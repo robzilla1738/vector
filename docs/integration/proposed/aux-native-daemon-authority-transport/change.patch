@@ -1,0 +1,795 @@
+--- docs/integration/proposed/aux-native-daemon-authority-transport/baseline/AuxNativeParentConnectionBridge.cc
++++ docs/integration/proposed/aux-native-daemon-authority-transport/source/AuxNativeParentConnectionBridge.cc
+@@ -114,3 +114,36 @@
+   } catch (...) { return -1; }
+   return -1;
+ }
++#if defined(AUX_NATIVE_DAEMON_AUTHORITY_SERVER)
++namespace {
++std::shared_ptr<AuthenticatedNativeParentConnection> ActualAuthorityConnection(uint64_t handle) {
++  auto& registry = Connections();
++  if (getpid() != registry.process) return {};
++  std::lock_guard<std::mutex> lock(registry.mutex);
++  auto found = registry.records.find(handle);
++  return found == registry.records.end() ? nullptr : found->second.connection;
++}
++}
++extern "C" int32_t AuxStartPreparedDaemonAuthorityServer(uint64_t parent, uint64_t provider,
++                                                         uint32_t timeout_ms) {
++  try {
++    if (getpid() != Connections().process) return -3;
++    auto actual = ActualAuthorityConnection(parent);
++    return actual ? actual->StartPreparedDaemonAuthorityServer(provider, timeout_ms) : -1;
++  } catch (...) { return -1; }
++}
++extern "C" int32_t AuxServicePreparedDaemonAuthorityServer(uint64_t parent, uint32_t timeout_ms) {
++  try {
++    if (getpid() != Connections().process) return -3;
++    auto actual = ActualAuthorityConnection(parent);
++    return actual ? actual->ServicePreparedDaemonAuthorityServer(timeout_ms) : -1;
++  } catch (...) { return -1; }
++}
++extern "C" int32_t AuxClosePreparedDaemonAuthorityServer(uint64_t parent) {
++  try {
++    if (getpid() != Connections().process) return -2;
++    auto actual = ActualAuthorityConnection(parent);
++    return actual ? actual->ClosePreparedDaemonAuthorityServer() : -1;
++  } catch (...) { return 2; } // Unknown close is retained/untracked, never drained.
++}
++#endif
+--- docs/integration/proposed/aux-native-daemon-authority-transport/baseline/AuxNativeParentConnectionBridge.h
++++ docs/integration/proposed/aux-native-daemon-authority-transport/source/AuxNativeParentConnectionBridge.h
+@@ -19,6 +19,11 @@
+ // 0 authenticated transfer;1 timeout;-1 refused;-2 closed;-3 wrong process.
+ // -4 unresolved Mach right cleanup; connection is closed, never retried blindly.
+ int32_t AuxSendAuthenticatedFreshColdHome(uint64_t native_parent, uint64_t ready_service, uint32_t timeout_ms);
++// Native-only actual backend/listener. No JS registration or generic commands.
++int32_t AuxStartPreparedDaemonAuthorityServer(uint64_t parent, uint64_t provider, uint32_t timeout_ms);
++int32_t AuxServicePreparedDaemonAuthorityServer(uint64_t parent, uint32_t timeout_ms);
++// Close:0 actual retired;1 in-flight;2 untracked;-1 absent;-2 wrong process.
++int32_t AuxClosePreparedDaemonAuthorityServer(uint64_t parent);
+ #ifdef __cplusplus
+ }
+ #endif
+--- docs/integration/proposed/aux-native-daemon-authority-transport/baseline/AuxNativePeerTransport.cc
++++ docs/integration/proposed/aux-native-daemon-authority-transport/source/AuxNativePeerTransport.cc
+@@ -15,6 +15,10 @@
+ #include <sys/wait.h>
+ #include <unistd.h>
+ #include <array>
++#include <algorithm>
++#include <atomic>
++#include <limits>
++#include <string.h>
+ #include <cstring>
+ #include <mutex>
+ #include <optional>
+@@ -24,7 +28,25 @@
+ #include <vector>
+ 
+ namespace aux::peer {
++DaemonAuthorityReply::DaemonAuthorityReply() = default;
++DaemonAuthorityReply::DaemonAuthorityReply(DaemonAuthorityStatus result, std::vector<uint8_t> bytes)
++    : status(result), payload(std::move(bytes)) {}
++DaemonAuthorityReply::~DaemonAuthorityReply() = default;
+ namespace {
++void WipeBytes(std::span<uint8_t> bytes) {
++  if (!bytes.empty()) memset_s(bytes.data(), bytes.size(), 0, bytes.size());
++}
++struct PayloadWiper {
++  explicit PayloadWiper(std::span<uint8_t> value);
++  ~PayloadWiper();
++  std::span<uint8_t> bytes;
++};
++PayloadWiper::PayloadWiper(std::span<uint8_t> value) : bytes(value) {}
++PayloadWiper::~PayloadWiper() { WipeBytes(bytes); }
++void WipePayload(std::vector<uint8_t>& value) {
++  WipeBytes(value);
++  value.clear();
++}
+ using namespace detail;
+ struct BirthIdentity {
+   pid_t pid;
+@@ -271,6 +293,25 @@
+   if (getpid() == process_ && right_ != MACH_PORT_NULL)
+     mach_port_deallocate(mach_task_self(), right_);
+ }
++struct AuthorityClient {
++  explicit AuthorityClient(NativeSendRight right);
++  ~AuthorityClient();
++  NativeSendRight endpoint;
++  std::mutex mutex;
++  bool closed = false;
++  bool started = false;
++  bool attempted = false;
++  bool pending = false;
++  uint32_t operation = 0;
++  uint64_t sequence = 0;
++  std::vector<uint8_t> completed;
++  bool completed_error = false;
++  std::array<uint8_t, 16> nonce{};
++  std::array<uint8_t, 51> message{};
++};
++AuthorityClient::AuthorityClient(NativeSendRight right) : endpoint(std::move(right)) {}
++AuthorityClient::~AuthorityClient() { WipePayload(completed); }
++struct AuthorityServer;
+ struct ParentTransport::State {
+   explicit State(std::shared_ptr<const ExactCodePolicy> value);
+   ~State();
+@@ -281,6 +322,7 @@
+   std::mutex mutex;
+   TransportSnapshot snapshot;
+   std::optional<int> child_pid_version;
++  std::shared_ptr<AuthorityClient> authority;
+   std::shared_ptr<AuthenticatedSelectedHomeTransfer> pending_home;
+   // Retains the actual accepted identity even after its one-shot typed take.
+   std::shared_ptr<AuthenticatedSelectedHomeTransfer> accepted_home;
+@@ -404,6 +446,7 @@
+     state_->snapshot.closed = true;
+     ++state_->snapshot.generation;
+   }
++  state_->authority.reset();
+   state_->pending_home.reset();
+   state_->accepted_home.reset();
+   state_->snapshot.selected_home_pending = false;
+@@ -432,6 +475,7 @@
+     state->snapshot.closed = true;
+     ++state->snapshot.generation;
+   }
++  state->authority.reset();
+   state->pending_home.reset();
+   state->accepted_home.reset();
+   state->snapshot.selected_home_pending = false;
+@@ -496,16 +540,22 @@
+   }
+   if (result == MACH_RCV_TIMED_OUT) return ExchangeStatus::timedOut;
+   DestroyMessage destroy(header);
++  const bool authority_registration = header->msgh_id == kAuthorityRegister;
+   const bool selected_request = header->msgh_id == kSelectedHomeRequest;
+   if (MACH_MSGH_BITS_REMOTE(header->msgh_bits) != MACH_MSG_TYPE_PORT_SEND_ONCE)
+     return ExchangeStatus::refused;
+   audit_token_t audit{};
+   std::array<uint8_t, 32> nonce{};
+   mach_port_t incoming_fileport = MACH_PORT_NULL;
+-  if (selected_request) {
++  if (selected_request || authority_registration) {
+     if (header->msgh_size != sizeof(SelectedHomeWire)) return ExchangeStatus::refused;
+     SelectedHomeReceived parsed{};
+     std::memcpy(&parsed, &incoming, sizeof(parsed));
++    if (authority_registration) {
++      if (parsed.wire.version != kAuthorityVersion) return ExchangeStatus::refused;
++      parsed.wire.header.msgh_id = kSelectedHomeRequest;
++      parsed.wire.version = kSelectedHomeVersion;
++    }
+     if (!ValidSelectedHomeWire(parsed)) return ExchangeStatus::refused;
+     audit = parsed.trailer.msgh_audit;
+     nonce = parsed.wire.nonce;
+@@ -561,12 +611,26 @@
+     ++state->snapshot.rejected_peer_identities;
+     return ExchangeStatus::refused;
+   }
++  std::shared_ptr<AuthorityClient> registered;
++  if (authority_registration) {
++    if (!state->accepted_home || !state->child_pid_version ||
++        *state->child_pid_version != version) return ExchangeStatus::refused;
++    if (state->authority && state->authority->endpoint.BorrowNativeName() != incoming_fileport)
++      return ExchangeStatus::refused;
++    if (!state->authority) {
++      registered = std::make_shared<AuthorityClient>(
++          NativeSendRight::AdoptReceivedRight(incoming_fileport));
++      // The new RAII owner consumes the received descriptor on every outcome.
++      auto* actual = reinterpret_cast<SelectedHomeWire*>(header);
++      actual->fileport.name = MACH_PORT_NULL;
++    }
++  }
+   Wire reply{};
+   reply.header.msgh_bits = MACH_MSGH_BITS(MACH_MSG_TYPE_MOVE_SEND_ONCE, 0);
+   reply.header.msgh_size = sizeof(reply);
+   reply.header.msgh_remote_port = header->msgh_remote_port;
+-  reply.header.msgh_id = selected_request ? kSelectedHomeReply : kReply;
+-  reply.version = selected_request ? kSelectedHomeVersion : kVersion;
++  reply.header.msgh_id = authority_registration ? kAuthorityRegistered : selected_request ? kSelectedHomeReply : kReply;
++  reply.version = authority_registration ? kAuthorityVersion : selected_request ? kSelectedHomeVersion : kVersion;
+   reply.generation = generation; reply.nonce = nonce;
+   header->msgh_remote_port = MACH_PORT_NULL;
+   DestroyMessage reply_cleanup(&reply.header);
+@@ -581,6 +645,7 @@
+     return ExchangeStatus::refused;
+   }
+   reply_cleanup.Disarm();
++  if (registered) state->authority = std::move(registered);
+   state->child_pid_version = version; state->snapshot.child_pid_version_observed = true;
+   ++state->snapshot.authenticated_exchanges;
+   if (selected_request) {
+@@ -658,6 +723,9 @@
+ 
+ namespace aux::peer {
+ struct AuthenticatedNativeParentConnection::State {
++  std::shared_ptr<AuthorityServer> authority;
++  bool authority_starting = false;
++  bool authority_closed = false;
+   State(NativeSendRight right, std::shared_ptr<const ExactCodePolicy> value,
+         BirthIdentity birth_value, ParentExchange verified);
+   ~State();
+@@ -779,7 +847,12 @@
+   int32_t directory = -1;
+   // This stronger producer refuses reserved/prepared/no-provider services and
+   // revalidates actual terminal/scoped/current state around its real FD dup.
+-  if (AuxCopyAuthenticatedFreshColdHomeDescriptor(ready_service, &directory) != 0 || directory < 0) {
++  const auto export_status = AuxCopyAuthenticatedFreshColdHomeDescriptor(ready_service, &directory);
++  if (export_status == 1) {
++    if (directory >= 0) { close(directory); return observation; }
++    observation.status = ExchangeStatus::timedOut; return observation;
++  }
++  if (export_status != 0 || directory < 0) {
+     if (directory >= 0) close(directory);
+     return observation;
+   }
+@@ -864,4 +937,465 @@
+   observation.peer_pid_version = state->snapshot.parent_pid_version;
+   return observation;
+ }
++
++#if defined(AUX_NATIVE_DAEMON_AUTHORITY_SERVER)
++#include "AuxPreparedDaemonAuthority.h"
++struct AuthorityServer {
++  AuthorityServer(std::shared_ptr<AuthenticatedNativeParentConnection::State> owner,
++                  uint64_t provider_value, uint64_t backend_value);
++  ~AuthorityServer();
++  int32_t Register(uint32_t timeout_ms);
++  int32_t Service(uint32_t timeout_ms);
++  int32_t Close();
++  const pid_t process = getpid();
++  const std::weak_ptr<AuthenticatedNativeParentConnection::State> connection;
++  const uint64_t provider;
++  const uint64_t backend;
++  ReceiveRight receiver;
++  std::optional<NativeSendRight> send_right;
++  std::mutex mutex;
++  bool closed = false;
++  std::atomic<uint64_t> generation{0};
++  uint64_t active_receives = 0;
++  uint64_t active_operations = 0;
++  bool cleanup_unresolved = false;
++};
++AuthorityServer::AuthorityServer(std::shared_ptr<AuthenticatedNativeParentConnection::State> owner,
++    uint64_t provider_value, uint64_t backend_value)
++    : connection(owner), provider(provider_value), backend(backend_value) {
++  if (receiver.get() != MACH_PORT_NULL &&
++      mach_port_insert_right(mach_task_self(), receiver.get(), receiver.get(),
++                             MACH_MSG_TYPE_MAKE_SEND) == KERN_SUCCESS)
++    send_right.emplace(NativeSendRight::AdoptReceivedRight(receiver.get()));
++}
++AuthorityServer::~AuthorityServer() {
++  if (getpid() == process) {
++    Close();
++    // Backend's real release retains pending/untracked exact owner itself.
++    AuxReleasePreparedDaemonAuthority(backend);
++  }
++}
++int32_t AuthorityServer::Close() {
++  if (getpid() != process) return -2;
++  {
++    std::lock_guard<std::mutex> lock(mutex);
++    closed = true;
++  }
++  const auto outcome = AuxClosePreparedDaemonAuthority(backend);
++  std::lock_guard<std::mutex> lock(mutex);
++  if (cleanup_unresolved) return 2;
++  if (active_receives || active_operations) return 1;
++  return outcome;
++}
++int32_t AuthorityServer::Register(uint32_t timeout_ms) {
++  if (getpid() != process) return -3;
++  auto state = connection.lock();
++  if (!state || !send_right || !send_right->is_valid()) return -1;
++  {
++    std::lock_guard<std::mutex> lock(mutex);
++    if (closed) return -2;
++  }
++  auto endpoint = [&] {
++    std::lock_guard<std::mutex> lock(state->mutex);
++    return state->endpoint.CopyOwnedRight();
++  }();
++  if (!endpoint.is_valid()) return -1;
++  ReceiveRight reply;
++  if (reply.get() == MACH_PORT_NULL) return -1;
++  SelectedHomeReceived request{};
++  request.wire.header.msgh_bits = MACH_MSGH_BITS(MACH_MSG_TYPE_COPY_SEND,
++      MACH_MSG_TYPE_MAKE_SEND_ONCE) | MACH_MSGH_BITS_COMPLEX;
++  request.wire.header.msgh_size = sizeof(SelectedHomeWire);
++  request.wire.header.msgh_remote_port = endpoint.BorrowNativeName();
++  request.wire.header.msgh_local_port = reply.get();
++  request.wire.header.msgh_id = kAuthorityRegister;
++  request.wire.body.msgh_descriptor_count = 1;
++  request.wire.fileport.name = send_right->BorrowNativeName();
++  request.wire.fileport.disposition = MACH_MSG_TYPE_COPY_SEND;
++  request.wire.fileport.type = MACH_MSG_PORT_DESCRIPTOR;
++  request.wire.version = kAuthorityVersion;
++  arc4random_buf(request.wire.nonce.data(), request.wire.nonce.size());
++  const auto nonce = request.wire.nonce;
++  auto result = mach_msg(&request.wire.header, MACH_SEND_MSG | MACH_SEND_TIMEOUT,
++      sizeof(SelectedHomeWire), 0, MACH_PORT_NULL, timeout_ms, MACH_PORT_NULL);
++  if (result != KERN_SUCCESS) {
++    if (RecoverableSendError(result)) {
++      const auto local = MACH_MSGH_BITS_LOCAL(request.wire.header.msgh_bits);
++      if (local == MACH_MSG_TYPE_MOVE_SEND || local == MACH_MSG_TYPE_MOVE_SEND_ONCE)
++        mach_port_deallocate(mach_task_self(), request.wire.header.msgh_local_port);
++    } else {
++      std::lock_guard<std::mutex> lock(mutex);
++      cleanup_unresolved = true; closed = true;
++      return -4;
++    }
++    return 1;
++  }
++  Received response{};
++  result = mach_msg(&response.wire.header, kReceiveOptions, 0, sizeof(response),
++      reply.get(), timeout_ms, MACH_PORT_NULL);
++  if (result == MACH_RCV_TIMED_OUT) return 1;
++  if (result != KERN_SUCCESS) {
++    std::lock_guard<std::mutex> lock(mutex);
++    cleanup_unresolved = true; closed = true;
++    return -4;
++  }
++  DestroyMessage destroy(&response.wire.header);
++  auto checked = response;
++  checked.wire.version = kVersion;
++  const bool valid = ValidWire(checked, kAuthorityRegistered) &&
++      response.wire.version == kAuthorityVersion && response.wire.nonce == nonce &&
++      response.wire.generation != 0 &&
++      audit_token_to_pid(response.trailer.msgh_audit) == state->birth.pid &&
++      audit_token_to_pidversion(response.trailer.msgh_audit) == state->snapshot.parent_pid_version &&
++      getppid() == state->birth.pid && SameBirth(state->birth, 0) &&
++      NativeOperations::Validate(response.trailer.msgh_audit, *state->policy);
++  std::lock_guard<std::mutex> parent_lock(state->mutex);
++  std::lock_guard<std::mutex> lock(mutex);
++  if (state->snapshot.closed || closed) return -2;
++  if (!valid || (generation && generation != response.wire.generation)) {
++    closed = true; return -1;
++  }
++  generation = response.wire.generation;
++  return 0;
++}
++int32_t AuthorityServer::Service(uint32_t timeout_ms) {
++  if (getpid() != process) return -3;
++  auto state = connection.lock();
++  if (!state || !ValidTimeout(timeout_ms)) return -1;
++  {
++    std::lock_guard<std::mutex> lock(state->mutex);
++    if (state->snapshot.closed) return -2;
++    ++state->snapshot.active_checks;
++  }
++  auto finish_check = +[](AuthenticatedNativeParentConnection::State* retained) {
++    std::lock_guard<std::mutex> lock(retained->mutex);
++    --retained->snapshot.active_checks;
++  };
++  std::unique_ptr<AuthenticatedNativeParentConnection::State, decltype(finish_check)> actual_call(state.get(), finish_check);
++  {
++    std::lock_guard<std::mutex> lock(mutex);
++    if (closed || !generation) return -2;
++    ++active_receives;
++  }
++  AuthorityReceived request{};
++  const auto received = mach_msg(&request.wire.header, kReceiveOptions, 0, sizeof(request),
++      receiver.get(), timeout_ms, MACH_PORT_NULL);
++  {
++    std::lock_guard<std::mutex> lock(mutex);
++    --active_receives;
++    if (received != KERN_SUCCESS && received != MACH_RCV_TIMED_OUT) {
++      cleanup_unresolved = true; closed = true; return -4;
++    }
++    if (closed) {
++      if (received == KERN_SUCCESS) mach_msg_destroy(&request.wire.header);
++      return -2;
++    }
++    if (received == MACH_RCV_TIMED_OUT) return 1;
++    ++active_operations;
++  }
++  auto finish = +[](AuthorityServer* server) {
++    std::lock_guard<std::mutex> lock(server->mutex);
++    --server->active_operations;
++  };
++  std::unique_ptr<AuthorityServer, decltype(finish)> active(this, finish);
++  DestroyMessage destroy(&request.wire.header);
++  const auto& wire = request.wire;
++  bool valid = wire.header.msgh_size == sizeof(wire) && wire.header.msgh_id == kAuthorityRequest &&
++      !(wire.header.msgh_bits & MACH_MSGH_BITS_COMPLEX) &&
++      MACH_MSGH_BITS_REMOTE(wire.header.msgh_bits) == MACH_MSG_TYPE_PORT_SEND_ONCE &&
++      wire.version == kAuthorityVersion && wire.padding == 0 && wire.generation == generation &&
++      (wire.operation == kSign || wire.operation == kPublicKeys || wire.operation == kObserve ||
++       wire.operation == kInboxKey || wire.operation == kAcknowledge) && wire.sequence != 0 &&
++      request.trailer.msgh_trailer_type == MACH_MSG_TRAILER_FORMAT_0 &&
++      request.trailer.msgh_trailer_size >= sizeof(request.trailer) &&
++      audit_token_to_pid(request.trailer.msgh_audit) == state->birth.pid &&
++      audit_token_to_pidversion(request.trailer.msgh_audit) == state->snapshot.parent_pid_version &&
++      getppid() == state->birth.pid && SameBirth(state->birth, 0);
++  if (valid) valid = NativeOperations::Validate(request.trailer.msgh_audit, *state->policy);
++  if (wire.operation != kSign)
++    valid = valid && std::all_of(wire.message.begin(), wire.message.end(), [](uint8_t b) { return b == 0; });
++  if (!valid) {
++    std::lock_guard<std::mutex> lock(mutex); closed = true; return -1;
++  }
++  AuthorityReplyWire response{};
++  PayloadWiper response_wiper(response.payload);
++  response.header.msgh_bits = MACH_MSGH_BITS(MACH_MSG_TYPE_MOVE_SEND_ONCE, 0);
++  response.header.msgh_size = sizeof(response);
++  response.header.msgh_remote_port = request.wire.header.msgh_remote_port;
++  response.header.msgh_id = kAuthorityReply;
++  response.generation = generation;
++  response.sequence = wire.sequence;
++  response.nonce = wire.nonce;
++  {
++    std::lock_guard<std::mutex> lock(state->mutex);
++    if (state->snapshot.closed) return -2;
++  }
++  // Guard validation reenters this same connection's Revalidate. All native
++  // registry/connection/server locks above have been released before callbacks.
++  if (wire.operation == kSign)
++    response.status = AuxBeginPreparedDaemonSignature(backend, wire.sequence, wire.nonce.data(),
++        wire.message.data(), response.payload.data(), response.payload.size(), &response.length);
++  else if (wire.operation == kPublicKeys)
++    response.status = AuxBeginPreparedDaemonPublicKeys(backend, wire.sequence, wire.nonce.data(),
++        response.payload.data(), response.payload.size(), &response.length);
++  else if (wire.operation == kInboxKey)
++    response.status = AuxBeginPreparedDaemonInboxKey(backend, wire.sequence, wire.nonce.data(),
++        response.payload.data(), response.payload.size(), &response.length);
++  else if (wire.operation == kAcknowledge)
++    response.status = AuxAckPreparedDaemonAuthority(backend, wire.sequence, wire.nonce.data());
++  else
++    response.status = AuxObservePreparedDaemonAuthority(backend, wire.sequence, wire.nonce.data(),
++        response.payload.data(), response.payload.size(), &response.length);
++  if (response.length > response.payload.size() ||
++      (response.status != 0 && response.length != 0)) return -1;
++  if (response.status != 0) WipeBytes(response.payload);
++  {
++    std::lock_guard<std::mutex> lock(mutex);
++    if (closed) return -2;
++  }
++  if (getppid() != state->birth.pid || !SameBirth(state->birth, 0)) return -1;
++  request.wire.header.msgh_remote_port = MACH_PORT_NULL;
++  DestroyMessage reply_cleanup(&response.header);
++  const auto sent = mach_msg(&response.header, MACH_SEND_MSG | MACH_SEND_TIMEOUT,
++      sizeof(response), 0, MACH_PORT_NULL, timeout_ms, MACH_PORT_NULL);
++  if (sent != KERN_SUCCESS) {
++    if (!RecoverableSendError(sent)) {
++      reply_cleanup.Disarm();
++      std::lock_guard<std::mutex> lock(mutex);
++      cleanup_unresolved = true; closed = true; return -4;
++    }
++    return 1;
++  }
++  reply_cleanup.Disarm();
++  return 0;
++}
++int32_t AuthenticatedNativeParentConnection::StartPreparedDaemonAuthorityServer(uint64_t provider,
++    uint32_t timeout_ms) {
++  if (!provider || !ValidTimeout(timeout_ms)) return -1;
++  const auto checked = Revalidate(timeout_ms);
++  if (checked != ExchangeStatus::authenticated) {
++    if (checked == ExchangeStatus::timedOut) return 1;
++    if (checked == ExchangeStatus::closed) return -2;
++    if (checked == ExchangeStatus::wrongProcess) return -3;
++    return -1;
++  }
++  std::shared_ptr<AuthorityServer> server;
++  {
++    std::lock_guard<std::mutex> lock(state_->mutex);
++    if (state_->snapshot.closed || state_->authority_closed) return -2;
++    server = state_->authority;
++    if (!server) {
++      if (state_->authority_starting) return 1;
++      state_->authority_starting = true;
++    }
++  }
++  if (!server) {
++    const auto backend = AuxCreatePreparedDaemonAuthority(provider);
++    if (!backend) {
++      std::lock_guard<std::mutex> lock(state_->mutex);
++      state_->authority_starting = false;
++      return -1;
++    }
++    auto created = std::make_shared<AuthorityServer>(state_, provider, backend);
++    std::lock_guard<std::mutex> lock(state_->mutex);
++    state_->authority_starting = false;
++    // Preserve a late actual backend even after close so its pending/untracked
++    // owner remains queryable; do not publish a listener after terminal close.
++    if (!state_->authority) state_->authority = created;
++    server = state_->authority;
++    if (state_->snapshot.closed || state_->authority_closed) return -2;
++  }
++  if (server->provider != provider) return -1;
++  return server->Register(timeout_ms);
++}
++int32_t AuthenticatedNativeParentConnection::ServicePreparedDaemonAuthorityServer(uint32_t timeout_ms) {
++  if (getpid() != state_->process) return -3;
++  std::shared_ptr<AuthorityServer> server;
++  {
++    std::lock_guard<std::mutex> lock(state_->mutex);
++    if (state_->snapshot.closed) return -2;
++    server = state_->authority;
++  }
++  return server ? server->Service(timeout_ms) : -1;
++}
++int32_t AuthenticatedNativeParentConnection::ClosePreparedDaemonAuthorityServer() {
++  if (getpid() != state_->process) return -2;
++  std::shared_ptr<AuthorityServer> server;
++  {
++    std::lock_guard<std::mutex> lock(state_->mutex);
++    state_->authority_closed = true;
++    if (state_->authority_starting) return 1;
++    server = state_->authority;
++  }
++  return server ? server->Close() : 0;
++}
++#endif
++
++DaemonAuthorityReply AuthenticatedSelectedHomeTransfer::SignDaemonChallenge(
++    std::span<const uint8_t> message, uint32_t timeout_ms) {
++  constexpr char domain[] = "Aux Daemon Auth v1"; // Includes exact terminating NUL.
++  if (message.size() != 51 || std::memcmp(message.data(), domain, sizeof(domain)) != 0)
++    return {};
++  return RequestAuthority(kSign, message, timeout_ms);
++}
++DaemonAuthorityReply AuthenticatedSelectedHomeTransfer::GetInstallationPublicKeys(uint32_t timeout_ms) {
++  return RequestAuthority(kPublicKeys, {}, timeout_ms);
++}
++DaemonAuthorityReply AuthenticatedSelectedHomeTransfer::GetAgentInboxV2MasterKey(uint32_t timeout_ms) {
++  return RequestAuthority(kInboxKey, {}, timeout_ms);
++}
++DaemonAuthorityReply AuthenticatedSelectedHomeTransfer::RequestAuthority(
++    uint32_t operation, std::span<const uint8_t> message, uint32_t timeout_ms) {
++  if (!ValidTimeout(timeout_ms)) return {};
++  const auto value = state_;
++  if (getpid() != value->process) return {DaemonAuthorityStatus::wrongProcess, {}};
++  int home = DuplicateRevalidatedDirectory();
++  if (home < 0) return {};
++  close(home);
++  const auto owner = value->owner.lock();
++  if (!owner) return {DaemonAuthorityStatus::closed, {}};
++  std::shared_ptr<AuthorityClient> client;
++  {
++    std::lock_guard<std::mutex> lock(owner->mutex);
++    if (owner->snapshot.closed || owner->snapshot.generation != value->generation)
++      return {DaemonAuthorityStatus::closed, {}};
++    client = owner->authority;
++    if (client) ++owner->snapshot.active_exchanges;
++  }
++  if (!client) return {};
++  auto finish_call = +[](ParentTransport::State* retained) {
++    std::lock_guard<std::mutex> lock(retained->mutex);
++    --retained->snapshot.active_exchanges;
++  };
++  std::unique_ptr<ParentTransport::State, decltype(finish_call)> owned_call(owner.get(), finish_call);
++  // One exact outstanding operation per native selected installation. This
++  // serialization lock is not a browser/host lock and crosses no JS callback.
++  std::lock_guard<std::mutex> serial(client->mutex);
++  if (client->closed) return {DaemonAuthorityStatus::closed, {}};
++  {
++    std::lock_guard<std::mutex> lock(owner->mutex);
++    if (owner->snapshot.closed || owner->snapshot.generation != value->generation) {
++      WipePayload(client->completed);
++      return {DaemonAuthorityStatus::closed, {}};
++    }
++  }
++  std::array<uint8_t, 51> body{};
++  std::copy(message.begin(), message.end(), body.begin());
++  const bool same = client->started && client->operation == operation && client->message == body;
++  if (client->pending && !same) return {DaemonAuthorityStatus::busy, {}};
++  if (!same) {
++    if (client->sequence == std::numeric_limits<uint64_t>::max()) return {};
++    ++client->sequence;
++    WipePayload(client->completed);
++    client->attempted = false;
++    client->completed_error = false;
++    client->operation = operation;
++    client->message = body;
++    arc4random_buf(client->nonce.data(), client->nonce.size());
++    client->started = true;
++  }
++  const bool observe = same && client->attempted;
++  bool acknowledging = false;
++  for (unsigned phase = 0; phase < 2; ++phase) {
++  ReceiveRight reply;
++  if (reply.get() == MACH_PORT_NULL) return {};
++  AuthorityReceived request{};
++  request.wire.header.msgh_bits = MACH_MSGH_BITS(MACH_MSG_TYPE_COPY_SEND, MACH_MSG_TYPE_MAKE_SEND_ONCE);
++  request.wire.header.msgh_size = sizeof(AuthorityWire);
++  request.wire.header.msgh_remote_port = client->endpoint.BorrowNativeName();
++  request.wire.header.msgh_local_port = reply.get();
++  request.wire.header.msgh_id = kAuthorityRequest;
++  request.wire.operation = acknowledging ? kAcknowledge : observe ? kObserve : operation;
++  request.wire.generation = value->generation;
++  request.wire.sequence = client->sequence;
++  request.wire.nonce = client->nonce;
++  if (!observe && !acknowledging) request.wire.message = body;
++  // Once send is attempted the nonce is retained, including all timeout/error
++  // outcomes. A later call can only observe it, never silently sign again.
++  client->pending = true;
++  client->attempted = true;
++  auto result = mach_msg(&request.wire.header, MACH_SEND_MSG | MACH_SEND_TIMEOUT,
++      sizeof(AuthorityWire), 0, MACH_PORT_NULL, timeout_ms, MACH_PORT_NULL);
++  if (result != KERN_SUCCESS) {
++    if (RecoverableSendError(result)) {
++      const auto local = MACH_MSGH_BITS_LOCAL(request.wire.header.msgh_bits);
++      if (local == MACH_MSG_TYPE_MOVE_SEND || local == MACH_MSG_TYPE_MOVE_SEND_ONCE)
++        mach_port_deallocate(mach_task_self(), request.wire.header.msgh_local_port);
++    } else {
++      std::lock_guard<std::mutex> lock(owner->mutex);
++      owner->snapshot.closed = true; ++owner->snapshot.generation;
++      WipePayload(client->completed);
++      return {DaemonAuthorityStatus::cleanupUnresolved, {}};
++    }
++    return {DaemonAuthorityStatus::timedOut, {}};
++  }
++  AuthorityReplyReceived response{};
++  PayloadWiper response_wiper(response.wire.payload);
++  result = mach_msg(&response.wire.header, kReceiveOptions, 0, sizeof(response),
++      reply.get(), timeout_ms, MACH_PORT_NULL);
++  if (result == MACH_RCV_TIMED_OUT) return {DaemonAuthorityStatus::timedOut, {}};
++  if (result != KERN_SUCCESS) {
++    std::lock_guard<std::mutex> lock(owner->mutex);
++    owner->snapshot.closed = true; ++owner->snapshot.generation;
++    WipePayload(client->completed);
++    return {DaemonAuthorityStatus::cleanupUnresolved, {}};
++  }
++  DestroyMessage cleanup(&response.wire.header);
++  const auto& wire = response.wire;
++  if (wire.header.msgh_size != sizeof(wire) || wire.header.msgh_id != kAuthorityReply ||
++      (wire.header.msgh_bits & MACH_MSGH_BITS_COMPLEX) || wire.version != kAuthorityVersion ||
++      wire.generation != value->generation || wire.sequence != client->sequence ||
++      wire.nonce != client->nonce || wire.reserved != 0 ||
++      wire.length > wire.payload.size() ||
++      response.trailer.msgh_trailer_type != MACH_MSG_TRAILER_FORMAT_0 ||
++      response.trailer.msgh_trailer_size < sizeof(response.trailer) ||
++      audit_token_to_pid(response.trailer.msgh_audit) != owner->child->pid ||
++      audit_token_to_pidversion(response.trailer.msgh_audit) != value->version ||
++      !SameBirth(*owner->child, owner->process) || !WaitableLiveChild(owner->child->pid) ||
++      !NativeOperations::Validate(response.trailer.msgh_audit, *owner->policy)) {
++    WipePayload(client->completed); return {};
++  }
++  home = DuplicateRevalidatedDirectory();
++  if (home < 0) { WipePayload(client->completed); return {}; }
++  close(home);
++  {
++    std::lock_guard<std::mutex> lock(owner->mutex);
++    if (owner->snapshot.closed || owner->snapshot.generation != value->generation)
++      { WipePayload(client->completed); return {DaemonAuthorityStatus::closed, {}}; }
++  }
++  switch (wire.status) {
++    case 0:
++      if (acknowledging) {
++        if (wire.length != 0 || (!client->completed_error && client->completed.empty())) return {};
++        client->pending = false;
++        if (client->completed_error) return {};
++        return {DaemonAuthorityStatus::ready, client->completed};
++      }
++      if (!wire.length || (operation == kInboxKey && wire.length != 32)) return {};
++      {
++        std::vector<uint8_t> payload(wire.payload.begin(), wire.payload.begin() + wire.length);
++        if (!client->completed.empty() && client->completed != payload) {
++          WipePayload(payload); WipePayload(client->completed); return {};
++        }
++        if (client->completed.empty()) client->completed = std::move(payload);
++        else WipePayload(payload);
++      }
++      acknowledging = true;
++      continue;
++    case 1: return {DaemonAuthorityStatus::pending, {}};
++    case 2: return {DaemonAuthorityStatus::busy, {}};
++    case 3:
++      client->closed = true;
++      WipePayload(client->completed);
++      return {DaemonAuthorityStatus::closed, {}};
++    case 4:
++      if (acknowledging) return {};
++      client->completed_error = true;
++      acknowledging = true;
++      continue;
++    default: return {};
++  }
++  }
++  return {DaemonAuthorityStatus::pending, {}};
++}
+ }  // namespace aux::peer
+--- docs/integration/proposed/aux-native-daemon-authority-transport/baseline/AuxNativePeerTransport.h
++++ docs/integration/proposed/aux-native-daemon-authority-transport/source/AuxNativePeerTransport.h
+@@ -5,6 +5,7 @@
+ #include <cstdint>
+ #include <memory>
+ #include <span>
++#include <vector>
+ #include <chrono>
+ #include <optional>
+ 
+@@ -71,6 +72,15 @@
+   bool right_cleanup_unresolved = false;
+   int32_t receive_error = 0;
+ };
++enum class DaemonAuthorityStatus { ready, pending, busy, refused, closed, timedOut,
++                                   wrongProcess, cleanupUnresolved };
++struct DaemonAuthorityReply {
++  DaemonAuthorityReply();
++  DaemonAuthorityReply(DaemonAuthorityStatus result, std::vector<uint8_t> bytes);
++  ~DaemonAuthorityReply();
++  DaemonAuthorityStatus status = DaemonAuthorityStatus::refused;
++  std::vector<uint8_t> payload;
++};
+ class PreparedParentEndpoint;
+ class OwnedNativePeerChild;
+ class SelectedNativeHome;
+@@ -85,12 +95,17 @@
+ class AuthenticatedSelectedHomeTransfer final {
+  public:
+   ~AuthenticatedSelectedHomeTransfer();
++  DaemonAuthorityReply SignDaemonChallenge(std::span<const uint8_t> exact_message,
++                                           uint32_t timeout_ms);
++  DaemonAuthorityReply GetInstallationPublicKeys(uint32_t timeout_ms);
++  DaemonAuthorityReply GetAgentInboxV2MasterKey(uint32_t timeout_ms);
+   AuthenticatedSelectedHomeTransfer(const AuthenticatedSelectedHomeTransfer&) = delete;
+   AuthenticatedSelectedHomeTransfer& operator=(const AuthenticatedSelectedHomeTransfer&) = delete;
+  private:
+   struct State;
+   explicit AuthenticatedSelectedHomeTransfer(std::shared_ptr<State> state);
+   int DuplicateRevalidatedDirectory();
++  DaemonAuthorityReply RequestAuthority(uint32_t operation, std::span<const uint8_t> message, uint32_t timeout_ms);
+   std::optional<ReadyHomePulse> InspectReadyPulse();
+   std::shared_ptr<State> state_;
+   friend class ParentTransport;
+@@ -157,11 +172,15 @@
+   ExchangeStatus Revalidate(uint32_t timeout_ms);
+   // Descriptor source is ONLY actual ready-service C producer, never a caller FD.
+   ParentExchange SendSelectedHome(uint64_t ready_service, uint32_t timeout_ms);
++  int32_t StartPreparedDaemonAuthorityServer(uint64_t provider, uint32_t timeout_ms);
++  int32_t ServicePreparedDaemonAuthorityServer(uint32_t timeout_ms);
++  int32_t ClosePreparedDaemonAuthorityServer();
+   NativeParentConnectionSnapshot CloseAndInspect();
+   NativeParentConnectionSnapshot Inspect() const;
+  private:
+   struct State;
+   explicit AuthenticatedNativeParentConnection(std::shared_ptr<State> state);
++  friend struct AuthorityServer;
+   std::shared_ptr<State> state_;
+ };
+ // Child native bootstrap consumes a private endpoint transferred by actual
+--- docs/integration/proposed/aux-native-daemon-authority-transport/baseline/AuxNativePeerWire.h
++++ docs/integration/proposed/aux-native-daemon-authority-transport/source/AuxNativePeerWire.h
+@@ -64,6 +64,39 @@
+       received.trailer.msgh_trailer_size >= sizeof(mach_msg_audit_trailer_t);
+ }
+ 
++// Finite native daemon authority RPC; never a generic command envelope.
++constexpr mach_msg_id_t kAuthorityRegister = 0x4155584a; // AUXJ
++constexpr mach_msg_id_t kAuthorityRegistered = 0x4155584b; // AUXK
++constexpr mach_msg_id_t kAuthorityRequest = 0x4155584c; // AUXL
++constexpr mach_msg_id_t kAuthorityReply = 0x4155584d; // AUXM
++constexpr uint32_t kAuthorityVersion = 4;
++constexpr uint32_t kSign = 1, kPublicKeys = 2, kInboxKey = 3, kObserve = 4, kAcknowledge = 5;
++struct AuthorityWire {
++  mach_msg_header_t header{};
++  uint32_t version = kAuthorityVersion;
++  uint32_t operation = 0;
++  uint64_t generation = 0;
++  uint64_t sequence = 0;
++  std::array<uint8_t, 16> nonce{};
++  std::array<uint8_t, 51> message{};
++  uint8_t padding = 0;
++};
++struct AuthorityReceived { AuthorityWire wire; mach_msg_audit_trailer_t trailer; };
++struct AuthorityReplyWire {
++  mach_msg_header_t header{};
++  uint32_t version = kAuthorityVersion;
++  int32_t status = -1;
++  uint64_t generation = 0;
++  uint64_t sequence = 0;
++  std::array<uint8_t, 16> nonce{};
++  uint32_t length = 0;
++  uint32_t reserved = 0;
++  std::array<uint8_t, 8192> payload{};
++};
++struct AuthorityReplyReceived { AuthorityReplyWire wire; mach_msg_audit_trailer_t trailer; };
++static_assert(sizeof(AuthorityWire) % 4 == 0);
++static_assert(sizeof(AuthorityReplyWire) % 4 == 0);
++
+ // Apple libsyscall only treats these send errors as recoverable for cleanup.
+ inline bool RecoverableSendError(mach_msg_return_t result) {
+   return result == MACH_SEND_INVALID_DEST || result == MACH_SEND_TIMED_OUT ||

@@ -1,0 +1,28 @@
+{
+  "format": "aux.native-daemon-authority-transport.source.v1",
+  "files": {
+    "docs/integration/proposed/aux-native-daemon-authority-transport/source/AuxNativeParentConnectionBridge.cc": "6363bb6bfe4d93db9d88afd8ea644304459e18c40bf7091e7f112747e965479b",
+    "docs/integration/proposed/aux-native-daemon-authority-transport/source/AuxNativeParentConnectionBridge.h": "048433d6100fd0dbebfa4f63ee9fdfe6ebd1f1f8aca5926afeffb7ddb8e3afb6",
+    "docs/integration/proposed/aux-native-daemon-authority-transport/source/AuxNativePeerTransport.cc": "688d16cbea2d039938fd01684ebd7c0d02c820d196bb9ef7c75ee3991db28f3a",
+    "docs/integration/proposed/aux-native-daemon-authority-transport/source/AuxNativePeerTransport.h": "57f8883361c4e4c35fcdbbd56c0481fb1b48d9b1e98ca31a69ac6bae7ac73a68",
+    "docs/integration/proposed/aux-native-daemon-authority-transport/source/AuxNativePeerWire.h": "53b04f8c07d52621800fdc6f2df26643db3031b6d54e0bd53c7d98aeb9a35024",
+    "docs/integration/proposed/aux-native-prepared-daemon-authority/source/AuxPreparedDaemonAuthority.h": "a5dd340a5ac026d7aa0367f5c8ecccb821dfc315d085cfe87a7fd5232507942c",
+    "docs/integration/proposed/aux-native-fresh-home-busy/source/AuxFreshColdBootstrapNativeBridge.swift": "b77181057bc99c054877d166a55941a8c85aa866543bcd2c64386af21c0c2e82"
+  },
+  "baseline": {
+    "docs/integration/proposed/aux-native-daemon-authority-transport/baseline/AuxNativeParentConnectionBridge.cc": "5b6f0d9c135149a37fd6c879f624d4b2fa3428b89c858c4d177ba0bdcb87cde9",
+    "docs/integration/proposed/aux-native-daemon-authority-transport/baseline/AuxNativeParentConnectionBridge.h": "4257b290b661e9bc8ffa03365d94287acaf1519724f8def9f13a5f166afafa42",
+    "docs/integration/proposed/aux-native-daemon-authority-transport/baseline/AuxNativePeerTransport.cc": "aed5a32ed83cf100a9b8ff3c13b579778898ab397d729dc6649e09f214e88465",
+    "docs/integration/proposed/aux-native-daemon-authority-transport/baseline/AuxNativePeerTransport.h": "1f776968781ad612ac17f3c8aec5dac22f610a9ddb121a0a40cbd64768f67b46",
+    "docs/integration/proposed/aux-native-daemon-authority-transport/baseline/AuxNativePeerWire.h": "b9018b0813acea1cc54603141a23a7498ceb33c96727b07fc29ef9b67714dc64"
+  },
+  "compiled": false,
+  "ipcOrProtectedOperations": 0,
+  "methods": [
+    "SignDaemonChallenge",
+    "GetInstallationPublicKeys",
+    "GetAgentInboxV2MasterKey"
+  ],
+  "parentBackendLinked": false,
+  "compatibilitySourceChanged": false
+}

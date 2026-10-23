@@ -89,7 +89,8 @@ def main():
         obj = output / (str(index) + '.o')
         command = ['xcrun', 'clang++', '-std=c++20', '-arch', 'arm64',
                    '-mmacosx-version-min=13.5', '-DNAPI_VERSION=8',
-                   '-DAUX_ATOMIC_CSK_DISPATCH=1', '-fPIC']
+                   '-fPIC']
+        command += ['-D' + define for define in pins['cppDefines']]
         for directory in includes:
             command += ['-I', str(directory)]
         command += ['-c', str(REPO / name), '-o', str(obj)]

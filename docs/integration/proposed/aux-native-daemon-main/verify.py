@@ -16,22 +16,25 @@ for section in ['externalStaticReferences', 'nodeLifecycleReferences']:
         assert sha(Path(name)) == digest, name
 main = (here / 'source/AuxNativeDaemonMain.cc').read_text()
 order = ['const mach_port_t endpoint = AuxTakeNativeParentEndpointForBootstrap()',
-         'if (AuxPrepareSealedNativeDaemonImages()',
-         'if (AuxCreateSealedOuterBrowserParentConnection(',
-         'if (AuxCreateAuthenticatedFreshColdBootstrap(',
+         'const auto images_status = AuxPrepareSealedNativeDaemonImages()',
+         'const auto parent_status = AuxCreateSealedOuterBrowserParentConnection(',
+         'const auto bootstrap_status = AuxCreateAuthenticatedFreshColdBootstrap(',
          'const auto phase = AuxAdvanceAuthenticatedFreshColdBootstrap(',
          'if (!InstallReadyHomeEnvironment(lifetime))',
-         'if (AuxSendAuthenticatedFreshColdHome(',
-         'if (AuxCopySealedNativeDaemonEntry(',
+         'const auto export_status = AuxSendAuthenticatedFreshColdHome(',
+         'const auto authority_status = AuxStartPreparedDaemonAuthorityServer(',
+         'AuthorityLoop authority(lifetime)',
+         'const auto entry_status = AuxCopySealedNativeDaemonEntry(',
          'auto initialized = node::InitializeOncePerProcess(',
          'auto setup = node::CommonEnvironmentSetup::Create(',
          'std::make_shared<AuxDevelopmentWorkerHost>(lifetime.provider)',
          'const auto result = RunAuxNativeNodeEnvironment(',
          'pulse.StopAndJoin()',
+         'authority.StopAndDrain()',
          'while (drain != AuxDevelopmentWorkerDrain::drained)',
          'const int exit_code = pulse.failed()',
          'setup.reset()']
-positions = [main.index(anchor) for anchor in order]
+positions = [main.rindex(anchor) if anchor == 'authority.StopAndDrain()' else main.index(anchor) for anchor in order]
 assert positions == sorted(positions)
 assert '--disable-sigusr1' in main and '--use-system-ca' in main
 assert 'uv_run(' not in main
