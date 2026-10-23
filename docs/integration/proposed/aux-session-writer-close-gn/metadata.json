@@ -1,0 +1,10 @@
+{
+  "version": 1,
+  "files": [
+    {
+      "path": "components/sessions/BUILD.gn",
+      "baselineSha256": "1e9d72a3d2cdf9a370add5f39598c1d3123d4ee82243fae918faafef757aa862",
+      "outputSha256": "e5412ef21667652c2951f85ea930a9a5a5e7bdac4624da09b22fb85d94752526"
+    }
+  ]
+}

@@ -1,0 +1,13 @@
+{
+  "format": "aux.native.session-writer-close-gn.v1",
+  "parentSha256": "014f0961182c8360133d484408e9b5ea4a03a419175d4252b2247b9df05e5097",
+  "successorSha256": "2f2d89447a39710b711db114c5578b745e8b5a71a930ca0ffd9f0e7a614fd1a9",
+  "sourceRecords": 778,
+  "binaryAssetsUnchanged": 23,
+  "gnFilesChanged": 1,
+  "headersRegistered": 1,
+  "appliedToNative": false,
+  "gnGenerated": false,
+  "browserLinked": false,
+  "appActivated": false
+}

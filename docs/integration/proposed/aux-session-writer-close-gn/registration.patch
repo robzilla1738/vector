@@ -1,0 +1,10 @@
+--- a/components/sessions/BUILD.gn
++++ b/components/sessions/BUILD.gn
+@@ -126,6 +126,7 @@
+     "core/session_types.cc",
+     "core/session_types.h",
+     "core/session_write_completion.h",
++    "core/session_writer_admission.h",
+     "core/tab_restore_service.h",
+     "core/tab_restore_service_client.cc",
+     "core/tab_restore_service_client.h",
