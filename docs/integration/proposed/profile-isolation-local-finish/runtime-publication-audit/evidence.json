@@ -1,0 +1,67 @@
+{
+  "format": "aux.runtime-publication.interface-audit.v1",
+  "date": "2026-10-23",
+  "result": "blocked-no-existing-native-publication-primitive",
+  "implemented": false,
+  "inputs": {
+    "runtimeSeed": {
+      "path": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-final-local-completion-20261023/Aux.app/Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/native/runtime-seed.cjs",
+      "sha256": "3051dea5ccc9d74126bf71ddc0bb72a4d3db19c59f890a8f48d572b215f092af"
+    },
+    "bootstrap": {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/profile-isolation-local-finish/runtime-bootstrap/source/runtime-bootstrap.cjs",
+      "sha256": "2e8c8db62e67e7ee812c5beb4606f11ed063e9aef6453db3d44e8c939255f604"
+    },
+    "workerHost": {
+      "path": "/private/tmp/aux-async-writes-final/docs/integration/proposed/profile-isolation-final/writes/source/AuxDevelopmentWorkerHost.cc",
+      "sha256": "e36e5c25c822879302a7f83fa5329305ba79f4d000ac45cd721cb820eaa81dd7"
+    },
+    "storageNapi": {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/profile-isolation-continuation/broker-writes/source/AuxStorageRootsNapi.inc",
+      "sha256": "f9c1549670b1ebc0d7825402c57079814d4095f27b8ec3b76f8c0bb9aeb57ec6"
+    },
+    "storageBridge": {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/profile-isolation-continuation/broker-writes/source/AuxStorageRootsBridge.h",
+      "sha256": "4e14e4c3ea1977fc8c23f362de37c16ad20047be0461056c06d7b163ecf0bd60"
+    },
+    "dispatcher": {
+      "path": "/private/tmp/aux-browser-admitted-recovery/docs/integration/proposed/profile-isolation-completion/restart/source/AuxOwnedCommandDispatcher.swift",
+      "sha256": "fbb2782491b242573c60433f98df39f7d7ef283392190d0e627f23fedc003a0c"
+    },
+    "taskLayout": {
+      "path": "/private/tmp/aux-profile-startup-next/docs/integration/proposed/profile-isolation-next/startup/v5-source/AuxNativeTaskLayout.swift",
+      "sha256": "4b27a1008a34640976e2e40a5c47fb08fdd28591e6a6df12522464d2474bd8dc"
+    },
+    "linkReceipt": {
+      "path": "/private/tmp/aux-delivery-link-20261023/results.json",
+      "sha256": "78cfe6b6966ea4d0d8081dfe9ebc6b043bf40990a242b4f7f25b849a818b9ce2"
+    },
+    "objectReceipt": {
+      "path": "/private/tmp/aux-awaited-writes-native-20261023-r3/results.json",
+      "sha256": "feb649389b0912c46e858c87bfc549eb441eb6ef866c4cf3e16b87425ad5428a"
+    },
+    "objectDependencies": {
+      "path": "/private/tmp/aux-awaited-writes-native-20261023-r3/worker-host.d",
+      "sha256": "2fe7870a730562921a2374ed33e91397fd59cb494a4e447a1f04f6c8d2fa2204"
+    }
+  },
+  "countCheckedExistingSeams": {
+    "exclusiveEmptyRuntimeReservation": 1,
+    "perEntryRename": 1,
+    "versionLastOrdering": 1,
+    "existingSafeDirectoryRetained": 2,
+    "rootLocatorBinding": 1,
+    "awaitedBrokerBinding": 1
+  },
+  "linkedWorkerObjectSha256": "d9847f322f8da7a58b737ffc94b12c8c1702974cbbe215208f48c2754c53c17e",
+  "linkedDaemonSha256": "22d6a634a413b97aa4df6ca70d9650a3c9dd6b626ce625169021f94be34a8626",
+  "sourcePairSha256": "ecff19ddbc7fa76529c50111152f8324ef0ba6b87de11e7ecf872f76270a7484",
+  "nativeAbiChanged": false,
+  "daemonRecipeChanged": false,
+  "runtimeBytesChanged": false,
+  "uiChanged": false,
+  "nativeCompilation": false,
+  "executableOrModuleExecution": false,
+  "ownerStateAccessed": false,
+  "verification": "Bounded hash/count audit of ten named static inputs; no runtime inventory scan, copy, launch, cache deletion or mutation."
+}

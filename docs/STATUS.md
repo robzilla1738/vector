@@ -1,3 +1,9 @@
+# Runtime directory publication remains a native implementation gap — 2026-10-23
+
+A finite audit of the exact linked worker/broker and supplied seed found no native atomic exclusive directory publisher. The seed reserves runtime then moves children individually, version last; a crash can expose a partial directory. Correction: the seed retains a preexisting safe directory without completeness validation; it does not itself reject a partial cache. Downstream validation is a separate boundary. No existing cache was inspected, repaired or removed.
+
+The pinned audit and inactive minimal interface proposal are in `docs/integration/proposed/profile-isolation-local-finish/runtime-publication-audit/`. Safe implementation still requires an owner/generation-bound exclusive whole-directory native publication and namespace custody; neither a JavaScript rename nor a completion marker proves that. No ABI, daemon recipe, executable or runtime distribution was changed by this audit. This remains implementation work, not merely an unrun test. The active browser compile continues separately; current UI and accepted app are preserved.
+
 # Interrupted browser build resumed from completed outputs — 2026-10-23
 
 The earlier `unsigned-approved-macro-route-build` stopped after the user interruption at40,301/56,815 actions. It has no successful final receipt; the incomplete log is historical evidence, not a compiler failure or a completed build. Process/lock inspection confirmed the old workers were gone before resuming. The same isolated snapshot now runs `unsigned-recovered-base-build-20261023` with fresh GN/action review,8jobs and16,514 remaining actions. Completed outputs are reused; the shared checkout and accepted app remain untouched.
