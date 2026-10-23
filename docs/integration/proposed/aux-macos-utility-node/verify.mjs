@@ -11,3 +11,10 @@ for(const text of [owner,cc,module])for(const no of ['AuxCreateSignedDevelopment
 assert(cc.includes('RTLD_NOLOAD|RTLD_LOCAL|RTLD_NOW'));assert(cc.includes('registry().retained'));assert(cc.indexOf('napi_add_env_cleanup_hook(env,Cleanup')<cc.indexOf('void* owner=AuxCreateMacUtilityOwner()'));
 assert(module.includes('host->AttachCurrentEnvironment(env,exports)'));assert(module.includes('CleanupHost'));
 console.log('PASS: exact source inputs, both guarded entry layouts/eight routing edits, five-only native graph and pending code-image ownership');
+assert(cc.includes('const pid_t kImageProcess=getpid();'));
+assert(cc.includes('if(getpid()!=kImageProcess)return -1;'));
+assert(cc.includes('registry().admission_closed=true;'));
+assert(cc.includes('if(registry().admission_closed)return napi_closing;'));
+for(const native of ['AuxMacUtilityCloseAdmissionAndDrain','AuxMacUtilityPendingEnvironments'])assert(cc.includes('extern "C" '+(native.includes('Pending')?'uint64_t ':'int32_t ')+native));
+assert(!module.includes('AuxMacUtilityCloseAdmissionAndDrain'));assert(!module.includes('AuxMacUtilityPendingEnvironments'));
+console.log('PASS: native-only permanent image closure/pending observation with load-time PID guard; production JS lifecycle surface unchanged');

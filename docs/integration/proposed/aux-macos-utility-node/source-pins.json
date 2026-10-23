@@ -48,16 +48,39 @@
     }
   },
   "sources": {
-    "source/AuxMacUtilityEnvironmentHost.cc": "d489ee3197e52a56c6fbdcb58b9168991dc6cbb4df054498ddef6f253262ce47",
-    "source/AuxMacUtilityEnvironmentHost.h": "3a9aabb0c98463bf2aafc12c9fc081e9fd456b9590980d933f903367b1806061",
+    "source/AuxMacUtilityEnvironmentHost.cc": "bd87d6693dbebdae0106561bb0932573337023c6fd9df1fdc129807c854ce8a9",
+    "source/AuxMacUtilityEnvironmentHost.h": "02aa4cf97e89fcdc902abff36c262b0c020b3e5012e770096510d2e88584608e",
     "source/AuxMacUtilityOwner.swift": "659b23a811b9b25e58b64dc031de57f82491733c529fa0a1dd6304f98b7dde67",
     "source/adapt.mjs": "8b9aae155b3396ca7ba4dd3aa4a88d3f752be348417bc2a0d318bf87fad7d324",
     "source/utility-module.cc": "19d99471c09588840e11cd569c2422a760ad0ff6c69139147bc4a762b604543a",
     "build.sh": "463811b43e675ad2a0a3928e5dc97ab123570030056b39435886cc348a2daf62",
     "check.sh": "2048e617c8abbb296c24f965204a18c37712a7994fc981f8bf617f9ed30167bc",
     "tests/CapturedUtilityOwner.swift": "94fb78f2a1d7ac35e76d50afd4b819523a2a66fc1ecd2fdef36495a457415c53",
-    "tests/module.cc": "c88baa6e7b1b4fbb21e39a16cee8f6ae993b69a080be7bcb7f37b2c33a5e5f20",
+    "tests/module.cc": "f2a06835ede5509166d73b7fe2e9534cc7d97ff5570189c4f52764cc56313003",
     "tests/check.cjs": "2b0fd994a1a5a2634d4094e7d2ca58e4c9c7ac1782032c75f9a06ea664a5c6e6",
-    "tests/routing.mjs": "03b4ccf5aa17800bf0aad03edc81356a044fabf4a7f42972c710878e9da9a3c0"
+    "tests/routing.mjs": "03b4ccf5aa17800bf0aad03edc81356a044fabf4a7f42972c710878e9da9a3c0",
+    "build-drain-fixture.sh": "562989f1ce8188e08384317c29afd2953a88adb7e3cc6a35fab73b994426b914",
+    "tests/image-drain.cjs": "02a8920555a8f3414d8731ce647defa1a6b2c987880405c4353dd76c1915b64d"
+  },
+  "nativeImageDrainSuccessor": {
+    "previousSourcePinsSha256": "c8bc551e4da5313cffa3a1de7c8a53a77541af87701ad1677f5d7b7f848e73b5",
+    "changes": [
+      {
+        "path": "source/AuxMacUtilityEnvironmentHost.cc",
+        "previousSha256": "d489ee3197e52a56c6fbdcb58b9168991dc6cbb4df054498ddef6f253262ce47",
+        "sha256": "bd87d6693dbebdae0106561bb0932573337023c6fd9df1fdc129807c854ce8a9"
+      },
+      {
+        "path": "source/AuxMacUtilityEnvironmentHost.h",
+        "previousSha256": "3a9aabb0c98463bf2aafc12c9fc081e9fd456b9590980d933f903367b1806061",
+        "sha256": "02aa4cf97e89fcdc902abff36c262b0c020b3e5012e770096510d2e88584608e"
+      },
+      {
+        "path": "tests/module.cc",
+        "previousSha256": "c88baa6e7b1b4fbb21e39a16cee8f6ae993b69a080be7bcb7f37b2c33a5e5f20",
+        "sha256": "f2a06835ede5509166d73b7fe2e9534cc7d97ff5570189c4f52764cc56313003"
+      }
+    ],
+    "historicalEvidenceUpdated": false
   }
 }
