@@ -10,9 +10,16 @@ export function applyOfficialChatGPT(source, { runtimeExpression } = {}) {
   };
   const local = 'auxChatGPT().daemonClient()', account = 'auxChatGPT().localAccount(this.accountId)';
   replace('credential read is local-only', 'get(Cn){return this.ensureLoaded(),this.data[Cn]??void 0}', `get(Cn){if(Cn===\`openai-codex\`)return ${local}.store.read(${account});return this.ensureLoaded(),this.data[Cn]??void 0}`);
-  replace('new tokens never enter synced file', 'set(Cn,ei){this.ensureLoaded(),this.data[Cn]=ei,this.persistProviderChange(Cn,ei)}', 'set(Cn,ei){if(Cn===`openai-codex`)throw Error(`ChatGPT credentials require the verified local authorization flow`);this.ensureLoaded(),this.data[Cn]=ei,this.persistProviderChange(Cn,ei)}');
-  replace('local disconnect retains registration', 'remove(Cn){this.ensureLoaded(),delete this.data[Cn],this.persistProviderChange(Cn,void 0)}', `remove(Cn){if(Cn===\`openai-codex\`)return ${local}.disconnectLocal(${account});this.ensureLoaded(),delete this.data[Cn],this.persistProviderChange(Cn,void 0)}`);
+  replace('new tokens never enter synced file', 'set(Cn,ei){this.ensureLoaded(),this.data[Cn]=ei,this.persistProviderChange(Cn,ei)}', 'set(Cn,ei){if(Cn===`openai-codex`)throw Error(`ChatGPT credentials require the verified local authorization flow`);this.ensureLoaded();this.persistProviderChange(Cn,ei);this.data[Cn]=ei}');
+  replace('local disconnect retains registration', 'remove(Cn){this.ensureLoaded(),delete this.data[Cn],this.persistProviderChange(Cn,void 0)}', `remove(Cn){if(Cn===\`openai-codex\`)return ${local}.disconnectLocal(${account});this.ensureLoaded();this.persistProviderChange(Cn,void 0);delete this.data[Cn]}`);
   replace('local state never enters synced file', 'setState(Cn,ei){let ti=this.get(Cn);', 'setState(Cn,ei){if(Cn===`openai-codex`)return;let ti=this.get(Cn);');
+  const persistStart = source.indexOf('persistProviderChange(Cn,ei){');
+  const persistEnd = source.indexOf('get(Cn){', persistStart);
+  if (persistStart < 0 || persistEnd < 0) throw Error('Credential persistence anchors missing');
+  const persistence = source.slice(persistStart, persistEnd);
+  const swallowed = '}catch(Cn){this.recordError(Cn)}}';
+  if (persistence.split(swallowed).length !== 2) throw Error('Credential persistence error anchor drift');
+  replace('credential persistence failures are truthful', persistence, persistence.replace(swallowed, '}catch(Cn){this.recordError(Cn);throw Error(`Credential changes could not be saved locally`)}}'));
   replace('generic credential mutation refuses', 'async modifyCredentialForPi(Cn,ei){await this.pullBeforeRefresh();', 'async modifyCredentialForPi(Cn,ei){if(Cn===`openai-codex`)throw Error(`ChatGPT credentials require local rotation`);await this.pullBeforeRefresh();');
   replace('generic credential deletion stays local', 'async deleteCredentialForPi(Cn){await this.storage.withLockAsync', `async deleteCredentialForPi(Cn){if(Cn===\`openai-codex\`)return ${local}.signOut(${account});await this.storage.withLockAsync`);
   replace('model auth uses issued-client refresh', 'async getModelAuth(Cn){let ei=this.get(Cn);', `async getModelAuth(Cn){if(Cn===\`openai-codex\`)return ${local}.auth(${account});let ei=this.get(Cn);`);

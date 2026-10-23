@@ -15,7 +15,7 @@ const binary = readFileSync(binaryPath), section = findMachOSeaSection(binary);
 const original = readSeaBlob(binary.subarray(section.offset, section.offset + section.size)).code;
 assert.equal(createHash('sha256').update(original).digest('hex'), DAEMON_CODE_SHA256);
 const baseline = adaptDaemonCode(original, {}, 'aux-v1', 2);
-const result = { source: baseline.code, patches: baseline.applied.slice(-28) };
+const result = { source: baseline.code, patches: baseline.applied.slice(-29) };
 assert.equal(result.patches.at(-1).name, 'no private ChatGPT usage requests');
 const temp = mkdtempSync(join(tmpdir(), 'aux-chatgpt-source-check-'));
 try {
@@ -33,12 +33,22 @@ try {
     auxChatGPT: () => ({ daemonClient: () => ({ store: { read: () => local } }), localAccount: String })
   });
   let synced = { 'openai-codex': { type: 'oauth', access: 'legacy-fixture' }, openai: { type: 'api_key', key: 'fixture-BYOK' } };
-  const credentials = CredentialStorage.fromBackend({ withLock: fn => fn(synced).result });
+  let failWrite = false;
+  const backend = {withLock: fn => {const operation=fn(structuredClone(synced));if(operation.next!==undefined){if(failWrite)throw Error('fixture-private-failure-detail');synced=structuredClone(operation.next);}return operation.result;}};
+  const credentials = CredentialStorage.fromBackend(backend);
   assert.equal(credentials.get('openai-codex').access, local.access);
   assert.equal(credentials.getAll()['openai-codex'].type, 'oauth');
   assert.equal(JSON.stringify(credentials.getAll()).includes('fixture-private'), false);
   assert.throws(() => credentials.set('openai-codex', local), /verified local/);
   assert.equal(synced['openai-codex'].access, 'legacy-fixture');
+  credentials.set('openai',{type:'api_key',key:'fixture-added-key'});
+  assert.equal(CredentialStorage.fromBackend(backend).get('openai').key,'fixture-added-key');
+  failWrite=true;
+  assert.throws(()=>credentials.set('openai',{type:'api_key',key:'fixture-rejected-key'}),error=>error.message==='Credential changes could not be saved locally');
+  assert.equal(credentials.get('openai').key,'fixture-added-key');assert.equal(CredentialStorage.fromBackend(backend).get('openai').key,'fixture-added-key');
+  assert.throws(()=>credentials.remove('openai'),/could not be saved/);assert.equal(credentials.get('openai').key,'fixture-added-key');
+  failWrite=false;credentials.remove('openai');assert.equal(CredentialStorage.fromBackend(backend).get('openai'),undefined);
+  const isolated=CredentialStorage.fromBackend({withLock:fn=>fn({}).result});assert.equal(isolated.get('openai'),undefined);
   const imageStart = result.source.indexOf('function openaiCodexImagesProvider(){');
   const imageEnd = result.source.indexOf('var CHATGPT_IMAGE_GENERATION_MODEL', imageStart);
   let privateTouched = false;
@@ -55,5 +65,5 @@ try {
   assert.equal(result.source.includes('await ti.removeCredential(ei.providerId),await ti.rewriteRoutingSelectionsToAvailableModels()'),true);
   const callback = applyOfficialChatGPTCallbackAsset(readFileSync(assetPath, 'utf8'));
   assert.equal(callback.includes('http://localhost:1455'), false);
-  console.log(JSON.stringify({ schema: 'aux.chatgpt.official-source-check.v1', originalSha256: DAEMON_CODE_SHA256, identity: 'aux-v1', stateVersion: 2, anchors: result.patches, checks: ['full transformed ESM syntax', 'actual supplied CredentialStorage local selection and metadata-only enumeration', 'legacy credential bytes preserved', 'unverified generic writes refused', 'callback IPv4 exact anchor', 'image capability suppressed and private transport refused', 'actual disconnect awaits revocation and reports unconfirmed status'], network: false, ownerState: false, runtimeAcceptance: false }, null, 2));
+  console.log(JSON.stringify({ schema: 'aux.chatgpt.official-source-check.v1', originalSha256: DAEMON_CODE_SHA256, identity: 'aux-v1', stateVersion: 2, anchors: result.patches, checks: ['full transformed ESM syntax', 'actual supplied CredentialStorage local selection and metadata-only enumeration', 'legacy credential bytes preserved', 'unverified generic writes refused', 'callback IPv4 exact anchor', 'image capability suppressed and private transport refused', 'actual disconnect awaits revocation and reports unconfirmed status', 'BYOK add/remove/restart/account isolation', 'failed BYOK persistence reports error and keeps previous state'], network: false, ownerState: false, runtimeAcceptance: false }, null, 2));
 } finally { rmSync(temp, { recursive: true, force: true }); }

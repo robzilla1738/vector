@@ -21,6 +21,10 @@
       "count": 1
     },
     {
+      "name": "credential persistence failures are truthful",
+      "count": 1
+    },
+    {
       "name": "generic credential mutation refuses",
       "count": 1
     },
@@ -124,7 +128,9 @@
     "unverified generic writes refused",
     "callback IPv4 exact anchor",
     "image capability suppressed and private transport refused",
-    "actual disconnect awaits revocation and reports unconfirmed status"
+    "actual disconnect awaits revocation and reports unconfirmed status",
+    "BYOK add/remove/restart/account isolation",
+    "failed BYOK persistence reports error and keeps previous state"
   ],
   "network": false,
   "ownerState": false,
