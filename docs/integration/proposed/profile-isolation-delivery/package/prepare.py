@@ -5,7 +5,7 @@ sys.dont_write_bytecode=True
 P=pathlib.Path
 spec=importlib.util.spec_from_file_location('aux_assemble',P(__file__).with_name('assemble.py'));m=importlib.util.module_from_spec(spec);spec.loader.exec_module(m)
 p=argparse.ArgumentParser()
-for name in ['baseline-app','native-receipt','daemon-receipt','source-pair','source','source-receipt','entry','entry-receipt','loader','pty','output','recipe']:p.add_argument('--'+name,required=True)
+for name in ['baseline-app','native-receipt','daemon-receipt','source-pair','source','source-receipt','entry','entry-receipt','loader','pty','runtime-integration','runtime-evidence','output','recipe']:p.add_argument('--'+name,required=True)
 a=p.parse_args();baseline=P(a.baseline_app).resolve();nr=P(a.native_receipt).resolve();dr=P(a.daemon_receipt).resolve();sr=P(a.source_receipt).resolve();er=P(a.entry_receipt).resolve()
 build=json.loads(nr.read_text());link=json.loads(dr.read_text());source=json.loads(sr.read_text());entry=json.loads(er.read_text())
 if not build['passed'] or not link['passed'] or not link['inputsUnchanged'] or not source['passed'] or not entry['passed']:raise ValueError('all exact builds/projections must pass')
@@ -19,6 +19,8 @@ replacements=[dict(path=rel,previousSha256=m.sha(root/rel),input=str(src.resolve
 r=dict(format='aux.inactive-successor.recipe.v1',baselineApp=str(baseline),baselineInventorySha256=m.digest(m.inventory(baseline)),nativeApp=str(native),nativeInventorySha256=m.digest(m.inventory(native)),nativeReceipt=str(nr),nativeReceiptSha256=m.sha(nr),daemonReceipt=str(dr),daemonReceiptSha256=m.sha(dr),sourceReceiptSha256=m.sha(sr),entryReceiptSha256=m.sha(er),output=str(P(a.output).absolute()),replacements=replacements)
 r.update(sourcePair=str(P(a.source_pair).resolve()),sourcePairSha256=m.sha(a.source_pair),sourceReceipt=str(sr),entryReceipt=str(er))
 r['outerBoundary']=dict(path='Contents/Resources/package.json',input=str(baseline/'Contents/Resources/package.json'),sha256=m.sha(baseline/'Contents/Resources/package.json'),mode=0o644)
+r.update(runtimeIntegrationManifest=str(P(a.runtime_integration).resolve()),runtimeIntegrationManifestSha256=m.sha(a.runtime_integration),runtimeIntegrationEvidence=str(P(a.runtime_evidence).resolve()),runtimeIntegrationEvidenceSha256=m.sha(a.runtime_evidence))
 m.verify_pair(r)
+m.runtime_changes(r)
 with P(a.recipe).open('x') as f:f.write(json.dumps(r,indent=2)+'\n')
 print('Prepared exact inactive recipe; not assembled or authorized')

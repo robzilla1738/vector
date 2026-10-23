@@ -1,3 +1,9 @@
+# Runtime bootstrap task-root and missing metadata defects corrected — 2026-10-23
+
+The copied runtime bootstrap required an absent distribution provenance file and selected AUX_HOME/runtime despite native task/runtime separation. Its two-leaf successor uses native immutable captureStorageRoots, requires the caller destination to match taskHome/runtime, rechecks owner generations and retains withBrokerAwaited through actual seed cleanup. Exact pinned historical text-root metadata replaces the missing-file dependency; the existing nine runtime text files and all static runtime executables stay unchanged. A focused actual-bootstrap fixture with controlled native/seed adapters passed ownership/destination, pending lifetime and metadata refusal; full native runtime seeding is not claimed. Source index/entry/daemon pair is unchanged.
+
+The strict assembler binds exactly these two runtime leaves and their verification receipt, preserves the outer private-only Node package marker, updates current app/projection metadata and retains historical provenance explicitly. Current metadata pins/syntax pass; actual assembly awaits the full browser and frozen native successor compilation. Accepted app/UI/shared checkout preserved. Product signing, release and owner/cloud operations remain separate.
+
 # Exact generation pairing enforced for package handoff — 2026-10-23
 
 A narrow independent source review found the package workflow could combine individually valid artifacts from different generations. Preparation and assembly now require the exact frozen source-pair tuple for all five replacement leaves, the paired daemon receipt and the entry projection’s exact source receipt. Current final inputs pass; mismatched daemon/source-receipt checks refuse. These are metadata/projection checks, not app execution. UI resources remain unchanged. The full native graph continues; assembly and runtime acceptance are still pending.
