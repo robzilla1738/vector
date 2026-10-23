@@ -1,0 +1,7 @@
+/private/tmp/aux-pty-helper-capability-20261023/docs/integration/proposed/aux-native-authenticated-pty-helper/source/AuxSignedFreshBootstrapPolicyLoader.swift:450:48: error: cannot call value of non-function type '[(Int32.Type, String.Type, Int32.Type, (UnsafePointer<CChar>?, UnsafeMutablePointer<stat>?) -> Int32)]' (aka 'Array<(Int32.Type, String.Type, Int32.Type, (Optional<UnsafePointer<Int8>>, Optional<UnsafeMutablePointer<stat>>) -> Int32)>')
+448 |         let path = policy.bundlePath + "/" + artifacts.helper.relativePath
+449 |         guard try canonical(path) == path else { throw AuxFreshBootstrapPolicyError.path }
+450 |         var descriptors = [Int32](), entries = [(Int32, String, Int32, stat)]()
+    |                                                `- error: cannot call value of non-function type '[(Int32.Type, String.Type, Int32.Type, (UnsafePointer<CChar>?, UnsafeMutablePointer<stat>?) -> Int32)]' (aka 'Array<(Int32.Type, String.Type, Int32.Type, (Optional<UnsafePointer<Int8>>, Optional<UnsafeMutablePointer<stat>>) -> Int32)>')
+451 |         var transferred = false
+452 |         defer { if !transferred { for fd in descriptors.reversed() { close(fd) } } }
