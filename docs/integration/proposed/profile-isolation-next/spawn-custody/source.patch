@@ -97,37 +97,70 @@
  #include "debug_utils-inl.h"
  #include "env-inl.h"
  #include "node_errors.h"
-@@ -462,12 +465,22 @@
+@@ -378,7 +381,16 @@
  }
  
- Maybe<void> SyncProcessRunner::TryInitializeAndRunLoop(Local<Value> options) {
+ void SyncProcessRunner::Spawn(const FunctionCallbackInfo<Value>& args) {
 +  struct PendingExec {
 +    void* token = AuxNativeExecBeginCurrent();
 +    ~PendingExec() { if (token) AuxNativeExecSpawnFailed(token); }
-+    void* TakeCreated() noexcept {
-+      void* saved = token;
-+      token = nullptr;
-+      return saved;
-+    }
++    void* Release() noexcept { void* saved = token; token = nullptr; return saved; }
 +  } pending;
-   int r;
+   Environment* env = Environment::GetCurrent(args);
++  if (!pending.token) {
++    THROW_ERR_INVALID_STATE(env, "Aux protected command owner is unavailable");
++    return;
++  }
+   Local<Context> context = env->context();
  
-   // There is no recovery from failure inside TryInitializeAndRunLoop - the
+   std::string resource = "";
+@@ -398,13 +410,13 @@
+   THROW_IF_INSUFFICIENT_PERMISSIONS(
+       env, permission::PermissionScope::kChildProcess, resource);
+   env->PrintSyncTrace();
+-  SyncProcessRunner p(env);
++  SyncProcessRunner p(env, pending.Release());
+   Local<Value> result;
+   if (!p.Run(args[0]).ToLocal(&result)) return;
+   args.GetReturnValue().Set(result);
+ }
+ 
+-SyncProcessRunner::SyncProcessRunner(Environment* env)
++SyncProcessRunner::SyncProcessRunner(Environment* env, void* native_reservation)
+     : max_buffer_(0),
+       timeout_(0),
+       kill_signal_(SIGTERM),
+@@ -431,12 +443,13 @@
+ 
+       lifecycle_(kUninitialized),
+ 
+-      env_(env) {}
++      env_(env) { aux_exec_pending_ = native_reservation; }
+ 
+ SyncProcessRunner::~SyncProcessRunner() {
+   CHECK_EQ(lifecycle_, kHandlesClosed);
+ 
+   stdio_pipes_.clear();
++  if (aux_exec_pending_) AuxNativeExecSpawnFailed(aux_exec_pending_);
+ }
+ 
+ 
+@@ -468,6 +481,7 @@
    // only option we'd have is to close all handles and destroy the loop.
    CHECK_EQ(lifecycle_, kUninitialized);
    lifecycle_ = kInitialized;
-+  if (!pending.token) { SetError(UV_EPERM); return JustVoid(); }
++  if (!aux_exec_pending_) { SetError(UV_EPERM); return JustVoid(); }
  
    uv_loop_ = new uv_loop_t;
    if (uv_loop_ == nullptr) {
-@@ -513,8 +526,30 @@
+@@ -513,8 +527,32 @@
      }
    }
  
 +  AuxExecNativeDeniedRoots denied_roots{};
 +  AuxExecSpawnEnvelope envelope;
 +  if (!AuxExecDescriptorOptionsAllowed(uv_process_options_) ||
-+      AuxNativeExecCopyDeniedRoots(pending.token, &denied_roots) != 0 ||
++      AuxNativeExecCopyDeniedRoots(aux_exec_pending_, &denied_roots) != 0 ||
 +      !envelope.Prepare(uv_process_options_, denied_roots)) {
 +    SetError(UV_EPERM);
 +    return JustVoid();
@@ -137,21 +170,23 @@
 +  uv_process_options_.cwd = envelope.Cwd();
 +  uv_process_options_.env = envelope.Env();
    uv_process_options_.exit_cb = ExitCallback;
-+  if (!AuxNativeExecCanSpawn(pending.token)) {
++  if (!AuxNativeExecCanSpawn(aux_exec_pending_)) {
 +    SetError(UV_EPERM);
 +    return JustVoid();
 +  }
-+  if (AuxNativeExecEnterUvSpawn(pending.token) != 0) {
++  if (AuxNativeExecEnterUvSpawn(aux_exec_pending_) != 0) {
 +    SetError(UV_EPERM);
 +    return JustVoid();
 +  }
    r = uv_spawn(uv_loop_, &uv_process_, &uv_process_options_);
-+  if (AuxNativeExecLeaveUvSpawn() == 1)
-+    aux_exec_reservation_ = pending.TakeCreated();
++  if (AuxNativeExecLeaveUvSpawn() == 1) {
++    aux_exec_reservation_ = aux_exec_pending_;
++    aux_exec_pending_ = nullptr;
++  }
    if (r < 0) {
      SetError(r);
      return JustVoid();
-@@ -1218,6 +1253,8 @@
+@@ -1218,6 +1256,8 @@
                                       int64_t exit_status,
                                       int term_signal) {
    SyncProcessRunner* self = reinterpret_cast<SyncProcessRunner*>(handle->data);
@@ -162,11 +197,21 @@
  }
 --- a/spawn_sync.h
 +++ b/spawn_sync.h
-@@ -216,6 +216,7 @@
+@@ -149,7 +149,7 @@
+  private:
+   friend class SyncProcessStdioPipe;
+ 
+-  explicit SyncProcessRunner(Environment* env_);
++  explicit SyncProcessRunner(Environment* env_, void* native_reservation);
+   ~SyncProcessRunner();
+ 
+   inline Environment* env() const;
+@@ -216,6 +216,8 @@
    std::unique_ptr<const char[]> cwd_buffer_;
  
    uv_process_t uv_process_;
 +  void* aux_exec_reservation_ = nullptr;
++  void* aux_exec_pending_ = nullptr;
    bool killed_;
  
    size_t buffered_output_size_;
@@ -444,7 +489,7 @@
          result = AuxDevelopmentWorkerDrain::pending;
        }
        if (result == AuxDevelopmentWorkerDrain::drained) {
-@@ -189,6 +201,24 @@
+@@ -189,6 +201,27 @@
    std::shared_ptr<PtyHelper> helper; // released after native creation or proven failure
    const pid_t process = getpid();
    PtyPhase phase = PtyPhase::pending; // Worker mutex protects mutable state.
@@ -461,7 +506,10 @@
 +  ~ExecBrowserRoots() { for (int fd : fds) if (fd >= 0) close(fd); }
 +};
 +struct ExecReservation {
-+  std::shared_ptr<Worker> worker;
++  // Registry.retained owns every pending/successful/unknown Worker. A failed
++  // inert token must not retain drained Worker/PDF/utility state forever.
++  // Assigned only before registry publication; every read locks locally.
++  std::weak_ptr<Worker> worker;
 +  std::shared_ptr<Owner> owner;
 +  std::shared_ptr<ExecBrowserRoots> roots;
 +  const pid_t process = getpid();
@@ -469,7 +517,7 @@
    pid_t child = -1;
  };
  // Process-local real Environment identities, not serializable credentials.
-@@ -202,6 +232,7 @@
+@@ -202,6 +235,7 @@
    // Stable native token addresses are retained as tombstones after failure;
    // neither Environment address reuse nor allocator reuse can redirect a token.
    std::unordered_map<void*, std::shared_ptr<PtyReservation>> pty;
@@ -477,7 +525,7 @@
    uint64_t next_generation = 1;
  };
  ProcessRegistry& Registry() {
-@@ -227,7 +258,7 @@
+@@ -227,7 +261,7 @@
          entry->second->generation == worker->generation) Registry().active.erase(entry);
      worker->environment_detached = true;
    }
@@ -486,7 +534,7 @@
  }
  std::shared_ptr<PtyReservation> LookupPty(void* token) noexcept {
    if (getpid() != kHostProcess) return nullptr;
-@@ -558,6 +589,254 @@
+@@ -558,6 +592,258 @@
    // descendant custody. The exact Worker+Owner remain quarantined.
  }
  
@@ -507,7 +555,7 @@
 +PendingExecCapture CapturePendingExec(void* token) noexcept {
 +  auto reservation = LookupExec(token);
 +  if (!reservation || getpid() != reservation->process) return {};
-+  auto worker = reservation->worker;
++  auto worker = reservation->worker.lock();
 +  if (!worker) return {};
 +  std::lock_guard<std::mutex> lock(worker->mutex);
 +  if (reservation->phase != PtyPhase::pending || !CurrentWorker(*worker) ||
@@ -667,8 +715,9 @@
 +extern "C" void AuxNativeExecSpawnFailed(void* token) noexcept {
 +  if (getpid() != kHostProcess) return;
 +  auto reservation = LookupExec(token);
-+  if (!reservation || getpid() != reservation->process || !reservation->worker) return;
-+  auto worker = reservation->worker;
++  if (!reservation || getpid() != reservation->process) return;
++  auto worker = reservation->worker.lock();
++  if (!worker) return;
 +  std::shared_ptr<Owner> released_owner;
 +  std::shared_ptr<ExecBrowserRoots> released_roots;
 +  bool closed = false;
@@ -687,8 +736,9 @@
 +extern "C" void AuxNativeExecChildCreated(void* token, int64_t child) noexcept {
 +  if (getpid() != kHostProcess) return;
 +  auto reservation = LookupExec(token);
-+  if (!reservation || getpid() != reservation->process || !reservation->worker) return;
-+  auto worker = reservation->worker;
++  if (!reservation || getpid() != reservation->process) return;
++  auto worker = reservation->worker.lock();
++  if (!worker) return;
 +  std::shared_ptr<ExecBrowserRoots> released_roots;
 +  {
 +    std::lock_guard<std::mutex> lock(worker->mutex);
@@ -710,8 +760,9 @@
 +    int64_t exit_status, int32_t term_signal) noexcept {
 +  if (getpid() != kHostProcess) return;
 +  auto reservation = LookupExec(token);
-+  if (!reservation || getpid() != reservation->process || !reservation->worker) return;
-+  auto worker = reservation->worker;
++  if (!reservation || getpid() != reservation->process) return;
++  auto worker = reservation->worker.lock();
++  if (!worker) return;
 +  std::lock_guard<std::mutex> lock(worker->mutex);
 +  // libuv's sole matching terminal wait calls this before JS. Creator thread
 +  // and actual handle PID must match; no current V8 context is required here.
@@ -727,8 +778,9 @@
 +    int32_t raw_status) noexcept {
 +  if (getpid() != kHostProcess) return;
 +  auto reservation = LookupExec(token);
-+  if (!reservation || getpid() != reservation->process || !reservation->worker) return;
-+  auto worker = reservation->worker;
++  if (!reservation || getpid() != reservation->process) return;
++  auto worker = reservation->worker.lock();
++  if (!worker) return;
 +  std::lock_guard<std::mutex> lock(worker->mutex);
 +  if (reservation->phase != PtyPhase::direct) return;
 +  --worker->exec_direct;

@@ -1,0 +1,4 @@
+/private/tmp/aux-spawn-custody-20261023/docs/integration/proposed/profile-isolation-next/spawn-custody/source/pty.cc:560:13: error: use of undeclared identifier 'openpty'
+  560 |   int ret = openpty(&master, &slave, nullptr, NULL, static_cast<winsize*>(&winp));
+      |             ^~~~~~~
+1 error generated.

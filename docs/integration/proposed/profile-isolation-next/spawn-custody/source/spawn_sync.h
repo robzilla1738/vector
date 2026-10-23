@@ -149,7 +149,7 @@ class SyncProcessRunner {
  private:
   friend class SyncProcessStdioPipe;
 
-  explicit SyncProcessRunner(Environment* env_);
+  explicit SyncProcessRunner(Environment* env_, void* native_reservation);
   ~SyncProcessRunner();
 
   inline Environment* env() const;
@@ -217,6 +217,7 @@ class SyncProcessRunner {
 
   uv_process_t uv_process_;
   void* aux_exec_reservation_ = nullptr;
+  void* aux_exec_pending_ = nullptr;
   bool killed_;
 
   size_t buffered_output_size_;

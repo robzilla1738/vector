@@ -1,0 +1,9 @@
+{
+  "format": "aux.native-spawn-custody.compile.v1",
+  "passed": false,
+  "phase": "dependency-discovery",
+  "session": 5476,
+  "exitCode": 1,
+  "error": "Copied libuv TU could not locate internal.h; added the original source-directory include path. No objects linked, loaded or executed.",
+  "sourceScopeCorrection": "Also moved sync reservation before the original permission-enabled options.file getter before the next compile."
+}

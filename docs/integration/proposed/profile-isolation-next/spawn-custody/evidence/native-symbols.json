@@ -1,0 +1,62 @@
+{
+  "format": "aux.spawn-custody.native-symbols.v1",
+  "definedNewNativeCAbi": [
+    "AuxNativeExecBeginCurrent",
+    "AuxNativeExecCanSpawn",
+    "AuxNativeExecChildCreated",
+    "AuxNativeExecCopyDeniedRoots",
+    "AuxNativeExecDirectExitObserved",
+    "AuxNativeExecDirectWaitResult",
+    "AuxNativeExecEnterUvSpawn",
+    "AuxNativeExecLeaveUvSpawn",
+    "AuxNativeExecSpawnFailed",
+    "AuxNativeExecUvCanSpawn",
+    "AuxNativeExecUvChildCreated"
+  ],
+  "imports": {
+    "process-wrap": [
+      "AuxNativeExecBeginCurrent",
+      "AuxNativeExecCanSpawn",
+      "AuxNativeExecCopyDeniedRoots",
+      "AuxNativeExecDirectExitObserved",
+      "AuxNativeExecEnterUvSpawn",
+      "AuxNativeExecLeaveUvSpawn",
+      "AuxNativeExecSpawnFailed"
+    ],
+    "spawn-sync": [
+      "AuxNativeExecBeginCurrent",
+      "AuxNativeExecCanSpawn",
+      "AuxNativeExecCopyDeniedRoots",
+      "AuxNativeExecDirectExitObserved",
+      "AuxNativeExecEnterUvSpawn",
+      "AuxNativeExecLeaveUvSpawn",
+      "AuxNativeExecSpawnFailed"
+    ],
+    "libuv-process": [
+      "AuxNativeExecUvCanSpawn",
+      "AuxNativeExecUvChildCreated"
+    ],
+    "worker-host": [
+      "AuxNativeContextCopyBrowserRoot",
+      "AuxNativeContextRetire",
+      "AuxNativeContextValidateCurrentAuthority"
+    ],
+    "pty-addon": [
+      "AuxNativeExecBeginCurrent",
+      "AuxNativeExecCanSpawn",
+      "AuxNativeExecChildCreated",
+      "AuxNativeExecCopyDeniedRoots",
+      "AuxNativeExecDirectWaitResult",
+      "AuxNativeExecSpawnFailed",
+      "AuxNativePtyBeginCurrent",
+      "AuxNativePtyCanSpawn",
+      "AuxNativePtyChildCreated",
+      "AuxNativePtyCopyHelperPath",
+      "AuxNativePtyDirectWaitResult",
+      "AuxNativePtySpawnFailed"
+    ]
+  },
+  "linked": false,
+  "loaded": false,
+  "runtimeAccepted": false
+}

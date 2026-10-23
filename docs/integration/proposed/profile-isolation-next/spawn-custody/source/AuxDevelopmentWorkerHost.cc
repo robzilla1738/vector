@@ -214,7 +214,10 @@ struct ExecBrowserRoots {
   ~ExecBrowserRoots() { for (int fd : fds) if (fd >= 0) close(fd); }
 };
 struct ExecReservation {
-  std::shared_ptr<Worker> worker;
+  // Registry.retained owns every pending/successful/unknown Worker. A failed
+  // inert token must not retain drained Worker/PDF/utility state forever.
+  // Assigned only before registry publication; every read locks locally.
+  std::weak_ptr<Worker> worker;
   std::shared_ptr<Owner> owner;
   std::shared_ptr<ExecBrowserRoots> roots;
   const pid_t process = getpid();
@@ -606,7 +609,7 @@ struct PendingExecCapture {
 PendingExecCapture CapturePendingExec(void* token) noexcept {
   auto reservation = LookupExec(token);
   if (!reservation || getpid() != reservation->process) return {};
-  auto worker = reservation->worker;
+  auto worker = reservation->worker.lock();
   if (!worker) return {};
   std::lock_guard<std::mutex> lock(worker->mutex);
   if (reservation->phase != PtyPhase::pending || !CurrentWorker(*worker) ||
@@ -766,8 +769,9 @@ extern "C" int32_t AuxNativeExecLeaveUvSpawn(void) noexcept {
 extern "C" void AuxNativeExecSpawnFailed(void* token) noexcept {
   if (getpid() != kHostProcess) return;
   auto reservation = LookupExec(token);
-  if (!reservation || getpid() != reservation->process || !reservation->worker) return;
-  auto worker = reservation->worker;
+  if (!reservation || getpid() != reservation->process) return;
+  auto worker = reservation->worker.lock();
+  if (!worker) return;
   std::shared_ptr<Owner> released_owner;
   std::shared_ptr<ExecBrowserRoots> released_roots;
   bool closed = false;
@@ -786,8 +790,9 @@ extern "C" void AuxNativeExecSpawnFailed(void* token) noexcept {
 extern "C" void AuxNativeExecChildCreated(void* token, int64_t child) noexcept {
   if (getpid() != kHostProcess) return;
   auto reservation = LookupExec(token);
-  if (!reservation || getpid() != reservation->process || !reservation->worker) return;
-  auto worker = reservation->worker;
+  if (!reservation || getpid() != reservation->process) return;
+  auto worker = reservation->worker.lock();
+  if (!worker) return;
   std::shared_ptr<ExecBrowserRoots> released_roots;
   {
     std::lock_guard<std::mutex> lock(worker->mutex);
@@ -809,8 +814,9 @@ extern "C" void AuxNativeExecDirectExitObserved(void* token, int64_t child,
     int64_t exit_status, int32_t term_signal) noexcept {
   if (getpid() != kHostProcess) return;
   auto reservation = LookupExec(token);
-  if (!reservation || getpid() != reservation->process || !reservation->worker) return;
-  auto worker = reservation->worker;
+  if (!reservation || getpid() != reservation->process) return;
+  auto worker = reservation->worker.lock();
+  if (!worker) return;
   std::lock_guard<std::mutex> lock(worker->mutex);
   // libuv's sole matching terminal wait calls this before JS. Creator thread
   // and actual handle PID must match; no current V8 context is required here.
@@ -826,8 +832,9 @@ extern "C" void AuxNativeExecDirectWaitResult(void* token, int64_t waited,
     int32_t raw_status) noexcept {
   if (getpid() != kHostProcess) return;
   auto reservation = LookupExec(token);
-  if (!reservation || getpid() != reservation->process || !reservation->worker) return;
-  auto worker = reservation->worker;
+  if (!reservation || getpid() != reservation->process) return;
+  auto worker = reservation->worker.lock();
+  if (!worker) return;
   std::lock_guard<std::mutex> lock(worker->mutex);
   if (reservation->phase != PtyPhase::direct) return;
   --worker->exec_direct;

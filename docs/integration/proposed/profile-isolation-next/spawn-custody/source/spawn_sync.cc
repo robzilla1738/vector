@@ -381,7 +381,16 @@ void SyncProcessRunner::RegisterExternalReferences(
 }
 
 void SyncProcessRunner::Spawn(const FunctionCallbackInfo<Value>& args) {
+  struct PendingExec {
+    void* token = AuxNativeExecBeginCurrent();
+    ~PendingExec() { if (token) AuxNativeExecSpawnFailed(token); }
+    void* Release() noexcept { void* saved = token; token = nullptr; return saved; }
+  } pending;
   Environment* env = Environment::GetCurrent(args);
+  if (!pending.token) {
+    THROW_ERR_INVALID_STATE(env, "Aux protected command owner is unavailable");
+    return;
+  }
   Local<Context> context = env->context();
 
   std::string resource = "";
@@ -401,13 +410,13 @@ void SyncProcessRunner::Spawn(const FunctionCallbackInfo<Value>& args) {
   THROW_IF_INSUFFICIENT_PERMISSIONS(
       env, permission::PermissionScope::kChildProcess, resource);
   env->PrintSyncTrace();
-  SyncProcessRunner p(env);
+  SyncProcessRunner p(env, pending.Release());
   Local<Value> result;
   if (!p.Run(args[0]).ToLocal(&result)) return;
   args.GetReturnValue().Set(result);
 }
 
-SyncProcessRunner::SyncProcessRunner(Environment* env)
+SyncProcessRunner::SyncProcessRunner(Environment* env, void* native_reservation)
     : max_buffer_(0),
       timeout_(0),
       kill_signal_(SIGTERM),
@@ -434,12 +443,13 @@ SyncProcessRunner::SyncProcessRunner(Environment* env)
 
       lifecycle_(kUninitialized),
 
-      env_(env) {}
+      env_(env) { aux_exec_pending_ = native_reservation; }
 
 SyncProcessRunner::~SyncProcessRunner() {
   CHECK_EQ(lifecycle_, kHandlesClosed);
 
   stdio_pipes_.clear();
+  if (aux_exec_pending_) AuxNativeExecSpawnFailed(aux_exec_pending_);
 }
 
 
@@ -465,22 +475,13 @@ MaybeLocal<Object> SyncProcessRunner::Run(Local<Value> options) {
 }
 
 Maybe<void> SyncProcessRunner::TryInitializeAndRunLoop(Local<Value> options) {
-  struct PendingExec {
-    void* token = AuxNativeExecBeginCurrent();
-    ~PendingExec() { if (token) AuxNativeExecSpawnFailed(token); }
-    void* TakeCreated() noexcept {
-      void* saved = token;
-      token = nullptr;
-      return saved;
-    }
-  } pending;
   int r;
 
   // There is no recovery from failure inside TryInitializeAndRunLoop - the
   // only option we'd have is to close all handles and destroy the loop.
   CHECK_EQ(lifecycle_, kUninitialized);
   lifecycle_ = kInitialized;
-  if (!pending.token) { SetError(UV_EPERM); return JustVoid(); }
+  if (!aux_exec_pending_) { SetError(UV_EPERM); return JustVoid(); }
 
   uv_loop_ = new uv_loop_t;
   if (uv_loop_ == nullptr) {
@@ -529,7 +530,7 @@ Maybe<void> SyncProcessRunner::TryInitializeAndRunLoop(Local<Value> options) {
   AuxExecNativeDeniedRoots denied_roots{};
   AuxExecSpawnEnvelope envelope;
   if (!AuxExecDescriptorOptionsAllowed(uv_process_options_) ||
-      AuxNativeExecCopyDeniedRoots(pending.token, &denied_roots) != 0 ||
+      AuxNativeExecCopyDeniedRoots(aux_exec_pending_, &denied_roots) != 0 ||
       !envelope.Prepare(uv_process_options_, denied_roots)) {
     SetError(UV_EPERM);
     return JustVoid();
@@ -539,17 +540,19 @@ Maybe<void> SyncProcessRunner::TryInitializeAndRunLoop(Local<Value> options) {
   uv_process_options_.cwd = envelope.Cwd();
   uv_process_options_.env = envelope.Env();
   uv_process_options_.exit_cb = ExitCallback;
-  if (!AuxNativeExecCanSpawn(pending.token)) {
+  if (!AuxNativeExecCanSpawn(aux_exec_pending_)) {
     SetError(UV_EPERM);
     return JustVoid();
   }
-  if (AuxNativeExecEnterUvSpawn(pending.token) != 0) {
+  if (AuxNativeExecEnterUvSpawn(aux_exec_pending_) != 0) {
     SetError(UV_EPERM);
     return JustVoid();
   }
   r = uv_spawn(uv_loop_, &uv_process_, &uv_process_options_);
-  if (AuxNativeExecLeaveUvSpawn() == 1)
-    aux_exec_reservation_ = pending.TakeCreated();
+  if (AuxNativeExecLeaveUvSpawn() == 1) {
+    aux_exec_reservation_ = aux_exec_pending_;
+    aux_exec_pending_ = nullptr;
+  }
   if (r < 0) {
     SetError(r);
     return JustVoid();
