@@ -1,0 +1,10 @@
+{
+  "format": "aux.final-browser-build-reference.v1",
+  "receipt": "out/native-final-peer-build-20261023.json",
+  "sha256": "b3dc640d620ae2e1fce3032be63d372859bf4d0ee2ea43a0870f01babea720ec",
+  "buildPassed": true,
+  "generatedKeyProbePassed": true,
+  "appExecuted": false,
+  "acceptedPreviewChanged": false,
+  "signed": false
+}

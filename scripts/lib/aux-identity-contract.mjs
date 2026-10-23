@@ -153,7 +153,14 @@ export async function verifyAuxIdentityContract({ stageRoot, composition, native
       if (provider) {
         // A separately reviewed successor; never replace the frozen predecessor
         // hashes with a stage-declared arbitrary digest or accept a prefix alone.
-        const pins = JSON.parse(await regular(join(repository, 'docs/integration/proposed/provider-funded-integration/entry-projections.json')));
+        const registries = await Promise.all([
+          'docs/integration/proposed/provider-funded-integration/entry-projections.json',
+          'docs/integration/proposed/final-completion/entry-projections.json',
+        ].map(async path => JSON.parse(await regular(join(repository, path)))));
+        const matches = registries.filter(pins => pins.policy === policy &&
+          pins['node-development']?.sha256 === provider.outputSha256);
+        if (matches.length !== 1) throw Error('Unregistered or ambiguous provider-funded entry successor');
+        const pins = matches[0];
         if (!variants || pins.format !== 'aux.provider-funded.entry-projections.v1' || pins.policy !== policy ||
             provider.format !== 'aux.provider-funded.entry.v1' || provider.sourceSha256 !== expectedNode ||
             provider.outputSha256 !== pins['node-development'].sha256 || provider.runtimeAccepted !== false ||

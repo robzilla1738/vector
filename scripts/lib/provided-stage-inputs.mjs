@@ -9,6 +9,7 @@ export const providedStageInputs = Object.freeze([
   'vendor/provided/aux-product-links.mjs',
   'vendor/provided/provider-funded-launch.mjs',
   'vendor/provided/provider-launch-stage.mjs',
+  'vendor/provided/aux-command-path-parsers.mjs',
   'vendor/provided/provider-funded-launch-ui.json',
   'vendor/aside/patches/chatgpt.mjs',
   'vendor/aside/shims/aux-chatgpt.cjs',

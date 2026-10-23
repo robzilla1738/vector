@@ -1,0 +1,12 @@
+{
+  "format": "aux.provider-funded.entry-projections.v1",
+  "policy": "development",
+  "sea": {
+    "sha256": "0c8ab6f052e6f8cf15bff7185c1cdeabf6db49e034e0c1f9be0883d273fed534",
+    "prelude": "\nimport {createRequire as auxChatGPTCreateRequire} from 'node:module';\nlet auxChatGPTModule;function auxChatGPT(){return auxChatGPTModule??=(auxChatGPTCreateRequire(import.meta.url))(auxChatGPTCreateRequire(import.meta.url)('node:path').resolve(process.execPath,'../../Resources/native/aux-chatgpt.cjs'));}\n"
+  },
+  "node-development": {
+    "sha256": "3bfa93416fc399e2c48ce0e7ed27fdea7bf283e9f7f821ca82f97ff5ac39f081",
+    "prelude": "\nimport {createRequire as auxChatGPTCreateRequire} from 'node:module';\nlet auxChatGPTModule;function auxChatGPT(){return auxChatGPTModule??=(auxChatGPTCreateRequire(import.meta.url))(auxChatGPTCreateRequire(import.meta.url)('node:url').fileURLToPath(new URL('../native/aux-chatgpt.cjs',import.meta.url)));}\n"
+  }
+}
