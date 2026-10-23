@@ -71,7 +71,7 @@ export async function verifyProviderNativePackageInput({ repositoryRoot, receipt
 export async function replaceCopiedProviderDaemonAndPty({ resources, assembled, evidence, repositoryRoot }) {
   if (!preflights.has(evidence) || assembled.identityProfile !== 'aux-v1' || assembled.stateIdentityVersion !== 2 ||
       assembled.daemonRuntime !== 'provided-node-development' || assembled.nativeMainReplacement ||
-      assembled.nativePtyReplacement || assembled.nativeEntryProjection)
+      assembled.nativePtyReplacement || assembled.providerNativeReplacement || assembled.nativeEntryProjection)
     throw Error('Fresh exact-byte inactive PTY preflight required');
   // Validate every old leaf and generate both resources before the first mutation.
   const replacements = [];
@@ -137,7 +137,7 @@ export async function replaceCopiedProviderDaemonAndPty({ resources, assembled, 
     fallbackRuntime: 'provided-node-development', defaultEntryRefusalPreserved: true, finalStageDeclarationSha256: pins.stageDeclarationSha256,
     replacements: replacements.map(({ artifact, replacedSha256 }) => ({ path: artifact.path, replacedSha256,
       outputSha256: artifact.sha256, outputBytes: artifact.bytes })), helperUnchanged: true, nativeEntryProjection };
-  assembled.nativePtyReplacement = report;
+  assembled.providerNativeReplacement = report;
   assembled.nativeEntryProjection = nativeEntryProjection;
   await writeFile(join(resources, 'bundle.json'), JSON.stringify(assembled, null, 2) + '\n');
   preflights.delete(evidence);

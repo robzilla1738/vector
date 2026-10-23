@@ -163,7 +163,7 @@
     "docs/integration/proposed/aux-native-worker-close-main-build/evidence/results.json": "229472346c580b50e2a4b47e29f1612b11186c85a0a8630e9726aa75ddd11646",
     "docs/integration/proposed/aux-native-worker-close-main-build/prepare.py": "be33d46d0472ad6baebfa5130ea996517567f1a63e519c5efef428c12746b09c",
     "docs/integration/proposed/aux-native-worker-close-main-build/build.py": "d7e359da9ca021013f21661bfd02ac2ed2f1b5da1d08937b67241b96ec95e94a",
-    "docs/integration/proposed/aux-native-provider-entry-package/source/package.mjs": "e4cd3136a342cf6b3450120dc7e4730ff9a105abcf3e6c50b040ac95c8cf0dfb",
+    "docs/integration/proposed/aux-native-provider-entry-package/source/package.mjs": "1aedee3b18e8959f759f7c1f3979f904dcdabc85d42105c2150ab2afc63d8569",
     "docs/integration/proposed/aux-native-provider-entry-package/prepare.mjs": "2ccb776233ab68fb99da3c799e7458a44e8bbe4eeb74c814f95e5be08a27874e"
   },
   "externalReferences": {
