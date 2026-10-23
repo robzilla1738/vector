@@ -1,0 +1,32 @@
+{
+  "format": "aux.owned-browser-quiesce.inputs.v1",
+  "parent": "out/native-reuse-composition-aux-loaded-session-submission-guard",
+  "parentSha256": "0ac64be69dde8bd8a6d418b79539dd682b8b0173115ff56cf1bf245da1c6d4ea",
+  "extenderSha256": "fe0fc5e3d5c6e02c3f59a59752f279c18c80626f6153a2ac043b0cb3f99aecba",
+  "workerManifestSha256": "a21d78c22bc357f8e6df1065be2f47537a49997e673918cbf284f5cfcaf97523",
+  "profileInputsSha256": "aa2249685d9152a0adb3242cffb1987086185a774de16abd572a58bfad4976fc",
+  "sources": [
+    {
+      "path": "chrome/browser/ui/aux_owned_browser_quiesce.cc",
+      "sha256": "c0c309dcf37b8897c80a0490c99f221d081952a54eac3daf6bfaa90b60365f1a"
+    },
+    {
+      "path": "chrome/browser/ui/aux_owned_browser_quiesce.h",
+      "sha256": "781612e1f5ef684195b48325f327031d2d2a7de46b37abbe48320bac70ede5e3"
+    }
+  ],
+  "gnNativeInputs": [
+    {
+      "path": "chrome/browser/ui/BUILD.gn",
+      "sha256": "c2169c7fbcab65d2b4007ccfe49af27db747b61bddbb5c20590b2a765830dc67"
+    },
+    {
+      "path": "chrome/browser/profiles/BUILD.gn",
+      "sha256": "b48b156e41b7c57f8b9a0f5eaf8631db841c282fd358d6714769882d6f4f6720"
+    },
+    {
+      "path": "extensions/browser/BUILD.gn",
+      "sha256": "054d4f855b3a59dd4ae1647057870600580abf14cfbc62c5f53f2d6987c5e0d9"
+    }
+  ]
+}
