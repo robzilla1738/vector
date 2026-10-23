@@ -1,0 +1,80 @@
+{
+  "startedAt": "2026-10-23T11:12:29.549Z",
+  "finishedAt": "2026-10-23T11:12:32.974Z",
+  "kind": "actual-funded-gateway-boundary",
+  "attempts": 1,
+  "model": "openai/gpt-6-luna",
+  "credentialPath": "fresh Aux Development Vercel OIDC; private temp env removed after check",
+  "implementation": {
+    "file": "services/aux-cloud/src/inference.ts",
+    "functions": [
+      "safeTextRequest",
+      "inferenceCost",
+      "tokenUsage"
+    ],
+    "sha256": "e8cc57129f7caf3201e2a2563333c266cc9d9af0807ac73ac4dce5ba49bcf82a"
+  },
+  "request": {
+    "protocol": "chat",
+    "privacy": {
+      "gateway": {
+        "zeroDataRetention": true,
+        "disallowPromptTraining": true
+      }
+    },
+    "store": false,
+    "maxCompletionTokens": 64,
+    "reasoningEffort": "none",
+    "requestBytes": 266,
+    "preflightReservedMicros": 79,
+    "independentPreflightCeilingMicros": 1000,
+    "tools": false,
+    "fallbackModels": false,
+    "promptSynthetic": true
+  },
+  "catalog": {
+    "zdr": "some",
+    "noTraining": "all",
+    "modalities": {
+      "input": [
+        "text",
+        "image",
+        "pdf"
+      ],
+      "output": [
+        "text"
+      ]
+    },
+    "pricing": {
+      "input": "0.0000001",
+      "output": "0.0000005"
+    }
+  },
+  "result": {
+    "status": 200,
+    "ok": true,
+    "returnedModel": "openai/gpt-6-luna",
+    "expectedSyntheticOutput": true,
+    "usage": {
+      "input": 12,
+      "output": 7
+    },
+    "calculatedUsageMicros": 6,
+    "errorType": null,
+    "responseId": "gen_01M5M7CPW3MWHPK16T26GXS0GW",
+    "providerName": null,
+    "responseSha256": "746616e7f35adcf81401256bc27f649ffaecfd2e0690e57704ad8246b5e63d8a",
+    "catalogUsageEstimateUsdBeforeMargin": 4.7e-06,
+    "gatewayBilledCostVerified": false
+  },
+  "limits": [
+    "Gateway boundary check only; hosted auth, wallet debit/settlement, desktop inference and dashboard request logs not exercised.",
+    "Strict ZDR/no-training enforced in sent request; response routing metadata may require separate Gateway log inspection.",
+    "GPT-6 Luna catalog excludes audio input and speech output; no speech/transcription request sent."
+  ],
+  "credentialCleanup": {
+    "freshPrivateEnvDeleted": true,
+    "originalLocalEnvUnchanged": true,
+    "credentialCreated": false
+  }
+}

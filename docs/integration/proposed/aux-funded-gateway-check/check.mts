@@ -1,0 +1,24 @@
+import { writeFile } from 'node:fs/promises';
+import { createHash } from 'node:crypto';
+import { safeTextRequest, inferenceCost, tokenUsage } from '/Users/rcourson/Documents/Vibe/web/services/aux-cloud/src/inference.ts';
+const target='openai/gpt-6-luna';
+const response=await fetch('https://ai-gateway.vercel.sh/v1/models',{signal:AbortSignal.timeout(10000),redirect:'error'});
+const catalog=await response.json();
+const model=catalog.data.find((m:any)=>m.id===target);
+if(!model || !['all','some'].includes(model.zdr) || model.type!=='language') throw Error('Exact authorized private model unavailable');
+if(process.env.AUX_AI_MODEL!==target) throw Error('Configured model does not match authorization');
+const body=safeTextRequest({messages:[{role:'user',content:'Reply with exactly: AUX_OK'}],max_completion_tokens:64,reasoning_effort:'none',stream:false},target,'chat');
+const requestBytes=Buffer.byteLength(JSON.stringify(body));
+const reservedMicros=inferenceCost(model.pricing,requestBytes,64);
+if(reservedMicros>1000)throw Error('Request exceeds independent $0.001 preflight ceiling');
+const key=process.env.AI_GATEWAY_API_KEY||process.env.VERCEL_OIDC_TOKEN;
+if(!key)throw Error('No configured credential');
+const startedAt=new Date().toISOString();
+const actual=await fetch('https://ai-gateway.vercel.sh/v1/chat/completions',{method:'POST',headers:{Authorization:`Bearer ${key}`,'Content-Type':'application/json'},body:JSON.stringify(body),redirect:'error',signal:AbortSignal.timeout(60000)});
+const raw=await actual.text();
+let payload:any;try{payload=JSON.parse(raw)}catch{payload={};}
+const usage=tokenUsage(payload);
+const provider=payload.provider_metadata?.gateway??payload.providerMetadata?.gateway??payload.gateway;
+const evidence={startedAt,finishedAt:new Date().toISOString(),kind:'actual-funded-gateway-boundary',attempts:1,model:target,credentialPath:'fresh Aux Development Vercel OIDC; private temp env removed after check',implementation:{file:'services/aux-cloud/src/inference.ts',functions:['safeTextRequest','inferenceCost','tokenUsage']},request:{protocol:'chat',privacy:body.providerOptions,store:body.store,maxCompletionTokens:64,reasoningEffort:'none',requestBytes,preflightReservedMicros:reservedMicros,independentPreflightCeilingMicros:1000,tools:false,fallbackModels:false,promptSynthetic:true},catalog:{zdr:model.zdr,noTraining:model.no_training,modalities:model.modalities,pricing:model.pricing.input&&{input:model.pricing.input,output:model.pricing.output}},result:{status:actual.status,ok:actual.ok,returnedModel:payload.model??null,expectedSyntheticOutput:payload.choices?.[0]?.message?.content?.trim()==='AUX_OK',usage:usage??null,calculatedUsageMicros:usage?.input!==undefined&&usage?.output!==undefined?inferenceCost(model.pricing,usage.input,usage.output):null,errorType:payload.error?.type??payload.error?.code??null,responseId:payload.id??null,providerName:typeof provider?.provider==='string'?provider.provider:null,responseSha256:createHash('sha256').update(raw).digest('hex')},limits:['Gateway boundary check only; hosted auth, wallet debit/settlement, desktop inference and dashboard request logs not exercised.','Strict ZDR/no-training enforced in sent request; response routing metadata may require separate Gateway log inspection.','GPT-6 Luna catalog excludes audio input and speech output; no speech/transcription request sent.']};
+await writeFile('/private/tmp/aux-gateway-funded-result.json',JSON.stringify(evidence,null,2)+'\n',{mode:0o600});
+console.log(JSON.stringify(evidence,null,2));
