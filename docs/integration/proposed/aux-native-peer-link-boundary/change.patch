@@ -1,0 +1,41 @@
+--- frozen/AuxNativePeerTransport.cc
++++ successor/AuxNativePeerTransport.cc
+@@ -1,7 +1,9 @@
+ #include "AuxNativePeerTransport.h"
+ #include "AuxNativePeerWire.h"
+ #include "AuxSelectedHomePolicyBridge.h"
++#if defined(AUX_NATIVE_DAEMON_AUTHORITY_SERVER)
+ #include "AuxFreshColdBootstrapNativeBridge.h"
++#endif
+ #include <sys/fileport.h>
+ #include <sys/acl.h>
+ #include <sys/stat.h>
+@@ -859,6 +861,7 @@
+   }
+   return ExchangeStatus::authenticated;
+ }
++#if defined(AUX_NATIVE_DAEMON_AUTHORITY_SERVER)
+ ParentExchange AuthenticatedNativeParentConnection::SendSelectedHome(uint64_t ready_service, uint32_t timeout_ms) {
+   ParentExchange observation;
+   auto state = state_;
+@@ -973,6 +976,7 @@
+   observation.peer_pid_version = state->snapshot.parent_pid_version;
+   return observation;
+ }
++#endif
+ 
+ #if defined(AUX_NATIVE_DAEMON_AUTHORITY_SERVER)
+ #include "AuxPreparedDaemonAuthority.h"
+--- frozen/AuxNativePeerTransport.h
++++ successor/AuxNativePeerTransport.h
+@@ -182,8 +182,10 @@
+   AuthenticatedNativeParentConnection(const AuthenticatedNativeParentConnection&) = delete;
+   AuthenticatedNativeParentConnection& operator=(const AuthenticatedNativeParentConnection&) = delete;
+   ExchangeStatus Revalidate(uint32_t timeout_ms);
++#if defined(AUX_NATIVE_DAEMON_AUTHORITY_SERVER)
+   // Descriptor source is ONLY actual ready-service C producer, never a caller FD.
+   ParentExchange SendSelectedHome(uint64_t ready_service, uint32_t timeout_ms);
++#endif
+   int32_t StartPreparedDaemonAuthorityServer(uint64_t provider, uint32_t timeout_ms);
+   int32_t ServicePreparedDaemonAuthorityServer(uint32_t timeout_ms);
+   int32_t ClosePreparedDaemonAuthorityServer();

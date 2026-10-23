@@ -1,0 +1,34 @@
+{
+  "format": "aux.native-peer-link-boundary.v1",
+  "files": {
+    "docs/integration/proposed/aux-native-peer-link-boundary/source/AuxAuthenticatedChildParentPolicyReader.swift": "85be3fcc4b2c7b2b55e80b411f75d548317e5cd2313993b717e7039f73032aff",
+    "docs/integration/proposed/aux-native-peer-link-boundary/source/AuxFreshBootstrapPolicy.swift": "ecda16a47e45fa96cc217663bce6ee1203978d8038c0162d6cc17108e40b5bb1",
+    "docs/integration/proposed/aux-native-peer-link-boundary/source/AuxNativePeerTransport.cc": "b2c00363429d13414ae5a37c86a6664f02845d232ebe7d716c6f68103575362a",
+    "docs/integration/proposed/aux-native-peer-link-boundary/source/AuxNativePeerTransport.h": "465104882f51c9e32f24918c9a83c938216c6a95993bdf88a16207fbee09d64e"
+  },
+  "baseline": {
+    "docs/integration/proposed/aux-native-daemon-authority-transport/source/AuxNativePeerTransport.cc": "f0f9566f4640edc715799b2f94745267b909c282cde319d7f995fd61123dc545",
+    "docs/integration/proposed/aux-native-daemon-authority-transport/source/AuxNativePeerTransport.h": "4803cac60f4d92c5019efc4c139dd42fa2d6b957316567c6b07993a06dc2734f",
+    "docs/integration/proposed/aux-native-embedded-image-preparation/source/AuxSignedFreshBootstrapPolicyLoader.swift": "dc87218812c7e51b5fb846ec0cbd53f6b044edfeb5fe3ea80c2ec62e95e0082e",
+    "docs/integration/proposed/aux-native-embedded-image-preparation/source/AuxFreshBootstrapPolicy.swift": "ecda16a47e45fa96cc217663bce6ee1203978d8038c0162d6cc17108e40b5bb1"
+  },
+  "compiled": false,
+  "executed": false,
+  "readOnlyParentSwiftFiles": 2,
+  "childOnlyDefine": "AUX_NATIVE_DAEMON_AUTHORITY_SERVER",
+  "reviewedChromiumSwiftTemplate": {
+    "source": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src/build/config/apple/swift_source_set.gni",
+    "sha256": "d792b0e5b3738269754c26ce43840f08fc8845a78415822076b18ea2c670e717"
+  },
+  "linkObligations": {
+    "parentRequiredC": [
+      "AuxCopyAuthenticatedFreshChildParentDescriptor"
+    ],
+    "parentChildOnlyCExcluded": [
+      "AuxCopyAuthenticatedFreshColdHomeDescriptor"
+    ],
+    "parentSwiftTarget": "aux_parent_sealed_policy",
+    "childMustNotLinkParentSubset": true,
+    "finalLinkProven": false
+  }
+}

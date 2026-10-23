@@ -1,0 +1,18 @@
+# New native destination is chosen by the integrator; this is not applied.
+import("//build/config/apple/swift_source_set.gni")
+
+# C ABI only. No Swift/C++ interop, runtime factory, installation or child code.
+swift_source_set("aux_parent_sealed_policy") {
+  sources = [
+    "AuxAuthenticatedChildParentPolicyReader.swift",
+    "AuxFreshBootstrapPolicy.swift",
+  ]
+  module_name = "AuxParentSealedPolicy"
+  frameworks = [ "Foundation.framework", "Security.framework", "CryptoKit.framework" ]
+}
+# The actual browser target containing AuxNativePeerTransport.cc must depend on
+# :aux_parent_sealed_policy. This target must NOT be linked into the child graph,
+# which already supplies the same C symbol from its complete sealed loader.
+# Parent transport: no AUX_NATIVE_DAEMON_AUTHORITY_SERVER define.
+# Child transport: define AUX_NATIVE_DAEMON_AUTHORITY_SERVER=1 and link real
+# AuxFreshColdBootstrapNativeBridge.swift plus prepared authority backend.
