@@ -95,3 +95,19 @@ enum AuxSealedOuterBrowserParent {
 
 @_silgen_name("AuxReleaseNativeParentConnection")
 private func releaseSealedOuterParent(_ handle: UInt64)
+
+// The actual C++ child entry receives one kernel right before Node is
+// initialized. No policy/identity/path parameters cross this C ABI.
+@_cdecl("AuxCreateSealedOuterBrowserParentConnection")
+func AuxCreateSealedOuterBrowserParentConnection(_ endpoint: mach_port_t,
+                                                _ output: UnsafeMutablePointer<UInt64>?) -> Int32 {
+    guard let output else {
+        if endpoint != MACH_PORT_NULL { mach_port_deallocate(mach_task_self_, endpoint) }
+        return -1
+    }
+    output.pointee = 0
+    do {
+        output.pointee = try AuxSealedOuterBrowserParent.connect(ownedEndpoint: endpoint)
+        return 0
+    } catch { return -1 }
+}

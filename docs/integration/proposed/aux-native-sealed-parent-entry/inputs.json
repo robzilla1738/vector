@@ -1,10 +1,11 @@
 {
   "format": "aux.sealed-outer-parent.source.v1",
   "files": {
-    "docs/integration/proposed/aux-native-sealed-parent-entry/source/AuxSealedOuterBrowserParent.swift": "28d9c484d36db6e42cd993edefbb4f5e70a402be7092c210e836452a5f408e13",
+    "docs/integration/proposed/aux-native-sealed-parent-entry/source/AuxSealedOuterBrowserParent.swift": "5294391eaf6af92ae59f57fb1925efe7e1e155b6b8e4c20107cf1cabd6beefdd",
     "docs/integration/proposed/aux-fresh-bootstrap-policy/source/AuxSignedFreshBootstrapPolicyLoader.swift": "e4cb24751618b8fba8d1a08459262265db3673c44947165c912ae99f8327011d",
     "docs/integration/proposed/aux-fresh-bootstrap-canonical-parent/source/AuxFreshBootstrapPolicy.swift": "bcfc039dd206b67dd1ab99d6bd00072e42ea774c243f76f49b43a47a5f67ed2f",
-    "docs/integration/proposed/aux-native-child-handoff/source/AuxNativeParentConnectionBridge.h": "2f47c0221ad0eb1169db380134754211d3a62258a5d0987500d22389b4edc8fc"
+    "docs/integration/proposed/aux-native-child-handoff/source/AuxNativeParentConnectionBridge.h": "2f47c0221ad0eb1169db380134754211d3a62258a5d0987500d22389b4edc8fc",
+    "docs/integration/proposed/aux-native-sealed-parent-entry/source/AuxSealedOuterBrowserParent.h": "2e3cf2e2f30a7a979f5f152ffd879b9c4950a856624351b3888b78b15831f5de"
   },
   "compilePending": true,
   "runtimeExecuted": false,
