@@ -1,3 +1,9 @@
+# Package handoff tightened; native full build continues — 2026-10-23
+
+The inactive assembler now checks native leaf modes and complete coverage against the successful build receipt, permits exactly the five fixed daemon/source/entry/loader/PTY replacements, and refuses output nested inside either input app. One inert temporary-file boundary check passed; no native executable ran. Actual assembly still waits the coherent build, which last passed7,580 of56,815 actions without further failure. This action count is progress, not an ETA or completion percentage.
+
+A disposable external-helper sandbox check exposed pre-existing hardlinks as a path-policy escape. Direct path, symlink and rename denials do not establish whole-root custody. Additional source defense is under review; all-writer coverage stays false and admitted-root reopening remains refused. Current accepted app/UI/shared checkout are untouched. Product signing and release remain separate.
+
 # Exact host-tool exception authorized; coherent build advancing — 2026-10-23
 
 Owner explicitly approved compiler-default ad-hoc signatures only for48host executables and20host macro libraries in the prepared review.20Aux product outputs retain no-ad-hoc. Authorization hashes, inactive-review tests and exact clone activation are recorded in `docs/integration/proposed/profile-isolation-completion/browser/host-tool-signing-review/` and browser evidence. No developer identity, Keychain, provisioning, notarization or release was authorized by this exception.

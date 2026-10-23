@@ -2,6 +2,8 @@
 """Assemble an exact inactive successor; never authorize startup or sign."""
 import argparse,hashlib,json,os,pathlib,shutil,subprocess
 P=pathlib.Path
+DAEMON='apps/daemon/Aux Daemon.app/Contents/'
+REPLACEMENTS={DAEMON+'MacOS/aux-daemon':0o755,DAEMON+'Resources/node-development/index.mjs':0o644,DAEMON+'Resources/node-development/aux-native-entry.mjs':0o644,DAEMON+'Resources/native/aux-owned-native.cjs':0o644,DAEMON+'Resources/native/node-pty/prebuilds/darwin-arm64/pty.node':0o755}
 sha=lambda p:hashlib.sha256(P(p).read_bytes()).hexdigest()
 def inventory(root):
  result=[]
@@ -23,30 +25,39 @@ def unsigned(root):
   if 'LC_CODE_SIGNATURE' in loads:raise ValueError('signed native artifact '+str(p))
 def pin(p,h):
  if P(p).is_symlink() or not P(p).is_file() or sha(p)!=h:raise ValueError('input pin '+str(p))
+def verify_native_inventory(root,leaves):
+ expected=[]
+ for x in leaves:
+  rel=P(x['path'])
+  if rel.is_absolute() or '..' in rel.parts or str(rel)!=x['path']:raise ValueError('invalid native inventory path')
+  if x['type']=='file':expected.append({k:x[k] for k in ['path','type','sha256','mode']})
+  elif x['type']=='symlink':expected.append(dict(path=x['path'],type='link',target=x['target'],mode=x['mode']))
+  else:raise ValueError('unknown native inventory leaf')
+ actual=inventory(root)
+ if actual!=expected:raise ValueError('native inventory content/mode/coverage mismatch')
+ return actual
 def main():
  a=argparse.ArgumentParser();a.add_argument('recipe');v=a.parse_args();recipe=P(v.recipe).resolve();r=json.loads(recipe.read_text());out=P(r['output']);baseline=P(r['baselineApp']);native=P(r['nativeApp']);receipt=P(r['nativeReceipt']);pin(receipt,r['nativeReceiptSha256']);build=json.loads(receipt.read_text())
  if not build['passed'] or build['signed'] or not build['sharedLinkConfigUnchanged'] or not build['appStableDuringInventory'] or not build['allInspectedMachoUnsigned']:raise ValueError('successful unsigned full build required')
- if out.exists() or not out.is_absolute() or out.resolve().is_relative_to(baseline.resolve()):raise ValueError('fresh separate output required')
+ if out.exists() or not out.is_absolute() or any(out.resolve().is_relative_to(p.resolve()) for p in [baseline,native]):raise ValueError('fresh separate output required')
  link=P(r['daemonReceipt']);pin(link,r['daemonReceiptSha256']);linked=json.loads(link.read_text())
  if not linked['passed'] or not linked['inputsUnchanged'] or linked['signed']:raise ValueError('successful unsigned daemon link required')
  if not any(x['sha256']==linked['executableSha256'] for x in r['replacements']):raise ValueError('linked daemon missing')
  if P(build['appPath']).resolve()!=native.resolve():raise ValueError('build app path mismatch')
  leaf_file=receipt.parent/'app-inventory.json';pin(leaf_file,build['appInventoryFileSha256']);leaves=json.loads(leaf_file.read_text())
  if digest(leaves)!=build['appInventorySha256']:raise ValueError('build inventory digest')
- for x in leaves:
-  target=native/x['path']
-  if x['type']=='file':pin(target,x['sha256'])
-  elif not target.is_symlink() or os.readlink(target)!=x['target']:raise ValueError('native link changed')
+ native_inv=verify_native_inventory(native,leaves)
  unsigned(native)
- base_inv=inventory(baseline);native_inv=inventory(native)
- if len(native_inv)!=len(leaves):raise ValueError('native inventory coverage mismatch')
+ base_inv=inventory(baseline)
  if digest(base_inv)!=r['baselineInventorySha256'] or digest(native_inv)!=r['nativeInventorySha256']:raise ValueError('app inventory mismatch')
  resources='Contents/Resources/aux';old=baseline/resources
  bundle=json.loads((old/'bundle.json').read_text());changes=[]
- if not r['replacements']:raise ValueError('explicit replacements required')
+ paths=[x['path'] for x in r['replacements']]
+ if len(paths)!=len(REPLACEMENTS) or set(paths)!=set(REPLACEMENTS):raise ValueError('exact five replacement leaves required')
  for item in r['replacements']:
   rel=P(item['path'])
   if rel.is_absolute() or '..' in rel.parts:raise ValueError('relative replacement required')
+  if item['mode']!=REPLACEMENTS[item['path']]:raise ValueError('replacement mode mismatch')
   pin(old/rel,item['previousSha256']);pin(item['input'],item['sha256']);changes.append(item)
  # The caller's full build is the base: no warm native-object mixing.
  out.mkdir(mode=0o700);app=out/'Aux.app'
