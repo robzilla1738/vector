@@ -1,0 +1,26 @@
+{
+  "format": "aux.native.fresh-home.check-evidence.v1",
+  "sourceCommit": "0b1bb5fbe",
+  "sourceManifestSha256": "4e0ccf553fb1cbd9299f51d1fc4d9b0253692c777ea92c84b46dbf03e7c07511",
+  "sourceSha256": "f72bdda8fffbe29d903f78e65984cfbbe53d9f2d3890c46f2f484fabcf2f5874",
+  "testSourceSha256": "9afc2cdeb424862f5fc46059dee74d42e46740d8e9b0cfdb982dba96b38b8dbe",
+  "checkScriptSha256": "4cba0b0154f8fba627da16a9df0eab339bd64c7e3be9537318392dbece60c361",
+  "serializedCommand": "python3 scripts/native-build.py sh docs/integration/proposed/aux-fresh-native-home/check.sh",
+  "execSession": 19768,
+  "exitCode": 0,
+  "compilerTarget": "arm64-apple-macos13.0",
+  "executedDisposableFilesystemChecks": 32,
+  "capturedOutput": "PASS:32 real disposable filesystem checks; no Security, authority generation or launch",
+  "temporaryExecutableRetained": false,
+  "fixtureDirectoriesRetained": false,
+  "preservationAssertionsBeforeFixtureTeardown": true,
+  "protectedCallsExecuted": false,
+  "authorityGenerated": false,
+  "profileOrRuntimeLaunched": false,
+  "wholeProfileCustodyClaimed": false,
+  "notes": [
+    "Command waited on the existing native build lock before its compiler ran.",
+    "The check script compiled actual source and ran only newly-created disposable filesystem fixtures.",
+    "Source verifier passed separately; no original addon, hardware, signing, credentials, provider or owner-state access occurred."
+  ]
+}
