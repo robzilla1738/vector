@@ -1,0 +1,15 @@
+{
+  "passed": true,
+  "bootstrapSha256": "2e8c8db62e67e7ee812c5beb4606f11ed063e9aef6453db3d44e8c939255f604",
+  "metadataSha256": "225e0eb0faad6e021a6ed181d6b07a262e6ec43a053a6103c804b3aae2d27be6",
+  "checks": [
+    "environment ignored and control root refused",
+    "actual task root passed to retained seed body",
+    "active operation retained and owner change refused",
+    "metadata hash mismatch refused before seed"
+  ],
+  "nativeAuthority": "synthetic immutable binding",
+  "runtimeSeed": "controlled write to disposable task directory; no executable/model invocation",
+  "staticRuntimeExecutablesChanged": false,
+  "nativeAbiChanged": false
+}

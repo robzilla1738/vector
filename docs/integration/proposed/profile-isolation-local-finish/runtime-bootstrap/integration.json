@@ -1,0 +1,28 @@
+{
+  "format": "aux.native-task-runtime-bootstrap.v1",
+  "sourceIndexChanged": false,
+  "nativeAbiChanged": false,
+  "staticRuntimeExecutablesChanged": false,
+  "runtimeIntegration": [
+    {
+      "path": "apps/daemon/Aux Daemon.app/Contents/Resources/native/runtime-bootstrap.cjs",
+      "previousSha256": "14624cffb7cd9d0852255f6557d6714b06ce6593981c2eede2bfcb2a75cdcf93",
+      "mustBeAbsent": false,
+      "input": "/private/tmp/aux-writes-local-finish/docs/integration/proposed/profile-isolation-local-finish/runtime-bootstrap/source/runtime-bootstrap.cjs",
+      "sha256": "2e8c8db62e67e7ee812c5beb4606f11ed063e9aef6453db3d44e8c939255f604",
+      "mode": 420
+    },
+    {
+      "path": "apps/daemon/Aux Daemon.app/Contents/Resources/native/runtime-text-root.json",
+      "previousSha256": null,
+      "mustBeAbsent": true,
+      "input": "/private/tmp/aux-writes-local-finish/docs/integration/proposed/profile-isolation-local-finish/runtime-bootstrap/source/runtime-text-root.json",
+      "sha256": "225e0eb0faad6e021a6ed181d6b07a262e6ec43a053a6103c804b3aae2d27be6",
+      "mode": 420
+    }
+  ],
+  "retainedStagedRuntimeTextRoot": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-final-local-completion-20261023/Aux.app/Contents/Resources/aux/agent-runtime",
+  "metadataPurpose": "Historical staged text anchor only, never destination authority",
+  "destinationAuthority": "native captureStorageRoots taskHome/runtime",
+  "seedCustody": "native withBrokerAwaited"
+}
