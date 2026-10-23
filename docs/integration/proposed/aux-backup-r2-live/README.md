@@ -1,0 +1,11 @@
+# Actual Aux R2 synthetic acceptance
+
+Owner authorized the private Aux recovery credential and one bounded encrypted deliver/fetch/expiry check on 2026-10-23. The credential is limited to Object Read & Write on `aux-recovery-prod`, with a 30-day lifetime. Provider configuration and secret custody are recorded separately by the integrator.
+
+`drill.mjs` uses the actual maintained backup job, AES-GCM bundle, R2 SDK transport and authenticated remote recovery implementations. It retrieves the separate recovery key privately from the approved 1Password Agents item; credentials are consumed from the private, temporary transfer file without printing them. No real database, private Blob store, application data or owner profile is read. The synthetic database entry is explicitly **not a PostgreSQL dump**; this check verifies transport and encryption, not a database restore.
+
+The reviewed recipient is Cloudflare account `5a5f6f8a4d1c1d35cfe82c4a74c966b9`, private bucket `aux-recovery-prod`, fresh UUID job below `aux/synthetic-acceptance-20261023/`, maximum 1 MiB. Four tiny objects comprise the encrypted bundle. Delivery uses create-only conditional writes, full ciphertext readbacks and completion publication last. The original private job and local delivery are then removed before fetching and authenticating the bundle from R2. Synthetic plaintext is compared privately and deleted. The script checks refusal before its authenticated 90-second retention deadline, then expires only the exact inventory and verifies remote prefix absence. Errors never emit raw SDK metadata.
+
+See `evidence.json` for actual outcomes, source hashes, object sizes/hashes, timestamps and cleanup. The SDK credential is not revoked: the authorized owner-held 30-day recovery credential remains available in 1Password. No schedule, always-on runner, alert, independent heartbeat, provider lifecycle, immutable lock, production data backup, hosted restore or desktop activation is established by this check. Real current-schema Neon/private-Blob restore acceptance is separate historical evidence; the two checks are not represented as an end-to-end scheduled backup.
+
+Re-running this script requires a fresh explicit check authorization and privately supplied transfer file. It refuses missing or insecure transfer files. Never commit a recovery key or S3 credential.

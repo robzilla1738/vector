@@ -1,0 +1,100 @@
+{
+  "format": "aux.backup.r2.live-acceptance.v1",
+  "startedAt": "2026-10-23T11:13:30.228Z",
+  "accountId": "5a5f6f8a4d1c1d35cfe82c4a74c966b9",
+  "bucket": "aux-recovery-prod",
+  "maxBytes": 1048576,
+  "syntheticOnly": true,
+  "productionDataRead": false,
+  "productionActivated": false,
+  "schedulerConfigured": false,
+  "phases": [
+    {
+      "phase": "synthetic-encrypted-capture-authenticated",
+      "at": "2026-10-23T11:13:31.450Z"
+    },
+    {
+      "phase": "real-r2-deliver-and-full-readback-verified",
+      "at": "2026-10-23T11:13:34.839Z"
+    },
+    {
+      "phase": "real-r2-fetch-authenticated-without-local-job",
+      "at": "2026-10-23T11:13:35.389Z"
+    },
+    {
+      "phase": "authenticated-expiry-and-exact-prefix-absence-verified",
+      "at": "2026-10-23T11:15:02.790Z"
+    }
+  ],
+  "sourceHashes": {
+    "recovery-bundle.mjs": "689bd4efea79c4a7dad9a29d4ace11c7f86516bcc86f6766a2f644df449a488b",
+    "backup-job-core.mjs": "01767f032f046a6718ccf6a44bdb1da48a9f71133b5762f6c4dd3f2e0195e5fc",
+    "backup-remote-core.mjs": "0edffb2858247280fb6764c7e7b3a4759ac76990c90c08b388c291b5f7f7b362",
+    "backup-r2-storage.mjs": "c280fafadaeeaded5d60f826ab5e28933a4061d41e13accc622b1cb02d9289fc"
+  },
+  "review": {
+    "format": "aux.backup.r2.review.v1",
+    "accountId": "5a5f6f8a4d1c1d35cfe82c4a74c966b9",
+    "bucket": "aux-recovery-prod",
+    "prefix": "aux/synthetic-acceptance-20261023/",
+    "jobId": "61b228c4-8402-47f3-b122-529fa1e7caba",
+    "bundleId": "e0e54a17-01cb-4ddb-820d-d452558906dc",
+    "inventorySha256": "533e6318c52f5322b9964922f1ff92e02a52b95f1647181dd100e1282da93a00",
+    "maxBytes": 1048576
+  },
+  "files": [
+    {
+      "name": "blob-0.bin.sealed",
+      "size": 80,
+      "sha256": "b9fdcadefdf04c473e1ae613e7703c011ee67aaf03d08225bd7d7c9a1b333a4f"
+    },
+    {
+      "name": "bundle.json",
+      "size": 57,
+      "sha256": "85bbb5c5d3896c97200610cc4380e71fdcd51606320b49835cf7c2ba3f446c5f"
+    },
+    {
+      "name": "database.dump.sealed",
+      "size": 94,
+      "sha256": "3c0a42246ced6f991930be878ada680b9cc86c1b9075d0bd65f68d6c3a11d187"
+    },
+    {
+      "name": "manifest.sealed",
+      "size": 438,
+      "sha256": "0c45b9a4cc853a123b8778ec7e048c528d49cc2c6b895693abe8b04554a7d4ff"
+    }
+  ],
+  "expiresAt": "2026-10-23T11:15:00.812Z",
+  "delivery": {
+    "jobId": "61b228c4-8402-47f3-b122-529fa1e7caba",
+    "files": 4,
+    "verified": true
+  },
+  "verification": {
+    "jobId": "61b228c4-8402-47f3-b122-529fa1e7caba",
+    "verified": true,
+    "files": 4
+  },
+  "fetch": {
+    "bundleId": "e0e54a17-01cb-4ddb-820d-d452558906dc",
+    "jobId": "61b228c4-8402-47f3-b122-529fa1e7caba",
+    "files": 4,
+    "bytes": 669,
+    "capturedAt": "2026-10-23T11:13:30.833Z",
+    "expiresAt": "2026-10-23T11:15:00.812Z",
+    "authenticated": true
+  },
+  "originalLocalJobAndDeliveryRemovedBeforeFetch": true,
+  "syntheticPlaintextCompared": true,
+  "earlyExpiryRefused": true,
+  "expiry": {
+    "jobId": "61b228c4-8402-47f3-b122-529fa1e7caba",
+    "files": 4,
+    "expired": true
+  },
+  "remotePrefixEmpty": true,
+  "passed": true,
+  "privateDrillRootRemoved": true,
+  "transientCredentialTransferRemoved": true,
+  "finishedAt": "2026-10-23T11:15:02.810Z"
+}
