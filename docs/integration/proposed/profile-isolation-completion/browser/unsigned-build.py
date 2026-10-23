@@ -3,7 +3,7 @@
 import argparse,pathlib,hashlib,json,subprocess,time,re,os,stat,struct
 H=pathlib.Path(__file__).resolve().parent;N=pathlib.Path('/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src')
 sha=lambda p:hashlib.sha256(p.read_bytes()).hexdigest()
-p=argparse.ArgumentParser();p.add_argument('--snapshot',required=True);p.add_argument('--build',action='store_true');p.add_argument('--resume-custody',action='store_true');p.add_argument('--receipt-name',default='');p.add_argument('--resume-reviewed',default='');a=p.parse_args();O=pathlib.Path(a.snapshot).resolve();S=O/'src';B=S/'out/AuxFast';R=O/(a.receipt_name or ('unsigned-custody-build' if a.resume_custody else 'unsigned-direct-build'))
+p=argparse.ArgumentParser();p.add_argument('--snapshot',required=True);p.add_argument('--build',action='store_true');p.add_argument('--resume-custody',action='store_true');p.add_argument('--jobs',type=int,default=4);p.add_argument('--receipt-name',default='');p.add_argument('--resume-reviewed',default='');a=p.parse_args();O=pathlib.Path(a.snapshot).resolve();S=O/'src';B=S/'out/AuxFast';R=O/(a.receipt_name or ('unsigned-custody-build' if a.resume_custody else 'unsigned-direct-build'))
 if R.parent!=O or not R.name.startswith('unsigned-'):raise SystemExit('receipt name must be a direct unsigned- child')
 prior=json.loads((O/'build-preparation.json').read_text())
 if not prior['passed']:raise SystemExit('initial preparation must pass')
@@ -19,6 +19,7 @@ try:
  if activation.exists():
   authorized=json.loads(activation.read_text())
   if sha(S/'build/toolchain/apple/linker_driver.py')!=authorized['linkerDriverSHA256'] or sha(S/'build/toolchain/apple/aux_host_link_filter.py')!=authorized['filterSHA256']:raise RuntimeError('authorized host filter changed')
+  if authorized.get('rustWrapperSHA256') and sha(S/'build/rust/gni_impl/rustc_wrapper.py')!=authorized['rustWrapperSHA256']:raise RuntimeError('authorized macro wrapper changed')
   r['approvedBuildToolOnlyAdHoc']=authorized;r['productSigned']=False;r['hostToolAdhocSigningAuthorized']=True;r['hostToolApprovalActivationSHA256']=sha(activation)
  reuse=None
  if a.resume_custody:
@@ -46,7 +47,7 @@ try:
  r['reviewedCommandCount']=len(commands);r['reviewedLinkCount']=len(links);r['dryRunActionCount']=sum(bool(re.match(r'^\[\d+/\d+\]',x)) for x in (R/'dryrun.log').read_text().splitlines());r['prepared']=True
  (R/'receipt.json').write_text(json.dumps(r,indent=2)+'\n')
  if a.build:
-  cmd=[str(S/'third_party/ninja/ninja'),'-C',str(B),'-j4','chrome'];t=time.monotonic()
+  cmd=[str(S/'third_party/ninja/ninja'),'-C',str(B),'-j'+str(a.jobs),'chrome'];t=time.monotonic()
   with (R/'build.log').open('w') as log:run=subprocess.run(cmd,cwd=S,stdout=log,stderr=subprocess.STDOUT)
   r['runs'].append({'name':'full-build','command':cmd,'exitCode':run.returncode,'seconds':time.monotonic()-t});r['passed']=run.returncode==0
   if r['passed']:

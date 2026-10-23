@@ -40,3 +40,15 @@ def filter_arguments(argv, cwd):
     if output in product:
         return list(argv)
     return [arg for arg in argv if arg != FLAG]
+
+
+def filter_rust_link_flags(output, flags, cwd):
+    normalized = normalize(str(output))
+    if not (normalized.startswith('clang_arm64_for_rust_host_build_tools/') and normalized.endswith('.dylib')):
+        return list(flags)
+    macros = {normalize(x['output']) for x in json.loads((ROOT / 'host-proc-macro-allowlist.json').read_text())}
+    if normalized not in macros:
+        raise ValueError('unreviewed host macro output')
+    # Apply the identical output/cwd/flag checks before Rust expands link args.
+    filtered = filter_arguments(['driver', *flags, '-o', str(output)], cwd)
+    return filtered[1:-2]

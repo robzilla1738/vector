@@ -1,0 +1,17 @@
+--- a/build/rust/gni_impl/rustc_wrapper.py
++++ b/build/rust/gni_impl/rustc_wrapper.py
+@@ -388,6 +388,14 @@
+     abs_build_root = os.getcwd().replace('\\', '/') + '/'
+     is_windows = sys.platform == 'win32' or args.target_windows
+ 
++    # Owner-approved exact host macro outputs share the native linker filter.
++    import importlib.util
++    aux_filter_path = pathlib.Path(__file__).resolve().parents[2] / "toolchain/apple/aux_host_link_filter.py"
++    aux_spec = importlib.util.spec_from_file_location("aux_host_link_filter", aux_filter_path)
++    aux_filter = importlib.util.module_from_spec(aux_spec)
++    aux_spec.loader.exec_module(aux_filter)
++    ldflags = aux_filter.filter_rust_link_flags(args.o, ldflags, os.getcwd())
++
+     rustc_args.extend(["-Clink-arg=%s" % arg for arg in ldflags])
+ 
+     with open(args.rsp) as rspfile:

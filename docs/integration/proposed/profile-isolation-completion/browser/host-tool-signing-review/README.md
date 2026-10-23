@@ -17,3 +17,11 @@ The cost is local CPU/disk only; no purchased service or recurring charge. The f
 `linker-driver.patch` and `aux_host_link_filter.py` are the concrete review-only implementation. Copying the helper and its three inventories alongside the isolated linker driver and applying the exact pinned patch would activate it; none of that has been done. The pure fixture exercises all 68 host and 20 product outputs in relative and absolute form plus six refusal cases. It invokes no compiler, linker or signing tool. Unknown outputs, unexpected working directories, traversal, absent/duplicate baseline flags, conflicting signing flags and duplicate output arguments refuse.
 
 Actual broader blocker subsequently reproduced: `unsigned-children-static-tools-build` passed the three mapped Rust scripts, linked the new unsigned `protoc`, then its first Perfetto generation returned `-9` at action 7 of 57,391. This is no longer only a predicted future tooling limitation. The full native app has not linked. The 15 child/messaging sources and two GN header registrations are now projected into the isolated source graph; no accepted app or shared Chromium files changed.
+
+After authorization, the first filtered build reached 649 actions. Native host
+generators executed successfully. The Rust macro `cxxbridge_macro` was compiled
+through a direct clang linker path and remained unsigned, causing rustc E0463
+when loading it. The same approved 20 macro outputs now use the identical
+allowlist filter at `rustc_wrapper.py`'s LDFLAGS boundary before expansion. All
+other Rust output flags remain unchanged. `rustc-wrapper.patch` records the exact
+adaptation; pure checks cover each approved macro and unknown-output refusal.

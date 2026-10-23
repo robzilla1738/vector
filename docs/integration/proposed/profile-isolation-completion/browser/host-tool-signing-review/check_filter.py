@@ -12,3 +12,14 @@ for args, cwd in [(['driver', FLAG, '-o', 'unreviewed'], BUILD_ROOT), (['driver'
     except ValueError: pass
     else: raise AssertionError('unsafe arguments accepted')
 print(f'Pure filter checks passed: {len(host)} host, {len(product)} product, 6 refusal cases; no execution')
+
+from aux_host_link_filter import filter_rust_link_flags
+import json
+from pathlib import Path
+for entry in json.loads((Path(__file__).parent/'host-proc-macro-allowlist.json').read_text()):
+    assert filter_rust_link_flags(entry['output'], ['--target=arm64-apple-macos', FLAG], BUILD_ROOT) == ['--target=arm64-apple-macos']
+assert filter_rust_link_flags('obj/product.rlib', [FLAG], BUILD_ROOT) == [FLAG]
+try: filter_rust_link_flags('clang_arm64_for_rust_host_build_tools/unknown.dylib', [FLAG], BUILD_ROOT)
+except ValueError: pass
+else: raise AssertionError('unapproved macro accepted')
+print('All20macro default-linker routes passed; other outputs unchanged')
