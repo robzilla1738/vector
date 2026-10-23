@@ -1,3 +1,9 @@
+# Production connection prepared; external setup decisions pending — 2026-10-23
+
+The actual Aux production Clerk endpoint form is prepared, unsubmitted, for `https://api.getaux.co/api/v1/webhooks/clerk` with exactly user.updated/deleted and session.ended/removed/revoked. No credential or endpoint was created. Action-time confirmation for this production security-sensitive connection was requested; the earlier credential connection approval covered Development/Preview. Actual public health checks returned200 for dev-cloud and404 for both production app/API URLs. Production handler delivery cannot yet be accepted. Nonsecret evidence: `docs/cloud/production-provider-review/prepared-clerk-webhook.json`.
+
+Gateway checkout still awaits explicit terms/payment confirmation, and a separate Aux live Stripe account still needs owner identification/verification. Current twelve-schema local restore/process-lifetime work is complete as documented below; hosted recovery, independent operational backup custody and protected same-candidate native runtime acceptance remain required. No new paid request, production activation, signing, owner data access or accepted app/UI change occurred.
+
 # Recovery subprocess cleanup corrected; actual local PostgreSQL18 restore passed — 2026-10-23
 
 Both online and historical capture commands now retain the actual PostgreSQL tool until exit and archive-stream settlement after error or a stop request. A real temporary writer exceeded its byte budget, ignored SIGTERM and later exited zero; the corrected runner waited and rejected that uncertain outcome. The restore CLI similarly retains its actual importer after post-spawn errors/timeouts and refuses exit0 success after uncertainty; one focused lifecycle fixture passed. No provider capture/restore was repeated for these new bytes. See `aux-recovery-tool-process/` and `aux-cloud-restore-process-lifetime/` under `docs/integration/proposed/`.

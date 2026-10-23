@@ -1,0 +1,32 @@
+{
+  "format": "aux.production-clerk.prepared-connection.v1",
+  "checkedAt": "2026-10-23T06:34:51.472426+00:00",
+  "source": "Actual logged-in Aux production Clerk endpoint form through desktop controls",
+  "instance": "ins_3L29Mzbc6B8iAxm7GYrD7e73HDc",
+  "endpoint": "https://api.getaux.co/api/v1/webhooks/clerk",
+  "selectedEvents": [
+    "user.updated",
+    "user.deleted",
+    "session.ended",
+    "session.removed",
+    "session.revoked"
+  ],
+  "eventsSelectedInForm": 5,
+  "creationSubmitted": false,
+  "signingSecretCreated": false,
+  "secretDestination": {
+    "project": "aux-cloud",
+    "environment": "Production",
+    "name": "CLERK_WEBHOOK_SIGNING_SECRET"
+  },
+  "actionTimeProductionConnectionConfirmationRequested": true,
+  "confirmationReceived": false,
+  "publicHealthObservation": {
+    "api.getaux.co": 404,
+    "app.getaux.co": 404,
+    "dev-cloud.getaux.co": 200
+  },
+  "productionActivated": false,
+  "providerDeliveryVerified": false,
+  "ownerDataModified": false
+}
