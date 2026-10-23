@@ -1,0 +1,9 @@
+# Aux production auth and billing preparation
+
+This is an unexecuted provider review, not activation. `plan.json` pins the actual backend consumers, intended Aux prices/events and Production-only credential destinations. It creates no account, credential, endpoint, customer or payment. The accepted desktop/UI is unchanged.
+
+Read-only logged-in dashboard inspection found zero endpoints in the existing Aux production Clerk instance. The existing Aux Development Stripe sandbox belongs to a parent live account labelled Joyflow. That live account is not assumed to be Aux, and none of its existing configuration, customers, payments or keys was modified. The browser was returned to the Aux Development sandbox. Raw dashboard/payment data is not stored here.
+
+Use a separate Aux live business account. The owner must complete any legal acceptance, identity/business and payout verification directly with Stripe. After that actual account is identified, prepare its two Aux products/four USD recurring prices, Aux-only portal, webhook and narrowly scoped backend credential. Confirm material credential access at the actual creation/connection step. Store credentials privately in aux-cloud Production without displaying values or changing existing keys. Do not connect the marketing project. The exact portal feature configuration and supported webhook event selection must be checked against the provider UI and real backend before creation; this review does not certify provider acceptance.
+
+The source prices are Pro $20/month or $200/year and Max $60/month or $600/year. No subscription, checkout, payment, refund, billing activation flag, production alias/deployment or paid service is authorized by this file. Creating price objects does not establish live billing acceptance. Production builds remain subject to missing-variable/resource/provider-mode checks. Gateway Terms/credit purchase and independent backup operations remain separate.

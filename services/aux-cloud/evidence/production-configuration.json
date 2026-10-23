@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "recordedAt": "2026-10-23T05:37:53.376Z",
+  "recordedAt": "2026-10-23T05:59:45.939Z",
   "projectId": "prj_WLAGrKLQ42G5unZOI5FUkk5gBwxB",
   "teamId": "team_aFPyA9tVAkB2WegquB3aADsL",
   "environment": "production",
@@ -24,7 +24,7 @@
     "CLERK_AUTHORIZED_PARTIES"
   ],
   "clerkHost": "clerk.getaux.co",
-  "resourceProfileConfigured": false,
+  "resourceProfileConfigured": true,
   "configurationComplete": false,
   "secretValuesInspected": false,
   "providerSecretPairingVerified": false,

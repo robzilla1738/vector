@@ -1,0 +1,123 @@
+{
+  "format": "aux.production-provider.review.v1",
+  "executed": false,
+  "activationAuthorized": false,
+  "observations": {
+    "clerkProductionInstance": "ins_3L29Mzbc6B8iAxm7GYrD7e73HDc",
+    "clerkProductionWebhookCount": 0,
+    "inspection": "Actual logged-in Clerk production endpoints page via desktop controls; no endpoint/key created",
+    "stripeSandboxAccount": "acct_1UTDA5GzjaZQfViz",
+    "sandboxName": "Aux Development",
+    "existingParentLiveAccount": "acct_1S8lUsGiH5gJuWEu",
+    "existingParentBusinessLabel": "Joyflow",
+    "existingParentModified": false,
+    "sandboxViewRestored": true
+  },
+  "clerk": {
+    "endpoint": "https://api.getaux.co/api/v1/webhooks/clerk",
+    "events": [
+      "user.deleted",
+      "user.updated",
+      "session.revoked",
+      "session.ended",
+      "session.removed"
+    ],
+    "secretDestination": {
+      "project": "aux-cloud",
+      "environment": "Production",
+      "name": "CLERK_WEBHOOK_SIGNING_SECRET"
+    },
+    "existingKeysChanged": false
+  },
+  "stripe": {
+    "target": "A separate owner-created Aux live business account; no Joyflow live resources or credentials reused",
+    "liveAccountId": null,
+    "ownerRequired": [
+      "Choose/create Aux live business account",
+      "Complete provider legal/business/identity/bank verification directly; do not submit credentials or identity documents to chat"
+    ],
+    "products": [
+      {
+        "id": "aux_pro_v1",
+        "name": "Aux Pro",
+        "prices": [
+          {
+            "lookup_key": "aux_pro_month",
+            "currency": "usd",
+            "unit_amount": 2000,
+            "recurring": {
+              "interval": "month"
+            }
+          },
+          {
+            "lookup_key": "aux_pro_year",
+            "currency": "usd",
+            "unit_amount": 20000,
+            "recurring": {
+              "interval": "year"
+            }
+          }
+        ]
+      },
+      {
+        "id": "aux_max_v1",
+        "name": "Aux Max",
+        "prices": [
+          {
+            "lookup_key": "aux_max_month",
+            "currency": "usd",
+            "unit_amount": 6000,
+            "recurring": {
+              "interval": "month"
+            }
+          },
+          {
+            "lookup_key": "aux_max_year",
+            "currency": "usd",
+            "unit_amount": 60000,
+            "recurring": {
+              "interval": "year"
+            }
+          }
+        ]
+      }
+    ],
+    "endpoint": "https://api.getaux.co/api/v1/webhooks/stripe",
+    "events": [
+      "customer.subscription.created",
+      "customer.subscription.updated",
+      "customer.subscription.deleted",
+      "invoice.paid",
+      "checkout.session.completed",
+      "checkout.session.async_payment_succeeded",
+      "charge.refunded"
+    ],
+    "customerPortal": {
+      "returnUrl": "https://app.getaux.co/account",
+      "cancellation": "period end; preserve paid period",
+      "changes": "Aux prices only; verify against existing implementation before creation"
+    },
+    "productionBindings": [
+      "STRIPE_SECRET_KEY",
+      "STRIPE_WEBHOOK_SECRET",
+      "STRIPE_PORTAL_CONFIGURATION_ID",
+      "NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY",
+      "STRIPE_PRICE_PRO_MONTH",
+      "STRIPE_PRICE_PRO_YEAR",
+      "STRIPE_PRICE_MAX_MONTH",
+      "STRIPE_PRICE_MAX_YEAR"
+    ],
+    "liveBillingFlagChanged": false,
+    "customersCreated": 0,
+    "paymentsOrRefunds": 0
+  },
+  "sourcePins": {
+    "services/aux-cloud/src/auth.ts": "25ed16cfe8b825420909ec8b403ece69d3738274d48a5d1f2c868c9972230bf2",
+    "services/aux-cloud/src/billing.ts": "1895c2a40a249b5d08e34196064417e658923bfc5c157a2ca1b8232d73d7083c",
+    "services/aux-cloud/src/app.ts": "918b51af98cc40934e7622700cad1f505e72a0242ee84140dfe3fe99e2521f7d",
+    "services/aux-cloud/src/billing-identity-transition.ts": "48fae5a3f820f95c31dbea97c292a2f483e553268ed8a8a1ef6c5010c84b4216",
+    "services/aux-cloud/evidence/production-configuration.json": "cb4b8a2726805db1291ae256469eb36774da9a35a8409ed247c5d571ffdbc636",
+    "services/aux-cloud/evidence/stripe-resources.json": "d4aa114a4e1be265a101d82b3e1226b037098b71592e7aa8537fd3063d7d0bfa"
+  },
+  "reviewedAt": "2026-10-23T06:00:25.613317+00:00"
+}
