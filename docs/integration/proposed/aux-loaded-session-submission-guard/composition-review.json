@@ -1,0 +1,14 @@
+{
+  "format": "aux.native.loaded-session-submission-guard-composition.v1",
+  "parentSourcesPreserved": 779,
+  "successorSources": 779,
+  "unchangedBinaryAssets": 23,
+  "modifiedSources": 2,
+  "newHeaders": 0,
+  "parentSha256": "76aa49a819db0e3adce2fc04ca4e508e1cee13b14007d320bda9ea543e8f9977",
+  "successorSha256": "4842e3fbfc3bc0846c1383fc810fbf03f4e0cd4ec12787fabf6bb2ede016f54d",
+  "appliedToNative": false,
+  "ChromiumTUCompiled": false,
+  "allWriterCustodyClaimed": false,
+  "fsyncClaimed": false
+}

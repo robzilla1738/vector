@@ -1,0 +1,70 @@
+{
+  "format": "aux.native.loaded-session-submission-guard.v1",
+  "nativeSourceRoot": "/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src",
+  "files": [
+    {
+      "path": "chrome/browser/sessions/session_service_base.cc",
+      "baselineSha256": null,
+      "sourceSha256": "06f665a13b45886c314778f279650ff9c3b46ba324790a430dff646786d28827",
+      "changed": false
+    },
+    {
+      "path": "chrome/browser/sessions/session_service_base.h",
+      "baselineSha256": null,
+      "sourceSha256": "5a3c95999730dc1323a0aa9ec58e1b90fd2e95d37fe143c2cfb0038109eb25df",
+      "changed": false
+    },
+    {
+      "path": "chrome/browser/ui/aux_profile_switch_session_rebuild.cc",
+      "baselineSha256": "6edd8c80043acc8715c6242e93dcf9fb557c17863fcd68bbc3d505cfd7a062e5",
+      "sourceSha256": "15b56506654e199357735f54c1c3b5942c7ddda0595786617ed846bfc33fd294",
+      "changed": true
+    },
+    {
+      "path": "chrome/browser/ui/aux_profile_switch_session_rebuild.h",
+      "baselineSha256": null,
+      "sourceSha256": "26a1f5be649a294b15a4d86775d4987d819f5efed0598726b58bbd0ab347ebd1",
+      "changed": false
+    },
+    {
+      "path": "chrome/browser/ui/aux_session_writer_participant.h",
+      "baselineSha256": "0d8010d4c6bdfa3c94e6d6cfe714e173be4dba372ab45e9e3b731cfbaa9241fd",
+      "sourceSha256": "344a1289abff18b86859f907e6607b9a9f1d9f0507a9dcadbc26250f4cef719c",
+      "changed": true
+    },
+    {
+      "path": "chrome/browser/ui/aux_workspace_snapshot_dispatch.h",
+      "baselineSha256": null,
+      "sourceSha256": "47a1c9f0d295828f7807163e55c467d24ef8ba8542423e82f98e1d9c25f175ab",
+      "changed": false
+    },
+    {
+      "path": "components/sessions/core/command_storage_manager.h",
+      "baselineSha256": null,
+      "sourceSha256": "5e7f5a8b2f1bf7ab4dde3d4b0bee7d770088e7c51f62cf23d0a61562c0253325",
+      "changed": false
+    },
+    {
+      "path": "components/sessions/core/session_write_completion.h",
+      "baselineSha256": null,
+      "sourceSha256": "f4789f676b87284d28b24e3c32ee2e32ef3d2dc247dc145040d9fcfa59de7637",
+      "changed": false
+    },
+    {
+      "path": "components/sessions/core/session_writer_admission.h",
+      "baselineSha256": null,
+      "sourceSha256": "46b59f90b4e48ceed1f9ad7db28626e5c9192fb0cf9c9813260258a3a46f45be",
+      "changed": false
+    }
+  ],
+  "patchSha256": "1b97a5f975e7141c1db4e81dec73e24af6ed7bf401d4f9999fd883ca9e753205",
+  "historicalProposal": "docs/integration/proposed/aux-loaded-session-participant",
+  "historicalManifestSha256": "7a2e3ddc5ecddd3f177d5dcdbd6de7c7ca6d50d9e79eb85a4a3cc304631fc28d",
+  "nativeApplied": false,
+  "wholeProfileCustodyClaimed": false,
+  "parentComposition": "out/native-reuse-composition-aux-loaded-session-participant",
+  "parentCompositionSha256": "76aa49a819db0e3adce2fc04ca4e508e1cee13b14007d320bda9ea543e8f9977",
+  "parentSourceCount": 779,
+  "parentBinaryAssetCount": 23,
+  "extenderSha256": "fe0fc5e3d5c6e02c3f59a59752f279c18c80626f6153a2ac043b0cb3f99aecba"
+}

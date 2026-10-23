@@ -1,0 +1,80 @@
+--- a/chrome/browser/ui/aux_session_writer_participant.h
++++ b/chrome/browser/ui/aux_session_writer_participant.h
+@@ -14,6 +14,21 @@
+ class ProfileManager;
+ 
+ namespace aux {
++
++// A zero pending count during a reentrant submission loop is not completion:
++// later inventory entries have not yet had their actual operations submitted.
++// This is UI-sequence bookkeeping, not a lifetime or custody grant.
++class SessionWriterSubmissionWindow {
++ public:
++  void Begin() { submitting_ = true; }
++  void Finish() { submitting_ = false; }
++  bool CanAdvance(size_t pending_operations) const {
++    return !submitting_ && pending_operations == 0;
++  }
++
++ private:
++  bool submitting_ = false;
++};
+ 
+ enum class ProfileSessionWriterOutcome {
+   kNotAttempted,
+--- a/chrome/browser/ui/aux_profile_switch_session_rebuild.cc
++++ b/chrome/browser/ui/aux_profile_switch_session_rebuild.cc
+@@ -232,6 +232,8 @@
+   // Keep actual pending accounting even if a queued result callback is dropped.
+   scoped_refptr<LoadedSessionWriterParticipant> retained_until_observed_;
+   Phase phase_ = Phase::kWaitingSnapshotCallbacks;
++  SessionWriterSubmissionWindow write_submission_;
++  SessionWriterSubmissionWindow close_submission_;
+   size_t pending_writes_ = 0;
+   size_t pending_closes_ = 0;
+   bool advance_posted_ = false;
+@@ -289,14 +291,16 @@
+     return;
+   }
+   if (phase_ == Phase::kWriting) {
+-    if (!pending_writes_) BeginManagerCloses();
+-    return;
+-  }
+-  if (phase_ == Phase::kClosing && !pending_closes_) Finish();
++    if (write_submission_.CanAdvance(pending_writes_)) BeginManagerCloses();
++    return;
++  }
++  if (phase_ == Phase::kClosing &&
++      close_submission_.CanAdvance(pending_closes_)) Finish();
+ }
+ 
+ void LoadedSessionWriterParticipant::BeginFinalWrites() {
+   phase_ = Phase::kWriting;
++  write_submission_.Begin();
+   for (size_t i = 0; i < profiles_.size(); ++i) {
+     auto& observation = result_.profiles[i];
+     if (!profiles_[i]) {
+@@ -316,6 +320,7 @@
+         &LoadedSessionWriterParticipant::DidWrite, base::WrapRefCounted(this), i));
+     // No raw profile/service access after the reset can reenter destruction.
+   }
++  write_submission_.Finish();
+   ScheduleAdvance();
+ }
+ 
+@@ -330,6 +335,7 @@
+ 
+ void LoadedSessionWriterParticipant::BeginManagerCloses() {
+   phase_ = Phase::kClosing;
++  close_submission_.Begin();
+   for (size_t i = 0; i < services_.size(); ++i) {
+     auto& observation = result_.profiles[i];
+     if (!observation.write.has_value()) continue;
+@@ -345,6 +351,7 @@
+     services_[i]->CloseCommandWriterAdmissionAndObserve(base::BindOnce(
+         &LoadedSessionWriterParticipant::DidClose, base::WrapRefCounted(this), i));
+   }
++  close_submission_.Finish();
+   ScheduleAdvance();
+ }
+ 

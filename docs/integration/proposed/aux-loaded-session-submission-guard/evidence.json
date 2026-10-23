@@ -1,0 +1,53 @@
+{
+  "format": "aux.native.loaded-session-submission-guard.focused-check.v1",
+  "currentProductionTUsCompiled": 1,
+  "compileResults": [
+    {
+      "path": "chrome/browser/ui/aux_profile_switch_session_rebuild.cc",
+      "exitCode": 0,
+      "seconds": 2.5014772080000003
+    }
+  ],
+  "compileCommandsSha256": "ec537a0aff3a7669dbe85c151cf7d1b746cede1eea2598d322710270d79b2700",
+  "compileInputsSha256": "afa683f8352904dc93418f31f4c17e04b88c93c44c4f597b93ae709f2f8c1b0a",
+  "sourceManifestSha256": "c8a96160f64332a197134a092e1c9a0c7d3d083123f6d60e558dfc40e16d9633",
+  "productionSubmissionWindowChecksPassed": 12,
+  "callbackOwnerRuntimeExecuted": false,
+  "loadedProfileInventoryExecuted": false,
+  "realBackendIOExecuted": false,
+  "nativeApplied": false,
+  "wholeBrowserBuilt": false,
+  "actualSecurityCalls": 0,
+  "actualOSOperations": 0,
+  "ownerStateRead": false,
+  "originalAddonExecuted": false,
+  "signed": false,
+  "uiChanged": false,
+  "wholeProfileCustodyClaimed": false,
+  "compiledObject": {
+    "sha256": "7a6f7c53b82b9b69cf59fa5b2c3570834b95a8a3522be2ee504a6a22d849b0b8",
+    "bytes": 56248
+  },
+  "checkSourcePins": [
+    {
+      "path": "verify.py",
+      "sha256": "75441ebffbbf0cab23d4a5e9f5bad2ff75033d07c9f69a30c5a1d78828eb9a2e"
+    },
+    {
+      "path": "tests/main.cc",
+      "sha256": "dcb50dff4f72ce1340b098605bf886f4a84acc6651307c553e5a826ea605b161"
+    },
+    {
+      "path": "check.sh",
+      "sha256": "1b04e634806ebd4bd35d22039596b20afe565a735426e582247b9474e596e775"
+    },
+    {
+      "path": "compile-check.py",
+      "sha256": "86ba8d252b35281ff68cf230ab48b808ccf713acad760c52f6ec48a091a7b695"
+    },
+    {
+      "path": "prepare-composition.py",
+      "sha256": "76ac065aa1328a10e474dc3e9bf42e39c0589d84734d6d28c24d3d6593c5aa38"
+    }
+  ]
+}
