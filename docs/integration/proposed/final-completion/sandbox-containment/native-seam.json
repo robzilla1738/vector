@@ -1,0 +1,13 @@
+{
+  "schema": "aux.exec-private-parent.consumer-contract.v1",
+  "builtin": "aux_owned_native",
+  "method": "captureExecPrivateParent",
+  "arguments": [],
+  "descriptor": {"own": true, "writable": false, "configurable": false, "accessor": false},
+  "return": {"format": "aux.native.exec-private-parent.v1", "privateParent": "native sealed canonical private parent"},
+  "requiredNativeChecks": ["actual registered Environment", "retained authenticated Owner and generation", "current owner admission before capture", "signed policy private parent", "current owner admission after capture"],
+  "notProvided": ["browser user-data root", "profile path", "retained native spawn lease", "inherited descriptor closure", "whole descendant custody"],
+  "callerRootOverride": false,
+  "fallback": "refuse",
+  "proposedOnly": true
+}

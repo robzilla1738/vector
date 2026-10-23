@@ -1,0 +1,29 @@
+{
+  "schema": "aux.exec-private-parent.proposal.v1",
+  "inputSha256": "1aad24f51525251838593f3c06adab824c3eec6962dfc26434b6901194c3c92b",
+  "anchors": [
+    {
+      "name": "retain supplied optional sandbox implementation",
+      "count": 1
+    },
+    {
+      "name": "actual MCP stdio spawn receives mandatory native-parent denial",
+      "count": 1
+    }
+  ],
+  "checks": [
+    "full proposed ESM syntax only",
+    "native zero-argument fixed builtin seam",
+    "missing/mutable/native-platform refusal",
+    "caller-selected root ignored",
+    "canonical private cwd refusal",
+    "actual transformed MCP start wraps before spawn and pipes all stdio",
+    "native capture failure prevents actual MCP spawn",
+    "inherited MCP stderr refuses before spawn"
+  ],
+  "nativeProducerExecuted": false,
+  "sandboxExecuted": false,
+  "custodyAccepted": false,
+  "browserProfileContainment": false,
+  "inheritedHandleContainment": false
+}

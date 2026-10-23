@@ -1,0 +1,263 @@
+{
+  "schema": "aux.supplied.exec-launch-inventory.v1",
+  "input": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-provider-funded-20261023/Aux.app/Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/node-development/index.mjs",
+  "bytes": 12209720,
+  "sha256": "1aad24f51525251838593f3c06adab824c3eec6962dfc26434b6901194c3c92b",
+  "landmarks": [
+    {
+      "name": "optional sandbox bypass",
+      "anchor": "async function wrapSandboxCommand(Cn){",
+      "count": 1,
+      "offsets": [
+        6853627
+      ]
+    },
+    {
+      "name": "shared non-PTY launch",
+      "anchor": "async function spawnSandboxed(Cn){",
+      "count": 1,
+      "offsets": [
+        6853339
+      ]
+    },
+    {
+      "name": "shared terminal PTY/non-PTY dispatch",
+      "anchor": "async function spawnExecProcess(Cn,ei){",
+      "count": 1,
+      "offsets": [
+        6860969
+      ]
+    },
+    {
+      "name": "PTY binding invocation",
+      "anchor": "function spawnPtyProcess(Cn){",
+      "count": 1,
+      "offsets": [
+        6859696
+      ]
+    },
+    {
+      "name": "runtime-use lease and permission envelope",
+      "anchor": "async function prepareSessionSpawn(Cn,ei){",
+      "count": 1,
+      "offsets": [
+        6866261
+      ]
+    },
+    {
+      "name": "runtime replacement/use counter",
+      "anchor": "async function acquireAgentRuntimeUse(Cn,ei={}){",
+      "count": 1,
+      "offsets": [
+        6828810
+      ]
+    },
+    {
+      "name": "MCP server constructor dispatch",
+      "anchor": "async function createTransport$1(Cn,ei,ti){",
+      "count": 1,
+      "offsets": [
+        6016179
+      ]
+    },
+    {
+      "name": "MCP SDK actual process start",
+      "anchor": "StdioClientTransport=class{",
+      "count": 1,
+      "offsets": [
+        5961224
+      ]
+    },
+    {
+      "name": "shell PATH discovery before MCP transport",
+      "anchor": "async function resolveShellPath(){",
+      "count": 1,
+      "offsets": [
+        6014655
+      ]
+    },
+    {
+      "name": "Claude CLI command and shell discovery",
+      "anchor": "async function runClaudeCommand(Cn){",
+      "count": 1,
+      "offsets": [
+        5734372
+      ]
+    },
+    {
+      "name": "other CLI command wrapper",
+      "anchor": "async function runCommand(Cn){",
+      "count": 1,
+      "offsets": [
+        10526251
+      ]
+    },
+    {
+      "name": "CLI installer external shell",
+      "anchor": "Could not download Aux CLI installer.",
+      "count": 2,
+      "offsets": [
+        11842826,
+        11844604
+      ]
+    },
+    {
+      "name": "ripgrep wraps before execFile",
+      "anchor": "let Cn=await wrapSandboxCommand({...ui,command:[`rg`,...ci]",
+      "count": 1,
+      "offsets": [
+        11450271
+      ]
+    },
+    {
+      "name": "optional Seatbelt deniedPaths rules",
+      "anchor": "function buildSeatbeltPolicy(Cn){",
+      "count": 1,
+      "offsets": [
+        6833496
+      ]
+    },
+    {
+      "name": "fixed native shim loader",
+      "anchor": "function loadBinding(){",
+      "count": 1,
+      "offsets": [
+        2890775
+      ]
+    },
+    {
+      "name": "credential command interpolation shell",
+      "anchor": "async function resolveConfigValue(Cn){",
+      "count": 1,
+      "offsets": [
+        6436789
+      ]
+    },
+    {
+      "name": "QuickJS guest bridge",
+      "anchor": "QuickJSBridge=class Cn{",
+      "count": 1,
+      "offsets": [
+        10938915
+      ]
+    },
+    {
+      "name": "REPL rejects external modules",
+      "anchor": "External modules are not available in the REPL.",
+      "count": 1,
+      "offsets": [
+        10952765
+      ]
+    }
+  ],
+  "primitiveOccurrences": [
+    {
+      "name": "shared spawnCommand",
+      "count": 27,
+      "offsets": [
+        2943671,
+        3374769,
+        5734504,
+        5735406,
+        6014841,
+        6833033,
+        6850511,
+        6853444,
+        10500083,
+        10511572,
+        10525939,
+        10526368,
+        10526995,
+        11838227,
+        11839764,
+        11840759,
+        11844049,
+        11844685,
+        11884562,
+        11946214,
+        11946650,
+        11948861,
+        11950549,
+        11950978,
+        11951433,
+        11951842,
+        11952243
+      ]
+    },
+    {
+      "name": "direct spawn",
+      "count": 17,
+      "offsets": [
+        234199,
+        2942267,
+        2942766,
+        3933183,
+        5488304,
+        5492138,
+        5959491,
+        6859835,
+        9116912,
+        9136808,
+        9139858,
+        9263281,
+        9264723,
+        9267242,
+        9269685,
+        9270568,
+        11021789
+      ]
+    },
+    {
+      "name": "direct spawnSync",
+      "count": 1,
+      "offsets": [
+        5959613
+      ]
+    },
+    {
+      "name": "direct execFile",
+      "count": 0,
+      "offsets": []
+    },
+    {
+      "name": "direct execFileSync",
+      "count": 2,
+      "offsets": [
+        7649150,
+        7649342
+      ]
+    },
+    {
+      "name": "async execFile alias",
+      "count": 1,
+      "offsets": [
+        11450439
+      ]
+    },
+    {
+      "name": "async shell exec aliases",
+      "count": 2,
+      "offsets": [
+        6436915,
+        11767529
+      ]
+    },
+    {
+      "name": "node-pty actual spawn",
+      "count": 1,
+      "offsets": [
+        6859821
+      ]
+    },
+    {
+      "name": "MCP cross-spawn",
+      "count": 1,
+      "offsets": [
+        5961666
+      ]
+    }
+  ],
+  "scope": "Static substring occurrence inventory; not AST/data-flow proof or a claim that every primitive occurrence is an active user-controlled route.",
+  "ownerStateRead": false,
+  "execution": false
+}
