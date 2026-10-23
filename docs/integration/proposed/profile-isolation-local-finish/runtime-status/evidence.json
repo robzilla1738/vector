@@ -1,0 +1,21 @@
+{
+  "inputSha256": "156c9361fc37848175c920d2fab53b89526870a2358803ef01f147af5ecb1ed6",
+  "outputSha256": "ecff19ddbc7fa76529c50111152f8324ef0ba6b87de11e7ecf872f76270a7484",
+  "changes": [
+    {
+      "name": "valid local runtime survives optional metadata failure",
+      "count": 1
+    }
+  ],
+  "checks": [
+    "baseline rejects successful bundled seed after metadata failure",
+    "valid nonquarantined local runtime returns offline status",
+    "force still rejects",
+    "missing runtime still rejects",
+    "quarantined runtime still rejects",
+    "full source syntax"
+  ],
+  "scope": "actual extracted performInstall; module loading/status/fetch are controlled adapters",
+  "network": false,
+  "productExecuted": false
+}
