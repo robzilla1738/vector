@@ -3,7 +3,7 @@
 import argparse,pathlib,hashlib,json,subprocess,time,re,os,stat,struct
 H=pathlib.Path(__file__).resolve().parent;N=pathlib.Path('/Users/rcourson/Documents/Code/aux-chromium-security-155/chromium/src')
 sha=lambda p:hashlib.sha256(p.read_bytes()).hexdigest()
-p=argparse.ArgumentParser();p.add_argument('--snapshot',required=True);p.add_argument('--build',action='store_true');a=p.parse_args();O=pathlib.Path(a.snapshot).resolve();S=O/'src';B=S/'out/AuxFast';R=O/'unsigned-direct-build'
+p=argparse.ArgumentParser();p.add_argument('--snapshot',required=True);p.add_argument('--build',action='store_true');p.add_argument('--resume-custody',action='store_true');a=p.parse_args();O=pathlib.Path(a.snapshot).resolve();S=O/'src';B=S/'out/AuxFast';R=O/('unsigned-custody-build' if a.resume_custody else 'unsigned-direct-build')
 prior=json.loads((O/'build-preparation.json').read_text())
 if not prior['passed']:raise SystemExit('initial preparation must pass')
 if R.exists():raise SystemExit('fresh build receipt directory required')
@@ -14,7 +14,17 @@ if cfg.read_text() not in [s,unsigned]:raise SystemExit('link config not matchin
 cfg.write_text(unsigned)
 r={'format':'aux.chromium.unsigned-full-build.v1','passed':False,'prepared':False,'source':str(S),'sharedLinkConfigSha256':baseline,'isolatedLinkConfigSha256':sha(cfg),'coldFeatureEnabled':False,'appExecuted':False,'signed':False,'runs':[]}
 try:
+ reuse=None
+ if a.resume_custody:
+  reuse=O/'unsigned-direct-build';old=json.loads((reuse/'receipt.json').read_text())
+  if old['isolatedLinkConfigSha256']!=sha(cfg) or any(not any(x['name']==name and x['exitCode']==0 for x in old['runs']) for name in ['gn','dryrun']):raise RuntimeError('prior graph did not pass')
+  custody=json.loads((O/'custody-source-receipt.json').read_text())
+  for name,x in custody.items():
+   if sha(S/'chrome/browser/aux'/name)!=x['afterSHA256']:raise RuntimeError('custody source mismatch')
+  r['custodySources']=custody;r['reusedGraphReceiptSha256']=sha(reuse/'receipt.json')
  for name,cmd in [('gn',[str(S/'buildtools/mac/gn'),'gen',str(B)]),('dryrun',[str(S/'third_party/ninja/ninja'),'-C',str(B),'-n','chrome']),('commands',[str(S/'third_party/ninja/ninja'),'-C',str(B),'-t','commands','chrome'])]:
+  if reuse and name in ['gn','dryrun']:
+   (R/(name+'.log')).write_bytes((reuse/(name+'.log')).read_bytes());r['runs'].append(dict(next(x for x in old['runs'] if x['name']==name),reused=True));continue
   t=time.monotonic();run=subprocess.run(cmd,cwd=S,capture_output=True,text=True);(R/(name+'.log')).write_text(run.stdout+run.stderr);r['runs'].append({'name':name,'command':cmd,'exitCode':run.returncode,'seconds':time.monotonic()-t})
   if run.returncode:raise RuntimeError(name+' failed')
  commands=(R/'commands.log').read_text().splitlines()

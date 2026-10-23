@@ -43,3 +43,17 @@ pipeline uses the complete direct Ninja graph, four jobs, with the same reviewed
 unsigned configuration. Final receipt/log/inventories are now under
 `unsigned-direct-build/`; the two earlier attempt directories remain historical.
 No owner/shared cache was used, and no prebuilt-object substitution was made.
+
+## Custody source freeze before compilation
+
+The owner-preserving snapshot received only the two exact custody successors from
+`profile-isolation-custody/restart/sources.json` before any full-build compilation.
+The first direct command inventory was stopped intentionally; its refused receipt
+is historical. `--resume-custody` uses that same graph's successful GN/dryrun and
+checks both source hashes and the unsigned linker configuration before repeating
+the full command safety review. It does not reuse object files manually. The real
+Ninja graph determines every compile/link dependency. This narrow resume is for
+this frozen source-only projection, not a generic graph cache.
+
+Current output: `/private/tmp/aux-chromium-recovery-snapshot-20261023/unsigned-custody-build/`.
+Runtime execution and a successful app build remain unproven until the final receipt.
