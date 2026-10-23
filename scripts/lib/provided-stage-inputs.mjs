@@ -1,6 +1,11 @@
 // Transform provenance prevents an older, internally consistent UI stage from
 // silently passing after its branding/platform adaptation code has changed.
 export const providedStageInputs = Object.freeze([
+  'vendor/provided/aux-channel-bot-assets.mjs',
+  'docs/integration/proposed/final-completion/channel-bot-assets.json',
+  'vendor/provided-ui/branding/channel-bots/discord.jpg',
+  'vendor/provided-ui/branding/channel-bots/slack.jpg',
+  'vendor/provided-ui/branding/channel-bots/telegram.jpg',
   'vendor/provided/aux-product-links.mjs',
   'vendor/provided/provider-funded-launch.mjs',
   'vendor/provided/provider-launch-stage.mjs',

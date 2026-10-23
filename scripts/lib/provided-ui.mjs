@@ -1,3 +1,4 @@
+import { applyAuxChannelBotAssets } from '../../vendor/provided/aux-channel-bot-assets.mjs';
 import { applyAuxProductLinks, applyAuxEditorGlobalIdentity } from '../../vendor/provided/aux-product-links.mjs';
 import { materializeAuxRecoveryEnrollmentUI } from '../../docs/integration/proposed/aux-sync-recovery-enrollment-ui/source/adapt.mjs';
 import { applyAuxBillingReturnFallback } from '../../vendor/provided/aux-billing-return-fallback.mjs';
@@ -318,6 +319,8 @@ export async function stageProvidedUi({
           anchors.push(...productLinks.anchors);
           const editorIdentity = applyAuxEditorGlobalIdentity({component, path: file.path, text, stateIdentityVersion});
           text = editorIdentity.text; anchors.push(...editorIdentity.anchors);
+          const channelAssets = applyAuxChannelBotAssets({component, path: file.path, text, stateIdentityVersion});
+          text = channelAssets.text; anchors.push(...channelAssets.anchors);
           const marks = file.inlineMarkCount
             ? [...text.matchAll(inlineMark)]
             : [];

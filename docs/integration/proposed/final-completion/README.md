@@ -14,4 +14,8 @@ The candidate inventory reads shipped files only and never executes native code.
 
 The transient new-tab editor publisher and reader now both use `window.__auxNewTabEditor`; an isolated check of the actual transformed expressions confirms they share the same object. This changes no persisted state.
 
-Remaining raw references include dynamic bot-avatar hosting, dormant daemon/runtime pins and native embedded source references. These require paired source/resource work, not indiscriminate binary substitution. Existing immutable inventories and legal/language semantics remain truthful. No complete-identity or real-app acceptance claim follows.
+Three public channel bot JPEGs are now pinned and bundled byte-for-byte through data URIs. Four original remote image consumers retain their supplied component/style structure, without contacting the source product. Module syntax, exact decoded JPEG bytes and unchanged className tokens passed; real rendering is still pending. A diagnostic extraction initially failed on the data URI semicolon; the corrected extraction passed.
+
+The deferred subscription predicate no longer grants privileges by the source company’s email domains. Default payment-free account behavior is unchanged; future paid mode must use actual plan entitlement. The actual extracted predicate was checked in both modes.
+
+Remaining raw references include dormant daemon/runtime pins and native embedded source references. These require paired source/resource work, not indiscriminate binary substitution. Existing immutable inventories and legal/language semantics remain truthful. No complete-identity or real-app acceptance claim follows.

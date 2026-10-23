@@ -1,0 +1,28 @@
+{
+  "format": "aux.channel-bot-assets.v1",
+  "acquiredDate": "2026-10-23",
+  "scope": "Public static image URLs referenced by supplied Agent; bytes copied without modification. No account/session access.",
+  "files": [
+    {
+      "platform": "discord",
+      "sourceUrl": "https://static.asidehq.com/bots/discord.jpg",
+      "path": "vendor/provided-ui/branding/channel-bots/discord.jpg",
+      "bytes": 22363,
+      "sha256": "374ba2a0cf60e6431dea446e8523c6e81ded7c26c30e0748a798c79565879584"
+    },
+    {
+      "platform": "slack",
+      "sourceUrl": "https://static.asidehq.com/bots/slack.jpg",
+      "path": "vendor/provided-ui/branding/channel-bots/slack.jpg",
+      "bytes": 26220,
+      "sha256": "33a7a42b9625b0a09fc6348d3c1a5e2985242cdfce9445281f101e867e2ce57a"
+    },
+    {
+      "platform": "telegram",
+      "sourceUrl": "https://static.asidehq.com/bots/telegram.jpg",
+      "path": "vendor/provided-ui/branding/channel-bots/telegram.jpg",
+      "bytes": 18882,
+      "sha256": "7f1d5d743eb5dc90407c4b06186b301e8530b7034d3832ae8bebc10b65387415"
+    }
+  ]
+}
