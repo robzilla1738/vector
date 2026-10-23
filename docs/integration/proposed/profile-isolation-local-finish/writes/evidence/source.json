@@ -1,0 +1,88 @@
+{
+  "format": "aux.local-finish-writers.source.v1",
+  "passed": true,
+  "inputSha256": "2c2f8f35308afeb8ba979543410f09fd2462f76c9c00351ba5a8768cbcef3431",
+  "outputSha256": "5f99818131f693c82d572a8316755d79f7185c9929a362a8ede9bb58783fe4ce",
+  "changes": [
+    {
+      "name": "producer helpers after refusal",
+      "count": 1
+    },
+    {
+      "name": "download cancellation scope",
+      "count": 1
+    },
+    {
+      "name": "download loop cancellation",
+      "count": 1
+    },
+    {
+      "name": "download actual request signal",
+      "count": 1
+    },
+    {
+      "name": "download retry cancellation",
+      "count": 1
+    },
+    {
+      "name": "download backpressure cancellation",
+      "count": 1
+    },
+    {
+      "name": "download terminal output cleanup",
+      "count": 1
+    },
+    {
+      "name": "ZIP reader retained resource",
+      "count": 1
+    },
+    {
+      "name": "ZIP cancellation rejects entry loop",
+      "count": 1
+    },
+    {
+      "name": "routine interval registered shutdown",
+      "count": 1
+    },
+    {
+      "name": "session lifecycle interval shutdown",
+      "count": 1
+    },
+    {
+      "name": "memory actual close shutdown",
+      "count": 1
+    },
+    {
+      "name": "memory watcher factory closing",
+      "count": 1
+    },
+    {
+      "name": "memory sync admission",
+      "count": 1
+    },
+    {
+      "name": "memory deferred sync admission",
+      "count": 1
+    },
+    {
+      "name": "artifact watcher retained resource",
+      "count": 1
+    },
+    {
+      "name": "artifact watcher retained close",
+      "count": 1
+    }
+  ],
+  "checks": [
+    "routine interval clear awaits actual returned tick",
+    "download abort holds pending through callback completion",
+    "backpressure abort destroys stream and removes listeners",
+    "artifact watcher error holds custody until close",
+    "ZIP open racing cancellation closes actual reader before publication",
+    "full bundle syntax and input pin refusal"
+  ],
+  "nativeBinding": "synthetic only",
+  "allProducersDrained": false,
+  "newNativeAbi": false,
+  "uiChanged": false
+}
