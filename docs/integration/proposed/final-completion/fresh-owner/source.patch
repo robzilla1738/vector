@@ -1,0 +1,268 @@
+--- a/docs/integration/proposed/aux-native-fresh-cold-bootstrap/source/AuxFreshNativeHome.swift
++++ b/docs/integration/proposed/final-completion/fresh-owner/source/AuxFreshNativeHome.swift
+@@ -5,33 +5,47 @@
+ 
+ enum AuxFreshHomeError: Error {
+     case unsafePath, unsafeMetadata, existingReservation, pathChanged, notEmpty
+-    case generationAlreadyAttempted
++    case generationAlreadyAttempted, foreignProcess
+     case io(Int32)
+ }
+ 
+ // One process-local target-progress lease per genuine retained home owner.
+ // This is mutual exclusion among native aliases, never foreign-process custody.
+ final class AuxNativeFreshCohortLease {
+-    private let lock=NSLock()
++    private let creatorProcess=getpid()
++    // Manual lifetime prevents foreign ARC teardown from destroying a lock
++    // inherited while another parent thread held it. This is not custody.
++    private let lock=Unmanaged.passRetained(NSLock())
+     private var occupied=false
+-    // Mechanical lock only; production admission always selects the actual
+-    // private native owner's readonly lease, never a caller-supplied instance.
+     init(){}
+     func tryAcquire()->AuxNativeFreshCohortOperation? {
+-        lock.lock();defer{lock.unlock()}
++        guard creatorProcess == getpid() else{return nil}
++        lock.takeUnretainedValue().lock();defer{lock.takeUnretainedValue().unlock()}
+         guard !occupied else{return nil}
+         occupied=true
+         return AuxNativeFreshCohortOperation(owner:self)
+     }
+-    fileprivate func release(){lock.lock();occupied=false;lock.unlock()}
++    fileprivate func release(){
++        guard creatorProcess == getpid() else{return}
++        lock.takeUnretainedValue().lock();occupied=false;lock.takeUnretainedValue().unlock()
++    }
++    deinit{if creatorProcess == getpid(){lock.release()}}
+ }
+ final class AuxNativeFreshCohortOperation {
++    private let creatorProcess=getpid()
+     private let owner:AuxNativeFreshCohortLease
+-    private let lock=NSLock()
++    private let lock=Unmanaged.passRetained(NSLock())
+     private var finished=false
+     fileprivate init(owner:AuxNativeFreshCohortLease){self.owner=owner}
+-    func finish(){lock.lock();guard !finished else{lock.unlock();return};finished=true;lock.unlock();owner.release()}
+-    deinit{finish()}
++    func finish(){
++        guard creatorProcess == getpid() else{return}
++        lock.takeUnretainedValue().lock();guard !finished else{lock.takeUnretainedValue().unlock();return}
++        finished=true;lock.takeUnretainedValue().unlock();owner.release()
++    }
++    deinit{
++        guard creatorProcess == getpid() else{return}
++        finish();lock.release()
++    }
+ }
+ 
+ final class AuxFreshNativeHome {
+@@ -40,19 +54,21 @@
+     let canonicalHome: String
+     let scope: String
+     let transactionId: String
++    private let creatorProcess = getpid()
+     private let reservationBytes: Data
+     private let canonicalParent: String
+     private let childName: String
+     private let parentFD: Int32
+     private let reservationFD: Int32
+     private let homeFD: Int32
+-    private let generationAttemptLock = NSLock()
++    private let generationAttemptLock = Unmanaged.passRetained(NSLock())
+     private var generationAttempted = false
+     let targetProgressLease: AuxNativeFreshCohortLease
+ 
+     // Only the successful O_EXCL/mkdirat creator can construct this owner.
+     // Existing reservations/children are never adopted, removed or retried.
+     static func create(inCanonicalPrivateParent parent: String,retainedParentDescriptor:Int32? = nil) throws -> AuxFreshNativeHome {
++        try AuxNativeFreshReservationLeaseRegistry.requireCurrentProcess()
+         try requireCanonical(parent)
+         let parentFD:Int32
+         if let retainedParentDescriptor{parentFD=fcntl(retainedParentDescriptor,F_DUPFD_CLOEXEC,0)}
+@@ -135,12 +151,21 @@
+     }
+ 
+     deinit {
++        // Int32 descriptors have no automatic close; foreign destruction leaves
++        // inherited references to process teardown instead of acting on them.
++        guard creatorProcess == getpid() else { return }
+         close(homeFD)
+         close(reservationFD)
+         close(parentFD)
++        generationAttemptLock.release()
++    }
++
++    private func requireOwnerProcess() throws {
++        guard creatorProcess == getpid() else { throw AuxFreshHomeError.foreignProcess }
+     }
+ 
+     func validateRetainedIdentity() throws {
++        try requireOwnerProcess()
+         try Self.requireCanonical(canonicalParent)
+         try Self.requirePrivate(parentFD, directory: true)
+         try Self.requirePrivate(homeFD, directory: true)
+@@ -159,8 +184,9 @@
+     // Operation state on this real private-init owner, not an admission claim.
+     // Consume before callbacks; failures never silently permit another factory.
+     func claimInitialAuthorityGenerationAttempt() throws {
+-        generationAttemptLock.lock()
+-        defer { generationAttemptLock.unlock() }
++        try requireOwnerProcess()
++        generationAttemptLock.takeUnretainedValue().lock()
++        defer { generationAttemptLock.takeUnretainedValue().unlock() }
+         guard !generationAttempted else { throw AuxFreshHomeError.generationAlreadyAttempted }
+         generationAttempted = true
+     }
+@@ -202,6 +228,7 @@
+     // This is an actual duplicate of the retained directory, not a receipt or
+     // launch grant. Callers own closing it; no process is started here.
+     func duplicateDirectoryForNativeBootstrap() throws -> Int32 {
++        try requireOwnerProcess()
+         try validateRetainedIdentity()
+         let duplicate = fcntl(homeFD, F_DUPFD_CLOEXEC, 0)
+         guard duplicate >= 0 else { throw AuxFreshHomeError.io(errno) }
+--- a/docs/integration/proposed/aux-native-fresh-cold-bootstrap/source/AuxResumedFreshNativeHome.swift
++++ b/docs/integration/proposed/final-completion/fresh-owner/source/AuxResumedFreshNativeHome.swift
+@@ -9,6 +9,7 @@
+     let canonicalHome: String
+     let scope: String
+     let transactionId: String
++    private let creatorProcess = getpid()
+     private let reservationBytes: Data
+     private let canonicalParent: String
+     private let childName: String
+@@ -17,13 +18,27 @@
+     private let homeFD: Int32
+     let policy: AuxAuthenticatedFreshBootstrapPolicy
+     let targetProgressLease: AuxNativeFreshCohortLease
+-    private static let registryLock = NSLock()
+-    private static var registry: [String: WeakResumedFreshHome] = [:]
++    // PID/lock/map belong to one lazy-initialized object. A separately lazy PID
++    // must never rebrand an already inherited registry as child-owned.
++    private final class RegistryState {
++        let creatorProcess=getpid()
++        let lock=Unmanaged.passRetained(NSLock())
++        var owners:[String:WeakResumedFreshHome]=[:]
++        deinit{if creatorProcess == getpid(){lock.release()}}
++    }
++    private static let registry=RegistryState()
++    private static func currentRegistry() throws -> RegistryState {
++        let selected=registry
++        guard selected.creatorProcess == getpid() else{throw AuxFreshHomeError.foreignProcess}
++        return selected
++    }
+ 
+     // Only an actually authenticated policy can locate this existing owner.
+     // Disk metadata is a bounded locator; protected-stage authentication is a
+     // separate prerequisite before any staged context may be returned.
+     static func reopen(policy: AuxAuthenticatedFreshBootstrapPolicy,retainedParentDescriptor:Int32? = nil) throws -> AuxResumedFreshNativeHome {
++        _ = try currentRegistry()
++        try AuxNativeFreshReservationLeaseRegistry.requireCurrentProcess()
+         try policy.revalidateCurrentIdentity()
+         let parent = policy.contents.canonicalPrivateParent
+         try requireCanonical(parent)
+@@ -101,12 +116,20 @@
+     }
+ 
+     deinit {
++        // Int32 descriptors have no automatic close; foreign destruction leaves
++        // inherited references to process teardown instead of acting on them.
++        guard creatorProcess == getpid() else { return }
+         close(homeFD)
+         close(reservationFD)
+         close(parentFD)
+     }
+ 
++    private func requireOwnerProcess() throws {
++        guard creatorProcess == getpid() else { throw AuxFreshHomeError.foreignProcess }
++    }
++
+     func validateRetainedIdentity() throws {
++        try requireOwnerProcess()
+         try Self.requireCanonical(canonicalParent)
+         try Self.requirePrivate(parentFD, directory: true)
+         try Self.requirePrivate(homeFD, directory: true)
+@@ -130,6 +153,7 @@
+     // This is an actual duplicate of the retained directory, not a receipt or
+     // launch grant. Callers own closing it; no process is started here.
+     func duplicateDirectoryForNativeBootstrap() throws -> Int32 {
++        try requireOwnerProcess()
+         try validateRetainedIdentity()
+         let duplicate = fcntl(homeFD, F_DUPFD_CLOEXEC, 0)
+         guard duplicate >= 0 else { throw AuxFreshHomeError.io(errno) }
+@@ -218,14 +242,17 @@
+     }
+ 
+     private static func canonicalOwner(_ proposed: AuxResumedFreshNativeHome) throws -> AuxResumedFreshNativeHome {
++        let state = try currentRegistry()
++        try proposed.requireOwnerProcess()
+         let reservation = try metadata(proposed.reservationFD)
+         let parent = try metadata(proposed.parentFD)
+         let key = "\(parent.st_dev):\(parent.st_ino):\(reservation.st_dev):\(reservation.st_ino)"
+-        registryLock.lock()
+-        let existing = registry[key]?.value
+-        if existing == nil { registry[key] = WeakResumedFreshHome(proposed) }
+-        registryLock.unlock()
++        state.lock.takeUnretainedValue().lock()
++        let existing = state.owners[key]?.value
++        if existing == nil { state.owners[key] = WeakResumedFreshHome(proposed) }
++        state.lock.takeUnretainedValue().unlock()
+         let selected = existing ?? proposed
++        try selected.requireOwnerProcess()
+         guard selected.policy.policySha256 == proposed.policy.policySha256,
+               selected.policy.bundlePath == proposed.policy.bundlePath,
+               selected.policy.hostCdHash == proposed.policy.hostCdHash,
+@@ -239,6 +266,7 @@
+     // Fixed existing-only path derived from retained reservation. No mkdir,
+     // lock creation, publication, arbitrary filename or missing-to-empty path.
+     func readExistingInitialJournal() throws -> StoredNativeFreshBootstrapJournal {
++        try requireOwnerProcess()
+         try policy.revalidateCurrentIdentity()
+         try validateRetainedIdentity()
+         let name = ".aux-native-fresh-initial-journal-v2-" + transactionId.lowercased()
+--- a/docs/integration/proposed/aux-native-fresh-resume/source/AuxNativeFreshReservationLeaseRegistry.swift
++++ b/docs/integration/proposed/final-completion/fresh-owner/source/AuxNativeFreshReservationLeaseRegistry.swift
+@@ -3,12 +3,24 @@
+ import Foundation
+ 
+ enum AuxNativeFreshReservationLeaseRegistry {
+-    private static let lock = NSLock()
+-    private static var leases: [String: AuxNativeFreshCohortLease] = [:]
++    private final class RegistryState {
++        let creatorProcess=getpid()
++        let lock=Unmanaged.passRetained(NSLock())
++        var leases:[String:AuxNativeFreshCohortLease]=[:]
++        deinit{if creatorProcess == getpid(){lock.release()}}
++    }
++    private static let state=RegistryState()
++    private static func currentState() throws -> RegistryState {
++        let selected=state
++        guard selected.creatorProcess == getpid() else{throw AuxFreshHomeError.foreignProcess}
++        return selected
++    }
++    static func requireCurrentProcess() throws { _ = try currentState() }
+ 
+     // Only real private owner constructors consume this result. An obtained
+     // lease cannot construct a home, capture, staged context or Add ticket.
+     static func lease(parentFD: Int32, reservationFD: Int32) throws -> AuxNativeFreshCohortLease {
++        let selected = try currentState()
+         var parent = stat(), reservation = stat()
+         guard fstat(parentFD, &parent) == 0, fstat(reservationFD, &reservation) == 0 else {
+             throw AuxFreshHomeError.io(errno)
+@@ -19,11 +31,11 @@
+             throw AuxFreshHomeError.unsafeMetadata
+         }
+         let key = "\(parent.st_dev):\(parent.st_ino):\(reservation.st_dev):\(reservation.st_ino)"
+-        lock.lock()
+-        defer { lock.unlock() }
+-        if let lease = leases[key] { return lease }
++        selected.lock.takeUnretainedValue().lock()
++        defer { selected.lock.takeUnretainedValue().unlock() }
++        if let lease = selected.leases[key] { return lease }
+         let lease = AuxNativeFreshCohortLease()
+-        leases[key] = lease
++        selected.leases[key] = lease
+         return lease
+     }
+ }

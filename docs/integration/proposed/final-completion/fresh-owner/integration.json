@@ -1,0 +1,23 @@
+{
+  "format": "aux.fresh-owner.successor.v1",
+  "baseline": "bed8f5307",
+  "replacements": {
+    "docs/integration/proposed/aux-native-fresh-cold-bootstrap/source/AuxFreshNativeHome.swift": {
+      "beforeSha256": "e3c67ab4666996532e9a1749a5d93da08a918977251675e85d91a02b9fc8b382",
+      "successor": "docs/integration/proposed/final-completion/fresh-owner/source/AuxFreshNativeHome.swift",
+      "afterSha256": "d7542cc9a3ec48de3af729fc8d5bdf90bf89daf8262b21b263995aeb012da12b"
+    },
+    "docs/integration/proposed/aux-native-fresh-cold-bootstrap/source/AuxResumedFreshNativeHome.swift": {
+      "beforeSha256": "1e5891b8283cfbcf9505a65270d2de77ac801303439c1ae6854b2e2533c37354",
+      "successor": "docs/integration/proposed/final-completion/fresh-owner/source/AuxResumedFreshNativeHome.swift",
+      "afterSha256": "81f659ea4f10b27f559628f9eebba2baacc4c8f3bd280eb5c6bbb8c10153485f"
+    },
+    "docs/integration/proposed/aux-native-fresh-resume/source/AuxNativeFreshReservationLeaseRegistry.swift": {
+      "beforeSha256": "1e460a27c2ed11a5aa3e9ab3e61a36f11d2038da571c4dcefd19b6f4055b30f6",
+      "successor": "docs/integration/proposed/final-completion/fresh-owner/source/AuxNativeFreshReservationLeaseRegistry.swift",
+      "afterSha256": "9d52ce0da42fe7e1b5ba1aad0cb4b9c0849592dc894c7c725f11dd64229cb39d"
+    }
+  },
+  "newAuthority": false,
+  "runtimeAccepted": false
+}
