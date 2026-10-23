@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Assemble an exact inactive successor; never authorize startup or sign."""
-import argparse,hashlib,json,os,pathlib,shutil,subprocess
+import argparse,hashlib,json,os,pathlib,shutil,struct,subprocess
 P=pathlib.Path
 DAEMON='apps/daemon/Aux Daemon.app/Contents/'
 REPLACEMENTS={DAEMON+'MacOS/aux-daemon':0o755,DAEMON+'Resources/node-development/index.mjs':0o644,DAEMON+'Resources/node-development/aux-native-entry.mjs':0o644,DAEMON+'Resources/native/aux-owned-native.cjs':0o644,DAEMON+'Resources/native/node-pty/prebuilds/darwin-arm64/pty.node':0o755}
@@ -23,8 +23,26 @@ def unsigned(root):
   if not p.is_file() or p.is_symlink():continue
   with p.open('rb') as stream:magic=stream.read(4)
   if magic not in [bytes.fromhex(x) for x in ['cffaedfe','feedfacf','cefaedfe','feedface','cafebabe','bebafeca','cafebabf','bfbafeca']]:continue
-  loads=subprocess.check_output(['/usr/bin/otool','-l',str(p)],text=True)
-  if 'LC_CODE_SIGNATURE' in loads:raise ValueError('signed native artifact '+str(p))
+  if magic==bytes.fromhex('cffaedfe'):
+   # otool treats parentheses in helper names as archive-member syntax.
+   # Parse the same thin64 load-command table directly, independent of filename.
+   with p.open('rb') as stream:
+    header=stream.read(32)
+    if len(header)!=32:raise ValueError('truncated Mach-O header '+str(p))
+    count,size=struct.unpack_from('<II',header,16)
+    if size>p.stat().st_size-32 or count>size//8:raise ValueError('invalid Mach-O command table '+str(p))
+    commands=stream.read(size)
+   offset=0
+   for _ in range(count):
+    if offset+8>size:raise ValueError('truncated Mach-O command '+str(p))
+    command,length=struct.unpack_from('<II',commands,offset)
+    if length<8 or offset+length>size:raise ValueError('invalid Mach-O command '+str(p))
+    if command==0x1d:raise ValueError('signed native artifact '+str(p))
+    offset+=length
+   if offset!=size:raise ValueError('inconsistent Mach-O command table '+str(p))
+  else:
+   loads=subprocess.check_output(['/usr/bin/otool','-l',str(p)],text=True)
+   if 'LC_CODE_SIGNATURE' in loads:raise ValueError('signed native artifact '+str(p))
 def pin(p,h):
  if P(p).is_symlink() or not P(p).is_file() or sha(p)!=h:raise ValueError('input pin '+str(p))
 def verify_native_inventory(root,leaves):
