@@ -1,0 +1,17 @@
+{
+  "chrome/browser/aux/AuxSelectedStateHome.cc": {
+    "beforeSource": "docs/integration/proposed/profile-isolation-custody/restart/source/AuxSelectedStateHome.cc",
+    "before": "5d00c1df70a17b774b47a5ee078ae06c1982e4f3600cd8f84e99c4f111c5b5d5",
+    "after": "84ea0199befec30857e38779e49a6c50197a809debf22673276cd20c3ac4ab90"
+  },
+  "chrome/browser/aux/AuxSelectedStateHome.h": {
+    "beforeSource": "docs/integration/proposed/profile-isolation-recovery/browser/source/AuxSelectedStateHome.h",
+    "before": "7a5cacaa8ec45bd8faef778d260ceecdb25d620751d80963593afe2ea8d39195",
+    "after": "511178394945890f0b8cfa1c6232a667da5dd4ebaca02a416b1a14edc1b2c779"
+  },
+  "chrome/browser/extensions/api/messaging/launch_context_posix.cc": {
+    "beforeSource": "docs/integration/proposed/profile-isolation-custody/messaging/source/chrome/browser/extensions/api/messaging/launch_context_posix.cc",
+    "before": "c53d29bccce56501fefcb70f83be1091563ce53874fb6e39862311e062a2c71c",
+    "after": "104a5914f95f4336aa54434cce59155963404dca2ea52bdee35e79aaea1b21ed"
+  }
+}
