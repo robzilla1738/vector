@@ -1,0 +1,72 @@
+{
+  "format": "aux.browser.scratch-composition.v1",
+  "passed": true,
+  "baseline": {
+    "chrome/browser/aux/AuxBrowserPrivateRoots.cc": null,
+    "chrome/browser/aux/AuxBrowserPrivateRoots.h": null,
+    "chrome/browser/aux/AuxChromiumBrowserRootProducer.cc": null,
+    "chrome/browser/aux/AuxNativePeerTransport.cc": "c734d4608bb0fc0e9aac21c37ac6db6419ddfc95f5fdd3bb2524e7988e8d6538",
+    "chrome/browser/aux/AuxNativePeerTransport.h": "465104882f51c9e32f24918c9a83c938216c6a95993bdf88a16207fbee09d64e",
+    "chrome/browser/aux/AuxNativePeerWire.h": "53b04f8c07d52621800fdc6f2df26643db3031b6d54e0bd53c7d98aeb9a35024",
+    "chrome/browser/aux/AuxOwnedNativePeerChild.cc": "d19283716fb4e5137016f090153effcd6ce672492cb3d356a3f7c96a6333b4a9",
+    "chrome/browser/aux/BUILD.gn": "c0524f00ddb655f5d55ca40a9902903d4334dd2d7820467b17741877cd4cc7a7",
+    "chrome/browser/chrome_browser_main.cc": "ad9c721123dfe37333cbca49e949679f1dcdbd1fb0dd7e3bbfbcd86ef03fa963",
+    "chrome/browser/chrome_content_browser_client.cc": "74c5fe253dc279db8b4808476cd6c28ef0f726adfaff8e3276ca0bddd4d62523",
+    "chrome/browser/chrome_content_browser_client.h": "67e92e79e30a2e1a2ab5410e97b5a538810702713b81fb07ffc787dd153b799a",
+    "chrome/browser/metrics/BUILD.gn": "2b3752e0bccdd95ec0ebb8df21cc10d37903561256be96696a936d178a01688f",
+    "chrome/browser/metrics/chrome_feature_list_creator.cc": "64fd24107caaa1988afdf3731b56b7e0b03aa980a26074e0f10f2c1413a14600",
+    "content/browser/storage_partition_impl.cc": "1da4737624ab997ebcd8a1095375a2fa7d95a98b4cd11582b831d3803d1faadf",
+    "content/public/browser/content_browser_client.cc": "925e729492d456a6ab01ada683ebf76a207ca1092f127afda646e95a84af29ef",
+    "content/public/browser/content_browser_client.h": "bee67407b3b927dbabee784c2b66d9104062924b9782beb154ab9b098346090c"
+  },
+  "patches": [
+    {
+      "path": "/private/tmp/aux-browser-final-20261023/docs/integration/proposed/profile-isolation-next/browser-roots/native.patch",
+      "sha256": "20786efd77fb70700f307c69d693d21214c7ad2e05851f0ccdb57ba6cefe1261",
+      "exitCode": 0,
+      "diagnostic": ""
+    },
+    {
+      "path": "/private/tmp/aux-browser-final-20261023/docs/integration/proposed/profile-isolation-next/browser-roots/early-local-state.patch",
+      "sha256": "dfca2b9d3133d087ada9b7e5bb25d8db7fa8485ec53ead116dd66226fff0e3d9",
+      "exitCode": 0,
+      "diagnostic": ""
+    },
+    {
+      "path": "/private/tmp/aux-browser-final-20261023/docs/integration/proposed/profile-isolation-continuation/native-startup/native.patch",
+      "sha256": "7ddcab335b16c805f31d35a5ddaa5824aa3aa26a28df987ab4dd2876b35fc033",
+      "exitCode": 0,
+      "diagnostic": ""
+    }
+  ],
+  "sharedSourceChanged": false,
+  "appBuilt": false,
+  "appExecuted": false,
+  "signed": false,
+  "uiFilesChanged": false,
+  "explicitAdditions": {
+    "chrome/browser/aux/AuxBrowserNetworkPaths.cc": "2996381f1265fd2af903c78a18f16bb8c31fdc762dba0c487dedc24a8cdcebda",
+    "chrome/browser/aux/AuxBrowserNetworkPaths.h": "8a456e530cc1c6f3955f14daa43fa3e7cbdd67f2b085118215023c344b6cccdc"
+  },
+  "output": {
+    "chrome/browser/aux/AuxBrowserNetworkPaths.cc": "2996381f1265fd2af903c78a18f16bb8c31fdc762dba0c487dedc24a8cdcebda",
+    "chrome/browser/aux/AuxBrowserNetworkPaths.h": "8a456e530cc1c6f3955f14daa43fa3e7cbdd67f2b085118215023c344b6cccdc",
+    "chrome/browser/aux/AuxBrowserPrivateRoots.cc": "403d6e5e1d8367b5317be06ec120ed9d65b032ed0fc176a379b7d7293373c998",
+    "chrome/browser/aux/AuxBrowserPrivateRoots.h": "5b9b84ca04000046b99b59ed9967d2ddce14afdd1c8b0a36bcf0d50a4aa30636",
+    "chrome/browser/aux/AuxChromiumBrowserRootProducer.cc": "e38a850dec4b8f6105fe75b94ad31a617a1a719af81b7fdc2c94202dc65bb3a7",
+    "chrome/browser/aux/AuxNativePeerTransport.cc": "811ab2a34f8e871703efdc59e84de52715eb96bca0fa5b0e055a6c94ac6ce22d",
+    "chrome/browser/aux/AuxNativePeerTransport.h": "a6456369f9e1f03e322516c5988112f29094063379e5170cf090fe65ce89cb92",
+    "chrome/browser/aux/AuxNativePeerWire.h": "34e406e583e8df0135af0b4de23c687f6590632c4c4bbda58ccdf024cc1557be",
+    "chrome/browser/aux/AuxOwnedNativePeerChild.cc": "8333b7664d73795bc2d39a9031dcbda4172874e5c3f6e216bbf854d59f35f9f6",
+    "chrome/browser/aux/BUILD.gn": "a8be48e7c155ddd624dcaccc2b55553d82b269e0d04c7fb2e6f68ea6272972eb",
+    "chrome/browser/chrome_browser_main.cc": "5a3c3b49207eedd03aeeff1efac203f6a48e3dfe357ab7cc7b471ee73e27a27d",
+    "chrome/browser/chrome_content_browser_client.cc": "1c276b6eb3218ab0f4c1aeb556d717aff7c0a43edc8190ec30dfb3e7ccd649c0",
+    "chrome/browser/chrome_content_browser_client.h": "63760dfa35a98dd907fae3adb6072f5d85bcc1a2715a96afcd48de60ba66f82a",
+    "chrome/browser/metrics/BUILD.gn": "c5aea6170d3f824b1a584eebf6e02c6c26c61cabe67ab27d28a16b09a0efea6f",
+    "chrome/browser/metrics/chrome_feature_list_creator.cc": "4c84df319418e574d430d5c70b18b671d7f6c8d910b6a38adf3767e4003c5460",
+    "content/browser/storage_partition_impl.cc": "80c07c1407f823576830d9b4a742c75cc1477af4273be1ade8e2c888e50097b6",
+    "content/public/browser/content_browser_client.cc": "73de0cadfbb1fb37d41e129ddcc5edc836b5035f7151f5d8b684eb079eb57974",
+    "content/public/browser/content_browser_client.h": "256c923c9ab8cd072ac2409b2a6914d02ae3d6ec2e24bac46820fa40b92a43df"
+  },
+  "baselineUnchanged": true
+}
