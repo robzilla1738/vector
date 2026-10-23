@@ -1,0 +1,79 @@
+--- baseline/AuxDevelopmentWorkerHost.cc
++++ source/AuxDevelopmentWorkerHost.cc
+@@ -14,6 +14,10 @@
+ #include <limits>
+ 
+ extern "C" int32_t AuxCreateSignedDevelopmentOwner(uint64_t*, void**);
++extern "C" int32_t AuxRetainPreparedFreshRuntimeProvider(uint64_t);
++extern "C" void AuxReleasePreparedFreshRuntimeProvider(uint64_t);
++extern "C" int32_t AuxClosePreparedFreshRuntimeCreation(uint64_t);
++extern "C" int32_t AuxCreatePreparedFreshRuntimeOwner(uint64_t, uint64_t*, void**);
+ extern "C" void AuxReleaseSignedDevelopmentOwner(void*);
+ extern "C" int32_t AuxCloseDevelopmentOwnerOSAdmission(void*);
+ 
+@@ -248,11 +252,22 @@
+ 
+ struct AuxDevelopmentWorkerHost::State {
+   const pid_t process = getpid();
++  uint64_t prepared_fresh_provider = 0;
++  State() = default;
++  explicit State(uint64_t provider) {
++    if (!provider || AuxRetainPreparedFreshRuntimeProvider(provider)) closed = true;
++    else prepared_fresh_provider = provider;
++  }
++  ~State() {
++    if (prepared_fresh_provider) AuxReleasePreparedFreshRuntimeProvider(prepared_fresh_provider);
++  }
+   std::mutex mutex;
+   bool closed = false;
+   std::vector<std::shared_ptr<Worker>> workers;
+ };
+ AuxDevelopmentWorkerHost::AuxDevelopmentWorkerHost() : state_(std::make_shared<State>()) {}
++AuxDevelopmentWorkerHost::AuxDevelopmentWorkerHost(uint64_t provider)
++    : state_(std::make_shared<State>(provider)) {}
+ AuxDevelopmentWorkerHost::~AuxDevelopmentWorkerHost() { CloseAndDrain(); }
+ 
+ napi_status AuxDevelopmentWorkerHost::RegisterCurrentWorker(napi_env env, napi_value target) {
+@@ -307,7 +322,9 @@
+   if (!worker->CanContinue()) return napi_closing;
+   uint64_t handle = 0;
+   void* retained_owner = nullptr;
+-  int32_t prepared = AuxCreateSignedDevelopmentOwner(&handle, &retained_owner);
++  int32_t prepared = state_->prepared_fresh_provider
++      ? AuxCreatePreparedFreshRuntimeOwner(state_->prepared_fresh_provider, &handle, &retained_owner)
++      : AuxCreateSignedDevelopmentOwner(&handle, &retained_owner);
+   if (prepared || !handle || !retained_owner) {
+     if (handle) AuxNativeContextRetire(handle);
+     if (retained_owner) AuxReleaseSignedDevelopmentOwner(retained_owner);
+@@ -361,6 +378,11 @@
+     workers = state_->workers;
+   }
+   auto result = AuxDevelopmentWorkerDrain::drained;
++  if (state_->prepared_fresh_provider) {
++    const int32_t creation = AuxClosePreparedFreshRuntimeCreation(state_->prepared_fresh_provider);
++    if (creation < 0) result = AuxDevelopmentWorkerDrain::untracked;
++    else if (creation > 0) result = AuxDevelopmentWorkerDrain::pending;
++  }
+   const auto retained_utility = AuxLoadedUtilityLifetime::InspectRetainedClosures();
+   if (retained_utility == AuxUtilityHostDrain::wrongProcess) result = AuxDevelopmentWorkerDrain::wrongProcess;
+   else if (retained_utility == AuxUtilityHostDrain::untracked) result = AuxDevelopmentWorkerDrain::untracked;
+--- baseline/AuxDevelopmentWorkerHost.h
++++ source/AuxDevelopmentWorkerHost.h
+@@ -1,6 +1,7 @@
+ #pragma once
+ #include <node_api.h>
+ #include <memory>
++#include <cstdint>
+ 
+ enum class AuxDevelopmentWorkerDrain { drained, pending, untracked, reentrant, wrongProcess };
+ 
+@@ -9,6 +10,9 @@
+ class AuxDevelopmentWorkerHost final {
+  public:
+   AuxDevelopmentWorkerHost();
++  // Explicit immutable native provider from genuine typed terminal preparation.
++  // Token is routing/lifetime only, never JS input or cohort admission.
++  explicit AuxDevelopmentWorkerHost(uint64_t prepared_fresh_provider);
+   ~AuxDevelopmentWorkerHost();
+   AuxDevelopmentWorkerHost(const AuxDevelopmentWorkerHost&) = delete;
+   AuxDevelopmentWorkerHost& operator=(const AuxDevelopmentWorkerHost&) = delete;
