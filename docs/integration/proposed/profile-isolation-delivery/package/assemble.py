@@ -20,7 +20,7 @@ def unsigned(root):
  for p in root.rglob('*'):
   if not p.is_file() or p.is_symlink():continue
   with p.open('rb') as stream:magic=stream.read(4)
-  if magic not in [bytes.fromhex(x) for x in ['cffaedfe','feedfacf','cafebabe','bebafeca']]:continue
+  if magic not in [bytes.fromhex(x) for x in ['cffaedfe','feedfacf','cefaedfe','feedface','cafebabe','bebafeca','cafebabf','bfbafeca']]:continue
   loads=subprocess.check_output(['/usr/bin/otool','-l',str(p)],text=True)
   if 'LC_CODE_SIGNATURE' in loads:raise ValueError('signed native artifact '+str(p))
 def pin(p,h):
