@@ -1,0 +1,26 @@
+{
+  "version": 1,
+  "daemonInputs": [
+    {
+      "kind": "source",
+      "path": "/private/tmp/aux-browser-features-async-daemon-20261023-a2/index.mjs",
+      "inputSha256": "2b1db7cebd8a7296b871dafdc4eb63955bbc13b4cee133c3c809c82b465ca02c",
+      "outputSha256": "ea17485de4bb5a59923743c72bbc4ae2fec78b6d4916d619fff6fc1fcd4c67d3"
+    },
+    {
+      "kind": "entry",
+      "path": "/private/tmp/aux-browser-features-async-daemon-20261023-a2/projected-entry/aux-native-entry.mjs",
+      "inputSha256": "cd7c8bb549b1187245ad3d6b308f9fd34512f3b7df0a45033126241161876438",
+      "outputSha256": "4e74b3225dd8a79332541dca2d0facab4afeefd074d93b70f5a187f7f948ae28"
+    }
+  ],
+  "changeCount": 36,
+  "remainingLiteralUnknown": 6,
+  "sourceFiles": {
+    "source/background-writer-lifetimes.js": "2a3a37ad1e042a000a24132bae65729d305d5b7d10c1c870d543b989daee3485",
+    "source/changes.json": "eee6bfe62395ec3c7c94c0385b670d316bb1cedcb37998b64752a1d8670a3f96",
+    "source/aux-background-writers.mjs": "925f8df47ddbe80939f3ccf8f9fc5d449fe18305a70611217b030d5009107589",
+    "generate.py": "7a48221ca26cabf021519a05c28b2b28549792539f9e398fb6b8d8e981c9f8d7",
+    "check.mjs": "07d69b76eaf780b619faa05b10e32bf76258b8821712cad8cff86db4443a83da"
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "exactInputReplay": true,
+  "ordinaryAndDormantSyntax": true,
+  "changeCount": 36,
+  "physicalLifetimeFixture": true,
+  "childCloseFixture": true,
+  "archiveFailureCleanupFixture": true,
+  "productExecuted": false,
+  "nativeBuilt": false,
+  "providerCalled": false,
+  "wholeWriterSettlementProven": false
+}

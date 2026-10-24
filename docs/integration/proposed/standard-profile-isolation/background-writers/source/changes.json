@@ -1,0 +1,218 @@
+[
+  {
+    "find": "function auxBrokerBoundary(){",
+    "replace": "// Inserted into the supplied module. No caller path/profile/owner selectors.\nfunction auxCreateBackgroundWriterLifetimes(boundary, stopSync, getServer) {\n  let closing = false, shutdown;\n  const pending = new Set(), failures = [], agents = new Set(), aborters = new Set();\n  const assertOpen = () => {\n    if (closing) throw Error('AUX_BACKGROUND_ADMISSION_CLOSED');\n    boundary.assertOwner();\n  };\n  function retain(promise) {\n    pending.add(promise);\n    promise.then(() => pending.delete(promise), error => {\n      pending.delete(promise); failures.push(error);\n    });\n    return promise;\n  }\n  // cleanup is only used by the concrete already-owned session disposer.\n  // It remains admitted until the integrator closes the native broker.\n  const cleanup = callback => retain(boundary.awaited(callback));\n  const run = callback => {\n    try { assertOpen(); } catch (error) { return Promise.reject(error); }\n    return cleanup(callback);\n  };\n  function agent(value) {\n    assertOpen(); agents.add(value);\n    return () => agents.delete(value);\n  }\n  function aborter(value) {\n    assertOpen(); aborters.add(value);\n    return () => aborters.delete(value);\n  }\n  function stop() {\n    if (shutdown) return shutdown;\n    closing = true;\n    shutdown = (async () => {\n      const call = callback => { try { return Promise.resolve(callback()); } catch (error) { return Promise.reject(error); } };\n      const results = await Promise.allSettled([\n        call(stopSync),\n        ...[...aborters].map(controller => call(() => controller.abort(Error('Aux is shutting down')))),\n        ...[...agents].map(value => call(() => value.abort())),\n        call(() => getServer()?.auxCloseAdmissionAndDrain())\n      ]);\n      for (const result of results) if (result.status === 'rejected') failures.push(result.reason);\n      // Cancellation never releases a retained reader/writer. Newly registered\n      // cleanup promises must also settle, even when their request already ended.\n      while (pending.size) await Promise.allSettled([...pending]);\n      if (failures.length) {\n        boundary.noteUntracked();\n        throw new AggregateError(failures, 'Aux background work did not settle successfully');\n      }\n    })();\n    shutdown.catch(() => {});\n    return shutdown;\n  }\n  return Object.freeze({assertOpen, run, cleanup, agent, aborter, stop, isClosing: () => closing});\n}\nfunction auxBackgroundWriters() {\n  return auxBackgroundWriters.cached ??= auxCreateBackgroundWriterLifetimes(\n    auxBrokerBoundary(), auxStopSyncProducers,\n    () => typeof GlobalAgentSessionServer === 'undefined' ? undefined : GlobalAgentSessionServer);\n}\nfunction auxStopBackgroundWriters() { return auxBackgroundWriters().stop(); }\n// execFile's abort callback can precede child close. Retain both, with no timeout\n// masquerading as completion. Native descendant settlement remains independent.\nfunction auxRunSkillArchiveTool(command, args, signal) {\n  signal.throwIfAborted();\n  return new Promise((resolve, reject) => {\n    let callbackDone = false, childClosed = false, failure, stdout;\n    const settle = () => {\n      if (callbackDone && childClosed) failure ? reject(failure) : resolve(stdout);\n    };\n    const child = child_process.execFile(command, args, {signal}, (error, output) => {\n      callbackDone = true; failure = error; stdout = output; settle();\n    });\n    child.once('close', () => { childClosed = true; settle(); });\n  });\n}\n\nfunction auxBrokerBoundary(){",
+    "count": 1,
+    "reason": "Native-backed finite background lifetimes; root must stop before broker close"
+  },
+  {
+    "find": "function auxCompleted_mergeMigrationEntry(Cn,ei){auxBrokerBoundary().noteUntracked();",
+    "replace": "function auxCompleted_mergeMigrationEntry(Cn,ei){",
+    "count": 1,
+    "reason": "Synchronous mergeMigrationEntry stays inside its existing native synchronous reservation"
+  },
+  {
+    "find": "function auxCompleted_markExternalStorageComplete(Cn){auxBrokerBoundary().noteUntracked();",
+    "replace": "function auxCompleted_markExternalStorageComplete(Cn){",
+    "count": 1,
+    "reason": "Synchronous markExternalStorageComplete stays inside its existing native synchronous reservation"
+  },
+  {
+    "find": "function auxCompleted_ensureProjectV6SessionAlias(Cn){auxBrokerBoundary().noteUntracked();",
+    "replace": "function auxCompleted_ensureProjectV6SessionAlias(Cn){",
+    "count": 1,
+    "reason": "Synchronous ensureProjectV6SessionAlias stays inside its existing native synchronous reservation"
+  },
+  {
+    "find": "(auxBrokerBoundary().noteUntracked(),tryMigrateStateDb(Cn))",
+    "replace": "auxBackgroundWriters().run(()=>tryMigrateStateDb(Cn))",
+    "count": 1,
+    "reason": "Retain actual synchronous SQLite migration and using-disposal through its async return"
+  },
+  {
+    "find": "function enqueue(Cn,ei){const auxDispatch=()=>{auxBrokerBoundary().assertOwner();auxBrokerBoundary().noteUntracked();return ei()};",
+    "replace": "function enqueue(Cn,ei){auxBackgroundWriters().assertOpen();const auxDispatch=()=>auxBackgroundWriters().isClosing()?Promise.resolve():auxBackgroundWriters().run(ei);",
+    "count": 1,
+    "reason": "Track real queued/no-runtime sync execution, refuse new admission and skip unstarted queued work"
+  },
+  {
+    "find": "function startWatchers(Cn){auxBrokerBoundary().assertOwner();auxBrokerBoundary().noteUntracked();",
+    "replace": "function startWatchers(Cn){auxBackgroundWriters().assertOpen();",
+    "count": 1,
+    "reason": "Existing native watcher reservation lasts until actual Chokidar close, including replaced watchers"
+  },
+  {
+    "find": "ii=ni=>{try{auxBrokerBoundary().assertOwner()}catch{return}runtimes.get(Cn)===ei",
+    "replace": "ii=ni=>{try{auxBackgroundWriters().assertOpen()}catch{return}runtimes.get(Cn)===ei",
+    "count": 1,
+    "reason": "Prevent old watcher callbacks from admitting sync during pre-broker drain"
+  },
+  {
+    "find": "function runDreaming(Cn){auxBrokerBoundary().assertOwner();auxBrokerBoundary().noteUntracked();",
+    "replace": "function runDreaming(Cn){auxBackgroundWriters().assertOpen();",
+    "count": 1,
+    "reason": "Dream admission is explicit"
+  },
+  {
+    "find": "let ni=runDreamingPass(Cn).finally(()=>activeDreams.delete(ei));",
+    "replace": "let ni=auxBackgroundWriters().run(()=>runDreamingPass(Cn)).finally(()=>activeDreams.delete(ei));",
+    "count": 1,
+    "reason": "Keep native reservation through actual prompt/tools and history writes"
+  },
+  {
+    "find": "});try{await Di.prompt({role:`user`,content:buildDreamingUserPrompt",
+    "replace": "});const auxReleaseDream=auxBackgroundWriters().agent(Di);try{await Di.prompt({role:`user`,content:buildDreamingUserPrompt",
+    "count": 1,
+    "reason": "Abort actual dreaming Agent on stop, never use abort as settlement"
+  },
+  {
+    "find": "}finally{ki()}await saveDreamState(Cn.accountRoot",
+    "replace": "}finally{ki();auxReleaseDream()}await saveDreamState(Cn.accountRoot",
+    "count": 1,
+    "reason": "Release Agent abort registration after prompt, keep outer write lifetime"
+  },
+  {
+    "find": "]).finally(()=>clearTimeout(pi));li={provider:hi.model.provider",
+    "replace": "]).finally(async()=>{clearTimeout(pi);await Promise.allSettled([ui])});li={provider:hi.model.provider",
+    "count": 1,
+    "reason": "Retain non-cancellable model resolver after timeout"
+  },
+  {
+    "find": "xi=setTimeout(()=>ci?.abort(),18e4);try{await ci.prompt",
+    "replace": "xi=setTimeout(()=>ci?.abort(),18e4);const auxReleaseTaxonomy=auxBackgroundWriters().agent(ci);try{await ci.prompt",
+    "count": 1,
+    "reason": "Track taxonomy Agent cancellation before actual prompt"
+  },
+  {
+    "find": "}finally{clearTimeout(xi),bi()}let Si=ci.state.messages",
+    "replace": "}finally{clearTimeout(xi),bi();auxReleaseTaxonomy()}let Si=ci.state.messages",
+    "count": 1,
+    "reason": "Release taxonomy Agent registration after actual prompt"
+  },
+  {
+    "find": "\"session.dispose\":()=>{incrementSessionCount(Cn.accountRoot).catch(Cn=>{logger.error(`[MemoryHook] incrementSessionCount failed: ${Cn}`)})}",
+    "replace": "\"session.dispose\":()=>incrementSessionCount(Cn.accountRoot).catch(Cn=>{logger.error(`[MemoryHook] incrementSessionCount failed: ${Cn}`);throw Cn})",
+    "count": 1,
+    "reason": "Return memory counter write to hook owner and preserve failure"
+  },
+  {
+    "find": "flush({accountId:Cn,sessionId:ei}){try{auxBrokerBoundary().assertOwner();auxBrokerBoundary().noteUntracked()}catch{return}deliverToSelf(Cn,ei,BACKGROUND_PROCESS_KIND,()=>takePending(Cn,ei)).catch",
+    "replace": "flush({accountId:Cn,sessionId:ei}){try{auxBackgroundWriters().assertOpen()}catch{return}auxBackgroundWriters().run(()=>deliverToSelf(Cn,ei,BACKGROUND_PROCESS_KIND,()=>takePending(Cn,ei))).catch",
+    "count": 1,
+    "reason": "Retain background delivery tail; run continuation tracked by server separately"
+  },
+  {
+    "find": "AgentSessionServer=class{#e=",
+    "replace": "AgentSessionServer=class{#auxClosing=false;#auxDisposals=new Map;#auxDrain;#e=",
+    "count": 1,
+    "reason": "Retain concurrent disposals and explicit server admission"
+  },
+  {
+    "find": "async#h(Cn,ei){assertSessionCanStart(Cn,ei);",
+    "replace": "async#h(Cn,ei){if(this.#auxClosing)throw Error(`AUX_AGENT_ADMISSION_CLOSED`);assertSessionCanStart(Cn,ei);",
+    "count": 1,
+    "reason": "Refuse new loads while closing"
+  },
+  {
+    "find": "let ni=await this.#i(Cn,ei),ri;try{assertSessionCanStart(Cn,ei);",
+    "replace": "let ni=await this.#i(Cn,ei),ri;try{if(this.#auxClosing)throw Error(`AUX_AGENT_ADMISSION_CLOSED`);assertSessionCanStart(Cn,ei);",
+    "count": 1,
+    "reason": "Dispose an agent loaded after close; never publish it"
+  },
+  {
+    "find": "async resumeRun(Cn,ei){let ti=entryKey",
+    "replace": "async resumeRun(Cn,ei){if(this.#auxClosing)throw Error(`AUX_AGENT_ADMISSION_CLOSED`);let ti=entryKey",
+    "count": 1,
+    "reason": "Refuse new recovery work"
+  },
+  {
+    "find": "recoverInterruptedRuns(Cn){let ei=Promise.resolve().then(()=>this.#u(Cn));",
+    "replace": "recoverInterruptedRuns(Cn){if(this.#auxClosing)throw Error(`AUX_AGENT_ADMISSION_CLOSED`);let ei=Promise.resolve().then(()=>this.#u(Cn));",
+    "count": 1,
+    "reason": "Close recovery producer admission"
+  },
+  {
+    "find": "try{assertSessionCanStart(Cn,ei),this.#S(ri),",
+    "replace": "try{if(this.#auxClosing)throw Error(`AUX_AGENT_ADMISSION_CLOSED`);assertSessionCanStart(Cn,ei),this.#S(ri),",
+    "count": 1,
+    "reason": "Recheck admission after actual semaphore acquisition"
+  },
+  {
+    "find": "let ci=(async()=>{let ii=Date.now(),ai=ri.agent.agent.state.messages.length",
+    "replace": "let ci=auxBackgroundWriters().run(async()=>{let ii=Date.now(),ai=ri.agent.agent.state.messages.length",
+    "count": 1,
+    "reason": "Native reservation owns physical Agent run and final hooks"
+  },
+  {
+    "find": "ri.agent.agent.state.isStreaming||this.#w(ri)}})();ri.runningPromise=ci",
+    "replace": "ri.agent.agent.state.isStreaming||this.#w(ri)}});ri.runningPromise=ci",
+    "count": 1,
+    "reason": "Retain actual run Promise without changing startRun early-return behavior"
+  },
+  {
+    "find": "#w(Cn){if(Cn.cleanupTimer&&=",
+    "replace": "#w(Cn){if(this.#auxClosing){this.#S(Cn);return}if(Cn.cleanupTimer&&=",
+    "count": 1,
+    "reason": "Do not rearm idle timers while actual drain is closing sessions"
+  },
+  {
+    "find": "async disposeSession(Cn,ei,ti={}){let ni=entryKey(Cn,ei);",
+    "replace": "disposeSession(Cn,ei,ti={}){const key=entryKey(Cn,ei);let pending=this.#auxDisposals.get(key);if(pending)return pending;pending=auxBackgroundWriters().cleanup(()=>this.auxDisposeSessionBody(Cn,ei,ti));this.#auxDisposals.set(key,pending);pending.then(()=>this.#auxDisposals.delete(key),()=>this.#auxDisposals.delete(key));return pending}async auxDisposeSessionBody(Cn,ei,ti={}){let ni=entryKey(Cn,ei);",
+    "count": 1,
+    "reason": "Retain already removed entry until physical disposal finishes; deduplicate concurrent disposal"
+  },
+  {
+    "find": "async disposeAll(){await Promise.all([...this.#e.values()].map(Cn=>this.disposeSession(Cn.accountId,Cn.sessionId)))}",
+    "replace": "async disposeAll(){await Promise.all([...this.#e.values()].map(Cn=>this.disposeSession(Cn.accountId,Cn.sessionId)))}auxCloseAdmissionAndDrain(){if(this.#auxDrain)return this.#auxDrain;this.#auxClosing=true;this.#auxDrain=(async()=>{const errors=[];for(const entry of this.#e.values()){this.#S(entry);entry.fanout.closeAll()}do{const results=await Promise.allSettled([...this.#t.values(),...this.#n.values(),...this.#r.values(),...this.#auxDisposals.values(),...[...this.#e.values()].map(entry=>this.disposeSession(entry.accountId,entry.sessionId))]);for(const result of results)if(result.status==='rejected')errors.push(result.reason)}while(this.#t.size||this.#n.size||this.#r.size||this.#auxDisposals.size||this.#e.size);if(errors.length)throw new AggregateError(errors,`Aux agent sessions did not settle`);})();this.#auxDrain.catch(()=>{});return this.#auxDrain}",
+    "count": 1,
+    "reason": "Drain real load/recovery/resume/run/disposal owners, including in-flight publication"
+  },
+  {
+    "find": "async reloadLoadedAgentSession(Cn,ei){let ti=entryKey(Cn,ei);",
+    "replace": "reloadLoadedAgentSession(Cn,ei){return auxBackgroundWriters().run(()=>this.auxReloadLoadedAgentSession(Cn,ei))}async auxReloadLoadedAgentSession(Cn,ei){let ti=entryKey(Cn,ei);",
+    "count": 1,
+    "reason": "Retain in-flight agent reload through physical old/new disposal"
+  },
+  {
+    "find": "let ri=ni.agent,ii=await this.#i(Cn,ei);ni.unsubscribe(),ni.agent=ii,",
+    "replace": "let ri=ni.agent,ii=await this.#i(Cn,ei);if(this.#auxClosing||this.#e.get(ti)!==ni){await ii.dispose({closeOwnedTabs:!1});return}ni.unsubscribe(),ni.agent=ii,",
+    "count": 1,
+    "reason": "Never publish a reloaded agent into a closed or removed session"
+  },
+  {
+    "find": "throw ri?.(),await ni.dispose().catch(()=>{}),Cn",
+    "replace": "ri?.();try{await ni.dispose()}catch(cleanupError){throw new AggregateError([Cn,cleanupError],`Aux unpublished agent disposal failed`)}throw Cn",
+    "count": 1,
+    "reason": "Do not hide failed unpublished-agent disposal from pending load outcome"
+  },
+  {
+    "find": "async dispose(Cn={}){this.#n=!0,this.execSessions.dispose(),this.#$(),this.#t=[],await this.hooks.trigger(`session.dispose`,{},void 0).catch(Cn=>{console.error(`[Hook] session.dispose failed:`,Cn)}),await this.#D?.shutdown().catch(Cn=>{console.error(`[MCP] shutdown failed:`,Cn)});for(let Cn of this.agent.state.tools)Cn.dispose?.();await this.browser?.dispose(Cn).catch(()=>{})}",
+    "replace": "async dispose(Cn={}){this.#n=true;const errors=[];const settle=async callback=>{try{await callback()}catch(error){errors.push(error)}};await settle(()=>this.execSessions.dispose());this.#$();this.#t=[];await settle(()=>this.hooks.trigger(`session.dispose`,{},void 0));await settle(()=>this.#D?.shutdown());const results=await Promise.allSettled(this.agent.state.tools.map(tool=>Promise.resolve().then(()=>tool.dispose?.())));for(const result of results)if(result.status===`rejected`)errors.push(result.reason);await settle(()=>this.browser?.dispose(Cn));if(errors.length)throw new AggregateError(errors,`Aux session disposal failed`)}",
+    "count": 1,
+    "reason": "Wait all actual tool/browser/hook cleanup; native exec descendant proof remains independent"
+  },
+  {
+    "find": "(auxBrokerBoundary().assertOwner(),auxBrokerBoundary().noteUntracked(),GlobalAgentSessionServer.connect(ei,ti,oi,ni))",
+    "replace": "auxBackgroundWriters().run(()=>GlobalAgentSessionServer.connect(ei,ti,oi,ni))",
+    "count": 1,
+    "reason": "Track websocket connect plus server-owned physical background work"
+  },
+  {
+    "find": "(auxBrokerBoundary().assertOwner(),auxBrokerBoundary().noteUntracked(),GlobalAgentSessionServer.handleCommand(ti,ai,oi.command,oi.commandId,ei))",
+    "replace": "auxBackgroundWriters().run(()=>GlobalAgentSessionServer.handleCommand(ti,ai,oi.command,oi.commandId,ei))",
+    "count": 1,
+    "reason": "Track explicit command plus separately retained actual Agent run"
+  },
+  {
+    "find": "async function extractSkillArchive(Cn,ei){auxBrokerBoundary().assertOwner();auxBrokerBoundary().noteUntracked();let ti=path$13.join(ei,`.skill-archive-${process.pid}-${Date.now()}`);if(!Cn.body)throw new AnthropicError(`skill download response had no body`);await stream$6.promises.pipeline(stream$6.Readable.fromWeb(Cn.body),auxBrokerBoundary().outputStream(()=>fs$12.createWriteStream(ti)));let ni=path$13.join(path$13.dirname(ei),`.skill-stage-${process.pid}-${Date.now()}`),ri=path$13.join(path$13.dirname(ei),`.skill-exclude-${process.pid}-${Date.now()}`);try{let Cn=await readHead$1(ti,4),ii=Cn.length>=4&&Cn[0]===80&&Cn[1]===75&&Cn[2]===3&&Cn[3]===4,ai=ii?`unzip`:`tar`,{plain:oi,special:si}=classifyArchiveListing(ai,await runArchiveTool(ai,ii?[`-Z1`,ti]:[`-tf`,ti]),await runArchiveTool(ai,ii?[`-Z`,`--h`,`--t`,ti]:[`-tvf`,ti]));assertSafeMemberNames([...oi,...si]);let ci=archiveTopDir(oi);await fs$10.mkdir(ni,{recursive:!0,mode:448}),oi.length>0&&await runArchiveTool(ai,await extractArgs(ai,ti,ni,si,ri)),await assertOnlyPlainEntries(ni);let li=ci?path$13.join(ni,ci):ni,ui=await fs$10.readdir(li).catch(Cn=>{throw errnoCode(Cn)===`ENOENT`?new AnthropicError(INCONSISTENT_LISTING):Cn});for(let Cn of ui)await fs$10.rename(path$13.join(li,Cn),path$13.join(ei,Cn))}finally{await fs$10.rm(ti,{force:!0}),await fs$10.rm(ri,{force:!0}),await fs$10.rm(ni,{recursive:!0,force:!0})}}",
+    "replace": "async function extractSkillArchive(Cn,ei){return auxBackgroundWriters().run(async()=>{auxBrokerBoundary().noteUntracked();if(!Cn.body)throw new AnthropicError(`skill download response had no body`);const auxBody=Cn.body,controller=new AbortController,release=auxBackgroundWriters().aborter(controller);let ti=path$13.join(ei,`.skill-archive-${process.pid}-${Date.now()}`);let ni=path$13.join(path$13.dirname(ei),`.skill-stage-${process.pid}-${Date.now()}`),ri=path$13.join(path$13.dirname(ei),`.skill-exclude-${process.pid}-${Date.now()}`);try{await stream$6.promises.pipeline(stream$6.Readable.fromWeb(auxBody),auxBrokerBoundary().outputStream(()=>fs$12.createWriteStream(ti)),{signal:controller.signal});let Cn=await readHead$1(ti,4),ii=Cn.length>=4&&Cn[0]===80&&Cn[1]===75&&Cn[2]===3&&Cn[3]===4,ai=ii?`unzip`:`tar`,{plain:oi,special:si}=classifyArchiveListing(ai,await runArchiveTool(ai,ii?[`-Z1`,ti]:[`-tf`,ti],controller.signal),await runArchiveTool(ai,ii?[`-Z`,`--h`,`--t`,ti]:[`-tvf`,ti],controller.signal));assertSafeMemberNames([...oi,...si]);let ci=archiveTopDir(oi);await fs$10.mkdir(ni,{recursive:!0,mode:448}),oi.length>0&&await runArchiveTool(ai,await extractArgs(ai,ti,ni,si,ri),controller.signal),await assertOnlyPlainEntries(ni);let li=ci?path$13.join(ni,ci):ni,ui=await fs$10.readdir(li).catch(Cn=>{throw errnoCode(Cn)===`ENOENT`?new AnthropicError(INCONSISTENT_LISTING):Cn});for(let Cn of ui){controller.signal.throwIfAborted();await fs$10.rename(path$13.join(li,Cn),path$13.join(ei,Cn))}}finally{const results=await Promise.allSettled([fs$10.rm(ti,{force:true}),fs$10.rm(ri,{force:true}),fs$10.rm(ni,{recursive:true,force:true})]);release();const errors=results.filter(result=>result.status==='rejected').map(result=>result.reason);if(errors.length)throw new AggregateError(errors,'Aux skill archive cleanup failed')}})}",
+    "count": 1,
+    "reason": "Await pipeline close, actual tool close and every cleanup; keep unknown descendant marker"
+  },
+  {
+    "find": "async function runArchiveTool(Cn,ei){try{let{stdout:ti}=await execFileAsync$4(Cn,ei);return ti}",
+    "replace": "async function runArchiveTool(Cn,ei,signal){try{if(signal)return await auxRunSkillArchiveTool(Cn,ei,signal);let{stdout:ti}=await execFileAsync$4(Cn,ei);return ti}",
+    "count": 1,
+    "reason": "Signal-aware extraction waits actual child close as well as callback"
+  }
+]
