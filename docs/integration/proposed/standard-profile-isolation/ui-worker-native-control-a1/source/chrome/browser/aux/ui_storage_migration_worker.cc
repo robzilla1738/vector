@@ -102,9 +102,11 @@ bool RunningMatches(content::ServiceWorkerContext& context,
       found->second.version_status == content::ServiceWorkerRunningInfo::ServiceWorkerVersionStatus::kActivated;
 }
 base::DictValue Refused(std::string error, bool retained = false) {
-  return base::DictValue().Set("success", false).Set("qualified", false)
+  base::DictValue result;
+  result.Set("success", false).Set("qualified", false)
       .Set("activationAuthorized", false).Set("retained", retained)
       .Set("error", std::move(error));
+  return result;
 }
 
 class WorkerOwner final : public base::SupportsUserData::Data,
@@ -438,7 +440,8 @@ bool WorkerOwner::FinishExternal() {
   external_held_ = false; return true;
 }
 base::DictValue WorkerOwner::Result(bool success, const std::string& json) const {
-  auto result = base::DictValue().Set("success", success).Set("qualified", false)
+  base::DictValue result;
+  result.Set("success", success).Set("qualified", false)
       .Set("activationAuthorized", false).Set("retained", Pending())
       .Set("nativeOwnerCurrent", Current()).Set("sourceHeld", source_held_)
       .Set("prepareRequestId", prepare_request_);

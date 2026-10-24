@@ -16,10 +16,10 @@
       "inputSha256": null,
       "expectedNativeTargetAbsent": true,
       "source": "/Users/rcourson/.codex/worktrees/aux-features-navigation/web/docs/integration/proposed/standard-profile-isolation/ui-worker-native-control-a1/source/chrome/browser/aux/ui_storage_migration_worker.cc",
-      "outputSha256": "93d3422a28e43da3fd5a93a44793313be1635a7dbd20f563a1772ac922dbab29"
+      "outputSha256": "8add977c0034ee471d09bba85549f2a56aa3a4ca12ac5da66c3cc9f414a3d92a"
     }
   ],
-  "sourcePlanSha256": "1f39f53f6b5c76c32d6afd8043fb4479d2bfd9796e0c071dd5f469bab8ddbe5f",
+  "sourcePlanSha256": "c6311b2e3102fc976db630f59826299b781af796ca5e7e99d358d900e2e1193d",
   "workerProducerIntegrationRequest": "docs/integration/proposed/standard-profile-isolation/ui-background-writer-closure-a1/integration-request.json",
   "workerProducerIntegrationRequestSha256": "1032dd9446be2ae31975450e9fc2934dd812337fae4fd73680f67ad33a531600",
   "publicNativeFunctions": [
