@@ -181,7 +181,7 @@
 +}  // namespace aux::routing
 --- /dev/null
 +++ b/chrome/browser/aux/routing/routing_service.cc
-@@ -0,0 +1,293 @@
+@@ -0,0 +1,294 @@
 +// Copyright 2026 Aux Authors. BSD-style license: see //LICENSE.
 +#include "chrome/browser/aux/routing/routing_service.h"
 +#include <set>
@@ -193,6 +193,7 @@
 +#include "base/timer/timer.h"
 +#include "base/uuid.h"
 +#include "chrome/browser/aux/AuxBrowserPrivateRoots.h"
++#include "chrome/browser/aux/AuxSelectedStateHome.h"
 +#include "chrome/browser/aux/organization/organization_profile_service.h"
 +#include "chrome/browser/aux/profile_identity.h"
 +#include "chrome/browser/aux/routing/routing_model.h"

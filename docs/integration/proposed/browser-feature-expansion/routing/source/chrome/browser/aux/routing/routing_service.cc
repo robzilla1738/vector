@@ -9,6 +9,7 @@
 #include "base/timer/timer.h"
 #include "base/uuid.h"
 #include "chrome/browser/aux/AuxBrowserPrivateRoots.h"
+#include "chrome/browser/aux/AuxSelectedStateHome.h"
 #include "chrome/browser/aux/organization/organization_profile_service.h"
 #include "chrome/browser/aux/profile_identity.h"
 #include "chrome/browser/aux/routing/routing_model.h"
