@@ -1,0 +1,8 @@
+{
+  "passed": true,
+  "kind": "counted source replay and exact authenticated policy preservation",
+  "files": 1,
+  "anchors": 8,
+  "nativeCompiled": false,
+  "runtimeAccepted": false
+}

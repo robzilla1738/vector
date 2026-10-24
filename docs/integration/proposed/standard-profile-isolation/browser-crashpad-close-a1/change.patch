@@ -1,0 +1,255 @@
+--- a/third_party/crashpad/crashpad/client/crashpad_client.h
++++ b/third_party/crashpad/crashpad/client/crashpad_client.h
+@@ -19,0 +20 @@
++#include <memory>
+@@ -49,0 +51,3 @@
++#if BUILDFLAG(IS_MAC)
++struct AuxCrashpadCloseState;
++#endif
+@@ -676,0 +681,5 @@
++  // Aux main-browser final shutdown only. 0=pending, 1=registration/thread
++  // closed, 2=unknown/refused. Handler exit is separately proven by native ES.
++  // Call on the original browser lifecycle sequence, after other children reap.
++  int CloseAuxBrowserRegistration();
++
+@@ -843,0 +853,3 @@
++#if BUILDFLAG(IS_MAC)
++  std::shared_ptr<AuxCrashpadCloseState> aux_close_state_;
++#endif
+--- a/third_party/crashpad/crashpad/client/crashpad_client_mac.cc
++++ b/third_party/crashpad/crashpad/client/crashpad_client_mac.cc
+@@ -22,0 +23 @@
++#include <atomic>
+@@ -31,0 +33 @@
++#include "base/process/mac/aux_browser_descendant_client.h"
+@@ -45,0 +48,18 @@
++
++// Native per-client ownership, never a PID, path, or completion supplied by JS.
++// Only a main executable exporting the reviewed browser bridge opts in.
++struct AuxCrashpadCloseState {
++  std::atomic<bool> closing{false};
++  std::atomic<bool> finished{false};
++  pthread_t thread{};
++  bool started = false;  // Published by InitialStart before the client is used.
++  bool joined = false;
++  bool registration_closed = false;
++  bool unknown = false;
++  base::apple::ScopedMachSendRight wake;
++  ~AuxCrashpadCloseState() {
++    // Ordinary destruction is not a shutdown receipt. The native close path
++    // requires a successful join; a lost client cannot report completion.
++    if (started && !joined) pthread_detach(thread);
++  }
++};
+@@ -144 +164,2 @@
+-      const std::set<FileHandle>& preserve_file_handles) {
++      const std::set<FileHandle>& preserve_file_handles,
++      std::shared_ptr<AuxCrashpadCloseState> aux_close_state) {
+@@ -169 +190 @@
+-      handler_restarter.reset(new HandlerStarter());
++      handler_restarter.reset(new HandlerStarter(std::move(aux_close_state)));
+@@ -223,0 +245,6 @@
++    }
++
++    if (aux_close_state_ && aux_close_state_->closing.load()) {
++      // Consume this actual notification's receive right without restarting.
++      base::apple::ScopedMachReceiveRight owner(rights);
++      return KERN_SUCCESS;
+@@ -244 +271 @@
+-  HandlerStarter()
++  explicit HandlerStarter(std::shared_ptr<AuxCrashpadCloseState> close_state)
+@@ -253 +280,2 @@
+-        last_start_time_(0) {}
++        last_start_time_(0),
++        aux_close_state_(std::move(close_state)) {}
+@@ -285,0 +314,2 @@
++    if (handler_restarter && handler_restarter->aux_close_state_ &&
++        handler_restarter->aux_close_state_->closing.load()) return false;
+@@ -374,0 +405,2 @@
++    if (handler_restarter && handler_restarter->aux_close_state_ &&
++        handler_restarter->aux_close_state_->closing.load()) return false;
+@@ -423 +455,3 @@
+-    errno = pthread_attr_setdetachstate(&pthread_attr, PTHREAD_CREATE_DETACHED);
++    errno = pthread_attr_setdetachstate(
++        &pthread_attr, aux_close_state_ ? PTHREAD_CREATE_JOINABLE
++                                       : PTHREAD_CREATE_DETACHED);
+@@ -428,0 +463,9 @@
++    if (aux_close_state_) {
++      mach_port_t port = MACH_PORT_NULL;
++      mach_msg_type_name_t type = 0;
++      const kern_return_t kr = mach_port_extract_right(
++          mach_task_self(), notify_port_.get(), MACH_MSG_TYPE_MAKE_SEND,
++          &port, &type);
++      if (kr != KERN_SUCCESS) return false;
++      aux_close_state_->wake.reset(port);
++    }
+@@ -435,0 +479,4 @@
++    if (aux_close_state_) {
++      aux_close_state_->thread = pthread;
++      aux_close_state_->started = true;
++    }
+@@ -442,13 +489,19 @@
+-    NotifyServer notify_server(self);
+-    mach_msg_return_t mr;
+-    do {
+-      mr = MachMessageServer::Run(&notify_server,
+-                                  self->notify_port_.get(),
+-                                  0,
+-                                  MachMessageServer::kPersistent,
+-                                  MachMessageServer::kReceiveLargeError,
+-                                  kMachMessageTimeoutWaitIndefinitely);
+-      MACH_LOG_IF(ERROR, mr != MACH_MSG_SUCCESS, mr)
+-          << "MachMessageServer::Run";
+-    } while (self->notify_port_.is_valid() && mr == MACH_MSG_SUCCESS);
+-
++    auto close_state = self->aux_close_state_;
++    {
++      NotifyServer notify_server(self);
++      mach_msg_return_t mr = MACH_MSG_SUCCESS;
++      while (self->notify_port_.is_valid() && mr == MACH_MSG_SUCCESS &&
++             (!close_state || !close_state->closing.load())) {
++        mr = MachMessageServer::Run(&notify_server,
++                                    self->notify_port_.get(),
++                                    0,
++                                    close_state ? MachMessageServer::kOneShot
++                                                : MachMessageServer::kPersistent,
++                                    MachMessageServer::kReceiveLargeError,
++                                    kMachMessageTimeoutWaitIndefinitely);
++        MACH_LOG_IF(ERROR, mr != MACH_MSG_SUCCESS, mr)
++            << "MachMessageServer::Run";
++      }
++    }
++    // Original receiver thread owns and destroys its receive right. The
++    // shutdown caller never destroys a live receiver's port behind its back.
+@@ -456 +509 @@
+-
++    if (close_state) close_state->finished.store(true);
+@@ -469,0 +523 @@
++  std::shared_ptr<AuxCrashpadCloseState> aux_close_state_;
+@@ -488,0 +543,3 @@
++  if (aux_close_state_ && aux_close_state_->closing.load()) return false;
++  if (aux::browser_custody::Bridge() && !aux_close_state_)
++    aux_close_state_ = std::make_shared<AuxCrashpadCloseState>();
+@@ -502 +559 @@
+-      preserve_file_handles));
++      preserve_file_handles, aux_close_state_));
+@@ -508,0 +566,67 @@
++}
++
++int CrashpadClient::CloseAuxBrowserRegistration() {
++  if (!aux::browser_custody::Bridge()) return 2;
++  if (!aux_close_state_) return exception_port_.is_valid() ? 2 : 1;
++  auto& state = *aux_close_state_;
++  state.closing.store(true);
++  if (state.unknown) return 2;
++  if (state.started && !state.joined) {
++    if (!state.finished.load()) {
++      // A nonblocking private wake for the original receiver. A full queue
++      // already wakes it; invalid destination may mean actual teardown is in
++      // progress. Neither is completion: only finished + pthread_join is.
++      mach_msg_header_t wake{};
++      wake.msgh_bits = MACH_MSGH_BITS(MACH_MSG_TYPE_COPY_SEND, 0);
++      wake.msgh_size = sizeof(wake);
++      wake.msgh_remote_port = state.wake.get();
++      wake.msgh_id = 0x415558;
++      const auto kr = mach_msg(&wake, MACH_SEND_MSG | MACH_SEND_TIMEOUT,
++                               sizeof(wake), 0, MACH_PORT_NULL, 0,
++                               MACH_PORT_NULL);
++      if (kr != MACH_MSG_SUCCESS && kr != MACH_SEND_TIMED_OUT &&
++          kr != MACH_SEND_INVALID_DEST) state.unknown = true;
++      return state.unknown ? 2 : 0;
++    }
++    if (pthread_equal(state.thread, pthread_self()) ||
++        pthread_join(state.thread, nullptr) != 0) {
++      state.unknown = true;
++      return 2;
++    }
++    state.joined = true;
++  }
++  state.wake.reset();
++  if (!state.registration_closed) {
++    if (exception_port_.is_valid()) {
++      exception_mask_t mask = EXC_MASK_CRASH | EXC_MASK_RESOURCE;
++      if (MacOSVersionNumber() < 13'00'00) mask |= EXC_MASK_GUARD;
++      mask &= ExcMaskValid();
++      ExceptionPorts ports(ExceptionPorts::kTargetTypeTask, TASK_NULL);
++      ExceptionPorts::ExceptionHandlerVector handlers;
++      if (!ports.GetExceptionPorts(mask, &handlers)) {
++        state.unknown = true;
++        return 2;
++      }
++      exception_mask_t found = 0;
++      for (const auto& handler : handlers) {
++        if (handler.port != exception_port_.get()) {
++          // Another registration is not ours to overwrite or close.
++          state.unknown = true;
++          return 2;
++        }
++        found |= handler.mask;
++      }
++      if ((found & mask) != mask) { state.unknown = true; return 2; }
++      // Restore system crash handling, restricted to this client's same mask.
++      // Standard cooperative ownership does not claim a hostile task-port CAS.
++      base::apple::ScopedMachSendRight system(SystemCrashReporterHandler());
++      if (!SetCrashExceptionPorts(system.get())) {
++        state.unknown = true;
++        return 2;
++      }
++      exception_port_.reset();
++      handlers.clear();  // Release the temporary queried send rights too.
++    }
++    state.registration_closed = true;
++  }
++  return 1;
+@@ -523,0 +648,3 @@
++  if (aux_close_state_ && aux_close_state_->closing.load()) return false;
++  if (aux::browser_custody::Bridge() && !aux_close_state_)
++    aux_close_state_ = std::make_shared<AuxCrashpadCloseState>();
+@@ -535,0 +663,2 @@
++  if (aux_close_state_ && aux_close_state_->closing.load())
++    return base::apple::ScopedMachSendRight();
+--- a/components/crash/core/app/crashpad.h
++++ b/components/crash/core/app/crashpad.h
+@@ -123,0 +124,5 @@
++#if BUILDFLAG(IS_MAC)
++// Final browser lifecycle sequence only; does not instantiate a client.
++// 0 pending, 1 closed, 2 unknown. Handler process exit is checked separately.
++int CloseAuxBrowserCrashpadRegistration();
++#endif
+--- a/components/crash/core/app/crashpad.cc
++++ b/components/crash/core/app/crashpad.cc
+@@ -236,0 +237,6 @@
++#if BUILDFLAG(IS_MAC)
++int CloseAuxBrowserCrashpadRegistration() {
++  return crashpad_client ? crashpad_client->CloseAuxBrowserRegistration() : 1;
++}
++#endif
++
+--- a/chrome/browser/ui/aux_browser_shutdown_drain.cc
++++ b/chrome/browser/ui/aux_browser_shutdown_drain.cc
+@@ -21,0 +22 @@
++#include "components/crash/core/app/crashpad.h"
+@@ -32,0 +34 @@
++  int crash_registration = 0;  // Actual lifecycle close/join, not an exit guess.
+@@ -62 +64,2 @@
+-      state.provider_failed || state.final_wait_exhausted) status = 2;
++      state.provider_failed || state.final_wait_exhausted ||
++      state.crash_registration == 2) status = 2;
+@@ -85 +88 @@
+-             state.main_loop_destroyed && descendants == aux::browser_custody::Result::kSettled) status = 0;
++             state.main_loop_destroyed && state.crash_registration == 1 && descendants == aux::browser_custody::Result::kSettled) status = 0;
+@@ -161,0 +165,14 @@
++    // Original children/reapers finish before dropping the browser's crash
++    // registration. Do not use an early UI snapshot or close another client.
++    const auto children = content::aux_migration::InspectContentChildDrain();
++    const auto hosts = extensions::AuxNativeMessagingLifetime::Inspect();
++    if (children.admission_closed && !children.wrong_process &&
++        !children.accounting_unknown && !children.pending && !children.unbound &&
++        !children.uncertain && !children.unobserved_descendant_cohorts &&
++        hosts.admission_closed && !hosts.wrong_process &&
++        !hosts.accounting_unknown && !hosts.unresolved && !hosts.unbound &&
++        !hosts.uncertain && !hosts.unobserved_descendant_cohorts) {
++      const int closed = crash_reporter::CloseAuxBrowserCrashpadRegistration();
++      std::lock_guard<std::mutex> lock(state.mutex);
++      state.crash_registration = closed;
++    }

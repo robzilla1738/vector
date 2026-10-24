@@ -1,0 +1,50 @@
+[
+  {
+    "path": "content/browser/aux_child_lifetime.h",
+    "old": "#include \"base/process/kill.h\"",
+    "new": "#include \"base/process/kill.h\"\n#include \"base/process/mac/aux_browser_descendant_client.h\"",
+    "count": 1
+  },
+  {
+    "path": "content/browser/aux_child_lifetime.h",
+    "old": "    Registry().push_back(entry);  // Reserve before the actual spawn.",
+    "new": "    entry->cohort = aux::browser_custody::Reserve(aux::browser_custody::Family::kContent);\n    if (!entry->cohort) return nullptr;\n    if (!aux::browser_custody::MaySpawn(entry->cohort)) {\n      // Admission closed after reservation, before any native spawn occurred.\n      aux::browser_custody::DidFailBeforeChild(entry->cohort);\n      return nullptr;\n    }\n    Registry().push_back(entry);  // Reserve before the actual spawn.",
+    "count": 1
+  },
+  {
+    "path": "content/browser/aux_child_lifetime.h",
+    "old": "      // A genuine direct-child reap does not prove that descendants stopped.\n      // Retain the cohort unless this exact launch receives the authenticated\n      // applied renderer no-fork receipt AND the sole original reap completes.\n      // Callback loss or direct reap alone never clears it.\n      std::lock_guard<std::mutex> registry_lock(RegistryMutex());\n      if (UnobservedDescendantCohorts() == UINT64_MAX) AccountingUnknown() = true;\n      else ++UnobservedDescendantCohorts();",
+    "new": "      // The fresh browser observer owns this launch and all descendants.\n      // A tracked pending cohort is not an unobserved/sticky-unknown cohort.\n      // Applied renderer policy below remains independently authenticated.\n      aux::browser_custody::DidCreate(cohort, pid);",
+    "count": 1
+  },
+  {
+    "path": "content/browser/aux_child_lifetime.h",
+    "old": "    if (pid <= 0) ReleaseLocked();  // Actual LaunchProcess returned invalid.",
+    "new": "    if (pid <= 0) aux::browser_custody::DidFailBeforeChild(cohort);\n    // Only the real observer fence releases this retained entry.",
+    "count": 1
+  },
+  {
+    "path": "content/browser/aux_child_lifetime.h",
+    "old": "    if (evidence == base::AuxChildReapEvidence::reaped && !uncertain)\n      ReleaseLocked();",
+    "new": "    if (evidence == base::AuxChildReapEvidence::reaped && !direct_reaped) {\n      direct_reaped = true;\n      aux::browser_custody::DidObserveOriginalReap(cohort, !uncertain);\n    }\n    if (evidence == base::AuxChildReapEvidence::unknown)\n      aux::browser_custody::DidObserveOriginalReap(cohort, false);",
+    "count": 1
+  },
+  {
+    "path": "content/browser/aux_child_lifetime.h",
+    "old": "      std::lock_guard<std::mutex> lock(entry->mutex);\n      if (entry->released) continue;",
+    "new": "      std::lock_guard<std::mutex> lock(entry->mutex);\n      const auto descendants = aux::browser_custody::Inspect(entry->cohort);\n      if (descendants == aux::browser_custody::Result::kSettled) entry->ReleaseLocked();\n      else if (descendants == aux::browser_custody::Result::kUnknown ||\n               descendants == aux::browser_custody::Result::kRefused) entry->uncertain = true;\n      if (entry->released) continue;",
+    "count": 1
+  },
+  {
+    "path": "content/browser/aux_child_lifetime.h",
+    "old": "    if (descendants_denied) {\n      if (UnobservedDescendantCohorts() == 0) AccountingUnknown() = true;\n      else --UnobservedDescendantCohorts();\n    }",
+    "new": "    // No second no-fork decrement: this launch was reserved in the native ES\n    // observer, which owns its sole cohort completion. Keep the policy receipt\n    // for launch qualification without treating it as a second reaper/fence.",
+    "count": 1
+  },
+  {
+    "path": "content/browser/aux_child_lifetime.h",
+    "old": "  base::Time birth;",
+    "new": "  base::Time birth;\n  aux::browser_custody::Ticket cohort = 0;\n  bool direct_reaped = false;",
+    "count": 1
+  }
+]

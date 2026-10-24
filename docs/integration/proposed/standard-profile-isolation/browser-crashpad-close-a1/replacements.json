@@ -1,0 +1,188 @@
+[
+  {
+    "path": "third_party/crashpad/crashpad/client/crashpad_client.h",
+    "old": "#include <map>",
+    "new": "#include <map>\n#include <memory>",
+    "count": 1
+  },
+  {
+    "path": "third_party/crashpad/crashpad/client/crashpad_client.h",
+    "old": "namespace crashpad {",
+    "new": "namespace crashpad {\n#if BUILDFLAG(IS_MAC)\nstruct AuxCrashpadCloseState;\n#endif",
+    "count": 1
+  },
+  {
+    "path": "third_party/crashpad/crashpad/client/crashpad_client.h",
+    "old": "  bool SetHandlerMachPort(base::apple::ScopedMachSendRight exception_port);",
+    "new": "  bool SetHandlerMachPort(base::apple::ScopedMachSendRight exception_port);\n\n  // Aux main-browser final shutdown only. 0=pending, 1=registration/thread\n  // closed, 2=unknown/refused. Handler exit is separately proven by native ES.\n  // Call on the original browser lifecycle sequence, after other children reap.\n  int CloseAuxBrowserRegistration();",
+    "count": 1
+  },
+  {
+    "path": "third_party/crashpad/crashpad/client/crashpad_client.h",
+    "old": "  base::apple::ScopedMachSendRight exception_port_;",
+    "new": "  base::apple::ScopedMachSendRight exception_port_;\n#if BUILDFLAG(IS_MAC)\n  std::shared_ptr<AuxCrashpadCloseState> aux_close_state_;\n#endif",
+    "count": 1
+  },
+  {
+    "path": "third_party/crashpad/crashpad/client/crashpad_client_mac.cc",
+    "old": "#include <memory>",
+    "new": "#include <atomic>\n#include <memory>",
+    "count": 1
+  },
+  {
+    "path": "third_party/crashpad/crashpad/client/crashpad_client_mac.cc",
+    "old": "#include \"base/check_op.h\"",
+    "new": "#include \"base/check_op.h\"\n#include \"base/process/mac/aux_browser_descendant_client.h\"",
+    "count": 1
+  },
+  {
+    "path": "third_party/crashpad/crashpad/client/crashpad_client_mac.cc",
+    "old": "namespace crashpad {\n\nnamespace {",
+    "new": "namespace crashpad {\n\n// Native per-client ownership, never a PID, path, or completion supplied by JS.\n// Only a main executable exporting the reviewed browser bridge opts in.\nstruct AuxCrashpadCloseState {\n  std::atomic<bool> closing{false};\n  std::atomic<bool> finished{false};\n  pthread_t thread{};\n  bool started = false;  // Published by InitialStart before the client is used.\n  bool joined = false;\n  bool registration_closed = false;\n  bool unknown = false;\n  base::apple::ScopedMachSendRight wake;\n  ~AuxCrashpadCloseState() {\n    // Ordinary destruction is not a shutdown receipt. The native close path\n    // requires a successful join; a lost client cannot report completion.\n    if (started && !joined) pthread_detach(thread);\n  }\n};\n\nnamespace {",
+    "count": 1
+  },
+  {
+    "path": "third_party/crashpad/crashpad/client/crashpad_client_mac.cc",
+    "old": "      const std::set<FileHandle>& preserve_file_handles) {\n    base::apple::ScopedMachReceiveRight receive_right(",
+    "new": "      const std::set<FileHandle>& preserve_file_handles,\n      std::shared_ptr<AuxCrashpadCloseState> aux_close_state) {\n    base::apple::ScopedMachReceiveRight receive_right(",
+    "count": 1
+  },
+  {
+    "path": "third_party/crashpad/crashpad/client/crashpad_client_mac.cc",
+    "old": "handler_restarter.reset(new HandlerStarter());",
+    "new": "handler_restarter.reset(new HandlerStarter(std::move(aux_close_state)));",
+    "count": 1
+  },
+  {
+    "path": "third_party/crashpad/crashpad/client/crashpad_client_mac.cc",
+    "old": "    // If CommonStart() fails, the receive right will die, and this will just",
+    "new": "    if (aux_close_state_ && aux_close_state_->closing.load()) {\n      // Consume this actual notification's receive right without restarting.\n      base::apple::ScopedMachReceiveRight owner(rights);\n      return KERN_SUCCESS;\n    }\n\n    // If CommonStart() fails, the receive right will die, and this will just",
+    "count": 1
+  },
+  {
+    "path": "third_party/crashpad/crashpad/client/crashpad_client_mac.cc",
+    "old": "  HandlerStarter()\n      : NotifyServer::DefaultInterface(),",
+    "new": "  explicit HandlerStarter(std::shared_ptr<AuxCrashpadCloseState> close_state)\n      : NotifyServer::DefaultInterface(),",
+    "count": 1
+  },
+  {
+    "path": "third_party/crashpad/crashpad/client/crashpad_client_mac.cc",
+    "old": "        last_start_time_(0) {}",
+    "new": "        last_start_time_(0),\n        aux_close_state_(std::move(close_state)) {}",
+    "count": 1
+  },
+  {
+    "path": "third_party/crashpad/crashpad/client/crashpad_client_mac.cc",
+    "old": "    DCHECK(!restart || handler_restarter);",
+    "new": "    DCHECK(!restart || handler_restarter);\n    if (handler_restarter && handler_restarter->aux_close_state_ &&\n        handler_restarter->aux_close_state_->closing.load()) return false;",
+    "count": 1
+  },
+  {
+    "path": "third_party/crashpad/crashpad/client/crashpad_client_mac.cc",
+    "old": "    if (!SpawnSubprocess(\n            argv,",
+    "new": "    if (handler_restarter && handler_restarter->aux_close_state_ &&\n        handler_restarter->aux_close_state_->closing.load()) return false;\n    if (!SpawnSubprocess(\n            argv,",
+    "count": 1
+  },
+  {
+    "path": "third_party/crashpad/crashpad/client/crashpad_client_mac.cc",
+    "old": "    errno = pthread_attr_setdetachstate(&pthread_attr, PTHREAD_CREATE_DETACHED);",
+    "new": "    errno = pthread_attr_setdetachstate(\n        &pthread_attr, aux_close_state_ ? PTHREAD_CREATE_JOINABLE\n                                       : PTHREAD_CREATE_DETACHED);",
+    "count": 1
+  },
+  {
+    "path": "third_party/crashpad/crashpad/client/crashpad_client_mac.cc",
+    "old": "    pthread_t pthread;\n    errno = pthread_create",
+    "new": "    if (aux_close_state_) {\n      mach_port_t port = MACH_PORT_NULL;\n      mach_msg_type_name_t type = 0;\n      const kern_return_t kr = mach_port_extract_right(\n          mach_task_self(), notify_port_.get(), MACH_MSG_TYPE_MAKE_SEND,\n          &port, &type);\n      if (kr != KERN_SUCCESS) return false;\n      aux_close_state_->wake.reset(port);\n    }\n    pthread_t pthread;\n    errno = pthread_create",
+    "count": 1
+  },
+  {
+    "path": "third_party/crashpad/crashpad/client/crashpad_client_mac.cc",
+    "old": "    return true;\n  }\n\n  static void* RestartThreadMain",
+    "new": "    if (aux_close_state_) {\n      aux_close_state_->thread = pthread;\n      aux_close_state_->started = true;\n    }\n    return true;\n  }\n\n  static void* RestartThreadMain",
+    "count": 1
+  },
+  {
+    "path": "third_party/crashpad/crashpad/client/crashpad_client_mac.cc",
+    "old": "    NotifyServer notify_server(self);\n    mach_msg_return_t mr;\n    do {\n      mr = MachMessageServer::Run(&notify_server,\n                                  self->notify_port_.get(),\n                                  0,\n                                  MachMessageServer::kPersistent,\n                                  MachMessageServer::kReceiveLargeError,\n                                  kMachMessageTimeoutWaitIndefinitely);\n      MACH_LOG_IF(ERROR, mr != MACH_MSG_SUCCESS, mr)\n          << \"MachMessageServer::Run\";\n    } while (self->notify_port_.is_valid() && mr == MACH_MSG_SUCCESS);\n\n    delete self;\n\n    return nullptr;",
+    "new": "    auto close_state = self->aux_close_state_;\n    {\n      NotifyServer notify_server(self);\n      mach_msg_return_t mr = MACH_MSG_SUCCESS;\n      while (self->notify_port_.is_valid() && mr == MACH_MSG_SUCCESS &&\n             (!close_state || !close_state->closing.load())) {\n        mr = MachMessageServer::Run(&notify_server,\n                                    self->notify_port_.get(),\n                                    0,\n                                    close_state ? MachMessageServer::kOneShot\n                                                : MachMessageServer::kPersistent,\n                                    MachMessageServer::kReceiveLargeError,\n                                    kMachMessageTimeoutWaitIndefinitely);\n        MACH_LOG_IF(ERROR, mr != MACH_MSG_SUCCESS, mr)\n            << \"MachMessageServer::Run\";\n      }\n    }\n    // Original receiver thread owns and destroys its receive right. The\n    // shutdown caller never destroys a live receiver's port behind its back.\n    delete self;\n    if (close_state) close_state->finished.store(true);\n    return nullptr;",
+    "count": 1
+  },
+  {
+    "path": "third_party/crashpad/crashpad/client/crashpad_client_mac.cc",
+    "old": "  uint64_t last_start_time_;",
+    "new": "  uint64_t last_start_time_;\n  std::shared_ptr<AuxCrashpadCloseState> aux_close_state_;",
+    "count": 1
+  },
+  {
+    "path": "third_party/crashpad/crashpad/client/crashpad_client_mac.cc",
+    "old": "  // The \u201crestartable\u201d behavior can only be selected on OS X 10.10 and later.",
+    "new": "  if (aux_close_state_ && aux_close_state_->closing.load()) return false;\n  if (aux::browser_custody::Bridge() && !aux_close_state_)\n    aux_close_state_ = std::make_shared<AuxCrashpadCloseState>();\n  // The \u201crestartable\u201d behavior can only be selected on OS X 10.10 and later.",
+    "count": 1
+  },
+  {
+    "path": "third_party/crashpad/crashpad/client/crashpad_client_mac.cc",
+    "old": "      preserve_file_handles));",
+    "new": "      preserve_file_handles, aux_close_state_));",
+    "count": 1
+  },
+  {
+    "path": "third_party/crashpad/crashpad/client/crashpad_client_mac.cc",
+    "old": "  DCHECK(!exception_port_.is_valid());",
+    "new": "  if (aux_close_state_ && aux_close_state_->closing.load()) return false;\n  if (aux::browser_custody::Bridge() && !aux_close_state_)\n    aux_close_state_ = std::make_shared<AuxCrashpadCloseState>();\n  DCHECK(!exception_port_.is_valid());",
+    "count": 1
+  },
+  {
+    "path": "third_party/crashpad/crashpad/client/crashpad_client_mac.cc",
+    "old": "base::apple::ScopedMachSendRight CrashpadClient::GetHandlerMachPort() const {\n  DCHECK",
+    "new": "base::apple::ScopedMachSendRight CrashpadClient::GetHandlerMachPort() const {\n  if (aux_close_state_ && aux_close_state_->closing.load())\n    return base::apple::ScopedMachSendRight();\n  DCHECK",
+    "count": 1
+  },
+  {
+    "path": "third_party/crashpad/crashpad/client/crashpad_client_mac.cc",
+    "old": "bool CrashpadClient::SetHandlerMachService(const std::string& service_name) {",
+    "new": "int CrashpadClient::CloseAuxBrowserRegistration() {\n  if (!aux::browser_custody::Bridge()) return 2;\n  if (!aux_close_state_) return exception_port_.is_valid() ? 2 : 1;\n  auto& state = *aux_close_state_;\n  state.closing.store(true);\n  if (state.unknown) return 2;\n  if (state.started && !state.joined) {\n    if (!state.finished.load()) {\n      // A nonblocking private wake for the original receiver. A full queue\n      // already wakes it; invalid destination may mean actual teardown is in\n      // progress. Neither is completion: only finished + pthread_join is.\n      mach_msg_header_t wake{};\n      wake.msgh_bits = MACH_MSGH_BITS(MACH_MSG_TYPE_COPY_SEND, 0);\n      wake.msgh_size = sizeof(wake);\n      wake.msgh_remote_port = state.wake.get();\n      wake.msgh_id = 0x415558;\n      const auto kr = mach_msg(&wake, MACH_SEND_MSG | MACH_SEND_TIMEOUT,\n                               sizeof(wake), 0, MACH_PORT_NULL, 0,\n                               MACH_PORT_NULL);\n      if (kr != MACH_MSG_SUCCESS && kr != MACH_SEND_TIMED_OUT &&\n          kr != MACH_SEND_INVALID_DEST) state.unknown = true;\n      return state.unknown ? 2 : 0;\n    }\n    if (pthread_equal(state.thread, pthread_self()) ||\n        pthread_join(state.thread, nullptr) != 0) {\n      state.unknown = true;\n      return 2;\n    }\n    state.joined = true;\n  }\n  state.wake.reset();\n  if (!state.registration_closed) {\n    if (exception_port_.is_valid()) {\n      exception_mask_t mask = EXC_MASK_CRASH | EXC_MASK_RESOURCE;\n      if (MacOSVersionNumber() < 13'00'00) mask |= EXC_MASK_GUARD;\n      mask &= ExcMaskValid();\n      ExceptionPorts ports(ExceptionPorts::kTargetTypeTask, TASK_NULL);\n      ExceptionPorts::ExceptionHandlerVector handlers;\n      if (!ports.GetExceptionPorts(mask, &handlers)) {\n        state.unknown = true;\n        return 2;\n      }\n      exception_mask_t found = 0;\n      for (const auto& handler : handlers) {\n        if (handler.port != exception_port_.get()) {\n          // Another registration is not ours to overwrite or close.\n          state.unknown = true;\n          return 2;\n        }\n        found |= handler.mask;\n      }\n      if ((found & mask) != mask) { state.unknown = true; return 2; }\n      // Restore system crash handling, restricted to this client's same mask.\n      // Standard cooperative ownership does not claim a hostile task-port CAS.\n      base::apple::ScopedMachSendRight system(SystemCrashReporterHandler());\n      if (!SetCrashExceptionPorts(system.get())) {\n        state.unknown = true;\n        return 2;\n      }\n      exception_port_.reset();\n      handlers.clear();  // Release the temporary queried send rights too.\n    }\n    state.registration_closed = true;\n  }\n  return 1;\n}\n\nbool CrashpadClient::SetHandlerMachService(const std::string& service_name) {",
+    "count": 1
+  },
+  {
+    "path": "components/crash/core/app/crashpad.h",
+    "old": "void DestroyCrashpadClient();",
+    "new": "void DestroyCrashpadClient();\n#if BUILDFLAG(IS_MAC)\n// Final browser lifecycle sequence only; does not instantiate a client.\n// 0 pending, 1 closed, 2 unknown. Handler process exit is checked separately.\nint CloseAuxBrowserCrashpadRegistration();\n#endif",
+    "count": 1
+  },
+  {
+    "path": "components/crash/core/app/crashpad.cc",
+    "old": "void DestroyCrashpadClient() {",
+    "new": "#if BUILDFLAG(IS_MAC)\nint CloseAuxBrowserCrashpadRegistration() {\n  return crashpad_client ? crashpad_client->CloseAuxBrowserRegistration() : 1;\n}\n#endif\n\nvoid DestroyCrashpadClient() {",
+    "count": 1
+  },
+  {
+    "path": "chrome/browser/ui/aux_browser_shutdown_drain.cc",
+    "old": "#include \"chrome/browser/ui/aux_owned_browser_quiesce.h\"",
+    "new": "#include \"chrome/browser/ui/aux_owned_browser_quiesce.h\"\n#include \"components/crash/core/app/crashpad.h\"",
+    "count": 1
+  },
+  {
+    "path": "chrome/browser/ui/aux_browser_shutdown_drain.cc",
+    "old": "  bool main_loop_destroyed = false;",
+    "new": "  bool main_loop_destroyed = false;\n  int crash_registration = 0;  // Actual lifecycle close/join, not an exit guess.",
+    "count": 1
+  },
+  {
+    "path": "chrome/browser/ui/aux_browser_shutdown_drain.cc",
+    "old": "      state.provider_failed || state.final_wait_exhausted) status = 2;",
+    "new": "      state.provider_failed || state.final_wait_exhausted ||\n      state.crash_registration == 2) status = 2;",
+    "count": 1
+  },
+  {
+    "path": "chrome/browser/ui/aux_browser_shutdown_drain.cc",
+    "old": "             state.main_loop_destroyed &&",
+    "new": "             state.main_loop_destroyed && state.crash_registration == 1 &&",
+    "count": 1
+  },
+  {
+    "path": "chrome/browser/ui/aux_browser_shutdown_drain.cc",
+    "old": "  for (;;) {\n    bool acknowledged;",
+    "new": "  for (;;) {\n    // Original children/reapers finish before dropping the browser's crash\n    // registration. Do not use an early UI snapshot or close another client.\n    const auto children = content::aux_migration::InspectContentChildDrain();\n    const auto hosts = extensions::AuxNativeMessagingLifetime::Inspect();\n    if (children.admission_closed && !children.wrong_process &&\n        !children.accounting_unknown && !children.pending && !children.unbound &&\n        !children.uncertain && !children.unobserved_descendant_cohorts &&\n        hosts.admission_closed && !hosts.wrong_process &&\n        !hosts.accounting_unknown && !hosts.unresolved && !hosts.unbound &&\n        !hosts.uncertain && !hosts.unobserved_descendant_cohorts) {\n      const int closed = crash_reporter::CloseAuxBrowserCrashpadRegistration();\n      std::lock_guard<std::mutex> lock(state.mutex);\n      state.crash_registration = closed;\n    }\n    bool acknowledged;",
+    "count": 1
+  }
+]

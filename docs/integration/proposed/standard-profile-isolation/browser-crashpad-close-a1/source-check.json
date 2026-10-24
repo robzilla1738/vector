@@ -1,0 +1,10 @@
+{
+  "passed": true,
+  "kind": "literal source replay and changed-boundary assertions only",
+  "files": 5,
+  "anchors": 31,
+  "nativeCompiled": false,
+  "productExecuted": false,
+  "crashHandlerStopped": false,
+  "runtimeAccepted": false
+}

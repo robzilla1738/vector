@@ -1,0 +1,53 @@
+--- a/content/browser/aux_child_lifetime.h
++++ b/content/browser/aux_child_lifetime.h
+@@ -3,0 +4 @@
++#include "base/process/mac/aux_browser_descendant_client.h"
+@@ -34,0 +36,7 @@
++    entry->cohort = aux::browser_custody::Reserve(aux::browser_custody::Family::kContent);
++    if (!entry->cohort) return nullptr;
++    if (!aux::browser_custody::MaySpawn(entry->cohort)) {
++      // Admission closed after reservation, before any native spawn occurred.
++      aux::browser_custody::DidFailBeforeChild(entry->cohort);
++      return nullptr;
++    }
+@@ -45,7 +53,4 @@
+-      // A genuine direct-child reap does not prove that descendants stopped.
+-      // Retain the cohort unless this exact launch receives the authenticated
+-      // applied renderer no-fork receipt AND the sole original reap completes.
+-      // Callback loss or direct reap alone never clears it.
+-      std::lock_guard<std::mutex> registry_lock(RegistryMutex());
+-      if (UnobservedDescendantCohorts() == UINT64_MAX) AccountingUnknown() = true;
+-      else ++UnobservedDescendantCohorts();
++      // The fresh browser observer owns this launch and all descendants.
++      // A tracked pending cohort is not an unobserved/sticky-unknown cohort.
++      // Applied renderer policy below remains independently authenticated.
++      aux::browser_custody::DidCreate(cohort, pid);
+@@ -54 +59,2 @@
+-    if (pid <= 0) ReleaseLocked();  // Actual LaunchProcess returned invalid.
++    if (pid <= 0) aux::browser_custody::DidFailBeforeChild(cohort);
++    // Only the real observer fence releases this retained entry.
+@@ -85,2 +91,6 @@
+-    if (evidence == base::AuxChildReapEvidence::reaped && !uncertain)
+-      ReleaseLocked();
++    if (evidence == base::AuxChildReapEvidence::reaped && !direct_reaped) {
++      direct_reaped = true;
++      aux::browser_custody::DidObserveOriginalReap(cohort, !uncertain);
++    }
++    if (evidence == base::AuxChildReapEvidence::unknown)
++      aux::browser_custody::DidObserveOriginalReap(cohort, false);
+@@ -108,0 +119,4 @@
++      const auto descendants = aux::browser_custody::Inspect(entry->cohort);
++      if (descendants == aux::browser_custody::Result::kSettled) entry->ReleaseLocked();
++      else if (descendants == aux::browser_custody::Result::kUnknown ||
++               descendants == aux::browser_custody::Result::kRefused) entry->uncertain = true;
+@@ -142,4 +156,3 @@
+-    if (descendants_denied) {
+-      if (UnobservedDescendantCohorts() == 0) AccountingUnknown() = true;
+-      else --UnobservedDescendantCohorts();
+-    }
++    // No second no-fork decrement: this launch was reserved in the native ES
++    // observer, which owns its sole cohort completion. Keep the policy receipt
++    // for launch qualification without treating it as a second reaper/fence.
+@@ -152,0 +166,2 @@
++  aux::browser_custody::Ticket cohort = 0;
++  bool direct_reaped = false;

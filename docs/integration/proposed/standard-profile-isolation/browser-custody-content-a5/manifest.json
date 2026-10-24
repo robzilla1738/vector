@@ -1,0 +1,16 @@
+{
+  "format": "aux.browser-custody-content-a5.overlay.v1",
+  "files": [
+    {
+      "path": "content/browser/aux_child_lifetime.h",
+      "beforeSha256": "7442ecebd1f40e2ac9d65f62b7689ab07f7daaf376b6e06d6482c061e672b33a",
+      "afterSha256": "cca5406aea1f9846c4613710213a141d41643335accbcbc85d01f995990af29e"
+    }
+  ],
+  "countedAdaptations": 8,
+  "patchSha256": "1a71eb2b0dc7ad62554e125e65d90d49115c445e61acf2383fe4be11eed9eafa",
+  "replacesPriorFile": "browser-native-host-custody-a1/content/browser/aux_child_lifetime.h",
+  "includesRefusalCorrection": "browser-native-host-reservation-refusal-a1/content/browser/aux_child_lifetime.h",
+  "nativeCompiled": false,
+  "runtimeAccepted": false
+}
