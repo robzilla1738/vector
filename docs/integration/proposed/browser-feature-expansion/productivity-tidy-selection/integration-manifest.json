@@ -6,7 +6,7 @@
     "chrome/browser/ui/aux_tidy_scope.cc": "5591d8cccd099ec6c4b168744fac09b206f1c0a7e0429dff25bd359eb1cd7fb7",
     "chrome/browser/ui/aux_tidy_scope.h": "08f286f1ad5c8ef41b64a54bbd28e568cad088faa6d6c0ed72f981ca99f2dde7",
     "chrome/browser/ui/views/frame/aux_tabs_actions.cc": "45e7ded8def5489e3de93e70512cbee29da58ceccf0a6ecf43ae974419686edf",
-    "chrome/browser/ui/views/frame/aux_tabs_actions.h": "9abf17ff229f74fb7d793564ff64498d07c681a962b47cf2f036a1e4f3c52dd0"
+    "chrome/browser/ui/views/frame/aux_tabs_actions.h": "8e49b81cf98fc3f1f40f489ba766bccf5afe0cade24aa4923ebb8cd9c815e255"
   },
   "resourceAdapter": "vendor/provided/aux-productivity-tidy-selection.mjs",
   "composeAfter": "transformAuxProductivityUi",

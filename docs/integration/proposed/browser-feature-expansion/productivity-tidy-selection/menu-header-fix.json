@@ -1,0 +1,19 @@
+{
+  "path": "chrome/browser/ui/views/frame/aux_tabs_actions.h",
+  "beforeSha256": "9abf17ff229f74fb7d793564ff64498d07c681a962b47cf2f036a1e4f3c52dd0",
+  "afterSha256": "8e49b81cf98fc3f1f40f489ba766bccf5afe0cade24aa4923ebb8cd9c815e255",
+  "edits": [
+    {
+      "find": "#include \"ui/base/models/simple_menu_model.h\"",
+      "replace": "#include \"ui/menus/simple_menu_model.h\"",
+      "count": 1
+    }
+  ],
+  "verifiedRelatedPaths": [
+    "ui/display/screen.h",
+    "ui/base/mojom/menu_source_type.mojom (generates menu_source_type.mojom.h)",
+    "ui/views/controls/menu/menu_types.h",
+    "ui/views/controls/menu/menu_runner.h",
+    "ui/views/widget/widget.h"
+  ]
+}

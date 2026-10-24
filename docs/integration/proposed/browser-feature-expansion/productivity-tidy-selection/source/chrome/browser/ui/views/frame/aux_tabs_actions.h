@@ -4,7 +4,7 @@
 
 #include <memory>
 #include <string>
-#include "ui/base/models/simple_menu_model.h"
+#include "ui/menus/simple_menu_model.h"
 #include "base/functional/callback.h"
 #include "base/memory/weak_ptr.h"
 

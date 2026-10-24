@@ -5,11 +5,11 @@
       "path": "chrome/browser/ui/views/frame/aux_tabs_actions.h",
       "baselineSource": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/ui/views/frame/aux_tabs_actions.h",
       "beforeSha256": "51c067a2b2f4f0c1b1b4dc5eeca9c4e4eea06a8a5b49fc9264e8fc46ff17cdaf",
-      "afterSha256": "9abf17ff229f74fb7d793564ff64498d07c681a962b47cf2f036a1e4f3c52dd0",
+      "afterSha256": "8e49b81cf98fc3f1f40f489ba766bccf5afe0cade24aa4923ebb8cd9c815e255",
       "edits": [
         {
           "find": "#include \"base/functional/callback.h\"",
-          "replace": "#include <memory>\n#include <string>\n#include \"ui/base/models/simple_menu_model.h\"\n#include \"base/functional/callback.h\"",
+          "replace": "#include <memory>\n#include <string>\n#include \"ui/menus/simple_menu_model.h\"\n#include \"base/functional/callback.h\"",
           "count": 1
         },
         {
