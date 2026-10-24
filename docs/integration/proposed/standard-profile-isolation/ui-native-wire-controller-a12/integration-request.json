@@ -1,0 +1,63 @@
+{
+  "format": "aux.ui-native-wire-controller.source.v1",
+  "files": [
+    {
+      "path": "chrome/browser/aux/ui_storage_migration_controller.cc",
+      "input": "/Users/rcourson/.codex/worktrees/aux-features-navigation/web/docs/integration/proposed/standard-profile-isolation/native-document-token-join-a11/source/chrome/browser/aux/ui_storage_migration_controller.cc",
+      "inputSha256": "14be18d4f5dcd08f2cd6f332db66b2b153c4e955eec969d648771e10c33d5e7f",
+      "output": "/Users/rcourson/.codex/worktrees/aux-features-navigation/web/docs/integration/proposed/standard-profile-isolation/ui-native-wire-controller-a12/source/chrome/browser/aux/ui_storage_migration_controller.cc",
+      "outputSha256": "df72d725a20842bac262a28cde37936807659662e80c3309efe63607550d4543",
+      "anchors": [
+        {
+          "find": "bool DraftData(const base::DictValue& value, std::string_view origin) {\n  if (value.size() != 5 || !Text(value, \"format\", \"aux.ui-draft-capture.v1\") ||\n      !Text(value, \"origin\", origin)) return false;\n  const auto* session = value.FindDict(\"sessionEntries\"), *local = value.FindDict(\"localEntries\");\n  const auto* mutations = value.FindList(\"mutations\");\n  if (!session || !local || !mutations || session->size() + local->size() + mutations->size() > 4096) return false;\n  for (const auto* entries : {session, local}) for (const auto [key, raw] : *entries)\n    if (!UiDraftKey(key, entries == local) || !raw.is_string() || raw.GetString().size() > 20 * 1024 * 1024) return false;\n  for (const auto& raw : *mutations) {\n    const auto* mutation = raw.GetIfDict();\n    const auto* key = mutation ? mutation->FindString(\"key\") : nullptr;\n    if (!key || (!Text(*mutation, \"storage\", \"local-storage\") && !Text(*mutation, \"storage\", \"session-storage\")) ||\n        !UiDraftKey(*key, Text(*mutation, \"storage\", \"local-storage\"))) return false;\n    if (Text(*mutation, \"operation\", \"remove\")) { if (mutation->size() != 3) return false; }\n    else if (Text(*mutation, \"operation\", \"set\")) {\n      const auto* data = mutation->FindString(\"value\");\n      if (mutation->size() != 4 || !data || data->size() > 20 * 1024 * 1024) return false;\n    } else return false;\n  }\n  return true;\n}\n",
+          "replace": "// These are source DATA. Actual Profile/document/cache/lease ownership is joined\n// independently; no reported identity or writer Boolean grants native authority.\nstruct WireMutation {\n  bool local = false, remove = false;\n  std::u16string key, value;\n};\nstruct WireStores {\n  std::map<std::u16string, std::u16string> session, local;\n  std::vector<WireMutation> mutations;\n};\nbool ReadWireUnits(const base::Value* value, std::u16string& output, size_t& total) {\n  const auto* units = value ? value->GetIfList() : nullptr;\n  if (!units || units->size() > 4194304 || total > 4194304 - units->size()) return false;\n  output.clear(); output.reserve(units->size()); total += units->size();\n  for (const auto& unit : *units) {\n    const auto number = unit.GetIfInt();\n    if (!number || *number < 0 || *number > 65535) return false;\n    output.push_back(static_cast<char16_t>(*number));\n  }\n  return true;\n}\nbool WireKey(const std::u16string& units, bool local) {\n  // Draft identities already have finite ASCII native schemas. Unknown Unicode\n  // identities refuse; values remain exact UTF16, including lone surrogates.\n  if (units.size() > 8192) return false;\n  std::string key; key.reserve(units.size());\n  for (const auto unit : units) {\n    if (unit > 127) return false;\n    key.push_back(static_cast<char>(unit));\n  }\n  return UiDraftKey(key, local);\n}\nbool ReadWireEntries(const base::Value* value, bool local,\n                     std::map<std::u16string, std::u16string>& output,\n                     size_t& count, size_t& total) {\n  const auto* entries = value ? value->GetIfList() : nullptr;\n  if (!entries || entries->size() > 4096 || count > 4096 - entries->size()) return false;\n  count += entries->size();\n  for (const auto& raw : *entries) {\n    const auto* entry = raw.GetIfDict(); std::u16string key, data;\n    if (!entry || entry->size() != 2 || !ReadWireUnits(entry->Find(\"key\"), key, total) ||\n        !WireKey(key, local) || !ReadWireUnits(entry->Find(\"value\"), data, total) ||\n        !output.emplace(std::move(key), std::move(data)).second) return false;\n  }\n  return true;\n}\nstd::optional<WireStores> ReadWireStores(const base::DictValue& value,\n                                       std::string_view actual_origin) {\n  if (value.size() != 5 || !Text(value, \"format\", \"aux.ui-draft-store-units.v1\") ||\n      !Text(value, \"origin\", actual_origin)) return std::nullopt;\n  WireStores stores; size_t count = 0, total = 0;\n  if (!ReadWireEntries(value.Find(\"sessionEntries\"), false, stores.session, count, total) ||\n      !ReadWireEntries(value.Find(\"localEntries\"), true, stores.local, count, total)) return std::nullopt;\n  const auto* changes = value.FindList(\"mutations\");\n  if (!changes || changes->size() > 4096 || count > 4096 - changes->size()) return std::nullopt;\n  std::set<std::pair<bool, std::u16string>> changed;\n  for (const auto& raw : *changes) {\n    const auto* change = raw.GetIfDict();\n    if (!change || (!Text(*change, \"storage\", \"local-storage\") && !Text(*change, \"storage\", \"session-storage\")) ||\n        (!Text(*change, \"operation\", \"set\") && !Text(*change, \"operation\", \"remove\"))) return std::nullopt;\n    WireMutation mutation;\n    mutation.local = Text(*change, \"storage\", \"local-storage\");\n    mutation.remove = Text(*change, \"operation\", \"remove\");\n    if (change->size() != (mutation.remove ? 3u : 4u) ||\n        !ReadWireUnits(change->Find(\"key\"), mutation.key, total) || !WireKey(mutation.key, mutation.local) ||\n        (!mutation.remove && !ReadWireUnits(change->Find(\"value\"), mutation.value, total)) ||\n        !changed.emplace(mutation.local, mutation.key).second) return std::nullopt;\n    stores.mutations.push_back(std::move(mutation));\n  }\n  return stores;\n}\n",
+          "count": 1
+        },
+        {
+          "find": "  double revision = 0;\n  int frame_id",
+          "replace": "  double revision = 0;\n  std::optional<WireStores> source_stores;\n  int frame_id",
+          "count": 1
+        },
+        {
+          "find": "  Invoke(index, \"auxPrepareDraftMigrationCapture\", base::ListValue().Append(frames_[index]->request_id),",
+          "replace": "  Invoke(index, \"auxPrepareDraftMigrationCapture\", base::ListValue().Append(frames_[index]->request_id).Append(\"utf16-v1\"),",
+          "count": 1
+        },
+        {
+          "find": "  const auto* capture = value.FindDict(\"capture\");",
+          "replace": "  const auto* raw_capture = value.FindString(\"captureJson\");\n  const auto* units = value.FindDict(\"storeUnits\");\n  auto stores = units ? ReadWireStores(*units, extension_->origin().Serialize()) : std::nullopt;",
+          "count": 1
+        },
+        {
+          "find": "      !owners || *owners <= 0 || *owners > 256 || value.FindBool(\"sealed\") != false || !capture ||\n      !DraftData(*capture, extension_->origin().Serialize())) return false;",
+          "replace": "      !owners || *owners <= 0 || *owners > 256 || value.FindBool(\"sealed\") != false ||\n      !Text(value, \"wireFormat\", \"utf16-v1\") || !raw_capture || raw_capture->empty() ||\n      raw_capture->size() > 32 * 1024 * 1024 || !stores) return false;",
+          "count": 1
+        },
+        {
+          "find": "  frame.lease_id = *lease; frame.revision = *revision; frame.capture_json = frame.result_json; frame.prepared = true;",
+          "replace": "  // captureJson is retained opaque. Never reparse its raw strings as a lossy\n  // substitute for the exact numeric units used in native semantic pairing.\n  frame.lease_id = *lease; frame.revision = *revision; frame.capture_json = frame.result_json;\n  frame.source_stores = std::move(stores); frame.prepared = true;",
+          "count": 1
+        },
+        {
+          "find": "\"auxReadDraftMigrationCapture\", base::ListValue(),",
+          "replace": "\"auxReadDraftMigrationCapture\", base::ListValue().Append(\"utf16-v1\"),",
+          "count": 2
+        }
+      ]
+    }
+  ],
+  "priorProposal": "native-document-token-join-a11",
+  "priorManifestSha256": "42d819412bd2da8b4f8327c0d6a8bfd6fe68eab04831aba2ef3b0587e904aa78",
+  "countedAnchors": 7,
+  "nativeTreeUnchanged": true,
+  "nativeCompiled": false,
+  "nativeExecuted": false,
+  "productExecuted": false,
+  "backendWriterClosure": false,
+  "targetApisCalled": false,
+  "runtimeAccepted": false,
+  "sourcePlanSha256": "becdf28157fea2528bc8f0c73690ac3a8e11bf06dc5262324a6b59d8351cab9c",
+  "producerCommit": "61ea4c439",
+  "priorNativeDocumentJoinCommit": "5d1380612",
+  "rootOwnsProjectionCompilationAndStaging": true
+}
