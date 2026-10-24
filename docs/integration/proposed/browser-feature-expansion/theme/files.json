@@ -1,0 +1,58 @@
+{
+  "baselineCommit": "d8bc09d93",
+  "selectedNativeRoot": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src",
+  "scope": "inactive native theme proposal; no selected native tree mutation",
+  "files": [
+    {
+      "path": "chrome/browser/themes/aux_theme_editor.cc",
+      "baselineSha256": null,
+      "sourceSha256": "e82561ba328b20313923b200b243050588e69860e03ac53faafad2b6ea35f28d"
+    },
+    {
+      "path": "chrome/browser/themes/aux_theme_editor.h",
+      "baselineSha256": null,
+      "sourceSha256": "31517af4c9fac364a110a3297456a7790e810abb93a1d820c27dcc6bcc0b9926"
+    },
+    {
+      "path": "chrome/browser/themes/theme_service.cc",
+      "baselineSha256": "83a42e3d5c62d055e93089547f1a465ab575d341cab561959e7c745ff1611fbc",
+      "sourceSha256": "7704ce4ac98a0c80c44d522d829712f254ebfa959599d2a78bd54b2b04e96d7c"
+    },
+    {
+      "path": "chrome/browser/themes/theme_service.h",
+      "baselineSha256": "ca44da30308a40d0c3d455a4071da7bb052b4f45012014d024623a610419e3b1",
+      "sourceSha256": "faf0ede4723cdd043aa27b8454d36046a02e50b79da8348a64680c59cfa37999"
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_sidebar_presentation.cc",
+      "baselineSha256": "29f5c485e11bdd8647256eba08aa135e3777502d07c0c4afdf1bdee00128aa32",
+      "sourceSha256": "0fec157024ad257bfd1fd232ccffccbe16df9658ff2bd8885d149011dc8b01bd"
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_sidebar_view.cc",
+      "baselineSha256": "d45d49536c2fe24e3877bda3210c23d21fb788bfdc955e21db4af4a34b304b80",
+      "sourceSha256": "175d63ba832f55e865dcdcaffffe677ee7d1cb43d3635c6e38cd5c6a9395c253"
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_vertical_sidebar_profile_button.cc",
+      "baselineSha256": "41fa975a4cae6e2815b9d63431143b2b7b66ad40e1d2c5bfd9c0b2553c75f3f1",
+      "sourceSha256": "bbb05eefa4d6291e4dc96911e50d376c1324c6ca89144682e106df29c0473425"
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/custom_corners_background.cc",
+      "baselineSha256": "cb0ca567326ef5dab106c3d1465aa158d5037a3c4d0eba696912ddbbc4c1c51e",
+      "sourceSha256": "933cd4a91888a8d74fcc3388f9cba65da92627cba03d920df29cf9168f547d65"
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/custom_corners_background.h",
+      "baselineSha256": "6a7cebaa7c59093908afd590fb18f4f36e79b087de412923eb6d3e782c7b91f6",
+      "sourceSha256": "a93613a0d36b8fb8c4df2f7168ca651c6ff99bb629bc680f370a424394170bf6"
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/themed_background.cc",
+      "baselineSha256": "f83214a6ee24e79ba135fa47318fd4852a97807bcd6bfd488eff2b9dc2edcf01",
+      "sourceSha256": "a34059e5568990bc7c2e7ac40033a1ee37c288877af6efeff33bd2311c0e640a"
+    }
+  ],
+  "patchSha256": "fdc62d3b3a30221be221857e52450a1c918c0fe0896ce70751888df48e460c38"
+}
