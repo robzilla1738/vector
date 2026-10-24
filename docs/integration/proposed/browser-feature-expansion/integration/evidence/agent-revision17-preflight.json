@@ -1,0 +1,13 @@
+{
+  "passed": true,
+  "revision": 17,
+  "expectedFingerprint": "568c3d6196dda55658c84ed9204a0581e79607b1a5d31e50362192becc9c0e53",
+  "predecessorStage": "out/browser-feature-stage-pair-20261023-a4/baseline/ui",
+  "baselineFingerprintReplayed": true,
+  "unchangedManifestBeforeRevision": true,
+  "changedScriptCount": 14,
+  "compositionReceipt": "/private/tmp/aux-feature-ui-review-20261023-a6/composition.json",
+  "compositionSha256": "6bfc02e29fe94f48d920e878d5870a4a195874f4ff710a7c068a2b291f3ba3a1",
+  "actualNewStagePassed": false,
+  "productExecuted": false
+}

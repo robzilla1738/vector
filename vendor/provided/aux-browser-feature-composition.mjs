@@ -1,6 +1,7 @@
 // Count-checked additions to the supplied owners after identity adaptation.
 import { transformAuxNavigation } from './aux-navigation-command-bar.mjs';
 import { transformAuxPaletteAsk } from './aux-palette-ask.mjs';
+import { transformAuxContextActions } from './aux-context-actions.mjs';
 import { transformAuxRemixContext } from './aux-remix-context.mjs';
 import { transformAuxResearchUi } from '../../docs/integration/proposed/browser-feature-expansion/research-v1/source/aux-research-ui.mjs';
 import { transformAuxProductivityUi, transformAuxProductivityDaemon } from './aux-productivity-integration.mjs';
@@ -65,6 +66,7 @@ export function transformAuxBrowserFeatureUi(input) {
     transformAuxFilesUi, transformAuxMediaUi, transformAuxRoutingSettings,
     transformAuxDeveloperUi, transformAuxCaptureUi,
     transformAuxBrowserFeatureSettings, transformAuxShortcutProfiles, transformAuxPaletteAsk,
+    transformAuxContextActions,
     transformAuxRemixContext,
     value => {
       const result = transformAuxResearchUi(value.text, value.relative ?? '');

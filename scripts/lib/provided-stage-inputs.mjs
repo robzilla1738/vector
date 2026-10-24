@@ -3,6 +3,7 @@
 export const providedStageInputs = Object.freeze([
   'vendor/provided/aux-navigation-command-bar.mjs',
   'vendor/provided/aux-palette-ask.mjs',
+  'vendor/provided/aux-context-actions.mjs',
   'vendor/provided/aux-remix-context.mjs',
   'docs/integration/proposed/browser-feature-expansion/research-v1/source/aux-research-ui.mjs',
   'docs/integration/proposed/browser-feature-expansion/research-v1/source/research-ui.js',

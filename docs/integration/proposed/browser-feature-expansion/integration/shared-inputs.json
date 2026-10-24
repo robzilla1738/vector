@@ -45,8 +45,8 @@
     {
       "path": "chrome/browser/extensions/api/aux_browser_preferences/aux_feature_expansion_api.cc",
       "beforeSha256": null,
-      "afterSha256": "b6c2e1ea270b6e3f2fa4a4a4c5a92e7645024a844f7ff7e0e0309d43c2439f1b",
-      "source": "docs/integration/proposed/browser-feature-expansion/remix-context-v1/source/chrome/browser/extensions/api/aux_browser_preferences/aux_feature_expansion_api.cc"
+      "afterSha256": "5cf6d62064c111ff0f3155cf90b733f2f742258feae819453badce7e52666222",
+      "source": "docs/integration/proposed/browser-feature-expansion/remix-context-compile-fix/source/chrome/browser/extensions/api/aux_browser_preferences/aux_feature_expansion_api.cc"
     },
     {
       "path": "chrome/common/extensions/api/aux_browser_preferences.json",
@@ -156,8 +156,8 @@
     {
       "path": "chrome/browser/ui/views/frame/aux_tab_search_bubble.cc",
       "beforeSha256": "85dbd06672dbf9dcbbbefa6da582e227423f01a41bad1f690c4706f0c72e7afa",
-      "afterSha256": "715ad2f1d91f7df35f997de3d2e082341881129d1c0aa3e845a385e6a2613377",
-      "source": "docs/integration/proposed/browser-feature-expansion/palette-ask-v1/source/aux_tab_search_bubble.cc",
+      "afterSha256": "3be3a1b0377b56c7c15b5cc14b08fe8d1dbe42b701efca1a98abef1c08ed50e6",
+      "source": "docs/integration/proposed/browser-feature-expansion/context-actions-v1/source/aux_tab_search_bubble.cc",
       "overridesNativeSourceSha256": "85dbd06672dbf9dcbbbefa6da582e227423f01a41bad1f690c4706f0c72e7afa"
     },
     {
