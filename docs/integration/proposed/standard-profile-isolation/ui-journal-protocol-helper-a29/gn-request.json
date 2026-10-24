@@ -1,0 +1,11 @@
+{
+  "path": "chrome/browser/aux/BUILD.gn",
+  "inputSha256": "fa833a4133cb298cb204b7c18d1e079bbcda0625bd4b547ece5f97ae2df420de",
+  "anchor": {
+    "find": "source_set(\"ui_storage_migration\") {\n  public = [ \"ui_storage_migration_controller.h\", \"ui_storage_migration_worker.h\", \"ui_storage_migration_completion.h\" ]\n  public_deps = [ \"//base\" ]\n}",
+    "replace": "source_set(\"ui_storage_migration\") {\n  public = [ \"ui_storage_migration_controller.h\", \"ui_storage_migration_worker.h\", \"ui_storage_migration_completion.h\", \"ui_storage_migration_journal_protocol.h\" ]\n  public_deps = [ \"//base\", \"//crypto\" ]\n}",
+    "count": 1
+  },
+  "reason": "Public header-only finite journal codec uses actual base span and crypto SHA256; root owns shared GN projection",
+  "nativeMutation": false
+}

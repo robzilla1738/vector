@@ -1,0 +1,16 @@
+{
+  "format": "aux.ui-journal-protocol-helper.source.v1",
+  "files": [
+    {
+      "path": "chrome/browser/aux/ui_storage_migration_journal_protocol.h",
+      "inputRoot": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src",
+      "inputAbsent": true,
+      "inputSha256": null,
+      "outputSha256": "f708b00fd4c30bef3a7f3c166d05d145cdf8b2d340c330eeb2b5f69a8c2a4804",
+      "source": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/ui-journal-protocol-helper-a29/source/chrome/browser/aux/ui_storage_migration_journal_protocol.h"
+    }
+  ],
+  "nativeMutation": false,
+  "compilerRun": false,
+  "runtimeAcceptance": false
+}

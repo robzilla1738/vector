@@ -1,0 +1,15 @@
+{
+  "format": "aux.ui-journal-protocol-helper.static.v1",
+  "newNativeFileAbsent": true,
+  "actualProducerOffsetsPinned": true,
+  "fixedInventoryHeaderBytes": 44,
+  "summaryBytes": 69,
+  "selectedHeaderBytes": 63,
+  "maximumInventoryReplyBytes": 4460,
+  "maximumFrameBytes": 8192,
+  "pureOwnedDataNoSpanFieldsOrRawBufferCasts": true,
+  "focusedBoundaryCaseCount": 3,
+  "boundaryCasesCompiledOrRun": false,
+  "nativeCompilerRun": false,
+  "runtimeAcceptance": false
+}
