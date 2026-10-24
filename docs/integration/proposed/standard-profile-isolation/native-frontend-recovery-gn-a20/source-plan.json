@@ -1,0 +1,17 @@
+{
+  "format": "aux.frontend-recovery.gn.source.v1",
+  "files": [
+    {
+      "path": "components/value_store/BUILD.gn",
+      "inputSha256": "63ae34e0dcacb212d25300512bbf4f8a08327bb94278807b20f5ab39d2fc8317",
+      "outputSha256": "c7a6bb3712ec3769a5edb73c5019def589248b36b3c49d29103a34103e1e7751",
+      "anchors": [
+        {
+          "find": "  deps = [\n    \"//base\",\n    \"//third_party/abseil-cpp:absl\",\n  ]",
+          "replace": "  deps = [\n    \"//base\",\n    \"//crypto\",\n    \"//third_party/abseil-cpp:absl\",\n  ]",
+          "count": 1
+        }
+      ]
+    }
+  ]
+}

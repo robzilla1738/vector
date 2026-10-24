@@ -1,0 +1,35 @@
+{
+  "format": "aux.native-cohort.projection.actual.v1",
+  "passed": true,
+  "originals": {
+    "components/services/storage/dom_storage/async_dom_storage_database.cc": "523ae22eb9aef56b088aafb08ffa86933808bee791c5f27f539254c64a9a1a0b",
+    "components/services/storage/public/mojom/local_storage_control.mojom": "66b453780758c30d87fb36af59e8b0ceafc272ea9d9ecb2b0c4766c87dd7bcf0",
+    "components/services/storage/public/mojom/session_storage_control.mojom": "d0be70fe6a617c450508d521de5dac426903c5b3ae62f198f7276cc7f4451762",
+    "components/services/storage/dom_storage/local_storage_impl.h": "a16b524702210be1f948f59a3ed1245da56a12ea4a8cf3d474aaa917a2113f40",
+    "components/services/storage/dom_storage/local_storage_impl.cc": "72e4d278dfe879baf5f07a7ad682efa4f7e8534e0f08e41656f6b2159388b15e",
+    "components/services/storage/dom_storage/session_storage_impl.h": "3efff4c1e4207a8cadfd59fa8bb186d22560f10f26ee497504d4bc59aa8e84eb",
+    "components/services/storage/dom_storage/session_storage_impl.cc": "e081d64179ddf6e3bc81955fbf6e6d756babf9b729a9e8fad1fac66df9e342a7",
+    "chrome/browser/aux/ui_storage_migration_controller.cc": "205f00f3d76292ee2b33c8b2c7a52c41fd3290e075445a093a3f0a3b8a86c627",
+    "chrome/browser/aux/ui_storage_migration_completion.h": null,
+    "chrome/browser/aux/AuxSelectedStateHome.cc": "8f5e06b8e772328d50542adfcdf7a25f7e0066f04c1d4f895298b9bba469f042",
+    "chrome/browser/aux/BUILD.gn": "3df60e432db4e30bd95252110462728ced8bff43fb0a8063ec95b6336f3e7876"
+  },
+  "projected": [
+    "components/services/storage/dom_storage/async_dom_storage_database.cc",
+    "components/services/storage/public/mojom/local_storage_control.mojom",
+    "components/services/storage/public/mojom/session_storage_control.mojom",
+    "components/services/storage/dom_storage/local_storage_impl.h",
+    "components/services/storage/dom_storage/local_storage_impl.cc",
+    "components/services/storage/dom_storage/session_storage_impl.h",
+    "components/services/storage/dom_storage/session_storage_impl.cc",
+    "chrome/browser/aux/ui_storage_migration_controller.cc",
+    "chrome/browser/aux/ui_storage_migration_completion.h",
+    "chrome/browser/aux/AuxSelectedStateHome.cc",
+    "chrome/browser/aux/BUILD.gn"
+  ],
+  "beforeImages": "/private/tmp/aux-chromium-recovery-snapshot-20261023/native-completion-integration-20261024-a23/before",
+  "sourceCompositionSha256": "779b0fcdef81124f766a43b94336dae7e573816792c4c6bdf44ea1cc4115a365",
+  "ownerChangesReset": false,
+  "acceptedAppReplaced": false,
+  "productExecuted": false
+}

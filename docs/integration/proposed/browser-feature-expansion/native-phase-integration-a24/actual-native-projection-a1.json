@@ -1,0 +1,25 @@
+{
+  "format": "aux.storage-restore.native-projection.actual.v1",
+  "passed": true,
+  "originals": {
+    "components/services/storage/dom_storage/aux_ui_cache_cohort.h": "db9f3099da9d1d03e0a5e00843d3e6b817788105998657359fc41d06fbf290c1",
+    "components/services/storage/dom_storage/aux_ui_cache_cohort.cc": "691d3277777c08c45054d2712bd7f781e8f5b9271a46f8972f2d7e20d3e06ff5",
+    "components/services/storage/dom_storage/storage_area_impl.h": "495e81c7dea4c99c2477b0f581367ea3cf1779fe95de571bdfc7c1964d674ba1",
+    "components/services/storage/dom_storage/storage_area_impl.cc": "7e123398b9d4b5cd2f508e9675d855699fd3ef5618faa7a16f1d7d48b5fc2b05",
+    "components/services/storage/dom_storage/async_dom_storage_database.h": "5da00143d24990009544af71d6ac28033ad667a72ff100927e4ec235010d4612",
+    "components/services/storage/dom_storage/async_dom_storage_database.cc": "d49b232613d9becc600e15ccf60f35c6a9feabb4704c63f2d6e1c4cb6f33a9d2"
+  },
+  "projected": [
+    "components/services/storage/dom_storage/aux_ui_cache_cohort.h",
+    "components/services/storage/dom_storage/aux_ui_cache_cohort.cc",
+    "components/services/storage/dom_storage/storage_area_impl.h",
+    "components/services/storage/dom_storage/storage_area_impl.cc",
+    "components/services/storage/dom_storage/async_dom_storage_database.h",
+    "components/services/storage/dom_storage/async_dom_storage_database.cc"
+  ],
+  "beforeImages": "/private/tmp/aux-chromium-recovery-snapshot-20261023/native-phase-integration-20261024-a24/before",
+  "sourceCompositionSha256": "66ba7e76618b89739915b41c64ba78a8fa1c854d27d8a849312f28bf871b62b1",
+  "ownerChangesReset": false,
+  "acceptedAppReplaced": false,
+  "productExecuted": false
+}

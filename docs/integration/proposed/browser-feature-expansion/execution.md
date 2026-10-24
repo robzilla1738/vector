@@ -143,3 +143,9 @@ UI revision32 passes exact staging/preservation checks; the accepted app and com
 A17 projects21 exact files with retained beforeimages and selects153 changed/413 total inputs: physical cache cohort and namespace/COW custody, real Session absence recovery, corrected SQLite map deletion, actual Local allocation actions/IDs, same-service observations, actual DOM controls and source/target-intent controller. Generation/affected-owner compilation is pending; no final full link/runtime success is transferred from earlier receipts. The full native daemon A3 journal links unsigned and preserves complete-prefix recovery with later uncertain records.
 
 Parallel lanes are implementing actual persistent target/readback/rollback/publication, factual allocation schema and fresh native recovery requalification. All activation/readiness flags remain false until genuine owner/physical/custody joins exist. No product lifecycle, signing or release operation occurred.
+
+## Actual recovery owners, typed completion and full A24 build — 2026-10-24
+
+A22 paired GN/Mojo generation and all13 actual recovery/frontend/backend objects pass; A23 all5 actual live controller/control/selected-owner objects pass; A24 all3 actual lost-cache-reply reconciliation objects pass. The signed/accepted app remains unchanged, and no product/native API was executed.
+
+Full A24 unsigned browser compilation now runs against414 immutable inputs while parallel workers complete journal-tail inventory, genuine fresh renderer/journal recovery and Local LevelDB absence metadata. The complete A3 native app was preserved before mutation. New metadata/ACKs do not publish an installation selection or change stateIdentityVersion; COLD remains disabled. The final native CLI is separately linked unsigned and preserved. UI32 styles/art/fonts/geometry are exact; final app assembly/runtime comparison remain pending.
