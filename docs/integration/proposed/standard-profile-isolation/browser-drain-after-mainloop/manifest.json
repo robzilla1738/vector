@@ -1,7 +1,7 @@
 {
   "modifiedCount": 5,
   "addedCount": 0,
-  "countedAdaptations": 10,
+  "countedAdaptations": 11,
   "files": [
     {
       "path": "chrome/browser/chrome_browser_main.cc",
@@ -11,7 +11,7 @@
     {
       "path": "chrome/browser/ui/aux_browser_shutdown_drain.cc",
       "beforeSha256": "a15b0dff766ea2b7061e68ae62ebd722baa961825666a0b9cf49521493d40e79",
-      "afterSha256": "2900f45ff36a3fd59775bd679e1eb68abbea64fd7e94cd8091b8e576d7e8dbe7"
+      "afterSha256": "db4d3302017b086c4fa3aa52a87b6aa82114eeeafe2d53d6342841c0178dc5b1"
     },
     {
       "path": "content/browser/aux_child_process_drain.cc",
@@ -29,7 +29,7 @@
       "afterSha256": "e3e30f3d5a5f83d6b845f3aa327648088e969d955c086a752e6fed7276ccc6d7"
     }
   ],
-  "patchSha256": "fc7c5a9d415fbebd92dd8ad3a22c40d9b8cc4780e171880d878a917b8eb3e022",
+  "patchSha256": "d5f1ddc57787a4626c4ace5341d1daf57ddca8a85209a329ddad583d304d6d2c",
   "verification": {
     "exactOrderedReplay": "passed",
     "unifiedPatchReplay": "passed",

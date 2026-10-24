@@ -58,5 +58,11 @@
     "old": "void FinishNativeBrowserShutdownDrain() {\n  auto& state = State();",
     "new": "void FinishNativeBrowserShutdownDrain() {\n  auto& state = State();\n  {\n    std::lock_guard<std::mutex> lock(state.mutex);\n    if (getpid() != state.process || !state.started || state.main_loop_destroyed) return;\n    state.main_loop_destroyed = true;\n  }",
     "count": 1
+  },
+  {
+    "path": "chrome/browser/ui/aux_browser_shutdown_drain.cc",
+    "old": "          !closed.active_reads) return;",
+    "new": "          !closed.active_reads && !closed.child_close->wrong_process &&\n          !closed.child_close->peer.wrong_process &&\n          !closed.child_close->peer.active_exchanges &&\n          !closed.child_close->peer.active_receives &&\n          !closed.child_close->peer.active_code_validations &&\n          !closed.child_close->peer.active_selected_home_validations &&\n          !closed.child_close->peer.unresolved_reply_cleanup &&\n          !closed.child_close->peer.unresolved_receive_cleanup &&\n          !closed.child_close->peer.selected_home_cleanup_unresolved) return;",
+    "count": 1
   }
 ]

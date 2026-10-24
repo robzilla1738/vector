@@ -50,6 +50,23 @@
    const auto deadline = base::TimeTicks::Now() + base::Seconds(10);
    for (;;) {
      bool acknowledged;
+@@ -156,7 +164,15 @@
+       if (closed.child_close && closed.child_close->exit_observed_and_reaped &&
+           !closed.child_close->exit_ownership_unknown && !closed.monitor_running &&
+           !closed.monitor_join_pending && !closed.initialization_pending &&
+-          !closed.active_reads) return;
++          !closed.active_reads && !closed.child_close->wrong_process &&
++          !closed.child_close->peer.wrong_process &&
++          !closed.child_close->peer.active_exchanges &&
++          !closed.child_close->peer.active_receives &&
++          !closed.child_close->peer.active_code_validations &&
++          !closed.child_close->peer.active_selected_home_validations &&
++          !closed.child_close->peer.unresolved_reply_cleanup &&
++          !closed.child_close->peer.unresolved_receive_cleanup &&
++          !closed.child_close->peer.selected_home_cleanup_unresolved) return;
+     }
+     if (base::TimeTicks::Now() >= deadline) {
+       std::lock_guard<std::mutex> lock(state.mutex);
 --- a/content/browser/aux_child_process_drain.cc
 +++ b/content/browser/aux_child_process_drain.cc
 @@ -1,7 +1,21 @@
