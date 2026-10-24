@@ -1,0 +1,16 @@
+{
+  "format": "aux.standard-package.source-native-preflight.v1",
+  "passed": false,
+  "browserReceiptRead": false,
+  "reviewFrozen": false,
+  "packageExecuted": false,
+  "stageRepeated": false,
+  "productExecuted": false,
+  "signed": false,
+  "checks": [
+    "genuine-v6-source-history",
+    "genuine-v6-native-history"
+  ],
+  "error": "ValueError: input pin /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/lib/libbsm.tbd",
+  "seconds": 20.360033290926367
+}

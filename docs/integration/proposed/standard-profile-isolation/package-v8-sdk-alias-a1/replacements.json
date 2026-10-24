@@ -1,0 +1,17 @@
+[
+  {
+    "find": "    def contract(self, review):\n",
+    "replace": "    def pin_browser_input(self, path, digest):\n        # One existing SDK linker alias, not a product/source path exception.\n        path = Path(path)\n        alias = Path('/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/lib/libbsm.tbd')\n        if path != alias:\n            return self.pin(path, digest)\n        target = alias.with_name('libbsm.0.tbd')\n        self.require(path.is_symlink() and path.readlink() == Path('libbsm.0.tbd')\n            and path.resolve() == target and not target.is_symlink()\n            and digest == '12b45397e34d2d80e6df3a3ff926f9b71abd01e060aaef80fafc9ec3f91282c3',\n            'Exact original libbsm SDK alias required')\n        self.pin(target, digest)\n        return path\n\n    def contract(self, review):\n",
+    "count": 1
+  },
+  {
+    "find": "            self.pin(row['path'], row['sha256'])\n        return c",
+    "replace": "            self.pin_browser_input(row['path'], row['sha256'])\n        return c",
+    "count": 1
+  },
+  {
+    "find": "        for name,value in expected_full.items(): pin(Path(build['source'])/name,value)",
+    "replace": "        for name,value in expected_full.items(): self.pin_browser_input(Path(build['source'])/name,value)",
+    "count": 1
+  }
+]

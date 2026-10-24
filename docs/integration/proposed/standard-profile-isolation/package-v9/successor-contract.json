@@ -1,0 +1,1801 @@
+{
+  "format": "aux.standard-isolation.package-v9.contract.v1",
+  "complete": true,
+  "inputs": [
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/content-policy-ack-v1/manifest.json",
+      "sha256": "fbeb48df6cb4a6243fe4a604f6b2b01f20461f1011ea69fcef12496981fa4a1a"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/content-policy-ack-v1/anchors.json",
+      "sha256": "4cb5c20ef9b454970ee342d3ea942384310c8f50437a62651e3666320e7d87c1"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/content-policy-ack-v2/manifest.json",
+      "sha256": "84d466404db41fd9e78f44d1333b7153debc476d7e5e75664346037a41204ec5"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/content-policy-ack-v2/anchors.json",
+      "sha256": "a6426a60d5062923101f6e3cbf62f1b42d9d1262b41403535a860b050a843b16"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/meta-connection-lifetime-a1/native-replacements.json",
+      "sha256": "9e79a93105cc5550132259aacb77245471f8b5795dc4caef6e8caf58c0271050"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/meta-connection-lifetime-a1/native-replacements.json",
+      "sha256": "9e79a93105cc5550132259aacb77245471f8b5795dc4caef6e8caf58c0271050"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/meta-connection-lifetime-a2/native-replacements.json",
+      "sha256": "5cec09d5324aefa7db33925a07da12aa88a20fa9133250265977cb97e0c94e48"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/meta-connection-lifetime-a2/native-replacements.json",
+      "sha256": "5cec09d5324aefa7db33925a07da12aa88a20fa9133250265977cb97e0c94e48"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/native-host-stderr-a1/manifest.json",
+      "sha256": "1f8299193922df7b44efd95b874b556ea5395f055305597c4e28bd984ed9c010"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/native-host-stderr-a1/replacements.json",
+      "sha256": "2fbce46c73db617d42e960322c24a779de32ee71708a308562024b03fa59d301"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/content-policy-ack-gn-a1/manifest.json",
+      "sha256": "993c149e0faff6725f6653d4c0e7d5153329ecf0b577d24feed0cbaa86c481ac"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/content-policy-ack-gn-a1/replacements.json",
+      "sha256": "c856b74d099ce70ef96df61284b14d606e3ef05775977fc080f816603d78ed08"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/content-policy-ack-v3/manifest.json",
+      "sha256": "e14d564c2e30cc74270dfbf29a0e5c48c907c01faa080bb63faa49550aea42a3"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/content-policy-ack-v3/anchors.json",
+      "sha256": "aa2fbce2949c411a4c646e831ef1c7c8cb57e0a58e57ab39998d18d6bb2e3417"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/native-credential-lock-a1/compile-review.json",
+      "sha256": "995f6eb7a7a58cf6f82294dbdf9df06573dc77002a493997727650ebdc6aa6ba"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/native-credential-lock-a1/overlay.json",
+      "sha256": "d6bc4ab8f93851383d3a2405b6cdf5ec6981ccf6d5e89ac61271a304b1c6981e"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/daemon-observer-reverse-coverage-a1/compile-review.json",
+      "sha256": "0de0852fc056e2fc859cbf2a4ec63fcdb29ebcb2b71224c5ffb1009a7705a9ae"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/daemon-observer-reverse-coverage-a1/overlay.json",
+      "sha256": "b242ef8e84d0a18832040e86cf005138741460d807e249597fa41deba129be66"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/daemon-projection-v5/immutable-inputs.json",
+      "sha256": "f473ecee4a8f8d3ed9a95b0c6907135f3590e59acf1a3aae431a728f1757c987"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/native-credential-lock-a1/overlay.json",
+      "sha256": "d6bc4ab8f93851383d3a2405b6cdf5ec6981ccf6d5e89ac61271a304b1c6981e"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/meta-connection-lifetime-a1/overlay.json",
+      "sha256": "3749e7200c18cee34fa21aa7c33d1f3218aea02173af76f6ef543108bfb7c993"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/content-policy-ack-v1/policy-inputs.json",
+      "sha256": "267801a3188826ebcf4793fb53e6c0f09f2030e8b13f8ccddb17093d4c11db09"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/meta-connection-lifetime-a1/scope-inputs.json",
+      "sha256": "3cfbdf9b2e766d5ef74b0096f5577d91f41e3b3786c20d86e1d0173bd55dc639"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/meta-connection-lifetime-a2/manifest.json",
+      "sha256": "906b6864d426d322f41ddd74d161befd0e00b24680e523028c701675e98c4779"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/integration/native-build-a6.json",
+      "sha256": "62c74376e452eb5c05d23dce86cc9a696ae7780ef47cc56c51084fbeb89c75d5"
+    },
+    {
+      "path": "/private/tmp/aux-standard-daemon-link-20261024-a6/results.json",
+      "sha256": "f2e5bb24ca213ac569a31fe7e88c40d92a0624e049a2e97fdf0dc630ce374975"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/integration/daemon-composition-a6.json",
+      "sha256": "bbe32ae3c4ad31465855f9ff21bd2a30ce084ab4afebda2790634395a647f702"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/daemon-crash-registration-close-a1/manifest.json",
+      "sha256": "c967a66b355e18ddf387d8948be8b6d6d3e45b7c095a4f571a09cc9a03471143"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/daemon-crash-registration-close-a1/compile-review.json",
+      "sha256": "744199d9d6023de22f0e9415dd58d0a9110f74d5de8c8249730856dd301109f5"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/integration/build-native-a6.py",
+      "sha256": "3e3b11ba694afbf0536f8d7717d82151bf3789807c2fafd9e594c0489dcef45a"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/daemon-crash-registration-close-a1/source/AuxNativeDaemonMain.cc",
+      "sha256": "baf0266ee957b652787aa91c0fe1d49b2ddbe35aa938c23dd4f6d37784764982"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/daemon-crash-registration-close-a1/source/AuxDevelopmentOwnerDrain.swift",
+      "sha256": "990a816ff7ba364144e532bd6959699bdbf3a0efc8bebf1507c55da72bdecaa2"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/daemon-crash-registration-close-a1/source/AuxInheritedCrashRegistration.cc",
+      "sha256": "d26b9d5bf21c1b325e9697dca3a5b8a585ffad3184708ff959fee175daeb0bba"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/daemon-crash-registration-close-a1/source/AuxInheritedCrashRegistration.h",
+      "sha256": "4eb3eaff5708bf4d45cbe9149e859e5c73a7f1bc6f5090ba1161c4a093f996e1"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/browser-native-host-custody-a1/manifest.json",
+      "sha256": "d2bb82e4f024d82628820c581dbd94bccc70476594983e4f57d0b6b69f617535"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/browser-native-host-custody-a1/replacements.json",
+      "sha256": "4a919344fdbff9831a51f89a6c10f1394cb7d073d48c17d76e7f9f4d447d8075"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/browser-custody-content-a5/manifest.json",
+      "sha256": "4891807aa378e321089e884d5552a3a208f80e10c44775d7bfbfc29198556db2"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/browser-custody-content-a5/replacements.json",
+      "sha256": "afc6c251c70ce07cc395ac451e571cc68ea23af6b561be48a11b0077c0ae11f3"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/browser-native-host-reservation-refusal-a1/manifest.json",
+      "sha256": "da4cdd319696130c9ff9690fa7f9eca4fdd4937214590cf31a169d3e1337d078"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/browser-native-host-reservation-refusal-a1/replacements.json",
+      "sha256": "410307445026ebbda0fa5b713cd53a168e85b3a3127601e681d54f2facea7f6b"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/browser-crashpad-close-a1/manifest.json",
+      "sha256": "9418c4f4fad071b5470a2a3f746b9643ec82d509d2d115736d15ba624f8c5771"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/browser-crashpad-close-a1/replacements.json",
+      "sha256": "8bc755df098b44127b0e42aea34b70202acaa94146f6f62e96d72bb554c0cb49"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/browser-crashpad-system-handler-a1/manifest.json",
+      "sha256": "aba02742b3801abdcf4dbe74c9cafebd306a511b2fd59dfc0c097bf86b7eab70"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/browser-crashpad-system-handler-a1/replacements.json",
+      "sha256": "36d41ebd61946fa4340f83f1517061157de0d5ec15d8a0cb6c889eae7e91130f"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/browser-custody-gn-a1/manifest.json",
+      "sha256": "e61477e10dc746f595b3280ac8298484be4408b0a2f9ed87c4f1085cc1d3a7bc"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/browser-custody-gn-a1/replacements.json",
+      "sha256": "150be39e4bb4cd632d726b809d562a6afca5fdad8efd8d73e5a43c43eae74aa9"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/content-policy-ack-v4/manifest.json",
+      "sha256": "233a1755068e78178a595e5eed3bb1ad8a43c2e4cf586f76d6d0d77919cadeac"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/content-policy-ack-v4/replacements.json",
+      "sha256": "19201400b04c15096dbe552d35e680b232f1adc7d661ed6cd93fc11c5d6c53e9"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/content-policy-ack-v4-custody/manifest.json",
+      "sha256": "c89b946bf66576a20e97cb005db39eba2ac83df6153f5bd84b3817d4ed965626"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/content-policy-ack-v4-custody/replacements.json",
+      "sha256": "a1d50b37cb225ea914847b501f788f9f3bcfceaa1d0d660a4f184554385b3399"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/meta-connection-lifetime-a3/manifest.json",
+      "sha256": "3bc8c9d641ae690539d397fddc61f78d57e3b21fe96373f34e1cb0563ab7ef31"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/meta-connection-lifetime-a3/replacements.json",
+      "sha256": "a14ed3d5d2e5a3d0571c54c94c4f7b24b13b94551cd56f72f721897f1368c3e5"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/build/config/mac/rules.gni",
+      "sha256": "386c9c81ba918548bdb69979d1dcf667e3f069144949cd11eb6555b92558fecf"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/build/config/BUILDCONFIG.gn",
+      "sha256": "074d2a608fb415e0359758c9bbff18930168690f719c854e3769f8e5c40015c2"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/build/config/compiler/BUILD.gn",
+      "sha256": "270ea6da49e42e7701e05033c5cd5ef9d351dcdb3c9cabfb1f4566b71a2426b3"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/buildtools/third_party/libc++abi/BUILD.gn",
+      "sha256": "560588f347ec4de8fc61024a6c036047ce6a6e5f1f9f2f28295816933497118f"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/app/app.exports",
+      "sha256": "89423ca41c39a99de3627f4107e5b795cc3790f33efdb4cf179f67271438d69f"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/third_party/crashpad/crashpad/client/BUILD.gn",
+      "sha256": "da905f5165e272c5ba5b976d0c8de8464a885eb9a69bdbbc9670b4674ab60896"
+    },
+    {
+      "path": "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/lib/libEndpointSecurity.tbd",
+      "sha256": "58f6c431dc8f63c9282ce6ca1c3dce983247e022e930e83ea2a4abf72e2353b6"
+    },
+    {
+      "path": "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/lib/libbsm.tbd",
+      "sha256": "12b45397e34d2d80e6df3a3ff926f9b71abd01e060aaef80fafc9ec3f91282c3"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/native-host-constructor-a1/manifest.json",
+      "sha256": "5fb0defe5bf070363a3d609ef9caa3de7c40aa3c084994da9544a49c822abdd4"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/native-host-constructor-a1/replacements.json",
+      "sha256": "aee1cbb6492cbd2c5ada75cf70b36b75c858ef0e3d7a9dd4d6322aefa8a4b5e1"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/browser-custody-compiler-a1/manifest.json",
+      "sha256": "ec495e53b4760f955afa9ccd3924cf78263d8bc26b1cfd3e1af87350c6ae1e9f"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/browser-custody-compiler-a1/replacements.json",
+      "sha256": "aed4680c2345fec3582a4dfc416c86d71b5d1a3fe57831a838f38d41b94b8486"
+    }
+  ],
+  "sourceStages": [
+    {
+      "name": "native-credential-lock",
+      "directory": "native-credential-lock-a1",
+      "module": "docs/integration/proposed/standard-profile-isolation/native-credential-lock-a1/source/transform.mjs",
+      "export": "transformAuxChatGPTNativeCredentialLock",
+      "count": 1
+    },
+    {
+      "name": "meta-connection-lifetime",
+      "directory": "meta-connection-lifetime-a1",
+      "module": "docs/integration/proposed/standard-profile-isolation/meta-connection-lifetime-a1/source/transform.mjs",
+      "export": "transformAuxMetaConnectionLifetime",
+      "count": 14
+    }
+  ],
+  "shimStages": [
+    {
+      "kind": "chatgpt-login",
+      "beforeSha256": "5fa0b56141c9fb515c6b5ff979340c0958bf3b9dd79fb60a7636357605e73ede",
+      "output": "/private/tmp/aux-standard-daemon-projection-20261024-a4/native/aux-chatgpt.cjs",
+      "afterSha256": "43f8ce1e95d34c3deeca3f6c0a2cecd8b55dcce2342a09f490fbfc06d496e3ef",
+      "anchors": [
+        {
+          "find": "      const code = await new Promise((resolve, reject) => {\n        const child = spawn('/usr/bin/lockf', ['-s', '-t', '0', '3'], { stdio: ['ignore', 'ignore', 'ignore', fd], env: { PATH: '/usr/bin:/bin', LANG: 'C' } });\n        const timeout = setTimeout(() => { child.kill('SIGKILL'); }, 5000);\n        child.once('error', error => { clearTimeout(timeout); reject(Error('ChatGPT: local lock service unavailable')); });\n        child.once('close', (code, signal) => { clearTimeout(timeout); signal ? reject(Error('ChatGPT: local lock acquisition interrupted')) : resolve(code); });\n      });\n",
+          "replace": "      const code = await acquireChatGPTLock(fd, this.lifetime);\n",
+          "count": 1
+        },
+        {
+          "find": "class LocalChatGPTStore {",
+          "replace": "// Descriptor lifetime ends only after Node's actual child close event. Killing\n// or receiving error is not close, and close alone is not descendant proof.\nfunction acquireChatGPTLock(fd, lifetime, spawnChild = spawn, clock = globalThis) {\n  lifetime?.admit();\n  // This inherited-FD lock helper is outside the native Exec/PTY protocol.\n  // Keep descendant uncertainty sticky until an authenticated native FD-lock\n  // implementation replaces it; never accept a JS PID or direct-exit proof.\n  lifetime?.unknown();\n  return new Promise((resolve, reject) => {\n    let child, failure, timeout;\n    const abort = () => { failure ||= Error('ChatGPT: local lock acquisition interrupted'); try { child?.kill('SIGKILL'); } catch(error) { lifetime?.unknown(); } };\n    try { child = spawnChild('/usr/bin/lockf', ['-s', '-t', '0', '3'], { stdio: ['ignore', 'ignore', 'ignore', fd], env: { PATH: '/usr/bin:/bin', LANG: 'C' } }); }\n    catch(error) { reject(Error('ChatGPT: local lock service unavailable')); return; }\n    child.once('error', () => { failure ||= Error('ChatGPT: local lock service unavailable'); });\n    child.once('close', (code, signal) => {\n      clock.clearTimeout(timeout); lifetime?.signal.removeEventListener('abort', abort);\n      if (failure || signal) reject(failure || Error('ChatGPT: local lock acquisition interrupted'));\n      else resolve(code);\n    });\n    timeout = clock.setTimeout(abort, 5000);\n    lifetime?.signal.addEventListener('abort', abort, {once:true});\n    if (lifetime?.signal.aborted) abort();\n  });\n}\nclass LocalChatGPTStore {",
+          "count": 1
+        },
+        {
+          "find": "let client;\nfunction daemonClient() { return client ||= new ChatGPTPlanClient({ store: new LocalChatGPTStore() }); }",
+          "replace": "let client, configuredLifetime;\nfunction configureLifetime(lifetime) {\n  need(lifetime && ['run','request','unknown','admit'].every(name => typeof lifetime[name] === 'function') && lifetime.signal, 'lifetime owner required');\n  need(!client && (!configuredLifetime || configuredLifetime === lifetime), 'lifetime owner changed after initialization');\n  configuredLifetime = lifetime;\n}\nfunction daemonClient() {\n  configuredLifetime?.admit();\n  if (!client) {\n    const store = new LocalChatGPTStore(); store.lifetime = configuredLifetime;\n    client = new ChatGPTPlanClient({store, ...(configuredLifetime ? {fetch:configuredLifetime.request} : {})});\n    if (configuredLifetime) for (const name of ['complete','auth','modelIds','signOut']) {\n      const original = client[name];\n      client[name] = (...args) => configuredLifetime.run(() => original.apply(client,args));\n    }\n  }\n  return client;\n}",
+          "count": 1
+        },
+        {
+          "find": "module.exports = { ISSUER, RESOURCE, SCOPES,",
+          "replace": "module.exports = { configureLifetime, cancel:flowId=>client?.cancel(flowId), ISSUER, RESOURCE, SCOPES,",
+          "count": 1
+        }
+      ],
+      "overlay": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/chatgpt-login/overlay.json",
+      "overlaySha256": "2ce643624134497a39f45cace040e7215d969afecb7a342fe06740980d53e557"
+    },
+    {
+      "kind": "native-credential-lock",
+      "beforeSha256": "43f8ce1e95d34c3deeca3f6c0a2cecd8b55dcce2342a09f490fbfc06d496e3ef",
+      "output": "/private/tmp/aux-standard-daemon-projection-20261024-a5/native/aux-chatgpt.cjs",
+      "afterSha256": "ab87a75d99a34f28cb4558a6060bfd2fdad0e0f4acbc9f69da4a4c09f8de922f",
+      "anchors": [
+        {
+          "find": "const { spawn } = require('node:child_process');",
+          "replace": "const { AsyncLocalStorage } = require('node:async_hooks');",
+          "count": 1
+        },
+        {
+          "find": "// Descriptor lifetime ends only after Node's actual child close event. Killing\n// or receiving error is not close, and close alone is not descendant proof.\nfunction acquireChatGPTLock(fd, lifetime, spawnChild = spawn, clock = globalThis) {\n  lifetime?.admit();\n  // This inherited-FD lock helper is outside the native Exec/PTY protocol.\n  // Keep descendant uncertainty sticky until an authenticated native FD-lock\n  // implementation replaces it; never accept a JS PID or direct-exit proof.\n  lifetime?.unknown();\n  return new Promise((resolve, reject) => {\n    let child, failure, timeout;\n    const abort = () => { failure ||= Error('ChatGPT: local lock acquisition interrupted'); try { child?.kill('SIGKILL'); } catch(error) { lifetime?.unknown(); } };\n    try { child = spawnChild('/usr/bin/lockf', ['-s', '-t', '0', '3'], { stdio: ['ignore', 'ignore', 'ignore', fd], env: { PATH: '/usr/bin:/bin', LANG: 'C' } }); }\n    catch(error) { reject(Error('ChatGPT: local lock service unavailable')); return; }\n    child.once('error', () => { failure ||= Error('ChatGPT: local lock service unavailable'); });\n    child.once('close', (code, signal) => {\n      clock.clearTimeout(timeout); lifetime?.signal.removeEventListener('abort', abort);\n      if (failure || signal) reject(failure || Error('ChatGPT: local lock acquisition interrupted'));\n      else resolve(code);\n    });\n    timeout = clock.setTimeout(abort, 5000);\n    lifetime?.signal.addEventListener('abort', abort, {once:true});\n    if (lifetime?.signal.aborted) abort();\n  });\n}\n",
+          "replace": "// Native capabilities stay in this module's closure. No FD/path is accepted by\n// the lock service. Every actual store method below is finite and synchronous.\nconst credentialStores = new WeakMap();\nfunction credentialScope(store, account, body) {\n  const state = credentialStores.get(store);\n  need(state, 'native credential locking unavailable');\n  state.lifetime.admit(); state.lifetime.signal.throwIfAborted();\n  const inherited = state.context.getStore();\n  if (inherited) {\n    need(account === undefined || account === inherited.key, 'credential transaction account changed');\n    need(store.root === inherited.token.root, 'credential root changed');\n    return state.native.sync(inherited.token, body);\n  }\n  const key = account === undefined ? 'aux-local-default' : account;\n  const token = state.native.begin(key);\n  try {\n    need(store.root === token.root, 'credential root changed');\n    return state.context.run({key,token}, () => state.native.sync(token,body));\n  } finally { state.native.close(token); }\n}\n",
+          "count": 1
+        },
+        {
+          "find": "  constructor(root = join(process.env.AUX_HOME || join(homedir(), '.aux'), 'local-only', 'chatgpt')) {\n    this.root = privateDirectory(root); this.operations = new Map();\n  }",
+          "replace": "  constructor(root, lifetime) {\n    const native = lifetime?.credentialLocks;\n    need(native && ['begin','sync','close'].every(name => typeof native[name] === 'function'), 'native credential locking unavailable');\n    lifetime.admit(); lifetime.signal.throwIfAborted();\n    const token = native.begin('aux-local-default');\n    try {\n      need(root === undefined || root === token.root, 'credential root must match the native owner');\n      this.root = token.root; this.operations = new Map();\n      credentialStores.set(this, {native,lifetime,context:new AsyncLocalStorage()});\n      for (const name of ['hostId','path','read','write','registration','saveRegistration','clearRegistration','clearTokens']) {\n        const original = LocalChatGPTStore.prototype[name];\n        Object.defineProperty(this,name,{value:(...args)=>credentialScope(this,name==='hostId'?undefined:args[0],()=>original.apply(this,args))});\n      }\n    } finally { native.close(token); }\n  }",
+          "count": 1
+        },
+        {
+          "find": "  async diskLocked(key, fn) {\n    privateDirectory(this.root);\n    need(process.platform === 'darwin', 'protected local locking is supported only on macOS');\n    const path = join(this.root, `${digest(key)}.lock`);\n    const marker = { schema: 'aux.chatgpt.auth-lock.v2', account: digest(key) };\n    let fd;\n    try {\n      try {\n        fd = openSync(path, constants.O_RDWR | constants.O_NONBLOCK | constants.O_CREAT | constants.O_EXCL | nofollow, 0o600);\n        writeFileSync(fd, JSON.stringify(marker)); fsyncSync(fd);\n      } catch (error) {\n        if (fd !== undefined || error.code !== 'EEXIST') throw error;\n        fd = openSync(path, constants.O_RDWR | constants.O_NONBLOCK | nofollow);\n      }\n      const stat = fstatSync(fd);\n      need(stat.isFile() && stat.uid === process.getuid() && (stat.mode & 0o077) === 0 && stat.nlink === 1 && stat.size < 1024, 'unsafe local lock file');\n      let existing; try { const bytes = Buffer.alloc(stat.size); need(readSync(fd, bytes, 0, bytes.length, 0) === bytes.length, 'incomplete lock marker'); existing = JSON.parse(bytes.toString('utf8')); } catch { throw Error('ChatGPT: legacy or incomplete lock needs explicit recovery review'); }\n      need(existing.schema === marker.schema && existing.account === marker.account, 'legacy or mismatched lock needs explicit recovery review');\n      // macOS lockf's descriptor form takes BSD flock on the inherited open-file\n      // description. This process retains the same descriptor after lockf exits.\n      // Its crash releases the kernel lock; the permanent inode is never unlinked.\n      const code = await acquireChatGPTLock(fd, this.lifetime);\n      need(code === 0, code === 75 ? 'another local credential operation is in progress' : 'local lock acquisition failed');\n      const current = lstatSync(path); privateDirectory(this.root);\n      need(current.dev === stat.dev && current.ino === stat.ino && current.nlink === 1, 'local lock namespace changed');\n      return await fn();\n    } finally { if (fd !== undefined) closeSync(fd); }\n  }\n",
+          "replace": "  async diskLocked(key, fn) {\n    const state = credentialStores.get(this);\n    need(state, 'native credential locking unavailable');\n    state.lifetime.admit(); state.lifetime.signal.throwIfAborted();\n    const token = state.native.begin(key);\n    const abort = () => { try { state.native.close(token); } catch { state.lifetime.unknown(); } };\n    try {\n      need(this.root === token.root, 'credential root changed');\n      state.lifetime.signal.addEventListener('abort',abort,{once:true});\n      if (state.lifetime.signal.aborted) { abort(); state.lifetime.signal.throwIfAborted(); }\n      // Await retains logical exclusion; it is NOT native completion evidence.\n      // Actual writes go through the finite per-method guards, which reject a\n      // closed lease even if a late provider callback resumes this context.\n      return await state.context.run({key,token},fn);\n    } finally {\n      state.lifetime.signal.removeEventListener('abort',abort);\n      state.native.close(token);\n    }\n  }\n",
+          "count": 1
+        },
+        {
+          "find": "const store = new LocalChatGPTStore(); store.lifetime = configuredLifetime;",
+          "replace": "const store = new LocalChatGPTStore(undefined, configuredLifetime);",
+          "count": 1
+        }
+      ],
+      "overlay": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/native-credential-lock-a1/overlay.json",
+      "overlaySha256": "d6bc4ab8f93851383d3a2405b6cdf5ec6981ccf6d5e89ac61271a304b1c6981e"
+    }
+  ],
+  "shimOverlay": {
+    "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/native-credential-lock-a1/overlay.json",
+    "sha256": "d6bc4ab8f93851383d3a2405b6cdf5ec6981ccf6d5e89ac61271a304b1c6981e"
+  },
+  "shimOutputSha256": "ab87a75d99a34f28cb4558a6060bfd2fdad0e0f4acbc9f69da4a4c09f8de922f",
+  "nativeStages": [
+    {
+      "actualInput": "nativeCredentialActual",
+      "format": "aux.chatgpt-credential-native.actual.v1",
+      "receiptPins": {
+        "compileReviewSha256": {
+          "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/native-credential-lock-a1/compile-review.json",
+          "sha256": "995f6eb7a7a58cf6f82294dbdf9df06573dc77002a493997727650ebdc6aa6ba"
+        },
+        "overlaySha256": {
+          "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/native-credential-lock-a1/overlay.json",
+          "sha256": "d6bc4ab8f93851383d3a2405b6cdf5ec6981ccf6d5e89ac61271a304b1c6981e"
+        }
+      },
+      "commandNames": [
+        "dependencies",
+        "compile",
+        "link"
+      ],
+      "units": [
+        {
+          "commandName": "compile",
+          "scanName": "dependencies",
+          "compile": [
+            "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang++",
+            "-fblocks",
+            "-I/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/native-credential-lock-a1/source",
+            "-I/private/tmp/aux-standard-native-source-20261023-a4",
+            "-I/private/tmp/aux-standard-browser-source-20261023-a2/chrome/browser/aux",
+            "-I/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/profile-isolation-local-finish/runtime-cache-async-relink-a3/source",
+            "-I/private/tmp/aux-standard-native-source-20261023-a4",
+            "-I/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/profile-isolation-local-finish/runtime-cache-async-relink-a3/source",
+            "-I/private/tmp/aux-async-writes-final/docs/integration/proposed/profile-isolation-next/spawn-custody/source",
+            "-I/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/deps/googletest/include",
+            "-I/private/tmp/aux-async-writes-final/docs/integration/proposed/profile-isolation-final/writes/source",
+            "-I/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/src",
+            "-I/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/profile-isolation-continuation/broker-writes/source",
+            "-I/private/tmp/aux-broker-writes-20261023/docs/integration/proposed/profile-isolation-continuation/broker-writes/source",
+            "-I/private/tmp/aux-broker-writes-20261023/docs/integration/proposed/profile-isolation-next/spawn-custody/source",
+            "-I/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/profile-isolation-next/browser-roots/source",
+            "-I/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/profile-isolation-next/containment/source",
+            "-isysroot",
+            "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk",
+            "-I",
+            "/private/tmp/aux-worker-close-successor/docs/integration/proposed/final-completion/native/exec-parent/source",
+            "-I",
+            "/private/tmp/aux-worker-close-successor/docs/integration/proposed/aux-native-authenticated-pty-helper/source",
+            "-std=c++20",
+            "-arch",
+            "arm64",
+            "-mmacosx-version-min=13.5",
+            "-DNAPI_VERSION=8",
+            "-fPIC",
+            "-DAUX_ATOMIC_CSK_DISPATCH=1",
+            "-DAUX_NATIVE_DAEMON_AUTHORITY_SERVER=1",
+            "-I",
+            "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-native-daemon-main/source",
+            "-I",
+            "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/src",
+            "-I",
+            "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/deps/v8/include",
+            "-I",
+            "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/deps/uv/include",
+            "-I",
+            "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-native-environment-preload/source",
+            "-I",
+            "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-native-node-runner/source",
+            "-I",
+            "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-native-sealed-parent-entry/source",
+            "-I",
+            "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-native-fresh-cold-bootstrap/source",
+            "-I",
+            "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-native-daemon-authority-transport/source",
+            "-I",
+            "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-owned-napi-adapter/source",
+            "-I",
+            "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-native-prepared-daemon-authority/source",
+            "-I",
+            "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-native-fresh-read-result-reconciliation/source",
+            "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/native-credential-lock-a1/source/AuxDevelopmentWorkerHost.cc",
+            "-c",
+            "-o",
+            "/private/tmp/aux-chatgpt-native-lock-objects-20261024-a1/worker-host.o",
+            "-MMD",
+            "-MF",
+            "/private/tmp/aux-chatgpt-native-lock-objects-20261024-a1/worker-host.d"
+          ],
+          "scan": [
+            "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang++",
+            "-fblocks",
+            "-I/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/native-credential-lock-a1/source",
+            "-I/private/tmp/aux-standard-native-source-20261023-a4",
+            "-I/private/tmp/aux-standard-browser-source-20261023-a2/chrome/browser/aux",
+            "-I/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/profile-isolation-local-finish/runtime-cache-async-relink-a3/source",
+            "-I/private/tmp/aux-standard-native-source-20261023-a4",
+            "-I/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/profile-isolation-local-finish/runtime-cache-async-relink-a3/source",
+            "-I/private/tmp/aux-async-writes-final/docs/integration/proposed/profile-isolation-next/spawn-custody/source",
+            "-I/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/deps/googletest/include",
+            "-I/private/tmp/aux-async-writes-final/docs/integration/proposed/profile-isolation-final/writes/source",
+            "-I/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/src",
+            "-I/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/profile-isolation-continuation/broker-writes/source",
+            "-I/private/tmp/aux-broker-writes-20261023/docs/integration/proposed/profile-isolation-continuation/broker-writes/source",
+            "-I/private/tmp/aux-broker-writes-20261023/docs/integration/proposed/profile-isolation-next/spawn-custody/source",
+            "-I/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/profile-isolation-next/browser-roots/source",
+            "-I/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/profile-isolation-next/containment/source",
+            "-isysroot",
+            "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk",
+            "-I",
+            "/private/tmp/aux-worker-close-successor/docs/integration/proposed/final-completion/native/exec-parent/source",
+            "-I",
+            "/private/tmp/aux-worker-close-successor/docs/integration/proposed/aux-native-authenticated-pty-helper/source",
+            "-std=c++20",
+            "-arch",
+            "arm64",
+            "-mmacosx-version-min=13.5",
+            "-DNAPI_VERSION=8",
+            "-fPIC",
+            "-DAUX_ATOMIC_CSK_DISPATCH=1",
+            "-DAUX_NATIVE_DAEMON_AUTHORITY_SERVER=1",
+            "-I",
+            "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-native-daemon-main/source",
+            "-I",
+            "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/src",
+            "-I",
+            "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/deps/v8/include",
+            "-I",
+            "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/deps/uv/include",
+            "-I",
+            "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-native-environment-preload/source",
+            "-I",
+            "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-native-node-runner/source",
+            "-I",
+            "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-native-sealed-parent-entry/source",
+            "-I",
+            "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-native-fresh-cold-bootstrap/source",
+            "-I",
+            "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-native-daemon-authority-transport/source",
+            "-I",
+            "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-owned-napi-adapter/source",
+            "-I",
+            "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-native-prepared-daemon-authority/source",
+            "-I",
+            "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-native-fresh-read-result-reconciliation/source",
+            "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/native-credential-lock-a1/source/AuxDevelopmentWorkerHost.cc",
+            "-MM",
+            "-MF",
+            "/private/tmp/aux-chatgpt-native-lock-objects-20261024-a1/worker-host.scan.d",
+            "-MT",
+            "worker-host.o"
+          ],
+          "dependencyFile": "/private/tmp/aux-chatgpt-native-lock-objects-20261024-a1/worker-host.d",
+          "scanFile": "/private/tmp/aux-chatgpt-native-lock-objects-20261024-a1/worker-host.scan.d"
+        }
+      ],
+      "linkManifest": "/private/tmp/aux-chatgpt-native-lock-objects-20261024-a1/daemon-inputs.json",
+      "linkReceipt": "/private/tmp/aux-standard-daemon-link-20261024-a4/results.json",
+      "operandReplacements": {
+        "/private/tmp/aux-standard-daemon-link-20261023-a3/swift-cache": "/private/tmp/aux-standard-daemon-link-20261024-a4/swift-cache",
+        "/private/tmp/aux-standard-daemon-objects-20261023-a2/worker-host.o": "/private/tmp/aux-chatgpt-native-lock-objects-20261024-a1/worker-host.o",
+        "/private/tmp/aux-standard-daemon-link-20261023-a3/Aux Daemon": "/private/tmp/aux-standard-daemon-link-20261024-a4/Aux Daemon"
+      },
+      "appendedOperands": [],
+      "objectCount": 13,
+      "addedPrivateDefinitions": [],
+      "linkInvocation": [
+        "/opt/homebrew/opt/python@3.15/bin/python3.15",
+        "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/profile-isolation-continuation/build/link-daemon.py",
+        "/private/tmp/aux-chatgpt-native-lock-objects-20261024-a1/daemon-inputs.json"
+      ]
+    },
+    {
+      "actualInput": "nativeObserverActual",
+      "format": "aux.daemon-observer-reverse.actual.v1",
+      "receiptPins": {
+        "compileReviewSha256": {
+          "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/daemon-observer-reverse-coverage-a1/compile-review.json",
+          "sha256": "0de0852fc056e2fc859cbf2a4ec63fcdb29ebcb2b71224c5ffb1009a7705a9ae"
+        },
+        "overlaySha256": {
+          "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/daemon-observer-reverse-coverage-a1/overlay.json",
+          "sha256": "b242ef8e84d0a18832040e86cf005138741460d807e249597fa41deba129be66"
+        }
+      },
+      "commandNames": [
+        "dependencies",
+        "compile",
+        "link"
+      ],
+      "units": [
+        {
+          "commandName": "compile",
+          "scanName": "dependencies",
+          "compile": [
+            "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang++",
+            "-fvisibility=hidden",
+            "-fblocks",
+            "-I/private/tmp/aux-standard-native-source-20261023-a4",
+            "-I/private/tmp/aux-standard-browser-source-20261023-a2/chrome/browser/aux",
+            "-I/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/profile-isolation-local-finish/runtime-cache-async-relink-a3/source",
+            "-std=c++20",
+            "-arch",
+            "arm64",
+            "-mmacosx-version-min=13.5",
+            "-fblocks",
+            "-fPIC",
+            "-isysroot",
+            "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk",
+            "-MMD",
+            "-MF",
+            "/private/tmp/aux-daemon-observer-reverse-a1/observer.d",
+            "-I",
+            "/private/tmp/aux-features-execution-organization-20261023/docs/integration/proposed/standard-profile-isolation/descendant-custody/source",
+            "-c",
+            "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/daemon-observer-reverse-coverage-a1/source/AuxTaskDescendantObserver.cc",
+            "-o",
+            "/private/tmp/aux-daemon-observer-reverse-a1/observer.o"
+          ],
+          "scan": [
+            "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang++",
+            "-fvisibility=hidden",
+            "-fblocks",
+            "-I/private/tmp/aux-standard-native-source-20261023-a4",
+            "-I/private/tmp/aux-standard-browser-source-20261023-a2/chrome/browser/aux",
+            "-I/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/profile-isolation-local-finish/runtime-cache-async-relink-a3/source",
+            "-std=c++20",
+            "-arch",
+            "arm64",
+            "-mmacosx-version-min=13.5",
+            "-fblocks",
+            "-fPIC",
+            "-isysroot",
+            "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk",
+            "-I",
+            "/private/tmp/aux-features-execution-organization-20261023/docs/integration/proposed/standard-profile-isolation/descendant-custody/source",
+            "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/daemon-observer-reverse-coverage-a1/source/AuxTaskDescendantObserver.cc",
+            "-MM",
+            "-MF",
+            "/private/tmp/aux-daemon-observer-reverse-a1/observer.scan.d",
+            "-MT",
+            "observer.o"
+          ],
+          "dependencyFile": "/private/tmp/aux-daemon-observer-reverse-a1/observer.d",
+          "scanFile": "/private/tmp/aux-daemon-observer-reverse-a1/observer.scan.d"
+        }
+      ],
+      "linkManifest": "/private/tmp/aux-daemon-observer-reverse-a1/daemon-inputs.json",
+      "linkReceipt": "/private/tmp/aux-standard-daemon-link-20261024-a5/results.json",
+      "operandReplacements": {
+        "/private/tmp/aux-standard-daemon-link-20261024-a4/swift-cache": "/private/tmp/aux-standard-daemon-link-20261024-a5/swift-cache",
+        "/private/tmp/aux-standard-daemon-link-20261024-a4/Aux Daemon": "/private/tmp/aux-standard-daemon-link-20261024-a5/Aux Daemon",
+        "/private/tmp/aux-standard-daemon-objects-20261023-a2/observer.o": "/private/tmp/aux-daemon-observer-reverse-a1/observer.o"
+      },
+      "appendedOperands": [],
+      "objectCount": 13,
+      "addedPrivateDefinitions": [],
+      "linkInvocation": [
+        "/opt/homebrew/opt/python@3.15/bin/python3.15",
+        "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/profile-isolation-continuation/build/link-daemon.py",
+        "/private/tmp/aux-daemon-observer-reverse-a1/daemon-inputs.json"
+      ]
+    },
+    {
+      "actualInput": "nativeCrashActual",
+      "format": "aux.standard-daemon.compile.v1",
+      "receiptPins": {
+        "planSha256": {
+          "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/integration/native-build-a6.json",
+          "sha256": "62c74376e452eb5c05d23dce86cc9a696ae7780ef47cc56c51084fbeb89c75d5"
+        }
+      },
+      "commandNames": [
+        "main-dependencies",
+        "inherited-crash-registration-dependencies",
+        "main",
+        "inherited-crash-registration",
+        "link"
+      ],
+      "units": [
+        {
+          "commandName": "main",
+          "scanName": "main-dependencies",
+          "compile": [
+            "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang++",
+            "-I/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/daemon-crash-registration-close-a1/source",
+            "-isysroot",
+            "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk",
+            "-fblocks",
+            "-I/private/tmp/aux-standard-native-source-20261023-a4",
+            "-I/private/tmp/aux-standard-browser-source-20261023-a2/chrome/browser/aux",
+            "-I/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/profile-isolation-local-finish/runtime-cache-async-relink-a3/source",
+            "-I",
+            "/private/tmp/aux-worker-close-successor/docs/integration/proposed/aux-native-worker-close-successor/source",
+            "-I",
+            "/private/tmp/aux-worker-close-successor/docs/integration/proposed/aux-native-authenticated-pty-helper/source",
+            "-MMD",
+            "-MF",
+            "/private/tmp/aux-daemon-crash-registration-close-check/main.d",
+            "-std=c++20",
+            "-arch",
+            "arm64",
+            "-mmacosx-version-min=13.5",
+            "-DNAPI_VERSION=8",
+            "-fPIC",
+            "-DAUX_ATOMIC_CSK_DISPATCH=1",
+            "-DAUX_NATIVE_DAEMON_AUTHORITY_SERVER=1",
+            "-I",
+            "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-native-daemon-main/source",
+            "-I",
+            "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/src",
+            "-I",
+            "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/deps/v8/include",
+            "-I",
+            "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/deps/uv/include",
+            "-I",
+            "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-native-environment-preload/source",
+            "-I",
+            "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-native-node-runner/source",
+            "-I",
+            "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-native-sealed-parent-entry/source",
+            "-I",
+            "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-native-fresh-cold-bootstrap/source",
+            "-I",
+            "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-native-daemon-authority-transport/source",
+            "-I",
+            "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-owned-napi-adapter/source",
+            "-I",
+            "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-native-prepared-daemon-authority/source",
+            "-I",
+            "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-native-fresh-read-result-reconciliation/source",
+            "-c",
+            "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/daemon-crash-registration-close-a1/source/AuxNativeDaemonMain.cc",
+            "-o",
+            "/private/tmp/aux-daemon-crash-registration-close-check/main.o"
+          ],
+          "scan": [
+            "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang++",
+            "-I/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/daemon-crash-registration-close-a1/source",
+            "-isysroot",
+            "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk",
+            "-fblocks",
+            "-I/private/tmp/aux-standard-native-source-20261023-a4",
+            "-I/private/tmp/aux-standard-browser-source-20261023-a2/chrome/browser/aux",
+            "-I/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/profile-isolation-local-finish/runtime-cache-async-relink-a3/source",
+            "-I",
+            "/private/tmp/aux-worker-close-successor/docs/integration/proposed/aux-native-worker-close-successor/source",
+            "-I",
+            "/private/tmp/aux-worker-close-successor/docs/integration/proposed/aux-native-authenticated-pty-helper/source",
+            "-std=c++20",
+            "-arch",
+            "arm64",
+            "-mmacosx-version-min=13.5",
+            "-DNAPI_VERSION=8",
+            "-fPIC",
+            "-DAUX_ATOMIC_CSK_DISPATCH=1",
+            "-DAUX_NATIVE_DAEMON_AUTHORITY_SERVER=1",
+            "-I",
+            "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-native-daemon-main/source",
+            "-I",
+            "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/src",
+            "-I",
+            "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/deps/v8/include",
+            "-I",
+            "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/deps/uv/include",
+            "-I",
+            "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-native-environment-preload/source",
+            "-I",
+            "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-native-node-runner/source",
+            "-I",
+            "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-native-sealed-parent-entry/source",
+            "-I",
+            "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-native-fresh-cold-bootstrap/source",
+            "-I",
+            "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-native-daemon-authority-transport/source",
+            "-I",
+            "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-owned-napi-adapter/source",
+            "-I",
+            "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-native-prepared-daemon-authority/source",
+            "-I",
+            "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-native-fresh-read-result-reconciliation/source",
+            "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/daemon-crash-registration-close-a1/source/AuxNativeDaemonMain.cc",
+            "-MM",
+            "-MF",
+            "/private/tmp/aux-daemon-crash-registration-close-check/main.scan.d",
+            "-MT",
+            "main.o"
+          ],
+          "dependencyFile": "/private/tmp/aux-daemon-crash-registration-close-check/main.d",
+          "scanFile": "/private/tmp/aux-daemon-crash-registration-close-check/main.scan.d"
+        },
+        {
+          "commandName": "inherited-crash-registration",
+          "scanName": "inherited-crash-registration-dependencies",
+          "compile": [
+            "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang++",
+            "-I/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/daemon-crash-registration-close-a1/source",
+            "-isysroot",
+            "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk",
+            "-fblocks",
+            "-I/private/tmp/aux-standard-native-source-20261023-a4",
+            "-I/private/tmp/aux-standard-browser-source-20261023-a2/chrome/browser/aux",
+            "-I/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/profile-isolation-local-finish/runtime-cache-async-relink-a3/source",
+            "-I",
+            "/private/tmp/aux-worker-close-successor/docs/integration/proposed/aux-native-worker-close-successor/source",
+            "-I",
+            "/private/tmp/aux-worker-close-successor/docs/integration/proposed/aux-native-authenticated-pty-helper/source",
+            "-MMD",
+            "-MF",
+            "/private/tmp/aux-daemon-crash-registration-close-check/inherited-crash-registration.d",
+            "-std=c++20",
+            "-arch",
+            "arm64",
+            "-mmacosx-version-min=13.5",
+            "-DNAPI_VERSION=8",
+            "-fPIC",
+            "-DAUX_ATOMIC_CSK_DISPATCH=1",
+            "-DAUX_NATIVE_DAEMON_AUTHORITY_SERVER=1",
+            "-I",
+            "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-native-daemon-main/source",
+            "-I",
+            "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/src",
+            "-I",
+            "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/deps/v8/include",
+            "-I",
+            "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/deps/uv/include",
+            "-I",
+            "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-native-environment-preload/source",
+            "-I",
+            "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-native-node-runner/source",
+            "-I",
+            "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-native-sealed-parent-entry/source",
+            "-I",
+            "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-native-fresh-cold-bootstrap/source",
+            "-I",
+            "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-native-daemon-authority-transport/source",
+            "-I",
+            "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-owned-napi-adapter/source",
+            "-I",
+            "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-native-prepared-daemon-authority/source",
+            "-I",
+            "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-native-fresh-read-result-reconciliation/source",
+            "-c",
+            "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/daemon-crash-registration-close-a1/source/AuxInheritedCrashRegistration.cc",
+            "-o",
+            "/private/tmp/aux-daemon-crash-registration-close-check/inherited-crash-registration.o"
+          ],
+          "scan": [
+            "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang++",
+            "-I/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/daemon-crash-registration-close-a1/source",
+            "-isysroot",
+            "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk",
+            "-fblocks",
+            "-I/private/tmp/aux-standard-native-source-20261023-a4",
+            "-I/private/tmp/aux-standard-browser-source-20261023-a2/chrome/browser/aux",
+            "-I/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/profile-isolation-local-finish/runtime-cache-async-relink-a3/source",
+            "-I",
+            "/private/tmp/aux-worker-close-successor/docs/integration/proposed/aux-native-worker-close-successor/source",
+            "-I",
+            "/private/tmp/aux-worker-close-successor/docs/integration/proposed/aux-native-authenticated-pty-helper/source",
+            "-std=c++20",
+            "-arch",
+            "arm64",
+            "-mmacosx-version-min=13.5",
+            "-DNAPI_VERSION=8",
+            "-fPIC",
+            "-DAUX_ATOMIC_CSK_DISPATCH=1",
+            "-DAUX_NATIVE_DAEMON_AUTHORITY_SERVER=1",
+            "-I",
+            "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-native-daemon-main/source",
+            "-I",
+            "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/src",
+            "-I",
+            "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/deps/v8/include",
+            "-I",
+            "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/deps/uv/include",
+            "-I",
+            "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-native-environment-preload/source",
+            "-I",
+            "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-native-node-runner/source",
+            "-I",
+            "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-native-sealed-parent-entry/source",
+            "-I",
+            "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-native-fresh-cold-bootstrap/source",
+            "-I",
+            "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-native-daemon-authority-transport/source",
+            "-I",
+            "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-owned-napi-adapter/source",
+            "-I",
+            "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-native-prepared-daemon-authority/source",
+            "-I",
+            "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-native-fresh-read-result-reconciliation/source",
+            "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/daemon-crash-registration-close-a1/source/AuxInheritedCrashRegistration.cc",
+            "-MM",
+            "-MF",
+            "/private/tmp/aux-daemon-crash-registration-close-check/inherited-crash-registration.scan.d",
+            "-MT",
+            "inherited-crash-registration.o"
+          ],
+          "dependencyFile": "/private/tmp/aux-daemon-crash-registration-close-check/inherited-crash-registration.d",
+          "scanFile": "/private/tmp/aux-daemon-crash-registration-close-check/inherited-crash-registration.scan.d"
+        }
+      ],
+      "linkManifest": "/private/tmp/aux-daemon-crash-registration-close-check/daemon-inputs.json",
+      "linkReceipt": "/private/tmp/aux-standard-daemon-link-20261024-a6/results.json",
+      "linkReceiptRef": {
+        "path": "/private/tmp/aux-standard-daemon-link-20261024-a6/results.json",
+        "sha256": "f2e5bb24ca213ac569a31fe7e88c40d92a0624e049a2e97fdf0dc630ce374975"
+      },
+      "operandReplacements": {
+        "/private/tmp/aux-standard-daemon-link-20261024-a5/swift-cache": "/private/tmp/aux-standard-daemon-link-20261024-a6/swift-cache",
+        "/private/tmp/aux-standard-native-source-20261023-a4/AuxDevelopmentOwnerDrain.swift": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/daemon-crash-registration-close-a1/source/AuxDevelopmentOwnerDrain.swift",
+        "/private/tmp/aux-standard-daemon-objects-20261023-a2/main.o": "/private/tmp/aux-daemon-crash-registration-close-check/main.o",
+        "/private/tmp/aux-standard-daemon-link-20261024-a5/Aux Daemon": "/private/tmp/aux-standard-daemon-link-20261024-a6/Aux Daemon"
+      },
+      "appendedOperands": [],
+      "insertedOperands": [
+        {
+          "index": 158,
+          "value": "/private/tmp/aux-daemon-crash-registration-close-check/inherited-crash-registration.o"
+        }
+      ],
+      "objectCount": 14,
+      "addedPrivateDefinitions": [
+        "_AuxCaptureInheritedCrashRegistration",
+        "_AuxCloseInheritedCrashRegistration"
+      ],
+      "sourceComposition": {
+        "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/integration/daemon-composition-a6.json",
+        "sha256": "bbe32ae3c4ad31465855f9ff21bd2a30ce084ab4afebda2790634395a647f702"
+      },
+      "linkInvocation": [
+        "/opt/homebrew/opt/python@3.15/bin/python3.15",
+        "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/profile-isolation-continuation/build/link-daemon.py",
+        "/private/tmp/aux-daemon-crash-registration-close-check/daemon-inputs.json"
+      ]
+    }
+  ],
+  "browserTransitions": [
+    {
+      "composition": {
+        "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/integration/browser-composition-a5.json",
+        "sha256": "ea0507501167c7191de44f5db1956ff53066ac301c4983a31d30e3acca98a6fb"
+      },
+      "layers": [
+        {
+          "name": "content-policy-ack-v1",
+          "manifest": {
+            "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/content-policy-ack-v1/manifest.json",
+            "sha256": "fbeb48df6cb4a6243fe4a604f6b2b01f20461f1011ea69fcef12496981fa4a1a"
+          },
+          "anchors": {
+            "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/content-policy-ack-v1/anchors.json",
+            "sha256": "4cb5c20ef9b454970ee342d3ea942384310c8f50437a62651e3666320e7d87c1"
+          },
+          "anchorCount": 44,
+          "files": [
+            {
+              "path": "content/public/browser/aux_sandbox_launch_binding.h",
+              "beforeSha256": null,
+              "afterSha256": "e4b0266fc3083fded6ac06d0e59b76d72e395afd70ce2de4bcbf2841f805a267",
+              "source": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/content-policy-ack-v1/source/content/public/browser/aux_sandbox_launch_binding.h",
+              "baseline": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/content-policy-ack-v1/baseline/content/public/browser/aux_sandbox_launch_binding.h"
+            },
+            {
+              "path": "content/public/browser/content_browser_client.h",
+              "beforeSha256": "256c923c9ab8cd072ac2409b2a6914d02ae3d6ec2e24bac46820fa40b92a43df",
+              "afterSha256": "b3e431dbd551a0bbe742a0322fa028645e17f4bdd607e01d693b90fc526d3601",
+              "source": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/content-policy-ack-v1/source/content/public/browser/content_browser_client.h",
+              "baseline": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/content-policy-ack-v1/baseline/content/public/browser/content_browser_client.h"
+            },
+            {
+              "path": "content/public/browser/content_browser_client.cc",
+              "beforeSha256": "73de0cadfbb1fb37d41e129ddcc5edc836b5035f7151f5d8b684eb079eb57974",
+              "afterSha256": "3eb8ab9eea36db1493e272c2029e55172bcd01994e636a3ec3afb96b95d90787",
+              "source": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/content-policy-ack-v1/source/content/public/browser/content_browser_client.cc",
+              "baseline": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/content-policy-ack-v1/baseline/content/public/browser/content_browser_client.cc"
+            },
+            {
+              "path": "content/browser/child_process_launcher_helper.h",
+              "beforeSha256": "d6ccc001aeb6f368fc932b7eb2e9600c3206265c6aed3a5c835ace04ba679653",
+              "afterSha256": "3061dd8b0952c2d70e417f3e810c5b737329fefdb837f0497e870cd81c31b001",
+              "source": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/content-policy-ack-v1/source/content/browser/child_process_launcher_helper.h",
+              "baseline": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/content-policy-ack-v1/baseline/content/browser/child_process_launcher_helper.h"
+            },
+            {
+              "path": "sandbox/mac/seatbelt_exec.h",
+              "beforeSha256": "75eb045a4c95352b3af8c65ff5e33d62e78270caad04922173a0c1b8aaa4d581",
+              "afterSha256": "ea5387242a1775ad854a10eef8eda19d42e76d9a9e7af9837c247b770a8270d8",
+              "source": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/content-policy-ack-v1/source/sandbox/mac/seatbelt_exec.h",
+              "baseline": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/content-policy-ack-v1/baseline/sandbox/mac/seatbelt_exec.h"
+            },
+            {
+              "path": "sandbox/mac/seatbelt_exec.cc",
+              "beforeSha256": "47c09440e41b26b8f7495b06e7d4ea7cd7eb84df4f83dd6abff2f0453fcf7b01",
+              "afterSha256": "295acddbf4b1f826e5905ada451cd895135435c7c12ef1f129cb02738fcbbc62",
+              "source": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/content-policy-ack-v1/source/sandbox/mac/seatbelt_exec.cc",
+              "baseline": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/content-policy-ack-v1/baseline/sandbox/mac/seatbelt_exec.cc"
+            },
+            {
+              "path": "content/browser/aux_child_lifetime.h",
+              "beforeSha256": "446f4dac61201c937cae66c4f7515e4aac7bb8cbe0ce14f613cb7661028d2fc6",
+              "afterSha256": "41e605c49fa58e3a3e0dd0120873af06cd245d4c8132fc5a383b2cc1680a87a4",
+              "source": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/content-policy-ack-v1/source/content/browser/aux_child_lifetime.h",
+              "baseline": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/content-policy-ack-v1/baseline/content/browser/aux_child_lifetime.h"
+            },
+            {
+              "path": "content/browser/child_process_launcher_helper_mac.cc",
+              "beforeSha256": "3593313f53dc2a6b149679340f148525b853354354b27f08e2374ddaf94115dd",
+              "afterSha256": "b82927e5ef6cf609f67e1ad47a24254fe7f2e16af8203c5156f2d9f2507cb2c9",
+              "source": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/content-policy-ack-v1/source/content/browser/child_process_launcher_helper_mac.cc",
+              "baseline": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/content-policy-ack-v1/baseline/content/browser/child_process_launcher_helper_mac.cc"
+            },
+            {
+              "path": "chrome/browser/aux/AuxContentPolicyBinding.h",
+              "beforeSha256": null,
+              "afterSha256": "1d2d85faa8f79e179c01e8c0fbe27fcef7b527bff85e66afc21c7205ccc18ddc",
+              "source": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/content-policy-ack-v1/source/chrome/browser/aux/AuxContentPolicyBinding.h",
+              "baseline": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/content-policy-ack-v1/baseline/chrome/browser/aux/AuxContentPolicyBinding.h"
+            },
+            {
+              "path": "chrome/browser/aux/AuxContentPolicyBinding.cc",
+              "beforeSha256": null,
+              "afterSha256": "c90f0eaebcb50e67b2daf3fbd82efe925a23715f681a20753ca1bdec49e39fd9",
+              "source": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/content-policy-ack-v1/source/chrome/browser/aux/AuxContentPolicyBinding.cc",
+              "baseline": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/content-policy-ack-v1/baseline/chrome/browser/aux/AuxContentPolicyBinding.cc"
+            },
+            {
+              "path": "chrome/browser/chrome_content_browser_client.h",
+              "beforeSha256": "63760dfa35a98dd907fae3adb6072f5d85bcc1a2715a96afcd48de60ba66f82a",
+              "afterSha256": "bfb9bb5975fca97f2ff1ae565baf69cae4d9437a2292541ccc856426630dd3e5",
+              "source": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/content-policy-ack-v1/source/chrome/browser/chrome_content_browser_client.h",
+              "baseline": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/content-policy-ack-v1/baseline/chrome/browser/chrome_content_browser_client.h"
+            },
+            {
+              "path": "chrome/browser/chrome_content_browser_client.cc",
+              "beforeSha256": "bafac29ed6899bcb8db8b4c3aaa97f88d6ec1ffc26b633491924ec58f629aa95",
+              "afterSha256": "0584d40c6a3d884a3510119ef787d15b18a7ed89ee5fab8a8f8516fc112c693a",
+              "source": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/content-policy-ack-v1/source/chrome/browser/chrome_content_browser_client.cc",
+              "baseline": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/content-policy-ack-v1/baseline/chrome/browser/chrome_content_browser_client.cc"
+            },
+            {
+              "path": "content/public/browser/aux_child_process_drain.h",
+              "beforeSha256": "56a55962ae71a7355927be8cabe8c3d5e24731587fdcf5cd2e64c1678f05f725",
+              "afterSha256": "223c82c4e8730f2c4c5a933b13061f13be1a970bdc1d930d1a430bd657f96c87",
+              "source": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/content-policy-ack-v1/source/content/public/browser/aux_child_process_drain.h",
+              "baseline": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/content-policy-ack-v1/baseline/content/public/browser/aux_child_process_drain.h"
+            }
+          ]
+        },
+        {
+          "name": "content-policy-ack-v2",
+          "manifest": {
+            "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/content-policy-ack-v2/manifest.json",
+            "sha256": "84d466404db41fd9e78f44d1333b7153debc476d7e5e75664346037a41204ec5"
+          },
+          "anchors": {
+            "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/content-policy-ack-v2/anchors.json",
+            "sha256": "a6426a60d5062923101f6e3cbf62f1b42d9d1262b41403535a860b050a843b16"
+          },
+          "anchorCount": 3,
+          "files": [
+            {
+              "path": "content/browser/aux_child_lifetime.h",
+              "beforeSha256": "41e605c49fa58e3a3e0dd0120873af06cd245d4c8132fc5a383b2cc1680a87a4",
+              "afterSha256": "7442ecebd1f40e2ac9d65f62b7689ab07f7daaf376b6e06d6482c061e672b33a",
+              "source": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/content-policy-ack-v2/source/content/browser/aux_child_lifetime.h",
+              "baseline": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/content-policy-ack-v2/baseline/content/browser/aux_child_lifetime.h"
+            },
+            {
+              "path": "chrome/browser/aux/AuxContentPolicyBinding.cc",
+              "beforeSha256": "c90f0eaebcb50e67b2daf3fbd82efe925a23715f681a20753ca1bdec49e39fd9",
+              "afterSha256": "08d96e02ddd9ada130d9622ef4b88fabfa0156764c9d3b2d6ba12f4fd774a2ea",
+              "source": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/content-policy-ack-v2/source/chrome/browser/aux/AuxContentPolicyBinding.cc",
+              "baseline": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/content-policy-ack-v2/baseline/chrome/browser/aux/AuxContentPolicyBinding.cc"
+            }
+          ]
+        },
+        {
+          "name": "meta-connection-lifetime-a1",
+          "manifest": {
+            "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/meta-connection-lifetime-a1/native-replacements.json",
+            "sha256": "9e79a93105cc5550132259aacb77245471f8b5795dc4caef6e8caf58c0271050"
+          },
+          "anchors": {
+            "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/meta-connection-lifetime-a1/native-replacements.json",
+            "sha256": "9e79a93105cc5550132259aacb77245471f8b5795dc4caef6e8caf58c0271050"
+          },
+          "anchorCount": 18,
+          "files": [
+            {
+              "path": "third_party/blink/public/devtools_protocol/domains/Target.pdl",
+              "beforeSha256": "136ca4a240e64aa727e0b261cbe7ac853748154aaa8c4a86fe818d7c522535d6",
+              "afterSha256": "5a1e7b0ffa3fbfba1d8d7d1457a1c18065d6745f9a64f1b83e91c9120ec2575c",
+              "source": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/meta-connection-lifetime-a1/native-source/third_party/blink/public/devtools_protocol/domains/Target.pdl",
+              "baseline": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/meta-connection-lifetime-a1/baseline/third_party/blink/public/devtools_protocol/domains/Target.pdl"
+            },
+            {
+              "path": "content/public/browser/devtools_manager_delegate.h",
+              "beforeSha256": "40eb2ff2b3e7833d67c072841965487a6a91d58648575ddd5dc931a5cbc1a71f",
+              "afterSha256": "a68762414021f680450d38670905e84836a2ddaf52ddd853ea4ab49bab5c7ce3",
+              "source": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/meta-connection-lifetime-a1/native-source/content/public/browser/devtools_manager_delegate.h",
+              "baseline": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/meta-connection-lifetime-a1/baseline/content/public/browser/devtools_manager_delegate.h"
+            },
+            {
+              "path": "content/public/browser/devtools_manager_delegate.cc",
+              "beforeSha256": "6bddf2a801e4afaa801a8580fc936d886cae196afd715b15022a8b8de977b6b8",
+              "afterSha256": "a29e237c88f749fb0e2bd9b92fedf1c4fed489c65409196d5bcfd11effd393d5",
+              "source": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/meta-connection-lifetime-a1/native-source/content/public/browser/devtools_manager_delegate.cc",
+              "baseline": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/meta-connection-lifetime-a1/baseline/content/public/browser/devtools_manager_delegate.cc"
+            },
+            {
+              "path": "chrome/browser/devtools/chrome_devtools_manager_delegate.h",
+              "beforeSha256": "90a00de04115f74411b1f37bb276f09392f7eaec702e9b4c779e1758c7c41e1a",
+              "afterSha256": "e687175087c5aec9433d4fe187df975a0301e580fdc196ec1a8bb3ada9fcf158",
+              "source": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/meta-connection-lifetime-a1/native-source/chrome/browser/devtools/chrome_devtools_manager_delegate.h",
+              "baseline": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/meta-connection-lifetime-a1/baseline/chrome/browser/devtools/chrome_devtools_manager_delegate.h"
+            },
+            {
+              "path": "chrome/browser/devtools/chrome_devtools_manager_delegate.cc",
+              "beforeSha256": "65b1bf002fba65086d8408d6d40ac99ef6b41d275b4764ebdace4f3e8bb24e52",
+              "afterSha256": "a1d1a68ca25fee53efdb1980a82879e6875b21669be22c65f44e5560e4e2748a",
+              "source": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/meta-connection-lifetime-a1/native-source/chrome/browser/devtools/chrome_devtools_manager_delegate.cc",
+              "baseline": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/meta-connection-lifetime-a1/baseline/chrome/browser/devtools/chrome_devtools_manager_delegate.cc"
+            },
+            {
+              "path": "chrome/browser/devtools/devtools_browser_context_manager.h",
+              "beforeSha256": "acff6a138586eb30652cd35afbd0e28384cf52af78c22bab9632ef7444f99e59",
+              "afterSha256": "f9cfb0b5b30e42e8b1fc3bffadf28ac64fb2e3502a896f2c67ef6856b8d04ad0",
+              "source": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/meta-connection-lifetime-a1/native-source/chrome/browser/devtools/devtools_browser_context_manager.h",
+              "baseline": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/meta-connection-lifetime-a1/baseline/chrome/browser/devtools/devtools_browser_context_manager.h"
+            },
+            {
+              "path": "chrome/browser/devtools/devtools_browser_context_manager.cc",
+              "beforeSha256": "0460aec3e6ab1b35383dfe0795d15aebbadf75aebb075e9f274ad49b8284717f",
+              "afterSha256": "be2f97e02dfb3b401c1f35ad2001aa97942eee41e2b139d962e69142c9619c4d",
+              "source": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/meta-connection-lifetime-a1/native-source/chrome/browser/devtools/devtools_browser_context_manager.cc",
+              "baseline": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/meta-connection-lifetime-a1/baseline/chrome/browser/devtools/devtools_browser_context_manager.cc"
+            },
+            {
+              "path": "chrome/browser/profiles/profile_impl.cc",
+              "beforeSha256": "62e02a0a01fa2366accde2b9fe260aec4e2cca0133ba511775711313ccffaee0",
+              "afterSha256": "21e145bc817d53a61bcb7f5424ef8219c6e03366de87abb80170758555f2548b",
+              "source": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/meta-connection-lifetime-a1/native-source/chrome/browser/profiles/profile_impl.cc",
+              "baseline": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/meta-connection-lifetime-a1/baseline/chrome/browser/profiles/profile_impl.cc"
+            },
+            {
+              "path": "content/browser/devtools/protocol/target_handler.h",
+              "beforeSha256": "ba9e7f5568c973226d04a82b0e0e1653cbf49448ac8d294be93abf4889409d5f",
+              "afterSha256": "6ace70aada06cdcaff15e21085a21741cf373ce5282ec2ea44d0921a8d23dea3",
+              "source": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/meta-connection-lifetime-a1/native-source/content/browser/devtools/protocol/target_handler.h",
+              "baseline": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/meta-connection-lifetime-a1/baseline/content/browser/devtools/protocol/target_handler.h"
+            },
+            {
+              "path": "content/browser/devtools/protocol/target_handler.cc",
+              "beforeSha256": "ce70690bcf25deb41135373090c38cfe304d4c7611d00cf4d511553dc2c743ad",
+              "afterSha256": "003af0e1fb8eb8de33da0f331c2a0e199334b8d5c6aa209837ae6d572092855f",
+              "source": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/meta-connection-lifetime-a1/native-source/content/browser/devtools/protocol/target_handler.cc",
+              "baseline": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/meta-connection-lifetime-a1/baseline/content/browser/devtools/protocol/target_handler.cc"
+            },
+            {
+              "path": "content/public/browser/storage_partition.h",
+              "beforeSha256": "5bf636613ec28382e393b812216afd199ff7024d0a3b780887261ad11abdffa7",
+              "afterSha256": "7fbd4e60765ba2337f0dfbaf25703b7494aac19246ee9d17a649e762d299f17b",
+              "source": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/meta-connection-lifetime-a1/native-source/content/public/browser/storage_partition.h",
+              "baseline": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/meta-connection-lifetime-a1/baseline/content/public/browser/storage_partition.h"
+            },
+            {
+              "path": "content/browser/storage_partition_impl.h",
+              "beforeSha256": "3de8c50ec783f6f63f44332fc14009648a0e9424ee41077335d18728d7986651",
+              "afterSha256": "5f61cf49ecbb3a6c5d36128e7a59c8f495b2b60578978904bf9211a21ccdcf9a",
+              "source": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/meta-connection-lifetime-a1/native-source/content/browser/storage_partition_impl.h",
+              "baseline": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/meta-connection-lifetime-a1/baseline/content/browser/storage_partition_impl.h"
+            },
+            {
+              "path": "content/browser/storage_partition_impl.cc",
+              "beforeSha256": "80c07c1407f823576830d9b4a742c75cc1477af4273be1ade8e2c888e50097b6",
+              "afterSha256": "d90e9e21503b529a0ac4cda5ab7538122e4e685a0e74316c659d83479d659b4a",
+              "source": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/meta-connection-lifetime-a1/native-source/content/browser/storage_partition_impl.cc",
+              "baseline": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/meta-connection-lifetime-a1/baseline/content/browser/storage_partition_impl.cc"
+            }
+          ]
+        },
+        {
+          "name": "meta-connection-lifetime-a2",
+          "manifest": {
+            "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/meta-connection-lifetime-a2/native-replacements.json",
+            "sha256": "5cec09d5324aefa7db33925a07da12aa88a20fa9133250265977cb97e0c94e48"
+          },
+          "anchors": {
+            "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/meta-connection-lifetime-a2/native-replacements.json",
+            "sha256": "5cec09d5324aefa7db33925a07da12aa88a20fa9133250265977cb97e0c94e48"
+          },
+          "anchorCount": 12,
+          "files": [
+            {
+              "path": "chrome/browser/profiles/profile.h",
+              "beforeSha256": "dc1ff74874ce73db6eeb579ed9b5a85a3226387ce3a4172eb814336562634485",
+              "afterSha256": "7fd40c408572939f885b3adf7be87a2906c0134cd009402ad10200fb151cfb2e",
+              "source": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/meta-connection-lifetime-a2/native-source/chrome/browser/profiles/profile.h",
+              "baseline": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/meta-connection-lifetime-a2/baseline/chrome/browser/profiles/profile.h"
+            },
+            {
+              "path": "chrome/browser/profiles/profile.cc",
+              "beforeSha256": "e9764d85fdd3c0603b3ea167cdd7b840f65bb7c21c918dd160389c1642762820",
+              "afterSha256": "9a8cc2d2a7b21d3a7bdc66246028b98fabb3b39a580a1b79c92ad4afb2ef129d",
+              "source": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/meta-connection-lifetime-a2/native-source/chrome/browser/profiles/profile.cc",
+              "baseline": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/meta-connection-lifetime-a2/baseline/chrome/browser/profiles/profile.cc"
+            },
+            {
+              "path": "chrome/browser/profiles/profile_impl.h",
+              "beforeSha256": "e0919613cf2a3f0020b69551d2e1a94d7661462e1396d5b62cef8c276c44df69",
+              "afterSha256": "9e36c91abdad94e5d1d6c14f8a17abfb470f5111b4a4fc32337827fcc9cf4ed2",
+              "source": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/meta-connection-lifetime-a2/native-source/chrome/browser/profiles/profile_impl.h",
+              "baseline": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/meta-connection-lifetime-a2/baseline/chrome/browser/profiles/profile_impl.h"
+            },
+            {
+              "path": "chrome/browser/profiles/profile_impl.cc",
+              "beforeSha256": "21e145bc817d53a61bcb7f5424ef8219c6e03366de87abb80170758555f2548b",
+              "afterSha256": "05c9811cd9fcb1b7a9293a6e3809bd89339a608614795e71cd1035c578aad7d0",
+              "source": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/meta-connection-lifetime-a2/native-source/chrome/browser/profiles/profile_impl.cc",
+              "baseline": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/meta-connection-lifetime-a2/baseline/chrome/browser/profiles/profile_impl.cc"
+            },
+            {
+              "path": "chrome/browser/devtools/devtools_browser_context_manager.h",
+              "beforeSha256": "f9cfb0b5b30e42e8b1fc3bffadf28ac64fb2e3502a896f2c67ef6856b8d04ad0",
+              "afterSha256": "fce2b07856ecc78f06564dcdadf8a0490a2461938a7c7dd0e614040381a96f98",
+              "source": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/meta-connection-lifetime-a2/native-source/chrome/browser/devtools/devtools_browser_context_manager.h",
+              "baseline": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/meta-connection-lifetime-a2/baseline/chrome/browser/devtools/devtools_browser_context_manager.h"
+            },
+            {
+              "path": "chrome/browser/devtools/devtools_browser_context_manager.cc",
+              "beforeSha256": "be2f97e02dfb3b401c1f35ad2001aa97942eee41e2b139d962e69142c9619c4d",
+              "afterSha256": "c33645d97b87ba2f24f9ed26789c579a987d582a5e86c6a153a9a9a5eb25f5bb",
+              "source": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/meta-connection-lifetime-a2/native-source/chrome/browser/devtools/devtools_browser_context_manager.cc",
+              "baseline": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/meta-connection-lifetime-a2/baseline/chrome/browser/devtools/devtools_browser_context_manager.cc"
+            }
+          ]
+        },
+        {
+          "name": "native-host-stderr-a1",
+          "manifest": {
+            "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/native-host-stderr-a1/manifest.json",
+            "sha256": "1f8299193922df7b44efd95b874b556ea5395f055305597c4e28bd984ed9c010"
+          },
+          "anchors": {
+            "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/native-host-stderr-a1/replacements.json",
+            "sha256": "2fbce46c73db617d42e960322c24a779de32ee71708a308562024b03fa59d301"
+          },
+          "anchorCount": 2,
+          "files": [
+            {
+              "path": "chrome/browser/extensions/api/messaging/launch_context_posix.cc",
+              "beforeSha256": "5007bc9ed3ab70693ffbebc5687cda1105246f74cce234b07cae58afb4d6c382",
+              "afterSha256": "bb960b43c26f23233cc1ef929bb0136270568b2a300e72427c74b03020a28589",
+              "source": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/native-host-stderr-a1/source/chrome/browser/extensions/api/messaging/launch_context_posix.cc",
+              "baseline": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/native-host-stderr-a1/baseline/chrome/browser/extensions/api/messaging/launch_context_posix.cc"
+            }
+          ]
+        },
+        {
+          "name": "content-policy-ack-gn-a1",
+          "manifest": {
+            "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/content-policy-ack-gn-a1/manifest.json",
+            "sha256": "993c149e0faff6725f6653d4c0e7d5153329ecf0b577d24feed0cbaa86c481ac"
+          },
+          "anchors": {
+            "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/content-policy-ack-gn-a1/replacements.json",
+            "sha256": "c856b74d099ce70ef96df61284b14d606e3ef05775977fc080f816603d78ed08"
+          },
+          "anchorCount": 3,
+          "files": [
+            {
+              "path": "chrome/browser/aux/BUILD.gn",
+              "beforeSha256": "fd14e65efe7d2dc1436ddec0d7bfb7ae93fdbe6e006356c3587f4b7845e334ad",
+              "afterSha256": "2dd27e70ceccbd6113cae66d9611e0ec707681fc45ef60c79173ba2eaa6c1c9a",
+              "source": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/content-policy-ack-gn-a1/source/chrome/browser/aux/BUILD.gn",
+              "baseline": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/content-policy-ack-gn-a1/baseline/chrome/browser/aux/BUILD.gn"
+            },
+            {
+              "path": "content/public/browser/BUILD.gn",
+              "beforeSha256": "7894529f3b24ff21beb29805e1c1bda0cbd971549dc717a36f0ec02974ef2415",
+              "afterSha256": "de1159e9ddd5eef7bba7b6e13d8b906ef256d1197a4d7e01996c68fda4a34ba3",
+              "source": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/content-policy-ack-gn-a1/source/content/public/browser/BUILD.gn",
+              "baseline": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/content-policy-ack-gn-a1/baseline/content/public/browser/BUILD.gn"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "composition": {
+        "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/integration/browser-composition-a6.json",
+        "sha256": "9827fabeb6b48915f760e3ef5c1b04eaca8d8e1c4369d1be9695cdc3089e8e41"
+      },
+      "layers": [
+        {
+          "name": "content-policy-ack-v3",
+          "manifest": {
+            "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/content-policy-ack-v3/manifest.json",
+            "sha256": "e14d564c2e30cc74270dfbf29a0e5c48c907c01faa080bb63faa49550aea42a3"
+          },
+          "anchors": {
+            "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/content-policy-ack-v3/anchors.json",
+            "sha256": "aa2fbce2949c411a4c646e831ef1c7c8cb57e0a58e57ab39998d18d6bb2e3417"
+          },
+          "anchorCount": 1,
+          "files": [
+            {
+              "path": "sandbox/mac/seatbelt_exec.cc",
+              "beforeSha256": "295acddbf4b1f826e5905ada451cd895135435c7c12ef1f129cb02738fcbbc62",
+              "afterSha256": "be6cf6300d90eda0f3f0d5150d53c8796990c1f58c37711d4c99026f13b4a751",
+              "source": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/content-policy-ack-v3/source/sandbox/mac/seatbelt_exec.cc",
+              "baseline": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/content-policy-ack-v3/baseline/sandbox/mac/seatbelt_exec.cc"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "composition": {
+        "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/integration/browser-composition-a7.json",
+        "sha256": "39a2492e73c922c0dfc33aad8c5285792139b8b6c85e13e5554b0e562db4a595"
+      },
+      "layers": [
+        {
+          "name": "browser-native-host-custody-a1",
+          "manifest": {
+            "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/browser-native-host-custody-a1/manifest.json",
+            "sha256": "d2bb82e4f024d82628820c581dbd94bccc70476594983e4f57d0b6b69f617535"
+          },
+          "anchors": {
+            "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/browser-native-host-custody-a1/replacements.json",
+            "sha256": "4a919344fdbff9831a51f89a6c10f1394cb7d073d48c17d76e7f9f4d447d8075"
+          },
+          "anchorCount": 35,
+          "files": [
+            {
+              "path": "chrome/app/chrome_exe_main_mac.cc",
+              "beforeSha256": "96ed48f2bd53d81cebba0063f1408fec4da7c952af2d7446f047a5d46fa885df",
+              "afterSha256": "371c931919e7455f980e28e0dd8a201a1e86b4f01c23de660a85a75360f5bddc",
+              "source": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/browser-native-host-custody-a1/source/chrome/app/chrome_exe_main_mac.cc",
+              "baseline": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/browser-native-host-custody-a1/baseline/chrome/app/chrome_exe_main_mac.cc"
+            },
+            {
+              "path": "chrome/browser/extensions/api/messaging/aux_native_messaging_lifetime.h",
+              "beforeSha256": "55a77918bbb40ba07a9fcf1b1e4d217b62f92d7e4f9d2bc7e6900205d9f4cb47",
+              "afterSha256": "4eac06ece4604d8cd97483998917105cd53f905666859aae3d98036ae1e812fb",
+              "source": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/browser-native-host-custody-a1/source/chrome/browser/extensions/api/messaging/aux_native_messaging_lifetime.h",
+              "baseline": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/browser-native-host-custody-a1/baseline/chrome/browser/extensions/api/messaging/aux_native_messaging_lifetime.h"
+            },
+            {
+              "path": "content/browser/aux_child_lifetime.h",
+              "beforeSha256": "446f4dac61201c937cae66c4f7515e4aac7bb8cbe0ce14f613cb7661028d2fc6",
+              "afterSha256": "2b338953aa589941250ff5fbd01816010f0fb08494263ba46f8c4c294b2ffdfe",
+              "source": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/browser-native-host-custody-a1/source/content/browser/aux_child_lifetime.h",
+              "baseline": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/browser-native-host-custody-a1/baseline/content/browser/aux_child_lifetime.h"
+            },
+            {
+              "path": "chrome/browser/aux/AuxOwnedNativePeerChild.cc",
+              "beforeSha256": "98e5e456db34ce07c285149ba7dc33e0179ed7001b044f25185fc0a719b49503",
+              "afterSha256": "e58cf3a84cc074b0701e20bfdb634a9f3d8ada13e2b76edd3238d5f14fbfd678",
+              "source": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/browser-native-host-custody-a1/source/chrome/browser/aux/AuxOwnedNativePeerChild.cc",
+              "baseline": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/browser-native-host-custody-a1/baseline/chrome/browser/aux/AuxOwnedNativePeerChild.cc"
+            },
+            {
+              "path": "chrome/browser/aux/AuxOwnedNativePeerChild.h",
+              "beforeSha256": "35812957162af8ff16ecda8e400debbd755314022ec12f01339402387d3cab97",
+              "afterSha256": "37f5a29c0df9f97ed99c707981ef4caa2e30aae3b5bfee4c213e224a167ef318",
+              "source": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/browser-native-host-custody-a1/source/chrome/browser/aux/AuxOwnedNativePeerChild.h",
+              "baseline": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/browser-native-host-custody-a1/baseline/chrome/browser/aux/AuxOwnedNativePeerChild.h"
+            },
+            {
+              "path": "chrome/browser/aux/AuxSelectedStateHome.cc",
+              "beforeSha256": "d1570801ecc1794abea41ba4c796fc7dfd3c273b11713e94d466010edfd78b56",
+              "afterSha256": "f5526dfac8b738d6e64ef346d97f89ead1f951aa0d64a7472a5ee07d83bafe5e",
+              "source": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/browser-native-host-custody-a1/source/chrome/browser/aux/AuxSelectedStateHome.cc",
+              "baseline": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/browser-native-host-custody-a1/baseline/chrome/browser/aux/AuxSelectedStateHome.cc"
+            },
+            {
+              "path": "third_party/crashpad/crashpad/util/posix/spawn_subprocess.cc",
+              "beforeSha256": "f5941bb86a60f19bf1d22f69f74e35ca8285856e2a009e78985da4176c3e5b20",
+              "afterSha256": "6d573b348ca31f3bf9f2fa82fc7b46253ba71fac2d9f3fad478bf9c2f7055427",
+              "source": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/browser-native-host-custody-a1/source/third_party/crashpad/crashpad/util/posix/spawn_subprocess.cc",
+              "baseline": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/browser-native-host-custody-a1/baseline/third_party/crashpad/crashpad/util/posix/spawn_subprocess.cc"
+            },
+            {
+              "path": "chrome/browser/ui/aux_browser_shutdown_drain.cc",
+              "beforeSha256": "738f1570150e06ca4771637095513b9ccb82dafda062ea2bd80b89929f1cd064",
+              "afterSha256": "f81edb2f78a29c058a0616ea455c235d52faea0c4ef090d9ea29ed7a8f915f75",
+              "source": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/browser-native-host-custody-a1/source/chrome/browser/ui/aux_browser_shutdown_drain.cc",
+              "baseline": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/browser-native-host-custody-a1/baseline/chrome/browser/ui/aux_browser_shutdown_drain.cc"
+            },
+            {
+              "path": "base/process/mac/aux_browser_descendant_bridge.cc",
+              "beforeSha256": null,
+              "afterSha256": "c241367f4c2095554e2e11f9a0dde1776a2d85f46e9d242b7183def60ddbefbe",
+              "source": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/browser-native-host-custody-a1/source/base/process/mac/aux_browser_descendant_bridge.cc",
+              "baseline": null
+            },
+            {
+              "path": "base/process/mac/aux_browser_descendant_bridge.h",
+              "beforeSha256": null,
+              "afterSha256": "0f1a8aca4506ccf5b2eaa410e01f388e23a6de77717f2d1c274003c71e07e395",
+              "source": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/browser-native-host-custody-a1/source/base/process/mac/aux_browser_descendant_bridge.h",
+              "baseline": null
+            },
+            {
+              "path": "base/process/mac/aux_browser_descendant_client.h",
+              "beforeSha256": null,
+              "afterSha256": "a0b37945caa903b40ef8e43ae24eee35e7abfa4ca4c80e5040edddda288864d6",
+              "source": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/browser-native-host-custody-a1/source/base/process/mac/aux_browser_descendant_client.h",
+              "baseline": null
+            },
+            {
+              "path": "base/process/mac/aux_browser_descendant_engine.cc",
+              "beforeSha256": null,
+              "afterSha256": "42427c90316c6cb92a9a5f5aafa307de29ea9df57cc913fb8769a2de5d439faa",
+              "source": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/browser-native-host-custody-a1/source/base/process/mac/aux_browser_descendant_engine.cc",
+              "baseline": null
+            },
+            {
+              "path": "base/process/mac/aux_browser_descendant_engine.h",
+              "beforeSha256": null,
+              "afterSha256": "ccd36116505b67a3bfd196857d50cc0c41d4f218e852d9e30930892991defb4d",
+              "source": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/browser-native-host-custody-a1/source/base/process/mac/aux_browser_descendant_engine.h",
+              "baseline": null
+            }
+          ],
+          "skipPaths": [
+            "content/browser/aux_child_lifetime.h"
+          ]
+        },
+        {
+          "name": "browser-custody-content-a5",
+          "manifest": {
+            "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/browser-custody-content-a5/manifest.json",
+            "sha256": "4891807aa378e321089e884d5552a3a208f80e10c44775d7bfbfc29198556db2"
+          },
+          "anchors": {
+            "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/browser-custody-content-a5/replacements.json",
+            "sha256": "afc6c251c70ce07cc395ac451e571cc68ea23af6b561be48a11b0077c0ae11f3"
+          },
+          "anchorCount": 8,
+          "files": [
+            {
+              "path": "content/browser/aux_child_lifetime.h",
+              "beforeSha256": "7442ecebd1f40e2ac9d65f62b7689ab07f7daaf376b6e06d6482c061e672b33a",
+              "afterSha256": "cca5406aea1f9846c4613710213a141d41643335accbcbc85d01f995990af29e",
+              "source": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/browser-custody-content-a5/source/content/browser/aux_child_lifetime.h",
+              "baseline": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/browser-custody-content-a5/baseline/content/browser/aux_child_lifetime.h"
+            }
+          ]
+        },
+        {
+          "name": "browser-native-host-reservation-refusal-a1",
+          "manifest": {
+            "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/browser-native-host-reservation-refusal-a1/manifest.json",
+            "sha256": "da4cdd319696130c9ff9690fa7f9eca4fdd4937214590cf31a169d3e1337d078"
+          },
+          "anchors": {
+            "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/browser-native-host-reservation-refusal-a1/replacements.json",
+            "sha256": "410307445026ebbda0fa5b713cd53a168e85b3a3127601e681d54f2facea7f6b"
+          },
+          "anchorCount": 3,
+          "files": [
+            {
+              "path": "chrome/browser/extensions/api/messaging/aux_native_messaging_lifetime.h",
+              "beforeSha256": "4eac06ece4604d8cd97483998917105cd53f905666859aae3d98036ae1e812fb",
+              "afterSha256": "a265e0f3dd5236e529f9f50c7060d11f4b4fcba084eda0dcfec6f65c89e7a7b0",
+              "source": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/browser-native-host-reservation-refusal-a1/source/chrome/browser/extensions/api/messaging/aux_native_messaging_lifetime.h",
+              "baseline": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/browser-native-host-reservation-refusal-a1/baseline/chrome/browser/extensions/api/messaging/aux_native_messaging_lifetime.h"
+            },
+            {
+              "path": "content/browser/aux_child_lifetime.h",
+              "beforeSha256": "2b338953aa589941250ff5fbd01816010f0fb08494263ba46f8c4c294b2ffdfe",
+              "afterSha256": "a617376339505c2df96b92937f5f6bbda061512b2cbe629d9785295ed354347b",
+              "source": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/browser-native-host-reservation-refusal-a1/source/content/browser/aux_child_lifetime.h",
+              "baseline": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/browser-native-host-reservation-refusal-a1/baseline/content/browser/aux_child_lifetime.h"
+            },
+            {
+              "path": "chrome/browser/aux/AuxOwnedNativePeerChild.cc",
+              "beforeSha256": "e58cf3a84cc074b0701e20bfdb634a9f3d8ada13e2b76edd3238d5f14fbfd678",
+              "afterSha256": "72bb8e0fa3510d35822e514c8c4f98f2901d7825a5d255faf019ffd870fd67f7",
+              "source": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/browser-native-host-reservation-refusal-a1/source/chrome/browser/aux/AuxOwnedNativePeerChild.cc",
+              "baseline": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/browser-native-host-reservation-refusal-a1/baseline/chrome/browser/aux/AuxOwnedNativePeerChild.cc"
+            }
+          ],
+          "skipPaths": [
+            "content/browser/aux_child_lifetime.h"
+          ]
+        },
+        {
+          "name": "browser-crashpad-close-a1",
+          "manifest": {
+            "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/browser-crashpad-close-a1/manifest.json",
+            "sha256": "9418c4f4fad071b5470a2a3f746b9643ec82d509d2d115736d15ba624f8c5771"
+          },
+          "anchors": {
+            "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/browser-crashpad-close-a1/replacements.json",
+            "sha256": "8bc755df098b44127b0e42aea34b70202acaa94146f6f62e96d72bb554c0cb49"
+          },
+          "anchorCount": 31,
+          "files": [
+            {
+              "path": "third_party/crashpad/crashpad/client/crashpad_client.h",
+              "beforeSha256": "8c345b533bfc7139cf931c39bc51dff4b9ce76a904c71b250d4e6f0cd1d13866",
+              "afterSha256": "4946e8892244377129ddf23c2921f6e2e9623e96605a33cbceecd0025e587ed9",
+              "source": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/browser-crashpad-close-a1/source/third_party/crashpad/crashpad/client/crashpad_client.h",
+              "baseline": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/browser-crashpad-close-a1/baseline/third_party/crashpad/crashpad/client/crashpad_client.h"
+            },
+            {
+              "path": "third_party/crashpad/crashpad/client/crashpad_client_mac.cc",
+              "beforeSha256": "3e28d6171057bbee9cbec88832c9a97a6fd9f658a2ae968aeb6633eb86dafbb9",
+              "afterSha256": "82e91ae2ba635795f4fca34b46722e05c9acd2b08c4aeae7c7a1c423d2df16d4",
+              "source": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/browser-crashpad-close-a1/source/third_party/crashpad/crashpad/client/crashpad_client_mac.cc",
+              "baseline": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/browser-crashpad-close-a1/baseline/third_party/crashpad/crashpad/client/crashpad_client_mac.cc"
+            },
+            {
+              "path": "components/crash/core/app/crashpad.h",
+              "beforeSha256": "c122541bfc8a3515ceebda7d4c87285ebe530b1c9c04e45ba5e7bd1797fcef4c",
+              "afterSha256": "c46d78d46dc9b0cf80af43550def34363726d02909dc97d063b9c7bae83e6fe5",
+              "source": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/browser-crashpad-close-a1/source/components/crash/core/app/crashpad.h",
+              "baseline": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/browser-crashpad-close-a1/baseline/components/crash/core/app/crashpad.h"
+            },
+            {
+              "path": "components/crash/core/app/crashpad.cc",
+              "beforeSha256": "38da9994807da86ac383176601dc8af074cb1c2c7f15afbed8165d257b491170",
+              "afterSha256": "74c463c94f03ae0f317361e07ca1a8b55986b06cd2ff523b8e8bde6dcc15f3b9",
+              "source": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/browser-crashpad-close-a1/source/components/crash/core/app/crashpad.cc",
+              "baseline": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/browser-crashpad-close-a1/baseline/components/crash/core/app/crashpad.cc"
+            },
+            {
+              "path": "chrome/browser/ui/aux_browser_shutdown_drain.cc",
+              "beforeSha256": "f81edb2f78a29c058a0616ea455c235d52faea0c4ef090d9ea29ed7a8f915f75",
+              "afterSha256": "24deafb22e065fdf4e30dd324d8a0e03aefb04e92e8d4bae8028e9bad1b73f08",
+              "source": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/browser-crashpad-close-a1/source/chrome/browser/ui/aux_browser_shutdown_drain.cc",
+              "baseline": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/browser-crashpad-close-a1/baseline/chrome/browser/ui/aux_browser_shutdown_drain.cc"
+            }
+          ]
+        },
+        {
+          "name": "browser-crashpad-system-handler-a1",
+          "manifest": {
+            "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/browser-crashpad-system-handler-a1/manifest.json",
+            "sha256": "aba02742b3801abdcf4dbe74c9cafebd306a511b2fd59dfc0c097bf86b7eab70"
+          },
+          "anchors": {
+            "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/browser-crashpad-system-handler-a1/replacements.json",
+            "sha256": "36d41ebd61946fa4340f83f1517061157de0d5ec15d8a0cb6c889eae7e91130f"
+          },
+          "anchorCount": 1,
+          "files": [
+            {
+              "path": "third_party/crashpad/crashpad/client/crashpad_client_mac.cc",
+              "beforeSha256": "82e91ae2ba635795f4fca34b46722e05c9acd2b08c4aeae7c7a1c423d2df16d4",
+              "afterSha256": "d3648e00805f79b7f0489fb2979eef53623bb495e735eb220f99de8e3aded54c",
+              "source": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/browser-crashpad-system-handler-a1/source/third_party/crashpad/crashpad/client/crashpad_client_mac.cc",
+              "baseline": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/browser-crashpad-system-handler-a1/baseline/third_party/crashpad/crashpad/client/crashpad_client_mac.cc"
+            }
+          ]
+        },
+        {
+          "name": "browser-custody-gn-a1",
+          "manifest": {
+            "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/browser-custody-gn-a1/manifest.json",
+            "sha256": "e61477e10dc746f595b3280ac8298484be4408b0a2f9ed87c4f1085cc1d3a7bc"
+          },
+          "anchors": {
+            "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/browser-custody-gn-a1/replacements.json",
+            "sha256": "150be39e4bb4cd632d726b809d562a6afca5fdad8efd8d73e5a43c43eae74aa9"
+          },
+          "anchorCount": 7,
+          "files": [
+            {
+              "path": "base/BUILD.gn",
+              "beforeSha256": "3983f3e3964b9e111bf4759b53168efb34ea533124f655a7288a328b2105343c",
+              "afterSha256": "5afe0d309e34842b08185c56d8fce7f0269656754b1bec0ea125846ce868fec8",
+              "source": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/browser-custody-gn-a1/source/base/BUILD.gn",
+              "baseline": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/browser-custody-gn-a1/baseline/base/BUILD.gn"
+            },
+            {
+              "path": "chrome/BUILD.gn",
+              "beforeSha256": "e8841f5e0f3ff5dc26ec4cedbd5dfa2fe0a349f5e6128d77fefa4a7dfd6fc9c1",
+              "afterSha256": "2758b3eb6b016012c570e1412b6d6027ab504ff459a7b869dd331aaa4ff25d90",
+              "source": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/browser-custody-gn-a1/source/chrome/BUILD.gn",
+              "baseline": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/browser-custody-gn-a1/baseline/chrome/BUILD.gn"
+            },
+            {
+              "path": "third_party/crashpad/crashpad/util/BUILD.gn",
+              "beforeSha256": "e6ecf26f121d2a688632fa8a49135033466fd3d4d399b4ecd3cdf00f5bbdbb37",
+              "afterSha256": "b51349fe4437b871ebfe43bb1b2ca045aba4dd34ae04fc42e37d907c1b8dd25d",
+              "source": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/browser-custody-gn-a1/source/third_party/crashpad/crashpad/util/BUILD.gn",
+              "baseline": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/browser-custody-gn-a1/baseline/third_party/crashpad/crashpad/util/BUILD.gn"
+            },
+            {
+              "path": "chrome/app/aux_browser_app.exports",
+              "beforeSha256": null,
+              "afterSha256": "6ec08b85012cd535c6aba8416fdf9a6eddd6910a53ac691d8c3894acccf492c3",
+              "source": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/browser-custody-gn-a1/source/chrome/app/aux_browser_app.exports",
+              "baseline": null
+            }
+          ]
+        },
+        {
+          "name": "content-policy-ack-v4",
+          "manifest": {
+            "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/content-policy-ack-v4/manifest.json",
+            "sha256": "233a1755068e78178a595e5eed3bb1ad8a43c2e4cf586f76d6d0d77919cadeac"
+          },
+          "anchors": {
+            "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/content-policy-ack-v4/replacements.json",
+            "sha256": "19201400b04c15096dbe552d35e680b232f1adc7d661ed6cd93fc11c5d6c53e9"
+          },
+          "anchorCount": 3,
+          "files": [
+            {
+              "path": "content/browser/child_process_launcher_helper_mac.cc",
+              "beforeSha256": "b82927e5ef6cf609f67e1ad47a24254fe7f2e16af8203c5156f2d9f2507cb2c9",
+              "afterSha256": "d92c1f98f35368d62c565ed8614c83e7c4459e81fcd718dbe7fef32aa2af98ee",
+              "source": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/content-policy-ack-v4/source/content/browser/child_process_launcher_helper_mac.cc",
+              "baseline": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/content-policy-ack-v4/baseline/content/browser/child_process_launcher_helper_mac.cc"
+            },
+            {
+              "path": "content/browser/aux_child_lifetime.h",
+              "beforeSha256": "7442ecebd1f40e2ac9d65f62b7689ab07f7daaf376b6e06d6482c061e672b33a",
+              "afterSha256": "369770282bc8edb196dba0eb1af6c604c3a79a7bafe61bc84ce2f8373f2554f0",
+              "source": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/content-policy-ack-v4/source/content/browser/aux_child_lifetime.h",
+              "baseline": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/content-policy-ack-v4/baseline/content/browser/aux_child_lifetime.h"
+            },
+            {
+              "path": "content/browser/aux_child_process_drain.cc",
+              "beforeSha256": "17ff56890fc349692ff79e575c9f8f017eaa6c0473cc6a894a25ed7d7402ed53",
+              "afterSha256": "862c5b8d2cc6af4fb2f7ddf04f3fea60fdf3a6e0c6506a032fd41f95252ccb13",
+              "source": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/content-policy-ack-v4/source/content/browser/aux_child_process_drain.cc",
+              "baseline": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/content-policy-ack-v4/baseline/content/browser/aux_child_process_drain.cc"
+            }
+          ],
+          "skipPaths": [
+            "content/browser/aux_child_lifetime.h"
+          ]
+        },
+        {
+          "name": "content-policy-ack-v4-custody",
+          "manifest": {
+            "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/content-policy-ack-v4-custody/manifest.json",
+            "sha256": "c89b946bf66576a20e97cb005db39eba2ac83df6153f5bd84b3817d4ed965626"
+          },
+          "anchors": {
+            "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/content-policy-ack-v4-custody/replacements.json",
+            "sha256": "a1d50b37cb225ea914847b501f788f9f3bcfceaa1d0d660a4f184554385b3399"
+          },
+          "anchorCount": 1,
+          "files": [
+            {
+              "path": "content/browser/aux_child_lifetime.h",
+              "beforeSha256": "cca5406aea1f9846c4613710213a141d41643335accbcbc85d01f995990af29e",
+              "afterSha256": "ccb7fe34dd5f2ef584d2bc616a39026bfa7f591931a4d73fc58f89626fa8af64",
+              "source": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/content-policy-ack-v4-custody/source/content/browser/aux_child_lifetime.h",
+              "baseline": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/content-policy-ack-v4-custody/baseline/content/browser/aux_child_lifetime.h"
+            }
+          ]
+        },
+        {
+          "name": "meta-connection-lifetime-a3",
+          "manifest": {
+            "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/meta-connection-lifetime-a3/manifest.json",
+            "sha256": "3bc8c9d641ae690539d397fddc61f78d57e3b21fe96373f34e1cb0563ab7ef31"
+          },
+          "anchors": {
+            "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/meta-connection-lifetime-a3/replacements.json",
+            "sha256": "a14ed3d5d2e5a3d0571c54c94c4f7b24b13b94551cd56f72f721897f1368c3e5"
+          },
+          "anchorCount": 3,
+          "files": [
+            {
+              "path": "content/browser/devtools/protocol_config.json",
+              "beforeSha256": "4d05914c24ae6e9fcae14f563f1ea660533432c2631ff708b5c8a837860ebc36",
+              "afterSha256": "2c28a36f1ca9440583cdb53b7401474592638fe5af83ec9f16ce97f93b51ef60",
+              "source": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/meta-connection-lifetime-a3/source/content/browser/devtools/protocol_config.json",
+              "baseline": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/meta-connection-lifetime-a3/baseline/content/browser/devtools/protocol_config.json"
+            },
+            {
+              "path": "chrome/browser/profiles/profile_impl.cc",
+              "beforeSha256": "05c9811cd9fcb1b7a9293a6e3809bd89339a608614795e71cd1035c578aad7d0",
+              "afterSha256": "0dd9073de623a40ce7c1ff5631c33c61c055d9ebf3565f1fa38235f5540189e3",
+              "source": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/meta-connection-lifetime-a3/source/chrome/browser/profiles/profile_impl.cc",
+              "baseline": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/meta-connection-lifetime-a3/baseline/chrome/browser/profiles/profile_impl.cc"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "composition": {
+        "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/integration/browser-composition-a8.json",
+        "sha256": "3ad8612a55d1c2e78786d5af747f59f4899069154104f7e1964235d6df17180d"
+      },
+      "layers": [
+        {
+          "name": "native-host-constructor-a1",
+          "manifest": {
+            "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/native-host-constructor-a1/manifest.json",
+            "sha256": "5fb0defe5bf070363a3d609ef9caa3de7c40aa3c084994da9544a49c822abdd4"
+          },
+          "anchors": {
+            "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/native-host-constructor-a1/replacements.json",
+            "sha256": "aee1cbb6492cbd2c5ada75cf70b36b75c858ef0e3d7a9dd4d6322aefa8a4b5e1"
+          },
+          "anchorCount": 2,
+          "files": [
+            {
+              "path": "chrome/browser/extensions/api/messaging/aux_native_messaging_lifetime.h",
+              "beforeSha256": "a265e0f3dd5236e529f9f50c7060d11f4b4fcba084eda0dcfec6f65c89e7a7b0",
+              "afterSha256": "25b3d277ea42891f183383383793d4a76d96564d3d571a1d2eac85a4987a9393",
+              "source": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/native-host-constructor-a1/source/chrome/browser/extensions/api/messaging/aux_native_messaging_lifetime.h",
+              "baseline": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/native-host-constructor-a1/baseline/chrome/browser/extensions/api/messaging/aux_native_messaging_lifetime.h"
+            },
+            {
+              "path": "chrome/browser/extensions/api/messaging/native_message_process_host.cc",
+              "beforeSha256": "e1c256d805b21228fe2361b8500a5230a1743762d4c52474f0c7241334356294",
+              "afterSha256": "f4bc07980dde7ef9b16c331080481871dd83d8e0b25b19f97b16b2defc40e5d0",
+              "source": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/native-host-constructor-a1/source/chrome/browser/extensions/api/messaging/native_message_process_host.cc",
+              "baseline": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/native-host-constructor-a1/baseline/chrome/browser/extensions/api/messaging/native_message_process_host.cc"
+            }
+          ]
+        },
+        {
+          "name": "browser-custody-compiler-a1",
+          "manifest": {
+            "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/browser-custody-compiler-a1/manifest.json",
+            "sha256": "ec495e53b4760f955afa9ccd3924cf78263d8bc26b1cfd3e1af87350c6ae1e9f"
+          },
+          "anchors": {
+            "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/browser-custody-compiler-a1/replacements.json",
+            "sha256": "aed4680c2345fec3582a4dfc416c86d71b5d1a3fe57831a838f38d41b94b8486"
+          },
+          "anchorCount": 4,
+          "files": [
+            {
+              "path": "base/process/mac/aux_browser_descendant_engine.cc",
+              "beforeSha256": "42427c90316c6cb92a9a5f5aafa307de29ea9df57cc913fb8769a2de5d439faa",
+              "afterSha256": "2dfc668e5cf7d6ca8461eb793f99d09949439c3519f611667a3db1023addd989",
+              "source": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/browser-custody-compiler-a1/source/base/process/mac/aux_browser_descendant_engine.cc",
+              "baseline": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/browser-custody-compiler-a1/baseline/base/process/mac/aux_browser_descendant_engine.cc"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "previousFullBrowserPins": {
+    "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/integration/full-native-input-pins-a4.json",
+    "sha256": "67378a52720d9a88343d62afca1305e7bdcc8522494428d4357d6356bb1517d1"
+  },
+  "browserAdditionalPins": [
+    {
+      "path": "sandbox/policy/mac/common.sb",
+      "sha256": "b6eb971c2f5cac96f5a843c5753e44f73ee3be6b8659a90e1caacafc20aec09b"
+    },
+    {
+      "path": "sandbox/policy/mac/renderer.sb",
+      "sha256": "45bc78ba343d70a31e3ac93a1949274e99681e2ffa7f0904cfbfc7baa6b31806"
+    },
+    {
+      "path": "sandbox/policy/mac/sandbox_mac.mm",
+      "sha256": "6cb531ee48582ef0f972af9a9fb98b4044bb858aa5736a8f396d5aae7181667c"
+    },
+    {
+      "path": "content/browser/sandbox_parameters_mac.mm",
+      "sha256": "3a0b8bcc6b8a801aa481ce1f62ea72b0a63f4a02d67d34397924bb13616bb8b6"
+    },
+    {
+      "path": "chrome/app/chrome_exe_main_mac.cc",
+      "sha256": "96ed48f2bd53d81cebba0063f1408fec4da7c952af2d7446f047a5d46fa885df"
+    },
+    {
+      "path": "chrome/browser/aux/AuxBrowserPrivateRoots.h",
+      "sha256": "5b9b84ca04000046b99b59ed9967d2ddce14afdd1c8b0a36bcf0d50a4aa30636"
+    },
+    {
+      "path": "chrome/browser/aux/AuxSelectedStateHome.h",
+      "sha256": "81f5a9138ffd7eccf173b081134a6c5e304184d1012557d4b6a1ccbf6971ddb7"
+    },
+    {
+      "path": "chrome/browser/aux/AuxSelectedStateHome.cc",
+      "sha256": "d1570801ecc1794abea41ba4c796fc7dfd3c273b11713e94d466010edfd78b56"
+    },
+    {
+      "path": "base/process/launch_mac.cc",
+      "sha256": "2c62e962f5b2fdabcfaaf8a5e4155e15e40ae332cda3a6c9c51261933877e80a"
+    },
+    {
+      "path": "content/public/browser/storage_partition_config.cc",
+      "sha256": "ef46e797c276190ea03edf5f98e472de5284beed74dd7249cff78136456c104e"
+    },
+    {
+      "path": "chrome/browser/net/profile_network_context_service.cc",
+      "sha256": "55d29972186221adc500576187a5ac9f4b4084aa5384bda05a6f9359ed2350bc"
+    },
+    {
+      "path": "chrome/browser/profiles/off_the_record_profile_impl.cc",
+      "sha256": "285616f80f298e8f62d6c0f80a971226c404b84c2c65696196e11fe6163be15a"
+    },
+    {
+      "path": "chrome/browser/aux/organization/organization_profile_service.cc",
+      "sha256": "7c50ffff360e13d830586c4941b6830d57a494c668de899db8bbd020a9e88a5d"
+    },
+    {
+      "path": "chrome/browser/ui/aux_owned_browser_quiesce.h",
+      "sha256": "e4993dec9f21a643bf51e5c4a11b52903abe183ff4e562f91159f5099433618d"
+    },
+    {
+      "path": "chrome/browser/ui/aux_owned_browser_quiesce.cc",
+      "sha256": "b894dca0c9eb487f854912643b380bfbe27708e377303a801170c9cce2094212"
+    },
+    {
+      "path": "content/browser/devtools/protocol/target_handler.cc",
+      "sha256": "ce70690bcf25deb41135373090c38cfe304d4c7611d00cf4d511553dc2c743ad"
+    },
+    {
+      "path": "chrome/browser/profiles/BUILD.gn",
+      "sha256": "9fc8bf8e2479b5c3b7130f77809dd4ae274847419dcf5b350f205c49a453629f"
+    },
+    {
+      "path": "chrome/browser/devtools/BUILD.gn",
+      "sha256": "9a3decf8ab0cb83636ac4ab0c31875023a5020280ef3886616f52703d1a10a33"
+    },
+    {
+      "path": "build/config/mac/rules.gni",
+      "sha256": "386c9c81ba918548bdb69979d1dcf667e3f069144949cd11eb6555b92558fecf"
+    },
+    {
+      "path": "build/config/BUILDCONFIG.gn",
+      "sha256": "074d2a608fb415e0359758c9bbff18930168690f719c854e3769f8e5c40015c2"
+    },
+    {
+      "path": "build/config/compiler/BUILD.gn",
+      "sha256": "270ea6da49e42e7701e05033c5cd5ef9d351dcdb3c9cabfb1f4566b71a2426b3"
+    },
+    {
+      "path": "buildtools/third_party/libc++abi/BUILD.gn",
+      "sha256": "560588f347ec4de8fc61024a6c036047ce6a6e5f1f9f2f28295816933497118f"
+    },
+    {
+      "path": "chrome/app/app.exports",
+      "sha256": "89423ca41c39a99de3627f4107e5b795cc3790f33efdb4cf179f67271438d69f"
+    },
+    {
+      "path": "third_party/crashpad/crashpad/client/BUILD.gn",
+      "sha256": "da905f5165e272c5ba5b976d0c8de8464a885eb9a69bdbbc9670b4674ab60896"
+    }
+  ]
+}

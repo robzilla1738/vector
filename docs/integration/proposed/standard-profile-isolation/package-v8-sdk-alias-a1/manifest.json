@@ -1,0 +1,15 @@
+{
+  "format": "aux.package-sdk-alias.successor.v1",
+  "input": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/package-v8/successor_verify.py",
+  "inputSha256": "c29b72afd6a85e33b32f6e47fbdb8d39a50e3356d3ab690c3ba8f2a5f11242b1",
+  "outputSha256": "9d80a2a7b7334fcdc43d2aac370d5c6d323f0a252607d0af8c8dcdfd4dcf2819",
+  "countedEdits": 3,
+  "source": "source/successor_verify.py",
+  "productExecuted": false,
+  "packageActivated": false,
+  "alias": {
+    "path": "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/lib/libbsm.tbd",
+    "linkText": "libbsm.0.tbd",
+    "targetSha256": "12b45397e34d2d80e6df3a3ff926f9b71abd01e060aaef80fafc9ec3f91282c3"
+  }
+}
