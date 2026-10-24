@@ -1,0 +1,69 @@
+{
+  "format": "aux.standard-daemon-projection-v5.preparation.v1",
+  "pairedLiteralReplay": true,
+  "pairedSyntax": true,
+  "isolatedLaneReviewsReplayed": true,
+  "shimLiteralReplay": true,
+  "shimSyntax": true,
+  "previousSourceSha256": "a37b3d7eb72707ca00729e39eae4aa90f3968ca7dfa5379f823ac1007f3157c4",
+  "previousEntrySha256": "edc8a98ed1bad63432c6ebf1e3244a27f690256f597933eb53054b4136dc9812",
+  "expectedOutputs": {
+    "source": "d0632af5fb69929ed52a7dc5aa78cfb0d27853933763dfcf51d6c84823fe9515",
+    "entry": "d62e557fdb8e1100f7362f6bae2ab83528122b8ed685baad943b7a3f68e74742"
+  },
+  "expectedStages": {
+    "source": [
+      {
+        "name": "native-credential-lock",
+        "inputSha256": "a37b3d7eb72707ca00729e39eae4aa90f3968ca7dfa5379f823ac1007f3157c4",
+        "outputSha256": "362e167d098dd002f0855075a0c9fe02a358749c8a139c03e7739e0cc600848b",
+        "changesSha256": "d03224b337504605c5fdf31372d8e3d257a53d7e0e4a93725ddaed5b61d2dea9"
+      },
+      {
+        "name": "meta-connection-lifetime",
+        "inputSha256": "362e167d098dd002f0855075a0c9fe02a358749c8a139c03e7739e0cc600848b",
+        "outputSha256": "d0632af5fb69929ed52a7dc5aa78cfb0d27853933763dfcf51d6c84823fe9515",
+        "changesSha256": "8ed4c3efd4c805ac9eab60667defaefdc536d869a5810e284eb7842153fc6f3c"
+      }
+    ],
+    "entry": [
+      {
+        "name": "native-credential-lock",
+        "inputSha256": "edc8a98ed1bad63432c6ebf1e3244a27f690256f597933eb53054b4136dc9812",
+        "outputSha256": "fb2ebc91649242c65597a92b3845cc401699cc77928534a26882421f48959c48",
+        "changesSha256": "d03224b337504605c5fdf31372d8e3d257a53d7e0e4a93725ddaed5b61d2dea9"
+      },
+      {
+        "name": "meta-connection-lifetime",
+        "inputSha256": "fb2ebc91649242c65597a92b3845cc401699cc77928534a26882421f48959c48",
+        "outputSha256": "d62e557fdb8e1100f7362f6bae2ab83528122b8ed685baad943b7a3f68e74742",
+        "changesSha256": "8ed4c3efd4c805ac9eab60667defaefdc536d869a5810e284eb7842153fc6f3c"
+      }
+    ]
+  },
+  "expectedShim": {
+    "kind": "chatgpt-shim",
+    "stage": "native-credential-lock",
+    "module": "docs/integration/proposed/standard-profile-isolation/native-credential-lock-a1/source/transform.mjs",
+    "export": "transformAuxChatGPTCredentialLockShim",
+    "count": 5,
+    "input": "/private/tmp/aux-standard-daemon-projection-20261024-a4/native/aux-chatgpt.cjs",
+    "packageRelativePath": "Contents/Resources/native/aux-chatgpt.cjs",
+    "inputSha256": "43f8ce1e95d34c3deeca3f6c0a2cecd8b55dcce2342a09f490fbfc06d496e3ef",
+    "outputSha256": "ab87a75d99a34f28cb4558a6060bfd2fdad0e0f4acbc9f69da4a4c09f8de922f",
+    "changesSha256": "7ca01bb1e3f01edb1b12dce7248d23ad66bed9b5f07ebd386479ad42433b1bd3",
+    "overlay": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/native-credential-lock-a1/overlay.json",
+    "overlaySha256": "d6bc4ab8f93851383d3a2405b6cdf5ec6981ccf6d5e89ac61271a304b1c6981e"
+  },
+  "editsPerLeaf": 15,
+  "shimEdits": 5,
+  "previousShimEdits": 4,
+  "plannedTotalShimEdits": 9,
+  "frozenPriorAnchorCount": 182,
+  "plannedTotalAnchorCount": 197,
+  "originalProjectorRerun": false,
+  "producerRun": false,
+  "productExecuted": false,
+  "providerRequests": 0,
+  "nativeBuild": false
+}
