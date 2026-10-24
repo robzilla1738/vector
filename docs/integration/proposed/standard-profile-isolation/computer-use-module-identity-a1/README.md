@@ -1,0 +1,15 @@
+# Computer Use private namespace identity
+
+The exact already-branded supplied helper is SHA256 `af5b2731c50a848c248a976b800ebd91d4ced91ccdf98eadb4d101a72bf9786c`. REA's actual Mach-O evidence is retained in `original-macho-evidence.json` (parent `ev_f52a3a3cf7bf6c390b66ba0c0a5925b302bd93a0ed836d3e3ceec69f202f0f11`). Its import/export normalization is explicitly not exhaustive; it was not decompiled or executed.
+
+There are2,027 complete private module spellings in three metadata/string sections and the indexed symbol string table. The other two uppercase branding matches lie in the original signature tail. The one lowercase match is SQLite's actual `_setupLookaside` language symbol and remains unchanged. No namespace occurrence intersects executable instructions.
+
+`assess.py` tested namespace candidates through the actual Xcode Swift demangler without writing an executable. `AuxComputerAgent` is **rejected**: eight specialized names change more than their module because Swift's word substitutions reconstruct nested symbols differently. The equal-width `AuxilComputerUse` preserves every one of the1,979 indexed demangled names except the intended private module spelling. This is a private implementation namespace; visible Aux naming, bundle identities, protocols, helper UI and artwork remain as before.
+
+`source/derive.py` uses the measured metadata locations, exact before-images, full Mach-O command/section/nlist bounds and pure-module equivalence. It changes only those fixed-width names and truthfully removes the invalidated original signature command/tail, updating LINKEDIT sizes. Every instruction section is byte-identical. All nlist records/addresses and714 indexed undefined-name records are unchanged; the complete parsed dynamic export trie preserves all302 names/terminals. Actual `dyld_info` export/dependency observations also match. Counts of indexed undefined records are not a claim of exhaustive runtime imports.
+
+Actual output: `/private/tmp/aux-computer-use-module-identity-20261024-a1/aux-computer-use`, SHA256 `debc03deb3f94eb7e8b50fa88d25e617f970b75f1e515b757b131655ad3dde51`. `derivation-a1.json` binds it and the exact2,031-edit/truncation plan. It is unsigned and was never loaded or executed. No edited artifact retains an original-signature validity claim.
+
+The real state-v2 stager and preservation checker replay this hash-pinned plan after the original supplied-branding adapter. State-v1 compatibility remains byte-identical. Actual complete helper staging passed (`actual-stage-a1.json`): only the executable differs; Info.plist, artwork, all other files, modes and coverage match the preceding helper stage. Wrong-source and repeated application refuse. Staging never signs or requests grants.
+
+This helper is not yet in the completed resource-package-a1 app. New package association and actual authorized helper/TCC/browser-suppression behavior acceptance remain open. Static symbol/layout checks cannot establish runtime behavior. Original source snapshots, accepted app and completed inactive candidates remain intact. No owner state, credentials, OS permission, process launch or release occurred.

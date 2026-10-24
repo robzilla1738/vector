@@ -1,0 +1,404 @@
+{
+  "format": "aux.computer-use-module.derivation.actual.v1",
+  "passed": true,
+  "inputSha256": "af5b2731c50a848c248a976b800ebd91d4ced91ccdf98eadb4d101a72bf9786c",
+  "output": "/private/tmp/aux-computer-use-module-identity-20261024-a1/aux-computer-use",
+  "outputSha256": "debc03deb3f94eb7e8b50fa88d25e617f970b75f1e515b757b131655ad3dde51",
+  "planSha256": "578a7c8313b2d986a00dc1dcab582e8ba805625aac27aa924cfc3b5eb4a5fda6",
+  "symbolCount": 6008,
+  "undefinedRecords": 714,
+  "renamedIndexedSymbols": 1979,
+  "namespaceOccurrences": 2027,
+  "dynamicExports": 302,
+  "nativeToolChecks": [
+    {
+      "tool": "/usr/bin/dyld_info",
+      "mode": "-exports",
+      "rows": 304,
+      "unchanged": true
+    },
+    {
+      "tool": "/usr/bin/dyld_info",
+      "mode": "-dependents",
+      "rows": 41,
+      "unchanged": true
+    }
+  ],
+  "sections": [
+    {
+      "segment": "__TEXT",
+      "section": "__text",
+      "offset": 6856,
+      "length": 1373184,
+      "flags": 2147484672,
+      "beforeSha256": "1787dbc9bf7a6b0ce4c41b18742cc98ac211f6c7120a5895ebd225f9a6d74f23",
+      "afterSha256": "1787dbc9bf7a6b0ce4c41b18742cc98ac211f6c7120a5895ebd225f9a6d74f23",
+      "unchanged": true
+    },
+    {
+      "segment": "__TEXT",
+      "section": "__stubs",
+      "offset": 1380040,
+      "length": 5436,
+      "flags": 2147484680,
+      "beforeSha256": "8c699a12ab6667c527e99b1e0ec6bc7ca2ff04b9d2861add866773572e7c38e3",
+      "afterSha256": "8c699a12ab6667c527e99b1e0ec6bc7ca2ff04b9d2861add866773572e7c38e3",
+      "unchanged": true
+    },
+    {
+      "segment": "__TEXT",
+      "section": "__objc_stubs",
+      "offset": 1385504,
+      "length": 8928,
+      "flags": 2147484672,
+      "beforeSha256": "ce0e816d31d8064534be1aa38c5dbe77919e1921c7d58b9b54f3961bc0dcbf39",
+      "afterSha256": "ce0e816d31d8064534be1aa38c5dbe77919e1921c7d58b9b54f3961bc0dcbf39",
+      "unchanged": true
+    },
+    {
+      "segment": "__TEXT",
+      "section": "__objc_methlist",
+      "offset": 1394432,
+      "length": 2068,
+      "flags": 0,
+      "beforeSha256": "3b8f3dc9aa769d191d39ffa3428e96001748cf0e7d906d3f70e741d90c830815",
+      "afterSha256": "3b8f3dc9aa769d191d39ffa3428e96001748cf0e7d906d3f70e741d90c830815",
+      "unchanged": true
+    },
+    {
+      "segment": "__TEXT",
+      "section": "__swift5_typeref",
+      "offset": 1396500,
+      "length": 3215,
+      "flags": 0,
+      "beforeSha256": "1acda53f607601e754340bcf2ab602c9e1b76954aa97a79fc67e780f709d062a",
+      "afterSha256": "1acda53f607601e754340bcf2ab602c9e1b76954aa97a79fc67e780f709d062a",
+      "unchanged": true
+    },
+    {
+      "segment": "__TEXT",
+      "section": "__swift5_entry",
+      "offset": 1399716,
+      "length": 8,
+      "flags": 0,
+      "beforeSha256": "6484c1d4f525de2ce767587f39bf0001c6eade2ab619b9b925d2c7f666e6b1d6",
+      "afterSha256": "6484c1d4f525de2ce767587f39bf0001c6eade2ab619b9b925d2c7f666e6b1d6",
+      "unchanged": true
+    },
+    {
+      "segment": "__TEXT",
+      "section": "__const",
+      "offset": 1399728,
+      "length": 31224,
+      "flags": 0,
+      "beforeSha256": "40afdf99c9c062f6e75d188889b7a6529ac745da3baa6443b0c67f9ec5b6defe",
+      "afterSha256": "7efdc70a9c74e9701d186ffd20af64ad13fb76b97c7ef37f92db0bf5edf16f91",
+      "unchanged": false
+    },
+    {
+      "segment": "__TEXT",
+      "section": "__cstring",
+      "offset": 1430960,
+      "length": 52620,
+      "flags": 2,
+      "beforeSha256": "04c05e16a84d27fc910a15164e133c36fda75239d5cae1a23c04ad65386442c8",
+      "afterSha256": "b4f575f636f45609b72baadefc10d27bff736565e991f74a42ab6bb01635312f",
+      "unchanged": false
+    },
+    {
+      "segment": "__TEXT",
+      "section": "__constg_swiftt",
+      "offset": 1483580,
+      "length": 2816,
+      "flags": 0,
+      "beforeSha256": "c0dff225e71e534e759fc3ab52c987cabf469a58ab536f17db94cd0c7ed8c5e1",
+      "afterSha256": "c0dff225e71e534e759fc3ab52c987cabf469a58ab536f17db94cd0c7ed8c5e1",
+      "unchanged": true
+    },
+    {
+      "segment": "__TEXT",
+      "section": "__swift5_reflstr",
+      "offset": 1486400,
+      "length": 3606,
+      "flags": 0,
+      "beforeSha256": "c97e11e2bad033d1fa808def8bc859d9bb6b508b13b2c8da52b4a6d45c8e9d93",
+      "afterSha256": "c97e11e2bad033d1fa808def8bc859d9bb6b508b13b2c8da52b4a6d45c8e9d93",
+      "unchanged": true
+    },
+    {
+      "segment": "__TEXT",
+      "section": "__swift5_fieldmd",
+      "offset": 1490008,
+      "length": 4156,
+      "flags": 0,
+      "beforeSha256": "673c9b8eaff8d528276ab2a5c261fb6a2ddaabddefc1ce7f1abeba65d1c382d4",
+      "afterSha256": "673c9b8eaff8d528276ab2a5c261fb6a2ddaabddefc1ce7f1abeba65d1c382d4",
+      "unchanged": true
+    },
+    {
+      "segment": "__TEXT",
+      "section": "__swift5_builtin",
+      "offset": 1494164,
+      "length": 220,
+      "flags": 0,
+      "beforeSha256": "8da5cd08dbb053a51bf9127651d7846173e35775f81a4866a6a126db9bfbfbea",
+      "afterSha256": "8da5cd08dbb053a51bf9127651d7846173e35775f81a4866a6a126db9bfbfbea",
+      "unchanged": true
+    },
+    {
+      "segment": "__TEXT",
+      "section": "__swift5_mpenum",
+      "offset": 1494384,
+      "length": 24,
+      "flags": 0,
+      "beforeSha256": "d057af4366a4123610e6cd30965f98770b62d41a55a0abf9fb64c219c53a265e",
+      "afterSha256": "d057af4366a4123610e6cd30965f98770b62d41a55a0abf9fb64c219c53a265e",
+      "unchanged": true
+    },
+    {
+      "segment": "__TEXT",
+      "section": "__swift5_proto",
+      "offset": 1494408,
+      "length": 172,
+      "flags": 0,
+      "beforeSha256": "d5405a5a1cab4c443bcbe9772ec855968f585a412bb15e8595f1d47231f53aa0",
+      "afterSha256": "d5405a5a1cab4c443bcbe9772ec855968f585a412bb15e8595f1d47231f53aa0",
+      "unchanged": true
+    },
+    {
+      "segment": "__TEXT",
+      "section": "__swift5_types",
+      "offset": 1494580,
+      "length": 268,
+      "flags": 0,
+      "beforeSha256": "7fc3d7f2ce622aaa5e8aac2274f0d4ed36fc35b29d7758e7e8d0c3b6b5ceb33e",
+      "afterSha256": "7fc3d7f2ce622aaa5e8aac2274f0d4ed36fc35b29d7758e7e8d0c3b6b5ceb33e",
+      "unchanged": true
+    },
+    {
+      "segment": "__TEXT",
+      "section": "__swift5_assocty",
+      "offset": 1494848,
+      "length": 264,
+      "flags": 0,
+      "beforeSha256": "dc1a5cb2401270b3733b8941c2413f26c62cb259152a790888186865521e0ef5",
+      "afterSha256": "dc1a5cb2401270b3733b8941c2413f26c62cb259152a790888186865521e0ef5",
+      "unchanged": true
+    },
+    {
+      "segment": "__TEXT",
+      "section": "__objc_methname",
+      "offset": 1495120,
+      "length": 11191,
+      "flags": 2,
+      "beforeSha256": "ee1c38d9dc8c967d93146c1a8953f381878279773cb83a1fdda1098623799272",
+      "afterSha256": "ee1c38d9dc8c967d93146c1a8953f381878279773cb83a1fdda1098623799272",
+      "unchanged": true
+    },
+    {
+      "segment": "__TEXT",
+      "section": "__swift5_capture",
+      "offset": 1506312,
+      "length": 1792,
+      "flags": 0,
+      "beforeSha256": "1b6c0f07ffc652a493510f6408250787d6bfa89b6d3d5e878d5792b6569044a6",
+      "afterSha256": "1b6c0f07ffc652a493510f6408250787d6bfa89b6d3d5e878d5792b6569044a6",
+      "unchanged": true
+    },
+    {
+      "segment": "__TEXT",
+      "section": "__objc_methtype",
+      "offset": 1508112,
+      "length": 2159,
+      "flags": 2,
+      "beforeSha256": "73107e95b1689321ede09fa5e3d3e2cf4509083f540f4db066d5f7361870de58",
+      "afterSha256": "73107e95b1689321ede09fa5e3d3e2cf4509083f540f4db066d5f7361870de58",
+      "unchanged": true
+    },
+    {
+      "segment": "__TEXT",
+      "section": "__objc_classname",
+      "offset": 1510272,
+      "length": 1595,
+      "flags": 2,
+      "beforeSha256": "b58a65c62dc88f2e6db4ed1252adf824d59523500b1895bc117024f6ff9941a0",
+      "afterSha256": "eede1ce77435792dcbfb852de4c121fa9b15b6fe1293a5f75189517053f51a6a",
+      "unchanged": false
+    },
+    {
+      "segment": "__TEXT",
+      "section": "__oslogstring",
+      "offset": 1511867,
+      "length": 54,
+      "flags": 2,
+      "beforeSha256": "8a0b7d27f3d844b986a8484d2bddacf0a6ca572923a3f7c052727c59ce8aca1b",
+      "afterSha256": "8a0b7d27f3d844b986a8484d2bddacf0a6ca572923a3f7c052727c59ce8aca1b",
+      "unchanged": true
+    },
+    {
+      "segment": "__TEXT",
+      "section": "__swift_as_entry",
+      "offset": 1511924,
+      "length": 8,
+      "flags": 0,
+      "beforeSha256": "64b149f75a1adc0a2e4f0000ebc3aaee47e1044611faacf398f10fdda377e590",
+      "afterSha256": "64b149f75a1adc0a2e4f0000ebc3aaee47e1044611faacf398f10fdda377e590",
+      "unchanged": true
+    },
+    {
+      "segment": "__TEXT",
+      "section": "__swift_as_ret",
+      "offset": 1511932,
+      "length": 12,
+      "flags": 0,
+      "beforeSha256": "93850645fc6dcaf8d47df2c3a82cefc5a6126f4847a60f6e5907019da0260f6c",
+      "afterSha256": "93850645fc6dcaf8d47df2c3a82cefc5a6126f4847a60f6e5907019da0260f6c",
+      "unchanged": true
+    },
+    {
+      "segment": "__TEXT",
+      "section": "__unwind_info",
+      "offset": 1511944,
+      "length": 8688,
+      "flags": 0,
+      "beforeSha256": "8e9b7140c0092870b1fe4ed702d2eb78bfffb5e5e2e9de46ecd33eaf77e664fd",
+      "afterSha256": "8e9b7140c0092870b1fe4ed702d2eb78bfffb5e5e2e9de46ecd33eaf77e664fd",
+      "unchanged": true
+    },
+    {
+      "segment": "__TEXT",
+      "section": "__eh_frame",
+      "offset": 1520632,
+      "length": 4720,
+      "flags": 1744830475,
+      "beforeSha256": "c996ac1941e89c8cd0e95f4500446a8106f6dad46bac1a807430ae89258ba26f",
+      "afterSha256": "c996ac1941e89c8cd0e95f4500446a8106f6dad46bac1a807430ae89258ba26f",
+      "unchanged": true
+    },
+    {
+      "segment": "__DATA_CONST",
+      "section": "__got",
+      "offset": 1540096,
+      "length": 4696,
+      "flags": 6,
+      "beforeSha256": "82592d658464b16e561e7d6d2ec36784aefc722978585d476371f2a351577d33",
+      "afterSha256": "82592d658464b16e561e7d6d2ec36784aefc722978585d476371f2a351577d33",
+      "unchanged": true
+    },
+    {
+      "segment": "__DATA_CONST",
+      "section": "__const",
+      "offset": 1544792,
+      "length": 19936,
+      "flags": 0,
+      "beforeSha256": "8ccb9c4361ccb49b17cada0fcaf7ca87767a4473e9e1127f44105bed1f41dd28",
+      "afterSha256": "8ccb9c4361ccb49b17cada0fcaf7ca87767a4473e9e1127f44105bed1f41dd28",
+      "unchanged": true
+    },
+    {
+      "segment": "__DATA_CONST",
+      "section": "__cfstring",
+      "offset": 1564728,
+      "length": 64,
+      "flags": 0,
+      "beforeSha256": "9ff4423834319c6be1be8dc1890e4e7dac18a653ff59cd4f2fcff1bc4e96de59",
+      "afterSha256": "9ff4423834319c6be1be8dc1890e4e7dac18a653ff59cd4f2fcff1bc4e96de59",
+      "unchanged": true
+    },
+    {
+      "segment": "__DATA_CONST",
+      "section": "__objc_classlist",
+      "offset": 1564792,
+      "length": 208,
+      "flags": 268435456,
+      "beforeSha256": "a508044086136e0deb37cecc5d27c095785e9b521ba031b8d53ac24f6ddf6355",
+      "afterSha256": "a508044086136e0deb37cecc5d27c095785e9b521ba031b8d53ac24f6ddf6355",
+      "unchanged": true
+    },
+    {
+      "segment": "__DATA_CONST",
+      "section": "__objc_protolist",
+      "offset": 1565000,
+      "length": 56,
+      "flags": 0,
+      "beforeSha256": "e80e72d7b23dfff24274ae3c537c330014c5b446a1bd4bb83689b4fdcb8bf235",
+      "afterSha256": "e80e72d7b23dfff24274ae3c537c330014c5b446a1bd4bb83689b4fdcb8bf235",
+      "unchanged": true
+    },
+    {
+      "segment": "__DATA_CONST",
+      "section": "__objc_imageinfo",
+      "offset": 1565056,
+      "length": 8,
+      "flags": 0,
+      "beforeSha256": "9430fb236b56df1c2846dc691d67b88647f3c5957aa1a8d2ceabf48690c6444b",
+      "afterSha256": "9430fb236b56df1c2846dc691d67b88647f3c5957aa1a8d2ceabf48690c6444b",
+      "unchanged": true
+    },
+    {
+      "segment": "__DATA",
+      "section": "__objc_const",
+      "offset": 1572864,
+      "length": 10072,
+      "flags": 0,
+      "beforeSha256": "fe7a90876edd116ec791034d55cbca2217a920bcc8b11f1a8bcc6c9b03fa7b00",
+      "afterSha256": "fe7a90876edd116ec791034d55cbca2217a920bcc8b11f1a8bcc6c9b03fa7b00",
+      "unchanged": true
+    },
+    {
+      "segment": "__DATA",
+      "section": "__objc_selrefs",
+      "offset": 1582936,
+      "length": 3016,
+      "flags": 268435461,
+      "beforeSha256": "bf81ba89cd533dc50aff71faa3a039cec4a48c385cd70e73ee8ac71408bcdbe5",
+      "afterSha256": "bf81ba89cd533dc50aff71faa3a039cec4a48c385cd70e73ee8ac71408bcdbe5",
+      "unchanged": true
+    },
+    {
+      "segment": "__DATA",
+      "section": "__objc_protorefs",
+      "offset": 1585952,
+      "length": 56,
+      "flags": 268435467,
+      "beforeSha256": "b6a0505f593f04613a292eaf1b20ae47d83e3df7ceac9db9b3a75be3cfc6d027",
+      "afterSha256": "b6a0505f593f04613a292eaf1b20ae47d83e3df7ceac9db9b3a75be3cfc6d027",
+      "unchanged": true
+    },
+    {
+      "segment": "__DATA",
+      "section": "__objc_classrefs",
+      "offset": 1586008,
+      "length": 480,
+      "flags": 268435456,
+      "beforeSha256": "1a02e9c0afac9f6c4b3523ee4b765103ce29a8b2a2d8d79244dcb1059078996e",
+      "afterSha256": "1a02e9c0afac9f6c4b3523ee4b765103ce29a8b2a2d8d79244dcb1059078996e",
+      "unchanged": true
+    },
+    {
+      "segment": "__DATA",
+      "section": "__objc_data",
+      "offset": 1586488,
+      "length": 2416,
+      "flags": 0,
+      "beforeSha256": "684f781efc32733705fcb0ad2a9b7acfc754f1def48f6883827cff11c544152e",
+      "afterSha256": "684f781efc32733705fcb0ad2a9b7acfc754f1def48f6883827cff11c544152e",
+      "unchanged": true
+    },
+    {
+      "segment": "__DATA",
+      "section": "__data",
+      "offset": 1588904,
+      "length": 21888,
+      "flags": 0,
+      "beforeSha256": "c4ced9231be703964a96b352f747c5df2ab0764370b96d136752449bebf1b8ff",
+      "afterSha256": "c4ced9231be703964a96b352f747c5df2ab0764370b96d136752449bebf1b8ff",
+      "unchanged": true
+    }
+  ],
+  "originalSignatureRemoved": true,
+  "signed": false,
+  "productExecuted": false,
+  "runtimeAcceptance": false,
+  "packaged": false
+}

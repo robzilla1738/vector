@@ -1,4 +1,5 @@
 import { createHash } from 'node:crypto';
+import { applyAuxComputerUseModuleIdentity } from '../../vendor/provided/aux-computer-use-module-identity.mjs';
 import {
   readFile,
   lstat,
@@ -393,7 +394,9 @@ export async function stageProvidedComputerUse({
   sourceRoot,
   outputRoot,
   identities,
+  stateIdentityVersion = 1,
 }) {
+  if (![1, 2].includes(stateIdentityVersion)) throw new Error('Unsupported helper state identity');
   const inventory = await verifyProvidedComputerUse(sourceRoot);
   sourceRoot = await realpath(sourceRoot);
   if (!isAbsolute(outputRoot))
@@ -423,6 +426,13 @@ export async function stageProvidedComputerUse({
     join(sourceRoot, 'Contents/MacOS/aside-computer-use'),
   );
   const binary = patchProvidedComputerUseIdentity(sourceBinary, identities);
+  if (stateIdentityVersion === 2) {
+    const module = applyAuxComputerUseModuleIdentity(binary.bytes);
+    binary.bytes = module.bytes;
+    binary.report.outputSha256 = module.report.outputSha256;
+    binary.report.moduleIdentity = module.report;
+    binary.report.remaining = binary.report.remaining.filter(note => note !== 'Swift module/type and ABI symbols intentionally retain their internally consistent names');
+  }
   const brand = JSON.parse(
     await readFile(
       new URL('../../assets/brand/inventory.json', import.meta.url),
@@ -502,6 +512,7 @@ export async function stageProvidedComputerUse({
   return {
     version: 1,
     component: 'computer-use',
+    stateIdentityVersion,
     sourceVersion: inventory.sourceVersion,
     sourceBuild: inventory.sourceBuild,
     inputRoot: sourceRoot,

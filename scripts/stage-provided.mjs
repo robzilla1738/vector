@@ -101,6 +101,7 @@ try {
     sourceRoot: sourceSnapshot?.roots.computerUse ?? helperPins.inputRoot,
     outputRoot: join(temporary, 'computer-use/Aux Computer Use.app'),
     identities: { browserBundleId: 'dev.aux.browser', canaryBundleId: 'dev.aux.browser.canary', bundleId: 'dev.aux.browser.computer-use' },
+    stateIdentityVersion,
   });
   computerUse.outputRoot = join(output, 'computer-use/Aux Computer Use.app');
   await writeFile(join(temporary, 'computer-use/manifest.json'), `${JSON.stringify(computerUse, null, 2)}\n`);

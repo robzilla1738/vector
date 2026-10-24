@@ -3,6 +3,7 @@ import {relocateAuxAssetPath} from '../vendor/provided/aux-asset-path-identity.m
 import {applyAuxBuiltinIconIdentity} from '../vendor/provided/aux-builtin-icon-identity.mjs';
 import {applyAuxRuntimeContractIdentity} from '../vendor/provided/aux-runtime-contract-identity.mjs';
 import {assertObsoleteDaemonAddonDisposition} from '../vendor/provided/aux-daemon-obsolete-addon.mjs';
+import {applyAuxComputerUseModuleIdentity} from '../vendor/provided/aux-computer-use-module-identity.mjs';
 import {CLI_COMMAND} from '../vendor/aside/patches/brand.mjs';
 import {disabledSeed} from '../vendor/provided/vault-product-exclusion.mjs';
 import {loadAuxBrowserIconReplacement} from './lib/aux-browser-icon.mjs';
@@ -257,6 +258,7 @@ if (!stack.components.computerUse) throw new Error('Restage: branded supplied Co
 const helper = await json(join(output, 'computer-use/manifest.json'));
 const helperPins = await json(join(repository, 'docs/source/provided-computer-use-inputs.json'));
 const helperRoot = join(output, 'computer-use/Aux Computer Use.app');
+if ((helper.stateIdentityVersion ?? 1) !== stateIdentityVersion) throw new Error('Helper state identity differs');
 if (JSON.stringify(await files(helperRoot)) !== JSON.stringify(helper.files.map((file) => file.path).sort())) throw new Error('Unreported helper resources');
 const helperSources = new Map(helperPins.files.map((file) => [file.path, file]));
 for (const file of helper.files) {
@@ -267,12 +269,17 @@ for (const file of helper.files) {
   const source = await readFile(join(sourceSnapshot?.roots.computerUse ?? helperPins.inputRoot, file.sourcePath)), bytes = await readFile(join(helperRoot, file.path));
   if (hash(source) !== pinned.sha256 || hash(bytes) !== file.outputSha256 || ((await lstat(join(helperRoot, file.path))).mode & 0o777) !== pinned.mode) throw new Error('Helper preservation hash or mode mismatch');
   if (file.sourcePath === 'Contents/MacOS/aside-computer-use') {
-    const replayed = Buffer.from(source);
+    let replayed = Buffer.from(source);
     for (const patch of helper.binary.patches) {
       const before = Buffer.from(patch.beforeHex, 'hex'), after = Buffer.from(patch.afterHex, 'hex');
       if (before.length !== after.length || !replayed.subarray(patch.offset, patch.offset + before.length).equals(before)) throw new Error('Helper binary patch anchor drift');
       after.copy(replayed, patch.offset);
     }
+    if (stateIdentityVersion === 2) {
+      const module = applyAuxComputerUseModuleIdentity(replayed);
+      if (JSON.stringify(module.report) !== JSON.stringify(helper.binary.moduleIdentity)) throw new Error('Unreported helper private-module derivation');
+      replayed = module.bytes;
+    } else if (helper.binary.moduleIdentity) throw new Error('Compatibility helper unexpectedly changed module identity');
     if (!replayed.equals(bytes)) throw new Error('Unreported helper binary modification');
   } else if (file.anchors?.length) {
     if (file.anchors[0].assetPath) {

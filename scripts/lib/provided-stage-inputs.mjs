@@ -31,6 +31,8 @@ export const providedStageInputs = Object.freeze([
   'vendor/provided-ui/branding/channel-bots/telegram.jpg',
   'vendor/provided/aux-product-links.mjs',
   'vendor/provided/aux-daemon-obsolete-addon.mjs',
+  'vendor/provided/aux-computer-use-module-identity.mjs',
+  'docs/integration/proposed/standard-profile-isolation/computer-use-module-identity-a1/source/patch-plan.json',
   'vendor/provided/aux-ui-peer-identity.mjs',
   'docs/integration/proposed/standard-profile-isolation/ui-peer-identity-a1/inputs.json',
   'vendor/provided/provider-funded-launch.mjs',
