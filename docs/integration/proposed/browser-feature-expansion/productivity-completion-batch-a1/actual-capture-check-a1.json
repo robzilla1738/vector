@@ -1,0 +1,19 @@
+{
+  "format": "aux.productivity-completion.capture-check.actual.v1",
+  "passed": true,
+  "command": [
+    "node",
+    "--test",
+    "vendor/provided/aux-productivity-capture.test.mjs"
+  ],
+  "exitCode": 0,
+  "tests": 7,
+  "failures": 0,
+  "adapterSourceSha256": "f35dc3078fa516851f67e9eb66b5eb785c8bea30c383ca6699a1bf7c468ee867",
+  "testSourceSha256": "e200993cf9a85bc764538d2f8c1aa7cae462e79158fee7a67cf9a0ca9b5b9576",
+  "actualSuppliedAdapterReplayAndSyntaxPassed": true,
+  "providerRequests": 0,
+  "nativeBuildRun": false,
+  "productExecuted": false,
+  "runtimeAcceptance": false
+}

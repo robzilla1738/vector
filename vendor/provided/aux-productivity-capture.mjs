@@ -1,3 +1,14 @@
+export function capturePngBounds(dataUrl) {
+ if(typeof dataUrl!=='string'||!dataUrl.startsWith('data:image/png;base64,'))throw Error('Page capture did not return a PNG.');
+ const bytes=atob(dataUrl.slice(22,66));
+ const byte=index=>bytes.charCodeAt(index);
+ const integer=index=>byte(index)*16777216+byte(index+1)*65536+byte(index+2)*256+byte(index+3);
+ if(bytes.length<24||[137,80,78,71,13,10,26,10].some((value,index)=>byte(index)!==value)||
+    integer(8)!==13||bytes.slice(12,16)!=='IHDR')throw Error('Page capture returned an invalid PNG.');
+ const width=integer(16),height=integer(20);
+ if(!width||!height||width*height>32*1024*1024)throw Error('The page image exceeds the capture limit.');
+ return {width,height};
+}
 export async function captureBoundPage(request,sender,api,fullPage,crop,enabled) {
  let capability;
  try {
@@ -20,6 +31,11 @@ export async function captureBoundPage(request,sender,api,fullPage,crop,enabled)
        rect.x<0||rect.y<0||rect.width<=0||rect.height<=0||request.viewportWidth<=0||
        rect.x+rect.width>request.viewportWidth||rect.width*rect.height>32*1024*1024)
      throw Error('Select a valid area inside the page.');
+    const image=capturePngBounds(dataUrl),scale=image.width/request.viewportWidth;
+    // The native surface uses integer pixels; tolerate only its final edge's
+    // one-pixel rounding, not an off-page selection or stale larger viewport.
+    if(!Number.isFinite(scale)||scale<=0||(rect.y+rect.height)*scale>image.height+1)
+     throw Error('The selected area is outside the captured page. Select it again.');
     dataUrl=await crop(dataUrl,rect,request.viewportWidth);
    }
   }else throw Error('Unsupported capture mode.');
@@ -54,7 +70,7 @@ export function transformAuxCaptureUi({relative,text}){
   const start=text.indexOf('async function zg(e, t) {'),end=text.indexOf('\nasync function Fg(e)',start);
   if(start<0||end<0)throw Error('Pinned screenshot handler unavailable');
   const original=text.slice(start,end);
-  text=change(text,original,`${captureBoundPage.toString()}\n${installNativeCaptureListener.toString()}\ninstallNativeCaptureListener(chrome.auxBrowserPreferences,chrome.tabs,Cs,message=>console.warn("Aux screenshot:",message));\nasync function zg(e,t){return captureBoundPage(e,t,chrome.auxBrowserPreferences,input=>D.capture.fullPage.mutate(input),od,Cs)}`,anchors,'aux-capture-native-document-dispatch');
+  text=change(text,original,`${capturePngBounds.toString()}\n${captureBoundPage.toString()}\n${installNativeCaptureListener.toString()}\ninstallNativeCaptureListener(chrome.auxBrowserPreferences,chrome.tabs,Cs,message=>console.warn("Aux screenshot:",message));\nasync function zg(e,t){return captureBoundPage(e,t,chrome.auxBrowserPreferences,input=>D.capture.fullPage.mutate(input),od,Cs)}`,anchors,'aux-capture-native-document-dispatch');
  }
  if(relative==='assets/capture-result-nUfmrYC9.js'){
   text=change(text,'var i=v(S());','import{n as auxCaptureToast}from"./dist-LyKrHgST.js";var i=v(S());',anchors,'aux-capture-existing-error-toast');

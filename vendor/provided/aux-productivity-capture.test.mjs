@@ -53,3 +53,28 @@ test('native screenshot ingress reports disabled state to its exact native inten
  await listener({tabId:5,documentId:'original-document'});
  assert.equal(sent,undefined);assert.equal(errors[0],'The screenshot document changed.');
 });
+test('area capture rejects a selection below the actual captured image before cropping',async()=>{
+ const header=Buffer.alloc(33);Buffer.from([137,80,78,71,13,10,26,10]).copy(header);
+ header.writeUInt32BE(13,8);header.write('IHDR',12);header.writeUInt32BE(200,16);header.writeUInt32BE(100,20);
+ const image='data:image/png;base64,'+header.toString('base64');
+ let crops=0,cancelled=0;
+ const api={beginPageSurfaceCapture:async()=>({success:true,capability:'lease',targetId:'target'}),
+  capturePageSurface:async()=>({success:true,dataUrl:image}),validatePageSurfaceCapture:async()=>({success:true}),
+  cancelPageSurfaceCapture:async()=>{cancelled++}};
+ const crop=async()=>{crops++;return png};
+ const request={mode:'area',viewportWidth:100,rect:{x:0,y:40,width:20,height:20}};
+ const outside=await captureBoundPage(request,sender,api,null,crop,async()=>true);
+ assert.equal(outside.ok,false);assert.match(outside.error,/outside the captured page/);assert.equal(crops,0);
+ const inside=await captureBoundPage({...request,rect:{x:0,y:30,width:20,height:20}},sender,api,null,crop,async()=>true);
+ assert.equal(inside.ok,true);assert.equal(crops,1);assert.equal(cancelled,2);
+ const edge=await captureBoundPage({...request,rect:{x:0,y:30.5,width:20,height:20}},sender,api,null,crop,async()=>true);
+ assert.equal(edge.ok,true);assert.equal(crops,2);assert.equal(cancelled,3);
+});
+test('area capture refuses invalid image dimensions and releases its native capability',async()=>{
+ let cropped=false,cancelled=false;
+ const api={beginPageSurfaceCapture:async()=>({success:true,capability:'lease',targetId:'target'}),
+  capturePageSurface:async()=>({success:true,dataUrl:png}),cancelPageSurfaceCapture:async()=>{cancelled=true}};
+ const result=await captureBoundPage({mode:'area',viewportWidth:100,rect:{x:0,y:0,width:10,height:10}},sender,api,null,
+  async()=>{cropped=true;return png},async()=>true);
+ assert.equal(result.ok,false);assert.match(result.error,/invalid PNG/);assert.equal(cropped,false);assert.equal(cancelled,true);
+});

@@ -5,6 +5,30 @@ export function validDownloadStem(value) {
     throw Error('Choose a filename without path separators or hidden control characters.');
   return value;
 }
+// A review can change while account resolution or provider work is pending.
+// Cancellation settles in the existing daemon boundary; this guard prevents
+// a completed old request from reopening/replacing the current file review.
+export function createFileReviewGuard(cancel) {
+  let epoch=0,request=null;
+  const stop=()=>{
+    const previous=request;request=null;
+    if(previous)Promise.resolve().then(()=>cancel(previous)).catch(()=>{});
+  };
+  return {
+    begin(){
+      stop();const current=++epoch;
+      const isCurrent=()=>current===epoch;
+      return {isCurrent,setRequest(value){
+        if(!isCurrent()){
+          if(value)throw Error('This file review changed.');
+          return;
+        }
+        request=value;
+      }};
+    },
+    invalidate(){++epoch;stop()}
+  };
+}
 export async function proposeDownloadName(input,deps) {
   deps.assertCurrent();deps.signal.throwIfAborted();
   const selection=await deps.selection();deps.assertCurrent();deps.signal.throwIfAborted();
@@ -63,11 +87,11 @@ export function transformAuxFilesUi({relative,text}) {
   const anchors=[];if(relative!=='assets/tabsearch-3k_2hgil.js')return{text,anchors};
   const change=(find,next,kind)=>{text=replace(text,find,next,anchors,kind)};
   change('import{b as oe,l as H}from"./queries-ldd77hNk.js";', 'import{g as auxFilesClient,i as auxFilesAccount,b as oe,l as H}from"./queries-ldd77hNk.js";','aux-files-existing-account-client');
-  change('function Qe(){const[auxProductivityReceipt,',`${[validDownloadStem,filesSections,runFileAction].map(fn=>fn.toString()).join('\n')}\nfunction Qe(){const[auxFileState,auxSetFileState]=(0,i.useState)(null),auxFileRequest=(0,i.useRef)(null);(0,i.useEffect)(()=>()=>{const request=auxFileRequest.current;if(request)auxFilesClient.models.downloadNameCancel.mutate(request).catch(()=>{})},[]);const[auxProductivityReceipt,`,'aux-files-reused-search-state');
+  change('function Qe(){const[auxProductivityReceipt,',`${[validDownloadStem,createFileReviewGuard,filesSections,runFileAction].map(fn=>fn.toString()).join('\n')}\nfunction Qe(){const[auxFileState,auxSetFileState]=(0,i.useState)(null),auxFileGuard=(0,i.useRef)(null);if(!auxFileGuard.current)auxFileGuard.current=createFileReviewGuard(request=>auxFilesClient.models.downloadNameCancel.mutate(request));(0,i.useEffect)(()=>()=>auxFileGuard.current?.invalidate(),[]);const[auxProductivityReceipt,`,'aux-files-reused-search-state');
   change('()=>productivitySections(auxNavContext,auxProductivityReceipt)??navigationSections(auxNavContext,r,Pe($,r)),[r,$,auxNavContext,auxProductivityReceipt]',
     '()=>productivitySections(auxNavContext,auxProductivityReceipt)??filesSections(auxNavContext,auxFileState,r,navigationSections(auxNavContext,r,Pe($,r))),[r,$,auxNavContext,auxProductivityReceipt,auxFileState]','aux-files-existing-search-rows');
   change('let auxNavSuccess=false;try{if(n.kind?.startsWith("aux-tidy-"))',
-    'let auxNavSuccess=false;try{if(n.kind?.startsWith("aux-file")){const result=await runFileAction(chrome.auxBrowserPreferences,auxFilesClient,auxFilesAccount,auxNavContext,auxFileState,r,n,value=>{auxFileRequest.current=value});auxSetFileState(result.state);if(result.text!==undefined){t(result.text);a(result.text);requestAnimationFrame(()=>{T.current?.focus();T.current?.select()})}return}if(n.kind?.startsWith("aux-tidy-"))','aux-files-existing-action-handler');
+    'let auxNavSuccess=false;try{if(n.kind?.startsWith("aux-file")){const action=auxFileGuard.current.begin();try{const result=await runFileAction(chrome.auxBrowserPreferences,auxFilesClient,auxFilesAccount,auxNavContext,auxFileState,r,n,action.setRequest);if(!action.isCurrent())return;auxSetFileState(result.state);if(result.text!==undefined){t(result.text);a(result.text);requestAnimationFrame(()=>{if(action.isCurrent()){T.current?.focus();T.current?.select()}})}}catch(error){if(action.isCurrent())throw error}return}if(n.kind?.startsWith("aux-tidy-"))','aux-files-existing-action-handler');
   change('if(auxNavSuccess)O()}},[auxNavContext,auxProductivityReceipt]);','if(auxNavSuccess)O()}},[auxNavContext,auxProductivityReceipt,auxFileState,r]);','aux-files-action-dependencies');
   change('onClick:()=>{t(c)},onPointerEnter:()=>r(x)},c.id)',
     'onClick:()=>{t(c)},onPointerEnter:()=>r(x),onDragStart:()=>t({...c,kind:"aux-file-drag",downloadId:c.file.id})},c.id)','aux-files-drag-existing-action');

@@ -1,0 +1,20 @@
+{
+  "format": "aux.productivity-completion.files-check.actual.v1",
+  "passed": true,
+  "command": [
+    "node",
+    "--test",
+    "vendor/provided/aux-productivity-files.test.mjs"
+  ],
+  "exitCode": 0,
+  "tests": 8,
+  "failures": 0,
+  "actualSuppliedAdapterReplayAndSyntaxPassed": true,
+  "existingCssClassSequencesPreserved": true,
+  "providerRequests": 0,
+  "nativeBuildRun": false,
+  "productExecuted": false,
+  "runtimeAcceptance": false,
+  "adapterSourceSha256": "fa20b16057bcf5c2eae0c67270be11d8bb09bfad032937935974743befcd75c4",
+  "testSourceSha256": "b9181916a573eb5429ed4f5322f42fb8b3b5ab3b1e08ce103371f679a0e4192e"
+}

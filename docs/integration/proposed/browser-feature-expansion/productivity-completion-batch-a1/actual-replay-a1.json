@@ -1,0 +1,14 @@
+{
+  "format": "aux.productivity-completion.replay.actual.v1",
+  "passed": true,
+  "sourcePlanSha256": "59a36c4c3c784f145d2ee19f776836c5f7ff414b5f7e07bfdf82922569e35185",
+  "patchSha256": "f9cdc4667238ea5e2b83e274f6a702938757ea1605f3dd2190059c51770626ea",
+  "files": 6,
+  "exactReplayPassed": true,
+  "reverseCheckPassed": true,
+  "nativeCheckoutChanged": false,
+  "nativeBuildRun": false,
+  "productExecuted": false,
+  "providerRequests": 0,
+  "runtimeAcceptance": false
+}

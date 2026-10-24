@@ -1,0 +1,133 @@
+{
+  "format": "aux.productivity-completion.source.v1",
+  "root": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src",
+  "files": [
+    {
+      "path": "chrome/browser/ui/views/frame/multi_contents_view.h",
+      "inputSha256": "cc7e30689b84dec1dbf69461b2c1deef36bfe3ff68cbada6daa806a1f8ca0da4",
+      "outputSha256": "17a154276b156c5e36be2a3a9c43afe993d368817a31db85fe42d13e76c19bc8",
+      "source": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/browser-feature-expansion/productivity-completion-batch-a1/source/chrome/browser/ui/views/frame/multi_contents_view.h",
+      "anchors": [
+        {
+          "find": "  void OnSwap();",
+          "replace": "  void OnSwap();\n  void OnSwapBranch(uint32_t node);",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/multi_contents_view.cc",
+      "inputSha256": "b1d489ee277bf17b7b1caa65be09cc00500cd728e635e6c77280f583b63d23d7",
+      "outputSha256": "b897b124ea477163405cfd83e8426e00124620a5b856e501655618f11de4fefd",
+      "source": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/browser-feature-expansion/productivity-completion-batch-a1/source/chrome/browser/ui/views/frame/multi_contents_view.cc",
+      "anchors": [
+        {
+          "find": "                          [](const auto& handle) { return handle->branch_node(); })) return;",
+          "replace": "                          [](const auto& handle) { return handle->branch_node(); })) {\n      // Different split trees reuse node IDs. Update retained handle axes when\n      // switching panes as well as when changing the current tree's visuals.\n      for (const auto& handle : branch_resize_areas_) {\n        const auto* node = visual_data_.pane_tree()->Find(handle->branch_node());\n        if (node) handle->SetLayout(node->axis == split_tabs::SplitPaneTree::Axis::kHorizontal\n            ? split_tabs::SplitTabLayout::kSideBySide : split_tabs::SplitTabLayout::kStacked);\n      }\n      return;\n    }",
+          "count": 1
+        },
+        {
+          "find": "  for (const auto& handle : branch_resize_areas_) {\n    const auto* node = visual_data_.pane_tree()->Find(handle->branch_node());\n    if (node) handle->SetLayout(node->axis == split_tabs::SplitPaneTree::Axis::kHorizontal\n        ? split_tabs::SplitTabLayout::kSideBySide : split_tabs::SplitTabLayout::kStacked);\n  }\n  InvalidateLayout();",
+          "replace": "  InvalidateLayout();",
+          "count": 1
+        },
+        {
+          "find": "void MultiContentsView::SetTargetContentBounds(",
+          "replace": "void MultiContentsView::OnSwapBranch(uint32_t node) {\n  if (!IsInSplitView() || !visual_data_.pane_tree()) return;\n  const auto* branch = visual_data_.pane_tree()->Find(node);\n  if (branch && !branch->slot) delegate_->ReversePaneBranch(node);\n}\n\nvoid MultiContentsView::SetTargetContentBounds(",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/multi_contents_resize_area.cc",
+      "inputSha256": "c810886c9b79940ec15a58d5ab8938357d8a0d8d08d9f918c84826950fa99346",
+      "outputSha256": "445065fe6ebdc8332b9ade730c82e010da626242e0da5b43d88944b745c6e675",
+      "source": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/browser-feature-expansion/productivity-completion-batch-a1/source/chrome/browser/ui/views/frame/multi_contents_resize_area.cc",
+      "anchors": [
+        {
+          "find": "    if (!branch_node_) multi_contents_view_->OnSwap();",
+          "replace": "    if (branch_node_) multi_contents_view_->OnSwapBranch(branch_node_);\n    else multi_contents_view_->OnSwap();",
+          "count": 2
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/multi_contents_view_delegate.h",
+      "inputSha256": "45525e6fb9dd52c5f9713bae7140dfde913ed7a37b4dde3f0cf9076e0eeded73",
+      "outputSha256": "3032b9708050f57dddf8acd557f409125985d93c7669a2dae359ee299ee66bc7",
+      "source": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/browser-feature-expansion/productivity-completion-batch-a1/source/chrome/browser/ui/views/frame/multi_contents_view_delegate.h",
+      "anchors": [
+        {
+          "find": "  virtual void ResizePaneBranch(uint32_t, double, bool) {}",
+          "replace": "  virtual void ResizePaneBranch(uint32_t, double, bool) {}\n  virtual void ReversePaneBranch(uint32_t node);",
+          "count": 1
+        },
+        {
+          "find": "  void ReverseWebContents() override;",
+          "replace": "  void ReverseWebContents() override;\n  void ReversePaneBranch(uint32_t node) override;",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/multi_contents_view_delegate.cc",
+      "inputSha256": "892cf8e0689c19d84ed9ba0e947bb4269a3c265580962f9052947a26b93e2b0d",
+      "outputSha256": "d6e00acc0f6e3b033f5afb78c58a027fb236dfe26fde5fab7c3b7bde1b5d9ad1",
+      "source": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/browser-feature-expansion/productivity-completion-batch-a1/source/chrome/browser/ui/views/frame/multi_contents_view_delegate.cc",
+      "anchors": [
+        {
+          "find": "MultiContentsViewDelegateImpl::MultiContentsViewDelegateImpl(",
+          "replace": "void MultiContentsViewDelegate::ReversePaneBranch(uint32_t) {}\n\nMultiContentsViewDelegateImpl::MultiContentsViewDelegateImpl(",
+          "count": 1
+        },
+        {
+          "find": "void MultiContentsViewDelegateImpl::ResizePaneBranch(uint32_t node,",
+          "replace": "void MultiContentsViewDelegateImpl::ReversePaneBranch(uint32_t node) {\n  auto* active = tab_strip_model_->GetActiveTab();\n  if (!active || !active->GetSplit()) return;\n  const auto split = *active->GetSplit();\n  const auto* data = tab_strip_model_->GetSplitData(split);\n  if (!data || !data->visual_data()->pane_tree()) return;\n  auto tree = *data->visual_data()->pane_tree();\n  if (!tree.SwapBranch(node) || !tab_strip_model_->UpdateSplitPaneTree(split, tree, false)) return;\n  // Preserve the genuine tabs, documents and active selection. Only this\n  // branch's geometry changes, and the native session owns its restoration.\n  if (auto* sessions = SessionServiceFactory::GetForProfile(browser_->GetProfile()))\n    sessions->SetSplitTabData(browser_->GetSessionID(), split,\n                             tab_strip_model_->GetSplitData(split)->visual_data());\n}\n\nvoid MultiContentsViewDelegateImpl::ResizePaneBranch(uint32_t node,",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_recent_files_section.cc",
+      "inputSha256": "f2049d1506fe826f846706fc6e23e41ee75d4297325d6a452621444d4738761a",
+      "outputSha256": "d6179fd3658038ae59941d6e3d205999d6ed74f3934a4e6b8ece0d62b3345f56",
+      "source": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/browser-feature-expansion/productivity-completion-batch-a1/source/chrome/browser/ui/views/frame/aux_recent_files_section.cc",
+      "anchors": [
+        {
+          "find": "  RecentFileRow(std::u16string name, base::RepeatingClosure reveal,\n                base::RepeatingClosure drag)\n      : views::Button(std::move(reveal)), drag_(std::move(drag)) {",
+          "replace": "  RecentFileRow(std::u16string name, bool available,\n                base::RepeatingClosure reveal, base::RepeatingClosure drag)\n      : views::Button(std::move(reveal)), drag_(std::move(drag)), available_(available) {",
+          "count": 1
+        },
+        {
+          "find": "    label_ = AddChildView(std::make_unique<views::Label>(name));",
+          "replace": "    label_ = AddChildView(std::make_unique<views::Label>(available_ ? name : name + u\" \u2014 unavailable\"));",
+          "count": 1
+        },
+        {
+          "find": "    SetTooltipText(name + u\" \u2014 drag to attach; click to show in Finder\");\n    GetViewAccessibility().SetName(name);",
+          "replace": "    SetEnabled(available_);\n    SetTooltipText(available_ ? name + u\" \u2014 drag to attach; click to show in Finder\"\n                             : name + u\" \u2014 unavailable. Select or download this file again.\");\n    GetViewAccessibility().SetName(available_ ? name : name + u\" \u2014 unavailable\");",
+          "count": 1
+        },
+        {
+          "find": "    label_->SetEnabledColor(RowColor(*this, false));",
+          "replace": "    label_->SetEnabledColor(RowColor(*this, !available_));",
+          "count": 1
+        },
+        {
+          "find": "  bool pressed_ = false, dragged_ = false;",
+          "replace": "  bool pressed_ = false, dragged_ = false;\n  const bool available_;",
+          "count": 1
+        },
+        {
+          "find": "    if (!id || !name || !file->FindBool(\"available\").value_or(false)) continue;\n    auto row = std::make_unique<RecentFileRow>(base::UTF8ToUTF16(*name),",
+          "replace": "    if (!id || !name) continue;\n    auto row = std::make_unique<RecentFileRow>(base::UTF8ToUTF16(*name),\n        file->FindBool(\"available\").value_or(false),",
+          "count": 1
+        }
+      ]
+    }
+  ],
+  "nativeCheckoutChanged": false,
+  "nativeBuildRun": false,
+  "productExecuted": false,
+  "runtimeAcceptance": false
+}

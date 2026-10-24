@@ -1,0 +1,26 @@
+{
+  "format": "aux.productivity-completion.adapter-inputs.v1",
+  "baseline": "e34540943",
+  "files": [
+    {
+      "path": "vendor/provided/aux-productivity-files.mjs",
+      "inputSha256": "31781def487c45829a4d974f7d35c65097b94afee518d61efd8f9f49940d01d1",
+      "outputSha256": "fa20b16057bcf5c2eae0c67270be11d8bb09bfad032937935974743befcd75c4"
+    },
+    {
+      "path": "vendor/provided/aux-productivity-files.test.mjs",
+      "inputSha256": "6f58ad7c44249da15a6d312e7a667f4181f38c82ceaab907afad5e3f923366c6",
+      "outputSha256": "b9181916a573eb5429ed4f5322f42fb8b3b5ab3b1e08ce103371f679a0e4192e"
+    },
+    {
+      "path": "vendor/provided/aux-productivity-capture.mjs",
+      "inputSha256": "112862eb42e660bb34ec8d2b836873255a613cb5ddc1197c832be77398ec9043",
+      "outputSha256": "f35dc3078fa516851f67e9eb66b5eb785c8bea30c383ca6699a1bf7c468ee867"
+    },
+    {
+      "path": "vendor/provided/aux-productivity-capture.test.mjs",
+      "inputSha256": "6ad2bcc5d936869d11f8594ffafa01ecf57f0e0d6251a429ecbc0f70cfb7a21f",
+      "outputSha256": "e200993cf9a85bc764538d2f8c1aa7cae462e79158fee7a67cf9a0ca9b5b9576"
+    }
+  ]
+}

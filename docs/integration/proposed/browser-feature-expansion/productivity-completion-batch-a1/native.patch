@@ -1,0 +1,193 @@
+--- a/chrome/browser/ui/views/frame/multi_contents_view.h
++++ b/chrome/browser/ui/views/frame/multi_contents_view.h
+@@ -145,6 +145,7 @@
+ 
+   // If in a split view, swaps the positions of the two active tabs.
+   void OnSwap();
++  void OnSwapBranch(uint32_t node);
+ 
+   // If non-null, specifies an increase in target size so that web contents
+   // maintain their maximum extents during browser animations to prevent
+--- a/chrome/browser/ui/views/frame/multi_contents_view.cc
++++ b/chrome/browser/ui/views/frame/multi_contents_view.cc
+@@ -376,7 +376,16 @@
+     if (desired.size() == branch_resize_areas_.size() &&
+         std::ranges::equal(desired, branch_resize_areas_, {},
+                           [](uint32_t id) { return id; },
+-                          [](const auto& handle) { return handle->branch_node(); })) return;
++                          [](const auto& handle) { return handle->branch_node(); })) {
++      // Different split trees reuse node IDs. Update retained handle axes when
++      // switching panes as well as when changing the current tree's visuals.
++      for (const auto& handle : branch_resize_areas_) {
++        const auto* node = visual_data_.pane_tree()->Find(handle->branch_node());
++        if (node) handle->SetLayout(node->axis == split_tabs::SplitPaneTree::Axis::kHorizontal
++            ? split_tabs::SplitTabLayout::kSideBySide : split_tabs::SplitTabLayout::kStacked);
++      }
++      return;
++    }
+   }
+   while (!branch_resize_areas_.empty()) {
+     auto* handle = branch_resize_areas_.back().get();
+@@ -504,11 +513,6 @@
+   visual_data_ = visual_data;
+   resize_area_->SetLayout(visual_data.split_layout());
+   ConfigureBranchHandles();
+-  for (const auto& handle : branch_resize_areas_) {
+-    const auto* node = visual_data_.pane_tree()->Find(handle->branch_node());
+-    if (node) handle->SetLayout(node->axis == split_tabs::SplitPaneTree::Axis::kHorizontal
+-        ? split_tabs::SplitTabLayout::kSideBySide : split_tabs::SplitTabLayout::kStacked);
+-  }
+   InvalidateLayout();
+ }
+ 
+@@ -531,6 +535,12 @@
+ void MultiContentsView::OnSwap() {
+   CHECK(IsInSplitView());
+   delegate_->ReverseWebContents();
++}
++
++void MultiContentsView::OnSwapBranch(uint32_t node) {
++  if (!IsInSplitView() || !visual_data_.pane_tree()) return;
++  const auto* branch = visual_data_.pane_tree()->Find(node);
++  if (branch && !branch->slot) delegate_->ReversePaneBranch(node);
+ }
+ 
+ void MultiContentsView::SetTargetContentBounds(
+--- a/chrome/browser/ui/views/frame/multi_contents_resize_area.cc
++++ b/chrome/browser/ui/views/frame/multi_contents_resize_area.cc
+@@ -108,7 +108,8 @@
+   // swap the contents views.
+   if (!is_resizing() && event->type() == ui::EventType::kGestureTap &&
+       event->details().tap_count() == 2) {
+-    if (!branch_node_) multi_contents_view_->OnSwap();
++    if (branch_node_) multi_contents_view_->OnSwapBranch(branch_node_);
++    else multi_contents_view_->OnSwap();
+   }
+   ResizeArea::OnGestureEvent(event);
+ }
+@@ -118,7 +119,8 @@
+   // event, swap the contents views.
+   if (!is_resizing() && event.IsOnlyLeftMouseButton() &&
+       event.GetClickCount() == 2) {
+-    if (!branch_node_) multi_contents_view_->OnSwap();
++    if (branch_node_) multi_contents_view_->OnSwapBranch(branch_node_);
++    else multi_contents_view_->OnSwap();
+   }
+   ResizeArea::OnMouseReleased(event);
+ }
+--- a/chrome/browser/ui/views/frame/multi_contents_view_delegate.h
++++ b/chrome/browser/ui/views/frame/multi_contents_view_delegate.h
+@@ -24,6 +24,7 @@
+   virtual void ResizeWebContents(double ratio, bool done_resizing) = 0;
+   virtual void ReverseWebContents() = 0;
+   virtual void ResizePaneBranch(uint32_t, double, bool) {}
++  virtual void ReversePaneBranch(uint32_t node);
+ };
+ 
+ // Executes browser and tabstrip dependent behaviors on behalf of a
+@@ -47,6 +48,7 @@
+   // Reverses the order of split tabs.
+   // Must already be in a split.
+   void ReverseWebContents() override;
++  void ReversePaneBranch(uint32_t node) override;
+   void ResizePaneBranch(uint32_t node, double ratio, bool done) override;
+ 
+   // Creates a new tab for the first valid URL in `urls` and creates a split
+--- a/chrome/browser/ui/views/frame/multi_contents_view_delegate.cc
++++ b/chrome/browser/ui/views/frame/multi_contents_view_delegate.cc
+@@ -27,6 +27,8 @@
+ #include "ui/base/window_open_disposition.h"
+ #include "url/url_constants.h"
+ 
++void MultiContentsViewDelegate::ReversePaneBranch(uint32_t) {}
++
+ MultiContentsViewDelegateImpl::MultiContentsViewDelegateImpl(
+     BrowserWindowInterface& browser)
+     : browser_(browser), tab_strip_model_(*browser.GetTabStripModel()) {}
+@@ -88,6 +90,21 @@
+     session_service->SetSplitTabData(browser_->GetSessionID(), split_id,
+                                      visual_data);
+   }
++}
++
++void MultiContentsViewDelegateImpl::ReversePaneBranch(uint32_t node) {
++  auto* active = tab_strip_model_->GetActiveTab();
++  if (!active || !active->GetSplit()) return;
++  const auto split = *active->GetSplit();
++  const auto* data = tab_strip_model_->GetSplitData(split);
++  if (!data || !data->visual_data()->pane_tree()) return;
++  auto tree = *data->visual_data()->pane_tree();
++  if (!tree.SwapBranch(node) || !tab_strip_model_->UpdateSplitPaneTree(split, tree, false)) return;
++  // Preserve the genuine tabs, documents and active selection. Only this
++  // branch's geometry changes, and the native session owns its restoration.
++  if (auto* sessions = SessionServiceFactory::GetForProfile(browser_->GetProfile()))
++    sessions->SetSplitTabData(browser_->GetSessionID(), split,
++                             tab_strip_model_->GetSplitData(split)->visual_data());
+ }
+ 
+ void MultiContentsViewDelegateImpl::ResizePaneBranch(uint32_t node,
+--- a/chrome/browser/ui/views/frame/aux_recent_files_section.cc
++++ b/chrome/browser/ui/views/frame/aux_recent_files_section.cc
+@@ -43,9 +43,9 @@
+ class RecentFileRow final : public views::Button {
+   METADATA_HEADER(RecentFileRow, views::Button)
+  public:
+-  RecentFileRow(std::u16string name, base::RepeatingClosure reveal,
+-                base::RepeatingClosure drag)
+-      : views::Button(std::move(reveal)), drag_(std::move(drag)) {
++  RecentFileRow(std::u16string name, bool available,
++                base::RepeatingClosure reveal, base::RepeatingClosure drag)
++      : views::Button(std::move(reveal)), drag_(std::move(drag)), available_(available) {
+     button_controller()->set_notify_action(views::ButtonController::NotifyAction::kOnRelease);
+     SetFocusBehavior(FocusBehavior::ALWAYS);
+     auto* layout = SetLayoutManager(std::make_unique<views::BoxLayout>(
+@@ -55,7 +55,7 @@
+     icon_->SetCanProcessEventsWithinSubtree(false);
+     icon_->SetPreferredSize(gfx::Size(16, 16));
+     icon_->SetProperty(views::kMarginsKey, gfx::Insets::TLBR(0, 0, 0, 8));
+-    label_ = AddChildView(std::make_unique<views::Label>(name));
++    label_ = AddChildView(std::make_unique<views::Label>(available_ ? name : name + u" — unavailable"));
+     label_->SetCanProcessEventsWithinSubtree(false);
+     label_->SetAutoColorReadabilityEnabled(false);
+     label_->SetSubpixelRenderingEnabled(false);
+@@ -65,8 +65,10 @@
+     label_->SetFontList(font.Derive(14 - font.GetFontSize(), gfx::Font::NORMAL,
+                                    gfx::Font::Weight::NORMAL));
+     layout->SetFlexForView(label_, 1);
+-    SetTooltipText(name + u" — drag to attach; click to show in Finder");
+-    GetViewAccessibility().SetName(name);
++    SetEnabled(available_);
++    SetTooltipText(available_ ? name + u" — drag to attach; click to show in Finder"
++                             : name + u" — unavailable. Select or download this file again.");
++    GetViewAccessibility().SetName(available_ ? name : name + u" — unavailable");
+     Refresh();
+   }
+   gfx::Size CalculatePreferredSize(const views::SizeBounds& bounds) const override {
+@@ -111,7 +113,7 @@
+   }
+  private:
+   void Refresh() {
+-    label_->SetEnabledColor(RowColor(*this, false));
++    label_->SetEnabledColor(RowColor(*this, !available_));
+     icon_->SetImage(ui::ImageModel::FromVectorIcon(kPageIcon, RowColor(*this, true), 16));
+   }
+   base::RepeatingClosure drag_;
+@@ -119,6 +121,7 @@
+   raw_ptr<views::Label> label_ = nullptr;
+   gfx::Point origin_;
+   bool pressed_ = false, dragged_ = false;
++  const bool available_;
+ };
+ BEGIN_METADATA(RecentFileRow)
+ END_METADATA
+@@ -197,8 +200,9 @@
+     const auto* file = entry.GetIfDict();
+     const auto* id = file ? file->FindString("id") : nullptr;
+     const auto* name = file ? file->FindString("name") : nullptr;
+-    if (!id || !name || !file->FindBool("available").value_or(false)) continue;
++    if (!id || !name) continue;
+     auto row = std::make_unique<RecentFileRow>(base::UTF8ToUTF16(*name),
++        file->FindBool("available").value_or(false),
+         base::BindRepeating(&AuxRecentFilesSection::Reveal, weak_factory_.GetWeakPtr(), *id),
+         base::BindRepeating(&AuxRecentFilesSection::Drag, weak_factory_.GetWeakPtr(), *id));
+     if (row_count_) row->SetProperty(views::kMarginsKey, gfx::Insets::TLBR(2, 0, 0, 0));
