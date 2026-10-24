@@ -1,0 +1,76 @@
+{
+  "format": "aux.native-document-token-bridge.source.v1",
+  "files": [
+    {
+      "path": "content/public/browser/aux_ui_migration_document.h",
+      "operation": "create",
+      "inputSha256": null,
+      "expectedNativeTargetAbsent": true,
+      "outputSha256": "7731641394116b8a6417163f35b1dfbb25b272c63482b4dcd445bfceee629589",
+      "output": "/Users/rcourson/.codex/worktrees/aux-features-navigation/web/docs/integration/proposed/standard-profile-isolation/native-document-token-bridge-a11b/source/content/public/browser/aux_ui_migration_document.h",
+      "anchors": []
+    },
+    {
+      "path": "content/browser/renderer_host/aux_ui_migration_document.cc",
+      "operation": "create",
+      "inputSha256": null,
+      "expectedNativeTargetAbsent": true,
+      "outputSha256": "bcf1ed9e33b71bcd9e6ca4fa33d622996f2d66cc28aa7ec962ef6721d8eb0b39",
+      "output": "/Users/rcourson/.codex/worktrees/aux-features-navigation/web/docs/integration/proposed/standard-profile-isolation/native-document-token-bridge-a11b/source/content/browser/renderer_host/aux_ui_migration_document.cc",
+      "anchors": []
+    },
+    {
+      "path": "chrome/browser/aux/ui_storage_migration_controller.cc",
+      "input": "/Users/rcourson/.codex/worktrees/aux-features-navigation/web/docs/integration/proposed/standard-profile-isolation/ui-native-wire-controller-a12/source/chrome/browser/aux/ui_storage_migration_controller.cc",
+      "inputSha256": "df72d725a20842bac262a28cde37936807659662e80c3309efe63607550d4543",
+      "outputSha256": "ae64750186759e955bd226f6498e830bc135f3a140402d802e50860707203143",
+      "output": "/Users/rcourson/.codex/worktrees/aux-features-navigation/web/docs/integration/proposed/standard-profile-isolation/native-document-token-bridge-a11b/source/chrome/browser/aux/ui_storage_migration_controller.cc",
+      "anchors": [
+        {
+          "find": "#include \"content/public/browser/browser_thread.h\"",
+          "replace": "#include \"content/public/browser/browser_thread.h\"\n#include \"content/public/browser/aux_ui_migration_document.h\"",
+          "count": 1
+        },
+        {
+          "find": "actual->GetDocumentTokenForAuxUiMigration()",
+          "replace": "content::GetDocumentTokenForAuxUiMigration(*actual)",
+          "count": 1
+        },
+        {
+          "find": "frame->GetDocumentTokenForAuxUiMigration()",
+          "replace": "content::GetDocumentTokenForAuxUiMigration(*frame)",
+          "count": 1
+        }
+      ]
+    }
+  ],
+  "countedAnchors": 3,
+  "requiredUnchangedNativeOwners": [
+    {
+      "path": "content/public/browser/render_frame_host.h",
+      "requiredOriginalSha256": "83f5f6af1916636407cebec62ab76b61d7f68d2468e26c64311125ecef628433",
+      "doNotProjectA11VirtualAccessor": true
+    },
+    {
+      "path": "content/browser/renderer_host/render_frame_host_impl.h",
+      "requiredOriginalSha256": "250a05273c856d1fc93ea8cc890fdb121651afee022924c0f2cf99f1d9018419",
+      "doNotProjectA11VirtualAccessor": true
+    },
+    {
+      "path": "content/browser/renderer_host/render_frame_host_impl.cc",
+      "requiredOriginalSha256": "3cbf82892a1a7573dd35a3c04b8ab7366b0f88ee268d7b4ef7c95faa1c7f04e2",
+      "doNotProjectA11VirtualAccessor": true
+    }
+  ],
+  "supersedes": "native-document-token-join-a11 three RFH/Impl virtual-accessor projections; keep controller facts via this bridge",
+  "priorController": "ui-native-wire-controller-a12",
+  "rootRegistrations": [
+    "content/public/browser/BUILD.gn:aux_ui_migration_document.h",
+    "content/browser/BUILD.gn:renderer_host/aux_ui_migration_document.cc"
+  ],
+  "nativeTreeUnchanged": true,
+  "nativeCompiled": false,
+  "nativeExecuted": false,
+  "productExecuted": false,
+  "runtimeAccepted": false
+}

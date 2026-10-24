@@ -1,0 +1,68 @@
+--- /dev/null
++++ b/content/public/browser/aux_ui_migration_document.h
+@@ -0,0 +1,15 @@
++// Copyright 2026 The Aux Authors. BSD-style license: see //LICENSE.
++#ifndef CONTENT_PUBLIC_BROWSER_AUX_UI_MIGRATION_DOCUMENT_H_
++#define CONTENT_PUBLIC_BROWSER_AUX_UI_MIGRATION_DOCUMENT_H_
++#include <optional>
++#include "content/common/content_export.h"
++#include "third_party/blink/public/common/tokens/tokens.h"
++namespace content {
++class RenderFrameHost;
++// Factual join only. Resolve the exact real browser-owned host through its
++// native registry, reject foreign/mock identities and unsupported lifecycle.
++// This does not grant storage, Profile, path, startup or migration authority.
++CONTENT_EXPORT std::optional<blink::DocumentToken>
++GetDocumentTokenForAuxUiMigration(RenderFrameHost& frame);
++}  // namespace content
++#endif
+--- /dev/null
++++ b/content/browser/renderer_host/aux_ui_migration_document.cc
+@@ -0,0 +1,19 @@
++// Copyright 2026 The Aux Authors. BSD-style license: see //LICENSE.
++#include "content/public/browser/aux_ui_migration_document.h"
++#include "content/browser/renderer_host/render_frame_host_impl.h"
++#include "content/public/browser/browser_thread.h"
++#include "content/public/browser/render_frame_host.h"
++namespace content {
++std::optional<blink::DocumentToken>
++GetDocumentTokenForAuxUiMigration(RenderFrameHost& frame) {
++  DCHECK_CURRENTLY_ON(BrowserThread::UI);
++  auto* actual = RenderFrameHostImpl::FromID(frame.GetGlobalId());
++  if (!actual || static_cast<RenderFrameHost*>(actual) != &frame ||
++      !actual->IsActive() || !actual->IsRenderFrameLive() ||
++      !actual->GetPendingCommitCrossDocumentNavigations().empty())
++    return std::nullopt;
++  // IsActive is exactly kActive (also rejecting pending lifecycle updates),
++  // preserving existing GetDocumentToken pending/speculative restrictions.
++  return actual->GetDocumentToken();
++}
++}  // namespace content
+--- a/chrome/browser/aux/ui_storage_migration_controller.cc
++++ b/chrome/browser/aux/ui_storage_migration_controller.cc
+@@ -33,6 +33,7 @@
+ #include "chrome/browser/ui/aux_feature_lifecycle.h"
+ #include "components/value_store/value_store.h"
+ #include "content/public/browser/browser_thread.h"
++#include "content/public/browser/aux_ui_migration_document.h"
+ #include "content/public/browser/dom_storage_context.h"
+ #include "content/public/browser/navigation_controller.h"
+ #include "content/public/browser/navigation_handle.h"
+@@ -396,7 +397,7 @@
+       actual->GetGlobalId() == frame.routing &&
+       extensions::ExtensionApiFrameIdMap::GetDocumentId(actual) == frame.document_id &&
+       frame.native_frame_token && actual->GetFrameToken() == *frame.native_frame_token &&
+-      frame.native_document_token && actual->GetDocumentTokenForAuxUiMigration() == frame.native_document_token &&
++      frame.native_document_token && content::GetDocumentTokenForAuxUiMigration(*actual) == frame.native_document_token &&
+       actual->GetLastCommittedOrigin() == extension_->origin();
+ }
+ bool Controller::Inventory(bool retain) {
+@@ -440,7 +441,7 @@
+     const auto& namespaces = contents->GetController().GetSessionStorageNamespaceMap();
+     const auto ns = namespaces.find(config);
+     if (ns == namespaces.end() || !ns->second || ns->second->id().empty()) return false;
+-    const auto native_document = frame->GetDocumentTokenForAuxUiMigration();
++    const auto native_document = content::GetDocumentTokenForAuxUiMigration(*frame);
+     if (!native_document) return false;
+     auto retained = std::make_unique<Frame>();
+     retained->native_frame_token = frame->GetFrameToken();
