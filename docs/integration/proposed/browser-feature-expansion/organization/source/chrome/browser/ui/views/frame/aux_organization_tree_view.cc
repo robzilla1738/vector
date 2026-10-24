@@ -304,6 +304,8 @@ void AuxOrganizationTreeView::ContextMenu(const std::string& id, const gfx::Poin
   if (!browser_ || !GetWidget()) return;
   const auto* snapshot = Snapshot(); if (!snapshot || !snapshot->entries.contains(id)) return;
   menu_context_ = CaptureOrganizationContext(*browser_); if (!menu_context_) return;
+  auto* service = organization::OrganizationProfileServiceFactory::GetForProfileIfExists(browser_->GetProfile());
+  undo_token_ = service && service->model() ? service->model()->LastUndoToken() : "";
   menu_entry_ = id; runner_.reset(); move_targets_.clear();
   menu_ = std::make_unique<ui::SimpleMenuModel>(this);
   const auto& entry = snapshot->entries.at(id);

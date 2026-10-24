@@ -52,3 +52,34 @@ the initiating native window's actual active Space. Logical rows reuse the real
 profile favicon service; pending remote URLs have a subtle marker and explicit
 context action. These remain source changes pending the integrator's compile
 and actual runtime checks.
+
+### Retention and opt-in startup cleanup source
+
+Space-local retention is separate from global pins and inherited by folder
+children. Folder dissolution moves all children (including separately archived
+children) without deleting or reviving them. Explicit folder-and-contents archive
+uses the native all-window guards; pinned folders move into the initiating Space
+and archive in one model commit. Archived records can be restored in the tree.
+
+Cleanup is off by default. Its persisted `cleanup` object has `enabled` and
+canonical-decimal `inactivityDays` (1–3650). The additive entry field
+`lastActiveUnixMs` defaults to unknown/zero for older snapshots; unknown and future
+activity dates are never old-tab candidates. Native user selection, explicit row
+open and actual window activation supply timestamps. Maintenance writes retain
+Undo history without adding activation entries; Undo never rewinds newer actual
+activation timestamps. The profile service grants one startup cleanup pass only
+after the real session restore and ordinary classification settle. Each archive
+rechecks the actual selected model and every same-profile live view; active,
+split, retained, pinned, loading, beforeunload, capturing, audible, downloading,
+Agent-marked, runtime-owned, Actor-busy, attached-debugger and pending-navigation
+views are skipped. Metadata stays recoverable; no permanent deletion occurs.
+
+The parent owns settings/private-API exposure. Only native code may submit
+`kMarkTabActive`; renderer claims are not user activity. New APIs are
+`RecordActivity`, `TryClaimStartupCleanup`, and `LastUndoToken`. New actions append
+to the original enum so existing replay fingerprints retain meaning. The codec
+accepts older missing additive fields with explicit safe defaults and refuses
+malformed present values. Pure model syntax was checked; model test cases for
+retention/dissolution and monotonic activation/Undo are supplied but have not been
+executed here. Native compilation, profile integration and runtime acceptance
+remain the integrator's checks.

@@ -13,8 +13,10 @@ namespace aux::organization {
 namespace {
 bool Keys(const base::DictValue& dict,
           std::initializer_list<std::string_view> allowed,
-          std::string_view optional = {}) {
-  if (dict.size() != allowed.size() + (!optional.empty() && dict.contains(optional) ? 1 : 0)) return false;
+          std::initializer_list<std::string_view> optional = {}) {
+  size_t expected = allowed.size();
+  for (const auto key : optional) if (dict.contains(key)) ++expected;
+  if (dict.size() != expected) return false;
   for (const auto key : allowed) {
     if (!dict.contains(key)) return false;
   }
@@ -52,6 +54,8 @@ base::DictValue EncodeSnapshot(const Snapshot& snapshot) {
   value.Set("revision", std::to_string(snapshot.revision));
   value.Set("bookmarksCollapsed", snapshot.bookmarks_collapsed);
   value.Set("pinsCollapsed", snapshot.pins_collapsed);
+  value.Set("cleanup", base::DictValue().Set("enabled", snapshot.cleanup_enabled)
+      .Set("inactivityDays", std::to_string(snapshot.cleanup_inactivity_days)));
   base::ListValue spaces;
   for (const auto& [id, space] : snapshot.spaces) {
     base::DictValue row;
@@ -73,6 +77,7 @@ base::DictValue EncodeSnapshot(const Snapshot& snapshot) {
     row.Set("archiveOperationId", entry.archive_operation_id);
     row.Set("collapsed", entry.collapsed);
     row.Set("keepInSpace", entry.keep_in_space);
+    row.Set("lastActiveUnixMs", std::to_string(entry.last_active_unix_ms));
     entries.Append(std::move(row));
   }
   value.Set("entries", std::move(entries));
@@ -91,7 +96,7 @@ base::DictValue EncodeSnapshot(const Snapshot& snapshot) {
 DecodeResult DecodeSnapshot(const base::DictValue& value,
                             std::string_view expected_profile_id) {
   if (!Keys(value, {"schemaVersion", "profileId", "revision", "bookmarksCollapsed",
-                    "pinsCollapsed", "spaces", "entries", "replay"}))
+                    "pinsCollapsed", "spaces", "entries", "replay"}, {"cleanup"}))
     return Fail("organization fields unknown or missing; original retained");
   if (value.FindInt("schemaVersion") != static_cast<int>(kSchemaVersion))
     return Fail("unsupported organization schema; original retained");
@@ -109,6 +114,13 @@ DecodeResult DecodeSnapshot(const base::DictValue& value,
   Snapshot snapshot;
   snapshot.profile_id = *profile; snapshot.revision = *revision;
   snapshot.bookmarks_collapsed = *bookmarks; snapshot.pins_collapsed = *pins;
+  if (value.contains("cleanup")) {
+    const auto* cleanup = value.FindDict("cleanup");
+    if (!cleanup || !Keys(*cleanup, {"enabled", "inactivityDays"}) ||
+        !cleanup->FindBool("enabled") || !Number(*cleanup, "inactivityDays")) return Fail("invalid cleanup policy");
+    snapshot.cleanup_enabled = *cleanup->FindBool("enabled");
+    snapshot.cleanup_inactivity_days = *Number(*cleanup, "inactivityDays");
+  }
   for (const auto& item : *spaces) {
     const auto* row = item.GetIfDict();
     if (!row || !Keys(*row, {"id", "name", "icon", "order"}))
@@ -125,7 +137,7 @@ DecodeResult DecodeSnapshot(const base::DictValue& value,
     const auto* row = item.GetIfDict();
     if (!row || !Keys(*row, {"id", "kind", "spaceId", "parentId", "title",
           "launchUrl", "currentUrl", "order", "archived", "archiveOperationId",
-          "collapsed"}, "keepInSpace")) return Fail("unknown or invalid entry fields");
+          "collapsed"}, {"keepInSpace", "lastActiveUnixMs"})) return Fail("unknown or invalid entry fields");
     const auto* id = String(*row, "id"); const auto* kind = String(*row, "kind");
     const auto* space = String(*row, "spaceId");
     const auto* parent = String(*row, "parentId");
@@ -152,6 +164,8 @@ DecodeResult DecodeSnapshot(const base::DictValue& value,
     if (row->contains("keepInSpace") && !row->FindBool("keepInSpace"))
       return Fail("invalid keepInSpace");
     entry.keep_in_space = row->FindBool("keepInSpace").value_or(false);
+    if (row->contains("lastActiveUnixMs") && !Number(*row, "lastActiveUnixMs")) return Fail("invalid last activation");
+    entry.last_active_unix_ms = Number(*row, "lastActiveUnixMs").value_or(0);
     if (!snapshot.entries.emplace(*id, std::move(entry)).second)
       return Fail("duplicate entry ID");
   }

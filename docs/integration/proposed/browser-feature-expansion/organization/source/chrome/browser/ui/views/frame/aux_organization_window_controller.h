@@ -61,6 +61,11 @@ class AuxOrganizationWindowController final : public OrganizationWindowDelegate,
   void QueueReconcile();
   void Reconcile();
   void PublishNavigation(tabs::TabHandle);
+  void RecordActivation(tabs::TabHandle);
+  void PublishActivity();
+  void MaybeRunCleanup();
+  void CleanupNext();
+  bool CanCleanup(const std::string&) const;
   void NavigationCommitted(tabs::TabHandle);
   void DocumentChanged(tabs::TabHandle);
   void PersistIdentity(tabs::TabHandle, const std::string&);
@@ -69,7 +74,7 @@ class AuxOrganizationWindowController final : public OrganizationWindowDelegate,
   bool Current() const;
   bool Protected(tabs::TabInterface*) const;
   bool CloseViewNow(tabs::TabHandle);
-  void ArchiveEntry(const std::string&, bool allow_pinned_folder, base::OnceCallback<void(bool)>);
+  void ArchiveEntry(const std::string&, bool allow_pinned_folder, base::OnceCallback<void(bool)>, bool automated = false);
   void EnsureSavedThenClose(tabs::TabHandle, base::OnceCallback<void(bool)>);
   void OnTabStripModelChanged(TabStripModel*, const TabStripModelChange&,
                               const TabStripSelectionChange&) override;
@@ -81,9 +86,13 @@ class AuxOrganizationWindowController final : public OrganizationWindowDelegate,
   std::map<tabs::TabHandle, ViewRecord> views_;
   std::set<tabs::TabHandle> explicit_unloads_;
   std::set<tabs::TabHandle> dirty_navigation_;
+  std::map<tabs::TabHandle, uint64_t> dirty_activation_;
+  std::vector<std::string> cleanup_ids_;
+  size_t cleanup_cursor_ = 0;
+  bool cleanup_running_ = false, cleanup_waiting_ = false;
   bool shutdown_ = false;
   bool reconcile_queued_ = false, registering_ = false, opening_ = false;
-  base::CallbackListSubscription ready_subscription_, model_changes_, settled_, session_restored_;
+  base::CallbackListSubscription ready_subscription_, model_changes_, settled_, session_restored_, activation_;
   base::RepeatingClosureList observers_;
   base::RepeatingCallback<bool(const tabs::TabInterface&)> ordinary_eligible_;
   base::WeakPtrFactory<AuxOrganizationWindowController> weak_{this};

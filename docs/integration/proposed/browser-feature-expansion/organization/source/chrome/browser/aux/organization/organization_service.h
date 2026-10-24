@@ -54,6 +54,10 @@ class OrganizationService final : public KeyedService {
   const Snapshot& snapshot() const;
   void Execute(Context context, Command command, Reply reply);
   void ExecuteBatch(Context context, std::vector<Command> commands, Reply reply);
+  // Browser-native activity only. Not a renderer-supplied activation claim.
+  void RecordActivity(Context context, std::vector<Command> commands, Reply reply);
+  bool TryClaimStartupCleanup();
+  std::string LastUndoToken() const;
   void Undo(Context context, std::string token, Reply reply);
   base::CallbackListSubscription Observe(
       base::RepeatingCallback<void(const Delta&)> callback);
@@ -67,7 +71,7 @@ class OrganizationService final : public KeyedService {
   struct Pending;
   struct UndoRecord { std::string token; uint64_t revision; Snapshot previous; size_t estimated_bytes = 0; };
   void Start(Context context, Mutation mutation, Reply reply,
-             bool make_undo);
+             bool make_undo, bool maintenance = false);
   void DidCommit(WriteReceipt receipt);
   Error Check(const Context& context) const;
   Snapshot snapshot_;
@@ -80,6 +84,7 @@ class OrganizationService final : public KeyedService {
   base::RepeatingClosureList settled_;
   bool blocked_ = false;
   bool shutdown_ = false;
+  bool startup_cleanup_claimed_ = false;
   SEQUENCE_CHECKER(sequence_checker_);
   base::WeakPtrFactory<OrganizationService> weak_{this};
 };

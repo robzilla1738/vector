@@ -153,5 +153,24 @@ TEST(OrganizationModel, DissolveFolderPreservesChildrenOrderAndInheritedRetentio
   EXPECT_EQ(GetCloseDisposition(dissolved.snapshot.entries.at(kTab)), CloseDisposition::kUnloadView);
   EXPECT_EQ(dissolved.snapshot.entries.at(kTab).current_url, kept.snapshot.entries.at(kTab).current_url);
 }
+TEST(OrganizationModel, ActivationIsMonotonicAndUndoDoesNotEraseRecentUse) {
+  auto created = Run(Initial(), Create(Action::kCreateTab, kTab));
+  Command activity; activity.action = Action::kMarkTabActive; activity.id = kTab; activity.index = 2000;
+  auto active = Run(created.snapshot, activity, 2);
+  ASSERT_EQ(active.error, Error::kNone);
+  activity.index = 1000;
+  auto clock_rollback = Run(active.snapshot, activity, 3);
+  ASSERT_EQ(clock_rollback.error, Error::kNone);
+  EXPECT_EQ(clock_rollback.snapshot.entries.at(kTab).last_active_unix_ms, 2000u);
+  auto undo = ApplyUndo(clock_rollback.snapshot, created.snapshot,
+      {"profile-one", "native-generation", 3, Operation(4)}, kOther);
+  ASSERT_EQ(undo.error, Error::kNone);
+  EXPECT_EQ(undo.snapshot.entries.at(kTab).last_active_unix_ms, 2000u);
+  EXPECT_FALSE(Initial().cleanup_enabled);
+  Command policy; policy.action = Action::kSetCleanupPolicy; policy.value = true;
+  EXPECT_EQ(Run(Initial(), policy).error, Error::kInvalid);
+  policy.index = 30;
+  EXPECT_TRUE(Run(Initial(), policy).snapshot.cleanup_enabled);
+}
 }  // namespace
 }  // namespace aux::organization

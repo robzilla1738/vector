@@ -96,7 +96,9 @@ Delta Difference(const Snapshot& old, const Snapshot& next,
       delta.changed_entries.push_back(id);
   }
   delta.sections_changed = old.bookmarks_collapsed != next.bookmarks_collapsed ||
-                           old.pins_collapsed != next.pins_collapsed;
+                           old.pins_collapsed != next.pins_collapsed ||
+                           old.cleanup_enabled != next.cleanup_enabled ||
+                           old.cleanup_inactivity_days != next.cleanup_inactivity_days;
   return delta;
 }
 Error CheckContext(const Snapshot& current, const Context& context,
@@ -186,6 +188,7 @@ std::vector<std::string> OrderedChildren(const Snapshot& snapshot,
   return result;
 }
 Error Validate(const Snapshot& snapshot) {
+  if (snapshot.cleanup_inactivity_days < 1 || snapshot.cleanup_inactivity_days > 3650) return Error::kInvalid;
   if (snapshot.schema_version != kSchemaVersion ||
       !Text(snapshot.profile_id, 256, false) || snapshot.spaces.empty())
     return Error::kInvalid;
@@ -203,6 +206,7 @@ Error Validate(const Snapshot& snapshot) {
   std::map<Group, std::set<uint64_t>> orders;
   for (const auto& [id, entry] : snapshot.entries) {
     if (!IsCanonicalId(id) || id != entry.id || !Text(entry.title, 4096) ||
+        entry.last_active_unix_ms > 253402300799999ULL ||
         !Text(entry.launch_url, 32768) || !Text(entry.current_url, 32768) ||
         (entry.kind != EntryKind::kTab && entry.kind != EntryKind::kFolder) ||
         (!entry.space_id.empty() && !snapshot.spaces.contains(entry.space_id)) ||
@@ -358,6 +362,7 @@ Mutation Apply(const Snapshot& current, const Context& context,
       next.entries.erase(command.id);
       break;
     }
+    case Action::kMarkTabActive:
     case Action::kSetKeepInSpace:
     case Action::kRenameEntry:
     case Action::kMoveEntry:
@@ -368,7 +373,11 @@ Mutation Apply(const Snapshot& current, const Context& context,
       auto it = next.entries.find(command.id);
       if (it == next.entries.end()) return {Error::kMissing, {}, {}};
       auto& entry = it->second;
-      if (command.action == Action::kSetKeepInSpace) {
+      if (command.action == Action::kMarkTabActive) {
+        if (entry.kind != EntryKind::kTab || entry.archived || !command.index || command.index > 253402300799999ULL)
+          return {Error::kInvalid, {}, {}};
+        entry.last_active_unix_ms = std::max(entry.last_active_unix_ms, command.index);
+      } else if (command.action == Action::kSetKeepInSpace) {
         if (entry.archived || IsGlobalPin(entry)) return {Error::kInvalid, {}, {}};
         entry.keep_in_space = command.value;
       } else if (command.action == Action::kRenameEntry) entry.title = command.title;
@@ -410,6 +419,9 @@ Mutation Apply(const Snapshot& current, const Context& context,
       }
       break;
     }
+    case Action::kSetCleanupPolicy:
+      if (command.index < 1 || command.index > 3650) return {Error::kInvalid, {}, {}};
+      next.cleanup_enabled = command.value; next.cleanup_inactivity_days = command.index; break;
     case Action::kSetBookmarksCollapsed:
       next.bookmarks_collapsed = command.value; break;
     case Action::kSetPinsCollapsed:
@@ -456,6 +468,12 @@ Mutation ApplyUndo(const Snapshot& current, const Snapshot& previous,
   if (!IsCanonicalId(token) || previous.profile_id != current.profile_id ||
       Validate(previous) != Error::kNone || previous.revision >= current.revision)
     return {Error::kUndoUnavailable, {}, {}};
-  return Finish(current, previous, context, fingerprint);
+  Snapshot restored = previous;
+  for (auto& [id, entry] : restored.entries) {
+    const auto live = current.entries.find(id);
+    if (live != current.entries.end()) entry.last_active_unix_ms =
+        std::max(entry.last_active_unix_ms, live->second.last_active_unix_ms);
+  }
+  return Finish(current, std::move(restored), context, fingerprint);
 }
 }  // namespace aux::organization

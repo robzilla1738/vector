@@ -34,6 +34,7 @@ struct OrganizationService::Pending {
   Mutation mutation;
   Reply reply;
   bool make_undo = true;
+  bool maintenance = false;
 };
 OrganizationService::OrganizationService(
     Snapshot initial, std::string owner_generation,
@@ -101,6 +102,25 @@ void OrganizationService::ExecuteBatch(Context context,
   Mutation mutation = ApplyBatch(snapshot_, context, commands);
   Start(std::move(context), std::move(mutation), std::move(reply), true);
 }
+void OrganizationService::RecordActivity(Context context, std::vector<Command> commands, Reply reply) {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_); CHECK(reply);
+  if (auto error = Check(context); error != Error::kNone) { std::move(reply).Run({error, snapshot_.revision, {}}); return; }
+  for (const auto& command : commands) if (command.action != Action::kMarkTabActive) {
+    std::move(reply).Run({Error::kInvalid, snapshot_.revision, {}}); return;
+  }
+  auto mutation = ApplyBatch(snapshot_, context, commands);
+  Start(std::move(context), std::move(mutation), std::move(reply), false, true);
+}
+std::string OrganizationService::LastUndoToken() const {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+  return !blocked() && !pending_ && !undo_.empty() && undo_.back().revision == snapshot_.revision
+      ? undo_.back().token : std::string();
+}
+bool OrganizationService::TryClaimStartupCleanup() {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+  if (shutdown_ || blocked_ || pending_ || startup_cleanup_claimed_ || !snapshot_.cleanup_enabled) return false;
+  startup_cleanup_claimed_ = true; return true;
+}
 void OrganizationService::Undo(Context context, std::string token, Reply reply) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   CHECK(reply);
@@ -126,7 +146,7 @@ void OrganizationService::Undo(Context context, std::string token, Reply reply) 
   Start(std::move(context), std::move(mutation), std::move(reply), false);
 }
 void OrganizationService::Start(Context context, Mutation mutation, Reply reply,
-                                bool make_undo) {
+                                bool make_undo, bool maintenance) {
   if (mutation.error != Error::kNone) {
     std::string token;
     if (mutation.error == Error::kReplay && !undo_.empty() &&
@@ -139,7 +159,7 @@ void OrganizationService::Start(Context context, Mutation mutation, Reply reply,
   auto serialized = EncodeSnapshot(mutation.snapshot);
   const auto target_revision = mutation.snapshot.revision;
   pending_ = std::make_unique<Pending>(Pending{std::move(context), snapshot_,
-      std::move(mutation), std::move(reply), make_undo});
+      std::move(mutation), std::move(reply), make_undo, maintenance});
   // Adapter may complete synchronously. Install pending state before calling.
   storage_->Commit(std::move(serialized), snapshot_.profile_id,
                    owner_generation_, snapshot_.revision, target_revision,
@@ -191,6 +211,8 @@ void OrganizationService::DidCommit(WriteReceipt receipt) {
     } else {
       undo_.clear(); undo_bytes_ = 0;
     }
+  } else if (pending->maintenance) {
+    if (!undo_.empty()) undo_.back().revision = snapshot_.revision;
   } else {
     CHECK(!undo_.empty());
     undo_bytes_ -= undo_.back().estimated_bytes;

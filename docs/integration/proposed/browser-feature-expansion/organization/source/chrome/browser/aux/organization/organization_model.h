@@ -39,6 +39,7 @@ struct Entry {
   std::string archive_operation_id;
   bool collapsed = false;
   bool keep_in_space = false;
+  uint64_t last_active_unix_ms = 0;  // Unknown is never an old-tab candidate.
   bool operator==(const Entry&) const = default;
 };
 struct ReplayRecord {
@@ -56,6 +57,8 @@ struct Snapshot {
   std::map<std::string, Entry> entries;
   bool bookmarks_collapsed = false;
   bool pins_collapsed = false;
+  bool cleanup_enabled = false;
+  uint64_t cleanup_inactivity_days = 30;
   std::vector<ReplayRecord> replay;
   bool operator==(const Snapshot&) const = default;
 };
@@ -73,7 +76,7 @@ enum class Action {
   kCreateTab, kCreateFolder, kRenameEntry, kMoveEntry,
   kArchive, kRestore, kSetFolderCollapsed,
   kSetBookmarksCollapsed, kSetPinsCollapsed, kUpdateTabUrl,
-  kSetKeepInSpace, kDissolveFolder,
+  kSetKeepInSpace, kDissolveFolder, kMarkTabActive, kSetCleanupPolicy,
 };
 struct Command {
   Action action = Action::kCreateSpace;
