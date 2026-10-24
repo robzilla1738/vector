@@ -1,0 +1,45 @@
+{
+  "format": "aux.credential-flock-mechanism.actual.v1",
+  "passed": true,
+  "productExecuted": false,
+  "nativeLeaseApiExecuted": false,
+  "ownerStateAccessed": false,
+  "commands": [
+    {
+      "command": [
+        "/usr/bin/lockf",
+        "-s",
+        "-t",
+        "0",
+        "3"
+      ],
+      "exitCode": 0
+    },
+    {
+      "command": [
+        "/usr/bin/lockf",
+        "-s",
+        "-t",
+        "0",
+        "3"
+      ],
+      "exitCode": 75
+    },
+    {
+      "command": [
+        "/usr/bin/lockf",
+        "-s",
+        "-t",
+        "0",
+        "3"
+      ],
+      "exitCode": 0
+    }
+  ],
+  "originalChildLockRetainedAfterExit": true,
+  "independentNativeFlockContends": true,
+  "originalDescriptorHelperContends": true,
+  "closeReleasesAndReacquireWorks": true,
+  "permanentInodeAndMarkerUnchanged": true,
+  "temporaryDirectoryRemoved": true
+}

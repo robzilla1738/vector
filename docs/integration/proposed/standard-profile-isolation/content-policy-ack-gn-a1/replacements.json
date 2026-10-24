@@ -1,0 +1,20 @@
+[
+  {
+    "path": "chrome/browser/aux/BUILD.gn",
+    "old": "      \"AuxBrowserPrivateRoots.h\",",
+    "new": "      \"AuxBrowserPrivateRoots.h\",\n      \"AuxContentPolicyBinding.cc\",\n      \"AuxContentPolicyBinding.h\",",
+    "count": 1
+  },
+  {
+    "path": "chrome/browser/aux/BUILD.gn",
+    "old": "    deps += [ \"native_peer_policy:aux_parent_sealed_policy\" ]",
+    "new": "    deps += [ \"native_peer_policy:aux_parent_sealed_policy\", \"//content/public/browser\" ]",
+    "count": 1
+  },
+  {
+    "path": "content/public/browser/BUILD.gn",
+    "old": "    \"aux_child_process_drain.h\",",
+    "new": "    \"aux_child_process_drain.h\",\n    \"aux_sandbox_launch_binding.h\",",
+    "count": 1
+  }
+]

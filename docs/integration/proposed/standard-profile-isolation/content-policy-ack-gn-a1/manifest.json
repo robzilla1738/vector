@@ -1,0 +1,20 @@
+{
+  "format": "aux.content-policy-ack.gn.v1",
+  "files": [
+    {
+      "path": "chrome/browser/aux/BUILD.gn",
+      "beforeSha256": "fd14e65efe7d2dc1436ddec0d7bfb7ae93fdbe6e006356c3587f4b7845e334ad",
+      "afterSha256": "2dd27e70ceccbd6113cae66d9611e0ec707681fc45ef60c79173ba2eaa6c1c9a"
+    },
+    {
+      "path": "content/public/browser/BUILD.gn",
+      "beforeSha256": "7894529f3b24ff21beb29805e1c1bda0cbd971549dc717a36f0ec02974ef2415",
+      "afterSha256": "de1159e9ddd5eef7bba7b6e13d8b906ef256d1197a4d7e01996c68fda4a34ba3"
+    }
+  ],
+  "countedEdits": 3,
+  "patchSha256": "6f46b36f0d63745ac45fdb97bb8af34ded82e1019b726d66b43fc1b3d98f4f35",
+  "nativeTreeChanged": false,
+  "compiled": false,
+  "uiChanged": false
+}

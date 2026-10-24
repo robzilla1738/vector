@@ -1,0 +1,30 @@
+--- a/chrome/browser/aux/BUILD.gn
++++ b/chrome/browser/aux/BUILD.gn
+@@ -27,6 +27,8 @@
+       "AuxNativeParentColdLaunch.h",
+       "AuxBrowserPrivateRoots.cc",
+       "AuxBrowserPrivateRoots.h",
++      "AuxContentPolicyBinding.cc",
++      "AuxContentPolicyBinding.h",
+       "AuxChromiumBrowserRootProducer.cc",
+       "AuxNativePeerTransport.cc",
+       "AuxNativePeerTransport.h",
+@@ -37,7 +39,7 @@
+       "AuxSelectedStateHome.h",
+       "AuxSelectedHomePolicyBridge.h",
+     ]
+-    deps += [ "native_peer_policy:aux_parent_sealed_policy" ]
++    deps += [ "native_peer_policy:aux_parent_sealed_policy", "//content/public/browser" ]
+     frameworks = [ "CoreFoundation.framework", "Security.framework" ]
+     libs = [ "bsm" ]
+   }
+--- a/content/public/browser/BUILD.gn
++++ b/content/public/browser/BUILD.gn
+@@ -40,6 +40,7 @@
+     "audio_stream_broker.cc",
+     "audio_stream_broker.h",
+     "aux_child_process_drain.h",
++    "aux_sandbox_launch_binding.h",
+     "authenticator_common.h",
+     "aux_renderer_navigation_admission.h",
+     "aux_service_worker_migration.h",
