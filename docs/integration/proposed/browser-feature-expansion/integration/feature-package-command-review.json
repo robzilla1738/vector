@@ -1,0 +1,32 @@
+{
+  "executed": false,
+  "requiresSuccessfulFullNativeBuild": true,
+  "requiresBoundSourcePair": true,
+  "prepareCommand": [
+    "/opt/homebrew/opt/python@3.15/bin/python3.15",
+    "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/package/feature_package.py",
+    "prepare",
+    "--base-recipe",
+    "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/integration/base-package-recipe.json",
+    "--native-composition",
+    "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/integration/composition.json",
+    "--daemon-composition",
+    "/private/tmp/aux-browser-features-daemon-source-20261023-a4/composition.json",
+    "--daemon-inputs",
+    "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/profile-isolation-protected-startup/integration/daemon-inputs.json",
+    "--baseline-stage",
+    "/Users/rcourson/Documents/Vibe/web/out/browser-feature-stage-pair-20261023-a3/baseline",
+    "--feature-stage",
+    "/Users/rcourson/Documents/Vibe/web/out/browser-feature-stage-pair-20261023-a3/desktop-v1",
+    "--recipe",
+    "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/integration/feature-package-recipe.json"
+  ],
+  "assembleCommand": [
+    "/opt/homebrew/opt/python@3.15/bin/python3.15",
+    "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/package/feature_package.py",
+    "assemble",
+    "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/integration/feature-package-recipe.json"
+  ],
+  "productExecuted": false,
+  "productSigning": false
+}
