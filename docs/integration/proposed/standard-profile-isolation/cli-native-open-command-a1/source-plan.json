@@ -184,7 +184,7 @@
     {
       "path": "chrome/browser/aux/cli/AuxCliOpenCommand.mm",
       "source": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/cli-native-open-command-a1/source/AuxCliOpenCommand.mm",
-      "outputSha256": "dc71fe9b0abb5ce7850de440a9b23d9e5f763b3effb75886b0c59d0d07dd6915",
+      "outputSha256": "0117c63f701e11c8c5f30e3d6ce5fab164e6836256f18dcee2a489481d0ee5bf",
       "newSource": true,
       "anchors": []
     }
