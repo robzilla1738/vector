@@ -1,0 +1,25 @@
+{
+  "modifiedCount": 2,
+  "addedCount": 0,
+  "countedAdaptations": 6,
+  "files": [
+    {
+      "path": "chrome/browser/ui/views/frame/multi_contents_view.cc",
+      "beforeSha256": "1871ebba7cbe6594b9fdb23bdbe352dc4b2ec2e2337040ad48e06e9345816f08",
+      "afterSha256": "b1d489ee277bf17b7b1caa65be09cc00500cd728e635e6c77280f583b63d23d7"
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/multi_contents_view.h",
+      "beforeSha256": "5d40a05f3c453cb39fb9dc6596099dae3321fa93fcb370d67d82855ac102591e",
+      "afterSha256": "cc7e30689b84dec1dbf69461b2c1deef36bfe3ff68cbada6daa806a1f8ca0da4"
+    }
+  ],
+  "patchSha256": "8d252028a32cf404bf0e3aa9bc0058870cd90335ecbc5556961e6a31f5e8e736",
+  "verification": {
+    "exactOrderedReplay": "passed",
+    "unifiedPatchReplay": "passed",
+    "whitespaceErrorCheck": "passed",
+    "nativeCompile": "not run by worker",
+    "runtime": "not run"
+  }
+}

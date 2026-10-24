@@ -1,0 +1,81 @@
+--- a/chrome/browser/ui/views/frame/multi_contents_view.cc
++++ b/chrome/browser/ui/views/frame/multi_contents_view.cc
+@@ -61,6 +61,28 @@
+ constexpr int kSnapDistance = 15;
+ }
+ 
++// Keep native toolbar-button styling while providing a label setter only for
++// these local presentation controls. ToolbarButton::SetText stays protected.
++class MultiContentsView::NarrowPaneButton final : public ToolbarButton {
++  METADATA_HEADER(NarrowPaneButton, ToolbarButton)
++ public:
++  explicit NarrowPaneButton(PressedCallback callback);
++  ~NarrowPaneButton() override;
++  void SetControlLabel(std::u16string_view text);
++};
++MultiContentsView::NarrowPaneButton::NarrowPaneButton(PressedCallback callback)
++    : ToolbarButton(std::move(callback)) {
++  SetProperty(views::kFlexBehaviorKey,
++      views::FlexSpecification(views::MinimumFlexSizeRule::kScaleToZero,
++                               views::MaximumFlexSizeRule::kPreferred));
++}
++MultiContentsView::NarrowPaneButton::~NarrowPaneButton() = default;
++void MultiContentsView::NarrowPaneButton::SetControlLabel(std::u16string_view text) {
++  ToolbarButton::SetText(text);
++}
++BEGIN_METADATA(MultiContentsView, NarrowPaneButton)
++END_METADATA
++
+ void MultiContentsView::ContentsSeparators::Reset() {
+   top_separator = nullptr;
+   leading_separator = nullptr;
+@@ -148,16 +170,16 @@
+       ->SetOrientation(views::LayoutOrientation::kHorizontal)
+       .SetCrossAxisAlignment(views::LayoutAlignment::kCenter);
+   narrow_focus_button_ = narrow_pane_controls_->AddChildView(
+-      std::make_unique<ToolbarButton>(base::BindRepeating(
++      std::make_unique<NarrowPaneButton>(base::BindRepeating(
+           &MultiContentsView::ToggleNarrowPaneFocus, base::Unretained(this))));
+-  narrow_focus_button_->SetText(u"Focus selected pane");
++  narrow_focus_button_->SetControlLabel(u"Focus");
+   narrow_focus_button_->SetAccessibleName(u"Focus selected split pane");
+   narrow_focus_button_->SetTooltipText(u"Split panes do not fit. Show one pane without closing the others.");
+   for (int direction : {-1, 1}) {
+     auto* button = narrow_pane_controls_->AddChildView(
+-        std::make_unique<ToolbarButton>(base::BindRepeating(
++        std::make_unique<NarrowPaneButton>(base::BindRepeating(
+             &MultiContentsView::CycleNarrowPane, base::Unretained(this), direction)));
+-    button->SetText(direction < 0 ? u"Previous pane" : u"Next pane");
++    button->SetControlLabel(direction < 0 ? u"‹" : u"›");
+     button->SetAccessibleName(direction < 0 ? u"Select previous split pane" : u"Select next split pane");
+     button->SetTooltipText(direction < 0 ? u"Select previous split pane" : u"Select next split pane");
+   }
+@@ -453,7 +475,7 @@
+   if (!narrow_focus_button_) return;
+   const std::u16string label = narrow_pane_focus_
+       ? u"Show all panes" : u"Focus selected pane";
+-  narrow_focus_button_->SetText(label);
++  narrow_focus_button_->SetControlLabel(narrow_pane_focus_ ? u"All" : u"Focus");
+   narrow_focus_button_->SetAccessibleName(label + u" (pane " +
+       base::UTF8ToUTF16(std::to_string(active_index_ + 1)) + u" of " +
+       base::UTF8ToUTF16(std::to_string(pane_count_)) + u")");
+--- a/chrome/browser/ui/views/frame/multi_contents_view.h
++++ b/chrome/browser/ui/views/frame/multi_contents_view.h
+@@ -33,7 +33,6 @@
+ class MultiContentsViewDelegate;
+ class MultiContentsViewDropTargetController;
+ class MultiContentsViewMiniToolbar;
+-class ToolbarButton;
+ 
+ namespace content {
+ class WebContents;
+@@ -325,7 +324,8 @@
+ 
+   // Window-local presentation only: real panes/history and split tree persist.
+   raw_ptr<views::View> narrow_pane_controls_ = nullptr;
+-  raw_ptr<ToolbarButton> narrow_focus_button_ = nullptr;
++  class NarrowPaneButton;
++  raw_ptr<NarrowPaneButton> narrow_focus_button_ = nullptr;
+   bool narrow_split_available_ = false;
+   bool narrow_pane_focus_ = false;
+   size_t pane_count_ = 1;

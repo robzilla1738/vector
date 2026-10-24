@@ -1,0 +1,38 @@
+[
+  {
+    "path": "chrome/browser/ui/views/frame/multi_contents_view.h",
+    "old": "class ToolbarButton;\n",
+    "new": "",
+    "count": 1
+  },
+  {
+    "path": "chrome/browser/ui/views/frame/multi_contents_view.h",
+    "old": "  raw_ptr<ToolbarButton> narrow_focus_button_ = nullptr;",
+    "new": "  class NarrowPaneButton;\n  raw_ptr<NarrowPaneButton> narrow_focus_button_ = nullptr;",
+    "count": 1
+  },
+  {
+    "path": "chrome/browser/ui/views/frame/multi_contents_view.cc",
+    "old": "void MultiContentsView::ContentsSeparators::Reset() {",
+    "new": "// Keep native toolbar-button styling while providing a label setter only for\n// these local presentation controls. ToolbarButton::SetText stays protected.\nclass MultiContentsView::NarrowPaneButton final : public ToolbarButton {\n  METADATA_HEADER(NarrowPaneButton, ToolbarButton)\n public:\n  explicit NarrowPaneButton(PressedCallback callback);\n  ~NarrowPaneButton() override;\n  void SetControlLabel(std::u16string_view text);\n};\nMultiContentsView::NarrowPaneButton::NarrowPaneButton(PressedCallback callback)\n    : ToolbarButton(std::move(callback)) {\n  SetProperty(views::kFlexBehaviorKey,\n      views::FlexSpecification(views::MinimumFlexSizeRule::kScaleToZero,\n                               views::MaximumFlexSizeRule::kPreferred));\n}\nMultiContentsView::NarrowPaneButton::~NarrowPaneButton() = default;\nvoid MultiContentsView::NarrowPaneButton::SetControlLabel(std::u16string_view text) {\n  ToolbarButton::SetText(text);\n}\nBEGIN_METADATA(MultiContentsView, NarrowPaneButton)\nEND_METADATA\n\nvoid MultiContentsView::ContentsSeparators::Reset() {",
+    "count": 1
+  },
+  {
+    "path": "chrome/browser/ui/views/frame/multi_contents_view.cc",
+    "old": "      std::make_unique<ToolbarButton>(base::BindRepeating(\n          &MultiContentsView::ToggleNarrowPaneFocus, base::Unretained(this))));\n  narrow_focus_button_->SetText(u\"Focus selected pane\");",
+    "new": "      std::make_unique<NarrowPaneButton>(base::BindRepeating(\n          &MultiContentsView::ToggleNarrowPaneFocus, base::Unretained(this))));\n  narrow_focus_button_->SetControlLabel(u\"Focus\");",
+    "count": 1
+  },
+  {
+    "path": "chrome/browser/ui/views/frame/multi_contents_view.cc",
+    "old": "        std::make_unique<ToolbarButton>(base::BindRepeating(\n            &MultiContentsView::CycleNarrowPane, base::Unretained(this), direction)));\n    button->SetText(direction < 0 ? u\"Previous pane\" : u\"Next pane\");",
+    "new": "        std::make_unique<NarrowPaneButton>(base::BindRepeating(\n            &MultiContentsView::CycleNarrowPane, base::Unretained(this), direction)));\n    button->SetControlLabel(direction < 0 ? u\"\u2039\" : u\"\u203a\");",
+    "count": 1
+  },
+  {
+    "path": "chrome/browser/ui/views/frame/multi_contents_view.cc",
+    "old": "  narrow_focus_button_->SetText(label);",
+    "new": "  narrow_focus_button_->SetControlLabel(narrow_pane_focus_ ? u\"All\" : u\"Focus\");",
+    "count": 1
+  }
+]
