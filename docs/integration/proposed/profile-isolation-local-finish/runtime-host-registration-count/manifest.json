@@ -1,0 +1,10 @@
+{
+  "format": "aux.runtime-host-registration-count.v1",
+  "input": "/private/tmp/aux-async-writes-final/docs/integration/proposed/profile-isolation-final/writes/source/AuxDevelopmentWorkerHost.cc",
+  "inputSha256": "e36e5c25c822879302a7f83fa5329305ba79f4d000ac45cd721cb820eaa81dd7",
+  "outputSha256": "49718219a54d300bbb77abca4b8a1fcf50d999ac6bb129550d2b4d5a34329562",
+  "old": "status = napi_define_properties(env,target,6,properties);",
+  "new": "status = napi_define_properties(env,target,std::size(properties),properties);",
+  "count": 1,
+  "patchSha256": "97fd8e25cf1ddadc79edf7409bf7997b446d3cc9d98f161ca9bc03d94d4d81d8"
+}

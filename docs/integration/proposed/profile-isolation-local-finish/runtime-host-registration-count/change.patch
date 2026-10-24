@@ -1,0 +1,11 @@
+--- a/AuxDevelopmentWorkerHost.cc
++++ b/AuxDevelopmentWorkerHost.cc
+@@ -974,7 +974,7 @@
+       {"withBrokerAwaited",nullptr,WithBrokerAwaited,nullptr,nullptr,nullptr,napi_default,nullptr},
+       {"closeBrokerWriteAdmission",nullptr,CloseBrokerWriteAdmission,nullptr,nullptr,nullptr,napi_default,nullptr},
+       {"noteUntrackedBrokerWork",nullptr,NoteUntrackedBrokerWork,nullptr,nullptr,nullptr,napi_default,nullptr}};
+-    status = napi_define_properties(env,target,6,properties);
++    status = napi_define_properties(env,target,std::size(properties),properties);
+   }
+   const bool closed = initialization.Complete(status == napi_ok);
+   return status == napi_ok && closed ? napi_closing : status;
