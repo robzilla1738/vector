@@ -1,0 +1,32 @@
+{
+  "modifiedCount": 5,
+  "addedCount": 0,
+  "patchSha256": "f59743c2219350df56f639f583c5a841e413a1a0d0740e9f9da25f4c697f5808",
+  "files": [
+    {
+      "path": "chrome/browser/ui/views/frame/aux_organization_tree_view.h",
+      "beforeSha256": "66595afb8f21823275545bdd529580eb9e0b06d95a7e98f041d051cbaa559593",
+      "afterSha256": "7f66e52ae31d598cb24d23f7910430dcd7cf34c6c133ebbc0abdec5779d14971"
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_organization_tree_view.cc",
+      "beforeSha256": "5ab306a698aeb7e99a9fb9f81f642da4774ec0ad55a9e930cfc11bbd3afede3d",
+      "afterSha256": "f14282b737c56c6325a4469c95214c3fcae7b5e806e040f231a20792e75e42a1"
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_organization_window_delegate.h",
+      "beforeSha256": "b597eeb22c9e4072ea2fbdf8cedc762319f03b5b68137b9a466ccf159625eb35",
+      "afterSha256": "319e3515541a790d07f9a8a9eff42adc7da230ec4c260196649c140c64733001"
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_organization_window_controller.h",
+      "beforeSha256": "8a152ce00f2accacede2e6d4bc89ed0ffff80ad4c95649d84b59a1e5551d56dc",
+      "afterSha256": "211631eb6c1b539b7210339beff5009c3e83ffdb0b9b14959e0e3b591b3367f1"
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_organization_window_controller.cc",
+      "beforeSha256": "4d1e0687cfaa379290abc78705553f6c2b3e09530418af28820c6aff0fe9a1b1",
+      "afterSha256": "fe9364ddb47f01a4d42a9805de97e819a6a7e05bc5b574436ef74fe83df8e9b0"
+    }
+  ]
+}

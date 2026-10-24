@@ -1,0 +1,204 @@
+diff --git a/chrome/browser/ui/views/frame/aux_organization_tree_view.h b/chrome/browser/ui/views/frame/aux_organization_tree_view.h
+--- a/chrome/browser/ui/views/frame/aux_organization_tree_view.h
++++ b/chrome/browser/ui/views/frame/aux_organization_tree_view.h
+@@ -42,7 +42,7 @@
+   void ContextMenu(const std::string&, const gfx::Point& screen_point);
+   bool Key(const std::string&, const ui::KeyEvent&);
+   void BeginDrag(const std::string&, const gfx::Point&);
+-  void ContinueDrag(const gfx::Point&, bool stacked);
++  void ContinueDrag(const gfx::Point&);
+   void FinishDrag();
+   void CancelDrag();
+   void Rename(const std::string&, bool create_child);
+@@ -64,14 +64,14 @@
+   base::RepeatingCallback<void(bool)> ready_changed_;
+   bool ready_ = false;
+   bool refresh_queued_ = false;
++  enum class DropEdge { kNone, kLeft, kRight, kTop, kBottom };
+   struct Drag {
+     std::string id, target;
+     gfx::Point origin;
+     organization::Context context;
+     bool moved = false;
+     bool after = false;
+-    bool split = false;
+-    bool stacked = false;
++    DropEdge edge = DropEdge::kNone;
+   };
+   std::optional<Drag> drag_;
+   std::string menu_entry_;
+diff --git a/chrome/browser/ui/views/frame/aux_organization_tree_view.cc b/chrome/browser/ui/views/frame/aux_organization_tree_view.cc
+--- a/chrome/browser/ui/views/frame/aux_organization_tree_view.cc
++++ b/chrome/browser/ui/views/frame/aux_organization_tree_view.cc
+@@ -98,7 +98,9 @@
+       }
+     }
+   }
+-  void MarkDrop(bool value) { drop_ = value; SchedulePaint(); }
++  void MarkDrop(bool value, AuxOrganizationTreeView::DropEdge edge = AuxOrganizationTreeView::DropEdge::kNone) {
++    drop_ = value; drop_edge_ = edge; SchedulePaint();
++  }
+   bool OnMousePressed(const ui::MouseEvent& event) override {
+     if (!owner_) return false;
+     gfx::Point point = event.location(); ConvertPointToScreen(this, &point);
+@@ -111,7 +113,7 @@
+   bool OnMouseDragged(const ui::MouseEvent& event) override {
+     if (!pressed_ || !owner_) return false;
+     gfx::Point point = event.location(); ConvertPointToScreen(this, &point);
+-    owner_->ContinueDrag(point, event.IsShiftDown()); return true;
++    owner_->ContinueDrag(point); return true;
+   }
+   void OnMouseReleased(const ui::MouseEvent& event) override {
+     if (!pressed_ || !owner_) return;
+@@ -140,13 +142,32 @@
+     flags.setColor(pressed_ ? (dark ? 0x26fafafa : 0x260a0a0a) : active_ ? (dark ? 0x14fafafa : 0xffffffff) : 0x14fafafa);
+     if (!dark && !active_ && !pressed_) flags.setColor(0x140a0a0a);
+     canvas->DrawRoundRect(gfx::RectF(GetLocalBounds()), 10, flags);
+-    if (drop_) { flags.setStyle(cc::PaintFlags::kStroke_Style); flags.setStrokeWidth(1.5f); flags.setColor(dark ? 0x33fafafa : 0x260a0a0a);
+-      auto rect = gfx::RectF(GetLocalBounds()); rect.Inset(0.75f); canvas->DrawRoundRect(rect, 10, flags); }
++    if (drop_) {
++      auto rect = gfx::RectF(GetLocalBounds()); rect.Inset(0.75f);
++      using Edge = AuxOrganizationTreeView::DropEdge;
++      if (drop_edge_ != Edge::kNone) {
++        if (drop_edge_ == Edge::kLeft || drop_edge_ == Edge::kRight) {
++          const float half = rect.width() / 2;
++          if (drop_edge_ == Edge::kRight) rect.set_x(rect.x() + half);
++          rect.set_width(half);
++        } else {
++          const float half = rect.height() / 2;
++          if (drop_edge_ == Edge::kBottom) rect.set_y(rect.y() + half);
++          rect.set_height(half);
++        }
++        flags.setColor(dark ? 0x26fafafa : 0x260a0a0a);
++        canvas->DrawRoundRect(rect, 8, flags);
++      }
++      flags.setStyle(cc::PaintFlags::kStroke_Style);
++      flags.setStrokeWidth(1.5f); flags.setColor(dark ? 0x66fafafa : 0x590a0a0a);
++      canvas->DrawRoundRect(rect, drop_edge_ == Edge::kNone ? 10 : 8, flags);
++    }
+   }
+  private:
+   base::WeakPtr<AuxOrganizationTreeView> owner_;
+   std::string id_;
+   bool folder_, active_, hovered_ = false, pressed_ = false, drop_ = false;
++  AuxOrganizationTreeView::DropEdge drop_edge_ = AuxOrganizationTreeView::DropEdge::kNone;
+   raw_ptr<views::ImageView> image_ = nullptr;
+   raw_ptr<views::Label> label_ = nullptr;
+   ui::ImageModel favicon_;
+@@ -444,21 +465,30 @@
+   auto context = CaptureOrganizationContext(*browser_);
+   if (context) drag_ = Drag{id, {}, point, std::move(*context), false, false};
+ }
+-void AuxOrganizationTreeView::ContinueDrag(const gfx::Point& point, bool stacked) {
++void AuxOrganizationTreeView::ContinueDrag(const gfx::Point& point) {
+   if (!drag_ || (!drag_->moved && (point - drag_->origin).LengthSquared() < 36)) return;
+-  drag_->moved = true; drag_->target.clear(); drag_->split = false; drag_->stacked = stacked;
++  drag_->moved = true; drag_->target.clear(); drag_->edge = DropEdge::kNone;
++  const auto* snapshot = Snapshot();
+   for (const auto& [id, row] : row_by_id_) {
+-    const auto bounds = row->GetBoundsInScreen(); const bool over = id != drag_->id && bounds.Contains(point);
+-    row->MarkDrop(over);
++    const auto bounds = row->GetBoundsInScreen();
++    const bool over = id != drag_->id && bounds.Contains(point);
++    DropEdge edge = DropEdge::kNone;
+     if (over) {
+       drag_->target = id; drag_->after = point.y() >= bounds.CenterPoint().y();
+-      const auto* snapshot = Snapshot();
+-      drag_->split = snapshot && snapshot->entries.contains(id) && snapshot->entries.contains(drag_->id) &&
++      const bool tabs = snapshot && snapshot->entries.contains(id) && snapshot->entries.contains(drag_->id) &&
+           snapshot->entries.at(id).kind == organization::EntryKind::kTab &&
+-          snapshot->entries.at(drag_->id).kind == organization::EntryKind::kTab &&
+-          point.y() > bounds.y() + bounds.height() / 3 &&
+-          point.y() < bounds.bottom() - bounds.height() / 3;
+-    }
++          snapshot->entries.at(drag_->id).kind == organization::EntryKind::kTab;
++      if (tabs) {
++        // Explicit edge targets; the center retains ordinary reordering.
++        const int horizontal_edge = std::min(32, bounds.width() / 5);
++        if (point.x() < bounds.x() + horizontal_edge) edge = DropEdge::kLeft;
++        else if (point.x() >= bounds.right() - horizontal_edge) edge = DropEdge::kRight;
++        else if (point.y() < bounds.y() + bounds.height() / 4) edge = DropEdge::kTop;
++        else if (point.y() >= bounds.bottom() - bounds.height() / 4) edge = DropEdge::kBottom;
++      }
++      drag_->edge = edge;
++    }
++    row->MarkDrop(over, edge);
+   }
+ }
+ void AuxOrganizationTreeView::CancelDrag() {
+@@ -468,9 +498,11 @@
+   auto drag = std::move(drag_); CancelDrag();
+   const auto* snapshot = Snapshot();
+   if (!drag || !drag->moved || !snapshot || !snapshot->entries.contains(drag->target)) return;
+-  if (drag->split) {
++  if (drag->edge != DropEdge::kNone) {
+     if (snapshot->revision != drag->context.expected_revision) return;
+-    window_->SplitLogicalTabs(drag->id, drag->target, drag->stacked,
++    const bool stacked = drag->edge == DropEdge::kTop || drag->edge == DropEdge::kBottom;
++    const bool leading = drag->edge == DropEdge::kTop || drag->edge == DropEdge::kLeft;
++    window_->SplitLogicalTabs(drag->id, drag->target, stacked, leading,
+         base::BindOnce([](base::WeakPtr<AuxOrganizationTreeView> owner, bool) {
+           if (owner) owner->Refresh();
+         }, weak_.GetWeakPtr()));
+diff --git a/chrome/browser/ui/views/frame/aux_organization_window_delegate.h b/chrome/browser/ui/views/frame/aux_organization_window_delegate.h
+--- a/chrome/browser/ui/views/frame/aux_organization_window_delegate.h
++++ b/chrome/browser/ui/views/frame/aux_organization_window_delegate.h
+@@ -23,7 +23,7 @@
+   virtual void ArchiveLogicalEntry(const std::string& id,
+                                    base::OnceCallback<void(bool)> reply) = 0;
+   virtual void SplitLogicalTabs(const std::string& source, const std::string& target,
+-                                bool stacked, base::OnceCallback<void(bool)> reply) = 0;
++                                bool stacked, bool leading, base::OnceCallback<void(bool)> reply) = 0;
+   virtual base::CallbackListSubscription ObserveWindowState(
+       base::RepeatingClosure callback) = 0;
+ };
+diff --git a/chrome/browser/ui/views/frame/aux_organization_window_controller.h b/chrome/browser/ui/views/frame/aux_organization_window_controller.h
+--- a/chrome/browser/ui/views/frame/aux_organization_window_controller.h
++++ b/chrome/browser/ui/views/frame/aux_organization_window_controller.h
+@@ -37,7 +37,7 @@
+   std::string SelectedLogicalTabId() const override;
+   bool SelectSpace(const std::string&) override;
+   void OpenLogicalTab(const std::string&, base::OnceCallback<void(bool)>) override;
+-  void SplitLogicalTabs(const std::string&, const std::string&, bool,
++  void SplitLogicalTabs(const std::string&, const std::string&, bool, bool,
+                         base::OnceCallback<void(bool)>) override;
+   void UnloadLogicalTab(const std::string&, base::OnceCallback<void(bool)>) override;
+   void ArchiveLogicalEntry(const std::string&, base::OnceCallback<void(bool)>) override;
+diff --git a/chrome/browser/ui/views/frame/aux_organization_window_controller.cc b/chrome/browser/ui/views/frame/aux_organization_window_controller.cc
+--- a/chrome/browser/ui/views/frame/aux_organization_window_controller.cc
++++ b/chrome/browser/ui/views/frame/aux_organization_window_controller.cc
+@@ -489,16 +489,16 @@
+   return profile_->GetDownloadManager()->InProgressCount() != 0;
+ }
+ void AuxOrganizationWindowController::SplitLogicalTabs(
+-    const std::string& source, const std::string& target, bool stacked,
++    const std::string& source, const std::string& target, bool stacked, bool leading,
+     base::OnceCallback<void(bool)> reply) {
+   if (!IsProjectionReady() || source == target) { std::move(reply).Run(false); return; }
+   OpenLogicalTab(target, base::BindOnce(
+       [](base::WeakPtr<AuxOrganizationWindowController> owner, std::string source_id,
+-         std::string target_id, bool vertical, base::OnceCallback<void(bool)> done, bool opened) {
++         std::string target_id, bool vertical, bool before, base::OnceCallback<void(bool)> done, bool opened) {
+         if (!owner || !opened) { std::move(done).Run(false); return; }
+         owner->OpenLogicalTab(source_id, base::BindOnce(
+             [](base::WeakPtr<AuxOrganizationWindowController> current, std::string source_key,
+-               std::string target_key, bool is_vertical, base::OnceCallback<void(bool)> completed, bool source_opened) {
++               std::string target_key, bool is_vertical, bool insert_before, base::OnceCallback<void(bool)> completed, bool source_opened) {
+               if (!current || !current->Current() || !source_opened) {
+                 std::move(completed).Run(false); return;
+               }
+@@ -513,11 +513,11 @@
+               }
+               const bool joined = JoinNativeSplit(*current->browser_, target_tab, source_tab,
+                   is_vertical ? split_tabs::SplitPaneTree::Axis::kVertical
+-                              : split_tabs::SplitPaneTree::Axis::kHorizontal, false);
++                              : split_tabs::SplitPaneTree::Axis::kHorizontal, insert_before);
+               current->QueueReconcile();
+               std::move(completed).Run(joined);
+-            }, owner, source_id, target_id, vertical, std::move(done)));
+-      }, weak_.GetWeakPtr(), source, target, stacked, std::move(reply)));
++            }, owner, source_id, target_id, vertical, before, std::move(done)));
++      }, weak_.GetWeakPtr(), source, target, stacked, leading, std::move(reply)));
+ }
+ 
+ void AuxOrganizationWindowController::OpenLogicalTab(const std::string& id, base::OnceCallback<void(bool)> reply) {
