@@ -1,0 +1,42 @@
+{
+  "version": 1,
+  "stage": "claude-code-login",
+  "changes": 6,
+  "sourceFiles": [
+    {
+      "path": "source/transform.mjs",
+      "sha256": "06b8f78823f33f710bfaf3e2e762efe677d6b8e93a5114d1a780afac259f084b"
+    },
+    {
+      "path": "source/anchors.json",
+      "sha256": "75a519f5273e54973ac9c96c557c6afbcf37a74ddc2deb0caaeed4ecdd2171ec"
+    },
+    {
+      "path": "source/claude-code-login.js",
+      "sha256": "93340adea901e6519e3b5c3550619e46b0a9dc6258a85e1f7dbc03b16f0253c7"
+    }
+  ],
+  "daemonInputs": [
+    {
+      "kind": "source",
+      "inputSha256": "3ee2471769470b820bfaf16d64f6dfc7aa0bef1b8ad54493c7d2a0bffe725802",
+      "outputSha256": "035fa507e59ba45eeacb50c7c79d9a99eae89aed00b9abcd5bb8b45255145daa",
+      "changesSha256": "2544a749772ceace39c909c6457c9e9605121aa5c6747607a2f27d42cee7b50a"
+    },
+    {
+      "kind": "entry",
+      "inputSha256": "ba6194fbe579dec43ccaa2a7b788e58bc0a1cb9a0ff52ab5b5cfcea334890804",
+      "outputSha256": "04f55827426e985e656d60277ba73c0b8eb289d5c301cd9ffa54390946afaee1",
+      "changesSha256": "2544a749772ceace39c909c6457c9e9605121aa5c6747607a2f27d42cee7b50a"
+    }
+  ],
+  "nativeRequirements": [
+    "Same fresh observer, actual broker owner and physical refresh I/O ownership as current a3; no authority changes"
+  ],
+  "preservedUnknown": [
+    "Meta CDP window",
+    "ChatGPT separate callback broker/shim",
+    "unrecognized or replaced provider implementations",
+    "all actual failed or unresolved physical cleanup"
+  ]
+}

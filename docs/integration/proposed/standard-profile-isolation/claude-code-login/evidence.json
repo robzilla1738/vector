@@ -1,0 +1,27 @@
+{
+  "version": 1,
+  "scope": "Inert fake server callbacks and source-only replay; no server, provider, credentials or product execution",
+  "checks": [
+    "mixed successful/occupied address retains listener and manual fallback",
+    "abort retains late bind and each close callback",
+    "all occupied preserves manual-only behavior",
+    "callback/manual race awaits loser cleanup",
+    "actual inline provider identity rejects replacement",
+    "paired exact six-anchor replay and node syntax"
+  ],
+  "daemonInputs": [
+    {
+      "kind": "source",
+      "inputSha256": "3ee2471769470b820bfaf16d64f6dfc7aa0bef1b8ad54493c7d2a0bffe725802",
+      "outputSha256": "035fa507e59ba45eeacb50c7c79d9a99eae89aed00b9abcd5bb8b45255145daa",
+      "changesSha256": "2544a749772ceace39c909c6457c9e9605121aa5c6747607a2f27d42cee7b50a"
+    },
+    {
+      "kind": "entry",
+      "inputSha256": "ba6194fbe579dec43ccaa2a7b788e58bc0a1cb9a0ff52ab5b5cfcea334890804",
+      "outputSha256": "04f55827426e985e656d60277ba73c0b8eb289d5c301cd9ffa54390946afaee1",
+      "changesSha256": "2544a749772ceace39c909c6457c9e9605121aa5c6747607a2f27d42cee7b50a"
+    }
+  ],
+  "scratch": "/var/folders/98/j36zgdnd0h507whjl16gxl780000gp/T/aux-claude-code-source-ONy1xP"
+}
