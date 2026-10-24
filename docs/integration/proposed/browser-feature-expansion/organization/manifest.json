@@ -26,7 +26,7 @@
     "chrome/browser/ui/views/frame/aux_organization_tree_view.h": "386937317773d3015b714409e4029250b373ad4291f5b08bedac14cc55a363ce",
     "chrome/browser/ui/views/frame/aux_organization_ui_commands.cc": "97646d6b69dbbbf57fd01edcc6fe0c1a78b263d8300d31bc338720bec821a7ca",
     "chrome/browser/ui/views/frame/aux_organization_ui_commands.h": "5b109b4204d0585ee98c43cca10a6b5cff9d579b29a0bee6ebef2f35083e9261",
-    "chrome/browser/ui/views/frame/aux_organization_window_controller.cc": "8787bc292387c65f0d2dfc2984df4a900240c1fa83fcc70082899d08296dd368",
+    "chrome/browser/ui/views/frame/aux_organization_window_controller.cc": "7667088252fb31a2ed5e6449c9b19b3b955d7f7c3a4fc264dab1ca992bcb56dc",
     "chrome/browser/ui/views/frame/aux_organization_window_controller.h": "531f7ac2d400e4b874b5ffbf0d2dadc9b41dc538631095f137d6c2e265fe77ac",
     "chrome/browser/ui/views/frame/aux_organization_window_delegate.h": "5ce059466a47665c25cef14892ce41103745d15947aa605d461fe51e386fa1e0",
     "chrome/browser/ui/views/frame/aux_pins_section.cc": "5a6ab5958add314aaf190ac4bf45368f93d19c638119a5aeb2b3b5614d255b2c",
@@ -69,5 +69,5 @@
   "selectedSourceRoot": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src",
   "consumerModifiedCount": 19,
   "consumerAddedCount": 13,
-  "consumerPatchSha256": "7c856b8d486e214f5ee2687883da7e1cdc3aec266e50b08fbd71093a1b0cd369"
+  "consumerPatchSha256": "cdab38b83858bc05565bc74f428852b40a92bba859c98050f00b0058e5755a3c"
 }

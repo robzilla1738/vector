@@ -16,6 +16,8 @@
 #include "chrome/browser/media/webrtc/media_capture_devices_dispatcher.h"
 #include "chrome/browser/media/webrtc/media_stream_capture_indicator.h"
 #include "chrome/browser/profiles/profile.h"
+#include "chrome/browser/profiles/keep_alive/scoped_profile_keep_alive.h"
+#include "chrome/browser/profiles/keep_alive/profile_keep_alive_types.h"
 #include "chrome/browser/sessions/session_restore.h"
 #include "chrome/browser/sessions/session_service_factory.h"
 #include "chrome/browser/ui/aux/page_identity.h"
@@ -571,27 +573,36 @@ void AuxOrganizationWindowController::ArchiveEntry(const std::string& id, bool a
   auto context = CaptureOrganizationContext(*browser_);
   if (!context) { std::move(reply).Run(false); return; }
   const auto alive = weak_.GetWeakPtr();
-  // Metadata is already durable before close. If any native removal refuses,
-  // retain the entire logical subtree rather than claiming partial archive.
-  for (const auto& [owner, handle] : targets) {
-    if (automated && !CanCleanup(id)) { std::move(reply).Run(false); return; }
-    if (!owner || !owner->CloseViewNow(handle)) { std::move(reply).Run(false); return; }
-    if (!alive) { std::move(reply).Run(false); return; }
-  }
+  const auto profile = profile_->GetWeakPtr();
+  auto profile_lifetime = ScopedProfileKeepAlive::TryAcquire(profile_, ProfileKeepAliveOrigin::kChromeViewsDelegate);
+  if (!profile_lifetime) { std::move(reply).Run(false); return; }
+  // Capture all command/context values before the last native view can destroy
+  // this Browser/window controller. No subsequent access through a dead this.
+  const std::string archive_id = id;
   std::vector<organization::Command> commands;
   if (entry.space_id.empty()) {
     organization::Command move; move.action = organization::Action::kMoveEntry;
-    move.id = id; move.space_id = active_space_; move.index = std::numeric_limits<uint64_t>::max();
+    move.id = archive_id; move.space_id = active_space_; move.index = std::numeric_limits<uint64_t>::max();
     commands.push_back(std::move(move));
   }
-  organization::Command command; command.action = organization::Action::kArchive; command.id = id;
+  organization::Command command; command.action = organization::Action::kArchive; command.id = archive_id;
   commands.push_back(std::move(command));
-  auto* current = Current() ? Organization(browser_.get()) : nullptr;
-  if (!current) { std::move(reply).Run(false); return; }
+  // Metadata is already durable before close. If a native removal refuses,
+  // retain the logical subtree rather than claiming partial archive.
+  for (const auto& [owner, handle] : targets) {
+    if (automated && (!alive || !alive->CanCleanup(archive_id))) { std::move(reply).Run(false); return; }
+    if (!owner || !owner->CloseViewNow(handle)) { std::move(reply).Run(false); return; }
+  }
+  auto* coordinator = profile ? organization::OrganizationProfileServiceFactory::GetForProfileIfExists(profile.get()) : nullptr;
+  auto* current = coordinator ? coordinator->model() : nullptr;
+  if (!current || coordinator->owner_generation() != context->owner_generation) {
+    std::move(reply).Run(false); return;
+  }
   current->ExecuteBatch(std::move(*context), std::move(commands), base::BindOnce(
-      [](base::OnceCallback<void(bool)> reply, organization::CommitResult result) {
+      [](std::unique_ptr<ScopedProfileKeepAlive> profile_lifetime,
+         base::OnceCallback<void(bool)> reply, organization::CommitResult result) {
         std::move(reply).Run(result.error == organization::Error::kNone);
-      }, std::move(reply)));
+      }, std::move(profile_lifetime), std::move(reply)));
 }
 bool AuxOrganizationWindowController::HandleClose(tabs::TabHandle handle) {
   if (!Current() || model_->closing_all() || IsExplicitUnload(handle)) return false;
