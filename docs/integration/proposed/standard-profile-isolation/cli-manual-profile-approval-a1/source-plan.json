@@ -1,0 +1,39 @@
+{
+  "format": "aux.cli-manual-profile-approval.sources.v1",
+  "files": [
+    {
+      "source": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/cli-manual-profile-approval-a1/source/AuxCliIngress.h",
+      "path": "chrome/browser/aux/cli/AuxCliIngress.h",
+      "outputSha256": "42de8847e39525bf61116f1e72c049976b27fe64356f0276d22cc3a48a0bd5a8",
+      "input": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/cli-native-embedding-a1/source/common/AuxCliIngress.h",
+      "inputSha256": "149338fc22b9eb3b90554d679814afc094046cef4aff75e1ab92fa11fca94fac",
+      "anchors": [
+        {
+          "find": "  friend class BrowserInvocation;",
+          "replace": "  friend class BrowserInvocation;\n  friend class ManualProfileApprovalRequest;\n  friend class ApprovedCliInvocation;",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "source": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/cli-manual-profile-approval-a1/source/AuxCliManualProfileApproval.h",
+      "path": "chrome/browser/aux/cli/AuxCliManualProfileApproval.h",
+      "outputSha256": "02b743604480764f9bbc7d688619c55a9d8a304b80bb134ecafed8a4f8653cc8",
+      "input": null,
+      "inputSha256": null,
+      "anchors": []
+    },
+    {
+      "source": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/cli-manual-profile-approval-a1/source/AuxCliManualProfileApproval.mm",
+      "path": "chrome/browser/aux/cli/AuxCliManualProfileApproval.mm",
+      "outputSha256": "41ee6bdd71f9b2acb47504d0fb717f4b57084bb1282b57e072132cf389cc26db",
+      "input": null,
+      "inputSha256": null,
+      "anchors": []
+    }
+  ],
+  "overlays": 1,
+  "anchors": 1,
+  "nativeCheckoutChanged": false,
+  "packageSelected": false
+}

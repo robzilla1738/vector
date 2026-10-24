@@ -1,0 +1,19 @@
+{
+  "format": "aux.cli-manual-profile-approval.static-check.v1",
+  "passed": true,
+  "checks": [
+    "exact one-anchor ingress successor; three source hashes/destinations",
+    "actual Profile/cookie/window/SDK source dependencies pinned",
+    "single private grant construction follows internal direct OS authentication result and native revalidation",
+    "managed-client refusals, finite timeout/lease, weak callback cancellation and definite no-start paths present"
+  ],
+  "sourceCount": 3,
+  "dependencyCount": 16,
+  "compilerRun": false,
+  "nativeApiExecuted": false,
+  "localAuthenticationInvoked": false,
+  "productExecuted": false,
+  "signed": false,
+  "packageSelected": false,
+  "runtimeAcceptance": false
+}
