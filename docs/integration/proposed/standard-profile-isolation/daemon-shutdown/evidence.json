@@ -1,0 +1,11 @@
+{
+  "exactPairedReplay": true,
+  "ordinaryAndDormantSyntax": true,
+  "changeCount": 35,
+  "transportAndProducerOrderFixture": true,
+  "lateChannelHandleClosureFixture": true,
+  "productExecuted": false,
+  "nativeBuilt": false,
+  "providerCalled": false,
+  "cleanReceiptAuthorityAdded": false
+}

@@ -1,0 +1,212 @@
+[
+  {
+    "find": "function auxCreateBackgroundWriterLifetimes(",
+    "replace": "// A shutdown request closes admission immediately, but returns before teardown.\n// Its Promise is owned here through every original callback and transport close.\nlet auxDaemonClosing = false;\nfunction auxCreateDaemonShutdown(deps) {\n  const fetches = new Set(), controllers = new Set();\n  let closing = false, shutdown, hold;\n  const call = callback => {try{return Promise.resolve(callback())}catch(error){return Promise.reject(error)}};\n  async function fetch(request, ...rest) {\n    if (closing) return new Response('Aux is shutting down', {status:503});\n    const control = new URL(request.url).pathname === '/shutdown';\n    const controller = new AbortController();\n    if (!control) controllers.add(controller);\n    const input = control ? request : new Request(request, {signal:AbortSignal.any([request.signal,controller.signal])});\n    const pending = call(() => deps.fetch(input,...rest));\n    fetches.add(pending);\n    try{return await pending}finally{fetches.delete(pending);controllers.delete(controller)}\n  }\n  function closeWebSockets(server) {\n    if (!server) return Promise.resolve();\n    const clients = [...server.clients];\n    const waiting = clients.map(client => new Promise((resolve,reject) => {\n      if (client.readyState === 3) {resolve();return}\n      client.once('close',resolve);\n      // Termination requests cancellation. Only the actual close event settles.\n      try{client.terminate()}catch(error){reject(error)}\n    }));\n    waiting.push(new Promise((resolve,reject) => {\n      try{server.close(error => error ? reject(error) : resolve())}catch(error){reject(error)}\n    }));\n    return settled(waiting,'Aux websocket shutdown failed');\n  }\n  function closeHttp(server) {\n    if (!server) return Promise.resolve();\n    return new Promise((resolve,reject) => {\n      try {\n        server.close(error => error ? reject(error) : resolve());\n        server.closeIdleConnections?.();\n      } catch(error){reject(error)}\n    });\n  }\n  async function settled(promises,message) {\n    const results=await Promise.allSettled(promises);\n    const errors=results.filter(result=>result.status==='rejected').map(result=>result.reason);\n    if(errors.length)throw new AggregateError(errors,message);\n  }\n  function start() {\n    if(shutdown)return shutdown;\n    closing=true;auxDaemonClosing=true;deps.closeReadiness();deps.clearBootstrapTimer();\n    // Retain the JS/native owner if a callback is lost or an outcome is unknown.\n    // This interval is NOT a timeout, completion receipt or forced exit.\n    hold=deps.hold();\n    for(const controller of controllers)controller.abort(Error('Aux is shutting down'));\n    const transports=[closeWebSockets(deps.websockets()),closeHttp(deps.http())];\n    for(const promise of transports)promise.catch(()=>{});\n    // Invoke stops synchronously so no new callback is admitted between gates.\n    const stops=[call(deps.stopIntervals),call(deps.stopRefresh),call(deps.stopProductivity),\n      call(deps.stopChannels),call(deps.stopOutbox),call(deps.stopBackground),call(deps.stopComputerUse),\n      call(deps.stopCoder),call(deps.terminateExec),call(deps.killCommands)];\n    shutdown=(async()=>{\n      await settled([...stops,call(deps.bootstrap)],'Aux producers did not settle');\n      while(fetches.size)await settled([...fetches],'Aux HTTP work did not settle');\n      await settled(transports,'Aux transport did not close');\n      // Telemetry is a producer too; close it while admitted cleanup can write.\n      await deps.stopTelemetry();\n      await deps.closeBroker();\n      deps.releaseHold(hold);hold=undefined;\n      // Only now can NativeRun return to the retained host's real settlement loop.\n      deps.exit();\n    })();\n    shutdown.catch(error=>{deps.unknown(error)});\n    return shutdown;\n  }\n  return Object.freeze({fetch,start,isClosing:()=>closing});\n}\n// Exact original channel outbox producers; not an arbitrary callback registry.\nconst auxChannelOutboxWork = new Set(), auxChannelStreams = new Set();\nfunction auxRunChannelOutbox(callback) {\n  if(auxDaemonClosing)return Promise.reject(Error('AUX_CHANNEL_ADMISSION_CLOSED'));\n  const pending=auxBrokerBoundary().awaited(callback);\n  auxChannelOutboxWork.add(pending);\n  pending.then(()=>auxChannelOutboxWork.delete(pending),()=>auxChannelOutboxWork.delete(pending));\n  return pending;\n}\nfunction auxOpenChannelStream(factory, close) {\n  if(auxDaemonClosing)throw Error('AUX_CHANNEL_ADMISSION_CLOSED');\n  const record={close,promise:auxRunChannelOutbox(factory)};\n  auxChannelStreams.add(record);\n  record.promise.then(()=>auxChannelStreams.delete(record),()=>auxChannelStreams.delete(record));\n  return record.promise;\n}\nasync function auxStopChannelOutbox() {\n  if(typeof retryTimers!=='undefined'){\n    for(const timer of retryTimers.values())clearTimeout(timer);\n    retryTimers.clear();\n  }\n  const errors=[];\n  for(const stream of auxChannelStreams)try{stream.close()}catch(error){errors.push(error)}\n  while(auxChannelOutboxWork.size){\n    const results=await Promise.allSettled([...auxChannelOutboxWork]);\n    for(const result of results)if(result.status==='rejected')errors.push(result.reason);\n  }\n  if(errors.length)throw new AggregateError(errors,'Aux channel outbox did not settle');\n}\n\nfunction auxCreateBackgroundWriterLifetimes(",
+    "count": 1,
+    "reason": "Retained daemon shutdown owner and real transport close callbacks"
+  },
+  {
+    "find": "function auxManagedInterval(callback,delay){\n const boundary=",
+    "replace": "function auxManagedInterval(callback,delay){\n if(auxDaemonClosing)throw Error('AUX_DAEMON_SHUTTING_DOWN');\n const boundary=",
+    "count": 1,
+    "reason": "Close interval creation before broker closure"
+  },
+  {
+    "find": "const timer=setInterval(()=>{\n  try{boundary.assertOwner()}catch{return}",
+    "replace": "const timer=setInterval(()=>{\n  if(auxDaemonClosing)return;\n  try{boundary.assertOwner()}catch{return}",
+    "count": 1,
+    "reason": "Close managed interval callback admission immediately"
+  },
+  {
+    "find": "async function auxRefreshProducer(provider,credential,signal){\n const boundary=",
+    "replace": "async function auxRefreshProducer(provider,credential,signal){\n if(auxDaemonClosing)throw Error('AUX_DAEMON_SHUTTING_DOWN');\n const boundary=",
+    "count": 1,
+    "reason": "Close new refresh admission without removing arbitrary provider uncertainty"
+  },
+  {
+    "find": "ii=()=>{if(ni)return;const auxWritesShutdown=auxBrokerBoundary().beginShutdown();ni=!0;let Cn=()=>{shutdownPostHog().finally(()=>process.exit(0))};setTimeout(Cn,5e3).unref(),GlobalAgentSessionServer.terminateExecSessions(),killRunningCommands(),Promise.race([Promise.all([auxWritesShutdown,globalChannelManager.shutdownAll(),shutdownComputerUseHelper(),stopCoderWork()]),new Promise(Cn=>setTimeout(Cn,4e3))]).finally(()=>{ei.close(),ti?.close(Cn)})},ai=createServer$1({isReady:()=>ri,requestShutdown:ii});",
+    "replace": "ii=()=>{if(ni)return;ni=true;ri=false;auxShutdown.start()},ai=createServer$1({isReady:()=>ri,requestShutdown:ii});let auxBootstrapPromise,auxBootstrapTimer;const auxShutdown=auxCreateDaemonShutdown({fetch:(...args)=>ai.fetch(...args),websockets:()=>ei,http:()=>ti,closeReadiness:()=>{ri=false},clearBootstrapTimer:()=>clearTimeout(auxBootstrapTimer),bootstrap:()=>auxBootstrapPromise,stopIntervals:auxStopLocalIntervals,stopRefresh:auxStopRefreshProducers,stopProductivity:auxStopProductivityRequests,stopChannels:()=>globalChannelManager.shutdownAll(),stopOutbox:auxStopChannelOutbox,stopBackground:auxStopBackgroundWriters,stopComputerUse:shutdownComputerUseHelper,stopCoder:stopCoderWork,terminateExec:()=>GlobalAgentSessionServer.terminateExecSessions(),killCommands:killRunningCommands,stopTelemetry:shutdownPostHog,closeBroker:()=>auxBrokerBoundary().beginShutdown(),hold:()=>setInterval(()=>{},6e4),releaseHold:clearInterval,exit:()=>process.exit(0),unknown:error=>{try{auxBrokerBoundary().noteUntracked()}catch{}console.error('[Aux] Shutdown remains incomplete; native owner retained',error)}});",
+    "count": 1,
+    "reason": "Replace forced 4s/5s exit with actual producer then broker drain; request callback stays immediate"
+  },
+  {
+    "find": "fetch:ai.fetch,websocket:{server:ei}",
+    "replace": "fetch:(...args)=>auxShutdown.fetch(...args),websocket:{server:ei}",
+    "count": 1,
+    "reason": "Refuse new HTTP/upgraded websocket requests and retain actual handler completion"
+  },
+  {
+    "find": "let oi=12e4;ti.timeout=oi",
+    "replace": "if(ni)return;let oi=12e4;ti.timeout=oi",
+    "count": 1,
+    "reason": "Do not start bootstrap after shutdown requested during listen"
+  },
+  {
+    "find": "let si=setTimeout(()=>{captureRuntimeError(`daemon.startup.stalled`",
+    "replace": "let si=auxBootstrapTimer=setTimeout(()=>{if(ni)return;captureRuntimeError(`daemon.startup.stalled`",
+    "count": 1,
+    "reason": "Existing startup watchdog cannot force exit during orderly shutdown"
+  },
+  {
+    "find": "await bootstrap(),clearTimeout(si),ri=!0,logger.info(`[Main] Bootstrap completed`",
+    "replace": "auxBootstrapPromise=bootstrap();await auxBootstrapPromise;clearTimeout(si);if(ni)return;ri=!0,logger.info(`[Main] Bootstrap completed`",
+    "count": 1,
+    "reason": "Retain actual admitted bootstrap and do not republish readiness after close"
+  },
+  {
+    "find": "if(stopAutomations(ti,ei!==void 0),Cn===void 0)return stopAllBackgroundProcesses();",
+    "replace": "if(stopAutomations(ti,ei!==void 0),Cn===void 0)return Promise.all([stopAllBackgroundProcesses(),stopBackgroundWorkflows(()=>!0)]);",
+    "count": 1,
+    "reason": "Global coder shutdown must await original background workflow owners as well as processes"
+  },
+  {
+    "find": "async function shutdownComputerUseHelper(){(process.platform===`darwin`||process.platform===`win32`)&&(shuttingDown$1=!0,await preparePromise?.catch(()=>void 0),await terminateInstalledHelper(COMPUTER_USE_HELPER_SOURCE_BIN_PATH).catch(()=>void 0))}",
+    "replace": "async function shutdownComputerUseHelper(){if(process.platform!==`darwin`&&process.platform!==`win32`)return;shuttingDown$1=true;const errors=[];try{await preparePromise}catch(error){errors.push(error)}try{await terminateInstalledHelper(COMPUTER_USE_HELPER_SOURCE_BIN_PATH)}catch(error){errors.push(error)}if(errors.length)throw new AggregateError(errors,`Aux Computer Use shutdown incomplete`)}",
+    "count": 1,
+    "reason": "Attempt actual helper termination after preparation settles even if preparation failed; retain errors"
+  },
+  {
+    "find": "ChannelManager=class{#e=",
+    "replace": "ChannelManager=class{#auxClosing=false;#auxPending=new Set;#auxStops=new Set;#auxShutdown;#auxTrack(promise,set=this.#auxPending){set.add(promise);promise.then(()=>set.delete(promise),()=>set.delete(promise));return promise}#auxOperation(callback){if(this.#auxClosing)return Promise.reject(Error(`AUX_CHANNEL_ADMISSION_CLOSED`));return this.#auxTrack(Promise.resolve().then(()=>{if(this.#auxClosing)throw Error(`AUX_CHANNEL_ADMISSION_CLOSED`);return callback()}))}#e=",
+    "count": 1,
+    "reason": "Retain exact channel operation and close ownership"
+  },
+  {
+    "find": "initialize(Cn){pruneChannelOutbox(Cn);let ei=listEnabledConnections(Cn);Promise.allSettled(ei.map(",
+    "replace": "initialize(Cn){if(this.#auxClosing)return Promise.reject(Error(`AUX_CHANNEL_ADMISSION_CLOSED`));pruneChannelOutbox(Cn);let ei=listEnabledConnections(Cn);return this.#auxTrack(Promise.allSettled(ei.map(",
+    "count": 1,
+    "reason": "Retain initialization including account outbox recovery"
+  },
+  {
+    "find": ",recoverAccountOutbox(Cn)})}resolveUserProfile(Cn,ei,ti)",
+    "replace": ";return this.#auxClosing?undefined:recoverAccountOutbox(Cn)}))}resolveUserProfile(Cn,ei,ti)",
+    "count": 1,
+    "reason": "Do not launch outbox recovery after channel admission closes"
+  },
+  {
+    "find": "async startConnection(Cn,ei){if(!hasChannelsAccess(Cn))",
+    "replace": "startConnection(Cn,ei){return this.#auxOperation(()=>this.auxStartConnection(Cn,ei))}async auxStartConnection(Cn,ei){if(this.#auxClosing)throw Error(`AUX_CHANNEL_ADMISSION_CLOSED`);if(!hasChannelsAccess(Cn))",
+    "count": 1,
+    "reason": "Refuse new/retried channel starts, retain actual start work"
+  },
+  {
+    "find": "await this.#i(Cn,ei.id);let ri={accountId:Cn,connectionId:ei.id",
+    "replace": "await this.#i(Cn,ei.id);if(this.#auxClosing)throw Error(`AUX_CHANNEL_ADMISSION_CLOSED`);let ri={accountId:Cn,connectionId:ei.id",
+    "count": 1,
+    "reason": "Recheck before publishing a new channel owner"
+  },
+  {
+    "find": "try{if(await this.#r(Cn,ei,ri),ri.issue)throw Error(`missing_scope: ${ri.issue.message}`);",
+    "replace": "try{ri.auxInitialization=this.#r(Cn,ei,ri);try{await ri.auxInitialization}finally{ri.auxInitialization=null}if(ri.issue)throw Error(`missing_scope: ${ri.issue.message}`);",
+    "count": 1,
+    "reason": "Retain actual channel initialization independently of request/start cleanup"
+  },
+  {
+    "find": "catch(ni){await this.#i(Cn,ei.id,ri);let ii=classifyStartError(ni);",
+    "replace": "catch(ni){await this.#i(Cn,ei.id,ri);if(this.#auxClosing)throw ni;let ii=classifyStartError(ni);",
+    "count": 1,
+    "reason": "No reconnect timer after shutdown"
+  },
+  {
+    "find": "onEvent:acceptInboundEvent,onAction:ei=>isPairingActionId(ei.actionId)?handlePairingAction(Cn,ei):isCommandPickerActionId(ei.actionId)?handleCommandPickerAction(Cn,ei):handleChannelSuspensionAction(Cn,ei),",
+    "replace": "onEvent:(...args)=>this.#auxOperation(()=>acceptInboundEvent(...args)),onAction:ei=>this.#auxOperation(()=>isPairingActionId(ei.actionId)?handlePairingAction(Cn,ei):isCommandPickerActionId(ei.actionId)?handleCommandPickerAction(Cn,ei):handleChannelSuspensionAction(Cn,ei)),",
+    "count": 1,
+    "reason": "Close inbound channel action/event admission and retain callbacks already dispatched"
+  },
+  {
+    "find": "onIssue:ni=>{ti.issue=ni,ri()&&updateConnection",
+    "replace": "onIssue:ni=>{if(this.#auxClosing)return;ti.issue=ni,ri()&&updateConnection",
+    "count": 1,
+    "reason": "No late channel issue write after close"
+  },
+  {
+    "find": "if(ti.handle=await createChannelRuntime({accountId:Cn,connection:ei,",
+    "replace": "const auxHandle=await createChannelRuntime({accountId:Cn,connection:ei,",
+    "count": 1,
+    "reason": "Retain asynchronously constructed channel handle outside mutable record"
+  },
+  {
+    "find": "statusMessage:ni.message})}}),await ti.handle.chat.initialize(),!ri()||ti.abort.signal.aborted)throw Error(`superseded`);let ii=await ti.handle.resolveBotIdentity(),",
+    "replace": "statusMessage:ni.message})}});ti.handle=auxHandle;try{if(this.#auxClosing||!ri()||ti.abort.signal.aborted)throw Error(`superseded`);await auxHandle.chat.initialize();if(this.#auxClosing||!ri()||ti.abort.signal.aborted)throw Error(`superseded`);let ii=await auxHandle.resolveBotIdentity();if(this.#auxClosing||!ri()||ti.abort.signal.aborted)throw Error(`superseded`);let ",
+    "count": 1,
+    "reason": "Recheck after async construction/initialization/identity before publication"
+  },
+  {
+    "find": "if(!li.connected)throw li.error instanceof Error?li.error:/* @__PURE__ */ Error(`Discord gateway failed to connect`)}async#i(Cn,ei,ti){",
+    "replace": "if(!li.connected)throw li.error instanceof Error?li.error:/* @__PURE__ */ Error(`Discord gateway failed to connect`)}catch(error){if(this.#auxClosing||!ri()||ti.abort.signal.aborted){await auxHandle.forceShutdown();ti.handle=null}throw error}}#i(Cn,ei,ti){return this.#auxTrack(this.auxStopChannel(Cn,ei,ti),this.#auxStops)}async auxStopChannel(Cn,ei,ti){",
+    "count": 1,
+    "reason": "Late superseded handles are really closed; removed entries retain actual stop Promise"
+  },
+  {
+    "find": "this.#e.delete(ni),ri.abort.abort(),unregisterChannelRuntime(Cn,ei);let ii=ri.handle;",
+    "replace": "this.#e.delete(ni),ri.abort.abort(),unregisterChannelRuntime(Cn,ei);await ri.auxInitialization?.catch(()=>{});let ii=ri.handle;",
+    "count": 1,
+    "reason": "Wait actual initializer before final platform shutdown so late initialization cannot recreate resources"
+  },
+  {
+    "find": "if(ri.handle=null,ii)try{ri.gatewayTask&&await Promise.race([ri.gatewayTask,sleep$12(4e3)]),await ii.forceShutdown()}catch{}",
+    "replace": "if(ri.handle=null,ii){const results=await Promise.allSettled([Promise.resolve().then(()=>ii.forceShutdown()),ri.gatewayTask]);const errors=results.filter(value=>value.status===`rejected`).map(value=>value.reason);if(errors.length)throw new AggregateError(errors,`Aux channel did not close`) }",
+    "count": 1,
+    "reason": "Platform shutdown and original gateway termination both settle; no timeout or swallowed cleanup error"
+  },
+  {
+    "find": "async shutdownAll(){for(let Cn of this.#n.values())clearTimeout(Cn);this.#n.clear(),await Promise.allSettled([...this.#e.values()].map(Cn=>this.#i(Cn.accountId,Cn.connectionId,Cn)))}",
+    "replace": "shutdownAll(){if(this.#auxShutdown)return this.#auxShutdown;this.#auxClosing=true;for(const timer of this.#n.values())clearTimeout(timer);this.#n.clear();this.#auxShutdown=(async()=>{const errors=[];do{const results=await Promise.allSettled([...this.#auxPending,...this.#auxStops,...[...this.#e.values()].map(entry=>this.#i(entry.accountId,entry.connectionId,entry))]);for(const result of results)if(result.status===`rejected`)errors.push(result.reason)}while(this.#auxPending.size||this.#auxStops.size||this.#e.size);if(errors.length)throw new AggregateError(errors,`Aux channels did not settle`)})();this.#auxShutdown.catch(()=>{});return this.#auxShutdown}",
+    "count": 1,
+    "reason": "Close actual channel admission and drain starts/actions/stops after map removal"
+  },
+  {
+    "find": "async function deliverProgressSnapshot(Cn,ei,ti,ni){",
+    "replace": "function deliverProgressSnapshot(Cn,ei,ti,ni){return auxRunChannelOutbox(()=>auxAdmitted_deliverProgressSnapshot(Cn,ei,ti,ni))}async function auxAdmitted_deliverProgressSnapshot(Cn,ei,ti,ni){",
+    "count": 1,
+    "reason": "Retain actual channel deliverProgressSnapshot I/O and refuse new delivery during shutdown"
+  },
+  {
+    "find": "async function deliverUploads(Cn,ei,ti){",
+    "replace": "function deliverUploads(Cn,ei,ti){return auxRunChannelOutbox(()=>auxAdmitted_deliverUploads(Cn,ei,ti))}async function auxAdmitted_deliverUploads(Cn,ei,ti){",
+    "count": 1,
+    "reason": "Retain actual channel deliverUploads I/O and refuse new delivery during shutdown"
+  },
+  {
+    "find": "async function deliverAssistantSnapshot(Cn,ei,ti){",
+    "replace": "function deliverAssistantSnapshot(Cn,ei,ti){return auxRunChannelOutbox(()=>auxAdmitted_deliverAssistantSnapshot(Cn,ei,ti))}async function auxAdmitted_deliverAssistantSnapshot(Cn,ei,ti){",
+    "count": 1,
+    "reason": "Retain actual channel deliverAssistantSnapshot I/O and refuse new delivery during shutdown"
+  },
+  {
+    "find": "async function recoverOutboxRow(Cn,ei){",
+    "replace": "function recoverOutboxRow(Cn,ei){return auxRunChannelOutbox(()=>auxAdmitted_recoverOutboxRow(Cn,ei))}async function auxAdmitted_recoverOutboxRow(Cn,ei){",
+    "count": 1,
+    "reason": "Retain actual channel recoverOutboxRow I/O and refuse new delivery during shutdown"
+  },
+  {
+    "find": "function scheduleOutboxRetry(Cn,ei){let ti=",
+    "replace": "function scheduleOutboxRetry(Cn,ei){if(auxDaemonClosing)return;let ti=",
+    "count": 1,
+    "reason": "No new outbox retry timers during shutdown"
+  },
+  {
+    "find": "function recoverAccountOutbox(Cn){for(let ei of listRecoverableOutbox(Cn))ei.state===`retry_wait`?scheduleOutboxRetry(Cn,ei.id):recoverOutboxRow(Cn,ei.id)}",
+    "replace": "async function recoverAccountOutbox(Cn){if(auxDaemonClosing)return;const work=[];for(const ei of listRecoverableOutbox(Cn))ei.state===`retry_wait`?scheduleOutboxRetry(Cn,ei.id):work.push(recoverOutboxRow(Cn,ei.id));const results=await Promise.allSettled(work);const errors=results.filter(value=>value.status===`rejected`).map(value=>value.reason);if(errors.length)throw new AggregateError(errors,`Aux outbox recovery failed`)}",
+    "count": 1,
+    "reason": "Return actual previously detached outbox recovery promises"
+  },
+  {
+    "find": "oi=ni.stream(ei,ri,ai);oi.catch(()=>void 0);",
+    "replace": "oi=auxOpenChannelStream(()=>ni.stream(ei,ri,ai),()=>ri.close());oi.catch(()=>void 0);",
+    "count": 1,
+    "reason": "Retain streaming delivery and close its real PushStream on shutdown"
+  },
+  {
+    "find": "process.on(`uncaughtException`,Cn=>{console.error(Cn),setTimeout(()=>process.exit(1),2e3).unref(),",
+    "replace": "process.on(`uncaughtException`,Cn=>{if(auxDaemonClosing){try{auxBrokerBoundary().noteUntracked()}catch{}console.error(Cn);return}console.error(Cn),setTimeout(()=>process.exit(1),2e3).unref(),",
+    "count": 1,
+    "reason": "Fatal error during retained shutdown cannot bypass drain with the old forced-exit timer"
+  },
+  {
+    "find": "main().catch(Cn=>{try{posthog(AccountRegistry.getCurrentAccountId())",
+    "replace": "main().catch(Cn=>{if(auxDaemonClosing){try{auxBrokerBoundary().noteUntracked()}catch{}console.error(Cn);return}try{posthog(AccountRegistry.getCurrentAccountId())",
+    "count": 1,
+    "reason": "Bootstrap rejection during shutdown remains unknown with owner held"
+  }
+]

@@ -1,0 +1,27 @@
+{
+  "version": 1,
+  "predecessor": "background-writers/manifest.json",
+  "predecessorSha256": "4158d1a9f2896e5396e0d373b88c0afd2efbd42a8fc27ef31f494332ae1449d2",
+  "daemonInputs": [
+    {
+      "kind": "source",
+      "originalPath": "/private/tmp/aux-browser-features-async-daemon-20261023-a2/index.mjs",
+      "inputSha256": "ea17485de4bb5a59923743c72bbc4ae2fec78b6d4916d619fff6fc1fcd4c67d3",
+      "outputSha256": "5fea0c148c61d6cc3851b56eac64e1ce3cd79766cbe3492b0708e377b17ee4ac"
+    },
+    {
+      "kind": "entry",
+      "originalPath": "/private/tmp/aux-browser-features-async-daemon-20261023-a2/projected-entry/aux-native-entry.mjs",
+      "inputSha256": "4e74b3225dd8a79332541dca2d0facab4afeefd074d93b70f5a187f7f948ae28",
+      "outputSha256": "6789d45516da8ee76acc6f2ace9797d575242a4a2afd2f2e9cb93e59bd4885e1"
+    }
+  ],
+  "changeCount": 35,
+  "sourceFiles": {
+    "source/shutdown-lifetimes.js": "6796e4369f6337919fb16521ef0048f5dd48dfed4512baf2b05dc50cbfe7f84f",
+    "source/changes.json": "1695825edeebd8ce270c116a95a67b4d5f040e4a47c727a81f1d1a42e85be8a3",
+    "source/aux-daemon-shutdown.mjs": "e09e50f8d2160085c83a6e9ce71f57dc2506f8cc3218970de06975540c6e2b90",
+    "generate.mjs": "dae07c6abb7c162f94dc109a71ec8011cf02fe1cbe8fce1e02f37f2ad441ef5d",
+    "check.mjs": "d28047a548a5308048efcec61e7ff62d5646e03b78810245124e95bd960f3d3e"
+  }
+}
