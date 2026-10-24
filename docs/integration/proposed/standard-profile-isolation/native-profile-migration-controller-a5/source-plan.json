@@ -1,0 +1,288 @@
+{
+  "format": "aux.native-profile-migration-controller.consumer.v1",
+  "nativeRoot": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src",
+  "files": [
+    {
+      "path": "chrome/browser/aux/ui_storage_migration_controller.cc",
+      "create": true,
+      "inputSha256": null,
+      "outputSha256": "2f0d09950e25eb267c8b6189449a62e99d7390d0ccb54a4b63f6663f5327ec5e",
+      "output": "/Users/rcourson/.codex/worktrees/aux-features-organization/web/docs/integration/proposed/standard-profile-isolation/native-profile-migration-controller-a5/source/chrome/browser/aux/ui_storage_migration_controller.cc",
+      "anchors": []
+    },
+    {
+      "path": "chrome/browser/aux/ui_storage_migration_controller.h",
+      "create": true,
+      "inputSha256": null,
+      "outputSha256": "dfcd4b44cc8a852b6d4f5c184e4a8853d89e5bc298c364af5796e5034a0bbf4d",
+      "output": "/Users/rcourson/.codex/worktrees/aux-features-organization/web/docs/integration/proposed/standard-profile-isolation/native-profile-migration-controller-a5/source/chrome/browser/aux/ui_storage_migration_controller.h",
+      "anchors": []
+    }
+  ],
+  "nativeDependencies": [
+    {
+      "path": "base/base64.h",
+      "sha256": "8faee5fb6abee88cb1620c3ea18754ebdb13ee3ac3cf6d03fcfda4216338b631"
+    },
+    {
+      "path": "base/callback_list.h",
+      "sha256": "f140dde6f4a7439b8663a068f825f3df051d4b2e662fe402e3eb62815391c64a"
+    },
+    {
+      "path": "base/functional/bind.h",
+      "sha256": "03b9b91d9afdfe67b1703e4531893239aab11826d4fcf62f0818d3679c3562f5"
+    },
+    {
+      "path": "base/functional/callback.h",
+      "sha256": "78970910986e6b76405562c62aef83d61954b74baace67c78c242395fa1c794e"
+    },
+    {
+      "path": "base/json/json_reader.h",
+      "sha256": "cc11fc68ff19fafde085c15349a2b6d17b09d21b4a75fc81c1e158eeee648548"
+    },
+    {
+      "path": "base/json/json_writer.h",
+      "sha256": "59f2a024af5a8b303b13594f209161a728edc5bcf286d34f69a2f333f8288c12"
+    },
+    {
+      "path": "base/memory/scoped_refptr.h",
+      "sha256": "19afae15dab2c7464a48dd0b49c88982239956fc65a3b0da966327adf218cef9"
+    },
+    {
+      "path": "base/memory/weak_ptr.h",
+      "sha256": "96c1b774f9ef78500fea3b5323e43126ddf63206931523df2c198eea29a6186d"
+    },
+    {
+      "path": "base/scoped_observation.h",
+      "sha256": "406257977df2006bd2046320066a8fbf4a8d183981541f24d99196d0eb3677f4"
+    },
+    {
+      "path": "base/strings/string_number_conversions.h",
+      "sha256": "dcecf9161bb1e2bd2ee0482e68c199263289bf0a60874cd50d2cc426de6b3b2c"
+    },
+    {
+      "path": "base/supports_user_data.h",
+      "sha256": "14006c91e60640dd2a43889ecae12089d80d41a25f682cb307bc9c20b209fe30"
+    },
+    {
+      "path": "base/task/single_thread_task_runner.h",
+      "sha256": "d7eab1b988d35b2317c6e65120b87388d6011ee8f9e7d23dc3b23ac1468e3e4a"
+    },
+    {
+      "path": "base/uuid.h",
+      "sha256": "52adf16c26f782c787e0528af729d93f92909acf2498c7a52cc8134bdda6ca8f"
+    },
+    {
+      "path": "base/values.h",
+      "sha256": "bc6ffad749e2e84ed10dbd296f604570bde6bf9bc1e41c11a3f8207ae9000f81"
+    },
+    {
+      "path": "chrome/browser/aux/AuxSelectedStateHome.h",
+      "sha256": "340e954939b4b9d08ef532b266ef37c403abf85a31b74599d5ed19ff3ebb0c52"
+    },
+    {
+      "path": "chrome/browser/aux/component_bootstrap.h",
+      "sha256": "712bd86de1bbed01daed81bf630b10c51a42dceedf84657ccfbf63c8aec22131"
+    },
+    {
+      "path": "chrome/browser/aux/profile_identity.h",
+      "sha256": "ddd97b8a3a95050d5e5fb63c80e6ae34f4fce775b9a2ed96994921760328d163"
+    },
+    {
+      "path": "chrome/browser/profiles/profile.h",
+      "sha256": "7fd40c408572939f885b3adf7be87a2906c0134cd009402ad10200fb151cfb2e"
+    },
+    {
+      "path": "chrome/browser/profiles/profile_observer.h",
+      "sha256": "798930db369924dea163b7f1855688abe7899614b31d715fa6239251c195a241"
+    },
+    {
+      "path": "chrome/browser/ui/aux_feature_lifecycle.h",
+      "sha256": "24afb23c687e5e6d36e012df349970e4e4ec338b0e8eb93f84887f0e40affa9c"
+    },
+    {
+      "path": "components/value_store/value_store.h",
+      "sha256": "a18b6b18cb4cc8534e374dae62b5cbf1849483e3dbbe5b364dbba6718c789d41"
+    },
+    {
+      "path": "content/public/browser/browser_thread.h",
+      "sha256": "2fc11786b55e672806e941347fe7af7c202e4abef5a4826079260e916c848e8c"
+    },
+    {
+      "path": "content/public/browser/dom_storage_context.h",
+      "sha256": "dda866985da4739030e8c53da74ea74680b9cc784694beb1e2077d9ea4805470"
+    },
+    {
+      "path": "content/public/browser/navigation_controller.h",
+      "sha256": "d8224150efb556df64c83aaabf4e8a4d6d010582b3e00198b49acd2d5113337d"
+    },
+    {
+      "path": "content/public/browser/render_frame_host.h",
+      "sha256": "83f5f6af1916636407cebec62ab76b61d7f68d2468e26c64311125ecef628433"
+    },
+    {
+      "path": "content/public/browser/render_process_host.h",
+      "sha256": "d006289a29392058eedca6d862c1656c4daad0c28841eb5baa2239ca1daa57de"
+    },
+    {
+      "path": "content/public/browser/storage_partition.h",
+      "sha256": "7fbd4e60765ba2337f0dfbaf25703b7494aac19246ee9d17a649e762d299f17b"
+    },
+    {
+      "path": "content/public/browser/weak_document_ptr.h",
+      "sha256": "38c51bde0eaaace8d19f95336e1e610db16c3d2d7d7f753b92293ba3e93dbb61"
+    },
+    {
+      "path": "content/public/browser/web_contents.h",
+      "sha256": "27ef39d4e28bceca91069bcf7ca1c5e6694f0550e4a2583645ee086389419cbe"
+    },
+    {
+      "path": "crypto/hash.h",
+      "sha256": "aaba81705b17299f9018c7d51dbe37c36a78965c34e94959d4d28d5fff3c27b8"
+    },
+    {
+      "path": "extensions/browser/api/storage/storage_frontend.h",
+      "sha256": "7cb718fd35c674a08ad825a4af1329924ff948a00d2d68d0c5f15b73347fc915"
+    },
+    {
+      "path": "extensions/browser/extension_api_frame_id_map.h",
+      "sha256": "6b79355ba8a014753c97f3412d459e507966ef8a250a60a7d971bc1b01d65044"
+    },
+    {
+      "path": "extensions/browser/extension_registry.h",
+      "sha256": "1b2696cd192728f3014df7cc7dbe491a6fa8bb8b1139b29e549e8c2c61bc84e7"
+    },
+    {
+      "path": "extensions/browser/extension_web_contents_observer.h",
+      "sha256": "2baa76422ed59efc51bc12c3d3dd3474c6cae94336a2b9dc0d1382a978829016"
+    },
+    {
+      "path": "extensions/browser/process_manager.h",
+      "sha256": "304ed9da7a5697bb6b455915e52f4efd130490946b836a474f5dc61c4e7342ec"
+    },
+    {
+      "path": "extensions/browser/script_executor.h",
+      "sha256": "1b7cff6295035559bee41a563e97537b249d33f3f9984b74b03e3a35930cf14d"
+    },
+    {
+      "path": "extensions/common/extension.h",
+      "sha256": "e01f71c73f04451297634b2c2482a58cea4b40fdd32ecc877fe3d3f90770735d"
+    },
+    {
+      "path": "extensions/common/mojom/code_injection.mojom",
+      "sha256": "a8572f3d0d4836c84e376b8cdda3ee912d6cc8d6e4e408d7c166f51a47c49d30"
+    },
+    {
+      "path": "extensions/common/mojom/host_id.mojom",
+      "sha256": "5f6835acfdf659dfd5b52301eff53ce26a6d43d2be3cb8a51da57581767ad79f"
+    },
+    {
+      "path": "extensions/common/mojom/match_origin_as_fallback.mojom",
+      "sha256": "3fabccd71f4610368511fcfa3184bf10c854d92e48d4fe33003222ca506ee905"
+    },
+    {
+      "path": "extensions/common/mojom/run_location.mojom",
+      "sha256": "794a30de51abb529abcdb2f1bef0a0be1b6caca293a536a837238e2e359e0a41"
+    },
+    {
+      "path": "mojo/public/cpp/bindings/callback_helpers.h",
+      "sha256": "932ab92d67b79769e8c461f8150267588b60db7bf8c19e192dc2f7738e8ecaa4"
+    },
+    {
+      "path": "third_party/blink/public/mojom/script/script_evaluation_params.mojom",
+      "sha256": "f3ae1a0deb84b96eb7df0175e00a44c1cfba96a419dc56c87efa098b85fe4f8b"
+    }
+  ],
+  "consumedNativeApi": [
+    {
+      "path": "content/public/browser/dom_storage_context.h",
+      "sha256": "dda866985da4739030e8c53da74ea74680b9cc784694beb1e2077d9ea4805470",
+      "anchors": [
+        {
+          "find": "DrainLoadedAreasForAuxUiMigration(",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "extensions/browser/script_executor.h",
+      "sha256": "1b7cff6295035559bee41a563e97537b249d33f3f9984b74b03e3a35930cf14d",
+      "anchors": [
+        {
+          "find": "void ExecuteScript(",
+          "count": 1
+        },
+        {
+          "find": "bool frame_responded = false;",
+          "count": 1
+        },
+        {
+          "find": "DocumentId document_id;",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "extensions/browser/extension_api_frame_id_map.h",
+      "sha256": "6b79355ba8a014753c97f3412d459e507966ef8a250a60a7d971bc1b01d65044",
+      "anchors": [
+        {
+          "find": "static DocumentId GetDocumentId(content::RenderFrameHost* render_frame_host);",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "extensions/browser/process_manager.h",
+      "sha256": "304ed9da7a5697bb6b455915e52f4efd130490946b836a474f5dc61c4e7342ec",
+      "anchors": [
+        {
+          "find": "const FrameSet GetAllFrames() const;",
+          "count": 1
+        },
+        {
+          "find": "GetServiceWorkersForExtension(",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "extensions/browser/api/storage/storage_frontend.h",
+      "sha256": "7cb718fd35c674a08ad825a4af1329924ff948a00d2d68d0c5f15b73347fc915",
+      "anchors": [
+        {
+          "find": "void CaptureAuxUiPreferencesForMigration(",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "components/value_store/value_store.h",
+      "sha256": "a18b6b18cb4cc8534e374dae62b5cbf1849483e3dbbe5b364dbba6718c789d41",
+      "anchors": [
+        {
+          "find": "CopyRecordsForNativeJournal() const;",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/aux/AuxSelectedStateHome.h",
+      "sha256": "340e954939b4b9d08ef532b266ef37c403abf85a31b74599d5ed19ff3ebb0c52",
+      "anchors": [
+        {
+          "find": "ExchangeNativeSelectedUiCaptureFrame(",
+          "count": 1
+        }
+      ]
+    }
+  ],
+  "nativeCheckoutChanged": false,
+  "nativeCompiled": false,
+  "productExecuted": false,
+  "captureQualified": false,
+  "backendWriterClosureImplemented": false,
+  "targetImportImplemented": false,
+  "activationAuthorized": false,
+  "apiRootOwner": "existing auxBrowserPreferences.commitCommand kind prepare-ui-state-upgrade"
+}

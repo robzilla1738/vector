@@ -1,0 +1,692 @@
+--- /dev/null
++++ b/chrome/browser/aux/ui_storage_migration_controller.cc
+@@ -0,0 +1,663 @@
++// Copyright 2026 The Aux Authors. BSD-style license: see //LICENSE.
++#include "chrome/browser/aux/ui_storage_migration_controller.h"
++#include <algorithm>
++#include <array>
++#include <atomic>
++#include <cmath>
++#include <map>
++#include <memory>
++#include <set>
++#include <string>
++#include <string_view>
++#include <optional>
++#include <utility>
++#include <vector>
++#include "base/base64.h"
++#include "base/functional/bind.h"
++#include "base/json/json_reader.h"
++#include "base/json/json_writer.h"
++#include "base/memory/scoped_refptr.h"
++#include "base/memory/weak_ptr.h"
++#include "base/scoped_observation.h"
++#include "base/strings/string_number_conversions.h"
++#include "base/supports_user_data.h"
++#include "base/task/single_thread_task_runner.h"
++#include "base/uuid.h"
++#include "chrome/browser/aux/AuxSelectedStateHome.h"
++#include "chrome/browser/aux/component_bootstrap.h"
++#include "chrome/browser/aux/profile_identity.h"
++#include "chrome/browser/profiles/profile.h"
++#include "chrome/browser/profiles/profile_observer.h"
++#include "chrome/browser/ui/aux_feature_lifecycle.h"
++#include "components/value_store/value_store.h"
++#include "content/public/browser/browser_thread.h"
++#include "content/public/browser/dom_storage_context.h"
++#include "content/public/browser/navigation_controller.h"
++#include "content/public/browser/render_frame_host.h"
++#include "content/public/browser/render_process_host.h"
++#include "content/public/browser/storage_partition.h"
++#include "content/public/browser/web_contents.h"
++#include "content/public/browser/weak_document_ptr.h"
++#include "crypto/hash.h"
++#include "extensions/browser/api/storage/storage_frontend.h"
++#include "extensions/browser/extension_api_frame_id_map.h"
++#include "extensions/browser/extension_registry.h"
++#include "extensions/browser/extension_web_contents_observer.h"
++#include "extensions/browser/process_manager.h"
++#include "extensions/browser/script_executor.h"
++#include "extensions/common/extension.h"
++#include "extensions/common/mojom/code_injection.mojom.h"
++#include "extensions/common/mojom/host_id.mojom.h"
++#include "extensions/common/mojom/match_origin_as_fallback.mojom.h"
++#include "extensions/common/mojom/run_location.mojom.h"
++#include "mojo/public/cpp/bindings/callback_helpers.h"
++#include "third_party/blink/public/mojom/script/script_evaluation_params.mojom.h"
++
++namespace aux {
++namespace {
++constexpr char kController[] = "aux.ui-storage-migration-controller.v1";
++constexpr char kCodec[] = "assets/draft-storage-ixLojjZ5.js";
++constexpr size_t kCaptureLimit = 64 * 1024 * 1024;
++using Reply = base::OnceCallback<void(base::DictValue)>;
++using ScriptResults = std::vector<extensions::ScriptExecutor::FrameResult>;
++using Capture = value_store::ValueStore::AuxUiPreferenceCapture;
++
++base::DictValue Refused(std::string reason) {
++  return base::DictValue().Set("success", false).Set("activationAuthorized", false)
++      .Set("qualified", false).Set("error", std::move(reason));
++}
++bool Text(const base::DictValue& value, std::string_view key, std::string_view expected) {
++  const auto* actual = value.FindString(key); return actual && *actual == expected;
++}
++bool UiDraftKey(std::string_view key, bool local) {
++  if (key.empty() || key.size() > 8192 || std::ranges::any_of(key,
++      [](unsigned char c) { return c < 32 || c == 127; })) return false;
++  for (const auto prefix : {"aux.chat-draft.v3:", "aux.chat-draft-text.v1:"})
++    if (key.starts_with(prefix) && key.size() > std::string_view(prefix).size()) return true;
++  constexpr std::string_view settings = "aux.sidepanel-new-session-settings.v2:";
++  return !local && (key == "aux.chat-pending-new-session-message.v2" ||
++      (key.starts_with(settings) && key.size() > settings.size()));
++}
++bool DraftData(const base::DictValue& value, std::string_view origin) {
++  if (value.size() != 5 || !Text(value, "format", "aux.ui-draft-capture.v1") ||
++      !Text(value, "origin", origin)) return false;
++  const auto* session = value.FindDict("sessionEntries"), *local = value.FindDict("localEntries");
++  const auto* mutations = value.FindList("mutations");
++  if (!session || !local || !mutations || session->size() + local->size() + mutations->size() > 4096) return false;
++  for (const auto* entries : {session, local}) for (const auto [key, raw] : *entries)
++    if (!UiDraftKey(key, entries == local) || !raw.is_string() || raw.GetString().size() > 20 * 1024 * 1024) return false;
++  for (const auto& raw : *mutations) {
++    const auto* mutation = raw.GetIfDict();
++    const auto* key = mutation ? mutation->FindString("key") : nullptr;
++    if (!key || (!Text(*mutation, "storage", "local-storage") && !Text(*mutation, "storage", "session-storage")) ||
++        !UiDraftKey(*key, Text(*mutation, "storage", "local-storage"))) return false;
++    if (Text(*mutation, "operation", "remove")) { if (mutation->size() != 3) return false; }
++    else if (Text(*mutation, "operation", "set")) {
++      const auto* data = mutation->FindString("value");
++      if (mutation->size() != 4 || !data || data->size() > 20 * 1024 * 1024) return false;
++    } else return false;
++  }
++  return true;
++}
++bool CanonicalUuid(const std::string& value) {
++  return base::Uuid::ParseLowercase(value).is_valid() &&
++      base::Uuid::ParseLowercase(value).AsLowercaseString() == value;
++}
++void Integer(std::vector<uint8_t>& bytes, uint64_t value, size_t count) {
++  for (size_t i = 0; i < count; ++i) bytes.push_back((value >> (8 * i)) & 255);
++}
++uint64_t IntegerAt(const std::vector<uint8_t>& bytes, size_t at, size_t count) {
++  uint64_t result = 0;
++  for (size_t i = 0; i < count; ++i) result |= uint64_t(bytes[at + i]) << (8 * i);
++  return result;
++}
++std::vector<uint8_t> UuidBytes(const std::string& id) {
++  std::vector<uint8_t> result;
++  std::string hex = id;
++  std::erase(hex, '-');
++  if (!CanonicalUuid(id) || !base::HexStringToBytes(hex, &result) || result.size() != 16) return {};
++  return result;
++}
++std::array<uint8_t, 32> Digest(const std::string& bytes) {
++  return crypto::hash::Sha256(base::as_byte_span(bytes));
++}
++// The native UI owner retains its exact next frame. Re-entry observes
++// that same authority sequence/nonce, never starts a new physical upload.
++struct Transfer {
++  Transfer();
++  ~Transfer();
++  std::string capture, upload, journal, receipt, error;
++  std::array<uint8_t, 32> digest{};
++  uint64_t generation = 0;
++  size_t offset = 0, read_offset = 0;
++  int phase = 0;
++  bool complete = false;
++  std::atomic_bool running{false}, cancelled{false};
++  std::vector<uint8_t> next;
++};
++Transfer::Transfer() = default;
++Transfer::~Transfer() = default;
++
++void TransferCapture(std::shared_ptr<Transfer> transfer) {
++  auto& t = *transfer;
++  t.error.clear();
++  do {
++    if (t.complete || t.cancelled.load()) break;
++    if (t.next.empty()) {
++      const auto upload = UuidBytes(t.upload);
++      if (t.phase == 0) {
++        t.next = {1}; t.next.insert(t.next.end(), upload.begin(), upload.end());
++        Integer(t.next, t.capture.size(), 4); t.next.insert(t.next.end(), t.digest.begin(), t.digest.end());
++      } else if (t.phase == 1 && t.offset < t.capture.size()) {
++        const size_t amount = std::min<size_t>(8192 - 21, t.capture.size() - t.offset);
++        t.next = {2}; t.next.insert(t.next.end(), upload.begin(), upload.end()); Integer(t.next, t.offset, 4);
++        t.next.insert(t.next.end(), t.capture.begin() + t.offset, t.capture.begin() + t.offset + amount);
++      } else if (t.phase <= 2) {
++        t.phase = 2; t.next = {3}; t.next.insert(t.next.end(), upload.begin(), upload.end());
++      } else if (t.phase == 3) {
++        const auto journal = UuidBytes(t.journal);
++        t.next = {5}; t.next.insert(t.next.end(), journal.begin(), journal.end());
++      } else {
++        const auto journal = UuidBytes(t.journal);
++        const size_t amount = std::min<size_t>(8191, t.capture.size() - t.read_offset);
++        t.next = {6}; t.next.insert(t.next.end(), journal.begin(), journal.end());
++        Integer(t.next, t.read_offset, 4); Integer(t.next, amount, 4);
++      }
++    }
++    // On repeated exact frames RequestAuthority observes the retained nonce;
++    // it does not replay the underlying physical persistence operation.
++    auto result = peer::ExchangeNativeSelectedUiCaptureFrame(t.next);
++    if (result.status != peer::DaemonAuthorityStatus::ready) {
++      t.error = "Native capture transport outcome remains unacknowledged"; break;
++    }
++    const auto& bytes = result.payload;
++    if (t.phase == 0) {
++      if (bytes.size() != 5 || bytes[0] != 1 || IntegerAt(bytes, 1, 4) > t.capture.size()) {
++        t.error = "Invalid native capture begin reply"; break;
++      }
++      t.offset = IntegerAt(bytes, 1, 4); t.phase = 1;
++    } else if (t.phase == 1) {
++      const size_t expected = t.offset + t.next.size() - 21;
++      if (bytes.size() != 5 || bytes[0] != 2 || IntegerAt(bytes, 1, 4) != expected) {
++        t.error = "Invalid native capture append reply"; break;
++      }
++      t.offset = expected;
++    } else if (t.phase == 2) {
++      if (bytes.empty() || bytes[0] != 3) { t.error = "Invalid native capture persist reply"; break; }
++      t.receipt.assign(bytes.begin() + 1, bytes.end());
++      auto receipt = base::JSONReader::ReadDict(t.receipt);
++      const auto* journal = receipt ? receipt->FindString("transactionId") : nullptr;
++      const auto* digest = receipt ? receipt->FindString("captureSha256") : nullptr;
++      if (!journal || !CanonicalUuid(*journal) || !digest ||
++          !Text(*receipt, "format", "aux.ui-storage.capture-receipt.v1") ||
++          *digest != base::HexEncodeLower(t.digest) ||
++          !Text(*receipt, "phase", "captured-unqualified") ||
++          receipt->FindBool("activationAuthorized") != false) {
++        t.error = "Native capture receipt mismatch"; break;
++      }
++      t.journal = *journal; t.phase = 3;
++    } else if (t.phase == 3) {
++      if (bytes.size() < 57 || bytes[0] != 5 || IntegerAt(bytes, 1, 4) != t.capture.size() ||
++          IntegerAt(bytes, 5, 8) != t.generation || IntegerAt(bytes, 13, 8) != t.generation ||
++          !std::equal(t.digest.begin(), t.digest.end(), bytes.begin() + 21) ||
++          IntegerAt(bytes, 53, 4) != bytes.size() - 57 ||
++          std::string(bytes.begin() + 57, bytes.end()) != t.receipt) {
++        t.error = "Native capture readback binding mismatch"; break;
++      }
++      t.phase = 4;
++    } else {
++      const size_t amount = IntegerAt(t.next, 21, 4);
++      if (bytes.size() != amount + 1 || bytes[0] != 6 ||
++          !std::equal(bytes.begin() + 1, bytes.end(), t.capture.begin() + t.read_offset)) {
++        t.error = "Native capture exact readback mismatch"; break;
++      }
++      t.read_offset += amount;
++      t.complete = t.read_offset == t.capture.size();
++    }
++    t.next.clear();
++  } while (false);
++  if (t.cancelled.load() && !t.complete) t.error = "Native source changed during capture transfer";
++  t.running.store(false, std::memory_order_release);
++}
++
++struct Frame {
++  Frame();
++  ~Frame();
++  content::WeakDocumentPtr document;
++  content::GlobalRenderFrameHostId routing;
++  extensions::ExtensionApiFrameIdMap::DocumentId document_id;
++  base::WeakPtr<content::WebContents> contents;
++  std::unique_ptr<extensions::ScriptExecutor> executor;
++  std::string request_id, lease_id, capture_json, result_json, namespace_id;
++  double revision = 0;
++  int frame_id = -1;
++  bool prepared = false, cleanup_unknown = false;
++};
++Frame::Frame() = default;
++Frame::~Frame() = default;
++class Controller final : public base::SupportsUserData::Data, public ProfileObserver {
++ public:
++  explicit Controller(Profile*);
++  ~Controller() override;
++  void Begin(content::RenderFrameHost*, Reply);
++  bool pending() const;
++  base::CallbackListSubscription Observe(base::RepeatingClosure);
++ private:
++  bool Current() const;
++  bool Inventory(bool retain);
++  bool DocumentCurrent(const Frame&) const;
++  void PrepareNext();
++  void Invoke(size_t, std::string_view, base::ListValue,
++              base::OnceCallback<void(std::optional<base::DictValue>, std::string)>);
++  void Prepared(size_t, std::optional<base::DictValue>, std::string);
++  void ObservePrepared(size_t, std::optional<base::DictValue>, std::string);
++  bool AcceptLease(Frame&, const base::DictValue&);
++  void CapturedExtension(value_store::ValueStore::AuxUiPreferenceCaptureResult);
++  void DrainNext();
++  void Drained(bool);
++  void ValidateNext();
++  void Validated(size_t, std::optional<base::DictValue>, std::string);
++  void Persist();
++  void RunTransfer();
++  void TransferStep();
++  void ObserveCleanupNext();
++  void ObservedCleanup(size_t, std::optional<base::DictValue>, std::string);
++  void Persisted();
++  void ReleaseNext();
++  void Released(size_t, std::optional<base::DictValue>, std::string);
++  void Finish(std::string);
++  void ReplyResult();
++  void OnProfileWillBeDestroyed(Profile*) override;
++  base::WeakPtr<Profile> profile_;
++  scoped_refptr<const extensions::Extension> extension_;
++  content::WeakDocumentPtr source_;
++  std::string profile_id_, binding_, restoration_, error_;
++  std::vector<std::unique_ptr<Frame>> frames_;
++  std::vector<content::StoragePartition*> partitions_;
++  std::unique_ptr<Capture> extension_capture_;
++  std::shared_ptr<Transfer> transfer_;
++  Reply reply_;
++  base::RepeatingClosureList settled_;
++  size_t cursor_ = 0;
++  bool busy_ = false, cleanup_unknown_ = false, post_persist_validation_ = false, transfer_validation_ = false, observing_cleanup_ = false;
++  base::ScopedObservation<Profile, ProfileObserver> profile_observation_{this};
++  base::WeakPtrFactory<Controller> weak_{this};
++};
++Controller::Controller(Profile* profile) : profile_(profile->GetWeakPtr()) {
++  profile_observation_.Observe(profile);
++}
++Controller::~Controller() { if (transfer_) transfer_->cancelled.store(true); }
++base::CallbackListSubscription Controller::Observe(base::RepeatingClosure callback) {
++  return settled_.Add(std::move(callback));
++}
++bool Controller::pending() const {
++  return busy_ || cleanup_unknown_ || (transfer_ &&
++      (transfer_->running.load(std::memory_order_acquire) || !transfer_->complete));
++}
++bool Controller::Current() const {
++  auto* source = source_.AsRenderFrameHostIfValid();
++  auto* registry = profile_ ? extensions::ExtensionRegistry::Get(profile_.get()) : nullptr;
++  return profile_ && source && source->GetBrowserContext() == profile_.get() &&
++      IsAuxLocalProfileAdmitted(profile_.get()) && !IsProfileCookieRestorePending(profile_.get()) &&
++      GetProfileId(profile_.get()) == profile_id_ && GetProfileCookieBindingEpoch(profile_.get()) == binding_ &&
++      GetProfileCookieRestoreEpoch(profile_.get()) == restoration_ && registry && extension_ &&
++      registry->enabled_extensions().GetByID(kAgentExtensionId) == extension_.get();
++}
++bool Controller::DocumentCurrent(const Frame& frame) const {
++  auto* actual = frame.document.AsRenderFrameHostIfValid();
++  return profile_ && actual && frame.contents && !frame.contents->IsBeingDestroyed() &&
++      actual->GetBrowserContext() == profile_.get() && actual->IsRenderFrameLive() && actual->IsActive() &&
++      actual->GetGlobalId() == frame.routing &&
++      extensions::ExtensionApiFrameIdMap::GetDocumentId(actual) == frame.document_id &&
++      actual->GetLastCommittedOrigin() == extension_->origin();
++}
++bool Controller::Inventory(bool retain) {
++  if (!Current()) return false;
++  auto* manager = extensions::ProcessManager::Get(profile_.get());
++  if (!manager || !manager->GetServiceWorkersForExtension(kAgentExtensionId).empty()) return false;
++  const auto registered = manager->GetRenderFrameHostsForExtension(kAgentExtensionId);
++  if (registered.empty() || registered.size() > 128) return false;
++  std::set<content::RenderFrameHost*> actual;
++  for (auto process = content::RenderProcessHost::AllHostsIterator(); !process.IsAtEnd(); process.Advance()) {
++    if (process.GetCurrentValue()->GetBrowserContext() != profile_.get()) continue;
++    process.GetCurrentValue()->ForEachRenderFrameHost([&](content::RenderFrameHost* frame) {
++      if (frame->GetLastCommittedOrigin() == extension_->origin()) actual.insert(frame);
++    });
++  }
++  if (actual != registered) return false;
++  if (!retain) {
++    if (frames_.size() != actual.size()) return false;
++    for (const auto& frame : frames_) if (!DocumentCurrent(*frame) ||
++        !actual.contains(frame->document.AsRenderFrameHostIfValid())) return false;
++    return true;
++  }
++  for (auto* frame : actual) {
++    auto* contents = content::WebContents::FromRenderFrameHost(frame);
++    auto* observer = contents ? extensions::ExtensionWebContentsObserver::GetForWebContents(contents) : nullptr;
++    if (!contents || !observer || !frame->IsRenderFrameLive() || !frame->IsActive() ||
++        frame->IsErrorDocument() || !frame->GetPendingCommitCrossDocumentNavigations().empty() ||
++        !observer->GetLocalFrame(frame)) return false;
++    const auto config = frame->GetStoragePartition()->GetConfig();
++    const auto& namespaces = contents->GetController().GetSessionStorageNamespaceMap();
++    const auto ns = namespaces.find(config);
++    if (ns == namespaces.end() || !ns->second || ns->second->id().empty()) return false;
++    auto retained = std::make_unique<Frame>();
++    retained->document = frame->GetWeakDocumentPtr(); retained->routing = frame->GetGlobalId();
++    retained->document_id = extensions::ExtensionApiFrameIdMap::GetDocumentId(frame);
++    retained->frame_id = extensions::ExtensionApiFrameIdMap::GetFrameId(frame);
++    retained->contents = contents->GetWeakPtr(); retained->namespace_id = ns->second->id();
++    retained->request_id = base::Uuid::GenerateRandomV4().AsLowercaseString();
++    retained->executor = std::make_unique<extensions::ScriptExecutor>(contents);
++    frames_.push_back(std::move(retained));
++    if (!std::ranges::contains(partitions_, frame->GetStoragePartition())) partitions_.push_back(frame->GetStoragePartition());
++  }
++  return true;
++}
++void Controller::Begin(content::RenderFrameHost* sender, Reply reply) {
++  if (busy_ || (transfer_ && transfer_->running.load(std::memory_order_acquire))) {
++    std::move(reply).Run(Refused("The actual native capture task remains running")); return;
++  }
++  // A repeated native request observes retained unfinished work first. It
++  // cannot start a fresh UUID or silently discard an unknown physical result.
++  if (cleanup_unknown_) {
++    busy_ = true; observing_cleanup_ = true; cleanup_unknown_ = false;
++    reply_ = std::move(reply); cursor_ = 0; ObserveCleanupNext(); return;
++  }
++  if (transfer_ && !transfer_->complete) {
++    if (!Current()) { std::move(reply).Run(Refused("Original native capture binding is unavailable for recovery")); return; }
++    busy_ = true; reply_ = std::move(reply);
++    transfer_validation_ = true; cursor_ = 0; ValidateNext(); return;
++  }
++  if (profile_ && IsAuxLocalFeatureWritePending(profile_.get())) {
++    std::move(reply).Run(Refused("An existing native profile writer must settle before capture")); return;
++  }
++  frames_.clear(); partitions_.clear(); transfer_.reset(); extension_capture_.reset(); error_.clear();
++  auto* registry = profile_ ? extensions::ExtensionRegistry::Get(profile_.get()) : nullptr;
++  extension_ = registry ? registry->enabled_extensions().GetByID(kAgentExtensionId) : nullptr;
++  if (!profile_ || !sender || sender->GetBrowserContext() != profile_.get() || !extension_ ||
++      !profile_->IsRegularProfile() || profile_->IsOffTheRecord() ||
++      sender->GetLastCommittedOrigin() != extension_->origin()) {
++    std::move(reply).Run(Refused("Actual regular Aux document required")); return;
++  }
++  source_ = sender->GetWeakDocumentPtr(); profile_id_ = GetProfileId(profile_.get());
++  binding_ = GetProfileCookieBindingEpoch(profile_.get()); restoration_ = GetProfileCookieRestoreEpoch(profile_.get());
++  if (profile_id_.empty() || binding_.empty() || restoration_.empty() || !Inventory(true)) {
++    frames_.clear(); std::move(reply).Run(Refused("Actual admitted profile/document/backend inventory unavailable")); return;
++  }
++  busy_ = true; observing_cleanup_ = false; post_persist_validation_ = false; reply_ = std::move(reply); cursor_ = 0; PrepareNext();
++}
++void Controller::Invoke(size_t index, std::string_view method, base::ListValue arguments,
++    base::OnceCallback<void(std::optional<base::DictValue>, std::string)> callback) {
++  if (index >= frames_.size() || !DocumentCurrent(*frames_[index])) {
++    std::move(callback).Run(std::nullopt, "Original native document was lost"); return;
++  }
++  auto& frame = *frames_[index];
++  auto encoded = base::WriteJson(arguments);
++  if (!encoded || (method != "auxPrepareDraftMigrationCapture" && method != "auxReadDraftMigrationCapture" &&
++      method != "auxValidateDraftMigrationCapture" && method != "auxReleaseDraftMigrationCapture")) {
++    std::move(callback).Run(std::nullopt, "Finite capture command refused"); return;
++  }
++  const std::string script = "(async()=>{const m=await import('" + extension_->GetResourceURL(kCodec).spec() +
++      "');return JSON.stringify(await m." + std::string(method) + "(..." + *encoded + "));})()";
++  auto js = extensions::mojom::JSInjection::New();
++  js->sources.push_back(extensions::mojom::JSSource::New(script, GURL()));
++  js->world = extensions::mojom::ExecutionWorld::kMain;
++  js->wants_result = blink::mojom::WantResultOption::kWantResult;
++  js->user_gesture = blink::mojom::UserActivationOption::kDoNotActivate;
++  js->wait_for_promise = blink::mojom::PromiseResultOption::kAwait;
++  auto finished = base::BindOnce([](base::WeakPtr<Controller> self, size_t index,
++      base::OnceCallback<void(std::optional<base::DictValue>, std::string)> callback, ScriptResults results) {
++    if (!self || index >= self->frames_.size() || !self->DocumentCurrent(*self->frames_[index]) ||
++        results.size() != 1 || !results[0].frame_responded || !results[0].error.empty() ||
++        results[0].document_id != self->frames_[index]->document_id || !results[0].value.is_string() ||
++        results[0].value.GetString().size() > kCaptureLimit) {
++      std::move(callback).Run(std::nullopt, "Capture script result is unavailable or stale"); return;
++    }
++    self->frames_[index]->result_json = results[0].value.GetString();
++    auto value = base::JSONReader::ReadDict(self->frames_[index]->result_json);
++    std::move(callback).Run(std::move(value), {});
++  }, weak_.GetWeakPtr(), index, std::move(callback));
++  extensions::mojom::HostID host(extensions::mojom::HostID::HostType::kExtensions, kAgentExtensionId);
++  frame.executor->ExecuteScript(host, extensions::mojom::CodeInjection::NewJs(std::move(js)),
++      extensions::ScriptExecutor::SPECIFIED_FRAMES, {frame.frame_id},
++      extensions::mojom::MatchOriginAsFallbackBehavior::kNever, extensions::mojom::RunLocation::kBrowserDriven,
++      extensions::ScriptExecutor::DEFAULT_PROCESS, GURL(),
++      mojo::WrapCallbackWithDefaultInvokeIfNotRun(std::move(finished), ScriptResults()));
++}
++void Controller::PrepareNext() {
++  if (!Inventory(false)) { Finish("Native frame/worker/profile inventory changed"); return; }
++  if (cursor_ == frames_.size()) {
++    auto* frontend = extensions::StorageFrontend::Get(profile_.get());
++    if (!frontend) { Finish("Actual extension backend unavailable"); return; }
++    frontend->CaptureAuxUiPreferencesForMigration(extension_, base::BindOnce(
++        &Controller::CapturedExtension, weak_.GetWeakPtr())); return;
++  }
++  const size_t index = cursor_++;
++  Invoke(index, "auxPrepareDraftMigrationCapture", base::ListValue().Append(frames_[index]->request_id),
++      base::BindOnce(&Controller::Prepared, weak_.GetWeakPtr(), index));
++}
++bool Controller::AcceptLease(Frame& frame, const base::DictValue& value) {
++  const auto* request = value.FindString("requestId"), *lease = value.FindString("leaseId");
++  auto revision = value.FindDouble("revision");
++  auto owners = value.FindInt("ownerCount");
++  const auto* capture = value.FindDict("capture");
++  if (!Text(value, "format", "aux.ui-draft-capture-lease.v1") ||
++      value.FindBool("ok") != true || !request || *request != frame.request_id || !lease || !CanonicalUuid(*lease) ||
++      !revision || *revision < 0 || *revision > 9007199254740991.0 || std::floor(*revision) != *revision ||
++      !owners || *owners < 0 || *owners > 256 || !capture ||
++      !DraftData(*capture, extension_->origin().Serialize())) return false;
++  if (frame.result_json.empty() || frame.result_json.size() > kCaptureLimit) return false;
++  frame.lease_id = *lease; frame.revision = *revision; frame.capture_json = frame.result_json; frame.prepared = true;
++  return true;
++}
++void Controller::Prepared(size_t index, std::optional<base::DictValue> value, std::string) {
++  if (!value || !AcceptLease(*frames_[index], *value)) {
++    // Preparation can have frozen a real producer before its result was lost.
++    // Observe that retained lease without rerunning its writer flush.
++    Invoke(index, "auxReadDraftMigrationCapture", base::ListValue(),
++        base::BindOnce(&Controller::ObservePrepared, weak_.GetWeakPtr(), index)); return;
++  }
++  PrepareNext();
++}
++void Controller::ObservePrepared(size_t index, std::optional<base::DictValue> value, std::string error) {
++  auto& frame = *frames_[index];
++  if (value && Text(*value, "requestId", frame.request_id) && AcceptLease(frame, *value)) {
++    PrepareNext(); return;
++  }
++  if (value && Text(*value, "requestId", frame.request_id)) {
++    const auto* lease = value->FindString("leaseId");
++    if (lease && CanonicalUuid(*lease)) { frame.lease_id = *lease; frame.prepared = true; }
++  }
++  // An explicit current no-lease observation differs from a lost/foreign reply.
++  frame.cleanup_unknown = !value || !Text(*value, "format", "aux.ui-draft-capture-lease.v1") ||
++      value->FindBool("retained") != false;
++  Finish(error.empty() ? "Renderer closure remains refused or uncertain" : std::move(error));
++}
++void Controller::CapturedExtension(value_store::ValueStore::AuxUiPreferenceCaptureResult result) {
++  if (!result.has_value() || !Inventory(false)) { Finish("Actual extension capture/backend ownership unavailable"); return; }
++  extension_capture_ = std::move(result.value()); cursor_ = 0; DrainNext();
++}
++void Controller::DrainNext() {
++  if (!Inventory(false)) { Finish("Native inventory changed before physical DOM drain"); return; }
++  if (cursor_ == partitions_.size()) { cursor_ = 0; ValidateNext(); return; }
++  auto* context = partitions_[cursor_++]->GetDOMStorageContext();
++  if (!context) { Finish("Actual DOM backend unavailable"); return; }
++  context->DrainLoadedAreasForAuxUiMigration(base::BindOnce(&Controller::Drained, weak_.GetWeakPtr()));
++}
++void Controller::Drained(bool synced) {
++  if (!synced) { Finish("Actual loaded-area DOM drain/file-data sync refused"); return; }
++  DrainNext();
++}
++void Controller::ValidateNext() {
++  if (!Inventory(false)) { Finish("Native inventory changed after physical DOM drain"); return; }
++  if (cursor_ == frames_.size()) {
++    if (post_persist_validation_)
++      Finish("Capture retained and read back; backend writer closure, target import and recovery are still required");
++    else if (transfer_validation_) { transfer_validation_ = false; RunTransfer(); }
++    else Persist();
++    return;
++  }
++  const size_t index = cursor_++;
++  Invoke(index, "auxValidateDraftMigrationCapture", base::ListValue().Append(frames_[index]->lease_id).Append(frames_[index]->revision),
++      base::BindOnce(&Controller::Validated, weak_.GetWeakPtr(), index));
++}
++void Controller::Validated(size_t index, std::optional<base::DictValue> value, std::string error) {
++  if (!value || !Text(*value, "format", "aux.ui-draft-capture-lease.v1") ||
++      value->FindBool("ok") != true || value->FindBool("closed") != true ||
++      !Text(*value, "requestId", frames_[index]->request_id) ||
++      !Text(*value, "leaseId", frames_[index]->lease_id) ||
++      value->FindDouble("revision") != frames_[index]->revision) {
++    Finish(error.empty() ? "Renderer lease changed during native capture" : std::move(error)); return;
++  }
++  ValidateNext();
++}
++void Controller::Persist() {
++  if (!Inventory(false) || !extension_capture_) { Finish("Native capture source was lost"); return; }
++  base::ListValue pages, extension_records;
++  for (const auto& frame : frames_) pages.Append(base::DictValue()
++      .Set("nativeDocumentId", frame->document_id.ToString()).Set("sessionNamespace", frame->namespace_id)
++      .Set("requestId", frame->request_id).Set("captureJson", frame->capture_json));
++  for (const auto& raw : extension_capture_->CopyRecordsForNativeJournal())
++    extension_records.Append(raw ? base::Value(base::Base64Encode(*raw)) : base::Value());
++  base::DictValue capture = base::DictValue().Set("format", "aux.ui-storage.capture-input.v1")
++      .Set("nativeProfileId", profile_id_).Set("bindingEpoch", binding_).Set("restoreEpoch", restoration_)
++      .Set("pages", std::move(pages)).Set("extensionRawRecords", std::move(extension_records))
++      .Set("phase", "captured-unqualified").Set("qualified", false).Set("activationAuthorized", false)
++      .Set("backendWriterClosure", false).Set("targetImportAvailable", false);
++  auto encoded = base::WriteJson(capture);
++  if (!encoded || encoded->empty() || encoded->size() > kCaptureLimit) { Finish("Complete native capture exceeds its bound"); return; }
++  transfer_ = std::make_shared<Transfer>(); transfer_->capture = std::move(*encoded);
++  transfer_->digest = Digest(transfer_->capture); transfer_->upload = base::Uuid::GenerateRandomV4().AsLowercaseString();
++  transfer_->generation = peer::InspectNativeBrowserShutdown().admitted_generation;
++  RunTransfer();
++}
++void Controller::RunTransfer() {
++  if (!Inventory(false)) { Finish("Native source changed before the next capture frame"); return; }
++  transfer_->running.store(true);
++  // One bounded native IPC on the real owner sequence per task. Yield before
++  // the next frame so document/profile/lease events can be processed. No
++  // arbitrary worker receives native authority or a long UI-blocking loop.
++  const bool posted = base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
++      FROM_HERE, base::BindOnce(&Controller::TransferStep, weak_.GetWeakPtr()));
++  if (!posted) {
++    transfer_->running.store(false);
++    if (transfer_->phase == 0 && transfer_->next.empty()) transfer_.reset();
++    Finish("Native capture owner task did not start; older outcomes remain retained");
++  }
++}
++void Controller::TransferStep() {
++  if (!Inventory(false)) {
++    transfer_->running.store(false); Finish("Native source changed before capture IPC"); return;
++  }
++  TransferCapture(transfer_);  // Exactly one finite frame, never a chunk loop.
++  if (transfer_->complete || !transfer_->error.empty()) { Persisted(); return; }
++  // Validate the actual retained producer leases between every bounded frame.
++  transfer_validation_ = true; cursor_ = 0; ValidateNext();
++}
++void Controller::Persisted() {
++  if (!transfer_ || !transfer_->complete || !Inventory(false)) {
++    Finish(transfer_ && !transfer_->error.empty() ? transfer_->error : "Native capture persistence/readback remains uncertain"); return;
++  }
++  post_persist_validation_ = true; cursor_ = 0; ValidateNext();
++}
++void Controller::ObserveCleanupNext() {
++  while (cursor_ < frames_.size()) {
++    const size_t index = cursor_++;
++    auto& frame = *frames_[index];
++    if (!frame.document.AsRenderFrameHostIfValid()) {
++      // This proves only destruction of the in-memory document lease, not
++      // completion of any backend/transport write.
++      frame.prepared = false; frame.cleanup_unknown = false; continue;
++    }
++    if (!frame.prepared && !frame.cleanup_unknown) continue;
++    Invoke(index, "auxReadDraftMigrationCapture", base::ListValue(),
++        base::BindOnce(&Controller::ObservedCleanup, weak_.GetWeakPtr(), index)); return;
++  }
++  observing_cleanup_ = false; error_ = "Retained renderer lease cleanup was observed; no migration activated"; ReplyResult();
++}
++void Controller::ObservedCleanup(size_t index, std::optional<base::DictValue> value, std::string) {
++  auto& frame = *frames_[index];
++  if (value && Text(*value, "format", "aux.ui-draft-capture-lease.v1") && value->FindBool("retained") == false) {
++    frame.prepared = false; frame.cleanup_unknown = false; ObserveCleanupNext(); return;
++  }
++  const auto* lease = value ? value->FindString("leaseId") : nullptr;
++  if (!value || !Text(*value, "requestId", frame.request_id) || !lease || !CanonicalUuid(*lease)) {
++    frame.cleanup_unknown = true; cleanup_unknown_ = true; ObserveCleanupNext(); return;
++  }
++  frame.lease_id = *lease; frame.prepared = true;
++  Invoke(index, "auxReleaseDraftMigrationCapture", base::ListValue().Append(frame.lease_id),
++      base::BindOnce(&Controller::Released, weak_.GetWeakPtr(), index));
++}
++void Controller::Finish(std::string error) {
++  error_ = std::move(error);
++  if (transfer_ && !transfer_->complete) {
++    // Never release the original producer leases and start a different upload
++    // across unfinished/unknown native capture work. Explicit observation of
++    // the same pending frame and original bindings is required for recovery.
++    ReplyResult(); return;
++  }
++  cursor_ = 0; ReleaseNext();
++}
++void Controller::ReleaseNext() {
++  while (cursor_ < frames_.size() && !frames_[cursor_]->prepared) {
++    cleanup_unknown_ |= frames_[cursor_]->cleanup_unknown; ++cursor_;
++  }
++  if (cursor_ == frames_.size()) { ReplyResult(); return; }
++  const size_t index = cursor_++;
++  Invoke(index, "auxReleaseDraftMigrationCapture", base::ListValue().Append(frames_[index]->lease_id),
++      base::BindOnce(&Controller::Released, weak_.GetWeakPtr(), index));
++}
++void Controller::Released(size_t index, std::optional<base::DictValue> value, std::string) {
++  const bool released = value && Text(*value, "format", "aux.ui-draft-capture-lease.v1") &&
++      value->FindBool("ok") == true && value->FindBool("released") == true &&
++      Text(*value, "leaseId", frames_[index]->lease_id) &&
++      Text(*value, "requestId", frames_[index]->request_id);
++  frames_[index]->prepared = !released; frames_[index]->cleanup_unknown = !released;
++  cleanup_unknown_ |= !released;
++  if (observing_cleanup_) ObserveCleanupNext(); else ReleaseNext();
++}
++void Controller::ReplyResult() {
++  busy_ = false;
++  if (!transfer_ || transfer_->complete) extension_capture_.reset();
++  auto result = Refused(error_).Set("phase", transfer_ && transfer_->complete ? "captured-unqualified" : "refused-or-unknown")
++      .Set("rendererCleanupUnknown", cleanup_unknown_).Set("targetImportAvailable", false);
++  if (transfer_ && transfer_->complete) result.Set("journalId", transfer_->journal).Set("captureSha256", base::HexEncodeLower(transfer_->digest));
++  auto alive = weak_.GetWeakPtr();
++  if (reply_) std::move(reply_).Run(std::move(result));
++  if (alive && !alive->pending()) alive->settled_.Notify();
++}
++void Controller::OnProfileWillBeDestroyed(Profile*) {
++  if (transfer_) transfer_->cancelled.store(true);
++  profile_observation_.Reset(); profile_ = nullptr;
++  if (reply_) std::move(reply_).Run(Refused("Original native Profile was destroyed; migration did not activate"));
++}
++Controller* Find(Profile* profile) {
++  return profile ? static_cast<Controller*>(profile->GetUserData(&kController)) : nullptr;
++}
++}  // namespace
++void PrepareUiStorageMigration(Profile* profile, content::RenderFrameHost* sender, Reply reply) {
++  DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
++  if (!profile || !sender || sender->GetBrowserContext() != profile ||
++      !profile->IsRegularProfile() || profile->IsOffTheRecord()) {
++    std::move(reply).Run(Refused("Actual regular native profile sender required")); return;
++  }
++  auto* registry = extensions::ExtensionRegistry::Get(profile);
++  auto* extension = registry ? registry->enabled_extensions().GetByID(kAgentExtensionId) : nullptr;
++  if (!extension || sender->GetLastCommittedOrigin() != extension->origin()) {
++    std::move(reply).Run(Refused("Actual enabled canonical Aux Agent document required")); return;
++  }
++  if (!Find(profile)) profile->SetUserData(&kController, std::make_unique<Controller>(profile));
++  Find(profile)->Begin(sender, std::move(reply));
++}
++bool IsUiStorageMigrationPending(Profile* profile) {
++  DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
++  auto* owner = Find(profile); return owner && owner->pending();
++}
++base::CallbackListSubscription ObserveUiStorageMigrationSettled(
++    Profile* profile, base::RepeatingClosure callback) {
++  DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
++  if (!profile || !profile->IsRegularProfile() || profile->IsOffTheRecord()) return {};
++  if (!Find(profile)) profile->SetUserData(&kController, std::make_unique<Controller>(profile));
++  return Find(profile)->Observe(std::move(callback));
++}
++}  // namespace aux
+--- /dev/null
++++ b/chrome/browser/aux/ui_storage_migration_controller.h
+@@ -0,0 +1,23 @@
++// Copyright 2026 The Aux Authors. BSD-style license: see //LICENSE.
++#ifndef CHROME_BROWSER_AUX_UI_STORAGE_MIGRATION_CONTROLLER_H_
++#define CHROME_BROWSER_AUX_UI_STORAGE_MIGRATION_CONTROLLER_H_
++#include "base/functional/callback.h"
++#include "base/callback_list.h"
++#include "base/values.h"
++class Profile;
++namespace content { class RenderFrameHost; }
++namespace aux {
++// Native private API only. The actual ExtensionFunction supplies its current
++// Profile and RenderFrameHost, never renderer-selected identities or paths.
++// Captured/unqualified data and physical uncertainty never authorize activation.
++void PrepareUiStorageMigration(Profile* profile, content::RenderFrameHost* sender,
++                               base::OnceCallback<void(base::DictValue)> reply);
++// Actual retained native operation/cleanup ownership only, not whole-browser
++// writer closure or a durable-migration certificate.
++bool IsUiStorageMigrationPending(Profile* profile);
++// Observer registration attaches only the in-memory native owner. Notification
++// means actual retained operation/cleanup is no longer pending, not durability.
++base::CallbackListSubscription ObserveUiStorageMigrationSettled(
++    Profile* profile, base::RepeatingClosure callback);
++}
++#endif

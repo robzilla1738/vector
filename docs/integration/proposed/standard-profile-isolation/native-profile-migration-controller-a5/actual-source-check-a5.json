@@ -1,0 +1,17 @@
+{
+  "format": "aux.native-profile-migration-controller.source-check.actual.v1",
+  "sourcePlanSha256": "f90fb8751b2ea0561b561fbf443cbdb6e6c8c6b2eccbd27feb79fcc3092dd94a",
+  "patchSha256": "49d0b87a146edab8d40d8bfd1c70f7288aad4364d53913fcc3e8e4ebec3a7a92",
+  "newNativeFiles": 2,
+  "nativeDependencyPins": 43,
+  "consumedApiAnchors": 10,
+  "replayDirectory": "/private/tmp/aux-native-ui-controller-replay-n6xsf73o",
+  "exactReplayPassed": true,
+  "reverseCheckPassed": true,
+  "nativeCheckoutChanged": false,
+  "nativeCompiled": false,
+  "productExecuted": false,
+  "captureQualified": false,
+  "targetImportExecuted": false,
+  "activationAuthorized": false
+}
