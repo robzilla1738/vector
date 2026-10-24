@@ -1,0 +1,49 @@
+--- a/AuxFreshColdInstallerGuard.swift
++++ b/AuxFreshColdInstallerGuard.swift
+@@ -1,6 +1,8 @@
+ // Real source-paired peer/FD ownership, not a Boolean custody receipt.
+ import Foundation
+ import Darwin
++import Security
++@_silgen_name("AuxCopyAuthenticatedBrowserDrainReport") private func copyAuthenticatedBrowserDrainReport(_ handle:UInt64,_ generation:UInt64,_ challenge:UnsafePointer<UInt8>,_ report:UnsafeMutablePointer<UInt8>)->Int32
+ @_silgen_name("AuxRetainNativeParentConnection") private func retainNativeParent(_ id:UInt64)->Int32
+ @_silgen_name("AuxReleaseNativeParentConnection") private func releaseNativeParent(_ id:UInt64)
+ @_silgen_name("AuxRevalidateNativeParentConnection") private func revalidateNativeParent(_ id:UInt64,_ timeout:UInt32)->Int32
+@@ -40,6 +42,24 @@
+             try revalidate()
+             return(generation,descriptor)
+         }catch{if descriptor>=0{close(descriptor)};throw error}
++    }
++    func authenticatedBrowserDrainReceipt(generation:UInt64)throws->Data {
++        guard getpid()==process,generation>0 else{throw AuxFreshColdGuardError.wrongProcess}
++        // Fresh challenge is generated here, never supplied by JavaScript or a
++        // previous disk record. Native transport authenticates the retained peer.
++        var challenge=[UInt8](repeating:0,count:32),report=[UInt8](repeating:0,count:128)
++        guard SecRandomCopyBytes(kSecRandomDefault,challenge.count,&challenge)==errSecSuccess else{throw AuxFreshColdGuardError.metadata}
++        let status=challenge.withUnsafeBufferPointer { input in report.withUnsafeMutableBufferPointer { output in
++            copyAuthenticatedBrowserDrainReport(handle,generation,input.baseAddress!,output.baseAddress!)
++        }}
++        guard status==0 else{throw AuxFreshColdGuardError.peer(status)}
++        func be(_ offset:Int,_ count:Int)->UInt64 {report[offset..<offset+count].reduce(UInt64(0)){($0<<8)|UInt64($1)}}
++        guard be(0,4)==1,be(4,4)==0,be(8,8)==generation,be(16,8)>0,
++              be(24,4)==6,be(28,4)==0,Array(report[32..<64])==challenge,
++              report[64..<96].contains(where:{$0 != 0}),report[96..<128].contains(where:{$0 != 0}) else{throw AuxFreshColdGuardError.metadata}
++        // status=settled must mean all physical browser/service/descendant
++        // writers settled, not merely phase 6 or an absent/disconnected peer.
++        return Data(report)
+     }
+     deinit{if getpid()==process{releaseNativeParent(handle)}}
+ }
+@@ -169,6 +189,12 @@
+         try revalidate()
+         return receipt
+     }
++    func completeBrowserCleanShutdown()throws {
++        try revalidate()
++        try browserAdmission.completeCleanShutdown(peer:peer)
++        // Transport stays retained through durable completion; it is released
++        // by the real Owner only after registry clean acknowledgement.
++    }
+     func createFreshHome()throws->AuxFreshNativeHome {
+         try revalidate()
+         let home=try AuxFreshNativeHome.create(inCanonicalPrivateParent:policy.contents.canonicalPrivateParent,retainedParentDescriptor:parentFD)

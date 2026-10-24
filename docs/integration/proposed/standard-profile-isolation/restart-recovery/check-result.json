@@ -1,0 +1,32 @@
+{
+  "scope": "exact selected-input pins and count-one source replay only; no Swift execution or compile",
+  "sources": [
+    {
+      "name": "AuxBrowserFreshRootAdmission.swift",
+      "anchors": 11,
+      "sha256": "db0dd11ba89a8bb7b413d2176597f6a253d3d36d03f2061af19c263d92c448c1"
+    },
+    {
+      "name": "AuxFreshColdInstallerGuard.swift",
+      "anchors": 3,
+      "sha256": "238b07dd054012ac4425b2500d9e1e04b934bc69290758f1f25cfe56df43a965"
+    },
+    {
+      "name": "AuxNativeFreshStageCoordinator.swift",
+      "anchors": 1,
+      "sha256": "6893e93cbcedebbf9fb81b0e84c138d15b68c750dc0d2e75308f41b0f618168a"
+    },
+    {
+      "name": "AuxOwnedCommandDispatcher.swift",
+      "anchors": 3,
+      "sha256": "37342cf112c425afd9dbc1990afe4b7bb82684ad4a28f961e8e9adc8ade4f543"
+    }
+  ],
+  "runtimeValidated": false,
+  "activationBlockedUntil": [
+    "actual native peer final all-writer report through real shutdown lifetime",
+    "actual WorkerHost owner settlement query/caller",
+    "shared dispatcher and native link integration",
+    "disposable clean-reopen, interrupted-admitted and partial-write checks"
+  ]
+}

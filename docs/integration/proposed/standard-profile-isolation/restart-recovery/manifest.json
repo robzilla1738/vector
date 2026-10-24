@@ -1,0 +1,25 @@
+{
+  "format": "aux.standard-restart-review.v1",
+  "activation": "requires real native authenticated report, owner settlement query and shutdown lifetime integration",
+  "files": {
+    "AuxBrowserFreshRootAdmission.swift.patch": "641f0a59ec1313aa41e27934f1c93b6e92481f6c26753fa8fc3b5acbe6d06883",
+    "AuxFreshColdInstallerGuard.swift.patch": "ae05410b77cc772e5ee2f0f75abb6a4142418feb4ea29366bf49fd3d3437e2ef",
+    "AuxNativeFreshStageCoordinator.swift.patch": "0d2cc672d7195258f2f850776ef631e2ff148379b27ba3415f22c1544556b245",
+    "AuxOwnedCommandDispatcher.swift.patch": "b426168e5de0297fbcf2ae85942f3b5064b723ce6c7f803a5c838a5b07f0b78d",
+    "README.md": "5cf60562792750335fab1591304a235643a440994782f2dbd00da76a7f81c67b",
+    "baseline/AuxBrowserFreshRootAdmission.swift": "441ad3f02266cb20a5b851bed1a3573bb24e05a4106bce3225cc07111e281a03",
+    "baseline/AuxFreshColdInstallerGuard.swift": "4cd3f0fca1e8413fc3d5b4208fbf45ac817506f54b725a830dca851726e766cb",
+    "baseline/AuxNativeFreshStageCoordinator.swift": "a5215891f3f66d1d71622b3fa7ac712d2ff58d677452c672615d3906f1f469e7",
+    "baseline/AuxOwnedCommandDispatcher.swift": "fbb2782491b242573c60433f98df39f7d7ef283392190d0e627f23fedc003a0c",
+    "check-result.json": "abccb46c6b17daf59d090415e825a3fbad2d78f23540d591b43e6cc22306c030",
+    "check-source.py": "091214455d502ffbbd2f0a80dc63f1cfb3dd6b5268f83b2e4aa07894c40d5492",
+    "dispatcher-method.inc": "7e27ff4b628a29426244058e30b62712210ff225903d1916210ec00f8c7f86a0",
+    "inputs.json": "61f47baef6a532f529c7f288900969e4fe82cdf9a1f886cc980b31ab30767087",
+    "make-overlay.py": "6f542071eb4d40d9b95170486c88de715d24ac439c347a41d7956bda97ed1344",
+    "overlay.json": "30a5cdb4a1cbbe0397ff1230f86100a83405fa073dbe6a5c7959d883159e4511",
+    "source/AuxBrowserFreshRootAdmission.swift": "db0dd11ba89a8bb7b413d2176597f6a253d3d36d03f2061af19c263d92c448c1",
+    "source/AuxFreshColdInstallerGuard.swift": "238b07dd054012ac4425b2500d9e1e04b934bc69290758f1f25cfe56df43a965",
+    "source/AuxNativeFreshStageCoordinator.swift": "6893e93cbcedebbf9fb81b0e84c138d15b68c750dc0d2e75308f41b0f618168a",
+    "source/AuxOwnedCommandDispatcher.swift": "37342cf112c425afd9dbc1990afe4b7bb82684ad4a28f961e8e9adc8ade4f543"
+  }
+}

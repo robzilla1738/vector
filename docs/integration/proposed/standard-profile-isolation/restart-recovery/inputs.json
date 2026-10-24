@@ -1,0 +1,26 @@
+{
+  "plan": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/profile-isolation-local-finish/runtime-cache-async-relink-a3/plan.json",
+  "planSha256": "9e800c538013eeb10efded31d35c86766bb5842caf475a1636b2d1d15edf8b1e",
+  "sources": [
+    {
+      "name": "AuxBrowserFreshRootAdmission.swift",
+      "selectedPath": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/profile-isolation-protected-startup/source/AuxBrowserFreshRootAdmission.swift",
+      "sha256": "441ad3f02266cb20a5b851bed1a3573bb24e05a4106bce3225cc07111e281a03"
+    },
+    {
+      "name": "AuxFreshColdInstallerGuard.swift",
+      "selectedPath": "/private/tmp/aux-early-authorization-final/docs/integration/proposed/profile-isolation-final/startup/source/AuxFreshColdInstallerGuard.swift",
+      "sha256": "4cd3f0fca1e8413fc3d5b4208fbf45ac817506f54b725a830dca851726e766cb"
+    },
+    {
+      "name": "AuxNativeFreshStageCoordinator.swift",
+      "selectedPath": "/private/tmp/aux-early-authorization-final/docs/integration/proposed/profile-isolation-final/startup/source/AuxNativeFreshStageCoordinator.swift",
+      "sha256": "a5215891f3f66d1d71622b3fa7ac712d2ff58d677452c672615d3906f1f469e7"
+    },
+    {
+      "name": "AuxOwnedCommandDispatcher.swift",
+      "selectedPath": "/private/tmp/aux-browser-admitted-recovery/docs/integration/proposed/profile-isolation-completion/restart/source/AuxOwnedCommandDispatcher.swift",
+      "sha256": "fbb2782491b242573c60433f98df39f7d7ef283392190d0e627f23fedc003a0c"
+    }
+  ]
+}

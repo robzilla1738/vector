@@ -1,0 +1,13 @@
+--- a/AuxNativeFreshStageCoordinator.swift
++++ b/AuxNativeFreshStageCoordinator.swift
+@@ -51,6 +51,10 @@
+         let receipt=try coldGuard.browserStartupReceipt()
+         try revalidateNativeStageBinding()
+         return receipt
++    }
++    func completeBrowserCleanShutdown()throws {
++        try revalidateNativeStageBinding()
++        try coldGuard.completeBrowserCleanShutdown()
+     }
+     // Finite task-home capability for the future caller projection migration.
+     // It does not expose any control root or accept an arbitrary account path.
