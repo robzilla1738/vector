@@ -14,7 +14,7 @@
 #include "ui/menus/simple_menu_model.h"
 #include "ui/views/view.h"
 class BrowserWindowInterface;
-namespace views { class Label; class MenuRunner; }
+namespace views { class Label; class LabelButton; class MenuRunner; }
 namespace aux {
 class OrganizationWindowDelegate;
 class OrganizationTreeRow;
@@ -33,6 +33,7 @@ class AuxOrganizationTreeView final : public views::View,
   void NewFolder();
   void ExecuteCommand(int command_id, int event_flags) override;
   bool IsCommandIdEnabled(int command_id) const override;
+  bool IsCommandIdChecked(int command_id) const override;
  private:
   friend class OrganizationTreeRow;
   void Bind();
@@ -55,6 +56,8 @@ class AuxOrganizationTreeView final : public views::View,
   const Scope scope_;
   raw_ptr<views::View> rows_ = nullptr;
   raw_ptr<views::Label> status_ = nullptr;
+  raw_ptr<views::LabelButton> archive_toggle_ = nullptr;
+  bool archive_mode_ = false;
   std::map<std::string, raw_ptr<OrganizationTreeRow>> row_by_id_;
   std::vector<std::string> visible_;
   base::CallbackListSubscription ready_subscription_, changes_, window_changes_;

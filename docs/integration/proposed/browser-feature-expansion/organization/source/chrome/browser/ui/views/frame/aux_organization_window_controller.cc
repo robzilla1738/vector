@@ -67,8 +67,16 @@ class AuxOrganizationWindowController::PageObserver final : public content::WebC
 };
 AuxOrganizationWindowController::AuxOrganizationWindowController(BrowserWindowInterface& browser)
     : browser_(browser.GetWeakPtr()) { RebindForProfileSwitch(); }
-AuxOrganizationWindowController::~AuxOrganizationWindowController() {
+AuxOrganizationWindowController::~AuxOrganizationWindowController() { Shutdown(); }
+void AuxOrganizationWindowController::Shutdown() {
+  if (shutdown_) return;
+  shutdown_ = true;
+  weak_.InvalidateWeakPtrs();
   TabStripModelObserver::StopObservingAll(this);
+  ready_subscription_ = {}; model_changes_ = {}; settled_ = {}; session_restored_ = {};
+  ordinary_eligible_.Reset(); views_.clear(); explicit_unloads_.clear(); dirty_navigation_.clear();
+  profile_ = nullptr; model_ = nullptr; active_space_.clear(); restored_space_.clear();
+  Notify();
 }
 AuxOrganizationWindowController* AuxOrganizationWindowController::FromBrowser(BrowserWindowInterface* browser) {
   return browser ? browser->GetFeatures().aux_organization_window_controller() : nullptr;
@@ -82,7 +90,7 @@ AuxOrganizationWindowController* AuxOrganizationWindowController::GetForTabStrip
   return result;
 }
 bool AuxOrganizationWindowController::Current() const {
-  return browser_ && profile_ && model_ && !profile_->IsOffTheRecord() &&
+  return !shutdown_ && browser_ && profile_ && model_ && !profile_->IsOffTheRecord() &&
       browser_->GetProfile() == profile_ && browser_->GetTabStripModel() == model_;
 }
 bool AuxOrganizationWindowController::ready() const {
@@ -100,6 +108,7 @@ bool AuxOrganizationWindowController::ready() const {
 }
 bool AuxOrganizationWindowController::IsProjectionReady() const { return ready(); }
 void AuxOrganizationWindowController::RebindForProfileSwitch() {
+  if (shutdown_) return;
   TabStripModelObserver::StopObservingAll(this);
   weak_.InvalidateWeakPtrs(); ready_subscription_ = {}; model_changes_ = {}; settled_ = {}; session_restored_ = {};
   views_.clear(); explicit_unloads_.clear(); dirty_navigation_.clear();
@@ -119,8 +128,10 @@ void AuxOrganizationWindowController::RebindForProfileSwitch() {
 }
 void AuxOrganizationWindowController::SetOrdinaryEligibility(
     base::RepeatingCallback<bool(const tabs::TabInterface&)> eligible) {
+  if (shutdown_) return;
   ordinary_eligible_ = std::move(eligible); QueueReconcile();
 }
+void AuxOrganizationWindowController::RefreshOrdinaryEligibility() { QueueReconcile(); }
 void AuxOrganizationWindowController::Bind() {
   model_changes_ = {}; settled_ = {};
   if (!Current()) return;
@@ -377,10 +388,21 @@ void AuxOrganizationWindowController::UnloadLogicalTab(const std::string& id, ba
   std::move(reply).Run(organization && organization->snapshot().entries.contains(id));
 }
 void AuxOrganizationWindowController::ArchiveLogicalEntry(const std::string& id, base::OnceCallback<void(bool)> reply) {
+  ArchiveEntry(id, false, std::move(reply));
+}
+void AuxOrganizationWindowController::ArchiveFolderAndContents(const std::string& id, base::OnceCallback<void(bool)> reply) {
+  ArchiveEntry(id, true, std::move(reply));
+}
+void AuxOrganizationWindowController::ArchiveEntry(const std::string& id, bool allow_pinned_folder,
+                                                   base::OnceCallback<void(bool)> reply) {
   auto* organization = Current() ? Organization(browser_.get()) : nullptr;
   if (!organization || organization->pending() || organization->blocked()) { std::move(reply).Run(false); return; }
   const auto& snapshot = organization->snapshot();
-  if (!snapshot.entries.contains(id) || snapshot.entries.at(id).space_id.empty()) { std::move(reply).Run(false); return; }
+  if (!snapshot.entries.contains(id)) { std::move(reply).Run(false); return; }
+  const auto entry = snapshot.entries.at(id);
+  if (entry.archived || (entry.space_id.empty() &&
+      (!allow_pinned_folder || entry.kind != organization::EntryKind::kFolder ||
+       !snapshot.spaces.contains(active_space_)))) { std::move(reply).Run(false); return; }
   std::set<std::string> subtree{id};
   for (size_t depth = 0; depth < organization::kMaxDepth; ++depth) {
     bool added = false;
@@ -414,8 +436,17 @@ void AuxOrganizationWindowController::ArchiveLogicalEntry(const std::string& id,
     if (!owner || !owner->CloseViewNow(handle)) { std::move(reply).Run(false); return; }
     if (!alive) { std::move(reply).Run(false); return; }
   }
+  std::vector<organization::Command> commands;
+  if (entry.space_id.empty()) {
+    organization::Command move; move.action = organization::Action::kMoveEntry;
+    move.id = id; move.space_id = active_space_; move.index = std::numeric_limits<uint64_t>::max();
+    commands.push_back(std::move(move));
+  }
   organization::Command command; command.action = organization::Action::kArchive; command.id = id;
-  ExecuteOrganizationCommand(browser_, std::move(*context), std::move(command), base::BindOnce(
+  commands.push_back(std::move(command));
+  auto* current = Current() ? Organization(browser_.get()) : nullptr;
+  if (!current) { std::move(reply).Run(false); return; }
+  current->ExecuteBatch(std::move(*context), std::move(commands), base::BindOnce(
       [](base::OnceCallback<void(bool)> reply, organization::CommitResult result) {
         std::move(reply).Run(result.error == organization::Error::kNone);
       }, std::move(reply)));
@@ -426,7 +457,7 @@ bool AuxOrganizationWindowController::HandleClose(tabs::TabHandle handle) {
   const auto id = GetRememberedPinnedTabEntryId(*tab->GetContents()).value_or("");
   auto* organization = Organization(browser_.get());
   if (id.empty() || !organization || !organization->snapshot().entries.contains(id)) return false;
-  const bool pin = organization::IsGlobalPin(organization->snapshot().entries.at(id));
+  const bool pin = organization::HasRetention(organization->snapshot(), id);
   base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(FROM_HERE, base::BindOnce(
       [](base::WeakPtr<AuxOrganizationWindowController> owner, std::string id, bool pin) {
         if (!owner) return;
@@ -442,6 +473,7 @@ bool AuxOrganizationWindowController::HasPendingSharedUpdate(const std::string& 
 bool AuxOrganizationWindowController::IsLogicalEntryProtected(const std::string& id) const {
   const auto* organization = Current() ? Organization(browser_.get()) : nullptr;
   if (!organization || organization->blocked() || organization->pending() || !organization->snapshot().entries.contains(id)) return true;
+  if (organization::HasRetention(organization->snapshot(), id)) return true;
   const auto& entries = organization->snapshot().entries;
   for (const auto& [handle, view] : views_) {
     std::string ancestor = view.logical_id;
@@ -491,6 +523,7 @@ base::ListValue AuxOrganizationWindowController::SnapshotViews() const {
     row.Set("documentId", view.document_id); row.Set("title", base::UTF16ToUTF8(contents->GetTitle()));
     row.Set("url", contents->GetLastCommittedURL().spec()); row.Set("spaceId", entry->second.space_id);
     row.Set("pinned", organization::IsGlobalPin(entry->second));
+    row.Set("retained", organization::HasRetention(organization->snapshot(), view.logical_id));
     row.Set("windowId", std::to_string(browser_->GetSessionID().id()));
     row.Set("pendingSharedUrl", view.pending_shared_url);
     row.Set("protected", Protected(handle.Get()) || !view.pending_shared_url.empty()); result.Append(std::move(row));

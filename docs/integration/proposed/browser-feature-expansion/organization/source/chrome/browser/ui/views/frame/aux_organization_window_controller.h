@@ -25,9 +25,11 @@ class AuxOrganizationWindowController final : public OrganizationWindowDelegate,
   static AuxOrganizationWindowController* FromBrowser(BrowserWindowInterface*);
   static AuxOrganizationWindowController* GetForTabStripModel(TabStripModel*);
   void RebindForProfileSwitch();
+  void Shutdown();
   // Bound to the supplied ordinary-row projection before its organization
   // filter. No URL guesses or recursive eligibility query.
   void SetOrdinaryEligibility(base::RepeatingCallback<bool(const tabs::TabInterface&)>);
+  void RefreshOrdinaryEligibility();
   void RestoreActiveSpace(const std::string&);
   bool IsProjectionReady() const override;
   std::string ActiveSpaceId() const override;
@@ -36,6 +38,7 @@ class AuxOrganizationWindowController final : public OrganizationWindowDelegate,
   void OpenLogicalTab(const std::string&, base::OnceCallback<void(bool)>) override;
   void UnloadLogicalTab(const std::string&, base::OnceCallback<void(bool)>) override;
   void ArchiveLogicalEntry(const std::string&, base::OnceCallback<void(bool)>) override;
+  void ArchiveFolderAndContents(const std::string&, base::OnceCallback<void(bool)>);
   base::CallbackListSubscription ObserveWindowState(base::RepeatingClosure) override;
   // Remote canonical URL changes never navigate a live page implicitly.
   bool HasPendingSharedUpdate(const std::string&) const;
@@ -65,6 +68,7 @@ class AuxOrganizationWindowController final : public OrganizationWindowDelegate,
   bool Current() const;
   bool Protected(tabs::TabInterface*) const;
   bool CloseViewNow(tabs::TabHandle);
+  void ArchiveEntry(const std::string&, bool allow_pinned_folder, base::OnceCallback<void(bool)>);
   void EnsureSavedThenClose(tabs::TabHandle, base::OnceCallback<void(bool)>);
   void OnTabStripModelChanged(TabStripModel*, const TabStripModelChange&,
                               const TabStripSelectionChange&) override;
@@ -76,6 +80,7 @@ class AuxOrganizationWindowController final : public OrganizationWindowDelegate,
   std::map<tabs::TabHandle, ViewRecord> views_;
   std::set<tabs::TabHandle> explicit_unloads_;
   std::set<tabs::TabHandle> dirty_navigation_;
+  bool shutdown_ = false;
   bool reconcile_queued_ = false, registering_ = false, opening_ = false;
   base::CallbackListSubscription ready_subscription_, model_changes_, settled_, session_restored_;
   base::RepeatingClosureList observers_;

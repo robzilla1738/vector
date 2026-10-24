@@ -65,7 +65,7 @@ class OrganizationService final : public KeyedService {
   void Shutdown() override;
  private:
   struct Pending;
-  struct UndoRecord { std::string token; uint64_t revision; Snapshot previous; };
+  struct UndoRecord { std::string token; uint64_t revision; Snapshot previous; size_t estimated_bytes = 0; };
   void Start(Context context, Mutation mutation, Reply reply,
              bool make_undo);
   void DidCommit(WriteReceipt receipt);
@@ -75,6 +75,7 @@ class OrganizationService final : public KeyedService {
   std::unique_ptr<OrganizationStorage> storage_;
   std::unique_ptr<Pending> pending_;
   std::vector<UndoRecord> undo_;
+  size_t undo_bytes_ = 0;
   base::RepeatingCallbackList<void(const Delta&)> observers_;
   base::RepeatingClosureList settled_;
   bool blocked_ = false;

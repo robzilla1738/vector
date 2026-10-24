@@ -38,6 +38,7 @@ struct Entry {
   bool archived = false;
   std::string archive_operation_id;
   bool collapsed = false;
+  bool keep_in_space = false;
   bool operator==(const Entry&) const = default;
 };
 struct ReplayRecord {
@@ -72,6 +73,7 @@ enum class Action {
   kCreateTab, kCreateFolder, kRenameEntry, kMoveEntry,
   kArchive, kRestore, kSetFolderCollapsed,
   kSetBookmarksCollapsed, kSetPinsCollapsed, kUpdateTabUrl,
+  kSetKeepInSpace, kDissolveFolder,
 };
 struct Command {
   Action action = Action::kCreateSpace;
@@ -114,6 +116,8 @@ std::vector<std::string> OrderedChildren(const Snapshot& snapshot,
                                        bool archived = false);
 // Global pins are a separate projection shown in every Space of this profile.
 bool IsGlobalPin(const Entry& entry);
+// Inherited retention includes global pins and Space-local retained folders.
+bool HasRetention(const Snapshot&, std::string_view id);
 // Close policy does not remove records. Callers must still consult all actual
 // view protections before unloading; this is not authority to discard work.
 enum class CloseDisposition { kUnloadView, kArchiveLogicalTab };

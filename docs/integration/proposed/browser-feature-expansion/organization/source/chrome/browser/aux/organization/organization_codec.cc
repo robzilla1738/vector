@@ -12,8 +12,9 @@
 namespace aux::organization {
 namespace {
 bool Keys(const base::DictValue& dict,
-          std::initializer_list<std::string_view> allowed) {
-  if (dict.size() != allowed.size()) return false;
+          std::initializer_list<std::string_view> allowed,
+          std::string_view optional = {}) {
+  if (dict.size() != allowed.size() + (!optional.empty() && dict.contains(optional) ? 1 : 0)) return false;
   for (const auto key : allowed) {
     if (!dict.contains(key)) return false;
   }
@@ -71,6 +72,7 @@ base::DictValue EncodeSnapshot(const Snapshot& snapshot) {
     row.Set("archived", entry.archived);
     row.Set("archiveOperationId", entry.archive_operation_id);
     row.Set("collapsed", entry.collapsed);
+    row.Set("keepInSpace", entry.keep_in_space);
     entries.Append(std::move(row));
   }
   value.Set("entries", std::move(entries));
@@ -123,7 +125,7 @@ DecodeResult DecodeSnapshot(const base::DictValue& value,
     const auto* row = item.GetIfDict();
     if (!row || !Keys(*row, {"id", "kind", "spaceId", "parentId", "title",
           "launchUrl", "currentUrl", "order", "archived", "archiveOperationId",
-          "collapsed"})) return Fail("unknown or invalid entry fields");
+          "collapsed"}, "keepInSpace")) return Fail("unknown or invalid entry fields");
     const auto* id = String(*row, "id"); const auto* kind = String(*row, "kind");
     const auto* space = String(*row, "spaceId");
     const auto* parent = String(*row, "parentId");
@@ -145,6 +147,11 @@ DecodeResult DecodeSnapshot(const base::DictValue& value,
     entry.launch_url = *launch; entry.current_url = *current; entry.order = *order;
     entry.archived = *archived; entry.archive_operation_id = *batch;
     entry.collapsed = *collapsed;
+    // Optional additive schema-v1 field: older snapshots mean false; malformed
+    // present values refuse instead of silently stripping retention on rewrite.
+    if (row->contains("keepInSpace") && !row->FindBool("keepInSpace"))
+      return Fail("invalid keepInSpace");
+    entry.keep_in_space = row->FindBool("keepInSpace").value_or(false);
     if (!snapshot.entries.emplace(*id, std::move(entry)).second)
       return Fail("duplicate entry ID");
   }

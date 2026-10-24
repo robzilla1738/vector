@@ -134,5 +134,24 @@ TEST(OrganizationModel, InvalidParentAndLastSpaceRemovalRefuse) {
   Command remove; remove.action = Action::kRemoveEmptySpace; remove.id = kSpace;
   EXPECT_EQ(Run(Initial(), remove).error, Error::kNotEmpty);
 }
+TEST(OrganizationModel, DissolveFolderPreservesChildrenOrderAndInheritedRetention) {
+  auto folder = Run(Initial(), Create(Action::kCreateFolder, kFolder));
+  auto tab = Run(folder.snapshot, Create(Action::kCreateTab, kTab, kFolder), 2);
+  auto other = Run(tab.snapshot, Create(Action::kCreateTab, kOther, kFolder), 3);
+  ASSERT_EQ(other.error, Error::kNone);
+  Command retain; retain.action = Action::kSetKeepInSpace; retain.id = kFolder; retain.value = true;
+  auto kept = Run(other.snapshot, retain, 4);
+  ASSERT_EQ(kept.error, Error::kNone);
+  EXPECT_TRUE(HasRetention(kept.snapshot, kTab));
+  Command dissolve; dissolve.action = Action::kDissolveFolder; dissolve.id = kFolder;
+  const auto before = OrderedChildren(kept.snapshot, kSpace, kFolder);
+  auto dissolved = Run(kept.snapshot, dissolve, 5);
+  ASSERT_EQ(dissolved.error, Error::kNone);
+  EXPECT_FALSE(dissolved.snapshot.entries.contains(kFolder));
+  EXPECT_EQ(OrderedChildren(dissolved.snapshot, kSpace, ""), before);
+  EXPECT_TRUE(dissolved.snapshot.entries.at(kTab).keep_in_space);
+  EXPECT_EQ(GetCloseDisposition(dissolved.snapshot.entries.at(kTab)), CloseDisposition::kUnloadView);
+  EXPECT_EQ(dissolved.snapshot.entries.at(kTab).current_url, kept.snapshot.entries.at(kTab).current_url);
+}
 }  // namespace
 }  // namespace aux::organization

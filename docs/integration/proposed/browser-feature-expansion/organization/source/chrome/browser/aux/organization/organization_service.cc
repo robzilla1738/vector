@@ -8,6 +8,26 @@
 #include "chrome/browser/aux/organization/organization_codec.h"
 
 namespace aux::organization {
+namespace {
+constexpr size_t kUndoEstimatedBytesLimit = 16 * 1024 * 1024;
+size_t SnapshotCost(const Snapshot& snapshot) {
+  // Account capacities, records and conservative per-map-node allocation
+  // overhead. This bounds retained undo history by size as well as count.
+  size_t bytes = sizeof(Snapshot) + snapshot.profile_id.capacity();
+  for (const auto& [id, space] : snapshot.spaces)
+    bytes += sizeof(Space) + sizeof(std::string) + 64 + id.capacity() +
+        space.id.capacity() + space.name.capacity() + space.icon.capacity();
+  for (const auto& [id, entry] : snapshot.entries)
+    bytes += sizeof(Entry) + sizeof(std::string) + 64 + id.capacity() +
+        entry.id.capacity() + entry.space_id.capacity() + entry.parent_id.capacity() +
+        entry.title.capacity() + entry.launch_url.capacity() + entry.current_url.capacity() +
+        entry.archive_operation_id.capacity();
+  bytes += snapshot.replay.capacity() * sizeof(ReplayRecord);
+  for (const auto& replay : snapshot.replay)
+    bytes += replay.operation_id.capacity() + replay.fingerprint.capacity();
+  return bytes;
+}
+}  // namespace
 struct OrganizationService::Pending {
   Context context;
   Snapshot previous;
@@ -159,11 +179,21 @@ void OrganizationService::DidCommit(WriteReceipt receipt) {
   }
   snapshot_ = std::move(pending->mutation.snapshot);
   if (pending->make_undo) {
-    undo_.push_back({base::Uuid::GenerateRandomV4().AsLowercaseString(),
-                     snapshot_.revision, std::move(pending->previous)});
-    if (undo_.size() > kUndoLimit) undo_.erase(undo_.begin());
+    const size_t cost = SnapshotCost(pending->previous);
+    if (cost <= kUndoEstimatedBytesLimit) {
+      undo_.push_back({base::Uuid::GenerateRandomV4().AsLowercaseString(),
+                       snapshot_.revision, std::move(pending->previous), cost});
+      undo_bytes_ += cost;
+      while (undo_.size() > kUndoLimit || undo_bytes_ > kUndoEstimatedBytesLimit) {
+        undo_bytes_ -= undo_.front().estimated_bytes;
+        undo_.erase(undo_.begin());
+      }
+    } else {
+      undo_.clear(); undo_bytes_ = 0;
+    }
   } else {
     CHECK(!undo_.empty());
+    undo_bytes_ -= undo_.back().estimated_bytes;
     undo_.pop_back();
     if (!undo_.empty()) undo_.back().revision = snapshot_.revision;
   }
@@ -190,7 +220,7 @@ void OrganizationService::Shutdown() {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   if (shutdown_) return;
   shutdown_ = true;
-  undo_.clear();
+  undo_.clear(); undo_bytes_ = 0;
   if (pending_ && pending_->reply)
     std::move(pending_->reply).Run({Error::kOwnerLost, snapshot_.revision, {}});
   // Storage owns custody through real completion even if this service retires.

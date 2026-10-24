@@ -34,6 +34,7 @@
 #include "ui/views/controls/highlight_path_generator.h"
 #include "ui/views/controls/image_view.h"
 #include "ui/views/controls/label.h"
+#include "ui/views/controls/button/label_button.h"
 #include "ui/views/controls/menu/menu_runner.h"
 #include "ui/views/controls/menu/menu_types.h"
 #include "ui/views/layout/box_layout.h"
@@ -162,6 +163,12 @@ AuxOrganizationTreeView::AuxOrganizationTreeView(BrowserWindowInterface& browser
   rows_->SetLayoutManager(std::make_unique<views::BoxLayout>(views::BoxLayout::Orientation::kVertical));
   status_ = AddChildView(std::make_unique<views::Label>());
   status_->SetMultiLine(true); status_->SetHorizontalAlignment(gfx::ALIGN_TO_HEAD); status_->SetVisible(false);
+  archive_toggle_ = AddChildView(std::make_unique<views::LabelButton>(base::BindRepeating(
+      [](base::WeakPtr<AuxOrganizationTreeView> view) {
+        if (view) { view->archive_mode_ = !view->archive_mode_; view->QueueRefresh(); }
+      }, weak_.GetWeakPtr()), u"Archived tabs and folders"));
+  archive_toggle_->SetVisible(false);
+  archive_toggle_->SetHasInkDropActionOnClick(false);
   auto* owner = organization::OrganizationProfileServiceFactory::GetForProfile(browser.GetProfile());
   if (owner) ready_subscription_ = owner->ObserveReady(base::BindRepeating(&AuxOrganizationTreeView::Bind, weak_.GetWeakPtr()));
   window_changes_ = window_->ObserveWindowState(base::BindRepeating(&AuxOrganizationTreeView::QueueRefresh, weak_.GetWeakPtr()));
@@ -204,8 +211,17 @@ void AuxOrganizationTreeView::Refresh() {
   if (ready_) {
     struct Pending { std::string id; int depth; };
     std::vector<Pending> pending;
-    auto children = organization::OrderedChildren(*snapshot,
-        scope_ == Scope::kPinnedFolders ? std::string() : window_->ActiveSpaceId(), "");
+    const auto scope = scope_ == Scope::kPinnedFolders ? std::string() : window_->ActiveSpaceId();
+    std::vector<std::string> children;
+    bool has_archived = false;
+    for (const auto& [id, entry] : snapshot->entries) {
+      if (entry.space_id != scope || !entry.archived) continue;
+      has_archived = true;
+      if (archive_mode_ && (entry.parent_id.empty() || !snapshot->entries.at(entry.parent_id).archived)) children.push_back(id);
+    }
+    archive_toggle_->SetVisible(has_archived || archive_mode_);
+    archive_toggle_->SetText(archive_mode_ ? u"Back to tabs" : u"Archived tabs and folders");
+    if (!archive_mode_) children = organization::OrderedChildren(*snapshot, scope, "");
     for (auto it = children.rbegin(); it != children.rend(); ++it) {
       if (scope_ != Scope::kPinnedFolders || snapshot->entries.at(*it).kind == organization::EntryKind::kFolder)
         pending.push_back({*it, 0});
@@ -217,12 +233,13 @@ void AuxOrganizationTreeView::Refresh() {
           item.depth, window_->SelectedLogicalTabId() == item.id));
       row_by_id_[item.id] = row; visible_.push_back(item.id);
       if (entry.kind == organization::EntryKind::kFolder && !entry.collapsed) {
-        auto nested = organization::OrderedChildren(*snapshot, entry.space_id, entry.id);
+        auto nested = organization::OrderedChildren(*snapshot, entry.space_id, entry.id, archive_mode_);
         for (auto it = nested.rbegin(); it != nested.rend(); ++it) pending.push_back({*it, item.depth + 1});
       }
     }
     if (auto it = row_by_id_.find(focused); it != row_by_id_.end()) it->second->RequestFocus();
   }
+  if (!ready_) archive_toggle_->SetVisible(false);
   const auto alive = weak_.GetWeakPtr();
   if (changed && ready_changed_) ready_changed_.Run(ready_);
   if (alive) PreferredSizeChanged();
@@ -245,6 +262,10 @@ void AuxOrganizationTreeView::Apply(organization::Command command,
 void AuxOrganizationTreeView::Activate(const std::string& id) {
   const auto* snapshot = Snapshot(); if (!snapshot) return;
   auto found = snapshot->entries.find(id); if (found == snapshot->entries.end() || found->second.archived) return;
+  if (found->second.archived) {
+    organization::Command command; command.action = organization::Action::kRestore; command.id = id; command.index = kEnd;
+    Apply(std::move(command)); return;
+  }
   if (found->second.kind == organization::EntryKind::kFolder) {
     organization::Command command; command.action = organization::Action::kSetFolderCollapsed;
     command.id = id; command.value = !found->second.collapsed; Apply(std::move(command));
@@ -285,6 +306,13 @@ void AuxOrganizationTreeView::ContextMenu(const std::string& id, const gfx::Poin
   menu_entry_ = id; runner_.reset(); move_targets_.clear();
   menu_ = std::make_unique<ui::SimpleMenuModel>(this);
   const auto& entry = snapshot->entries.at(id);
+  if (entry.archived) {
+    menu_->AddItem(10, u"Restore");
+    runner_ = std::make_unique<views::MenuRunner>(menu_.get(), views::MenuRunner::CONTEXT_MENU);
+    runner_->RunMenuAt(GetWidget(), nullptr, gfx::Rect(point, gfx::Size()),
+        views::MenuAnchorPosition::kTopLeft, ui::mojom::MenuSourceType::kMouse);
+    return;
+  }
   menu_->AddItem(1, u"Rename…");
   if (entry.kind == organization::EntryKind::kFolder) menu_->AddItem(2, u"New folder inside…");
   else {
@@ -306,11 +334,23 @@ void AuxOrganizationTreeView::ContextMenu(const std::string& id, const gfx::Poin
     move_targets_.push_back({folder.space_id, folder_id});
   }
   menu_->AddSubMenu(5, u"Move to", move_menu_.get());
-  if (!entry.space_id.empty()) menu_->AddItem(6, u"Archive");
+  if (!entry.space_id.empty()) {
+    menu_->AddCheckItem(9, u"Keep in this Space");
+    if (entry.kind == organization::EntryKind::kTab) menu_->AddItem(6, u"Archive");
+  }
+  if (entry.kind == organization::EntryKind::kFolder) {
+    menu_->AddItem(11, u"Remove folder, keep contents");
+    menu_->AddItem(12, u"Archive folder and contents");
+  }
   menu_->AddSeparator(ui::NORMAL_SEPARATOR); menu_->AddItem(7, u"Undo organization change");
   runner_ = std::make_unique<views::MenuRunner>(menu_.get(), views::MenuRunner::CONTEXT_MENU);
   runner_->RunMenuAt(GetWidget(), nullptr, gfx::Rect(point, gfx::Size()),
       views::MenuAnchorPosition::kTopLeft, ui::mojom::MenuSourceType::kMouse);
+}
+bool AuxOrganizationTreeView::IsCommandIdChecked(int command) const {
+  const auto* snapshot = Snapshot();
+  return command == 9 && snapshot && snapshot->entries.contains(menu_entry_) &&
+      snapshot->entries.at(menu_entry_).keep_in_space;
 }
 bool AuxOrganizationTreeView::IsCommandIdEnabled(int command) const {
   return command != 7 || !undo_token_.empty();
@@ -318,6 +358,20 @@ bool AuxOrganizationTreeView::IsCommandIdEnabled(int command) const {
 void AuxOrganizationTreeView::ExecuteCommand(int command, int) {
   const auto* snapshot = Snapshot(); if (!snapshot || !menu_context_) return;
   auto found = snapshot->entries.find(menu_entry_); if (found == snapshot->entries.end()) return;
+  if (command == 9 || command == 10 || command == 11) {
+    organization::Command change; change.id = menu_entry_; change.index = kEnd;
+    change.action = command == 9 ? organization::Action::kSetKeepInSpace :
+        command == 10 ? organization::Action::kRestore : organization::Action::kDissolveFolder;
+    change.value = !found->second.keep_in_space; Apply(std::move(change), menu_context_); return;
+  }
+  if (command == 12 && browser_) {
+    auto* controller = AuxOrganizationWindowController::FromBrowser(browser_.get());
+    if (controller) controller->ArchiveFolderAndContents(menu_entry_, base::BindOnce(
+        [](base::WeakPtr<AuxOrganizationTreeView> view, bool success) {
+          if (view && !success) view->Status(u"Active work prevented this folder from being archived.");
+        }, weak_.GetWeakPtr()));
+    return;
+  }
   if (command == 1 || command == 2) { Rename(menu_entry_, command == 2); return; }
   if (command == 3) {
     window_->UnloadLogicalTab(menu_entry_, base::BindOnce([](base::WeakPtr<AuxOrganizationTreeView> view, bool success) {

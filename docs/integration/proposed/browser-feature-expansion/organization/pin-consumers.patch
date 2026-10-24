@@ -921,7 +921,7 @@ diff --git a/chrome/browser/ui/views/frame/aux_organization_tree_view.cc b/chrom
 new file mode 100644
 --- /dev/null
 +++ b/chrome/browser/ui/views/frame/aux_organization_tree_view.cc
-@@ -0,0 +1,413 @@
+@@ -0,0 +1,467 @@
 +// Copyright 2026 Aux Authors. BSD-style license: see //LICENSE.
 +#include "chrome/browser/ui/views/frame/aux_organization_tree_view.h"
 +#include <algorithm>
@@ -958,6 +958,7 @@ new file mode 100644
 +#include "ui/views/controls/highlight_path_generator.h"
 +#include "ui/views/controls/image_view.h"
 +#include "ui/views/controls/label.h"
++#include "ui/views/controls/button/label_button.h"
 +#include "ui/views/controls/menu/menu_runner.h"
 +#include "ui/views/controls/menu/menu_types.h"
 +#include "ui/views/layout/box_layout.h"
@@ -1086,6 +1087,12 @@ new file mode 100644
 +  rows_->SetLayoutManager(std::make_unique<views::BoxLayout>(views::BoxLayout::Orientation::kVertical));
 +  status_ = AddChildView(std::make_unique<views::Label>());
 +  status_->SetMultiLine(true); status_->SetHorizontalAlignment(gfx::ALIGN_TO_HEAD); status_->SetVisible(false);
++  archive_toggle_ = AddChildView(std::make_unique<views::LabelButton>(base::BindRepeating(
++      [](base::WeakPtr<AuxOrganizationTreeView> view) {
++        if (view) { view->archive_mode_ = !view->archive_mode_; view->QueueRefresh(); }
++      }, weak_.GetWeakPtr()), u"Archived tabs and folders"));
++  archive_toggle_->SetVisible(false);
++  archive_toggle_->SetHasInkDropActionOnClick(false);
 +  auto* owner = organization::OrganizationProfileServiceFactory::GetForProfile(browser.GetProfile());
 +  if (owner) ready_subscription_ = owner->ObserveReady(base::BindRepeating(&AuxOrganizationTreeView::Bind, weak_.GetWeakPtr()));
 +  window_changes_ = window_->ObserveWindowState(base::BindRepeating(&AuxOrganizationTreeView::QueueRefresh, weak_.GetWeakPtr()));
@@ -1128,8 +1135,17 @@ new file mode 100644
 +  if (ready_) {
 +    struct Pending { std::string id; int depth; };
 +    std::vector<Pending> pending;
-+    auto children = organization::OrderedChildren(*snapshot,
-+        scope_ == Scope::kPinnedFolders ? std::string() : window_->ActiveSpaceId(), "");
++    const auto scope = scope_ == Scope::kPinnedFolders ? std::string() : window_->ActiveSpaceId();
++    std::vector<std::string> children;
++    bool has_archived = false;
++    for (const auto& [id, entry] : snapshot->entries) {
++      if (entry.space_id != scope || !entry.archived) continue;
++      has_archived = true;
++      if (archive_mode_ && (entry.parent_id.empty() || !snapshot->entries.at(entry.parent_id).archived)) children.push_back(id);
++    }
++    archive_toggle_->SetVisible(has_archived || archive_mode_);
++    archive_toggle_->SetText(archive_mode_ ? u"Back to tabs" : u"Archived tabs and folders");
++    if (!archive_mode_) children = organization::OrderedChildren(*snapshot, scope, "");
 +    for (auto it = children.rbegin(); it != children.rend(); ++it) {
 +      if (scope_ != Scope::kPinnedFolders || snapshot->entries.at(*it).kind == organization::EntryKind::kFolder)
 +        pending.push_back({*it, 0});
@@ -1141,12 +1157,13 @@ new file mode 100644
 +          item.depth, window_->SelectedLogicalTabId() == item.id));
 +      row_by_id_[item.id] = row; visible_.push_back(item.id);
 +      if (entry.kind == organization::EntryKind::kFolder && !entry.collapsed) {
-+        auto nested = organization::OrderedChildren(*snapshot, entry.space_id, entry.id);
++        auto nested = organization::OrderedChildren(*snapshot, entry.space_id, entry.id, archive_mode_);
 +        for (auto it = nested.rbegin(); it != nested.rend(); ++it) pending.push_back({*it, item.depth + 1});
 +      }
 +    }
 +    if (auto it = row_by_id_.find(focused); it != row_by_id_.end()) it->second->RequestFocus();
 +  }
++  if (!ready_) archive_toggle_->SetVisible(false);
 +  const auto alive = weak_.GetWeakPtr();
 +  if (changed && ready_changed_) ready_changed_.Run(ready_);
 +  if (alive) PreferredSizeChanged();
@@ -1169,6 +1186,10 @@ new file mode 100644
 +void AuxOrganizationTreeView::Activate(const std::string& id) {
 +  const auto* snapshot = Snapshot(); if (!snapshot) return;
 +  auto found = snapshot->entries.find(id); if (found == snapshot->entries.end() || found->second.archived) return;
++  if (found->second.archived) {
++    organization::Command command; command.action = organization::Action::kRestore; command.id = id; command.index = kEnd;
++    Apply(std::move(command)); return;
++  }
 +  if (found->second.kind == organization::EntryKind::kFolder) {
 +    organization::Command command; command.action = organization::Action::kSetFolderCollapsed;
 +    command.id = id; command.value = !found->second.collapsed; Apply(std::move(command));
@@ -1209,6 +1230,13 @@ new file mode 100644
 +  menu_entry_ = id; runner_.reset(); move_targets_.clear();
 +  menu_ = std::make_unique<ui::SimpleMenuModel>(this);
 +  const auto& entry = snapshot->entries.at(id);
++  if (entry.archived) {
++    menu_->AddItem(10, u"Restore");
++    runner_ = std::make_unique<views::MenuRunner>(menu_.get(), views::MenuRunner::CONTEXT_MENU);
++    runner_->RunMenuAt(GetWidget(), nullptr, gfx::Rect(point, gfx::Size()),
++        views::MenuAnchorPosition::kTopLeft, ui::mojom::MenuSourceType::kMouse);
++    return;
++  }
 +  menu_->AddItem(1, u"Rename…");
 +  if (entry.kind == organization::EntryKind::kFolder) menu_->AddItem(2, u"New folder inside…");
 +  else {
@@ -1230,11 +1258,23 @@ new file mode 100644
 +    move_targets_.push_back({folder.space_id, folder_id});
 +  }
 +  menu_->AddSubMenu(5, u"Move to", move_menu_.get());
-+  if (!entry.space_id.empty()) menu_->AddItem(6, u"Archive");
++  if (!entry.space_id.empty()) {
++    menu_->AddCheckItem(9, u"Keep in this Space");
++    if (entry.kind == organization::EntryKind::kTab) menu_->AddItem(6, u"Archive");
++  }
++  if (entry.kind == organization::EntryKind::kFolder) {
++    menu_->AddItem(11, u"Remove folder, keep contents");
++    menu_->AddItem(12, u"Archive folder and contents");
++  }
 +  menu_->AddSeparator(ui::NORMAL_SEPARATOR); menu_->AddItem(7, u"Undo organization change");
 +  runner_ = std::make_unique<views::MenuRunner>(menu_.get(), views::MenuRunner::CONTEXT_MENU);
 +  runner_->RunMenuAt(GetWidget(), nullptr, gfx::Rect(point, gfx::Size()),
 +      views::MenuAnchorPosition::kTopLeft, ui::mojom::MenuSourceType::kMouse);
++}
++bool AuxOrganizationTreeView::IsCommandIdChecked(int command) const {
++  const auto* snapshot = Snapshot();
++  return command == 9 && snapshot && snapshot->entries.contains(menu_entry_) &&
++      snapshot->entries.at(menu_entry_).keep_in_space;
 +}
 +bool AuxOrganizationTreeView::IsCommandIdEnabled(int command) const {
 +  return command != 7 || !undo_token_.empty();
@@ -1242,6 +1282,20 @@ new file mode 100644
 +void AuxOrganizationTreeView::ExecuteCommand(int command, int) {
 +  const auto* snapshot = Snapshot(); if (!snapshot || !menu_context_) return;
 +  auto found = snapshot->entries.find(menu_entry_); if (found == snapshot->entries.end()) return;
++  if (command == 9 || command == 10 || command == 11) {
++    organization::Command change; change.id = menu_entry_; change.index = kEnd;
++    change.action = command == 9 ? organization::Action::kSetKeepInSpace :
++        command == 10 ? organization::Action::kRestore : organization::Action::kDissolveFolder;
++    change.value = !found->second.keep_in_space; Apply(std::move(change), menu_context_); return;
++  }
++  if (command == 12 && browser_) {
++    auto* controller = AuxOrganizationWindowController::FromBrowser(browser_.get());
++    if (controller) controller->ArchiveFolderAndContents(menu_entry_, base::BindOnce(
++        [](base::WeakPtr<AuxOrganizationTreeView> view, bool success) {
++          if (view && !success) view->Status(u"Active work prevented this folder from being archived.");
++        }, weak_.GetWeakPtr()));
++    return;
++  }
 +  if (command == 1 || command == 2) { Rename(menu_entry_, command == 2); return; }
 +  if (command == 3) {
 +    window_->UnloadLogicalTab(menu_entry_, base::BindOnce([](base::WeakPtr<AuxOrganizationTreeView> view, bool success) {
@@ -1339,7 +1393,7 @@ diff --git a/chrome/browser/ui/views/frame/aux_organization_tree_view.h b/chrome
 new file mode 100644
 --- /dev/null
 +++ b/chrome/browser/ui/views/frame/aux_organization_tree_view.h
-@@ -0,0 +1,81 @@
+@@ -0,0 +1,84 @@
 +// Copyright 2026 Aux Authors. BSD-style license: see //LICENSE.
 +#ifndef CHROME_BROWSER_UI_VIEWS_FRAME_AUX_ORGANIZATION_TREE_VIEW_H_
 +#define CHROME_BROWSER_UI_VIEWS_FRAME_AUX_ORGANIZATION_TREE_VIEW_H_
@@ -1356,7 +1410,7 @@ new file mode 100644
 +#include "ui/menus/simple_menu_model.h"
 +#include "ui/views/view.h"
 +class BrowserWindowInterface;
-+namespace views { class Label; class MenuRunner; }
++namespace views { class Label; class LabelButton; class MenuRunner; }
 +namespace aux {
 +class OrganizationWindowDelegate;
 +class OrganizationTreeRow;
@@ -1375,6 +1429,7 @@ new file mode 100644
 +  void NewFolder();
 +  void ExecuteCommand(int command_id, int event_flags) override;
 +  bool IsCommandIdEnabled(int command_id) const override;
++  bool IsCommandIdChecked(int command_id) const override;
 + private:
 +  friend class OrganizationTreeRow;
 +  void Bind();
@@ -1397,6 +1452,8 @@ new file mode 100644
 +  const Scope scope_;
 +  raw_ptr<views::View> rows_ = nullptr;
 +  raw_ptr<views::Label> status_ = nullptr;
++  raw_ptr<views::LabelButton> archive_toggle_ = nullptr;
++  bool archive_mode_ = false;
 +  std::map<std::string, raw_ptr<OrganizationTreeRow>> row_by_id_;
 +  std::vector<std::string> visible_;
 +  base::CallbackListSubscription ready_subscription_, changes_, window_changes_;
@@ -1543,7 +1600,7 @@ diff --git a/chrome/browser/ui/views/frame/aux_organization_window_controller.cc
 new file mode 100644
 --- /dev/null
 +++ b/chrome/browser/ui/views/frame/aux_organization_window_controller.cc
-@@ -0,0 +1,516 @@
+@@ -0,0 +1,549 @@
 +// Copyright 2026 Aux Authors. BSD-style license: see //LICENSE.
 +#include "chrome/browser/ui/views/frame/aux_organization_window_controller.h"
 +#include <algorithm>
@@ -1613,8 +1670,16 @@ new file mode 100644
 +};
 +AuxOrganizationWindowController::AuxOrganizationWindowController(BrowserWindowInterface& browser)
 +    : browser_(browser.GetWeakPtr()) { RebindForProfileSwitch(); }
-+AuxOrganizationWindowController::~AuxOrganizationWindowController() {
++AuxOrganizationWindowController::~AuxOrganizationWindowController() { Shutdown(); }
++void AuxOrganizationWindowController::Shutdown() {
++  if (shutdown_) return;
++  shutdown_ = true;
++  weak_.InvalidateWeakPtrs();
 +  TabStripModelObserver::StopObservingAll(this);
++  ready_subscription_ = {}; model_changes_ = {}; settled_ = {}; session_restored_ = {};
++  ordinary_eligible_.Reset(); views_.clear(); explicit_unloads_.clear(); dirty_navigation_.clear();
++  profile_ = nullptr; model_ = nullptr; active_space_.clear(); restored_space_.clear();
++  Notify();
 +}
 +AuxOrganizationWindowController* AuxOrganizationWindowController::FromBrowser(BrowserWindowInterface* browser) {
 +  return browser ? browser->GetFeatures().aux_organization_window_controller() : nullptr;
@@ -1628,7 +1693,7 @@ new file mode 100644
 +  return result;
 +}
 +bool AuxOrganizationWindowController::Current() const {
-+  return browser_ && profile_ && model_ && !profile_->IsOffTheRecord() &&
++  return !shutdown_ && browser_ && profile_ && model_ && !profile_->IsOffTheRecord() &&
 +      browser_->GetProfile() == profile_ && browser_->GetTabStripModel() == model_;
 +}
 +bool AuxOrganizationWindowController::ready() const {
@@ -1646,6 +1711,7 @@ new file mode 100644
 +}
 +bool AuxOrganizationWindowController::IsProjectionReady() const { return ready(); }
 +void AuxOrganizationWindowController::RebindForProfileSwitch() {
++  if (shutdown_) return;
 +  TabStripModelObserver::StopObservingAll(this);
 +  weak_.InvalidateWeakPtrs(); ready_subscription_ = {}; model_changes_ = {}; settled_ = {}; session_restored_ = {};
 +  views_.clear(); explicit_unloads_.clear(); dirty_navigation_.clear();
@@ -1665,8 +1731,10 @@ new file mode 100644
 +}
 +void AuxOrganizationWindowController::SetOrdinaryEligibility(
 +    base::RepeatingCallback<bool(const tabs::TabInterface&)> eligible) {
++  if (shutdown_) return;
 +  ordinary_eligible_ = std::move(eligible); QueueReconcile();
 +}
++void AuxOrganizationWindowController::RefreshOrdinaryEligibility() { QueueReconcile(); }
 +void AuxOrganizationWindowController::Bind() {
 +  model_changes_ = {}; settled_ = {};
 +  if (!Current()) return;
@@ -1923,10 +1991,21 @@ new file mode 100644
 +  std::move(reply).Run(organization && organization->snapshot().entries.contains(id));
 +}
 +void AuxOrganizationWindowController::ArchiveLogicalEntry(const std::string& id, base::OnceCallback<void(bool)> reply) {
++  ArchiveEntry(id, false, std::move(reply));
++}
++void AuxOrganizationWindowController::ArchiveFolderAndContents(const std::string& id, base::OnceCallback<void(bool)> reply) {
++  ArchiveEntry(id, true, std::move(reply));
++}
++void AuxOrganizationWindowController::ArchiveEntry(const std::string& id, bool allow_pinned_folder,
++                                                   base::OnceCallback<void(bool)> reply) {
 +  auto* organization = Current() ? Organization(browser_.get()) : nullptr;
 +  if (!organization || organization->pending() || organization->blocked()) { std::move(reply).Run(false); return; }
 +  const auto& snapshot = organization->snapshot();
-+  if (!snapshot.entries.contains(id) || snapshot.entries.at(id).space_id.empty()) { std::move(reply).Run(false); return; }
++  if (!snapshot.entries.contains(id)) { std::move(reply).Run(false); return; }
++  const auto entry = snapshot.entries.at(id);
++  if (entry.archived || (entry.space_id.empty() &&
++      (!allow_pinned_folder || entry.kind != organization::EntryKind::kFolder ||
++       !snapshot.spaces.contains(active_space_)))) { std::move(reply).Run(false); return; }
 +  std::set<std::string> subtree{id};
 +  for (size_t depth = 0; depth < organization::kMaxDepth; ++depth) {
 +    bool added = false;
@@ -1960,8 +2039,17 @@ new file mode 100644
 +    if (!owner || !owner->CloseViewNow(handle)) { std::move(reply).Run(false); return; }
 +    if (!alive) { std::move(reply).Run(false); return; }
 +  }
++  std::vector<organization::Command> commands;
++  if (entry.space_id.empty()) {
++    organization::Command move; move.action = organization::Action::kMoveEntry;
++    move.id = id; move.space_id = active_space_; move.index = std::numeric_limits<uint64_t>::max();
++    commands.push_back(std::move(move));
++  }
 +  organization::Command command; command.action = organization::Action::kArchive; command.id = id;
-+  ExecuteOrganizationCommand(browser_, std::move(*context), std::move(command), base::BindOnce(
++  commands.push_back(std::move(command));
++  auto* current = Current() ? Organization(browser_.get()) : nullptr;
++  if (!current) { std::move(reply).Run(false); return; }
++  current->ExecuteBatch(std::move(*context), std::move(commands), base::BindOnce(
 +      [](base::OnceCallback<void(bool)> reply, organization::CommitResult result) {
 +        std::move(reply).Run(result.error == organization::Error::kNone);
 +      }, std::move(reply)));
@@ -1972,7 +2060,7 @@ new file mode 100644
 +  const auto id = GetRememberedPinnedTabEntryId(*tab->GetContents()).value_or("");
 +  auto* organization = Organization(browser_.get());
 +  if (id.empty() || !organization || !organization->snapshot().entries.contains(id)) return false;
-+  const bool pin = organization::IsGlobalPin(organization->snapshot().entries.at(id));
++  const bool pin = organization::HasRetention(organization->snapshot(), id);
 +  base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(FROM_HERE, base::BindOnce(
 +      [](base::WeakPtr<AuxOrganizationWindowController> owner, std::string id, bool pin) {
 +        if (!owner) return;
@@ -1988,6 +2076,7 @@ new file mode 100644
 +bool AuxOrganizationWindowController::IsLogicalEntryProtected(const std::string& id) const {
 +  const auto* organization = Current() ? Organization(browser_.get()) : nullptr;
 +  if (!organization || organization->blocked() || organization->pending() || !organization->snapshot().entries.contains(id)) return true;
++  if (organization::HasRetention(organization->snapshot(), id)) return true;
 +  const auto& entries = organization->snapshot().entries;
 +  for (const auto& [handle, view] : views_) {
 +    std::string ancestor = view.logical_id;
@@ -2037,6 +2126,7 @@ new file mode 100644
 +    row.Set("documentId", view.document_id); row.Set("title", base::UTF16ToUTF8(contents->GetTitle()));
 +    row.Set("url", contents->GetLastCommittedURL().spec()); row.Set("spaceId", entry->second.space_id);
 +    row.Set("pinned", organization::IsGlobalPin(entry->second));
++    row.Set("retained", organization::HasRetention(organization->snapshot(), view.logical_id));
 +    row.Set("windowId", std::to_string(browser_->GetSessionID().id()));
 +    row.Set("pendingSharedUrl", view.pending_shared_url);
 +    row.Set("protected", Protected(handle.Get()) || !view.pending_shared_url.empty()); result.Append(std::move(row));
@@ -2064,7 +2154,7 @@ diff --git a/chrome/browser/ui/views/frame/aux_organization_window_controller.h 
 new file mode 100644
 --- /dev/null
 +++ b/chrome/browser/ui/views/frame/aux_organization_window_controller.h
-@@ -0,0 +1,86 @@
+@@ -0,0 +1,91 @@
 +// Copyright 2026 Aux Authors. BSD-style license: see //LICENSE.
 +#ifndef CHROME_BROWSER_UI_VIEWS_FRAME_AUX_ORGANIZATION_WINDOW_CONTROLLER_H_
 +#define CHROME_BROWSER_UI_VIEWS_FRAME_AUX_ORGANIZATION_WINDOW_CONTROLLER_H_
@@ -2092,9 +2182,11 @@ new file mode 100644
 +  static AuxOrganizationWindowController* FromBrowser(BrowserWindowInterface*);
 +  static AuxOrganizationWindowController* GetForTabStripModel(TabStripModel*);
 +  void RebindForProfileSwitch();
++  void Shutdown();
 +  // Bound to the supplied ordinary-row projection before its organization
 +  // filter. No URL guesses or recursive eligibility query.
 +  void SetOrdinaryEligibility(base::RepeatingCallback<bool(const tabs::TabInterface&)>);
++  void RefreshOrdinaryEligibility();
 +  void RestoreActiveSpace(const std::string&);
 +  bool IsProjectionReady() const override;
 +  std::string ActiveSpaceId() const override;
@@ -2103,6 +2195,7 @@ new file mode 100644
 +  void OpenLogicalTab(const std::string&, base::OnceCallback<void(bool)>) override;
 +  void UnloadLogicalTab(const std::string&, base::OnceCallback<void(bool)>) override;
 +  void ArchiveLogicalEntry(const std::string&, base::OnceCallback<void(bool)>) override;
++  void ArchiveFolderAndContents(const std::string&, base::OnceCallback<void(bool)>);
 +  base::CallbackListSubscription ObserveWindowState(base::RepeatingClosure) override;
 +  // Remote canonical URL changes never navigate a live page implicitly.
 +  bool HasPendingSharedUpdate(const std::string&) const;
@@ -2132,6 +2225,7 @@ new file mode 100644
 +  bool Current() const;
 +  bool Protected(tabs::TabInterface*) const;
 +  bool CloseViewNow(tabs::TabHandle);
++  void ArchiveEntry(const std::string&, bool allow_pinned_folder, base::OnceCallback<void(bool)>);
 +  void EnsureSavedThenClose(tabs::TabHandle, base::OnceCallback<void(bool)>);
 +  void OnTabStripModelChanged(TabStripModel*, const TabStripModelChange&,
 +                              const TabStripSelectionChange&) override;
@@ -2143,6 +2237,7 @@ new file mode 100644
 +  std::map<tabs::TabHandle, ViewRecord> views_;
 +  std::set<tabs::TabHandle> explicit_unloads_;
 +  std::set<tabs::TabHandle> dirty_navigation_;
++  bool shutdown_ = false;
 +  bool reconcile_queued_ = false, registering_ = false, opening_ = false;
 +  base::CallbackListSubscription ready_subscription_, model_changes_, settled_, session_restored_;
 +  base::RepeatingClosureList observers_;

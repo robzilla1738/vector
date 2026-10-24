@@ -154,8 +154,17 @@ bool IsCanonicalId(std::string_view id) {
   return nonzero;
 }
 bool IsGlobalPin(const Entry& entry) { return entry.space_id.empty(); }
+bool HasRetention(const Snapshot& snapshot, std::string_view id) {
+  for (size_t depth = 0; depth <= kMaxDepth && !id.empty(); ++depth) {
+    const auto found = snapshot.entries.find(std::string(id));
+    if (found == snapshot.entries.end()) return true;  // Unknown ancestry is protected.
+    if (IsGlobalPin(found->second) || found->second.keep_in_space) return true;
+    id = found->second.parent_id;
+  }
+  return !id.empty();
+}
 CloseDisposition GetCloseDisposition(const Entry& entry) {
-  return IsGlobalPin(entry) ? CloseDisposition::kUnloadView
+  return IsGlobalPin(entry) || entry.keep_in_space ? CloseDisposition::kUnloadView
                             : CloseDisposition::kArchiveLogicalTab;
 }
 std::vector<std::string> OrderedChildren(const Snapshot& snapshot,
@@ -325,6 +334,31 @@ Mutation Apply(const Snapshot& current, const Context& context,
       Place(next, command.id, command.index);
       break;
     }
+    case Action::kDissolveFolder: {
+      const auto found = next.entries.find(command.id);
+      if (found == next.entries.end()) return {Error::kMissing, {}, {}};
+      const Entry folder = found->second;
+      if (folder.kind != EntryKind::kFolder || folder.archived) return {Error::kInvalid, {}, {}};
+      // Preserve both active and separately archived children; dissolving a
+      // container never deletes or revives its contents.
+      const auto children = OrderedChildren(next, folder.space_id, folder.id);
+      uint64_t index = folder.order;
+      for (const auto& id : children) {
+        auto& child = next.entries.at(id);
+        child.parent_id = folder.parent_id;
+        child.keep_in_space |= folder.keep_in_space;
+        Place(next, id, index++);
+      }
+      for (auto& [id, child] : next.entries) {
+        if (child.parent_id == folder.id) {
+          child.parent_id = folder.parent_id;
+          child.keep_in_space |= folder.keep_in_space;
+        }
+      }
+      next.entries.erase(command.id);
+      break;
+    }
+    case Action::kSetKeepInSpace:
     case Action::kRenameEntry:
     case Action::kMoveEntry:
     case Action::kArchive:
@@ -334,7 +368,10 @@ Mutation Apply(const Snapshot& current, const Context& context,
       auto it = next.entries.find(command.id);
       if (it == next.entries.end()) return {Error::kMissing, {}, {}};
       auto& entry = it->second;
-      if (command.action == Action::kRenameEntry) entry.title = command.title;
+      if (command.action == Action::kSetKeepInSpace) {
+        if (entry.archived || IsGlobalPin(entry)) return {Error::kInvalid, {}, {}};
+        entry.keep_in_space = command.value;
+      } else if (command.action == Action::kRenameEntry) entry.title = command.title;
       else if (command.action == Action::kSetFolderCollapsed) {
         if (entry.kind != EntryKind::kFolder) return {Error::kInvalid, {}, {}};
         entry.collapsed = command.value;
