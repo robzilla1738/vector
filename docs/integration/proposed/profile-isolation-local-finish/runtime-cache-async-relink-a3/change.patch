@@ -1,0 +1,40 @@
+--- a/AuxRuntimeCacheInspection.inc
++++ b/AuxRuntimeCacheInspection.inc
+@@ -11,7 +11,8 @@
+ struct Fd {
+   int fd=-1;
+   explicit Fd(int value=-1):fd(value){}
+-  ~Fd(){if(fd>=0)close(fd);}
++  ~Fd(){const int saved=errno;if(fd>=0)close(fd);errno=saved;}
++  int release(){const int result=fd;fd=-1;return result;}
+   Fd(const Fd&)=delete; Fd& operator=(const Fd&)=delete;
+ };
+ constexpr int kRead=O_RDONLY|O_NOFOLLOW|O_NONBLOCK|O_CLOEXEC;
+@@ -22,19 +23,19 @@
+ }
+ bool Private(const struct stat& st){return st.st_uid==geteuid()&&!(st.st_mode&0022);}
+ int Parent(int root,const char* relative) {
+-  int current=fcntl(root,F_DUPFD_CLOEXEC,0);
+-  if(current<0)return -1;
++  Fd current(fcntl(root,F_DUPFD_CLOEXEC,0));
++  if(current.fd<0)return -1;
+   std::string name(relative);size_t start=0,end=0;
+   while((end=name.find('/',start))!=std::string::npos){
+     const std::string part=name.substr(start,end-start);
+-    if(part.empty()||part=="."||part==".."){close(current);errno=EINVAL;return -1;}
+-    const int next=openat(current,part.c_str(),kRead|O_DIRECTORY);
+-    const int saved=errno;close(current);current=next;errno=saved;
+-    if(current<0)return -1;
+-    struct stat st{};if(fstat(current,&st)!=0||!S_ISDIR(st.st_mode)||!Private(st)){close(current);errno=EACCES;return -1;}
++    if(part.empty()||part=="."||part==".."){errno=EINVAL;return -1;}
++    Fd next(openat(current.fd,part.c_str(),kRead|O_DIRECTORY));
++    if(next.fd<0)return -1;
++    struct stat st{};if(fstat(next.fd,&st)!=0||!S_ISDIR(st.st_mode)||!Private(st)){errno=EACCES;return -1;}
++    std::swap(current.fd,next.fd);
+     start=end+1;
+   }
+-  return current;
++  return current.release();
+ }
+ const char* Leaf(const char* path){const char* slash=strrchr(path,'/');return slash?slash+1:path;}
+ struct Read { bool ok=false,oversize=false;struct stat identity{};std::string text,hash; };

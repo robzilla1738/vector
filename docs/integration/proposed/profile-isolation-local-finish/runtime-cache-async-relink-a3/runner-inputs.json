@@ -1,0 +1,8 @@
+{
+  "format": "aux.runtime-cache-async-runner-pins.v1",
+  "files": {
+    "/private/tmp/aux-features-execution-organization-20261023/docs/integration/proposed/profile-isolation-local-finish/runtime-cache-async-relink-a3/prepare.py": "27b7f6a69d37c0c3e302e3ecb917c0af4d0d14a034e8d869b31dcbf530b3b78e",
+    "/private/tmp/aux-features-execution-organization-20261023/docs/integration/proposed/profile-isolation-local-finish/runtime-cache-async-relink-a3/run.py": "4e5acc0328fad0052c7b2e36124a74c8d8f6c1a631eabe41a85440dbf8b11e3c",
+    "/private/tmp/aux-features-execution-organization-20261023/docs/integration/proposed/profile-isolation-local-finish/runtime-cache-async-relink-a3/plan.json": "500ca4d42cdaed903fadeed7eb59a8bca7ef0eaf15b204e5a4f8367ed231a5f4"
+  }
+}
