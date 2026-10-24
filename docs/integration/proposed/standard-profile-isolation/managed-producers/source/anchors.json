@@ -1,0 +1,122 @@
+[
+  {
+    "name": "managed-registry",
+    "find": "async function auxStopLocalIntervals(){\n for(const timer of auxLocalIntervals)clearInterval(timer);auxLocalIntervals.clear();\n const results=await Promise.allSettled([...auxLocalTicks]);\n const failures=results.filter(result=>result.status==='rejected').map(result=>result.reason);\n if(failures.length)throw new AggregateError(failures,'Aux scheduled producers did not stop cleanly');\n}\nfunction auxManagedInterval(callback,delay){\n if(auxDaemonClosing)throw Error('AUX_DAEMON_SHUTTING_DOWN');\n const boundary=auxBrokerBoundary();boundary.registerProducerStop(auxStopLocalIntervals);\n const timer=setInterval(()=>{\n  if(auxDaemonClosing)return;\n  try{boundary.assertOwner()}catch{return}\n  boundary.noteUntracked();\n  // Exact callback bodies below return their actual existing work promises.\n  // Any nested detached work remains covered by the one-way unknown marker.\n  let pending;try{pending=boundary.awaited(()=>Promise.resolve(callback()))}catch{return}\n  auxLocalTicks.add(pending);pending.then(()=>auxLocalTicks.delete(pending),()=>auxLocalTicks.delete(pending));\n },delay);auxLocalIntervals.add(timer);return timer;\n}\n",
+    "replace": "__AUX_MANAGED_SOURCE__\n",
+    "count": 1
+  },
+  {
+    "name": "retire-interval-only-sets",
+    "find": "const auxLocalDownloads=new Set,auxLocalIntervals=new Set,auxLocalTicks=new Set;",
+    "replace": "const auxLocalDownloads=new Set;",
+    "count": 1
+  },
+  {
+    "name": "retire-event-unknown",
+    "find": "function auxManagedEvent(emitter,event,callback){\n const boundary=auxBrokerBoundary(), pending=new Set();let stopping=false;\n boundary.assertOwner();\n const unsubscribe=emitter.on(event,(...args)=>{\n  if(stopping)return;\n  boundary.assertOwner();boundary.noteUntracked();\n  const operation=boundary.awaited(()=>callback(...args));pending.add(operation);\n  operation.then(()=>pending.delete(operation),()=>pending.delete(operation));return operation;\n });\n boundary.registerProducerStop(async()=>{stopping=true;unsubscribe();const results=await Promise.allSettled([...pending]);const errors=results.filter(v=>v.status==='rejected').map(v=>v.reason);if(errors.length)throw new AggregateError(errors,'Routine listener cleanup failed')});\n return unsubscribe;\n}\n",
+    "replace": "",
+    "count": 1
+  },
+  {
+    "name": "retire-timeout-unknown",
+    "find": "function auxManagedTimeout(callback,delay){\n const boundary=auxBrokerBoundary();boundary.assertOwner();let stopped=false,operation;\n const timer=setTimeout(()=>{if(stopped)return;boundary.assertOwner();boundary.noteUntracked();operation=boundary.awaited(callback);operation.catch(()=>{})},delay);\n boundary.registerProducerStop(async()=>{stopped=true;clearTimeout(timer);if(operation)await operation});return timer;\n}\n\n",
+    "replace": "",
+    "count": 1
+  },
+  {
+    "name": "bridge-unsubscribe",
+    "find": "onConnect(Cn){this.connectHandlers.push(Cn)}",
+    "replace": "onConnect(Cn){this.connectHandlers.push(Cn);let active=!0;return()=>{if(active){active=!1;let index=this.connectHandlers.indexOf(Cn);index>=0&&this.connectHandlers.splice(index,1)}}}",
+    "count": 1
+  },
+  {
+    "name": "bridge-actual-dispatch",
+    "find": "try{ni.send(JSON.stringify(ri))}",
+    "replace": "try{ei.auxManagedWrite?.();ni.send(JSON.stringify(ri))}",
+    "count": 1
+  },
+  {
+    "name": "await-session-startup",
+    "find": "async function initializeSessionLifecycles(){allAccountIds().forEach(Cn=>{RecentSessionsStore.loadCache(Cn),GlobalAgentSessionServer.recoverInterruptedRuns(Cn).catch(ei=>{logger.error(`[SessionLifecycle] Run recovery failed (account ${Cn})`,{error:String(ei)})}).then(()=>resumeCoderReports(Cn))}),registerStartupTabReconciliation(),auxManagedInterval(async()=>{await purgeEphemeralSessions().catch(()=>{}),await flushIdleTabs().catch(()=>{})},SESSION_LIFECYCLE_INTERVAL_MS)}",
+    "replace": "async function initializeSessionLifecycles(){await auxManagedLifecycle(async()=>{const outcomes=await Promise.allSettled(allAccountIds().map(async Cn=>{RecentSessionsStore.loadCache(Cn);await GlobalAgentSessionServer.recoverInterruptedRuns(Cn).catch(ei=>{logger.error(`[SessionLifecycle] Run recovery failed (account ${Cn})`,{error:String(ei)})});if(auxManagedProducers().admitted())await resumeCoderReports(Cn)}));const failures=outcomes.filter(result=>result.status===`rejected`).map(result=>result.reason);if(failures.length)throw new AggregateError(failures,`Aux session recovery failed`)});if(auxDaemonClosing)return;registerStartupTabReconciliation(),auxManagedInterval(async()=>{await purgeEphemeralSessions().catch(()=>{}),await flushIdleTabs().catch(()=>{})},SESSION_LIFECYCLE_INTERVAL_MS)}",
+    "count": 1
+  },
+  {
+    "name": "bootstrap-await-session-startup",
+    "find": ",initializeSessionLifecycles(),startRoutineScheduler()",
+    "replace": ";if(auxDaemonClosing)return;await initializeSessionLifecycles();if(auxDaemonClosing)return;startRoutineScheduler()",
+    "count": 1
+  },
+  {
+    "name": "retain-reconciliation",
+    "find": "function registerStartupTabReconciliation(){didRegisterStartupTabReconciliation||(didRegisterStartupTabReconciliation=!0,globalExtensionBridge.onConnect(({accountId:Cn,profileId:ei,browserMode:ti})=>{let ni=`${Cn}:${ei}:${ti}`;if(reconciledProfileKeys.has(ni)||reconciliationByProfileKey.has(ni))return;let ri=reconcileSessionTabs(Cn,ei,ti).then(()=>{reconciledProfileKeys.add(ni)}).catch(ti=>{logger.warn(`[SessionLifecycle] Session tab reconciliation skipped`,{accountId:Cn,profileId:ei,error:ti})}).finally(()=>{reconciliationByProfileKey.delete(ni)});reconciliationByProfileKey.set(ni,ri)}))}",
+    "replace": "function registerStartupTabReconciliation(){didRegisterStartupTabReconciliation||(didRegisterStartupTabReconciliation=!0,auxManagedConnect(({accountId:Cn,profileId:ei,browserMode:ti})=>{let ni=`${Cn}:${ei}:${ti}`;if(reconciledProfileKeys.has(ni)||reconciliationByProfileKey.has(ni))return;let ri=reconcileSessionTabs(Cn,ei,ti).then(()=>{reconciledProfileKeys.add(ni)}).catch(ti=>{logger.warn(`[SessionLifecycle] Session tab reconciliation skipped`,{accountId:Cn,profileId:ei,error:ti})}).finally(()=>{reconciliationByProfileKey.delete(ni)});reconciliationByProfileKey.set(ni,ri);return ri}))}",
+    "count": 1
+  },
+  {
+    "name": "orphan-real-close-ack",
+    "find": "ii=()=>sendCommandToExtension({method:`Aux.clearAiTabsGroup`,params:{keepTargetIds:stateDb(Cn).select().from(SessionTabTable).all().filter(Cn=>ri(Cn.sessionId)).map(Cn=>Cn.targetId)}},{accountId:Cn,profileId:ei,browserMode:ti}).catch(()=>{})",
+    "replace": "ii=()=>auxManagedBrowserClose({method:`Aux.clearAiTabsGroup`,params:{keepTargetIds:stateDb(Cn).select().from(SessionTabTable).all().filter(Cn=>ri(Cn.sessionId)).map(Cn=>Cn.targetId)}},{accountId:Cn,profileId:ei,browserMode:ti})",
+    "count": 1
+  },
+  {
+    "name": "idle-real-close-ack",
+    "find": "ti?.browserBinding&&await sendCommandToExtension({method:`Aux.controlTab`,params:{action:`close`,targetId:Cn.targetId}},{accountId:ei,profileId:ti.browserBinding.profileId,browserMode:ti.browserBinding.browserMode??`default`,windowId:ti.browserBinding.windowId}).catch(()=>{}),removeSessionTab(ei,Cn.tabId)",
+    "replace": "if(!ti?.browserBinding)continue;let closed=await auxManagedBrowserClose({method:`Aux.controlTab`,params:{action:`close`,targetId:Cn.targetId}},{accountId:ei,profileId:ti.browserBinding.profileId,browserMode:ti.browserBinding.browserMode??`default`,windowId:ti.browserBinding.windowId});if(closed.closed)removeSessionTab(ei,Cn.tabId)",
+    "count": 1
+  },
+  {
+    "name": "owned-real-close-acks",
+    "find": "async function closeOwnedSessionTabs(Cn,ei,ti={}){let ni=SessionStore.get(Cn,ei),ri=listSessionTabs(Cn,ei).filter(Cn=>Cn.ownership===`owned`),ii=ni?.browserBinding;return!ii?.browserMode||ri.length===0||await Promise.allSettled(ri.map(ei=>sendCommandToExtension({method:`Aux.controlTab`,params:{action:`close`,targetId:ei.targetId,skipIfActive:ti.skipIfActive??!0}},{accountId:Cn,profileId:ii.profileId,browserMode:ii.browserMode,windowId:ii.windowId}))),ri}",
+    "replace": "async function closeOwnedSessionTabs(Cn,ei,ti={}){let ni=SessionStore.get(Cn,ei),ri=listSessionTabs(Cn,ei).filter(Cn=>Cn.ownership===`owned`),ii=ni?.browserBinding;if(!ii||!ri.length)return[];const outcomes=await Promise.allSettled(ri.map(async tab=>{const result=await auxManagedBrowserClose({method:`Aux.controlTab`,params:{action:`close`,targetId:tab.targetId,skipIfActive:ti.skipIfActive??!0}},{accountId:Cn,profileId:ii.profileId,browserMode:ii.browserMode??`default`,windowId:ii.windowId});return result.closed?tab:null}));const failures=outcomes.filter(result=>result.status===`rejected`);if(failures.length)throw new AggregateError(failures.map(result=>result.reason),`Aux owned tab close was not acknowledged`);return outcomes.flatMap(result=>result.value?[result.value]:[])}",
+    "count": 1
+  },
+  {
+    "name": "purge-retains-unclosed-rows",
+    "find": "await detachOwnedSessionTabs(ei,ri,{skipIfActive:!1}),await GlobalAgentSessionServer.abort(ei,ri)",
+    "replace": "await detachOwnedSessionTabs(ei,ri,{skipIfActive:!1});if(listSessionTabs(ei,ri).some(tab=>tab.ownership===`owned`))throw Error(`Aux session still owns an unclosed browser tab`);await GlobalAgentSessionServer.abort(ei,ri)",
+    "count": 1
+  },
+  {
+    "name": "retain-report-delivery",
+    "find": "async function deliverReports(Cn,ei,ti,ni=0){",
+    "replace": "function deliverReports(Cn,ei,ti,ni=0){return auxManagedLifecycle(()=>auxDeliverReportsBody(Cn,ei,ti,ni))}async function auxDeliverReportsBody(Cn,ei,ti,ni=0){",
+    "count": 1
+  },
+  {
+    "name": "retain-report-retry",
+    "find": "ii&&!ii.archivedAt&&ai!==void 0&&setTimeout(()=>void deliverReports(Cn,ei,ti,ni+1),ai).unref()",
+    "replace": "ii&&!ii.archivedAt&&ai!==void 0&&auxManagedProducers().admitted()&&auxManagedTimeout(()=>deliverReports(Cn,ei,ti,ni+1),ai).unref()",
+    "count": 1
+  },
+  {
+    "name": "await-recovered-reports",
+    "find": "function resumeCoderReports(Cn){for(let ei of SessionStore.listCoders(Cn)){let ti=delegatorOf(ei);ti&&ei.toolState.coder?.pendingReports?.length&&deliverReports(Cn,ei.id,ti)}}",
+    "replace": "async function resumeCoderReports(Cn){const work=[];for(let ei of SessionStore.listCoders(Cn)){let ti=delegatorOf(ei);ti&&ei.toolState.coder?.pendingReports?.length&&work.push(deliverReports(Cn,ei.id,ti))}const outcomes=await Promise.allSettled(work),errors=outcomes.filter(result=>result.status===`rejected`).map(result=>result.reason);if(errors.length)throw new AggregateError(errors,`Aux pending coder reports did not complete`)}",
+    "count": 1
+  },
+  {
+    "name": "retain-deleted-archived-stops",
+    "find": "EventBus.on(`session:updated`,({data:{accountId:Cn,sessionId:ei,session:ti}})=>{ti.archivedAt&&stopCoderWork(Cn,[ei])}),EventBus.on(`session:deleted`,({data:{accountId:Cn,sessionId:ei}})=>void stopCoderWork(Cn,[ei]))",
+    "replace": "auxManagedEvent(EventBus,`session:updated`,({data:{accountId:Cn,sessionId:ei,session:ti}})=>ti.archivedAt?stopCoderWork(Cn,[ei]):void 0),auxManagedEvent(EventBus,`session:deleted`,({data:{accountId:Cn,sessionId:ei}})=>stopCoderWork(Cn,[ei]))",
+    "count": 1
+  },
+  {
+    "name": "retain-workflow-stop-event",
+    "find": "EventBus.on(`session:updated`,({data:{accountId:Cn,sessionId:ei,session:ti}})=>{isStoppedStatus(ti.status)&&stopBackgroundWorkflows((ti,[ni])=>ti===Cn&&ni===ei)})",
+    "replace": "auxManagedEvent(EventBus,`session:updated`,({data:{accountId:Cn,sessionId:ei,session:ti}})=>isStoppedStatus(ti.status)?stopBackgroundWorkflows((ti,[ni])=>ti===Cn&&ni===ei):void 0)",
+    "count": 1
+  },
+  {
+    "name": "defer-transport-close-until-acks",
+    "find": "const transports=[closeWebSockets(deps.websockets()),closeHttp(deps.http())];\n    for(const promise of transports)promise.catch(()=>{});",
+    "replace": "const closeTransports=()=>[closeWebSockets(deps.websockets()),closeHttp(deps.http())];",
+    "count": 1
+  },
+  {
+    "name": "close-transport-after-producer-drain",
+    "find": "await settled(transports,'Aux transport did not close');",
+    "replace": "await settled(closeTransports(),'Aux transport did not close');",
+    "count": 1
+  }
+]

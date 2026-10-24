@@ -1,0 +1,53 @@
+{
+  "format": "aux.standard-isolation.managed-producers.v1",
+  "sourceFiles": [
+    {
+      "path": "source/anchors.json",
+      "sha256": "10a7b03c437299f4385d64f8b07a9dc50af0456aa0ac507cbe6b216da8ef73a4"
+    },
+    {
+      "path": "source/managed-producers.js",
+      "sha256": "2500fa38643f1a4dfdace691df506b8c83371785cd9485b641d9787d23a5a4aa"
+    },
+    {
+      "path": "source/transform.mjs",
+      "sha256": "55b0f7eeb8c5d357991f68a7951cbab84990198bf64f2ad2ce893c883dbe7a43"
+    }
+  ],
+  "export": "transformAuxManagedProducers",
+  "module": "source/transform.mjs",
+  "countedChanges": 20,
+  "observedReplay": [
+    {
+      "input": "/private/tmp/aux-standard-daemon-projection-20261024-a1/index.mjs",
+      "inputSha256": "00607ee3555eb8c8c8f6d7641d93ac009ca9a3b4e2fc7444dfe898109d9d863c",
+      "output": "/private/tmp/aux-managed-producers-replay-20261024-a2/index.mjs",
+      "outputSha256": "4ff69e3bdd8e5c67ae8d7a8690e074aa27ae1452c52b33da742c9771ffc7f692",
+      "countedChanges": 20
+    },
+    {
+      "input": "/private/tmp/aux-standard-daemon-projection-20261024-a1/aux-native-entry.mjs",
+      "inputSha256": "fe85ca92a82b957f61727729ba61ca732d061df8534f3f64a3afd2a2af5c0400",
+      "output": "/private/tmp/aux-managed-producers-replay-20261024-a2/aux-native-entry.mjs",
+      "outputSha256": "5954a94365d0feb57f4808b2d96dba62889bd4431f2184028dced7b3027e8fa2",
+      "countedChanges": 20
+    }
+  ],
+  "semanticEvidence": [
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/extensions/api/tabs/tabs_api.cc",
+      "sha256": "2d2feb210c1a76ea22b652d440cde4b22c66a1cafe3e8dd8fd5c196503bc586c"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/out/browser-feature-stage-pair-20261023-a5/desktop-v1/ui/agent/background.js",
+      "sha256": "adbd37ca858ecc94815012046f56cc145a6a3a40d8e1a21fc92f057633140eb4"
+    }
+  ],
+  "sourceOnly": true,
+  "productExecuted": false,
+  "runtimeAccepted": false,
+  "testable": false,
+  "whole_writer_drain_proven": false,
+  "nativeBindingsChanged": false,
+  "existingFrozenArtifactsChanged": false
+}
