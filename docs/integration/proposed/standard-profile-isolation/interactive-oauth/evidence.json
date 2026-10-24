@@ -1,0 +1,28 @@
+{
+  "version": 1,
+  "scope": "Source-only and inert callback fixture; no sockets, provider requests, credentials or product executed",
+  "checks": [
+    "late listen cancellation remains pending until actual close callback",
+    "success response flush then independent socket close",
+    "abort during response flush",
+    "deleted flow retains login and physical transport cleanup",
+    "unreviewed provider remains unknown and awaited",
+    "12 exact anchors independently replayed on both pinned a2 leaves",
+    "node --check both resulting leaves"
+  ],
+  "scratch": "/var/folders/98/j36zgdnd0h507whjl16gxl780000gp/T/aux-interactive-oauth-source-pOXhzS",
+  "daemonInputs": [
+    {
+      "kind": "source",
+      "inputSha256": "2e35bf82a24e22a1a76b61fe7211c9a1bdbfb770f3e45ae689131eefae9f75ea",
+      "outputSha256": "438cae0bf3f3f52b2f392641c2b9a7f59aaab5b436710641d64dc398d888e2dc",
+      "changesSha256": "f32e328631004eca5997c372105eb24960231a2abbd73b5d09cbf0e5ff292d1e"
+    },
+    {
+      "kind": "entry",
+      "inputSha256": "ebb32136d280406d02841c5f9fc3b08d2714b4384e70d0d690ca4bdd8bb1c8d7",
+      "outputSha256": "2c2a338cf0aca63ba30690dd931801facd69570bb7db1aec2a70247fb5dc2f00",
+      "changesSha256": "f32e328631004eca5997c372105eb24960231a2abbd73b5d09cbf0e5ff292d1e"
+    }
+  ]
+}

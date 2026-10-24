@@ -1,0 +1,42 @@
+{
+  "version": 1,
+  "stage": "interactive-oauth",
+  "changes": 12,
+  "sourceFiles": [
+    {
+      "path": "source/transform.mjs",
+      "sha256": "d324268a68edbadb82b20947f672ea85dcaa0d3f6f1d94fead87c675da6f2ef8"
+    },
+    {
+      "path": "source/anchors.json",
+      "sha256": "bc86590bae4b13a3b1f87372b00cb22b11cd584978c421d2510ee6d60ca15edf"
+    },
+    {
+      "path": "source/interactive-oauth.js",
+      "sha256": "dcb8f0a78c0e183e32b0a94601efbcd8288c6512489ce684bbffa64d65fbaaf3"
+    }
+  ],
+  "daemonInputs": [
+    {
+      "kind": "source",
+      "inputSha256": "2e35bf82a24e22a1a76b61fe7211c9a1bdbfb770f3e45ae689131eefae9f75ea",
+      "outputSha256": "438cae0bf3f3f52b2f392641c2b9a7f59aaab5b436710641d64dc398d888e2dc",
+      "changesSha256": "f32e328631004eca5997c372105eb24960231a2abbd73b5d09cbf0e5ff292d1e"
+    },
+    {
+      "kind": "entry",
+      "inputSha256": "ebb32136d280406d02841c5f9fc3b08d2714b4384e70d0d690ca4bdd8bb1c8d7",
+      "outputSha256": "2c2a338cf0aca63ba30690dd931801facd69570bb7db1aec2a70247fb5dc2f00",
+      "changesSha256": "f32e328631004eca5997c372105eb24960231a2abbd73b5d09cbf0e5ff292d1e"
+    }
+  ],
+  "nativeRequirements": [
+    "Fresh descendant observer and existing broker physical-writer ownership remain required; no authority flags change."
+  ],
+  "preservedUnknown": [
+    "Meta CDP sign-in window",
+    "Claude-code callback listeners",
+    "ChatGPT callback broker and separate shim transport",
+    "unrecognized or replaced OAuth implementations"
+  ]
+}
