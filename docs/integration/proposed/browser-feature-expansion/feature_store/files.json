@@ -1,0 +1,18 @@
+{
+  "baselineCommit": "4d6ca3a07",
+  "selectedNativeRoot": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src",
+  "scope": "inactive durable feature store proposal; no selected native tree mutation",
+  "files": [
+    {
+      "path": "chrome/browser/aux/feature_store/feature_profile_store.cc",
+      "baselineSha256": null,
+      "sourceSha256": "f38724cd331a675bde344d6bfd022f9eea1b836fe62fd85af95f0e885cbbf637"
+    },
+    {
+      "path": "chrome/browser/aux/feature_store/feature_profile_store.h",
+      "baselineSha256": null,
+      "sourceSha256": "0fa60130e276a3aed3513dcc8c894e17abe42dac17049bfd1866b7005e676903"
+    }
+  ],
+  "patchSha256": "04b387b7e28301fbfe04b4a67ec592fafa9b45a9840824990a1d22377273f638"
+}
