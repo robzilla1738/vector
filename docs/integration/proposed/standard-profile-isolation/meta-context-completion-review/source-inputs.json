@@ -1,0 +1,86 @@
+{
+  "format": "aux.meta-context-completion.review.v1",
+  "purpose": "Bounded static lifecycle trace; no completed implementation or runtime evidence",
+  "inputs": [
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/content/browser/devtools/protocol/target_handler.cc",
+      "sha256": "ce70690bcf25deb41135373090c38cfe304d4c7611d00cf4d511553dc2c743ad"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/devtools/devtools_browser_context_manager.cc",
+      "sha256": "0460aec3e6ab1b35383dfe0795d15aebbadf75aebb075e9f274ad49b8284717f"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/devtools/chrome_devtools_manager_delegate.cc",
+      "sha256": "65b1bf002fba65086d8408d6d40ac99ef6b41d275b4764ebdace4f3e8bb24e52"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/profiles/profile_destroyer.h",
+      "sha256": "c4ee66f428da4e68d1a526c69998fa8f16eaddc7829a4bf6245a47c8538186e6"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/profiles/profile_destroyer.cc",
+      "sha256": "76dbca3e9a8cdc3989108a0c6743e66178cc86ff8c9399bdfc8b42e73ba747a4"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/profiles/off_the_record_profile_impl.cc",
+      "sha256": "285616f80f298e8f62d6c0f80a971226c404b84c2c65696196e11fe6163be15a"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/profiles/profile_impl.cc",
+      "sha256": "62e02a0a01fa2366accde2b9fe260aec4e2cca0133ba511775711313ccffaee0"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/content/browser/browser_context_impl.cc",
+      "sha256": "d43111c9198961a9ac9942740a3cfea43587cffd1ca5e14afd7730ef52f2740f"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/content/browser/storage_partition_impl.cc",
+      "sha256": "80c07c1407f823576830d9b4a742c75cc1477af4273be1ade8e2c888e50097b6"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/content/browser/storage_partition_impl.h",
+      "sha256": "3de8c50ec783f6f63f44332fc14009648a0e9424ee41077335d18728d7986651"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/content/browser/dom_storage/dom_storage_context_wrapper.cc",
+      "sha256": "0504e43e25a2e91876f4460a3e97da585792afd5c8ae2518688ac1540ebd0055"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/content/browser/code_cache/generated_code_cache_context.cc",
+      "sha256": "3a558c27c0fa7561f032f278dea8a061b54625bbd8d3bf12aa9562ced4b53b8b"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/services/network/network_context.cc",
+      "sha256": "a40fc3072ac1acca76a07bef5fe3d7722887e214267703c5d81b83394fcc43ce"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/services/network/public/mojom/network_context.mojom",
+      "sha256": "908e5725ad33a359b6943048adb445bb2a0fd80e989287f8e191846398cbcaee"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/aux/feature_store/feature_write_participant.h",
+      "sha256": "a7db1e6b87daf66bce72c7b542e31d4b5b5e0147101ece0df85ad5c3387a37cc"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/aux/feature_store/feature_write_participant.cc",
+      "sha256": "ce1fe4b56c370b6b0369776eadc3d00530a7931d2963b81fb70c75f72079f14d"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/ui/aux_owned_browser_quiesce.h",
+      "sha256": "e4993dec9f21a643bf51e5c4a11b52903abe183ff4e562f91159f5099433618d"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/third_party/blink/public/devtools_protocol/domains/Target.pdl",
+      "sha256": "136ca4a240e64aa727e0b261cbe7ac853748154aaa8c4a86fe818d7c522535d6"
+    },
+    {
+      "path": "/private/tmp/aux-standard-daemon-projection-20261024-a4/index.mjs",
+      "sha256": "a37b3d7eb72707ca00729e39eae4aa90f3968ca7dfa5379f823ac1007f3157c4"
+    }
+  ],
+  "sourceModified": false,
+  "nativeBuild": false,
+  "productExecuted": false,
+  "permissionsChanged": false
+}
