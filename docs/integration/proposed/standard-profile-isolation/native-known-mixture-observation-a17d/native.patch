@@ -1,0 +1,20 @@
+--- a/components/services/storage/dom_storage/async_dom_storage_database.h
++++ b/components/services/storage/dom_storage/async_dom_storage_database.h
+@@ -164,6 +164,7 @@
+     std::vector<AuxUiMapSnapshot> maps;
+     bool matches_source = false;
+     bool matches_target = false;
++    bool known_source_target_mixture = false;
+     bool file_data_synced = false;
+     bool ordinary_work_queued = false;
+     bool target_attempted = false;
+--- a/components/services/storage/dom_storage/async_dom_storage_database.cc
++++ b/components/services/storage/dom_storage/async_dom_storage_database.cc
+@@ -496,6 +496,7 @@
+   result.target_topology_sha256 = AuxTopologyDigest(capture, true, local);
+   result.allocation_action_sha256 = AuxAllocationActionsDigest(capture);
+   result.file_data_synced = capture.file_data_synced;
++  result.known_source_target_mixture = capture.file_data_synced && !result.matches_source && !result.matches_target;
+   result.target_attempted = capture.target_attempted;
+   return result;
+ }

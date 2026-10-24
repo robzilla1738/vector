@@ -1,0 +1,16 @@
+{
+  "format": "aux.known-mixture.source-check.actual.v1",
+  "passed": true,
+  "sourcePlanSha256": "89de5c8cc8d4f2ea88a72f31f4db294ed1d966ab248f9450da9752a3b856c6de",
+  "patchSha256": "466056a4720c09df1a0485984e458c1bb3883cf9f52c6d38679f6d97ad57e842",
+  "files": 2,
+  "countedAnchors": 2,
+  "replayDirectory": "/private/tmp/aux-known-mixture-replay-putu74dr",
+  "exactReplayPassed": true,
+  "reverseCheckPassed": true,
+  "nativeCheckoutChanged": false,
+  "nativeCompiled": false,
+  "testsExecuted": false,
+  "productExecuted": false,
+  "runtimeAcceptance": false
+}

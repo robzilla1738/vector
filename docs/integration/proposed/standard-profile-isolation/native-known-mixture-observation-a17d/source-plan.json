@@ -1,0 +1,37 @@
+{
+  "format": "aux.native-known-mixture.source.v1",
+  "files": [
+    {
+      "path": "components/services/storage/dom_storage/async_dom_storage_database.h",
+      "inputRoot": "/Users/rcourson/.codex/worktrees/aux-features-organization/web/docs/integration/proposed/standard-profile-isolation/native-recovery-metadata-a17a/source",
+      "inputSha256": "e54d239c7e4f7c36c529455fb050d0ccf180d69810c48dfdab09a39abc7ac635",
+      "outputSha256": "0a4a0299a1c3ec38618beef03e70dc107de450a16c8d9fc54d4f4e8dbf91ff68",
+      "output": "/Users/rcourson/.codex/worktrees/aux-features-organization/web/docs/integration/proposed/standard-profile-isolation/native-known-mixture-observation-a17d/source/components/services/storage/dom_storage/async_dom_storage_database.h",
+      "anchors": [
+        {
+          "find": "    bool matches_target = false;",
+          "replace": "    bool matches_target = false;\n    bool known_source_target_mixture = false;",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "components/services/storage/dom_storage/async_dom_storage_database.cc",
+      "inputRoot": "/Users/rcourson/.codex/worktrees/aux-features-organization/web/docs/integration/proposed/standard-profile-isolation/native-cohort-compile-fix-a17c/source",
+      "inputSha256": "4cb9e2a23018dcc4a7e0c62fea32d7ca8941254c17cf4527b833f633808c4a61",
+      "outputSha256": "150e5fe2bdd38c52b21601fd454154d5e1944528574c8d3f22b98909d4f90f1b",
+      "output": "/Users/rcourson/.codex/worktrees/aux-features-organization/web/docs/integration/proposed/standard-profile-isolation/native-known-mixture-observation-a17d/source/components/services/storage/dom_storage/async_dom_storage_database.cc",
+      "anchors": [
+        {
+          "find": "  result.file_data_synced = capture.file_data_synced;",
+          "replace": "  result.file_data_synced = capture.file_data_synced;\n  result.known_source_target_mixture = capture.file_data_synced && !result.matches_source && !result.matches_target;",
+          "count": 1
+        }
+      ]
+    }
+  ],
+  "nativeCheckoutChanged": false,
+  "nativeCompiled": false,
+  "productExecuted": false,
+  "runtimeAcceptance": false
+}
