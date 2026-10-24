@@ -1,0 +1,9 @@
+# Native immutable UI transaction data journal
+
+The actual48-source Swift/14-object daemon graph compiles and links with additive bounded record persistence/discovery/readback over the existing audited native capture channel. The resulting daemon is unsigned and unexecuted. `actual-daemon-link-a2.json` verifies its actual private C entry resolution, unchanged receiver object and absence of a code-signature load command. SHA256: `d9530d0052292a307427af0a81278438482325fd7a12100685c59f089731b3e3`.
+
+One real parser error in a multiline Data expression is preserved in the first source/receipt. Its counted successor uses explicit append. The copied post-link verifier then incorrectly required the intentionally private entry in global exports; the correct established private-symbol verifier inspects the completed binary without recompiling or changing exports/flags. The source/manifest/failed recipes remain truthful and immutable.
+
+Each record retains exact payload bytes and a chained immutable receipt, bound by the actual retained root, policy, installation journal, native source capture, generation and fixed ordinal/kind. Exclusive fixed-name files, sync and exact readback precede success. Lost responses can observe only the exact existing record; partial, conflicting or gapped chains stay uncertain and are never overwritten/deleted. Bounds are64 records and64MiB aggregate payload. No caller chooses a path, Profile, store handle or restore map.
+
+Every record is explicitly unqualified data with activation forbidden. The native controller must rediscover and hold actual owners, compare exact source/target maps and topology, and consume real physical write/readback/publication callbacks. Persisted assertions do not provide those capabilities. Native target/recovery consumption and a newly paired full browser/package remain unfinished. No app/native API execution, owner data, provider request, signing or release occurred.

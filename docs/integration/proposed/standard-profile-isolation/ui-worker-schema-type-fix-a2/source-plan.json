@@ -1,0 +1,24 @@
+{
+  "format": "aux.ui-worker.schema-type-fix.source.v1",
+  "files": [
+    {
+      "path": "chrome/common/extensions/api/aux_browser_preferences.json",
+      "inputSha256": "0dae39b7d5ccd0f355a4129ddf9efbd1ed30ec2ef6df4a817a6e9a205e853aa6",
+      "outputSha256": "20ed9157cc2fc007f58c76e93da38208807c54dabda8702ed0799e566d4dd6ca",
+      "anchors": [
+        {
+          "find": "              \"operation\": {\n                \"type\": \"string\",\n                \"enum\": [\n                  \"prepare\",\n                  \"read\",\n                  \"validate\",\n                  \"release\"\n                ]\n              }",
+          "replace": "              \"operation\": {\n                \"$ref\": \"UiMigrationWorkerOperation\"\n              }",
+          "count": 2
+        },
+        {
+          "find": "    \"functions\": [\n",
+          "replace": "    \"types\": [\n      {\n        \"id\": \"UiMigrationWorkerOperation\",\n        \"type\": \"string\",\n        \"enum\": [\"prepare\", \"read\", \"validate\", \"release\"]\n      }\n    ],\n    \"functions\": [\n",
+          "count": 1
+        }
+      ]
+    }
+  ],
+  "nativeCheckoutChanged": false,
+  "productExecuted": false
+}

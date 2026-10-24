@@ -1,3 +1,11 @@
+# Worker/cache controller compiles; durable native record journal links — 2026-10-24
+
+The actual final seven native objects pass with4,139 dependency pins: canonical worker helper, API, generated registry, both Blink storage owners, SessionStorageImpl and real controller. Complete GN/Chrome/Blink generation passes after a named-schema enum correction. Exact compiler fixes preserve lvalue API semantics, global ExtensionFunction ownership and GC-aware Blink binds. Source composition is113 changed/383 selected; evidence is `browser-feature-expansion/ui-worker-integration-a6/actual-compile-a3.json`. UI revision31 remains exact and staged; no full successor browser link is claimed.
+
+The bounded immutable transaction DATA journal actually compiles/links into the complete48-Swift/14-object daemon. `standard-profile-isolation/ui-transaction-record-journal-a1/actual-daemon-link-a2.json` verifies private entry resolution/unsigned binary d9530d0052292a307427af0a81278438482325fd7a12100685c59f089731b3e3. Parser and copied verifier failures remain historical; the corrected private-symbol verifier did not repeat compilation or change exports. Records preserve native-root/capture bindings, exact payload and chained receipts, sync/readback and unknown outcomes; every record stays unqualified with activation forbidden.
+
+Parallel source work continues on real DOM/cache cohort target/digest interfaces, frontend exact-source restore/controller joins and native CLI open/registration. COLD and process-loss profile migration/admission remain unfinished; the complete inactive A3 app and accepted app are intact. No product/native API lifecycle, owner/provider action, signing or release occurred. These compile/link/stage results are not runtime/UI acceptance.
+
 # Parallel storage, renderer and CLI integration — 2026-10-24
 
 Actual UI revision31 staging passes. Its exact final output matches the reviewed renderer cleanup and background-worker producer; only draft codec, background script and manifest differ from30. All other bytes/modes, styles/art/fonts/permissions/identities are preserved. See `browser-feature-expansion/ui-worker-integration-a6/actual-ui-stage-a1.json`. No app/UI observation is transferred from resource equality.
