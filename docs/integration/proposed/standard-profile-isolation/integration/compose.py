@@ -44,7 +44,29 @@ for tag,i,j,x,y in difflib.SequenceMatcher(None,old,new,autojunk=False).get_opco
  lo=max(0,i-2);hi=min(len(old),j+2)
  before=''.join(old[lo:hi]);after=''.join(old[lo:i]+new[x:y]+old[j:hi])
  edits('AuxOwnedCommandDispatcher.swift',[{'find':before,'replace':after,'count':1}],'runtime-publication-dispatcher')
+# Couple the descendant observer with the already composed native receiver.
+desc=scope/'descendant-custody'
+manifest_desc=jsonread(desc/'manifest.json')
+values['AuxNativeDaemonMain.cc']=read(desc/'baseline/AuxNativeDaemonMain.cc')
+for row in jsonread(desc/'replacements.json'):
+ change={'find':row['old'],'replace':row['new'],'count':row['count']}
+ if row['path']=='AuxDevelopmentWorkerHost.cc' and row['old']=='  auto result = AuxDevelopmentWorkerDrain::drained;\n  if (state_->prepared_fresh_provider)':
+  # Both independent lanes insert immediately before factory closure. Preserve
+  # root's clean observation block and the observer's real stream observation.
+  suffix='\n  if (state_->prepared_fresh_provider)'
+  assert row['new'].endswith(suffix)
+  change={'find':'  auto result = AuxDevelopmentWorkerDrain::drained;', 'replace':row['new'][:-len(suffix)],'count':1}
+ edits(row['path'],[change],'descendant-custody')
+for n in ['AuxTaskDescendantObserver.cc','AuxTaskDescendantObserver.h']:
+ values[n]=read(desc/'source'/n)
+# New actual cohort counts and live observer status are explicit clean-query
+# prerequisites, in addition to the actual retained runtime scope counters.
+edits('AuxStandardCleanSettlement.inc',[
+ {'find':'    int32_t result = hosts.empty() ? 2 : 0;', 'replace':'    int32_t result = hosts.empty() ? 2 : 0;\n    const auto stream = aux::descendants::InspectStream();\n    if (stream == aux::descendants::Result::unknown ||\n        stream == aux::descendants::Result::refused) result = 2;\n    else if (stream != aux::descendants::Result::settled && result == 0) result = 1;', 'count':1},
+ {'find':'worker->pty_pending || worker->pty_direct ||', 'replace':'worker->pty_pending || worker->pty_direct || worker->pty_descendant_pending ||', 'count':1},
+ {'find':'worker->exec_pending || worker->exec_direct ||', 'replace':'worker->exec_pending || worker->exec_direct || worker->exec_descendant_pending ||', 'count':1}
+],'observer-clean-query-coupling')
 for n,text in values.items():(out/n).write_text(text)
-manifest={'format':'aux.standard-isolation.source-composition.v1','inputs':inputs,'changes':changes,'outputs':[{'path':str(out/n),'sha256':hashlib.sha256(t.encode()).hexdigest()} for n,t in sorted(values.items())],'compiled':False,'activated':False,'productExecuted':False,'runtimeAuthorityGranted':False,'descendantSuccessorPending':True}
+manifest={'format':'aux.standard-isolation.source-composition.v1','inputs':inputs,'changes':changes,'outputs':[{'path':str(out/n),'sha256':hashlib.sha256(t.encode()).hexdigest()} for n,t in sorted(values.items())],'compiled':False,'activated':False,'productExecuted':False,'runtimeAuthorityGranted':False,'descendantSuccessorPending':False}
 (out/'composition.json').write_text(json.dumps(manifest,indent=2)+'\n')
 print(json.dumps({'output':str(out),'files':len(values),'countedEdits':len(changes),'compiled':False}))

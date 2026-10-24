@@ -40,7 +40,7 @@
     {
       "path": "AuxDevelopmentWorkerHost.cc",
       "find": "// These are native producer entry points only.",
-      "replace": "extern \"C\" int32_t AuxDevelopmentOwnerCleanSettlementStatus(void* owner) noexcept {\n  return ObserveOwnerCleanSettlement(owner);\n}\nextern \"C\" void AuxObserveDevelopmentMainLoopReturned() noexcept {\n  ObserveMainLoopReturned();\n}\n\n// These are native producer entry points only.",
+      "replace": "extern \"C\" __attribute__((visibility(\"hidden\"))) int32_t AuxDevelopmentOwnerCleanSettlementStatus(void* owner) noexcept {\n  return ObserveOwnerCleanSettlement(owner);\n}\nextern \"C\" __attribute__((visibility(\"hidden\"))) void AuxObserveDevelopmentMainLoopReturned() noexcept {\n  ObserveMainLoopReturned();\n}\n\n// These are native producer entry points only.",
       "count": 1
     },
     {

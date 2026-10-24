@@ -1,0 +1,507 @@
+{
+  "format": "aux.standard-isolation.source-composition.v1",
+  "inputs": [
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/runtime-publication/source/AuxDevelopmentWorkerHost.cc",
+      "sha256": "080fc7d251f36469e445665d89621c426e1822d0188584d89ab187e3f9936797"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/runtime-publication/source/AuxRuntimePublication.inc",
+      "sha256": "4cecd5bee1eb6c88894c0710053b3c46a17ed9249196a7084380f44e6a5c69c9"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/runtime-publication/source/AuxRuntimePublicationBridge.h",
+      "sha256": "ae3c0b18a5695962ece952f0301ee7f6601b2de638b1d47edf6ca04043e43113"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/runtime-publication/source/AuxRuntimePublicationNapi.inc",
+      "sha256": "824b83c6da46f394d78fab110aa405f2492c0f2689d828d97d382047b5f61335"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/runtime-publication/source/runtime-bootstrap.cjs",
+      "sha256": "da30c2b0445af81b3d3ff53fc82f7c93f589e34c3a7756e9f92ef38fab34c5e4"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/runtime-publication/source/runtime-seed.cjs",
+      "sha256": "4b202aa8a73843502fa19dd22df2c326c5bf1890fa955b9e3b815028f58d8e2f"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/runtime-coordination/overlay.json",
+      "sha256": "f510fadd56e0cdb06edf7a0bc2fc1a4b556b609c8eb924175f686c2dc444d5ac"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/runtime-coordination/source/AuxRuntimeCoordination.inc",
+      "sha256": "b552a17a6046932e37fd863526f82abe5c0602da1a33b7f5ae1f00b83399f812"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/daemon-settlement/overlay.json",
+      "sha256": "56c4cb2881250a32b2c8762e455947840994cd60510d8f8a09b369e9590eebc1"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/daemon-settlement/inputs.json",
+      "sha256": "74669b65ef7cb358c682e8acafa7e81f2caafbc0a899a2135487d5ac2e9aa48b"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-development-worker-host/source/AuxDevelopmentOwnerDrain.swift",
+      "sha256": "0bcbeec3d5667f8f53a91c29622b6a1f4fce50d9181661690b5863ea0bdcbb0b"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-native-node-runner/source/AuxNativeNodeRunner.cc",
+      "sha256": "9990ae404ab0204e3ce913a4f4f541cc4e3af885294e0b879cab2f63f690469b"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/daemon-settlement/source/AuxStandardCleanSettlement.inc",
+      "sha256": "f366015772a27b9de99a9d01f1bda2d55cfd6be1801d860ed4946a339f3aed93"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/restart-recovery/inputs.json",
+      "sha256": "61f47baef6a532f529c7f288900969e4fe82cdf9a1f886cc980b31ab30767087"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/restart-recovery/source/AuxBrowserFreshRootAdmission.swift",
+      "sha256": "435ef261a1abab8e5c573368941337e714d00b167f71c81268d5dace4b10ca09"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/restart-recovery/source/AuxFreshColdInstallerGuard.swift",
+      "sha256": "027912387acceece77e627e53613e6964c102e2b79fa9673455cdc81e397ac8a"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/restart-recovery/source/AuxNativeFreshStageCoordinator.swift",
+      "sha256": "6893e93cbcedebbf9fb81b0e84c138d15b68c750dc0d2e75308f41b0f618168a"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/restart-recovery/source/AuxOwnedCommandDispatcher.swift",
+      "sha256": "37342cf112c425afd9dbc1990afe4b7bb82684ad4a28f961e8e9adc8ade4f543"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/runtime-publication/baseline/AuxOwnedCommandDispatcher.swift",
+      "sha256": "fbb2782491b242573c60433f98df39f7d7ef283392190d0e627f23fedc003a0c"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/runtime-publication/source/AuxOwnedCommandDispatcher.swift",
+      "sha256": "fb716b4f103c7d9dcb67eebf4853f67fb6bff161d65148679ed703a1c2fede08"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/descendant-custody/manifest.json",
+      "sha256": "450e229a027841aad94fbbba19f486668224d238ce1d6254fda57d7540f467e4"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/descendant-custody/baseline/AuxNativeDaemonMain.cc",
+      "sha256": "16a394a12e8ab2d8541f172c4776f99cefce14a4098ea0697fae4d015c19cff3"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/descendant-custody/replacements.json",
+      "sha256": "88e1f544d7e9d53ff22c91a4914599b59fe3d75b5e9b0c88f5a2fdf16f5e4b52"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/descendant-custody/source/AuxTaskDescendantObserver.cc",
+      "sha256": "cb10bb7e05caed1baa661e67430d33f1aa9532fd82b44804166d619c4043d56d"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/descendant-custody/source/AuxTaskDescendantObserver.h",
+      "sha256": "60a1a872cad6f791f61061aa7a15d2d8ac3bb7fb8144b5f25c5fabcb3fd44969"
+    }
+  ],
+  "changes": [
+    {
+      "source": "runtime-coordination",
+      "name": "AuxDevelopmentWorkerHost.cc",
+      "count": 1
+    },
+    {
+      "source": "runtime-coordination",
+      "name": "AuxDevelopmentWorkerHost.cc",
+      "count": 1
+    },
+    {
+      "source": "runtime-coordination",
+      "name": "AuxDevelopmentWorkerHost.cc",
+      "count": 1
+    },
+    {
+      "source": "runtime-coordination",
+      "name": "AuxDevelopmentWorkerHost.cc",
+      "count": 1
+    },
+    {
+      "source": "runtime-coordination",
+      "name": "AuxDevelopmentWorkerHost.cc",
+      "count": 1
+    },
+    {
+      "source": "runtime-coordination",
+      "name": "AuxDevelopmentWorkerHost.cc",
+      "count": 1
+    },
+    {
+      "source": "runtime-coordination",
+      "name": "AuxDevelopmentWorkerHost.cc",
+      "count": 1
+    },
+    {
+      "source": "runtime-coordination",
+      "name": "AuxDevelopmentWorkerHost.cc",
+      "count": 1
+    },
+    {
+      "source": "runtime-coordination",
+      "name": "AuxDevelopmentWorkerHost.cc",
+      "count": 1
+    },
+    {
+      "source": "runtime-coordination",
+      "name": "AuxDevelopmentWorkerHost.cc",
+      "count": 1
+    },
+    {
+      "source": "runtime-coordination",
+      "name": "AuxDevelopmentWorkerHost.cc",
+      "count": 1
+    },
+    {
+      "source": "runtime-coordination",
+      "name": "AuxDevelopmentWorkerHost.cc",
+      "count": 1
+    },
+    {
+      "source": "runtime-coordination",
+      "name": "AuxDevelopmentWorkerHost.cc",
+      "count": 1
+    },
+    {
+      "source": "runtime-coordination",
+      "name": "AuxDevelopmentWorkerHost.cc",
+      "count": 1
+    },
+    {
+      "source": "runtime-coordination",
+      "name": "AuxDevelopmentWorkerHost.cc",
+      "count": 1
+    },
+    {
+      "source": "runtime-coordination",
+      "name": "AuxRuntimePublication.inc",
+      "count": 1
+    },
+    {
+      "source": "runtime-coordination",
+      "name": "AuxRuntimePublication.inc",
+      "count": 1
+    },
+    {
+      "source": "daemon-settlement",
+      "name": "AuxDevelopmentWorkerHost.cc",
+      "count": 1
+    },
+    {
+      "source": "daemon-settlement",
+      "name": "AuxDevelopmentWorkerHost.cc",
+      "count": 1
+    },
+    {
+      "source": "daemon-settlement",
+      "name": "AuxDevelopmentWorkerHost.cc",
+      "count": 1
+    },
+    {
+      "source": "daemon-settlement",
+      "name": "AuxDevelopmentWorkerHost.cc",
+      "count": 1
+    },
+    {
+      "source": "daemon-settlement",
+      "name": "AuxDevelopmentWorkerHost.cc",
+      "count": 1
+    },
+    {
+      "source": "daemon-settlement",
+      "name": "AuxDevelopmentWorkerHost.cc",
+      "count": 1
+    },
+    {
+      "source": "daemon-settlement",
+      "name": "AuxDevelopmentWorkerHost.cc",
+      "count": 1
+    },
+    {
+      "source": "daemon-settlement",
+      "name": "AuxDevelopmentWorkerHost.cc",
+      "count": 1
+    },
+    {
+      "source": "daemon-settlement",
+      "name": "AuxDevelopmentWorkerHost.cc",
+      "count": 1
+    },
+    {
+      "source": "daemon-settlement",
+      "name": "AuxDevelopmentWorkerHost.cc",
+      "count": 1
+    },
+    {
+      "source": "daemon-settlement",
+      "name": "AuxDevelopmentWorkerHost.cc",
+      "count": 1
+    },
+    {
+      "source": "daemon-settlement",
+      "name": "AuxDevelopmentWorkerHost.cc",
+      "count": 1
+    },
+    {
+      "source": "daemon-settlement",
+      "name": "AuxDevelopmentWorkerHost.cc",
+      "count": 1
+    },
+    {
+      "source": "daemon-settlement",
+      "name": "AuxDevelopmentWorkerHost.cc",
+      "count": 1
+    },
+    {
+      "source": "daemon-settlement",
+      "name": "AuxDevelopmentWorkerHost.cc",
+      "count": 1
+    },
+    {
+      "source": "daemon-settlement",
+      "name": "AuxNativeNodeRunner.cc",
+      "count": 1
+    },
+    {
+      "source": "daemon-settlement",
+      "name": "AuxNativeNodeRunner.cc",
+      "count": 1
+    },
+    {
+      "source": "daemon-settlement",
+      "name": "AuxDevelopmentOwnerDrain.swift",
+      "count": 1
+    },
+    {
+      "source": "runtime-publication-dispatcher",
+      "name": "AuxOwnedCommandDispatcher.swift",
+      "count": 1
+    },
+    {
+      "source": "runtime-publication-dispatcher",
+      "name": "AuxOwnedCommandDispatcher.swift",
+      "count": 1
+    },
+    {
+      "source": "descendant-custody",
+      "name": "AuxDevelopmentWorkerHost.cc",
+      "count": 1
+    },
+    {
+      "source": "descendant-custody",
+      "name": "AuxDevelopmentWorkerHost.cc",
+      "count": 1
+    },
+    {
+      "source": "descendant-custody",
+      "name": "AuxDevelopmentWorkerHost.cc",
+      "count": 1
+    },
+    {
+      "source": "descendant-custody",
+      "name": "AuxDevelopmentWorkerHost.cc",
+      "count": 1
+    },
+    {
+      "source": "descendant-custody",
+      "name": "AuxDevelopmentWorkerHost.cc",
+      "count": 1
+    },
+    {
+      "source": "descendant-custody",
+      "name": "AuxDevelopmentWorkerHost.cc",
+      "count": 1
+    },
+    {
+      "source": "descendant-custody",
+      "name": "AuxDevelopmentWorkerHost.cc",
+      "count": 2
+    },
+    {
+      "source": "descendant-custody",
+      "name": "AuxDevelopmentWorkerHost.cc",
+      "count": 1
+    },
+    {
+      "source": "descendant-custody",
+      "name": "AuxDevelopmentWorkerHost.cc",
+      "count": 1
+    },
+    {
+      "source": "descendant-custody",
+      "name": "AuxDevelopmentWorkerHost.cc",
+      "count": 1
+    },
+    {
+      "source": "descendant-custody",
+      "name": "AuxDevelopmentWorkerHost.cc",
+      "count": 1
+    },
+    {
+      "source": "descendant-custody",
+      "name": "AuxDevelopmentWorkerHost.cc",
+      "count": 1
+    },
+    {
+      "source": "descendant-custody",
+      "name": "AuxDevelopmentWorkerHost.cc",
+      "count": 2
+    },
+    {
+      "source": "descendant-custody",
+      "name": "AuxDevelopmentWorkerHost.cc",
+      "count": 1
+    },
+    {
+      "source": "descendant-custody",
+      "name": "AuxDevelopmentWorkerHost.cc",
+      "count": 1
+    },
+    {
+      "source": "descendant-custody",
+      "name": "AuxDevelopmentWorkerHost.cc",
+      "count": 1
+    },
+    {
+      "source": "descendant-custody",
+      "name": "AuxDevelopmentWorkerHost.cc",
+      "count": 1
+    },
+    {
+      "source": "descendant-custody",
+      "name": "AuxDevelopmentWorkerHost.cc",
+      "count": 1
+    },
+    {
+      "source": "descendant-custody",
+      "name": "AuxDevelopmentWorkerHost.cc",
+      "count": 1
+    },
+    {
+      "source": "descendant-custody",
+      "name": "AuxDevelopmentWorkerHost.cc",
+      "count": 1
+    },
+    {
+      "source": "descendant-custody",
+      "name": "AuxRuntimeCoordination.inc",
+      "count": 1
+    },
+    {
+      "source": "descendant-custody",
+      "name": "AuxRuntimeCoordination.inc",
+      "count": 1
+    },
+    {
+      "source": "descendant-custody",
+      "name": "AuxRuntimeCoordination.inc",
+      "count": 1
+    },
+    {
+      "source": "descendant-custody",
+      "name": "AuxNativeDaemonMain.cc",
+      "count": 1
+    },
+    {
+      "source": "descendant-custody",
+      "name": "AuxNativeDaemonMain.cc",
+      "count": 1
+    },
+    {
+      "source": "observer-clean-query-coupling",
+      "name": "AuxStandardCleanSettlement.inc",
+      "count": 1
+    },
+    {
+      "source": "observer-clean-query-coupling",
+      "name": "AuxStandardCleanSettlement.inc",
+      "count": 1
+    },
+    {
+      "source": "observer-clean-query-coupling",
+      "name": "AuxStandardCleanSettlement.inc",
+      "count": 1
+    }
+  ],
+  "outputs": [
+    {
+      "path": "/private/tmp/aux-standard-native-source-20261023-a4/AuxBrowserFreshRootAdmission.swift",
+      "sha256": "435ef261a1abab8e5c573368941337e714d00b167f71c81268d5dace4b10ca09"
+    },
+    {
+      "path": "/private/tmp/aux-standard-native-source-20261023-a4/AuxDevelopmentOwnerDrain.swift",
+      "sha256": "ba42b6767b8ebd2d7a419a6d7ec5690e4bb5b8bea1115de185bc18cd6f181698"
+    },
+    {
+      "path": "/private/tmp/aux-standard-native-source-20261023-a4/AuxDevelopmentWorkerHost.cc",
+      "sha256": "c9d68ac1284c7521aa857b4422205648e95adec5c3babb86783e15a71c1553a7"
+    },
+    {
+      "path": "/private/tmp/aux-standard-native-source-20261023-a4/AuxFreshColdInstallerGuard.swift",
+      "sha256": "027912387acceece77e627e53613e6964c102e2b79fa9673455cdc81e397ac8a"
+    },
+    {
+      "path": "/private/tmp/aux-standard-native-source-20261023-a4/AuxNativeDaemonMain.cc",
+      "sha256": "a08bdb486d414ae78466b1a385bced411215218c71ee5ce1dcb8908659746ffc"
+    },
+    {
+      "path": "/private/tmp/aux-standard-native-source-20261023-a4/AuxNativeFreshStageCoordinator.swift",
+      "sha256": "6893e93cbcedebbf9fb81b0e84c138d15b68c750dc0d2e75308f41b0f618168a"
+    },
+    {
+      "path": "/private/tmp/aux-standard-native-source-20261023-a4/AuxNativeNodeRunner.cc",
+      "sha256": "3379d8ef6bb089acc052228713906517bdda21945f3840e7216a104714ef6e7a"
+    },
+    {
+      "path": "/private/tmp/aux-standard-native-source-20261023-a4/AuxOwnedCommandDispatcher.swift",
+      "sha256": "85153a74b4fc12b5e0374ac58ecdc95f588835b10b38811bf2fb6b267ab1f6b1"
+    },
+    {
+      "path": "/private/tmp/aux-standard-native-source-20261023-a4/AuxRuntimeCoordination.inc",
+      "sha256": "342a44fab0360268ef4773c68406b30a0cc4fb2e2000493ec6f7c7a03fa497b9"
+    },
+    {
+      "path": "/private/tmp/aux-standard-native-source-20261023-a4/AuxRuntimePublication.inc",
+      "sha256": "4e0dfe94fec7763adbb454bf7d4dd01c50e3095ab242108d784b0f7bbf5f8fa9"
+    },
+    {
+      "path": "/private/tmp/aux-standard-native-source-20261023-a4/AuxRuntimePublicationBridge.h",
+      "sha256": "ae3c0b18a5695962ece952f0301ee7f6601b2de638b1d47edf6ca04043e43113"
+    },
+    {
+      "path": "/private/tmp/aux-standard-native-source-20261023-a4/AuxRuntimePublicationNapi.inc",
+      "sha256": "824b83c6da46f394d78fab110aa405f2492c0f2689d828d97d382047b5f61335"
+    },
+    {
+      "path": "/private/tmp/aux-standard-native-source-20261023-a4/AuxStandardCleanSettlement.inc",
+      "sha256": "57e895d7bf8306ec625956b53a151405ef33d8bda9407c51a0c8ee94d21a4f25"
+    },
+    {
+      "path": "/private/tmp/aux-standard-native-source-20261023-a4/AuxTaskDescendantObserver.cc",
+      "sha256": "cb10bb7e05caed1baa661e67430d33f1aa9532fd82b44804166d619c4043d56d"
+    },
+    {
+      "path": "/private/tmp/aux-standard-native-source-20261023-a4/AuxTaskDescendantObserver.h",
+      "sha256": "60a1a872cad6f791f61061aa7a15d2d8ac3bb7fb8144b5f25c5fabcb3fd44969"
+    },
+    {
+      "path": "/private/tmp/aux-standard-native-source-20261023-a4/runtime-bootstrap.cjs",
+      "sha256": "da30c2b0445af81b3d3ff53fc82f7c93f589e34c3a7756e9f92ef38fab34c5e4"
+    },
+    {
+      "path": "/private/tmp/aux-standard-native-source-20261023-a4/runtime-seed.cjs",
+      "sha256": "4b202aa8a73843502fa19dd22df2c326c5bf1890fa955b9e3b815028f58d8e2f"
+    }
+  ],
+  "compiled": false,
+  "activated": false,
+  "productExecuted": false,
+  "runtimeAuthorityGranted": false,
+  "descendantSuccessorPending": false
+}

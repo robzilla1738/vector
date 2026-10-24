@@ -25,10 +25,10 @@ edit(n,'  bool environment_detached = false;','  bool environment_detached = fal
 edit(n,'  uint64_t next_generation = 1;','  uint64_t next_generation = 1;\n  bool native_shutdown_closed = false;\n  std::vector<std::shared_ptr<HostCleanObservation>> hosts;')
 edit(n,'  if (Registry().next_generation == std::numeric_limits<uint64_t>::max()) return 0;','  if (Registry().native_shutdown_closed || Registry().next_generation == std::numeric_limits<uint64_t>::max()) return 0;')
 edit(n,'#include "AuxRuntimePublicationNapi.inc"','#include "AuxRuntimePublicationNapi.inc"\n#include "AuxStandardCleanSettlement.inc"')
-edit(n,'// These are native producer entry points only.','''extern "C" int32_t AuxDevelopmentOwnerCleanSettlementStatus(void* owner) noexcept {
+edit(n,'// These are native producer entry points only.','''extern "C" __attribute__((visibility("hidden"))) int32_t AuxDevelopmentOwnerCleanSettlementStatus(void* owner) noexcept {
   return ObserveOwnerCleanSettlement(owner);
 }
-extern "C" void AuxObserveDevelopmentMainLoopReturned() noexcept {
+extern "C" __attribute__((visibility("hidden"))) void AuxObserveDevelopmentMainLoopReturned() noexcept {
   ObserveMainLoopReturned();
 }
 

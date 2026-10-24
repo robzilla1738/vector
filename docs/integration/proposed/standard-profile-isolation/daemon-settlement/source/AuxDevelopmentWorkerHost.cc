@@ -444,10 +444,10 @@ class Initialization {
 
 }
 
-extern "C" int32_t AuxDevelopmentOwnerCleanSettlementStatus(void* owner) noexcept {
+extern "C" __attribute__((visibility("hidden"))) int32_t AuxDevelopmentOwnerCleanSettlementStatus(void* owner) noexcept {
   return ObserveOwnerCleanSettlement(owner);
 }
-extern "C" void AuxObserveDevelopmentMainLoopReturned() noexcept {
+extern "C" __attribute__((visibility("hidden"))) void AuxObserveDevelopmentMainLoopReturned() noexcept {
   ObserveMainLoopReturned();
 }
 
