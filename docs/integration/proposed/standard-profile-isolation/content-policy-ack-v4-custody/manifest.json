@@ -1,0 +1,17 @@
+{
+  "format": "aux.content-policy-ack.custody-constructor.v1",
+  "files": [
+    {
+      "path": "content/browser/aux_child_lifetime.h",
+      "baselinePath": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/browser-custody-content-a5/source/content/browser/aux_child_lifetime.h",
+      "beforeSha256": "cca5406aea1f9846c4613710213a141d41643335accbcbc85d01f995990af29e",
+      "afterSha256": "ccb7fe34dd5f2ef584d2bc616a39026bfa7f591931a4d73fc58f89626fa8af64"
+    }
+  ],
+  "countedAdaptations": 1,
+  "replacementsSha256": "a1d50b37cb225ea914847b501f788f9f3bcfceaa1d0d660a4f184554385b3399",
+  "patchSha256": "c61b7a3580cf9bfa6683f09de3427166e61ff4c0c151674a55d71fa3ec665cb2",
+  "requires": "content-policy-ack-v4 source/content/browser/aux_child_process_drain.cc for matching definition",
+  "compiled": false,
+  "runtimeAccepted": false
+}

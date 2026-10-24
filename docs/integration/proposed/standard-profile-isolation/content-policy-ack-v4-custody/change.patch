@@ -1,0 +1,11 @@
+--- a/content/browser/aux_child_lifetime.h
++++ b/content/browser/aux_child_lifetime.h
+@@ -138,7 +138,7 @@
+   }
+   std::mutex mutex;
+  private:
+-  AuxChildLifetime() = default;
++  AuxChildLifetime();
+   static pid_t RegistryOwner() { static const pid_t owner = getpid(); return owner; }
+   static bool& Closed() { static bool closed = false; return closed; }
+   static bool& AccountingUnknown() { static bool unknown = false; return unknown; }

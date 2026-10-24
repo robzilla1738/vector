@@ -1,0 +1,8 @@
+[
+  {
+    "path": "content/browser/aux_child_lifetime.h",
+    "old": "  AuxChildLifetime() = default;",
+    "new": "  AuxChildLifetime();",
+    "count": 1
+  }
+]
