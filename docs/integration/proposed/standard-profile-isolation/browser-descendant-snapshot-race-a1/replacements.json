@@ -1,0 +1,14 @@
+[
+  {
+    "path": "chrome/browser/extensions/api/messaging/aux_native_messaging_lifetime.h",
+    "old": "      if (entry->uncertain) ++result.uncertain;\n    }\n    return result;\n",
+    "new": "      if (entry->uncertain) ++result.uncertain;\n    }\n    {\n      // A copied unbound entry may bind and be reaped before its entry scan.\n      // Read the sticky cohort evidence AFTER scanning so that release cannot\n      // hide that launch. Keep admission_closed from the original copy: an\n      // open-to-closed transition cannot make an incomplete copy authoritative.\n      std::lock_guard<std::mutex> lock(RegistryMutex());\n      result.accounting_unknown |= AccountingUnknown();\n      result.unobserved_descendant_cohorts = UnobservedDescendantCohorts();\n    }\n    return result;\n",
+    "count": 1
+  },
+  {
+    "path": "content/browser/aux_child_lifetime.h",
+    "old": "      if (entry->uncertain) ++result.uncertain;\n    }\n    return result;\n",
+    "new": "      if (entry->uncertain) ++result.uncertain;\n    }\n    {\n      // A copied unbound entry may bind and be reaped before its entry scan.\n      // Read the sticky cohort evidence AFTER scanning so that release cannot\n      // hide that launch. Keep admission_closed from the original copy: an\n      // open-to-closed transition cannot make an incomplete copy authoritative.\n      std::lock_guard<std::mutex> lock(RegistryMutex());\n      result.accounting_unknown |= AccountingUnknown();\n      result.unobserved_descendant_cohorts = UnobservedDescendantCohorts();\n    }\n    return result;\n",
+    "count": 1
+  }
+]

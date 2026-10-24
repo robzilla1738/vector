@@ -1,0 +1,25 @@
+{
+  "modifiedCount": 2,
+  "addedCount": 0,
+  "countedAdaptations": 2,
+  "files": [
+    {
+      "path": "chrome/browser/extensions/api/messaging/aux_native_messaging_lifetime.h",
+      "beforeSha256": "dc0bff27eabee9b7ba16a28be96905164da6481fb23231d6bb5ef68a283537ea",
+      "afterSha256": "55a77918bbb40ba07a9fcf1b1e4d217b62f92d7e4f9d2bc7e6900205d9f4cb47"
+    },
+    {
+      "path": "content/browser/aux_child_lifetime.h",
+      "beforeSha256": "5c5f5de0075eab2d96d7ca015ed6124e291183c0fbbf640dd428719b038a9a10",
+      "afterSha256": "446f4dac61201c937cae66c4f7515e4aac7bb8cbe0ce14f613cb7661028d2fc6"
+    }
+  ],
+  "patchSha256": "ae70adc6aaeb39d1b56c5672e890d5d924e898a9d37ebbabb2cf6f95a93ca3d4",
+  "verification": {
+    "exactOrderedReplay": "passed",
+    "unifiedPatchReplay": "passed",
+    "whitespaceErrorCheck": "passed",
+    "nativeCompile": "not run by worker",
+    "runtime": "not run"
+  }
+}
