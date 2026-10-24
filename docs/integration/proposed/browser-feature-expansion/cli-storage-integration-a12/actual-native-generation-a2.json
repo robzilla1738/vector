@@ -1,0 +1,13 @@
+{
+  "passed": true,
+  "command": [
+    "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/buildtools/mac/gn",
+    "gen",
+    "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/out/AuxFast"
+  ],
+  "cwd": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src",
+  "exitCode": 0,
+  "sourceCompositionSha256": "5497db9eb4a23ad88ebf1380e743d3c4d42671b594d1b2d99649f4ac6cc9a2c7",
+  "productExecuted": false,
+  "fullBrowserBuilt": false
+}

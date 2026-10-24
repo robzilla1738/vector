@@ -1,0 +1,24 @@
+{
+  "format": "aux.cli-native.gn-compile-fix.v1",
+  "files": [
+    {
+      "path": "chrome/browser/aux/BUILD.gn",
+      "inputSha256": "300940d48c436a8e8580fb65c632dfb1e1018019775e9781e0a084608d57d241",
+      "outputSha256": "618fcddf53fe41cb137ed241cecb208c57e8dcd9d8f0172584863280872b973f",
+      "anchors": [
+        {
+          "find": "    configs += [ \"//build/config/compiler:enable_arc\" ]\n",
+          "replace": "",
+          "count": 1
+        }
+      ]
+    }
+  ],
+  "actualDefaultConfig": {
+    "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/build/config/BUILDCONFIG.gn",
+    "sha256": "074d2a608fb415e0359758c9bbff18930168690f719c854e3769f8e5c40015c2"
+  },
+  "meaning": "ARC is already enabled by actual global Mac compiler defaults; remove duplicate only",
+  "nativeCheckoutChanged": false,
+  "productExecuted": false
+}

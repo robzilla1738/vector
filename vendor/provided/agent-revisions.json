@@ -216,5 +216,13 @@
     "stateIdentityVersion": 2,
     "featureProfile": "desktop-v1",
     "fingerprint": "6509023d4a2e3a912bc8034231663311f457beb3972c55f8e93bdb00d757ee72"
+  },
+  {
+    "revision": 32,
+    "profile": "development",
+    "identityProfile": "aux-v1",
+    "stateIdentityVersion": 2,
+    "featureProfile": "desktop-v1",
+    "fingerprint": "0a782a1a9b142e95449e242995c4cb9c89f792364e9be1db2282a1d03b3ec68c"
   }
 ]

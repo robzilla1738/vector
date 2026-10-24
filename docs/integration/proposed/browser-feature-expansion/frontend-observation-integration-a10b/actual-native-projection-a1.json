@@ -1,0 +1,19 @@
+{
+  "format": "aux.storage-restore.native-projection.actual.v1",
+  "passed": true,
+  "originals": {
+    "extensions/browser/api/storage/storage_frontend.h": "e30f9f583317a457997870eba0006c2867cdb69a8a0088b15fa23ce064ff5af5",
+    "extensions/browser/api/storage/storage_frontend.cc": "658011a9542474b40c706f7e4b2a7be8e05913f4fe30f5106ab986d7f04454ce",
+    "chrome/browser/aux/ui_storage_migration_controller.cc": "ae64750186759e955bd226f6498e830bc135f3a140402d802e50860707203143"
+  },
+  "projected": [
+    "extensions/browser/api/storage/storage_frontend.h",
+    "extensions/browser/api/storage/storage_frontend.cc",
+    "chrome/browser/aux/ui_storage_migration_controller.cc"
+  ],
+  "beforeImages": "/private/tmp/aux-chromium-recovery-snapshot-20261023/native-frontend-observation-integration-20261024-a10b/before",
+  "sourceCompositionSha256": "7331991243f76cb2ab065542aaf340d71a7c641eadb9dee71a8fe8af5556e9f9",
+  "ownerChangesReset": false,
+  "acceptedAppReplaced": false,
+  "productExecuted": false
+}

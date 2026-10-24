@@ -1,0 +1,25 @@
+{
+  "format": "aux.storage-restore.native-projection.actual.v1",
+  "passed": true,
+  "originals": {
+    "chrome/browser/aux/cli/AuxCliWire.h": "e95c86ea68e13b9265ab3a48d983824dba128eab260687ab061387f18f788774",
+    "chrome/browser/aux/cli/AuxCliWire.cc": "94ba5d5e076cc6fbfb7163512c1f8600b326969ef7e83dde236ac483c8a1fb68",
+    "chrome/browser/aux/cli/AuxCliIngress.cc": "d4bbd7529c76cb093195024a85f151bf20dd55c89f6b45f7743145730e1f2bda",
+    "chrome/browser/aux/cli/AuxCliSealedImages.cc": "c0eb4c06aaec80a9636ce1379a07837f544abef9ffc650f64c607e20abffba91",
+    "chrome/browser/aux/cli/packaged-identity-admission.h": "3f56e834ea18353f8ec7ed554336eb94104ff86f84dcfe1952de258520c4f50a",
+    "chrome/browser/aux/cli/AuxNativeCliFrontend.mm": "bb65a82e22c85768cf81184fb083026b2371edfe23d95e78e9133133c54d7fb2"
+  },
+  "projected": [
+    "chrome/browser/aux/cli/AuxCliWire.h",
+    "chrome/browser/aux/cli/AuxCliWire.cc",
+    "chrome/browser/aux/cli/AuxCliIngress.cc",
+    "chrome/browser/aux/cli/AuxCliSealedImages.cc",
+    "chrome/browser/aux/cli/packaged-identity-admission.h",
+    "chrome/browser/aux/cli/AuxNativeCliFrontend.mm"
+  ],
+  "beforeImages": "/private/tmp/aux-chromium-recovery-snapshot-20261023/native-cli-buffer-integration-20261024-a16/before",
+  "sourceCompositionSha256": "c09b08ef1d9ede67f4a4b617fc7b95777dd497651dccb1083580ccf8a2210860",
+  "ownerChangesReset": false,
+  "acceptedAppReplaced": false,
+  "productExecuted": false
+}

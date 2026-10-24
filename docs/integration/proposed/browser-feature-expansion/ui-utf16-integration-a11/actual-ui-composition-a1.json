@@ -1,0 +1,75 @@
+{
+  "format": "aux.ui-controller-integration.composition.actual.v1",
+  "passed": true,
+  "files": [
+    {
+      "relative": "assets/draft-storage-ixLojjZ5.js",
+      "beforeSha256": "7f26ff1bf4b89834ca5d70018a09a782f31be4b8379b10184c3b38b1e22c0030",
+      "afterSha256": "9b62901b3069e75a07d86b3dd353cd529ddc00beff7b5d18938c86493b854207",
+      "syntaxPassed": true,
+      "originalClassNamesExact": true
+    },
+    {
+      "relative": "assets/create-editor-B-Br5Wz9.js",
+      "beforeSha256": "2648d8c6683527af3f150b3ab00be60c5a0c76f47eaf7a16f3e448a2e89a06a9",
+      "afterSha256": "2648d8c6683527af3f150b3ab00be60c5a0c76f47eaf7a16f3e448a2e89a06a9",
+      "syntaxPassed": true,
+      "originalClassNamesExact": true
+    },
+    {
+      "relative": "assets/file-attachments-D5m1O8aA.js",
+      "beforeSha256": "57ccf50a480416d980bd1963eae88146a6e19a5fbafcd7a38ca17957e32ae62a",
+      "afterSha256": "57ccf50a480416d980bd1963eae88146a6e19a5fbafcd7a38ca17957e32ae62a",
+      "syntaxPassed": true,
+      "originalClassNamesExact": true
+    },
+    {
+      "relative": "assets/permission-approval-D-GTf91U.js",
+      "beforeSha256": "08afcf585bf6707377424fa07557c2d335d08898adae2576b4340bddf2a5d03f",
+      "afterSha256": "08afcf585bf6707377424fa07557c2d335d08898adae2576b4340bddf2a5d03f",
+      "syntaxPassed": true,
+      "originalClassNamesExact": true
+    },
+    {
+      "relative": "assets/newtab-editor-u_GbForB.js",
+      "beforeSha256": "10575e00999d606490b41e21ccf954d47625bb9c724ef8abd7037a75c04babd7",
+      "afterSha256": "10575e00999d606490b41e21ccf954d47625bb9c724ef8abd7037a75c04babd7",
+      "syntaxPassed": true,
+      "originalClassNamesExact": true
+    },
+    {
+      "relative": "assets/minipopup-LkDLFvnq.js",
+      "beforeSha256": "3071da2f307abd83fdaedd2ffc0d2fa77dcb6aab3f5c8a06d2bf0c9f9cc89eaf",
+      "afterSha256": "3071da2f307abd83fdaedd2ffc0d2fa77dcb6aab3f5c8a06d2bf0c9f9cc89eaf",
+      "syntaxPassed": true,
+      "originalClassNamesExact": true
+    },
+    {
+      "relative": "assets/session-composer-Dc0LRfZA.js",
+      "beforeSha256": "7d9fd830a06e4bc846a7d81f849486a16013a36411c8d33a309ddc6a6d7f229d",
+      "afterSha256": "7d9fd830a06e4bc846a7d81f849486a16013a36411c8d33a309ddc6a6d7f229d",
+      "syntaxPassed": true,
+      "originalClassNamesExact": true
+    },
+    {
+      "relative": "assets/provider-Cw0zhujt.js",
+      "beforeSha256": "8aee4a9cc8229397e4067fb9a9a4772ef4bdfddc03d1db3f2c84836a1b6fe724",
+      "afterSha256": "8aee4a9cc8229397e4067fb9a9a4772ef4bdfddc03d1db3f2c84836a1b6fe724",
+      "syntaxPassed": true,
+      "originalClassNamesExact": true
+    },
+    {
+      "relative": "background.js",
+      "afterSha256": "02b2288a0c1691a1e55d4f16c1db1147385da5b7030740b62c37432a191591cc",
+      "syntaxPassed": true
+    }
+  ],
+  "fullFeatureComposition": true,
+  "actualCompletePreflightCandidate": false,
+  "countedSourceProposalCandidate": true,
+  "stillRequiresFullStageEquality": true,
+  "workerProtocolSha256": "245034481f5bd0c135fd6d0552b293c7345ebb4d46ff608f1a38a30d9f0400ec",
+  "originalUiClassesPreserved": true,
+  "productExecuted": false,
+  "runtimeAcceptance": false
+}

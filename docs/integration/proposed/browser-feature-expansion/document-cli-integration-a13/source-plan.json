@@ -1,0 +1,227 @@
+{
+  "format": "aux.document-cli.integration-source.v1",
+  "files": [
+    {
+      "path": "chrome/browser/aux/ui_storage_migration_controller.cc",
+      "inputSha256": "02c3bbab4b8b71568945a3f0b55ec0794adced2ca8af47fbef1df9408662588e",
+      "outputSha256": "ae64750186759e955bd226f6498e830bc135f3a140402d802e50860707203143",
+      "anchors": [
+        {
+          "find": "  extensions::ExtensionApiFrameIdMap::DocumentId document_id;",
+          "replace": "  extensions::ExtensionApiFrameIdMap::DocumentId document_id;\n  std::optional<blink::LocalFrameToken> native_frame_token;\n  std::optional<blink::DocumentToken> native_document_token;",
+          "count": 1
+        },
+        {
+          "find": "      extensions::ExtensionApiFrameIdMap::GetDocumentId(actual) == frame.document_id &&\n      actual->GetLastCommittedOrigin() == extension_->origin();",
+          "replace": "      extensions::ExtensionApiFrameIdMap::GetDocumentId(actual) == frame.document_id &&\n      frame.native_frame_token && actual->GetFrameToken() == *frame.native_frame_token &&\n      frame.native_document_token && actual->GetDocumentTokenForAuxUiMigration() == frame.native_document_token &&\n      actual->GetLastCommittedOrigin() == extension_->origin();",
+          "count": 1
+        },
+        {
+          "find": "    auto retained = std::make_unique<Frame>();",
+          "replace": "    const auto native_document = frame->GetDocumentTokenForAuxUiMigration();\n    if (!native_document) return false;\n    auto retained = std::make_unique<Frame>();\n    retained->native_frame_token = frame->GetFrameToken();\n    retained->native_document_token = native_document;",
+          "count": 1
+        },
+        {
+          "find": "    page.Set(\"nativeDocumentId\", frame->document_id.ToString());",
+          "replace": "    page.Set(\"nativeDocumentId\", frame->document_id.ToString());\n    page.Set(\"nativeLocalFrameToken\", frame->native_frame_token->ToString());\n    page.Set(\"nativeBlinkDocumentToken\", frame->native_document_token->ToString());",
+          "count": 1
+        },
+        {
+          "find": "bool DraftData(const base::DictValue& value, std::string_view origin) {\n  if (value.size() != 5 || !Text(value, \"format\", \"aux.ui-draft-capture.v1\") ||\n      !Text(value, \"origin\", origin)) return false;\n  const auto* session = value.FindDict(\"sessionEntries\"), *local = value.FindDict(\"localEntries\");\n  const auto* mutations = value.FindList(\"mutations\");\n  if (!session || !local || !mutations || session->size() + local->size() + mutations->size() > 4096) return false;\n  for (const auto* entries : {session, local}) for (const auto [key, raw] : *entries)\n    if (!UiDraftKey(key, entries == local) || !raw.is_string() || raw.GetString().size() > 20 * 1024 * 1024) return false;\n  for (const auto& raw : *mutations) {\n    const auto* mutation = raw.GetIfDict();\n    const auto* key = mutation ? mutation->FindString(\"key\") : nullptr;\n    if (!key || (!Text(*mutation, \"storage\", \"local-storage\") && !Text(*mutation, \"storage\", \"session-storage\")) ||\n        !UiDraftKey(*key, Text(*mutation, \"storage\", \"local-storage\"))) return false;\n    if (Text(*mutation, \"operation\", \"remove\")) { if (mutation->size() != 3) return false; }\n    else if (Text(*mutation, \"operation\", \"set\")) {\n      const auto* data = mutation->FindString(\"value\");\n      if (mutation->size() != 4 || !data || data->size() > 20 * 1024 * 1024) return false;\n    } else return false;\n  }\n  return true;\n}\n",
+          "replace": "// These are source DATA. Actual Profile/document/cache/lease ownership is joined\n// independently; no reported identity or writer Boolean grants native authority.\nstruct WireMutation {\n  bool local = false, remove = false;\n  std::u16string key, value;\n};\nstruct WireStores {\n  std::map<std::u16string, std::u16string> session, local;\n  std::vector<WireMutation> mutations;\n};\nbool ReadWireUnits(const base::Value* value, std::u16string& output, size_t& total) {\n  const auto* units = value ? value->GetIfList() : nullptr;\n  if (!units || units->size() > 4194304 || total > 4194304 - units->size()) return false;\n  output.clear(); output.reserve(units->size()); total += units->size();\n  for (const auto& unit : *units) {\n    const auto number = unit.GetIfInt();\n    if (!number || *number < 0 || *number > 65535) return false;\n    output.push_back(static_cast<char16_t>(*number));\n  }\n  return true;\n}\nbool WireKey(const std::u16string& units, bool local) {\n  // Draft identities already have finite ASCII native schemas. Unknown Unicode\n  // identities refuse; values remain exact UTF16, including lone surrogates.\n  if (units.size() > 8192) return false;\n  std::string key; key.reserve(units.size());\n  for (const auto unit : units) {\n    if (unit > 127) return false;\n    key.push_back(static_cast<char>(unit));\n  }\n  return UiDraftKey(key, local);\n}\nbool ReadWireEntries(const base::Value* value, bool local,\n                     std::map<std::u16string, std::u16string>& output,\n                     size_t& count, size_t& total) {\n  const auto* entries = value ? value->GetIfList() : nullptr;\n  if (!entries || entries->size() > 4096 || count > 4096 - entries->size()) return false;\n  count += entries->size();\n  for (const auto& raw : *entries) {\n    const auto* entry = raw.GetIfDict(); std::u16string key, data;\n    if (!entry || entry->size() != 2 || !ReadWireUnits(entry->Find(\"key\"), key, total) ||\n        !WireKey(key, local) || !ReadWireUnits(entry->Find(\"value\"), data, total) ||\n        !output.emplace(std::move(key), std::move(data)).second) return false;\n  }\n  return true;\n}\nstd::optional<WireStores> ReadWireStores(const base::DictValue& value,\n                                       std::string_view actual_origin) {\n  if (value.size() != 5 || !Text(value, \"format\", \"aux.ui-draft-store-units.v1\") ||\n      !Text(value, \"origin\", actual_origin)) return std::nullopt;\n  WireStores stores; size_t count = 0, total = 0;\n  if (!ReadWireEntries(value.Find(\"sessionEntries\"), false, stores.session, count, total) ||\n      !ReadWireEntries(value.Find(\"localEntries\"), true, stores.local, count, total)) return std::nullopt;\n  const auto* changes = value.FindList(\"mutations\");\n  if (!changes || changes->size() > 4096 || count > 4096 - changes->size()) return std::nullopt;\n  std::set<std::pair<bool, std::u16string>> changed;\n  for (const auto& raw : *changes) {\n    const auto* change = raw.GetIfDict();\n    if (!change || (!Text(*change, \"storage\", \"local-storage\") && !Text(*change, \"storage\", \"session-storage\")) ||\n        (!Text(*change, \"operation\", \"set\") && !Text(*change, \"operation\", \"remove\"))) return std::nullopt;\n    WireMutation mutation;\n    mutation.local = Text(*change, \"storage\", \"local-storage\");\n    mutation.remove = Text(*change, \"operation\", \"remove\");\n    if (change->size() != (mutation.remove ? 3u : 4u) ||\n        !ReadWireUnits(change->Find(\"key\"), mutation.key, total) || !WireKey(mutation.key, mutation.local) ||\n        (!mutation.remove && !ReadWireUnits(change->Find(\"value\"), mutation.value, total)) ||\n        !changed.emplace(mutation.local, mutation.key).second) return std::nullopt;\n    stores.mutations.push_back(std::move(mutation));\n  }\n  return stores;\n}\n",
+          "count": 1
+        },
+        {
+          "find": "  double revision = 0;\n  int frame_id",
+          "replace": "  double revision = 0;\n  std::optional<WireStores> source_stores;\n  int frame_id",
+          "count": 1
+        },
+        {
+          "find": "  Invoke(index, \"auxPrepareDraftMigrationCapture\", base::ListValue().Append(frames_[index]->request_id),",
+          "replace": "  Invoke(index, \"auxPrepareDraftMigrationCapture\", base::ListValue().Append(frames_[index]->request_id).Append(\"utf16-v1\"),",
+          "count": 1
+        },
+        {
+          "find": "  const auto* capture = value.FindDict(\"capture\");",
+          "replace": "  const auto* raw_capture = value.FindString(\"captureJson\");\n  const auto* units = value.FindDict(\"storeUnits\");\n  auto stores = units ? ReadWireStores(*units, extension_->origin().Serialize()) : std::nullopt;",
+          "count": 1
+        },
+        {
+          "find": "      !owners || *owners <= 0 || *owners > 256 || value.FindBool(\"sealed\") != false || !capture ||\n      !DraftData(*capture, extension_->origin().Serialize())) return false;",
+          "replace": "      !owners || *owners <= 0 || *owners > 256 || value.FindBool(\"sealed\") != false ||\n      !Text(value, \"wireFormat\", \"utf16-v1\") || !raw_capture || raw_capture->empty() ||\n      raw_capture->size() > 32 * 1024 * 1024 || !stores) return false;",
+          "count": 1
+        },
+        {
+          "find": "  frame.lease_id = *lease; frame.revision = *revision; frame.capture_json = frame.result_json; frame.prepared = true;",
+          "replace": "  // captureJson is retained opaque. Never reparse its raw strings as a lossy\n  // substitute for the exact numeric units used in native semantic pairing.\n  frame.lease_id = *lease; frame.revision = *revision; frame.capture_json = frame.result_json;\n  frame.source_stores = std::move(stores); frame.prepared = true;",
+          "count": 1
+        },
+        {
+          "find": "\"auxReadDraftMigrationCapture\", base::ListValue(),",
+          "replace": "\"auxReadDraftMigrationCapture\", base::ListValue().Append(\"utf16-v1\"),",
+          "count": 2
+        },
+        {
+          "find": "#include \"content/public/browser/browser_thread.h\"",
+          "replace": "#include \"content/public/browser/browser_thread.h\"\n#include \"content/public/browser/aux_ui_migration_document.h\"",
+          "count": 1
+        },
+        {
+          "find": "actual->GetDocumentTokenForAuxUiMigration()",
+          "replace": "content::GetDocumentTokenForAuxUiMigration(*actual)",
+          "count": 1
+        },
+        {
+          "find": "frame->GetDocumentTokenForAuxUiMigration()",
+          "replace": "content::GetDocumentTokenForAuxUiMigration(*frame)",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "content/public/browser/aux_ui_migration_document.h",
+      "inputSha256": null,
+      "outputSha256": "7731641394116b8a6417163f35b1dfbb25b272c63482b4dcd445bfceee629589",
+      "anchors": []
+    },
+    {
+      "path": "content/browser/renderer_host/aux_ui_migration_document.cc",
+      "inputSha256": null,
+      "outputSha256": "bcf1ed9e33b71bcd9e6ca4fa33d622996f2d66cc28aa7ec962ef6721d8eb0b39",
+      "anchors": []
+    },
+    {
+      "path": "base/process/mac/aux_browser_descendant_cli_membership.h",
+      "inputSha256": "459c840be2e6316adc8bb5a955a5dd897e678a775da265f510f7eab568f2cdb0",
+      "outputSha256": "21bf9c251295aaea620bf0954c0cc732e0cdbc735f83685d83683e61ee06d87c",
+      "anchors": [
+        {
+          "name": "Actual audit_token_t declaration from the native Mach SDK",
+          "find": "#include <bsm/audit.h>",
+          "replace": "#include <bsm/audit.h>\n#include <mach/mach.h>",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/aux/cli/AuxCliIngress.cc",
+      "inputSha256": "32c4ebdebec5e08df2b4b365f5c0c67276eb1fba953506526a4480ba86bc314c",
+      "outputSha256": "d4bbd7529c76cb093195024a85f151bf20dd55c89f6b45f7743145730e1f2bda",
+      "anchors": [
+        {
+          "name": "Preserve actual checked dynamic registration with one-call diagnostic scope",
+          "find": " if(!state->images->RevalidateSelf()||bootstrap_register(bootstrap_port,const_cast<char*>(state->images->service().c_str()),send.value)!=KERN_SUCCESS||!state->images->RevalidateSelf())return{};",
+          "replace": " if(!state->images->RevalidateSelf())return{};\n // A dynamic private service has no installed launchd declaration. check_in\n // would require unrelated installation and is not an equivalent replacement.\n // Keep this one real checked registration; do not suppress other diagnostics.\n#pragma clang diagnostic push\n#pragma clang diagnostic ignored \"-Wdeprecated-declarations\"\n const auto registered=bootstrap_register(bootstrap_port,\n     const_cast<char*>(state->images->service().c_str()),send.value);\n#pragma clang diagnostic pop\n if(registered!=KERN_SUCCESS||!state->images->RevalidateSelf())return{};",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/aux/cli/AuxCliSealedImages.cc",
+      "inputSha256": "fb28fb6fd341165d229670befb2bb5d3ff108054c5e7e286362ca7c7ba12a959",
+      "outputSha256": "c0eb4c06aaec80a9636ce1379a07837f544abef9ffc650f64c607e20abffba91",
+      "anchors": [
+        {
+          "name": "Descriptor cleanup owns its vector without a native reference field",
+          "find": "  std::vector<int> held;struct Cleanup{std::vector<int>& values;~Cleanup(){for(auto it=values.rbegin();it!=values.rend();++it)close(*it);}}cleanup{held};",
+          "replace": "  struct Cleanup{std::vector<int> values;~Cleanup(){for(auto it=values.rbegin();it!=values.rend();++it)close(*it);}}cleanup;\n  auto& held=cleanup.values;",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/aux/cli/AuxCliOpenCommand.mm",
+      "inputSha256": "0117c63f701e11c8c5f30e3d6ce5fab164e6836256f18dcee2a489481d0ee5bf",
+      "outputSha256": "877d188359dea891638ca135144e464ac83e18017fc3b79bac445a92b2bf0a65",
+      "anchors": [
+        {
+          "name": "Explicit process-lifetime holder dependency",
+          "find": "#include \"base/memory/weak_ptr.h\"",
+          "replace": "#include \"base/memory/weak_ptr.h\"\n#include \"base/no_destructor.h\"",
+          "count": 1
+        },
+        {
+          "name": "No exit-time service destruction or implicit thread join",
+          "find": "namespace {std::shared_ptr<NativeOpenService> service;bool start_attempted=false;}",
+          "replace": "namespace {\nstd::shared_ptr<NativeOpenService>& RetainedService(){\n  // Actual Close/join and retained counters remain explicit. Static teardown\n  // must not destroy a service/thread or manufacture a settled observation.\n  static base::NoDestructor<std::shared_ptr<NativeOpenService>> service;\n  return *service;\n}\nbool start_attempted=false;\n}",
+          "count": 1
+        },
+        {
+          "name": "Actual startup uses retained process-lifetime service slot",
+          "find": "  start_attempted=true;Counters().started.store(true);service=std::make_shared<NativeOpenService>();",
+          "replace": "  auto& service=RetainedService();\n  start_attempted=true;Counters().started.store(true);service=std::make_shared<NativeOpenService>();",
+          "count": 1
+        },
+        {
+          "name": "Actual close still joins the retained receiver explicitly",
+          "find": "  admission_closed=true;Counters().closed.store(true);if(service)service->Close();",
+          "replace": "  auto& service=RetainedService();\n  admission_closed=true;Counters().closed.store(true);if(service)service->Close();",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "content/public/browser/BUILD.gn",
+      "inputSha256": "de1159e9ddd5eef7bba7b6e13d8b906ef256d1197a4d7e01996c68fda4a34ba3",
+      "outputSha256": "d8ae6e0f949736dafa3ed5944fcb058610b0b75535b4f918208b468fc05e40bb",
+      "anchors": [
+        {
+          "find": "    \"browser_accessibility_state.h\",",
+          "replace": "    \"aux_ui_migration_document.h\",\n    \"browser_accessibility_state.h\",",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "content/browser/BUILD.gn",
+      "inputSha256": "dd7bb4fda0507f7553aa07c1befdd6f391d0a7a448a6a50a5c42f0a0fd9d6622",
+      "outputSha256": "6a0ea9238ae0a4d0471017e92247499025f0ca03651098411867b85bc8d47373",
+      "anchors": [
+        {
+          "find": "    \"renderer_host/render_frame_host_impl.cc\",",
+          "replace": "    \"renderer_host/aux_ui_migration_document.cc\",\n    \"renderer_host/render_frame_host_impl.cc\",",
+          "count": 1
+        }
+      ]
+    }
+  ],
+  "manifests": [
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/native-document-token-join-a11/source-plan.json",
+      "sha256": "42d819412bd2da8b4f8327c0d6a8bfd6fe68eab04831aba2ef3b0587e904aa78"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/ui-native-wire-controller-a12/source-plan.json",
+      "sha256": "becdf28157fea2528bc8f0c73690ac3a8e11bf06dc5262324a6b59d8351cab9c"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/native-document-token-bridge-a11b/source-plan.json",
+      "sha256": "39128f18c93efae4c44580a21f49ceb01908f5b27126def93e55d22c75184e24"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/cli-native-owner-compile-fix-a1/source-plan.json",
+      "sha256": "9103b1b0b3c24ee11a5639c13d9cc60aad0658c96c3d8a695974465355077320"
+    }
+  ],
+  "unchangedNativeOwners": [
+    {
+      "path": "content/public/browser/render_frame_host.h",
+      "requiredOriginalSha256": "83f5f6af1916636407cebec62ab76b61d7f68d2468e26c64311125ecef628433",
+      "doNotProjectA11VirtualAccessor": true
+    },
+    {
+      "path": "content/browser/renderer_host/render_frame_host_impl.h",
+      "requiredOriginalSha256": "250a05273c856d1fc93ea8cc890fdb121651afee022924c0f2cf99f1d9018419",
+      "doNotProjectA11VirtualAccessor": true
+    },
+    {
+      "path": "content/browser/renderer_host/render_frame_host_impl.cc",
+      "requiredOriginalSha256": "3cbf82892a1a7573dd35a3c04b8ab7366b0f88ee268d7b4ef7c95faa1c7f04e2",
+      "doNotProjectA11VirtualAccessor": true
+    }
+  ],
+  "nativeCheckoutChanged": false,
+  "newVirtualsIntroduced": false,
+  "productExecuted": false,
+  "runtimeAcceptance": false
+}
