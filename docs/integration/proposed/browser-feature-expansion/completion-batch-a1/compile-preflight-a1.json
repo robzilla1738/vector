@@ -1,0 +1,8 @@
+{
+  "passed": false,
+  "stage": "target discovery",
+  "nativeObjectsCompiled": 0,
+  "reason": "The Ninja compile-line parser expected five tokens instead of four. Correct the parser; source bytes are unchanged.",
+  "nativeCheckoutChanged": false,
+  "productExecuted": false
+}

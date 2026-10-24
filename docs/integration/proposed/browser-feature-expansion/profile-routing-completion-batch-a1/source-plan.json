@@ -1,0 +1,75 @@
+{
+  "format": "aux.profile-routing.completion.source.v1",
+  "nativeRoot": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src",
+  "files": [
+    {
+      "path": "chrome/browser/aux/routing/routing_service.cc",
+      "inputSha256": "2f99bbe4ac57aceda559c8c644e2d3be0733329af002205dd752e1d33e28030b",
+      "outputSha256": "54517576199648eaccde1216bda347fd9f9f304217508841dc6c28aadf33a9ca",
+      "output": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/profile-routing-completion-batch-a1/source/chrome/browser/aux/routing/routing_service.cc",
+      "anchors": [
+        {
+          "find": "#include \"base/strings/utf_string_conversions.h\"",
+          "replace": "#include \"base/strings/utf_string_conversions.h\"\n#include \"base/strings/string_split.h\"",
+          "count": 1
+        },
+        {
+          "find": "#include \"content/public/browser/browser_thread.h\"",
+          "replace": "#include \"content/public/browser/browser_thread.h\"\n#include \"content/public/browser/web_contents.h\"",
+          "count": 1
+        },
+        {
+          "find": "#include \"chrome/browser/ui/views/frame/aux_organization_window_controller.h\"",
+          "replace": "#include \"chrome/browser/ui/views/frame/aux_organization_window_controller.h\"\n#include \"chrome/browser/ui/tabs/tab_strip_model.h\"",
+          "count": 1
+        },
+        {
+          "find": "bool BypassAutomaticRouting(const GURL& url) {",
+          "replace": "bool AuthenticationParameter(std::string_view key) {\n  return key.find('%') != std::string_view::npos || key == \"code\" ||\n      key == \"state\" || key == \"access_token\" || key == \"id_token\" ||\n      key == \"oauth_token\" || key == \"oauth_verifier\";\n}\nbool BypassAutomaticRouting(const GURL& url) {",
+          "count": 1
+        },
+        {
+          "find": "    if (key.find('%') != std::string::npos) return true;\n    if (key == \"code\" || key == \"state\" || key == \"access_token\" ||\n        key == \"id_token\" || key == \"oauth_token\" || key == \"oauth_verifier\")\n      return true;",
+          "replace": "    if (AuthenticationParameter(key)) return true;",
+          "count": 1
+        },
+        {
+          "find": "  const auto fragment = base::ToLowerASCII(url.ref());\n  return fragment.find(\"access_token=\") != std::string::npos ||\n         fragment.find(\"id_token=\") != std::string::npos;",
+          "replace": "  // OAuth callbacks can carry code/state in a fragment, including a\n  // hash-router query. Keep them with their original profile just like query\n  // callbacks. Inspect parameter names only; never log or decode token values.\n  const auto fragment = base::ToLowerASCII(url.ref());\n  std::string_view parameters(fragment);\n  if (const auto query = parameters.find('?'); query != std::string_view::npos)\n    parameters.remove_prefix(query + 1);\n  for (const auto field : base::SplitStringPiece(parameters, \"&\", base::KEEP_WHITESPACE,\n                                                 base::SPLIT_WANT_ALL))\n    if (AuthenticationParameter(field.substr(0, field.find('=')))) return true;\n  return false;",
+          "count": 1
+        },
+        {
+          "find": "    NavigateParams params(browser, intent_.url, ui::PAGE_TRANSITION_LINK);",
+          "replace": "    auto retained_browser = browser->GetWeakPtr();\n    NavigateParams params(browser, intent_.url, ui::PAGE_TRANSITION_LINK);",
+          "count": 1
+        },
+        {
+          "find": "    if (!params.navigated_or_inserted_contents) { Fail(\"navigation-refused\"); return; }",
+          "replace": "    if (!params.navigated_or_inserted_contents) { Fail(\"navigation-refused\"); return; }\n    // Navigate may synchronously reenter profile/window observers. The issued\n    // navigation is never retried or rolled back, but cannot publish a stale\n    // success or fall through into another profile after losing its binding.\n    if (!Current() || !target_ || !Admitted(target_.get()) || !retained_browser ||\n        retained_browser->GetProfile() != target_.get() ||\n        aux::GetProfileCookieBindingEpoch(target_.get()) != target_epoch_) {\n      Fail(\"routing-changed-after-navigation\"); return;\n    }\n    auto* strip = retained_browser->GetTabStripModel();\n    const int inserted = strip->GetIndexOfWebContents(params.navigated_or_inserted_contents);\n    if (inserted == TabStripModel::kNoTab ||\n        strip->GetWebContentsAt(inserted)->GetBrowserContext() != target_.get()) {\n      Fail(\"routing-changed-after-navigation\"); return;\n    }",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/aux/routing/external_routing_ingress.cc",
+      "inputSha256": "c148e6e86118652e242b9a5e8f4de6abb237036b2f1f7e68b919ea40901976c4",
+      "outputSha256": "1995d054d20ed10f5406b673fdb938b83bb95c288b2cba478080a1ca05b642b2",
+      "output": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/profile-routing-completion-batch-a1/source/chrome/browser/aux/routing/external_routing_ingress.cc",
+      "anchors": [
+        {
+          "find": "    base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(\n        FROM_HERE, base::BindOnce(&ExternalBatch::Next, base::RetainedRef(this)));",
+          "replace": "    if (!base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(\n            FROM_HERE, base::BindOnce(&ExternalBatch::Next, base::RetainedRef(this)))) {\n      // TaskRunner false means this continuation definitely cannot run. Settle\n      // only the unissued remainder; accepted posts keep their normal custody.\n      refused_ += tabs_.size() - index_;\n      index_ = tabs_.size();\n      Finish();\n    }",
+          "count": 1
+        }
+      ]
+    }
+  ],
+  "taskRunnerContract": {
+    "path": "base/task/task_runner.h",
+    "sha256": "9536dcb971b674686d78cf77177d936e0ca81866b7f75241725fb1ad0b02ecef",
+    "line": 63,
+    "claim": "PostTask false means the task definitely will not run"
+  },
+  "productExecuted": false,
+  "nativeCheckoutChanged": false
+}

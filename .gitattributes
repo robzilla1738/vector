@@ -6,5 +6,8 @@ docs/integration/proposed/standard-profile-isolation/ui-storage-durable-drain-a1
 docs/integration/proposed/standard-profile-isolation/ui-extension-native-binding-a1/**/*.patch -whitespace
 docs/integration/proposed/standard-profile-isolation/ui-native-capture-journal-a1/**/*.patch -whitespace
 docs/integration/proposed/standard-profile-isolation/ui-native-capture-transport-a1/**/*.patch -whitespace
+docs/integration/proposed/browser-feature-expansion/organization-completion-batch-a1/**/*.patch -whitespace
+docs/integration/proposed/browser-feature-expansion/productivity-completion-batch-a1/**/*.patch -whitespace
+docs/integration/proposed/browser-feature-expansion/profile-routing-completion-batch-a1/**/*.patch -whitespace
 # Vite output is byte-pinned and can contain whitespace from dependencies.
 chromium/shell-assets/** -diff -whitespace

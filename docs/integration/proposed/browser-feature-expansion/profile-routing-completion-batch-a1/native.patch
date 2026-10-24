@@ -1,0 +1,105 @@
+--- a/chrome/browser/aux/routing/routing_service.cc
++++ b/chrome/browser/aux/routing/routing_service.cc
+@@ -6,6 +6,7 @@
+ #include "base/memory/ref_counted.h"
+ #include "base/memory/weak_ptr.h"
+ #include "base/strings/utf_string_conversions.h"
++#include "base/strings/string_split.h"
+ #include "base/timer/timer.h"
+ #include "base/uuid.h"
+ #include "chrome/browser/aux/AuxBrowserPrivateRoots.h"
+@@ -23,8 +24,10 @@
+ #include "chrome/browser/ui/navigator/browser_navigator.h"
+ #include "chrome/browser/ui/navigator/browser_navigator_params.h"
+ #include "chrome/browser/ui/views/frame/aux_organization_window_controller.h"
++#include "chrome/browser/ui/tabs/tab_strip_model.h"
+ #include "components/prefs/pref_service.h"
+ #include "content/public/browser/browser_thread.h"
++#include "content/public/browser/web_contents.h"
+ #include "net/base/url_util.h"
+ #include "base/strings/string_util.h"
+ #include "ui/base/window_open_disposition.h"
+@@ -93,19 +96,29 @@
+   }
+   return found;
+ }
++bool AuthenticationParameter(std::string_view key) {
++  return key.find('%') != std::string_view::npos || key == "code" ||
++      key == "state" || key == "access_token" || key == "id_token" ||
++      key == "oauth_token" || key == "oauth_verifier";
++}
+ bool BypassAutomaticRouting(const GURL& url) {
+   if (url.host() == "localhost" || url.host() == "[::1]" ||
+       base::StartsWith(url.host(), "127.")) return true;
+   for (net::QueryIterator it(url); !it.IsAtEnd(); it.Advance()) {
+     const auto key = base::ToLowerASCII(it.GetKey());
+-    if (key.find('%') != std::string::npos) return true;
+-    if (key == "code" || key == "state" || key == "access_token" ||
+-        key == "id_token" || key == "oauth_token" || key == "oauth_verifier")
+-      return true;
+-  }
++    if (AuthenticationParameter(key)) return true;
++  }
++  // OAuth callbacks can carry code/state in a fragment, including a
++  // hash-router query. Keep them with their original profile just like query
++  // callbacks. Inspect parameter names only; never log or decode token values.
+   const auto fragment = base::ToLowerASCII(url.ref());
+-  return fragment.find("access_token=") != std::string::npos ||
+-         fragment.find("id_token=") != std::string::npos;
++  std::string_view parameters(fragment);
++  if (const auto query = parameters.find('?'); query != std::string_view::npos)
++    parameters.remove_prefix(query + 1);
++  for (const auto field : base::SplitStringPiece(parameters, "&", base::KEEP_WHITESPACE,
++                                                 base::SPLIT_WANT_ALL))
++    if (AuthenticationParameter(field.substr(0, field.find('=')))) return true;
++  return false;
+ }
+ class OpenRequest : public base::RefCounted<OpenRequest> {
+  public:
+@@ -162,12 +175,27 @@
+           !controller->SelectSpace(space)) { Fail("space-unavailable-or-busy"); return; }
+       resolved_.Set("spaceId", space);
+     }
++    auto retained_browser = browser->GetWeakPtr();
+     NavigateParams params(browser, intent_.url, ui::PAGE_TRANSITION_LINK);
+     params.disposition = WindowOpenDisposition::NEW_FOREGROUND_TAB;
+     // External/CLI input is not a trusted browser-UI navigation or an opener.
+     params.initiator_origin = url::Origin();
+     Navigate(&params);
+     if (!params.navigated_or_inserted_contents) { Fail("navigation-refused"); return; }
++    // Navigate may synchronously reenter profile/window observers. The issued
++    // navigation is never retried or rolled back, but cannot publish a stale
++    // success or fall through into another profile after losing its binding.
++    if (!Current() || !target_ || !Admitted(target_.get()) || !retained_browser ||
++        retained_browser->GetProfile() != target_.get() ||
++        aux::GetProfileCookieBindingEpoch(target_.get()) != target_epoch_) {
++      Fail("routing-changed-after-navigation"); return;
++    }
++    auto* strip = retained_browser->GetTabStripModel();
++    const int inserted = strip->GetIndexOfWebContents(params.navigated_or_inserted_contents);
++    if (inserted == TabStripModel::kNoTab ||
++        strip->GetWebContentsAt(inserted)->GetBrowserContext() != target_.get()) {
++      Fail("routing-changed-after-navigation"); return;
++    }
+     timer_.Stop();
+     resolved_.Set("opened", true);
+     std::move(done_).Run(std::move(resolved_));
+--- a/chrome/browser/aux/routing/external_routing_ingress.cc
++++ b/chrome/browser/aux/routing/external_routing_ingress.cc
+@@ -50,8 +50,14 @@
+   }
+   void Continue() {
+     // Avoid recursion for long unmatched batches and for synchronous refusals.
+-    base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
+-        FROM_HERE, base::BindOnce(&ExternalBatch::Next, base::RetainedRef(this)));
++    if (!base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
++            FROM_HERE, base::BindOnce(&ExternalBatch::Next, base::RetainedRef(this)))) {
++      // TaskRunner false means this continuation definitely cannot run. Settle
++      // only the unissued remainder; accepted posts keep their normal custody.
++      refused_ += tabs_.size() - index_;
++      index_ = tabs_.size();
++      Finish();
++    }
+   }
+   void Next() {
+     if (index_ == tabs_.size()) { Finish(); return; }

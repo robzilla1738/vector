@@ -2,6 +2,8 @@
 
 ## Current substantial parallel batch — 2026-10-24
 
+The three worker slices are now reviewed/integrated on main (`1953479a8`, `1d1ebb908`, `f4d864ff4`); root's routing completion joins them. All13 changed native owners pass one coherent compile with3,080 dependency pins. The complete UI stage passes at revision28 with only two scripts and the revision manifest changed; default styles/assets/fonts/other bytes and identity/permissions remain identical. Worker22 focused provider-free cases were not repeated; root's five-asset integrated composition check passes. See `completion-batch-a1/README.md`. Full browser linking/packaging and actual-app acceptance remain open. The ownership table below records the dispatched batch, not currently running workers; all three delivered and no native job is running at this checkpoint.
+
 The owner explicitly renewed parallel implementation after clarifying that source/build progress is not a delivered/tested feature app. Root at `e34540943` preserves the accepted UI/app and current inactive app. Three clean attached feature worktrees were advanced from their unchanged detached baseline to this commit; no owner changes were reset. Actual worker dispatches are active, with root as the fourth lane. The original feature requirements and stable FX node IDs remain the scope, mobile excluded.
 
 | Active owner | Outcome nodes | Exclusive surfaces and handoff |

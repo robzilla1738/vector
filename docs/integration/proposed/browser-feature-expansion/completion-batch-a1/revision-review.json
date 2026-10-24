@@ -1,0 +1,22 @@
+{
+  "format": "aux.feature-completion.ui-revision-review.v1",
+  "previousLedgerSha256": "ccc2ce402de9d98d2d72c4a674b7de4012eb971eb72620594bfe28f65aa24835",
+  "nextLedgerSha256": "2c48f1733163cf06e935447b4320eae0d845213d613a15b937436efa6b05460d",
+  "preflightSha256": "dbbce83aca5d970cfff263e24ead5a0ba4c433af5dcda8369106cce29747fe92",
+  "compositionSha256": "ec94357c76bc197e50a085e171ee4e278c6d39fb9aa842299b61f6bf801713d7",
+  "review": {
+    "revision": 28,
+    "profile": "development",
+    "identityProfile": "aux-v1",
+    "stateIdentityVersion": 2,
+    "featureProfile": "desktop-v1",
+    "fingerprint": "26f20a7f646055d1748c0f5b998f4bc2e3affff9da3d6cf347a68dae70d40bf9"
+  },
+  "adapters": {
+    "aux-navigation-command-bar.mjs": "6601d1411fb9485b3968e07f4e3d7b532764091357c6779d67cbe329a956028f",
+    "aux-productivity-files.mjs": "fa20b16057bcf5c2eae0c67270be11d8bb09bfad032937935974743befcd75c4",
+    "aux-productivity-capture.mjs": "f35dc3078fa516851f67e9eb66b5eb785c8bea30c383ca6699a1bf7c468ee867"
+  },
+  "candidateDeltaStillRequiresVerification": true,
+  "productExecuted": false
+}

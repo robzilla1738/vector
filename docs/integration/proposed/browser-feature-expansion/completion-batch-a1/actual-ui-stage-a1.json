@@ -1,0 +1,30 @@
+{
+  "format": "aux.feature-completion.ui-stage.actual.v1",
+  "passed": true,
+  "output": "/private/tmp/aux-feature-completion-ui-stage-20261024-a1",
+  "stageManifestSha256": "88b7531d172b52ab8b201d72878814444dbc08028006997bc8b9b6bf05ad5367",
+  "priorManifestSha256": "1dd3d77cb33a61a7da4f5fa0c73a0f605339e068d6450f434945226f37795466",
+  "agentRevision": 28,
+  "deltas": [
+    {
+      "path": "assets/tabsearch-3k_2hgil.js",
+      "beforeSha256": "dfe24ac522874111318c36925800457aaeaf3f4920bab4ea4e8b91187b70a602",
+      "afterSha256": "793240b87bff3b3c6a2ed7c40d4fb9298aa107d39ebeb168b3bbbeec2b13fb45"
+    },
+    {
+      "path": "background.js",
+      "beforeSha256": "5d556c69449db9978ffbd6301491c4a6ec0ef41975a00a9cef1650e9cd9441ec",
+      "afterSha256": "bd97a84088d75a0a58a7f9519336b277f2dd0ec5adbee7e843e85c6ac2f8d032"
+    },
+    {
+      "path": "manifest.json",
+      "beforeSha256": "71a2900f84ccdf34ef6b65ab2e64a24dc89dc41b9762c6dc6f770ee5039b4cb2",
+      "afterSha256": "b4bbb5cdc9142fd7daa7521a5b658ee2a9f238a4c37bf0ebed00ac4438edd33d"
+    }
+  ],
+  "stylesAssetsFontsModesAndOtherBytesPreserved": true,
+  "identitiesAndPermissionsPreserved": true,
+  "productExecuted": false,
+  "appPackaged": false,
+  "runtimeAcceptance": false
+}
