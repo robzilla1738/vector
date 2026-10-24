@@ -1,0 +1,23 @@
+{
+  "format": "aux.ui-transient-revision-review.v1",
+  "previousLedgerSha256": "2dc9a8b74bd49081c39c5844d079b1b9f9cff26ee3fb92be4a031976b26ab3af",
+  "reviews": [
+    {
+      "revision": 20,
+      "profile": "development",
+      "identityProfile": "aux-v1",
+      "stateIdentityVersion": 2,
+      "fingerprint": "b96e46a664c51ff45db5ea002368e05aa3dfcdd3feb228a2cf99dc713fc8e311"
+    },
+    {
+      "revision": 21,
+      "profile": "development",
+      "identityProfile": "aux-v1",
+      "stateIdentityVersion": 2,
+      "featureProfile": "desktop-v1",
+      "fingerprint": "523ce18ac62aef206dccdb0dac062265165b8d4fa2e72ab77d6b51e4d7ebabb1"
+    }
+  ],
+  "uiChanged": false,
+  "productExecuted": false
+}

@@ -36,6 +36,8 @@ export const providedStageInputs = Object.freeze([
   'docs/integration/proposed/standard-profile-isolation/memory-runtime-v2-a1/source/stage-plan.json',
   'docs/integration/proposed/standard-profile-isolation/computer-use-module-identity-a1/source/patch-plan.json',
   'vendor/provided/aux-ui-peer-identity.mjs',
+  'vendor/provided/aux-ui-transient-identity.mjs',
+  'docs/integration/proposed/standard-profile-isolation/ui-transient-identity-a1/inputs.json',
   'docs/integration/proposed/standard-profile-isolation/ui-peer-identity-a1/inputs.json',
   'vendor/provided/provider-funded-launch.mjs',
   'vendor/provided/provider-launch-stage.mjs',

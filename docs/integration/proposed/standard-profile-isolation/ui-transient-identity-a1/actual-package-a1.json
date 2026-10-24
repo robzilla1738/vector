@@ -1,0 +1,19 @@
+{
+  "format": "aux.ui-transient-package.actual.v1",
+  "passed": true,
+  "app": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-standard-profile-ui-20261024/Aux.app",
+  "receipt": {
+    "path": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-standard-profile-ui-20261024/receipt.json",
+    "sha256": "151a2962070aec277dc751763365d582dd7daf83ae02de89e43dcc3888816b58"
+  },
+  "inventorySha256": "2ac280556fb8fe5041d56324ef40c1478bba094c215d2648af5a007c4a9e74f7",
+  "leaves": 11187,
+  "exactReplacements": 11,
+  "nativeSourceCliRuntimeUnchanged": true,
+  "allStylesheetsAndAssetsUnchanged": true,
+  "testable": false,
+  "runtimeAuthorityGranted": false,
+  "appExecuted": false,
+  "productSigned": false,
+  "acceptedAppReplaced": false
+}

@@ -1,0 +1,210 @@
+{
+  "format": "aux.ui-transient-identity.inputs.v1",
+  "sourceVersion": "1.26.1016.1852",
+  "files": [
+    {
+      "path": "background.js",
+      "sourceSha256": "ed19abc67a8a23d7868005ea1db84e2abe3a3f70609ab7b4ab2c1455c92131f7",
+      "predecessorSha256": "e1f41a4ca0705944d92abc4ca54bfa5b516766c4dbf32169825778bb247574a4",
+      "rules": [
+        {
+          "name": "Paired tab preview protocol",
+          "find": "aside.tab-preview.ready",
+          "replace": "aux.tab-preview.ready",
+          "count": 1
+        },
+        {
+          "name": "Paired tab preview protocol",
+          "find": "aside.tab-preview.render-state",
+          "replace": "aux.tab-preview.render-state",
+          "count": 1
+        },
+        {
+          "name": "Paired tab preview protocol",
+          "find": "aside.tab-preview.stream",
+          "replace": "aux.tab-preview.stream",
+          "count": 1
+        },
+        {
+          "name": "Paired tab preview protocol",
+          "find": "aside.tab-preview.visibility",
+          "replace": "aux.tab-preview.visibility",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "assets/channel-platform-icon-Cjhdli_M.js",
+      "sourceSha256": "b0daf4469fcf0d778509a40382a504f3d08e7311a2abd4b819af1d0fedd204c0",
+      "predecessorSha256": "b0daf4469fcf0d778509a40382a504f3d08e7311a2abd4b819af1d0fedd204c0",
+      "rules": [
+        {
+          "name": "Paired tab preview protocol",
+          "find": "aside.tab-preview.ready",
+          "replace": "aux.tab-preview.ready",
+          "count": 1
+        },
+        {
+          "name": "Paired tab preview protocol",
+          "find": "aside.tab-preview.render-state",
+          "replace": "aux.tab-preview.render-state",
+          "count": 1
+        },
+        {
+          "name": "Paired tab preview protocol",
+          "find": "aside.tab-preview.stream",
+          "replace": "aux.tab-preview.stream",
+          "count": 1
+        },
+        {
+          "name": "Paired tab preview protocol",
+          "find": "aside.tab-preview.visibility",
+          "replace": "aux.tab-preview.visibility",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "tab-preview-player.js",
+      "sourceSha256": "8a90b9f1ec4654256228a6e5834c8d0aed0e109db71b8c83764a90b02caa61fe",
+      "predecessorSha256": "20d23588107f320c269f09a19be1e6f2d57d1cb2b8fcb68c06dcab8c4b0f1486",
+      "rules": [
+        {
+          "name": "Paired tab preview protocol",
+          "find": "aside.tab-preview.ready",
+          "replace": "aux.tab-preview.ready",
+          "count": 1
+        },
+        {
+          "name": "Paired tab preview protocol",
+          "find": "aside.tab-preview.render-state",
+          "replace": "aux.tab-preview.render-state",
+          "count": 1
+        },
+        {
+          "name": "Paired tab preview protocol",
+          "find": "aside.tab-preview.stream",
+          "replace": "aux.tab-preview.stream",
+          "count": 1
+        },
+        {
+          "name": "Paired tab preview protocol",
+          "find": "aside.tab-preview.visibility",
+          "replace": "aux.tab-preview.visibility",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "assets/newtab-editor-u_GbForB.js",
+      "sourceSha256": "243f687f9b3dfe34faa764533bb528d4c58b0571a25e945842d3824b747813a5",
+      "predecessorSha256": "9cbae591022e3650500183e8ba3809135394f10d2dc1c3425f06a1be48374638",
+      "rules": [
+        {
+          "name": "Paired NTP readiness publisher",
+          "find": "aside-omnibox-input-ready",
+          "replace": "aux-omnibox-input-ready",
+          "count": 2
+        }
+      ]
+    },
+    {
+      "path": "assets/newtab-CnOLQ0yu.js",
+      "sourceSha256": "e300bb70a84a0630c94f20469822517ca0ca02be902d9bb150492994f719cb19",
+      "predecessorSha256": "585d55943f27a1c09bd384dba357133dff68e99dc581e40cba5bf94803b3247f",
+      "rules": [
+        {
+          "name": "Paired NTP readiness listener",
+          "find": "aside-omnibox-input-ready",
+          "replace": "aux-omnibox-input-ready",
+          "count": 2
+        }
+      ]
+    },
+    {
+      "path": "content/content.js",
+      "sourceSha256": "a94f1914511c11c3ef3cfdf4362fa27e9e3b86856409ded7e3a2ae324f03cfc2",
+      "predecessorSha256": "9f22a49f5e52277af7718ade29c10a341540905f2d7067ce30b635982c3d8f2e",
+      "rules": [
+        {
+          "name": "Transient zoom DOM id",
+          "find": "aside-current-zoom-indicator-root",
+          "replace": "aux-current-zoom-indicator-root",
+          "count": 1
+        },
+        {
+          "name": "Paired zoom custom property",
+          "find": "aside-zoom-indicator-scale",
+          "replace": "aux-zoom-indicator-scale",
+          "count": 2
+        }
+      ]
+    },
+    {
+      "path": "assets/utils-DCBm67_n.js",
+      "sourceSha256": "c95e1cdbfbee45c1354898d72aa8523d956249025847b14da0255c616aafc359",
+      "predecessorSha256": "3435a5412059bdb17fb77b16c6c101cacad5a38a6085c7868119e0f5b1c0482c",
+      "rules": [
+        {
+          "name": "Transient zoom DOM id",
+          "find": "aside-current-zoom-indicator-root",
+          "replace": "aux-current-zoom-indicator-root",
+          "count": 1
+        },
+        {
+          "name": "Paired zoom custom property",
+          "find": "aside-zoom-indicator-scale",
+          "replace": "aux-zoom-indicator-scale",
+          "count": 2
+        }
+      ]
+    },
+    {
+      "path": "assets/session-composer-Dc0LRfZA.js",
+      "sourceSha256": "71e187af0ca2887e13b840cd1e1b4aa2f46693821fb96daa8eafa9f4480bf645",
+      "predecessorSha256": "3547a8e34fe55532ed0140d4ec63ad379422a97a0ed766df45c8323107676446",
+      "rules": [
+        {
+          "name": "Ephemeral supplied notice kind",
+          "find": "aside-sign-in-required",
+          "replace": "aux-sign-in-required",
+          "count": 1
+        },
+        {
+          "name": "Paired ephemeral supplied notice kind",
+          "find": "aside-monthly-limit-warning",
+          "replace": "aux-monthly-limit-warning",
+          "count": 4
+        }
+      ]
+    },
+    {
+      "path": "assets/capture-result-nUfmrYC9.js",
+      "sourceSha256": "cfa3ec9546c3971ad154a59443bd16044465963f4d3b36d9871a456916f438f4",
+      "predecessorSha256": "78e8b797cbb80b96386eae42e36686919fd5994d30e16afd2e62faa3c67a97d8",
+      "rules": [
+        {
+          "name": "Aux screenshot filename",
+          "find": "aside-capture-",
+          "replace": "aux-capture-",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "assets/billing-DuRDVoRU.js",
+      "sourceSha256": "8e96e886ea34d3f5e5cb2a618eea7f6d1d95c5138bc60e4c82f67d24c1a21127",
+      "predecessorSha256": "ed47c622e6ce85722ab54b26a338f3c5ea9633d40a94d5f0e641de8fb8394515",
+      "rules": [
+        {
+          "name": "Aux CSV export filename",
+          "find": "aside-usage-",
+          "replace": "aux-usage-",
+          "count": 1
+        }
+      ]
+    }
+  ],
+  "cssAndGeometryChange": false,
+  "persistedStateMigration": false
+}

@@ -1,0 +1,15 @@
+{
+  "format": "aux.ui-transient.focused.actual.v1",
+  "passed": true,
+  "files": 10,
+  "countedReplacements": 29,
+  "exactPredecessorReplayPassed": true,
+  "changedScriptsParse": true,
+  "compatibilityStateUnchanged": true,
+  "repeatedDerivationRefused": true,
+  "actualPreviewProtocolCohortsMatch": true,
+  "persistedStateReadOrChanged": false,
+  "uiGeometryChanged": false,
+  "productExecuted": false,
+  "runtimeBehaviorEstablished": false
+}
