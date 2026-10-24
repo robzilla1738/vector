@@ -1,0 +1,407 @@
+{
+  "format": "aux.native-dom-transaction-lease.source.v1",
+  "nativeRoot": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src",
+  "files": [
+    {
+      "path": "components/services/storage/dom_storage/async_dom_storage_database.h",
+      "inputSha256": "520e6aecaf29b3aa7214a90c8876bab84074f500077bb266ddeb0e2244f7f28b",
+      "outputSha256": "e06682f9ad850167e7776ce312d5242dd06f07848de91ab92fc3e0fbcb03193b",
+      "output": "/Users/rcourson/.codex/worktrees/aux-features-organization/web/docs/integration/proposed/standard-profile-isolation/native-dom-transaction-lease-a7/source/components/services/storage/dom_storage/async_dom_storage_database.h",
+      "anchors": [
+        {
+          "find": "#include \"base/time/time.h\"",
+          "replace": "#include \"base/time/time.h\"\n#include \"base/unguessable_token.h\"",
+          "count": 1
+        },
+        {
+          "find": "  // Registers or unregisters `source` such that its commits will be batched",
+          "replace": "  // Native, database-owned custody. The initial slice refuses every loaded\n  // committer: changing persisted keys underneath native/renderer caches is\n  // not a successful UI migration. No caller supplies a path, map or target.\n  struct AuxUiMapSnapshot {\n    blink::StorageKey storage_key;\n    std::vector<std::string> session_ids;\n    std::map<DomStorageDatabase::Key, DomStorageDatabase::Value> source;\n    std::map<DomStorageDatabase::Key, DomStorageDatabase::Value> target;\n  };\n  struct AuxUiSnapshot {\n    std::vector<AuxUiMapSnapshot> maps;\n    bool matches_source = false;\n    bool matches_target = false;\n    bool file_data_synced = false;\n    bool ordinary_work_queued = false;\n    bool target_attempted = false;\n  };\n  class AuxUiMigrationLease {\n   public:\n    AuxUiMigrationLease(const AuxUiMigrationLease&) = delete;\n    AuxUiMigrationLease& operator=(const AuxUiMigrationLease&) = delete;\n    ~AuxUiMigrationLease();\n    const base::UnguessableToken& token() const;\n   private:\n    friend class AsyncDomStorageDatabase;\n    struct State;\n    explicit AuxUiMigrationLease(std::shared_ptr<State> state);\n    std::shared_ptr<State> state_;\n  };\n  using AuxUiLeaseCallback = base::OnceCallback<void(\n      StatusOr<std::unique_ptr<AuxUiMigrationLease>>, AuxUiSnapshot)>;\n  using AuxUiReadCallback = base::OnceCallback<void(StatusOr<AuxUiSnapshot>)>;\n  void BeginAuxUiMigrationLease(AuxUiLeaseCallback callback);\n  void ReadAuxUiMigrationLease(AuxUiMigrationLease& lease,\n                               AuxUiReadCallback callback);\n  void CommitAuxUiMigrationLease(AuxUiMigrationLease& lease,\n                                 AuxUiReadCallback callback);\n  void RestoreAuxUiMigrationLease(AuxUiMigrationLease& lease,\n                                  AuxUiReadCallback callback);\n  bool ReleaseAuxUiMigrationLease(AuxUiMigrationLease& lease);\n\n  // All ordinary backend work keeps its original callback and ordering.\n  // Attempted work taints a held source; it is never reported as quiescent.\n  bool IsAuxUiMigrationHeld() const { return !!aux_ui_migration_gate_; }\n  bool DeferForAuxUiMigration(base::OnceClosure operation);\n\n  // Registers or unregisters `source` such that its commits will be batched",
+          "count": 1
+        },
+        {
+          "find": "  explicit AsyncDomStorageDatabase(StorageType storage_type);",
+          "replace": "  explicit AsyncDomStorageDatabase(StorageType storage_type);\n  void RunAuxUiMigrationOperation(AuxUiMigrationLease& lease, int operation,\n                                  AuxUiReadCallback callback);\n  void ReleaseAuxUiMigrationGate(std::shared_ptr<AuxUiMigrationLease::State> state);",
+          "count": 1
+        },
+        {
+          "find": "  bool is_database_opened_ = false;",
+          "replace": "  bool is_database_opened_ = false;\n  bool aux_on_disk_ = false;\n  std::shared_ptr<AuxUiMigrationLease::State> aux_ui_migration_gate_;",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "components/services/storage/dom_storage/async_dom_storage_database.cc",
+      "inputSha256": "90bcb90fa1acc193be54211777ffd6137ce66c8ad7d7911fd20d81930ffb3b53",
+      "outputSha256": "30b5e952ad6118627f86ec5cda45f648f5bf0ea26c5a407942e1e0ce6f9e2a40",
+      "output": "/Users/rcourson/.codex/worktrees/aux-features-organization/web/docs/integration/proposed/standard-profile-isolation/native-dom-transaction-lease-a7/source/components/services/storage/dom_storage/async_dom_storage_database.cc",
+      "anchors": [
+        {
+          "find": "#include \"base/files/file_path.h\"",
+          "replace": "#include <algorithm>\n#include <cstring>\n#include <iterator>\n\n#include \"base/files/file_path.h\"\n#include \"base/json/json_reader.h\"\n#include \"base/strings/utf_string_conversions.h\"\n#include \"url/gurl.h\"\n#include \"url/origin.h\"",
+          "count": 1
+        },
+        {
+          "find": "  DomStorageDatabaseFactory::Open(\n",
+          "replace": "  instance->aux_on_disk_ = !dir_to_open.empty();\n  DomStorageDatabaseFactory::Open(\n",
+          "count": 1
+        },
+        {
+          "find": "// static\nstd::unique_ptr<AsyncDomStorageDatabase> AsyncDomStorageDatabase::Open(",
+          "replace": "namespace {\nusing AuxRawMap = std::map<DomStorageDatabase::Key, DomStorageDatabase::Value>;\nstruct AuxDomMap {\n  DomStorageDatabase::MapLocator locator;\n  AuxRawMap source;\n  AuxRawMap target;\n  std::optional<base::Time> last_accessed;\n  std::optional<base::Time> last_modified;\n  std::optional<base::ByteSize> total_size;\n};\n// Only DB-sequence tasks access this state. It retains exact original raw\n// maps, including unrelated entries, but exports only reviewed UI families.\nstruct AuxDomCapture {\n  std::vector<AuxDomMap> maps;\n  bool target_attempted = false;\n  bool file_data_synced = false;\n};\nstruct AuxUiKeyRule { std::string_view source; std::string_view target; bool prefix; int scope; };\nconstexpr AuxUiKeyRule kAuxUiKeyRules[] = {\n  {\"aside.new-tab.omnibox-mode.v1\", \"aux.new-tab.omnibox-mode.v2\", false, 1},\n  {\"aside.browserTabStyle\", \"aux.browserTabStyle.v2\", false, 1},\n  {\"aside.last-final-confirm.v1\", \"aux.last-final-confirm.v2\", false, 1},\n  {\"aside.last-permission-mode.v1\", \"aux.last-permission-mode.v2\", false, 1},\n  {\"aside.new-tab.onboarding-helper-state.v1\", \"aux.new-tab.onboarding-helper-state.v2\", false, 1},\n  {\"aside.chat-draft.v2:\", \"aux.chat-draft.v3:\", true, 0},\n  {\"aside.chat-draft.v1:\", \"aux.chat-draft-text.v1:\", true, 0},\n  {\"aside.sidepanel-new-session-settings.v1:\", \"aux.sidepanel-new-session-settings.v2:\", true, 2},\n  {\"aside.chat-pending-new-session-message.v1\", \"aux.chat-pending-new-session-message.v2\", false, 2},\n};\nbool AuxUiKeyMatches(std::string_view key, std::string_view pattern, bool prefix) {\n  return prefix ? key.starts_with(pattern) : key == pattern;\n}\n// StorageArea's serialized Local Storage format has a Latin1/UTF16 tag.\n// Session Storage uses raw UTF8 or native UTF16. Only ASCII identity suffixes\n// are supported here; ambiguous encodings refuse, never reinterpret bytes.\nstd::optional<std::string> AuxDecodeKey(const DomStorageDatabase::Key& raw,\n                                      bool local, int* format) {\n  size_t offset = 0;\n  bool utf16 = false;\n  if (local) {\n    if (raw.empty() || raw[0] > 1) return std::nullopt;\n    *format = raw[0]; offset = 1; utf16 = raw[0] == 0;\n  } else {\n    utf16 = raw.size() >= 2 && (raw[0] == 0 || raw[1] == 0);\n    *format = utf16 ? 2 : 3;\n  }\n  std::string result;\n  if (utf16) {\n    if ((raw.size() - offset) % sizeof(char16_t)) return std::nullopt;\n    for (size_t i = offset; i < raw.size(); i += sizeof(char16_t)) {\n      char16_t value;\n      std::memcpy(&value, raw.data() + i, sizeof(value));\n      if (value < 0x20 || value > 0x7e) return std::nullopt;\n      result.push_back(static_cast<char>(value));\n    }\n  } else {\n    for (size_t i = offset; i < raw.size(); ++i) {\n      if (raw[i] < 0x20 || raw[i] > 0x7e) return std::nullopt;\n      result.push_back(static_cast<char>(raw[i]));\n    }\n  }\n  return result;\n}\nDomStorageDatabase::Key AuxEncodeKey(std::string_view key, int format) {\n  DomStorageDatabase::Key raw;\n  if (format == 0 || format == 1) raw.push_back(format);\n  for (char ch : key) {\n    if (format == 0 || format == 2) {\n      char16_t value = static_cast<unsigned char>(ch);\n      const auto* bytes = reinterpret_cast<const uint8_t*>(&value);\n      raw.insert(raw.end(), bytes, bytes + sizeof(value));\n    } else { raw.push_back(ch); }\n  }\n  return raw;\n}\nbool AuxKnownKey(std::string_view key, bool local) {\n  for (const auto& rule : kAuxUiKeyRules) {\n    if ((rule.scope == 1 && !local) || (rule.scope == 2 && local)) continue;\n    if (AuxUiKeyMatches(key, rule.source, rule.prefix) ||\n        AuxUiKeyMatches(key, rule.target, rule.prefix)) return true;\n  }\n  return false;\n}\nStatusOr<AuxRawMap> AuxBuildTarget(const AuxRawMap& source, bool local) {\n  AuxRawMap target = source;\n  std::set<std::string> logical_keys;\n  for (const auto& [raw, value] : source) {\n    int format;\n    auto key = AuxDecodeKey(raw, local, &format);\n    if (!key || !AuxKnownKey(*key, local)) continue;\n    if (!logical_keys.insert(*key).second)\n      return base::unexpected(DbStatus::InvalidArgument(\"Ambiguous Aux UI key encoding\"));\n    for (const auto& rule : kAuxUiKeyRules) {\n      if (((rule.scope == 1 && !local) || (rule.scope == 2 && local)) || !AuxUiKeyMatches(*key, rule.source, rule.prefix)) continue;\n      auto next = AuxEncodeKey(std::string(rule.target) + key->substr(rule.source.size()), format);\n      auto existing = target.find(next);\n      if (existing != target.end() && existing->second != value)\n        return base::unexpected(DbStatus::InvalidArgument(\"Conflicting Aux UI preference generations\"));\n      target[next] = value;\n      target.erase(raw);\n      break;\n    }\n  }\n  // A target encoded differently under the same logical key is also a\n  // conflict, even when its bytes happen to have the same value.\n  logical_keys.clear();\n  for (const auto& [raw, value] : target) {\n    int format;\n    auto key = AuxDecodeKey(raw, local, &format);\n    if (key && AuxKnownKey(*key, local) && !logical_keys.insert(*key).second)\n      return base::unexpected(DbStatus::InvalidArgument(\"Ambiguous Aux UI target encoding\"));\n  }\n  return target;\n}\nstd::optional<std::string> AuxDecodeValue(const DomStorageDatabase::Value& raw, bool local) {\n  size_t offset = 0;\n  bool latin1 = false;\n  if (local) {\n    if (raw.empty() || raw[0] > 1) return std::nullopt;\n    offset = 1; latin1 = raw[0] == 1;\n  }\n  std::u16string units;\n  if (latin1) {\n    for (size_t i = offset; i < raw.size(); ++i) units.push_back(raw[i]);\n  } else {\n    if ((raw.size() - offset) % sizeof(char16_t)) return std::nullopt;\n    for (size_t i = offset; i < raw.size(); i += sizeof(char16_t)) {\n      char16_t unit;\n      std::memcpy(&unit, raw.data() + i, sizeof(unit));\n      units.push_back(unit);\n    }\n  }\n  if (units.size() > 5242880) return std::nullopt;\n  std::string result;\n  if (!base::UTF16ToUTF8(units.data(), units.size(), &result)) return std::nullopt;\n  return result;\n}\nbool AuxValidValue(size_t rule, const DomStorageDatabase::Value& raw, bool local) {\n  auto value = AuxDecodeValue(raw, local);\n  if (!value) return false;\n  switch (rule) {\n    case 0: return *value == \"ask\" || *value == \"search\";\n    case 1: return *value == \"horizontal\" || *value == \"vertical\";\n    case 2: return *value == \"true\" || *value == \"false\";\n    case 3: return *value == \"read-only\" || *value == \"guard\" || *value == \"full-access\";\n    case 4: return *value == \"folded\" || *value == \"expanded\";\n    case 6: return true;  // Exact raw draft text is retained unchanged.\n    default: break;\n  }\n  auto parsed = base::JSONReader::ReadDict(*value, base::JSON_PARSE_RFC, 100);\n  if (!parsed) return false;\n  if (rule == 5) return parsed->FindInt(\"version\") == 2 && parsed->FindString(\"plainText\");\n  if (rule == 7) return parsed->FindInt(\"version\") == 1;\n  const auto* session = parsed->FindString(\"sessionId\");\n  const auto* mode = parsed->FindString(\"mode\");\n  // A stored claim, including an old-looking one, is unresolved work. This\n  // physical slice cannot infer that a sender/claim owner completed it.\n  if (parsed->contains(\"claimId\")) return false;\n  return session && !session->empty() && parsed->FindDict(\"message\") &&\n      (!parsed->contains(\"mode\") || (mode && (*mode == \"client-send\" || *mode == \"display-only\")));\n}\nDbStatus AuxValidateEntries(const AuxRawMap& entries, bool local) {\n  for (const auto& [raw, value] : entries) {\n    int format;\n    auto key = AuxDecodeKey(raw, local, &format);\n    if (!key) {\n      for (const auto& rule : kAuxUiKeyRules) {\n        if (!rule.prefix) continue;\n        for (std::string_view prefix : {rule.source, rule.target}) {\n          for (int encoding : local ? std::vector<int>{0, 1} : std::vector<int>{2, 3}) {\n            auto encoded = AuxEncodeKey(prefix, encoding);\n            if (raw.size() >= encoded.size() && std::equal(encoded.begin(), encoded.end(), raw.begin()))\n              return DbStatus::NotSupported(\"Aux draft key needs unsupported encoding/scope handling\");\n          }\n        }\n      }\n      continue;\n    }\n    for (size_t i = 0; i < std::size(kAuxUiKeyRules); ++i) {\n      const auto& rule = kAuxUiKeyRules[i];\n      bool old = AuxUiKeyMatches(*key, rule.source, rule.prefix);\n      bool current = AuxUiKeyMatches(*key, rule.target, rule.prefix);\n      if (!old && !current) continue;\n      if ((rule.scope == 1 && !local) || (rule.scope == 2 && local))\n        return DbStatus::NotSupported(\"Aux UI record is in the wrong physical store\");\n      size_t prefix_size = old ? rule.source.size() : rule.target.size();\n      if (rule.prefix && (key->size() == prefix_size || key->size() - prefix_size > 4096))\n        return DbStatus::NotSupported(\"Aux UI draft scope exceeds the supported bound\");\n      if (!AuxValidValue(i, value, local))\n        return DbStatus::NotSupported(\"Aux UI value/claim needs explicit recovery\");\n    }\n  }\n  return DbStatus::OK();\n}\nAuxRawMap AuxSelectedEntries(const AuxRawMap& map, bool local) {\n  AuxRawMap selected;\n  for (const auto& [raw, value] : map) {\n    int format;\n    auto key = AuxDecodeKey(raw, local, &format);\n    if (key && AuxKnownKey(*key, local)) selected.emplace(raw, value);\n  }\n  return selected;\n}\nbool AuxSameLocator(const DomStorageDatabase::MapLocator& a,\n                    const DomStorageDatabase::MapLocator& b) {\n  return a.storage_key() == b.storage_key() && a.map_id() == b.map_id() &&\n         a.session_ids() == b.session_ids();\n}\nStatusOr<AsyncDomStorageDatabase::AuxUiSnapshot> AuxReadDomCapture(\n    AuxDomCapture& capture, bool local, DomStorageDatabase* database) {\n  auto metadata = database->ReadAllMetadata();\n  if (!metadata.has_value()) return base::unexpected(metadata.error());\n  const url::Origin agent = url::Origin::Create(GURL(\n      \"chrome-extension://gokkffaiccpmoeodpmeamcjajcagjmkm/\"));\n  size_t inventory_count = 0;\n  for (const auto& entry : metadata->map_metadata) {\n    if (entry.map_locator.storage_key().origin() != agent) continue;\n    ++inventory_count;\n    bool found = false;\n    for (const auto& captured : capture.maps)\n      found |= AuxSameLocator(entry.map_locator, captured.locator);\n    if (!found) return base::unexpected(DbStatus::IOError(\"Aux DOM map topology changed\"));\n  }\n  if (inventory_count != capture.maps.size())\n    return base::unexpected(DbStatus::IOError(\"Aux DOM map inventory changed\"));\n  AsyncDomStorageDatabase::AuxUiSnapshot result;\n  result.matches_source = true;\n  result.matches_target = true;\n  for (const auto& map : capture.maps) {\n    auto current = database->ReadMapKeyValues(map.locator.Clone());\n    if (!current.has_value()) return base::unexpected(current.error());\n    result.matches_source &= current.value() == map.source;\n    result.matches_target &= current.value() == map.target;\n    result.maps.push_back({map.locator.storage_key(), map.locator.session_ids(),\n        AuxSelectedEntries(map.source, local), AuxSelectedEntries(map.target, local)});\n  }\n  result.file_data_synced = capture.file_data_synced;\n  result.target_attempted = capture.target_attempted;\n  return result;\n}\n}  // namespace\n\nstruct AsyncDomStorageDatabase::AuxUiMigrationLease::State {\n  base::WeakPtr<AsyncDomStorageDatabase> owner;\n  base::UnguessableToken token = base::UnguessableToken::Create();\n  std::shared_ptr<AuxDomCapture> backend = std::make_shared<AuxDomCapture>();\n  std::vector<base::OnceClosure> deferred;\n  bool pending = false;\n  bool tainted = false;\n  bool target_attempted = false;\n  bool resolved_and_synced = false;\n};\nAsyncDomStorageDatabase::AuxUiMigrationLease::AuxUiMigrationLease(\n    std::shared_ptr<State> state) : state_(std::move(state)) {}\nAsyncDomStorageDatabase::AuxUiMigrationLease::~AuxUiMigrationLease() = default;\nconst base::UnguessableToken&\nAsyncDomStorageDatabase::AuxUiMigrationLease::token() const { return state_->token; }\n\nbool AsyncDomStorageDatabase::DeferForAuxUiMigration(base::OnceClosure operation) {\n  if (!aux_ui_migration_gate_) return false;\n  aux_ui_migration_gate_->tainted = true;\n  aux_ui_migration_gate_->deferred.push_back(std::move(operation));\n  return true;\n}\nvoid AsyncDomStorageDatabase::BeginAuxUiMigrationLease(AuxUiLeaseCallback callback) {\n  if (!is_database_opened_ || !aux_on_disk_ || aux_ui_migration_gate_ ||\n      !committers_.empty()) {\n    std::move(callback).Run(base::unexpected(DbStatus::NotSupported(\n        \"Aux DOM lease requires an existing disk backend and no live cache owners\")), {});\n    return;\n  }\n  auto state = std::make_shared<AuxUiMigrationLease::State>();\n  state->owner = weak_ptr_factory_.GetWeakPtr();\n  state->pending = true;\n  aux_ui_migration_gate_ = state;\n  bool local = storage_type_ == StorageType::kLocalStorage;\n  auto reply = base::BindOnce(\n      [](std::shared_ptr<AuxUiMigrationLease::State> state, AuxUiLeaseCallback callback,\n         StatusOr<AuxUiSnapshot> snapshot) {\n        auto* owner = state->owner.get();\n        state->pending = false;\n        if (!owner || owner->aux_ui_migration_gate_ != state || state->tainted ||\n            !owner->committers_.empty()) {\n          snapshot = base::unexpected(DbStatus::IOError(\"Aux DOM owner or writer inventory changed\"));\n        }\n        if (!snapshot.has_value()) {\n          if (owner && owner->aux_ui_migration_gate_ == state)\n            owner->ReleaseAuxUiMigrationGate(state);\n          std::move(callback).Run(base::unexpected(snapshot.error()), {});\n          return;\n        }\n        state->resolved_and_synced = snapshot->file_data_synced;\n        std::move(callback).Run(std::unique_ptr<AuxUiMigrationLease>(new AuxUiMigrationLease(state)),\n                                std::move(snapshot).value());\n      }, state, std::move(callback));\n  auto guarded = mojo::WrapCallbackWithDefaultInvokeIfNotRun(\n      base::BindPostTaskToCurrentDefault(std::move(reply)),\n      StatusOr<AuxUiSnapshot>(base::unexpected(DbStatus::IOError(\"Aux DOM capture reply lost\"))));\n  database_.PostTaskWithThisObject(base::BindOnce(\n      [](std::shared_ptr<AuxDomCapture> capture,\n         std::shared_ptr<AuxMigrationWriteStatus> writes, bool local,\n         base::OnceCallback<void(StatusOr<AuxUiSnapshot>)> callback,\n         DomStorageDatabase* database) {\n        auto run = [&]() -> StatusOr<AuxUiSnapshot> {\n          if (writes->first_error) return base::unexpected(*writes->first_error);\n          auto metadata = database->ReadAllMetadata();\n          if (!metadata.has_value()) return base::unexpected(metadata.error());\n          const url::Origin agent = url::Origin::Create(GURL(\n              \"chrome-extension://gokkffaiccpmoeodpmeamcjajcagjmkm/\"));\n          size_t scan_bytes = 0;\n          size_t export_bytes = 0;\n          for (auto& map : metadata->map_metadata) {\n            if (map.map_locator.storage_key().origin() != agent) continue;\n            if (capture->maps.size() >= 256)\n              return base::unexpected(DbStatus::NotSupported(\"Too many Aux DOM maps\"));\n            for (const auto& existing : capture->maps) {\n              if (existing.locator.map_id() == map.map_locator.map_id() &&\n                  existing.locator.storage_key() == map.map_locator.storage_key())\n                return base::unexpected(DbStatus::NotSupported(\"Repeated or cloned Aux DOM map needs topology handling\"));\n            }\n            auto entries = database->ReadMapKeyValues(map.map_locator.Clone());\n            if (!entries.has_value()) return base::unexpected(entries.error());\n            for (const auto& [key, value] : entries.value()) {\n              scan_bytes += key.size() + value.size();\n              if (scan_bytes > 64 * 1024 * 1024)\n                return base::unexpected(DbStatus::NotSupported(\"Aux DOM capture exceeds finite bound\"));\n            }\n            DbStatus validated = AuxValidateEntries(entries.value(), local);\n            if (!validated.ok()) return base::unexpected(validated);\n            auto target = AuxBuildTarget(entries.value(), local);\n            if (!target.has_value()) return base::unexpected(target.error());\n            for (const auto& selected : {AuxSelectedEntries(entries.value(), local),\n                                        AuxSelectedEntries(target.value(), local)}) {\n              for (const auto& [key, value] : selected) export_bytes += key.size() + value.size();\n            }\n            if (export_bytes > 16 * 1024 * 1024)\n              return base::unexpected(DbStatus::NotSupported(\"Aux DOM wire capture exceeds finite bound\"));\n            capture->maps.push_back({std::move(map.map_locator), std::move(entries).value(),\n                std::move(target).value(), map.last_accessed, map.last_modified, map.total_size});\n          }\n          DbStatus sync = database->SyncForAuxMigration();\n          if (!sync.ok()) return base::unexpected(sync);\n          capture->file_data_synced = true;\n          return AuxReadDomCapture(*capture, local, database);\n        };\n        std::move(callback).Run(run());\n      }, state->backend, aux_migration_write_status_, local, std::move(guarded)));\n}\nvoid AsyncDomStorageDatabase::ReadAuxUiMigrationLease(\n    AuxUiMigrationLease& lease, AuxUiReadCallback callback) {\n  RunAuxUiMigrationOperation(lease, 0, std::move(callback));\n}\nvoid AsyncDomStorageDatabase::CommitAuxUiMigrationLease(\n    AuxUiMigrationLease& lease, AuxUiReadCallback callback) {\n  RunAuxUiMigrationOperation(lease, 1, std::move(callback));\n}\nvoid AsyncDomStorageDatabase::RestoreAuxUiMigrationLease(\n    AuxUiMigrationLease& lease, AuxUiReadCallback callback) {\n  RunAuxUiMigrationOperation(lease, 2, std::move(callback));\n}\nvoid AsyncDomStorageDatabase::RunAuxUiMigrationOperation(\n    AuxUiMigrationLease& lease, int operation, AuxUiReadCallback callback) {\n  auto state = lease.state_;\n  if (state != aux_ui_migration_gate_ || state->owner.get() != this ||\n      state->pending || !committers_.empty() ||\n      (operation == 1 && (state->tainted || state->target_attempted))) {\n    std::move(callback).Run(base::unexpected(DbStatus::IOError(\"Aux DOM lease cannot run this operation\")));\n    return;\n  }\n  state->pending = true;\n  state->resolved_and_synced = false;\n  if (operation != 0) state->target_attempted = true;\n  const bool local = storage_type_ == StorageType::kLocalStorage;\n  auto reply = base::BindOnce(\n      [](std::shared_ptr<AuxUiMigrationLease::State> state, AuxUiReadCallback callback,\n         StatusOr<AuxUiSnapshot> result) {\n        state->pending = false;\n        auto* owner = state->owner.get();\n        if (!owner || owner->aux_ui_migration_gate_ != state || !owner->committers_.empty()) {\n          result = base::unexpected(DbStatus::IOError(\"Aux DOM owner changed during operation\"));\n        }\n        if (result.has_value()) {\n          result->ordinary_work_queued = state->tainted || !state->deferred.empty();\n          state->resolved_and_synced = result->file_data_synced &&\n              (result->matches_source || result->matches_target);\n        }\n        std::move(callback).Run(std::move(result));\n      }, state, std::move(callback));\n  auto guarded = mojo::WrapCallbackWithDefaultInvokeIfNotRun(\n      base::BindPostTaskToCurrentDefault(std::move(reply)),\n      StatusOr<AuxUiSnapshot>(base::unexpected(DbStatus::IOError(\"Aux DOM operation reply lost\"))));\n  database_.PostTaskWithThisObject(base::BindOnce(\n      [](std::shared_ptr<AuxDomCapture> capture, bool local, int operation,\n         base::OnceCallback<void(StatusOr<AuxUiSnapshot>)> callback,\n         DomStorageDatabase* database) {\n        auto run = [&]() -> StatusOr<AuxUiSnapshot> {\n          auto before = AuxReadDomCapture(*capture, local, database);\n          if (!before.has_value()) return base::unexpected(before.error());\n          if (operation != 0) {\n            if ((operation == 1 && !before->matches_source) ||\n                (operation == 2 && !before->matches_source && !before->matches_target))\n              return base::unexpected(DbStatus::IOError(\"Aux DOM exact source/target CAS refused\"));\n            capture->target_attempted = true;\n            capture->file_data_synced = false;\n            std::vector<DomStorageDatabase::MapBatchUpdate> updates;\n            for (const auto& map : capture->maps) {\n              if (map.source == map.target) continue;\n              const AuxRawMap& desired = operation == 1 ? map.target : map.source;\n              const AuxRawMap& previous = operation == 1 ? map.source : map.target;\n              DomStorageDatabase::MapBatchUpdate update(map.locator.Clone());\n              for (const auto& [key, value] : previous)\n                if (!desired.contains(key)) update.keys_to_delete.push_back(key);\n              for (const auto& [key, value] : desired) {\n                auto old = previous.find(key);\n                if (old == previous.end() || old->second != value)\n                  update.entries_to_add.emplace_back(key, value);\n              }\n              if (local) {\n                update.map_usage.emplace();\n                if (map.last_accessed) update.map_usage->SetLastAccessed(*map.last_accessed);\n                if (map.last_modified && map.total_size) {\n                  size_t bytes = 0;\n                  for (const auto& [key, value] : desired) bytes += key.size() + value.size();\n                  update.map_usage->SetLastModifiedAndTotalSize(*map.last_modified,\n                      operation == 1 ? base::ByteSize(bytes) : *map.total_size);\n                }\n              }\n              updates.push_back(std::move(update));\n            }\n            DbStatus update = database->UpdateMaps(std::move(updates));\n            if (!update.ok()) return base::unexpected(update);\n          }\n          // Read-only recovery can resolve an uncertain prior successful batch,\n          // but only after a fresh real sync and exact source/target readback.\n          DbStatus sync = database->SyncForAuxMigration();\n          if (!sync.ok()) return base::unexpected(sync);\n          capture->file_data_synced = true;\n          return AuxReadDomCapture(*capture, local, database);\n        };\n        std::move(callback).Run(run());\n      }, state->backend, local, operation, std::move(guarded)));\n}\nbool AsyncDomStorageDatabase::ReleaseAuxUiMigrationLease(AuxUiMigrationLease& lease) {\n  auto state = lease.state_;\n  if (state != aux_ui_migration_gate_ || state->owner.get() != this || state->pending ||\n      (state->target_attempted && !state->resolved_and_synced)) return false;\n  ReleaseAuxUiMigrationGate(std::move(state));\n  return true;\n}\nvoid AsyncDomStorageDatabase::ReleaseAuxUiMigrationGate(\n    std::shared_ptr<AuxUiMigrationLease::State> state) {\n  CHECK(aux_ui_migration_gate_ == state);\n  auto deferred = std::move(state->deferred);\n  aux_ui_migration_gate_.reset();\n  for (auto& operation : deferred) std::move(operation).Run();\n}\n\n// static\nstd::unique_ptr<AsyncDomStorageDatabase> AsyncDomStorageDatabase::Open(",
+          "count": 1
+        },
+        {
+          "find": "void AsyncDomStorageDatabase::AddCommitter(Committer* source) {",
+          "replace": "void AsyncDomStorageDatabase::AddCommitter(Committer* source) {\n  if (aux_ui_migration_gate_) aux_ui_migration_gate_->tainted = true;",
+          "count": 1
+        },
+        {
+          "find": "void AsyncDomStorageDatabase::RemoveCommitter(Committer* source) {",
+          "replace": "void AsyncDomStorageDatabase::RemoveCommitter(Committer* source) {\n  if (aux_ui_migration_gate_) aux_ui_migration_gate_->tainted = true;",
+          "count": 1
+        },
+        {
+          "find": "void AsyncDomStorageDatabase::InitiateCommit() {\n  CHECK(is_database_opened_);",
+          "replace": "void AsyncDomStorageDatabase::InitiateCommit() {\n  CHECK(is_database_opened_);\n  if (aux_ui_migration_gate_ && DeferForAuxUiMigration(base::BindOnce(&AsyncDomStorageDatabase::InitiateCommit,\n                                          weak_ptr_factory_.GetWeakPtr()))) return;",
+          "count": 1
+        },
+        {
+          "find": "void AsyncDomStorageDatabase::DrainCommitsForAuxMigration(\n    StatusCallback callback) {\n  CHECK(is_database_opened_);",
+          "replace": "void AsyncDomStorageDatabase::DrainCommitsForAuxMigration(\n    StatusCallback callback) {\n  CHECK(is_database_opened_);\n  if (aux_ui_migration_gate_ && DeferForAuxUiMigration(base::BindOnce(&AsyncDomStorageDatabase::DrainCommitsForAuxMigration,\n      weak_ptr_factory_.GetWeakPtr(), std::move(callback)))) return;",
+          "count": 1
+        },
+        {
+          "find": "    StatusCallback callback) {\n  database_.PostTaskWithThisObject(base::BindOnce(",
+          "replace": "    StatusCallback callback) {\n  if (aux_ui_migration_gate_ && DeferForAuxUiMigration(base::BindOnce(\n      [](base::WeakPtr<AsyncDomStorageDatabase> owner, std::string operation,\n         base::OnceCallback<DbStatus(DomStorageDatabase*)> task, StatusCallback callback) {\n        if (owner) owner->RunTaskOnDbSequenceAndRecordHistograms(operation, std::move(task), std::move(callback));\n      }, weak_ptr_factory_.GetWeakPtr(), std::string(operation), std::move(db_task), std::move(callback)))) return;\n  database_.PostTaskWithThisObject(base::BindOnce(",
+          "count": 1
+        },
+        {
+          "find": "    base::OnceCallback<void(StatusOr<T>)> callback) {\n  database_.PostTaskWithThisObject(base::BindOnce(",
+          "replace": "    base::OnceCallback<void(StatusOr<T>)> callback) {\n  if (aux_ui_migration_gate_ && DeferForAuxUiMigration(base::BindOnce(\n      [](base::WeakPtr<AsyncDomStorageDatabase> owner, std::string operation,\n         base::OnceCallback<StatusOr<T>(DomStorageDatabase*)> task,\n         base::OnceCallback<void(StatusOr<T>)> callback) {\n        if (owner) owner->RunTaskOnDbSequenceAndRecordHistograms<T>(operation, std::move(task), std::move(callback));\n      }, weak_ptr_factory_.GetWeakPtr(), std::string(operation), std::move(db_task), std::move(callback)))) return;\n  database_.PostTaskWithThisObject(base::BindOnce(",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "components/services/storage/public/mojom/local_storage_control.mojom",
+      "inputSha256": "82f97d65cbc2c675de7b5c3a6df0d135a03e1c8f1e78bb874fd02535c0576fb7",
+      "outputSha256": "fc3c2509a36b784df009628e3eb3e323f881e81009f016a514e83230e02d8c56",
+      "output": "/Users/rcourson/.codex/worktrees/aux-features-organization/web/docs/integration/proposed/standard-profile-isolation/native-dom-transaction-lease-a7/source/components/services/storage/public/mojom/local_storage_control.mojom",
+      "anchors": [
+        {
+          "find": "import \"components/services/storage/public/mojom/storage_policy_update.mojom\";",
+          "replace": "import \"mojo/public/mojom/base/unguessable_token.mojom\";\nimport \"components/services/storage/public/mojom/storage_policy_update.mojom\";",
+          "count": 1
+        },
+        {
+          "find": "// Controls the state of Local Storage within a partition.",
+          "replace": "\n// Only reviewed UI key families are exported. Unrelated raw map entries are\n// retained privately by the backend for exact CAS and source restoration.\nstruct AuxUiDomMapSnapshot {\n  blink.mojom.StorageKey storage_key;\n  array<string> session_ids;\n  array<blink.mojom.KeyValue> source_entries;\n  array<blink.mojom.KeyValue> target_entries;\n};\nstruct AuxUiDomLeaseReply {\n  bool ok;\n  bool held;\n  string error;\n  mojo_base.mojom.UnguessableToken? request_id;\n  mojo_base.mojom.UnguessableToken? token;\n  array<AuxUiDomMapSnapshot> maps;\n  bool matches_source;\n  bool matches_target;\n  bool file_data_synced;\n  bool ordinary_work_queued;\n  bool target_attempted;\n};\n\n// Controls the state of Local Storage within a partition.",
+          "count": 1
+        },
+        {
+          "find": "  DrainAuxUiMigration() => (bool file_data_synced);",
+          "replace": "  DrainAuxUiMigration() => (bool file_data_synced);\n\n  // Native-only pending physical transaction. No full-profile closure,\n  // directory durability, cache coherence or activation claim is implied.\n  // Begin refuses live map cache owners in this initial physical slice.\n  BeginAuxUiPreferenceLease(mojo_base.mojom.UnguessableToken request_id)\n      => (AuxUiDomLeaseReply reply);\n  // Discovery is read-only and recognizes only this service's original\n  // request. It never reruns Begin after an uncertain/lost reply.\n  ReadAuxUiPreferenceLease(mojo_base.mojom.UnguessableToken request_id)\n      => (AuxUiDomLeaseReply reply);\n  CommitAuxUiPreferenceLease(mojo_base.mojom.UnguessableToken request_id,\n                            mojo_base.mojom.UnguessableToken token)\n      => (AuxUiDomLeaseReply reply);\n  RestoreAuxUiPreferenceLease(mojo_base.mojom.UnguessableToken request_id,\n                             mojo_base.mojom.UnguessableToken token)\n      => (AuxUiDomLeaseReply reply);\n  ReleaseAuxUiPreferenceLease(mojo_base.mojom.UnguessableToken request_id,\n                             mojo_base.mojom.UnguessableToken token)\n      => (bool released);\n",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "components/services/storage/public/mojom/session_storage_control.mojom",
+      "inputSha256": "266015391dfe129ca3c85e773c8648a65ad5336d71958c87fa41e71aea44ecf6",
+      "outputSha256": "65942da5213f70d5ba6405b3758f81679ec12c5ee97537e70efd420cbff60f59",
+      "output": "/Users/rcourson/.codex/worktrees/aux-features-organization/web/docs/integration/proposed/standard-profile-isolation/native-dom-transaction-lease-a7/source/components/services/storage/public/mojom/session_storage_control.mojom",
+      "anchors": [
+        {
+          "find": "import \"third_party/blink/public/mojom/dom_storage/storage_area.mojom\";",
+          "replace": "import \"mojo/public/mojom/base/unguessable_token.mojom\";\nimport \"components/services/storage/public/mojom/local_storage_control.mojom\";\nimport \"third_party/blink/public/mojom/dom_storage/storage_area.mojom\";",
+          "count": 1
+        },
+        {
+          "find": "  DrainAuxUiMigration() => (bool file_data_synced);",
+          "replace": "  DrainAuxUiMigration() => (bool file_data_synced);\n\n  // Native-only pending physical transaction. No full-profile closure,\n  // directory durability, cache coherence or activation claim is implied.\n  // Begin refuses live map cache owners in this initial physical slice.\n  BeginAuxUiPreferenceLease(mojo_base.mojom.UnguessableToken request_id)\n      => (AuxUiDomLeaseReply reply);\n  // Discovery is read-only and recognizes only this service's original\n  // request. It never reruns Begin after an uncertain/lost reply.\n  ReadAuxUiPreferenceLease(mojo_base.mojom.UnguessableToken request_id)\n      => (AuxUiDomLeaseReply reply);\n  CommitAuxUiPreferenceLease(mojo_base.mojom.UnguessableToken request_id,\n                            mojo_base.mojom.UnguessableToken token)\n      => (AuxUiDomLeaseReply reply);\n  RestoreAuxUiPreferenceLease(mojo_base.mojom.UnguessableToken request_id,\n                             mojo_base.mojom.UnguessableToken token)\n      => (AuxUiDomLeaseReply reply);\n  ReleaseAuxUiPreferenceLease(mojo_base.mojom.UnguessableToken request_id,\n                             mojo_base.mojom.UnguessableToken token)\n      => (bool released);\n",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "components/services/storage/dom_storage/local_storage_impl.h",
+      "inputSha256": "144e33b571980556a4cf37738ddee5e57c2fd79d95d346ef911d5b56e734676c",
+      "outputSha256": "e8759ec03ff0dd805cb2ef78d0be233cfade1976638b3effa8e8cbde1caf2806",
+      "output": "/Users/rcourson/.codex/worktrees/aux-features-organization/web/docs/integration/proposed/standard-profile-isolation/native-dom-transaction-lease-a7/source/components/services/storage/dom_storage/local_storage_impl.h",
+      "anchors": [
+        {
+          "find": "  void DrainAuxUiMigration(DrainAuxUiMigrationCallback callback) override;",
+          "replace": "  void DrainAuxUiMigration(DrainAuxUiMigrationCallback callback) override;\n  void BeginAuxUiPreferenceLease(const base::UnguessableToken& request_id, BeginAuxUiPreferenceLeaseCallback callback) override;\n  void ReadAuxUiPreferenceLease(const base::UnguessableToken& request_id, ReadAuxUiPreferenceLeaseCallback callback) override;\n  void CommitAuxUiPreferenceLease(const base::UnguessableToken& request_id, const base::UnguessableToken& token, CommitAuxUiPreferenceLeaseCallback callback) override;\n  void RestoreAuxUiPreferenceLease(const base::UnguessableToken& request_id, const base::UnguessableToken& token, RestoreAuxUiPreferenceLeaseCallback callback) override;\n  void ReleaseAuxUiPreferenceLease(const base::UnguessableToken& request_id, const base::UnguessableToken& token, ReleaseAuxUiPreferenceLeaseCallback callback) override;\n",
+          "count": 1
+        },
+        {
+          "find": "  base::WeakPtrFactory<LocalStorageImpl> weak_ptr_factory_{this};",
+          "replace": "  std::optional<base::UnguessableToken> aux_ui_request_;\n  std::unique_ptr<AsyncDomStorageDatabase::AuxUiMigrationLease> aux_ui_lease_;\n\n  base::WeakPtrFactory<LocalStorageImpl> weak_ptr_factory_{this};",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "components/services/storage/dom_storage/local_storage_impl.cc",
+      "inputSha256": "a602f0bb3e45156ee6c128369532134aa1fb7a5e26f8a1f8eeb96225cd1dd693",
+      "outputSha256": "31e17a862d4bf65c1d4eb54639c94b68e0c89403e15fb04ca4ac7e2f8e89cb13",
+      "output": "/Users/rcourson/.codex/worktrees/aux-features-organization/web/docs/integration/proposed/standard-profile-isolation/native-dom-transaction-lease-a7/source/components/services/storage/dom_storage/local_storage_impl.cc",
+      "anchors": [
+        {
+          "find": "void LocalStorageImpl::DrainAuxUiMigration(",
+          "replace": "namespace {\nmojom::AuxUiDomLeaseReplyPtr AuxDomLeaseFailure(\n    const std::optional<base::UnguessableToken>& request,\n    const AsyncDomStorageDatabase::AuxUiMigrationLease* lease,\n    std::string error) {\n  auto reply = mojom::AuxUiDomLeaseReply::New();\n  reply->ok = false;\n  reply->held = request.has_value();\n  reply->request_id = request;\n  if (lease) reply->token = lease->token();\n  reply->error = std::move(error);\n  return reply;\n}\nmojom::AuxUiDomLeaseReplyPtr AuxDomLeaseSnapshot(\n    const base::UnguessableToken& request,\n    const AsyncDomStorageDatabase::AuxUiMigrationLease& lease,\n    AsyncDomStorageDatabase::AuxUiSnapshot snapshot) {\n  auto reply = mojom::AuxUiDomLeaseReply::New();\n  reply->ok = true;\n  reply->held = true;\n  reply->request_id = request;\n  reply->token = lease.token();\n  reply->matches_source = snapshot.matches_source;\n  reply->matches_target = snapshot.matches_target;\n  reply->file_data_synced = snapshot.file_data_synced;\n  reply->ordinary_work_queued = snapshot.ordinary_work_queued;\n  reply->target_attempted = snapshot.target_attempted;\n  for (auto& map : snapshot.maps) {\n    auto output = mojom::AuxUiDomMapSnapshot::New();\n    output->storage_key = std::move(map.storage_key);\n    output->session_ids = std::move(map.session_ids);\n    for (auto& [key, value] : map.source)\n      output->source_entries.push_back(blink::mojom::KeyValue::New(key, std::move(value)));\n    for (auto& [key, value] : map.target)\n      output->target_entries.push_back(blink::mojom::KeyValue::New(key, std::move(value)));\n    reply->maps.push_back(std::move(output));\n  }\n  return reply;\n}\n}  // namespace\n\nvoid LocalStorageImpl::BeginAuxUiPreferenceLease(\n    const base::UnguessableToken& request_id,\n    BeginAuxUiPreferenceLeaseCallback callback) {\n  if (request_id.is_empty() || aux_ui_request_ || LIVE_LocalStorageImplS ||\n      connection_state_ != CONNECTION_FINISHED || !database_ || in_memory_ ||\n      storage_partition_directory_.empty()) {\n    std::move(callback).Run(AuxDomLeaseFailure(aux_ui_request_, aux_ui_lease_.get(),\n        \"Existing disk backend required; discover an already-held request instead of preparing again\"));\n    return;\n  }\n  aux_ui_request_ = request_id;\n  database_->BeginAuxUiMigrationLease(base::BindOnce(\n      [](base::WeakPtr<LocalStorageImpl> owner, base::UnguessableToken request,\n         BeginAuxUiPreferenceLeaseCallback callback,\n         StatusOr<std::unique_ptr<AsyncDomStorageDatabase::AuxUiMigrationLease>> lease,\n         AsyncDomStorageDatabase::AuxUiSnapshot snapshot) {\n        if (!owner || owner->aux_ui_request_ != request) {\n          std::move(callback).Run(AuxDomLeaseFailure(request, nullptr, \"Aux DOM service owner changed\"));\n          return;\n        }\n        if (!lease.has_value()) {\n          owner->aux_ui_request_.reset();\n          std::move(callback).Run(AuxDomLeaseFailure(std::nullopt, nullptr, lease.error().ToString()));\n          return;\n        }\n        owner->aux_ui_lease_ = std::move(lease).value();\n        std::move(callback).Run(AuxDomLeaseSnapshot(request, *owner->aux_ui_lease_, std::move(snapshot)));\n      }, weak_ptr_factory_.GetWeakPtr(), request_id, std::move(callback)));\n}\nvoid LocalStorageImpl::ReadAuxUiPreferenceLease(\n    const base::UnguessableToken& request_id,\n    ReadAuxUiPreferenceLeaseCallback callback) {\n  if (aux_ui_request_ != request_id || !aux_ui_lease_ || !database_) {\n    std::move(callback).Run(AuxDomLeaseFailure(aux_ui_request_, aux_ui_lease_.get(),\n        \"Exact original request is not available or is still pending\"));\n    return;\n  }\n  database_->ReadAuxUiMigrationLease(*aux_ui_lease_, base::BindOnce(\n      [](base::WeakPtr<LocalStorageImpl> owner, base::UnguessableToken request,\n         ReadAuxUiPreferenceLeaseCallback callback,\n         StatusOr<AsyncDomStorageDatabase::AuxUiSnapshot> result) {\n        if (!owner || owner->aux_ui_request_ != request || !owner->aux_ui_lease_) {\n          std::move(callback).Run(AuxDomLeaseFailure(request, nullptr, \"Aux DOM service owner changed\"));\n        } else if (!result.has_value()) {\n          std::move(callback).Run(AuxDomLeaseFailure(owner->aux_ui_request_, owner->aux_ui_lease_.get(), result.error().ToString()));\n        } else {\n          std::move(callback).Run(AuxDomLeaseSnapshot(request, *owner->aux_ui_lease_, std::move(result).value()));\n        }\n      }, weak_ptr_factory_.GetWeakPtr(), request_id, std::move(callback)));\n}\nvoid LocalStorageImpl::CommitAuxUiPreferenceLease(\n    const base::UnguessableToken& request_id, const base::UnguessableToken& token,\n    CommitAuxUiPreferenceLeaseCallback callback) {\n  if (aux_ui_request_ != request_id || !aux_ui_lease_ ||\n      aux_ui_lease_->token() != token || !database_) {\n    std::move(callback).Run(AuxDomLeaseFailure(aux_ui_request_, aux_ui_lease_.get(), \"Exact native-held DOM lease required\"));\n    return;\n  }\n  database_->CommitAuxUiMigrationLease(*aux_ui_lease_, base::BindOnce(\n      [](base::WeakPtr<LocalStorageImpl> owner, base::UnguessableToken request,\n         CommitAuxUiPreferenceLeaseCallback callback,\n         StatusOr<AsyncDomStorageDatabase::AuxUiSnapshot> result) {\n        if (!owner || owner->aux_ui_request_ != request || !owner->aux_ui_lease_) {\n          std::move(callback).Run(AuxDomLeaseFailure(request, nullptr, \"Aux DOM service owner changed\"));\n        } else if (!result.has_value()) {\n          std::move(callback).Run(AuxDomLeaseFailure(owner->aux_ui_request_, owner->aux_ui_lease_.get(), result.error().ToString()));\n        } else {\n          std::move(callback).Run(AuxDomLeaseSnapshot(request, *owner->aux_ui_lease_, std::move(result).value()));\n        }\n      }, weak_ptr_factory_.GetWeakPtr(), request_id, std::move(callback)));\n}\nvoid LocalStorageImpl::RestoreAuxUiPreferenceLease(\n    const base::UnguessableToken& request_id, const base::UnguessableToken& token,\n    RestoreAuxUiPreferenceLeaseCallback callback) {\n  if (aux_ui_request_ != request_id || !aux_ui_lease_ ||\n      aux_ui_lease_->token() != token || !database_) {\n    std::move(callback).Run(AuxDomLeaseFailure(aux_ui_request_, aux_ui_lease_.get(), \"Exact native-held DOM lease required\"));\n    return;\n  }\n  database_->RestoreAuxUiMigrationLease(*aux_ui_lease_, base::BindOnce(\n      [](base::WeakPtr<LocalStorageImpl> owner, base::UnguessableToken request,\n         RestoreAuxUiPreferenceLeaseCallback callback,\n         StatusOr<AsyncDomStorageDatabase::AuxUiSnapshot> result) {\n        if (!owner || owner->aux_ui_request_ != request || !owner->aux_ui_lease_) {\n          std::move(callback).Run(AuxDomLeaseFailure(request, nullptr, \"Aux DOM service owner changed\"));\n        } else if (!result.has_value()) {\n          std::move(callback).Run(AuxDomLeaseFailure(owner->aux_ui_request_, owner->aux_ui_lease_.get(), result.error().ToString()));\n        } else {\n          std::move(callback).Run(AuxDomLeaseSnapshot(request, *owner->aux_ui_lease_, std::move(result).value()));\n        }\n      }, weak_ptr_factory_.GetWeakPtr(), request_id, std::move(callback)));\n}\nvoid LocalStorageImpl::ReleaseAuxUiPreferenceLease(\n    const base::UnguessableToken& request_id, const base::UnguessableToken& token,\n    ReleaseAuxUiPreferenceLeaseCallback callback) {\n  bool released = aux_ui_request_ == request_id && aux_ui_lease_ && database_ &&\n      aux_ui_lease_->token() == token && database_->ReleaseAuxUiMigrationLease(*aux_ui_lease_);\n  if (released) { aux_ui_lease_.reset(); aux_ui_request_.reset(); }\n  std::move(callback).Run(released);\n}\n\nvoid LocalStorageImpl::DrainAuxUiMigration(",
+          "count": 1
+        },
+        {
+          "find": "void LocalStorageImpl::BindStorageArea(\n    const blink::StorageKey& storage_key,\n    mojo::PendingReceiver<blink::mojom::StorageArea> receiver) {",
+          "replace": "void LocalStorageImpl::BindStorageArea(\n    const blink::StorageKey& storage_key,\n    mojo::PendingReceiver<blink::mojom::StorageArea> receiver) {\n  if (database_ && database_->IsAuxUiMigrationHeld()) {\n    database_->DeferForAuxUiMigration(base::BindOnce(&LocalStorageImpl::BindStorageArea,\n        weak_ptr_factory_.GetWeakPtr(), storage_key, std::move(receiver)));\n    return;\n  }",
+          "count": 1
+        },
+        {
+          "find": "void LocalStorageImpl::DeleteStorage(const blink::StorageKey& storage_key,\n                                     DeleteStorageCallback callback) {",
+          "replace": "void LocalStorageImpl::DeleteStorage(const blink::StorageKey& storage_key,\n                                     DeleteStorageCallback callback) {\n  if (database_ && database_->IsAuxUiMigrationHeld()) {\n    database_->DeferForAuxUiMigration(base::BindOnce(&LocalStorageImpl::DeleteStorage,\n        weak_ptr_factory_.GetWeakPtr(), storage_key, std::move(callback)));\n    return;\n  }",
+          "count": 1
+        },
+        {
+          "find": "void LocalStorageImpl::CleanUpStorage(CleanUpStorageCallback callback) {",
+          "replace": "void LocalStorageImpl::CleanUpStorage(CleanUpStorageCallback callback) {\n  if (database_ && database_->IsAuxUiMigrationHeld()) {\n    database_->DeferForAuxUiMigration(base::BindOnce(&LocalStorageImpl::CleanUpStorage,\n        weak_ptr_factory_.GetWeakPtr(), std::move(callback)));\n    return;\n  }",
+          "count": 1
+        },
+        {
+          "find": "void LocalStorageImpl::Flush() {",
+          "replace": "void LocalStorageImpl::Flush() {\n  if (database_ && database_->IsAuxUiMigrationHeld()) {\n    database_->DeferForAuxUiMigration(base::BindOnce(&LocalStorageImpl::Flush,\n        weak_ptr_factory_.GetWeakPtr()));\n    return;\n  }",
+          "count": 1
+        },
+        {
+          "find": "void LocalStorageImpl::PurgeMemory() {",
+          "replace": "void LocalStorageImpl::PurgeMemory() {\n  if (database_ && database_->IsAuxUiMigrationHeld()) {\n    database_->DeferForAuxUiMigration(base::BindOnce(&LocalStorageImpl::PurgeMemory,\n        weak_ptr_factory_.GetWeakPtr()));\n    return;\n  }",
+          "count": 1
+        },
+        {
+          "find": "void LocalStorageImpl::PurgeUnusedAreasIfNeeded() {",
+          "replace": "void LocalStorageImpl::PurgeUnusedAreasIfNeeded() {\n  if (database_ && database_->IsAuxUiMigrationHeld()) {\n    database_->DeferForAuxUiMigration(base::BindOnce(&LocalStorageImpl::PurgeUnusedAreasIfNeeded,\n        weak_ptr_factory_.GetWeakPtr()));\n    return;\n  }",
+          "count": 1
+        },
+        {
+          "find": "void LocalStorageImpl::RunWhenConnected(base::OnceClosure callback) {",
+          "replace": "void LocalStorageImpl::RunWhenConnected(base::OnceClosure callback) {\n  if (database_ && database_->IsAuxUiMigrationHeld()) {\n    database_->DeferForAuxUiMigration(base::BindOnce(&LocalStorageImpl::RunWhenConnected,\n        weak_ptr_factory_.GetWeakPtr(), std::move(callback)));\n    return;\n  }",
+          "count": 1
+        },
+        {
+          "find": "void LocalStorageImpl::DeleteAndRecreateDatabase(\n    DomStorageRecoveryReason reason) {",
+          "replace": "void LocalStorageImpl::DeleteAndRecreateDatabase(\n    DomStorageRecoveryReason reason) {\n  if (database_ && database_->IsAuxUiMigrationHeld()) {\n    database_->DeferForAuxUiMigration(base::BindOnce(&LocalStorageImpl::DeleteAndRecreateDatabase,\n        weak_ptr_factory_.GetWeakPtr(), reason));\n    return;\n  }",
+          "count": 1
+        },
+        {
+          "find": "void LocalStorageImpl::ApplyPolicyUpdates(\n    std::vector<mojom::StoragePolicyUpdatePtr> policy_updates) {",
+          "replace": "void LocalStorageImpl::ApplyPolicyUpdates(\n    std::vector<mojom::StoragePolicyUpdatePtr> policy_updates) {\n  if (database_ && database_->IsAuxUiMigrationHeld()) {\n    database_->DeferForAuxUiMigration(base::BindOnce(&LocalStorageImpl::ApplyPolicyUpdates,\n        weak_ptr_factory_.GetWeakPtr(), std::move(policy_updates)));\n    return;\n  }",
+          "count": 1
+        },
+        {
+          "find": "void LocalStorageImpl::ForceKeepSessionState() {",
+          "replace": "void LocalStorageImpl::ForceKeepSessionState() {\n  if (database_ && database_->IsAuxUiMigrationHeld()) {\n    database_->DeferForAuxUiMigration(base::BindOnce(&LocalStorageImpl::ForceKeepSessionState,\n        weak_ptr_factory_.GetWeakPtr()));\n    return;\n  }",
+          "count": 1
+        },
+        {
+          "find": "void LocalStorageImpl::DeleteStaleStorageAreas() {",
+          "replace": "void LocalStorageImpl::DeleteStaleStorageAreas() {\n  if (database_ && database_->IsAuxUiMigrationHeld()) {\n    database_->DeferForAuxUiMigration(base::BindOnce(&LocalStorageImpl::DeleteStaleStorageAreas,\n        weak_ptr_factory_.GetWeakPtr()));\n    return;\n  }",
+          "count": 1
+        },
+        {
+          "find": "void LocalStorageImpl::OnGotMetaDataToDeleteStaleStorageAreas(\n    StatusOr<DomStorageDatabase::Metadata> all_metadata) {",
+          "replace": "void LocalStorageImpl::OnGotMetaDataToDeleteStaleStorageAreas(\n    StatusOr<DomStorageDatabase::Metadata> all_metadata) {\n  if (database_ && database_->IsAuxUiMigrationHeld()) {\n    database_->DeferForAuxUiMigration(base::BindOnce(&LocalStorageImpl::OnGotMetaDataToDeleteStaleStorageAreas,\n        weak_ptr_factory_.GetWeakPtr(), std::move(all_metadata)));\n    return;\n  }",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "components/services/storage/dom_storage/session_storage_impl.h",
+      "inputSha256": "ee5c205c527bed5fed5d164e77d41da3e4a2efa059360866b250c78af3a1e566",
+      "outputSha256": "e29920bb539a07db7398a33c686413e498ef5fa599c1926639d74ba57b3ec96f",
+      "output": "/Users/rcourson/.codex/worktrees/aux-features-organization/web/docs/integration/proposed/standard-profile-isolation/native-dom-transaction-lease-a7/source/components/services/storage/dom_storage/session_storage_impl.h",
+      "anchors": [
+        {
+          "find": "  void DrainAuxUiMigration(DrainAuxUiMigrationCallback callback) override;",
+          "replace": "  void DrainAuxUiMigration(DrainAuxUiMigrationCallback callback) override;\n  void BeginAuxUiPreferenceLease(const base::UnguessableToken& request_id, BeginAuxUiPreferenceLeaseCallback callback) override;\n  void ReadAuxUiPreferenceLease(const base::UnguessableToken& request_id, ReadAuxUiPreferenceLeaseCallback callback) override;\n  void CommitAuxUiPreferenceLease(const base::UnguessableToken& request_id, const base::UnguessableToken& token, CommitAuxUiPreferenceLeaseCallback callback) override;\n  void RestoreAuxUiPreferenceLease(const base::UnguessableToken& request_id, const base::UnguessableToken& token, RestoreAuxUiPreferenceLeaseCallback callback) override;\n  void ReleaseAuxUiPreferenceLease(const base::UnguessableToken& request_id, const base::UnguessableToken& token, ReleaseAuxUiPreferenceLeaseCallback callback) override;\n",
+          "count": 1
+        },
+        {
+          "find": "  base::WeakPtrFactory<SessionStorageImpl> weak_ptr_factory_{this};",
+          "replace": "  std::optional<base::UnguessableToken> aux_ui_request_;\n  std::unique_ptr<AsyncDomStorageDatabase::AuxUiMigrationLease> aux_ui_lease_;\n\n  base::WeakPtrFactory<SessionStorageImpl> weak_ptr_factory_{this};",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "components/services/storage/dom_storage/session_storage_impl.cc",
+      "inputSha256": "3ead284327254e4812e21bbb66e5c85a256f068d2105637f6895992427bb3490",
+      "outputSha256": "beb9da5bcc25ae43a7519af7ed40226b1a391df40409e06fefaebcb933ea1cb4",
+      "output": "/Users/rcourson/.codex/worktrees/aux-features-organization/web/docs/integration/proposed/standard-profile-isolation/native-dom-transaction-lease-a7/source/components/services/storage/dom_storage/session_storage_impl.cc",
+      "anchors": [
+        {
+          "find": "void SessionStorageImpl::DrainAuxUiMigration(",
+          "replace": "namespace {\nmojom::AuxUiDomLeaseReplyPtr AuxDomLeaseFailure(\n    const std::optional<base::UnguessableToken>& request,\n    const AsyncDomStorageDatabase::AuxUiMigrationLease* lease,\n    std::string error) {\n  auto reply = mojom::AuxUiDomLeaseReply::New();\n  reply->ok = false;\n  reply->held = request.has_value();\n  reply->request_id = request;\n  if (lease) reply->token = lease->token();\n  reply->error = std::move(error);\n  return reply;\n}\nmojom::AuxUiDomLeaseReplyPtr AuxDomLeaseSnapshot(\n    const base::UnguessableToken& request,\n    const AsyncDomStorageDatabase::AuxUiMigrationLease& lease,\n    AsyncDomStorageDatabase::AuxUiSnapshot snapshot) {\n  auto reply = mojom::AuxUiDomLeaseReply::New();\n  reply->ok = true;\n  reply->held = true;\n  reply->request_id = request;\n  reply->token = lease.token();\n  reply->matches_source = snapshot.matches_source;\n  reply->matches_target = snapshot.matches_target;\n  reply->file_data_synced = snapshot.file_data_synced;\n  reply->ordinary_work_queued = snapshot.ordinary_work_queued;\n  reply->target_attempted = snapshot.target_attempted;\n  for (auto& map : snapshot.maps) {\n    auto output = mojom::AuxUiDomMapSnapshot::New();\n    output->storage_key = std::move(map.storage_key);\n    output->session_ids = std::move(map.session_ids);\n    for (auto& [key, value] : map.source)\n      output->source_entries.push_back(blink::mojom::KeyValue::New(key, std::move(value)));\n    for (auto& [key, value] : map.target)\n      output->target_entries.push_back(blink::mojom::KeyValue::New(key, std::move(value)));\n    reply->maps.push_back(std::move(output));\n  }\n  return reply;\n}\n}  // namespace\n\nvoid SessionStorageImpl::BeginAuxUiPreferenceLease(\n    const base::UnguessableToken& request_id,\n    BeginAuxUiPreferenceLeaseCallback callback) {\n  if (request_id.is_empty() || aux_ui_request_ || LIVE_SessionStorageImplS ||\n      connection_state_ != CONNECTION_FINISHED || !database_ || in_memory_ ||\n      storage_partition_directory_.empty()) {\n    std::move(callback).Run(AuxDomLeaseFailure(aux_ui_request_, aux_ui_lease_.get(),\n        \"Existing disk backend required; discover an already-held request instead of preparing again\"));\n    return;\n  }\n  aux_ui_request_ = request_id;\n  database_->BeginAuxUiMigrationLease(base::BindOnce(\n      [](base::WeakPtr<SessionStorageImpl> owner, base::UnguessableToken request,\n         BeginAuxUiPreferenceLeaseCallback callback,\n         StatusOr<std::unique_ptr<AsyncDomStorageDatabase::AuxUiMigrationLease>> lease,\n         AsyncDomStorageDatabase::AuxUiSnapshot snapshot) {\n        if (!owner || owner->aux_ui_request_ != request) {\n          std::move(callback).Run(AuxDomLeaseFailure(request, nullptr, \"Aux DOM service owner changed\"));\n          return;\n        }\n        if (!lease.has_value()) {\n          owner->aux_ui_request_.reset();\n          std::move(callback).Run(AuxDomLeaseFailure(std::nullopt, nullptr, lease.error().ToString()));\n          return;\n        }\n        owner->aux_ui_lease_ = std::move(lease).value();\n        std::move(callback).Run(AuxDomLeaseSnapshot(request, *owner->aux_ui_lease_, std::move(snapshot)));\n      }, weak_ptr_factory_.GetWeakPtr(), request_id, std::move(callback)));\n}\nvoid SessionStorageImpl::ReadAuxUiPreferenceLease(\n    const base::UnguessableToken& request_id,\n    ReadAuxUiPreferenceLeaseCallback callback) {\n  if (aux_ui_request_ != request_id || !aux_ui_lease_ || !database_) {\n    std::move(callback).Run(AuxDomLeaseFailure(aux_ui_request_, aux_ui_lease_.get(),\n        \"Exact original request is not available or is still pending\"));\n    return;\n  }\n  database_->ReadAuxUiMigrationLease(*aux_ui_lease_, base::BindOnce(\n      [](base::WeakPtr<SessionStorageImpl> owner, base::UnguessableToken request,\n         ReadAuxUiPreferenceLeaseCallback callback,\n         StatusOr<AsyncDomStorageDatabase::AuxUiSnapshot> result) {\n        if (!owner || owner->aux_ui_request_ != request || !owner->aux_ui_lease_) {\n          std::move(callback).Run(AuxDomLeaseFailure(request, nullptr, \"Aux DOM service owner changed\"));\n        } else if (!result.has_value()) {\n          std::move(callback).Run(AuxDomLeaseFailure(owner->aux_ui_request_, owner->aux_ui_lease_.get(), result.error().ToString()));\n        } else {\n          std::move(callback).Run(AuxDomLeaseSnapshot(request, *owner->aux_ui_lease_, std::move(result).value()));\n        }\n      }, weak_ptr_factory_.GetWeakPtr(), request_id, std::move(callback)));\n}\nvoid SessionStorageImpl::CommitAuxUiPreferenceLease(\n    const base::UnguessableToken& request_id, const base::UnguessableToken& token,\n    CommitAuxUiPreferenceLeaseCallback callback) {\n  if (aux_ui_request_ != request_id || !aux_ui_lease_ ||\n      aux_ui_lease_->token() != token || !database_) {\n    std::move(callback).Run(AuxDomLeaseFailure(aux_ui_request_, aux_ui_lease_.get(), \"Exact native-held DOM lease required\"));\n    return;\n  }\n  database_->CommitAuxUiMigrationLease(*aux_ui_lease_, base::BindOnce(\n      [](base::WeakPtr<SessionStorageImpl> owner, base::UnguessableToken request,\n         CommitAuxUiPreferenceLeaseCallback callback,\n         StatusOr<AsyncDomStorageDatabase::AuxUiSnapshot> result) {\n        if (!owner || owner->aux_ui_request_ != request || !owner->aux_ui_lease_) {\n          std::move(callback).Run(AuxDomLeaseFailure(request, nullptr, \"Aux DOM service owner changed\"));\n        } else if (!result.has_value()) {\n          std::move(callback).Run(AuxDomLeaseFailure(owner->aux_ui_request_, owner->aux_ui_lease_.get(), result.error().ToString()));\n        } else {\n          std::move(callback).Run(AuxDomLeaseSnapshot(request, *owner->aux_ui_lease_, std::move(result).value()));\n        }\n      }, weak_ptr_factory_.GetWeakPtr(), request_id, std::move(callback)));\n}\nvoid SessionStorageImpl::RestoreAuxUiPreferenceLease(\n    const base::UnguessableToken& request_id, const base::UnguessableToken& token,\n    RestoreAuxUiPreferenceLeaseCallback callback) {\n  if (aux_ui_request_ != request_id || !aux_ui_lease_ ||\n      aux_ui_lease_->token() != token || !database_) {\n    std::move(callback).Run(AuxDomLeaseFailure(aux_ui_request_, aux_ui_lease_.get(), \"Exact native-held DOM lease required\"));\n    return;\n  }\n  database_->RestoreAuxUiMigrationLease(*aux_ui_lease_, base::BindOnce(\n      [](base::WeakPtr<SessionStorageImpl> owner, base::UnguessableToken request,\n         RestoreAuxUiPreferenceLeaseCallback callback,\n         StatusOr<AsyncDomStorageDatabase::AuxUiSnapshot> result) {\n        if (!owner || owner->aux_ui_request_ != request || !owner->aux_ui_lease_) {\n          std::move(callback).Run(AuxDomLeaseFailure(request, nullptr, \"Aux DOM service owner changed\"));\n        } else if (!result.has_value()) {\n          std::move(callback).Run(AuxDomLeaseFailure(owner->aux_ui_request_, owner->aux_ui_lease_.get(), result.error().ToString()));\n        } else {\n          std::move(callback).Run(AuxDomLeaseSnapshot(request, *owner->aux_ui_lease_, std::move(result).value()));\n        }\n      }, weak_ptr_factory_.GetWeakPtr(), request_id, std::move(callback)));\n}\nvoid SessionStorageImpl::ReleaseAuxUiPreferenceLease(\n    const base::UnguessableToken& request_id, const base::UnguessableToken& token,\n    ReleaseAuxUiPreferenceLeaseCallback callback) {\n  bool released = aux_ui_request_ == request_id && aux_ui_lease_ && database_ &&\n      aux_ui_lease_->token() == token && database_->ReleaseAuxUiMigrationLease(*aux_ui_lease_);\n  if (released) { aux_ui_lease_.reset(); aux_ui_request_.reset(); }\n  std::move(callback).Run(released);\n}\n\nvoid SessionStorageImpl::DrainAuxUiMigration(",
+          "count": 1
+        },
+        {
+          "find": "void SessionStorageImpl::BindStorageArea(\n    const blink::StorageKey& storage_key,\n    const std::string& namespace_id,\n    mojo::PendingReceiver<blink::mojom::StorageArea> receiver) {",
+          "replace": "void SessionStorageImpl::BindStorageArea(\n    const blink::StorageKey& storage_key,\n    const std::string& namespace_id,\n    mojo::PendingReceiver<blink::mojom::StorageArea> receiver) {\n  if (database_ && database_->IsAuxUiMigrationHeld()) {\n    database_->DeferForAuxUiMigration(base::BindOnce(&SessionStorageImpl::BindStorageArea,\n        weak_ptr_factory_.GetWeakPtr(), storage_key, namespace_id, std::move(receiver)));\n    return;\n  }",
+          "count": 1
+        },
+        {
+          "find": "void SessionStorageImpl::DeleteStorage(const blink::StorageKey& storage_key,\n                                       const std::string& namespace_id,\n                                       DeleteStorageCallback callback) {",
+          "replace": "void SessionStorageImpl::DeleteStorage(const blink::StorageKey& storage_key,\n                                       const std::string& namespace_id,\n                                       DeleteStorageCallback callback) {\n  if (database_ && database_->IsAuxUiMigrationHeld()) {\n    database_->DeferForAuxUiMigration(base::BindOnce(&SessionStorageImpl::DeleteStorage,\n        weak_ptr_factory_.GetWeakPtr(), storage_key, namespace_id, std::move(callback)));\n    return;\n  }",
+          "count": 1
+        },
+        {
+          "find": "void SessionStorageImpl::CleanUpStorage(CleanUpStorageCallback callback) {",
+          "replace": "void SessionStorageImpl::CleanUpStorage(CleanUpStorageCallback callback) {\n  if (database_ && database_->IsAuxUiMigrationHeld()) {\n    database_->DeferForAuxUiMigration(base::BindOnce(&SessionStorageImpl::CleanUpStorage,\n        weak_ptr_factory_.GetWeakPtr(), std::move(callback)));\n    return;\n  }",
+          "count": 1
+        },
+        {
+          "find": "void SessionStorageImpl::Flush() {",
+          "replace": "void SessionStorageImpl::Flush() {\n  if (database_ && database_->IsAuxUiMigrationHeld()) {\n    database_->DeferForAuxUiMigration(base::BindOnce(&SessionStorageImpl::Flush,\n        weak_ptr_factory_.GetWeakPtr()));\n    return;\n  }",
+          "count": 1
+        },
+        {
+          "find": "void SessionStorageImpl::PurgeMemory() {",
+          "replace": "void SessionStorageImpl::PurgeMemory() {\n  if (database_ && database_->IsAuxUiMigrationHeld()) {\n    database_->DeferForAuxUiMigration(base::BindOnce(&SessionStorageImpl::PurgeMemory,\n        weak_ptr_factory_.GetWeakPtr()));\n    return;\n  }",
+          "count": 1
+        },
+        {
+          "find": "void SessionStorageImpl::PurgeUnusedAreasIfNeeded() {",
+          "replace": "void SessionStorageImpl::PurgeUnusedAreasIfNeeded() {\n  if (database_ && database_->IsAuxUiMigrationHeld()) {\n    database_->DeferForAuxUiMigration(base::BindOnce(&SessionStorageImpl::PurgeUnusedAreasIfNeeded,\n        weak_ptr_factory_.GetWeakPtr()));\n    return;\n  }",
+          "count": 1
+        },
+        {
+          "find": "void SessionStorageImpl::RunWhenConnected(base::OnceClosure callback) {",
+          "replace": "void SessionStorageImpl::RunWhenConnected(base::OnceClosure callback) {\n  if (database_ && database_->IsAuxUiMigrationHeld()) {\n    database_->DeferForAuxUiMigration(base::BindOnce(&SessionStorageImpl::RunWhenConnected,\n        weak_ptr_factory_.GetWeakPtr(), std::move(callback)));\n    return;\n  }",
+          "count": 1
+        },
+        {
+          "find": "void SessionStorageImpl::DeleteAndRecreateDatabase(\n    DomStorageRecoveryReason reason) {",
+          "replace": "void SessionStorageImpl::DeleteAndRecreateDatabase(\n    DomStorageRecoveryReason reason) {\n  if (database_ && database_->IsAuxUiMigrationHeld()) {\n    database_->DeferForAuxUiMigration(base::BindOnce(&SessionStorageImpl::DeleteAndRecreateDatabase,\n        weak_ptr_factory_.GetWeakPtr(), reason));\n    return;\n  }",
+          "count": 1
+        },
+        {
+          "find": "void SessionStorageImpl::BindNamespace(\n    const std::string& namespace_id,\n    mojo::PendingReceiver<blink::mojom::SessionStorageNamespace> receiver) {",
+          "replace": "void SessionStorageImpl::BindNamespace(\n    const std::string& namespace_id,\n    mojo::PendingReceiver<blink::mojom::SessionStorageNamespace> receiver) {\n  if (database_ && database_->IsAuxUiMigrationHeld()) {\n    database_->DeferForAuxUiMigration(base::BindOnce(&SessionStorageImpl::BindNamespace,\n        weak_ptr_factory_.GetWeakPtr(), namespace_id, std::move(receiver)));\n    return;\n  }",
+          "count": 1
+        },
+        {
+          "find": "void SessionStorageImpl::CreateNamespace(const std::string& namespace_id) {",
+          "replace": "void SessionStorageImpl::CreateNamespace(const std::string& namespace_id) {\n  if (database_ && database_->IsAuxUiMigrationHeld()) {\n    database_->DeferForAuxUiMigration(base::BindOnce(&SessionStorageImpl::CreateNamespace,\n        weak_ptr_factory_.GetWeakPtr(), namespace_id));\n    return;\n  }",
+          "count": 1
+        },
+        {
+          "find": "void SessionStorageImpl::CloneNamespace(\n    const std::string& clone_from_namespace_id,\n    const std::string& clone_to_namespace_id,\n    mojom::SessionStorageCloneType clone_type) {",
+          "replace": "void SessionStorageImpl::CloneNamespace(\n    const std::string& clone_from_namespace_id,\n    const std::string& clone_to_namespace_id,\n    mojom::SessionStorageCloneType clone_type) {\n  if (database_ && database_->IsAuxUiMigrationHeld()) {\n    database_->DeferForAuxUiMigration(base::BindOnce(&SessionStorageImpl::CloneNamespace,\n        weak_ptr_factory_.GetWeakPtr(), clone_from_namespace_id, clone_to_namespace_id, clone_type));\n    return;\n  }",
+          "count": 1
+        },
+        {
+          "find": "void SessionStorageImpl::DeleteNamespace(const std::string& namespace_id,\n                                         bool should_persist) {",
+          "replace": "void SessionStorageImpl::DeleteNamespace(const std::string& namespace_id,\n                                         bool should_persist) {\n  if (database_ && database_->IsAuxUiMigrationHeld()) {\n    database_->DeferForAuxUiMigration(base::BindOnce(&SessionStorageImpl::DeleteNamespace,\n        weak_ptr_factory_.GetWeakPtr(), namespace_id, should_persist));\n    return;\n  }",
+          "count": 1
+        },
+        {
+          "find": "void SessionStorageImpl::ScavengeUnusedNamespaces() {",
+          "replace": "void SessionStorageImpl::ScavengeUnusedNamespaces() {\n  if (database_ && database_->IsAuxUiMigrationHeld()) {\n    database_->DeferForAuxUiMigration(base::BindOnce(&SessionStorageImpl::ScavengeUnusedNamespaces,\n        weak_ptr_factory_.GetWeakPtr()));\n    return;\n  }",
+          "count": 1
+        },
+        {
+          "find": "void SessionStorageImpl::PurgeAllNamespaceDataMaps() {",
+          "replace": "void SessionStorageImpl::PurgeAllNamespaceDataMaps() {\n  if (database_ && database_->IsAuxUiMigrationHeld()) {\n    database_->DeferForAuxUiMigration(base::BindOnce(&SessionStorageImpl::PurgeAllNamespaceDataMaps,\n        weak_ptr_factory_.GetWeakPtr()));\n    return;\n  }",
+          "count": 1
+        },
+        {
+          "find": "void SessionStorageImpl::DeleteNamespacesFromMetadataAndDatabase(\n    std::vector<std::string> namespace_ids) {",
+          "replace": "void SessionStorageImpl::DeleteNamespacesFromMetadataAndDatabase(\n    std::vector<std::string> namespace_ids) {\n  if (database_ && database_->IsAuxUiMigrationHeld()) {\n    database_->DeferForAuxUiMigration(base::BindOnce(&SessionStorageImpl::DeleteNamespacesFromMetadataAndDatabase,\n        weak_ptr_factory_.GetWeakPtr(), std::move(namespace_ids)));\n    return;\n  }",
+          "count": 1
+        }
+      ]
+    }
+  ],
+  "consumedNativeBackend": [
+    {
+      "path": "components/services/storage/dom_storage/dom_storage_database.h",
+      "sha256": "9df50e67d7be0bcbf32f5a7a123f4e82bcbd95117b22512ea5369d36b2542b45",
+      "anchors": [
+        {
+          "find": "  virtual DbStatus UpdateMaps(std::vector<MapBatchUpdate> map_updates) = 0;",
+          "count": 1
+        },
+        {
+          "find": "  virtual StatusOr<Metadata> ReadAllMetadata() = 0;",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "components/services/storage/dom_storage/leveldb/local_storage_leveldb.cc",
+      "sha256": "1ebe0857276485a7bb3bc31d065c841b7326a0c53724d5ee8dd95441bb1e1bbb",
+      "anchors": [
+        {
+          "find": "DbStatus LocalStorageLevelDB::UpdateMaps(",
+          "count": 1
+        },
+        {
+          "find": "  return leveldb_batch->Commit();",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "components/services/storage/dom_storage/leveldb/session_storage_leveldb.cc",
+      "sha256": "821463ae48ad4f364d87c3890a73769e778c624fe9ec36c5fbbde54b79af4105",
+      "anchors": [
+        {
+          "find": "DbStatus SessionStorageLevelDB::UpdateMaps(",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "components/services/storage/dom_storage/sqlite/local_storage_sqlite.cc",
+      "sha256": "0601c10dc762dce7123b7c4e493eca8fb20e19b5b8ea90b3b333ebbc4b32367f",
+      "anchors": [
+        {
+          "find": "DbStatus LocalStorageSqlite::UpdateMaps(",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "components/services/storage/dom_storage/sqlite/session_storage_sqlite.cc",
+      "sha256": "9c6e3c2e7cdbc576e5dfee9af58de7818281aff24002ef3c91c3a5e2eea718f5",
+      "anchors": [
+        {
+          "find": "DbStatus SessionStorageSqlite::UpdateMaps(",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "third_party/blink/renderer/modules/storage/cached_storage_area.cc",
+      "sha256": "92a53b484ce3276c3155890549c8d38cfe91129996550a29c1d82f7c5f744e21",
+      "anchors": [
+        {
+          "find": "enum class StorageFormat : uint8_t { UTF16 = 0, Latin1 = 1 };",
+          "count": 1
+        },
+        {
+          "find": "CachedStorageArea::FormatOption CachedStorageArea::GetValueFormat() const {",
+          "count": 1
+        }
+      ]
+    }
+  ],
+  "nativeCheckoutChanged": false,
+  "nativeCompiled": false,
+  "productExecuted": false,
+  "loadedCacheCoherenceImplemented": false,
+  "rendererTargetImportImplemented": false,
+  "directoryDurabilityProven": false,
+  "crossStoreRecoveryImplemented": false,
+  "activationAuthorized": false
+}

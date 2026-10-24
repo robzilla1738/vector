@@ -1,0 +1,16 @@
+{
+  "format": "aux.dom-transaction.source-check.actual.v1",
+  "passed": true,
+  "sourcePlanSha256": "bc901ffa5df88f64d2691a56b5c019641f85b7fb9f1bf3c88f70b26a1b984b79",
+  "patchSha256": "3ae00bc8382dd0b541f6380f99fd97acd9e9d87082572d67f16c0a486d228a09",
+  "files": 8,
+  "countedAnchors": 51,
+  "replayDirectory": "/private/tmp/aux-dom-transaction-replay-p6oo57ao",
+  "exactReplayPassed": true,
+  "reverseCheckPassed": true,
+  "nativeCheckoutChanged": false,
+  "nativeCompiled": false,
+  "testsExecuted": false,
+  "productExecuted": false,
+  "runtimeAcceptance": false
+}
