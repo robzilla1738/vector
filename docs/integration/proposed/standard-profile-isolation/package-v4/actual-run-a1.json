@@ -1,0 +1,86 @@
+{
+  "format": "aux.standard-profile-package.execution.v1",
+  "commandsSha256": "7f6a5cfec7fafd0f3617972f43813b1b56f01d68fc4950f04a7a37a2dc964939",
+  "runnerSha256": "667694e8019f3634bea5569dc0c3015931143b44a3b1328d490cf77cedd08745",
+  "passed": false,
+  "runs": [
+    {
+      "name": "freezeReview",
+      "command": [
+        "/opt/homebrew/opt/python@3.15/bin/python3.15",
+        "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/package-v4/freeze-review.py"
+      ],
+      "exitCode": 0,
+      "seconds": 0.10450816701631993
+    },
+    {
+      "name": "checkInputs",
+      "command": [
+        "/opt/homebrew/opt/python@3.15/bin/python3.15",
+        "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/package-v4/cache_package.py",
+        "check-inputs"
+      ],
+      "exitCode": 0,
+      "seconds": 4.158676624996588
+    },
+    {
+      "name": "bindPair",
+      "command": [
+        "/opt/homebrew/opt/python@3.15/bin/python3.15",
+        "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/package-v4/bind_pair.py",
+        "--link-result",
+        "/private/tmp/aux-standard-daemon-objects-20261023-a2/results.json",
+        "--output",
+        "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/package-v4/source-pair-final.json"
+      ],
+      "exitCode": 0,
+      "seconds": 15.554333374951966
+    },
+    {
+      "name": "prepareBase",
+      "command": [
+        "/opt/homebrew/opt/python@3.15/bin/python3.15",
+        "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/package-v4/cache_package.py",
+        "prepare-base",
+        "--link-result",
+        "/private/tmp/aux-standard-daemon-objects-20261023-a2/results.json",
+        "--relink-plan",
+        "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/integration/native-build-a2.json",
+        "--runtime-manifest",
+        "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/package-v4/prepared/runtime-integration.json",
+        "--baseline-app",
+        "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-final-local-completion-20261023/Aux.app",
+        "--native-receipt",
+        "/private/tmp/aux-chromium-recovery-snapshot-20261023/unsigned-standard-profile-browser-build-20261024-a4/receipt.json",
+        "--daemon-receipt",
+        "/private/tmp/aux-standard-daemon-link-20261023-a3/results.json",
+        "--source-pair",
+        "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/package-v4/source-pair-final.json",
+        "--source",
+        "/private/tmp/aux-standard-daemon-projection-20261024-a3/index.mjs",
+        "--source-receipt",
+        "/private/tmp/aux-standard-daemon-projection-20261024-a3/source-receipt.json",
+        "--entry",
+        "/private/tmp/aux-standard-daemon-projection-20261024-a3/projected-entry/aux-native-entry.mjs",
+        "--entry-receipt",
+        "/private/tmp/aux-standard-daemon-projection-20261024-a3/projected-entry/results.json",
+        "--loader",
+        "/private/tmp/aux-standard-daemon-projection-20261024-a3/projected-entry/aux-owned-native.cjs",
+        "--pty",
+        "/private/tmp/aux-contained-pty-module-20261023-r2/pty.node",
+        "--output",
+        "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-standard-profile-isolation-20261024",
+        "--recipe",
+        "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/package-v4/prepared/base-recipe.json"
+      ],
+      "exitCode": 1,
+      "seconds": 13.051733374944888
+    }
+  ],
+  "appExecuted": false,
+  "productSigned": false,
+  "runtimeAuthorityGranted": false,
+  "acceptedAppReplaced": false,
+  "testable": false,
+  "error": "Reviewed package phase failed: prepareBase"
+}

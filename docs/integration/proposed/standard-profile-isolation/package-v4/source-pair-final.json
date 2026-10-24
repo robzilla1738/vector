@@ -1,0 +1,46 @@
+{
+  "format": "aux.exact-successor.source-pair.v1",
+  "passed": true,
+  "daemon": "/private/tmp/aux-standard-daemon-link-20261023-a3/Aux Daemon",
+  "daemonSha256": "100d9ca3755a4371907bf245c1d7f2d8e354420e78d5023090bca7e57838de2b",
+  "daemonReceiptSha256": "d4a21086d6cfd0704f7512101873762125d912307034f37f48f3084155cea1d6",
+  "pty": "/private/tmp/aux-contained-pty-module-20261023-r2/pty.node",
+  "ptySha256": "03f4124086be96716bf1666555aa6d1a2b3d055efd103d5af8b984de5d0c03be",
+  "source": "/private/tmp/aux-standard-daemon-projection-20261024-a3/index.mjs",
+  "sourceSha256": "3ee2471769470b820bfaf16d64f6dfc7aa0bef1b8ad54493c7d2a0bffe725802",
+  "entry": "/private/tmp/aux-standard-daemon-projection-20261024-a3/projected-entry/aux-native-entry.mjs",
+  "entrySha256": "ba6194fbe579dec43ccaa2a7b788e58bc0a1cb9a0ff52ab5b5cfcea334890804",
+  "loader": "/private/tmp/aux-standard-daemon-projection-20261024-a3/projected-entry/aux-owned-native.cjs",
+  "loaderSha256": "ec7ea0405f415d84e4afc695405eec07378d8c7233b926ffd9dd7db2edfed663",
+  "policyFormat": "aux.fresh.bootstrap.policy.v8",
+  "coldFeatureEnabled": false,
+  "runtimeAuthorityGranted": false,
+  "nativeBrowserBuildPending": false,
+  "uiModified": true,
+  "nativeBrowserReceiptSha256": "49d24692e97328d458a175d154758ed8c82c61c096abc2e840e40625719d2556",
+  "predecessorSourcePairSha256": "1eb6698864691d5affacc52f860ffb9a917fdf07a36cc5ffcc8fb55d26f4d8e4",
+  "sourceCompositionReceiptSha256": "45b5c2597c2ab8b10ad4fbf08fc31cf1ee25673ff926c7fbd0ff99b77649aedd",
+  "sourceReceiptSha256": "fd064af2b5f067adfe44901ee5f6318b133abb1119fc4d1c473db90d03446b31",
+  "entryReceiptSha256": "b8dda99b132ff64e07c189e150e0a2107702b44764cb9cf15310cca25932acd9",
+  "nativeInputManifestSha256": "a71af23aeb15f8c7108e19355a6028af41e330d21b9a11be07fc4d5f789efe95",
+  "nativeRelinkResultSha256": "336d7dac0d9d296ce7c82df038bdfea2dec570b0f2759586d20399f11f320fe3",
+  "nativeAbiChanged": true,
+  "nativeHostApiChanged": true,
+  "pairedModuleAbiChanged": false,
+  "nativePairingPending": false,
+  "productExecuted": false,
+  "pairProducer": {
+    "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/package-v4/bind_pair.py",
+    "sha256": "5678511875407c63539abdfdf1201c104f6527db91658dfd5cfda59cc08eb87b"
+  },
+  "pairProducerInputs": {
+    "tool": {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/package-v4/cache_package.py",
+      "sha256": "895a60a37e6afad686ad44bd28f79ae81b584e043cafa0748f375564a9da3478"
+    },
+    "review": {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/package-v4/review.json",
+      "sha256": "7ea1cdd58fe9b27603d07930fb7f5424cc08b8187617baf8a9acaf021dd8ffae"
+    }
+  }
+}

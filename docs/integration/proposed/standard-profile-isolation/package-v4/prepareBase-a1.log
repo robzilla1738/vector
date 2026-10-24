@@ -1,0 +1,11 @@
+Traceback (most recent call last):
+  File "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/package-v4/cache_package.py", line 285, in <module>
+    main()
+    ~~~~^^
+  File "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/package-v4/cache_package.py", line 272, in main
+    prepare_base(args, extra)
+    ~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/package-v4/cache_package.py", line 224, in prepare_base
+    previousSha256=old_items[PREFIX+name]['previousSha256'],
+                   ~~~~~~~~~^^^^^^^^^^^^^
+KeyError: 'apps/daemon/Aux Daemon.app/Contents/Resources/native/runtime-seed.cjs'
