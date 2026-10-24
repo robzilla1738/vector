@@ -26,6 +26,9 @@ void ApplyDownloadRename(Profile*, const std::string& capability,
 void UndoDownloadRename(Profile*, const std::string& receipt_id, Reply);
 base::DictValue DragRecentDownload(Profile*, const std::string& download_guid,
                                    gfx::NativeView);
+// 0: original file remains; 1: exclusive move completed; -1: conflict.
+int InspectRegularFileMove(const base::DictValue&, const base::FilePath& source,
+                            const base::FilePath& destination);
 // Reused conditional same-directory primitive, executed on download sequence.
 std::optional<base::DictValue> FingerprintRegularFile(const base::FilePath&);
 int MoveRegularFileExclusive(const base::DictValue& fingerprint,

@@ -15,6 +15,17 @@ std::optional<base::DictValue> FingerprintRegularFile(const base::FilePath& path
       .Set("modifiedSeconds", base::NumberToString(info.st_mtimespec.tv_sec))
       .Set("modifiedNanos", base::NumberToString(info.st_mtimespec.tv_nsec));
 }
+int InspectRegularFileMove(const base::DictValue& expected,
+                            const base::FilePath& source,
+                            const base::FilePath& destination) {
+  if (source == destination || source.DirName() != destination.DirName()) return -1;
+  const auto original = FingerprintRegularFile(source);
+  if (original && *original == expected) return 0;
+  struct stat info;
+  if (!lstat(source.value().c_str(), &info) || errno != ENOENT) return -1;
+  const auto moved = FingerprintRegularFile(destination);
+  return moved && *moved == expected ? 1 : -1;
+}
 int MoveRegularFileExclusive(const base::DictValue& fingerprint,
                              const base::FilePath& expected,
                              const base::FilePath& source,

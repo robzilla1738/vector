@@ -62,7 +62,8 @@ struct State {
   uint64_t owner_epoch = 0;
   bool pending = false;
   bool alive = true;
-  bool Current() const { return alive && profile && current && current.Run(); }
+  bool journal_ready = true;
+  bool Current() const { return alive && journal_ready && profile && current && current.Run(); }
   Item* Find(const std::string& guid) {
     return alive && profile ? profile->GetDownloadManager()->GetDownloadByGuid(guid) : nullptr;
   }
@@ -90,6 +91,7 @@ struct Rename : Item::Observer, std::enable_shared_from_this<Rename> {
   Candidate candidate;
   std::string stem, receipt_id, original, filename;
   bool undo = false, physical_done = false, item_reply = false;
+  bool recover_only = false, keep_pending = false;
   int attempt = 1;
   Result result = Result::FAILURE_UNKNOWN;
   Item* item = nullptr;
@@ -101,8 +103,7 @@ struct Rename : Item::Observer, std::enable_shared_from_this<Rename> {
     if (!reply) return;
     if (item) { item->RemoveObserver(this); item = nullptr; }
     auto done = std::move(reply);
-    state->pending = false;
-    state->settled.Notify();
+    if (!keep_pending) { state->pending = false; state->settled.Notify(); }
     std::move(done).Run(std::move(value));
   }
   void Start() {
@@ -110,13 +111,14 @@ struct Rename : Item::Observer, std::enable_shared_from_this<Rename> {
     if (!state->Current() || !Eligible(found) || found->GetTargetFilePath() != candidate.path) {
       Finish(Error("Download or profile changed; nothing was renamed.")); return;
     }
-    filename = undo ? original : stem + (attempt == 1 ? "" : " (" + base::NumberToString(attempt) + ")") + candidate.path.Extension();
+    filename = recover_only ? filename : undo ? original : stem + (attempt == 1 ? "" : " (" + base::NumberToString(attempt) + ")") + candidate.path.Extension();
     if (filename == candidate.path.BaseName().AsUTF8Unsafe()) {
       Finish(Error("The download already has that name.")); return;
     }
     base::DictValue receipt;
     receipt.Set("downloadGuid", candidate.guid);
     receipt.Set("originalName", original);
+    receipt.Set("sourceName", candidate.path.BaseName().AsUTF8Unsafe());
     receipt.Set("filename", filename);
     receipt.Set("fingerprint", candidate.fingerprint.Clone());
     receipt.Set("phase", undo ? "undo-planned" : "planned");
@@ -125,6 +127,7 @@ struct Rename : Item::Observer, std::enable_shared_from_this<Rename> {
     state->persist.Run(state->receipts.Clone(), base::BindOnce(&Rename::Prepared, shared_from_this()));
   }
   void Prepared(bool durable) {
+    if (!durable) state->journal_ready = false;
     auto* found = state->Find(candidate.guid);
     if (!durable || !state->Current() || !Eligible(found) || found->GetTargetFilePath() != candidate.path) {
       Finish(Error("The rename could not be safely prepared.")); return;
@@ -135,8 +138,11 @@ struct Rename : Item::Observer, std::enable_shared_from_this<Rename> {
       base::BindOnce([](std::shared_ptr<Rename> operation,
                        scoped_refptr<base::SequencedTaskRunner> ui,
                        const base::FilePath& source, const base::FilePath& destination) {
-        auto result = static_cast<Result>(MoveRegularFileExclusive(
-            operation->candidate.fingerprint, operation->candidate.path, source, destination));
+        auto result = operation->recover_only
+            ? (InspectRegularFileMove(operation->candidate.fingerprint, source, destination) == 1
+                ? Result::SUCCESS : Result::FAILURE_UNAVAILABLE)
+            : static_cast<Result>(MoveRegularFileExclusive(
+                operation->candidate.fingerprint, operation->candidate.path, source, destination));
         ui->PostTask(FROM_HERE, base::BindOnce(&Rename::PhysicalDone, operation, result));
         return result;
       }, shared_from_this(), ui),
@@ -158,6 +164,7 @@ struct Rename : Item::Observer, std::enable_shared_from_this<Rename> {
     state->persist.Run(state->receipts.Clone(), base::BindOnce(&Rename::Recorded, shared_from_this()));
   }
   void Recorded(bool durable) {
+    if (!durable) state->journal_ready = false;
     if (result != Result::SUCCESS) {
       Finish(Error(result == Result::FAILURE_NAME_CONFLICT ? "That filename is already in use." : "The file changed or is no longer available.")); return;
     }
@@ -166,14 +173,102 @@ struct Rename : Item::Observer, std::enable_shared_from_this<Rename> {
         .Set("receiptId", receipt_id).Set("undone", undo));
   }
 };
+// Reconcile only native DownloadManager GUIDs and the previously journaled
+// same-directory names. Never guess a new path or move an unrelated replacement.
+struct Recovery : std::enable_shared_from_this<Recovery> {
+  std::shared_ptr<State> state;
+  std::vector<std::string> ids;
+  size_t index = 0;
+  bool changed = false;
+  uint64_t epoch = 0;
+  void Finish() {
+    state->pending = false; state->settled.Notify();
+  }
+  bool Current() const { return state->Current() && state->owner_epoch == epoch; }
+  void Next() {
+    if (!Current()) { Finish(); return; }
+    if (index == ids.size()) {
+      if (changed) state->persist.Run(state->receipts.Clone(), base::BindOnce(
+          [](std::shared_ptr<Recovery> recovery, bool durable) {
+            if (!durable) recovery->state->journal_ready = false;
+            recovery->Finish(); }, shared_from_this()));
+      else Finish();
+      return;
+    }
+    const auto id = ids[index++];
+    auto* receipt = state->receipts.FindDict(id);
+    const auto* guid = receipt ? receipt->FindString("downloadGuid") : nullptr;
+    const auto* original = receipt ? receipt->FindString("originalName") : nullptr;
+    const auto* target_name = receipt ? receipt->FindString("filename") : nullptr;
+    const auto* phase = receipt ? receipt->FindString("phase") : nullptr;
+    const auto* source_name = receipt ? receipt->FindString("sourceName") : nullptr;
+    const auto* fingerprint = receipt ? receipt->FindDict("fingerprint") : nullptr;
+    if (!source_name && phase && *phase == "planned") source_name = original;
+    auto* item = guid ? state->Find(*guid) : nullptr;
+    auto safe = [](const std::string* name) {
+      return name && !name->empty() && *name != "." && *name != ".." &&
+          base::FilePath::FromUTF8Unsafe(*name).BaseName().AsUTF8Unsafe() == *name;
+    };
+    if (!Eligible(item) || !safe(source_name) || !safe(target_name) ||
+        !safe(original) || !fingerprint || !phase) { Conflict(id); return; }
+    const auto path = item->GetTargetFilePath();
+    const auto source = path.DirName().Append(base::FilePath::FromUTF8Unsafe(*source_name));
+    const auto destination = path.DirName().Append(base::FilePath::FromUTF8Unsafe(*target_name));
+    if (path != source && path != destination) { Conflict(id); return; }
+    base::ThreadPool::PostTaskAndReplyWithResult(FROM_HERE, {base::MayBlock()},
+        base::BindOnce(&InspectRegularFileMove, fingerprint->Clone(), source, destination),
+        base::BindOnce(&Recovery::Inspected, shared_from_this(), id, *guid,
+                       path, source, destination, fingerprint->Clone(), *original,
+                       *phase == "undo-planned"));
+  }
+  void Conflict(const std::string& id) {
+    if (auto* receipt = state->receipts.FindDict(id)) receipt->Set("phase", "needs-review");
+    changed = true; Next();
+  }
+  void Inspected(std::string id, std::string guid, base::FilePath captured,
+                 base::FilePath source, base::FilePath destination,
+                 base::DictValue fingerprint, std::string original, bool undo,
+                 int outcome) {
+    if (!Current()) { Finish(); return; }
+    auto* item = state->Find(guid);
+    if (!Eligible(item) || item->GetTargetFilePath() != captured) { Conflict(id); return; }
+    if (outcome == 0 && captured == source) {
+      state->receipts.FindDict(id)->Set("phase", "failed"); changed = true; Next(); return;
+    }
+    if (outcome != 1) { Conflict(id); return; }
+    if (captured == destination) {
+      state->receipts.FindDict(id)->Set("phase", undo ? "undone" : "complete");
+      changed = true; Next(); return;
+    }
+    auto request = std::make_shared<Rename>(); request->state = state;
+    request->candidate = Candidate{guid, source, std::move(fingerprint), base::Time::Now() + base::Minutes(1)};
+    request->filename = destination.BaseName().AsUTF8Unsafe(); request->original = original;
+    request->receipt_id = id; request->undo = undo; request->recover_only = true; request->keep_pending = true;
+    request->reply = base::BindOnce([](std::shared_ptr<Recovery> recovery, base::DictValue result) {
+      recovery->Next();
+    }, shared_from_this());
+    request->Start();
+  }
+};
+void RecoverPending(const std::shared_ptr<State>& state) {
+  if (!state->Current() || !state->persist || state->pending) return;
+  auto recovery = std::make_shared<Recovery>(); recovery->state = state; recovery->epoch = state->owner_epoch;
+  for (const auto [id, value] : state->receipts) {
+    const auto* receipt = value.GetIfDict(); const auto* phase = receipt ? receipt->FindString("phase") : nullptr;
+    if (phase && (*phase == "planned" || *phase == "undo-planned")) recovery->ids.push_back(id);
+  }
+  if (recovery->ids.empty()) return;
+  state->pending = true; recovery->Next();
+}
 }  // namespace
 void SetWriteOwner(Profile* profile, base::RepeatingCallback<bool()> current,
                    Persist persist, base::DictValue restored) {
   auto state = Get(profile);
   if (!state || state->pending) return;
-  ++state->owner_epoch;
+  ++state->owner_epoch; state->journal_ready = true;
   state->current = std::move(current); state->persist = std::move(persist);
   state->receipts = std::move(restored); state->candidates.clear();
+  RecoverPending(state);
 }
 bool HasPendingWrite(Profile* profile) {
   auto state = Get(profile, false); return state && state->pending;
@@ -201,7 +296,7 @@ base::DictValue ListRecentFiles(Profile* profile) {
     const auto* receipt = value.GetIfDict();
     if (!receipt) continue;
     const auto* phase = receipt->FindString("phase");
-    if (!phase || (*phase != "complete" && *phase != "planned" && *phase != "undo-planned")) continue;
+    if (!phase || (*phase != "complete" && *phase != "planned" && *phase != "undo-planned" && *phase != "needs-review")) continue;
     auto visible = receipt->Clone(); visible.Remove("fingerprint"); visible.Set("id", id);
     receipts.Append(std::move(visible));
   }
