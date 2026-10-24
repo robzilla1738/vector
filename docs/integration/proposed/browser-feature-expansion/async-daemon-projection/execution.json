@@ -1,0 +1,23 @@
+{
+  "command": [
+    "node",
+    "/private/tmp/aux-features-execution-frame-20261023/docs/integration/proposed/browser-feature-expansion/async-daemon-projection/compose.mjs",
+    "/private/tmp/aux-browser-features-async-daemon-20261023-a1"
+  ],
+  "exitCode": 0,
+  "utilitySha256": "d96fc701ad55a66b29a1141ee6ba624c7f6e6ab8092a7565c5b0e08a37f9ddbc",
+  "inputsSha256": "edaec6f7332ac95cffa9b57c5c587ef171a086fcd0cc3873d7417fa28514e0c1",
+  "featureBaseComposition": "/private/tmp/aux-browser-features-async-daemon-20261023-a1/feature-base/composition.json",
+  "featureBaseCompositionSha256": "d8e1b5486dd6d4cc2b3328182d95229213ac236b89553ddedac7ff5c1fc1b626",
+  "finalComposition": "/private/tmp/aux-browser-features-async-daemon-20261023-a1/composition.json",
+  "finalCompositionSha256": "7a52261da13b1930646d56577824a32b75086aaa25cd805f590d029ba462e3c6",
+  "adapterInputCount": 171,
+  "inheritedFeatureAdapterCount": 147,
+  "actualProjectionEvidence": "/private/tmp/aux-browser-features-async-daemon-20261023-a1/projection-evidence.json",
+  "actualProjectionEvidenceSha256": "f4ef315fa5c08aae6fd331eaf7b4b3b6da6688b14c1eca67b602b5a0c342b513",
+  "productExecuted": false,
+  "signed": false,
+  "nativeLinked": false,
+  "appChanged": false,
+  "runtimeAuthorityGranted": false
+}

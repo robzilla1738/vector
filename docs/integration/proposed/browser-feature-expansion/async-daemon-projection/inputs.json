@@ -1,0 +1,148 @@
+{
+  "format": "aux.async-daemon-projection.inputs.v1",
+  "root": "/Users/rcourson/Documents/Vibe/web",
+  "baseline": "/private/tmp/aux-browser-features-daemon-source-20261023-a4",
+  "asyncIntegration": "docs/integration/proposed/profile-isolation-local-finish/runtime-cache-async-integration",
+  "inputs": [
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-final-local-entry-package/inputs.json",
+      "sha256": "fbd94a9feaf4f84b52935f3c8e38a86e3f61efff66be75298b398e903069e6f7"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-final-local-entry-package/source/project.mjs",
+      "sha256": "a2ce2662ff122459756a6faf69976d7e9e8be66a2c277f4b49f540b77a646968"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-native-exec-lifetime/edits.json",
+      "sha256": "66f4a6de988ab32cb167002ccad9ad89e3beaf50f969f849baf95817c6e63736"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-native-fixed-pty-loading/anchor.json",
+      "sha256": "9fd9124dd108807b5dc07f8ec4f2208dfec21d9d4c6b4635e6006b7c25aed6bb"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-native-fixed-pty-loading/transform.mjs",
+      "sha256": "6f276e4ed7a3ae88d02059cec365a4ddfdf99cf415037d09d59c5fe76626334f"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-native-owned-entry-routing/edits.json",
+      "sha256": "6a761312b4ef0feaf728ad24183c02a7ae0950987bfc703c5244adf98fae54ac"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/profile-isolation-final/integration/project-entry.mjs",
+      "sha256": "38b689de20525f6f87671fdafe811cd6ec0a497b066c876034fc704567a149da"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/profile-isolation-local-finish/runtime-bootstrap/source/runtime-bootstrap.cjs",
+      "sha256": "2e8c8db62e67e7ee812c5beb4606f11ed063e9aef6453db3d44e8c939255f604"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/profile-isolation-local-finish/runtime-cache-async-integration/README.md",
+      "sha256": "d86537df678f8c55022ee1086dcd7abc8566da87c4cd8236c617f7a5b32810e3"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/profile-isolation-local-finish/runtime-cache-async-integration/compile-command.json",
+      "sha256": "35638d27627206d7be8a84da9aab61420b6dc64cb518c5b775fb9f6c922904c4"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/profile-isolation-local-finish/runtime-cache-async-integration/compile-dependencies.json",
+      "sha256": "c0fb6023c8cda42d92342973d85dd9a5c44743fa45d3b658ccf7064402c2c4bc"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/profile-isolation-local-finish/runtime-cache-async-integration/compile-result.json",
+      "sha256": "09411d21c6d7c705453b8e342a3f34aab576b2ada8b15469dd735ad8af6a7763"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/profile-isolation-local-finish/runtime-cache-async-integration/host-overlay.json",
+      "sha256": "e4d273571e004a84d43027b11a9dc019aec8fd31bb4a5b32d7f00c24055de98c"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/profile-isolation-local-finish/runtime-cache-async-integration/host.patch",
+      "sha256": "f8b9e9bb9580e1082dceec0746150c523a5620f80a6b3f2ff42e91af3d733541"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/profile-isolation-local-finish/runtime-cache-async-integration/manifest.json",
+      "sha256": "65c7a50c2dafebc74873e25d51615df70701b3984968c2e21881ffb0a82087c1"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/profile-isolation-local-finish/runtime-cache-async-integration/prepare.py",
+      "sha256": "e1d5c74c64c933df82a7119da85ccf50c997568658f39d192defcb9167258c1b"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/profile-isolation-local-finish/runtime-cache-async-integration/source-overlay.json",
+      "sha256": "1f74499da0e59e03bf14af1efa3cf664ec6e5cbac118068c4c4de475dcd0c856"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/profile-isolation-local-finish/runtime-cache-async-integration/source/AuxDevelopmentWorkerHost.cc",
+      "sha256": "3bda3d49671811e93b1890ef712328eecbb840ec32f0c3389ba43888765b5e39"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/profile-isolation-local-finish/runtime-cache-async-integration/source/AuxRuntimeCacheAsync.inc",
+      "sha256": "660c0a2cfbc1f073d78528899510c9f335c6e7501ab01b70cd5b848083f91df9"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/profile-isolation-local-finish/runtime-cache-async-integration/source/AuxRuntimeCacheInspection.inc",
+      "sha256": "9fdc7b754b33861dccb0115bde857f69f6066bb18e57a6d50ec43c0830fdc077"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/profile-isolation-local-finish/runtime-cache-async-integration/source/AuxRuntimeCachePins.inc",
+      "sha256": "0cdad8ab9b147222b80dcd89847f48f6ba97f4f874d20c86d1b2a2ebc139fd5a"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/profile-isolation-local-finish/runtime-cache-async-integration/transform.mjs",
+      "sha256": "3d30efd5a149ca5ce6852243ba83db946b7c804d4442cd52698224567f050f01"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/vendor/aside/lib/sea.mjs",
+      "sha256": "2a2698eef8e353354d7203f8fd460935fddf039677a79659b60b80802ee12ac6"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/vendor/provided/aux-cold-entry-admission.mjs",
+      "sha256": "a569415ecca246cddca88b2f29363f8b0ac014c4a7450e92ee0c000657826161"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/vendor/provided/runtime-seed.cjs",
+      "sha256": "3051dea5ccc9d74126bf71ddc0bb72a4d3db19c59f890a8f48d572b215f092af"
+    },
+    {
+      "path": "/private/tmp/aux-browser-features-daemon-source-20261023-a4/composition.json",
+      "sha256": "f7b0349fd51fcea2edb725da2fe084b07d97e8b124ec9cacc558a0c661ca8f34"
+    },
+    {
+      "path": "/private/tmp/aux-browser-features-daemon-source-20261023-a4/index.mjs",
+      "sha256": "4e5c2710ddeb7b1f57f2524088ece6678b0f091ec6f7af68564c355cabae4723"
+    },
+    {
+      "path": "/private/tmp/aux-browser-features-daemon-source-20261023-a4/projected-entry/aux-native-entry.mjs",
+      "sha256": "aba6ebad5e4abd9e563770dc6be80e6b9c181a22fd41a16c7112417863cf1823"
+    },
+    {
+      "path": "/private/tmp/aux-browser-features-daemon-source-20261023-a4/projected-entry/results.json",
+      "sha256": "87a3a0f00563cfbf2d89ec333699c3a44b84f72e19b3fed7c12219dd926167bb"
+    },
+    {
+      "path": "/private/tmp/aux-browser-features-daemon-source-20261023-a4/source-receipt.json",
+      "sha256": "ea493568d11fc5188945f73b85e15b35e1c11d0c2ae36aae9f0121065160242c"
+    },
+    {
+      "path": "/private/tmp/aux-runtime-cache-async-final-h2BztW/aux-native-entry.mjs",
+      "sha256": "b6aa10117346544e02e636d4b45ebb0049b421f7c40210775afdd661c1309de9"
+    },
+    {
+      "path": "/private/tmp/aux-runtime-cache-async-final-h2BztW/index.mjs",
+      "sha256": "dc41cebe8ad7dc4cac162226b1267b0ae7602727d05a781c59ff593afd537ef3"
+    },
+    {
+      "path": "/private/tmp/aux-runtime-cache-async-final-h2BztW/runtime-bootstrap.cjs",
+      "sha256": "13657bf3e1c3a0477c15eb154ba74f336a82c4af3b9800a1c86713a5a395d7a5"
+    },
+    {
+      "path": "/private/tmp/aux-runtime-cache-async-final-h2BztW/runtime-seed.cjs",
+      "sha256": "54bd9cf68d25b9db0827af32ad323ea03821f7adae4066b677849a3e5b28a039"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/integration/compose-daemon.mjs",
+      "sha256": "97a1918c5a274b9d8a9b6644df209c8df7de4c92ae2839f1f305195a92c6ba31"
+    }
+  ]
+}

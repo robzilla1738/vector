@@ -1,0 +1,18 @@
+{
+  "format": "aux.async-daemon-projection.actual.v1",
+  "passed": true,
+  "output": "/private/tmp/aux-browser-features-async-daemon-20261023-a1",
+  "compositionSha256": "7a52261da13b1930646d56577824a32b75086aaa25cd805f590d029ba462e3c6",
+  "sourceReceiptSha256": "f077e85802141dd6e0c9cf92bf31a3918e87d05e7ab6099a183d333f6df1af2e",
+  "entryReceiptSha256": "d065cb6a2725590509a345eac102960f0608bb1ccbf52262e7300425701f0c5b",
+  "sourceSha256": "dc41cebe8ad7dc4cac162226b1267b0ae7602727d05a781c59ff593afd537ef3",
+  "entrySha256": "b6aa10117346544e02e636d4b45ebb0049b421f7c40210775afdd661c1309de9",
+  "loaderSha256": "ec7ea0405f415d84e4afc695405eec07378d8c7233b926ffd9dd7db2edfed663",
+  "independentEntryMatchesProjection": true,
+  "nativeAbiChanged": true,
+  "nativePairingPending": true,
+  "coldFeatureEnabled": false,
+  "runtimeAuthorityGranted": false,
+  "productExecuted": false,
+  "packaged": false
+}
