@@ -1,0 +1,13 @@
+{
+  "format": "aux.feature-completion.cold-entry-observation.actual.v1",
+  "object": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/out/AuxFast/obj/chrome/browser/metrics/impl/chrome_feature_list_creator.o",
+  "objectSha256": "e19683a3d39628c3dafc3b7f00d02ede5b9cf3aa32fc44e3dbdf71d774cfeaef",
+  "actualTargetCommandSha256": "0382c8689ccdf4345dfd0108754d21db6781d68dcd1f5c264f5d56d3c2e95f2e",
+  "commandInventorySha256": "f34bca2704c209dd28189d1eb48424ad00a19739a1ac43422aa81938c103f073",
+  "coldEntryDefineInCommand": false,
+  "startupGateReferences": [],
+  "objectStableDuringInspection": true,
+  "nativeStartupExecuted": false,
+  "runtimeAdmissionAccepted": false,
+  "note": "Absence of both the command define and direct native startup references is evidence that this target does not consume the dormant COLD hook. It is not proof of runtime startup."
+}
