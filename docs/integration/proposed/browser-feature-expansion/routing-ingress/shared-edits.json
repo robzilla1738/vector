@@ -1,0 +1,66 @@
+{
+  "scope": "counted native receipt seams only; root applies to current composition",
+  "files": [
+    {
+      "path": "chrome/browser/ui/startup/startup_tab.h",
+      "baselineOrigin": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/ui/startup/startup_tab.h",
+      "baselineSha256": "0553e1d9e2c1b74c23dc3ebfa17fcca7e01acda86a97e8ac459dbee1a7ac9484",
+      "sourceSha256": "32b4a6c67d9a42682d3b051bdacb711a9bc09697a6d726182b7f6f3a27866162",
+      "edits": [
+        {
+          "name": "native-only-external-receipt",
+          "find": "  std::string sender_app;",
+          "replace": "  std::string sender_app;\n  // Minted only by native macOS/ProcessSingleton URL ingress, never from a\n  // renderer, session restore, URL parameters, or persisted StartupTab data.\n  bool aux_native_external_receipt = false;",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/app_controller_mac.mm",
+      "baselineOrigin": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/app_controller_mac.mm",
+      "baselineSha256": "2e5139d89df654da1b6d6b63251318d3b01ba40cf70efdc7162932a99464dfaf",
+      "sourceSha256": "18935db78d56fbf97abbd1a8dfeb75066032bef30b66ad8968090e035141d84c",
+      "edits": [
+        {
+          "name": "include-ingress",
+          "find": "#include \"chrome/browser/buildflags.h\"",
+          "replace": "#include \"chrome/browser/buildflags.h\"\n#if BUILDFLAG(ENABLE_AUX_BROWSER)\n#include \"chrome/browser/aux/routing/external_routing_ingress.h\"\n#endif",
+          "count": 1
+        },
+        {
+          "name": "mark-actual-apple-event",
+          "find": "  for (auto& tab : startupTabs) tab.sender_app = sender_app;",
+          "replace": "  for (auto& tab : startupTabs) {\n    tab.sender_app = sender_app;\n#if BUILDFLAG(ENABLE_AUX_BROWSER)\n    tab.aux_native_external_receipt = true;\n#endif\n  }",
+          "count": 1
+        },
+        {
+          "name": "consume-native-selected-profile",
+          "find": "  // Use FindTabbedBrowser() to ensure URLs open in a normal tabbed browser",
+          "replace": "#if BUILDFLAG(ENABLE_AUX_BROWSER)\n  // After native privacy/profile selection, before opening anything. Preserve\n  // ordered fallback through this exact native path with one-use receipt cleared.\n  if (aux::routing::MaybeRouteExternalTabs(profile, tabs, base::BindRepeating(\n      [](const StartupTab& tab, Profile* selected) {\n        OpenStartupTabsInBrowserWithProfile(StartupTabs{tab}, selected);\n      }))) return;\n#endif\n  // Use FindTabbedBrowser() to ensure URLs open in a normal tabbed browser",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/ui/startup/startup_browser_creator.cc",
+      "baselineOrigin": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/ui/startup/startup_browser_creator.cc",
+      "baselineSha256": "7815d7e0caff70a851e33083420600f5c4ed01b8197b997b2437cc2bdc5caed3",
+      "sourceSha256": "1be9702fff5372a3f85ab88f72a7b78b460325b90836574f1cb9db6eb4a09859",
+      "edits": [
+        {
+          "name": "include-ingress",
+          "find": "#include \"chrome/browser/browser_features.h\"",
+          "replace": "#include \"chrome/browser/browser_features.h\"\n#include \"chrome/browser/buildflags.h\"\n#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)\n#include \"chrome/browser/aux/routing/external_routing_ingress.h\"\n#endif",
+          "count": 1
+        },
+        {
+          "name": "native-argv-continuation",
+          "find": "  Profiles last_opened_profiles;\n#if !BUILDFLAG(IS_CHROMEOS)\n  // On ChromeOS multiple profiles doesn't apply.\n  // If no browser windows are open, i.e. the browser is being kept alive in\n  // background mode or for other processing, restore |last_opened_profiles|.\n  if (GlobalBrowserCollection::GetInstance()->GetSize() == 0) {\n    last_opened_profiles =\n        g_browser_process->profile_manager()->GetLastOpenedProfiles();\n  }\n#endif  // BUILDFLAG(IS_CHROMEOS)\n\n  StartupBrowserCreator startup_browser_creator;\n  startup_browser_creator.ProcessCmdLineImpl(\n      command_line, cur_dir, chrome::startup::IsProcessStartup::kNo,\n      {profile, mode}, last_opened_profiles);",
+          "replace": "  auto continue_native = base::BindRepeating(\n      [](const base::FilePath& cur_dir, StartupProfileMode mode,\n         const base::CommandLine& native_command, Profile* selected) {\n      Profiles last_opened_profiles;\n    #if !BUILDFLAG(IS_CHROMEOS)\n      // On ChromeOS multiple profiles doesn't apply.\n      // If no browser windows are open, i.e. the browser is being kept alive in\n      // background mode or for other processing, restore |last_opened_profiles|.\n      if (GlobalBrowserCollection::GetInstance()->GetSize() == 0) {\n        last_opened_profiles =\n            g_browser_process->profile_manager()->GetLastOpenedProfiles();\n      }\n    #endif  // BUILDFLAG(IS_CHROMEOS)\n\n      StartupBrowserCreator startup_browser_creator;\n      startup_browser_creator.ProcessCmdLineImpl(\n          native_command, cur_dir, chrome::startup::IsProcessStartup::kNo,\n          {selected, mode}, last_opened_profiles);\n      }, cur_dir, mode);\n#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)\n  // This method is entered from the actual ProcessSingleton receipt, after\n  // native profile selection. Renderer navigations never reach this seam.\n  if (mode == StartupProfileMode::kBrowserWindow &&\n      aux::routing::MaybeRouteExternalCommandLine(profile, command_line,\n                                                 continue_native)) return;\n#endif\n  continue_native.Run(command_line, profile);",
+          "count": 1
+        }
+      ]
+    }
+  ],
+  "patchSha256": "02c2f2443fabf581846b8b081b3ac5ca539a15cc2e5042065cc87927d576e46f"
+}

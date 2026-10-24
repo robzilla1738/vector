@@ -1,0 +1,16 @@
+{
+  "selectedNativeRoot": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src",
+  "files": [
+    {
+      "path": "chrome/browser/aux/routing/external_routing_ingress.cc",
+      "baselineSha256": null,
+      "sourceSha256": "a3765be5e645c455a547c31814298f12ce9f468dda8c46f93e054f78edf8457c"
+    },
+    {
+      "path": "chrome/browser/aux/routing/external_routing_ingress.h",
+      "baselineSha256": null,
+      "sourceSha256": "1310ed79d2cd16f65fe2588ef3df669209202f2d304dff8e4d28289cfcbe5894"
+    }
+  ],
+  "patchSha256": "890187a1eb0ffb99aab7bd4def8654aad440bf4e44bfab0bcea67925cbd706e1"
+}

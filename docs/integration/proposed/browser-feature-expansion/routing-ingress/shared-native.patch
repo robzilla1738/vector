@@ -1,0 +1,115 @@
+--- a/chrome/browser/ui/startup/startup_tab.h
++++ b/chrome/browser/ui/startup/startup_tab.h
+@@ -34,6 +34,9 @@
+   bool is_untrusted_launch = false;
+   // Native Apple Event sender identity only; never copied from URL query parameters.
+   std::string sender_app;
++  // Minted only by native macOS/ProcessSingleton URL ingress, never from a
++  // renderer, session restore, URL parameters, or persisted StartupTab data.
++  bool aux_native_external_receipt = false;
+ };
+ 
+ using StartupTabs = std::vector<StartupTab>;
+--- a/chrome/browser/app_controller_mac.mm
++++ b/chrome/browser/app_controller_mac.mm
+@@ -44,6 +44,9 @@
+ #include "chrome/browser/apps/platform_apps/app_window_registry_util.h"
+ #include "chrome/browser/browser_features.h"
+ #include "chrome/browser/buildflags.h"
++#if BUILDFLAG(ENABLE_AUX_BROWSER)
++#include "chrome/browser/aux/routing/external_routing_ingress.h"
++#endif
+ #include "chrome/browser/browser_process.h"
+ #if BUILDFLAG(ENABLE_AUX_SHELL)
+ #include "chrome/browser/ui/aux/little_window_controller.h"
+@@ -2203,7 +2206,12 @@
+     }
+   }
+ 
+-  for (auto& tab : startupTabs) tab.sender_app = sender_app;
++  for (auto& tab : startupTabs) {
++    tab.sender_app = sender_app;
++#if BUILDFLAG(ENABLE_AUX_BROWSER)
++    tab.aux_native_external_receipt = true;
++#endif
++  }
+   if (!startupTabs.empty()) {
+     [self openStartupTabsReplacingNTP:std::move(startupTabs)];
+   }
+@@ -2773,6 +2781,14 @@
+     profile = ProfileManager::MaybeForceOffTheRecordMode(
+         profile->GetOriginalProfile());
+   }
++#if BUILDFLAG(ENABLE_AUX_BROWSER)
++  // After native privacy/profile selection, before opening anything. Preserve
++  // ordered fallback through this exact native path with one-use receipt cleared.
++  if (aux::routing::MaybeRouteExternalTabs(profile, tabs, base::BindRepeating(
++      [](const StartupTab& tab, Profile* selected) {
++        OpenStartupTabsInBrowserWithProfile(StartupTabs{tab}, selected);
++      }))) return;
++#endif
+   // Use FindTabbedBrowser() to ensure URLs open in a normal tabbed browser
+   // window, not in PWA/app windows which cannot accept new tabs.
+   BrowserWindowInterface* browser =
+--- a/chrome/browser/ui/startup/startup_browser_creator.cc
++++ b/chrome/browser/ui/startup/startup_browser_creator.cc
+@@ -41,6 +41,10 @@
+ #include "chrome/browser/apps/platform_apps/app_load_service.h"
+ #include "chrome/browser/apps/platform_apps/platform_app_launch.h"
+ #include "chrome/browser/browser_features.h"
++#include "chrome/browser/buildflags.h"
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++#include "chrome/browser/aux/routing/external_routing_ingress.h"
++#endif
+ #include "chrome/browser/browser_process.h"
+ #include "chrome/browser/extensions/startup_helper.h"
+ #include "chrome/browser/first_run/first_run.h"
+@@ -1530,21 +1534,33 @@
+     return;
+   }
+ 
+-  Profiles last_opened_profiles;
+-#if !BUILDFLAG(IS_CHROMEOS)
+-  // On ChromeOS multiple profiles doesn't apply.
+-  // If no browser windows are open, i.e. the browser is being kept alive in
+-  // background mode or for other processing, restore |last_opened_profiles|.
+-  if (GlobalBrowserCollection::GetInstance()->GetSize() == 0) {
+-    last_opened_profiles =
+-        g_browser_process->profile_manager()->GetLastOpenedProfiles();
+-  }
+-#endif  // BUILDFLAG(IS_CHROMEOS)
+-
+-  StartupBrowserCreator startup_browser_creator;
+-  startup_browser_creator.ProcessCmdLineImpl(
+-      command_line, cur_dir, chrome::startup::IsProcessStartup::kNo,
+-      {profile, mode}, last_opened_profiles);
++  auto continue_native = base::BindRepeating(
++      [](const base::FilePath& cur_dir, StartupProfileMode mode,
++         const base::CommandLine& native_command, Profile* selected) {
++      Profiles last_opened_profiles;
++    #if !BUILDFLAG(IS_CHROMEOS)
++      // On ChromeOS multiple profiles doesn't apply.
++      // If no browser windows are open, i.e. the browser is being kept alive in
++      // background mode or for other processing, restore |last_opened_profiles|.
++      if (GlobalBrowserCollection::GetInstance()->GetSize() == 0) {
++        last_opened_profiles =
++            g_browser_process->profile_manager()->GetLastOpenedProfiles();
++      }
++    #endif  // BUILDFLAG(IS_CHROMEOS)
++
++      StartupBrowserCreator startup_browser_creator;
++      startup_browser_creator.ProcessCmdLineImpl(
++          native_command, cur_dir, chrome::startup::IsProcessStartup::kNo,
++          {selected, mode}, last_opened_profiles);
++      }, cur_dir, mode);
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++  // This method is entered from the actual ProcessSingleton receipt, after
++  // native profile selection. Renderer navigations never reach this seam.
++  if (mode == StartupProfileMode::kBrowserWindow &&
++      aux::routing::MaybeRouteExternalCommandLine(profile, command_line,
++                                                 continue_native)) return;
++#endif
++  continue_native.Run(command_line, profile);
+ }
+ 
+ // static
