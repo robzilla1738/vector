@@ -1,0 +1,41 @@
+{
+  "format": "aux.runtime-cache-package.a3-preparation.v1",
+  "origin": {
+    "cache_package.py": {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/runtime-cache-package/cache_package.py",
+      "sha256": "2cdf68130e0c095f50530db3dab696fe0585eb8d9745340f03b307ada01ec7d0",
+      "copiedByteIdentically": true
+    },
+    "bind_pair.py": {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/runtime-cache-package/bind_pair.py",
+      "sha256": "cb79fa759ff13b6bec66cd924867002a031c21f8cd482303c22d5123cfdd8ba0",
+      "copiedByteIdentically": true
+    },
+    "link-tool-aliases.json": {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/runtime-cache-package/link-tool-aliases.json",
+      "sha256": "75ff23f4bcbc614394587ff29afef364672c15a9de9a12b69a882c310e7abec6",
+      "copiedByteIdentically": true
+    }
+  },
+  "checks": {
+    "copiedToolsByteIdentical": true,
+    "pythonSourcesParsed": true,
+    "availableReviewInputsMatch": true
+  },
+  "relinkReviewFrozen": false,
+  "actualA3LinkChecked": false,
+  "sourcePairCreated": false,
+  "recipePrepared": false,
+  "assembled": false,
+  "runtimeExecuted": false,
+  "testable": false,
+  "runtimeAuthorityGranted": false,
+  "files": {
+    "README.md": "78b04f35ed67231d46025ff9279e38ad13bac990287d840276676ef41ff7ecd3",
+    "bind_pair.py": "cb79fa759ff13b6bec66cd924867002a031c21f8cd482303c22d5123cfdd8ba0",
+    "cache_package.py": "2cdf68130e0c095f50530db3dab696fe0585eb8d9745340f03b307ada01ec7d0",
+    "commands.json": "5cd9b007530fab728d3fcd4b3d55cba4800f37663d91c561964c3a509614eba5",
+    "link-tool-aliases.json": "75ff23f4bcbc614394587ff29afef364672c15a9de9a12b69a882c310e7abec6",
+    "review.json": "950fe9989ec2287f1772a2305ae7bd37669f175974aa4cfcdd416ede0f1466c7"
+  }
+}
