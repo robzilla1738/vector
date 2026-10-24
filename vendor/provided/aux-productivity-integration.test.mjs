@@ -22,7 +22,7 @@ test('proposal keeps duplicate URLs as distinct tabs and refuses unknown or repe
  assert.throws(()=>createTidyProposal(snapshot,{groups:[{title:'Bad',tabIds:['a','a']}]},()=>''),/duplicate/);
 });
 test('real dispatch requests only titles and origins, revalidates snapshot, and never applies before review',async()=>{
- let sent,shown;let id=0;const deps={snapshot:async()=>structuredClone(snapshot),account:async()=>({accountId:7}),uuid:()=>`id-${++id}`,customPrompt:async()=>'',plan:async input=>{sent=input;return plan},cancel:async()=>{},show:async input=>{shown=input;return{success:true}},interval:()=>1,clearInterval:()=>{}};
+ let sent,shown;let id=0;const deps={snapshot:async()=>structuredClone(snapshot),account:async()=>({accountId:7,browserProfile:{profileId:'native-profile'}}),uuid:()=>`id-${++id}`,customPrompt:async()=>'',plan:async input=>{sent=input;return plan},cancel:async()=>{},show:async input=>{shown=input;return{success:true}},interval:()=>1,clearInterval:()=>{}};
  const result=await prepareTidyProposal(deps);assert.equal(result.phase,'review');assert.equal(shown.proposal.moves.length,2);
  assert.deepEqual(sent.tabs.map(t=>t.origin),['https://example.test','https://example.test']);assert.ok(!JSON.stringify(sent).includes('private='));
  let windows=0;await assert.rejects(prepareTidyProposal({...deps,snapshot:async()=>({...snapshot,windowId:++windows<3?31:32})}),/changed/);

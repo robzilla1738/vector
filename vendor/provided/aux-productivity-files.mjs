@@ -1,3 +1,5 @@
+import {auxCreateProductivityAccountGuard} from './aux-productivity-integration.mjs';
+
 export function validDownloadStem(value) {
   if(typeof value!=='string'||!value||value.length>100||value!==value.trim()||value.startsWith('.')||/[\\/:\p{Cc}\p{Cf}]/u.test(value))
     throw Error('Choose a filename without path separators or hidden control characters.');
@@ -44,12 +46,13 @@ export async function runFileAction(api,client,account,context,state,query,item,
   if(item.kind==='aux-file-apply')return{state:{...checked(await api.applyDownloadRename({...base,capability:state.prepared.capability,stem:validDownloadStem(query)})),view:'renamed'},text:''};
   if(item.kind==='aux-file-suggest'){
     const prepared=state.prepared,binding=await account();
-    if(binding.accountId!==prepared.accountId)throw Error('The active profile changed.');
-    const request={accountId:prepared.accountId,requestId:crypto.randomUUID()};onRequest(request);
+    if(binding.accountId!==prepared.accountId||!binding.browserProfile?.profileId)throw Error('The active profile changed.');
+    const request={accountId:prepared.accountId,profileId:binding.browserProfile.profileId,requestId:crypto.randomUUID()};onRequest(request);
     try{
       const proposal=await client.models.downloadNameProposal.mutate({...request,filename:prepared.filename,mime:prepared.mime,sourceHost:prepared.sourceHost});
       const current=await api.getCommandContext();
-      if(!current.success||current.generation!==context.generation||(await account()).accountId!==prepared.accountId)throw Error('The file review expired.');
+      const currentAccount=await account();
+      if(!current.success||current.generation!==context.generation||currentAccount.accountId!==prepared.accountId||currentAccount.browserProfile?.profileId!==request.profileId)throw Error('The file review expired.');
       return{state,text:validDownloadStem(proposal.stem)};
     }finally{onRequest(null)}
   }
@@ -75,20 +78,38 @@ export function transformAuxFilesUi({relative,text}) {
   change('readOnly:auxNavContext?.mode==="tidy",placeholder:', 'readOnly:auxNavContext?.mode==="tidy",placeholder:auxFileState?.view==="rename"?"Filename without extension":auxFileState?.view==="list"?"Search recent files":','aux-files-existing-input');
   return{text,anchors};
 }
-export async function auxRunDownloadNameRequest(accountId,input) {
+export async function auxRunDownloadNameRequest(accountId,input,account) {
   init_runtime$1();init_models();init_settings$1();
   const boundary=auxBrokerBoundary();boundary.assertOwner();boundary.registerProducerStop(auxStopDownloadNameRequests);
   if(auxDownloadNameRequests.has(accountId))throw Error('A filename suggestion is already running.');
-  const controller=new AbortController(),entry={requestId:input.requestId,controller};auxDownloadNameRequests.set(accountId,entry);
+  const controller=new AbortController();
+  const guard=auxCreateProductivityAccountGuard(accountId,account,input.profileId,controller,boundary);
+  const entry={requestId:input.requestId,controller,guard};auxDownloadNameRequests.set(accountId,entry);
   const timer=setTimeout(()=>controller.abort(Error('Filename suggestion timed out.')),30000);
-  try{return await boundary.awaited(()=>proposeDownloadName(input,{signal:controller.signal,assertCurrent:()=>boundary.assertOwner(),selection:async()=>{const store=settings(accountId);return store.get('modelCategories')?.fast??store.get('defaultModel')},resolve:selection=>models(accountId).resolve(selection.modelId,selection.provider),complete:(resolved,context,selection)=>modelRuntime.completeSimple(resolved.model,context,{apiKey:resolved.apiKey,maxTokens:256,signal:controller.signal,cacheRetention:'none',reasoning:selection.thinkingLevel})}))}
-  finally{clearTimeout(timer);if(auxDownloadNameRequests.get(accountId)===entry)auxDownloadNameRequests.delete(accountId)}
+  try{
+    guard.assertCurrent();
+    const sourceSettings=settings(accountId),sourceModels=models(accountId);
+    guard.assertCurrent();
+    const result=await boundary.awaited(()=>proposeDownloadName(input,{
+      signal:controller.signal,assertCurrent:guard.assertCurrent,
+      selection:async()=>{guard.assertCurrent();return sourceSettings.get('modelCategories')?.fast??sourceSettings.get('defaultModel')},
+      resolve:selection=>{guard.assertCurrent();return sourceModels.resolve(selection.modelId,selection.provider)},
+      complete:(resolved,context,selection)=>{guard.assertCurrent();return modelRuntime.completeSimple(resolved.model,context,{apiKey:resolved.apiKey,maxTokens:256,signal:controller.signal,cacheRetention:'none',reasoning:selection.thinkingLevel})}
+    }));
+    guard.assertCurrent();return result;
+  }finally{clearTimeout(timer);guard.dispose();if(auxDownloadNameRequests.get(accountId)===entry)auxDownloadNameRequests.delete(accountId)}
 }
 export function auxStopDownloadNameRequests(){for(const entry of auxDownloadNameRequests.values())entry.controller.abort(Error('Aux is shutting down.'))}
-export function auxCancelDownloadNameRequest(accountId,requestId){const entry=auxDownloadNameRequests.get(accountId);if(entry?.requestId===requestId)entry.controller.abort(Error('File review closed.'));return{success:true}}
+export function auxCancelDownloadNameRequest(accountId,input,account){
+  const entry=auxDownloadNameRequests.get(accountId);
+  if(entry?.requestId===input.requestId&&entry.guard.profileId===input.profileId&&
+     entry.guard.createdAt===account.createdAt&&entry.guard.incarnation===account.incarnationId)
+    entry.controller.abort(Error('File review closed.'));
+  return{success:true};
+}
 export function transformAuxFilesDaemon({text}) {
   const anchors=[];
-  text=replace(text,'modelsRouter=router({','modelsRouter=router({downloadNameProposal:accountProcedure.input(object({requestId:string$3().uuid(),filename:string$3().min(1).max(400),mime:string$3().max(200),sourceHost:string$3().max(253)})).mutation(({ctx,input})=>auxRunDownloadNameRequest(ctx.accountId,input)),downloadNameCancel:accountProcedure.input(object({requestId:string$3().uuid()})).mutation(({ctx,input})=>auxCancelDownloadNameRequest(ctx.accountId,input.requestId)),',anchors,'aux-files-account-provider-router');
+  text=replace(text,'modelsRouter=router({','modelsRouter=router({downloadNameProposal:accountProcedure.input(object({requestId:string$3().uuid(),profileId:string$3().min(1).max(256),filename:string$3().min(1).max(400),mime:string$3().max(200),sourceHost:string$3().max(253)})).mutation(({ctx,input})=>auxRunDownloadNameRequest(ctx.accountId,input,ctx.account)),downloadNameCancel:accountProcedure.input(object({requestId:string$3().uuid(),profileId:string$3().min(1).max(256)})).mutation(({ctx,input})=>auxCancelDownloadNameRequest(ctx.accountId,input,ctx.account)),',anchors,'aux-files-account-provider-router');
   const helpers=`\nconst auxDownloadNameRequests=new Map();\n${[validDownloadStem,proposeDownloadName,auxRunDownloadNameRequest,auxStopDownloadNameRequests,auxCancelDownloadNameRequest].map(fn=>fn.toString()).join('\n')}\n`;
   text+=helpers;anchors.push({kind:'aux-files-provider-helpers',append:helpers,count:1});return{text,anchors};
 }

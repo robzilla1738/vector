@@ -20,7 +20,7 @@ test('suggestion remains editable and cannot apply a rename implicitly or after 
  const context={success:true,generation:'review',mode:'commands'},state={view:'rename',prepared:{filename:'old.pdf',extension:'.pdf',capability:'cap',accountId:5,mime:'application/pdf',sourceHost:'example.test'}};
  let mutation=0;const api={getCommandContext:async()=>context,applyDownloadRename:async()=>{mutation++;return{success:true}}};
  const client={models:{downloadNameProposal:{mutate:async()=>({stem:'Suggested'})}}};
- assert.equal((await runFileAction(api,client,async()=>({accountId:5}),context,state,'old',{kind:'aux-file-suggest'},()=>{})).text,'Suggested');assert.equal(mutation,0);
+ assert.equal((await runFileAction(api,client,async()=>({accountId:5,browserProfile:{profileId:'native-profile'}}),context,state,'old',{kind:'aux-file-suggest'},()=>{})).text,'Suggested');assert.equal(mutation,0);
  await assert.rejects(runFileAction(api,client,async()=>({accountId:6}),context,state,'old',{kind:'aux-file-suggest'},()=>{}),/profile changed/);
  const sections=filesSections(context,state,'Chosen name',[]);assert.equal(sections[0].items[0].title,'Use Chosen name.pdf');
 });

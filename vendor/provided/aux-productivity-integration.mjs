@@ -9,21 +9,23 @@ export async function prepareTidyProposal(deps) {
   if(!Number.isSafeInteger(snapshot.accountId)||snapshot.accountId<0) throw Error('Connect this profile to an AI provider before using Tidy Tabs.');
   if(tabs.length<2) throw Error('Open at least two unpinned tabs in this Space to tidy.');
   const account=await deps.account();
-  if(account.accountId!==snapshot.accountId) throw Error('Profile changed; try Tidy Tabs again.');
+  if(account.accountId!==snapshot.accountId||!account.browserProfile?.profileId) throw Error('Profile changed; try Tidy Tabs again.');
+  const profileId=account.browserProfile.profileId;
   const requestId=deps.uuid();let expired=false,checking=false;
   const same=next=>next?.success&&next.ownerGeneration===snapshot.ownerGeneration&&next.revision===snapshot.revision&&next.spaceId===snapshot.spaceId&&next.windowId===snapshot.windowId&&next.accountId===snapshot.accountId;
   const timer=deps.interval(async()=>{
     if(checking)return;checking=true;
-    try{if(!same(await deps.snapshot())){expired=true;await deps.cancel({accountId:snapshot.accountId,requestId})}}
-    catch{expired=true;await deps.cancel({accountId:snapshot.accountId,requestId}).catch(()=>{})}
+    try{if(!same(await deps.snapshot())){expired=true;await deps.cancel({accountId:snapshot.accountId,profileId,requestId})}}
+    catch{expired=true;await deps.cancel({accountId:snapshot.accountId,profileId,requestId}).catch(()=>{})}
     finally{checking=false}
   },1000);
   try {
     const customPrompt=await deps.customPrompt();
     if(expired||!same(await deps.snapshot()))throw Error('Tabs changed; try Tidy Tabs again.');
-    const plan=await deps.plan({accountId:snapshot.accountId,requestId,customPrompt,
+    const plan=await deps.plan({accountId:snapshot.accountId,profileId,requestId,customPrompt,
       tabs:tabs.map(tab=>({id:tab.id,title:(tab.title??'').slice(0,512),origin:new URL(tab.url).origin}))});
-    if(expired||!same(await deps.snapshot())||(await deps.account()).accountId!==snapshot.accountId)
+    const currentAccount=await deps.account();
+    if(expired||!same(await deps.snapshot())||currentAccount.accountId!==snapshot.accountId||currentAccount.browserProfile?.profileId!==profileId)
       throw Error('Tabs or profile changed; no organization was applied.');
     const proposal=createTidyProposal(snapshot,plan,deps.uuid);
     if(!proposal.moves.length)throw Error('No organization changes were suggested.');
@@ -88,37 +90,76 @@ export function transformAuxProductivityUi({relative,text}) {
   return {text,anchors};
 }
 
-// Authenticated accountProcedure calls this inside the existing daemon. The
-// account's ModelsManager resolves its own credential or eligible plan session.
-export async function auxRunProductivityRequest(accountId,input) {
+// accountProcedure supplies the authenticated account snapshot. The CLI-only
+// accountInstanceProcedure is initialized separately, so reuse its exact
+// assertAccountInstance contract without introducing router initialization order.
+export function auxCreateProductivityAccountGuard(accountId,account,profileId,controller,boundary) {
+  init_accounts();init_notify();init_lifecycle();
+  if(!account||account.id!==accountId||!Number.isSafeInteger(account.createdAt)||typeof profileId!=='string'||!profileId)
+    throw Error('The originating profile account is unavailable.');
+  const createdAt=account.createdAt,incarnation=account.incarnationId,epoch=externalOwnerEpoch(accountId);
+  const binding=AccountRegistry.getAll().profileAccountBindings[profileId];
+  const identity=value=>JSON.stringify([value?.id,value?.mode,value?.userId,value?.authStatus,value?.provider]);
+  const accountIdentity=identity(account);
+  const bindingIdentity=value=>JSON.stringify([value?.profileId,value?.accountId,value?.profileIndex,value?.profilePath,value?.updatedAt]);
+  const capturedBinding=bindingIdentity(binding);
+  const assertCurrent=()=>{
+    boundary.assertOwner();
+    const current=AccountRegistry.getAccount(accountId);
+    assertAccountInstance(current,createdAt);
+    if(current?.incarnationId!==incarnation||identity(current)!==accountIdentity||
+       externalOwnerEpoch(accountId)!==epoch||isExternalOwnerSuspended(accountId)||
+       !binding||binding.profileId!==profileId||binding.accountId!==accountId||
+       bindingIdentity(AccountRegistry.getAll().profileAccountBindings[profileId])!==capturedBinding)
+      throw Error('The originating profile account changed. Start the request again.');
+    controller.signal.throwIfAborted();
+  };
+  assertCurrent();
+  const unsubscribe=onAccountAuthChange(changed=>{
+    if(changed!==accountId)return;
+    try{assertCurrent()}catch(error){controller.abort(error)}
+  });
+  return {assertCurrent,dispose:unsubscribe,createdAt,incarnation,profileId};
+}
+export async function auxRunProductivityRequest(accountId,input,account) {
   init_runtime$1();init_models();init_settings$1();
   const boundary=auxBrokerBoundary();boundary.assertOwner();
   boundary.registerProducerStop(auxStopProductivityRequests);
   if(auxProductivityRequests.has(accountId))throw Error('A tab organization request is already running for this profile.');
-  const controller=new AbortController(),entry={requestId:input.requestId,controller};
+  const controller=new AbortController();
+  const guard=auxCreateProductivityAccountGuard(accountId,account,input.profileId,controller,boundary);
+  const entry={requestId:input.requestId,controller,guard};
   auxProductivityRequests.set(accountId,entry);
   const timeout=setTimeout(()=>controller.abort(Error('Tab organization timed out.')),60000);
-  try{return await boundary.awaited(()=>runProductivityPlan(input,{
-    signal:controller.signal,assertCurrent:()=>boundary.assertOwner(),
-    selection:async()=>{const store=settings(accountId);return store.get('modelCategories')?.fast??store.get('defaultModel')},
-    resolve:selection=>models(accountId).resolve(selection.modelId,selection.provider),
-    complete:(resolved,context,selection)=>modelRuntime.completeSimple(resolved.model,context,{apiKey:resolved.apiKey,
-      maxTokens:2048,signal:controller.signal,cacheRetention:'none',reasoning:selection.thinkingLevel})
-  }))}finally{clearTimeout(timeout);if(auxProductivityRequests.get(accountId)===entry)auxProductivityRequests.delete(accountId)}
+  try{
+    guard.assertCurrent();
+    const sourceSettings=settings(accountId),sourceModels=models(accountId);
+    guard.assertCurrent();
+    const result=await boundary.awaited(()=>runProductivityPlan(input,{
+      signal:controller.signal,assertCurrent:guard.assertCurrent,
+      selection:async()=>{guard.assertCurrent();return sourceSettings.get('modelCategories')?.fast??sourceSettings.get('defaultModel')},
+      resolve:selection=>{guard.assertCurrent();return sourceModels.resolve(selection.modelId,selection.provider)},
+      complete:(resolved,context,selection)=>{guard.assertCurrent();return modelRuntime.completeSimple(resolved.model,context,{apiKey:resolved.apiKey,
+        maxTokens:2048,signal:controller.signal,cacheRetention:'none',reasoning:selection.thinkingLevel})}
+    }));
+    guard.assertCurrent();return result;
+  }finally{clearTimeout(timeout);guard.dispose();if(auxProductivityRequests.get(accountId)===entry)auxProductivityRequests.delete(accountId)}
 }
 export function auxStopProductivityRequests(){for(const entry of auxProductivityRequests.values())entry.controller.abort(Error('Aux is shutting down.'))}
-export function auxCancelProductivityRequest(accountId,requestId) {
+export function auxCancelProductivityRequest(accountId,input,account) {
   const entry=auxProductivityRequests.get(accountId);
-  if(entry?.requestId===requestId)entry.controller.abort(Error('The organization context changed.'));
+  if(entry?.requestId===input.requestId&&entry.guard.profileId===input.profileId&&
+     entry.guard.createdAt===account.createdAt&&entry.guard.incarnation===account.incarnationId)
+    entry.controller.abort(Error('The organization context changed.'));
   return {success:true};
 }
 export function transformAuxProductivityDaemon({text}) {
   const anchors=[];
-  const helpers=`\nconst auxProductivityRequests=new Map();\n${[validateTidyPlan,runProductivityPlan,auxStopProductivityRequests,auxCancelProductivityRequest,auxRunProductivityRequest].map(fn=>fn.toString()).join('\n')}\n`;
+  const helpers=`\nconst auxProductivityRequests=new Map();\n${[validateTidyPlan,runProductivityPlan,auxCreateProductivityAccountGuard,auxStopProductivityRequests,auxCancelProductivityRequest,auxRunProductivityRequest].map(fn=>fn.toString()).join('\n')}\n`;
   // Insert declarations before the generated bundle, but after any current
   // admission guard: declarations have no account/model/runtime side effects.
   text+=helpers;
-  const routes='modelsRouter=router({productivityPlan:accountProcedure.input(object({requestId:string$3().uuid(),tabs:array(object({id:string$3().min(1).max(64),title:string$3().max(512),origin:string$3().max(2048)})).min(2).max(128),customPrompt:string$3().max(2000).optional()})).mutation(({ctx,input})=>auxRunProductivityRequest(ctx.accountId,input)),productivityCancel:accountProcedure.input(object({requestId:string$3().uuid()})).mutation(({ctx,input})=>auxCancelProductivityRequest(ctx.accountId,input.requestId)),listSupported:';
+  const routes='modelsRouter=router({productivityPlan:accountProcedure.input(object({requestId:string$3().uuid(),profileId:string$3().min(1).max(256),tabs:array(object({id:string$3().min(1).max(64),title:string$3().max(512),origin:string$3().max(2048)})).min(2).max(128),customPrompt:string$3().max(2000).optional()})).mutation(({ctx,input})=>auxRunProductivityRequest(ctx.accountId,input,ctx.account)),productivityCancel:accountProcedure.input(object({requestId:string$3().uuid(),profileId:string$3().min(1).max(256)})).mutation(({ctx,input})=>auxCancelProductivityRequest(ctx.accountId,input,ctx.account)),listSupported:';
   text=replace(text,'modelsRouter=router({listSupported:',routes,anchors,'aux-tidy-account-provider-router');
   anchors.push({kind:'aux-tidy-provider-helpers',append:helpers,count:1});
   return {text,anchors};
