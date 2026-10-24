@@ -1,0 +1,22 @@
+{
+  "format": "aux.cli-open.build-handoff.static-check.v1",
+  "passed": true,
+  "sourceRows": 16,
+  "nativeGNFiles": 6,
+  "singleMatchAnchors": 19,
+  "appendBlocks": 2,
+  "registrationAnchors": 8,
+  "sdkCompileCommandsPrepared": 6,
+  "sdkInputsVerified": 13,
+  "dependencyCount": 31,
+  "bridgeV1LayoutChanged": false,
+  "actualNativeMutation": false,
+  "gnRun": false,
+  "compilerRun": false,
+  "linkerRun": false,
+  "nativeApiExecuted": false,
+  "localAuthenticationInvoked": false,
+  "productExecuted": false,
+  "signed": false,
+  "runtimeAcceptance": false
+}

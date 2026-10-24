@@ -1,0 +1,129 @@
+{
+  "format": "aux.cli-open.build-handoff.dependencies.v1",
+  "files": [
+    {
+      "path": "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/SDKSettings.json",
+      "sha256": "7b93ad7e534cc4b31c6a4e39d19b5e0288acf2168c2649479a796d1cb51939fb"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/aux-native-daemon-main/source/AuxNativeEndpointDelivery.cc",
+      "sha256": "3765060b84d88a7f63cdcfb695bcbc3f58ab1f92ca9905ccc5d37b629944c57d"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/aux-native-daemon-main/source/AuxNativeEndpointDelivery.h",
+      "sha256": "f3d78409fec2b84a5304626e144e84314954bce0ea29762f0f30740c62ca6b89"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/cli-native-embedding-a1/source/base/process/mac/aux_browser_descendant_engine.cc",
+      "sha256": "d787d49fc018b1153f8e6414615f0a40f87b458d91aa3c8fcc82c4fa6f3ef470"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/cli-native-embedding-a1/source/base/process/mac/aux_browser_descendant_engine.h",
+      "sha256": "55d795b7dcd1631c71ed32a713dbbb9dd16673808c8183837ba2bd1426883f27"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/cli-native-embedding-a1/source/common/AuxCliSealedImages.cc",
+      "sha256": "fb28fb6fd341165d229670befb2bb5d3ff108054c5e7e286362ca7c7ba12a959"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/cli-native-embedding-a1/source/common/AuxCliSealedImages.h",
+      "sha256": "6f1df6f4b83809e8e4ae4fec2cfcd4a6a8e7b0cd40e8bcbb1e7bc25bec59087b"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/cli-native-embedding-a1/source/common/AuxCliWire.cc",
+      "sha256": "94ba5d5e076cc6fbfb7163512c1f8600b326969ef7e83dde236ac483c8a1fb68"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/cli-native-embedding-a1/source/common/AuxCliWire.h",
+      "sha256": "e95c86ea68e13b9265ab3a48d983824dba128eab260687ab061387f18f788774"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/cli-native-open-build-handoff-a1/source/AuxCliIngress.cc",
+      "sha256": "32c4ebdebec5e08df2b4b365f5c0c67276eb1fba953506526a4480ba86bc314c"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/cli-native-open-build-handoff-a1/source/AuxNativeCliFrontend.mm",
+      "sha256": "bb65a82e22c85768cf81184fb083026b2371edfe23d95e78e9133133c54d7fb2"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/cli-native-open-command-a1/dependency-pins.json",
+      "sha256": "224c83c67b81921f9cfbf4549c52c9dd4b9d0cdb8a5c05f49634b720e79f4449"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/cli-native-open-command-a1/source/AuxCliIngress.cc",
+      "sha256": "d40c06b4b0e02c692281b2ef2b495a962f888c5492c0a9049f9b65b8ef30fd59"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/cli-native-open-command-a1/source/AuxCliIngress.h",
+      "sha256": "4515848fafc4dad25e5180130640d28c28bf1a3333610f232b34816a7e64e8d6"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/cli-native-open-command-a1/source/AuxCliManualProfileApproval.mm",
+      "sha256": "cdb90bafc1a6bc45283c9b907bbbfc3f5efacb21cf43f26b8153a4ea9c055428"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/cli-native-open-command-a1/source/AuxCliOpenArguments.cc",
+      "sha256": "d2f946689e5f5a6d5c82adbb1c3c685ddc58ac92ab9ef0dbebcd07edb4282f92"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/cli-native-open-command-a1/source/AuxCliOpenArguments.h",
+      "sha256": "6c9761c47b8d76f2bde4bfadeb78f5b24cbaeba457ad1b0a2b99cf2a6f2e2a6d"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/cli-native-open-command-a1/source/AuxNativeCliFrontend.cc",
+      "sha256": "bb47d7c3f54b043235d1186e6e39f67c10092d0425838b4d6bb29c3fb5cf0237"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/vendor/provided/native/packaged-identity-admission.h",
+      "sha256": "3f56e834ea18353f8ec7ed554336eb94104ff86f84dcfe1952de258520c4f50a"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/base/BUILD.gn",
+      "sha256": "5afe0d309e34842b08185c56d8fce7f0269656754b1bec0ea125846ce868fec8"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/base/apple/mach_port_rendezvous.cc",
+      "sha256": "ea2852469c36dc1eb81280f6d6ad30f3487691fa6980c6c7877927878be56db6"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/base/apple/mach_port_rendezvous.h",
+      "sha256": "c54d30debfa721763774774ad85e197b8a7b1337d3cb78a830258cd30d73f74f"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/base/apple/mach_port_rendezvous_mac.cc",
+      "sha256": "1de18c3104a1b7edc92f9e7ec9615c4dc1d49be114d564baf0b4ec94c2f46d34"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/base/process/mac/aux_browser_descendant_bridge.cc",
+      "sha256": "c241367f4c2095554e2e11f9a0dde1776a2d85f46e9d242b7183def60ddbefbe"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/base/process/mac/aux_browser_descendant_bridge.h",
+      "sha256": "0f1a8aca4506ccf5b2eaa410e01f388e23a6de77717f2d1c274003c71e07e395"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/build/config/compiler/BUILD.gn",
+      "sha256": "270ea6da49e42e7701e05033c5cd5ef9d351dcdb3c9cabfb1f4566b71a2426b3"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/BUILD.gn",
+      "sha256": "2758b3eb6b016012c570e1412b6d6027ab504ff459a7b869dd331aaa4ff25d90"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/app/aux_browser_app.exports",
+      "sha256": "6ec08b85012cd535c6aba8416fdf9a6eddd6910a53ac691d8c3894acccf492c3"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/BUILD.gn",
+      "sha256": "699fd76e3019c3a5dc3a298c7477c16f9b0df2935d873b8522b0bd9437eff347"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/aux/BUILD.gn",
+      "sha256": "dbf23257b66ca9d4b236371aab78a9303bda0f1bbfb2698dcce47f46ce6d83f4"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/ui/BUILD.gn",
+      "sha256": "4eb9bba269b73f8569f632a84b5b407d104d1e56b61000fcb3525542c9683723"
+    }
+  ]
+}

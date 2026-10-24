@@ -1,0 +1,111 @@
+{
+  "format": "aux.cli-open.gn-proposals.v1",
+  "files": [
+    {
+      "path": "base/BUILD.gn",
+      "inputSha256": "5afe0d309e34842b08185c56d8fce7f0269656754b1bec0ea125846ce868fec8",
+      "outputSha256": "f5ecbd00c9664ab5a4bffded070536dada339de82bc71a876e41427d5d6bb1a8",
+      "source": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/cli-native-open-build-handoff-a1/source/base/BUILD.gn",
+      "anchors": [
+        {
+          "name": "Headers-only factual CLI query, primary implementation remains private",
+          "find": "    public = [\n      \"process/mac/aux_browser_descendant_bridge.h\",\n      \"process/mac/aux_browser_descendant_client.h\",\n    ]",
+          "replace": "    public = [\n      \"process/mac/aux_browser_descendant_bridge.h\",\n      \"process/mac/aux_browser_descendant_client.h\",\n      \"process/mac/aux_browser_descendant_cli_membership.h\",\n    ]",
+          "count": 1
+        }
+      ],
+      "rootOwned": true,
+      "applied": false
+    },
+    {
+      "path": "chrome/browser/aux/BUILD.gn",
+      "inputSha256": "dbf23257b66ca9d4b236371aab78a9303bda0f1bbfb2698dcce47f46ce6d83f4",
+      "outputSha256": "300940d48c436a8e8580fb65c632dfb1e1018019775e9781e0a084608d57d241",
+      "source": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/cli-native-open-build-handoff-a1/source/chrome/browser/aux/BUILD.gn",
+      "anchors": [
+        {
+          "name": "Profile identity header dependency without UI cycle",
+          "find": "    \"//chrome/browser/profiles:profile_util\",\n    \"//components/prefs\",\n    \"//content/public/browser\",\n  ]\n}\n\nsource_set(\"profile_security_client\")",
+          "replace": "    \"//chrome/browser/profiles:profile_util\",\n    \"//components/prefs\",\n    \"//content/public/browser\",\n  ]\n  if (enable_aux_browser && is_mac) {\n    deps += [ \":native_cli_open_headers\" ]\n  }\n}\n\nsource_set(\"profile_security_client\")",
+          "count": 1
+        }
+      ],
+      "append": "\n# Narrow native browser URL command. Common transport has only SDK dependencies;\n# the actual profile/approval/navigation implementation remains in :ui.\nif (enable_aux_browser && is_mac) {\n  source_set(\"native_cli_open_headers\") {\n    public = [ \"cli/AuxCliOpenCommand.h\" ]\n  }\n  source_set(\"native_cli_ingress\") {\n    public = [\n      \"cli/AuxCliIngress.h\",\n      \"cli/AuxCliSealedImages.h\",\n      \"cli/AuxCliWire.h\",\n      \"cli/AuxCliOpenArguments.h\",\n    ]\n    sources = public + [\n      \"cli/AuxCliIngress.cc\",\n      \"cli/AuxCliSealedImages.cc\",\n      \"cli/AuxCliWire.cc\",\n      \"cli/AuxCliOpenArguments.cc\",\n    ]\n    frameworks = [ \"CoreFoundation.framework\", \"Security.framework\" ]\n    libs = [ \"bsm\" ]\n  }\n  executable(\"native_cli_open\") {\n    # Genuine standalone SDK-only native frontend, not a Node/SEA launcher.\n    # Root packaging places this output in the fixed signed CLI bundle later.\n    sources = [\n      \"cli/AuxNativeCliFrontend.mm\",\n      \"cli/AuxNativeEndpointDelivery.cc\",\n      \"cli/AuxNativeEndpointDelivery.h\",\n      \"cli/packaged-identity-admission.h\",\n    ]\n    deps = [ \":native_cli_ingress\" ]\n    frameworks = [ \"Foundation.framework\" ]\n    libs = [ \"bsm\" ]\n    configs += [ \"//build/config/compiler:enable_arc\" ]\n    ldflags = [ \"-Wl,-no_adhoc_codesign\" ]\n  }\n}\n",
+      "appendCount": 1,
+      "rootOwned": true,
+      "applied": false
+    },
+    {
+      "path": "chrome/browser/ui/BUILD.gn",
+      "inputSha256": "4eb9bba269b73f8569f632a84b5b407d104d1e56b61000fcb3525542c9683723",
+      "outputSha256": "56b91a9ea98e67910d50ca536af0143eac81637069d07022683671d779345b86",
+      "source": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/cli-native-open-build-handoff-a1/source/chrome/browser/ui/BUILD.gn",
+      "anchors": [
+        {
+          "name": "Native CLI UI implementation and genuine dependencies in existing Aux block",
+          "find": "  if (enable_aux_browser && is_mac) {\n    deps += [\n      \"//chrome/browser/profiles:profile\",",
+          "replace": "  if (enable_aux_browser && is_mac) {\n    sources += [\n      \"../aux/cli/AuxCliManualProfileApproval.h\",\n      \"../aux/cli/AuxCliManualProfileApproval.mm\",\n      \"../aux/cli/AuxCliOpenCommand.h\",\n      \"../aux/cli/AuxCliOpenCommand.mm\",\n    ]\n    deps += [\n      \"//chrome/browser/aux:native_cli_open_headers\",\n      \"//chrome/browser/aux:native_cli_ingress\",\n      \"//chrome/browser/profiles/keep_alive\",\n      \"//chrome/browser/profiles:profile\",",
+          "count": 1
+        },
+        {
+          "name": "Native OS approval frameworks on actual UI Mac target",
+          "find": "    frameworks = [\n      \"Carbon.framework\",\n      \"Quartz.framework\",\n    ]",
+          "replace": "    frameworks = [\n      \"Carbon.framework\",\n      \"Quartz.framework\",\n    ]\n    if (enable_aux_browser) {\n      frameworks += [ \"AppKit.framework\", \"Foundation.framework\", \"LocalAuthentication.framework\" ]\n    }",
+          "count": 1
+        }
+      ],
+      "rootOwned": true,
+      "applied": false
+    },
+    {
+      "path": "chrome/browser/BUILD.gn",
+      "inputSha256": "699fd76e3019c3a5dc3a298c7477c16f9b0df2935d873b8522b0bd9437eff347",
+      "outputSha256": "a1241bd149a63328dfca61eb014598fc63063e26228c86e3c90b54178a5da334",
+      "source": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/cli-native-open-build-handoff-a1/source/chrome/browser/BUILD.gn",
+      "anchors": [
+        {
+          "name": "Actual PostBrowserStart caller header dependency",
+          "find": "  if (enable_aux_browser && is_mac) {\n    deps += [ \"//chrome/browser/extensions/api/aux_mini_popup\" ]\n  }",
+          "replace": "  if (enable_aux_browser && is_mac) {\n    deps += [ \"//chrome/browser/extensions/api/aux_mini_popup\",\n              \"//chrome/browser/aux:native_cli_open_headers\" ]\n  }",
+          "count": 1
+        }
+      ],
+      "rootOwned": true,
+      "applied": false
+    },
+    {
+      "path": "chrome/BUILD.gn",
+      "inputSha256": "2758b3eb6b016012c570e1412b6d6027ab504ff459a7b869dd331aaa4ff25d90",
+      "outputSha256": "0b97bafecccd7310d4273def283cefb795deb277a5641c2ccd37665948cfc627",
+      "source": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/cli-native-open-build-handoff-a1/source/chrome/BUILD.gn",
+      "anchors": [
+        {
+          "name": "Retain the separate factual main-image CLI query export",
+          "find": "      ldflags += [ \"-Wl,-u,_AuxGetBrowserDescendantBridgeV1\" ]",
+          "replace": "      ldflags += [ \"-Wl,-u,_AuxGetBrowserDescendantBridgeV1\",\n                   \"-Wl,-u,_AuxGetActualCliClientMembershipV1\" ]",
+          "count": 1
+        }
+      ],
+      "rootOwned": true,
+      "applied": false
+    },
+    {
+      "path": "chrome/app/aux_browser_app.exports",
+      "inputSha256": "6ec08b85012cd535c6aba8416fdf9a6eddd6910a53ac691d8c3894acccf492c3",
+      "outputSha256": "777b3f341ee9805c329a52dd89c484a7bb0411e9b9f1b73da9e7ebe7bad32eea",
+      "source": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/cli-native-open-build-handoff-a1/source/chrome/app/aux_browser_app.exports",
+      "anchors": [
+        {
+          "name": "Expose only the actual primary query beside the unchanged V1 getter",
+          "find": "_AuxGetBrowserDescendantBridgeV1\n",
+          "replace": "_AuxGetBrowserDescendantBridgeV1\n_AuxGetActualCliClientMembershipV1\n",
+          "count": 1
+        }
+      ],
+      "rootOwned": true,
+      "applied": false
+    }
+  ],
+  "actualNativeMutation": false,
+  "gnRun": false
+}
