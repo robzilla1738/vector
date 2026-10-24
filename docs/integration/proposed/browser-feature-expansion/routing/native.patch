@@ -1,0 +1,514 @@
+--- /dev/null
++++ b/chrome/browser/aux/routing/routing_model.cc
+@@ -0,0 +1,100 @@
++// Copyright 2026 Aux Authors. BSD-style license: see //LICENSE.
++#include "chrome/browser/aux/routing/routing_model.h"
++#include <set>
++#include <tuple>
++#include "base/strings/string_util.h"
++#include "base/uuid.h"
++namespace aux::routing {
++namespace {
++bool Keys(const base::DictValue& d, std::initializer_list<std::string_view> keys) {
++  for (const auto item : d) {
++    bool found = false;
++    for (auto key : keys) found |= item.first == key;
++    if (!found) return false;
++  }
++  return true;
++}
++bool Id(const std::string* s) {
++  return s && base::Uuid::ParseLowercase(*s).is_valid();
++}
++bool PathMatches(const std::string& path, const GURL& url) {
++  return path.empty() || path == "/" || url.path_piece() == path ||
++      (base::StartsWith(url.path_piece(), path) &&
++       (path.back() == '/' || url.path_piece()[path.size()] == '/'));
++}
++}  // namespace
++bool RoutableUrl(const GURL& url) {
++  return url.is_valid() && url.SchemeIsHTTPOrHTTPS() &&
++         !url.has_username() && !url.has_password() &&
++         url.spec().size() <= 16384;
++}
++Decoded DecodeConfiguration(const base::DictValue& value) {
++  if (!Keys(value, {"version", "revision", "rules"}) ||
++      value.FindInt("version") != 1 || !Id(value.FindString("revision")))
++    return {.error = "Unsupported or invalid routing configuration"};
++  const auto* rows = value.FindList("rules");
++  if (!rows || rows->size() > 200)
++    return {.error = "Routing requires at most 200 rules"};
++  Configuration result{.revision = *value.FindString("revision")};
++  std::set<std::string> ids;
++  for (const auto& item : *rows) {
++    const auto* d = item.GetIfDict();
++    if (!d || !Keys(*d, {"id", "enabled", "host", "subdomains", "path",
++                         "priority", "profileId", "spaceId"}) ||
++        !Id(d->FindString("id")) || !Id(d->FindString("profileId")) ||
++        !d->FindBool("enabled") || !d->FindBool("subdomains") ||
++        !d->FindInt("priority"))
++      return {.error = "Invalid routing rule fields"};
++    const auto* host = d->FindString("host");
++    const auto* path = d->FindString("path");
++    const auto* space = d->FindString("spaceId");
++    if (!host || host->empty() || host->size() > 253 || !path ||
++        path->size() > 2048 || !space || (!space->empty() && !Id(space)) ||
++        !ids.insert(*d->FindString("id")).second)
++      return {.error = "Invalid or duplicated routing identity"};
++    const GURL parsed("https://" + *host + "/");
++    if (!RoutableUrl(parsed) || parsed.has_port() || parsed.has_query() ||
++        parsed.has_ref() || parsed.path() != "/" || parsed.host() != *host ||
++        host->find_first_of("/*?#@\\") != std::string::npos)
++      return {.error = "Use a normalized hostname without a scheme or port"};
++    const GURL path_url("https://" + *host + (path->empty() ? "/" : *path));
++    if ((!path->empty() && (path->front() != '/' ||
++         path_url.path() != *path)) || path_url.has_query() ||
++        path_url.has_ref() || path_url.host() != *host ||
++        *d->FindInt("priority") < -10000 || *d->FindInt("priority") > 10000)
++      return {.error = "Use a normalized path without query or fragment"};
++    result.rules.push_back({.id = *d->FindString("id"), .host = *host,
++        .path = *path, .enabled = *d->FindBool("enabled"),
++        .subdomains = *d->FindBool("subdomains"),
++        .priority = *d->FindInt("priority"),
++        .destination = {*d->FindString("profileId"), *space}});
++  }
++  return {.config = std::move(result)};
++}
++base::DictValue EncodeConfiguration(const Configuration& config) {
++  base::ListValue rules;
++  for (const auto& r : config.rules) {
++    rules.Append(base::DictValue().Set("id", r.id).Set("enabled", r.enabled)
++        .Set("host", r.host).Set("path", r.path).Set("subdomains", r.subdomains)
++        .Set("priority", r.priority).Set("profileId", r.destination.profile_id)
++        .Set("spaceId", r.destination.space_id));
++  }
++  return base::DictValue().Set("version", 1).Set("revision", config.revision)
++      .Set("rules", std::move(rules));
++}
++const Rule* Match(const Configuration& config, const GURL& url) {
++  if (!RoutableUrl(url)) return nullptr;
++  const Rule* winner = nullptr;
++  auto rank = [](const Rule& r) {
++    return std::tuple(r.priority, r.path.size(), !r.subdomains, r.host.size());
++  };
++  for (const auto& r : config.rules) {
++    if (!r.enabled || !PathMatches(r.path, url) ||
++        !(url.host() == r.host || (r.subdomains &&
++          base::EndsWith(url.host_piece(), "." + r.host)))) continue;
++    // Equal ranks retain user order; no dependence on hash/map iteration.
++    if (!winner || rank(r) > rank(*winner)) winner = &r;
++  }
++  return winner;
++}
++}  // namespace aux::routing
+--- /dev/null
++++ b/chrome/browser/aux/routing/routing_model.h
+@@ -0,0 +1,27 @@
++// Copyright 2026 Aux Authors. BSD-style license: see //LICENSE.
++#ifndef CHROME_BROWSER_AUX_ROUTING_ROUTING_MODEL_H_
++#define CHROME_BROWSER_AUX_ROUTING_ROUTING_MODEL_H_
++#include <optional>
++#include <string>
++#include <vector>
++#include "base/values.h"
++#include "url/gurl.h"
++namespace aux::routing {
++struct Destination { std::string profile_id; std::string space_id; };
++struct Rule {
++  std::string id, host, path;
++  bool enabled = true, subdomains = false;
++  int priority = 0;
++  Destination destination;
++};
++struct Configuration { std::string revision; std::vector<Rule> rules; };
++struct Decoded { std::optional<Configuration> config; std::string error; };
++// Versioned, bounded and strict. Unknown fields are refused, not discarded.
++Decoded DecodeConfiguration(const base::DictValue&);
++base::DictValue EncodeConfiguration(const Configuration&);
++bool RoutableUrl(const GURL&);
++// A matched destination is returned even when unavailable. Availability belongs
++// to the native owner and may never cause selection of another rule/profile.
++const Rule* Match(const Configuration&, const GURL&);
++}  // namespace aux::routing
++#endif
+--- /dev/null
++++ b/chrome/browser/aux/routing/routing_model_unittest.cc
+@@ -0,0 +1,45 @@
++// Copyright 2026 Aux Authors. BSD-style license: see //LICENSE.
++#include "chrome/browser/aux/routing/routing_model.h"
++#include "testing/gtest/include/gtest/gtest.h"
++namespace aux::routing {
++namespace {
++Configuration Fixture() {
++  Configuration c{.revision = "19b6f236-3f92-4358-8bd9-ddaa77b566f3"};
++  c.rules.push_back({.id = "6bd41982-1ba0-45aa-b6da-1f070c16784b", .host = "example.org",
++      .path = "/work", .subdomains = true,
++      .destination = {"23919be8-58d6-4598-8865-c3e30b518e8b", ""}});
++  return c;
++}
++TEST(AuxRoutingModel, NormalizedBoundedRoundTripRejectsUnknownOrUnsafeInput) {
++  auto c = Fixture();
++  EXPECT_TRUE(DecodeConfiguration(EncodeConfiguration(c)).config);
++  auto unknown = EncodeConfiguration(c); unknown.Set("script", "bad");
++  EXPECT_FALSE(DecodeConfiguration(unknown).config);
++  for (const auto* host : {"example.org.evil/path", "user@example.org", "EXAMPLE.org", "example.org:443"}) {
++    c.rules[0].host = host;
++    EXPECT_FALSE(DecodeConfiguration(EncodeConfiguration(c)).config);
++  }
++  c = Fixture(); c.rules[0].path = "/work/../personal";
++  EXPECT_FALSE(DecodeConfiguration(EncodeConfiguration(c)).config);
++  c = Fixture(); c.rules.push_back(c.rules.front());
++  EXPECT_FALSE(DecodeConfiguration(EncodeConfiguration(c)).config);
++}
++TEST(AuxRoutingModel, HostAndPathBoundariesCannotMatchLookalikesOrCredentials) {
++  const auto c = Fixture();
++  EXPECT_NE(Match(c, GURL("https://a.example.org/work/report")), nullptr);
++  for (const auto* url : {"https://example.org.evil/work", "https://notexample.org/work",
++      "https://example.org/workshop", "https://u:p@example.org/work", "file:///work"})
++    EXPECT_EQ(Match(c, GURL(url)), nullptr);
++}
++TEST(AuxRoutingModel, DeterministicPrioritySpecificityThenUserOrder) {
++  auto c = Fixture(); auto exact = c.rules.front();
++  exact.id = "cd852c30-9f38-4aa6-bbfd-4d98f85cec72"; exact.subdomains = false;
++  c.rules.push_back(exact);
++  EXPECT_EQ(Match(c, GURL("https://example.org/work"))->id, exact.id);
++  c.rules[0].priority = 1;
++  EXPECT_EQ(Match(c, GURL("https://example.org/work"))->id, c.rules[0].id);
++  c.rules[0].enabled = false;
++  EXPECT_EQ(Match(c, GURL("https://example.org/work"))->id, exact.id);
++}
++}  // namespace
++}  // namespace aux::routing
+--- /dev/null
++++ b/chrome/browser/aux/routing/routing_service.cc
+@@ -0,0 +1,293 @@
++// Copyright 2026 Aux Authors. BSD-style license: see //LICENSE.
++#include "chrome/browser/aux/routing/routing_service.h"
++#include <set>
++#include <utility>
++#include "base/functional/bind.h"
++#include "base/memory/ref_counted.h"
++#include "base/memory/weak_ptr.h"
++#include "base/strings/utf_string_conversions.h"
++#include "base/timer/timer.h"
++#include "base/uuid.h"
++#include "chrome/browser/aux/AuxBrowserPrivateRoots.h"
++#include "chrome/browser/aux/organization/organization_profile_service.h"
++#include "chrome/browser/aux/profile_identity.h"
++#include "chrome/browser/aux/routing/routing_model.h"
++#include "chrome/browser/browser_process.h"
++#include "chrome/browser/profiles/profile.h"
++#include "chrome/browser/profiles/profile_attributes_entry.h"
++#include "chrome/browser/profiles/profile_attributes_storage.h"
++#include "chrome/browser/profiles/profile_manager.h"
++#include "chrome/browser/profiles/profile_window.h"
++#include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
++#include "chrome/browser/ui/navigator/browser_navigator.h"
++#include "chrome/browser/ui/navigator/browser_navigator_params.h"
++#include "chrome/browser/ui/views/frame/aux_organization_window_controller.h"
++#include "components/prefs/pref_service.h"
++#include "content/public/browser/browser_thread.h"
++#include "net/base/url_util.h"
++#include "base/strings/string_util.h"
++#include "ui/base/window_open_disposition.h"
++#include "url/origin.h"
++namespace aux::routing {
++namespace {
++base::DictValue Error(std::string code) {
++  return base::DictValue().Set("ok", false).Set("handled", true).Set("error", code);
++}
++PrefService* Local() { return g_browser_process ? g_browser_process->local_state() : nullptr; }
++ProfileManager* Manager() { return g_browser_process ? g_browser_process->profile_manager() : nullptr; }
++bool Admitted(Profile* p) {
++  DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
++  if (!p || !p->IsRegularProfile() || p->IsOffTheRecord() ||
++      aux::IsProfileCookieRestorePending(p) || !Local() || !Manager() ||
++      !Local()->FindPreference(kRulesPref) || !Local()->FindPreference(kProfileIndexPref)) return false;
++  auto roots = aux::peer::CaptureActualChromiumBrowserRoots();
++  const auto state = aux::peer::InspectNativeBrowserShutdown();
++  return roots && roots->Revalidate() && state.admitted_generation &&
++      !state.wrong_process && !state.admission_closed && !state.sequence_uncertain;
++}
++Decoded Config() {
++  const auto& stored = Local()->GetDict(kRulesPref);
++  if (stored.empty()) return {.config = Configuration{
++      .revision = "62421b4e-3acf-4a12-9b12-bb26106339aa"}};
++  return DecodeConfiguration(stored);
++}
++// This index is written only by RememberProfile from a native loaded Profile.
++// It stores one native directory basename, never a renderer-supplied path.
++ProfileAttributesEntry* Entry(const std::string& id) {
++  const auto* leaf = Local()->GetDict(kProfileIndexPref).FindString(id);
++  if (!leaf || leaf->empty() || leaf->find_first_of("/\\") != std::string::npos ||
++      *leaf == "." || *leaf == "..") return nullptr;
++  auto* entry = Manager()->GetProfileAttributesStorage().GetProfileAttributesWithPath(
++      Manager()->user_data_dir().Append(base::FilePath::FromUTF8Unsafe(*leaf)));
++  if (!entry || entry->IsOmitted() || entry->IsEphemeral() || entry->IsSigninRequired())
++    return nullptr;
++  auto* loaded = Manager()->GetProfileByPath(entry->GetPath());
++  if (loaded && (!loaded->IsRegularProfile() || loaded->IsOffTheRecord() ||
++                 aux::GetProfileId(loaded) != id)) return nullptr;
++  return entry;
++}
++std::string ProfileSelector(const std::string& value) {
++  if (base::Uuid::ParseLowercase(value).is_valid()) return Entry(value) ? value : "";
++  std::string found;
++  for (const auto row : Local()->GetDict(kProfileIndexPref)) {
++    auto* e = Entry(row.first);
++    if (e && base::UTF16ToUTF8(e->GetName()) == value) {
++      if (!found.empty()) return "";
++      found = row.first;
++    }
++  }
++  return found;
++}
++std::string SpaceSelector(Profile* p, const std::string& value) {
++  auto* owner = organization::OrganizationProfileServiceFactory::GetForProfileIfExists(p);
++  if (!owner || !owner->EnsureCurrentBinding() || owner->loading() || !owner->model()) return "";
++  const auto& spaces = owner->model()->snapshot().spaces;
++  if (spaces.contains(value)) return value;
++  std::string found;
++  for (const auto& [id, space] : spaces) {
++    if (space.name == value) {
++      if (!found.empty()) return "";
++      found = id;
++    }
++  }
++  return found;
++}
++bool BypassAutomaticRouting(const GURL& url) {
++  if (url.host() == "localhost" || url.host() == "[::1]" ||
++      base::StartsWith(url.host_piece(), "127.")) return true;
++  for (net::QueryIterator it(url); !it.IsAtEnd(); it.Advance()) {
++    const auto key = base::ToLowerASCII(it.GetKey());
++    if (key.find('%') != std::string::npos) return true;
++    if (key == "code" || key == "state" || key == "access_token" ||
++        key == "id_token" || key == "oauth_token" || key == "oauth_verifier")
++      return true;
++  }
++  const auto fragment = base::ToLowerASCII(url.ref_piece());
++  return fragment.find("access_token=") != std::string::npos ||
++         fragment.find("id_token=") != std::string::npos;
++}
++class OpenRequest : public base::RefCounted<OpenRequest> {
++ public:
++  OpenRequest(Profile* p, Intent intent, base::DictValue resolved,
++              base::OnceCallback<void(base::DictValue)> done)
++      : source_(p->GetWeakPtr()), epoch_(aux::GetProfileCookieBindingEpoch(p)),
++        generation_(aux::peer::InspectNativeBrowserShutdown().admitted_generation),
++        intent_(std::move(intent)), resolved_(std::move(resolved)), done_(std::move(done)) {}
++  void Start() {
++    timer_.Start(FROM_HERE, base::Seconds(15),
++        base::BindOnce(&OpenRequest::Fail, base::RetainedRef(this), "routing-timeout"));
++    auto* entry = Entry(*resolved_.FindString("profileId"));
++    if (!entry) { Fail("profile-unavailable"); return; }
++    profiles::LoadProfileAsync(entry->GetPath(),
++        base::BindOnce(&OpenRequest::Loaded, base::RetainedRef(this)));
++  }
++ private:
++  friend class base::RefCounted<OpenRequest>;
++  ~OpenRequest() = default;
++  bool Current() const {
++    if (!done_ || !source_ || !Admitted(source_.get()) ||
++        aux::GetProfileCookieBindingEpoch(source_.get()) != epoch_ ||
++        aux::peer::InspectNativeBrowserShutdown().admitted_generation != generation_)
++      return false;
++    const auto current = Config();
++    return current.config && current.config->revision == *resolved_.FindString("revision");
++  }
++  void Fail(std::string reason) {
++    if (!done_) return;
++    timer_.Stop();
++    std::move(done_).Run(Error(std::move(reason)));
++  }
++  void Loaded(Profile* p) {
++    if (!Current()) { Fail("routing-cancelled"); return; }
++    if (!Admitted(p) || aux::GetProfileId(p) != *resolved_.FindString("profileId") ||
++        !Entry(aux::GetProfileId(p))) { Fail("profile-unavailable"); return; }
++    target_ = p->GetWeakPtr();
++    target_epoch_ = aux::GetProfileCookieBindingEpoch(p);
++    profiles::OpenBrowserWindowForProfile(
++        base::BindOnce(&OpenRequest::Window, base::RetainedRef(this)), false, false, false, p);
++  }
++  void Window(BrowserWindowInterface* browser) {
++    if (!Current() || !target_ || !Admitted(target_.get()) || !browser ||
++        browser->GetProfile() != target_.get() ||
++        browser->GetType() != BrowserWindowInterface::TYPE_NORMAL ||
++        aux::GetProfileCookieBindingEpoch(target_.get()) != target_epoch_ ||
++        aux::GetProfileId(target_.get()) != *resolved_.FindString("profileId") ||
++        !Entry(aux::GetProfileId(target_.get()))) { Fail("routing-cancelled"); return; }
++    const std::string requested_space = *resolved_.FindString("spaceId");
++    if (!requested_space.empty()) {
++      const auto space = SpaceSelector(target_.get(), requested_space);
++      auto* controller = aux::AuxOrganizationWindowController::FromBrowser(browser);
++      if (space.empty() || !controller || !controller->IsProjectionReady() ||
++          !controller->SelectSpace(space)) { Fail("space-unavailable-or-busy"); return; }
++      resolved_.Set("spaceId", space);
++    }
++    NavigateParams params(browser, intent_.url, ui::PAGE_TRANSITION_LINK);
++    params.disposition = WindowOpenDisposition::NEW_FOREGROUND_TAB;
++    // External/CLI input is not a trusted browser-UI navigation or an opener.
++    params.initiator_origin = url::Origin();
++    Navigate(&params);
++    if (!params.navigated_or_inserted_contents) { Fail("navigation-refused"); return; }
++    timer_.Stop();
++    resolved_.Set("opened", true);
++    std::move(done_).Run(std::move(resolved_));
++  }
++  base::WeakPtr<Profile> source_, target_;
++  const std::string epoch_;
++  const uint64_t generation_;
++  std::string target_epoch_;
++  Intent intent_;
++  base::DictValue resolved_;
++  base::OnceCallback<void(base::DictValue)> done_;
++  base::OneShotTimer timer_;
++};
++}  // namespace
++void RememberProfile(Profile* p) {
++  if (!Admitted(p)) return;
++  auto* entry = Manager()->GetProfileAttributesStorage().GetProfileAttributesWithPath(p->GetPath());
++  if (!entry || entry->IsOmitted() || entry->IsEphemeral() ||
++      p->GetPath().DirName() != Manager()->user_data_dir()) return;
++  auto index = Local()->GetDict(kProfileIndexPref).Clone();
++  const auto id = aux::GetProfileId(p);
++  if (!base::Uuid::ParseLowercase(id).is_valid()) return;
++  const auto leaf = p->GetPath().BaseName().AsUTF8Unsafe();
++  if (index.FindString(id)) return;  // Never silently retarget an existing UUID.
++  index.Set(id, leaf);
++  Local()->SetDict(kProfileIndexPref, std::move(index));
++}
++base::DictValue GetState(Profile* p) {
++  if (!Admitted(p)) return Error("routing-authority-unavailable");
++  auto config = Config();
++  if (!config.config) return Error(config.error);  // Preserve unknown stored bytes.
++  base::ListValue profiles;
++  for (const auto row : Local()->GetDict(kProfileIndexPref)) {
++    auto* entry = Entry(row.first);
++    if (!entry) continue;
++    base::ListValue spaces;
++    if (auto* loaded = Manager()->GetProfileByPath(entry->GetPath())) {
++      auto* owner = organization::OrganizationProfileServiceFactory::GetForProfileIfExists(loaded);
++      if (owner && owner->EnsureCurrentBinding() && !owner->loading() && owner->model())
++        for (const auto& [id, space] : owner->model()->snapshot().spaces)
++          spaces.Append(base::DictValue().Set("id", id).Set("name", space.name));
++    }
++    profiles.Append(base::DictValue().Set("id", row.first)
++        .Set("name", base::UTF16ToUTF8(entry->GetName())).Set("spaces", std::move(spaces)));
++  }
++  return base::DictValue().Set("ok", true).Set("configuration", EncodeConfiguration(*config.config))
++      .Set("profiles", std::move(profiles));
++}
++base::DictValue ReplaceRules(Profile* p, const std::string& revision,
++                            const base::DictValue& value) {
++  if (!Admitted(p)) return Error("routing-authority-unavailable");
++  const auto before = Config();
++  if (!before.config) return Error(before.error);
++  if (before.config->revision != revision) return Error("routing-revision-conflict");
++  auto next = DecodeConfiguration(value);
++  if (!next.config || next.config->revision != revision)
++    return Error(next.config ? "routing-revision-conflict" : next.error);
++  // Allow retaining an existing unavailable destination so it can be disabled or
++  // removed; never introduce a new reference to an unavailable profile.
++  for (const auto& rule : next.config->rules) {
++    if (Entry(rule.destination.profile_id)) continue;
++    bool existing = false;
++    for (const auto& old : before.config->rules)
++      existing |= old.id == rule.id && old.destination.profile_id == rule.destination.profile_id;
++    if (!existing) return Error("profile-unavailable");
++  }
++  next.config->revision = base::Uuid::GenerateRandomV4().AsLowercaseString();
++  Local()->SetDict(kRulesPref, EncodeConfiguration(*next.config));
++  // Native PrefService owns persistence; this receipt means accepted in memory,
++  // not a durable-write/drain certificate.
++  return GetState(p).Set("persistence", "native-pref-queued");
++}
++base::DictValue Resolve(Profile* p, const Intent& intent) {
++  if (!Admitted(p)) return Error("routing-authority-unavailable");
++  if (!RoutableUrl(intent.url)) return Error("unsupported-url");
++  auto config = Config();
++  if (!config.config) return Error(config.error);
++  auto* source_entry = Entry(aux::GetProfileId(p));
++  if (!source_entry || source_entry->GetPath() != p->GetPath())
++    return Error("profile-identity-unavailable");
++  Destination destination;
++  std::string rule_id;
++  if (!intent.profile.empty()) {
++    destination.profile_id = ProfileSelector(intent.profile);
++    if (destination.profile_id.empty()) return Error("profile-missing-or-ambiguous");
++  } else if (const auto* rule = BypassAutomaticRouting(intent.url) ? nullptr :
++                 Match(*config.config, intent.url)) {
++    destination = rule->destination;
++    rule_id = rule->id;
++  } else if (intent.authority == Authority::kCurrentProfile) {
++    destination.profile_id = aux::GetProfileId(p);
++  } else {
++    return base::DictValue().Set("ok", true).Set("handled", false);
++  }
++  if (!Entry(destination.profile_id)) return Error("profile-unavailable");
++  if (intent.authority == Authority::kCurrentProfile && destination.profile_id != aux::GetProfileId(p))
++    return Error("destination-outside-authenticated-profile");
++  if (!intent.space.empty()) destination.space_id = intent.space;
++  std::string space_status = "none";
++  if (!destination.space_id.empty()) {
++    auto* loaded = Manager()->GetProfileByPath(Entry(destination.profile_id)->GetPath());
++    if (loaded) {
++      const auto space = SpaceSelector(loaded, destination.space_id);
++      if (space.empty()) return Error("space-unavailable-or-busy");
++      destination.space_id = space;
++      space_status = "ready";
++    } else {
++      space_status = "requires-profile-load";
++    }
++  }
++  return base::DictValue().Set("ok", true).Set("handled", true)
++      .Set("spaceStatus", space_status)
++      .Set("profileId", destination.profile_id).Set("spaceId", destination.space_id)
++      .Set("ruleId", rule_id).Set("revision", config.config->revision);
++}
++void Open(Profile* p, Intent intent, base::OnceCallback<void(base::DictValue)> done) {
++  auto resolved = Resolve(p, intent);
++  if (!resolved.FindBool("ok").value_or(false) || !resolved.FindBool("handled").value_or(false)) {
++    std::move(done).Run(std::move(resolved)); return;
++  }
++  auto request = base::MakeRefCounted<OpenRequest>(p, std::move(intent), std::move(resolved), std::move(done));
++  request->Start();
++}
++}  // namespace aux::routing
+--- /dev/null
++++ b/chrome/browser/aux/routing/routing_service.h
+@@ -0,0 +1,34 @@
++// Copyright 2026 Aux Authors. BSD-style license: see //LICENSE.
++#ifndef CHROME_BROWSER_AUX_ROUTING_ROUTING_SERVICE_H_
++#define CHROME_BROWSER_AUX_ROUTING_ROUTING_SERVICE_H_
++#include <string>
++#include "base/functional/callback.h"
++#include "base/values.h"
++#include "url/gurl.h"
++class Profile;
++namespace aux::routing {
++inline constexpr char kRulesPref[] = "aux.routing.rules";
++inline constexpr char kProfileIndexPref[] = "aux.routing.profile_index";
++// Local State dictionaries, never syncable. Native startup calls RememberProfile
++// only after ordinary profile admission. No renderer can provide a filesystem path.
++void RememberProfile(Profile*);
++base::DictValue GetState(Profile*);
++base::DictValue ReplaceRules(Profile*, const std::string& expected_revision,
++                            const base::DictValue& configuration);
++// CLI calls use kCurrentProfile: the authenticated bridge has authority only for
++// its bound profile. Native external receipt uses kExternal; never use it from JS.
++enum class Authority { kCurrentProfile, kExternal };
++struct Intent {
++  GURL url;
++  std::string profile;  // Exact UUID or unambiguous native display name.
++  std::string space;    // Exact UUID or unambiguous name in the selected profile.
++  Authority authority = Authority::kCurrentProfile;
++};
++base::DictValue Resolve(Profile*, const Intent&);
++// No match => handled:false, original native opener continues. Any matched but
++// refused target => handled:true, ok:false: caller displays error and MUST NOT
++// fall through to opening the URL in another profile. Open never retries an
++// issued navigation. Profiles/windows are created only through native APIs.
++void Open(Profile*, Intent, base::OnceCallback<void(base::DictValue)>);
++}  // namespace aux::routing
++#endif

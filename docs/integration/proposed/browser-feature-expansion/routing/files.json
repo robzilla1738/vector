@@ -1,0 +1,33 @@
+{
+  "baselineCommit": "fd0bb9af6",
+  "selectedNativeRoot": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src",
+  "scope": "inactive routing proposal; no selected native tree mutation",
+  "files": [
+    {
+      "path": "chrome/browser/aux/routing/routing_model.cc",
+      "baselineSha256": null,
+      "sourceSha256": "2efb0d6b283d434bfd8d9dbb0d7b68b5ee5d7d857c56e24548199fe493c2136e"
+    },
+    {
+      "path": "chrome/browser/aux/routing/routing_model.h",
+      "baselineSha256": null,
+      "sourceSha256": "97253d31a3cf5409d247a4a2eb95738de844e8484477a2ae04ad859b6fec53a0"
+    },
+    {
+      "path": "chrome/browser/aux/routing/routing_model_unittest.cc",
+      "baselineSha256": null,
+      "sourceSha256": "24d53d8efda192f918ef13b45a51590b7b81966b67b41eae30c0bc9b5826dd2e"
+    },
+    {
+      "path": "chrome/browser/aux/routing/routing_service.cc",
+      "baselineSha256": null,
+      "sourceSha256": "35ff2788cce729dc79ffa738e35b50ff2087fe5e8a71cc4258d467c28b6f09a9"
+    },
+    {
+      "path": "chrome/browser/aux/routing/routing_service.h",
+      "baselineSha256": null,
+      "sourceSha256": "000caf70a7d18b1fe577878a2b27a9753c97ab82cbc0568aa08379893e8ef362"
+    }
+  ],
+  "patchSha256": "b19dedae01e4c3d3e6fd49086aad75fa2ce404a98214115676323791c346bf84"
+}
