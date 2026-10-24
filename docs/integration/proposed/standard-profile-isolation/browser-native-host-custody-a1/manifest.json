@@ -1,0 +1,78 @@
+{
+  "format": "aux.browser-native-host-custody.overlay.v1",
+  "files": [
+    {
+      "path": "chrome/app/chrome_exe_main_mac.cc",
+      "beforeSha256": "96ed48f2bd53d81cebba0063f1408fec4da7c952af2d7446f047a5d46fa885df",
+      "afterSha256": "371c931919e7455f980e28e0dd8a201a1e86b4f01c23de660a85a75360f5bddc"
+    },
+    {
+      "path": "chrome/browser/extensions/api/messaging/aux_native_messaging_lifetime.h",
+      "beforeSha256": "55a77918bbb40ba07a9fcf1b1e4d217b62f92d7e4f9d2bc7e6900205d9f4cb47",
+      "afterSha256": "4eac06ece4604d8cd97483998917105cd53f905666859aae3d98036ae1e812fb"
+    },
+    {
+      "path": "content/browser/aux_child_lifetime.h",
+      "beforeSha256": "446f4dac61201c937cae66c4f7515e4aac7bb8cbe0ce14f613cb7661028d2fc6",
+      "afterSha256": "2b338953aa589941250ff5fbd01816010f0fb08494263ba46f8c4c294b2ffdfe"
+    },
+    {
+      "path": "chrome/browser/aux/AuxOwnedNativePeerChild.cc",
+      "beforeSha256": "98e5e456db34ce07c285149ba7dc33e0179ed7001b044f25185fc0a719b49503",
+      "afterSha256": "e58cf3a84cc074b0701e20bfdb634a9f3d8ada13e2b76edd3238d5f14fbfd678"
+    },
+    {
+      "path": "chrome/browser/aux/AuxOwnedNativePeerChild.h",
+      "beforeSha256": "35812957162af8ff16ecda8e400debbd755314022ec12f01339402387d3cab97",
+      "afterSha256": "37f5a29c0df9f97ed99c707981ef4caa2e30aae3b5bfee4c213e224a167ef318"
+    },
+    {
+      "path": "chrome/browser/aux/AuxSelectedStateHome.cc",
+      "beforeSha256": "d1570801ecc1794abea41ba4c796fc7dfd3c273b11713e94d466010edfd78b56",
+      "afterSha256": "f5526dfac8b738d6e64ef346d97f89ead1f951aa0d64a7472a5ee07d83bafe5e"
+    },
+    {
+      "path": "third_party/crashpad/crashpad/util/posix/spawn_subprocess.cc",
+      "beforeSha256": "f5941bb86a60f19bf1d22f69f74e35ca8285856e2a009e78985da4176c3e5b20",
+      "afterSha256": "6d573b348ca31f3bf9f2fa82fc7b46253ba71fac2d9f3fad478bf9c2f7055427"
+    },
+    {
+      "path": "chrome/browser/ui/aux_browser_shutdown_drain.cc",
+      "beforeSha256": "738f1570150e06ca4771637095513b9ccb82dafda062ea2bd80b89929f1cd064",
+      "afterSha256": "f81edb2f78a29c058a0616ea455c235d52faea0c4ef090d9ea29ed7a8f915f75"
+    }
+  ],
+  "newFiles": [
+    {
+      "path": "base/process/mac/aux_browser_descendant_bridge.cc",
+      "sha256": "c241367f4c2095554e2e11f9a0dde1776a2d85f46e9d242b7183def60ddbefbe"
+    },
+    {
+      "path": "base/process/mac/aux_browser_descendant_bridge.h",
+      "sha256": "0f1a8aca4506ccf5b2eaa410e01f388e23a6de77717f2d1c274003c71e07e395"
+    },
+    {
+      "path": "base/process/mac/aux_browser_descendant_client.h",
+      "sha256": "a0b37945caa903b40ef8e43ae24eee35e7abfa4ca4c80e5040edddda288864d6"
+    },
+    {
+      "path": "base/process/mac/aux_browser_descendant_engine.cc",
+      "sha256": "42427c90316c6cb92a9a5f5aafa307de29ea9df57cc913fb8769a2de5d439faa"
+    },
+    {
+      "path": "base/process/mac/aux_browser_descendant_engine.h",
+      "sha256": "ccd36116505b67a3bfd196857d50cc0c41d4f218e852d9e30930892991defb4d"
+    }
+  ],
+  "countedAdaptations": 35,
+  "patchSha256": "f73c05ac5c4f92c5ffc760d5d6503d1bdb2c5878b8ed59d3cd56a3c13fe628fd",
+  "enginePredecessor": {
+    "path": "/private/tmp/aux-standard-native-source-20261023-a4/AuxTaskDescendantObserver.cc",
+    "sha256": "cb10bb7e05caed1baa661e67430d33f1aa9532fd82b44804166d619c4043d56d"
+  },
+  "nativeCompiled": false,
+  "runtimeAccepted": false,
+  "productExecuted": false,
+  "signingPerformed": false,
+  "crashRegistrationCloseIntegrated": false
+}

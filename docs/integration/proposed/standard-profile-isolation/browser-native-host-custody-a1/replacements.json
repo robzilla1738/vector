@@ -1,0 +1,212 @@
+[
+  {
+    "path": "chrome/app/chrome_exe_main_mac.cc",
+    "old": "#include <dlfcn.h>",
+    "new": "#include <dlfcn.h>\n#if defined(AUX_BROWSER_DESCENDANT_CUSTODY) && !defined(HELPER_EXECUTABLE)\n#include \"base/process/mac/aux_browser_descendant_engine.h\"\n#endif",
+    "count": 1
+  },
+  {
+    "path": "chrome/app/chrome_exe_main_mac.cc",
+    "old": "  partition_alloc::EarlyMallocZoneRegistration();",
+    "new": "  partition_alloc::EarlyMallocZoneRegistration();\n#if defined(AUX_BROWSER_DESCENDANT_CUSTODY) && !defined(HELPER_EXECUTABLE)\n  // First native browser entry, before framework dlopen or any child launch.\n  // Allocator registration above creates no browser child or task authority.\n  if (aux::browser_descendants::InitializeAtFreshBrowserEntry() != 0)\n    FatalError(\"Aux browser descendant capability unavailable.\");\n#endif",
+    "count": 1
+  },
+  {
+    "path": "chrome/browser/extensions/api/messaging/aux_native_messaging_lifetime.h",
+    "old": "#include \"base/process/kill.h\"",
+    "new": "#include \"base/process/kill.h\"\n#include \"base/process/mac/aux_browser_descendant_client.h\"",
+    "count": 1
+  },
+  {
+    "path": "chrome/browser/extensions/api/messaging/aux_native_messaging_lifetime.h",
+    "old": "    Registry().push_back(entry);  // Reserve before the actual spawn.",
+    "new": "    entry->cohort = aux::browser_custody::Reserve(aux::browser_custody::Family::kNativeMessaging);\n    if (!entry->cohort || !aux::browser_custody::MaySpawn(entry->cohort)) return nullptr;\n    Registry().push_back(entry);  // Reserve before the actual spawn.",
+    "count": 1
+  },
+  {
+    "path": "chrome/browser/extensions/api/messaging/aux_native_messaging_lifetime.h",
+    "old": "      // A genuine direct-child reap does not prove that descendants stopped.\n      // Keep this process-lifetime tombstone until an actual native descendant\n      // authority is integrated; neither callback loss nor reaping clears it.\n      std::lock_guard<std::mutex> registry_lock(RegistryMutex());\n      if (UnobservedDescendantCohorts() == UINT64_MAX) AccountingUnknown() = true;\n      else ++UnobservedDescendantCohorts();\n      if (birth.is_null()) uncertain = true;",
+    "new": "      aux::browser_custody::DidCreate(cohort,pid);\n      if (birth.is_null()) uncertain = true;",
+    "count": 1
+  },
+  {
+    "path": "chrome/browser/extensions/api/messaging/aux_native_messaging_lifetime.h",
+    "old": "    if (pid <= 0) ReleaseLocked();  // Actual LaunchProcess returned invalid.",
+    "new": "    if (pid <= 0) aux::browser_custody::DidFailBeforeChild(cohort);\n    // Receiver loss/direct exit cannot clear the actual descendant ticket.",
+    "count": 1
+  },
+  {
+    "path": "chrome/browser/extensions/api/messaging/aux_native_messaging_lifetime.h",
+    "old": "    if (evidence == base::AuxChildReapEvidence::reaped && !uncertain)\n      ReleaseLocked();",
+    "new": "    if (evidence == base::AuxChildReapEvidence::reaped && !direct_reaped) {\n      direct_reaped = true;\n      aux::browser_custody::DidObserveOriginalReap(cohort,!uncertain);\n    }\n    if (evidence == base::AuxChildReapEvidence::unknown)\n      aux::browser_custody::DidObserveOriginalReap(cohort,false);",
+    "count": 1
+  },
+  {
+    "path": "chrome/browser/extensions/api/messaging/aux_native_messaging_lifetime.h",
+    "old": "      if (entry->released) continue;",
+    "new": "      const auto descendants = aux::browser_custody::Inspect(entry->cohort);\n      if (descendants == aux::browser_custody::Result::kSettled) entry->ReleaseLocked();\n      else if (descendants == aux::browser_custody::Result::kUnknown ||\n               descendants == aux::browser_custody::Result::kRefused) entry->uncertain = true;\n      if (entry->released) continue;",
+    "count": 1
+  },
+  {
+    "path": "chrome/browser/extensions/api/messaging/aux_native_messaging_lifetime.h",
+    "old": "  bool bound = false;",
+    "new": "  aux::browser_custody::Ticket cohort = 0;\n  bool direct_reaped = false;\n  bool bound = false;",
+    "count": 1
+  },
+  {
+    "path": "content/browser/aux_child_lifetime.h",
+    "old": "#include \"base/process/kill.h\"",
+    "new": "#include \"base/process/kill.h\"\n#include \"base/process/mac/aux_browser_descendant_client.h\"",
+    "count": 1
+  },
+  {
+    "path": "content/browser/aux_child_lifetime.h",
+    "old": "    Registry().push_back(entry);  // Reserve before the actual spawn.",
+    "new": "    entry->cohort = aux::browser_custody::Reserve(aux::browser_custody::Family::kContent);\n    if (!entry->cohort || !aux::browser_custody::MaySpawn(entry->cohort)) return nullptr;\n    Registry().push_back(entry);  // Reserve before the actual spawn.",
+    "count": 1
+  },
+  {
+    "path": "content/browser/aux_child_lifetime.h",
+    "old": "      // A genuine direct-child reap does not prove that descendants stopped.\n      // Keep this process-lifetime tombstone until an actual native descendant\n      // authority is integrated; neither callback loss nor reaping clears it.\n      std::lock_guard<std::mutex> registry_lock(RegistryMutex());\n      if (UnobservedDescendantCohorts() == UINT64_MAX) AccountingUnknown() = true;\n      else ++UnobservedDescendantCohorts();\n      if (birth.is_null()) uncertain = true;",
+    "new": "      aux::browser_custody::DidCreate(cohort,pid);\n      if (birth.is_null()) uncertain = true;",
+    "count": 1
+  },
+  {
+    "path": "content/browser/aux_child_lifetime.h",
+    "old": "    if (pid <= 0) ReleaseLocked();  // Actual LaunchProcess returned invalid.",
+    "new": "    if (pid <= 0) aux::browser_custody::DidFailBeforeChild(cohort);\n    // Receiver loss/direct exit cannot clear the actual descendant ticket.",
+    "count": 1
+  },
+  {
+    "path": "content/browser/aux_child_lifetime.h",
+    "old": "    if (evidence == base::AuxChildReapEvidence::reaped && !uncertain)\n      ReleaseLocked();",
+    "new": "    if (evidence == base::AuxChildReapEvidence::reaped && !direct_reaped) {\n      direct_reaped = true;\n      aux::browser_custody::DidObserveOriginalReap(cohort,!uncertain);\n    }\n    if (evidence == base::AuxChildReapEvidence::unknown)\n      aux::browser_custody::DidObserveOriginalReap(cohort,false);",
+    "count": 1
+  },
+  {
+    "path": "content/browser/aux_child_lifetime.h",
+    "old": "      if (entry->released) continue;",
+    "new": "      const auto descendants = aux::browser_custody::Inspect(entry->cohort);\n      if (descendants == aux::browser_custody::Result::kSettled) entry->ReleaseLocked();\n      else if (descendants == aux::browser_custody::Result::kUnknown ||\n               descendants == aux::browser_custody::Result::kRefused) entry->uncertain = true;\n      if (entry->released) continue;",
+    "count": 1
+  },
+  {
+    "path": "content/browser/aux_child_lifetime.h",
+    "old": "  bool bound = false;",
+    "new": "  aux::browser_custody::Ticket cohort = 0;\n  bool direct_reaped = false;\n  bool bound = false;",
+    "count": 1
+  },
+  {
+    "path": "chrome/browser/aux/AuxOwnedNativePeerChild.cc",
+    "old": "#include \"AuxOwnedChildWait.h\"",
+    "new": "#include \"AuxOwnedChildWait.h\"\n#include \"base/process/mac/aux_browser_descendant_client.h\"",
+    "count": 1
+  },
+  {
+    "path": "chrome/browser/aux/AuxOwnedNativePeerChild.cc",
+    "old": "  base::Process child;",
+    "new": "  base::Process child;\n  aux::browser_custody::Ticket descendant_ticket = 0;",
+    "count": 1
+  },
+  {
+    "path": "chrome/browser/aux/AuxOwnedNativePeerChild.cc",
+    "old": "  State::RetainBeforeLaunch(state);",
+    "new": "  state->descendant_ticket = aux::browser_custody::Reserve(aux::browser_custody::Family::kDaemon);\n  if (!state->descendant_ticket || !aux::browser_custody::MaySpawn(state->descendant_ticket)) return false;\n  State::RetainBeforeLaunch(state);",
+    "count": 1
+  },
+  {
+    "path": "chrome/browser/aux/AuxOwnedNativePeerChild.cc",
+    "old": "    state->observation.launch_failed = true;",
+    "new": "    aux::browser_custody::DidFailBeforeChild(state->descendant_ticket);\n    state->observation.launch_failed = true;",
+    "count": 1
+  },
+  {
+    "path": "chrome/browser/aux/AuxOwnedNativePeerChild.cc",
+    "old": "  state->observation.child_pid = state->child.Pid();",
+    "new": "  aux::browser_custody::DidCreate(state->descendant_ticket,state->child.Pid());\n  state->observation.child_pid = state->child.Pid();",
+    "count": 1
+  },
+  {
+    "path": "chrome/browser/aux/AuxOwnedNativePeerChild.cc",
+    "old": "  observation.wait_status = status;",
+    "new": "  aux::browser_custody::DidObserveOriginalReap(descendant_ticket,!observation.exit_ownership_unknown);\n  observation.wait_status = status;",
+    "count": 1
+  },
+  {
+    "path": "chrome/browser/aux/AuxOwnedNativePeerChild.cc",
+    "old": "int SelectedNativeHome::DuplicateRevalidatedDirectory() {",
+    "new": "bool SelectedNativeHome::BindBrowserDescendantScope(uint64_t generation) {\n  const auto pulse = InspectReadyPulse();\n  if (!generation || !pulse || pulse->generation != generation) return false;\n  auto owner = state_->child;\n  std::lock_guard<std::mutex> lock(owner->mutex);\n  if (getpid() != owner->process || !owner->peer || !owner->child.IsValid() ||\n      owner->observation.closed || owner->observation.exit_ownership_unknown ||\n      owner->observation.exit_observed_and_reaped) return false;\n  return aux::browser_custody::TransferDaemon(owner->descendant_ticket,generation);\n}\nint SelectedNativeHome::DuplicateRevalidatedDirectory() {",
+    "count": 1
+  },
+  {
+    "path": "chrome/browser/aux/AuxOwnedNativePeerChild.h",
+    "old": "  int DuplicateRevalidatedDirectory();",
+    "new": "  bool BindBrowserDescendantScope(uint64_t authenticated_generation);\n  int DuplicateRevalidatedDirectory();",
+    "count": 1
+  },
+  {
+    "path": "chrome/browser/aux/AuxSelectedStateHome.cc",
+    "old": "    admitted_generation = generation;",
+    "new": "    if (!owner->BindBrowserDescendantScope(generation)) return false;\n    admitted_generation = generation;",
+    "count": 1
+  },
+  {
+    "path": "third_party/crashpad/crashpad/util/posix/spawn_subprocess.cc",
+    "old": "#include \"build/build_config.h\"",
+    "new": "#include \"build/build_config.h\"\n#if BUILDFLAG(IS_MAC)\n#include \"base/process/mac/aux_browser_descendant_client.h\"\n#endif",
+    "count": 1
+  },
+  {
+    "path": "third_party/crashpad/crashpad/util/posix/spawn_subprocess.cc",
+    "old": "  pid_t pid = fork();",
+    "new": "#if BUILDFLAG(IS_MAC)\n  const auto aux_crash_ticket = aux::browser_custody::ReserveIfBrowser(aux::browser_custody::Family::kCrashpad);\n  if (aux_crash_ticket.required && !aux_crash_ticket.ticket) return false;\n#endif\n  pid_t pid = fork();",
+    "count": 1
+  },
+  {
+    "path": "third_party/crashpad/crashpad/util/posix/spawn_subprocess.cc",
+    "old": "    PLOG(ERROR) << \"fork\";",
+    "new": "#if BUILDFLAG(IS_MAC)\n    if (aux_crash_ticket.ticket) aux::browser_custody::DidFailBeforeChild(aux_crash_ticket.ticket);\n#endif\n    PLOG(ERROR) << \"fork\";",
+    "count": 1
+  },
+  {
+    "path": "third_party/crashpad/crashpad/util/posix/spawn_subprocess.cc",
+    "old": "  // waitpid() for the child, so that it does not become a zombie process.",
+    "new": "#if BUILDFLAG(IS_MAC)\n  if (aux_crash_ticket.ticket) aux::browser_custody::DidCreate(aux_crash_ticket.ticket,pid);\n#endif\n  // waitpid() for the child, so that it does not become a zombie process.",
+    "count": 1
+  },
+  {
+    "path": "third_party/crashpad/crashpad/util/posix/spawn_subprocess.cc",
+    "old": "  if (wait_pid == -1) {",
+    "new": "#if BUILDFLAG(IS_MAC)\n  if (aux_crash_ticket.ticket) aux::browser_custody::DidObserveOriginalReap(\n      aux_crash_ticket.ticket,wait_pid == pid && (WIFEXITED(status) || WIFSIGNALED(status)));\n#endif\n  if (wait_pid == -1) {",
+    "count": 1
+  },
+  {
+    "path": "chrome/browser/ui/aux_browser_shutdown_drain.cc",
+    "old": "#include \"chrome/browser/ui/aux_browser_shutdown_drain.h\"",
+    "new": "#include \"chrome/browser/ui/aux_browser_shutdown_drain.h\"\n#include \"base/process/mac/aux_browser_descendant_client.h\"",
+    "count": 1
+  },
+  {
+    "path": "chrome/browser/ui/aux_browser_shutdown_drain.cc",
+    "old": "    if (readiness.unknown || carriers.unresolved_children) status = 2;",
+    "new": "    const auto descendants = aux::browser_custody::InspectBrowserScope(expected_generation);\n    if (readiness.unknown || carriers.unresolved_children ||\n        descendants == aux::browser_custody::Result::kUnknown ||\n        descendants == aux::browser_custody::Result::kRefused) status = 2;",
+    "count": 1
+  },
+  {
+    "path": "chrome/browser/ui/aux_browser_shutdown_drain.cc",
+    "old": "             state.main_loop_destroyed) status = 0;",
+    "new": "             state.main_loop_destroyed && descendants == aux::browser_custody::Result::kSettled) status = 0;",
+    "count": 1
+  },
+  {
+    "path": "chrome/browser/ui/aux_browser_shutdown_drain.cc",
+    "old": "  CloseInstallationCarrierAdmission();",
+    "new": "  aux::browser_custody::CloseAdmission();\n  CloseInstallationCarrierAdmission();",
+    "count": 1
+  },
+  {
+    "path": "chrome/browser/ui/aux_browser_shutdown_drain.cc",
+    "old": "          !closed.child_close->peer.selected_home_cleanup_unresolved) return;",
+    "new": "          !closed.child_close->peer.selected_home_cleanup_unresolved &&\n          aux::browser_custody::InspectStream() == aux::browser_custody::Result::kSettled) return;",
+    "count": 1
+  }
+]

@@ -1,0 +1,9 @@
+{
+  "passed": true,
+  "kind": "counted source replay and inert lineage scenarios",
+  "files": 8,
+  "anchors": 35,
+  "nativeCompiled": false,
+  "observerExecuted": false,
+  "crashHandlerStopped": false
+}
