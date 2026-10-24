@@ -1,0 +1,52 @@
+{
+  "format": "aux.standard-daemon-projection-v2.preparation.v1",
+  "pairedLiteralReplay": true,
+  "pairedSyntax": true,
+  "previousSourceSha256": "00607ee3555eb8c8c8f6d7641d93ac009ca9a3b4e2fc7444dfe898109d9d863c",
+  "previousEntrySha256": "fe85ca92a82b957f61727729ba61ca732d061df8534f3f64a3afd2a2af5c0400",
+  "expectedOutputs": {
+    "source": "2e35bf82a24e22a1a76b61fe7211c9a1bdbfb770f3e45ae689131eefae9f75ea",
+    "entry": "ebb32136d280406d02841c5f9fc3b08d2714b4384e70d0d690ca4bdd8bb1c8d7"
+  },
+  "expectedStages": {
+    "source": [
+      {
+        "name": "refresh-and-skill",
+        "inputSha256": "00607ee3555eb8c8c8f6d7641d93ac009ca9a3b4e2fc7444dfe898109d9d863c",
+        "outputSha256": "c8d26083dd40cadbf6a4d29708c054db5b614c51f06822cc33bc68573fe47af9",
+        "changesSha256": "b68268d2762baa6ef4a3f61dfaddf9dca0472374d38a0314078525050d1ba41a"
+      },
+      {
+        "name": "managed-producers",
+        "inputSha256": "c8d26083dd40cadbf6a4d29708c054db5b614c51f06822cc33bc68573fe47af9",
+        "outputSha256": "2e35bf82a24e22a1a76b61fe7211c9a1bdbfb770f3e45ae689131eefae9f75ea",
+        "changesSha256": "bfdeaa693b2c524129819e925ef0d1a043462e47fdbff660c2f664c0149b84ac"
+      }
+    ],
+    "entry": [
+      {
+        "name": "refresh-and-skill",
+        "inputSha256": "fe85ca92a82b957f61727729ba61ca732d061df8534f3f64a3afd2a2af5c0400",
+        "outputSha256": "beacf4d6cbfa19bc66d8b0f1f717b5594177c80b6d85ead584b4985adedc11d8",
+        "changesSha256": "b68268d2762baa6ef4a3f61dfaddf9dca0472374d38a0314078525050d1ba41a"
+      },
+      {
+        "name": "managed-producers",
+        "inputSha256": "beacf4d6cbfa19bc66d8b0f1f717b5594177c80b6d85ead584b4985adedc11d8",
+        "outputSha256": "ebb32136d280406d02841c5f9fc3b08d2714b4384e70d0d690ca4bdd8bb1c8d7",
+        "changesSha256": "bfdeaa693b2c524129819e925ef0d1a043462e47fdbff660c2f664c0149b84ac"
+      }
+    ]
+  },
+  "editsPerLeaf": [
+    15,
+    20
+  ],
+  "frozenPriorAnchorCount": 118,
+  "plannedTotalAnchorCount": 153,
+  "originalProjectorRerun": false,
+  "producerRun": false,
+  "productExecuted": false,
+  "providerRequests": 0,
+  "nativeBuild": false
+}
