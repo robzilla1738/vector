@@ -1,0 +1,94 @@
+{
+  "format": "aux.extension-storage-migration.source.v1",
+  "files": [
+    {
+      "path": "components/value_store/leveldb_value_store.h",
+      "inputSha256": "23cf9626d3152f4253eacdd1e5c26113905db60c11e90d6ea0551cdf69735edd",
+      "outputSha256": "f2924f6064f76cb5b1e78b8e0fd7fc49e309488b47686079dc79c358f4f8900e",
+      "anchors": [
+        {
+          "find": "#include <memory>",
+          "replace": "#include <array>\n#include <memory>\n#include <optional>",
+          "count": 1
+        },
+        {
+          "find": "#include \"base/compiler_specific.h\"",
+          "replace": "#include \"base/compiler_specific.h\"\n#include \"base/memory/weak_ptr.h\"\n#include \"base/types/expected.h\"",
+          "count": 1
+        },
+        {
+          "find": "  // Write directly to the backing levelDB.",
+          "replace": "\n  // Backend-only preparation. Never opens, repairs or deletes a database.\n  // Call on the owning backend sequence after profile writers are quiesced.\n  // The capture is invalidated by intervening ordinary store operations.\n  // These methods neither grant profile authority nor commit other UI stores.\n  class AuxUiPreferenceCapture {\n   public:\n    ~AuxUiPreferenceCapture();\n\n   private:\n    friend class LeveldbValueStore;\n    AuxUiPreferenceCapture();\n    base::WeakPtr<LeveldbValueStore> owner;\n    std::array<std::optional<std::string>, 6> records;\n  };\n  using AuxUiPreferenceCaptureResult =\n      base::expected<std::unique_ptr<AuxUiPreferenceCapture>, Status>;\n  AuxUiPreferenceCaptureResult CaptureAuxUiPreferencesForMigration();\n  Status CommitAuxUiPreferenceMigration(\n      std::unique_ptr<AuxUiPreferenceCapture> capture);\n\n  // Write directly to the backing levelDB.",
+          "count": 1
+        },
+        {
+          "find": "  ValueStore::Status WriteToDb(leveldb::WriteBatch* batch);",
+          "replace": "  ValueStore::Status WriteToDb(leveldb::WriteBatch* batch);\n\n  base::WeakPtrFactory<LeveldbValueStore> aux_migration_weak_factory_{this};",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "components/value_store/leveldb_value_store.cc",
+      "inputSha256": "5277dedde0146ce20883151e9abb372fd5924e489e8461e1c6c6307e70feaae9",
+      "outputSha256": "b3d627eae8bbec6ff073b5320e6a0648cdcfbd62585abba72c70932d8fbdac51",
+      "anchors": [
+        {
+          "find": "#include \"base/notreached.h\"",
+          "replace": "#include \"base/notreached.h\"\n#include \"base/memory/ptr_util.h\"",
+          "count": 1
+        },
+        {
+          "find": "#include \"base/strings/sys_string_conversions.h\"",
+          "replace": "#include \"base/strings/sys_string_conversions.h\"\n#include \"base/strings/utf_string_conversions.h\"",
+          "count": 1
+        },
+        {
+          "find": "const char kCannotSerialize[] = \"Cannot serialize value to JSON\";",
+          "replace": "const char kCannotSerialize[] = \"Cannot serialize value to JSON\";\n\nconstexpr std::array<const char*, 6> kAuxUiPreferenceKeys = {\n    \"aside.browserColorScheme\", \"aux.browserColorScheme.v2\",\n    \"aside.capture.enabled\", \"aux.capture.enabled.v2\",\n    \"aside.tabsTidy.customPrompt\", \"aux.tabsTidy.customPrompt.v2\"};\n\nbool IsValidAuxUiPreference(const base::Value& value, size_t family) {\n  if (family == 1) {\n    return value.is_bool();\n  }\n  if (!value.is_string()) {\n    return false;\n  }\n  const std::string& text = value.GetString();\n  if (family == 0) {\n    return text == \"system\" || text == \"light\" || text == \"dark\";\n  }\n  // The supplied UI's 300-character limit counts UTF-16 code units.\n  return base::UTF8ToUTF16(text).size() <= 300;\n}\n",
+          "count": 1
+        },
+        {
+          "find": "ValueStore::ReadResult LeveldbValueStore::GetKeys() {",
+          "replace": "ValueStore::ReadResult LeveldbValueStore::GetKeys() {\n  aux_migration_weak_factory_.InvalidateWeakPtrs();",
+          "count": 1
+        },
+        {
+          "find": "    const std::vector<std::string>& keys) {",
+          "replace": "    const std::vector<std::string>& keys) {\n  aux_migration_weak_factory_.InvalidateWeakPtrs();",
+          "count": 2
+        },
+        {
+          "find": "ValueStore::ReadResult LeveldbValueStore::Get() {",
+          "replace": "ValueStore::ReadResult LeveldbValueStore::Get() {\n  aux_migration_weak_factory_.InvalidateWeakPtrs();",
+          "count": 1
+        },
+        {
+          "find": "                                               const base::Value& value) {",
+          "replace": "                                               const base::Value& value) {\n  aux_migration_weak_factory_.InvalidateWeakPtrs();",
+          "count": 1
+        },
+        {
+          "find": "    const base::DictValue& settings) {",
+          "replace": "    const base::DictValue& settings) {\n  aux_migration_weak_factory_.InvalidateWeakPtrs();",
+          "count": 1
+        },
+        {
+          "find": "ValueStore::WriteResult LeveldbValueStore::Clear() {",
+          "replace": "ValueStore::WriteResult LeveldbValueStore::Clear() {\n  aux_migration_weak_factory_.InvalidateWeakPtrs();",
+          "count": 1
+        },
+        {
+          "find": "bool LeveldbValueStore::WriteToDbForTest(leveldb::WriteBatch* batch) {",
+          "replace": "bool LeveldbValueStore::WriteToDbForTest(leveldb::WriteBatch* batch) {\n  aux_migration_weak_factory_.InvalidateWeakPtrs();",
+          "count": 1
+        },
+        {
+          "find": "bool LeveldbValueStore::WriteToDbForTest(leveldb::WriteBatch* batch) {",
+          "replace": "\nLeveldbValueStore::AuxUiPreferenceCapture::AuxUiPreferenceCapture() = default;\nLeveldbValueStore::AuxUiPreferenceCapture::~AuxUiPreferenceCapture() = default;\n\nLeveldbValueStore::AuxUiPreferenceCaptureResult\nLeveldbValueStore::CaptureAuxUiPreferencesForMigration() {\n  if (!db()) {\n    return base::unexpected(Status(OTHER_ERROR,\n                                  \"Aux migration requires an open backend\"));\n  }\n  auto capture = base::WrapUnique(new AuxUiPreferenceCapture());\n  capture->owner = aux_migration_weak_factory_.GetWeakPtr();\n  for (size_t i = 0; i < kAuxUiPreferenceKeys.size(); ++i) {\n    std::string raw;\n    const leveldb::Status status =\n        db()->Get(read_options(), kAuxUiPreferenceKeys[i], &raw);\n    if (status.IsNotFound()) {\n      continue;\n    }\n    if (!status.ok()) {\n      return base::unexpected(ToValueStoreError(status));\n    }\n    std::optional<base::Value> value =\n        base::JSONReader::Read(raw, base::JSON_PARSE_CHROMIUM_EXTENSIONS);\n    if (!value || !IsValidAuxUiPreference(*value, i / 2)) {\n      return base::unexpected(Status(CORRUPTION,\n                                    \"Invalid Aux migration preference\"));\n    }\n    capture->records[i] = std::move(raw);\n  }\n  for (size_t i = 0; i < kAuxUiPreferenceKeys.size(); i += 2) {\n    if (capture->records[i] && capture->records[i + 1] &&\n        capture->records[i] != capture->records[i + 1]) {\n      return base::unexpected(Status(OTHER_ERROR,\n                                    \"Conflicting Aux migration preference\"));\n    }\n  }\n  return capture;\n}\n\nValueStore::Status LeveldbValueStore::CommitAuxUiPreferenceMigration(\n    std::unique_ptr<AuxUiPreferenceCapture> capture) {\n  if (!capture || capture->owner.get() != this || !db()) {\n    return Status(OTHER_ERROR, \"Stale or foreign Aux preference capture\");\n  }\n  // Consume all captures before touching the database. A failed sync can have\n  // an unknown outcome; only a new native-authorized capture may retry.\n  aux_migration_weak_factory_.InvalidateWeakPtrs();\n  for (size_t i = 0; i < kAuxUiPreferenceKeys.size(); ++i) {\n    std::string raw;\n    const leveldb::Status status =\n        db()->Get(read_options(), kAuxUiPreferenceKeys[i], &raw);\n    if (!status.ok() && !status.IsNotFound()) {\n      return ToValueStoreError(status);\n    }\n    std::optional<std::string> current;\n    if (status.ok()) {\n      current = std::move(raw);\n    }\n    if (current != capture->records[i]) {\n      return Status(OTHER_ERROR, \"Aux preference changed after capture\");\n    }\n  }\n  leveldb::WriteBatch batch;\n  for (size_t i = 0; i < kAuxUiPreferenceKeys.size(); i += 2) {\n    if (capture->records[i]) {\n      // Preserve exact original JSON bytes, including explicit false values.\n      batch.Put(kAuxUiPreferenceKeys[i + 1], *capture->records[i]);\n      batch.Delete(kAuxUiPreferenceKeys[i]);\n    }\n  }\n  leveldb::WriteOptions options;\n  options.sync = true;\n  // An empty batch still requests sync; a retry must not mistake a previous\n  // write with an unknown sync outcome for a durable completed migration.\n  return ToValueStoreError(db()->Write(options, &batch));\n}\n\nbool LeveldbValueStore::WriteToDbForTest(leveldb::WriteBatch* batch) {",
+          "count": 1
+        }
+      ]
+    }
+  ]
+}

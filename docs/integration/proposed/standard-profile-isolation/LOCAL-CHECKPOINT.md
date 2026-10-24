@@ -69,6 +69,14 @@ Four draft families and all paired codec/page-copy/new-tab names are now source-
 
 `ui-storage-native-drain-a1/` provides a real two-file queued-write barrier with a successful focused Chromium object compile and 274 actual dependency pins. Its successful callback follows previously queued DB tasks and preserves failed status; lost/frontend-destroyed replies refuse. It is not yet caller-integrated, linked or packaged. It does not close write admission, cover not-yet-posted/future writes, acknowledge disk fsync or cover Chrome-local ValueStore. Native quiescence, ready-area qualification, extension-store completion, durable multi-store recovery and admission must be paired before real migration. The original one-way Flush cannot substitute for those acknowledgments.
 
+## Additional storage backend source — 2026-10-24
+
+The DOM queue acknowledgment now has internal Local/Session Storage service callers. Both real target objects compile against the paired DB overlay. They refuse unloaded/pending areas, mismatched databases, in-memory fallback and lost/changed services. This covers currently loaded areas only; the importer must still qualify every required page/origin and close writers. No new browser link or app package was made.
+
+The extension backend now has an instance-bound capture and a single sync LevelDB batch for its three preference families. It directly reads only the six known keys, refuses corruption without repair/deletion, invalidates captures after ordinary store operations and preserves raw values and unrelated records. Its actual object and five native test fixtures compile; the fixtures have not executed. Evidence is in `ui-extension-storage-migration-a1/` and `ui-storage-native-drain-a1/actual-service-compile-a1.json`.
+
+These are source/backend advances, not a completed importer or migration. Native owner/epoch binding, complete capture, the cross-store journal, durable DOM writes, startup association and actual acceptance remain open. The latest inactive app and accepted preview are unchanged. No build job remains running.
+
 ## Capability and acceptance gates
 
 The paired daemon requires the actual macOS27 descendant API and restricted Endpoint Security capability at fresh startup; unsigned output cannot satisfy that normal path. A read-only version check reports this Mac is already on 27.0.1 (`integration/host-version-readonly.json`); no API/client was run and no capability was granted. Its exact peer identity checks remain intact. Signing alone does not prove runtime completion or credential-lock behavior. Signing, installation/capabilities and release remain separate.

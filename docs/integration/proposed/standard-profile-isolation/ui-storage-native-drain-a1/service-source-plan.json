@@ -1,0 +1,59 @@
+{
+  "format": "aux.storage-service-drain.source.v1",
+  "overlay": "/private/tmp/aux-dom-storage-service-overlay-20261024-a1",
+  "files": [
+    {
+      "path": "components/services/storage/dom_storage/local_storage_impl.h",
+      "inputSha256": "8a3aee90a19d9151ee54caebcfd17f87caa23c824ce7842c349bde1addec6ca3",
+      "outputSha256": "4d29fc4be14f6b15077544cf9908d613f1f6e0e0a7025d0f351f8b83218209b2",
+      "anchors": [
+        {
+          "find": "  void Flush() override;",
+          "replace": "  void Flush() override;\n\n  // Internal queue acknowledgment for currently loaded areas only. The native\n  // owner must already quiesce writers and qualify complete target coverage.\n  // Never opens/repairs a DB or claims fsync, capture or migration authority.\n  void DrainLoadedAreasForAuxMigration(\n      AsyncDomStorageDatabase::StatusCallback callback);",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "components/services/storage/dom_storage/local_storage_impl.cc",
+      "inputSha256": "5d768d92ba81bce3b8ae74eb80a27043aaf7a283759053d73e18bbbbd523c4cc",
+      "outputSha256": "9baf9f764694d7c3f408894612b5d89c03102625b1d0a564acbf93bb7b4de67b",
+      "anchors": [
+        {
+          "find": "#include \"storage/common/database/database_identifier.h\"",
+          "replace": "#include \"mojo/public/cpp/bindings/callback_helpers.h\"\n#include \"storage/common/database/database_identifier.h\"",
+          "count": 1
+        },
+        {
+          "find": "void LocalStorageImpl::Flush() {",
+          "replace": "void LocalStorageImpl::DrainLoadedAreasForAuxMigration(\n    AsyncDomStorageDatabase::StatusCallback callback) {\n  if (connection_state_ != CONNECTION_FINISHED || !database_ || in_memory_ ||\n      storage_partition_directory_.empty()) {\n    std::move(callback).Run(\n        DbStatus::IOError(\"Aux migration requires an existing disk backend\"));\n    return;\n  }\n  for (const auto& entry : areas_) {\n    StorageAreaImpl* area = entry.second->storage_area();\n    if (!area->initialized() || area->has_pending_load_tasks() ||\n        area->database() != database_.get()) {\n      std::move(callback).Run(\n          DbStatus::IOError(\"Aux storage areas are not ready to drain\"));\n      return;\n    }\n  }\n  // Loaded areas have no deferred load callbacks. Scheduling their immediate\n  // commits posts existing batches before the DB queue sentinel below.\n  for (const auto& entry : areas_) {\n    entry.second->storage_area()->ScheduleImmediateCommit();\n  }\n  auto reply = base::BindOnce(\n      [](base::WeakPtr<LocalStorageImpl> owner,\n         AsyncDomStorageDatabase::StatusCallback callback, DbStatus status) {\n        if (!owner || owner->connection_state_ != CONNECTION_FINISHED ||\n            !owner->database_ || owner->in_memory_) {\n          status = DbStatus::IOError(\"Aux storage service changed during drain\");\n        }\n        std::move(callback).Run(std::move(status));\n      },\n      weak_ptr_factory_.GetWeakPtr(), std::move(callback));\n  database_->DrainCommitsForAuxMigration(\n      mojo::WrapCallbackWithDefaultInvokeIfNotRun(\n          std::move(reply),\n          DbStatus::IOError(\"Aux storage service drain reply was lost\")));\n}\n\nvoid LocalStorageImpl::Flush() {",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "components/services/storage/dom_storage/session_storage_impl.h",
+      "inputSha256": "65e7713d37c77da8911f44c4fc8a5460d17ecd9cb02a7eed379f479d6f468fdb",
+      "outputSha256": "a16fc19a67393cef1a64a218e04615403e34f5dacf12d54a00f6fb4327bfbd76",
+      "anchors": [
+        {
+          "find": "  void Flush() override;",
+          "replace": "  void Flush() override;\n\n  // Internal queue acknowledgment for currently loaded areas only. The native\n  // owner must already quiesce writers and qualify complete target coverage.\n  // Never opens/repairs a DB or claims fsync, capture or migration authority.\n  void DrainLoadedAreasForAuxMigration(\n      AsyncDomStorageDatabase::StatusCallback callback);",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "components/services/storage/dom_storage/session_storage_impl.cc",
+      "inputSha256": "dce7eb8bac5f1562c97f1f315881ee8df95931b212e81488c8c87aa285bfc74a",
+      "outputSha256": "2f8fd62bc71304357a51cd8a9e41c00a9ad262f7dcc76c4cb693b5f813a24a3f",
+      "anchors": [
+        {
+          "find": "void SessionStorageImpl::Flush() {",
+          "replace": "void SessionStorageImpl::DrainLoadedAreasForAuxMigration(\n    AsyncDomStorageDatabase::StatusCallback callback) {\n  if (connection_state_ != CONNECTION_FINISHED || !database_ || in_memory_ ||\n      storage_partition_directory_.empty()) {\n    std::move(callback).Run(\n        DbStatus::IOError(\"Aux migration requires an existing disk backend\"));\n    return;\n  }\n  for (const auto& entry : data_maps_) {\n    StorageAreaImpl* area = entry.second->storage_area();\n    if (!area->initialized() || area->has_pending_load_tasks() ||\n        area->database() != database_.get()) {\n      std::move(callback).Run(\n          DbStatus::IOError(\"Aux storage areas are not ready to drain\"));\n      return;\n    }\n  }\n  // Loaded areas have no deferred load callbacks. Scheduling their immediate\n  // commits posts existing batches before the DB queue sentinel below.\n  for (const auto& entry : data_maps_) {\n    entry.second->storage_area()->ScheduleImmediateCommit();\n  }\n  auto reply = base::BindOnce(\n      [](base::WeakPtr<SessionStorageImpl> owner,\n         AsyncDomStorageDatabase::StatusCallback callback, DbStatus status) {\n        if (!owner || owner->connection_state_ != CONNECTION_FINISHED ||\n            !owner->database_ || owner->in_memory_) {\n          status = DbStatus::IOError(\"Aux storage service changed during drain\");\n        }\n        std::move(callback).Run(std::move(status));\n      },\n      weak_ptr_factory_.GetWeakPtr(), std::move(callback));\n  database_->DrainCommitsForAuxMigration(\n      mojo::WrapCallbackWithDefaultInvokeIfNotRun(\n          std::move(reply),\n          DbStatus::IOError(\"Aux storage service drain reply was lost\")));\n}\n\nvoid SessionStorageImpl::Flush() {",
+          "count": 1
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,15 @@
+{
+  "format": "aux.extension-storage-migration.compile.actual.v1",
+  "passed": false,
+  "exitCode": 1,
+  "output": "/private/tmp/aux-extension-storage-migration-compile-20261024-a1",
+  "nativeTreeChanged": false,
+  "appExecuted": false,
+  "productSigned": false,
+  "callerIntegrated": false,
+  "fullBrowserBuilt": false,
+  "testsExecuted": false,
+  "sourcePlanSha256": "8dac91f1f63c829b94356787155dbbcdac948907728d8c58f60e2210ad234aec",
+  "compilerCommandSha256": "e93be9813b0d0767dfbf5e21d7802cef2eb3b8fade1e11ffd59e8eadda4a0033",
+  "failure": "Chromium style plugin requires complex capture constructor and destructor out of line"
+}

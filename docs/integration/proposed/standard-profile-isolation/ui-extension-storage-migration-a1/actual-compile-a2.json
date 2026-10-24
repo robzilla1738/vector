@@ -1,0 +1,1309 @@
+{
+  "format": "aux.extension-storage-migration.compile.actual.v1",
+  "passed": true,
+  "exitCode": 0,
+  "output": "/private/tmp/aux-extension-storage-migration-compile-20261024-a2",
+  "nativeTreeChanged": false,
+  "appExecuted": false,
+  "productSigned": false,
+  "callerIntegrated": false,
+  "fullBrowserBuilt": false,
+  "testsExecuted": false,
+  "sourcePlanSha256": "6426bfbe8e2d724fef193c7069cd0600036d3c6f5667f61f34835796ceeddef3",
+  "compilerCommandSha256": "ac489920ef09e7bcbf8ef1776e0b397d7b45b7a59f0173591daf92133c5779ce",
+  "objectSha256": "6a9307478b8c265ba64d1578c51706ce21b3b99f5dee4433909b6dd37758d7cf",
+  "dependencyInputs": [
+    {
+      "path": "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/SDKSettings.json",
+      "sha256": "7b93ad7e534cc4b31c6a4e39d19b5e0288acf2168c2649479a796d1cb51939fb"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/ui-extension-storage-migration-a1/source/components/value_store/leveldb_value_store.cc",
+      "sha256": "b3d627eae8bbec6ff073b5320e6a0648cdcfbd62585abba72c70932d8fbdac51"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/ui-extension-storage-migration-a1/source/components/value_store/leveldb_value_store.h",
+      "sha256": "f2924f6064f76cb5b1e78b8e0fd7fc49e309488b47686079dc79c358f4f8900e"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/base/allocator/partition_allocator/src/partition_alloc/address_pool_manager_types.h",
+      "sha256": "dbdc9abdc3253836315a255470504a06962fa27df5d0cc3e17a26823d9149eab"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/base/allocator/partition_allocator/src/partition_alloc/bounds_checks.h",
+      "sha256": "53adea986b18be6fa821aa266ed7ed1d42c07dadf153239419dd38d6ba246061"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/base/allocator/partition_allocator/src/partition_alloc/bucket_lookup.h",
+      "sha256": "2ac83edc57e8c1497278a73d0eff4e27ee048bb2cd02d1ede09b3d131796b8a6"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/base/allocator/partition_allocator/src/partition_alloc/build_config.h",
+      "sha256": "a0bc70bbb196d756c14b24d9da928301273a09dddcd84f2879cec475c5675811"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/base/allocator/partition_allocator/src/partition_alloc/buildflag.h",
+      "sha256": "bded0f8d9d0c77743ca7f7096a56ef36bc0c6c4ccf9e55bc24d3b50744cdcbde"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/base/allocator/partition_allocator/src/partition_alloc/flags.h",
+      "sha256": "b45773189cddebd31d3dd1c9f7d7e36a2ac730b80e42abd83eaa03c725b7b048"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/base/allocator/partition_allocator/src/partition_alloc/page_allocator_constants.h",
+      "sha256": "e2b3dd2b5f0d48caf4240dc73cef1b8c4866ad4c5d5ff64720e64517aa9f1d0f"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/base/allocator/partition_allocator/src/partition_alloc/partition_address_space.h",
+      "sha256": "da9a95bb875bbd0b7bcd03ca94640e2096f412af03f62051c81fab6d325cef08"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/base/allocator/partition_allocator/src/partition_alloc/partition_alloc_base/bits.h",
+      "sha256": "9207d63abdb52cb4b25438707e6c914e322ded38ce40ddfe3abc1a0fb3d23336"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/base/allocator/partition_allocator/src/partition_alloc/partition_alloc_base/check.h",
+      "sha256": "17046570d9a3c34de98769bc84ebc75e37edbdf4d39d401220c79b117a34e6ad"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/base/allocator/partition_allocator/src/partition_alloc/partition_alloc_base/compiler_specific.h",
+      "sha256": "b701bbaf312d9183b57c63bff0dae10bac89b6c5abe89c07f3fc34e49fe7e3cc"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/base/allocator/partition_allocator/src/partition_alloc/partition_alloc_base/component_export.h",
+      "sha256": "e6d93aed857ba4f5f7081235b9fcef04be6aa26ed281e16bffbfcd0c0a068df9"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/base/allocator/partition_allocator/src/partition_alloc/partition_alloc_base/cxx_wrapper/algorithm.h",
+      "sha256": "fa2f4f0bcbf2339c797dfd7333ccf43a1944e4e6aebaafec672f34a62ae44955"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/base/allocator/partition_allocator/src/partition_alloc/partition_alloc_base/debug/alias.h",
+      "sha256": "fd0bb19eedbeaee348ebbb797eba1ea775907b2360ffeb634d4a341f7d1dee48"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/base/allocator/partition_allocator/src/partition_alloc/partition_alloc_base/immediate_crash.h",
+      "sha256": "2a427b76896f22bfe25f5bea7e32862abbc2e87abbeef815ab106ac2a7822a63"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/base/allocator/partition_allocator/src/partition_alloc/partition_alloc_base/log_message.h",
+      "sha256": "1152b52ddf3a7b5389794fd9ed0dfdbe627750309df5ed6e6a020f8681f85633"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/base/allocator/partition_allocator/src/partition_alloc/partition_alloc_base/scoped_clear_last_error.h",
+      "sha256": "6659b2ff66f9b814e6a5c3ee1f85cec4ebdc84ff313637b799210f5503ab96e4"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/base/allocator/partition_allocator/src/partition_alloc/partition_alloc_base/strings/cstring_builder.h",
+      "sha256": "db84268fc58203f26e87a0a906d1ba2fb68920b502389212ff94138ffb861e96"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/base/allocator/partition_allocator/src/partition_alloc/partition_alloc_base/thread_annotations.h",
+      "sha256": "84b7d7d0de09723cf78693d506922019ed7c14bdd6d179683befc99590dde7e2"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/base/allocator/partition_allocator/src/partition_alloc/partition_alloc_base/types/same_as_any.h",
+      "sha256": "7de95a3ae1cd6943537bda9eb813ecceb4c2210adc751e249939576a0eadb6ad"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/base/allocator/partition_allocator/src/partition_alloc/partition_alloc_check.h",
+      "sha256": "b341dbe4c067a69b74cfe592396480c7af0be6a771a3f4ba70c608c2a8e5b9f3"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/base/allocator/partition_allocator/src/partition_alloc/partition_alloc_config.h",
+      "sha256": "a92c159fa2d3917ff2709215a2b74088da2b0a738fde626a62cf100f8345b31f"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/base/allocator/partition_allocator/src/partition_alloc/partition_alloc_constants.h",
+      "sha256": "422a46eed4bea3772e54deb61dc4b2d447a178924c8d40a200dcf8cf5a34e57f"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/base/allocator/partition_allocator/src/partition_alloc/partition_alloc_forward.h",
+      "sha256": "49be776c7a2b6f4d8836a2ec0faaf8745a38c5004e5c0d6f1f6785fdaf345d52"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/base/allocator/partition_allocator/src/partition_alloc/pointers/instance_tracer.h",
+      "sha256": "c67420a184d810173691541cfb36d60380f72c51a21e39230a4be240e997dd41"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/base/allocator/partition_allocator/src/partition_alloc/pointers/raw_ptr.h",
+      "sha256": "814a3e7283390b1a1cb5ce4310117154797eeae3529b6d5c4661e15b6321b98a"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/base/allocator/partition_allocator/src/partition_alloc/pointers/raw_ptr_backup_ref_impl.h",
+      "sha256": "bb7dfe414bdfff36ec02fc86e93dc5ad4fa0ebcefcc15224ed278fffa8061bfd"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/base/allocator/partition_allocator/src/partition_alloc/pointers/raw_ptr_exclusion.h",
+      "sha256": "4a95e59a2771614f01da64a69036161e27017f3e8646c56272036c74b09c699f"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/base/allocator/partition_allocator/src/partition_alloc/pointers/raw_ptr_noop_impl.h",
+      "sha256": "6d6d20d59f7a06017df1934838476deb804c1a07c37b826b6a791acbc3a85a7c"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/base/allocator/partition_allocator/src/partition_alloc/pointers/raw_ref.h",
+      "sha256": "2a7a7f4215c16b1bfc3b4f699286a4aec0ee900a1c6d780e3a3026c45bc7307c"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/base/allocator/partition_allocator/src/partition_alloc/tagging.h",
+      "sha256": "b8d3dfe55c7df1272f7f44f5831a97dd975e373d8c8a23bf5b5068b7fe43840b"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/base/allocator/partition_allocator/src/partition_alloc/thread_isolation/alignment.h",
+      "sha256": "094f38accd7f09f527c2ed9d4e2367a67e1987f5c51f2e1e3e2e1b35fefb0cfd"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/base/apple/scoped_cftyperef.h",
+      "sha256": "c17f979f0ac20fccc99d0d27d3f36ed514c7f892d53b39ee76e6ba671c69db35"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/base/apple/scoped_typeref.h",
+      "sha256": "701636eebe71ead0b839e06d0d9595db8dfef5f5a3981d0c67fa5e8a41c52502"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/base/atomic_ref_count.h",
+      "sha256": "efc1d3f38052a227e2d3b11a875e4a38fe3f870d30e60d2634417c0dcb6a1098"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/base/atomicops.h",
+      "sha256": "ed163bfd45cb08b1d61d4d7afeaa89d4af485b9aede76e7583f1738eed5d6bf3"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/base/atomicops_internals_portable.h",
+      "sha256": "9728d1ed793cc4d967cc0979de79e1207d0738782715d3cb27fde30e9d5ebc8e"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/base/auto_reset.h",
+      "sha256": "5d9b757f2b1c44ada9df5de62569e365b5170ecd5979be508d627c3720625eab"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/base/base_export.h",
+      "sha256": "bf8e625312db80b7f4902b2a23fe24df6f9b53c42a34a2b1968e3df5a7c32049"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/base/bit_cast.h",
+      "sha256": "0cd10ccc2b5fe82c1a50fc8f4342e818dfb9335f05452ba308dfb90ad92e004c"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/base/byte_size.h",
+      "sha256": "13b61592c4f5ab2305e9fe66b4b5d70ac0259fd797f56654eb61883e7626a3df"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/base/check.h",
+      "sha256": "1e5c47e439a3fcfd7f40b8c7ed117b6974602e3c61bed3ea078db4e047df0860"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/base/check_op.h",
+      "sha256": "024d6edba6d60995f7ad6b0f27c4ff4a9883782d06939ef29ebb9de40ea31fe9"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/base/compiler_specific.h",
+      "sha256": "4809b7c9ae9394929e3023611e438b64d443ad54e48e19dfaff9c9d4205c3a29"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/base/containers/checked_iterators.h",
+      "sha256": "ddef2b47f0ddc8e5bcf2bbd23c29ff3f973581d53c7dcb41f1d0bfd4f28377d5"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/base/containers/flat_map.h",
+      "sha256": "6df46ae6ef045899ab1035cbd4325840dffa61521861052d5f9aa36614089609"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/base/containers/flat_tree.h",
+      "sha256": "7e21ca4153506906a533ddbeea83549cfaa540d72991b05a9c517876c90801a6"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/base/containers/linked_list.h",
+      "sha256": "0c94df58c115da1c32e3fa701d93992a89e49d8faa1e183127db4548a76de3bf"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/base/containers/span.h",
+      "sha256": "307329af0e9fb55fe05527668a8c679e5c32c17233808e403541313fe89ed63c"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/base/containers/span_forward_internal.h",
+      "sha256": "9a918beca275e4bff3ffc094d9cf92f2a3f4f3c5e6eb3a3ed758a0a330f5d4f9"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/base/dcheck_is_on.h",
+      "sha256": "7d99fbd3bf2aeba1c3d4b78e28944d29c6bf54bf50a76810fe222d6d197d1b38"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/base/debug/stack_trace.h",
+      "sha256": "ea6578f820b49eb05a32db35894d106f86a20aa22591321f74209b063507c383"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/base/files/file.h",
+      "sha256": "9f14d7ae8876aefc5b2c240814822d5a503c595a29f00656bc7690d744465fd2"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/base/files/file_path.h",
+      "sha256": "c8e135db3b184e838d5e7413796d8f5f32aef492ca16e347da0e100783526b0c"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/base/files/platform_file.h",
+      "sha256": "f3a069e7e394ff2cd6888e031c886823749456dcb81ee74035f72ddbc8b2d64f"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/base/files/scoped_file.h",
+      "sha256": "4df827293317e03713e7350adf0dcefa19d38de24e21654a7f8ad22cf4528a9b"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/base/functional/bind.h",
+      "sha256": "03b9b91d9afdfe67b1703e4531893239aab11826d4fcf62f0818d3679c3562f5"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/base/functional/bind_internal.h",
+      "sha256": "4c7e4f55de91f455af8034b6f30e7d1719b5b161de18a1a686b00920d589d3b0"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/base/functional/callback.h",
+      "sha256": "78970910986e6b76405562c62aef83d61954b74baace67c78c242395fa1c794e"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/base/functional/callback_forward.h",
+      "sha256": "6ffbed9bc5ead1b97b58a340d3f8584aa3fe878742044b5711db6b876eefbd67"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/base/functional/callback_internal.h",
+      "sha256": "7c32e5555b73c9e8a5e9875650c82bd678e412cb36457f5f05ca2b6284fbade4"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/base/functional/callback_tags.h",
+      "sha256": "b8c53b1ddba798e40c79758378a490866a2b3ae88b55a910234e8afbbea9a94b"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/base/functional/function_ref.h",
+      "sha256": "745b47162d2000e873871dd2a543465fa20b8836f1f3d3f53458bd33a472beab"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/base/functional/is_callback.h",
+      "sha256": "afe5226c4b98c6df3ff6e06f50305ae5fc79180b526f8e69feab21f150ba9abd"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/base/functional/unretained_traits.h",
+      "sha256": "6ca145edb2ec1da442e46f1f9dd529e1854262087205b08d53a3a98118bb3711"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/base/gtest_prod_util.h",
+      "sha256": "ffcf29d9afbf76513b49d392fc9b44e389efb0c5119a93745c5c549498ddc733"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/base/immediate_crash.h",
+      "sha256": "a39bf79fb35879f65aa0dd0eadec076151e3865831053c6f6be807d6abd08e56"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/base/json/json_common.h",
+      "sha256": "f5d9250aa18fb4952b31842afebbfdac72c5e2cdc92917ce2a7438180ca75bd7"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/base/json/json_reader.h",
+      "sha256": "cc11fc68ff19fafde085c15349a2b6d17b09d21b4a75fc81c1e158eeee648548"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/base/json/json_writer.h",
+      "sha256": "59f2a024af5a8b303b13594f209161a728edc5bcf286d34f69a2f333f8288c12"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/base/lazy_instance_helpers.h",
+      "sha256": "cccc3818d34a2f4a65bd0bddd2eb9c8d1cdcaceece26c7629f75d5ec81200342"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/base/location.h",
+      "sha256": "c0487e4e0ef3bf50950669bc04d02cc88893c51022c24ce75dcef7102ec0fdfd"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/base/macros/concat.h",
+      "sha256": "4f90f9390c77a510de25784d770874c95258c50a69251fb8916283ef8e2c80cf"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/base/macros/if.h",
+      "sha256": "d0d9f44489a98a70b32729a4cebf503325c7318a03e392cc61cbc6a24769ef4b"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/base/macros/is_empty.h",
+      "sha256": "e88011b71e772e24537e36eb4ae67a7863b18e2415c2ebf4382d223ee84dde80"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/base/macros/uniquify.h",
+      "sha256": "5b74ee2aab96bf42f958acd61e036914f88aa6dba9dde407e4414b7fab9f0128"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/base/memory/ptr_util.h",
+      "sha256": "cc865471fdec396a6affcbb08e9f4400f83fb7fabf469454051744a81307a599"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/base/memory/raw_ptr.h",
+      "sha256": "8f1a3a60bdb98fa37a269fe3eaff289027961c9d46ff247c34cc8d1c6f8c67a5"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/base/memory/raw_ptr_exclusion.h",
+      "sha256": "d341357ae72ca29a343460bece70d619b9a526c6abf34546fb8feba7b742f0be"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/base/memory/raw_ref.h",
+      "sha256": "7680f8e16324832495472b3830b66edc64c06bb0efb716e7374de86399d73e5d"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/base/memory/ref_counted.h",
+      "sha256": "83b08b3316a4d19cc0b500fc4216b9a6010c2b3f2b545e86de2f87551637bb27"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/base/memory/safe_ref_traits.h",
+      "sha256": "5b610495ebe7f17309c7c065153bd80ed36ce252bcaa425df4d9c06b42fd8316"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/base/memory/scoped_policy.h",
+      "sha256": "f64fa8e05a31a628a759d2f89d7e7c4786dae421ac7fbe62f52aa7ec0e802374"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/base/memory/scoped_refptr.h",
+      "sha256": "19afae15dab2c7464a48dd0b49c88982239956fc65a3b0da966327adf218cef9"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/base/memory/singleton.h",
+      "sha256": "e7f1e8d0e10f5645a57555324b803e2e662df0cf07e354d248cae602f60609e3"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/base/memory/stack_allocated.h",
+      "sha256": "a0e062475d3fbba10561b6b78ae04016d1019d54ffb24b466dc5f990ea4a53d2"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/base/memory/weak_ptr.h",
+      "sha256": "96c1b774f9ef78500fea3b5323e43126ddf63206931523df2c198eea29a6186d"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/base/message_loop/message_pump_type.h",
+      "sha256": "c3c40fc1883c7a4295415c046a5e3f63f55c856d6c2f452bcffbe6ce0d583ddb"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/base/metrics/histogram_base.h",
+      "sha256": "31cf9b5618006238e2fe4a8af2b98f65c931d5a1ffef521eda23c52e3b6e41ec"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/base/not_fatal_until.h",
+      "sha256": "7be8c54a83d3a46b2ff696297860c9af964243214cc2a08bc325f1a7f7cf4696"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/base/notreached.h",
+      "sha256": "3793a02d64c9dac9489f20f207bd10b9c3123a1a1009b8c8637d21db87cbfd4f"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/base/numerics/checked_math.h",
+      "sha256": "06578728237e257390aa34a6e7d3ca21b56b88520ca4a8b2b7f859e44ea0ca30"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/base/numerics/checked_math_impl.h",
+      "sha256": "49d2bb59788b43f5b161727a9fca7e4d9548b4a0794dba44045ae3f3d31c9d57"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/base/numerics/clamped_math.h",
+      "sha256": "1b3208a6f26d2b78508b94b940a17eb33c252a549bb0927cbcff2eeba41c3fad"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/base/numerics/clamped_math_impl.h",
+      "sha256": "f6aea00b13a7b8dae6301e293704725c13ef9520df895ce69563901b8fadeb79"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/base/numerics/integral_constant_like.h",
+      "sha256": "c2dba40dffed08c47bc054fcca4e0cacdc55fb09eca089e7e9f5cb07c01b5ecd"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/base/numerics/safe_conversions.h",
+      "sha256": "d730a0709abd5426b6c89a4961451a45397cc4ee13c88176d9250b80723fd614"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/base/numerics/safe_conversions_impl.h",
+      "sha256": "b4d7df7bc8f9501ea7b01fa7e3a2c460b8c91c990ed95a54e55ad659f6e60511"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/base/numerics/safe_math_clang_gcc_impl.h",
+      "sha256": "2c17dea7483a7f1e0941af093d0404ed0f98fb4ed3922992a2623b845eef1201"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/base/numerics/safe_math_shared_impl.h",
+      "sha256": "ae86304e978ec15452f6e84876f5d86123f7452475de0319a71205b0fe4c2ad2"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/base/numerics/wrapping_math.h",
+      "sha256": "93b6e211bf7b88bb28ed44a4a6692362c47d3273dcc82a14b529d33f68297f75"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/base/process/process_handle.h",
+      "sha256": "1f1b60073b3e6bbb8ae61adb11cdb2c06fd596f017878c0db062131efd43cb04"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/base/scoped_generic.h",
+      "sha256": "a217f3a45726e31515919aff0ca0f7ed4dd24656b31d1add495eca964f4bb0a5"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/base/sequence_checker.h",
+      "sha256": "7ebfd767db9075b2519a84c60aec234d31434c80986d928dd01b097fc0b1e5f7"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/base/sequence_checker_impl.h",
+      "sha256": "0529276299acd491b45612e9eae514a57c72ef9bb537a0af7fb657d1bd2b2df3"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/base/sequence_token.h",
+      "sha256": "e70eb372f8601e79922cb0ce11c0bddf5097be66bea982f6be67698e16171429"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/base/strings/cstring_view.h",
+      "sha256": "69271a584978512438d393b592e521a92de38e3e09f214dffced8cbb4a10140e"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/base/strings/durable_string_view.h",
+      "sha256": "8b101248bf89879c95638a6ac944367f642eef381266d954a91e9553c70d2641"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/base/strings/join_string_internal.h",
+      "sha256": "a3adb2cae67a12206e878a186c0de5a90362fae943ae5a1d6f2dc979c03e12f9"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/base/strings/strcat.h",
+      "sha256": "91ce0f081014df19d3f6b1f30f266943c94a14ee1f0378b661e71e940b7e2473"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/base/strings/string_number_conversions.h",
+      "sha256": "dcecf9161bb1e2bd2ee0482e68c199263289bf0a60874cd50d2cc426de6b3b2c"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/base/strings/string_util.h",
+      "sha256": "a1b0e9ebc96ab275748c7f6a26fc912a1b63c11c28512f03506046c6bc4db893"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/base/strings/string_util_internal.h",
+      "sha256": "6b52b18ccfe7ae1dcd5d6f488902ce7dd0e49061a15b3c8ce478ab845963638c"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/base/strings/string_util_posix.h",
+      "sha256": "efb87b972f035030aab5d42b9dea120d88b7649c24726df80ce0bb60a5f4c9ac"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/base/strings/string_view_util.h",
+      "sha256": "8ddb3651e6ce9b811de3bf5b01c368ba1707207088622952a491aa4de3a37ef5"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/base/strings/stringprintf.h",
+      "sha256": "a80c792e3c1a5e083792154fdf416409ff12ed38adc87c1134c3cc42b1fe266a"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/base/strings/sys_string_conversions.h",
+      "sha256": "6ff27b0369472c40794cc84155e7bcb9c53c45693d42cdd4af000310cf0865f7"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/base/strings/to_string.h",
+      "sha256": "59c72a1b9e5c15a496fa258380452002784dfdff959d1acb7043b9eaf1c9482c"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/base/strings/utf_string_conversions.h",
+      "sha256": "9a44082b7a8cde528172e1d782370c046bc767125acb70088f900dbfbbd08724"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/base/strings/whitespace_constants.h",
+      "sha256": "564b8baf3e2109c768b5efabe20053dd1ccde3077e31aa38df0625b0e1bac2c3"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/base/synchronization/atomic_flag.h",
+      "sha256": "4846417a6d9062a2faf513d39627bdf0a41e393e438e219acc59ea48147dc0bb"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/base/synchronization/condition_variable.h",
+      "sha256": "782208ef78207479f09d8f4562ca20b863a17075aa09d48d4769b29dc624282d"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/base/synchronization/lock.h",
+      "sha256": "6e31288f216b837400847b1ce217dcd8088e97033234ca590bb5615f84b08ac2"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/base/synchronization/lock_impl.h",
+      "sha256": "e139551d67a0e02ba6bd739849b7b3141de01700f3ab9d3b428e739456711758"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/base/synchronization/lock_metrics_recorder_tags.h",
+      "sha256": "7aa06d9d55b1f13eac8fc866870601d6c76b82e05eae0e2dc8116f9f8da25578"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/base/synchronization/lock_subtle.h",
+      "sha256": "5b9af9343e24a30813ee5f815143197d76ce2a87e2f8de8cbf3f74b52de04b8b"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/base/task/delayed_task_handle.h",
+      "sha256": "9684e8ef66c00d1f475a5cda23942c3d6f1f3d4587f5747d48b3d76a8a08d909"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/base/task/post_task_and_reply_with_result_internal.h",
+      "sha256": "dd460d164c6285883c1efccd839627c521ff9df593d6316d078c0061c7bc228c"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/base/task/sequenced_task_runner.h",
+      "sha256": "fa1273efbf08c4376adc0ed7afb59ace5a71b418b1034e9d90166ea9adf87dd2"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/base/task/sequenced_task_runner_helpers.h",
+      "sha256": "7abf6f75b2d761f77e0ae5f93916cec1fe5a139ca1b3f0829dd2160e6dc4c55c"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/base/task/task_runner.h",
+      "sha256": "9536dcb971b674686d78cf77177d936e0ca81866b7f75241725fb1ad0b02ecef"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/base/task/thread_type.h",
+      "sha256": "1061c24ca4743f31d15d6dcf43ef0abb00ddeb627cbf8c87cad927a2ba55feda"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/base/thread_annotations.h",
+      "sha256": "252bb0aae4a819a13e17d65d280168e1b31e8990fa5f33357f7a4930913731bd"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/base/threading/platform_thread.h",
+      "sha256": "4208af4b08bba8492db10dfbfdc9edbf8337f328c18141dd963735605d1cbccb"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/base/threading/platform_thread_ref.h",
+      "sha256": "192874921e6a8bae9eaf8f3366df78edbf6f6f118ca6fd11553a7d4dd6fa6856"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/base/threading/scoped_blocking_call.h",
+      "sha256": "f641f7eb900cd579b5a7ff0afc310b1c738d9d1e3e0b18af7be5611509168529"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/base/threading/scoped_blocking_call_internal.h",
+      "sha256": "1d25e134590b76485dbf0c8b6b8ae35e898f6d8a044c57cde2b7cf7ca17cb36b"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/base/threading/thread_collision_warner.h",
+      "sha256": "05536414955edf926e6c994c5453b8cff85f230391ac3aea56f6e716de7bfa73"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/base/threading/thread_restrictions.h",
+      "sha256": "17e04b6573ad8076c73eae5323114c1212499d1c6d4d8ae82aa0ac294e52abfd"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/base/time/time.h",
+      "sha256": "e66bef19df9d66cb48f6e6cc7eff68faf35dd46b29ac469206b6e7d122c1bb80"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/base/time/time_override.h",
+      "sha256": "ac6c35da3f584cf43a8d5c2b777d0f74bf5546c42cd33ef8114bdc07820bc41c"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/base/timer/elapsed_timer.h",
+      "sha256": "934005c5dcc71e70095a2d33649f4e4c97a3e2d993cbf3ba5d310bed5c8ed099"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/base/token.h",
+      "sha256": "8c1022514f1945db3c83e2ab177fa97571ba299b657418301602704c16f06c9e"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/base/trace_event/base_tracing_forward.h",
+      "sha256": "742120e6d64653b4f1bda851f4d1b3d5b178f57b57ba70d076aec05360463145"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/base/trace_event/builtin_categories.h",
+      "sha256": "e8341e0b7fb05d3afd74cdfab96b0ee4fb002c7106758785a412d92060e2fe26"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/base/trace_event/common/trace_event_common.h",
+      "sha256": "9a62dae4f531aafd733e16273ec544310a0970d86f4d2f416aab22c7d4113a8b"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/base/trace_event/heap_profiler_allocation_context.h",
+      "sha256": "c1f1357e93a9a63a4af3cc9d7c16af0cbe15115db3b707231022e4c65383caa8"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/base/trace_event/measured_memory_dump_provider_info.h",
+      "sha256": "f8fede764647a60d06debe8f5cfaece8520e0f2df84ee6ca0c1b86cc013f6ab4"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/base/trace_event/memory_allocator_dump.h",
+      "sha256": "aaacec2f3b6c35325e5a186cdcb978647e5fd55c61b26fb51bf1111b912f3e89"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/base/trace_event/memory_allocator_dump_guid.h",
+      "sha256": "788023b46933b063408e076bd926ec63ce37d3429171ce6dd3ef06a06ed17e74"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/base/trace_event/memory_dump_manager.h",
+      "sha256": "32e6caf401ac71a035d1e5ee51b8dbab2c3a4b11f63585054359bedeae9d9392"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/base/trace_event/memory_dump_provider.h",
+      "sha256": "33826911d19ee86583fa1a1070acc9c1966a2c2c12bf78fc5a54ccea3dd46dd7"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/base/trace_event/memory_dump_provider_info.h",
+      "sha256": "ed9fb4f388c0d9d09c631ee17467cb54dd1c7321668b771b7aeb6ac1d5675e3b"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/base/trace_event/memory_dump_request_args.h",
+      "sha256": "afd45ea7be4294a07c53253ebfe3a663f9cf9d930df5a3c63d68fa3439458f2a"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/base/trace_event/process_memory_dump.h",
+      "sha256": "23b37c9205ad61c650f0b06d7bd49b3446bde21f53a37837b8705dde31c6890e"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/base/trace_event/trace_arguments.h",
+      "sha256": "509cd4c0d686765e8b4b48c3fcd0026dbb70b39da1cb1ea366a105c19894d7cb"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/base/trace_event/trace_config.h",
+      "sha256": "a9d8a48508da46cc4e8e2b96457b2c349bfe0249c97b24d24b203f6aceb3d51c"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/base/trace_event/trace_config_category_filter.h",
+      "sha256": "c798bc98d42d7f0c9dd8245aa9a2d75016edca9c2d3caaffed4ad77d37c94320"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/base/trace_event/trace_event.h",
+      "sha256": "8dd905f2dec4bd3dafadddd1f63b1e992677b0be253b0a2e30434df4d7f1fde8"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/base/trace_event/trace_event_impl.h",
+      "sha256": "cbf3019e534c349a270349b4a025986f64ca9836f56a87ac2b0c16ee47585438"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/base/trace_event/traced_value_support.h",
+      "sha256": "ffe00f89e390cde4ccc8297394674ecc1ac33a405c629e6f6695470efa839656"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/base/types/expected.h",
+      "sha256": "0d5fad1c2881f95dcd40979a2f54f74edcc58964963254c98f8dc3a4a911e8eb"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/base/types/expected_internal.h",
+      "sha256": "288bd2c3044558e86fa0ce1d604481ea9fcc53207f4c199eba63adfe588c2a57"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/base/types/is_arc_pointer.h",
+      "sha256": "ae99ec140c78e321200ce699438fc3d67f84922216d200b8bcbf4e4e353092d2"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/base/types/is_complete.h",
+      "sha256": "ee498aa659dd705d6ebe6e7f021b69d8f8695e0d27e465e5bb0b034c9333fb92"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/base/types/is_instantiation.h",
+      "sha256": "6ab30e421f9b82f61e365e1e6e681eed4fabb46c744ad75c577804c6f618287f"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/base/types/same_as_any.h",
+      "sha256": "c1ba0fc90b8e5e2995dd996e4b1e126675e66acb14fe0eacfa3d9aa49eb0e2ab"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/base/types/strong_alias.h",
+      "sha256": "a224905a267a428d17301411df2f0424eb6a3f4a4dcfed6500968e04cbccc30b"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/base/types/supports_ostream_operator.h",
+      "sha256": "e28edb5bae69a0105e231f1cc751110ab11e8d298d002db976aa9569f01b7759"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/base/types/supports_to_string.h",
+      "sha256": "cb8ec1d5a5b1958290dc77c7f6760e66177cb1b56e11d79dbddf4de12d8b9b8b"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/base/types/to_address.h",
+      "sha256": "414a4d34ba8b28290500bfa80ef6f34cc4441fc527ac6bcc4109d383901991b6"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/base/unguessable_token.h",
+      "sha256": "8480a87fd7ad7856d2799890a7ba03f470b80746ee6e66a2a170fab2773b14fb"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/base/value_iterators.h",
+      "sha256": "35f9dc7c377cdd6f2556f0e3e4d4ae5ba0d64094fd300d771a881ec3a29d15a4"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/base/values.h",
+      "sha256": "bc6ffad749e2e84ed10dbd296f604570bde6bf9bc1e41c11a3f8207ae9000f81"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/build/build_config.h",
+      "sha256": "c6e3501edea0833a2ef1b50f5cd27e151d58198af0523fa4d91ebd62a1be2039"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/build/buildflag.h",
+      "sha256": "40538acaa9b39d0f68e895503752bde340f8ea1cdb67a87bfaee865dba54c5cd"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/components/value_store/lazy_leveldb.h",
+      "sha256": "4fc8f64ef054dd0b642ec49e00176c38b0fb4ef0c3223f4c5803703e4b41e9c8"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/components/value_store/value_store.h",
+      "sha256": "fe84e2af9e5794afe5e8626ba5a64a629ec158255fff726a4d70397439facfe3"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/components/value_store/value_store_change.h",
+      "sha256": "db1a372cfc9be78246f7a8f370c05f4ef317146a4b0b541d85155da4730efcd1"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/out/AuxFast/gen/base/allocator/partition_allocator/src/partition_alloc/buildflags.h",
+      "sha256": "631592bca3418bc99c303bac61dc2c612aaf61c2b84606319a675177d80a539a"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/out/AuxFast/gen/base/debug/debugging_buildflags.h",
+      "sha256": "39aff09ca624cf69953c9297a45408f94f8f5df035759ed425120f846e3beec9"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/out/AuxFast/gen/base/fuzzing_buildflags.h",
+      "sha256": "179ecabdabd5797cbf662dd96591566e7bb262b84379a1214b3cf28a07a03b00"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/out/AuxFast/gen/base/synchronization/synchronization_buildflags.h",
+      "sha256": "5450ac8be06a3977df2f84d573d9aa30643612428faaf6cb067953cc0788c477"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/out/AuxFast/gen/base/trace_event/memory_dump_provider_name_variants.h",
+      "sha256": "40380eaf91f6b2b0f2cfa317030eaec7ff69e3e5716d540d0bf966c422de80cd"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/out/AuxFast/gen/base/tracing_buildflags.h",
+      "sha256": "7b9d8247b68ae5be19ce4a38293e3900432d89d1767dfcd8de238671b27a4d72"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/out/AuxFast/gen/build/modules/module.modulemap",
+      "sha256": "4af6368f381f18ab9ff37f2ddf6c761fc4de00629d0f28a3d59342547df99514"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/out/AuxFast/gen/third_party/perfetto/build_config/perfetto_build_flags.h",
+      "sha256": "f421fe6877270455d79977dd4b470cd1596d0617c81bb708cdda9a11668a7125"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/out/AuxFast/gen/third_party/perfetto/protos/perfetto/common/builtin_clock.pbzero.h",
+      "sha256": "8ef2a21c6fbd391e1d8cab3d1b0a6cea86d30438f2822c5ac3b8d4d5373d60fa"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/out/AuxFast/gen/third_party/perfetto/protos/perfetto/config/data_source_config.gen.h",
+      "sha256": "b6fa6bb7e6cd666cedb0f83c12ce6788bf06309f113033bf2deffcf1e664bece"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/out/AuxFast/gen/third_party/perfetto/protos/perfetto/config/track_event/track_event_config.gen.h",
+      "sha256": "e1b5d3d013a459e07ff9d5b3e3cbd4cd16937deb98b7480c3b675d921e402ff6"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/out/AuxFast/gen/third_party/perfetto/protos/perfetto/trace/interned_data/interned_data.pbzero.h",
+      "sha256": "ca000b85061ecb113c44583c6b636bf625b9d37ff99b44a17a1fa3c3c8db2e9b"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/out/AuxFast/gen/third_party/perfetto/protos/perfetto/trace/trace_packet.pbzero.h",
+      "sha256": "c8f342a2afe639383670be655c884b146e50c2e90adf3b9e49394a7aefe7cece"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/out/AuxFast/gen/third_party/perfetto/protos/perfetto/trace/track_event/counter_descriptor.gen.h",
+      "sha256": "c4312aba31e0f7c7ec4cfcb0ec2de083b6134b926fa0491cb4530539553c0234"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/out/AuxFast/gen/third_party/perfetto/protos/perfetto/trace/track_event/counter_descriptor.pbzero.h",
+      "sha256": "4fb9b0e777f30856590f724825d84b998cc204220c211d0fa9a5b1a0d96692a3"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/out/AuxFast/gen/third_party/perfetto/protos/perfetto/trace/track_event/debug_annotation.pbzero.h",
+      "sha256": "dacf6d73d6c4abe9f0f1e60d71c07062b42ee1314aad8318d262c93b0a90b722"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/out/AuxFast/gen/third_party/perfetto/protos/perfetto/trace/track_event/process_descriptor.gen.h",
+      "sha256": "4e82e2e84dedbfb73869b4a77cfab5dcbeecf8b77c288266d90f02366f89d74a"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/out/AuxFast/gen/third_party/perfetto/protos/perfetto/trace/track_event/process_descriptor.pbzero.h",
+      "sha256": "358489d1e549809be86bb7233aa33f9877d9b6292012bb8a7a2a3f2ae1eddd68"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/out/AuxFast/gen/third_party/perfetto/protos/perfetto/trace/track_event/thread_descriptor.gen.h",
+      "sha256": "8a2a979df2bbd86842c99e658455131a15725335e059f5e828c06bc423b58de4"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/out/AuxFast/gen/third_party/perfetto/protos/perfetto/trace/track_event/thread_descriptor.pbzero.h",
+      "sha256": "721c82eb37d1bea922147fe26dfbaa2d1c10abafa0b34761ee4206afaa8740e8"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/out/AuxFast/gen/third_party/perfetto/protos/perfetto/trace/track_event/track_descriptor.gen.h",
+      "sha256": "2a11e744359e0a95fca8075e240195a7b4c75b34c2b2e313972f5547c0476151"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/out/AuxFast/gen/third_party/perfetto/protos/perfetto/trace/track_event/track_descriptor.pbzero.h",
+      "sha256": "bd4aa52cde3eab6ef74be0837322d4a447df9fc77e89533a8176048ffa7f3139"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/out/AuxFast/gen/third_party/perfetto/protos/perfetto/trace/track_event/track_event.pbzero.h",
+      "sha256": "2d5cf7f5ed5f2744b6945696616fdb524061c40f6688e10d22fbcce39faab6c3"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/testing/gtest/include/gtest/gtest_prod.h",
+      "sha256": "d6bb3a59058a0850c1ff6fa68e51b65065001cd7e94de7179fbe253274f3ee53"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/third_party/abseil-cpp/absl/algorithm/algorithm.h",
+      "sha256": "9868a11d13fcfa6a09cd9ae07792a5fcae0351a6c72d70cd00ccd9a845a616a7"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/third_party/abseil-cpp/absl/base/attributes.h",
+      "sha256": "c14c44067b5f42138762dbf77bcaa66fb251222bf4632218b4f51bcaa9bc06c1"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/third_party/abseil-cpp/absl/base/config.h",
+      "sha256": "78d135277cb41f62066ffd1ee4ac22ba74af1bbd1a9f8506acb71b8b08d01f05"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/third_party/abseil-cpp/absl/base/const_init.h",
+      "sha256": "24713581a12e8bdc3294eb5759fd88a15eaa08b667b6facf7e0b9bff6dbc36b1"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/third_party/abseil-cpp/absl/base/internal/hardening.h",
+      "sha256": "411b59671233de9bd6f79dcea93fa113c6c4282760d0463c3e047b5cdb5aa176"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/third_party/abseil-cpp/absl/base/internal/iterator_traits.h",
+      "sha256": "ad89bfbc71af9e936ea4707bfdea9cf746339253f0293f6b22757c43fb6d4c9f"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/third_party/abseil-cpp/absl/base/macros.h",
+      "sha256": "5d23e9900999374fd0410d9416e897ff22699f28ce5122a8f447615b9b485548"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/third_party/abseil-cpp/absl/base/nullability.h",
+      "sha256": "200c9c5d7d463b82493b4133b1e2b88ba65d8c74e4c7c1d0461566208871477c"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/third_party/abseil-cpp/absl/base/optimization.h",
+      "sha256": "05641e2013401775775f738e7ab805ef22003aeac05533222b09109f1d77d51e"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/third_party/abseil-cpp/absl/base/options.h",
+      "sha256": "9410ff006074b83d4bfaec5fffd38dd8cc7d795d9510722d417a9249a2485ec3"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/third_party/abseil-cpp/absl/base/policy_checks.h",
+      "sha256": "c45fbccdda2805411a54a6e24ded002cdcc285dae5904b36768c769e9defebd1"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/third_party/abseil-cpp/absl/base/port.h",
+      "sha256": "114cc510e2fefeeb5f0751d3c5ae2e0fe87e25697e5e9114e02aec647c7199b0"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/third_party/abseil-cpp/absl/base/throw_delegate.h",
+      "sha256": "debe039e1d827b40ee23d98bc8399e79917fc30c553cb0d77951ee2d2f1f20ff"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/third_party/abseil-cpp/absl/container/inlined_vector.h",
+      "sha256": "eed47bb3ee45bd9f16005fefe2cbe4045702961ae58a60210e9fb6eeb6d46c1a"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/third_party/abseil-cpp/absl/container/internal/compressed_tuple.h",
+      "sha256": "349d61a4d551395bb607333a9039363225506c427d9c734db161b196bc43817e"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/third_party/abseil-cpp/absl/container/internal/inlined_vector.h",
+      "sha256": "75e7ef10a90c11c4ed3e54ca4447130f20bd4483faa21e523b75dd565eb313e7"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/third_party/abseil-cpp/absl/functional/any_invocable.h",
+      "sha256": "9e3236c8402ff251c1f8a1a4b0867832328b0e41f642d6f53b789a680966365d"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/third_party/abseil-cpp/absl/functional/function_ref.h",
+      "sha256": "0d656ab97b6bc78ba374bd34ece11c7d982021b91b83e11d27899be84b557793"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/third_party/abseil-cpp/absl/functional/internal/any_invocable.h",
+      "sha256": "8030eb240ae04b24c73bd7ddb941d13b61c755b13d06531d481a3c380bc7e0c2"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/third_party/abseil-cpp/absl/functional/internal/function_ref.h",
+      "sha256": "6609c31b8b5b2e8bef63554f5f64899fab7122d06d86f31a59a8750dd49720b0"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/third_party/abseil-cpp/absl/hash/internal/weakly_mixed_integer.h",
+      "sha256": "5a6c4b178fb2245ba0d6de82d0c4c903f615b74f24fadc1b955d3dfa60e2c246"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/third_party/abseil-cpp/absl/memory/memory.h",
+      "sha256": "21fc5eefb9a621238ab750dc8a4611ebe66b323d167b303439bf76397df324e2"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/third_party/abseil-cpp/absl/meta/type_traits.h",
+      "sha256": "7f4eeac17e6e3a01939fb57a34adae08f2a6283a7ae80d3c20557315b394886d"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/third_party/abseil-cpp/absl/numeric/int128.h",
+      "sha256": "8dba3e952a606955e4400f90c58720e4cb0280339516eb26d980dbd3a9ed7ae6"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/third_party/abseil-cpp/absl/numeric/int128_have_intrinsic.inc",
+      "sha256": "fec524de548e2d4f002fc2f3b6fd118c6b9d5f6d0762c0f31fffc012029d7496"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/third_party/abseil-cpp/absl/strings/has_absl_stringify.h",
+      "sha256": "706d52bc80b4d4e5a83af5f3912244260cb61988c703ddc11b483e92ecb94ea5"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/third_party/abseil-cpp/absl/strings/internal/str_format/arg.h",
+      "sha256": "a5011d6648c483cd3a8ad3738dd5a317856b55b972c5743fc906367828ed2e76"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/third_party/abseil-cpp/absl/strings/internal/str_format/bind.h",
+      "sha256": "113544ef7eeefbe1dd728775b8a45ac4afa4ed5b2f9ff58be6567785a68f432e"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/third_party/abseil-cpp/absl/strings/internal/str_format/checker.h",
+      "sha256": "39db547f5c4a73153759bcc070b75bf4b4dade050b81b75dddfc2ddd3683f9e7"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/third_party/abseil-cpp/absl/strings/internal/str_format/constexpr_parser.h",
+      "sha256": "22be968eef75bffe59f3c6ee629b7910fa8039768c39fb47960b4090eda0b6e9"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/third_party/abseil-cpp/absl/strings/internal/str_format/extension.h",
+      "sha256": "6233ead0b5a11996ff282dd6a7da06bfcea6fc6f6f67d393ddecb18709df72d7"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/third_party/abseil-cpp/absl/strings/internal/str_format/output.h",
+      "sha256": "538e94cab87208120a02163cfc8cac93a2cdc2f47749abd32edc23d798ec4909"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/third_party/abseil-cpp/absl/strings/internal/str_format/parser.h",
+      "sha256": "e3970242669350c2ba43836dbf616e173a9427b16b8b8dc7749319793f05f4be"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/third_party/abseil-cpp/absl/strings/str_format.h",
+      "sha256": "6f01c95dd50e9bf97a1a6f2085acd1034ae5edb0efadd2679af83a4e9091272c"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/third_party/abseil-cpp/absl/strings/string_view.h",
+      "sha256": "6113de0019e3b91feb3c8b87c2d80b5c720ed1538b2b0ffd40a5fc7cd2cd693b"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/third_party/abseil-cpp/absl/types/compare.h",
+      "sha256": "0591cc0094c1c46b39ddb475147835ccf331a1bec89f94abfb2d0f567c639728"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/third_party/abseil-cpp/absl/types/internal/span.h",
+      "sha256": "df92da75505787139fc4c315c230c477d9ce008a8c586c7ab76cc8e159f173aa"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/third_party/abseil-cpp/absl/types/span.h",
+      "sha256": "f34eb810727a4557ba13e7a16d33115752ae4e782bfac9d9cd5c30a5654d1731"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/third_party/abseil-cpp/absl/utility/utility.h",
+      "sha256": "a85f699418ad1c409a36ae19233343a9960b1a87377543dbce7be2126a514728"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/third_party/googletest/src/googletest/include/gtest/gtest_prod.h",
+      "sha256": "3c6301ef533db8686e474dd5a0de4d98a31cbb630e2273f712472d1be25aa261"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/third_party/leveldatabase/env_chromium.h",
+      "sha256": "7c30f5852b8a8b2883baf1f0dff9e1933a6a7071fb5c3f6633af48f21f79fc98"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/third_party/leveldatabase/port/port_chromium.h",
+      "sha256": "792c60baa8774b5a583b71601c1a126af35d83095074b04aeae2df835b3344b4"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/third_party/leveldatabase/src/include/leveldb/cache.h",
+      "sha256": "dfb2f00e6a304d30c563ffadead62077c8024f2f5b812495f65d25c7b41b52e5"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/third_party/leveldatabase/src/include/leveldb/db.h",
+      "sha256": "e0d5c78895ae329b5382e8c9c32809e5c32868d5a5e929f922b6f5f64f057af5"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/third_party/leveldatabase/src/include/leveldb/env.h",
+      "sha256": "7679523b84a83010e1810cd2185bf083a433afcf875274d67a5a832896296f8f"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/third_party/leveldatabase/src/include/leveldb/export.h",
+      "sha256": "16d10725a7121568913e6b994c58c6a1227f459713065a8640c4d8f130cb5af7"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/third_party/leveldatabase/src/include/leveldb/iterator.h",
+      "sha256": "e6d53d3d2dae5cb8bfd859c0044ca527ea70ba3e5d95fd62fb2f282644fe9b9b"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/third_party/leveldatabase/src/include/leveldb/options.h",
+      "sha256": "2998a0866cd991aa426573acba8ac0ec48ff7568fc6d50b5ff2a467b0e45c507"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/third_party/leveldatabase/src/include/leveldb/slice.h",
+      "sha256": "b1124749326893ca3a81a8affbb936baffe10bb86a7c725ed17c21d7441eb1a0"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/third_party/leveldatabase/src/include/leveldb/status.h",
+      "sha256": "9620ded7cf53e5cd4911c89c0012e7124ee6de789b3858e02b113cdaee787114"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/third_party/leveldatabase/src/include/leveldb/write_batch.h",
+      "sha256": "0ae1d1fb2620a3ffb76aa9b4330bd4a283f9c92e829afacd52ea65a11cc3d8ad"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/third_party/perfetto/include/perfetto/base/build_config.h",
+      "sha256": "01c8b46ffc3aeb50287c3821249ba6c3ce662f0fe1a2f17958e28cac33bfc62c"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/third_party/perfetto/include/perfetto/base/compiler.h",
+      "sha256": "6c4292c9c3608bd10aa23dba4445fba96730ecd6f406a3b3fee3cd0dfb4c1185"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/third_party/perfetto/include/perfetto/base/export.h",
+      "sha256": "c83bf1abcfce1ce783968e50864bdfd7b05237288dbe5649e6a8899eafc54ae5"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/third_party/perfetto/include/perfetto/base/flat_set.h",
+      "sha256": "0deb6f2ca3c015e7e57b70fbcde9a393e1e5f31afa37369e41c587b99948b76f"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/third_party/perfetto/include/perfetto/base/logging.h",
+      "sha256": "58db9c363fc9f00f2a217399a44cd389c2f3f2adfd2ad956df947f0935f36e67"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/third_party/perfetto/include/perfetto/base/platform_handle.h",
+      "sha256": "6d6613c26a3f34b2a555f939b5ed3d6d9ceaf6b1a3d6795cdacc8a0ab1cfbc6e"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/third_party/perfetto/include/perfetto/base/proc_utils.h",
+      "sha256": "a6bf8a3abfe2ef502c5cdd091ba67755d0adbae7e38c955150bf024ccc186626"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/third_party/perfetto/include/perfetto/base/template_util.h",
+      "sha256": "40938e6c6fd1e40a9ab639d581a8b0db8495d5e2aae51799358d5ee8485193d8"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/third_party/perfetto/include/perfetto/base/thread_annotations.h",
+      "sha256": "21cace6bf3f0693d2d4ace011914ba5f5574c4ee7d5529dc73d1fdaec7cbdf12"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/third_party/perfetto/include/perfetto/base/thread_utils.h",
+      "sha256": "a2a30174d7abacbb8c2a8fc179982b6af2e66609ddbff7ebf550a587f72fced7"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/third_party/perfetto/include/perfetto/protozero/contiguous_memory_range.h",
+      "sha256": "2beb3447ff507d10957f2f6462548db082805e8e245ff95f78259926d72b654e"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/third_party/perfetto/include/perfetto/protozero/copyable_ptr.h",
+      "sha256": "e7a0772ba27348ba289f0ddf71b7105896254791d81efdf7fa8e2488f0963834"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/third_party/perfetto/include/perfetto/protozero/cpp_message_obj.h",
+      "sha256": "10eef6db16a9865060be349fe1e9256bce937ea599861585fd08443bc9e678a1"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/third_party/perfetto/include/perfetto/protozero/field.h",
+      "sha256": "6e9c4a71d7de96b31e1ac647b7f3ec330703c22ea4ef41171117dfef1396d8d2"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/third_party/perfetto/include/perfetto/protozero/field_writer.h",
+      "sha256": "a3fd508ad3371f9761fb8d405c10c6868bfdb8ca5f92be7d38ce20f6298fc5df"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/third_party/perfetto/include/perfetto/protozero/message.h",
+      "sha256": "ec337ff0e4a957f8c23305d3a88d070c9ba75754c6172a7a52fc48bfdbffe4d6"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/third_party/perfetto/include/perfetto/protozero/message_arena.h",
+      "sha256": "2ef3c360594f17c1f27fbb9536138b557018f2e83e91dc39f55858d9b88769c5"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/third_party/perfetto/include/perfetto/protozero/message_handle.h",
+      "sha256": "b92fd4042cac31c9d95cd5eee6b043bda76f77485fecef7b099ad9d060911380"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/third_party/perfetto/include/perfetto/protozero/packed_repeated_fields.h",
+      "sha256": "89a74984ad59d4ca930e44aa8124f93ff05ded05b712287ba22ea276012fe241"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/third_party/perfetto/include/perfetto/protozero/proto_decoder.h",
+      "sha256": "22d0060fe7ebe98bf71f0730fd87d82ae1a22ec5f7667438e6ab3326d807910e"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/third_party/perfetto/include/perfetto/protozero/proto_utils.h",
+      "sha256": "a8870c9d2049c57b1c21d63072fcdea7b75d1d092d7f6ba62b3225cb5cf1b74b"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/third_party/perfetto/include/perfetto/protozero/root_message.h",
+      "sha256": "a09017789ce6372147ca73dc4b9c3f3b3da39ededeec6e5c31bb3e7c3a18d2c9"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/third_party/perfetto/include/perfetto/protozero/scattered_heap_buffer.h",
+      "sha256": "5d5e30ef9e73701c7d47c54820c5574a341bf730cb173afe95362cdad434f7c1"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/third_party/perfetto/include/perfetto/protozero/scattered_stream_writer.h",
+      "sha256": "3bfcf44b756c7c33f9d93b0d02109060cdc1081eff864d0bead1f576da9bcad9"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/third_party/perfetto/include/perfetto/public/abi/export.h",
+      "sha256": "d19ff97564e9ec2643284d879a04b427163b09a2e9be5dfaba548b8f901a354b"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/third_party/perfetto/include/perfetto/public/compiler.h",
+      "sha256": "d5f652d8db4519d00d101cd11fdeb266e5d5ccc985cdd8bafa62ee83ba9e803f"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/third_party/perfetto/include/perfetto/public/pb_utils.h",
+      "sha256": "7a40ae642b135966a3ff354f3e6960be25f5c4ba2f4e4b2be01fb1d983a18c5b"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/third_party/perfetto/include/perfetto/tracing/backend_type.h",
+      "sha256": "d8a574bcb9be7c1d048f3da969b40dfa0d84946bfa1ce3e0beb3e56b36fe4b6a"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/third_party/perfetto/include/perfetto/tracing/buffer_exhausted_policy.h",
+      "sha256": "ffba33ed3569bd10087dad42f6737d090ec136e36b9b7be133e0a06e0ea6f8c5"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/third_party/perfetto/include/perfetto/tracing/core/data_source_config.h",
+      "sha256": "dcc92f2a6a894a7b08854b3c1712690dea5b956713b76867cb0121530f911a17"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/third_party/perfetto/include/perfetto/tracing/core/flush_flags.h",
+      "sha256": "36886a12090dbf3da604a34375efec6307995289c0b22967669b425eddc2e59b"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/third_party/perfetto/include/perfetto/tracing/core/forward_decls.h",
+      "sha256": "8b668ac6b5db517691fafe5dc25e4fae3cee41c7c714f906f6a688c2300580bc"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/third_party/perfetto/include/perfetto/tracing/data_source.h",
+      "sha256": "c92ee05882717994b4febbd35898e223dfadf26c99bf1e5d15d762e1e796b596"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/third_party/perfetto/include/perfetto/tracing/debug_annotation.h",
+      "sha256": "486a0b8c0ce0f2fc6ea8c6e7a5765c1b712fe005e5521e4cba5b731fa349dd46"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/third_party/perfetto/include/perfetto/tracing/default_socket.h",
+      "sha256": "7014f9ad34222266d1343d3849cf669bcb6a9668241d7e32121272dcfd5f8e27"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/third_party/perfetto/include/perfetto/tracing/event_context.h",
+      "sha256": "b365fe8e54049e170b90ed6761b12babdb48f253ee7dbef4011129b47fb1b228"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/third_party/perfetto/include/perfetto/tracing/interceptor.h",
+      "sha256": "78e7671d970bd4d3e7ec661d1564c01da12dc34624c42d454133d73226bdf62c"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/third_party/perfetto/include/perfetto/tracing/internal/basic_types.h",
+      "sha256": "07dc63b3ff6d17c8d2e8334f47efa850d800dc8677fb8790fe5acd4e1ff8e3be"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/third_party/perfetto/include/perfetto/tracing/internal/checked_scope.h",
+      "sha256": "d429e5dbbdb11c9f2784e3800dbedd67ab4561a6f3580ce3e4c672c255773f32"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/third_party/perfetto/include/perfetto/tracing/internal/data_source_internal.h",
+      "sha256": "9cfe61318bf48adac9fd31b3aaccdfb3c5352e0a17cb424d70bdf871715241d9"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/third_party/perfetto/include/perfetto/tracing/internal/data_source_type.h",
+      "sha256": "c22d1f8635204b87e452079e2512dda490c9527e2aaf0f70c77c80c70582f683"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/third_party/perfetto/include/perfetto/tracing/internal/fnv1a.h",
+      "sha256": "ae7699889a00d37244e40819ba8dae4f6df13addd1d2fb35499779f18f1c49d9"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/third_party/perfetto/include/perfetto/tracing/internal/in_process_tracing_backend.h",
+      "sha256": "a7748118e846b3b0689a55af08f6fd2061392c73dd42d014b7f44537ab96dca6"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/third_party/perfetto/include/perfetto/tracing/internal/system_tracing_backend.h",
+      "sha256": "329c4b169f7d878e8e2c5a1f26f382e4a50de50edfb7642b1ae01fab70e925a2"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/third_party/perfetto/include/perfetto/tracing/internal/tracing_muxer.h",
+      "sha256": "0a710bcec718d0dfef5ddd55e5c778565abd1cae76761480071fada6fc111e61"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/third_party/perfetto/include/perfetto/tracing/internal/tracing_tls.h",
+      "sha256": "eeb51cf478702d605464a7d67280e7702c5be62cfc0f13479b403ec713beee33"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/third_party/perfetto/include/perfetto/tracing/internal/track_event_data_source.h",
+      "sha256": "e1c337174e70fc02d363ed57507624fdc453864295d17fccb2b593d224110b67"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/third_party/perfetto/include/perfetto/tracing/internal/track_event_internal.h",
+      "sha256": "ace1d93196a86c2cf26813f1c1163e853c5a421828e179bf2572e6cc626d1130"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/third_party/perfetto/include/perfetto/tracing/internal/track_event_legacy.h",
+      "sha256": "8a9db288998e28e944efbf6fa2233fb685c29b65fc5a4eca62ea40cf8d8f29fe"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/third_party/perfetto/include/perfetto/tracing/internal/track_event_macros.h",
+      "sha256": "2ce6b72b60c0d7ce22c3c175cc00e3c192fcf2ed60c2d16ab0b2e36fa507085d"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/third_party/perfetto/include/perfetto/tracing/internal/write_track_event_args.h",
+      "sha256": "7eaa2fcde1fb4899d13584d203ef93aa091abef9faf6dee0ba06af960126f6c2"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/third_party/perfetto/include/perfetto/tracing/locked_handle.h",
+      "sha256": "4fc0d6173f7d76df7bfe76dfbd1dba8600948db3d181dca4bd602d1fced557df"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/third_party/perfetto/include/perfetto/tracing/platform.h",
+      "sha256": "63142e844d82c60f1d1780008b63c84968be6f5486aced3e34f966cfdc19eb39"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/third_party/perfetto/include/perfetto/tracing/string_helpers.h",
+      "sha256": "2a16ced65eb49c1896ad22db5163a76c783cb42a3e68adb1d7c8a05b52527a5f"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/third_party/perfetto/include/perfetto/tracing/trace_writer_base.h",
+      "sha256": "3af3360a8d071132aee97158ef32ac5373dd593cb9410a96403012d69cb9aaa7"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/third_party/perfetto/include/perfetto/tracing/traced_proto.h",
+      "sha256": "38bc636aa3f6e464794a1b4999cda51ca161ed252e797e3fd24044313ea15e5f"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/third_party/perfetto/include/perfetto/tracing/traced_value.h",
+      "sha256": "6c1e16a9580f3dc88a446832a87aeea1b73210ec9297e35120ae4648f1f89966"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/third_party/perfetto/include/perfetto/tracing/traced_value_forward.h",
+      "sha256": "26bcbca2ec785864f5025b96eab66415737e188bfc12cf2055f1624de97a2160"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/third_party/perfetto/include/perfetto/tracing/tracing.h",
+      "sha256": "a28bfa52830c04915de308a7a897fc6921e532127d89df322f6bfd80f3d1bee2"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/third_party/perfetto/include/perfetto/tracing/tracing_backend.h",
+      "sha256": "5461e302d23636954c29fad69537f1f8270b19ddc8295da6b16cd76da56ba0d6"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/third_party/perfetto/include/perfetto/tracing/tracing_policy.h",
+      "sha256": "42e3a8b1a57d2560f30d691aedae9fd0f39d7565ef89f970ba79c18dec28cc96"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/third_party/perfetto/include/perfetto/tracing/track.h",
+      "sha256": "08f11def8f2858dbad4429d6745472e9a8a4e0c17adf5e06bdcde844122660ac"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/third_party/perfetto/include/perfetto/tracing/track_event.h",
+      "sha256": "0eefec965318a2208af955531eb84b7c3e2f321401ea3098f5bf98dcf678d3a8"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/third_party/perfetto/include/perfetto/tracing/track_event_args.h",
+      "sha256": "af1ac20def498df106197bbef8a2bff92b5fed834559246b2ca1025cd3750be7"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/third_party/perfetto/include/perfetto/tracing/track_event_category_registry.h",
+      "sha256": "669d2892103a89e31f2ec8f1143341d6f8903b4a4db94775299650796e89bf67"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/third_party/perfetto/include/perfetto/tracing/track_event_legacy.h",
+      "sha256": "e2bf2cce79c1c5ea920f9d831327c015d0dc0f0254d413275f9deca0c8fb9d34"
+    }
+  ]
+}
