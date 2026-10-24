@@ -88,6 +88,19 @@ function editor(f,{text='latest unreported text',onChange}={}){
  const second=plain(f.api.release(lease.leaseId));assert.equal(second.released,true);assert.equal(second.restored,true);assert.equal(e.editor.isEditable,true);
  const observed=plain(f.api.readCapture());assert.equal(observed.retained,false);assert.equal(observed.released,true);assert.equal(observed.leaseId,lease.leaseId);assert.equal(observed.requestId,lease.requestId);cases++;
 }
+// Native wire mode preserves exact UTF16, including lone surrogates, without
+// embedding decoded store strings that an RFC-native JSON parser can reject.
+{
+ const f=fixture();editor(f);const key='aux.chat-draft-text.v1:orphan',raw='plain '+String.fromCharCode(0xd800)+' '+String.fromCodePoint(0x1f600);
+ f.localStorage.map.set(key,raw);const lease=f.api.rawPrepare('00000000-0000-4000-8000-000000000002','utf16-v1');assert.equal(lease.ok,true);assert.equal(lease.sealed,false);assert.equal('capture' in lease,false);const wire=plain(f.api.seal(lease.leaseId,lease.revision,'utf16-v1'));
+ assert.equal(wire.ok,true);assert.equal('capture' in wire,false);assert.equal(typeof wire.captureJson,'string');
+ const entry=wire.storeUnits.localEntries.find(record=>String.fromCharCode(...record.key)===key);
+ assert.equal(String.fromCharCode(...entry.value),raw);assert(entry.value.includes(0xd800));assert(entry.value.includes(0xd83d));
+ assert.equal(JSON.parse(wire.captureJson).localEntries[key],raw);
+ assert.deepEqual(plain(f.api.readCapture('utf16-v1')).storeUnits,wire.storeUnits);
+ const observed=plain(f.api.observeTarget(lease.leaseId,lease.revision,'utf16-v1'));assert.equal(observed.ok,true);assert.equal('stores' in observed,false);assert.deepEqual(observed.storeUnits.mutations,[]);
+ f.api.release(lease.leaseId);cases++;
+}
 // IME is a real owner predicate; refusal does not alter editable state or draft.
 {
  const f=fixture(),e=editor(f);e.runtime.composition.isComposing=true;const before=JSON.stringify([...f.sessionStorage.map]);
@@ -219,7 +232,7 @@ function editor(f,{text='latest unreported text',onChange}={}){
 const receipt={format:'aux.ui-editor-writer-closure.focused.actual.v1',passed:true,cases,
  actualCodecEditorFactoryFileReaderAndComposerCallbacksExecuted:true,
  actualChatWireMethodAndSessionCreateCallbacksExecuted:true,unknownSentCommandsAndCreateResultsRemainRefused:true,
- retainedLeaseReadOnlyRecoveryAndRequestCorrelationPassed:true,failedRestorationRetriesAndCorrelatedReleaseObservationPassed:true,
+ retainedLeaseReadOnlyRecoveryAndRequestCorrelationPassed:true,failedRestorationRetriesAndCorrelatedReleaseObservationPassed:true,utf16WirePreservesLoneSurrogatesAndOriginalCaptureJsonPassed:true,
  zeroOwnerMountingManagerMismatchAndUnknownRouteRefused:true,
  cohortReadOnlySealAndPostSealByteValidationPassed:true,readOnlyTargetObservationPreservesSealedSourceAndRefusesProductiveWrites:true,exactAckTombstoneAndStoredClaimFencesPassed:true,privateModeAndSessionSettingsCallbacksChecked:true,consumedCaptureAdapterCompositionPassed:true,
  latestEditorFlushPassed:true,imeUploadPublicationAndClaimRefusalPassed:true,heldLateWritesRetainedAndTainted:true,

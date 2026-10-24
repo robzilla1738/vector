@@ -127,7 +127,7 @@ function auxDraftMigrationRelease(lease){
     requestId:lease.requestId,leaseId:lease.id,revision:lease.revision,released:true,restored:true};
   return true;
 }
-function auxPrepareDraftMigrationCapture(requestId){
+function auxPrepareDraftMigrationCapture(requestId,wireFormat){
   if(typeof requestId!=="string"||!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(requestId))
     return{format:auxDraftMigrationFormat,ok:false,error:"A canonical capture request ID is required"};
   if(auxDraftMigrationLease)return{format:auxDraftMigrationFormat,ok:false,error:"This document already has a capture lease"};
@@ -167,6 +167,7 @@ function auxPrepareDraftMigrationCapture(requestId){
     lease.captureJson=auxDraftMigrationCaptureJson();
     if(auxDraftMigrationLease!==lease||lease.tainted)throw Error("Aux draft lease changed during capture");
     lease.revision=auxDraftMigrationRevision;lease.phase="held";
+    if(wireFormat==="utf16-v1")return auxDraftMigrationEnvelope(lease,wireFormat);
     return{format:auxDraftMigrationFormat,ok:true,requestId:lease.requestId,leaseId:lease.id,revision:lease.revision,
       ownerCount:owners.length,sealed:false,capture:JSON.parse(lease.captureJson)};
   }catch(error){
@@ -205,7 +206,28 @@ function auxValidateDraftMigrationCapture(leaseId,revision){
   }catch(error){return{format:auxDraftMigrationFormat,ok:false,requestId:lease?.requestId,
     leaseId:lease?.id,revision:lease?.revision,sealed:lease?.sealed??false,closed:false,error:String(error?.message??error)}}
 }
-function auxObserveDraftMigrationTarget(leaseId,revision){
+function auxDraftMigrationStoreUnits(capture){
+  let count=0;
+  const units=value=>{
+    if(typeof value!=="string"||(count+=value.length)>4194304)throw Error("Aux UTF16 store capture exceeds its bound");
+    const output=new Array(value.length);
+    for(let index=0;index<value.length;index++)output[index]=value.charCodeAt(index);
+    return output;
+  };
+  const entries=value=>Object.keys(value).sort().map(key=>({key:units(key),value:units(value[key])}));
+  return{format:"aux.ui-draft-store-units.v1",origin:capture.origin,
+    sessionEntries:entries(capture.sessionEntries),localEntries:entries(capture.localEntries),
+    mutations:(capture.mutations??[]).map(change=>({storage:change.storage,operation:change.operation,
+      key:units(change.key),...change.operation==="set"?{value:units(change.value)}:{}}))};
+}
+function auxDraftMigrationEnvelope(lease,wireFormat){
+  const base={format:auxDraftMigrationFormat,ok:true,retained:true,requestId:lease.requestId,
+    leaseId:lease.id,revision:lease.revision,ownerCount:lease.signatures.length,sealed:lease.sealed};
+  const capture=JSON.parse(lease.captureJson);
+  return wireFormat==="utf16-v1"?{...base,wireFormat,captureJson:lease.captureJson,
+    storeUnits:auxDraftMigrationStoreUnits(capture)}:{...base,capture};
+}
+function auxObserveDraftMigrationTarget(leaseId,revision,wireFormat){
   const lease=auxDraftMigrationLease;
   try{
     auxAssertDraftMigrationOwners(leaseId,revision);
@@ -214,22 +236,27 @@ function auxObserveDraftMigrationTarget(leaseId,revision){
     // Never reset the sealed source baseline or infer new mutation intentions.
     const {origin,sessionEntries,localEntries}=JSON.parse(auxDraftMigrationCaptureJson());
     auxAssertDraftMigrationOwners(leaseId,revision);
-    return{format:auxDraftMigrationFormat,ok:true,requestId:lease.requestId,leaseId,revision,
-      ownerCount:lease.signatures.length,sealed:true,stores:{origin,sessionEntries,localEntries}};
+    const stores={origin,sessionEntries,localEntries};
+    const base={format:auxDraftMigrationFormat,ok:true,requestId:lease.requestId,leaseId,revision,
+      ownerCount:lease.signatures.length,sealed:true};
+    return wireFormat==="utf16-v1"?{...base,wireFormat,storesJson:JSON.stringify(stores),
+      storeUnits:auxDraftMigrationStoreUnits(stores)}:{...base,stores};
   }catch(error){return{format:auxDraftMigrationFormat,ok:false,requestId:lease?.requestId,
     leaseId:lease?.id,revision:lease?.revision,sealed:lease?.sealed??false,error:String(error?.message??error)}}
 }
-function auxReadDraftMigrationCapture(){
+function auxReadDraftMigrationCapture(wireFormat){
   const lease=auxDraftMigrationLease;
   if(!lease)return auxDraftMigrationLastRelease?{...auxDraftMigrationLastRelease}:
     {format:auxDraftMigrationFormat,ok:false,retained:false,error:"No retained Aux draft capture"};
   if(lease.phase!=="held")return{format:auxDraftMigrationFormat,ok:false,retained:true,requestId:lease.requestId,leaseId:lease.id,revision:lease.revision,sealed:lease.sealed,error:"Aux draft capture owner is changing"};
   const current=auxValidateDraftMigrationCapture(lease.id,lease.revision);
   if(!current.ok)return{...current,retained:true,requestId:lease.requestId,leaseId:lease.id,revision:lease.revision};
-  return{format:auxDraftMigrationFormat,ok:true,retained:true,requestId:lease.requestId,leaseId:lease.id,revision:lease.revision,
-    ownerCount:lease.signatures.length,sealed:lease.sealed,capture:JSON.parse(lease.captureJson)};
+  try{return auxDraftMigrationEnvelope(lease,wireFormat)}catch(error){
+    return{format:auxDraftMigrationFormat,ok:false,retained:true,requestId:lease.requestId,
+      leaseId:lease.id,revision:lease.revision,sealed:lease.sealed,error:String(error?.message??error)};
+  }
 }
-function auxSealDraftMigrationCapture(leaseId,revision){
+function auxSealDraftMigrationCapture(leaseId,revision,wireFormat){
   const lease=auxDraftMigrationLease,current=auxValidateDraftMigrationCapture(leaseId,revision);
   if(!current.ok)return current;
   try{
@@ -242,7 +269,7 @@ function auxSealDraftMigrationCapture(leaseId,revision){
         throw Error("Aux draft owner changed during sealing");
       lease.captureJson=captured;lease.sealed=true;
     }
-    return auxReadDraftMigrationCapture();
+    return auxReadDraftMigrationCapture(wireFormat);
   }catch(error){return{format:auxDraftMigrationFormat,ok:false,retained:true,requestId:lease.requestId,
     leaseId:lease.id,revision:lease.revision,sealed:lease.sealed,error:String(error?.message??error)}}
 }

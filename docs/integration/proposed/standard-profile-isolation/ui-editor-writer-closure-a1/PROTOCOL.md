@@ -100,3 +100,16 @@ restoration keeps the same cleanup lease and failed restorer closures for explic
 retry; no absent lease is manufactured from failed restoration. A reviewed
 pre-lease refusal can retain a correlated `noLeaseCreated` observation instead.
 None of these cleanup outcomes grants target admission or writer closure.
+
+The native controller may supply the fixed optional serialization mode `utf16-v1`
+to Prepare (second argument), Read (first), Seal/ObserveTarget (third). Default
+shapes are unchanged. Wire replies omit decoded capture/stores and provide their
+original JSON as an escaped `captureJson`/`storesJson` string plus bounded
+`storeUnits:{format:"aux.ui-draft-store-units.v1",origin,sessionEntries,localEntries,mutations}`.
+Entry keys/values and mutation keys/set-values are arrays of exact UTF16 code
+units; remove retains absence of value. Native compares numeric arrays to real
+cache/native source observations and does not reparse raw-string JSON as a
+substitute, which would reject or replace lone surrogates. Target observation
+contains no regenerated mutation intents. Data cannot grant native authority.
+Aggregate unit count is bounded at4194304; oversized capture refuses without
+truncation. Prepare wire serialization failure restores its actual original lease.

@@ -2,7 +2,7 @@
   "format": "aux.ui-editor-writer-closure.inputs.v1",
   "baselineCommit": "130acfb8c",
   "predecessorStage": "/private/tmp/aux-feature-completion-ui-stage-20261024-a2/agent",
-  "runtimeSha256": "e6f4fdf8162f97778c27fbc6debd29f8e3042b36f8d9bb662223e21e856a4734",
+  "runtimeSha256": "40b8fc59ecbbe100b8d91166dbc3256241eb8a92917fecd2a69a9a537197b983",
   "files": [
     {
       "path": "assets/draft-storage-ixLojjZ5.js",

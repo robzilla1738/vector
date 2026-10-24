@@ -124,3 +124,10 @@ acknowledgments. Failed restoration retains the original cleanup lease and faile
 closures for explicit retry, and successful release is available through correlated
 readback if its result is lost. One focused failure/retry case brings the actual
 source suite to17 cases. Ordinary UI paths and classes remain unchanged.
+
+A fixed optional native wire mode now exposes exact UTF16 code units and original
+escaped capture JSON without a lossy UTF8 semantic roundtrip. Default shapes and
+normal UI remain unchanged. One Unicode boundary case covers Prepare, Seal, Read
+and target observation with a lone surrogate and supplementary character. The
+focused source suite now has18 cases; native caller pairing/acceptance is still
+required and these remain data-only source reports.
