@@ -1,0 +1,590 @@
+// Copyright 2026 The Chromium Authors
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+
+#include "chrome/browser/themes/aux_theme_editor.h"
+
+#include <algorithm>
+#include <cmath>
+#include <memory>
+#include <optional>
+#include <string>
+#include <utility>
+#include <vector>
+
+#include "base/check.h"
+#include "base/functional/bind.h"
+#include "base/memory/weak_ptr.h"
+#include "base/sequence_checker.h"
+#include "base/strings/string_util.h"
+#include "base/strings/stringprintf.h"
+#include "base/supports_user_data.h"
+#include "base/timer/timer.h"
+#include "base/types/expected.h"
+#include "base/uuid.h"
+#include "chrome/browser/profiles/profile.h"
+#include "chrome/common/pref_names.h"
+#include "chrome/browser/themes/theme_service.h"
+#include "chrome/browser/themes/theme_service_factory.h"
+#include "chrome/browser/ui/color/chrome_color_id.h"
+#include "components/prefs/pref_change_registrar.h"
+#include "components/prefs/pref_service.h"
+#include "ui/color/color_id.h"
+#include "ui/color/color_mixer.h"
+#include "ui/color/color_provider.h"
+#include "ui/color/color_recipe.h"
+#include "ui/gfx/color_utils.h"
+#include "ui/native_theme/native_theme.h"
+
+namespace aux_theme {
+namespace {
+constexpr size_t kMaxPresets = 12;
+const char kEditorDataKey = 0;
+// Private negative display-property ID, outside native ThemeProperties IDs.
+// Existing suppliers return false for unknown properties; only our immutable
+// supplier advertises custom backdrop contrast to the recovered sidebar.
+constexpr int kAuxBackdropContrastProperty = -0x415558;
+
+base::DictValue Failure(std::string_view error) {
+  return base::DictValue().Set("success", false).Set("error", std::string(error));
+}
+
+std::optional<SkColor> ParseColor(std::string_view text) {
+  if (text.size() != 7 || text[0] != '#')
+    return std::nullopt;
+  uint32_t rgb = 0;
+  for (char c : text.substr(1)) {
+    if (!base::IsHexDigit(c))
+      return std::nullopt;
+    rgb = (rgb << 4) | base::HexDigitToInt(c);
+  }
+  return SK_ColorBLACK | rgb;
+}
+
+base::expected<base::DictValue, std::string> Validate(
+    const base::DictValue& input) {
+  if (input.empty())
+    return base::DictValue().Set("version", 1);
+  if (input.FindInt("version") != 1)
+    return base::unexpected("Unsupported theme version.");
+  base::DictValue result;
+  result.Set("version", 1);
+  for (const auto [key, value] : input) {
+    if (key == "version")
+      continue;
+    if (key == "accent" || key == "background" || key == "tint") {
+      if (!value.is_string() || !ParseColor(value.GetString()))
+        return base::unexpected("Colors must be #RRGGBB.");
+      result.Set(key, base::ToUpperASCII(value.GetString()));
+    } else if (key == "scheme") {
+      if (!value.is_string() || (value.GetString() != "system" &&
+          value.GetString() != "light" && value.GetString() != "dark"))
+        return base::unexpected("Choose system, light or dark.");
+      result.Set(key, value.Clone());
+    } else if (key == "material") {
+      if (!value.is_string() || (value.GetString() != "default" &&
+          value.GetString() != "clear" && value.GetString() != "soft" &&
+          value.GetString() != "opaque"))
+        return base::unexpected("Unknown material.");
+      if (value.GetString() != "default")
+        result.Set(key, value.Clone());
+    } else if (key == "tintStrength") {
+      if ((!value.is_double() && !value.is_int()) ||
+          !std::isfinite(value.GetDouble()) || value.GetDouble() < 0 ||
+          value.GetDouble() > 0.4)
+        return base::unexpected("Tint strength must be between 0 and 0.4.");
+      result.Set(key, value.GetDouble());
+    } else {
+      return base::unexpected("Unknown theme field.");
+    }
+  }
+  if (result.contains("tint") != result.contains("tintStrength"))
+    return base::unexpected("Tint color and strength must be supplied together.");
+  return result;
+}
+
+bool Available(Profile* profile) {
+  return profile && !profile->IsOffTheRecord() && profile->IsRegularProfile() &&
+      profile->GetPrefs()->FindPreference(kThemeTokensPref) &&
+      profile->GetPrefs()->FindPreference(kThemePresetsPref) &&
+      !profile->GetPrefs()->IsManagedPreference(kThemeTokensPref) &&
+      !profile->GetPrefs()->IsManagedPreference(kThemePresetsPref) &&
+      !ThemeServiceFactory::GetForProfile(profile)->UsingPolicyTheme();
+}
+
+// This immutable ref-counted supplier makes the complete effective theme part
+// of Chromium's existing ColorProvider cache key. No mutable global profile
+// lookup is hidden in a mixer, and old providers cannot acquire new tokens.
+class ThemeSupplier final : public ui::ColorProviderKey::ThemeInitializerSupplier {
+ public:
+  ThemeSupplier(scoped_refptr<ThemeInitializerSupplier> underlying,
+                const base::DictValue& tokens)
+      : ThemeInitializerSupplier(underlying ? underlying->get_theme_type()
+                                           : ThemeType::kAutogenerated),
+        underlying_(std::move(underlying)), tokens_(tokens.Clone()) {}
+  bool Matches(const scoped_refptr<ThemeInitializerSupplier>& underlying,
+               const base::DictValue& tokens) const {
+    return underlying_ == underlying && tokens_ == tokens;
+  }
+  bool GetColor(int id, SkColor* color) const override {
+    return underlying_ && underlying_->GetColor(id, color);
+  }
+  bool GetTint(int id, color_utils::HSL* hsl) const override {
+    return underlying_ && underlying_->GetTint(id, hsl);
+  }
+  bool GetDisplayProperty(int id, int* value) const override {
+    if (id == kAuxBackdropContrastProperty &&
+        (tokens_.contains("background") || tokens_.contains("tint"))) {
+      *value = 1;
+      return true;
+    }
+    return underlying_ && underlying_->GetDisplayProperty(id, value);
+  }
+  bool HasCustomImage(int id) const override {
+    return underlying_ && underlying_->HasCustomImage(id);
+  }
+  void AddColorMixers(ui::ColorProvider* provider,
+                     const ui::ColorProviderKey& key) const override {
+    if (underlying_)
+      underlying_->AddColorMixers(provider, key);
+    auto& mixer = provider->AddMixer();
+    const bool dark = key.color_mode == ui::ColorProviderKey::ColorMode::kDark;
+    const auto* background = tokens_.FindString("background");
+    const auto* tint = tokens_.FindString("tint");
+    if (background || tint) {
+      const SkColor toolbar = background ? *ParseColor(*background)
+                                         : (dark ? 0xff171717u : SK_ColorWHITE);
+      const SkColor frame = tint ? color_utils::AlphaBlend(
+          *ParseColor(*tint), toolbar,
+          static_cast<SkAlpha>(*tokens_.FindDouble("tintStrength") * 255))
+                                : toolbar;
+      const SkColor text = color_utils::GetColorWithMaxContrast(toolbar);
+      const SkColor frame_text = color_utils::GetColorWithMaxContrast(frame);
+      mixer[kColorToolbar] = {toolbar};
+      mixer[kColorToolbarBackgroundSubtleEmphasis] = {toolbar};
+      mixer[kColorToolbarBackgroundSubtleEmphasisHovered] = {toolbar};
+      mixer[kColorLocationBarBackground] = {toolbar};
+      mixer[kColorLocationBarBackgroundHovered] = {toolbar};
+      mixer[kColorOmniboxText] = {text};
+      mixer[kColorOmniboxTextDimmed] = {SkColorSetA(text, 178)};
+      mixer[kColorToolbarText] = {text};
+      mixer[kColorToolbarTextDefault] = {text};
+      mixer[kColorToolbarButtonText] = {text};
+      mixer[kColorToolbarButtonIcon] = {text};
+      mixer[kColorToolbarButtonIconDefault] = {text};
+      mixer[kColorToolbarButtonIconHovered] = {text};
+      mixer[kColorToolbarButtonIconPressed] = {text};
+      mixer[kColorToolbarButtonIconDisabled] = {SkColorSetA(text, 97)};
+      mixer[kColorToolbarButtonIconInactive] = {SkColorSetA(text, 150)};
+      mixer[kColorBookmarkBarForeground] = {text};
+      mixer[kColorBookmarkButtonIcon] = {text};
+      mixer[ui::kColorFrameActive] = {frame};
+      mixer[ui::kColorFrameInactive] = {frame};
+      mixer[kColorFrameCaptionActive] = {frame_text};
+      mixer[kColorFrameCaptionInactive] = {frame_text};
+      mixer[kColorSidePanelBackground] = {frame};
+      mixer[kColorTabBackgroundActiveFrameActive] = {toolbar};
+      mixer[kColorTabBackgroundActiveFrameInactive] = {toolbar};
+      mixer[kColorTabBackgroundInactiveFrameActive] = {frame};
+      mixer[kColorTabBackgroundInactiveFrameInactive] = {frame};
+      mixer[kColorTabForegroundActiveFrameActive] = {text};
+      mixer[kColorTabForegroundActiveFrameInactive] = {text};
+      mixer[kColorTabForegroundInactiveFrameActive] = {frame_text};
+      mixer[kColorTabForegroundInactiveFrameInactive] = {frame_text};
+      // Keyboard focus remains visible even with a very pale/dark custom tint.
+      mixer[ui::kColorFocusableBorderFocused] = {text};
+    }
+    if (const auto* accent = tokens_.FindString("accent"))
+      mixer[ui::kColorAccent] = {*ParseColor(*accent)};
+  }
+ private:
+  ~ThemeSupplier() override = default;
+  const scoped_refptr<ThemeInitializerSupplier> underlying_;
+  const base::DictValue tokens_;
+};
+
+class Editor final : public base::SupportsUserData::Data {
+ public:
+  explicit Editor(Profile* profile) : profile_(profile->GetWeakPtr()) {
+    registrar_.Init(profile_->GetPrefs());
+    for (const char* pref : {kThemeTokensPref, kThemePresetsPref,
+                             prefs::kBrowserColorScheme}) {
+      registrar_.Add(pref, base::BindRepeating(&Editor::ExternalChange,
+                                              base::Unretained(this)));
+    }
+    for (const char* pref : {prefs::kUserColor, prefs::kCurrentThemeID}) {
+      registrar_.Add(pref, base::BindRepeating(&Editor::ExternalAccentChange,
+                                              base::Unretained(this)));
+    }
+  }
+  ~Editor() override = default;
+  base::DictValue Saved() const {
+    auto valid = Validate(profile_->GetPrefs()->GetDict(kThemeTokensPref));
+    auto result = valid.has_value() ? std::move(*valid)
+                                   : base::DictValue().Set("version", 1);
+    // Existing Appearance controls and installed themes remain authoritative.
+    // Do not replay old Aux scheme/accent copies over later native changes.
+    auto* theme = ThemeServiceFactory::GetForProfile(profile_.get());
+    if (result.contains("scheme")) {
+      const auto scheme = theme->GetBrowserColorScheme();
+      result.Set("scheme", scheme == ThemeService::BrowserColorScheme::kDark
+          ? "dark" : scheme == ThemeService::BrowserColorScheme::kLight
+          ? "light" : "system");
+    }
+    // Accent is a scoped ColorProvider overlay, never a destructive native
+    // ThemeService user-color write. Removing it exposes the actual current
+    // profile theme, including an installed extension theme, after restart.
+    return result;
+  }
+  base::DictValue Effective() const {
+    return preview_ ? preview_->Clone() : Saved();
+  }
+  base::ListValue Presets() const {
+    base::ListValue result;
+    for (const auto& value : profile_->GetPrefs()->GetList(kThemePresetsPref)) {
+      if (!value.is_dict() || result.size() >= kMaxPresets)
+        continue;
+      const auto& preset = value.GetDict();
+      const auto* name = preset.FindString("name");
+      const auto* id = preset.FindString("id");
+      const auto* tokens = preset.FindDict("tokens");
+      if (!name || name->empty() || name->size() > 64 || !id ||
+          !base::Uuid::ParseLowercase(*id).is_valid() || !tokens)
+        continue;
+      auto valid = Validate(*tokens);
+      if (valid.has_value()) {
+        result.Append(base::DictValue().Set("id", *id).Set("name", *name)
+                          .Set("tokens", std::move(*valid)));
+      }
+    }
+    return result;
+  }
+  base::DictValue State() const {
+    DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_);
+    auto* theme = ThemeServiceFactory::GetForProfile(profile_.get());
+    return base::DictValue().Set("success", true).Set("revision", revision_)
+        .Set("tokens", Saved()).Set("effectiveTokens", Effective())
+        .Set("presets", Presets()).Set("previewing", preview_.has_value())
+        .Set("nativeScheme", static_cast<int>(theme->GetBrowserColorScheme()))
+        .Set("reducedTransparency", ui::NativeTheme::GetInstanceForNativeUi()
+                                        ->prefers_reduced_transparency())
+        .Set("highContrast", ui::NativeTheme::GetInstanceForNativeUi()
+            ->preferred_contrast() == ui::NativeTheme::PreferredContrast::kMore);
+  }
+  bool Matches(std::string_view owner, std::string_view revision) const {
+    DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_);
+    return !owner.empty() && owner.size() <= 256 && revision == revision_ &&
+        (owner_.empty() || owner_ == owner);
+  }
+  void SetPreview(std::string_view owner, base::DictValue tokens) {
+    DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_);
+    owner_ = owner;
+    preview_ = std::move(tokens);
+    timer_.Start(FROM_HERE, base::Minutes(2),
+                 base::BindOnce(&Editor::Expire, base::Unretained(this)));
+    if (profile_)
+      NotifyProfileThemeChanged(profile_.get());
+  }
+  void ClearPreview() {
+    owner_.clear();
+    preview_.reset();
+    timer_.Stop();
+  }
+  void Expire() {
+    ClearPreview();
+    if (profile_)
+      NotifyProfileThemeChanged(profile_.get());
+  }
+  bool Owns(std::string_view owner) const { return owner_ == owner; }
+  void WriteTokens(base::DictValue tokens, bool reset = false) {
+    ClearPreview();
+    writing_ = true;
+    auto* theme = ThemeServiceFactory::GetForProfile(profile_.get());
+    if (reset) {
+      theme->UseDefaultTheme();
+      theme->SetBrowserColorScheme(ThemeService::BrowserColorScheme::kSystem);
+    } else {
+      if (const auto* scheme = tokens.FindString("scheme")) {
+        theme->SetBrowserColorScheme(*scheme == "dark"
+            ? ThemeService::BrowserColorScheme::kDark : *scheme == "light"
+            ? ThemeService::BrowserColorScheme::kLight
+            : ThemeService::BrowserColorScheme::kSystem);
+      }
+      // Keep the underlying profile theme intact. DecorateColorProviderKey
+      // applies this optional accent for preview and committed tokens alike.
+    }
+    profile_->GetPrefs()->SetDict(kThemeTokensPref, std::move(tokens));
+    writing_ = false;
+    Changed();
+  }
+  void WritePresets(base::ListValue presets) {
+    writing_ = true;
+    profile_->GetPrefs()->SetList(kThemePresetsPref, std::move(presets));
+    writing_ = false;
+    revision_ = base::Uuid::GenerateRandomV4().AsLowercaseString();
+  }
+  scoped_refptr<ThemeSupplier> Supplier(
+      scoped_refptr<ui::ColorProviderKey::ThemeInitializerSupplier> underlying,
+      const base::DictValue& tokens) {
+    // This editor belongs to a profile, not one window. An installed web app
+    // and a normal browser may use distinct native theme suppliers; retain
+    // both immutable wrappers so alternating key lookups keep stable identity.
+    // The small LRU also bounds retained preview tokens and underlying themes.
+    constexpr size_t kMaxCachedSuppliers = 8;
+    for (size_t i = 0; i < suppliers_.size(); ++i) {
+      if (suppliers_[i]->Matches(underlying, tokens)) {
+        auto supplier = suppliers_[i];
+        suppliers_.erase(suppliers_.begin() + i);
+        suppliers_.push_back(supplier);
+        return supplier;
+      }
+    }
+    auto supplier = base::MakeRefCounted<ThemeSupplier>(std::move(underlying), tokens);
+    if (suppliers_.size() == kMaxCachedSuppliers)
+      suppliers_.erase(suppliers_.begin());
+    suppliers_.push_back(supplier);
+    return supplier;
+  }
+ private:
+  void Changed() {
+    revision_ = base::Uuid::GenerateRandomV4().AsLowercaseString();
+    if (profile_)
+      NotifyProfileThemeChanged(profile_.get());
+  }
+  void ExternalChange() {
+    if (writing_)
+      return;
+    ClearPreview();
+    Changed();
+  }
+  void ExternalAccentChange() {
+    if (writing_)
+      return;
+    // A later choice through Chromium's existing Appearance/theme controls
+    // takes precedence. Retire only our accent override, preserving unrelated
+    // Aux background/material tokens and every native theme preference.
+    auto tokens = profile_->GetPrefs()->GetDict(kThemeTokensPref).Clone();
+    if (tokens.Remove("accent")) {
+      writing_ = true;
+      profile_->GetPrefs()->SetDict(kThemeTokensPref, std::move(tokens));
+      writing_ = false;
+    }
+    ExternalChange();
+  }
+  const base::WeakPtr<Profile> profile_;
+  std::string revision_ = base::Uuid::GenerateRandomV4().AsLowercaseString();
+  std::string owner_;
+  std::optional<base::DictValue> preview_;
+  base::OneShotTimer timer_;
+  bool writing_ = false;
+  std::vector<scoped_refptr<ThemeSupplier>> suppliers_;
+  PrefChangeRegistrar registrar_;
+  SEQUENCE_CHECKER(sequence_);
+};
+
+Editor& GetEditor(Profile* profile) {
+  auto* editor = static_cast<Editor*>(profile->GetUserData(&kEditorDataKey));
+  if (!editor) {
+    auto data = std::make_unique<Editor>(profile);
+    editor = data.get();
+    profile->SetUserData(&kEditorDataKey, std::move(data));
+  }
+  return *editor;
+}
+
+std::string Material(Profile* profile, const ui::NativeTheme* native_theme) {
+  if (!Available(profile) || !native_theme)
+    return "default";
+  if (native_theme->preferred_contrast() == ui::NativeTheme::PreferredContrast::kMore ||
+      native_theme->prefers_reduced_transparency())
+    return "opaque";
+  const auto tokens = GetEditor(profile).Effective();
+  const auto* material = tokens.FindString("material");
+  return material ? *material : "default";
+}
+}  // namespace
+
+base::DictValue GetState(Profile* profile) {
+  return Available(profile) ? GetEditor(profile).State()
+                            : Failure("Theme editing is unavailable in this profile.");
+}
+
+base::DictValue Preview(Profile* profile, std::string_view owner,
+                        std::string_view revision, const base::DictValue& tokens) {
+  if (!Available(profile))
+    return Failure("Theme editing is unavailable in this profile.");
+  auto& editor = GetEditor(profile);
+  if (!editor.Matches(owner, revision))
+    return Failure("Theme changed or another window is previewing. Reopen the editor.");
+  auto valid = Validate(tokens);
+  if (!valid.has_value())
+    return Failure(valid.error());
+  editor.SetPreview(owner, std::move(*valid));
+  return editor.State();
+}
+
+base::DictValue Apply(Profile* profile, std::string_view owner,
+                      std::string_view revision, const base::DictValue& tokens) {
+  if (!Available(profile))
+    return Failure("Theme editing is unavailable in this profile.");
+  auto& editor = GetEditor(profile);
+  if (!editor.Matches(owner, revision))
+    return Failure("Theme changed or another window is previewing. Reopen the editor.");
+  auto valid = Validate(tokens);
+  if (!valid.has_value())
+    return Failure(valid.error());
+  editor.WriteTokens(std::move(*valid));
+  return editor.State();
+}
+
+base::DictValue Cancel(Profile* profile, std::string_view owner) {
+  if (!Available(profile))
+    return Failure("Theme editing is unavailable in this profile.");
+  auto& editor = GetEditor(profile);
+  if (editor.Owns(owner))
+    editor.Expire();
+  return editor.State();
+}
+
+base::DictValue Reset(Profile* profile, std::string_view owner,
+                      std::string_view revision) {
+  if (!Available(profile))
+    return Failure("Theme editing is unavailable in this profile.");
+  auto& editor = GetEditor(profile);
+  if (!editor.Matches(owner, revision))
+    return Failure("Theme changed or another window is previewing. Reopen the editor.");
+  editor.WriteTokens(base::DictValue().Set("version", 1), true);
+  return editor.State();
+}
+
+base::DictValue SavePreset(Profile* profile, std::string_view owner,
+                           std::string_view revision, std::string_view name,
+                           const base::DictValue& tokens) {
+  if (!Available(profile))
+    return Failure("Theme editing is unavailable in this profile.");
+  auto& editor = GetEditor(profile);
+  if (!editor.Matches(owner, revision))
+    return Failure("Theme changed or another window is previewing. Reopen the editor.");
+  std::string trimmed;
+  base::TrimWhitespaceASCII(name, base::TRIM_ALL, &trimmed);
+  if (trimmed.empty() || trimmed.size() > 64 ||
+      std::ranges::any_of(trimmed, [](unsigned char c) { return c < 32; }))
+    return Failure("Preset name must contain 1–64 bytes with no control characters.");
+  auto valid = Validate(tokens);
+  if (!valid.has_value())
+    return Failure(valid.error());
+  auto presets = editor.Presets();
+  if (presets.size() >= kMaxPresets)
+    return Failure("Remove a preset before adding another (maximum 12).");
+  presets.Append(base::DictValue()
+      .Set("id", base::Uuid::GenerateRandomV4().AsLowercaseString())
+      .Set("name", trimmed).Set("tokens", std::move(*valid)));
+  editor.WritePresets(std::move(presets));
+  return editor.State();
+}
+
+base::DictValue DeletePreset(Profile* profile, std::string_view owner,
+                             std::string_view revision, std::string_view id) {
+  if (!Available(profile))
+    return Failure("Theme editing is unavailable in this profile.");
+  auto& editor = GetEditor(profile);
+  if (!editor.Matches(owner, revision))
+    return Failure("Theme changed or another window is previewing. Reopen the editor.");
+  auto presets = editor.Presets();
+  presets.EraseIf([id](const base::Value& value) {
+    const auto* saved = value.GetDict().FindString("id");
+    return saved && *saved == id;
+  });
+  editor.WritePresets(std::move(presets));
+  return editor.State();
+}
+
+base::DictValue ExportPreset(Profile* profile, const base::DictValue& tokens) {
+  if (!Available(profile))
+    return Failure("Theme editing is unavailable in this profile.");
+  auto valid = Validate(tokens);
+  if (!valid.has_value())
+    return Failure(valid.error());
+  return base::DictValue().Set("success", true).Set("preset",
+      base::DictValue().Set("format", "aux-theme").Set("version", 1)
+          .Set("tokens", std::move(*valid)));
+}
+
+ui::ColorProviderKey DecorateColorProviderKey(
+    const Profile* profile, ui::ColorProviderKey key) {
+  auto* mutable_profile = const_cast<Profile*>(profile);
+  if (!Available(mutable_profile) ||
+      key.contrast_mode != ui::ColorProviderKey::ContrastMode::kNormal ||
+      key.forced_colors != ui::ColorProviderKey::ForcedColors::kNone)
+    return key;
+  auto& editor = GetEditor(mutable_profile);
+  const auto tokens = editor.Effective();
+  if (const auto* scheme = tokens.FindString("scheme")) {
+    key.color_mode = *scheme == "system"
+        ? ui::NativeTheme::GetInstanceForNativeUi()->GetColorProviderKey(nullptr).color_mode
+        : *scheme == "dark" ? ui::ColorProviderKey::ColorMode::kDark
+                             : ui::ColorProviderKey::ColorMode::kLight;
+  }
+  if (const auto* accent = tokens.FindString("accent")) {
+    key.user_color = ParseColor(*accent);
+    key.user_color_source = ui::ColorProviderKey::UserColorSource::kAccent;
+  }
+  if (tokens.contains("accent") || tokens.contains("background") || tokens.contains("tint"))
+    key.custom_theme = editor.Supplier(key.custom_theme, tokens);
+  return key;
+}
+
+float MaterialOpacity(Profile* profile, const ui::NativeTheme* native_theme,
+                      float original) {
+  // Never turn an opaque native surface into glass or change invisible cutouts.
+  if (original <= 0 || original >= 1)
+    return original;
+  const std::string material = Material(profile, native_theme);
+  if (material == "opaque") return 1;
+  if (material == "clear") return std::clamp(original * 0.75f, 0.1f, 1.0f);
+  if (material == "soft") return std::clamp(original * 1.2f, 0.1f, 1.0f);
+  return original;
+}
+
+float MaterialBlurRadius(Profile* profile, const ui::NativeTheme* native_theme,
+                         float original) {
+  const std::string material = Material(profile, native_theme);
+  if (material == "opaque") return 0;
+  if (material == "clear") return original * 0.6f;
+  if (material == "soft") return original * 1.4f;
+  return original;
+}
+
+bool HasBackgroundOverride(Profile* profile) {
+  if (!Available(profile)) return false;
+  const auto tokens = GetEditor(profile).Effective();
+  return tokens.contains("background") || tokens.contains("tint");
+}
+
+SkColor SidebarForeground(const ui::ColorProviderKey& key,
+                          const ui::ColorProvider* provider, SkColor original) {
+  int enabled = 0;
+  if (!provider || !key.custom_theme ||
+      key.contrast_mode != ui::ColorProviderKey::ContrastMode::kNormal ||
+      key.forced_colors != ui::ColorProviderKey::ForcedColors::kNone ||
+      !key.custom_theme->GetDisplayProperty(kAuxBackdropContrastProperty, &enabled) ||
+      enabled != 1)
+    return original;
+  const SkColor background = provider->GetColor(ui::kColorFrameActive);
+  const SkColor foreground = color_utils::GetColorWithMaxContrast(background);
+  int alpha = SkColorGetA(original);
+  // Low-opacity hover fills/dividers retain their supplied subtlety. Text and
+  // glyph opacity increases only as needed for readable custom colors.
+  if (alpha >= 0x70) {
+    while (alpha < 255 && color_utils::GetContrastRatio(
+        color_utils::AlphaBlend(foreground, background, static_cast<SkAlpha>(alpha)),
+        background) < 4.5f)
+      alpha = std::min(255, alpha + 8);
+  }
+  return SkColorSetA(foreground, alpha);
+}
+
+void NotifyProfileThemeChanged(Profile* profile) {
+  ThemeServiceFactory::GetForProfile(profile)->NotifyThemeChanged();
+}
+}  // namespace aux_theme

@@ -1,0 +1,38 @@
+{
+  "scope": "inactive bounded immutable per-profile supplier identity cache",
+  "files": [
+    {
+      "path": "chrome/browser/themes/aux_theme_editor.cc",
+      "baselineOrigin": "/private/tmp/aux-features-execution-frame-20261023/docs/integration/proposed/browser-feature-expansion/frame-theme-completion/source/chrome/browser/themes/aux_theme_editor.cc",
+      "baselineSha256": "744f37d1421665a5abf3c3c6ff0bc091126dfc4c7f1ca6e1ce526716d146ed27",
+      "sourceSha256": "60472eef6a2c6edd297cafeea186039a478963a355ba6114c705417d3a00844c",
+      "edits": [
+        {
+          "name": "bounded-cache-container",
+          "find": "#include <utility>\n",
+          "replace": "#include <utility>\n#include <vector>\n",
+          "count": 1
+        },
+        {
+          "name": "immutable-cache-key",
+          "find": "  bool GetColor(int id, SkColor* color) const override {\n",
+          "replace": "  bool Matches(const scoped_refptr<ThemeInitializerSupplier>& underlying,\n               const base::DictValue& tokens) const {\n    return underlying_ == underlying && tokens_ == tokens;\n  }\n  bool GetColor(int id, SkColor* color) const override {\n",
+          "count": 1
+        },
+        {
+          "name": "reuse-per-window-suppliers",
+          "find": "    if (!supplier_ || supplier_base_ != underlying || supplier_tokens_ != tokens) {\n      supplier_ = base::MakeRefCounted<ThemeSupplier>(underlying, tokens);\n      supplier_base_ = std::move(underlying);\n      supplier_tokens_ = tokens.Clone();\n    }\n    return supplier_;\n",
+          "replace": "    // This editor belongs to a profile, not one window. An installed web app\n    // and a normal browser may use distinct native theme suppliers; retain\n    // both immutable wrappers so alternating key lookups keep stable identity.\n    // The small LRU also bounds retained preview tokens and underlying themes.\n    constexpr size_t kMaxCachedSuppliers = 8;\n    for (size_t i = 0; i < suppliers_.size(); ++i) {\n      if (suppliers_[i]->Matches(underlying, tokens)) {\n        auto supplier = suppliers_[i];\n        suppliers_.erase(suppliers_.begin() + i);\n        suppliers_.push_back(supplier);\n        return supplier;\n      }\n    }\n    auto supplier = base::MakeRefCounted<ThemeSupplier>(std::move(underlying), tokens);\n    if (suppliers_.size() == kMaxCachedSuppliers)\n      suppliers_.erase(suppliers_.begin());\n    suppliers_.push_back(supplier);\n    return supplier;\n",
+          "count": 1
+        },
+        {
+          "name": "replace-single-cache-slot",
+          "find": "  scoped_refptr<ThemeSupplier> supplier_;\n  scoped_refptr<ui::ColorProviderKey::ThemeInitializerSupplier> supplier_base_;\n  base::DictValue supplier_tokens_;\n",
+          "replace": "  std::vector<scoped_refptr<ThemeSupplier>> suppliers_;\n",
+          "count": 1
+        }
+      ]
+    }
+  ],
+  "patchSha256": "d5a49399d395bc726c99d1fae5432bc07d7c2843f6c641c6ae1c3cd1cd1493d3"
+}
