@@ -1,0 +1,16 @@
+{
+  "format": "aux.native-requalification.source-check.actual.v1",
+  "passed": true,
+  "sourcePlanSha256": "5f2f1db87684f28573a44f4908ef9c36f474c781e53a5db86d830817d7747089",
+  "patchSha256": "c5f3dfbe3e2c284c062c3c1fa7f14c7ac32c5c249bf808e4005d07c42d917a92",
+  "files": 2,
+  "countedAnchors": 6,
+  "replayDirectory": "/private/tmp/aux-native-requalification-replay-amkjutm1",
+  "exactReplayPassed": true,
+  "reverseCheckPassed": true,
+  "nativeCheckoutChanged": false,
+  "nativeCompiled": false,
+  "testsExecuted": false,
+  "productExecuted": false,
+  "runtimeAcceptance": false
+}
