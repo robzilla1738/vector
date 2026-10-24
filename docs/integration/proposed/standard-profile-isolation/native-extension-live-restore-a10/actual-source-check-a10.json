@@ -1,0 +1,17 @@
+{
+  "format": "aux.native-extension-live-restore.source-check.actual.v1",
+  "passed": true,
+  "files": 10,
+  "countedAnchors": 28,
+  "exactReplayAndOriginalInputPreservation": true,
+  "realQuotaUnlimitedBackendAndFrontendConsumersPresent": true,
+  "liveOpaqueTokenSourceTargetCasAndSyncReadbackAnchorsPresent": true,
+  "ordinaryInvalidationAndLegacyOneShotPathPreserved": true,
+  "sourceOnly": true,
+  "nativeCompiled": false,
+  "nativeExecuted": false,
+  "productExecuted": false,
+  "restartRecoveryImplemented": false,
+  "runtimeAccepted": false,
+  "sourcePlanSha256": "25e8eaf222ae1b61cbd2bb9b65e84c47d66d855c762db14cf492f0e937682086"
+}

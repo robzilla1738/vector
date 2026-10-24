@@ -1,0 +1,495 @@
+--- a/components/value_store/value_store.h
++++ b/components/value_store/value_store.h
+@@ -218,12 +218,15 @@
+    public:
+     ~AuxUiPreferenceCapture();
+     std::array<std::optional<std::string>, 6> CopyRecordsForNativeJournal() const;
++    std::array<std::optional<std::string>, 6> CopyTargetRecordsForNativeJournal() const;
+ 
+    private:
+     friend class LeveldbValueStore;
+     AuxUiPreferenceCapture();
+     base::WeakPtr<ValueStore> owner;
+     std::array<std::optional<std::string>, 6> records;
++    bool retained_target_attempted = false, retained_restore_attempted = false;
++    bool retained_observation_known = false;
+   };
+   using AuxUiPreferenceCaptureResult =
+       base::expected<std::unique_ptr<AuxUiPreferenceCapture>, Status>;
+@@ -234,6 +237,24 @@
+   virtual Status CommitAuxUiPreferenceMigration(
+       std::unique_ptr<AuxUiPreferenceCapture> capture);
+ 
++  using AuxUiPreferenceRecords = std::array<std::optional<std::string>, 6>;
++  struct AuxUiPreferenceReadback {
++    AuxUiPreferenceRecords records;
++    bool matches_source = false, matches_target = false, file_data_synced = false;
++    bool target_attempted = false, restore_attempted = false;
++  };
++  using AuxUiPreferenceReadbackResult = base::expected<AuxUiPreferenceReadback, Status>;
++  // Distinct native live-owner path. Construction stays private; source records
++  // are immutable, own transaction operations retain custody, and ordinary
++  // backend operations still invalidate the original owner weak reference.
++  virtual AuxUiPreferenceReadbackResult CommitRetainedAuxUiPreferenceMigration(
++      std::shared_ptr<AuxUiPreferenceCapture> capture);
++  virtual AuxUiPreferenceReadbackResult ReadRetainedAuxUiPreferenceMigration(
++      std::shared_ptr<AuxUiPreferenceCapture> capture);
++  virtual AuxUiPreferenceReadbackResult RestoreRetainedAuxUiPreferenceMigration(
++      std::shared_ptr<AuxUiPreferenceCapture> capture);
++
++
+ };
+ 
+ }  // namespace value_store
+--- a/components/value_store/value_store.cc
++++ b/components/value_store/value_store.cc
+@@ -76,6 +76,15 @@
+   return records;
+ }
+ 
++std::array<std::optional<std::string>, 6>
++ValueStore::AuxUiPreferenceCapture::CopyTargetRecordsForNativeJournal() const {
++  auto target = records;
++  for (size_t index = 0; index < target.size(); index += 2) if (records[index]) {
++    target[index + 1] = records[index]; target[index].reset();
++  }
++  return target;
++}
++
+ ValueStore::AuxUiPreferenceCaptureResult
+ ValueStore::CaptureAuxUiPreferencesForMigration() {
+   return base::unexpected(Status(OTHER_ERROR, "Aux migration backend unsupported"));
+@@ -86,4 +95,17 @@
+   return Status(OTHER_ERROR, "Aux migration backend unsupported");
+ }
+ 
++ValueStore::AuxUiPreferenceReadbackResult
++ValueStore::CommitRetainedAuxUiPreferenceMigration(std::shared_ptr<AuxUiPreferenceCapture> capture) {
++  return base::unexpected(Status(OTHER_ERROR, "Retained Aux migration backend unsupported"));
++}
++ValueStore::AuxUiPreferenceReadbackResult
++ValueStore::ReadRetainedAuxUiPreferenceMigration(std::shared_ptr<AuxUiPreferenceCapture> capture) {
++  return base::unexpected(Status(OTHER_ERROR, "Retained Aux migration backend unsupported"));
++}
++ValueStore::AuxUiPreferenceReadbackResult
++ValueStore::RestoreRetainedAuxUiPreferenceMigration(std::shared_ptr<AuxUiPreferenceCapture> capture) {
++  return base::unexpected(Status(OTHER_ERROR, "Retained Aux migration backend unsupported"));
++}
++
+ }  // namespace value_store
+--- a/components/value_store/leveldb_value_store.h
++++ b/components/value_store/leveldb_value_store.h
+@@ -71,6 +71,13 @@
+   Status CommitAuxUiPreferenceMigration(
+       std::unique_ptr<AuxUiPreferenceCapture> capture) override;
+ 
++  AuxUiPreferenceReadbackResult CommitRetainedAuxUiPreferenceMigration(
++      std::shared_ptr<AuxUiPreferenceCapture> capture) override;
++  AuxUiPreferenceReadbackResult ReadRetainedAuxUiPreferenceMigration(
++      std::shared_ptr<AuxUiPreferenceCapture> capture) override;
++  AuxUiPreferenceReadbackResult RestoreRetainedAuxUiPreferenceMigration(
++      std::shared_ptr<AuxUiPreferenceCapture> capture) override;
++
+   // Write directly to the backing levelDB. Only used for testing to cause
+   // corruption in the database.
+   bool WriteToDbForTest(leveldb::WriteBatch* batch);
+@@ -80,6 +87,9 @@
+                     base::trace_event::ProcessMemoryDump* pmd) override;
+ 
+  private:
++  AuxUiPreferenceReadbackResult ApplyRetainedAuxUiPreferenceMigration(
++      std::shared_ptr<AuxUiPreferenceCapture> capture, bool restore, bool read_only);
++
+   // Adds a setting to a WriteBatch, and logs the change in |changes|. For use
+   // with WriteToDb.
+   ValueStore::Status AddToBatch(ValueStore::WriteOptions options,
+--- a/components/value_store/leveldb_value_store.cc
++++ b/components/value_store/leveldb_value_store.cc
+@@ -338,6 +338,81 @@
+   return ToValueStoreError(db()->Write(options, &batch));
+ }
+ 
++ValueStore::AuxUiPreferenceReadbackResult
++LeveldbValueStore::CommitRetainedAuxUiPreferenceMigration(
++    std::shared_ptr<AuxUiPreferenceCapture> capture) {
++  return ApplyRetainedAuxUiPreferenceMigration(std::move(capture), false, false);
++}
++ValueStore::AuxUiPreferenceReadbackResult
++LeveldbValueStore::ReadRetainedAuxUiPreferenceMigration(
++    std::shared_ptr<AuxUiPreferenceCapture> capture) {
++  return ApplyRetainedAuxUiPreferenceMigration(std::move(capture), false, true);
++}
++ValueStore::AuxUiPreferenceReadbackResult
++LeveldbValueStore::RestoreRetainedAuxUiPreferenceMigration(
++    std::shared_ptr<AuxUiPreferenceCapture> capture) {
++  return ApplyRetainedAuxUiPreferenceMigration(std::move(capture), true, false);
++}
++ValueStore::AuxUiPreferenceReadbackResult
++LeveldbValueStore::ApplyRetainedAuxUiPreferenceMigration(
++    std::shared_ptr<AuxUiPreferenceCapture> capture, bool restore, bool read_only) {
++  if (!capture || capture->owner.get() != this || !db())
++    return base::unexpected(Status(OTHER_ERROR, "Original retained Aux backend owner unavailable"));
++  if (!read_only && !restore &&
++      (capture->retained_target_attempted || capture->retained_restore_attempted))
++    return base::unexpected(Status(OTHER_ERROR, "Observe the original target attempt instead of replaying it"));
++  if (!read_only && restore && !capture->retained_observation_known)
++    return base::unexpected(Status(OTHER_ERROR, "Exact source/target readback required before restoring"));
++  if (!read_only) {
++    if (restore) capture->retained_restore_attempted = true;
++    else capture->retained_target_attempted = true;
++  }
++  capture->retained_observation_known = false;
++  auto read = [&]() -> base::expected<AuxUiPreferenceRecords, Status> {
++    AuxUiPreferenceRecords records;
++    for (size_t index = 0; index < kAuxUiPreferenceKeys.size(); ++index) {
++      std::string raw;
++      const auto status = db()->Get(read_options(), kAuxUiPreferenceKeys[index], &raw);
++      if (!status.ok() && !status.IsNotFound()) return base::unexpected(ToValueStoreError(status));
++      if (status.ok()) records[index] = std::move(raw);
++    }
++    return records;
++  };
++  auto before = read();
++  if (!before.has_value()) return base::unexpected(std::move(before.error()));
++  const auto target = capture->CopyTargetRecordsForNativeJournal();
++  if (before.value() != capture->records && before.value() != target)
++    return base::unexpected(Status(OTHER_ERROR, "Current Aux preference bytes match neither retained source nor target"));
++  if (!read_only && !restore && before.value() != capture->records)
++    return base::unexpected(Status(OTHER_ERROR, "Aux source changed before target CAS"));
++  const auto& expected = read_only ? before.value() : restore ? capture->records : target;
++  leveldb::WriteBatch batch;
++  if (!read_only) for (size_t index = 0; index < kAuxUiPreferenceKeys.size(); ++index) {
++    if (expected[index]) batch.Put(kAuxUiPreferenceKeys[index], *expected[index]);
++    else batch.Delete(kAuxUiPreferenceKeys[index]);
++  }
++  leveldb::WriteOptions options;
++  options.sync = true;
++  // The original token is NOT invalidated by its own transaction. Every
++  // ordinary existing Get/Write still invalidates it via the real factory.
++  // An empty readback batch gives a fresh file-data sync after a lost result.
++  const auto written = db()->Write(options, &batch);
++  if (!written.ok()) return base::unexpected(ToValueStoreError(written));
++  auto after = read();
++  if (!after.has_value()) return base::unexpected(std::move(after.error()));
++  if (capture->owner.get() != this || after.value() != expected)
++    return base::unexpected(Status(OTHER_ERROR, "Aux raw preference readback changed after physical sync"));
++  AuxUiPreferenceReadback result;
++  result.records = std::move(after.value());
++  result.matches_source = result.records == capture->records;
++  result.matches_target = result.records == target;
++  result.file_data_synced = true;
++  result.target_attempted = capture->retained_target_attempted;
++  result.restore_attempted = capture->retained_restore_attempted;
++  capture->retained_observation_known = true;
++  return result;
++}
++
+ bool LeveldbValueStore::WriteToDbForTest(leveldb::WriteBatch* batch) {
+   aux_migration_weak_factory_.InvalidateWeakPtrs();
+   Status status = EnsureDbIsOpen();
+--- a/extensions/browser/api/storage/weak_unlimited_settings_storage.h
++++ b/extensions/browser/api/storage/weak_unlimited_settings_storage.h
+@@ -49,6 +49,13 @@
+   AuxUiPreferenceCaptureResult CaptureAuxUiPreferencesForMigration() override;
+   Status CommitAuxUiPreferenceMigration(
+       std::unique_ptr<AuxUiPreferenceCapture> capture) override;
++  AuxUiPreferenceReadbackResult CommitRetainedAuxUiPreferenceMigration(
++      std::shared_ptr<AuxUiPreferenceCapture> capture) override;
++  AuxUiPreferenceReadbackResult ReadRetainedAuxUiPreferenceMigration(
++      std::shared_ptr<AuxUiPreferenceCapture> capture) override;
++  AuxUiPreferenceReadbackResult RestoreRetainedAuxUiPreferenceMigration(
++      std::shared_ptr<AuxUiPreferenceCapture> capture) override;
++
+ 
+  private:
+   // The delegate storage area, NOT OWNED.
+--- a/extensions/browser/api/storage/weak_unlimited_settings_storage.cc
++++ b/extensions/browser/api/storage/weak_unlimited_settings_storage.cc
+@@ -84,4 +84,20 @@
+   return delegate_->CommitAuxUiPreferenceMigration(std::move(capture));
+ }
+ 
++ValueStore::AuxUiPreferenceReadbackResult
++WeakUnlimitedSettingsStorage::CommitRetainedAuxUiPreferenceMigration(
++    std::shared_ptr<AuxUiPreferenceCapture> capture) {
++  return delegate_->CommitRetainedAuxUiPreferenceMigration(std::move(capture));
++}
++ValueStore::AuxUiPreferenceReadbackResult
++WeakUnlimitedSettingsStorage::ReadRetainedAuxUiPreferenceMigration(
++    std::shared_ptr<AuxUiPreferenceCapture> capture) {
++  return delegate_->ReadRetainedAuxUiPreferenceMigration(std::move(capture));
++}
++ValueStore::AuxUiPreferenceReadbackResult
++WeakUnlimitedSettingsStorage::RestoreRetainedAuxUiPreferenceMigration(
++    std::shared_ptr<AuxUiPreferenceCapture> capture) {
++  return delegate_->RestoreRetainedAuxUiPreferenceMigration(std::move(capture));
++}
++
+ }  // namespace extensions
+--- a/extensions/browser/api/storage/settings_storage_quota_enforcer.h
++++ b/extensions/browser/api/storage/settings_storage_quota_enforcer.h
+@@ -60,6 +60,13 @@
+   AuxUiPreferenceCaptureResult CaptureAuxUiPreferencesForMigration() override;
+   Status CommitAuxUiPreferenceMigration(
+       std::unique_ptr<AuxUiPreferenceCapture> capture) override;
++  AuxUiPreferenceReadbackResult CommitRetainedAuxUiPreferenceMigration(
++      std::shared_ptr<AuxUiPreferenceCapture> capture) override;
++  AuxUiPreferenceReadbackResult ReadRetainedAuxUiPreferenceMigration(
++      std::shared_ptr<AuxUiPreferenceCapture> capture) override;
++  AuxUiPreferenceReadbackResult RestoreRetainedAuxUiPreferenceMigration(
++      std::shared_ptr<AuxUiPreferenceCapture> capture) override;
++
+ 
+   value_store::ValueStore* get_delegate_for_test() { return delegate_.get(); }
+ 
+--- a/extensions/browser/api/storage/settings_storage_quota_enforcer.cc
++++ b/extensions/browser/api/storage/settings_storage_quota_enforcer.cc
+@@ -268,4 +268,22 @@
+   return delegate_->CommitAuxUiPreferenceMigration(std::move(capture));
+ }
+ 
++ValueStore::AuxUiPreferenceReadbackResult
++SettingsStorageQuotaEnforcer::CommitRetainedAuxUiPreferenceMigration(
++    std::shared_ptr<AuxUiPreferenceCapture> capture) {
++  usage_calculated_ = false; used_total_ = 0; used_per_setting_.clear();
++  return delegate_->CommitRetainedAuxUiPreferenceMigration(std::move(capture));
++}
++ValueStore::AuxUiPreferenceReadbackResult
++SettingsStorageQuotaEnforcer::ReadRetainedAuxUiPreferenceMigration(
++    std::shared_ptr<AuxUiPreferenceCapture> capture) {
++  return delegate_->ReadRetainedAuxUiPreferenceMigration(std::move(capture));
++}
++ValueStore::AuxUiPreferenceReadbackResult
++SettingsStorageQuotaEnforcer::RestoreRetainedAuxUiPreferenceMigration(
++    std::shared_ptr<AuxUiPreferenceCapture> capture) {
++  usage_calculated_ = false; used_total_ = 0; used_per_setting_.clear();
++  return delegate_->RestoreRetainedAuxUiPreferenceMigration(std::move(capture));
++}
++
+ }  // namespace extensions
+--- a/extensions/browser/api/storage/storage_frontend.h
++++ b/extensions/browser/api/storage/storage_frontend.h
+@@ -126,13 +126,14 @@
+     AuxUiMigrationLease(const AuxUiMigrationLease&) = delete;
+     AuxUiMigrationLease& operator=(const AuxUiMigrationLease&) = delete;
+     std::array<std::optional<std::string>, 6> CopySourceRecords() const;
++    std::array<std::optional<std::string>, 6> CopyTargetRecords() const;
+    private:
+     friend class StorageFrontend;
+     struct State;
+     AuxUiMigrationLease(std::shared_ptr<State> state,
+         std::unique_ptr<value_store::ValueStore::AuxUiPreferenceCapture> capture);
+     std::shared_ptr<State> state_;
+-    std::unique_ptr<value_store::ValueStore::AuxUiPreferenceCapture> capture_;
++    std::shared_ptr<value_store::ValueStore::AuxUiPreferenceCapture> capture_;
+   };
+   struct AuxUiMigrationReadback {
+     AuxUiMigrationReadback();
+@@ -144,6 +145,8 @@
+     bool matches_target = false;
+     bool commit_file_data_synced = false;
+     bool ordinary_work_queued = false;
++    bool readback_file_data_synced = false, source_file_data_synced = false;
++    bool restore_attempted = false;
+   };
+   using AuxUiMigrationLeaseResult = base::expected<
+       std::unique_ptr<AuxUiMigrationLease>, value_store::ValueStore::Status>;
+@@ -154,6 +157,8 @@
+   bool ValidateAuxUiMigrationLease(const AuxUiMigrationLease& lease) const;
+   void CommitAuxUiMigrationLease(AuxUiMigrationLease& lease,
+       base::OnceCallback<void(value_store::ValueStore::Status)> callback);
++  void RestoreAuxUiMigrationLease(AuxUiMigrationLease& lease,
++      base::OnceCallback<void(value_store::ValueStore::Status)> callback);
+   void ReadbackAuxUiMigrationLease(AuxUiMigrationLease& lease,
+       base::OnceCallback<void(AuxUiMigrationReadbackResult)> callback);
+   // Before target attempt this aborts the hold. After target attempt it only
+@@ -241,6 +246,11 @@
+       std::unique_ptr<value_store::ValueStore::AuxUiPreferenceCapture> capture,
+       base::OnceCallback<void(value_store::ValueStore::Status)> callback);
+   void ReleaseAuxUiMigrationGate(std::shared_ptr<AuxUiMigrationLease::State> state);
++  enum class AuxUiRetainedOperation { kCommit, kRead, kRestore };
++  using AuxUiRetainedCallback = base::OnceCallback<void(value_store::ValueStore::AuxUiPreferenceReadbackResult)>;
++  void RunRetainedAuxUiPreferencesUngated(scoped_refptr<const Extension> extension,
++      std::shared_ptr<value_store::ValueStore::AuxUiPreferenceCapture> capture,
++      AuxUiRetainedOperation operation, AuxUiRetainedCallback callback);
+ 
+   // Constructor for tests.
+   StorageFrontend(scoped_refptr<value_store::ValueStoreFactory> storage_factory,
+--- a/extensions/browser/api/storage/storage_frontend.cc
++++ b/extensions/browser/api/storage/storage_frontend.cc
+@@ -595,6 +595,7 @@
+   std::vector<base::OnceClosure> deferred;
+   bool pending = true, tainted = false, target_attempted = false;
+   bool target_file_data_synced = false, target_readback_matches = false;
++  bool restore_attempted = false, source_file_data_synced = false, source_readback_matches = false;
+ };
+ StorageFrontend::AuxUiMigrationLease::State::State() = default;
+ StorageFrontend::AuxUiMigrationLease::State::~State() = default;
+@@ -606,6 +607,10 @@
+ std::array<std::optional<std::string>, 6>
+ StorageFrontend::AuxUiMigrationLease::CopySourceRecords() const {
+   return state_ ? state_->source : std::array<std::optional<std::string>, 6>();
++}
++std::array<std::optional<std::string>, 6>
++StorageFrontend::AuxUiMigrationLease::CopyTargetRecords() const {
++  return state_ ? state_->target : std::array<std::optional<std::string>, 6>();
+ }
+ StorageFrontend::AuxUiMigrationReadback::AuxUiMigrationReadback() = default;
+ StorageFrontend::AuxUiMigrationReadback::AuxUiMigrationReadback(AuxUiMigrationReadback&&) = default;
+@@ -641,12 +646,7 @@
+               ValueStore::OTHER_ERROR, "Original Aux backend capture route unavailable"))); return;
+         }
+         state->source = captured.value()->CopyRecordsForNativeJournal();
+-        state->target = state->source;
+-        // This is the exact pair order of the actual backend's six-key token.
+-        // Preserve original JSON bytes and explicit false; never parse/rewrite.
+-        for (size_t i = 0; i < state->target.size(); i += 2) if (state->source[i]) {
+-          state->target[i + 1] = state->source[i]; state->target[i].reset();
+-        }
++        state->target = captured.value()->CopyTargetRecordsForNativeJournal();
+         std::move(callback).Run(base::WrapUnique(new AuxUiMigrationLease(
+             state, std::move(captured.value()))));
+       }, weak_factory_.GetWeakPtr(), state, std::move(callback)));
+@@ -669,12 +669,17 @@
+   auto state = lease.state_;
+   state->pending = true; state->target_attempted = true;
+   state->target_file_data_synced = false; state->target_readback_matches = false;
+-  CommitAuxUiPreferencesUngated(state->extension, std::move(lease.capture_), base::BindOnce(
++  state->source_file_data_synced = false; state->source_readback_matches = false;
++  RunRetainedAuxUiPreferencesUngated(state->extension, lease.capture_, AuxUiRetainedOperation::kCommit, base::BindOnce(
+       [](base::WeakPtr<StorageFrontend> owner,
+          std::shared_ptr<AuxUiMigrationLease::State> state,
+-         base::OnceCallback<void(ValueStore::Status)> callback, ValueStore::Status status) {
++         base::OnceCallback<void(ValueStore::Status)> callback,
++         ValueStore::AuxUiPreferenceReadbackResult result) {
+         state->pending = false;
+-        state->target_file_data_synced = status.ok();
++        state->target_file_data_synced = result.has_value() && result->file_data_synced && result->matches_target;
++        state->target_readback_matches = state->target_file_data_synced && result->records == state->target;
++        ValueStore::Status status = state->target_readback_matches ? ValueStore::Status() :
++            ValueStore::Status(ValueStore::OTHER_ERROR, "Actual retained Aux target/readback remains unknown");
+         if (!owner || owner->aux_ui_migration_gate_ != state ||
+             !owner->CanUseAuxUiMigrationBackend(*state->extension) || state->tainted)
+           status = ValueStore::Status(ValueStore::OTHER_ERROR,
+@@ -693,11 +698,13 @@
+         ValueStore::OTHER_ERROR, "Original Aux backend readback unavailable"))); return;
+   }
+   state->pending = true;
+-  CaptureAuxUiPreferencesUngated(state->extension, base::BindOnce(
++  state->source_file_data_synced = false; state->source_readback_matches = false;
++  state->target_file_data_synced = false; state->target_readback_matches = false;
++  RunRetainedAuxUiPreferencesUngated(state->extension, lease.capture_, AuxUiRetainedOperation::kRead, base::BindOnce(
+       [](base::WeakPtr<StorageFrontend> owner,
+          std::shared_ptr<AuxUiMigrationLease::State> state,
+          base::OnceCallback<void(AuxUiMigrationReadbackResult)> callback,
+-         ValueStore::AuxUiPreferenceCaptureResult captured) {
++         ValueStore::AuxUiPreferenceReadbackResult captured) {
+         state->pending = false;
+         if (!owner || owner->aux_ui_migration_gate_ != state ||
+             !owner->CanUseAuxUiMigrationBackend(*state->extension) || !captured.has_value()) {
+@@ -706,12 +713,18 @@
+               ValueStore::OTHER_ERROR, "Aux raw target readback refused"))); return;
+         }
+         AuxUiMigrationReadback result;
+-        result.records = captured.value()->CopyRecordsForNativeJournal();
++        result.records = captured->records;
+         result.matches_source = result.records == state->source;
+         result.matches_target = result.records == state->target;
++        result.readback_file_data_synced = captured->file_data_synced;
++        result.source_file_data_synced = captured->file_data_synced && result.matches_source;
++        result.restore_attempted = state->restore_attempted || captured->restore_attempted;
++        state->source_file_data_synced = result.source_file_data_synced;
++        state->source_readback_matches = result.matches_source && captured->file_data_synced;
++        state->target_file_data_synced = result.matches_target && captured->file_data_synced && state->target_attempted;
++        state->target_readback_matches = result.matches_target && captured->file_data_synced;
+         result.commit_file_data_synced = state->target_file_data_synced;
+         result.ordinary_work_queued = state->tainted || !state->deferred.empty();
+-        state->target_readback_matches = result.matches_target;
+         std::move(callback).Run(std::move(result));
+       }, weak_factory_.GetWeakPtr(), state, std::move(callback)));
+ }
+@@ -720,12 +733,82 @@
+   auto state = lease.state_;
+   if (!state || state->owner.get() != this || aux_ui_migration_gate_ != state || state->pending ||
+       (state->target_attempted && (!CanUseAuxUiMigrationBackend(*state->extension) ||
+-       !state->target_file_data_synced ||
+-       !state->target_readback_matches || state->tainted || !state->deferred.empty()))) return false;
++       !((state->source_file_data_synced && state->source_readback_matches) ||
++         (state->target_file_data_synced && state->target_readback_matches &&
++          !state->restore_attempted && !state->tainted && state->deferred.empty()))))) return false;
+   // No target attempt, or actual successful file-data sync + exact raw target
+   // readback. Native controller still owns cross-store journal/activation.
+   lease.capture_.reset(); lease.state_.reset(); ReleaseAuxUiMigrationGate(state); return true;
+ }
++void StorageFrontend::RunRetainedAuxUiPreferencesUngated(
++    scoped_refptr<const Extension> extension,
++    std::shared_ptr<ValueStore::AuxUiPreferenceCapture> capture,
++    AuxUiRetainedOperation operation, AuxUiRetainedCallback callback) {
++  DCHECK_CURRENTLY_ON(BrowserThread::UI);
++  using Result = ValueStore::AuxUiPreferenceReadbackResult;
++  if (!capture || !extension || !CanUseAuxUiMigrationBackend(*extension)) {
++    std::move(callback).Run(base::unexpected(ValueStore::Status(
++        ValueStore::OTHER_ERROR, "Original retained Aux frontend route unavailable"))); return;
++  }
++  auto reply = base::BindOnce(
++      [](base::WeakPtr<StorageFrontend> owner, scoped_refptr<const Extension> extension,
++         AuxUiRetainedCallback callback, Result result) {
++        if (!owner || !owner->CanUseAuxUiMigrationBackend(*extension))
++          result = base::unexpected(ValueStore::Status(ValueStore::OTHER_ERROR,
++              "Original retained Aux frontend route was lost"));
++        std::move(callback).Run(std::move(result));
++      }, weak_factory_.GetWeakPtr(), extension, std::move(callback));
++  auto guarded = mojo::WrapCallbackWithDefaultInvokeIfNotRun(
++      base::BindPostTaskToCurrentDefault(std::move(reply)),
++      Result(base::unexpected(ValueStore::Status(ValueStore::OTHER_ERROR,
++          "Retained Aux physical callback outcome remains unknown"))));
++  RunWithStorageUngated(extension, settings_namespace::LOCAL, base::BindOnce(
++      [](std::shared_ptr<ValueStore::AuxUiPreferenceCapture> capture,
++         AuxUiRetainedOperation operation, AuxUiRetainedCallback callback, ValueStore* storage) {
++        if (!storage) {
++          std::move(callback).Run(base::unexpected(ValueStore::Status(
++              ValueStore::OTHER_ERROR, "Original retained Aux storage unavailable"))); return;
++        }
++        switch (operation) {
++          case AuxUiRetainedOperation::kCommit:
++            std::move(callback).Run(storage->CommitRetainedAuxUiPreferenceMigration(std::move(capture))); return;
++          case AuxUiRetainedOperation::kRead:
++            std::move(callback).Run(storage->ReadRetainedAuxUiPreferenceMigration(std::move(capture))); return;
++          case AuxUiRetainedOperation::kRestore:
++            std::move(callback).Run(storage->RestoreRetainedAuxUiPreferenceMigration(std::move(capture))); return;
++        }
++      }, std::move(capture), operation, std::move(guarded)));
++}
++void StorageFrontend::RestoreAuxUiMigrationLease(
++    AuxUiMigrationLease& lease, base::OnceCallback<void(ValueStore::Status)> callback) {
++  DCHECK_CURRENTLY_ON(BrowserThread::UI);
++  const auto state = lease.state_;
++  // Queued ordinary callbacks stay queued. Exact source restoration is an abort
++  // path; it may later replay those originals after current source readback.
++  if (!state || state->owner.get() != this || aux_ui_migration_gate_ != state ||
++      state->pending || !lease.capture_ || !CanUseAuxUiMigrationBackend(*state->extension)) {
++    std::move(callback).Run(ValueStore::Status(ValueStore::OTHER_ERROR,
++        "Original Aux frontend restore lease unavailable")); return;
++  }
++  state->pending = true; state->restore_attempted = true;
++  state->source_file_data_synced = false; state->source_readback_matches = false;
++  RunRetainedAuxUiPreferencesUngated(state->extension, lease.capture_, AuxUiRetainedOperation::kRestore,
++      base::BindOnce([](base::WeakPtr<StorageFrontend> owner,
++          std::shared_ptr<AuxUiMigrationLease::State> state,
++          base::OnceCallback<void(ValueStore::Status)> callback,
++          ValueStore::AuxUiPreferenceReadbackResult result) {
++        state->pending = false;
++        state->source_file_data_synced = result.has_value() && result->file_data_synced && result->matches_source;
++        state->source_readback_matches = state->source_file_data_synced && result->records == state->source;
++        if (!owner || owner->aux_ui_migration_gate_ != state ||
++            !owner->CanUseAuxUiMigrationBackend(*state->extension) || !state->source_readback_matches) {
++          std::move(callback).Run(ValueStore::Status(ValueStore::OTHER_ERROR,
++              "Aux original source restore requires exact retained-owner readback")); return;
++        }
++        std::move(callback).Run(ValueStore::Status());
++      }, weak_factory_.GetWeakPtr(), state, std::move(callback)));
++}
++
+ void StorageFrontend::ReleaseAuxUiMigrationGate(
+     std::shared_ptr<AuxUiMigrationLease::State> state) {
+   if (aux_ui_migration_gate_ != state) return;
