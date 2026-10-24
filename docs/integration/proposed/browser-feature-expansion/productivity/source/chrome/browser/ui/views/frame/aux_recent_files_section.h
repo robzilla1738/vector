@@ -2,6 +2,7 @@
 #ifndef CHROME_BROWSER_UI_VIEWS_FRAME_AUX_RECENT_FILES_SECTION_H_
 #define CHROME_BROWSER_UI_VIEWS_FRAME_AUX_RECENT_FILES_SECTION_H_
 #include <set>
+#include "base/callback_list.h"
 #include "base/memory/weak_ptr.h"
 #include "chrome/browser/ui/views/frame/aux_section_view.h"
 #include "components/download/public/common/download_item.h"
@@ -48,6 +49,7 @@ class AuxRecentFilesSection final : public AuxSectionView,
   raw_ptr<content::DownloadManager> manager_ = nullptr;
   std::set<download::DownloadItem*> observed_;
   PrefChangeRegistrar prefs_;
+  base::CallbackListSubscription chosen_changed_;
   raw_ptr<views::View> rows_ = nullptr;
   raw_ptr<AuxSectionClipView> clip_ = nullptr;
   int row_count_ = 0;

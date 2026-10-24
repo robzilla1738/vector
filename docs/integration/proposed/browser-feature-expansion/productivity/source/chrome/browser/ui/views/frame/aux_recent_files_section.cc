@@ -9,6 +9,7 @@
 #include "cc/paint/paint_flags.h"
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/ui/aux_recent_files_service.h"
+#include "chrome/browser/ui/aux_chosen_files_service.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
 #include "chrome/browser/ui/views/frame/aux_section_clip_view.h"
 #include "components/prefs/pref_service.h"
@@ -144,7 +145,7 @@ AuxRecentFilesSection::AuxRecentFilesSection(BrowserWindowInterface& browser)
 AuxRecentFilesSection::~AuxRecentFilesSection() { PauseProfileObservation(); }
 void AuxRecentFilesSection::PauseProfileObservation() {
   weak_factory_.InvalidateWeakPtrs(); refresh_pending_ = false;
-  prefs_.RemoveAll();
+  prefs_.RemoveAll(); chosen_changed_ = {};
   if (manager_) manager_->RemoveObserver(this);
   manager_ = nullptr;
   for (auto* item : observed_) item->RemoveObserver(this);
@@ -156,6 +157,8 @@ void AuxRecentFilesSection::BindBrowser(BrowserWindowInterface& browser) {
   auto* profile = browser.GetProfile();
   if (!profile || profile->IsOffTheRecord()) return;
   profile_ = profile->GetWeakPtr();
+  chosen_changed_ = files::ObserveChosenFilesChanged(profile,
+      base::BindRepeating(&AuxRecentFilesSection::ScheduleRefresh, weak_factory_.GetWeakPtr()));
   manager_ = profile->GetDownloadManager();
   manager_->AddObserver(this);
   content::DownloadManager::DownloadVector items;
@@ -205,9 +208,7 @@ void AuxRecentFilesSection::Refresh() {
   SetVisible(row_count_ > 0); ApplyHeight();
 }
 void AuxRecentFilesSection::Reveal(const std::string& guid) {
-  auto* item = manager_ ? manager_->GetDownloadByGuid(guid) : nullptr;
-  if (item && !item->IsDangerous() && !item->GetFileExternallyRemoved() && item->CanShowInFolder())
-    item->ShowDownloadInShell();
+  if (profile_) files::RevealRecentFile(profile_.get(), guid);
 }
 void AuxRecentFilesSection::Drag(const std::string& guid) {
   if (profile_ && GetWidget())

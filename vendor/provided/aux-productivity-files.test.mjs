@@ -40,3 +40,12 @@ test('supplied command UI and paired daemon adapters compose and parse without c
   for(const [name,text] of files){const path=join(dir,name);writeFileSync(path,text);const parsed=spawnSync(process.execPath,['--check',path],{encoding:'utf8'});assert.equal(parsed.status,0,parsed.stderr)}
  }finally{rmSync(dir,{recursive:true,force:true})}
 });
+test('chosen file rows reveal or drag opaque IDs without invoking provider or download rename',async()=>{
+ const context={success:true,generation:'owner',mode:'commands'},state={view:'list',files:[{id:'chosen:native-id',name:'notes.txt',source:'chosen',available:true,sourceHost:'Selected in Aux'}]};
+ const row=filesSections(context,state,'',[])[1].items[0];assert.equal(row.actionLabel,'Show');
+ let called;
+ const api={revealRecentFile:async input=>{called=input;return{success:true}},prepareDownloadRename:()=>assert.fail('chosen files are not download rename targets')};
+ assert.equal((await runFileAction(api,null,null,context,state,'',row)).state,state);
+ assert.deepEqual(called,{generation:'owner',downloadId:'chosen:native-id'});
+ await assert.rejects(runFileAction({...api,revealRecentFile:async()=>({success:false,error:'Attach it again'})},null,null,context,state,'',row),/Attach it again/);
+});

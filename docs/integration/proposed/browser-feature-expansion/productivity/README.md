@@ -100,3 +100,39 @@ fingerprint comparison. Worker code never calls a Profile or UI authorization
 callback. Revocation cannot undo a syscall already in progress, and these guards
 do not claim whole filesystem namespace custody against external races.
 The integrator must include `aux_file_operation_lifetime.cc` in its native target.
+
+### Explicitly chosen files
+
+`aux_chosen_files_service.{h,cc}` and `aux_chosen_files_drag_mac.mm` index only
+regular files returned by the real native file chooser for the installed Agent
+extension. `transformAuxFileChooser` applies five counted edits to the selected
+`chrome/browser/file_select_helper.{h,cc}`: capture the starting WeakDocumentPtr,
+and register policy-accepted kOpen/kOpenMultiple results before delivery. The
+service independently verifies that exact document, installed extension and
+actual profile at entry and after asynchronous stat collection. Other websites,
+folder selection, renderer-supplied paths and private profiles do not enter the
+index. Fingerprints contain metadata, not file contents.
+
+The integrator installs `SetChosenFilesWriteOwner` using the same admitted durable
+journal callback, separately namespaced as `chosenFiles`. It is a maximum-50
+dictionary keyed native UUID, each containing `path` (private absolute path),
+`fingerprint` (five string fields from the rename namespace), and `selectedAt`
+(number, epoch milliseconds). Restore validates each record; renderer listings
+expose only `chosen:<uuid>`, basename, source and timestamp. The actual-profile-path
+pending registry is shared with download writes. Owner loss does not clear its
+pending fence, and persistence failure disables writes until an admitted reload.
+
+The existing list/drag methods now support both kinds of file. Add
+`revealRecentFile({generation,downloadId})` with the same installed-search-owner,
+current-command-generation and user-gesture restrictions as file drag; call
+`aux::files::RevealRecentFile` using the sender-derived Profile. Explicit chosen
+files can be revealed or dragged, never sent through download AI naming. Native
+sidebar observers subscribe to chosen-index changes as well as DownloadManager.
+Unavailable/replaced chosen files fail identity validation on reveal/drag and ask
+the user to attach again; stored metadata does not claim current path availability.
+
+Focused checks: real supplied command/daemon composition and parsing, unchanged
+CSS class strings, AI suggestion/provider/cancellation contracts, chosen-file
+opaque-ID dispatch with no rename/provider fallback, and counted actual native
+chooser insertion. Actual native compile, OS drag and profile teardown remain
+integrator acceptance; no owner file or provider was touched by these checks.

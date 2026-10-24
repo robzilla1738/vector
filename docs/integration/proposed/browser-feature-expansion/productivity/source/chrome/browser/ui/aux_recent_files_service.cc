@@ -1,6 +1,7 @@
 // Copyright 2026 The Aux Authors. BSD-style license: see //LICENSE.
 #include "chrome/browser/ui/aux_recent_files_service.h"
 #include "chrome/browser/ui/aux_file_operation_lifetime.h"
+#include "chrome/browser/ui/aux_chosen_files_service.h"
 #include <algorithm>
 #include <cstdint>
 #include <vector>
@@ -294,15 +295,21 @@ base::DictValue ListRecentFiles(Profile* profile) {
   download::SimpleDownloadManager::DownloadVector items;
   profile->GetDownloadManager()->GetAllDownloads(&items);
   std::ranges::sort(items, [](const Item* a, const Item* b) { return a->GetEndTime() > b->GetEndTime(); });
-  base::ListValue rows;
+  base::ListValue rows = ListChosenFiles(profile);
+  int download_count = 0;
   for (auto* item : items) {
     if (item->GetState() != Item::COMPLETE || item->IsDangerous()) continue;
     rows.Append(base::DictValue().Set("id", item->GetGuid())
         .Set("name", item->GetTargetFilePath().BaseName().AsUTF8Unsafe())
         .Set("mime", item->GetMimeType()).Set("sourceHost", item->GetURL().host())
+        .Set("selectedAt", static_cast<double>(item->GetEndTime().InMillisecondsSinceUnixEpoch()))
         .Set("available", Eligible(item)).Set("source", "download"));
-    if (rows.size() >= 50) break;
+    if (++download_count >= 50) break;
   }
+  std::ranges::sort(rows, [](const base::Value& a, const base::Value& b) {
+    return a.GetDict().FindDouble("selectedAt").value_or(0) > b.GetDict().FindDouble("selectedAt").value_or(0);
+  });
+  while (rows.size() > 50) rows.erase(rows.end() - 1);
   base::ListValue receipts;
   for (const auto [id, value] : state->receipts) {
     const auto* receipt = value.GetIfDict();
@@ -394,9 +401,17 @@ void UndoDownloadRename(Profile* profile, const std::string& id, Reply reply) {
 }
 base::DictValue DragRecentDownload(Profile* profile, const std::string& guid,
                                    gfx::NativeView view) {
+  if (guid.starts_with("chosen:")) return DragChosenFile(profile, guid, view);
   auto state = Get(profile); auto* item = state ? state->Find(guid) : nullptr;
   if (!Eligible(item) || !view) return Error("The downloaded file is unavailable.");
   DragDownloadItem(item, nullptr, view);
+  return base::DictValue().Set("success", true);
+}
+base::DictValue RevealRecentFile(Profile* profile, const std::string& id) {
+  if (id.starts_with("chosen:")) return RevealChosenFile(profile, id);
+  auto state = Get(profile); auto* item = state ? state->Find(id) : nullptr;
+  if (!Eligible(item) || !item->CanShowInFolder()) return Error("The downloaded file is unavailable.");
+  item->ShowDownloadInShell();
   return base::DictValue().Set("success", true);
 }
 }  // namespace aux::files
