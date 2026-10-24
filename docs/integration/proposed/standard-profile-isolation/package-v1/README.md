@@ -1,0 +1,9 @@
+# Standard profile package checkpoint — preparation, unassembled
+
+The actual standard browser a2 and native daemon a3 build/link checks passed. The daemon retains the original module and 50 imports, with exactly three additional hidden private definitions. Fresh baseline/desktop resources for the reserved output path passed staging. Source projection and independent original-projector equality passed. These do not establish runtime authority or readiness.
+
+This version copies the reviewed a4 producers and adds the pinned strict `standard_verify` adapter. It changes the source/native composition references and validates new helper bytes while retaining their actual original-baseline previous hashes and text-root metadata. Existing a4 files, recipes, candidates and the accepted app are untouched.
+
+`check-inputs` passed. The first binding attempt refused a historical mutable snapshot input: native source composition recorded the old native-messaging header before projection, while the actual build correctly contains its reviewed successor. The guard adapter needs immutable-baseline provenance handling for this exact transformation; no receipt/pin was substituted and no source pair, base preparation, feature recipe or package was written. A corrected validator proposal is pending. All original source, artifact, alias, guard, native import, unsigned-product and exact16-resource gates remain required.
+
+Further source review identified normal-path extraction/timer/event/refresh unknown markers and missing explicit descendant coverage in browser drain. Correctness/liveness successors are in parallel source lanes. This checkpoint is not a completed clean-recovery implementation, is not testable or activated, and must not replace the accepted app. Signing, OS capabilities, owner data and actual app lifecycle remain separate.
