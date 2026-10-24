@@ -1,0 +1,12 @@
+{
+  "format": "aux.browser-features.composed-source.v1",
+  "passed": true,
+  "inputSha256": "ecff19ddbc7fa76529c50111152f8324ef0ba6b87de11e7ecf872f76270a7484",
+  "composedSha256": "f525f457b2c08df4fd3790ffe0acacf1e86101cc8c0c1706ff9fee7235706d57",
+  "compositionReceiptSha256": "fd4c3f3de000a4caa6fd798d4fdc05151e67a01034714477a6703ca1f9ab3ff2",
+  "coldRefusalPreserved": true,
+  "executed": false,
+  "uiChanged": false,
+  "nativeAbiChanged": false,
+  "nativePairingPending": true
+}

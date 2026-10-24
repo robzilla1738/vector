@@ -1,0 +1,74 @@
+[
+  {
+    "relative": "docs/integration/proposed/profile-isolation-final/integration/project-entry.mjs",
+    "source": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/profile-isolation-final/integration/project-entry.mjs",
+    "sha256": "38b689de20525f6f87671fdafe811cd6ec0a497b066c876034fc704567a149da",
+    "output": "/private/tmp/aux-productivity-latest-context-20261024-a2/projector-inputs/docs/integration/proposed/profile-isolation-final/integration/project-entry.mjs"
+  },
+  {
+    "relative": "docs/integration/proposed/aux-final-local-entry-package/inputs.json",
+    "source": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/aux-final-local-entry-package/inputs.json",
+    "sha256": "fbd94a9feaf4f84b52935f3c8e38a86e3f61efff66be75298b398e903069e6f7",
+    "output": "/private/tmp/aux-productivity-latest-context-20261024-a2/projector-inputs/docs/integration/proposed/aux-final-local-entry-package/inputs.json"
+  },
+  {
+    "relative": "docs/integration/proposed/aux-final-local-entry-package/source/project.mjs",
+    "source": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/aux-final-local-entry-package/source/project.mjs",
+    "sha256": "a2ce2662ff122459756a6faf69976d7e9e8be66a2c277f4b49f540b77a646968",
+    "output": "/private/tmp/aux-productivity-latest-context-20261024-a2/projector-inputs/docs/integration/proposed/aux-final-local-entry-package/source/project.mjs"
+  },
+  {
+    "relative": "docs/integration/proposed/aux-native-owned-entry-routing/edits.json",
+    "source": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/aux-native-owned-entry-routing/edits.json",
+    "sha256": "6a761312b4ef0feaf728ad24183c02a7ae0950987bfc703c5244adf98fae54ac",
+    "output": "/private/tmp/aux-productivity-latest-context-20261024-a2/projector-inputs/docs/integration/proposed/aux-native-owned-entry-routing/edits.json"
+  },
+  {
+    "relative": "docs/integration/proposed/aux-native-exec-lifetime/edits.json",
+    "source": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/aux-native-exec-lifetime/edits.json",
+    "sha256": "66f4a6de988ab32cb167002ccad9ad89e3beaf50f969f849baf95817c6e63736",
+    "output": "/private/tmp/aux-productivity-latest-context-20261024-a2/projector-inputs/docs/integration/proposed/aux-native-exec-lifetime/edits.json"
+  },
+  {
+    "relative": "docs/integration/proposed/aux-native-fixed-pty-loading/anchor.json",
+    "source": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/aux-native-fixed-pty-loading/anchor.json",
+    "sha256": "9fd9124dd108807b5dc07f8ec4f2208dfec21d9d4c6b4635e6006b7c25aed6bb",
+    "output": "/private/tmp/aux-productivity-latest-context-20261024-a2/projector-inputs/docs/integration/proposed/aux-native-fixed-pty-loading/anchor.json"
+  },
+  {
+    "relative": "docs/integration/proposed/aux-native-fixed-pty-loading/transform.mjs",
+    "source": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/aux-native-fixed-pty-loading/transform.mjs",
+    "sha256": "6f276e4ed7a3ae88d02059cec365a4ddfdf99cf415037d09d59c5fe76626334f",
+    "output": "/private/tmp/aux-productivity-latest-context-20261024-a2/projector-inputs/docs/integration/proposed/aux-native-fixed-pty-loading/transform.mjs"
+  },
+  {
+    "relative": "vendor/aside/lib/sea.mjs",
+    "source": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/vendor/aside/lib/sea.mjs",
+    "sha256": "2a2698eef8e353354d7203f8fd460935fddf039677a79659b60b80802ee12ac6",
+    "output": "/private/tmp/aux-productivity-latest-context-20261024-a2/projector-inputs/vendor/aside/lib/sea.mjs"
+  },
+  {
+    "relative": "vendor/provided/aux-cold-entry-admission.mjs",
+    "source": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/vendor/provided/aux-cold-entry-admission.mjs",
+    "sha256": "a569415ecca246cddca88b2f29363f8b0ac014c4a7450e92ee0c000657826161",
+    "output": "/private/tmp/aux-productivity-latest-context-20261024-a2/projector-inputs/vendor/provided/aux-cold-entry-admission.mjs"
+  },
+  {
+    "relative": "docs/integration/proposed/aux-cold-entry-admission/inputs.json",
+    "source": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/aux-cold-entry-admission/inputs.json",
+    "sha256": "59dc73375a99bb8cc5401e7a03b80005cf8b7b235340a6dc779482d4ff9022c2",
+    "output": "/private/tmp/aux-productivity-latest-context-20261024-a2/projector-inputs/docs/integration/proposed/aux-cold-entry-admission/inputs.json"
+  },
+  {
+    "relative": "docs/integration/proposed/aux-native-owned-entry-routing/source/aux-owned-native.cjs",
+    "source": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/aux-native-owned-entry-routing/source/aux-owned-native.cjs",
+    "sha256": "ec7ea0405f415d84e4afc695405eec07378d8c7233b926ffd9dd7db2edfed663",
+    "output": "/private/tmp/aux-productivity-latest-context-20261024-a2/projector-inputs/docs/integration/proposed/aux-native-owned-entry-routing/source/aux-owned-native.cjs"
+  },
+  {
+    "relative": "out/provided-source-snapshot-1.26.1016.1852/daemon/Contents/MacOS/aside-daemon",
+    "source": "/Users/rcourson/Documents/Vibe/web/out/provided-source-snapshot-1.26.1016.1852/daemon/Contents/MacOS/aside-daemon",
+    "sha256": "60d3c50a649a528927137c427d284e695a98162476d28065bb9634e937fed286",
+    "output": "/private/tmp/aux-productivity-latest-context-20261024-a2/projector-inputs/out/provided-source-snapshot-1.26.1016.1852/daemon/Contents/MacOS/aside-daemon"
+  }
+]

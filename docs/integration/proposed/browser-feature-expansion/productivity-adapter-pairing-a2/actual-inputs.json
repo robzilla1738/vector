@@ -1,0 +1,325 @@
+{
+  "format": "aux.productivity-latest-context.inputs.v1",
+  "root": "/Users/rcourson/.codex/worktrees/aux-features-frame/web",
+  "producer": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/browser-feature-expansion/productivity-adapter-pairing-a2",
+  "output": "/private/tmp/aux-productivity-latest-context-20261024-a2",
+  "latestPair": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/runtime-package-a1/source-pair.json",
+  "priorRoot": "/private/tmp/aux-standard-daemon-projection-20261024-a7",
+  "priorComposition": "/private/tmp/aux-standard-daemon-projection-20261024-a7/composition.json",
+  "latestPackage": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/ui-draft-identity-a1/actual-package-a1.json",
+  "context": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/vendor/provided/aux-productivity-context-read.mjs",
+  "contextPlan": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/browser-feature-expansion/productivity-adapter-pairing-a1/context-successor-plan.json",
+  "projectionCopies": [
+    {
+      "relative": "docs/integration/proposed/profile-isolation-final/integration/project-entry.mjs",
+      "source": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/profile-isolation-final/integration/project-entry.mjs",
+      "sha256": "38b689de20525f6f87671fdafe811cd6ec0a497b066c876034fc704567a149da"
+    },
+    {
+      "relative": "docs/integration/proposed/aux-final-local-entry-package/inputs.json",
+      "source": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/aux-final-local-entry-package/inputs.json",
+      "sha256": "fbd94a9feaf4f84b52935f3c8e38a86e3f61efff66be75298b398e903069e6f7"
+    },
+    {
+      "relative": "docs/integration/proposed/aux-final-local-entry-package/source/project.mjs",
+      "source": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/aux-final-local-entry-package/source/project.mjs",
+      "sha256": "a2ce2662ff122459756a6faf69976d7e9e8be66a2c277f4b49f540b77a646968"
+    },
+    {
+      "relative": "docs/integration/proposed/aux-native-owned-entry-routing/edits.json",
+      "source": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/aux-native-owned-entry-routing/edits.json",
+      "sha256": "6a761312b4ef0feaf728ad24183c02a7ae0950987bfc703c5244adf98fae54ac"
+    },
+    {
+      "relative": "docs/integration/proposed/aux-native-exec-lifetime/edits.json",
+      "source": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/aux-native-exec-lifetime/edits.json",
+      "sha256": "66f4a6de988ab32cb167002ccad9ad89e3beaf50f969f849baf95817c6e63736"
+    },
+    {
+      "relative": "docs/integration/proposed/aux-native-fixed-pty-loading/anchor.json",
+      "source": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/aux-native-fixed-pty-loading/anchor.json",
+      "sha256": "9fd9124dd108807b5dc07f8ec4f2208dfec21d9d4c6b4635e6006b7c25aed6bb"
+    },
+    {
+      "relative": "docs/integration/proposed/aux-native-fixed-pty-loading/transform.mjs",
+      "source": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/aux-native-fixed-pty-loading/transform.mjs",
+      "sha256": "6f276e4ed7a3ae88d02059cec365a4ddfdf99cf415037d09d59c5fe76626334f"
+    },
+    {
+      "relative": "vendor/aside/lib/sea.mjs",
+      "source": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/vendor/aside/lib/sea.mjs",
+      "sha256": "2a2698eef8e353354d7203f8fd460935fddf039677a79659b60b80802ee12ac6"
+    },
+    {
+      "relative": "vendor/provided/aux-cold-entry-admission.mjs",
+      "source": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/vendor/provided/aux-cold-entry-admission.mjs",
+      "sha256": "a569415ecca246cddca88b2f29363f8b0ac014c4a7450e92ee0c000657826161"
+    },
+    {
+      "relative": "docs/integration/proposed/aux-cold-entry-admission/inputs.json",
+      "source": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/aux-cold-entry-admission/inputs.json",
+      "sha256": "59dc73375a99bb8cc5401e7a03b80005cf8b7b235340a6dc779482d4ff9022c2"
+    },
+    {
+      "relative": "docs/integration/proposed/aux-native-owned-entry-routing/source/aux-owned-native.cjs",
+      "source": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/aux-native-owned-entry-routing/source/aux-owned-native.cjs",
+      "sha256": "ec7ea0405f415d84e4afc695405eec07378d8c7233b926ffd9dd7db2edfed663"
+    },
+    {
+      "relative": "out/provided-source-snapshot-1.26.1016.1852/daemon/Contents/MacOS/aside-daemon",
+      "source": "/Users/rcourson/Documents/Vibe/web/out/provided-source-snapshot-1.26.1016.1852/daemon/Contents/MacOS/aside-daemon",
+      "sha256": "60d3c50a649a528927137c427d284e695a98162476d28065bb9634e937fed286"
+    }
+  ],
+  "packageLeaves": [
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-standard-profile-drafts-20261024/Aux.app/Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/node-development/index.mjs",
+      "relative": "Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/node-development/index.mjs",
+      "sha256": "c56057f14d25f622ec19df32d5da6989ce238477631f613c2502da0f56310707",
+      "mode": 420
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-standard-profile-drafts-20261024/Aux.app/Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/node-development/aux-native-entry.mjs",
+      "relative": "Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/node-development/aux-native-entry.mjs",
+      "sha256": "0b1fe1660c8313db735cd590fca92f3cd8716c1dcbd1e2956917b06cdcaa80a9",
+      "mode": 420
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-standard-profile-drafts-20261024/Aux.app/Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/MacOS/aux-daemon",
+      "relative": "Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/MacOS/aux-daemon",
+      "sha256": "7b3521946787f944756c077670e05052221682fbf1b120e1a8a89bbe463977fc",
+      "mode": 493
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-standard-profile-drafts-20261024/Aux.app/Contents/Resources/aux/apps/cli/Aux CLI.app/Contents/MacOS/aux-cli",
+      "relative": "Contents/Resources/aux/apps/cli/Aux CLI.app/Contents/MacOS/aux-cli",
+      "sha256": "7874f6b80def71d65c42750b393fa512531d6d031ad28942f950078b667b9955",
+      "mode": 493
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-standard-profile-drafts-20261024/Aux.app/Contents/Resources/aux/apps/cli/Aux CLI.app/Contents/MacOS/aux-cli-sea",
+      "relative": "Contents/Resources/aux/apps/cli/Aux CLI.app/Contents/MacOS/aux-cli-sea",
+      "sha256": "6c4eb44167a474ab0d643b031d0f8a7fb5459d0047ce4ef9aacdd92935e8fbb7",
+      "mode": 493
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-standard-profile-drafts-20261024/Aux.app/Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/native/aux-owned-native.cjs",
+      "relative": "Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/native/aux-owned-native.cjs",
+      "sha256": "ec7ea0405f415d84e4afc695405eec07378d8c7233b926ffd9dd7db2edfed663",
+      "mode": 420
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-standard-profile-drafts-20261024/Aux.app/Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/native/runtime-seed.cjs",
+      "relative": "Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/native/runtime-seed.cjs",
+      "sha256": "4b202aa8a73843502fa19dd22df2c326c5bf1890fa955b9e3b815028f58d8e2f",
+      "mode": 420
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-standard-profile-drafts-20261024/Aux.app/Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/native/runtime-bootstrap.cjs",
+      "relative": "Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/native/runtime-bootstrap.cjs",
+      "sha256": "da30c2b0445af81b3d3ff53fc82f7c93f589e34c3a7756e9f92ef38fab34c5e4",
+      "mode": 420
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-standard-profile-drafts-20261024/Aux.app/Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/native/aux-chatgpt.cjs",
+      "relative": "Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/native/aux-chatgpt.cjs",
+      "sha256": "ab87a75d99a34f28cb4558a6060bfd2fdad0e0f4acbc9f69da4a4c09f8de922f",
+      "mode": 420
+    }
+  ],
+  "nativeReceipt": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/ui-native-capture-transport-a1/actual-daemon-link-a3.json",
+  "nativeInputs": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/ui-native-capture-transport-a1/daemon-link-inputs.json",
+  "nativeBinary": "/private/tmp/aux-ui-native-capture-transport-daemon-link-20261024-a3/Aux Daemon",
+  "inputs": [
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/browser-feature-expansion/productivity-adapter-pairing-a2/freeze.mjs",
+      "sha256": "6a9f9fe0bc6f2014ad00d8c40e0bd597b4924141aabecd07f6358d40a16ef5ee"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/browser-feature-expansion/productivity-adapter-pairing-a2/compose.mjs",
+      "sha256": "7089092e9cdc3a0e5f04a893e152ee804dbbb19a01d1c24b4bf9d2c6d15a1f37"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/runtime-package-a1/source-pair.json",
+      "sha256": "1c31026ccd73ce889c117eaea8b565408e9e8273a7621e982b2fca1586829a4b"
+    },
+    {
+      "path": "/private/tmp/aux-standard-daemon-projection-20261024-a7/index.mjs",
+      "sha256": "c56057f14d25f622ec19df32d5da6989ce238477631f613c2502da0f56310707"
+    },
+    {
+      "path": "/private/tmp/aux-standard-daemon-projection-20261024-a7/projected-entry/aux-native-entry.mjs",
+      "sha256": "0b1fe1660c8313db735cd590fca92f3cd8716c1dcbd1e2956917b06cdcaa80a9"
+    },
+    {
+      "path": "/private/tmp/aux-standard-daemon-projection-20261024-a5/projected-entry/aux-owned-native.cjs",
+      "sha256": "ec7ea0405f415d84e4afc695405eec07378d8c7233b926ffd9dd7db2edfed663"
+    },
+    {
+      "path": "/private/tmp/aux-standard-daemon-link-20261024-a6/Aux Daemon",
+      "sha256": "7b3521946787f944756c077670e05052221682fbf1b120e1a8a89bbe463977fc"
+    },
+    {
+      "path": "/private/tmp/aux-contained-pty-module-20261023-r2/pty.node",
+      "sha256": "03f4124086be96716bf1666555aa6d1a2b3d055efd103d5af8b984de5d0c03be"
+    },
+    {
+      "path": "/private/tmp/aux-standard-daemon-projection-20261024-a7/composition.json",
+      "sha256": "99d259aea229dc1cda6361f7e183a9425bf4c10eac1232c8d022820744cfb0e1"
+    },
+    {
+      "path": "/private/tmp/aux-standard-daemon-projection-20261024-a7/source-receipt.json",
+      "sha256": "d3714520ba610489146c23a1173dca60a9b5b31a1f0cc1f3f74c7c1e09fbf0aa"
+    },
+    {
+      "path": "/private/tmp/aux-standard-daemon-projection-20261024-a7/projected-entry/results.json",
+      "sha256": "8fba90f936607199f324a6288e4521343bf59f573c8c389acb2f0b2f8f2cbc04"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/profile-isolation-protected-startup/integration/source-pair.json",
+      "sha256": "1eb6698864691d5affacc52f860ffb9a917fdf07a36cc5ffcc8fb55d26f4d8e4"
+    },
+    {
+      "path": "/private/tmp/aux-offline-runtime-source-20261023/index.mjs",
+      "sha256": "ecff19ddbc7fa76529c50111152f8324ef0ba6b87de11e7ecf872f76270a7484"
+    },
+    {
+      "path": "/private/tmp/aux-offline-runtime-entry-20261023/aux-native-entry.mjs",
+      "sha256": "541917242bf9134a2bb7915cb8b65a1ecb28d84c2ed91264639c82245e3f3b7e"
+    },
+    {
+      "path": "/private/tmp/aux-standard-daemon-projection-20261024-a7/aux-native-entry.mjs",
+      "sha256": "0b1fe1660c8313db735cd590fca92f3cd8716c1dcbd1e2956917b06cdcaa80a9"
+    },
+    {
+      "path": "/private/tmp/aux-standard-daemon-projection-20261024-a5/native/runtime-seed.cjs",
+      "sha256": "4b202aa8a73843502fa19dd22df2c326c5bf1890fa955b9e3b815028f58d8e2f"
+    },
+    {
+      "path": "/private/tmp/aux-standard-daemon-projection-20261024-a5/native/runtime-bootstrap.cjs",
+      "sha256": "da30c2b0445af81b3d3ff53fc82f7c93f589e34c3a7756e9f92ef38fab34c5e4"
+    },
+    {
+      "path": "/private/tmp/aux-standard-daemon-projection-20261024-a5/native/aux-chatgpt.cjs",
+      "sha256": "ab87a75d99a34f28cb4558a6060bfd2fdad0e0f4acbc9f69da4a4c09f8de922f"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/ui-draft-identity-a1/actual-package-a1.json",
+      "sha256": "2a6ae40559fc59830f193d7cde696157af061d0c2f95fc1a59e6dabd6f57b408"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-standard-profile-drafts-20261024/receipt.json",
+      "sha256": "3fd0400a7b36ccabb8194dbc88b64ba1629867c23b529db7899e262781f6da13"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-standard-profile-drafts-20261024/Aux.app/Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/node-development/index.mjs",
+      "sha256": "c56057f14d25f622ec19df32d5da6989ce238477631f613c2502da0f56310707"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-standard-profile-drafts-20261024/Aux.app/Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/node-development/aux-native-entry.mjs",
+      "sha256": "0b1fe1660c8313db735cd590fca92f3cd8716c1dcbd1e2956917b06cdcaa80a9"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-standard-profile-drafts-20261024/Aux.app/Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/MacOS/aux-daemon",
+      "sha256": "7b3521946787f944756c077670e05052221682fbf1b120e1a8a89bbe463977fc"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-standard-profile-drafts-20261024/Aux.app/Contents/Resources/aux/apps/cli/Aux CLI.app/Contents/MacOS/aux-cli",
+      "sha256": "7874f6b80def71d65c42750b393fa512531d6d031ad28942f950078b667b9955"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-standard-profile-drafts-20261024/Aux.app/Contents/Resources/aux/apps/cli/Aux CLI.app/Contents/MacOS/aux-cli-sea",
+      "sha256": "6c4eb44167a474ab0d643b031d0f8a7fb5459d0047ce4ef9aacdd92935e8fbb7"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-standard-profile-drafts-20261024/Aux.app/Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/native/aux-owned-native.cjs",
+      "sha256": "ec7ea0405f415d84e4afc695405eec07378d8c7233b926ffd9dd7db2edfed663"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-standard-profile-drafts-20261024/Aux.app/Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/native/runtime-seed.cjs",
+      "sha256": "4b202aa8a73843502fa19dd22df2c326c5bf1890fa955b9e3b815028f58d8e2f"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-standard-profile-drafts-20261024/Aux.app/Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/native/runtime-bootstrap.cjs",
+      "sha256": "da30c2b0445af81b3d3ff53fc82f7c93f589e34c3a7756e9f92ef38fab34c5e4"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-standard-profile-drafts-20261024/Aux.app/Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/native/aux-chatgpt.cjs",
+      "sha256": "ab87a75d99a34f28cb4558a6060bfd2fdad0e0f4acbc9f69da4a4c09f8de922f"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/vendor/provided/aux-productivity-context-read.mjs",
+      "sha256": "120bb353ca2c426fbeb6deba78e1834c365405d18304865b1c31168f290b885a"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/browser-feature-expansion/productivity-adapter-pairing-a1/context-successor-plan.json",
+      "sha256": "9c04da8410f9b3ab1c08d7e0f28bb24486d1a3f5b63182f5cf1d9b355b5a94a6"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/browser-feature-expansion/productivity-adapter-pairing-a1/actual-inputs.json",
+      "sha256": "55a7fdcdf44cb197a70f64010ad115c8ce09ece2332d002733560bbaa598d0fc"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/profile-isolation-final/integration/project-entry.mjs",
+      "sha256": "38b689de20525f6f87671fdafe811cd6ec0a497b066c876034fc704567a149da"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/aux-final-local-entry-package/inputs.json",
+      "sha256": "fbd94a9feaf4f84b52935f3c8e38a86e3f61efff66be75298b398e903069e6f7"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/aux-final-local-entry-package/source/project.mjs",
+      "sha256": "a2ce2662ff122459756a6faf69976d7e9e8be66a2c277f4b49f540b77a646968"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/aux-native-owned-entry-routing/edits.json",
+      "sha256": "6a761312b4ef0feaf728ad24183c02a7ae0950987bfc703c5244adf98fae54ac"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/aux-native-exec-lifetime/edits.json",
+      "sha256": "66f4a6de988ab32cb167002ccad9ad89e3beaf50f969f849baf95817c6e63736"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/aux-native-fixed-pty-loading/anchor.json",
+      "sha256": "9fd9124dd108807b5dc07f8ec4f2208dfec21d9d4c6b4635e6006b7c25aed6bb"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/aux-native-fixed-pty-loading/transform.mjs",
+      "sha256": "6f276e4ed7a3ae88d02059cec365a4ddfdf99cf415037d09d59c5fe76626334f"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/vendor/aside/lib/sea.mjs",
+      "sha256": "2a2698eef8e353354d7203f8fd460935fddf039677a79659b60b80802ee12ac6"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/vendor/provided/aux-cold-entry-admission.mjs",
+      "sha256": "a569415ecca246cddca88b2f29363f8b0ac014c4a7450e92ee0c000657826161"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/aux-cold-entry-admission/inputs.json",
+      "sha256": "59dc73375a99bb8cc5401e7a03b80005cf8b7b235340a6dc779482d4ff9022c2"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/aux-native-owned-entry-routing/source/aux-owned-native.cjs",
+      "sha256": "ec7ea0405f415d84e4afc695405eec07378d8c7233b926ffd9dd7db2edfed663"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/out/provided-source-snapshot-1.26.1016.1852/daemon/Contents/MacOS/aside-daemon",
+      "sha256": "60d3c50a649a528927137c427d284e695a98162476d28065bb9634e937fed286"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/ui-native-capture-transport-a1/actual-daemon-link-a3.json",
+      "sha256": "fa23bbf4a3c5de9c7fabf031f98448ef61b02dc4e3099e4fb08bde7c7aae5fde"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/ui-native-capture-transport-a1/daemon-link-inputs.json",
+      "sha256": "6b5ce4ebda63e9d206f65e91431548d27dfda50086d05de4475ff4dfff01adab"
+    },
+    {
+      "path": "/private/tmp/aux-ui-native-capture-transport-daemon-link-20261024-a3/Aux Daemon",
+      "sha256": "6c1d34edb745017bbbe37b607291ee9e46c6c9011f59c29512c089c08bef6972"
+    }
+  ],
+  "productExecuted": false,
+  "runtimeAuthorityGranted": false
+}

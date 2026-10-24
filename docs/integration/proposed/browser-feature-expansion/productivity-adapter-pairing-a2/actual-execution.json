@@ -1,0 +1,43 @@
+{
+  "format": "aux.productivity-latest-context.execution.v1",
+  "recordedAt": "2026-10-24T19:16:41.187120+00:00",
+  "baselineCommit": "f20256553",
+  "commands": [
+    [
+      "node",
+      "docs/integration/proposed/browser-feature-expansion/productivity-adapter-pairing-a2/freeze.mjs",
+      "/private/tmp/aux-productivity-latest-context-20261024-a2.inputs.json",
+      "/private/tmp/aux-productivity-latest-context-20261024-a2"
+    ],
+    [
+      "node",
+      "docs/integration/proposed/browser-feature-expansion/productivity-adapter-pairing-a2/compose.mjs",
+      "/private/tmp/aux-productivity-latest-context-20261024-a2.inputs.json"
+    ]
+  ],
+  "history": [
+    {
+      "step": "initial freeze",
+      "result": "refused before output creation",
+      "reason": "The package keeps its native loader/helpers inside the daemon app, rather than the outer native directory. The corrected producer pins the actual receipt locations."
+    },
+    {
+      "step": "a1 produce",
+      "result": "passed",
+      "reason": "Actual latest package delta and original projection passed. Final producer then corrected cumulative bookkeeping to distinguish 209 anchor objects from 217 counted matches; output source bytes are identical."
+    },
+    {
+      "step": "a2 produce",
+      "result": "passed",
+      "exitCode": 0
+    }
+  ],
+  "precedingActualProjection": "/private/tmp/aux-productivity-latest-context-20261024-a1/projection-evidence.json",
+  "precedingActualProjectionSha256": "0c9f71e20dbe6935eedce24aed27dc1b236b3323524cd7f102a1e5a3e6916148",
+  "finalEvidence": "/private/tmp/aux-productivity-latest-context-20261024-a2/projection-evidence.json",
+  "finalEvidenceSha256": "aaec23c959c7b593f30cb0e5f07276b192e9ee2647bfb3830e2fe5d990567af1",
+  "existingTestsRepeated": false,
+  "nativeBuildRun": false,
+  "productExecuted": false,
+  "packaged": false
+}
