@@ -1,0 +1,52 @@
+{
+  "format": "aux.cache-prelease-receipt.source.v1",
+  "files": [
+    {
+      "path": "third_party/blink/renderer/modules/storage/cached_storage_area.h",
+      "inputSha256": "c014c2af3048b20398c2b6075be01680915ef0faf4b69bea834f052ba113f2c6",
+      "outputSha256": "5fd45af42d2593677bb1fdf66dc44d25bd17651775833b8319b5cf5cb6e3975f",
+      "inputRoot": "/Users/rcourson/.codex/worktrees/aux-features-organization/web/docs/integration/proposed/standard-profile-isolation/native-cache-release-receipt-a13/source",
+      "output": "/Users/rcourson/.codex/worktrees/aux-features-organization/web/docs/integration/proposed/standard-profile-isolation/native-cache-prelease-receipt-a13b/source/third_party/blink/renderer/modules/storage/cached_storage_area.h",
+      "anchors": [
+        {
+          "find": "  std::optional<base::UnguessableToken> aux_ui_last_released_token_;",
+          "replace": "  std::optional<base::UnguessableToken> aux_ui_last_released_token_;\n  // Minted only by a definitive prepare refusal before creating its lease.\n  std::optional<base::UnguessableToken> aux_ui_last_refused_prepare_;",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "third_party/blink/renderer/modules/storage/cached_storage_area.cc",
+      "inputSha256": "d1e518fff7b7d8deb34d3c6def68adfe04d25d7b4c13c8350c99762faa72c16e",
+      "outputSha256": "58b3517ae977a70fd6190399bac03214ecf6b8cbe952b2219066caf03dd2e665",
+      "inputRoot": "/Users/rcourson/.codex/worktrees/aux-features-organization/web/docs/integration/proposed/standard-profile-isolation/native-cache-release-receipt-a13/source",
+      "output": "/Users/rcourson/.codex/worktrees/aux-features-organization/web/docs/integration/proposed/standard-profile-isolation/native-cache-prelease-receipt-a13b/source/third_party/blink/renderer/modules/storage/cached_storage_area.cc",
+      "anchors": [
+        {
+          "find": "    reply->request_id = request;\n    // A known native token may be retired only by this exact real past\n    // release, never from a bare absent-state observation.\n    if (aux_ui_last_released_request_ == request)\n      reply->token = aux_ui_last_released_token_;",
+          "replace": "    // No state alone is unknown. Correlation must come from an actual\n    // past release or a definitive pre-lease prepare refusal retained here.\n    if (aux_ui_last_released_request_ == request) {\n      reply->request_id = request;\n      reply->token = aux_ui_last_released_token_;\n    } else if (aux_ui_last_refused_prepare_ == request) {\n      reply->request_id = request;\n    }",
+          "count": 1
+        },
+        {
+          "find": "    if (!aux_ui_cache_lease_) reply->request_id = request;\n    reply->error = \"Actual Aux cache is not ready for a new hold\";",
+          "replace": "    if (!aux_ui_cache_lease_ && !request.is_empty()) {\n      // This actual prepare invocation has created no lease or lease-owned\n      // deferred work. It says nothing about other physical writers.\n      aux_ui_last_refused_prepare_ = request;\n      reply->request_id = request;\n    }\n    reply->error = \"Actual Aux cache is not ready for a new hold\";",
+          "count": 1
+        },
+        {
+          "find": "    auto reply = mojom::blink::AuxUiCacheReply::New(); reply->request_id = request;\n    reply->error = \"Unknown Aux cache document owner\";",
+          "replace": "    aux_ui_last_refused_prepare_ = request;\n    auto reply = mojom::blink::AuxUiCacheReply::New(); reply->request_id = request;\n    reply->error = \"Unknown Aux cache document owner\";",
+          "count": 1
+        },
+        {
+          "find": "  aux_ui_cache_lease_ = std::make_unique<AuxUiCacheLease>();\n  aux_ui_cache_lease_->request = request;",
+          "replace": "  aux_ui_last_refused_prepare_.reset();\n  aux_ui_cache_lease_ = std::make_unique<AuxUiCacheLease>();\n  aux_ui_cache_lease_->request = request;",
+          "count": 1
+        }
+      ]
+    }
+  ],
+  "nativeCheckoutChanged": false,
+  "nativeCompiled": false,
+  "productExecuted": false,
+  "runtimeAcceptance": false
+}

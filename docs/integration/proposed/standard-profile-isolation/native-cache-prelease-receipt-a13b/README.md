@@ -1,0 +1,5 @@
+# Definitive pre-lease refusal correlation
+
+This corrects A13's tokenless no-held observation. `Read` must not echo a caller request merely because no state exists. The actual renderer `Prepare` now retains one explicit original request only when it definitively refuses before creating any lease or lease-owned deferred work; a successful prepare clears that record. No-held read echoes correlation only from that retained refusal or the exact real past release request/token. Unknown absence has neither correlation nor token and native cleanup keeps custody unresolved.
+
+The receipt proves only that this specific prepare did not acquire a cache lease. It says nothing about outstanding physical callbacks, writer readiness, storage recovery or migration authority. Existing native A13 requires the exact known token when custody previously had one. No schema or UI change. Two files / five exact anchors over A13 outputs; source replay/reverse/hash/whitespace checks only, with actual compilation and runtime acceptance owned by root.

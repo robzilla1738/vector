@@ -1,0 +1,57 @@
+--- a/third_party/blink/renderer/modules/storage/cached_storage_area.h
++++ b/third_party/blink/renderer/modules/storage/cached_storage_area.h
+@@ -265,6 +265,8 @@
+   // One exact past cleanup receipt; never current writer closure/readiness.
+   std::optional<base::UnguessableToken> aux_ui_last_released_request_;
+   std::optional<base::UnguessableToken> aux_ui_last_released_token_;
++  // Minted only by a definitive prepare refusal before creating its lease.
++  std::optional<base::UnguessableToken> aux_ui_last_refused_prepare_;
+   size_t aux_storage_callbacks_pending_ = 0;
+ 
+   // Queues of local mutations which are pending browser acknowledgement via
+--- a/third_party/blink/renderer/modules/storage/cached_storage_area.cc
++++ b/third_party/blink/renderer/modules/storage/cached_storage_area.cc
+@@ -201,11 +201,14 @@
+     const std::optional<base::UnguessableToken>& token) {
+   auto reply = mojom::blink::AuxUiCacheReply::New();
+   if (!aux_ui_cache_lease_) {
+-    reply->request_id = request;
+-    // A known native token may be retired only by this exact real past
+-    // release, never from a bare absent-state observation.
+-    if (aux_ui_last_released_request_ == request)
++    // No state alone is unknown. Correlation must come from an actual
++    // past release or a definitive pre-lease prepare refusal retained here.
++    if (aux_ui_last_released_request_ == request) {
++      reply->request_id = request;
+       reply->token = aux_ui_last_released_token_;
++    } else if (aux_ui_last_refused_prepare_ == request) {
++      reply->request_id = request;
++    }
+     reply->error = "No retained Aux cache lease";
+     return reply;
+   }
+@@ -245,16 +248,23 @@
+       !pending_mutations_by_source_.empty() || !pending_mutations_by_key_.empty()) {
+     auto reply = mojom::blink::AuxUiCacheReply::New();
+     reply->held = !!aux_ui_cache_lease_;
+-    if (!aux_ui_cache_lease_) reply->request_id = request;
++    if (!aux_ui_cache_lease_ && !request.is_empty()) {
++      // This actual prepare invocation has created no lease or lease-owned
++      // deferred work. It says nothing about other physical writers.
++      aux_ui_last_refused_prepare_ = request;
++      reply->request_id = request;
++    }
+     reply->error = "Actual Aux cache is not ready for a new hold";
+     std::move(callback).Run(std::move(reply)); return;
+   }
+   auto sources = CollectAuxUiCacheSources();
+   if (!sources) {
++    aux_ui_last_refused_prepare_ = request;
+     auto reply = mojom::blink::AuxUiCacheReply::New(); reply->request_id = request;
+     reply->error = "Unknown Aux cache document owner";
+     std::move(callback).Run(std::move(reply)); return;
+   }
++  aux_ui_last_refused_prepare_.reset();
+   aux_ui_cache_lease_ = std::make_unique<AuxUiCacheLease>();
+   aux_ui_cache_lease_->request = request;
+   aux_ui_cache_lease_->sources = std::move(*sources);
