@@ -17,3 +17,7 @@ New organization, FeatureStore and file-operation writers participate in actual 
 ## Acceptance after implementation
 
 The exact completed candidate still needs protected startup/resource association, clean and interrupted restart, cancellation/late-write observation, and genuine final UI/workflow comparison in disposable state under authorized lifecycle boundaries. No new signing, owner state, Keychain access, OS grant or product launch is authorized by this reconciliation. Signing alone does not implement the missing mechanisms.
+
+## Common cache successor now built
+
+The a18 browser plus a3 daemon/cache successor is actually assembled in an inactive package; see evidence/actual-cache-package-a3.json. Native matching-seed inspection, async Owner lifetime, exact mutable-package classification and exception-safe descriptor cleanup are compiled/linked and paired. Those are completed source/build improvements, not missing pairing work. The atomic publisher/custody/full-drain/reopen rows above remain missing implementation. Modified/newer runtime compatibility remains explicitly unverified rather than update provenance. Actual runtime and UI journeys remain not run.

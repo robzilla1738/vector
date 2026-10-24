@@ -1,0 +1,16 @@
+{
+  "format": "aux.browser-features.inactive-package.v1",
+  "passed": true,
+  "recipeSha256": "a3935eb5367867e2df105558ca1dd54b5cc496dff7851890465e5aadf2b4cd8a",
+  "baseAssemblyReceiptSha256": "e1a449fbb2004a9b65f576e715e1c88346a07d1bba33a46a118fcae1f04afbda",
+  "inventorySha256": "db79793814aadf2c87169376ab831bb1fb1558416599c72ec40b634a59f9d0ce",
+  "testable": false,
+  "runtimeAuthorityGranted": false,
+  "appExecuted": false,
+  "productSigned": false,
+  "acceptedAppReplaced": false,
+  "unchangedNativeWrapperAndUnrelatedResources": true,
+  "receipt": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-browser-features-cache-20261023/receipt.json",
+  "receiptSha256": "3e350ca34f3abbf5c640b0608ba1f15f0a9aae12370381d9f73181220a4aed9e",
+  "fileCount": 11191
+}
