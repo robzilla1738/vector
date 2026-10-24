@@ -1,0 +1,91 @@
+--- a/third_party/blink/renderer/modules/storage/cached_storage_area.h
++++ b/third_party/blink/renderer/modules/storage/cached_storage_area.h
+@@ -262,6 +262,9 @@
+ 
+   std::unique_ptr<StorageAreaMap> map_;
+   std::unique_ptr<AuxUiCacheLease> aux_ui_cache_lease_;
++  // One exact past cleanup receipt; never current writer closure/readiness.
++  std::optional<base::UnguessableToken> aux_ui_last_released_request_;
++  std::optional<base::UnguessableToken> aux_ui_last_released_token_;
+   size_t aux_storage_callbacks_pending_ = 0;
+ 
+   // Queues of local mutations which are pending browser acknowledgement via
+--- a/third_party/blink/renderer/modules/storage/cached_storage_area.cc
++++ b/third_party/blink/renderer/modules/storage/cached_storage_area.cc
+@@ -200,7 +200,15 @@
+     const base::UnguessableToken& request,
+     const std::optional<base::UnguessableToken>& token) {
+   auto reply = mojom::blink::AuxUiCacheReply::New();
+-  if (!aux_ui_cache_lease_) { reply->error = "No retained Aux cache lease"; return reply; }
++  if (!aux_ui_cache_lease_) {
++    reply->request_id = request;
++    // A known native token may be retired only by this exact real past
++    // release, never from a bare absent-state observation.
++    if (aux_ui_last_released_request_ == request)
++      reply->token = aux_ui_last_released_token_;
++    reply->error = "No retained Aux cache lease";
++    return reply;
++  }
+   auto& held = *aux_ui_cache_lease_;
+   reply->held = true;
+   reply->request_id = held.request;
+@@ -237,12 +245,14 @@
+       !pending_mutations_by_source_.empty() || !pending_mutations_by_key_.empty()) {
+     auto reply = mojom::blink::AuxUiCacheReply::New();
+     reply->held = !!aux_ui_cache_lease_;
++    if (!aux_ui_cache_lease_) reply->request_id = request;
+     reply->error = "Actual Aux cache is not ready for a new hold";
+     std::move(callback).Run(std::move(reply)); return;
+   }
+   auto sources = CollectAuxUiCacheSources();
+   if (!sources) {
+-    auto reply = mojom::blink::AuxUiCacheReply::New(); reply->error = "Unknown Aux cache document owner";
++    auto reply = mojom::blink::AuxUiCacheReply::New(); reply->request_id = request;
++    reply->error = "Unknown Aux cache document owner";
+     std::move(callback).Run(std::move(reply)); return;
+   }
+   aux_ui_cache_lease_ = std::make_unique<AuxUiCacheLease>();
+@@ -318,7 +328,12 @@
+ void CachedStorageArea::ReleaseAuxUiCacheMigration(
+     const base::UnguessableToken& request, const base::UnguessableToken& token,
+     ReleaseAuxUiCacheMigrationCallback callback) {
+-  if (!aux_ui_cache_lease_ || aux_ui_cache_lease_->request != request || aux_ui_cache_lease_->token != token) {
++  if (!aux_ui_cache_lease_) {
++    std::move(callback).Run(aux_ui_last_released_request_ == request &&
++                            aux_ui_last_released_token_ == token);
++    return;
++  }
++  if (aux_ui_cache_lease_->request != request || aux_ui_cache_lease_->token != token) {
+     std::move(callback).Run(false); return;
+   }
+   // Exact original-owner release is cleanup, never proof of physical success.
+@@ -327,6 +342,8 @@
+   auto deferred = std::move(aux_ui_cache_lease_->deferred);
+   aux_ui_cache_lease_.reset();
+   for (auto& operation : deferred) std::move(operation).Run();
++  aux_ui_last_released_request_ = request;
++  aux_ui_last_released_token_ = token;
+   std::move(callback).Run(true);
+ }
+ 
+--- a/components/services/storage/dom_storage/aux_ui_cache_cohort.cc
++++ b/components/services/storage/dom_storage/aux_ui_cache_cohort.cc
+@@ -208,10 +208,14 @@
+   if (valid) {
+     node.token = reply->token;
+     node.custody = Custody::kHeld;
+-  } else if (reply && !reply->held &&
+-             (operation == Operation::kRead || operation == Operation::kPrepare)) {
+-    // An authenticated response from this exact observer proves only that it
+-    // has no retained hold. It cannot qualify capture and does not retire work.
++  } else if (reply && !reply->held && reply->request_id == request_ &&
++             (operation == Operation::kRead || operation == Operation::kPrepare) &&
++             ((!node.token && !reply->token) ||
++              (node.token && node.token == reply->token))) {
++    // No known token: this exact observer reports our prepare never held.
++    // Known token: require its exact real past-release receipt. Bare absence,
++    // mismatched requests and successor leases never retire original custody.
++    // Neither branch qualifies source capture or outstanding physical work.
+     node.custody = Custody::kNotHeld;
+   }
+   if (!valid || !reply->ok || reply->tainted || !SameEndpoints()) {

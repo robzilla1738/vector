@@ -1,0 +1,16 @@
+{
+  "format": "aux.cache-release.source-check.actual.v1",
+  "passed": true,
+  "sourcePlanSha256": "8ec8d45025f157f227fc638ea8a6167936242c06cd64d454e8db71b153877a31",
+  "patchSha256": "e0f45844c1adcdcc3b51c4d5d18c0f30d772e1c56949ced197711ca9771d6f2d",
+  "files": 3,
+  "countedAnchors": 7,
+  "replayDirectory": "/private/tmp/aux-cache-release-replay-uuj4orkm",
+  "exactReplayPassed": true,
+  "reverseCheckPassed": true,
+  "nativeCheckoutChanged": false,
+  "nativeCompiled": false,
+  "testsExecuted": false,
+  "productExecuted": false,
+  "runtimeAcceptance": false
+}

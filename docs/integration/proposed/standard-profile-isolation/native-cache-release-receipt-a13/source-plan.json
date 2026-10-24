@@ -1,0 +1,71 @@
+{
+  "format": "aux.cache-release-receipt.source.v1",
+  "files": [
+    {
+      "path": "third_party/blink/renderer/modules/storage/cached_storage_area.h",
+      "inputSha256": "043ba2361b97f905feb35acc853f056de666a4b1830adf83663d7dd07c9e08f9",
+      "outputSha256": "c014c2af3048b20398c2b6075be01680915ef0faf4b69bea834f052ba113f2c6",
+      "inputRoot": "/Users/rcourson/.codex/worktrees/aux-features-organization/web/docs/integration/proposed/standard-profile-isolation/native-renderer-cache-lease-a8/source",
+      "output": "/Users/rcourson/.codex/worktrees/aux-features-organization/web/docs/integration/proposed/standard-profile-isolation/native-cache-release-receipt-a13/source/third_party/blink/renderer/modules/storage/cached_storage_area.h",
+      "anchors": [
+        {
+          "find": "  std::unique_ptr<AuxUiCacheLease> aux_ui_cache_lease_;",
+          "replace": "  std::unique_ptr<AuxUiCacheLease> aux_ui_cache_lease_;\n  // One exact past cleanup receipt; never current writer closure/readiness.\n  std::optional<base::UnguessableToken> aux_ui_last_released_request_;\n  std::optional<base::UnguessableToken> aux_ui_last_released_token_;",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "third_party/blink/renderer/modules/storage/cached_storage_area.cc",
+      "inputSha256": "df0728fe5feb374f2fd508de55dc51bdd10531711e7184ec1628222dfaa776e8",
+      "outputSha256": "d1e518fff7b7d8deb34d3c6def68adfe04d25d7b4c13c8350c99762faa72c16e",
+      "inputRoot": "/Users/rcourson/.codex/worktrees/aux-features-organization/web/docs/integration/proposed/standard-profile-isolation/native-cache-cohort-integration-a9/source",
+      "output": "/Users/rcourson/.codex/worktrees/aux-features-organization/web/docs/integration/proposed/standard-profile-isolation/native-cache-release-receipt-a13/source/third_party/blink/renderer/modules/storage/cached_storage_area.cc",
+      "anchors": [
+        {
+          "find": "  if (!aux_ui_cache_lease_) { reply->error = \"No retained Aux cache lease\"; return reply; }",
+          "replace": "  if (!aux_ui_cache_lease_) {\n    reply->request_id = request;\n    // A known native token may be retired only by this exact real past\n    // release, never from a bare absent-state observation.\n    if (aux_ui_last_released_request_ == request)\n      reply->token = aux_ui_last_released_token_;\n    reply->error = \"No retained Aux cache lease\";\n    return reply;\n  }",
+          "count": 1
+        },
+        {
+          "find": "    reply->held = !!aux_ui_cache_lease_;\n    reply->error = \"Actual Aux cache is not ready for a new hold\";",
+          "replace": "    reply->held = !!aux_ui_cache_lease_;\n    if (!aux_ui_cache_lease_) reply->request_id = request;\n    reply->error = \"Actual Aux cache is not ready for a new hold\";",
+          "count": 1
+        },
+        {
+          "find": "    auto reply = mojom::blink::AuxUiCacheReply::New(); reply->error = \"Unknown Aux cache document owner\";",
+          "replace": "    auto reply = mojom::blink::AuxUiCacheReply::New(); reply->request_id = request;\n    reply->error = \"Unknown Aux cache document owner\";",
+          "count": 1
+        },
+        {
+          "find": "  if (!aux_ui_cache_lease_ || aux_ui_cache_lease_->request != request || aux_ui_cache_lease_->token != token) {\n    std::move(callback).Run(false); return;\n  }\n  // Exact original-owner release is cleanup, never proof of physical success.",
+          "replace": "  if (!aux_ui_cache_lease_) {\n    std::move(callback).Run(aux_ui_last_released_request_ == request &&\n                            aux_ui_last_released_token_ == token);\n    return;\n  }\n  if (aux_ui_cache_lease_->request != request || aux_ui_cache_lease_->token != token) {\n    std::move(callback).Run(false); return;\n  }\n  // Exact original-owner release is cleanup, never proof of physical success.",
+          "count": 1
+        },
+        {
+          "find": "  for (auto& operation : deferred) std::move(operation).Run();\n  std::move(callback).Run(true);\n}\n\nunsigned CachedStorageArea::GetLength()",
+          "replace": "  for (auto& operation : deferred) std::move(operation).Run();\n  aux_ui_last_released_request_ = request;\n  aux_ui_last_released_token_ = token;\n  std::move(callback).Run(true);\n}\n\nunsigned CachedStorageArea::GetLength()",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "components/services/storage/dom_storage/aux_ui_cache_cohort.cc",
+      "inputSha256": "aa500a6d6153031cf9606ae81cb04e596f6af53ac5d814c4107efe09440bb3d4",
+      "outputSha256": "2d82dfab997950bde58cd81222148b1889fdb121e3ebae78ebd372b7b5ce36f8",
+      "inputRoot": "/Users/rcourson/.codex/worktrees/aux-features-organization/web/docs/integration/proposed/standard-profile-isolation/native-cache-cohort-integration-a9/source",
+      "output": "/Users/rcourson/.codex/worktrees/aux-features-organization/web/docs/integration/proposed/standard-profile-isolation/native-cache-release-receipt-a13/source/components/services/storage/dom_storage/aux_ui_cache_cohort.cc",
+      "anchors": [
+        {
+          "find": "  } else if (reply && !reply->held &&\n             (operation == Operation::kRead || operation == Operation::kPrepare)) {\n    // An authenticated response from this exact observer proves only that it\n    // has no retained hold. It cannot qualify capture and does not retire work.\n    node.custody = Custody::kNotHeld;\n  }",
+          "replace": "  } else if (reply && !reply->held && reply->request_id == request_ &&\n             (operation == Operation::kRead || operation == Operation::kPrepare) &&\n             ((!node.token && !reply->token) ||\n              (node.token && node.token == reply->token))) {\n    // No known token: this exact observer reports our prepare never held.\n    // Known token: require its exact real past-release receipt. Bare absence,\n    // mismatched requests and successor leases never retire original custody.\n    // Neither branch qualifies source capture or outstanding physical work.\n    node.custody = Custody::kNotHeld;\n  }",
+          "count": 1
+        }
+      ]
+    }
+  ],
+  "nativeCheckoutChanged": false,
+  "nativeCompiled": false,
+  "productExecuted": false,
+  "runtimeAcceptance": false
+}
