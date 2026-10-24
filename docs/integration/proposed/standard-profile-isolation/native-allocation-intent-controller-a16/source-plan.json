@@ -1,0 +1,91 @@
+{
+  "format": "aux.native-allocation-intent-controller.v1",
+  "files": [
+    {
+      "path": "chrome/browser/aux/ui_storage_migration_controller.cc",
+      "input": "/Users/rcourson/.codex/worktrees/aux-features-navigation/web/docs/integration/proposed/standard-profile-isolation/native-target-intent-controller-a15/source/chrome/browser/aux/ui_storage_migration_controller.cc",
+      "inputSha256": "71d7da1ce3aabc45bf3873cfd393be56a97e83d28c56c6146b7619c209a9070e",
+      "output": "/Users/rcourson/.codex/worktrees/aux-features-navigation/web/docs/integration/proposed/standard-profile-isolation/native-allocation-intent-controller-a16/source/chrome/browser/aux/ui_storage_migration_controller.cc",
+      "outputSha256": "884003b81ad39cda462b9f8acfce766056acf8c0c5e4817c9522f318b9be2cac",
+      "anchors": [
+        {
+          "find": "  std::array<uint8_t, 32> digest{}, receipt_digest{};",
+          "replace": "  std::array<uint8_t, 32> digest{}, receipt_digest{}, previous_digest{}, intent_digest{};\n  uint32_t ordinal = 0;\n  uint8_t kind = 1;",
+          "count": 1
+        },
+        {
+          "find": "bool IntentReceipt(const IntentRecord& t, std::string_view receipt) {",
+          "replace": "constexpr std::array<std::string_view, 8> kRecordKinds = {\n  \"pre-target-intent\", \"target-attempt\", \"store-readback\", \"restore-attempt\",\n  \"source-readback\", \"backends-target-observed\", \"cache-publish-attempt\", \"cache-publish-ack\"};\nbool IntentReceipt(const IntentRecord& t, std::string_view receipt) {",
+          "count": 1
+        },
+        {
+          "find": "Text(*parsed, \"transactionId\", t.journal) && Text(*parsed, \"ordinal\", \"0\") &&\n      Text(*parsed, \"kind\", \"pre-target-intent\")",
+          "replace": "Text(*parsed, \"transactionId\", t.journal) && Text(*parsed, \"ordinal\", base::NumberToString(t.ordinal)) &&\n      t.kind >= 1 && t.kind <= kRecordKinds.size() && Text(*parsed, \"kind\", kRecordKinds[t.kind - 1])",
+          "count": 1
+        },
+        {
+          "find": "Text(*parsed, \"intentSha256\", base::HexEncodeLower(t.digest)) &&\n      Text(*parsed, \"previousRecordSha256\", std::string(64, '0'))",
+          "replace": "Text(*parsed, \"intentSha256\", base::HexEncodeLower(t.intent_digest)) &&\n      Text(*parsed, \"previousRecordSha256\", base::HexEncodeLower(t.previous_digest))",
+          "count": 1
+        },
+        {
+          "find": "if (journal.size() != 16 || upload.size() != 16 || t.payload.empty() || t.payload.size() > kCaptureLimit)",
+          "replace": "if (journal.size() != 16 || upload.size() != 16 || t.ordinal >= 64 || t.kind < 1 || t.kind > 8 ||\n      t.payload.empty() || t.payload.size() > kCaptureLimit)",
+          "count": 1
+        },
+        {
+          "find": "t.next.insert(t.next.end(), upload.begin(), upload.end()); Integer(t.next, 0, 4);\n      t.next.push_back(1); t.next.insert(t.next.end(), 32, 0);\n      t.next.insert(t.next.end(), t.digest.begin(), t.digest.end());",
+          "replace": "t.next.insert(t.next.end(), upload.begin(), upload.end()); Integer(t.next, t.ordinal, 4);\n      t.next.push_back(t.kind); t.next.insert(t.next.end(), t.previous_digest.begin(), t.previous_digest.end());\n      t.next.insert(t.next.end(), t.intent_digest.begin(), t.intent_digest.end());",
+          "count": 1
+        },
+        {
+          "find": "t.next = {10}; t.next.insert(t.next.end(), journal.begin(), journal.end()); Integer(t.next, 0, 4);",
+          "replace": "t.next = {10}; t.next.insert(t.next.end(), journal.begin(), journal.end()); Integer(t.next, t.ordinal, 4);",
+          "count": 1
+        },
+        {
+          "find": "t.next = {11}; t.next.insert(t.next.end(), journal.begin(), journal.end()); Integer(t.next, 0, 4);",
+          "replace": "t.next = {11}; t.next.insert(t.next.end(), journal.begin(), journal.end()); Integer(t.next, t.ordinal, 4);",
+          "count": 1
+        },
+        {
+          "find": "bytes[5] != 1 || IntegerAt(result.payload, 38, 4)",
+          "replace": "bytes[5] != t.kind || IntegerAt(result.payload, 38, 4)",
+          "count": 1
+        },
+        {
+          "find": "      value->source_topology_sha256.size() != 64 || value->target_topology_sha256.size() != 64) return false;\n  std::set<uint32_t> ordinals;",
+          "replace": "      value->source_topology_sha256.size() != 64) return false;\n  bool pending_allocation = false, requested_allocation = false;\n  std::set<uint32_t> ordinals;",
+          "count": 1
+        },
+        {
+          "find": "    if (!map || !ordinals.insert(map->map_ordinal).second || map->source_map_sha256.size() != 64 ||\n        map->target_map_sha256.size() != 64 || map->source_entries.size() > 4096 ||\n        map->cache_views.size() > 256) return false;\n  }\n  if (hold.source",
+          "replace": "    if (!map || !ordinals.insert(map->map_ordinal).second || map->source_map_sha256.size() != 64 ||\n        map->source_entries.size() > 4096 || map->cache_views.size() > 256) return false;\n    if (map->allocation_requested) {\n      requested_allocation = true;\n      if (!hold.local || map->source_persisted || map->map_id || map->allocation_action_sha256.size() != 64 ||\n          map->allocation_observed != map->allocated_map_id.has_value()) return false;\n      if (!map->allocation_observed) {\n        pending_allocation = true;\n        if (!map->target_map_sha256.empty()) return false;\n      } else if (*map->allocated_map_id < 0 || map->target_map_sha256.size() != 64) return false;\n    } else if (!map->allocation_action_sha256.empty() || map->allocated_map_id || map->allocation_observed ||\n        map->target_map_sha256.size() != 64) return false;\n  }\n  if ((requested_allocation ? value->allocation_action_sha256.size() != 64 : !value->allocation_action_sha256.empty()) ||\n      (pending_allocation ? !value->target_topology_sha256.empty() : value->target_topology_sha256.size() != 64)) return false;\n  if (hold.source",
+          "count": 1
+        },
+        {
+          "find": "    domain.Set(\"targetTopologySha256\", hold.source->target_topology_sha256);\n    base::ListValue maps;",
+          "replace": "    domain.Set(\"targetTopologySha256\", hold.source->target_topology_sha256);\n    domain.Set(\"allocationActionSha256\", hold.source->allocation_action_sha256);\n    base::ListValue maps;",
+          "count": 1
+        },
+        {
+          "find": "      fact.Set(\"sourcePersisted\", map->source_persisted);\n      base::ListValue source, target, namespaces;",
+          "replace": "      fact.Set(\"sourcePersisted\", map->source_persisted);\n      fact.Set(\"originalMapId\", map->map_id ? base::Value(base::NumberToString(*map->map_id)) : base::Value());\n      fact.Set(\"allocationRequested\", map->allocation_requested);\n      fact.Set(\"allocationActionSha256\", map->allocation_action_sha256);\n      fact.Set(\"allocationObserved\", map->allocation_observed);\n      fact.Set(\"allocatedMapId\", map->allocated_map_id ? base::Value(base::NumberToString(*map->allocated_map_id)) : base::Value());\n      base::ListValue source, target, namespaces;",
+          "count": 1
+        },
+        {
+          "find": "  intent_->digest = Digest(intent_->payload); intent_->journal = transfer_->journal;",
+          "replace": "  intent_->digest = Digest(intent_->payload); intent_->intent_digest = intent_->digest; intent_->journal = transfer_->journal;",
+          "count": 1
+        }
+      ]
+    }
+  ],
+  "dependencies": [
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/native-dom-control-allocation-wire-a16/source/components/services/storage/public/mojom/local_storage_control.mojom",
+      "sha256": "8fa2f64846fee55043ebe6a6f45827e9fafd1ecf1f2ad302c43a32627031e3c6",
+      "role": "append-only actual allocation action/result observations"
+    }
+  ]
+}
