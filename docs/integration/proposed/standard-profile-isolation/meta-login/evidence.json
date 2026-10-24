@@ -1,0 +1,14 @@
+{
+  "format": "aux.meta-login.source-evidence.v1",
+  "pairedLiteralReplay": true,
+  "pairedSyntax": true,
+  "editsPerLeaf": 3,
+  "retainsUntilTransportClose": true,
+  "uncertaintyNotCleared": true,
+  "abortedAndShutdownAdmissionRefused": true,
+  "sourceExecuted": false,
+  "providerRequests": 0,
+  "browserRequests": 0,
+  "nativeBuild": false,
+  "productExecuted": false
+}

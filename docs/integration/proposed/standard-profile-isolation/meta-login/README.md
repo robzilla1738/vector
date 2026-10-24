@@ -1,0 +1,19 @@
+# Meta interactive login — retained HTTP, explicit browser cleanup gap
+
+Source-only successor to the actual 166-anchor a3 daemon/entry pair. No root, native tree, frozen package or build input is changed. The three count-one edits preserve provider endpoints, response handling, UI, notifications and cancellation behavior.
+
+Two original direct fetches (`startDeviceAuthorization` and `pollForIdentityToken`) now use `auxRefreshFetch`; the existing `mintApiKey` already does. The original `loginMeta` function identity remains the provider entry point. A dedicated retained transport scope surrounds the complete original login and waits for actual transport closure on success or rejection. The existing interactive manager retains the login during shutdown even after flow-map deletion; the new scope also registers the existing producer stop and refuses shutdown/aborted admission. It never clears native uncertainty.
+
+This deliberately does not add Meta to the reviewed-clean provider classification. Browser cleanup remains a concrete implementation gap, not an unrun test:
+
+- The actual bundled `openOAuthWindow` creates a private context with `disposeOnDetach`, creates the sign-in target, and calls `CdpClient.close()` on abort. That async close method nulls its current socket before requesting socket close. Its close handler calls `#C`/emits `disconnected` only if that same socket is still current, so intentional-close completion is not exposed. An awaited call to this method is only a close request.
+- `content/browser/devtools/protocol/target_handler.cc`, `Disable`, disposes those contexts with `base::DoNothing()`. `DisposeBrowserContext` forwards a callback, but the actual desktop `DevToolsBrowserContextManager::OnBrowserClosed` posts `DestroyOTRProfileWhenAppropriate` and then immediately reports success. The no-browser branch likewise calls deferred destruction before success. The response is not proof that profile services or their writers have finished.
+- `Target.targetDestroyed` refers to the target, not the complete private context and its services. A close response, missing target, reconnect, timeout or vanished socket cannot replace a genuine completion receipt.
+
+The smallest completion seam is an authenticated, original-connection-bound lifetime handle for this exact created private context: observe actual target destruction and physical socket closure, and receive a trusted native context/service-drain completion bound to its context/owner generation. Late target/context creation and connection loss must remain pending/unknown. Existing browser content/native-messaging descendant uncertainty remains independent. This proposal adds no synthetic acknowledgment, arbitrary CDP redesign or claimed whole-browser settlement. Signing alone does not supply this missing bridge mechanism.
+
+## Integration and evidence
+
+Apply `transformAuxMetaLogin` from `source/transform.mjs` as the fixed `meta-login` stage. `overlay.json` pins the exact actual a3 ordinary/independent-entry inputs, output hashes, replacement digest and three source files. The anchors do not overlap the Claude lane's callback server, initializer capture or candidate/reviewer clauses. Root must rerun the original entry projector and exact package validation before integrating a later candidate.
+
+`check.mjs` independently replays all three anchors on both pinned leaves and runs syntax-only checks. Its inert fixture verifies that login remains pending until transport close, retains uncertainty, and refuses aborted/shutdown admission. It creates no socket, browser, provider request or native process. The first source check exposed a transform property typo, and the first fixture exposed a cross-context microtask timing assumption; both were corrected before the final passing evidence. No actual product behavior or browser cleanup completion is claimed.

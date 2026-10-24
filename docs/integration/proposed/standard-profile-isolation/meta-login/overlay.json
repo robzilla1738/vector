@@ -1,0 +1,41 @@
+{
+  "version": 1,
+  "stage": "meta-login",
+  "changes": 3,
+  "sourceFiles": [
+    {
+      "path": "source/transform.mjs",
+      "sha256": "8487ab42e64f565710adac31ea2126156114a8b32eecdce859f3a35a4b50e663"
+    },
+    {
+      "path": "source/anchors.json",
+      "sha256": "f428b44b3ee89674eedfdfa40b58cea9d3d66e43f8b1349479d586f46ef71f86"
+    },
+    {
+      "path": "source/meta-login.js",
+      "sha256": "e9b2ce2e937486a8f91d779e6caa97fd0dffb013b9340cfecc7a1e9a55ff93fe"
+    }
+  ],
+  "daemonInputs": [
+    {
+      "kind": "source",
+      "input": "/private/tmp/aux-standard-daemon-projection-20261024-a3/index.mjs",
+      "inputSha256": "3ee2471769470b820bfaf16d64f6dfc7aa0bef1b8ad54493c7d2a0bffe725802",
+      "outputSha256": "319b93e9f80959dacecca9da72af3da6d907a08637657188978e382a27b344db",
+      "changesSha256": "7e961dce8fab15a100a0fd576b2fbf2fbb850501e9edd9c8c46636759fb60eaf"
+    },
+    {
+      "kind": "entry",
+      "input": "/private/tmp/aux-standard-daemon-projection-20261024-a3/projected-entry/aux-native-entry.mjs",
+      "inputSha256": "ba6194fbe579dec43ccaa2a7b788e58bc0a1cb9a0ff52ab5b5cfcea334890804",
+      "outputSha256": "44e175b1174955d4395b2313c97c89b954bb7f52c9f4a813789f0c3072bf927a",
+      "changesSha256": "7e961dce8fab15a100a0fd576b2fbf2fbb850501e9edd9c8c46636759fb60eaf"
+    }
+  ],
+  "nativeRequirements": [
+    "Existing fresh descendant observer and broker retained ownership remain required."
+  ],
+  "preservedUnknown": [
+    "Meta CDP context destruction and intentional socket close have no authentic completion channel; HTTP settlement does not clear whole-login uncertainty."
+  ]
+}

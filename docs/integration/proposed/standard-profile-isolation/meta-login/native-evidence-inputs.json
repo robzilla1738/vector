@@ -1,0 +1,18 @@
+{
+  "format": "aux.meta-login.native-evidence.v1",
+  "purpose": "Read-only source evidence; not a native modification or runtime receipt",
+  "files": [
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/content/browser/devtools/protocol/target_handler.cc",
+      "sha256": "ce70690bcf25deb41135373090c38cfe304d4c7611d00cf4d511553dc2c743ad"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/devtools/chrome_devtools_manager_delegate.cc",
+      "sha256": "65b1bf002fba65086d8408d6d40ac99ef6b41d275b4764ebdace4f3e8bb24e52"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/devtools/devtools_browser_context_manager.cc",
+      "sha256": "0460aec3e6ab1b35383dfe0795d15aebbadf75aebb075e9f274ad49b8284717f"
+    }
+  ]
+}

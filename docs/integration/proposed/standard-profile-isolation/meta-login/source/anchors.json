@@ -1,0 +1,17 @@
+[
+  {
+    "find": "async function startDeviceAuthorization(Cn){let ei=await fetch(DEVICE_AUTHORIZATION_URL,",
+    "replace": "async function startDeviceAuthorization(Cn){let ei=await auxRefreshFetch(DEVICE_AUTHORIZATION_URL,",
+    "count": 1
+  },
+  {
+    "find": "poll:async()=>{let ti=await fetch(DEVICE_TOKEN_URL$1,",
+    "replace": "poll:async()=>{let ti=await auxRefreshFetch(DEVICE_TOKEN_URL$1,",
+    "count": 1
+  },
+  {
+    "find": "async function loginMeta(Cn){try{",
+    "replace": "/* AUX_META_LOGIN_HELPER */\nasync function loginMeta(Cn){return auxRunMetaLogin(Cn.signal,()=>auxOriginalMetaLogin(Cn))}async function auxOriginalMetaLogin(Cn){try{",
+    "count": 1
+  }
+]
