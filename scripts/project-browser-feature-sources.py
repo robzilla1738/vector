@@ -64,6 +64,7 @@ def main():
         name = entry['path']
         relative(name)
         allowed = name.startswith('chrome/') or name in {
+            'ui/color/color_provider_source.h',
             'components/sessions/BUILD.gn',
             'components/sessions/core/live_tab_context.cc',
             'components/sessions/core/live_tab_context.h',

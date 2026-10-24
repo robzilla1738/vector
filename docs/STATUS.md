@@ -1,3 +1,7 @@
+# Two sidebar integration compiler fixes projected — 2026-10-23
+
+The full a12 attempt stopped on a protected color-provider API call and an incomplete Profile type in saved-entry drag handling. Exact source overlays now use a public accessor forwarding the actual virtual widget/profile color key and include the Profile definition. Five files are projected into the isolated native tree; a focused rebuild of the two failed objects is running. No default UI/material/layout changes, app lifecycle, signing or runtime acceptance occurred. A separate concrete custom-theme supplier overwrite found during review is being corrected before the next full build.
+
 # Tab restore include fix compiled; full feature build resumed — 2026-10-23
 
 The a11 full attempt reached437actions before `browser_tabrestore.cc` used Aux flags before including their definitions. A bounded scan found two other changed files relying on transitive flag includes. The a12 three-file include-only correction passed all three focused object targets. The full unsigned graph is running with a new immutable250-input manifest; earlier completed objects, failed receipts and input manifests remain preserved. Source/API/resource compatibility and the final14-leaf stage delta are checked; full link/assembly and runtime acceptance remain pending. No app lifecycle or signing/release operation occurred.

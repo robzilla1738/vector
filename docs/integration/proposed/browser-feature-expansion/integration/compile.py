@@ -26,6 +26,9 @@ def verify():
   if sha(native/name)!=value:raise RuntimeError('Native composition changed: '+name)
 verify()
 targets=[
+ 'obj/chrome/browser/ui/ui/browser_widget.o',
+ 'obj/chrome/browser/ui/ui/aux_sidebar_presentation.o',
+ 'obj/chrome/browser/ui/ui/aux_saved_entry_drop_target.o',
  'obj/chrome/browser/ui/browser_tabrestore_impl/browser_tabrestore.o',
  'obj/chrome/browser/extensions/api/api_registration/generated_api_registration.o',
  'obj/chrome/browser/aux/keyboard_shortcuts/aux_keyboard_shortcuts.o',

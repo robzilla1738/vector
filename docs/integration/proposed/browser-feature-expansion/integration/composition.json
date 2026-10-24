@@ -3,22 +3,34 @@
   "baselineCommit": "02ce77253",
   "files": [
     {
-      "path": "chrome/browser/ui/browser_tabrestore.cc",
-      "beforeSha256": "943678ba2fdcd906541d5eb1f043a4f9eb3efb2d9e70475d16b91f11be0c00ff",
-      "afterSha256": "c0c5d1596ac5a7e78818796964141aed12f7351ce1b7c29b25d07e7732d5df7e",
-      "source": "docs/integration/proposed/browser-feature-expansion/integration/source/chrome/browser/ui/browser_tabrestore.cc"
+      "path": "chrome/browser/ui/views/frame/aux_saved_entry_drop_target.cc",
+      "beforeSha256": "fd3291a15d58affa738cec2335faf7155e6b5950a60f927b35f7ae5c75b782f8",
+      "afterSha256": "e751bef5d02860b5c119b1eddd08b0b128644ffbd2abcca7ba5ce7a70e23c0cc",
+      "source": "docs/integration/proposed/browser-feature-expansion/saved-entry-drop-profile-include/source/chrome/browser/ui/views/frame/aux_saved_entry_drop_target.cc"
     },
     {
-      "path": "chrome/browser/ui/browser_window/internal/browser_window_features.cc",
-      "beforeSha256": "cbf28b97004f06ddaae7e8f51485a0a304f8d99a9437932b665d1c3ce34414fc",
-      "afterSha256": "04227d3f9257eb6f955b2b1c102e81c58518f175c11c8c4722a6a7d463d5ea3c",
-      "source": "docs/integration/proposed/browser-feature-expansion/integration/source/chrome/browser/ui/browser_window/internal/browser_window_features.cc"
+      "path": "chrome/browser/ui/views/frame/aux_sidebar_presentation.cc",
+      "beforeSha256": "0fec157024ad257bfd1fd232ccffccbe16df9658ff2bd8885d149011dc8b01bd",
+      "afterSha256": "ecc4eea41c75aabe624e98ed4c0a2c4c446b2b76eefe21c9118e8b628ccaa36a",
+      "source": "docs/integration/proposed/browser-feature-expansion/theme-public-key/source/chrome/browser/ui/views/frame/aux_sidebar_presentation.cc"
     },
     {
-      "path": "chrome/browser/ui/tabs/tab_strip_model.cc",
-      "beforeSha256": "d6790854a6c1b784cc6c9e5139061fad9411f57462d5706b8d0918485361e71d",
-      "afterSha256": "d30702e35ceb70ff0ac6e858702513bdcff424063f56e77f68e1b51144933d7a",
-      "source": "docs/integration/proposed/browser-feature-expansion/integration/source/chrome/browser/ui/tabs/tab_strip_model.cc"
+      "path": "chrome/browser/ui/views/frame/aux_sidebar_view.cc",
+      "beforeSha256": "175d63ba832f55e865dcdcaffffe677ee7d1cb43d3635c6e38cd5c6a9395c253",
+      "afterSha256": "6ad3e83f6b49ff2c40f76ef8f3af22e6d176d7308b0f9afbc6d6686acbb67723",
+      "source": "docs/integration/proposed/browser-feature-expansion/theme-public-key/source/chrome/browser/ui/views/frame/aux_sidebar_view.cc"
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_vertical_sidebar_profile_button.cc",
+      "beforeSha256": "bbb05eefa4d6291e4dc96911e50d376c1324c6ca89144682e106df29c0473425",
+      "afterSha256": "a6f2ddd75d9ed3375903e357fb54b5cf92239db434b872b6437fc4f756368a76",
+      "source": "docs/integration/proposed/browser-feature-expansion/theme-public-key/source/chrome/browser/ui/views/frame/aux_vertical_sidebar_profile_button.cc"
+    },
+    {
+      "path": "ui/color/color_provider_source.h",
+      "beforeSha256": "38bf63410c571d5f2506ddef06fb8ab5637cbb0b5b85352bd32130992050bff0",
+      "afterSha256": "15ec370940d4a082f32d8261cd8846b4157a426629ec5ce1312627fe959c44b5",
+      "source": "docs/integration/proposed/browser-feature-expansion/theme-public-key/source/ui/color/color_provider_source.h"
     }
   ],
   "inputPins": {
@@ -146,14 +158,14 @@
     "chrome/browser/ui/views/frame/aux_pins_section.h": "d8da282cddc9bd76fe891ed47d6c7100781c94943de23c9673e0076a90508963",
     "chrome/browser/ui/views/frame/aux_recent_files_section.cc": "f2049d1506fe826f846706fc6e23e41ee75d4297325d6a452621444d4738761a",
     "chrome/browser/ui/views/frame/aux_recent_files_section.h": "6252cebccb04eda78f2563acf1911a8c93a54c1c48a0c695c0a59a6bf0bcbd4a",
-    "chrome/browser/ui/views/frame/aux_saved_entry_drop_target.cc": "fd3291a15d58affa738cec2335faf7155e6b5950a60f927b35f7ae5c75b782f8",
+    "chrome/browser/ui/views/frame/aux_saved_entry_drop_target.cc": "e751bef5d02860b5c119b1eddd08b0b128644ffbd2abcca7ba5ce7a70e23c0cc",
     "chrome/browser/ui/views/frame/aux_saved_pin_bookmark_conversion.cc": "fad9e21d22a124e1b47d14f09dec6b2999aef3b51d0a951788d483638a5dba8b",
     "chrome/browser/ui/views/frame/aux_saved_pin_bookmark_conversion.h": "8c567094c8455ee7ea8fe049027eccb6144be489dea964e8aa215923d2e9a66f",
     "chrome/browser/ui/views/frame/aux_sidebar_body.cc": "74a4cce16e8790e24ef5b1f2ffe14bc49dff2316cb59778861720699b9e2df3f",
-    "chrome/browser/ui/views/frame/aux_sidebar_presentation.cc": "0fec157024ad257bfd1fd232ccffccbe16df9658ff2bd8885d149011dc8b01bd",
+    "chrome/browser/ui/views/frame/aux_sidebar_presentation.cc": "ecc4eea41c75aabe624e98ed4c0a2c4c446b2b76eefe21c9118e8b628ccaa36a",
     "chrome/browser/ui/views/frame/aux_sidebar_projection.cc": "190c758ae34c880622c882ff3ed4d20bf97338c3f2b3679b70af14c2c62bae99",
     "chrome/browser/ui/views/frame/aux_sidebar_projection.h": "042c83bc716fe53656e937f13e2d74852fae0f13ef29206459ef77cb1b37a158",
-    "chrome/browser/ui/views/frame/aux_sidebar_view.cc": "175d63ba832f55e865dcdcaffffe677ee7d1cb43d3635c6e38cd5c6a9395c253",
+    "chrome/browser/ui/views/frame/aux_sidebar_view.cc": "6ad3e83f6b49ff2c40f76ef8f3af22e6d176d7308b0f9afbc6d6686acbb67723",
     "chrome/browser/ui/views/frame/aux_spaces_switcher.cc": "c67510c0de3895d768fdfd2948c088bc42d45e7728773f41aaa8919b4b566d8a",
     "chrome/browser/ui/views/frame/aux_spaces_switcher.h": "4d699386528f6ceae84409db478a3393873c866f8dce19ef24142522d9619944",
     "chrome/browser/ui/views/frame/aux_split_commands.cc": "945511b4577bd546c02f99759a07e5c81c80cb6be63338c5efe9bee8af55cdaf",
@@ -162,7 +174,7 @@
     "chrome/browser/ui/views/frame/aux_tab_search_bubble.h": "3ed95b3465ed2f8ea3401a4f5574bc802e4d35fa81c6e6e484294d4cd6cec6f9",
     "chrome/browser/ui/views/frame/aux_tabs_section.cc": "a7b4f093c84fa7bdbc270849b1f9dbf0d90bb67d615e1fac2bac570f159a42a4",
     "chrome/browser/ui/views/frame/aux_tabs_section.h": "3a30c690780140f857bfc57fa32f3ffaf46faa5b85eeb9e716b5b2070a721283",
-    "chrome/browser/ui/views/frame/aux_vertical_sidebar_profile_button.cc": "bbb05eefa4d6291e4dc96911e50d376c1324c6ca89144682e106df29c0473425",
+    "chrome/browser/ui/views/frame/aux_vertical_sidebar_profile_button.cc": "a6f2ddd75d9ed3375903e357fb54b5cf92239db434b872b6437fc4f756368a76",
     "chrome/browser/ui/views/frame/browser_view.cc": "b6fecde06fb561b4fb5d2da9405981cede125be331286aecb19f1213bd884fd9",
     "chrome/browser/ui/views/frame/browser_view.h": "795df144d9073676c9ba12613829852825c08cdc59ee69ff42902707b4666281",
     "chrome/browser/ui/views/frame/custom_corners_background.cc": "89bb798da9bf0d4bac1561dfe6830d934e1ff927558836fb0af5cdb8bd5be2c9",
@@ -207,7 +219,8 @@
     "extensions/browser/extension_event_histogram_value.h": "3fcb7b1c9be371dcba33230cb14d4ec194e41c3e1cdbe19d94afe1bfb8d08507",
     "extensions/browser/extension_function_histogram_value.h": "48502688a5072e9be61a8ed64836a0ec7c0c465c4138afc1dd88ec5327a339e4",
     "tools/metrics/histograms/metadata/browser/enums.xml": "9458cb5b3885c975856ea857d16e23240cef365bf22ae3e650715251396586d0",
-    "tools/metrics/histograms/metadata/extensions/enums.xml": "80e8e170d391f1a4b4a15214d0824f2fc15f6c3b835925ee359e17529a918764"
+    "tools/metrics/histograms/metadata/extensions/enums.xml": "80e8e170d391f1a4b4a15214d0824f2fc15f6c3b835925ee359e17529a918764",
+    "ui/color/color_provider_source.h": "15ec370940d4a082f32d8261cd8846b4157a426629ec5ce1312627fe959c44b5"
   },
   "runtimeAccepted": false,
   "coldHookEnabled": false,

@@ -1,0 +1,10 @@
+{
+  "receipt": "/private/tmp/aux-chromium-recovery-snapshot-20261023/unsigned-browser-features-full-build-20261023-a12/receipt.json",
+  "passed": false,
+  "errors": [
+    "aux_sidebar_presentation.cc called protected GetColorProviderKey",
+    "aux_saved_entry_drop_target.cc lacked complete Profile inheritance definition"
+  ],
+  "successorProjection": "/private/tmp/aux-feature-source-projection-20261023-a13/projection.json",
+  "runtimeAccepted": false
+}
