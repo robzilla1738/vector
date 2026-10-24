@@ -1,3 +1,7 @@
+# Tab restore include fix compiled; full feature build resumed — 2026-10-23
+
+The a11 full attempt reached437actions before `browser_tabrestore.cc` used Aux flags before including their definitions. A bounded scan found two other changed files relying on transitive flag includes. The a12 three-file include-only correction passed all three focused object targets. The full unsigned graph is running with a new immutable250-input manifest; earlier completed objects, failed receipts and input manifests remain preserved. Source/API/resource compatibility and the final14-leaf stage delta are checked; full link/assembly and runtime acceptance remain pending. No app lifecycle or signing/release operation occurred.
+
 # Registry and command fixes compiled; full feature build resumed — 2026-10-23
 
 Generated extension registration compiled after exposing the new API headers. The a10b focused run compiled the final organization/cleanup/drop objects but caught two command-bar implementation errors; a11 then passed exactly those two failed objects. The current full unsigned app build uses a new immutable250-input manifest, retaining completed objects and the earlier failed receipts. Final stage pairing and14-leaf resource preflight have passed. Full app link, inactive assembly and actual-app acceptance are still pending; no runtime readiness or signing/release claim.

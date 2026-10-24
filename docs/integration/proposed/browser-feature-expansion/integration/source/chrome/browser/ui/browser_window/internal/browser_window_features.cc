@@ -3,6 +3,8 @@
 // found in the LICENSE file.
 
 #include "chrome/browser/ui/browser_window/public/browser_window_features.h"
+#include "build/build_config.h"
+#include "chrome/browser/buildflags.h"
 #if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
 #include "chrome/browser/aux/organization/organization_profile_service.h"
 #include "chrome/browser/ui/aux_feature_lifecycle.h"
@@ -11,7 +13,6 @@
 #endif
 
 #include <memory>
-#include "chrome/browser/buildflags.h"
 #if BUILDFLAG(ENABLE_AUX_SHELL)
 #include "chrome/browser/ui/aux/methods/extensions_ui_methods.h"
 #endif

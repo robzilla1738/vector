@@ -76,19 +76,19 @@
     {
       "path": "chrome/browser/ui/browser_window/internal/browser_window_features.cc",
       "beforeSha256": "eac70346220c4dd6f2d6d49f359181c6d6b10cb2733bdcb74742ed78b72f18c9",
-      "afterSha256": "cbf28b97004f06ddaae7e8f51485a0a304f8d99a9437932b665d1c3ce34414fc",
+      "afterSha256": "04227d3f9257eb6f955b2b1c102e81c58518f175c11c8c4722a6a7d463d5ea3c",
       "source": "docs/integration/proposed/browser-feature-expansion/integration/source/chrome/browser/ui/browser_window/internal/browser_window_features.cc"
     },
     {
       "path": "chrome/browser/ui/tabs/tab_strip_model.cc",
       "beforeSha256": "7b467a5c7ae30f3d68b5a6f503a39f0800cc79915e598a6a36284c41c6498fcc",
-      "afterSha256": "d6790854a6c1b784cc6c9e5139061fad9411f57462d5706b8d0918485361e71d",
+      "afterSha256": "d30702e35ceb70ff0ac6e858702513bdcff424063f56e77f68e1b51144933d7a",
       "source": "docs/integration/proposed/browser-feature-expansion/integration/source/chrome/browser/ui/tabs/tab_strip_model.cc"
     },
     {
       "path": "chrome/browser/ui/browser_tabrestore.cc",
       "beforeSha256": "94ba29985acb56af869b1f8fc78f27a9dd18a3e7d191a5933e33b246589d17a8",
-      "afterSha256": "943678ba2fdcd906541d5eb1f043a4f9eb3efb2d9e70475d16b91f11be0c00ff",
+      "afterSha256": "c0c5d1596ac5a7e78818796964141aed12f7351ce1b7c29b25d07e7732d5df7e",
       "source": "docs/integration/proposed/browser-feature-expansion/integration/source/chrome/browser/ui/browser_tabrestore.cc"
     },
     {

@@ -3,16 +3,22 @@
   "baselineCommit": "02ce77253",
   "files": [
     {
-      "path": "chrome/browser/extensions/api/aux_browser_preferences/aux_browser_preferences_api.cc",
-      "beforeSha256": "ab20e6da3dc951551abb17088528cd8d09c2c804a06b2523e5618a083e6cd8b9",
-      "afterSha256": "276506304349c8718bfb1dfae68653c357b2702b584d53d9de8ca16afe811e69",
-      "source": "docs/integration/proposed/browser-feature-expansion/integration/source/chrome/browser/extensions/api/aux_browser_preferences/aux_browser_preferences_api.cc"
+      "path": "chrome/browser/ui/browser_tabrestore.cc",
+      "beforeSha256": "943678ba2fdcd906541d5eb1f043a4f9eb3efb2d9e70475d16b91f11be0c00ff",
+      "afterSha256": "c0c5d1596ac5a7e78818796964141aed12f7351ce1b7c29b25d07e7732d5df7e",
+      "source": "docs/integration/proposed/browser-feature-expansion/integration/source/chrome/browser/ui/browser_tabrestore.cc"
     },
     {
-      "path": "chrome/browser/ui/views/frame/aux_tab_search_bubble.cc",
-      "beforeSha256": "64cd17a4bac8ee607ad532d881262092867787df5ecf86aa2f622d36cfe78cf5",
-      "afterSha256": "fb43406612104ae431ebe0ec20c79275cfad47050246ad394107e581aedc2c18",
-      "source": "docs/integration/proposed/browser-feature-expansion/integration/source/chrome/browser/ui/views/frame/aux_tab_search_bubble.cc"
+      "path": "chrome/browser/ui/browser_window/internal/browser_window_features.cc",
+      "beforeSha256": "cbf28b97004f06ddaae7e8f51485a0a304f8d99a9437932b665d1c3ce34414fc",
+      "afterSha256": "04227d3f9257eb6f955b2b1c102e81c58518f175c11c8c4722a6a7d463d5ea3c",
+      "source": "docs/integration/proposed/browser-feature-expansion/integration/source/chrome/browser/ui/browser_window/internal/browser_window_features.cc"
+    },
+    {
+      "path": "chrome/browser/ui/tabs/tab_strip_model.cc",
+      "beforeSha256": "d6790854a6c1b784cc6c9e5139061fad9411f57462d5706b8d0918485361e71d",
+      "afterSha256": "d30702e35ceb70ff0ac6e858702513bdcff424063f56e77f68e1b51144933d7a",
+      "source": "docs/integration/proposed/browser-feature-expansion/integration/source/chrome/browser/ui/tabs/tab_strip_model.cc"
     }
   ],
   "inputPins": {
@@ -101,9 +107,9 @@
     "chrome/browser/ui/browser_command_controller.cc": "eab1ecf1959b8c9707282211f8227a6fe87accb5247f9c157f93142f3ce61c73",
     "chrome/browser/ui/browser_live_tab_context.cc": "e2cf847710ec0a873bf489af1a157f639f612906690557db08e5301412c209dd",
     "chrome/browser/ui/browser_live_tab_context.h": "9787b8ce41c9d6cacc5ed75ec0cbf9a976a6c1af0ac74be1040ae1c00c9cdfc9",
-    "chrome/browser/ui/browser_tabrestore.cc": "943678ba2fdcd906541d5eb1f043a4f9eb3efb2d9e70475d16b91f11be0c00ff",
+    "chrome/browser/ui/browser_tabrestore.cc": "c0c5d1596ac5a7e78818796964141aed12f7351ce1b7c29b25d07e7732d5df7e",
     "chrome/browser/ui/browser_web_contents_delegate/browser_web_contents_delegate.cc": "a610fb22fc9f306dd699c656aaddb0605dfdd09135678b50862cb53c2ee7f152",
-    "chrome/browser/ui/browser_window/internal/browser_window_features.cc": "cbf28b97004f06ddaae7e8f51485a0a304f8d99a9437932b665d1c3ce34414fc",
+    "chrome/browser/ui/browser_window/internal/browser_window_features.cc": "04227d3f9257eb6f955b2b1c102e81c58518f175c11c8c4722a6a7d463d5ea3c",
     "chrome/browser/ui/browser_window/public/browser_window_features.h": "0617d4b746dfbe6a945e11b5408d7efc6f862b9120f9d05e57d411e087d0684a",
     "chrome/browser/ui/startup/startup_browser_creator.cc": "1be9702fff5372a3f85ab88f72a7b78b460325b90836574f1cb9db6eb4a09859",
     "chrome/browser/ui/startup/startup_browser_creator_impl.cc": "caa2a48e7b5e31d065f5f1800a28eff87487a66cefb6dea0027ff814bafb0883",
@@ -116,7 +122,7 @@
     "chrome/browser/ui/tabs/aux_pinned_tab_entry_identity.h": "a054d8029447ca6c769bbd41cc6f18b8b7b882dbf9c1b3d3f4adf406e37556c9",
     "chrome/browser/ui/tabs/pinned_tab_service.cc": "f95f190161928cdec5e44650bc214b9b8f37c6392d6db2cbdbf0e0922120135c",
     "chrome/browser/ui/tabs/pinned_tab_service.h": "a8fd0172b9e93e5bbe36625344b71a32809ce94f999c9ffc4058b5ce591e06fd",
-    "chrome/browser/ui/tabs/tab_strip_model.cc": "d6790854a6c1b784cc6c9e5139061fad9411f57462d5706b8d0918485361e71d",
+    "chrome/browser/ui/tabs/tab_strip_model.cc": "d30702e35ceb70ff0ac6e858702513bdcff424063f56e77f68e1b51144933d7a",
     "chrome/browser/ui/tabs/tab_strip_model.h": "91a91180817ba16fedafe465313906f0cbb001574fed631069662cf084c6ff1c",
     "chrome/browser/ui/unload_controller.cc": "09220f0d6b2f9f93c3d3434cb05a0b2fd251592bda6485b8de49fd7454116dcf",
     "chrome/browser/ui/views/frame/aux_bookmark_pin_conversion.cc": "053b2f6e6865760491fafdcc4937d9f1566c5d24fd0b27b8bb12cc3f157140f8",

@@ -3,6 +3,8 @@
 // found in the LICENSE file.
 
 #include "chrome/browser/ui/browser_tabrestore.h"
+#include "build/build_config.h"
+#include "chrome/browser/buildflags.h"
 #if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
 #include "chrome/browser/aux/organization/organization_model.h"
 #include "chrome/browser/ui/tabs/aux_pinned_tab_entry_identity.h"
@@ -13,8 +15,6 @@
 #include <utility>
 
 #include "base/containers/span.h"
-#include "build/build_config.h"
-#include "chrome/browser/buildflags.h"
 #if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
 #include "chrome/browser/ui/tabs/aux_bookmark_tab_representation.h"
 #endif

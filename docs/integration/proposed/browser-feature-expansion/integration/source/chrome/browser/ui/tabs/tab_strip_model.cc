@@ -4,10 +4,11 @@
 
 #include <limits>
 #include "chrome/browser/ui/tabs/tab_strip_model.h"
+#include "build/build_config.h"
+#include "chrome/browser/buildflags.h"
 #if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
 #include "chrome/browser/ui/views/frame/aux_organization_window_controller.h"
 #endif
-#include "chrome/browser/buildflags.h"
 #if BUILDFLAG(ENABLE_AUX_SHELL)
 #include "chrome/browser/ui/aux/native_creator_close_receipt.h"
 #endif
@@ -46,7 +47,6 @@
 #include "base/trace_event/common/trace_event_common.h"
 #include "base/trace_event/trace_event.h"
 #include "base/types/pass_key.h"
-#include "build/build_config.h"
 #include "chrome/app/chrome_command_ids.h"
 #include "chrome/browser/content_settings/host_content_settings_map_factory.h"
 #include "chrome/browser/extensions/tab_helper.h"
