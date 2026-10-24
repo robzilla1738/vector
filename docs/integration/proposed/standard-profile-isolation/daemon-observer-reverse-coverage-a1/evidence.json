@@ -1,0 +1,10 @@
+{
+  "exactSourceReplay": true,
+  "inertBoundaryCases": 8,
+  "unmatchedExitedBirthRefused": true,
+  "oneToOneMatchedBirthAcceptedByModel": true,
+  "nativeExecuted": false,
+  "compiled": false,
+  "linked": false,
+  "signed": false
+}

@@ -1,0 +1,31 @@
+{
+  "format": "aux.daemon-observer-reverse.overlay.v1",
+  "inputs": [
+    {
+      "path": "/private/tmp/aux-standard-native-source-20261023-a4/AuxTaskDescendantObserver.cc",
+      "sha256": "cb10bb7e05caed1baa661e67430d33f1aa9532fd82b44804166d619c4043d56d"
+    },
+    {
+      "path": "/private/tmp/aux-standard-native-source-20261023-a4/AuxTaskDescendantObserver.h",
+      "sha256": "60a1a872cad6f791f61061aa7a15d2d8ac3bb7fb8144b5f25c5fabcb3fd44969"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/integration/native-build-a2.json",
+      "sha256": "47c19b1c3ded0fbcf6d6cd9c28ba1d9fa7a6575d81d954b6fbaaa17788a652b2"
+    }
+  ],
+  "source": {
+    "path": "source/AuxTaskDescendantObserver.cc",
+    "beforeSha256": "cb10bb7e05caed1baa661e67430d33f1aa9532fd82b44804166d619c4043d56d",
+    "afterSha256": "a0cd63fad2f860c47829b91fcd1d8f3a0715492f657f89f8f6158046b6d41bdb"
+  },
+  "changes": 1,
+  "patchSha256": "27f7c7606e90d156641ecc70fd0d67681e4f8a4220403a51b243fe0e36bac021",
+  "compileReviewSha256": "0de0852fc056e2fc859cbf2a4ec63fcdb29ebcb2b71224c5ffb1009a7705a9ae",
+  "nativeAbiChanged": false,
+  "moduleUnchanged": true,
+  "compiled": false,
+  "linked": false,
+  "productExecuted": false,
+  "signing": false
+}

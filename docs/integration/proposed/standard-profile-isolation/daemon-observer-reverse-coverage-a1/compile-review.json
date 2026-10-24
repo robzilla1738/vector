@@ -1,0 +1,89 @@
+{
+  "format": "aux.daemon-observer-reverse.compile-row.v1",
+  "baselinePlan": {
+    "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/integration/native-build-a2.json",
+    "sha256": "47c19b1c3ded0fbcf6d6cd9c28ba1d9fa7a6575d81d954b6fbaaa17788a652b2"
+  },
+  "baselineRow": {
+    "name": "observer",
+    "command": [
+      "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang++",
+      "-fvisibility=hidden",
+      "-fblocks",
+      "-I/private/tmp/aux-standard-native-source-20261023-a4",
+      "-I/private/tmp/aux-standard-browser-source-20261023-a2/chrome/browser/aux",
+      "-I/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/profile-isolation-local-finish/runtime-cache-async-relink-a3/source",
+      "-std=c++20",
+      "-arch",
+      "arm64",
+      "-mmacosx-version-min=13.5",
+      "-fblocks",
+      "-fPIC",
+      "-isysroot",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk",
+      "-MMD",
+      "-MF",
+      "/private/tmp/aux-standard-daemon-objects-20261023-a2/observer.d",
+      "-I",
+      "/private/tmp/aux-features-execution-organization-20261023/docs/integration/proposed/standard-profile-isolation/descendant-custody/source",
+      "-c",
+      "/private/tmp/aux-standard-native-source-20261023-a4/AuxTaskDescendantObserver.cc",
+      "-o",
+      "/private/tmp/aux-standard-daemon-objects-20261023-a2/observer.o"
+    ],
+    "source": "/private/tmp/aux-standard-native-source-20261023-a4/AuxTaskDescendantObserver.cc"
+  },
+  "successorRow": {
+    "name": "observer",
+    "command": [
+      "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang++",
+      "-fvisibility=hidden",
+      "-fblocks",
+      "-I/private/tmp/aux-standard-native-source-20261023-a4",
+      "-I/private/tmp/aux-standard-browser-source-20261023-a2/chrome/browser/aux",
+      "-I/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/profile-isolation-local-finish/runtime-cache-async-relink-a3/source",
+      "-std=c++20",
+      "-arch",
+      "arm64",
+      "-mmacosx-version-min=13.5",
+      "-fblocks",
+      "-fPIC",
+      "-isysroot",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk",
+      "-MMD",
+      "-MF",
+      "/private/tmp/aux-daemon-observer-reverse-a1/observer.d",
+      "-I",
+      "/private/tmp/aux-features-execution-organization-20261023/docs/integration/proposed/standard-profile-isolation/descendant-custody/source",
+      "-c",
+      "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/daemon-observer-reverse-coverage-a1/source/AuxTaskDescendantObserver.cc",
+      "-o",
+      "/private/tmp/aux-daemon-observer-reverse-a1/observer.o"
+    ],
+    "source": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/daemon-observer-reverse-coverage-a1/source/AuxTaskDescendantObserver.cc"
+  },
+  "onlyCommandReplacements": [
+    {
+      "kind": "source",
+      "before": "/private/tmp/aux-standard-native-source-20261023-a4/AuxTaskDescendantObserver.cc",
+      "after": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/daemon-observer-reverse-coverage-a1/source/AuxTaskDescendantObserver.cc"
+    },
+    {
+      "kind": "-o",
+      "before": "/private/tmp/aux-standard-daemon-objects-20261023-a2/observer.o",
+      "after": "/private/tmp/aux-daemon-observer-reverse-a1/observer.o"
+    },
+    {
+      "kind": "-MF",
+      "before": "/private/tmp/aux-standard-daemon-objects-20261023-a2/observer.d",
+      "after": "/private/tmp/aux-daemon-observer-reverse-a1/observer.d"
+    }
+  ],
+  "outputDirectory": "/private/tmp/aux-daemon-observer-reverse-a1",
+  "nativeModuleUnchanged": true,
+  "nativeHeaderUnchanged": true,
+  "compiled": false,
+  "linked": false,
+  "executed": false,
+  "serializedBuildRequired": true
+}

@@ -1,0 +1,21 @@
+--- a/AuxTaskDescendantObserver.cc
++++ b/AuxTaskDescendantObserver.cc
+@@ -267,6 +267,18 @@
+             for (const auto& c : s.cohorts) {
+               if (!MatchBirthLocked(s, *c)) { UnknownLocked(s); return; }
+             }
++            // Every observed self birth must belong to exactly one actual
++            // successful native spawn, including births buffered while another
++            // reservation was still awaiting publication. A forward-only check
++            // can silently omit an unrelated short-lived root.
++            for (const auto& birth : s.roots) {
++              size_t owners = 0;
++              for (const auto& c : s.cohorts)
++                if (!c->failed_before_child && !c->publication_pending &&
++                    c->child == birth.id.pid && birth.time >= c->reserved_at &&
++                    birth.time <= c->published_at) ++owners;
++              if (owners != 1) { UnknownLocked(s); return; }
++            }
+             completions.reserve(s.cohorts.size());
+             for (const auto& c : s.cohorts) {
+               c->settled = true;
