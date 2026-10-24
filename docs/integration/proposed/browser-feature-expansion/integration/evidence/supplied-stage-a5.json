@@ -1,0 +1,16 @@
+{
+  "format": "aux.browser-features.supplied-stage-evidence.v1",
+  "passed": true,
+  "output": "/Users/rcourson/Documents/Vibe/web/out/provided-browser-features-desktop-v1-20261023",
+  "featureProfile": "desktop-v1",
+  "productionReady": false,
+  "supersededByFinalSourceChanges": true,
+  "productExecuted": false,
+  "uiComponentFileCounts": {
+    "agent": 1217,
+    "vault": 46
+  },
+  "stageManifestSha256": "60d37bb2cdbf8bbabf8478641054c68734a47891d978b98be7185a9a4d4a0e99",
+  "uiManifestSha256": "8f0a75200548d0074d7499d3dfc570b6db414605a625ce0b9ea1f57720ab1774",
+  "appsManifestSha256": "bb1d421d4750ab1a26fb3ce5cfd033c55f52884fbefb810e412d2abb971ecb4e"
+}

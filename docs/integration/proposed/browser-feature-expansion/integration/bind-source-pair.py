@@ -18,6 +18,9 @@ protected=root/'docs/integration/proposed/profile-isolation-protected-startup/in
 prior_path=protected/'source-pair.json';prior=read(prior_path)
 composition_path=Path(a.source_composition).resolve();composition=read(composition_path)
 if not composition['passed'] or composition['predecessorSourcePairSha256']!=sha(prior_path):raise RuntimeError('Exact source predecessor required')
+if not composition.get('adapterInputs'):raise RuntimeError('Frozen source adapter inputs required')
+for item in composition['adapterInputs']:
+ if sha(root/item['path'])!=item['sha256']:raise RuntimeError('Source adapter changed: '+item['path'])
 link_path=protected/'daemon-link.json';link=read(link_path)
 inputs_path=protected/'daemon-inputs.json';inputs=read(inputs_path)
 if not link['passed'] or not link['inputsUnchanged'] or link['signed'] or sha(inputs_path)!=link['manifestSha256']:raise RuntimeError('Successful unchanged unsigned native daemon link required')
