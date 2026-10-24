@@ -1,0 +1,368 @@
+{
+  "format": "aux.ui-worker-native-control.source-contract.actual.v1",
+  "passed": true,
+  "files": [
+    {
+      "path": "chrome/browser/aux/ui_storage_migration_worker.h",
+      "operation": "create",
+      "inputSha256": null,
+      "expectedNativeTargetAbsent": true,
+      "source": "/Users/rcourson/.codex/worktrees/aux-features-navigation/web/docs/integration/proposed/standard-profile-isolation/ui-worker-native-control-a1/source/chrome/browser/aux/ui_storage_migration_worker.h",
+      "outputSha256": "e994ad290428a766623326d510d0499a54a4d24982faab92d09eddc8f253ce26"
+    },
+    {
+      "path": "chrome/browser/aux/ui_storage_migration_worker.cc",
+      "operation": "create",
+      "inputSha256": null,
+      "expectedNativeTargetAbsent": true,
+      "source": "/Users/rcourson/.codex/worktrees/aux-features-navigation/web/docs/integration/proposed/standard-profile-isolation/ui-worker-native-control-a1/source/chrome/browser/aux/ui_storage_migration_worker.cc",
+      "outputSha256": "50bbe678f75f41586530ffbbbb9a616de2ed9c4d65b4771e89784d571c8b8caa"
+    }
+  ],
+  "dependencies": [
+    {
+      "path": "extensions/browser/extension_function.h",
+      "inputSha256": "b7d21adba7e74da120ead3ea1136e5a03046f29009a6ba92965f670c4b3b0b3a",
+      "countedAnchors": [
+        {
+          "find": "const std::optional<extensions::WorkerId>& worker_id() const",
+          "count": 1
+        },
+        {
+          "find": "bool is_from_service_worker() const",
+          "count": 1
+        },
+        {
+          "find": "int source_process_id() const",
+          "count": 1
+        },
+        {
+          "find": "content::BrowserContext* browser_context() const",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "extensions/browser/extension_function_dispatcher.cc",
+      "inputSha256": "1a5bf2614b9b23838544494da1d75cee9263c6c83e9975688a54bb2d0e2a69a7",
+      "countedAnchors": [
+        {
+          "find": "function->set_worker_id(std::move(worker_id));",
+          "count": 1
+        },
+        {
+          "find": "if (!ProcessManager::Get(browser_context_)->HasServiceWorker(worker_id))",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "extensions/browser/service_worker/service_worker_host.cc",
+      "inputSha256": "0f7714730f6a767099d8314f379c14db04864ec1d5960ebf5c8b51e4c471dbb5",
+      "countedAnchors": [
+        {
+          "find": "void ServiceWorkerHost::RequestWorker(",
+          "count": 1
+        },
+        {
+          "find": "render_process_host_->GetID().GetUnsafeValue()",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "extensions/browser/service_worker/worker_id.h",
+      "inputSha256": "ada0e7c97b1955cce6cb95c6f0fdf3d2cecebe368958d50f72a036f86d2a0096",
+      "countedAnchors": [
+        {
+          "find": "std::optional<blink::ServiceWorkerToken> start_token;",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "extensions/browser/service_worker/worker_id.cc",
+      "inputSha256": "27cd60bdf01e0dd445db19a08d97d09a23515291d06bcb56e202f65eedff7f12",
+      "countedAnchors": [
+        {
+          "find": "bool WorkerId::operator==(const WorkerId& other) const",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "extensions/browser/process_manager.h",
+      "inputSha256": "304ed9da7a5697bb6b455915e52f4efd130490946b836a474f5dc61c4e7342ec",
+      "countedAnchors": [
+        {
+          "find": "bool HasServiceWorker(const WorkerId& worker_id) const;",
+          "count": 1
+        },
+        {
+          "find": "base::Uuid GetContextIdForWorker(const WorkerId& worker_id) const;",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "extensions/browser/process_manager.cc",
+      "inputSha256": "b618481f08f9328d833fbefe76bb1eabfbae9ab5d6c715820b4cc35803c4600f",
+      "countedAnchors": [
+        {
+          "find": "service_worker_context->StartingExternalRequest(service_worker_version_id,",
+          "count": 1
+        },
+        {
+          "find": "std::vector<WorkerId> ProcessManager::GetServiceWorkersForExtension(",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "extensions/browser/extension_util.h",
+      "inputSha256": "38ea3286b22889f79387b8c5b35e092da7361187f3a6e2db66ed6be27ecc42eb",
+      "countedAnchors": [
+        {
+          "find": "content::StoragePartition* GetStoragePartitionForExtensionId(",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "extensions/browser/event_router.h",
+      "inputSha256": "48818b3799ff1393afc3564ad8808def2699a2611d1e568b33fa82a8618554b3",
+      "countedAnchors": [
+        {
+          "find": "std::optional<DispatchTarget> restrict_to_dispatch_target;",
+          "count": 1
+        },
+        {
+          "find": "using DidDispatchCallback = base::RepeatingCallback<void(const EventTarget&)>;",
+          "count": 1
+        },
+        {
+          "find": "CannotDispatchCallback cannot_dispatch_callback;",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "extensions/browser/events/event_dispatch_helper.cc",
+      "inputSha256": "91275d53ab1b737bc91d049d7c7c880293cf273e4fd823be6f957bab0bdc2cb8",
+      "countedAnchors": [
+        {
+          "find": "listener->process()->GetID() == target.render_process_id",
+          "count": 1
+        },
+        {
+          "find": "listener->worker_thread_id() == target.worker_thread_id",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "content/public/browser/service_worker_context.h",
+      "inputSha256": "4fbf236e86dfd361d47964874c286eb85ed2e920a0f0af3892c2457335471986",
+      "countedAnchors": [
+        {
+          "find": "virtual ServiceWorkerExternalRequestResult StartingExternalRequest(",
+          "count": 1
+        },
+        {
+          "find": "virtual ServiceWorkerExternalRequestResult FinishedExternalRequest(",
+          "count": 1
+        },
+        {
+          "find": "GetRunningServiceWorkerInfos() = 0;",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "content/public/browser/service_worker_context_observer.h",
+      "inputSha256": "f6e432b9c8e2758c6b334be695a6366857e1a3ca13ccaa02e1fe659c0b1d5943",
+      "countedAnchors": [
+        {
+          "find": "virtual void OnVersionStoppingRunning(int64_t version_id)",
+          "count": 1
+        },
+        {
+          "find": "virtual void OnDestruct(ServiceWorkerContext* context)",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "content/public/browser/service_worker_running_info.h",
+      "inputSha256": "880925209abdcbb10495f0c8a2aaca887b7d423de05d27581928c0314eee9383",
+      "countedAnchors": [
+        {
+          "find": "blink::ServiceWorkerToken token;",
+          "count": 1
+        },
+        {
+          "find": "blink::StorageKey key;",
+          "count": 1
+        },
+        {
+          "find": "ServiceWorkerVersionStatus version_status;",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "content/public/browser/service_worker_external_request_timeout_type.h",
+      "inputSha256": "506286a5613a4965ced1e408851a35986739a2b11305c1c7d1d9b81fd9290fd7",
+      "countedAnchors": [
+        {
+          "find": "kDoesNotTimeout,",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "content/public/browser/service_worker_external_request_result.h",
+      "inputSha256": "dd76e3b86b3f6aab2d7de78472b1e311f794ffb6eacbe4d7f5457ba1f4ab9299",
+      "countedAnchors": [
+        {
+          "find": "kOk = 0,",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "content/public/browser/render_process_host.h",
+      "inputSha256": "d006289a29392058eedca6d862c1656c4daad0c28841eb5baa2239ca1daa57de",
+      "countedAnchors": [
+        {
+          "find": "virtual StoragePartition* GetStoragePartition() = 0;",
+          "count": 1
+        },
+        {
+          "find": "virtual bool IsInitializedAndNotDead() = 0;",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "extensions/common/manifest_handlers/background_info.h",
+      "inputSha256": "436467850a32c3588c023c8c0d1e11d1782e3d2fef54e2eab1c9b07cebd19f24",
+      "countedAnchors": [
+        {
+          "find": "static const GURL& GetBackgroundServiceWorkerScriptURL(",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "extensions/browser/process_manager_observer.h",
+      "inputSha256": "c5aa3709f61df1876e3af0209d2904b8d600a2884edcb9ee481618fe49aa7202",
+      "countedAnchors": [
+        {
+          "find": "virtual void OnStartedTrackingServiceWorkerInstance(",
+          "count": 1
+        },
+        {
+          "find": "virtual void OnProcessManagerShutdown(",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "extensions/browser/extension_registry_observer.h",
+      "inputSha256": "33ba8df587278c281ff27fd49f175c642705ebffcf055221b7d6107f17581287",
+      "countedAnchors": [
+        {
+          "find": "virtual void OnExtensionUnloaded(",
+          "count": 1
+        },
+        {
+          "find": "virtual void OnShutdown(",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/aux/component_bootstrap.h",
+      "inputSha256": "712bd86de1bbed01daed81bf630b10c51a42dceedf84657ccfbf63c8aec22131",
+      "countedAnchors": [
+        {
+          "find": "inline constexpr char kAgentExtensionId[] = \"gokkffaiccpmoeodpmeamcjajcagjmkm\";",
+          "count": 1
+        }
+      ]
+    }
+  ],
+  "countedSource": [
+    {
+      "find": "return left == right && left.start_token && right.start_token &&",
+      "count": 1
+    },
+    {
+      "find": "left.start_token == right.start_token;",
+      "count": 1
+    },
+    {
+      "find": "manager->GetContextIdForWorker(workers.front()) != context_id_",
+      "count": 1
+    },
+    {
+      "find": "found->second.key == blink::StorageKey::CreateFirstParty(extension.origin())",
+      "count": 1
+    },
+    {
+      "find": "external_held_ = context_->StartingExternalRequest(",
+      "count": 1
+    },
+    {
+      "find": "keepalive_id_) == ExternalResult::kOk;",
+      "count": 1
+    },
+    {
+      "find": "context_->FinishedExternalRequest(worker_.version_id, keepalive_id_) != ExternalResult::kOk",
+      "count": 1
+    },
+    {
+      "find": "event->restrict_to_dispatch_target = extensions::Event::DispatchTarget{",
+      "count": 1
+    },
+    {
+      "find": "!sender.is_from_service_worker() || sender.render_frame_host()",
+      "count": 2
+    },
+    {
+      "find": "return *sender.worker_id() == worker_;",
+      "count": 1
+    },
+    {
+      "find": "operation != Name(found->second.operation)",
+      "count": 1
+    },
+    {
+      "find": "Text(report, \"requestId\", prepare_request_)",
+      "count": 4
+    },
+    {
+      "find": "report.FindBool(\"noLeaseCreated\") == true && report.FindInt(\"deferredCount\") == 0",
+      "count": 1
+    },
+    {
+      "find": "settled_result_ = result.Clone();",
+      "count": 1
+    },
+    {
+      "find": "superseded.Set(\"requestId\", iterator->first).Set(\"transportSuperseded\", true);",
+      "count": 1
+    }
+  ],
+  "workerProducerOutputSha256": "02b2288a0c1691a1e55d4f16c1db1147385da5b7030740b62c37432a191591cc",
+  "workerProducerProtocolSha256": "bc348d82cee1f5afdbf524543a964368cf2f6ebab4d10526760e79411d861757",
+  "actualApiSignaturesAndTargetDispatchSemanticsRead": true,
+  "workerIdTokenEqualityAndUncheckedWrapperDifferenceRecorded": true,
+  "sourceOnly": true,
+  "nativeCompiled": false,
+  "nativeExecuted": false,
+  "productExecuted": false,
+  "completeWriterCoverage": false,
+  "runtimeAccepted": false
+}

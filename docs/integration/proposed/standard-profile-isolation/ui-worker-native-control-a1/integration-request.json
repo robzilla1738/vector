@@ -1,0 +1,47 @@
+{
+  "format": "aux.ui-worker-native-control.integration-request.v1",
+  "baselineCommit": "d0d005d8c",
+  "files": [
+    {
+      "path": "chrome/browser/aux/ui_storage_migration_worker.h",
+      "operation": "create",
+      "inputSha256": null,
+      "expectedNativeTargetAbsent": true,
+      "source": "/Users/rcourson/.codex/worktrees/aux-features-navigation/web/docs/integration/proposed/standard-profile-isolation/ui-worker-native-control-a1/source/chrome/browser/aux/ui_storage_migration_worker.h",
+      "outputSha256": "e994ad290428a766623326d510d0499a54a4d24982faab92d09eddc8f253ce26"
+    },
+    {
+      "path": "chrome/browser/aux/ui_storage_migration_worker.cc",
+      "operation": "create",
+      "inputSha256": null,
+      "expectedNativeTargetAbsent": true,
+      "source": "/Users/rcourson/.codex/worktrees/aux-features-navigation/web/docs/integration/proposed/standard-profile-isolation/ui-worker-native-control-a1/source/chrome/browser/aux/ui_storage_migration_worker.cc",
+      "outputSha256": "50bbe678f75f41586530ffbbbb9a616de2ed9c4d65b4771e89784d571c8b8caa"
+    }
+  ],
+  "sourcePlanSha256": "24bcbd77e9f1b67fb48aff1e73dc1cdb6646da55badad86b63b14d22f8eaebd8",
+  "workerProducerIntegrationRequest": "docs/integration/proposed/standard-profile-isolation/ui-background-writer-closure-a1/integration-request.json",
+  "workerProducerIntegrationRequestSha256": "1032dd9446be2ae31975450e9fc2934dd812337fae4fd73680f67ad33a531600",
+  "publicNativeFunctions": [
+    "BeginUiStorageMigrationWorker",
+    "ReadUiStorageMigrationWorker",
+    "ValidateUiStorageMigrationWorker",
+    "ReleaseUiStorageMigrationWorker",
+    "IsUiStorageMigrationWorkerPending",
+    "HasValidUiStorageMigrationWorkerLease",
+    "AcceptUiStorageMigrationWorkerReply"
+  ],
+  "rootRegistrationsRequired": [
+    "GN:new source pair",
+    "API:auxBrowserPreferences.onUiMigrationWorkerControl",
+    "API:auxBrowserPreferences.replyUiMigrationWorkerControl",
+    "ExtensionFunction reply registration and histogram",
+    "event histogram:AUXBROWSERPREFERENCES_ONUIMIGRATIONWORKERCONTROL"
+  ],
+  "rootAndOrganizationOwnActualProjectionRegistrationControllerStageBuildPackageAndObservation": true,
+  "nativeCompiled": false,
+  "nativeExecuted": false,
+  "productExecuted": false,
+  "completeWriterCoverage": false,
+  "runtimeAccepted": false
+}

@@ -3,7 +3,7 @@
   "baselineCommit": "f82c3229a",
   "actualModule": "background.js",
   "predecessorSha256": "bd97a84088d75a0a58a7f9519336b277f2dd0ec5adbee7e843e85c6ac2f8d032",
-  "outputSha256": "10c6d6328b07da44751a9c86b95bcbdb4da8e2b29235dd0f36abd0929f1a246e",
+  "outputSha256": "02b2288a0c1691a1e55d4f16c1db1147385da5b7030740b62c37432a191591cc",
   "provenanceInputsToRegister": [
     {
       "path": "vendor/provided/aux-ui-background-writer-closure.mjs",
@@ -11,11 +11,11 @@
     },
     {
       "path": "vendor/provided/aux-ui-background-writer-runtime.js.txt",
-      "sha256": "655ef370f4fbee12fe73a3ea20f60c518b64511ea593ad59ff5d599af51a3ea9"
+      "sha256": "abf70036fdedb3aa0a3af3e3ac18241d7c096b14cdc8e8b9a7d2e8238cc8f823"
     },
     {
       "path": "docs/integration/proposed/standard-profile-isolation/ui-background-writer-closure-a1/inputs.json",
-      "sha256": "06a2166aa0577b2c697f6758fa0a3ec2271fd947062b703d52c4587ccc0db9d3"
+      "sha256": "9f102bcf77f520947e379b8cd062ba19e285300e6f73f507c23fe236d604ef8d"
     }
   ],
   "sharedCompositionRequests": [
@@ -50,9 +50,9 @@
     "release"
   ],
   "maximumResultJsonUtf8Bytes": 65536,
-  "protocolSha256": "d2801997d363d91935dec1f031ab20107acd616d7ddd9ae0a17804d6012c9f76",
-  "sourcePlanSha256": "c2b622005b98bbbc08c34c6d59c611ed6c753fb2fc41024b3829d48f6b250256",
-  "focusedReceiptSha256": "189e5e61e0b4322b480bf5e3674b3c81b93e2f0615e5e38e4583ee051b59d138",
+  "protocolSha256": "bc348d82cee1f5afdbf524543a964368cf2f6ebab4d10526760e79411d861757",
+  "sourcePlanSha256": "81f74f6c6049ff7e708b768243757bfdd33043a1d8c143d46f611279200d239a",
+  "focusedReceiptSha256": "7af4c09763754fdae3412684e148d9bdb9c8323f555a12bcc04ff2511a01e34a",
   "rootOwnsSchemaNativeReplySenderBindingCompositionRevisionStageAndPackage": true,
   "nativeExecuted": false,
   "productExecuted": false,

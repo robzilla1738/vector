@@ -34,7 +34,7 @@ release. No worker data grants identity or admission.
 ## Focused evidence
 
 `project-ui.mjs` verifies counted replay, exact input pins, syntax, original class
-preservation and state-version refusal. `check.mjs` runs ten bounded synthetic
+preservation and state-version refusal. `check.mjs` runs eleven bounded synthetic
 cases against the actual projected source and original callback bodies:
 
 - Original nested storage completions drain; queued arguments preserve intent
@@ -72,3 +72,11 @@ SHA and byte equivalence with the pinned revision29/a2 predecessor. This checks
 the actual final staged pipeline rather than mistaking an intermediate pure
 feature-composition output for the installed/staged product. No source rebase or
 older fixture substitution is involved.
+
+The correlated pre-lease refusal follow-up retains immutable request correlation
+for known no-op starts. It lets a genuine same-worker native consumer balance
+its own successful external request without leaking that reference, while still
+reporting failure and refusing any drain/readiness inference. Missing replies and
+actual post-lease uncertainty remain retained. The focused check confirms failed
+attempt replay is read-only, a fresh UUID can start after registration, and a
+post-lease active-owner failure never reports no-lease creation.

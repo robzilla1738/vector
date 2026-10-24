@@ -1,6 +1,6 @@
 // Native owns Profile/Extension/actual serviceworker identity. Reports are data.
 const auxWorkerPending=new Map,auxWorkerUnknown=new Set,auxWorkerDeferred=[];
-let auxWorkerLease=null,auxWorkerLastRelease=null,auxWorkerRevision=0,auxWorkerStarted=false,auxWorkerInspector=null;
+let auxWorkerLease=null,auxWorkerLastRelease=null,auxWorkerLastNoLease=null,auxWorkerRevision=0,auxWorkerStarted=false,auxWorkerInspector=null;
 const auxWorkerFormat="aux.ui-background-writer-lease.v1",auxWorkerUuid=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 function auxWorkerAdvance(){
   if(auxWorkerRevision===Number.MAX_SAFE_INTEGER){auxWorkerUnknown.add("revision-exhausted");return}
@@ -52,11 +52,12 @@ function auxWorkerReport(){
   const counts=Object.create(null);
   for(const {kind} of auxWorkerPending.values())counts[kind]=(counts[kind]??0)+1;
   const closed=!!lease&&lease.phase==="held"&&lease.revision===auxWorkerRevision&&!auxWorkerPending.size&&!auxWorkerUnknown.size&&!inspectionError;
-  return{format:auxWorkerFormat,ok:closed,retained:!!lease,requestId:lease?.requestId??auxWorkerLastRelease?.requestId,
+  return{format:auxWorkerFormat,ok:closed,retained:!!lease,requestId:lease?.requestId??auxWorkerLastNoLease?.requestId??auxWorkerLastRelease?.requestId,
     leaseId:lease?.id??auxWorkerLastRelease?.leaseId,revision:lease?.revision??auxWorkerLastRelease?.revision,
     phase:lease?.phase??"open",closed,pendingCount:auxWorkerPending.size,deferredCount:auxWorkerDeferred.length,
     pendingKinds:counts,unknownKinds:[...auxWorkerUnknown].sort(),released:!lease&&!!auxWorkerLastRelease,
-    ...inspectionError?{error:inspectionError}:!closed?{error:"Worker writers are pending, unknown, or not held"}:{}};
+    ...!lease&&auxWorkerLastNoLease?{attemptState:"not-started",noLeaseCreated:true,error:auxWorkerLastNoLease.error}:
+      inspectionError?{error:inspectionError}:!closed?{error:"Worker writers are pending, unknown, or not held"}:{}};
 }
 function auxWorkerCopyArguments(args){
   if(!auxWorkerLease)return args;
@@ -74,16 +75,24 @@ function auxWorkerAlarmCreate(...args){
   const captured=auxWorkerCopyArguments(args);
   return auxWorkerPhysical("chrome-alarm",()=>chrome.alarms.create(...captured));
 }
+function auxWorkerRefuseBeforeLease(requestId,error){
+  // Only reviewed branches before assigning a lease can record this state.
+  // No held/deferred producer work is discarded or called complete.
+  if(auxWorkerLease||auxWorkerDeferred.length)return auxWorkerReport();
+  auxWorkerLastRelease=null;auxWorkerLastNoLease={requestId,error};
+  return auxWorkerReport();
+}
 async function auxWorkerPrepare(requestId){
   if(typeof document!=="undefined"||typeof window!=="undefined")return{format:auxWorkerFormat,ok:false,error:"A background serviceworker context is required"};
   if(typeof requestId!=="string"||!auxWorkerUuid.test(requestId))return{format:auxWorkerFormat,ok:false,error:"A canonical worker prepare request ID is required"};
+  if(auxWorkerLastNoLease?.requestId===requestId||auxWorkerLastRelease?.requestId===requestId)return auxWorkerReport();
   if(auxWorkerLease)return auxWorkerLease.requestId===requestId?auxWorkerReport():
     {format:auxWorkerFormat,ok:false,retained:true,error:"Another worker lease is already retained"};
-  if(!auxWorkerStarted||!auxWorkerInspector)return{format:auxWorkerFormat,ok:false,retained:false,error:"Worker producer registration is incomplete"};
+  if(!auxWorkerStarted||!auxWorkerInspector)return auxWorkerRefuseBeforeLease(requestId,"Worker producer registration is incomplete");
   let id;
-  try{id=crypto.randomUUID()}catch{return{format:auxWorkerFormat,ok:false,error:"Worker lease identity unavailable"}}
-  if(!auxWorkerUuid.test(id))return{format:auxWorkerFormat,ok:false,error:"Worker lease identity unavailable"};
-  const lease={id,requestId,revision:null,phase:"preparing"};auxWorkerLease=lease;
+  try{id=crypto.randomUUID()}catch{return auxWorkerRefuseBeforeLease(requestId,"Worker lease identity unavailable")}
+  if(typeof id!=="string"||!auxWorkerUuid.test(id))return auxWorkerRefuseBeforeLease(requestId,"Worker lease identity unavailable");
+  const lease={id,requestId,revision:null,phase:"preparing"};auxWorkerLastNoLease=null;auxWorkerLastRelease=null;auxWorkerLease=lease;
   // No timer can turn incomplete physical callbacks into a closed writer set.
   while(auxWorkerLease===lease&&auxWorkerPending.size){
     const completions=[...auxWorkerPending.values()].map(work=>work.completion);

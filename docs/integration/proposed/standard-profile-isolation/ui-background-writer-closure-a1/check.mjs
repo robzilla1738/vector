@@ -107,8 +107,15 @@ function bridgeFixture(f,operation){
 }
 // Module startup and actual active tab-capture owner inspection are mandatory.
 {
- const f=fixture({started:false});assert.equal((await f.api.prepare(request)).ok,false);
- f.api.install(()=>{throw Error('Tab capture subscribers are still active')});assert.equal((await f.api.prepare(request)).ok,false);cases++;
+ const f=fixture({started:false});const refusal=plain(await f.api.prepare(request));assert.equal(refusal.ok,false);
+ assert.equal(refusal.noLeaseCreated,true);assert.equal(refusal.requestId,request);assert.equal(refusal.retained,false);assert.equal(refusal.closed,false);
+ f.api.install(()=>{});assert.equal((await f.api.prepare(request)).noLeaseCreated,true);assert.equal(f.api.read().requestId,request);
+ const lease=await f.api.prepare(rpc);assert.equal(lease.ok,true);assert.equal('noLeaseCreated' in lease,false);
+ f.api.release(lease.leaseId);assert.equal((await f.api.prepare(rpc)).released,true);cases++;
+}
+{
+ const f=fixture({inspector:()=>{throw Error('Tab capture subscribers are still active')}});
+ const refusal=await f.api.prepare(request);assert.equal(refusal.ok,false);assert.equal(refusal.retained,true);assert.equal('noLeaseCreated' in refusal,false);cases++;
 }
 // Prove final post-feature composition matches the pinned canonical predecessor.
 const baseline='/private/tmp/aux-ui-draft-capture-stage-20261024-a3/baseline/agent/background.js';
@@ -120,7 +127,7 @@ const receipt={format:'aux.ui-background-writer-closure.focused.actual.v1',passe
  actualProjectedBridgeCommandAndDisconnectMethodsExecuted:true,actualSuppliedSignTimeoutAndContextMenuCallbacksExecuted:true,
  nativePromiseCompletionNotAbortMapClearOrCallerCatch:true,deferredIntentBytesRetained:true,unknownOutcomesNeverReset:true,
  knownDeferredCommandCancellationRetainsOriginalReplySemantics:true,freshNativeRpcAndRetainedCaptureCorrelationChecked:true,
- startupAndActiveCaptureOwnerRefusalChecked:true,lastPostFeatureCompositionPassed:true,nativeContracts,
+ startupAndActiveCaptureOwnerRefusalChecked:true,immutableCorrelatedPreLeaseRefusalAndReleasedAttemptObservationChecked:true,lastPostFeatureCompositionPassed:true,nativeContracts,
  sourcePlanSha256:sha(await readFile(new URL('source-plan.json',here))),syntheticNativeCallbacksOnly:true,
  nativeExecuted:false,productExecuted:false,completeWriterCoverage:false,runtimeAccepted:false};
 await writeFile(new URL('actual-focused-a1.json',here),JSON.stringify(receipt,null,2)+'\n');console.log(JSON.stringify(receipt));

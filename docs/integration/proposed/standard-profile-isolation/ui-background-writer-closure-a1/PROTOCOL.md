@@ -82,3 +82,21 @@ source producer does not claim generic remote server durability, response-body
 completion after an unjoined fetch, or native writes inside arbitrary commands
 whose underlying callback is not joined. Those require their actual native and
 daemon drain owners; no report field substitutes for them.
+
+## Authenticated refusal before a lease exists
+
+Only actual reviewed branches before assigning `auxWorkerLease` may retain
+`{requestId,attemptState:"not-started",noLeaseCreated:true,retained:false,
+closed:false,ok:false,phase:"open",released:false}` with zero deferred jobs and
+no lease/revision keys. These branches are incomplete synchronous producer
+registration or unavailable/invalid generated lease UUID; no source freeze or
+deferred work was created. `read` observes that immutable last attempt. Repeating
+prepare for the same refused or released request ID only observes; a fresh native
+request is required for a new attempt.
+
+An authenticated matching native reply may let native retire ONLY its own checked
+external lifetime reference and report failed/unqualified/no producer lease.
+Pending ordinary callbacks or unknown physical results are not called drained.
+Missing, malformed, wrong-attempt or merely undeliverable replies are insufficient.
+A held/preparing source lease must instead use exact correlated release, restoring
+and replaying its actual deferred callbacks before native retires its own hold.

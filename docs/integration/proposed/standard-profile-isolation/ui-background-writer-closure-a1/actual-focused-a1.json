@@ -1,7 +1,7 @@
 {
   "format": "aux.ui-background-writer-closure.focused.actual.v1",
   "passed": true,
-  "cases": 10,
+  "cases": 11,
   "actualProjectedBridgeCommandAndDisconnectMethodsExecuted": true,
   "actualSuppliedSignTimeoutAndContextMenuCallbacksExecuted": true,
   "nativePromiseCompletionNotAbortMapClearOrCallerCatch": true,
@@ -10,6 +10,7 @@
   "knownDeferredCommandCancellationRetainsOriginalReplySemantics": true,
   "freshNativeRpcAndRetainedCaptureCorrelationChecked": true,
   "startupAndActiveCaptureOwnerRefusalChecked": true,
+  "immutableCorrelatedPreLeaseRefusalAndReleasedAttemptObservationChecked": true,
   "lastPostFeatureCompositionPassed": true,
   "nativeContracts": [
     {
@@ -21,7 +22,7 @@
       "sha256": "54a24ce3f49d14121b8df9aaac18ad72ce3d88dd5ff8b748c483577a706c3a9e"
     }
   ],
-  "sourcePlanSha256": "c2b622005b98bbbc08c34c6d59c611ed6c753fb2fc41024b3829d48f6b250256",
+  "sourcePlanSha256": "81f74f6c6049ff7e708b768243757bfdd33043a1d8c143d46f611279200d239a",
   "syntheticNativeCallbacksOnly": true,
   "nativeExecuted": false,
   "productExecuted": false,

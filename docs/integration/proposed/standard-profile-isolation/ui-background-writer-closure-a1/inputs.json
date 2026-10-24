@@ -5,7 +5,7 @@
   "originalSha256": "ed19abc67a8a23d7868005ea1db84e2abe3a3f70609ab7b4ab2c1455c92131f7",
   "predecessor": "/private/tmp/aux-feature-completion-ui-stage-20261024-a2/agent/background.js",
   "predecessorSha256": "bd97a84088d75a0a58a7f9519336b277f2dd0ec5adbee7e843e85c6ac2f8d032",
-  "runtimeSha256": "655ef370f4fbee12fe73a3ea20f60c518b64511ea593ad59ff5d599af51a3ea9",
+  "runtimeSha256": "abf70036fdedb3aa0a3af3e3ac18241d7c096b14cdc8e8b9a7d2e8238cc8f823",
   "rules": [
     {
       "find": "chrome.storage.local.set(",
