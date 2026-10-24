@@ -1,0 +1,11 @@
+{
+  "format": "aux.owned-unstarted-package-queue.retired.v1",
+  "pid": 49637,
+  "verifiedCommand": "/opt/homebrew/Cellar/python@3.15/3.15.0_1/Frameworks/Python.framework/Versions/3.15/Resources/Python.app/Contents/MacOS/Python scripts/native-build.py python3 docs/integration/proposed/standard-profile-isolation/integration/finalize-browser-a8.py",
+  "hadChildren": false,
+  "finalizerStarted": false,
+  "reason": "Actual source/native preflight found exact SDK libbsm alias rejected; retire only unstarted v8 queue for corrected successor",
+  "buildSessionUntouched": 52546,
+  "packageSession": 12572,
+  "appLifecycleChanged": false
+}
