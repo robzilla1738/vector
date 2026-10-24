@@ -1,0 +1,17 @@
+{
+  "format": "aux.content-policy-ack.argv-parser-correction.v1",
+  "files": [
+    {
+      "path": "sandbox/mac/seatbelt_exec.cc",
+      "beforeSha256": "295acddbf4b1f826e5905ada451cd895135435c7c12ef1f129cb02738fcbbc62",
+      "afterSha256": "be6cf6300d90eda0f3f0d5150d53c8796990c1f58c37711d4c99026f13b4a751"
+    }
+  ],
+  "anchors": 1,
+  "anchorsSha256": "aa2fbce2949c411a4c646e831ef1c7c8cb57e0a58e57ab39998d18d6bb2e3417",
+  "patchSha256": "351ebf56d5a379e39b6c6a173399acd89ab612abcb8cd03edb8d999902e1afb6",
+  "baselineSource": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/sandbox/mac/seatbelt_exec.cc",
+  "literalReplayPassed": true,
+  "nativeCompiled": false,
+  "runtimeExecuted": false
+}

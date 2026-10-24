@@ -1,0 +1,26 @@
+--- a/sandbox/mac/seatbelt_exec.cc
++++ b/sandbox/mac/seatbelt_exec.cc
+@@ -241,5 +241,18 @@
+-      const char* value = UNSAFE_TODO(argv[i] + strlen(switches::kAuxSeatbeltReceipt));
+-      char* end = nullptr;
+-      long parsed = strtol(value, &end, 10);
+-      if (!end || *end || parsed < 0 || parsed > INT_MAX) duplicate_receipt = true;
+-      else receipt_fd = static_cast<int>(parsed);
++      // argc/argv supplies NUL-terminated strings for these in-range indices.
++      // Copy through the same narrow argv access used by the existing client
++      // switch parser below; all subsequent parsing uses bounded string storage.
++      const std::string receipt_arg(UNSAFE_TODO(argv[i]));
++      const std::string value =
++          receipt_arg.substr(strlen(switches::kAuxSeatbeltReceipt));
++      int parsed = 0;
++      bool valid = !value.empty();
++      for (char digit : value) {
++        if (digit < '0' || digit > '9' ||
++            parsed > (INT_MAX - (digit - '0')) / 10) {
++          valid = false;
++          break;
++        }
++        parsed = parsed * 10 + (digit - '0');
++      }
++      if (!valid) duplicate_receipt = true;
++      else receipt_fd = parsed;
