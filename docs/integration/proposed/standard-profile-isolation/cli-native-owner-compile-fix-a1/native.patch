@@ -1,0 +1,80 @@
+--- a/base/process/mac/aux_browser_descendant_cli_membership.h
++++ b/base/process/mac/aux_browser_descendant_cli_membership.h
+@@ -1,5 +1,6 @@
+ #pragma once
+ #include <bsm/audit.h>
++#include <mach/mach.h>
+ #include <cstdint>
+ #include <dlfcn.h>
+ namespace aux::browser_descendants {
+--- a/chrome/browser/aux/cli/AuxCliIngress.cc
++++ b/chrome/browser/aux/cli/AuxCliIngress.cc
+@@ -120,7 +120,16 @@
+  auto state=std::make_shared<State>();state->images=SealedImages::ForCurrentBrowser();
+  if(!state->images||!state->service.Create()||mach_port_insert_right(mach_task_self(),state->service.value,state->service.value,MACH_MSG_TYPE_MAKE_SEND)!=KERN_SUCCESS)return{};
+  Right send;send.value=state->service.value;
+- if(!state->images->RevalidateSelf()||bootstrap_register(bootstrap_port,const_cast<char*>(state->images->service().c_str()),send.value)!=KERN_SUCCESS||!state->images->RevalidateSelf())return{};
++ if(!state->images->RevalidateSelf())return{};
++ // A dynamic private service has no installed launchd declaration. check_in
++ // would require unrelated installation and is not an equivalent replacement.
++ // Keep this one real checked registration; do not suppress other diagnostics.
++#pragma clang diagnostic push
++#pragma clang diagnostic ignored "-Wdeprecated-declarations"
++ const auto registered=bootstrap_register(bootstrap_port,
++     const_cast<char*>(state->images->service().c_str()),send.value);
++#pragma clang diagnostic pop
++ if(registered!=KERN_SUCCESS||!state->images->RevalidateSelf())return{};
+  return std::unique_ptr<Ingress>(new Ingress(std::move(state)));
+ }
+ std::unique_ptr<Invocation> Ingress::ReceiveOne(uint32_t timeout){
+--- a/chrome/browser/aux/cli/AuxCliSealedImages.cc
++++ b/chrome/browser/aux/cli/AuxCliSealedImages.cc
+@@ -171,7 +171,8 @@
+ }
+ bool SealedImages::ValidateCliLaunchResources()const{
+   if(!RevalidateSelf())return false;
+-  std::vector<int> held;struct Cleanup{std::vector<int>& values;~Cleanup(){for(auto it=values.rbegin();it!=values.rend();++it)close(*it);}}cleanup{held};
++  struct Cleanup{std::vector<int> values;~Cleanup(){for(auto it=values.rbegin();it!=values.rend();++it)close(*it);}}cleanup;
++  auto& held=cleanup.values;
+   auto metadata=[](int fd,bool directory,struct stat* out){
+     if(fstat(fd,out)!=0||out->st_uid!=0||(out->st_mode&0022)|| (directory?!S_ISDIR(out->st_mode):(!S_ISREG(out->st_mode)||out->st_nlink!=1||out->st_size<=0||out->st_size>32*1024*1024)))return false;
+     errno=0;acl_t acl=acl_get_fd_np(fd,ACL_TYPE_EXTENDED);if(!acl)return errno==ENOENT;acl_entry_t entry=nullptr;errno=0;const bool empty=acl_valid(acl)==0&&acl_get_entry(acl,ACL_FIRST_ENTRY,&entry)==-1&&errno==EINVAL&&entry==nullptr;acl_free(acl);return empty;
+--- a/chrome/browser/aux/cli/AuxCliOpenCommand.mm
++++ b/chrome/browser/aux/cli/AuxCliOpenCommand.mm
+@@ -7,6 +7,7 @@
+ #include "chrome/browser/aux/profile_identity.h"
+ #include "base/functional/bind.h"
+ #include "base/memory/weak_ptr.h"
++#include "base/no_destructor.h"
+ #include "base/strings/utf_string_conversions.h"
+ #include "base/task/single_thread_task_runner.h"
+ #include "base/threading/thread.h"
+@@ -265,10 +266,19 @@
+   std::atomic_bool closing_{false},running_{false};
+   std::atomic_uint64_t queued_{0};
+ };
+-namespace {std::shared_ptr<NativeOpenService> service;bool start_attempted=false;}
++namespace {
++std::shared_ptr<NativeOpenService>& RetainedService(){
++  // Actual Close/join and retained counters remain explicit. Static teardown
++  // must not destroy a service/thread or manufacture a settled observation.
++  static base::NoDestructor<std::shared_ptr<NativeOpenService>> service;
++  return *service;
++}
++bool start_attempted=false;
++}
+ bool StartNativeOpenServiceAtActualBrowserStartup(){
+   DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
+   if(getpid()!=kProcess || start_attempted || !ActualNativeReady())return false;
++  auto& service=RetainedService();
+   start_attempted=true;Counters().started.store(true);service=std::make_shared<NativeOpenService>();
+   if(!service->Start())return false;
+   admission_closed=false;Counters().closed.store(false);return true;
+@@ -276,6 +286,7 @@
+ void CloseNativeOpenServiceAdmission(){
+   DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
+   if(getpid()!=kProcess)return;
++  auto& service=RetainedService();
+   admission_closed=true;Counters().closed.store(true);if(service)service->Close();
+   // Cancellation can reenter this map through the actual OS reply callback.
+   auto actual=Pending();for(auto& [identity,operation]:actual)operation->Cancel(78);
