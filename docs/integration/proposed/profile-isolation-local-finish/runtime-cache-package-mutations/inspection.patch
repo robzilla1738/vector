@@ -1,0 +1,40 @@
+--- a/AuxRuntimeCacheInspection.inc
++++ b/AuxRuntimeCacheInspection.inc
+@@ -1,6 +1,7 @@
+ // Private host implementation. Include in its anonymous namespace; no C ABI,
+ // JS pathname, caller FD, pin inventory or owner selector is exposed.
+ namespace aux_runtime_cache {
++#include "AuxRuntimeMutablePins.inc"
+ enum class Status { kMatchingSeed, kIncomplete, kModifiedUnverified,
+                     kNewerUnverified, kOtherVersionUnverified, kUnsafe, kCancelled };
+ struct Anchor { const char* find; const char* replacement; size_t count; bool runtime_root; };
+@@ -99,24 +100,24 @@
+   const auto raw_version=version.text;
+   if(version.oversize||!Version(&version.text))return result;
+   if(version.text!=source_version){result.status=NumericNewer(version.text,source_version)?Status::kNewerUnverified:Status::kOtherVersionUnverified;return result;}
+-  auto fail=[&](){if(errno==ENOENT)++result.missing;else ++result.unsafe;};
++  auto fail=[&](const Pin& pin){if(errno==ENOENT){if(MissingMayBePackageMutation(pin.path))++result.modified;else ++result.missing;}else ++result.unsafe;};
+   for(size_t i=0;i<count;++i){
+     if(!current()){result.status=Status::kCancelled;return result;}
+     const auto& pin=pins[i];Fd parent(Parent(root,pin.path));++result.checked;
+-    if(parent.fd<0){fail();continue;}const char* name=Leaf(pin.path);
++    if(parent.fd<0){fail(pin);continue;}const char* name=Leaf(pin.path);
+     if(pin.type=='d'){
+       Fd fd(openat(parent.fd,name,kRead|O_DIRECTORY));struct stat st{};
+-      if(fd.fd<0||fstat(fd.fd,&st)!=0){fail();continue;}
++      if(fd.fd<0||fstat(fd.fd,&st)!=0){fail(pin);continue;}
+       if(!S_ISDIR(st.st_mode)||!Private(st)){++result.unsafe;continue;}
+       if((st.st_mode&07777)!=pin.mode)++result.modified;
+     }else if(pin.type=='l'){
+       std::array<char,4096> target{};ssize_t size=readlinkat(parent.fd,name,target.data(),target.size());
+-      if(size<0){fail();continue;}
++      if(size<0){fail(pin);continue;}
+       if(static_cast<size_t>(size)!=strlen(pin.target)||memcmp(target.data(),pin.target,size)!=0)++result.unsafe;
+     }else{
+       uint64_t growth=0;for(size_t j=0;j<pin.anchor_count;++j){const auto& a=pin.anchors[j];const size_t n=a.runtime_root?text_root.size():strlen(a.replacement),old=strlen(a.find);if(n>old)growth+=(n-old)*a.count;}
+       auto read=File(parent.fd,name,pin.size+growth,pin.anchor_count>0,current);
+-      if(!read.ok){fail();continue;}
++      if(!read.ok){fail(pin);continue;}
+       if(read.oversize){++result.modified;continue;}
+       bool match=static_cast<uint64_t>(read.identity.st_size)==pin.size&&read.hash==pin.sha256;
+       if(pin.anchor_count)match=ReverseText(&read.text,pin,text_root)&&read.text.size()==pin.size&&Hash(read.text)==pin.sha256;

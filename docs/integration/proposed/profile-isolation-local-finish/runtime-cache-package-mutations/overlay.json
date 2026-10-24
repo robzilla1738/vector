@@ -1,0 +1,27 @@
+{
+  "format": "aux.runtime-package-mutation-overlay.v1",
+  "active": false,
+  "inputInspectionSha256": "9fdc7b754b33861dccb0115bde857f69f6066bb18e57a6d50ec43c0830fdc077",
+  "outputInspectionSha256": "d09f42b7a692e15d3461c094bb8de5bde8539df8bcfec3bc0518881159e73030",
+  "changes": [
+    {
+      "old": "namespace aux_runtime_cache {",
+      "new": "namespace aux_runtime_cache {\n#include \"AuxRuntimeMutablePins.inc\"",
+      "count": 1
+    },
+    {
+      "old": "auto fail=[&](){if(errno==ENOENT)++result.missing;else ++result.unsafe;};",
+      "new": "auto fail=[&](const Pin& pin){if(errno==ENOENT){if(MissingMayBePackageMutation(pin.path))++result.modified;else ++result.missing;}else ++result.unsafe;};",
+      "count": 1
+    },
+    {
+      "old": "fail();",
+      "new": "fail(pin);",
+      "count": 4
+    }
+  ],
+  "addedInclude": "AuxRuntimeMutablePins.inc",
+  "addedIncludeSha256": "13d344158d2e40b7c6c5e7d52b8ea3d19a7fe07b1814e9fbc13edfaeeb79224c",
+  "mutablePins": 4892,
+  "fixedPins": 32
+}

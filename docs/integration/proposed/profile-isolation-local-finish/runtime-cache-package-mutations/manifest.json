@@ -1,0 +1,35 @@
+{
+  "format": "aux.runtime-cache-package-mutations.v1",
+  "active": false,
+  "baseAsyncCommit": "cac025021",
+  "files": [
+    {
+      "path": "README.md",
+      "sha256": "c3f8d572d9fe56cad30d2f6d0d2628f61ff412caab7939e928bbf7d3656fc4f3"
+    },
+    {
+      "path": "generate.py",
+      "sha256": "363c7f976050e880de9bf191e0c0b5869daa36025306f8e1f6b3b253b8497210"
+    },
+    {
+      "path": "inspection.patch",
+      "sha256": "1c5b9c722c99e2efe7d2013c3c82531fb476e8d95194294b1d3dcdc87b8683a0"
+    },
+    {
+      "path": "overlay.json",
+      "sha256": "37cf25810fc8c6e0f6bba25d9633045de95b76ad290775f233b7102e3469ac19"
+    },
+    {
+      "path": "provenance.json",
+      "sha256": "5f0cdebc439e1b5cfdea4dbd0e1056ec622ced353a818ef7253c1b66f495e6b3"
+    },
+    {
+      "path": "source/AuxRuntimeCacheInspection.inc",
+      "sha256": "d09f42b7a692e15d3461c094bb8de5bde8539df8bcfec3bc0518881159e73030"
+    },
+    {
+      "path": "source/AuxRuntimeMutablePins.inc",
+      "sha256": "13d344158d2e40b7c6c5e7d52b8ea3d19a7fe07b1814e9fbc13edfaeeb79224c"
+    }
+  ]
+}
