@@ -1,0 +1,137 @@
+{
+  "format": "aux.native-credential-lock.source-review.v1",
+  "scope": "read-only feasibility; proposed API is not implemented",
+  "inputs": [
+    {
+      "path": "/private/tmp/aux-standard-native-source-20261023-a4/AuxDevelopmentWorkerHost.cc",
+      "sha256": "c9d68ac1284c7521aa857b4422205648e95adec5c3babb86783e15a71c1553a7",
+      "anchors": [
+        {
+          "text": "AuxNativeExecBeginCurrent",
+          "firstLine": 787
+        },
+        {
+          "text": "AuxNativeExecCanSpawn",
+          "firstLine": 846
+        },
+        {
+          "text": "AuxNativeExecUvChildCreated",
+          "firstLine": 871
+        }
+      ]
+    },
+    {
+      "path": "/private/tmp/aux-standard-native-source-20261023-a4/AuxOwnedCommandDispatcher.swift",
+      "sha256": "85153a74b4fc12b5e0374ac58ecdc95f588835b10b38811bf2fb6b267ab1f6b1",
+      "anchors": [
+        {
+          "text": "func copyAuthenticatedStorageRoots",
+          "firstLine": 423
+        },
+        {
+          "text": "AuxNativeContextCopyStorageRoots",
+          "firstLine": 754
+        }
+      ]
+    },
+    {
+      "path": "/private/tmp/aux-standard-native-source-20261023-a4/AuxNativeDaemonMain.cc",
+      "sha256": "a08bdb486d414ae78466b1a385bced411215218c71ee5ce1dcb8908659746ffc",
+      "anchors": [
+        {
+          "text": "bool InstallReadyHomeEnvironment",
+          "firstLine": 65
+        }
+      ]
+    },
+    {
+      "path": "/private/tmp/aux-standard-native-source-20261023-a4/AuxStandardCleanSettlement.inc",
+      "sha256": "57e895d7bf8306ec625956b53a151405ef33d8bda9407c51a0c8ee94d21a4f25",
+      "anchors": [
+        {
+          "text": "worker->broker_pending",
+          "firstLine": 45
+        }
+      ]
+    },
+    {
+      "path": "/private/tmp/aux-standard-native-source-20261023-a4/AuxTaskDescendantObserver.h",
+      "sha256": "60a1a872cad6f791f61061aa7a15d2d8ac3bb7fb8144b5f25c5fabcb3fd44969",
+      "anchors": [
+        {
+          "text": "InitializeAtFreshDaemonEntry",
+          "firstLine": 16
+        },
+        {
+          "text": "DidObserveOriginalReap",
+          "firstLine": 27
+        }
+      ]
+    },
+    {
+      "path": "/private/tmp/aux-async-writes-final/docs/integration/proposed/profile-isolation-next/spawn-custody/source/process_wrap.cc",
+      "sha256": "ca7e729812c0e0d4d7805793d40db74641a53135a8e3dddc20b2fab461547559",
+      "anchors": [
+        {
+          "text": "AuxExecDescriptorOptionsAllowed(options)",
+          "firstLine": 343
+        }
+      ]
+    },
+    {
+      "path": "/private/tmp/aux-async-writes-final/docs/integration/proposed/profile-isolation-next/spawn-custody/source/AuxNativeExecDescriptorPolicy.h",
+      "sha256": "d72c0fe16823cba6ff2636ccd7e5240520b2d3f82d2954459dec231ec64075db",
+      "anchors": [
+        {
+          "text": "options.stdio_count != 3",
+          "firstLine": 13
+        }
+      ]
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/profile-isolation-continuation/broker-writes/source/AuxBrokerWritesNapi.inc",
+      "sha256": "fdac90ec6345980cbdcac929a507afcf67670bde03c18aba23ef07dcd2cc2033",
+      "anchors": [
+        {
+          "text": "BrokerOwner CaptureBrokerOwner",
+          "firstLine": 6
+        },
+        {
+          "text": "napi_value WithBrokerSync",
+          "firstLine": 56
+        }
+      ]
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/vendor/aside/shims/aux-chatgpt.cjs",
+      "sha256": "5fa0b56141c9fb515c6b5ff979340c0958bf3b9dd79fb60a7636357605e73ede",
+      "anchors": [
+        {
+          "text": "async diskLocked",
+          "firstLine": 59
+        },
+        {
+          "text": "schema: 'aux.chatgpt.auth-lock.v2'",
+          "firstLine": 63
+        }
+      ]
+    },
+    {
+      "path": "/usr/share/man/man1/lockf.1",
+      "sha256": "a52f599d9a8a7a82cbc14e72c06dbedb14fc1cd180574f30a489712b80eeb267",
+      "anchors": []
+    },
+    {
+      "path": "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/share/man/man2/flock.2",
+      "sha256": "54195927032ace18230a4f926d9edfbb672fc8706267be00727d203a01b6d616",
+      "anchors": []
+    }
+  ],
+  "newRuntimeApiImplemented": false,
+  "nativeExecuted": false,
+  "providerExecuted": false,
+  "credentialDataRead": false,
+  "testsRun": false,
+  "signingPerformed": false,
+  "existingProtectedInputsChanged": false
+}
