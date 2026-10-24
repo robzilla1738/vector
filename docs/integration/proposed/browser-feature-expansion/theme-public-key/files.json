@@ -1,0 +1,30 @@
+{
+  "scope": "Exact public ColorProviderSource accessor and four existing sidebar calls; inactive proposal only",
+  "files": [
+    {
+      "path": "chrome/browser/ui/views/frame/aux_sidebar_presentation.cc",
+      "baselineOrigin": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/theme/source/chrome/browser/ui/views/frame/aux_sidebar_presentation.cc",
+      "baselineSha256": "0fec157024ad257bfd1fd232ccffccbe16df9658ff2bd8885d149011dc8b01bd",
+      "sourceSha256": "ecc4eea41c75aabe624e98ed4c0a2c4c446b2b76eefe21c9118e8b628ccaa36a"
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_vertical_sidebar_profile_button.cc",
+      "baselineOrigin": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/theme/source/chrome/browser/ui/views/frame/aux_vertical_sidebar_profile_button.cc",
+      "baselineSha256": "bbb05eefa4d6291e4dc96911e50d376c1324c6ca89144682e106df29c0473425",
+      "sourceSha256": "a6f2ddd75d9ed3375903e357fb54b5cf92239db434b872b6437fc4f756368a76"
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_sidebar_view.cc",
+      "baselineOrigin": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/theme/source/chrome/browser/ui/views/frame/aux_sidebar_view.cc",
+      "baselineSha256": "175d63ba832f55e865dcdcaffffe677ee7d1cb43d3635c6e38cd5c6a9395c253",
+      "sourceSha256": "6ad3e83f6b49ff2c40f76ef8f3af22e6d176d7308b0f9afbc6d6686acbb67723"
+    },
+    {
+      "path": "ui/color/color_provider_source.h",
+      "baselineOrigin": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/ui/color/color_provider_source.h",
+      "baselineSha256": "38bf63410c571d5f2506ddef06fb8ab5637cbb0b5b85352bd32130992050bff0",
+      "sourceSha256": "15ec370940d4a082f32d8261cd8846b4157a426629ec5ce1312627fe959c44b5"
+    }
+  ],
+  "patchSha256": "36fce7915cf237bbb713861256af981ede7c011a9a7db1f26c9848a61e889fa4"
+}

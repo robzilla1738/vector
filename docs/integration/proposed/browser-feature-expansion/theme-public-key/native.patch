@@ -1,0 +1,58 @@
+--- a/chrome/browser/ui/views/frame/aux_sidebar_presentation.cc
++++ b/chrome/browser/ui/views/frame/aux_sidebar_presentation.cc
+@@ -32,7 +32,7 @@
+   // from the original private mixer, not a CSS/color-theme approximation.
+   const bool dark = GetWidget()->GetColorMode() == ui::ColorProviderKey::ColorMode::kDark;
+   cc::PaintFlags flags;
+-  flags.setColor(aux_theme::SidebarForeground(GetWidget()->GetColorProviderKey(),
++  flags.setColor(aux_theme::SidebarForeground(GetWidget()->GetCurrentColorProviderKey(),
+       GetColorProvider(), dark ? 0x1afafafa : 0x1a0a0a0a));
+   canvas->DrawRect(gfx::RectF(0, (height() - 0.5f) * 0.5f, width(), 0.5f), flags);
+ }
+--- a/chrome/browser/ui/views/frame/aux_vertical_sidebar_profile_button.cc
++++ b/chrome/browser/ui/views/frame/aux_vertical_sidebar_profile_button.cc
+@@ -181,7 +181,7 @@
+   const bool dark = GetWidget()->GetColorMode() ==
+                     ui::ColorProviderKey::ColorMode::kDark;
+   const auto resolve = [this](SkColor original) {
+-    return aux_theme::SidebarForeground(GetWidget()->GetColorProviderKey(),
++    return aux_theme::SidebarForeground(GetWidget()->GetCurrentColorProviderKey(),
+                                          GetColorProvider(), original);
+   };
+   const SkColor foreground = resolve(dark ? 0xd9fafafa : 0xd90a0a0a);
+@@ -210,7 +210,7 @@
+     cc::PaintFlags flags;
+     flags.setAntiAlias(true);
+     flags.setColor(aux_theme::SidebarForeground(
+-        GetWidget()->GetColorProviderKey(), GetColorProvider(),
++        GetWidget()->GetCurrentColorProviderKey(), GetColorProvider(),
+         GetWidget()->GetColorMode() == ui::ColorProviderKey::ColorMode::kDark
+             ? 0x14fafafa : 0x140a0a0a));
+     canvas->DrawRoundRect(gfx::RectF(GetLocalBounds()), 8, flags);
+--- a/chrome/browser/ui/views/frame/aux_sidebar_view.cc
++++ b/chrome/browser/ui/views/frame/aux_sidebar_view.cc
+@@ -155,7 +155,7 @@
+ constexpr int kRowIconSize = 16;
+ SkColor AuxThemeForeground(const views::View* view, SkColor original) {
+   return view->GetWidget() ? aux_theme::SidebarForeground(
+-      view->GetWidget()->GetColorProviderKey(), view->GetColorProvider(), original)
++      view->GetWidget()->GetCurrentColorProviderKey(), view->GetColorProvider(), original)
+       : original;
+ }
+ 
+--- a/ui/color/color_provider_source.h
++++ b/ui/color/color_provider_source.h
+@@ -39,6 +39,13 @@
+   // in the method `GetColorProvider()` changes.
+   void NotifyColorProviderChanged();
+ 
++  // Snapshot of the actual source key, including profile and widget overrides.
++  // Dispatch through the protected implementation so callers never reconstruct
++  // an approximate key from the operating-system theme.
++  ColorProviderKey GetCurrentColorProviderKey() const {
++    return GetColorProviderKey();
++  }
++
+   // Gets the ColorMode currently associated with this source.
+   ColorProviderKey::ColorMode GetColorMode() const;
+ 
