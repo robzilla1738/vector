@@ -1,0 +1,18 @@
+{
+  "selectedNativeRoot": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/organization/source",
+  "files": [
+    {
+      "path": "chrome/browser/ui/views/frame/aux_organization_window_controller.cc",
+      "baselineOrigin": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/organization/source/chrome/browser/ui/views/frame/aux_organization_window_controller.cc",
+      "baselineSha256": "af7caf37b61f9037e9917246293380d562f50c8022d73812aae1b623e59ff20e",
+      "sourceSha256": "4d1e0687cfaa379290abc78705553f6c2b3e09530418af28820c6aff0fe9a1b1"
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_organization_window_controller.h",
+      "baselineOrigin": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/organization/source/chrome/browser/ui/views/frame/aux_organization_window_controller.h",
+      "baselineSha256": "8b80194c2d5deaa0dabc07f5117318e54e6a175d8fa37a9a28c519b10d7b9e0a",
+      "sourceSha256": "8a152ce00f2accacede2e6d4bc89ed0ffff80ad4c95649d84b59a1e5551d56dc"
+    }
+  ],
+  "patchSha256": "98638e2ed617c0374e3599f840700d51439b6917a424f2aa6a13efa5b3582997"
+}

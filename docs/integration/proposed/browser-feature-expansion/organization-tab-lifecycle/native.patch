@@ -1,0 +1,180 @@
+--- a/chrome/browser/ui/views/frame/aux_organization_window_controller.cc
++++ b/chrome/browser/ui/views/frame/aux_organization_window_controller.cc
+@@ -10,6 +10,8 @@
+ #include "chrome/browser/ui/browser_init_state.h"
+ #include "base/uuid.h"
+ #include "chrome/browser/aux/organization/organization_profile_service.h"
++#include "chrome/browser/aux/ntp_prerender_service.h"
++#include "chrome/common/url_constants.h"
+ #include "chrome/browser/actor/ui/actor_ui_tab_controller.h"
+ #include "chrome/browser/ui/views/frame/aux_split_commands.h"
+ #include "chrome/browser/ui/views/frame/aux_bookmark_tab_exclusion.h"
+@@ -46,10 +48,23 @@
+   auto* owner = organization::OrganizationProfileServiceFactory::GetForProfileIfExists(browser->GetProfile());
+   return owner ? owner->model() : nullptr;
+ }
++// Native NTP authority is the actual enabled manifest/transferred prerender,
++// not a hostname/title guess. Persist its stable browser URL so a later view
++// resolves through that profile's current override/account. Other pages remain
++// distinct logical tabs even when their URLs are equal.
++GURL LogicalTabUrl(content::WebContents& contents, bool allow_visible = false) {
++  const GURL committed = contents.GetLastCommittedURL();
++  auto* profile = Profile::FromBrowserContext(contents.GetBrowserContext());
++  if (IsNtpPrerenderContents(&contents) &&
++      (committed.is_empty() || committed == GURL(chrome::kChromeUINewTabURL) ||
++       IsEligibleNtpPrerenderUrl(profile, committed)))
++    return GURL(chrome::kChromeUINewTabURL);
++  return committed.is_valid() || !allow_visible ? committed : contents.GetVisibleURL();
++}
+ std::vector<organization::Command> NavigationCommands(const organization::Entry& entry,
+                                                      content::WebContents& contents) {
+   std::vector<organization::Command> commands;
+-  const GURL url = contents.GetLastCommittedURL();
++  const GURL url = LogicalTabUrl(contents);
+   if (url.is_valid() && url.spec() != entry.current_url) {
+     organization::Command command; command.action = organization::Action::kUpdateTabUrl;
+     command.id = entry.id; command.url = url.spec(); commands.push_back(std::move(command));
+@@ -79,7 +94,7 @@
+   weak_.InvalidateWeakPtrs();
+   TabStripModelObserver::StopObservingAll(this);
+   ready_subscription_ = {}; model_changes_ = {}; settled_ = {}; session_restored_ = {}; activation_ = {};
+-  ordinary_eligible_.Reset(); views_.clear(); explicit_unloads_.clear(); dirty_navigation_.clear(); dirty_activation_.clear();
++  ordinary_eligible_.Reset(); views_.clear(); candidate_observers_.clear(); explicit_unloads_.clear(); dirty_navigation_.clear(); dirty_activation_.clear();
+   cleanup_ids_.clear(); cleanup_running_ = false; cleanup_waiting_ = false;
+   profile_ = nullptr; model_ = nullptr; active_space_.clear(); restored_space_.clear();
+   Notify();
+@@ -125,7 +140,7 @@
+   if (shutdown_) return;
+   TabStripModelObserver::StopObservingAll(this);
+   weak_.InvalidateWeakPtrs(); ready_subscription_ = {}; model_changes_ = {}; settled_ = {}; session_restored_ = {}; activation_ = {};
+-  views_.clear(); explicit_unloads_.clear(); dirty_navigation_.clear(); dirty_activation_.clear();
++  views_.clear(); candidate_observers_.clear(); explicit_unloads_.clear(); dirty_navigation_.clear(); dirty_activation_.clear();
+   cleanup_ids_.clear(); cleanup_running_ = false; cleanup_waiting_ = false; cleanup_cursor_ = 0;
+   reconcile_queued_ = false; registering_ = false; opening_ = false;
+   profile_ = browser_ ? browser_->GetProfile() : nullptr;
+@@ -227,13 +242,14 @@
+     auto logical = GetRememberedPinnedTabEntryId(*contents).value_or("");
+     if (logical.empty() && existing != views_.end()) { logical = existing->second.logical_id; PersistIdentity(tab->GetHandle(), logical); }
+     if (!logical.empty() && snapshot.entries.contains(logical) && snapshot.entries.at(logical).kind == organization::EntryKind::kTab) {
++      candidate_observers_.erase(tab->GetHandle());
+       const auto& entry = snapshot.entries.at(logical);
+       auto& view = views_[tab->GetHandle()];
+       view.logical_id = logical;
+       view.view_id = PageIdentity::GetOrCreate(profile_, contents);
+       if (!view.observer || view.observer->web_contents() != contents) {
+         view.observer = std::make_unique<PageObserver>(contents, weak_.GetWeakPtr(), tab->GetHandle());
+-        view.loaded_url = contents->GetLastCommittedURL().spec();
++        view.loaded_url = LogicalTabUrl(*contents).spec();
+         view.document_id = base::Uuid::GenerateRandomV4().AsLowercaseString();
+       }
+       if (view.loaded_url == entry.current_url) view.pending_shared_url.clear();
+@@ -247,12 +263,24 @@
+     // never assign an existing record based on URL. Each ordinary tab gets its
+     // own logical ID, even when several URLs are identical.
+     if (tab->IsPinned() || tab->IsSplit() || IsBookmarkTabExcluded(tab, model_) ||
+-        !ordinary_eligible_ || !ordinary_eligible_.Run(*tab) ||
+-        registering_ || organization->pending() || opening_ ||
++        !ordinary_eligible_ || !ordinary_eligible_.Run(*tab)) {
++      candidate_observers_.erase(tab->GetHandle());
++      continue;
++    }
++    const auto* identity = PageIdentity::FromWebContents(contents);
++    if (identity && identity->runtime_owned()) {
++      candidate_observers_.erase(tab->GetHandle());
++      continue;
++    }
++    // An inserted ordinary tab may have no committed or visible URL yet.
++    // Observe it before waiting for URL/registration readiness; otherwise its
++    // first commit is missed and it needs an unrelated tab event to register.
++    auto& candidate = candidate_observers_[tab->GetHandle()];
++    if (!candidate || candidate->web_contents() != contents)
++      candidate = std::make_unique<PageObserver>(contents, weak_.GetWeakPtr(), tab->GetHandle());
++    if (registering_ || organization->pending() || opening_ ||
+         SessionRestore::IsRestoring(profile_) || commands.size() == 512) continue;
+-    const auto* identity = PageIdentity::FromWebContents(contents);
+-    if (identity && identity->runtime_owned()) continue;
+-    const GURL url = contents->GetLastCommittedURL().is_valid() ? contents->GetLastCommittedURL() : contents->GetVisibleURL();
++    const GURL url = LogicalTabUrl(*contents, true);
+     if (!url.is_valid()) continue;
+     organization::Command command; command.action = organization::Action::kCreateTab;
+     command.id = base::Uuid::GenerateRandomV4().AsLowercaseString();
+@@ -296,13 +324,19 @@
+   if (!Current()) return;
+   auto it = views_.find(handle);
+   if (it != views_.end() && handle.Get() && handle.Get()->GetContents())
+-    it->second.loaded_url = handle.Get()->GetContents()->GetLastCommittedURL().spec();
++    it->second.loaded_url = LogicalTabUrl(*handle.Get()->GetContents()).spec();
+   dirty_navigation_.insert(handle); QueueReconcile();
+ }
+ void AuxOrganizationWindowController::PublishNavigation(tabs::TabHandle handle) {
+   auto* organization = Current() ? Organization(browser_.get()) : nullptr;
+   auto* tab = handle.Get();
+-  if (!organization || !tab || !tab->GetContents() || model_->GetIndexOfTab(tab) < 0) return;
++  if (!organization || !tab || !tab->GetContents() || model_->GetIndexOfTab(tab) < 0 ||
++      tab->GetContents()->GetBrowserContext() != profile_) return;
++  // A user tab can later become an Agent/runtime-owned surface. Preserve its
++  // prior canonical user record, but never publish the host's navigation.
++  const auto* identity = PageIdentity::FromWebContents(tab->GetContents());
++  if (IsBookmarkTabExcluded(tab, model_) || (identity && identity->runtime_owned()) ||
++      (!tab->IsPinned() && (!ordinary_eligible_ || !ordinary_eligible_.Run(*tab)))) return;
+   const auto id = GetRememberedPinnedTabEntryId(*tab->GetContents()).value_or("");
+   const auto found = organization->snapshot().entries.find(id);
+   if (found == organization->snapshot().entries.end() || found->second.archived) return;
+@@ -382,7 +416,7 @@
+           controller->Protected(tab) || controller->HasPendingSharedUpdate(id) ||
+           controller->dirty_navigation_.contains(tab->GetHandle()) ||
+           controller->dirty_activation_.contains(tab->GetHandle()) ||
+-          contents->GetLastCommittedURL().spec() != found->second.current_url) {
++          LogicalTabUrl(*contents).spec() != found->second.current_url) {
+         safe = false; return false;
+       }
+     }
+@@ -597,7 +631,7 @@
+       if (!controller || controller->Protected(tab)) { safe = false; return false; }
+       // Do not archive a newly navigated view until its actual URL is durable.
+       const auto logical = GetRememberedPinnedTabEntryId(*contents).value();
+-      if (contents->GetLastCommittedURL().spec() != snapshot.entries.at(logical).current_url) { safe = false; return false; }
++      if (LogicalTabUrl(*contents).spec() != snapshot.entries.at(logical).current_url) { safe = false; return false; }
+       targets.push_back({controller->weak_.GetWeakPtr(), tab->GetHandle()});
+     }
+     return true;
+@@ -708,7 +742,12 @@
+   if (!Current()) return result;
+   for (const auto& [handle, view] : views_) {
+     if (!handle.Get() || model_->GetIndexOfTab(handle.Get()) < 0) continue;
+-    auto* contents = handle.Get()->GetContents(); if (!contents) continue;
++    auto* tab = handle.Get();
++    auto* contents = tab->GetContents();
++    if (!contents || contents->GetBrowserContext() != profile_) continue;
++    const auto* identity = PageIdentity::FromWebContents(contents);
++    if (IsBookmarkTabExcluded(tab, model_) || (identity && identity->runtime_owned()) ||
++        (!tab->IsPinned() && (!ordinary_eligible_ || !ordinary_eligible_.Run(*tab)))) continue;
+     const auto* organization = Organization(browser_.get()); if (!organization) continue;
+     const auto entry = organization->snapshot().entries.find(view.logical_id);
+     if (entry == organization->snapshot().entries.end()) continue;
+@@ -736,12 +775,12 @@
+       (selection.reason & TabStripModelObserver::CHANGE_REASON_USER_GESTURE))
+     RecordActivation(selection.new_tab->GetHandle());
+   if (change.type() == TabStripModelChange::kRemoved) for (const auto& removed : change.GetRemove()->contents) {
+-    if (removed.tab) { views_.erase(removed.tab->GetHandle()); dirty_navigation_.erase(removed.tab->GetHandle()); dirty_activation_.erase(removed.tab->GetHandle()); }
++    if (removed.tab) { views_.erase(removed.tab->GetHandle()); candidate_observers_.erase(removed.tab->GetHandle()); dirty_navigation_.erase(removed.tab->GetHandle()); dirty_activation_.erase(removed.tab->GetHandle()); }
+   }
+   QueueReconcile();
+ }
+ void AuxOrganizationWindowController::OnTabStripModelDestroyed(TabStripModel* model) {
+   if (model_ != model) return;
+-  model_ = nullptr; views_.clear(); dirty_navigation_.clear(); dirty_activation_.clear();
++  model_ = nullptr; views_.clear(); candidate_observers_.clear(); dirty_navigation_.clear(); dirty_activation_.clear();
+ }
+ }  // namespace aux
+--- a/chrome/browser/ui/views/frame/aux_organization_window_controller.h
++++ b/chrome/browser/ui/views/frame/aux_organization_window_controller.h
+@@ -86,6 +86,8 @@
+   raw_ptr<TabStripModel> model_ = nullptr;
+   std::string active_space_, restored_space_;
+   std::map<tabs::TabHandle, ViewRecord> views_;
++  // Unregistered ordinary views still observe their first native commit.
++  std::map<tabs::TabHandle, std::unique_ptr<PageObserver>> candidate_observers_;
+   std::set<tabs::TabHandle> explicit_unloads_;
+   std::set<tabs::TabHandle> dirty_navigation_;
+   std::map<tabs::TabHandle, uint64_t> dirty_activation_;
