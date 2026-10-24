@@ -1,0 +1,15 @@
+{
+  "format": "aux.native-cache-cohort.source-check.actual.v1",
+  "passed": true,
+  "sourcePlanSha256": "6b61232abb23a6f3019ffd857c9b26c7779246a1d4c9ce3ae4631deb3dd5ffe4",
+  "patchSha256": "c5486ef61e6516337f4f5e4f4a1e78205cd063e4db2e0abda591bdf0ebb1c0f8",
+  "files": 11,
+  "countedAnchors": 59,
+  "replayDirectory": "/private/tmp/aux-native-cache-cohort-replay-73mlgym7",
+  "exactReplayPassed": true,
+  "reverseCheckPassed": true,
+  "nativeCheckoutChanged": false,
+  "nativeCompiled": false,
+  "productExecuted": false,
+  "runtimeAcceptance": false
+}
