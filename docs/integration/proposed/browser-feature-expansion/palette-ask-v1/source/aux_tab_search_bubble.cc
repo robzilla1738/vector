@@ -870,6 +870,19 @@ base::DictValue CommitAuxCommand(content::WebContents* sender,
     params.source_contents = target_weak.get();
     params.disposition = WindowOpenDisposition::NEW_FOREGROUND_TAB;
     Navigate(&params);
+    auto* opened = params.navigated_or_inserted_contents.get();
+    auto* strip = browser_weak ? browser_weak->GetTabStripModel() : nullptr;
+    if (!opened || opened == target_weak.get() || !profile_weak || !browser_weak ||
+        browser_weak->GetProfile() != profile_weak.get() ||
+        opened->GetBrowserContext() != profile_weak.get() || !strip ||
+        strip->GetIndexOfWebContents(opened) == TabStripModel::kNoTab ||
+        aux::GetProfileCookieBindingEpoch(profile_weak.get()) != epoch ||
+        !IsAuxLocalProfileAdmitted(profile_weak.get()))
+      return CommandFailure("The Ask composer was not opened in the originating window");
+    auto* destination = opened->GetController().GetPendingEntry();
+    if (!destination) destination = opened->GetController().GetLastCommittedEntry();
+    if (!destination || destination->GetURL() != url)
+      return CommandFailure("The Ask destination could not be opened");
   } else if (*kind == "navigate") {
     const auto* text = request.FindString("text");
     if (!text || text->size() > 32768 ||
