@@ -1,0 +1,14 @@
+{
+  "format": "aux.browser-custody-compiler.overlay.v1",
+  "files": [
+    {
+      "path": "base/process/mac/aux_browser_descendant_engine.cc",
+      "beforeSha256": "42427c90316c6cb92a9a5f5aafa307de29ea9df57cc913fb8769a2de5d439faa",
+      "afterSha256": "2dfc668e5cf7d6ca8461eb793f99d09949439c3519f611667a3db1023addd989"
+    }
+  ],
+  "countedAdaptations": 4,
+  "patchSha256": "c02659e9560a8d259b0a31766f28e444c593203f34ced5496534d6077e8660c9",
+  "nativeCompiled": false,
+  "runtimeAccepted": false
+}

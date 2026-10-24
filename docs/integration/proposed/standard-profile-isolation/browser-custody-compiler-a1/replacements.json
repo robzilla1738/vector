@@ -1,0 +1,26 @@
+[
+  {
+    "path": "base/process/mac/aux_browser_descendant_engine.cc",
+    "old": "#include \"base/process/mac/aux_browser_descendant_engine.h\"",
+    "new": "#include \"base/process/mac/aux_browser_descendant_engine.h\"\n#include \"base/compiler_specific.h\"",
+    "count": 1
+  },
+  {
+    "path": "base/process/mac/aux_browser_descendant_engine.cc",
+    "old": "#include <mutex>",
+    "new": "#include <mutex>\n#include <span>",
+    "count": 1
+  },
+  {
+    "path": "base/process/mac/aux_browser_descendant_engine.cc",
+    "old": "  es_client_t* client = nullptr;\n  // Deliberately retained",
+    "new": "  // Opaque Endpoint Security allocation, not a PartitionAlloc object. It is\n  // owned by the process-lifetime native observer and never deleted/replaced;\n  // retain it even on unknown outcomes. This pre-framework target deliberately\n  // has no PartitionAlloc runtime dependency. Same field annotation as the\n  // Chromium RAW_PTR_EXCLUSION macro, without introducing its PA build deps.\n  [[clang::annotate(\"raw_ptr_exclusion\")]] es_client_t* client = nullptr;\n  // Deliberately retained",
+    "count": 1
+  },
+  {
+    "path": "base/process/mac/aux_browser_descendant_engine.cc",
+    "old": "      if (exact) for (auto type : required)\n        exact = exact && std::find(actual, actual + count, type) != actual + count;",
+    "new": "      if (exact) {\n        // SAFETY: successful es_subscriptions returns a malloc-owned allocation\n        // containing count entries. Above, actual is non-null and count equals\n        // our fixed four-event request. Keep the bounded view only until free.\n        const auto subscriptions = UNSAFE_BUFFERS(\n            std::span<const es_event_type_t>(actual, count));\n        for (auto type : required)\n          exact = exact && std::find(subscriptions.begin(), subscriptions.end(),\n                                     type) != subscriptions.end();\n      }",
+    "count": 1
+  }
+]
