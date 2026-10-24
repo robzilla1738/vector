@@ -1,0 +1,69 @@
+{
+  "format": "aux.native-recovery-capture-facts.v1",
+  "files": [
+    {
+      "path": "chrome/browser/aux/ui_storage_migration_controller.cc",
+      "input": "/Users/rcourson/.codex/worktrees/aux-features-navigation/web/docs/integration/proposed/standard-profile-isolation/native-live-rollback-source-a22/source/chrome/browser/aux/ui_storage_migration_controller.cc",
+      "inputSha256": "5397a43a4fdb35eb06874ea0874f645bec36cf786ec59b62870ae18da4e363ce",
+      "output": "/Users/rcourson/.codex/worktrees/aux-features-navigation/web/docs/integration/proposed/standard-profile-isolation/native-recovery-capture-facts-a24/source/chrome/browser/aux/ui_storage_migration_controller.cc",
+      "outputSha256": "515ca0ef250d01ea0793be9db6a4b62603e53672a52efdb6bb658c5fc27faac9",
+      "anchors": [
+        {
+          "find": "  std::string target_observation_sha;",
+          "replace": "  std::string target_observation_sha, owner_state_json, memory_state_json;",
+          "count": 1
+        },
+        {
+          "find": "  bool intent_validation_ = false;",
+          "replace": "  bool intent_validation_ = false;\n  bool recovery_mode_ = false;",
+          "count": 1
+        },
+        {
+          "find": "method != \"auxValidateDraftMigrationCapture\" && method != \"auxObserveDraftMigrationTarget\" &&",
+          "replace": "method != \"auxPrepareDraftMigrationRecoveryCapture\" &&\n      method != \"auxValidateDraftMigrationCapture\" && method != \"auxObserveDraftMigrationTarget\" &&",
+          "count": 1
+        },
+        {
+          "find": "  Invoke(index, \"auxPrepareDraftMigrationCapture\", base::ListValue().Append(frames_[index]->request_id).Append(\"utf16-v1\"),",
+          "replace": "  Invoke(index, recovery_mode_ ? \"auxPrepareDraftMigrationRecoveryCapture\" : \"auxPrepareDraftMigrationCapture\",\n      base::ListValue().Append(frames_[index]->request_id).Append(\"utf16-v1\"),",
+          "count": 1
+        },
+        {
+          "find": "  const auto* units = value.FindDict(\"storeUnits\");\n  auto stores =",
+          "replace": "  const auto* units = value.FindDict(\"storeUnits\");\n  const auto* owner_state = value.FindString(\"ownerStateJson\"), *memory_state = value.FindString(\"memoryStateJson\");\n  auto stores =",
+          "count": 1
+        },
+        {
+          "find": "      !Text(value, \"wireFormat\", \"utf16-v1\") || !raw_capture || raw_capture->empty() ||",
+          "replace": "      value.FindBool(\"recoveryReadOnly\") != recovery_mode_ || !owner_state || owner_state->empty() ||\n      !memory_state || memory_state->empty() || owner_state->size() > 33554432 ||\n      memory_state->size() > 33554432 || owner_state->size() + memory_state->size() > 33554432 ||\n      !Text(value, \"wireFormat\", \"utf16-v1\") || !raw_capture || raw_capture->empty() ||",
+          "count": 1
+        },
+        {
+          "find": "  frame.source_stores = std::move(stores); frame.prepared = true; frame.sealed = sealed;",
+          "replace": "  frame.source_stores = std::move(stores); frame.prepared = true; frame.sealed = sealed;\n  frame.owner_state_json = *owner_state; frame.memory_state_json = *memory_state;",
+          "count": 1
+        },
+        {
+          "find": "      fact.Set(\"sourceTotalSizeBytes\", map->source_total_size_bytes ? base::Value(*map->source_total_size_bytes) : base::Value());",
+          "replace": "      fact.Set(\"sourceTotalSizeBytes\", map->source_total_size_bytes ? base::Value(*map->source_total_size_bytes) : base::Value());\n      fact.Set(\"targetMetadataExplicit\", map->target_metadata_is_explicit);\n      fact.Set(\"targetLastAccessedUs\", map->target_last_accessed_us ? base::Value(*map->target_last_accessed_us) : base::Value());\n      fact.Set(\"targetLastModifiedUs\", map->target_last_modified_us ? base::Value(*map->target_last_modified_us) : base::Value());\n      fact.Set(\"targetTotalSizeBytes\", map->target_total_size_bytes ? base::Value(*map->target_total_size_bytes) : base::Value());",
+          "count": 1
+        },
+        {
+          "find": "        map->allocation_action_sha256 != prior->allocation_action_sha256) return false;",
+          "replace": "        map->allocation_action_sha256 != prior->allocation_action_sha256 ||\n        map->target_metadata_is_explicit != prior->target_metadata_is_explicit ||\n        map->target_last_accessed_us != prior->target_last_accessed_us ||\n        map->target_last_modified_us != prior->target_last_modified_us ||\n        map->target_total_size_bytes != prior->target_total_size_bytes) return false;",
+          "count": 1
+        }
+      ]
+    }
+  ],
+  "dependencies": [
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/native-dom-control-target-metadata-a27/source/components/services/storage/public/mojom/local_storage_control.mojom",
+      "sha256": "06f0634252485338eed9ff983be004da0b6ca0fa7f0a7064b4234c06e4031029"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-navigation/web/vendor/provided/aux-ui-draft-closure-runtime.js.txt",
+      "sha256": "73ee3f1ac7777573da9333e6f27d502e0f63099c40ac6d8506a9e5e6d20f03a0"
+    }
+  ]
+}
