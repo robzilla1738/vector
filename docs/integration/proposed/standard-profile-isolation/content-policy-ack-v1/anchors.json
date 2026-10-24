@@ -1,0 +1,266 @@
+[
+  {
+    "path": "content/public/browser/content_browser_client.h",
+    "find": "#include \"content/public/browser/auction_result.h\"",
+    "replace": "#include \"content/public/browser/auction_result.h\"\n#include \"content/public/browser/aux_sandbox_launch_binding.h\"",
+    "count": 1
+  },
+  {
+    "path": "content/public/browser/content_browser_client.h",
+    "find": "  virtual bool CanCreateNetworkContext(",
+    "replace": "  // Native launch only; default unavailable. The retained object must not\n  // depend on this embedder object's lifetime during asynchronous receipt IO.\n  virtual std::shared_ptr<const AuxSandboxLaunchBinding>\n  CaptureAuxSandboxLaunchBinding(const base::CommandLine& command);\n\n  virtual bool CanCreateNetworkContext(",
+    "count": 1
+  },
+  {
+    "path": "content/public/browser/content_browser_client.cc",
+    "find": "bool ContentBrowserClient::CanCreateNetworkContext(",
+    "replace": "std::shared_ptr<const AuxSandboxLaunchBinding>\nContentBrowserClient::CaptureAuxSandboxLaunchBinding(\n    const base::CommandLine& command) {\n  return nullptr;\n}\n\nbool ContentBrowserClient::CanCreateNetworkContext(",
+    "count": 1
+  },
+  {
+    "path": "content/browser/child_process_launcher_helper.h",
+    "find": "  std::string serialized_policy_;",
+    "replace": "  std::string serialized_policy_;\n  std::shared_ptr<const content::AuxSandboxLaunchBinding> aux_policy_binding_;",
+    "count": 1
+  },
+  {
+    "path": "content/browser/child_process_launcher_helper.h",
+    "find": "#include \"sandbox/mac/seatbelt_exec.h\"",
+    "replace": "#include \"sandbox/mac/seatbelt_exec.h\"\n#include \"content/public/browser/aux_sandbox_launch_binding.h\"",
+    "count": 1
+  },
+  {
+    "path": "sandbox/mac/seatbelt_exec.h",
+    "find": "#include <memory>",
+    "replace": "#include <memory>\n#include <array>\n#include <cstdint>",
+    "count": 1
+  },
+  {
+    "path": "sandbox/mac/seatbelt_exec.h",
+    "find": "SEATBELT_EXPORT extern const char kSeatbeltClientName[];",
+    "replace": "SEATBELT_EXPORT extern const char kSeatbeltClientName[];\nSEATBELT_EXPORT extern const char kAuxSeatbeltReceipt[];",
+    "count": 1
+  },
+  {
+    "path": "sandbox/mac/seatbelt_exec.h",
+    "find": "  bool SendPolicy(const std::string& serialized_policy);",
+    "replace": "  bool SendPolicy(const std::string& serialized_policy);\n  // Optional receipt channel. Native generation comes from retained embedder\n  // authority; the unpredictable challenge is generated internally.\n  int EnableAuxAppliedPolicyReceipt(uint64_t generation);\n  bool ReadAuxAppliedPolicyReceipt(const std::string& expected_policy);\n",
+    "count": 1
+  },
+  {
+    "path": "sandbox/mac/seatbelt_exec.h",
+    "find": "  int pipe_[2];",
+    "replace": "  int pipe_[2];\n  int aux_receipt_[2] = {-1, -1};\n  uint64_t aux_generation_ = 0;\n  std::array<uint8_t, 32> aux_challenge_{};\n",
+    "count": 1
+  },
+  {
+    "path": "sandbox/mac/seatbelt_exec.h",
+    "find": "  int fd_;",
+    "replace": "  int fd_;\n  int aux_receipt_fd_ = -1;\n",
+    "count": 1
+  },
+  {
+    "path": "sandbox/mac/seatbelt_exec.cc",
+    "find": "#include <unistd.h>",
+    "replace": "#include <unistd.h>\n#include <fcntl.h>\n#include <poll.h>\n#include <stdlib.h>\n#include <chrono>\n#include <algorithm>",
+    "count": 1
+  },
+  {
+    "path": "sandbox/mac/seatbelt_exec.cc",
+    "find": "struct ReadTraits {",
+    "replace": "// Local, same-architecture protocol: exact bytes, not a renderer proof.\nstruct AuxPolicyEnvelope {\n  uint64_t version = 1;\n  uint64_t generation = 0;\n  std::array<uint8_t, 32> challenge{};\n};\nconstexpr size_t kAuxMaxPolicyBytes = 8 * 1024 * 1024;\n// Bounds only receipt availability, never turns elapsed time into settlement.\n// Nonblocking descriptors ensure poll readiness cannot turn into an unbounded\n// read/write. Every caller owns and closes its endpoint after the loop.\nbool AuxReceiptIO(int fd, void* buffer, size_t size, bool writing) {\n  auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(10);\n  auto* bytes = static_cast<uint8_t*>(buffer);\n  size_t offset = 0;\n  while (offset < size) {\n    auto left = std::chrono::duration_cast<std::chrono::milliseconds>(\n        deadline - std::chrono::steady_clock::now()).count();\n    if (left <= 0) return false;\n    pollfd item{fd, static_cast<short>(writing ? POLLOUT : POLLIN), 0};\n    int ready = HANDLE_EINTR(poll(&item, 1, static_cast<int>(left)));\n    if (ready <= 0 || (item.revents & (POLLERR | POLLNVAL))) return false;\n    ssize_t n = writing\n        ? write(fd, UNSAFE_TODO(bytes + offset), size - offset)\n        : read(fd, UNSAFE_TODO(bytes + offset), size - offset);\n    if (n < 0 && (errno == EINTR || errno == EAGAIN)) continue;\n    if (n <= 0) return false;\n    offset += static_cast<size_t>(n);\n  }\n  return true;\n}\nstruct ReadTraits {",
+    "count": 1
+  },
+  {
+    "path": "sandbox/mac/seatbelt_exec.cc",
+    "find": "const char kSeatbeltClientName[] = \"seatbelt-client\";",
+    "replace": "const char kSeatbeltClientName[] = \"seatbelt-client\";\nconst char kAuxSeatbeltReceipt[] = \"--aux-seatbelt-receipt=\";",
+    "count": 1
+  },
+  {
+    "path": "sandbox/mac/seatbelt_exec.cc",
+    "find": "SeatbeltExecClient::~SeatbeltExecClient() {",
+    "replace": "SeatbeltExecClient::~SeatbeltExecClient() {\n  for (int fd : aux_receipt_) if (fd >= 0) IGNORE_EINTR(close(fd));",
+    "count": 1
+  },
+  {
+    "path": "sandbox/mac/seatbelt_exec.cc",
+    "find": "int SeatbeltExecClient::GetReadFD() {",
+    "replace": "int SeatbeltExecClient::EnableAuxAppliedPolicyReceipt(uint64_t generation) {\n  if (!generation || aux_receipt_[0] >= 0 || pipe(aux_receipt_) != 0) return -1;\n  for (int fd : aux_receipt_) {\n    if (fcntl(fd, F_SETFD, FD_CLOEXEC) != 0 ||\n        fcntl(fd, F_SETFL, O_NONBLOCK) != 0) {\n      for (int& owned : aux_receipt_) { close(owned); owned = -1; }\n      return -1;\n    }\n  }\n  if (fcntl(aux_receipt_[1], F_SETNOSIGPIPE, 1) != 0) {\n    for (int& owned : aux_receipt_) { close(owned); owned = -1; }\n    return -1;\n  }\n  aux_generation_ = generation;\n  arc4random_buf(aux_challenge_.data(), aux_challenge_.size());\n  return aux_receipt_[1];\n}\n\nbool SeatbeltExecClient::ReadAuxAppliedPolicyReceipt(\n    const std::string& expected_policy) {\n  if (aux_receipt_[0] < 0 || !aux_generation_ ||\n      expected_policy.size() > kAuxMaxPolicyBytes) return false;\n  AuxPolicyEnvelope observed;\n  uint64_t length = 0;\n  if (!AuxReceiptIO(aux_receipt_[0], &observed, sizeof(observed), false) ||\n      observed.version != 1 || observed.generation != aux_generation_ ||\n      observed.challenge != aux_challenge_ ||\n      !AuxReceiptIO(aux_receipt_[0], &length, sizeof(length), false) ||\n      length != expected_policy.size()) return false;\n  std::string observed_policy(length, '\\0');\n  return AuxReceiptIO(aux_receipt_[0], observed_policy.data(), length, false) &&\n         observed_policy == expected_policy;\n}\n\nint SeatbeltExecClient::GetReadFD() {",
+    "count": 1
+  },
+  {
+    "path": "sandbox/mac/seatbelt_exec.cc",
+    "find": "  IGNORE_EINTR(close(pipe_[1]));\n  pipe_[1] = -1;",
+    "replace": "  if (aux_receipt_[1] >= 0) {\n    IGNORE_EINTR(close(aux_receipt_[1]));\n    aux_receipt_[1] = -1;\n    AuxPolicyEnvelope envelope;\n    envelope.generation = aux_generation_;\n    envelope.challenge = aux_challenge_;\n    if (!ReadOrWrite<WriteTraits>(pipe_[1],\n          reinterpret_cast<const uint8_t*>(&envelope), sizeof(envelope),\n          \"Aux receipt binding\")) return false;\n  }\n  IGNORE_EINTR(close(pipe_[1]));\n  pipe_[1] = -1;",
+    "count": 1
+  },
+  {
+    "path": "sandbox/mac/seatbelt_exec.cc",
+    "find": "SeatbeltExecServer::~SeatbeltExecServer() {\n  close(fd_);\n}",
+    "replace": "SeatbeltExecServer::~SeatbeltExecServer() {\n  if (fd_ >= 0) close(fd_);\n  if (aux_receipt_fd_ >= 0) close(aux_receipt_fd_);\n}",
+    "count": 1
+  },
+  {
+    "path": "sandbox/mac/seatbelt_exec.cc",
+    "find": "  int seatbelt_client_fd = -1;",
+    "replace": "  int seatbelt_client_fd = -1;\n  int receipt_fd = -1;\n  bool duplicate_receipt = false;",
+    "count": 1
+  },
+  {
+    "path": "sandbox/mac/seatbelt_exec.cc",
+    "find": "  for (int i = 1; i < argc; ++i) {",
+    "replace": "  for (int i = 1; i < argc; ++i) {\n    if (UNSAFE_TODO(strncmp(argv[i], switches::kAuxSeatbeltReceipt,\n                           strlen(switches::kAuxSeatbeltReceipt))) == 0) {\n      if (receipt_fd >= 0) duplicate_receipt = true;\n      const char* value = UNSAFE_TODO(argv[i] + strlen(switches::kAuxSeatbeltReceipt));\n      char* end = nullptr;\n      long parsed = strtol(value, &end, 10);\n      if (!end || *end || parsed < 0 || parsed > INT_MAX) duplicate_receipt = true;\n      else receipt_fd = static_cast<int>(parsed);\n    }",
+    "count": 1
+  },
+  {
+    "path": "sandbox/mac/seatbelt_exec.cc",
+    "find": "  result.server.reset(new SeatbeltExecServer(seatbelt_client_fd));",
+    "replace": "  if (duplicate_receipt || receipt_fd == seatbelt_client_fd) return result;\n  result.server.reset(new SeatbeltExecServer(seatbelt_client_fd));\n  result.server->aux_receipt_fd_ = receipt_fd;",
+    "count": 1
+  },
+  {
+    "path": "sandbox/mac/seatbelt_exec.cc",
+    "find": "  return SandboxSerializer::ApplySerializedPolicy(policy_string);",
+    "replace": "  AuxPolicyEnvelope envelope;\n  if (aux_receipt_fd_ >= 0 &&\n      (!ReadOrWrite<ReadTraits>(fd_, reinterpret_cast<uint8_t*>(&envelope),\n          sizeof(envelope), \"Aux receipt binding\") ||\n       envelope.version != 1 || !envelope.generation)) return false;\n  // The capability channel is closed before entering the framework. Receipt\n  // failure does not undo a successfully installed policy or claim coverage.\n  close(fd_);\n  fd_ = -1;\n  bool applied = SandboxSerializer::ApplySerializedPolicy(policy_string);\n  if (aux_receipt_fd_ >= 0) {\n    if (applied && policy_string.size() <= kAuxMaxPolicyBytes) {\n      uint64_t length = policy_string.size();\n      if (AuxReceiptIO(aux_receipt_fd_, &envelope, sizeof(envelope), true) &&\n          AuxReceiptIO(aux_receipt_fd_, &length, sizeof(length), true)) {\n        AuxReceiptIO(aux_receipt_fd_, policy_string.data(), length, true);\n      }\n    }\n    close(aux_receipt_fd_);\n    aux_receipt_fd_ = -1;\n  }\n  return applied;",
+    "count": 1
+  },
+  {
+    "path": "content/browser/aux_child_lifetime.h",
+    "find": "#include \"base/process/kill.h\"",
+    "replace": "#include \"base/process/kill.h\"\n#include \"content/public/browser/aux_sandbox_launch_binding.h\"",
+    "count": 1
+  },
+  {
+    "path": "content/browser/aux_child_lifetime.h",
+    "find": "  void ValidateBeforeWaitLocked(pid_t pid, base::Time creation) {",
+    "replace": "  void ObserveAppliedPolicy(\n      const content::AuxSandboxLaunchBinding& authority) {\n    std::lock_guard<std::mutex> lock(mutex);\n    if (getpid() != owner || !bound || released || uncertain || child <= 0 ||\n        birth.is_null() || !authority.generation()) return;\n    // Mutex excludes the sole original reap while native birth/code/root\n    // validation runs. No global browser pointer is retained by the reader.\n    if (authority.Validate(child, birth)) {\n      applied_policy_generation = authority.generation();\n    }\n    // An applied policy is not a descendant/delegated-writer certificate.\n  }\n  void ValidateBeforeWaitLocked(pid_t pid, base::Time creation) {",
+    "count": 1
+  },
+  {
+    "path": "content/browser/aux_child_lifetime.h",
+    "find": "  bool released = false;",
+    "replace": "  bool released = false;\n  uint64_t applied_policy_generation = 0;",
+    "count": 1
+  },
+  {
+    "path": "content/browser/child_process_launcher_helper_mac.cc",
+    "find": "#include \"base/process/kill.h\"",
+    "replace": "#include \"base/process/kill.h\"\n#include \"base/task/thread_pool.h\"",
+    "count": 1
+  },
+  {
+    "path": "content/browser/child_process_launcher_helper_mac.cc",
+    "find": "    options->fds_to_remap.push_back(std::make_pair(pipe, pipe));",
+    "replace": "    options->fds_to_remap.push_back(std::make_pair(pipe, pipe));\n    bool injected_loader = false;\n    for (const auto& [key, value] : options->environment) {\n      if (key.starts_with(\"DYLD_\")) injected_loader = true;\n    }\n    if (!injected_loader) {\n      aux_policy_binding_ = GetContentClient()->browser()\n          ->CaptureAuxSandboxLaunchBinding(*command_line_);\n    }\n    if (aux_policy_binding_) {\n      int receipt = seatbelt_exec_client_->EnableAuxAppliedPolicyReceipt(\n          aux_policy_binding_->generation());\n      if (receipt >= 0) {\n        options->fds_to_remap.emplace_back(receipt, receipt);\n        command_line_->AppendArg(base::StringPrintf(\n            \"%s%d\", sandbox::switches::kAuxSeatbeltReceipt, receipt));\n      } else {\n        aux_policy_binding_.reset();\n      }\n    }",
+    "count": 1
+  },
+  {
+    "path": "content/browser/child_process_launcher_helper_mac.cc",
+    "find": "    seatbelt_exec_client_->SendPolicy(serialized_policy_);",
+    "replace": "    const bool sent = seatbelt_exec_client_->SendPolicy(serialized_policy_);\n    if (sent && aux_policy_binding_ && process.aux_child_lifetime) {\n      base::ThreadPool::PostTask(\n          FROM_HERE, {base::MayBlock(), base::TaskShutdownBehavior::BLOCK_SHUTDOWN},\n          base::BindOnce(\n              [](std::unique_ptr<sandbox::SeatbeltExecClient> channel,\n                 std::string policy,\n                 std::shared_ptr<const content::AuxSandboxLaunchBinding> binding,\n                 std::shared_ptr<AuxChildLifetime> lifetime) {\n                if (channel->ReadAuxAppliedPolicyReceipt(policy))\n                  lifetime->ObserveAppliedPolicy(*binding);\n                // Every FD and retained owner settles on this worker's actual\n                // return; refusal/timeout never clears descendant uncertainty.\n              }, std::move(seatbelt_exec_client_), serialized_policy_,\n              std::move(aux_policy_binding_), process.aux_child_lifetime));\n    }",
+    "count": 1
+  },
+  {
+    "path": "chrome/browser/chrome_content_browser_client.h",
+    "find": "  bool CanCreateNetworkContext(",
+    "replace": "  std::shared_ptr<const content::AuxSandboxLaunchBinding>\n  CaptureAuxSandboxLaunchBinding(const base::CommandLine& command) override;\n  bool CanCreateNetworkContext(",
+    "count": 1
+  },
+  {
+    "path": "chrome/browser/chrome_content_browser_client.cc",
+    "find": "#include \"chrome/browser/aux/AuxBrowserNetworkPaths.h\"",
+    "replace": "#include \"chrome/browser/aux/AuxBrowserNetworkPaths.h\"\n#if BUILDFLAG(IS_MAC)\n#include \"chrome/browser/aux/AuxContentPolicyBinding.h\"\n#endif",
+    "count": 1
+  },
+  {
+    "path": "chrome/browser/chrome_content_browser_client.cc",
+    "find": "bool ChromeContentBrowserClient::CanCreateNetworkContext(",
+    "replace": "std::shared_ptr<const content::AuxSandboxLaunchBinding>\nChromeContentBrowserClient::CaptureAuxSandboxLaunchBinding(\n    const base::CommandLine& command) {\n#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC) && defined(AUX_SEALED_NATIVE_COLD_ENTRY)\n  return aux::peer::CaptureContentPolicyBinding(command);\n#else\n  return nullptr;\n#endif\n}\n\nbool ChromeContentBrowserClient::CanCreateNetworkContext(",
+    "count": 1
+  },
+  {
+    "path": "content/browser/child_process_launcher_helper.h",
+    "find": "  std::shared_ptr<const content::AuxSandboxLaunchBinding> aux_policy_binding_;",
+    "replace": "  std::shared_ptr<const content::AuxSandboxLaunchBinding> aux_policy_binding_;\n  bool aux_renderer_no_fork_ = false;",
+    "count": 1
+  },
+  {
+    "path": "content/browser/child_process_launcher_helper_mac.cc",
+    "find": "    seatbelt_exec_client_ = std::make_unique<sandbox::SeatbeltExecClient>();",
+    "replace": "    // Only the pinned common+renderer policy is classified here. Its default\n    // deny and absence of process-fork/process-right extension allowances are\n    // a build-reviewed invariant. All other policy classes remain unqualified.\n    aux_renderer_no_fork_ = sandbox_type == sandbox::mojom::Sandbox::kRenderer;\n    seatbelt_exec_client_ = std::make_unique<sandbox::SeatbeltExecClient>();",
+    "count": 1
+  },
+  {
+    "path": "content/browser/child_process_launcher_helper_mac.cc",
+    "find": "                 std::shared_ptr<AuxChildLifetime> lifetime) {",
+    "replace": "                 std::shared_ptr<AuxChildLifetime> lifetime, bool renderer_no_fork) {",
+    "count": 1
+  },
+  {
+    "path": "content/browser/child_process_launcher_helper_mac.cc",
+    "find": "                  lifetime->ObserveAppliedPolicy(*binding);",
+    "replace": "                  lifetime->ObserveAppliedPolicy(*binding, renderer_no_fork);",
+    "count": 1
+  },
+  {
+    "path": "content/browser/child_process_launcher_helper_mac.cc",
+    "find": "              std::move(aux_policy_binding_), process.aux_child_lifetime));",
+    "replace": "              std::move(aux_policy_binding_), process.aux_child_lifetime,\n              aux_renderer_no_fork_));",
+    "count": 1
+  },
+  {
+    "path": "content/browser/aux_child_lifetime.h",
+    "find": "      const content::AuxSandboxLaunchBinding& authority) {",
+    "replace": "      const content::AuxSandboxLaunchBinding& authority, bool renderer_no_fork) {",
+    "count": 1
+  },
+  {
+    "path": "content/browser/aux_child_lifetime.h",
+    "find": "      applied_policy_generation = authority.generation();",
+    "replace": "      applied_policy_generation = authority.generation();\n      descendants_denied = renderer_no_fork;",
+    "count": 1
+  },
+  {
+    "path": "content/browser/aux_child_lifetime.h",
+    "find": "    // An applied policy is not a descendant/delegated-writer certificate.",
+    "replace": "    // Renderer no-fork covers descendants only. Delegated/browser-side work\n    // remains with its actual writer participants; this is never all-writer coverage.",
+    "count": 1
+  },
+  {
+    "path": "content/browser/aux_child_lifetime.h",
+    "find": "    released = true;",
+    "replace": "'    released = true;\n    if (descendants_denied) {\n      if (UnobservedDescendantCohorts() == 0) AccountingUnknown() = true;\n      else --UnobservedDescendantCohorts();\n    }",
+    "count": 1
+  },
+  {
+    "path": "content/browser/aux_child_lifetime.h",
+    "find": "  uint64_t applied_policy_generation = 0;",
+    "replace": "  uint64_t applied_policy_generation = 0;\n  bool descendants_denied = false;",
+    "count": 1
+  },
+  {
+    "path": "content/browser/aux_child_lifetime.h",
+    "find": "      // Keep this process-lifetime tombstone until an actual native descendant\n      // authority is integrated; neither callback loss nor reaping clears it.",
+    "replace": "      // Retain the cohort unless this exact launch receives the authenticated\n      // applied renderer no-fork receipt AND the sole original reap completes.\n      // Callback loss or direct reap alone never clears it.",
+    "count": 1
+  },
+  {
+    "path": "content/public/browser/aux_child_process_drain.h",
+    "find": "  // This survives the direct process's actual reap; zero is not a census.",
+    "replace": "  // Reap alone cannot clear it. An exact authenticated renderer no-fork\n  // receipt plus that original reap may discharge its own cohort only.\n  // Zero remains no proof of delegated or browser-side writer settlement.",
+    "count": 1
+  },
+  {
+    "path": "sandbox/mac/seatbelt_exec.cc",
+    "find": "#include <fcntl.h>",
+    "replace": "#include <fcntl.h>\n#include <cerrno>\n#include <climits>",
+    "count": 1
+  },
+  {
+    "path": "content/browser/aux_child_lifetime.h",
+    "find": "  void ValidateBeforeWaitLocked(pid_t pid, base::Time creation) {",
+    "replace": "  uint64_t AppliedPolicyGenerationForReview() {\n    std::lock_guard<std::mutex> lock(mutex);\n    return getpid() == owner ? applied_policy_generation : 0;\n  }\n  void ValidateBeforeWaitLocked(pid_t pid, base::Time creation) {",
+    "count": 1
+  }
+]

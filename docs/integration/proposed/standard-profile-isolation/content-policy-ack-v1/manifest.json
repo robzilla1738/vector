@@ -1,0 +1,80 @@
+{
+  "format": "aux.content-policy-ack.v1",
+  "baseline": "selected a4 native source; inputs pinned per file",
+  "countedAdaptations": 44,
+  "files": [
+    {
+      "path": "content/public/browser/aux_sandbox_launch_binding.h",
+      "beforeSha256": null,
+      "afterSha256": "e4b0266fc3083fded6ac06d0e59b76d72e395afd70ce2de4bcbf2841f805a267"
+    },
+    {
+      "path": "content/public/browser/content_browser_client.h",
+      "beforeSha256": "256c923c9ab8cd072ac2409b2a6914d02ae3d6ec2e24bac46820fa40b92a43df",
+      "afterSha256": "b3e431dbd551a0bbe742a0322fa028645e17f4bdd607e01d693b90fc526d3601"
+    },
+    {
+      "path": "content/public/browser/content_browser_client.cc",
+      "beforeSha256": "73de0cadfbb1fb37d41e129ddcc5edc836b5035f7151f5d8b684eb079eb57974",
+      "afterSha256": "3eb8ab9eea36db1493e272c2029e55172bcd01994e636a3ec3afb96b95d90787"
+    },
+    {
+      "path": "content/browser/child_process_launcher_helper.h",
+      "beforeSha256": "d6ccc001aeb6f368fc932b7eb2e9600c3206265c6aed3a5c835ace04ba679653",
+      "afterSha256": "3061dd8b0952c2d70e417f3e810c5b737329fefdb837f0497e870cd81c31b001"
+    },
+    {
+      "path": "sandbox/mac/seatbelt_exec.h",
+      "beforeSha256": "75eb045a4c95352b3af8c65ff5e33d62e78270caad04922173a0c1b8aaa4d581",
+      "afterSha256": "ea5387242a1775ad854a10eef8eda19d42e76d9a9e7af9837c247b770a8270d8"
+    },
+    {
+      "path": "sandbox/mac/seatbelt_exec.cc",
+      "beforeSha256": "47c09440e41b26b8f7495b06e7d4ea7cd7eb84df4f83dd6abff2f0453fcf7b01",
+      "afterSha256": "295acddbf4b1f826e5905ada451cd895135435c7c12ef1f129cb02738fcbbc62"
+    },
+    {
+      "path": "content/browser/aux_child_lifetime.h",
+      "beforeSha256": "446f4dac61201c937cae66c4f7515e4aac7bb8cbe0ce14f613cb7661028d2fc6",
+      "afterSha256": "41e605c49fa58e3a3e0dd0120873af06cd245d4c8132fc5a383b2cc1680a87a4"
+    },
+    {
+      "path": "content/browser/child_process_launcher_helper_mac.cc",
+      "beforeSha256": "3593313f53dc2a6b149679340f148525b853354354b27f08e2374ddaf94115dd",
+      "afterSha256": "b82927e5ef6cf609f67e1ad47a24254fe7f2e16af8203c5156f2d9f2507cb2c9"
+    },
+    {
+      "path": "chrome/browser/aux/AuxContentPolicyBinding.h",
+      "beforeSha256": null,
+      "afterSha256": "1d2d85faa8f79e179c01e8c0fbe27fcef7b527bff85e66afc21c7205ccc18ddc"
+    },
+    {
+      "path": "chrome/browser/aux/AuxContentPolicyBinding.cc",
+      "beforeSha256": null,
+      "afterSha256": "c90f0eaebcb50e67b2daf3fbd82efe925a23715f681a20753ca1bdec49e39fd9"
+    },
+    {
+      "path": "chrome/browser/chrome_content_browser_client.h",
+      "beforeSha256": "63760dfa35a98dd907fae3adb6072f5d85bcc1a2715a96afcd48de60ba66f82a",
+      "afterSha256": "bfb9bb5975fca97f2ff1ae565baf69cae4d9437a2292541ccc856426630dd3e5"
+    },
+    {
+      "path": "chrome/browser/chrome_content_browser_client.cc",
+      "beforeSha256": "bafac29ed6899bcb8db8b4c3aaa97f88d6ec1ffc26b633491924ec58f629aa95",
+      "afterSha256": "0584d40c6a3d884a3510119ef787d15b18a7ed89ee5fab8a8f8516fc112c693a"
+    },
+    {
+      "path": "content/public/browser/aux_child_process_drain.h",
+      "beforeSha256": "56a55962ae71a7355927be8cabe8c3d5e24731587fdcf5cd2e64c1678f05f725",
+      "afterSha256": "223c82c4e8730f2c4c5a933b13061f13be1a970bdc1d930d1a430bd657f96c87"
+    }
+  ],
+  "patchSha256": "085ab4517c36b41f79fe017cf6af8f22656ed0541fddca854bfedfc6ee4d7ed3",
+  "verification": {
+    "nativeCompile": "not run",
+    "runtime": "not run",
+    "policyCoverage": "renderer only: authenticated applied-policy receipt plus original reap; all other cohorts and delegates unchanged",
+    "exactOrderedReplay": "passed",
+    "policyInputPins": "passed"
+  }
+}

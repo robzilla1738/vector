@@ -1,0 +1,38 @@
+[
+  {
+    "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/sandbox/policy/mac/common.sb",
+    "sha256": "b6eb971c2f5cac96f5a843c5753e44f73ee3be6b8659a90e1caacafc20aec09b"
+  },
+  {
+    "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/sandbox/policy/mac/renderer.sb",
+    "sha256": "45bc78ba343d70a31e3ac93a1949274e99681e2ffa7f0904cfbfc7baa6b31806"
+  },
+  {
+    "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/sandbox/policy/mac/sandbox_mac.mm",
+    "sha256": "6cb531ee48582ef0f972af9a9fb98b4044bb858aa5736a8f396d5aae7181667c"
+  },
+  {
+    "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/content/browser/sandbox_parameters_mac.mm",
+    "sha256": "3a0b8bcc6b8a801aa481ce1f62ea72b0a63f4a02d67d34397924bb13616bb8b6"
+  },
+  {
+    "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/app/chrome_exe_main_mac.cc",
+    "sha256": "96ed48f2bd53d81cebba0063f1408fec4da7c952af2d7446f047a5d46fa885df"
+  },
+  {
+    "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/aux/AuxBrowserPrivateRoots.h",
+    "sha256": "5b9b84ca04000046b99b59ed9967d2ddce14afdd1c8b0a36bcf0d50a4aa30636"
+  },
+  {
+    "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/aux/AuxSelectedStateHome.h",
+    "sha256": "81f5a9138ffd7eccf173b081134a6c5e304184d1012557d4b6a1ccbf6971ddb7"
+  },
+  {
+    "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/aux/AuxSelectedStateHome.cc",
+    "sha256": "d1570801ecc1794abea41ba4c796fc7dfd3c273b11713e94d466010edfd78b56"
+  },
+  {
+    "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/base/process/launch_mac.cc",
+    "sha256": "2c62e962f5b2fdabcfaaf8a5e4155e15e40ae332cda3a6c9c51261933877e80a"
+  }
+]

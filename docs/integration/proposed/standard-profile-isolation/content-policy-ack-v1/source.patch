@@ -1,0 +1,679 @@
+--- /dev/null
++++ b/content/public/browser/aux_sandbox_launch_binding.h
+@@ -0,0 +1,18 @@
++// Copyright 2026 The Aux Authors
++#ifndef CONTENT_PUBLIC_BROWSER_AUX_SANDBOX_LAUNCH_BINDING_H_
++#define CONTENT_PUBLIC_BROWSER_AUX_SANDBOX_LAUNCH_BINDING_H_
++#include <cstdint>
++#include "base/process/process_handle.h"
++#include "base/time/time.h"
++#include "content/common/content_export.h"
++namespace content {
++class CONTENT_EXPORT AuxSandboxLaunchBinding {
++ public:
++  virtual ~AuxSandboxLaunchBinding() = default;
++  virtual uint64_t generation() const = 0;
++  // Called under the original launch record's sole-reaper mutex. Must be safe
++  // off the UI thread, retain its native authority, and recheck after reads.
++  virtual bool Validate(base::ProcessId pid, base::Time birth) const = 0;
++};
++}  // namespace content
++#endif
+--- a/content/public/browser/content_browser_client.h
++++ b/content/public/browser/content_browser_client.h
+@@ -35,6 +35,7 @@
+ #include "content/common/content_export.h"
+ #include "content/public/browser/allow_service_worker_result.h"
+ #include "content/public/browser/auction_result.h"
++#include "content/public/browser/aux_sandbox_launch_binding.h"
+ #include "content/public/browser/browsing_data_remover.h"
+ #include "content/public/browser/certificate_request_result_type.h"
+ #include "content/public/browser/child_process_security_policy.h"
+@@ -2224,6 +2225,11 @@
+   // paths, after embedder and DevTools configuration. False creates no network
+   // context; callers receive disconnected endpoints without automatic retry.
+   // This callback must not mutate preferences or substitute fallback paths.
++  // Native launch only; default unavailable. The retained object must not
++  // depend on this embedder object's lifetime during asynchronous receipt IO.
++  virtual std::shared_ptr<const AuxSandboxLaunchBinding>
++  CaptureAuxSandboxLaunchBinding(const base::CommandLine& command);
++
+   virtual bool CanCreateNetworkContext(
+       BrowserContext* context,
+       const network::mojom::NetworkContextParams& network_context_params);
+--- a/content/public/browser/content_browser_client.cc
++++ b/content/public/browser/content_browser_client.cc
+@@ -1223,6 +1223,12 @@
+   network_context_params->accept_language = "en-us,en";
+ }
+ 
++std::shared_ptr<const AuxSandboxLaunchBinding>
++ContentBrowserClient::CaptureAuxSandboxLaunchBinding(
++    const base::CommandLine& command) {
++  return nullptr;
++}
++
+ bool ContentBrowserClient::CanCreateNetworkContext(
+     BrowserContext* context,
+     const network::mojom::NetworkContextParams& network_context_params) {
+--- a/content/browser/child_process_launcher_helper.h
++++ b/content/browser/child_process_launcher_helper.h
+@@ -43,6 +43,7 @@
+ 
+ #if BUILDFLAG(IS_MAC)
+ #include "sandbox/mac/seatbelt_exec.h"
++#include "content/public/browser/aux_sandbox_launch_binding.h"
+ #endif  // BUILDFLAG(IS_MAC)
+ 
+ #if BUILDFLAG(IS_FUCHSIA)
+@@ -345,6 +346,8 @@
+ #if BUILDFLAG(IS_MAC)
+   std::unique_ptr<sandbox::SeatbeltExecClient> seatbelt_exec_client_;
+   std::string serialized_policy_;
++  std::shared_ptr<const content::AuxSandboxLaunchBinding> aux_policy_binding_;
++  bool aux_renderer_no_fork_ = false;
+ #endif  // BUILDFLAG(IS_MAC)
+ 
+ #if BUILDFLAG(IS_IOS) && !BUILDFLAG(IS_IOS_TVOS)
+--- a/sandbox/mac/seatbelt_exec.h
++++ b/sandbox/mac/seatbelt_exec.h
+@@ -6,6 +6,8 @@
+ #define SANDBOX_MAC_SEATBELT_EXEC_H_
+ 
+ #include <memory>
++#include <array>
++#include <cstdint>
+ #include <string>
+ 
+ #include "sandbox/mac/seatbelt_export.h"
+@@ -22,6 +24,7 @@
+ 
+ // This is the same as kSeatbeltClient without the prefix and suffix.
+ SEATBELT_EXPORT extern const char kSeatbeltClientName[];
++SEATBELT_EXPORT extern const char kAuxSeatbeltReceipt[];
+ 
+ }  // namespace switches
+ 
+@@ -45,12 +48,21 @@
+ 
+   // Sends the policy to the SeatbeltExecServer and returns success or failure.
+   bool SendPolicy(const std::string& serialized_policy);
++  // Optional receipt channel. Native generation comes from retained embedder
++  // authority; the unpredictable challenge is generated internally.
++  int EnableAuxAppliedPolicyReceipt(uint64_t generation);
++  bool ReadAuxAppliedPolicyReceipt(const std::string& expected_policy);
++
+ 
+  private:
+   bool WriteString(const std::string& str);
+ 
+   // A file descriptor pair used for interprocess communication.
+   int pipe_[2];
++  int aux_receipt_[2] = {-1, -1};
++  uint64_t aux_generation_ = 0;
++  std::array<uint8_t, 32> aux_challenge_{};
++
+ };
+ 
+ // SeatbeltExecServer is used by the process that will be sandboxed to receive
+@@ -94,6 +106,8 @@
+ 
+   // The file descriptor used to communicate with the launcher process.
+   int fd_;
++  int aux_receipt_fd_ = -1;
++
+ };
+ 
+ }  // namespace sandbox
+--- a/sandbox/mac/seatbelt_exec.cc
++++ b/sandbox/mac/seatbelt_exec.cc
+@@ -7,6 +7,13 @@
+ #include <stdint.h>
+ #include <string.h>
+ #include <unistd.h>
++#include <fcntl.h>
++#include <cerrno>
++#include <climits>
++#include <poll.h>
++#include <stdlib.h>
++#include <chrono>
++#include <algorithm>
+ 
+ #include <limits>
+ #include <vector>
+@@ -21,6 +28,36 @@
+ 
+ namespace {
+ 
++// Local, same-architecture protocol: exact bytes, not a renderer proof.
++struct AuxPolicyEnvelope {
++  uint64_t version = 1;
++  uint64_t generation = 0;
++  std::array<uint8_t, 32> challenge{};
++};
++constexpr size_t kAuxMaxPolicyBytes = 8 * 1024 * 1024;
++// Bounds only receipt availability, never turns elapsed time into settlement.
++// Nonblocking descriptors ensure poll readiness cannot turn into an unbounded
++// read/write. Every caller owns and closes its endpoint after the loop.
++bool AuxReceiptIO(int fd, void* buffer, size_t size, bool writing) {
++  auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(10);
++  auto* bytes = static_cast<uint8_t*>(buffer);
++  size_t offset = 0;
++  while (offset < size) {
++    auto left = std::chrono::duration_cast<std::chrono::milliseconds>(
++        deadline - std::chrono::steady_clock::now()).count();
++    if (left <= 0) return false;
++    pollfd item{fd, static_cast<short>(writing ? POLLOUT : POLLIN), 0};
++    int ready = HANDLE_EINTR(poll(&item, 1, static_cast<int>(left)));
++    if (ready <= 0 || (item.revents & (POLLERR | POLLNVAL))) return false;
++    ssize_t n = writing
++        ? write(fd, UNSAFE_TODO(bytes + offset), size - offset)
++        : read(fd, UNSAFE_TODO(bytes + offset), size - offset);
++    if (n < 0 && (errno == EINTR || errno == EAGAIN)) continue;
++    if (n <= 0) return false;
++    offset += static_cast<size_t>(n);
++  }
++  return true;
++}
+ struct ReadTraits {
+   using BufferType = uint8_t*;
+   static constexpr char kNameString[] = "read";
+@@ -79,6 +116,7 @@
+ const char kSeatbeltClient[] = "--seatbelt-client=";
+ 
+ const char kSeatbeltClientName[] = "seatbelt-client";
++const char kAuxSeatbeltReceipt[] = "--aux-seatbelt-receipt=";
+ 
+ }  // namespace switches
+ 
+@@ -88,12 +126,47 @@
+ }
+ 
+ SeatbeltExecClient::~SeatbeltExecClient() {
++  for (int fd : aux_receipt_) if (fd >= 0) IGNORE_EINTR(close(fd));
+   if (pipe_[0] != -1)
+     IGNORE_EINTR(close(pipe_[0]));
+   if (pipe_[1] != -1)
+     IGNORE_EINTR(close(pipe_[1]));
+ }
+ 
++int SeatbeltExecClient::EnableAuxAppliedPolicyReceipt(uint64_t generation) {
++  if (!generation || aux_receipt_[0] >= 0 || pipe(aux_receipt_) != 0) return -1;
++  for (int fd : aux_receipt_) {
++    if (fcntl(fd, F_SETFD, FD_CLOEXEC) != 0 ||
++        fcntl(fd, F_SETFL, O_NONBLOCK) != 0) {
++      for (int& owned : aux_receipt_) { close(owned); owned = -1; }
++      return -1;
++    }
++  }
++  if (fcntl(aux_receipt_[1], F_SETNOSIGPIPE, 1) != 0) {
++    for (int& owned : aux_receipt_) { close(owned); owned = -1; }
++    return -1;
++  }
++  aux_generation_ = generation;
++  arc4random_buf(aux_challenge_.data(), aux_challenge_.size());
++  return aux_receipt_[1];
++}
++
++bool SeatbeltExecClient::ReadAuxAppliedPolicyReceipt(
++    const std::string& expected_policy) {
++  if (aux_receipt_[0] < 0 || !aux_generation_ ||
++      expected_policy.size() > kAuxMaxPolicyBytes) return false;
++  AuxPolicyEnvelope observed;
++  uint64_t length = 0;
++  if (!AuxReceiptIO(aux_receipt_[0], &observed, sizeof(observed), false) ||
++      observed.version != 1 || observed.generation != aux_generation_ ||
++      observed.challenge != aux_challenge_ ||
++      !AuxReceiptIO(aux_receipt_[0], &length, sizeof(length), false) ||
++      length != expected_policy.size()) return false;
++  std::string observed_policy(length, '\0');
++  return AuxReceiptIO(aux_receipt_[0], observed_policy.data(), length, false) &&
++         observed_policy == expected_policy;
++}
++
+ int SeatbeltExecClient::GetReadFD() {
+   return pipe_[0];
+ }
+@@ -106,6 +179,16 @@
+     return false;
+   }
+ 
++  if (aux_receipt_[1] >= 0) {
++    IGNORE_EINTR(close(aux_receipt_[1]));
++    aux_receipt_[1] = -1;
++    AuxPolicyEnvelope envelope;
++    envelope.generation = aux_generation_;
++    envelope.challenge = aux_challenge_;
++    if (!ReadOrWrite<WriteTraits>(pipe_[1],
++          reinterpret_cast<const uint8_t*>(&envelope), sizeof(envelope),
++          "Aux receipt binding")) return false;
++  }
+   IGNORE_EINTR(close(pipe_[1]));
+   pipe_[1] = -1;
+ 
+@@ -131,7 +214,8 @@
+ SeatbeltExecServer::SeatbeltExecServer(int fd) : fd_(fd) {}
+ 
+ SeatbeltExecServer::~SeatbeltExecServer() {
+-  close(fd_);
++  if (fd_ >= 0) close(fd_);
++  if (aux_receipt_fd_ >= 0) close(aux_receipt_fd_);
+ }
+ 
+ sandbox::SeatbeltExecServer::CreateFromArgumentsResult::
+@@ -148,7 +232,18 @@
+                                         const char* const* argv) {
+   CreateFromArgumentsResult result;
+   int seatbelt_client_fd = -1;
++  int receipt_fd = -1;
++  bool duplicate_receipt = false;
+   for (int i = 1; i < argc; ++i) {
++    if (UNSAFE_TODO(strncmp(argv[i], switches::kAuxSeatbeltReceipt,
++                           strlen(switches::kAuxSeatbeltReceipt))) == 0) {
++      if (receipt_fd >= 0) duplicate_receipt = true;
++      const char* value = UNSAFE_TODO(argv[i] + strlen(switches::kAuxSeatbeltReceipt));
++      char* end = nullptr;
++      long parsed = strtol(value, &end, 10);
++      if (!end || *end || parsed < 0 || parsed > INT_MAX) duplicate_receipt = true;
++      else receipt_fd = static_cast<int>(parsed);
++    }
+     if (UNSAFE_TODO(strncmp(argv[i], switches::kSeatbeltClient,
+                             strlen(switches::kSeatbeltClient))) == 0) {
+       result.sandbox_required = true;
+@@ -167,7 +262,9 @@
+     return result;
+   }
+ 
++  if (duplicate_receipt || receipt_fd == seatbelt_client_fd) return result;
+   result.server.reset(new SeatbeltExecServer(seatbelt_client_fd));
++  result.server->aux_receipt_fd_ = receipt_fd;
+   return result;
+ }
+ 
+@@ -176,7 +273,28 @@
+   if (!ReadString(&policy_string))
+     return false;
+ 
+-  return SandboxSerializer::ApplySerializedPolicy(policy_string);
++  AuxPolicyEnvelope envelope;
++  if (aux_receipt_fd_ >= 0 &&
++      (!ReadOrWrite<ReadTraits>(fd_, reinterpret_cast<uint8_t*>(&envelope),
++          sizeof(envelope), "Aux receipt binding") ||
++       envelope.version != 1 || !envelope.generation)) return false;
++  // The capability channel is closed before entering the framework. Receipt
++  // failure does not undo a successfully installed policy or claim coverage.
++  close(fd_);
++  fd_ = -1;
++  bool applied = SandboxSerializer::ApplySerializedPolicy(policy_string);
++  if (aux_receipt_fd_ >= 0) {
++    if (applied && policy_string.size() <= kAuxMaxPolicyBytes) {
++      uint64_t length = policy_string.size();
++      if (AuxReceiptIO(aux_receipt_fd_, &envelope, sizeof(envelope), true) &&
++          AuxReceiptIO(aux_receipt_fd_, &length, sizeof(length), true)) {
++        AuxReceiptIO(aux_receipt_fd_, policy_string.data(), length, true);
++      }
++    }
++    close(aux_receipt_fd_);
++    aux_receipt_fd_ = -1;
++  }
++  return applied;
+ }
+ 
+ bool SeatbeltExecServer::ReadString(std::string* str) {
+--- a/content/browser/aux_child_lifetime.h
++++ b/content/browser/aux_child_lifetime.h
+@@ -1,6 +1,7 @@
+ // Copyright 2026 Aux contributors. Chromium integration retains upstream notices.
+ #pragma once
+ #include "base/process/kill.h"
++#include "content/public/browser/aux_sandbox_launch_binding.h"
+ #include <algorithm>
+ #include <cstdint>
+ #include <memory>
+@@ -42,14 +43,33 @@
+     birth = creation;
+     if (pid > 0) {
+       // A genuine direct-child reap does not prove that descendants stopped.
+-      // Keep this process-lifetime tombstone until an actual native descendant
+-      // authority is integrated; neither callback loss nor reaping clears it.
++      // Retain the cohort unless this exact launch receives the authenticated
++      // applied renderer no-fork receipt AND the sole original reap completes.
++      // Callback loss or direct reap alone never clears it.
+       std::lock_guard<std::mutex> registry_lock(RegistryMutex());
+       if (UnobservedDescendantCohorts() == UINT64_MAX) AccountingUnknown() = true;
+       else ++UnobservedDescendantCohorts();
+       if (birth.is_null()) uncertain = true;
+     }
+     if (pid <= 0) ReleaseLocked();  // Actual LaunchProcess returned invalid.
++  }
++  void ObserveAppliedPolicy(
++      const content::AuxSandboxLaunchBinding& authority, bool renderer_no_fork) {
++    std::lock_guard<std::mutex> lock(mutex);
++    if (getpid() != owner || !bound || released || uncertain || child <= 0 ||
++        birth.is_null() || !authority.generation()) return;
++    // Mutex excludes the sole original reap while native birth/code/root
++    // validation runs. No global browser pointer is retained by the reader.
++    if (authority.Validate(child, birth)) {
++      applied_policy_generation = authority.generation();
++      descendants_denied = renderer_no_fork;
++    }
++    // Renderer no-fork covers descendants only. Delegated/browser-side work
++    // remains with its actual writer participants; this is never all-writer coverage.
++  }
++  uint64_t AppliedPolicyGenerationForReview() {
++    std::lock_guard<std::mutex> lock(mutex);
++    return getpid() == owner ? applied_policy_generation : 0;
+   }
+   void ValidateBeforeWaitLocked(pid_t pid, base::Time creation) {
+     if (getpid() != owner || !bound || pid != child || birth.is_null() ||
+@@ -118,7 +138,11 @@
+   void ReleaseLocked() {
+     std::lock_guard<std::mutex> lock(RegistryMutex());
+     if (released || uncertain) return;
+-    released = true;
++'    released = true;
++    if (descendants_denied) {
++      if (UnobservedDescendantCohorts() == 0) AccountingUnknown() = true;
++      else --UnobservedDescendantCohorts();
++    }
+     if (Settled() == UINT64_MAX) AccountingUnknown() = true;
+     else ++Settled();
+     std::erase_if(Registry(), [this](const auto& entry) { return entry.get() == this; });
+@@ -129,5 +153,7 @@
+   bool bound = false;
+   bool uncertain = false;
+   bool released = false;
++  uint64_t applied_policy_generation = 0;
++  bool descendants_denied = false;
+ };
+ }
+--- a/content/browser/child_process_launcher_helper_mac.cc
++++ b/content/browser/child_process_launcher_helper_mac.cc
+@@ -5,6 +5,7 @@
+ #include "content/browser/child_process_launcher_helper.h"
+ #include "content/browser/aux_child_lifetime.h"
+ #include "base/process/kill.h"
++#include "base/task/thread_pool.h"
+ 
+ #include "base/apple/mach_port_rendezvous.h"
+ #include "base/command_line.h"
+@@ -164,6 +165,10 @@
+       }
+     }
+ 
++    // Only the pinned common+renderer policy is classified here. Its default
++    // deny and absence of process-fork/process-right extension allowances are
++    // a build-reviewed invariant. All other policy classes remain unqualified.
++    aux_renderer_no_fork_ = sandbox_type == sandbox::mojom::Sandbox::kRenderer;
+     seatbelt_exec_client_ = std::make_unique<sandbox::SeatbeltExecClient>();
+     int pipe = seatbelt_exec_client_->GetReadFD();
+     if (pipe < 0) {
+@@ -172,6 +177,25 @@
+     }
+ 
+     options->fds_to_remap.push_back(std::make_pair(pipe, pipe));
++    bool injected_loader = false;
++    for (const auto& [key, value] : options->environment) {
++      if (key.starts_with("DYLD_")) injected_loader = true;
++    }
++    if (!injected_loader) {
++      aux_policy_binding_ = GetContentClient()->browser()
++          ->CaptureAuxSandboxLaunchBinding(*command_line_);
++    }
++    if (aux_policy_binding_) {
++      int receipt = seatbelt_exec_client_->EnableAuxAppliedPolicyReceipt(
++          aux_policy_binding_->generation());
++      if (receipt >= 0) {
++        options->fds_to_remap.emplace_back(receipt, receipt);
++        command_line_->AppendArg(base::StringPrintf(
++            "%s%d", sandbox::switches::kAuxSeatbeltReceipt, receipt));
++      } else {
++        aux_policy_binding_.reset();
++      }
++    }
+ 
+     // Update the command line to enable the V2 sandbox and pass the
+     // communication FD to the helper executable.
+@@ -210,7 +234,23 @@
+   // Send the sandbox profile after launch so that the child will exist and be
+   // waiting for the message on its side of the pipe.
+   if (process.process.IsValid() && seatbelt_exec_client_.get() != nullptr) {
+-    seatbelt_exec_client_->SendPolicy(serialized_policy_);
++    const bool sent = seatbelt_exec_client_->SendPolicy(serialized_policy_);
++    if (sent && aux_policy_binding_ && process.aux_child_lifetime) {
++      base::ThreadPool::PostTask(
++          FROM_HERE, {base::MayBlock(), base::TaskShutdownBehavior::BLOCK_SHUTDOWN},
++          base::BindOnce(
++              [](std::unique_ptr<sandbox::SeatbeltExecClient> channel,
++                 std::string policy,
++                 std::shared_ptr<const content::AuxSandboxLaunchBinding> binding,
++                 std::shared_ptr<AuxChildLifetime> lifetime, bool renderer_no_fork) {
++                if (channel->ReadAuxAppliedPolicyReceipt(policy))
++                  lifetime->ObserveAppliedPolicy(*binding, renderer_no_fork);
++                // Every FD and retained owner settles on this worker's actual
++                // return; refusal/timeout never clears descendant uncertainty.
++              }, std::move(seatbelt_exec_client_), serialized_policy_,
++              std::move(aux_policy_binding_), process.aux_child_lifetime,
++              aux_renderer_no_fork_));
++    }
+   }
+ }
+ 
+--- /dev/null
++++ b/chrome/browser/aux/AuxContentPolicyBinding.h
+@@ -0,0 +1,8 @@
++#pragma once
++#include <memory>
++#include "base/command_line.h"
++#include "content/public/browser/aux_sandbox_launch_binding.h"
++namespace aux::peer {
++std::shared_ptr<const content::AuxSandboxLaunchBinding>
++CaptureContentPolicyBinding(const base::CommandLine& command);
++}
+--- /dev/null
++++ b/chrome/browser/aux/AuxContentPolicyBinding.cc
+@@ -0,0 +1,151 @@
++#include "chrome/browser/aux/AuxContentPolicyBinding.h"
++#include "chrome/browser/aux/AuxBrowserPrivateRoots.h"
++#include "chrome/browser/aux/AuxSelectedStateHome.h"
++#include "content/public/browser/child_process_host.h"
++#include "content/public/common/content_switches.h"
++#include "base/files/file_util.h"
++#include "base/process/process.h"
++#include <Security/Security.h>
++#include <crt_externs.h>
++#include <fcntl.h>
++#include <libproc.h>
++#include <sys/stat.h>
++#include <unistd.h>
++#include <array>
++#include <vector>
++#include <string_view>
++#include "base/compiler_specific.h"
++
++namespace aux::peer {
++namespace {
++std::vector<uint8_t> SigningHash(CFDictionaryRef info) {
++  if (!info) return {};
++  CFTypeRef value = CFDictionaryGetValue(info, kSecCodeInfoUnique);
++  if (!value || CFGetTypeID(value) != CFDataGetTypeID()) return {};
++  auto data = static_cast<CFDataRef>(value);
++  const auto size = CFDataGetLength(data);
++  if (size != 20 && size != 32) return {};
++  std::vector<uint8_t> result(static_cast<size_t>(size));
++  CFDataGetBytes(data, CFRangeMake(0, size), result.data());
++  return result;
++}
++bool Current(uint64_t generation,
++             const std::shared_ptr<const BrowserPrivateRoots>& roots) {
++  const auto state = InspectNativeBrowserShutdown();
++  return generation && !state.wrong_process && !state.admission_closed &&
++      !state.sequence_uncertain && state.admitted_generation == generation &&
++      roots && roots->Revalidate();
++}
++class Binding final : public content::AuxSandboxLaunchBinding {
++ public:
++  Binding(uint64_t generation, std::shared_ptr<const BrowserPrivateRoots> roots,
++          base::FilePath executable, std::vector<uint8_t> hash, int descriptor,
++          struct stat identity)
++      : generation_(generation), roots_(std::move(roots)),
++        executable_(std::move(executable)), hash_(std::move(hash)),
++        descriptor_(descriptor), identity_(identity) {}
++  ~Binding() override { close(descriptor_); }
++  uint64_t generation() const override { return generation_; }
++  bool Validate(base::ProcessId pid, base::Time birth) const override {
++    if (getpid() != owner_ || pid <= 0 || birth.is_null() ||
++        !Current(generation_, roots_)) return false;
++    struct stat held{}, named{};
++    if (fstat(descriptor_, &held) || lstat(executable_.value().c_str(), &named) ||
++        !S_ISREG(named.st_mode) || held.st_dev != identity_.st_dev ||
++        held.st_ino != identity_.st_ino || named.st_dev != held.st_dev ||
++        named.st_ino != held.st_ino) return false;
++    auto process = base::Process::Open(pid);
++    if (!process.IsValid() || process.CreationTime() != birth) return false;
++    std::array<char, PROC_PIDPATHINFO_MAXSIZE> observed{};
++    if (proc_pidpath(pid, observed.data(), observed.size()) <= 0 ||
++        base::MakeAbsoluteFilePath(base::FilePath(observed.data())) != executable_)
++      return false;
++    int numeric_pid = pid;
++    CFNumberRef number = CFNumberCreate(nullptr, kCFNumberIntType, &numeric_pid);
++    if (!number) return false;
++    const void* key = kSecGuestAttributePid;
++    const void* value = number;
++    CFDictionaryRef attrs = CFDictionaryCreate(nullptr, &key, &value, 1,
++        &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks);
++    CFRelease(number);
++    if (!attrs) return false;
++    SecCodeRef guest = nullptr;
++    OSStatus status = SecCodeCopyGuestWithAttributes(
++        nullptr, attrs, kSecCSDefaultFlags, &guest);
++    CFRelease(attrs);
++    if (status != errSecSuccess || !guest) return false;
++    status = SecCodeCheckValidity(guest, kSecCSDefaultFlags, nullptr);
++    CFDictionaryRef info = nullptr;
++    if (status == errSecSuccess)
++      status = SecCodeCopySigningInformation(guest, kSecCSSigningInformation, &info);
++    const bool code_matches = status == errSecSuccess && SigningHash(info) == hash_;
++    if (info) CFRelease(info);
++    CFRelease(guest);
++    return code_matches && process.CreationTime() == birth &&
++        Current(generation_, roots_);
++  }
++ private:
++  const pid_t owner_ = getpid();
++  const uint64_t generation_;
++  const std::shared_ptr<const BrowserPrivateRoots> roots_;
++  const base::FilePath executable_;
++  const std::vector<uint8_t> hash_;
++  const int descriptor_;
++  const struct stat identity_;
++};
++}  // namespace
++
++std::shared_ptr<const content::AuxSandboxLaunchBinding>
++CaptureContentPolicyBinding(const base::CommandLine& command) {
++  const auto* current = base::CommandLine::ForCurrentProcess();
++  if (!current || current->HasSwitch(switches::kBrowserSubprocessPath) ||
++      command.HasSwitch("aux-seatbelt-receipt") ||
++      command.HasSwitch("seatbelt-client")) return nullptr;
++  // Inherited loader injection would execute before the fixed helper's main.
++  // _NSGetEnviron supplies a native null-terminated array, read-only here.
++  UNSAFE_BUFFERS({
++    for (char** env = *_NSGetEnviron(); env && *env; ++env)
++      if (std::string_view(*env).starts_with("DYLD_")) return nullptr;
++  });
++  const auto state = InspectNativeBrowserShutdown();
++  auto roots = CaptureActualChromiumBrowserRoots();
++  if (!Current(state.admitted_generation, roots)) return nullptr;
++  const auto executable = base::MakeAbsoluteFilePath(command.GetProgram());
++  bool fixed_helper = false;
++  for (int flags : {content::ChildProcessHost::CHILD_NORMAL,
++                    content::ChildProcessHost::CHILD_RENDERER,
++                    content::ChildProcessHost::CHILD_GPU}) {
++    const auto selected = base::MakeAbsoluteFilePath(
++        content::ChildProcessHost::GetChildPath(flags));
++    if (!selected.empty() && selected == executable) fixed_helper = true;
++  }
++  if (!fixed_helper || executable.empty()) return nullptr;
++  int fd = open(executable.value().c_str(), O_RDONLY | O_NOFOLLOW | O_CLOEXEC);
++  struct stat identity{};
++  if (fd < 0) return nullptr;
++  if (fstat(fd, &identity) || !S_ISREG(identity.st_mode)) {
++    close(fd); return nullptr;
++  }
++  CFURLRef url = CFURLCreateFromFileSystemRepresentation(nullptr,
++      reinterpret_cast<const UInt8*>(executable.value().data()),
++      executable.value().size(), false);
++  SecStaticCodeRef code = nullptr;
++  OSStatus status = url ? SecStaticCodeCreateWithPath(url, kSecCSDefaultFlags, &code)
++                       : errSecParam;
++  if (url) CFRelease(url);
++  if (status == errSecSuccess && code)
++    status = SecStaticCodeCheckValidity(code,
++        kSecCSCheckAllArchitectures | kSecCSStrictValidate, nullptr);
++  CFDictionaryRef info = nullptr;
++  if (status == errSecSuccess && code)
++    status = SecCodeCopySigningInformation(code, kSecCSSigningInformation, &info);
++  auto hash = status == errSecSuccess ? SigningHash(info) : std::vector<uint8_t>();
++  if (info) CFRelease(info);
++  if (code) CFRelease(code);
++  if (hash.empty() || !Current(state.admitted_generation, roots)) {
++    close(fd); return nullptr;
++  }
++  return std::make_shared<Binding>(state.admitted_generation, std::move(roots),
++      executable, std::move(hash), fd, identity);
++}
++}  // namespace aux::peer
+--- a/chrome/browser/chrome_content_browser_client.h
++++ b/chrome/browser/chrome_content_browser_client.h
+@@ -776,6 +776,8 @@
+       network::mojom::NetworkContextParams* network_context_params,
+       cert_verifier::mojom::CertVerifierCreationParams*
+           cert_verifier_creation_params) override;
++  std::shared_ptr<const content::AuxSandboxLaunchBinding>
++  CaptureAuxSandboxLaunchBinding(const base::CommandLine& command) override;
+   bool CanCreateNetworkContext(
+       content::BrowserContext* context,
+       const network::mojom::NetworkContextParams& network_context_params) override;
+--- a/chrome/browser/chrome_content_browser_client.cc
++++ b/chrome/browser/chrome_content_browser_client.cc
+@@ -230,6 +230,9 @@
+ #include "chrome/browser/aux/ntp_prerender_service.h"
+ #if defined(AUX_SEALED_NATIVE_COLD_ENTRY)
+ #include "chrome/browser/aux/AuxBrowserNetworkPaths.h"
++#if BUILDFLAG(IS_MAC)
++#include "chrome/browser/aux/AuxContentPolicyBinding.h"
++#endif
+ #endif
+ #endif
+ #if BUILDFLAG(ENABLE_AUX_SHELL)
+@@ -7451,6 +7454,16 @@
+   }
+ }
+ 
++std::shared_ptr<const content::AuxSandboxLaunchBinding>
++ChromeContentBrowserClient::CaptureAuxSandboxLaunchBinding(
++    const base::CommandLine& command) {
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC) && defined(AUX_SEALED_NATIVE_COLD_ENTRY)
++  return aux::peer::CaptureContentPolicyBinding(command);
++#else
++  return nullptr;
++#endif
++}
++
+ bool ChromeContentBrowserClient::CanCreateNetworkContext(
+     content::BrowserContext* context,
+     const network::mojom::NetworkContextParams& params) {
+--- a/content/public/browser/aux_child_process_drain.h
++++ b/content/public/browser/aux_child_process_drain.h
+@@ -14,7 +14,9 @@
+   size_t uncertain = 0;
+   uint64_t settled = 0;
+   // Successful direct launches whose descendant write closure is unproved.
+-  // This survives the direct process's actual reap; zero is not a census.
++  // Reap alone cannot clear it. An exact authenticated renderer no-fork
++  // receipt plus that original reap may discharge its own cohort only.
++  // Zero remains no proof of delegated or browser-side writer settlement.
+   uint64_t unobserved_descendant_cohorts = 0;
+ };
+ // mac content launch owner only. Neither a second reaper nor a descendant census.
