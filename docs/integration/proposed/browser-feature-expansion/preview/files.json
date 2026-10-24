@@ -1,0 +1,28 @@
+{
+  "baselineCommit": "7032e0ff0",
+  "selectedNativeRoot": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src",
+  "scope": "inactive native preview proposal; no selected native tree mutation",
+  "files": [
+    {
+      "path": "chrome/browser/ui/aux_preview/aux_preview_controller.cc",
+      "baselineSha256": null,
+      "sourceSha256": "95c5c1d0d6428c1e4f93f2e2c4c65c4ebe524034960aa2626e7b027a036288df"
+    },
+    {
+      "path": "chrome/browser/ui/aux_preview/aux_preview_controller.h",
+      "baselineSha256": null,
+      "sourceSha256": "a842d5ddbc635fe8418e9c4cad6ccce0c0f723f2cb6d1c3d681ea5d013794d23"
+    },
+    {
+      "path": "chrome/browser/ui/aux_preview/aux_preview_navigation_throttle.cc",
+      "baselineSha256": null,
+      "sourceSha256": "00c9fa96eb33b8a0f83d1d3fd8fb011e4cd41914645fa7ebd6f6b93a76c50f68"
+    },
+    {
+      "path": "chrome/browser/ui/aux_preview/aux_preview_navigation_throttle.h",
+      "baselineSha256": null,
+      "sourceSha256": "0c0b3a294fa34e29877ca1d588f4d32383fc80527af5fe20be39b0294545eeac"
+    }
+  ],
+  "patchSha256": "9791511e63685974e5d3dcd12d6707aeb5ab35ce6b29c26ceabe0fced8b92d53"
+}
