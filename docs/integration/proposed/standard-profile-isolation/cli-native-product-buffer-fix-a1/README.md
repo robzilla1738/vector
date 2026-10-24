@@ -1,0 +1,12 @@
+# Real native CLI product buffer corrections
+
+These six exact source overlays address the relative-path product build's actual unsafe-buffer diagnostics. Checks remain enabled. No native tree, compiler flags, warning path classifier, build target, signature policy, wire layout or UI is changed by this lane.
+
+* Wire decoding uses a checked subspan and its bounded iterators.
+* Native C-main arguments are converted once at the actual `argc/argv` ABI into bounded owned strings. Only the span construction and bounded libc scan at that genuine NUL-terminated ABI have individually documented clang unsafe-buffer boundary annotations. The helper remains standard-library/SDK-only and introduces no base dependency.
+* The Mach receiver owns typed maximum-capacity storage, accesses its actual header directly and copies a bounds-checked trailer into its own typed cache. Sender templates retain the actual complete typed object extent and verify it before sending/copying. Unknown post-call rights remain quarantined; copies never trust a header size beyond the real owning object. The sole single-object byte-view construction is explicitly documented/annotated at this actual C ABI boundary; no arbitrary pointer/length API is exposed.
+* Sealed-image hash comparison copies the already-length-checked CFData into a bounded fixed array, then uses range equality. Hex/prefix classification uses bounded views. Resource reads use remaining owned spans and reject an impossible byte count before advancing. All original identity/resource checks and revalidation remain.
+* The copied CLI-private immutable identity reader uses exact JSON substrings and remaining owned read spans. The unrelated original supplied header is untouched.
+* Frontend diagnostics use length-aware string views/stream output; both native argv traversals use the same bounded ABI conversion. Broad account/SEA/private-child refusals remain.
+
+`source-plan.json` pins actual current beforeimages, counted replacements, final sources and the real product compiler log. `native.patch` is the reviewable exact delta. `sdk-plan-after-projection.json` updates the typed standalone SDK inputs to the final projected sources/headers; it may be run by root only after successful projection. Root's actual relative-path Ninja product build is the authoritative unsafe-buffer check; earlier absolute-source SDK/object receipts remain historical and do not prove this correction compiles. No compiler/linker/native API/product execution occurred here.

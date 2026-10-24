@@ -1,0 +1,240 @@
+{
+  "format": "aux.cli-native-product.buffer-fix.v1",
+  "files": [
+    {
+      "path": "chrome/browser/aux/cli/AuxCliWire.h",
+      "inputSha256": "e95c86ea68e13b9265ab3a48d983824dba128eab260687ab061387f18f788774",
+      "outputSha256": "e104b5b424c8441c1b6f24885039246891ede8cfad24c90e9287de39c8fea01d",
+      "source": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/cli-native-product-buffer-fix-a1/source/chrome/browser/aux/cli/AuxCliWire.h",
+      "beforeImage": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/cli-native-product-buffer-fix-a1/before/chrome/browser/aux/cli/AuxCliWire.h",
+      "anchors": [
+        {
+          "name": "Explicit bounded main ABI dependency",
+          "find": "#include <cstddef>",
+          "replace": "#include <cstddef>\n#include <cstring>",
+          "count": 1
+        },
+        {
+          "name": "One bounded SDK-only main argument conversion",
+          "find": "using Nonce = std::array<uint8_t, 32>;",
+          "replace": "using Nonce = std::array<uint8_t, 32>;\n// C main ABI only: the OS supplies exactly argc argv pointers and each\n// argument is a NUL-terminated C string. Convert that boundary once, bounded\n// by the existing argument limits, then use owned strings/ranges exclusively.\ninline bool CopyNativeMainArguments(int argc, char* argv[],\n                                    std::vector<std::string>* output) {\n  if (!output || !argv || argc < 1 ||\n      static_cast<size_t>(argc - 1) > kArgumentLimit) return false;\n  std::span<char* const> native;\n#pragma clang unsafe_buffer_usage begin\n  native = std::span<char* const>(argv, static_cast<size_t>(argc));\n#pragma clang unsafe_buffer_usage end\n  std::vector<std::string> copied;\n  for (const char* argument : native.subspan(1)) {\n    if (!argument) return false;\n    // The sole bounded libc scan is at the actual NUL-terminated main ABI.\n#pragma clang unsafe_buffer_usage begin\n    const size_t length = strnlen(argument, kArgumentBytes + 1);\n#pragma clang unsafe_buffer_usage end\n    if (length > kArgumentBytes) return false;\n    std::span<const char> bytes;\n#pragma clang unsafe_buffer_usage begin\n    bytes = std::span<const char>(argument, length);\n#pragma clang unsafe_buffer_usage end\n    copied.emplace_back(bytes.begin(), bytes.end());\n  }\n  *output = std::move(copied);\n  return true;\n}\n",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/aux/cli/AuxCliWire.cc",
+      "inputSha256": "94ba5d5e076cc6fbfb7163512c1f8600b326969ef7e83dde236ac483c8a1fb68",
+      "outputSha256": "457cd1fa9a78e3427cc45c1978e91a92e290656497d2faa52a838962bfbcbcd9",
+      "source": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/cli-native-product-buffer-fix-a1/source/chrome/browser/aux/cli/AuxCliWire.cc",
+      "beforeImage": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/cli-native-product-buffer-fix-a1/before/chrome/browser/aux/cli/AuxCliWire.cc",
+      "anchors": [
+        {
+          "name": "Read validated text through bounded span iterators",
+          "find": "    text.assign(reinterpret_cast<const char*>(bytes_.data()+offset_),size);offset_+=size;",
+          "replace": "    const auto value=bytes_.subspan(offset_,size);\n    text.assign(value.begin(),value.end());offset_+=size;",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/aux/cli/AuxCliIngress.cc",
+      "inputSha256": "d4bbd7529c76cb093195024a85f151bf20dd55c89f6b45f7743145730e1f2bda",
+      "outputSha256": "884e2d83edc447aa75b612eb828f87f95baf84b007639382e8a2faf823ac7fd2",
+      "source": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/cli-native-product-buffer-fix-a1/source/chrome/browser/aux/cli/AuxCliIngress.cc",
+      "beforeImage": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/cli-native-product-buffer-fix-a1/before/chrome/browser/aux/cli/AuxCliIngress.cc",
+      "anchors": [
+        {
+          "name": "Kernel receive owns typed maximum storage and copies bounded audit bytes",
+          "find": "struct Message {\n alignas(mach_msg_audit_trailer_t) std::array<uint8_t,sizeof(Request)+sizeof(mach_msg_audit_trailer_t)+64> bytes{};\n mach_msg_header_t* Header(){return reinterpret_cast<mach_msg_header_t*>(bytes.data());}\n bool received=false;\n ~Message(){if(received)mach_msg_destroy(Header());}\n const mach_msg_audit_trailer_t* Audit()const{\n  const auto* header=reinterpret_cast<const mach_msg_header_t*>(bytes.data());\n  const auto offset=(static_cast<size_t>(header->msgh_size)+3)&~size_t{3};\n  if(offset>bytes.size()-sizeof(mach_msg_audit_trailer_t))return nullptr;\n  const auto* trailer=reinterpret_cast<const mach_msg_audit_trailer_t*>(bytes.data()+offset);\n  return trailer->msgh_trailer_type==MACH_MSG_TRAILER_FORMAT_0&&trailer->msgh_trailer_size==sizeof(*trailer)?trailer:nullptr;\n }\n};\n",
+          "replace": "struct Message {\n struct KernelStorage {\n  Request request{};\n  std::array<uint8_t,sizeof(mach_msg_audit_trailer_t)+64> tail{};\n };\n // The actual kernel receive destination owns the complete maximum frame and\n // trailer capacity. Typed header access never casts array::data into an object.\n alignas(mach_msg_audit_trailer_t) std::array<KernelStorage,1> storage{};\n mutable std::array<mach_msg_audit_trailer_t,1> audit_cache{};\n mach_msg_header_t* Header(){return &storage.front().request.header;}\n size_t Capacity()const{return sizeof(storage);}\n bool received=false;\n ~Message(){if(received)mach_msg_destroy(Header());}\n const mach_msg_audit_trailer_t* Audit()const{\n  const auto& header=storage.front().request.header;\n  const auto offset=(static_cast<size_t>(header.msgh_size)+3)&~size_t{3};\n  const auto bytes=std::as_bytes(std::span(storage));\n  if(offset>bytes.size()-sizeof(mach_msg_audit_trailer_t))return nullptr;\n  const auto trailer=bytes.subspan(offset,sizeof(mach_msg_audit_trailer_t));\n  auto target=std::as_writable_bytes(std::span(audit_cache));\n  std::copy(trailer.begin(),trailer.end(),target.begin());\n  const auto& parsed=audit_cache.front();\n  return parsed.msgh_trailer_type==MACH_MSG_TRAILER_FORMAT_0&&parsed.msgh_trailer_size==sizeof(parsed)?&parsed:nullptr;\n }\n};\n",
+          "count": 1
+        },
+        {
+          "name": "Kernel receives the real complete owned capacity",
+          "find": "message.bytes.size(),port,timeout",
+          "replace": "message.Capacity(),port,timeout",
+          "count": 1
+        },
+        {
+          "name": "Send/retention keeps actual typed message ownership and extent",
+          "find": "bool Send(mach_msg_header_t* header,uint32_t timeout){\n const auto status=mach_msg(header,MACH_SEND_MSG|MACH_SEND_TIMEOUT,header->msgh_size,0,MACH_PORT_NULL,timeout,MACH_PORT_NULL);\n if(status==KERN_SUCCESS)return true;\n if(status==MACH_SEND_INVALID_DEST||status==MACH_SEND_TIMED_OUT||status==MACH_SEND_INTERRUPTED){mach_msg_destroy(header);return false;}\n auto retained=std::make_unique<UnresolvedSend>();retained->bytes.assign(reinterpret_cast<uint8_t*>(header),reinterpret_cast<uint8_t*>(header)+header->msgh_size);\n if(header->msgh_id==kInvoke&&retained->bytes.size()>=offsetof(Request,payload))std::fill(retained->bytes.begin()+offsetof(Request,payload),retained->bytes.end(),0);\n std::lock_guard<std::mutex> lock(SendMutex());Sends().push_back(std::move(retained));return false;\n}\nbool SendOnce(mach_port_t& right,mach_msg_header_t* header,uint32_t timeout){\n if(right==MACH_PORT_NULL)return false;header->msgh_remote_port=right;right=MACH_PORT_NULL;\n header->msgh_bits=MACH_MSGH_BITS(MACH_MSG_TYPE_MOVE_SEND_ONCE,0)|(header->msgh_bits&MACH_MSGH_BITS_COMPLEX);\n return Send(header,timeout);\n}\n",
+          "replace": "// A real typed stack message supplies its complete C ABI extent; there is no\n// caller-provided pointer/length or msgh_size-based unbounded copy.\ntemplate<typename Wire>\nstd::span<const std::byte> NativeMessageBytes(const Wire& message){\n static_assert(offsetof(Wire,header)==0);\n#pragma clang unsafe_buffer_usage begin\n const auto object=std::span<const Wire,1>(&message,1);\n#pragma clang unsafe_buffer_usage end\n return std::as_bytes(object);\n}\ntemplate<typename Wire>\nbool Send(Wire& message,uint32_t timeout){\n auto* header=&message.header;\n const auto storage=NativeMessageBytes(message);\n const bool bounded=header->msgh_size>=sizeof(mach_msg_header_t)&&header->msgh_size<=storage.size();\n const auto status=bounded?mach_msg(header,MACH_SEND_MSG|MACH_SEND_TIMEOUT,header->msgh_size,0,MACH_PORT_NULL,timeout,MACH_PORT_NULL):MACH_SEND_INVALID_DATA;\n if(status==KERN_SUCCESS)return true;\n if(bounded&&(status==MACH_SEND_INVALID_DEST||status==MACH_SEND_TIMED_OUT||status==MACH_SEND_INTERRUPTED)){mach_msg_destroy(header);return false;}\n // Preserve actual post-call rights even for an unknown/invalid header size,\n // bounded by the real owning object's extent rather than trusting that field.\n const auto size=header->msgh_size<=storage.size()?header->msgh_size:storage.size();\n const auto bytes=storage.first(size);\n auto retained=std::make_unique<UnresolvedSend>();retained->bytes.reserve(bytes.size());\n for(const auto value:bytes)retained->bytes.push_back(std::to_integer<uint8_t>(value));\n if(header->msgh_id==kInvoke&&retained->bytes.size()>=offsetof(Request,payload)){\n  auto payload=std::span(retained->bytes).subspan(offsetof(Request,payload));\n  std::fill(payload.begin(),payload.end(),0);\n }\n std::lock_guard<std::mutex> lock(SendMutex());Sends().push_back(std::move(retained));return false;\n}\ntemplate<typename Wire>\nbool SendOnce(mach_port_t& right,Wire& message,uint32_t timeout){\n if(right==MACH_PORT_NULL)return false;auto& header=message.header;\n header.msgh_remote_port=right;right=MACH_PORT_NULL;\n header.msgh_bits=MACH_MSGH_BITS(MACH_MSG_TYPE_MOVE_SEND_ONCE,0)|(header.msgh_bits&MACH_MSGH_BITS_COMPLEX);\n return Send(message,timeout);\n}\n",
+          "count": 1
+        },
+        {
+          "name": "Typed native message handoff SendOnce(state_->reply.value,&response.header,kHandshake)",
+          "find": "SendOnce(state_->reply.value,&response.header,kHandshake)",
+          "replace": "SendOnce(state_->reply.value,response,kHandshake)",
+          "count": 1
+        },
+        {
+          "name": "Typed native message handoff SendOnce(reply,&response.header,kHandshake)",
+          "find": "SendOnce(reply,&response.header,kHandshake)",
+          "replace": "SendOnce(reply,response,kHandshake)",
+          "count": 1
+        },
+        {
+          "name": "Typed native message handoff Send(&hello.header,kHandshake)",
+          "find": "Send(&hello.header,kHandshake)",
+          "replace": "Send(hello,kHandshake)",
+          "count": 1
+        },
+        {
+          "name": "Typed native message handoff Send(&request.header,kHandshake)",
+          "find": "Send(&request.header,kHandshake)",
+          "replace": "Send(request,kHandshake)",
+          "count": 1
+        },
+        {
+          "name": "Typed native message handoff Send(&control.header,kHandshake)",
+          "find": "Send(&control.header,kHandshake)",
+          "replace": "Send(control,kHandshake)",
+          "count": 1
+        },
+        {
+          "name": "No raw argv traversal after the actual main ABI conversion",
+          "find": " Arguments arguments;for(int i=1;i<argc;++i){if(!argv[i]||strnlen(argv[i],kArgumentBytes+1)>kArgumentBytes)return 64;arguments.argv.emplace_back(argv[i]);}",
+          "replace": " Arguments arguments;if(!CopyNativeMainArguments(argc,argv,&arguments.argv))return 64;",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/aux/cli/AuxCliSealedImages.cc",
+      "inputSha256": "c0eb4c06aaec80a9636ce1379a07837f544abef9ffc650f64c607e20abffba91",
+      "outputSha256": "ce2b89fa21fab68eff9cf45e0215b3d802c34926c06908d255df32f714184756",
+      "source": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/cli-native-product-buffer-fix-a1/source/chrome/browser/aux/cli/AuxCliSealedImages.cc",
+      "beforeImage": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/cli-native-product-buffer-fix-a1/before/chrome/browser/aux/cli/AuxCliSealedImages.cc",
+      "anchors": [
+        {
+          "name": "Bounded range algorithms and spans only, SDK-compatible",
+          "find": "#include <optional>",
+          "replace": "#include <optional>\n#include <algorithm>\n#include <span>\n#include <string_view>",
+          "count": 1
+        },
+        {
+          "name": "Compare exact CF-owned code hashes by copied bounded ranges",
+          "find": "bool ValidateGuest(audit_token_t token,SecRequirementRef requirement,const std::vector<uint8_t>& hash){",
+          "replace": "bool SameCapturedHash(CFDataRef captured,std::span<const uint8_t> expected){\n if(!captured||expected.empty()||expected.size()>32||\n    CFDataGetLength(captured)!=static_cast<CFIndex>(expected.size()))return false;\n std::array<uint8_t,32> copied{};\n // CoreFoundation owns the input and guarantees the validated range; this\n // fixed destination is larger than the exact already-checked hash length.\n CFDataGetBytes(captured,CFRangeMake(0,expected.size()),copied.data());\n return std::ranges::equal(std::span(copied).first(expected.size()),expected);\n}\nbool ValidateGuest(audit_token_t token,SecRequirementRef requirement,const std::vector<uint8_t>& hash){",
+          "count": 1
+        },
+        {
+          "name": "No unsafe raw hash memcmp at peer validation",
+          "find": "  return unique&&CFDataGetLength(unique)==static_cast<CFIndex>(hash.size())&&std::memcmp(CFDataGetBytePtr(unique),hash.data(),hash.size())==0;",
+          "replace": "  return SameCapturedHash(unique,hash);",
+          "count": 1
+        },
+        {
+          "name": "Hex digit lookup uses bounded string_view",
+          "find": "constexpr char hex[]=\"0123456789abcdef\";",
+          "replace": "constexpr std::string_view hex=\"0123456789abcdef\";",
+          "count": 1
+        },
+        {
+          "name": "No unsafe raw hash memcmp at current image validation",
+          "find": "return unique&&CFDataGetLength(unique)==static_cast<CFIndex>(data_->own.cd_hash.size())&&std::memcmp(CFDataGetBytePtr(unique),data_->own.cd_hash.data(),data_->own.cd_hash.size())==0;",
+          "replace": "return SameCapturedHash(unique,data_->own.cd_hash);",
+          "count": 1
+        },
+        {
+          "name": "Read only the remaining owned resource span",
+          "find": "while(offset<bytes.size()){const auto count=pread(entry,bytes.data()+offset,bytes.size()-offset,offset);if(count<0&&errno==EINTR)continue;if(count<=0)return false;offset+=count;}",
+          "replace": "while(offset<bytes.size()){auto remaining=std::span(bytes).subspan(offset);const auto count=pread(entry,remaining.data(),remaining.size(),offset);if(count<0&&errno==EINTR)continue;if(count<=0||static_cast<size_t>(count)>remaining.size())return false;offset+=static_cast<size_t>(count);}",
+          "count": 1
+        },
+        {
+          "name": "Classify fixed entry prefix with bounded ranges",
+          "find": "constexpr char prefix[]=\"#!/usr/bin/env node\\n/* aux-owned-cli-entry-v1 */\\n\";\n  if(bytes.size()<sizeof(prefix)-1||std::memcmp(bytes.data(),prefix,sizeof(prefix)-1)!=0)return false;",
+          "replace": "constexpr std::string_view prefix=\"#!/usr/bin/env node\\n/* aux-owned-cli-entry-v1 */\\n\";\n  if(bytes.size()<prefix.size()||!std::ranges::equal(std::span(bytes).first(prefix.size()),prefix))return false;",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/aux/cli/packaged-identity-admission.h",
+      "inputSha256": "3f56e834ea18353f8ec7ed554336eb94104ff86f84dcfe1952de258520c4f50a",
+      "outputSha256": "10abe5ead6bbbe3bcfd4d28a99aa89690adb0b9ae22cdf4d06cae034ff2feabb",
+      "source": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/cli-native-product-buffer-fix-a1/source/chrome/browser/aux/cli/packaged-identity-admission.h",
+      "beforeImage": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/cli-native-product-buffer-fix-a1/before/chrome/browser/aux/cli/packaged-identity-admission.h",
+      "anchors": [
+        {
+          "name": "Owned marker remainder spans require only the standard library",
+          "find": "#include <string_view>",
+          "replace": "#include <string_view>\n#include <span>",
+          "count": 1
+        },
+        {
+          "name": "Foundation gets the exact checked JSON key slice",
+          "find": "          NSData* encoded_key = [NSData dataWithBytes:json.data() + start\n                                               length:index - start + 1];",
+          "replace": "          const auto key_view = json.substr(start, index - start + 1);\n          NSData* encoded_key = [NSData dataWithBytes:key_view.data()\n                                               length:key_view.size()];",
+          "count": 1
+        },
+        {
+          "name": "Read only the remaining owned immutable marker buffer",
+          "find": "    const ssize_t size = read(fd.value, bytes.data() + offset, bytes.size() - offset);",
+          "replace": "    auto remaining = std::span(bytes).subspan(offset);\n    const ssize_t size = read(fd.value, remaining.data(), remaining.size());",
+          "count": 1
+        },
+        {
+          "name": "Reject impossible libc byte count before advancing owned offset",
+          "find": "    if (size <= 0) return false;\n    offset += static_cast<size_t>(size);",
+          "replace": "    if (size <= 0 || static_cast<size_t>(size) > remaining.size()) return false;\n    offset += static_cast<size_t>(size);",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/aux/cli/AuxNativeCliFrontend.mm",
+      "inputSha256": "bb65a82e22c85768cf81184fb083026b2371edfe23d95e78e9133133c54d7fb2",
+      "outputSha256": "cd79cf887952b79cb9a8cd3b4e226a1e5bb81ec5ff02f0b5d4dd1f0134e3793c",
+      "source": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/cli-native-product-buffer-fix-a1/source/chrome/browser/aux/cli/AuxNativeCliFrontend.mm",
+      "beforeImage": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/cli-native-product-buffer-fix-a1/before/chrome/browser/aux/cli/AuxNativeCliFrontend.mm",
+      "anchors": [
+        {
+          "name": "Length-aware SDK-only stream diagnostics",
+          "find": "#include <cstdio>",
+          "replace": "#include <cstdio>\n#include <iostream>\n#include <string_view>",
+          "count": 1
+        },
+        {
+          "name": "One bounded actual C main argument conversion",
+          "find": " if(argc<1||argc>257||!argv)return 64;\n for(int i=1;i<argc;++i){if(!argv[i]||strnlen(argv[i],8193)>8192)return 64;arguments.emplace_back(argv[i]);}",
+          "replace": " if(!aux::cli::CopyNativeMainArguments(argc,argv,&arguments))return 64;",
+          "count": 1
+        },
+        {
+          "name": "Bounded literal stream output stderr",
+          "find": "std::fputs(\"Aux CLI retained runtime join is not paired\\n\",stderr)",
+          "replace": "std::cerr << std::string_view(\"Aux CLI retained runtime join is not paired\\n\")",
+          "count": 1
+        },
+        {
+          "name": "Bounded literal stream output stderr",
+          "find": "std::fputs(\"Aux currently supports native open only; installation/account CLI commands remain unavailable\\n\",stderr)",
+          "replace": "std::cerr << std::string_view(\"Aux currently supports native open only; installation/account CLI commands remain unavailable\\n\")",
+          "count": 1
+        },
+        {
+          "name": "Bounded literal stream output stderr",
+          "find": "std::fputs(\"Aux packaged state identity is unsupported or unaccepted\\n\",stderr)",
+          "replace": "std::cerr << std::string_view(\"Aux packaged state identity is unsupported or unaccepted\\n\")",
+          "count": 2
+        },
+        {
+          "name": "Bounded literal stream output stdout",
+          "find": "std::fputs(\"Usage: aux open <https://URL> [--profile <native profile ID or unique name>]\\n\",stdout)",
+          "replace": "std::cout << std::string_view(\"Usage: aux open <https://URL> [--profile <native profile ID or unique name>]\\n\")",
+          "count": 1
+        }
+      ]
+    }
+  ],
+  "actualProductCompilerLog": "/private/tmp/aux-chromium-recovery-snapshot-20261023/native-cli-product-link-20261024-a1/stdout",
+  "actualProductCompilerLogSha256": "44ebdff325ee6811155058d2c01380a809d6a7f4bb55bcd989f018b18dc78aae",
+  "actualNativeMutation": false,
+  "compilerRun": false,
+  "unsafeChecksDisabled": false,
+  "newBaseDependency": false,
+  "runtimeAcceptance": false
+}

@@ -1,0 +1,233 @@
+{
+  "format": "aux.cli-product-buffer.sdk-plan.v1",
+  "requiresActualProjectionFirst": true,
+  "outputDirectory": "/private/tmp/aux-cli-product-buffer-sdk-after-projection-20261024-a1",
+  "requiresOutputDirectoryCreationByRoot": true,
+  "commands": [
+    {
+      "name": "Wire",
+      "source": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/aux/cli/AuxCliWire.cc",
+      "expectedSourceSha256": "457cd1fa9a78e3427cc45c1978e91a92e290656497d2faa52a838962bfbcbcd9",
+      "output": "/private/tmp/aux-cli-product-buffer-sdk-after-projection-20261024-a1/Wire.o",
+      "argv": [
+        "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang++",
+        "-target",
+        "arm64-apple-macos13.5",
+        "-isysroot",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk",
+        "-std=c++20",
+        "-stdlib=libc++",
+        "-fPIC",
+        "-fvisibility=hidden",
+        "-Wall",
+        "-Wextra",
+        "-Werror=return-type",
+        "-x",
+        "c++",
+        "-I",
+        "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/aux/cli",
+        "-c",
+        "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/aux/cli/AuxCliWire.cc",
+        "-o",
+        "/private/tmp/aux-cli-product-buffer-sdk-after-projection-20261024-a1/Wire.o"
+      ]
+    },
+    {
+      "name": "SealedImages",
+      "source": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/aux/cli/AuxCliSealedImages.cc",
+      "expectedSourceSha256": "ce2b89fa21fab68eff9cf45e0215b3d802c34926c06908d255df32f714184756",
+      "output": "/private/tmp/aux-cli-product-buffer-sdk-after-projection-20261024-a1/SealedImages.o",
+      "argv": [
+        "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang++",
+        "-target",
+        "arm64-apple-macos13.5",
+        "-isysroot",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk",
+        "-std=c++20",
+        "-stdlib=libc++",
+        "-fPIC",
+        "-fvisibility=hidden",
+        "-Wall",
+        "-Wextra",
+        "-Werror=return-type",
+        "-x",
+        "c++",
+        "-I",
+        "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/aux/cli",
+        "-c",
+        "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/aux/cli/AuxCliSealedImages.cc",
+        "-o",
+        "/private/tmp/aux-cli-product-buffer-sdk-after-projection-20261024-a1/SealedImages.o"
+      ]
+    },
+    {
+      "name": "Ingress",
+      "source": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/aux/cli/AuxCliIngress.cc",
+      "expectedSourceSha256": "884e2d83edc447aa75b612eb828f87f95baf84b007639382e8a2faf823ac7fd2",
+      "output": "/private/tmp/aux-cli-product-buffer-sdk-after-projection-20261024-a1/Ingress.o",
+      "argv": [
+        "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang++",
+        "-target",
+        "arm64-apple-macos13.5",
+        "-isysroot",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk",
+        "-std=c++20",
+        "-stdlib=libc++",
+        "-fPIC",
+        "-fvisibility=hidden",
+        "-Wall",
+        "-Wextra",
+        "-Werror=return-type",
+        "-x",
+        "c++",
+        "-I",
+        "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/aux/cli",
+        "-c",
+        "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/aux/cli/AuxCliIngress.cc",
+        "-o",
+        "/private/tmp/aux-cli-product-buffer-sdk-after-projection-20261024-a1/Ingress.o"
+      ]
+    },
+    {
+      "name": "OpenArguments",
+      "source": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/aux/cli/AuxCliOpenArguments.cc",
+      "expectedSourceSha256": "d2f946689e5f5a6d5c82adbb1c3c685ddc58ac92ab9ef0dbebcd07edb4282f92",
+      "output": "/private/tmp/aux-cli-product-buffer-sdk-after-projection-20261024-a1/OpenArguments.o",
+      "argv": [
+        "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang++",
+        "-target",
+        "arm64-apple-macos13.5",
+        "-isysroot",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk",
+        "-std=c++20",
+        "-stdlib=libc++",
+        "-fPIC",
+        "-fvisibility=hidden",
+        "-Wall",
+        "-Wextra",
+        "-Werror=return-type",
+        "-x",
+        "c++",
+        "-I",
+        "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/aux/cli",
+        "-c",
+        "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/aux/cli/AuxCliOpenArguments.cc",
+        "-o",
+        "/private/tmp/aux-cli-product-buffer-sdk-after-projection-20261024-a1/OpenArguments.o"
+      ]
+    },
+    {
+      "name": "Frontend",
+      "source": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/aux/cli/AuxNativeCliFrontend.mm",
+      "expectedSourceSha256": "cd79cf887952b79cb9a8cd3b4e226a1e5bb81ec5ff02f0b5d4dd1f0134e3793c",
+      "output": "/private/tmp/aux-cli-product-buffer-sdk-after-projection-20261024-a1/Frontend.o",
+      "argv": [
+        "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang++",
+        "-target",
+        "arm64-apple-macos13.5",
+        "-isysroot",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk",
+        "-std=c++20",
+        "-stdlib=libc++",
+        "-fPIC",
+        "-fvisibility=hidden",
+        "-Wall",
+        "-Wextra",
+        "-Werror=return-type",
+        "-x",
+        "objective-c++",
+        "-fobjc-arc",
+        "-fno-objc-arc-exceptions",
+        "-fblocks",
+        "-I",
+        "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/aux/cli",
+        "-c",
+        "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/aux/cli/AuxNativeCliFrontend.mm",
+        "-o",
+        "/private/tmp/aux-cli-product-buffer-sdk-after-projection-20261024-a1/Frontend.o"
+      ]
+    },
+    {
+      "name": "EndpointDelivery",
+      "source": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/aux/cli/AuxNativeEndpointDelivery.cc",
+      "expectedSourceSha256": "3765060b84d88a7f63cdcfb695bcbc3f58ab1f92ca9905ccc5d37b629944c57d",
+      "output": "/private/tmp/aux-cli-product-buffer-sdk-after-projection-20261024-a1/EndpointDelivery.o",
+      "argv": [
+        "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang++",
+        "-target",
+        "arm64-apple-macos13.5",
+        "-isysroot",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk",
+        "-std=c++20",
+        "-stdlib=libc++",
+        "-fPIC",
+        "-fvisibility=hidden",
+        "-Wall",
+        "-Wextra",
+        "-Werror=return-type",
+        "-x",
+        "c++",
+        "-I",
+        "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/aux/cli",
+        "-c",
+        "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/aux/cli/AuxNativeEndpointDelivery.cc",
+        "-o",
+        "/private/tmp/aux-cli-product-buffer-sdk-after-projection-20261024-a1/EndpointDelivery.o"
+      ]
+    }
+  ],
+  "headers": [
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/aux/cli/AuxCliWire.h",
+      "sha256": "e104b5b424c8441c1b6f24885039246891ede8cfad24c90e9287de39c8fea01d"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/aux/cli/AuxCliIngress.h",
+      "sha256": "4515848fafc4dad25e5180130640d28c28bf1a3333610f232b34816a7e64e8d6"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/aux/cli/AuxCliSealedImages.h",
+      "sha256": "6f1df6f4b83809e8e4ae4fec2cfcd4a6a8e7b0cd40e8bcbb1e7bc25bec59087b"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/aux/cli/AuxCliOpenArguments.h",
+      "sha256": "6c9761c47b8d76f2bde4bfadeb78f5b24cbaeba457ad1b0a2b99cf2a6f2e2a6d"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/aux/cli/AuxNativeEndpointDelivery.h",
+      "sha256": "f3d78409fec2b84a5304626e144e84314954bce0ea29762f0f30740c62ca6b89"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/aux/cli/packaged-identity-admission.h",
+      "sha256": "10abe5ead6bbbe3bcfd4d28a99aa89690adb0b9ae22cdf4d06cae034ff2feabb"
+    }
+  ],
+  "optionalUnsignedNativeOnlyLinkArgv": [
+    "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang++",
+    "-target",
+    "arm64-apple-macos13.5",
+    "-isysroot",
+    "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk",
+    "-stdlib=libc++",
+    "/private/tmp/aux-cli-product-buffer-sdk-after-projection-20261024-a1/Wire.o",
+    "/private/tmp/aux-cli-product-buffer-sdk-after-projection-20261024-a1/SealedImages.o",
+    "/private/tmp/aux-cli-product-buffer-sdk-after-projection-20261024-a1/Ingress.o",
+    "/private/tmp/aux-cli-product-buffer-sdk-after-projection-20261024-a1/OpenArguments.o",
+    "/private/tmp/aux-cli-product-buffer-sdk-after-projection-20261024-a1/Frontend.o",
+    "/private/tmp/aux-cli-product-buffer-sdk-after-projection-20261024-a1/EndpointDelivery.o",
+    "-framework",
+    "CoreFoundation",
+    "-framework",
+    "Security",
+    "-framework",
+    "Foundation",
+    "-lbsm",
+    "-lobjc",
+    "-Wl,-no_adhoc_codesign",
+    "-o",
+    "/private/tmp/aux-cli-product-buffer-sdk-after-projection-20261024-a1/aux-cli"
+  ],
+  "unsafeChecksMustRemainEnabledInActualNinjaBuild": true,
+  "compilerRun": false,
+  "linkerRun": false
+}

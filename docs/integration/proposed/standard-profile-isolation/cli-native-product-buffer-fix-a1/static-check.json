@@ -1,0 +1,14 @@
+{
+  "format": "aux.cli-native-product.buffer-fix.static.v1",
+  "passed": true,
+  "files": 6,
+  "countedMatches": 30,
+  "patchAppliedAndReversedInDisposableMirror": true,
+  "actualNativeMutation": false,
+  "unsafeChecksDisabled": false,
+  "newBaseDependency": false,
+  "compilerRun": false,
+  "nativeApiExecuted": false,
+  "productExecuted": false,
+  "runtimeAcceptance": false
+}
