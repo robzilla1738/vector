@@ -1,0 +1,30 @@
+--- baseline/chrome/browser/ui/aux_browser_shutdown_drain.cc
++++ source/chrome/browser/ui/aux_browser_shutdown_drain.cc
+@@ -125,7 +125,8 @@
+   base::RunLoop loop;
+   base::RepeatingTimer poll;
+   const auto deadline = base::TimeTicks::Now() + base::Seconds(5);
+-  poll.Start(FROM_HERE, base::Milliseconds(25), base::BindRepeating([&] {
++  poll.Start(FROM_HERE, base::Milliseconds(25), base::BindRepeating(
++      [](ShutdownDrainState* state, base::RunLoop* loop, base::TimeTicks deadline) {
+     auto observed = InspectOwnedBrowserParticipantQuiesce();
+     auto before_children = observed;
+     before_children.content_children.pending = 0;
+@@ -134,12 +135,12 @@
+     before_children.native_messaging.unbound = 0;
+     const auto ready = EvaluateOwnedBrowserParticipantDrain(before_children);
+     if ((!ready.pending && !ready.unknown) || base::TimeTicks::Now() >= deadline) {
+-      std::lock_guard<std::mutex> lock(state.mutex);
+-      state.observation = std::move(observed);
+-      state.frozen = true;
+-      loop.Quit();
++      std::lock_guard<std::mutex> lock(state->mutex);
++      state->observation = std::move(observed);
++      state->frozen = true;
++      loop->Quit();
+     }
+-  }));
++  }, base::Unretained(&state), base::Unretained(&loop), deadline));
+   loop.Run();
+ }
+ void FinishNativeBrowserShutdownDrain() {

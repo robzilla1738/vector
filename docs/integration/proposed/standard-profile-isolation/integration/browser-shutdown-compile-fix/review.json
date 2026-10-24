@@ -1,0 +1,9 @@
+{
+  "format": "aux.standard-browser.compile-fix.v1",
+  "path": "chrome/browser/ui/aux_browser_shutdown_drain.cc",
+  "beforeSha256": "db4d3302017b086c4fa3aa52a87b6aa82114eeeafe2d53d6342841c0178dc5b1",
+  "afterSha256": "c9ed04b825e5614fa50dead287c692678663960f2745e876f184a8bf2d124607",
+  "reason": "Chromium BindRepeating requires a stateless callable with explicitly bound arguments",
+  "uiChanged": false,
+  "compiled": false
+}

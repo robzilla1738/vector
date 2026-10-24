@@ -3,7 +3,7 @@
 from pathlib import Path
 import hashlib,json,re,shlex,subprocess,sys,time
 here=Path(__file__).resolve().parent
-planpath=here/'native-build-a1.json';plan=json.loads(planpath.read_text());out=Path(plan['output'])
+planpath=here/'native-build-a2.json';plan=json.loads(planpath.read_text());out=Path(plan['output'])
 assert not out.exists();out.mkdir(mode=0o700)
 def sha(p):
  with open(p,'rb') as f:return hashlib.file_digest(f,'sha256').hexdigest()

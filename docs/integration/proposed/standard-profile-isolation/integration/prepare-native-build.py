@@ -5,8 +5,8 @@ import hashlib,json
 here=Path(__file__).resolve().parent;repo=here.parents[4]
 source=Path('/private/tmp/aux-standard-native-source-20261023-a4')
 browser=Path('/private/tmp/aux-standard-browser-source-20261023-a2')
-objects=Path('/private/tmp/aux-standard-daemon-objects-20261023-a1')
-link=Path('/private/tmp/aux-standard-daemon-link-20261023-a1')
+objects=Path('/private/tmp/aux-standard-daemon-objects-20261023-a2')
+link=Path('/private/tmp/aux-standard-daemon-link-20261023-a2')
 def read(path):return json.loads(Path(path).read_text())
 def sha(path):return hashlib.sha256(Path(path).read_bytes()).hexdigest()
 assert not objects.exists() and not link.exists()
@@ -25,6 +25,7 @@ def add(name,cmd,src,oldobject,visibility=False):
  if '-c' not in c:c.extend(['-c','-o',str(objects/(name+'.o'))])
  if '-MMD' not in c:c.extend(['-MMD','-MF',str(objects/(name+'.d'))])
  c[1:1]=['-fblocks','-I'+str(source),'-I'+str(browser/'chrome/browser/aux'),'-I'+str(repo/'docs/integration/proposed/profile-isolation-local-finish/runtime-cache-async-relink-a3/source')]
+ if '-isysroot' not in c:c[1:1]=['-isysroot','/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk']
  if visibility:c.insert(1,'-fvisibility=hidden')
  commands.append({'name':name,'command':c,'source':str(src)})
  if oldobject:replacements[oldobject]=str(objects/(name+'.o'))
@@ -54,4 +55,4 @@ linkcmd.extend([str(objects/'observer.o'),'-framework','EndpointSecurity'])
 manifest=dict(old);manifest['commands']=[linkcmd];manifest['output']=str(link)
 manifest['privateDefinitions']=list(old['privateDefinitions'])+['_AuxDevelopmentOwnerCleanSettlementStatus','_AuxObserveDevelopmentMainLoopReturned','_AuxCompleteDevelopmentOwnerBrowserCleanShutdown']
 plan={'format':'aux.standard-daemon.compile-plan.v1','output':str(objects),'linkManifestTemplate':manifest,'commands':commands,'replacements':replacements,'sourceComposition':{'path':str(source/'composition.json'),'sha256':sha(source/'composition.json')},'frozenNewSources':{str(p):sha(p) for root in [source,browser] for p in root.rglob('*') if p.is_file()},'moduleUnchanged':True,'productExecuted':False,'productSigned':False,'runtimeAuthorityGranted':False}
-(here/'native-build-a1.json').write_text(json.dumps(plan,indent=2)+'\n');print(json.dumps({'compileUnits':len(commands),'sourceCompositionSha256':plan['sourceComposition']['sha256'],'preparedOnly':True}))
+(here/'native-build-a2.json').write_text(json.dumps(plan,indent=2)+'\n');print(json.dumps({'compileUnits':len(commands),'sourceCompositionSha256':plan['sourceComposition']['sha256'],'preparedOnly':True}))
