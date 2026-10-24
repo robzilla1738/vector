@@ -3,7 +3,7 @@
   "kind": "native-feature-proposal",
   "sourceBaseline": "02ce77253",
   "files": {
-    "chrome/browser/aux/organization/organization_codec.cc": "f657f7e64d11156d24623ae86096115361b0848ed374100ca345ef94fa31bb8d",
+    "chrome/browser/aux/organization/organization_codec.cc": "84ec2866fda4387d537adb208b90a288e32e96afb21071ea29cbdcc97214a419",
     "chrome/browser/aux/organization/organization_codec.h": "2977da779fc63adbc09d02a41fd35c2352fb8b82b77f95ce99ae95ab0298c080",
     "chrome/browser/aux/organization/organization_model.cc": "b4fe274385ad178dd36019e3b7706b6af07662cf3b65b91135ff00df21121920",
     "chrome/browser/aux/organization/organization_model.h": "49742f7d154e6e2b06eea4241d07b6b757d1b9335542f9cb133859b6c62c15a1",

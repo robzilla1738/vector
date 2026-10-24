@@ -1,12 +1,12 @@
 // Copyright 2026 The Aux Authors. BSD-style license: see //LICENSE.
 #include "chrome/browser/aux/organization/organization_codec.h"
 
-#include <charconv>
 #include <initializer_list>
 #include <set>
 #include <utility>
 
 #include "base/check.h"
+#include "base/strings/string_number_conversions.h"
 #include "url/gurl.h"
 
 namespace aux::organization {
@@ -40,9 +40,7 @@ std::optional<uint64_t> ParseCanonicalUint64(std::string_view value) {
     if (ch < '0' || ch > '9') return std::nullopt;
   }
   uint64_t result = 0;
-  const auto parsed = std::from_chars(value.data(), value.data() + value.size(), result);
-  if (parsed.ec != std::errc() || parsed.ptr != value.data() + value.size())
-    return std::nullopt;
+  if (!base::StringToUint64(value, &result)) return std::nullopt;
   return result;
 }
 base::DictValue EncodeSnapshot(const Snapshot& snapshot) {
