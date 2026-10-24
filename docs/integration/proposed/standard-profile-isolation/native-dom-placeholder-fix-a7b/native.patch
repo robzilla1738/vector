@@ -1,0 +1,22 @@
+--- a/components/services/storage/dom_storage/local_storage_impl.cc
++++ b/components/services/storage/dom_storage/local_storage_impl.cc
+@@ -321,7 +321,7 @@
+ void LocalStorageImpl::BeginAuxUiPreferenceLease(
+     const base::UnguessableToken& request_id,
+     BeginAuxUiPreferenceLeaseCallback callback) {
+-  if (request_id.is_empty() || aux_ui_request_ || LIVE_LocalStorageImplS ||
++  if (request_id.is_empty() || aux_ui_request_ || !areas_.empty() ||
+       connection_state_ != CONNECTION_FINISHED || !database_ || in_memory_ ||
+       storage_partition_directory_.empty()) {
+     std::move(callback).Run(AuxDomLeaseFailure(aux_ui_request_, aux_ui_lease_.get(),
+--- a/components/services/storage/dom_storage/session_storage_impl.cc
++++ b/components/services/storage/dom_storage/session_storage_impl.cc
+@@ -306,7 +306,7 @@
+ void SessionStorageImpl::BeginAuxUiPreferenceLease(
+     const base::UnguessableToken& request_id,
+     BeginAuxUiPreferenceLeaseCallback callback) {
+-  if (request_id.is_empty() || aux_ui_request_ || LIVE_SessionStorageImplS ||
++  if (request_id.is_empty() || aux_ui_request_ || !data_maps_.empty() || !namespaces_.empty() ||
+       connection_state_ != CONNECTION_FINISHED || !database_ || in_memory_ ||
+       storage_partition_directory_.empty()) {
+     std::move(callback).Run(AuxDomLeaseFailure(aux_ui_request_, aux_ui_lease_.get(),

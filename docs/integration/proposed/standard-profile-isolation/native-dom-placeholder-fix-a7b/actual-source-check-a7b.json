@@ -1,0 +1,16 @@
+{
+  "format": "aux.dom-placeholder.source-check.actual.v1",
+  "passed": true,
+  "sourcePlanSha256": "7bda46a3c87b517e3fc87434fff9d61c7c74468cdd5b2d7b5439094e8a94fe2b",
+  "patchSha256": "8af7297d3cdef2f0cde8a750dfac94a61acc41b885a83112aad690bb7943f3be",
+  "files": 2,
+  "countedAnchors": 2,
+  "replayDirectory": "/private/tmp/aux-dom-placeholder-replay-l5qtwgok",
+  "exactReplayPassed": true,
+  "reverseCheckPassed": true,
+  "nativeCheckoutChanged": false,
+  "nativeCompiled": false,
+  "testsExecuted": false,
+  "productExecuted": false,
+  "runtimeAcceptance": false
+}

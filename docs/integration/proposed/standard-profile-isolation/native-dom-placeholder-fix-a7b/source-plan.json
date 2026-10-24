@@ -1,0 +1,36 @@
+{
+  "format": "aux.native-dom-placeholder-fix.source.v1",
+  "nativeRoot": "/Users/rcourson/.codex/worktrees/aux-features-organization/web/docs/integration/proposed/standard-profile-isolation/native-dom-transaction-lease-a7/source",
+  "files": [
+    {
+      "path": "components/services/storage/dom_storage/local_storage_impl.cc",
+      "inputSha256": "31e17a862d4bf65c1d4eb54639c94b68e0c89403e15fb04ca4ac7e2f8e89cb13",
+      "outputSha256": "6cf448a4ea6a57b0998bdcfaaa2ba07ba8917dcfc47b6747b78f5b77c39880af",
+      "output": "/Users/rcourson/.codex/worktrees/aux-features-organization/web/docs/integration/proposed/standard-profile-isolation/native-dom-placeholder-fix-a7b/source/components/services/storage/dom_storage/local_storage_impl.cc",
+      "anchors": [
+        {
+          "find": "LIVE_LocalStorageImplS",
+          "replace": "!areas_.empty()",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "components/services/storage/dom_storage/session_storage_impl.cc",
+      "inputSha256": "beb9da5bcc25ae43a7519af7ed40226b1a391df40409e06fefaebcb933ea1cb4",
+      "outputSha256": "b80f8d3bf53dfab3b184e45fd9d9477dd63f1a31a31b3169ed53648f1f3defe6",
+      "output": "/Users/rcourson/.codex/worktrees/aux-features-organization/web/docs/integration/proposed/standard-profile-isolation/native-dom-placeholder-fix-a7b/source/components/services/storage/dom_storage/session_storage_impl.cc",
+      "anchors": [
+        {
+          "find": "LIVE_SessionStorageImplS",
+          "replace": "!data_maps_.empty() || !namespaces_.empty()",
+          "count": 1
+        }
+      ]
+    }
+  ],
+  "nativeCheckoutChanged": false,
+  "nativeCompiled": false,
+  "productExecuted": false,
+  "activationAuthorized": false
+}
