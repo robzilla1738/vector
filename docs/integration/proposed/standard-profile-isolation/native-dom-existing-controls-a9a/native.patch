@@ -1,0 +1,73 @@
+--- a/content/public/browser/dom_storage_context.h
++++ b/content/public/browser/dom_storage_context.h
+@@ -5,6 +5,8 @@
+ #ifndef CONTENT_PUBLIC_BROWSER_DOM_STORAGE_CONTEXT_H_
+ #define CONTENT_PUBLIC_BROWSER_DOM_STORAGE_CONTEXT_H_
+ 
++#include <cstdint>
++#include <optional>
+ #include <string>
+ #include <vector>
+ 
+@@ -14,6 +16,11 @@
+ namespace blink {
+ class StorageKey;
+ }  // namespace blink
++
++namespace storage::mojom {
++class LocalStorageControl;
++class SessionStorageControl;
++}
+ 
+ namespace content {
+ 
+@@ -61,6 +68,17 @@
+   // been created after a session restore, or a session restore won't happen.
+   virtual void StartScavengingUnusedSessionStorage() = 0;
+ 
++  // Native observation of this actual context's already-bound controls.
++  // Reacquire after every async boundary; pointer/generation observations do
++  // not authorize writes, prove closure or cause lazy service construction.
++  struct AuxUiMigrationControls {
++    storage::mojom::LocalStorageControl* local;
++    storage::mojom::SessionStorageControl* session;
++    uint64_t generation;
++  };
++  CONTENT_EXPORT virtual std::optional<AuxUiMigrationControls>
++  GetExistingAuxUiMigrationControls();
++
+  protected:
+   virtual ~DOMStorageContext() {}
+ };
+--- a/content/browser/dom_storage/dom_storage_context_wrapper.h
++++ b/content/browser/dom_storage/dom_storage_context_wrapper.h
+@@ -95,6 +95,7 @@
+   void StartScavengingUnusedSessionStorage() override;
+   void DrainLoadedAreasForAuxUiMigration(
+       base::OnceCallback<void(bool)> callback) override;
++  std::optional<AuxUiMigrationControls> GetExistingAuxUiMigrationControls() override;
+   bool scavenging_started_for_testing() const {
+     return scavenging_started_for_testing_;
+   }
+--- a/content/browser/dom_storage/dom_storage_context_wrapper.cc
++++ b/content/browser/dom_storage/dom_storage_context_wrapper.cc
+@@ -52,6 +52,19 @@
+   std::move(callback).Run(false);
+ }
+ 
++std::optional<DOMStorageContext::AuxUiMigrationControls>
++DOMStorageContext::GetExistingAuxUiMigrationControls() { return std::nullopt; }
++
++std::optional<DOMStorageContext::AuxUiMigrationControls>
++DOMStorageContextWrapper::GetExistingAuxUiMigrationControls() {
++  DCHECK_CURRENTLY_ON(BrowserThread::UI);
++  if (!partition_ || !local_storage_control_ || !session_storage_control_ ||
++      !local_storage_control_.is_connected() || !session_storage_control_.is_connected())
++    return std::nullopt;
++  return AuxUiMigrationControls{local_storage_control_.get(),
++      session_storage_control_.get(), aux_control_generation_};
++}
++
+ namespace {
+ 
+ void AdaptSessionStorageUsageInfo(

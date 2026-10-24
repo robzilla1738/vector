@@ -1,0 +1,59 @@
+{
+  "format": "aux.native-dom-existing-controls.source.v1",
+  "nativeRoot": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src",
+  "files": [
+    {
+      "path": "content/public/browser/dom_storage_context.h",
+      "inputSha256": "dda866985da4739030e8c53da74ea74680b9cc784694beb1e2077d9ea4805470",
+      "outputSha256": "b75a30bbdfa2c2604f44e72141a7801fc46188006f40475b98a989b777124152",
+      "output": "/Users/rcourson/.codex/worktrees/aux-features-organization/web/docs/integration/proposed/standard-profile-isolation/native-dom-existing-controls-a9a/source/content/public/browser/dom_storage_context.h",
+      "anchors": [
+        {
+          "find": "#include <string>",
+          "replace": "#include <cstdint>\n#include <optional>\n#include <string>",
+          "count": 1
+        },
+        {
+          "find": "namespace content {",
+          "replace": "namespace storage::mojom {\nclass LocalStorageControl;\nclass SessionStorageControl;\n}\n\nnamespace content {",
+          "count": 1
+        },
+        {
+          "find": " protected:\n  virtual ~DOMStorageContext() {}",
+          "replace": "  // Native observation of this actual context's already-bound controls.\n  // Reacquire after every async boundary; pointer/generation observations do\n  // not authorize writes, prove closure or cause lazy service construction.\n  struct AuxUiMigrationControls {\n    storage::mojom::LocalStorageControl* local;\n    storage::mojom::SessionStorageControl* session;\n    uint64_t generation;\n  };\n  CONTENT_EXPORT virtual std::optional<AuxUiMigrationControls>\n  GetExistingAuxUiMigrationControls();\n\n protected:\n  virtual ~DOMStorageContext() {}",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "content/browser/dom_storage/dom_storage_context_wrapper.h",
+      "inputSha256": "c39eb726f0be482fe50c62eb7a3329c364e04cd94e076e14e2ba9d1f9ad5b928",
+      "outputSha256": "7bc184d988354367075efccc4d7b1e29c2dc3ab9c91abdd7b99217eaf5a545d6",
+      "output": "/Users/rcourson/.codex/worktrees/aux-features-organization/web/docs/integration/proposed/standard-profile-isolation/native-dom-existing-controls-a9a/source/content/browser/dom_storage/dom_storage_context_wrapper.h",
+      "anchors": [
+        {
+          "find": "  bool scavenging_started_for_testing() const {",
+          "replace": "  std::optional<AuxUiMigrationControls> GetExistingAuxUiMigrationControls() override;\n  bool scavenging_started_for_testing() const {",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "content/browser/dom_storage/dom_storage_context_wrapper.cc",
+      "inputSha256": "dfb67720ced4159fc2ea532a1a127535305705dd7d297352551a1076e3b7fc3e",
+      "outputSha256": "7acb499d2682f1c0395ae45e3f4c1b9b6f6d8a7980e1c28c8e237f52ca0e277c",
+      "output": "/Users/rcourson/.codex/worktrees/aux-features-organization/web/docs/integration/proposed/standard-profile-isolation/native-dom-existing-controls-a9a/source/content/browser/dom_storage/dom_storage_context_wrapper.cc",
+      "anchors": [
+        {
+          "find": "namespace {\n\nvoid AdaptSessionStorageUsageInfo(",
+          "replace": "std::optional<DOMStorageContext::AuxUiMigrationControls>\nDOMStorageContext::GetExistingAuxUiMigrationControls() { return std::nullopt; }\n\nstd::optional<DOMStorageContext::AuxUiMigrationControls>\nDOMStorageContextWrapper::GetExistingAuxUiMigrationControls() {\n  DCHECK_CURRENTLY_ON(BrowserThread::UI);\n  if (!partition_ || !local_storage_control_ || !session_storage_control_ ||\n      !local_storage_control_.is_connected() || !session_storage_control_.is_connected())\n    return std::nullopt;\n  return AuxUiMigrationControls{local_storage_control_.get(),\n      session_storage_control_.get(), aux_control_generation_};\n}\n\nnamespace {\n\nvoid AdaptSessionStorageUsageInfo(",
+          "count": 1
+        }
+      ]
+    }
+  ],
+  "nativeCheckoutChanged": false,
+  "nativeCompiled": false,
+  "productExecuted": false,
+  "activationAuthorized": false
+}

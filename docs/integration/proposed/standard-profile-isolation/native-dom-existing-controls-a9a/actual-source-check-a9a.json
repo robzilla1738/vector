@@ -1,0 +1,16 @@
+{
+  "format": "aux.dom-existing-controls.source-check.actual.v1",
+  "passed": true,
+  "sourcePlanSha256": "6f72398f70a921f482c84c292f85323bdd9de598243f0d7760dba46326a31326",
+  "patchSha256": "63f41a28fc67dbde2c338434f8f00056c6e7569d1c32196ede1a3043c380d228",
+  "files": 3,
+  "countedAnchors": 5,
+  "replayDirectory": "/private/tmp/aux-dom-existing-controls-replay-g9ys9pbz",
+  "exactReplayPassed": true,
+  "reverseCheckPassed": true,
+  "nativeCheckoutChanged": false,
+  "nativeCompiled": false,
+  "testsExecuted": false,
+  "productExecuted": false,
+  "runtimeAcceptance": false
+}
