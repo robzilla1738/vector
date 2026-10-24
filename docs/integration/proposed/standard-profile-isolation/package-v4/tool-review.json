@@ -1,0 +1,75 @@
+{
+  "format": "aux.standard-isolation.package-v4.tools.v1",
+  "predecessorRootCommit": "733fa9281",
+  "files": [
+    {
+      "path": "cache_package.py",
+      "predecessor": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/package-v3/cache_package.py",
+      "sha256": "895a60a37e6afad686ad44bd28f79ae81b584e043cafa0748f375564a9da3478",
+      "byteIdentical": true
+    },
+    {
+      "path": "bind_pair.py",
+      "predecessor": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/package-v3/bind_pair.py",
+      "sha256": "5678511875407c63539abdfdf1201c104f6527db91658dfd5cfda59cc08eb87b",
+      "byteIdentical": true
+    },
+    {
+      "path": "link-tool-aliases.json",
+      "predecessor": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/package-v3/link-tool-aliases.json",
+      "sha256": "75ff23f4bcbc614394587ff29afef364672c15a9de9a12b69a882c310e7abec6",
+      "byteIdentical": true
+    }
+  ],
+  "validator": {
+    "path": "standard_verify.py",
+    "sha256": "23df1867fd7f5e2ae83c1db6c5e68638fabdb7820bff7065bc58cf7835cca210",
+    "predecessor": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/package-v3/standard_verify.py",
+    "predecessorSha256": "509525c61b4e4e14c923f2d0cd421dd5dfef71caa009dbcd6fc0bf9187c98c46"
+  },
+  "freezeHelper": {
+    "path": "freeze-review.py",
+    "sha256": "c09b153007d3dd405e24dfd39748075b99f76add88325553ccb962a745b1c510",
+    "predecessor": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/package-v3/freeze-review.py",
+    "predecessorSha256": "e7c1157f14eab605b43f4347f9cd9623749783c23441e75daef69bd66283bb03",
+    "changes": "Exact v3 source format and 13/166 counts; append only fixed interactive-oauth stage"
+  },
+  "oauthOverlayCommit": "f22b47114",
+  "oauthOverlaySha256": "7d3734a938e60305b07516620030dcd1c8576d76f796960725d47e312f93bc69",
+  "sourceContract": {
+    "format": "aux.standard-daemon-projection.actual.v3",
+    "stage": "interactive-oauth",
+    "priorAnchors": 153,
+    "appendedAnchors": 13,
+    "totalAnchors": 166,
+    "newAnchors": 134,
+    "daemonInputs": [
+      {
+        "kind": "source",
+        "inputSha256": "2e35bf82a24e22a1a76b61fe7211c9a1bdbfb770f3e45ae689131eefae9f75ea",
+        "outputSha256": "3ee2471769470b820bfaf16d64f6dfc7aa0bef1b8ad54493c7d2a0bffe725802",
+        "changesSha256": "cc7c9398e1d1ea3a7eaf8ef5c3effc1855a2ada3100fe4e318f1847727bc8f2c"
+      },
+      {
+        "kind": "entry",
+        "inputSha256": "ebb32136d280406d02841c5f9fc3b08d2714b4384e70d0d690ca4bdd8bb1c8d7",
+        "outputSha256": "ba6194fbe579dec43ccaa2a7b788e58bc0a1cb9a0ff52ab5b5cfcea334890804",
+        "changesSha256": "cc7c9398e1d1ea3a7eaf8ef5c3effc1855a2ada3100fe4e318f1847727bc8f2c"
+      }
+    ]
+  },
+  "sourceChecks": {
+    "pythonSyntax": true,
+    "unchangedAllNonSourceValidatorAST": true,
+    "unchangedValidatorInstallationAST": true,
+    "byteIdenticalWrapperBinderAliases": true,
+    "preparedTemplateReferences": true,
+    "oauthOverlayAndSourcePins": true
+  },
+  "actualInputsFrozen": false,
+  "nativeBuildRun": false,
+  "bound": false,
+  "assembled": false,
+  "productExecuted": false,
+  "testable": false
+}
