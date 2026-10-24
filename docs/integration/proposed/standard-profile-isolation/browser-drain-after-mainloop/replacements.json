@@ -1,0 +1,62 @@
+[
+  {
+    "path": "content/public/browser/aux_child_process_drain.h",
+    "old": "CONTENT_EXPORT ChildProcessDrainSnapshot InspectContentChildDrain();",
+    "new": "CONTENT_EXPORT ChildProcessDrainSnapshot InspectContentChildDrain();\n// Native embedder-only, one immutable callback, invoked after the actual main\n// loop and all its members have been destroyed, never on window/profile close.\nCONTENT_EXPORT bool RegisterBrowserShutdownCompletion(void (*completed)());\nCONTENT_EXPORT void ObserveBrowserMainLoopDestroyedForDrain();",
+    "count": 1
+  },
+  {
+    "path": "content/browser/aux_child_process_drain.cc",
+    "old": "#include \"content/browser/aux_child_lifetime.h\"",
+    "new": "#include \"content/browser/aux_child_lifetime.h\"\n#include <atomic>",
+    "count": 1
+  },
+  {
+    "path": "content/browser/aux_child_process_drain.cc",
+    "old": "namespace content::aux_migration {",
+    "new": "namespace content::aux_migration {\nnamespace {\nstd::atomic<void (*)()> completion{nullptr};\nstd::atomic_bool delivered{false};\n}\nbool RegisterBrowserShutdownCompletion(void (*completed)()) {\n  if (!completed || delivered.load()) return false;\n  void (*expected)() = nullptr;\n  return completion.compare_exchange_strong(expected, completed) || expected == completed;\n}\nvoid ObserveBrowserMainLoopDestroyedForDrain() {\n  if (delivered.exchange(true)) return;\n  if (auto completed = completion.load()) completed();\n}",
+    "count": 1
+  },
+  {
+    "path": "content/browser/browser_main_runner_impl.cc",
+    "old": "#include \"content/browser/browser_main_loop.h\"",
+    "new": "#include \"content/browser/browser_main_loop.h\"\n#if BUILDFLAG(IS_MAC)\n#include \"content/public/browser/aux_child_process_drain.h\"\n#endif",
+    "count": 1
+  },
+  {
+    "path": "content/browser/browser_main_runner_impl.cc",
+    "old": "    main_loop_.reset(nullptr);",
+    "new": "    main_loop_.reset(nullptr);\n#if BUILDFLAG(IS_MAC)\n    aux_migration::ObserveBrowserMainLoopDestroyedForDrain();\n#endif",
+    "count": 1
+  },
+  {
+    "path": "chrome/browser/chrome_browser_main.cc",
+    "old": "  aux::peer::ObserveNativeBrowserPartsDestroyed();\n  aux::FinishNativeBrowserShutdownDrain();",
+    "new": "  aux::peer::ObserveNativeBrowserPartsDestroyed();",
+    "count": 1
+  },
+  {
+    "path": "chrome/browser/ui/aux_browser_shutdown_drain.cc",
+    "old": "  bool frozen = false;",
+    "new": "  bool frozen = false;\n  bool main_loop_destroyed = false;",
+    "count": 1
+  },
+  {
+    "path": "chrome/browser/ui/aux_browser_shutdown_drain.cc",
+    "old": "             !native.active_authority_reads && carriers.drained()) status = 0;",
+    "new": "             !native.active_authority_reads && carriers.drained() &&\n             state.main_loop_destroyed) status = 0;",
+    "count": 1
+  },
+  {
+    "path": "chrome/browser/ui/aux_browser_shutdown_drain.cc",
+    "old": "    state.provider_failed = !peer::RegisterBrowserDrainReportProvider(&Report, &Acknowledged);",
+    "new": "    state.provider_failed = !peer::RegisterBrowserDrainReportProvider(&Report, &Acknowledged) ||\n        !content::aux_migration::RegisterBrowserShutdownCompletion(&FinishNativeBrowserShutdownDrain);",
+    "count": 1
+  },
+  {
+    "path": "chrome/browser/ui/aux_browser_shutdown_drain.cc",
+    "old": "void FinishNativeBrowserShutdownDrain() {\n  auto& state = State();",
+    "new": "void FinishNativeBrowserShutdownDrain() {\n  auto& state = State();\n  {\n    std::lock_guard<std::mutex> lock(state.mutex);\n    if (getpid() != state.process || !state.started || state.main_loop_destroyed) return;\n    state.main_loop_destroyed = true;\n  }",
+    "count": 1
+  }
+]

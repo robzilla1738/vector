@@ -1,0 +1,110 @@
+--- a/chrome/browser/chrome_browser_main.cc
++++ b/chrome/browser/chrome_browser_main.cc
+@@ -904,7 +904,6 @@
+   shutdown_watchdog::OnShutdownComplete();
+ #if BUILDFLAG(ENABLE_AUX_BROWSER) && defined(AUX_SEALED_NATIVE_COLD_ENTRY)
+   aux::peer::ObserveNativeBrowserPartsDestroyed();
+-  aux::FinishNativeBrowserShutdownDrain();
+ #endif
+ 
+ #endif
+--- a/chrome/browser/ui/aux_browser_shutdown_drain.cc
++++ b/chrome/browser/ui/aux_browser_shutdown_drain.cc
+@@ -28,6 +28,7 @@
+   bool started = false;
+   bool provider_failed = false;
+   bool frozen = false;
++  bool main_loop_destroyed = false;
+   bool acknowledged = false;
+   bool final_wait_exhausted = false;
+   std::array<uint8_t, 32> session{};
+@@ -74,7 +75,8 @@
+     if (readiness.unknown || carriers.unresolved_children) status = 2;
+     else if (readiness.close_requested && readiness.process_shutdown &&
+              !readiness.pending && native.admission_closed && native.phase == 6 &&
+-             !native.active_authority_reads && carriers.drained()) status = 0;
++             !native.active_authority_reads && carriers.drained() &&
++             state.main_loop_destroyed) status = 0;
+     // Canonical digest binds the exact closed process cohort counters. It is
+     // descriptive integrity inside authenticated IPC, not a signature/grant.
+     peer::BrowserDrainReport cohort{};
+@@ -111,7 +113,8 @@
+     std::lock_guard<std::mutex> lock(state.mutex);
+     if (getpid() != state.process || state.started) return;
+     state.started = true;
+-    state.provider_failed = !peer::RegisterBrowserDrainReportProvider(&Report, &Acknowledged);
++    state.provider_failed = !peer::RegisterBrowserDrainReportProvider(&Report, &Acknowledged) ||
++        !content::aux_migration::RegisterBrowserShutdownCompletion(&FinishNativeBrowserShutdownDrain);
+   }
+   CloseInstallationCarrierAdmission();
+   CloseOwnedBrowserParticipantsForShutdown(base::BindOnce(
+@@ -141,6 +144,11 @@
+ }
+ void FinishNativeBrowserShutdownDrain() {
+   auto& state = State();
++  {
++    std::lock_guard<std::mutex> lock(state.mutex);
++    if (getpid() != state.process || !state.started || state.main_loop_destroyed) return;
++    state.main_loop_destroyed = true;
++  }
+   const auto deadline = base::TimeTicks::Now() + base::Seconds(10);
+   for (;;) {
+     bool acknowledged;
+--- a/content/browser/aux_child_process_drain.cc
++++ b/content/browser/aux_child_process_drain.cc
+@@ -1,7 +1,21 @@
+ // Copyright 2026 The Aux Authors
+ #include "content/public/browser/aux_child_process_drain.h"
+ #include "content/browser/aux_child_lifetime.h"
++#include <atomic>
+ namespace content::aux_migration {
++namespace {
++std::atomic<void (*)()> completion{nullptr};
++std::atomic_bool delivered{false};
++}
++bool RegisterBrowserShutdownCompletion(void (*completed)()) {
++  if (!completed || delivered.load()) return false;
++  void (*expected)() = nullptr;
++  return completion.compare_exchange_strong(expected, completed) || expected == completed;
++}
++void ObserveBrowserMainLoopDestroyedForDrain() {
++  if (delivered.exchange(true)) return;
++  if (auto completed = completion.load()) completed();
++}
+ void CloseContentChildLaunchAdmission() {
+   internal::AuxChildLifetime::CloseAdmission();
+ }
+--- a/content/browser/browser_main_runner_impl.cc
++++ b/content/browser/browser_main_runner_impl.cc
+@@ -22,6 +22,9 @@
+ #include "base/trace_event/trace_event.h"
+ #include "build/build_config.h"
+ #include "content/browser/browser_main_loop.h"
++#if BUILDFLAG(IS_MAC)
++#include "content/public/browser/aux_child_process_drain.h"
++#endif
+ #include "content/common/content_switches_internal.h"
+ #include "content/public/common/content_switches.h"
+ #include "content/public/common/main_function_params.h"
+@@ -179,6 +182,9 @@
+     ole_initializer_.reset(NULL);
+ #endif
+     main_loop_.reset(nullptr);
++#if BUILDFLAG(IS_MAC)
++    aux_migration::ObserveBrowserMainLoopDestroyedForDrain();
++#endif
+ 
+     is_shutdown_ = true;
+   }
+--- a/content/public/browser/aux_child_process_drain.h
++++ b/content/public/browser/aux_child_process_drain.h
+@@ -17,5 +17,9 @@
+ // mac content launch owner only. Neither a second reaper nor a descendant census.
+ CONTENT_EXPORT void CloseContentChildLaunchAdmission();
+ CONTENT_EXPORT ChildProcessDrainSnapshot InspectContentChildDrain();
++// Native embedder-only, one immutable callback, invoked after the actual main
++// loop and all its members have been destroyed, never on window/profile close.
++CONTENT_EXPORT bool RegisterBrowserShutdownCompletion(void (*completed)());
++CONTENT_EXPORT void ObserveBrowserMainLoopDestroyedForDrain();
+ }
+ #endif

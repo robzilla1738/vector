@@ -1,0 +1,40 @@
+{
+  "modifiedCount": 5,
+  "addedCount": 0,
+  "countedAdaptations": 10,
+  "files": [
+    {
+      "path": "chrome/browser/chrome_browser_main.cc",
+      "beforeSha256": "6033ba7fd8223f03f226ba6bb384bb1bd3783da3552226b0ee587d538f71d954",
+      "afterSha256": "44cf3fbd07ce89cac0a42d2ced4e96e2174564f140a7d99387777eb66b1b7290"
+    },
+    {
+      "path": "chrome/browser/ui/aux_browser_shutdown_drain.cc",
+      "beforeSha256": "a15b0dff766ea2b7061e68ae62ebd722baa961825666a0b9cf49521493d40e79",
+      "afterSha256": "2900f45ff36a3fd59775bd679e1eb68abbea64fd7e94cd8091b8e576d7e8dbe7"
+    },
+    {
+      "path": "content/browser/aux_child_process_drain.cc",
+      "beforeSha256": "9066cb23944a0494899337fe4740c1cd6975b168e40f17628c2e9b78854ef3ae",
+      "afterSha256": "26717323c56cecd0dd918df4067b1c0c8e30e72f9e29050a669711850c447a6f"
+    },
+    {
+      "path": "content/browser/browser_main_runner_impl.cc",
+      "beforeSha256": "69998f19d6fe4ac6f645e74a4c68907a7cc2a297886163700efe58da8be5ef6a",
+      "afterSha256": "e4c3c41dae7c2a98013c681539839651ddd2a43af79b030131b39a1fad3b2962"
+    },
+    {
+      "path": "content/public/browser/aux_child_process_drain.h",
+      "beforeSha256": "45d254d75f1c7ad8b1e40f3e91ed5ce6b2ade57e83fc8d332f5afb65c41a1449",
+      "afterSha256": "e3e30f3d5a5f83d6b845f3aa327648088e969d955c086a752e6fed7276ccc6d7"
+    }
+  ],
+  "patchSha256": "fc7c5a9d415fbebd92dd8ad3a22c40d9b8cc4780e171880d878a917b8eb3e022",
+  "verification": {
+    "exactOrderedReplay": "passed",
+    "unifiedPatchReplay": "passed",
+    "whitespaceErrorCheck": "passed",
+    "nativeCompile": "not run by worker",
+    "runtime": "not run"
+  }
+}
