@@ -6,7 +6,8 @@
   "refusalCases": [
     "CSS mutation",
     "wrong CLI predecessor",
-    "object-only native receipt"
+    "object-only native receipt",
+    "mismatched development service configuration"
   ],
   "guardReplayFiles": 3,
   "originalPreparationLogicPreservedExceptDocumentedValidatorHook": true,

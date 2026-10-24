@@ -29,7 +29,7 @@ try:
     for profile in ['baseline','desktop-v1']:
         command = [a.node, str(f.ROOT/'scripts/stage-provided.mjs'), '--source-snapshot', str(snapshot),
                    '--output', str(output/profile), '--app-path', str(final), '--identity-profile', 'aux-v1',
-                   '--state-identity-version', '2', '--feature-profile', profile]
+                   '--state-identity-version', '2', '--cloud-profile', 'development', '--feature-profile', profile]
         report['commands'].append(command)
         subprocess.run(command, cwd=f.ROOT, check=True)
         f.stage_inputs(output/profile, profile)

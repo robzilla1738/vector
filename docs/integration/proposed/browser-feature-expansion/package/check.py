@@ -27,7 +27,7 @@ with tempfile.TemporaryDirectory(prefix='aux-feature-package-fixture-') as temp:
         stage.mkdir()
         (stage/'manifest.json').write_text(json.dumps(dict(implementation='supplied', identityProfile='aux-v1',
             stateIdentityVersion=2, featureProfile=profile, productionReady=False,
-            adaptationInputs=[], brandInputs=[], finalApp=str(app))))
+            adaptationInputs=[], brandInputs=[], cloudPolicy=m.DEVELOPMENT_POLICY, finalApp=str(app))))
         for rel, data, mode in [('ui/agent/entry.js', b'old' if profile=='baseline' else b'new', 0o644),
                                 ('ui/agent/style.css', b'unchanged', 0o644),
                                 (m.CLI, b'old-sea' if profile=='baseline' else b'new-sea', 0o755)]:
@@ -35,6 +35,12 @@ with tempfile.TemporaryDirectory(prefix='aux-feature-package-fixture-') as temp:
     for rel, data, mode in [('apps/extension/dist/entry.js', b'old', 0o644),
                             (m.CLI+'-sea', b'old-sea', 0o755)]:
         target=app/m.RESOURCES/rel;target.parent.mkdir(parents=True,exist_ok=True);target.write_bytes(data);os.chmod(target,mode)
+    changed_manifest=m.read(feature/'manifest.json')
+    changed_manifest['cloudPolicy']={'mode':'local'}
+    (feature/'manifest.json').write_text(json.dumps(changed_manifest))
+    refused(lambda:m.resource_deltas(baseline,feature,app), 'Different service policy accepted')
+    changed_manifest['cloudPolicy']=m.DEVELOPMENT_POLICY
+    (feature/'manifest.json').write_text(json.dumps(changed_manifest))
     changes=m.resource_deltas(baseline, feature, app)
     assert len(changes)==2 and all(x['path'] != m.CLI for x in changes)
     (feature/'ui/agent/style.css').write_bytes(b'changed')
@@ -62,5 +68,5 @@ with tempfile.TemporaryDirectory(prefix='aux-feature-guard-check-') as temp:
     subprocess.run(['git','apply','--check',str(patch)],cwd=tree,check=True)
     subprocess.run(['git','apply',str(patch)],cwd=tree,check=True)
     for item in review['files']:m.legacy.pin(tree/item['path'],item['afterSha256'])
-print(json.dumps({'focusedInertChecks':'passed','fixtureDeltaLeaves':2,'refusalCases':3,'guardReplayFiles':3,
+print(json.dumps({'focusedInertChecks':'passed','fixtureDeltaLeaves':2,'refusalCases':4,'guardReplayFiles':3,
                   'originalPreparationLogicPreserved':True,'productAssembled':False,'appExecuted':False}))

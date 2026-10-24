@@ -16,6 +16,8 @@ PACKAGE = ROOT / 'docs/integration/proposed/profile-isolation-delivery/package'
 PROTECTED = ROOT / 'docs/integration/proposed/profile-isolation-protected-startup/integration'
 RESOURCES = Path('Contents/Resources/aux')
 CLI = 'apps/cli/Aux CLI.app/Contents/MacOS/aux-cli'
+DEVELOPMENT_POLICY = {'mode': 'development', 'origins': {
+    'api': 'https://dev-cloud.getaux.co', 'share': 'https://dev-cloud.getaux.co'}}
 SPEC = importlib.util.spec_from_file_location('previous_assembler', PACKAGE / 'assemble.py')
 legacy = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(legacy)
@@ -112,7 +114,8 @@ def stage_inputs(stage, profile):
     require(manifest.get('implementation') == 'supplied' and manifest.get('identityProfile') == 'aux-v1'
             and manifest.get('stateIdentityVersion') == 2 and manifest.get('featureProfile') == profile
             and manifest.get('productionReady') is False, 'Explicit inactive Aux-v2 stage required')
-    require('cloudPolicy' not in manifest, 'Local-only stage required')
+    require(manifest.get('cloudPolicy') == DEVELOPMENT_POLICY,
+            'Exact existing development service configuration required; this does not activate services')
     for item in manifest['adaptationInputs'] + manifest['brandInputs']:
         legacy.pin(ROOT / item['path'], item['sha256'])
     return manifest
@@ -127,6 +130,7 @@ def resource_deltas(baseline_stage, feature_stage, baseline_app):
     after = stage_inputs(feature_stage, 'desktop-v1')
     require(before['adaptationInputs'] == after['adaptationInputs'] and before['brandInputs'] == after['brandInputs'],
             'Baseline and feature stages must use identical current source inputs')
+    require(before['cloudPolicy'] == after['cloudPolicy'], 'Stage service configuration mismatch')
     require(before['finalApp'] == after['finalApp'], 'Stage final-app target mismatch')
     output = []
     # Do not merge new stage native/addon/runtime trees into a protected package.
