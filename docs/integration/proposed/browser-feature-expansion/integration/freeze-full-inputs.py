@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Freeze current exact reviewed feature/native inputs without changing source."""
-import hashlib,json
+import argparse,hashlib,json
 from pathlib import Path
 here=Path(__file__).resolve().parent
 native=Path('/private/tmp/aux-chromium-recovery-snapshot-20261023/src')
@@ -20,7 +20,10 @@ for name,digest in files.items():
 result={'format':'aux.chromium.final-native-inputs.v1','files':dict(sorted(files.items())),
  'predecessorNativeReceipt':str(old_receipt),'predecessorNativeReceiptSha256':sha(old_receipt),
  'predecessorInputPinsSha256':sha(pins),'featureCompositionSha256':sha(composition)}
-out=here/'full-native-input-pins.json'
+parser=argparse.ArgumentParser()
+parser.add_argument('--output',default=str(here/'full-native-input-pins.json'))
+out=Path(parser.parse_args().output).resolve()
+if out.parent!=here or not out.name.startswith('full-native-input-pins'):raise RuntimeError('Fresh integration input manifest required')
 if out.exists():raise RuntimeError('Do not replace an existing frozen build input manifest')
 out.write_text(json.dumps(result,indent=2)+'\n')
 print(json.dumps({'frozen':True,'path':str(out),'inputs':len(files),'sourceMutated':False}))

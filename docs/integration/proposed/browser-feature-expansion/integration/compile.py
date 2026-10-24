@@ -13,6 +13,7 @@ build=native/'out/AuxFast'
 parser=argparse.ArgumentParser()
 parser.add_argument('--receipt',required=True)
 parser.add_argument('--generate',action='store_true')
+parser.add_argument('--target',action='append',default=[])
 args=parser.parse_args()
 receipt=Path(args.receipt).resolve()
 if receipt.exists(): raise SystemExit('Fresh receipt directory required')
@@ -25,6 +26,7 @@ def verify():
   if sha(native/name)!=value:raise RuntimeError('Native composition changed: '+name)
 verify()
 targets=[
+ 'obj/chrome/browser/extensions/api/api_registration/generated_api_registration.o',
  'obj/chrome/browser/aux/keyboard_shortcuts/aux_keyboard_shortcuts.o',
  'obj/chrome/browser/aux/profile_gate_prefs/profile_gate_prefs.o',
  'obj/chrome/browser/extensions/api/aux_browser_preferences/aux_browser_preferences/aux_browser_preferences_api.o',
@@ -65,6 +67,9 @@ targets=[
 
 
 ]
+if args.target:
+ if len(set(args.target))!=len(args.target) or any(target not in targets for target in args.target):raise RuntimeError('Only known focused targets allowed')
+ targets=args.target
 ninja=str(native/'third_party/ninja/ninja')
 result={'format':'aux.browser-features.native-compile.v1','passed':False,'sourcePins':pins,
         'targets':targets,'appExecuted':False,'productSigned':False,'runs':[]}

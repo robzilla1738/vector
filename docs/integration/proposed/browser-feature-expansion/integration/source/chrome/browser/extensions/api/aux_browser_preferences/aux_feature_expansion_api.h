@@ -3,7 +3,7 @@
 #define CHROME_BROWSER_EXTENSIONS_API_AUX_BROWSER_PREFERENCES_AUX_FEATURE_EXPANSION_API_H_
 #include <string>
 #include "base/memory/weak_ptr.h"
-#include "chrome/browser/aux/organization/organization_service.h"
+namespace aux::organization { struct CommitResult; }
 #include "chrome/browser/extensions/api/aux_common/aux_api.h"
 #include "content/public/browser/weak_document_ptr.h"
 class BrowserWindowInterface;

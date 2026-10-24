@@ -673,7 +673,7 @@ base::DictValue GetAuxCommandContext(content::WebContents* sender) {
   auto* owner = aux::organization::OrganizationProfileServiceFactory::GetForProfileIfExists(profile);
   auto* model = owner && owner->EnsureCurrentBinding() ? owner->model() : nullptr;
   auto* controller = aux::AuxOrganizationWindowController::FromBrowser(browser);
-  if (aux::IsAuxLocalProfileAdmitted(profile) && owner &&
+  if (IsAuxLocalProfileAdmitted(profile) && owner &&
       model && !model->blocked() && !model->pending() && controller && controller->IsProjectionReady()) {
     const auto& snapshot = model->snapshot();
     const auto views = controller->SnapshotViews();
@@ -689,8 +689,11 @@ base::DictValue GetAuxCommandContext(content::WebContents* sender) {
     for (const auto& [id, entry] : snapshot.entries) {
       if (entry.archived || entry.kind != aux::organization::EntryKind::kTab) continue;
       base::DictValue row;
-      row.Set("id", id).Set("title", entry.title).Set("url", entry.current_url)
-          .Set("spaceId", entry.space_id).Set("pinned", entry.space_id.empty());
+      row.Set("id", id);
+      row.Set("title", entry.title);
+      row.Set("url", entry.current_url);
+      row.Set("spaceId", entry.space_id);
+      row.Set("pinned", entry.space_id.empty());
       if (const auto found = views_by_id.find(id); found != views_by_id.end()) {
         const auto& view = *found->second;
         if (const auto native_id = view.FindInt("nativeTabId")) row.Set("nativeTabId", *native_id);
@@ -730,7 +733,7 @@ void CommitAuxCommandAsync(content::WebContents* sender, const base::DictValue& 
   auto* owner = aux::organization::OrganizationProfileServiceFactory::GetForProfileIfExists(profile);
   auto* model = owner && owner->EnsureCurrentBinding() ? owner->model() : nullptr;
   auto* controller = aux::AuxOrganizationWindowController::FromBrowser(browser);
-  if (!aux::IsAuxLocalProfileAdmitted(profile) || !owner ||
+  if (!IsAuxLocalProfileAdmitted(profile) || !owner ||
       !model || model->blocked() || model->pending() || !controller || !controller->IsProjectionReady() ||
       owner->owner_generation() != *owner_generation || base::NumberToString(model->snapshot().revision) != *revision) {
     std::move(reply).Run(CommandFailure("Tabs or Spaces changed; reopen the command bar")); return;
@@ -761,7 +764,7 @@ void CommitAuxCommandAsync(content::WebContents* sender, const base::DictValue& 
       base::OnceCallback<void(base::DictValue)> reply, bool opened) {
     auto* owner = profile ? aux::organization::OrganizationProfileServiceFactory::GetForProfileIfExists(profile.get()) : nullptr;
     if (!opened || !browser || !profile || browser->GetProfile() != profile.get() ||
-        !aux::IsAuxLocalProfileAdmitted(profile.get()) || !owner ||
+        !IsAuxLocalProfileAdmitted(profile.get()) || !owner ||
         !owner->EnsureCurrentBinding() || owner->owner_generation() != owner_token) {
       std::move(reply).Run(CommandFailure("The tab or originating window changed; reopen the command bar")); return;
     }
@@ -776,7 +779,7 @@ void CommitAuxCommandAsync(content::WebContents* sender, const base::DictValue& 
   auto* current_owner = profile_weak ? aux::organization::OrganizationProfileServiceFactory::GetForProfileIfExists(profile_weak.get()) : nullptr;
   if (!controller || !controller->IsProjectionReady() || !current_owner ||
       !current_owner->EnsureCurrentBinding() || current_owner->owner_generation() != owner_token ||
-      !aux::IsAuxLocalProfileAdmitted(profile_weak.get())) {
+      !IsAuxLocalProfileAdmitted(profile_weak.get())) {
     std::move(completion).Run(false); return;
   }
   controller->OpenLogicalTab(*id, std::move(completion));

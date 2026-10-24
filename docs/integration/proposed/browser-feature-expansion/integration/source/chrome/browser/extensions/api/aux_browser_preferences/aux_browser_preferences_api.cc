@@ -95,8 +95,8 @@ ExtensionFunction::ResponseAction AuxBrowserPreferencesFunction::RunAux() {
     CommitAuxCommandAsync(GetSenderWebContents(), args()[0].GetDict(),
         base::BindOnce([](AuxBrowserPreferencesFunction* self, base::DictValue result) {
           if (!self->browser_context()) result = base::DictValue().Set("success", false).Set("error", "Profile closed");
-          self->Respond(WithArguments(std::move(result)));
-        }, this));
+          self->Respond(self->WithArguments(std::move(result)));
+        }, base::RetainedRef(this)));
     return did_respond() ? AlreadyResponded() : RespondLater();
   }
   if (method == "getAlwaysShowFullUrl") {

@@ -1,3 +1,9 @@
+# Full feature build registration fix in progress — 2026-10-23
+
+The first full unsigned feature build completed381actions before generated extension registration failed: its public API header did not expose the new feature/developer classes. Their implementation objects had compiled in a8. The counted a10b projection exposes those declarations through the existing public header, removes an unnecessary organization-service include from the declaration-only feature header, and adds the generated registry object to the focused compile targets. That check is running before resuming the full graph; completed objects are retained. The first failed full-build receipt and input manifest remain historical evidence, not success.
+
+Final baseline/desktop-v1 resource staging passed. One actual preflight against the original inactive baseline passed14exact replacements:12Agent scripts, revision-only manifest and CLI SEA. No baseline mismatch, CSS/image change, native launcher replacement or addon/runtime drift was accepted. The native entry compatibility source audit found no compiled JavaScript digest requirement; actual resource sealing and startup authority still gate runtime. No app lifecycle, signing, cloud/provider call or accepted-app replacement occurred.
+
 # Desktop focused compile passed; final feature build running — 2026-10-23
 
 The a8 focused native build passed all recorded targets with actual nonempty object outputs, including session/history, recursive Views, native capture/developer APIs, profile/write owners, original frame/search/toolbar and routing integration. The final a9 projection adds shared logical-tab/Space command results, directional split drops and selected-Space cleanup, with250 frozen native inputs. The full unsigned browser build is now running; it is not yet a successful linked feature app.
