@@ -6,6 +6,7 @@
 #include "chrome/browser/ui/aux_developer_commands.h"
 
 #include <algorithm>
+#include <map>
 #include <memory>
 #include <utility>
 
@@ -19,6 +20,9 @@
 #include "chrome/browser/autocomplete/autocomplete_classifier_factory.h"
 #include "chrome/browser/extensions/extension_tab_util.h"
 #include "chrome/browser/ui/aux_keyboard_shortcuts.h"
+#include "chrome/browser/aux/organization/organization_profile_service.h"
+#include "chrome/browser/ui/aux_feature_lifecycle.h"
+#include "chrome/browser/ui/views/frame/aux_organization_window_controller.h"
 #include "chrome/browser/ui/browser_commands.h"
 #include "chrome/browser/ui/navigator/browser_navigator.h"
 #include "chrome/browser/ui/navigator/browser_navigator_params.h"
@@ -660,9 +664,122 @@ base::DictValue GetAuxCommandContext(content::WebContents* sender) {
     result.Set("activeUrl", target->GetLastCommittedURL().spec());
   }
   result.Set("commands", aux::GetNavigationCommandCatalog(browser));
+  base::ListValue native_tabs;
+  if (auto* strip = browser->GetTabStripModel())
+    for (int i = 0; i < strip->count(); ++i)
+      native_tabs.Append(extensions::ExtensionTabUtil::GetTabId(strip->GetWebContentsAt(i)));
+  result.Set("windowTabIds", std::move(native_tabs));
+  auto* profile = browser->GetProfile();
+  auto* owner = aux::organization::OrganizationProfileServiceFactory::GetForProfileIfExists(profile);
+  auto* model = owner && owner->EnsureCurrentBinding() ? owner->model() : nullptr;
+  auto* controller = aux::AuxOrganizationWindowController::FromBrowser(browser);
+  if (aux::IsAuxLocalProfileAdmitted(profile) && owner &&
+      model && !model->blocked() && !model->pending() && controller && controller->IsProjectionReady()) {
+    const auto& snapshot = model->snapshot();
+    const auto views = controller->SnapshotViews();
+    std::map<std::string, const base::DictValue*> views_by_id;
+    for (const auto& value : views) {
+      const auto& view = value.GetDict();
+      if (const auto* id = view.FindString("id")) views_by_id.try_emplace(*id, &view);
+    }
+    base::ListValue spaces, logical_tabs;
+    for (const auto& [id, space] : snapshot.spaces)
+      spaces.Append(base::DictValue().Set("id", id).Set("title", space.name)
+          .Set("icon", space.icon).Set("order", base::NumberToString(space.order)));
+    for (const auto& [id, entry] : snapshot.entries) {
+      if (entry.archived || entry.kind != aux::organization::EntryKind::kTab) continue;
+      base::DictValue row;
+      row.Set("id", id).Set("title", entry.title).Set("url", entry.current_url)
+          .Set("spaceId", entry.space_id).Set("pinned", entry.space_id.empty());
+      if (const auto found = views_by_id.find(id); found != views_by_id.end()) {
+        const auto& view = *found->second;
+        if (const auto native_id = view.FindInt("nativeTabId")) row.Set("nativeTabId", *native_id);
+        // A live view's real URL/title always wins over shared canonical metadata.
+        if (const auto* url = view.FindString("url")) row.Set("url", *url);
+        if (const auto* title = view.FindString("title")) row.Set("title", *title);
+      }
+      logical_tabs.Append(std::move(row));
+    }
+    result.Set("organization", base::DictValue().Set("ownerGeneration", owner->owner_generation())
+        .Set("revision", base::NumberToString(snapshot.revision))
+        .Set("activeSpaceId", controller->ActiveSpaceId())
+        .Set("spaces", std::move(spaces)).Set("tabs", std::move(logical_tabs)));
+  }
   if (const auto* proposal = binding->proposal())
     result.Set("organizationProposal", proposal->Clone());
   return result;
+}
+void CommitAuxCommandAsync(content::WebContents* sender, const base::DictValue& request,
+                           base::OnceCallback<void(base::DictValue)> reply) {
+  const auto* kind = request.FindString("kind");
+  if (!kind || (*kind != "activate-logical-tab" && *kind != "select-space")) {
+    std::move(reply).Run(CommitAuxCommand(sender, request)); return;
+  }
+  auto* binding = sender ? aux::SearchBrowserBinding::FromWebContents(sender) : nullptr;
+  const auto* generation = request.FindString("generation");
+  const auto* owner_generation = request.FindString("organizationOwner");
+  const auto* revision = request.FindString("organizationRevision");
+  const auto* id = request.FindString("id");
+  if (!binding || !binding->current() || !generation || *generation != binding->generation() ||
+      !owner_generation || !revision || !id || id->empty() || id->size() > 64 ||
+      owner_generation->size() > 256 || revision->size() > 20) {
+    std::move(reply).Run(CommandFailure("The organization command expired; reopen the command bar")); return;
+  }
+  auto* browser = binding->browser();
+  auto* profile = browser->GetProfile();
+  auto* owner = aux::organization::OrganizationProfileServiceFactory::GetForProfileIfExists(profile);
+  auto* model = owner && owner->EnsureCurrentBinding() ? owner->model() : nullptr;
+  auto* controller = aux::AuxOrganizationWindowController::FromBrowser(browser);
+  if (!aux::IsAuxLocalProfileAdmitted(profile) || !owner ||
+      !model || model->blocked() || model->pending() || !controller || !controller->IsProjectionReady() ||
+      owner->owner_generation() != *owner_generation || base::NumberToString(model->snapshot().revision) != *revision) {
+    std::move(reply).Run(CommandFailure("Tabs or Spaces changed; reopen the command bar")); return;
+  }
+  std::string target_space;
+  if (*kind == "select-space") {
+    if (!model->snapshot().spaces.contains(*id)) {
+      std::move(reply).Run(CommandFailure("This Space is no longer available")); return;
+    }
+    target_space = *id;
+  } else {
+    const auto entry = model->snapshot().entries.find(*id);
+    if (entry == model->snapshot().entries.end() || entry->second.archived ||
+        entry->second.kind != aux::organization::EntryKind::kTab) {
+      std::move(reply).Run(CommandFailure("This tab is no longer available")); return;
+    }
+    target_space = entry->second.space_id;
+  }
+  const auto browser_weak = browser->GetWeakPtr();
+  const auto profile_weak = profile->GetWeakPtr();
+  const auto owner_token = owner->owner_generation();
+  binding->Invalidate();
+  if (!target_space.empty() && !controller->SelectSpace(target_space)) {
+    std::move(reply).Run(CommandFailure("This window could not select the Space")); return;
+  }
+  auto completion = base::BindOnce([](base::WeakPtr<BrowserWindowInterface> browser,
+      base::WeakPtr<Profile> profile, std::string owner_token,
+      base::OnceCallback<void(base::DictValue)> reply, bool opened) {
+    auto* owner = profile ? aux::organization::OrganizationProfileServiceFactory::GetForProfileIfExists(profile.get()) : nullptr;
+    if (!opened || !browser || !profile || browser->GetProfile() != profile.get() ||
+        !aux::IsAuxLocalProfileAdmitted(profile.get()) || !owner ||
+        !owner->EnsureCurrentBinding() || owner->owner_generation() != owner_token) {
+      std::move(reply).Run(CommandFailure("The tab or originating window changed; reopen the command bar")); return;
+    }
+    CloseAuxProfileSearch(browser.get());
+    std::move(reply).Run(base::DictValue().Set("success", true));
+  }, browser_weak, profile_weak, owner_token, std::move(reply));
+  if (*kind == "select-space") { std::move(completion).Run(true); return; }
+  // The native controller reuses this window's exact logical view or creates a
+  // separate view here; it never steals another window or deduplicates by URL.
+  controller = browser_weak && profile_weak && browser_weak->GetProfile() == profile_weak.get()
+      ? aux::AuxOrganizationWindowController::FromBrowser(browser_weak.get()) : nullptr;
+  auto* current_owner = profile_weak ? aux::organization::OrganizationProfileServiceFactory::GetForProfileIfExists(profile_weak.get()) : nullptr;
+  if (!controller || !controller->IsProjectionReady() || !current_owner ||
+      !current_owner->EnsureCurrentBinding() || current_owner->owner_generation() != owner_token ||
+      !aux::IsAuxLocalProfileAdmitted(profile_weak.get())) {
+    std::move(completion).Run(false); return;
+  }
+  controller->OpenLogicalTab(*id, std::move(completion));
 }
 base::DictValue CommitAuxCommand(content::WebContents* sender,
                                 const base::DictValue& request) {

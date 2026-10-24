@@ -71,3 +71,47 @@ test('frame changes are native partial writes; invalid cleanup values do not rea
   const cleanup=createAuxFeatureSettingsSession({getOrganizationSettings:async()=>state(),setOrganizationCleanupPolicy:()=>assert.fail('invalid native write')},'cleanup',()=>{},()=>{});
   await cleanup.load();for(const inactivityDays of [0,3651,1.5,NaN,'30'])await assert.rejects(cleanup.save({enabled:true,inactivityDays}),/whole number/);
 });
+
+
+test('cleanup scope uses native Space IDs, refuses invalid selections and preserves older caller scope',async()=>{
+  const main='00000000-0000-4000-8000-000000000001',work='00000000-0000-4000-8000-000000000002';
+  const spaces=[{id:main,name:'Personal',order:0},{id:work,name:'Work',order:1}];
+  let current={...state(),spaces,cleanup:{enabled:false,inactivityDays:30,spaceIds:[work]}};
+  const requests=[];
+  const client=createAuxFeatureSettingsSession({getOrganizationSettings:async()=>current,
+    setOrganizationCleanupPolicy:async request=>{
+      requests.push(request);
+      current={...current,revision:String(Number(current.revision)+1),cleanup:{...current.cleanup,
+        enabled:request.enabled,inactivityDays:request.inactivityDays,
+        ...(Object.hasOwn(request,'spaceIds')?{spaceIds:request.spaceIds}:{})}};
+      return{success:true};
+    }},'cleanup',()=>{},()=>{});
+  await client.load();
+  await client.save({enabled:true,inactivityDays:14});
+  assert.equal(Object.hasOwn(requests[0],'spaceIds'),false);
+  assert.deepEqual(current.cleanup.spaceIds,[work]);
+  for(const spaceIds of [[],[main,main],['wrong-profile'],[main,...Array(1024).fill(work)],'all'])
+    await assert.rejects(client.save({enabled:true,inactivityDays:14,spaceIds}),/available Space/);
+  assert.equal(requests.length,1);
+  await client.save({enabled:true,inactivityDays:14,spaceIds:[main]});
+  assert.deepEqual(current.cleanup.spaceIds,[main]);
+  assert.equal(requests[1].expectedRevision,'2');
+  await client.save({enabled:true,inactivityDays:14,spaceIds:null});
+  assert.equal(current.cleanup.spaceIds,null);
+});
+
+test('cleanup refuses a saved scope outside the actual profile and a concurrently removed selected Space',async()=>{
+  const main='00000000-0000-4000-8000-000000000001',work='00000000-0000-4000-8000-000000000002';
+  let current={...state(),spaces:[{id:main,name:'Personal'}],cleanup:{enabled:true,inactivityDays:30,spaceIds:[work]}};
+  const invalid=createAuxFeatureSettingsSession({getOrganizationSettings:async()=>current},'cleanup',()=>{},()=>{});
+  await assert.rejects(invalid.load(),/Invalid tab cleanup/);
+  current={...state(),spaces:[{id:main,name:'Personal'},{id:work,name:'Work'}],cleanup:{enabled:true,inactivityDays:30,spaceIds:[work]}};
+  let writes=0;
+  const client=createAuxFeatureSettingsSession({getOrganizationSettings:async()=>current,
+    setOrganizationCleanupPolicy:async()=>{writes++;current={...current,revision:'2',spaces:[{id:main,name:'Personal'}],
+      cleanup:{enabled:false,inactivityDays:30,spaceIds:[]}};return{success:false,error:'Organization changed'}}},'cleanup',()=>{},()=>{});
+  await client.load();
+  await assert.rejects(client.save({enabled:true,inactivityDays:30,spaceIds:[work]}),/Organization changed/);
+  await assert.rejects(client.save({enabled:true,inactivityDays:30,spaceIds:[work]}),/available Space/);
+  assert.equal(writes,1);
+});

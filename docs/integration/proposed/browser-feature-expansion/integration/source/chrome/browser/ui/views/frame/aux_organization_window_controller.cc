@@ -397,7 +397,8 @@ bool AuxOrganizationWindowController::CanCleanup(const std::string& id) const {
   const auto found = snapshot.entries.find(id);
   if (found == snapshot.entries.end() || found->second.archived ||
       found->second.kind != organization::EntryKind::kTab ||
-      organization::HasRetention(snapshot, id) || !found->second.last_active_unix_ms) return false;
+      organization::HasRetention(snapshot, id) || !found->second.last_active_unix_ms ||
+      !organization::CleanupIncludesSpace(snapshot, found->second.space_id)) return false;
   const int64_t now = base::Time::Now().InMillisecondsSinceUnixEpoch();
   if (now <= 0 || static_cast<uint64_t>(now) <= found->second.last_active_unix_ms ||
       static_cast<uint64_t>(now) - found->second.last_active_unix_ms <

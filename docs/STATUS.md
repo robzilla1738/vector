@@ -1,3 +1,11 @@
+# Desktop focused compile passed; final feature build running — 2026-10-23
+
+The a8 focused native build passed all recorded targets with actual nonempty object outputs, including session/history, recursive Views, native capture/developer APIs, profile/write owners, original frame/search/toolbar and routing integration. The final a9 projection adds shared logical-tab/Space command results, directional split drops and selected-Space cleanup, with250 frozen native inputs. The full unsigned browser build is now running; it is not yet a successful linked feature app.
+
+Actual supplied resource staging passed at `out/provided-browser-features-desktop-v1-20261023` for the preceding feature revision. Final baseline/feature staging is running after the last settings/navigation changes. Twelve composed supplied scripts parse; CSS/assets are untouched. The newly composed daemon source was reprojected through the existing dormant native-entry owner and exactly matched an independent adaptation of the prior entry, with unchanged loader/ABI and no execution. Guarded inactive assembly tooling now requires the real current full-build receipt, exact pair and identical static development configuration. It preserves the native CLI launcher and original addons/runtime.
+
+No actual feature app/UI comparison or runtime acceptance has occurred. Accepted app and previous inactive package remain intact. The standing no-app-lifecycle/no-signing/release constraints remain; existing startup/custody/drain/recovery/publication and external-hardlink gates are not closed by feature source/build evidence. Current detail: `docs/integration/proposed/browser-feature-expansion/execution.md`.
+
 # Desktop feature integration in progress; accepted UI preserved — 2026-10-23
 
 Parallel lanes delivered native organization/pins/folders/Spaces, real per-window views of shared tabs, original toolbar reparenting, theme previews/presets, atomic shortcut profiles, recursive split session/history source, files/rename ownership, routing, and supplied AI/media/capture/settings additions. Root has composed the native owners, close/account-switch/restore fences, private APIs and exact source projection; further Peek and capture/command integration continues. Current status is recorded in `docs/integration/proposed/browser-feature-expansion/execution.md`.

@@ -92,7 +92,12 @@ ExtensionFunction::ResponseAction AuxBrowserPreferencesFunction::RunAux() {
   if (method == "commitCommand") {
     if (args().size() != 1 || !args()[0].is_dict())
       return RespondNow(Error("Command request required"));
-    return RespondNow(WithArguments(CommitAuxCommand(GetSenderWebContents(), args()[0].GetDict())));
+    CommitAuxCommandAsync(GetSenderWebContents(), args()[0].GetDict(),
+        base::BindOnce([](AuxBrowserPreferencesFunction* self, base::DictValue result) {
+          if (!self->browser_context()) result = base::DictValue().Set("success", false).Set("error", "Profile closed");
+          self->Respond(WithArguments(std::move(result)));
+        }, this));
+    return did_respond() ? AlreadyResponded() : RespondLater();
   }
   if (method == "getAlwaysShowFullUrl") {
     if (!args().empty()) return RespondNow(Error("This method takes no arguments"));

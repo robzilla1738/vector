@@ -45,7 +45,7 @@
     {
       "path": "chrome/browser/extensions/api/aux_browser_preferences/aux_feature_expansion_api.cc",
       "beforeSha256": null,
-      "afterSha256": "d0e621b9b82597ea00ab768d467dc4e8be4fda24b6b981dff9077348a3a53b7f",
+      "afterSha256": "c0209446da9a6178c4dc858e8ca5070db0348818a2d465c3cb5c8892dc79908a",
       "source": "docs/integration/proposed/browser-feature-expansion/integration/source/chrome/browser/extensions/api/aux_browser_preferences/aux_feature_expansion_api.cc"
     },
     {
@@ -156,7 +156,7 @@
     {
       "path": "chrome/browser/ui/views/frame/aux_tab_search_bubble.cc",
       "beforeSha256": "85dbd06672dbf9dcbbbefa6da582e227423f01a41bad1f690c4706f0c72e7afa",
-      "afterSha256": "75786b7a666eb166e624b3f2265745b42372ce3f152b180da027abeaa5c36e44",
+      "afterSha256": "64cd17a4bac8ee607ad532d881262092867787df5ecf86aa2f622d36cfe78cf5",
       "source": "docs/integration/proposed/browser-feature-expansion/integration/source/chrome/browser/ui/views/frame/aux_tab_search_bubble.cc",
       "overridesNativeSourceSha256": "85dbd06672dbf9dcbbbefa6da582e227423f01a41bad1f690c4706f0c72e7afa"
     },
@@ -176,7 +176,7 @@
     {
       "path": "chrome/browser/extensions/api/aux_browser_preferences/aux_browser_preferences_api.cc",
       "beforeSha256": "246f57bcd77092ce4b452e6a039c8376c73fb6af2e6ef44c053201d62a82f38c",
-      "afterSha256": "175c3b26a6a29ec53305823584301aa71a7b14aa37c6b1479dac0283b8f5071d",
+      "afterSha256": "ab20e6da3dc951551abb17088528cd8d09c2c804a06b2523e5618a083e6cd8b9",
       "source": "docs/integration/proposed/browser-feature-expansion/integration/source/chrome/browser/extensions/api/aux_browser_preferences/aux_browser_preferences_api.cc",
       "overridesNativeSourceSha256": "246f57bcd77092ce4b452e6a039c8376c73fb6af2e6ef44c053201d62a82f38c"
     },
@@ -450,7 +450,7 @@
       "beforeSha256": "af7caf37b61f9037e9917246293380d562f50c8022d73812aae1b623e59ff20e",
       "source": "docs/integration/proposed/browser-feature-expansion/integration/source/chrome/browser/ui/views/frame/aux_organization_window_controller.cc",
       "overridesNativeSourceSha256": "af7caf37b61f9037e9917246293380d562f50c8022d73812aae1b623e59ff20e",
-      "afterSha256": "fe9364ddb47f01a4d42a9805de97e819a6a7e05bc5b574436ef74fe83df8e9b0"
+      "afterSha256": "1f1dece764f70899e455e6a77b1c3be791260ab95f0390a513b95e3ce826e2f0"
     },
     {
       "path": "chrome/browser/ui/views/frame/aux_organization_window_controller.h",
@@ -471,7 +471,7 @@
       "source": "docs/integration/proposed/browser-feature-expansion/integration/source/chrome/browser/ui/views/frame/aux_organization_tree_view.cc",
       "beforeSha256": "5ab306a698aeb7e99a9fb9f81f642da4774ec0ad55a9e930cfc11bbd3afede3d",
       "overridesNativeSourceSha256": "5ab306a698aeb7e99a9fb9f81f642da4774ec0ad55a9e930cfc11bbd3afede3d",
-      "afterSha256": "f14282b737c56c6325a4469c95214c3fcae7b5e806e040f231a20792e75e42a1"
+      "afterSha256": "02834d5fb3d24d7048b58ac7de7e135e96ad50341b957dc737a0703644717169"
     },
     {
       "path": "chrome/browser/ui/views/frame/aux_organization_window_delegate.h",
@@ -479,6 +479,48 @@
       "beforeSha256": "b597eeb22c9e4072ea2fbdf8cedc762319f03b5b68137b9a466ccf159625eb35",
       "overridesNativeSourceSha256": "b597eeb22c9e4072ea2fbdf8cedc762319f03b5b68137b9a466ccf159625eb35",
       "afterSha256": "319e3515541a790d07f9a8a9eff42adc7da230ec4c260196649c140c64733001"
+    },
+    {
+      "path": "chrome/browser/aux/organization/organization_codec.cc",
+      "beforeSha256": "8fc6606d3cb2cca9813840b4f689aaa4c38ebdb370ba96e5db26a6077e145361",
+      "source": "docs/integration/proposed/browser-feature-expansion/integration/source/chrome/browser/aux/organization/organization_codec.cc",
+      "overridesNativeSourceSha256": "8fc6606d3cb2cca9813840b4f689aaa4c38ebdb370ba96e5db26a6077e145361",
+      "afterSha256": "bdf55a5c5e1ad5266ce70c461339b6614fdf8070be1674b15466a5949e06260c"
+    },
+    {
+      "path": "chrome/browser/aux/organization/organization_model.cc",
+      "beforeSha256": "b12613cd73b0a1118bffc249fce2d03c076988f627afd9adec329b97b3a83c38",
+      "source": "docs/integration/proposed/browser-feature-expansion/integration/source/chrome/browser/aux/organization/organization_model.cc",
+      "overridesNativeSourceSha256": "b12613cd73b0a1118bffc249fce2d03c076988f627afd9adec329b97b3a83c38",
+      "afterSha256": "877820286f212d2354f150520cc9a612ec0be9d547655941618bb4f8118f4815"
+    },
+    {
+      "path": "chrome/browser/aux/organization/organization_model.h",
+      "beforeSha256": "385ed0531f6e259787f54cd87f87bbcbb4f2be720e7a1b056055ea6d9f985864",
+      "source": "docs/integration/proposed/browser-feature-expansion/integration/source/chrome/browser/aux/organization/organization_model.h",
+      "overridesNativeSourceSha256": "385ed0531f6e259787f54cd87f87bbcbb4f2be720e7a1b056055ea6d9f985864",
+      "afterSha256": "f1d0c83d136e5c2ba485322d309b0f35541b6143abb5ae8b6e1a2c823ccf5a8a"
+    },
+    {
+      "path": "chrome/browser/aux/organization/organization_model_unittest.cc",
+      "beforeSha256": "a8c46f0d20415a6b24b4f82a8e934408fe9436d97a4427a321891ae5df641891",
+      "source": "docs/integration/proposed/browser-feature-expansion/integration/source/chrome/browser/aux/organization/organization_model_unittest.cc",
+      "overridesNativeSourceSha256": "a8c46f0d20415a6b24b4f82a8e934408fe9436d97a4427a321891ae5df641891",
+      "afterSha256": "e88b67479224a1b2dbe0848138fea89647c87303d42f8a72a41438281b9fd1f4"
+    },
+    {
+      "path": "chrome/browser/aux/organization/organization_service.cc",
+      "beforeSha256": "16bdc57d78a387a9c5b0ffe0c4c7e8a6d4ca7ada019e11d6160c8a14bbf810fb",
+      "source": "docs/integration/proposed/browser-feature-expansion/integration/source/chrome/browser/aux/organization/organization_service.cc",
+      "overridesNativeSourceSha256": "16bdc57d78a387a9c5b0ffe0c4c7e8a6d4ca7ada019e11d6160c8a14bbf810fb",
+      "afterSha256": "f4a6cc05a69a64c005c203a19f8af47144aea687bdfc4136e06403076e9879c2"
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_tab_search_bubble.h",
+      "beforeSha256": "d5192c375f9d4d8bba83d384169046ee6575ab810fc2e9d1448c69668de616aa",
+      "source": "docs/integration/proposed/browser-feature-expansion/integration/source/chrome/browser/ui/views/frame/aux_tab_search_bubble.h",
+      "overridesNativeSourceSha256": "d5192c375f9d4d8bba83d384169046ee6575ab810fc2e9d1448c69668de616aa",
+      "afterSha256": "3ed95b3465ed2f8ea3401a4f5574bc802e4d35fa81c6e6e484294d4cd6cec6f9"
     }
   ]
 }

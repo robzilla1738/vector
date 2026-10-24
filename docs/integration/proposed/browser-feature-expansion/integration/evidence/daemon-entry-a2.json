@@ -1,0 +1,35 @@
+{
+  "source-receipt.json": {
+    "format": "aux.browser-features.composed-source.v1",
+    "passed": true,
+    "inputSha256": "ecff19ddbc7fa76529c50111152f8324ef0ba6b87de11e7ecf872f76270a7484",
+    "composedSha256": "4e5c2710ddeb7b1f57f2524088ece6678b0f091ec6f7af68564c355cabae4723",
+    "compositionReceiptSha256": "da9f76e6686f9da8860a78498f15befc04825224f8ee7990d3d32bb5fc820ebb",
+    "coldRefusalPreserved": true,
+    "executed": false,
+    "uiChanged": false,
+    "nativeAbiChanged": false,
+    "receiptSha256": "623454600e9292ae93a576db2c1eb657b0b6804f868998947d49bfa769e794fa"
+  },
+  "projected-entry/results.json": {
+    "format": "aux.profile-isolation.dormant-entry.v1",
+    "passed": true,
+    "sourceSha256": "4e5c2710ddeb7b1f57f2524088ece6678b0f091ec6f7af68564c355cabae4723",
+    "sourceReceiptSha256": "623454600e9292ae93a576db2c1eb657b0b6804f868998947d49bfa769e794fa",
+    "entrySha256": "aba6ebad5e4abd9e563770dc6be80e6b9c181a22fd41a16c7112417863cf1823",
+    "loaderSha256": "ec7ea0405f415d84e4afc695405eec07378d8c7233b926ffd9dd7db2edfed663",
+    "entryBytes": 12261835,
+    "historicalProjectionPinsSha256": "fbd94a9feaf4f84b52935f3c8e38a86e3f61efff66be75298b398e903069e6f7",
+    "syntaxExitCode": 0,
+    "ordinarySourceUnchanged": true,
+    "defaultEntryRefusalPreserved": true,
+    "dormant": true,
+    "executed": false,
+    "appChanged": false,
+    "runtimeAuthorityGranted": false,
+    "packaged": false,
+    "receiptSha256": "b9bbe6c37801925fcb3a46dc28f13c1462dc6a60494cc0d51e3967e67e0bbf64"
+  },
+  "independentEntryProjectionMatched": true,
+  "productExecuted": false
+}

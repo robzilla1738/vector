@@ -356,10 +356,23 @@ ExtensionFunction::ResponseAction AuxFeatureExpansionFunction::RunAux() {
     const auto generation = aux::GetProfileCookieBindingEpoch(profile());
     if (method == "getOrganizationSettings") {
       if (!args().empty()) return RespondNow(Error("This method takes no arguments"));
+      const auto& snapshot = service->snapshot();
+      base::ListValue spaces;
+      for (const auto& [id, space] : snapshot.spaces)
+        spaces.Append(base::DictValue().Set("id", id).Set("name", space.name)
+          .Set("icon", space.icon).Set("order", static_cast<int>(space.order)));
+      base::Value scope;
+      if (snapshot.cleanup_space_ids) {
+        base::ListValue ids;
+        for (const auto& id : *snapshot.cleanup_space_ids) ids.Append(id);
+        scope = base::Value(std::move(ids));
+      }
       return RespondNow(WithArguments(base::DictValue().Set("success", true)
-        .Set("ownerGeneration", generation).Set("revision", base::NumberToString(service->snapshot().revision))
-        .Set("cleanup", base::DictValue().Set("enabled", service->snapshot().cleanup_enabled)
-          .Set("inactivityDays", static_cast<int>(service->snapshot().cleanup_inactivity_days)))));
+        .Set("ownerGeneration", generation).Set("revision", base::NumberToString(snapshot.revision))
+        .Set("spaces", std::move(spaces))
+        .Set("cleanup", base::DictValue().Set("enabled", snapshot.cleanup_enabled)
+          .Set("inactivityDays", static_cast<int>(snapshot.cleanup_inactivity_days))
+          .Set("spaceIds", std::move(scope)))));
     }
     const auto enabled = request ? request->FindBool("enabled") : std::nullopt;
     const auto days = request ? request->FindInt("inactivityDays") : std::nullopt;
@@ -373,6 +386,21 @@ ExtensionFunction::ResponseAction AuxFeatureExpansionFunction::RunAux() {
     pending_browser_ = browser->GetWeakPtr(); pending_generation_ = generation;
     org::Command command; command.action = org::Action::kSetCleanupPolicy;
     command.value = *enabled; command.index = *days;
+    // Older settings callers change enabled/days without broadening a saved scope.
+    command.space_ids = service->snapshot().cleanup_space_ids;
+    if (const auto* scope = request->Find("spaceIds")) {
+      if (scope->is_none()) {
+        command.space_ids.reset();
+      } else {
+        if (!scope->is_list() || scope->GetList().size() > org::kMaxSpaces)
+          return RespondNow(Error("Valid cleanup Spaces required"));
+        command.space_ids.emplace();
+        for (const auto& id : scope->GetList()) {
+          if (!id.is_string()) return RespondNow(Error("Valid cleanup Space ID required"));
+          command.space_ids->push_back(id.GetString());
+        }
+      }
+    }
     org::Context context{service->snapshot().profile_id, generation, *revision,
       base::Uuid::GenerateRandomV4().AsLowercaseString()};
     service->Execute(std::move(context), std::move(command),

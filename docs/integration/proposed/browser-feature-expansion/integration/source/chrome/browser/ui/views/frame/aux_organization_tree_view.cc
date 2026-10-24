@@ -499,7 +499,10 @@ void AuxOrganizationTreeView::FinishDrag() {
   const auto* snapshot = Snapshot();
   if (!drag || !drag->moved || !snapshot || !snapshot->entries.contains(drag->target)) return;
   if (drag->edge != DropEdge::kNone) {
-    if (snapshot->revision != drag->context.expected_revision) return;
+    const auto current = CaptureOrganizationContext(*browser_);
+    if (!current || current->profile_id != drag->context.profile_id ||
+        current->owner_generation != drag->context.owner_generation ||
+        snapshot->revision != drag->context.expected_revision) return;
     const bool stacked = drag->edge == DropEdge::kTop || drag->edge == DropEdge::kBottom;
     const bool leading = drag->edge == DropEdge::kTop || drag->edge == DropEdge::kLeft;
     window_->SplitLogicalTabs(drag->id, drag->target, stacked, leading,
