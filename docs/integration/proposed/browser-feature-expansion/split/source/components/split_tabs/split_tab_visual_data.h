@@ -34,11 +34,11 @@ class SplitTabVisualData {
   SplitTabVisualData(SplitTabLayout split_layout, double split_ratio);
   ~SplitTabVisualData();
 
-  SplitTabVisualData(const SplitTabVisualData& other) = default;
-  SplitTabVisualData(SplitTabVisualData&& other) = default;
+  SplitTabVisualData(const SplitTabVisualData& other);
+  SplitTabVisualData(SplitTabVisualData&& other) noexcept;
 
-  SplitTabVisualData& operator=(const SplitTabVisualData& other) = default;
-  SplitTabVisualData& operator=(SplitTabVisualData&& other) = default;
+  SplitTabVisualData& operator=(const SplitTabVisualData& other);
+  SplitTabVisualData& operator=(SplitTabVisualData&& other) noexcept;
 
   void set_split_layout(SplitTabLayout split_layout) {
     split_layout_ = split_layout;

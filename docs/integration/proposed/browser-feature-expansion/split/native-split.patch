@@ -1338,6 +1338,18 @@
 +  }
 +}
 +}  // namespace split_tabs
+--- a/components/split_tabs/split_tab_visual_data.cc
++++ b/components/split_tabs/split_tab_visual_data.cc
+@@ -17,5 +17,9 @@
+     : split_layout_(split_layout), split_ratio_(split_ratio) {}
+ 
+ SplitTabVisualData::~SplitTabVisualData() = default;
++SplitTabVisualData::SplitTabVisualData(const SplitTabVisualData&) = default;
++SplitTabVisualData::SplitTabVisualData(SplitTabVisualData&&) noexcept = default;
++SplitTabVisualData& SplitTabVisualData::operator=(const SplitTabVisualData&) = default;
++SplitTabVisualData& SplitTabVisualData::operator=(SplitTabVisualData&&) noexcept = default;
+ 
+ }  // namespace split_tabs
 --- a/components/split_tabs/split_tab_visual_data.h
 +++ b/components/split_tabs/split_tab_visual_data.h
 @@ -4,6 +4,11 @@
@@ -1352,6 +1364,22 @@
  
  namespace split_tabs {
  
+@@ -29,11 +34,11 @@
+   SplitTabVisualData(SplitTabLayout split_layout, double split_ratio);
+   ~SplitTabVisualData();
+ 
+-  SplitTabVisualData(const SplitTabVisualData& other) = default;
+-  SplitTabVisualData(SplitTabVisualData&& other) = default;
++  SplitTabVisualData(const SplitTabVisualData& other);
++  SplitTabVisualData(SplitTabVisualData&& other) noexcept;
+ 
+-  SplitTabVisualData& operator=(const SplitTabVisualData& other) = default;
+-  SplitTabVisualData& operator=(SplitTabVisualData&& other) = default;
++  SplitTabVisualData& operator=(const SplitTabVisualData& other);
++  SplitTabVisualData& operator=(SplitTabVisualData&& other) noexcept;
+ 
+   void set_split_layout(SplitTabLayout split_layout) {
+     split_layout_ = split_layout;
 @@ -45,6 +50,15 @@
  
    double split_ratio() const { return split_ratio_; }

@@ -17,5 +17,9 @@ SplitTabVisualData::SplitTabVisualData(SplitTabLayout split_layout,
     : split_layout_(split_layout), split_ratio_(split_ratio) {}
 
 SplitTabVisualData::~SplitTabVisualData() = default;
+SplitTabVisualData::SplitTabVisualData(const SplitTabVisualData&) = default;
+SplitTabVisualData::SplitTabVisualData(SplitTabVisualData&&) noexcept = default;
+SplitTabVisualData& SplitTabVisualData::operator=(const SplitTabVisualData&) = default;
+SplitTabVisualData& SplitTabVisualData::operator=(SplitTabVisualData&&) noexcept = default;
 
 }  // namespace split_tabs

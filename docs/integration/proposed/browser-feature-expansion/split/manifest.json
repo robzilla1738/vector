@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "status": "source-proposal-unintegrated",
-  "modified": 9,
+  "modified": 10,
   "added": 5,
   "sources": [
     {
@@ -70,12 +70,17 @@
       "baseline_sha256": null
     },
     {
+      "path": "components/split_tabs/split_tab_visual_data.cc",
+      "sha256": "8cc1230156c36e4a90deb46332c86d439bb05941cf71f1ae6584ee7b4c50904e",
+      "baseline_sha256": "f11e2e7ad0aba15251985369621885995e5d6991418e3a459f10dabd9e57dcc0"
+    },
+    {
       "path": "components/split_tabs/split_tab_visual_data.h",
-      "sha256": "1fdab94ca5f9746020d2f592c0ebdbdd844067a80bc06fe1468dadfa54a70ddc",
+      "sha256": "3d5477136b8e6edc164ecbff9fa25259dfce8b5967619c5286dfe4c26ee6295b",
       "baseline_sha256": "0b9a0749ecab70cd014782e15cb45270f5d0083a6ba3eb9577623e88f8f09508"
     }
   ],
-  "patch_sha256": "78e6ee552d61b252d4d2e2ef70f727b80dfa7e8feebbb35a25c1f91e5b70a1b6",
+  "patch_sha256": "f6056f44de11dd3778b201226d6d01e2e18f7c5b385df6a1b23f490d0bf02687",
   "shared_hooks": [
     {
       "path": "chrome/browser/sessions/session_restore.cc",
@@ -124,7 +129,7 @@
     },
     {
       "path": "components/tabs/impl/tab_strip_collection.cc",
-      "sha256": "55952808686881d1e06dad7261d468bbdbc48d57cb62ee6ef8ee315aae26e0f1",
+      "sha256": "f0fa224a383569669bf6993fe22ba205af17b869a767df59ba6bf3d77bdb8758",
       "baseline_sha256": "99616835b21b31e72bc405d88d9de8c13534ee4aa318250c5dfc8bd562d6ca83"
     },
     {
@@ -133,5 +138,5 @@
       "baseline_sha256": "2a04873e086b81ab541d7663afe5a57feb1304408e800863969e1b9adf8a8aa7"
     }
   ],
-  "shared_hooks_patch_sha256": "1f1bce2cad797c32364a972874cfaf2fabe97c40a485363bced9f12ab19e832c"
+  "shared_hooks_patch_sha256": "9112a79b5c4a0599a24d8c904a4d79e9f5878c648f51622fba7133e3b6269339"
 }

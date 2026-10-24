@@ -467,8 +467,8 @@ void TabStripCollection::MoveTabWithinSplit(split_tabs::SplitTabId split_id,
   CHECK_LT(from, split->TabCountRecursive());
   CHECK_LT(to, split->TabCountRecursive());
   if (from == to) return;
-  MoveTabImpl(split->GetTabAtIndexRecursive(from),
-              {split->GetHandle(), to + (from < to ? 1 : 0)});
+  TabCollection::Position position = {split->GetHandle(), to + (from < to ? 1 : 0)};
+  MoveTabImpl(split->GetTabAtIndexRecursive(from), position);
 }
 
 void TabStripCollection::Unsplit(split_tabs::SplitTabId split_id) {
