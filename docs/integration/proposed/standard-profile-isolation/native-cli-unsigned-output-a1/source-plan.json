@@ -1,0 +1,17 @@
+{
+  "format": "aux.native-cli.unsigned-output.source.v1",
+  "files": [
+    {
+      "path": "build/toolchain/apple/excluded-product-outputs.json",
+      "inputSha256": "cf5ff83bcb5768ecf18ba436694f8b175183829b81b5de0e2a7702ded90f3381",
+      "outputSha256": "fe1e6db5126c656da5652bd6bd6e8965abeccc4f955bc54927e558cfca28713c",
+      "anchors": [
+        {
+          "find": "[\n  \"./libEGL.dylib\",\n  \"./libGLESv2.dylib\",\n  \"./libvk_swiftshader.dylib\",\n  \"./libvulkan.dylib\",\n  \"./libVkICD_mock_icd.dylib\",\n  \"./libVkLayer_khronos_validation.dylib\",\n  \"obj/chrome/chrome_framework_shared_library/Aux Framework\",\n  \"./libaperitif.dylib\",\n  \"./app_mode_loader\",\n  \"./chrome_crashpad_handler\",\n  \"./web_app_shortcut_copier\",\n  \"obj/chrome/chrome_helper_app_default_executable/Aux Helper\",\n  \"obj/chrome/chrome_helper_app_renderer_executable/Aux Helper (Renderer)\",\n  \"obj/chrome/chrome_helper_app_gpu_executable/Aux Helper (GPU)\",\n  \"obj/chrome/chrome_helper_app_aperitif_executable/Aux Helper (Aperitif)\",\n  \"obj/chrome/chrome_helper_app_aperitif_renderer_executable/Aux Helper (Aperitif Renderer)\",\n  \"obj/chrome/chrome_helper_app_aperitif_gpu_executable/Aux Helper (Aperitif GPU)\",\n  \"obj/chrome/chrome_helper_app_alerts_executable/Aux Helper (Alerts)\",\n  \"obj/chrome/chrome_helper_app_aperitif_alerts_executable/Aux Helper (Aperitif Alerts)\",\n  \"obj/chrome/chrome_app_executable/Aux\"\n]\n",
+          "replace": "[\n  \"./libEGL.dylib\",\n  \"./libGLESv2.dylib\",\n  \"./libvk_swiftshader.dylib\",\n  \"./libvulkan.dylib\",\n  \"./libVkICD_mock_icd.dylib\",\n  \"./libVkLayer_khronos_validation.dylib\",\n  \"obj/chrome/chrome_framework_shared_library/Aux Framework\",\n  \"./libaperitif.dylib\",\n  \"./app_mode_loader\",\n  \"./chrome_crashpad_handler\",\n  \"./web_app_shortcut_copier\",\n  \"obj/chrome/chrome_helper_app_default_executable/Aux Helper\",\n  \"obj/chrome/chrome_helper_app_renderer_executable/Aux Helper (Renderer)\",\n  \"obj/chrome/chrome_helper_app_gpu_executable/Aux Helper (GPU)\",\n  \"obj/chrome/chrome_helper_app_aperitif_executable/Aux Helper (Aperitif)\",\n  \"obj/chrome/chrome_helper_app_aperitif_renderer_executable/Aux Helper (Aperitif Renderer)\",\n  \"obj/chrome/chrome_helper_app_aperitif_gpu_executable/Aux Helper (Aperitif GPU)\",\n  \"obj/chrome/chrome_helper_app_alerts_executable/Aux Helper (Alerts)\",\n  \"obj/chrome/chrome_helper_app_aperitif_alerts_executable/Aux Helper (Aperitif Alerts)\",\n  \"obj/chrome/chrome_app_executable/Aux\",\n  \"native_cli_open\"\n]\n",
+          "count": 1
+        }
+      ]
+    }
+  ]
+}

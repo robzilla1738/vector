@@ -1,0 +1,12 @@
+{
+  "passed": true,
+  "productOutputs": 21,
+  "unchangedHostOutputs": 68,
+  "newProductRemainsUnsigned": true,
+  "unknownOutputRefused": true,
+  "filterLogicSha256": "404875f1d5df38c6d1d7e37c96a1860b23445776a94b605be3087d7502dbde34",
+  "outputInventorySha256": "fe1e6db5126c656da5652bd6bd6e8965abeccc4f955bc54927e558cfca28713c",
+  "nativeApiExecuted": false,
+  "productExecuted": false,
+  "signingPerformed": false
+}

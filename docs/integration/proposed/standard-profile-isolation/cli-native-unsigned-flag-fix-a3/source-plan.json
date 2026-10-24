@@ -1,0 +1,17 @@
+{
+  "format": "aux.native-cli.unsigned-flag.source.v1",
+  "files": [
+    {
+      "path": "chrome/browser/aux/BUILD.gn",
+      "inputSha256": "618fcddf53fe41cb137ed241cecb208c57e8dcd9d8f0172584863280872b973f",
+      "outputSha256": "3df60e432db4e30bd95252110462728ced8bff43fb0a8063ec95b6336f3e7876",
+      "anchors": [
+        {
+          "find": "    ldflags = [ \"-Wl,-no_adhoc_codesign\" ]\n",
+          "replace": "    # The reviewed global unsigned product config supplies the one link flag.\n",
+          "count": 1
+        }
+      ]
+    }
+  ]
+}

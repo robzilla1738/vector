@@ -1,0 +1,31 @@
+{
+  "format": "aux.native-cohort.projection.actual.v1",
+  "passed": true,
+  "originals": {
+    "components/services/storage/dom_storage/async_dom_storage_database.h": "0050781f8c549a38d01d2431c8b498bde48c144dc3b1c6dc188e68a8a74d8317",
+    "components/services/storage/dom_storage/async_dom_storage_database.cc": "5917a846a2636ad1cc93b490a7de6bf25695866b06fb31c568c6b4bc3de01853",
+    "components/services/storage/dom_storage/aux_ui_cache_cohort.h": "1ec8d102513563d197680d8a3796b93cd00ac0604426ac35783bb34a18786e2a",
+    "components/services/storage/dom_storage/aux_ui_cache_cohort.cc": "2d82dfab997950bde58cd81222148b1889fdb121e3ebae78ebd372b7b5ce36f8",
+    "components/services/storage/public/mojom/local_storage_control.mojom": "74f84005316e3ee9d0f097e6c1d8faf2f37ea22182d9947b3ef22ffd76d9df55",
+    "components/services/storage/dom_storage/local_storage_impl.cc": "ca08f7d83f35d684e327074501f3736c7f761044f25cca135dddfbaf5a4f0261",
+    "components/services/storage/dom_storage/session_storage_impl.cc": "51df9b241107fcc000f353ac80a654f5a5340a9f93405ef81651fe98f176491d",
+    "chrome/browser/aux/ui_storage_migration_controller.cc": "71d7da1ce3aabc45bf3873cfd393be56a97e83d28c56c6146b7619c209a9070e",
+    "build/toolchain/apple/excluded-product-outputs.json": "cf5ff83bcb5768ecf18ba436694f8b175183829b81b5de0e2a7702ded90f3381"
+  },
+  "projected": [
+    "components/services/storage/dom_storage/async_dom_storage_database.h",
+    "components/services/storage/dom_storage/async_dom_storage_database.cc",
+    "components/services/storage/dom_storage/aux_ui_cache_cohort.h",
+    "components/services/storage/dom_storage/aux_ui_cache_cohort.cc",
+    "components/services/storage/public/mojom/local_storage_control.mojom",
+    "components/services/storage/dom_storage/local_storage_impl.cc",
+    "components/services/storage/dom_storage/session_storage_impl.cc",
+    "chrome/browser/aux/ui_storage_migration_controller.cc",
+    "build/toolchain/apple/excluded-product-outputs.json"
+  ],
+  "beforeImages": "/private/tmp/aux-chromium-recovery-snapshot-20261023/native-cohort-integration-20261024-a19/before",
+  "sourceCompositionSha256": "07ba2fa31f73c7d6bcc5f21612828944ed2aea1b981735d23984e48bca2185e1",
+  "ownerChangesReset": false,
+  "acceptedAppReplaced": false,
+  "productExecuted": false
+}

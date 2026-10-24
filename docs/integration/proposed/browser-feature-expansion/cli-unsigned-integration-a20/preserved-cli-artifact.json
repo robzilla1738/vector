@@ -1,0 +1,19 @@
+{
+  "passed": true,
+  "artifact": "/private/tmp/aux-chromium-recovery-snapshot-20261023/native-cli-product-link-20261024-a5/native_cli_open",
+  "sha256": "f9d14791f20e74c363bbe61729ae5c9eb35ae18bc25c48d767c3205ea21a20c1",
+  "mode": 493,
+  "sourceReceiptSha256": "d6b604418674e9d220e2c44642e2d787b8e0b60945a5449b9cad7aba864eff34",
+  "loadCommandsSha256": "b8384c7f31da21f7a2baebf51c8bfc9ed64b1ccd19660a577c2ce3672efe0dbd",
+  "dependencies": [
+    "\t/System/Library/Frameworks/Foundation.framework/Versions/C/Foundation (compatibility version 300.0.0, current version 5027.0.69)",
+    "\t/System/Library/Frameworks/CoreFoundation.framework/Versions/A/CoreFoundation (compatibility version 150.0.0, current version 5027.0.69)",
+    "\t/usr/lib/libobjc.A.dylib (compatibility version 1.0.0, current version 228.0.0)",
+    "\t/System/Library/Frameworks/Security.framework/Versions/A/Security (compatibility version 1.0.0, current version 62460.1.2)",
+    "\t/usr/lib/libbsm.0.dylib (compatibility version 1.0.0, current version 1.0.0)",
+    "\t/usr/lib/libSystem.B.dylib (compatibility version 1.0.0, current version 1359.0.0)"
+  ],
+  "productExecuted": false,
+  "productSigned": false,
+  "runtimeAcceptance": false
+}

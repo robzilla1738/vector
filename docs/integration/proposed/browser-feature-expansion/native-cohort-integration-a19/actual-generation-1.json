@@ -1,0 +1,17 @@
+{
+  "passed": true,
+  "command": [
+    "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/third_party/ninja/ninja",
+    "-C",
+    "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/out/AuxFast",
+    "-j4",
+    "gen/components/services/storage/public/mojom/local_storage_control.mojom.h",
+    "gen/components/services/storage/public/mojom/local_storage_control.mojom-shared.h",
+    "gen/components/services/storage/public/mojom/local_storage_control.mojom-shared-internal.h",
+    "gen/components/services/storage/public/mojom/session_storage_control.mojom.h",
+    "gen/components/services/storage/public/mojom/session_storage_control.mojom-shared.h",
+    "gen/components/services/storage/public/mojom/session_storage_control.mojom-shared-internal.h"
+  ],
+  "exitCode": 0,
+  "productExecuted": false
+}
