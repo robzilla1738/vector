@@ -1,0 +1,16 @@
+{
+  "format": "aux.leveldb-absence.source-check.actual.v1",
+  "passed": true,
+  "sourcePlanSha256": "4c977b9171b2645256a33a70dd7134aa8b353882cedc6efb7e1abfdb9eb730da",
+  "patchSha256": "616146068b2f14384c62aa35b2fecf20a4f13ee719747d48c3016a54b6cd2e1f",
+  "files": 2,
+  "countedAnchors": 13,
+  "replayDirectory": "/private/tmp/aux-leveldb-absence-replay-8w3b1ppq",
+  "exactReplayPassed": true,
+  "reverseCheckPassed": true,
+  "nativeCheckoutChanged": false,
+  "nativeCompiled": false,
+  "testsExecuted": false,
+  "productExecuted": false,
+  "runtimeAcceptance": false
+}

@@ -1,0 +1,179 @@
+--- a/components/services/storage/dom_storage/async_dom_storage_database.h
++++ b/components/services/storage/dom_storage/async_dom_storage_database.h
+@@ -158,6 +158,10 @@
+     std::optional<base::Time> source_last_accessed;
+     std::optional<base::Time> source_last_modified;
+     std::optional<base::ByteSize> source_total_size;
++    bool target_metadata_is_explicit = false;
++    std::optional<base::Time> target_last_accessed;
++    std::optional<base::Time> target_last_modified;
++    std::optional<base::ByteSize> target_total_size;
+   };
+   struct AuxUiTargetMap {
+     uint32_t map_ordinal = 0;
+--- a/components/services/storage/dom_storage/async_dom_storage_database.cc
++++ b/components/services/storage/dom_storage/async_dom_storage_database.cc
+@@ -80,6 +80,10 @@
+   bool source_persisted = true;
+   bool allocation_requested = false;
+   std::optional<int64_t> allocated_map_id;
++  bool target_metadata_is_explicit = false;
++  std::optional<base::Time> target_last_accessed;
++  std::optional<base::Time> target_last_modified;
++  std::optional<base::ByteSize> target_total_size;
+ };
+ // Only DB-sequence tasks access this state. It retains exact original raw
+ // maps, including unrelated entries, but exports only reviewed UI families.
+@@ -322,15 +326,18 @@
+   }
+   const auto& entries = target ? map.target : map.source;
+   AuxDigestNumber(bytes, target ? map.source_persisted || !entries.empty() : map.source_persisted);
+-  for (const auto& time : {map.last_accessed, map.last_modified}) {
++  const bool explicit_target = target && map.target_metadata_is_explicit;
++  for (const auto& time : {explicit_target ? map.target_last_accessed : map.last_accessed,
++                          explicit_target ? map.target_last_modified : map.last_modified}) {
+     AuxDigestNumber(bytes, time.has_value());
+     if (time) AuxDigestNumber(bytes, static_cast<uint64_t>(time->ToDeltaSinceWindowsEpoch().InMicroseconds()));
+   }
+-  AuxDigestNumber(bytes, local && map.total_size.has_value());
+-  if (local && map.total_size) {
++  const auto& size = explicit_target ? map.target_total_size : map.total_size;
++  AuxDigestNumber(bytes, local && size.has_value());
++  if (local && size) {
+     size_t count = 0;
+     for (const auto& [key, value] : entries) count += key.size() + value.size();
+-    AuxDigestNumber(bytes, target && map.target != map.source ? count : map.total_size->InBytes());
++    AuxDigestNumber(bytes, target && !explicit_target && map.target != map.source ? count : size->InBytes());
+   }
+   AuxDigestNumber(bytes, entries.size());
+   for (const auto& [key, value] : entries) { AuxDigestRaw(bytes, key); AuxDigestRaw(bytes, value); }
+@@ -486,6 +493,10 @@
+     output.source_last_accessed = original.last_accessed;
+     output.source_last_modified = original.last_modified;
+     output.source_total_size = original.total_size;
++    output.target_metadata_is_explicit = original.target_metadata_is_explicit;
++    output.target_last_accessed = original.target_last_accessed;
++    output.target_last_modified = original.target_last_modified;
++    output.target_total_size = original.target_total_size;
+     for (const auto& selected : {output.source, output.target})
+       for (const auto& [key, value] : selected) export_bytes += key.size() + value.size();
+     if (export_bytes > 16 * 1024 * 1024)
+@@ -527,6 +538,13 @@
+     }
+     AuxDigestNumber(bytes, map.source_total_size.has_value());
+     if (map.source_total_size) AuxDigestNumber(bytes, map.source_total_size->InBytes());
++    AuxDigestNumber(bytes, map.target_metadata_is_explicit);
++    for (const auto& time : {map.target_last_accessed, map.target_last_modified}) {
++      AuxDigestNumber(bytes, time.has_value());
++      if (time) AuxDigestNumber(bytes, static_cast<uint64_t>(time->ToDeltaSinceWindowsEpoch().InMicroseconds()));
++    }
++    AuxDigestNumber(bytes, map.target_total_size.has_value());
++    if (map.target_total_size) AuxDigestNumber(bytes, map.target_total_size->InBytes());
+     for (const auto* selected : {&map.source, &map.target}) {
+       AuxDigestNumber(bytes, selected->size());
+       for (const auto& [key, value] : *selected) { AuxDigestRaw(bytes, key); AuxDigestRaw(bytes, value); }
+@@ -592,7 +610,8 @@
+     for (const auto& session : row.session_ids) locator.AddSession(session);
+     AuxDomMap map{std::move(locator), actual.source, actual.source,
+         row.source_last_accessed, row.source_last_modified, row.source_total_size,
+-        row.source_persisted, row.allocation_requested, row.allocated_map_id};
++        row.source_persisted, row.allocation_requested, row.allocated_map_id,
++        row.target_metadata_is_explicit, row.target_last_accessed, row.target_last_modified, row.target_total_size};
+     for (const auto& [key, value] : AuxSelectedEntries(actual.source, local)) {
+       map.source.erase(key); map.target.erase(key);
+     }
+@@ -607,6 +626,18 @@
+     auto canonical = AuxBuildTarget(map.target, local);
+     if (!canonical.has_value() || canonical.value() != map.target)
+       return base::unexpected(DbStatus::NotSupported("Recovery target is not the exact current native codec"));
++    if (map.target_metadata_is_explicit) {
++      size_t count = 0;
++      for (const auto& [key, value] : map.target) count += key.size() + value.size();
++      if (!local || sqlite || map.source_persisted || map.locator.map_id() ||
++          map.allocation_requested || !map.source.empty() || map.target.empty() ||
++          map.last_accessed || map.last_modified || map.total_size ||
++          !map.target_last_accessed || !map.target_last_modified || !map.target_total_size ||
++          map.target_last_accessed != map.target_last_modified || map.target_total_size->InBytes() != count)
++        return base::unexpected(DbStatus::IOError("Exact original native LevelDB creation metadata required"));
++    } else if (map.target_last_accessed || map.target_last_modified || map.target_total_size) {
++      return base::unexpected(DbStatus::IOError("Target metadata must have explicit native provenance"));
++    }
+     if (map.allocation_requested) {
+       if (!local || !sqlite || !recorded.target_attempted || map.source_persisted ||
+           map.locator.map_id() || !map.source.empty() || map.target.empty() || map.last_accessed || map.last_modified || map.total_size ||
+@@ -957,15 +988,32 @@
+               if (!canonical.has_value() || canonical.value() != candidate)
+                 return base::unexpected(DbStatus::NotSupported("Ambiguous/non-current target key encoding"));
+               if (!map.source_persisted && candidate != map.source &&
+-                  (local ? (!sqlite || map.locator.map_id() || !map.locator.session_ids().empty() || !map.source.empty()) :
++                  (local ? (map.locator.map_id() || !map.locator.session_ids().empty() || !map.source.empty()) :
+                    (!map.locator.map_id() || map.locator.session_ids().size() != 1)))
+-                return base::unexpected(DbStatus::NotSupported("Actual SQLite absent Local or allocator-owned single-namespace Session map required"));
++                return base::unexpected(DbStatus::NotSupported("Actual absent native Local or allocator-owned single-namespace Session map required"));
+               proposed[target.map_ordinal] = std::move(candidate);
+             }
+             for (size_t i = 0; i < capture->maps.size(); ++i) {
+               auto& map = capture->maps[i];
+               map.target = std::move(proposed[i]);
+-              map.allocation_requested = local && !map.source_persisted && map.target != map.source;
++              map.allocation_requested = local && sqlite && !map.source_persisted && map.target != map.source;
++              const bool leveldb_creation = local && !sqlite && !map.source_persisted && map.target != map.source;
++              if (leveldb_creation) {
++                // LevelDB's storage-key identity is already real. Its data
++                // and metadata must enter the same actual batch; no future
++                // SQLite row ID or caller backend selector is introduced.
++                if (!map.target_metadata_is_explicit) {
++                  const auto now = base::Time::Now();
++                  map.target_last_accessed = now; map.target_last_modified = now;
++                }
++                map.target_metadata_is_explicit = true;
++                size_t count = 0;
++                for (const auto& [key, value] : map.target) count += key.size() + value.size();
++                map.target_total_size = base::ByteSize(count);
++              } else {
++                map.target_metadata_is_explicit = false;
++                map.target_last_accessed.reset(); map.target_last_modified.reset(); map.target_total_size.reset();
++              }
+             }
+           } else if (operation == 3 || operation == 4) {
+             // AuxReadDomCapture has checked every complete map/topology
+@@ -980,13 +1028,16 @@
+               if (map.source == map.target) continue;
+               if (operation == 4 && !map.source_persisted) {
+                 if (local) {
+-                  if (!map.allocation_requested || !map.source.empty())
++                  if (!map.source.empty() ||
++                      (sqlite ? !map.allocation_requested : !map.target_metadata_is_explicit))
+                     return base::unexpected(DbStatus::NotSupported("Original Local absence action missing"));
+-                  // No observed allocation means the failed original write
+-                  // left verified source absence. Never retry its allocator.
+-                  if (!map.allocated_map_id) continue;
++                  // Missing observed SQLite allocation means known source
++                  // absence. LevelDB has no generated ID: its actual key
++                  // owns both the exact metadata and raw prefix batch.
++                  if (sqlite && !map.allocated_map_id) continue;
+                   std::vector<DomStorageDatabase::MapLocator> maps_to_delete;
+-                  maps_to_delete.emplace_back(map.locator.storage_key(), *map.allocated_map_id);
++                  if (sqlite) maps_to_delete.emplace_back(map.locator.storage_key(), *map.allocated_map_id);
++                  else maps_to_delete.emplace_back(map.locator.storage_key());
+                   DbStatus removed = database->DeleteStorageKeysFromSession(
+                       {}, {map.locator.storage_key()}, std::move(maps_to_delete));
+                   if (!removed.ok()) return base::unexpected(removed);
+@@ -1017,12 +1068,17 @@
+               }
+               if (local) {
+                 update.map_usage.emplace();
++                if (operation == 3 && map.target_metadata_is_explicit) {
++                  update.map_usage->SetLastAccessed(*map.target_last_accessed);
++                  update.map_usage->SetLastModifiedAndTotalSize(*map.target_last_modified, *map.target_total_size);
++                } else {
+                 if (map.last_accessed) update.map_usage->SetLastAccessed(*map.last_accessed);
+                 if (map.last_modified && map.total_size) {
+                   size_t count = 0;
+                   for (const auto& [key, value] : desired) count += key.size() + value.size();
+                   update.map_usage->SetLastModifiedAndTotalSize(*map.last_modified,
+                       operation == 3 ? base::ByteSize(count) : *map.total_size);
++                }
+                 }
+               }
+               updates.push_back(std::move(update));
