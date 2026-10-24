@@ -1,0 +1,64 @@
+{
+  "format": "aux.standard-profile-package.execution.v1",
+  "commandsSha256": "524838e3a326b5e05a61e6b4ee70683a484f7c15af59d6d36d5e18fde552177d",
+  "runnerSha256": "25059ad81913d6ca029f65fa7f53e57688674ea68048abea6c471be8f9207ad8",
+  "previousExecution": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/package-v11/actual-run-a1.json",
+  "previousExecutionSha256": "031a24983f23ecf18b31a0bd47b6089410f1e32d190431726b2077e182fcf4df",
+  "passed": true,
+  "runs": [
+    {
+      "name": "prepareFeature",
+      "command": [
+        "/opt/homebrew/opt/python@3.15/bin/python3.15",
+        "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/package-v11/cache_package.py",
+        "prepare",
+        "--base-recipe",
+        "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/package-v11/prepared/base-recipe.json",
+        "--native-composition",
+        "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/integration/browser-composition-a8.json",
+        "--daemon-composition",
+        "/private/tmp/aux-standard-daemon-projection-20261024-a5/composition.json",
+        "--daemon-inputs",
+        "/private/tmp/aux-daemon-crash-registration-close-check/daemon-inputs.json",
+        "--baseline-stage",
+        "/Users/rcourson/Documents/Vibe/web/out/standard-profile-finish-stage-pair-20261024/baseline",
+        "--feature-stage",
+        "/Users/rcourson/Documents/Vibe/web/out/standard-profile-finish-stage-pair-20261024/desktop-v1",
+        "--recipe",
+        "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/package-v11/prepared/feature-recipe.json"
+      ],
+      "exitCode": 0,
+      "seconds": 88.0367603750201
+    },
+    {
+      "name": "verify",
+      "command": [
+        "/opt/homebrew/opt/python@3.15/bin/python3.15",
+        "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/package-v11/cache_package.py",
+        "verify",
+        "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/package-v11/prepared/feature-recipe.json"
+      ],
+      "exitCode": 0,
+      "seconds": 81.19061787496321
+    },
+    {
+      "name": "assemble",
+      "command": [
+        "/opt/homebrew/opt/python@3.15/bin/python3.15",
+        "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/package-v11/cache_package.py",
+        "assemble",
+        "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/package-v11/prepared/feature-recipe.json"
+      ],
+      "exitCode": 0,
+      "seconds": 342.2454429590143
+    }
+  ],
+  "appExecuted": false,
+  "productSigned": false,
+  "runtimeAuthorityGranted": false,
+  "acceptedAppReplaced": false,
+  "testable": false,
+  "app": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-standard-profile-finish-20261024/Aux.app",
+  "finalReceipt": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-standard-profile-finish-20261024/receipt.json",
+  "finalReceiptSha256": "098761236ab2507fccc0151d49f95b2f4646f69b4e26f1199badcae902853a6f"
+}
