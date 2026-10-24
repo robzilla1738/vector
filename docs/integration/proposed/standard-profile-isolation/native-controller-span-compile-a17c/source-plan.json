@@ -1,0 +1,44 @@
+{
+  "format": "aux.native-controller-span-compile.v1",
+  "files": [
+    {
+      "path": "chrome/browser/aux/ui_storage_migration_controller.cc",
+      "input": "/Users/rcourson/.codex/worktrees/aux-features-navigation/web/docs/integration/proposed/standard-profile-isolation/native-allocation-intent-controller-a16/source/chrome/browser/aux/ui_storage_migration_controller.cc",
+      "inputSha256": "884003b81ad39cda462b9f8acfce766056acf8c0c5e4817c9522f318b9be2cac",
+      "output": "/Users/rcourson/.codex/worktrees/aux-features-navigation/web/docs/integration/proposed/standard-profile-isolation/native-controller-span-compile-a17c/source/chrome/browser/aux/ui_storage_migration_controller.cc",
+      "outputSha256": "205f00f3d76292ee2b33c8b2c7a52c41fd3290e075445a093a3f0a3b8a86c627",
+      "anchors": [
+        {
+          "find": ".subspan(1)",
+          "replace": ".subspan<1>()",
+          "count": 3
+        },
+        {
+          "find": ".subspan(1, 32)",
+          "replace": ".subspan<1, 32>()",
+          "count": 1
+        },
+        {
+          "find": ".subspan(2)",
+          "replace": ".subspan<2>()",
+          "count": 2
+        },
+        {
+          "find": ".subspan(37)",
+          "replace": ".subspan<37>()",
+          "count": 1
+        },
+        {
+          "find": ".subspan(42)",
+          "replace": ".subspan<42>()",
+          "count": 1
+        },
+        {
+          "find": ".subspan(6, 32)",
+          "replace": ".subspan<6, 32>()",
+          "count": 1
+        }
+      ]
+    }
+  ]
+}
