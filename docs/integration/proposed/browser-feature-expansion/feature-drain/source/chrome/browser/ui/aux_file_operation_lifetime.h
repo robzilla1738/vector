@@ -16,11 +16,14 @@ class FileOperationLifetime {
   void Revoke();
   bool Begin();
   void End();
+  // The worker stopped, but its physical result/journal still needs recovery.
+  void MarkUncertain();
   std::shared_ptr<const std::atomic_bool> authorization() const { return authorized_; }
  private:
   base::FilePath path_;
   std::shared_ptr<std::atomic_bool> authorized_;
   bool pending_ = false;
+  bool uncertain_ = false;
   std::shared_ptr<aux::features::NativeFeatureIoTicket> ticket_;
 };
 bool HasFileOperationsPending(const base::FilePath& actual_profile_path);

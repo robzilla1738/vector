@@ -13,16 +13,28 @@
 namespace aux::features {
 namespace {
 struct Record {
+  Record(base::FilePath path, NativeFeatureIoKind kind,
+         std::weak_ptr<std::atomic_bool> authorization);
+  Record(Record&&) noexcept;
+  Record& operator=(Record&&) noexcept;
+  ~Record();
   base::FilePath profile_path;
   NativeFeatureIoKind kind;
   std::weak_ptr<std::atomic_bool> authorization;
   bool abandoned = false;
 };
 struct Waiter {
+  Waiter(scoped_refptr<base::SequencedTaskRunner> runner,
+         base::OnceCallback<void(NativeFeatureWriteObservation)> callback);
+  Waiter(Waiter&&) noexcept;
+  Waiter& operator=(Waiter&&) noexcept;
+  ~Waiter();
   scoped_refptr<base::SequencedTaskRunner> runner;
   base::OnceCallback<void(NativeFeatureWriteObservation)> callback;
 };
 struct Registry {
+  Registry();
+  ~Registry();
   const pid_t process = getpid();
   std::mutex mutex;
   uint64_t next_id = 1;
@@ -30,6 +42,21 @@ struct Registry {
   std::map<uint64_t, Record> records;
   std::vector<Waiter> waiters;
 };
+Record::Record(base::FilePath path, NativeFeatureIoKind io_kind,
+               std::weak_ptr<std::atomic_bool> write_authorization)
+    : profile_path(std::move(path)), kind(io_kind),
+      authorization(std::move(write_authorization)) {}
+Record::Record(Record&&) noexcept = default;
+Record& Record::operator=(Record&&) noexcept = default;
+Record::~Record() = default;
+Waiter::Waiter(scoped_refptr<base::SequencedTaskRunner> task_runner,
+               base::OnceCallback<void(NativeFeatureWriteObservation)> done)
+    : runner(std::move(task_runner)), callback(std::move(done)) {}
+Waiter::Waiter(Waiter&&) noexcept = default;
+Waiter& Waiter::operator=(Waiter&&) noexcept = default;
+Waiter::~Waiter() = default;
+Registry::Registry() = default;
+Registry::~Registry() = default;
 Registry& State() { static base::NoDestructor<Registry> state; return *state; }
 void ReportSettled() {
   auto& state = State();

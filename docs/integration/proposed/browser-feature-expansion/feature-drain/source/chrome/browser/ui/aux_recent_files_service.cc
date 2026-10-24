@@ -171,13 +171,18 @@ struct Rename : Item::Observer, std::enable_shared_from_this<Rename> {
     }
     auto* receipt = state->receipts.FindDict(receipt_id);
     if (receipt) receipt->Set("phase", result == Result::SUCCESS ? (undo ? "undone" : "complete") : "failed");
+    if (result == Result::FAILURE_UNKNOWN) state->lifetime->MarkUncertain();
     if (!state->Current()) {
+      state->lifetime->MarkUncertain();
       Finish(Error("Profile closed; the prepared rename receipt requires recovery.")); return;
     }
     state->persist.Run(state->receipts.Clone(), base::BindOnce(&Rename::Recorded, shared_from_this()));
   }
   void Recorded(bool durable) {
-    if (!durable) state->journal_ready = false;
+    if (!durable) {
+      state->journal_ready = false;
+      state->lifetime->MarkUncertain();
+    }
     if (result != Result::SUCCESS) {
       Finish(Error(result == Result::FAILURE_NAME_CONFLICT ? "That filename is already in use." : "The file changed or is no longer available.")); return;
     }
@@ -216,6 +221,9 @@ struct Recovery : content::DownloadManager::Observer, std::enable_shared_from_th
     Finish();
   }
   void Finish() {
+    // Remaining prepared receipts need another recovery pass even when this
+    // process has no worker left. Do not report them as a clean completion.
+    if (!Current() || index < ids.size()) state->lifetime->MarkUncertain();
     state->SetPending(false);
   }
   bool Current() const { return state->Current() && state->owner_epoch == epoch; }
@@ -224,7 +232,10 @@ struct Recovery : content::DownloadManager::Observer, std::enable_shared_from_th
     if (index == ids.size()) {
       if (changed) state->persist.Run(state->receipts.Clone(), base::BindOnce(
           [](std::shared_ptr<Recovery> recovery, bool durable) {
-            if (!durable) recovery->state->journal_ready = false;
+            if (!durable) {
+              recovery->state->journal_ready = false;
+              recovery->state->lifetime->MarkUncertain();
+            }
             recovery->Finish(); }, shared_from_this()));
       else Finish();
       return;
@@ -256,6 +267,7 @@ struct Recovery : content::DownloadManager::Observer, std::enable_shared_from_th
                        *phase == "undo-planned"));
   }
   void Conflict(const std::string& id) {
+    state->lifetime->MarkUncertain();
     if (auto* receipt = state->receipts.FindDict(id)) receipt->Set("phase", "needs-review");
     changed = true; Next();
   }

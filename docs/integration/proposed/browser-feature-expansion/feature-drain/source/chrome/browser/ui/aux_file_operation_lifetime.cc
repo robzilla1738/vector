@@ -26,15 +26,19 @@ bool FileOperationLifetime::Begin() {
   CHECK(!pending_);
   ticket_ = aux::features::BeginNativeFeatureIo(path_, aux::features::NativeFeatureIoKind::kDownloadTransaction, authorized_);
   if (!ticket_) { Revoke(); return false; }
-  pending_ = true; ++ForPath(path_).pending;
+  pending_ = true; uncertain_ = false; ++ForPath(path_).pending;
   return true;
 }
 void FileOperationLifetime::End() {
   CHECK(pending_); pending_ = false;
-  ticket_->Settle(aux::features::NativeFeatureIoOutcome::kCompleted);
+  ticket_->Settle(uncertain_ ? aux::features::NativeFeatureIoOutcome::kUncertain
+                             : aux::features::NativeFeatureIoOutcome::kCompleted);
   ticket_.reset();
   auto& fence = ForPath(path_); CHECK_GT(fence.pending, 0u);
   if (--fence.pending == 0) fence.settled.Notify();
+}
+void FileOperationLifetime::MarkUncertain() {
+  CHECK(pending_); uncertain_ = true;
 }
 bool HasFileOperationsPending(const base::FilePath& path) { return ForPath(path).pending != 0; }
 base::CallbackListSubscription ObserveFileOperationsSettled(const base::FilePath& path, base::RepeatingClosure callback) {
