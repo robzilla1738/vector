@@ -1,0 +1,23 @@
+{
+  "format": "aux.runtime-cache-fd-cleanup.v1",
+  "input": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/profile-isolation-local-finish/runtime-cache-async-relink-a2/source/AuxRuntimeCacheInspection.inc",
+  "inputSha256": "d09f42b7a692e15d3461c094bb8de5bde8539df8bcfec3bc0518881159e73030",
+  "output": "source/AuxRuntimeCacheInspection.inc",
+  "outputSha256": "d67c7ad5acb41a731ecf24aaf8575a5f3433ae854026b0f78fcb94c542d3915c",
+  "changes": [
+    {
+      "old": "  ~Fd(){if(fd>=0)close(fd);}",
+      "new": "  ~Fd(){const int saved=errno;if(fd>=0)close(fd);errno=saved;}\n  int release(){const int result=fd;fd=-1;return result;}",
+      "count": 1
+    },
+    {
+      "old": "int Parent(int root,const char* relative) {\n  int current=fcntl(root,F_DUPFD_CLOEXEC,0);\n  if(current<0)return -1;\n  std::string name(relative);size_t start=0,end=0;\n  while((end=name.find('/',start))!=std::string::npos){\n    const std::string part=name.substr(start,end-start);\n    if(part.empty()||part==\".\"||part==\"..\"){close(current);errno=EINVAL;return -1;}\n    const int next=openat(current,part.c_str(),kRead|O_DIRECTORY);\n    const int saved=errno;close(current);current=next;errno=saved;\n    if(current<0)return -1;\n    struct stat st{};if(fstat(current,&st)!=0||!S_ISDIR(st.st_mode)||!Private(st)){close(current);errno=EACCES;return -1;}\n    start=end+1;\n  }\n  return current;\n}",
+      "new": "int Parent(int root,const char* relative) {\n  Fd current(fcntl(root,F_DUPFD_CLOEXEC,0));\n  if(current.fd<0)return -1;\n  std::string name(relative);size_t start=0,end=0;\n  while((end=name.find('/',start))!=std::string::npos){\n    const std::string part=name.substr(start,end-start);\n    if(part.empty()||part==\".\"||part==\"..\"){errno=EINVAL;return -1;}\n    Fd next(openat(current.fd,part.c_str(),kRead|O_DIRECTORY));\n    if(next.fd<0)return -1;\n    struct stat st{};if(fstat(next.fd,&st)!=0||!S_ISDIR(st.st_mode)||!Private(st)){errno=EACCES;return -1;}\n    std::swap(current.fd,next.fd);\n    start=end+1;\n  }\n  return current.release();\n}",
+      "count": 1
+    }
+  ],
+  "scope": "Exception-safe descriptor ownership and errno-preserving cleanup only. No policy, allowlist, ABI, UI or whole-writer-custody claim.",
+  "compiled": false,
+  "executed": false,
+  "signed": false
+}

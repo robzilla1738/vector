@@ -1,0 +1,9 @@
+{
+  "format": "aux.runtime-cache-fd-cleanup-files.v1",
+  "files": {
+    "README.md": "8db0a13cd8309f8d813128e7ed8246b583d63e88075d47c9c8d30799c982a3f0",
+    "change.patch": "55f901e543a448cce9b512703f7192fc7b3afcbe7a64d242aa04b3d8e0101a6f",
+    "overlay.json": "2b79d05906ef844fd021902ba09b27c0e211f5e76232db151d1441012ddff07f",
+    "source/AuxRuntimeCacheInspection.inc": "d67c7ad5acb41a731ecf24aaf8575a5f3433ae854026b0f78fcb94c542d3915c"
+  }
+}
