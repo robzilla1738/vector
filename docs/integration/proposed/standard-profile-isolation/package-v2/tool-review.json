@@ -1,0 +1,43 @@
+{
+  "format": "aux.standard-isolation.package-v2.tools.v1",
+  "predecessorRootCommit": "aaca9a8814391bfd5f8e08ceb04b3187b4b512b9",
+  "files": [
+    {
+      "path": "cache_package.py",
+      "predecessor": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/package-v1/cache_package.py",
+      "sha256": "895a60a37e6afad686ad44bd28f79ae81b584e043cafa0748f375564a9da3478",
+      "byteIdentical": true
+    },
+    {
+      "path": "bind_pair.py",
+      "predecessor": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/package-v1/bind_pair.py",
+      "sha256": "5678511875407c63539abdfdf1201c104f6527db91658dfd5cfda59cc08eb87b",
+      "byteIdentical": true
+    },
+    {
+      "path": "link-tool-aliases.json",
+      "predecessor": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/package-v1/link-tool-aliases.json",
+      "sha256": "75ff23f4bcbc614394587ff29afef364672c15a9de9a12b69a882c310e7abec6",
+      "byteIdentical": true
+    }
+  ],
+  "validator": {
+    "path": "standard_verify.py",
+    "sha256": "bba86b9ef7056526848cb094cff6626fb97fcd19b77c29ad3ae38197a3585b54",
+    "predecessor": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/package-v1/standard_verify.py",
+    "predecessorSha256": "4d84d40f0047649ebd78b67cf811a51ebb5eeef3bcf4707933352593916fb799"
+  },
+  "sourceChecks": {
+    "pythonSyntax": true,
+    "unchangedLinkValidationAST": true,
+    "byteIdenticalWrapperBinderAliases": true,
+    "actualV2PrefixAndJSONDigestCompatible": true,
+    "actualSixFileBrowserReplayCompatible": true
+  },
+  "actualInputsFrozen": false,
+  "nativeBuildRun": false,
+  "bound": false,
+  "assembled": false,
+  "productExecuted": false,
+  "testable": false
+}

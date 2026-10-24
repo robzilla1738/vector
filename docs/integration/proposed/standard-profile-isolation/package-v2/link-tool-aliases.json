@@ -1,0 +1,25 @@
+{
+  "format": "aux.runtime-cache.existing-link-tool-aliases.v1",
+  "protectedInputsSha256": "e2206c68f0be0cd024ed5b77b28be36dc2c88459cb445f4fd55193a9c3a7704d",
+  "files": [
+    {
+      "path": "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc",
+      "linkTarget": "swift-frontend",
+      "resolved": "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swift-frontend",
+      "sha256": "84b410d8143298f90ab0b721d488dab90e2fdbf23577ae6186162832a1155cb7"
+    },
+    {
+      "path": "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/otool",
+      "linkTarget": "llvm-otool",
+      "resolved": "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/llvm-otool",
+      "sha256": "0bd9ea3d08ef3720f080a9e6da4f699e55b908a0c1cf4e15616fd4fa64d7b52d"
+    },
+    {
+      "path": "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/nm",
+      "linkTarget": "llvm-nm",
+      "resolved": "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/llvm-nm",
+      "sha256": "42da2421bff98120a4a2857285db866bfc327fdcc8713b1a0e104a0b8550850f"
+    }
+  ],
+  "scope": "Original link/check operands newly frozen by the successful a2 recipe; no product/source aliases"
+}
