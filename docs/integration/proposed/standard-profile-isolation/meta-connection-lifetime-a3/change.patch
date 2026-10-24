@@ -1,0 +1,32 @@
+--- a/content/browser/devtools/protocol_config.json
++++ b/content/browser/devtools/protocol_config.json
+@@ -373,6 +373,7 @@
+         "async": [
+           "createBrowserContext",
+           "disposeBrowserContext",
++          "disposeAuxBrowserContextAndObserve",
+           "setAutoAttach",
+           "autoAttachRelated",
+           "exposeDevToolsProtocol"
+--- a/chrome/browser/profiles/profile_impl.cc
++++ b/chrome/browser/profiles/profile_impl.cc
+@@ -1151,8 +1151,6 @@
+         });
+   }
+   otr_profiles_.erase(profile_id);
+-  if (aux_destroyed)
+-    std::move(aux_destroyed).Run(aux_storage_memory_only);
+ #if BUILDFLAG(ENABLE_EXTENSIONS_CORE)
+   // Extensions are only supported on primary OTR profile.
+   if (profile_id == OTRProfileID::PrimaryID() &&
+@@ -1164,6 +1162,10 @@
+     pref_value_map->ClearAllIncognitoSessionOnlyPreferences();
+   }
+ #endif
++  // Completion may reenter or destroy this parent. Keep it after all parent
++  // accesses as well as the actual child destructor above.
++  if (aux_destroyed)
++    std::move(aux_destroyed).Run(aux_storage_memory_only);
+ }
+ 
+ bool ProfileImpl::HasOffTheRecordProfile(const OTRProfileID& otr_profile_id) {

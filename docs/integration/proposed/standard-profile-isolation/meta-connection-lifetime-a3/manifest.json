@@ -1,0 +1,31 @@
+{
+  "format": "aux.meta-context-async-reentrancy.overlay.v3",
+  "files": [
+    {
+      "path": "content/browser/devtools/protocol_config.json",
+      "baselinePath": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/content/browser/devtools/protocol_config.json",
+      "beforeSha256": "4d05914c24ae6e9fcae14f563f1ea660533432c2631ff708b5c8a837860ebc36",
+      "afterSha256": "2c28a36f1ca9440583cdb53b7401474592638fe5af83ec9f16ce97f93b51ef60"
+    },
+    {
+      "path": "chrome/browser/profiles/profile_impl.cc",
+      "baselinePath": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/profiles/profile_impl.cc",
+      "beforeSha256": "05c9811cd9fcb1b7a9293a6e3809bd89339a608614795e71cd1035c578aad7d0",
+      "afterSha256": "0dd9073de623a40ce7c1ff5631c33c61c055d9ebf3565f1fa38235f5540189e3"
+    }
+  ],
+  "countedAdaptations": 3,
+  "replacementsSha256": "a14ed3d5d2e5a3d0571c54c94c4f7b24b13b94551cd56f72f721897f1368c3e5",
+  "patchSha256": "e2d409f3d95704c91a832bf26c56868783f637edeb33d2fa8ece0c5a9fd72694",
+  "unchangedChromeProtocolConfig": {
+    "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/devtools/inspector_protocol_config.json",
+    "sha256": "736155a7ce2076b45e63d662eeb1b9d8bb7e1edf65075b9b2517d34fca97ad3b",
+    "targetInclude": [
+      "setRemoteLocations",
+      "createTarget"
+    ]
+  },
+  "profileBaselineEqualsA2": true,
+  "compiled": false,
+  "runtimeAccepted": false
+}

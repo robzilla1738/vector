@@ -1,0 +1,20 @@
+[
+  {
+    "path": "content/browser/devtools/protocol_config.json",
+    "old": "          \"createBrowserContext\",\n          \"disposeBrowserContext\",",
+    "new": "          \"createBrowserContext\",\n          \"disposeBrowserContext\",\n          \"disposeAuxBrowserContextAndObserve\",",
+    "count": 1
+  },
+  {
+    "path": "chrome/browser/profiles/profile_impl.cc",
+    "old": "  otr_profiles_.erase(profile_id);\n  if (aux_destroyed)\n    std::move(aux_destroyed).Run(aux_storage_memory_only);\n#if BUILDFLAG(ENABLE_EXTENSIONS_CORE)",
+    "new": "  otr_profiles_.erase(profile_id);\n#if BUILDFLAG(ENABLE_EXTENSIONS_CORE)",
+    "count": 1
+  },
+  {
+    "path": "chrome/browser/profiles/profile_impl.cc",
+    "old": "    pref_value_map->ClearAllIncognitoSessionOnlyPreferences();\n  }\n#endif\n}\n\nbool ProfileImpl::HasOffTheRecordProfile",
+    "new": "    pref_value_map->ClearAllIncognitoSessionOnlyPreferences();\n  }\n#endif\n  // Completion may reenter or destroy this parent. Keep it after all parent\n  // accesses as well as the actual child destructor above.\n  if (aux_destroyed)\n    std::move(aux_destroyed).Run(aux_storage_memory_only);\n}\n\nbool ProfileImpl::HasOffTheRecordProfile",
+    "count": 1
+  }
+]
