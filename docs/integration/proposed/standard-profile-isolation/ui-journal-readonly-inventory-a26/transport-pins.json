@@ -1,0 +1,25 @@
+{
+  "format": "aux.ui-journal-readonly-inventory.transport-pins.v1",
+  "files": [
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/ui-transaction-record-journal-a1/source-plan-a3.json",
+      "sha256": "52961c86b9c5b38fe5a0f876b1d6d00940393ac26a203414e0c0c1be5e20b230"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/ui-transaction-record-journal-a1/daemon-link-inputs-a3.json",
+      "sha256": "022ec56d97a81617d8f6ace804f1402650ea6671f195408cf6d975552efa85fc"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/aux/AuxSelectedStateHome.cc",
+      "sha256": "d92dabe6b5a9eb60034c8cf891b5396fb4663b666d005f21b043a3ade5ca3109"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/ui-native-capture-transport-a1/source/AuxPreparedDaemonAuthority.swift",
+      "sha256": "84492348111bfd2730c508c746e2062086daf93841c62770abef9eec4a04da7c"
+    }
+  ],
+  "existingSelectedHomeTransportAcceptsOpaqueFramesUpTo8192": true,
+  "existingDaemonOperation7CallsSameGuardedEntryFrameMethod": true,
+  "newCExportsOrNapiAdded": false,
+  "rootMustReviewLatestPairedInputsBeforeCompile": true
+}

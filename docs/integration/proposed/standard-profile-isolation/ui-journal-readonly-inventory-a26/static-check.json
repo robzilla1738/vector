@@ -1,0 +1,19 @@
+{
+  "format": "aux.ui-journal-readonly-inventory.static.v1",
+  "files": 1,
+  "countedAnchors": 7,
+  "patchReplay": true,
+  "patchReverse": true,
+  "legacyFrame10BodyByteIdentical": true,
+  "legacyFrame12BodyByteIdentical": true,
+  "newFrame13DoesNotSettleUploadsPersistOrWrite": true,
+  "inventoryScanUsesNoFileSync": true,
+  "selectionAndChunksRevalidateActualJournalOwner": true,
+  "boundedReplyMax": 4460,
+  "maxRetainedRecords": 64,
+  "maxAggregatePayloadBytes": 67108864,
+  "privateStrictDefaultParser": true,
+  "compilerRun": false,
+  "nativeExecuted": false,
+  "runtimeAcceptance": false
+}

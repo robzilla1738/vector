@@ -1,0 +1,290 @@
+--- a/AuxOwnedCommandDispatcher.swift
++++ b/AuxOwnedCommandDispatcher.swift
+@@ -28,6 +28,7 @@
+         var uiCaptureDownload:UiCaptureDownload? = nil
+         var uiTransactionUpload:UiTransactionUpload? = nil
+         var uiTransactionDownload:UiTransactionDownload? = nil
++        var uiTransactionInventory:UiTransactionInventoryDownload? = nil
+         var nativeGuardFailure:AuxNativeFreshGuardFailure? = nil
+         var pendingPostGuardObservation:AuxNativeFreshGuardFailure? = nil
+         // Exact completed read reply stays private process memory only. Never
+@@ -352,6 +353,14 @@
+         }
+         private func transactionBinding(_ d:TransactionDescriptor,writerGeneration:UInt64,
+             captureReceipt:Data,capture:Data,sourceGeneration:UInt64)throws->Data {
++            try transactionBinding(d,writerGeneration:writerGeneration,
++                captureReceiptSha256:Self.hash(captureReceipt),captureSha256:Self.hash(capture),
++                sourceGeneration:sourceGeneration)
++        }
++        // The private scanner computes these hashes once for the actual loaded
++        // capture. Binding bytes are identical; no hash comes from a caller.
++        private func transactionBinding(_ d:TransactionDescriptor,writerGeneration:UInt64,
++            captureReceiptSha256:String,captureSha256:String,sourceGeneration:UInt64)throws->Data {
+             guard (0..<64).contains(d.ordinal),(1...8).contains(d.kind),
+                   d.previous.count==32,d.intent.count==32,d.digest.count==32,
+                   d.count>0,d.count<=Self.limit,writerGeneration != 0 else{throw Failure.invalid}
+@@ -363,7 +372,7 @@
+                 "kind":Self.transactionKinds[Int(d.kind)-1],
+                 "writerGeneration":String(writerGeneration),
+                 "captureSourceGeneration":String(sourceGeneration),
+-                "captureReceiptSha256":Self.hash(captureReceipt),"captureSha256":Self.hash(capture),
++                "captureReceiptSha256":captureReceiptSha256,"captureSha256":captureSha256,
+                 "policySha256":context.journal.policySha256,
+                 "initialJournalSha256":context.durableJournalSha256,
+                 "rootDevice":String(root.st_dev),"rootInode":String(root.st_ino),
+@@ -383,55 +392,136 @@
+             a.ordinal==b.ordinal && a.kind==b.kind && a.previous==b.previous &&
+                 a.intent==b.intent && a.count==b.count && a.digest==b.digest
+         }
+-        private func transactionRecords(captureReceipt:Data,capture:Data,sourceGeneration:UInt64,throughOrdinal:Int?=nil)throws->[TransactionRecord] {
+-            var records=[TransactionRecord](),total=0,ended=false
++        private struct TransactionScan {
++            var records=[TransactionRecord]()
++            var firstUncertain:Int? = nil
++            var tailStatus:UInt8=0
++            var tailPresent=false
++        }
++        // This retained object owns the actual admitted root/directory, not a
++        // caller path or authority reconstructed from a UUID/generation value.
++        final class TransactionInventory {
++            private let owner:UiCaptureJournal
++            let records:[TransactionRecord]
++            let sourceGeneration:UInt64
++            let firstUncertain:Int?
++            let tailStatus:UInt8
++            let tailPresent:Bool
++            var currentGeneration:UInt64 {owner.generation}
++            init(owner:UiCaptureJournal,records:[TransactionRecord],sourceGeneration:UInt64,
++                 firstUncertain:Int?,tailStatus:UInt8,tailPresent:Bool) {
++                self.owner=owner;self.records=records;self.sourceGeneration=sourceGeneration
++                self.firstUncertain=firstUncertain;self.tailStatus=tailStatus;self.tailPresent=tailPresent
++            }
++            func revalidate()throws {try owner.revalidate()}
++            func record(_ ordinal:Int)throws->TransactionRecord {
++                try revalidate()
++                guard records.indices.contains(ordinal),records[ordinal].descriptor.ordinal==ordinal
++                    else{throw Failure.incomplete}
++                let record=records[ordinal]
++                try revalidate()
++                return record
++            }
++        }
++        private func readTransactionRecord(_ ordinal:Int,previous:Data,intent:Data?,remaining:Int,
++            captureReceiptSha256:String,captureSha256:String,sourceGeneration:UInt64,
++            synchronize:Bool,tolerateMalformed:Bool)throws->TransactionRecord {
++            let payloadName=try Self.recordName(ordinal,"payload")
++            let bindingName=try Self.recordName(ordinal,"binding")
++            let readyName=try Self.recordName(ordinal,"READY")
++            // Strict legacy discovery/load still performs its original sync.
++            // Frame13 only reads and never settles a physical upload outcome.
++            if synchronize {for name in [payloadName,bindingName,readyName] {try syncRecordFile(name)}}
++            let payload=try read(payloadName)
++            let binding=try read(bindingName,limit:16_384)
++            let receipt=try read(readyName,limit:16_384)
++            guard !payload.isEmpty,payload.count<=remaining else{throw Failure.binding}
++            let json:Any
++            do {json=try JSONSerialization.jsonObject(with:binding)}
++            catch {if tolerateMalformed {throw Failure.binding};throw error}
++            guard let b=json as? [String:Any],
++                  let generationText=b["writerGeneration"] as? String,
++                  let writerGeneration=UInt64(generationText),writerGeneration != 0,
++                  String(writerGeneration)==generationText,
++                  let kindText=b["kind"] as? String,
++                  let kindIndex=Self.transactionKinds.firstIndex(of:kindText)
++                else{throw Failure.binding}
++            let digest=Data(SHA256.hash(data:payload))
++            let descriptor=TransactionDescriptor(ordinal:ordinal,kind:UInt8(kindIndex+1),
++                previous:previous,intent:intent ?? digest,count:payload.count,digest:digest)
++            guard ordinal != 0 || descriptor.kind==1,
++                  ordinal == 0 || descriptor.kind != 1,
++                  try transactionBinding(descriptor,writerGeneration:writerGeneration,
++                    captureReceiptSha256:captureReceiptSha256,captureSha256:captureSha256,
++                    sourceGeneration:sourceGeneration)==binding,
++                  try transactionReceipt(descriptor,binding:binding)==receipt else{throw Failure.binding}
++            return TransactionRecord(descriptor:descriptor,receipt:receipt,payload:payload)
++        }
++        private func transactionScan(captureReceipt:Data,capture:Data,sourceGeneration:UInt64,
++            throughOrdinal:Int?=nil,allowUncertainTail:Bool=false)throws->TransactionScan {
++            var scan=TransactionScan(),total=0,ended=false
++            var firstHole:Int?=nil
+             if let last=throughOrdinal {guard (0..<64).contains(last) else{throw Failure.invalid}}
++            let captureReceiptSha256=Self.hash(captureReceipt),captureSha256=Self.hash(capture)
+             for ordinal in 0..<64 {
+-                // Loading one complete record validates its full predecessor
+-                // chain, while a later partial record remains unknown.
+                 if let last=throughOrdinal,ordinal>last {break}
+                 let ready=try hasRecordFile(ordinal,"READY")
+                 let payloadExists=try hasRecordFile(ordinal,"payload")
+                 let bindingExists=try hasRecordFile(ordinal,"binding")
+-                if !ready {
+-                    // Partial or gapped records are retained uncertainty. Never
+-                    // skip them, replace them, or infer a target action absent.
+-                    guard !payloadExists && !bindingExists else{throw Failure.incomplete}
+-                    ended=true;continue
++                let present=ready || payloadExists || bindingExists
++                if ended {
++                    if present {
++                        guard allowUncertainTail else{throw Failure.incomplete}
++                        scan.tailPresent=true
++                        if scan.firstUncertain==nil {scan.firstUncertain=firstHole ?? ordinal;scan.tailStatus=2}
++                    }
++                    continue
+                 }
+-                guard !ended,payloadExists,bindingExists else{throw Failure.incomplete}
+-                let payloadName=try Self.recordName(ordinal,"payload")
+-                let bindingName=try Self.recordName(ordinal,"binding")
+-                let readyName=try Self.recordName(ordinal,"READY")
+-                // Fresh physical sync plus exact readback resolves a lost
+-                // receipt; file existence alone never settles a write.
+-                for name in [payloadName,bindingName,readyName] {try syncRecordFile(name)}
+-                let payload=try read(payloadName)
+-                let binding=try read(bindingName,limit:16_384)
+-                let receipt=try read(readyName,limit:16_384)
+-                guard !payload.isEmpty,total<=Self.limit-payload.count,
+-                      let b=try JSONSerialization.jsonObject(with:binding) as? [String:Any],
+-                      let generationText=b["writerGeneration"] as? String,
+-                      let writerGeneration=UInt64(generationText),writerGeneration != 0,
+-                      String(writerGeneration)==generationText,
+-                      let kindText=b["kind"] as? String,
+-                      let kindIndex=Self.transactionKinds.firstIndex(of:kindText)
+-                    else{throw Failure.binding}
+-                total += payload.count
+-                let previous=records.last?.digest ?? Data(repeating:0,count:32)
+-                let digest=Data(SHA256.hash(data:payload))
+-                let intent=records.first?.descriptor.intent ?? digest
+-                let descriptor=TransactionDescriptor(ordinal:ordinal,kind:UInt8(kindIndex+1),
+-                    previous:previous,intent:intent,count:payload.count,digest:digest)
+-                guard ordinal != 0 || descriptor.kind==1,
+-                      ordinal == 0 || descriptor.kind != 1,
+-                      try transactionBinding(descriptor,writerGeneration:writerGeneration,
+-                        captureReceipt:captureReceipt,capture:capture,sourceGeneration:sourceGeneration)==binding,
+-                      try transactionReceipt(descriptor,binding:binding)==receipt else{throw Failure.binding}
+-                records.append(TransactionRecord(descriptor:descriptor,receipt:receipt,payload:payload))
++                if !ready || !payloadExists || !bindingExists {
++                    if present {
++                        guard allowUncertainTail else{throw Failure.incomplete}
++                        scan.firstUncertain=ordinal;scan.tailStatus=1;scan.tailPresent=true
++                    }
++                    firstHole=ordinal;ended=true;continue
++                }
++                do {
++                    let record=try readTransactionRecord(ordinal,
++                        previous:scan.records.last?.digest ?? Data(repeating:0,count:32),
++                        intent:scan.records.first?.descriptor.intent,remaining:Self.limit-total,
++                        captureReceiptSha256:captureReceiptSha256,captureSha256:captureSha256,
++                        sourceGeneration:sourceGeneration,synchronize:!allowUncertainTail,
++                        tolerateMalformed:allowUncertainTail)
++                    total += record.payload.count;scan.records.append(record)
++                } catch let failure as Failure {
++                    guard allowUncertainTail else{throw failure}
++                    switch failure {
++                    case .binding,.invalid,.incomplete:
++                        // Content/partial evidence is retained uncertainty. Root,
++                        // context and directory admission are rechecked below.
++                        scan.firstUncertain=ordinal;scan.tailStatus=3;scan.tailPresent=true
++                        firstHole=ordinal;ended=true
++                    case .unsafe:throw failure
++                    case .io(_):throw failure
++                    }
++                }
+             }
+             try revalidate()
+-            return records
++            return scan
++        }
++        private func transactionRecords(captureReceipt:Data,capture:Data,sourceGeneration:UInt64,throughOrdinal:Int?=nil)throws->[TransactionRecord] {
++            // The default remains strict: any partial/gapped tail refuses and
++            // legacy frame10 still validates only its requested complete prefix.
++            try transactionScan(captureReceipt:captureReceipt,capture:capture,
++                sourceGeneration:sourceGeneration,throughOrdinal:throughOrdinal).records
++        }
++        static func inventory(context:NativeFreshStagedContext,transaction:String)throws->TransactionInventory {
++            let capture=try load(context:context,transaction:transaction)
++            let store=try UiCaptureJournal(context:context,transaction:transaction,create:false)
++            let scan=try store.transactionScan(captureReceipt:capture.receipt,capture:capture.capture,
++                sourceGeneration:capture.sourceGeneration,allowUncertainTail:true)
++            try store.revalidate()
++            return TransactionInventory(owner:store,records:scan.records,sourceGeneration:capture.sourceGeneration,
++                firstUncertain:scan.firstUncertain,tailStatus:scan.tailStatus,tailPresent:scan.tailPresent)
+         }
+         static func records(context:NativeFreshStagedContext,transaction:String,throughOrdinal:Int?=nil)throws->[TransactionRecord] {
+             let capture=try load(context:context,transaction:transaction)
+@@ -587,6 +677,16 @@
+     private struct UiTransactionDownload {
+         let transaction:String
+         let record:UiCaptureJournal.TransactionRecord
++        let inventory:UiCaptureJournal.TransactionInventory?
++        init(transaction:String,record:UiCaptureJournal.TransactionRecord,
++             inventory:UiCaptureJournal.TransactionInventory?=nil) {
++            self.transaction=transaction;self.record=record;self.inventory=inventory
++        }
++    }
++    private struct UiTransactionInventoryDownload {
++        let id:Data
++        let transaction:String
++        let inventory:UiCaptureJournal.TransactionInventory
+     }
+ 
+     private enum UiCaptureFrameError:Error {case invalid,conflict,incomplete,unknown}
+@@ -762,7 +862,10 @@
+                     let offset=Int(try Self.captureInteger(frame,21,4)),count=Int(try Self.captureInteger(frame,25,4))
+                     guard count>0,count<=8191,offset<=loaded.record.payload.count-count
+                         else{throw UiCaptureFrameError.invalid}
+-                    return Data([11])+loaded.record.payload[offset..<offset+count]
++                    try loaded.inventory?.revalidate()
++                    let reply=Data([11])+loaded.record.payload[offset..<offset+count]
++                    try loaded.inventory?.revalidate()
++                    return reply
+                 case 12:
+                     guard frame.count==17 else{throw UiCaptureFrameError.invalid}
+                     let transaction=try Self.captureUUID(Data(frame[1..<17]))
+@@ -773,6 +876,49 @@
+                         reply.append(record.descriptor.kind);reply.append(record.digest)
+                         reply.append(record.descriptor.digest)
+                     }
++                    return reply
++                case 13:
++                    guard frame.count==17 || frame.count==37 else{throw UiCaptureFrameError.invalid}
++                    let transaction=try Self.captureUUID(Data(frame[1..<17]))
++                    if frame.count==17 {
++                        let inventory=try UiCaptureJournal.inventory(context:captured.owner,transaction:transaction)
++                        let id=try Self.captureUUIDBytes(UUID().uuidString.lowercased())
++                        guard inventory.records.count<=64 else{throw UiCaptureFrameError.invalid}
++                        var reply=Data([13,0]);reply.append(id)
++                        reply.append(Self.captureIntegerBytes(inventory.sourceGeneration,8))
++                        reply.append(Self.captureIntegerBytes(inventory.currentGeneration,8))
++                        reply.append(Self.captureIntegerBytes(UInt64(inventory.records.count),4))
++                        reply.append(Self.captureIntegerBytes(UInt64(inventory.firstUncertain ?? 64),4))
++                        reply.append(inventory.tailStatus);reply.append(inventory.tailPresent ? 1:0)
++                        for record in inventory.records {
++                            reply.append(Self.captureIntegerBytes(UInt64(record.descriptor.ordinal),4))
++                            reply.append(record.descriptor.kind);reply.append(record.digest)
++                            reply.append(record.descriptor.digest)
++                        }
++                        guard reply.count<=8192 else{throw UiCaptureFrameError.invalid}
++                        try inventory.revalidate()
++                        // Replacing read caches never changes any upload,
++                        // unknown persistence result or pending mutable action.
++                        if entry.uiTransactionDownload?.inventory != nil {entry.uiTransactionDownload=nil}
++                        entry.uiTransactionInventory=UiTransactionInventoryDownload(id:id,
++                            transaction:transaction,inventory:inventory)
++                        return reply
++                    }
++                    guard let cached=entry.uiTransactionInventory,cached.transaction==transaction,
++                          frame[17..<33]==cached.id else{throw UiCaptureFrameError.invalid}
++                    let ordinal=Int(try Self.captureInteger(frame,33,4))
++                    let record=try cached.inventory.record(ordinal)
++                    guard record.receipt.count<=8192-63 else{throw UiCaptureFrameError.invalid}
++                    var reply=Data([13,1]);reply.append(cached.id)
++                    reply.append(Self.captureIntegerBytes(UInt64(ordinal),4))
++                    reply.append(Self.captureIntegerBytes(UInt64(record.payload.count),4))
++                    reply.append(record.descriptor.kind);reply.append(record.digest)
++                    reply.append(Self.captureIntegerBytes(UInt64(record.receipt.count),4));reply.append(record.receipt)
++                    try cached.inventory.revalidate()
++                    entry.uiTransactionDownload=UiTransactionDownload(transaction:transaction,
++                        record:record,inventory:cached.inventory)
++                    // Deliberately do not settle uiTransactionUpload here.
++                    // Only the unchanged strict synced frame10 may do that.
+                     return reply
+                 default:throw UiCaptureFrameError.invalid
+                 }
