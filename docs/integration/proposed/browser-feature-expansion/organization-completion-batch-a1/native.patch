@@ -1,0 +1,409 @@
+--- a/chrome/browser/ui/views/frame/aux_organization_window_controller.h
++++ b/chrome/browser/ui/views/frame/aux_organization_window_controller.h
+@@ -6,6 +6,7 @@
+ #include <set>
+ #include <string>
+ #include "base/callback_list.h"
++#include "base/timer/timer.h"
+ #include "base/memory/raw_ptr.h"
+ #include "base/memory/weak_ptr.h"
+ #include "base/values.h"
+@@ -45,6 +46,9 @@
+   base::CallbackListSubscription ObserveWindowState(base::RepeatingClosure) override;
+   // Remote canonical URL changes never navigate a live page implicitly.
+   bool HasPendingSharedUpdate(const std::string&) const;
++  // Presentation follows this window's retained live page; shared topology
++  // and manually chosen titles stay authoritative in the logical record.
++  organization::Entry EntryForDisplay(const organization::Entry&) const;
+   bool IsLogicalEntryProtected(const std::string&) const;
+   bool IsLogicalTabSelected(const std::string&) const;
+   // Native row input only: select existing current-window ordinary views. The
+@@ -120,6 +124,7 @@
+   std::vector<std::string> cleanup_ids_;
+   size_t cleanup_cursor_ = 0;
+   bool cleanup_running_ = false, cleanup_waiting_ = false;
++  base::RepeatingTimer cleanup_timer_;
+   bool shutdown_ = false;
+   bool reconcile_queued_ = false, registering_ = false, opening_ = false;
+   base::CallbackListSubscription ready_subscription_, model_changes_, settled_, session_restored_, activation_;
+--- a/chrome/browser/ui/views/frame/aux_organization_window_controller.cc
++++ b/chrome/browser/ui/views/frame/aux_organization_window_controller.cc
+@@ -116,6 +116,7 @@
+ void AuxOrganizationWindowController::Shutdown() {
+   if (shutdown_) return;
+   shutdown_ = true;
++  cleanup_timer_.Stop();
+   weak_.InvalidateWeakPtrs();
+   TabStripModelObserver::StopObservingAll(this);
+   ready_subscription_ = {}; model_changes_ = {}; settled_ = {}; session_restored_ = {}; activation_ = {};
+@@ -164,6 +165,7 @@
+ }
+ void AuxOrganizationWindowController::RebindForProfileSwitch() {
+   if (shutdown_) return;
++  cleanup_timer_.Stop();
+   TabStripModelObserver::StopObservingAll(this);
+   weak_.InvalidateWeakPtrs(); ready_subscription_ = {}; model_changes_ = {}; settled_ = {}; session_restored_ = {}; activation_ = {};
+   views_.clear(); candidate_observers_.clear(); explicit_unloads_.clear(); dirty_navigation_.clear(); dirty_activation_.clear(); dirty_titles_.clear();
+@@ -203,6 +205,9 @@
+         if (owner) owner->QueueReconcile();
+       }, weak_.GetWeakPtr()));
+   settled_ = organization->ObserveSettled(base::BindRepeating(&AuxOrganizationWindowController::QueueReconcile, weak_.GetWeakPtr()));
++  if (!cleanup_timer_.IsRunning())
++    cleanup_timer_.Start(FROM_HERE, base::Hours(1), base::BindRepeating(
++        &AuxOrganizationWindowController::QueueReconcile, weak_.GetWeakPtr()));
+   QueueReconcile();
+ }
+ void AuxOrganizationWindowController::RestoreActiveSpace(const std::string& id) {
+@@ -548,7 +553,7 @@
+   if (!organization || organization->pending() || organization->blocked() ||
+       !dirty_navigation_.empty() || !dirty_activation_.empty()) return;
+   if (!cleanup_running_) {
+-    if (!organization->TryClaimStartupCleanup()) return;
++    if (!organization->TryClaimCleanupPass()) return;
+     cleanup_ids_.clear(); cleanup_cursor_ = 0;
+     for (const auto& [id, entry] : organization->snapshot().entries)
+       if (!entry.archived && entry.kind == organization::EntryKind::kTab &&
+@@ -1037,21 +1042,44 @@
+   const auto id = GetRememberedPinnedTabEntryId(*tab->GetContents()).value_or("");
+   auto* organization = Organization(browser_.get());
+   if (id.empty() || !organization || !organization->snapshot().entries.contains(id)) return false;
+-  if (organization->snapshot().entries.at(id).archived) {
+-    base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(FROM_HERE,
+-        base::BindOnce([](base::WeakPtr<AuxOrganizationWindowController> owner, tabs::TabHandle target) {
+-          if (owner && owner->Current()) owner->CloseViewNow(target);
+-        }, weak_.GetWeakPtr(), handle));
+-    return true;
+-  }
+-  const bool pin = organization::HasRetention(organization->snapshot(), id);
+   base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(FROM_HERE, base::BindOnce(
+-      [](base::WeakPtr<AuxOrganizationWindowController> owner, std::string id, bool pin) {
+-        if (!owner) return;
+-        auto done = base::BindOnce([](base::WeakPtr<AuxOrganizationWindowController> owner, bool) { if (owner) owner->Notify(); }, owner);
+-        if (pin) owner->UnloadLogicalTab(id, std::move(done)); else owner->ArchiveLogicalEntry(id, std::move(done));
+-      }, weak_.GetWeakPtr(), id, pin));
++      [](base::WeakPtr<AuxOrganizationWindowController> owner, tabs::TabHandle target, std::string id) {
++        auto* tab = target.Get();
++        if (!owner || !owner->Current() || owner->model_->closing_all() || !tab || tab->IsSplit() ||
++            owner->model_->GetIndexOfTab(tab) < 0 ||
++            !tab->GetContents() || tab->GetContents()->GetBrowserContext() != owner->profile_ ||
++            GetRememberedPinnedTabEntryId(*tab->GetContents()) != id) return;
++        auto* current = Organization(owner->browser_.get());
++        if (!current || current->blocked() || !current->snapshot().entries.contains(id)) return;
++        // Retain the exact native tab and re-read retention after the posted
++        // task. A pin/Keep change while queued must not become a shared close.
++        if (current->snapshot().entries.at(id).archived) { owner->CloseViewNow(target); return; }
++        auto done = base::BindOnce([](base::WeakPtr<AuxOrganizationWindowController> owner, bool) {
++          if (owner) owner->Notify();
++        }, owner);
++        if (tab->IsPinned() || organization::HasRetention(current->snapshot(), id)) owner->UnloadLogicalTab(id, std::move(done));
++        else owner->ArchiveLogicalEntry(id, std::move(done));
++      }, weak_.GetWeakPtr(), handle, id));
+   return true;
++}
++organization::Entry AuxOrganizationWindowController::EntryForDisplay(const organization::Entry& entry) const {
++  organization::Entry shown = entry;
++  const auto* service = Current() ? Organization(browser_.get()) : nullptr;
++  if (!service || service->blocked() || entry.archived || entry.kind != organization::EntryKind::kTab) return shown;
++  const auto shared = service->snapshot().entries.find(entry.id);
++  if (shared == service->snapshot().entries.end() || shared->second != entry) return shown;
++  const auto handle = FindLocalView(entry.id);
++  auto* tab = handle ? handle->Get() : nullptr;
++  auto* contents = tab ? tab->GetContents() : nullptr;
++  if (!contents || IsBookmarkTabExcluded(tab, model_) ||
++      (!tab->IsPinned() && (!ordinary_eligible_ || !ordinary_eligible_.Run(*tab)))) return shown;
++  const auto* identity = PageIdentity::FromWebContents(contents);
++  if (identity && identity->runtime_owned()) return shown;
++  const auto url = LogicalTabUrl(*contents);
++  if (url.is_valid()) shown.current_url = url.spec();
++  if (entry.title_mode == organization::TitleMode::kAutomatic)
++    shown.title = base::UTF16ToUTF8(contents->GetTitle());
++  return shown;
+ }
+ bool AuxOrganizationWindowController::HasPendingSharedUpdate(const std::string& id) const {
+   for (const auto& [handle, view] : views_) if (view.logical_id == id && !view.pending_shared_url.empty()) return true;
+--- a/chrome/browser/ui/views/frame/aux_organization_tree_view.cc
++++ b/chrome/browser/ui/views/frame/aux_organization_tree_view.cc
+@@ -67,6 +67,10 @@
+     if (!folder_ && owner_ && owner_->browser_)
+       if (auto* controller = AuxOrganizationWindowController::FromBrowser(owner_->browser_.get()))
+         selected_ = controller->IsLogicalTabSelected(id_);
++    auto shown = entry;
++    if (owner_ && owner_->browser_)
++      if (auto* controller = AuxOrganizationWindowController::FromBrowser(owner_->browser_.get()))
++        shown = controller->EntryForDisplay(entry);
+     auto* layout = SetLayoutManager(std::make_unique<views::BoxLayout>(
+         views::BoxLayout::Orientation::kHorizontal, gfx::Insets::TLBR(6, 8 + depth * 14, 6, 8)));
+     layout->set_cross_axis_alignment(views::BoxLayout::CrossAxisAlignment::kCenter);
+@@ -74,7 +78,7 @@
+     image_->SetImageSize(gfx::Size(16, 16));
+     image_->SetCanProcessEventsWithinSubtree(false);
+     image_->SetProperty(views::kMarginsKey, gfx::Insets::TLBR(0, 0, 0, 8));
+-    label_ = AddChildView(std::make_unique<views::Label>(base::UTF8ToUTF16(entry.title.empty() ? entry.current_url : entry.title),
++    label_ = AddChildView(std::make_unique<views::Label>(base::UTF8ToUTF16(shown.title.empty() ? shown.current_url : shown.title),
+         views::style::CONTEXT_LABEL, views::style::STYLE_PRIMARY));
+     label_->SetCanProcessEventsWithinSubtree(false);
+     label_->SetHorizontalAlignment(gfx::ALIGN_TO_HEAD);
+@@ -88,12 +92,12 @@
+     SetFocusBehavior(FocusBehavior::ALWAYS);
+     SetNotifyEnterExitOnChild(true);
+     GetViewAccessibility().SetName(std::u16string(label_->GetText()));
+-    SetTooltipText(base::UTF8ToUTF16(folder_ ? entry.title : entry.current_url));
++    SetTooltipText(base::UTF8ToUTF16(folder_ ? shown.title : shown.current_url));
+     views::InstallRoundRectHighlightPathGenerator(this, gfx::Insets(), 10);
+     if (!folder_ && owner_ && owner_->browser_) {
+       auto* profile = owner_->browser_->GetProfile();
+       if (auto* service = FaviconServiceFactory::GetForProfile(profile, ServiceAccessType::EXPLICIT_ACCESS)) {
+-        service->GetFaviconImageForPageURL(GURL(entry.current_url), base::BindOnce(
++        service->GetFaviconImageForPageURL(GURL(shown.current_url), base::BindOnce(
+             [](base::WeakPtr<OrganizationTreeRow> row, Profile* expected,
+                const favicon_base::FaviconImageResult& result) {
+               if (!row || !row->owner_ || !row->owner_->browser_ ||
+@@ -104,7 +108,8 @@
+       }
+       if (auto* window = AuxOrganizationWindowController::FromBrowser(owner_->browser_.get());
+           window && window->HasPendingSharedUpdate(entry.id)) {
+-        SetTooltipText(base::UTF8ToUTF16(entry.current_url) + u"\nUpdated in another window. Right-click to use the shared URL or keep an independent copy.");
++        SetTooltipText(base::UTF8ToUTF16(shown.current_url) + u"\nShared URL: " + base::UTF8ToUTF16(entry.current_url) +
++            u"\nUpdated in another window. Right-click to use the shared URL or keep an independent copy.");
+         auto* marker = AddChildView(std::make_unique<views::Label>(u"•"));
+         marker->SetAutoColorReadabilityEnabled(false);
+         marker->SetEnabledColor(0xff30b4dc);
+@@ -382,7 +387,7 @@
+     return;
+   }
+   const auto* snapshot = Snapshot(); if (!snapshot) return;
+-  auto found = snapshot->entries.find(id); if (found == snapshot->entries.end() || found->second.archived) return;
++  auto found = snapshot->entries.find(id); if (found == snapshot->entries.end()) return;
+   if (found->second.archived) {
+     organization::Command command; command.action = organization::Action::kRestore; command.id = id; command.index = kEnd;
+     Apply(std::move(command)); return;
+@@ -603,6 +608,10 @@
+     if (entry.kind == organization::EntryKind::kFolder && entry.collapsed != left) {
+       organization::Command op; op.action = organization::Action::kSetFolderCollapsed; op.id = id; op.value = left; Apply(std::move(op));
+     } else if (left && row_by_id_.contains(entry.parent_id)) row_by_id_.at(entry.parent_id)->RequestFocus();
++    else if (!left && entry.kind == organization::EntryKind::kFolder && !entry.collapsed) {
++      const auto children = organization::OrderedChildren(*snapshot, entry.space_id, entry.id, entry.archived);
++      if (!children.empty() && row_by_id_.contains(children.front())) row_by_id_.at(children.front())->RequestFocus();
++    }
+     return true;
+   }
+   return false;
+@@ -660,8 +669,13 @@
+   }
+   const auto target = snapshot->entries.at(drag->target);
+   const bool folder = target.kind == organization::EntryKind::kFolder;
+-  Move(drag->id, target.space_id, folder ? target.id : target.parent_id,
+-      folder ? kEnd : target.order + (drag->after ? 1 : 0), std::move(drag->context));
++  uint64_t index = folder ? kEnd : target.order + (drag->after ? 1 : 0);
++  const auto source = snapshot->entries.find(drag->id);
++  // Drop targets describe the current list; the model inserts after removing
++  // the source. Compensate exactly once within the same sibling group.
++  if (!folder && source != snapshot->entries.end() && source->second.space_id == target.space_id &&
++      source->second.parent_id == target.parent_id && source->second.order < index) --index;
++  Move(drag->id, target.space_id, folder ? target.id : target.parent_id, index, std::move(drag->context));
+ }
+ BEGIN_METADATA(AuxOrganizationTreeView)
+ END_METADATA
+--- a/chrome/browser/ui/views/frame/aux_spaces_switcher.h
++++ b/chrome/browser/ui/views/frame/aux_spaces_switcher.h
+@@ -2,6 +2,7 @@
+ #ifndef CHROME_BROWSER_UI_VIEWS_FRAME_AUX_SPACES_SWITCHER_H_
+ #define CHROME_BROWSER_UI_VIEWS_FRAME_AUX_SPACES_SWITCHER_H_
+ #include <memory>
++#include <optional>
+ #include <string>
+ #include <vector>
+ #include "base/callback_list.h"
+@@ -9,6 +10,7 @@
+ #include "base/memory/raw_ptr.h"
+ #include "base/memory/weak_ptr.h"
+ #include "base/time/time.h"
++#include "chrome/browser/aux/organization/organization_model.h"
+ #include "ui/menus/simple_menu_model.h"
+ #include "ui/views/view.h"
+ class BrowserWindowInterface;
+@@ -40,6 +42,8 @@
+   raw_ptr<views::LabelButton> select_ = nullptr;
+   raw_ptr<views::LabelButton> add_ = nullptr;
+   std::vector<std::string> menu_spaces_;
++  std::optional<organization::Context> menu_context_;
++  std::string menu_active_space_;
+   std::unique_ptr<ui::SimpleMenuModel> menu_;
+   std::unique_ptr<views::MenuRunner> runner_;
+   base::CallbackListSubscription ready_, changes_, window_changes_;
+--- a/chrome/browser/ui/views/frame/aux_spaces_switcher.cc
++++ b/chrome/browser/ui/views/frame/aux_spaces_switcher.cc
+@@ -94,6 +94,9 @@
+ }
+ void AuxSpacesSwitcher::ShowMenu() {
+   if (!browser_ || !GetWidget()) return;
++  menu_context_ = CaptureOrganizationContext(*browser_);
++  if (!menu_context_) return;
++  menu_active_space_ = window_->ActiveSpaceId();
+   runner_.reset();
+   menu_ = std::make_unique<ui::SimpleMenuModel>(this);
+   menu_spaces_.clear();
+@@ -114,6 +117,13 @@
+ }
+ void AuxSpacesSwitcher::ExecuteCommand(int command, int) {
+   if (!browser_) return;
++  const auto current = CaptureOrganizationContext(*browser_);
++  if (!menu_context_ || !current || current->profile_id != menu_context_->profile_id ||
++      current->owner_generation != menu_context_->owner_generation ||
++      current->expected_revision != menu_context_->expected_revision ||
++      window_->ActiveSpaceId() != menu_active_space_) {
++    select_->SetTooltipText(u"The profile or tab list changed. Open the Space menu again."); return;
++  }
+   if (command >= 100 && static_cast<size_t>(command - 100) < menu_spaces_.size()) {
+     window_->SelectSpace(menu_spaces_[command - 100]); return;
+   }
+--- a/chrome/browser/aux/organization/organization_service.h
++++ b/chrome/browser/aux/organization/organization_service.h
+@@ -11,6 +11,7 @@
+ #include "base/functional/callback.h"
+ #include "base/memory/weak_ptr.h"
+ #include "base/sequence_checker.h"
++#include "base/time/time.h"
+ #include "base/values.h"
+ #include "chrome/browser/aux/organization/organization_model.h"
+ #include "components/keyed_service/core/keyed_service.h"
+@@ -59,7 +60,8 @@
+   // Exact current document/URL is checked by the native caller. Metadata is a
+   // maintenance write, preserving the existing bounded user Undo frontier.
+   void RecordTabTitles(Context context, std::vector<Command> commands, Reply reply);
+-  bool TryClaimStartupCleanup();
++  // Shared across windows; one pass per hour, and immediately after policy changes.
++  bool TryClaimCleanupPass();
+   std::string LastUndoToken() const;
+   void Undo(Context context, std::string token, Reply reply);
+   base::CallbackListSubscription Observe(
+@@ -87,7 +89,7 @@
+   base::RepeatingClosureList settled_;
+   bool blocked_ = false;
+   bool shutdown_ = false;
+-  bool startup_cleanup_claimed_ = false;
++  base::TimeTicks next_cleanup_;
+   SEQUENCE_CHECKER(sequence_checker_);
+   base::WeakPtrFactory<OrganizationService> weak_{this};
+ };
+--- a/chrome/browser/aux/organization/organization_service.cc
++++ b/chrome/browser/aux/organization/organization_service.cc
+@@ -130,10 +130,13 @@
+   return !blocked() && !pending_ && !undo_.empty() && undo_.back().revision == snapshot_.revision
+       ? undo_.back().token : std::string();
+ }
+-bool OrganizationService::TryClaimStartupCleanup() {
+-  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+-  if (shutdown_ || blocked_ || pending_ || startup_cleanup_claimed_ || !snapshot_.cleanup_enabled) return false;
+-  startup_cleanup_claimed_ = true; return true;
++bool OrganizationService::TryClaimCleanupPass() {
++  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
++  if (shutdown_ || blocked_ || pending_ || !snapshot_.cleanup_enabled) return false;
++  const auto now = base::TimeTicks::Now();
++  if (!next_cleanup_.is_null() && now < next_cleanup_) return false;
++  next_cleanup_ = now + base::Hours(1);
++  return true;
+ }
+ void OrganizationService::Undo(Context context, std::string token, Reply reply) {
+   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+@@ -211,6 +214,10 @@
+       std::move(pending->reply).Run({error, revision, {}});
+     return;
+   }
++  const auto& next = pending->mutation.snapshot;
++  if (snapshot_.cleanup_enabled != next.cleanup_enabled ||
++      snapshot_.cleanup_inactivity_days != next.cleanup_inactivity_days ||
++      snapshot_.cleanup_space_ids != next.cleanup_space_ids) next_cleanup_ = {};
+   snapshot_ = std::move(pending->mutation.snapshot);
+   if (pending->make_undo) {
+     const size_t cost = SnapshotCost(pending->previous);
+--- a/chrome/browser/ui/views/tabs/vertical/vertical_pinned_tab_entries_view.h
++++ b/chrome/browser/ui/views/tabs/vertical/vertical_pinned_tab_entries_view.h
+@@ -111,6 +111,7 @@
+   void ResolveSharedUpdate(const std::string& logical_id, bool independent);
+   struct Entry {
+     aux::PinnedTabEntry saved;
++    GURL display_url;  // Actual local page; never rewrites saved action state.
+     std::optional<int> live_index;
+     std::u16string title;
+     ui::ImageModel image;
+--- a/chrome/browser/ui/views/tabs/vertical/vertical_pinned_tab_entries_view.cc
++++ b/chrome/browser/ui/views/tabs/vertical/vertical_pinned_tab_entries_view.cc
+@@ -184,8 +184,9 @@
+     if (index_ >= owner_->entries_.size())
+       return;
+     const auto& entry = owner_->entries_[index_];
+-    const auto description = entry.title + (entry.shared_update
+-        ? u"\nUpdated in another window. Right-click to use the shared URL or keep an independent copy."
++    const auto description = entry.title + u"\n" + base::UTF8ToUTF16(entry.display_url.spec()) + (entry.shared_update
++        ? u"\nShared URL: " + base::UTF8ToUTF16(entry.saved.url.spec()) +
++            u"\nUpdated in another window. Right-click to use the shared URL or keep an independent copy."
+         : std::u16string());
+     SetTooltipText(owner_->IsEntryDragInProgress() ? std::u16string() : description);
+     GetViewAccessibility().SetRole(ax::mojom::Role::kButton);
+@@ -587,6 +588,7 @@
+   for (auto& value : saved) {
+     Entry entry;
+     entry.saved = std::move(value);
++    entry.display_url = entry.saved.url;
+     entry.title = entry.saved.title.empty()
+                       ? base::UTF8ToUTF16(entry.saved.url.has_host()
+                                               ? entry.saved.url.host()
+@@ -600,6 +602,12 @@
+     entry.live_index = aux::FindPinnedTabEntry(*model_, entry.saved);
+     if (entry.live_index) {
+       auto* tab = model_->GetTabAtIndex(*entry.live_index);
++      if (auto* contents = tab->GetContents(); contents && contents->GetLastCommittedURL().is_valid() &&
++          contents->GetLastCommittedURL() != entry.display_url) {
++        entry.display_url = contents->GetLastCommittedURL();
++        entry.image = {};
++        if (auto cached = icon_cache_.find(entry.display_url.spec()); cached != icon_cache_.end()) entry.image = cached->second;
++      }
+       if (auto* helper = TabUIHelper::From(tab)) {
+         const auto title = helper->GetTitle();
+         bool automatic_title = !projected;
+@@ -614,7 +622,7 @@
+         const auto icon = helper->GetFavicon();
+         if (!icon.IsEmpty()) {
+           entry.image = icon;
+-          icon_cache_.insert_or_assign(entry.saved.url.spec(), entry.image);
++          icon_cache_.insert_or_assign(entry.display_url.spec(), entry.image);
+         }
+         ui_changes_.push_back(helper->AddTabUIChangeCallback(
+             base::BindRepeating(&VerticalPinnedTabEntriesView::ScheduleRefresh,
+@@ -624,26 +632,26 @@
+     }
+     // Stored application PNGs must not replace the canonical product glyph,
+     // including a saved Agent tile whose live tab is currently closed.
+-    if ((entry.saved.url.SchemeIs("chrome-extension") &&
+-         entry.saved.url.host() == aux::kAgentExtensionId) ||
+-        (entry.saved.url.SchemeIs("chrome") &&
+-         entry.saved.url.host() == "newtab")) {
++    if ((entry.display_url.SchemeIs("chrome-extension") &&
++         entry.display_url.host() == aux::kAgentExtensionId) ||
++        (entry.display_url.SchemeIs("chrome") &&
++         entry.display_url.host() == "newtab")) {
+       entry.image = ui::ImageModel::FromVectorIcon(
+           kAuxNewTabMarkIcon, kColorToolbarButtonIcon, 16);
+     }
+     if (entry.image.IsEmpty())
+-      RequestIcon(entry.saved.url);
++      RequestIcon(entry.display_url);
+     entry.accent = FaviconAccent(entry.image);
+     entries.push_back(std::move(entry));
+   }
+   const bool reuse_rows = children().size() == entries_.size() &&
+       entries.size() == entries_.size() &&
+-      std::ranges::equal(entries_, entries, {},
+-                         [](const Entry& entry) { return entry.saved.url; },
+-                         [](const Entry& entry) { return entry.saved.url; });
++      std::ranges::equal(entries_, entries, [](const Entry& left, const Entry& right) {
++        return left.saved.logical_id == right.saved.logical_id && left.saved.url == right.saved.url;
++      });
+   auto weak = weak_factory_.GetWeakPtr();
+   if (!reuse_rows) {
+-    // A changed ordered URL roster replaces the actual rows. The original
++    // A changed ordered logical-ID/URL roster replaces the actual rows. The original
+     // capture-loss cleanup is posted; detach our raw row alias before removal.
+     if (dragging_view_) {
+       EntryView* captured = std::exchange(dragging_view_, nullptr);

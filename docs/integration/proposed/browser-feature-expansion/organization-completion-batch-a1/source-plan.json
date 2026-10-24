@@ -1,0 +1,263 @@
+{
+  "format": "aux.organization-completion.source.v1",
+  "nativeRoot": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src",
+  "files": [
+    {
+      "path": "chrome/browser/ui/views/frame/aux_organization_window_controller.h",
+      "inputSha256": "aeccff9abeadd82903528e935f68a09a13e54fe25e4b4b3acc132d0821044614",
+      "outputSha256": "8183d81aace58350e385e0f93b23d2236ca78715eade05fa425b8ac06fdea9a7",
+      "output": "/Users/rcourson/.codex/worktrees/aux-features-organization/web/docs/integration/proposed/browser-feature-expansion/organization-completion-batch-a1/source/chrome/browser/ui/views/frame/aux_organization_window_controller.h",
+      "anchors": [
+        {
+          "find": "#include \"base/callback_list.h\"",
+          "replace": "#include \"base/callback_list.h\"\n#include \"base/timer/timer.h\"",
+          "count": 1
+        },
+        {
+          "find": "  bool HasPendingSharedUpdate(const std::string&) const;",
+          "replace": "  bool HasPendingSharedUpdate(const std::string&) const;\n  // Presentation follows this window's retained live page; shared topology\n  // and manually chosen titles stay authoritative in the logical record.\n  organization::Entry EntryForDisplay(const organization::Entry&) const;",
+          "count": 1
+        },
+        {
+          "find": "  bool cleanup_running_ = false, cleanup_waiting_ = false;",
+          "replace": "  bool cleanup_running_ = false, cleanup_waiting_ = false;\n  base::RepeatingTimer cleanup_timer_;",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_organization_window_controller.cc",
+      "inputSha256": "f45bb0d24ef580b2ff9d0bbda697af014d9f84e819f353605e62babb5a7839b4",
+      "outputSha256": "3443b7ef044b2bdcabe44a54aea99073ee802da5260773b7d477517947f9fb75",
+      "output": "/Users/rcourson/.codex/worktrees/aux-features-organization/web/docs/integration/proposed/browser-feature-expansion/organization-completion-batch-a1/source/chrome/browser/ui/views/frame/aux_organization_window_controller.cc",
+      "anchors": [
+        {
+          "find": "  shutdown_ = true;\n  weak_.InvalidateWeakPtrs();",
+          "replace": "  shutdown_ = true;\n  cleanup_timer_.Stop();\n  weak_.InvalidateWeakPtrs();",
+          "count": 1
+        },
+        {
+          "find": "void AuxOrganizationWindowController::RebindForProfileSwitch() {\n  if (shutdown_) return;",
+          "replace": "void AuxOrganizationWindowController::RebindForProfileSwitch() {\n  if (shutdown_) return;\n  cleanup_timer_.Stop();",
+          "count": 1
+        },
+        {
+          "find": "  settled_ = organization->ObserveSettled(base::BindRepeating(&AuxOrganizationWindowController::QueueReconcile, weak_.GetWeakPtr()));\n  QueueReconcile();",
+          "replace": "  settled_ = organization->ObserveSettled(base::BindRepeating(&AuxOrganizationWindowController::QueueReconcile, weak_.GetWeakPtr()));\n  if (!cleanup_timer_.IsRunning())\n    cleanup_timer_.Start(FROM_HERE, base::Hours(1), base::BindRepeating(\n        &AuxOrganizationWindowController::QueueReconcile, weak_.GetWeakPtr()));\n  QueueReconcile();",
+          "count": 1
+        },
+        {
+          "find": "    if (!organization->TryClaimStartupCleanup()) return;",
+          "replace": "    if (!organization->TryClaimCleanupPass()) return;",
+          "count": 1
+        },
+        {
+          "find": "bool AuxOrganizationWindowController::HandleClose(tabs::TabHandle handle) {\n  if (!Current() || model_->closing_all() || IsExplicitUnload(handle)) return false;\n  auto* tab = handle.Get(); if (!tab || !tab->GetContents() || tab->IsSplit()) return false;\n  const auto id = GetRememberedPinnedTabEntryId(*tab->GetContents()).value_or(\"\");\n  auto* organization = Organization(browser_.get());\n  if (id.empty() || !organization || !organization->snapshot().entries.contains(id)) return false;\n  if (organization->snapshot().entries.at(id).archived) {\n    base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(FROM_HERE,\n        base::BindOnce([](base::WeakPtr<AuxOrganizationWindowController> owner, tabs::TabHandle target) {\n          if (owner && owner->Current()) owner->CloseViewNow(target);\n        }, weak_.GetWeakPtr(), handle));\n    return true;\n  }\n  const bool pin = organization::HasRetention(organization->snapshot(), id);\n  base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(FROM_HERE, base::BindOnce(\n      [](base::WeakPtr<AuxOrganizationWindowController> owner, std::string id, bool pin) {\n        if (!owner) return;\n        auto done = base::BindOnce([](base::WeakPtr<AuxOrganizationWindowController> owner, bool) { if (owner) owner->Notify(); }, owner);\n        if (pin) owner->UnloadLogicalTab(id, std::move(done)); else owner->ArchiveLogicalEntry(id, std::move(done));\n      }, weak_.GetWeakPtr(), id, pin));\n  return true;\n}\n",
+          "replace": "bool AuxOrganizationWindowController::HandleClose(tabs::TabHandle handle) {\n  if (!Current() || model_->closing_all() || IsExplicitUnload(handle)) return false;\n  auto* tab = handle.Get(); if (!tab || !tab->GetContents() || tab->IsSplit()) return false;\n  const auto id = GetRememberedPinnedTabEntryId(*tab->GetContents()).value_or(\"\");\n  auto* organization = Organization(browser_.get());\n  if (id.empty() || !organization || !organization->snapshot().entries.contains(id)) return false;\n  base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(FROM_HERE, base::BindOnce(\n      [](base::WeakPtr<AuxOrganizationWindowController> owner, tabs::TabHandle target, std::string id) {\n        auto* tab = target.Get();\n        if (!owner || !owner->Current() || owner->model_->closing_all() || !tab || tab->IsSplit() ||\n            owner->model_->GetIndexOfTab(tab) < 0 ||\n            !tab->GetContents() || tab->GetContents()->GetBrowserContext() != owner->profile_ ||\n            GetRememberedPinnedTabEntryId(*tab->GetContents()) != id) return;\n        auto* current = Organization(owner->browser_.get());\n        if (!current || current->blocked() || !current->snapshot().entries.contains(id)) return;\n        // Retain the exact native tab and re-read retention after the posted\n        // task. A pin/Keep change while queued must not become a shared close.\n        if (current->snapshot().entries.at(id).archived) { owner->CloseViewNow(target); return; }\n        auto done = base::BindOnce([](base::WeakPtr<AuxOrganizationWindowController> owner, bool) {\n          if (owner) owner->Notify();\n        }, owner);\n        if (tab->IsPinned() || organization::HasRetention(current->snapshot(), id)) owner->UnloadLogicalTab(id, std::move(done));\n        else owner->ArchiveLogicalEntry(id, std::move(done));\n      }, weak_.GetWeakPtr(), handle, id));\n  return true;\n}\n",
+          "count": 1
+        },
+        {
+          "find": "bool AuxOrganizationWindowController::HasPendingSharedUpdate(const std::string& id) const {",
+          "replace": "organization::Entry AuxOrganizationWindowController::EntryForDisplay(const organization::Entry& entry) const {\n  organization::Entry shown = entry;\n  const auto* service = Current() ? Organization(browser_.get()) : nullptr;\n  if (!service || service->blocked() || entry.archived || entry.kind != organization::EntryKind::kTab) return shown;\n  const auto shared = service->snapshot().entries.find(entry.id);\n  if (shared == service->snapshot().entries.end() || shared->second != entry) return shown;\n  const auto handle = FindLocalView(entry.id);\n  auto* tab = handle ? handle->Get() : nullptr;\n  auto* contents = tab ? tab->GetContents() : nullptr;\n  if (!contents || IsBookmarkTabExcluded(tab, model_) ||\n      (!tab->IsPinned() && (!ordinary_eligible_ || !ordinary_eligible_.Run(*tab)))) return shown;\n  const auto* identity = PageIdentity::FromWebContents(contents);\n  if (identity && identity->runtime_owned()) return shown;\n  const auto url = LogicalTabUrl(*contents);\n  if (url.is_valid()) shown.current_url = url.spec();\n  if (entry.title_mode == organization::TitleMode::kAutomatic)\n    shown.title = base::UTF16ToUTF8(contents->GetTitle());\n  return shown;\n}\nbool AuxOrganizationWindowController::HasPendingSharedUpdate(const std::string& id) const {",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_organization_tree_view.cc",
+      "inputSha256": "8846dc9a9c4118174e8538f789f2bbaeb4fb171b2b9ea76c4073bf2f0e39bfd6",
+      "outputSha256": "5d30adbaeb54e4eb23dfa23c5c058cf6faa752cbcb2c4ec05db54de634daac37",
+      "output": "/Users/rcourson/.codex/worktrees/aux-features-organization/web/docs/integration/proposed/browser-feature-expansion/organization-completion-batch-a1/source/chrome/browser/ui/views/frame/aux_organization_tree_view.cc",
+      "anchors": [
+        {
+          "find": "    auto* layout = SetLayoutManager(std::make_unique<views::BoxLayout>(",
+          "replace": "    auto shown = entry;\n    if (owner_ && owner_->browser_)\n      if (auto* controller = AuxOrganizationWindowController::FromBrowser(owner_->browser_.get()))\n        shown = controller->EntryForDisplay(entry);\n    auto* layout = SetLayoutManager(std::make_unique<views::BoxLayout>(",
+          "count": 1
+        },
+        {
+          "find": "std::make_unique<views::Label>(base::UTF8ToUTF16(entry.title.empty() ? entry.current_url : entry.title),",
+          "replace": "std::make_unique<views::Label>(base::UTF8ToUTF16(shown.title.empty() ? shown.current_url : shown.title),",
+          "count": 1
+        },
+        {
+          "find": "    SetTooltipText(base::UTF8ToUTF16(folder_ ? entry.title : entry.current_url));",
+          "replace": "    SetTooltipText(base::UTF8ToUTF16(folder_ ? shown.title : shown.current_url));",
+          "count": 1
+        },
+        {
+          "find": "service->GetFaviconImageForPageURL(GURL(entry.current_url), base::BindOnce(",
+          "replace": "service->GetFaviconImageForPageURL(GURL(shown.current_url), base::BindOnce(",
+          "count": 1
+        },
+        {
+          "find": "        SetTooltipText(base::UTF8ToUTF16(entry.current_url) + u\"\\nUpdated in another window. Right-click to use the shared URL or keep an independent copy.\");",
+          "replace": "        SetTooltipText(base::UTF8ToUTF16(shown.current_url) + u\"\\nShared URL: \" + base::UTF8ToUTF16(entry.current_url) +\n            u\"\\nUpdated in another window. Right-click to use the shared URL or keep an independent copy.\");",
+          "count": 1
+        },
+        {
+          "find": "  auto found = snapshot->entries.find(id); if (found == snapshot->entries.end() || found->second.archived) return;\n  if (found->second.archived) {",
+          "replace": "  auto found = snapshot->entries.find(id); if (found == snapshot->entries.end()) return;\n  if (found->second.archived) {",
+          "count": 1
+        },
+        {
+          "find": "    } else if (left && row_by_id_.contains(entry.parent_id)) row_by_id_.at(entry.parent_id)->RequestFocus();",
+          "replace": "    } else if (left && row_by_id_.contains(entry.parent_id)) row_by_id_.at(entry.parent_id)->RequestFocus();\n    else if (!left && entry.kind == organization::EntryKind::kFolder && !entry.collapsed) {\n      const auto children = organization::OrderedChildren(*snapshot, entry.space_id, entry.id, entry.archived);\n      if (!children.empty() && row_by_id_.contains(children.front())) row_by_id_.at(children.front())->RequestFocus();\n    }",
+          "count": 1
+        },
+        {
+          "find": "  Move(drag->id, target.space_id, folder ? target.id : target.parent_id,\n      folder ? kEnd : target.order + (drag->after ? 1 : 0), std::move(drag->context));",
+          "replace": "  uint64_t index = folder ? kEnd : target.order + (drag->after ? 1 : 0);\n  const auto source = snapshot->entries.find(drag->id);\n  // Drop targets describe the current list; the model inserts after removing\n  // the source. Compensate exactly once within the same sibling group.\n  if (!folder && source != snapshot->entries.end() && source->second.space_id == target.space_id &&\n      source->second.parent_id == target.parent_id && source->second.order < index) --index;\n  Move(drag->id, target.space_id, folder ? target.id : target.parent_id, index, std::move(drag->context));",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_spaces_switcher.h",
+      "inputSha256": "4d699386528f6ceae84409db478a3393873c866f8dce19ef24142522d9619944",
+      "outputSha256": "9254567de667adf26fb18c4511fa9c0ad6688c2994647dbcf90dec2e36213b6b",
+      "output": "/Users/rcourson/.codex/worktrees/aux-features-organization/web/docs/integration/proposed/browser-feature-expansion/organization-completion-batch-a1/source/chrome/browser/ui/views/frame/aux_spaces_switcher.h",
+      "anchors": [
+        {
+          "find": "#include <memory>",
+          "replace": "#include <memory>\n#include <optional>",
+          "count": 1
+        },
+        {
+          "find": "#include \"base/time/time.h\"",
+          "replace": "#include \"base/time/time.h\"\n#include \"chrome/browser/aux/organization/organization_model.h\"",
+          "count": 1
+        },
+        {
+          "find": "  std::vector<std::string> menu_spaces_;",
+          "replace": "  std::vector<std::string> menu_spaces_;\n  std::optional<organization::Context> menu_context_;\n  std::string menu_active_space_;",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_spaces_switcher.cc",
+      "inputSha256": "c67510c0de3895d768fdfd2948c088bc42d45e7728773f41aaa8919b4b566d8a",
+      "outputSha256": "b5627a43a61068825aaadf2e9d4c258dd49d6a958c31c933b5ede56a07babb9a",
+      "output": "/Users/rcourson/.codex/worktrees/aux-features-organization/web/docs/integration/proposed/browser-feature-expansion/organization-completion-batch-a1/source/chrome/browser/ui/views/frame/aux_spaces_switcher.cc",
+      "anchors": [
+        {
+          "find": "void AuxSpacesSwitcher::ShowMenu() {\n  if (!browser_ || !GetWidget()) return;",
+          "replace": "void AuxSpacesSwitcher::ShowMenu() {\n  if (!browser_ || !GetWidget()) return;\n  menu_context_ = CaptureOrganizationContext(*browser_);\n  if (!menu_context_) return;\n  menu_active_space_ = window_->ActiveSpaceId();",
+          "count": 1
+        },
+        {
+          "find": "void AuxSpacesSwitcher::ExecuteCommand(int command, int) {\n  if (!browser_) return;",
+          "replace": "void AuxSpacesSwitcher::ExecuteCommand(int command, int) {\n  if (!browser_) return;\n  const auto current = CaptureOrganizationContext(*browser_);\n  if (!menu_context_ || !current || current->profile_id != menu_context_->profile_id ||\n      current->owner_generation != menu_context_->owner_generation ||\n      current->expected_revision != menu_context_->expected_revision ||\n      window_->ActiveSpaceId() != menu_active_space_) {\n    select_->SetTooltipText(u\"The profile or tab list changed. Open the Space menu again.\"); return;\n  }",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/aux/organization/organization_service.h",
+      "inputSha256": "aa6124c1f4317efe4c40343d0472364422adc44b45be0bb1a765190ffa5d2651",
+      "outputSha256": "10d26f0dbe61a23341156622c2fb2a14535210f33ba020d25cbd56e3d12a0fc5",
+      "output": "/Users/rcourson/.codex/worktrees/aux-features-organization/web/docs/integration/proposed/browser-feature-expansion/organization-completion-batch-a1/source/chrome/browser/aux/organization/organization_service.h",
+      "anchors": [
+        {
+          "find": "#include \"base/sequence_checker.h\"",
+          "replace": "#include \"base/sequence_checker.h\"\n#include \"base/time/time.h\"",
+          "count": 1
+        },
+        {
+          "find": "  bool TryClaimStartupCleanup();",
+          "replace": "  // Shared across windows; one pass per hour, and immediately after policy changes.\n  bool TryClaimCleanupPass();",
+          "count": 1
+        },
+        {
+          "find": "  bool startup_cleanup_claimed_ = false;",
+          "replace": "  base::TimeTicks next_cleanup_;",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/aux/organization/organization_service.cc",
+      "inputSha256": "7bf3a55c6014d433e8ee1753b68b3cb8a84b9d55ea67a53f274ff65894686fc0",
+      "outputSha256": "b520ad1dfea94381ce2cef20149a2ccc0ecf7d15dca33b0a61543112ce8185fb",
+      "output": "/Users/rcourson/.codex/worktrees/aux-features-organization/web/docs/integration/proposed/browser-feature-expansion/organization-completion-batch-a1/source/chrome/browser/aux/organization/organization_service.cc",
+      "anchors": [
+        {
+          "find": "bool OrganizationService::TryClaimStartupCleanup() {\n  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);\n  if (shutdown_ || blocked_ || pending_ || startup_cleanup_claimed_ || !snapshot_.cleanup_enabled) return false;\n  startup_cleanup_claimed_ = true; return true;\n}",
+          "replace": "bool OrganizationService::TryClaimCleanupPass() {\n  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);\n  if (shutdown_ || blocked_ || pending_ || !snapshot_.cleanup_enabled) return false;\n  const auto now = base::TimeTicks::Now();\n  if (!next_cleanup_.is_null() && now < next_cleanup_) return false;\n  next_cleanup_ = now + base::Hours(1);\n  return true;\n}",
+          "count": 1
+        },
+        {
+          "find": "  snapshot_ = std::move(pending->mutation.snapshot);\n  if (pending->make_undo) {",
+          "replace": "  const auto& next = pending->mutation.snapshot;\n  if (snapshot_.cleanup_enabled != next.cleanup_enabled ||\n      snapshot_.cleanup_inactivity_days != next.cleanup_inactivity_days ||\n      snapshot_.cleanup_space_ids != next.cleanup_space_ids) next_cleanup_ = {};\n  snapshot_ = std::move(pending->mutation.snapshot);\n  if (pending->make_undo) {",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/ui/views/tabs/vertical/vertical_pinned_tab_entries_view.h",
+      "inputSha256": "429aae7dc4216cb950de74bfc3dc8430b07519ea1494a5c727df613262f1b71e",
+      "outputSha256": "846e9a61409b723dca0f34c6cbccab8781b34b8110f00269caad8ecccb1f1b0c",
+      "output": "/Users/rcourson/.codex/worktrees/aux-features-organization/web/docs/integration/proposed/browser-feature-expansion/organization-completion-batch-a1/source/chrome/browser/ui/views/tabs/vertical/vertical_pinned_tab_entries_view.h",
+      "anchors": [
+        {
+          "find": "    aux::PinnedTabEntry saved;\n    std::optional<int> live_index;",
+          "replace": "    aux::PinnedTabEntry saved;\n    GURL display_url;  // Actual local page; never rewrites saved action state.\n    std::optional<int> live_index;",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/ui/views/tabs/vertical/vertical_pinned_tab_entries_view.cc",
+      "inputSha256": "69dba57b2bf0d2fa1f0867cf1de838a5ab59e8bc18f64e52dbc743fd14aacc07",
+      "outputSha256": "312c1397b07c244762bceea9402b5c6df96d0fdc65d6b1785df0b47f0ab72001",
+      "output": "/Users/rcourson/.codex/worktrees/aux-features-organization/web/docs/integration/proposed/browser-feature-expansion/organization-completion-batch-a1/source/chrome/browser/ui/views/tabs/vertical/vertical_pinned_tab_entries_view.cc",
+      "anchors": [
+        {
+          "find": "    const auto description = entry.title + (entry.shared_update\n        ? u\"\\nUpdated in another window. Right-click to use the shared URL or keep an independent copy.\"\n        : std::u16string());",
+          "replace": "    const auto description = entry.title + u\"\\n\" + base::UTF8ToUTF16(entry.display_url.spec()) + (entry.shared_update\n        ? u\"\\nShared URL: \" + base::UTF8ToUTF16(entry.saved.url.spec()) +\n            u\"\\nUpdated in another window. Right-click to use the shared URL or keep an independent copy.\"\n        : std::u16string());",
+          "count": 1
+        },
+        {
+          "find": "    entry.saved = std::move(value);\n    entry.title =",
+          "replace": "    entry.saved = std::move(value);\n    entry.display_url = entry.saved.url;\n    entry.title =",
+          "count": 1
+        },
+        {
+          "find": "      auto* tab = model_->GetTabAtIndex(*entry.live_index);\n      if (auto* helper = TabUIHelper::From(tab)) {",
+          "replace": "      auto* tab = model_->GetTabAtIndex(*entry.live_index);\n      if (auto* contents = tab->GetContents(); contents && contents->GetLastCommittedURL().is_valid() &&\n          contents->GetLastCommittedURL() != entry.display_url) {\n        entry.display_url = contents->GetLastCommittedURL();\n        entry.image = {};\n        if (auto cached = icon_cache_.find(entry.display_url.spec()); cached != icon_cache_.end()) entry.image = cached->second;\n      }\n      if (auto* helper = TabUIHelper::From(tab)) {",
+          "count": 1
+        },
+        {
+          "find": "          icon_cache_.insert_or_assign(entry.saved.url.spec(), entry.image);",
+          "replace": "          icon_cache_.insert_or_assign(entry.display_url.spec(), entry.image);",
+          "count": 1
+        },
+        {
+          "find": "    if ((entry.saved.url.SchemeIs(\"chrome-extension\") &&\n         entry.saved.url.host() == aux::kAgentExtensionId) ||\n        (entry.saved.url.SchemeIs(\"chrome\") &&\n         entry.saved.url.host() == \"newtab\")) {",
+          "replace": "    if ((entry.display_url.SchemeIs(\"chrome-extension\") &&\n         entry.display_url.host() == aux::kAgentExtensionId) ||\n        (entry.display_url.SchemeIs(\"chrome\") &&\n         entry.display_url.host() == \"newtab\")) {",
+          "count": 1
+        },
+        {
+          "find": "      RequestIcon(entry.saved.url);",
+          "replace": "      RequestIcon(entry.display_url);",
+          "count": 1
+        },
+        {
+          "find": "      std::ranges::equal(entries_, entries, {},\n                         [](const Entry& entry) { return entry.saved.url; },\n                         [](const Entry& entry) { return entry.saved.url; });",
+          "replace": "      std::ranges::equal(entries_, entries, [](const Entry& left, const Entry& right) {\n        return left.saved.logical_id == right.saved.logical_id && left.saved.url == right.saved.url;\n      });",
+          "count": 1
+        },
+        {
+          "find": "    // A changed ordered URL roster replaces the actual rows. The original",
+          "replace": "    // A changed ordered logical-ID/URL roster replaces the actual rows. The original",
+          "count": 1
+        }
+      ]
+    }
+  ],
+  "nativeCheckoutChanged": false,
+  "uiStylesChanged": false,
+  "nativeCompiled": false,
+  "productExecuted": false,
+  "runtimeAcceptance": false
+}

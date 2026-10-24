@@ -1,0 +1,16 @@
+{
+  "format": "aux.organization-completion.source-check.actual.v1",
+  "passed": true,
+  "sourcePlanSha256": "f96e3e9b07e00d9bd5b946f0d2dff3de0a7aabbcf9276ebc36c1ee53331d79ee",
+  "patchSha256": "3a9bb78deb86106f85697407d4a07d65af8e0a72420888dcdd197182f1280bed",
+  "files": 9,
+  "countedAnchors": 36,
+  "replayDirectory": "/private/tmp/aux-organization-completion-replay-4z2n2r74",
+  "exactReplayPassed": true,
+  "reverseCheckPassed": true,
+  "nativeCheckoutChanged": false,
+  "nativeCompiled": false,
+  "testsExecuted": false,
+  "productExecuted": false,
+  "runtimeAcceptance": false
+}
