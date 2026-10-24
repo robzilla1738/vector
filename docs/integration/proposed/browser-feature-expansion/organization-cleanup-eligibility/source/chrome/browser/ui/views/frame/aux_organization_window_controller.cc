@@ -1,0 +1,1263 @@
+// Copyright 2026 Aux Authors. BSD-style license: see //LICENSE.
+#include "chrome/browser/ui/views/frame/aux_organization_window_controller.h"
+#include <algorithm>
+#include <limits>
+#include <tuple>
+#include <utility>
+#include "base/functional/bind.h"
+#include "base/functional/callback_helpers.h"
+#include "base/strings/utf_string_conversions.h"
+#include "base/task/single_thread_task_runner.h"
+#include "base/time/time.h"
+#include "chrome/browser/ui/browser_init_state.h"
+#include "base/uuid.h"
+#include "chrome/browser/aux/organization/organization_profile_service.h"
+#include "chrome/browser/aux/ntp_prerender_service.h"
+#include "chrome/common/url_constants.h"
+#include "chrome/browser/actor/ui/actor_ui_tab_controller.h"
+#include "chrome/browser/ui/views/frame/aux_split_commands.h"
+#include "chrome/browser/ui/views/frame/aux_bookmark_tab_exclusion.h"
+#include "chrome/browser/aux/organization/organization_service.h"
+#include "chrome/browser/media/webrtc/media_capture_devices_dispatcher.h"
+#include "chrome/browser/media/webrtc/media_stream_capture_indicator.h"
+#include "chrome/browser/profiles/profile.h"
+#include "chrome/browser/profiles/keep_alive/scoped_profile_keep_alive.h"
+#include "chrome/browser/profiles/keep_alive/profile_keep_alive_types.h"
+#include "chrome/browser/sessions/session_restore.h"
+#include "chrome/browser/sessions/session_service_factory.h"
+#include "chrome/browser/ui/aux/page_identity.h"
+#include "chrome/browser/ui/browser_window/public/browser_window_features.h"
+#include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
+#include "chrome/browser/ui/browser_window/public/browser_window_interface_iterator.h"
+#include "chrome/browser/ui/navigator/browser_navigator.h"
+#include "chrome/browser/ui/navigator/browser_navigator_params.h"
+#include "chrome/browser/ui/tabs/aux_pinned_tab_entry_identity.h"
+#include "chrome/browser/ui/tabs/tab_enums.h"
+#include "chrome/browser/ui/tabs/tab_strip_model.h"
+#include "chrome/browser/ui/tabs/tab_strip_model_delegate.h"
+#include "ui/base/models/list_selection_model.h"
+#include "chrome/browser/ui/tabs/tab_strip_user_gesture_details.h"
+#include "chrome/browser/ui/views/frame/aux_organization_ui_commands.h"
+#include "components/sessions/content/session_tab_helper.h"
+#include "content/public/browser/download_manager.h"
+#include "content/public/browser/devtools_agent_host.h"
+#include "content/public/browser/navigation_controller.h"
+#include "content/public/browser/navigation_handle.h"
+#include "content/public/browser/web_contents.h"
+#include "content/public/browser/web_contents_observer.h"
+namespace aux {
+namespace {
+organization::OrganizationService* Organization(BrowserWindowInterface* browser) {
+  if (!browser) return nullptr;
+  auto* owner = organization::OrganizationProfileServiceFactory::GetForProfileIfExists(browser->GetProfile());
+  return owner ? owner->model() : nullptr;
+}
+// Native NTP authority is the actual enabled manifest/transferred prerender,
+// not a hostname/title guess. Persist its stable browser URL so a later view
+// resolves through that profile's current override/account. Other pages remain
+// distinct logical tabs even when their URLs are equal.
+GURL LogicalTabUrl(content::WebContents& contents, bool allow_visible = false) {
+  const GURL committed = contents.GetLastCommittedURL();
+  auto* profile = Profile::FromBrowserContext(contents.GetBrowserContext());
+  if (IsNtpPrerenderContents(&contents) &&
+      (committed.is_empty() || committed == GURL(chrome::kChromeUINewTabURL) ||
+       IsEligibleNtpPrerenderUrl(profile, committed)))
+    return GURL(chrome::kChromeUINewTabURL);
+  return committed.is_valid() || !allow_visible ? committed : contents.GetVisibleURL();
+}
+std::vector<organization::Command> NavigationCommands(const organization::Entry& entry,
+                                                     content::WebContents& contents) {
+  std::vector<organization::Command> commands;
+  const GURL url = LogicalTabUrl(contents);
+  if (url.is_valid() && url.spec() != entry.current_url) {
+    organization::Command command; command.action = organization::Action::kUpdateTabUrl;
+    command.id = entry.id; command.url = url.spec(); commands.push_back(std::move(command));
+  }
+  // User-renamed titles are retained; URL commits do not silently rename them.
+  return commands;
+}
+}  // namespace
+class AuxOrganizationWindowController::PageObserver final : public content::WebContentsObserver {
+ public:
+  PageObserver(content::WebContents* contents, base::WeakPtr<AuxOrganizationWindowController> owner, tabs::TabHandle handle)
+      : content::WebContentsObserver(contents), owner_(owner), handle_(handle) {}
+  void DidFinishNavigation(content::NavigationHandle* navigation) override {
+    if (owner_ && navigation->HasCommitted() && navigation->IsInPrimaryMainFrame()) owner_->NavigationCommitted(handle_);
+  }
+  void PrimaryPageChanged(content::Page&) override { if (owner_) owner_->DocumentChanged(handle_); }
+ private:
+  base::WeakPtr<AuxOrganizationWindowController> owner_;
+  tabs::TabHandle handle_;
+};
+struct AuxOrganizationWindowController::AutomaticArchive {
+  using Target = std::tuple<base::WeakPtr<AuxOrganizationWindowController>,
+                            tabs::TabHandle, std::string, std::string, std::string>;
+  AutomaticArchive();
+  ~AutomaticArchive();
+  organization::Entry original;
+  std::string operation_id, generation;
+  base::WeakPtr<Profile> profile;
+  std::unique_ptr<ScopedProfileKeepAlive> profile_lifetime;
+  std::vector<Target> targets;
+  uint64_t cutoff = 0, activated_at = 0;
+  bool committed = false, cancelling = false, restoring = false;
+  base::OnceCallback<void(bool)> reply;
+};
+AuxOrganizationWindowController::AutomaticArchive::AutomaticArchive() = default;
+AuxOrganizationWindowController::AutomaticArchive::~AutomaticArchive() {
+  // Owner destruction or lost callbacks cannot turn an unknown write into
+  // success. The archived identity/native session remains recoverable.
+  if (reply) std::move(reply).Run(false);
+}
+AuxOrganizationWindowController::AuxOrganizationWindowController(BrowserWindowInterface& browser)
+    : browser_(browser.GetWeakPtr()) { RebindForProfileSwitch(); }
+AuxOrganizationWindowController::~AuxOrganizationWindowController() { Shutdown(); }
+void AuxOrganizationWindowController::Shutdown() {
+  if (shutdown_) return;
+  shutdown_ = true;
+  weak_.InvalidateWeakPtrs();
+  TabStripModelObserver::StopObservingAll(this);
+  ready_subscription_ = {}; model_changes_ = {}; settled_ = {}; session_restored_ = {}; activation_ = {};
+  ordinary_eligible_.Reset(); views_.clear(); candidate_observers_.clear(); explicit_unloads_.clear(); dirty_navigation_.clear(); dirty_activation_.clear();
+  automatic_archive_.reset();
+  cleanup_ids_.clear(); cleanup_running_ = false; cleanup_waiting_ = false;
+  profile_ = nullptr; model_ = nullptr; active_space_.clear(); restored_space_.clear();
+  Notify();
+}
+AuxOrganizationWindowController* AuxOrganizationWindowController::FromBrowser(BrowserWindowInterface* browser) {
+  return browser ? browser->GetFeatures().aux_organization_window_controller() : nullptr;
+}
+AuxOrganizationWindowController* AuxOrganizationWindowController::GetForTabStripModel(TabStripModel* model) {
+  AuxOrganizationWindowController* result = nullptr;
+  ForEachCurrentBrowserWindowInterfaceOrderedByActivation([&](BrowserWindowInterface* browser) {
+    if (browser->GetTabStripModel() != model) return true;
+    result = FromBrowser(browser); return false;
+  });
+  return result;
+}
+bool AuxOrganizationWindowController::Current() const {
+  return !shutdown_ && browser_ && profile_ && model_ && !profile_->IsOffTheRecord() &&
+      browser_->GetProfile() == profile_ && browser_->GetTabStripModel() == model_;
+}
+bool AuxOrganizationWindowController::ready() const {
+  auto* organization = Current() ? Organization(browser_.get()) : nullptr;
+  if (!organization || organization->blocked() || !ordinary_eligible_ || !organization->snapshot().spaces.contains(active_space_)) return false;
+  for (auto* tab : *model_) {
+    auto* contents = tab->GetContents(); if (!contents || tab->IsPinned() || !ordinary_eligible_.Run(*tab)) continue;
+    const auto* identity = PageIdentity::FromWebContents(contents);
+    if (identity && identity->runtime_owned()) continue;
+    const auto id = GetRememberedPinnedTabEntryId(*contents).value_or("");
+    const auto entry = organization->snapshot().entries.find(id);
+    if (entry == organization->snapshot().entries.end() || entry->second.kind != organization::EntryKind::kTab) return false;
+  }
+  return true;
+}
+bool AuxOrganizationWindowController::IsProjectionReady() const { return ready(); }
+bool AuxOrganizationWindowController::ShouldDisplayLogicalEntry(const std::string& id) const {
+  if (!Current() || !ordinary_eligible_) return false;
+  for (auto* tab : *model_) {
+    if (tab->GetContents() && GetRememberedPinnedTabEntryId(*tab->GetContents()) == id &&
+        !tab->IsPinned() && !ordinary_eligible_.Run(*tab)) return false;
+  }
+  return true;
+}
+void AuxOrganizationWindowController::RebindForProfileSwitch() {
+  if (shutdown_) return;
+  TabStripModelObserver::StopObservingAll(this);
+  weak_.InvalidateWeakPtrs(); ready_subscription_ = {}; model_changes_ = {}; settled_ = {}; session_restored_ = {}; activation_ = {};
+  views_.clear(); candidate_observers_.clear(); explicit_unloads_.clear(); dirty_navigation_.clear(); dirty_activation_.clear();
+  automatic_archive_.reset();
+  cleanup_ids_.clear(); cleanup_running_ = false; cleanup_waiting_ = false; cleanup_cursor_ = 0;
+  reconcile_queued_ = false; registering_ = false; opening_ = false;
+  profile_ = browser_ ? browser_->GetProfile() : nullptr;
+  model_ = browser_ ? browser_->GetTabStripModel() : nullptr;
+  active_space_.clear(); restored_space_.clear(); ordinary_eligible_.Reset();
+  if (!Current() || browser_->GetType() != BrowserWindowInterface::TYPE_NORMAL) return;
+  model_->AddObserver(this);
+  activation_ = browser_->RegisterDidBecomeActive(base::BindRepeating(
+      [](base::WeakPtr<AuxOrganizationWindowController> owner, BrowserWindowInterface*) {
+        if (owner && owner->Current() && owner->model_->GetActiveTab())
+          owner->RecordActivation(owner->model_->GetActiveTab()->GetHandle());
+      }, weak_.GetWeakPtr()));
+  session_restored_ = SessionRestore::RegisterOnSessionRestoredCallback(base::BindRepeating(
+      [](base::WeakPtr<AuxOrganizationWindowController> owner, Profile* profile, int) {
+        if (owner && owner->profile_ == profile) owner->QueueReconcile();
+      }, weak_.GetWeakPtr()));
+  auto* owner = organization::OrganizationProfileServiceFactory::GetForProfile(profile_);
+  if (owner) ready_subscription_ = owner->ObserveReady(base::BindRepeating(&AuxOrganizationWindowController::Bind, weak_.GetWeakPtr()));
+  Bind();
+}
+void AuxOrganizationWindowController::SetOrdinaryEligibility(
+    base::RepeatingCallback<bool(const tabs::TabInterface&)> eligible) {
+  if (shutdown_) return;
+  ordinary_eligible_ = std::move(eligible); QueueReconcile();
+}
+void AuxOrganizationWindowController::RefreshOrdinaryEligibility() { QueueReconcile(); }
+void AuxOrganizationWindowController::Bind() {
+  model_changes_ = {}; settled_ = {};
+  if (!Current()) return;
+  auto* organization = Organization(browser_.get()); if (!organization) return;
+  model_changes_ = organization->Observe(base::BindRepeating(
+      [](base::WeakPtr<AuxOrganizationWindowController> owner, const organization::Delta&) {
+        if (owner) owner->QueueReconcile();
+      }, weak_.GetWeakPtr()));
+  settled_ = organization->ObserveSettled(base::BindRepeating(&AuxOrganizationWindowController::QueueReconcile, weak_.GetWeakPtr()));
+  QueueReconcile();
+}
+void AuxOrganizationWindowController::RestoreActiveSpace(const std::string& id) {
+  if (!organization::IsCanonicalId(id)) return;
+  restored_space_ = id; QueueReconcile();
+}
+std::string AuxOrganizationWindowController::ActiveSpaceId() const { return Current() ? active_space_ : ""; }
+std::string AuxOrganizationWindowController::SelectedLogicalTabId() const {
+  if (!Current()) return {};
+  auto* contents = model_->GetActiveWebContents();
+  return contents ? GetRememberedPinnedTabEntryId(*contents).value_or("") : "";
+}
+void AuxOrganizationWindowController::PersistSpace() {
+  if (!Current() || active_space_.empty() || !browser_->GetSessionID().is_valid()) return;
+  if (auto* service = SessionServiceFactory::GetForProfile(profile_))
+    service->AddWindowExtraData(browser_->GetSessionID(), "aux_organization_space_id", active_space_);
+}
+bool AuxOrganizationWindowController::SelectSpace(const std::string& id) {
+  auto* organization = Current() ? Organization(browser_.get()) : nullptr;
+  if (!organization || organization->blocked() || !organization->snapshot().spaces.contains(id)) return false;
+  if (active_space_ != id) { active_space_ = id; PersistSpace(); Notify(); }
+  // Selection changes organization only; it never moves or destroys a loaded page.
+  return true;
+}
+void AuxOrganizationWindowController::QueueReconcile() {
+  if (!Current() || reconcile_queued_) return;
+  reconcile_queued_ = true;
+  base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(FROM_HERE,
+      base::BindOnce(&AuxOrganizationWindowController::Reconcile, weak_.GetWeakPtr()));
+}
+void AuxOrganizationWindowController::PersistIdentity(tabs::TabHandle handle, const std::string& id) {
+  auto* tab = handle.Get();
+  if (!Current() || !tab || model_->GetIndexOfTab(tab) < 0 || !tab->GetContents() ||
+      tab->GetContents()->GetBrowserContext() != profile_) return;
+  RememberPinnedTabEntryId(*tab->GetContents(), id);
+  const auto tab_id = sessions::SessionTabHelper::IdForTab(tab->GetContents());
+  if (tab_id.is_valid() && browser_->GetSessionID().is_valid()) {
+    if (auto* service = SessionServiceFactory::GetForProfile(profile_))
+      service->AddTabExtraData(browser_->GetSessionID(), tab_id, "aux_organization_tab_id", id);
+  }
+}
+void AuxOrganizationWindowController::Reconcile() {
+  reconcile_queued_ = false;
+  if (!Current()) return;
+  // Compensation takes priority over draining queued activation/navigation.
+  // Other windows may have started a real write before our archive callback;
+  // ObserveSettled schedules this same path once that write actually settles.
+  if (automatic_archive_ && automatic_archive_->committed) {
+    ContinueAutomaticArchive();
+    return;
+  }
+  auto* organization = Organization(browser_.get());
+  if (!organization || organization->blocked()) { Notify(); return; }
+  const auto alive = weak_.GetWeakPtr();
+  const auto& snapshot = organization->snapshot();
+  if (!restored_space_.empty() && snapshot.spaces.contains(restored_space_)) {
+    active_space_ = std::exchange(restored_space_, {}); PersistSpace();
+  }
+  if (!snapshot.spaces.contains(active_space_)) {
+    const organization::Space* first = nullptr;
+    for (const auto& [id, space] : snapshot.spaces) if (!first || space.order < first->order) first = &space;
+    if (!first) return;
+    active_space_ = first->id; PersistSpace();
+  }
+  std::vector<organization::Command> commands;
+  std::vector<std::pair<tabs::TabHandle, std::string>> assigned;
+  for (auto* tab : *model_) {
+    auto* contents = tab->GetContents();
+    if (!contents || contents->GetBrowserContext() != profile_) continue;
+    auto existing = views_.find(tab->GetHandle());
+    auto logical = GetRememberedPinnedTabEntryId(*contents).value_or("");
+    if (logical.empty() && existing != views_.end()) { logical = existing->second.logical_id; PersistIdentity(tab->GetHandle(), logical); }
+    if (!logical.empty() && snapshot.entries.contains(logical) && snapshot.entries.at(logical).kind == organization::EntryKind::kTab) {
+      candidate_observers_.erase(tab->GetHandle());
+      const auto& entry = snapshot.entries.at(logical);
+      auto& view = views_[tab->GetHandle()];
+      view.logical_id = logical;
+      view.view_id = PageIdentity::GetOrCreate(profile_, contents);
+      if (!view.observer || view.observer->web_contents() != contents) {
+        view.observer = std::make_unique<PageObserver>(contents, weak_.GetWeakPtr(), tab->GetHandle());
+        view.loaded_url = LogicalTabUrl(*contents).spec();
+        view.document_id = base::Uuid::GenerateRandomV4().AsLowercaseString();
+      }
+      if (entry.archived) {
+        // Session restore already retains this exact logical ID. An archived
+        // record plus a live native view is a local recovery, never a new tab.
+        view.pending_shared_url.clear();
+        continue;
+      }
+      if (view.loaded_url == entry.current_url) view.pending_shared_url.clear();
+      if (view.shared_url != entry.current_url) {
+        view.shared_url = entry.current_url;
+        view.pending_shared_url = view.loaded_url == entry.current_url ? "" : entry.current_url;
+      }
+      continue;
+    }
+    // Restore retains an unknown ID until the authoritative snapshot is known;
+    // never assign an existing record based on URL. Each ordinary tab gets its
+    // own logical ID, even when several URLs are identical.
+    if (tab->IsPinned() || tab->IsSplit() || IsBookmarkTabExcluded(tab, model_) ||
+        !ordinary_eligible_ || !ordinary_eligible_.Run(*tab)) {
+      candidate_observers_.erase(tab->GetHandle());
+      continue;
+    }
+    const auto* identity = PageIdentity::FromWebContents(contents);
+    if (identity && identity->runtime_owned()) {
+      candidate_observers_.erase(tab->GetHandle());
+      continue;
+    }
+    // An inserted ordinary tab may have no committed or visible URL yet.
+    // Observe it before waiting for URL/registration readiness; otherwise its
+    // first commit is missed and it needs an unrelated tab event to register.
+    auto& candidate = candidate_observers_[tab->GetHandle()];
+    if (!candidate || candidate->web_contents() != contents)
+      candidate = std::make_unique<PageObserver>(contents, weak_.GetWeakPtr(), tab->GetHandle());
+    if (registering_ || organization->pending() || opening_ ||
+        SessionRestore::IsRestoring(profile_) || commands.size() == 512) continue;
+    const GURL url = LogicalTabUrl(*contents, true);
+    if (!url.is_valid()) continue;
+    organization::Command command; command.action = organization::Action::kCreateTab;
+    command.id = base::Uuid::GenerateRandomV4().AsLowercaseString();
+    command.space_id = active_space_; command.title = base::UTF16ToUTF8(contents->GetTitle());
+    command.url = url.spec(); command.index = std::numeric_limits<uint64_t>::max();
+    assigned.push_back({tab->GetHandle(), command.id}); commands.push_back(std::move(command));
+  }
+  if (!commands.empty()) {
+    auto context = CaptureOrganizationContext(*browser_);
+    if (context) {
+      registering_ = true;
+      organization->ExecuteBatch(std::move(*context), std::move(commands), base::BindOnce(
+          [](base::WeakPtr<AuxOrganizationWindowController> owner,
+             std::vector<std::pair<tabs::TabHandle, std::string>> assigned, organization::CommitResult result) {
+            if (!owner) return; owner->registering_ = false;
+            if (result.error == organization::Error::kNone) {
+              for (const auto& [handle, id] : assigned) {
+                owner->PersistIdentity(handle, id); owner->dirty_navigation_.insert(handle);
+              }
+              owner->QueueReconcile();
+            }
+            owner->Notify();
+          }, weak_.GetWeakPtr(), std::move(assigned)));
+    }
+  } else if (!organization->pending() && !dirty_navigation_.empty()) {
+    const auto handle = *dirty_navigation_.begin(); dirty_navigation_.erase(handle);
+    PublishNavigation(handle);
+  } else if (!organization->pending() && !dirty_activation_.empty()) {
+    PublishActivity();
+  } else if (!organization->pending()) {
+    MaybeRunCleanup();
+  }
+  if (alive) Notify();
+}
+void AuxOrganizationWindowController::DocumentChanged(tabs::TabHandle handle) {
+  auto it = views_.find(handle);
+  if (it != views_.end()) it->second.document_id = base::Uuid::GenerateRandomV4().AsLowercaseString();
+  NavigationCommitted(handle);
+}
+void AuxOrganizationWindowController::NavigationCommitted(tabs::TabHandle handle) {
+  if (!Current()) return;
+  InvalidateAutomaticArchive(handle);
+  auto it = views_.find(handle);
+  if (it != views_.end() && handle.Get() && handle.Get()->GetContents())
+    it->second.loaded_url = LogicalTabUrl(*handle.Get()->GetContents()).spec();
+  dirty_navigation_.insert(handle); QueueReconcile();
+}
+void AuxOrganizationWindowController::PublishNavigation(tabs::TabHandle handle) {
+  auto* organization = Current() ? Organization(browser_.get()) : nullptr;
+  auto* tab = handle.Get();
+  if (!organization || !tab || !tab->GetContents() || model_->GetIndexOfTab(tab) < 0 ||
+      tab->GetContents()->GetBrowserContext() != profile_) return;
+  // A user tab can later become an Agent/runtime-owned surface. Preserve its
+  // prior canonical user record, but never publish the host's navigation.
+  const auto* identity = PageIdentity::FromWebContents(tab->GetContents());
+  if (IsBookmarkTabExcluded(tab, model_) || (identity && identity->runtime_owned()) ||
+      (!tab->IsPinned() && (!ordinary_eligible_ || !ordinary_eligible_.Run(*tab)))) return;
+  const auto id = GetRememberedPinnedTabEntryId(*tab->GetContents()).value_or("");
+  const auto found = organization->snapshot().entries.find(id);
+  if (found == organization->snapshot().entries.end() || found->second.archived) return;
+  auto commands = NavigationCommands(found->second, *tab->GetContents());
+  if (commands.empty()) { QueueReconcile(); return; }
+  auto context = CaptureOrganizationContext(*browser_);
+  if (!context) { dirty_navigation_.insert(handle); return; }
+  organization->ExecuteBatch(std::move(*context), std::move(commands), base::BindOnce(
+      [](base::WeakPtr<AuxOrganizationWindowController> owner, tabs::TabHandle handle, organization::CommitResult result) {
+        if (!owner) return;
+        if (result.error == organization::Error::kBusy || result.error == organization::Error::kStaleRevision)
+          owner->dirty_navigation_.insert(handle);
+        owner->QueueReconcile();
+      }, weak_.GetWeakPtr(), handle));
+}
+void AuxOrganizationWindowController::RecordActivation(tabs::TabHandle handle) {
+  auto* tab = handle.Get();
+  if (!Current() || !tab || model_->GetIndexOfTab(tab) < 0 || !tab->GetContents()) return;
+  const auto* identity = PageIdentity::FromWebContents(tab->GetContents());
+  if (IsBookmarkTabExcluded(tab, model_) || (identity && identity->runtime_owned())) return;
+  const int64_t now = base::Time::Now().InMillisecondsSinceUnixEpoch();
+  if (now <= 0) return;
+  dirty_activation_[handle] = static_cast<uint64_t>(now);
+  InvalidateAutomaticArchive(handle, static_cast<uint64_t>(now));
+  QueueReconcile();
+}
+void AuxOrganizationWindowController::PublishActivity() {
+  auto* organization = Current() ? Organization(browser_.get()) : nullptr;
+  if (!organization || organization->pending() || organization->blocked()) return;
+  auto context = CaptureOrganizationContext(*browser_); if (!context) return;
+  std::map<tabs::TabHandle, uint64_t> captured;
+  std::vector<organization::Command> commands;
+  for (auto it = dirty_activation_.begin(); it != dirty_activation_.end() && commands.size() < 512;) {
+    const auto handle = it->first; const auto time = it->second; it = dirty_activation_.erase(it);
+    auto* tab = handle.Get();
+    if (!tab || !tab->GetContents() || model_->GetIndexOfTab(tab) < 0) continue;
+    const auto id = GetRememberedPinnedTabEntryId(*tab->GetContents()).value_or("");
+    const auto found = organization->snapshot().entries.find(id);
+    if (found == organization->snapshot().entries.end() || found->second.archived ||
+        found->second.kind != organization::EntryKind::kTab || time <= found->second.last_active_unix_ms) continue;
+    organization::Command command; command.action = organization::Action::kMarkTabActive;
+    command.id = id; command.index = time; commands.push_back(std::move(command)); captured.emplace(handle, time);
+  }
+  if (commands.empty()) { QueueReconcile(); return; }
+  organization->RecordActivity(std::move(*context), std::move(commands), base::BindOnce(
+      [](base::WeakPtr<AuxOrganizationWindowController> owner,
+         std::map<tabs::TabHandle, uint64_t> captured, organization::CommitResult result) {
+        if (!owner) return;
+        if (result.error == organization::Error::kBusy || result.error == organization::Error::kStaleRevision)
+          for (const auto& [handle, time] : captured)
+            owner->dirty_activation_[handle] = std::max(owner->dirty_activation_[handle], time);
+        owner->QueueReconcile();
+      }, weak_.GetWeakPtr(), std::move(captured)));
+}
+bool AuxOrganizationWindowController::CanCleanup(const std::string& id) const {
+  const auto* organization = Current() ? Organization(browser_.get()) : nullptr;
+  if (!organization || organization->blocked() || organization->pending() ||
+      !organization->snapshot().cleanup_enabled || SessionRestore::IsRestoring(profile_)) return false;
+  const auto& snapshot = organization->snapshot();
+  const auto found = snapshot.entries.find(id);
+  if (found == snapshot.entries.end() || found->second.archived ||
+      found->second.kind != organization::EntryKind::kTab ||
+      organization::HasRetention(snapshot, id) || !found->second.last_active_unix_ms ||
+      !organization::CleanupIncludesSpace(snapshot, found->second.space_id)) return false;
+  const int64_t now = base::Time::Now().InMillisecondsSinceUnixEpoch();
+  if (now <= 0 || static_cast<uint64_t>(now) <= found->second.last_active_unix_ms ||
+      static_cast<uint64_t>(now) - found->second.last_active_unix_ms <
+          snapshot.cleanup_inactivity_days * 86400000ULL) return false;
+  bool safe = true;
+  ForEachCurrentBrowserWindowInterfaceOrderedByActivation([&](BrowserWindowInterface* browser) {
+    if (browser->GetProfile() != profile_) return true;
+    auto* controller = FromBrowser(browser);
+    auto* tabs = browser->GetTabStripModel();
+    if (!tabs) { safe = false; return false; }
+    for (auto* tab : *tabs) {
+      auto* contents = tab->GetContents();
+      if (!contents || GetRememberedPinnedTabEntryId(*contents) != id) continue;
+      if (!controller || !controller->Current() || !controller->ordinary_eligible_ ||
+          !controller->ordinary_eligible_.Run(*tab) || tab == tabs->GetActiveTab() || tab->IsPinned() ||
+          controller->Protected(tab) || controller->HasPendingSharedUpdate(id) ||
+          controller->dirty_navigation_.contains(tab->GetHandle()) ||
+          controller->dirty_activation_.contains(tab->GetHandle()) ||
+          LogicalTabUrl(*contents).spec() != found->second.current_url) {
+        safe = false; return false;
+      }
+    }
+    return true;
+  });
+  return safe;
+}
+void AuxOrganizationWindowController::MaybeRunCleanup() {
+  if (!Current() || !ready() || SessionRestore::IsRestoring(profile_)) return;
+  const auto* init = BrowserInitState::From(browser_.get());
+  if (!init || init->is_aux_profile_switch_cache()) return;
+  auto* organization = Organization(browser_.get());
+  if (!organization || organization->pending() || organization->blocked() ||
+      !dirty_navigation_.empty() || !dirty_activation_.empty()) return;
+  if (!cleanup_running_) {
+    if (!organization->TryClaimStartupCleanup()) return;
+    cleanup_ids_.clear(); cleanup_cursor_ = 0;
+    for (const auto& [id, entry] : organization->snapshot().entries)
+      if (!entry.archived && entry.kind == organization::EntryKind::kTab &&
+          entry.last_active_unix_ms && !organization::HasRetention(organization->snapshot(), id)) cleanup_ids_.push_back(id);
+    cleanup_running_ = true;
+  }
+  if (!cleanup_waiting_) CleanupNext();
+}
+void AuxOrganizationWindowController::CleanupNext() {
+  if (!Current() || !cleanup_running_ || cleanup_waiting_) return;
+  auto* organization = Organization(browser_.get());
+  if (!organization || organization->blocked()) { cleanup_running_ = false; return; }
+  if (organization->pending()) return;  // Actual settlement schedules reconciliation.
+  size_t examined = 0;
+  while (cleanup_cursor_ < cleanup_ids_.size()) {
+    if (++examined > 64) {
+      base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(FROM_HERE,
+          base::BindOnce(&AuxOrganizationWindowController::CleanupNext, weak_.GetWeakPtr()));
+      return;
+    }
+    const auto id = cleanup_ids_[cleanup_cursor_++];
+    if (!CanCleanup(id)) continue;
+    cleanup_waiting_ = true;
+    ArchiveEntry(id, false, base::BindOnce(
+        [](base::WeakPtr<AuxOrganizationWindowController> owner, bool completed) {
+          if (!owner) return;
+          owner->cleanup_waiting_ = false;
+          if (!completed) {
+            owner->cleanup_running_ = false; owner->cleanup_ids_.clear();
+            return;  // Cancelled/uncertain cleanup never retries another close.
+          }
+          base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(FROM_HERE,
+              base::BindOnce(&AuxOrganizationWindowController::CleanupNext, owner));
+        }, weak_.GetWeakPtr()), true);
+    return;
+  }
+  cleanup_running_ = false; cleanup_ids_.clear();
+}
+void AuxOrganizationWindowController::InvalidateAutomaticArchive(
+    tabs::TabHandle handle, uint64_t activated_at) {
+  auto* tab = handle.Get();
+  if (!Current() || !tab || model_->GetIndexOfTab(tab) < 0 || !tab->GetContents()) return;
+  const auto id = GetRememberedPinnedTabEntryId(*tab->GetContents());
+  if (!id) return;
+  ForEachCurrentBrowserWindowInterfaceOrderedByActivation([&](BrowserWindowInterface* browser) {
+    if (browser->GetProfile() != profile_) return true;
+    auto* owner = FromBrowser(browser);
+    auto* pending = owner ? owner->automatic_archive_.get() : nullptr;
+    if (pending && pending->profile.get() == profile_ && pending->original.id == *id) {
+      // Sticky cancellation: selecting then leaving a tab during the write is
+      // still activity even if another window drains its queued timestamps.
+      pending->cancelling = true;
+      pending->activated_at = std::max(pending->activated_at, activated_at);
+      owner->QueueReconcile();
+    }
+    return true;
+  });
+}
+bool AuxOrganizationWindowController::AutomaticArchiveStillEligible() const {
+  const auto* pending = automatic_archive_.get();
+  if (!pending || !Current() || pending->cancelling ||
+      pending->profile.get() != profile_ || SessionRestore::IsRestoring(profile_)) return false;
+  auto* coordinator = organization::OrganizationProfileServiceFactory::GetForProfileIfExists(profile_);
+  const auto* service = coordinator ? coordinator->model() : nullptr;
+  if (!service || service->blocked() || service->pending() ||
+      coordinator->owner_generation() != pending->generation) return false;
+  const auto& snapshot = service->snapshot();
+  const auto found = snapshot.entries.find(pending->original.id);
+  if (found == snapshot.entries.end()) return false;
+  const auto& entry = found->second;
+  const auto& before = pending->original;
+  const auto now = base::Time::Now().InMillisecondsSinceUnixEpoch();
+  if (!entry.archived || entry.archive_operation_id != pending->operation_id ||
+      entry.kind != organization::EntryKind::kTab || entry.current_url != before.current_url ||
+      entry.launch_url != before.launch_url || entry.title != before.title ||
+      entry.parent_id != before.parent_id || entry.space_id != before.space_id ||
+      entry.last_active_unix_ms != before.last_active_unix_ms ||
+      !entry.last_active_unix_ms || entry.last_active_unix_ms > pending->cutoff ||
+      !snapshot.cleanup_enabled || organization::HasRetention(snapshot, entry.id) ||
+      !organization::CleanupIncludesSpace(snapshot, entry.space_id) || now <= 0 ||
+      static_cast<uint64_t>(now) <= entry.last_active_unix_ms ||
+      static_cast<uint64_t>(now) - entry.last_active_unix_ms <
+          snapshot.cleanup_inactivity_days * 86400000ULL) return false;
+  // Every original view must still be this exact document. Successfully
+  // unloaded targets are removed by our own close loop, never by URL matching.
+  for (const auto& [owner, handle, logical, url, document] : pending->targets) {
+    auto* tab = handle.Get();
+    if (!owner || !owner->Current() || owner->profile_ != profile_ || !tab ||
+        owner->model_->GetIndexOfTab(tab) < 0 || !tab->GetContents()) return false;
+    const auto view = owner->views_.find(handle);
+    if (view == owner->views_.end() || view->second.logical_id != logical ||
+        view->second.document_id != document || view->second.loaded_url != url ||
+        GetRememberedPinnedTabEntryId(*tab->GetContents()) != logical ||
+        LogicalTabUrl(*tab->GetContents()).spec() != url) return false;
+  }
+  bool safe = true;
+  ForEachCurrentBrowserWindowInterfaceOrderedByActivation([&](BrowserWindowInterface* browser) {
+    if (browser->GetProfile() != profile_) return true;
+    auto* owner = FromBrowser(browser);
+    auto* tabs = browser->GetTabStripModel();
+    if (!tabs) { safe = false; return false; }
+    for (auto* tab : *tabs) {
+      auto* contents = tab->GetContents();
+      if (!contents || GetRememberedPinnedTabEntryId(*contents) != entry.id) continue;
+      const bool captured = std::ranges::any_of(pending->targets, [&](const auto& target) {
+        return std::get<0>(target).get() == owner && std::get<1>(target) == tab->GetHandle();
+      });
+      if (!captured || !owner || !owner->Current() || !owner->ordinary_eligible_ ||
+          !owner->ordinary_eligible_.Run(*tab) || tab == tabs->GetActiveTab() ||
+          tab->IsPinned() || owner->Protected(tab) || owner->HasPendingSharedUpdate(entry.id) ||
+          owner->dirty_activation_.contains(tab->GetHandle()) ||
+          owner->dirty_navigation_.contains(tab->GetHandle())) {
+        safe = false; return false;
+      }
+    }
+    return true;
+  });
+  return safe;
+}
+void AuxOrganizationWindowController::FinishAutomaticArchive(
+    const std::string& operation_id, bool success) {
+  if (!automatic_archive_ || automatic_archive_->operation_id != operation_id) return;
+  auto pending = std::move(automatic_archive_);
+  const auto alive = weak_.GetWeakPtr();
+  if (pending->reply) std::move(pending->reply).Run(success);
+  if (alive) { QueueReconcile(); Notify(); }
+}
+void AuxOrganizationWindowController::AutomaticArchiveCommitted(
+    const std::string& operation_id, bool committed) {
+  if (!automatic_archive_ || automatic_archive_->operation_id != operation_id) return;
+  if (!committed) { FinishAutomaticArchive(operation_id, false); return; }
+  automatic_archive_->committed = true;
+  while (true) {
+    if (!AutomaticArchiveStillEligible()) {
+      automatic_archive_->cancelling = true;
+      ContinueAutomaticArchive();
+      return;
+    }
+    if (automatic_archive_->targets.empty()) {
+      FinishAutomaticArchive(operation_id, true);
+      return;
+    }
+    const auto target = automatic_archive_->targets.back();
+    const auto alive = weak_.GetWeakPtr();
+    const bool closed = std::get<0>(target)->CloseViewNow(std::get<1>(target));
+    if (!alive || !automatic_archive_ || automatic_archive_->operation_id != operation_id) return;
+    if (!closed) {
+      automatic_archive_->cancelling = true;
+      ContinueAutomaticArchive();
+      return;
+    }
+    automatic_archive_->targets.pop_back();
+    // Recheck every remaining same-profile view after each synchronous close.
+    // Close observers may activate a sibling or begin a real profile write.
+  }
+}
+void AuxOrganizationWindowController::ContinueAutomaticArchive() {
+  auto* pending = automatic_archive_.get();
+  if (!pending || !pending->committed || pending->restoring) return;
+  const auto operation_id = pending->operation_id;
+  auto* coordinator = pending->profile ?
+      organization::OrganizationProfileServiceFactory::GetForProfileIfExists(pending->profile.get()) : nullptr;
+  auto* service = coordinator ? coordinator->model() : nullptr;
+  if (!Current() || pending->profile.get() != profile_ || !service || service->blocked() ||
+      coordinator->owner_generation() != pending->generation) {
+    FinishAutomaticArchive(operation_id, false); return;
+  }
+  const auto& snapshot = service->snapshot();
+  const auto found = snapshot.entries.find(pending->original.id);
+  if (found == snapshot.entries.end() || !found->second.archived ||
+      found->second.archive_operation_id != operation_id) {
+    FinishAutomaticArchive(operation_id, false); return;
+  }
+  // Never retry a close after a cancellation, and never overwrite a newer
+  // archive operation. Busy is temporary: the existing settlement observer
+  // queues this compensation again using the then-current revision.
+  pending->cancelling = true;
+  if (service->pending()) return;
+  organization::Context context{snapshot.profile_id, pending->generation,
+      snapshot.revision, base::Uuid::GenerateRandomV4().AsLowercaseString()};
+  organization::Command restore; restore.action = organization::Action::kRestore;
+  restore.id = pending->original.id; restore.index = pending->original.order;
+  std::vector<organization::Command> commands; commands.push_back(std::move(restore));
+  if (pending->activated_at) {
+    organization::Command activity; activity.action = organization::Action::kMarkTabActive;
+    activity.id = pending->original.id; activity.index = pending->activated_at;
+    commands.push_back(std::move(activity));
+  }
+  pending->restoring = true;
+  service->ExecuteBatch(std::move(context), std::move(commands), base::BindOnce(
+      [](base::WeakPtr<AuxOrganizationWindowController> owner, std::string operation,
+         base::ScopedClosureRunner dropped, organization::CommitResult result) {
+        dropped.ReplaceClosure({});
+        if (!owner || !owner->automatic_archive_ ||
+            owner->automatic_archive_->operation_id != operation) return;
+        auto* state = owner->automatic_archive_.get();
+        auto* current = state->profile ? organization::OrganizationProfileServiceFactory::GetForProfileIfExists(state->profile.get()) : nullptr;
+        const auto* model = current ? current->model() : nullptr;
+        if (result.error == organization::Error::kNone && owner->Current() &&
+            owner->profile_ == state->profile.get() && model && !model->blocked() &&
+            current->owner_generation() == state->generation) {
+          const auto id = state->original.id;
+          // Another window may have consumed a queued navigation while this
+          // identity was briefly archived. Requeue genuine divergent commits
+          // against the now-restored ID; never navigate/replace a native view.
+          ForEachCurrentBrowserWindowInterfaceOrderedByActivation([&](BrowserWindowInterface* browser) {
+            if (browser->GetProfile() != state->profile.get()) return true;
+            auto* controller = FromBrowser(browser);
+            if (!controller || !controller->Current()) return true;
+            for (auto* tab : *controller->model_) {
+              auto* contents = tab->GetContents();
+              if (!contents || GetRememberedPinnedTabEntryId(*contents) != id) continue;
+              if (LogicalTabUrl(*contents).spec() != state->original.current_url)
+                controller->dirty_navigation_.insert(tab->GetHandle());
+            }
+            controller->QueueReconcile();
+            return true;
+          });
+        }
+        // Even successful durable compensation means cleanup was cancelled.
+        // Refusal/uncertainty/owner loss leaves the native recovery untouched.
+        owner->FinishAutomaticArchive(operation, false);
+      }, weak_.GetWeakPtr(), operation_id,
+      base::ScopedClosureRunner(base::BindOnce(
+          &AuxOrganizationWindowController::FinishAutomaticArchive,
+          weak_.GetWeakPtr(), operation_id, false))));
+}
+bool AuxOrganizationWindowController::Protected(tabs::TabInterface* tab) const {
+  if (!Current() || !tab || model_->GetIndexOfTab(tab) < 0 || tab->IsSplit()) return true;
+  auto* contents = tab->GetContents();
+  if (!contents || contents->GetBrowserContext() != profile_ || contents->IsLoading() ||
+      contents->IsCurrentlyAudible() || contents->IsBeingCaptured() ||
+      contents->NeedToFireBeforeUnloadOrUnloadEvents() || IsBookmarkTabExcluded(tab, model_)) return true;
+  // Use actual selected-product activity owners. The older independent
+  // EgressController/creator service is not in this build and is not authority.
+  const auto* identity = PageIdentity::FromWebContents(contents);
+  if (identity && identity->runtime_owned()) return true;
+  if (content::DevToolsAgentHost::HasFor(contents) &&
+      content::DevToolsAgentHost::GetOrCreateFor(contents)->IsAttached()) return true;
+  auto* actor_controller = actor::ui::ActorUiTabController::Get(tab->GetUnownedUserDataHost());
+  if (actor_controller && !actor_controller->IsColdForAuxProfileSwitch()) return true;
+  const auto capture = MediaCaptureDevicesDispatcher::GetInstance()->GetMediaStreamCaptureIndicator();
+  if (capture->IsCapturingUserMedia(contents) || capture->IsBeingMirrored(contents) ||
+      capture->IsCapturingTab(contents) || capture->IsCapturingWindow(contents) || capture->IsCapturingDisplay(contents)) return true;
+  // Conservative profile-wide protection until a download can be attributed
+  // exactly to a view; unknown ownership never authorizes an unload.
+  return profile_->GetDownloadManager()->InProgressCount() != 0;
+}
+void AuxOrganizationWindowController::SplitLogicalTabs(
+    const std::string& source, const std::string& target, bool stacked, bool leading,
+    base::OnceCallback<void(bool)> reply) {
+  if (!IsProjectionReady() || source == target) { std::move(reply).Run(false); return; }
+  OpenLogicalTab(target, base::BindOnce(
+      [](base::WeakPtr<AuxOrganizationWindowController> owner, std::string source_id,
+         std::string target_id, bool vertical, bool before, base::OnceCallback<void(bool)> done, bool opened) {
+        if (!owner || !opened) { std::move(done).Run(false); return; }
+        owner->OpenLogicalTab(source_id, base::BindOnce(
+            [](base::WeakPtr<AuxOrganizationWindowController> current, std::string source_key,
+               std::string target_key, bool is_vertical, bool insert_before, base::OnceCallback<void(bool)> completed, bool source_opened) {
+              if (!current || !current->Current() || !source_opened) {
+                std::move(completed).Run(false); return;
+              }
+              tabs::TabInterface* source_tab = nullptr;
+              tabs::TabInterface* target_tab = nullptr;
+              for (int i = 0; i < current->model_->count(); ++i) {
+                auto* tab = current->model_->GetTabAtIndex(i);
+                if (!tab->GetContents()) continue;
+                auto logical_id = GetRememberedPinnedTabEntryId(*tab->GetContents());
+                if (logical_id == source_key) source_tab = tab;
+                if (logical_id == target_key) target_tab = tab;
+              }
+              const bool joined = JoinNativeSplit(*current->browser_, target_tab, source_tab,
+                  is_vertical ? split_tabs::SplitPaneTree::Axis::kVertical
+                              : split_tabs::SplitPaneTree::Axis::kHorizontal, insert_before);
+              current->QueueReconcile();
+              std::move(completed).Run(joined);
+            }, owner, source_id, target_id, vertical, before, std::move(done)));
+      }, weak_.GetWeakPtr(), source, target, stacked, leading, std::move(reply)));
+}
+
+void AuxOrganizationWindowController::OpenLogicalTab(const std::string& id, base::OnceCallback<void(bool)> reply) {
+  auto* organization = Current() ? Organization(browser_.get()) : nullptr;
+  if (!organization || organization->blocked() || organization->pending()) { std::move(reply).Run(false); return; }
+  const auto found = organization->snapshot().entries.find(id);
+  if (found == organization->snapshot().entries.end() || found->second.archived ||
+      found->second.kind != organization::EntryKind::kTab) { std::move(reply).Run(false); return; }
+  for (auto* tab : *model_) {
+    if (tab->GetContents() && GetRememberedPinnedTabEntryId(*tab->GetContents()) == id) {
+      const auto alive = weak_.GetWeakPtr();
+      const auto handle = tab->GetHandle();
+      model_->ActivateTabAt(model_->GetIndexOfTab(tab), TabStripUserGestureDetails(TabStripUserGestureDetails::GestureType::kNone));
+      if (alive && Current()) RecordActivation(handle);
+      std::move(reply).Run(true); return;
+    }
+  }
+  const auto entry = found->second; const GURL url(entry.current_url);
+  if (!url.is_valid()) { std::move(reply).Run(false); return; }
+  // The real navigator remains the owner of navigation policy, schemes and
+  // permissions. No other window is focused, navigated, or detached.
+  const auto alive = weak_.GetWeakPtr();
+  opening_ = true;
+  NavigateParams params(browser_.get(), url, ui::PAGE_TRANSITION_AUTO_BOOKMARK);
+  params.disposition = WindowOpenDisposition::NEW_FOREGROUND_TAB;
+  Navigate(&params);
+  if (alive) opening_ = false;
+  if (!alive || !Current() || !params.navigated_or_inserted_contents) { std::move(reply).Run(false); return; }
+  auto* contents = params.navigated_or_inserted_contents.get();
+  const int index = model_->GetIndexOfWebContents(contents);
+  if (index < 0 || contents->GetBrowserContext() != profile_) { std::move(reply).Run(false); return; }
+  PersistIdentity(model_->GetTabAtIndex(index)->GetHandle(), id);
+  RecordActivation(model_->GetTabAtIndex(index)->GetHandle());
+  if (entry.space_id.empty()) model_->SetTabPinned(index, true);
+  if (alive) QueueReconcile();
+  std::move(reply).Run(static_cast<bool>(alive));
+}
+bool AuxOrganizationWindowController::IsExplicitUnload(tabs::TabHandle handle) const { return explicit_unloads_.contains(handle); }
+bool AuxOrganizationWindowController::CloseViewNow(tabs::TabHandle handle) {
+  auto* tab = handle.Get(); if (Protected(tab)) return false;
+  const auto alive = weak_.GetWeakPtr();
+  const int index = model_->GetIndexOfTab(tab);
+  explicit_unloads_.insert(handle);
+  model_->CloseWebContentsAt(index, CLOSE_USER_GESTURE);
+  if (!alive) return !handle.Get();
+  explicit_unloads_.erase(handle);
+  return !handle.Get() || model_->GetIndexOfTab(handle.Get()) < 0;
+}
+void AuxOrganizationWindowController::EnsureSavedThenClose(tabs::TabHandle handle, base::OnceCallback<void(bool)> reply) {
+  if (Protected(handle.Get())) { std::move(reply).Run(false); return; }
+  auto* organization = Organization(browser_.get());
+  auto* tab = handle.Get();
+  const auto id = GetRememberedPinnedTabEntryId(*tab->GetContents()).value_or("");
+  if (!organization || !organization->snapshot().entries.contains(id)) { std::move(reply).Run(false); return; }
+  // Closing this view is not acceptance of a remote URL, nor permission to
+  // overwrite its newer shared record with this view's older document.
+  if (organization->snapshot().entries.at(id).archived || HasPendingSharedUpdate(id)) {
+    std::move(reply).Run(CloseViewNow(handle)); return;
+  }
+  auto commands = NavigationCommands(organization->snapshot().entries.at(id), *tab->GetContents());
+  if (commands.empty()) { std::move(reply).Run(CloseViewNow(handle)); return; }
+  auto context = CaptureOrganizationContext(*browser_);
+  if (!context) { std::move(reply).Run(false); return; }
+  const std::string url = tab->GetContents()->GetLastCommittedURL().spec();
+  organization->ExecuteBatch(std::move(*context), std::move(commands), base::BindOnce(
+      [](base::WeakPtr<AuxOrganizationWindowController> owner, tabs::TabHandle handle, std::string url,
+         base::OnceCallback<void(bool)> reply, organization::CommitResult result) {
+        bool closed = false;
+        if (owner && result.error == organization::Error::kNone && handle.Get() &&
+            handle.Get()->GetContents() && handle.Get()->GetContents()->GetLastCommittedURL().spec() == url)
+          closed = owner->CloseViewNow(handle);
+        std::move(reply).Run(closed);
+      }, weak_.GetWeakPtr(), handle, url, std::move(reply)));
+}
+void AuxOrganizationWindowController::UnloadLogicalTab(const std::string& id, base::OnceCallback<void(bool)> reply) {
+  if (!Current()) { std::move(reply).Run(false); return; }
+  for (auto* tab : *model_) if (tab->GetContents() && GetRememberedPinnedTabEntryId(*tab->GetContents()) == id) {
+    EnsureSavedThenClose(tab->GetHandle(), std::move(reply)); return;
+  }
+  // Already-unloaded logical entries are successful only if they still exist.
+  auto* organization = Organization(browser_.get());
+  std::move(reply).Run(organization && organization->snapshot().entries.contains(id) &&
+      !organization->snapshot().entries.at(id).archived);
+}
+void AuxOrganizationWindowController::ArchiveLogicalEntry(const std::string& id, base::OnceCallback<void(bool)> reply) {
+  ArchiveEntry(id, false, std::move(reply));
+}
+void AuxOrganizationWindowController::ArchiveFolderAndContents(const std::string& id, base::OnceCallback<void(bool)> reply) {
+  ArchiveEntry(id, true, std::move(reply));
+}
+void AuxOrganizationWindowController::ArchiveEntry(const std::string& id, bool allow_pinned_folder,
+                                                   base::OnceCallback<void(bool)> reply, bool automated) {
+  auto* organization = Current() ? Organization(browser_.get()) : nullptr;
+  if (!organization || organization->pending() || organization->blocked()) { std::move(reply).Run(false); return; }
+  const auto& snapshot = organization->snapshot();
+  if (!snapshot.entries.contains(id)) { std::move(reply).Run(false); return; }
+  const auto entry = snapshot.entries.at(id);
+  if (automated && !CanCleanup(id)) { std::move(reply).Run(false); return; }
+  if (entry.archived || (entry.space_id.empty() &&
+      (!allow_pinned_folder || entry.kind != organization::EntryKind::kFolder ||
+       !snapshot.spaces.contains(active_space_)))) { std::move(reply).Run(false); return; }
+  std::set<std::string> subtree{id};
+  for (size_t depth = 0; depth < organization::kMaxDepth; ++depth) {
+    bool added = false;
+    for (const auto& [entry_id, descendant] : snapshot.entries)
+      if (!descendant.archived && subtree.contains(descendant.parent_id) && subtree.insert(entry_id).second) added = true;
+    if (!added) break;
+  }
+  auto context = CaptureOrganizationContext(*browser_);
+  if (!context) { std::move(reply).Run(false); return; }
+  const std::string generation = context->owner_generation;
+  // Only exact, currently unprotected documents are candidates for removal
+  // after durable commit. All others remain as local recovery views.
+  using Target = AutomaticArchive::Target;
+  std::vector<Target> targets;
+  bool owned = true;
+  ForEachCurrentBrowserWindowInterfaceOrderedByActivation([&](BrowserWindowInterface* browser) {
+    if (browser->GetProfile() != profile_) return true;
+    auto* controller = FromBrowser(browser);
+    for (auto* tab : *browser->GetTabStripModel()) {
+      auto* contents = tab->GetContents();
+      if (!contents || !subtree.contains(GetRememberedPinnedTabEntryId(*contents).value_or(""))) continue;
+      if (!controller || !controller->Current()) { owned = false; return false; }
+      const auto logical = GetRememberedPinnedTabEntryId(*contents).value();
+      const auto view = controller->views_.find(tab->GetHandle());
+      if (controller->Protected(tab) || view == controller->views_.end() ||
+          LogicalTabUrl(*contents).spec() != snapshot.entries.at(logical).current_url) {
+        if (automated) { owned = false; return false; }
+        continue;
+      }
+      targets.emplace_back(controller->weak_.GetWeakPtr(), tab->GetHandle(), logical,
+          LogicalTabUrl(*contents).spec(), view->second.document_id);
+    }
+    return true;
+  });
+  if (!owned || (automated && !CanCleanup(id))) { std::move(reply).Run(false); return; }
+  const auto profile = profile_->GetWeakPtr();
+  auto profile_lifetime = ScopedProfileKeepAlive::TryAcquire(profile_, ProfileKeepAliveOrigin::kChromeViewsDelegate);
+  if (!profile_lifetime) { std::move(reply).Run(false); return; }
+  std::vector<organization::Command> commands;
+  if (entry.space_id.empty()) {
+    organization::Command move; move.action = organization::Action::kMoveEntry;
+    move.id = id; move.space_id = active_space_; move.index = std::numeric_limits<uint64_t>::max();
+    commands.push_back(std::move(move));
+  }
+  organization::Command command; command.action = organization::Action::kArchive; command.id = id;
+  commands.push_back(std::move(command));
+  if (automated) {
+    if (automatic_archive_) { std::move(reply).Run(false); return; }
+    const auto now = base::Time::Now().InMillisecondsSinceUnixEpoch();
+    const auto age = snapshot.cleanup_inactivity_days * 86400000ULL;
+    if (now <= 0 || static_cast<uint64_t>(now) < age) { std::move(reply).Run(false); return; }
+    auto pending = std::make_unique<AutomaticArchive>();
+    pending->original = entry; pending->operation_id = context->operation_id;
+    pending->generation = generation; pending->profile = profile;
+    pending->profile_lifetime = std::move(profile_lifetime);
+    pending->targets = std::move(targets); pending->reply = std::move(reply);
+    pending->cutoff = static_cast<uint64_t>(now) - age;
+    const auto operation_id = pending->operation_id;
+    automatic_archive_ = std::move(pending);
+    organization->ExecuteBatch(std::move(*context), std::move(commands), base::BindOnce(
+        [](base::WeakPtr<AuxOrganizationWindowController> owner, std::string operation,
+           base::ScopedClosureRunner dropped, organization::CommitResult result) {
+          dropped.ReplaceClosure({});
+          if (owner) owner->AutomaticArchiveCommitted(operation, result.error == organization::Error::kNone);
+        }, weak_.GetWeakPtr(), operation_id,
+        base::ScopedClosureRunner(base::BindOnce(
+            &AuxOrganizationWindowController::FinishAutomaticArchive,
+            weak_.GetWeakPtr(), operation_id, false))));
+    return;
+  }
+  // Storage refusal/uncertainty leaves every native view untouched. Once the
+  // shared archive is durable, late navigation, protection, close refusal, or
+  // a newly attached view remains recoverable under that archived identity.
+  organization->ExecuteBatch(std::move(*context), std::move(commands), base::BindOnce(
+      [](std::unique_ptr<ScopedProfileKeepAlive> profile_lifetime,
+         base::WeakPtr<Profile> expected_profile, std::string expected_generation,
+         std::vector<Target> captured_targets, base::OnceCallback<void(bool)> done,
+         organization::CommitResult result) {
+        auto* coordinator = expected_profile ? organization::OrganizationProfileServiceFactory::GetForProfileIfExists(expected_profile.get()) : nullptr;
+        if (result.error != organization::Error::kNone || !coordinator ||
+            coordinator->owner_generation() != expected_generation || !coordinator->model() ||
+            coordinator->model()->blocked()) { std::move(done).Run(false); return; }
+        for (const auto& [owner, handle, logical, url, document] : captured_targets) {
+          auto* tab = handle.Get();
+          if (!owner || !owner->Current() || owner->profile_ != expected_profile.get() ||
+              !tab || owner->model_->GetIndexOfTab(tab) < 0 || !tab->GetContents()) continue;
+          auto* current_owner = organization::OrganizationProfileServiceFactory::GetForProfileIfExists(expected_profile.get());
+          const auto* current_model = current_owner ? current_owner->model() : nullptr;
+          if (!current_model || current_model->blocked() || current_model->pending() ||
+              current_owner->owner_generation() != expected_generation ||
+              !current_model->snapshot().entries.contains(logical) ||
+              !current_model->snapshot().entries.at(logical).archived) continue;
+          const auto live = owner->views_.find(handle);
+          if (live == owner->views_.end() || live->second.document_id != document ||
+              GetRememberedPinnedTabEntryId(*tab->GetContents()) != logical ||
+              LogicalTabUrl(*tab->GetContents()).spec() != url) continue;
+          owner->CloseViewNow(handle);  // Rechecks actual protection/beforeunload.
+        }
+        // Publication already queues every same-profile controller refresh.
+        // Success describes shared membership, not destruction of protected work.
+        std::move(done).Run(true);
+      }, std::move(profile_lifetime), profile, generation, std::move(targets), std::move(reply)));
+}
+bool AuxOrganizationWindowController::HandleClose(tabs::TabHandle handle) {
+  if (!Current() || model_->closing_all() || IsExplicitUnload(handle)) return false;
+  auto* tab = handle.Get(); if (!tab || !tab->GetContents() || tab->IsSplit()) return false;
+  const auto id = GetRememberedPinnedTabEntryId(*tab->GetContents()).value_or("");
+  auto* organization = Organization(browser_.get());
+  if (id.empty() || !organization || !organization->snapshot().entries.contains(id)) return false;
+  if (organization->snapshot().entries.at(id).archived) {
+    base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(FROM_HERE,
+        base::BindOnce([](base::WeakPtr<AuxOrganizationWindowController> owner, tabs::TabHandle target) {
+          if (owner && owner->Current()) owner->CloseViewNow(target);
+        }, weak_.GetWeakPtr(), handle));
+    return true;
+  }
+  const bool pin = organization::HasRetention(organization->snapshot(), id);
+  base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(FROM_HERE, base::BindOnce(
+      [](base::WeakPtr<AuxOrganizationWindowController> owner, std::string id, bool pin) {
+        if (!owner) return;
+        auto done = base::BindOnce([](base::WeakPtr<AuxOrganizationWindowController> owner, bool) { if (owner) owner->Notify(); }, owner);
+        if (pin) owner->UnloadLogicalTab(id, std::move(done)); else owner->ArchiveLogicalEntry(id, std::move(done));
+      }, weak_.GetWeakPtr(), id, pin));
+  return true;
+}
+bool AuxOrganizationWindowController::HasPendingSharedUpdate(const std::string& id) const {
+  for (const auto& [handle, view] : views_) if (view.logical_id == id && !view.pending_shared_url.empty()) return true;
+  return false;
+}
+bool AuxOrganizationWindowController::IsLogicalTabSelected(const std::string& id) const {
+  const auto* organization = Current() ? Organization(browser_.get()) : nullptr;
+  if (!organization || organization->blocked()) return false;
+  const auto entry = organization->snapshot().entries.find(id);
+  if (entry == organization->snapshot().entries.end() || entry->second.archived ||
+      entry->second.kind != organization::EntryKind::kTab || entry->second.space_id != active_space_) return false;
+  const auto handle = FindLocalView(id);
+  return handle && model_->IsTabSelected(model_->GetIndexOfTab(handle->Get()));
+}
+bool AuxOrganizationWindowController::SelectLoadedLogicalTab(const std::string& id,
+    bool toggle, bool range, const std::vector<std::string>& visible_ids) {
+  auto* organization = Current() ? Organization(browser_.get()) : nullptr;
+  if ((!toggle && !range) || !organization || organization->blocked() ||
+      !ordinary_eligible_ || !model_->delegate()->IsTabStripEditable()) return false;
+  const std::set<std::string> visible(visible_ids.begin(), visible_ids.end());
+  std::map<int, std::string> eligible;
+  std::map<std::string, int> native_indices;
+  int target = -1;
+  for (int index = 0; index < model_->count(); ++index) {
+    auto* tab = model_->GetTabAtIndex(index);
+    auto* contents = tab->GetContents();
+    if (!contents || contents->GetBrowserContext() != profile_ || tab->IsPinned() || tab->IsSplit() ||
+        IsBookmarkTabExcluded(tab, model_) || !ordinary_eligible_.Run(*tab)) continue;
+    const auto* identity = PageIdentity::FromWebContents(contents);
+    if (identity && identity->runtime_owned()) continue;
+    const auto logical = GetRememberedPinnedTabEntryId(*contents).value_or("");
+    const auto entry = organization->snapshot().entries.find(logical);
+    if (!visible.contains(logical) || entry == organization->snapshot().entries.end() ||
+        entry->second.kind != organization::EntryKind::kTab || entry->second.archived ||
+        entry->second.space_id != active_space_) continue;
+    // Ambiguous duplicated session identities never select a guessed view.
+    if (!native_indices.emplace(logical, index).second) return false;
+    eligible.emplace(index, logical);
+    if (logical == id) target = index;
+  }
+  if (target < 0) return false;  // Never navigate or instantiate an unloaded row.
+  ui::ListSelectionModel selection;
+  if (toggle) for (const auto& [index, logical] : eligible)
+    if (model_->IsTabSelected(index)) selection.AddIndexToSelection(index);
+  int anchor = target;
+  if (auto* anchor_tab = model_->selection_model().anchor_tab()) {
+    const int native_anchor = model_->GetIndexOfTab(anchor_tab);
+    if (eligible.contains(native_anchor)) anchor = native_anchor;
+  }
+  if (range) {
+    // Honor the actual native anchor, but range over displayed logical rows:
+    // folders/reordering can make sidebar order differ from native strip order.
+    const auto first = std::ranges::find(visible_ids, eligible.at(anchor));
+    const auto last = std::ranges::find(visible_ids, id);
+    if (first == visible_ids.end() || last == visible_ids.end()) return false;
+    for (auto it = std::min(first, last); it != std::max(first, last) + 1; ++it)
+      if (auto index = native_indices.find(*it); index != native_indices.end())
+        selection.AddIndexToSelection(index->second);
+    selection.set_anchor(anchor); selection.set_active(target);
+  } else {
+    if (selection.IsSelected(target)) {
+      if (selection.size() == 1) return true;  // Native tabs require one active selection.
+      selection.RemoveIndexFromSelection(target);
+      const int active = model_->active_index();
+      selection.set_active(active >= 0 && selection.IsSelected(active)
+          ? static_cast<size_t>(active) : *selection.selected_indices().begin());
+    } else {
+      selection.AddIndexToSelection(target); selection.set_active(target);
+    }
+    selection.set_anchor(target);
+  }
+  // No selected entry is split, so native split expansion cannot add hidden
+  // panes. Native selection remains authoritative for all consumers, including
+  // Tidy; local logical IDs merely resolve this window's existing indices.
+  const auto alive = weak_.GetWeakPtr();
+  model_->SetSelectionFromModel(std::move(selection));
+  if (alive && Current()) { QueueReconcile(); Notify(); }
+  return true;
+}
+bool AuxOrganizationWindowController::IsLogicalEntryProtected(const std::string& id) const {
+  const auto* organization = Current() ? Organization(browser_.get()) : nullptr;
+  if (!organization || organization->blocked() || organization->pending() || !organization->snapshot().entries.contains(id)) return true;
+  if (organization::HasRetention(organization->snapshot(), id)) return true;
+  const auto& entries = organization->snapshot().entries;
+  for (const auto& [child_id, child] : entries) {
+    if (child.archived || !child.keep_in_space) continue;
+    std::string ancestor = child_id;
+    for (size_t depth = 0; depth <= organization::kMaxDepth && !ancestor.empty(); ++depth) {
+      if (ancestor == id) return true;
+      const auto found = entries.find(ancestor); if (found == entries.end()) return true;
+      ancestor = found->second.parent_id;
+    }
+  }
+  for (const auto& [handle, view] : views_) {
+    std::string ancestor = view.logical_id;
+    for (size_t depth = 0; depth <= organization::kMaxDepth && !ancestor.empty(); ++depth) {
+      if (ancestor == id) {
+        if (Protected(handle.Get()) || !view.pending_shared_url.empty()) return true;
+        break;
+      }
+      auto found = entries.find(ancestor); if (found == entries.end()) return true;
+      ancestor = found->second.parent_id;
+    }
+  }
+  return false;
+}
+void AuxOrganizationWindowController::ApplyPendingSharedUpdate(const std::string& id, base::OnceCallback<void(bool)> reply) {
+  if (!Current()) { std::move(reply).Run(false); return; }
+  for (const auto& [handle, view] : views_) if (view.logical_id == id && !view.pending_shared_url.empty()) {
+    if (Protected(handle.Get())) { std::move(reply).Run(false); return; }
+    const auto* organization = Organization(browser_.get());
+    if (!organization || organization->pending() || !organization->snapshot().entries.contains(id) ||
+        organization->snapshot().entries.at(id).current_url != view.pending_shared_url) { std::move(reply).Run(false); return; }
+    const GURL url(view.pending_shared_url);
+    auto* coordinator = organization::OrganizationProfileServiceFactory::GetForProfileIfExists(profile_);
+    if (!coordinator || organization->blocked()) { std::move(reply).Run(false); return; }
+    // Explicit person action targets this exact view; it does not focus a
+    // different tab or authorize a background/agent navigation.
+    const auto alive = weak_.GetWeakPtr();
+    auto* contents = handle.Get()->GetContents();
+    contents->GetController().LoadURLWithParams(content::NavigationController::LoadURLParams(url));
+    std::move(reply).Run(static_cast<bool>(alive));
+    return;
+  }
+  std::move(reply).Run(false);
+}
+std::optional<tabs::TabHandle> AuxOrganizationWindowController::FindLocalView(const std::string& id) const {
+  if (!Current()) return std::nullopt;
+  for (const auto& [handle, view] : views_) {
+    auto* tab = handle.Get();
+    if (tab && model_->GetIndexOfTab(tab) >= 0 && tab->GetContents() &&
+        tab->GetContents()->GetBrowserContext() == profile_ &&
+        (id == view.logical_id || id == "recovery:" + view.view_id)) return handle;
+  }
+  return std::nullopt;
+}
+std::vector<organization::Entry> AuxOrganizationWindowController::RecoveryEntries() const {
+  std::vector<organization::Entry> rows;
+  const auto* organization = Current() ? Organization(browser_.get()) : nullptr;
+  if (!organization || organization->blocked()) return rows;
+  for (const auto& [handle, view] : views_) {
+    auto* tab = handle.Get();
+    const auto original = organization->snapshot().entries.find(view.logical_id);
+    if (!tab || model_->GetIndexOfTab(tab) < 0 || !tab->GetContents() ||
+        tab->GetContents()->GetBrowserContext() != profile_ ||
+        original == organization->snapshot().entries.end() || !original->second.archived) continue;
+    auto row = original->second;
+    row.id = "recovery:" + view.view_id;
+    row.parent_id.clear(); row.archived = false; row.archive_operation_id.clear();
+    row.current_url = LogicalTabUrl(*tab->GetContents()).spec();
+    row.title = "Recovery — " + base::UTF16ToUTF8(tab->GetContents()->GetTitle());
+    if (row.title == "Recovery — ") row.title += row.current_url;
+    rows.push_back(std::move(row));
+  }
+  return rows;
+}
+bool AuxOrganizationWindowController::IsRecoveryActive(const std::string& id) const {
+  const auto handle = FindLocalView(id);
+  return handle && model_->GetActiveTab() == handle->Get();
+}
+bool AuxOrganizationWindowController::ActivateRecovery(const std::string& id) {
+  const auto rows = RecoveryEntries();
+  if (std::ranges::none_of(rows, [&](const auto& row) { return row.id == id; })) return false;
+  const auto handle = FindLocalView(id); if (!handle) return false;
+  model_->ActivateTabAt(model_->GetIndexOfTab(handle->Get()),
+      TabStripUserGestureDetails(TabStripUserGestureDetails::GestureType::kNone));
+  return true;
+}
+void AuxOrganizationWindowController::CloseRecovery(const std::string& id, base::OnceCallback<void(bool)> reply) {
+  const auto rows = RecoveryEntries();
+  const auto handle = FindLocalView(id);
+  if (!handle || std::ranges::none_of(rows, [&](const auto& row) { return row.id == id; })) {
+    std::move(reply).Run(false); return;
+  }
+  std::move(reply).Run(CloseViewNow(*handle));
+}
+void AuxOrganizationWindowController::KeepIndependentCopy(const std::string& id, base::OnceCallback<void(bool)> reply) {
+  auto* organization = Current() ? Organization(browser_.get()) : nullptr;
+  const auto handle = FindLocalView(id);
+  auto context = Current() ? CaptureOrganizationContext(*browser_) : std::nullopt;
+  if (!organization || organization->blocked() || organization->pending() || !context || !handle) {
+    std::move(reply).Run(false); return;
+  }
+  auto* contents = handle->Get()->GetContents();
+  const auto& view = views_.at(*handle);
+  const auto original = organization->snapshot().entries.find(view.logical_id);
+  const GURL url = LogicalTabUrl(*contents);
+  if (original == organization->snapshot().entries.end() || !url.is_valid() ||
+      !organization->snapshot().spaces.contains(active_space_)) { std::move(reply).Run(false); return; }
+  auto profile_lifetime = ScopedProfileKeepAlive::TryAcquire(profile_, ProfileKeepAliveOrigin::kChromeViewsDelegate);
+  if (!profile_lifetime) { std::move(reply).Run(false); return; }
+  organization::Command command; command.action = organization::Action::kCreateTab;
+  command.id = base::Uuid::GenerateRandomV4().AsLowercaseString();
+  command.space_id = original->second.archived ? active_space_ : original->second.space_id;
+  command.parent_id = original->second.archived ? "" : original->second.parent_id;
+  command.title = base::UTF16ToUTF8(contents->GetTitle()); command.url = url.spec();
+  command.index = std::numeric_limits<uint64_t>::max();
+  const std::string new_id = command.id, generation = context->owner_generation;
+  const bool new_pin = command.space_id.empty();
+  // No renderer replacement or history clone. Until durable success this exact
+  // native view continues owning its original identity and document.
+  organization->Execute(std::move(*context), std::move(command), base::BindOnce(
+      [](std::unique_ptr<ScopedProfileKeepAlive> profile_lifetime,
+         base::WeakPtr<AuxOrganizationWindowController> owner, tabs::TabHandle target,
+         std::string previous_id, std::string next_id, std::string document,
+         std::string captured_url, std::string expected_generation, bool pinned,
+         base::OnceCallback<void(bool)> done,
+         organization::CommitResult result) {
+        if (!owner || !owner->Current() || result.error != organization::Error::kNone) {
+          std::move(done).Run(false); return;
+        }
+        auto* coordinator = organization::OrganizationProfileServiceFactory::GetForProfileIfExists(owner->profile_);
+        auto* tab = target.Get();
+        const auto live = owner->views_.find(target);
+        if (!coordinator || coordinator->owner_generation() != expected_generation ||
+            !coordinator->model() || coordinator->model()->blocked() || !tab || owner->model_->GetIndexOfTab(tab) < 0 || !tab->GetContents() ||
+            tab->GetContents()->GetBrowserContext() != owner->profile_ ||
+            live == owner->views_.end() || live->second.document_id != document ||
+            GetRememberedPinnedTabEntryId(*tab->GetContents()) != previous_id ||
+            LogicalTabUrl(*tab->GetContents()).spec() != captured_url) {
+          // The durable new record remains accessible, but a changed view is
+          // never rebound to an older captured document.
+          std::move(done).Run(false); return;
+        }
+        owner->PersistIdentity(target, next_id);
+        live->second.logical_id = next_id; live->second.pending_shared_url.clear();
+        live->second.shared_url = captured_url;
+        owner->dirty_navigation_.erase(target);
+        if (tab->IsPinned() != pinned) owner->model_->SetTabPinned(owner->model_->GetIndexOfTab(tab), pinned);
+        if (owner && owner->Current()) { owner->QueueReconcile(); owner->Notify(); }
+        std::move(done).Run(true);
+      }, std::move(profile_lifetime), weak_.GetWeakPtr(), *handle, view.logical_id, new_id,
+      view.document_id, url.spec(), generation, new_pin, std::move(reply)));
+}
+base::ListValue AuxOrganizationWindowController::SnapshotViews() const {
+  base::ListValue result;
+  if (!Current()) return result;
+  for (const auto& [handle, view] : views_) {
+    if (!handle.Get() || model_->GetIndexOfTab(handle.Get()) < 0) continue;
+    auto* tab = handle.Get();
+    auto* contents = tab->GetContents();
+    if (!contents || contents->GetBrowserContext() != profile_) continue;
+    const auto* identity = PageIdentity::FromWebContents(contents);
+    if (IsBookmarkTabExcluded(tab, model_) || (identity && identity->runtime_owned()) ||
+        (!tab->IsPinned() && (!ordinary_eligible_ || !ordinary_eligible_.Run(*tab)))) continue;
+    const auto* organization = Organization(browser_.get()); if (!organization) continue;
+    const auto entry = organization->snapshot().entries.find(view.logical_id);
+    if (entry == organization->snapshot().entries.end()) continue;
+    base::DictValue row; row.Set("id", view.logical_id); row.Set("viewId", view.view_id);
+    row.Set("recovery", entry->second.archived);
+    row.Set("nativeTabId", sessions::SessionTabHelper::IdForTab(contents).id());
+    row.Set("targetId", content::DevToolsAgentHost::GetOrCreateFor(contents)->GetId());
+    row.Set("documentId", view.document_id); row.Set("title", base::UTF16ToUTF8(contents->GetTitle()));
+    row.Set("url", contents->GetLastCommittedURL().spec()); row.Set("spaceId", entry->second.space_id);
+    row.Set("pinned", organization::IsGlobalPin(entry->second));
+    row.Set("retained", organization::HasRetention(organization->snapshot(), view.logical_id));
+    row.Set("windowId", std::to_string(browser_->GetSessionID().id()));
+    row.Set("pendingSharedUrl", view.pending_shared_url);
+    row.Set("protected", organization::HasRetention(organization->snapshot(), view.logical_id) || Protected(handle.Get()) || !view.pending_shared_url.empty()); result.Append(std::move(row));
+  }
+  return result;
+}
+base::CallbackListSubscription AuxOrganizationWindowController::ObserveWindowState(base::RepeatingClosure callback) {
+  return observers_.Add(std::move(callback));
+}
+void AuxOrganizationWindowController::Notify() { observers_.Notify(); }
+void AuxOrganizationWindowController::OnTabStripModelChanged(TabStripModel* model,
+    const TabStripModelChange& change, const TabStripSelectionChange& selection) {
+  if (!Current() || model != model_) return;
+  if (selection.active_tab_changed() && selection.new_tab &&
+      (selection.reason & TabStripModelObserver::CHANGE_REASON_USER_GESTURE))
+    RecordActivation(selection.new_tab->GetHandle());
+  if (change.type() == TabStripModelChange::kRemoved) for (const auto& removed : change.GetRemove()->contents) {
+    if (removed.tab) { views_.erase(removed.tab->GetHandle()); candidate_observers_.erase(removed.tab->GetHandle()); dirty_navigation_.erase(removed.tab->GetHandle()); dirty_activation_.erase(removed.tab->GetHandle()); }
+  }
+  QueueReconcile();
+}
+void AuxOrganizationWindowController::OnTabStripModelDestroyed(TabStripModel* model) {
+  if (model_ != model) return;
+  model_ = nullptr; views_.clear(); candidate_observers_.clear(); dirty_navigation_.clear(); dirty_activation_.clear();
+}
+}  // namespace aux

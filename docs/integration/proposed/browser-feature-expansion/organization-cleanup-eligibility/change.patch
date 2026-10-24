@@ -1,0 +1,374 @@
+--- a/chrome/browser/ui/views/frame/aux_organization_window_controller.cc
++++ b/chrome/browser/ui/views/frame/aux_organization_window_controller.cc
+@@ -5,6 +5,7 @@
+ #include <tuple>
+ #include <utility>
+ #include "base/functional/bind.h"
++#include "base/functional/callback_helpers.h"
+ #include "base/strings/utf_string_conversions.h"
+ #include "base/task/single_thread_task_runner.h"
+ #include "base/time/time.h"
+@@ -88,6 +89,26 @@
+   base::WeakPtr<AuxOrganizationWindowController> owner_;
+   tabs::TabHandle handle_;
+ };
++struct AuxOrganizationWindowController::AutomaticArchive {
++  using Target = std::tuple<base::WeakPtr<AuxOrganizationWindowController>,
++                            tabs::TabHandle, std::string, std::string, std::string>;
++  AutomaticArchive();
++  ~AutomaticArchive();
++  organization::Entry original;
++  std::string operation_id, generation;
++  base::WeakPtr<Profile> profile;
++  std::unique_ptr<ScopedProfileKeepAlive> profile_lifetime;
++  std::vector<Target> targets;
++  uint64_t cutoff = 0, activated_at = 0;
++  bool committed = false, cancelling = false, restoring = false;
++  base::OnceCallback<void(bool)> reply;
++};
++AuxOrganizationWindowController::AutomaticArchive::AutomaticArchive() = default;
++AuxOrganizationWindowController::AutomaticArchive::~AutomaticArchive() {
++  // Owner destruction or lost callbacks cannot turn an unknown write into
++  // success. The archived identity/native session remains recoverable.
++  if (reply) std::move(reply).Run(false);
++}
+ AuxOrganizationWindowController::AuxOrganizationWindowController(BrowserWindowInterface& browser)
+     : browser_(browser.GetWeakPtr()) { RebindForProfileSwitch(); }
+ AuxOrganizationWindowController::~AuxOrganizationWindowController() { Shutdown(); }
+@@ -98,6 +119,7 @@
+   TabStripModelObserver::StopObservingAll(this);
+   ready_subscription_ = {}; model_changes_ = {}; settled_ = {}; session_restored_ = {}; activation_ = {};
+   ordinary_eligible_.Reset(); views_.clear(); candidate_observers_.clear(); explicit_unloads_.clear(); dirty_navigation_.clear(); dirty_activation_.clear();
++  automatic_archive_.reset();
+   cleanup_ids_.clear(); cleanup_running_ = false; cleanup_waiting_ = false;
+   profile_ = nullptr; model_ = nullptr; active_space_.clear(); restored_space_.clear();
+   Notify();
+@@ -144,6 +166,7 @@
+   TabStripModelObserver::StopObservingAll(this);
+   weak_.InvalidateWeakPtrs(); ready_subscription_ = {}; model_changes_ = {}; settled_ = {}; session_restored_ = {}; activation_ = {};
+   views_.clear(); candidate_observers_.clear(); explicit_unloads_.clear(); dirty_navigation_.clear(); dirty_activation_.clear();
++  automatic_archive_.reset();
+   cleanup_ids_.clear(); cleanup_running_ = false; cleanup_waiting_ = false; cleanup_cursor_ = 0;
+   reconcile_queued_ = false; registering_ = false; opening_ = false;
+   profile_ = browser_ ? browser_->GetProfile() : nullptr;
+@@ -223,6 +246,13 @@
+ void AuxOrganizationWindowController::Reconcile() {
+   reconcile_queued_ = false;
+   if (!Current()) return;
++  // Compensation takes priority over draining queued activation/navigation.
++  // Other windows may have started a real write before our archive callback;
++  // ObserveSettled schedules this same path once that write actually settles.
++  if (automatic_archive_ && automatic_archive_->committed) {
++    ContinueAutomaticArchive();
++    return;
++  }
+   auto* organization = Organization(browser_.get());
+   if (!organization || organization->blocked()) { Notify(); return; }
+   const auto alive = weak_.GetWeakPtr();
+@@ -331,6 +361,7 @@
+ }
+ void AuxOrganizationWindowController::NavigationCommitted(tabs::TabHandle handle) {
+   if (!Current()) return;
++  InvalidateAutomaticArchive(handle);
+   auto it = views_.find(handle);
+   if (it != views_.end() && handle.Get() && handle.Get()->GetContents())
+     it->second.loaded_url = LogicalTabUrl(*handle.Get()->GetContents()).spec();
+@@ -368,7 +399,9 @@
+   if (IsBookmarkTabExcluded(tab, model_) || (identity && identity->runtime_owned())) return;
+   const int64_t now = base::Time::Now().InMillisecondsSinceUnixEpoch();
+   if (now <= 0) return;
+-  dirty_activation_[handle] = static_cast<uint64_t>(now); QueueReconcile();
++  dirty_activation_[handle] = static_cast<uint64_t>(now);
++  InvalidateAutomaticArchive(handle, static_cast<uint64_t>(now));
++  QueueReconcile();
+ }
+ void AuxOrganizationWindowController::PublishActivity() {
+   auto* organization = Current() ? Organization(browser_.get()) : nullptr;
+@@ -467,15 +500,208 @@
+     if (!CanCleanup(id)) continue;
+     cleanup_waiting_ = true;
+     ArchiveEntry(id, false, base::BindOnce(
+-        [](base::WeakPtr<AuxOrganizationWindowController> owner, bool) {
++        [](base::WeakPtr<AuxOrganizationWindowController> owner, bool completed) {
+           if (!owner) return;
+           owner->cleanup_waiting_ = false;
++          if (!completed) {
++            owner->cleanup_running_ = false; owner->cleanup_ids_.clear();
++            return;  // Cancelled/uncertain cleanup never retries another close.
++          }
+           base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(FROM_HERE,
+               base::BindOnce(&AuxOrganizationWindowController::CleanupNext, owner));
+         }, weak_.GetWeakPtr()), true);
+     return;
+   }
+   cleanup_running_ = false; cleanup_ids_.clear();
++}
++void AuxOrganizationWindowController::InvalidateAutomaticArchive(
++    tabs::TabHandle handle, uint64_t activated_at) {
++  auto* tab = handle.Get();
++  if (!Current() || !tab || model_->GetIndexOfTab(tab) < 0 || !tab->GetContents()) return;
++  const auto id = GetRememberedPinnedTabEntryId(*tab->GetContents());
++  if (!id) return;
++  ForEachCurrentBrowserWindowInterfaceOrderedByActivation([&](BrowserWindowInterface* browser) {
++    if (browser->GetProfile() != profile_) return true;
++    auto* owner = FromBrowser(browser);
++    auto* pending = owner ? owner->automatic_archive_.get() : nullptr;
++    if (pending && pending->profile.get() == profile_ && pending->original.id == *id) {
++      // Sticky cancellation: selecting then leaving a tab during the write is
++      // still activity even if another window drains its queued timestamps.
++      pending->cancelling = true;
++      pending->activated_at = std::max(pending->activated_at, activated_at);
++      owner->QueueReconcile();
++    }
++    return true;
++  });
++}
++bool AuxOrganizationWindowController::AutomaticArchiveStillEligible() const {
++  const auto* pending = automatic_archive_.get();
++  if (!pending || !Current() || pending->cancelling ||
++      pending->profile.get() != profile_ || SessionRestore::IsRestoring(profile_)) return false;
++  auto* coordinator = organization::OrganizationProfileServiceFactory::GetForProfileIfExists(profile_);
++  const auto* service = coordinator ? coordinator->model() : nullptr;
++  if (!service || service->blocked() || service->pending() ||
++      coordinator->owner_generation() != pending->generation) return false;
++  const auto& snapshot = service->snapshot();
++  const auto found = snapshot.entries.find(pending->original.id);
++  if (found == snapshot.entries.end()) return false;
++  const auto& entry = found->second;
++  const auto& before = pending->original;
++  const auto now = base::Time::Now().InMillisecondsSinceUnixEpoch();
++  if (!entry.archived || entry.archive_operation_id != pending->operation_id ||
++      entry.kind != organization::EntryKind::kTab || entry.current_url != before.current_url ||
++      entry.launch_url != before.launch_url || entry.title != before.title ||
++      entry.parent_id != before.parent_id || entry.space_id != before.space_id ||
++      entry.last_active_unix_ms != before.last_active_unix_ms ||
++      !entry.last_active_unix_ms || entry.last_active_unix_ms > pending->cutoff ||
++      !snapshot.cleanup_enabled || organization::HasRetention(snapshot, entry.id) ||
++      !organization::CleanupIncludesSpace(snapshot, entry.space_id) || now <= 0 ||
++      static_cast<uint64_t>(now) <= entry.last_active_unix_ms ||
++      static_cast<uint64_t>(now) - entry.last_active_unix_ms <
++          snapshot.cleanup_inactivity_days * 86400000ULL) return false;
++  // Every original view must still be this exact document. Successfully
++  // unloaded targets are removed by our own close loop, never by URL matching.
++  for (const auto& [owner, handle, logical, url, document] : pending->targets) {
++    auto* tab = handle.Get();
++    if (!owner || !owner->Current() || owner->profile_ != profile_ || !tab ||
++        owner->model_->GetIndexOfTab(tab) < 0 || !tab->GetContents()) return false;
++    const auto view = owner->views_.find(handle);
++    if (view == owner->views_.end() || view->second.logical_id != logical ||
++        view->second.document_id != document || view->second.loaded_url != url ||
++        GetRememberedPinnedTabEntryId(*tab->GetContents()) != logical ||
++        LogicalTabUrl(*tab->GetContents()).spec() != url) return false;
++  }
++  bool safe = true;
++  ForEachCurrentBrowserWindowInterfaceOrderedByActivation([&](BrowserWindowInterface* browser) {
++    if (browser->GetProfile() != profile_) return true;
++    auto* owner = FromBrowser(browser);
++    auto* tabs = browser->GetTabStripModel();
++    if (!tabs) { safe = false; return false; }
++    for (auto* tab : *tabs) {
++      auto* contents = tab->GetContents();
++      if (!contents || GetRememberedPinnedTabEntryId(*contents) != entry.id) continue;
++      const bool captured = std::ranges::any_of(pending->targets, [&](const auto& target) {
++        return std::get<0>(target).get() == owner && std::get<1>(target) == tab->GetHandle();
++      });
++      if (!captured || !owner || !owner->Current() || !owner->ordinary_eligible_ ||
++          !owner->ordinary_eligible_.Run(*tab) || tab == tabs->GetActiveTab() ||
++          tab->IsPinned() || owner->Protected(tab) || owner->HasPendingSharedUpdate(entry.id) ||
++          owner->dirty_activation_.contains(tab->GetHandle()) ||
++          owner->dirty_navigation_.contains(tab->GetHandle())) {
++        safe = false; return false;
++      }
++    }
++    return true;
++  });
++  return safe;
++}
++void AuxOrganizationWindowController::FinishAutomaticArchive(
++    const std::string& operation_id, bool success) {
++  if (!automatic_archive_ || automatic_archive_->operation_id != operation_id) return;
++  auto pending = std::move(automatic_archive_);
++  const auto alive = weak_.GetWeakPtr();
++  if (pending->reply) std::move(pending->reply).Run(success);
++  if (alive) { QueueReconcile(); Notify(); }
++}
++void AuxOrganizationWindowController::AutomaticArchiveCommitted(
++    const std::string& operation_id, bool committed) {
++  if (!automatic_archive_ || automatic_archive_->operation_id != operation_id) return;
++  if (!committed) { FinishAutomaticArchive(operation_id, false); return; }
++  automatic_archive_->committed = true;
++  while (true) {
++    if (!AutomaticArchiveStillEligible()) {
++      automatic_archive_->cancelling = true;
++      ContinueAutomaticArchive();
++      return;
++    }
++    if (automatic_archive_->targets.empty()) {
++      FinishAutomaticArchive(operation_id, true);
++      return;
++    }
++    const auto target = automatic_archive_->targets.back();
++    const auto alive = weak_.GetWeakPtr();
++    const bool closed = std::get<0>(target)->CloseViewNow(std::get<1>(target));
++    if (!alive || !automatic_archive_ || automatic_archive_->operation_id != operation_id) return;
++    if (!closed) {
++      automatic_archive_->cancelling = true;
++      ContinueAutomaticArchive();
++      return;
++    }
++    automatic_archive_->targets.pop_back();
++    // Recheck every remaining same-profile view after each synchronous close.
++    // Close observers may activate a sibling or begin a real profile write.
++  }
++}
++void AuxOrganizationWindowController::ContinueAutomaticArchive() {
++  auto* pending = automatic_archive_.get();
++  if (!pending || !pending->committed || pending->restoring) return;
++  const auto operation_id = pending->operation_id;
++  auto* coordinator = pending->profile ?
++      organization::OrganizationProfileServiceFactory::GetForProfileIfExists(pending->profile.get()) : nullptr;
++  auto* service = coordinator ? coordinator->model() : nullptr;
++  if (!Current() || pending->profile.get() != profile_ || !service || service->blocked() ||
++      coordinator->owner_generation() != pending->generation) {
++    FinishAutomaticArchive(operation_id, false); return;
++  }
++  const auto& snapshot = service->snapshot();
++  const auto found = snapshot.entries.find(pending->original.id);
++  if (found == snapshot.entries.end() || !found->second.archived ||
++      found->second.archive_operation_id != operation_id) {
++    FinishAutomaticArchive(operation_id, false); return;
++  }
++  // Never retry a close after a cancellation, and never overwrite a newer
++  // archive operation. Busy is temporary: the existing settlement observer
++  // queues this compensation again using the then-current revision.
++  pending->cancelling = true;
++  if (service->pending()) return;
++  organization::Context context{snapshot.profile_id, pending->generation,
++      snapshot.revision, base::Uuid::GenerateRandomV4().AsLowercaseString()};
++  organization::Command restore; restore.action = organization::Action::kRestore;
++  restore.id = pending->original.id; restore.index = pending->original.order;
++  std::vector<organization::Command> commands; commands.push_back(std::move(restore));
++  if (pending->activated_at) {
++    organization::Command activity; activity.action = organization::Action::kMarkTabActive;
++    activity.id = pending->original.id; activity.index = pending->activated_at;
++    commands.push_back(std::move(activity));
++  }
++  pending->restoring = true;
++  service->ExecuteBatch(std::move(context), std::move(commands), base::BindOnce(
++      [](base::WeakPtr<AuxOrganizationWindowController> owner, std::string operation,
++         base::ScopedClosureRunner dropped, organization::CommitResult result) {
++        dropped.ReplaceClosure({});
++        if (!owner || !owner->automatic_archive_ ||
++            owner->automatic_archive_->operation_id != operation) return;
++        auto* state = owner->automatic_archive_.get();
++        auto* current = state->profile ? organization::OrganizationProfileServiceFactory::GetForProfileIfExists(state->profile.get()) : nullptr;
++        const auto* model = current ? current->model() : nullptr;
++        if (result.error == organization::Error::kNone && owner->Current() &&
++            owner->profile_ == state->profile.get() && model && !model->blocked() &&
++            current->owner_generation() == state->generation) {
++          const auto id = state->original.id;
++          // Another window may have consumed a queued navigation while this
++          // identity was briefly archived. Requeue genuine divergent commits
++          // against the now-restored ID; never navigate/replace a native view.
++          ForEachCurrentBrowserWindowInterfaceOrderedByActivation([&](BrowserWindowInterface* browser) {
++            if (browser->GetProfile() != state->profile.get()) return true;
++            auto* controller = FromBrowser(browser);
++            if (!controller || !controller->Current()) return true;
++            for (auto* tab : *controller->model_) {
++              auto* contents = tab->GetContents();
++              if (!contents || GetRememberedPinnedTabEntryId(*contents) != id) continue;
++              if (LogicalTabUrl(*contents).spec() != state->original.current_url)
++                controller->dirty_navigation_.insert(tab->GetHandle());
++            }
++            controller->QueueReconcile();
++            return true;
++          });
++        }
++        // Even successful durable compensation means cleanup was cancelled.
++        // Refusal/uncertainty/owner loss leaves the native recovery untouched.
++        owner->FinishAutomaticArchive(operation, false);
++      }, weak_.GetWeakPtr(), operation_id,
++      base::ScopedClosureRunner(base::BindOnce(
++          &AuxOrganizationWindowController::FinishAutomaticArchive,
++          weak_.GetWeakPtr(), operation_id, false))));
+ }
+ bool AuxOrganizationWindowController::Protected(tabs::TabInterface* tab) const {
+   if (!Current() || !tab || model_->GetIndexOfTab(tab) < 0 || tab->IsSplit()) return true;
+@@ -641,8 +867,7 @@
+   const std::string generation = context->owner_generation;
+   // Only exact, currently unprotected documents are candidates for removal
+   // after durable commit. All others remain as local recovery views.
+-  using Target = std::tuple<base::WeakPtr<AuxOrganizationWindowController>,
+-                            tabs::TabHandle, std::string, std::string, std::string>;
++  using Target = AutomaticArchive::Target;
+   std::vector<Target> targets;
+   bool owned = true;
+   ForEachCurrentBrowserWindowInterfaceOrderedByActivation([&](BrowserWindowInterface* browser) {
+@@ -655,7 +880,10 @@
+       const auto logical = GetRememberedPinnedTabEntryId(*contents).value();
+       const auto view = controller->views_.find(tab->GetHandle());
+       if (controller->Protected(tab) || view == controller->views_.end() ||
+-          LogicalTabUrl(*contents).spec() != snapshot.entries.at(logical).current_url) continue;
++          LogicalTabUrl(*contents).spec() != snapshot.entries.at(logical).current_url) {
++        if (automated) { owned = false; return false; }
++        continue;
++      }
+       targets.emplace_back(controller->weak_.GetWeakPtr(), tab->GetHandle(), logical,
+           LogicalTabUrl(*contents).spec(), view->second.document_id);
+     }
+@@ -673,6 +901,30 @@
+   }
+   organization::Command command; command.action = organization::Action::kArchive; command.id = id;
+   commands.push_back(std::move(command));
++  if (automated) {
++    if (automatic_archive_) { std::move(reply).Run(false); return; }
++    const auto now = base::Time::Now().InMillisecondsSinceUnixEpoch();
++    const auto age = snapshot.cleanup_inactivity_days * 86400000ULL;
++    if (now <= 0 || static_cast<uint64_t>(now) < age) { std::move(reply).Run(false); return; }
++    auto pending = std::make_unique<AutomaticArchive>();
++    pending->original = entry; pending->operation_id = context->operation_id;
++    pending->generation = generation; pending->profile = profile;
++    pending->profile_lifetime = std::move(profile_lifetime);
++    pending->targets = std::move(targets); pending->reply = std::move(reply);
++    pending->cutoff = static_cast<uint64_t>(now) - age;
++    const auto operation_id = pending->operation_id;
++    automatic_archive_ = std::move(pending);
++    organization->ExecuteBatch(std::move(*context), std::move(commands), base::BindOnce(
++        [](base::WeakPtr<AuxOrganizationWindowController> owner, std::string operation,
++           base::ScopedClosureRunner dropped, organization::CommitResult result) {
++          dropped.ReplaceClosure({});
++          if (owner) owner->AutomaticArchiveCommitted(operation, result.error == organization::Error::kNone);
++        }, weak_.GetWeakPtr(), operation_id,
++        base::ScopedClosureRunner(base::BindOnce(
++            &AuxOrganizationWindowController::FinishAutomaticArchive,
++            weak_.GetWeakPtr(), operation_id, false))));
++    return;
++  }
+   // Storage refusal/uncertainty leaves every native view untouched. Once the
+   // shared archive is durable, late navigation, protection, close refusal, or
+   // a newly attached view remains recoverable under that archived identity.
+--- a/chrome/browser/ui/views/frame/aux_organization_window_controller.h
++++ b/chrome/browser/ui/views/frame/aux_organization_window_controller.h
+@@ -67,6 +67,12 @@
+   bool ready() const;
+  private:
+   class PageObserver;
++  struct AutomaticArchive;
++  void InvalidateAutomaticArchive(tabs::TabHandle, uint64_t activated_at = 0);
++  bool AutomaticArchiveStillEligible() const;
++  void AutomaticArchiveCommitted(const std::string& operation_id, bool committed);
++  void ContinueAutomaticArchive();
++  void FinishAutomaticArchive(const std::string& operation_id, bool success);
+   struct ViewRecord {
+     std::string logical_id, view_id, document_id, loaded_url, shared_url, pending_shared_url;
+     std::unique_ptr<PageObserver> observer;
+@@ -104,6 +110,9 @@
+   std::set<tabs::TabHandle> explicit_unloads_;
+   std::set<tabs::TabHandle> dirty_navigation_;
+   std::map<tabs::TabHandle, uint64_t> dirty_activation_;
++  // One startup-cleanup archive or its exact compensation. Reconciliation is
++  // awakened by genuine storage settlement, never by a polling/reclose loop.
++  std::unique_ptr<AutomaticArchive> automatic_archive_;
+   std::vector<std::string> cleanup_ids_;
+   size_t cleanup_cursor_ = 0;
+   bool cleanup_running_ = false, cleanup_waiting_ = false;

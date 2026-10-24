@@ -1,0 +1,27 @@
+{
+  "modifiedCount": 2,
+  "addedCount": 0,
+  "countedAdaptations": 16,
+  "baseline": "selected Chromium source; root audit baseline fefe0af9c",
+  "files": [
+    {
+      "path": "chrome/browser/ui/views/frame/aux_organization_window_controller.cc",
+      "beforeSha256": "daf4d6414ffe1cb35d0a31d172f1a83d17e1deb60e8e873f1a4eb0b3b01bbd94",
+      "afterSha256": "e22204196a121902b50fc5aef953282522a906a200c84ef49d02162ef386aa63"
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_organization_window_controller.h",
+      "beforeSha256": "1b58e79aef403bb33ebae8eb06c0999d85e542153d82d69c407b491ca0fd5c8e",
+      "afterSha256": "f1d039714ef603478f8f4d277b64817ce2bc75aef83b0b62abb66676d769628d"
+    }
+  ],
+  "patchSha256": "1428c331b7629b172c680f137ba413864efdf3aa6e7fb129bc0f19acb02a3171",
+  "verification": {
+    "exactOrderedReplay": "passed",
+    "unifiedPatchReplay": "passed",
+    "whitespaceErrorCheck": "passed",
+    "manualArchiveTailAndCloseProtectionUnchanged": "passed",
+    "nativeCompile": "not run by worker",
+    "runtime": "not run"
+  }
+}

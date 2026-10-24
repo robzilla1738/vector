@@ -1,0 +1,21 @@
+# Automatic cleanup eligibility across durable archive
+
+This two-file overlay targets the selected `aux_organization_window_controller.{h,cc}` captured in `baseline/`. Apply only after exact baseline hashes match. No new registration, schema, UI, storage owner or authority is introduced. `replacements.json` contains ordered, count-one source adaptations; `change.patch` is the equivalent unified patch.
+
+The previous automatic cleanup rechecked age/selection before submitting its archive, but reused the manual archive completion path afterward. That path correctly preserves protected/divergent documents for an explicit user archive; it does not consider an otherwise unprotected newly active tab unsafe to close. A tab selected while persistence was pending could therefore close after the write completed.
+
+The automatic branch now retains the originating profile/generation, exact archive operation, original record, captured age cutoff, and all candidate native view/document identities through the real commit callback. It rechecks current cleanup policy/Space scope, retention, recorded activity, document/URL identity, native ordinary classification, active selection and genuine protection across every same-profile window, including newly attached views. It repeats this check before each remaining close. Manual archive and pin-unload policy are unchanged.
+
+Real activation and committed navigation invalidate the pending automation across profile windows. Cancellation is sticky even if selection moves away again or another window drains a queued timestamp while the record is briefly archived. The cancellation path never closes another view. It submits a fresh revision-bound restore only while the exact record still carries this operation's archive identity and the same profile owner generation remains current. Recorded activity is included in the restore batch; real divergent native navigations are requeued after restoration, without replacing their WebContents/history.
+
+If another actual write is pending, the single retained recovery state waits through the existing `ObserveSettled` → `QueueReconcile` path. Compensation takes precedence over this controller draining queued activity. There is no timer, polling or re-close retry. Actual restore admission/storage failure, uncertainty, callback loss, owner loss or a different archive operation terminates with failure and preserves the existing native recovery/session identity. The controller does not claim these outcomes restored shared membership. The batch stops after cancellation/failure. A successful compensation also reports cleanup cancelled, and only after the durable restore reply.
+
+## Lean evidence
+
+- Ordered count-one adaptations replay exactly to both proposed output files; the equivalent unified patch passes byte replay and whitespace checks.
+- The ordinary/manual archive completion tail, `Protected`, `CloseViewNow`, `HandleClose`, and pin/retention policies are unchanged.
+- Actual model inspected: `organization_model.cc` handles `kRestore` by restoring only descendants with the matching archive operation and uses `kMarkTabActive` monotonically. The compensation batch here only targets the captured tab; no model/schema alteration is needed.
+- Actual service inspected: `OrganizationService::DidCommit` publishes a tuple-bound successful snapshot, notifies observers/settlement, then delivers the reply. This ordering permits another observer to make the model busy, which is why recovery waits on real settlement rather than treating temporary busy as a terminal result.
+- Actual callback API inspected: `base::ScopedClosureRunner::ReplaceClosure` disarms dropped-callback failure only when a real callback arrives. Owner shutdown/rebind clears the retained state and never interprets callback destruction as write success.
+
+Native compilation and actual app/race observation have **not** been run by this worker. Integrator acceptance should check only this changed boundary: an old inactive tab selected/navigated during archive persistence stays open and is durably restored; busy unrelated writes delay that restoration until settlement; refused/uncertain restoration leaves a recoverable native view and no cleanup success. No existing startup/custody guarantee or full runtime readiness is asserted.
