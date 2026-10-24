@@ -24,6 +24,27 @@ export function navigationSections(context, query, sections) {
         title:command.title,subtitle:command.shortcut,commandId:command.commandId,actionLabel:'Run'}));
     if (commands.length) result.unshift({id:'aux-commands',title:'Commands',items:commands});
   }
+  const organization=context.organization;
+  if(organization?.ownerGeneration&&organization.revision){
+    const query=text.toLowerCase(),matches=value=>!query||value.toLowerCase().includes(query);
+    const logical=(organization.tabs??[]).filter(tab=>matches(`${tab.title} ${tab.url}`)).slice(0,100)
+      .map(tab=>({id:`aux-logical:${tab.id}`,kind:'aux-logical-tab',logicalId:tab.id,
+        title:tab.title||tab.url,subtitle:tab.url,
+        actionLabel:Number.isInteger(tab.nativeTabId)?'Switch':'Open here'}));
+    const spaces=(organization.spaces??[]).filter(space=>matches(space.title))
+      .sort((a,b)=>Number(BigInt(a.order??0)-BigInt(b.order??0))).slice(0,100)
+      .map(space=>({id:`aux-space:${space.id}`,kind:'aux-space',spaceId:space.id,title:space.title,
+        subtitle:space.id===organization.activeSpaceId?'Current Space':'Switch Space',actionLabel:'Switch'}));
+    if(logical.length)result.push({id:'aux-logical-tabs',title:'Tabs in this profile',items:logical});
+    if(spaces.length&&context.mode!=='navigate')result.push({id:'aux-spaces',title:'Spaces',items:spaces});
+    const represented=new Set((organization.tabs??[]).map(tab=>tab.nativeTabId).filter(Number.isInteger));
+    const local=new Set(context.windowTabIds??[]);
+    sections=sections.map(section=>({...section,items:section.items.filter(item=>item.kind!=='open-tab'||
+      local.has(item.tabId)&&!represented.has(item.tabId))})).filter(section=>section.items.length);
+  }else if(Array.isArray(context.windowTabIds)){
+    const local=new Set(context.windowTabIds);
+    sections=sections.map(section=>({...section,items:section.items.filter(item=>item.kind!=='open-tab'||local.has(item.tabId))})).filter(section=>section.items.length);
+  }
   return [...result,...sections];
 }
 
@@ -31,7 +52,14 @@ export async function commitNavigation(api, context, item) {
   if (!context?.success || typeof context.generation !== 'string' ||
       typeof api?.commitCommand !== 'function') throw Error('Command context is unavailable');
   const request = {generation:context.generation};
-  if (item.kind === 'aux-command') Object.assign(request,{kind:'command',commandId:item.commandId});
+  if(item.kind==='aux-logical-tab'||item.kind==='aux-space'){
+    const org=context.organization;
+    if(!org?.ownerGeneration||!org.revision)throw Error('Organization context expired');
+    Object.assign(request,{kind:item.kind==='aux-space'?'select-space':'activate-logical-tab',
+      id:item.kind==='aux-space'?item.spaceId:item.logicalId,
+      organizationOwner:org.ownerGeneration,organizationRevision:org.revision});
+  }
+  else if (item.kind === 'aux-command') Object.assign(request,{kind:'command',commandId:item.commandId});
   else if (item.kind === 'open-tab') Object.assign(request,{kind:'activate-tab',tabId:item.tabId});
   else Object.assign(request,{kind:'navigate',text:item.text ?? item.url});
   const result = await api.commitCommand(request);
@@ -69,7 +97,7 @@ export function transformAuxNavigation({relative,text}) {
     change('I=(0,i.useMemo)(()=>Pe($,r),[r,$])',
       'I=(0,i.useMemo)(()=>navigationSections(auxNavContext,r,Pe($,r)),[r,$,auxNavContext])','aux-navigation-results');
     const begin='A=(0,i.useCallback)(async n=>{try{';
-    change(begin,'A=(0,i.useCallback)(async n=>{if(auxNavBusy.current)return;auxNavBusy.current=true;auxNavSetError("");let auxNavSuccess=false;try{if(n.kind==="aux-navigate"||n.kind==="aux-command"||n.kind==="open-tab"||n.url&&n.kind!=="extension"&&n.kind!=="recently-closed"){await commitNavigation(chrome.auxBrowserPreferences,auxNavContext,n);auxNavSuccess=true;return}const auxLive=await chrome.auxBrowserPreferences.getCommandContext();if(!auxLive.success||auxLive.generation!==auxNavContext?.generation)throw Error("Command context expired; reopen the command bar");','aux-navigation-activation');
+    change(begin,'A=(0,i.useCallback)(async n=>{if(auxNavBusy.current)return;auxNavBusy.current=true;auxNavSetError("");let auxNavSuccess=false;try{if(n.kind==="aux-logical-tab"||n.kind==="aux-space"||n.kind==="aux-navigate"||n.kind==="aux-command"||n.kind==="open-tab"||n.url&&n.kind!=="extension"&&n.kind!=="recently-closed"){await commitNavigation(chrome.auxBrowserPreferences,auxNavContext,n);auxNavSuccess=true;return}const auxLive=await chrome.auxBrowserPreferences.getCommandContext();if(!auxLive.success||auxLive.generation!==auxNavContext?.generation)throw Error("Command context expired; reopen the command bar");','aux-navigation-activation');
     change('}finally{O()}},[]);(0,i.useEffect)',
       ';auxNavSuccess=true}catch(error){auxNavSetError(error instanceof Error?error.message:String(error))}finally{auxNavBusy.current=false;if(auxNavSuccess)O()}},[auxNavContext]);(0,i.useEffect)', 'aux-navigation-errors');
     change('await chrome.sessions.restore(n.restoreSessionId);return}', 'await chrome.sessions.restore(n.restoreSessionId);auxNavSuccess=true;return}', 'aux-navigation-restored-close');

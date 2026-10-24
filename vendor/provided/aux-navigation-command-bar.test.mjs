@@ -42,3 +42,15 @@ test('all real pinned supplied assets adapt once, parse and retain every existin
   assert.throws(()=>transformAuxNavigation({relative,text:result.text}),/expected one pinned anchor/);
  }
 });
+test('logical tab and Space results retain identity, independent views and real local URLs',async()=>{
+ const c={...context,mode:'commands',windowTabIds:[10,11],organization:{ownerGeneration:'native-owner',revision:'42',activeSpaceId:'s1',spaces:[{id:'s1',title:'Work',order:'0'},{id:'s2',title:'Personal',order:'1'}],tabs:[{id:'a',title:'Local form',url:'https://example.test/local',nativeTabId:10,spaceId:'s1'},{id:'b',title:'Other view',url:'https://example.test/local',spaceId:'s2'}]}};
+ const original=[{id:'open',items:[{kind:'open-tab',tabId:10},{kind:'open-tab',tabId:11},{kind:'open-tab',tabId:900}]}];
+ const result=navigationSections(c,'',original),tabs=result.find(section=>section.id==='aux-logical-tabs').items;
+ assert.deepEqual(tabs.map(tab=>tab.logicalId),['a','b']);assert.deepEqual(tabs.map(tab=>tab.actionLabel),['Switch','Open here']);
+ assert.deepEqual(result.find(section=>section.id==='open').items,[{kind:'open-tab',tabId:11}]);
+ assert.equal(result.find(section=>section.id==='aux-spaces').items[1].spaceId,'s2');
+ let seen;const api={commitCommand:async request=>(seen=request,{success:true})};
+ await commitNavigation(api,c,tabs[1]);assert.deepEqual(seen,{generation:c.generation,kind:'activate-logical-tab',id:'b',organizationOwner:'native-owner',organizationRevision:'42'});
+ await commitNavigation(api,c,result.find(section=>section.id==='aux-spaces').items[1]);assert.equal(seen.kind,'select-space');assert.equal(seen.id,'s2');
+ assert.equal(navigationSections(c,'Other view',original).find(section=>section.id==='aux-logical-tabs').items.length,1);
+});
