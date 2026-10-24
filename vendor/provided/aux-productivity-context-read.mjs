@@ -10,7 +10,7 @@ export async function auxValidateReferenceMessages(browser,messages,send=sendCom
   if(!references.length)return;
   if(references.length>64||references.some(ref=>!ref.documentCapability||!ref.targetId||!ref.url))
     throw Error('A referenced tab must be selected again; your pending message is preserved.');
-  const route=browser?.extensionBridgeRoute;
+  const source=browser?.extensionBridgeRoute,route=source?{...source}:undefined;
   if(!Number.isInteger(route?.accountId)||!route.profileId)throw Error('The original browser profile is unavailable.');
   const result=await send({method:'Aux.validateTabReferences',params:{references}},route);
   if(!result?.success)throw Error(result?.error??'A referenced tab changed; select it again.');
@@ -26,47 +26,96 @@ export async function auxDrainValidatedQueue(queue,validate,signal) {
   // The supplied follow-up queue can drain a user row before its separate
   // metadata row. Validate the queued batch without changing its drain mode.
   const batch=Array.isArray(queue.messages)?queue.messages.slice():pending;
+  const capturedReferences=JSON.stringify(auxReferencesFromMessages(batch));
   await validate(batch);
   if(signal?.aborted)throw Error('Message dispatch cancelled.');
   const current=queue.peek();
   if(current.length!==pending.length||current.some((message,index)=>message!==pending[index])||
-      (Array.isArray(queue.messages)&&(queue.messages.length!==batch.length||queue.messages.some((message,index)=>message!==batch[index]))))
+      (Array.isArray(queue.messages)&&(queue.messages.length!==batch.length||queue.messages.some((message,index)=>message!==batch[index])))||
+      JSON.stringify(auxReferencesFromMessages(Array.isArray(queue.messages)?queue.messages:current))!==capturedReferences)
     throw Error('The queued message changed during validation.');
   return queue.drain();
 }
 export function auxReferenceCdpClient(client,getTabs,getRoute,send=sendCommandToExtension) {
-  const sessions=new Map();
+  const sessions=new Map(),pending=new Map();
   const recordFor=target=>getTabs().find(tab=>tab.targetId===target);
-  const capabilityFor=target=>{
+  const bindingFor=target=>{
     const record=recordFor(target);
-    if(record?.source!=='attachment'&&!record?.documentCapability)return undefined;
+    if(record?.source!=='attachment'&&!record?.documentCapability)return {target,referenced:false};
     if(!record.documentCapability||!record.documentUrl)throw Error('Referenced tab context expired; select it again.');
-    return record.documentCapability;
+    const source=getRoute(),route=source?{...source}:undefined;
+    if(!Number.isInteger(route?.accountId)||!route.profileId)throw Error('The original browser profile is unavailable.');
+    return {target,referenced:true,capability:record.documentCapability,url:record.documentUrl,route};
+  };
+  const assertBinding=binding=>{
+    if(!binding.referenced)return;
+    if(binding.retirement)throw Error('Referenced tab context expired; select it again.');
+    const record=recordFor(binding.target),current=getRoute();
+    if(!binding.capability||!record||!record.documentCapability||!record.documentUrl)
+      throw Error('Referenced tab context expired; select it again.');
+    if(record.documentCapability!==binding.capability||record.documentUrl!==binding.url)
+      throw Error('Referenced tab context changed; select it again.');
+    if(current?.profileId!==binding.route.profileId||current?.accountId!==binding.route.accountId||current?.browserMode!==binding.route.browserMode)
+      throw Error('The browser profile changed.');
+  };
+  const retireBinding=async(binding,sessionId)=>{
+    const actual=binding.rootSession??sessionId;
+    if(!actual)return;
+    if(!binding.retirement)binding.retirement=Promise.resolve().then(()=>
+      client.send('Target.detachFromTarget',{sessionId:actual})).catch(()=>{});
+    // The supplied SessionManager observes the actual detach event and evicts
+    // its cached page session. Keep guarded bindings until that event; a lost
+    // cleanup reply must not permit an ordinary read or a silent rebind.
+    await binding.retirement;
   };
   return new Proxy(client,{get(object,key){
     if(key==='send')return async(method,params,sessionId,options={})=>{
       if(method==='Target.attachToTarget'){
-        const target=params?.targetId,capability=capabilityFor(target);
-        if(capability){
-          const record=recordFor(target),route=getRoute();
-          if(!Number.isInteger(route?.accountId)||!route.profileId)throw Error('The original browser profile is unavailable.');
-          const result=await send({method:'Aux.validateTabReferences',params:{references:[{targetId:target,url:record.documentUrl,documentCapability:capability}]}},route);
-          if(!result?.success||capabilityFor(target)!==capability)throw Error(result?.error??'Referenced tab context changed.');
-          const current=getRoute();
-          if(current?.profileId!==route.profileId||current?.accountId!==route.accountId||current?.browserMode!==route.browserMode)throw Error('The browser profile changed.');
+        const target=params?.targetId,binding=bindingFor(target);
+        if(pending.has(target))throw Error('A tab attachment is already pending.');
+        pending.set(target,binding);
+        try{
+          if(binding.referenced){
+            const result=await send({method:'Aux.validateTabReferences',params:{references:[{targetId:target,url:binding.url,documentCapability:binding.capability}]}},binding.route);
+            if(!result?.success)throw Error(result?.error??'Referenced tab context changed.');
+            assertBinding(binding);
+          }
+          const attached=await object.send(method,params,sessionId,options);
+          if(attached?.sessionId){binding.rootSession=attached.sessionId;sessions.set(attached.sessionId,binding)}
+          try{assertBinding(binding)}catch(error){
+            // Detach only the session this exact call created. A lost cleanup
+            // reply retains its guarded binding; it never becomes ordinary.
+            await retireBinding(binding,attached?.sessionId);
+            throw error;
+          }
+          return attached;
+        }finally{
+          if(pending.get(target)===binding)pending.delete(target);
         }
-        const attached=await object.send(method,params,sessionId,options);
-        if(attached?.sessionId)sessions.set(attached.sessionId,target);
-        return attached;
       }
-      const target=sessions.get(sessionId);
-      const capability=target?capabilityFor(target):undefined;
-      return object.send(method,params,sessionId,capability?{...options,auxDocumentCapability:capability}:options);
+      const binding=sessions.get(sessionId);
+      if(binding&&!binding.referenced){
+        const selected=bindingFor(binding.target);
+        // A session opened for ordinary browsing may later become selected
+        // context. Upgrade its shared frame binding once; never downgrade it.
+        if(selected.referenced)Object.assign(binding,selected);
+      }
+      if(binding?.referenced)try{assertBinding(binding)}catch(error){
+        await retireBinding(binding,sessionId);throw error;
+      }
+      return object.send(method,params,sessionId,binding?.referenced?{...options,auxDocumentCapability:binding.capability}:options);
     };
     if(key==='on')return (event,callback)=>object.on(event,(data,meta)=>{
       if(event==='Target.attachedToTarget'){
-        const target=sessions.get(meta?.sessionId)??data.targetInfo?.targetId;
-        if(target&&data.sessionId)sessions.set(data.sessionId,target);
+        const target=data.targetInfo?.targetId,inherited=sessions.get(meta?.sessionId)??pending.get(target);
+        if(data.sessionId){
+          if(inherited){
+            if(!inherited.rootSession)inherited.rootSession=data.sessionId;
+            sessions.set(data.sessionId,inherited);
+          }
+          else if(target)try{sessions.set(data.sessionId,{...bindingFor(target),rootSession:data.sessionId})}
+          catch{sessions.set(data.sessionId,{target,referenced:true})}
+        }
       }
       if(event==='Target.detachedFromTarget')sessions.delete(data.sessionId);
       return callback(data,meta);

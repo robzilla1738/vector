@@ -51,6 +51,76 @@ test('failed or changing selection never attaches a target',async()=>{
  await assert.rejects(auxReferenceCdpClient(client,()=>tabs,()=>route,async()=>({success:false,error:'Document changed'})).send('Target.attachToTarget',{targetId:'view'}),/Document changed/);
  await assert.rejects(auxReferenceCdpClient(client,()=>tabs,()=>route,async()=>{tabs[0].documentCapability='new';return{success:true}}).send('Target.attachToTarget',{targetId:'view'}),/context changed/);
 });
+test('a referenced session never downgrades or rebinds when its record disappears or changes',async()=>{
+ const calls=[],tabs=[{targetId:'view',source:'attachment',documentCapability:'original',documentUrl:'https://example.test/original'}];
+ const client={send:async(...args)=>{calls.push(args);return args[0]==='Target.attachToTarget'?{sessionId:'bound'}:{}}};
+ const guarded=auxReferenceCdpClient(client,()=>tabs,()=>route,async()=>({success:true}));
+ await guarded.send('Target.attachToTarget',{targetId:'view'});
+ tabs.length=0;
+ await assert.rejects(guarded.send('Runtime.evaluate',{},'bound'),/context (expired|changed)/);
+ tabs.push({targetId:'view',source:'attachment',documentCapability:'replacement',documentUrl:'https://example.test/other'});
+ await assert.rejects(guarded.send('Runtime.evaluate',{},'bound'),/context (expired|changed)/);
+ Object.assign(tabs[0],{documentCapability:'original',documentUrl:'https://example.test/original'});
+ await assert.rejects(guarded.send('Runtime.evaluate',{},'bound'),/context expired/);
+ assert.deepEqual(calls.map(call=>call[0]),['Target.attachToTarget','Target.detachFromTarget']);
+});
+test('in-place route and queued reference changes cannot pass an earlier validation',async()=>{
+ const mutable={...route},browser={extensionBridgeRoute:mutable};
+ await assert.rejects(auxValidateReferenceMessages(browser,[metadata],async()=>{
+  mutable.profileId='other';return {success:true};
+ }),/profile changed/);
+ const captured={...reference},pending=queue([{role:'user-message-metadata',attachments:[captured]}]);
+ await assert.rejects(auxDrainValidatedQueue(pending,async()=>{captured.documentCapability='new-document'}),/changed during validation/);
+ assert.equal(pending.messages.length,1);
+ assert.equal(pending.messages[0].attachments[0].documentCapability,'new-document');
+});
+test('early attached frames retain the pending parent binding before its reply',async()=>{
+ const calls=[],listeners=new Map(),tabs=[{targetId:'view',source:'attachment',documentCapability:'document',documentUrl:'https://example.test'}];
+ const client={send:async(...args)=>{
+  calls.push(args);
+  if(args[0]==='Target.attachToTarget'){
+   listeners.get('Target.attachedToTarget')({sessionId:'parent',targetInfo:{targetId:'view'}},{});
+   listeners.get('Target.attachedToTarget')({sessionId:'child',targetInfo:{targetId:'frame'}},{sessionId:'parent'});
+   return {sessionId:'parent'};
+  }
+  return {};
+ },on(event,callback){listeners.set(event,callback)}};
+ const guarded=auxReferenceCdpClient(client,()=>tabs,()=>route,async()=>({success:true}));
+ guarded.on('Target.attachedToTarget',()=>{});
+ await guarded.send('Target.attachToTarget',{targetId:'view'});
+ await guarded.send('DOM.getDocument',{},'child');
+ assert.equal(calls.at(-1)[3].auxDocumentCapability,'document');
+ tabs.length=0;
+ await assert.rejects(guarded.send('DOM.getDocument',{},'child'),/context (expired|changed)/);
+});
+test('an existing ordinary session and its frames upgrade when selected context is attached',async()=>{
+ const calls=[],listeners=new Map(),tabs=[{targetId:'view',source:'ordinary'}];
+ const client={send:async(...args)=>{calls.push(args);return args[0]==='Target.attachToTarget'?{sessionId:'parent'}:{}},
+  on(event,callback){listeners.set(event,callback)}};
+ const guarded=auxReferenceCdpClient(client,()=>tabs,()=>route,async()=>({success:true}));
+ guarded.on('Target.attachedToTarget',()=>{});
+ await guarded.send('Target.attachToTarget',{targetId:'view'});
+ listeners.get('Target.attachedToTarget')({sessionId:'child',targetInfo:{targetId:'frame'}},{sessionId:'parent'});
+ Object.assign(tabs[0],{source:'attachment',documentCapability:'selected',documentUrl:'https://example.test'});
+ await guarded.send('DOM.getDocument',{},'child');
+ assert.equal(calls.at(-1)[3].auxDocumentCapability,'selected');
+ tabs.length=0;
+ await assert.rejects(guarded.send('Runtime.evaluate',{},'parent'),/context (expired|changed)/);
+});
+test('a context changed during physical attachment detaches only its exact new session',async()=>{
+ const calls=[],tabs=[{targetId:'view',source:'attachment',documentCapability:'original',documentUrl:'https://example.test'}];
+ const client={send:async(...args)=>{
+  calls.push(args);
+  if(args[0]==='Target.attachToTarget'){tabs.length=0;return {sessionId:'created'}}
+  if(args[0]==='Target.detachFromTarget')throw Error('Cleanup reply lost');
+  return {};
+ }};
+ const guarded=auxReferenceCdpClient(client,()=>tabs,()=>route,async()=>({success:true}));
+ await assert.rejects(guarded.send('Target.attachToTarget',{targetId:'view'}),/context (expired|changed)/);
+ assert.deepEqual(calls[1],['Target.detachFromTarget',{sessionId:'created'}]);
+ await assert.rejects(guarded.send('Runtime.evaluate',{},'created'),/context (expired|changed)/);
+ assert.equal(calls.length,2);
+});
 test('counted adapters apply to both actual paired daemon entries and authenticated extension dispatch',()=>{
  const root='/Users/rcourson/Documents/Vibe/web/out/provided-candidate-protected-startup-integration-20261023/Aux.app/Contents/Resources/aux';
  const dir=mkdtempSync(join(tmpdir(),'aux-context-read-'));

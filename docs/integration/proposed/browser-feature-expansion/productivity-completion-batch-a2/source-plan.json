@@ -1,0 +1,130 @@
+{
+  "format": "aux.productivity-completion.source.v2",
+  "root": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src",
+  "files": [
+    {
+      "path": "chrome/browser/ui/aux_recent_files_service.cc",
+      "inputSha256": "b7a5ba2a42137bee886606c8774db5e32210cd3e820b153edef38563ffc3666a",
+      "outputSha256": "46ec54e2041b87dfbd4332c5150ca32b69d72807d72145539945e51b81fabf6b",
+      "source": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/browser-feature-expansion/productivity-completion-batch-a2/source/chrome/browser/ui/aux_recent_files_service.cc",
+      "anchors": [
+        {
+          "find": "#include \"base/functional/bind.h\"",
+          "replace": "#include \"base/functional/bind.h\"\n#include \"base/functional/callback_helpers.h\"",
+          "count": 1
+        },
+        {
+          "find": "  bool SetPending(bool value) {\n    if (pending == value) return true;\n    if (value && !lifetime->Begin()) return false;\n    pending = value;\n    if (!value) lifetime->End();\n    return true;\n  }",
+          "replace": "  bool SetPending(bool value, aux::features::NativeFeatureIoOutcome outcome =\n                                 aux::features::NativeFeatureIoOutcome::kCompleted) {\n    if (pending == value) return true;\n    if (value && !lifetime->Begin()) return false;\n    pending = value;\n    if (!value) {\n      // Settlement observers can replace the state's next owner/lifetime.\n      // Retain this exact ticket owner until its End callback has returned.\n      auto retained = lifetime;\n      retained->End(outcome);\n    }\n    return true;\n  }",
+          "count": 1
+        },
+        {
+          "find": "    if (receipt) receipt->Set(\"phase\", result == Result::SUCCESS ? (undo ? \"undone\" : \"complete\") : \"failed\");",
+          "replace": "    if (receipt) receipt->Set(\"phase\", result == Result::SUCCESS ? (undo ? \"undone\" : \"complete\")\n        : result == Result::FAILURE_UNKNOWN ? (undo ? \"undo-planned\" : \"planned\") : \"failed\");",
+          "count": 1
+        },
+        {
+          "find": "    if (result != Result::SUCCESS) {\n      Finish(Error(result == Result::FAILURE_NAME_CONFLICT",
+          "replace": "    if (result == Result::FAILURE_UNKNOWN) {\n      Finish(Error(\"The rename may have completed; its prepared receipt is preserved for recovery.\")); return;\n    }\n    if (result != Result::SUCCESS) {\n      Finish(Error(result == Result::FAILURE_NAME_CONFLICT",
+          "count": 1
+        },
+        {
+          "find": "    base::ThreadPool::PostTaskAndReplyWithResult(FROM_HERE, {base::MayBlock()},\n        base::BindOnce(&InspectRegularFileMove, fingerprint->Clone(), source, destination),",
+          "replace": "    const bool posted = base::ThreadPool::PostTaskAndReplyWithResult(FROM_HERE, {base::MayBlock()},\n        base::BindOnce(&InspectRegularFileMove, fingerprint->Clone(), source, destination),",
+          "count": 1
+        },
+        {
+          "find": "                       *phase == \"undo-planned\"));\n  }\n  void Conflict",
+          "replace": "                       *phase == \"undo-planned\"));\n    if (!posted) {\n      // The inspection did not start. Its prepared receipt remains unresolved;\n      // do not count this last incremented index as a completed recovery.\n      state->lifetime->MarkUncertain();\n      Finish();\n    }\n  }\n  void Conflict",
+          "count": 1
+        },
+        {
+          "find": "      .Set(\"extension\", path.Extension());\n  base::ThreadPool::PostTaskAndReplyWithResult",
+          "replace": "      .Set(\"extension\", path.Extension());\n  if (!state->SetPending(true)) {\n    std::move(reply).Run(Error(\"File operations are closing; nothing was prepared.\")); return;\n  }\n  auto [prepared_reply, refused_reply] = base::SplitOnceCallback(std::move(reply));\n  const bool posted = base::ThreadPool::PostTaskAndReplyWithResult",
+          "count": 1
+        },
+        {
+          "find": "        std::move(reply).Run(Error(\"The file moved or is unavailable.\")); return;",
+          "replace": "        state->SetPending(false);\n        std::move(reply).Run(Error(\"The file moved or is unavailable.\")); return;",
+          "count": 1
+        },
+        {
+          "find": "      if (state->candidates.size() >= 64) { std::move(reply).Run(Error(\"Too many pending file reviews.\")); return; }",
+          "replace": "      if (state->candidates.size() >= 64) {\n        state->SetPending(false);\n        std::move(reply).Run(Error(\"Too many pending file reviews.\")); return;\n      }",
+          "count": 1
+        },
+        {
+          "find": "      metadata.Set(\"capability\", token); metadata.Set(\"success\", true);\n      std::move(reply).Run(std::move(metadata));\n    }, state, guid, path, metadata.Clone(), owner_epoch, std::move(reply)));",
+          "replace": "      metadata.Set(\"capability\", token); metadata.Set(\"success\", true);\n      state->SetPending(false);\n      std::move(reply).Run(std::move(metadata));\n    }, state, guid, path, metadata.Clone(), owner_epoch, std::move(prepared_reply)));\n  if (!posted) {\n    state->SetPending(false, aux::features::NativeFeatureIoOutcome::kRefused);\n    std::move(refused_reply).Run(Error(\"The file review could not start; try again.\"));\n  }",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/ui/aux_recent_files_move_mac.mm",
+      "inputSha256": "4be595663b7d8aa70cb3f3a140cfb736548a9b00729fc55d15007af455ec37d1",
+      "outputSha256": "db72df01327f5dd01c65685d554cfa34e593356d76b70fd4a6c9ce4cd9b9c680",
+      "source": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/browser-feature-expansion/productivity-completion-batch-a2/source/chrome/browser/ui/aux_recent_files_move_mac.mm",
+      "anchors": [
+        {
+          "find": "// Reuses the supplied conditional download rename primitive; no byte rewriting.\n#include \"chrome/browser/ui/aux_recent_files_service.h\"\n#include <cerrno>\n#include <stdio.h>\n#include <sys/stat.h>\n#include \"base/strings/string_number_conversions.h\"\n#include \"components/download/public/common/download_item.h\"\nnamespace aux::files {\nstd::optional<base::DictValue> FingerprintRegularFile(const base::FilePath& path) {\n  struct stat info;\n  if (lstat(path.value().c_str(), &info) || !S_ISREG(info.st_mode)) return std::nullopt;\n  return base::DictValue().Set(\"device\", base::NumberToString(info.st_dev))\n      .Set(\"inode\", base::NumberToString(info.st_ino))\n      .Set(\"size\", base::NumberToString(info.st_size))\n      .Set(\"modifiedSeconds\", base::NumberToString(info.st_mtimespec.tv_sec))\n      .Set(\"modifiedNanos\", base::NumberToString(info.st_mtimespec.tv_nsec));\n}\nint InspectRegularFileMove(const base::DictValue& expected,\n                            const base::FilePath& source,\n                            const base::FilePath& destination) {\n  if (source == destination || source.DirName() != destination.DirName()) return -1;\n  const auto original = FingerprintRegularFile(source);\n  if (original && *original == expected) return 0;\n  struct stat info;\n  if (!lstat(source.value().c_str(), &info) || errno != ENOENT) return -1;\n  const auto moved = FingerprintRegularFile(destination);\n  return moved && *moved == expected ? 1 : -1;\n}\nint MoveRegularFileExclusive(const base::DictValue& fingerprint,\n                             const base::FilePath& expected,\n                             const base::FilePath& source,\n                             const base::FilePath& destination,\n                             std::shared_ptr<const std::atomic_bool> authorization) {\n  using Result = download::DownloadItem::DownloadRenameResult;\n  auto actual = FingerprintRegularFile(source);\n  if (source != expected || source.DirName() != destination.DirName() ||\n      !actual || *actual != fingerprint) return Result::FAILURE_UNAVAILABLE;\n  if (!authorization || !authorization->load(std::memory_order_acquire)) return Result::FAILURE_UNAVAILABLE;\n  if (renamex_np(source.value().c_str(), destination.value().c_str(), RENAME_EXCL))\n    return errno == EEXIST ? Result::FAILURE_NAME_CONFLICT : Result::FAILURE_UNKNOWN;\n  return Result::SUCCESS;\n}\n}  // namespace aux::files\n",
+          "replace": "// Reuses the supplied conditional download rename primitive; no byte rewriting.\n#include \"chrome/browser/ui/aux_recent_files_service.h\"\n#include <cerrno>\n#include <fcntl.h>\n#include <stdio.h>\n#include <sys/stat.h>\n#include <unistd.h>\n#include \"base/files/scoped_file.h\"\n#include \"base/strings/string_number_conversions.h\"\n#include \"components/download/public/common/download_item.h\"\nnamespace aux::files {\nnamespace {\nbase::DictValue FingerprintInfo(const struct stat& info) {\n  return base::DictValue().Set(\"device\", base::NumberToString(info.st_dev))\n      .Set(\"inode\", base::NumberToString(info.st_ino))\n      .Set(\"size\", base::NumberToString(info.st_size))\n      .Set(\"modifiedSeconds\", base::NumberToString(info.st_mtimespec.tv_sec))\n      .Set(\"modifiedNanos\", base::NumberToString(info.st_mtimespec.tv_nsec));\n}\nstd::optional<base::DictValue> FingerprintAt(int directory, const base::FilePath& name) {\n  struct stat info;\n  if (fstatat(directory, name.value().c_str(), &info, AT_SYMLINK_NOFOLLOW) || !S_ISREG(info.st_mode))\n    return std::nullopt;\n  return FingerprintInfo(info);\n}\nbool CurrentDirectory(int descriptor, const base::FilePath& path) {\n  struct stat held, named;\n  return !fstat(descriptor, &held) && !stat(path.value().c_str(), &named) &&\n      S_ISDIR(held.st_mode) && S_ISDIR(named.st_mode) &&\n      held.st_dev == named.st_dev && held.st_ino == named.st_ino;\n}\nbool SyncDirectory(int descriptor, const base::FilePath& path) {\n  if (!CurrentDirectory(descriptor, path)) return false;\n  int result;\n  do { result = fsync(descriptor); } while (result && errno == EINTR);\n  return !result && CurrentDirectory(descriptor, path);\n}\n}  // namespace\nstd::optional<base::DictValue> FingerprintRegularFile(const base::FilePath& path) {\n  struct stat info;\n  if (lstat(path.value().c_str(), &info) || !S_ISREG(info.st_mode)) return std::nullopt;\n  return FingerprintInfo(info);\n}\nint InspectRegularFileMove(const base::DictValue& expected,\n                            const base::FilePath& source,\n                            const base::FilePath& destination) {\n  if (!source.IsAbsolute() || source == destination || source.DirName() != destination.DirName()) return -1;\n  const auto parent = source.DirName();\n  base::ScopedFD directory(open(parent.value().c_str(), O_RDONLY | O_DIRECTORY | O_CLOEXEC));\n  if (!directory.is_valid() || !CurrentDirectory(directory.get(), parent)) return -1;\n  const auto original = FingerprintAt(directory.get(), source.BaseName());\n  if (original && *original == expected)\n    return CurrentDirectory(directory.get(), parent) ? 0 : -1;\n  struct stat info;\n  if (!fstatat(directory.get(), source.BaseName().value().c_str(), &info, AT_SYMLINK_NOFOLLOW) || errno != ENOENT)\n    return -1;\n  const auto moved = FingerprintAt(directory.get(), destination.BaseName());\n  return moved && *moved == expected && SyncDirectory(directory.get(), parent) ? 1 : -1;\n}\nint MoveRegularFileExclusive(const base::DictValue& fingerprint,\n                             const base::FilePath& expected,\n                             const base::FilePath& source,\n                             const base::FilePath& destination,\n                             std::shared_ptr<const std::atomic_bool> authorization) {\n  using Result = download::DownloadItem::DownloadRenameResult;\n  if (source != expected || !source.IsAbsolute() || source == destination ||\n      source.DirName() != destination.DirName()) return Result::FAILURE_UNAVAILABLE;\n  const auto parent = source.DirName();\n  base::ScopedFD directory(open(parent.value().c_str(), O_RDONLY | O_DIRECTORY | O_CLOEXEC));\n  if (!directory.is_valid() || !CurrentDirectory(directory.get(), parent)) return Result::FAILURE_UNAVAILABLE;\n  const auto source_name = source.BaseName(), destination_name = destination.BaseName();\n  const auto actual = FingerprintAt(directory.get(), source_name);\n  if (!actual || *actual != fingerprint) return Result::FAILURE_UNAVAILABLE;\n  if (!authorization || !authorization->load(std::memory_order_acquire)) return Result::FAILURE_UNAVAILABLE;\n  // Keep both leaves on the same retained directory. The path cannot retarget\n  // this operation, and an existing destination is never overwritten.\n  if (renameatx_np(directory.get(), source_name.value().c_str(), directory.get(),\n                   destination_name.value().c_str(), RENAME_EXCL))\n    return errno == EEXIST ? Result::FAILURE_NAME_CONFLICT : Result::FAILURE_UNKNOWN;\n  const auto moved = FingerprintAt(directory.get(), destination_name);\n  struct stat info;\n  const bool source_missing = fstatat(directory.get(), source_name.value().c_str(),\n                                     &info, AT_SYMLINK_NOFOLLOW) && errno == ENOENT;\n  // After the physical move, readback/sync/revocation failures are unknown.\n  // The caller must retain its prepared receipt for recovery, never retry as\n  // if no move occurred or mark the rename completed before directory sync.\n  if (!moved || *moved != fingerprint || !source_missing ||\n      !SyncDirectory(directory.get(), parent) || !authorization->load(std::memory_order_acquire))\n    return Result::FAILURE_UNKNOWN;\n  return Result::SUCCESS;\n}\n}  // namespace aux::files\n",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/ui/aux_chosen_files_service.h",
+      "inputSha256": "fe22e1351238e741392016deb9f9f23db737d98eb4247ba20c14b489d0f8e24b",
+      "outputSha256": "ecf9c57ba04bc108f8ffc766aa154b6820f023269e51b8ea4df9f5b92e2b6820",
+      "source": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/browser-feature-expansion/productivity-completion-batch-a2/source/chrome/browser/ui/aux_chosen_files_service.h",
+      "anchors": [
+        {
+          "find": "bool BeginVerifiedFileDrag(const base::FilePath&, const base::DictValue&, gfx::NativeView);",
+          "replace": "bool BeginVerifiedFileDrag(Profile*, const base::FilePath&, const base::DictValue&,\n                            gfx::NativeView, base::RepeatingCallback<bool()> current);",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/ui/aux_chosen_files_service.cc",
+      "inputSha256": "8522fdb6c3f9777a410a485e4887d9d1f8c97c79a90cff4c50961ed88fa594e2",
+      "outputSha256": "91abab5a413023f4ed644bf088b0b3f39324d17f2a4458281def250fbf548abb",
+      "source": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/browser-feature-expansion/productivity-completion-batch-a2/source/chrome/browser/ui/aux_chosen_files_service.cc",
+      "anchors": [
+        {
+          "find": "  if (!file || !view || !BeginVerifiedFileDrag(base::FilePath::FromUTF8Unsafe(*file->FindString(\"path\")),\n                                               *file->FindDict(\"fingerprint\"), view)) return Error();",
+          "replace": "  if (!file || !view) return Error();\n  const auto path = base::FilePath::FromUTF8Unsafe(*file->FindString(\"path\"));\n  const auto fingerprint = std::make_shared<const base::DictValue>(file->FindDict(\"fingerprint\")->Clone());\n  const uint64_t epoch = state->epoch;\n  auto current = base::BindRepeating([](std::shared_ptr<State> state, uint64_t epoch,\n      const std::string& id, const base::FilePath& path,\n      std::shared_ptr<const base::DictValue> expected) {\n    if (state->epoch != epoch) return false;\n    const auto* selected = Find(state, id);\n    return selected &&\n        *selected->FindString(\"path\") == path.AsUTF8Unsafe() &&\n        *selected->FindDict(\"fingerprint\") == *expected;\n  }, state, epoch, id, path, fingerprint);\n  if (!BeginVerifiedFileDrag(state->profile.get(), path, *fingerprint, view, std::move(current))) return Error();",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/ui/aux_chosen_files_drag_mac.mm",
+      "inputSha256": "a67d5915a9df58358b803eef3db365d2c6374909555323107205ded22238f19d",
+      "outputSha256": "ac0ca261fdb808e9cc91855918ca3cc85cdc8d1780d1b5c1c2931b88a141211a",
+      "source": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/browser-feature-expansion/productivity-completion-batch-a2/source/chrome/browser/ui/aux_chosen_files_drag_mac.mm",
+      "anchors": [
+        {
+          "find": "#import <Cocoa/Cocoa.h>",
+          "replace": "#import <Cocoa/Cocoa.h>\n#include \"chrome/browser/profiles/profile.h\"\n#include \"chrome/browser/ui/browser_window/public/browser_window_interface.h\"\n#include \"chrome/browser/ui/views/frame/browser_view.h\"",
+          "count": 1
+        },
+        {
+          "find": "bool BeginVerifiedFileDrag(const base::FilePath& path, const base::DictValue& expected,\n                            gfx::NativeView native_view) {\n  const auto actual = FingerprintRegularFile(path);\n  if (!actual || *actual != expected || !native_view) return false;\n  NSView* view = native_view.GetNativeNSView();\n  if (!view || !view.window) return false;",
+          "replace": "bool BeginVerifiedFileDrag(Profile* profile, const base::FilePath& path,\n                            const base::DictValue& expected, gfx::NativeView native_view,\n                            base::RepeatingCallback<bool()> current) {\n  if (!profile || !native_view || !current) return false;\n  auto profile_owner = profile->GetWeakPtr();\n  if (!current.Run()) return false;\n  NSView* view = native_view.GetNativeNSView();\n  if (!view || !view.window) return false;\n  auto* browser_view = BrowserView::GetBrowserViewForNativeWindow(gfx::NativeWindow(view.window));\n  if (!browser_view || browser_view->GetProfile() != profile) return false;\n  const auto window_owner = browser_view->browser()->GetWeakPtr();\n  auto binding_current = [&] {\n    if (!profile_owner || !window_owner || window_owner->GetProfile() != profile_owner.get() ||\n        !current.Run() || !view.window) return false;\n    auto* active_view = BrowserView::GetBrowserViewForNativeWindow(gfx::NativeWindow(view.window));\n    return active_view && active_view->browser() == window_owner.get();\n  };\n  if (!binding_current()) return false;\n  const auto actual = FingerprintRegularFile(path);\n  if (!actual || *actual != expected) return false;",
+          "count": 1
+        },
+        {
+          "find": "  if (!host || !host->GetNSWindowMojo()) return false;\n  host->GetNSWindowMojo()->BeginFileDrag",
+          "replace": "  if (!host || !host->GetNSWindowMojo() || !binding_current()) return false;\n  const auto after_release = FingerprintRegularFile(path);\n  if (!after_release || *after_release != expected || !binding_current()) return false;\n  host->GetNSWindowMojo()->BeginFileDrag",
+          "count": 1
+        }
+      ]
+    }
+  ],
+  "nativeCheckoutChanged": false,
+  "nativeBuildRun": false,
+  "productExecuted": false,
+  "runtimeAcceptance": false
+}
