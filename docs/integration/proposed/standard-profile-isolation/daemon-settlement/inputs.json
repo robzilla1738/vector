@@ -11,7 +11,7 @@
       "name": "AuxDevelopmentOwnerDrain.swift",
       "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-development-worker-host/source/AuxDevelopmentOwnerDrain.swift",
       "sha256": "0bcbeec3d5667f8f53a91c29622b6a1f4fce50d9181661690b5863ea0bdcbb0b",
-      "outputSha256": "2c840ec37dc3cc193ebd9a3e8a138b9391ba709a8cc2506ad6243d713ec84ad1"
+      "outputSha256": "ba42b6767b8ebd2d7a419a6d7ec5690e4bb5b8bea1115de185bc18cd6f181698"
     },
     {
       "name": "AuxNativeNodeRunner.cc",

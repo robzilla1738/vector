@@ -116,6 +116,7 @@ func auxCompleteDevelopmentOwnerBrowserCleanShutdown(_ pointer:UnsafeMutableRawP
     do { try owner.completeBrowserCleanShutdown(); return 0 }
     catch AuxDispatcherLifetimeError.retiring { return 1 }
     catch AuxDispatcherLifetimeError.reentrantRetirement { return 1 }
+    catch AuxFreshColdGuardError.peer(1) { return 1 }
     catch { return 2 }
 }''')
 n='AuxNativeNodeRunner.cc'

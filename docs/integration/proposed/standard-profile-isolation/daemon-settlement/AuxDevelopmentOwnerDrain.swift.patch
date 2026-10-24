@@ -1,6 +1,6 @@
 --- baseline/AuxDevelopmentOwnerDrain.swift
 +++ source/AuxDevelopmentOwnerDrain.swift
-@@ -1,6 +1,21 @@
+@@ -1,6 +1,22 @@
  // Native trusted caller only: pointer is the exact retained owner created by
  // AuxCreateSignedDevelopmentOwner, kept alive by C++ shared ownership.
  import Foundation
@@ -17,6 +17,7 @@
 +    do { try owner.completeBrowserCleanShutdown(); return 0 }
 +    catch AuxDispatcherLifetimeError.retiring { return 1 }
 +    catch AuxDispatcherLifetimeError.reentrantRetirement { return 1 }
++    catch AuxFreshColdGuardError.peer(1) { return 1 }
 +    catch { return 2 }
 +}
  @_cdecl("AuxCloseDevelopmentOwnerOSAdmission")
