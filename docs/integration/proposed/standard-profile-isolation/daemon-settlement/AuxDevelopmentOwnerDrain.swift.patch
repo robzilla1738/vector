@@ -1,0 +1,24 @@
+--- baseline/AuxDevelopmentOwnerDrain.swift
++++ source/AuxDevelopmentOwnerDrain.swift
+@@ -1,6 +1,21 @@
+ // Native trusted caller only: pointer is the exact retained owner created by
+ // AuxCreateSignedDevelopmentOwner, kept alive by C++ shared ownership.
+ import Foundation
++@_silgen_name("AuxDevelopmentOwnerCleanSettlementStatus")
++private func observeNativeCleanSettlement(_ pointer:UnsafeMutableRawPointer)->Int32
++
++@_cdecl("AuxCompleteDevelopmentOwnerBrowserCleanShutdown")
++func auxCompleteDevelopmentOwnerBrowserCleanShutdown(_ pointer:UnsafeMutableRawPointer?)->Int32 {
++    guard let pointer else{return -1}
++    // Validate native registry membership before interpreting the pointer.
++    let status=observeNativeCleanSettlement(pointer)
++    guard status==0 else{return status}
++    let owner=Unmanaged<AuxOwnedCommandDispatcher>.fromOpaque(pointer).takeUnretainedValue()
++    do { try owner.completeBrowserCleanShutdown(); return 0 }
++    catch AuxDispatcherLifetimeError.retiring { return 1 }
++    catch AuxDispatcherLifetimeError.reentrantRetirement { return 1 }
++    catch { return 2 }
++}
+ @_cdecl("AuxCloseDevelopmentOwnerOSAdmission")
+ func auxCloseDevelopmentOwnerOSAdmission(_ pointer:UnsafeMutableRawPointer?)->Int32 {
+     guard let pointer else{return -1}

@@ -1,0 +1,171 @@
+--- baseline/AuxDevelopmentWorkerHost.cc
++++ source/AuxDevelopmentWorkerHost.cc
+@@ -46,6 +46,7 @@
+ extern "C" int32_t AuxCreatePreparedFreshRuntimeOwner(uint64_t, uint64_t*, void**);
+ extern "C" void AuxReleaseSignedDevelopmentOwner(void*);
+ extern "C" int32_t AuxCloseDevelopmentOwnerOSAdmission(void*);
++extern "C" int32_t AuxCompleteDevelopmentOwnerBrowserCleanShutdown(void*);
+ 
+ namespace {
+ // Captured at image initialization, not a lazy singleton in a fork child.
+@@ -56,6 +57,13 @@
+   void* const retained;
+   Owner(uint64_t h, void* r) : handle(h), retained(r) {}
+   ~Owner() { AuxReleaseSignedDevelopmentOwner(retained); }
++};
++struct HostCleanObservation {
++  std::mutex mutex;
++  bool admission_closed = false;
++  bool factory_settled = false;
++  bool images_settled = false;
++  bool unknown = false;
+ };
+ struct Worker {
+   const uint64_t generation;
+@@ -93,6 +101,7 @@
+   bool utility_close_unresolved = false;
+   bool cleanup_completed = false;
+   bool environment_detached = false;
++  bool main_loop_returned = false;
+   Worker(uint64_t g, node::Environment* e, v8::Isolate* i, uv_loop_t* l)
+       : generation(g), process(getpid()), environment(e), isolate(i), loop(l), thread(pthread_self()) {}
+   AuxDevelopmentWorkerDrain Close(bool close_process_images = false) noexcept {
+@@ -252,6 +261,8 @@
+   std::unordered_map<void*, std::shared_ptr<PtyReservation>> pty;
+   std::unordered_map<void*, std::shared_ptr<ExecReservation>> exec;
+   uint64_t next_generation = 1;
++  bool native_shutdown_closed = false;
++  std::vector<std::shared_ptr<HostCleanObservation>> hosts;
+ };
+ ProcessRegistry& Registry() {
+   // Intentional process lifetime: native host objects may outlive a module's
+@@ -262,7 +273,7 @@
+ }
+ uint64_t NextGeneration() {
+   std::lock_guard<std::mutex> lock(Registry().mutex);
+-  if (Registry().next_generation == std::numeric_limits<uint64_t>::max()) return 0;
++  if (Registry().native_shutdown_closed || Registry().next_generation == std::numeric_limits<uint64_t>::max()) return 0;
+   return Registry().next_generation++;
+ }
+ void DetachCompletedEnvironment(const std::shared_ptr<Worker>& worker) {
+@@ -335,6 +346,7 @@
+ #include "AuxRuntimeCacheAsync.inc"
+ #include "AuxRuntimePublication.inc"
+ #include "AuxRuntimePublicationNapi.inc"
++#include "AuxStandardCleanSettlement.inc"
+ napi_value CaptureExecPrivateParent(napi_env env, napi_callback_info info) {
+   if (getpid() != kHostProcess) return nullptr;
+   auto refuse = [env]() -> napi_value {
+@@ -430,6 +442,13 @@
+   bool completed = false;
+ };
+ 
++}
++
++extern "C" int32_t AuxDevelopmentOwnerCleanSettlementStatus(void* owner) noexcept {
++  return ObserveOwnerCleanSettlement(owner);
++}
++extern "C" void AuxObserveDevelopmentMainLoopReturned() noexcept {
++  ObserveMainLoopReturned();
+ }
+ 
+ // These are native producer entry points only. In particular they are not
+@@ -870,9 +889,14 @@
+ struct AuxDevelopmentWorkerHost::State {
+   const pid_t process = getpid();
+   uint64_t prepared_fresh_provider = 0;
+-  State() = default;
+-  explicit State(uint64_t provider) {
+-    if (!provider || AuxRetainPreparedFreshRuntimeProvider(provider)) closed = true;
++  std::shared_ptr<HostCleanObservation> clean = std::make_shared<HostCleanObservation>();
++  State() {
++    std::lock_guard<std::mutex> lock(Registry().mutex);
++    closed = Registry().native_shutdown_closed;
++    Registry().hosts.push_back(clean);
++  }
++  explicit State(uint64_t provider) : State() {
++    if (closed || !provider || AuxRetainPreparedFreshRuntimeProvider(provider)) closed = true;
+     else prepared_fresh_provider = provider;
+   }
+   ~State() {
+@@ -909,7 +933,7 @@
+     cleanup_retain = new std::shared_ptr<Worker>(worker);
+     {
+       std::lock_guard<std::mutex> lock(Registry().mutex);
+-      if (Registry().active.count(environment)) { delete cleanup_retain; return napi_generic_failure; }
++      if (Registry().native_shutdown_closed || Registry().active.count(environment)) { delete cleanup_retain; return napi_closing; }
+       Registry().active.emplace(environment, worker);
+       Registry().retained.emplace(worker->generation, worker);
+     }
+@@ -1000,6 +1024,10 @@
+ 
+ AuxDevelopmentWorkerDrain AuxDevelopmentWorkerHost::CloseAndDrain() noexcept {
+   if (getpid() != state_->process) return AuxDevelopmentWorkerDrain::wrongProcess;
++  {
++    std::lock_guard<std::mutex> lock(Registry().mutex);
++    Registry().native_shutdown_closed = true;
++  }
+   size_t worker_count;
+   {
+     std::lock_guard<std::mutex> lock(state_->mutex);
+@@ -1009,6 +1037,10 @@
+     worker_count = state_->workers.size();
+   }
+   auto result = AuxDevelopmentWorkerDrain::drained;
++  {
++    std::lock_guard<std::mutex> lock(state_->clean->mutex);
++    state_->clean->admission_closed = true;
++  }
+   if (state_->prepared_fresh_provider) {
+     const int32_t creation = AuxClosePreparedFreshRuntimeCreation(state_->prepared_fresh_provider);
+     if (creation < 0 || creation == 2)
+@@ -1024,6 +1056,13 @@
+     // closing actual workers; no snapshot allocation is needed for that pass.
+     result = AuxMergeWorkerDrain(result, AuxDevelopmentWorkerDrain::untracked);
+   }
++  {
++    std::lock_guard<std::mutex> lock(state_->clean->mutex);
++    state_->clean->factory_settled = result == AuxDevelopmentWorkerDrain::drained;
++    state_->clean->images_settled = result == AuxDevelopmentWorkerDrain::drained;
++    if (result != AuxDevelopmentWorkerDrain::drained &&
++        result != AuxDevelopmentWorkerDrain::pending) state_->clean->unknown = true;
++  }
+   for (size_t i = 0; i < worker_count; ++i) {
+     std::shared_ptr<Worker> worker;
+     {
+@@ -1033,5 +1072,35 @@
+     result = AuxMergeWorkerDrain(result, worker->Close(true));
+     DetachCompletedEnvironment(worker);
+   }
++  // Browser grant retirement intentionally remains pending until the real
++  // browser peer proves teardown. Retain each exact Owner across Swift/FS work;
++  // never hold a native host/Worker mutex across this callback.
++  for (size_t i = 0; i < worker_count; ++i) {
++    std::shared_ptr<Worker> worker;
++    { std::lock_guard<std::mutex> lock(state_->mutex); worker = state_->workers[i]; }
++    std::shared_ptr<Owner> owner;
++    { std::lock_guard<std::mutex> lock(worker->mutex); owner = worker->owner; }
++    if (owner && ObserveOwnerCleanSettlement(owner->retained) == 0) {
++      const int32_t clean = AuxCompleteDevelopmentOwnerBrowserCleanShutdown(owner->retained);
++      if (clean == 2 || clean < 0) {
++        std::lock_guard<std::mutex> lock(worker->mutex);
++        worker->retirement_failure = AuxDevelopmentWorkerDrain::untracked;
++      }
++    }
++  }
++  // Recompute instead of permanently merging a pre-ACK pending observation.
++  result = AuxDevelopmentWorkerDrain::drained;
++  {
++    std::lock_guard<std::mutex> lock(state_->clean->mutex);
++    if (state_->clean->unknown) result = AuxDevelopmentWorkerDrain::untracked;
++    else if (!state_->clean->factory_settled || !state_->clean->images_settled)
++      result = AuxDevelopmentWorkerDrain::pending;
++  }
++  for (size_t i = 0; i < worker_count; ++i) {
++    std::shared_ptr<Worker> worker;
++    { std::lock_guard<std::mutex> lock(state_->mutex); worker = state_->workers[i]; }
++    result = AuxMergeWorkerDrain(result, worker->Close(true));
++    DetachCompletedEnvironment(worker);
++  }
+   return result;
+ }

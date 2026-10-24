@@ -1,0 +1,113 @@
+{
+  "format": "aux.standard-daemon-settlement.overlay.v1",
+  "changes": [
+    {
+      "path": "AuxDevelopmentWorkerHost.cc",
+      "find": "extern \"C\" int32_t AuxCloseDevelopmentOwnerOSAdmission(void*);",
+      "replace": "extern \"C\" int32_t AuxCloseDevelopmentOwnerOSAdmission(void*);\nextern \"C\" int32_t AuxCompleteDevelopmentOwnerBrowserCleanShutdown(void*);",
+      "count": 1
+    },
+    {
+      "path": "AuxDevelopmentWorkerHost.cc",
+      "find": "struct Worker {",
+      "replace": "struct HostCleanObservation {\n  std::mutex mutex;\n  bool admission_closed = false;\n  bool factory_settled = false;\n  bool images_settled = false;\n  bool unknown = false;\n};\nstruct Worker {",
+      "count": 1
+    },
+    {
+      "path": "AuxDevelopmentWorkerHost.cc",
+      "find": "  bool environment_detached = false;",
+      "replace": "  bool environment_detached = false;\n  bool main_loop_returned = false;",
+      "count": 1
+    },
+    {
+      "path": "AuxDevelopmentWorkerHost.cc",
+      "find": "  uint64_t next_generation = 1;",
+      "replace": "  uint64_t next_generation = 1;\n  bool native_shutdown_closed = false;\n  std::vector<std::shared_ptr<HostCleanObservation>> hosts;",
+      "count": 1
+    },
+    {
+      "path": "AuxDevelopmentWorkerHost.cc",
+      "find": "  if (Registry().next_generation == std::numeric_limits<uint64_t>::max()) return 0;",
+      "replace": "  if (Registry().native_shutdown_closed || Registry().next_generation == std::numeric_limits<uint64_t>::max()) return 0;",
+      "count": 1
+    },
+    {
+      "path": "AuxDevelopmentWorkerHost.cc",
+      "find": "#include \"AuxRuntimePublicationNapi.inc\"",
+      "replace": "#include \"AuxRuntimePublicationNapi.inc\"\n#include \"AuxStandardCleanSettlement.inc\"",
+      "count": 1
+    },
+    {
+      "path": "AuxDevelopmentWorkerHost.cc",
+      "find": "// These are native producer entry points only.",
+      "replace": "extern \"C\" int32_t AuxDevelopmentOwnerCleanSettlementStatus(void* owner) noexcept {\n  return ObserveOwnerCleanSettlement(owner);\n}\nextern \"C\" void AuxObserveDevelopmentMainLoopReturned() noexcept {\n  ObserveMainLoopReturned();\n}\n\n// These are native producer entry points only.",
+      "count": 1
+    },
+    {
+      "path": "AuxDevelopmentWorkerHost.cc",
+      "find": "  State() = default;",
+      "replace": "  std::shared_ptr<HostCleanObservation> clean = std::make_shared<HostCleanObservation>();\n  State() {\n    std::lock_guard<std::mutex> lock(Registry().mutex);\n    closed = Registry().native_shutdown_closed;\n    Registry().hosts.push_back(clean);\n  }",
+      "count": 1
+    },
+    {
+      "path": "AuxDevelopmentWorkerHost.cc",
+      "find": "  explicit State(uint64_t provider) {",
+      "replace": "  explicit State(uint64_t provider) : State() {",
+      "count": 1
+    },
+    {
+      "path": "AuxDevelopmentWorkerHost.cc",
+      "find": "    if (!provider || AuxRetainPreparedFreshRuntimeProvider(provider)) closed = true;",
+      "replace": "    if (closed || !provider || AuxRetainPreparedFreshRuntimeProvider(provider)) closed = true;",
+      "count": 1
+    },
+    {
+      "path": "AuxDevelopmentWorkerHost.cc",
+      "find": "      if (Registry().active.count(environment)) { delete cleanup_retain; return napi_generic_failure; }",
+      "replace": "      if (Registry().native_shutdown_closed || Registry().active.count(environment)) { delete cleanup_retain; return napi_closing; }",
+      "count": 1
+    },
+    {
+      "path": "AuxDevelopmentWorkerHost.cc",
+      "find": "  size_t worker_count;",
+      "replace": "  {\n    std::lock_guard<std::mutex> lock(Registry().mutex);\n    Registry().native_shutdown_closed = true;\n  }\n  size_t worker_count;",
+      "count": 1
+    },
+    {
+      "path": "AuxDevelopmentWorkerHost.cc",
+      "find": "  auto result = AuxDevelopmentWorkerDrain::drained;\n  if (state_->prepared_fresh_provider) {",
+      "replace": "  auto result = AuxDevelopmentWorkerDrain::drained;\n  {\n    std::lock_guard<std::mutex> lock(state_->clean->mutex);\n    state_->clean->admission_closed = true;\n  }\n  if (state_->prepared_fresh_provider) {",
+      "count": 1
+    },
+    {
+      "path": "AuxDevelopmentWorkerHost.cc",
+      "find": "  for (size_t i = 0; i < worker_count; ++i) {",
+      "replace": "  {\n    std::lock_guard<std::mutex> lock(state_->clean->mutex);\n    state_->clean->factory_settled = result == AuxDevelopmentWorkerDrain::drained;\n    state_->clean->images_settled = result == AuxDevelopmentWorkerDrain::drained;\n    if (result != AuxDevelopmentWorkerDrain::drained &&\n        result != AuxDevelopmentWorkerDrain::pending) state_->clean->unknown = true;\n  }\n  for (size_t i = 0; i < worker_count; ++i) {",
+      "count": 1
+    },
+    {
+      "path": "AuxDevelopmentWorkerHost.cc",
+      "find": "    result = AuxMergeWorkerDrain(result, worker->Close(true));\n    DetachCompletedEnvironment(worker);\n  }\n  return result;\n}",
+      "replace": "    result = AuxMergeWorkerDrain(result, worker->Close(true));\n    DetachCompletedEnvironment(worker);\n  }\n  // Browser grant retirement intentionally remains pending until the real\n  // browser peer proves teardown. Retain each exact Owner across Swift/FS work;\n  // never hold a native host/Worker mutex across this callback.\n  for (size_t i = 0; i < worker_count; ++i) {\n    std::shared_ptr<Worker> worker;\n    { std::lock_guard<std::mutex> lock(state_->mutex); worker = state_->workers[i]; }\n    std::shared_ptr<Owner> owner;\n    { std::lock_guard<std::mutex> lock(worker->mutex); owner = worker->owner; }\n    if (owner && ObserveOwnerCleanSettlement(owner->retained) == 0) {\n      const int32_t clean = AuxCompleteDevelopmentOwnerBrowserCleanShutdown(owner->retained);\n      if (clean == 2 || clean < 0) {\n        std::lock_guard<std::mutex> lock(worker->mutex);\n        worker->retirement_failure = AuxDevelopmentWorkerDrain::untracked;\n      }\n    }\n  }\n  // Recompute instead of permanently merging a pre-ACK pending observation.\n  result = AuxDevelopmentWorkerDrain::drained;\n  {\n    std::lock_guard<std::mutex> lock(state_->clean->mutex);\n    if (state_->clean->unknown) result = AuxDevelopmentWorkerDrain::untracked;\n    else if (!state_->clean->factory_settled || !state_->clean->images_settled)\n      result = AuxDevelopmentWorkerDrain::pending;\n  }\n  for (size_t i = 0; i < worker_count; ++i) {\n    std::shared_ptr<Worker> worker;\n    { std::lock_guard<std::mutex> lock(state_->mutex); worker = state_->workers[i]; }\n    result = AuxMergeWorkerDrain(result, worker->Close(true));\n    DetachCompletedEnvironment(worker);\n  }\n  return result;\n}",
+      "count": 1
+    },
+    {
+      "path": "AuxDevelopmentOwnerDrain.swift",
+      "find": "import Foundation",
+      "replace": "import Foundation\n@_silgen_name(\"AuxDevelopmentOwnerCleanSettlementStatus\")\nprivate func observeNativeCleanSettlement(_ pointer:UnsafeMutableRawPointer)->Int32\n\n@_cdecl(\"AuxCompleteDevelopmentOwnerBrowserCleanShutdown\")\nfunc auxCompleteDevelopmentOwnerBrowserCleanShutdown(_ pointer:UnsafeMutableRawPointer?)->Int32 {\n    guard let pointer else{return -1}\n    // Validate native registry membership before interpreting the pointer.\n    let status=observeNativeCleanSettlement(pointer)\n    guard status==0 else{return status}\n    let owner=Unmanaged<AuxOwnedCommandDispatcher>.fromOpaque(pointer).takeUnretainedValue()\n    do { try owner.completeBrowserCleanShutdown(); return 0 }\n    catch AuxDispatcherLifetimeError.retiring { return 1 }\n    catch AuxDispatcherLifetimeError.reentrantRetirement { return 1 }\n    catch { return 2 }\n}",
+      "count": 1
+    },
+    {
+      "path": "AuxNativeNodeRunner.cc",
+      "find": "#include <optional>",
+      "replace": "#include <optional>\nextern \"C\" void AuxObserveDevelopmentMainLoopReturned() noexcept;",
+      "count": 1
+    },
+    {
+      "path": "AuxNativeNodeRunner.cc",
+      "find": "  if (requested_exit->has_value()) exit_code = **requested_exit;",
+      "replace": "  // This native stack never executes JS again after the actual event loop\n  // returned. Setup remains retained through physical cleanup and clean ACK.\n  if (loaded) AuxObserveDevelopmentMainLoopReturned();\n  if (requested_exit->has_value()) exit_code = **requested_exit;",
+      "count": 1
+    }
+  ]
+}

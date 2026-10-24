@@ -1,0 +1,20 @@
+--- baseline/AuxNativeNodeRunner.cc
++++ source/AuxNativeNodeRunner.cc
+@@ -1,6 +1,7 @@
+ #include "AuxNativeNodeRunner.h"
+ #include <memory>
+ #include <optional>
++extern "C" void AuxObserveDevelopmentMainLoopReturned() noexcept;
+ 
+ AuxNativeNodeRunResult RunAuxNativeNodeEnvironment(
+     node::CommonEnvironmentSetup& setup, const node::ModuleData& entry,
+@@ -24,6 +25,9 @@
+   const bool loaded =
+       !node::LoadEnvironment(env, &entry, preload.Callback()).IsEmpty();
+   int exit_code = loaded ? node::SpinEventLoop(env).FromMaybe(1) : 1;
++  // This native stack never executes JS again after the actual event loop
++  // returned. Setup remains retained through physical cleanup and clean ACK.
++  if (loaded) AuxObserveDevelopmentMainLoopReturned();
+   if (requested_exit->has_value()) exit_code = **requested_exit;
+   const auto drain = preload.CloseAndDrain();
+   if (drain == AuxDevelopmentWorkerDrain::drained) {

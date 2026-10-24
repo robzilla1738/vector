@@ -1,0 +1,23 @@
+{
+  "format": "aux.standard-daemon-settlement.inputs.v1",
+  "sources": [
+    {
+      "name": "AuxDevelopmentWorkerHost.cc",
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/runtime-publication/source/AuxDevelopmentWorkerHost.cc",
+      "sha256": "080fc7d251f36469e445665d89621c426e1822d0188584d89ab187e3f9936797",
+      "outputSha256": "5db2aafcd6b9f2852bad9738803765f9f3f854e17691807fe8aafc486e73bb29"
+    },
+    {
+      "name": "AuxDevelopmentOwnerDrain.swift",
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-development-worker-host/source/AuxDevelopmentOwnerDrain.swift",
+      "sha256": "0bcbeec3d5667f8f53a91c29622b6a1f4fce50d9181661690b5863ea0bdcbb0b",
+      "outputSha256": "2c840ec37dc3cc193ebd9a3e8a138b9391ba709a8cc2506ad6243d713ec84ad1"
+    },
+    {
+      "name": "AuxNativeNodeRunner.cc",
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-native-node-runner/source/AuxNativeNodeRunner.cc",
+      "sha256": "9990ae404ab0204e3ce913a4f4f541cc4e3af885294e0b879cab2f63f690469b",
+      "outputSha256": "3379d8ef6bb089acc052228713906517bdda21945f3840e7216a104714ef6e7a"
+    }
+  ]
+}
