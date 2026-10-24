@@ -1,0 +1,24 @@
+{
+  "format": "aux.content-policy-ack.v2",
+  "predecessor": "content-policy-ack-v1",
+  "predecessorManifestSha256": "fbeb48df6cb4a6243fe4a604f6b2b01f20461f1011ea69fcef12496981fa4a1a",
+  "countedAdaptations": 3,
+  "files": [
+    {
+      "path": "content/browser/aux_child_lifetime.h",
+      "beforeSha256": "41e605c49fa58e3a3e0dd0120873af06cd245d4c8132fc5a383b2cc1680a87a4",
+      "afterSha256": "7442ecebd1f40e2ac9d65f62b7689ab07f7daaf376b6e06d6482c061e672b33a"
+    },
+    {
+      "path": "chrome/browser/aux/AuxContentPolicyBinding.cc",
+      "beforeSha256": "c90f0eaebcb50e67b2daf3fbd82efe925a23715f681a20753ca1bdec49e39fd9",
+      "afterSha256": "08d96e02ddd9ada130d9622ef4b88fabfa0156764c9d3b2d6ba12f4fd774a2ea"
+    }
+  ],
+  "patchSha256": "4dda6b67d502a0c28ffeaca0246a6ff38c66cc3eebfefebfcca03a1572d07e02",
+  "verification": {
+    "orderedReplay": "passed",
+    "nativeCompile": "root pending",
+    "runtime": "not run"
+  }
+}

@@ -1,0 +1,20 @@
+[
+  {
+    "path": "content/browser/aux_child_lifetime.h",
+    "find": "'    released = true;",
+    "replace": "    released = true;",
+    "count": 1
+  },
+  {
+    "path": "chrome/browser/aux/AuxContentPolicyBinding.cc",
+    "find": "    return code_matches && process.CreationTime() == birth &&\n        Current(generation_, roots_);",
+    "replace": "    struct stat after_held{}, after_named{};\n    const bool same_file = fstat(descriptor_, &after_held) == 0 &&\n        lstat(executable_.value().c_str(), &after_named) == 0 &&\n        S_ISREG(after_named.st_mode) &&\n        after_held.st_dev == identity_.st_dev &&\n        after_held.st_ino == identity_.st_ino &&\n        after_named.st_dev == after_held.st_dev &&\n        after_named.st_ino == after_held.st_ino;\n    return code_matches && same_file && process.CreationTime() == birth &&\n        Current(generation_, roots_);",
+    "count": 1
+  },
+  {
+    "path": "chrome/browser/aux/AuxContentPolicyBinding.cc",
+    "find": "  if (hash.empty() || !Current(state.admitted_generation, roots)) {",
+    "replace": "  struct stat after_held{}, after_named{};\n  const bool same_file = fstat(fd, &after_held) == 0 &&\n      lstat(executable.value().c_str(), &after_named) == 0 &&\n      S_ISREG(after_named.st_mode) && after_held.st_dev == identity.st_dev &&\n      after_held.st_ino == identity.st_ino &&\n      after_named.st_dev == after_held.st_dev &&\n      after_named.st_ino == after_held.st_ino;\n  if (hash.empty() || !same_file || !Current(state.admitted_generation, roots)) {",
+    "count": 1
+  }
+]

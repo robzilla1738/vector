@@ -1,0 +1,46 @@
+--- a/content/browser/aux_child_lifetime.h
++++ b/content/browser/aux_child_lifetime.h
+@@ -138,7 +138,7 @@
+   void ReleaseLocked() {
+     std::lock_guard<std::mutex> lock(RegistryMutex());
+     if (released || uncertain) return;
+-'    released = true;
++    released = true;
+     if (descendants_denied) {
+       if (UnobservedDescendantCohorts() == 0) AccountingUnknown() = true;
+       else --UnobservedDescendantCohorts();
+--- a/chrome/browser/aux/AuxContentPolicyBinding.cc
++++ b/chrome/browser/aux/AuxContentPolicyBinding.cc
+@@ -81,7 +81,15 @@
+     const bool code_matches = status == errSecSuccess && SigningHash(info) == hash_;
+     if (info) CFRelease(info);
+     CFRelease(guest);
+-    return code_matches && process.CreationTime() == birth &&
++    struct stat after_held{}, after_named{};
++    const bool same_file = fstat(descriptor_, &after_held) == 0 &&
++        lstat(executable_.value().c_str(), &after_named) == 0 &&
++        S_ISREG(after_named.st_mode) &&
++        after_held.st_dev == identity_.st_dev &&
++        after_held.st_ino == identity_.st_ino &&
++        after_named.st_dev == after_held.st_dev &&
++        after_named.st_ino == after_held.st_ino;
++    return code_matches && same_file && process.CreationTime() == birth &&
+         Current(generation_, roots_);
+   }
+  private:
+@@ -142,7 +150,14 @@
+   auto hash = status == errSecSuccess ? SigningHash(info) : std::vector<uint8_t>();
+   if (info) CFRelease(info);
+   if (code) CFRelease(code);
+-  if (hash.empty() || !Current(state.admitted_generation, roots)) {
++  struct stat after_held{}, after_named{};
++  const bool same_file = fstat(fd, &after_held) == 0 &&
++      lstat(executable.value().c_str(), &after_named) == 0 &&
++      S_ISREG(after_named.st_mode) && after_held.st_dev == identity.st_dev &&
++      after_held.st_ino == identity.st_ino &&
++      after_named.st_dev == after_held.st_dev &&
++      after_named.st_ino == after_held.st_ino;
++  if (hash.empty() || !same_file || !Current(state.admitted_generation, roots)) {
+     close(fd); return nullptr;
+   }
+   return std::make_shared<Binding>(state.admitted_generation, std::move(roots),
