@@ -3,6 +3,7 @@ import Foundation
 import Darwin
 import Security
 @_silgen_name("AuxCopyAuthenticatedBrowserDrainReport") private func copyAuthenticatedBrowserDrainReport(_ handle:UInt64,_ generation:UInt64,_ challenge:UnsafePointer<UInt8>,_ report:UnsafeMutablePointer<UInt8>)->Int32
+@_silgen_name("AuxAcknowledgeAuthenticatedBrowserDrainReport") private func acknowledgeAuthenticatedBrowserDrainReport(_ handle:UInt64,_ report:UnsafePointer<UInt8>)->Int32
 @_silgen_name("AuxRetainNativeParentConnection") private func retainNativeParent(_ id:UInt64)->Int32
 @_silgen_name("AuxReleaseNativeParentConnection") private func releaseNativeParent(_ id:UInt64)
 @_silgen_name("AuxRevalidateNativeParentConnection") private func revalidateNativeParent(_ id:UInt64,_ timeout:UInt32)->Int32
@@ -60,6 +61,11 @@ final class AuxLiveNativeParentConnection {
         // status=settled must mean all physical browser/service/descendant
         // writers settled, not merely phase 6 or an absent/disconnected peer.
         return Data(report)
+    }
+    func acknowledgeBrowserDrainReceipt(_ report:Data)throws {
+        guard getpid()==process,report.count==128 else{throw AuxFreshColdGuardError.wrongProcess}
+        let status=report.withUnsafeBytes { bytes in acknowledgeAuthenticatedBrowserDrainReport(handle,bytes.bindMemory(to:UInt8.self).baseAddress!) }
+        guard status==0 else{throw AuxFreshColdGuardError.peer(status)}
     }
     deinit{if getpid()==process{releaseNativeParent(handle)}}
 }

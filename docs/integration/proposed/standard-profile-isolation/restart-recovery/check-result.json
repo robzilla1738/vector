@@ -4,12 +4,12 @@
     {
       "name": "AuxBrowserFreshRootAdmission.swift",
       "anchors": 11,
-      "sha256": "db0dd11ba89a8bb7b413d2176597f6a253d3d36d03f2061af19c263d92c448c1"
+      "sha256": "435ef261a1abab8e5c573368941337e714d00b167f71c81268d5dace4b10ca09"
     },
     {
       "name": "AuxFreshColdInstallerGuard.swift",
       "anchors": 3,
-      "sha256": "238b07dd054012ac4425b2500d9e1e04b934bc69290758f1f25cfe56df43a965"
+      "sha256": "027912387acceece77e627e53613e6964c102e2b79fa9673455cdc81e397ac8a"
     },
     {
       "name": "AuxNativeFreshStageCoordinator.swift",

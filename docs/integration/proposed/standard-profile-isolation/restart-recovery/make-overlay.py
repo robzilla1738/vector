@@ -6,7 +6,7 @@ def edit(name,old,new):
 for f in (p/'baseline').glob('*.swift'):(p/'source'/f.name).write_bytes(f.read_bytes())
 n='AuxBrowserFreshRootAdmission.swift'
 edit(n,'// Recover only interrupted pre-grant preparation; admitted roots stay refused.','// Standard profile isolation: paired, authenticated-owner clean shutdown permits reopen.\n// Interrupted ADMITTED/partial/mixed records remain unknown; never reset user data.')
-edit(n,'private enum Phase{case prepared,admitted,failed}','private enum Phase{case prepared,admitted,clean,failed}\n    private let permitsExistingData:Bool\n    private let priorCleanReceipt:String')
+edit(n,'private enum Phase{case prepared,admitted,failed}','private enum Phase{case prepared,admitted,clean,failed}\n    private let permitsExistingData:Bool\n    private let priorCleanReceipt:String\n    private var pendingCleanAcknowledgement:Data?')
 edit(n,'records:[Data],reservation:String) {','records:[Data],reservation:String,permitsExistingData:Bool,priorCleanReceipt:String) {')
 edit(n,'self.records=records;self.reservation=reservation','self.records=records;self.reservation=reservation;self.permitsExistingData=permitsExistingData;self.priorCleanReceipt=priorCleanReceipt')
 edit(n,'            // Even recovery admits only directories containing the exact marker.\n            // Existing Local State, profile files, v1 markers and unknowns refuse.\n            try inventory(root,allowed:[".","..",marker])','            // Existing contents are considered only after BOTH exact records\n            // establish clean provenance. Missing markers still require emptiness.')
@@ -80,6 +80,11 @@ edit(n,'    private static func metadata(','''    // Called only by the retained
     func completeCleanShutdown(peer:AuxLiveNativeParentConnection)throws {
         guard getpid()==process else{throw AuxFreshColdGuardError.wrongProcess}
         lock.lock();defer{lock.unlock()};try validateLocked()
+        if phase == .clean {
+            guard let report=pendingCleanAcknowledgement else{return}
+            try peer.acknowledgeBrowserDrainReceipt(report)
+            pendingCleanAcknowledgement=nil;return
+        }
         guard phase == .admitted else{throw AuxFreshColdGuardError.path}
         let report=try peer.authenticatedBrowserDrainReceipt(generation:generation)
         try validateLocked()
@@ -91,13 +96,18 @@ edit(n,'    private static func metadata(','''    // Called only by the retained
             try Self.writeRecord(record,fd:markers[i]);guard fsync(roots[i])==0 else{throw AuxFreshColdGuardError.io(errno)}
             clean.append(record)
         }
-        records=clean;phase = .clean
+        records=clean;phase = .clean;pendingCleanAcknowledgement=report
         do{try validateLocked()}catch{phase = .failed;throw error}
+        // This ACK informs the parent of already durable CLEAN. Its loss keeps
+        // the parent observer unknown; it cannot undo physical settled writes.
+        // Retain the exact report for idempotent ACK retry, never rewrite CLEAN.
+        try peer.acknowledgeBrowserDrainReceipt(report)
+        pendingCleanAcknowledgement=nil
     }
     private static func metadata(''')
 # Peer callback is authenticated native-only, never exposed through NAPI/request fields.
 n='AuxFreshColdInstallerGuard.swift'
-edit(n,'import Darwin','import Darwin\nimport Security\n@_silgen_name("AuxCopyAuthenticatedBrowserDrainReport") private func copyAuthenticatedBrowserDrainReport(_ handle:UInt64,_ generation:UInt64,_ challenge:UnsafePointer<UInt8>,_ report:UnsafeMutablePointer<UInt8>)->Int32')
+edit(n,'import Darwin','import Darwin\nimport Security\n@_silgen_name("AuxCopyAuthenticatedBrowserDrainReport") private func copyAuthenticatedBrowserDrainReport(_ handle:UInt64,_ generation:UInt64,_ challenge:UnsafePointer<UInt8>,_ report:UnsafeMutablePointer<UInt8>)->Int32\n@_silgen_name("AuxAcknowledgeAuthenticatedBrowserDrainReport") private func acknowledgeAuthenticatedBrowserDrainReport(_ handle:UInt64,_ report:UnsafePointer<UInt8>)->Int32')
 edit(n,'    deinit{if getpid()==process{releaseNativeParent(handle)}}','''    func authenticatedBrowserDrainReceipt(generation:UInt64)throws->Data {
         guard getpid()==process,generation>0 else{throw AuxFreshColdGuardError.wrongProcess}
         // Fresh challenge is generated here, never supplied by JavaScript or a
@@ -115,6 +125,11 @@ edit(n,'    deinit{if getpid()==process{releaseNativeParent(handle)}}','''    fu
         // status=settled must mean all physical browser/service/descendant
         // writers settled, not merely phase 6 or an absent/disconnected peer.
         return Data(report)
+    }
+    func acknowledgeBrowserDrainReceipt(_ report:Data)throws {
+        guard getpid()==process,report.count==128 else{throw AuxFreshColdGuardError.wrongProcess}
+        let status=report.withUnsafeBytes { bytes in acknowledgeAuthenticatedBrowserDrainReport(handle,bytes.bindMemory(to:UInt8.self).baseAddress!) }
+        guard status==0 else{throw AuxFreshColdGuardError.peer(status)}
     }
     deinit{if getpid()==process{releaseNativeParent(handle)}}''')
 edit(n,'    func createFreshHome()throws->AuxFreshNativeHome {','''    func completeBrowserCleanShutdown()throws {

@@ -17,6 +17,7 @@ final class AuxBrowserFreshRootAdmission {
     private enum Phase{case prepared,admitted,clean,failed}
     private let permitsExistingData:Bool
     private let priorCleanReceipt:String
+    private var pendingCleanAcknowledgement:Data?
     private var phase=Phase.prepared
     private init(policy:AuxAuthenticatedFreshBootstrapPolicy,generation:UInt64,paths:[String],roots:[Int32],markers:[Int32],records:[Data],reservation:String,permitsExistingData:Bool,priorCleanReceipt:String) {
         self.policy=policy;self.generation=generation;self.paths=paths;self.roots=roots;self.markers=markers;self.records=records;self.reservation=reservation;self.permitsExistingData=permitsExistingData;self.priorCleanReceipt=priorCleanReceipt
@@ -184,6 +185,11 @@ final class AuxBrowserFreshRootAdmission {
     func completeCleanShutdown(peer:AuxLiveNativeParentConnection)throws {
         guard getpid()==process else{throw AuxFreshColdGuardError.wrongProcess}
         lock.lock();defer{lock.unlock()};try validateLocked()
+        if phase == .clean {
+            guard let report=pendingCleanAcknowledgement else{return}
+            try peer.acknowledgeBrowserDrainReceipt(report)
+            pendingCleanAcknowledgement=nil;return
+        }
         guard phase == .admitted else{throw AuxFreshColdGuardError.path}
         let report=try peer.authenticatedBrowserDrainReceipt(generation:generation)
         try validateLocked()
@@ -195,8 +201,13 @@ final class AuxBrowserFreshRootAdmission {
             try Self.writeRecord(record,fd:markers[i]);guard fsync(roots[i])==0 else{throw AuxFreshColdGuardError.io(errno)}
             clean.append(record)
         }
-        records=clean;phase = .clean
+        records=clean;phase = .clean;pendingCleanAcknowledgement=report
         do{try validateLocked()}catch{phase = .failed;throw error}
+        // This ACK informs the parent of already durable CLEAN. Its loss keeps
+        // the parent observer unknown; it cannot undo physical settled writes.
+        // Retain the exact report for idempotent ACK retry, never rewrite CLEAN.
+        try peer.acknowledgeBrowserDrainReceipt(report)
+        pendingCleanAcknowledgement=nil
     }
     private static func metadata(_ fd:Int32,directory:Bool)throws {
         var value=stat();guard fstat(fd,&value)==0,value.st_uid==geteuid(),(value.st_mode&S_IFMT)==(directory ? S_IFDIR:S_IFREG),value.st_mode&0o7777==(directory ? 0o700:0o600),directory || value.st_nlink==1 else{throw AuxFreshColdGuardError.metadata}
