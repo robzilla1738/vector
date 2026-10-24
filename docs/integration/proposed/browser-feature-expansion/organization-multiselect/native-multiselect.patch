@@ -1,0 +1,172 @@
+--- a/chrome/browser/ui/views/frame/aux_organization_tree_view.cc
++++ b/chrome/browser/ui/views/frame/aux_organization_tree_view.cc
+@@ -64,6 +64,9 @@
+       const organization::Entry& entry, int depth, bool active, bool animate_selection = false)
+       : owner_(owner), id_(entry.id), folder_(entry.kind == organization::EntryKind::kFolder), active_(active),
+         animate_selection_(animate_selection), selection_(base::Milliseconds(140), 60, this) {
++    if (!folder_ && owner_ && owner_->browser_)
++      if (auto* controller = AuxOrganizationWindowController::FromBrowser(owner_->browser_.get()))
++        selected_ = controller->IsLogicalTabSelected(id_);
+     auto* layout = SetLayoutManager(std::make_unique<views::BoxLayout>(
+         views::BoxLayout::Orientation::kHorizontal, gfx::Insets::TLBR(6, 8 + depth * 14, 6, 8)));
+     layout->set_cross_axis_alignment(views::BoxLayout::CrossAxisAlignment::kCenter);
+@@ -138,6 +141,18 @@
+     gfx::Point point = event.location(); ConvertPointToScreen(this, &point);
+     if (event.IsRightMouseButton()) { owner_->ContextMenu(id_, point); return true; }
+     if (!event.IsOnlyLeftMouseButton()) return false;
++    if (!folder_ && !id_.starts_with("recovery:") && (event.IsCommandDown() || event.IsShiftDown())) {
++      RequestFocus();
++      const auto owner = owner_; const auto id = id_;
++      owner->CancelDrag();
++      auto* controller = owner->browser_ ? AuxOrganizationWindowController::FromBrowser(owner->browser_.get()) : nullptr;
++      const bool selected = controller && controller->SelectLoadedLogicalTab(
++          id, event.IsCommandDown(), event.IsShiftDown(), owner->visible_);
++      if (owner) owner->Status(selected ? u"" : u"Select tabs already open in this window and Space. Open an unloaded tab with a regular click first.");
++      // Modifier selection is completed on press; release must not collapse it
++      // through ordinary activation or start a logical organization drag.
++      return true;
++    }
+     RequestFocus(); pressed_ = true; SchedulePaint();
+     owner_->BeginDrag(id_, point);
+     return true;
+@@ -162,13 +177,13 @@
+   void OnThemeChanged() override {
+     views::View::OnThemeChanged(); if (!GetWidget()) return;
+     const bool dark = GetWidget()->GetColorMode() == ui::ColorProviderKey::ColorMode::kDark;
+-    label_->SetEnabledColor(ThemeForeground(active_ ? (dark ? 0xfffafafa : 0xff0a0a0a) : (dark ? 0xa6fafafa : 0xb80a0a0a)));
++    label_->SetEnabledColor(ThemeForeground((active_ || selected_) ? (dark ? 0xfffafafa : 0xff0a0a0a) : (dark ? 0xa6fafafa : 0xb80a0a0a)));
+     image_->SetImage(!favicon_.IsEmpty() ? favicon_ : ui::ImageModel::FromVectorIcon(folder_ ? kFolderIcon : kPageIcon,
+         ThemeForeground(dark ? 0x8cfafafa : 0x8c0a0a0a), 16));
+   }
+  protected:
+   void OnPaintBackground(gfx::Canvas* canvas) override {
+-    if (!GetWidget() || (!active_ && !hovered_ && !pressed_ && !drop_)) return;
++    if (!GetWidget() || (!active_ && !selected_ && !hovered_ && !pressed_ && !drop_)) return;
+     const bool dark = GetWidget()->GetColorMode() == ui::ColorProviderKey::ColorMode::kDark;
+     const gfx::RectF bounds(GetLocalBounds());
+     if (active_) {
+@@ -194,8 +209,8 @@
+       // which would make its matching dark foreground unreadable.
+       flags.setColor(SkColorSetA(foreground, pressed_ ? 0x26 : 0x14));
+     } else {
+-      flags.setColor(pressed_ ? (dark ? 0x26fafafa : 0x260a0a0a) : active_ ? (dark ? 0x14fafafa : 0xffffffff) : 0x14fafafa);
+-      if (!dark && !active_ && !pressed_) flags.setColor(0x140a0a0a);
++      flags.setColor(pressed_ ? (dark ? 0x26fafafa : 0x260a0a0a) : (active_ || selected_) ? (dark ? 0x14fafafa : 0xffffffff) : 0x14fafafa);
++      if (!dark && !active_ && !selected_ && !pressed_) flags.setColor(0x140a0a0a);
+     }
+     canvas->DrawRoundRect(bounds, 10, flags);
+     if (drop_) {
+@@ -227,6 +242,7 @@
+   base::WeakPtr<AuxOrganizationTreeView> owner_;
+   std::string id_;
+   bool folder_, active_, hovered_ = false, pressed_ = false, drop_ = false;
++  bool selected_ = false;
+   bool animate_selection_ = false;
+   gfx::LinearAnimation selection_;
+   AuxOrganizationTreeView::DropEdge drop_edge_ = AuxOrganizationTreeView::DropEdge::kNone;
+--- a/chrome/browser/ui/views/frame/aux_organization_window_controller.cc
++++ b/chrome/browser/ui/views/frame/aux_organization_window_controller.cc
+@@ -33,6 +33,8 @@
+ #include "chrome/browser/ui/tabs/aux_pinned_tab_entry_identity.h"
+ #include "chrome/browser/ui/tabs/tab_enums.h"
+ #include "chrome/browser/ui/tabs/tab_strip_model.h"
++#include "chrome/browser/ui/tabs/tab_strip_model_delegate.h"
++#include "ui/base/models/list_selection_model.h"
+ #include "chrome/browser/ui/tabs/tab_strip_user_gesture_details.h"
+ #include "chrome/browser/ui/views/frame/aux_organization_ui_commands.h"
+ #include "components/sessions/content/session_tab_helper.h"
+@@ -730,6 +732,80 @@
+   for (const auto& [handle, view] : views_) if (view.logical_id == id && !view.pending_shared_url.empty()) return true;
+   return false;
+ }
++bool AuxOrganizationWindowController::IsLogicalTabSelected(const std::string& id) const {
++  const auto* organization = Current() ? Organization(browser_.get()) : nullptr;
++  if (!organization || organization->blocked()) return false;
++  const auto entry = organization->snapshot().entries.find(id);
++  if (entry == organization->snapshot().entries.end() || entry->second.archived ||
++      entry->second.kind != organization::EntryKind::kTab || entry->second.space_id != active_space_) return false;
++  const auto handle = FindLocalView(id);
++  return handle && model_->IsTabSelected(model_->GetIndexOfTab(handle->Get()));
++}
++bool AuxOrganizationWindowController::SelectLoadedLogicalTab(const std::string& id,
++    bool toggle, bool range, const std::vector<std::string>& visible_ids) {
++  auto* organization = Current() ? Organization(browser_.get()) : nullptr;
++  if ((!toggle && !range) || !organization || organization->blocked() ||
++      !ordinary_eligible_ || !model_->delegate()->IsTabStripEditable()) return false;
++  const std::set<std::string> visible(visible_ids.begin(), visible_ids.end());
++  std::map<int, std::string> eligible;
++  std::map<std::string, int> native_indices;
++  int target = -1;
++  for (int index = 0; index < model_->count(); ++index) {
++    auto* tab = model_->GetTabAtIndex(index);
++    auto* contents = tab->GetContents();
++    if (!contents || contents->GetBrowserContext() != profile_ || tab->IsPinned() || tab->IsSplit() ||
++        IsBookmarkTabExcluded(tab, model_) || !ordinary_eligible_.Run(*tab)) continue;
++    const auto* identity = PageIdentity::FromWebContents(contents);
++    if (identity && identity->runtime_owned()) continue;
++    const auto logical = GetRememberedPinnedTabEntryId(*contents).value_or("");
++    const auto entry = organization->snapshot().entries.find(logical);
++    if (!visible.contains(logical) || entry == organization->snapshot().entries.end() ||
++        entry->second.kind != organization::EntryKind::kTab || entry->second.archived ||
++        entry->second.space_id != active_space_) continue;
++    // Ambiguous duplicated session identities never select a guessed view.
++    if (!native_indices.emplace(logical, index).second) return false;
++    eligible.emplace(index, logical);
++    if (logical == id) target = index;
++  }
++  if (target < 0) return false;  // Never navigate or instantiate an unloaded row.
++  ui::ListSelectionModel selection;
++  if (toggle) for (const auto& [index, logical] : eligible)
++    if (model_->IsTabSelected(index)) selection.AddIndexToSelection(index);
++  int anchor = target;
++  if (auto* anchor_tab = model_->selection_model().anchor_tab()) {
++    const int native_anchor = model_->GetIndexOfTab(anchor_tab);
++    if (eligible.contains(native_anchor)) anchor = native_anchor;
++  }
++  if (range) {
++    // Honor the actual native anchor, but range over displayed logical rows:
++    // folders/reordering can make sidebar order differ from native strip order.
++    const auto first = std::ranges::find(visible_ids, eligible.at(anchor));
++    const auto last = std::ranges::find(visible_ids, id);
++    if (first == visible_ids.end() || last == visible_ids.end()) return false;
++    for (auto it = std::min(first, last); it != std::max(first, last) + 1; ++it)
++      if (auto index = native_indices.find(*it); index != native_indices.end())
++        selection.AddIndexToSelection(index->second);
++    selection.set_anchor(anchor); selection.set_active(target);
++  } else {
++    if (selection.IsSelected(target)) {
++      if (selection.size() == 1) return true;  // Native tabs require one active selection.
++      selection.RemoveIndexFromSelection(target);
++      const int active = model_->active_index();
++      selection.set_active(active >= 0 && selection.IsSelected(active)
++          ? static_cast<size_t>(active) : *selection.selected_indices().begin());
++    } else {
++      selection.AddIndexToSelection(target); selection.set_active(target);
++    }
++    selection.set_anchor(target);
++  }
++  // No selected entry is split, so native split expansion cannot add hidden
++  // panes. Native selection remains authoritative for all consumers, including
++  // Tidy; local logical IDs merely resolve this window's existing indices.
++  const auto alive = weak_.GetWeakPtr();
++  model_->SetSelectionFromModel(std::move(selection));
++  if (alive && Current()) { QueueReconcile(); Notify(); }
++  return true;
++}
+ bool AuxOrganizationWindowController::IsLogicalEntryProtected(const std::string& id) const {
+   const auto* organization = Current() ? Organization(browser_.get()) : nullptr;
+   if (!organization || organization->blocked() || organization->pending() || !organization->snapshot().entries.contains(id)) return true;
+--- a/chrome/browser/ui/views/frame/aux_organization_window_controller.h
++++ b/chrome/browser/ui/views/frame/aux_organization_window_controller.h
+@@ -46,6 +46,11 @@
+   // Remote canonical URL changes never navigate a live page implicitly.
+   bool HasPendingSharedUpdate(const std::string&) const;
+   bool IsLogicalEntryProtected(const std::string&) const;
++  bool IsLogicalTabSelected(const std::string&) const;
++  // Native row input only: select existing current-window ordinary views. The
++  // caller's visible IDs restrict ranges; native selection owns the anchor.
++  bool SelectLoadedLogicalTab(const std::string&, bool toggle, bool range,
++                             const std::vector<std::string>& visible_ids);
+   void ApplyPendingSharedUpdate(const std::string&, base::OnceCallback<void(bool)>);
+   // Local rows derive from the native session identity and the durable archived
+   // record. They are never new shared records or replacement WebContents.

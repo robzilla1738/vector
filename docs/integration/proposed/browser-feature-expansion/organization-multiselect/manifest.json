@@ -1,0 +1,32 @@
+{
+  "modifiedCount": 3,
+  "addedCount": 0,
+  "dependsOn": [
+    "6a41685ad organization-window-recovery",
+    "15318552e organization-row-polish"
+  ],
+  "patchSha256": "fc695efe366d122f462cd28f83b4ccf3981461d673e06299c87cfc4bfb8423f3",
+  "files": [
+    {
+      "path": "chrome/browser/ui/views/frame/aux_organization_tree_view.cc",
+      "beforeSha256": "d557e96fd8d051346cfd8f5f1db4f372e4fe1c8c57837221a143fe2252db6936",
+      "afterSha256": "50edd799937662ec2029a32aa553b57c9afc0f5a90aa8cb900539412b532e0f6"
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_organization_window_controller.cc",
+      "beforeSha256": "afdf4f33b88e0b968a99522b530e081c65436c65034ca01ca705e13599ee4355",
+      "afterSha256": "daf4d6414ffe1cb35d0a31d172f1a83d17e1deb60e8e873f1a4eb0b3b01bbd94"
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_organization_window_controller.h",
+      "beforeSha256": "03630e500adb934835a8d40133a83dc16b166895a36c168225d7ac7da9b09670",
+      "afterSha256": "1b58e79aef403bb33ebae8eb06c0999d85e542153d82d69c407b491ca0fd5c8e"
+    }
+  ],
+  "verification": {
+    "exactReplay": "passed",
+    "whitespaceErrorCheck": "passed",
+    "nativeCompile": "not run by worker",
+    "runtime": "not run"
+  }
+}
