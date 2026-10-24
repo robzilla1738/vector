@@ -26,6 +26,7 @@ machos = sorted({row['path'] for row in json.loads((BUILD / 'macho-inventory.jso
 primary = 'Contents/MacOS/Aux'
 assert primary in machos
 record = {'format': 'aux.standard-browser-primary-bridge.actual.v1', 'passed': False,
+    'inspectionToolSha256': sha(__file__),
     'nativeReceipt': str(BUILD / 'receipt.json'), 'nativeReceiptSha256': sha(BUILD / 'receipt.json'),
     'sourceCompositionSha256': sha(HERE / 'browser-composition-a8.json'),
     'expectedExport': SYMBOL, 'observations': [], 'appExecuted': False,
@@ -40,6 +41,13 @@ try:
         symbols = [line.split()[-1] for line in exported.stdout.splitlines() if line.split()]
         count = symbols.count(SYMBOL)
         assert count == (1 if name == primary else 0), (name, count)
+        # A global definition is insufficient for RTLD_MAIN_ONLY/dlsym. Read
+        # the actual dynamic export trie as well; never execute the product.
+        exports_command = ['/usr/bin/dyld_info', '-exports', str(binary)]
+        exports = subprocess.run(exports_command, capture_output=True, text=True)
+        assert exports.returncode == 0, (name, exports.stderr)
+        dynamic_count = exports.stdout.split().count(SYMBOL)
+        assert dynamic_count == (1 if name == primary else 0), (name, dynamic_count)
         libraries_command = ['/usr/bin/otool', '-L', str(binary)]
         libraries = subprocess.run(libraries_command, capture_output=True, text=True)
         assert libraries.returncode == 0, name
@@ -49,6 +57,8 @@ try:
         assert sha(binary) == rows[name]['sha256'], name
         record['observations'].append({'path': name, 'sha256': rows[name]['sha256'],
             'nmCommand': command, 'nmExitCode': exported.returncode, 'bridgeDefinitionCount': count,
+            'exportsCommand': exports_command, 'exportsExitCode': exports.returncode,
+            'dynamicBridgeExportCount': dynamic_count,
             'libraryCommand': libraries_command, 'libraryExitCode': libraries.returncode,
             'custodySystemLibraries': added})
     record['passed'] = True
