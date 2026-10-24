@@ -1,0 +1,43 @@
+{
+  "format": "aux.ui-recovery-owner-capture.v1",
+  "files": [
+    {
+      "path": "vendor/provided/aux-ui-draft-closure-runtime.js.txt",
+      "inputSha256": "40b8fc59ecbbe100b8d91166dbc3256241eb8a92917fecd2a69a9a537197b983",
+      "outputSha256": "73ee3f1ac7777573da9333e6f27d502e0f63099c40ac6d8506a9e5e6d20f03a0",
+      "anchors": [
+        {
+          "find": "function auxPrepareDraftMigrationCapture(requestId,wireFormat){",
+          "replace": "function auxPrepareDraftMigrationRecoveryCapture(requestId,wireFormat){\n  return auxPrepareDraftMigrationCapture(requestId,wireFormat,\"recovery-read-only\");\n}\nfunction auxPrepareDraftMigrationCapture(requestId,wireFormat,captureMode){\n  if(captureMode!==undefined&&captureMode!==\"recovery-read-only\")\n    return{format:auxDraftMigrationFormat,ok:false,error:\"Unsupported Aux draft capture mode\"};",
+          "count": 1
+        },
+        {
+          "find": "captureJson:null,memoryJson:null,sealed:false,revision:0",
+          "replace": "captureJson:null,memoryJson:null,ownerStateJson:null,recoveryReadOnly:captureMode===\"recovery-read-only\",sealed:false,revision:0",
+          "count": 1
+        },
+        {
+          "find": "    auxDraftMigrationFlushing=true;\n    try{for(const {owner} of owners){\n      const result=owner.flush();\n      if(result&&typeof result.then===\"function\"){auxDraftMigrationUnknownWork.add(\"async-flush\");throw Error(\"Asynchronous editor flush is unsupported\")}\n    }}finally{auxDraftMigrationFlushing=false}",
+          "replace": "    if(!lease.recoveryReadOnly){\n      auxDraftMigrationFlushing=true;\n      try{for(const {owner} of owners){\n        const result=owner.flush();\n        if(result&&typeof result.then===\"function\"){auxDraftMigrationUnknownWork.add(\"async-flush\");throw Error(\"Asynchronous editor flush is unsupported\")}\n      }}finally{auxDraftMigrationFlushing=false}\n    }",
+          "count": 1
+        },
+        {
+          "find": "    lease.memoryJson=auxDraftMigrationMemorySignature();\n    lease.captureJson=auxDraftMigrationCaptureJson();",
+          "replace": "    lease.memoryJson=auxDraftMigrationMemorySignature();\n    const ownerStates=owners.map(({kind},index)=>({kind,signatureJson:lease.signatures[index]}));\n    ownerStates.sort((a,b)=>a.kind<b.kind?-1:a.kind>b.kind?1:a.signatureJson<b.signatureJson?-1:a.signatureJson>b.signatureJson?1:0);\n    lease.ownerStateJson=JSON.stringify(ownerStates);\n    if(lease.ownerStateJson.length+lease.memoryJson.length>33554432)\n      throw Error(\"Aux recovery owner state exceeds its bound\");\n    lease.captureJson=auxDraftMigrationCaptureJson();",
+          "count": 1
+        },
+        {
+          "find": "leaseId:lease.id,revision:lease.revision,ownerCount:lease.signatures.length,sealed:lease.sealed};",
+          "replace": "leaseId:lease.id,revision:lease.revision,ownerCount:lease.signatures.length,sealed:lease.sealed,\n    recoveryReadOnly:lease.recoveryReadOnly,ownerStateJson:lease.ownerStateJson,memoryStateJson:lease.memoryJson};",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "docs/integration/proposed/standard-profile-isolation/ui-editor-writer-closure-a1/inputs.json",
+      "inputSha256": "ab4ead1ba658494bd1152b84ccdf039e00d236eb3ee49299bea3bd18265b8024",
+      "outputSha256": "d817b1cfa23b71f9bc41105b40912def8fd3d96b10304a67549194b411f1be63",
+      "note": "same original/predecessor pins and counted rules; runtime SHA and one added finite export only"
+    }
+  ]
+}

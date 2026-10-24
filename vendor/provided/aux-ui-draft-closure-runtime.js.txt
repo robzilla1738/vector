@@ -127,11 +127,16 @@ function auxDraftMigrationRelease(lease){
     requestId:lease.requestId,leaseId:lease.id,revision:lease.revision,released:true,restored:true};
   return true;
 }
-function auxPrepareDraftMigrationCapture(requestId,wireFormat){
+function auxPrepareDraftMigrationRecoveryCapture(requestId,wireFormat){
+  return auxPrepareDraftMigrationCapture(requestId,wireFormat,"recovery-read-only");
+}
+function auxPrepareDraftMigrationCapture(requestId,wireFormat,captureMode){
+  if(captureMode!==undefined&&captureMode!=="recovery-read-only")
+    return{format:auxDraftMigrationFormat,ok:false,error:"Unsupported Aux draft capture mode"};
   if(typeof requestId!=="string"||!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(requestId))
     return{format:auxDraftMigrationFormat,ok:false,error:"A canonical capture request ID is required"};
   if(auxDraftMigrationLease)return{format:auxDraftMigrationFormat,ok:false,error:"This document already has a capture lease"};
-  const lease={id:null,requestId,phase:"preparing",tainted:false,restores:[],signatures:[],captureJson:null,memoryJson:null,sealed:false,revision:0};
+  const lease={id:null,requestId,phase:"preparing",tainted:false,restores:[],signatures:[],captureJson:null,memoryJson:null,ownerStateJson:null,recoveryReadOnly:captureMode==="recovery-read-only",sealed:false,revision:0};
   try{
     // Establish the actual extension context before reading any draft data.
     if(typeof window==="undefined"||typeof chrome==="undefined"||!chrome.runtime?.id||
@@ -152,11 +157,13 @@ function auxPrepareDraftMigrationCapture(requestId,wireFormat){
       if(typeof restore!=="function")throw Error("Aux editor freeze is unsupported");
       lease.restores.push(restore);
     }
-    auxDraftMigrationFlushing=true;
-    try{for(const {owner} of owners){
-      const result=owner.flush();
-      if(result&&typeof result.then==="function"){auxDraftMigrationUnknownWork.add("async-flush");throw Error("Asynchronous editor flush is unsupported")}
-    }}finally{auxDraftMigrationFlushing=false}
+    if(!lease.recoveryReadOnly){
+      auxDraftMigrationFlushing=true;
+      try{for(const {owner} of owners){
+        const result=owner.flush();
+        if(result&&typeof result.then==="function"){auxDraftMigrationUnknownWork.add("async-flush");throw Error("Asynchronous editor flush is unsupported")}
+      }}finally{auxDraftMigrationFlushing=false}
+    }
     if(auxDraftMigrationLease!==lease||lease.tainted||auxDraftMigrationWork.size||auxDraftMigrationUnknownWork.size||auxDraftMigrationOwnerOverflow||auxDraftMigrationOwners.size!==owners.length||auxDraftMigrationHasClaim())
       throw Error("Aux draft owners changed during capture");
     auxDraftMigrationCheckInputs();
@@ -164,6 +171,11 @@ function auxPrepareDraftMigrationCapture(requestId,wireFormat){
     if(lease.signatures.reduce((size,value)=>size+value.length,0)>33554432)
       throw Error("Aux editor capture exceeds its aggregate bound");
     lease.memoryJson=auxDraftMigrationMemorySignature();
+    const ownerStates=owners.map(({kind},index)=>({kind,signatureJson:lease.signatures[index]}));
+    ownerStates.sort((a,b)=>a.kind<b.kind?-1:a.kind>b.kind?1:a.signatureJson<b.signatureJson?-1:a.signatureJson>b.signatureJson?1:0);
+    lease.ownerStateJson=JSON.stringify(ownerStates);
+    if(lease.ownerStateJson.length+lease.memoryJson.length>33554432)
+      throw Error("Aux recovery owner state exceeds its bound");
     lease.captureJson=auxDraftMigrationCaptureJson();
     if(auxDraftMigrationLease!==lease||lease.tainted)throw Error("Aux draft lease changed during capture");
     lease.revision=auxDraftMigrationRevision;lease.phase="held";
@@ -222,7 +234,8 @@ function auxDraftMigrationStoreUnits(capture){
 }
 function auxDraftMigrationEnvelope(lease,wireFormat){
   const base={format:auxDraftMigrationFormat,ok:true,retained:true,requestId:lease.requestId,
-    leaseId:lease.id,revision:lease.revision,ownerCount:lease.signatures.length,sealed:lease.sealed};
+    leaseId:lease.id,revision:lease.revision,ownerCount:lease.signatures.length,sealed:lease.sealed,
+    recoveryReadOnly:lease.recoveryReadOnly,ownerStateJson:lease.ownerStateJson,memoryStateJson:lease.memoryJson};
   const capture=JSON.parse(lease.captureJson);
   return wireFormat==="utf16-v1"?{...base,wireFormat,captureJson:lease.captureJson,
     storeUnits:auxDraftMigrationStoreUnits(capture)}:{...base,capture};
