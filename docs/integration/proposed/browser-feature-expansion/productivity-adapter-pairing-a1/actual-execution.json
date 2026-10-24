@@ -1,0 +1,55 @@
+{
+  "format": "aux.productivity-adapter-pairing.execution.v1",
+  "recordedAt": "2026-10-24T19:10:49.081613+00:00",
+  "baselineCommit": "d11d6108b",
+  "root": "/Users/rcourson/.codex/worktrees/aux-features-frame/web",
+  "commands": [
+    [
+      "node",
+      "docs/integration/proposed/browser-feature-expansion/productivity-adapter-pairing-a1/freeze.mjs",
+      "/private/tmp/aux-productivity-adapter-pairing-20261024-a3.inputs.json",
+      "/private/tmp/aux-productivity-adapter-pairing-20261024-a3"
+    ],
+    [
+      "node",
+      "docs/integration/proposed/browser-feature-expansion/productivity-adapter-pairing-a1/compose.mjs",
+      "/private/tmp/aux-productivity-adapter-pairing-20261024-a3.inputs.json"
+    ]
+  ],
+  "attempts": [
+    {
+      "step": "initial freeze",
+      "result": "refused before pins/output creation",
+      "reason": "Worker checkout has no generated original snapshot; exact static project snapshot is used through a fresh operand tree."
+    },
+    {
+      "step": "a1 compose",
+      "pins": "/private/tmp/aux-productivity-adapter-pairing-20261024-a1.inputs.json",
+      "result": "refused",
+      "reason": "Exact equality of all non-context anchors refused the next append anchor, whose input tail correctly changes but whose appended Files helper payload is identical.",
+      "pinsSha256": "a32a327b3dcc912a7a2000807c321e2cf7bdf174446b106fb79dd1cd5c4fa8c8"
+    },
+    {
+      "step": "a2 compose",
+      "pins": "/private/tmp/aux-productivity-adapter-pairing-20261024-a2.inputs.json",
+      "result": "source composition passed, original entry projector refused",
+      "reason": "Fresh original projector operand tree lacked the cold-entry input JSON; final producer explicitly pins/copies that existing static dependency.",
+      "pinsSha256": "e2b83afd2a5ef5868dd7567cbb84547aa187e131d35a33b626755ff6412a679a"
+    },
+    {
+      "step": "a3 compose",
+      "pins": "/private/tmp/aux-productivity-adapter-pairing-20261024-a3.inputs.json",
+      "result": "passed",
+      "exitCode": 0,
+      "pinsSha256": "55a7fdcdf44cb197a70f64010ad115c8ce09ece2332d002733560bbaa598d0fc"
+    }
+  ],
+  "finalEvidence": "/private/tmp/aux-productivity-adapter-pairing-20261024-a3/projection-evidence.json",
+  "finalEvidenceSha256": "f2cc35af64a0153a97c6b24a7ca5ffc507093b842d2692e965a031fde18b7441",
+  "existingContextFilesTestsRepeated": false,
+  "nativeBuildRun": false,
+  "productExecuted": false,
+  "packaged": false,
+  "runtimeAuthorityGranted": false,
+  "uiChanged": false
+}

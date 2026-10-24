@@ -1,0 +1,1637 @@
+{
+  "format": "aux.productivity-adapter-pairing.inputs.v1",
+  "root": "/Users/rcourson/.codex/worktrees/aux-features-frame/web",
+  "producer": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/browser-feature-expansion/productivity-adapter-pairing-a1",
+  "output": "/private/tmp/aux-productivity-adapter-pairing-20261024-a3",
+  "historicalProjection": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/browser-feature-expansion/async-daemon-projection-research-v1/actual-projection.json",
+  "historicalComposition": "/private/tmp/aux-browser-features-async-daemon-20261023-a2/composition.json",
+  "predecessorSourcePair": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/profile-isolation-protected-startup/integration/source-pair.json",
+  "nativeReceipt": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/ui-native-capture-transport-a1/actual-daemon-link-a3.json",
+  "nativeInputs": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/ui-native-capture-transport-a1/daemon-link-inputs.json",
+  "nativeBinary": "/private/tmp/aux-ui-native-capture-transport-daemon-link-20261024-a3/Aux Daemon",
+  "adapterInputs": [
+    {
+      "path": "vendor/provided/aux-navigation-command-bar.mjs",
+      "sha256": "6601d1411fb9485b3968e07f4e3d7b532764091357c6779d67cbe329a956028f"
+    },
+    {
+      "path": "vendor/provided/aux-palette-ask.mjs",
+      "sha256": "af2635ee35e7fc2e4960e5b6d394b5c5c1a9fdd775e8aa7430b30f014bf34797"
+    },
+    {
+      "path": "vendor/provided/aux-context-actions.mjs",
+      "sha256": "c4b59997df0faf589c9ddef3a08a8e8f4ca7181adddf9e0815d31604c4318514"
+    },
+    {
+      "path": "vendor/provided/aux-remix-context.mjs",
+      "sha256": "ab19e0d5a2a1ae36bc820d2a376bb195144eb85518b2f1f7ac941c8cc3cb6a5c"
+    },
+    {
+      "path": "docs/integration/proposed/browser-feature-expansion/research-v1/source/aux-research-ui.mjs",
+      "sha256": "39a7ce3794b858d00424d6939d759fcf8c10e7e1713459c469712a8c26c56003"
+    },
+    {
+      "path": "docs/integration/proposed/browser-feature-expansion/research-v1/source/research-ui.js",
+      "sha256": "d8fd3a7a7024466782e4654b019d4169ac89a43cb4366d3468dd9443b27a6017"
+    },
+    {
+      "path": "vendor/provided/aux-browser-feature-composition.mjs",
+      "sha256": "ddf1b6dc11fede1c3ce73dfa915f02653cd312145e2c074bfd591f9de48cdd32"
+    },
+    {
+      "path": "vendor/provided/aux-browser-feature-settings.mjs",
+      "sha256": "c1be2eb2724bded22ee69abf96a24bb1e85f6481641da6c92d24e8791367ccfa"
+    },
+    {
+      "path": "vendor/provided/aux-shortcut-profiles.mjs",
+      "sha256": "2df345d683e54b3396786028da88cbc1021073e9fb0e1d49734e7ef6b72eee18"
+    },
+    {
+      "path": "vendor/provided/aux-productivity-capture.mjs",
+      "sha256": "f35dc3078fa516851f67e9eb66b5eb785c8bea30c383ca6699a1bf7c468ee867"
+    },
+    {
+      "path": "vendor/provided/aux-productivity-developer.mjs",
+      "sha256": "2d5c245c4543a9b355170175ac343939e4fb9d4a9b66022767a03c17cab9368b"
+    },
+    {
+      "path": "vendor/provided/aux-productivity-file-chooser.mjs",
+      "sha256": "a04280410208eee7d04a436140cc887d9076620f65fb6e2119157a4692eb48e2"
+    },
+    {
+      "path": "vendor/provided/aux-productivity-integration.mjs",
+      "sha256": "bf4af7a208070064bddbe9d07fbb50601ec797bd88ed5ca3890f136f70a9e42b"
+    },
+    {
+      "path": "vendor/provided/aux-productivity-proposals.mjs",
+      "sha256": "c05c352269ed16a8d7704e03b4cc3798b6d6bbca1fe152eccfe6474ac4c7c2bf"
+    },
+    {
+      "path": "vendor/provided/aux-productivity-tab-context.mjs",
+      "sha256": "2099c6af7682945c1b61b7da4fb58e1896f6886958e51989fd3b87c0258ba9cf"
+    },
+    {
+      "path": "vendor/provided/aux-productivity-spaces.mjs",
+      "sha256": "d1a97b9805f5d4b5b9ec5fdb9085e07f12cea025820fa7325e8a26aef92b4c21"
+    },
+    {
+      "path": "vendor/provided/aux-productivity-tidy-selection.mjs",
+      "sha256": "6865871e172c192c0ecad2d9b4d6074462fdaa977a336648d2f95add0b74e4fd"
+    },
+    {
+      "path": "vendor/provided/aux-productivity-context-read.mjs",
+      "sha256": "120bb353ca2c426fbeb6deba78e1834c365405d18304865b1c31168f290b885a"
+    },
+    {
+      "path": "vendor/provided/aux-theme-editor.mjs",
+      "sha256": "595a666881880a21ac728840086c01ea34e2a590cdfc4ba8851f34de07e1225a"
+    },
+    {
+      "path": "vendor/provided/aux-productivity-files.mjs",
+      "sha256": "19c992da931dcddaa0e002aef94ce74038ce9dbb1682fe99449289f6e38a490f"
+    },
+    {
+      "path": "vendor/provided/aux-productivity-media.mjs",
+      "sha256": "4485f8206b4c6d0e103032459f05d6b5fa6240e475e2ae38d94b8ab2201db1b5"
+    },
+    {
+      "path": "vendor/provided/aux-browser-routing.mjs",
+      "sha256": "a65214c95c1c7e5209581f82ef67516ffcc9bdd731546b9d820e850b977f6b0b"
+    },
+    {
+      "path": "vendor/provided/aux-channel-bot-assets.mjs",
+      "sha256": "685af8c82cdd6c58fde46637de6f8d86183a2f56023de486499b92a3451c92b9"
+    },
+    {
+      "path": "docs/integration/proposed/final-completion/channel-bot-assets.json",
+      "sha256": "19c3630cb0a32cf6dd333d1f91847342bd26a25a6040fbbfd90b09aa8e877490"
+    },
+    {
+      "path": "vendor/provided-ui/branding/channel-bots/discord.jpg",
+      "sha256": "374ba2a0cf60e6431dea446e8523c6e81ded7c26c30e0748a798c79565879584"
+    },
+    {
+      "path": "vendor/provided-ui/branding/channel-bots/slack.jpg",
+      "sha256": "33a7a42b9625b0a09fc6348d3c1a5e2985242cdfce9445281f101e867e2ce57a"
+    },
+    {
+      "path": "vendor/provided-ui/branding/channel-bots/telegram.jpg",
+      "sha256": "7f1d5d743eb5dc90407c4b06186b301e8530b7034d3832ae8bebc10b65387415"
+    },
+    {
+      "path": "vendor/provided/aux-product-links.mjs",
+      "sha256": "8fcae8278990a5c55f523263217dc90bb9b03ff0856ad3e677625eb19596e41d"
+    },
+    {
+      "path": "vendor/provided/aux-daemon-obsolete-addon.mjs",
+      "sha256": "4f029d631d4a81fdc03a203cfe468a6e9c8e779d97f01cff542f76938e7d4181"
+    },
+    {
+      "path": "vendor/provided/aux-computer-use-module-identity.mjs",
+      "sha256": "a7d325fe94fc574ae634f4f92d46218189fc66055026205896e1e33d72fffb05"
+    },
+    {
+      "path": "vendor/provided/aux-memory-runtime-v2-stage.mjs",
+      "sha256": "de1957eb0e0a931f3dc76aabdba73a2e4a2630f4716111bf33d7a25398d58a0d"
+    },
+    {
+      "path": "docs/integration/proposed/standard-profile-isolation/memory-runtime-v2-a1/source/stage-plan.json",
+      "sha256": "3d9b1ab4e81596402de7cf159484ee214239914691e815a79fbb48e5758fc8ed"
+    },
+    {
+      "path": "docs/integration/proposed/standard-profile-isolation/computer-use-module-identity-a1/source/patch-plan.json",
+      "sha256": "578a7c8313b2d986a00dc1dcab582e8ba805625aac27aa924cfc3b5eb4a5fda6"
+    },
+    {
+      "path": "vendor/provided/aux-ui-peer-identity.mjs",
+      "sha256": "f12a64f5bec022209cfa4e2d67f7d04dd35db249927e307314f708edbeaac794"
+    },
+    {
+      "path": "vendor/provided/aux-ui-transient-identity.mjs",
+      "sha256": "73bab22d32699abf193a07d08abcecd7e8c6d01c769a63e8090beb98cd34508a"
+    },
+    {
+      "path": "vendor/provided/aux-ui-storage-identity.mjs",
+      "sha256": "7881cf049b01e50cdd36dbf3d85359bee7695ee536470774c6ad88f2a3670f08"
+    },
+    {
+      "path": "vendor/provided/aux-ui-draft-identity.mjs",
+      "sha256": "6eb32b18e49ca3fc63edd1ccd53968f3d61a1e2669ca4523a6715c86451387e3"
+    },
+    {
+      "path": "vendor/provided/aux-ui-draft-capture.mjs",
+      "sha256": "07d17a6edcd9c7f59cd438153031cd011f128b11bc1580edae0f52b5819220f2"
+    },
+    {
+      "path": "vendor/provided/aux-ui-draft-capture-runtime.js.txt",
+      "sha256": "183879e669c0efec13ccb5e9267772c5945bb9c45477c46247b3895d22a75ea7"
+    },
+    {
+      "path": "docs/integration/proposed/standard-profile-isolation/ui-draft-capture-a1/inputs.json",
+      "sha256": "667c8da7ebc11355d2db87a9ada757572d678b3753d9ce9b2ce37dd64cc52052"
+    },
+    {
+      "path": "docs/integration/proposed/standard-profile-isolation/ui-draft-identity-a1/inputs.json",
+      "sha256": "68011631d8e74f645ddf80d60c3db26d7342ae1658cd389a27ad8dafa3ee8b53"
+    },
+    {
+      "path": "vendor/provided/aux-ui-storage-migration.mjs",
+      "sha256": "df36e7cbfb221ecc329db3d5d406cfdb1fef4917e3ae663d909a739d309ff7dc"
+    },
+    {
+      "path": "vendor/provided/aux-cli-worker-settlement.mjs",
+      "sha256": "3c57ea84b62ab0eb9d3dbda646f49920f54ba10a5ce5fec7a3e46debbb41334d"
+    },
+    {
+      "path": "docs/integration/proposed/standard-profile-isolation/cli-worker-settlement-a1/inputs.json",
+      "sha256": "1320098b61dd6d10c620a9a67ade803701343afc3cdbb1242a0c076b01dbc560"
+    },
+    {
+      "path": "docs/integration/proposed/standard-profile-isolation/cli-worker-settlement-a1/source/original.js.txt",
+      "sha256": "4240d7f47501a41b3b08a279a0b68a5cf1a6658b85b7bef08c5d0c0c646b5989"
+    },
+    {
+      "path": "docs/integration/proposed/standard-profile-isolation/cli-worker-settlement-a1/source/replacement.js.txt",
+      "sha256": "c3b7ccc6f7858d0fdbb546c08f91e31fcf7d68ff5de73b65d4020df9111c5720"
+    },
+    {
+      "path": "docs/integration/proposed/standard-profile-isolation/cli-worker-settlement-a1/source/anchors.json",
+      "sha256": "afe60668311d65aa4c9df9ec691ca531bc438b69064b63577fa9f6ea87783987"
+    },
+    {
+      "path": "docs/integration/proposed/standard-profile-isolation/ui-storage-identity-a1/inputs.json",
+      "sha256": "010b006a4ec2510390abbe1b3d7b94d918cde7693b0616af34bfec76181d420b"
+    },
+    {
+      "path": "docs/integration/proposed/standard-profile-isolation/ui-transient-identity-a1/inputs.json",
+      "sha256": "b913440d52056eb94090a3e5e6e4ffa95dbfb65d60c613adcf8d6fc7b030769f"
+    },
+    {
+      "path": "docs/integration/proposed/standard-profile-isolation/ui-peer-identity-a1/inputs.json",
+      "sha256": "4e19dc2c5649999ae4eb246eacbfdabaddaec5321f14f3ab92df94895253ef68"
+    },
+    {
+      "path": "vendor/provided/provider-funded-launch.mjs",
+      "sha256": "5542681d235a9a21340317afbfa2a9ac4bc12fdc0e295918737db033954aafae"
+    },
+    {
+      "path": "vendor/provided/provider-launch-stage.mjs",
+      "sha256": "3c7378ab0d06ab0fa52ede152b8d816dc99ccca2081a18fd44e1b8b1abd41cd1"
+    },
+    {
+      "path": "vendor/provided/aux-command-path-parsers.mjs",
+      "sha256": "e53a752716948bb7dfc44a9dcee2101059762b5013059453be84c95bbe0f2415"
+    },
+    {
+      "path": "vendor/provided/provider-funded-launch-ui.json",
+      "sha256": "4bf974f1817f6b64c9eb982b841028abf26a6085d5771a459a184d9bfebffb32"
+    },
+    {
+      "path": "vendor/aside/patches/chatgpt.mjs",
+      "sha256": "552dd553abd04ab69d73ab33c0c27b0725792a2653d51100d4fb0695f5cb8b38"
+    },
+    {
+      "path": "vendor/aside/shims/aux-chatgpt.cjs",
+      "sha256": "5fa0b56141c9fb515c6b5ff979340c0958bf3b9dd79fb60a7636357605e73ede"
+    },
+    {
+      "path": "vendor/provided/aux-macos-utility-stage.mjs",
+      "sha256": "09467f590724d3bf2a3e25908251a5050e0471b424d5a9f39ceafb3f9be37f46"
+    },
+    {
+      "path": "docs/integration/proposed/aux-sync-recovery-enrollment-ui/source/adapt.mjs",
+      "sha256": "974d493b9fdde739a73e37a7df4c7678e7e26c0612621841f89a15516e897987"
+    },
+    {
+      "path": "docs/integration/proposed/aux-sync-recovery-enrollment-ui/source/materialize-desktop.mjs",
+      "sha256": "4d3b44d6ca741b4a80b3980ab6038284eecbc5234a0af764ce7d1457c6ef2014"
+    },
+    {
+      "path": "docs/integration/proposed/aux-sync-recovery-enrollment-ui/source/desktop.ts",
+      "sha256": "0bcc589285a3243e92e71e9e04fefb8750be91e0405b64a6df9251731e993044"
+    },
+    {
+      "path": "docs/integration/proposed/aux-sync-recovery-enrollment-ui/source/aux-sync-recovery-enrollment-controller.js",
+      "sha256": "8a6d30d3346c2a890660182d93bae0573dab0ef4eb475bd51decbcd9ab9647d3"
+    },
+    {
+      "path": "docs/integration/proposed/aux-sync-recovery-enrollment-ui/source/aux-sync-recovery-enrollment.js",
+      "sha256": "2aeaa20ec0a4b29a459a604a987d9829381a7f614dd707ddf88337437918fd45"
+    },
+    {
+      "path": "docs/integration/proposed/aux-sync-recovery-enrollment-ui/source-pins.json",
+      "sha256": "8f6e4e89a358d68f6602fbd6e126de0558b8fd8e9c02cbb355e5ebf4c2c86e23"
+    },
+    {
+      "path": "docs/integration/proposed/aux-sync-recovery-daemon/source/adapt.mjs",
+      "sha256": "276189e76353f399211c98db290a8f584a72216dda589f0ac6dc4d4d72f4d12a"
+    },
+    {
+      "path": "docs/integration/proposed/aux-sync-recovery-daemon/source/materialize-desktop.mjs",
+      "sha256": "600b95e183527ff2c1c87c047e40d4c497bde61a54df64cdc9c41905e44451d3"
+    },
+    {
+      "path": "docs/integration/proposed/aux-sync-recovery-daemon/source/desktop.ts",
+      "sha256": "63b763994a810f5fcc3903dc37d8ac5010fb3a033c240b4de62fe4df169003eb"
+    },
+    {
+      "path": "docs/integration/proposed/aux-sync-recovery-daemon/source/bridge.js.txt",
+      "sha256": "24bc4ddaf8d99711ba32a74b9f158bddfd9f651ef0c8958c101512c063143157"
+    },
+    {
+      "path": "docs/integration/proposed/aux-sync-recovery-daemon/source-pins.json",
+      "sha256": "5a6ca6dc77e520d2fbcddf14e3da827376a6701e69f9d1e5423e5c40f45c7992"
+    },
+    {
+      "path": "services/aux-cloud/src/sync-recovery-crypto.ts",
+      "sha256": "4fe58769ee4df77595ff5060e63724d2d5289f4b50e667ab58f30da1aa90c0d7"
+    },
+    {
+      "path": "docs/integration/proposed/aux-atomic-csk-publication/source/adapt.mjs",
+      "sha256": "08d10c3010fc69175440207fd7a1a91b5b3ee06e47d4979bec83839be072bcf5"
+    },
+    {
+      "path": "docs/integration/proposed/aux-atomic-csk-publication/source-pins.json",
+      "sha256": "f4c15e8bb7765c4c1d4477164edb58b8e6f749ae473a0778fb2267d540496a84"
+    },
+    {
+      "path": "docs/integration/proposed/aux-macos-utility-integration/inputs.json",
+      "sha256": "cbbd62108d589fd6e680c13a50328a628c286d252a65c05cbdec0734ba28f7c4"
+    },
+    {
+      "path": "docs/integration/proposed/aux-macos-utility-integration/artifact.json",
+      "sha256": "d9ecd74397a6388a7d195e3ed9a91b5c9496811a867edfc0c445b4b72edb7c24"
+    },
+    {
+      "path": "docs/integration/proposed/aux-macos-utility-node/source/adapt.mjs",
+      "sha256": "8b9aae155b3396ca7ba4dd3aa4a88d3f752be348417bc2a0d318bf87fad7d324"
+    },
+    {
+      "path": "docs/integration/proposed/aux-macos-utility-node/source-pins.json",
+      "sha256": "fca3c7188a637df1ec4b2302237e4f7085d4d3d2727d3bec5827aed282c7378e"
+    },
+    {
+      "path": "docs/integration/proposed/aux-macos-utility-node/source/AuxMacUtilityEnvironmentHost.cc",
+      "sha256": "bd87d6693dbebdae0106561bb0932573337023c6fd9df1fdc129807c854ce8a9"
+    },
+    {
+      "path": "docs/integration/proposed/aux-macos-utility-node/source/utility-module.cc",
+      "sha256": "19d99471c09588840e11cd569c2422a760ad0ff6c69139147bc4a762b604543a"
+    },
+    {
+      "path": "docs/integration/proposed/aux-macos-utility-node/source/AuxMacUtilityEnvironmentHost.h",
+      "sha256": "02aa4cf97e89fcdc902abff36c262b0c020b3e5012e770096510d2e88584608e"
+    },
+    {
+      "path": "docs/integration/proposed/aux-macos-utility-node/source/AuxMacUtilityOwner.swift",
+      "sha256": "659b23a811b9b25e58b64dc031de57f82491733c529fa0a1dd6304f98b7dde67"
+    },
+    {
+      "path": "docs/integration/proposed/aux-owned-dispatch-lifetime/source/AuxOSDrainResult.swift",
+      "sha256": "9a5886c30591940594906fb6ffd57ce4648933269414bd96ce136e3c4448579f"
+    },
+    {
+      "path": "docs/integration/proposed/aux-native-macos-utilities/source/AuxOSJobCustody.swift",
+      "sha256": "ef8f44ebc2da8633bbff8e527dced516c49d3d77949b63aac72f2b8cc9f043c4"
+    },
+    {
+      "path": "docs/integration/proposed/aux-native-macos-utilities/source/AuxMacOSUtilityCommandCore.swift",
+      "sha256": "625388093933d923c14e66766f825bf5f49638b4d71299b535e918df87864dc8"
+    },
+    {
+      "path": "docs/integration/proposed/aux-native-macos-utilities/source/AuxUtilityCompletion.swift",
+      "sha256": "fdf573db59912ed7288984e8eee958adf9c5455a88707cb0f78ff29d0d5d20f1"
+    },
+    {
+      "path": "docs/integration/proposed/aux-native-macos-utilities/source/AuxAppKitUtilityBoundary.swift",
+      "sha256": "04ee53525717955c107661f49de5be311ef08543fe07ad47d1da7e94537d743d"
+    },
+    {
+      "path": "vendor/provided/aux-crypto-stage.mjs",
+      "sha256": "dcec4c8d034e36bc5866d53d2484a599f80e498e1dd29028b8d54de5680df47e"
+    },
+    {
+      "path": "docs/integration/proposed/aux-crypto-stage-integration/inputs.json",
+      "sha256": "04ba60db4d0bff27682ea882ac4bad7eda148504e8165765b9fa0702b4d95f59"
+    },
+    {
+      "path": "docs/integration/proposed/aux-csk-v2-consumer/source-pins.json",
+      "sha256": "c0df74aabb7be152d32a0a1dd95a1bdd171596c76a70da20a4f60e880dbb72ba"
+    },
+    {
+      "path": "docs/integration/proposed/aux-live-dk-purposes/source-pins.json",
+      "sha256": "0679b19878759aec047de3036d30f33936b7c0f32dbc69deedf1260c8de5a9c4"
+    },
+    {
+      "path": "docs/integration/proposed/aux-macos-crypto-exclusion/source-pins.json",
+      "sha256": "9e923414094990e6b3a774e66901c922a4dc9d2b53f8cc2f28e80b2537d90025"
+    },
+    {
+      "path": "docs/integration/proposed/aux-crypto-runtime-assets/source-pins.json",
+      "sha256": "d76aec791ba845885c6f2ec7d2923946e2808784ff4f2be15291daed3ec3fa6f"
+    },
+    {
+      "path": "docs/integration/proposed/aux-crypto-runtime-assets/source/materialize.mjs",
+      "sha256": "0415c7c21ed5bc9faf054d8e539c321b121f642013f7858aeb4fd66e289438f3"
+    },
+    {
+      "path": "docs/integration/proposed/aux-csk-v2-consumer/source/aux-csk-v2-runtime.mjs",
+      "sha256": "3448fdac0d7629975df39d2e33db3c219a70a043e5d3a577c7b9dec12d9061af"
+    },
+    {
+      "path": "docs/integration/proposed/aux-live-dk-purposes/source/runtime.mjs",
+      "sha256": "438df3eeb7bf3e7ee2140c8983e0039ca47952afa90fc7e3ce830532f39ca43c"
+    },
+    {
+      "path": "vendor/aside/lib/sea.mjs",
+      "sha256": "2a2698eef8e353354d7203f8fd460935fddf039677a79659b60b80802ee12ac6"
+    },
+    {
+      "path": "vendor/provided/aux-crypto-identity.mjs",
+      "sha256": "8bfe8a9c618bfd5f448650bf1a7f809d7fb75946eb54dfea91f7a1fda47c4b4f"
+    },
+    {
+      "path": "vendor/provided/aux-identity-json-tokens.mjs",
+      "sha256": "6186f20acf05547d0acc86de5251c896902b42bf46b275f45854cb825e47ba1b"
+    },
+    {
+      "path": "scripts/stage-provided.mjs",
+      "sha256": "58b7d321c7bc9747d4f5529fbd4c50d5f2a70826715e46494bb3459b5bb6f11e"
+    },
+    {
+      "path": "docs/integration/proposed/provided-agent-worker-revision/revision.mjs",
+      "sha256": "fd02d1d73cb94df1fe4d15ca8490e8130882783307cf8617c47c21b9b3f8bd54"
+    },
+    {
+      "path": "vendor/provided/agent-revisions.json",
+      "sha256": "2c48f1733163cf06e935447b4320eae0d845213d613a15b937436efa6b05460d"
+    },
+    {
+      "path": "vendor/provided/aux-protocol-identity.mjs",
+      "sha256": "929f57d4c6fc2cd7068e18ffeb0afc4b367ec8819d8f188df8639de56f112fe4"
+    },
+    {
+      "path": "vendor/provided/aux-provider-identity.mjs",
+      "sha256": "6a603bfc85530c426dc9be75d2532158d1d900d1a77dc8ecbeb24c125bab313d"
+    },
+    {
+      "path": "vendor/provided/aux-runtime-contract-identity.mjs",
+      "sha256": "5a51895d1f6563148eeb07809c1304c422b928d3a65c574bd0d7589161db83d4"
+    },
+    {
+      "path": "vendor/provided/aux-builtin-icon-identity.mjs",
+      "sha256": "fbbaefd28b0f9de35cb7e840c484ac3eb4a4b82ea0230097a9bab4cff3540a06"
+    },
+    {
+      "path": "docs/integration/proposed/aux-builtin-icon-hosting/source-inventory.json",
+      "sha256": "11dc14722d548af6de7812ad234f7668a188041577a144b810532e63f828eab1"
+    },
+    {
+      "path": "docs/integration/proposed/aux-builtin-icon-hosting/acquisition.json",
+      "sha256": "2be79d3d09164af435952c4d0427ad6575f0e0ecd63c9a6ab99e99a27a1537b5"
+    },
+    {
+      "path": "vendor/provided/aux-cold-entry-admission.mjs",
+      "sha256": "a569415ecca246cddca88b2f29363f8b0ac014c4a7450e92ee0c000657826161"
+    },
+    {
+      "path": "docs/integration/proposed/aux-cold-entry-admission/inputs.json",
+      "sha256": "59dc73375a99bb8cc5401e7a03b80005cf8b7b235340a6dc779482d4ff9022c2"
+    },
+    {
+      "path": "vendor/provided/aux-ephemeral-runtime-identity.mjs",
+      "sha256": "6ed8ca32d1c26ed01b8f1333c25ff9b91d04979d411a7bdd9dbf2da54fd56dc7"
+    },
+    {
+      "path": "docs/integration/proposed/aux-ephemeral-runtime-identity/inputs.json",
+      "sha256": "a88ffaf0aff3690c315bf931ca8a533583d98f264d8c769c47bb44a55637b9b6"
+    },
+    {
+      "path": "vendor/provided/aux-automation-identity.mjs",
+      "sha256": "3b1d289a7d182c96de9159a9a033d5ba12b56cd11ae883ad760d3ff5acfc8a7c"
+    },
+    {
+      "path": "vendor/provided/aux-private-daemon-identity.mjs",
+      "sha256": "bcf18bd720362b9aef0e94b37ffb6d159d3b4579cde25e8f87ac1e138b5c65f2"
+    },
+    {
+      "path": "vendor/provided/aux-capture-contract-identity.mjs",
+      "sha256": "df2a69066c81e1e6f47683592001e6d66b5b8683a84744e69b224bc68ae151c6"
+    },
+    {
+      "path": "vendor/provided/aux-profile-context-identity.mjs",
+      "sha256": "a793cbd71a8643e8ec4336b6b343f406d08695fcba62882d662c2bac58c5d233"
+    },
+    {
+      "path": "vendor/provided/aux-selection-contract-identity.mjs",
+      "sha256": "0c9b50b1c2a4f873446ebbae44a6e7f9645358f3eb8afbce739808b9d5f0fbef"
+    },
+    {
+      "path": "vendor/provided/aux-billing-return-fallback.mjs",
+      "sha256": "2200d58af0ccf7d4f5b16b0a2bdbbe277d2336c8a771392a6b5313ce77589b05"
+    },
+    {
+      "path": "docs/integration/proposed/aux-billing-return-fallback/inputs.json",
+      "sha256": "2f2a4e9c8f936b6452c74c911398132659d45fd73ceff8bb1bf4d9675eeddd7e"
+    },
+    {
+      "path": "vendor/provided/aux-ui-origin-identity.mjs",
+      "sha256": "0a2c7c347074abebe8f73d3e5d00e5f36a834692bbee3886154e210e38b1a55d"
+    },
+    {
+      "path": "docs/integration/proposed/aux-ui-origin-identity/inputs.json",
+      "sha256": "8771b909a78ef79631a4459e517e7ca8824d4b313c632688c16404a18919a25f"
+    },
+    {
+      "path": "docs/integration/proposed/aux-selection-contract-identity/inputs.json",
+      "sha256": "7d5954bd78ec70d6863c59ed98e23f9ba7a952747dfc5e7c12ed50894eb41a18"
+    },
+    {
+      "path": "docs/integration/proposed/aux-profile-context-identity/inputs.json",
+      "sha256": "4ab7338557d141c5a2c5743e51634e41e53d05a5f013f324cfaab22d50991901"
+    },
+    {
+      "path": "docs/integration/proposed/aux-capture-contract-identity/inputs.json",
+      "sha256": "58163d4ba821564c0d2d7c3086326a959c2d63cc03f4a6a66d1a0aa26f6c1d0f"
+    },
+    {
+      "path": "vendor/provided/aux-runtime-correctness-identity.mjs",
+      "sha256": "784c5f93973ea2cb1f9c0cb139b5866dd54f0ee0002f5ddb9022719fdb8c3654"
+    },
+    {
+      "path": "docs/integration/proposed/aux-runtime-correctness-identity/inputs.json",
+      "sha256": "2813ad104307abc60c6200f188922066c140f9a7b72d2285fdb87e6f7cd89b7c"
+    },
+    {
+      "path": "docs/integration/proposed/aux-private-daemon-identity/inputs.json",
+      "sha256": "b9ab0940e86dee2922ce77068576105ba2eaa6cba729ec1d283aa290d6b797a8"
+    },
+    {
+      "path": "vendor/provided/aux-context-ledger-identity.mjs",
+      "sha256": "928069c3dcb0b7b58bd319f6dca89e1ca13efff6fb4eb62b9ce1f99ac8b8095b"
+    },
+    {
+      "path": "vendor/provided/aux-context-ledger-schema.mjs",
+      "sha256": "e1ae24b8466fbf47af0c44cf0a734c01bc8d8b5e22171cac35a9cb073c33a7cc"
+    },
+    {
+      "path": "docs/integration/proposed/aux-context-ledger-identity/source-pins.json",
+      "sha256": "7467a5ae16d8b57db5b872cf9b6c9380d32592c2958102a4d723187db0ff4ca8"
+    },
+    {
+      "path": "vendor/provided/aux-asset-path-identity.mjs",
+      "sha256": "4626ac2533c22d150f40b01f9a50234e4d95e1c261ae2709d5ec266981326c4a"
+    },
+    {
+      "path": "docs/integration/proposed/aux-asset-path-identity/inputs.json",
+      "sha256": "931f459c7896addb945cf2ead800e3e7160671bd8198efb4c58c67c031bc9cfb"
+    },
+    {
+      "path": "scripts/lib/aux-browser-icon.mjs",
+      "sha256": "37ce0a2949617f04c50332fa2c451444de86e38504c0718836fab1d30a9d05b1"
+    },
+    {
+      "path": "docs/integration/proposed/aux-browser-icon/replacement-receipt.json",
+      "sha256": "cd9db49cd76aa81ff405c8145fb03705173a65f73b17d2db41fd81786670d16e"
+    },
+    {
+      "path": "docs/integration/proposed/aux-automation-identity/inputs.json",
+      "sha256": "45cb6b698002cac5b39903b5ffc9769ad363f7d1229c5a19851a3af2b2fce7c2"
+    },
+    {
+      "path": "docs/integration/proposed/aux-runtime-contract-identity/inputs.json",
+      "sha256": "7de8f9a3a040754973c66a54a6611e2a0f557a8d76baafeac6e40b9fdd202316"
+    },
+    {
+      "path": "docs/integration/proposed/aux-provider-identity/inputs.json",
+      "sha256": "7b3057dab39f908535a2b73aa3b19d4de9e7d9dba0664bf154b602e62c72f04d"
+    },
+    {
+      "path": "scripts/lib/provided-ui.mjs",
+      "sha256": "65f5a549a2ce9b4fa03e4cb3917cfbd9073d2b5c4542ee5132b39b12da3d6666"
+    },
+    {
+      "path": "scripts/lib/provided-apps.mjs",
+      "sha256": "3702026ae62ecb693a90aad4f4d87fe86b465ca13a48794f6aece4ba00df1e82"
+    },
+    {
+      "path": "vendor/provided/daemon-adapter.mjs",
+      "sha256": "cb3e5a2fa8e82cbcb40e719f091e1eb9fba9f7d2ad6ade50d3f0d86e0ee8d7a3"
+    },
+    {
+      "path": "vendor/provided/aux-pdf.cjs",
+      "sha256": "103969123196851013a4b184e938635089217e747a3e1a6a3dbbf21a53a3d4f3"
+    },
+    {
+      "path": "vendor/provided/aux-pdf-pins.cjs",
+      "sha256": "6e6ad8a9c9f1fdd6925fa287617a794de8576e6dd290537cee1b48597f1ba16f"
+    },
+    {
+      "path": "vendor/provided/aux-pdf-artifact.mjs",
+      "sha256": "468409fb4c59db2634e6abcb26a3b6239ba566a1059696d60655886a764a53a8"
+    },
+    {
+      "path": "docs/integration/proposed/aux-native-pdf-link/runtime-evidence.json",
+      "sha256": "762585bc954f9e3d2ce5e073ff0865a2d3b8c42e6a7add906f13770a528c2826"
+    },
+    {
+      "path": "docs/integration/proposed/aux-pdf-lifetime/runtime-evidence.json",
+      "sha256": "88593eff40073347c6de29367e0231ecb24a301a4b03b20a37b613f7ab125591"
+    },
+    {
+      "path": "vendor/provided/cli-adapter.mjs",
+      "sha256": "b1293b1dbe9b7e52f1b118d9c20e35f6404c3717aa0ecb6ab9c0366e04cb3ed1"
+    },
+    {
+      "path": "vendor/provided/aux-cli-device-registration.mjs",
+      "sha256": "35df9fb4427cdd3839de43025d54ce8c9a74c4622b6c1cdc1eac1ccd5080c3a7"
+    },
+    {
+      "path": "docs/integration/proposed/aux-cli-device-registration/inputs.json",
+      "sha256": "ec3c8b8d9d9e0407c4323405f7991af5cc8e4f89156136aea19e83bd4de6efb8"
+    },
+    {
+      "path": "docs/integration/proposed/aux-cli-device-registration/original-function.js.txt",
+      "sha256": "c0761f018fae35fe832aff281adf7f274fa180505312edab0a645b2939406cd2"
+    },
+    {
+      "path": "docs/integration/proposed/aux-cli-device-registration/replacement-function.js.txt",
+      "sha256": "06d12923237f8aabcbd3103fc7129480452f8a86f93abcbbe14a1dc06391107d"
+    },
+    {
+      "path": "services/aux-cloud/src/auth.ts",
+      "sha256": "25ed16cfe8b825420909ec8b403ece69d3738274d48a5d1f2c868c9972230bf2"
+    },
+    {
+      "path": "vendor/provided/cloud-desktop-composition.mjs",
+      "sha256": "932d2e3e67d646d7f115dff84b1c622049577fb127a5111635d071257c1d4ca1"
+    },
+    {
+      "path": "vendor/provided/cloud-sea-embedding.mjs",
+      "sha256": "393b84b262066d5b155a7e233d1a6df2663e85d7d384ae956ef0b38de7fc5054"
+    },
+    {
+      "path": "vendor/provided/cloud-service-policy.mjs",
+      "sha256": "a4136a61445ec94953beaf0d24fdb1ccbe2d5e72a9d0a97cc65421490c635fe9"
+    },
+    {
+      "path": "vendor/provided/cloud-drive-1852-adapter.mjs",
+      "sha256": "a7cc75c4a731250cb3eb0da11d1a19d0be8f3939370c5128d7399054090674fc"
+    },
+    {
+      "path": "vendor/provided/cloud-cookie-restore.mjs",
+      "sha256": "e0556c695669fa12c43a3f9dbe36f43fa8b01203722da1b78750097bc7cbd2e8"
+    },
+    {
+      "path": "vendor/provided/cloud-cookie-profile.mjs",
+      "sha256": "fae8de526a5e31b8a015a3cdc363fc729e820d479c7e98169f606a5a12fd6242"
+    },
+    {
+      "path": "vendor/provided/cloud-sync-adapter.mjs",
+      "sha256": "6bc8d0f3996865e6c041fd519e777db8469404c1bd7cd9e049ff44878c6e80af"
+    },
+    {
+      "path": "vendor/provided/cloud-attachment-adapter.mjs",
+      "sha256": "63913a02ab8288eb02dc127ff888af202763f38a3a9782abbc9cec59ddfcf6ea"
+    },
+    {
+      "path": "vendor/provided/cloud-session-adapter.mjs",
+      "sha256": "7d4875dffda0d7283c51e8f2fac192669097d4cdb37c5f328ec53637dc48dec9"
+    },
+    {
+      "path": "vendor/provided/cloud-inference-upload-adapter.mjs",
+      "sha256": "94ce8fd0577bb7b51869556683581760cee252b4c9f59e74291fae7fac24830a"
+    },
+    {
+      "path": "vendor/provided/cloud-billing-adapter.mjs",
+      "sha256": "dbf394210314ae7cec30fea0fb44d377d59fac5a10e202371ca29cc425d52820"
+    },
+    {
+      "path": "vendor/provided/vault-product-exclusion.mjs",
+      "sha256": "eef6069753eb9e3ae8044076bbeb7016cadf14cd6e7f0e0db840048e39d6361f"
+    },
+    {
+      "path": "vendor/provided/daemon-node-development.mjs",
+      "sha256": "c7b0dc7404c1e9b9527d95af6c05710cf92cc29552815ffc508a60ef2c88552f"
+    },
+    {
+      "path": "scripts/lib/aux-mark.mjs",
+      "sha256": "5cbe321fc9c77407af903ce540f66a18182dc8a9412d1478d7c022717634180d"
+    },
+    {
+      "path": "scripts/lib/provided-wire.mjs",
+      "sha256": "7d074b68d7553a6776d41fd28ec1c8b0347da50910b916ac92b4e937c841b9eb"
+    },
+    {
+      "path": "scripts/lib/provided-ui-boundary.mjs",
+      "sha256": "125047b508f98759524f23caa4d496d44da96f9fadfdabde150b4a9d63bd93f2"
+    },
+    {
+      "path": "scripts/lib/provided-newtab-unavailable-controls.mjs",
+      "sha256": "bf3e435cd1abd07d78eb27580cca061ddb45b3ca2de3bd3fdba9765a07a7b30f"
+    },
+    {
+      "path": "scripts/lib/provided-password-manager-scope.mjs",
+      "sha256": "d375d38108249dee080836c234df66e9904e208da38e4a3b881a6176d61f9783"
+    },
+    {
+      "path": "scripts/lib/provided-settings-import-copy.mjs",
+      "sha256": "629d4e247ec36dc8feade1923137042615ce1f51d40ca01292bf4e9e21d11e51"
+    },
+    {
+      "path": "scripts/lib/provided-draft-flush.mjs",
+      "sha256": "2c6a5845d8fc58d287c5d9c30a069dad16ca10609f7840e548e8a01072144d7a"
+    },
+    {
+      "path": "scripts/lib/provided-pending-files.mjs",
+      "sha256": "d65a0fbd367f93a190e99e687f75fade6eb37a0408dd3e5bb81a3e9df54c28ab"
+    },
+    {
+      "path": "scripts/lib/provided-lasso-ownership.mjs",
+      "sha256": "45cd133a7856c0d401139ea5a984f10808b49dbd50a4d27b695e9ec7ae42cf56"
+    },
+    {
+      "path": "scripts/lib/provided-notification-routing.mjs",
+      "sha256": "4ae1e2e83a8946882f8d00c46c98154e4de823c60b29d977e09a8451876fc7da"
+    },
+    {
+      "path": "docs/integration/proposed/provided-notification-window-routing/patch.json",
+      "sha256": "cadff06f7a9a57bfae424c36c5f94249c8cfb4825524dacb3f431faabae0450a"
+    },
+    {
+      "path": "docs/integration/proposed/provided-lasso-request-ownership/patch.json",
+      "sha256": "b518b4ec9be1caf504c6e13e7ddbe56d7b5693d97cbf52cb32006dc2653ec1b2"
+    },
+    {
+      "path": "vendor/provided/native-ui-compat.mjs",
+      "sha256": "487f9bf4a3c2da76dbd06d1fd51efebcc67d1c37a7cd3189a9096b9e54d49b05"
+    }
+  ],
+  "projectionCopies": [
+    {
+      "relative": "docs/integration/proposed/profile-isolation-final/integration/project-entry.mjs",
+      "source": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/profile-isolation-final/integration/project-entry.mjs",
+      "sha256": "38b689de20525f6f87671fdafe811cd6ec0a497b066c876034fc704567a149da"
+    },
+    {
+      "relative": "docs/integration/proposed/aux-final-local-entry-package/inputs.json",
+      "source": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/aux-final-local-entry-package/inputs.json",
+      "sha256": "fbd94a9feaf4f84b52935f3c8e38a86e3f61efff66be75298b398e903069e6f7"
+    },
+    {
+      "relative": "docs/integration/proposed/aux-final-local-entry-package/source/project.mjs",
+      "source": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/aux-final-local-entry-package/source/project.mjs",
+      "sha256": "a2ce2662ff122459756a6faf69976d7e9e8be66a2c277f4b49f540b77a646968"
+    },
+    {
+      "relative": "docs/integration/proposed/aux-native-owned-entry-routing/edits.json",
+      "source": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/aux-native-owned-entry-routing/edits.json",
+      "sha256": "6a761312b4ef0feaf728ad24183c02a7ae0950987bfc703c5244adf98fae54ac"
+    },
+    {
+      "relative": "docs/integration/proposed/aux-native-exec-lifetime/edits.json",
+      "source": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/aux-native-exec-lifetime/edits.json",
+      "sha256": "66f4a6de988ab32cb167002ccad9ad89e3beaf50f969f849baf95817c6e63736"
+    },
+    {
+      "relative": "docs/integration/proposed/aux-native-fixed-pty-loading/anchor.json",
+      "source": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/aux-native-fixed-pty-loading/anchor.json",
+      "sha256": "9fd9124dd108807b5dc07f8ec4f2208dfec21d9d4c6b4635e6006b7c25aed6bb"
+    },
+    {
+      "relative": "docs/integration/proposed/aux-native-fixed-pty-loading/transform.mjs",
+      "source": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/aux-native-fixed-pty-loading/transform.mjs",
+      "sha256": "6f276e4ed7a3ae88d02059cec365a4ddfdf99cf415037d09d59c5fe76626334f"
+    },
+    {
+      "relative": "vendor/aside/lib/sea.mjs",
+      "source": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/vendor/aside/lib/sea.mjs",
+      "sha256": "2a2698eef8e353354d7203f8fd460935fddf039677a79659b60b80802ee12ac6"
+    },
+    {
+      "relative": "vendor/provided/aux-cold-entry-admission.mjs",
+      "source": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/vendor/provided/aux-cold-entry-admission.mjs",
+      "sha256": "a569415ecca246cddca88b2f29363f8b0ac014c4a7450e92ee0c000657826161"
+    },
+    {
+      "relative": "docs/integration/proposed/aux-cold-entry-admission/inputs.json",
+      "source": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/aux-cold-entry-admission/inputs.json",
+      "sha256": "59dc73375a99bb8cc5401e7a03b80005cf8b7b235340a6dc779482d4ff9022c2"
+    },
+    {
+      "relative": "docs/integration/proposed/aux-native-owned-entry-routing/source/aux-owned-native.cjs",
+      "source": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/aux-native-owned-entry-routing/source/aux-owned-native.cjs",
+      "sha256": "ec7ea0405f415d84e4afc695405eec07378d8c7233b926ffd9dd7db2edfed663"
+    },
+    {
+      "relative": "out/provided-source-snapshot-1.26.1016.1852/daemon/Contents/MacOS/aside-daemon",
+      "source": "/Users/rcourson/Documents/Vibe/web/out/provided-source-snapshot-1.26.1016.1852/daemon/Contents/MacOS/aside-daemon",
+      "sha256": "60d3c50a649a528927137c427d284e695a98162476d28065bb9634e937fed286"
+    }
+  ],
+  "inputs": [
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/browser-feature-expansion/productivity-adapter-pairing-a1/freeze.mjs",
+      "sha256": "dfe37aaad1dcbb46671106c16aad4260abb496c837ff0b18e505b11e562a5174"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/browser-feature-expansion/productivity-adapter-pairing-a1/compose.mjs",
+      "sha256": "4d36bd6a90815faa04a73b2f4b7658018b833a39a3b68d6ba5b0cc41afa1b92c"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/browser-feature-expansion/async-daemon-projection-research-v1/actual-projection.json",
+      "sha256": "650d135dbb57a32a8ba726ee7a9c2fe718ec43d5f0d4dfb9163f41a48382715c"
+    },
+    {
+      "path": "/private/tmp/aux-browser-features-async-daemon-20261023-a2/composition.json",
+      "sha256": "b6ad388be2fd2d8de657af5d48209e36b17d86958b6e6fd63490304e0ff3aed7"
+    },
+    {
+      "path": "/private/tmp/aux-browser-features-async-daemon-20261023-a2/feature-base/composition.json",
+      "sha256": "4224359eba3a2aa824598fe558c978ba14b92a8944f498667ba9cdfa691399ef"
+    },
+    {
+      "path": "/private/tmp/aux-browser-features-async-daemon-20261023-a2/source-receipt.json",
+      "sha256": "da365ab2e8e45b4a3e1b39e0a61ad74bcde23e375955d5f959c3ce41ff4d274b"
+    },
+    {
+      "path": "/private/tmp/aux-browser-features-async-daemon-20261023-a2/projected-entry/results.json",
+      "sha256": "0c7965bb81e472f4f4a60f0f1408e592169d33796670cbda292a0faf1de72e17"
+    },
+    {
+      "path": "/private/tmp/aux-browser-features-async-daemon-20261023-a2/projected-entry/aux-native-entry.mjs",
+      "sha256": "cd7c8bb549b1187245ad3d6b308f9fd34512f3b7df0a45033126241161876438"
+    },
+    {
+      "path": "/private/tmp/aux-browser-features-async-daemon-20261023-a2/projected-entry/aux-owned-native.cjs",
+      "sha256": "ec7ea0405f415d84e4afc695405eec07378d8c7233b926ffd9dd7db2edfed663"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/profile-isolation-protected-startup/integration/source-pair.json",
+      "sha256": "1eb6698864691d5affacc52f860ffb9a917fdf07a36cc5ffcc8fb55d26f4d8e4"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/profile-isolation-protected-startup/integration/source-pair.json",
+      "sha256": "1eb6698864691d5affacc52f860ffb9a917fdf07a36cc5ffcc8fb55d26f4d8e4"
+    },
+    {
+      "path": "/private/tmp/aux-offline-runtime-source-20261023/index.mjs",
+      "sha256": "ecff19ddbc7fa76529c50111152f8324ef0ba6b87de11e7ecf872f76270a7484"
+    },
+    {
+      "path": "/private/tmp/aux-offline-runtime-entry-20261023/aux-native-entry.mjs",
+      "sha256": "541917242bf9134a2bb7915cb8b65a1ecb28d84c2ed91264639c82245e3f3b7e"
+    },
+    {
+      "path": "/private/tmp/aux-offline-runtime-entry-20261023/aux-owned-native.cjs",
+      "sha256": "ec7ea0405f415d84e4afc695405eec07378d8c7233b926ffd9dd7db2edfed663"
+    },
+    {
+      "path": "/private/tmp/aux-browser-features-async-daemon-20261023-a2/index.mjs",
+      "sha256": "2b1db7cebd8a7296b871dafdc4eb63955bbc13b4cee133c3c809c82b465ca02c"
+    },
+    {
+      "path": "/private/tmp/aux-browser-features-async-daemon-20261023-a2/feature-base/index.mjs",
+      "sha256": "4e5c2710ddeb7b1f57f2524088ece6678b0f091ec6f7af68564c355cabae4723"
+    },
+    {
+      "path": "/private/tmp/aux-browser-features-async-daemon-20261023-a2/async-index.mjs",
+      "sha256": "dc41cebe8ad7dc4cac162226b1267b0ae7602727d05a781c59ff593afd537ef3"
+    },
+    {
+      "path": "/private/tmp/aux-browser-features-async-daemon-20261023-a2/aux-native-entry.mjs",
+      "sha256": "cd7c8bb549b1187245ad3d6b308f9fd34512f3b7df0a45033126241161876438"
+    },
+    {
+      "path": "/private/tmp/aux-browser-features-async-daemon-20261023-a2/feature-base/aux-native-entry.mjs",
+      "sha256": "aba6ebad5e4abd9e563770dc6be80e6b9c181a22fd41a16c7112417863cf1823"
+    },
+    {
+      "path": "/private/tmp/aux-browser-features-async-daemon-20261023-a2/async-native-entry.mjs",
+      "sha256": "b6aa10117346544e02e636d4b45ebb0049b421f7c40210775afdd661c1309de9"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/vendor/provided/runtime-seed.cjs",
+      "sha256": "3051dea5ccc9d74126bf71ddc0bb72a4d3db19c59f890a8f48d572b215f092af"
+    },
+    {
+      "path": "/private/tmp/aux-browser-features-async-daemon-20261023-a2/native/runtime-seed.cjs",
+      "sha256": "54bd9cf68d25b9db0827af32ad323ea03821f7adae4066b677849a3e5b28a039"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/profile-isolation-local-finish/runtime-bootstrap/source/runtime-bootstrap.cjs",
+      "sha256": "2e8c8db62e67e7ee812c5beb4606f11ed063e9aef6453db3d44e8c939255f604"
+    },
+    {
+      "path": "/private/tmp/aux-browser-features-async-daemon-20261023-a2/native/runtime-bootstrap.cjs",
+      "sha256": "13657bf3e1c3a0477c15eb154ba74f336a82c4af3b9800a1c86713a5a395d7a5"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/scripts/lib/provided-stage-inputs.mjs",
+      "sha256": "d4b5dabd6fddd4b521505981da6d7548844c74c2c60e8d6eaf25971a39b7dece"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/vendor/provided/aux-navigation-command-bar.mjs",
+      "sha256": "6601d1411fb9485b3968e07f4e3d7b532764091357c6779d67cbe329a956028f"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/vendor/provided/aux-palette-ask.mjs",
+      "sha256": "af2635ee35e7fc2e4960e5b6d394b5c5c1a9fdd775e8aa7430b30f014bf34797"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/vendor/provided/aux-context-actions.mjs",
+      "sha256": "c4b59997df0faf589c9ddef3a08a8e8f4ca7181adddf9e0815d31604c4318514"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/vendor/provided/aux-remix-context.mjs",
+      "sha256": "ab19e0d5a2a1ae36bc820d2a376bb195144eb85518b2f1f7ac941c8cc3cb6a5c"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/browser-feature-expansion/research-v1/source/aux-research-ui.mjs",
+      "sha256": "39a7ce3794b858d00424d6939d759fcf8c10e7e1713459c469712a8c26c56003"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/browser-feature-expansion/research-v1/source/research-ui.js",
+      "sha256": "d8fd3a7a7024466782e4654b019d4169ac89a43cb4366d3468dd9443b27a6017"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/vendor/provided/aux-browser-feature-composition.mjs",
+      "sha256": "ddf1b6dc11fede1c3ce73dfa915f02653cd312145e2c074bfd591f9de48cdd32"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/vendor/provided/aux-browser-feature-settings.mjs",
+      "sha256": "c1be2eb2724bded22ee69abf96a24bb1e85f6481641da6c92d24e8791367ccfa"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/vendor/provided/aux-shortcut-profiles.mjs",
+      "sha256": "2df345d683e54b3396786028da88cbc1021073e9fb0e1d49734e7ef6b72eee18"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/vendor/provided/aux-productivity-capture.mjs",
+      "sha256": "f35dc3078fa516851f67e9eb66b5eb785c8bea30c383ca6699a1bf7c468ee867"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/vendor/provided/aux-productivity-developer.mjs",
+      "sha256": "2d5c245c4543a9b355170175ac343939e4fb9d4a9b66022767a03c17cab9368b"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/vendor/provided/aux-productivity-file-chooser.mjs",
+      "sha256": "a04280410208eee7d04a436140cc887d9076620f65fb6e2119157a4692eb48e2"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/vendor/provided/aux-productivity-integration.mjs",
+      "sha256": "bf4af7a208070064bddbe9d07fbb50601ec797bd88ed5ca3890f136f70a9e42b"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/vendor/provided/aux-productivity-proposals.mjs",
+      "sha256": "c05c352269ed16a8d7704e03b4cc3798b6d6bbca1fe152eccfe6474ac4c7c2bf"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/vendor/provided/aux-productivity-tab-context.mjs",
+      "sha256": "2099c6af7682945c1b61b7da4fb58e1896f6886958e51989fd3b87c0258ba9cf"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/vendor/provided/aux-productivity-spaces.mjs",
+      "sha256": "d1a97b9805f5d4b5b9ec5fdb9085e07f12cea025820fa7325e8a26aef92b4c21"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/vendor/provided/aux-productivity-tidy-selection.mjs",
+      "sha256": "6865871e172c192c0ecad2d9b4d6074462fdaa977a336648d2f95add0b74e4fd"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/vendor/provided/aux-productivity-context-read.mjs",
+      "sha256": "120bb353ca2c426fbeb6deba78e1834c365405d18304865b1c31168f290b885a"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/vendor/provided/aux-theme-editor.mjs",
+      "sha256": "595a666881880a21ac728840086c01ea34e2a590cdfc4ba8851f34de07e1225a"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/vendor/provided/aux-productivity-files.mjs",
+      "sha256": "19c992da931dcddaa0e002aef94ce74038ce9dbb1682fe99449289f6e38a490f"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/vendor/provided/aux-productivity-media.mjs",
+      "sha256": "4485f8206b4c6d0e103032459f05d6b5fa6240e475e2ae38d94b8ab2201db1b5"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/vendor/provided/aux-browser-routing.mjs",
+      "sha256": "a65214c95c1c7e5209581f82ef67516ffcc9bdd731546b9d820e850b977f6b0b"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/vendor/provided/aux-channel-bot-assets.mjs",
+      "sha256": "685af8c82cdd6c58fde46637de6f8d86183a2f56023de486499b92a3451c92b9"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/final-completion/channel-bot-assets.json",
+      "sha256": "19c3630cb0a32cf6dd333d1f91847342bd26a25a6040fbbfd90b09aa8e877490"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/vendor/provided-ui/branding/channel-bots/discord.jpg",
+      "sha256": "374ba2a0cf60e6431dea446e8523c6e81ded7c26c30e0748a798c79565879584"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/vendor/provided-ui/branding/channel-bots/slack.jpg",
+      "sha256": "33a7a42b9625b0a09fc6348d3c1a5e2985242cdfce9445281f101e867e2ce57a"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/vendor/provided-ui/branding/channel-bots/telegram.jpg",
+      "sha256": "7f1d5d743eb5dc90407c4b06186b301e8530b7034d3832ae8bebc10b65387415"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/vendor/provided/aux-product-links.mjs",
+      "sha256": "8fcae8278990a5c55f523263217dc90bb9b03ff0856ad3e677625eb19596e41d"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/vendor/provided/aux-daemon-obsolete-addon.mjs",
+      "sha256": "4f029d631d4a81fdc03a203cfe468a6e9c8e779d97f01cff542f76938e7d4181"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/vendor/provided/aux-computer-use-module-identity.mjs",
+      "sha256": "a7d325fe94fc574ae634f4f92d46218189fc66055026205896e1e33d72fffb05"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/vendor/provided/aux-memory-runtime-v2-stage.mjs",
+      "sha256": "de1957eb0e0a931f3dc76aabdba73a2e4a2630f4716111bf33d7a25398d58a0d"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/memory-runtime-v2-a1/source/stage-plan.json",
+      "sha256": "3d9b1ab4e81596402de7cf159484ee214239914691e815a79fbb48e5758fc8ed"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/computer-use-module-identity-a1/source/patch-plan.json",
+      "sha256": "578a7c8313b2d986a00dc1dcab582e8ba805625aac27aa924cfc3b5eb4a5fda6"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/vendor/provided/aux-ui-peer-identity.mjs",
+      "sha256": "f12a64f5bec022209cfa4e2d67f7d04dd35db249927e307314f708edbeaac794"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/vendor/provided/aux-ui-transient-identity.mjs",
+      "sha256": "73bab22d32699abf193a07d08abcecd7e8c6d01c769a63e8090beb98cd34508a"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/vendor/provided/aux-ui-storage-identity.mjs",
+      "sha256": "7881cf049b01e50cdd36dbf3d85359bee7695ee536470774c6ad88f2a3670f08"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/vendor/provided/aux-ui-draft-identity.mjs",
+      "sha256": "6eb32b18e49ca3fc63edd1ccd53968f3d61a1e2669ca4523a6715c86451387e3"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/vendor/provided/aux-ui-draft-capture.mjs",
+      "sha256": "07d17a6edcd9c7f59cd438153031cd011f128b11bc1580edae0f52b5819220f2"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/vendor/provided/aux-ui-draft-capture-runtime.js.txt",
+      "sha256": "183879e669c0efec13ccb5e9267772c5945bb9c45477c46247b3895d22a75ea7"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/ui-draft-capture-a1/inputs.json",
+      "sha256": "667c8da7ebc11355d2db87a9ada757572d678b3753d9ce9b2ce37dd64cc52052"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/ui-draft-identity-a1/inputs.json",
+      "sha256": "68011631d8e74f645ddf80d60c3db26d7342ae1658cd389a27ad8dafa3ee8b53"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/vendor/provided/aux-ui-storage-migration.mjs",
+      "sha256": "df36e7cbfb221ecc329db3d5d406cfdb1fef4917e3ae663d909a739d309ff7dc"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/vendor/provided/aux-cli-worker-settlement.mjs",
+      "sha256": "3c57ea84b62ab0eb9d3dbda646f49920f54ba10a5ce5fec7a3e46debbb41334d"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/cli-worker-settlement-a1/inputs.json",
+      "sha256": "1320098b61dd6d10c620a9a67ade803701343afc3cdbb1242a0c076b01dbc560"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/cli-worker-settlement-a1/source/original.js.txt",
+      "sha256": "4240d7f47501a41b3b08a279a0b68a5cf1a6658b85b7bef08c5d0c0c646b5989"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/cli-worker-settlement-a1/source/replacement.js.txt",
+      "sha256": "c3b7ccc6f7858d0fdbb546c08f91e31fcf7d68ff5de73b65d4020df9111c5720"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/cli-worker-settlement-a1/source/anchors.json",
+      "sha256": "afe60668311d65aa4c9df9ec691ca531bc438b69064b63577fa9f6ea87783987"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/ui-storage-identity-a1/inputs.json",
+      "sha256": "010b006a4ec2510390abbe1b3d7b94d918cde7693b0616af34bfec76181d420b"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/ui-transient-identity-a1/inputs.json",
+      "sha256": "b913440d52056eb94090a3e5e6e4ffa95dbfb65d60c613adcf8d6fc7b030769f"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/ui-peer-identity-a1/inputs.json",
+      "sha256": "4e19dc2c5649999ae4eb246eacbfdabaddaec5321f14f3ab92df94895253ef68"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/vendor/provided/provider-funded-launch.mjs",
+      "sha256": "5542681d235a9a21340317afbfa2a9ac4bc12fdc0e295918737db033954aafae"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/vendor/provided/provider-launch-stage.mjs",
+      "sha256": "3c7378ab0d06ab0fa52ede152b8d816dc99ccca2081a18fd44e1b8b1abd41cd1"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/vendor/provided/aux-command-path-parsers.mjs",
+      "sha256": "e53a752716948bb7dfc44a9dcee2101059762b5013059453be84c95bbe0f2415"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/vendor/provided/provider-funded-launch-ui.json",
+      "sha256": "4bf974f1817f6b64c9eb982b841028abf26a6085d5771a459a184d9bfebffb32"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/vendor/aside/patches/chatgpt.mjs",
+      "sha256": "552dd553abd04ab69d73ab33c0c27b0725792a2653d51100d4fb0695f5cb8b38"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/vendor/aside/shims/aux-chatgpt.cjs",
+      "sha256": "5fa0b56141c9fb515c6b5ff979340c0958bf3b9dd79fb60a7636357605e73ede"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/vendor/provided/aux-macos-utility-stage.mjs",
+      "sha256": "09467f590724d3bf2a3e25908251a5050e0471b424d5a9f39ceafb3f9be37f46"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/aux-sync-recovery-enrollment-ui/source/adapt.mjs",
+      "sha256": "974d493b9fdde739a73e37a7df4c7678e7e26c0612621841f89a15516e897987"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/aux-sync-recovery-enrollment-ui/source/materialize-desktop.mjs",
+      "sha256": "4d3b44d6ca741b4a80b3980ab6038284eecbc5234a0af764ce7d1457c6ef2014"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/aux-sync-recovery-enrollment-ui/source/desktop.ts",
+      "sha256": "0bcc589285a3243e92e71e9e04fefb8750be91e0405b64a6df9251731e993044"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/aux-sync-recovery-enrollment-ui/source/aux-sync-recovery-enrollment-controller.js",
+      "sha256": "8a6d30d3346c2a890660182d93bae0573dab0ef4eb475bd51decbcd9ab9647d3"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/aux-sync-recovery-enrollment-ui/source/aux-sync-recovery-enrollment.js",
+      "sha256": "2aeaa20ec0a4b29a459a604a987d9829381a7f614dd707ddf88337437918fd45"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/aux-sync-recovery-enrollment-ui/source-pins.json",
+      "sha256": "8f6e4e89a358d68f6602fbd6e126de0558b8fd8e9c02cbb355e5ebf4c2c86e23"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/aux-sync-recovery-daemon/source/adapt.mjs",
+      "sha256": "276189e76353f399211c98db290a8f584a72216dda589f0ac6dc4d4d72f4d12a"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/aux-sync-recovery-daemon/source/materialize-desktop.mjs",
+      "sha256": "600b95e183527ff2c1c87c047e40d4c497bde61a54df64cdc9c41905e44451d3"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/aux-sync-recovery-daemon/source/desktop.ts",
+      "sha256": "63b763994a810f5fcc3903dc37d8ac5010fb3a033c240b4de62fe4df169003eb"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/aux-sync-recovery-daemon/source/bridge.js.txt",
+      "sha256": "24bc4ddaf8d99711ba32a74b9f158bddfd9f651ef0c8958c101512c063143157"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/aux-sync-recovery-daemon/source-pins.json",
+      "sha256": "5a6ca6dc77e520d2fbcddf14e3da827376a6701e69f9d1e5423e5c40f45c7992"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/services/aux-cloud/src/sync-recovery-crypto.ts",
+      "sha256": "4fe58769ee4df77595ff5060e63724d2d5289f4b50e667ab58f30da1aa90c0d7"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/aux-atomic-csk-publication/source/adapt.mjs",
+      "sha256": "08d10c3010fc69175440207fd7a1a91b5b3ee06e47d4979bec83839be072bcf5"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/aux-atomic-csk-publication/source-pins.json",
+      "sha256": "f4c15e8bb7765c4c1d4477164edb58b8e6f749ae473a0778fb2267d540496a84"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/aux-macos-utility-integration/inputs.json",
+      "sha256": "cbbd62108d589fd6e680c13a50328a628c286d252a65c05cbdec0734ba28f7c4"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/aux-macos-utility-integration/artifact.json",
+      "sha256": "d9ecd74397a6388a7d195e3ed9a91b5c9496811a867edfc0c445b4b72edb7c24"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/aux-macos-utility-node/source/adapt.mjs",
+      "sha256": "8b9aae155b3396ca7ba4dd3aa4a88d3f752be348417bc2a0d318bf87fad7d324"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/aux-macos-utility-node/source-pins.json",
+      "sha256": "fca3c7188a637df1ec4b2302237e4f7085d4d3d2727d3bec5827aed282c7378e"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/aux-macos-utility-node/source/AuxMacUtilityEnvironmentHost.cc",
+      "sha256": "bd87d6693dbebdae0106561bb0932573337023c6fd9df1fdc129807c854ce8a9"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/aux-macos-utility-node/source/utility-module.cc",
+      "sha256": "19d99471c09588840e11cd569c2422a760ad0ff6c69139147bc4a762b604543a"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/aux-macos-utility-node/source/AuxMacUtilityEnvironmentHost.h",
+      "sha256": "02aa4cf97e89fcdc902abff36c262b0c020b3e5012e770096510d2e88584608e"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/aux-macos-utility-node/source/AuxMacUtilityOwner.swift",
+      "sha256": "659b23a811b9b25e58b64dc031de57f82491733c529fa0a1dd6304f98b7dde67"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/aux-owned-dispatch-lifetime/source/AuxOSDrainResult.swift",
+      "sha256": "9a5886c30591940594906fb6ffd57ce4648933269414bd96ce136e3c4448579f"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/aux-native-macos-utilities/source/AuxOSJobCustody.swift",
+      "sha256": "ef8f44ebc2da8633bbff8e527dced516c49d3d77949b63aac72f2b8cc9f043c4"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/aux-native-macos-utilities/source/AuxMacOSUtilityCommandCore.swift",
+      "sha256": "625388093933d923c14e66766f825bf5f49638b4d71299b535e918df87864dc8"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/aux-native-macos-utilities/source/AuxUtilityCompletion.swift",
+      "sha256": "fdf573db59912ed7288984e8eee958adf9c5455a88707cb0f78ff29d0d5d20f1"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/aux-native-macos-utilities/source/AuxAppKitUtilityBoundary.swift",
+      "sha256": "04ee53525717955c107661f49de5be311ef08543fe07ad47d1da7e94537d743d"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/vendor/provided/aux-crypto-stage.mjs",
+      "sha256": "dcec4c8d034e36bc5866d53d2484a599f80e498e1dd29028b8d54de5680df47e"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/aux-crypto-stage-integration/inputs.json",
+      "sha256": "04ba60db4d0bff27682ea882ac4bad7eda148504e8165765b9fa0702b4d95f59"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/aux-csk-v2-consumer/source-pins.json",
+      "sha256": "c0df74aabb7be152d32a0a1dd95a1bdd171596c76a70da20a4f60e880dbb72ba"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/aux-live-dk-purposes/source-pins.json",
+      "sha256": "0679b19878759aec047de3036d30f33936b7c0f32dbc69deedf1260c8de5a9c4"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/aux-macos-crypto-exclusion/source-pins.json",
+      "sha256": "9e923414094990e6b3a774e66901c922a4dc9d2b53f8cc2f28e80b2537d90025"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/aux-crypto-runtime-assets/source-pins.json",
+      "sha256": "d76aec791ba845885c6f2ec7d2923946e2808784ff4f2be15291daed3ec3fa6f"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/aux-crypto-runtime-assets/source/materialize.mjs",
+      "sha256": "0415c7c21ed5bc9faf054d8e539c321b121f642013f7858aeb4fd66e289438f3"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/aux-csk-v2-consumer/source/aux-csk-v2-runtime.mjs",
+      "sha256": "3448fdac0d7629975df39d2e33db3c219a70a043e5d3a577c7b9dec12d9061af"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/aux-live-dk-purposes/source/runtime.mjs",
+      "sha256": "438df3eeb7bf3e7ee2140c8983e0039ca47952afa90fc7e3ce830532f39ca43c"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/vendor/aside/lib/sea.mjs",
+      "sha256": "2a2698eef8e353354d7203f8fd460935fddf039677a79659b60b80802ee12ac6"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/vendor/provided/aux-crypto-identity.mjs",
+      "sha256": "8bfe8a9c618bfd5f448650bf1a7f809d7fb75946eb54dfea91f7a1fda47c4b4f"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/vendor/provided/aux-identity-json-tokens.mjs",
+      "sha256": "6186f20acf05547d0acc86de5251c896902b42bf46b275f45854cb825e47ba1b"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/scripts/stage-provided.mjs",
+      "sha256": "58b7d321c7bc9747d4f5529fbd4c50d5f2a70826715e46494bb3459b5bb6f11e"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/provided-agent-worker-revision/revision.mjs",
+      "sha256": "fd02d1d73cb94df1fe4d15ca8490e8130882783307cf8617c47c21b9b3f8bd54"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/vendor/provided/agent-revisions.json",
+      "sha256": "2c48f1733163cf06e935447b4320eae0d845213d613a15b937436efa6b05460d"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/vendor/provided/aux-protocol-identity.mjs",
+      "sha256": "929f57d4c6fc2cd7068e18ffeb0afc4b367ec8819d8f188df8639de56f112fe4"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/vendor/provided/aux-provider-identity.mjs",
+      "sha256": "6a603bfc85530c426dc9be75d2532158d1d900d1a77dc8ecbeb24c125bab313d"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/vendor/provided/aux-runtime-contract-identity.mjs",
+      "sha256": "5a51895d1f6563148eeb07809c1304c422b928d3a65c574bd0d7589161db83d4"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/vendor/provided/aux-builtin-icon-identity.mjs",
+      "sha256": "fbbaefd28b0f9de35cb7e840c484ac3eb4a4b82ea0230097a9bab4cff3540a06"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/aux-builtin-icon-hosting/source-inventory.json",
+      "sha256": "11dc14722d548af6de7812ad234f7668a188041577a144b810532e63f828eab1"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/aux-builtin-icon-hosting/acquisition.json",
+      "sha256": "2be79d3d09164af435952c4d0427ad6575f0e0ecd63c9a6ab99e99a27a1537b5"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/vendor/provided/aux-cold-entry-admission.mjs",
+      "sha256": "a569415ecca246cddca88b2f29363f8b0ac014c4a7450e92ee0c000657826161"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/aux-cold-entry-admission/inputs.json",
+      "sha256": "59dc73375a99bb8cc5401e7a03b80005cf8b7b235340a6dc779482d4ff9022c2"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/vendor/provided/aux-ephemeral-runtime-identity.mjs",
+      "sha256": "6ed8ca32d1c26ed01b8f1333c25ff9b91d04979d411a7bdd9dbf2da54fd56dc7"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/aux-ephemeral-runtime-identity/inputs.json",
+      "sha256": "a88ffaf0aff3690c315bf931ca8a533583d98f264d8c769c47bb44a55637b9b6"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/vendor/provided/aux-automation-identity.mjs",
+      "sha256": "3b1d289a7d182c96de9159a9a033d5ba12b56cd11ae883ad760d3ff5acfc8a7c"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/vendor/provided/aux-private-daemon-identity.mjs",
+      "sha256": "bcf18bd720362b9aef0e94b37ffb6d159d3b4579cde25e8f87ac1e138b5c65f2"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/vendor/provided/aux-capture-contract-identity.mjs",
+      "sha256": "df2a69066c81e1e6f47683592001e6d66b5b8683a84744e69b224bc68ae151c6"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/vendor/provided/aux-profile-context-identity.mjs",
+      "sha256": "a793cbd71a8643e8ec4336b6b343f406d08695fcba62882d662c2bac58c5d233"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/vendor/provided/aux-selection-contract-identity.mjs",
+      "sha256": "0c9b50b1c2a4f873446ebbae44a6e7f9645358f3eb8afbce739808b9d5f0fbef"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/vendor/provided/aux-billing-return-fallback.mjs",
+      "sha256": "2200d58af0ccf7d4f5b16b0a2bdbbe277d2336c8a771392a6b5313ce77589b05"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/aux-billing-return-fallback/inputs.json",
+      "sha256": "2f2a4e9c8f936b6452c74c911398132659d45fd73ceff8bb1bf4d9675eeddd7e"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/vendor/provided/aux-ui-origin-identity.mjs",
+      "sha256": "0a2c7c347074abebe8f73d3e5d00e5f36a834692bbee3886154e210e38b1a55d"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/aux-ui-origin-identity/inputs.json",
+      "sha256": "8771b909a78ef79631a4459e517e7ca8824d4b313c632688c16404a18919a25f"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/aux-selection-contract-identity/inputs.json",
+      "sha256": "7d5954bd78ec70d6863c59ed98e23f9ba7a952747dfc5e7c12ed50894eb41a18"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/aux-profile-context-identity/inputs.json",
+      "sha256": "4ab7338557d141c5a2c5743e51634e41e53d05a5f013f324cfaab22d50991901"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/aux-capture-contract-identity/inputs.json",
+      "sha256": "58163d4ba821564c0d2d7c3086326a959c2d63cc03f4a6a66d1a0aa26f6c1d0f"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/vendor/provided/aux-runtime-correctness-identity.mjs",
+      "sha256": "784c5f93973ea2cb1f9c0cb139b5866dd54f0ee0002f5ddb9022719fdb8c3654"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/aux-runtime-correctness-identity/inputs.json",
+      "sha256": "2813ad104307abc60c6200f188922066c140f9a7b72d2285fdb87e6f7cd89b7c"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/aux-private-daemon-identity/inputs.json",
+      "sha256": "b9ab0940e86dee2922ce77068576105ba2eaa6cba729ec1d283aa290d6b797a8"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/vendor/provided/aux-context-ledger-identity.mjs",
+      "sha256": "928069c3dcb0b7b58bd319f6dca89e1ca13efff6fb4eb62b9ce1f99ac8b8095b"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/vendor/provided/aux-context-ledger-schema.mjs",
+      "sha256": "e1ae24b8466fbf47af0c44cf0a734c01bc8d8b5e22171cac35a9cb073c33a7cc"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/aux-context-ledger-identity/source-pins.json",
+      "sha256": "7467a5ae16d8b57db5b872cf9b6c9380d32592c2958102a4d723187db0ff4ca8"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/vendor/provided/aux-asset-path-identity.mjs",
+      "sha256": "4626ac2533c22d150f40b01f9a50234e4d95e1c261ae2709d5ec266981326c4a"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/aux-asset-path-identity/inputs.json",
+      "sha256": "931f459c7896addb945cf2ead800e3e7160671bd8198efb4c58c67c031bc9cfb"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/scripts/lib/aux-browser-icon.mjs",
+      "sha256": "37ce0a2949617f04c50332fa2c451444de86e38504c0718836fab1d30a9d05b1"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/aux-browser-icon/replacement-receipt.json",
+      "sha256": "cd9db49cd76aa81ff405c8145fb03705173a65f73b17d2db41fd81786670d16e"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/aux-automation-identity/inputs.json",
+      "sha256": "45cb6b698002cac5b39903b5ffc9769ad363f7d1229c5a19851a3af2b2fce7c2"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/aux-runtime-contract-identity/inputs.json",
+      "sha256": "7de8f9a3a040754973c66a54a6611e2a0f557a8d76baafeac6e40b9fdd202316"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/aux-provider-identity/inputs.json",
+      "sha256": "7b3057dab39f908535a2b73aa3b19d4de9e7d9dba0664bf154b602e62c72f04d"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/scripts/lib/provided-ui.mjs",
+      "sha256": "65f5a549a2ce9b4fa03e4cb3917cfbd9073d2b5c4542ee5132b39b12da3d6666"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/scripts/lib/provided-apps.mjs",
+      "sha256": "3702026ae62ecb693a90aad4f4d87fe86b465ca13a48794f6aece4ba00df1e82"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/vendor/provided/daemon-adapter.mjs",
+      "sha256": "cb3e5a2fa8e82cbcb40e719f091e1eb9fba9f7d2ad6ade50d3f0d86e0ee8d7a3"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/vendor/provided/aux-pdf.cjs",
+      "sha256": "103969123196851013a4b184e938635089217e747a3e1a6a3dbbf21a53a3d4f3"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/vendor/provided/aux-pdf-pins.cjs",
+      "sha256": "6e6ad8a9c9f1fdd6925fa287617a794de8576e6dd290537cee1b48597f1ba16f"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/vendor/provided/aux-pdf-artifact.mjs",
+      "sha256": "468409fb4c59db2634e6abcb26a3b6239ba566a1059696d60655886a764a53a8"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/aux-native-pdf-link/runtime-evidence.json",
+      "sha256": "762585bc954f9e3d2ce5e073ff0865a2d3b8c42e6a7add906f13770a528c2826"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/aux-pdf-lifetime/runtime-evidence.json",
+      "sha256": "88593eff40073347c6de29367e0231ecb24a301a4b03b20a37b613f7ab125591"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/vendor/provided/cli-adapter.mjs",
+      "sha256": "b1293b1dbe9b7e52f1b118d9c20e35f6404c3717aa0ecb6ab9c0366e04cb3ed1"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/vendor/provided/aux-cli-device-registration.mjs",
+      "sha256": "35df9fb4427cdd3839de43025d54ce8c9a74c4622b6c1cdc1eac1ccd5080c3a7"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/aux-cli-device-registration/inputs.json",
+      "sha256": "ec3c8b8d9d9e0407c4323405f7991af5cc8e4f89156136aea19e83bd4de6efb8"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/aux-cli-device-registration/original-function.js.txt",
+      "sha256": "c0761f018fae35fe832aff281adf7f274fa180505312edab0a645b2939406cd2"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/aux-cli-device-registration/replacement-function.js.txt",
+      "sha256": "06d12923237f8aabcbd3103fc7129480452f8a86f93abcbbe14a1dc06391107d"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/services/aux-cloud/src/auth.ts",
+      "sha256": "25ed16cfe8b825420909ec8b403ece69d3738274d48a5d1f2c868c9972230bf2"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/vendor/provided/cloud-desktop-composition.mjs",
+      "sha256": "932d2e3e67d646d7f115dff84b1c622049577fb127a5111635d071257c1d4ca1"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/vendor/provided/cloud-sea-embedding.mjs",
+      "sha256": "393b84b262066d5b155a7e233d1a6df2663e85d7d384ae956ef0b38de7fc5054"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/vendor/provided/cloud-service-policy.mjs",
+      "sha256": "a4136a61445ec94953beaf0d24fdb1ccbe2d5e72a9d0a97cc65421490c635fe9"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/vendor/provided/cloud-drive-1852-adapter.mjs",
+      "sha256": "a7cc75c4a731250cb3eb0da11d1a19d0be8f3939370c5128d7399054090674fc"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/vendor/provided/cloud-cookie-restore.mjs",
+      "sha256": "e0556c695669fa12c43a3f9dbe36f43fa8b01203722da1b78750097bc7cbd2e8"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/vendor/provided/cloud-cookie-profile.mjs",
+      "sha256": "fae8de526a5e31b8a015a3cdc363fc729e820d479c7e98169f606a5a12fd6242"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/vendor/provided/cloud-sync-adapter.mjs",
+      "sha256": "6bc8d0f3996865e6c041fd519e777db8469404c1bd7cd9e049ff44878c6e80af"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/vendor/provided/cloud-attachment-adapter.mjs",
+      "sha256": "63913a02ab8288eb02dc127ff888af202763f38a3a9782abbc9cec59ddfcf6ea"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/vendor/provided/cloud-session-adapter.mjs",
+      "sha256": "7d4875dffda0d7283c51e8f2fac192669097d4cdb37c5f328ec53637dc48dec9"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/vendor/provided/cloud-inference-upload-adapter.mjs",
+      "sha256": "94ce8fd0577bb7b51869556683581760cee252b4c9f59e74291fae7fac24830a"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/vendor/provided/cloud-billing-adapter.mjs",
+      "sha256": "dbf394210314ae7cec30fea0fb44d377d59fac5a10e202371ca29cc425d52820"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/vendor/provided/vault-product-exclusion.mjs",
+      "sha256": "eef6069753eb9e3ae8044076bbeb7016cadf14cd6e7f0e0db840048e39d6361f"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/vendor/provided/daemon-node-development.mjs",
+      "sha256": "c7b0dc7404c1e9b9527d95af6c05710cf92cc29552815ffc508a60ef2c88552f"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/scripts/lib/aux-mark.mjs",
+      "sha256": "5cbe321fc9c77407af903ce540f66a18182dc8a9412d1478d7c022717634180d"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/scripts/lib/provided-wire.mjs",
+      "sha256": "7d074b68d7553a6776d41fd28ec1c8b0347da50910b916ac92b4e937c841b9eb"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/scripts/lib/provided-ui-boundary.mjs",
+      "sha256": "125047b508f98759524f23caa4d496d44da96f9fadfdabde150b4a9d63bd93f2"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/scripts/lib/provided-newtab-unavailable-controls.mjs",
+      "sha256": "bf3e435cd1abd07d78eb27580cca061ddb45b3ca2de3bd3fdba9765a07a7b30f"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/scripts/lib/provided-password-manager-scope.mjs",
+      "sha256": "d375d38108249dee080836c234df66e9904e208da38e4a3b881a6176d61f9783"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/scripts/lib/provided-settings-import-copy.mjs",
+      "sha256": "629d4e247ec36dc8feade1923137042615ce1f51d40ca01292bf4e9e21d11e51"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/scripts/lib/provided-draft-flush.mjs",
+      "sha256": "2c6a5845d8fc58d287c5d9c30a069dad16ca10609f7840e548e8a01072144d7a"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/scripts/lib/provided-pending-files.mjs",
+      "sha256": "d65a0fbd367f93a190e99e687f75fade6eb37a0408dd3e5bb81a3e9df54c28ab"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/scripts/lib/provided-lasso-ownership.mjs",
+      "sha256": "45cd133a7856c0d401139ea5a984f10808b49dbd50a4d27b695e9ec7ae42cf56"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/scripts/lib/provided-notification-routing.mjs",
+      "sha256": "4ae1e2e83a8946882f8d00c46c98154e4de823c60b29d977e09a8451876fc7da"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/provided-notification-window-routing/patch.json",
+      "sha256": "cadff06f7a9a57bfae424c36c5f94249c8cfb4825524dacb3f431faabae0450a"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/provided-lasso-request-ownership/patch.json",
+      "sha256": "b518b4ec9be1caf504c6e13e7ddbe56d7b5693d97cbf52cb32006dc2653ec1b2"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/vendor/provided/native-ui-compat.mjs",
+      "sha256": "487f9bf4a3c2da76dbd06d1fd51efebcc67d1c37a7cd3189a9096b9e54d49b05"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/browser-feature-expansion/integration/compose-daemon.mjs",
+      "sha256": "97a1918c5a274b9d8a9b6644df209c8df7de4c92ae2839f1f305195a92c6ba31"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/profile-isolation-final/integration/project-entry.mjs",
+      "sha256": "38b689de20525f6f87671fdafe811cd6ec0a497b066c876034fc704567a149da"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/aux-final-local-entry-package/inputs.json",
+      "sha256": "fbd94a9feaf4f84b52935f3c8e38a86e3f61efff66be75298b398e903069e6f7"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/aux-final-local-entry-package/source/project.mjs",
+      "sha256": "a2ce2662ff122459756a6faf69976d7e9e8be66a2c277f4b49f540b77a646968"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/aux-native-owned-entry-routing/edits.json",
+      "sha256": "6a761312b4ef0feaf728ad24183c02a7ae0950987bfc703c5244adf98fae54ac"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/aux-native-exec-lifetime/edits.json",
+      "sha256": "66f4a6de988ab32cb167002ccad9ad89e3beaf50f969f849baf95817c6e63736"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/aux-native-fixed-pty-loading/anchor.json",
+      "sha256": "9fd9124dd108807b5dc07f8ec4f2208dfec21d9d4c6b4635e6006b7c25aed6bb"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/aux-native-fixed-pty-loading/transform.mjs",
+      "sha256": "6f276e4ed7a3ae88d02059cec365a4ddfdf99cf415037d09d59c5fe76626334f"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/profile-isolation-local-finish/runtime-cache-async-integration/transform.mjs",
+      "sha256": "3d30efd5a149ca5ce6852243ba83db946b7c804d4442cd52698224567f050f01"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/browser-feature-expansion/research-v1/source/aux-research-daemon.mjs",
+      "sha256": "a5f624aa6edc9a082a47245c21e34edb7c26cb09c1f39609cb9a57048e548eeb"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/browser-feature-expansion/research-v1/source/research-runtime.js",
+      "sha256": "cb0a67b454cbcf6d0282ee31ff29376ae46c739bcb71757dcd5c447e577fe6be"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/out/provided-source-snapshot-1.26.1016.1852/daemon/Contents/MacOS/aside-daemon",
+      "sha256": "60d3c50a649a528927137c427d284e695a98162476d28065bb9634e937fed286"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/aux-native-owned-entry-routing/source/aux-owned-native.cjs",
+      "sha256": "ec7ea0405f415d84e4afc695405eec07378d8c7233b926ffd9dd7db2edfed663"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/ui-native-capture-transport-a1/actual-daemon-link-a3.json",
+      "sha256": "fa23bbf4a3c5de9c7fabf031f98448ef61b02dc4e3099e4fb08bde7c7aae5fde"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/ui-native-capture-transport-a1/daemon-link-inputs.json",
+      "sha256": "6b5ce4ebda63e9d206f65e91431548d27dfda50086d05de4475ff4dfff01adab"
+    },
+    {
+      "path": "/private/tmp/aux-ui-native-capture-transport-daemon-link-20261024-a3/Aux Daemon",
+      "sha256": "6c1d34edb745017bbbe37b607291ee9e46c6c9011f59c29512c089c08bef6972"
+    }
+  ],
+  "preparedOnly": true,
+  "productExecuted": false,
+  "runtimeAuthorityGranted": false
+}
