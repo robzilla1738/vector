@@ -1,0 +1,31 @@
+--- a/components/services/storage/public/mojom/local_storage_control.mojom
++++ b/components/services/storage/public/mojom/local_storage_control.mojom
+@@ -68,6 +68,8 @@
+   bool aborted;
+   // Physical target topology may be empty until the real allocator is observed.
+   string allocation_action_sha256;
++  // Actual complete per-map source/target mixture; never a readiness grant.
++  bool known_source_target_mixture;
+ };
+ 
+ // Controls the state of Local Storage within a partition. This is a privileged
+--- a/components/services/storage/dom_storage/local_storage_impl.cc
++++ b/components/services/storage/dom_storage/local_storage_impl.cc
+@@ -336,6 +336,7 @@
+   reply->source_topology_sha256 = std::move(snapshot.source_topology_sha256);
+   reply->target_topology_sha256 = std::move(snapshot.target_topology_sha256);
+   reply->allocation_action_sha256 = std::move(snapshot.allocation_action_sha256);
++  reply->known_source_target_mixture = snapshot.known_source_target_mixture;
+   for (auto& map : snapshot.maps) {
+     auto output = mojom::AuxUiDomMapSnapshot::New();
+     output->storage_key = std::move(map.storage_key);
+--- a/components/services/storage/dom_storage/session_storage_impl.cc
++++ b/components/services/storage/dom_storage/session_storage_impl.cc
+@@ -322,6 +322,7 @@
+   reply->source_topology_sha256 = std::move(snapshot.source_topology_sha256);
+   reply->target_topology_sha256 = std::move(snapshot.target_topology_sha256);
+   reply->allocation_action_sha256 = std::move(snapshot.allocation_action_sha256);
++  reply->known_source_target_mixture = snapshot.known_source_target_mixture;
+   for (auto& map : snapshot.maps) {
+     auto output = mojom::AuxUiDomMapSnapshot::New();
+     output->storage_key = std::move(map.storage_key);

@@ -1,0 +1,10 @@
+{
+  "files": 3,
+  "countedAnchors": 3,
+  "patchReplay": true,
+  "patchReverse": true,
+  "nativeFlagCopiedVerbatim": true,
+  "sourceReadyAndHeldSemanticsUnchanged": true,
+  "nativeCompile": false,
+  "runtimeAcceptance": false
+}

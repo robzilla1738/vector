@@ -1,0 +1,66 @@
+{
+  "format": "aux.dom-controls.mixture-wire.v1",
+  "predecessorCommit": "f89e3c533",
+  "nativeOwnerCommit": "6863506bf",
+  "files": [
+    {
+      "path": "components/services/storage/public/mojom/local_storage_control.mojom",
+      "inputSource": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/native-dom-control-metadata-wire-a17a/source/components/services/storage/public/mojom/local_storage_control.mojom",
+      "inputSha256": "479bd288148e7c1e4ec14695e88e6b4e7056c1ec762327a41ec7dcef7765a13e",
+      "outputSha256": "66b453780758c30d87fb36af59e8b0ceafc272ea9d9ecb2b0c4766c87dd7bcf0",
+      "source": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/native-dom-control-mixture-wire-a17d/source/components/services/storage/public/mojom/local_storage_control.mojom",
+      "anchors": [
+        {
+          "find": "  string allocation_action_sha256;\n};",
+          "replace": "  string allocation_action_sha256;\n  // Actual complete per-map source/target mixture; never a readiness grant.\n  bool known_source_target_mixture;\n};",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "components/services/storage/dom_storage/local_storage_impl.cc",
+      "inputSource": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/native-dom-control-metadata-wire-a17a/source/components/services/storage/dom_storage/local_storage_impl.cc",
+      "inputSha256": "dd692170ab4ec69f8d525e8871dc4fa53c8d8e8ee7329334e977143997d10473",
+      "outputSha256": "72e4d278dfe879baf5f07a7ad682efa4f7e8534e0f08e41656f6b2159388b15e",
+      "source": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/native-dom-control-mixture-wire-a17d/source/components/services/storage/dom_storage/local_storage_impl.cc",
+      "anchors": [
+        {
+          "find": "  reply->allocation_action_sha256 = std::move(snapshot.allocation_action_sha256);",
+          "replace": "  reply->allocation_action_sha256 = std::move(snapshot.allocation_action_sha256);\n  reply->known_source_target_mixture = snapshot.known_source_target_mixture;",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "components/services/storage/dom_storage/session_storage_impl.cc",
+      "inputSource": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/native-dom-control-metadata-wire-a17a/source/components/services/storage/dom_storage/session_storage_impl.cc",
+      "inputSha256": "2d4de35ec2a218daa020bee2dfb35e0d629c1b4a6582828d4ff8fd2f9d7f4f3d",
+      "outputSha256": "e081d64179ddf6e3bc81955fbf6e6d756babf9b729a9e8fad1fac66df9e342a7",
+      "source": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/native-dom-control-mixture-wire-a17d/source/components/services/storage/dom_storage/session_storage_impl.cc",
+      "anchors": [
+        {
+          "find": "  reply->allocation_action_sha256 = std::move(snapshot.allocation_action_sha256);",
+          "replace": "  reply->allocation_action_sha256 = std::move(snapshot.allocation_action_sha256);\n  reply->known_source_target_mixture = snapshot.known_source_target_mixture;",
+          "count": 1
+        }
+      ]
+    }
+  ],
+  "dependencies": [
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-organization/web/docs/integration/proposed/standard-profile-isolation/native-known-mixture-observation-a17d/source-plan.json",
+      "sha256": "89de5c8cc8d4f2ea88a72f31f4db294ed1d966ab248f9450da9752a3b856c6de"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-organization/web/docs/integration/proposed/standard-profile-isolation/native-known-mixture-observation-a17d/source/components/services/storage/dom_storage/async_dom_storage_database.h",
+      "sha256": "0a4a0299a1c3ec38618beef03e70dc107de450a16c8d9fc54d4f4e8dbf91ff68"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-organization/web/docs/integration/proposed/standard-profile-isolation/native-known-mixture-observation-a17d/source/components/services/storage/dom_storage/async_dom_storage_database.cc",
+      "sha256": "150e5fe2bdd38c52b21601fd454154d5e1944528574c8d3f22b98909d4f90f1b"
+    }
+  ],
+  "nativeMutation": false,
+  "compilerRun": false,
+  "runtimeAcceptance": false
+}
