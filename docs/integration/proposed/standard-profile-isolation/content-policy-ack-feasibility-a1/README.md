@@ -1,0 +1,23 @@
+# Content applied-policy acknowledgment: bounded feasibility result
+
+No new startup protocol, source mutation, native build, policy/client execution, signing or grant was performed. The separate browser-descendant-uncertainty-a1 correctness change remains the proposed behavior: no unobserved cohort may produce CLEAN.
+
+## Exact missing mechanism
+
+The selected Seatbelt channel is one-way. `SeatbeltExecClient` creates a pipe, maps the read end to the child, writes the serialized policy, then closes the write end (`sandbox/mac/seatbelt_exec.cc:83–130`). `SendPolicy` proves only that bytes were written. `SeatbeltExecServer::InitializeSandbox` reads those bytes and returns `ApplySerializedPolicy` (`:174–180`), but sends no reply. The parent ignores `SendPolicy`'s result (`content/browser/child_process_launcher_helper_mac.cc:211–216`). Existing native lifetime evidence binds PID and creation time, then observes the original direct-child reap; it captures no policy/type/application result.
+
+Both ordinary helpers (`chrome/app/chrome_exe_main_mac.cc:165–176`) and Aperitif (`content/app/aperitif_mac.cc:76–83`) apply the policy before framework/user execution, failing fatally on error. This is a useful trusted bootstrap seam. It does not turn a one-way write into a parent-observed acknowledgment.
+
+A real acknowledgment route would require a new private return descriptor/protocol between that bootstrap and the original parent reservation. It must bind the exact serialized policy and one-time challenge, application success and actual kernel process-creation denial, verified fixed helper executable/startup path, and the original native launch. The parent must reject overridden subprocess paths/wrappers for this classification: `ChildProcessHost::GetChildPath` prioritizes `--browser-subprocess-path` and embedder overrides before bundled helper resolution (`content/browser/child_process_host_impl.cc:58–122`). Renderer/GPU command prefixes are additional real launch routes. Missing/invalid acknowledgment remains unknown; no timeout or later PID absence can substitute for it.
+
+## Why classifying every type is not a complete solution
+
+`GetSandboxProfile` composes common.sb plus each exact type suffix, including renderer, GPU, network, audio, CDM, mirroring, print services, ScreenAI, speech recognition, on-device models/translation, proxy resolution, WebNN and utility/service variants. These selected source policies do not allow process-fork; common.sb denies default. The actual child application path is therefore a plausible no-descendant proof boundary, not permission to treat every type name as covered. `--no-sandbox` and unsandboxed types bypass it entirely and must remain unknown.
+
+Even a correct no-fork acknowledgment establishes only that the child cannot create descendants. It does not establish that all delegated writers lost Aux write authority. GPU policy explicitly permits writes to Darwin user cache/temp directories (`gpu.sb:116–120`), issues extensions and permits Metal helper cache access (`:125–131`). The on-device model policy also enables that helper access. Common policy explains that compilation is offloaded to another service and allows issuing read-write extensions to helper cache paths (`common.sb:79–103`). These are OS services, not necessarily descendants of the content process. The current selected source does not bind a native service-completion acknowledgment to these extensions. The Darwin directories are resolved from actual confstr values (`sandbox_parameters_mac.mm:62–82`); their separation from every protected Aux root/alias must be established for the active root reservation, not assumed from their names.
+
+## Smallest honest continuation
+
+Keep the current uncertainty gate for the collected build. A later bounded implementation can add the private bootstrap acknowledgment and per-launch classification for a verified no-fork type, while retaining direct-reap evidence and uncertainty for every unverified/unsandboxed launch. Complete CLEAN additionally needs a demonstrated root-authority boundary for delegated services, or actual service settlement evidence. Native messaging remains separately unknown until its own descendant or complete write-authority closure is established.
+
+No owner action or new permission is required to retain this safe blocked-CLEAN state. Source implementation and review of the explicit return-channel and root/service boundary are the next engineering steps. Signing alone, granting ES to the daemon alone, or approving another timeout cannot supply the missing browser-owned evidence. Runtime acceptance of any successor would still need a separately permitted exact candidate; this document grants none.

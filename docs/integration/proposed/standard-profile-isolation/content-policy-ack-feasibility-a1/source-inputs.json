@@ -1,0 +1,65 @@
+{
+  "purpose": "Read-only bounded feasibility evidence; not source projection or runtime acceptance",
+  "inputs": [
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/sandbox/mac/seatbelt_exec.h",
+      "sha256": "75eb045a4c95352b3af8c65ff5e33d62e78270caad04922173a0c1b8aaa4d581"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/sandbox/mac/seatbelt_exec.cc",
+      "sha256": "47c09440e41b26b8f7495b06e7d4ea7cd7eb84df4f83dd6abff2f0453fcf7b01"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/sandbox/mac/sandbox_serializer.cc",
+      "sha256": "8a18d7b993e288b4d994bb54101b04147b0955364076c7e2728489ff54ebe0b5"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/sandbox/mac/seatbelt.cc",
+      "sha256": "ca74d83dfa03acd119d3900ba0c10608df46df21982126c3c0a8832d4d23b08d"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/app/chrome_exe_main_mac.cc",
+      "sha256": "96ed48f2bd53d81cebba0063f1408fec4da7c952af2d7446f047a5d46fa885df"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/content/app/aperitif_mac.cc",
+      "sha256": "a093313bf480cb9c5e38765ee1ff2a8008f7cc33084201c5d8e8844736f258b8"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/content/browser/child_process_launcher_helper_mac.cc",
+      "sha256": "3593313f53dc2a6b149679340f148525b853354354b27f08e2374ddaf94115dd"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/content/browser/child_process_host_impl.cc",
+      "sha256": "22f757889e3360141174049d13fc361397c9d3bb54251684121934144408bdc8"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/content/browser/sandbox_parameters_mac.mm",
+      "sha256": "3a0b8bcc6b8a801aa481ce1f62ea72b0a63f4a02d67d34397924bb13616bb8b6"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/sandbox/policy/mac/sandbox_mac.mm",
+      "sha256": "6cb531ee48582ef0f972af9a9fb98b4044bb858aa5736a8f396d5aae7181667c"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/sandbox/policy/mac/common.sb",
+      "sha256": "b6eb971c2f5cac96f5a843c5753e44f73ee3be6b8659a90e1caacafc20aec09b"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/sandbox/policy/mac/renderer.sb",
+      "sha256": "45bc78ba343d70a31e3ac93a1949274e99681e2ffa7f0904cfbfc7baa6b31806"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/sandbox/policy/mac/gpu.sb",
+      "sha256": "771e53cb9e38d9dd907f91f9f346fbf92fd1038faac2578d0449a1cfdfeb7825"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/sandbox/policy/mac/on_device_model_execution.sb",
+      "sha256": "2ab527d0a598d488fcac3200898845ab04eeda0c4b53572805f3d584a5bb254c"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/sandbox/policy/mac/webnn_model_compilation.sb",
+      "sha256": "4f11c48cb8ad4400dacc307c59e6840ba94144b746b6bbc7db6e4b20b7c08958"
+    }
+  ]
+}
