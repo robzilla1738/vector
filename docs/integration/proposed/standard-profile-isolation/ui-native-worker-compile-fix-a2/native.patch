@@ -1,0 +1,213 @@
+--- a/chrome/browser/aux/ui_storage_migration_worker.h
++++ b/chrome/browser/aux/ui_storage_migration_worker.h
+@@ -7,7 +7,7 @@
+ #include "base/values.h"
+ 
+ class Profile;
+-namespace extensions { class ExtensionFunction; }
++class ExtensionFunction;
+ namespace aux {
+ // Native controller calls only. The helper retains the actual canonical worker,
+ // checked external-request lifetime and native RPC correlation, not caller IDs.
+@@ -30,7 +30,7 @@
+ // Root's finite ExtensionFunction calls this with its actual native context.
+ // A true return means the exact RPC transport was consumed, not producer success.
+ // Identity selectors are never accepted from JSON or API arguments.
+-bool AcceptUiStorageMigrationWorkerReply(extensions::ExtensionFunction& sender,
++bool AcceptUiStorageMigrationWorkerReply(ExtensionFunction& sender,
+                                          const std::string& request_id,
+                                          const std::string& operation,
+                                          const std::string& result_json);
+--- a/chrome/browser/aux/ui_storage_migration_worker.cc
++++ b/chrome/browser/aux/ui_storage_migration_worker.cc
+@@ -103,9 +103,11 @@
+ }
+ base::DictValue Refused(std::string error, bool retained = false) {
+   base::DictValue result;
+-  result.Set("success", false).Set("qualified", false)
+-      .Set("activationAuthorized", false).Set("retained", retained)
+-      .Set("error", std::move(error));
++  result.Set("success", false);
++  result.Set("qualified", false);
++  result.Set("activationAuthorized", false);
++  result.Set("retained", retained);
++  result.Set("error", std::move(error));
+   return result;
+ }
+ 
+@@ -142,7 +144,7 @@
+   }
+   void Begin(Reply reply);
+   void Invoke(Operation operation, Reply reply);
+-  bool Accept(extensions::ExtensionFunction& sender, const std::string& request,
++  bool Accept(ExtensionFunction& sender, const std::string& request,
+               const std::string& operation, const std::string& json);
+   bool Pending() const {
+     return attempted_ || external_held_ || !requests_.empty();
+@@ -159,7 +161,7 @@
+   };
+   bool CaptureOwner();
+   bool Current() const;
+-  bool SenderCurrent(extensions::ExtensionFunction& sender) const;
++  bool SenderCurrent(ExtensionFunction& sender) const;
+   bool Adopt(const base::DictValue& report);
+   bool SourceHeld(const base::DictValue& report) const;
+   bool Released(const base::DictValue& report) const;
+@@ -338,7 +340,8 @@
+ void WorkerOwner::Dispatch(Operation operation, std::string request, Reply reply) {
+   source_held_ = false;
+   base::DictValue control;
+-  control.Set("requestId", request).Set("operation", Name(operation));
++  control.Set("requestId", request);
++  control.Set("operation", Name(operation));
+   if (operation == Operation::kValidate || operation == Operation::kRelease)
+     control.Set("leaseId", source_lease_);
+   if (operation == Operation::kValidate) control.Set("revision", *source_revision_);
+@@ -375,10 +378,11 @@
+   // Do not translate missing delivery or an abandoned callback to 'not started'.
+   // Keep the same actual worker/lifetime and original request for read recovery.
+   auto result = Refused("Worker event delivery is unconfirmed", true);
+-  result.Set("requestId", request).Set("deliveryUnconfirmed", true);
++  result.Set("requestId", request);
++  result.Set("deliveryUnconfirmed", true);
+   std::move(reply).Run(std::move(result));
+ }
+-bool WorkerOwner::SenderCurrent(extensions::ExtensionFunction& sender) const {
++bool WorkerOwner::SenderCurrent(ExtensionFunction& sender) const {
+   if (!Current() || !sender.is_from_service_worker() || sender.render_frame_host() ||
+       sender.browser_context() != profile_ || sender.extension() != extension_.get() ||
+       sender.source_context_type() != extensions::mojom::ContextType::kPrivilegedExtension ||
+@@ -441,10 +445,13 @@
+ }
+ base::DictValue WorkerOwner::Result(bool success, const std::string& json) const {
+   base::DictValue result;
+-  result.Set("success", success).Set("qualified", false)
+-      .Set("activationAuthorized", false).Set("retained", Pending())
+-      .Set("nativeOwnerCurrent", Current()).Set("sourceHeld", source_held_)
+-      .Set("prepareRequestId", prepare_request_);
++  result.Set("success", success);
++  result.Set("qualified", false);
++  result.Set("activationAuthorized", false);
++  result.Set("retained", Pending());
++  result.Set("nativeOwnerCurrent", Current());
++  result.Set("sourceHeld", source_held_);
++  result.Set("prepareRequestId", prepare_request_);
+   if (!json.empty()) result.Set("reportJson", json);
+   if (!failure_.empty()) result.Set("error", failure_);
+   return result;
+@@ -458,7 +465,8 @@
+   failure_ = released ? "" : "The authenticated source refused before creating a producer lease";
+   auto remaining = std::move(requests_); requests_.clear();
+   auto result = Result(released, json);
+-  result.Set("released", released).Set("ownExternalRequestRetired", true);
++  result.Set("released", released);
++  result.Set("ownExternalRequestRetired", true);
+   if (!released) result.Set("noProducerLeaseCreated", true);
+   settled_result_ = result.Clone();
+   manager_observation_.Reset(); registry_observation_.Reset();
+@@ -468,14 +476,15 @@
+   std::vector<std::pair<Reply, base::DictValue>> callbacks;
+   for (auto& [id, pending] : remaining) {
+     auto unresolved = Refused("Original control reply unresolved when the exact attempt was settled");
+-    unresolved.Set("requestId", id).Set("transportSuperseded", true);
++    unresolved.Set("requestId", id);
++    unresolved.Set("transportSuperseded", true);
+     callbacks.emplace_back(std::move(pending.reply), std::move(unresolved));
+   }
+   callbacks.emplace_back(std::move(reply), std::move(result));
+   // No owner access after a callback can destroy its Profile or start a lease.
+   for (auto& [callback, value] : callbacks) std::move(callback).Run(std::move(value));
+ }
+-bool WorkerOwner::Accept(extensions::ExtensionFunction& sender,
++bool WorkerOwner::Accept(ExtensionFunction& sender,
+                          const std::string& request, const std::string& operation,
+                          const std::string& json) {
+   const auto found = requests_.find(request);
+@@ -508,7 +517,8 @@
+     for (auto iterator = requests_.begin(); iterator != requests_.end();) {
+       if (iterator->second.operation == Operation::kRelease) { ++iterator; continue; }
+       auto superseded = Refused("Original control reply unresolved; exact-owner read observed the source lease", true);
+-      superseded.Set("requestId", iterator->first).Set("transportSuperseded", true);
++      superseded.Set("requestId", iterator->first);
++      superseded.Set("transportSuperseded", true);
+       recovered.emplace_back(std::move(iterator->second.reply), std::move(superseded));
+       iterator = requests_.erase(iterator);
+     }
+@@ -633,7 +643,7 @@
+   DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
+   auto* owner = WorkerOwner::Get(profile, false); return owner && owner->Valid();
+ }
+-bool AcceptUiStorageMigrationWorkerReply(extensions::ExtensionFunction& sender,
++bool AcceptUiStorageMigrationWorkerReply(ExtensionFunction& sender,
+                                          const std::string& request,
+                                          const std::string& operation,
+                                          const std::string& json) {
+--- a/chrome/browser/aux/ui_storage_migration_controller.cc
++++ b/chrome/browser/aux/ui_storage_migration_controller.cc
+@@ -68,8 +68,10 @@
+ 
+ base::DictValue Refused(std::string reason) {
+   base::DictValue result;
+-  result.Set("success", false).Set("activationAuthorized", false)
+-      .Set("qualified", false).Set("error", std::move(reason));
++  result.Set("success", false);
++  result.Set("activationAuthorized", false);
++  result.Set("qualified", false);
++  result.Set("error", std::move(reason));
+   return result;
+ }
+ bool Text(const base::DictValue& value, std::string_view key, std::string_view expected) {
+@@ -679,19 +681,28 @@
+   base::ListValue pages, extension_records;
+   for (const auto& frame : frames_) {
+     base::DictValue page;
+-    page.Set("nativeDocumentId", frame->document_id.ToString()).Set("sessionNamespace", frame->namespace_id)
+-        .Set("requestId", frame->request_id).Set("captureJson", frame->capture_json);
++    page.Set("nativeDocumentId", frame->document_id.ToString());
++    page.Set("sessionNamespace", frame->namespace_id);
++    page.Set("requestId", frame->request_id);
++    page.Set("captureJson", frame->capture_json);
+     pages.Append(std::move(page));
+   }
+   for (const auto& raw : extension_lease_->CopySourceRecords())
+     extension_records.Append(raw ? base::Value(base::Base64Encode(*raw)) : base::Value());
+   base::DictValue capture;
+-  capture.Set("format", "aux.ui-storage.capture-input.v1")
+-      .Set("nativeProfileId", profile_id_).Set("bindingEpoch", binding_).Set("restoreEpoch", restoration_)
+-      .Set("pages", std::move(pages)).Set("extensionRawRecords", std::move(extension_records))
+-      .Set("workerPrepareRequestId", worker_request_id_).Set("workerReportJson", worker_report_json_)
+-      .Set("phase", "captured-unqualified").Set("qualified", false).Set("activationAuthorized", false)
+-      .Set("backendWriterClosure", false).Set("targetImportAvailable", false);
++  capture.Set("format", "aux.ui-storage.capture-input.v1");
++  capture.Set("nativeProfileId", profile_id_);
++  capture.Set("bindingEpoch", binding_);
++  capture.Set("restoreEpoch", restoration_);
++  capture.Set("pages", std::move(pages));
++  capture.Set("extensionRawRecords", std::move(extension_records));
++  capture.Set("workerPrepareRequestId", worker_request_id_);
++  capture.Set("workerReportJson", worker_report_json_);
++  capture.Set("phase", "captured-unqualified");
++  capture.Set("qualified", false);
++  capture.Set("activationAuthorized", false);
++  capture.Set("backendWriterClosure", false);
++  capture.Set("targetImportAvailable", false);
+   auto encoded = base::WriteJson(capture);
+   if (!encoded || encoded->empty() || encoded->size() > kCaptureLimit) { Finish("Complete native capture exceeds its bound"); return; }
+   transfer_ = std::make_shared<Transfer>(); transfer_->capture = std::move(*encoded);
+@@ -849,10 +860,12 @@
+   // Opaque frontend/worker tokens survive any unconfirmed cleanup. Only their
+   // actual native release paths above may retire them.
+   auto result = Refused(error_);
+-  result.Set("phase", transfer_ && transfer_->complete ? "captured-unqualified" : "refused-or-unknown")
+-      .Set("rendererCleanupUnknown", cleanup_unknown_).Set("workerCleanupPending", worker_attempted_)
+-      .Set("frontendCleanupPending", !!extension_lease_ || frontend_begin_unknown_ || frontend_io_unknown_)
+-      .Set("backendWriterClosure", false).Set("targetImportAvailable", false);
++  result.Set("phase", transfer_ && transfer_->complete ? "captured-unqualified" : "refused-or-unknown");
++  result.Set("rendererCleanupUnknown", cleanup_unknown_);
++  result.Set("workerCleanupPending", worker_attempted_);
++  result.Set("frontendCleanupPending", !!extension_lease_ || frontend_begin_unknown_ || frontend_io_unknown_);
++  result.Set("backendWriterClosure", false);
++  result.Set("targetImportAvailable", false);
+   if (transfer_ && transfer_->complete) {
+     result.Set("journalId", transfer_->journal);
+     result.Set("captureSha256", base::HexEncodeLower(transfer_->digest));

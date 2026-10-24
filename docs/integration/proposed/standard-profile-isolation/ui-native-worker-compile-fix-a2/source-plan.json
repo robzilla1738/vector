@@ -1,0 +1,106 @@
+{
+  "format": "aux.ui-native-worker-compile-fix.source.v1",
+  "files": [
+    {
+      "path": "chrome/browser/aux/ui_storage_migration_worker.h",
+      "inputSha256": "e994ad290428a766623326d510d0499a54a4d24982faab92d09eddc8f253ce26",
+      "outputSha256": "ad7cc054d0975aa04015f664c367127f4f8e1388776c1b9527b3a5405209e8b6",
+      "output": "/Users/rcourson/.codex/worktrees/aux-features-navigation/web/docs/integration/proposed/standard-profile-isolation/ui-native-worker-compile-fix-a2/source/chrome/browser/aux/ui_storage_migration_worker.h",
+      "anchors": [
+        {
+          "find": "namespace extensions { class ExtensionFunction; }",
+          "replace": "class ExtensionFunction;",
+          "count": 1
+        },
+        {
+          "find": "extensions::ExtensionFunction",
+          "replace": "ExtensionFunction",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/aux/ui_storage_migration_worker.cc",
+      "inputSha256": "8add977c0034ee471d09bba85549f2a56aa3a4ca12ac5da66c3cc9f414a3d92a",
+      "outputSha256": "45897978269cd30647920191aa216fbab923911d38cb6803cb58214f246f84bf",
+      "output": "/Users/rcourson/.codex/worktrees/aux-features-navigation/web/docs/integration/proposed/standard-profile-isolation/ui-native-worker-compile-fix-a2/source/chrome/browser/aux/ui_storage_migration_worker.cc",
+      "anchors": [
+        {
+          "find": "extensions::ExtensionFunction",
+          "replace": "ExtensionFunction",
+          "count": 5
+        },
+        {
+          "find": "  result.Set(\"success\", false).Set(\"qualified\", false)\n      .Set(\"activationAuthorized\", false).Set(\"retained\", retained)\n      .Set(\"error\", std::move(error));",
+          "replace": "  result.Set(\"success\", false);\n  result.Set(\"qualified\", false);\n  result.Set(\"activationAuthorized\", false);\n  result.Set(\"retained\", retained);\n  result.Set(\"error\", std::move(error));",
+          "count": 1
+        },
+        {
+          "find": "  control.Set(\"requestId\", request).Set(\"operation\", Name(operation));",
+          "replace": "  control.Set(\"requestId\", request);\n  control.Set(\"operation\", Name(operation));",
+          "count": 1
+        },
+        {
+          "find": "  result.Set(\"requestId\", request).Set(\"deliveryUnconfirmed\", true);",
+          "replace": "  result.Set(\"requestId\", request);\n  result.Set(\"deliveryUnconfirmed\", true);",
+          "count": 1
+        },
+        {
+          "find": "  result.Set(\"success\", success).Set(\"qualified\", false)\n      .Set(\"activationAuthorized\", false).Set(\"retained\", Pending())\n      .Set(\"nativeOwnerCurrent\", Current()).Set(\"sourceHeld\", source_held_)\n      .Set(\"prepareRequestId\", prepare_request_);",
+          "replace": "  result.Set(\"success\", success);\n  result.Set(\"qualified\", false);\n  result.Set(\"activationAuthorized\", false);\n  result.Set(\"retained\", Pending());\n  result.Set(\"nativeOwnerCurrent\", Current());\n  result.Set(\"sourceHeld\", source_held_);\n  result.Set(\"prepareRequestId\", prepare_request_);",
+          "count": 1
+        },
+        {
+          "find": "  result.Set(\"released\", released).Set(\"ownExternalRequestRetired\", true);",
+          "replace": "  result.Set(\"released\", released);\n  result.Set(\"ownExternalRequestRetired\", true);",
+          "count": 1
+        },
+        {
+          "find": "    unresolved.Set(\"requestId\", id).Set(\"transportSuperseded\", true);",
+          "replace": "    unresolved.Set(\"requestId\", id);\n    unresolved.Set(\"transportSuperseded\", true);",
+          "count": 1
+        },
+        {
+          "find": "      superseded.Set(\"requestId\", iterator->first).Set(\"transportSuperseded\", true);",
+          "replace": "      superseded.Set(\"requestId\", iterator->first);\n      superseded.Set(\"transportSuperseded\", true);",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/aux/ui_storage_migration_controller.cc",
+      "inputSha256": "aae943357053ca41a6e7afac86541f78d66c3548c6b385bf1eeae502ce224515",
+      "outputSha256": "02c3bbab4b8b71568945a3f0b55ec0794adced2ca8af47fbef1df9408662588e",
+      "output": "/Users/rcourson/.codex/worktrees/aux-features-navigation/web/docs/integration/proposed/standard-profile-isolation/ui-native-worker-compile-fix-a2/source/chrome/browser/aux/ui_storage_migration_controller.cc",
+      "anchors": [
+        {
+          "find": "  result.Set(\"success\", false).Set(\"activationAuthorized\", false)\n      .Set(\"qualified\", false).Set(\"error\", std::move(reason));",
+          "replace": "  result.Set(\"success\", false);\n  result.Set(\"activationAuthorized\", false);\n  result.Set(\"qualified\", false);\n  result.Set(\"error\", std::move(reason));",
+          "count": 1
+        },
+        {
+          "find": "    page.Set(\"nativeDocumentId\", frame->document_id.ToString()).Set(\"sessionNamespace\", frame->namespace_id)\n        .Set(\"requestId\", frame->request_id).Set(\"captureJson\", frame->capture_json);",
+          "replace": "    page.Set(\"nativeDocumentId\", frame->document_id.ToString());\n    page.Set(\"sessionNamespace\", frame->namespace_id);\n    page.Set(\"requestId\", frame->request_id);\n    page.Set(\"captureJson\", frame->capture_json);",
+          "count": 1
+        },
+        {
+          "find": "  capture.Set(\"format\", \"aux.ui-storage.capture-input.v1\")\n      .Set(\"nativeProfileId\", profile_id_).Set(\"bindingEpoch\", binding_).Set(\"restoreEpoch\", restoration_)\n      .Set(\"pages\", std::move(pages)).Set(\"extensionRawRecords\", std::move(extension_records))\n      .Set(\"workerPrepareRequestId\", worker_request_id_).Set(\"workerReportJson\", worker_report_json_)\n      .Set(\"phase\", \"captured-unqualified\").Set(\"qualified\", false).Set(\"activationAuthorized\", false)\n      .Set(\"backendWriterClosure\", false).Set(\"targetImportAvailable\", false);",
+          "replace": "  capture.Set(\"format\", \"aux.ui-storage.capture-input.v1\");\n  capture.Set(\"nativeProfileId\", profile_id_);\n  capture.Set(\"bindingEpoch\", binding_);\n  capture.Set(\"restoreEpoch\", restoration_);\n  capture.Set(\"pages\", std::move(pages));\n  capture.Set(\"extensionRawRecords\", std::move(extension_records));\n  capture.Set(\"workerPrepareRequestId\", worker_request_id_);\n  capture.Set(\"workerReportJson\", worker_report_json_);\n  capture.Set(\"phase\", \"captured-unqualified\");\n  capture.Set(\"qualified\", false);\n  capture.Set(\"activationAuthorized\", false);\n  capture.Set(\"backendWriterClosure\", false);\n  capture.Set(\"targetImportAvailable\", false);",
+          "count": 1
+        },
+        {
+          "find": "  result.Set(\"phase\", transfer_ && transfer_->complete ? \"captured-unqualified\" : \"refused-or-unknown\")\n      .Set(\"rendererCleanupUnknown\", cleanup_unknown_).Set(\"workerCleanupPending\", worker_attempted_)\n      .Set(\"frontendCleanupPending\", !!extension_lease_ || frontend_begin_unknown_ || frontend_io_unknown_)\n      .Set(\"backendWriterClosure\", false).Set(\"targetImportAvailable\", false);",
+          "replace": "  result.Set(\"phase\", transfer_ && transfer_->complete ? \"captured-unqualified\" : \"refused-or-unknown\");\n  result.Set(\"rendererCleanupUnknown\", cleanup_unknown_);\n  result.Set(\"workerCleanupPending\", worker_attempted_);\n  result.Set(\"frontendCleanupPending\", !!extension_lease_ || frontend_begin_unknown_ || frontend_io_unknown_);\n  result.Set(\"backendWriterClosure\", false);\n  result.Set(\"targetImportAvailable\", false);",
+          "count": 1
+        }
+      ]
+    }
+  ],
+  "countedAnchors": 14,
+  "actualValuesHeaderSha256": "bc6ffad749e2e84ed10dbd296f604570bde6bf9bc1e41c11a3f8207ae9000f81",
+  "actualExtensionFunctionHeaderSha256": "b7d21adba7e74da120ead3ea1136e5a03046f29009a6ba92965f670c4b3b0b3a",
+  "failedCompileLogSha256": "5803299eeaa0944ab21c92077d4d46abe0aa3b65881388bb5ed450ba7e0e3fdb",
+  "nativeTreeUnchanged": true,
+  "nativeCompiled": false,
+  "runtimeAccepted": false
+}
