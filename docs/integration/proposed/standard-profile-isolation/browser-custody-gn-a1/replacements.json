@@ -1,0 +1,44 @@
+[
+  {
+    "path": "base/BUILD.gn",
+    "old": "component(\"base\") {\n",
+    "new": "if (is_mac) {\n  # No implementation, allocation, or dependency on the base component. The\n  # Crashpad/Framework clients call the one main-executable bridge.\n  source_set(\"aux_browser_descendant_client\") {\n    public = [\n      \"process/mac/aux_browser_descendant_bridge.h\",\n      \"process/mac/aux_browser_descendant_client.h\",\n    ]\n    sources = public\n  }\n\n  # Only the primary browser image owns the ES stream and ticket registry.\n  # mac_app_bundle forwards deps to both its bundle and executable target.\n  source_set(\"aux_browser_descendant_engine\") {\n    visibility = [\n      \"//chrome:chrome_app\",\n      \"//chrome:chrome_app_executable\",\n    ]\n    public = [ \"process/mac/aux_browser_descendant_engine.h\" ]\n    sources = [\n      \"process/mac/aux_browser_descendant_bridge.cc\",\n      \"process/mac/aux_browser_descendant_engine.cc\",\n      \"process/mac/aux_browser_descendant_engine.h\",\n    ]\n    deps = [ \":aux_browser_descendant_client\" ]\n    configs -= [ \"//build/config/compiler:no_exceptions\" ]\n    configs += [ \"//build/config/compiler:exceptions\" ]\n    cflags_cc = [ \"-fblocks\" ]\n    libs = [\n      \"EndpointSecurity\",\n      \"bsm\",\n    ]\n  }\n}\n\ncomponent(\"base\") {\n",
+    "count": 1
+  },
+  {
+    "path": "base/BUILD.gn",
+    "old": "  sources += [\n    \"containers/span_rust.h\",\n    \"strings/string_view_rust.h\",\n  ]\n",
+    "new": "  if (is_mac) {\n    public_deps += [ \":aux_browser_descendant_client\" ]\n  }\n\n  sources += [\n    \"containers/span_rust.h\",\n    \"strings/string_view_rust.h\",\n  ]\n",
+    "count": 1
+  },
+  {
+    "path": "chrome/BUILD.gn",
+    "old": "      \"//chrome/common:version_header\",\n    ]\n\n    if (enable_updater) {\n",
+    "new": "      \"//chrome/common:version_header\",\n    ]\n\n    ldflags = []\n    if (enable_aux_browser) {\n      defines = [ \"AUX_BROWSER_DESCENDANT_CUSTODY\" ]\n      deps += [ \"//base:aux_browser_descendant_engine\" ]\n      # The Framework resolves only this main-image symbol via RTLD_MAIN_ONLY.\n      ldflags += [ \"-Wl,-u,_AuxGetBrowserDescendantBridgeV1\" ]\n    }\n\n    if (enable_updater) {\n",
+    "count": 1
+  },
+  {
+    "path": "chrome/BUILD.gn",
+    "old": "      ldflags = [ \"-Wl,-exported_symbols_list,\" +\n                  rebase_path(\"app/app.exports\", root_build_dir) ]\n",
+    "new": "      if (enable_aux_browser) {\n        inputs = [ \"app/aux_browser_app.exports\" ]\n        ldflags += [ \"-Wl,-exported_symbols_list,\" +\n                     rebase_path(\"app/aux_browser_app.exports\", root_build_dir) ]\n      } else {\n        ldflags += [ \"-Wl,-exported_symbols_list,\" +\n                     rebase_path(\"app/app.exports\", root_build_dir) ]\n      }\n",
+    "count": 1
+  },
+  {
+    "path": "chrome/BUILD.gn",
+    "old": "      deps += [ \":chrome_framework+link\" ]\n      ldflags = [ \"-Wl,-rpath,@executable_path/../Frameworks\" ]\n",
+    "new": "      deps += [ \":chrome_framework+link\" ]\n      ldflags += [ \"-Wl,-rpath,@executable_path/../Frameworks\" ]\n",
+    "count": 1
+  },
+  {
+    "path": "chrome/BUILD.gn",
+    "old": "      deps = [ \":chrome_app\" ]\n    }\n  }\n\n  compiled_action(\"chrome_app_strings\") {\n",
+    "new": "      if (enable_aux_browser) {\n        args += [\n          \"--allow\",\n          \"/usr/lib/libEndpointSecurity.dylib\",\n          \"--allow\",\n          \"/usr/lib/libbsm.0.dylib\",\n        ]\n      }\n      deps = [ \":chrome_app\" ]\n    }\n  }\n\n  compiled_action(\"chrome_app_strings\") {\n",
+    "count": 1
+  },
+  {
+    "path": "third_party/crashpad/crashpad/util/BUILD.gn",
+    "old": "  if (crashpad_is_mac && !crashpad_is_in_fuchsia) {\n    libs = [ \"bsm\" ]\n",
+    "new": "  if (crashpad_is_mac && !crashpad_is_in_fuchsia) {\n    if (crashpad_is_in_chromium) {\n      # Header-only native bridge; never depend on the full Chromium base\n      # component (which already depends on Crashpad) or the observer engine.\n      public_deps += [ \"//base:aux_browser_descendant_client\" ]\n    }\n    libs = [ \"bsm\" ]\n",
+    "count": 1
+  }
+]

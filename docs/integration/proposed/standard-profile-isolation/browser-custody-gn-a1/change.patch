@@ -1,0 +1,134 @@
+--- a/base/BUILD.gn
++++ b/base/BUILD.gn
+@@ -242,6 +242,41 @@
+ # base compilation units to be linked in where they wouldn't have otherwise.
+ # This does not include test code (test support and anything in the test
+ # directory) which should use source_set as is recommended for GN targets).
++if (is_mac) {
++  # No implementation, allocation, or dependency on the base component. The
++  # Crashpad/Framework clients call the one main-executable bridge.
++  source_set("aux_browser_descendant_client") {
++    public = [
++      "process/mac/aux_browser_descendant_bridge.h",
++      "process/mac/aux_browser_descendant_client.h",
++    ]
++    sources = public
++  }
++
++  # Only the primary browser image owns the ES stream and ticket registry.
++  # mac_app_bundle forwards deps to both its bundle and executable target.
++  source_set("aux_browser_descendant_engine") {
++    visibility = [
++      "//chrome:chrome_app",
++      "//chrome:chrome_app_executable",
++    ]
++    public = [ "process/mac/aux_browser_descendant_engine.h" ]
++    sources = [
++      "process/mac/aux_browser_descendant_bridge.cc",
++      "process/mac/aux_browser_descendant_engine.cc",
++      "process/mac/aux_browser_descendant_engine.h",
++    ]
++    deps = [ ":aux_browser_descendant_client" ]
++    configs -= [ "//build/config/compiler:no_exceptions" ]
++    configs += [ "//build/config/compiler:exceptions" ]
++    cflags_cc = [ "-fblocks" ]
++    libs = [
++      "EndpointSecurity",
++      "bsm",
++    ]
++  }
++}
++
+ component("base") {
+   sources = [
+     "allocator/allocator_check.cc",
+@@ -1198,6 +1233,10 @@
+     "//third_party/abseil-cpp:absl",
+   ]
+ 
++  if (is_mac) {
++    public_deps += [ ":aux_browser_descendant_client" ]
++  }
++
+   sources += [
+     "containers/span_rust.h",
+     "strings/string_view_rust.h",
+--- a/chrome/BUILD.gn
++++ b/chrome/BUILD.gn
+@@ -629,6 +629,14 @@
+       "//chrome/common:version_header",
+     ]
+ 
++    ldflags = []
++    if (enable_aux_browser) {
++      defines = [ "AUX_BROWSER_DESCENDANT_CUSTODY" ]
++      deps += [ "//base:aux_browser_descendant_engine" ]
++      # The Framework resolves only this main-image symbol via RTLD_MAIN_ONLY.
++      ldflags += [ "-Wl,-u,_AuxGetBrowserDescendantBridgeV1" ]
++    }
++
+     if (enable_updater) {
+       deps += [ ":chromium_updater_privileged_helper" ]
+     }
+@@ -644,8 +652,14 @@
+       # file. All other global symbols will be marked as private. The default
+       # //build/config/apple:strip_all config will then remove the remaining
+       # local and debug symbols.
+-      ldflags = [ "-Wl,-exported_symbols_list," +
+-                  rebase_path("app/app.exports", root_build_dir) ]
++      if (enable_aux_browser) {
++        inputs = [ "app/aux_browser_app.exports" ]
++        ldflags += [ "-Wl,-exported_symbols_list," +
++                     rebase_path("app/aux_browser_app.exports", root_build_dir) ]
++      } else {
++        ldflags += [ "-Wl,-exported_symbols_list," +
++                     rebase_path("app/app.exports", root_build_dir) ]
++      }
+     }
+ 
+     if (is_component_build) {
+@@ -653,7 +667,7 @@
+       # executable because dlopen() and loading all the dependent dylibs
+       # is time-consuming, see https://crbug.com/40176946.
+       deps += [ ":chrome_framework+link" ]
+-      ldflags = [ "-Wl,-rpath,@executable_path/../Frameworks" ]
++      ldflags += [ "-Wl,-rpath,@executable_path/../Frameworks" ]
+ 
+       # The Framework is packaged inside the .app bundle. But when using the
+       # component build, all the dependent shared libraries of :chrome_dll are
+@@ -680,6 +694,14 @@
+         "--allow",
+         "/usr/lib/libSystem.B.dylib",
+       ]
++      if (enable_aux_browser) {
++        args += [
++          "--allow",
++          "/usr/lib/libEndpointSecurity.dylib",
++          "--allow",
++          "/usr/lib/libbsm.0.dylib",
++        ]
++      }
+       deps = [ ":chrome_app" ]
+     }
+   }
+--- a/third_party/crashpad/crashpad/util/BUILD.gn
++++ b/third_party/crashpad/crashpad/util/BUILD.gn
+@@ -613,6 +613,11 @@
+   }
+ 
+   if (crashpad_is_mac && !crashpad_is_in_fuchsia) {
++    if (crashpad_is_in_chromium) {
++      # Header-only native bridge; never depend on the full Chromium base
++      # component (which already depends on Crashpad) or the observer engine.
++      public_deps += [ "//base:aux_browser_descendant_client" ]
++    }
+     libs = [ "bsm" ]
+     frameworks = [
+       "CoreFoundation.framework",
+--- /dev/null
++++ b/chrome/app/aux_browser_app.exports
+@@ -0,0 +1,4 @@
++# Copyright 2026 The Aux Authors.
++# Primary browser only; helper executables retain app.exports unchanged.
++_main
++_AuxGetBrowserDescendantBridgeV1
