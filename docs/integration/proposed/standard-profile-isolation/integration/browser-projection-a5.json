@@ -1,0 +1,73 @@
+{
+  "format": "aux.standard-browser-source-projection.v4",
+  "source": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src",
+  "previousInputPinsSha256": "67378a52720d9a88343d62afca1305e7bdcc8522494428d4357d6356bb1517d1",
+  "inputPinsSha256": "fcad0b61dedf7ae611b6353f44df58e20c3111f5806a35b00338ad125ecfa96b",
+  "compositionSha256": "ea0507501167c7191de44f5db1956ff53066ac301c4983a31d30e3acca98a6fb",
+  "filesProjected": 32,
+  "stages": [
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/content-policy-ack-v1/manifest.json",
+      "sha256": "fbeb48df6cb4a6243fe4a604f6b2b01f20461f1011ea69fcef12496981fa4a1a",
+      "files": 13,
+      "countedEdits": 44,
+      "anchorsSha256": "4cb5c20ef9b454970ee342d3ea942384310c8f50437a62651e3666320e7d87c1"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/content-policy-ack-v2/manifest.json",
+      "sha256": "84d466404db41fd9e78f44d1333b7153debc476d7e5e75664346037a41204ec5",
+      "files": 2,
+      "countedEdits": 3,
+      "anchorsSha256": "a6426a60d5062923101f6e3cbf62f1b42d9d1262b41403535a860b050a843b16"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/meta-connection-lifetime-a1/native-replacements.json",
+      "sha256": "9e79a93105cc5550132259aacb77245471f8b5795dc4caef6e8caf58c0271050",
+      "files": 13,
+      "countedEdits": 18,
+      "anchorsSha256": "9e79a93105cc5550132259aacb77245471f8b5795dc4caef6e8caf58c0271050"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/meta-connection-lifetime-a2/native-replacements.json",
+      "sha256": "5cec09d5324aefa7db33925a07da12aa88a20fa9133250265977cb97e0c94e48",
+      "files": 6,
+      "countedEdits": 12,
+      "anchorsSha256": "5cec09d5324aefa7db33925a07da12aa88a20fa9133250265977cb97e0c94e48"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/native-host-stderr-a1/manifest.json",
+      "sha256": "1f8299193922df7b44efd95b874b556ea5395f055305597c4e28bd984ed9c010",
+      "files": 1,
+      "countedEdits": 2,
+      "anchorsSha256": "2fbce46c73db617d42e960322c24a779de32ee71708a308562024b03fa59d301"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/content-policy-ack-gn-a1/manifest.json",
+      "sha256": "993c149e0faff6725f6653d4c0e7d5153329ecf0b577d24feed0cbaa86c481ac",
+      "files": 2,
+      "countedEdits": 3,
+      "anchorsSha256": "c856b74d099ce70ef96df61284b14d606e3ef05775977fc080f816603d78ed08"
+    }
+  ],
+  "additionalEvidence": [
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/content-policy-ack-v1/policy-inputs.json",
+      "sha256": "267801a3188826ebcf4793fb53e6c0f09f2030e8b13f8ccddb17093d4c11db09"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/meta-connection-lifetime-a1/scope-inputs.json",
+      "sha256": "3cfbdf9b2e766d5ef74b0096f5577d91f41e3b3786c20d86e1d0173bd55dc639"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/meta-connection-lifetime-a2/manifest.json",
+      "sha256": "906b6864d426d322f41ddd74d161befd0e00b24680e523028c701675e98c4779"
+    }
+  ],
+  "nativeInputCount": 301,
+  "featurePins": 241,
+  "ownerCheckoutChanged": false,
+  "uiChanged": false,
+  "appExecuted": false,
+  "productSigned": false,
+  "cleanRecoveryProven": false
+}
