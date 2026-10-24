@@ -30,14 +30,7 @@ export function applyAuxBrowserRouting({component, text}) {
   } else if (component === 'daemon') {
     const schema = 'object({method:literal(`Aux.routeBrowserLink`),params:object({operation:_enum([`open`,`resolve`,`list`]),url:string$3().max(16384).optional(),profile:string$3().max(256).optional(),space:string$3().max(256).optional()}).strict()})';
     edit('Aux browser routing bridge schema', 'Cn.extensionRequestSchema=discriminatedUnion(`method`,Ri)', `Ri.push(${schema});Cn.extensionRequestSchema=discriminatedUnion(\`method\`,Ri)`);
-    edit('Aux account-scoped browser routing RPC', 'cliRouter=router({', `cliRouter=router({browserRoute:accountInstanceProcedure.input(object({operation:_enum([\`open\`,\`resolve\`,\`list\`]),url:string$3().max(16384).optional(),profile:string$3().max(256).optional(),space:string$3().max(256).optional()})).mutation(async({input:input,ctx:ctx})=>{
-      let candidates=listCliBrowserProfiles(ctx.accountId), selector=input.profile, chosen;
-      if(selector){let exact=candidates.find(p=>p.profileId===selector);let names=candidates.filter(p=>p.label===selector);chosen=exact??(names.length===1?names[0]:void 0);if(!chosen)throw new TRPCError({code:\`BAD_REQUEST\`,message:\`Profile missing or ambiguous; use aux host profiles\`});}
-      const binding=await resolveCliBrowserBinding(ctx.accountId,chosen?.profileId);
-      assertAccountInstance(AccountRegistry.getAccount(ctx.accountId),ctx.accountCreatedAt);
-      const params={operation:input.operation,...input.url===void 0?{}:{url:input.url},...selector?{profile:binding.profileId}:{},...input.space?{space:input.space}:{}};
-      return await sendCommandToExtension({method:\`Aux.routeBrowserLink\`,params},{accountId:ctx.accountId,profileId:binding.profileId,browserMode:\`default\`,windowId:binding.windowId,timeoutMs:20000});
-    }),`);
+    edit('Aux account-scoped browser routing RPC', 'cliRouter=router({', daemonAction);
   } else if (component === 'agent') {
     edit('Aux browser routing extension schema', 'e.extensionRequestSchema = Me("method", oo)', `oo.push(m({method:E("Aux.routeBrowserLink"),params:m({operation:p().refine(v=>["open","resolve","list"].includes(v)),url:p().max(16384).optional(),profile:p().max(256).optional(),space:p().max(256).optional()}).strict()}));e.extensionRequestSchema = Me("method", oo)`);
     edit('Aux native browser routing dispatch', '    case "Aux.resolveBindingWindow":', `    case "Aux.routeBrowserLink": {
@@ -50,6 +43,50 @@ export function applyAuxBrowserRouting({component, text}) {
   } else return {text, anchors};
   return {text, anchors};
 }
+const daemonAction = String.raw`cliRouter=router({browserRoute:accountInstanceProcedure.input(object({operation:_enum(["open","resolve","list"]),url:string$3().max(16384).optional(),profile:string$3().max(256).optional(),space:string$3().max(256).optional()})).mutation(async({input,ctx})=>{
+  const currentAccount = () => assertAccountInstance(AccountRegistry.getAccount(ctx.accountId),ctx.accountCreatedAt);
+  currentAccount();
+  const candidates = listCliBrowserProfiles(ctx.accountId), selector = input.profile;
+  const candidateIds = candidates.map(p=>p.profileId).sort();
+  const authorized = id => listCliBrowserProfiles(ctx.accountId).some(p=>p.profileId===id);
+  const exactBinding = async id => {
+    currentAccount();
+    if(id && !authorized(id)) throw new TRPCError({code:"CONFLICT",message:"The selected profile binding changed; try again"});
+    const binding = await resolveCliBrowserBinding(ctx.accountId,id);
+    currentAccount();
+    if((id && binding.profileId!==id) || binding.browserMode!=="default" || !authorized(binding.profileId))
+      throw new TRPCError({code:"CONFLICT",message:"The selected profile binding changed; try again"});
+    return binding;
+  };
+  let chosen = selector ? candidates.find(p=>p.profileId===selector)?.profileId : void 0;
+  if(selector && !chosen){
+    const profiles = await Promise.all(candidates.map(async candidate=>{
+      try {
+        const binding = await exactBinding(candidate.profileId);
+        currentAccount();
+        const value = await sendCommandToExtension({method:"Aux.routeBrowserLink",params:{operation:"list",profile:binding.profileId}},
+          {accountId:ctx.accountId,profileId:binding.profileId,browserMode:"default",windowId:binding.windowId,timeoutMs:20000});
+        currentAccount();
+        if(!authorized(candidate.profileId) || value?.ok!==true || value.profile?.id!==candidate.profileId ||
+            typeof value.profile.name!=="string" || !value.profile.name.length) return null;
+        return {id:candidate.profileId,name:value.profile.name};
+      } catch(error) { currentAccount(); return null; }
+    }));
+    currentAccount();
+    if(JSON.stringify(candidateIds)!==JSON.stringify(listCliBrowserProfiles(ctx.accountId).map(p=>p.profileId).sort()))
+      throw new TRPCError({code:"CONFLICT",message:"Profile bindings changed while resolving the name; try again"});
+    if(profiles.some(p=>p===null)) throw new TRPCError({code:"PRECONDITION_FAILED",message:"Native profile names are unavailable; open the profiles or use an exact profile id from aux host profiles"});
+    const matches = profiles.filter(p=>p.name===selector);
+    if(matches.length!==1) throw new TRPCError({code:"BAD_REQUEST",message:matches.length?"Profile name is ambiguous; use an exact profile id":"Profile name was not found; use an exact profile id or native profile name"});
+    chosen = matches[0].id;
+  }
+  const binding = await exactBinding(chosen);
+  const params={operation:input.operation,...input.url===void 0?{}:{url:input.url},...selector?{profile:binding.profileId}:{},...input.space?{space:input.space}:{}};
+  currentAccount();
+  const result = await sendCommandToExtension({method:"Aux.routeBrowserLink",params},{accountId:ctx.accountId,profileId:binding.profileId,browserMode:"default",windowId:binding.windowId,timeoutMs:20000});
+  currentAccount();
+  return result;
+}),`;
 const cliAction = String.raw`
 async function runAuxBrowserRoute(operation, url, options) {
   if (options.host && options.host !== "local") throw new Error("Browser routing is local-only");

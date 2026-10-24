@@ -60,3 +60,65 @@ test('routing settings preserve supplied General rows and compose once',()=>{
   new SourceTextModule(result.text);assert.equal(result.anchors.length,2);
   assert.throws(()=>transformAuxRoutingSettings({relative:ROUTING_SETTINGS_ASSET,text:result.text}),/drift/);
 });
+
+// Evaluate only the emitted RPC and the pinned supplied account-scoped profile
+// inventory excerpt. No supplied module, daemon, browser or owner state runs.
+function routingFixture(names = {p1:'Personal',p2:'Work'}) {
+  const replacement=applyAuxBrowserRouting({component:'daemon',text:originalDaemon.replaceAll('Aside.','Aux.')}).anchors[1].replace;
+  const begin=originalDaemon.indexOf('function listCliBrowserProfiles(');
+  const end=originalDaemon.indexOf('async function resolveCliBrowserBinding(',begin);
+  assert.ok(begin>=0&&end>begin);
+  const registry={profileAccountBindings:{a:{accountId:7,profileId:'p1'},b:{accountId:7,profileId:'p2'},foreign:{accountId:8,profileId:'foreign'}}};
+  const account={createdAt:42}, calls=[], resolutions=[];
+  const state={names,unavailable:new Set(),wrongReply:new Set(),afterList:null};
+  class TRPCError extends Error { constructor(value){super(value.message);this.code=value.code;} }
+  const schema={max(){return this},optional(){return this}};
+  const sandbox={TRPCError,object:()=>schema,_enum:()=>schema,string$3:()=>schema,
+    accountInstanceProcedure:{input:()=>({mutation:fn=>fn})},router:value=>value,
+    AccountRegistry:{getAccount:id=>id===7?account:null,getAll:()=>registry},
+    globalExtensionBridge:{listConnectedProfiles:()=>[]},getProfileLabel:id=>`Profile ${id==='p1'?1:2}`,
+    assertAccountInstance:(value,epoch)=>{if(value?.createdAt!==epoch)throw new TRPCError({code:'CONFLICT',message:'account changed'});},
+    resolveCliBrowserBinding:async(accountId,id)=>{resolutions.push({accountId,id});if(!id)throw Error('multiple profiles');return{profileId:id,browserMode:'default',windowId:id==='p1'?11:12};},
+    sendCommandToExtension:async(request,binding)=>{
+      calls.push({request,binding});
+      if(request.params.operation==='list'){
+        if(state.afterList)state.afterList(binding.profileId);
+        if(state.unavailable.has(binding.profileId))throw Error('bridge offline');
+        return{ok:true,profile:{id:state.wrongReply.has(binding.profileId)?'foreign':binding.profileId,name:state.names[binding.profileId],spacesReady:true,spaces:[]}};
+      }
+      return{ok:true,profileId:binding.profileId};
+    }};
+  runInNewContext(`${originalDaemon.slice(begin,end)};${replacement}});globalThis.route=cliRouter.browserRoute;`,sandbox);
+  return{state,account,registry,calls,resolutions,run:profile=>sandbox.route({ctx:{accountId:7,accountCreatedAt:42},input:{operation:'open',url:'https://example.org',...(profile?{profile}:{})}})};
+}
+test('daemon resolves exact native names within authorized candidates; exact IDs bypass name lookup',async()=>{
+  const f=routingFixture();
+  assert.equal((await f.run('Work')).profileId,'p2');
+  assert.deepEqual(f.calls.map(c=>[c.request.params.operation,c.binding.accountId,c.binding.profileId,c.request.params.profile]),[
+    ['list',7,'p1','p1'],['list',7,'p2','p2'],['open',7,'p2','p2']]);
+  assert.ok(f.calls.every(c=>c.binding.browserMode==='default'));
+  f.calls.length=0;f.state.unavailable.add('p1');
+  assert.equal((await f.run('p2')).profileId,'p2');
+  assert.deepEqual(f.calls.map(c=>c.request.params.operation),['open']);
+});
+test('daemon refuses ambiguous, unknown or unavailable native names without any open fallback',async()=>{
+  for(const configure of [
+    f=>{f.state.names.p1='Work';},
+    f=>{f.state.unavailable.add('p1');},
+    f=>{f.state.wrongReply.add('p1');},
+    f=>{f.state.names.p2='Renamed';},
+  ]){
+    const f=routingFixture();configure(f);await assert.rejects(f.run('Work'));
+    assert.equal(f.calls.filter(c=>c.request.params.operation==='open').length,0);
+  }
+  const generic=routingFixture();await assert.rejects(generic.run('Profile 2'),/not found/);
+  assert.equal(generic.calls.filter(c=>c.request.params.operation==='open').length,0);
+});
+test('daemon refuses account replacement and candidate-set changes during native name lookup',async()=>{
+  const replaced=routingFixture();replaced.state.afterList=()=>{replaced.account.createdAt=43;};
+  await assert.rejects(replaced.run('Work'),/account changed/);
+  assert.equal(replaced.calls.filter(c=>c.request.params.operation==='open').length,0);
+  const changed=routingFixture();changed.state.afterList=()=>{delete changed.registry.profileAccountBindings.a;};
+  await assert.rejects(changed.run('Work'),/bindings changed/);
+  assert.equal(changed.calls.filter(c=>c.request.params.operation==='open').length,0);
+});
