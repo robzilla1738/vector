@@ -1,0 +1,20 @@
+{
+  "format": "aux.vendor-experimental-removal.v1",
+  "countedEdits": 1,
+  "after": "vendor-entitlement-removal-a1",
+  "pairedInputs": [
+    {
+      "path": "index.mjs",
+      "inputSha256": "4ca05dc7e366e20642bfd25b8778a900067e721e45da704a9f801e40ff9136b7",
+      "outputSha256": "3ce70424305191a2345ea070b00b1d36b9935b7e348950167316f4386ecd45b1"
+    },
+    {
+      "path": "projected-entry/aux-native-entry.mjs",
+      "inputSha256": "3f59535341e1a2de3bae5c4545f411819cf84f67fe02f4d56ca8550e3ec0410b",
+      "outputSha256": "b8d82b141dbab76def7ef6cdf462366d3e1786d93fae330965b7099ed3522d8e"
+    }
+  ],
+  "uiChanged": false,
+  "projected": false,
+  "productExecuted": false
+}

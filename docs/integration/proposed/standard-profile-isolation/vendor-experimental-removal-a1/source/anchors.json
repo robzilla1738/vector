@@ -1,0 +1,7 @@
+[
+  {
+    "find": "function isExperimentalEligible({email:Cn,isCanary:ei=!1,featureFlag:ti=!1}={}){return ei||ti?!0:!!Cn?.trim().toLowerCase().endsWith(INTERNAL_EMAIL_SUFFIX)}var INTERNAL_EMAIL_SUFFIX,EXPERIMENTAL_FEATURE_FLAG_KEY,init_is_experimental_eligible=__esmMin((()=>{INTERNAL_EMAIL_SUFFIX=`@at.studio`,EXPERIMENTAL_FEATURE_FLAG_KEY=`experimental`}))",
+    "replace": "function isExperimentalEligible({isCanary:ei=!1,featureFlag:ti=!1}={}){return !!(ei||ti)}var EXPERIMENTAL_FEATURE_FLAG_KEY,init_is_experimental_eligible=__esmMin((()=>{EXPERIMENTAL_FEATURE_FLAG_KEY=`experimental`}))",
+    "count": 1
+  }
+]

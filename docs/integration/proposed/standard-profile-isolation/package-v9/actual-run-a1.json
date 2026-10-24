@@ -1,0 +1,46 @@
+{
+  "format": "aux.standard-profile-package.execution.v1",
+  "commandsSha256": "311f2bfe3da0435f593a2ccc53dff4038fca396969e42275c5595b698d15c389",
+  "runnerSha256": "667694e8019f3634bea5569dc0c3015931143b44a3b1328d490cf77cedd08745",
+  "passed": false,
+  "runs": [
+    {
+      "name": "freezeReview",
+      "command": [
+        "/opt/homebrew/opt/python@3.15/bin/python3.15",
+        "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/package-v9/freeze-review.py"
+      ],
+      "exitCode": 0,
+      "seconds": 0.36418570892419666
+    },
+    {
+      "name": "checkInputs",
+      "command": [
+        "/opt/homebrew/opt/python@3.15/bin/python3.15",
+        "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/package-v9/cache_package.py",
+        "check-inputs"
+      ],
+      "exitCode": 0,
+      "seconds": 11.52403879200574
+    },
+    {
+      "name": "bindPair",
+      "command": [
+        "/opt/homebrew/opt/python@3.15/bin/python3.15",
+        "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/package-v9/bind_pair.py",
+        "--link-result",
+        "/private/tmp/aux-daemon-crash-registration-close-check/results.json",
+        "--output",
+        "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/package-v9/source-pair-final.json"
+      ],
+      "exitCode": 1,
+      "seconds": 35.34241920802742
+    }
+  ],
+  "appExecuted": false,
+  "productSigned": false,
+  "runtimeAuthorityGranted": false,
+  "acceptedAppReplaced": false,
+  "testable": false,
+  "error": "Reviewed package phase failed: bindPair"
+}

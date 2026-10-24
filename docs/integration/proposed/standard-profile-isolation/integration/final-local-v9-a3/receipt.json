@@ -1,0 +1,35 @@
+{
+  "format": "aux.standard-profile-final-local.execution.v1",
+  "passed": false,
+  "runnerSha256": "1019dbe0ef235fc1ac7b43b86b404f3306d0880cc0d48e16ed401ae275349ebd",
+  "appExecuted": false,
+  "productSigned": false,
+  "runtimeAuthorityGranted": false,
+  "acceptedAppReplaced": false,
+  "testable": false,
+  "runs": [
+    {
+      "name": "primary-bridge",
+      "command": [
+        "/opt/homebrew/opt/python@3.15/bin/python3.15",
+        "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/integration/inspect-browser-a8-a3.py"
+      ],
+      "exitCode": 0,
+      "toolSha256": "02d6490a15b13fc6345909e5b80626243113193b55229d83acf46e248e9da215",
+      "seconds": 4.961265000049025
+    },
+    {
+      "name": "package",
+      "command": [
+        "/opt/homebrew/opt/python@3.15/bin/python3.15",
+        "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/package-v9/run-reviewed.py"
+      ],
+      "exitCode": 1,
+      "toolSha256": "667694e8019f3634bea5569dc0c3015931143b44a3b1328d490cf77cedd08745",
+      "seconds": 47.308699124958366
+    }
+  ],
+  "nativeReceipt": "/private/tmp/aux-chromium-recovery-snapshot-20261023/unsigned-standard-profile-browser-build-20261024-a8/receipt.json",
+  "nativeReceiptSha256": "f404439f4715652672042281ce63a88357baba6b827442bb8e4ae6c36cabdbf2",
+  "error": "package refused"
+}

@@ -1,0 +1,43 @@
+{
+  "format": "aux.counted-before-images.restored.v1",
+  "passed": true,
+  "manifestSha256": "d2bb82e4f024d82628820c581dbd94bccc70476594983e4f57d0b6b69f617535",
+  "anchorsSha256": "4a919344fdbff9831a51f89a6c10f1394cb7d073d48c17d76e7f9f4d447d8075",
+  "rows": [
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/browser-native-host-custody-a1/baseline/chrome/app/chrome_exe_main_mac.cc",
+      "sha256": "96ed48f2bd53d81cebba0063f1408fec4da7c952af2d7446f047a5d46fa885df"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/browser-native-host-custody-a1/baseline/chrome/browser/extensions/api/messaging/aux_native_messaging_lifetime.h",
+      "sha256": "55a77918bbb40ba07a9fcf1b1e4d217b62f92d7e4f9d2bc7e6900205d9f4cb47"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/browser-native-host-custody-a1/baseline/content/browser/aux_child_lifetime.h",
+      "sha256": "446f4dac61201c937cae66c4f7515e4aac7bb8cbe0ce14f613cb7661028d2fc6"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/browser-native-host-custody-a1/baseline/chrome/browser/aux/AuxOwnedNativePeerChild.cc",
+      "sha256": "98e5e456db34ce07c285149ba7dc33e0179ed7001b044f25185fc0a719b49503"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/browser-native-host-custody-a1/baseline/chrome/browser/aux/AuxOwnedNativePeerChild.h",
+      "sha256": "35812957162af8ff16ecda8e400debbd755314022ec12f01339402387d3cab97"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/browser-native-host-custody-a1/baseline/chrome/browser/aux/AuxSelectedStateHome.cc",
+      "sha256": "d1570801ecc1794abea41ba4c796fc7dfd3c273b11713e94d466010edfd78b56"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/browser-native-host-custody-a1/baseline/third_party/crashpad/crashpad/util/posix/spawn_subprocess.cc",
+      "sha256": "f5941bb86a60f19bf1d22f69f74e35ca8285856e2a009e78985da4176c3e5b20"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/browser-native-host-custody-a1/baseline/chrome/browser/ui/aux_browser_shutdown_drain.cc",
+      "sha256": "738f1570150e06ca4771637095513b9ccb82dafda062ea2bd80b89929f1cd064"
+    }
+  ],
+  "actualNativeTreeChanged": false,
+  "buildReceiptChanged": false,
+  "productExecuted": false
+}

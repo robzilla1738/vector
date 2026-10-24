@@ -1,0 +1,574 @@
+{
+  "format": "aux.standard-browser-primary-bridge.actual.v1",
+  "passed": true,
+  "inspectionToolSha256": "02d6490a15b13fc6345909e5b80626243113193b55229d83acf46e248e9da215",
+  "nativeReceipt": "/private/tmp/aux-chromium-recovery-snapshot-20261023/unsigned-standard-profile-browser-build-20261024-a8/receipt.json",
+  "nativeReceiptSha256": "f404439f4715652672042281ce63a88357baba6b827442bb8e4ae6c36cabdbf2",
+  "sourceCompositionSha256": "3ad8612a55d1c2e78786d5af747f59f4899069154104f7e1964235d6df17180d",
+  "expectedExport": "_AuxGetBrowserDescendantBridgeV1",
+  "observations": [
+    {
+      "path": "Contents/Frameworks/Aux Framework.framework/Versions/155.0.8059.85/Aux Framework",
+      "sha256": "684edf75e4a553dab614ee774ad6b3dbeb3d0fb754b4159ec3b2b6a620aaa0b9",
+      "nmCommand": [
+        "/usr/bin/nm",
+        "-gU",
+        "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/out/AuxFast/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/155.0.8059.85/Aux Framework"
+      ],
+      "nmExitCode": 0,
+      "bridgeDefinitionCount": 0,
+      "exportsCommand": [
+        "/usr/bin/dyld_info",
+        "-exports",
+        "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/out/AuxFast/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/155.0.8059.85/Aux Framework"
+      ],
+      "exportsExitCode": 0,
+      "dynamicBridgeExportCount": 0,
+      "libraryCommand": [
+        "/usr/bin/dyld_info",
+        "-dependents",
+        "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/out/AuxFast/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/155.0.8059.85/Aux Framework"
+      ],
+      "libraryExitCode": 0,
+      "custodySystemLibraries": [
+        "/usr/lib/libbsm.0.dylib"
+      ],
+      "baselinePath": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-standard-profile-isolation-20261024/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/155.0.8059.85/Aux Framework",
+      "baselineSha256": "ff905b470ae453e89970f30328b8487962b31082153b7716ab61cbdce028c1a6",
+      "baselineLibraryCommand": [
+        "/usr/bin/dyld_info",
+        "-dependents",
+        "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-standard-profile-isolation-20261024/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/155.0.8059.85/Aux Framework"
+      ],
+      "baselineLibraryExitCode": 0,
+      "priorSystemLibraries": [
+        "/usr/lib/libbsm.0.dylib"
+      ]
+    },
+    {
+      "path": "Contents/Frameworks/Aux Framework.framework/Versions/155.0.8059.85/Helpers/Aux Helper (Alerts).app/Contents/MacOS/Aux Helper (Alerts)",
+      "sha256": "b4ff8b813348a1e4dfc4d0e68d504f139e34219e79240f029740e88e88df6c8c",
+      "nmCommand": [
+        "/usr/bin/nm",
+        "-gU",
+        "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/out/AuxFast/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/155.0.8059.85/Helpers/Aux Helper (Alerts).app/Contents/MacOS/Aux Helper (Alerts)"
+      ],
+      "nmExitCode": 0,
+      "bridgeDefinitionCount": 0,
+      "exportsCommand": [
+        "/usr/bin/dyld_info",
+        "-exports",
+        "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/out/AuxFast/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/155.0.8059.85/Helpers/Aux Helper (Alerts).app/Contents/MacOS/Aux Helper (Alerts)"
+      ],
+      "exportsExitCode": 0,
+      "dynamicBridgeExportCount": 0,
+      "libraryCommand": [
+        "/usr/bin/dyld_info",
+        "-dependents",
+        "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/out/AuxFast/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/155.0.8059.85/Helpers/Aux Helper (Alerts).app/Contents/MacOS/Aux Helper (Alerts)"
+      ],
+      "libraryExitCode": 0,
+      "custodySystemLibraries": [],
+      "baselinePath": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-standard-profile-isolation-20261024/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/155.0.8059.85/Helpers/Aux Helper (Alerts).app/Contents/MacOS/Aux Helper (Alerts)",
+      "baselineSha256": "4e9c114851de0982e91630c7925c2da9fc9c62502ef4335bffb14e9c596216dc",
+      "baselineLibraryCommand": [
+        "/usr/bin/dyld_info",
+        "-dependents",
+        "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-standard-profile-isolation-20261024/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/155.0.8059.85/Helpers/Aux Helper (Alerts).app/Contents/MacOS/Aux Helper (Alerts)"
+      ],
+      "baselineLibraryExitCode": 0,
+      "priorSystemLibraries": []
+    },
+    {
+      "path": "Contents/Frameworks/Aux Framework.framework/Versions/155.0.8059.85/Helpers/Aux Helper (Aperitif Alerts).app/Contents/MacOS/Aux Helper (Aperitif Alerts)",
+      "sha256": "982ea1ed78864a47331f2372ec3d98a96247b33eac8504cc664bc671b1cfd603",
+      "nmCommand": [
+        "/usr/bin/nm",
+        "-gU",
+        "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/out/AuxFast/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/155.0.8059.85/Helpers/Aux Helper (Aperitif Alerts).app/Contents/MacOS/Aux Helper (Aperitif Alerts)"
+      ],
+      "nmExitCode": 0,
+      "bridgeDefinitionCount": 0,
+      "exportsCommand": [
+        "/usr/bin/dyld_info",
+        "-exports",
+        "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/out/AuxFast/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/155.0.8059.85/Helpers/Aux Helper (Aperitif Alerts).app/Contents/MacOS/Aux Helper (Aperitif Alerts)"
+      ],
+      "exportsExitCode": 0,
+      "dynamicBridgeExportCount": 0,
+      "libraryCommand": [
+        "/usr/bin/dyld_info",
+        "-dependents",
+        "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/out/AuxFast/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/155.0.8059.85/Helpers/Aux Helper (Aperitif Alerts).app/Contents/MacOS/Aux Helper (Aperitif Alerts)"
+      ],
+      "libraryExitCode": 0,
+      "custodySystemLibraries": [],
+      "baselinePath": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-standard-profile-isolation-20261024/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/155.0.8059.85/Helpers/Aux Helper (Aperitif Alerts).app/Contents/MacOS/Aux Helper (Aperitif Alerts)",
+      "baselineSha256": "982ea1ed78864a47331f2372ec3d98a96247b33eac8504cc664bc671b1cfd603",
+      "baselineLibraryCommand": [
+        "/usr/bin/dyld_info",
+        "-dependents",
+        "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-standard-profile-isolation-20261024/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/155.0.8059.85/Helpers/Aux Helper (Aperitif Alerts).app/Contents/MacOS/Aux Helper (Aperitif Alerts)"
+      ],
+      "baselineLibraryExitCode": 0,
+      "priorSystemLibraries": []
+    },
+    {
+      "path": "Contents/Frameworks/Aux Framework.framework/Versions/155.0.8059.85/Helpers/Aux Helper (Aperitif GPU).app/Contents/MacOS/Aux Helper (Aperitif GPU)",
+      "sha256": "8d3133a646e608c3d228633fdeb8723ebb1861ce94c1278015f9f5c75c130032",
+      "nmCommand": [
+        "/usr/bin/nm",
+        "-gU",
+        "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/out/AuxFast/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/155.0.8059.85/Helpers/Aux Helper (Aperitif GPU).app/Contents/MacOS/Aux Helper (Aperitif GPU)"
+      ],
+      "nmExitCode": 0,
+      "bridgeDefinitionCount": 0,
+      "exportsCommand": [
+        "/usr/bin/dyld_info",
+        "-exports",
+        "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/out/AuxFast/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/155.0.8059.85/Helpers/Aux Helper (Aperitif GPU).app/Contents/MacOS/Aux Helper (Aperitif GPU)"
+      ],
+      "exportsExitCode": 0,
+      "dynamicBridgeExportCount": 0,
+      "libraryCommand": [
+        "/usr/bin/dyld_info",
+        "-dependents",
+        "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/out/AuxFast/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/155.0.8059.85/Helpers/Aux Helper (Aperitif GPU).app/Contents/MacOS/Aux Helper (Aperitif GPU)"
+      ],
+      "libraryExitCode": 0,
+      "custodySystemLibraries": [],
+      "baselinePath": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-standard-profile-isolation-20261024/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/155.0.8059.85/Helpers/Aux Helper (Aperitif GPU).app/Contents/MacOS/Aux Helper (Aperitif GPU)",
+      "baselineSha256": "8d3133a646e608c3d228633fdeb8723ebb1861ce94c1278015f9f5c75c130032",
+      "baselineLibraryCommand": [
+        "/usr/bin/dyld_info",
+        "-dependents",
+        "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-standard-profile-isolation-20261024/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/155.0.8059.85/Helpers/Aux Helper (Aperitif GPU).app/Contents/MacOS/Aux Helper (Aperitif GPU)"
+      ],
+      "baselineLibraryExitCode": 0,
+      "priorSystemLibraries": []
+    },
+    {
+      "path": "Contents/Frameworks/Aux Framework.framework/Versions/155.0.8059.85/Helpers/Aux Helper (Aperitif Renderer).app/Contents/MacOS/Aux Helper (Aperitif Renderer)",
+      "sha256": "54d2ba9a49ba252afbedad27df27abc72e58015ed9e5683d34519b6e50f39d99",
+      "nmCommand": [
+        "/usr/bin/nm",
+        "-gU",
+        "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/out/AuxFast/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/155.0.8059.85/Helpers/Aux Helper (Aperitif Renderer).app/Contents/MacOS/Aux Helper (Aperitif Renderer)"
+      ],
+      "nmExitCode": 0,
+      "bridgeDefinitionCount": 0,
+      "exportsCommand": [
+        "/usr/bin/dyld_info",
+        "-exports",
+        "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/out/AuxFast/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/155.0.8059.85/Helpers/Aux Helper (Aperitif Renderer).app/Contents/MacOS/Aux Helper (Aperitif Renderer)"
+      ],
+      "exportsExitCode": 0,
+      "dynamicBridgeExportCount": 0,
+      "libraryCommand": [
+        "/usr/bin/dyld_info",
+        "-dependents",
+        "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/out/AuxFast/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/155.0.8059.85/Helpers/Aux Helper (Aperitif Renderer).app/Contents/MacOS/Aux Helper (Aperitif Renderer)"
+      ],
+      "libraryExitCode": 0,
+      "custodySystemLibraries": [],
+      "baselinePath": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-standard-profile-isolation-20261024/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/155.0.8059.85/Helpers/Aux Helper (Aperitif Renderer).app/Contents/MacOS/Aux Helper (Aperitif Renderer)",
+      "baselineSha256": "54d2ba9a49ba252afbedad27df27abc72e58015ed9e5683d34519b6e50f39d99",
+      "baselineLibraryCommand": [
+        "/usr/bin/dyld_info",
+        "-dependents",
+        "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-standard-profile-isolation-20261024/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/155.0.8059.85/Helpers/Aux Helper (Aperitif Renderer).app/Contents/MacOS/Aux Helper (Aperitif Renderer)"
+      ],
+      "baselineLibraryExitCode": 0,
+      "priorSystemLibraries": []
+    },
+    {
+      "path": "Contents/Frameworks/Aux Framework.framework/Versions/155.0.8059.85/Helpers/Aux Helper (Aperitif).app/Contents/MacOS/Aux Helper (Aperitif)",
+      "sha256": "a781430fc531a980cd605fa3e467b35f2070e42fcdbcca3788144dd107de9cfa",
+      "nmCommand": [
+        "/usr/bin/nm",
+        "-gU",
+        "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/out/AuxFast/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/155.0.8059.85/Helpers/Aux Helper (Aperitif).app/Contents/MacOS/Aux Helper (Aperitif)"
+      ],
+      "nmExitCode": 0,
+      "bridgeDefinitionCount": 0,
+      "exportsCommand": [
+        "/usr/bin/dyld_info",
+        "-exports",
+        "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/out/AuxFast/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/155.0.8059.85/Helpers/Aux Helper (Aperitif).app/Contents/MacOS/Aux Helper (Aperitif)"
+      ],
+      "exportsExitCode": 0,
+      "dynamicBridgeExportCount": 0,
+      "libraryCommand": [
+        "/usr/bin/dyld_info",
+        "-dependents",
+        "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/out/AuxFast/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/155.0.8059.85/Helpers/Aux Helper (Aperitif).app/Contents/MacOS/Aux Helper (Aperitif)"
+      ],
+      "libraryExitCode": 0,
+      "custodySystemLibraries": [],
+      "baselinePath": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-standard-profile-isolation-20261024/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/155.0.8059.85/Helpers/Aux Helper (Aperitif).app/Contents/MacOS/Aux Helper (Aperitif)",
+      "baselineSha256": "a781430fc531a980cd605fa3e467b35f2070e42fcdbcca3788144dd107de9cfa",
+      "baselineLibraryCommand": [
+        "/usr/bin/dyld_info",
+        "-dependents",
+        "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-standard-profile-isolation-20261024/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/155.0.8059.85/Helpers/Aux Helper (Aperitif).app/Contents/MacOS/Aux Helper (Aperitif)"
+      ],
+      "baselineLibraryExitCode": 0,
+      "priorSystemLibraries": []
+    },
+    {
+      "path": "Contents/Frameworks/Aux Framework.framework/Versions/155.0.8059.85/Helpers/Aux Helper (GPU).app/Contents/MacOS/Aux Helper (GPU)",
+      "sha256": "fee2aa06352a2a5da6ea8b39a0b3da289f027814e354bb938bce9f4e9bfd670e",
+      "nmCommand": [
+        "/usr/bin/nm",
+        "-gU",
+        "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/out/AuxFast/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/155.0.8059.85/Helpers/Aux Helper (GPU).app/Contents/MacOS/Aux Helper (GPU)"
+      ],
+      "nmExitCode": 0,
+      "bridgeDefinitionCount": 0,
+      "exportsCommand": [
+        "/usr/bin/dyld_info",
+        "-exports",
+        "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/out/AuxFast/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/155.0.8059.85/Helpers/Aux Helper (GPU).app/Contents/MacOS/Aux Helper (GPU)"
+      ],
+      "exportsExitCode": 0,
+      "dynamicBridgeExportCount": 0,
+      "libraryCommand": [
+        "/usr/bin/dyld_info",
+        "-dependents",
+        "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/out/AuxFast/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/155.0.8059.85/Helpers/Aux Helper (GPU).app/Contents/MacOS/Aux Helper (GPU)"
+      ],
+      "libraryExitCode": 0,
+      "custodySystemLibraries": [],
+      "baselinePath": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-standard-profile-isolation-20261024/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/155.0.8059.85/Helpers/Aux Helper (GPU).app/Contents/MacOS/Aux Helper (GPU)",
+      "baselineSha256": "7c704b80b34df895ab458a8d347d3012b7775656b882d984d1a512d96563e16c",
+      "baselineLibraryCommand": [
+        "/usr/bin/dyld_info",
+        "-dependents",
+        "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-standard-profile-isolation-20261024/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/155.0.8059.85/Helpers/Aux Helper (GPU).app/Contents/MacOS/Aux Helper (GPU)"
+      ],
+      "baselineLibraryExitCode": 0,
+      "priorSystemLibraries": []
+    },
+    {
+      "path": "Contents/Frameworks/Aux Framework.framework/Versions/155.0.8059.85/Helpers/Aux Helper (Renderer).app/Contents/MacOS/Aux Helper (Renderer)",
+      "sha256": "9f1f7fd40571203511d3e6fb3029cd465645a34e8c24fb44d2f8019900e341d6",
+      "nmCommand": [
+        "/usr/bin/nm",
+        "-gU",
+        "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/out/AuxFast/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/155.0.8059.85/Helpers/Aux Helper (Renderer).app/Contents/MacOS/Aux Helper (Renderer)"
+      ],
+      "nmExitCode": 0,
+      "bridgeDefinitionCount": 0,
+      "exportsCommand": [
+        "/usr/bin/dyld_info",
+        "-exports",
+        "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/out/AuxFast/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/155.0.8059.85/Helpers/Aux Helper (Renderer).app/Contents/MacOS/Aux Helper (Renderer)"
+      ],
+      "exportsExitCode": 0,
+      "dynamicBridgeExportCount": 0,
+      "libraryCommand": [
+        "/usr/bin/dyld_info",
+        "-dependents",
+        "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/out/AuxFast/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/155.0.8059.85/Helpers/Aux Helper (Renderer).app/Contents/MacOS/Aux Helper (Renderer)"
+      ],
+      "libraryExitCode": 0,
+      "custodySystemLibraries": [],
+      "baselinePath": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-standard-profile-isolation-20261024/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/155.0.8059.85/Helpers/Aux Helper (Renderer).app/Contents/MacOS/Aux Helper (Renderer)",
+      "baselineSha256": "606a414a9476204e42cd35597ae9d771b43d65066700c5edffec0de07c7f8426",
+      "baselineLibraryCommand": [
+        "/usr/bin/dyld_info",
+        "-dependents",
+        "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-standard-profile-isolation-20261024/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/155.0.8059.85/Helpers/Aux Helper (Renderer).app/Contents/MacOS/Aux Helper (Renderer)"
+      ],
+      "baselineLibraryExitCode": 0,
+      "priorSystemLibraries": []
+    },
+    {
+      "path": "Contents/Frameworks/Aux Framework.framework/Versions/155.0.8059.85/Helpers/Aux Helper.app/Contents/MacOS/Aux Helper",
+      "sha256": "9c3fb3d545c77e7b97cfefd371ba1fbbed10c3a5cf594040bb890b9096c5162d",
+      "nmCommand": [
+        "/usr/bin/nm",
+        "-gU",
+        "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/out/AuxFast/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/155.0.8059.85/Helpers/Aux Helper.app/Contents/MacOS/Aux Helper"
+      ],
+      "nmExitCode": 0,
+      "bridgeDefinitionCount": 0,
+      "exportsCommand": [
+        "/usr/bin/dyld_info",
+        "-exports",
+        "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/out/AuxFast/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/155.0.8059.85/Helpers/Aux Helper.app/Contents/MacOS/Aux Helper"
+      ],
+      "exportsExitCode": 0,
+      "dynamicBridgeExportCount": 0,
+      "libraryCommand": [
+        "/usr/bin/dyld_info",
+        "-dependents",
+        "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/out/AuxFast/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/155.0.8059.85/Helpers/Aux Helper.app/Contents/MacOS/Aux Helper"
+      ],
+      "libraryExitCode": 0,
+      "custodySystemLibraries": [],
+      "baselinePath": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-standard-profile-isolation-20261024/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/155.0.8059.85/Helpers/Aux Helper.app/Contents/MacOS/Aux Helper",
+      "baselineSha256": "3c39987ad8c9cf0899eb299c9a8e82c352ee26b0a5cdb022a951da4edfa044c6",
+      "baselineLibraryCommand": [
+        "/usr/bin/dyld_info",
+        "-dependents",
+        "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-standard-profile-isolation-20261024/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/155.0.8059.85/Helpers/Aux Helper.app/Contents/MacOS/Aux Helper"
+      ],
+      "baselineLibraryExitCode": 0,
+      "priorSystemLibraries": []
+    },
+    {
+      "path": "Contents/Frameworks/Aux Framework.framework/Versions/155.0.8059.85/Helpers/app_mode_loader",
+      "sha256": "10b5b95935260e56a012f7e8bbae1eadc2bb9419e0f9806c1918e00eed5e50c7",
+      "nmCommand": [
+        "/usr/bin/nm",
+        "-gU",
+        "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/out/AuxFast/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/155.0.8059.85/Helpers/app_mode_loader"
+      ],
+      "nmExitCode": 0,
+      "bridgeDefinitionCount": 0,
+      "exportsCommand": [
+        "/usr/bin/dyld_info",
+        "-exports",
+        "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/out/AuxFast/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/155.0.8059.85/Helpers/app_mode_loader"
+      ],
+      "exportsExitCode": 0,
+      "dynamicBridgeExportCount": 0,
+      "libraryCommand": [
+        "/usr/bin/dyld_info",
+        "-dependents",
+        "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/out/AuxFast/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/155.0.8059.85/Helpers/app_mode_loader"
+      ],
+      "libraryExitCode": 0,
+      "custodySystemLibraries": [
+        "/usr/lib/libbsm.0.dylib"
+      ],
+      "baselinePath": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-standard-profile-isolation-20261024/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/155.0.8059.85/Helpers/app_mode_loader",
+      "baselineSha256": "10b5b95935260e56a012f7e8bbae1eadc2bb9419e0f9806c1918e00eed5e50c7",
+      "baselineLibraryCommand": [
+        "/usr/bin/dyld_info",
+        "-dependents",
+        "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-standard-profile-isolation-20261024/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/155.0.8059.85/Helpers/app_mode_loader"
+      ],
+      "baselineLibraryExitCode": 0,
+      "priorSystemLibraries": [
+        "/usr/lib/libbsm.0.dylib"
+      ]
+    },
+    {
+      "path": "Contents/Frameworks/Aux Framework.framework/Versions/155.0.8059.85/Helpers/chrome_crashpad_handler",
+      "sha256": "61cfe14505c162a86a805634a9a14f826be1aaa47a50720edb5a3b3c1a2568d6",
+      "nmCommand": [
+        "/usr/bin/nm",
+        "-gU",
+        "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/out/AuxFast/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/155.0.8059.85/Helpers/chrome_crashpad_handler"
+      ],
+      "nmExitCode": 0,
+      "bridgeDefinitionCount": 0,
+      "exportsCommand": [
+        "/usr/bin/dyld_info",
+        "-exports",
+        "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/out/AuxFast/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/155.0.8059.85/Helpers/chrome_crashpad_handler"
+      ],
+      "exportsExitCode": 0,
+      "dynamicBridgeExportCount": 0,
+      "libraryCommand": [
+        "/usr/bin/dyld_info",
+        "-dependents",
+        "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/out/AuxFast/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/155.0.8059.85/Helpers/chrome_crashpad_handler"
+      ],
+      "libraryExitCode": 0,
+      "custodySystemLibraries": [
+        "/usr/lib/libbsm.0.dylib"
+      ],
+      "baselinePath": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-standard-profile-isolation-20261024/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/155.0.8059.85/Helpers/chrome_crashpad_handler",
+      "baselineSha256": "ba6b679af59417a313b606ffb4b9a92fc696b8b48bb72b7da7fbf723982abbb2",
+      "baselineLibraryCommand": [
+        "/usr/bin/dyld_info",
+        "-dependents",
+        "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-standard-profile-isolation-20261024/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/155.0.8059.85/Helpers/chrome_crashpad_handler"
+      ],
+      "baselineLibraryExitCode": 0,
+      "priorSystemLibraries": [
+        "/usr/lib/libbsm.0.dylib"
+      ]
+    },
+    {
+      "path": "Contents/Frameworks/Aux Framework.framework/Versions/155.0.8059.85/Helpers/web_app_shortcut_copier",
+      "sha256": "b3640a3cbc8c6fa79edbad0bcf546863e8c44bf4c1c0f8de7deb055b11abce5e",
+      "nmCommand": [
+        "/usr/bin/nm",
+        "-gU",
+        "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/out/AuxFast/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/155.0.8059.85/Helpers/web_app_shortcut_copier"
+      ],
+      "nmExitCode": 0,
+      "bridgeDefinitionCount": 0,
+      "exportsCommand": [
+        "/usr/bin/dyld_info",
+        "-exports",
+        "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/out/AuxFast/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/155.0.8059.85/Helpers/web_app_shortcut_copier"
+      ],
+      "exportsExitCode": 0,
+      "dynamicBridgeExportCount": 0,
+      "libraryCommand": [
+        "/usr/bin/dyld_info",
+        "-dependents",
+        "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/out/AuxFast/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/155.0.8059.85/Helpers/web_app_shortcut_copier"
+      ],
+      "libraryExitCode": 0,
+      "custodySystemLibraries": [],
+      "baselinePath": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-standard-profile-isolation-20261024/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/155.0.8059.85/Helpers/web_app_shortcut_copier",
+      "baselineSha256": "b3640a3cbc8c6fa79edbad0bcf546863e8c44bf4c1c0f8de7deb055b11abce5e",
+      "baselineLibraryCommand": [
+        "/usr/bin/dyld_info",
+        "-dependents",
+        "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-standard-profile-isolation-20261024/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/155.0.8059.85/Helpers/web_app_shortcut_copier"
+      ],
+      "baselineLibraryExitCode": 0,
+      "priorSystemLibraries": []
+    },
+    {
+      "path": "Contents/Frameworks/Aux Framework.framework/Versions/155.0.8059.85/Libraries/libaperitif.dylib",
+      "sha256": "1789088defc4a596d29f0096df1636842998873c131b0f5e2bd61e7520d2bc67",
+      "nmCommand": [
+        "/usr/bin/nm",
+        "-gU",
+        "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/out/AuxFast/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/155.0.8059.85/Libraries/libaperitif.dylib"
+      ],
+      "nmExitCode": 0,
+      "bridgeDefinitionCount": 0,
+      "exportsCommand": [
+        "/usr/bin/dyld_info",
+        "-exports",
+        "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/out/AuxFast/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/155.0.8059.85/Libraries/libaperitif.dylib"
+      ],
+      "exportsExitCode": 0,
+      "dynamicBridgeExportCount": 0,
+      "libraryCommand": [
+        "/usr/bin/dyld_info",
+        "-dependents",
+        "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/out/AuxFast/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/155.0.8059.85/Libraries/libaperitif.dylib"
+      ],
+      "libraryExitCode": 0,
+      "custodySystemLibraries": [],
+      "baselinePath": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-standard-profile-isolation-20261024/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/155.0.8059.85/Libraries/libaperitif.dylib",
+      "baselineSha256": "d65f3672cceeac562cbd018997688344fa44bf06d0b42574104dbf6705bbc0c0",
+      "baselineLibraryCommand": [
+        "/usr/bin/dyld_info",
+        "-dependents",
+        "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-standard-profile-isolation-20261024/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/155.0.8059.85/Libraries/libaperitif.dylib"
+      ],
+      "baselineLibraryExitCode": 0,
+      "priorSystemLibraries": []
+    },
+    {
+      "path": "Contents/Frameworks/Aux Framework.framework/Versions/155.0.8059.85/Libraries/libvk_swiftshader.dylib",
+      "sha256": "798ef2626f7030ad6bcd952a726bc18b8ce512d5b5c56bd0f620ccafbf8f59ef",
+      "nmCommand": [
+        "/usr/bin/nm",
+        "-gU",
+        "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/out/AuxFast/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/155.0.8059.85/Libraries/libvk_swiftshader.dylib"
+      ],
+      "nmExitCode": 0,
+      "bridgeDefinitionCount": 0,
+      "exportsCommand": [
+        "/usr/bin/dyld_info",
+        "-exports",
+        "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/out/AuxFast/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/155.0.8059.85/Libraries/libvk_swiftshader.dylib"
+      ],
+      "exportsExitCode": 0,
+      "dynamicBridgeExportCount": 0,
+      "libraryCommand": [
+        "/usr/bin/dyld_info",
+        "-dependents",
+        "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/out/AuxFast/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/155.0.8059.85/Libraries/libvk_swiftshader.dylib"
+      ],
+      "libraryExitCode": 0,
+      "custodySystemLibraries": [],
+      "baselinePath": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-standard-profile-isolation-20261024/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/155.0.8059.85/Libraries/libvk_swiftshader.dylib",
+      "baselineSha256": "798ef2626f7030ad6bcd952a726bc18b8ce512d5b5c56bd0f620ccafbf8f59ef",
+      "baselineLibraryCommand": [
+        "/usr/bin/dyld_info",
+        "-dependents",
+        "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-standard-profile-isolation-20261024/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/155.0.8059.85/Libraries/libvk_swiftshader.dylib"
+      ],
+      "baselineLibraryExitCode": 0,
+      "priorSystemLibraries": []
+    },
+    {
+      "path": "Contents/Frameworks/Aux Framework.framework/Versions/155.0.8059.85/Libraries/libvulkan.dylib",
+      "sha256": "7368e11025c2f24fb926d4f1a1a46f87ae1f25a8b4f243e4efa36804c6af0bc7",
+      "nmCommand": [
+        "/usr/bin/nm",
+        "-gU",
+        "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/out/AuxFast/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/155.0.8059.85/Libraries/libvulkan.dylib"
+      ],
+      "nmExitCode": 0,
+      "bridgeDefinitionCount": 0,
+      "exportsCommand": [
+        "/usr/bin/dyld_info",
+        "-exports",
+        "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/out/AuxFast/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/155.0.8059.85/Libraries/libvulkan.dylib"
+      ],
+      "exportsExitCode": 0,
+      "dynamicBridgeExportCount": 0,
+      "libraryCommand": [
+        "/usr/bin/dyld_info",
+        "-dependents",
+        "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/out/AuxFast/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/155.0.8059.85/Libraries/libvulkan.dylib"
+      ],
+      "libraryExitCode": 0,
+      "custodySystemLibraries": [],
+      "baselinePath": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-standard-profile-isolation-20261024/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/155.0.8059.85/Libraries/libvulkan.dylib",
+      "baselineSha256": "7368e11025c2f24fb926d4f1a1a46f87ae1f25a8b4f243e4efa36804c6af0bc7",
+      "baselineLibraryCommand": [
+        "/usr/bin/dyld_info",
+        "-dependents",
+        "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-standard-profile-isolation-20261024/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/155.0.8059.85/Libraries/libvulkan.dylib"
+      ],
+      "baselineLibraryExitCode": 0,
+      "priorSystemLibraries": []
+    },
+    {
+      "path": "Contents/MacOS/Aux",
+      "sha256": "c76f180f22896bd039fb0555f4a922caff91b9ceb148c4fe22cb3b8d3b6be346",
+      "nmCommand": [
+        "/usr/bin/nm",
+        "-gU",
+        "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/out/AuxFast/Aux.app/Contents/MacOS/Aux"
+      ],
+      "nmExitCode": 0,
+      "bridgeDefinitionCount": 1,
+      "exportsCommand": [
+        "/usr/bin/dyld_info",
+        "-exports",
+        "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/out/AuxFast/Aux.app/Contents/MacOS/Aux"
+      ],
+      "exportsExitCode": 0,
+      "dynamicBridgeExportCount": 1,
+      "libraryCommand": [
+        "/usr/bin/dyld_info",
+        "-dependents",
+        "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/out/AuxFast/Aux.app/Contents/MacOS/Aux"
+      ],
+      "libraryExitCode": 0,
+      "custodySystemLibraries": [
+        "/usr/lib/libEndpointSecurity.dylib",
+        "/usr/lib/libbsm.0.dylib"
+      ],
+      "baselinePath": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-standard-profile-isolation-20261024/Aux.app/Contents/MacOS/Aux",
+      "baselineSha256": "dde5eb893782cd926b325c6a928cb7de9212691fd0fafc81a774dcd67445c3e2",
+      "baselineLibraryCommand": [
+        "/usr/bin/dyld_info",
+        "-dependents",
+        "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-standard-profile-isolation-20261024/Aux.app/Contents/MacOS/Aux"
+      ],
+      "baselineLibraryExitCode": 0,
+      "priorSystemLibraries": []
+    }
+  ],
+  "appExecuted": false,
+  "productSigned": false,
+  "runtimeAuthorityGranted": false,
+  "uiAccepted": false
+}

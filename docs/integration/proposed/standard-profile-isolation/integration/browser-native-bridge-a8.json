@@ -1,0 +1,15 @@
+{
+  "format": "aux.standard-browser-primary-bridge.actual.v1",
+  "passed": false,
+  "inspectionToolSha256": "9a2cff7a374fbc2cd8655584712db22d213e13bb45d9c4c90478d82d8a645230",
+  "nativeReceipt": "/private/tmp/aux-chromium-recovery-snapshot-20261023/unsigned-standard-profile-browser-build-20261024-a8/receipt.json",
+  "nativeReceiptSha256": "f404439f4715652672042281ce63a88357baba6b827442bb8e4ae6c36cabdbf2",
+  "sourceCompositionSha256": "3ad8612a55d1c2e78786d5af747f59f4899069154104f7e1964235d6df17180d",
+  "expectedExport": "_AuxGetBrowserDescendantBridgeV1",
+  "observations": [],
+  "appExecuted": false,
+  "productSigned": false,
+  "runtimeAuthorityGranted": false,
+  "uiAccepted": false,
+  "error": "Contents/Frameworks/Aux Framework.framework/Versions/155.0.8059.85/Aux Framework"
+}

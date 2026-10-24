@@ -1,0 +1,54 @@
+{
+  "format": "aux.standard-browser-primary-bridge.actual.v1",
+  "passed": false,
+  "inspectionToolSha256": "9223ee58b1c8305f06a59fd2e82e7cd6bbe1b8b69ae76159c16c40120ac6288e",
+  "nativeReceipt": "/private/tmp/aux-chromium-recovery-snapshot-20261023/unsigned-standard-profile-browser-build-20261024-a8/receipt.json",
+  "nativeReceiptSha256": "f404439f4715652672042281ce63a88357baba6b827442bb8e4ae6c36cabdbf2",
+  "sourceCompositionSha256": "3ad8612a55d1c2e78786d5af747f59f4899069154104f7e1964235d6df17180d",
+  "expectedExport": "_AuxGetBrowserDescendantBridgeV1",
+  "observations": [
+    {
+      "path": "Contents/Frameworks/Aux Framework.framework/Versions/155.0.8059.85/Aux Framework",
+      "sha256": "684edf75e4a553dab614ee774ad6b3dbeb3d0fb754b4159ec3b2b6a620aaa0b9",
+      "nmCommand": [
+        "/usr/bin/nm",
+        "-gU",
+        "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/out/AuxFast/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/155.0.8059.85/Aux Framework"
+      ],
+      "nmExitCode": 0,
+      "bridgeDefinitionCount": 0,
+      "exportsCommand": [
+        "/usr/bin/dyld_info",
+        "-exports",
+        "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/out/AuxFast/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/155.0.8059.85/Aux Framework"
+      ],
+      "exportsExitCode": 0,
+      "dynamicBridgeExportCount": 0,
+      "libraryCommand": [
+        "/usr/bin/otool",
+        "-L",
+        "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/out/AuxFast/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/155.0.8059.85/Aux Framework"
+      ],
+      "libraryExitCode": 0,
+      "custodySystemLibraries": [
+        "/usr/lib/libbsm.0.dylib"
+      ],
+      "baselinePath": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-standard-profile-isolation-20261024/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/155.0.8059.85/Aux Framework",
+      "baselineSha256": "ff905b470ae453e89970f30328b8487962b31082153b7716ab61cbdce028c1a6",
+      "baselineLibraryCommand": [
+        "/usr/bin/otool",
+        "-L",
+        "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-standard-profile-isolation-20261024/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/155.0.8059.85/Aux Framework"
+      ],
+      "baselineLibraryExitCode": 0,
+      "priorSystemLibraries": [
+        "/usr/lib/libbsm.0.dylib"
+      ]
+    }
+  ],
+  "appExecuted": false,
+  "productSigned": false,
+  "runtimeAuthorityGranted": false,
+  "uiAccepted": false,
+  "error": "Contents/Frameworks/Aux Framework.framework/Versions/155.0.8059.85/Helpers/Aux Helper (Alerts).app/Contents/MacOS/Aux Helper (Alerts)"
+}
