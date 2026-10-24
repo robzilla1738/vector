@@ -95,7 +95,7 @@ std::string SpaceSelector(Profile* p, const std::string& value) {
 }
 bool BypassAutomaticRouting(const GURL& url) {
   if (url.host() == "localhost" || url.host() == "[::1]" ||
-      base::StartsWith(url.host_piece(), "127.")) return true;
+      base::StartsWith(url.host(), "127.")) return true;
   for (net::QueryIterator it(url); !it.IsAtEnd(); it.Advance()) {
     const auto key = base::ToLowerASCII(it.GetKey());
     if (key.find('%') != std::string::npos) return true;
@@ -103,7 +103,7 @@ bool BypassAutomaticRouting(const GURL& url) {
         key == "id_token" || key == "oauth_token" || key == "oauth_verifier")
       return true;
   }
-  const auto fragment = base::ToLowerASCII(url.ref_piece());
+  const auto fragment = base::ToLowerASCII(url.ref());
   return fragment.find("access_token=") != std::string::npos ||
          fragment.find("id_token=") != std::string::npos;
 }

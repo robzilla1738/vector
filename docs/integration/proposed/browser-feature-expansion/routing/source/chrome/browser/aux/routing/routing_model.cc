@@ -18,9 +18,9 @@ bool Id(const std::string* s) {
   return s && base::Uuid::ParseLowercase(*s).is_valid();
 }
 bool PathMatches(const std::string& path, const GURL& url) {
-  return path.empty() || path == "/" || url.path_piece() == path ||
-      (base::StartsWith(url.path_piece(), path) &&
-       (path.back() == '/' || url.path_piece()[path.size()] == '/'));
+  return path.empty() || path == "/" || url.path() == path ||
+      (base::StartsWith(url.path(), path) &&
+       (path.back() == '/' || url.path()[path.size()] == '/'));
 }
 }  // namespace
 bool RoutableUrl(const GURL& url) {
@@ -91,7 +91,7 @@ const Rule* Match(const Configuration& config, const GURL& url) {
   for (const auto& r : config.rules) {
     if (!r.enabled || !PathMatches(r.path, url) ||
         !(url.host() == r.host || (r.subdomains &&
-          base::EndsWith(url.host_piece(), "." + r.host)))) continue;
+          base::EndsWith(url.host(), "." + r.host)))) continue;
     // Equal ranks retain user order; no dependence on hash/map iteration.
     if (!winner || rank(r) > rank(*winner)) winner = &r;
   }

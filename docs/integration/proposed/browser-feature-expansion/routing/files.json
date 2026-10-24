@@ -6,7 +6,7 @@
     {
       "path": "chrome/browser/aux/routing/routing_model.cc",
       "baselineSha256": null,
-      "sourceSha256": "2efb0d6b283d434bfd8d9dbb0d7b68b5ee5d7d857c56e24548199fe493c2136e"
+      "sourceSha256": "8693a282f61b269ec5957c320cf16361f3f595d3ea71d3c1499a82f4afb0a59d"
     },
     {
       "path": "chrome/browser/aux/routing/routing_model.h",
@@ -21,7 +21,7 @@
     {
       "path": "chrome/browser/aux/routing/routing_service.cc",
       "baselineSha256": null,
-      "sourceSha256": "f93cbf5379a85600f1b993e3d431b25cdaa3270934623e201df348d6acd288c1"
+      "sourceSha256": "2f99bbe4ac57aceda559c8c644e2d3be0733329af002205dd752e1d33e28030b"
     },
     {
       "path": "chrome/browser/aux/routing/routing_service.h",
@@ -29,5 +29,5 @@
       "sourceSha256": "000caf70a7d18b1fe577878a2b27a9753c97ab82cbc0568aa08379893e8ef362"
     }
   ],
-  "patchSha256": "03001a295f05c0a5547f8d70ede64aa289f0932f76b8c25abb8d521c4bd76cb6"
+  "patchSha256": "d4f41cc7e3948aafb19b3917fc6fa57905df0359b94e2d9f3081396e859f0758"
 }

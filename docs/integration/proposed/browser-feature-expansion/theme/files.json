@@ -6,7 +6,7 @@
     {
       "path": "chrome/browser/themes/aux_theme_editor.cc",
       "baselineSha256": null,
-      "sourceSha256": "e82561ba328b20313923b200b243050588e69860e03ac53faafad2b6ea35f28d"
+      "sourceSha256": "16ffe2121f7312eebc34a333ea2ad06c9f866d113b63b6ded2eff9dc160d31e7"
     },
     {
       "path": "chrome/browser/themes/aux_theme_editor.h",
@@ -54,5 +54,5 @@
       "sourceSha256": "a34059e5568990bc7c2e7ac40033a1ee37c288877af6efeff33bd2311c0e640a"
     }
   ],
-  "patchSha256": "4a60e5142d8c3fff1fefb7a7e1b92ced964b9c208b277fa95a5df93c8aee1f6d"
+  "patchSha256": "96a3c8c78c5d97eaa6b11c205efd8455d2703627c9fbad923751cad7da9b3f4d"
 }

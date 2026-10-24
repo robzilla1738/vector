@@ -21,9 +21,9 @@
 +  return s && base::Uuid::ParseLowercase(*s).is_valid();
 +}
 +bool PathMatches(const std::string& path, const GURL& url) {
-+  return path.empty() || path == "/" || url.path_piece() == path ||
-+      (base::StartsWith(url.path_piece(), path) &&
-+       (path.back() == '/' || url.path_piece()[path.size()] == '/'));
++  return path.empty() || path == "/" || url.path() == path ||
++      (base::StartsWith(url.path(), path) &&
++       (path.back() == '/' || url.path()[path.size()] == '/'));
 +}
 +}  // namespace
 +bool RoutableUrl(const GURL& url) {
@@ -94,7 +94,7 @@
 +  for (const auto& r : config.rules) {
 +    if (!r.enabled || !PathMatches(r.path, url) ||
 +        !(url.host() == r.host || (r.subdomains &&
-+          base::EndsWith(url.host_piece(), "." + r.host)))) continue;
++          base::EndsWith(url.host(), "." + r.host)))) continue;
 +    // Equal ranks retain user order; no dependence on hash/map iteration.
 +    if (!winner || rank(r) > rank(*winner)) winner = &r;
 +  }
@@ -279,7 +279,7 @@
 +}
 +bool BypassAutomaticRouting(const GURL& url) {
 +  if (url.host() == "localhost" || url.host() == "[::1]" ||
-+      base::StartsWith(url.host_piece(), "127.")) return true;
++      base::StartsWith(url.host(), "127.")) return true;
 +  for (net::QueryIterator it(url); !it.IsAtEnd(); it.Advance()) {
 +    const auto key = base::ToLowerASCII(it.GetKey());
 +    if (key.find('%') != std::string::npos) return true;
@@ -287,7 +287,7 @@
 +        key == "id_token" || key == "oauth_token" || key == "oauth_verifier")
 +      return true;
 +  }
-+  const auto fragment = base::ToLowerASCII(url.ref_piece());
++  const auto fragment = base::ToLowerASCII(url.ref());
 +  return fragment.find("access_token=") != std::string::npos ||
 +         fragment.find("id_token=") != std::string::npos;
 +}
