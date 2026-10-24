@@ -1,0 +1,91 @@
+{
+  "format": "aux.runtime-cache-async-source-overlay.v1",
+  "active": false,
+  "files": [
+    {
+      "kind": "seed",
+      "inputSha256": "3051dea5ccc9d74126bf71ddc0bb72a4d3db19c59f890a8f48d572b215f092af",
+      "outputSha256": "54bd9cf68d25b9db0827af32ad323ea03821f7adae4066b677849a3e5b28a039",
+      "edits": [
+        {
+          "before": "async function seedBundledRuntime({ source, home, bundleRuntimeRoot, pins }) {",
+          "after": "async function seedBundledRuntime({ source, home, bundleRuntimeRoot, pins, inspectRetainedRuntime }) {",
+          "count": 1
+        },
+        {
+          "before": "return { retained: true, runtime, seeded: false };",
+          "after": "if (typeof inspectRetainedRuntime !== 'function') throw Error('Native retained-runtime inspection required');\n    const inspection = await inspectRetainedRuntime();\n    return { retained: true, runtime, seeded: false, inspection };",
+          "count": 2
+        }
+      ],
+      "input": "/Users/rcourson/Documents/Vibe/web/vendor/provided/runtime-seed.cjs",
+      "output": "/private/tmp/aux-runtime-cache-async-final-h2BztW/runtime-seed.cjs",
+      "syntaxExitCode": 0
+    },
+    {
+      "kind": "bootstrap",
+      "inputSha256": "2e8c8db62e67e7ee812c5beb4606f11ed063e9aef6453db3d44e8c939255f604",
+      "outputSha256": "13657bf3e1c3a0477c15eb154ba74f336a82c4af3b9800a1c86713a5a395d7a5",
+      "edits": [
+        {
+          "before": "['captureStorageRoots','withBrokerAwaited']",
+          "after": "['captureStorageRoots','withBrokerAwaited','inspectRuntimeCache']",
+          "count": 1
+        },
+        {
+          "before": "let active,activeRoots;",
+          "after": "\nasync function inspectWithAuthority(authority, destination) {\n  if (destination !== path.join(authority.roots.taskHome, 'runtime')) throw Error('Runtime inspection destination does not match native task home');\n  const report = await authority.functions.inspectRuntimeCache();\n  const current = authority.functions.captureStorageRoots();\n  if (authority.keys.some(key => current[key] !== authority.roots[key])) throw Error('Runtime owner changed during inspection');\n  const fields=['format','authority','status','ownerGeneration','transportGeneration','checkedEntries','missing','modified','unsafe'];\n  if (!report || !Object.isFrozen(report) || Object.keys(report).sort().join('\\0') !== fields.sort().join('\\0') ||\n      report.format !== 'aux.runtime-cache-inspection.v1' || report.authority !== 'none' ||\n      report.ownerGeneration !== authority.roots.ownerGeneration || report.transportGeneration !== authority.roots.transportGeneration ||\n      !['checkedEntries','missing','modified','unsafe'].every(key => Number.isSafeInteger(report[key]) && report[key] >= 0 && report[key] <= 10930)) throw Error('Invalid native runtime inspection');\n  if (['incomplete','unsafe','cancelled'].includes(report.status)) throw Object.assign(Error('Retained runtime is incomplete, unsafe or no longer current'), {code:'AUX_RUNTIME_CACHE_REFUSED'});\n  if (!['matching-seed','unverified-modified','unverified-newer','unverified-other-version'].includes(report.status)) throw Error('Unknown native runtime inspection result');\n  // Modified and newer caches retain original downstream compatibility checks.\n  // This result never asserts update provenance or grants execution authority.\n  return report;\n}\n\nlet active,activeRoots;",
+          "count": 1
+        },
+        {
+          "before": "return seedBundledRuntime({ source: path.join(root, 'agent-runtime'), home, bundleRuntimeRoot: report.runtimeRoot, pins });",
+          "after": "return seedBundledRuntime({ source: path.join(root, 'agent-runtime'), home, bundleRuntimeRoot: report.runtimeRoot, pins,\n      inspectRetainedRuntime: () => inspectWithAuthority(authority, destination) });",
+          "count": 1
+        }
+      ],
+      "input": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/profile-isolation-local-finish/runtime-bootstrap/source/runtime-bootstrap.cjs",
+      "output": "/private/tmp/aux-runtime-cache-async-final-h2BztW/runtime-bootstrap.cjs",
+      "syntaxExitCode": 0
+    },
+    {
+      "kind": "daemon",
+      "inputSha256": "4e5c2710ddeb7b1f57f2524088ece6678b0f091ec6f7af68564c355cabae4723",
+      "outputSha256": "dc41cebe8ad7dc4cac162226b1267b0ae7602727d05a781c59ff593afd537ef3",
+      "edits": [
+        {
+          "before": "if(Cn?.aborted)throw Cn.reason??new DOMException(`Operation aborted`,`AbortError`);if(agentRuntimeJob.state===`failed`&&!await serializeReplacement",
+          "after": "if(Cn?.aborted)throw Cn.reason??new DOMException(`Operation aborted`,`AbortError`);await (await import(`node:module`)).createRequire(process.execPath)(path.join(__auxDaemonResources,`native/runtime-bootstrap.cjs`)).inspectRetainedRuntime(path.resolve(ei.runtimeDir??AUX_RUNTIME_DIR));if(Cn?.aborted)throw Cn.reason??new DOMException(`Operation aborted`,`AbortError`);if(agentRuntimeJob.state===`failed`&&!await serializeReplacement",
+          "count": 1
+        },
+        {
+          "before": "runtimeUseCount+=1;let ti=!1;return{state:`ready`",
+          "after": "if(activeInstall)return acquireAgentRuntimeUse(Cn,ei);if(Cn?.aborted)throw Cn.reason??new DOMException(`Operation aborted`,`AbortError`);runtimeUseCount+=1;let ti=!1;return{state:`ready`",
+          "count": 1
+        }
+      ],
+      "input": "/private/tmp/aux-browser-features-daemon-source-20261023-a4/index.mjs",
+      "output": "/private/tmp/aux-runtime-cache-async-final-h2BztW/index.mjs",
+      "syntaxExitCode": 0
+    },
+    {
+      "kind": "daemon",
+      "inputSha256": "aba6ebad5e4abd9e563770dc6be80e6b9c181a22fd41a16c7112417863cf1823",
+      "outputSha256": "b6aa10117346544e02e636d4b45ebb0049b421f7c40210775afdd661c1309de9",
+      "edits": [
+        {
+          "before": "if(Cn?.aborted)throw Cn.reason??new DOMException(`Operation aborted`,`AbortError`);if(agentRuntimeJob.state===`failed`&&!await serializeReplacement",
+          "after": "if(Cn?.aborted)throw Cn.reason??new DOMException(`Operation aborted`,`AbortError`);await (await import(`node:module`)).createRequire(process.execPath)(path.join(__auxDaemonResources,`native/runtime-bootstrap.cjs`)).inspectRetainedRuntime(path.resolve(ei.runtimeDir??AUX_RUNTIME_DIR));if(Cn?.aborted)throw Cn.reason??new DOMException(`Operation aborted`,`AbortError`);if(agentRuntimeJob.state===`failed`&&!await serializeReplacement",
+          "count": 1
+        },
+        {
+          "before": "runtimeUseCount+=1;let ti=!1;return{state:`ready`",
+          "after": "if(activeInstall)return acquireAgentRuntimeUse(Cn,ei);if(Cn?.aborted)throw Cn.reason??new DOMException(`Operation aborted`,`AbortError`);runtimeUseCount+=1;let ti=!1;return{state:`ready`",
+          "count": 1
+        }
+      ],
+      "input": "/private/tmp/aux-browser-features-daemon-source-20261023-a4/projected-entry/aux-native-entry.mjs",
+      "output": "/private/tmp/aux-runtime-cache-async-final-h2BztW/aux-native-entry.mjs",
+      "syntaxExitCode": 0
+    }
+  ]
+}

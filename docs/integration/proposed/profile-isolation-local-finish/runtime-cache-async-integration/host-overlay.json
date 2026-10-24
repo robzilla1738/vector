@@ -1,0 +1,23 @@
+{
+  "format": "aux.runtime-cache-async-host-overlay.v1",
+  "originalSha256": "e36e5c25c822879302a7f83fa5329305ba79f4d000ac45cd721cb820eaa81dd7",
+  "baseAfterCountFixSha256": "49718219a54d300bbb77abca4b8a1fcf50d999ac6bb129550d2b4d5a34329562",
+  "outputSha256": "3bda3d49671811e93b1890ef712328eecbb840ec32f0c3389ba43888765b5e39",
+  "changes": [
+    {
+      "old": "#include <limits>",
+      "new": "#include <limits>\n#include <algorithm>\n#include <atomic>\n#include <functional>\n#include <iterator>\n#include <CommonCrypto/CommonDigest.h>",
+      "count": 1
+    },
+    {
+      "old": "#include \"AuxBrokerAwaitedNapi.inc\"",
+      "new": "#include \"AuxBrokerAwaitedNapi.inc\"\n#include \"AuxRuntimeCacheInspection.inc\"\n#include \"AuxRuntimeCachePins.inc\"\n#include \"AuxRuntimeCacheAsync.inc\"",
+      "count": 1
+    },
+    {
+      "old": "      {\"captureStorageRoots\",nullptr,CaptureStorageRoots,nullptr,nullptr,nullptr,napi_default,nullptr},",
+      "new": "      {\"captureStorageRoots\",nullptr,CaptureStorageRoots,nullptr,nullptr,nullptr,napi_default,nullptr},\n      {\"inspectRuntimeCache\",nullptr,InspectRuntimeCache,nullptr,nullptr,nullptr,napi_default,nullptr},",
+      "count": 1
+    }
+  ]
+}

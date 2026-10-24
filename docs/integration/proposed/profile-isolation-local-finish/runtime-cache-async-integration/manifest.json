@@ -1,0 +1,60 @@
+{
+  "format": "aux.runtime-cache-async-integration.v1",
+  "active": false,
+  "baseCountCorrection": "82f6368b2",
+  "baseReader": "6487466a6",
+  "files": [
+    {
+      "path": "README.md",
+      "sha256": "d86537df678f8c55022ee1086dcd7abc8566da87c4cd8236c617f7a5b32810e3"
+    },
+    {
+      "path": "compile-command.json",
+      "sha256": "35638d27627206d7be8a84da9aab61420b6dc64cb518c5b775fb9f6c922904c4"
+    },
+    {
+      "path": "compile-dependencies.json",
+      "sha256": "c0fb6023c8cda42d92342973d85dd9a5c44743fa45d3b658ccf7064402c2c4bc"
+    },
+    {
+      "path": "compile-result.json",
+      "sha256": "09411d21c6d7c705453b8e342a3f34aab576b2ada8b15469dd735ad8af6a7763"
+    },
+    {
+      "path": "host-overlay.json",
+      "sha256": "e4d273571e004a84d43027b11a9dc019aec8fd31bb4a5b32d7f00c24055de98c"
+    },
+    {
+      "path": "host.patch",
+      "sha256": "f8b9e9bb9580e1082dceec0746150c523a5620f80a6b3f2ff42e91af3d733541"
+    },
+    {
+      "path": "prepare.py",
+      "sha256": "e1d5c74c64c933df82a7119da85ccf50c997568658f39d192defcb9167258c1b"
+    },
+    {
+      "path": "source/AuxDevelopmentWorkerHost.cc",
+      "sha256": "3bda3d49671811e93b1890ef712328eecbb840ec32f0c3389ba43888765b5e39"
+    },
+    {
+      "path": "source/AuxRuntimeCacheAsync.inc",
+      "sha256": "660c0a2cfbc1f073d78528899510c9f335c6e7501ab01b70cd5b848083f91df9"
+    },
+    {
+      "path": "source/AuxRuntimeCacheInspection.inc",
+      "sha256": "9fdc7b754b33861dccb0115bde857f69f6066bb18e57a6d50ec43c0830fdc077"
+    },
+    {
+      "path": "source/AuxRuntimeCachePins.inc",
+      "sha256": "0cdad8ab9b147222b80dcd89847f48f6ba97f4f874d20c86d1b2a2ebc139fd5a"
+    },
+    {
+      "path": "source-overlay.json",
+      "sha256": "1f74499da0e59e03bf14af1efa3cf664ec6e5cbac118068c4c4de475dcd0c856"
+    },
+    {
+      "path": "transform.mjs",
+      "sha256": "3d30efd5a149ca5ce6852243ba83db946b7c804d4442cd52698224567f050f01"
+    }
+  ]
+}

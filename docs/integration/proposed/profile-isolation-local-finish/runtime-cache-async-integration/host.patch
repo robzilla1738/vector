@@ -1,0 +1,32 @@
+--- a/AuxDevelopmentWorkerHost.cc
++++ b/AuxDevelopmentWorkerHost.cc
+@@ -26,6 +26,11 @@
+ #include <vector>
+ #include <new>
+ #include <limits>
++#include <algorithm>
++#include <atomic>
++#include <functional>
++#include <iterator>
++#include <CommonCrypto/CommonDigest.h>
+ 
+ 
+ // Provided only by the actual Owner -> retained cold guard/parent root bridge.
+@@ -320,6 +325,9 @@
+ #include "AuxStorageRootsNapi.inc"
+ #include "AuxBrokerWritesNapi.inc"
+ #include "AuxBrokerAwaitedNapi.inc"
++#include "AuxRuntimeCacheInspection.inc"
++#include "AuxRuntimeCachePins.inc"
++#include "AuxRuntimeCacheAsync.inc"
+ napi_value CaptureExecPrivateParent(napi_env env, napi_callback_info info) {
+   if (getpid() != kHostProcess) return nullptr;
+   auto refuse = [env]() -> napi_value {
+@@ -969,6 +977,7 @@
+     const napi_property_descriptor properties[] = {
+       {"captureExecPrivateParent",nullptr,CaptureExecPrivateParent,nullptr,nullptr,nullptr,napi_default,nullptr},
+       {"captureStorageRoots",nullptr,CaptureStorageRoots,nullptr,nullptr,nullptr,napi_default,nullptr},
++      {"inspectRuntimeCache",nullptr,InspectRuntimeCache,nullptr,nullptr,nullptr,napi_default,nullptr},
+       {"assertBrokerOwner",nullptr,AssertBrokerOwner,nullptr,nullptr,nullptr,napi_default,nullptr},
+       {"withBrokerSync",nullptr,WithBrokerSync,nullptr,nullptr,nullptr,napi_default,nullptr},
+       {"withBrokerAwaited",nullptr,WithBrokerAwaited,nullptr,nullptr,nullptr,napi_default,nullptr},
