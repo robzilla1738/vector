@@ -1,0 +1,3 @@
+# Chromium compiler enforcement corrections
+
+Three native sources, eight counted anchors / thirteen literal sites over the latest A17a Async implementation, A13 native cohort implementation and A9 cohort header. Actual Chromium relative-path compilation reported its raw-reference fields and one indexed C array. This successor uses raw_ref for the three actual owner references, explicit get() for the implementation address, checked pointer access for the referenced sets, and a checked span for the indexed fixed rule table. Ownership, dispatch order, rules, lifetime and refusal behavior are unchanged. No compiler/plugin suppression. Exact source replay, reverse applicability and whitespace passed; root owns actual compiler acceptance.

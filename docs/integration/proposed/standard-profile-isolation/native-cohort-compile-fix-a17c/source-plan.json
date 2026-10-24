@@ -1,0 +1,76 @@
+{
+  "format": "aux.native-cohort-compile-fix.source.v1",
+  "files": [
+    {
+      "path": "components/services/storage/dom_storage/aux_ui_cache_cohort.h",
+      "inputRoot": "/Users/rcourson/.codex/worktrees/aux-features-organization/web/docs/integration/proposed/standard-profile-isolation/native-cache-cohort-integration-a9/source",
+      "inputSha256": "1ec8d102513563d197680d8a3796b93cd00ac0604426ac35783bb34a18786e2a",
+      "outputSha256": "cbb5e56f89257640b5946dc319ffcfae9e8670d1f2a53691c10d6b9a96c38958",
+      "output": "/Users/rcourson/.codex/worktrees/aux-features-organization/web/docs/integration/proposed/standard-profile-isolation/native-cohort-compile-fix-a17c/source/components/services/storage/dom_storage/aux_ui_cache_cohort.h",
+      "anchors": [
+        {
+          "find": "#include \"base/memory/weak_ptr.h\"",
+          "replace": "#include \"base/memory/weak_ptr.h\"\n#include \"base/memory/raw_ref.h\"",
+          "count": 1
+        },
+        {
+          "find": "  blink::mojom::StorageArea& implementation_;",
+          "replace": "  raw_ref<blink::mojom::StorageArea> implementation_;",
+          "count": 1
+        },
+        {
+          "find": "  mojo::RemoteSet<blink::mojom::StorageAreaObserver>& observers_;",
+          "replace": "  raw_ref<mojo::RemoteSet<blink::mojom::StorageAreaObserver>> observers_;",
+          "count": 1
+        },
+        {
+          "find": "  mojo::ReceiverSet<blink::mojom::StorageArea>& receivers_;",
+          "replace": "  raw_ref<mojo::ReceiverSet<blink::mojom::StorageArea>> receivers_;",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "components/services/storage/dom_storage/aux_ui_cache_cohort.cc",
+      "inputRoot": "/Users/rcourson/.codex/worktrees/aux-features-organization/web/docs/integration/proposed/standard-profile-isolation/native-cache-release-receipt-a13/source",
+      "inputSha256": "2d82dfab997950bde58cd81222148b1889fdb121e3ebae78ebd372b7b5ce36f8",
+      "outputSha256": "331ae9b9c7570ded051122b41c121c4dacd323e1aa1ed6826990c61669c3cd29",
+      "output": "/Users/rcourson/.codex/worktrees/aux-features-organization/web/docs/integration/proposed/standard-profile-isolation/native-cohort-compile-fix-a17c/source/components/services/storage/dom_storage/aux_ui_cache_cohort.cc",
+      "anchors": [
+        {
+          "find": "observers_.",
+          "replace": "observers_->",
+          "count": 6
+        },
+        {
+          "find": "receivers_.TakeReceivers()",
+          "replace": "receivers_->TakeReceivers()",
+          "count": 1
+        },
+        {
+          "find": "receivers_.Add(&implementation_,",
+          "replace": "receivers_->Add(&implementation_.get(),",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "components/services/storage/dom_storage/async_dom_storage_database.cc",
+      "inputRoot": "/Users/rcourson/.codex/worktrees/aux-features-organization/web/docs/integration/proposed/standard-profile-isolation/native-recovery-metadata-a17a/source",
+      "inputSha256": "7516a9b132509201322cc9105b16713b48ade3183a9189b0dc11289ad266c4c6",
+      "outputSha256": "4cb9e2a23018dcc4a7e0c62fea32d7ca8941254c17cf4527b833f633808c4a61",
+      "output": "/Users/rcourson/.codex/worktrees/aux-features-organization/web/docs/integration/proposed/standard-profile-isolation/native-cohort-compile-fix-a17c/source/components/services/storage/dom_storage/async_dom_storage_database.cc",
+      "anchors": [
+        {
+          "find": "      const auto& rule = kAuxUiKeyRules[i];",
+          "replace": "      const auto& rule = base::span(kAuxUiKeyRules)[i];",
+          "count": 1
+        }
+      ]
+    }
+  ],
+  "nativeCheckoutChanged": false,
+  "nativeCompiled": false,
+  "productExecuted": false,
+  "runtimeAcceptance": false
+}

@@ -1,0 +1,76 @@
+--- a/components/services/storage/dom_storage/aux_ui_cache_cohort.h
++++ b/components/services/storage/dom_storage/aux_ui_cache_cohort.h
+@@ -8,6 +8,7 @@
+ #include <vector>
+ #include "base/functional/callback.h"
+ #include "base/memory/weak_ptr.h"
++#include "base/memory/raw_ref.h"
+ #include "base/unguessable_token.h"
+ #include "components/services/storage/dom_storage/db_status.h"
+ #include "mojo/public/cpp/bindings/remote_set.h"
+@@ -61,9 +62,9 @@
+   void OneDone(DbStatus status);
+   void Finish();
+   bool SameEndpoints() const;
+-  blink::mojom::StorageArea& implementation_;
+-  mojo::RemoteSet<blink::mojom::StorageAreaObserver>& observers_;
+-  mojo::ReceiverSet<blink::mojom::StorageArea>& receivers_;
++  raw_ref<blink::mojom::StorageArea> implementation_;
++  raw_ref<mojo::RemoteSet<blink::mojom::StorageAreaObserver>> observers_;
++  raw_ref<mojo::ReceiverSet<blink::mojom::StorageArea>> receivers_;
+   std::vector<mojo::PendingReceiver<blink::mojom::StorageArea>> frozen_receivers_;
+   const blink::StorageKey storage_key_;
+   const std::string namespace_id_;
+--- a/components/services/storage/dom_storage/aux_ui_cache_cohort.cc
++++ b/components/services/storage/dom_storage/aux_ui_cache_cohort.cc
+@@ -42,8 +42,8 @@
+       storage_key_(std::move(storage_key)), namespace_id_(std::move(namespace_id)) {}
+ AuxUiCacheCohort::~AuxUiCacheCohort() = default;
+ bool AuxUiCacheCohort::SameEndpoints() const {
+-  if (observers_.size() != nodes_.size()) return false;
+-  for (auto iterator = observers_.begin(); iterator != observers_.end(); ++iterator)
++  if (observers_->size() != nodes_.size()) return false;
++  for (auto iterator = observers_->begin(); iterator != observers_->end(); ++iterator)
+     if (!nodes_.contains(iterator.id())) return false;
+   return true;
+ }
+@@ -126,8 +126,8 @@
+   // Unbinding retains actual pending receiver handles/messages. Dispatch later
+   // resumes through the real receiver context, including bad-message checks.
+   // No RPC callback is dropped or falsely acknowledged by a native task queue.
+-  frozen_receivers_ = receivers_.TakeReceivers();
+-  for (auto iterator = observers_.begin(); iterator != observers_.end(); ++iterator)
++  frozen_receivers_ = receivers_->TakeReceivers();
++  for (auto iterator = observers_->begin(); iterator != observers_->end(); ++iterator)
+     nodes_.try_emplace(iterator.id());
+   Run(Operation::kPrepare, {}, {}, std::move(callback));
+ }
+@@ -173,7 +173,7 @@
+     if (operation == Operation::kRelease && node.custody == Custody::kNotHeld) {
+       OneDone(DbStatus::OK()); continue;
+     }
+-    auto* observer = observers_.Get(id);
++    auto* observer = observers_->Get(id);
+     if (!observer) { OneDone(DbStatus::IOError("Original cache endpoint disappeared")); continue; }
+     if (operation != Operation::kPrepare && operation != Operation::kRead && !node.token) {
+       OneDone(DbStatus::IOError("Original cache lease token remains unknown")); continue;
+@@ -279,7 +279,7 @@
+     request_.reset(); nodes_.clear(); prepared_ = false;
+     expected_source_.clear(); expected_target_.clear();
+     auto receivers = std::move(frozen_receivers_);
+-    for (auto& receiver : receivers) receivers_.Add(&implementation_, std::move(receiver));
++    for (auto& receiver : receivers) receivers_->Add(&implementation_.get(), std::move(receiver));
+   }
+   auto callback = std::move(callback_);
+   std::move(callback).Run(std::move(outcome));
+--- a/components/services/storage/dom_storage/async_dom_storage_database.cc
++++ b/components/services/storage/dom_storage/async_dom_storage_database.cc
+@@ -268,7 +268,7 @@
+       continue;
+     }
+     for (size_t i = 0; i < std::size(kAuxUiKeyRules); ++i) {
+-      const auto& rule = kAuxUiKeyRules[i];
++      const auto& rule = base::span(kAuxUiKeyRules)[i];
+       bool old = AuxUiKeyMatches(*key, rule.source, rule.prefix);
+       bool current = AuxUiKeyMatches(*key, rule.target, rule.prefix);
+       if (!old && !current) continue;

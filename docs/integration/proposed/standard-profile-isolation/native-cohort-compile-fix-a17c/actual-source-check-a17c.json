@@ -1,0 +1,16 @@
+{
+  "format": "aux.cohort-compile.source-check.actual.v1",
+  "passed": true,
+  "sourcePlanSha256": "1c3b97bcf5dbf25b4c48c2f337c01e4da3450965cc38977e801c0d61522dfd13",
+  "patchSha256": "b09bf10a3dc9c5b9aa722dab6052a4b52cbfe2f6e41262dd75fa3cc8115248b8",
+  "files": 3,
+  "countedAnchors": 8,
+  "replayDirectory": "/private/tmp/aux-cohort-compile-replay-dkcmfj89",
+  "exactReplayPassed": true,
+  "reverseCheckPassed": true,
+  "nativeCheckoutChanged": false,
+  "nativeCompiled": false,
+  "testsExecuted": false,
+  "productExecuted": false,
+  "runtimeAcceptance": false
+}
