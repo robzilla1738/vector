@@ -1,0 +1,80 @@
+[
+  {
+    "path": "chrome/browser/ui/views/tabs/vertical/vertical_pinned_tab_entries_view.h",
+    "old": "  class EntryView;",
+    "new": "  class EntryView;\n  class EntryMenuModel;\n  bool SharedUpdateAvailable(const std::string& logical_id) const;\n  void ResolveSharedUpdate(const std::string& logical_id, bool independent);",
+    "count": 1
+  },
+  {
+    "path": "chrome/browser/ui/views/tabs/vertical/vertical_pinned_tab_entries_view.h",
+    "old": "    bool active = false;",
+    "new": "    bool active = false;\n    bool shared_update = false;",
+    "count": 1
+  },
+  {
+    "path": "chrome/browser/ui/views/tabs/vertical/vertical_pinned_tab_entries_view.h",
+    "old": "  base::CallbackListSubscription organization_changes_;",
+    "new": "  base::CallbackListSubscription organization_changes_;\n  base::CallbackListSubscription organization_window_;",
+    "count": 1
+  },
+  {
+    "path": "chrome/browser/ui/views/tabs/vertical/vertical_pinned_tab_entries_view.cc",
+    "old": "    SetTooltipText(owner_->IsEntryDragInProgress() ? std::u16string()\n                                                  : entry.title);",
+    "new": "    const auto description = entry.title + (entry.shared_update\n        ? u\"\\nUpdated in another window. Right-click to use the shared URL or keep an independent copy.\"\n        : std::u16string());\n    SetTooltipText(owner_->IsEntryDragInProgress() ? std::u16string() : description);",
+    "count": 1
+  },
+  {
+    "path": "chrome/browser/ui/views/tabs/vertical/vertical_pinned_tab_entries_view.cc",
+    "old": "    GetViewAccessibility().SetName(entry.title);",
+    "new": "    GetViewAccessibility().SetName(description);",
+    "count": 1
+  },
+  {
+    "path": "chrome/browser/ui/views/tabs/vertical/vertical_pinned_tab_entries_view.cc",
+    "old": "    canvas->DrawRoundRect(stroke, 10 - width / 2, border);\n  }",
+    "new": "    canvas->DrawRoundRect(stroke, 10 - width / 2, border);\n    if (entry.shared_update) {\n      // Same cyan pending-update cue as organization rows, without reserving\n      // layout space or replacing the supplied favicon/tile treatment.\n      cc::PaintFlags marker; marker.setAntiAlias(true); marker.setColor(0xff30b4dc);\n      canvas->DrawCircle(gfx::PointF(bounds.right() - 8, bounds.y() + 8), 2.5f, marker);\n    }\n  }",
+    "count": 1
+  },
+  {
+    "path": "chrome/browser/ui/views/tabs/vertical/vertical_pinned_tab_entries_view.cc",
+    "old": "  organization_changes_ = {};\n  if (paused_) return;",
+    "new": "  organization_changes_ = {}; organization_window_ = {};\n  if (paused_) return;\n  if (auto* window = aux::AuxOrganizationWindowController::FromBrowser(browser_))\n    organization_window_ = window->ObserveWindowState(base::BindRepeating(\n        &VerticalPinnedTabEntriesView::ScheduleRefresh, weak_factory_.GetWeakPtr()));",
+    "count": 1
+  },
+  {
+    "path": "chrome/browser/ui/views/tabs/vertical/vertical_pinned_tab_entries_view.cc",
+    "old": "  organization_changes_ = {};\n  TabStripModelObserver::StopObservingAll(this);",
+    "new": "  organization_changes_ = {}; organization_window_ = {};\n  TabStripModelObserver::StopObservingAll(this);",
+    "count": 1
+  },
+  {
+    "path": "chrome/browser/ui/views/tabs/vertical/vertical_pinned_tab_entries_view.cc",
+    "old": "    entry.live_index = aux::FindPinnedTabEntry(*model_, entry.saved);",
+    "new": "    if (auto* window = aux::AuxOrganizationWindowController::FromBrowser(browser_))\n      entry.shared_update = !entry.saved.logical_id.empty() && window->HasPendingSharedUpdate(entry.saved.logical_id);\n    entry.live_index = aux::FindPinnedTabEntry(*model_, entry.saved);",
+    "count": 1
+  },
+  {
+    "path": "chrome/browser/ui/views/tabs/vertical/vertical_pinned_tab_entries_view.cc",
+    "old": "      auto menu = std::make_unique<TabMenuModel>(\n          live_menu_.get(), TabMenuModelDelegate::From(browser_), model_,\n          *live);",
+    "new": "      auto menu = std::make_unique<EntryMenuModel>(this, live_menu_.get(), *live,\n                                                   entries_[index].saved.logical_id);",
+    "count": 1
+  },
+  {
+    "path": "chrome/browser/ui/views/tabs/vertical/vertical_pinned_tab_entries_view.cc",
+    "old": "void VerticalPinnedTabEntriesView::ShowEntryContextMenu(size_t index,",
+    "new": "// Extend the real native menu instead of substituting a reduced pin menu.\n// The added commands are dispatched by model index before the native delegate;\n// they never enter TabStripModel's command enum or extension ID ranges.\nclass VerticalPinnedTabEntriesView::EntryMenuModel final : public TabMenuModel {\n public:\n  EntryMenuModel(VerticalPinnedTabEntriesView*, ui::SimpleMenuModel::Delegate*,\n                 int native_index, std::string logical_id);\n  ~EntryMenuModel() override;\n  bool IsItemCheckedAt(size_t index) const override;\n  bool IsEnabledAt(size_t index) const override;\n  bool IsVisibleAt(size_t index) const override;\n  void ActivatedAt(size_t index) override;\n  void ActivatedAt(size_t index, int event_flags) override;\n private:\n  bool IsSharedAction(size_t index) const;\n  base::WeakPtr<VerticalPinnedTabEntriesView> owner_;\n  std::string logical_id_;\n  size_t shared_index_ = std::numeric_limits<size_t>::max();\n};\nVerticalPinnedTabEntriesView::EntryMenuModel::EntryMenuModel(\n    VerticalPinnedTabEntriesView* owner, ui::SimpleMenuModel::Delegate* delegate,\n    int native_index, std::string logical_id)\n    : TabMenuModel(delegate, TabMenuModelDelegate::From(owner->browser_), owner->model_, native_index),\n      owner_(owner->weak_factory_.GetWeakPtr()), logical_id_(std::move(logical_id)) {\n  if (!owner->SharedUpdateAvailable(logical_id_)) return;\n  AddSeparator(ui::NORMAL_SEPARATOR);\n  shared_index_ = GetItemCount();\n  AddItem(0x41555801, u\"Use shared URL from another window\");\n  AddItem(0x41555802, u\"Keep independent copy\");\n}\nVerticalPinnedTabEntriesView::EntryMenuModel::~EntryMenuModel() = default;\nbool VerticalPinnedTabEntriesView::EntryMenuModel::IsSharedAction(size_t index) const {\n  return shared_index_ != std::numeric_limits<size_t>::max() &&\n         (index == shared_index_ || index == shared_index_ + 1);\n}\nbool VerticalPinnedTabEntriesView::EntryMenuModel::IsItemCheckedAt(size_t index) const {\n  return IsSharedAction(index) ? false : TabMenuModel::IsItemCheckedAt(index);\n}\nbool VerticalPinnedTabEntriesView::EntryMenuModel::IsEnabledAt(size_t index) const {\n  return IsSharedAction(index) ? owner_ && owner_->SharedUpdateAvailable(logical_id_)\n                               : TabMenuModel::IsEnabledAt(index);\n}\nbool VerticalPinnedTabEntriesView::EntryMenuModel::IsVisibleAt(size_t index) const {\n  return IsSharedAction(index) ? static_cast<bool>(owner_) : TabMenuModel::IsVisibleAt(index);\n}\nvoid VerticalPinnedTabEntriesView::EntryMenuModel::ActivatedAt(size_t index) { ActivatedAt(index, 0); }\nvoid VerticalPinnedTabEntriesView::EntryMenuModel::ActivatedAt(size_t index, int event_flags) {\n  if (!IsSharedAction(index)) { TabMenuModel::ActivatedAt(index, event_flags); return; }\n  if (owner_ && owner_->SharedUpdateAvailable(logical_id_))\n    owner_->ResolveSharedUpdate(logical_id_, index == shared_index_ + 1);\n}\nbool VerticalPinnedTabEntriesView::SharedUpdateAvailable(const std::string& logical_id) const {\n  if (paused_ || !model_ || logical_id.empty() || browser_->GetTabStripModel() != model_) return false;\n  const auto* service = aux::organization::OrganizationProfileServiceFactory::GetForProfileIfExists(browser_->GetProfile());\n  auto* window = aux::AuxOrganizationWindowController::FromBrowser(browser_);\n  return service && service->model() && !service->model()->blocked() && !service->model()->pending() &&\n         window && window->HasPendingSharedUpdate(logical_id);\n}\nvoid VerticalPinnedTabEntriesView::ResolveSharedUpdate(const std::string& logical_id, bool independent) {\n  if (!SharedUpdateAvailable(logical_id)) return;\n  auto* window = aux::AuxOrganizationWindowController::FromBrowser(browser_);\n  auto done = base::BindOnce([](base::WeakPtr<VerticalPinnedTabEntriesView> owner, bool) {\n    if (owner) owner->ScheduleRefresh();\n  }, weak_factory_.GetWeakPtr());\n  if (independent) window->KeepIndependentCopy(logical_id, std::move(done));\n  else window->ApplyPendingSharedUpdate(logical_id, std::move(done));\n}\nvoid VerticalPinnedTabEntriesView::ShowEntryContextMenu(size_t index,",
+    "count": 1
+  },
+  {
+    "path": "chrome/browser/ui/views/tabs/vertical/vertical_pinned_tab_entries_view.cc",
+    "old": "  bool IsItemCheckedAt(size_t index) const override;",
+    "new": "  bool IsItemCheckedAt(size_t index) const override;\n  bool IsAlertedAt(size_t index) const override;\n  bool GetAcceleratorAt(size_t index, ui::Accelerator* accelerator) const override;",
+    "count": 1
+  },
+  {
+    "path": "chrome/browser/ui/views/tabs/vertical/vertical_pinned_tab_entries_view.cc",
+    "old": "bool VerticalPinnedTabEntriesView::EntryMenuModel::IsEnabledAt(size_t index) const {",
+    "new": "bool VerticalPinnedTabEntriesView::EntryMenuModel::IsAlertedAt(size_t index) const {\n  return IsSharedAction(index) ? false : TabMenuModel::IsAlertedAt(index);\n}\nbool VerticalPinnedTabEntriesView::EntryMenuModel::GetAcceleratorAt(\n    size_t index, ui::Accelerator* accelerator) const {\n  return IsSharedAction(index) ? false : TabMenuModel::GetAcceleratorAt(index, accelerator);\n}\nbool VerticalPinnedTabEntriesView::EntryMenuModel::IsEnabledAt(size_t index) const {",
+    "count": 1
+  }
+]

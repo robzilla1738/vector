@@ -1,0 +1,25 @@
+{
+  "modifiedCount": 2,
+  "addedCount": 0,
+  "countedAdaptations": 13,
+  "files": [
+    {
+      "path": "chrome/browser/ui/views/tabs/vertical/vertical_pinned_tab_entries_view.cc",
+      "beforeSha256": "7fa3fb0bc0e2379a3d934c4021fb4ea024a47bbb90f542cdd412df6ee0f34896",
+      "afterSha256": "0ed7cb1184fd63ecaeafd8e65cbef85607772f03ca7bcfa2959dbe21796423ff"
+    },
+    {
+      "path": "chrome/browser/ui/views/tabs/vertical/vertical_pinned_tab_entries_view.h",
+      "beforeSha256": "c2cd7a2fd7c8536782547c444dd281f67f78295443089807bc569ccc70865245",
+      "afterSha256": "429aae7dc4216cb950de74bfc3dc8430b07519ea1494a5c727df613262f1b71e"
+    }
+  ],
+  "patchSha256": "8b1f3049fe717d5130c4b76e4ec1fdd162769b8d186d0bdf08c7d840644368af",
+  "verification": {
+    "exactOrderedReplay": "passed",
+    "unifiedPatchReplay": "passed",
+    "whitespaceErrorCheck": "passed",
+    "nativeCompile": "not run by worker",
+    "runtime": "not run"
+  }
+}
