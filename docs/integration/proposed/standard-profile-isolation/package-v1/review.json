@@ -75,7 +75,7 @@
     },
     "standardVerifier": {
       "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/package-v1/standard_verify.py",
-      "sha256": "213aa2f8246cf0e6c5296d2ed47271f47190eb2f3c3dd16f62388756e40df82d"
+      "sha256": "4d84d40f0047649ebd78b67cf811a51ebb5eeef3bcf4707933352593916fb799"
     },
     "standardCompileResult": {
       "path": "/private/tmp/aux-standard-daemon-objects-20261023-a2/results.json",

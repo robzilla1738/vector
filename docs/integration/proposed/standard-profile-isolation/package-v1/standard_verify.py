@@ -274,8 +274,88 @@ def install(env):
         browser = checked['browser']; source = document(browser['sourceComposition'])
         require(source['files'] == browser['sourceChanges'] and len(source['files']) == 26,
                 'Exact reviewed browser source composition required')
+        # Historical snapshot reads record BEFORE projection, not immutable paths.
+        # Authenticate their retained baselines and replay all reviewed layers.
+        scope_root = root/'docs/integration/proposed/standard-profile-isolation'
+        source_root = Path(build['source'])
+        changed = {x['path']: x for x in source['files']}
+        input_pins = {x['path']: x['sha256'] for x in source['inputs']}
+        require(len(input_pins) == len(source['inputs']), 'Duplicate browser source input')
         for row in source['inputs']:
-            pinned(row['path'], row['sha256'])
+            path = Path(row['path'])
+            if path.is_relative_to(source_root):
+                name = str(path.relative_to(source_root))
+                require(name in changed and row['sha256'] == changed[name]['beforeSha256'],
+                        'Unreviewed mutable snapshot input')
+            else:
+                pinned(path, row['sha256'])
+        values = {}
+        for lane_name in ['browser-drain', 'browser-drain-transport', 'browser-drain-final',
+                          'browser-drain-after-mainloop', 'browser-drain-shutdown-snapshots']:
+            lane = scope_root/lane_name
+            manifest = read(pinned(lane/'manifest.json', input_pins[str(lane/'manifest.json')]))
+            for item in manifest['files']:
+                name = item['path']
+                if name not in values:
+                    require(item['beforeSha256'] == changed[name]['beforeSha256'],
+                            'Retained baseline differs from historical read')
+                    values[name] = pinned(lane/'baseline'/name, item['beforeSha256']).read_text()
+                require(sha_bytes(values[name].encode()) == item['beforeSha256'],
+                        'Browser layer before hash mismatch')
+            edits = read(pinned(lane/'replacements.json', input_pins[str(lane/'replacements.json')]))
+            for edit in edits:
+                values[edit['path']] = replay(values[edit['path']],
+                    [dict(find=edit['old'], replace=edit['new'], count=edit['count'])])
+            for item in manifest['files']:
+                require(sha_bytes(values[item['path']].encode()) == item['afterSha256'],
+                        'Browser layer replay mismatch')
+            for item in manifest.get('added', []):
+                require(item['path'] not in values and changed[item['path']]['beforeSha256'] is None,
+                        'Added browser leaf replaces existing source')
+                values[item['path']] = pinned(lane/'source'/item['path'], item['sha256']).read_text()
+        registrations = [
+            ('content/browser/BUILD.gn', '    "aux_child_lifetime.h",',
+             '    "aux_child_lifetime.h",\n    "aux_child_process_drain.cc",'),
+            ('content/public/browser/BUILD.gn', '    "audio_stream_broker.h",',
+             '    "audio_stream_broker.h",\n    "aux_child_process_drain.h",'),
+            ('chrome/browser/ui/BUILD.gn', '        "aux_owned_browser_quiesce.cc",',
+             '        "aux_browser_shutdown_drain.cc",\n        "aux_browser_shutdown_drain.h",\n        "aux_owned_browser_quiesce.cc",')]
+        projection_root = Path(browser['sourceComposition']['path']).parent
+        for name, before, after in registrations:
+            row = changed[name]
+            text = pinned(projection_root/name, row['afterSha256']).read_text()
+            original = replay(text, [dict(find=after, replace=before, count=1)])
+            require(sha_bytes(original.encode()) == row['beforeSha256']
+                    and input_pins[str(source_root/name)] == row['beforeSha256'],
+                    'GN registration reverse baseline mismatch')
+            values[name] = replay(original, [dict(find=before, replace=after, count=1)])
+        require(set(values) == set(changed), 'Browser composition replay omitted a leaf')
+        for name, text in values.items():
+            require(sha_bytes(text.encode()) == changed[name]['afterSha256']
+                    and pinned(projection_root/name, changed[name]['afterSha256']).read_text() == text,
+                    'Original browser projection equality failed')
+        # The single actual compiler correction is a separate exact transition.
+        fix_name = 'chrome/browser/ui/aux_browser_shutdown_drain.cc'
+        fix_lane = scope_root/'integration/browser-shutdown-compile-fix'
+        before_hash = 'db4d3302017b086c4fa3aa52a87b6aa82114eeeafe2d53d6342841c0178dc5b1'
+        after_hash = 'c9ed04b825e5614fa50dead287c692678663960f2745e876f184a8bf2d124607'
+        require(values[fix_name] == pinned(fix_lane/'baseline.cc', before_hash).read_text(),
+                'Compiler fix baseline differs')
+        fixed = replay(values[fix_name], [
+            dict(find='  poll.Start(FROM_HERE, base::Milliseconds(25), base::BindRepeating([&] {',
+                 replace='  poll.Start(FROM_HERE, base::Milliseconds(25), base::BindRepeating(\n'
+                         '      [](ShutdownDrainState* state, base::RunLoop* loop, base::TimeTicks deadline) {', count=1),
+            dict(find='      std::lock_guard<std::mutex> lock(state.mutex);\n'
+                      '      state.observation = std::move(observed);\n      state.frozen = true;\n      loop.Quit();',
+                 replace='      std::lock_guard<std::mutex> lock(state->mutex);\n'
+                         '      state->observation = std::move(observed);\n      state->frozen = true;\n      loop->Quit();', count=1),
+            dict(find='  }));\n  loop.Run();',
+                 replace='  }, base::Unretained(&state), base::Unretained(&loop), deadline));\n  loop.Run();', count=1)])
+        require(sha_bytes(fixed.encode()) == after_hash
+                and pinned(fix_lane/'source.cc', after_hash).read_text() == fixed,
+                'Exact compiler fix replay mismatch')
+        final_hashes = {name: sha_bytes(text.encode()) for name, text in values.items()}
+        final_hashes[fix_name] = after_hash
         composed = document(review['inputs']['standardNativeComposition'])
         require(review['inputs']['standardNativeComposition'] == browser['composition'], 'Browser composition changed')
         require(build['nativeInputPinsPath'] == browser['fullInputPins']['path']
@@ -287,8 +367,8 @@ def install(env):
         for row in source['files']:
             if row['path'].startswith('daemon/'):
                 continue
-            require(full['files'].get(row['path']) == row['afterSha256'], 'Standard browser input missing')
-            pinned(Path(build['source'])/row['path'], row['afterSha256'])
+            require(full['files'].get(row['path']) == final_hashes[row['path']], 'Standard browser input missing')
+            pinned(Path(build['source'])/row['path'], final_hashes[row['path']])
         changed = {x['path']: x for x in source['files']}
         intersect = set(expected) & set(changed)
         require(intersect == {'chrome/browser/extensions/api/messaging/launch_context_posix.cc'},

@@ -1,3 +1,9 @@
+# Standard source/native binding passed; correctness successors integrated — 2026-10-24
+
+The corrected strict binder passed against the actual successful standard browser a2/daemon a3 receipts. It authenticates historical before-inputs by immutable five-layer replay, exact GN reversals and the literal compiler correction; original defenses remain checked. The inactive checkpoint pair is `docs/integration/proposed/standard-profile-isolation/package-v1/source-pair-final.json`. It is not assembled, activated or accepted.
+
+New separate source proposals preserve browser descendant uncertainty after direct reap and retain real refresh transport/filesystem cleanup. The managed-producer lane and combined source projection are in progress. These will need a coupled successor build/package; the earlier built tuple still contains the known coverage gap and must not be advertised as recovery-ready. Current UI/CSS/assets and accepted app are unchanged. No launch/shutdown/restart, provider call, signing, owner-state access or permission grant occurred.
+
 # Standard native builds passed; remaining writer fixes in parallel — 2026-10-24
 
 The actual standard browser a2 full build and daemon a3 link passed. Six changed native units compiled; all 48 Swift sources link. The unchanged native module's 50 imports resolve; the exact three new private definitions are internal, and products remain unsigned/unexecuted. Fresh baseline/desktop resources passed staging for the reserved standard-profile candidate. Actual source projection/independent original-entry equality remains valid. Evidence: `docs/integration/proposed/standard-profile-isolation/integration/{browser-build-a2-passed,daemon-link-a3-passed}.json`.
