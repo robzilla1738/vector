@@ -1,0 +1,39 @@
+{
+  "format": "aux.runtime-cache-async-relink.a1-preserved.v1",
+  "failedNativeAttempt": true,
+  "compileExitCode": 1,
+  "files": {
+    "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/profile-isolation-local-finish/runtime-cache-async-relink/prepare.py": {
+      "copy": "a1-evidence/prepare.py",
+      "sha256": "624f98f95a881ee3c7be07b31cd530399c4ffe96d2d7e7f8d6ecc04dbb5c2996"
+    },
+    "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/profile-isolation-local-finish/runtime-cache-async-relink/run.py": {
+      "copy": "a1-evidence/run.py",
+      "sha256": "41bac357ebed59d7f8504a8bb1c051f213b6d389546e1bb1baf49ca96acb4c8d"
+    },
+    "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/profile-isolation-local-finish/runtime-cache-async-relink/plan.json": {
+      "copy": "a1-evidence/plan.json",
+      "sha256": "3d5171a71ee0e9e649ac777cc16bcfeb53153fc8093f9fda265d44b0c2f88cb4"
+    },
+    "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/profile-isolation-local-finish/runtime-cache-async-relink/runner-inputs.json": {
+      "copy": "a1-evidence/runner-inputs.json",
+      "sha256": "141e5e07122cb71505c8faa4ed8579e1b36a394ce2bffd3d86fccb907c2e9ca8"
+    },
+    "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/profile-isolation-local-finish/runtime-cache-async-relink/manifest.json": {
+      "copy": "a1-evidence/manifest.json",
+      "sha256": "313a796c3452fe40ece9e4e08ba6806f1f8335af9fd1edb51ddb698063318885"
+    },
+    "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/profile-isolation-local-finish/runtime-cache-async-relink/source/AuxDevelopmentWorkerHost.cc": {
+      "copy": "a1-evidence/source/AuxDevelopmentWorkerHost.cc",
+      "sha256": "3bda3d49671811e93b1890ef712328eecbb840ec32f0c3389ba43888765b5e39"
+    },
+    "/private/tmp/aux-runtime-cache-async-object-20261023-a1/results.json": {
+      "copy": "a1-evidence/results.json",
+      "sha256": "beafe2117876b846662d0e03d41a3ba7d8ecffc24881c4a55c619cb86c49e938"
+    },
+    "/private/tmp/aux-runtime-cache-async-object-20261023-a1/compile.log": {
+      "copy": "a1-evidence/compile.log",
+      "sha256": "d212595b58aea0ce60e6717e7bcd9575877753c8e9a35fdc8173f4b25256c161"
+    }
+  }
+}

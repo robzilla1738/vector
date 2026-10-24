@@ -1,0 +1,39 @@
+{
+  "format": "aux.runtime-cache-async-dependency-review.v1",
+  "oldDependencyFile": "/private/tmp/aux-awaited-writes-native-20261023-r3/worker-host.d",
+  "oldDependencyFileSha256": "2fe7870a730562921a2374ed33e91397fd59cb494a4e447a1f04f6c8d2fa2204",
+  "priorLexicalCount": 92,
+  "priorCanonicalCount": 90,
+  "aliases": [
+    {
+      "canonical": "/private/tmp/aux-async-writes-final/docs/integration/proposed/aux-native-pdf-host-consumer/source/AuxLoadedPdfLifetime.h",
+      "paths": [
+        "/private/tmp/aux-async-writes-final/docs/integration/proposed/profile-isolation-next/spawn-custody/source/../../../aux-native-pdf-host-consumer/source/AuxLoadedPdfLifetime.h",
+        "/private/tmp/aux-async-writes-final/docs/integration/proposed/profile-isolation-final/writes/source/../../../aux-native-pdf-host-consumer/source/AuxLoadedPdfLifetime.h"
+      ],
+      "sha256": "90ce2cd5bdf13c5a4c6e6ac81af4ea3cc01d142a82c5ecf9eb79e2aa0e5cecb2",
+      "allAliasesSameBytes": true
+    },
+    {
+      "canonical": "/private/tmp/aux-async-writes-final/docs/integration/proposed/aux-native-utility-host-consumer/source/AuxLoadedUtilityLifetime.h",
+      "paths": [
+        "/private/tmp/aux-async-writes-final/docs/integration/proposed/profile-isolation-next/spawn-custody/source/../../../aux-native-utility-host-consumer/source/AuxLoadedUtilityLifetime.h",
+        "/private/tmp/aux-async-writes-final/docs/integration/proposed/profile-isolation-final/writes/source/../../../aux-native-utility-host-consumer/source/AuxLoadedUtilityLifetime.h"
+      ],
+      "sha256": "cfbd39036c202510e2775a7ce6fdfba9e322c1e9d2f43614fdf1c228f6d02e87",
+      "allAliasesSameBytes": true
+    }
+  ],
+  "expectedChanges": {
+    "remove": "original AuxDevelopmentWorkerHost.cc canonical path",
+    "add": [
+      "projected AuxDevelopmentWorkerHost.cc",
+      "AuxRuntimeCacheInspection.inc",
+      "AuxRuntimeCachePins.inc",
+      "AuxRuntimeCacheAsync.inc",
+      "AuxRuntimeMutablePins.inc"
+    ]
+  },
+  "expectedCanonicalCount": 94,
+  "acceptance": "Runner must compare exact canonical sets and independently verify every old pinned path byte digest. This note is source/dependency review, not serialized compile acceptance."
+}

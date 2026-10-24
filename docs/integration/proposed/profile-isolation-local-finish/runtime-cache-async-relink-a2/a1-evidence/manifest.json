@@ -1,0 +1,40 @@
+{
+  "format": "aux.runtime-cache-async-relink.proposal.v1",
+  "status": "prepared-not-executed",
+  "input": "/private/tmp/aux-async-writes-final/docs/integration/proposed/profile-isolation-final/writes/source/AuxDevelopmentWorkerHost.cc",
+  "inputSha256": "e36e5c25c822879302a7f83fa5329305ba79f4d000ac45cd721cb820eaa81dd7",
+  "output": "source/AuxDevelopmentWorkerHost.cc",
+  "outputSha256": "3bda3d49671811e93b1890ef712328eecbb840ec32f0c3389ba43888765b5e39",
+  "replacementCount": 4,
+  "addedIncludes": [
+    "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/profile-isolation-local-finish/runtime-cache-async-relink/source/AuxRuntimeCacheInspection.inc",
+    "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/profile-isolation-local-finish/runtime-cache-async-relink/source/AuxRuntimeCachePins.inc",
+    "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/profile-isolation-local-finish/runtime-cache-async-relink/source/AuxRuntimeCacheAsync.inc"
+  ],
+  "files": {
+    "README.md": "4a6220284027cc1e61303e95b73ccf705c3f9af55d0b0e1ed2f5e76b2a130309",
+    "change.patch": "f9577f85ec39d5b2981fce1bff44cee2670244229080d14594a6fd347b86dcee",
+    "plan.json": "3d5171a71ee0e9e649ac777cc16bcfeb53153fc8093f9fda265d44b0c2f88cb4",
+    "prepare.py": "624f98f95a881ee3c7be07b31cd530399c4ffe96d2d7e7f8d6ecc04dbb5c2996",
+    "run.py": "41bac357ebed59d7f8504a8bb1c051f213b6d389546e1bb1baf49ca96acb4c8d",
+    "runner-inputs.json": "141e5e07122cb71505c8faa4ed8579e1b36a394ce2bffd3d86fccb907c2e9ca8",
+    "source/AuxDevelopmentWorkerHost.cc": "3bda3d49671811e93b1890ef712328eecbb840ec32f0c3389ba43888765b5e39",
+    "source/AuxRuntimeCacheAsync.inc": "660c0a2cfbc1f073d78528899510c9f335c6e7501ab01b70cd5b848083f91df9",
+    "source/AuxRuntimeCacheInspection.inc": "9fdc7b754b33861dccb0115bde857f69f6066bb18e57a6d50ec43c0830fdc077",
+    "source/AuxRuntimeCachePins.inc": "0cdad8ab9b147222b80dcd89847f48f6ba97f4f874d20c86d1b2a2ebc139fd5a"
+  },
+  "checks": {
+    "pythonSyntaxParsed": true,
+    "exactCountPatch": true,
+    "exactAsyncOverlay": true,
+    "nativeInputsVerified": 364,
+    "compilerDependencyPathsPinned": 92,
+    "unchangedSwiftSources": 48,
+    "unchangedOtherNativeObjects": 11
+  },
+  "compiled": false,
+  "linked": false,
+  "executed": false,
+  "signed": false,
+  "fullWriterIsolationProven": false
+}

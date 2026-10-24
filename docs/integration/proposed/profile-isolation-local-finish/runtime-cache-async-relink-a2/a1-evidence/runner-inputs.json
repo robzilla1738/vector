@@ -1,0 +1,8 @@
+{
+  "format": "aux.runtime-host-registration-runner-pins.v1",
+  "files": {
+    "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/profile-isolation-local-finish/runtime-cache-async-relink/run.py": "41bac357ebed59d7f8504a8bb1c051f213b6d389546e1bb1baf49ca96acb4c8d",
+    "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/profile-isolation-local-finish/runtime-cache-async-relink/prepare.py": "624f98f95a881ee3c7be07b31cd530399c4ffe96d2d7e7f8d6ecc04dbb5c2996",
+    "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/profile-isolation-local-finish/runtime-cache-async-relink/plan.json": "3d5171a71ee0e9e649ac777cc16bcfeb53153fc8093f9fda265d44b0c2f88cb4"
+  }
+}
