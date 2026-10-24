@@ -1,0 +1,336 @@
+--- a/extensions/browser/api/storage/storage_frontend.h
++++ b/extensions/browser/api/storage/storage_frontend.h
+@@ -5,7 +5,10 @@
+ #ifndef EXTENSIONS_BROWSER_API_STORAGE_STORAGE_FRONTEND_H_
+ #define EXTENSIONS_BROWSER_API_STORAGE_STORAGE_FRONTEND_H_
+ 
++#include <array>
+ #include <map>
++#include <optional>
++#include <vector>
+ #include <memory>
+ #include <string>
+ 
+@@ -115,6 +118,49 @@
+       std::unique_ptr<value_store::ValueStore::AuxUiPreferenceCapture> capture,
+       base::OnceCallback<void(value_store::ValueStore::Status)> callback);
+ 
++  // Native-only canonical Agent LOCAL writer closure. No renderer API, path,
++  // profile selector or caller-provided readiness/commit flag exists.
++  class AuxUiMigrationLease {
++   public:
++    ~AuxUiMigrationLease();
++    AuxUiMigrationLease(const AuxUiMigrationLease&) = delete;
++    AuxUiMigrationLease& operator=(const AuxUiMigrationLease&) = delete;
++    std::array<std::optional<std::string>, 6> CopySourceRecords() const;
++   private:
++    friend class StorageFrontend;
++    struct State;
++    AuxUiMigrationLease(std::shared_ptr<State> state,
++        std::unique_ptr<value_store::ValueStore::AuxUiPreferenceCapture> capture);
++    std::shared_ptr<State> state_;
++    std::unique_ptr<value_store::ValueStore::AuxUiPreferenceCapture> capture_;
++  };
++  struct AuxUiMigrationReadback {
++    AuxUiMigrationReadback();
++    AuxUiMigrationReadback(AuxUiMigrationReadback&&);
++    AuxUiMigrationReadback& operator=(AuxUiMigrationReadback&&);
++    ~AuxUiMigrationReadback();
++    std::array<std::optional<std::string>, 6> records;
++    bool matches_source = false;
++    bool matches_target = false;
++    bool commit_file_data_synced = false;
++    bool ordinary_work_queued = false;
++  };
++  using AuxUiMigrationLeaseResult = base::expected<
++      std::unique_ptr<AuxUiMigrationLease>, value_store::ValueStore::Status>;
++  using AuxUiMigrationReadbackResult = base::expected<
++      AuxUiMigrationReadback, value_store::ValueStore::Status>;
++  void BeginAuxUiMigrationLease(scoped_refptr<const Extension> extension,
++      base::OnceCallback<void(AuxUiMigrationLeaseResult)> callback);
++  bool ValidateAuxUiMigrationLease(const AuxUiMigrationLease& lease) const;
++  void CommitAuxUiMigrationLease(AuxUiMigrationLease& lease,
++      base::OnceCallback<void(value_store::ValueStore::Status)> callback);
++  void ReadbackAuxUiMigrationLease(AuxUiMigrationLease& lease,
++      base::OnceCallback<void(AuxUiMigrationReadbackResult)> callback);
++  // Before target attempt this aborts the hold. After target attempt it only
++  // releases an actually synced/read-back target with no queued old work.
++  // False retains both the gate and original callbacks for explicit recovery.
++  bool ReleaseAuxUiMigrationLease(AuxUiMigrationLease& lease);
++
+   // Deletes the settings for the given `extension_id` and synchronously invokes
+   // `done_callback` once the settings are deleted.
+   void DeleteStorageSoon(const ExtensionId& extension_id,
+@@ -187,6 +233,14 @@
+       CacheMap;
+ 
+   bool CanUseAuxUiMigrationBackend(const Extension& extension) const;
++  void RunWithStorageUngated(scoped_refptr<const Extension> extension,
++      settings_namespace::Namespace settings_namespace, ValueStoreCache::StorageCallback callback);
++  void CaptureAuxUiPreferencesUngated(scoped_refptr<const Extension> extension,
++      AuxUiPreferenceCaptureCallback callback);
++  void CommitAuxUiPreferencesUngated(scoped_refptr<const Extension> extension,
++      std::unique_ptr<value_store::ValueStore::AuxUiPreferenceCapture> capture,
++      base::OnceCallback<void(value_store::ValueStore::Status)> callback);
++  void ReleaseAuxUiMigrationGate(std::shared_ptr<AuxUiMigrationLease::State> state);
+ 
+   // Constructor for tests.
+   StorageFrontend(scoped_refptr<value_store::ValueStoreFactory> storage_factory,
+@@ -230,6 +284,8 @@
+   // are owned by this object.
+   CacheMap caches_;
+ 
++  std::shared_ptr<AuxUiMigrationLease::State> aux_ui_migration_gate_;
++
+   base::WeakPtrFactory<StorageFrontend> weak_factory_{this};
+ };
+ 
+--- a/extensions/browser/api/storage/storage_frontend.cc
++++ b/extensions/browser/api/storage/storage_frontend.cc
+@@ -586,6 +586,154 @@
+   return caches_.contains(settings_namespace);
+ }
+ 
++struct StorageFrontend::AuxUiMigrationLease::State {
++  State();
++  ~State();
++  base::WeakPtr<StorageFrontend> owner;
++  scoped_refptr<const Extension> extension;
++  std::array<std::optional<std::string>, 6> source, target;
++  std::vector<base::OnceClosure> deferred;
++  bool pending = true, tainted = false, target_attempted = false;
++  bool target_file_data_synced = false, target_readback_matches = false;
++};
++StorageFrontend::AuxUiMigrationLease::State::State() = default;
++StorageFrontend::AuxUiMigrationLease::State::~State() = default;
++StorageFrontend::AuxUiMigrationLease::AuxUiMigrationLease(
++    std::shared_ptr<State> state,
++    std::unique_ptr<ValueStore::AuxUiPreferenceCapture> capture)
++    : state_(std::move(state)), capture_(std::move(capture)) {}
++StorageFrontend::AuxUiMigrationLease::~AuxUiMigrationLease() = default;
++std::array<std::optional<std::string>, 6>
++StorageFrontend::AuxUiMigrationLease::CopySourceRecords() const {
++  return state_ ? state_->source : std::array<std::optional<std::string>, 6>();
++}
++StorageFrontend::AuxUiMigrationReadback::AuxUiMigrationReadback() = default;
++StorageFrontend::AuxUiMigrationReadback::AuxUiMigrationReadback(AuxUiMigrationReadback&&) = default;
++StorageFrontend::AuxUiMigrationReadback& StorageFrontend::AuxUiMigrationReadback::operator=(AuxUiMigrationReadback&&) = default;
++StorageFrontend::AuxUiMigrationReadback::~AuxUiMigrationReadback() = default;
++
++void StorageFrontend::BeginAuxUiMigrationLease(
++    scoped_refptr<const Extension> extension,
++    base::OnceCallback<void(AuxUiMigrationLeaseResult)> callback) {
++  DCHECK_CURRENTLY_ON(BrowserThread::UI);
++  if (!extension || aux_ui_migration_gate_ || !CanUseAuxUiMigrationBackend(*extension)) {
++    std::move(callback).Run(base::unexpected(ValueStore::Status(
++        ValueStore::OTHER_ERROR, "Actual Aux backend writer gate unavailable"))); return;
++  }
++  auto state = std::make_shared<AuxUiMigrationLease::State>();
++  state->owner = weak_factory_.GetWeakPtr(); state->extension = extension;
++  // Admission closes on the actual frontend sequence before the backend queue
++  // sentinel. Every already submitted operation precedes the raw capture.
++  aux_ui_migration_gate_ = state;
++  CaptureAuxUiPreferencesUngated(extension, base::BindOnce(
++      [](base::WeakPtr<StorageFrontend> owner,
++         std::shared_ptr<AuxUiMigrationLease::State> state,
++         base::OnceCallback<void(AuxUiMigrationLeaseResult)> callback,
++         ValueStore::AuxUiPreferenceCaptureResult captured) {
++        state->pending = false;
++        if (!owner || owner->aux_ui_migration_gate_ != state ||
++            !owner->CanUseAuxUiMigrationBackend(*state->extension) || !captured.has_value()) {
++          // Begin has made no target write. Replaying ordinary work here is
++          // an abort of the hold, never a successful capture or durable drain.
++          if (owner && owner->aux_ui_migration_gate_ == state)
++            owner->ReleaseAuxUiMigrationGate(state);
++          std::move(callback).Run(base::unexpected(ValueStore::Status(
++              ValueStore::OTHER_ERROR, "Original Aux backend capture route unavailable"))); return;
++        }
++        state->source = captured.value()->CopyRecordsForNativeJournal();
++        state->target = state->source;
++        // This is the exact pair order of the actual backend's six-key token.
++        // Preserve original JSON bytes and explicit false; never parse/rewrite.
++        for (size_t i = 0; i < state->target.size(); i += 2) if (state->source[i]) {
++          state->target[i + 1] = state->source[i]; state->target[i].reset();
++        }
++        std::move(callback).Run(base::WrapUnique(new AuxUiMigrationLease(
++            state, std::move(captured.value()))));
++      }, weak_factory_.GetWeakPtr(), state, std::move(callback)));
++}
++
++bool StorageFrontend::ValidateAuxUiMigrationLease(const AuxUiMigrationLease& lease) const {
++  DCHECK_CURRENTLY_ON(BrowserThread::UI);
++  const auto state = lease.state_;
++  return state && state->owner.get() == this && aux_ui_migration_gate_ == state &&
++      !state->pending && !state->tainted && state->deferred.empty() &&
++      CanUseAuxUiMigrationBackend(*state->extension);
++}
++void StorageFrontend::CommitAuxUiMigrationLease(
++    AuxUiMigrationLease& lease, base::OnceCallback<void(ValueStore::Status)> callback) {
++  DCHECK_CURRENTLY_ON(BrowserThread::UI);
++  if (!ValidateAuxUiMigrationLease(lease) || !lease.capture_ || lease.state_->target_attempted) {
++    std::move(callback).Run(ValueStore::Status(ValueStore::OTHER_ERROR,
++        "Actual Aux source capture cannot authorize another target attempt")); return;
++  }
++  auto state = lease.state_;
++  state->pending = true; state->target_attempted = true;
++  state->target_file_data_synced = false; state->target_readback_matches = false;
++  CommitAuxUiPreferencesUngated(state->extension, std::move(lease.capture_), base::BindOnce(
++      [](base::WeakPtr<StorageFrontend> owner,
++         std::shared_ptr<AuxUiMigrationLease::State> state,
++         base::OnceCallback<void(ValueStore::Status)> callback, ValueStore::Status status) {
++        state->pending = false;
++        state->target_file_data_synced = status.ok();
++        if (!owner || owner->aux_ui_migration_gate_ != state ||
++            !owner->CanUseAuxUiMigrationBackend(*state->extension) || state->tainted)
++          status = ValueStore::Status(ValueStore::OTHER_ERROR,
++              "Aux target outcome requires original-owner readback/recovery");
++        std::move(callback).Run(std::move(status));
++      }, weak_factory_.GetWeakPtr(), state, std::move(callback)));
++}
++void StorageFrontend::ReadbackAuxUiMigrationLease(
++    AuxUiMigrationLease& lease,
++    base::OnceCallback<void(AuxUiMigrationReadbackResult)> callback) {
++  DCHECK_CURRENTLY_ON(BrowserThread::UI);
++  auto state = lease.state_;
++  if (!state || state->owner.get() != this || aux_ui_migration_gate_ != state ||
++      state->pending || !CanUseAuxUiMigrationBackend(*state->extension)) {
++    std::move(callback).Run(base::unexpected(ValueStore::Status(
++        ValueStore::OTHER_ERROR, "Original Aux backend readback unavailable"))); return;
++  }
++  state->pending = true;
++  CaptureAuxUiPreferencesUngated(state->extension, base::BindOnce(
++      [](base::WeakPtr<StorageFrontend> owner,
++         std::shared_ptr<AuxUiMigrationLease::State> state,
++         base::OnceCallback<void(AuxUiMigrationReadbackResult)> callback,
++         ValueStore::AuxUiPreferenceCaptureResult captured) {
++        state->pending = false;
++        if (!owner || owner->aux_ui_migration_gate_ != state ||
++            !owner->CanUseAuxUiMigrationBackend(*state->extension) || !captured.has_value()) {
++          state->target_readback_matches = false;
++          std::move(callback).Run(base::unexpected(ValueStore::Status(
++              ValueStore::OTHER_ERROR, "Aux raw target readback refused"))); return;
++        }
++        AuxUiMigrationReadback result;
++        result.records = captured.value()->CopyRecordsForNativeJournal();
++        result.matches_source = result.records == state->source;
++        result.matches_target = result.records == state->target;
++        result.commit_file_data_synced = state->target_file_data_synced;
++        result.ordinary_work_queued = state->tainted || !state->deferred.empty();
++        state->target_readback_matches = result.matches_target;
++        std::move(callback).Run(std::move(result));
++      }, weak_factory_.GetWeakPtr(), state, std::move(callback)));
++}
++bool StorageFrontend::ReleaseAuxUiMigrationLease(AuxUiMigrationLease& lease) {
++  DCHECK_CURRENTLY_ON(BrowserThread::UI);
++  auto state = lease.state_;
++  if (!state || state->owner.get() != this || aux_ui_migration_gate_ != state || state->pending ||
++      (state->target_attempted && (!CanUseAuxUiMigrationBackend(*state->extension) ||
++       !state->target_file_data_synced ||
++       !state->target_readback_matches || state->tainted || !state->deferred.empty()))) return false;
++  // No target attempt, or actual successful file-data sync + exact raw target
++  // readback. Native controller still owns cross-store journal/activation.
++  lease.capture_.reset(); lease.state_.reset(); ReleaseAuxUiMigrationGate(state); return true;
++}
++void StorageFrontend::ReleaseAuxUiMigrationGate(
++    std::shared_ptr<AuxUiMigrationLease::State> state) {
++  if (aux_ui_migration_gate_ != state) return;
++  aux_ui_migration_gate_.reset();
++  auto pending = std::move(state->deferred);
++  for (auto& operation : pending) std::move(operation).Run();
++}
++
+ bool StorageFrontend::CanUseAuxUiMigrationBackend(
+     const Extension& extension) const {
+   DCHECK_CURRENTLY_ON(BrowserThread::UI);
+@@ -597,6 +745,15 @@
+ }
+ 
+ void StorageFrontend::CaptureAuxUiPreferencesForMigration(
++    scoped_refptr<const Extension> extension, AuxUiPreferenceCaptureCallback callback) {
++  DCHECK_CURRENTLY_ON(BrowserThread::UI);
++  if (aux_ui_migration_gate_) {
++    std::move(callback).Run(base::unexpected(ValueStore::Status(
++        ValueStore::OTHER_ERROR, "Actual Aux writer lease already owns this backend"))); return;
++  }
++  CaptureAuxUiPreferencesUngated(std::move(extension), std::move(callback));
++}
++void StorageFrontend::CaptureAuxUiPreferencesUngated(
+     scoped_refptr<const Extension> extension,
+     AuxUiPreferenceCaptureCallback callback) {
+   DCHECK_CURRENTLY_ON(BrowserThread::UI);
+@@ -621,7 +778,7 @@
+       base::BindPostTaskToCurrentDefault(std::move(reply)),
+       Result(base::unexpected(ValueStore::Status(
+           ValueStore::OTHER_ERROR, "Aux migration capture reply was lost"))));
+-  RunWithStorage(extension, settings_namespace::LOCAL, base::BindOnce(
++  RunWithStorageUngated(extension, settings_namespace::LOCAL, base::BindOnce(
+       [](AuxUiPreferenceCaptureCallback callback, ValueStore* storage) {
+         if (!storage) {
+           std::move(callback).Run(base::unexpected(ValueStore::Status(
+@@ -634,6 +791,17 @@
+ }
+ 
+ void StorageFrontend::CommitAuxUiPreferenceMigration(
++    scoped_refptr<const Extension> extension,
++    std::unique_ptr<ValueStore::AuxUiPreferenceCapture> capture,
++    base::OnceCallback<void(ValueStore::Status)> callback) {
++  DCHECK_CURRENTLY_ON(BrowserThread::UI);
++  if (aux_ui_migration_gate_) {
++    std::move(callback).Run(ValueStore::Status(ValueStore::OTHER_ERROR,
++        "Actual Aux writer lease already owns this backend")); return;
++  }
++  CommitAuxUiPreferencesUngated(std::move(extension), std::move(capture), std::move(callback));
++}
++void StorageFrontend::CommitAuxUiPreferencesUngated(
+     scoped_refptr<const Extension> extension,
+     std::unique_ptr<ValueStore::AuxUiPreferenceCapture> capture,
+     base::OnceCallback<void(ValueStore::Status)> callback) {
+@@ -661,7 +829,7 @@
+       base::BindPostTaskToCurrentDefault(std::move(reply)),
+       ValueStore::Status(ValueStore::OTHER_ERROR,
+                          "Aux migration commit reply was lost"));
+-  RunWithStorage(extension, settings_namespace::LOCAL, base::BindOnce(
++  RunWithStorageUngated(extension, settings_namespace::LOCAL, base::BindOnce(
+       [](std::unique_ptr<ValueStore::AuxUiPreferenceCapture> capture,
+          base::OnceCallback<void(ValueStore::Status)> callback,
+          ValueStore* storage) {
+@@ -682,6 +850,25 @@
+     ValueStoreCache::StorageCallback callback) {
+   DCHECK_CURRENTLY_ON(BrowserThread::UI);
+   CHECK(extension.get());
++  if (aux_ui_migration_gate_ && extension->id() == "gokkffaiccpmoeodpmeamcjajcagjmkm" &&
++      settings_namespace == extensions::settings_namespace::LOCAL) {
++    aux_ui_migration_gate_->tainted = true;
++    // Preserve the original operation and its real callback. The source pause
++    // must close producers before this gate; attempted new work invalidates
++    // qualification and cannot silently execute against a captured old store.
++    aux_ui_migration_gate_->deferred.push_back(base::BindOnce(
++        &StorageFrontend::RunWithStorage, weak_factory_.GetWeakPtr(),
++        std::move(extension), settings_namespace, std::move(callback)));
++    return;
++  }
++  RunWithStorageUngated(std::move(extension), settings_namespace, std::move(callback));
++}
++void StorageFrontend::RunWithStorageUngated(
++    scoped_refptr<const Extension> extension,
++    settings_namespace::Namespace settings_namespace,
++    ValueStoreCache::StorageCallback callback) {
++  DCHECK_CURRENTLY_ON(BrowserThread::UI);
++  CHECK(extension.get());
+ 
+   ValueStoreCache* cache = caches_[settings_namespace];
+   CHECK(cache);
+@@ -695,6 +882,13 @@
+ void StorageFrontend::DeleteStorageSoon(const ExtensionId& extension_id,
+                                         base::OnceClosure done_callback) {
+   DCHECK_CURRENTLY_ON(BrowserThread::UI);
++  if (aux_ui_migration_gate_ && extension_id == "gokkffaiccpmoeodpmeamcjajcagjmkm") {
++    aux_ui_migration_gate_->tainted = true;
++    aux_ui_migration_gate_->deferred.push_back(base::BindOnce(
++        &StorageFrontend::DeleteStorageSoon, weak_factory_.GetWeakPtr(), extension_id,
++        std::move(done_callback)));
++    return;
++  }
+   auto subtask_done_callback =
+       base::BarrierClosure(caches_.size(), std::move(done_callback));
+   for (auto& cache_map : caches_) {

@@ -1,0 +1,16 @@
+{
+  "format": "aux.extension-writer-gate.source-check.actual.v1",
+  "passed": true,
+  "sourcePlanSha256": "24bc7ff28d174913b8a9f53b27e5cc94f03f5884cd2f7a61c8daef4c6738ddb8",
+  "patchSha256": "8800ff61b5f5ae37135614b844556daad3d98b8ba71bc97c0cc824c05408e1ca",
+  "files": 2,
+  "countedAnchors": 11,
+  "replayDirectory": "/private/tmp/aux-extension-writer-gate-replay-26w3alhs",
+  "exactReplayPassed": true,
+  "reverseCheckPassed": true,
+  "nativeCheckoutChanged": false,
+  "nativeCompiled": false,
+  "testsExecuted": false,
+  "productExecuted": false,
+  "runtimeAcceptance": false
+}
