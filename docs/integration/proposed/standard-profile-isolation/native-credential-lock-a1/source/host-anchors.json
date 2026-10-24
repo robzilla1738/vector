@@ -1,0 +1,27 @@
+[
+  {
+    "find": "#include <sys/file.h>",
+    "replace": "#include <sys/file.h>\n#include <limits.h>",
+    "count": 1
+  },
+  {
+    "find": "struct RuntimeScope;",
+    "replace": "struct RuntimeScope;\nstruct Worker;\nvoid CloseChatGPTCredentialLocks(Worker*) noexcept;",
+    "count": 1
+  },
+  {
+    "find": "    // No host/worker lock crosses native retirement, OS drain or owner release.",
+    "replace": "    CloseChatGPTCredentialLocks(this);\n    // No host/worker lock crosses native retirement, OS drain or owner release.",
+    "count": 1
+  },
+  {
+    "find": "#include \"AuxBrokerWritesNapi.inc\"",
+    "replace": "#include \"AuxBrokerWritesNapi.inc\"\n#include \"AuxChatGPTCredentialLock.inc\"",
+    "count": 1
+  },
+  {
+    "find": "      {\"assertBrokerOwner\",nullptr,AssertBrokerOwner,nullptr,nullptr,nullptr,napi_default,nullptr},",
+    "replace": "      {\"beginChatGPTCredentialLock\",nullptr,BeginChatGPTCredentialLock,nullptr,nullptr,nullptr,napi_default,nullptr},\n      {\"withChatGPTCredentialLockSync\",nullptr,WithChatGPTCredentialLockSync,nullptr,nullptr,nullptr,napi_default,nullptr},\n      {\"closeChatGPTCredentialLock\",nullptr,CloseChatGPTCredentialLock,nullptr,nullptr,nullptr,napi_default,nullptr},\n      {\"assertBrokerOwner\",nullptr,AssertBrokerOwner,nullptr,nullptr,nullptr,napi_default,nullptr},",
+    "count": 1
+  }
+]

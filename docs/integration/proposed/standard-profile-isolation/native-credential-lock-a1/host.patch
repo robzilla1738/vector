@@ -1,0 +1,45 @@
+--- a/AuxDevelopmentWorkerHost.cc
++++ b/AuxDevelopmentWorkerHost.cc
+@@ -34,6 +34,7 @@
+ #include <CommonCrypto/CommonDigest.h>
+ #include <dirent.h>
+ #include <sys/file.h>
++#include <limits.h>
+ #include <time.h>
+ #include <stdio.h>
+ #include <stdexcept>
+@@ -62,6 +63,8 @@
+   ~Owner() { AuxReleaseSignedDevelopmentOwner(retained); }
+ };
+ struct RuntimeScope;
++struct Worker;
++void CloseChatGPTCredentialLocks(Worker*) noexcept;
+ struct HostCleanObservation {
+   std::mutex mutex;
+   bool admission_closed = false;
+@@ -157,6 +160,7 @@
+       }
+       retiring = true;
+     }
++    CloseChatGPTCredentialLocks(this);
+     // No host/worker lock crosses native retirement, OS drain or owner release.
+     // A concurrent/reentrant close observes pending instead of deadlocking.
+     int32_t status = captured ? AuxNativeContextRetire(captured->handle) : 0;
+@@ -356,6 +360,7 @@
+ }
+ #include "AuxStorageRootsNapi.inc"
+ #include "AuxBrokerWritesNapi.inc"
++#include "AuxChatGPTCredentialLock.inc"
+ #include "AuxBrokerAwaitedNapi.inc"
+ #include "AuxRuntimeCacheInspection.inc"
+ #include "AuxRuntimeCachePins.inc"
+@@ -1094,6 +1099,9 @@
+       {"seedBundledRuntime",nullptr,SeedBundledRuntime,nullptr,nullptr,nullptr,napi_default,nullptr},
+       {"acquireRuntimeMutation",nullptr,AcquireRuntimeMutation,nullptr,nullptr,nullptr,napi_default,nullptr},
+       {"acquireRuntimeUse",nullptr,AcquireRuntimeUse,nullptr,nullptr,nullptr,napi_default,nullptr},
++      {"beginChatGPTCredentialLock",nullptr,BeginChatGPTCredentialLock,nullptr,nullptr,nullptr,napi_default,nullptr},
++      {"withChatGPTCredentialLockSync",nullptr,WithChatGPTCredentialLockSync,nullptr,nullptr,nullptr,napi_default,nullptr},
++      {"closeChatGPTCredentialLock",nullptr,CloseChatGPTCredentialLock,nullptr,nullptr,nullptr,napi_default,nullptr},
+       {"assertBrokerOwner",nullptr,AssertBrokerOwner,nullptr,nullptr,nullptr,napi_default,nullptr},
+       {"withBrokerSync",nullptr,WithBrokerSync,nullptr,nullptr,nullptr,napi_default,nullptr},
+       {"withBrokerAwaited",nullptr,WithBrokerAwaited,nullptr,nullptr,nullptr,napi_default,nullptr},

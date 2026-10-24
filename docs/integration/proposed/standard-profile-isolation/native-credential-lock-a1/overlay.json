@@ -1,0 +1,119 @@
+{
+  "format": "aux.chatgpt-native-credential-lock.overlay.v1",
+  "stage": "native-credential-lock",
+  "sourceFiles": [
+    {
+      "path": "docs/integration/proposed/standard-profile-isolation/native-credential-lock-a1/source/AuxChatGPTCredentialLock.inc",
+      "sha256": "5fd433655ec805a4399599f16ed6b5e468af02c1a08b18bd6ded5f3e83186115"
+    },
+    {
+      "path": "docs/integration/proposed/standard-profile-isolation/native-credential-lock-a1/source/AuxDevelopmentWorkerHost.cc",
+      "sha256": "660f3a55ab7d3b8a527ceadf01c1a212e7a7bff0afca3546797caa74357b0b87"
+    },
+    {
+      "path": "docs/integration/proposed/standard-profile-isolation/native-credential-lock-a1/source/aux-chatgpt.cjs",
+      "sha256": "ab87a75d99a34f28cb4558a6060bfd2fdad0e0f4acbc9f69da4a4c09f8de922f"
+    },
+    {
+      "path": "docs/integration/proposed/standard-profile-isolation/native-credential-lock-a1/source/daemon-lock-capability.js",
+      "sha256": "fa5be650dfd842849d8339bb291bf9b1bdf7674b99ccef80d7944a423a25720d"
+    },
+    {
+      "path": "docs/integration/proposed/standard-profile-isolation/native-credential-lock-a1/source/host-anchors.json",
+      "sha256": "ff9d86402deb76f6da55cae184c563d8c0f93686bb3937c3a395d24c0cdc15e4"
+    },
+    {
+      "path": "docs/integration/proposed/standard-profile-isolation/native-credential-lock-a1/source/shim-anchors.json",
+      "sha256": "0bbed4c15773d75c7f0d6bd15e4a6dd5998d4e1c98000a832b3465349c90e115"
+    },
+    {
+      "path": "docs/integration/proposed/standard-profile-isolation/native-credential-lock-a1/source/transform.mjs",
+      "sha256": "f513631a79d1f422c99a5d7b17217debe016fb6e3c9b35d91d7ecbdce40408e8"
+    }
+  ],
+  "inputs": [
+    {
+      "path": "/private/tmp/aux-standard-native-source-20261023-a4/AuxDevelopmentWorkerHost.cc",
+      "sha256": "c9d68ac1284c7521aa857b4422205648e95adec5c3babb86783e15a71c1553a7"
+    },
+    {
+      "path": "/private/tmp/aux-standard-daemon-projection-20261024-a4/index.mjs",
+      "sha256": "a37b3d7eb72707ca00729e39eae4aa90f3968ca7dfa5379f823ac1007f3157c4"
+    },
+    {
+      "path": "/private/tmp/aux-standard-daemon-projection-20261024-a4/projected-entry/aux-native-entry.mjs",
+      "sha256": "edc8a98ed1bad63432c6ebf1e3244a27f690256f597933eb53054b4136dc9812"
+    },
+    {
+      "path": "/private/tmp/aux-standard-daemon-projection-20261024-a4/native/aux-chatgpt.cjs",
+      "sha256": "43f8ce1e95d34c3deeca3f6c0a2cecd8b55dcce2342a09f490fbfc06d496e3ef"
+    },
+    {
+      "path": "/private/tmp/aux-standard-daemon-link-20261023-a3/results.json",
+      "sha256": "d4a21086d6cfd0704f7512101873762125d912307034f37f48f3084155cea1d6"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/integration/native-build-a2.json",
+      "sha256": "47c19b1c3ded0fbcf6d6cd9c28ba1d9fa7a6575d81d954b6fbaaa17788a652b2"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/integration/daemon-link-a3-inputs.json",
+      "sha256": "a71af23aeb15f8c7108e19355a6028af41e330d21b9a11be07fc4d5f789efe95"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/profile-isolation-continuation/broker-writes/source/AuxBrokerWritesNapi.inc",
+      "sha256": "fdac90ec6345980cbdcac929a507afcf67670bde03c18aba23ef07dcd2cc2033"
+    },
+    {
+      "path": "/private/tmp/aux-standard-native-source-20261023-a4/AuxOwnedCommandDispatcher.swift",
+      "sha256": "85153a74b4fc12b5e0374ac58ecdc95f588835b10b38811bf2fb6b267ab1f6b1"
+    }
+  ],
+  "daemonInputs": [
+    {
+      "kind": "source",
+      "path": "/private/tmp/aux-standard-daemon-projection-20261024-a4/index.mjs",
+      "inputSha256": "a37b3d7eb72707ca00729e39eae4aa90f3968ca7dfa5379f823ac1007f3157c4",
+      "outputSha256": "362e167d098dd002f0855075a0c9fe02a358749c8a139c03e7739e0cc600848b",
+      "changes": 1,
+      "changesSha256": "d03224b337504605c5fdf31372d8e3d257a53d7e0e4a93725ddaed5b61d2dea9"
+    },
+    {
+      "kind": "entry",
+      "path": "/private/tmp/aux-standard-daemon-projection-20261024-a4/projected-entry/aux-native-entry.mjs",
+      "inputSha256": "edc8a98ed1bad63432c6ebf1e3244a27f690256f597933eb53054b4136dc9812",
+      "outputSha256": "fb2ebc91649242c65597a92b3845cc401699cc77928534a26882421f48959c48",
+      "changes": 1,
+      "changesSha256": "d03224b337504605c5fdf31372d8e3d257a53d7e0e4a93725ddaed5b61d2dea9"
+    }
+  ],
+  "shim": {
+    "kind": "shim",
+    "path": "/private/tmp/aux-standard-daemon-projection-20261024-a4/native/aux-chatgpt.cjs",
+    "inputSha256": "43f8ce1e95d34c3deeca3f6c0a2cecd8b55dcce2342a09f490fbfc06d496e3ef",
+    "outputSha256": "ab87a75d99a34f28cb4558a6060bfd2fdad0e0f4acbc9f69da4a4c09f8de922f",
+    "changes": 5,
+    "changesSha256": "7ca01bb1e3f01edb1b12dce7248d23ad66bed9b5f07ebd386479ad42433b1bd3"
+  },
+  "host": {
+    "kind": "host",
+    "path": "/private/tmp/aux-standard-native-source-20261023-a4/AuxDevelopmentWorkerHost.cc",
+    "inputSha256": "c9d68ac1284c7521aa857b4422205648e95adec5c3babb86783e15a71c1553a7",
+    "outputSha256": "660f3a55ab7d3b8a527ceadf01c1a212e7a7bff0afca3546797caa74357b0b87",
+    "changes": 5,
+    "changesSha256": "9d9fc3216b0413776d814e9d10d59b3f1dee2dfe28f18cfc58eab1c457708b70"
+  },
+  "hostPatchSha256": "94ee6ecbd790cacf277b53d1b53d73cd7a06e40c6a9d5597116c9deb3cc00cda",
+  "compileReviewSha256": "995f6eb7a7a58cf6f82294dbdf9df06573dc77002a493997727650ebdc6aa6ba",
+  "daemonAnchorCount": 1,
+  "shimAnchorCount": 5,
+  "hostAnchorCount": 5,
+  "nativeHeaderAdded": "AuxChatGPTCredentialLock.inc",
+  "nativeCompiled": false,
+  "nativeLinked": false,
+  "productExecuted": false,
+  "runtimeAccepted": false,
+  "genericDescriptorPolicyChanged": false,
+  "publicNativeAbiChanged": false,
+  "previousModuleMustRemainUnchanged": true
+}

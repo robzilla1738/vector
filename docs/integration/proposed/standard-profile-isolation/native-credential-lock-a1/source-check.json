@@ -1,0 +1,51 @@
+{
+  "format": "aux.chatgpt-native-credential-lock.source-check.v1",
+  "passed": true,
+  "inputs": [
+    {
+      "kind": "source",
+      "path": "/private/tmp/aux-standard-daemon-projection-20261024-a4/index.mjs",
+      "inputSha256": "a37b3d7eb72707ca00729e39eae4aa90f3968ca7dfa5379f823ac1007f3157c4",
+      "outputSha256": "362e167d098dd002f0855075a0c9fe02a358749c8a139c03e7739e0cc600848b",
+      "changes": 1,
+      "changesSha256": "d03224b337504605c5fdf31372d8e3d257a53d7e0e4a93725ddaed5b61d2dea9"
+    },
+    {
+      "kind": "entry",
+      "path": "/private/tmp/aux-standard-daemon-projection-20261024-a4/projected-entry/aux-native-entry.mjs",
+      "inputSha256": "edc8a98ed1bad63432c6ebf1e3244a27f690256f597933eb53054b4136dc9812",
+      "outputSha256": "fb2ebc91649242c65597a92b3845cc401699cc77928534a26882421f48959c48",
+      "changes": 1,
+      "changesSha256": "d03224b337504605c5fdf31372d8e3d257a53d7e0e4a93725ddaed5b61d2dea9"
+    },
+    {
+      "kind": "shim",
+      "path": "/private/tmp/aux-standard-daemon-projection-20261024-a4/native/aux-chatgpt.cjs",
+      "inputSha256": "43f8ce1e95d34c3deeca3f6c0a2cecd8b55dcce2342a09f490fbfc06d496e3ef",
+      "outputSha256": "ab87a75d99a34f28cb4558a6060bfd2fdad0e0f4acbc9f69da4a4c09f8de922f",
+      "changes": 5,
+      "changesSha256": "7ca01bb1e3f01edb1b12dce7248d23ad66bed9b5f07ebd386479ad42433b1bd3"
+    },
+    {
+      "kind": "host",
+      "path": "/private/tmp/aux-standard-native-source-20261023-a4/AuxDevelopmentWorkerHost.cc",
+      "inputSha256": "c9d68ac1284c7521aa857b4422205648e95adec5c3babb86783e15a71c1553a7",
+      "outputSha256": "660f3a55ab7d3b8a527ceadf01c1a212e7a7bff0afca3546797caa74357b0b87",
+      "changes": 5,
+      "changesSha256": "9d9fc3216b0413776d814e9d10d59b3f1dee2dfe28f18cfc58eab1c457708b70"
+    }
+  ],
+  "inertChecks": [
+    "paired counted source replay",
+    "JS syntax without product import",
+    "nested finite store methods",
+    "abort rejects late credential write",
+    "close waits actual synchronous stack",
+    "closed lease rejects reuse"
+  ],
+  "nativeCompiled": false,
+  "nativeSyscallsExecuted": false,
+  "providerExecuted": false,
+  "productExecuted": false,
+  "runtimeAccepted": false
+}
