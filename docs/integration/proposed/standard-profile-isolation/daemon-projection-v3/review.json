@@ -1,0 +1,37 @@
+{
+  "format": "aux.standard-daemon-projection-v3.preparation.v1",
+  "pairedLiteralReplay": true,
+  "pairedSyntax": true,
+  "previousSourceSha256": "2e35bf82a24e22a1a76b61fe7211c9a1bdbfb770f3e45ae689131eefae9f75ea",
+  "previousEntrySha256": "ebb32136d280406d02841c5f9fc3b08d2714b4384e70d0d690ca4bdd8bb1c8d7",
+  "expectedOutputs": {
+    "source": "3ee2471769470b820bfaf16d64f6dfc7aa0bef1b8ad54493c7d2a0bffe725802",
+    "entry": "ba6194fbe579dec43ccaa2a7b788e58bc0a1cb9a0ff52ab5b5cfcea334890804"
+  },
+  "expectedStages": {
+    "source": [
+      {
+        "name": "interactive-oauth",
+        "inputSha256": "2e35bf82a24e22a1a76b61fe7211c9a1bdbfb770f3e45ae689131eefae9f75ea",
+        "outputSha256": "3ee2471769470b820bfaf16d64f6dfc7aa0bef1b8ad54493c7d2a0bffe725802",
+        "changesSha256": "cc7c9398e1d1ea3a7eaf8ef5c3effc1855a2ada3100fe4e318f1847727bc8f2c"
+      }
+    ],
+    "entry": [
+      {
+        "name": "interactive-oauth",
+        "inputSha256": "ebb32136d280406d02841c5f9fc3b08d2714b4384e70d0d690ca4bdd8bb1c8d7",
+        "outputSha256": "ba6194fbe579dec43ccaa2a7b788e58bc0a1cb9a0ff52ab5b5cfcea334890804",
+        "changesSha256": "cc7c9398e1d1ea3a7eaf8ef5c3effc1855a2ada3100fe4e318f1847727bc8f2c"
+      }
+    ]
+  },
+  "editsPerLeaf": 13,
+  "frozenPriorAnchorCount": 153,
+  "plannedTotalAnchorCount": 166,
+  "originalProjectorRerun": false,
+  "producerRun": false,
+  "productExecuted": false,
+  "providerRequests": 0,
+  "nativeBuild": false
+}
