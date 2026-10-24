@@ -1,0 +1,73 @@
+{
+  "format": "aux.runtime-cache-package.review.v1",
+  "inputs": {
+    "featureTool": {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/package/feature_package.py",
+      "sha256": "bf631ba3ac0cb536bc7cb4f76a6f673ae6991d1a4319cc87a90f4401861bddaf"
+    },
+    "basePreparer": {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/package/prepare_base.py",
+      "sha256": "3f2d3320c3d6d9e4cffb06e7c0bdc5624c04aea87a79b2cbe8484a7541f87590"
+    },
+    "assembler": {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/profile-isolation-delivery/package/assemble.py",
+      "sha256": "e6ac0a786e9a443efa00beac35fe7eb4dc029c24a4dd7c752cf8dcc664e240f2"
+    },
+    "legacyPreparer": {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/profile-isolation-delivery/package/prepare.py",
+      "sha256": "0ab1853339753f8bd8c6913a7fa54127b03dca21f3ff362cc5ccd14543eaed54"
+    },
+    "protectedRecipe": {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/profile-isolation-protected-startup/integration/package-recipe.json",
+      "sha256": "6b41db40b135d075f620227cbd94dff49923c80862dc13976cd8fb56d5a49f26"
+    },
+    "protectedPair": {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/profile-isolation-protected-startup/integration/source-pair.json",
+      "sha256": "1eb6698864691d5affacc52f860ffb9a917fdf07a36cc5ffcc8fb55d26f4d8e4"
+    },
+    "protectedInputs": {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/profile-isolation-protected-startup/integration/daemon-inputs.json",
+      "sha256": "e2206c68f0be0cd024ed5b77b28be36dc2c88459cb445f4fd55193a9c3a7704d"
+    },
+    "protectedLink": {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/profile-isolation-protected-startup/integration/daemon-link.json",
+      "sha256": "4ef12198bbd92df5c40e2cefb4f95036f94b0e404ee3c6b47f4a6063a052fa3c"
+    },
+    "sourceOverlay": {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/profile-isolation-local-finish/runtime-cache-async-integration/source-overlay.json",
+      "sha256": "1f74499da0e59e03bf14af1efa3cf664ec6e5cbac118068c4c4de475dcd0c856"
+    },
+    "projection": {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/async-daemon-projection/actual-projection.json",
+      "sha256": "f4ef315fa5c08aae6fd331eaf7b4b3b6da6688b14c1eca67b602b5a0c342b513"
+    },
+    "browserReceipt": {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/unsigned-browser-features-full-build-20261023-a18/receipt.json",
+      "sha256": "b7e5dbd45bedfd05dedaa1201512097be20dcb1d4712ac184931f0a4de027287"
+    },
+    "guardReview": {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/package/guard-transition.json",
+      "sha256": "c4d31fb767c0cfd40d46c79d2d714a67ac390859de02fa5253ba428594b5680d"
+    },
+    "guardPatch": {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/package/guard-transition.patch",
+      "sha256": "623e450656dc991e9ec9eaffcb9373aa37ebc57a04daa51fe5dbcd3388feb383"
+    },
+    "toolchainReview": {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/package/toolchain-alias-review.json",
+      "sha256": "010dfbfca72c07c059ea5790ec38d506e3b17bb839cb10bde7d0df5c2c68a390"
+    }
+  },
+  "relink": null,
+  "reservedRelinkPaths": {
+    "plan": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/profile-isolation-local-finish/runtime-cache-async-relink-a2/plan.json",
+    "runner": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/profile-isolation-local-finish/runtime-cache-async-relink-a2/run.py",
+    "host": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/profile-isolation-local-finish/runtime-cache-async-relink-a2/source/AuxDevelopmentWorkerHost.cc"
+  },
+  "relinkStatus": "Pending actual final corrected plan and successful compile/link; no receipts invented",
+  "expectedFeatureResourceDeltas": 14,
+  "testable": false,
+  "runtimeAuthorityGranted": false,
+  "runtimeExecuted": false,
+  "assembled": false
+}

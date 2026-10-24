@@ -1,0 +1,20 @@
+{
+  "format": "aux.runtime-cache-package.preparation.v1",
+  "checks": {
+    "pythonSourceParsed": true,
+    "availablePinnedInputsMatch": true
+  },
+  "relinkReviewFrozen": false,
+  "actualLinkChecked": false,
+  "sourcePairCreated": false,
+  "recipePrepared": false,
+  "assembled": false,
+  "runtimeExecuted": false,
+  "testable": false,
+  "runtimeAuthorityGranted": false,
+  "files": {
+    "cache_package.py": "82126e6b17a23992eaad64f923c5facb976acef8c61281b76c9ac581c86cb2b9",
+    "review.json": "f3892323313c169cef6fe44c1f685c16dc43c04e65de7d07859363beb681fbd9",
+    "README.md": "3d7a6f44a4dc6938ead109bd7cf9e20cb548a2b3ef37bb051562de0877eb456a"
+  }
+}
