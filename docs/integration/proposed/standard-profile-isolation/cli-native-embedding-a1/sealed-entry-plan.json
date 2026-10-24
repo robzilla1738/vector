@@ -1,0 +1,46 @@
+{
+  "format": "aux.cli-sealed-entry.proposal.v1",
+  "input": "/private/tmp/aux-native-current-entry-package/docs/integration/proposed/aux-native-current-entry-package/source/AuxSealedNativeDaemonEntry.swift",
+  "inputSha256": "1076fd852428f0db4d0ba4f2a2898b05f88656d9bec36d272418a1fe2bdac2b8",
+  "output": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/cli-native-embedding-a1/source/daemon/AuxSealedNativeCliEntry.swift",
+  "outputSha256": "9e42fbfb371c6e2ebb0c323e5b8b5578dbc9041b36486028146169c9cd513532",
+  "changes": [
+    {
+      "find": "AuxSealedDaemonEntryError",
+      "replace": "AuxSealedCliEntryError",
+      "count": 16
+    },
+    {
+      "find": "sealedEntryMetadata",
+      "replace": "cliSealedEntryMetadata",
+      "count": 5
+    },
+    {
+      "find": "sealedEntrySame",
+      "replace": "cliSealedEntrySame",
+      "count": 3
+    },
+    {
+      "find": "loadSealedNativeDaemonEntry",
+      "replace": "loadSealedNativeCliEntry",
+      "count": 2
+    },
+    {
+      "find": "AuxCopySealedNativeDaemonEntry",
+      "replace": "AuxCopySealedNativeCliEntry",
+      "count": 2
+    },
+    {
+      "find": "policy.contents.role == .daemon",
+      "replace": "policy.contents.role == .cli",
+      "count": 1
+    },
+    {
+      "find": "aux-native-entry.mjs",
+      "replace": "aux-native-cli-entry.mjs",
+      "count": 4
+    }
+  ],
+  "nativeApiExecuted": false,
+  "compiled": false
+}

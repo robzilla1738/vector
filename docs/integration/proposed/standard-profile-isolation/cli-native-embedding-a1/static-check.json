@@ -1,0 +1,24 @@
+{
+  "format": "aux.cli-native-embedding.static-check.v1",
+  "passed": true,
+  "checks": [
+    "six native overlays replay exactly from unchanged inputs; eleven one-match anchors",
+    "exact native patch applies and reverses in a disposable source-only directory",
+    "current compiled sealed-entry reader preserved by seven exact counted substitutions",
+    "every proposed source has a hash and destination; no root registration/packaging mutation",
+    "actual current native source graph and Node Worker cwd implementation pinned without execution",
+    "managed/unknown launch refused; private-child refusal and private uncalled retained factory remain"
+  ],
+  "nativeOverlayCount": 6,
+  "nativeAnchorCount": 11,
+  "sourceCount": 18,
+  "dependencyCount": 66,
+  "nativeCheckoutChanged": false,
+  "nativeBuildRun": false,
+  "compilerRun": false,
+  "nativeApiExecuted": false,
+  "productExecuted": false,
+  "signed": false,
+  "packageSelected": false,
+  "runtimeAcceptance": false
+}

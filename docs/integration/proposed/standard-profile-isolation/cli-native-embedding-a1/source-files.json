@@ -1,0 +1,115 @@
+{
+  "format": "aux.cli-native-embedding.sources.v1",
+  "files": [
+    {
+      "source": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/cli-native-embedding-a1/source/base/process/launch.h",
+      "path": "base/process/launch.h",
+      "sha256": "9073808bd4450e3a814c48b9a464f805c4172fdf6040911b7d93561398ee33f0",
+      "kind": "existing-native-overlay"
+    },
+    {
+      "source": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/cli-native-embedding-a1/source/base/process/launch_mac.cc",
+      "path": "base/process/launch_mac.cc",
+      "sha256": "30ab5100db1d42c6cb43d3185cd183f6ddc56572831d01d0fa0955e3f0250e2a",
+      "kind": "existing-native-overlay"
+    },
+    {
+      "source": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/cli-native-embedding-a1/source/base/process/mac/aux_browser_descendant_engine.cc",
+      "path": "base/process/mac/aux_browser_descendant_engine.cc",
+      "sha256": "d787d49fc018b1153f8e6414615f0a40f87b458d91aa3c8fcc82c4fa6f3ef470",
+      "kind": "existing-native-overlay"
+    },
+    {
+      "source": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/cli-native-embedding-a1/source/base/process/mac/aux_browser_descendant_engine.h",
+      "path": "base/process/mac/aux_browser_descendant_engine.h",
+      "sha256": "55d795b7dcd1631c71ed32a713dbbb9dd16673808c8183837ba2bd1426883f27",
+      "kind": "existing-native-overlay"
+    },
+    {
+      "source": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/cli-native-embedding-a1/source/browser/AuxBrowserCliInvocation.cc",
+      "path": "chrome/browser/aux/cli/AuxBrowserCliInvocation.cc",
+      "sha256": "0256f10b4140a4a9e63cfae34f95b68e0b332c1bd32e898fe61932042e16351c",
+      "kind": "new-native-source"
+    },
+    {
+      "source": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/cli-native-embedding-a1/source/browser/AuxBrowserCliInvocation.h",
+      "path": "chrome/browser/aux/cli/AuxBrowserCliInvocation.h",
+      "sha256": "00df1e6f88d2b132d53d6f99000d065750b149347eedf7fb60c42cd9fc951255",
+      "kind": "new-native-source"
+    },
+    {
+      "source": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/cli-native-embedding-a1/source/chrome/browser/aux/AuxOwnedNativePeerChild.cc",
+      "path": "chrome/browser/aux/AuxOwnedNativePeerChild.cc",
+      "sha256": "9a0377648a004dceddf2f1e19ca32ea7c4df6064dc57426a095e278fd2776ccb",
+      "kind": "existing-native-overlay"
+    },
+    {
+      "source": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/cli-native-embedding-a1/source/chrome/browser/aux/AuxOwnedNativePeerChild.h",
+      "path": "chrome/browser/aux/AuxOwnedNativePeerChild.h",
+      "sha256": "9e2210ccac6621d4bd84bbe1429427bc7a8d3fd96991fa2e0d087c310270fc1a",
+      "kind": "existing-native-overlay"
+    },
+    {
+      "source": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/cli-native-embedding-a1/source/common/AuxCliIngress.cc",
+      "path": "chrome/browser/aux/cli/AuxCliIngress.cc",
+      "sha256": "d5187ed6bdf9fb002a9a24a1c319e891904802739651029a78dd7816b7f38982",
+      "kind": "new-native-source"
+    },
+    {
+      "source": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/cli-native-embedding-a1/source/common/AuxCliIngress.h",
+      "path": "chrome/browser/aux/cli/AuxCliIngress.h",
+      "sha256": "149338fc22b9eb3b90554d679814afc094046cef4aff75e1ab92fa11fca94fac",
+      "kind": "new-native-source"
+    },
+    {
+      "source": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/cli-native-embedding-a1/source/common/AuxCliSealedImages.cc",
+      "path": "chrome/browser/aux/cli/AuxCliSealedImages.cc",
+      "sha256": "fb28fb6fd341165d229670befb2bb5d3ff108054c5e7e286362ca7c7ba12a959",
+      "kind": "new-native-source"
+    },
+    {
+      "source": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/cli-native-embedding-a1/source/common/AuxCliSealedImages.h",
+      "path": "chrome/browser/aux/cli/AuxCliSealedImages.h",
+      "sha256": "6f1df6f4b83809e8e4ae4fec2cfcd4a6a8e7b0cd40e8bcbb1e7bc25bec59087b",
+      "kind": "new-native-source"
+    },
+    {
+      "source": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/cli-native-embedding-a1/source/common/AuxCliWire.cc",
+      "path": "chrome/browser/aux/cli/AuxCliWire.cc",
+      "sha256": "94ba5d5e076cc6fbfb7163512c1f8600b326969ef7e83dde236ac483c8a1fb68",
+      "kind": "new-native-source"
+    },
+    {
+      "source": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/cli-native-embedding-a1/source/common/AuxCliWire.h",
+      "path": "chrome/browser/aux/cli/AuxCliWire.h",
+      "sha256": "e95c86ea68e13b9265ab3a48d983824dba128eab260687ab061387f18f788774",
+      "kind": "new-native-source"
+    },
+    {
+      "source": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/cli-native-embedding-a1/source/common/AuxNativeCliFrontend.cc",
+      "path": "chrome/browser/aux/cli/AuxNativeCliFrontend.cc",
+      "sha256": "896180208e311451d8d4f9b607d7337089e0cebcdf5989fc17013491f510f311",
+      "kind": "new-native-source"
+    },
+    {
+      "source": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/cli-native-embedding-a1/source/daemon/AuxRetainedCliInvocation.cc",
+      "path": "native-cli/AuxRetainedCliInvocation.cc",
+      "sha256": "b83a586f1d9029c14468fe484e95aff33e20d559ec7fad8c210b7c2a64abbb53",
+      "kind": "new-native-executable-source"
+    },
+    {
+      "source": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/cli-native-embedding-a1/source/daemon/AuxRetainedCliInvocation.h",
+      "path": "native-cli/AuxRetainedCliInvocation.h",
+      "sha256": "9bf81121f4197ed6a4a4f90a0cfc6af3dc977dfd407ad6684d9a8fa4848305a0",
+      "kind": "new-native-executable-source"
+    },
+    {
+      "source": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/cli-native-embedding-a1/source/daemon/AuxSealedNativeCliEntry.swift",
+      "path": "native-cli/AuxSealedNativeCliEntry.swift",
+      "sha256": "9e42fbfb371c6e2ebb0c323e5b8b5578dbc9041b36486028146169c9cd513532",
+      "kind": "new-native-executable-source"
+    }
+  ],
+  "sourceCount": 18,
+  "packageSelected": false
+}

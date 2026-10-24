@@ -1,0 +1,157 @@
+--- a/base/process/launch.h
++++ b/base/process/launch.h
+@@ -125,6 +125,11 @@
+ 
+   // If not empty, change to this directory before executing the new process.
+   base::FilePath current_directory;
++#if BUILDFLAG(IS_MAC)
++  // Native caller retains this actual directory through LaunchProcess. Never
++  // combine with current_directory. Default preserves every existing launch.
++  int current_directory_fd = -1;
++#endif
+ 
+ #if BUILDFLAG(IS_WIN)
+   bool start_hidden = false;
+--- a/base/process/launch_mac.cc
++++ b/base/process/launch_mac.cc
+@@ -81,6 +81,7 @@
+ #include "base/memory/raw_ptr.h"
+ #include "base/posix/eintr_wrapper.h"
+ #include "base/process/environment_internal.h"
++#include <sys/stat.h>
+ #include "base/process/launch.h"
+ #include "base/threading/scoped_blocking_call.h"
+ #include "base/threading/thread_restrictions.h"
+@@ -159,6 +160,13 @@
+   }
+ 
+ #if BUILDFLAG(IS_MAC)
++  void Fchdir(int descriptor) {
++    if (__builtin_available(macOS 26, *)) {
++      DPSXCHECK(posix_spawn_file_actions_addfchdir(&file_actions_, descriptor));
++    } else {
++      DPSXCHECK(posix_spawn_file_actions_addfchdir_np(&file_actions_, descriptor));
++    }
++  }
+   void Chdir(const char* path) {
+     if (__builtin_available(macOS 26, *)) {
+       DPSXCHECK(posix_spawn_file_actions_addchdir(&file_actions_, path));
+@@ -264,6 +272,16 @@
+ Process LaunchProcess(const std::vector<std::string>& argv,
+                       const LaunchOptions& options) {
+   TRACE_EVENT0("base", "LaunchProcess");
++#if BUILDFLAG(IS_MAC)
++  if (options.current_directory_fd != -1) {
++    struct stat directory;
++    if (!options.current_directory.empty() || options.current_directory_fd < 0 ||
++        fstat(options.current_directory_fd, &directory) != 0 ||
++        !S_ISDIR(directory.st_mode)) {
++      return Process();
++    }
++  }
++#endif
+ 
+   PosixSpawnAttr attr;
+ 
+@@ -275,6 +293,11 @@
+   DPSXCHECK(posix_spawnattr_setflags(attr.get(), flags));
+ 
+   PosixSpawnFileActions file_actions;
++#if BUILDFLAG(IS_MAC)
++  if (options.current_directory_fd >= 0) {
++    file_actions.Fchdir(options.current_directory_fd);
++  }
++#endif
+ 
+   // Process file descriptors for the child. By default, LaunchProcess will
+   // open stdin to /dev/null and inherit stdout and stderr.
+--- a/chrome/browser/aux/AuxOwnedNativePeerChild.h
++++ b/chrome/browser/aux/AuxOwnedNativePeerChild.h
+@@ -53,6 +53,7 @@
+       std::shared_ptr<const ExactCodePolicy> child_policy);
+   ~OwnedNativePeerChild();
+   bool LaunchOnce();
++  bool SignalOwnedProcessGroup(int signal);
+   ExchangeStatus ServicePeerOnce(uint32_t timeout_ms);
+   std::unique_ptr<SelectedNativeHome> TakeSelectedHome();
+   NativeChildObservation CloseAndInspect();
+--- a/chrome/browser/aux/AuxOwnedNativePeerChild.cc
++++ b/chrome/browser/aux/AuxOwnedNativePeerChild.cc
+@@ -8,6 +8,7 @@
+ #include "base/process/process.h"
+ #include "base/time/time.h"
+ #include <sys/wait.h>
++#include <signal.h>
+ #include <unistd.h>
+ #include <mutex>
+ #include <optional>
+@@ -158,6 +159,23 @@
+   // A failed binding does not discard/kill the child already spawned.
+   return static_cast<bool>(state->peer);
+ }
++bool OwnedNativePeerChild::SignalOwnedProcessGroup(int signal) {
++  auto state = state_;
++  if (getpid() != state->process ||
++      (signal != SIGINT && signal != SIGTERM && signal != SIGHUP && signal != SIGWINCH)) return false;
++  std::lock_guard<std::mutex> lock(state->mutex);
++  if (!state->options.new_process_group || !state->child.IsValid() ||
++      state->observation.exit_observed_and_reaped ||
++      state->observation.exit_ownership_unknown) return false;
++  const pid_t pid = state->child.Pid();
++  siginfo_t observed{};
++  if (pid <= 1 || waitid(P_PID, static_cast<id_t>(pid), &observed,
++                         WEXITED | WNOHANG | WNOWAIT) != 0 || observed.si_pid != 0)
++    return false;
++  // This mutex also serializes the sole actual reaper. An exited child stays
++  // waitable until that reaper, so this cannot signal a reused unrelated PID.
++  return kill(-pid, signal) == 0;
++}
+ ExchangeStatus OwnedNativePeerChild::ServicePeerOnce(uint32_t timeout_ms) {
+   auto state = state_;
+   if (getpid() != state->process) return ExchangeStatus::wrongProcess;
+--- a/base/process/mac/aux_browser_descendant_engine.h
++++ b/base/process/mac/aux_browser_descendant_engine.h
+@@ -2,6 +2,7 @@
+ #include <cstdint>
+ #include <functional>
+ #include <memory>
++#include <bsm/audit.h>
+ 
+ namespace aux::browser_descendants {
+ // Native-only capabilities. Never exported as a JS handle, path, PID selector,
+@@ -9,6 +10,11 @@
+ class Cohort;
+ using Ticket = std::shared_ptr<Cohort>;
+ enum class Result { pending, settled, unknown, refused };
++// Only a kernel trailer supplies this token. A missing local observation is
++// unknown: it never proves that the client is a manual terminal or permits
++// selecting another profile. Managed includes reparented retained descendants.
++enum class CliClientMembership { managed, unknown };
++CliClientMembership InspectActualCliClient(audit_token_t kernel_peer) noexcept;
+ 
+ // Exactly once, at the fixed executable's first native main entry, before
+ // bootstrap/image loading/Node/worker creation. Refuses unavailable capability.
+--- a/base/process/mac/aux_browser_descendant_engine.cc
++++ b/base/process/mac/aux_browser_descendant_engine.cc
+@@ -478,6 +478,21 @@
+   if (FenceUsefulLocked(s)) ScheduleFenceLocked(s);
+   return Result::pending;
+ }
++CliClientMembership InspectActualCliClient(audit_token_t token) noexcept {
++  if (!SameProcess()) return CliClientMembership::unknown;
++  const Identity client = Id(token);
++  if (client.pid <= 0 || !client.version) return CliClientMembership::unknown;
++  auto& s = State(); std::lock_guard<std::mutex> lock(s.mutex);
++  // Positive retained custody remains managed even if the stream later loses
++  // certainty. Live stores the genuine original root through exec/reparenting.
++  if (client == s.self || s.live.contains(client))
++    return CliClientMembership::managed;
++  for (const auto& birth : s.roots)
++    if (birth.id == client) return CliClientMembership::managed;
++  // This observer proves its own browser subtree, never the absence of a task
++  // owner in another Aux instance or an earlier/reparented native lineage.
++  return CliClientMembership::unknown;
++}
+ Result InspectStream() noexcept {
+   if (!SameProcess()) return Result::refused;
+   auto& s = State(); std::lock_guard<std::mutex> lock(s.mutex);

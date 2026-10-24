@@ -1,0 +1,124 @@
+{
+  "format": "aux.cli-native-embedding.proposal.v1",
+  "root": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src",
+  "files": [
+    {
+      "path": "base/process/launch.h",
+      "inputSha256": "52b4dc784b0e8678697b10c847fa03f2b482578a323fcd0574d95ef68d6ed008",
+      "outputSha256": "9073808bd4450e3a814c48b9a464f805c4172fdf6040911b7d93561398ee33f0",
+      "source": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/cli-native-embedding-a1/source/base/process/launch.h",
+      "anchors": [
+        {
+          "name": "Optional borrowed macOS directory capability",
+          "find": "  base::FilePath current_directory;\n",
+          "replace": "  base::FilePath current_directory;\n#if BUILDFLAG(IS_MAC)\n  // Native caller retains this actual directory through LaunchProcess. Never\n  // combine with current_directory. Default preserves every existing launch.\n  int current_directory_fd = -1;\n#endif\n",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "base/process/launch_mac.cc",
+      "inputSha256": "2c62e962f5b2fdabcfaaf8a5e4155e15e40ae332cda3a6c9c51261933877e80a",
+      "outputSha256": "30ab5100db1d42c6cb43d3185cd183f6ddc56572831d01d0fa0955e3f0250e2a",
+      "source": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/cli-native-embedding-a1/source/base/process/launch_mac.cc",
+      "anchors": [
+        {
+          "name": "Explicit directory metadata dependency",
+          "find": "#include \"base/process/environment_internal.h\"",
+          "replace": "#include \"base/process/environment_internal.h\"\n#include <sys/stat.h>",
+          "count": 1
+        },
+        {
+          "name": "Native descriptor fchdir file action",
+          "find": "  void Chdir(const char* path) {",
+          "replace": "  void Fchdir(int descriptor) {\n    if (__builtin_available(macOS 26, *)) {\n      DPSXCHECK(posix_spawn_file_actions_addfchdir(&file_actions_, descriptor));\n    } else {\n      DPSXCHECK(posix_spawn_file_actions_addfchdir_np(&file_actions_, descriptor));\n    }\n  }\n  void Chdir(const char* path) {",
+          "count": 1
+        },
+        {
+          "name": "Refuse conflicting or non-directory capability before spawn",
+          "find": "  TRACE_EVENT0(\"base\", \"LaunchProcess\");",
+          "replace": "  TRACE_EVENT0(\"base\", \"LaunchProcess\");\n#if BUILDFLAG(IS_MAC)\n  if (options.current_directory_fd != -1) {\n    struct stat directory;\n    if (!options.current_directory.empty() || options.current_directory_fd < 0 ||\n        fstat(options.current_directory_fd, &directory) != 0 ||\n        !S_ISDIR(directory.st_mode)) {\n      return Process();\n    }\n  }\n#endif",
+          "count": 1
+        },
+        {
+          "name": "Set child cwd from retained FD before descriptor actions",
+          "find": "  PosixSpawnFileActions file_actions;",
+          "replace": "  PosixSpawnFileActions file_actions;\n#if BUILDFLAG(IS_MAC)\n  if (options.current_directory_fd >= 0) {\n    file_actions.Fchdir(options.current_directory_fd);\n  }\n#endif",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/aux/AuxOwnedNativePeerChild.h",
+      "inputSha256": "28ed85a70c129d7a55e70536c5e2e5c42f98893716546825660dfe397278cc81",
+      "outputSha256": "9e2210ccac6621d4bd84bbe1429427bc7a8d3fd96991fa2e0d087c310270fc1a",
+      "source": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/cli-native-embedding-a1/source/chrome/browser/aux/AuxOwnedNativePeerChild.h",
+      "anchors": [
+        {
+          "name": "Finite signal producer on the actual waitable owned group",
+          "find": "  bool LaunchOnce();",
+          "replace": "  bool LaunchOnce();\n  bool SignalOwnedProcessGroup(int signal);",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/aux/AuxOwnedNativePeerChild.cc",
+      "inputSha256": "0f1ff7a11c2493fc03b9df20fdfc114e6e3ddac89d9b3f9ddc9c88614a790e56",
+      "outputSha256": "9a0377648a004dceddf2f1e19ca32ea7c4df6064dc57426a095e278fd2776ccb",
+      "source": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/cli-native-embedding-a1/source/chrome/browser/aux/AuxOwnedNativePeerChild.cc",
+      "anchors": [
+        {
+          "name": "Explicit finite signal dependency",
+          "find": "#include <sys/wait.h>",
+          "replace": "#include <sys/wait.h>\n#include <signal.h>",
+          "count": 1
+        },
+        {
+          "name": "Signal only exact still-waitable native child group",
+          "find": "ExchangeStatus OwnedNativePeerChild::ServicePeerOnce(uint32_t timeout_ms) {",
+          "replace": "bool OwnedNativePeerChild::SignalOwnedProcessGroup(int signal) {\n  auto state = state_;\n  if (getpid() != state->process ||\n      (signal != SIGINT && signal != SIGTERM && signal != SIGHUP && signal != SIGWINCH)) return false;\n  std::lock_guard<std::mutex> lock(state->mutex);\n  if (!state->options.new_process_group || !state->child.IsValid() ||\n      state->observation.exit_observed_and_reaped ||\n      state->observation.exit_ownership_unknown) return false;\n  const pid_t pid = state->child.Pid();\n  siginfo_t observed{};\n  if (pid <= 1 || waitid(P_PID, static_cast<id_t>(pid), &observed,\n                         WEXITED | WNOHANG | WNOWAIT) != 0 || observed.si_pid != 0)\n    return false;\n  // This mutex also serializes the sole actual reaper. An exited child stays\n  // waitable until that reaper, so this cannot signal a reused unrelated PID.\n  return kill(-pid, signal) == 0;\n}\nExchangeStatus OwnedNativePeerChild::ServicePeerOnce(uint32_t timeout_ms) {",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "base/process/mac/aux_browser_descendant_engine.h",
+      "inputSha256": "ccd36116505b67a3bfd196857d50cc0c41d4f218e852d9e30930892991defb4d",
+      "outputSha256": "55d795b7dcd1631c71ed32a713dbbb9dd16673808c8183837ba2bd1426883f27",
+      "source": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/cli-native-embedding-a1/source/base/process/mac/aux_browser_descendant_engine.h",
+      "anchors": [
+        {
+          "name": "Native audited CLI custody query header dependency",
+          "find": "#include <memory>",
+          "replace": "#include <memory>\n#include <bsm/audit.h>",
+          "count": 1
+        },
+        {
+          "name": "Factual membership has no absence-as-manual result",
+          "find": "enum class Result { pending, settled, unknown, refused };",
+          "replace": "enum class Result { pending, settled, unknown, refused };\n// Only a kernel trailer supplies this token. A missing local observation is\n// unknown: it never proves that the client is a manual terminal or permits\n// selecting another profile. Managed includes reparented retained descendants.\nenum class CliClientMembership { managed, unknown };\nCliClientMembership InspectActualCliClient(audit_token_t kernel_peer) noexcept;",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "base/process/mac/aux_browser_descendant_engine.cc",
+      "inputSha256": "2dfc668e5cf7d6ca8461eb793f99d09949439c3519f611667a3db1023addd989",
+      "outputSha256": "d787d49fc018b1153f8e6414615f0a40f87b458d91aa3c8fcc82c4fa6f3ef470",
+      "source": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/cli-native-embedding-a1/source/base/process/mac/aux_browser_descendant_engine.cc",
+      "anchors": [
+        {
+          "name": "Inspect retained identity under the existing custody lock",
+          "find": "Result InspectStream() noexcept {",
+          "replace": "CliClientMembership InspectActualCliClient(audit_token_t token) noexcept {\n  if (!SameProcess()) return CliClientMembership::unknown;\n  const Identity client = Id(token);\n  if (client.pid <= 0 || !client.version) return CliClientMembership::unknown;\n  auto& s = State(); std::lock_guard<std::mutex> lock(s.mutex);\n  // Positive retained custody remains managed even if the stream later loses\n  // certainty. Live stores the genuine original root through exec/reparenting.\n  if (client == s.self || s.live.contains(client))\n    return CliClientMembership::managed;\n  for (const auto& birth : s.roots)\n    if (birth.id == client) return CliClientMembership::managed;\n  // This observer proves its own browser subtree, never the absence of a task\n  // owner in another Aux instance or an earlier/reparented native lineage.\n  return CliClientMembership::unknown;\n}\nResult InspectStream() noexcept {",
+          "count": 1
+        }
+      ]
+    }
+  ],
+  "nativeCheckoutChanged": false,
+  "nativeBuildRun": false,
+  "productExecuted": false,
+  "runtimeAcceptance": false
+}
