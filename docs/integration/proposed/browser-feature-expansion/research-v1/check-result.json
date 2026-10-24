@@ -1,0 +1,16 @@
+{
+  "passed": true,
+  "checks": [
+    "counted ordinary/dormant replay and syntax",
+    "composed actual Agent UI replay and syntax",
+    "search once across request preparation retry",
+    "observed sources only; unsafe URLs excluded",
+    "deterministic original-citation footer",
+    "Aux hosted-provider refusal",
+    "cancellation aborts fetch and waits for physical body settlement; no late source persistence",
+    "per-session callbacks restored"
+  ],
+  "appExecuted": false,
+  "providerCalled": false,
+  "nativeBuilt": false
+}

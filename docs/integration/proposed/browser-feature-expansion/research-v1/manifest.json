@@ -1,0 +1,84 @@
+{
+  "schema": 1,
+  "daemonInputs": [
+    {
+      "kind": "source",
+      "inputSha256": "dc41cebe8ad7dc4cac162226b1267b0ae7602727d05a781c59ff593afd537ef3",
+      "outputSha256": "2b1db7cebd8a7296b871dafdc4eb63955bbc13b4cee133c3c809c82b465ca02c",
+      "changes": [
+        {
+          "count": 1,
+          "findSha256": "b3e1f48476e419766721dcd4aff5ffd93419a78fd9784d4387258b8b1e91b410",
+          "replaceSha256": "f1158938ad08b997b0027a45b014d3e0a46cd086ec6c8e947084ca98b78d9048"
+        },
+        {
+          "count": 1,
+          "findSha256": "cd0a49bb42e5425bed1dc9b18293e6f304600198c00c56d4be9c44b2ecbe4ac5",
+          "replaceSha256": "c02149be8388757974a55c9f476b2bb8f9aa4a4337eccaf4e71905619b16425c"
+        },
+        {
+          "count": 1,
+          "findSha256": "da9785971b29430fc9e3fc620ceac0c67f9e7da5eea72cd8bba599d4ac5f0d08",
+          "replaceSha256": "9f89307261581ff948a1b00105661b8c326c2aecafec783d0915fe9ec6d21ea7"
+        }
+      ]
+    },
+    {
+      "kind": "entry",
+      "inputSha256": "b6aa10117346544e02e636d4b45ebb0049b421f7c40210775afdd661c1309de9",
+      "outputSha256": "cd7c8bb549b1187245ad3d6b308f9fd34512f3b7df0a45033126241161876438",
+      "changes": [
+        {
+          "count": 1,
+          "findSha256": "b3e1f48476e419766721dcd4aff5ffd93419a78fd9784d4387258b8b1e91b410",
+          "replaceSha256": "f1158938ad08b997b0027a45b014d3e0a46cd086ec6c8e947084ca98b78d9048"
+        },
+        {
+          "count": 1,
+          "findSha256": "cd0a49bb42e5425bed1dc9b18293e6f304600198c00c56d4be9c44b2ecbe4ac5",
+          "replaceSha256": "c02149be8388757974a55c9f476b2bb8f9aa4a4337eccaf4e71905619b16425c"
+        },
+        {
+          "count": 1,
+          "findSha256": "da9785971b29430fc9e3fc620ceac0c67f9e7da5eea72cd8bba599d4ac5f0d08",
+          "replaceSha256": "9f89307261581ff948a1b00105661b8c326c2aecafec783d0915fe9ec6d21ea7"
+        }
+      ]
+    }
+  ],
+  "uiInputs": [
+    {
+      "path": "assets/session-composer-Dc0LRfZA.js",
+      "inputSha256": "0dbd56fcdfbbb4d7fefa1229d3c8c633f2112963005b903c71a5d8eb8fe8ad72",
+      "outputSha256": "3547a8e34fe55532ed0140d4ec63ad379422a97a0ed766df45c8323107676446",
+      "changes": 3
+    },
+    {
+      "path": "assets/ask-omnibox-panel-DkxXbN8c.js",
+      "inputSha256": "4e22edae8d6d2381d2ecfc79a37353f85611a4516cb3e9b986c4ec641aa29d11",
+      "outputSha256": "e3438fdb14d09f56459e1d08a27a1cee65a63d46c49619479d1b56005ba5cb15",
+      "changes": 2
+    }
+  ],
+  "sourceFiles": [
+    {
+      "path": "source/aux-research-daemon.mjs",
+      "sha256": "a5f624aa6edc9a082a47245c21e34edb7c26cb09c1f39609cb9a57048e548eeb"
+    },
+    {
+      "path": "source/research-runtime.js",
+      "sha256": "cb0a67b454cbcf6d0282ee31ff29376ae46c739bcb71757dcd5c447e577fe6be"
+    },
+    {
+      "path": "source/aux-research-ui.mjs",
+      "sha256": "39a7ce3794b858d00424d6939d759fcf8c10e7e1713459c469712a8c26c56003"
+    },
+    {
+      "path": "source/research-ui.js",
+      "sha256": "d8fd3a7a7024466782e4654b019d4169ac89a43cb4366d3468dd9443b27a6017"
+    }
+  ],
+  "integration": "post-async ordinary and independent dormant entry; UI after existing browser-feature transforms",
+  "runtimeVerified": false,
+  "providerCalled": false
+}
