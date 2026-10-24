@@ -111,7 +111,7 @@ class OrganizationTreeRow final : public views::View {
   bool OnMouseDragged(const ui::MouseEvent& event) override {
     if (!pressed_ || !owner_) return false;
     gfx::Point point = event.location(); ConvertPointToScreen(this, &point);
-    owner_->ContinueDrag(point); return true;
+    owner_->ContinueDrag(point, event.IsShiftDown()); return true;
   }
   void OnMouseReleased(const ui::MouseEvent& event) override {
     if (!pressed_ || !owner_) return;
@@ -444,13 +444,21 @@ void AuxOrganizationTreeView::BeginDrag(const std::string& id, const gfx::Point&
   auto context = CaptureOrganizationContext(*browser_);
   if (context) drag_ = Drag{id, {}, point, std::move(*context), false, false};
 }
-void AuxOrganizationTreeView::ContinueDrag(const gfx::Point& point) {
+void AuxOrganizationTreeView::ContinueDrag(const gfx::Point& point, bool stacked) {
   if (!drag_ || (!drag_->moved && (point - drag_->origin).LengthSquared() < 36)) return;
-  drag_->moved = true; drag_->target.clear();
+  drag_->moved = true; drag_->target.clear(); drag_->split = false; drag_->stacked = stacked;
   for (const auto& [id, row] : row_by_id_) {
     const auto bounds = row->GetBoundsInScreen(); const bool over = id != drag_->id && bounds.Contains(point);
     row->MarkDrop(over);
-    if (over) { drag_->target = id; drag_->after = point.y() >= bounds.CenterPoint().y(); }
+    if (over) {
+      drag_->target = id; drag_->after = point.y() >= bounds.CenterPoint().y();
+      const auto* snapshot = Snapshot();
+      drag_->split = snapshot && snapshot->entries.contains(id) && snapshot->entries.contains(drag_->id) &&
+          snapshot->entries.at(id).kind == organization::EntryKind::kTab &&
+          snapshot->entries.at(drag_->id).kind == organization::EntryKind::kTab &&
+          point.y() > bounds.y() + bounds.height() / 3 &&
+          point.y() < bounds.bottom() - bounds.height() / 3;
+    }
   }
 }
 void AuxOrganizationTreeView::CancelDrag() {
@@ -460,6 +468,14 @@ void AuxOrganizationTreeView::FinishDrag() {
   auto drag = std::move(drag_); CancelDrag();
   const auto* snapshot = Snapshot();
   if (!drag || !drag->moved || !snapshot || !snapshot->entries.contains(drag->target)) return;
+  if (drag->split) {
+    if (snapshot->revision != drag->context.expected_revision) return;
+    window_->SplitLogicalTabs(drag->id, drag->target, drag->stacked,
+        base::BindOnce([](base::WeakPtr<AuxOrganizationTreeView> owner, bool) {
+          if (owner) owner->Refresh();
+        }, weak_.GetWeakPtr()));
+    return;
+  }
   const auto target = snapshot->entries.at(drag->target);
   const bool folder = target.kind == organization::EntryKind::kFolder;
   Move(drag->id, target.space_id, folder ? target.id : target.parent_id,

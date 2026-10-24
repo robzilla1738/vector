@@ -11,6 +11,7 @@
 #include "base/uuid.h"
 #include "chrome/browser/aux/organization/organization_profile_service.h"
 #include "chrome/browser/actor/ui/actor_ui_tab_controller.h"
+#include "chrome/browser/ui/views/frame/aux_split_commands.h"
 #include "chrome/browser/ui/views/frame/aux_bookmark_tab_exclusion.h"
 #include "chrome/browser/aux/organization/organization_service.h"
 #include "chrome/browser/media/webrtc/media_capture_devices_dispatcher.h"
@@ -453,6 +454,38 @@ bool AuxOrganizationWindowController::Protected(tabs::TabInterface* tab) const {
   // exactly to a view; unknown ownership never authorizes an unload.
   return profile_->GetDownloadManager()->InProgressCount() != 0;
 }
+void AuxOrganizationWindowController::SplitLogicalTabs(
+    const std::string& source, const std::string& target, bool stacked,
+    base::OnceCallback<void(bool)> reply) {
+  if (!IsProjectionReady() || source == target) { std::move(reply).Run(false); return; }
+  OpenLogicalTab(target, base::BindOnce(
+      [](base::WeakPtr<AuxOrganizationWindowController> owner, std::string source_id,
+         std::string target_id, bool vertical, base::OnceCallback<void(bool)> done, bool opened) {
+        if (!owner || !opened) { std::move(done).Run(false); return; }
+        owner->OpenLogicalTab(source_id, base::BindOnce(
+            [](base::WeakPtr<AuxOrganizationWindowController> current, std::string source_key,
+               std::string target_key, bool is_vertical, base::OnceCallback<void(bool)> completed, bool source_opened) {
+              if (!current || !current->Current() || !source_opened) {
+                std::move(completed).Run(false); return;
+              }
+              tabs::TabInterface* source_tab = nullptr;
+              tabs::TabInterface* target_tab = nullptr;
+              for (int i = 0; i < current->model_->count(); ++i) {
+                auto* tab = current->model_->GetTabAtIndex(i);
+                if (!tab->GetContents()) continue;
+                auto logical_id = GetRememberedPinnedTabEntryId(*tab->GetContents());
+                if (logical_id == source_key) source_tab = tab;
+                if (logical_id == target_key) target_tab = tab;
+              }
+              const bool joined = JoinNativeSplit(*current->browser_, target_tab, source_tab,
+                  is_vertical ? split_tabs::SplitPaneTree::Axis::kVertical
+                              : split_tabs::SplitPaneTree::Axis::kHorizontal, false);
+              current->QueueReconcile();
+              std::move(completed).Run(joined);
+            }, owner, source_id, target_id, vertical, std::move(done)));
+      }, weak_.GetWeakPtr(), source, target, stacked, std::move(reply)));
+}
+
 void AuxOrganizationWindowController::OpenLogicalTab(const std::string& id, base::OnceCallback<void(bool)> reply) {
   auto* organization = Current() ? Organization(browser_.get()) : nullptr;
   if (!organization || organization->blocked() || organization->pending()) { std::move(reply).Run(false); return; }
@@ -606,7 +639,7 @@ void AuxOrganizationWindowController::ArchiveEntry(const std::string& id, bool a
 }
 bool AuxOrganizationWindowController::HandleClose(tabs::TabHandle handle) {
   if (!Current() || model_->closing_all() || IsExplicitUnload(handle)) return false;
-  auto* tab = handle.Get(); if (!tab || !tab->GetContents()) return false;
+  auto* tab = handle.Get(); if (!tab || !tab->GetContents() || tab->IsSplit()) return false;
   const auto id = GetRememberedPinnedTabEntryId(*tab->GetContents()).value_or("");
   auto* organization = Organization(browser_.get());
   if (id.empty() || !organization || !organization->snapshot().entries.contains(id)) return false;

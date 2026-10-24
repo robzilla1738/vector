@@ -1,0 +1,418 @@
+--- a/chrome/browser/sessions/session_restore.cc
++++ b/chrome/browser/sessions/session_restore.cc
+@@ -1229,11 +1229,17 @@
+             browser->GetTabStripModel()->GetIndexOfTab(tab));
+       }
+ 
+-      // The number of supported split tabs is 2. Do not attempt to restore
+-      // more than this to future proof it.
+-      if (tab_contents_list.size() == 2) {
+-        browser->GetTabStripModel()->RestoreSplit(
+-            split_id, tab_index_list, split_tabs::SplitTabVisualData());
++      split_tabs::SplitTabVisualData visual;
++      for (const auto& saved : window.split_tabs)
++        if (saved->id_ == split_id) visual = saved->split_visual_data_;
++      const size_t pane_count = tab_contents_list.size();
++      const bool mapped = visual.pane_tree() && visual.pane_tree()->IsValid() &&
++          visual.pane_tree()->pane_slots().size() == pane_count;
++      // Restore complete topology before notifying Views of an N-pane split.
++      // Missing/unknown topology leaves ordinary tabs recoverable individually.
++      if (pane_count >= 2 && pane_count <= split_tabs::SplitPaneTree::kMaxPanes &&
++          (mapped || (pane_count == 2 && !visual.pane_tree()))) {
++        browser->GetTabStripModel()->RestoreSplit(split_id, tab_index_list, visual);
+       }
+     }
+   }
+@@ -1337,9 +1343,13 @@
+       browser->GetTabStripModel()->UpdateSplitLayout(
+           session_split_tab->id_,
+           session_split_tab->split_visual_data_.split_layout());
+-      browser->GetTabStripModel()->UpdateSplitRatio(
+-          session_split_tab->id_,
+-          session_split_tab->split_visual_data_.split_ratio());
++      if (session_split_tab->split_visual_data_.pane_tree()) {
++        browser->GetTabStripModel()->UpdateSplitPaneTree(
++            session_split_tab->id_, *session_split_tab->split_visual_data_.pane_tree());
++      } else {
++        browser->GetTabStripModel()->UpdateSplitRatio(
++            session_split_tab->id_, session_split_tab->split_visual_data_.split_ratio());
++      }
+     }
+   }
+ 
+--- a/chrome/browser/ui/tabs/tab_strip_model.cc
++++ b/chrome/browser/ui/tabs/tab_strip_model.cc
+@@ -2,6 +2,7 @@
+ // Use of this source code is governed by a BSD-style license that can be
+ // found in the LICENSE file.
+ 
++#include <limits>
+ #include "chrome/browser/ui/tabs/tab_strip_model.h"
+ #if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
+ #include "chrome/browser/ui/views/frame/aux_organization_window_controller.h"
+@@ -1814,7 +1815,8 @@
+     // If the tab is already deselected, no need to do anything.
+     return;
+   } else if (selection_model_.size() == 1 ||
+-             (selection_model_.size() == 2 && tab->GetSplit().has_value())) {
++             (tab->GetSplit().has_value() && selection_model_.size() ==
++              GetSplitData(*tab->GetSplit())->ListTabs().size())) {
+     // One tab must be selected and this tab is currently selected so we can't
+     // unselect it.
+     return;
+@@ -2132,6 +2134,12 @@
+       *GetSplitData(split_id)->visual_data();
+ 
+   split_data->visual_data()->set_split_layout(tab_layout);
++  if (split_data->visual_data()->pane_tree()) {
++    auto tree = *split_data->visual_data()->pane_tree();
++    tree.SetBranchAxis(tree.root(), tab_layout == split_tabs::SplitTabLayout::kSideBySide
++        ? split_tabs::SplitPaneTree::Axis::kHorizontal : split_tabs::SplitPaneTree::Axis::kVertical);
++    split_data->visual_data()->SetPaneTree(std::move(tree));
++  }
+ 
+   if (source.has_value()) {
+     split_tabs::RecordSplitTabOrientationChanged(source.value());
+@@ -2161,11 +2169,90 @@
+   }
+ 
+   split_tabs::SplitTabVisualData old_visual_data = *split_data->visual_data();
++  if (split_data->visual_data()->pane_tree()) {
++    auto tree = *split_data->visual_data()->pane_tree();
++    if (!tree.ResizeBranch(tree.root(), split_ratio)) return;
++    split_data->visual_data()->SetPaneTree(std::move(tree));
++  }
+   split_data->visual_data()->set_split_ratio(split_ratio);
+ 
+   NotifySplitTabVisualsChanged(
+       split_id, old_visual_data, *split_data->visual_data(),
+       SplitTabChange::SplitVisualChangeReason::kRatioUpdated, is_intermediate);
++}
++
++bool TabStripModel::UpdateSplitPaneTree(
++    split_tabs::SplitTabId split_id, const split_tabs::SplitPaneTree& tree,
++    bool is_intermediate) {
++  ReentrancyCheck reentrancy_check(&reentrancy_guard_);
++  auto* data = ContainsSplit(split_id) ? GetSplitData(split_id) : nullptr;
++  if (!data || !tree.IsValid() || tree.pane_slots().size() != data->ListTabs().size()) return false;
++  const auto previous = *data->visual_data();
++  if (!data->visual_data()->SetPaneTree(tree)) return false;
++  NotifySplitTabVisualsChanged(split_id, previous, *data->visual_data(),
++      SplitTabChange::SplitVisualChangeReason::kRatioUpdated, is_intermediate);
++  return true;
++}
++
++bool TabStripModel::JoinTabToSplit(int target_index, int source_index,
++    split_tabs::SplitPaneTree::Axis axis, bool before) {
++  ReentrancyCheck reentrancy_check(&reentrancy_guard_);
++  if (!ContainsIndex(target_index) || !ContainsIndex(source_index) ||
++      target_index == source_index || closing_all() ||
++      (axis != split_tabs::SplitPaneTree::Axis::kHorizontal &&
++       axis != split_tabs::SplitPaneTree::Axis::kVertical)) return false;
++  auto* target = GetTabAtIndex(target_index);
++  auto* source = GetTabAtIndex(source_index);
++  if (source->IsSplit() || target->IsPinned() != source->IsPinned() ||
++      target->GetGroup() != source->GetGroup()) return false;
++  if (!target->IsSplit()) {
++    MoveTabToIndexImpl(source_index, target_index, source->GetGroup(), source->IsPinned(), false);
++    if (!before) {
++      const int source_now = GetIndexOfTab(source);
++      const int target_now = GetIndexOfTab(target);
++      if (source_now < target_now)
++        MoveTabToIndexImpl(source_now, target_now, source->GetGroup(), source->IsPinned(), false);
++    } else if (GetIndexOfTab(source) > GetIndexOfTab(target)) {
++      MoveTabToIndexImpl(GetIndexOfTab(source), GetIndexOfTab(target), source->GetGroup(), source->IsPinned(), false);
++    }
++    std::vector<int> indices{GetIndexOfTab(target), GetIndexOfTab(source)};
++    std::ranges::sort(indices);
++    AddToSplitImpl(split_tabs::SplitTabId::GenerateNew(), indices,
++        GetIndexOfTab(target), split_tabs::SplitTabVisualData(
++            axis == split_tabs::SplitPaneTree::Axis::kHorizontal
++                ? split_tabs::SplitTabLayout::kSideBySide : split_tabs::SplitTabLayout::kStacked),
++        SplitTabChange::SplitTabAddReason::kNewSplitTabAdded);
++    return true;
++  }
++  const auto split = *target->GetSplit();
++  auto* data = GetSplitData(split);
++  auto members = data->ListTabs();
++  if (members.size() >= split_tabs::SplitPaneTree::kMaxPanes) return false;
++  auto visual = *data->visual_data();
++  auto tree = visual.pane_tree().value_or(split_tabs::SplitPaneTree::Pair(
++      visual.split_layout() == split_tabs::SplitTabLayout::kSideBySide
++          ? split_tabs::SplitPaneTree::Axis::kHorizontal : split_tabs::SplitPaneTree::Axis::kVertical,
++      visual.split_ratio()));
++  if (tree.pane_slots().size() != members.size()) return false;
++  std::map<tabs::TabInterface*, uint32_t> slots;
++  for (size_t i = 0; i < members.size(); ++i) slots[members[i]] = tree.pane_slots()[i];
++  const uint32_t next_slot = *std::ranges::max_element(tree.pane_slots());
++  if (next_slot == std::numeric_limits<uint32_t>::max() ||
++      !tree.SplitLeaf(slots.at(target), next_slot + 1, axis, before)) return false;
++  slots[source] = next_slot + 1;
++  members.push_back(source);
++  RemoveSplitImpl(split, SplitTabChange::SplitTabRemoveReason::kSplitTabRemoved);
++  std::ranges::sort(members, {}, [this](auto* member) { return GetIndexOfTab(member); });
++  std::vector<int> indices;
++  std::vector<uint32_t> order;
++  for (auto* member : members) {
++    indices.push_back(GetIndexOfTab(member)); order.push_back(slots.at(member));
++  }
++  tree.SetPaneOrder(std::move(order));
++  visual.SetPaneTree(std::move(tree));
++  AddToSplitImpl(split, indices, GetIndexOfTab(target), visual,
++      SplitTabChange::SplitTabAddReason::kNewSplitTabAdded);
++  return true;
+ }
+ 
+ void TabStripModel::UpdateTabInSplit(tabs::TabInterface* split_tab,
+@@ -2200,6 +2287,16 @@
+ void TabStripModel::ReverseTabsInSplit(split_tabs::SplitTabId split_id) {
+   ReentrancyCheck reentrancy_check(&reentrancy_guard_);
+ 
++  auto* data = GetSplitData(split_id);
++  if (data->visual_data()->pane_tree()) {
++    const auto previous = *data->visual_data();
++    auto tree = *data->visual_data()->pane_tree();
++    tree.SwapBranch(tree.root());
++    data->visual_data()->SetPaneTree(std::move(tree));
++    NotifySplitTabVisualsChanged(split_id, previous, *data->visual_data(),
++        SplitTabChange::SplitVisualChangeReason::kLayoutUpdated);
++    return;
++  }
+   tabs::TabInterface* first_tab = GetSplitData(split_id)->ListTabs()[0];
+   const int index_of_first_tab_in_split = GetIndexOfTab(first_tab);
+   MoveTabToIndexImpl(index_of_first_tab_in_split,
+@@ -2213,7 +2310,7 @@
+     split_tabs::SplitTabCreatedSource source) {
+   ReentrancyCheck reentrancy_check(&reentrancy_guard_);
+ 
+-  CHECK(indices.size() == 1u || indices.size() == 2u)
++  CHECK(indices.size() >= 1u && indices.size() <= split_tabs::SplitPaneTree::kMaxPanes)
+       << "Invalid index count: " << indices.size();
+ 
+   // If there is only one entry in `indices`, use the active index as the pivot
+@@ -2221,6 +2318,9 @@
+   if (indices.size() == 1u) {
+     indices.insert(indices.begin(), active_index());
+   }
++  CHECK(visual_data.pane_tree()
++        ? (visual_data.pane_tree()->IsValid() && visual_data.pane_tree()->pane_slots().size() == indices.size())
++        : indices.size() == 2);
+   int pivot_index = indices[0];
+   CHECK(pivot_index != kNoTab);
+   // Check that the indices are unique.
+@@ -2256,7 +2356,10 @@
+                                  split_tabs::SplitTabVisualData visual_data) {
+   ReentrancyCheck reentrancy_check(&reentrancy_guard_);
+   CHECK(std::ranges::is_sorted(indices));
+-  CHECK_EQ(indices.size(), 2u);
++  CHECK(indices.size() >= 2u && indices.size() <= split_tabs::SplitPaneTree::kMaxPanes);
++  CHECK(visual_data.pane_tree()
++        ? (visual_data.pane_tree()->IsValid() && visual_data.pane_tree()->pane_slots().size() == indices.size())
++        : indices.size() == 2);
+ 
+   // Ideally these are consecutive indices from the restore flow and the pivot
+   // index does not matter. However, given there are numerous steps in restore
+@@ -5092,11 +5195,24 @@
+   if (!creator_close_invocation.is_empty() &&
+       (removed_tab_is_split || tab_to_remove->GetGroup())) return nullptr;
+ #endif
++  std::optional<split_tabs::SplitTabId> retained_split;
++  std::optional<split_tabs::SplitTabVisualData> old_split_visual;
+   if (removed_tab_is_split) {
+-    next_selected_index = GetIndexOfTab(
+-        GetSplitData(tab_to_remove->GetSplit().value())->ListTabs()[0]);
+-    RemoveSplitImpl(tab_to_remove->GetSplit().value(),
+-                    SplitTabChange::SplitTabRemoveReason::kSplitTabRemoved);
++    const auto split = *tab_to_remove->GetSplit();
++    auto* data = GetSplitData(split);
++    const auto members = data->ListTabs();
++    next_selected_index = GetIndexOfTab(members[0]);
++    if (members.size() > 2 && data->visual_data()->pane_tree()) {
++      auto tree = *data->visual_data()->pane_tree();
++      const size_t offset = std::distance(members.begin(), std::ranges::find(members, tab_to_remove));
++      CHECK(tree.pane_slots().size() == members.size());
++      CHECK(tree.RemoveLeaf(tree.pane_slots()[offset]));
++      old_split_visual = *data->visual_data();
++      data->visual_data()->SetPaneTree(std::move(tree));
++      retained_split = split;
++    } else {
++      RemoveSplitImpl(split, SplitTabChange::SplitTabRemoveReason::kSplitTabRemoved);
++    }
+   }
+ 
+ #if BUILDFLAG(ENABLE_AUX_SHELL)
+@@ -5188,6 +5304,11 @@
+                          std::nullopt);
+   }
+ 
++  if (retained_split && ContainsSplit(*retained_split)) {
++    NotifySplitTabVisualsChanged(*retained_split, *old_split_visual,
++        *GetSplitData(*retained_split)->visual_data(),
++        SplitTabChange::SplitVisualChangeReason::kLayoutUpdated);
++  }
+   return old_data;
+ }
+ 
+@@ -5233,7 +5354,21 @@
+   TabStripSelectionChange selection(GetActiveTab(),
+                                     selection_model().GetListSelectionModel());
+   if (move_within_split) {
+-    contents_data_->ReverseSplit(tab->GetSplit().value());
++    const auto split = *tab->GetSplit();
++    auto* data = GetSplitData(split);
++    const auto members = data->ListTabs();
++    const size_t from = std::distance(members.begin(), std::ranges::find(members, tab));
++    const int first_index = GetIndexOfTab(members.front());
++    const size_t to = static_cast<size_t>(final_index - first_index);
++    if (data->visual_data()->pane_tree()) {
++      auto tree = *data->visual_data()->pane_tree();
++      auto order = tree.pane_slots();
++      const auto moved = order[from];
++      order.erase(order.begin() + from); order.insert(order.begin() + to, moved);
++      CHECK(tree.SetPaneOrder(std::move(order)));
++      data->visual_data()->SetPaneTree(std::move(tree));
++    }
++    contents_data_->MoveTabWithinSplit(split, from, to);
+   } else {
+     contents_data_->MoveTabRecursive(initial_index, final_index, group, pin);
+   }
+@@ -6288,7 +6423,7 @@
+       }
+     }
+     for (const auto& [split_id, count] : split_closing_counts) {
+-      if (count == 2) {
++      if (static_cast<size_t>(count) == GetSplitData(split_id)->ListTabs().size()) {
+         delegate_->CreateHistoricalSplit(split_id);
+       }
+     }
+--- a/chrome/browser/ui/tabs/tab_strip_model.h
++++ b/chrome/browser/ui/tabs/tab_strip_model.h
+@@ -5,6 +5,7 @@
+ #ifndef CHROME_BROWSER_UI_TABS_TAB_STRIP_MODEL_H_
+ #define CHROME_BROWSER_UI_TABS_TAB_STRIP_MODEL_H_
+ 
++#include "components/split_tabs/split_pane_tree.h"
+ #include <stddef.h>
+ #include <stdint.h>
+ 
+@@ -669,6 +670,12 @@
+   void UpdateSplitRatio(split_tabs::SplitTabId split_id,
+                         double start_content_ratio,
+                         bool is_intermediate = false);
++  bool UpdateSplitPaneTree(split_tabs::SplitTabId split_id,
++                           const split_tabs::SplitPaneTree& tree,
++                           bool is_intermediate = false);
++  bool JoinTabToSplit(int target_index, int source_index,
++                      split_tabs::SplitPaneTree::Axis axis, bool before);
++
+ 
+   // Updates the split tab at index `split_index` with the tab at
+   // `update_index`. The split that includes `split_index` must include the
+--- a/chrome/browser/ui/views/frame/browser_view.cc
++++ b/chrome/browser/ui/views/frame/browser_view.cc
+@@ -2102,8 +2102,7 @@
+     multi_contents_view_->GetActiveContentsView()->PrepareAuxNtpTransition(
+         new_contents);
+ #endif
+-    multi_contents_view_->GetInactiveContentsView()->SetWebContents(nullptr);
+-    active_contents_view->SetWebContents(nullptr);
++    multi_contents_view_->ClearAllWebContents();
+   }
+ 
+   // Do this before updating InfoBarContainer as the InfoBarContainer may
+@@ -3639,7 +3638,10 @@
+           browser_->GetTabStripModel()->GetActiveTab();
+ 
+       if (active_tab->GetSplit() == change.split_id) {
+-        multi_contents_view_->SwapContentsInSplitView();
++        if (browser_->GetTabStripModel()->GetSplitData(change.split_id)->visual_data()->pane_tree())
++          ShowSplitView(false);
++        else
++          multi_contents_view_->SwapContentsInSplitView();
+       }
+       break;
+     }
+@@ -4477,6 +4479,12 @@
+ 
+   std::vector<tabs::TabInterface*> split_tabs = split_data->ListTabs();
+ 
++  const auto& containers = multi_contents_view_->contents_container_views();
++  bool changed = containers.size() < split_tabs.size();
++  for (size_t i = 0; !changed && i < split_tabs.size(); ++i)
++    changed = containers[i]->contents_view()->web_contents() != split_tabs[i]->GetContents();
++  if (changed) multi_contents_view_->ClearAllWebContents();
++  multi_contents_view_->PrepareSplitView(*split_data->visual_data(), split_tabs.size());
+   for (size_t i = 0; tabs::TabInterface* tab : split_tabs) {
+     multi_contents_view_->SetWebContentsAtIndex(tab->GetContents(), i++);
+   }
+@@ -4525,8 +4533,13 @@
+   // When active tab changes inside a split, it's generally due to focus change.
+   // However, there are cases where inactive tab can be activated without a
+   // focus change e.g. using tab shortcuts and in these cases update focus.
+-  if (GetWidget()->IsActive() &&
+-      multi_contents_view_->GetInactiveContentsView()->HasFocus()) {
++  const bool inactive_focused = std::ranges::any_of(
++      multi_contents_view_->contents_container_views(), [this](const auto& container) {
++        return container->GetVisible() &&
++            container->contents_view() != multi_contents_view_->GetActiveContentsView() &&
++            container->contents_view()->HasFocus();
++      });
++  if (GetWidget()->IsActive() && inactive_focused) {
+     multi_contents_view_->GetActiveContentsView()->RequestFocus();
+   }
+ }
+@@ -4536,8 +4549,7 @@
+   return multi_contents_view_->IsInSplitView() &&
+          multi_contents_view_->GetActiveContentsView()->web_contents() ==
+              old_contents &&
+-         multi_contents_view_->GetInactiveContentsView()->web_contents() ==
+-             new_contents;
++         multi_contents_view_->IsInactiveWebContents(new_contents);
+ }
+ 
+ void BrowserView::UpdateTabModalDialogHost() {
+@@ -4586,10 +4598,10 @@
+ std::vector<ContentsWebView*> BrowserView::GetAllVisibleContentsWebViews() {
+   std::vector<ContentsWebView*> contents_views;
+   contents_views.push_back(multi_contents_view_->GetActiveContentsView());
+-  ContentsWebView* inactive_contents_view =
+-      multi_contents_view_->GetInactiveContentsView();
+-  if (multi_contents_view_->IsInSplitView()) {
+-    contents_views.push_back(inactive_contents_view);
++  for (const auto& container : multi_contents_view_->contents_container_views()) {
++    if (container->GetVisible() &&
++        container->contents_view() != multi_contents_view_->GetActiveContentsView())
++      contents_views.push_back(container->contents_view());
+   }
+   return contents_views;
+ }
+--- a/components/tabs/impl/tab_strip_collection.cc
++++ b/components/tabs/impl/tab_strip_collection.cc
+@@ -458,6 +458,17 @@
+   TabCollection::Position positon = {split->GetHandle(),
+                                      split->TabCountRecursive()};
+   MoveTabImpl(split->GetTabAtIndexRecursive(0), positon);
++}
++
++void TabStripCollection::MoveTabWithinSplit(split_tabs::SplitTabId split_id,
++                                            size_t from, size_t to) {
++  auto* split = GetSplitTabCollection(split_id);
++  CHECK(split);
++  CHECK_LT(from, split->TabCountRecursive());
++  CHECK_LT(to, split->TabCountRecursive());
++  if (from == to) return;
++  MoveTabImpl(split->GetTabAtIndexRecursive(from),
++              {split->GetHandle(), to + (from < to ? 1 : 0)});
+ }
+ 
+ void TabStripCollection::Unsplit(split_tabs::SplitTabId split_id) {
+--- a/components/tabs/public/tab_strip_collection.h
++++ b/components/tabs/public/tab_strip_collection.h
+@@ -116,6 +116,7 @@
+                    const std::vector<TabInterface*>& tabs,
+                    split_tabs::SplitTabVisualData visual_data);
+   void ReverseSplit(split_tabs::SplitTabId split_id);
++  void MoveTabWithinSplit(split_tabs::SplitTabId split_id, size_t from, size_t to);
+   void Unsplit(split_tabs::SplitTabId split_id);
+   std::set<split_tabs::SplitTabId> ListSplits() const;
+ 

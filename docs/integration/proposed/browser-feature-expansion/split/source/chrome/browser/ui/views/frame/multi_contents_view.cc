@@ -418,13 +418,9 @@ void MultiContentsView::UpdateSplitVisualData(
     return;
   }
 
-  const bool tree_shape_changed = visual_data_.pane_tree().has_value() !=
-      visual_data.pane_tree().has_value() ||
-      (visual_data_.pane_tree() && visual_data.pane_tree() &&
-       visual_data_.pane_tree()->nodes().size() != visual_data.pane_tree()->nodes().size());
   visual_data_ = visual_data;
   resize_area_->SetLayout(visual_data.split_layout());
-  if (tree_shape_changed) ConfigureBranchHandles();
+  ConfigureBranchHandles();
   for (const auto& handle : branch_resize_areas_) {
     const auto* node = visual_data_.pane_tree()->Find(handle->branch_node());
     if (node) handle->SetLayout(node->axis == split_tabs::SplitPaneTree::Axis::kHorizontal

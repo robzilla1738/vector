@@ -37,6 +37,8 @@ class AuxOrganizationWindowController final : public OrganizationWindowDelegate,
   std::string SelectedLogicalTabId() const override;
   bool SelectSpace(const std::string&) override;
   void OpenLogicalTab(const std::string&, base::OnceCallback<void(bool)>) override;
+  void SplitLogicalTabs(const std::string&, const std::string&, bool,
+                        base::OnceCallback<void(bool)>) override;
   void UnloadLogicalTab(const std::string&, base::OnceCallback<void(bool)>) override;
   void ArchiveLogicalEntry(const std::string&, base::OnceCallback<void(bool)>) override;
   void ArchiveFolderAndContents(const std::string&, base::OnceCallback<void(bool)>);

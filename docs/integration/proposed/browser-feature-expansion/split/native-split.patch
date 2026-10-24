@@ -1,3 +1,117 @@
+--- /dev/null
++++ b/chrome/browser/ui/views/frame/aux_split_commands.cc
+@@ -0,0 +1,91 @@
++// Copyright 2026 Aux Authors. BSD-style license: see //LICENSE.
++#include "chrome/browser/ui/views/frame/aux_split_commands.h"
++#include <algorithm>
++#include "chrome/browser/actor/ui/actor_ui_tab_controller.h"
++#include "chrome/browser/profiles/profile.h"
++#include "chrome/browser/sessions/session_service.h"
++#include "chrome/browser/sessions/session_service_factory.h"
++#include "chrome/browser/ui/aux/page_identity.h"
++#include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
++#include "chrome/browser/ui/tabs/tab_strip_model.h"
++#include "chrome/browser/ui/views/frame/aux_bookmark_tab_exclusion.h"
++#include "components/tabs/public/split_tab_data.h"
++#include "components/tabs/public/tab_interface.h"
++#include "content/public/browser/devtools_agent_host.h"
++#include "content/public/browser/web_contents.h"
++
++namespace aux {
++namespace {
++bool Eligible(BrowserWindowInterface& browser, tabs::TabInterface* tab) {
++  auto* model = browser.GetTabStripModel();
++  if (!tab || !model || model->closing_all() || model->GetIndexOfTab(tab) < 0 ||
++      browser.GetType() != BrowserWindowInterface::TYPE_NORMAL ||
++      IsBookmarkTabExcluded(tab, model)) return false;
++  auto* page = tab->GetContents();
++  if (!page || page->GetBrowserContext() != browser.GetProfile() ||
++      page->IsBeingCaptured()) return false;
++  const auto* identity = PageIdentity::FromWebContents(page);
++  if (identity && identity->runtime_owned()) return false;
++  auto* actor_controller = actor::ui::ActorUiTabController::Get(tab->GetUnownedUserDataHost());
++  if (actor_controller && !actor_controller->IsColdForAuxProfileSwitch()) return false;
++  return !content::DevToolsAgentHost::HasFor(page) ||
++         !content::DevToolsAgentHost::GetOrCreateFor(page)->IsAttached();
++}
++void Persist(BrowserWindowInterface& browser, tabs::TabInterface* tab) {
++  if (!tab || !tab->GetSplit()) return;
++  if (auto* service = SessionServiceFactory::GetForProfile(browser.GetProfile())) {
++    const auto split = *tab->GetSplit();
++    service->SetSplitTabData(browser.GetSessionID(), split,
++        browser.GetTabStripModel()->GetSplitData(split)->visual_data());
++  }
++}
++}  // namespace
++
++bool CanJoinNativeSplit(BrowserWindowInterface& browser,
++                        tabs::TabInterface* target, tabs::TabInterface* source) {
++  if (target == source || !Eligible(browser, target) || !Eligible(browser, source) ||
++      source->IsSplit() || target->IsPinned() != source->IsPinned() ||
++      target->GetGroup() != source->GetGroup()) return false;
++  if (!target->GetSplit()) return true;
++  const auto members = browser.GetTabStripModel()->GetSplitData(*target->GetSplit())->ListTabs();
++  return members.size() < split_tabs::SplitPaneTree::kMaxPanes &&
++      std::ranges::all_of(members, [&](auto* member) { return Eligible(browser, member); });
++}
++
++bool JoinNativeSplit(BrowserWindowInterface& browser,
++                     tabs::TabInterface* target, tabs::TabInterface* source,
++                     split_tabs::SplitPaneTree::Axis axis, bool before) {
++  if (!CanJoinNativeSplit(browser, target, source)) return false;
++  auto* model = browser.GetTabStripModel();
++  const bool joined = model->JoinTabToSplit(model->GetIndexOfTab(target),
++      model->GetIndexOfTab(source), axis, before);
++  if (joined) Persist(browser, target);
++  return joined;
++}
++
++bool CycleNativeSplitPane(BrowserWindowInterface& browser, int direction) {
++  auto* model = browser.GetTabStripModel();
++  auto* active = model ? model->GetActiveTab() : nullptr;
++  if (!active || !active->GetSplit() || !direction) return false;
++  const auto members = model->GetSplitData(*active->GetSplit())->ListTabs();
++  const auto current = std::ranges::find(members, active);
++  if (current == members.end()) return false;
++  const int count = static_cast<int>(members.size());
++  const int next = (static_cast<int>(std::distance(members.begin(), current)) +
++                    (direction > 0 ? 1 : count - 1)) % count;
++  model->ActivateTabAt(model->GetIndexOfTab(members[next]));
++  return true;
++}
++
++bool SetNativeSplitOrientation(BrowserWindowInterface& browser,
++                               split_tabs::SplitPaneTree::Axis axis) {
++  auto* model = browser.GetTabStripModel();
++  auto* active = model ? model->GetActiveTab() : nullptr;
++  if (!active || !active->GetSplit()) return false;
++  model->UpdateSplitLayout(*active->GetSplit(),
++      axis == split_tabs::SplitPaneTree::Axis::kHorizontal
++          ? split_tabs::SplitTabLayout::kSideBySide : split_tabs::SplitTabLayout::kStacked);
++  Persist(browser, active);
++  return true;
++}
++}  // namespace aux
+--- /dev/null
++++ b/chrome/browser/ui/views/frame/aux_split_commands.h
+@@ -0,0 +1,17 @@
++// Copyright 2026 Aux Authors. BSD-style license: see //LICENSE.
++#ifndef CHROME_BROWSER_UI_VIEWS_FRAME_AUX_SPLIT_COMMANDS_H_
++#define CHROME_BROWSER_UI_VIEWS_FRAME_AUX_SPLIT_COMMANDS_H_
++#include "components/split_tabs/split_pane_tree.h"
++class BrowserWindowInterface;
++namespace tabs { class TabInterface; }
++namespace aux {
++bool CanJoinNativeSplit(BrowserWindowInterface& browser,
++                        tabs::TabInterface* target, tabs::TabInterface* source);
++bool JoinNativeSplit(BrowserWindowInterface& browser,
++                     tabs::TabInterface* target, tabs::TabInterface* source,
++                     split_tabs::SplitPaneTree::Axis axis, bool before);
++bool CycleNativeSplitPane(BrowserWindowInterface& browser, int direction);
++bool SetNativeSplitOrientation(BrowserWindowInterface& browser,
++                               split_tabs::SplitPaneTree::Axis axis);
++}  // namespace aux
++#endif
 --- a/chrome/browser/ui/views/frame/multi_contents_resize_area.cc
 +++ b/chrome/browser/ui/views/frame/multi_contents_resize_area.cc
 @@ -75,9 +75,9 @@
@@ -338,17 +452,11 @@
    UpdateContentsBorderAndOverlay();
  }
  
-@@ -348,8 +418,18 @@
-     return;
-   }
+@@ -350,6 +420,12 @@
  
-+  const bool tree_shape_changed = visual_data_.pane_tree().has_value() !=
-+      visual_data.pane_tree().has_value() ||
-+      (visual_data_.pane_tree() && visual_data.pane_tree() &&
-+       visual_data_.pane_tree()->nodes().size() != visual_data.pane_tree()->nodes().size());
    visual_data_ = visual_data;
    resize_area_->SetLayout(visual_data.split_layout());
-+  if (tree_shape_changed) ConfigureBranchHandles();
++  ConfigureBranchHandles();
 +  for (const auto& handle : branch_resize_areas_) {
 +    const auto* node = visual_data_.pane_tree()->Find(handle->branch_node());
 +    if (node) handle->SetLayout(node->axis == split_tabs::SplitPaneTree::Axis::kHorizontal
@@ -357,7 +465,7 @@
    InvalidateLayout();
  }
  
-@@ -423,6 +503,42 @@
+@@ -423,6 +499,42 @@
    }
  }
  
@@ -400,7 +508,7 @@
  double MultiContentsView::CalculateRatioWithSnapPoints(
      double start_size,
      double total_size) const {
-@@ -448,7 +564,7 @@
+@@ -448,7 +560,7 @@
    if (IsInSplitView()) {
      // Check whether the widget is visible as otherwise during browser hide,
      // inactive web contents gets focus. See crbug.com/419335827
@@ -409,7 +517,7 @@
          GetWidget()->IsVisible()) {
        delegate_->WebContentsFocused(web_view->web_contents());
      }
-@@ -460,10 +576,10 @@
+@@ -460,10 +572,10 @@
      for (auto& contents_container_view : contents_container_views_) {
        if (contents_container_view->actor_overlay_web_view() &&
            contents_container_view->actor_overlay_web_view() == web_view &&
@@ -422,7 +530,7 @@
        }
      }
    }
-@@ -474,10 +590,10 @@
+@@ -474,10 +586,10 @@
      for (auto& contents_container_view : contents_container_views_) {
        if (contents_container_view->new_tab_footer_view() &&
            contents_container_view->new_tab_footer_view() == web_view &&
@@ -435,7 +543,7 @@
        }
      }
    }
-@@ -487,7 +603,7 @@
+@@ -487,7 +599,7 @@
      ContentsContainerView* container,
      views::WebView* web_view) {
    if (IsInSplitView() && GetWidget()->IsVisible()) {
@@ -444,7 +552,7 @@
        delegate_->WebContentsFocused(container->contents_view()->web_contents());
      }
    }
-@@ -521,6 +637,32 @@
+@@ -521,6 +633,32 @@
  
    if (IsInSplitView()) {
      available_space.Inset(split_view_insets_);
@@ -477,7 +585,7 @@
    }
    ViewSizes sizes = GetViewSizes(available_space);
  
-@@ -587,6 +729,18 @@
+@@ -587,6 +725,18 @@
          views::SizeBounds(target_content_bounds_->actual_size));
    }
  
@@ -534,7 +642,16 @@
    // the user drags a link to the edge of the contents view.
 --- a/chrome/browser/ui/views/frame/multi_contents_view_delegate.cc
 +++ b/chrome/browser/ui/views/frame/multi_contents_view_delegate.cc
-@@ -88,6 +88,23 @@
+@@ -4,6 +4,8 @@
+ 
+ #include "chrome/browser/ui/views/frame/multi_contents_view_delegate.h"
+ 
++#include "chrome/browser/ui/views/frame/aux_split_commands.h"
++#include "chrome/browser/ui/views/tabs/dragging/drag_session_data.h"
+ #include "chrome/browser/sessions/session_service.h"
+ #include "chrome/browser/sessions/session_service_factory.h"
+ #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
+@@ -88,6 +90,23 @@
    }
  }
  
@@ -558,6 +675,38 @@
  void MultiContentsViewDelegateImpl::HandleLinkDrop(
      MultiContentsDropTargetView::DropSide side,
      const ui::DropTargetEvent& event) {
+@@ -146,7 +165,30 @@
+ void MultiContentsViewDelegateImpl::HandleTabDrop(
+     MultiContentsDropTargetView::DropSide side,
+     TabDragTarget::DragController& drag_controller) {
+-  CHECK(!tab_strip_model_->GetActiveTab()->IsSplit());
++  auto* target = tab_strip_model_->GetActiveTab();
++  if (!target) return;
++  if (target->IsSplit()) {
++    const auto& drag = drag_controller.GetSessionData();
++    if (drag.num_dragging_tabs() != 1 || !drag.dragging_groups.empty()) return;
++    auto* source = tabs::TabInterface::MaybeGetFromContents(drag.source_dragged_contents());
++    if (!aux::CanJoinNativeSplit(browser_.get(), target, source)) return;
++    const auto target_handle = target->GetHandle();
++    auto detached = drag_controller.DetachTabAtForInsertion(drag.source_view_index_);
++    if (!detached) return;
++    // Keep the detached tab recoverable even if target admission changes.
++    auto* current_target = target_handle.Get();
++    const int inserted = tab_strip_model_->InsertDetachedTabAt(
++        tab_strip_model_->count(), std::move(detached),
++        current_target && current_target->IsPinned() ? AddTabTypes::ADD_PINNED : AddTabTypes::ADD_NONE,
++        current_target ? current_target->GetGroup() : std::nullopt);
++    auto* added = tab_strip_model_->GetTabAtIndex(inserted);
++    aux::JoinNativeSplit(browser_.get(), target_handle.Get(), added,
++        side == MultiContentsDropTargetView::DropSide::BOTTOM
++            ? split_tabs::SplitPaneTree::Axis::kVertical : split_tabs::SplitPaneTree::Axis::kHorizontal,
++        side == MultiContentsDropTargetView::DropSide::START);
++    tab_strip_model_->ActivateTabAt(tab_strip_model_->GetIndexOfTab(added));
++    return;
++  }
+ 
+   const split_tabs::SplitTabVisualData split_data(
+       side == MultiContentsDropTargetView::DropSide::BOTTOM
 --- a/chrome/browser/ui/views/frame/multi_contents_view_delegate.h
 +++ b/chrome/browser/ui/views/frame/multi_contents_view_delegate.h
 @@ -5,6 +5,7 @@
@@ -781,7 +930,7 @@
  
 --- /dev/null
 +++ b/components/split_tabs/split_pane_tree.cc
-@@ -0,0 +1,209 @@
+@@ -0,0 +1,225 @@
 +// Copyright 2026 The Chromium Authors
 +// Use of this source code is governed by a BSD-style license that can be
 +// found in the LICENSE file.
@@ -836,7 +985,7 @@
 +  }
 +  std::set<uint32_t> ids;
 +  for (const Node& node : nodes_) {
-+    if (!node.id || !ids.insert(node.id).second ||
++    if (!node.id || !ids.insert(node.id).second || !std::isfinite(node.ratio) ||
 +        (node.axis != Axis::kHorizontal && node.axis != Axis::kVertical)) {
 +      return false;
 +    }
@@ -928,6 +1077,22 @@
 +  return true;
 +}
 +
++bool SplitPaneTree::SwapBranch(uint32_t id) {
++  auto node = std::ranges::find(nodes_, id, &Node::id);
++  if (node == nodes_.end() || node->slot) return false;
++  std::swap(node->first, node->second);
++  node->ratio = 1.0 - node->ratio;
++  return true;
++}
++
++bool SplitPaneTree::SetBranchAxis(uint32_t id, Axis axis) {
++  if (axis != Axis::kHorizontal && axis != Axis::kVertical) return false;
++  auto node = std::ranges::find(nodes_, id, &Node::id);
++  if (node == nodes_.end() || node->slot) return false;
++  node->axis = axis;
++  return true;
++}
++
 +bool SplitPaneTree::SetPaneOrder(std::vector<uint32_t> order) {
 +  const std::set<uint32_t> previous(pane_slots_.begin(), pane_slots_.end());
 +  const std::set<uint32_t> proposed(order.begin(), order.end());
@@ -993,7 +1158,7 @@
 +}  // namespace split_tabs
 --- /dev/null
 +++ b/components/split_tabs/split_pane_tree.h
-@@ -0,0 +1,73 @@
+@@ -0,0 +1,75 @@
 +// Copyright 2026 The Chromium Authors
 +// Use of this source code is governed by a BSD-style license that can be
 +// found in the LICENSE file.
@@ -1051,6 +1216,8 @@
 +  bool SplitLeaf(uint32_t slot, uint32_t new_slot, Axis axis, bool before);
 +  bool RemoveLeaf(uint32_t slot);
 +  bool ResizeBranch(uint32_t node, double ratio);
++  bool SwapBranch(uint32_t node);
++  bool SetBranchAxis(uint32_t node, Axis axis);
 +  bool SetPaneOrder(std::vector<uint32_t> pane_slots);
 +  std::vector<Placement> Layout(Rect bounds, int divider, int minimum) const;
 +  const Node* Find(uint32_t node) const;

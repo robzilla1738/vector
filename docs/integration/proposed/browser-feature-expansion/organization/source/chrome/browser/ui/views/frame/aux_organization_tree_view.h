@@ -42,7 +42,7 @@ class AuxOrganizationTreeView final : public views::View,
   void ContextMenu(const std::string&, const gfx::Point& screen_point);
   bool Key(const std::string&, const ui::KeyEvent&);
   void BeginDrag(const std::string&, const gfx::Point&);
-  void ContinueDrag(const gfx::Point&);
+  void ContinueDrag(const gfx::Point&, bool stacked);
   void FinishDrag();
   void CancelDrag();
   void Rename(const std::string&, bool create_child);
@@ -70,6 +70,8 @@ class AuxOrganizationTreeView final : public views::View,
     organization::Context context;
     bool moved = false;
     bool after = false;
+    bool split = false;
+    bool stacked = false;
   };
   std::optional<Drag> drag_;
   std::string menu_entry_;

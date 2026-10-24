@@ -22,6 +22,8 @@ class OrganizationWindowDelegate {
                                 base::OnceCallback<void(bool)> reply) = 0;
   virtual void ArchiveLogicalEntry(const std::string& id,
                                    base::OnceCallback<void(bool)> reply) = 0;
+  virtual void SplitLogicalTabs(const std::string& source, const std::string& target,
+                                bool stacked, base::OnceCallback<void(bool)> reply) = 0;
   virtual base::CallbackListSubscription ObserveWindowState(
       base::RepeatingClosure callback) = 0;
 };

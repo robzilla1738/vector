@@ -52,7 +52,7 @@ bool SplitPaneTree::IsValid() const {
   }
   std::set<uint32_t> ids;
   for (const Node& node : nodes_) {
-    if (!node.id || !ids.insert(node.id).second ||
+    if (!node.id || !ids.insert(node.id).second || !std::isfinite(node.ratio) ||
         (node.axis != Axis::kHorizontal && node.axis != Axis::kVertical)) {
       return false;
     }
@@ -141,6 +141,22 @@ bool SplitPaneTree::ResizeBranch(uint32_t id, double ratio) {
   auto node = std::ranges::find(nodes_, id, &Node::id);
   if (node == nodes_.end() || node->slot) return false;
   node->ratio = ratio;
+  return true;
+}
+
+bool SplitPaneTree::SwapBranch(uint32_t id) {
+  auto node = std::ranges::find(nodes_, id, &Node::id);
+  if (node == nodes_.end() || node->slot) return false;
+  std::swap(node->first, node->second);
+  node->ratio = 1.0 - node->ratio;
+  return true;
+}
+
+bool SplitPaneTree::SetBranchAxis(uint32_t id, Axis axis) {
+  if (axis != Axis::kHorizontal && axis != Axis::kVertical) return false;
+  auto node = std::ranges::find(nodes_, id, &Node::id);
+  if (node == nodes_.end() || node->slot) return false;
+  node->axis = axis;
   return true;
 }
 

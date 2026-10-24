@@ -2,8 +2,18 @@
   "schema": 1,
   "status": "source-proposal-unintegrated",
   "modified": 9,
-  "added": 3,
+  "added": 5,
   "sources": [
+    {
+      "path": "chrome/browser/ui/views/frame/aux_split_commands.cc",
+      "sha256": "afc8157dda827dbfa4c0c5e148c0eb0c3b93ead6d468ba0ed21a9672ad56e1da",
+      "baseline_sha256": null
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_split_commands.h",
+      "sha256": "6050e830014137062f08e43e03fdd52618f3f7295a5e6e391130e1d3ca7e243a",
+      "baseline_sha256": null
+    },
     {
       "path": "chrome/browser/ui/views/frame/multi_contents_resize_area.cc",
       "sha256": "c810886c9b79940ec15a58d5ab8938357d8a0d8d08d9f918c84826950fa99346",
@@ -16,7 +26,7 @@
     },
     {
       "path": "chrome/browser/ui/views/frame/multi_contents_view.cc",
-      "sha256": "f3b39e6f3c21d724e0b40631ad27608ac6e1969486dfdc0a7740b0445f219579",
+      "sha256": "694b03838ea835708796ae25c2341817976c7fd556b8030b4e281646db7a3a8d",
       "baseline_sha256": "228656abe05ca719436c435e2ff872f761e7c7352d2e7b4d3daa080d8a3a22ce"
     },
     {
@@ -26,7 +36,7 @@
     },
     {
       "path": "chrome/browser/ui/views/frame/multi_contents_view_delegate.cc",
-      "sha256": "0481b6ce20f02f6b8634c37f9ab6eaaf6dcfa602f30a14d610f66ba98f2e8df1",
+      "sha256": "892cf8e0689c19d84ed9ba0e947bb4269a3c265580962f9052947a26b93e2b0d",
       "baseline_sha256": "434fdde097a00c8b70fcedb8469328f5b7902269ba0f215e2be41a11dda31b6a"
     },
     {
@@ -46,12 +56,12 @@
     },
     {
       "path": "components/split_tabs/split_pane_tree.cc",
-      "sha256": "77a0f9207f3d1ae21fc796f134a8092ef46a329cf133f6b6c54843e49dfc1585",
+      "sha256": "2394a959b781e6103445ece5327740c6cad73ae561d1fefde15b05ced46a45f6",
       "baseline_sha256": null
     },
     {
       "path": "components/split_tabs/split_pane_tree.h",
-      "sha256": "fcf76b42a273a2b37a9b9499e49a76a81f4d2d7f2d743a1df0c07915abe37521",
+      "sha256": "edcbfa4695dfcb6c6e20d21e1d53d71aac68765f396ce35fb84e8e2bcfc0f1ed",
       "baseline_sha256": null
     },
     {
@@ -65,5 +75,38 @@
       "baseline_sha256": "0b9a0749ecab70cd014782e15cb45270f5d0083a6ba3eb9577623e88f8f09508"
     }
   ],
-  "patch_sha256": "eeb234144425a9345501fbfeeae0dad442884fe3e9d20a1f16b390ee16ce05da"
+  "patch_sha256": "1a0e3ac813f2a57858ecaf5c659262d144252b81a3d7f8bf40a312768be1da73",
+  "shared_hooks": [
+    {
+      "path": "chrome/browser/sessions/session_restore.cc",
+      "sha256": "c9f0557fd7a4e1d4ebf0c02ed53e3fd58a1bf1ae01ca371cc64eecd9c8398446",
+      "baseline_sha256": "b999e51752a9964e2c59ac1345cabdf25e2984566badc00cae22f2383223faf2"
+    },
+    {
+      "path": "chrome/browser/ui/tabs/tab_strip_model.cc",
+      "sha256": "c96e2cfff4f1d1ad339962bd00aa89bb3913907d96bb3f43095518169b474067",
+      "baseline_sha256": "6860e0de77c3be9f127f70cc577ec6a311b7f0f32652c983243b1448885fd93c"
+    },
+    {
+      "path": "chrome/browser/ui/tabs/tab_strip_model.h",
+      "sha256": "0b47e2860251ffc017f2c5c2aca996196780cba117a42a8344a479ef7d61f93e",
+      "baseline_sha256": "9d944b3029763e441bc6979c58deba9c1482b095542c73b8a79cac8941690ca8"
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/browser_view.cc",
+      "sha256": "3e84d46972029f05e9875aa000716723ee2a709bf25e34dd79970062dd0354c8",
+      "baseline_sha256": "cf57a912b3d621ef170e6e20b236e36ad4bff7ac6143bada614177c3298e2a1c"
+    },
+    {
+      "path": "components/tabs/impl/tab_strip_collection.cc",
+      "sha256": "55952808686881d1e06dad7261d468bbdbc48d57cb62ee6ef8ee315aae26e0f1",
+      "baseline_sha256": "99616835b21b31e72bc405d88d9de8c13534ee4aa318250c5dfc8bd562d6ca83"
+    },
+    {
+      "path": "components/tabs/public/tab_strip_collection.h",
+      "sha256": "b29dc9daa5203233cdafe015db88df3d60a89fb781ebd3e3f495bf392ef140ee",
+      "baseline_sha256": "2a04873e086b81ab541d7663afe5a57feb1304408e800863969e1b9adf8a8aa7"
+    }
+  ],
+  "shared_hooks_patch_sha256": "204d6a92fff4d9771d88b67fcf0a56a85310c08fda04646eadad99555f83c3c6"
 }

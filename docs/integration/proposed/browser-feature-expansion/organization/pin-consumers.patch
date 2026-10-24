@@ -921,7 +921,7 @@ diff --git a/chrome/browser/ui/views/frame/aux_organization_tree_view.cc b/chrom
 new file mode 100644
 --- /dev/null
 +++ b/chrome/browser/ui/views/frame/aux_organization_tree_view.cc
-@@ -0,0 +1,470 @@
+@@ -0,0 +1,486 @@
 +// Copyright 2026 Aux Authors. BSD-style license: see //LICENSE.
 +#include "chrome/browser/ui/views/frame/aux_organization_tree_view.h"
 +#include <algorithm>
@@ -1035,7 +1035,7 @@ new file mode 100644
 +  bool OnMouseDragged(const ui::MouseEvent& event) override {
 +    if (!pressed_ || !owner_) return false;
 +    gfx::Point point = event.location(); ConvertPointToScreen(this, &point);
-+    owner_->ContinueDrag(point); return true;
++    owner_->ContinueDrag(point, event.IsShiftDown()); return true;
 +  }
 +  void OnMouseReleased(const ui::MouseEvent& event) override {
 +    if (!pressed_ || !owner_) return;
@@ -1368,13 +1368,21 @@ new file mode 100644
 +  auto context = CaptureOrganizationContext(*browser_);
 +  if (context) drag_ = Drag{id, {}, point, std::move(*context), false, false};
 +}
-+void AuxOrganizationTreeView::ContinueDrag(const gfx::Point& point) {
++void AuxOrganizationTreeView::ContinueDrag(const gfx::Point& point, bool stacked) {
 +  if (!drag_ || (!drag_->moved && (point - drag_->origin).LengthSquared() < 36)) return;
-+  drag_->moved = true; drag_->target.clear();
++  drag_->moved = true; drag_->target.clear(); drag_->split = false; drag_->stacked = stacked;
 +  for (const auto& [id, row] : row_by_id_) {
 +    const auto bounds = row->GetBoundsInScreen(); const bool over = id != drag_->id && bounds.Contains(point);
 +    row->MarkDrop(over);
-+    if (over) { drag_->target = id; drag_->after = point.y() >= bounds.CenterPoint().y(); }
++    if (over) {
++      drag_->target = id; drag_->after = point.y() >= bounds.CenterPoint().y();
++      const auto* snapshot = Snapshot();
++      drag_->split = snapshot && snapshot->entries.contains(id) && snapshot->entries.contains(drag_->id) &&
++          snapshot->entries.at(id).kind == organization::EntryKind::kTab &&
++          snapshot->entries.at(drag_->id).kind == organization::EntryKind::kTab &&
++          point.y() > bounds.y() + bounds.height() / 3 &&
++          point.y() < bounds.bottom() - bounds.height() / 3;
++    }
 +  }
 +}
 +void AuxOrganizationTreeView::CancelDrag() {
@@ -1384,6 +1392,14 @@ new file mode 100644
 +  auto drag = std::move(drag_); CancelDrag();
 +  const auto* snapshot = Snapshot();
 +  if (!drag || !drag->moved || !snapshot || !snapshot->entries.contains(drag->target)) return;
++  if (drag->split) {
++    if (snapshot->revision != drag->context.expected_revision) return;
++    window_->SplitLogicalTabs(drag->id, drag->target, drag->stacked,
++        base::BindOnce([](base::WeakPtr<AuxOrganizationTreeView> owner, bool) {
++          if (owner) owner->Refresh();
++        }, weak_.GetWeakPtr()));
++    return;
++  }
 +  const auto target = snapshot->entries.at(drag->target);
 +  const bool folder = target.kind == organization::EntryKind::kFolder;
 +  Move(drag->id, target.space_id, folder ? target.id : target.parent_id,
@@ -1396,7 +1412,7 @@ diff --git a/chrome/browser/ui/views/frame/aux_organization_tree_view.h b/chrome
 new file mode 100644
 --- /dev/null
 +++ b/chrome/browser/ui/views/frame/aux_organization_tree_view.h
-@@ -0,0 +1,84 @@
+@@ -0,0 +1,86 @@
 +// Copyright 2026 Aux Authors. BSD-style license: see //LICENSE.
 +#ifndef CHROME_BROWSER_UI_VIEWS_FRAME_AUX_ORGANIZATION_TREE_VIEW_H_
 +#define CHROME_BROWSER_UI_VIEWS_FRAME_AUX_ORGANIZATION_TREE_VIEW_H_
@@ -1441,7 +1457,7 @@ new file mode 100644
 +  void ContextMenu(const std::string&, const gfx::Point& screen_point);
 +  bool Key(const std::string&, const ui::KeyEvent&);
 +  void BeginDrag(const std::string&, const gfx::Point&);
-+  void ContinueDrag(const gfx::Point&);
++  void ContinueDrag(const gfx::Point&, bool stacked);
 +  void FinishDrag();
 +  void CancelDrag();
 +  void Rename(const std::string&, bool create_child);
@@ -1469,6 +1485,8 @@ new file mode 100644
 +    organization::Context context;
 +    bool moved = false;
 +    bool after = false;
++    bool split = false;
++    bool stacked = false;
 +  };
 +  std::optional<Drag> drag_;
 +  std::string menu_entry_;
@@ -1603,7 +1621,7 @@ diff --git a/chrome/browser/ui/views/frame/aux_organization_window_controller.cc
 new file mode 100644
 --- /dev/null
 +++ b/chrome/browser/ui/views/frame/aux_organization_window_controller.cc
-@@ -0,0 +1,714 @@
+@@ -0,0 +1,747 @@
 +// Copyright 2026 Aux Authors. BSD-style license: see //LICENSE.
 +#include "chrome/browser/ui/views/frame/aux_organization_window_controller.h"
 +#include <algorithm>
@@ -1617,6 +1635,7 @@ new file mode 100644
 +#include "base/uuid.h"
 +#include "chrome/browser/aux/organization/organization_profile_service.h"
 +#include "chrome/browser/actor/ui/actor_ui_tab_controller.h"
++#include "chrome/browser/ui/views/frame/aux_split_commands.h"
 +#include "chrome/browser/ui/views/frame/aux_bookmark_tab_exclusion.h"
 +#include "chrome/browser/aux/organization/organization_service.h"
 +#include "chrome/browser/media/webrtc/media_capture_devices_dispatcher.h"
@@ -2059,6 +2078,38 @@ new file mode 100644
 +  // exactly to a view; unknown ownership never authorizes an unload.
 +  return profile_->GetDownloadManager()->InProgressCount() != 0;
 +}
++void AuxOrganizationWindowController::SplitLogicalTabs(
++    const std::string& source, const std::string& target, bool stacked,
++    base::OnceCallback<void(bool)> reply) {
++  if (!IsProjectionReady() || source == target) { std::move(reply).Run(false); return; }
++  OpenLogicalTab(target, base::BindOnce(
++      [](base::WeakPtr<AuxOrganizationWindowController> owner, std::string source_id,
++         std::string target_id, bool vertical, base::OnceCallback<void(bool)> done, bool opened) {
++        if (!owner || !opened) { std::move(done).Run(false); return; }
++        owner->OpenLogicalTab(source_id, base::BindOnce(
++            [](base::WeakPtr<AuxOrganizationWindowController> current, std::string source_key,
++               std::string target_key, bool is_vertical, base::OnceCallback<void(bool)> completed, bool source_opened) {
++              if (!current || !current->Current() || !source_opened) {
++                std::move(completed).Run(false); return;
++              }
++              tabs::TabInterface* source_tab = nullptr;
++              tabs::TabInterface* target_tab = nullptr;
++              for (int i = 0; i < current->model_->count(); ++i) {
++                auto* tab = current->model_->GetTabAtIndex(i);
++                if (!tab->GetContents()) continue;
++                auto logical_id = GetRememberedPinnedTabEntryId(*tab->GetContents());
++                if (logical_id == source_key) source_tab = tab;
++                if (logical_id == target_key) target_tab = tab;
++              }
++              const bool joined = JoinNativeSplit(*current->browser_, target_tab, source_tab,
++                  is_vertical ? split_tabs::SplitPaneTree::Axis::kVertical
++                              : split_tabs::SplitPaneTree::Axis::kHorizontal, false);
++              current->QueueReconcile();
++              std::move(completed).Run(joined);
++            }, owner, source_id, target_id, vertical, std::move(done)));
++      }, weak_.GetWeakPtr(), source, target, stacked, std::move(reply)));
++}
++
 +void AuxOrganizationWindowController::OpenLogicalTab(const std::string& id, base::OnceCallback<void(bool)> reply) {
 +  auto* organization = Current() ? Organization(browser_.get()) : nullptr;
 +  if (!organization || organization->blocked() || organization->pending()) { std::move(reply).Run(false); return; }
@@ -2212,7 +2263,7 @@ new file mode 100644
 +}
 +bool AuxOrganizationWindowController::HandleClose(tabs::TabHandle handle) {
 +  if (!Current() || model_->closing_all() || IsExplicitUnload(handle)) return false;
-+  auto* tab = handle.Get(); if (!tab || !tab->GetContents()) return false;
++  auto* tab = handle.Get(); if (!tab || !tab->GetContents() || tab->IsSplit()) return false;
 +  const auto id = GetRememberedPinnedTabEntryId(*tab->GetContents()).value_or("");
 +  auto* organization = Organization(browser_.get());
 +  if (id.empty() || !organization || !organization->snapshot().entries.contains(id)) return false;
@@ -2322,7 +2373,7 @@ diff --git a/chrome/browser/ui/views/frame/aux_organization_window_controller.h 
 new file mode 100644
 --- /dev/null
 +++ b/chrome/browser/ui/views/frame/aux_organization_window_controller.h
-@@ -0,0 +1,101 @@
+@@ -0,0 +1,103 @@
 +// Copyright 2026 Aux Authors. BSD-style license: see //LICENSE.
 +#ifndef CHROME_BROWSER_UI_VIEWS_FRAME_AUX_ORGANIZATION_WINDOW_CONTROLLER_H_
 +#define CHROME_BROWSER_UI_VIEWS_FRAME_AUX_ORGANIZATION_WINDOW_CONTROLLER_H_
@@ -2362,6 +2413,8 @@ new file mode 100644
 +  std::string SelectedLogicalTabId() const override;
 +  bool SelectSpace(const std::string&) override;
 +  void OpenLogicalTab(const std::string&, base::OnceCallback<void(bool)>) override;
++  void SplitLogicalTabs(const std::string&, const std::string&, bool,
++                        base::OnceCallback<void(bool)>) override;
 +  void UnloadLogicalTab(const std::string&, base::OnceCallback<void(bool)>) override;
 +  void ArchiveLogicalEntry(const std::string&, base::OnceCallback<void(bool)>) override;
 +  void ArchiveFolderAndContents(const std::string&, base::OnceCallback<void(bool)>);
@@ -2428,7 +2481,7 @@ diff --git a/chrome/browser/ui/views/frame/aux_organization_window_delegate.h b/
 new file mode 100644
 --- /dev/null
 +++ b/chrome/browser/ui/views/frame/aux_organization_window_delegate.h
-@@ -0,0 +1,29 @@
+@@ -0,0 +1,31 @@
 +// Copyright 2026 Aux Authors. BSD-style license: see //LICENSE.
 +#ifndef CHROME_BROWSER_UI_VIEWS_FRAME_AUX_ORGANIZATION_WINDOW_DELEGATE_H_
 +#define CHROME_BROWSER_UI_VIEWS_FRAME_AUX_ORGANIZATION_WINDOW_DELEGATE_H_
@@ -2453,6 +2506,8 @@ new file mode 100644
 +                                base::OnceCallback<void(bool)> reply) = 0;
 +  virtual void ArchiveLogicalEntry(const std::string& id,
 +                                   base::OnceCallback<void(bool)> reply) = 0;
++  virtual void SplitLogicalTabs(const std::string& source, const std::string& target,
++                                bool stacked, base::OnceCallback<void(bool)> reply) = 0;
 +  virtual base::CallbackListSubscription ObserveWindowState(
 +      base::RepeatingClosure callback) = 0;
 +};

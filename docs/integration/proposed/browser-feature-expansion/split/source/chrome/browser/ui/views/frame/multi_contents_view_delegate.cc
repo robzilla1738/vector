@@ -4,6 +4,8 @@
 
 #include "chrome/browser/ui/views/frame/multi_contents_view_delegate.h"
 
+#include "chrome/browser/ui/views/frame/aux_split_commands.h"
+#include "chrome/browser/ui/views/tabs/dragging/drag_session_data.h"
 #include "chrome/browser/sessions/session_service.h"
 #include "chrome/browser/sessions/session_service_factory.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
@@ -163,7 +165,30 @@ void MultiContentsViewDelegateImpl::HandleLinkDrop(
 void MultiContentsViewDelegateImpl::HandleTabDrop(
     MultiContentsDropTargetView::DropSide side,
     TabDragTarget::DragController& drag_controller) {
-  CHECK(!tab_strip_model_->GetActiveTab()->IsSplit());
+  auto* target = tab_strip_model_->GetActiveTab();
+  if (!target) return;
+  if (target->IsSplit()) {
+    const auto& drag = drag_controller.GetSessionData();
+    if (drag.num_dragging_tabs() != 1 || !drag.dragging_groups.empty()) return;
+    auto* source = tabs::TabInterface::MaybeGetFromContents(drag.source_dragged_contents());
+    if (!aux::CanJoinNativeSplit(browser_.get(), target, source)) return;
+    const auto target_handle = target->GetHandle();
+    auto detached = drag_controller.DetachTabAtForInsertion(drag.source_view_index_);
+    if (!detached) return;
+    // Keep the detached tab recoverable even if target admission changes.
+    auto* current_target = target_handle.Get();
+    const int inserted = tab_strip_model_->InsertDetachedTabAt(
+        tab_strip_model_->count(), std::move(detached),
+        current_target && current_target->IsPinned() ? AddTabTypes::ADD_PINNED : AddTabTypes::ADD_NONE,
+        current_target ? current_target->GetGroup() : std::nullopt);
+    auto* added = tab_strip_model_->GetTabAtIndex(inserted);
+    aux::JoinNativeSplit(browser_.get(), target_handle.Get(), added,
+        side == MultiContentsDropTargetView::DropSide::BOTTOM
+            ? split_tabs::SplitPaneTree::Axis::kVertical : split_tabs::SplitPaneTree::Axis::kHorizontal,
+        side == MultiContentsDropTargetView::DropSide::START);
+    tab_strip_model_->ActivateTabAt(tab_strip_model_->GetIndexOfTab(added));
+    return;
+  }
 
   const split_tabs::SplitTabVisualData split_data(
       side == MultiContentsDropTargetView::DropSide::BOTTOM

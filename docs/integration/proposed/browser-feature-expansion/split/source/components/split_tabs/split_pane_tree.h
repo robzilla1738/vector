@@ -55,6 +55,8 @@ class SplitPaneTree {
   bool SplitLeaf(uint32_t slot, uint32_t new_slot, Axis axis, bool before);
   bool RemoveLeaf(uint32_t slot);
   bool ResizeBranch(uint32_t node, double ratio);
+  bool SwapBranch(uint32_t node);
+  bool SetBranchAxis(uint32_t node, Axis axis);
   bool SetPaneOrder(std::vector<uint32_t> pane_slots);
   std::vector<Placement> Layout(Rect bounds, int divider, int minimum) const;
   const Node* Find(uint32_t node) const;
