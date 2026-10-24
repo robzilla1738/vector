@@ -1,0 +1,10 @@
+{
+  "checks": "ordered explicit Ask row; restricted modes; enabled native command; exact payload; native refusal; actual composed syntax; unchanged CSS classes; count/hash native replay; original editable Ask ingress",
+  "stage": "/Users/rcourson/Documents/Vibe/web/out/browser-feature-stage-pair-20261023-a4/desktop-v1/ui/agent",
+  "inputSha256": "5344dac3ec31e708066abcdb5793d887f0e8511a13babfdb4abad3a8caa757ad",
+  "outputSha256": "29b3f114c30acfd9ad3c514cda08c71ca6f7e81642384c09bdad95865534c1e8",
+  "editorSha256": "9cbae591022e3650500183e8ba3809135394f10d2dc1c3425f06a1be48374638",
+  "nativeSha256": "bf0d3f880df07a99a5a4ce9ea0d11bae9e8498da8b1b0e450a0858de335d315a",
+  "runtimeObserved": false,
+  "nativeCompiled": false
+}

@@ -1,0 +1,24 @@
+{
+  "format": "aux.palette-ask-source-overlay.v1",
+  "inactive": true,
+  "baseRootCommit": "fefe0af9c",
+  "files": {
+    "README.md": "049278b869c23e0a1291ec5fd05c0b30d5992c6e57905a188688ed34fd558901",
+    "baseline/aux_tab_search_bubble.cc": "fb43406612104ae431ebe0ec20c79275cfad47050246ad394107e581aedc2c18",
+    "check-result.json": "b8851c15fb1e96af7f2bb03ee93facfed4295bbb5804e386d594b61cb7ed7c26",
+    "check.mjs": "fffdaec3de44801d5cf20e9c7cfa59572f9129cbbe0d393e68e87377203f3992",
+    "native-overlay.json": "8016b25cfdc9df5a3bb0b711d8097f4a5c80bc479afb4c3534459c477db56abc",
+    "native.patch": "3dce733a8688c74a1fc606849cc2240dfe17d4dee57342c6269cc6d55d385215",
+    "source/aux-palette-ask.mjs": "af2635ee35e7fc2e4960e5b6d394b5c5c1a9fdd775e8aa7430b30f014bf34797",
+    "source/aux_tab_search_bubble.cc": "bf0d3f880df07a99a5a4ce9ea0d11bae9e8498da8b1b0e450a0858de335d315a"
+  },
+  "sharedNativeFiles": [
+    "chrome/browser/ui/views/frame/aux_tab_search_bubble.cc"
+  ],
+  "nativeChanges": 5,
+  "resourceChanges": 2,
+  "resourceHelperAppends": 1,
+  "schemaChanges": 0,
+  "runtimeObserved": false,
+  "nativeCompiled": false
+}

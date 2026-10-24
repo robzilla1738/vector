@@ -1,0 +1,32 @@
+{
+  "path": "chrome/browser/ui/views/frame/aux_tab_search_bubble.cc",
+  "inputSha256": "fb43406612104ae431ebe0ec20c79275cfad47050246ad394107e581aedc2c18",
+  "outputSha256": "bf0d3f880df07a99a5a4ce9ea0d11bae9e8498da8b1b0e450a0858de335d315a",
+  "changes": [
+    {
+      "find": "#include \"chrome/browser/aux/component_bootstrap.h\"",
+      "replace": "#include \"chrome/browser/aux/component_bootstrap.h\"\n#include \"chrome/browser/aux/profile_identity.h\"\n#include \"net/base/url_util.h\"",
+      "count": 1
+    },
+    {
+      "find": "    auto* owner = browser();\n    auto* tab = owner ? owner->GetActiveTabInterface() : nullptr;\n    auto* contents = tab ? tab->GetContents() : nullptr;\n    target_ =",
+      "replace": "    auto* owner = browser();\n    ask_profile_epoch_ = owner ? GetProfileCookieBindingEpoch(owner->GetProfile()) : std::string();\n    auto* tab = owner ? owner->GetActiveTabInterface() : nullptr;\n    auto* contents = tab ? tab->GetContents() : nullptr;\n    target_ =",
+      "count": 1
+    },
+    {
+      "find": "  AuxCommandBarMode mode() const { return mode_; }",
+      "replace": "  AuxCommandBarMode mode() const { return mode_; }\n  const std::string& ask_profile_epoch() const { return ask_profile_epoch_; }",
+      "count": 1
+    },
+    {
+      "find": "  AuxCommandBarMode mode_ = AuxCommandBarMode::kSearchTabs;",
+      "replace": "  std::string ask_profile_epoch_;\n  AuxCommandBarMode mode_ = AuxCommandBarMode::kSearchTabs;",
+      "count": 1
+    },
+    {
+      "find": "  } else if (*kind == \"navigate\") {",
+      "replace": "  } else if (*kind == \"ask\") {\n    const auto* text = request.FindString(\"text\");\n    auto* profile = browser->GetProfile();\n    auto* target = binding->target();\n    auto* registry = extensions::ExtensionRegistry::Get(profile);\n    if (!text || text->size() > 32768 || !base::IsStringUTF8(*text) ||\n        base::TrimWhitespaceASCII(*text, base::TRIM_ALL).empty() ||\n        !IsAuxLocalProfileAdmitted(profile) ||\n        binding->ask_profile_epoch() != aux::GetProfileCookieBindingEpoch(profile) ||\n        !registry || !registry->enabled_extensions().Contains(aux::kAgentExtensionId) ||\n        !chrome::IsCommandEnabled(browser, IDC_AUX_ASK) ||\n        binding->mode() == AuxCommandBarMode::kSearchTabs ||\n        binding->mode() == AuxCommandBarMode::kTidy ||\n        !target || target->GetController().GetPendingEntry())\n      return CommandFailure(\"Ask context changed; reopen the command bar\");\n    // The original supplied editor consumes mode/q into an editable composer.\n    // This handoff never submits, attaches a page, or invokes a provider.\n    GURL url(\"chrome-extension://\" + std::string(aux::kAgentExtensionId) + \"/newtab.html\");\n    url = net::AppendQueryParameter(url, \"mode\", \"ask\");\n    url = net::AppendQueryParameter(url, \"q\", *text);\n    const auto epoch = binding->ask_profile_epoch();\n    const auto profile_weak = profile->GetWeakPtr();\n    const auto target_weak = target->GetWeakPtr();\n    auto* entry = target->GetController().GetLastCommittedEntry();\n    const int navigation_id = entry ? entry->GetUniqueID() : 0;\n    binding->Invalidate();\n    CloseAuxProfileSearch(browser);\n    auto* active = browser_weak ? browser_weak->GetActiveTabInterface() : nullptr;\n    auto* current_entry = target_weak ? target_weak->GetController().GetLastCommittedEntry() : nullptr;\n    if (!browser_weak || !profile_weak || !target_weak ||\n        browser_weak->GetProfile() != profile_weak.get() ||\n        !IsAuxLocalProfileAdmitted(profile_weak.get()) ||\n        aux::GetProfileCookieBindingEpoch(profile_weak.get()) != epoch ||\n        !active || active->GetContents() != target_weak.get() ||\n        target_weak->GetController().GetPendingEntry() ||\n        (current_entry ? current_entry->GetUniqueID() : 0) != navigation_id)\n      return CommandFailure(\"The originating page changed; reopen the command bar\");\n    NavigateParams params(browser_weak.get(), url, ui::PAGE_TRANSITION_TYPED);\n    params.source_contents = target_weak.get();\n    params.disposition = WindowOpenDisposition::NEW_FOREGROUND_TAB;\n    Navigate(&params);\n  } else if (*kind == \"navigate\") {",
+      "count": 1
+    }
+  ]
+}

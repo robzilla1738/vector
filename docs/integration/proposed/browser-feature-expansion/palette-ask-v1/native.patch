@@ -1,0 +1,83 @@
+--- a/chrome/browser/ui/views/frame/aux_tab_search_bubble.cc
++++ b/chrome/browser/ui/views/frame/aux_tab_search_bubble.cc
+@@ -38,6 +38,8 @@
+ #include "base/memory/weak_ptr.h"
+ #include "base/scoped_multi_source_observation.h"
+ #include "chrome/browser/aux/component_bootstrap.h"
++#include "chrome/browser/aux/profile_identity.h"
++#include "net/base/url_util.h"
+ #include "chrome/browser/profiles/profile.h"
+ #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
+ #include "chrome/browser/ui/tabs/tab_strip_model.h"
+@@ -110,6 +112,7 @@
+     mode_ = mode;
+     generation_ = base::Uuid::GenerateRandomV4().AsLowercaseString();
+     auto* owner = browser();
++    ask_profile_epoch_ = owner ? GetProfileCookieBindingEpoch(owner->GetProfile()) : std::string();
+     auto* tab = owner ? owner->GetActiveTabInterface() : nullptr;
+     auto* contents = tab ? tab->GetContents() : nullptr;
+     target_ = contents ? contents->GetWeakPtr() : nullptr;
+@@ -122,6 +125,7 @@
+   void ConsumeProposal() { proposal_.reset(); }
+   content::WebContents* target() { return target_.get(); }
+   AuxCommandBarMode mode() const { return mode_; }
++  const std::string& ask_profile_epoch() const { return ask_profile_epoch_; }
+   const std::string& generation() const { return generation_; }
+   bool current() {
+     auto* owner = browser();
+@@ -139,6 +143,7 @@
+         browser_(browser.GetWeakPtr()) {}
+   base::WeakPtr<BrowserWindowInterface> browser_;
+   base::WeakPtr<content::WebContents> target_;
++  std::string ask_profile_epoch_;
+   AuxCommandBarMode mode_ = AuxCommandBarMode::kSearchTabs;
+   std::string generation_;
+   int navigation_id_ = 0;
+@@ -824,6 +829,47 @@
+     CloseAuxProfileSearch(browser);
+     if (!browser_weak) return CommandFailure("Window closed");
+     model->ActivateTabAt(index);
++  } else if (*kind == "ask") {
++    const auto* text = request.FindString("text");
++    auto* profile = browser->GetProfile();
++    auto* target = binding->target();
++    auto* registry = extensions::ExtensionRegistry::Get(profile);
++    if (!text || text->size() > 32768 || !base::IsStringUTF8(*text) ||
++        base::TrimWhitespaceASCII(*text, base::TRIM_ALL).empty() ||
++        !IsAuxLocalProfileAdmitted(profile) ||
++        binding->ask_profile_epoch() != aux::GetProfileCookieBindingEpoch(profile) ||
++        !registry || !registry->enabled_extensions().Contains(aux::kAgentExtensionId) ||
++        !chrome::IsCommandEnabled(browser, IDC_AUX_ASK) ||
++        binding->mode() == AuxCommandBarMode::kSearchTabs ||
++        binding->mode() == AuxCommandBarMode::kTidy ||
++        !target || target->GetController().GetPendingEntry())
++      return CommandFailure("Ask context changed; reopen the command bar");
++    // The original supplied editor consumes mode/q into an editable composer.
++    // This handoff never submits, attaches a page, or invokes a provider.
++    GURL url("chrome-extension://" + std::string(aux::kAgentExtensionId) + "/newtab.html");
++    url = net::AppendQueryParameter(url, "mode", "ask");
++    url = net::AppendQueryParameter(url, "q", *text);
++    const auto epoch = binding->ask_profile_epoch();
++    const auto profile_weak = profile->GetWeakPtr();
++    const auto target_weak = target->GetWeakPtr();
++    auto* entry = target->GetController().GetLastCommittedEntry();
++    const int navigation_id = entry ? entry->GetUniqueID() : 0;
++    binding->Invalidate();
++    CloseAuxProfileSearch(browser);
++    auto* active = browser_weak ? browser_weak->GetActiveTabInterface() : nullptr;
++    auto* current_entry = target_weak ? target_weak->GetController().GetLastCommittedEntry() : nullptr;
++    if (!browser_weak || !profile_weak || !target_weak ||
++        browser_weak->GetProfile() != profile_weak.get() ||
++        !IsAuxLocalProfileAdmitted(profile_weak.get()) ||
++        aux::GetProfileCookieBindingEpoch(profile_weak.get()) != epoch ||
++        !active || active->GetContents() != target_weak.get() ||
++        target_weak->GetController().GetPendingEntry() ||
++        (current_entry ? current_entry->GetUniqueID() : 0) != navigation_id)
++      return CommandFailure("The originating page changed; reopen the command bar");
++    NavigateParams params(browser_weak.get(), url, ui::PAGE_TRANSITION_TYPED);
++    params.source_contents = target_weak.get();
++    params.disposition = WindowOpenDisposition::NEW_FOREGROUND_TAB;
++    Navigate(&params);
+   } else if (*kind == "navigate") {
+     const auto* text = request.FindString("text");
+     if (!text || text->size() > 32768 ||
