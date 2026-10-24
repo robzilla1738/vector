@@ -1,0 +1,93 @@
+{
+  "format": "aux.dom-control-target-metadata.source.v1",
+  "predecessorCommit": "e9a93e122",
+  "nativeOwnerCommit": "c9f4a4f7d",
+  "dependencies": [
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-organization/web/docs/integration/proposed/standard-profile-isolation/native-leveldb-absence-a25/source-plan.json",
+      "sha256": "4c977b9171b2645256a33a70dd7134aa8b353882cedc6efb7e1abfdb9eb730da"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-organization/web/docs/integration/proposed/standard-profile-isolation/native-leveldb-absence-a25/source/components/services/storage/dom_storage/async_dom_storage_database.h",
+      "sha256": "5f3d557cad1fb75002a5a812930ac99563c70dfe860aab14fb65c5122180a86d"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-organization/web/docs/integration/proposed/standard-profile-isolation/native-leveldb-absence-a25/source/components/services/storage/dom_storage/async_dom_storage_database.cc",
+      "sha256": "8b7f780228b28d80a3077740329f8d56595aead41809068c4f234675cadd2700"
+    }
+  ],
+  "files": [
+    {
+      "path": "components/services/storage/public/mojom/local_storage_control.mojom",
+      "inputSource": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/native-dom-control-recovery-a21/source/components/services/storage/public/mojom/local_storage_control.mojom",
+      "inputSha256": "b823be759e2cda8c95e6b52fb824231502af60e2a2e146f33feb12e29bfff2dc",
+      "outputSha256": "06f0634252485338eed9ff983be004da0b6ca0fa7f0a7064b4234c06e4031029",
+      "source": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/native-dom-control-target-metadata-a27/source/components/services/storage/public/mojom/local_storage_control.mojom",
+      "anchors": [
+        {
+          "name": "Append identical native target facts to output map and journal-data recovery map",
+          "find": "  string? source_total_size_bytes;\n};",
+          "replace": "  string? source_total_size_bytes;\n  // Actual native pre-attempt LevelDB plan metadata; never a generated map ID.\n  bool target_metadata_is_explicit;\n  string? target_last_accessed_us;\n  string? target_last_modified_us;\n  string? target_total_size_bytes;\n};",
+          "count": 2
+        }
+      ]
+    },
+    {
+      "path": "components/services/storage/dom_storage/local_storage_impl.cc",
+      "inputSource": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/native-dom-control-recovery-a21/source/components/services/storage/dom_storage/local_storage_impl.cc",
+      "inputSha256": "c556822376bee01548b19a84e6a5be4ae82d7abb372c4776e69e5c6abb661111",
+      "outputSha256": "f80c3f614428f6db47ceee773013db7b9b857470b958fdb8c4a8858bcaa2519a",
+      "source": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/native-dom-control-target-metadata-a27/source/components/services/storage/dom_storage/local_storage_impl.cc",
+      "anchors": [
+        {
+          "name": "Serialize native explicit target metadata with exact signed/unsigned precision",
+          "find": "    if (map.source_total_size)\n      output->source_total_size_bytes = base::NumberToString(map.source_total_size->InBytes());",
+          "replace": "    if (map.source_total_size)\n      output->source_total_size_bytes = base::NumberToString(map.source_total_size->InBytes());\n    output->target_metadata_is_explicit = map.target_metadata_is_explicit;\n    if (map.target_last_accessed)\n      output->target_last_accessed_us = base::NumberToString(\n          map.target_last_accessed->ToDeltaSinceWindowsEpoch().InMicroseconds());\n    if (map.target_last_modified)\n      output->target_last_modified_us = base::NumberToString(\n          map.target_last_modified->ToDeltaSinceWindowsEpoch().InMicroseconds());\n    if (map.target_total_size)\n      output->target_total_size_bytes = base::NumberToString(map.target_total_size->InBytes());",
+          "count": 1
+        },
+        {
+          "name": "Share the existing canonical uint64 size parser without rounding",
+          "find": "bool ConvertAuxDomRecovery(mojom::AuxUiDomRecoveryDescriptorPtr input,",
+          "replace": "bool ParseAuxRecoverySize(const std::optional<std::string>& encoded,\n                          std::optional<base::ByteSize>* output) {\n  if (!encoded) return true;\n  uint64_t value = 0;\n  if (encoded->size() > 20 || !base::StringToUint64(*encoded, &value) ||\n      base::NumberToString(value) != *encoded) return false;\n  *output = base::ByteSize(value);\n  return true;\n}\nbool ConvertAuxDomRecovery(mojom::AuxUiDomRecoveryDescriptorPtr input,",
+          "count": 1
+        },
+        {
+          "name": "Preserve original metadata and parse target facts independently as unqualified journal data",
+          "find": "    if (row->source_total_size_bytes) {\n      uint64_t size = 0;\n      if (row->source_total_size_bytes->size() > 20 ||\n          !base::StringToUint64(*row->source_total_size_bytes, &size) ||\n          base::NumberToString(size) != *row->source_total_size_bytes) return false;\n      map.source_total_size = base::ByteSize(size);\n    }",
+          "replace": "    if (!ParseAuxRecoverySize(row->source_total_size_bytes, &map.source_total_size)) return false;\n    map.target_metadata_is_explicit = row->target_metadata_is_explicit;\n    if (!ParseAuxRecoveryTime(row->target_last_accessed_us, &map.target_last_accessed) ||\n        !ParseAuxRecoveryTime(row->target_last_modified_us, &map.target_last_modified) ||\n        !ParseAuxRecoverySize(row->target_total_size_bytes, &map.target_total_size)) return false;",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "components/services/storage/dom_storage/session_storage_impl.cc",
+      "inputSource": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/native-dom-control-recovery-a21/source/components/services/storage/dom_storage/session_storage_impl.cc",
+      "inputSha256": "000988350ce3a285c86d5bff4b43bb8bdf86f64938e5f4fac89527ef4634c2ac",
+      "outputSha256": "3ecdf4b347db96a878cf2cd8668b875df23909f945a4c1642764bdd7a4eff808",
+      "source": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/native-dom-control-target-metadata-a27/source/components/services/storage/dom_storage/session_storage_impl.cc",
+      "anchors": [
+        {
+          "name": "Serialize native explicit target metadata with exact signed/unsigned precision",
+          "find": "    if (map.source_total_size)\n      output->source_total_size_bytes = base::NumberToString(map.source_total_size->InBytes());",
+          "replace": "    if (map.source_total_size)\n      output->source_total_size_bytes = base::NumberToString(map.source_total_size->InBytes());\n    output->target_metadata_is_explicit = map.target_metadata_is_explicit;\n    if (map.target_last_accessed)\n      output->target_last_accessed_us = base::NumberToString(\n          map.target_last_accessed->ToDeltaSinceWindowsEpoch().InMicroseconds());\n    if (map.target_last_modified)\n      output->target_last_modified_us = base::NumberToString(\n          map.target_last_modified->ToDeltaSinceWindowsEpoch().InMicroseconds());\n    if (map.target_total_size)\n      output->target_total_size_bytes = base::NumberToString(map.target_total_size->InBytes());",
+          "count": 1
+        },
+        {
+          "name": "Share the existing canonical uint64 size parser without rounding",
+          "find": "bool ConvertAuxDomRecovery(mojom::AuxUiDomRecoveryDescriptorPtr input,",
+          "replace": "bool ParseAuxRecoverySize(const std::optional<std::string>& encoded,\n                          std::optional<base::ByteSize>* output) {\n  if (!encoded) return true;\n  uint64_t value = 0;\n  if (encoded->size() > 20 || !base::StringToUint64(*encoded, &value) ||\n      base::NumberToString(value) != *encoded) return false;\n  *output = base::ByteSize(value);\n  return true;\n}\nbool ConvertAuxDomRecovery(mojom::AuxUiDomRecoveryDescriptorPtr input,",
+          "count": 1
+        },
+        {
+          "name": "Preserve original metadata and parse target facts independently as unqualified journal data",
+          "find": "    if (row->source_total_size_bytes) {\n      uint64_t size = 0;\n      if (row->source_total_size_bytes->size() > 20 ||\n          !base::StringToUint64(*row->source_total_size_bytes, &size) ||\n          base::NumberToString(size) != *row->source_total_size_bytes) return false;\n      map.source_total_size = base::ByteSize(size);\n    }",
+          "replace": "    if (!ParseAuxRecoverySize(row->source_total_size_bytes, &map.source_total_size)) return false;\n    map.target_metadata_is_explicit = row->target_metadata_is_explicit;\n    if (!ParseAuxRecoveryTime(row->target_last_accessed_us, &map.target_last_accessed) ||\n        !ParseAuxRecoveryTime(row->target_last_modified_us, &map.target_last_modified) ||\n        !ParseAuxRecoverySize(row->target_total_size_bytes, &map.target_total_size)) return false;",
+          "count": 1
+        }
+      ]
+    }
+  ],
+  "nativeMutation": false,
+  "compilerRun": false,
+  "runtimeAcceptance": false
+}

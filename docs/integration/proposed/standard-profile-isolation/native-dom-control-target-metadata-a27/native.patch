@@ -1,0 +1,132 @@
+--- a/components/services/storage/public/mojom/local_storage_control.mojom
++++ b/components/services/storage/public/mojom/local_storage_control.mojom
+@@ -41,6 +41,11 @@
+   string? source_last_accessed_us;
+   string? source_last_modified_us;
+   string? source_total_size_bytes;
++  // Actual native pre-attempt LevelDB plan metadata; never a generated map ID.
++  bool target_metadata_is_explicit;
++  string? target_last_accessed_us;
++  string? target_last_modified_us;
++  string? target_total_size_bytes;
+ };
+ struct AuxUiDomTargetMap {
+   // Ordinal only selects a map captured by this exact existing backend lease.
+@@ -67,6 +72,11 @@
+   string? source_last_accessed_us;
+   string? source_last_modified_us;
+   string? source_total_size_bytes;
++  // Actual native pre-attempt LevelDB plan metadata; never a generated map ID.
++  bool target_metadata_is_explicit;
++  string? target_last_accessed_us;
++  string? target_last_modified_us;
++  string? target_total_size_bytes;
+ };
+ struct AuxUiDomRecoveryDescriptor {
+   array<AuxUiDomRecoveryMap> maps;
+--- a/components/services/storage/dom_storage/local_storage_impl.cc
++++ b/components/services/storage/dom_storage/local_storage_impl.cc
+@@ -360,6 +360,15 @@
+           map.source_last_modified->ToDeltaSinceWindowsEpoch().InMicroseconds());
+     if (map.source_total_size)
+       output->source_total_size_bytes = base::NumberToString(map.source_total_size->InBytes());
++    output->target_metadata_is_explicit = map.target_metadata_is_explicit;
++    if (map.target_last_accessed)
++      output->target_last_accessed_us = base::NumberToString(
++          map.target_last_accessed->ToDeltaSinceWindowsEpoch().InMicroseconds());
++    if (map.target_last_modified)
++      output->target_last_modified_us = base::NumberToString(
++          map.target_last_modified->ToDeltaSinceWindowsEpoch().InMicroseconds());
++    if (map.target_total_size)
++      output->target_total_size_bytes = base::NumberToString(map.target_total_size->InBytes());
+     for (auto& [key, value] : map.source)
+       output->source_entries.push_back(blink::mojom::KeyValue::New(key, std::move(value)));
+     for (auto& [key, value] : map.target)
+@@ -430,6 +439,15 @@
+   *output = time;
+   return true;
+ }
++bool ParseAuxRecoverySize(const std::optional<std::string>& encoded,
++                          std::optional<base::ByteSize>* output) {
++  if (!encoded) return true;
++  uint64_t value = 0;
++  if (encoded->size() > 20 || !base::StringToUint64(*encoded, &value) ||
++      base::NumberToString(value) != *encoded) return false;
++  *output = base::ByteSize(value);
++  return true;
++}
+ bool ConvertAuxDomRecovery(mojom::AuxUiDomRecoveryDescriptorPtr input,
+                            AsyncDomStorageDatabase::AuxUiSnapshot* output) {
+   if (!input || input->maps.size() > 256 ||
+@@ -481,13 +499,11 @@
+     map.allocation_observed = row->allocation_observed;
+     if (!ParseAuxRecoveryTime(row->source_last_accessed_us, &map.source_last_accessed) ||
+         !ParseAuxRecoveryTime(row->source_last_modified_us, &map.source_last_modified)) return false;
+-    if (row->source_total_size_bytes) {
+-      uint64_t size = 0;
+-      if (row->source_total_size_bytes->size() > 20 ||
+-          !base::StringToUint64(*row->source_total_size_bytes, &size) ||
+-          base::NumberToString(size) != *row->source_total_size_bytes) return false;
+-      map.source_total_size = base::ByteSize(size);
+-    }
++    if (!ParseAuxRecoverySize(row->source_total_size_bytes, &map.source_total_size)) return false;
++    map.target_metadata_is_explicit = row->target_metadata_is_explicit;
++    if (!ParseAuxRecoveryTime(row->target_last_accessed_us, &map.target_last_accessed) ||
++        !ParseAuxRecoveryTime(row->target_last_modified_us, &map.target_last_modified) ||
++        !ParseAuxRecoverySize(row->target_total_size_bytes, &map.target_total_size)) return false;
+     if (!convert_entries(std::move(row->source_entries), &map.source) ||
+         !convert_entries(std::move(row->target_entries), &map.target)) return false;
+     // Leave all cache/docs/readiness flags at native defaults. Only the actual
+--- a/components/services/storage/dom_storage/session_storage_impl.cc
++++ b/components/services/storage/dom_storage/session_storage_impl.cc
+@@ -348,6 +348,15 @@
+           map.source_last_modified->ToDeltaSinceWindowsEpoch().InMicroseconds());
+     if (map.source_total_size)
+       output->source_total_size_bytes = base::NumberToString(map.source_total_size->InBytes());
++    output->target_metadata_is_explicit = map.target_metadata_is_explicit;
++    if (map.target_last_accessed)
++      output->target_last_accessed_us = base::NumberToString(
++          map.target_last_accessed->ToDeltaSinceWindowsEpoch().InMicroseconds());
++    if (map.target_last_modified)
++      output->target_last_modified_us = base::NumberToString(
++          map.target_last_modified->ToDeltaSinceWindowsEpoch().InMicroseconds());
++    if (map.target_total_size)
++      output->target_total_size_bytes = base::NumberToString(map.target_total_size->InBytes());
+     for (auto& [key, value] : map.source)
+       output->source_entries.push_back(blink::mojom::KeyValue::New(key, std::move(value)));
+     for (auto& [key, value] : map.target)
+@@ -418,6 +427,15 @@
+   *output = time;
+   return true;
+ }
++bool ParseAuxRecoverySize(const std::optional<std::string>& encoded,
++                          std::optional<base::ByteSize>* output) {
++  if (!encoded) return true;
++  uint64_t value = 0;
++  if (encoded->size() > 20 || !base::StringToUint64(*encoded, &value) ||
++      base::NumberToString(value) != *encoded) return false;
++  *output = base::ByteSize(value);
++  return true;
++}
+ bool ConvertAuxDomRecovery(mojom::AuxUiDomRecoveryDescriptorPtr input,
+                            AsyncDomStorageDatabase::AuxUiSnapshot* output) {
+   if (!input || input->maps.size() > 256 ||
+@@ -469,13 +487,11 @@
+     map.allocation_observed = row->allocation_observed;
+     if (!ParseAuxRecoveryTime(row->source_last_accessed_us, &map.source_last_accessed) ||
+         !ParseAuxRecoveryTime(row->source_last_modified_us, &map.source_last_modified)) return false;
+-    if (row->source_total_size_bytes) {
+-      uint64_t size = 0;
+-      if (row->source_total_size_bytes->size() > 20 ||
+-          !base::StringToUint64(*row->source_total_size_bytes, &size) ||
+-          base::NumberToString(size) != *row->source_total_size_bytes) return false;
+-      map.source_total_size = base::ByteSize(size);
+-    }
++    if (!ParseAuxRecoverySize(row->source_total_size_bytes, &map.source_total_size)) return false;
++    map.target_metadata_is_explicit = row->target_metadata_is_explicit;
++    if (!ParseAuxRecoveryTime(row->target_last_accessed_us, &map.target_last_accessed) ||
++        !ParseAuxRecoveryTime(row->target_last_modified_us, &map.target_last_modified) ||
++        !ParseAuxRecoverySize(row->target_total_size_bytes, &map.target_total_size)) return false;
+     if (!convert_entries(std::move(row->source_entries), &map.source) ||
+         !convert_entries(std::move(row->target_entries), &map.target)) return false;
+     // Leave all cache/docs/readiness flags at native defaults. Only the actual

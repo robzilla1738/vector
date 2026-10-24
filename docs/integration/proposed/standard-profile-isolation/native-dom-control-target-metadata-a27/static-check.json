@@ -1,0 +1,13 @@
+{
+  "format": "aux.dom-control-target-metadata.static.v1",
+  "files": 3,
+  "countedAnchors": 7,
+  "physicalMatches": 8,
+  "patchReplay": true,
+  "patchReverse": true,
+  "exactNullableSignedTimeAndUnsignedSize": true,
+  "sourceMetadataSemanticsPreserved": true,
+  "noGeneratedMapIdOrCallerSqliteSelector": true,
+  "nativeCompilerRun": false,
+  "runtimeAcceptance": false
+}

@@ -1,0 +1,11 @@
+# Actual LevelDB target metadata through the existing controls
+
+This three-file successor composes over A21 control recovery `e9a93e122` and paired native LevelDB absence owner `c9f4a4f7d`. The output map and bounded journal-data recovery map append `target_metadata_is_explicit` and nullable decimal strings `target_last_accessed_us`, `target_last_modified_us`, `target_total_size_bytes`. Both Local and Session serializers copy the actual native fields without deriving or minting anything.
+
+The native LevelDB owner creates this finite target metadata once before the physical attempt, under its real Open/backend fact. The physical target digest binds it to the actual StorageKey and planned target bytes. It does not have a generated SQLite map ID and does not set `allocation_requested` as a substitute. Original source metadata remains independent and unchanged. Session/other backends forward their actual native defaults or refuse invalid descriptors in the real owner.
+
+Recovery conversion uses the existing canonical signed-int64 Windows-epoch microsecond parser and a shared canonical uint64 ByteSize parser. Null stays distinct from present zero; overflow, leading signs/zeros, whitespace and noncanonical/lossy decimal encodings refuse. No JSON double is involved. Target fields remain unqualified journal facts; the real backend checks their allowed source-absent LevelDB context, actual identity, immutable target/full-map digest and stage history. No caller SQLite selector, future map ID, readiness flag, root or Profile authority is added.
+
+`source-plan.json` pins the A21 inputs and native owner plan/hash. Seven anchors have eight exact matches: the shared field block intentionally appears once in each of the two distinct map structs. The patch replayed and reversed in a disposable source mirror. Root owns actual schema generation, native owner/controller projection and compilation. Navigation must persist these exact target facts in new immutable intents and pass them verbatim from a verified journal when requalifying; old missing required target facts must not be synthesized from the current state.
+
+No native mutation, compiler, product/API execution, signing, owner-state access or runtime acceptance occurred. This proposal changes no UI or accepted app.
