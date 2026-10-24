@@ -1,0 +1,71 @@
+--- a/chrome/browser/ui/aux_file_operation_lifetime.h
++++ b/chrome/browser/ui/aux_file_operation_lifetime.h
+@@ -15,7 +15,10 @@
+   ~FileOperationLifetime();
+   void Revoke();
+   bool Begin();
+-  void End();
++  // A refused outcome is valid only when no operation was submitted or its
++  // actual completion establishes refusal. Cancellation/destruction is not End.
++  void End(aux::features::NativeFeatureIoOutcome outcome =
++               aux::features::NativeFeatureIoOutcome::kCompleted);
+   // The worker stopped, but its physical result/journal still needs recovery.
+   void MarkUncertain();
+   std::shared_ptr<const std::atomic_bool> authorization() const { return authorized_; }
+--- a/chrome/browser/ui/aux_file_operation_lifetime.cc
++++ b/chrome/browser/ui/aux_file_operation_lifetime.cc
+@@ -29,10 +29,10 @@
+   pending_ = true; uncertain_ = false; ++ForPath(path_).pending;
+   return true;
+ }
+-void FileOperationLifetime::End() {
++void FileOperationLifetime::End(aux::features::NativeFeatureIoOutcome outcome) {
+   CHECK(pending_); pending_ = false;
+   ticket_->Settle(uncertain_ ? aux::features::NativeFeatureIoOutcome::kUncertain
+-                             : aux::features::NativeFeatureIoOutcome::kCompleted);
++                             : outcome);
+   ticket_.reset();
+   auto& fence = ForPath(path_); CHECK_GT(fence.pending, 0u);
+   if (--fence.pending == 0) fence.settled.Notify();
+--- a/chrome/browser/ui/aux_chosen_files_service.cc
++++ b/chrome/browser/ui/aux_chosen_files_service.cc
+@@ -27,11 +27,12 @@
+   base::DictValue files;
+   base::RepeatingClosureList changed;
+   std::shared_ptr<FileOperationLifetime> lifetime;
+-  bool SetPending(bool value) {
++  bool SetPending(bool value, aux::features::NativeFeatureIoOutcome outcome =
++                                 aux::features::NativeFeatureIoOutcome::kCompleted) {
+     if (pending == value) return true;
+     if (value && !lifetime->Begin()) return false;
+     pending = value;
+-    if (!value) lifetime->End();
++    if (!value) lifetime->End(outcome);
+     return true;
+   }
+   uint64_t epoch = 0;
+@@ -130,7 +131,8 @@
+   if (paths.empty()) return;
+   if (!state->SetPending(true)) return;
+   const uint64_t epoch = state->epoch;
+-  base::ThreadPool::PostTaskAndReplyWithResult(FROM_HERE, {base::MayBlock()},
++  const bool posted = base::ThreadPool::PostTaskAndReplyWithResult(
++    FROM_HERE, {base::MayBlock()},
+     base::BindOnce(&FingerprintSelection, std::move(paths)),
+     base::BindOnce([](std::shared_ptr<State> state, uint64_t epoch,
+                      content::WeakDocumentPtr document, base::DictValue selected) {
+@@ -160,6 +162,14 @@
+         state->SetPending(false);
+       }, state, epoch, std::move(merged)));
+     }, state, epoch, document));
++  if (!posted) {
++    // ThreadPool documents false as a definite non-start. Its relay destroys
++    // the task/reply on this origin sequence without invoking either; this
++    // local shared owner remains valid. No fingerprint or persistence task
++    // was submitted, so release only this known refusal. A true result leaves
++    // all accounting to the existing actual completion/persistence callbacks.
++    state->SetPending(false, aux::features::NativeFeatureIoOutcome::kRefused);
++  }
+ }
+ base::ListValue ListChosenFiles(Profile* profile) {
+   base::ListValue result;

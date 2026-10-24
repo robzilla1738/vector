@@ -1,0 +1,78 @@
+{
+  "scope": "definite pre-submit chosen-file refusal settlement only",
+  "files": [
+    {
+      "path": "chrome/browser/ui/aux_file_operation_lifetime.h",
+      "baselineOrigin": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/ui/aux_file_operation_lifetime.h",
+      "baselineSha256": "07ce25807ffa1a55cb031b77d699fdb4666da21d2ea3ee79db8f55ea2389a54e",
+      "sourceSha256": "d692e67f55138170edb1cd6a3efc9d79a565c819a0613417a39e96d08a5bf231",
+      "edits": [
+        {
+          "name": "explicit-definite-refusal",
+          "find": "  void End();",
+          "replace": "  // A refused outcome is valid only when no operation was submitted or its\n  // actual completion establishes refusal. Cancellation/destruction is not End.\n  void End(aux::features::NativeFeatureIoOutcome outcome =\n               aux::features::NativeFeatureIoOutcome::kCompleted);",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/ui/aux_file_operation_lifetime.cc",
+      "baselineOrigin": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/ui/aux_file_operation_lifetime.cc",
+      "baselineSha256": "2b19dafe262878f46ca2802f3be0b7515ba8ee5d11f1caa9ff6b084fdae9008e",
+      "sourceSha256": "808fd1ebef8ebb4d7349795aafab7b9b23469135f13d795a9f8c69ee1b9facb5",
+      "edits": [
+        {
+          "name": "retain-uncertainty-priority",
+          "find": "void FileOperationLifetime::End() {\n  CHECK(pending_); pending_ = false;\n  ticket_->Settle(uncertain_ ? aux::features::NativeFeatureIoOutcome::kUncertain\n                             : aux::features::NativeFeatureIoOutcome::kCompleted);",
+          "replace": "void FileOperationLifetime::End(aux::features::NativeFeatureIoOutcome outcome) {\n  CHECK(pending_); pending_ = false;\n  ticket_->Settle(uncertain_ ? aux::features::NativeFeatureIoOutcome::kUncertain\n                             : outcome);",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/ui/aux_chosen_files_service.cc",
+      "baselineOrigin": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/ui/aux_chosen_files_service.cc",
+      "baselineSha256": "12a0444fa8c880eb5267023dab64851f4c3d25c61d351cc4ec5dd807bd0d74ba",
+      "sourceSha256": "8522fdb6c3f9777a410a485e4887d9d1f8c97c79a90cff4c50961ed88fa594e2",
+      "edits": [
+        {
+          "name": "forward-actual-settlement-outcome",
+          "find": "  bool SetPending(bool value) {\n    if (pending == value) return true;\n    if (value && !lifetime->Begin()) return false;\n    pending = value;\n    if (!value) lifetime->End();\n    return true;\n  }",
+          "replace": "  bool SetPending(bool value, aux::features::NativeFeatureIoOutcome outcome =\n                                 aux::features::NativeFeatureIoOutcome::kCompleted) {\n    if (pending == value) return true;\n    if (value && !lifetime->Begin()) return false;\n    pending = value;\n    if (!value) lifetime->End(outcome);\n    return true;\n  }",
+          "count": 1
+        },
+        {
+          "name": "capture-submit-result",
+          "find": "  base::ThreadPool::PostTaskAndReplyWithResult(FROM_HERE, {base::MayBlock()},\n    base::BindOnce(&FingerprintSelection, std::move(paths)),",
+          "replace": "  const bool posted = base::ThreadPool::PostTaskAndReplyWithResult(\n    FROM_HERE, {base::MayBlock()},\n    base::BindOnce(&FingerprintSelection, std::move(paths)),",
+          "count": 1
+        },
+        {
+          "name": "settle-only-known-not-started",
+          "find": "    }, state, epoch, document));\n}\nbase::ListValue ListChosenFiles",
+          "replace": "    }, state, epoch, document));\n  if (!posted) {\n    // ThreadPool documents false as a definite non-start. Its relay destroys\n    // the task/reply on this origin sequence without invoking either; this\n    // local shared owner remains valid. No fingerprint or persistence task\n    // was submitted, so release only this known refusal. A true result leaves\n    // all accounting to the existing actual completion/persistence callbacks.\n    state->SetPending(false, aux::features::NativeFeatureIoOutcome::kRefused);\n  }\n}\nbase::ListValue ListChosenFiles",
+          "count": 1
+        }
+      ]
+    }
+  ],
+  "contractInputs": [
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/base/task/thread_pool.h",
+      "sha256": "57beb9ad92ca929d309fa5d0f8d4294fbbb47ea06b662dfe00ce3d7e996ea268"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/base/task/thread_pool.cc",
+      "sha256": "4b7bd0d5c29ad7b929bcb665e07550f857a14e4403078478b44a6dc0ad25e838"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/base/threading/post_task_and_reply_impl.h",
+      "sha256": "3539882d51114c26c7b07517f4495d40e9709bcd51bfbabb49db476386c15e30"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/base/threading/post_task_and_reply_impl.cc",
+      "sha256": "0e8a74fbc17c2e51d95fc4f1394055c0b3b28bb50f799c3bdccfd2f754818b20"
+    }
+  ],
+  "patchSha256": "f76e51049abf874d5df0e6c30f7b15fa5ab34d0a9c0544b893b6445d3e29db54"
+}

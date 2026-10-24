@@ -1,0 +1,10 @@
+{
+  "passed": true,
+  "scope": "single exact-source/selected-contract replay check",
+  "files": 3,
+  "contractInputs": 4,
+  "runtimeExecuted": false,
+  "wholeWriterDrainProven": false,
+  "nativeMutation": false,
+  "manifestSha256": "180631877f4f1e76d7b4fcc07ac8eb364626d8e35b2fdb75d555f750af5e5732"
+}
