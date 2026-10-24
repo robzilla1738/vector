@@ -1,3 +1,11 @@
+# Coupled daemon linked; final browser source projected — 2026-10-24
+
+Native daemon a6 compiled and linked with the fixed credential lease, reverse observer coverage and exact inherited crash-registration cleanup: 14 native objects, 48 Swift sources and the unchanged module’s 50 imports. The actual v5 ordinary/dormant source pair passes 197 anchors and independent original-entry equality; its ChatGPT shim passes nine exact edits. No product API or provider was executed.
+
+The final browser a7 source batch projects 25 exact files and retains 322 pinned inputs. It combines primary-only descendant custody, content/native-host launch accounting, Crashpad close, GN integration and the concrete constructor/include/async-registration compiler fixes. Actual GN generation passed. Focused compilation is running; full browser success and final package-v7 assembly remain pending. Earlier failed browser receipts and the completed inactive v6 package remain intact. Existing UI/CSS/assets and accepted app were not changed.
+
+Standard browser isolation excludes unrelated same-UID apps while retaining every Aux-launched writer in scope. Restricted startup capability, actual NAPI/provider/recovery/UI/extension acceptance and later update trust remain separate gates. No app launch/shutdown/restart, signing/release, owner-state access, provider call or OS grant occurred. See `docs/integration/proposed/standard-profile-isolation/LOCAL-CHECKPOINT.md` for current implementation versus acceptance.
+
 # Standard-isolation package assembled; next bounded source batch in progress — 2026-10-24
 
 The actual browser a4 full build, daemon a3 native link, independent 182-anchor source/entry pairing, final helper derivation and all seven package-v6 phases passed. The inactive unsigned app is `out/provided-candidate-standard-profile-isolation-20261024/Aux.app`. Its 11,191-leaf inventory is `1f7258d555bf3c5d91b7b719394d1bf9da2b54bd82623e6ca0e532079d8c1a5b`; final receipt SHA256 is `8a0ab2d88ead8094a00720ee5a49e4e87ac4bbb97241735774768f1f6d6d4839`. Exact 16 feature-resource deltas, native CLI wrapper and unrelated CSS/assets/resources passed their original checks. Actual evidence: `docs/integration/proposed/standard-profile-isolation/integration/standard-package-v6-passed.json`.
