@@ -1055,7 +1055,7 @@
 +
 +bool SplitPaneTree::SplitLeaf(uint32_t slot, uint32_t new_slot,
 +                              Axis axis, bool before) {
-+  if (!IsValid() || pane_slots_.size() == kMaxPanes || !new_slot ||
++  if (!slot || !IsValid() || pane_slots_.size() == kMaxPanes || !new_slot ||
 +      std::ranges::find(pane_slots_, new_slot) != pane_slots_.end() ||
 +      (axis != Axis::kHorizontal && axis != Axis::kVertical)) {
 +    return false;
@@ -1083,7 +1083,7 @@
 +}
 +
 +bool SplitPaneTree::RemoveLeaf(uint32_t slot) {
-+  if (!IsValid() || pane_slots_.size() == 1) {
++  if (!slot || !IsValid() || pane_slots_.size() == 1) {
 +    return false;
 +  }
 +  const auto leaf = std::ranges::find(nodes_, slot, &Node::slot);
@@ -1284,7 +1284,7 @@
 +#endif  // COMPONENTS_SPLIT_TABS_SPLIT_PANE_TREE_H_
 --- /dev/null
 +++ b/components/split_tabs/split_pane_tree_unittest.cc
-@@ -0,0 +1,53 @@
+@@ -0,0 +1,55 @@
 +// Copyright 2026 The Chromium Authors
 +// Use of this source code is governed by a BSD-style license that can be
 +// found in the LICENSE file.
@@ -1318,6 +1318,8 @@
 +  EXPECT_FALSE(SplitPaneTree::Decode(tree.root(), tree.nodes(), {1, 1}));
 +  const auto before = tree;
 +  EXPECT_FALSE(tree.SplitLeaf(1, 2, SplitPaneTree::Axis::kVertical, false));
++  EXPECT_FALSE(tree.SplitLeaf(0, 3, SplitPaneTree::Axis::kVertical, false));
++  EXPECT_FALSE(tree.RemoveLeaf(0));
 +  EXPECT_FALSE(tree.ResizeBranch(tree.root(), 1.0));
 +  EXPECT_EQ(tree, before);
 +}

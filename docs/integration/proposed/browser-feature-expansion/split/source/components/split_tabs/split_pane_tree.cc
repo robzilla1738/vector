@@ -87,7 +87,7 @@ bool SplitPaneTree::IsValid() const {
 
 bool SplitPaneTree::SplitLeaf(uint32_t slot, uint32_t new_slot,
                               Axis axis, bool before) {
-  if (!IsValid() || pane_slots_.size() == kMaxPanes || !new_slot ||
+  if (!slot || !IsValid() || pane_slots_.size() == kMaxPanes || !new_slot ||
       std::ranges::find(pane_slots_, new_slot) != pane_slots_.end() ||
       (axis != Axis::kHorizontal && axis != Axis::kVertical)) {
     return false;
@@ -115,7 +115,7 @@ bool SplitPaneTree::SplitLeaf(uint32_t slot, uint32_t new_slot,
 }
 
 bool SplitPaneTree::RemoveLeaf(uint32_t slot) {
-  if (!IsValid() || pane_slots_.size() == 1) {
+  if (!slot || !IsValid() || pane_slots_.size() == 1) {
     return false;
   }
   const auto leaf = std::ranges::find(nodes_, slot, &Node::slot);

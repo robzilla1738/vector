@@ -31,6 +31,8 @@ TEST(SplitPaneTreeTest, InvalidGraphAndSlotMappingAreRefused) {
   EXPECT_FALSE(SplitPaneTree::Decode(tree.root(), tree.nodes(), {1, 1}));
   const auto before = tree;
   EXPECT_FALSE(tree.SplitLeaf(1, 2, SplitPaneTree::Axis::kVertical, false));
+  EXPECT_FALSE(tree.SplitLeaf(0, 3, SplitPaneTree::Axis::kVertical, false));
+  EXPECT_FALSE(tree.RemoveLeaf(0));
   EXPECT_FALSE(tree.ResizeBranch(tree.root(), 1.0));
   EXPECT_EQ(tree, before);
 }

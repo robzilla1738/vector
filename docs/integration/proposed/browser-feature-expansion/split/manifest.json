@@ -56,7 +56,7 @@
     },
     {
       "path": "components/split_tabs/split_pane_tree.cc",
-      "sha256": "e59f12dceeb0de9eb4912a270953f77664deec3624a1e4cd638894f93be30d9a",
+      "sha256": "4055cd1c1178dff8b0d235b2cb26070d2387f126e530be76d9bac5be54a4437e",
       "baseline_sha256": null
     },
     {
@@ -66,7 +66,7 @@
     },
     {
       "path": "components/split_tabs/split_pane_tree_unittest.cc",
-      "sha256": "94b1c48d156ee4f3f5a5ff52373b4da737be2fd6ec8b9f88d99b5190ced4cfa5",
+      "sha256": "5a8ad153325038fd0e8fa8035d45f6ea490c2410ca7196cdf24f65455d58f89c",
       "baseline_sha256": null
     },
     {
@@ -80,7 +80,7 @@
       "baseline_sha256": "0b9a0749ecab70cd014782e15cb45270f5d0083a6ba3eb9577623e88f8f09508"
     }
   ],
-  "patch_sha256": "f6056f44de11dd3778b201226d6d01e2e18f7c5b385df6a1b23f490d0bf02687",
+  "patch_sha256": "cf4c30bb87fb0d7f14f2f3d962cc553d2055d59bbd41ce5c179eb77fc17d1e9b",
   "shared_hooks": [
     {
       "path": "chrome/browser/sessions/session_restore.cc",
