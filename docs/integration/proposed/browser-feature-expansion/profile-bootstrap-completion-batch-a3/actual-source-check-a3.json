@@ -1,0 +1,16 @@
+{
+  "format": "aux.profile-bootstrap-completion.source-check.actual.v1",
+  "passed": true,
+  "sourcePlanSha256": "744d4b5c92aefc73d28ecaea922edff657ed2924d2f810b0a748c4953c0501ad",
+  "patchSha256": "6d88aeb88c157872448dc2947617856044fdca1351db03ef13b87fe6643efdad",
+  "files": 3,
+  "countedAnchors": 39,
+  "replayDirectory": "/private/tmp/aux-profile-bootstrap-completion-replay-n1j3lzon",
+  "exactReplayPassed": true,
+  "reverseCheckPassed": true,
+  "nativeCheckoutChanged": false,
+  "nativeCompiled": false,
+  "testsExecuted": false,
+  "productExecuted": false,
+  "runtimeAcceptance": false
+}

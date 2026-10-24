@@ -1,0 +1,109 @@
+{
+  "format": "aux.profile-bootstrap.admission-inspection.actual.v1",
+  "nativeRoot": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src",
+  "inputs": [
+    {
+      "path": "chrome/browser/aux/AuxSelectedStateHome.cc",
+      "sha256": "8f5e06b8e772328d50542adfcdf7a25f7e0066f04c1d4f895298b9bba469f042",
+      "anchors": [
+        {
+          "find": "bool AuthorizeNativeBrowserStartupBeforeLocalState() {",
+          "count": 1
+        },
+        {
+          "find": "  state.admitted_browser_roots = std::move(roots);\n  state.browser_generation = admitted_generation;\n  return true;",
+          "count": 1
+        },
+        {
+          "find": "    if (owner->AcceptAuthorityReply(reply, 2'000) != DaemonAuthorityStatus::ready) return false;\n    if (!owner->BindBrowserDescendantScope(generation)) return false;",
+          "count": 1
+        },
+        {
+          "find": "  auto& state = CurrentState();\n  if (getpid() != state.process) return {.wrong_process = true};",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/aux/AuxSelectedStateHome.h",
+      "sha256": "340e954939b4b9d08ef532b266ef37c403abf85a31b74599d5ed19ff3ebb0c52",
+      "anchors": [
+        {
+          "find": "bool AuthorizeNativeBrowserStartupBeforeLocalState();",
+          "count": 1
+        },
+        {
+          "find": "BrowserShutdownObservation InspectNativeBrowserShutdown();",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/metrics/chrome_feature_list_creator.cc",
+      "sha256": "7a0355ec29bdd62808d96c81d20ab718cef16d9c8650d1c9bf1305892569f621",
+      "anchors": [
+        {
+          "find": "void ChromeFeatureListCreator::CreatePrefService() {\n#if BUILDFLAG(ENABLE_AUX_BROWSER) && defined(AUX_SEALED_NATIVE_COLD_ENTRY)",
+          "count": 1
+        },
+        {
+          "find": "  CHECK(aux::peer::AuthorizeNativeBrowserStartupBeforeLocalState());\n#endif\n  base::FilePath local_state_file;",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/ui/profiles/profile_customization_util.cc",
+      "sha256": "44eb61807e8c7b3157db18456d8a6251e11c75678d724fde809145254bca8f08",
+      "anchors": [
+        {
+          "find": "        if (weak_profile) aux::RequestProfileBootstrap(weak_profile.get());",
+          "count": 1
+        },
+        {
+          "find": "  if (!entry->IsOmitted()) {",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/aux/AuxNativePeerTransport.h",
+      "sha256": "200735d57b29147b258c46d81e610b9615b3fe38b2bf08a3c7f69c2776a19050",
+      "anchors": [
+        {
+          "find": "using BrowserDrainAckObserver = void (*)(const BrowserDrainReport&);",
+          "count": 1
+        },
+        {
+          "find": "// Observational only: constructed from completed genuine ready-home exchanges.",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/aux/feature_store/feature_write_participant.h",
+      "sha256": "a7db1e6b87daf66bce72c7b542e31d4b5b5e0147101ece0df85ad5c3387a37cc",
+      "anchors": [
+        {
+          "find": "// These are observations of registered feature I/O only, never authority,",
+          "count": 1
+        },
+        {
+          "find": "void CloseNativeFeatureWritesForMigration(",
+          "count": 1
+        }
+      ]
+    }
+  ],
+  "rootObservationPath": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/completion-batch-a1/cold-entry-observation-a1.json",
+  "rootObservationSha256": "aa06d8cc240f81552fd19eddfe2d05416d170414b6b57e7fae0da5ab082411c9",
+  "admissionReadyEventFoundInPinnedProducerPublicApi": false,
+  "existingSynchronousAdmissionProducer": "AuthorizeNativeBrowserStartupBeforeLocalState",
+  "currentCompileConsumesColdHook": false,
+  "freshProfileRetryEventImplemented": false,
+  "admissionGuardWeakened": false,
+  "nativeCheckoutChanged": false,
+  "nativeStartupExecuted": false,
+  "runtimeAdmissionAccepted": false,
+  "inference": "No existing native late-ready event can honestly wake fresh-profile identity. The only pinned writer-admission producer synchronously precedes Local State in the dormant COLD hook. Root must integrate/activate that genuine pre-profile path; feature settlement, drain ACK, daemon authorization and ready-home pulses do not substitute for it."
+}

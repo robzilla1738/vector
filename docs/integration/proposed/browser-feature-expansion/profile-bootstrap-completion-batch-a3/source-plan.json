@@ -1,0 +1,282 @@
+{
+  "format": "aux.profile-bootstrap-completion.source.v1",
+  "nativeRoot": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src",
+  "supersedes": {
+    "sourcePlan": "/Users/rcourson/.codex/worktrees/aux-features-organization/web/docs/integration/proposed/browser-feature-expansion/profile-window-completion-batch-a2/source-plan.json",
+    "sha256": "b720a92e5033d4d5f071e10b56e6a1f00948c42892616c4729f19af2b259a513",
+    "paths": [
+      "chrome/browser/ui/views/frame/aux_sidebar_view.cc",
+      "chrome/browser/ui/views/frame/aux_profile_switch_request.cc"
+    ]
+  },
+  "files": [
+    {
+      "path": "chrome/browser/ui/views/frame/aux_sidebar_view.cc",
+      "inputSha256": "6ad3e83f6b49ff2c40f76ef8f3af22e6d176d7308b0f9afbc6d6686acbb67723",
+      "outputSha256": "a9f370351d2962be935ea314ce5451a540eee984e0ecb72327732fe529e75421",
+      "output": "/Users/rcourson/.codex/worktrees/aux-features-organization/web/docs/integration/proposed/browser-feature-expansion/profile-bootstrap-completion-batch-a3/source/chrome/browser/ui/views/frame/aux_sidebar_view.cc",
+      "anchors": [
+        {
+          "find": "#include \"chrome/browser/ui/browser_commands.h\"",
+          "replace": "#include \"chrome/browser/ui/browser_commands.h\"\n#include \"chrome/browser/ui/browser_init_state.h\"",
+          "count": 1,
+          "provenance": "reviewed-a2"
+        },
+        {
+          "find": "  if (!sender || !sender->GetProfile() ||\n      sender->GetProfile()->IsOffTheRecord()) {",
+          "replace": "  if (!sender || !sender->GetProfile() ||\n      !sender->GetProfile()->IsRegularProfile() || sender->GetProfile()->IsOffTheRecord()) {",
+          "count": 1,
+          "provenance": "reviewed-a2"
+        },
+        {
+          "find": "  ProfileManager::CreateMultiProfileAsync(\n      name, /*icon_index=*/26, /*is_hidden=*/false,",
+          "replace": "  auto* state = BrowserInitState::From(sender.get());\n  if (!state || state->is_aux_profile_switch_cache()) return;\n  const auto source = sender->GetProfile()->GetWeakPtr();\n  const auto epoch = aux::GetProfileCookieBindingEpoch(source.get());\n  if (epoch.empty() || aux::IsProfileCookieRestorePending(source.get())) return;\n  const uint64_t generation = state->BeginAuxProfileSwitchRequest();\n  ProfileManager::CreateMultiProfileAsync(\n      name, /*icon_index=*/26, /*is_hidden=*/false,",
+          "count": 1,
+          "provenance": "reviewed-a2"
+        },
+        {
+          "find": "          [](base::WeakPtr<BrowserWindowInterface> browser, Profile* profile) {\n            if (browser && profile) {\n              DispatchSelectedProfile(browser, profile->GetPath());\n            }\n          },\n          sender));",
+          "replace": "          [](base::WeakPtr<BrowserWindowInterface> browser,\n             base::WeakPtr<Profile> source, std::string epoch,\n             uint64_t generation, Profile* profile) {\n            const auto current = [&]() {\n              const auto* state = browser ? BrowserInitState::From(browser.get()) : nullptr;\n              return browser && source && browser->GetProfile() == source.get() && state &&\n                  state->IsCurrentAuxProfileSwitchRequest(generation) &&\n                  aux::GetProfileCookieBindingEpoch(source.get()) == epoch &&\n                  !aux::IsProfileCookieRestorePending(source.get());\n            };\n            if (!current() || !profile) return;\n            const auto target = profile->GetWeakPtr();\n            const auto identity = aux::InitializeFreshProfileIdentity(profile);\n            if (current() && target &&\n                identity != aux::FreshProfileIdentityInitialization::kUnavailable)\n              DispatchSelectedProfile(browser, target->GetPath());\n          },\n          sender, source, epoch, generation));",
+          "count": 1,
+          "provenance": "reviewed-a2"
+        },
+        {
+          "find": "// Supplied040fe7a4 receives the actual weak sender, not a global active window.",
+          "replace": "// Menu retirement is asynchronous. An old command must not retarget a\n// window that switched profiles/accounts before the posted action executes.\nvoid RunProfileMenuAction(base::WeakPtr<BrowserWindowInterface> sender,\n                          base::WeakPtr<Profile> source, std::string epoch,\n                          base::OnceClosure action) {\n  if (!sender || !source || epoch.empty() || sender->GetProfile() != source.get() ||\n      aux::GetProfileCookieBindingEpoch(source.get()) != epoch ||\n      aux::IsProfileCookieRestorePending(source.get())) return;\n  std::move(action).Run();\n}\n// Supplied040fe7a4 receives the actual weak sender, not a global active window.",
+          "count": 1,
+          "provenance": "reviewed-a2"
+        },
+        {
+          "find": "        browser_(browser), sender_(browser->GetWeakPtr()) {",
+          "replace": "        browser_(browser), sender_(browser->GetWeakPtr()), source_(browser->GetProfile()->GetWeakPtr()),\n        source_epoch_(aux::GetProfileCookieBindingEpoch(browser->GetProfile())) {",
+          "count": 1,
+          "provenance": "reviewed-a2"
+        },
+        {
+          "find": "          FROM_HERE, std::move(pending_switch_));",
+          "replace": "          FROM_HERE, base::BindOnce(&RunProfileMenuAction, sender_, source_, source_epoch_,\n                                    std::move(pending_switch_)));",
+          "count": 1,
+          "provenance": "reviewed-a2"
+        },
+        {
+          "find": "  const base::WeakPtr<BrowserWindowInterface> sender_;\n  raw_ptr<views::View> contents_",
+          "replace": "  const base::WeakPtr<BrowserWindowInterface> sender_;\n  const base::WeakPtr<Profile> source_;\n  const std::string source_epoch_;\n  raw_ptr<views::View> contents_",
+          "count": 1,
+          "provenance": "reviewed-a2"
+        },
+        {
+          "find": "        owner_(browser),\n        path_(std::move(path)) {",
+          "replace": "        owner_(browser),\n        path_(std::move(path)),\n        source_(browser->GetProfile()->GetWeakPtr()),\n        source_epoch_(aux::GetProfileCookieBindingEpoch(browser->GetProfile())) {",
+          "count": 1,
+          "provenance": "reviewed-a2"
+        },
+        {
+          "find": "          FROM_HERE, std::move(pending_));",
+          "replace": "          FROM_HERE, base::BindOnce(&RunProfileMenuAction, browser_, source_, source_epoch_,\n                                    std::move(pending_)));",
+          "count": 1,
+          "provenance": "reviewed-a2"
+        },
+        {
+          "find": "  const base::FilePath path_;\n  raw_ptr<views::View> contents_",
+          "replace": "  const base::FilePath path_;\n  const base::WeakPtr<Profile> source_;\n  const std::string source_epoch_;\n  raw_ptr<views::View> contents_",
+          "count": 1,
+          "provenance": "reviewed-a2"
+        },
+        {
+          "find": "#include \"chrome/browser/ui/browser_init_state.h\"",
+          "replace": "#include \"chrome/browser/ui/browser_init_state.h\"\n#include \"chrome/browser/ui/unload_controller.h\"\n#include \"chrome/browser/lifetime/browser_shutdown.h\"",
+          "count": 1,
+          "provenance": "a3"
+        },
+        {
+          "find": "void RunProfileMenuAction(base::WeakPtr<BrowserWindowInterface> sender,\n                          base::WeakPtr<Profile> source, std::string epoch,\n                          base::OnceClosure action) {\n  if (!sender || !source || epoch.empty() || sender->GetProfile() != source.get() ||\n      aux::GetProfileCookieBindingEpoch(source.get()) != epoch ||\n      aux::IsProfileCookieRestorePending(source.get())) return;\n  std::move(action).Run();\n}",
+          "replace": "bool IsCurrentProfileMenuSource(base::WeakPtr<BrowserWindowInterface> sender,\n                                base::WeakPtr<Profile> source,\n                                const std::string& epoch) {\n  const auto* unload = sender ? UnloadController::From(sender.get()) : nullptr;\n  return sender && source && !epoch.empty() && source->IsRegularProfile() &&\n      !source->IsOffTheRecord() && sender->GetProfile() == source.get() &&\n      sender->GetWindow() && unload && !unload->is_attempting_to_close_browser() &&\n      !unload->is_delete_scheduled() && !browser_shutdown::HasShutdownStarted() &&\n      !browser_shutdown::IsTryingToQuit() &&\n      aux::GetProfileCookieBindingEpoch(source.get()) == epoch &&\n      !aux::IsProfileCookieRestorePending(source.get());\n}\nvoid RunProfileMenuAction(base::WeakPtr<BrowserWindowInterface> sender,\n                          base::WeakPtr<Profile> source, std::string epoch,\n                          base::OnceClosure action) {\n  if (IsCurrentProfileMenuSource(sender, source, epoch)) std::move(action).Run();\n}",
+          "count": 1,
+          "provenance": "a3"
+        },
+        {
+          "find": "void ShowEditProfileDialog(base::WeakPtr<BrowserWindowInterface> browser,\n                           base::FilePath path) {\n  if (!browser) {\n    return;\n  }\n  auto* manager =",
+          "replace": "void ShowEditProfileDialog(base::WeakPtr<BrowserWindowInterface> browser,\n                           base::FilePath path) {\n  const auto source = browser && browser->GetProfile()\n      ? browser->GetProfile()->GetWeakPtr() : base::WeakPtr<Profile>();\n  const auto epoch = source ? aux::GetProfileCookieBindingEpoch(source.get()) : std::string();\n  if (!IsCurrentProfileMenuSource(browser, source, epoch)) return;\n  auto* manager =",
+          "count": 1,
+          "provenance": "a3"
+        },
+        {
+          "find": "  std::u16string name = entry ? entry->GetLocalProfileName() : std::u16string();\n  ui::DialogModel::Builder builder;",
+          "replace": "  if (!entry || entry->IsOmitted()) return;\n  std::u16string name = entry->GetLocalProfileName();\n  ui::DialogModel::Builder builder;",
+          "count": 1,
+          "provenance": "a3"
+        },
+        {
+          "find": "              [](base::WeakPtr<BrowserWindowInterface> sender,\n                 base::FilePath target, ui::DialogModel* dialog) {\n                if (!sender) {\n                  return;\n                }\n                auto* profile_manager =",
+          "replace": "              [](base::WeakPtr<BrowserWindowInterface> sender,\n                 base::WeakPtr<Profile> source, std::string epoch,\n                 base::FilePath target, ui::DialogModel* dialog) {\n                // A native modal can outlive the retired menu and an account\n                // or profile switch. Keep the original source through Save.\n                if (!IsCurrentProfileMenuSource(sender, source, epoch)) return;\n                auto* profile_manager =",
+          "count": 1,
+          "provenance": "a3"
+        },
+        {
+          "find": "                if (!target_entry) {\n                  return;\n                }\n                const std::u16string normalized",
+          "replace": "                if (!target_entry || target_entry->IsOmitted()) {\n                  return;\n                }\n                const std::u16string normalized",
+          "count": 1,
+          "provenance": "a3"
+        },
+        {
+          "find": "              browser, path, model),",
+          "replace": "              browser, source, epoch, path, model),",
+          "count": 1,
+          "provenance": "a3"
+        },
+        {
+          "find": "              return browser && source && browser->GetProfile() == source.get() && state &&\n                  state->IsCurrentAuxProfileSwitchRequest(generation) &&\n                  aux::GetProfileCookieBindingEpoch(source.get()) == epoch &&\n                  !aux::IsProfileCookieRestorePending(source.get());",
+          "replace": "              return state && state->IsCurrentAuxProfileSwitchRequest(generation) &&\n                  IsCurrentProfileMenuSource(browser, source, epoch);",
+          "count": 1,
+          "provenance": "a3"
+        },
+        {
+          "find": "  if (epoch.empty() || aux::IsProfileCookieRestorePending(source.get())) return;\n  const uint64_t generation = state->BeginAuxProfileSwitchRequest();",
+          "replace": "  if (!IsCurrentProfileMenuSource(sender, source, epoch)) return;\n  const uint64_t generation = state->BeginAuxProfileSwitchRequest();",
+          "count": 1,
+          "provenance": "a3"
+        },
+        {
+          "find": "void ConfirmRemoveIndicatorProfile(\n    base::WeakPtr<BrowserWindowInterface> browser,\n    base::FilePath path) {\n  if (!browser || !CanRemoveIndicatorProfile(browser.get(), path))\n    return;",
+          "replace": "void ConfirmRemoveIndicatorProfile(\n    base::WeakPtr<BrowserWindowInterface> browser,\n    base::FilePath path) {\n  const auto source = browser && browser->GetProfile()\n      ? browser->GetProfile()->GetWeakPtr() : base::WeakPtr<Profile>();\n  const auto epoch = source ? aux::GetProfileCookieBindingEpoch(source.get()) : std::string();\n  if (!IsCurrentProfileMenuSource(browser, source, epoch) ||\n      !CanRemoveIndicatorProfile(browser.get(), path)) return;",
+          "count": 1,
+          "provenance": "a3"
+        },
+        {
+          "find": "                  [](base::WeakPtr<BrowserWindowInterface> sender,\n                     base::FilePath target) {\n                    if (!sender ||\n                        !CanRemoveIndicatorProfile(sender.get(), target))",
+          "replace": "                  [](base::WeakPtr<BrowserWindowInterface> sender,\n                     base::WeakPtr<Profile> source, std::string epoch,\n                     base::FilePath target) {\n                    if (!IsCurrentProfileMenuSource(sender, source, epoch) ||\n                        !CanRemoveIndicatorProfile(sender.get(), target))",
+          "count": 1,
+          "provenance": "a3"
+        },
+        {
+          "find": "                  browser, path),\n              ui::DialogModel::Button::Params().SetLabel(u\"Delete\"))",
+          "replace": "                  browser, source, epoch, path),\n              ui::DialogModel::Button::Params().SetLabel(u\"Delete\"))",
+          "count": 1,
+          "provenance": "a3"
+        }
+      ],
+      "a2OutputSha256": "5ac9aca124e4df028730d2bfea824df426cfaf06d28cc181a639a436b8ac68ad"
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_profile_switch_request.cc",
+      "inputSha256": "a801af8c2acc83ed32843eb289cf7989f9bd2aec5a8af2fe0e09759015fd82a3",
+      "outputSha256": "178a5e03a6a8bf00f87ab5d1cd3313c8597ffdfd56e9655adaacb504a4443840",
+      "output": "/Users/rcourson/.codex/worktrees/aux-features-organization/web/docs/integration/proposed/browser-feature-expansion/profile-bootstrap-completion-batch-a3/source/chrome/browser/ui/views/frame/aux_profile_switch_request.cc",
+      "anchors": [
+        {
+          "find": "namespace aux {\nnamespace {\nvoid ReportCurrentSwitchFailure(",
+          "replace": "namespace aux {\nnamespace {\nBrowser* CurrentSwitchWindow(base::WeakPtr<BrowserWindowInterface> window,\n                             base::WeakPtr<Profile> expected) {\n  const auto* unload = window ? UnloadController::From(window.get()) : nullptr;\n  if (!window || !expected || window->GetProfile() != expected.get() || !window->GetWindow() ||\n      !unload || unload->is_attempting_to_close_browser() || unload->is_delete_scheduled() ||\n      browser_shutdown::HasShutdownStarted() || browser_shutdown::IsTryingToQuit()) return nullptr;\n  return static_cast<Browser*>(window.get());\n}\nBrowser* CurrentSwitchResult(base::WeakPtr<BrowserWindowInterface> window,\n                             base::WeakPtr<Profile> expected, uint64_t generation) {\n  auto* browser = CurrentSwitchWindow(window, expected);\n  const auto* state = browser ? BrowserInitState::From(browser) : nullptr;\n  return state && state->IsCurrentAuxProfileSwitchRequest(generation) ? browser : nullptr;\n}\nvoid ReportCurrentSwitchFailure(",
+          "count": 1,
+          "provenance": "reviewed-a2"
+        },
+        {
+          "find": "  const uint64_t generation = state->BeginAuxProfileSwitchRequest();\n  if (target ==",
+          "replace": "  const uint64_t generation = state->BeginAuxProfileSwitchRequest();\n  const auto source_weak = profile->GetWeakPtr();\n  if (target ==",
+          "count": 1,
+          "provenance": "reviewed-a2"
+        },
+        {
+          "find": "      std::move(completion).Run(sender_weak ? sender : nullptr);\n    }\n    return;\n  }\n  state->KeepAuxProfileSwitchProfileAlive(profile);",
+          "replace": "      std::move(completion).Run(CurrentSwitchResult(sender_weak, source_weak, generation));\n    }\n    return;\n  }\n  state->KeepAuxProfileSwitchProfileAlive(profile);",
+          "count": 1,
+          "provenance": "reviewed-a2"
+        },
+        {
+          "find": "                         sender_weak, profile->GetWeakPtr(), generation,",
+          "replace": "                         sender_weak, source_weak, generation,",
+          "count": 1,
+          "provenance": "reviewed-a2"
+        },
+        {
+          "find": "        recovered->GetWindow()->Activate();\n        // Activation can dispatch observers and close either native window.",
+          "replace": "        recovered->GetWindow()->Activate();\n        const auto current_recovery = [&]() -> Browser* {\n          return CurrentSwitchResult(sender_weak, source, generation)\n              ? CurrentSwitchWindow(recovered_weak, target_weak) : nullptr;\n        };\n        // Activation can dispatch observers and close or rebind either native window.",
+          "count": 1,
+          "provenance": "reviewed-a2"
+        },
+        {
+          "find": "        if (notify && recovered_weak && recovered_weak->GetWindow()) {",
+          "replace": "        if (notify && current_recovery()) {",
+          "count": 1,
+          "provenance": "reviewed-a2"
+        },
+        {
+          "find": "        if (completion) std::move(completion).Run(\n            recovered_weak ? static_cast<Browser*>(recovered_weak.get()) : nullptr);",
+          "replace": "        if (completion) std::move(completion).Run(current_recovery());",
+          "count": 1,
+          "provenance": "reviewed-a2"
+        },
+        {
+          "find": "    std::move(completion).Run(sender_weak ? sender : nullptr);\n  }\n}\n\nvoid ProfileSwitchRequest::ContinueAfterCacheSetup(",
+          "replace": "    std::move(completion).Run(CurrentSwitchResult(sender_weak, target_weak, generation));\n  }\n}\n\nvoid ProfileSwitchRequest::ContinueAfterCacheSetup(",
+          "count": 1,
+          "provenance": "reviewed-a2"
+        },
+        {
+          "find": "#include \"chrome/browser/profiles/profile.h\"",
+          "replace": "#include \"chrome/browser/profiles/profile.h\"\n#include \"chrome/browser/aux/profile_identity.h\"",
+          "count": 1,
+          "provenance": "a3"
+        },
+        {
+          "find": "  loading_ = true;\n  completion = base::BindOnce(&ProfileSwitchRequest::Complete,",
+          "replace": "  const auto source = sender_ && sender_->GetProfile()\n      ? sender_->GetProfile()->GetWeakPtr() : base::WeakPtr<Profile>();\n  const auto epoch = source ? GetProfileCookieBindingEpoch(source.get()) : std::string();\n  if (!CurrentSwitchWindow(sender_, source) || epoch.empty() ||\n      IsProfileCookieRestorePending(source.get())) {\n    std::move(completion).Run(nullptr);\n    return;\n  }\n  loading_ = true;\n  completion = base::BindOnce(&ProfileSwitchRequest::Complete,",
+          "count": 1,
+          "provenance": "a3"
+        },
+        {
+          "find": "  if (!alive) {\n    return;\n  }\n  Dispatch(sender_, target, std::move(completion));",
+          "replace": "  if (!alive) return;\n  // Restoring the borrowed native views can reenter a profile/account switch.\n  // The original intent must never dispatch against that replacement source.\n  if (!CurrentSwitchWindow(sender_, source) ||\n      GetProfileCookieBindingEpoch(source.get()) != epoch ||\n      IsProfileCookieRestorePending(source.get())) {\n    std::move(completion).Run(nullptr);\n    return;\n  }\n  Dispatch(sender_, target, std::move(completion));",
+          "count": 1,
+          "provenance": "a3"
+        },
+        {
+          "find": "  CHECK(!preview_->empty());\n  pending_.emplace(Pending{std::move(target), std::move(completion)});",
+          "replace": "  CHECK(!preview_->empty());\n  const auto source = sender_ && sender_->GetProfile()\n      ? sender_->GetProfile()->GetWeakPtr() : base::WeakPtr<Profile>();\n  const auto epoch = source ? GetProfileCookieBindingEpoch(source.get()) : std::string();\n  if (!CurrentSwitchWindow(sender_, source) || epoch.empty() ||\n      IsProfileCookieRestorePending(source.get())) {\n    std::move(completion).Run(nullptr);\n    return;\n  }\n  pending_.emplace(Pending{std::move(target), std::move(completion), source, epoch});",
+          "count": 1,
+          "provenance": "a3"
+        },
+        {
+          "find": "  auto pending = std::move(*pending_);\n  pending_.reset();\n  Start(pending.target, std::move(pending.completion));",
+          "replace": "  auto pending = std::move(*pending_);\n  pending_.reset();\n  // The 50ms frame-settle timer belongs to the actual source at queue time.\n  // A different profile/account in the same live window is not that source.\n  if (!CurrentSwitchWindow(sender_, pending.source) ||\n      GetProfileCookieBindingEpoch(pending.source.get()) != pending.source_epoch ||\n      IsProfileCookieRestorePending(pending.source.get())) {\n    std::move(pending.completion).Run(nullptr);\n    return;\n  }\n  Start(pending.target, std::move(pending.completion));",
+          "count": 1,
+          "provenance": "a3"
+        }
+      ],
+      "a2OutputSha256": "5dbd0c246451d7fd5fd403822bf2c17b360cf7acc59d64144a2a06b19c6563a2"
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_profile_switch_request.h",
+      "inputSha256": "f81e5a57f0ec56365b6d450b74662a68bb2e6a576c8e263a2512fc85d1afb321",
+      "outputSha256": "c50dda31fd13c702ebb8ef447579020621b0d3d1f319b601eedfc31d5ed011a6",
+      "output": "/Users/rcourson/.codex/worktrees/aux-features-organization/web/docs/integration/proposed/browser-feature-expansion/profile-bootstrap-completion-batch-a3/source/chrome/browser/ui/views/frame/aux_profile_switch_request.h",
+      "anchors": [
+        {
+          "find": "#include <optional>",
+          "replace": "#include <optional>\n#include <string>",
+          "count": 1,
+          "provenance": "a3"
+        },
+        {
+          "find": "  // Completion receives the same actual sender only after real core success\n  // and activation. LoadProfileAsync can drop completion on null load failure.",
+          "replace": "  // Completion receives the current switched sender or genuine separately\n  // recovered target after activation; failure or stale intent returns null.",
+          "count": 1,
+          "provenance": "a3"
+        },
+        {
+          "find": "    base::FilePath target;\n    Completion completion;\n  };",
+          "replace": "    base::FilePath target;\n    Completion completion;\n    base::WeakPtr<Profile> source;\n    std::string source_epoch;\n  };",
+          "count": 1,
+          "provenance": "a3"
+        }
+      ],
+      "a2OutputSha256": null
+    }
+  ],
+  "nativeCheckoutChanged": false,
+  "uiStylesChanged": false,
+  "nativeCompiled": false,
+  "productExecuted": false,
+  "runtimeAcceptance": false,
+  "admissionReadyEventInvented": false,
+  "coldEntryActivated": false
+}
