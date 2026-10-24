@@ -1,3 +1,11 @@
+# Full desktop feature build passed; inactive assembly retry running — 2026-10-23
+
+The actual full a17 native build passed with 259 immutable native inputs, 195 feature source pins, 416 app leaves and 16 inspected unsigned Mach-O files. Final supplied resource staging, 14 exact Agent/CLI replacements and dormant daemon source/entry pairing passed. No app was executed or accepted; the current app/UI remains intact.
+
+The first base assembly passed. Its feature overlay correctly refused missing installed CLI SEA metadata: the original bundle records that payload under its staged name, before the native wrapper relocated it. The failed candidate/recipe and base receipt are retained. The successor now authenticates that one exact original hash/mode, maps the SEA record to its installed name, records the unchanged native wrapper and exact component count, and rejects wrong hashes/duplicate records. A fresh full inactive assembly is running; no feature-package success is claimed yet. Original native guard hashes, counted GN inverses, the single frozen compiler alias and all other frozen-file checks remain required.
+
+The feature matrix in `docs/integration/proposed/browser-feature-expansion/execution.md` separates implemented/linked source from unobserved behavior. Writer custody, complete drain/admitted-root recovery and atomic runtime publication still require implementation. The prepared profile-authority decision explains standard browser isolation versus mandatory isolation from unrelated same-user writers; no contract is silently narrowed. No launch/shutdown/restart, product signing/release, owner-state or provider/cloud operation occurred.
+
 # Feature focused compilation passed; full unsigned build a17 running — 2026-10-23
 
 The reviewed local feature deltas are integrated and all eleven affected feature targets have compiled across the focused a15/a16/a17 corrections. The final Tidy menu object passes with actual nonempty output. The full unsigned app build is running against259 immutable native inputs with12 compiler jobs; completed a14 objects are retained.

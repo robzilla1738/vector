@@ -1,0 +1,12 @@
+{
+  "passed": false,
+  "reason": "Feature metadata expected installed CLI SEA record, but baseline retains the staged pre-wrapper name",
+  "baseAssemblyPassed": true,
+  "appExecuted": false,
+  "productSigned": false,
+  "acceptedAppReplaced": false,
+  "recipeSha256": "a9c041a6122f0fcee35e8a0bf4ff3f4bc6a6e668303f3ad37f6989418e223337",
+  "failedOutput": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-browser-features-20261023-failed-a1",
+  "toolArchive": "docs/integration/proposed/browser-feature-expansion/integration/evidence/feature-package-tool-failed-a1.py.txt",
+  "toolSha256": "50f42d02537b32a57d1b0b359273ce3ce111898e7c69eccadd12a545765e6dbb"
+}

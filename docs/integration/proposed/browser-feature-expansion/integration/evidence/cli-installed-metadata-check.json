@@ -1,0 +1,12 @@
+{
+  "passed": true,
+  "tool": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/package/feature_package.py",
+  "toolSha256": "bf631ba3ac0cb536bc7cb4f76a6f673ae6991d1a4319cc87a90f4401861bddaf",
+  "checks": [
+    "Exact original CLI metadata becomes installed SEA record plus independently pinned unchanged native-wrapper record",
+    "Wrong original SEA hash refused",
+    "Duplicate original CLI record refused"
+  ],
+  "productExecuted": false,
+  "nativeWrapperChanged": false
+}

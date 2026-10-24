@@ -1,0 +1,8 @@
+{
+  "format": "aux.browser-features.frozen-toolchain-alias.v1",
+  "path": "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang++",
+  "linkTarget": "clang",
+  "resolved": "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang",
+  "sha256": "5922f5f7843fee699497c45cc98134b6686e0a5e2fa8a5866ab74c5482fa87a5",
+  "scope": "Existing frozen daemon compiler alias only; no product/source alias permission"
+}

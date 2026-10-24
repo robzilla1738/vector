@@ -98,14 +98,23 @@ def verify_guarded_native(build):
             expected[item['path']] = item['afterSha256']
     for name, value in expected.items():
         require(inputs['files'].get(name) == value, 'Final native defense/registration missing: ' + name)
-    # The Aux GN change adds exactly two participant sources to the existing
-    # platform target; every pre-existing defense registration stays byte exact.
+    # Reverse every exact GN edit already frozen in the three-file review.
+    # The platform defense changes only by the two participant sources; the
+    # separate profile-updater/shortcut targets also need their reviewed deps.
     gn_item = next(x for x in review['files'] if x['path'] == 'chrome/browser/aux/BUILD.gn')
     text = (ROOT / gn_item['source']).read_text()
-    for line in ['    "feature_store/feature_write_participant.cc",\n',
-                 '    "feature_store/feature_write_participant.h",\n']:
-        require(text.count(line) == 1, 'Unique feature participant registration required')
-        text = text.replace(line, '')
+    inverse = [
+        ('    "feature_store/feature_write_participant.cc",\n    "feature_store/feature_write_participant.h",\n', ''),
+        ('  public_deps = [ "//chrome/browser/ui:aux_profile_search_headers", "//base", "//chrome/browser/profiles:profile",\n',
+         '  public_deps = [ "//base", "//chrome/browser/profiles:profile",\n'),
+        ('      ":keyboard_shortcut_parser",\n      ":platform",\n      ":profile_identity",\n      "//crypto",\n      "//chrome/browser/ui:aux_profile_search_headers",\n',
+         '      ":keyboard_shortcut_parser",\n'),
+        ('    frameworks = [ "AppKit.framework", "Carbon.framework" ]\n',
+         '    frameworks = [ "AppKit.framework" ]\n'),
+    ]
+    for find, replacement in inverse:
+        require(text.count(find) == 1, 'Unique reviewed GN edit required')
+        text = text.replace(find, replacement)
     require(text.encode() == (ROOT / gn_item['baseline']).read_bytes(), 'Unreviewed platform GN mutation')
 
 
@@ -175,6 +184,36 @@ def resource_deltas(baseline_stage, feature_stage, baseline_app):
     return output
 
 
+def feature_records(bundle, replacements, wrapper):
+    """Map the one staged CLI SEA record to its installed payload name."""
+    sea = [item for item in replacements if item['path'] == CLI + '-sea']
+    require(len(sea) == 1, 'Exact CLI SEA replacement required')
+    records = bundle['files']
+    require(not any(item['path'] == CLI + '-sea' for item in records),
+            'Expected original staged CLI metadata before native-wrapper mapping')
+    old = [item for item in records if item['path'] == CLI]
+    require(len(old) == 1 and old[0]['type'] == 'file'
+            and old[0]['sha256'] == sea[0]['previousSha256']
+            and old[0]['mode'] == sea[0]['mode'],
+            'Original CLI metadata must authenticate the exact retained SEA payload')
+    target = 'apps/cli/Aux CLI.app'
+    components = [item for item in bundle['components'] if item['target'] == target]
+    require(len(components) == 1 and components[0]['records']
+            == sum(item['path'].startswith(target + '/') for item in records),
+            'Exact original CLI component count required')
+    old[0]['path'] = CLI + '-sea'
+    records.append({'path': CLI, 'type': 'file', 'sha256': wrapper['sha256'],
+                    'mode': wrapper['mode'], 'source': 'reviewed-native-pre-home-wrapper',
+                    'changeKinds': ['integration']})
+    components[0]['records'] += 1
+    for replacement in replacements:
+        found = [item for item in records if item['path'] == replacement['path']]
+        require(len(found) == 1 and found[0]['type'] == 'file'
+                and found[0]['sha256'] == replacement['previousSha256']
+                and found[0]['mode'] == replacement['mode'],
+                'Unique exact previous packaged feature record required: ' + replacement['path'])
+
+
 def verify_composed_pair_leaf(base, pair, item):
     kind = item['kind']
     require(pair[kind + 'Sha256'] == item['afterSha256'],
@@ -196,7 +235,7 @@ def verify_composed_pair_leaf(base, pair, item):
 def verify(recipe):
     require(recipe.get('format') == 'aux.browser-features.inactive-package.recipe.v1', 'Unknown feature recipe')
     require(Path(recipe['repository']).resolve() == ROOT, 'Recipe repository mismatch')
-    for name in ['assembler', 'preparer', 'tool', 'guardReview', 'guardPatch']:
+    for name in ['assembler', 'preparer', 'tool', 'guardReview', 'guardPatch', 'toolchainReview']:
         resolve(recipe[name])
     require(resolve(recipe['assembler']) == PACKAGE / 'assemble.py', 'Exact previous assembler required')
     require(resolve(recipe['preparer']) == PACKAGE / 'prepare.py', 'Exact previous preparer required')
@@ -249,8 +288,29 @@ def verify(recipe):
     for path, value in protected_inputs['frozenFiles'].items():
         require(native_inputs['frozenFiles'].get(path) == value,
                 'Protected daemon input changed; separate exact review required: ' + path)
+    alias_path = resolve(recipe['toolchainReview'])
+    require(alias_path == Path(__file__).with_name('toolchain-alias-review.json'),
+            'Exact existing toolchain alias review required')
+    alias = read(alias_path)
+    compiler = '/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang++'
+    require(alias.get('format') == 'aux.browser-features.frozen-toolchain-alias.v1'
+            and alias['path'] == compiler and alias['linkTarget'] == 'clang'
+            and alias['resolved'] == str(Path(compiler).with_name('clang')),
+            'Only the original clang++ toolchain alias is permitted')
+    require(Path(compiler).is_symlink()
+            and protected_inputs['frozenFiles'].get(compiler) == alias['sha256']
+            and native_inputs['frozenFiles'].get(compiler) == alias['sha256'],
+            'Original frozen compiler alias type and bytes required')
     for path, value in native_inputs['frozenFiles'].items():
-        legacy.pin(path, value)
+        source = Path(path)
+        if source.is_symlink():
+            require(path == compiler and value == alias['sha256']
+                    and os.readlink(source) == alias['linkTarget']
+                    and source.resolve() == Path(alias['resolved']),
+                    'Frozen toolchain alias changed; no product/source aliases allowed')
+            legacy.pin(alias['resolved'], value)
+        else:
+            legacy.pin(path, value)
     for kind in ['loader', 'pty']:
         require(pair[kind + 'Sha256'] == previous[kind + 'Sha256'], 'Unrelated native module/loader replacement refused')
     for name in ['baselineStage', 'featureStage']:
@@ -265,6 +325,7 @@ def verify(recipe):
     require(wrapper['path'] == CLI, 'Native CLI wrapper path changed')
     legacy.pin(baseline_app / RESOURCES / CLI, wrapper['sha256'])
     require((baseline_app / RESOURCES / CLI).stat().st_mode & 0o777 == wrapper['mode'], 'CLI wrapper mode changed')
+    feature_records(read(baseline_app / RESOURCES / 'bundle.json'), actual, wrapper)
     # Every native CLI addon remains covered by the final exact unrelated-leaf comparison.
     require(legacy.digest(legacy.inventory(baseline_app)) == base['baselineInventorySha256'], 'Baseline app inventory changed')
     return base_path, base
@@ -276,7 +337,8 @@ def prepare(args):
     r = {'format': 'aux.browser-features.inactive-package.recipe.v1', 'repository': str(ROOT),
          'assembler': reference(PACKAGE / 'assemble.py'), 'preparer': reference(PACKAGE / 'prepare.py'),
          'tool': reference(__file__), 'guardReview': reference(Path(__file__).with_name('guard-transition.json')),
-         'guardPatch': reference(Path(__file__).with_name('guard-transition.patch')), 'baseRecipe': reference(args.base_recipe),
+         'guardPatch': reference(Path(__file__).with_name('guard-transition.patch')),
+         'toolchainReview': reference(Path(__file__).with_name('toolchain-alias-review.json')), 'baseRecipe': reference(args.base_recipe),
          'nativeComposition': reference(args.native_composition), 'daemonComposition': reference(args.daemon_composition),
          'daemonInputs': reference(args.daemon_inputs),
          'cliWrapper': {'path': CLI, 'sha256': legacy.sha(wrapper), 'mode': wrapper.stat().st_mode & 0o777},
@@ -318,6 +380,7 @@ def assemble(args):
         verify(recipe)
         bundle_path = resources / 'bundle.json'
         bundle = read(bundle_path)
+        feature_records(bundle, recipe['replacements'], recipe['cliWrapper'])
         for item in recipe['replacements']:
             target = resources / item['path']
             require(target.resolve().is_relative_to(resources.resolve()) and not target.is_symlink(), 'Feature destination escapes')

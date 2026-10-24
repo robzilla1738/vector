@@ -1,0 +1,65 @@
+{
+  "format": "aux.inactive-successor.recipe.v1",
+  "baselineApp": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-final-local-completion-20261023/Aux.app",
+  "baselineInventorySha256": "6ee453caea071b921b5be656fa5f9db974bd98826995dc84bd58186f620c002f",
+  "nativeApp": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/out/AuxFast/Aux.app",
+  "nativeInventorySha256": "e4e7b9cf192c5f10f342807537ab1fe264c5b3637d7cc7be0dedc6eb1eec09fb",
+  "nativeReceipt": "/private/tmp/aux-chromium-recovery-snapshot-20261023/unsigned-browser-features-full-build-20261023-a17/receipt.json",
+  "nativeReceiptSha256": "22860c886a18ab111982d85bb26b6a30c8f6e7b92976fc41b644b7a4c03368dd",
+  "daemonReceipt": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/profile-isolation-protected-startup/integration/daemon-link.json",
+  "daemonReceiptSha256": "4ef12198bbd92df5c40e2cefb4f95036f94b0e404ee3c6b47f4a6063a052fa3c",
+  "sourceReceiptSha256": "ea493568d11fc5188945f73b85e15b35e1c11d0c2ae36aae9f0121065160242c",
+  "entryReceiptSha256": "87a3a0f00563cfbf2d89ec333699c3a44b84f72e19b3fed7c12219dd926167bb",
+  "output": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-browser-features-20261023",
+  "replacements": [
+    {
+      "path": "apps/daemon/Aux Daemon.app/Contents/MacOS/aux-daemon",
+      "previousSha256": "3e48f01554e35228945604fdeafcb1aaccee248151b2337f3596cfe0d1b75e2e",
+      "input": "/private/tmp/aux-protected-startup-link-20261023/Aux Daemon",
+      "sha256": "420fae0a46654433a2f3f449bab0114619c352e5915385721a9926cdfabf6b17",
+      "mode": 493
+    },
+    {
+      "path": "apps/daemon/Aux Daemon.app/Contents/Resources/node-development/index.mjs",
+      "previousSha256": "3bfa93416fc399e2c48ce0e7ed27fdea7bf283e9f7f821ca82f97ff5ac39f081",
+      "input": "/private/tmp/aux-browser-features-daemon-source-20261023-a4/index.mjs",
+      "sha256": "4e5c2710ddeb7b1f57f2524088ece6678b0f091ec6f7af68564c355cabae4723",
+      "mode": 420
+    },
+    {
+      "path": "apps/daemon/Aux Daemon.app/Contents/Resources/node-development/aux-native-entry.mjs",
+      "previousSha256": "f9d4703a219c0430fd4652d18ab40b02b1f4d1a806bbc0d8af8a2d2cc3136d6d",
+      "input": "/private/tmp/aux-browser-features-daemon-source-20261023-a4/projected-entry/aux-native-entry.mjs",
+      "sha256": "aba6ebad5e4abd9e563770dc6be80e6b9c181a22fd41a16c7112417863cf1823",
+      "mode": 420
+    },
+    {
+      "path": "apps/daemon/Aux Daemon.app/Contents/Resources/native/aux-owned-native.cjs",
+      "previousSha256": "ec7ea0405f415d84e4afc695405eec07378d8c7233b926ffd9dd7db2edfed663",
+      "input": "/private/tmp/aux-browser-features-daemon-source-20261023-a4/projected-entry/aux-owned-native.cjs",
+      "sha256": "ec7ea0405f415d84e4afc695405eec07378d8c7233b926ffd9dd7db2edfed663",
+      "mode": 420
+    },
+    {
+      "path": "apps/daemon/Aux Daemon.app/Contents/Resources/native/node-pty/prebuilds/darwin-arm64/pty.node",
+      "previousSha256": "5b703ca2ae0901cc2b8e8e1064aaf4b78a386f402578a995834a8024de433726",
+      "input": "/private/tmp/aux-contained-pty-module-20261023-r2/pty.node",
+      "sha256": "03f4124086be96716bf1666555aa6d1a2b3d055efd103d5af8b984de5d0c03be",
+      "mode": 493
+    }
+  ],
+  "sourcePair": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/integration/source-pair.json",
+  "sourcePairSha256": "ad04cb0180b7bbd180d7aecf2d1546a41e59f7877799077154832213f0875236",
+  "sourceReceipt": "/private/tmp/aux-browser-features-daemon-source-20261023-a4/source-receipt.json",
+  "entryReceipt": "/private/tmp/aux-browser-features-daemon-source-20261023-a4/projected-entry/results.json",
+  "outerBoundary": {
+    "path": "Contents/Resources/package.json",
+    "input": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-final-local-completion-20261023/Aux.app/Contents/Resources/package.json",
+    "sha256": "d866fdcb8dc8d2f8038193fb6765500d7565c1c542139d7719ce25b574bf8b6c",
+    "mode": 420
+  },
+  "runtimeIntegrationManifest": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/profile-isolation-local-finish/runtime-bootstrap/integration.json",
+  "runtimeIntegrationManifestSha256": "6667bc39185609eb0f406e00fa0f06274c817d5277752c3ee384a5cad521df27",
+  "runtimeIntegrationEvidence": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/profile-isolation-local-finish/runtime-bootstrap/evidence.json",
+  "runtimeIntegrationEvidenceSha256": "f0dfd8d2c94afcf335443d75d6cac51cd17d5f43a91195d9e3ff7cad9ca1150d"
+}
