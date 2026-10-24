@@ -21,6 +21,12 @@ test('queue validation precedes removal and preserves cancelled, stale and edite
  assert.deepEqual(pending.messages,[replacement]);
  assert.deepEqual(await auxDrainValidatedQueue(pending,async()=>{}),[replacement]);assert.equal(pending.messages.length,0);
 });
+test('one-row drain validates the separately queued attachment metadata before removing the user row',async()=>{
+ const user={role:'user',content:'read this tab'},pending=queue([user,metadata]);
+ pending.peek=function(){return this.messages.slice(0,1)};
+ let validated;await assert.rejects(auxDrainValidatedQueue(pending,async messages=>{validated=messages;throw Error('stale metadata')}),/stale metadata/);
+ assert.deepEqual(validated,[user,metadata]);assert.deepEqual(pending.messages,[user,metadata]);
+});
 test('actual bridge route is required and cannot change during admission',async()=>{
  let current=route;const browser={get extensionBridgeRoute(){return current}};
  let sent;await auxValidateReferenceMessages(browser,[metadata],async(command,options)=>{sent={command,options};return {success:true}});

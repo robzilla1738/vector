@@ -23,10 +23,14 @@ export async function auxDrainValidatedQueue(queue,validate,signal) {
   const pending=queue.peek();
   if(!pending.length)return [];
   if(signal?.aborted)throw Error('Message dispatch cancelled.');
-  await validate(pending);
+  // The supplied follow-up queue can drain a user row before its separate
+  // metadata row. Validate the queued batch without changing its drain mode.
+  const batch=Array.isArray(queue.messages)?queue.messages.slice():pending;
+  await validate(batch);
   if(signal?.aborted)throw Error('Message dispatch cancelled.');
   const current=queue.peek();
-  if(current.length!==pending.length||current.some((message,index)=>message!==pending[index]))
+  if(current.length!==pending.length||current.some((message,index)=>message!==pending[index])||
+      (Array.isArray(queue.messages)&&(queue.messages.length!==batch.length||queue.messages.some((message,index)=>message!==batch[index]))))
     throw Error('The queued message changed during validation.');
   return queue.drain();
 }
@@ -82,6 +86,12 @@ export function transformAuxContextReadDaemon({text}){
     'Ri.push(object({method:literal(`Aux.validateTabReferences`),params:object({references:array(object({targetId:string$3().min(1),url:string$3().min(1),documentCapability:string$3().uuid()})).min(1).max(64)})})),Cn.extensionRequestSchema=discriminatedUnion(`method`,Ri)','aux-context-bridge-request-schema');
   change('ei=this.harness.prepareMessages?.(this.ctx,ei)??ei;let ti=await prepareAttachments(',
     'ei=this.harness.prepareMessages?.(this.ctx,ei)??ei;await auxValidateReferenceMessages(this.browser,ei);let ti=await prepareAttachments(','aux-context-message-admission');
+  change('return this.#Te(ti),await this.hooks.trigger(`chat.message`,ti,ti)',
+    'return await auxValidateReferenceMessages(this.browser,ti),this.#Te(ti),await this.hooks.trigger(`chat.message`,ti,ti)','aux-context-after-file-preparation');
+  change('let Cn=this.steeringQueue.drain();if(Cn.length>0)',
+    'let Cn=await auxDrainValidatedQueue(this.steeringQueue,this.auxValidateQueuedMessages);if(Cn.length>0)','aux-context-continue-steering');
+  change('let ei=this.followUpQueue.drain();if(ei.length>0)',
+    'let ei=await auxDrainValidatedQueue(this.followUpQueue,this.auxValidateQueuedMessages);if(ei.length>0)','aux-context-continue-follow-up');
   change('getSteeringMessages:async()=>ei?(ei=!1,[]):this.steeringQueue.drain(),getFollowUpMessages:async()=>this.followUpQueue.drain()',
     'getSteeringMessages:async()=>ei?(ei=!1,[]):auxDrainValidatedQueue(this.steeringQueue,this.auxValidateQueuedMessages,this.activeRun?.abortController.signal),getFollowUpMessages:async()=>auxDrainValidatedQueue(this.followUpQueue,this.auxValidateQueuedMessages,this.activeRun?.abortController.signal)','aux-context-actual-queue-dequeue');
   change('ei.prepareRequest=async({context:Cn})=>{',
