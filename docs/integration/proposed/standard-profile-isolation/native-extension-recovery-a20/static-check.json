@@ -1,0 +1,17 @@
+{
+  "format": "aux.native-extension-recovery.static.v1",
+  "files": 10,
+  "countedAnchors": 38,
+  "patchReplay": true,
+  "patchReverse": true,
+  "privateBackendRequalificationIsReadOnly": true,
+  "freshCurrentAndOriginalRecordsDistinct": true,
+  "bothRealWrappersForward": true,
+  "commitReplayRefused": true,
+  "sourceReleaseRequiresSyncedOriginalReadback": true,
+  "releaseObservationDistinctFromAbortedBegin": true,
+  "descriptorDoesNotAuthenticateJournal": true,
+  "nativeCompilerRun": false,
+  "apiOrProductExecuted": false,
+  "runtimeAcceptance": false
+}

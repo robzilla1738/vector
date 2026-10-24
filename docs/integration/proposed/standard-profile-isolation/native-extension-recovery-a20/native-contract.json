@@ -1,0 +1,47 @@
+{
+  "format": "aux.native-extension-recovery.api.v1",
+  "fixedRecordCount": 6,
+  "scope": "complete fixed-six optional raw JSON records; unrelated store entries remain private/untouched",
+  "maximumRawBytesPerAlternative": 65536,
+  "recordDomain": "aux.ui-preference-records.v1",
+  "recordDomainTerminalNul": true,
+  "recordCountEncoding": "uint64 little endian",
+  "recordEncoding": [
+    "uint8 presence",
+    "uint64 little endian raw byte length; absent zero",
+    "exact raw JSON bytes when present"
+  ],
+  "descriptorDomain": "aux.ui-preference-recovery.v1",
+  "descriptorDomainTerminalNul": true,
+  "descriptorPayload": [
+    "lowercase source SHA256 string of length64",
+    "lowercase derived target SHA256 string of length64"
+  ],
+  "nativeFrontendMethod": "RequalifyAuxUiMigrationLease(extension, original_native_request, descriptor, AuxUiMigrationLeaseResultCallback)",
+  "requiresVerifiedJournalCaller": true,
+  "freshCurrentKeptSeparate": true,
+  "sourceRestorationUsesExistingRetainedBackend": true,
+  "commitAllowedForRecovery": false,
+  "qualificationPerformsSyncOrWrite": false,
+  "sameLeaseReadbackRequiredBeforeRestore": true,
+  "lostCallbackObservation": [
+    "preparation_pending",
+    "recovery_requested",
+    "recovery_qualified",
+    "recovery_descriptor_sha256",
+    "recovery_source_released"
+  ],
+  "publicPageApiAdded": false,
+  "headers": [
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/native-extension-recovery-a20/source/components/value_store/value_store.h",
+      "sha256": "4ea60c3b78da3e837cfc668195ac73aa99b03fdc8f4ec5bde538bf312d5d689d"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/native-extension-recovery-a20/source/extensions/browser/api/storage/storage_frontend.h",
+      "sha256": "e71dd5967dcf1fd0c340f0f42b47b9d564ddeeb2dd98565e56bd60a4af84d444"
+    }
+  ],
+  "nativeCompile": false,
+  "runtimeAcceptance": false
+}

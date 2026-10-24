@@ -1,0 +1,11 @@
+{
+  "path": "components/value_store/BUILD.gn",
+  "inputSha256": "63ae34e0dcacb212d25300512bbf4f8a08327bb94278807b20f5ab39d2fc8317",
+  "anchor": {
+    "find": "  deps = [\n    \"//base\",\n    \"//third_party/abseil-cpp:absl\",\n  ]",
+    "replace": "  deps = [\n    \"//base\",\n    \"//crypto\",\n    \"//third_party/abseil-cpp:absl\",\n  ]",
+    "count": 1
+  },
+  "reason": "Actual shared native SHA256 fixed-six journal codec uses crypto/hash.h; root owns GN projection",
+  "nativeMutation": false
+}

@@ -1,0 +1,330 @@
+{
+  "format": "aux.native-extension-recovery.source.v1",
+  "predecessorCommits": [
+    "a8b92a9d2",
+    "e1bee6c7e"
+  ],
+  "files": [
+    {
+      "path": "components/value_store/value_store.h",
+      "inputRoot": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src",
+      "inputSha256": "81a77d86cfcc1c58e4c30f7966052568c266153750223a75959d077e33f446d9",
+      "outputSha256": "4ea60c3b78da3e837cfc668195ac73aa99b03fdc8f4ec5bde538bf312d5d689d",
+      "source": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/native-extension-recovery-a20/source/components/value_store/value_store.h",
+      "anchors": [
+        {
+          "name": "Move the exact fixed-six alias before native capture/descriptor declarations",
+          "find": "  // Native-only capture: private construction by the real LevelDB backend.",
+          "replace": "  using AuxUiPreferenceRecords = std::array<std::optional<std::string>, 6>;\n  // Finite native-controller journal data only. Digests validate exact bytes;\n  // they do not authenticate a journal or confer Profile/backend authority.\n  struct AuxUiPreferenceRecoveryDescriptor {\n    AuxUiPreferenceRecords source, target;\n    std::string source_sha256, target_sha256, descriptor_sha256;\n  };\n  using AuxUiPreferenceFingerprintResult = base::expected<std::string, Status>;\n  using AuxUiPreferenceTargetResult = base::expected<AuxUiPreferenceRecords, Status>;\n  using AuxUiPreferenceRecoveryDescriptorResult =\n      base::expected<AuxUiPreferenceRecoveryDescriptor, Status>;\n  static AuxUiPreferenceFingerprintResult FingerprintAuxUiPreferenceRecords(\n      const AuxUiPreferenceRecords& records);\n  static AuxUiPreferenceTargetResult DeriveAuxUiPreferenceTargetRecords(\n      const AuxUiPreferenceRecords& source);\n  static AuxUiPreferenceRecoveryDescriptorResult MakeAuxUiPreferenceRecoveryDescriptor(\n      const AuxUiPreferenceRecords& source);\n  static Status ValidateAuxUiPreferenceRecoveryDescriptor(\n      const AuxUiPreferenceRecoveryDescriptor& descriptor);\n\n  // Native-only capture: private construction by the real LevelDB backend.",
+          "count": 1
+        },
+        {
+          "name": "Keep newly observed records distinct from original recovery source",
+          "find": "    std::array<std::optional<std::string>, 6> CopyTargetRecordsForNativeJournal() const;",
+          "replace": "    std::array<std::optional<std::string>, 6> CopyTargetRecordsForNativeJournal() const;\n    AuxUiPreferenceRecords CopyFreshRecordsForNativeJournal() const;",
+          "count": 1
+        },
+        {
+          "name": "Recovery descriptor never overwrites the freshly captured current records",
+          "find": "    std::array<std::optional<std::string>, 6> records;",
+          "replace": "    std::array<std::optional<std::string>, 6> records;\n    std::optional<AuxUiPreferenceRecoveryDescriptor> recovery;",
+          "count": 1
+        },
+        {
+          "name": "Alias remains single declared",
+          "find": "  using AuxUiPreferenceRecords = std::array<std::optional<std::string>, 6>;\n  struct AuxUiPreferenceReadback {",
+          "replace": "  struct AuxUiPreferenceReadback {",
+          "count": 1
+        },
+        {
+          "name": "Append unsupported-by-default real native backend recovery entry",
+          "find": "  virtual AuxUiPreferenceReadbackResult RestoreRetainedAuxUiPreferenceMigration(\n      std::shared_ptr<AuxUiPreferenceCapture> capture);",
+          "replace": "  virtual AuxUiPreferenceReadbackResult RestoreRetainedAuxUiPreferenceMigration(\n      std::shared_ptr<AuxUiPreferenceCapture> capture);\n  // Read-only qualification of a real fresh capture against a verified native\n  // journal descriptor. No writes, root selection or unknown target replay.\n  virtual AuxUiPreferenceCaptureResult RequalifyAuxUiPreferenceRecovery(\n      std::shared_ptr<AuxUiPreferenceCapture> fresh,\n      AuxUiPreferenceRecoveryDescriptor descriptor);",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "components/value_store/value_store.cc",
+      "inputRoot": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src",
+      "inputSha256": "d6190f63ad111f4da30b6e88c37c464aca6b051c1731be194604369ded2b75d6",
+      "outputSha256": "95595cdaba589b43cd69d8041a4a9b99b7cae9adbfc88b640663b5099386b50f",
+      "source": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/native-extension-recovery-a20/source/components/value_store/value_store.cc",
+      "anchors": [
+        {
+          "name": "Declare used native integer/string-view types",
+          "find": "#include <utility>",
+          "replace": "#include <cstdint>\n#include <string_view>\n#include <utility>",
+          "count": 1
+        },
+        {
+          "name": "Use actual native SHA/JSON/UTF16 dependencies",
+          "find": "#include \"base/check.h\"",
+          "replace": "#include \"base/check.h\"\n#include \"base/json/json_reader.h\"\n#include \"base/strings/string_number_conversions.h\"\n#include \"base/strings/utf_string_conversions.h\"\n#include \"crypto/hash.h\"",
+          "count": 1
+        },
+        {
+          "name": "Expose original recovery records only through the qualified native capture",
+          "find": "  return records;\n}\n\nstd::array<std::optional<std::string>, 6>\nValueStore::AuxUiPreferenceCapture::CopyTargetRecordsForNativeJournal() const {\n  auto target = records;",
+          "replace": "  return recovery ? recovery->source : records;\n}\n\nValueStore::AuxUiPreferenceRecords\nValueStore::AuxUiPreferenceCapture::CopyFreshRecordsForNativeJournal() const {\n  return records;\n}\n\nstd::array<std::optional<std::string>, 6>\nValueStore::AuxUiPreferenceCapture::CopyTargetRecordsForNativeJournal() const {\n  if (recovery) return recovery->target;\n  auto target = records;",
+          "count": 1
+        },
+        {
+          "name": "Shared bounded exact-byte codec and unsupported default recovery API",
+          "find": "\n}  // namespace value_store",
+          "replace": "\nnamespace {\nconstexpr size_t kAuxPreferenceRecordBytes = 64 * 1024;\nvoid AuxPreferenceLength(std::string& bytes, uint64_t value) {\n  for (size_t index = 0; index < 8; ++index) {\n    bytes.push_back(static_cast<char>(value & 0xff)); value >>= 8;\n  }\n}\nstd::string AuxPreferenceDescriptorDigest(std::string_view source,\n                                          std::string_view target) {\n  std::string bytes(\"aux.ui-preference-recovery.v1\"); bytes.push_back('\\0');\n  bytes.append(source); bytes.append(target);\n  return base::HexEncodeLower(crypto::hash::Sha256(bytes));\n}\n}\nValueStore::AuxUiPreferenceFingerprintResult\nValueStore::FingerprintAuxUiPreferenceRecords(const AuxUiPreferenceRecords& records) {\n  size_t total = 0;\n  for (const auto& record : records) if (record) {\n    if (record->size() > kAuxPreferenceRecordBytes - total)\n      return base::unexpected(Status(OTHER_ERROR, \"Fixed-six Aux journal records exceed 64 KiB\"));\n    total += record->size();\n  }\n  std::string bytes(\"aux.ui-preference-records.v1\"); bytes.push_back('\\0');\n  AuxPreferenceLength(bytes, records.size());\n  for (const auto& record : records) {\n    bytes.push_back(record ? '\\1' : '\\0');\n    AuxPreferenceLength(bytes, record ? record->size() : 0);\n    if (record) bytes.append(*record);\n  }\n  return base::HexEncodeLower(crypto::hash::Sha256(bytes));\n}\nValueStore::AuxUiPreferenceTargetResult\nValueStore::DeriveAuxUiPreferenceTargetRecords(const AuxUiPreferenceRecords& source) {\n  auto bounded = FingerprintAuxUiPreferenceRecords(source);\n  if (!bounded.has_value()) return base::unexpected(std::move(bounded.error()));\n  for (size_t index = 0; index < source.size(); ++index) if (source[index]) {\n    const auto value = base::JSONReader::Read(*source[index], base::JSON_PARSE_CHROMIUM_EXTENSIONS);\n    const size_t family = index / 2;\n    if (!value || (family == 1 ? !value->is_bool() : !value->is_string()))\n      return base::unexpected(Status(CORRUPTION, \"Invalid fixed Aux journal preference schema\"));\n    if (family != 1) {\n      const auto& text = value->GetString();\n      if (family == 0 ? (text != \"system\" && text != \"light\" && text != \"dark\") :\n                        base::UTF8ToUTF16(text).size() > 300)\n        return base::unexpected(Status(CORRUPTION, \"Invalid fixed Aux journal preference value\"));\n    }\n  }\n  auto target = source;\n  for (size_t index = 0; index < source.size(); index += 2) {\n    if (source[index] && source[index + 1] && source[index] != source[index + 1])\n      return base::unexpected(Status(OTHER_ERROR, \"Conflicting original Aux journal preferences\"));\n    if (source[index]) { target[index + 1] = source[index]; target[index].reset(); }\n  }\n  return target;\n}\nValueStore::AuxUiPreferenceRecoveryDescriptorResult\nValueStore::MakeAuxUiPreferenceRecoveryDescriptor(const AuxUiPreferenceRecords& source) {\n  auto target = DeriveAuxUiPreferenceTargetRecords(source);\n  if (!target.has_value()) return base::unexpected(std::move(target.error()));\n  auto source_digest = FingerprintAuxUiPreferenceRecords(source);\n  auto target_digest = FingerprintAuxUiPreferenceRecords(*target);\n  if (!source_digest.has_value()) return base::unexpected(std::move(source_digest.error()));\n  if (!target_digest.has_value()) return base::unexpected(std::move(target_digest.error()));\n  AuxUiPreferenceRecoveryDescriptor descriptor;\n  descriptor.source = source; descriptor.target = std::move(*target);\n  descriptor.source_sha256 = std::move(*source_digest);\n  descriptor.target_sha256 = std::move(*target_digest);\n  descriptor.descriptor_sha256 = AuxPreferenceDescriptorDigest(\n      descriptor.source_sha256, descriptor.target_sha256);\n  return descriptor;\n}\nValueStore::Status ValueStore::ValidateAuxUiPreferenceRecoveryDescriptor(\n    const AuxUiPreferenceRecoveryDescriptor& descriptor) {\n  auto expected = MakeAuxUiPreferenceRecoveryDescriptor(descriptor.source);\n  if (!expected.has_value()) return std::move(expected.error());\n  if (expected->target != descriptor.target || expected->source_sha256 != descriptor.source_sha256 ||\n      expected->target_sha256 != descriptor.target_sha256 ||\n      expected->descriptor_sha256 != descriptor.descriptor_sha256)\n    return Status(OTHER_ERROR, \"Fixed-six Aux recovery descriptor/digests do not match the original transform\");\n  return Status();\n}\nValueStore::AuxUiPreferenceCaptureResult\nValueStore::RequalifyAuxUiPreferenceRecovery(std::shared_ptr<AuxUiPreferenceCapture> fresh,\n    AuxUiPreferenceRecoveryDescriptor descriptor) {\n  return base::unexpected(Status(OTHER_ERROR, \"Aux preference recovery backend unsupported\"));\n}\n\n}  // namespace value_store",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "components/value_store/leveldb_value_store.h",
+      "inputRoot": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src",
+      "inputSha256": "8936aaa5b62337193610effba10bdf2764edc39e5de9883138364242f924b62a",
+      "outputSha256": "cf26db0e17d689329c4fa0e30561a0ba9be11d3c36b7e4fb34960035914be32b",
+      "source": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/native-extension-recovery-a20/source/components/value_store/leveldb_value_store.h",
+      "anchors": [
+        {
+          "name": "Declare genuine backend qualification without public restore maps",
+          "find": "  // Write directly to the backing levelDB.",
+          "replace": "  AuxUiPreferenceCaptureResult RequalifyAuxUiPreferenceRecovery(\n      std::shared_ptr<AuxUiPreferenceCapture> fresh,\n      AuxUiPreferenceRecoveryDescriptor descriptor) override;\n\n  // Write directly to the backing levelDB.",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "components/value_store/leveldb_value_store.cc",
+      "inputRoot": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src",
+      "inputSha256": "47467f34db83f34794b35e60605746a85a94d1a59b340c886eca688492da6c00",
+      "outputSha256": "7fb9442e9b43fce7a7c128da613c3a1b392697e0fcf1117de9d8f511f7519530",
+      "source": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/native-extension-recovery-a20/source/components/value_store/leveldb_value_store.cc",
+      "anchors": [
+        {
+          "name": "Read-only same-owner requalification against actual current fixed records",
+          "find": "\nbool LeveldbValueStore::WriteToDbForTest",
+          "replace": "\nValueStore::AuxUiPreferenceCaptureResult\nLeveldbValueStore::RequalifyAuxUiPreferenceRecovery(\n    std::shared_ptr<AuxUiPreferenceCapture> fresh,\n    AuxUiPreferenceRecoveryDescriptor descriptor) {\n  if (!fresh || fresh->owner.get() != this || !db() || fresh->recovery ||\n      fresh->retained_target_attempted || fresh->retained_restore_attempted)\n    return base::unexpected(Status(OTHER_ERROR, \"Real untouched fresh Aux backend capture required\"));\n  auto valid = ValidateAuxUiPreferenceRecoveryDescriptor(descriptor);\n  if (!valid.ok()) return base::unexpected(std::move(valid));\n  AuxUiPreferenceRecords current;\n  for (size_t index = 0; index < kAuxUiPreferenceKeys.size(); ++index) {\n    std::string raw;\n    const auto status = db()->Get(read_options(), kAuxUiPreferenceKeys[index], &raw);\n    if (!status.ok() && !status.IsNotFound()) return base::unexpected(ToValueStoreError(status));\n    if (status.ok()) current[index] = std::move(raw);\n  }\n  if (fresh->owner.get() != this || current != fresh->records ||\n      (current != descriptor.source && current != descriptor.target))\n    return base::unexpected(Status(OTHER_ERROR, \"Fresh fixed-six Aux contents do not match recorded source or target\"));\n  auto digest = FingerprintAuxUiPreferenceRecords(current);\n  if (!digest.has_value()) return base::unexpected(std::move(digest.error()));\n  if (*digest != descriptor.source_sha256 && *digest != descriptor.target_sha256)\n    return base::unexpected(Status(OTHER_ERROR, \"Fresh fixed-six Aux digest differs from recorded alternatives\"));\n  // This only observes the real open backend. No Sync/Write/repair/creation,\n  // target replay, source adoption or durability claim occurs here.\n  auto recovered = base::WrapUnique(new AuxUiPreferenceCapture());\n  recovered->owner = fresh->owner;\n  recovered->records = std::move(current);  // Fresh physical observation stays separate.\n  recovered->recovery = std::move(descriptor);\n  return recovered;\n}\n\nbool LeveldbValueStore::WriteToDbForTest",
+          "count": 1
+        },
+        {
+          "name": "Never replay the old target through a recovered native capture",
+          "find": "      (capture->retained_target_attempted || capture->retained_restore_attempted))",
+          "replace": "      (capture->recovery || capture->retained_target_attempted || capture->retained_restore_attempted))",
+          "count": 1
+        },
+        {
+          "name": "Retained source is original journal source, not fresh current target",
+          "find": "  const auto target = capture->CopyTargetRecordsForNativeJournal();\n  if (before.value() != capture->records && before.value() != target)",
+          "replace": "  const auto source = capture->CopyRecordsForNativeJournal();\n  const auto target = capture->CopyTargetRecordsForNativeJournal();\n  if (before.value() != source && before.value() != target)",
+          "count": 1
+        },
+        {
+          "name": "Target CAS still requires original source and original capture",
+          "find": "  if (!read_only && !restore && before.value() != capture->records)",
+          "replace": "  if (!read_only && !restore && before.value() != source)",
+          "count": 1
+        },
+        {
+          "name": "Restore writes only immutable original records to the six fixed keys",
+          "find": "  const auto& expected = read_only ? before.value() : restore ? capture->records : target;",
+          "replace": "  const auto& expected = read_only ? before.value() : restore ? source : target;",
+          "count": 1
+        },
+        {
+          "name": "Readback reports original source identity after recovery",
+          "find": "  result.matches_source = result.records == capture->records;",
+          "replace": "  result.matches_source = result.records == source;",
+          "count": 1
+        },
+        {
+          "name": "Legacy one-shot commit cannot consume a recovery capture",
+          "find": "  if (!capture || capture->owner.get() != this || !db()) {",
+          "replace": "  if (!capture || capture->owner.get() != this || !db() || capture->recovery) {",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "extensions/browser/api/storage/settings_storage_quota_enforcer.h",
+      "inputRoot": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src",
+      "inputSha256": "2802bcd9a91e5fff575eecd34a14605780140a934c8264c02d5052d986d85465",
+      "outputSha256": "ec25b667bbd9521ccd0d331665b5f2750a868c801357416603a0a2ef29f011c0",
+      "source": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/native-extension-recovery-a20/source/extensions/browser/api/storage/settings_storage_quota_enforcer.h",
+      "anchors": [
+        {
+          "name": "Forward recovery through the existing real storage wrapper",
+          "find": "  AuxUiPreferenceReadbackResult RestoreRetainedAuxUiPreferenceMigration(\n      std::shared_ptr<AuxUiPreferenceCapture> capture) override;",
+          "replace": "  AuxUiPreferenceReadbackResult RestoreRetainedAuxUiPreferenceMigration(\n      std::shared_ptr<AuxUiPreferenceCapture> capture) override;\n  AuxUiPreferenceCaptureResult RequalifyAuxUiPreferenceRecovery(\n      std::shared_ptr<AuxUiPreferenceCapture> fresh,\n      AuxUiPreferenceRecoveryDescriptor descriptor) override;",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "extensions/browser/api/storage/settings_storage_quota_enforcer.cc",
+      "inputRoot": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src",
+      "inputSha256": "5a918330a2f19ef4d292927b8cfa2f0041d2325bfbbc911e8747916c7e42a465",
+      "outputSha256": "b36240ff30fc5743aa36462e9052c784f93310738ffd08094db7c3445643e33b",
+      "source": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/native-extension-recovery-a20/source/extensions/browser/api/storage/settings_storage_quota_enforcer.cc",
+      "anchors": [
+        {
+          "name": "Preserve actual wrapper/delegate ownership on the backend sequence",
+          "find": "\n}  // namespace extensions",
+          "replace": "\nValueStore::AuxUiPreferenceCaptureResult\nSettingsStorageQuotaEnforcer::RequalifyAuxUiPreferenceRecovery(\n    std::shared_ptr<AuxUiPreferenceCapture> fresh,\n    AuxUiPreferenceRecoveryDescriptor descriptor) {\n  return delegate_->RequalifyAuxUiPreferenceRecovery(std::move(fresh), std::move(descriptor));\n}\n\n}  // namespace extensions",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "extensions/browser/api/storage/weak_unlimited_settings_storage.h",
+      "inputRoot": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src",
+      "inputSha256": "72dcadc4fd6bad15cd0ec7d22ebff978ddb23fe49b84af9638cb9ee42e1a63bf",
+      "outputSha256": "5ae5569cfb8e604223f4df4e4e8cf6215c1ee696ad50c925648adddf2c346adf",
+      "source": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/native-extension-recovery-a20/source/extensions/browser/api/storage/weak_unlimited_settings_storage.h",
+      "anchors": [
+        {
+          "name": "Forward recovery through the existing real storage wrapper",
+          "find": "  AuxUiPreferenceReadbackResult RestoreRetainedAuxUiPreferenceMigration(\n      std::shared_ptr<AuxUiPreferenceCapture> capture) override;",
+          "replace": "  AuxUiPreferenceReadbackResult RestoreRetainedAuxUiPreferenceMigration(\n      std::shared_ptr<AuxUiPreferenceCapture> capture) override;\n  AuxUiPreferenceCaptureResult RequalifyAuxUiPreferenceRecovery(\n      std::shared_ptr<AuxUiPreferenceCapture> fresh,\n      AuxUiPreferenceRecoveryDescriptor descriptor) override;",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "extensions/browser/api/storage/weak_unlimited_settings_storage.cc",
+      "inputRoot": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src",
+      "inputSha256": "281367a1bcf15bc0912318c5f0be1be7671a35081f6b270f9e2de2b0ebd232ea",
+      "outputSha256": "9754f12fb7785940c670ed0614f28a3eb3aa2fdc94948a664b68e57bed46c93f",
+      "source": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/native-extension-recovery-a20/source/extensions/browser/api/storage/weak_unlimited_settings_storage.cc",
+      "anchors": [
+        {
+          "name": "Preserve actual wrapper/delegate ownership on the backend sequence",
+          "find": "\n}  // namespace extensions",
+          "replace": "\nValueStore::AuxUiPreferenceCaptureResult\nWeakUnlimitedSettingsStorage::RequalifyAuxUiPreferenceRecovery(\n    std::shared_ptr<AuxUiPreferenceCapture> fresh,\n    AuxUiPreferenceRecoveryDescriptor descriptor) {\n  return delegate_->RequalifyAuxUiPreferenceRecovery(std::move(fresh), std::move(descriptor));\n}\n\n}  // namespace extensions",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "extensions/browser/api/storage/storage_frontend.h",
+      "inputRoot": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src",
+      "inputSha256": "9b7287f31b86ba8097f0f7f9a31a41bb23dda037338e3c5d4c40f501a2a8036c",
+      "outputSha256": "e71dd5967dcf1fd0c340f0f42b47b9d564ddeeb2dd98565e56bd60a4af84d444",
+      "source": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/native-extension-recovery-a20/source/extensions/browser/api/storage/storage_frontend.h",
+      "anchors": [
+        {
+          "name": "Expose fresh observations separately from immutable recovery original",
+          "find": "    std::array<std::optional<std::string>, 6> CopyTargetRecords() const;",
+          "replace": "    std::array<std::optional<std::string>, 6> CopyTargetRecords() const;\n    value_store::ValueStore::AuxUiPreferenceRecords CopyFreshRecords() const;\n    bool IsRecoveryQualified() const;\n    std::string RecoveryDescriptorSha256() const;",
+          "count": 1
+        },
+        {
+          "name": "Lost callback observation retains recovery phase and descriptor correlation",
+          "find": "    bool target_attempted = false;\n  };",
+          "replace": "    bool target_attempted = false;\n    bool recovery_requested = false, recovery_qualified = false;\n    bool recovery_source_released = false;\n    std::string recovery_descriptor_sha256;\n  };",
+          "count": 1
+        },
+        {
+          "name": "Native controller-only bounded descriptor uses actual existing frontend gate",
+          "find": "  bool ValidateAuxUiMigrationLease(const AuxUiMigrationLease& lease) const;",
+          "replace": "  // Caller must join the actual verified native journal and Profile before\n  // invoking this native-only method. Descriptor digests are data, not admission.\n  void RequalifyAuxUiMigrationLease(scoped_refptr<const Extension> extension,\n      const base::UnguessableToken& request,\n      value_store::ValueStore::AuxUiPreferenceRecoveryDescriptor descriptor,\n      base::OnceCallback<void(AuxUiMigrationLeaseResult)> callback);\n  bool ValidateAuxUiMigrationLease(const AuxUiMigrationLease& lease) const;",
+          "count": 1
+        },
+        {
+          "name": "Finite successful recovery release observation is distinct from a no-target abort",
+          "find": "  scoped_refptr<const Extension> aux_ui_aborted_extension_;",
+          "replace": "  scoped_refptr<const Extension> aux_ui_aborted_extension_;\n  struct AuxUiRecoveryReleasedReceipt {\n    base::UnguessableToken request;\n    scoped_refptr<const Extension> extension;\n    std::string descriptor_sha256;\n  };\n  std::optional<AuxUiRecoveryReleasedReceipt> aux_ui_recovery_released_;",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "extensions/browser/api/storage/storage_frontend.cc",
+      "inputRoot": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src",
+      "inputSha256": "dde0a3a41bfe0b356b318b3a11eb5b3832423a58852e35b47ea751561e911ea2",
+      "outputSha256": "f3dae5de093a9455d0be547eee9230e3456ed56ea40c96ea13dbf2e2452826a3",
+      "source": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/native-extension-recovery-a20/source/extensions/browser/api/storage/storage_frontend.cc",
+      "anchors": [
+        {
+          "name": "Retain immutable journal descriptor apart from fresh original capture",
+          "find": "  std::array<std::optional<std::string>, 6> source, target;",
+          "replace": "  std::array<std::optional<std::string>, 6> source, target, fresh;\n  std::optional<ValueStore::AuxUiPreferenceRecoveryDescriptor> recovery_descriptor;\n  bool recovery_requested = false, recovery_qualified = false;",
+          "count": 1
+        },
+        {
+          "name": "Do not expose an unqualified fresh current target as original recovery source",
+          "find": "  return state_ ? state_->source : std::array<std::optional<std::string>, 6>();",
+          "replace": "  return state_ && (!state_->recovery_requested || state_->recovery_qualified) ?\n      state_->source : std::array<std::optional<std::string>, 6>();",
+          "count": 1
+        },
+        {
+          "name": "Do not expose unqualified inferred target as recorded recovery target",
+          "find": "  return state_ ? state_->target : std::array<std::optional<std::string>, 6>();",
+          "replace": "  return state_ && (!state_->recovery_requested || state_->recovery_qualified) ?\n      state_->target : std::array<std::optional<std::string>, 6>();\n}\nValueStore::AuxUiPreferenceRecords\nStorageFrontend::AuxUiMigrationLease::CopyFreshRecords() const {\n  return state_ ? state_->fresh : ValueStore::AuxUiPreferenceRecords();\n}\nbool StorageFrontend::AuxUiMigrationLease::IsRecoveryQualified() const {\n  return state_ && state_->recovery_requested && state_->recovery_qualified;\n}\nstd::string StorageFrontend::AuxUiMigrationLease::RecoveryDescriptorSha256() const {\n  return state_ && state_->recovery_descriptor ? state_->recovery_descriptor->descriptor_sha256 : std::string();",
+          "count": 1
+        },
+        {
+          "name": "Capture fresh current state independently before every consumer callback",
+          "find": "        state->source = captured.value()->CopyRecordsForNativeJournal();",
+          "replace": "        state->fresh = captured.value()->CopyFreshRecordsForNativeJournal();\n        state->source = captured.value()->CopyRecordsForNativeJournal();",
+          "count": 1
+        },
+        {
+          "name": "Observe only an actual correlated source recovery release, never absence",
+          "find": "  if (aux_ui_aborted_request_ == request && aux_ui_aborted_extension_ &&",
+          "replace": "  if (aux_ui_recovery_released_ && aux_ui_recovery_released_->request == request &&\n      CanUseAuxUiMigrationBackend(*aux_ui_recovery_released_->extension)) {\n    AuxUiMigrationLeaseObservation result;\n    result.recovery_requested = result.recovery_qualified = true;\n    result.recovery_source_released = true;\n    result.recovery_descriptor_sha256 = aux_ui_recovery_released_->descriptor_sha256;\n    return result;\n  }\n  if (aux_ui_aborted_request_ == request && aux_ui_aborted_extension_ &&",
+          "count": 1
+        },
+        {
+          "name": "Original request observation keeps the actual recovery result discoverable",
+          "find": "    result.target_attempted = state->target_attempted;",
+          "replace": "    result.target_attempted = state->target_attempted;\n    result.recovery_requested = state->recovery_requested;\n    result.recovery_qualified = state->recovery_qualified;\n    if (state->recovery_descriptor)\n      result.recovery_descriptor_sha256 = state->recovery_descriptor->descriptor_sha256;",
+          "count": 1
+        },
+        {
+          "name": "Qualify through the actual backend and retain custody before the native caller reply",
+          "find": "\nbool StorageFrontend::ValidateAuxUiMigrationLease",
+          "replace": "\nvoid StorageFrontend::RequalifyAuxUiMigrationLease(\n    scoped_refptr<const Extension> extension, const base::UnguessableToken& request,\n    ValueStore::AuxUiPreferenceRecoveryDescriptor descriptor,\n    base::OnceCallback<void(AuxUiMigrationLeaseResult)> callback) {\n  DCHECK_CURRENTLY_ON(BrowserThread::UI);\n  auto valid = ValueStore::ValidateAuxUiPreferenceRecoveryDescriptor(descriptor);\n  if (!valid.ok()) { std::move(callback).Run(base::unexpected(std::move(valid))); return; }\n  // Close actual frontend admission and capture after the real backend queue\n  // sentinel. A nonce is correlation only; no journal/Profile authority comes\n  // from it. Existing A10b observation owns custody across lost callbacks.\n  BeginAuxUiMigrationLease(extension, request, base::BindOnce(\n      [](base::WeakPtr<StorageFrontend> owner,\n         ValueStore::AuxUiPreferenceRecoveryDescriptor descriptor,\n         base::OnceCallback<void(AuxUiMigrationLeaseResult)> callback,\n         AuxUiMigrationLeaseResult begun) {\n        if (!begun.has_value()) { std::move(callback).Run(base::unexpected(std::move(begun.error()))); return; }\n        auto lease = std::move(*begun);\n        const auto state = lease->state_;\n        const bool current = owner && owner->ValidateAuxUiMigrationLease(*lease) && state->capture;\n        state->recovery_requested = true;\n        state->recovery_descriptor = descriptor;\n        if (!current) {\n          std::move(callback).Run(base::unexpected(ValueStore::Status(ValueStore::OTHER_ERROR,\n              \"Actual fresh frontend recovery gate changed\"))); return;\n        }\n        state->pending = true;\n        auto reply = base::BindOnce(\n            [](base::WeakPtr<StorageFrontend> owner,\n               std::shared_ptr<AuxUiMigrationLease::State> state,\n               base::OnceCallback<void(AuxUiMigrationLeaseResult)> callback,\n               ValueStore::AuxUiPreferenceCaptureResult recovered) {\n              state->pending = false;\n              if (!owner || owner->aux_ui_migration_gate_ != state ||\n                  !owner->CanUseAuxUiMigrationBackend(*state->extension) ||\n                  !recovered.has_value() || !recovered.value() || !state->recovery_descriptor ||\n                  recovered.value()->CopyFreshRecordsForNativeJournal() != state->fresh ||\n                  recovered.value()->CopyRecordsForNativeJournal() != state->recovery_descriptor->source ||\n                  recovered.value()->CopyTargetRecordsForNativeJournal() != state->recovery_descriptor->target) {\n                // No rebase, implicit release, retry or original-source claim.\n                // The exact original request remains observable and held.\n                std::move(callback).Run(base::unexpected(ValueStore::Status(ValueStore::OTHER_ERROR,\n                    \"Fresh Aux preference recovery remains unqualified/unknown\"))); return;\n              }\n              state->capture = std::move(recovered.value());\n              state->fresh = state->capture->CopyFreshRecordsForNativeJournal();\n              state->source = state->capture->CopyRecordsForNativeJournal();\n              state->target = state->capture->CopyTargetRecordsForNativeJournal();\n              state->recovery_qualified = true;\n              // Read-only requalification is not file-data sync or restoration.\n              state->source_file_data_synced = state->source_readback_matches = false;\n              state->target_file_data_synced = state->target_readback_matches = false;\n              std::move(callback).Run(base::WrapUnique(new AuxUiMigrationLease(state, state->capture)));\n            }, owner, state, std::move(callback));\n        auto guarded = mojo::WrapCallbackWithDefaultInvokeIfNotRun(\n            base::BindPostTaskToCurrentDefault(std::move(reply)),\n            ValueStore::AuxUiPreferenceCaptureResult(base::unexpected(ValueStore::Status(\n                ValueStore::OTHER_ERROR, \"Read-only Aux recovery callback was lost\"))));\n        owner->RunWithStorageUngated(state->extension, settings_namespace::LOCAL, base::BindOnce(\n            [](std::shared_ptr<ValueStore::AuxUiPreferenceCapture> fresh,\n               ValueStore::AuxUiPreferenceRecoveryDescriptor descriptor,\n               AuxUiPreferenceCaptureCallback callback, ValueStore* storage) {\n              if (!storage) {\n                std::move(callback).Run(base::unexpected(ValueStore::Status(ValueStore::OTHER_ERROR,\n                    \"Actual fresh recovery backend unavailable\"))); return;\n              }\n              std::move(callback).Run(storage->RequalifyAuxUiPreferenceRecovery(\n                  std::move(fresh), std::move(descriptor)));\n            }, state->capture, std::move(descriptor), std::move(guarded)));\n      }, weak_factory_.GetWeakPtr(), std::move(descriptor), std::move(callback)));\n}\n\nbool StorageFrontend::ValidateAuxUiMigrationLease",
+          "count": 1
+        },
+        {
+          "name": "Unqualified recovery is retained custody, not a valid usable source",
+          "find": "      !state->pending && !state->tainted && state->deferred.empty() &&",
+          "replace": "      !state->pending && !state->tainted && state->deferred.empty() &&\n      (!state->recovery_requested || state->recovery_qualified) &&",
+          "count": 1
+        },
+        {
+          "name": "Recovered descriptor cannot authorize target replay",
+          "find": "  if (!ValidateAuxUiMigrationLease(lease) || !lease.capture_ || lease.state_->target_attempted) {",
+          "replace": "  if (!ValidateAuxUiMigrationLease(lease) || !lease.capture_ ||\n      lease.state_->recovery_requested || lease.state_->target_attempted) {",
+          "count": 1
+        },
+        {
+          "name": "Unqualified recovery never reads or restores using the normal fresh-source capture",
+          "find": "      state->pending || !CanUseAuxUiMigrationBackend(*state->extension)) {",
+          "replace": "      state->pending || (state->recovery_requested && !state->recovery_qualified) ||\n      !CanUseAuxUiMigrationBackend(*state->extension)) {",
+          "count": 1
+        },
+        {
+          "name": "Recovery release requires actual synced readback of immutable original source",
+          "find": "      (state->target_attempted && (!CanUseAuxUiMigrationBackend(*state->extension) ||",
+          "replace": "      (state->recovery_requested && (!CanUseAuxUiMigrationBackend(*state->extension) ||\n       !state->recovery_qualified || !state->source_file_data_synced || !state->source_readback_matches)) ||\n      (state->target_attempted && (!CanUseAuxUiMigrationBackend(*state->extension) ||",
+          "count": 1
+        },
+        {
+          "name": "Unqualified recovery never restores through a freshly rebased token",
+          "find": "      state->pending || !lease.capture_ || !CanUseAuxUiMigrationBackend(*state->extension)) {",
+          "replace": "      state->pending || !lease.capture_ ||\n      (state->recovery_requested && !state->recovery_qualified) ||\n      !CanUseAuxUiMigrationBackend(*state->extension)) {",
+          "count": 1
+        },
+        {
+          "name": "Record successful original recovery separately from generic no-target abort",
+          "find": "  if (!state->target_attempted) {\n    // Past gate retirement only,",
+          "replace": "  if (state->recovery_requested) {\n    // ReleaseAuxUiMigrationLease already proved exact original-source sync and\n    // readback on this live owner. This is a past release correlation only.\n    CHECK(state->recovery_qualified && state->recovery_descriptor &&\n          state->source_file_data_synced && state->source_readback_matches);\n    aux_ui_recovery_released_ = AuxUiRecoveryReleasedReceipt{\n        state->request, state->extension, state->recovery_descriptor->descriptor_sha256};\n  } else if (!state->target_attempted) {\n    // Past gate retirement only,",
+          "count": 1
+        }
+      ]
+    }
+  ],
+  "nativeMutation": false,
+  "compilerRun": false,
+  "runtimeAcceptance": false
+}

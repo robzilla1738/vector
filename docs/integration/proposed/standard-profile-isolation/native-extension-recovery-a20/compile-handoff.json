@@ -1,0 +1,22 @@
+{
+  "format": "aux.native-extension-recovery.compile-handoff.v1",
+  "rootMustApplyGnRequest": "gn-request.json",
+  "projectExactSourcesBeforeGeneration": true,
+  "actualChangedSources": [
+    "components/value_store/value_store.cc",
+    "components/value_store/leveldb_value_store.cc",
+    "extensions/browser/api/storage/settings_storage_quota_enforcer.cc",
+    "extensions/browser/api/storage/weak_unlimited_settings_storage.cc",
+    "extensions/browser/api/storage/storage_frontend.cc"
+  ],
+  "actualChangedHeaders": [
+    "components/value_store/value_store.h",
+    "components/value_store/leveldb_value_store.h",
+    "extensions/browser/api/storage/settings_storage_quota_enforcer.h",
+    "extensions/browser/api/storage/weak_unlimited_settings_storage.h",
+    "extensions/browser/api/storage/storage_frontend.h"
+  ],
+  "nativeBuildOwner": "root",
+  "actualRelativeSourceChromiumChecksRequired": true,
+  "compileOrLinkRun": false
+}

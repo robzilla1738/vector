@@ -1,0 +1,14 @@
+{
+  "format": "aux.native-extension-recovery.dependencies.v1",
+  "files": [
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-navigation/web/docs/integration/proposed/standard-profile-isolation/native-frontend-observation-a10b/source-plan.json",
+      "sha256": "d5ea1e1dae94627eef2e8976b10934b6de8cf9c971f8607a83dd64faefcd4ad8"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-navigation/web/docs/integration/proposed/standard-profile-isolation/native-extension-live-restore-a10/source-plan.json",
+      "sha256": "25e8eaf222ae1b61cbd2bb9b65e84c47d66d855c762db14cf492f0e937682086"
+    }
+  ],
+  "rootOwnedGnRequest": "gn-request.json"
+}
