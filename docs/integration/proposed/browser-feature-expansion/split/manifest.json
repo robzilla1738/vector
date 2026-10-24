@@ -1,0 +1,32 @@
+{
+  "schema": 1,
+  "status": "source-proposal-unintegrated",
+  "sources": [
+    {
+      "path": "components/sessions/core/session_service_commands.cc",
+      "sha256": "294fdd0196c72568809f1356cd15ae6b0df7780c9664a74f9081b00a06e791ca",
+      "baseline_sha256": "e7a79ce6c5e916d8ff68b362fd027c68d8c0c4105955968efc1f0c147cb16d29"
+    },
+    {
+      "path": "components/split_tabs/split_pane_tree.cc",
+      "sha256": "cda37f60f31d3b1030877fefd23fc3941e5e6bfd064f833993d5b338be40811f",
+      "baseline_sha256": null
+    },
+    {
+      "path": "components/split_tabs/split_pane_tree.h",
+      "sha256": "65c666b564913b1714850ee09cac79ad03f23a50ecc9b67c943ed665b7a4b8aa",
+      "baseline_sha256": null
+    },
+    {
+      "path": "components/split_tabs/split_pane_tree_unittest.cc",
+      "sha256": "94b1c48d156ee4f3f5a5ff52373b4da737be2fd6ec8b9f88d99b5190ced4cfa5",
+      "baseline_sha256": null
+    },
+    {
+      "path": "components/split_tabs/split_tab_visual_data.h",
+      "sha256": "7be17e25a73e71220d23d0bfb646ed211f5e83854e90d6877b05b46617224e6d",
+      "baseline_sha256": "0b9a0749ecab70cd014782e15cb45270f5d0083a6ba3eb9577623e88f8f09508"
+    }
+  ],
+  "patch_sha256": "1c75915aa4208cf4b600642febd2303f2505b6e067fdba0ad3c34c4060a6149a"
+}

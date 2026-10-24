@@ -1,0 +1,445 @@
+--- a/components/sessions/core/session_service_commands.cc
++++ b/components/sessions/core/session_service_commands.cc
+@@ -843,8 +843,38 @@
+           return;
+         }
+ 
+-        split->split_visual_data_ = split_tabs::SplitTabVisualData(
++        split_tabs::SplitTabVisualData visual_data(
+             SplitTabLayoutFromString(split_layout_str), split_ratio);
++        if (!iter.ReachedEnd()) {
++          uint32_t version, root, count;
++          if (!iter.ReadUInt32(&version) || version != 1 ||
++              !iter.ReadUInt32(&root) || !iter.ReadUInt32(&count) ||
++              count == 0 || count > 15) return;
++          std::vector<split_tabs::SplitPaneTree::Node> nodes;
++          for (uint32_t i = 0; i < count; ++i) {
++            split_tabs::SplitPaneTree::Node node;
++            uint32_t axis;
++            if (!iter.ReadUInt32(&node.id) || !iter.ReadUInt32(&node.slot) ||
++                !iter.ReadUInt32(&axis) || axis > 1 ||
++                !iter.ReadUInt32(&node.first) ||
++                !iter.ReadUInt32(&node.second) ||
++                !iter.ReadDouble(&node.ratio)) return;
++            node.axis = static_cast<split_tabs::SplitPaneTree::Axis>(axis);
++            nodes.push_back(node);
++          }
++          if (!iter.ReadUInt32(&count) || count < 2 || count > 8) return;
++          std::vector<uint32_t> slots;
++          for (uint32_t i = 0; i < count; ++i) {
++            uint32_t slot;
++            if (!iter.ReadUInt32(&slot)) return;
++            slots.push_back(slot);
++          }
++          if (!iter.ReachedEnd()) return;
++          auto tree = split_tabs::SplitPaneTree::Decode(
++              root, std::move(nodes), std::move(slots));
++          if (!tree || !visual_data.SetPaneTree(std::move(*tree))) return;
++        }
++        split->split_visual_data_ = std::move(visual_data);
+         break;
+       }
+ 
+@@ -1212,6 +1242,22 @@
+   pickle.WriteString(
+       SplitTabLayoutToString(split_tab_visual_data->split_layout()));
+ 
++  if (split_tab_visual_data->pane_tree()) {
++    const auto& tree = *split_tab_visual_data->pane_tree();
++    pickle.WriteUInt32(1);  // Versioned extension; absent for legacy two panes.
++    pickle.WriteUInt32(tree.root());
++    pickle.WriteUInt32(static_cast<uint32_t>(tree.nodes().size()));
++    for (const auto& node : tree.nodes()) {
++      pickle.WriteUInt32(node.id);
++      pickle.WriteUInt32(node.slot);
++      pickle.WriteUInt32(static_cast<uint32_t>(node.axis));
++      pickle.WriteUInt32(node.first);
++      pickle.WriteUInt32(node.second);
++      pickle.WriteDouble(node.ratio);
++    }
++    pickle.WriteUInt32(static_cast<uint32_t>(tree.pane_slots().size()));
++    for (uint32_t slot : tree.pane_slots()) pickle.WriteUInt32(slot);
++  }
+   return std::make_unique<SessionCommand>(kCommandSetSplitTabData, pickle);
+ }
+ 
+--- /dev/null
++++ b/components/split_tabs/split_pane_tree.cc
+@@ -0,0 +1,209 @@
++// Copyright 2026 The Chromium Authors
++// Use of this source code is governed by a BSD-style license that can be
++// found in the LICENSE file.
++
++#include "components/split_tabs/split_pane_tree.h"
++
++#include <algorithm>
++#include <cmath>
++#include <functional>
++#include <limits>
++#include <set>
++#include <utility>
++
++namespace split_tabs {
++namespace {
++bool ValidRatio(double ratio) {
++  return std::isfinite(ratio) && ratio >= 0.05 && ratio <= 0.95;
++}
++}  // namespace
++
++SplitPaneTree SplitPaneTree::Pair(Axis axis, double ratio) {
++  SplitPaneTree tree;
++  tree.root_ = 1;
++  tree.nodes_ = {{1, 0, axis, 2, 3, ValidRatio(ratio) ? ratio : 0.5},
++                 {2, 1}, {3, 2}};
++  tree.pane_slots_ = {1, 2};
++  return tree;
++}
++
++std::optional<SplitPaneTree> SplitPaneTree::Decode(
++    uint32_t root, std::vector<Node> nodes,
++    std::vector<uint32_t> pane_slots) {
++  SplitPaneTree tree;
++  tree.root_ = root;
++  tree.nodes_ = std::move(nodes);
++  tree.pane_slots_ = std::move(pane_slots);
++  if (!tree.IsValid()) {
++    return std::nullopt;
++  }
++  return tree;
++}
++
++const SplitPaneTree::Node* SplitPaneTree::Find(uint32_t id) const {
++  auto found = std::ranges::find(nodes_, id, &Node::id);
++  return found == nodes_.end() ? nullptr : &*found;
++}
++
++bool SplitPaneTree::IsValid() const {
++  if (pane_slots_.empty() || pane_slots_.size() > kMaxPanes ||
++      nodes_.size() != pane_slots_.size() * 2 - 1 || !root_) {
++    return false;
++  }
++  std::set<uint32_t> ids;
++  for (const Node& node : nodes_) {
++    if (!node.id || !ids.insert(node.id).second ||
++        (node.axis != Axis::kHorizontal && node.axis != Axis::kVertical)) {
++      return false;
++    }
++  }
++  std::set<uint32_t> visited;
++  std::set<uint32_t> slots;
++  std::function<bool(uint32_t)> visit = [&](uint32_t id) {
++    const Node* node = Find(id);
++    if (!node || !visited.insert(id).second) {
++      return false;
++    }
++    if (node->slot) {
++      return !node->first && !node->second &&
++             slots.insert(node->slot).second;
++    }
++    return ValidRatio(node->ratio) && node->first && node->second &&
++           visit(node->first) && visit(node->second);
++  };
++  if (!visit(root_) || visited.size() != nodes_.size()) {
++    return false;
++  }
++  const std::set<uint32_t> ordered(pane_slots_.begin(), pane_slots_.end());
++  return ordered.size() == pane_slots_.size() && ordered == slots;
++}
++
++bool SplitPaneTree::SplitLeaf(uint32_t slot, uint32_t new_slot,
++                              Axis axis, bool before) {
++  if (!IsValid() || pane_slots_.size() == kMaxPanes || !new_slot ||
++      std::ranges::find(pane_slots_, new_slot) != pane_slots_.end() ||
++      (axis != Axis::kHorizontal && axis != Axis::kVertical)) {
++    return false;
++  }
++  auto leaf = std::ranges::find(nodes_, slot, &Node::slot);
++  if (leaf == nodes_.end()) {
++    return false;
++  }
++  uint32_t next_id = 0;
++  for (const Node& node : nodes_) {
++    next_id = std::max(next_id, node.id);
++  }
++  if (next_id > std::numeric_limits<uint32_t>::max() - 2) {
++    return false;
++  }
++  const uint32_t old_leaf = next_id + 1;
++  const uint32_t new_leaf = next_id + 2;
++  *leaf = {leaf->id, 0, axis, before ? new_leaf : old_leaf,
++            before ? old_leaf : new_leaf, 0.5};
++  nodes_.push_back({old_leaf, slot});
++  nodes_.push_back({new_leaf, new_slot});
++  auto position = std::ranges::find(pane_slots_, slot);
++  pane_slots_.insert(before ? position : std::next(position), new_slot);
++  return true;
++}
++
++bool SplitPaneTree::RemoveLeaf(uint32_t slot) {
++  if (!IsValid() || pane_slots_.size() == 1) {
++    return false;
++  }
++  const auto leaf = std::ranges::find(nodes_, slot, &Node::slot);
++  if (leaf == nodes_.end()) {
++    return false;
++  }
++  const uint32_t leaf_id = leaf->id;
++  const auto parent = std::ranges::find_if(nodes_, [leaf_id](const Node& node) {
++    return node.first == leaf_id || node.second == leaf_id;
++  });
++  if (parent == nodes_.end()) {
++    return false;
++  }
++  const uint32_t parent_id = parent->id;
++  const uint32_t sibling = parent->first == leaf_id ? parent->second : parent->first;
++  for (Node& node : nodes_) {
++    if (node.first == parent_id) node.first = sibling;
++    if (node.second == parent_id) node.second = sibling;
++  }
++  if (root_ == parent_id) root_ = sibling;
++  std::erase_if(nodes_, [leaf_id, parent_id](const Node& node) {
++    return node.id == leaf_id || node.id == parent_id;
++  });
++  std::erase(pane_slots_, slot);
++  return true;
++}
++
++bool SplitPaneTree::ResizeBranch(uint32_t id, double ratio) {
++  if (!ValidRatio(ratio)) return false;
++  auto node = std::ranges::find(nodes_, id, &Node::id);
++  if (node == nodes_.end() || node->slot) return false;
++  node->ratio = ratio;
++  return true;
++}
++
++bool SplitPaneTree::SetPaneOrder(std::vector<uint32_t> order) {
++  const std::set<uint32_t> previous(pane_slots_.begin(), pane_slots_.end());
++  const std::set<uint32_t> proposed(order.begin(), order.end());
++  if (order.size() != pane_slots_.size() || proposed != previous) return false;
++  pane_slots_ = std::move(order);
++  return true;
++}
++
++std::vector<SplitPaneTree::Placement> SplitPaneTree::Layout(
++    Rect bounds, int divider, int minimum) const {
++  std::vector<Placement> result;
++  if (!IsValid() || bounds.width < 0 || bounds.height < 0) return result;
++  divider = std::clamp(divider, 0, 64);
++  minimum = std::clamp(minimum, 0, 10000);
++  std::function<std::pair<int, int>(uint32_t)> min_size = [&](uint32_t id) {
++    const Node& node = *Find(id);
++    if (node.slot) return std::pair(minimum, minimum);
++    auto first = min_size(node.first);
++    auto second = min_size(node.second);
++    return node.axis == Axis::kHorizontal
++      ? std::pair(first.first + second.first + divider, std::max(first.second, second.second))
++      : std::pair(std::max(first.first, second.first), first.second + second.second + divider);
++  };
++  std::function<void(uint32_t, Rect)> layout = [&](uint32_t id, Rect rect) {
++    const Node& node = *Find(id);
++    if (node.slot) {
++      result.push_back({id, node.slot, node.axis, rect});
++      return;
++    }
++    const bool horizontal = node.axis == Axis::kHorizontal;
++    const int extent = horizontal ? rect.width : rect.height;
++    const int gap = std::min(extent, divider);
++    const int usable = extent - gap;
++    const auto first_min = min_size(node.first);
++    const auto second_min = min_size(node.second);
++    int low = horizontal ? first_min.first : first_min.second;
++    int high = horizontal ? second_min.first : second_min.second;
++    if (low + high > usable) {
++      low = low + high == 0 ? 0 : static_cast<int>(
++          static_cast<int64_t>(usable) * low / (low + high));
++      high = usable - low;
++    }
++    const int first_size = std::clamp(static_cast<int>(std::round(usable * node.ratio)), low, usable - high);
++    Rect first = rect;
++    Rect handle = rect;
++    Rect second = rect;
++    if (horizontal) {
++      first.width = first_size;
++      handle.x += first_size; handle.width = gap;
++      second.x += first_size + gap; second.width = usable - first_size;
++    } else {
++      first.height = first_size;
++      handle.y += first_size; handle.height = gap;
++      second.y += first_size + gap; second.height = usable - first_size;
++    }
++    layout(node.first, first);
++    result.push_back({id, 0, node.axis, handle});
++    layout(node.second, second);
++  };
++  layout(root_, bounds);
++  return result;
++}
++}  // namespace split_tabs
+--- /dev/null
++++ b/components/split_tabs/split_pane_tree.h
+@@ -0,0 +1,72 @@
++// Copyright 2026 The Chromium Authors
++// Use of this source code is governed by a BSD-style license that can be
++// found in the LICENSE file.
++
++#ifndef COMPONENTS_SPLIT_TABS_SPLIT_PANE_TREE_H_
++#define COMPONENTS_SPLIT_TABS_SPLIT_PANE_TREE_H_
++
++#include <cstddef>
++#include <cstdint>
++#include <optional>
++#include <vector>
++
++namespace split_tabs {
++
++// Native tab collections bind their ordering to pane_slots. Slot identities
++// survive branch edits; they are not current tab indexes or URLs.
++class SplitPaneTree {
++ public:
++  static constexpr size_t kMaxPanes = 8;
++  enum class Axis { kHorizontal, kVertical };
++  struct Node {
++    uint32_t id = 0;
++    uint32_t slot = 0;  // Nonzero only for leaves.
++    Axis axis = Axis::kHorizontal;
++    uint32_t first = 0;
++    uint32_t second = 0;
++    double ratio = 0.5;
++    friend bool operator==(const Node&, const Node&) = default;
++  };
++  struct Rect {
++    int x = 0;
++    int y = 0;
++    int width = 0;
++    int height = 0;
++    friend bool operator==(const Rect&, const Rect&) = default;
++  };
++  struct Placement {
++    uint32_t node = 0;
++    uint32_t slot = 0;  // Zero indicates a divider.
++    Axis axis = Axis::kHorizontal;
++    Rect bounds;
++  };
++
++  static SplitPaneTree Pair(Axis axis, double ratio = 0.5);
++  // Decoding is transactional. Invalid or unknown representations must not
++  // replace a caller's previous accepted visual state.
++  static std::optional<SplitPaneTree> Decode(
++      uint32_t root, std::vector<Node> nodes,
++      std::vector<uint32_t> pane_slots);
++
++  bool IsValid() const;
++  // Caller adds the corresponding genuine tab at the matching slot position
++  // only after validation. Neither operation creates or destroys WebContents.
++  bool SplitLeaf(uint32_t slot, uint32_t new_slot, Axis axis, bool before);
++  bool RemoveLeaf(uint32_t slot);
++  bool ResizeBranch(uint32_t node, double ratio);
++  bool SetPaneOrder(std::vector<uint32_t> pane_slots);
++  std::vector<Placement> Layout(Rect bounds, int divider, int minimum) const;
++  const Node* Find(uint32_t node) const;
++  const std::vector<Node>& nodes() const { return nodes_; }
++  const std::vector<uint32_t>& pane_slots() const { return pane_slots_; }
++  uint32_t root() const { return root_; }
++  friend bool operator==(const SplitPaneTree&, const SplitPaneTree&) = default;
++
++ private:
++  uint32_t root_ = 0;
++  std::vector<Node> nodes_;
++  std::vector<uint32_t> pane_slots_;
++};
++
++}  // namespace split_tabs
++#endif  // COMPONENTS_SPLIT_TABS_SPLIT_PANE_TREE_H_
+--- /dev/null
++++ b/components/split_tabs/split_pane_tree_unittest.cc
+@@ -0,0 +1,53 @@
++// Copyright 2026 The Chromium Authors
++// Use of this source code is governed by a BSD-style license that can be
++// found in the LICENSE file.
++
++#include "components/split_tabs/split_pane_tree.h"
++#include "testing/gtest/include/gtest/gtest.h"
++
++namespace split_tabs {
++TEST(SplitPaneTreeTest, MixedBranchesRetainOtherPaneIdentitiesOnRemoval) {
++  auto tree = SplitPaneTree::Pair(SplitPaneTree::Axis::kHorizontal);
++  ASSERT_TRUE(tree.SplitLeaf(2, 3, SplitPaneTree::Axis::kVertical, false));
++  ASSERT_TRUE(tree.SplitLeaf(1, 4, SplitPaneTree::Axis::kVertical, true));
++  EXPECT_EQ(tree.pane_slots(), (std::vector<uint32_t>{4, 1, 2, 3}));
++  auto layout = tree.Layout({0, 0, 1000, 800}, 10, 100);
++  ASSERT_EQ(layout.size(), 7u);
++  EXPECT_EQ(layout.front().slot, 4u);
++  EXPECT_EQ(layout.back().slot, 3u);
++  const auto original_right = layout.back().bounds;
++  ASSERT_TRUE(tree.RemoveLeaf(4));
++  EXPECT_EQ(tree.pane_slots(), (std::vector<uint32_t>{1, 2, 3}));
++  EXPECT_EQ(tree.Layout({0, 0, 1000, 800}, 10, 100).back().bounds,
++            original_right);
++  EXPECT_TRUE(tree.IsValid());
++}
++
++TEST(SplitPaneTreeTest, InvalidGraphAndSlotMappingAreRefused) {
++  auto tree = SplitPaneTree::Pair(SplitPaneTree::Axis::kHorizontal);
++  auto nodes = tree.nodes();
++  nodes.front().first = tree.root();
++  EXPECT_FALSE(SplitPaneTree::Decode(tree.root(), nodes, tree.pane_slots()));
++  EXPECT_FALSE(SplitPaneTree::Decode(tree.root(), tree.nodes(), {1, 1}));
++  const auto before = tree;
++  EXPECT_FALSE(tree.SplitLeaf(1, 2, SplitPaneTree::Axis::kVertical, false));
++  EXPECT_FALSE(tree.ResizeBranch(tree.root(), 1.0));
++  EXPECT_EQ(tree, before);
++}
++
++TEST(SplitPaneTreeTest, ConstrainedLayoutNeverProducesNegativeDimensions) {
++  auto tree = SplitPaneTree::Pair(SplitPaneTree::Axis::kVertical);
++  for (uint32_t slot = 3; slot <= 8; ++slot) {
++    ASSERT_TRUE(tree.SplitLeaf(slot - 1, slot,
++        slot % 2 ? SplitPaneTree::Axis::kHorizontal
++                 : SplitPaneTree::Axis::kVertical, false));
++  }
++  EXPECT_FALSE(tree.SplitLeaf(8, 9, SplitPaneTree::Axis::kHorizontal, false));
++  for (const auto& item : tree.Layout({0, 0, 25, 21}, 10, 200)) {
++    EXPECT_GE(item.bounds.width, 0);
++    EXPECT_GE(item.bounds.height, 0);
++    EXPECT_LE(item.bounds.x + item.bounds.width, 25);
++    EXPECT_LE(item.bounds.y + item.bounds.height, 21);
++  }
++}
++}  // namespace split_tabs
+--- a/components/split_tabs/split_tab_visual_data.h
++++ b/components/split_tabs/split_tab_visual_data.h
+@@ -4,6 +4,10 @@
+ 
+ #ifndef COMPONENTS_SPLIT_TABS_SPLIT_TAB_VISUAL_DATA_H_
+ #define COMPONENTS_SPLIT_TABS_SPLIT_TAB_VISUAL_DATA_H_
++
++#include <optional>
++
++#include "components/split_tabs/split_pane_tree.h"
+ 
+ namespace split_tabs {
+ 
+@@ -45,6 +49,15 @@
+ 
+   double split_ratio() const { return split_ratio_; }
+ 
++  // Empty preserves the supplied two-pane visual/serialization path exactly.
++  const std::optional<SplitPaneTree>& pane_tree() const { return pane_tree_; }
++  bool SetPaneTree(SplitPaneTree tree) {
++    if (!tree.IsValid()) return false;
++    pane_tree_ = std::move(tree);
++    return true;
++  }
++  void ClearPaneTree() { pane_tree_.reset(); }
++
+   // Checks whether two instances are visually equivalent.
+   friend bool operator==(const SplitTabVisualData&,
+                          const SplitTabVisualData&) = default;
+@@ -53,6 +66,7 @@
+   SplitTabLayout split_layout_;
+   // ratio of the first split tab's width to the available width.
+   double split_ratio_ = 0.5;
++  std::optional<SplitPaneTree> pane_tree_;
+ };
+ 
+ }  // namespace split_tabs
