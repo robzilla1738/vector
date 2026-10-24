@@ -1,0 +1,12 @@
+{
+  "passed": false,
+  "command": [
+    "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/buildtools/mac/gn",
+    "gen",
+    "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/out/AuxFast"
+  ],
+  "exitCode": 1,
+  "productExecuted": false,
+  "fullBrowserBuilt": false,
+  "coldFeatureEnabled": false
+}

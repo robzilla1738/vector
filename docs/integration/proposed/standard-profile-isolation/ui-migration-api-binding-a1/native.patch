@@ -1,0 +1,141 @@
+--- a/chrome/browser/extensions/api/aux_browser_preferences/aux_browser_preferences_api.cc
++++ b/chrome/browser/extensions/api/aux_browser_preferences/aux_browser_preferences_api.cc
+@@ -11,6 +11,8 @@
+ #include "base/strings/utf_string_conversions.h"
+ #include "base/task/thread_pool.h"
+ #include "chrome/browser/browser_process.h"
++#include "chrome/browser/aux/component_bootstrap.h"
++#include "chrome/browser/aux/ui_storage_migration_controller.h"
+ #include "chrome/browser/content_settings/host_content_settings_map_factory.h"
+ #include "chrome/browser/profiles/profile.h"
+ #include "chrome/browser/profiles/profile_manager.h"
+@@ -92,6 +94,23 @@
+   if (method == "commitCommand") {
+     if (args().size() != 1 || !args()[0].is_dict())
+       return RespondNow(Error("Command request required"));
++    const auto* kind = args()[0].GetDict().FindString("kind");
++    if (kind && *kind == "prepare-ui-state-upgrade") {
++      // The real native sender is the sole source of profile/document scope.
++      // No renderer-selected identity, path, epoch or readiness is accepted.
++      if (args()[0].GetDict().size() != 1 || extension_id() != aux::kAgentExtensionId ||
++          !render_frame_host())
++        return RespondNow(Error("A canonical Aux page and parameter-free upgrade request are required"));
++      aux::PrepareUiStorageMigration(profile(), render_frame_host(),
++          base::BindOnce([](AuxBrowserPreferencesFunction* self, base::DictValue result) {
++            if (!self->browser_context()) {
++              result.Set("success", false);
++              result.Set("error", "Profile closed; retained migration outcomes may still need recovery");
++            }
++            self->Respond(self->WithArguments(std::move(result)));
++          }, base::RetainedRef(this)));
++      return did_respond() ? AlreadyResponded() : RespondLater();
++    }
+     CommitAuxCommandAsync(GetSenderWebContents(), args()[0].GetDict(),
+         base::BindOnce([](AuxBrowserPreferencesFunction* self, base::DictValue result) {
+           if (!self->browser_context()) result = base::DictValue().Set("success", false).Set("error", "Profile closed");
+--- a/chrome/browser/ui/aux_feature_profile_owners.cc
++++ b/chrome/browser/ui/aux_feature_profile_owners.cc
+@@ -9,6 +9,7 @@
+ #include "chrome/browser/aux/feature_store/feature_profile_store.h"
+ #include "chrome/browser/aux/organization/organization_profile_service.h"
+ #include "chrome/browser/aux/profile_identity.h"
++#include "chrome/browser/aux/ui_storage_migration_controller.h"
+ #include "chrome/browser/aux/AuxSelectedStateHome.h"
+ #include "chrome/browser/aux/AuxBrowserPrivateRoots.h"
+ #include "chrome/browser/profiles/profile.h"
+@@ -30,6 +31,8 @@
+     if (auto* organization = aux::organization::OrganizationProfileServiceFactory::GetForProfileIfExists(profile))
+       organization_settled_ = organization->ObserveSettled(base::BindRepeating(
+           &FeatureOwners::Notify, weak_.GetWeakPtr()));
++    migration_settled_ = aux::ObserveUiStorageMigrationSettled(profile,
++        base::BindRepeating(&FeatureOwners::StoreSettled, weak_.GetWeakPtr()));
+     cookie_restored_ = aux::ObserveProfileCookieRestoreFinished(profile,
+         base::BindRepeating(&FeatureOwners::QueueRefresh, weak_.GetWeakPtr()));
+     prefs_.Init(profile->GetPrefs());
+@@ -40,7 +43,8 @@
+   }
+   void Refresh() {
+     if (!profile_) return;
+-    if (aux::files::HasPendingWrite(profile_.get())) return;
++    if (aux::files::HasPendingWrite(profile_.get()) ||
++        aux::IsUiStorageMigrationPending(profile_.get())) return;
+     if (!aux::features::IsWritePending(profile_.get()) &&
+         !aux::features::GetNamespace(profile_.get(), "downloads")) installed_epoch_.clear();
+     aux::features::InitializeForProfile(profile_.get());
+@@ -61,7 +65,8 @@
+         }, weak_.GetWeakPtr()));
+   }
+   void Attach() {
+-    if (!profile_ || aux::files::HasPendingWrite(profile_.get())) return;
++    if (!profile_ || aux::files::HasPendingWrite(profile_.get()) ||
++        aux::IsUiStorageMigrationPending(profile_.get())) return;
+     const auto epoch = aux::GetProfileCookieBindingEpoch(profile_.get());
+     if (epoch.empty() || installed_epoch_ == epoch) return;
+     auto restored = aux::features::GetNamespace(profile_.get(), "downloads");
+@@ -109,7 +114,7 @@
+   std::string installed_epoch_;
+   bool queued_ = false;
+   PrefChangeRegistrar prefs_;
+-  base::CallbackListSubscription ready_, store_settled_, files_settled_, organization_settled_, cookie_restored_;
++  base::CallbackListSubscription ready_, store_settled_, files_settled_, organization_settled_, cookie_restored_, migration_settled_;
+   base::RepeatingClosureList settled_;
+   base::WeakPtrFactory<FeatureOwners> weak_{this};
+ };
+@@ -126,7 +131,8 @@
+   if (!profile || !profile->IsRegularProfile() || profile->IsOffTheRecord()) return false;
+   return aux::features::IsNativeFeatureIoPendingForProfilePath(profile->GetPath()) ||
+       aux::organization::IsProfileOrganizationWritePending(profile) ||
+-      aux::features::IsWritePending(profile) || aux::files::HasPendingWrite(profile);
++      aux::features::IsWritePending(profile) || aux::files::HasPendingWrite(profile) ||
++      aux::IsUiStorageMigrationPending(profile);
+ }
+ base::CallbackListSubscription ObserveAuxLocalFeatureSettled(Profile* profile,
+     base::RepeatingClosure callback) {
+--- a/chrome/browser/ui/BUILD.gn
++++ b/chrome/browser/ui/BUILD.gn
+@@ -1137,6 +1137,10 @@
+       "//chrome/browser/extensions/api/aux_mini_popup",
+       "//chrome/browser/ui/tabs:aux_pinned_tab_entries",
+       "//components/constrained_window",
++      "//components/value_store",
++      "//crypto",
++      "//chrome/browser/aux:ui_storage_migration",
++      "//extensions/browser/api/storage",
+       "//ui/snapshot",
+     ]
+     sources += [
+@@ -1327,6 +1331,8 @@
+       "views/profiles/aux_profile_indicator_icon.h",
+       "views/profiles/aux_profile_indicator_icons.inc",
+       "../aux/profile_gate.cc",
++      "../aux/ui_storage_migration_controller.cc",
++      "../aux/ui_storage_migration_controller.h",
+       "views/frame/aux_vertical_sidebar_profile_icons.inc",
+       "views/frame/aux_profile_preview_capture_cache.cc",
+       "views/frame/aux_profile_preview_capture_cache.h",
+--- a/chrome/browser/aux/BUILD.gn
++++ b/chrome/browser/aux/BUILD.gn
+@@ -106,6 +106,12 @@
+ # Interface only, exactly like ntp_prerender. Implemented by the full UI target.
+ source_set("profile_gate") {
+   public = [ "profile_gate.h" ]
++  public_deps = [ "//base" ]
++}
++
++# Interface only; the complete implementation belongs to //chrome/browser/ui:ui.
++source_set("ui_storage_migration") {
++  public = [ "ui_storage_migration_controller.h" ]
+   public_deps = [ "//base" ]
+ }
+ 
+--- a/chrome/browser/extensions/api/aux_browser_preferences/BUILD.gn
++++ b/chrome/browser/extensions/api/aux_browser_preferences/BUILD.gn
+@@ -5,7 +5,7 @@
+   public_deps = [ "//chrome/browser/extensions/api/aux_common", "//chrome/browser:shell_integration" ]
+   deps = [ "//base", "//chrome/browser:browser_process", "//chrome/browser/content_settings:content_settings_factory", "//chrome/browser/profiles:profile", "//chrome/browser/profiles:profile_manager", "//chrome/browser/search_engines", "//chrome/browser/themes", "//chrome/browser/ui/zoom", "//chrome/browser/ui/tabs:tab_strip", "//chrome/browser/mac", "//components/content_settings/core/browser", "//components/keep_alive_registry", "//components/language/core/browser", "//components/prefs", "//components/search_engines", "//components/spellcheck/browser", "//components/user_prefs", "//components/version_info", "//ui/base", "//third_party/blink/public/common" ]
+   if (is_mac && enable_aux_browser) {
+-    deps += [ "//chrome/browser/aux:keyboard_shortcuts", "//chrome/browser/ui:aux_profile_search_headers", "//components/omnibox/browser", "//chrome/browser/aux:profile_state", "//chrome/browser/aux:profile_identity", "//chrome/browser/aux:platform", "//content/public/browser", "//components/sessions:session_id" ]
++    deps += [ "//chrome/browser/aux:keyboard_shortcuts", "//chrome/browser/aux:ui_storage_migration", "//chrome/browser/ui:aux_profile_search_headers", "//components/omnibox/browser", "//chrome/browser/aux:profile_state", "//chrome/browser/aux:profile_identity", "//chrome/browser/aux:platform", "//content/public/browser", "//components/sessions:session_id" ]
+   }
+   frameworks = [ "Foundation.framework", "CoreFoundation.framework" ]
+ }

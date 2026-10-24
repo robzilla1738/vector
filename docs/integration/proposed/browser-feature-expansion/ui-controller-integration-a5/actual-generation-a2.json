@@ -1,0 +1,15 @@
+{
+  "passed": true,
+  "command": [
+    "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/buildtools/mac/gn",
+    "gen",
+    "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/out/AuxFast"
+  ],
+  "cwd": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src",
+  "exitCode": 0,
+  "priorFailure": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/ui-controller-integration-a5/actual-generation-a1.json",
+  "sourceCompositionSha256": "0b1a83205c3a2f12a5b0f2214edf49364746e4b1f1169ab7180254637b462b58",
+  "productExecuted": false,
+  "fullBrowserBuilt": false,
+  "coldFeatureEnabled": false
+}

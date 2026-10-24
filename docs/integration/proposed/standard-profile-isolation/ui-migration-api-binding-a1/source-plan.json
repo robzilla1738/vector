@@ -1,0 +1,108 @@
+{
+  "format": "aux.ui-migration.api-binding.source.v1",
+  "files": [
+    {
+      "path": "chrome/browser/extensions/api/aux_browser_preferences/aux_browser_preferences_api.cc",
+      "inputSha256": "276506304349c8718bfb1dfae68653c357b2702b584d53d9de8ca16afe811e69",
+      "outputSha256": "b017dbc2dc68327221aeeab04e3e2e15d408465628f4f8f238f50018b4fe45cc",
+      "output": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/ui-migration-api-binding-a1/source/chrome/browser/extensions/api/aux_browser_preferences/aux_browser_preferences_api.cc",
+      "anchors": [
+        {
+          "find": "#include \"chrome/browser/browser_process.h\"",
+          "replace": "#include \"chrome/browser/browser_process.h\"\n#include \"chrome/browser/aux/component_bootstrap.h\"\n#include \"chrome/browser/aux/ui_storage_migration_controller.h\"",
+          "count": 1
+        },
+        {
+          "find": "    CommitAuxCommandAsync(GetSenderWebContents(), args()[0].GetDict(),",
+          "replace": "    const auto* kind = args()[0].GetDict().FindString(\"kind\");\n    if (kind && *kind == \"prepare-ui-state-upgrade\") {\n      // The real native sender is the sole source of profile/document scope.\n      // No renderer-selected identity, path, epoch or readiness is accepted.\n      if (args()[0].GetDict().size() != 1 || extension_id() != aux::kAgentExtensionId ||\n          !render_frame_host())\n        return RespondNow(Error(\"A canonical Aux page and parameter-free upgrade request are required\"));\n      aux::PrepareUiStorageMigration(profile(), render_frame_host(),\n          base::BindOnce([](AuxBrowserPreferencesFunction* self, base::DictValue result) {\n            if (!self->browser_context()) {\n              result.Set(\"success\", false);\n              result.Set(\"error\", \"Profile closed; retained migration outcomes may still need recovery\");\n            }\n            self->Respond(self->WithArguments(std::move(result)));\n          }, base::RetainedRef(this)));\n      return did_respond() ? AlreadyResponded() : RespondLater();\n    }\n    CommitAuxCommandAsync(GetSenderWebContents(), args()[0].GetDict(),",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/ui/aux_feature_profile_owners.cc",
+      "inputSha256": "a5ef886ed10c9a3bbfee146333742fb0373b705ac953411082cd2703abaa841c",
+      "outputSha256": "5ea144e35a91f8596289690f7456b404bf8d6c05f8b532709671dec6ee2a368c",
+      "output": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/ui-migration-api-binding-a1/source/chrome/browser/ui/aux_feature_profile_owners.cc",
+      "anchors": [
+        {
+          "find": "#include \"chrome/browser/aux/profile_identity.h\"",
+          "replace": "#include \"chrome/browser/aux/profile_identity.h\"\n#include \"chrome/browser/aux/ui_storage_migration_controller.h\"",
+          "count": 1
+        },
+        {
+          "find": "    cookie_restored_ = aux::ObserveProfileCookieRestoreFinished(profile,",
+          "replace": "    migration_settled_ = aux::ObserveUiStorageMigrationSettled(profile,\n        base::BindRepeating(&FeatureOwners::StoreSettled, weak_.GetWeakPtr()));\n    cookie_restored_ = aux::ObserveProfileCookieRestoreFinished(profile,",
+          "count": 1
+        },
+        {
+          "find": "    if (aux::files::HasPendingWrite(profile_.get())) return;",
+          "replace": "    if (aux::files::HasPendingWrite(profile_.get()) ||\n        aux::IsUiStorageMigrationPending(profile_.get())) return;",
+          "count": 1
+        },
+        {
+          "find": "    if (!profile_ || aux::files::HasPendingWrite(profile_.get())) return;",
+          "replace": "    if (!profile_ || aux::files::HasPendingWrite(profile_.get()) ||\n        aux::IsUiStorageMigrationPending(profile_.get())) return;",
+          "count": 1
+        },
+        {
+          "find": "  base::CallbackListSubscription ready_, store_settled_, files_settled_, organization_settled_, cookie_restored_;",
+          "replace": "  base::CallbackListSubscription ready_, store_settled_, files_settled_, organization_settled_, cookie_restored_, migration_settled_;",
+          "count": 1
+        },
+        {
+          "find": "      aux::features::IsWritePending(profile) || aux::files::HasPendingWrite(profile);",
+          "replace": "      aux::features::IsWritePending(profile) || aux::files::HasPendingWrite(profile) ||\n      aux::IsUiStorageMigrationPending(profile);",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/ui/BUILD.gn",
+      "inputSha256": "250662205793be4b2c65f31910b4e296b42a04da273f8d1f094ecec7fb99ccb8",
+      "outputSha256": "8214d1514c47e6b318cd4adeef8507c235e4a5ededd2370f8a06a2b7db98c4fa",
+      "output": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/ui-migration-api-binding-a1/source/chrome/browser/ui/BUILD.gn",
+      "anchors": [
+        {
+          "find": "      \"//components/constrained_window\",\n      \"//ui/snapshot\",",
+          "replace": "      \"//components/constrained_window\",\n      \"//components/value_store\",\n      \"//crypto\",\n      \"//chrome/browser/aux:ui_storage_migration\",\n      \"//extensions/browser/api/storage\",\n      \"//ui/snapshot\",",
+          "count": 1
+        },
+        {
+          "find": "      \"../aux/profile_gate.cc\",",
+          "replace": "      \"../aux/profile_gate.cc\",\n      \"../aux/ui_storage_migration_controller.cc\",\n      \"../aux/ui_storage_migration_controller.h\",",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/aux/BUILD.gn",
+      "anchors": [
+        {
+          "find": "source_set(\"profile_gate_prefs\") {",
+          "replace": "# Interface only; the complete implementation belongs to //chrome/browser/ui:ui.\nsource_set(\"ui_storage_migration\") {\n  public = [ \"ui_storage_migration_controller.h\" ]\n  public_deps = [ \"//base\" ]\n}\n\nsource_set(\"profile_gate_prefs\") {",
+          "count": 1
+        }
+      ],
+      "inputSha256": "2dd27e70ceccbd6113cae66d9611e0ec707681fc45ef60c79173ba2eaa6c1c9a",
+      "outputSha256": "8235f54f9e78966a301db907b963f4629fe7bec4324a5f81db68bbaf35fae548",
+      "output": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/ui-migration-api-binding-a1/source/chrome/browser/aux/BUILD.gn"
+    },
+    {
+      "path": "chrome/browser/extensions/api/aux_browser_preferences/BUILD.gn",
+      "anchors": [
+        {
+          "find": "\"//chrome/browser/aux:keyboard_shortcuts\",",
+          "replace": "\"//chrome/browser/aux:keyboard_shortcuts\", \"//chrome/browser/aux:ui_storage_migration\",",
+          "count": 1
+        }
+      ],
+      "inputSha256": "c394166d7528e3c2131498a48a02466bd495c1cbb9f7ad7abe3ddafb4522dcdd",
+      "outputSha256": "b96c170e0335e182a0769f507b92e0c931d43e4a784623103cb55364156df2a3",
+      "output": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/ui-migration-api-binding-a1/source/chrome/browser/extensions/api/aux_browser_preferences/BUILD.gn"
+    }
+  ],
+  "nativeCheckoutChanged": false,
+  "productExecuted": false,
+  "runtimeAuthorityGranted": false
+}

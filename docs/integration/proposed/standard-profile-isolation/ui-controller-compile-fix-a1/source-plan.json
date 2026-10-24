@@ -1,0 +1,40 @@
+{
+  "format": "aux.ui-controller.compile-fix.source.v1",
+  "files": [
+    {
+      "path": "chrome/browser/aux/ui_storage_migration_controller.cc",
+      "inputSha256": "2f0d09950e25eb267c8b6189449a62e99d7390d0ccb54a4b63f6663f5327ec5e",
+      "outputSha256": "bd13c8b0ad260d399bf0f5f399f82884329cbbf1c85aabbcecf2cb925dee0ac7",
+      "output": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/ui-controller-compile-fix-a1/source/chrome/browser/aux/ui_storage_migration_controller.cc",
+      "anchors": [
+        {
+          "find": "#include \"base/memory/scoped_refptr.h\"",
+          "replace": "#include \"base/memory/scoped_refptr.h\"\n#include \"base/memory/safe_ref.h\"",
+          "count": 1
+        },
+        {
+          "find": "#include \"content/public/browser/navigation_controller.h\"",
+          "replace": "#include \"content/public/browser/navigation_controller.h\"\n#include \"content/public/browser/navigation_handle.h\"",
+          "count": 1
+        },
+        {
+          "find": "base::JSONReader::ReadDict(t.receipt)",
+          "replace": "base::JSONReader::ReadDict(t.receipt, base::JSON_PARSE_RFC)",
+          "count": 1
+        },
+        {
+          "find": "base::JSONReader::ReadDict(self->frames_[index]->result_json)",
+          "replace": "base::JSONReader::ReadDict(self->frames_[index]->result_json, base::JSON_PARSE_RFC)",
+          "count": 1
+        },
+        {
+          "find": "  if (transfer_ && transfer_->complete) result.Set(\"journalId\", transfer_->journal).Set(\"captureSha256\", base::HexEncodeLower(transfer_->digest));",
+          "replace": "  if (transfer_ && transfer_->complete) {\n    result.Set(\"journalId\", transfer_->journal);\n    result.Set(\"captureSha256\", base::HexEncodeLower(transfer_->digest));\n  }",
+          "count": 1
+        }
+      ]
+    }
+  ],
+  "productExecuted": false,
+  "policyChanged": false
+}

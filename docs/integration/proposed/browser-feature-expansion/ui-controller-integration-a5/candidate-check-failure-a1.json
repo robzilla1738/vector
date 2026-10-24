@@ -1,0 +1,7 @@
+{
+  "passed": false,
+  "stage": "candidate file lookup before ledger or final stage",
+  "error": "Strict stage producer removes rejected preflight output; proposal candidate must be independently pinned before revision review",
+  "productExecuted": false,
+  "revisionLedgerChanged": false
+}

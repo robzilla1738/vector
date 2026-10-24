@@ -1,0 +1,48 @@
+--- a/chrome/browser/aux/ui_storage_migration_controller.cc
++++ b/chrome/browser/aux/ui_storage_migration_controller.cc
+@@ -17,6 +17,7 @@
+ #include "base/json/json_reader.h"
+ #include "base/json/json_writer.h"
+ #include "base/memory/scoped_refptr.h"
++#include "base/memory/safe_ref.h"
+ #include "base/memory/weak_ptr.h"
+ #include "base/scoped_observation.h"
+ #include "base/strings/string_number_conversions.h"
+@@ -33,6 +34,7 @@
+ #include "content/public/browser/browser_thread.h"
+ #include "content/public/browser/dom_storage_context.h"
+ #include "content/public/browser/navigation_controller.h"
++#include "content/public/browser/navigation_handle.h"
+ #include "content/public/browser/render_frame_host.h"
+ #include "content/public/browser/render_process_host.h"
+ #include "content/public/browser/storage_partition.h"
+@@ -185,7 +187,7 @@
+     } else if (t.phase == 2) {
+       if (bytes.empty() || bytes[0] != 3) { t.error = "Invalid native capture persist reply"; break; }
+       t.receipt.assign(bytes.begin() + 1, bytes.end());
+-      auto receipt = base::JSONReader::ReadDict(t.receipt);
++      auto receipt = base::JSONReader::ReadDict(t.receipt, base::JSON_PARSE_RFC);
+       const auto* journal = receipt ? receipt->FindString("transactionId") : nullptr;
+       const auto* digest = receipt ? receipt->FindString("captureSha256") : nullptr;
+       if (!journal || !CanonicalUuid(*journal) || !digest ||
+@@ -414,7 +416,7 @@
+       std::move(callback).Run(std::nullopt, "Capture script result is unavailable or stale"); return;
+     }
+     self->frames_[index]->result_json = results[0].value.GetString();
+-    auto value = base::JSONReader::ReadDict(self->frames_[index]->result_json);
++    auto value = base::JSONReader::ReadDict(self->frames_[index]->result_json, base::JSON_PARSE_RFC);
+     std::move(callback).Run(std::move(value), {});
+   }, weak_.GetWeakPtr(), index, std::move(callback));
+   extensions::mojom::HostID host(extensions::mojom::HostID::HostType::kExtensions, kAgentExtensionId);
+@@ -621,7 +623,10 @@
+   if (!transfer_ || transfer_->complete) extension_capture_.reset();
+   auto result = Refused(error_).Set("phase", transfer_ && transfer_->complete ? "captured-unqualified" : "refused-or-unknown")
+       .Set("rendererCleanupUnknown", cleanup_unknown_).Set("targetImportAvailable", false);
+-  if (transfer_ && transfer_->complete) result.Set("journalId", transfer_->journal).Set("captureSha256", base::HexEncodeLower(transfer_->digest));
++  if (transfer_ && transfer_->complete) {
++    result.Set("journalId", transfer_->journal);
++    result.Set("captureSha256", base::HexEncodeLower(transfer_->digest));
++  }
+   auto alive = weak_.GetWeakPtr();
+   if (reply_) std::move(reply_).Run(std::move(result));
+   if (alive && !alive->pending()) alive->settled_.Notify();

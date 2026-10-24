@@ -1,0 +1,29 @@
+{
+  "format": "aux.integration-completion.native-projection.actual.v1",
+  "passed": true,
+  "predecessorNativeReceipt": "/private/tmp/aux-chromium-recovery-snapshot-20261023/unsigned-feature-completion-browser-build-20261024-a3b/receipt.json",
+  "predecessorNativeReceiptSha256": "8f18420f80a296d4fc1b2548dfa0a48b3296ba364a744c239deffb48876260cc",
+  "preservedNativeApp": "/private/tmp/aux-chromium-recovery-snapshot-20261023/native-ui-controller-integration-20261024-a5/previous-native-a3/Aux.app",
+  "sourceBeforeImages": "/private/tmp/aux-chromium-recovery-snapshot-20261023/native-ui-controller-integration-20261024-a5/before",
+  "originals": {
+    "chrome/browser/aux/ui_storage_migration_controller.cc": null,
+    "chrome/browser/aux/ui_storage_migration_controller.h": null,
+    "chrome/browser/extensions/api/aux_browser_preferences/aux_browser_preferences_api.cc": "276506304349c8718bfb1dfae68653c357b2702b584d53d9de8ca16afe811e69",
+    "chrome/browser/ui/aux_feature_profile_owners.cc": "a5ef886ed10c9a3bbfee146333742fb0373b705ac953411082cd2703abaa841c",
+    "chrome/browser/ui/BUILD.gn": "250662205793be4b2c65f31910b4e296b42a04da273f8d1f094ecec7fb99ccb8",
+    "chrome/browser/aux/BUILD.gn": "2dd27e70ceccbd6113cae66d9611e0ec707681fc45ef60c79173ba2eaa6c1c9a",
+    "chrome/browser/extensions/api/aux_browser_preferences/BUILD.gn": "c394166d7528e3c2131498a48a02466bd495c1cbb9f7ad7abe3ddafb4522dcdd"
+  },
+  "projected": [
+    "chrome/browser/aux/ui_storage_migration_controller.cc",
+    "chrome/browser/aux/ui_storage_migration_controller.h",
+    "chrome/browser/extensions/api/aux_browser_preferences/aux_browser_preferences_api.cc",
+    "chrome/browser/ui/aux_feature_profile_owners.cc",
+    "chrome/browser/ui/BUILD.gn",
+    "chrome/browser/aux/BUILD.gn",
+    "chrome/browser/extensions/api/aux_browser_preferences/BUILD.gn"
+  ],
+  "ownerChangesReset": false,
+  "productExecuted": false,
+  "acceptedAppReplaced": false
+}

@@ -1,0 +1,60 @@
+{
+  "format": "aux.feature-completion.ui-stage.actual.v1",
+  "passed": true,
+  "output": "/private/tmp/aux-ui-controller-integration-stage-20261024-a5",
+  "stageManifestSha256": "15a30f747221b1167141e543b98f93889ece6628282e3eed5c894b9299f46e9e",
+  "priorManifestSha256": "5b361f84155051073736ff388e79b79b3680fda4099698dd5ccb8d9b9219770c",
+  "agentRevision": 30,
+  "deltas": [
+    {
+      "path": "assets/create-editor-B-Br5Wz9.js",
+      "beforeSha256": "814f707acf1a1a455137ae23375aa6a41791a6dac99895f4439062285e66bdd5",
+      "afterSha256": "2648d8c6683527af3f150b3ab00be60c5a0c76f47eaf7a16f3e448a2e89a06a9"
+    },
+    {
+      "path": "assets/draft-storage-ixLojjZ5.js",
+      "beforeSha256": "bddddc6df8a000becb1c6245bc732d258b405e71c5c933d4c3de991ebdc125fc",
+      "afterSha256": "0911117b2d4425f34f5d62abd5c0a7c9ff2646cb1d5c48a037587d0186f59288"
+    },
+    {
+      "path": "assets/file-attachments-D5m1O8aA.js",
+      "beforeSha256": "b94263913ff12de4b2d7960945469eb79d1624a48045e93cd2a4c94673da1b3a",
+      "afterSha256": "57ccf50a480416d980bd1963eae88146a6e19a5fbafcd7a38ca17957e32ae62a"
+    },
+    {
+      "path": "assets/minipopup-LkDLFvnq.js",
+      "beforeSha256": "f70c8c0328992493053ef4d61a205ba2800586fe44a79f29d9f188a7400ce762",
+      "afterSha256": "3071da2f307abd83fdaedd2ffc0d2fa77dcb6aab3f5c8a06d2bf0c9f9cc89eaf"
+    },
+    {
+      "path": "assets/newtab-editor-u_GbForB.js",
+      "beforeSha256": "77c7374756c75ec386b2f3c9ae57b9b5c3890a190357d178105e0debed7b4dfc",
+      "afterSha256": "10575e00999d606490b41e21ccf954d47625bb9c724ef8abd7037a75c04babd7"
+    },
+    {
+      "path": "assets/permission-approval-D-GTf91U.js",
+      "beforeSha256": "e4908ae0c13431dd77292d0df18504fc902ef9c725926b671a106e67e69b9e18",
+      "afterSha256": "08afcf585bf6707377424fa07557c2d335d08898adae2576b4340bddf2a5d03f"
+    },
+    {
+      "path": "assets/provider-Cw0zhujt.js",
+      "beforeSha256": "1e64914a8267b82ea9bacbe04c4e1393495d84973130db7533928cc8b8abf133",
+      "afterSha256": "8aee4a9cc8229397e4067fb9a9a4772ef4bdfddc03d1db3f2c84836a1b6fe724"
+    },
+    {
+      "path": "assets/session-composer-Dc0LRfZA.js",
+      "beforeSha256": "18979e7cb8bb5d09eb79c88b30b89b76ace3edaaf421a11785362eef4356468b",
+      "afterSha256": "7d9fd830a06e4bc846a7d81f849486a16013a36411c8d33a309ddc6a6d7f229d"
+    },
+    {
+      "path": "manifest.json",
+      "beforeSha256": "83b36529497ad99637b671a467ca6f2bdf67af81baedccf8afea24c49cc59e7f",
+      "afterSha256": "29acae8a48d4b985c20a9d508ef46c981c0966ae48345b13088ff6d6492db681"
+    }
+  ],
+  "stylesAssetsFontsModesAndOtherBytesPreserved": true,
+  "identitiesAndPermissionsPreserved": true,
+  "productExecuted": false,
+  "appPackaged": false,
+  "runtimeAcceptance": false
+}
