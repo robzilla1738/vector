@@ -1,7 +1,7 @@
 {
   "version": 1,
   "stage": "interactive-oauth",
-  "changes": 12,
+  "changes": 13,
   "sourceFiles": [
     {
       "path": "source/transform.mjs",
@@ -9,25 +9,25 @@
     },
     {
       "path": "source/anchors.json",
-      "sha256": "bc86590bae4b13a3b1f87372b00cb22b11cd584978c421d2510ee6d60ca15edf"
+      "sha256": "fab159927f6b37f47d8e42b052a2d2d7219c2b523d6502fb0b23671005d345f6"
     },
     {
       "path": "source/interactive-oauth.js",
-      "sha256": "dcb8f0a78c0e183e32b0a94601efbcd8288c6512489ce684bbffa64d65fbaaf3"
+      "sha256": "702ffcfe93bd8488b9b6c2672ea1f92139c5d6d3d186b0fdbfd63db70bfcff31"
     }
   ],
   "daemonInputs": [
     {
       "kind": "source",
       "inputSha256": "2e35bf82a24e22a1a76b61fe7211c9a1bdbfb770f3e45ae689131eefae9f75ea",
-      "outputSha256": "438cae0bf3f3f52b2f392641c2b9a7f59aaab5b436710641d64dc398d888e2dc",
-      "changesSha256": "f32e328631004eca5997c372105eb24960231a2abbd73b5d09cbf0e5ff292d1e"
+      "outputSha256": "3ee2471769470b820bfaf16d64f6dfc7aa0bef1b8ad54493c7d2a0bffe725802",
+      "changesSha256": "cc7c9398e1d1ea3a7eaf8ef5c3effc1855a2ada3100fe4e318f1847727bc8f2c"
     },
     {
       "kind": "entry",
       "inputSha256": "ebb32136d280406d02841c5f9fc3b08d2714b4384e70d0d690ca4bdd8bb1c8d7",
-      "outputSha256": "2c2a338cf0aca63ba30690dd931801facd69570bb7db1aec2a70247fb5dc2f00",
-      "changesSha256": "f32e328631004eca5997c372105eb24960231a2abbd73b5d09cbf0e5ff292d1e"
+      "outputSha256": "ba6194fbe579dec43ccaa2a7b788e58bc0a1cb9a0ff52ab5b5cfcea334890804",
+      "changesSha256": "cc7c9398e1d1ea3a7eaf8ef5c3effc1855a2ada3100fe4e318f1847727bc8f2c"
     }
   ],
   "nativeRequirements": [

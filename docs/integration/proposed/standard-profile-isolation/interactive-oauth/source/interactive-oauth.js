@@ -1,6 +1,6 @@
 // Lifetime ownership for the supplied interactive login. A returned auth URL is
 // not completion; deleted/expired flow-map entries do not release a login.
-function auxCreateInteractiveOAuth({boundary, isClosing, isReviewed, createTransport, context}) {
+function auxCreateInteractiveOAuth({boundary, isClosing, isCandidate, isReviewed, createTransport, context}) {
   let closing = false, stopPromise;
   const pending = new Set(), flows = new Map();
   const retain = promise => {
@@ -18,7 +18,7 @@ function auxCreateInteractiveOAuth({boundary, isClosing, isReviewed, createTrans
   }
   function register(flow, cancel) {
     const owner = admit();
-    const reviewed = isReviewed(flow.providerId);
+    const reviewed = isCandidate(flow.providerId);
     if (!reviewed) owner.noteUntracked();
     flows.set(flow, {reviewed,cancel});
   }
@@ -28,6 +28,10 @@ function auxCreateInteractiveOAuth({boundary, isClosing, isReviewed, createTrans
     return retain(owner.awaited(async () => {
       try {
         if (!record.reviewed) return await operation();
+        let reviewed;
+        try { reviewed=await isReviewed(flow.providerId); } catch(error) {owner.noteUntracked();throw error;}
+        flow.abortController.signal.throwIfAborted();
+        if (!reviewed) { owner.noteUntracked();return await operation(); }
         const scope = createTransport(flow.abortController.signal, () => owner.noteUntracked());
         try {
           const result = await context.run(scope, operation);
@@ -61,17 +65,31 @@ function auxCreateInteractiveOAuth({boundary, isClosing, isReviewed, createTrans
   }
   return {run,register,login,stop};
 }
-function auxReviewedInteractiveProvider(id) {
-  const provider = getOAuthProviderForCredential(id)?.oauth;
-  return auxKnownRefreshProvider(provider) && (
-    provider === anthropicOAuth && provider.login === loginAnthropic ||
-    provider === githubCopilotOAuth && provider.login === loginGitHubCopilot ||
-    provider === kimiCodingOAuth && provider.login === loginKimiCoding ||
-    provider === xaiOAuth && provider.login === loginXai);
+const auxInteractiveLazyLogins = new WeakMap();
+function auxInteractiveProviderCandidate(id) {
+  const entry=getOAuthProviderForCredential(id);
+  return !!entry && (id==='anthropic' || id==='github-copilot' ||
+    entry===kimiCodeProvider || entry===xaiGrokOAuthProvider);
+}
+async function auxReviewedInteractiveProvider(id) {
+  let provider=getOAuthProviderForCredential(id)?.oauth;
+  if (!auxKnownRefreshProvider(provider)) return false;
+  // Supplied credentials contain nested lazyOAuth proxies (and Kimi copies a
+  // proxy). Resolve only functions registered by that exact original factory.
+  for(let depth=0;depth<4;++depth) {
+    if (provider===anthropicOAuth && provider.login===loginAnthropic ||
+        provider===githubCopilotOAuth && provider.login===loginGitHubCopilot ||
+        provider===kimiCodingOAuth && provider.login===loginKimiCoding ||
+        provider===xaiOAuth && provider.login===loginXai) return true;
+    const load=auxInteractiveLazyLogins.get(provider?.login);
+    if(!load)return false;
+    provider=await load();
+  }
+  return false;
 }
 const auxInteractiveOAuth = auxCreateInteractiveOAuth({
   boundary:auxBrokerBoundary,isClosing:()=>auxDaemonClosing,
-  isReviewed:auxReviewedInteractiveProvider,context:auxRefreshIoContext,
+  isCandidate:auxInteractiveProviderCandidate,isReviewed:auxReviewedInteractiveProvider,context:auxRefreshIoContext,
   createTransport(signal,unknown) {
     const {Agent,Client,buildConnector}=require_undici$1();
     return auxCreateRefreshIo({fetch,Agent,Client,buildConnector,lookup:auxRefreshDnsLookup,signal,unknown});

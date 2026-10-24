@@ -32,5 +32,10 @@ for start,end in [('async function startDeviceAuthorization$1(', 'function parse
  a=src[src.index(start):src.index(end,src.index(start))]
  assert a.count('await fetch(')==1
  add(a,a.replace('await fetch(','await auxRefreshFetch('))
+a=src[src.index('function lazyOAuth('):src.index('var init_helpers$3=',src.index('function lazyOAuth('))]
+b=a.replace('return{name:Cn.name', 'let ni={name:Cn.name')
+assert b.endswith('}}')
+b=b[:-1]+';auxInteractiveLazyLogins.set(ni.login,ti);return ni}'
+add(a,b)
 (root/'source/anchors.json').write_text(json.dumps(changes,indent=2)+'\n')
 print(len(changes))

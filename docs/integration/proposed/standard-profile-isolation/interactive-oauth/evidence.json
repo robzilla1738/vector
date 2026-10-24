@@ -7,22 +7,23 @@
     "abort during response flush",
     "deleted flow retains login and physical transport cleanup",
     "unreviewed provider remains unknown and awaited",
-    "12 exact anchors independently replayed on both pinned a2 leaves",
+    "actual nested/copied lazyOAuth factory identity and replacement refusal",
+    "13 exact anchors independently replayed on both pinned a2 leaves",
     "node --check both resulting leaves"
   ],
-  "scratch": "/var/folders/98/j36zgdnd0h507whjl16gxl780000gp/T/aux-interactive-oauth-source-pOXhzS",
+  "scratch": "/var/folders/98/j36zgdnd0h507whjl16gxl780000gp/T/aux-interactive-oauth-source-K0QJOh",
   "daemonInputs": [
     {
       "kind": "source",
       "inputSha256": "2e35bf82a24e22a1a76b61fe7211c9a1bdbfb770f3e45ae689131eefae9f75ea",
-      "outputSha256": "438cae0bf3f3f52b2f392641c2b9a7f59aaab5b436710641d64dc398d888e2dc",
-      "changesSha256": "f32e328631004eca5997c372105eb24960231a2abbd73b5d09cbf0e5ff292d1e"
+      "outputSha256": "3ee2471769470b820bfaf16d64f6dfc7aa0bef1b8ad54493c7d2a0bffe725802",
+      "changesSha256": "cc7c9398e1d1ea3a7eaf8ef5c3effc1855a2ada3100fe4e318f1847727bc8f2c"
     },
     {
       "kind": "entry",
       "inputSha256": "ebb32136d280406d02841c5f9fc3b08d2714b4384e70d0d690ca4bdd8bb1c8d7",
-      "outputSha256": "2c2a338cf0aca63ba30690dd931801facd69570bb7db1aec2a70247fb5dc2f00",
-      "changesSha256": "f32e328631004eca5997c372105eb24960231a2abbd73b5d09cbf0e5ff292d1e"
+      "outputSha256": "ba6194fbe579dec43ccaa2a7b788e58bc0a1cb9a0ff52ab5b5cfcea334890804",
+      "changesSha256": "cc7c9398e1d1ea3a7eaf8ef5c3effc1855a2ada3100fe4e318f1847727bc8f2c"
     }
   ]
 }
