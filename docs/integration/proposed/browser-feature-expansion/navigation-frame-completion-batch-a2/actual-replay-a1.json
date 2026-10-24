@@ -1,0 +1,28 @@
+{
+  "format": "aux.navigation-frame-completion.replay.actual.v1",
+  "passed": true,
+  "sourcePlanSha256": "9c68f68687c8eaaf8856b614f4c1c413973f2b4ce0cb8c150ce6b2f2cafb4abb",
+  "patchSha256": "9f0d4cee5e25f28b22283cb8bc075ab264a2fd48f6def01c7d1ebac75fb22db4",
+  "output": "/private/tmp/aux-navigation-frame-replay-20261024-a2-sdk5rt2c",
+  "files": 6,
+  "countedAnchors": 32,
+  "reviewedContracts": {
+    "base/timer/timer.h": "ff85d8ad819a0ce8ab6ebd1c5be671830d8bf7657f2c0d6a2c4e5d62e35837dc",
+    "base/timer/timer.cc": "f8cda0b0d320007505e91e4468139f6952846d8d3894ffe2a559ebfbb86ebd28",
+    "chrome/browser/ui/animation/browser_animation_controller.cc": "839e4dd5858dfefe5d4341e3ba1aa845b28f451db2af8a573c2272d3814b7edd",
+    "chrome/browser/ui/animation/browser_animation_controller.h": "6072f38bf4ee8379dd315805a5dc3caf4fb81fc7b8660af67f4d5c242ad1c543",
+    "chrome/browser/ui/views/frame/aux_navigation_placement.cc": "b8fbe684517fbcda3d32bbe7b23f3e9db6a9925a76fee05b9f5f829a2bd3be24",
+    "chrome/browser/ui/views/frame/aux_profile_preview_retention.cc": "4d19c2c1084926bffbd0c835dc5a287d8378e7d9485fbd431f1d4d83e7377e93",
+    "chrome/browser/ui/views/frame/aux_frame_presentation_state.h": "75a03dd72306172dad94afab2b1c7d44903c1585ef130646521037fa8f9b3028",
+    "chrome/browser/ui/views/frame/layout/browser_view_tabbed_layout_impl.cc": "c202bbe1aee81c8a72f8b48bc9431c4e1adb3310388c3bc6b1f52da9beee039e",
+    "chrome/browser/ui/views/frame/browser_view.cc": "9e00e465d3b53f968697588594c05c43a7660b3744904890ef3ebd9fe7cde939"
+  },
+  "exactReplayPassed": true,
+  "reverseCheckPassed": true,
+  "existingAnimationDurationsAndTweensUnchanged": true,
+  "nativeThemeVisualConsumersUnchanged": true,
+  "nativeRootChanged": false,
+  "nativeCompiled": false,
+  "productExecuted": false,
+  "runtimeAccepted": false
+}

@@ -1,0 +1,217 @@
+{
+  "format": "aux.navigation-frame-completion.source.v1",
+  "baselineCommit": "12fa305ef",
+  "nativeRoot": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src",
+  "files": [
+    {
+      "path": "chrome/browser/ui/views/frame/aux_profile_preview_admission.h",
+      "inputSha256": "233722b90112c4db681b0d2900c85aaaf23ba01516e594594dd668e101502d64",
+      "output": "/Users/rcourson/.codex/worktrees/aux-features-navigation/web/docs/integration/proposed/browser-feature-expansion/navigation-frame-completion-batch-a2/source/chrome/browser/ui/views/frame/aux_profile_preview_admission.h",
+      "outputSha256": "3ff6b21cf387d5a9fa8722edda3483da11c157e02c32ca94037c6c9568e0645a",
+      "anchors": [
+        {
+          "find": "  void SetEdgeRetention(bool requested);",
+          "replace": "  void SetEdgeRetention(bool requested);\n  // Native sidebar URL placement owns this request, independently of mouse\n  // producers and the region's menu/drag locks.\n  void SetNavigationRetention(bool requested);\n  void ClearNavigationRetentionWithoutLayout() { navigation_retention_ = false; }",
+          "count": 1
+        },
+        {
+          "find": "  bool edge_retention_ = false;",
+          "replace": "  bool edge_retention_ = false;\n  bool navigation_retention_ = false;",
+          "count": 1
+        },
+        {
+          "find": "  void SetHoverExpanded(bool expanded);",
+          "replace": "  void SetHoverExpanded(bool expanded);\n  // Called only by the real frame controller after its hide motion ends.\n  void HoverCollapseSettled();",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_profile_preview_admission.cc",
+      "inputSha256": "aa1e8a5e3c91032cd5fbbd5f82478612c11456ff6ff66a385e542505141fbef5",
+      "output": "/Users/rcourson/.codex/worktrees/aux-features-navigation/web/docs/integration/proposed/browser-feature-expansion/navigation-frame-completion-batch-a2/source/chrome/browser/ui/views/frame/aux_profile_preview_admission.cc",
+      "outputSha256": "8407ff5f3fda60dc296d8e9445b8c501ab056230cb873707b965431aaa4e8c7b",
+      "anchors": [
+        {
+          "find": "void ProfilePreviewAdmission::AcquireRetention() {",
+          "replace": "void ProfilePreviewAdmission::SetNavigationRetention(bool requested) {\n  requested = requested && collapsed_;\n  if (navigation_retention_ == requested) {\n    if (requested && !retained_)\n      AcquireRetention();\n    return;\n  }\n  navigation_retention_ = requested;\n  if (requested) {\n    if (!retained_)\n      AcquireRetention();\n  } else if (retained_ && !browser_retention_ && !edge_retention_) {\n    ScheduleRelease();\n  }\n}\n\nvoid ProfilePreviewAdmission::AcquireRetention() {",
+          "count": 1
+        },
+        {
+          "find": "void ProfilePreviewAdmission::ReleaseIfPointerOutside() {",
+          "replace": "void ProfilePreviewAdmission::ReleaseIfPointerOutside() {\n  // A delayed release belongs to the request which scheduled it. A different\n  // real producer may have acquired while the shared timer was pending.\n  if (browser_retention_ || edge_retention_ || navigation_retention_) {\n    ScheduleRetentionCheck();\n    return;\n  }",
+          "count": 1
+        },
+        {
+          "find": "  if (delegate_->KeepExpandedLocked()) {",
+          "replace": "  if (navigation_retention_ || delegate_->KeepExpandedLocked()) {",
+          "count": 1
+        },
+        {
+          "find": "  browser_retention_ = retained_ = false;",
+          "replace": "  browser_retention_ = navigation_retention_ = retained_ = false;",
+          "count": 1
+        },
+        {
+          "find": "  if (!retained_ || browser_retention_ || edge_retention_ || pointer_inside ||\n      hover_expanded_)",
+          "replace": "  if (!retained_ || browser_retention_ || edge_retention_ ||\n      navigation_retention_ || pointer_inside || hover_expanded_)",
+          "count": 1
+        },
+        {
+          "find": "  collapsed_ = collapsed;\n  uncollapsed_width_ = uncollapsed_width;",
+          "replace": "  collapsed_ = collapsed;\n  if (!collapsed)\n    navigation_retention_ = false;\n  uncollapsed_width_ = uncollapsed_width;",
+          "count": 1
+        },
+        {
+          "find": "  if (edge_retention_ == requested)\n    return;\n  edge_retention_ = requested;",
+          "replace": "  if (edge_retention_ == requested) {\n    // A genuine force-collapse can retire the panel while preserving the edge\n    // producer's latch. A later eligible event must be able to acquire again.\n    if (requested && !retained_)\n      AcquireRetention();\n    return;\n  }\n  edge_retention_ = requested;",
+          "count": 1
+        },
+        {
+          "find": "  if (browser_retention_ || edge_retention_)\n    return;\n  auto weak = weak_factory_.GetWeakPtr();\n  const bool inside = delegate_->RetainedPointerInside();\n  if (weak && !inside)\n    ClearRetention();\n}",
+          "replace": "  if (browser_retention_ || edge_retention_ || navigation_retention_) {\n    ScheduleRetentionCheck();\n    return;\n  }\n  auto weak = weak_factory_.GetWeakPtr();\n  const bool inside = delegate_->RetainedPointerInside();\n  if (!weak)\n    return;\n  if (!inside) {\n    ClearRetention();\n    // A successful release has started the real hide motion. Its completion,\n    // not another timer tick, retires the retained geometry.\n    if (!weak || !hover_expanded_)\n      return;\n  }\n  // RetainingOneShotTimer stops before running its callback. Keep observing\n  // the SAME retained owner while pointer/focus/menu/drag can still change.\n  ScheduleRetentionCheck();\n}",
+          "count": 1
+        },
+        {
+          "find": "void ProfilePreviewAdmission::SetCollapseState(bool collapsed,",
+          "replace": "void ProfilePreviewAdmission::HoverCollapseSettled() {\n  if (!retained_ || hover_expanded_ || browser_retention_ || edge_retention_ ||\n      navigation_retention_)\n    return;\n  const auto weak = weak_factory_.GetWeakPtr();\n  const bool locked = delegate_->KeepExpandedLocked();\n  if (!weak || locked)\n    return;\n  // Keep full retained geometry throughout the existing slide-out. Only the\n  // genuine completion may retire its offscreen surface/focus presentation.\n  retained_ = false;\n  retained_check_.Stop();\n  delegate_->ApplyRetainedLayout();\n}\n\nvoid ProfilePreviewAdmission::SetCollapseState(bool collapsed,",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/vertical_tab_strip_region_view.h",
+      "inputSha256": "e18b0dae2e62f03e7cbf96bb200c1e1101db71ef7d9bb1304b537055a9c46717",
+      "output": "/Users/rcourson/.codex/worktrees/aux-features-navigation/web/docs/integration/proposed/browser-feature-expansion/navigation-frame-completion-batch-a2/source/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.h",
+      "outputSha256": "46d342fc18c50516db1e84435cbb6b4b5fe5c8bab980170b81add6e955a50b5e",
+      "anchors": [
+        {
+          "find": "  void SetAuxNavigationPlacementHold(bool held);",
+          "replace": "  void SetAuxNavigationPlacementHold(bool held);\n  // Terminal detach/profile pause revokes ownership without starting layout.\n  void ClearAuxNavigationPlacementHoldWithoutLayout();",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/vertical_tab_strip_region_view.cc",
+      "inputSha256": "c1a7edf26b4a26bf3b55f0ff41a49eda9a902d5c4d32c16ed2347ec0ef7304d2",
+      "output": "/Users/rcourson/.codex/worktrees/aux-features-navigation/web/docs/integration/proposed/browser-feature-expansion/navigation-frame-completion-batch-a2/source/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.cc",
+      "outputSha256": "fffd13aa4507ec62ae1a964ee932af1e6d595c3d5477dc84a3bf71135efe327e",
+      "anchors": [
+        {
+          "find": "void VerticalTabStripRegionView::SetAuxNavigationPlacementHold(bool held) {\n  if (aux_navigation_placement_hold_ == held)\n    return;\n  aux_navigation_placement_hold_ = held;\n  // Root owns this placement lifetime. Do not count the hold as a menu lock\n  // in the public input snapshot: that would make deferred relocation sticky.\n  UpdateExpandOnHoverState();\n}",
+          "replace": "void VerticalTabStripRegionView::SetAuxNavigationPlacementHold(bool held) {\n  const bool changed = aux_navigation_placement_hold_ != held;\n  aux_navigation_placement_hold_ = held;\n  // The real placement owner supplies focus/menu/drag deferral. Keep its\n  // floating geometry distinct from mouse producers and public menu locks,\n  // otherwise deferred relocation can become self-sustaining.\n  const auto alive = aux_preview_weak_factory_.GetWeakPtr();\n  if (aux_profile_preview_admission_) {\n    aux_profile_preview_admission_->SetNavigationRetention(\n        held && force_collapse_lock_count_ == 0 && GetWidget() && tab_strip_view());\n    if (!alive)\n      return;\n  }\n  if (changed)\n    UpdateExpandOnHoverState();\n}\n\nvoid VerticalTabStripRegionView::ClearAuxNavigationPlacementHoldWithoutLayout() {\n  aux_navigation_placement_hold_ = false;\n  if (aux_profile_preview_admission_)\n    aux_profile_preview_admission_->ClearNavigationRetentionWithoutLayout();\n}",
+          "count": 1
+        },
+        {
+          "find": "void VerticalTabStripRegionView::RemovedFromWidget() {",
+          "replace": "void VerticalTabStripRegionView::RemovedFromWidget() {\n  // Like the native edge producer, detachment revokes without a new callback.\n  ClearAuxNavigationPlacementHoldWithoutLayout();",
+          "count": 1
+        },
+        {
+          "find": "void VerticalTabStripRegionView::OnTabStripViewWillClear() {\n  aux_empty_pinned_drop_active_ = false;\n  aux_navigation_placement_hold_ = false;",
+          "replace": "void VerticalTabStripRegionView::OnTabStripViewWillClear() {\n  aux_empty_pinned_drop_active_ = false;\n  ClearAuxNavigationPlacementHoldWithoutLayout();",
+          "count": 1
+        },
+        {
+          "find": "    // The recovered SlideAnimation owns region width and admission. The\n    // frame controller owns its companion collapse and hover transitions.\n    if (status == BrowserAnimationUpdate::kStarted)",
+          "replace": "    // The recovered SlideAnimation owns region width and admission. The\n    // frame controller owns its companion collapse and hover transitions.\n    const auto alive = aux_preview_weak_factory_.GetWeakPtr();\n    if (status == BrowserAnimationUpdate::kEnded &&\n        controller->GetCurrentMotion(TabStripAnimations::kVerticalTabStrip) ==\n            TabStripAnimations::kCollapseOnHover) {\n      aux_profile_preview_admission_->HoverCollapseSettled();\n      if (!alive)\n        return;\n    }\n    if (status == BrowserAnimationUpdate::kStarted)",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/browser_view.cc",
+      "inputSha256": "9e00e465d3b53f968697588594c05c43a7660b3744904890ef3ebd9fe7cde939",
+      "output": "/Users/rcourson/.codex/worktrees/aux-features-navigation/web/docs/integration/proposed/browser-feature-expansion/navigation-frame-completion-batch-a2/source/chrome/browser/ui/views/frame/browser_view.cc",
+      "outputSha256": "d635428d4d397641ddd6234b3c8684d6ba221c2348fbd0c808d01ba4913ecd36",
+      "anchors": [
+        {
+          "find": "  aux_profile_switch_source_ = GetProfile()->GetWeakPtr();\n  aux_profile_switch_target_ = target->GetWeakPtr();\n  registrar_.Reset();",
+          "replace": "  aux_profile_switch_source_ = GetProfile()->GetWeakPtr();\n  aux_profile_switch_target_ = target->GetWeakPtr();\n  // The source profile's deferred sidebar URL placement cannot retain the\n  // target profile's hover surface through the paused rebind interval.\n  if (vertical_tab_strip_region_view_)\n    vertical_tab_strip_region_view_->ClearAuxNavigationPlacementHoldWithoutLayout();\n  registrar_.Reset();",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/themes/aux_theme_editor.cc",
+      "inputSha256": "60472eef6a2c6edd297cafeea186039a478963a355ba6114c705417d3a00844c",
+      "output": "/Users/rcourson/.codex/worktrees/aux-features-navigation/web/docs/integration/proposed/browser-feature-expansion/navigation-frame-completion-batch-a2/source/chrome/browser/themes/aux_theme_editor.cc",
+      "outputSha256": "3ae36fdcae98959c808d289e6c77a4d0a468579a897c81442a460c14f0035bda",
+      "anchors": [
+        {
+          "find": "  ~Editor() override = default;\n  base::DictValue Saved() const {",
+          "replace": "  ~Editor() override = default;\n  base::WeakPtr<Editor> GetWeakPtr() { return weak_factory_.GetWeakPtr(); }\n  Profile* profile() const { return profile_.get(); }\n  base::DictValue Saved() const {",
+          "count": 1
+        },
+        {
+          "find": "    return !owner.empty() && owner.size() <= 256 && revision == revision_ &&\n        (owner_.empty() || owner_ == owner);",
+          "replace": "    return !writing_ && !owner.empty() && owner.size() <= 256 && revision == revision_ &&\n        (owner_.empty() || owner_ == owner);",
+          "count": 1
+        },
+        {
+          "find": "  void WriteTokens(base::DictValue tokens, bool reset = false) {\n    ClearPreview();\n    writing_ = true;",
+          "replace": "  void WriteTokens(base::DictValue tokens, bool reset = false) {\n    const auto alive = weak_factory_.GetWeakPtr();\n    ClearPreview();\n    writing_ = true;",
+          "count": 1
+        },
+        {
+          "find": "      theme->UseDefaultTheme();\n      theme->SetBrowserColorScheme(ThemeService::BrowserColorScheme::kSystem);",
+          "replace": "      theme->UseDefaultTheme();\n      if (!alive || !profile_)\n        return;\n      theme->SetBrowserColorScheme(ThemeService::BrowserColorScheme::kSystem);",
+          "count": 1
+        },
+        {
+          "find": "    profile_->GetPrefs()->SetDict(kThemeTokensPref, std::move(tokens));\n    writing_ = false;\n    Changed();",
+          "replace": "    if (!alive || !profile_)\n      return;\n    if (!Available(profile_.get())) {\n      writing_ = false;\n      return;\n    }\n    profile_->GetPrefs()->SetDict(kThemeTokensPref, std::move(tokens));\n    if (!alive)\n      return;\n    writing_ = false;\n    Changed();",
+          "count": 1
+        },
+        {
+          "find": "  void WritePresets(base::ListValue presets) {\n    writing_ = true;\n    profile_->GetPrefs()->SetList(kThemePresetsPref, std::move(presets));\n    writing_ = false;",
+          "replace": "  void WritePresets(base::ListValue presets) {\n    const auto alive = weak_factory_.GetWeakPtr();\n    writing_ = true;\n    profile_->GetPrefs()->SetList(kThemePresetsPref, std::move(presets));\n    if (!alive)\n      return;\n    writing_ = false;",
+          "count": 1
+        },
+        {
+          "find": "    if (tokens.Remove(\"accent\")) {\n      writing_ = true;\n      profile_->GetPrefs()->SetDict(kThemeTokensPref, std::move(tokens));\n      writing_ = false;\n    }\n    ExternalChange();",
+          "replace": "    if (tokens.Remove(\"accent\")) {\n      const auto alive = weak_factory_.GetWeakPtr();\n      writing_ = true;\n      profile_->GetPrefs()->SetDict(kThemeTokensPref, std::move(tokens));\n      if (!alive)\n        return;\n      writing_ = false;\n    }\n    ExternalChange();",
+          "count": 1
+        },
+        {
+          "find": "  SEQUENCE_CHECKER(sequence_);\n};\n\nEditor& GetEditor(Profile* profile) {",
+          "replace": "  SEQUENCE_CHECKER(sequence_);\n  base::WeakPtrFactory<Editor> weak_factory_{this};\n};\n\nbase::DictValue StateAfterChange(const base::WeakPtr<Editor>& editor) {\n  if (!editor || !editor->profile())\n    return Failure(\"The theme editor's profile closed before completion.\");\n  if (!Available(editor->profile()))\n    return Failure(\"Theme editing is no longer available in this profile.\");\n  return editor->State();\n}\n\nEditor& GetEditor(Profile* profile) {",
+          "count": 1
+        },
+        {
+          "find": "  editor.SetPreview(owner, std::move(*valid));\n  return editor.State();",
+          "replace": "  const auto alive = editor.GetWeakPtr();\n  editor.SetPreview(owner, std::move(*valid));\n  return StateAfterChange(alive);",
+          "count": 1
+        },
+        {
+          "find": "  editor.WriteTokens(std::move(*valid));\n  return editor.State();",
+          "replace": "  const auto alive = editor.GetWeakPtr();\n  editor.WriteTokens(std::move(*valid));\n  return StateAfterChange(alive);",
+          "count": 1
+        },
+        {
+          "find": "base::DictValue Cancel(Profile* profile, std::string_view owner) {\n  if (!Available(profile))\n    return Failure(\"Theme editing is unavailable in this profile.\");\n  auto& editor = GetEditor(profile);\n  if (editor.Owns(owner))\n    editor.Expire();\n  return editor.State();\n}",
+          "replace": "base::DictValue Cancel(Profile* profile, std::string_view owner) {\n  if (!profile)\n    return Failure(\"Theme editing is unavailable in this profile.\");\n  // Revocation is not a preference write. Policy/accessibility/profile changes\n  // must not leave an old preview waiting to resurrect when editing returns.\n  auto* editor = static_cast<Editor*>(profile->GetUserData(&kEditorDataKey));\n  if (!editor)\n    return GetState(profile);\n  const auto alive = editor->GetWeakPtr();\n  if (!owner.empty() && editor->Owns(owner))\n    editor->Expire();\n  return StateAfterChange(alive);\n}",
+          "count": 1
+        },
+        {
+          "find": "  editor.WriteTokens(base::DictValue().Set(\"version\", 1), true);\n  return editor.State();",
+          "replace": "  const auto alive = editor.GetWeakPtr();\n  editor.WriteTokens(base::DictValue().Set(\"version\", 1), true);\n  return StateAfterChange(alive);",
+          "count": 1
+        },
+        {
+          "find": "  editor.WritePresets(std::move(presets));\n  return editor.State();\n}\n\nbase::DictValue DeletePreset",
+          "replace": "  const auto alive = editor.GetWeakPtr();\n  editor.WritePresets(std::move(presets));\n  return StateAfterChange(alive);\n}\n\nbase::DictValue DeletePreset",
+          "count": 1
+        },
+        {
+          "find": "  editor.WritePresets(std::move(presets));\n  return editor.State();\n}\n\nbase::DictValue ExportPreset",
+          "replace": "  const auto alive = editor.GetWeakPtr();\n  editor.WritePresets(std::move(presets));\n  return StateAfterChange(alive);\n}\n\nbase::DictValue ExportPreset",
+          "count": 1
+        }
+      ]
+    }
+  ],
+  "nativeRootChanged": false,
+  "actualAppAcceptance": false
+}
