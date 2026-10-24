@@ -1,0 +1,85 @@
+--- a/content/public/browser/render_frame_host.h
++++ b/content/public/browser/render_frame_host.h
+@@ -243,6 +243,13 @@
+   // Returns the frame token for this frame.
+   virtual const blink::LocalFrameToken& GetFrameToken() const = 0;
+ 
++  // Factual native document join for the finite Aux storage cohort. Unsupported
++  // hosts/mocks return no fact, never a generated/default token. This does not
++  // authorize storage or replace WeakDocumentPtr/lifecycle ownership checks.
++  virtual std::optional<blink::DocumentToken> GetDocumentTokenForAuxUiMigration() {
++    return std::nullopt;
++  }
++
+   // Returns a tracing track to use as a grouping parent. Do not emit directly
+   // events to this track.
+   virtual const perfetto::Track& GetTracingTrack() const = 0;
+--- a/content/browser/renderer_host/render_frame_host_impl.h
++++ b/content/browser/renderer_host/render_frame_host_impl.h
+@@ -474,6 +474,7 @@
+   int GetRoutingID() const override;
+   int64_t GetNavigationId() const override;
+   const blink::LocalFrameToken& GetFrameToken() const override;
++  std::optional<blink::DocumentToken> GetDocumentTokenForAuxUiMigration() override;
+   const perfetto::Track& GetTracingTrack() const override;
+   const base::UnguessableToken& GetReportingSource() override;
+   ui::AXTreeID GetAXTreeID() override;
+--- a/content/browser/renderer_host/render_frame_host_impl.cc
++++ b/content/browser/renderer_host/render_frame_host_impl.cc
+@@ -3100,6 +3100,15 @@
+   return frame_token_;
+ }
+ 
++std::optional<blink::DocumentToken>
++RenderFrameHostImpl::GetDocumentTokenForAuxUiMigration() {
++  if (!IsActive() || !IsRenderFrameLive() ||
++      lifecycle_state() == LifecycleStateImpl::kPendingCommit ||
++      lifecycle_state() == LifecycleStateImpl::kSpeculative ||
++      !GetPendingCommitCrossDocumentNavigations().empty()) return std::nullopt;
++  return GetDocumentToken();
++}
++
+ const perfetto::Track& RenderFrameHostImpl::GetTracingTrack() const {
+   return *tracing_track_;
+ }
+--- a/chrome/browser/aux/ui_storage_migration_controller.cc
++++ b/chrome/browser/aux/ui_storage_migration_controller.cc
+@@ -234,6 +234,8 @@
+   content::WeakDocumentPtr document;
+   content::GlobalRenderFrameHostId routing;
+   extensions::ExtensionApiFrameIdMap::DocumentId document_id;
++  std::optional<blink::LocalFrameToken> native_frame_token;
++  std::optional<blink::DocumentToken> native_document_token;
+   base::WeakPtr<content::WebContents> contents;
+   std::unique_ptr<extensions::ScriptExecutor> executor;
+   std::string request_id, lease_id, capture_json, result_json, namespace_id;
+@@ -342,6 +344,8 @@
+       actual->GetBrowserContext() == profile_.get() && actual->IsRenderFrameLive() && actual->IsActive() &&
+       actual->GetGlobalId() == frame.routing &&
+       extensions::ExtensionApiFrameIdMap::GetDocumentId(actual) == frame.document_id &&
++      frame.native_frame_token && actual->GetFrameToken() == *frame.native_frame_token &&
++      frame.native_document_token && actual->GetDocumentTokenForAuxUiMigration() == frame.native_document_token &&
+       actual->GetLastCommittedOrigin() == extension_->origin();
+ }
+ bool Controller::Inventory(bool retain) {
+@@ -385,7 +389,11 @@
+     const auto& namespaces = contents->GetController().GetSessionStorageNamespaceMap();
+     const auto ns = namespaces.find(config);
+     if (ns == namespaces.end() || !ns->second || ns->second->id().empty()) return false;
++    const auto native_document = frame->GetDocumentTokenForAuxUiMigration();
++    if (!native_document) return false;
+     auto retained = std::make_unique<Frame>();
++    retained->native_frame_token = frame->GetFrameToken();
++    retained->native_document_token = native_document;
+     retained->document = frame->GetWeakDocumentPtr(); retained->routing = frame->GetGlobalId();
+     retained->document_id = extensions::ExtensionApiFrameIdMap::GetDocumentId(frame);
+     retained->frame_id = extensions::ExtensionApiFrameIdMap::GetFrameId(frame);
+@@ -682,6 +690,8 @@
+   for (const auto& frame : frames_) {
+     base::DictValue page;
+     page.Set("nativeDocumentId", frame->document_id.ToString());
++    page.Set("nativeLocalFrameToken", frame->native_frame_token->ToString());
++    page.Set("nativeBlinkDocumentToken", frame->native_document_token->ToString());
+     page.Set("sessionNamespace", frame->namespace_id);
+     page.Set("requestId", frame->request_id);
+     page.Set("captureJson", frame->capture_json);

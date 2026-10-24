@@ -1,0 +1,81 @@
+{
+  "format": "aux.native-document-token-join.source.v1",
+  "nativeRoot": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src",
+  "files": [
+    {
+      "path": "content/public/browser/render_frame_host.h",
+      "inputSha256": "83f5f6af1916636407cebec62ab76b61d7f68d2468e26c64311125ecef628433",
+      "outputSha256": "88f3dc93d985aead0e71dbc1deb81741874f47de9274805da59e4030b7c0bf0b",
+      "output": "/Users/rcourson/.codex/worktrees/aux-features-navigation/web/docs/integration/proposed/standard-profile-isolation/native-document-token-join-a11/source/content/public/browser/render_frame_host.h",
+      "anchors": [
+        {
+          "find": "  virtual const blink::LocalFrameToken& GetFrameToken() const = 0;",
+          "replace": "  virtual const blink::LocalFrameToken& GetFrameToken() const = 0;\n\n  // Factual native document join for the finite Aux storage cohort. Unsupported\n  // hosts/mocks return no fact, never a generated/default token. This does not\n  // authorize storage or replace WeakDocumentPtr/lifecycle ownership checks.\n  virtual std::optional<blink::DocumentToken> GetDocumentTokenForAuxUiMigration() {\n    return std::nullopt;\n  }",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "content/browser/renderer_host/render_frame_host_impl.h",
+      "inputSha256": "250a05273c856d1fc93ea8cc890fdb121651afee022924c0f2cf99f1d9018419",
+      "outputSha256": "583b03653b4f5c13a111e1980a4cc747020084d6b670c9137bdb8dc8f05c794e",
+      "output": "/Users/rcourson/.codex/worktrees/aux-features-navigation/web/docs/integration/proposed/standard-profile-isolation/native-document-token-join-a11/source/content/browser/renderer_host/render_frame_host_impl.h",
+      "anchors": [
+        {
+          "find": "  const blink::LocalFrameToken& GetFrameToken() const override;",
+          "replace": "  const blink::LocalFrameToken& GetFrameToken() const override;\n  std::optional<blink::DocumentToken> GetDocumentTokenForAuxUiMigration() override;",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "content/browser/renderer_host/render_frame_host_impl.cc",
+      "inputSha256": "3cbf82892a1a7573dd35a3c04b8ab7366b0f88ee268d7b4ef7c95faa1c7f04e2",
+      "outputSha256": "ae9939bdef1a14e0973b00636d68da57fb8e0dfd81fa7419b174650aebea624d",
+      "output": "/Users/rcourson/.codex/worktrees/aux-features-navigation/web/docs/integration/proposed/standard-profile-isolation/native-document-token-join-a11/source/content/browser/renderer_host/render_frame_host_impl.cc",
+      "anchors": [
+        {
+          "find": "const perfetto::Track& RenderFrameHostImpl::GetTracingTrack() const {",
+          "replace": "std::optional<blink::DocumentToken>\nRenderFrameHostImpl::GetDocumentTokenForAuxUiMigration() {\n  if (!IsActive() || !IsRenderFrameLive() ||\n      lifecycle_state() == LifecycleStateImpl::kPendingCommit ||\n      lifecycle_state() == LifecycleStateImpl::kSpeculative ||\n      !GetPendingCommitCrossDocumentNavigations().empty()) return std::nullopt;\n  return GetDocumentToken();\n}\n\nconst perfetto::Track& RenderFrameHostImpl::GetTracingTrack() const {",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/aux/ui_storage_migration_controller.cc",
+      "inputSha256": "02c3bbab4b8b71568945a3f0b55ec0794adced2ca8af47fbef1df9408662588e",
+      "outputSha256": "14be18d4f5dcd08f2cd6f332db66b2b153c4e955eec969d648771e10c33d5e7f",
+      "output": "/Users/rcourson/.codex/worktrees/aux-features-navigation/web/docs/integration/proposed/standard-profile-isolation/native-document-token-join-a11/source/chrome/browser/aux/ui_storage_migration_controller.cc",
+      "anchors": [
+        {
+          "find": "  extensions::ExtensionApiFrameIdMap::DocumentId document_id;",
+          "replace": "  extensions::ExtensionApiFrameIdMap::DocumentId document_id;\n  std::optional<blink::LocalFrameToken> native_frame_token;\n  std::optional<blink::DocumentToken> native_document_token;",
+          "count": 1
+        },
+        {
+          "find": "      extensions::ExtensionApiFrameIdMap::GetDocumentId(actual) == frame.document_id &&\n      actual->GetLastCommittedOrigin() == extension_->origin();",
+          "replace": "      extensions::ExtensionApiFrameIdMap::GetDocumentId(actual) == frame.document_id &&\n      frame.native_frame_token && actual->GetFrameToken() == *frame.native_frame_token &&\n      frame.native_document_token && actual->GetDocumentTokenForAuxUiMigration() == frame.native_document_token &&\n      actual->GetLastCommittedOrigin() == extension_->origin();",
+          "count": 1
+        },
+        {
+          "find": "    auto retained = std::make_unique<Frame>();",
+          "replace": "    const auto native_document = frame->GetDocumentTokenForAuxUiMigration();\n    if (!native_document) return false;\n    auto retained = std::make_unique<Frame>();\n    retained->native_frame_token = frame->GetFrameToken();\n    retained->native_document_token = native_document;",
+          "count": 1
+        },
+        {
+          "find": "    page.Set(\"nativeDocumentId\", frame->document_id.ToString());",
+          "replace": "    page.Set(\"nativeDocumentId\", frame->document_id.ToString());\n    page.Set(\"nativeLocalFrameToken\", frame->native_frame_token->ToString());\n    page.Set(\"nativeBlinkDocumentToken\", frame->native_document_token->ToString());",
+          "count": 1
+        }
+      ]
+    }
+  ],
+  "countedAnchors": 7,
+  "nativeTreeUnchanged": true,
+  "nativeCompiled": false,
+  "nativeExecuted": false,
+  "productExecuted": false,
+  "runtimeAccepted": false,
+  "sourcePlanSha256": "42d819412bd2da8b4f8327c0d6a8bfd6fe68eab04831aba2ef3b0587e904aa78",
+  "rootOwnsProjectionAndCompilation": true
+}
