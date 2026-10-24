@@ -1,0 +1,27 @@
+{
+  "format": "aux.browser-features.native-guard-transition.v1",
+  "files": [
+    {
+      "path": "chrome/browser/aux/AuxSelectedStateHome.cc",
+      "baseline": "docs/integration/proposed/profile-isolation-custody/barrier/source/chrome/browser/aux/AuxSelectedStateHome.cc",
+      "beforeSha256": "ba49614b3b912387ce8425ffa274dc9e35910576a76b8e28956fee5d38edbf57",
+      "source": "docs/integration/proposed/browser-feature-expansion/integration/source/chrome/browser/aux/AuxSelectedStateHome.cc",
+      "afterSha256": "d1570801ecc1794abea41ba4c796fc7dfd3c273b11713e94d466010edfd78b56"
+    },
+    {
+      "path": "chrome/browser/aux/AuxSelectedStateHome.h",
+      "baseline": "docs/integration/proposed/profile-isolation-custody/barrier/source/chrome/browser/aux/AuxSelectedStateHome.h",
+      "beforeSha256": "511178394945890f0b8cfa1c6232a667da5dd4ebaca02a416b1a14edc1b2c779",
+      "source": "docs/integration/proposed/browser-feature-expansion/integration/source/chrome/browser/aux/AuxSelectedStateHome.h",
+      "afterSha256": "81f5a9138ffd7eccf173b081134a6c5e304184d1012557d4b6a1ccbf6971ddb7"
+    },
+    {
+      "path": "chrome/browser/aux/BUILD.gn",
+      "baseline": "docs/integration/proposed/profile-isolation-continuation/native-startup/source/chrome/browser/aux/BUILD.gn",
+      "beforeSha256": "a8be48e7c155ddd624dcaccc2b55553d82b269e0d04c7fb2e6f68ea6272972eb",
+      "source": "docs/integration/proposed/browser-feature-expansion/integration/source/chrome/browser/aux/BUILD.gn",
+      "afterSha256": "fd14e65efe7d2dc1436ddec0d7bfb7ae93fdbe6e006356c3587f4b7845e334ad"
+    }
+  ],
+  "patchSha256": "623e450656dc991e9ec9eaffcb9373aa37ebc57a04daa51fe5dbcd3388feb383"
+}

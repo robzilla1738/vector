@@ -1,0 +1,87 @@
+--- a/chrome/browser/aux/AuxSelectedStateHome.cc
++++ b/chrome/browser/aux/AuxSelectedStateHome.cc
+@@ -402,7 +402,10 @@
+   state.browser_shutdown_phase = expected;
+ }
+ }
+-void BeginNativeBrowserShutdown() { AdvanceNativeBrowserShutdown(1); }
++void BeginNativeBrowserShutdown() {
++  aux::features::CloseNativeFeatureIoAdmission();
++  AdvanceNativeBrowserShutdown(1);
++}
+ void ObserveNativeBrowserProfileTeardown() { AdvanceNativeBrowserShutdown(2); }
+ void ObserveNativeBrowserThreadsDestroyed() { AdvanceNativeBrowserShutdown(3); }
+ void ObserveNativeBrowserProcessDestroyed() { AdvanceNativeBrowserShutdown(4); }
+@@ -412,12 +415,14 @@
+   auto& state = CurrentState();
+   if (getpid() != state.process) return {.wrong_process = true};
+   std::lock_guard<std::mutex> lock(state.mutex);
++  // Later content/service/file writers are not proven drained.
+   return {false, state.browser_shutdown_phase != 0,
+           state.browser_shutdown_uncertain, state.browser_shutdown_phase,
+           state.browser_generation, state.active_reads, state.monitor_running,
+-          false}; // Later content/service/file writers are not proven drained.
++          false, aux::features::InspectNativeFeatureWrites()};
+ }
+ SelectedStateHomeObservation CloseNativeSelectedStateHome() {
++  aux::features::CloseNativeFeatureIoAdmission();
+   auto& state = CurrentState();
+   if (getpid() != state.process) return {SelectedStateHomeRoute::wrongProcess};
+   std::shared_ptr<SelectedNativeHome> owner;
+--- a/chrome/browser/aux/AuxSelectedStateHome.h
++++ b/chrome/browser/aux/AuxSelectedStateHome.h
+@@ -1,5 +1,6 @@
+ #pragma once
+ #include "AuxOwnedNativePeerChild.h"
++#include "chrome/browser/aux/feature_store/feature_write_participant.h"
+ #include "base/files/file_path.h"
+ #include "base/command_line.h"
+ #include <memory>
+@@ -19,6 +20,7 @@
+   uint64_t active_authority_reads = 0;
+   bool monitor_running = false;
+   bool whole_writer_drain_proven = false;
++  aux::features::NativeFeatureWriteObservation feature_writes;
+ };
+ void BeginNativeBrowserShutdown();
+ void ObserveNativeBrowserProfileTeardown();
+--- a/chrome/browser/aux/BUILD.gn
++++ b/chrome/browser/aux/BUILD.gn
+@@ -2,6 +2,8 @@
+ import("//chrome/browser/buildflags.gni")
+ source_set("platform") {
+   sources = [
++    "feature_store/feature_write_participant.cc",
++    "feature_store/feature_write_participant.h",
+     "installation_auth.cc",
+     "installation_auth.h",
+     "installation_carrier_custody.cc",
+@@ -132,7 +134,7 @@
+ source_set("account_profile_updater") {
+   sources = [ "account_profile_updater.cc", "account_profile_updater.h",
+               "account_profile_avatar.cc", "account_profile_avatar.h" ]
+-  public_deps = [ "//base", "//chrome/browser/profiles:profile",
++  public_deps = [ "//chrome/browser/ui:aux_profile_search_headers", "//base", "//chrome/browser/profiles:profile",
+                   "//components/keyed_service/content" ]
+   deps = [
+     ":account_profile_source", ":platform", ":profile_gate_prefs",
+@@ -179,6 +181,10 @@
+     public_deps = [ "//base" ]
+     deps = [
+       ":keyboard_shortcut_parser",
++      ":platform",
++      ":profile_identity",
++      "//crypto",
++      "//chrome/browser/ui:aux_profile_search_headers",
+       "//chrome/browser:browser_process",
+       "//chrome/browser/extensions/api/aux_mini_popup",
+       "//chrome/browser/profiles:profile",
+@@ -191,7 +197,7 @@
+       "//ui/events",
+       "//ui/gfx",
+     ]
+-    frameworks = [ "AppKit.framework" ]
++    frameworks = [ "AppKit.framework", "Carbon.framework" ]
+   }
+ }
+ 

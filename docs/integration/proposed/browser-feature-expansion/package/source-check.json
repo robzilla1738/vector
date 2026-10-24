@@ -1,0 +1,19 @@
+{
+  "format": "aux.browser-features.package-tooling-check.v1",
+  "passed": true,
+  "scope": "inert fixtures, exact three-file source patch replay, Python syntax and argument help only",
+  "fixtureDeltaLeaves": 2,
+  "refusalCases": [
+    "CSS mutation",
+    "wrong CLI predecessor",
+    "object-only native receipt"
+  ],
+  "guardReplayFiles": 3,
+  "originalPreparationLogicPreservedExceptDocumentedValidatorHook": true,
+  "productStaged": false,
+  "productAssembled": false,
+  "nativeTreeMutated": false,
+  "appExecuted": false,
+  "signed": false,
+  "runtimeAccepted": false
+}
