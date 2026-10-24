@@ -1,0 +1,21 @@
+--- a/content/public/browser/dom_storage_context.h
++++ b/content/public/browser/dom_storage_context.h
+@@ -11,6 +11,7 @@
+ #include <vector>
+ 
+ #include "base/functional/callback.h"
++#include "base/memory/raw_ptr.h"
+ #include "content/common/content_export.h"
+ 
+ namespace blink {
+@@ -72,8 +73,8 @@
+   // Reacquire after every async boundary; pointer/generation observations do
+   // not authorize writes, prove closure or cause lazy service construction.
+   struct AuxUiMigrationControls {
+-    storage::mojom::LocalStorageControl* local;
+-    storage::mojom::SessionStorageControl* session;
++    raw_ptr<storage::mojom::LocalStorageControl> local;
++    raw_ptr<storage::mojom::SessionStorageControl> session;
+     uint64_t generation;
+   };
+   CONTENT_EXPORT virtual std::optional<AuxUiMigrationControls>

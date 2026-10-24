@@ -1,0 +1,33 @@
+{
+  "format": "aux.native-dom-existing-controls-compile-fix.source.v1",
+  "nativeRoot": "/Users/rcourson/.codex/worktrees/aux-features-organization/web/docs/integration/proposed/standard-profile-isolation/native-dom-existing-controls-a9a/source",
+  "files": [
+    {
+      "path": "content/public/browser/dom_storage_context.h",
+      "inputSha256": "b75a30bbdfa2c2604f44e72141a7801fc46188006f40475b98a989b777124152",
+      "outputSha256": "c106dd8dd77ffc8fa071ec382cf285ee2bb5394646026fe37c5ab2b0b7da668c",
+      "output": "/Users/rcourson/.codex/worktrees/aux-features-organization/web/docs/integration/proposed/standard-profile-isolation/native-dom-existing-controls-compile-fix-a9b/source/content/public/browser/dom_storage_context.h",
+      "anchors": [
+        {
+          "find": "#include \"base/functional/callback.h\"",
+          "replace": "#include \"base/functional/callback.h\"\n#include \"base/memory/raw_ptr.h\"",
+          "count": 1
+        },
+        {
+          "find": "    storage::mojom::LocalStorageControl* local;",
+          "replace": "    raw_ptr<storage::mojom::LocalStorageControl> local;",
+          "count": 1
+        },
+        {
+          "find": "    storage::mojom::SessionStorageControl* session;",
+          "replace": "    raw_ptr<storage::mojom::SessionStorageControl> session;",
+          "count": 1
+        }
+      ]
+    }
+  ],
+  "nativeCheckoutChanged": false,
+  "nativeCompiled": false,
+  "productExecuted": false,
+  "activationAuthorized": false
+}
