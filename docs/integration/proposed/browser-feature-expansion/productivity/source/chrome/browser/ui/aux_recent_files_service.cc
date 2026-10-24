@@ -185,12 +185,33 @@ struct Rename : Item::Observer, std::enable_shared_from_this<Rename> {
 };
 // Reconcile only native DownloadManager GUIDs and the previously journaled
 // same-directory names. Never guess a new path or move an unrelated replacement.
-struct Recovery : std::enable_shared_from_this<Recovery> {
+struct Recovery : content::DownloadManager::Observer, std::enable_shared_from_this<Recovery> {
   std::shared_ptr<State> state;
   std::vector<std::string> ids;
   size_t index = 0;
   bool changed = false;
   uint64_t epoch = 0;
+  content::DownloadManager* waiting_manager = nullptr;
+  std::shared_ptr<Recovery> waiting_self;
+  ~Recovery() override { if (waiting_manager) waiting_manager->RemoveObserver(this); }
+  void Start() {
+    if (!Current()) { Finish(); return; }
+    auto* manager = state->profile->GetDownloadManager();
+    if (manager->IsManagerInitialized()) { Next(); return; }
+    waiting_self = shared_from_this(); waiting_manager = manager;
+    manager->AddObserver(this);
+  }
+  void OnManagerInitialized() override {
+    auto keep_alive = std::move(waiting_self);
+    waiting_manager->RemoveObserver(this); waiting_manager = nullptr;
+    Next();
+  }
+  void ManagerGoingDown(content::DownloadManager* manager) override {
+    auto keep_alive = std::move(waiting_self);
+    manager->RemoveObserver(this); waiting_manager = nullptr;
+    // No file operation was dispatched while history was unavailable.
+    Finish();
+  }
   void Finish() {
     state->SetPending(false);
   }
@@ -268,7 +289,7 @@ void RecoverPending(const std::shared_ptr<State>& state) {
     if (phase && (*phase == "planned" || *phase == "undo-planned")) recovery->ids.push_back(id);
   }
   if (recovery->ids.empty()) return;
-  state->SetPending(true); recovery->Next();
+  state->SetPending(true); recovery->Start();
 }
 }  // namespace
 void SetWriteOwner(Profile* profile, base::RepeatingCallback<bool()> current,

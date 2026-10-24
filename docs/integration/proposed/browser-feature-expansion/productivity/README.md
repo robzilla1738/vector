@@ -136,3 +136,9 @@ CSS class strings, AI suggestion/provider/cancellation contracts, chosen-file
 opaque-ID dispatch with no rename/provider fallback, and counted actual native
 chooser insertion. Actual native compile, OS drag and profile teardown remain
 integrator acceptance; no owner file or provider was touched by these checks.
+
+Startup reconciliation waits for actual `DownloadManager::IsManagerInitialized`
+(or its `OnManagerInitialized` callback) before interpreting a missing GUID.
+The pending registry remains held during that wait. Manager shutdown releases
+only this undispatched wait; it does not pretend a file task was completed.
+This prevents history loading from turning valid prepared receipts into conflicts.
