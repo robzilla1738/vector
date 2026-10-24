@@ -1,0 +1,46 @@
+{
+  "format": "aux.exact-successor.source-pair.v1",
+  "passed": true,
+  "daemon": "/private/tmp/aux-runtime-cache-async-link-20261023-a3/Aux Daemon",
+  "daemonSha256": "8e5d57a9be1bf9602d2ebc2e683d8693af837f817beb31b93508beb2ec596c2a",
+  "daemonReceiptSha256": "e3f2bf7cd66258d682c0ec7a4c5e68b4000bce87a5637f243df8a9f9b3427606",
+  "pty": "/private/tmp/aux-contained-pty-module-20261023-r2/pty.node",
+  "ptySha256": "03f4124086be96716bf1666555aa6d1a2b3d055efd103d5af8b984de5d0c03be",
+  "source": "/private/tmp/aux-browser-features-async-daemon-20261023-a1/index.mjs",
+  "sourceSha256": "dc41cebe8ad7dc4cac162226b1267b0ae7602727d05a781c59ff593afd537ef3",
+  "entry": "/private/tmp/aux-browser-features-async-daemon-20261023-a1/projected-entry/aux-native-entry.mjs",
+  "entrySha256": "b6aa10117346544e02e636d4b45ebb0049b421f7c40210775afdd661c1309de9",
+  "loader": "/private/tmp/aux-browser-features-async-daemon-20261023-a1/projected-entry/aux-owned-native.cjs",
+  "loaderSha256": "ec7ea0405f415d84e4afc695405eec07378d8c7233b926ffd9dd7db2edfed663",
+  "policyFormat": "aux.fresh.bootstrap.policy.v8",
+  "coldFeatureEnabled": false,
+  "runtimeAuthorityGranted": false,
+  "nativeBrowserBuildPending": false,
+  "uiModified": true,
+  "nativeBrowserReceiptSha256": "b7e5dbd45bedfd05dedaa1201512097be20dcb1d4712ac184931f0a4de027287",
+  "predecessorSourcePairSha256": "1eb6698864691d5affacc52f860ffb9a917fdf07a36cc5ffcc8fb55d26f4d8e4",
+  "sourceCompositionReceiptSha256": "7a52261da13b1930646d56577824a32b75086aaa25cd805f590d029ba462e3c6",
+  "sourceReceiptSha256": "f077e85802141dd6e0c9cf92bf31a3918e87d05e7ab6099a183d333f6df1af2e",
+  "entryReceiptSha256": "d065cb6a2725590509a345eac102960f0608bb1ccbf52262e7300425701f0c5b",
+  "nativeInputManifestSha256": "9d978ded686ef7ba6a0d8cdb26628634b5dc995acc2eb3a737b125ca72e7ab0f",
+  "nativeRelinkResultSha256": "ed611d1058045b562db19658c848b48f0093e1b90b7111da55c8a6f4bb815ec7",
+  "nativeAbiChanged": true,
+  "nativeHostApiChanged": true,
+  "pairedModuleAbiChanged": false,
+  "nativePairingPending": false,
+  "productExecuted": false,
+  "pairProducer": {
+    "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/runtime-cache-package-a3/bind_pair.py",
+    "sha256": "cb79fa759ff13b6bec66cd924867002a031c21f8cd482303c22d5123cfdd8ba0"
+  },
+  "pairProducerInputs": {
+    "tool": {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/runtime-cache-package-a3/cache_package.py",
+      "sha256": "2cdf68130e0c095f50530db3dab696fe0585eb8d9745340f03b307ada01ec7d0"
+    },
+    "review": {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/runtime-cache-package-a3/review.json",
+      "sha256": "24ea419348c4738681cb93f5940bf198aa0f61cc22eda08cfd2466aab611a519"
+    }
+  }
+}

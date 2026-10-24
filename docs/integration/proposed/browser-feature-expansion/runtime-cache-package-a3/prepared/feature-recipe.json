@@ -1,0 +1,168 @@
+{
+  "format": "aux.browser-features.inactive-package.recipe.v1",
+  "repository": "/Users/rcourson/Documents/Vibe/web",
+  "assembler": {
+    "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/profile-isolation-delivery/package/assemble.py",
+    "sha256": "e6ac0a786e9a443efa00beac35fe7eb4dc029c24a4dd7c752cf8dcc664e240f2"
+  },
+  "preparer": {
+    "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/profile-isolation-delivery/package/prepare.py",
+    "sha256": "0ab1853339753f8bd8c6913a7fa54127b03dca21f3ff362cc5ccd14543eaed54"
+  },
+  "tool": {
+    "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/package/feature_package.py",
+    "sha256": "bf631ba3ac0cb536bc7cb4f76a6f673ae6991d1a4319cc87a90f4401861bddaf"
+  },
+  "guardReview": {
+    "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/package/guard-transition.json",
+    "sha256": "c4d31fb767c0cfd40d46c79d2d714a67ac390859de02fa5253ba428594b5680d"
+  },
+  "guardPatch": {
+    "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/package/guard-transition.patch",
+    "sha256": "623e450656dc991e9ec9eaffcb9373aa37ebc57a04daa51fe5dbcd3388feb383"
+  },
+  "toolchainReview": {
+    "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/package/toolchain-alias-review.json",
+    "sha256": "010dfbfca72c07c059ea5790ec38d506e3b17bb839cb10bde7d0df5c2c68a390"
+  },
+  "baseRecipe": {
+    "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/runtime-cache-package-a3/prepared/base-recipe.json",
+    "sha256": "5c195f809f7497f4ea6327655fafa9fc949d0092719b7caf5035ec44e29d0f66"
+  },
+  "nativeComposition": {
+    "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/integration/composition.json",
+    "sha256": "740527ee8ba76f526e12478a6e7503e1f4da4d0943669ad6f1c6e3024a259e24"
+  },
+  "daemonComposition": {
+    "path": "/private/tmp/aux-browser-features-async-daemon-20261023-a1/composition.json",
+    "sha256": "7a52261da13b1930646d56577824a32b75086aaa25cd805f590d029ba462e3c6"
+  },
+  "daemonInputs": {
+    "path": "/private/tmp/aux-runtime-cache-async-object-20261023-a3/daemon-inputs.json",
+    "sha256": "9d978ded686ef7ba6a0d8cdb26628634b5dc995acc2eb3a737b125ca72e7ab0f"
+  },
+  "cliWrapper": {
+    "path": "apps/cli/Aux CLI.app/Contents/MacOS/aux-cli",
+    "sha256": "7874f6b80def71d65c42750b393fa512531d6d031ad28942f950078b667b9955",
+    "mode": 493
+  },
+  "testable": false,
+  "runtimeAuthorityGranted": false,
+  "productSigningAuthorized": false,
+  "baselineStage": {
+    "path": "/Users/rcourson/Documents/Vibe/web/out/browser-feature-stage-pair-20261023-a4/baseline",
+    "inventorySha256": "f4027f3a1b788bc73d967af08da8f6791018ea7cf6095dd23d2b9ab3044cbdf8"
+  },
+  "featureStage": {
+    "path": "/Users/rcourson/Documents/Vibe/web/out/browser-feature-stage-pair-20261023-a4/desktop-v1",
+    "inventorySha256": "a1eb18914baa58518a126468d099c69f80a46d2755659989f5182f0b343b8dae"
+  },
+  "replacements": [
+    {
+      "path": "apps/extension/dist/assets/appearance-C03x8vQf.js",
+      "previousSha256": "a171562318a41f235f26d3a3a59ae64c2a34a867165c513bb75f99cb86d94ca4",
+      "input": "/Users/rcourson/Documents/Vibe/web/out/browser-feature-stage-pair-20261023-a4/desktop-v1/ui/agent/assets/appearance-C03x8vQf.js",
+      "sha256": "93752762781d2cb926a652b20d498a17f29814a405bb8216f308c4ab73d4d951",
+      "mode": 420
+    },
+    {
+      "path": "apps/extension/dist/assets/appearance-Ceuw3-j6.js",
+      "previousSha256": "01c170f7f7ae1b7fd91509dd2525c4dbad466a4c3982281e674bec0954d8e80a",
+      "input": "/Users/rcourson/Documents/Vibe/web/out/browser-feature-stage-pair-20261023-a4/desktop-v1/ui/agent/assets/appearance-Ceuw3-j6.js",
+      "sha256": "6837e0fce2c3d2ddb1262de3df0d476fef00d590f4c157df9a380c81aeaf2cae",
+      "mode": 420
+    },
+    {
+      "path": "apps/extension/dist/assets/browser-binding-CzDmxQNA.js",
+      "previousSha256": "640740218d5568482b7de348a5de7bccded1827f78d3efcb01b909a8518d2c17",
+      "input": "/Users/rcourson/Documents/Vibe/web/out/browser-feature-stage-pair-20261023-a4/desktop-v1/ui/agent/assets/browser-binding-CzDmxQNA.js",
+      "sha256": "c9d434f10aadd743b5a8f651c745c26db0cc810b7c659ecc9772b308c0c69358",
+      "mode": 420
+    },
+    {
+      "path": "apps/extension/dist/assets/capture-result-nUfmrYC9.js",
+      "previousSha256": "cfa3ec9546c3971ad154a59443bd16044465963f4d3b36d9871a456916f438f4",
+      "input": "/Users/rcourson/Documents/Vibe/web/out/browser-feature-stage-pair-20261023-a4/desktop-v1/ui/agent/assets/capture-result-nUfmrYC9.js",
+      "sha256": "78e8b797cbb80b96386eae42e36686919fd5994d30e16afd2e62faa3c67a97d8",
+      "mode": 420
+    },
+    {
+      "path": "apps/extension/dist/assets/create-editor-B-Br5Wz9.js",
+      "previousSha256": "78b981a941e91bfdd52c2fd25787d310351c736214a8634a1591c86795a7e877",
+      "input": "/Users/rcourson/Documents/Vibe/web/out/browser-feature-stage-pair-20261023-a4/desktop-v1/ui/agent/assets/create-editor-B-Br5Wz9.js",
+      "sha256": "814f707acf1a1a455137ae23375aa6a41791a6dac99895f4439062285e66bdd5",
+      "mode": 420
+    },
+    {
+      "path": "apps/extension/dist/assets/general-3dgRbrRk.js",
+      "previousSha256": "95a0d7c7c4eda9c0ce7d1d6aaa3ef943327b48ae7261267cf0e5cd772b72fbc5",
+      "input": "/Users/rcourson/Documents/Vibe/web/out/browser-feature-stage-pair-20261023-a4/desktop-v1/ui/agent/assets/general-3dgRbrRk.js",
+      "sha256": "de4cbe9abb59b31e066ddd4e4ec8317eeff4845d6a4b4ad299e72152397a4dba",
+      "mode": 420
+    },
+    {
+      "path": "apps/extension/dist/assets/permission-approval-D-GTf91U.js",
+      "previousSha256": "e04488b780ed84b71289f7e63d205c2d50136eb6868f4ee23bb0f7c1d5e35bf8",
+      "input": "/Users/rcourson/Documents/Vibe/web/out/browser-feature-stage-pair-20261023-a4/desktop-v1/ui/agent/assets/permission-approval-D-GTf91U.js",
+      "sha256": "e4908ae0c13431dd77292d0df18504fc902ef9c725926b671a106e67e69b9e18",
+      "mode": 420
+    },
+    {
+      "path": "apps/extension/dist/assets/provider-Cw0zhujt.js",
+      "previousSha256": "6f1d1c108263b62fa39925da3bccd423524f6b5399aa31ada4a6c8a4b92c1d10",
+      "input": "/Users/rcourson/Documents/Vibe/web/out/browser-feature-stage-pair-20261023-a4/desktop-v1/ui/agent/assets/provider-Cw0zhujt.js",
+      "sha256": "1e64914a8267b82ea9bacbe04c4e1393495d84973130db7533928cc8b8abf133",
+      "mode": 420
+    },
+    {
+      "path": "apps/extension/dist/assets/tabsearch-3k_2hgil.js",
+      "previousSha256": "a988898d132dc507d84efe21f86184a67e62524381c69dbef645d2203d7988aa",
+      "input": "/Users/rcourson/Documents/Vibe/web/out/browser-feature-stage-pair-20261023-a4/desktop-v1/ui/agent/assets/tabsearch-3k_2hgil.js",
+      "sha256": "5344dac3ec31e708066abcdb5793d887f0e8511a13babfdb4abad3a8caa757ad",
+      "mode": 420
+    },
+    {
+      "path": "apps/extension/dist/assets/use-shortcut-capture-DGr8Ws5Z.js",
+      "previousSha256": "77946a7fa9d48fcb546f04d345c9eeed2ece6e332bdad4f35e9c91565d2aa652",
+      "input": "/Users/rcourson/Documents/Vibe/web/out/browser-feature-stage-pair-20261023-a4/desktop-v1/ui/agent/assets/use-shortcut-capture-DGr8Ws5Z.js",
+      "sha256": "4948b274e6038eac50a7c0b0ea959d7b8fdc7356b8c1a30460e84b0b2d732249",
+      "mode": 420
+    },
+    {
+      "path": "apps/extension/dist/assets/utils-Cl9zfMcr.js",
+      "previousSha256": "f699d2de7d31ddc769ed3c1194ffd6b588baeb99b04f223bcbd7a89961b178fe",
+      "input": "/Users/rcourson/Documents/Vibe/web/out/browser-feature-stage-pair-20261023-a4/desktop-v1/ui/agent/assets/utils-Cl9zfMcr.js",
+      "sha256": "09a71987e6cba7ec3a23d53803faf02f0209efd20661bf01c0bac2a620d888a5",
+      "mode": 420
+    },
+    {
+      "path": "apps/extension/dist/background.js",
+      "previousSha256": "2aa4cff640db8118f6d5820e757860f4e24c637c4f6369c28065a819773b15d6",
+      "input": "/Users/rcourson/Documents/Vibe/web/out/browser-feature-stage-pair-20261023-a4/desktop-v1/ui/agent/background.js",
+      "sha256": "8be6b070f7230bb8efe8f3dc7386e9774de15d5e0d4a39d0aef21cbf96e8bc84",
+      "mode": 420
+    },
+    {
+      "path": "apps/extension/dist/manifest.json",
+      "previousSha256": "a6fa0936721353b71ad9ac0e0d7b30f975f320377cf403219a293dfc9856b4cb",
+      "input": "/Users/rcourson/Documents/Vibe/web/out/browser-feature-stage-pair-20261023-a4/desktop-v1/ui/agent/manifest.json",
+      "sha256": "dc0b1d50ae521de7f3fb0283446672cb82adb6686a34aa28bcd403fdefef84d6",
+      "mode": 420
+    },
+    {
+      "path": "apps/cli/Aux CLI.app/Contents/MacOS/aux-cli-sea",
+      "previousSha256": "3a9ccd7a0ac13560eedb7d5c655b8144640648a9abeb6d1f2f4050bc58fb3185",
+      "input": "/Users/rcourson/Documents/Vibe/web/out/browser-feature-stage-pair-20261023-a4/desktop-v1/apps/cli/Aux CLI.app/Contents/MacOS/aux-cli",
+      "sha256": "bd7affd5eac3df380a1d45118cb4b35e121dad64188ae61b2da884ba5f386965",
+      "mode": 493
+    }
+  ],
+  "runtimeCacheTool": {
+    "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/runtime-cache-package-a3/cache_package.py",
+    "sha256": "2cdf68130e0c095f50530db3dab696fe0585eb8d9745340f03b307ada01ec7d0"
+  },
+  "runtimeCacheReview": {
+    "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/runtime-cache-package-a3/review.json",
+    "sha256": "24ea419348c4738681cb93f5940bf198aa0f61cc22eda08cfd2466aab611a519"
+  }
+}

@@ -1,3 +1,11 @@
+# Native cache successor built; final inactive packaging in progress — 2026-10-23
+
+The full a18 browser build passed. The new a3 cache/daemon host also compiled and linked successfully through the serialized build wrapper: one changed host object, the expected 94-file dependency closure, unchanged native-module ABI/private definitions, and an unsigned, unexecuted product. This includes the omitted native method registration correction, retained/racing-cache inspection, genuine async Owner lifetime, exact mutable-package classification, and descriptor cleanup with errno preservation. See `docs/integration/proposed/browser-feature-expansion/integration/evidence/native-cache-host-a3.json`.
+
+The actual ordinary source and dormant entry are independently projected and paired with that new daemon and a18 browser. Fresh a4 baseline/feature resources passed their 14-leaf delta check. A3 base and feature packaging preparation passed; final inactive assembly is running. Historical a1 failure, successful a2 build/preparation, a17 package and accepted app remain unchanged. No UI/CSS/assets changed in this native follow-up.
+
+This does not complete protected startup or runtime acceptance. Mandatory writer custody, full drain/authenticated normal reopen and atomic whole-directory runtime publication still need implementation under the pending profile-authority decision. Modified/newer runtimes remain explicitly unverified, not authenticated updates. No product launch/shutdown/restart, signing/release, provider/cloud operation, owner-state access or actual-app comparison occurred.
+
 # Full a18 browser passed; coupled cache/daemon successor in progress — 2026-10-23
 
 The full a18 unsigned browser build passed after the chosen-file pre-submit settlement fix, with exact 259-input provenance, 416 native leaves and 16 inspected unsigned Mach-O files. The accepted app and successful inactive a17 package remain intact.
