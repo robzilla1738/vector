@@ -1,0 +1,56 @@
+{
+  "modifiedCount": 6,
+  "addedCount": 2,
+  "countedAdaptations": 28,
+  "files": [
+    {
+      "path": "chrome/browser/extensions/api/messaging/aux_native_messaging_lifetime.h",
+      "beforeSha256": "cea96cac077371596371b95651dd2972607293e3f18295c73c0a78a6e59a3551",
+      "afterSha256": "5e936b7cfaaff9c3c4ad8bfbab959d530f4c16ad0ba6b4439bed379ea917a460"
+    },
+    {
+      "path": "chrome/browser/extensions/api/messaging/launch_context_posix.cc",
+      "beforeSha256": "104a5914f95f4336aa54434cce59155963404dca2ea52bdee35e79aaea1b21ed",
+      "afterSha256": "5007bc9ed3ab70693ffbebc5687cda1105246f74cce234b07cae58afb4d6c382"
+    },
+    {
+      "path": "chrome/browser/ui/aux_owned_browser_quiesce.cc",
+      "beforeSha256": "d8fb7b6084597827336063ba9b70be16f58d4cff405d165f62965a97a82395f1",
+      "afterSha256": "5f2d33791162d32cc94568256facc082c91a9b55dc0496b4d9788995e78bdb7f"
+    },
+    {
+      "path": "chrome/browser/ui/aux_owned_browser_quiesce.h",
+      "beforeSha256": "16e65be831601477acf05a81b66d2032ad6147ce1e8ca4b563939764e668d8f7",
+      "afterSha256": "e4993dec9f21a643bf51e5c4a11b52903abe183ff4e562f91159f5099433618d"
+    },
+    {
+      "path": "content/browser/aux_child_lifetime.h",
+      "beforeSha256": "44b5aaf5d6c8a6ea48e92c7f00433b573860b06403a2f097ec80e9497764c7c9",
+      "afterSha256": "6dd37d40401d70cba57efc6be80e3f4db8365692f62d64eecae5ccd9bde7a8b1"
+    },
+    {
+      "path": "content/browser/child_process_launcher_helper_mac.cc",
+      "beforeSha256": "d0b0ec0d435e0729f41d2eae119e60a795141e2de0081fa8bd95a86a29869d7c",
+      "afterSha256": "3593313f53dc2a6b149679340f148525b853354354b27f08e2374ddaf94115dd"
+    }
+  ],
+  "patchSha256": "42a5b8aec0863b8ed29b346d734f65f64a188186f28f008e4a329ed003a656b3",
+  "verification": {
+    "exactOrderedReplay": "passed",
+    "unifiedPatchReplay": "passed",
+    "whitespaceErrorCheck": "passed",
+    "nativeCompile": "not run by worker",
+    "runtime": "not run"
+  },
+  "added": [
+    {
+      "path": "content/browser/aux_child_process_drain.cc",
+      "sha256": "9066cb23944a0494899337fe4740c1cd6975b168e40f17628c2e9b78854ef3ae"
+    },
+    {
+      "path": "content/public/browser/aux_child_process_drain.h",
+      "sha256": "45d254d75f1c7ad8b1e40f3e91ed5ce6b2ade57e83fc8d332f5afb65c41a1449"
+    }
+  ],
+  "scope": "Standard supervised Aux writer universe; this slice is participant admission/settlement, not a whole-browser certificate."
+}

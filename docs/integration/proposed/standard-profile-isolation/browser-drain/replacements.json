@@ -1,0 +1,170 @@
+[
+  {
+    "path": "content/browser/aux_child_lifetime.h",
+    "old": "  struct Snapshot { size_t unresolved; bool all_writer_coverage = false; };",
+    "new": "  struct Snapshot {\n    size_t unresolved = 0;\n    bool all_writer_coverage = false;  // This participant is never a census.\n    bool admission_closed = false;\n    bool wrong_process = false;\n    bool accounting_unknown = false;\n    size_t unbound = 0;\n    size_t uncertain = 0;\n    uint64_t settled = 0;\n  };",
+    "count": 1
+  },
+  {
+    "path": "content/browser/aux_child_lifetime.h",
+    "old": "    Registry().push_back(entry);  // Reserve before the actual spawn.",
+    "new": "    if (getpid() != RegistryOwner() || Closed() || Registry().size() >= 4096) {\n      if (getpid() != RegistryOwner() || Registry().size() >= 4096)\n        AccountingUnknown() = true;\n      return nullptr;\n    }\n    Registry().push_back(entry);  // Reserve before the actual spawn.",
+    "count": 1
+  },
+  {
+    "path": "content/browser/aux_child_lifetime.h",
+    "old": "  static Snapshot Inspect() {\n    std::lock_guard<std::mutex> lock(RegistryMutex());\n    return {Registry().size(), false};\n  }",
+    "new": "  static void CloseAdmission() {\n    std::lock_guard<std::mutex> lock(RegistryMutex());\n    Closed() = true;\n    if (getpid() != RegistryOwner()) AccountingUnknown() = true;\n  }\n  static Snapshot Inspect() {\n    Snapshot result;\n    std::vector<std::shared_ptr<AuxChildLifetime>> entries;\n    {\n      std::lock_guard<std::mutex> lock(RegistryMutex());\n      result.admission_closed = Closed();\n      result.wrong_process = getpid() != RegistryOwner();\n      result.accounting_unknown = AccountingUnknown();\n      result.settled = Settled();\n      entries = Registry();\n    }\n    // Never hold the registry mutex while acquiring an entry mutex: the sole\n    // original reaper releases an entry in the opposite order.\n    for (const auto& entry : entries) {\n      std::lock_guard<std::mutex> lock(entry->mutex);\n      if (entry->released) continue;\n      ++result.unresolved;\n      if (!entry->bound) ++result.unbound;\n      if (entry->uncertain) ++result.uncertain;\n    }\n    return result;\n  }",
+    "count": 1
+  },
+  {
+    "path": "content/browser/aux_child_lifetime.h",
+    "old": "  AuxChildLifetime() = default;",
+    "new": "  AuxChildLifetime() = default;\n  static pid_t RegistryOwner() { static const pid_t owner = getpid(); return owner; }\n  static bool& Closed() { static bool closed = false; return closed; }\n  static bool& AccountingUnknown() { static bool unknown = false; return unknown; }\n  static uint64_t& Settled() { static uint64_t settled = 0; return settled; }",
+    "count": 1
+  },
+  {
+    "path": "content/browser/aux_child_lifetime.h",
+    "old": "    std::erase_if(Registry(), [this](const auto& entry) { return entry.get() == this; });",
+    "new": "    if (released || uncertain) return;\n    released = true;\n    if (Settled() == UINT64_MAX) AccountingUnknown() = true;\n    else ++Settled();\n    std::erase_if(Registry(), [this](const auto& entry) { return entry.get() == this; });",
+    "count": 1
+  },
+  {
+    "path": "content/browser/aux_child_lifetime.h",
+    "old": "  bool uncertain = false;",
+    "new": "  bool uncertain = false;\n  bool released = false;",
+    "count": 1
+  },
+  {
+    "path": "content/browser/aux_child_lifetime.h",
+    "old": "#include <algorithm>",
+    "new": "#include <algorithm>\n#include <cstdint>",
+    "count": 1
+  },
+  {
+    "path": "chrome/browser/extensions/api/messaging/aux_native_messaging_lifetime.h",
+    "old": "  struct Snapshot { size_t unresolved; bool all_writer_coverage = false; };",
+    "new": "  struct Snapshot {\n    size_t unresolved = 0;\n    bool all_writer_coverage = false;  // This participant is never a census.\n    bool admission_closed = false;\n    bool wrong_process = false;\n    bool accounting_unknown = false;\n    size_t unbound = 0;\n    size_t uncertain = 0;\n    uint64_t settled = 0;\n  };",
+    "count": 1
+  },
+  {
+    "path": "chrome/browser/extensions/api/messaging/aux_native_messaging_lifetime.h",
+    "old": "    Registry().push_back(entry);  // Reserve before the actual spawn.",
+    "new": "    if (getpid() != RegistryOwner() || Closed() || Registry().size() >= 4096) {\n      if (getpid() != RegistryOwner() || Registry().size() >= 4096)\n        AccountingUnknown() = true;\n      return nullptr;\n    }\n    Registry().push_back(entry);  // Reserve before the actual spawn.",
+    "count": 1
+  },
+  {
+    "path": "chrome/browser/extensions/api/messaging/aux_native_messaging_lifetime.h",
+    "old": "  static Snapshot Inspect() {\n    std::lock_guard<std::mutex> lock(RegistryMutex());\n    return {Registry().size(), false};\n  }",
+    "new": "  static void CloseAdmission() {\n    std::lock_guard<std::mutex> lock(RegistryMutex());\n    Closed() = true;\n    if (getpid() != RegistryOwner()) AccountingUnknown() = true;\n  }\n  static Snapshot Inspect() {\n    Snapshot result;\n    std::vector<std::shared_ptr<AuxNativeMessagingLifetime>> entries;\n    {\n      std::lock_guard<std::mutex> lock(RegistryMutex());\n      result.admission_closed = Closed();\n      result.wrong_process = getpid() != RegistryOwner();\n      result.accounting_unknown = AccountingUnknown();\n      result.settled = Settled();\n      entries = Registry();\n    }\n    // Never hold the registry mutex while acquiring an entry mutex: the sole\n    // original reaper releases an entry in the opposite order.\n    for (const auto& entry : entries) {\n      std::lock_guard<std::mutex> lock(entry->mutex);\n      if (entry->released) continue;\n      ++result.unresolved;\n      if (!entry->bound) ++result.unbound;\n      if (entry->uncertain) ++result.uncertain;\n    }\n    return result;\n  }",
+    "count": 1
+  },
+  {
+    "path": "chrome/browser/extensions/api/messaging/aux_native_messaging_lifetime.h",
+    "old": "  AuxNativeMessagingLifetime() = default;",
+    "new": "  AuxNativeMessagingLifetime() = default;\n  static pid_t RegistryOwner() { static const pid_t owner = getpid(); return owner; }\n  static bool& Closed() { static bool closed = false; return closed; }\n  static bool& AccountingUnknown() { static bool unknown = false; return unknown; }\n  static uint64_t& Settled() { static uint64_t settled = 0; return settled; }",
+    "count": 1
+  },
+  {
+    "path": "chrome/browser/extensions/api/messaging/aux_native_messaging_lifetime.h",
+    "old": "    std::erase_if(Registry(), [this](const auto& entry) { return entry.get() == this; });",
+    "new": "    if (released || uncertain) return;\n    released = true;\n    if (Settled() == UINT64_MAX) AccountingUnknown() = true;\n    else ++Settled();\n    std::erase_if(Registry(), [this](const auto& entry) { return entry.get() == this; });",
+    "count": 1
+  },
+  {
+    "path": "chrome/browser/extensions/api/messaging/aux_native_messaging_lifetime.h",
+    "old": "  bool uncertain = false;",
+    "new": "  bool uncertain = false;\n  bool released = false;",
+    "count": 1
+  },
+  {
+    "path": "chrome/browser/extensions/api/messaging/aux_native_messaging_lifetime.h",
+    "old": "#include <algorithm>",
+    "new": "#include <algorithm>\n#include <cstdint>",
+    "count": 1
+  },
+  {
+    "path": "content/browser/child_process_launcher_helper_mac.cc",
+    "old": "  process.aux_child_lifetime = AuxChildLifetime::Reserve();\n  process.process = base::LaunchProcess",
+    "new": "  process.aux_child_lifetime = AuxChildLifetime::Reserve();\n  if (!process.aux_child_lifetime) {\n    *launch_result = LAUNCH_RESULT_FAILURE;\n    return process;\n  }\n  process.process = base::LaunchProcess",
+    "count": 1
+  },
+  {
+    "path": "chrome/browser/extensions/api/messaging/launch_context_posix.cc",
+    "old": "  auto custody = AuxNativeMessagingLifetime::Reserve();\n  base::Process local_process",
+    "new": "  auto custody = AuxNativeMessagingLifetime::Reserve();\n  if (!custody) {\n    LOG(ERROR) << \"Native messaging launch admission is closed\";\n    return std::nullopt;\n  }\n  base::Process local_process",
+    "count": 1
+  },
+  {
+    "path": "chrome/browser/ui/aux_owned_browser_quiesce.h",
+    "old": "#include \"base/functional/callback.h\"",
+    "new": "#include \"base/functional/callback.h\"\n#include \"content/public/browser/aux_child_process_drain.h\"",
+    "count": 1
+  },
+  {
+    "path": "chrome/browser/ui/aux_owned_browser_quiesce.h",
+    "old": "  bool close_requested = false;",
+    "new": "  bool close_requested = false;\n  bool process_shutdown = false;\n  content::aux_migration::ChildProcessDrainSnapshot content_children;\n  content::aux_migration::ChildProcessDrainSnapshot native_messaging;",
+    "count": 1
+  },
+  {
+    "path": "chrome/browser/ui/aux_owned_browser_quiesce.h",
+    "old": "OwnedBrowserQuiesceObservation InspectOwnedBrowserParticipantQuiesce();",
+    "new": "OwnedBrowserQuiesceObservation InspectOwnedBrowserParticipantQuiesce();\nstruct BrowserParticipantDrainResult {\n  bool close_requested = false;\n  bool process_shutdown = false;\n  bool pending = true;\n  bool unknown = false;\n};\n// Only process shutdown may use this irreversible close. A normal window close\n// or profile switch must never call it. The selected daemon peer is retained\n// separately until its authenticated final browser receipt has been consumed.\nvoid CloseOwnedBrowserParticipantsForShutdown(\n    base::OnceCallback<void(OwnedBrowserQuiesceObservation)> done);\nBrowserParticipantDrainResult EvaluateOwnedBrowserParticipantDrain(\n    const OwnedBrowserQuiesceObservation& observation);",
+    "count": 1
+  },
+  {
+    "path": "chrome/browser/ui/aux_owned_browser_quiesce.cc",
+    "old": "#include \"chrome/browser/aux/browser_platform.h\"",
+    "new": "#include \"chrome/browser/aux/browser_platform.h\"\n#include \"chrome/browser/extensions/api/messaging/aux_native_messaging_lifetime.h\"",
+    "count": 1
+  },
+  {
+    "path": "chrome/browser/ui/aux_owned_browser_quiesce.cc",
+    "old": "  bool close_requested = false;",
+    "new": "  bool close_requested = false;\n  bool process_shutdown = false;",
+    "count": 1
+  },
+  {
+    "path": "chrome/browser/ui/aux_owned_browser_quiesce.cc",
+    "old": "  result.close_requested = state.close_requested;",
+    "new": "  result.close_requested = state.close_requested;\n  result.process_shutdown = state.process_shutdown;\n  result.content_children = content::aux_migration::InspectContentChildDrain();\n  const auto messaging = extensions::AuxNativeMessagingLifetime::Inspect();\n  result.native_messaging = {messaging.admission_closed, messaging.wrong_process,\n      messaging.accounting_unknown, messaging.unresolved, messaging.unbound,\n      messaging.uncertain, messaging.settled};",
+    "count": 1
+  },
+  {
+    "path": "chrome/browser/ui/aux_owned_browser_quiesce.cc",
+    "old": "void CloseOwnedBrowserParticipantsForMigration(QuiesceCallback done) {",
+    "new": "namespace {\nvoid CloseParticipants(QuiesceCallback done, bool process_shutdown) {",
+    "count": 1
+  },
+  {
+    "path": "chrome/browser/ui/aux_owned_browser_quiesce.cc",
+    "old": "  if (state.close_requested) {\n    ReportAvailableObservations();",
+    "new": "  if (state.close_requested) {\n    // An earlier migration cannot be promoted to an ordinary shutdown receipt.\n    if (state.process_shutdown != process_shutdown)\n      state.profile_manager_unavailable = true;\n    ReportAvailableObservations();",
+    "count": 1
+  },
+  {
+    "path": "chrome/browser/ui/aux_owned_browser_quiesce.cc",
+    "old": "  state.close_requested = true;\n  state.participant_submission_pending = true;",
+    "new": "  state.close_requested = true;\n  state.process_shutdown = process_shutdown;\n  content::aux_migration::CloseContentChildLaunchAdmission();\n  extensions::AuxNativeMessagingLifetime::CloseAdmission();\n  state.participant_submission_pending = true;",
+    "count": 1
+  },
+  {
+    "path": "chrome/browser/ui/aux_owned_browser_quiesce.cc",
+    "old": "  state.helper_pending = true;",
+    "new": "  state.helper_pending = !process_shutdown;",
+    "count": 1
+  },
+  {
+    "path": "chrome/browser/ui/aux_owned_browser_quiesce.cc",
+    "old": "  BrowserPlatform::Get().QuiesceOwnedDirectHelpersForMigration(base::BindOnce(",
+    "new": "  if (!process_shutdown)\n    BrowserPlatform::Get().QuiesceOwnedDirectHelpersForMigration(base::BindOnce(",
+    "count": 1
+  },
+  {
+    "path": "chrome/browser/ui/aux_owned_browser_quiesce.cc",
+    "old": "\n}  // namespace aux\n",
+    "new": "\n}  // namespace\nvoid CloseOwnedBrowserParticipantsForMigration(QuiesceCallback done) {\n  CloseParticipants(std::move(done), false);\n}\nvoid CloseOwnedBrowserParticipantsForShutdown(QuiesceCallback done) {\n  CloseParticipants(std::move(done), true);\n}\nBrowserParticipantDrainResult EvaluateOwnedBrowserParticipantDrain(\n    const OwnedBrowserQuiesceObservation& o) {\n  BrowserParticipantDrainResult result{o.close_requested, o.process_shutdown,\n      !o.close_requested || o.participant_submission_pending ||\n          o.helper_observation_pending || o.session_observation_pending ||\n          o.feature_observation_pending,\n      o.profile_manager_unavailable};\n  const auto& f = o.feature_writes;\n  result.pending |= !f.admission_closed || f.pending;\n  result.unknown |= f.wrong_process || f.uncertain || f.abandoned;\n  for (const auto& child : {o.content_children, o.native_messaging}) {\n    result.pending |= !child.admission_closed || child.pending || child.unbound;\n    result.unknown |= child.wrong_process || child.accounting_unknown || child.uncertain;\n  }\n  const auto& p = o.async_profile_creation;\n  result.pending |= !p.closed || p.active_dispatches || p.unfinished_initializations;\n  result.unknown |= p.unresolved_initializations != 0;\n  const auto& r = o.renderer_navigation;\n  result.pending |= !r.closed || r.active_renderer_init_calls ||\n      r.pending_renderer_launches || r.active_navigation_dispatches ||\n      r.live_navigation_requests;\n  result.unknown |= r.unresolved_renderer_launches ||\n      r.unresolved_navigation_cleanups || r.unsupported_navigation_cancellations;\n  const auto& w = o.service_workers;\n  result.pending |= !w.start_admission_closed || w.pending_start_callbacks ||\n      w.active_start_callback_dispatches || w.pending_context_stop_callbacks ||\n      w.active_stop_cleanup_dispatches;\n  result.unknown |= w.unresolved_start_callbacks || w.unresolved_context_stops ||\n      w.unavailable_context_cores || w.detached_worker_observations;\n  const auto& e = o.extension_worker_starts;\n  result.pending |= e.admission_open;\n  const auto inspect_queue = [&](const auto& q, bool destroyed) {\n    const bool callbacks = q.registration_callbacks || q.verification_callbacks ||\n        q.pending_storage_registrations || q.pending_unregistrations;\n    result.pending |= callbacks || q.pending_tasks;\n    result.unknown |= destroyed && (callbacks || q.pending_tasks);\n    for (const auto& worker : q.workers) result.pending |= worker.starting;\n    for (const auto& worker : q.retired_workers) result.pending |= worker.starting;\n  };\n  for (const auto& q : e.queues) inspect_queue(q, false);\n  for (const auto& q : e.destroyed_queues) inspect_queue(q, true);\n  if (!o.process_shutdown) {\n    result.pending |= !o.helpers || !o.helpers->owned_helpers_drained();\n  }\n  if (!o.sessions) {\n    result.pending = true;\n    return result;\n  }\n  const auto& sessions = *o.sessions;\n  result.unknown |= sessions.outcome != SessionWriterParticipantOutcome::kObserved ||\n      sessions.profiles.size() != sessions.loaded_profile_count;\n  const auto& dispatch = sessions.final_snapshot_dispatch;\n  result.pending |= !dispatch.dispatch_admission_closed ||\n      !dispatch.captured_writes_complete();\n  result.unknown |= dispatch.accounting_unknown || dispatch.unresolved_paths ||\n      dispatch.failed_write_observations;\n  const auto inspect_service = [&](const auto& service) {\n    if (service.outcome == ProfileSessionWriterOutcome::kNoExistingService) return;\n    if (service.outcome != ProfileSessionWriterOutcome::kServiceObserved ||\n        !service.close || !service.write) {\n      result.unknown = true;\n      return;\n    }\n    const auto& close = *service.close;\n    result.pending |= !close.admission_closed || close.unsubmitted_commands ||\n        close.unsubmitted_reset || close.deferred_encryption_operations ||\n        close.active_encryption_replay_operations;\n    result.unknown |= close.manager_unavailable || close.admission_accounting_unknown ||\n        close.required_encrypted_backend_missing;\n    for (const auto& backend : close.backends) {\n      result.pending |= !backend.admission_closed || !backend.owned_file_object_released;\n      result.unknown |= !backend.owning_sequence_observed || backend.task_rejected ||\n          backend.accounting_unknown || backend.failed_write_returns;\n    }\n    if (service.write->captured_batch_had_commands &&\n        !service.write->captured_writes_completed()) result.unknown = true;\n    result.pending |= service.write->deferred_encryption_work;\n  };\n  for (const auto& profile : sessions.profiles) {\n    inspect_service(profile);\n    inspect_service(profile.app_session);\n  }\n  return result;\n}\n}  // namespace aux\n",
+    "count": 1
+  }
+]
