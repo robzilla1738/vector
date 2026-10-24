@@ -1,0 +1,36 @@
+{
+  "format": "aux.counted-overlay.v1",
+  "files": [
+    {
+      "path": "chrome/browser/extensions/api/aux_browser_preferences/aux_feature_expansion_api.cc",
+      "baselineSource": "docs/integration/proposed/browser-feature-expansion/integration/source/chrome/browser/extensions/api/aux_browser_preferences/aux_feature_expansion_api.cc",
+      "beforeSha256": "c0209446da9a6178c4dc858e8ca5070db0348818a2d465c3cb5c8892dc79908a",
+      "afterSha256": "71bbdfc61a65eb2aee6168bc72b4ccc7a5ad017918ce06a9a7d469266aa2ca3b",
+      "edits": [
+        {
+          "find": "#include \"chrome/browser/ui/aux_tab_reference_context.h\"",
+          "replace": "#include \"chrome/browser/ui/aux_tab_reference_context.h\"\n#include \"chrome/browser/ui/aux_tab_mention_spaces.h\"",
+          "count": 1
+        },
+        {
+          "find": "  if (method == \"getOrganizationSnapshot\") {",
+          "replace": "  if (method == \"getTabMentionSpaces\" || method == \"captureTabMentionSpace\") {\n    if (!SettingsDocument(sender, profile(), render_frame_host()))\n      return RespondNow(Error(\"Live Aux composer document required\"));\n    if (method == \"getTabMentionSpaces\") {\n      if (!args().empty()) return RespondNow(Error(\"This method takes no arguments\"));\n      return RespondNow(WithArguments(GetAuxTabMentionSpaces(sender)));\n    }\n    if (args().size() != 1 || !request)\n      return RespondNow(Error(\"Explicit Space selection required\"));\n    return RespondNow(WithArguments(CaptureAuxTabMentionSpace(sender, *request)));\n  }\n  if (method == \"getOrganizationSnapshot\") {",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/extensions/api/aux_browser_preferences/aux_feature_expansion_api.h",
+      "baselineSource": "docs/integration/proposed/browser-feature-expansion/integration/source/chrome/browser/extensions/api/aux_browser_preferences/aux_feature_expansion_api.h",
+      "beforeSha256": "fbc7de6bb9f4788ba5c372521e576beff22a8199014b8850fc31666980325431",
+      "afterSha256": "7f9aac8f99165debe5d98c64ca4bf7fe3d8da9776503f5a973e723507500b354",
+      "edits": [
+        {
+          "find": "}  // namespace extensions",
+          "replace": "class AuxBrowserPreferencesGetTabMentionSpacesFunction final : public AuxFeatureExpansionFunction {\n public:\n  DECLARE_EXTENSION_FUNCTION(\"auxBrowserPreferences.getTabMentionSpaces\", AUXBROWSERPREFERENCES_GETTABMENTIONSPACES)\n protected:\n  ~AuxBrowserPreferencesGetTabMentionSpacesFunction() override = default;\n};\nclass AuxBrowserPreferencesCaptureTabMentionSpaceFunction final : public AuxFeatureExpansionFunction {\n public:\n  DECLARE_EXTENSION_FUNCTION(\"auxBrowserPreferences.captureTabMentionSpace\", AUXBROWSERPREFERENCES_CAPTURETABMENTIONSPACE)\n protected:\n  ~AuxBrowserPreferencesCaptureTabMentionSpaceFunction() override = default;\n};\n}  // namespace extensions",
+          "count": 1
+        }
+      ]
+    }
+  ]
+}
