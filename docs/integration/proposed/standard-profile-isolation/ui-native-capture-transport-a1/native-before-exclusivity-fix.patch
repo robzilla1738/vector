@@ -1,0 +1,454 @@
+--- a/chrome/browser/aux/AuxNativePeerWire.h
++++ b/chrome/browser/aux/AuxNativePeerWire.h
+@@ -115,8 +115,8 @@
+ constexpr mach_msg_id_t kAuthorityRegistered = 0x4155584b; // AUXK
+ constexpr mach_msg_id_t kAuthorityRequest = 0x4155584c; // AUXL
+ constexpr mach_msg_id_t kAuthorityReply = 0x4155584d; // AUXM
+-constexpr uint32_t kAuthorityVersion = 5;
+-constexpr uint32_t kSign = 1, kPublicKeys = 2, kInboxKey = 3, kObserve = 4, kAcknowledge = 5, kBrowserStartup = 6;
++constexpr uint32_t kAuthorityVersion = 6;
++constexpr uint32_t kSign = 1, kPublicKeys = 2, kInboxKey = 3, kObserve = 4, kAcknowledge = 5, kBrowserStartup = 6, kUiCapture = 7;
+ struct AuthorityWire {
+   mach_msg_header_t header{};
+   uint32_t version = kAuthorityVersion;
+@@ -124,8 +124,9 @@
+   uint64_t generation = 0;
+   uint64_t sequence = 0;
+   std::array<uint8_t, 16> nonce{};
+-  std::array<uint8_t, 51> message{};
+-  uint8_t padding = 0;
++  uint32_t message_length = 0;
++  uint32_t reserved = 0;
++  std::array<uint8_t, 8192> message{};
+ };
+ struct AuthorityReceived { AuthorityWire wire; mach_msg_audit_trailer_t trailer; };
+ struct AuthorityReplyWire {
+--- a/chrome/browser/aux/AuxNativePeerTransport.h
++++ b/chrome/browser/aux/AuxNativePeerTransport.h
+@@ -116,6 +116,8 @@
+                                            uint32_t timeout_ms);
+   DaemonAuthorityReply GetInstallationPublicKeys(uint32_t timeout_ms);
+   DaemonAuthorityReply GetBrowserStartupLease(uint32_t timeout_ms);
++  // Finite capture-data frames only; no profile/migration admission.
++  DaemonAuthorityReply ExchangeUiCaptureFrame(std::span<const uint8_t> frame, uint32_t timeout_ms);
+   DaemonAuthorityReply GetAgentInboxV2MasterKey(uint32_t timeout_ms);
+   // Caller invokes only after its actual owner/pulse publication fence.
+   DaemonAuthorityStatus AcceptAuthorityReply(const DaemonAuthorityReply& reply,
+--- a/chrome/browser/aux/AuxNativePeerTransport.cc
++++ b/chrome/browser/aux/AuxNativePeerTransport.cc
+@@ -4,6 +4,8 @@
+ #include "AuxSelectedHomePolicyBridge.h"
+ #if defined(AUX_NATIVE_DAEMON_AUTHORITY_SERVER)
+ #include "AuxFreshColdBootstrapNativeBridge.h"
++extern "C" int32_t AuxBeginPreparedUiCapture(uint64_t, uint64_t, const uint8_t*,
++    const uint8_t*, uint32_t, uint8_t*, uint32_t, uint32_t*);
+ #endif
+ #include <sys/fileport.h>
+ #include <CommonCrypto/CommonDigest.h>
+@@ -368,10 +370,10 @@
+   std::vector<uint8_t> completed;
+   bool completed_error = false;
+   std::array<uint8_t, 16> nonce{};
+-  std::array<uint8_t, 51> message{};
++  std::vector<uint8_t> message;
+ };
+ AuthorityClient::AuthorityClient(NativeSendRight right) : endpoint(std::move(right)) {}
+-AuthorityClient::~AuthorityClient() { WipePayload(completed); }
++AuthorityClient::~AuthorityClient() { WipePayload(completed); WipePayload(message); }
+ struct AuthorityServer;
+ struct ParentTransport::State {
+   explicit State(std::shared_ptr<const ExactCodePolicy> value);
+@@ -421,7 +423,7 @@
+   uint64_t sequence;
+   uint32_t operation;
+   std::array<uint8_t, 16> nonce;
+-  std::array<uint8_t, 51> message;
++  std::vector<uint8_t> message;
+   bool acknowledged = false; // Protected by that exact client's mutex.
+ };
+ DaemonAuthorityPublication::DaemonAuthorityPublication(
+@@ -429,7 +431,7 @@
+     std::shared_ptr<AuthorityClient> source)
+     : selected(value), client(source), sequence(source->sequence),
+       operation(source->operation), nonce(source->nonce), message(source->message) {}
+-DaemonAuthorityPublication::~DaemonAuthorityPublication() = default;
++DaemonAuthorityPublication::~DaemonAuthorityPublication() { WipePayload(message); }
+ AuthenticatedSelectedHomeTransfer::AuthenticatedSelectedHomeTransfer(std::shared_ptr<State> value) : state_(std::move(value)) {}
+ AuthenticatedSelectedHomeTransfer::~AuthenticatedSelectedHomeTransfer() = default;
+ int AuthenticatedSelectedHomeTransfer::DuplicateRevalidatedDirectory() {
+@@ -1509,21 +1511,27 @@
+   };
+   std::unique_ptr<AuthorityServer, decltype(finish)> active(this, finish);
+   DestroyMessage destroy(&request.wire.header);
++  PayloadWiper request_wiper(request.wire.message);
+   const auto& wire = request.wire;
+   bool valid = wire.header.msgh_size == sizeof(wire) && wire.header.msgh_id == kAuthorityRequest &&
+       !(wire.header.msgh_bits & MACH_MSGH_BITS_COMPLEX) &&
+       MACH_MSGH_BITS_REMOTE(wire.header.msgh_bits) == MACH_MSG_TYPE_PORT_SEND_ONCE &&
+-      wire.version == kAuthorityVersion && wire.padding == 0 && wire.generation == generation &&
++      wire.version == kAuthorityVersion && wire.reserved == 0 && wire.generation == generation &&
+       (wire.operation == kSign || wire.operation == kPublicKeys || wire.operation == kObserve ||
+-       wire.operation == kInboxKey || wire.operation == kBrowserStartup || wire.operation == kAcknowledge) && wire.sequence != 0 &&
++       wire.operation == kInboxKey || wire.operation == kBrowserStartup || wire.operation == kUiCapture || wire.operation == kAcknowledge) && wire.sequence != 0 &&
+       request.trailer.msgh_trailer_type == MACH_MSG_TRAILER_FORMAT_0 &&
+       request.trailer.msgh_trailer_size >= sizeof(request.trailer) &&
+       audit_token_to_pid(request.trailer.msgh_audit) == state->birth.pid &&
+       audit_token_to_pidversion(request.trailer.msgh_audit) == state->snapshot.parent_pid_version &&
+       getppid() == state->birth.pid && SameBirth(state->birth, 0);
+   if (valid) valid = NativeOperations::Validate(request.trailer.msgh_audit, *state->policy);
+-  if (wire.operation != kSign)
+-    valid = valid && std::all_of(wire.message.begin(), wire.message.end(), [](uint8_t b) { return b == 0; });
++  valid = valid && wire.message_length <= wire.message.size();
++  if (valid) {
++    const bool valid_length = wire.operation == kSign ? wire.message_length == 51 :
++        wire.operation == kUiCapture ? wire.message_length > 0 : wire.message_length == 0;
++    valid = valid_length && std::all_of(wire.message.begin() + wire.message_length,
++        wire.message.end(), [](uint8_t b) { return b == 0; });
++  }
+   if (!valid) {
+     std::lock_guard<std::mutex> lock(mutex); closed = true; return -1;
+   }
+@@ -1554,6 +1562,9 @@
+   else if (wire.operation == kBrowserStartup)
+     response.status = AuxBeginPreparedBrowserStartup(backend, wire.sequence, wire.nonce.data(),
+         response.payload.data(), response.payload.size(), &response.length);
++  else if (wire.operation == kUiCapture)
++    response.status = AuxBeginPreparedUiCapture(backend, wire.sequence, wire.nonce.data(),
++        wire.message.data(), wire.message_length, response.payload.data(), response.payload.size(), &response.length);
+   else if (wire.operation == kAcknowledge)
+     response.status = AuxAckPreparedDaemonAuthority(backend, wire.sequence, wire.nonce.data());
+   else
+@@ -1660,9 +1671,14 @@
+ DaemonAuthorityReply AuthenticatedSelectedHomeTransfer::GetAgentInboxV2MasterKey(uint32_t timeout_ms) {
+   return RequestAuthority(kInboxKey, {}, timeout_ms);
+ }
++DaemonAuthorityReply AuthenticatedSelectedHomeTransfer::ExchangeUiCaptureFrame(
++    std::span<const uint8_t> frame, uint32_t timeout_ms) {
++  if (frame.empty() || frame.size() > 8192) return {};
++  return RequestAuthority(kUiCapture, frame, timeout_ms);
++}
+ DaemonAuthorityReply AuthenticatedSelectedHomeTransfer::RequestAuthority(
+     uint32_t operation, std::span<const uint8_t> message, uint32_t timeout_ms) {
+-  if (!ValidTimeout(timeout_ms)) return {};
++  if (!ValidTimeout(timeout_ms) || message.size() > 8192) return {};
+   const auto value = state_;
+   if (getpid() != value->process) return {DaemonAuthorityStatus::wrongProcess, {}};
+   int home = DuplicateRevalidatedDirectory();
+@@ -1695,8 +1711,8 @@
+       return {DaemonAuthorityStatus::closed, {}};
+     }
+   }
+-  std::array<uint8_t, 51> body{};
+-  std::copy(message.begin(), message.end(), body.begin());
++  std::vector<uint8_t> body(message.begin(), message.end());
++  PayloadWiper body_wiper(body);
+   const bool same = client->started && client->operation == operation && client->message == body;
+   if (client->pending && !same) return {DaemonAuthorityStatus::busy, {}};
+   if (!same) {
+@@ -1706,6 +1722,7 @@
+     client->attempted = false;
+     client->completed_error = false;
+     client->operation = operation;
++    WipePayload(client->message);
+     client->message = body;
+     arc4random_buf(client->nonce.data(), client->nonce.size());
+     client->started = true;
+@@ -1725,7 +1742,11 @@
+   request.wire.generation = value->generation;
+   request.wire.sequence = client->sequence;
+   request.wire.nonce = client->nonce;
+-  if (!observe && !acknowledging) request.wire.message = body;
++  PayloadWiper request_wiper(request.wire.message);
++  if (!observe && !acknowledging) {
++    request.wire.message_length = static_cast<uint32_t>(body.size());
++    std::copy(body.begin(), body.end(), request.wire.message.begin());
++  }
+   // Once send is attempted the nonce is retained, including all timeout/error
+   // outcomes. A later call can only observe it, never silently sign again.
+   client->pending = true;
+--- a/chrome/browser/aux/AuxOwnedNativePeerChild.h
++++ b/chrome/browser/aux/AuxOwnedNativePeerChild.h
+@@ -34,6 +34,7 @@
+   DaemonAuthorityReply SignDaemonChallenge(std::span<const uint8_t> message, uint32_t timeout_ms);
+   DaemonAuthorityReply GetInstallationPublicKeys(uint32_t timeout_ms);
+   DaemonAuthorityReply GetBrowserStartupLease(uint32_t timeout_ms);
++  DaemonAuthorityReply ExchangeUiCaptureFrame(std::span<const uint8_t> frame, uint32_t timeout_ms);
+   DaemonAuthorityReply GetAgentInboxV2MasterKey(uint32_t timeout_ms);
+   DaemonAuthorityStatus AcceptAuthorityReply(const DaemonAuthorityReply& reply, uint32_t timeout_ms);
+  private:
+--- a/chrome/browser/aux/AuxOwnedNativePeerChild.cc
++++ b/chrome/browser/aux/AuxOwnedNativePeerChild.cc
+@@ -361,6 +361,18 @@
+     return {DaemonAuthorityStatus::closed, {}};
+   return reply;
+ }
++DaemonAuthorityReply SelectedNativeHome::ExchangeUiCaptureFrame(
++    std::span<const uint8_t> frame, uint32_t timeout_ms) {
++  auto before = InspectOwnedChild();
++  if (before.closed || before.wrong_process || before.exit_observed_and_reaped || before.exit_ownership_unknown)
++    return {DaemonAuthorityStatus::closed, {}};
++  auto reply = state_->transfer->ExchangeUiCaptureFrame(frame, timeout_ms);
++  auto after = InspectOwnedChild();
++  if (after.closed || after.wrong_process || after.exit_observed_and_reaped ||
++      after.exit_ownership_unknown || after.child_pid != before.child_pid)
++    return {DaemonAuthorityStatus::closed, {}};
++  return reply;
++}
+ DaemonAuthorityReply SelectedNativeHome::GetAgentInboxV2MasterKey(uint32_t timeout_ms) {
+   auto before = InspectOwnedChild();
+   if (before.closed || before.wrong_process || before.exit_observed_and_reaped || before.exit_ownership_unknown)
+--- a/chrome/browser/aux/AuxSelectedStateHome.h
++++ b/chrome/browser/aux/AuxSelectedStateHome.h
+@@ -54,6 +54,8 @@
+   DaemonAuthorityStatus status = DaemonAuthorityStatus::refused;
+   std::optional<std::string> signature;
+ };
++// Native-only capture data route, never migration/profile authority.
++DaemonAuthorityReply ExchangeNativeSelectedUiCaptureFrame(std::span<const uint8_t> frame);
+ NativeDaemonSignatureReply ObserveNativeSelectedDaemonChallenge(std::string_view encoded_message);
+ std::optional<std::string> SignNativeSelectedDaemonChallenge(std::string_view encoded_message);
+ std::optional<std::string> GetNativeSelectedInstallationPublicKeys();
+--- a/chrome/browser/aux/AuxSelectedStateHome.cc
++++ b/chrome/browser/aux/AuxSelectedStateHome.cc
+@@ -259,6 +259,43 @@
+       current->exports < pulse->exports || !Fresh(*current)) return {SelectedStateHomeRoute::unavailable, {}};
+   return {SelectedStateHomeRoute::current, *path, current->exports, child.child_pid};
+ }
++DaemonAuthorityReply ExchangeNativeSelectedUiCaptureFrame(std::span<const uint8_t> frame) {
++  auto& state = CurrentState();
++  if (getpid() != state.process) return {DaemonAuthorityStatus::wrongProcess, {}};
++  if (frame.empty() || frame.size() > 8192) return {};
++  std::shared_ptr<SelectedNativeHome> owner;
++  std::shared_ptr<const BrowserPrivateRoots> roots;
++  uint64_t generation = 0;
++  {
++    std::lock_guard<std::mutex> lock(state.mutex);
++    if (state.closed || state.browser_shutdown_phase || state.initializing ||
++        !state.selected || !state.admitted_browser_roots || !state.browser_generation) return {};
++    owner = state.selected; roots = state.admitted_browser_roots;
++    generation = state.browser_generation;
++    ++state.active_reads;
++  }
++  auto finish = +[](State* held) { std::lock_guard<std::mutex> lock(held->mutex); --held->active_reads; };
++  std::unique_ptr<State, decltype(finish)> active(&state, finish);
++  auto valid = [&] {
++    auto pulse = owner->InspectReadyPulse();
++    auto child = owner->InspectOwnedChild();
++    if (!pulse || !Fresh(*pulse) || pulse->generation != generation || !roots->Revalidate() ||
++        child.closed || child.wrong_process || child.exit_observed_and_reaped ||
++        child.exit_ownership_unknown || child.child_pid <= 1) return false;
++    std::lock_guard<std::mutex> lock(state.mutex);
++    return !state.closed && !state.browser_shutdown_phase && state.selected == owner &&
++        state.admitted_browser_roots == roots && state.browser_generation == generation;
++  };
++  if (!valid()) return {};
++  auto reply = owner->ExchangeUiCaptureFrame(frame, 2'000);
++  if (reply.status != DaemonAuthorityStatus::ready) return reply;
++  // A lost holder fence/ACK is unknown, not proof that physical IO did not run.
++  if (!valid()) return {};
++  auto accepted = owner->AcceptAuthorityReply(reply, 2'000);
++  if (accepted != DaemonAuthorityStatus::ready) return {accepted, {}};
++  if (!valid()) return {};
++  return reply;
++}
+ // No caller path, token, FD, generation or readiness flag can mint admission.
+ bool AuthorizeNativeBrowserStartupBeforeLocalState() {
+   auto& state = CurrentState();
+--- a/AuxOwnedCommandDispatcher.swift
++++ b/AuxOwnedCommandDispatcher.swift
+@@ -24,6 +24,8 @@
+     private final class Entry {
+ #if AUX_NATIVE_FRESH_RUNTIME_CONSUMER
+         var nativeFreshRuntime:NativeFreshRuntimeCapturedContext? = nil
++        var uiCaptureUpload:UiCaptureUpload? = nil
++        var uiCaptureDownload:UiCaptureDownload? = nil
+         var nativeGuardFailure:AuxNativeFreshGuardFailure? = nil
+         var pendingPostGuardObservation:AuxNativeFreshGuardFailure? = nil
+         // Exact completed read reply stays private process memory only. Never
+@@ -371,6 +373,122 @@
+             return(receipt,capture,parsed,store.generation)
+         }
+     }
++    // Finite, native-peer-only transfer of unqualified capture data. The real
++    // Entry execution lock serializes frames; no caller chooses a root/handle.
++    private final class UiCaptureUpload {
++        let id:Data
++        let count:Int
++        let digest:Data
++        var bytes=Data()
++        var receipt:Data?
++        var physicalOutcomeUnknown=false
++        init(id:Data,count:Int,digest:Data){self.id=id;self.count=count;self.digest=digest}
++    }
++    private struct UiCaptureDownload {
++        let id:Data
++        let capture:Data
++    }
++    private enum UiCaptureFrameError:Error {case invalid,conflict,incomplete,unknown}
++    private static func captureInteger(_ bytes:Data,_ offset:Int,_ count:Int)throws->UInt64 {
++        guard offset>=0,count>0,count<=8,offset<=bytes.count-count else{throw UiCaptureFrameError.invalid}
++        return (0..<count).reduce(UInt64(0)){$0 | UInt64(bytes[offset+$1]) << (8*$1)}
++    }
++    private static func captureIntegerBytes(_ value:UInt64,_ count:Int)->Data {
++        Data((0..<count).map{UInt8(truncatingIfNeeded:value >> (8*$0))})
++    }
++    private static func captureUUID(_ bytes:Data)throws->String {
++        guard bytes.count==16 else{throw UiCaptureFrameError.invalid}
++        let hex=bytes.map{String(format:"%02x",$0)}.joined()
++        let groups=[8,4,4,4,12]
++        var cursor=hex.startIndex,parts=[String]()
++        for length in groups {
++            let end=hex.index(cursor,offsetBy:length)
++            parts.append(String(hex[cursor..<end]));cursor=end
++        }
++        let result=parts.joined(separator:"-")
++        guard UUID(uuidString:result)?.uuidString.lowercased()==result else{throw UiCaptureFrameError.invalid}
++        return result
++    }
++    private static func captureUUIDBytes(_ text:String)throws->Data {
++        guard UUID(uuidString:text)?.uuidString.lowercased()==text else{throw UiCaptureFrameError.invalid}
++        let hex=Array(text.replacingOccurrences(of:"-",with:"").utf8)
++        func nibble(_ value:UInt8)->UInt8{value<=57 ? value-48:value-87}
++        return Data(stride(from:0,to:32,by:2).map{nibble(hex[$0])*16+nibble(hex[$0+1])})
++    }
++    func exchangeUiStorageCaptureFrame(_ handle:UInt64,frame:Data)throws->Data {
++        guard frame.startIndex==0,!frame.isEmpty,frame.count<=8192 else{throw UiCaptureFrameError.invalid}
++        return try withEntry(handle,guardGenericAction:false){entry in
++            guard let captured=entry.nativeFreshRuntime else{throw AuxDispatcherLifetimeError.invalidInput}
++            return try guardedFreshAction(entry,before:.beforeAction,after:.afterAction,afterThrow:.afterThrownAction){
++                try captured.owner.verifyUiCaptureJournalAdmission()
++                switch frame[0] {
++                case 1: // Begin: operation, upload UUID, total LE32, SHA256.
++                    guard frame.count==53 else{throw UiCaptureFrameError.invalid}
++                    let id=Data(frame[1..<17]),count=Int(try Self.captureInteger(frame,17,4))
++                    _ = try Self.captureUUID(id)
++                    guard count>0,count<=64*1024*1024 else{throw UiCaptureFrameError.invalid}
++                    let digest=Data(frame[21..<53])
++                    if let previous=entry.uiCaptureUpload {
++                        if previous.id==id {
++                            guard previous.count==count,previous.digest==digest,
++                                  !previous.physicalOutcomeUnknown else{throw UiCaptureFrameError.conflict}
++                            return Data([1])+Self.captureIntegerBytes(UInt64(previous.bytes.count),4)
++                        }
++                        // Partial/unknown work cannot be discarded by a new UUID.
++                        guard previous.receipt != nil,!previous.physicalOutcomeUnknown else{throw UiCaptureFrameError.incomplete}
++                    }
++                    entry.uiCaptureUpload=UiCaptureUpload(id:id,count:count,digest:digest)
++                    return Data([1])+Self.captureIntegerBytes(0,4)
++                case 2: // Append: operation, upload UUID, exact offset LE32, bytes.
++                    guard frame.count>21,let upload=entry.uiCaptureUpload,
++                          frame[1..<17]==upload.id,upload.receipt==nil,
++                          !upload.physicalOutcomeUnknown else{throw UiCaptureFrameError.invalid}
++                    let offset=Int(try Self.captureInteger(frame,17,4)),chunk=Data(frame[21...])
++                    guard offset==upload.bytes.count,chunk.count<=upload.count-offset else{throw UiCaptureFrameError.conflict}
++                    upload.bytes.append(chunk)
++                    return Data([2])+Self.captureIntegerBytes(UInt64(upload.bytes.count),4)
++                case 3: // Persist once. A failed physical attempt is never rerun.
++                    guard frame.count==17,let upload=entry.uiCaptureUpload,
++                          frame[1..<17]==upload.id else{throw UiCaptureFrameError.invalid}
++                    if let receipt=upload.receipt{return Data([3])+receipt}
++                    guard !upload.physicalOutcomeUnknown else{throw UiCaptureFrameError.unknown}
++                    guard upload.bytes.count==upload.count,
++                          Data(SHA256.hash(data:upload.bytes))==upload.digest else{throw UiCaptureFrameError.incomplete}
++                    upload.physicalOutcomeUnknown=true
++                    let receipt=try UiCaptureJournal.persist(context:captured.owner,capture:upload.bytes)
++                    upload.receipt=receipt;upload.physicalOutcomeUnknown=false
++                    return Data([3])+receipt
++                case 4: // Discover immutable/partial journal IDs; no promotion.
++                    guard frame.count==1 else{throw UiCaptureFrameError.invalid}
++                    let ids=try UiCaptureJournal.list(context:captured.owner)
++                    var reply=Data([4])+Self.captureIntegerBytes(UInt64(ids.count),4)
++                    for id in ids {reply.append(try Self.captureUUIDBytes(id))}
++                    return reply
++                case 5: // Load from the actual owner; cache only validated data.
++                    guard frame.count==17 else{throw UiCaptureFrameError.invalid}
++                    let id=Data(frame[1..<17])
++                    let loaded=try UiCaptureJournal.load(context:captured.owner,transaction:Self.captureUUID(id))
++                    entry.uiCaptureDownload=UiCaptureDownload(id:id,capture:loaded.capture)
++                    var reply=Data([5])
++                    reply.append(Self.captureIntegerBytes(UInt64(loaded.capture.count),4))
++                    reply.append(Self.captureIntegerBytes(loaded.sourceGeneration,8))
++                    reply.append(Self.captureIntegerBytes(loaded.currentGeneration,8))
++                    reply.append(Data(SHA256.hash(data:loaded.capture)))
++                    reply.append(Self.captureIntegerBytes(UInt64(loaded.receipt.count),4))
++                    reply.append(loaded.receipt)
++                    return reply
++                case 6: // Read a bounded slice of that exact validated capture.
++                    guard frame.count==25,let loaded=entry.uiCaptureDownload,
++                          frame[1..<17]==loaded.id else{throw UiCaptureFrameError.invalid}
++                    let offset=Int(try Self.captureInteger(frame,17,4)),count=Int(try Self.captureInteger(frame,21,4))
++                    guard count>0,count<=8191,offset<=loaded.capture.count-count else{throw UiCaptureFrameError.invalid}
++                    return Data([6])+loaded.capture[offset..<offset+count]
++                default:throw UiCaptureFrameError.invalid
++                }
++            }
++        }
++    }
++
+     // Native-only seams: not registered in the string command dispatcher or
+     // NAPI. withEntry retains the real owner, active count and execution lock
+     // through every physical write/fsync/read and the final guard observation.
+--- a/AuxPreparedDaemonAuthority.swift
++++ b/AuxPreparedDaemonAuthority.swift
+@@ -7,7 +7,7 @@
+ private var daemonAuthorityNext:UInt64=1
+ private var daemonAuthorities=[UInt64:PreparedDaemonAuthority]()
+ private let daemonAuthPrefix=Data("Aux Daemon Auth v1\0".utf8) //19 exact bytes.
+-private enum DaemonAuthorityKind:Equatable{case signature,publicKeys,inboxKey,browserStartup}
++private enum DaemonAuthorityKind:Equatable{case signature,publicKeys,inboxKey,browserStartup,uiCapture}
+ // Exact backend-owned cache allocation; no Data COW alias can retain its old
+ // cache buffer after wipe. This does not promise zeroization of Foundation's
+ // transient JSON/base64 String copies or separately owned transport buffers.
+@@ -42,7 +42,7 @@
+         case .signature:command="cdp-sign"
+         case .publicKeys:command="get-public-keys"
+         case .inboxKey:command="inbox-key-v2"
+-        case .browserStartup:command="" // Native capability route, never generic command dispatch.
++        case .browserStartup,.uiCapture:command="" // Native-only routes, never generic command dispatch.
+         }
+         input=kind == .signature ? "{\"challenge\":\""+message.base64EncodedString()+"\"}":"{}"
+     }
+@@ -101,6 +101,13 @@
+             return .completed(DaemonAuthorityPayload(&receipt))
+         }catch{return .failed}
+     }
++    if request.kind == .uiCapture {
++        do {
++            var reply=try AuxCommandDispatcherRegistry.shared.exchangeUiStorageCaptureFrame(entry.owner.handle,frame:request.message)
++            guard !reply.isEmpty,reply.count<=8192 else{return .failed}
++            return .completed(DaemonAuthorityPayload(&reply))
++        }catch{return .failed}
++    }
+     let response:String?=request.command.utf8CString.withUnsafeBufferPointer{command in
+         request.input.utf8CString.withUnsafeBufferPointer{input in
+             guard let pointer=auxNativeContextRun(entry.owner.handle,
+@@ -149,7 +156,7 @@
+     }
+ }
+ private enum DaemonAuthorityTask:Equatable{case execute,recover,cached}
+-private func operatePreparedDaemonAuthority(_ id:UInt64,sequence:UInt64,nonce:UnsafePointer<UInt8>?,kind:DaemonAuthorityKind?,message:UnsafePointer<UInt8>?,output:UnsafeMutablePointer<UInt8>?,capacity:UInt32,written:UnsafeMutablePointer<UInt32>?)->Int32 {
++private func operatePreparedDaemonAuthority(_ id:UInt64,sequence:UInt64,nonce:UnsafePointer<UInt8>?,kind:DaemonAuthorityKind?,message:UnsafePointer<UInt8>?,output:UnsafeMutablePointer<UInt8>?,capacity:UInt32,written:UnsafeMutablePointer<UInt32>?,messageCount:UInt32=0)->Int32 {
+     guard getpid()==daemonAuthorityProcess else{return -2}
+     daemonAuthorityLock.lock()
+     guard let entry=daemonAuthorities[id]else{daemonAuthorityLock.unlock();return -1}
+@@ -161,6 +168,9 @@
+     if kind == .signature {
+         guard let message else{return -1};bytes=Data(bytes:message,count:51)
+         guard validDaemonAuthMessage(bytes)else{return -1}
++    }else if kind == .uiCapture {
++        guard let message,messageCount>0,messageCount<=8192 else{return -1}
++        bytes=Data(bytes:message,count:Int(messageCount))
+     }else{bytes=Data()}
+     daemonAuthorityLock.lock()
+     guard !entry.closing else{daemonAuthorityLock.unlock();return 3}
+@@ -224,6 +234,10 @@
+     withExtendedLifetime(entry){}
+     return status
+ }
++@_cdecl("AuxBeginPreparedUiCapture")
++func AuxBeginPreparedUiCapture(_ id:UInt64,_ sequence:UInt64,_ nonce:UnsafePointer<UInt8>?,_ message:UnsafePointer<UInt8>?,_ count:UInt32,_ output:UnsafeMutablePointer<UInt8>?,_ capacity:UInt32,_ written:UnsafeMutablePointer<UInt32>?)->Int32 {
++    operatePreparedDaemonAuthority(id,sequence:sequence,nonce:nonce,kind:.uiCapture,message:message,output:output,capacity:capacity,written:written,messageCount:count)
++}
+ @_cdecl("AuxBeginPreparedDaemonSignature")
+ func AuxBeginPreparedDaemonSignature(_ id:UInt64,_ sequence:UInt64,_ nonce:UnsafePointer<UInt8>?,_ message:UnsafePointer<UInt8>?,_ output:UnsafeMutablePointer<UInt8>?,_ capacity:UInt32,_ written:UnsafeMutablePointer<UInt32>?)->Int32 {
+     operatePreparedDaemonAuthority(id,sequence:sequence,nonce:nonce,kind:.signature,message:message,output:output,capacity:capacity,written:written)

@@ -1,0 +1,17 @@
+{
+  "format": "aux.ui-native-capture-transport.typecheck.actual.v1",
+  "passed": true,
+  "exitCode": 0,
+  "sourcePlanSha256": "1f167a9a5fd1d39d30cdbfb21fd8f1c94980620391b626bc8f6a8bfbd9fb4747",
+  "commandSha256": "c4022a295e94ff87b03a371bced699755e895582732a3b3ad3bbfb95c5ea77f1",
+  "sourceCount": 48,
+  "cppCompileReceiptSha256": "254ec479d47e268df9fd8c49ecf2e642dc01477667c4d0b480a66c7a2ba6a75f",
+  "cppCompiledInputsUnchanged": true,
+  "cppRecompiled": false,
+  "output": "/private/tmp/aux-ui-native-capture-transport-typecheck-20261024-a2",
+  "linked": false,
+  "productExecuted": false,
+  "nativeApiExecuted": false,
+  "migrationActivationAuthorized": false,
+  "runtimeAcceptance": false
+}

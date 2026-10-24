@@ -1,0 +1,14 @@
+{
+  "format": "aux.ui-native-capture-transport.daemon-link.actual.v1",
+  "passed": false,
+  "exitCode": 1,
+  "inputsSha256": "a42d0499e3be413e5a7c5f1c1f0b1735fde95af5de171f6e5f962ca3d8f5dd81",
+  "output": "/private/tmp/aux-ui-native-capture-transport-daemon-link-20261024-a1",
+  "signed": false,
+  "executed": false,
+  "nativeApiExecuted": false,
+  "browserFullyLinked": false,
+  "packageIntegrated": false,
+  "migrationActivationAuthorized": false,
+  "runtimeAcceptance": false
+}

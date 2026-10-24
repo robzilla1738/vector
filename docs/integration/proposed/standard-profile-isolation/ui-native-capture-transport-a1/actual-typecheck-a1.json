@@ -1,0 +1,14 @@
+{
+  "format": "aux.ui-native-capture-transport.typecheck.actual.v1",
+  "passed": false,
+  "exitCode": 1,
+  "sourcePlanSha256": "ba356ae901971ce76e1f61b864dbde8f25fa3b12366b2f289bcff7e5e121774d",
+  "commandSha256": "aa3a1edebe9a60f35125288e0cf689d3fe57057c96685ff8f1859632bf286973",
+  "sourceCount": 48,
+  "output": "/private/tmp/aux-ui-native-capture-transport-compile-20261024-a1",
+  "linked": false,
+  "productExecuted": false,
+  "nativeApiExecuted": false,
+  "migrationActivationAuthorized": false,
+  "runtimeAcceptance": false
+}

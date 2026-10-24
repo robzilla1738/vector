@@ -1,0 +1,10 @@
+{
+  "format": "aux.ui-native-capture-transport.link-interruption.actual.v1",
+  "sessionId": 57977,
+  "sessionLookup": "unknown process id",
+  "matchingCompilerProcesses": 0,
+  "resultReceiptExists": false,
+  "binaryExists": false,
+  "disposition": "interrupted before result; not accepted; a fresh output is required",
+  "productExecuted": false
+}

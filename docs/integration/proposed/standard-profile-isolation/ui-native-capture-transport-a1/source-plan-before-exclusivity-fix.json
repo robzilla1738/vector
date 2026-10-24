@@ -1,0 +1,584 @@
+{
+  "format": "aux.ui-native-capture-transport.source.v1",
+  "files": [
+    {
+      "input": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/aux/AuxNativePeerWire.h",
+      "path": "chrome/browser/aux/AuxNativePeerWire.h",
+      "inputSha256": "b02072fde7e71b70a4443ed8eadcc6c3e32c8fedf6068c337fcf6c9b62ba57d5",
+      "output": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/ui-native-capture-transport-a1/source/chrome/browser/aux/AuxNativePeerWire.h",
+      "outputSha256": "f15b5c11f1c79971b14b65e866acf7306763a421fe461d57cd1aed3523bcb3dd",
+      "anchors": [
+        {
+          "find": "kAuthorityVersion = 5;",
+          "replace": "kAuthorityVersion = 6;",
+          "count": 1
+        },
+        {
+          "find": "kBrowserStartup = 6;",
+          "replace": "kBrowserStartup = 6, kUiCapture = 7;",
+          "count": 1
+        },
+        {
+          "find": "  std::array<uint8_t, 51> message{};\n  uint8_t padding = 0;",
+          "replace": "  uint32_t message_length = 0;\n  uint32_t reserved = 0;\n  std::array<uint8_t, 8192> message{};",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "input": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/aux/AuxNativePeerTransport.h",
+      "path": "chrome/browser/aux/AuxNativePeerTransport.h",
+      "inputSha256": "240c7b66aaa51efec1e5450cfecdb3461c9d70a57ca11c3f66381d593e407e6a",
+      "output": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/ui-native-capture-transport-a1/source/chrome/browser/aux/AuxNativePeerTransport.h",
+      "outputSha256": "200735d57b29147b258c46d81e610b9615b3fe38b2bf08a3c7f69c2776a19050",
+      "anchors": [
+        {
+          "find": "  DaemonAuthorityReply GetBrowserStartupLease(uint32_t timeout_ms);",
+          "replace": "  DaemonAuthorityReply GetBrowserStartupLease(uint32_t timeout_ms);\n  // Finite capture-data frames only; no profile/migration admission.\n  DaemonAuthorityReply ExchangeUiCaptureFrame(std::span<const uint8_t> frame, uint32_t timeout_ms);",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "input": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/aux/AuxNativePeerTransport.cc",
+      "path": "chrome/browser/aux/AuxNativePeerTransport.cc",
+      "inputSha256": "6d6598fc792bbb7a93bcb8c50a64bda65c33f011d201b6493757c38dc1320e9e",
+      "output": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/ui-native-capture-transport-a1/source/chrome/browser/aux/AuxNativePeerTransport.cc",
+      "outputSha256": "e24dd9886408bda5e3e18cdcf2edf45085163b4252db21570fff1aedb483a016",
+      "anchors": [
+        {
+          "find": "#include \"AuxFreshColdBootstrapNativeBridge.h\"",
+          "replace": "#include \"AuxFreshColdBootstrapNativeBridge.h\"\nextern \"C\" int32_t AuxBeginPreparedUiCapture(uint64_t, uint64_t, const uint8_t*,\n    const uint8_t*, uint32_t, uint8_t*, uint32_t, uint32_t*);",
+          "count": 1
+        },
+        {
+          "find": "  std::array<uint8_t, 51> message{};",
+          "replace": "  std::vector<uint8_t> message;",
+          "count": 1
+        },
+        {
+          "find": "AuthorityClient::~AuthorityClient() { WipePayload(completed); }",
+          "replace": "AuthorityClient::~AuthorityClient() { WipePayload(completed); WipePayload(message); }",
+          "count": 1
+        },
+        {
+          "find": "  std::array<uint8_t, 51> message;",
+          "replace": "  std::vector<uint8_t> message;",
+          "count": 1
+        },
+        {
+          "find": "DaemonAuthorityPublication::~DaemonAuthorityPublication() = default;",
+          "replace": "DaemonAuthorityPublication::~DaemonAuthorityPublication() { WipePayload(message); }",
+          "count": 1
+        },
+        {
+          "find": "  DestroyMessage destroy(&request.wire.header);\n  const auto& wire = request.wire;\n  bool valid = wire.header.msgh_size",
+          "replace": "  DestroyMessage destroy(&request.wire.header);\n  PayloadWiper request_wiper(request.wire.message);\n  const auto& wire = request.wire;\n  bool valid = wire.header.msgh_size",
+          "count": 1
+        },
+        {
+          "find": "wire.version == kAuthorityVersion && wire.padding == 0 && wire.generation == generation &&",
+          "replace": "wire.version == kAuthorityVersion && wire.reserved == 0 && wire.generation == generation &&",
+          "count": 1
+        },
+        {
+          "find": "wire.operation == kInboxKey || wire.operation == kBrowserStartup || wire.operation == kAcknowledge)",
+          "replace": "wire.operation == kInboxKey || wire.operation == kBrowserStartup || wire.operation == kUiCapture || wire.operation == kAcknowledge)",
+          "count": 1
+        },
+        {
+          "find": "  if (wire.operation != kSign)\n    valid = valid && std::all_of(wire.message.begin(), wire.message.end(), [](uint8_t b) { return b == 0; });",
+          "replace": "  valid = valid && wire.message_length <= wire.message.size();\n  if (valid) {\n    const bool valid_length = wire.operation == kSign ? wire.message_length == 51 :\n        wire.operation == kUiCapture ? wire.message_length > 0 : wire.message_length == 0;\n    valid = valid_length && std::all_of(wire.message.begin() + wire.message_length,\n        wire.message.end(), [](uint8_t b) { return b == 0; });\n  }",
+          "count": 1
+        },
+        {
+          "find": "  else if (wire.operation == kAcknowledge)\n    response.status",
+          "replace": "  else if (wire.operation == kUiCapture)\n    response.status = AuxBeginPreparedUiCapture(backend, wire.sequence, wire.nonce.data(),\n        wire.message.data(), wire.message_length, response.payload.data(), response.payload.size(), &response.length);\n  else if (wire.operation == kAcknowledge)\n    response.status",
+          "count": 1
+        },
+        {
+          "find": "DaemonAuthorityReply AuthenticatedSelectedHomeTransfer::RequestAuthority(",
+          "replace": "DaemonAuthorityReply AuthenticatedSelectedHomeTransfer::ExchangeUiCaptureFrame(\n    std::span<const uint8_t> frame, uint32_t timeout_ms) {\n  if (frame.empty() || frame.size() > 8192) return {};\n  return RequestAuthority(kUiCapture, frame, timeout_ms);\n}\nDaemonAuthorityReply AuthenticatedSelectedHomeTransfer::RequestAuthority(",
+          "count": 1
+        },
+        {
+          "find": "  if (!ValidTimeout(timeout_ms)) return {};\n  const auto value = state_;",
+          "replace": "  if (!ValidTimeout(timeout_ms) || message.size() > 8192) return {};\n  const auto value = state_;",
+          "count": 1
+        },
+        {
+          "find": "  std::array<uint8_t, 51> body{};\n  std::copy(message.begin(), message.end(), body.begin());",
+          "replace": "  std::vector<uint8_t> body(message.begin(), message.end());\n  PayloadWiper body_wiper(body);",
+          "count": 1
+        },
+        {
+          "find": "    client->message = body;",
+          "replace": "    WipePayload(client->message);\n    client->message = body;",
+          "count": 1
+        },
+        {
+          "find": "  if (!observe && !acknowledging) request.wire.message = body;",
+          "replace": "  PayloadWiper request_wiper(request.wire.message);\n  if (!observe && !acknowledging) {\n    request.wire.message_length = static_cast<uint32_t>(body.size());\n    std::copy(body.begin(), body.end(), request.wire.message.begin());\n  }",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "input": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/aux/AuxOwnedNativePeerChild.h",
+      "path": "chrome/browser/aux/AuxOwnedNativePeerChild.h",
+      "inputSha256": "37f5a29c0df9f97ed99c707981ef4caa2e30aae3b5bfee4c213e224a167ef318",
+      "output": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/ui-native-capture-transport-a1/source/chrome/browser/aux/AuxOwnedNativePeerChild.h",
+      "outputSha256": "28ed85a70c129d7a55e70536c5e2e5c42f98893716546825660dfe397278cc81",
+      "anchors": [
+        {
+          "find": "  DaemonAuthorityReply GetBrowserStartupLease(uint32_t timeout_ms);",
+          "replace": "  DaemonAuthorityReply GetBrowserStartupLease(uint32_t timeout_ms);\n  DaemonAuthorityReply ExchangeUiCaptureFrame(std::span<const uint8_t> frame, uint32_t timeout_ms);",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "input": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/aux/AuxOwnedNativePeerChild.cc",
+      "path": "chrome/browser/aux/AuxOwnedNativePeerChild.cc",
+      "inputSha256": "72bb8e0fa3510d35822e514c8c4f98f2901d7825a5d255faf019ffd870fd67f7",
+      "output": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/ui-native-capture-transport-a1/source/chrome/browser/aux/AuxOwnedNativePeerChild.cc",
+      "outputSha256": "0f1ff7a11c2493fc03b9df20fdfc114e6e3ddac89d9b3f9ddc9c88614a790e56",
+      "anchors": [
+        {
+          "find": "DaemonAuthorityReply SelectedNativeHome::GetAgentInboxV2MasterKey(uint32_t timeout_ms) {",
+          "replace": "DaemonAuthorityReply SelectedNativeHome::ExchangeUiCaptureFrame(\n    std::span<const uint8_t> frame, uint32_t timeout_ms) {\n  auto before = InspectOwnedChild();\n  if (before.closed || before.wrong_process || before.exit_observed_and_reaped || before.exit_ownership_unknown)\n    return {DaemonAuthorityStatus::closed, {}};\n  auto reply = state_->transfer->ExchangeUiCaptureFrame(frame, timeout_ms);\n  auto after = InspectOwnedChild();\n  if (after.closed || after.wrong_process || after.exit_observed_and_reaped ||\n      after.exit_ownership_unknown || after.child_pid != before.child_pid)\n    return {DaemonAuthorityStatus::closed, {}};\n  return reply;\n}\nDaemonAuthorityReply SelectedNativeHome::GetAgentInboxV2MasterKey(uint32_t timeout_ms) {",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "input": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/aux/AuxSelectedStateHome.h",
+      "path": "chrome/browser/aux/AuxSelectedStateHome.h",
+      "inputSha256": "81f5a9138ffd7eccf173b081134a6c5e304184d1012557d4b6a1ccbf6971ddb7",
+      "output": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/ui-native-capture-transport-a1/source/chrome/browser/aux/AuxSelectedStateHome.h",
+      "outputSha256": "340e954939b4b9d08ef532b266ef37c403abf85a31b74599d5ed19ff3ebb0c52",
+      "anchors": [
+        {
+          "find": "NativeDaemonSignatureReply ObserveNativeSelectedDaemonChallenge(std::string_view encoded_message);",
+          "replace": "// Native-only capture data route, never migration/profile authority.\nDaemonAuthorityReply ExchangeNativeSelectedUiCaptureFrame(std::span<const uint8_t> frame);\nNativeDaemonSignatureReply ObserveNativeSelectedDaemonChallenge(std::string_view encoded_message);",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "input": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/aux/AuxSelectedStateHome.cc",
+      "path": "chrome/browser/aux/AuxSelectedStateHome.cc",
+      "inputSha256": "f5526dfac8b738d6e64ef346d97f89ead1f951aa0d64a7472a5ee07d83bafe5e",
+      "output": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/ui-native-capture-transport-a1/source/chrome/browser/aux/AuxSelectedStateHome.cc",
+      "outputSha256": "8f5e06b8e772328d50542adfcdf7a25f7e0066f04c1d4f895298b9bba469f042",
+      "anchors": [
+        {
+          "find": "// No caller path, token, FD, generation or readiness flag can mint admission.",
+          "replace": "DaemonAuthorityReply ExchangeNativeSelectedUiCaptureFrame(std::span<const uint8_t> frame) {\n  auto& state = CurrentState();\n  if (getpid() != state.process) return {DaemonAuthorityStatus::wrongProcess, {}};\n  if (frame.empty() || frame.size() > 8192) return {};\n  std::shared_ptr<SelectedNativeHome> owner;\n  std::shared_ptr<const BrowserPrivateRoots> roots;\n  uint64_t generation = 0;\n  {\n    std::lock_guard<std::mutex> lock(state.mutex);\n    if (state.closed || state.browser_shutdown_phase || state.initializing ||\n        !state.selected || !state.admitted_browser_roots || !state.browser_generation) return {};\n    owner = state.selected; roots = state.admitted_browser_roots;\n    generation = state.browser_generation;\n    ++state.active_reads;\n  }\n  auto finish = +[](State* held) { std::lock_guard<std::mutex> lock(held->mutex); --held->active_reads; };\n  std::unique_ptr<State, decltype(finish)> active(&state, finish);\n  auto valid = [&] {\n    auto pulse = owner->InspectReadyPulse();\n    auto child = owner->InspectOwnedChild();\n    if (!pulse || !Fresh(*pulse) || pulse->generation != generation || !roots->Revalidate() ||\n        child.closed || child.wrong_process || child.exit_observed_and_reaped ||\n        child.exit_ownership_unknown || child.child_pid <= 1) return false;\n    std::lock_guard<std::mutex> lock(state.mutex);\n    return !state.closed && !state.browser_shutdown_phase && state.selected == owner &&\n        state.admitted_browser_roots == roots && state.browser_generation == generation;\n  };\n  if (!valid()) return {};\n  auto reply = owner->ExchangeUiCaptureFrame(frame, 2'000);\n  if (reply.status != DaemonAuthorityStatus::ready) return reply;\n  // A lost holder fence/ACK is unknown, not proof that physical IO did not run.\n  if (!valid()) return {};\n  auto accepted = owner->AcceptAuthorityReply(reply, 2'000);\n  if (accepted != DaemonAuthorityStatus::ready) return {accepted, {}};\n  if (!valid()) return {};\n  return reply;\n}\n// No caller path, token, FD, generation or readiness flag can mint admission.",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "input": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/ui-native-capture-journal-a1/source/AuxOwnedCommandDispatcher.swift",
+      "path": "AuxOwnedCommandDispatcher.swift",
+      "inputSha256": "e60f0947bf6ccace36b491300d8bd504bf247ed0654a468dc5143605e8eeea4a",
+      "output": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/ui-native-capture-transport-a1/source/AuxOwnedCommandDispatcher.swift",
+      "outputSha256": "f99616eed15dffd887701310fed74ac894a82a9591c1a4ead67bbd25196ea941",
+      "anchors": [
+        {
+          "find": "        var nativeFreshRuntime:NativeFreshRuntimeCapturedContext? = nil",
+          "replace": "        var nativeFreshRuntime:NativeFreshRuntimeCapturedContext? = nil\n        var uiCaptureUpload:UiCaptureUpload? = nil\n        var uiCaptureDownload:UiCaptureDownload? = nil",
+          "count": 1
+        },
+        {
+          "find": "    // Native-only seams: not registered in the string command dispatcher or",
+          "replace": "    // Finite, native-peer-only transfer of unqualified capture data. The real\n    // Entry execution lock serializes frames; no caller chooses a root/handle.\n    private final class UiCaptureUpload {\n        let id:Data\n        let count:Int\n        let digest:Data\n        var bytes=Data()\n        var receipt:Data?\n        var physicalOutcomeUnknown=false\n        init(id:Data,count:Int,digest:Data){self.id=id;self.count=count;self.digest=digest}\n    }\n    private struct UiCaptureDownload {\n        let id:Data\n        let capture:Data\n    }\n    private enum UiCaptureFrameError:Error {case invalid,conflict,incomplete,unknown}\n    private static func captureInteger(_ bytes:Data,_ offset:Int,_ count:Int)throws->UInt64 {\n        guard offset>=0,count>0,count<=8,offset<=bytes.count-count else{throw UiCaptureFrameError.invalid}\n        return (0..<count).reduce(UInt64(0)){$0 | UInt64(bytes[offset+$1]) << (8*$1)}\n    }\n    private static func captureIntegerBytes(_ value:UInt64,_ count:Int)->Data {\n        Data((0..<count).map{UInt8(truncatingIfNeeded:value >> (8*$0))})\n    }\n    private static func captureUUID(_ bytes:Data)throws->String {\n        guard bytes.count==16 else{throw UiCaptureFrameError.invalid}\n        let hex=bytes.map{String(format:\"%02x\",$0)}.joined()\n        let groups=[8,4,4,4,12]\n        var cursor=hex.startIndex,parts=[String]()\n        for length in groups {\n            let end=hex.index(cursor,offsetBy:length)\n            parts.append(String(hex[cursor..<end]));cursor=end\n        }\n        let result=parts.joined(separator:\"-\")\n        guard UUID(uuidString:result)?.uuidString.lowercased()==result else{throw UiCaptureFrameError.invalid}\n        return result\n    }\n    private static func captureUUIDBytes(_ text:String)throws->Data {\n        guard UUID(uuidString:text)?.uuidString.lowercased()==text else{throw UiCaptureFrameError.invalid}\n        let hex=Array(text.replacingOccurrences(of:\"-\",with:\"\").utf8)\n        func nibble(_ value:UInt8)->UInt8{value<=57 ? value-48:value-87}\n        return Data(stride(from:0,to:32,by:2).map{nibble(hex[$0])*16+nibble(hex[$0+1])})\n    }\n    func exchangeUiStorageCaptureFrame(_ handle:UInt64,frame:Data)throws->Data {\n        guard frame.startIndex==0,!frame.isEmpty,frame.count<=8192 else{throw UiCaptureFrameError.invalid}\n        return try withEntry(handle,guardGenericAction:false){entry in\n            guard let captured=entry.nativeFreshRuntime else{throw AuxDispatcherLifetimeError.invalidInput}\n            return try guardedFreshAction(entry,before:.beforeAction,after:.afterAction,afterThrow:.afterThrownAction){\n                try captured.owner.verifyUiCaptureJournalAdmission()\n                switch frame[0] {\n                case 1: // Begin: operation, upload UUID, total LE32, SHA256.\n                    guard frame.count==53 else{throw UiCaptureFrameError.invalid}\n                    let id=Data(frame[1..<17]),count=Int(try Self.captureInteger(frame,17,4))\n                    _ = try Self.captureUUID(id)\n                    guard count>0,count<=64*1024*1024 else{throw UiCaptureFrameError.invalid}\n                    let digest=Data(frame[21..<53])\n                    if let previous=entry.uiCaptureUpload {\n                        if previous.id==id {\n                            guard previous.count==count,previous.digest==digest,\n                                  !previous.physicalOutcomeUnknown else{throw UiCaptureFrameError.conflict}\n                            return Data([1])+Self.captureIntegerBytes(UInt64(previous.bytes.count),4)\n                        }\n                        // Partial/unknown work cannot be discarded by a new UUID.\n                        guard previous.receipt != nil,!previous.physicalOutcomeUnknown else{throw UiCaptureFrameError.incomplete}\n                    }\n                    entry.uiCaptureUpload=UiCaptureUpload(id:id,count:count,digest:digest)\n                    return Data([1])+Self.captureIntegerBytes(0,4)\n                case 2: // Append: operation, upload UUID, exact offset LE32, bytes.\n                    guard frame.count>21,let upload=entry.uiCaptureUpload,\n                          frame[1..<17]==upload.id,upload.receipt==nil,\n                          !upload.physicalOutcomeUnknown else{throw UiCaptureFrameError.invalid}\n                    let offset=Int(try Self.captureInteger(frame,17,4)),chunk=Data(frame[21...])\n                    guard offset==upload.bytes.count,chunk.count<=upload.count-offset else{throw UiCaptureFrameError.conflict}\n                    upload.bytes.append(chunk)\n                    return Data([2])+Self.captureIntegerBytes(UInt64(upload.bytes.count),4)\n                case 3: // Persist once. A failed physical attempt is never rerun.\n                    guard frame.count==17,let upload=entry.uiCaptureUpload,\n                          frame[1..<17]==upload.id else{throw UiCaptureFrameError.invalid}\n                    if let receipt=upload.receipt{return Data([3])+receipt}\n                    guard !upload.physicalOutcomeUnknown else{throw UiCaptureFrameError.unknown}\n                    guard upload.bytes.count==upload.count,\n                          Data(SHA256.hash(data:upload.bytes))==upload.digest else{throw UiCaptureFrameError.incomplete}\n                    upload.physicalOutcomeUnknown=true\n                    let receipt=try UiCaptureJournal.persist(context:captured.owner,capture:upload.bytes)\n                    upload.receipt=receipt;upload.physicalOutcomeUnknown=false\n                    return Data([3])+receipt\n                case 4: // Discover immutable/partial journal IDs; no promotion.\n                    guard frame.count==1 else{throw UiCaptureFrameError.invalid}\n                    let ids=try UiCaptureJournal.list(context:captured.owner)\n                    var reply=Data([4])+Self.captureIntegerBytes(UInt64(ids.count),4)\n                    for id in ids {reply.append(try Self.captureUUIDBytes(id))}\n                    return reply\n                case 5: // Load from the actual owner; cache only validated data.\n                    guard frame.count==17 else{throw UiCaptureFrameError.invalid}\n                    let id=Data(frame[1..<17])\n                    let loaded=try UiCaptureJournal.load(context:captured.owner,transaction:Self.captureUUID(id))\n                    entry.uiCaptureDownload=UiCaptureDownload(id:id,capture:loaded.capture)\n                    var reply=Data([5])\n                    reply.append(Self.captureIntegerBytes(UInt64(loaded.capture.count),4))\n                    reply.append(Self.captureIntegerBytes(loaded.sourceGeneration,8))\n                    reply.append(Self.captureIntegerBytes(loaded.currentGeneration,8))\n                    reply.append(Data(SHA256.hash(data:loaded.capture)))\n                    reply.append(Self.captureIntegerBytes(UInt64(loaded.receipt.count),4))\n                    reply.append(loaded.receipt)\n                    return reply\n                case 6: // Read a bounded slice of that exact validated capture.\n                    guard frame.count==25,let loaded=entry.uiCaptureDownload,\n                          frame[1..<17]==loaded.id else{throw UiCaptureFrameError.invalid}\n                    let offset=Int(try Self.captureInteger(frame,17,4)),count=Int(try Self.captureInteger(frame,21,4))\n                    guard count>0,count<=8191,offset<=loaded.capture.count-count else{throw UiCaptureFrameError.invalid}\n                    return Data([6])+loaded.capture[offset..<offset+count]\n                default:throw UiCaptureFrameError.invalid\n                }\n            }\n        }\n    }\n\n    // Native-only seams: not registered in the string command dispatcher or",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "input": "/private/tmp/aux-delivery-restart/docs/integration/proposed/profile-isolation-delivery/restart/source/AuxPreparedDaemonAuthority.swift",
+      "path": "AuxPreparedDaemonAuthority.swift",
+      "inputSha256": "1073843482b774f410225436cb7cc6e2bfd48126ef9dedd3d4b81e671aad32c0",
+      "output": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/ui-native-capture-transport-a1/source/AuxPreparedDaemonAuthority.swift",
+      "outputSha256": "84492348111bfd2730c508c746e2062086daf93841c62770abef9eec4a04da7c",
+      "anchors": [
+        {
+          "find": "case signature,publicKeys,inboxKey,browserStartup}",
+          "replace": "case signature,publicKeys,inboxKey,browserStartup,uiCapture}",
+          "count": 1
+        },
+        {
+          "find": "        case .browserStartup:command=\"\" // Native capability route, never generic command dispatch.",
+          "replace": "        case .browserStartup,.uiCapture:command=\"\" // Native-only routes, never generic command dispatch.",
+          "count": 1
+        },
+        {
+          "find": "    let response:String?=request.command.utf8CString.withUnsafeBufferPointer{command in",
+          "replace": "    if request.kind == .uiCapture {\n        do {\n            var reply=try AuxCommandDispatcherRegistry.shared.exchangeUiStorageCaptureFrame(entry.owner.handle,frame:request.message)\n            guard !reply.isEmpty,reply.count<=8192 else{return .failed}\n            return .completed(DaemonAuthorityPayload(&reply))\n        }catch{return .failed}\n    }\n    let response:String?=request.command.utf8CString.withUnsafeBufferPointer{command in",
+          "count": 1
+        },
+        {
+          "find": "capacity:UInt32,written:UnsafeMutablePointer<UInt32>?)->Int32 {\n    guard getpid()==daemonAuthorityProcess else{return -2}",
+          "replace": "capacity:UInt32,written:UnsafeMutablePointer<UInt32>?,messageCount:UInt32=0)->Int32 {\n    guard getpid()==daemonAuthorityProcess else{return -2}",
+          "count": 1
+        },
+        {
+          "find": "    }else{bytes=Data()}\n    daemonAuthorityLock.lock()",
+          "replace": "    }else if kind == .uiCapture {\n        guard let message,messageCount>0,messageCount<=8192 else{return -1}\n        bytes=Data(bytes:message,count:Int(messageCount))\n    }else{bytes=Data()}\n    daemonAuthorityLock.lock()",
+          "count": 1
+        },
+        {
+          "find": "@_cdecl(\"AuxBeginPreparedDaemonSignature\")",
+          "replace": "@_cdecl(\"AuxBeginPreparedUiCapture\")\nfunc AuxBeginPreparedUiCapture(_ id:UInt64,_ sequence:UInt64,_ nonce:UnsafePointer<UInt8>?,_ message:UnsafePointer<UInt8>?,_ count:UInt32,_ output:UnsafeMutablePointer<UInt8>?,_ capacity:UInt32,_ written:UnsafeMutablePointer<UInt32>?)->Int32 {\n    operatePreparedDaemonAuthority(id,sequence:sequence,nonce:nonce,kind:.uiCapture,message:message,output:output,capacity:capacity,written:written,messageCount:count)\n}\n@_cdecl(\"AuxBeginPreparedDaemonSignature\")",
+          "count": 1
+        }
+      ]
+    }
+  ],
+  "swiftPredecessor": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/ui-native-capture-journal-a1/daemon-source-composition.json",
+  "swiftPredecessorSha256": "ed23d50f70e7693db61a4a1e6084d414f30853b227e69f54f09ae195b54090d9",
+  "swiftSources": [
+    {
+      "predecessor": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-native-p256-envelope-port/source/EnvelopeRecords.swift",
+      "predecessorSha256": "e6b8b6bcae9f6b34cc5dfe757e5f0130297f1c4c3bae81636387a06e24dc34d6",
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-native-p256-envelope-port/source/EnvelopeRecords.swift",
+      "sha256": "e6b8b6bcae9f6b34cc5dfe757e5f0130297f1c4c3bae81636387a06e24dc34d6",
+      "changed": false
+    },
+    {
+      "predecessor": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-native-p256-envelope-port/source/RecoveredP256Authority.swift",
+      "predecessorSha256": "0713e381797ca552d1740e41729445c014347f476c01d1c7290663a606bdfcff",
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-native-p256-envelope-port/source/RecoveredP256Authority.swift",
+      "sha256": "0713e381797ca552d1740e41729445c014347f476c01d1c7290663a606bdfcff",
+      "changed": false
+    },
+    {
+      "predecessor": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-native-p256-envelope-port/source/AuxNativeEnvelopeV2.swift",
+      "predecessorSha256": "7041372ba6bdaf73a6a81422950d306c66e2ac06c78158efce20836f5a1a296f",
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-native-p256-envelope-port/source/AuxNativeEnvelopeV2.swift",
+      "sha256": "7041372ba6bdaf73a6a81422950d306c66e2ac06c78158efce20836f5a1a296f",
+      "changed": false
+    },
+    {
+      "predecessor": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-native-pq-continuation/source/PqEnvelopeRecords.swift",
+      "predecessorSha256": "ab0caa18e08af604c94b2d1f70f5ae04e4e56bf9678578861214593a51a075fc",
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-native-pq-continuation/source/PqEnvelopeRecords.swift",
+      "sha256": "ab0caa18e08af604c94b2d1f70f5ae04e4e56bf9678578861214593a51a075fc",
+      "changed": false
+    },
+    {
+      "predecessor": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-native-pq-continuation/source/RecoveredPqAuthority.swift",
+      "predecessorSha256": "01a893c2939606692da02249b0abc264ca5a80d2a4fd10bcacf9888688b65e42",
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-native-pq-continuation/source/RecoveredPqAuthority.swift",
+      "sha256": "01a893c2939606692da02249b0abc264ca5a80d2a4fd10bcacf9888688b65e42",
+      "changed": false
+    },
+    {
+      "predecessor": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-native-signing-port/source/RecoveredP256SigningAuthority.swift",
+      "predecessorSha256": "d678c329635f69fe1bbfaad0d82cd8a3bf2d422c7133adaa42d5050dada26ac4",
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-native-signing-port/source/RecoveredP256SigningAuthority.swift",
+      "sha256": "d678c329635f69fe1bbfaad0d82cd8a3bf2d422c7133adaa42d5050dada26ac4",
+      "changed": false
+    },
+    {
+      "predecessor": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-native-signing-port/source/RecoveredPqSigningAuthority.swift",
+      "predecessorSha256": "44a2ab0825edb95066db8fb1d1a4ef8f18393f372467a256848693d90651916f",
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-native-signing-port/source/RecoveredPqSigningAuthority.swift",
+      "sha256": "44a2ab0825edb95066db8fb1d1a4ef8f18393f372467a256848693d90651916f",
+      "changed": false
+    },
+    {
+      "predecessor": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-native-inbox-v2/source/AuxInstallationCommandCore.swift",
+      "predecessorSha256": "9009863cb5858f798eea3cb089964113c85ce706d7d02ee9bbcd5c08274ff947",
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-native-inbox-v2/source/AuxInstallationCommandCore.swift",
+      "sha256": "9009863cb5858f798eea3cb089964113c85ce706d7d02ee9bbcd5c08274ff947",
+      "changed": false
+    },
+    {
+      "predecessor": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-fresh-installation-factory/source/AuxFreshInstallationFactory.swift",
+      "predecessorSha256": "25e041d9ccc738b9cde9110b3790a6cd205dcd6ca2d4ea2965d25be9fe291086",
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-fresh-installation-factory/source/AuxFreshInstallationFactory.swift",
+      "sha256": "25e041d9ccc738b9cde9110b3790a6cd205dcd6ca2d4ea2965d25be9fe291086",
+      "changed": false
+    },
+    {
+      "predecessor": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-fresh-four-row-preparation/source/AuxFreshFourRowPreparation.swift",
+      "predecessorSha256": "bd7212b3061e6bcecd3a8c52490b8ebb29a3abb28123d67e75f9379c9ac342cb",
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-fresh-four-row-preparation/source/AuxFreshFourRowPreparation.swift",
+      "sha256": "bd7212b3061e6bcecd3a8c52490b8ebb29a3abb28123d67e75f9379c9ac342cb",
+      "changed": false
+    },
+    {
+      "predecessor": "/private/tmp/aux-final-native-link/docs/integration/proposed/final-completion/fresh-owner/source/AuxNativeFreshReservationLeaseRegistry.swift",
+      "predecessorSha256": "9d52ce0da42fe7e1b5ba1aad0cb4b9c0849592dc894c7c725f11dd64229cb39d",
+      "path": "/private/tmp/aux-final-native-link/docs/integration/proposed/final-completion/fresh-owner/source/AuxNativeFreshReservationLeaseRegistry.swift",
+      "sha256": "9d52ce0da42fe7e1b5ba1aad0cb4b9c0849592dc894c7c725f11dd64229cb39d",
+      "changed": false
+    },
+    {
+      "predecessor": "/private/tmp/aux-browser-root-restart/docs/integration/proposed/profile-isolation-recovery/restart/source/AuxFreshBootstrapPolicy.swift",
+      "predecessorSha256": "4aedad8ea6875c2d5aa8c51c05563c8cc4a094a901bdf05eec1f33f1ae0a9b22",
+      "path": "/private/tmp/aux-browser-root-restart/docs/integration/proposed/profile-isolation-recovery/restart/source/AuxFreshBootstrapPolicy.swift",
+      "sha256": "4aedad8ea6875c2d5aa8c51c05563c8cc4a094a901bdf05eec1f33f1ae0a9b22",
+      "changed": false
+    },
+    {
+      "predecessor": "/private/tmp/aux-final-native-link/docs/integration/proposed/final-completion/native/exec-parent/source/AuxSignedFreshBootstrapPolicyLoader.swift",
+      "predecessorSha256": "5932be30b0230f57fa09f88b28770ef9ddc016944f1d3b02e39fd9704faa0877",
+      "path": "/private/tmp/aux-final-native-link/docs/integration/proposed/final-completion/native/exec-parent/source/AuxSignedFreshBootstrapPolicyLoader.swift",
+      "sha256": "5932be30b0230f57fa09f88b28770ef9ddc016944f1d3b02e39fd9704faa0877",
+      "changed": false
+    },
+    {
+      "predecessor": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-fresh-native-secure-capture/source/AuxFreshNativeSecureCapture.swift",
+      "predecessorSha256": "b3230449886e1d1705345bbdf724952d90a4fefbd17c04cc594db6b8268c6e81",
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-fresh-native-secure-capture/source/AuxFreshNativeSecureCapture.swift",
+      "sha256": "b3230449886e1d1705345bbdf724952d90a4fefbd17c04cc594db6b8268c6e81",
+      "changed": false
+    },
+    {
+      "predecessor": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-native-fresh-stage-reconciliation/source/NativeFreshBootstrapJournal.swift",
+      "predecessorSha256": "471a3418d616342f87d03e538235fbae25bd26c9618c9cb61b1457a6015092b0",
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-native-fresh-stage-reconciliation/source/NativeFreshBootstrapJournal.swift",
+      "sha256": "471a3418d616342f87d03e538235fbae25bd26c9618c9cb61b1457a6015092b0",
+      "changed": false
+    },
+    {
+      "predecessor": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-native-fresh-retained-journal/source/PrivateNativeFreshBootstrapJournalStore.swift",
+      "predecessorSha256": "41acf84d6c2828d4093bb0efa47568408e3e69c9006fea628f587085aa0c3114",
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-native-fresh-retained-journal/source/PrivateNativeFreshBootstrapJournalStore.swift",
+      "sha256": "41acf84d6c2828d4093bb0efa47568408e3e69c9006fea628f587085aa0c3114",
+      "changed": false
+    },
+    {
+      "predecessor": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-native-fresh-target-cohort-lease/source/NativeFreshTargetJournal.swift",
+      "predecessorSha256": "28ee6d0e4a9705ab4c67e160fdb00686cdc64b89be7a6c7f9884e7ddbaef4172",
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-native-fresh-target-cohort-lease/source/NativeFreshTargetJournal.swift",
+      "sha256": "28ee6d0e4a9705ab4c67e160fdb00686cdc64b89be7a6c7f9884e7ddbaef4172",
+      "changed": false
+    },
+    {
+      "predecessor": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-native-fresh-target-coordinator/source/PrivateNativeFreshTargetJournalStore.swift",
+      "predecessorSha256": "d7cdbe6b4326d5209d912149aceba8658aefa44e5e63d3089443c8c146d34b52",
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-native-fresh-target-coordinator/source/PrivateNativeFreshTargetJournalStore.swift",
+      "sha256": "d7cdbe6b4326d5209d912149aceba8658aefa44e5e63d3089443c8c146d34b52",
+      "changed": false
+    },
+    {
+      "predecessor": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-native-fresh-runtime-consumer/source/AuxNativeFreshTargetCoordinator.swift",
+      "predecessorSha256": "6f9a1449828ed324a18375ead6a24faafbc0f6b461a39354f5c298feea35e50f",
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-native-fresh-runtime-consumer/source/AuxNativeFreshTargetCoordinator.swift",
+      "sha256": "6f9a1449828ed324a18375ead6a24faafbc0f6b461a39354f5c298feea35e50f",
+      "changed": false
+    },
+    {
+      "predecessor": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-native-fresh-target-boundary/source/AuxNativeFreshTargetBoundary.swift",
+      "predecessorSha256": "93ed889ac25ce89c0835e26656b32e824fa552b76a3c12456f07846d90785c2a",
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-native-fresh-target-boundary/source/AuxNativeFreshTargetBoundary.swift",
+      "sha256": "93ed889ac25ce89c0835e26656b32e824fa552b76a3c12456f07846d90785c2a",
+      "changed": false
+    },
+    {
+      "predecessor": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-runtime-target-capture/source/AuxRuntimeTargetCapture.swift",
+      "predecessorSha256": "a20562a0776d0e5a0992f2c5568243f522fd37909183a952027219338d3430f0",
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-runtime-target-capture/source/AuxRuntimeTargetCapture.swift",
+      "sha256": "a20562a0776d0e5a0992f2c5568243f522fd37909183a952027219338d3430f0",
+      "changed": false
+    },
+    {
+      "predecessor": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-native-fresh-runtime-consumer/source/AuxSecureStore.swift",
+      "predecessorSha256": "24fbf31b9a40228a4744bb094b475b096017dd29df62e7c97c8d0dfa14399a58",
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-native-fresh-runtime-consumer/source/AuxSecureStore.swift",
+      "sha256": "24fbf31b9a40228a4744bb094b475b096017dd29df62e7c97c8d0dfa14399a58",
+      "changed": false
+    },
+    {
+      "predecessor": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-native-fresh-runtime-readiness/source/ScopedAuxCommandContext.swift",
+      "predecessorSha256": "c11bed197cc847a3743dbd8ce8940b56890d3d1d47da9f16bb39f81004c6b7e1",
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-native-fresh-runtime-readiness/source/ScopedAuxCommandContext.swift",
+      "sha256": "c11bed197cc847a3743dbd8ce8940b56890d3d1d47da9f16bb39f81004c6b7e1",
+      "changed": false
+    },
+    {
+      "predecessor": "/private/tmp/aux-standard-native-source-20261023-a4/AuxOwnedCommandDispatcher.swift",
+      "predecessorSha256": "85153a74b4fc12b5e0374ac58ecdc95f588835b10b38811bf2fb6b267ab1f6b1",
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/ui-native-capture-journal-a1/source/AuxOwnedCommandDispatcher.swift",
+      "sha256": "e60f0947bf6ccace36b491300d8bd504bf247ed0654a468dc5143605e8eeea4a",
+      "changed": true
+    },
+    {
+      "predecessor": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-native-fresh-runtime-readiness/source/NativeFreshRuntimeCapturedContext.swift",
+      "predecessorSha256": "76d83aa5f418118bbd018bf8bd7c64da707ca69d86631509ba7c73c391ee99c4",
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-native-fresh-runtime-readiness/source/NativeFreshRuntimeCapturedContext.swift",
+      "sha256": "76d83aa5f418118bbd018bf8bd7c64da707ca69d86631509ba7c73c391ee99c4",
+      "changed": false
+    },
+    {
+      "predecessor": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-owned-dispatch-lifetime/source/AuxOSDrainResult.swift",
+      "predecessorSha256": "9a5886c30591940594906fb6ffd57ce4648933269414bd96ce136e3c4448579f",
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-owned-dispatch-lifetime/source/AuxOSDrainResult.swift",
+      "sha256": "9a5886c30591940594906fb6ffd57ce4648933269414bd96ce136e3c4448579f",
+      "changed": false
+    },
+    {
+      "predecessor": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-native-fresh-runtime-account-lock-revalidation/source/AuxAccountsCskCoordinator.swift",
+      "predecessorSha256": "4cf920a8be299e95314ca0324c3e5083e23762f92f5c556b7e6554a8e954feef",
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-native-fresh-runtime-account-lock-revalidation/source/AuxAccountsCskCoordinator.swift",
+      "sha256": "4cf920a8be299e95314ca0324c3e5083e23762f92f5c556b7e6554a8e954feef",
+      "changed": false
+    },
+    {
+      "predecessor": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-native-macos-utilities/source/AuxOSJobCustody.swift",
+      "predecessorSha256": "ef8f44ebc2da8633bbff8e527dced516c49d3d77949b63aac72f2b8cc9f043c4",
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-native-macos-utilities/source/AuxOSJobCustody.swift",
+      "sha256": "ef8f44ebc2da8633bbff8e527dced516c49d3d77949b63aac72f2b8cc9f043c4",
+      "changed": false
+    },
+    {
+      "predecessor": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-native-macos-utilities/source/AuxMacOSUtilityCommandCore.swift",
+      "predecessorSha256": "625388093933d923c14e66766f825bf5f49638b4d71299b535e918df87864dc8",
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-native-macos-utilities/source/AuxMacOSUtilityCommandCore.swift",
+      "sha256": "625388093933d923c14e66766f825bf5f49638b4d71299b535e918df87864dc8",
+      "changed": false
+    },
+    {
+      "predecessor": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-native-macos-utilities/source/AuxUtilityCompletion.swift",
+      "predecessorSha256": "fdf573db59912ed7288984e8eee958adf9c5455a88707cb0f78ff29d0d5d20f1",
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-native-macos-utilities/source/AuxUtilityCompletion.swift",
+      "sha256": "fdf573db59912ed7288984e8eee958adf9c5455a88707cb0f78ff29d0d5d20f1",
+      "changed": false
+    },
+    {
+      "predecessor": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-native-macos-utilities/source/AuxAppKitUtilityBoundary.swift",
+      "predecessorSha256": "04ee53525717955c107661f49de5be311ef08543fe07ad47d1da7e94537d743d",
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-native-macos-utilities/source/AuxAppKitUtilityBoundary.swift",
+      "sha256": "04ee53525717955c107661f49de5be311ef08543fe07ad47d1da7e94537d743d",
+      "changed": false
+    },
+    {
+      "predecessor": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-native-fresh-runtime-readiness/source/AuxPreparedFreshRuntimeProvider.swift",
+      "predecessorSha256": "e62a251dde870dec2aac77c457dda52f8567ed03df7f925ae9b268d94087c320",
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-native-fresh-runtime-readiness/source/AuxPreparedFreshRuntimeProvider.swift",
+      "sha256": "e62a251dde870dec2aac77c457dda52f8567ed03df7f925ae9b268d94087c320",
+      "changed": false
+    },
+    {
+      "predecessor": "/private/tmp/aux-final-native-link/docs/integration/proposed/final-completion/fresh-owner/source/AuxFreshNativeHome.swift",
+      "predecessorSha256": "d7542cc9a3ec48de3af729fc8d5bdf90bf89daf8262b21b263995aeb012da12b",
+      "path": "/private/tmp/aux-final-native-link/docs/integration/proposed/final-completion/fresh-owner/source/AuxFreshNativeHome.swift",
+      "sha256": "d7542cc9a3ec48de3af729fc8d5bdf90bf89daf8262b21b263995aeb012da12b",
+      "changed": false
+    },
+    {
+      "predecessor": "/private/tmp/aux-final-native-link/docs/integration/proposed/final-completion/fresh-owner/source/AuxResumedFreshNativeHome.swift",
+      "predecessorSha256": "81f659ea4f10b27f559628f9eebba2baacc4c8f3bd280eb5c6bbb8c10153485f",
+      "path": "/private/tmp/aux-final-native-link/docs/integration/proposed/final-completion/fresh-owner/source/AuxResumedFreshNativeHome.swift",
+      "sha256": "81f659ea4f10b27f559628f9eebba2baacc4c8f3bd280eb5c6bbb8c10153485f",
+      "changed": false
+    },
+    {
+      "predecessor": "/private/tmp/aux-standard-native-source-20261023-a4/AuxNativeFreshStageCoordinator.swift",
+      "predecessorSha256": "6893e93cbcedebbf9fb81b0e84c138d15b68c750dc0d2e75308f41b0f618168a",
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/ui-native-capture-journal-a1/source/AuxNativeFreshStageCoordinator.swift",
+      "sha256": "963436dbbbbe9ab779d48689dcd2f97243059c45356b150f447f916cc2ffc1fc",
+      "changed": true
+    },
+    {
+      "predecessor": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-native-fresh-cold-bootstrap/source/AuxNativeFreshBootstrapFactory.swift",
+      "predecessorSha256": "b5299aac3a874d193cfbcab06dbc5a28380eede6db1f19c8fd8bc39a280783cd",
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-native-fresh-cold-bootstrap/source/AuxNativeFreshBootstrapFactory.swift",
+      "sha256": "b5299aac3a874d193cfbcab06dbc5a28380eede6db1f19c8fd8bc39a280783cd",
+      "changed": false
+    },
+    {
+      "predecessor": "/private/tmp/aux-profile-startup-next/docs/integration/proposed/profile-isolation-next/startup/v5-source/AuxAuthenticatedFreshColdBootstrap.swift",
+      "predecessorSha256": "2f49786b05871c1a4473716f4f28a2febc898dbd31625aeb6cc115341459bd4b",
+      "path": "/private/tmp/aux-profile-startup-next/docs/integration/proposed/profile-isolation-next/startup/v5-source/AuxAuthenticatedFreshColdBootstrap.swift",
+      "sha256": "2f49786b05871c1a4473716f4f28a2febc898dbd31625aeb6cc115341459bd4b",
+      "changed": false
+    },
+    {
+      "predecessor": "/private/tmp/aux-standard-native-source-20261023-a4/AuxFreshColdInstallerGuard.swift",
+      "predecessorSha256": "027912387acceece77e627e53613e6964c102e2b79fa9673455cdc81e397ac8a",
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/ui-native-capture-journal-a1/source/AuxFreshColdInstallerGuard.swift",
+      "sha256": "36de079ca488250033b3c20f0d86ee2134a73dffa3c6f81bd87f88a8f556aa58",
+      "changed": true
+    },
+    {
+      "predecessor": "/private/tmp/aux-profile-startup-next/docs/integration/proposed/profile-isolation-next/startup/v5-source/AuxFreshColdBootstrapNativeBridge.swift",
+      "predecessorSha256": "dde9f4e2fbeac6d421c29296a7f1fb911966db74f1bee9837dda1cbd7ff1c6c4",
+      "path": "/private/tmp/aux-profile-startup-next/docs/integration/proposed/profile-isolation-next/startup/v5-source/AuxFreshColdBootstrapNativeBridge.swift",
+      "sha256": "dde9f4e2fbeac6d421c29296a7f1fb911966db74f1bee9837dda1cbd7ff1c6c4",
+      "changed": false
+    },
+    {
+      "predecessor": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-native-fresh-runtime-readiness/source/AuxNativeFreshGuardFailure.swift",
+      "predecessorSha256": "3467707af5da2b0337f6b105ec82425885b4531a4e0ce5811003a7364f002f63",
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-native-fresh-runtime-readiness/source/AuxNativeFreshGuardFailure.swift",
+      "sha256": "3467707af5da2b0337f6b105ec82425885b4531a4e0ce5811003a7364f002f63",
+      "changed": false
+    },
+    {
+      "predecessor": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-native-sealed-parent-entry/source/AuxSealedOuterBrowserParent.swift",
+      "predecessorSha256": "391b11b7c853fe06b52f501c919898fec890490a7ee6d2f9eed9ed173e7b2475",
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-native-sealed-parent-entry/source/AuxSealedOuterBrowserParent.swift",
+      "sha256": "391b11b7c853fe06b52f501c919898fec890490a7ee6d2f9eed9ed173e7b2475",
+      "changed": false
+    },
+    {
+      "predecessor": "/private/tmp/aux-native-current-entry-package/docs/integration/proposed/aux-native-current-entry-package/source/AuxSealedNativeDaemonEntry.swift",
+      "predecessorSha256": "1076fd852428f0db4d0ba4f2a2898b05f88656d9bec36d272418a1fe2bdac2b8",
+      "path": "/private/tmp/aux-native-current-entry-package/docs/integration/proposed/aux-native-current-entry-package/source/AuxSealedNativeDaemonEntry.swift",
+      "sha256": "1076fd852428f0db4d0ba4f2a2898b05f88656d9bec36d272418a1fe2bdac2b8",
+      "changed": false
+    },
+    {
+      "predecessor": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/daemon-crash-registration-close-a1/source/AuxDevelopmentOwnerDrain.swift",
+      "predecessorSha256": "990a816ff7ba364144e532bd6959699bdbf3a0efc8bebf1507c55da72bdecaa2",
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/daemon-crash-registration-close-a1/source/AuxDevelopmentOwnerDrain.swift",
+      "sha256": "990a816ff7ba364144e532bd6959699bdbf3a0efc8bebf1507c55da72bdecaa2",
+      "changed": false
+    },
+    {
+      "predecessor": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-native-daemon-main/source/AuxFreshRuntimeOwnerRelease.swift",
+      "predecessorSha256": "6924508e172a583e041575b496a02ec99de5cfeb412a1f6dc40d8c871d155048",
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-native-daemon-main/source/AuxFreshRuntimeOwnerRelease.swift",
+      "sha256": "6924508e172a583e041575b496a02ec99de5cfeb412a1f6dc40d8c871d155048",
+      "changed": false
+    },
+    {
+      "predecessor": "/private/tmp/aux-delivery-restart/docs/integration/proposed/profile-isolation-delivery/restart/source/AuxPreparedDaemonAuthority.swift",
+      "predecessorSha256": "1073843482b774f410225436cb7cc6e2bfd48126ef9dedd3d4b81e671aad32c0",
+      "path": "/private/tmp/aux-delivery-restart/docs/integration/proposed/profile-isolation-delivery/restart/source/AuxPreparedDaemonAuthority.swift",
+      "sha256": "1073843482b774f410225436cb7cc6e2bfd48126ef9dedd3d4b81e671aad32c0",
+      "changed": false
+    },
+    {
+      "predecessor": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-native-inbox-v2/source/AuxInboxV2Key.swift",
+      "predecessorSha256": "3286feaa01b4c4c108883cd2dc0dcceef082de5dea5a88248a87445abb4b2a4a",
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-native-inbox-v2/source/AuxInboxV2Key.swift",
+      "sha256": "3286feaa01b4c4c108883cd2dc0dcceef082de5dea5a88248a87445abb4b2a4a",
+      "changed": false
+    },
+    {
+      "predecessor": "/private/tmp/aux-profile-startup-next/docs/integration/proposed/profile-isolation-next/startup/v5-source/AuxNativeTaskLayout.swift",
+      "predecessorSha256": "4b27a1008a34640976e2e40a5c47fb08fdd28591e6a6df12522464d2474bd8dc",
+      "path": "/private/tmp/aux-profile-startup-next/docs/integration/proposed/profile-isolation-next/startup/v5-source/AuxNativeTaskLayout.swift",
+      "sha256": "4b27a1008a34640976e2e40a5c47fb08fdd28591e6a6df12522464d2474bd8dc",
+      "changed": false
+    },
+    {
+      "predecessor": "/private/tmp/aux-standard-native-source-20261023-a4/AuxBrowserFreshRootAdmission.swift",
+      "predecessorSha256": "435ef261a1abab8e5c573368941337e714d00b167f71c81268d5dace4b10ca09",
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/ui-native-capture-journal-a1/source/AuxBrowserFreshRootAdmission.swift",
+      "sha256": "ca63849e2858f9047641ed354bd310bba38ac618f0e10cd274656f817350c0ce",
+      "changed": true
+    }
+  ],
+  "authorityWireVersion": 6,
+  "rootSelectionFromCaller": false,
+  "migrationActivationAuthorized": false
+}
