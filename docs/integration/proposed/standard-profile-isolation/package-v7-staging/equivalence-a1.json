@@ -1,0 +1,29 @@
+{
+  "format": "aux.standard-final-resource-stage.equivalence.v1",
+  "passed": true,
+  "receipt": "/Users/rcourson/Documents/Vibe/web/out/standard-profile-finish-stage-pair-20261024/receipt.json",
+  "receiptSha256": "159511cc615fe3d85fe310c8044083c5a42cc6cd84694084d39d72a2fe8e128a",
+  "profiles": [
+    {
+      "profile": "baseline",
+      "agentVersion": "1.26.1016.1865",
+      "agentResourceCount": 1217,
+      "agentResourceBytesAndModesIdentical": true,
+      "priorManifestSha256": "3c15c66dcf5346030021e790da8779aafeb0dd7805114544b90bbd0d2c869ab6",
+      "freshManifestSha256": "7f6bc88a1bf0e4801a29463863cb20e5d8c809033500b5deaaa544dafbe4c842"
+    },
+    {
+      "profile": "desktop-v1",
+      "agentVersion": "1.26.1016.1869",
+      "agentResourceCount": 1217,
+      "agentResourceBytesAndModesIdentical": true,
+      "priorManifestSha256": "30e3fcc0a805270feaaab49cd2cd0a7788931c6934571bc8e5f36f6c6e4f9bd6",
+      "freshManifestSha256": "2936f8e0c328afeba5789b767f814ff0efcffe9141c12ba3de4f5c4cefd0e18e"
+    }
+  ],
+  "appAssembled": false,
+  "appExecuted": false,
+  "signed": false,
+  "runtimeAcceptance": false,
+  "scope": "Exact current Agent UI resources and stage input association only"
+}

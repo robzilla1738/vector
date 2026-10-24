@@ -1,0 +1,26 @@
+{
+  "format": "aux.standard-final-resource-stage.actual.v1",
+  "reviewSha256": "e4060fda52bf0af578ffc184911524c94130a8bb3d1a4a625307b84871b7d404",
+  "command": [
+    "/opt/homebrew/opt/python@3.15/bin/python3.15",
+    "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/package/stage_pair.py",
+    "--source-snapshot",
+    "/Users/rcourson/Documents/Vibe/web/out/provided-source-snapshot-1.26.1016.1852",
+    "--output",
+    "/Users/rcourson/Documents/Vibe/web/out/standard-profile-finish-stage-pair-20261024",
+    "--final-app",
+    "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-standard-profile-finish-20261024/Aux.app",
+    "--node",
+    "/opt/homebrew/bin/node"
+  ],
+  "exitCode": 0,
+  "elapsedSeconds": 282.72216633404605,
+  "passed": true,
+  "productExecuted": false,
+  "packageFrozen": false,
+  "packageAssembled": false,
+  "signed": false,
+  "stageReceipt": "/Users/rcourson/Documents/Vibe/web/out/standard-profile-finish-stage-pair-20261024/receipt.json",
+  "stageReceiptSha256": "159511cc615fe3d85fe310c8044083c5a42cc6cd84694084d39d72a2fe8e128a",
+  "stagePassed": true
+}

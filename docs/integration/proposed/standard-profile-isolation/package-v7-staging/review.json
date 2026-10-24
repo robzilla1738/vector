@@ -1,0 +1,58 @@
+{
+  "format": "aux.standard-final-resource-stage.review.v1",
+  "command": [
+    "/opt/homebrew/opt/python@3.15/bin/python3.15",
+    "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/package/stage_pair.py",
+    "--source-snapshot",
+    "/Users/rcourson/Documents/Vibe/web/out/provided-source-snapshot-1.26.1016.1852",
+    "--output",
+    "/Users/rcourson/Documents/Vibe/web/out/standard-profile-finish-stage-pair-20261024",
+    "--final-app",
+    "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-standard-profile-finish-20261024/Aux.app",
+    "--node",
+    "/opt/homebrew/bin/node"
+  ],
+  "inputPins": [
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/package/stage_pair.py",
+      "sha256": "9282c1ff54c9fd02dabf750654c470b062ea5069c6fdc307628b459429839da1"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/scripts/stage-provided.mjs",
+      "sha256": "39b85afdcf302d686a3cea77bf2c18ab1f84115b0519dd611ca304068535e085"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/vendor/provided/agent-revisions.json",
+      "sha256": "653091a743a7cc8b6008ec8ff14385b37073d293cdb508f0324850d47ea65e36"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/out/standard-profile-stage-pair-20261024-a1/receipt.json",
+      "sha256": "3405dde1269773e0f7612ec12edfb74f7478f9c73324537b21a6ab805bc97977"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/out/standard-profile-stage-pair-20261024-a1/baseline/manifest.json",
+      "sha256": "3c15c66dcf5346030021e790da8779aafeb0dd7805114544b90bbd0d2c869ab6"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/out/standard-profile-stage-pair-20261024-a1/desktop-v1/manifest.json",
+      "sha256": "30e3fcc0a805270feaaab49cd2cd0a7788931c6934571bc8e5f36f6c6e4f9bd6"
+    }
+  ],
+  "revision17": {
+    "revision": 17,
+    "profile": "development",
+    "identityProfile": "aux-v1",
+    "stateIdentityVersion": 2,
+    "featureProfile": "desktop-v1",
+    "fingerprint": "568c3d6196dda55658c84ed9204a0581e79607b1a5d31e50362192becc9c0e53"
+  },
+  "agentVersion": "1.26.1016.1869",
+  "unchangedTransformInputCount": 152,
+  "freshOutput": "/Users/rcourson/Documents/Vibe/web/out/standard-profile-finish-stage-pair-20261024",
+  "finalApp": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-standard-profile-finish-20261024/Aux.app",
+  "priorPreflightCorrection": "Initial read-only check wrongly equated revision17 to version suffix17. Exact source ledger uses1852+17=1869; corrected before any staging. Transform/brand input hashes matched.",
+  "productExecuted": false,
+  "packageFrozen": false,
+  "packageAssembled": false,
+  "signed": false
+}

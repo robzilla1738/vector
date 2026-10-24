@@ -1,0 +1,13 @@
+{
+  "format": "aux.original-runtime-seed-association.v1",
+  "originalSeed": {
+    "path": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-final-local-completion-20261023/Aux.app/Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/native/runtime-seed.cjs",
+    "sha256": "3051dea5ccc9d74126bf71ddc0bb72a4d3db19c59f890a8f48d572b215f092af"
+  },
+  "historicalManifest": {
+    "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/runtime-cache-package-a4/prepared/runtime-integration.json",
+    "sha256": "049e6e4046b9933b7edd4d4950005f4a460acc6fc171c94daa476286d0e79e70"
+  },
+  "mutated": false,
+  "note": "Original packaging seed baseline retained. Staging is not runtime acceptance and does not replace this association."
+}
