@@ -164,7 +164,7 @@ void AuxOrganizationTreeView::QueueRefresh() {
 void AuxOrganizationTreeView::Refresh() {
   refresh_queued_ = false;
   const auto* snapshot = Snapshot();
-  const bool next_ready = snapshot && (scope_ == Scope::kPinnedFolders || snapshot->spaces.contains(window_->ActiveSpaceId()));
+  const bool next_ready = snapshot && window_->IsProjectionReady() && (scope_ == Scope::kPinnedFolders || snapshot->spaces.contains(window_->ActiveSpaceId()));
   const bool changed = ready_ != next_ready;
   ready_ = next_ready;
   CancelDrag();

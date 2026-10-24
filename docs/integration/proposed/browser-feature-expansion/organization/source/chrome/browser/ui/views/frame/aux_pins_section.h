@@ -18,6 +18,7 @@ class AuxPinsSection final : public AuxSectionView, public gfx::AnimationDelegat
  public:
   AuxPinsSection(BrowserWindowInterface&, std::unique_ptr<views::View> contents);
   ~AuxPinsSection() override;
+  void RebindForProfileSwitch();
  private:
   void Bind();
   void Toggle();

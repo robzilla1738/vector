@@ -22,13 +22,15 @@
     "chrome/browser/ui/views/frame/aux_bookmarks_section.cc": "492ed402ba0fcfcd5d517b0380deee330a04a0a62a0edff3355d7d0ed280e851",
     "chrome/browser/ui/views/frame/aux_bookmarks_section.h": "6b5cdbb09d893130eef1250e614a73a519f853057ffe44103de17a5b6bc4b80d",
     "chrome/browser/ui/views/frame/aux_cross_section_drag_coordinator.cc": "731312ae619601cb107b2f4c4baf56c0438ce6b2007dcbd4c0de99ee40763c1e",
-    "chrome/browser/ui/views/frame/aux_organization_tree_view.cc": "a32855117d819d0cbe2395bc34a3711bc4b290db41992545319922e509a360b1",
+    "chrome/browser/ui/views/frame/aux_organization_tree_view.cc": "65c941c9f6012719dfe05634dd880f5b8b63dbfe41679a7af28adbd4e1c4d1b4",
     "chrome/browser/ui/views/frame/aux_organization_tree_view.h": "df694dacead5d7446a5671fc1de4efe10229ef859b3137e529be48630112b9ca",
     "chrome/browser/ui/views/frame/aux_organization_ui_commands.cc": "97646d6b69dbbbf57fd01edcc6fe0c1a78b263d8300d31bc338720bec821a7ca",
     "chrome/browser/ui/views/frame/aux_organization_ui_commands.h": "5b109b4204d0585ee98c43cca10a6b5cff9d579b29a0bee6ebef2f35083e9261",
-    "chrome/browser/ui/views/frame/aux_organization_window_delegate.h": "5ebd4ca8e29b046bfa2cf2b5c8d5ecaeda2348790b329209752c205bc2891939",
-    "chrome/browser/ui/views/frame/aux_pins_section.cc": "5e123630c9d5d1af4abee552ad678c3e125499ca1e59ab821b9a5c116afa4d3c",
-    "chrome/browser/ui/views/frame/aux_pins_section.h": "603f32878b6831c67d5af4598994cc1a671acc05c1b5191b6dbaaab36ceaa197",
+    "chrome/browser/ui/views/frame/aux_organization_window_controller.cc": "81275c828319ddbab1c40998fcfc346af423ef9e60e21720a44e07dce62a32db",
+    "chrome/browser/ui/views/frame/aux_organization_window_controller.h": "3397c6266ab75e16ed5c4e88f7b03cba1f8934bbfad0d76b2c326a9f6484a829",
+    "chrome/browser/ui/views/frame/aux_organization_window_delegate.h": "2882e3100a8013dec87551e300403eb6222623f251969a72e779904509a931fe",
+    "chrome/browser/ui/views/frame/aux_pins_section.cc": "5a6ab5958add314aaf190ac4bf45368f93d19c638119a5aeb2b3b5614d255b2c",
+    "chrome/browser/ui/views/frame/aux_pins_section.h": "d8da282cddc9bd76fe891ed47d6c7100781c94943de23c9673e0076a90508963",
     "chrome/browser/ui/views/frame/aux_saved_entry_drop_target.cc": "fd3291a15d58affa738cec2335faf7155e6b5950a60f927b35f7ae5c75b782f8",
     "chrome/browser/ui/views/frame/aux_saved_pin_bookmark_conversion.cc": "fad9e21d22a124e1b47d14f09dec6b2999aef3b51d0a951788d483638a5dba8b",
     "chrome/browser/ui/views/frame/aux_saved_pin_bookmark_conversion.h": "8c567094c8455ee7ea8fe049027eccb6144be489dea964e8aa215923d2e9a66f",
@@ -66,6 +68,6 @@
   },
   "selectedSourceRoot": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src",
   "consumerModifiedCount": 19,
-  "consumerAddedCount": 11,
-  "consumerPatchSha256": "b4bce850118ea3ffc57d46217842cdcf428ffa665b9bbe4438def442572e5def"
+  "consumerAddedCount": 13,
+  "consumerPatchSha256": "fd84704e65954f9ba762b14a2901b7f30ea1d46e1c186808ddc7d70c5bf763d0"
 }

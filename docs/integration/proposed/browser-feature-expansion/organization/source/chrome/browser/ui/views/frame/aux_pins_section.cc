@@ -21,11 +21,16 @@ AuxPinsSection::AuxPinsSection(BrowserWindowInterface& browser, std::unique_ptr<
   clip_ = contents()->AddChildView(std::make_unique<AuxSectionClipView>(std::move(content)));
   animation_.SetSlideDuration(gfx::Animation::ShouldRenderRichAnimation()
       ? base::Milliseconds(180) : base::TimeDelta());
-  auto* owner = organization::OrganizationProfileServiceFactory::GetForProfile(browser.GetProfile());
+  RebindForProfileSwitch();
+}
+AuxPinsSection::~AuxPinsSection() = default;
+void AuxPinsSection::RebindForProfileSwitch() {
+  ready_ = {}; changes_ = {}; animation_.Stop();
+  if (!browser_) return;
+  auto* owner = organization::OrganizationProfileServiceFactory::GetForProfile(browser_->GetProfile());
   if (owner) ready_ = owner->ObserveReady(base::BindRepeating(&AuxPinsSection::Bind, weak_.GetWeakPtr()));
   Bind();
 }
-AuxPinsSection::~AuxPinsSection() = default;
 void AuxPinsSection::Bind() {
   changes_ = {};
   if (!browser_) return;

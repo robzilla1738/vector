@@ -23,3 +23,22 @@ Integration requests: register `chrome/browser/ui/tabs/aux_organization_pin_adap
 New native Views expose a compact Space selector/+ inside the existing Tabs header, name/icon dialogs, local mouse-wheel/horizontal-swipe stepping with threshold and one transition per gesture, and explicit end-of-list creation affordance. Logical folders reuse the supplied bookmark glyph geometry, row metrics, text treatment, chevron and native dialog pattern; they support nesting/collapse, rename, drag moves, keyboard traversal/reorder, global pin moves and context operations. New Pins and existing Bookmarks wrappers persist collapse through the single organization service and reuse the 180ms clip animation/reduced-motion path. No fake BookmarkNodes are created.
 
 The exact selected-source changes now number 19, plus 11 new consumer/Views files. The root integration must mount these Views and provide the real window delegate. The concrete controller is the next slice. The tree’s Archive action intentionally delegates all live-view protection and close decisions to that controller; it does not issue a metadata-only archive directly. This slice has not yet passed Chromium compilation, actual-app interaction, nested-folder deletion/keep-contents UX, full favicon integration, or runtime visual comparison. Those remain explicit work rather than accepted behavior.
+
+### Native window controller proposal
+
+The controller now observes actual per-window TabStripModel/WebContents instances,
+registers ordinary tabs atomically without URL deduplication, persists logical IDs
+and active Space through SessionService extra data, and projects the shared list
+only after existing ordinary tabs are represented durably. Each window retains
+independent selected/loaded views. Remote URL updates become pending proposals;
+they never navigate existing pages implicitly. Explicit application rechecks the
+actual document, native ownership generation, Egress authorization and live-work
+protections. Dropped authorization callbacks report refusal.
+
+Pin close unloads the native view while retaining its record; ordinary archive
+checks all matching same-profile views and existing native protections. Browser
+close-all is distinct and retains the shared list. Last-view/window destruction
+can conservatively retain the logical record rather than claim archive success.
+The parent integrator owns BrowserWindowFeatures lifetime, close/restore gates,
+sidebar mounts and GN registration. This source has not yet passed native compile
+or real multi-window acceptance; no app was launched or altered by this lane.
