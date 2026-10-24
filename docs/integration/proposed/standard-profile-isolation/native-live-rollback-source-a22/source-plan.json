@@ -1,0 +1,19 @@
+{
+  "format": "aux.native-live-rollback-source.v1",
+  "files": [
+    {
+      "path": "chrome/browser/aux/ui_storage_migration_controller.cc",
+      "input": "/Users/rcourson/.codex/worktrees/aux-features-navigation/web/docs/integration/proposed/standard-profile-isolation/native-ui-completion-fact-a19/source/chrome/browser/aux/ui_storage_migration_controller.cc",
+      "inputSha256": "643ebb05c32f1f375acc26cd377abfcb62ba2cec95ff98ce8149fc6b903eef37",
+      "output": "/Users/rcourson/.codex/worktrees/aux-features-navigation/web/docs/integration/proposed/standard-profile-isolation/native-live-rollback-source-a22/source/chrome/browser/aux/ui_storage_migration_controller.cc",
+      "outputSha256": "5397a43a4fdb35eb06874ea0874f645bec36cf786ec59b62870ae18da4e363ce",
+      "anchors": [
+        {
+          "find": "  if (value->matches_target && (!value->source_ready || !value->private_target_staged)) return false;\n  if (value->matches_source && !value->source_ready) return false;",
+          "replace": "  const bool restored_source = live_rollback_ && value->matches_source && value->file_data_synced &&\n      !value->cache_published && !value->known_source_target_mixture &&\n      std::ranges::all_of(value->maps, [](const auto& map) {\n        return std::ranges::all_of(map->cache_views, [](const auto& view) {\n          return view && view->cache && !view->cache->published && view->cache->error.empty() &&\n              view->cache->staged_entries == view->cache->source_entries;\n        });\n      });\n  // Forward source_ready includes no queued ordinary work. Exact source abort\n  // may safely replay those ORIGINAL callbacks only after real restore/cache\n  // rounds, complete original map CAS+sync and the source observation above.\n  // Source and target can coincide, so both forward-only tests need this guard.\n  if (!restored_source && value->matches_target && (!value->source_ready || !value->private_target_staged)) return false;\n  if (!restored_source && value->matches_source && !value->source_ready) return false;",
+          "count": 1
+        }
+      ]
+    }
+  ]
+}
