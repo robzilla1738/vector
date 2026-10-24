@@ -107,6 +107,14 @@ bool AuxOrganizationWindowController::ready() const {
   return true;
 }
 bool AuxOrganizationWindowController::IsProjectionReady() const { return ready(); }
+bool AuxOrganizationWindowController::ShouldDisplayLogicalEntry(const std::string& id) const {
+  if (!Current() || !ordinary_eligible_) return false;
+  for (auto* tab : *model_) {
+    if (tab->GetContents() && GetRememberedPinnedTabEntryId(*tab->GetContents()) == id &&
+        !tab->IsPinned() && !ordinary_eligible_.Run(*tab)) return false;
+  }
+  return true;
+}
 void AuxOrganizationWindowController::RebindForProfileSwitch() {
   if (shutdown_) return;
   TabStripModelObserver::StopObservingAll(this);
@@ -306,8 +314,8 @@ bool AuxOrganizationWindowController::Protected(tabs::TabInterface* tab) const {
   if (identity && identity->runtime_owned()) return true;
   if (content::DevToolsAgentHost::HasFor(contents) &&
       content::DevToolsAgentHost::GetOrCreateFor(contents)->IsAttached()) return true;
-  auto* actor = actor::ui::ActorUiTabController::Get(tab->GetUnownedUserDataHost());
-  if (actor && !actor->IsColdForAuxProfileSwitch()) return true;
+  auto* actor_controller = actor::ui::ActorUiTabController::Get(tab->GetUnownedUserDataHost());
+  if (actor_controller && !actor_controller->IsColdForAuxProfileSwitch()) return true;
   const auto capture = MediaCaptureDevicesDispatcher::GetInstance()->GetMediaStreamCaptureIndicator();
   if (capture->IsCapturingUserMedia(contents) || capture->IsBeingMirrored(contents) ||
       capture->IsCapturingTab(contents) || capture->IsCapturingWindow(contents) || capture->IsCapturingDisplay(contents)) return true;
@@ -475,6 +483,15 @@ bool AuxOrganizationWindowController::IsLogicalEntryProtected(const std::string&
   if (!organization || organization->blocked() || organization->pending() || !organization->snapshot().entries.contains(id)) return true;
   if (organization::HasRetention(organization->snapshot(), id)) return true;
   const auto& entries = organization->snapshot().entries;
+  for (const auto& [child_id, child] : entries) {
+    if (child.archived || !child.keep_in_space) continue;
+    std::string ancestor = child_id;
+    for (size_t depth = 0; depth <= organization::kMaxDepth && !ancestor.empty(); ++depth) {
+      if (ancestor == id) return true;
+      const auto found = entries.find(ancestor); if (found == entries.end()) return true;
+      ancestor = found->second.parent_id;
+    }
+  }
   for (const auto& [handle, view] : views_) {
     std::string ancestor = view.logical_id;
     for (size_t depth = 0; depth <= organization::kMaxDepth && !ancestor.empty(); ++depth) {
@@ -526,7 +543,7 @@ base::ListValue AuxOrganizationWindowController::SnapshotViews() const {
     row.Set("retained", organization::HasRetention(organization->snapshot(), view.logical_id));
     row.Set("windowId", std::to_string(browser_->GetSessionID().id()));
     row.Set("pendingSharedUrl", view.pending_shared_url);
-    row.Set("protected", Protected(handle.Get()) || !view.pending_shared_url.empty()); result.Append(std::move(row));
+    row.Set("protected", organization::HasRetention(organization->snapshot(), view.logical_id) || Protected(handle.Get()) || !view.pending_shared_url.empty()); result.Append(std::move(row));
   }
   return result;
 }

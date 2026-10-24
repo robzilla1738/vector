@@ -32,6 +32,7 @@ class AuxOrganizationWindowController final : public OrganizationWindowDelegate,
   void RefreshOrdinaryEligibility();
   void RestoreActiveSpace(const std::string&);
   bool IsProjectionReady() const override;
+  bool ShouldDisplayLogicalEntry(const std::string&) const override;
   std::string ActiveSpaceId() const override;
   std::string SelectedLogicalTabId() const override;
   bool SelectSpace(const std::string&) override;

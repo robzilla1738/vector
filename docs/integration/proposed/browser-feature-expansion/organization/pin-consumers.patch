@@ -921,7 +921,7 @@ diff --git a/chrome/browser/ui/views/frame/aux_organization_tree_view.cc b/chrom
 new file mode 100644
 --- /dev/null
 +++ b/chrome/browser/ui/views/frame/aux_organization_tree_view.cc
-@@ -0,0 +1,467 @@
+@@ -0,0 +1,468 @@
 +// Copyright 2026 Aux Authors. BSD-style license: see //LICENSE.
 +#include "chrome/browser/ui/views/frame/aux_organization_tree_view.h"
 +#include <algorithm>
@@ -1153,6 +1153,7 @@ new file mode 100644
 +    while (!pending.empty()) {
 +      auto item = std::move(pending.back()); pending.pop_back();
 +      const auto& entry = snapshot->entries.at(item.id);
++      if (!entry.archived && entry.kind == organization::EntryKind::kTab && !window_->ShouldDisplayLogicalEntry(item.id)) continue;
 +      auto* row = rows_->AddChildView(std::make_unique<OrganizationTreeRow>(weak_.GetWeakPtr(), entry,
 +          item.depth, window_->SelectedLogicalTabId() == item.id));
 +      row_by_id_[item.id] = row; visible_.push_back(item.id);
@@ -1600,7 +1601,7 @@ diff --git a/chrome/browser/ui/views/frame/aux_organization_window_controller.cc
 new file mode 100644
 --- /dev/null
 +++ b/chrome/browser/ui/views/frame/aux_organization_window_controller.cc
-@@ -0,0 +1,549 @@
+@@ -0,0 +1,566 @@
 +// Copyright 2026 Aux Authors. BSD-style license: see //LICENSE.
 +#include "chrome/browser/ui/views/frame/aux_organization_window_controller.h"
 +#include <algorithm>
@@ -1710,6 +1711,14 @@ new file mode 100644
 +  return true;
 +}
 +bool AuxOrganizationWindowController::IsProjectionReady() const { return ready(); }
++bool AuxOrganizationWindowController::ShouldDisplayLogicalEntry(const std::string& id) const {
++  if (!Current() || !ordinary_eligible_) return false;
++  for (auto* tab : *model_) {
++    if (tab->GetContents() && GetRememberedPinnedTabEntryId(*tab->GetContents()) == id &&
++        !tab->IsPinned() && !ordinary_eligible_.Run(*tab)) return false;
++  }
++  return true;
++}
 +void AuxOrganizationWindowController::RebindForProfileSwitch() {
 +  if (shutdown_) return;
 +  TabStripModelObserver::StopObservingAll(this);
@@ -1909,8 +1918,8 @@ new file mode 100644
 +  if (identity && identity->runtime_owned()) return true;
 +  if (content::DevToolsAgentHost::HasFor(contents) &&
 +      content::DevToolsAgentHost::GetOrCreateFor(contents)->IsAttached()) return true;
-+  auto* actor = actor::ui::ActorUiTabController::Get(tab->GetUnownedUserDataHost());
-+  if (actor && !actor->IsColdForAuxProfileSwitch()) return true;
++  auto* actor_controller = actor::ui::ActorUiTabController::Get(tab->GetUnownedUserDataHost());
++  if (actor_controller && !actor_controller->IsColdForAuxProfileSwitch()) return true;
 +  const auto capture = MediaCaptureDevicesDispatcher::GetInstance()->GetMediaStreamCaptureIndicator();
 +  if (capture->IsCapturingUserMedia(contents) || capture->IsBeingMirrored(contents) ||
 +      capture->IsCapturingTab(contents) || capture->IsCapturingWindow(contents) || capture->IsCapturingDisplay(contents)) return true;
@@ -2078,6 +2087,15 @@ new file mode 100644
 +  if (!organization || organization->blocked() || organization->pending() || !organization->snapshot().entries.contains(id)) return true;
 +  if (organization::HasRetention(organization->snapshot(), id)) return true;
 +  const auto& entries = organization->snapshot().entries;
++  for (const auto& [child_id, child] : entries) {
++    if (child.archived || !child.keep_in_space) continue;
++    std::string ancestor = child_id;
++    for (size_t depth = 0; depth <= organization::kMaxDepth && !ancestor.empty(); ++depth) {
++      if (ancestor == id) return true;
++      const auto found = entries.find(ancestor); if (found == entries.end()) return true;
++      ancestor = found->second.parent_id;
++    }
++  }
 +  for (const auto& [handle, view] : views_) {
 +    std::string ancestor = view.logical_id;
 +    for (size_t depth = 0; depth <= organization::kMaxDepth && !ancestor.empty(); ++depth) {
@@ -2129,7 +2147,7 @@ new file mode 100644
 +    row.Set("retained", organization::HasRetention(organization->snapshot(), view.logical_id));
 +    row.Set("windowId", std::to_string(browser_->GetSessionID().id()));
 +    row.Set("pendingSharedUrl", view.pending_shared_url);
-+    row.Set("protected", Protected(handle.Get()) || !view.pending_shared_url.empty()); result.Append(std::move(row));
++    row.Set("protected", organization::HasRetention(organization->snapshot(), view.logical_id) || Protected(handle.Get()) || !view.pending_shared_url.empty()); result.Append(std::move(row));
 +  }
 +  return result;
 +}
@@ -2154,7 +2172,7 @@ diff --git a/chrome/browser/ui/views/frame/aux_organization_window_controller.h 
 new file mode 100644
 --- /dev/null
 +++ b/chrome/browser/ui/views/frame/aux_organization_window_controller.h
-@@ -0,0 +1,91 @@
+@@ -0,0 +1,92 @@
 +// Copyright 2026 Aux Authors. BSD-style license: see //LICENSE.
 +#ifndef CHROME_BROWSER_UI_VIEWS_FRAME_AUX_ORGANIZATION_WINDOW_CONTROLLER_H_
 +#define CHROME_BROWSER_UI_VIEWS_FRAME_AUX_ORGANIZATION_WINDOW_CONTROLLER_H_
@@ -2189,6 +2207,7 @@ new file mode 100644
 +  void RefreshOrdinaryEligibility();
 +  void RestoreActiveSpace(const std::string&);
 +  bool IsProjectionReady() const override;
++  bool ShouldDisplayLogicalEntry(const std::string&) const override;
 +  std::string ActiveSpaceId() const override;
 +  std::string SelectedLogicalTabId() const override;
 +  bool SelectSpace(const std::string&) override;
@@ -2250,7 +2269,7 @@ diff --git a/chrome/browser/ui/views/frame/aux_organization_window_delegate.h b/
 new file mode 100644
 --- /dev/null
 +++ b/chrome/browser/ui/views/frame/aux_organization_window_delegate.h
-@@ -0,0 +1,28 @@
+@@ -0,0 +1,29 @@
 +// Copyright 2026 Aux Authors. BSD-style license: see //LICENSE.
 +#ifndef CHROME_BROWSER_UI_VIEWS_FRAME_AUX_ORGANIZATION_WINDOW_DELEGATE_H_
 +#define CHROME_BROWSER_UI_VIEWS_FRAME_AUX_ORGANIZATION_WINDOW_DELEGATE_H_
@@ -2264,6 +2283,7 @@ new file mode 100644
 + public:
 +  virtual ~OrganizationWindowDelegate() = default;
 +  virtual bool IsProjectionReady() const = 0;
++  virtual bool ShouldDisplayLogicalEntry(const std::string&) const = 0;
 +  virtual std::string ActiveSpaceId() const = 0;
 +  virtual std::string SelectedLogicalTabId() const = 0;
 +  virtual bool SelectSpace(const std::string& id) = 0;

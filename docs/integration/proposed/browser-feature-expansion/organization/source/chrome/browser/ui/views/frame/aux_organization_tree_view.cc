@@ -229,6 +229,7 @@ void AuxOrganizationTreeView::Refresh() {
     while (!pending.empty()) {
       auto item = std::move(pending.back()); pending.pop_back();
       const auto& entry = snapshot->entries.at(item.id);
+      if (!entry.archived && entry.kind == organization::EntryKind::kTab && !window_->ShouldDisplayLogicalEntry(item.id)) continue;
       auto* row = rows_->AddChildView(std::make_unique<OrganizationTreeRow>(weak_.GetWeakPtr(), entry,
           item.depth, window_->SelectedLogicalTabId() == item.id));
       row_by_id_[item.id] = row; visible_.push_back(item.id);

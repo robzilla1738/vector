@@ -22,13 +22,13 @@
     "chrome/browser/ui/views/frame/aux_bookmarks_section.cc": "492ed402ba0fcfcd5d517b0380deee330a04a0a62a0edff3355d7d0ed280e851",
     "chrome/browser/ui/views/frame/aux_bookmarks_section.h": "6b5cdbb09d893130eef1250e614a73a519f853057ffe44103de17a5b6bc4b80d",
     "chrome/browser/ui/views/frame/aux_cross_section_drag_coordinator.cc": "731312ae619601cb107b2f4c4baf56c0438ce6b2007dcbd4c0de99ee40763c1e",
-    "chrome/browser/ui/views/frame/aux_organization_tree_view.cc": "ff179d30c5bfea7e2682533807e658e7a201ebd229f1b0c7f16bb13e2f9665ab",
+    "chrome/browser/ui/views/frame/aux_organization_tree_view.cc": "d249a5879d5d3fac392282edad560bc1e55a31da8fd625829ec7bf34234b9383",
     "chrome/browser/ui/views/frame/aux_organization_tree_view.h": "386937317773d3015b714409e4029250b373ad4291f5b08bedac14cc55a363ce",
     "chrome/browser/ui/views/frame/aux_organization_ui_commands.cc": "97646d6b69dbbbf57fd01edcc6fe0c1a78b263d8300d31bc338720bec821a7ca",
     "chrome/browser/ui/views/frame/aux_organization_ui_commands.h": "5b109b4204d0585ee98c43cca10a6b5cff9d579b29a0bee6ebef2f35083e9261",
-    "chrome/browser/ui/views/frame/aux_organization_window_controller.cc": "761f27be920cff2642cbef66ad9e75dc0d16a8a6bf6425a7183dc4dc650cf543",
-    "chrome/browser/ui/views/frame/aux_organization_window_controller.h": "584d331ee524174324ec96554db98bcfd647018c51f2b301678042d056af2531",
-    "chrome/browser/ui/views/frame/aux_organization_window_delegate.h": "2882e3100a8013dec87551e300403eb6222623f251969a72e779904509a931fe",
+    "chrome/browser/ui/views/frame/aux_organization_window_controller.cc": "964054005381488319265806061544ce7f9d87f8947c4ba3f521bd90c979c9db",
+    "chrome/browser/ui/views/frame/aux_organization_window_controller.h": "eceee26c3478ab069a8f657b99d367e3c8745ca8aa4eb2f6de98c6a3460ef61f",
+    "chrome/browser/ui/views/frame/aux_organization_window_delegate.h": "5ce059466a47665c25cef14892ce41103745d15947aa605d461fe51e386fa1e0",
     "chrome/browser/ui/views/frame/aux_pins_section.cc": "5a6ab5958add314aaf190ac4bf45368f93d19c638119a5aeb2b3b5614d255b2c",
     "chrome/browser/ui/views/frame/aux_pins_section.h": "d8da282cddc9bd76fe891ed47d6c7100781c94943de23c9673e0076a90508963",
     "chrome/browser/ui/views/frame/aux_saved_entry_drop_target.cc": "fd3291a15d58affa738cec2335faf7155e6b5950a60f927b35f7ae5c75b782f8",
@@ -69,5 +69,5 @@
   "selectedSourceRoot": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src",
   "consumerModifiedCount": 19,
   "consumerAddedCount": 13,
-  "consumerPatchSha256": "78b4ea5db7cfbd51bc07017a55fecca8e4f95c8a14d66d58f1fedb60db875b38"
+  "consumerPatchSha256": "fee0ba063fa94d15ae57fe370417d186bfde79aa2bcfdd94c714698915424eb0"
 }

@@ -11,6 +11,7 @@ class OrganizationWindowDelegate {
  public:
   virtual ~OrganizationWindowDelegate() = default;
   virtual bool IsProjectionReady() const = 0;
+  virtual bool ShouldDisplayLogicalEntry(const std::string&) const = 0;
   virtual std::string ActiveSpaceId() const = 0;
   virtual std::string SelectedLogicalTabId() const = 0;
   virtual bool SelectSpace(const std::string& id) = 0;
