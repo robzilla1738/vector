@@ -1,0 +1,25 @@
+{
+  "format": "aux.standard-package-chatgpt-shim.v1",
+  "edits": [
+    {
+      "find": "def runtime_changes(base):",
+      "replace": "def chatgpt_runtime_change(review, oldbase):\n    # The existing packaged shim is replaced, never added through an absence gate.\n    original = '5fa0b56141c9fb515c6b5ff979340c0958bf3b9dd79fb60a7636357605e73ede'\n    changed = '43f8ce1e95d34c3deeca3f6c0a2cecd8b55dcce2342a09f490fbfc06d496e3ef'\n    baseline = Path(oldbase['baselineApp']) / 'Contents/Resources/aux' / PREFIX / 'aux-chatgpt.cjs'\n    require(review['inputs']['originalChatGPTShim'] == dict(path=str(baseline), sha256=original)\n            and not baseline.is_symlink(), 'Exact original packaged ChatGPT shim required')\n    m.pin(baseline, original)\n    require(baseline.stat().st_mode & 0o777 == 0o644, 'Original ChatGPT shim mode changed')\n    source = ROOT / 'vendor/aside/shims/aux-chatgpt.cjs'\n    m.pin(source, original)\n    projection = read(resolve(review['inputs']['projection']))\n    composition_path = Path(projection['output']) / 'composition.json'\n    m.pin(composition_path, projection['compositionSha256'])\n    composition = read(composition_path)\n    require(len(composition['artifacts']) == 1, 'Exactly one coupled shim required')\n    item = composition['artifacts'][0]\n    output = Path(projection['output']) / 'native/aux-chatgpt.cjs'\n    require(item['kind'] == 'chatgpt-shim' and item['stage'] == 'chatgpt-login'\n            and item['input'] == str(source) and item['inputSha256'] == original\n            and item['output'] == str(output) and item['outputSha256'] == changed\n            and item['packageRelativePath'] == 'Contents/Resources/native/aux-chatgpt.cjs',\n            'Coupled existing shim association changed')\n    # review_inputs already ran exact four-anchor literal replay and receipt checks.\n    m.pin(output, changed)\n    return dict(path=PREFIX+'aux-chatgpt.cjs', input=str(output), previousSha256=original,\n                sha256=changed, mode=0o644, mustBeAbsent=False)\n\n\ndef runtime_changes(base):",
+      "count": 1
+    },
+    {
+      "find": "    expected.append(old_items[PREFIX+'runtime-text-root.json'])",
+      "replace": "    expected.append(old_items[PREFIX+'runtime-text-root.json'])\n    expected.append(chatgpt_runtime_change(review, oldbase))",
+      "count": 1
+    },
+    {
+      "find": "'Exactly two reviewed replacements plus unchanged absent metadata required'",
+      "replace": "'Exactly bootstrap, seed, unchanged metadata and coupled existing shim required'",
+      "count": 1
+    },
+    {
+      "find": "    items.append(old_items[PREFIX+'runtime-text-root.json'])",
+      "replace": "    items.append(old_items[PREFIX+'runtime-text-root.json'])\n    items.append(chatgpt_runtime_change(review, oldbase))",
+      "count": 1
+    }
+  ]
+}

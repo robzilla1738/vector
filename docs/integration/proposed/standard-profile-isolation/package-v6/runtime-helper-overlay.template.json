@@ -1,0 +1,23 @@
+{
+  "format": "aux.standard-runtime-helper-overlay.v1",
+  "files": [
+    {
+      "kind": "seed",
+      "input": "/private/tmp/aux-browser-features-async-daemon-20261023-a2/native/runtime-seed.cjs",
+      "inputSha256": "54bd9cf68d25b9db0827af32ad323ea03821f7adae4066b677849a3e5b28a039",
+      "output": "/private/tmp/aux-standard-daemon-projection-20261024-a4/native/runtime-seed.cjs",
+      "outputSha256": "4b202aa8a73843502fa19dd22df2c326c5bf1890fa955b9e3b815028f58d8e2f",
+      "publisherOverlay": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/runtime-publication/overlay.json",
+      "publisherOverlaySha256": "567dcca8fb02c2ab3ecfda41fcc4752f0312ebef02a2336fcc855e8b5086ff98"
+    },
+    {
+      "kind": "bootstrap",
+      "input": "/private/tmp/aux-browser-features-async-daemon-20261023-a2/native/runtime-bootstrap.cjs",
+      "inputSha256": "13657bf3e1c3a0477c15eb154ba74f336a82c4af3b9800a1c86713a5a395d7a5",
+      "output": "/private/tmp/aux-standard-daemon-projection-20261024-a4/native/runtime-bootstrap.cjs",
+      "outputSha256": "da30c2b0445af81b3d3ff53fc82f7c93f589e34c3a7756e9f92ef38fab34c5e4",
+      "publisherOverlay": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/runtime-publication/overlay.json",
+      "publisherOverlaySha256": "567dcca8fb02c2ab3ecfda41fcc4752f0312ebef02a2336fcc855e8b5086ff98"
+    }
+  ]
+}

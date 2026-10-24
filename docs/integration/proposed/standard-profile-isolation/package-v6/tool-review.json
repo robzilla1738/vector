@@ -1,0 +1,87 @@
+{
+  "format": "aux.standard-isolation.package-v6.tools.v1",
+  "predecessor": "package-v5",
+  "unchangedFiles": [
+    {
+      "path": "bind_pair.py",
+      "sha256": "5678511875407c63539abdfdf1201c104f6527db91658dfd5cfda59cc08eb87b",
+      "predecessorSha256": "5678511875407c63539abdfdf1201c104f6527db91658dfd5cfda59cc08eb87b"
+    },
+    {
+      "path": "link-tool-aliases.json",
+      "sha256": "75ff23f4bcbc614394587ff29afef364672c15a9de9a12b69a882c310e7abec6",
+      "predecessorSha256": "75ff23f4bcbc614394587ff29afef364672c15a9de9a12b69a882c310e7abec6"
+    }
+  ],
+  "files": [
+    {
+      "path": "bind_pair.py",
+      "sha256": "5678511875407c63539abdfdf1201c104f6527db91658dfd5cfda59cc08eb87b"
+    },
+    {
+      "path": "cache_package.py",
+      "sha256": "d88bc649217250debca64975c9aab770e10138f81750fa500ee4721f1c2f7822"
+    },
+    {
+      "path": "commands.json",
+      "sha256": "9f8747ab43df902a0c0d1d5111759b947d0f400f8817dad38b377ef301d7efa9"
+    },
+    {
+      "path": "freeze-review.py",
+      "sha256": "863b8d4e836db1c4d8c00aec61711d9cf1dde399723a97ceafd1e1c9a239fb8a"
+    },
+    {
+      "path": "link-tool-aliases.json",
+      "sha256": "75ff23f4bcbc614394587ff29afef364672c15a9de9a12b69a882c310e7abec6"
+    },
+    {
+      "path": "review.template.json",
+      "sha256": "143426d8327314994b7287d6079a06c0838904eddace3a567040f3c8f5226905"
+    },
+    {
+      "path": "runtime-helper-overlay.template.json",
+      "sha256": "9cd00e6981653dc1d50cac96ed40c883fbdc66af4f50a4b01a875897124fcecc"
+    },
+    {
+      "path": "standard_verify.py",
+      "sha256": "682e8758185e4a725423d2e2ea4d88dfe55ee10279b57f7438ee17b69e1c8763"
+    },
+    {
+      "path": "wrapper-replacements.json",
+      "sha256": "aba8e81bb1ec9f3cbdd0c86953a236ef31c9af497edeb499d64aa7ed72d26e7f"
+    }
+  ],
+  "sourceContract": {
+    "format": "aux.standard-daemon-projection.actual.v4",
+    "priorAnchors": 166,
+    "appendedStages": {
+      "claude-code-login": 6,
+      "meta-login": 3,
+      "chatgpt-login": 7
+    },
+    "totalAnchors": 182,
+    "newAnchors": 150,
+    "shimAnchors": 4
+  },
+  "runtimeLeaves": [
+    "runtime-bootstrap.cjs",
+    "runtime-seed.cjs",
+    "runtime-text-root.json",
+    "aux-chatgpt.cjs"
+  ],
+  "sourceChecks": {
+    "pythonSyntax": true,
+    "unchangedNonSourceValidatorAST": true,
+    "unchangedBinderAliases": true,
+    "v5SeedFixPreserved": true,
+    "wrapperCountedReplay": true,
+    "baselineAndVendorShimPins": true,
+    "fourAnchorShimLiteralReplay": true
+  },
+  "actualInputsFrozen": false,
+  "nativeBuildRun": false,
+  "bound": false,
+  "assembled": false,
+  "productExecuted": false,
+  "testable": false
+}
