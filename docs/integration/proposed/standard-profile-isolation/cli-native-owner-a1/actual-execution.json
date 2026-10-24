@@ -1,0 +1,40 @@
+{
+  "format": "aux.cli-native-owner.execution.v1",
+  "recordedAt": "2026-10-24T19:30:44.891484+00:00",
+  "baselineCommit": "fc68ff13f",
+  "commands": [
+    [
+      "node",
+      "docs/integration/proposed/standard-profile-isolation/cli-native-owner-a1/produce.mjs",
+      "/private/tmp/aux-cli-native-owner-source-20261024-a3"
+    ],
+    [
+      "node",
+      "docs/integration/proposed/standard-profile-isolation/cli-native-owner-a1/check.mjs",
+      "/private/tmp/aux-cli-native-owner-consumer-20261024-a2.json",
+      "/private/tmp/aux-cli-native-owner-source-20261024-a3"
+    ]
+  ],
+  "history": [
+    {
+      "output": "/private/tmp/aux-cli-native-owner-source-20261024-a1",
+      "result": "passed 16-anchor static projection and 7 synthetic consumer cases"
+    },
+    {
+      "output": "/private/tmp/aux-cli-native-owner-source-20261024-a2",
+      "result": "same unchanged 16-anchor source; attempted guard edit had a Python quoting error before mutation and the following static producer ran unchanged"
+    },
+    {
+      "output": "/private/tmp/aux-cli-native-owner-source-20261024-a3",
+      "result": "final 19-anchor static projection plus 9 synthetic cases, including actual transformed after-await writer/private read gates"
+    }
+  ],
+  "existingWorkerSuiteRepeated": false,
+  "realWorkersRun": false,
+  "nativeCommandsRun": false,
+  "providerRequests": 0,
+  "nativeBuildRun": false,
+  "cliExecuted": false,
+  "packaged": false,
+  "runtimeAcceptance": false
+}
