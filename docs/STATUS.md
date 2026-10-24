@@ -1,3 +1,7 @@
+# Sidebar compiler fixes and theme propagation compiled; full build a14 running — 2026-10-23
+
+The two failed a12 sidebar/drop objects passed the exact a13 focused rebuild. The newly identified BrowserWidget opt-in theme supplier overwrite is corrected and its one affected object passed a14. Source projection a14 pins188 feature inputs; a fresh immutable252-input manifest now drives the full unsigned browser build. Current default UI and accepted app remain intact. Full link, inactive assembly and actual-app/UI acceptance are pending; no app lifecycle, signing or release action occurred.
+
 # Two sidebar integration compiler fixes projected — 2026-10-23
 
 The full a12 attempt stopped on a protected color-provider API call and an incomplete Profile type in saved-entry drag handling. Exact source overlays now use a public accessor forwarding the actual virtual widget/profile color key and include the Profile definition. Five files are projected into the isolated native tree; a focused rebuild of the two failed objects is running. No default UI/material/layout changes, app lifecycle, signing or runtime acceptance occurred. A separate concrete custom-theme supplier overwrite found during review is being corrected before the next full build.

@@ -7,7 +7,7 @@
     "--baseline-app",
     "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-final-local-completion-20261023/Aux.app",
     "--native-receipt",
-    "/private/tmp/aux-chromium-recovery-snapshot-20261023/unsigned-browser-features-full-build-20261023-a12/receipt.json",
+    "/private/tmp/aux-chromium-recovery-snapshot-20261023/unsigned-browser-features-full-build-20261023-a14/receipt.json",
     "--daemon-receipt",
     "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/profile-isolation-protected-startup/integration/daemon-link.json",
     "--source-pair",
