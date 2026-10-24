@@ -1,0 +1,15 @@
+export const ROOT="/Users/rcourson/Documents/Vibe/web";
+export const PREFIX="docs/integration/proposed/standard-profile-isolation/";
+export const STAGES=Object.freeze([
+ {name:'native-credential-lock',directory:'native-credential-lock-a1',module:PREFIX+'native-credential-lock-a1/source/transform.mjs',export:'transformAuxChatGPTNativeCredentialLock',count:1},
+ {name:'meta-connection-lifetime',directory:'meta-connection-lifetime-a1',module:PREFIX+'meta-connection-lifetime-a1/source/transform.mjs',export:'transformAuxMetaConnectionLifetime',count:14}
+]);
+export const APPENDED_COUNT=15;
+export const OVERLAYS=Object.freeze([
+ {name:'native-credential-lock',directory:'native-credential-lock-a1',sha256:'d6bc4ab8f93851383d3a2405b6cdf5ec6981ccf6d5e89ac61271a304b1c6981e',format:'aux.chatgpt-native-credential-lock.overlay.v1',countField:'daemonAnchorCount',paths:'repository',sourceFiles:["docs/integration/proposed/standard-profile-isolation/native-credential-lock-a1/source/AuxChatGPTCredentialLock.inc", "docs/integration/proposed/standard-profile-isolation/native-credential-lock-a1/source/AuxDevelopmentWorkerHost.cc", "docs/integration/proposed/standard-profile-isolation/native-credential-lock-a1/source/aux-chatgpt.cjs", "docs/integration/proposed/standard-profile-isolation/native-credential-lock-a1/source/daemon-lock-capability.js", "docs/integration/proposed/standard-profile-isolation/native-credential-lock-a1/source/host-anchors.json", "docs/integration/proposed/standard-profile-isolation/native-credential-lock-a1/source/shim-anchors.json", "docs/integration/proposed/standard-profile-isolation/native-credential-lock-a1/source/transform.mjs"]},
+ {name:'meta-connection-lifetime',directory:'meta-connection-lifetime-a1',sha256:'3749e7200c18cee34fa21aa7c33d1f3218aea02173af76f6ef543108bfb7c993',version:1,countField:'changes',paths:'overlay',sourceFiles:['source/transform.mjs','source/anchors.json','source/owned-cdp-lifetime.js','source/oauth-window.js','native-replacements.json','native.patch']}
+]);
+export const SHIM=Object.freeze({kind:'chatgpt-shim',stage:'native-credential-lock',module:PREFIX+'native-credential-lock-a1/source/transform.mjs',export:'transformAuxChatGPTCredentialLockShim',count:5,input:'/private/tmp/aux-standard-daemon-projection-20261024-a4/native/aux-chatgpt.cjs',packageRelativePath:'Contents/Resources/native/aux-chatgpt.cjs'});
+export const PREVIOUS=Object.freeze({source:'a37b3d7eb72707ca00729e39eae4aa90f3968ca7dfa5379f823ac1007f3157c4',entry:'edc8a98ed1bad63432c6ebf1e3244a27f690256f597933eb53054b4136dc9812',loader:'ec7ea0405f415d84e4afc695405eec07378d8c7233b926ffd9dd7db2edfed663',shim:'43f8ce1e95d34c3deeca3f6c0a2cecd8b55dcce2342a09f490fbfc06d496e3ef'});
+export const PREVIOUS_STAGES=Object.freeze(['features','async-runtime-inspection','research-v1','background-writers','daemon-shutdown','runtime-coordination','refresh-and-skill','managed-producers','interactive-oauth','claude-code-login','meta-login','chatgpt-login']);
+export const PRODUCER_FILES=Object.freeze(['freeze.mjs','produce.mjs','immutable-inputs.json','README.md','prepare-review.mjs','review.json','contract.mjs']);
