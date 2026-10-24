@@ -1,0 +1,22 @@
+[
+  {
+    "find": "      const code = await new Promise((resolve, reject) => {\n        const child = spawn('/usr/bin/lockf', ['-s', '-t', '0', '3'], { stdio: ['ignore', 'ignore', 'ignore', fd], env: { PATH: '/usr/bin:/bin', LANG: 'C' } });\n        const timeout = setTimeout(() => { child.kill('SIGKILL'); }, 5000);\n        child.once('error', error => { clearTimeout(timeout); reject(Error('ChatGPT: local lock service unavailable')); });\n        child.once('close', (code, signal) => { clearTimeout(timeout); signal ? reject(Error('ChatGPT: local lock acquisition interrupted')) : resolve(code); });\n      });\n",
+    "replace": "      const code = await acquireChatGPTLock(fd, this.lifetime);\n",
+    "count": 1
+  },
+  {
+    "find": "class LocalChatGPTStore {",
+    "replace": "// Descriptor lifetime ends only after Node's actual child close event. Killing\n// or receiving error is not close, and close alone is not descendant proof.\nfunction acquireChatGPTLock(fd, lifetime, spawnChild = spawn, clock = globalThis) {\n  lifetime?.admit();\n  // This inherited-FD lock helper is outside the native Exec/PTY protocol.\n  // Keep descendant uncertainty sticky until an authenticated native FD-lock\n  // implementation replaces it; never accept a JS PID or direct-exit proof.\n  lifetime?.unknown();\n  return new Promise((resolve, reject) => {\n    let child, failure, timeout;\n    const abort = () => { failure ||= Error('ChatGPT: local lock acquisition interrupted'); try { child?.kill('SIGKILL'); } catch(error) { lifetime?.unknown(); } };\n    try { child = spawnChild('/usr/bin/lockf', ['-s', '-t', '0', '3'], { stdio: ['ignore', 'ignore', 'ignore', fd], env: { PATH: '/usr/bin:/bin', LANG: 'C' } }); }\n    catch(error) { reject(Error('ChatGPT: local lock service unavailable')); return; }\n    child.once('error', () => { failure ||= Error('ChatGPT: local lock service unavailable'); });\n    child.once('close', (code, signal) => {\n      clock.clearTimeout(timeout); lifetime?.signal.removeEventListener('abort', abort);\n      if (failure || signal) reject(failure || Error('ChatGPT: local lock acquisition interrupted'));\n      else resolve(code);\n    });\n    timeout = clock.setTimeout(abort, 5000);\n    lifetime?.signal.addEventListener('abort', abort, {once:true});\n    if (lifetime?.signal.aborted) abort();\n  });\n}\nclass LocalChatGPTStore {",
+    "count": 1
+  },
+  {
+    "find": "let client;\nfunction daemonClient() { return client ||= new ChatGPTPlanClient({ store: new LocalChatGPTStore() }); }",
+    "replace": "let client, configuredLifetime;\nfunction configureLifetime(lifetime) {\n  need(lifetime && ['run','request','unknown','admit'].every(name => typeof lifetime[name] === 'function') && lifetime.signal, 'lifetime owner required');\n  need(!client && (!configuredLifetime || configuredLifetime === lifetime), 'lifetime owner changed after initialization');\n  configuredLifetime = lifetime;\n}\nfunction daemonClient() {\n  configuredLifetime?.admit();\n  if (!client) {\n    const store = new LocalChatGPTStore(); store.lifetime = configuredLifetime;\n    client = new ChatGPTPlanClient({store, ...(configuredLifetime ? {fetch:configuredLifetime.request} : {})});\n    if (configuredLifetime) for (const name of ['complete','auth','modelIds','signOut']) {\n      const original = client[name];\n      client[name] = (...args) => configuredLifetime.run(() => original.apply(client,args));\n    }\n  }\n  return client;\n}",
+    "count": 1
+  },
+  {
+    "find": "module.exports = { ISSUER, RESOURCE, SCOPES,",
+    "replace": "module.exports = { configureLifetime, cancel:flowId=>client?.cancel(flowId), ISSUER, RESOURCE, SCOPES,",
+    "count": 1
+  }
+]

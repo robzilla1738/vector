@@ -1,0 +1,41 @@
+{
+  "pairedLiteralReplay": true,
+  "pairedSyntax": true,
+  "shimLiteralReplay": true,
+  "shimSyntax": true,
+  "rows": [
+    {
+      "kind": "source",
+      "input": "/private/tmp/aux-standard-daemon-projection-20261024-a3/index.mjs",
+      "inputSha256": "3ee2471769470b820bfaf16d64f6dfc7aa0bef1b8ad54493c7d2a0bffe725802",
+      "output": "/private/tmp/aux-chatgpt-login-source-9BfynL/source.mjs",
+      "outputSha256": "7b3e3d969c4d6804e0f2df46b2fe6a8cea026e14a1f2e7f06ff8f471e7e4f191",
+      "changesSha256": "5454fc94c4895cb8512c261b041743b8f05b401f43bb79914c02915d978f672d",
+      "count": 7
+    },
+    {
+      "kind": "entry",
+      "input": "/private/tmp/aux-standard-daemon-projection-20261024-a3/projected-entry/aux-native-entry.mjs",
+      "inputSha256": "ba6194fbe579dec43ccaa2a7b788e58bc0a1cb9a0ff52ab5b5cfcea334890804",
+      "output": "/private/tmp/aux-chatgpt-login-source-9BfynL/entry.mjs",
+      "outputSha256": "86481c95252c166eb02e8dbd47fa810231d270a5e304249e8bad1e83205af703",
+      "changesSha256": "5454fc94c4895cb8512c261b041743b8f05b401f43bb79914c02915d978f672d",
+      "count": 7
+    },
+    {
+      "kind": "shim",
+      "input": "/Users/rcourson/Documents/Vibe/web/vendor/aside/shims/aux-chatgpt.cjs",
+      "inputSha256": "5fa0b56141c9fb515c6b5ff979340c0958bf3b9dd79fb60a7636357605e73ede",
+      "output": "/private/tmp/aux-chatgpt-login-source-9BfynL/shim.cjs",
+      "outputSha256": "43f8ce1e95d34c3deeca3f6c0a2cecd8b55dcce2342a09f490fbfc06d496e3ef",
+      "changesSha256": "72d0e49d9f74977f58a6bd22498dcac47ad1ab04ffa0a2a193be5e09a64c9812",
+      "count": 4
+    }
+  ],
+  "inertCheck": "check.mjs",
+  "originalProjectorExecuted": false,
+  "productExecuted": false,
+  "nativeExecuted": false,
+  "network": false,
+  "credentialAccess": false
+}

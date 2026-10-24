@@ -1,0 +1,32 @@
+[
+  {
+    "find": "function auxChatGPT(){return auxChatGPTModule??=(auxChatGPTCreateRequire(import.meta.url))(auxChatGPTCreateRequire(import.meta.url)('node:url').fileURLToPath(new URL('../native/aux-chatgpt.cjs',import.meta.url)));}",
+    "replace": "function auxChatGPT(){return auxChatGPTModule??=auxPrepareChatGPTModule((auxChatGPTCreateRequire(import.meta.url))(auxChatGPTCreateRequire(import.meta.url)('node:url').fileURLToPath(new URL('../native/aux-chatgpt.cjs',import.meta.url))));}",
+    "count": 1
+  },
+  {
+    "find": "async function listenOnCallbackHost(Cn){let ei=createServer((Cn,ei)=>{try{handleRequest(Cn,ei)}catch(Cn){ei.statusCode=500,ei.end(`Internal error`),console.error(`[openai-codex] Callback server request failed:`,Cn)}});return new Promise((ti,ni)=>{let ri=ri=>{if(ei.close(),ri.code!==`EADDRINUSE`){ni(/* @__PURE__ */ Error(`Failed to start ChatGPT Subscription callback server on ${Cn}:${CALLBACK_PORT}: ${ri.message}`));return}ensureExistingCallbackBroker(CALLBACK_HOST_ORIGINS[Cn]).then(()=>ti({})).catch(Cn=>{console.warn(`[openai-codex] Falling back to manual OAuth callback input:`,Cn),ti({manualPrompt:{message:`ChatGPT sign-in callback port is in use. Complete sign-in in the browser, then paste the redirected URL or authorization code here.`,placeholder:`${CALLBACK_ORIGIN}${CALLBACK_PATH}`}})})};ei.once(`error`,ri),ei.listen(CALLBACK_PORT,Cn,()=>{ei.off(`error`,ri),ti({server:ei})})})}",
+    "replace": "async function listenOnCallbackHost(Cn){return auxChatGPTLifetime().listen(Cn,CALLBACK_PORT)}",
+    "count": 1
+  },
+  {
+    "find": "for(let ei of Cn)ei.server?.close();throw serverPromise=null,ei",
+    "replace": "await Promise.all(Cn.filter(ei=>ei.server).map(ei=>auxChatGPTLifetime().closeBroker(ei.server)));throw serverPromise=null,ei",
+    "count": 1
+  },
+  {
+    "find": "auxInteractiveOAuth.register(si,()=>{if(si.openAICodex)return auxChatGPT().daemonClient().cancel(si.id)});",
+    "replace": "if(Cn===`openai-codex`&&this.ensureOpenAICodexCallbackServer===ensureOpenAICodexCallbackServer)auxChatGPTLifetime().register(si,()=>auxChatGPT().cancel(si.id));else auxInteractiveOAuth.register(si,()=>{if(si.openAICodex)return auxChatGPT().daemonClient().cancel(si.id)});",
+    "count": 1
+  },
+  {
+    "find": "ti.status=`failed`;ti.error=Error(`ChatGPT authorization did not complete`);throw ti.error}",
+    "replace": "ti.status=`failed`;ti.error=Error(`ChatGPT authorization did not complete`);throw ti.error}finally{auxChatGPTLifetime().release(ti)}",
+    "count": 1
+  },
+  {
+    "find": "if(ei.openAICodex)auxChatGPT().daemonClient().cancel(Cn);",
+    "replace": "if(ei.openAICodex)auxChatGPT().cancel(Cn);",
+    "count": 1
+  }
+]

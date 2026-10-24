@@ -1,0 +1,58 @@
+{
+  "version": 1,
+  "stage": "chatgpt-login",
+  "changes": 7,
+  "sourceFiles": [
+    {
+      "path": "source/transform.mjs",
+      "sha256": "931f9be08b3b16b568634de1a4258282d6bef72091a17e098cd167f3b1c836ae"
+    },
+    {
+      "path": "source/anchors.json",
+      "sha256": "3810c46166da77b38f36b8e4027e87a1b35c936c288083ef7c945700f607dfe2"
+    },
+    {
+      "path": "source/chatgpt-lifetimes.js",
+      "sha256": "172963f456a6cc80fbfd199ac2299de5a92daed2379f11ac4455603b36583d3a"
+    },
+    {
+      "path": "source/shim-anchors.json",
+      "sha256": "797d06fe209165fd87b7bd71ade8bfe629853281d9dd625d5f00d5839e05782c"
+    },
+    {
+      "path": "source/aux-chatgpt.cjs",
+      "sha256": "43f8ce1e95d34c3deeca3f6c0a2cecd8b55dcce2342a09f490fbfc06d496e3ef"
+    }
+  ],
+  "daemonInputs": [
+    {
+      "kind": "source",
+      "inputSha256": "3ee2471769470b820bfaf16d64f6dfc7aa0bef1b8ad54493c7d2a0bffe725802",
+      "outputSha256": "7b3e3d969c4d6804e0f2df46b2fe6a8cea026e14a1f2e7f06ff8f471e7e4f191",
+      "changesSha256": "5454fc94c4895cb8512c261b041743b8f05b401f43bb79914c02915d978f672d"
+    },
+    {
+      "kind": "entry",
+      "inputSha256": "ba6194fbe579dec43ccaa2a7b788e58bc0a1cb9a0ff52ab5b5cfcea334890804",
+      "outputSha256": "86481c95252c166eb02e8dbd47fa810231d270a5e304249e8bad1e83205af703",
+      "changesSha256": "5454fc94c4895cb8512c261b041743b8f05b401f43bb79914c02915d978f672d"
+    }
+  ],
+  "shim": {
+    "repositoryInput": "vendor/aside/shims/aux-chatgpt.cjs",
+    "packageRelativePath": "Contents/Resources/native/aux-chatgpt.cjs",
+    "kind": "shim",
+    "input": "/Users/rcourson/Documents/Vibe/web/vendor/aside/shims/aux-chatgpt.cjs",
+    "inputSha256": "5fa0b56141c9fb515c6b5ff979340c0958bf3b9dd79fb60a7636357605e73ede",
+    "output": "/private/tmp/aux-chatgpt-login-source-9BfynL/shim.cjs",
+    "outputSha256": "43f8ce1e95d34c3deeca3f6c0a2cecd8b55dcce2342a09f490fbfc06d496e3ef",
+    "changesSha256": "72d0e49d9f74977f58a6bd22498dcac47ad1ab04ffa0a2a193be5e09a64c9812",
+    "count": 4
+  },
+  "nativeApiChanged": false,
+  "preservedUnknown": [
+    "lockf inherited-FD child descendant cohort",
+    "unrecognized callback broker factory",
+    "existing inference streaming boundary remains separate"
+  ]
+}
