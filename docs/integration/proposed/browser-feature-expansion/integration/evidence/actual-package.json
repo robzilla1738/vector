@@ -1,0 +1,17 @@
+{
+  "format": "aux.browser-features.actual-inactive-package-evidence.v1",
+  "receipt": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-browser-features-20261023/receipt.json",
+  "receiptSha256": "de0e7221be7454f18b20cfe49e4a1121de2637c3dd56e72aa584a973e292b5fb",
+  "appPath": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-browser-features-20261023/Aux.app",
+  "leafCount": 11191,
+  "passed": true,
+  "recipeSha256": "3c84ef5c917ddd018ba6a9f8cff4e1c36d4f05af54b7f2af6781a87e1e06ea99",
+  "baseAssemblyReceiptSha256": "6031696961456ba48e5eb59f4c8de2b0868c35c0570052b1d38724dafc60f988",
+  "inventorySha256": "8cae56629dd5534e58382f74787819433648d840a2ab96ecd5631b1920f23a47",
+  "testable": false,
+  "runtimeAuthorityGranted": false,
+  "appExecuted": false,
+  "productSigned": false,
+  "acceptedAppReplaced": false,
+  "unchangedNativeWrapperAndUnrelatedResources": true
+}
