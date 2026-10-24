@@ -1,0 +1,264 @@
+{
+  "format": "aux.ui-editor-writer-closure.inputs.v1",
+  "baselineCommit": "130acfb8c",
+  "predecessorStage": "/private/tmp/aux-feature-completion-ui-stage-20261024-a2/agent",
+  "runtimeSha256": "b4c07d22e847dff77b71cf3980bee3329016bb763acbea0e4957f3a229afa9b3",
+  "files": [
+    {
+      "path": "assets/draft-storage-ixLojjZ5.js",
+      "sourceSha256": "4fd066c4a2b8c9d5021e9687463a0ce8bcbd193268f44a18b4ce12c2f05c38bc",
+      "predecessorSha256": "bddddc6df8a000becb1c6245bc732d258b405e71c5c933d4c3de991ebdc125fc",
+      "rules": [
+        {
+          "find": "function U(e,n){if(!(typeof window>\"u\"))try{const t=g(e);if(!t?.message||t.sessionId!==e||t.claimId!==n)return;d()}catch{d()}}",
+          "replace": "function U(e,n){if(!(typeof window>\"u\"))try{const t=g(e);if(!t?.message||t.sessionId!==e||t.claimId!==n)return;auxRememberDraftClaimAcknowledgement(t);d()}catch{d()}}",
+          "count": 1
+        },
+        {
+          "find": "auxWriteScope=auxDurable;if(auxDurable?!o:!r)",
+          "replace": "auxWriteScope=auxDurable;if(auxDraftMigrationBlocked())throw new Error(\"Aux draft capture is holding this document\");if(auxDurable?!o:!r)",
+          "count": 1
+        },
+        {
+          "find": "draftProjectId:n.draftProjectId});t.setItem(auxKey,auxRaw);",
+          "replace": "draftProjectId:n.draftProjectId});if(auxDraftMigrationBlocked())throw new Error(\"Aux draft capture is holding this document\");t.setItem(auxKey,auxRaw);",
+          "count": 1
+        },
+        {
+          "find": "function H(e){if(typeof window>\"u\")return null;",
+          "replace": "function H(e){if(typeof window>\"u\"||auxDraftMigrationBlocked())return null;",
+          "count": 1
+        },
+        {
+          "find": "function S(e){a=e;try{window.sessionStorage.setItem(m,JSON.stringify(e));",
+          "replace": "function S(e){a=e;try{if(auxDraftMigrationBlocked())throw new Error(\"Aux draft capture is holding this document\");window.sessionStorage.setItem(m,JSON.stringify(e));",
+          "count": 1
+        },
+        {
+          "find": "function d(){a=null;try{window.sessionStorage.removeItem(m);",
+          "replace": "function d(){a=null;try{if(auxDraftMigrationBlocked())throw new Error(\"Aux draft capture is holding this document\");window.sessionStorage.removeItem(m);",
+          "count": 1
+        },
+        {
+          "find": "export{k as a,W as c,F as i,J as l,U as n,$ as o,b as r,X as s,H as t,j as u,auxCaptureDraftMigration};",
+          "replace": "__AUX_CLOSURE_RUNTIME__\nexport{k as a,W as c,F as i,J as l,U as n,$ as o,b as r,X as s,H as t,j as u,auxCaptureDraftMigration,auxPrepareDraftMigrationCapture,auxValidateDraftMigrationCapture,auxSealDraftMigrationCapture,auxReadDraftMigrationCapture,auxReleaseDraftMigrationCapture,auxRegisterDraftMigrationOwner,auxBeginDraftMigrationWork,auxDraftMigrationBlocked,auxDraftMigrationChanged,auxGetNewtabDraftSettingsOwner};",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "assets/create-editor-B-Br5Wz9.js",
+      "sourceSha256": "78b981a941e91bfdd52c2fd25787d310351c736214a8634a1591c86795a7e877",
+      "predecessorSha256": "814f707acf1a1a455137ae23375aa6a41791a6dac99895f4439062285e66bdd5",
+      "rules": [
+        {
+          "find": "import{i as $}from\"./platform-CX_yPATJ.js\";",
+          "replace": "import{auxRegisterDraftMigrationOwner,auxDraftMigrationChanged}from\"./draft-storage-ixLojjZ5.js\";import{i as $}from\"./platform-CX_yPATJ.js\";",
+          "count": 1
+        },
+        {
+          "find": "function ye(t,e,n={}){let s=!1,r=0,o=0;",
+          "replace": "function ye(t,e,n={}){let auxRetireDraftEditor=null;let s=!1,r=0,o=0;",
+          "count": 1
+        },
+        {
+          "find": "onUpdate:()=>{if(e.composition.isComposing",
+          "replace": "onUpdate:()=>{auxDraftMigrationChanged();if(e.composition.isComposing",
+          "count": 1
+        },
+        {
+          "find": "onDestroy:()=>{a(),s=!1,e.callbacks.onControllerChange?.(null)}",
+          "replace": "onDestroy:()=>{auxRetireDraftEditor?.(),auxRetireDraftEditor=null,a(),s=!1,e.callbacks.onControllerChange?.(null)}",
+          "count": 1
+        },
+        {
+          "find": "return e.callbacks.onControllerChange?.(d),{editor:i,controller:d}",
+          "replace": "auxRetireDraftEditor=auxRegisterDraftMigrationOwner(\"rich-editor\",{controller:()=>d,element:()=>i.isDestroyed?null:i.view.dom,inspect:()=>{if(i.isDestroyed||e.composition.isComposing||i.view.composing)throw Error(\"An editor is composing or unavailable\");return{snapshot:d.getSnapshot(),editable:i.isEditable}},flush:()=>{if(i.isDestroyed)throw Error(\"An editor closed during capture\");return e.callbacks.onChange?.(d.getSnapshot())},freeze:()=>{if(i.isDestroyed)throw Error(\"An editor closed during capture\");const editable=i.isEditable;i.setEditable(!1,!1);return()=>{if(!i.isDestroyed)i.setEditable(editable&&!e.root.disabled,!1)}}});return e.callbacks.onControllerChange?.(d),{editor:i,controller:d}",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "assets/file-attachments-D5m1O8aA.js",
+      "sourceSha256": "b94263913ff12de4b2d7960945469eb79d1624a48045e93cd2a4c94673da1b3a",
+      "predecessorSha256": "b94263913ff12de4b2d7960945469eb79d1624a48045e93cd2a4c94673da1b3a",
+      "rules": [
+        {
+          "find": "import{n}from\"./dist-LyKrHgST.js\";",
+          "replace": "import{auxBeginDraftMigrationWork}from\"./draft-storage-ixLojjZ5.js\";import{n}from\"./dist-LyKrHgST.js\";",
+          "count": 1
+        },
+        {
+          "find": "async function _(e){",
+          "replace": "async function auxReadAttachmentOriginal(e){",
+          "count": 1
+        },
+        {
+          "find": "export{f as a,h as i,w as n,_ as r,u as t};",
+          "replace": "async function _(e){const done=auxBeginDraftMigrationWork(\"file-read\");try{return await auxReadAttachmentOriginal(e)}finally{done()}}export{f as a,h as i,w as n,_ as r,u as t};",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "assets/permission-approval-D-GTf91U.js",
+      "sourceSha256": "4bd21aeaf261c71712b6fdb3d9fc52fcb347977f73332e0e4719ab990cbac4f9",
+      "predecessorSha256": "e4908ae0c13431dd77292d0df18504fc902ef9c725926b671a106e67e69b9e18",
+      "rules": [
+        {
+          "find": "import{A as Et,C as N,E as Tt,w as Dt}",
+          "replace": "import{auxRegisterDraftMigrationOwner,auxBeginDraftMigrationWork}from\"./draft-storage-ixLojjZ5.js\";import{A as Et,C as N,E as Tt,w as Dt}",
+          "count": 1
+        },
+        {
+          "find": "xe=(0,a.useEffectEvent)(async(c={})=>{if(K)return;",
+          "replace": "xe=(0,a.useEffectEvent)(async(c={})=>{const auxFinishSubmit=auxBeginDraftMigrationWork(\"composer-submit\");try{if(K)return;",
+          "count": 1
+        },
+        {
+          "find": "he(H),r(H),le(d)}}),ge=async c=>",
+          "replace": "he(H),r(H),le(d)}}catch(error){auxFinishSubmit(!0);throw error}finally{auxFinishSubmit()}}),ge=async c=>",
+          "count": 1
+        },
+        {
+          "find": "$e=()=>M.current?.getSnapshot().plainText??z.current.plainText;return(0,n.jsx)(lt,",
+          "replace": "$e=()=>M.current?.getSnapshot().plainText??z.current.plainText;const auxDraftMigrationInspect=(0,a.useEffectEvent)(()=>{if(ee.current||ze.length||auxFileUnload.current||oe.current||G.current!==null||ae.current||ce.current.length||q.current||U.current||w||t===\"streaming\"||Z.current!==Y)throw Error(\"Composer attachment, response or message work is still active\");if(typeof je!==\"function\")throw Error(\"Composer draft persistence is unavailable\");return{scope:Y,snapshot:M.current?.getSnapshot()??z.current,attachments:te}}),auxDraftMigrationFlush=(0,a.useEffectEvent)(()=>{auxDraftMigrationInspect();return pe(M.current?.getSnapshot()??z.current,te,!0)});(0,a.useLayoutEffect)(()=>auxRegisterDraftMigrationOwner(\"composer\",{controller:()=>M.current,inspect:()=>auxDraftMigrationInspect(),flush:()=>auxDraftMigrationFlush(),freeze:()=>()=>{}}),[]);return(0,n.jsx)(lt,",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "assets/newtab-editor-u_GbForB.js",
+      "sourceSha256": "243f687f9b3dfe34faa764533bb528d4c58b0571a25e945842d3824b747813a5",
+      "predecessorSha256": "77c7374756c75ec386b2f3c9ae57b9b5c3890a190357d178105e0debed7b4dfc",
+      "rules": [
+        {
+          "find": "import{i as x,l as P,r as D}from\"./draft-storage-ixLojjZ5.js\";",
+          "replace": "import{i as x,l as P,r as D,o as auxReadNewtabDraftSettings,u as auxWriteNewtabDraftSettings,auxRegisterDraftMigrationOwner,auxDraftMigrationBlocked}from\"./draft-storage-ixLojjZ5.js\";",
+          "count": 1
+        },
+        {
+          "find": "window.__auxNewTabEditor=n,s.callbacks.onChange=",
+          "replace": "window.__auxNewTabEditor=n;const auxRetireNewtab=auxRegisterDraftMigrationOwner(\"newtab\",{controller:()=>m,standalone:()=>!n.draftPersistenceManaged,sessionSettings:{scope:auxScope,read:()=>auxReadNewtabDraftSettings(auxScope),write:value=>auxWriteNewtabDraftSettings(auxScope,value)},inspect:()=>{if(n.pendingFiles.length||n.pendingAsk||u||a===\"search\"&&!r.isEmpty)throw Error(\"New Tab has unfinished files, submission or search text\");return{mode:a,draft:i.getDraft(),managed:n.draftPersistenceManaged}},flush:()=>{if(a===\"ask\"&&!n.draftPersistenceManaged){const snapshot=m.getSnapshot();i.write({version:2,plainText:snapshot.plainText,doc:snapshot.doc,attachments:i.getDraft()?.attachments},!0)}return i.flush()},freeze:()=>()=>{}});window.addEventListener(\"pagehide\",auxRetireNewtab,{once:!0});s.callbacks.onChange=",
+          "count": 1
+        },
+        {
+          "find": "s.submit.onSubmit=()=>{if(i.flush(),a===\"search\")",
+          "replace": "s.submit.onSubmit=()=>{if(auxDraftMigrationBlocked())return;if(i.flush(),a===\"search\")",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "assets/minipopup-LkDLFvnq.js",
+      "sourceSha256": "8fd650df3497acc5e8a5c34ab5990f45c9e97c0c920e4a7735f7b28aba72469e",
+      "predecessorSha256": "f70c8c0328992493053ef4d61a205ba2800586fe44a79f29d9f188a7400ce762",
+      "rules": [
+        {
+          "find": "import{i as auxReadMiniDraft,l as auxWriteMiniDraft}from\"./draft-storage-ixLojjZ5.js\";",
+          "replace": "import{i as auxReadMiniDraft,l as auxWriteMiniDraft,auxRegisterDraftMigrationOwner,auxDraftMigrationChanged}from\"./draft-storage-ixLojjZ5.js\";",
+          "count": 1
+        },
+        {
+          "find": "set(record){owner.record=record;",
+          "replace": "set(record){auxDraftMigrationChanged();owner.record=record;",
+          "count": 1
+        },
+        {
+          "find": "auxMiniDraftOwners.set(accountId,owner);return owner",
+          "replace": "auxMiniDraftOwners.set(accountId,owner);auxRegisterDraftMigrationOwner(\"mini\",{inspect:()=>{if((privateContext||owner.mode===\"incognito\")&&(owner.record?.plainText?.length||owner.record?.attachments?.length))throw Error(\"A private Mini draft must remain in its current view\");return{scope,mode:owner.mode,record:owner.record}},flush:()=>owner.set(owner.record),freeze:()=>()=>{}});return owner",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "assets/session-composer-Dc0LRfZA.js",
+      "sourceSha256": "71e187af0ca2887e13b840cd1e1b4aa2f46693821fb96daa8eafa9f4480bf645",
+      "predecessorSha256": "18979e7cb8bb5d09eb79c88b30b89b76ace3edaaf421a11785362eef4356468b",
+      "rules": [
+        {
+          "find": "defaultDraftStateKey:o,onDraftStateChange:i,getCreateSessionInput:c})=>{const{accountId:l}=ge()",
+          "replace": "defaultDraftStateKey:o,onDraftStateChange:i,getCreateSessionInput:c})=>{const auxNewtabSettings=auxGetNewtabDraftSettingsOwner();if(auxNewtabSettings){s??=auxNewtabSettings.read();o??=auxNewtabSettings.scope;i??=auxNewtabSettings.write}const{accountId:l}=ge()",
+          "count": 1
+        },
+        {
+          "find": "import{c as Qr,i as Fl,l as Ll}from\"./draft-storage-ixLojjZ5.js\";",
+          "replace": "import{c as Qr,i as Fl,l as Ll,auxRegisterDraftMigrationOwner,auxBeginDraftMigrationWork,auxGetNewtabDraftSettingsOwner}from\"./draft-storage-ixLojjZ5.js\";",
+          "count": 1
+        },
+        {
+          "find": "},[_,ye]),L=(0,g.useCallback)(D=>{ye({draftProjectId:D})},[ye]);return{createSessionMutation:y,",
+          "replace": "},[_,ye]),L=(0,g.useCallback)(D=>{ye({draftProjectId:D})},[ye]);const auxSessionDraftState=(0,g.useEffectEvent)(()=>{if(N.current||F)throw Error(\"Session creation or attachment upload is still active\");if(E===\"incognito\")throw Error(\"A private session draft must remain in its current view\");if(typeof i!==\"function\"&&JSON.stringify(O)!==JSON.stringify(Hn(s,o,x)))throw Error(\"Unsaved session options have no supported serializer\");return{scope:o??null,mode:E,settings:{draftModelOverride:he,draftPermissionMode:O.draftPermissionMode,draftRuntimeConfig:_,draftMode:se,draftProjectId:U}}}),auxSessionDraftFlush=(0,g.useEffectEvent)(()=>{const state=auxSessionDraftState();return i?.(state.settings)});(0,g.useLayoutEffect)(()=>auxRegisterDraftMigrationOwner(\"session-owner\",{inspect:()=>auxSessionDraftState(),flush:()=>auxSessionDraftFlush(),freeze:()=>()=>{}}),[]);return{createSessionMutation:y,",
+          "count": 1
+        },
+        {
+          "find": "handleCreateAndSend:(0,g.useCallback)(async D=>{if(!(fe||N.current)){N.current=!0;",
+          "replace": "handleCreateAndSend:(0,g.useCallback)(async D=>{const auxFinishCreate=auxBeginDraftMigrationWork(\"session-create\");let auxCreateAttempted=!1,auxCreateSettled=!1;try{if(!(fe||N.current)){auxCreateAttempted=!0;N.current=!0;",
+          "count": 1
+        },
+        {
+          "find": "h.invalidateQueries(u.sessions.listPreviewItems.infiniteQueryFilter({accountId:l}))}catch($)",
+          "replace": "h.invalidateQueries(u.sessions.listPreviewItems.infiniteQueryFilter({accountId:l})),auxCreateSettled=!0}catch($)",
+          "count": 1
+        },
+        {
+          "find": "finally{N.current=!1}}},[y,k,M,X,fe,E,ae,U,_,c,e,t,h,l,n,u])",
+          "replace": "finally{N.current=!1}}}finally{auxFinishCreate(auxCreateAttempted&&!auxCreateSettled)}},[y,k,M,X,fe,E,ae,U,_,c,e,t,h,l,n,u])",
+          "count": 1
+        },
+        {
+          "find": "m=p=>{!o||i||c(p)};return(0,a.jsx)(Vo,{session:{submitDisabled:u||!h,notice:d}",
+          "replace": "m=p=>{!o||i||c(p)};const auxExistingSessionState=(0,g.useEffectEvent)(()=>{if(n.incognito||t?.value===\"incognito\")throw Error(\"A private session must remain in its current view\");return{sessionId:n.id,mode:t?.value??\"default\"}});(0,g.useLayoutEffect)(()=>auxRegisterDraftMigrationOwner(\"session-owner\",{inspect:()=>auxExistingSessionState(),flush:()=>{},freeze:()=>()=>{}}),[]);return(0,a.jsx)(Vo,{session:{submitDisabled:u||!h,notice:d}",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "assets/provider-Cw0zhujt.js",
+      "sourceSha256": "6c3aa90661897411efea336eff14b6e0d50e8fbb7f09b178b44305be1ee95c97",
+      "predecessorSha256": "1e64914a8267b82ea9bacbe04c4e1393495d84973130db7533928cc8b8abf133",
+      "rules": [
+        {
+          "find": "import{a as ga,n as Ze,s as Vt,t as ya}from\"./draft-storage-ixLojjZ5.js\";",
+          "replace": "import{a as ga,n as Ze,s as Vt,t as ya,auxRegisterDraftMigrationOwner,auxBeginDraftMigrationWork,auxDraftMigrationBlocked}from\"./draft-storage-ixLojjZ5.js\";",
+          "count": 1
+        },
+        {
+          "find": "#m=new Si;#f=null;constructor(e){",
+          "replace": "#m=new Si;#f=null;#auxRetireDraftClient=null;constructor(e){",
+          "count": 1
+        },
+        {
+          "find": "onClose:t=>this.#Y(t)}),this.#U()}#U(){",
+          "replace": "onClose:t=>this.#Y(t)}),this.#U(),this.#auxRetireDraftClient=auxRegisterDraftMigrationOwner(\"chat-client\",{inspect:()=>{if(this.#r||this.#x||this.#v||this.#N||this.#d.pendingPromise||this.#S!==null||this.#b!==null||this.#p!==null||this.#C||this.#t)throw Error(\"Chat command, stream or publication is still active\");return{sessionId:this.#c,status:this.#o().status}},flush:()=>{},freeze:()=>()=>{}})}#U(){",
+          "count": 1
+        },
+        {
+          "find": "dispose(){this.#u.reset(),this.#m.reset(),",
+          "replace": "dispose(){this.#auxRetireDraftClient?.(),this.#auxRetireDraftClient=null,this.#u.reset(),this.#m.reset(),",
+          "count": 1
+        },
+        {
+          "find": "sendMessage=async e=>{if(this.#r)",
+          "replace": "sendMessage=async e=>{if(auxDraftMigrationBlocked())throw Error(\"Aux draft capture is holding this document\");if(this.#r)",
+          "count": 1
+        },
+        {
+          "find": "reconnectToStream=async({isRetry:e=!1,suppressErrorHandling:t=!1}={})=>{if(!(",
+          "replace": "reconnectToStream=async({isRetry:e=!1,suppressErrorHandling:t=!1}={})=>{if(auxDraftMigrationBlocked())throw Error(\"Aux draft capture is holding this document\");if(!(",
+          "count": 1
+        },
+        {
+          "find": "async#w(e,t=crypto.randomUUID()){if(await this.#i.connect()",
+          "replace": "async#w(e,t=crypto.randomUUID()){const auxFinishCommand=auxBeginDraftMigrationWork(\"chat-command\");let auxCommandAttempted=!1,auxCommandAcknowledged=!1;try{if(await this.#i.connect()",
+          "count": 1
+        },
+        {
+          "find": "this.#i.send(JSON.stringify(a))}catch(a){this.#d.reject(a instanceof Error?a:new Error(String(a)))}await s.promise}#q(e){",
+          "replace": "auxCommandAttempted=!0,this.#i.send(JSON.stringify(a))}catch(a){this.#d.reject(a instanceof Error?a:new Error(String(a)))}await s.promise,auxCommandAcknowledged=!0}finally{auxFinishCommand(auxCommandAttempted&&!auxCommandAcknowledged)}}#q(e){",
+          "count": 1
+        }
+      ]
+    }
+  ]
+}

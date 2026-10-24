@@ -1,12 +1,14 @@
 /** Capture actual codec memory; native ownership/admission remains external. */
 import {readFileSync} from 'node:fs';
 import {createHash} from 'node:crypto';
+import {applyAuxUiDraftClosure} from './aux-ui-draft-closure.mjs';
 const pins=JSON.parse(readFileSync(new URL('../../docs/integration/proposed/standard-profile-isolation/ui-draft-capture-a1/inputs.json',import.meta.url),'utf8'));
 const runtime=readFileSync(new URL('./aux-ui-draft-capture-runtime.js.txt',import.meta.url),'utf8');
 const sha=value=>createHash('sha256').update(value).digest('hex');
 if(sha(runtime)!==pins.runtimeSha256)throw Error('Aux draft capture runtime differs from review');
 export function applyAuxUiDraftCapture({component,path,text,original,stateIdentityVersion}){
-  if(component!=='agent'||path!==pins.path||stateIdentityVersion!==2)return{text,anchors:[]};
+  if(component!=='agent'||stateIdentityVersion!==2)return{text,anchors:[]};
+  if(path!==pins.path)return applyAuxUiDraftClosure({component,path,text,original,stateIdentityVersion});
   if(typeof original!=='string'||sha(original)!==pins.sourceSha256)
     throw Error('Aux draft capture original source differs');
   if(text.includes('function auxCaptureDraftMigration('))throw Error('Repeated Aux draft capture derivation');
@@ -16,5 +18,6 @@ export function applyAuxUiDraftCapture({component,path,text,original,stateIdenti
     const replace=rule.replace.replace('__AUX_CAPTURE_RUNTIME__',runtime);
     text=text.split(rule.find).join(replace);anchors.push({kind:'integration',...rule,replace});
   }
-  return{text,anchors};
+  const closure=applyAuxUiDraftClosure({component,path,text,original,stateIdentityVersion});
+  return{text:closure.text,anchors:[...anchors,...closure.anchors]};
 }

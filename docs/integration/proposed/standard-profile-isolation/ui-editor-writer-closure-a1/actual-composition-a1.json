@@ -1,0 +1,85 @@
+{
+  "format": "aux.ui-editor-writer-closure.composition.actual.v1",
+  "passed": true,
+  "base": "/private/tmp/aux-ui-draft-capture-stage-20261024-a3/baseline/agent/",
+  "files": [
+    {
+      "path": "assets/draft-storage-ixLojjZ5.js",
+      "preFeatureSha256": "bddddc6df8a000becb1c6245bc732d258b405e71c5c933d4c3de991ebdc125fc",
+      "priorOutputSha256": "bddddc6df8a000becb1c6245bc732d258b405e71c5c933d4c3de991ebdc125fc",
+      "outputSha256": "0911117b2d4425f34f5d62abd5c0a7c9ff2646cb1d5c48a037587d0186f59288",
+      "closureAnchors": 7,
+      "featureAnchors": 0,
+      "syntaxPassed": true
+    },
+    {
+      "path": "assets/create-editor-B-Br5Wz9.js",
+      "preFeatureSha256": "78b981a941e91bfdd52c2fd25787d310351c736214a8634a1591c86795a7e877",
+      "priorOutputSha256": "814f707acf1a1a455137ae23375aa6a41791a6dac99895f4439062285e66bdd5",
+      "outputSha256": "2648d8c6683527af3f150b3ab00be60c5a0c76f47eaf7a16f3e448a2e89a06a9",
+      "closureAnchors": 5,
+      "featureAnchors": 1,
+      "syntaxPassed": true
+    },
+    {
+      "path": "assets/file-attachments-D5m1O8aA.js",
+      "preFeatureSha256": "b94263913ff12de4b2d7960945469eb79d1624a48045e93cd2a4c94673da1b3a",
+      "priorOutputSha256": "b94263913ff12de4b2d7960945469eb79d1624a48045e93cd2a4c94673da1b3a",
+      "outputSha256": "57ccf50a480416d980bd1963eae88146a6e19a5fbafcd7a38ca17957e32ae62a",
+      "closureAnchors": 3,
+      "featureAnchors": 0,
+      "syntaxPassed": true
+    },
+    {
+      "path": "assets/permission-approval-D-GTf91U.js",
+      "preFeatureSha256": "e04488b780ed84b71289f7e63d205c2d50136eb6868f4ee23bb0f7c1d5e35bf8",
+      "priorOutputSha256": "e4908ae0c13431dd77292d0df18504fc902ef9c725926b671a106e67e69b9e18",
+      "outputSha256": "08afcf585bf6707377424fa07557c2d335d08898adae2576b4340bddf2a5d03f",
+      "closureAnchors": 4,
+      "featureAnchors": 3,
+      "syntaxPassed": true
+    },
+    {
+      "path": "assets/newtab-editor-u_GbForB.js",
+      "preFeatureSha256": "77c7374756c75ec386b2f3c9ae57b9b5c3890a190357d178105e0debed7b4dfc",
+      "priorOutputSha256": "77c7374756c75ec386b2f3c9ae57b9b5c3890a190357d178105e0debed7b4dfc",
+      "outputSha256": "10575e00999d606490b41e21ccf954d47625bb9c724ef8abd7037a75c04babd7",
+      "closureAnchors": 3,
+      "featureAnchors": 0,
+      "syntaxPassed": true
+    },
+    {
+      "path": "assets/minipopup-LkDLFvnq.js",
+      "preFeatureSha256": "f70c8c0328992493053ef4d61a205ba2800586fe44a79f29d9f188a7400ce762",
+      "priorOutputSha256": "f70c8c0328992493053ef4d61a205ba2800586fe44a79f29d9f188a7400ce762",
+      "outputSha256": "3071da2f307abd83fdaedd2ffc0d2fa77dcb6aab3f5c8a06d2bf0c9f9cc89eaf",
+      "closureAnchors": 3,
+      "featureAnchors": 0,
+      "syntaxPassed": true
+    },
+    {
+      "path": "assets/session-composer-Dc0LRfZA.js",
+      "preFeatureSha256": "e2779af11374862c5b31b9a879da3320f604ebc1f03ec66c4b34527642b886f1",
+      "priorOutputSha256": "18979e7cb8bb5d09eb79c88b30b89b76ace3edaaf421a11785362eef4356468b",
+      "outputSha256": "7d9fd830a06e4bc846a7d81f849486a16013a36411c8d33a309ddc6a6d7f229d",
+      "closureAnchors": 7,
+      "featureAnchors": 3,
+      "syntaxPassed": true
+    },
+    {
+      "path": "assets/provider-Cw0zhujt.js",
+      "preFeatureSha256": "6f1d1c108263b62fa39925da3bccd423524f6b5399aa31ada4a6c8a4b92c1d10",
+      "priorOutputSha256": "1e64914a8267b82ea9bacbe04c4e1393495d84973130db7533928cc8b8abf133",
+      "outputSha256": "8aee4a9cc8229397e4067fb9a9a4772ef4bdfddc03d1db3f2c84836a1b6fe724",
+      "closureAnchors": 8,
+      "featureAnchors": 8,
+      "syntaxPassed": true
+    }
+  ],
+  "consumedPreFeatureAndFullFeatureCompositionIdentical": true,
+  "allOriginalClassesPreserved": true,
+  "sourcePlanSha256": "115300733060f9b7498540aa50e04c1a1b033214e4218c59c563f43c504d7b62",
+  "runtimeExecuted": false,
+  "productExecuted": false,
+  "completeWriterCoverage": false
+}

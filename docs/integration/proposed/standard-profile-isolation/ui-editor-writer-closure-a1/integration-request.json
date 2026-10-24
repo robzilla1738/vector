@@ -1,0 +1,40 @@
+{
+  "format": "aux.ui-editor-writer-closure.integration-request.v1",
+  "baselineCommit": "130acfb8c",
+  "consumedAdapter": {
+    "path": "vendor/provided/aux-ui-draft-capture.mjs",
+    "inputSha256": "07d17a6edcd9c7f59cd438153031cd011f128b11bc1580edae0f52b5819220f2",
+    "outputSha256": "3d0eefe5939f6bf9005951ac9c62f6acc370eefcb539b8dd2ac8b432102982c3"
+  },
+  "provenanceInputsToRegister": [
+    {
+      "path": "vendor/provided/aux-ui-draft-closure.mjs",
+      "sha256": "a4f7c5d0b36fe354e10bceaecf1967318d16e143efcd89170f3c524c7743f9f6"
+    },
+    {
+      "path": "vendor/provided/aux-ui-draft-closure-runtime.js.txt",
+      "sha256": "b4c07d22e847dff77b71cf3980bee3329016bb763acbea0e4957f3a229afa9b3"
+    },
+    {
+      "path": "docs/integration/proposed/standard-profile-isolation/ui-editor-writer-closure-a1/inputs.json",
+      "sha256": "a57a34a6c760a50fda95b1a3ea6c4253e2f2a07dc6dd386029dc8101d75ed32d"
+    }
+  ],
+  "actualModule": "assets/draft-storage-ixLojjZ5.js",
+  "exports": {
+    "prepare": "auxPrepareDraftMigrationCapture(requestId)",
+    "read": "auxReadDraftMigrationCapture()",
+    "validate": "auxValidateDraftMigrationCapture(leaseId, revision)",
+    "seal": "auxSealDraftMigrationCapture(leaseId, revision)",
+    "release": "auxReleaseDraftMigrationCapture(leaseId)"
+  },
+  "protocolSha256": "84b82e369539dd7de805920cf601c6f38e66b11fda2bc25d314abdaed6c51ec6",
+  "sourcePlanSha256": "115300733060f9b7498540aa50e04c1a1b033214e4218c59c563f43c504d7b62",
+  "focusedReceiptSha256": "3091fef725bcf6d5c74dec76abf4a50f1f76abfc5470472dc90239cb16abc08b",
+  "compositionReceiptSha256": "637a34c7a7733c1e33a0673c6365c7c0771d559eb485dfa0e17ba44d273990cd",
+  "rootOwnsProvenanceRevisionNativeCallerBackendGatesStageAndPackage": true,
+  "nativeExecuted": false,
+  "productExecuted": false,
+  "completeWriterCoverage": false,
+  "runtimeAccepted": false
+}
