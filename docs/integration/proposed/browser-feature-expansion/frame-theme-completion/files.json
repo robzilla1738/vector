@@ -1,0 +1,104 @@
+{
+  "scope": "inactive minimal native presentation and non-destructive theme accent inheritance",
+  "files": [
+    {
+      "path": "chrome/browser/ui/views/frame/browser_view.cc",
+      "baselineOrigin": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/ui/views/frame/browser_view.cc",
+      "baselineSha256": "b6fecde06fb561b4fb5d2da9405981cede125be331286aecb19f1213bd884fd9",
+      "sourceSha256": "9e00e465d3b53f968697588594c05c43a7660b3744904890ef3ebd9fe7cde939",
+      "edits": [
+        {
+          "name": "completion-1",
+          "find": "  inputs.sidebar_navigation = vertical && vertical->ShouldDisplayVerticalTabs() &&\n      read_bool(aux::kSidebarNavigationEnabledPref) && !IsFullscreen() &&\n      GetIsNormalType();\n  inputs.minimal = read_bool(aux::kMinimalUiEnabledPref) && GetIsNormalType();",
+          "replace": "  inputs.minimal = read_bool(aux::kMinimalUiEnabledPref) && GetIsNormalType();\n  // Minimal mode reclaims the page's top toolbar row by moving the SAME\n  // trusted native controls into the docked sidebar. Collapse/hover keeps the\n  // existing top host; focus/menu/drag locks still defer actual reparenting.\n  inputs.sidebar_navigation = vertical && vertical->ShouldDisplayVerticalTabs() &&\n      (read_bool(aux::kSidebarNavigationEnabledPref) || inputs.minimal) &&\n      !IsFullscreen() && GetIsNormalType();",
+          "count": 1
+        },
+        {
+          "name": "completion-2",
+          "find": "  const bool minimal_changed = aux_minimal_ui_enabled_ != inputs.minimal;\n  aux_minimal_ui_enabled_ = inputs.minimal;",
+          "replace": "  const bool minimal_changed = aux_minimal_ui_enabled_ != inputs.minimal;\n  aux_minimal_ui_enabled_ = inputs.minimal;\n  toolbar_->SetAuxMinimalUiLayout(inputs.minimal);\n  if (!alive)\n    return;",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/ui/views/toolbar/toolbar_view.h",
+      "baselineOrigin": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/ui/views/toolbar/toolbar_view.h",
+      "baselineSha256": "5110333dda4d47d6f5c667180ed8ac6085b863dfd5a67df53d52e0c620821584",
+      "sourceSha256": "377fe00219dcc78d75dece3f93b3beb35af2b61dccbccdbae36618d793f4c551",
+      "edits": [
+        {
+          "name": "completion-1",
+          "find": "  bool SetAuxSidebarNavigationLayout(bool enabled);",
+          "replace": "  bool SetAuxSidebarNavigationLayout(bool enabled);\n  // Compact only redundant top-row padding; never hide the actual location\n  // bar, permission indicators, chat/profile/extensions or their controllers.\n  void SetAuxMinimalUiLayout(bool enabled);",
+          "count": 1
+        },
+        {
+          "name": "completion-2",
+          "find": "  bool aux_sidebar_navigation_layout_ = false;",
+          "replace": "  bool aux_sidebar_navigation_layout_ = false;\n  bool aux_minimal_ui_layout_ = false;",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/ui/views/toolbar/toolbar_view.cc",
+      "baselineOrigin": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/ui/views/toolbar/toolbar_view.cc",
+      "baselineSha256": "076680b0b700efa5180f13676ea5c055c0c1691c1f04247bd7f4c5d16fd67632",
+      "sourceSha256": "50fc4d3f77d198a4009dcf8f9c05a61216d965392d0cf0a652eb2a533d123587",
+      "edits": [
+        {
+          "name": "completion-1",
+          "find": "bool ToolbarView::SetAuxSidebarNavigationLayout(bool enabled) {",
+          "replace": "void ToolbarView::SetAuxMinimalUiLayout(bool enabled) {\n  if (aux_minimal_ui_layout_ == enabled)\n    return;\n  aux_minimal_ui_layout_ = enabled;\n  if (initialized_ && display_mode_ == DisplayMode::kNormal && layout_manager_) {\n    LayoutCommon();\n    PreferredSizeChanged();\n    InvalidateLayout();\n  }\n}\n\nbool ToolbarView::SetAuxSidebarNavigationLayout(bool enabled) {",
+          "count": 1
+        },
+        {
+          "name": "completion-2",
+          "find": "  gfx::Insets interior_margin =\n      GetLayoutInsets(LayoutInset::TOOLBAR_INTERIOR_MARGIN);\n\n  const bool is_trailing_contextual_tasks_visible =",
+          "replace": "  gfx::Insets interior_margin =\n      GetLayoutInsets(LayoutInset::TOOLBAR_INTERIOR_MARGIN);\n  if (aux_minimal_ui_layout_ && !aux_sidebar_navigation_layout_) {\n    // With a collapsed sidebar the trusted URL stays visible. Reclaim only\n    // redundant vertical padding; native controls retain their minimum hit\n    // target sizes and the existing frame layout derives the resulting bounds.\n    interior_margin.set_top(0);\n    interior_margin.set_bottom(0);\n  }\n\n  const bool is_trailing_contextual_tasks_visible =",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/themes/aux_theme_editor.cc",
+      "baselineOrigin": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/theme/source/chrome/browser/themes/aux_theme_editor.cc",
+      "baselineSha256": "16ffe2121f7312eebc34a333ea2ad06c9f866d113b63b6ded2eff9dc160d31e7",
+      "sourceSha256": "744f37d1421665a5abf3c3c6ff0bc091126dfc4c7f1ca6e1ce526716d146ed27",
+      "edits": [
+        {
+          "name": "completion-1",
+          "find": "    for (const char* pref : {kThemeTokensPref, kThemePresetsPref,\n                             prefs::kBrowserColorScheme, prefs::kUserColor,\n                             prefs::kCurrentThemeID}) {",
+          "replace": "    for (const char* pref : {kThemeTokensPref, kThemePresetsPref,\n                             prefs::kBrowserColorScheme}) {",
+          "count": 1
+        },
+        {
+          "name": "completion-2",
+          "find": "      registrar_.Add(pref, base::BindRepeating(&Editor::ExternalChange,\n                                              base::Unretained(this)));\n    }\n  }",
+          "replace": "      registrar_.Add(pref, base::BindRepeating(&Editor::ExternalChange,\n                                              base::Unretained(this)));\n    }\n    for (const char* pref : {prefs::kUserColor, prefs::kCurrentThemeID}) {\n      registrar_.Add(pref, base::BindRepeating(&Editor::ExternalAccentChange,\n                                              base::Unretained(this)));\n    }\n  }",
+          "count": 1
+        },
+        {
+          "name": "completion-3",
+          "find": "    if (result.contains(\"accent\")) {\n      if (auto color = theme->GetUserColor()) {\n        result.Set(\"accent\", base::StringPrintf(\"#%06X\", *color & 0xffffff));\n      } else {\n        result.Remove(\"accent\");\n      }\n    }\n",
+          "replace": "    // Accent is a scoped ColorProvider overlay, never a destructive native\n    // ThemeService user-color write. Removing it exposes the actual current\n    // profile theme, including an installed extension theme, after restart.\n",
+          "count": 1
+        },
+        {
+          "name": "completion-4",
+          "find": "      if (const auto* accent = tokens.FindString(\"accent\"))\n        theme->SetUserColor(ParseColor(*accent));\n",
+          "replace": "      // Keep the underlying profile theme intact. DecorateColorProviderKey\n      // applies this optional accent for preview and committed tokens alike.\n",
+          "count": 1
+        },
+        {
+          "name": "completion-5",
+          "find": "  void ExternalChange() {\n    if (writing_)\n      return;\n    ClearPreview();\n    Changed();\n  }\n",
+          "replace": "  void ExternalChange() {\n    if (writing_)\n      return;\n    ClearPreview();\n    Changed();\n  }\n  void ExternalAccentChange() {\n    if (writing_)\n      return;\n    // A later choice through Chromium's existing Appearance/theme controls\n    // takes precedence. Retire only our accent override, preserving unrelated\n    // Aux background/material tokens and every native theme preference.\n    auto tokens = profile_->GetPrefs()->GetDict(kThemeTokensPref).Clone();\n    if (tokens.Remove(\"accent\")) {\n      writing_ = true;\n      profile_->GetPrefs()->SetDict(kThemeTokensPref, std::move(tokens));\n      writing_ = false;\n    }\n    ExternalChange();\n  }\n",
+          "count": 1
+        }
+      ]
+    }
+  ],
+  "patchSha256": "feeaffe3e2ac6d389d49e6cf96657aa484b87de9ae1d2af39542d098e87cb1c7"
+}

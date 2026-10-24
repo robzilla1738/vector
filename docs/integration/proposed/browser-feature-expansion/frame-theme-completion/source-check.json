@@ -1,0 +1,8 @@
+{
+  "passed": true,
+  "scope": "single inert source replay and exact current-baseline/hash check",
+  "files": 4,
+  "runtimeAccepted": false,
+  "nativeCompile": false,
+  "manifestSha256": "c0b8bc9962b4149cfc3cbb599a4c54b35e68be68f30d3e0034b859d133b07026"
+}

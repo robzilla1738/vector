@@ -1,0 +1,149 @@
+--- a/chrome/browser/ui/views/frame/browser_view.cc
++++ b/chrome/browser/ui/views/frame/browser_view.cc
+@@ -6386,10 +6386,13 @@
+   };
+   auto inputs = vertical_tab_strip_region_view_->GetAuxFramePresentationInputs();
+   auto* vertical = tabs::VerticalTabStripStateController::From(browser_);
++  inputs.minimal = read_bool(aux::kMinimalUiEnabledPref) && GetIsNormalType();
++  // Minimal mode reclaims the page's top toolbar row by moving the SAME
++  // trusted native controls into the docked sidebar. Collapse/hover keeps the
++  // existing top host; focus/menu/drag locks still defer actual reparenting.
+   inputs.sidebar_navigation = vertical && vertical->ShouldDisplayVerticalTabs() &&
+-      read_bool(aux::kSidebarNavigationEnabledPref) && !IsFullscreen() &&
+-      GetIsNormalType();
+-  inputs.minimal = read_bool(aux::kMinimalUiEnabledPref) && GetIsNormalType();
++      (read_bool(aux::kSidebarNavigationEnabledPref) || inputs.minimal) &&
++      !IsFullscreen() && GetIsNormalType();
+   inputs.always_show_full_url = read_bool(omnibox::kPreventUrlElisionsInOmnibox);
+   inputs.navigation_has_focus = GetFocusManager() &&
+       toolbar_->Contains(GetFocusManager()->GetFocusedView());
+@@ -6444,6 +6447,9 @@
+     return;
+   const bool minimal_changed = aux_minimal_ui_enabled_ != inputs.minimal;
+   aux_minimal_ui_enabled_ = inputs.minimal;
++  toolbar_->SetAuxMinimalUiLayout(inputs.minimal);
++  if (!alive)
++    return;
+   if (was_hosted != is_hosted)
+     EnsureFocusOrder();
+   if (was_hosted != is_hosted || minimal_changed) {
+--- a/chrome/browser/ui/views/toolbar/toolbar_view.h
++++ b/chrome/browser/ui/views/toolbar/toolbar_view.h
+@@ -140,6 +140,9 @@
+   bool CanUseAuxSidebarNavigationLayout() const;
+   bool IsAuxNavigationInteractionActive() const;
+   bool SetAuxSidebarNavigationLayout(bool enabled);
++  // Compact only redundant top-row padding; never hide the actual location
++  // bar, permission indicators, chat/profile/extensions or their controllers.
++  void SetAuxMinimalUiLayout(bool enabled);
+   bool IsAuxSidebarNavigationLayout() const {
+     return aux_sidebar_navigation_layout_;
+   }
+@@ -496,6 +499,7 @@
+ 
+   raw_ptr<views::FlexLayout> layout_manager_ = nullptr;
+   bool aux_sidebar_navigation_layout_ = false;
++  bool aux_minimal_ui_layout_ = false;
+   bool aux_location_bar_was_ignored_ = false;
+ 
+ 
+--- a/chrome/browser/ui/views/toolbar/toolbar_view.cc
++++ b/chrome/browser/ui/views/toolbar/toolbar_view.cc
+@@ -1616,6 +1616,17 @@
+          location_bar_view_ && back_ && !toolbar_webview_ && layout_manager_;
+ }
+ 
++void ToolbarView::SetAuxMinimalUiLayout(bool enabled) {
++  if (aux_minimal_ui_layout_ == enabled)
++    return;
++  aux_minimal_ui_layout_ = enabled;
++  if (initialized_ && display_mode_ == DisplayMode::kNormal && layout_manager_) {
++    LayoutCommon();
++    PreferredSizeChanged();
++    InvalidateLayout();
++  }
++}
++
+ bool ToolbarView::SetAuxSidebarNavigationLayout(bool enabled) {
+   if (enabled && !CanUseAuxSidebarNavigationLayout())
+     return false;
+@@ -1976,6 +1987,13 @@
+ 
+   gfx::Insets interior_margin =
+       GetLayoutInsets(LayoutInset::TOOLBAR_INTERIOR_MARGIN);
++  if (aux_minimal_ui_layout_ && !aux_sidebar_navigation_layout_) {
++    // With a collapsed sidebar the trusted URL stays visible. Reclaim only
++    // redundant vertical padding; native controls retain their minimum hit
++    // target sizes and the existing frame layout derives the resulting bounds.
++    interior_margin.set_top(0);
++    interior_margin.set_bottom(0);
++  }
+ 
+   const bool is_trailing_contextual_tasks_visible =
+       IsTrailingContextualTasksButtonVisible();
+--- a/chrome/browser/themes/aux_theme_editor.cc
++++ b/chrome/browser/themes/aux_theme_editor.cc
+@@ -203,9 +203,12 @@
+   explicit Editor(Profile* profile) : profile_(profile->GetWeakPtr()) {
+     registrar_.Init(profile_->GetPrefs());
+     for (const char* pref : {kThemeTokensPref, kThemePresetsPref,
+-                             prefs::kBrowserColorScheme, prefs::kUserColor,
+-                             prefs::kCurrentThemeID}) {
++                             prefs::kBrowserColorScheme}) {
+       registrar_.Add(pref, base::BindRepeating(&Editor::ExternalChange,
++                                              base::Unretained(this)));
++    }
++    for (const char* pref : {prefs::kUserColor, prefs::kCurrentThemeID}) {
++      registrar_.Add(pref, base::BindRepeating(&Editor::ExternalAccentChange,
+                                               base::Unretained(this)));
+     }
+   }
+@@ -223,13 +226,9 @@
+           ? "dark" : scheme == ThemeService::BrowserColorScheme::kLight
+           ? "light" : "system");
+     }
+-    if (result.contains("accent")) {
+-      if (auto color = theme->GetUserColor()) {
+-        result.Set("accent", base::StringPrintf("#%06X", *color & 0xffffff));
+-      } else {
+-        result.Remove("accent");
+-      }
+-    }
++    // Accent is a scoped ColorProvider overlay, never a destructive native
++    // ThemeService user-color write. Removing it exposes the actual current
++    // profile theme, including an installed extension theme, after restart.
+     return result;
+   }
+   base::DictValue Effective() const {
+@@ -306,8 +305,8 @@
+             ? ThemeService::BrowserColorScheme::kLight
+             : ThemeService::BrowserColorScheme::kSystem);
+       }
+-      if (const auto* accent = tokens.FindString("accent"))
+-        theme->SetUserColor(ParseColor(*accent));
++      // Keep the underlying profile theme intact. DecorateColorProviderKey
++      // applies this optional accent for preview and committed tokens alike.
+     }
+     profile_->GetPrefs()->SetDict(kThemeTokensPref, std::move(tokens));
+     writing_ = false;
+@@ -340,6 +339,20 @@
+       return;
+     ClearPreview();
+     Changed();
++  }
++  void ExternalAccentChange() {
++    if (writing_)
++      return;
++    // A later choice through Chromium's existing Appearance/theme controls
++    // takes precedence. Retire only our accent override, preserving unrelated
++    // Aux background/material tokens and every native theme preference.
++    auto tokens = profile_->GetPrefs()->GetDict(kThemeTokensPref).Clone();
++    if (tokens.Remove("accent")) {
++      writing_ = true;
++      profile_->GetPrefs()->SetDict(kThemeTokensPref, std::move(tokens));
++      writing_ = false;
++    }
++    ExternalChange();
+   }
+   const base::WeakPtr<Profile> profile_;
+   std::string revision_ = base::Uuid::GenerateRandomV4().AsLowercaseString();
