@@ -106,6 +106,21 @@ TEST(OrganizationModel, LaunchUrlSurvivesNavigationAndUndoPreservesReplay) {
   EXPECT_EQ(undo.snapshot.entries.at(kTab).current_url,
             tab.snapshot.entries.at(kTab).current_url);
 }
+TEST(OrganizationModel, BatchIsOneRevisionAndRefusesWholeInvalidPlan) {
+  const auto initial = Initial();
+  Context context{"profile-one", "native-generation", 0, Operation(1)};
+  std::vector<Command> plan{Create(Action::kCreateFolder, kFolder),
+                            Create(Action::kCreateTab, kTab, kFolder)};
+  auto result = ApplyBatch(initial, context, plan);
+  ASSERT_EQ(result.error, Error::kNone);
+  EXPECT_EQ(result.snapshot.revision, 1u);
+  EXPECT_EQ(result.snapshot.replay.size(), 1u);
+  EXPECT_EQ(ApplyBatch(result.snapshot, context, plan).error, Error::kReplay);
+  plan.back().parent_id = kOther;
+  EXPECT_EQ(ApplyBatch(initial, context, plan).error, Error::kMissing);
+  EXPECT_TRUE(initial.entries.empty());
+  EXPECT_EQ(ApplyBatch(result.snapshot, context, plan).error, Error::kOperationConflict);
+}
 TEST(OrganizationModel, OverflowAndUnknownSchemaRefuseWithoutMutation) {
   Snapshot snapshot = Initial();
   snapshot.revision = std::numeric_limits<uint64_t>::max();

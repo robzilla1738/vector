@@ -120,6 +120,8 @@ enum class CloseDisposition { kUnloadView, kArchiveLogicalTab };
 CloseDisposition GetCloseDisposition(const Entry& entry);
 Mutation Apply(const Snapshot& current, const Context& context,
                const Command& command);
+Mutation ApplyBatch(const Snapshot& current, const Context& context,
+                    const std::vector<Command>& commands);
 Mutation ApplyUndo(const Snapshot& current, const Snapshot& previous,
                    const Context& context, std::string_view token);
 }  // namespace aux::organization

@@ -53,6 +53,7 @@ class OrganizationService final : public KeyedService {
   ~OrganizationService() override;
   const Snapshot& snapshot() const;
   void Execute(Context context, Command command, Reply reply);
+  void ExecuteBatch(Context context, std::vector<Command> commands, Reply reply);
   void Undo(Context context, std::string token, Reply reply);
   base::CallbackListSubscription Observe(
       base::RepeatingCallback<void(const Delta&)> callback);

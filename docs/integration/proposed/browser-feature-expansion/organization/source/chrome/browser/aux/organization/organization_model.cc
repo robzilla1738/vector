@@ -381,6 +381,36 @@ Mutation Apply(const Snapshot& current, const Context& context,
   }
   return Finish(current, std::move(next), context, fingerprint);
 }
+Mutation ApplyBatch(const Snapshot& current, const Context& context,
+                    const std::vector<Command>& commands) {
+  if (commands.empty() || commands.size() > 512)
+    return {Error::kCapacity, {}, {}};
+  std::string fingerprint = "batch:";
+  for (const auto& command : commands) {
+    if (!Text(command.id, 36) || !Text(command.space_id, 36) ||
+        !Text(command.parent_id, 36) || !Text(command.title, 4096) ||
+        !Text(command.icon, 256) || !Text(command.url, 32768))
+      return {Error::kInvalid, {}, {}};
+    const auto part = Fingerprint(command);
+    fingerprint += std::to_string(part.size()) + ":" + part;
+    if (fingerprint.size() > 131072) return {Error::kCapacity, {}, {}};
+  }
+  if (const auto error = CheckContext(current, context, fingerprint);
+      error != Error::kNone) return {error, {}, {}};
+  Snapshot next = current;
+  // Local evaluation has no persisted revision/replay. Each command validates
+  // a private candidate; only Finish below creates the single durable mutation.
+  Context local = context;
+  local.expected_revision = 0;
+  for (const auto& command : commands) {
+    next.revision = 0;
+    next.replay.clear();
+    auto result = Apply(next, local, command);
+    if (result.error != Error::kNone) return {result.error, {}, {}};
+    next = std::move(result.snapshot);
+  }
+  return Finish(current, std::move(next), context, std::move(fingerprint));
+}
 Mutation ApplyUndo(const Snapshot& current, const Snapshot& previous,
                    const Context& context, std::string_view token) {
   const auto fingerprint = "undo:" + std::string(token);

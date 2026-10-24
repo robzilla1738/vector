@@ -63,6 +63,24 @@ void OrganizationService::Execute(Context context, Command command, Reply reply)
   Mutation mutation = Apply(snapshot_, context, command);
   Start(std::move(context), std::move(mutation), std::move(reply), true);
 }
+void OrganizationService::ExecuteBatch(Context context,
+                                        std::vector<Command> commands,
+                                        Reply reply) {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+  CHECK(reply);
+  if (auto error = Check(context); error != Error::kNone) {
+    std::move(reply).Run({error, snapshot_.revision, {}});
+    return;
+  }
+  for (const auto& command : commands) {
+    if (!CommandUrlsValid(command)) {
+      std::move(reply).Run({Error::kInvalid, snapshot_.revision, {}});
+      return;
+    }
+  }
+  Mutation mutation = ApplyBatch(snapshot_, context, commands);
+  Start(std::move(context), std::move(mutation), std::move(reply), true);
+}
 void OrganizationService::Undo(Context context, std::string token, Reply reply) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   CHECK(reply);
