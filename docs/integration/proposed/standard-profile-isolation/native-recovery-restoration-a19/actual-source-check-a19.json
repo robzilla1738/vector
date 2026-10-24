@@ -1,0 +1,16 @@
+{
+  "format": "aux.native-recovery-restore.source-check.actual.v1",
+  "passed": true,
+  "sourcePlanSha256": "04e154fbdeeec82f88242f94ab226d989290a756b6ac19e9fc880fd5fe9aa2a7",
+  "patchSha256": "2d91e1b01bd5cd96546a2bfc66a6a229264678e779cc9f7a32ca6db2b442bb97",
+  "files": 3,
+  "countedAnchors": 14,
+  "replayDirectory": "/private/tmp/aux-native-recovery-restore-replay-_npudeuu",
+  "exactReplayPassed": true,
+  "reverseCheckPassed": true,
+  "nativeCheckoutChanged": false,
+  "nativeCompiled": false,
+  "testsExecuted": false,
+  "productExecuted": false,
+  "runtimeAcceptance": false
+}

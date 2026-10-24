@@ -1,0 +1,106 @@
+{
+  "format": "aux.native-recovery-restoration.source.v1",
+  "files": [
+    {
+      "path": "components/services/storage/dom_storage/async_dom_storage_database.h",
+      "inputRoot": "/Users/rcourson/.codex/worktrees/aux-features-organization/web/docs/integration/proposed/standard-profile-isolation/native-cache-recovery-original-a18/source",
+      "inputSha256": "3ad83e63a7f45ca80c0df300b9fc479fa8f4c6ff6109ebcac1c4c1c700af126e",
+      "outputSha256": "5da00143d24990009544af71d6ac28033ad667a72ff100927e4ec235010d4612",
+      "output": "/Users/rcourson/.codex/worktrees/aux-features-organization/web/docs/integration/proposed/standard-profile-isolation/native-recovery-restoration-a19/source/components/services/storage/dom_storage/async_dom_storage_database.h",
+      "anchors": [
+        {
+          "find": "    bool published = false;\n  };",
+          "replace": "    bool published = false;\n    bool recovery_prepared = false;\n    bool recovery_restored = false;\n  };",
+          "count": 1
+        },
+        {
+          "find": "    bool known_source_target_mixture = false;",
+          "replace": "    bool known_source_target_mixture = false;\n    bool recovery_cache_prepared = false;\n    bool recovery_original_restored = false;",
+          "count": 1
+        },
+        {
+          "find": "  void CommitAuxUiMigrationLease(AuxUiMigrationLease& lease,",
+          "replace": "  void PrepareAuxUiMigrationRecoveryCaches(AuxUiMigrationLease& lease, AuxUiReadCallback callback);\n  void ReadAuxUiMigrationRecovery(AuxUiMigrationLease& lease, AuxUiReadCallback callback);\n  // Actual verified controller must first persist explicit recovery intent\n  // and join fresh editor/worker/backend ownership. No payload grants that.\n  void RestoreAuxUiMigrationRecovery(AuxUiMigrationLease& lease, AuxUiReadCallback callback);\n  void CommitAuxUiMigrationLease(AuxUiMigrationLease& lease,",
+          "count": 1
+        },
+        {
+          "find": "  void RunAuxUiBackend(std::shared_ptr<AuxUiMigrationLease::State> state, int operation,\n      std::vector<AuxUiTargetMap> targets, AuxUiReadCallback callback);",
+          "replace": "  void RunAuxUiBackend(std::shared_ptr<AuxUiMigrationLease::State> state, int operation,\n      std::vector<AuxUiTargetMap> targets, AuxUiReadCallback callback, bool recovery = false);",
+          "count": 1
+        },
+        {
+          "find": "  void CheckedAuxUiRecovery(std::shared_ptr<AuxUiMigrationLease::State> state,",
+          "replace": "  void RunAuxUiRecoveryAction(AuxUiMigrationLease& lease, int operation, AuxUiReadCallback callback);\n  void CheckedAuxUiRecoveryAction(std::shared_ptr<AuxUiMigrationLease::State> state,\n      int operation, AuxUiReadCallback callback, DbStatus status);\n  void BackendAuxUiRecoveryAction(std::shared_ptr<AuxUiMigrationLease::State> state,\n      int operation, AuxUiReadCallback callback, StatusOr<AuxUiSnapshot> result);\n  void CompletedAuxUiRecoveryAction(std::shared_ptr<AuxUiMigrationLease::State> state,\n      int operation, AuxUiSnapshot snapshot, AuxUiReadCallback callback, DbStatus status);\n  void CheckedAuxUiRecovery(std::shared_ptr<AuxUiMigrationLease::State> state,",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "components/services/storage/dom_storage/async_dom_storage_database.cc",
+      "inputRoot": "/Users/rcourson/.codex/worktrees/aux-features-organization/web/docs/integration/proposed/standard-profile-isolation/native-recovery-requalification-a17b/source",
+      "inputSha256": "28ec1bce66f2c49ef42989f08cb835e18c81b44dacaa9bdde478cdf53de10043",
+      "outputSha256": "523ae22eb9aef56b088aafb08ffa86933808bee791c5f27f539254c64a9a1a0b",
+      "output": "/Users/rcourson/.codex/worktrees/aux-features-organization/web/docs/integration/proposed/standard-profile-isolation/native-recovery-restoration-a19/source/components/services/storage/dom_storage/async_dom_storage_database.cc",
+      "anchors": [
+        {
+          "find": "  std::string recovery_descriptor_sha256;",
+          "replace": "  std::string recovery_descriptor_sha256;\n  bool recovery_requalified = false;\n  bool recovery_cache_prepared = false;\n  bool recovery_write_attempted = false;\n  bool recovery_original_restored = false;",
+          "count": 1
+        },
+        {
+          "find": "  if (round->operation == AuxUiCacheOperation::kStage && !map) {",
+          "replace": "  if ((round->operation == AuxUiCacheOperation::kStage ||\n       round->operation == AuxUiCacheOperation::kRecoveryStage ||\n       round->operation == AuxUiCacheOperation::kRecoveryRestore) && !map) {",
+          "count": 1
+        },
+        {
+          "find": "              round->operation == AuxUiCacheOperation::kRestore)) {",
+          "replace": "              round->operation == AuxUiCacheOperation::kRestore ||\n              round->operation == AuxUiCacheOperation::kRecoveryRestore)) {",
+          "count": 1
+        },
+        {
+          "find": "    std::vector<AuxUiTargetMap> targets, AuxUiReadCallback callback) {\n  const bool local = storage_type_ == StorageType::kLocalStorage;",
+          "replace": "    std::vector<AuxUiTargetMap> targets, AuxUiReadCallback callback, bool recovery) {\n  if (recovery && (operation != 1 && operation != 4)) {\n    std::move(callback).Run(base::unexpected(DbStatus::IOError(\"Recovery cannot replay a target write\"))); return;\n  }\n  const bool local = storage_type_ == StorageType::kLocalStorage;",
+          "count": 1
+        },
+        {
+          "find": "      }, state->backend, aux_migration_write_status_, local, is_sqlite_, operation, std::move(targets), std::move(guarded)));",
+          "replace": "      }, recovery ? state->recovery_backend : state->backend, aux_migration_write_status_, local, is_sqlite_, operation, std::move(targets), std::move(guarded)));",
+          "count": 1
+        },
+        {
+          "find": "        if (!owner || !owner->CurrentAuxUiMigrationWriters(state) || state->tainted)\n          result = base::unexpected(DbStatus::IOError(\"Actual fresh recovery owner changed\"));\n        std::move(callback).Run(std::move(result));",
+          "replace": "        if (!owner || !owner->CurrentAuxUiMigrationWriters(state) || state->tainted)\n          result = base::unexpected(DbStatus::IOError(\"Actual fresh recovery owner changed\"));\n        state->recovery_requalified = result.has_value();\n        std::move(callback).Run(std::move(result));",
+          "count": 1
+        },
+        {
+          "find": "void AsyncDomStorageDatabase::RunAuxUiMigrationOperation(AuxUiMigrationLease& lease,",
+          "replace": "void AsyncDomStorageDatabase::PrepareAuxUiMigrationRecoveryCaches(\n    AuxUiMigrationLease& lease, AuxUiReadCallback callback) {\n  RunAuxUiRecoveryAction(lease, 0, std::move(callback));\n}\nvoid AsyncDomStorageDatabase::ReadAuxUiMigrationRecovery(\n    AuxUiMigrationLease& lease, AuxUiReadCallback callback) {\n  RunAuxUiRecoveryAction(lease, 1, std::move(callback));\n}\nvoid AsyncDomStorageDatabase::RestoreAuxUiMigrationRecovery(\n    AuxUiMigrationLease& lease, AuxUiReadCallback callback) {\n  RunAuxUiRecoveryAction(lease, 2, std::move(callback));\n}\nvoid AsyncDomStorageDatabase::RunAuxUiRecoveryAction(\n    AuxUiMigrationLease& lease, int operation, AuxUiReadCallback callback) {\n  auto state = lease.state_;\n  if (!CurrentAuxUiMigrationWriters(state) || state->pending || state->tainted ||\n      state->recovery_descriptor_sha256.empty() || !state->recovery_backend ||\n      !state->recovery_requalified || (operation == 2 && !state->recovery_cache_prepared)) {\n    std::move(callback).Run(base::unexpected(DbStatus::IOError(\"Actual requalified original/cache custody required\"))); return;\n  }\n  state->pending = true;\n  RunAuxUiMigrationCaches(state, AuxUiCacheOperation::kRead, false, state->snapshot,\n      base::BindOnce(&AsyncDomStorageDatabase::CheckedAuxUiRecoveryAction,\n          weak_ptr_factory_.GetWeakPtr(), state, operation, std::move(callback)));\n}\nvoid AsyncDomStorageDatabase::CheckedAuxUiRecoveryAction(\n    std::shared_ptr<AuxUiMigrationLease::State> state, int operation,\n    AuxUiReadCallback callback, DbStatus status) {\n  if (!status.ok() || !CurrentAuxUiMigrationWriters(state) || state->tainted) {\n    state->pending = false;\n    state->recovery_original_restored = false;\n    std::move(callback).Run(base::unexpected(status.ok() ? DbStatus::IOError(\"Actual recovery writer registry changed\") : status)); return;\n  }\n  if (operation == 2) {\n    // This is an original restoration under the same immutable descriptor,\n    // never an allocator/target retry. Only its actual result can reopen.\n    state->recovery_write_attempted = true;\n    state->recovery_original_restored = false;\n  }\n  RunAuxUiBackend(state, operation == 2 ? 4 : 1, {},\n      base::BindOnce(&AsyncDomStorageDatabase::BackendAuxUiRecoveryAction,\n          weak_ptr_factory_.GetWeakPtr(), state, operation, std::move(callback)), true);\n}\nvoid AsyncDomStorageDatabase::BackendAuxUiRecoveryAction(\n    std::shared_ptr<AuxUiMigrationLease::State> state, int operation,\n    AuxUiReadCallback callback, StatusOr<AuxUiSnapshot> result) {\n  if (!result.has_value() || !CurrentAuxUiMigrationWriters(state) || state->tainted) {\n    state->pending = false;\n    state->recovery_original_restored = false;\n    std::move(callback).Run(result.has_value() ?\n        StatusOr<AuxUiSnapshot>(base::unexpected(DbStatus::IOError(\"Actual recovery owner changed after backend operation\"))) : std::move(result)); return;\n  }\n  if (operation == 2 && (!result->matches_source || !result->file_data_synced)) {\n    state->pending = false;\n    state->recovery_original_restored = false;\n    std::move(callback).Run(base::unexpected(DbStatus::IOError(\"Actual complete original readback/sync required before cache restoration\"))); return;\n  }\n  if (state->recovery_original_restored && (!result->matches_source || !result->file_data_synced)) {\n    state->pending = false; state->recovery_original_restored = false;\n    std::move(callback).Run(base::unexpected(DbStatus::IOError(\"Previously restored original is no longer verified\"))); return;\n  }\n  auto snapshot = std::move(result).value();\n  const auto cache = operation == 0 ? AuxUiCacheOperation::kRecoveryStage :\n      operation == 2 ? AuxUiCacheOperation::kRecoveryRestore : AuxUiCacheOperation::kRead;\n  RunAuxUiMigrationCaches(state, cache, false, snapshot,\n      base::BindOnce(&AsyncDomStorageDatabase::CompletedAuxUiRecoveryAction,\n          weak_ptr_factory_.GetWeakPtr(), state, operation, snapshot, std::move(callback)));\n}\nvoid AsyncDomStorageDatabase::CompletedAuxUiRecoveryAction(\n    std::shared_ptr<AuxUiMigrationLease::State> state, int operation,\n    AuxUiSnapshot snapshot, AuxUiReadCallback callback, DbStatus status) {\n  state->pending = false;\n  if (!status.ok() || !CurrentAuxUiMigrationWriters(state) || state->tainted) {\n    state->recovery_original_restored = false;\n    std::move(callback).Run(base::unexpected(status.ok() ? DbStatus::IOError(\"Actual recovery cache registry changed\") : status)); return;\n  }\n  if (operation == 0) state->recovery_cache_prepared = true;\n  if (operation == 2) state->recovery_original_restored = true;\n  // Do not infer an unacknowledged native cache adoption from bare renderer\n  // flags. After a lost internal ack, explicit original Restore must recheck\n  // every native owner and renderer again; it never replays target creation.\n  snapshot.recovery_cache_prepared = state->recovery_cache_prepared;\n  snapshot.recovery_original_restored = state->recovery_original_restored;\n  snapshot.source_ready = snapshot.private_target_staged = snapshot.cache_published = false;\n  for (auto& map : snapshot.maps) {\n    auto original = AuxUiCacheCohort::DecodeSelected(map.source, map.session_ids.empty());\n    auto target = AuxUiCacheCohort::DecodeSelected(map.target, map.session_ids.empty());\n    if (!original.has_value() || !target.has_value()) {\n      std::move(callback).Run(base::unexpected(DbStatus::IOError(\"Original recovery cache codec changed\"))); return;\n    }\n    std::map<std::u16string, std::u16string> source_units, target_units;\n    for (const auto& entry : original.value()) source_units.emplace(\n        std::u16string(entry->key.begin(), entry->key.end()), std::u16string(entry->value.begin(), entry->value.end()));\n    for (const auto& entry : target.value()) target_units.emplace(\n        std::u16string(entry->key.begin(), entry->key.end()), std::u16string(entry->value.begin(), entry->value.end()));\n    for (const auto& writer : state->writers) {\n      if (!writer->MatchesAuxUiMigrationMap(map)) continue;\n      for (auto& view : writer->CopyAuxUiMigrationCacheViews()) {\n        if ((map.session_ids.empty() ? !view.namespace_id.empty() :\n             !std::ranges::contains(map.session_ids, view.namespace_id)) ||\n            (view.source != source_units && view.source != target_units) ||\n            (state->recovery_cache_prepared && !view.recovery_prepared) ||\n            (state->recovery_original_restored && !view.recovery_restored)) {\n          state->recovery_original_restored = false;\n          std::move(callback).Run(base::unexpected(DbStatus::IOError(\"Actual journal-original cache pairing/readback changed\"))); return;\n        }\n        map.cache_views.push_back(std::move(view));\n      }\n    }\n  }\n  std::move(callback).Run(std::move(snapshot));\n}\nvoid AsyncDomStorageDatabase::RunAuxUiMigrationOperation(AuxUiMigrationLease& lease,",
+          "count": 1
+        },
+        {
+          "find": "  if (!CurrentAuxUiMigrationWriters(state) || state->pending || !before_reopen ||",
+          "replace": "  if (!CurrentAuxUiMigrationWriters(state) || state->pending || !before_reopen ||\n      (state->recovery_write_attempted && !state->recovery_original_restored) ||",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "components/services/storage/dom_storage/storage_area_impl.cc",
+      "inputRoot": "/Users/rcourson/.codex/worktrees/aux-features-organization/web/docs/integration/proposed/standard-profile-isolation/native-cache-recovery-original-a18/source",
+      "inputSha256": "06ee9f1214d0e310d306bf427d940da07505ffec9c466f0dea2b816eabf80f69",
+      "outputSha256": "7e123398b9d4b5cd2f508e9675d855699fd3ef5618faa7a16f1d7d48b5fc2b05",
+      "output": "/Users/rcourson/.codex/worktrees/aux-features-organization/web/docs/integration/proposed/standard-profile-isolation/native-recovery-restoration-a19/source/components/services/storage/dom_storage/storage_area_impl.cc",
+      "anchors": [
+        {
+          "find": "      view.namespace_id = participant->namespace_id(); view.published = report->published;",
+          "replace": "      view.namespace_id = participant->namespace_id(); view.published = report->published;\n      view.recovery_prepared = report->recovery_prepared;\n      view.recovery_restored = report->recovery_restored;",
+          "count": 1
+        }
+      ]
+    }
+  ],
+  "nativeCheckoutChanged": false,
+  "nativeCompiled": false,
+  "productExecuted": false,
+  "runtimeAcceptance": false
+}

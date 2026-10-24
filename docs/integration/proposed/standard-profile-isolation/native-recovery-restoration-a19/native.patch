@@ -1,0 +1,256 @@
+--- a/components/services/storage/dom_storage/async_dom_storage_database.h
++++ b/components/services/storage/dom_storage/async_dom_storage_database.h
+@@ -72,6 +72,8 @@
+     std::map<std::u16string, std::u16string> source;
+     std::map<std::u16string, std::u16string> staged;
+     bool published = false;
++    bool recovery_prepared = false;
++    bool recovery_restored = false;
+   };
+   struct AuxUiMapSnapshot;
+ 
+@@ -165,6 +167,8 @@
+     bool matches_source = false;
+     bool matches_target = false;
+     bool known_source_target_mixture = false;
++    bool recovery_cache_prepared = false;
++    bool recovery_original_restored = false;
+     bool file_data_synced = false;
+     bool ordinary_work_queued = false;
+     bool target_attempted = false;
+@@ -200,6 +204,11 @@
+   // Reacquires no authority and never replaces this fresh lease's originals.
+   void RequalifyAuxUiMigrationLease(AuxUiMigrationLease& lease,
+       AuxUiSnapshot recorded, AuxUiReadCallback callback);
++  void PrepareAuxUiMigrationRecoveryCaches(AuxUiMigrationLease& lease, AuxUiReadCallback callback);
++  void ReadAuxUiMigrationRecovery(AuxUiMigrationLease& lease, AuxUiReadCallback callback);
++  // Actual verified controller must first persist explicit recovery intent
++  // and join fresh editor/worker/backend ownership. No payload grants that.
++  void RestoreAuxUiMigrationRecovery(AuxUiMigrationLease& lease, AuxUiReadCallback callback);
+   void CommitAuxUiMigrationLease(AuxUiMigrationLease& lease,
+                                  AuxUiReadCallback callback);
+   void RestoreAuxUiMigrationLease(AuxUiMigrationLease& lease,
+@@ -249,7 +258,7 @@
+   void AttachAuxUiCacheObservations(const std::shared_ptr<AuxUiMigrationLease::State>& state,
+       AuxUiSnapshot& snapshot) const;
+   void RunAuxUiBackend(std::shared_ptr<AuxUiMigrationLease::State> state, int operation,
+-      std::vector<AuxUiTargetMap> targets, AuxUiReadCallback callback);
++      std::vector<AuxUiTargetMap> targets, AuxUiReadCallback callback, bool recovery = false);
+   void PreparedAuxUiMigration(std::shared_ptr<AuxUiMigrationLease::State> state,
+       AuxUiLeaseCallback callback, DbStatus status);
+   void CapturedAuxUiMigration(std::shared_ptr<AuxUiMigrationLease::State> state,
+@@ -258,6 +267,13 @@
+       AuxUiLeaseCallback callback, DbStatus status);
+   void CompleteAuxUiBegin(std::shared_ptr<AuxUiMigrationLease::State> state,
+       AuxUiLeaseCallback callback, DbStatus status);
++  void RunAuxUiRecoveryAction(AuxUiMigrationLease& lease, int operation, AuxUiReadCallback callback);
++  void CheckedAuxUiRecoveryAction(std::shared_ptr<AuxUiMigrationLease::State> state,
++      int operation, AuxUiReadCallback callback, DbStatus status);
++  void BackendAuxUiRecoveryAction(std::shared_ptr<AuxUiMigrationLease::State> state,
++      int operation, AuxUiReadCallback callback, StatusOr<AuxUiSnapshot> result);
++  void CompletedAuxUiRecoveryAction(std::shared_ptr<AuxUiMigrationLease::State> state,
++      int operation, AuxUiSnapshot snapshot, AuxUiReadCallback callback, DbStatus status);
+   void CheckedAuxUiRecovery(std::shared_ptr<AuxUiMigrationLease::State> state,
+       AuxUiSnapshot recorded, AuxUiReadCallback callback, DbStatus status);
+   void CheckedAuxUiOperation(std::shared_ptr<AuxUiMigrationLease::State> state, int operation,
+--- a/components/services/storage/dom_storage/async_dom_storage_database.cc
++++ b/components/services/storage/dom_storage/async_dom_storage_database.cc
+@@ -657,6 +657,10 @@
+   // into the old transaction's original cache/target authority.
+   std::shared_ptr<AuxDomCapture> recovery_backend;
+   std::string recovery_descriptor_sha256;
++  bool recovery_requalified = false;
++  bool recovery_cache_prepared = false;
++  bool recovery_write_attempted = false;
++  bool recovery_original_restored = false;
+   std::vector<base::OnceClosure> deferred;
+   bool pending = false;
+   bool tainted = false;
+@@ -757,7 +761,9 @@
+     if (map) { std::move(reply).Run(DbStatus::IOError("Native cache map pairing is ambiguous")); return; }
+     map = &candidate;
+   }
+-  if (round->operation == AuxUiCacheOperation::kStage && !map) {
++  if ((round->operation == AuxUiCacheOperation::kStage ||
++       round->operation == AuxUiCacheOperation::kRecoveryStage ||
++       round->operation == AuxUiCacheOperation::kRecoveryRestore) && !map) {
+     auto locator = writer->CopyAuxUiMigrationLocator();
+     if (!locator.has_value()) { std::move(reply).Run(locator.error()); return; }
+     const auto origin = url::Origin::Create(GURL("chrome-extension://gokkffaiccpmoeodpmeamcjajcagjmkm/"));
+@@ -771,7 +777,8 @@
+     return;
+   }
+   if (map && (round->operation == AuxUiCacheOperation::kPublish ||
+-              round->operation == AuxUiCacheOperation::kRestore)) {
++              round->operation == AuxUiCacheOperation::kRestore ||
++              round->operation == AuxUiCacheOperation::kRecoveryRestore)) {
+     DbStatus adopted = writer->AdoptAuxUiMigrationMap(*map,
+         round->operation == AuxUiCacheOperation::kPublish);
+     if (!adopted.ok()) { std::move(reply).Run(std::move(adopted)); return; }
+@@ -817,7 +824,10 @@
+ }
+ void AsyncDomStorageDatabase::RunAuxUiBackend(
+     std::shared_ptr<AuxUiMigrationLease::State> state, int operation,
+-    std::vector<AuxUiTargetMap> targets, AuxUiReadCallback callback) {
++    std::vector<AuxUiTargetMap> targets, AuxUiReadCallback callback, bool recovery) {
++  if (recovery && (operation != 1 && operation != 4)) {
++    std::move(callback).Run(base::unexpected(DbStatus::IOError("Recovery cannot replay a target write"))); return;
++  }
+   const bool local = storage_type_ == StorageType::kLocalStorage;
+   auto reply = base::BindOnce(
+       [](base::WeakPtr<AsyncDomStorageDatabase> owner,
+@@ -1017,7 +1027,7 @@
+           return AuxReadDomCapture(*capture, local, database);
+         };
+         std::move(callback).Run(run());
+-      }, state->backend, aux_migration_write_status_, local, is_sqlite_, operation, std::move(targets), std::move(guarded)));
++      }, recovery ? state->recovery_backend : state->backend, aux_migration_write_status_, local, is_sqlite_, operation, std::move(targets), std::move(guarded)));
+ }
+ void AsyncDomStorageDatabase::BeginAuxUiMigrationLease(AuxUiLeaseCallback callback) {
+   if (!is_database_opened_ || !aux_on_disk_ || aux_ui_migration_gate_) {
+@@ -1147,6 +1157,7 @@
+         state->pending = false;
+         if (!owner || !owner->CurrentAuxUiMigrationWriters(state) || state->tainted)
+           result = base::unexpected(DbStatus::IOError("Actual fresh recovery owner changed"));
++        state->recovery_requalified = result.has_value();
+         std::move(callback).Run(std::move(result));
+       }, weak_ptr_factory_.GetWeakPtr(), state, std::move(callback));
+   auto guarded = mojo::WrapCallbackWithDefaultInvokeIfNotRun(
+@@ -1159,6 +1170,118 @@
+         std::move(callback).Run(AuxRequalifyRecordedCapture(*fresh, *recovery, recorded, local, sqlite, database));
+       }, state->backend, state->recovery_backend, std::move(recorded),
+       storage_type_ == StorageType::kLocalStorage, is_sqlite_, std::move(guarded)));
++}
++void AsyncDomStorageDatabase::PrepareAuxUiMigrationRecoveryCaches(
++    AuxUiMigrationLease& lease, AuxUiReadCallback callback) {
++  RunAuxUiRecoveryAction(lease, 0, std::move(callback));
++}
++void AsyncDomStorageDatabase::ReadAuxUiMigrationRecovery(
++    AuxUiMigrationLease& lease, AuxUiReadCallback callback) {
++  RunAuxUiRecoveryAction(lease, 1, std::move(callback));
++}
++void AsyncDomStorageDatabase::RestoreAuxUiMigrationRecovery(
++    AuxUiMigrationLease& lease, AuxUiReadCallback callback) {
++  RunAuxUiRecoveryAction(lease, 2, std::move(callback));
++}
++void AsyncDomStorageDatabase::RunAuxUiRecoveryAction(
++    AuxUiMigrationLease& lease, int operation, AuxUiReadCallback callback) {
++  auto state = lease.state_;
++  if (!CurrentAuxUiMigrationWriters(state) || state->pending || state->tainted ||
++      state->recovery_descriptor_sha256.empty() || !state->recovery_backend ||
++      !state->recovery_requalified || (operation == 2 && !state->recovery_cache_prepared)) {
++    std::move(callback).Run(base::unexpected(DbStatus::IOError("Actual requalified original/cache custody required"))); return;
++  }
++  state->pending = true;
++  RunAuxUiMigrationCaches(state, AuxUiCacheOperation::kRead, false, state->snapshot,
++      base::BindOnce(&AsyncDomStorageDatabase::CheckedAuxUiRecoveryAction,
++          weak_ptr_factory_.GetWeakPtr(), state, operation, std::move(callback)));
++}
++void AsyncDomStorageDatabase::CheckedAuxUiRecoveryAction(
++    std::shared_ptr<AuxUiMigrationLease::State> state, int operation,
++    AuxUiReadCallback callback, DbStatus status) {
++  if (!status.ok() || !CurrentAuxUiMigrationWriters(state) || state->tainted) {
++    state->pending = false;
++    state->recovery_original_restored = false;
++    std::move(callback).Run(base::unexpected(status.ok() ? DbStatus::IOError("Actual recovery writer registry changed") : status)); return;
++  }
++  if (operation == 2) {
++    // This is an original restoration under the same immutable descriptor,
++    // never an allocator/target retry. Only its actual result can reopen.
++    state->recovery_write_attempted = true;
++    state->recovery_original_restored = false;
++  }
++  RunAuxUiBackend(state, operation == 2 ? 4 : 1, {},
++      base::BindOnce(&AsyncDomStorageDatabase::BackendAuxUiRecoveryAction,
++          weak_ptr_factory_.GetWeakPtr(), state, operation, std::move(callback)), true);
++}
++void AsyncDomStorageDatabase::BackendAuxUiRecoveryAction(
++    std::shared_ptr<AuxUiMigrationLease::State> state, int operation,
++    AuxUiReadCallback callback, StatusOr<AuxUiSnapshot> result) {
++  if (!result.has_value() || !CurrentAuxUiMigrationWriters(state) || state->tainted) {
++    state->pending = false;
++    state->recovery_original_restored = false;
++    std::move(callback).Run(result.has_value() ?
++        StatusOr<AuxUiSnapshot>(base::unexpected(DbStatus::IOError("Actual recovery owner changed after backend operation"))) : std::move(result)); return;
++  }
++  if (operation == 2 && (!result->matches_source || !result->file_data_synced)) {
++    state->pending = false;
++    state->recovery_original_restored = false;
++    std::move(callback).Run(base::unexpected(DbStatus::IOError("Actual complete original readback/sync required before cache restoration"))); return;
++  }
++  if (state->recovery_original_restored && (!result->matches_source || !result->file_data_synced)) {
++    state->pending = false; state->recovery_original_restored = false;
++    std::move(callback).Run(base::unexpected(DbStatus::IOError("Previously restored original is no longer verified"))); return;
++  }
++  auto snapshot = std::move(result).value();
++  const auto cache = operation == 0 ? AuxUiCacheOperation::kRecoveryStage :
++      operation == 2 ? AuxUiCacheOperation::kRecoveryRestore : AuxUiCacheOperation::kRead;
++  RunAuxUiMigrationCaches(state, cache, false, snapshot,
++      base::BindOnce(&AsyncDomStorageDatabase::CompletedAuxUiRecoveryAction,
++          weak_ptr_factory_.GetWeakPtr(), state, operation, snapshot, std::move(callback)));
++}
++void AsyncDomStorageDatabase::CompletedAuxUiRecoveryAction(
++    std::shared_ptr<AuxUiMigrationLease::State> state, int operation,
++    AuxUiSnapshot snapshot, AuxUiReadCallback callback, DbStatus status) {
++  state->pending = false;
++  if (!status.ok() || !CurrentAuxUiMigrationWriters(state) || state->tainted) {
++    state->recovery_original_restored = false;
++    std::move(callback).Run(base::unexpected(status.ok() ? DbStatus::IOError("Actual recovery cache registry changed") : status)); return;
++  }
++  if (operation == 0) state->recovery_cache_prepared = true;
++  if (operation == 2) state->recovery_original_restored = true;
++  // Do not infer an unacknowledged native cache adoption from bare renderer
++  // flags. After a lost internal ack, explicit original Restore must recheck
++  // every native owner and renderer again; it never replays target creation.
++  snapshot.recovery_cache_prepared = state->recovery_cache_prepared;
++  snapshot.recovery_original_restored = state->recovery_original_restored;
++  snapshot.source_ready = snapshot.private_target_staged = snapshot.cache_published = false;
++  for (auto& map : snapshot.maps) {
++    auto original = AuxUiCacheCohort::DecodeSelected(map.source, map.session_ids.empty());
++    auto target = AuxUiCacheCohort::DecodeSelected(map.target, map.session_ids.empty());
++    if (!original.has_value() || !target.has_value()) {
++      std::move(callback).Run(base::unexpected(DbStatus::IOError("Original recovery cache codec changed"))); return;
++    }
++    std::map<std::u16string, std::u16string> source_units, target_units;
++    for (const auto& entry : original.value()) source_units.emplace(
++        std::u16string(entry->key.begin(), entry->key.end()), std::u16string(entry->value.begin(), entry->value.end()));
++    for (const auto& entry : target.value()) target_units.emplace(
++        std::u16string(entry->key.begin(), entry->key.end()), std::u16string(entry->value.begin(), entry->value.end()));
++    for (const auto& writer : state->writers) {
++      if (!writer->MatchesAuxUiMigrationMap(map)) continue;
++      for (auto& view : writer->CopyAuxUiMigrationCacheViews()) {
++        if ((map.session_ids.empty() ? !view.namespace_id.empty() :
++             !std::ranges::contains(map.session_ids, view.namespace_id)) ||
++            (view.source != source_units && view.source != target_units) ||
++            (state->recovery_cache_prepared && !view.recovery_prepared) ||
++            (state->recovery_original_restored && !view.recovery_restored)) {
++          state->recovery_original_restored = false;
++          std::move(callback).Run(base::unexpected(DbStatus::IOError("Actual journal-original cache pairing/readback changed"))); return;
++        }
++        map.cache_views.push_back(std::move(view));
++      }
++    }
++  }
++  std::move(callback).Run(std::move(snapshot));
+ }
+ void AsyncDomStorageDatabase::RunAuxUiMigrationOperation(AuxUiMigrationLease& lease,
+     int operation, std::vector<AuxUiTargetMap> targets, AuxUiReadCallback callback) {
+@@ -1241,6 +1364,7 @@
+     AuxUiBeforeReopen before_reopen, StatusCallback callback) {
+   auto state = lease.state_;
+   if (!CurrentAuxUiMigrationWriters(state) || state->pending || !before_reopen ||
++      (state->recovery_write_attempted && !state->recovery_original_restored) ||
+       (state->target_attempted && (!state->resolved_and_synced ||
+        (state->snapshot.matches_target && !state->snapshot.matches_source && !state->cache_published)))) {
+     std::move(callback).Run(DbStatus::IOError("Actual target/source cleanup remains held")); return;
+--- a/components/services/storage/dom_storage/storage_area_impl.cc
++++ b/components/services/storage/dom_storage/storage_area_impl.cc
+@@ -229,6 +229,8 @@
+       if (!report || !report->ok || !report->held || report->tainted) continue;
+       AsyncDomStorageDatabase::AuxUiCacheView view;
+       view.namespace_id = participant->namespace_id(); view.published = report->published;
++      view.recovery_prepared = report->recovery_prepared;
++      view.recovery_restored = report->recovery_restored;
+       for (const auto& source : report->sources)
+         view.documents.push_back({source->source_id, source->frame, source->document});
+       for (const auto& entry : report->source_entries)
