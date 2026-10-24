@@ -1,0 +1,82 @@
+--- a/chrome/browser/ui/aux_profile_switch_session_rebuild.cc
++++ b/chrome/browser/ui/aux_profile_switch_session_rebuild.cc
+@@ -81,7 +81,8 @@
+ }
+ 
+ WorkspaceSnapshotDispatchObservation
+-ProfileSwitchSessionRebuild::CloseAdmissionAndDispatchPendingSnapshots() {
++ProfileSwitchSessionRebuild::CloseAdmissionAndDispatchPendingSnapshots(
++    bool process_shutdown) {
+   auto& state = SnapshotDispatchState();
+   // Close first: ResetFromCurrentBrowsers may reenter window/profile callbacks.
+   state.CloseAdmission();
+@@ -94,7 +95,7 @@
+   }
+   for (auto& owner : owners) {
+     if (owner && !owner->pending_paths_.empty()) {
+-      owner->Rebuild(owner->generation_);
++      owner->Rebuild(owner->generation_, process_shutdown);
+     }
+   }
+   return state.Inspect();
+@@ -125,11 +126,12 @@
+   base::SequencedTaskRunner::GetCurrentDefault()->PostDelayedTask(
+       FROM_HERE,
+       base::BindOnce(&ProfileSwitchSessionRebuild::Rebuild,
+-                     weak_ptr_factory_.GetWeakPtr(), generation),
++                     weak_ptr_factory_.GetWeakPtr(), generation, false),
+       base::Milliseconds(500));
+ }
+ 
+-void ProfileSwitchSessionRebuild::Rebuild(uint64_t generation) {
++void ProfileSwitchSessionRebuild::Rebuild(uint64_t generation,
++                                        bool process_shutdown) {
+   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+   if (SnapshotDispatchState().Inspect().dispatch_admission_closed ||
+       generation != generation_ || !g_browser_process ||
+@@ -185,11 +187,17 @@
+     if (service && service->is_saving_enabled()) {
+       if (dispatch.Inspect().admission_closed) {
+         dispatch.BeginWriteObservation();
+-        service->ResetFromCurrentBrowsersWithWriteCompletion(base::BindOnce(
++        auto done = base::BindOnce(
+             [](sessions::SessionWriteCompletion result) {
+               SnapshotDispatchState().DidObserveWrite(result);
+               NotifySnapshotDispatchChanged();
+-            }));
++            });
++        // Final windows may already be detached. Flush the queued commands;
++        // rebuilding from an empty browser collection would erase recovery.
++        if (process_shutdown)
++          service->FlushPendingCommandsWithWriteCompletion(std::move(done));
++        else
++          service->ResetFromCurrentBrowsersWithWriteCompletion(std::move(done));
+       } else {
+         service->ResetFromCurrentBrowsers();
+       }
+@@ -270,7 +278,8 @@
+       &LoadedSessionWriterParticipant::ScheduleAdvance,
+       base::WrapRefCounted(this)));
+   result_.initial_snapshot_dispatch =
+-      ProfileSwitchSessionRebuild::CloseAdmissionAndDispatchPendingSnapshots();
++      ProfileSwitchSessionRebuild::CloseAdmissionAndDispatchPendingSnapshots(
++          process_shutdown_);
+   ScheduleAdvance();
+ }
+ 
+--- a/chrome/browser/ui/aux_profile_switch_session_rebuild.h
++++ b/chrome/browser/ui/aux_profile_switch_session_rebuild.h
+@@ -41,11 +41,11 @@
+   // dispatches pending snapshots while real windows still own their tabs.
+   // NOT renderer/profile/storage/independent-process custody or a write flush.
+   static WorkspaceSnapshotDispatchObservation
+-  CloseAdmissionAndDispatchPendingSnapshots();
++  CloseAdmissionAndDispatchPendingSnapshots(bool process_shutdown = false);
+   static WorkspaceSnapshotDispatchObservation InspectSnapshotDispatch();
+ 
+  private:
+-  void Rebuild(uint64_t generation);
++  void Rebuild(uint64_t generation, bool process_shutdown = false);
+ 
+   SEQUENCE_CHECKER(sequence_checker_);
+   std::set<base::FilePath> pending_paths_;

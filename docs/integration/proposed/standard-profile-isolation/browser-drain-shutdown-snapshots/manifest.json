@@ -1,0 +1,25 @@
+{
+  "modifiedCount": 2,
+  "addedCount": 0,
+  "countedAdaptations": 8,
+  "files": [
+    {
+      "path": "chrome/browser/ui/aux_profile_switch_session_rebuild.cc",
+      "beforeSha256": "de8890cc938e52a682ca54e333a312858882dff858833af790654f92ff6b732a",
+      "afterSha256": "54864c28a7c0a065aa79edf7d8b1b2c4cb0e74035d5ca155339e6ac42ea39c82"
+    },
+    {
+      "path": "chrome/browser/ui/aux_profile_switch_session_rebuild.h",
+      "beforeSha256": "26a1f5be649a294b15a4d86775d4987d819f5efed0598726b58bbd0ab347ebd1",
+      "afterSha256": "37f4cb29bf229ae228f89b35071f605e1a7e2e73487fe934752c1ce37cb62802"
+    }
+  ],
+  "patchSha256": "aeb56cd121a3e4e1cbbf1d727c113c90cab593f07c16d147d93a06eef7c87134",
+  "verification": {
+    "exactOrderedReplay": "passed",
+    "unifiedPatchReplay": "passed",
+    "whitespaceErrorCheck": "passed",
+    "nativeCompile": "not run by worker",
+    "runtime": "not run"
+  }
+}

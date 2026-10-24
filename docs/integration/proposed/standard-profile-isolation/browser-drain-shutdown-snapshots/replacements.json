@@ -1,0 +1,50 @@
+[
+  {
+    "path": "chrome/browser/ui/aux_profile_switch_session_rebuild.h",
+    "old": "CloseAdmissionAndDispatchPendingSnapshots();",
+    "new": "CloseAdmissionAndDispatchPendingSnapshots(bool process_shutdown = false);",
+    "count": 1
+  },
+  {
+    "path": "chrome/browser/ui/aux_profile_switch_session_rebuild.h",
+    "old": "void Rebuild(uint64_t generation);",
+    "new": "void Rebuild(uint64_t generation, bool process_shutdown = false);",
+    "count": 1
+  },
+  {
+    "path": "chrome/browser/ui/aux_profile_switch_session_rebuild.cc",
+    "old": "ProfileSwitchSessionRebuild::CloseAdmissionAndDispatchPendingSnapshots() {",
+    "new": "ProfileSwitchSessionRebuild::CloseAdmissionAndDispatchPendingSnapshots(\n    bool process_shutdown) {",
+    "count": 1
+  },
+  {
+    "path": "chrome/browser/ui/aux_profile_switch_session_rebuild.cc",
+    "old": "owner->Rebuild(owner->generation_);",
+    "new": "owner->Rebuild(owner->generation_, process_shutdown);",
+    "count": 1
+  },
+  {
+    "path": "chrome/browser/ui/aux_profile_switch_session_rebuild.cc",
+    "old": "weak_ptr_factory_.GetWeakPtr(), generation),",
+    "new": "weak_ptr_factory_.GetWeakPtr(), generation, false),",
+    "count": 1
+  },
+  {
+    "path": "chrome/browser/ui/aux_profile_switch_session_rebuild.cc",
+    "old": "void ProfileSwitchSessionRebuild::Rebuild(uint64_t generation) {",
+    "new": "void ProfileSwitchSessionRebuild::Rebuild(uint64_t generation,\n                                        bool process_shutdown) {",
+    "count": 1
+  },
+  {
+    "path": "chrome/browser/ui/aux_profile_switch_session_rebuild.cc",
+    "old": "        service->ResetFromCurrentBrowsersWithWriteCompletion(base::BindOnce(\n            [](sessions::SessionWriteCompletion result) {\n              SnapshotDispatchState().DidObserveWrite(result);\n              NotifySnapshotDispatchChanged();\n            }));",
+    "new": "        auto done = base::BindOnce(\n            [](sessions::SessionWriteCompletion result) {\n              SnapshotDispatchState().DidObserveWrite(result);\n              NotifySnapshotDispatchChanged();\n            });\n        // Final windows may already be detached. Flush the queued commands;\n        // rebuilding from an empty browser collection would erase recovery.\n        if (process_shutdown)\n          service->FlushPendingCommandsWithWriteCompletion(std::move(done));\n        else\n          service->ResetFromCurrentBrowsersWithWriteCompletion(std::move(done));",
+    "count": 1
+  },
+  {
+    "path": "chrome/browser/ui/aux_profile_switch_session_rebuild.cc",
+    "old": "ProfileSwitchSessionRebuild::CloseAdmissionAndDispatchPendingSnapshots();",
+    "new": "ProfileSwitchSessionRebuild::CloseAdmissionAndDispatchPendingSnapshots(\n          process_shutdown_);",
+    "count": 1
+  }
+]
