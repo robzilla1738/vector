@@ -1,0 +1,16 @@
+{
+  "format": "aux.source-absence-cancel.source-check.actual.v1",
+  "passed": true,
+  "sourcePlanSha256": "8d0bd82d167fcccb52becd6d8644ad0ddf7196942103f98a16c3ac317f287dfe",
+  "patchSha256": "467062c9360980f198775dcbf556820f49768b3e225de9fb556bf19593a6add5",
+  "files": 2,
+  "countedAnchors": 5,
+  "replayDirectory": "/private/tmp/aux-source-absence-cancel-replay-52iwm_d1",
+  "exactReplayPassed": true,
+  "reverseCheckPassed": true,
+  "nativeCheckoutChanged": false,
+  "nativeCompiled": false,
+  "testsExecuted": false,
+  "productExecuted": false,
+  "runtimeAcceptance": false
+}

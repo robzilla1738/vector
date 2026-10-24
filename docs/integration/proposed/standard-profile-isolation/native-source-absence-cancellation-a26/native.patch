@@ -1,0 +1,157 @@
+--- a/components/services/storage/dom_storage/async_dom_storage_database.h
++++ b/components/services/storage/dom_storage/async_dom_storage_database.h
+@@ -154,6 +154,9 @@
+     bool allocation_requested = false;
+     std::string allocation_action_sha256;
+     std::optional<int64_t> allocated_map_id;
++    // Read-only absence cancellation observes the fresh identity separately;
++    // it never rebinds or treats it as the recorded original map ID.
++    std::optional<int64_t> fresh_map_id;
+     bool allocation_observed = false;
+     std::optional<base::Time> source_last_accessed;
+     std::optional<base::Time> source_last_modified;
+@@ -174,6 +177,7 @@
+     bool known_source_target_mixture = false;
+     bool recovery_cache_prepared = false;
+     bool recovery_original_restored = false;
++    bool source_absence_cancellation = false;
+     bool file_data_synced = false;
+     bool ordinary_work_queued = false;
+     bool target_attempted = false;
+--- a/components/services/storage/dom_storage/async_dom_storage_database.cc
++++ b/components/services/storage/dom_storage/async_dom_storage_database.cc
+@@ -683,6 +683,108 @@
+   observed->cache_published = false;
+   recovery = std::move(proposed);
+   return observed;
++}
++StatusOr<AsyncDomStorageDatabase::AuxUiSnapshot> AuxObserveOriginalAbsence(
++    AuxDomCapture& fresh, const AsyncDomStorageDatabase::AuxUiSnapshot& recorded,
++    bool local, DomStorageDatabase* database) {
++  if (!fresh.captured || fresh.target_attempted || recorded.maps.size() != fresh.maps.size() ||
++      recorded.maps.size() > 256 || recorded.source_topology_sha256.size() != 64)
++    return base::unexpected(DbStatus::IOError("Exact fresh source inventory required for absence observation"));
++  auto sync = database->SyncForAuxMigration();
++  if (!sync.ok()) return base::unexpected(sync);
++  fresh.file_data_synced = true;
++  auto observed = AuxReadDomCapture(fresh, local, database);
++  if (!observed.has_value()) return base::unexpected(observed.error());
++  if (!observed->matches_source || !observed->file_data_synced)
++    return base::unexpected(DbStatus::IOError("Fresh source changed during absence observation"));
++  auto metadata = database->ReadAllMetadata();
++  if (!metadata.has_value()) return base::unexpected(metadata.error());
++  AuxDomCapture original;
++  original.unrelated_metadata_sha256 = fresh.unrelated_metadata_sha256;
++  std::set<size_t> matched;
++  std::vector<std::optional<int64_t>> fresh_ids;
++  size_t absent = 0;
++  for (size_t ordinal = 0; ordinal < recorded.maps.size(); ++ordinal) {
++    const auto& row = recorded.maps[ordinal];
++    if (row.map_ordinal != ordinal || row.source_map_sha256.size() != 64 ||
++        row.source != AuxSelectedEntries(row.source, local))
++      return base::unexpected(DbStatus::IOError("Exact original source descriptor required"));
++    auto namespaces = row.session_ids;
++    std::sort(namespaces.begin(), namespaces.end());
++    if (std::adjacent_find(namespaces.begin(), namespaces.end()) != namespaces.end() ||
++        (local ? !namespaces.empty() : namespaces.empty()))
++      return base::unexpected(DbStatus::IOError("Original source namespace scope is ambiguous"));
++    size_t index = fresh.maps.size();
++    for (size_t i = 0; i < fresh.maps.size(); ++i) {
++      const auto& current = fresh.maps[i];
++      auto current_namespaces = current.locator.session_ids();
++      std::sort(current_namespaces.begin(), current_namespaces.end());
++      // Scope comparison is data correlation only. No namespace or map ID
++      // is assigned/rebound, and this observation cannot restore a target.
++      if (current.locator.storage_key() != row.storage_key || current_namespaces != namespaces) continue;
++      if (index != fresh.maps.size())
++        return base::unexpected(DbStatus::IOError("Original source has multiple fresh native scopes"));
++      index = i;
++    }
++    if (index == fresh.maps.size() || !matched.insert(index).second)
++      return base::unexpected(DbStatus::IOError("Original source lacks a unique captured fresh scope"));
++    const auto& current = fresh.maps[index];
++    if (current.source_persisted != row.source_persisted ||
++        current.last_accessed != row.source_last_accessed ||
++        current.last_modified != row.source_last_modified || current.total_size != row.source_total_size ||
++        AuxSelectedEntries(current.source, local) != row.source)
++      return base::unexpected(DbStatus::IOError("Fresh physical source differs from recorded original"));
++    DomStorageDatabase::MapLocator locator = row.map_id ?
++        DomStorageDatabase::MapLocator(row.storage_key, *row.map_id) :
++        DomStorageDatabase::MapLocator(row.storage_key);
++    for (const auto& ns : row.session_ids) locator.AddSession(ns);
++    if (!row.source_persisted) {
++      ++absent;
++      if (!row.source.empty() || !current.source.empty() || row.source_last_accessed ||
++          row.source_last_modified || row.source_total_size)
++        return base::unexpected(DbStatus::IOError("Original native absence is not empty"));
++    }
++    if (current.locator.map_id() != row.map_id) {
++      if (local || row.source_persisted || row.session_ids.size() != 1 ||
++          !row.map_id || !current.locator.map_id())
++        return base::unexpected(DbStatus::IOError("Changed persisted/native source identity cannot be canceled"));
++      // The old allocator ID is not treated as the fresh area's identity.
++      // It must have no metadata reference anywhere and no raw values. This
++      // proves old physical absence only, never restored correspondence.
++      for (const auto& entry : metadata->map_metadata)
++        if (entry.map_locator.map_id() == row.map_id)
++          return base::unexpected(DbStatus::IOError("Old Session map still has a native metadata reference"));
++      auto old_entries = database->ReadMapKeyValues(locator.Clone());
++      if (!old_entries.has_value()) return base::unexpected(old_entries.error());
++      if (!old_entries->empty())
++        return base::unexpected(DbStatus::IOError("Old unpersisted Session ID contains physical data"));
++    }
++    AuxDomMap source{std::move(locator), current.source, current.source,
++        row.source_last_accessed, row.source_last_modified, row.source_total_size, row.source_persisted};
++    if (AuxFullMapDigest(source, false, local) != row.source_map_sha256)
++      return base::unexpected(DbStatus::IOError("Complete original source digest differs"));
++    original.maps.push_back(std::move(source));
++    fresh_ids.push_back(current.locator.map_id());
++  }
++  if (!absent || AuxTopologyDigest(original, false, local) != recorded.source_topology_sha256)
++    return base::unexpected(DbStatus::IOError("Complete original source-absence topology is unproven"));
++  original.captured = true; original.file_data_synced = true;
++  auto result = AuxReadDomCapture(original, local, database);
++  if (!result.has_value()) return base::unexpected(result.error());
++  if (!result->matches_source || !result->file_data_synced)
++    return base::unexpected(DbStatus::IOError("Original source readback changed"));
++  for (size_t i = 0; i < result->maps.size(); ++i) {
++    result->maps[i].fresh_map_id = fresh_ids[i];
++    result->maps[i].target.clear(); result->maps[i].target_map_sha256.clear();
++  }
++  result->target_topology_sha256.clear(); result->allocation_action_sha256.clear();
++  result->matches_target = false; result->known_source_target_mixture = false;
++  result->source_ready = result->private_target_staged = result->cache_published = false;
++  result->source_absence_cancellation = true;
++  // No recovery capsule is produced. The verified controller may cancel only
++  // after separately joining fresh editor/failed-memory/worker intents. This
++  // function neither releases those owners nor discards/restores any values.
++  return result;
+ }
+ }  // namespace
+ 
+@@ -1222,7 +1324,7 @@
+         state->pending = false;
+         if (!owner || !owner->CurrentAuxUiMigrationWriters(state) || state->tainted)
+           result = base::unexpected(DbStatus::IOError("Actual fresh recovery owner changed"));
+-        state->recovery_requalified = result.has_value();
++        state->recovery_requalified = result.has_value() && !result->source_absence_cancellation;
+         std::move(callback).Run(std::move(result));
+       }, weak_ptr_factory_.GetWeakPtr(), state, std::move(callback));
+   auto guarded = mojo::WrapCallbackWithDefaultInvokeIfNotRun(
+@@ -1232,7 +1334,15 @@
+       [](std::shared_ptr<AuxDomCapture> fresh, std::shared_ptr<AuxDomCapture> recovery,
+          AuxUiSnapshot recorded, bool local, bool sqlite,
+          AuxUiReadCallback callback, DomStorageDatabase* database) {
+-        std::move(callback).Run(AuxRequalifyRecordedCapture(*fresh, *recovery, recorded, local, sqlite, database));
++        auto result = AuxRequalifyRecordedCapture(*fresh, *recovery, recorded, local, sqlite, database);
++        if (!result.has_value()) {
++          // Proven unchanged original absence can cancel an interrupted
++          // intent without knowing or recreating its never-written target.
++          // This produces no recovery capsule or restored-identity claim.
++          auto source = AuxObserveOriginalAbsence(*fresh, recorded, local, database);
++          if (source.has_value()) result = std::move(source);
++        }
++        std::move(callback).Run(std::move(result));
+       }, state->backend, state->recovery_backend, std::move(recorded),
+       storage_type_ == StorageType::kLocalStorage, is_sqlite_, std::move(guarded)));
+ }
