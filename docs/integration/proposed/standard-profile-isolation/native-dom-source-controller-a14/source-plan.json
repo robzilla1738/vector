@@ -1,0 +1,176 @@
+{
+  "format": "aux.native-dom-source-controller.v1",
+  "files": [
+    {
+      "path": "chrome/browser/aux/ui_storage_migration_controller.cc",
+      "input": "/Users/rcourson/.codex/worktrees/aux-features-navigation/web/docs/integration/proposed/standard-profile-isolation/native-frontend-observation-a10b/source/chrome/browser/aux/ui_storage_migration_controller.cc",
+      "inputSha256": "effaefe59a7da4050d80afe3e75692c08376cd419ad4047cd4edfadfde49473e",
+      "output": "/Users/rcourson/.codex/worktrees/aux-features-navigation/web/docs/integration/proposed/standard-profile-isolation/native-dom-source-controller-a14/source/chrome/browser/aux/ui_storage_migration_controller.cc",
+      "outputSha256": "22f5845ba6e596ed68bb471bc216d67cc9ea8b47d70eec7a2ecb95a1c2a4f2bf",
+      "anchors": [
+        {
+          "find": "#include \"components/value_store/value_store.h\"",
+          "replace": "#include \"components/value_store/value_store.h\"\n#include \"components/services/storage/public/mojom/local_storage_control.mojom.h\"\n#include \"components/services/storage/public/mojom/session_storage_control.mojom.h\"",
+          "count": 1
+        },
+        {
+          "find": "bool prepared = false, cleanup_unknown = false;",
+          "replace": "bool prepared = false, sealed = false, cleanup_unknown = false;",
+          "count": 1
+        },
+        {
+          "find": "class Controller final :",
+          "replace": "// Proxy pointers are NEVER retained across asynchronous boundaries. A hold stores\n// only the actual original partition index, native correlation and service data.\nstruct DomHold {\n  size_t partition = 0;\n  bool local = false, attempted = false, pending = false, unknown = false, released = false;\n  uint64_t generation = 0;\n  base::UnguessableToken request;\n  std::optional<base::UnguessableToken> token;\n  storage::mojom::AuxUiDomLeaseReplyPtr source;\n};\nclass Controller final :",
+          "count": 1
+        },
+        {
+          "find": "  bool AcceptLease(Frame&, const base::DictValue&);",
+          "replace": "  bool AcceptLease(Frame&, const base::DictValue&, bool sealed = false);",
+          "count": 1
+        },
+        {
+          "find": "  void DrainNext();",
+          "replace": "  std::optional<content::DOMStorageContext::AuxUiMigrationControls> DomControls(size_t) const;\n  bool DomCurrent() const;\n  bool AcceptDom(size_t, storage::mojom::AuxUiDomLeaseReplyPtr);\n  bool PairDomSources() const;\n  void BeginDomNext();\n  void BeganDom(size_t, storage::mojom::AuxUiDomLeaseReplyPtr);\n  void DomLost(size_t);\n  void ValidateDomNext();\n  void ValidatedDom(size_t, storage::mojom::AuxUiDomLeaseReplyPtr);\n  void SealNext();\n  void Sealed(size_t, bool, std::optional<base::DictValue>, std::string);\n  void CleanupDomNext();\n  void ObservedDomCleanup(size_t, storage::mojom::AuxUiDomLeaseReplyPtr);\n  void ReleasedDom(size_t, bool);\n  void CleanupFrontend();\n  void DrainNext();",
+          "count": 1
+        },
+        {
+          "find": "  std::unique_ptr<ExtensionLease> extension_lease_;",
+          "replace": "  std::unique_ptr<ExtensionLease> extension_lease_;\n  std::vector<DomHold> dom_holds_;\n  size_t dom_cursor_ = 0;\n  bool sealing_ = false, dom_cleaning_ = false;",
+          "count": 1
+        },
+        {
+          "find": "  return busy_ || cleanup_unknown_ || extension_lease_ || worker_attempted_ ||",
+          "replace": "  return busy_ || cleanup_unknown_ || extension_lease_ || worker_attempted_ ||\n      std::ranges::any_of(dom_holds_, [](const auto& hold) { return hold.attempted && !hold.released; }) ||",
+          "count": 1
+        },
+        {
+          "find": "  if (cleanup_unknown_ || extension_lease_ || worker_attempted_ ||",
+          "replace": "  if (cleanup_unknown_ || extension_lease_ || worker_attempted_ ||\n      std::ranges::any_of(dom_holds_, [](const auto& hold) { return hold.attempted && !hold.released; }) ||",
+          "count": 1
+        },
+        {
+          "find": "  frames_.clear(); partitions_.clear(); transfer_.reset(); error_.clear();",
+          "replace": "  frames_.clear(); partitions_.clear(); dom_holds_.clear(); transfer_.reset(); error_.clear();\n  sealing_ = false;",
+          "count": 1
+        },
+        {
+          "find": "      method != \"auxValidateDraftMigrationCapture\" && method != \"auxReleaseDraftMigrationCapture\")) {",
+          "replace": "      method != \"auxValidateDraftMigrationCapture\" && method != \"auxSealDraftMigrationCapture\" &&\n      method != \"auxReleaseDraftMigrationCapture\")) {",
+          "count": 1
+        },
+        {
+          "find": "bool Controller::AcceptLease(Frame& frame, const base::DictValue& value) {",
+          "replace": "bool Controller::AcceptLease(Frame& frame, const base::DictValue& value, bool sealed) {",
+          "count": 1
+        },
+        {
+          "find": "!owners || *owners <= 0 || *owners > 256 || value.FindBool(\"sealed\") != false ||",
+          "replace": "!owners || *owners <= 0 || *owners > 256 || value.FindBool(\"sealed\") != sealed ||\n      (sealed && (!frame.prepared || *lease != frame.lease_id || *revision != frame.revision)) ||",
+          "count": 1
+        },
+        {
+          "find": "  frame.source_stores = std::move(stores); frame.prepared = true;",
+          "replace": "  frame.source_stores = std::move(stores); frame.prepared = true; frame.sealed = sealed;",
+          "count": 1
+        },
+        {
+          "find": "  cursor_ = 0; DrainNext();",
+          "replace": "  for (size_t partition = 0; partition < partitions_.size(); ++partition) {\n    for (const bool local : {true, false}) {\n      DomHold hold; hold.partition = partition; hold.local = local;\n      hold.request = base::UnguessableToken::Create();\n      dom_holds_.push_back(std::move(hold));\n    }\n  }\n  dom_cursor_ = 0; BeginDomNext();",
+          "count": 1
+        },
+        {
+          "find": "      value->FindBool(\"ok\") != true || value->FindBool(\"closed\") != true || value->FindBool(\"sealed\") != false ||",
+          "replace": "      value->FindBool(\"ok\") != true || value->FindBool(\"closed\") != true ||\n      value->FindBool(\"sealed\") != frames_[index]->sealed ||",
+          "count": 1
+        },
+        {
+          "find": "  ValidationComplete();\n}\nvoid Controller::ValidationComplete()",
+          "replace": "  dom_cursor_ = 0; ValidateDomNext();\n}\nvoid Controller::ValidationComplete()",
+          "count": 1
+        },
+        {
+          "find": "Finish(\"Capture retained and read back; genuine DOM writer gates, target import and recovery remain required\");",
+          "replace": "Finish(\"Sealed source retained and read back; private target intent, import and recovery remain required\");",
+          "count": 1
+        },
+        {
+          "find": "  capture.Set(\"workerReportJson\", worker_report_json_);",
+          "replace": "  capture.Set(\"workerReportJson\", worker_report_json_);\n  base::ListValue domains;\n  for (const auto& hold : dom_holds_) {\n    base::DictValue domain;\n    domain.Set(\"partitionOrdinal\", static_cast<int>(hold.partition));\n    domain.Set(\"storage\", hold.local ? \"local-storage\" : \"session-storage\");\n    domain.Set(\"requestId\", hold.request.ToString());\n    domain.Set(\"serviceToken\", hold.token->ToString());\n    domain.Set(\"controlGeneration\", base::NumberToString(hold.generation));\n    domain.Set(\"sourceTopologySha256\", hold.source->source_topology_sha256);\n    base::ListValue maps;\n    for (const auto& map : hold.source->maps) {\n      base::DictValue fact;\n      fact.Set(\"ordinal\", static_cast<int>(map->map_ordinal));\n      fact.Set(\"storageKey\", map->storage_key.Serialize());\n      fact.Set(\"sourceMapSha256\", map->source_map_sha256);\n      fact.Set(\"sourcePersisted\", map->source_persisted);\n      base::ListValue records, namespaces;\n      for (const auto& entry : map->source_entries) {\n        base::DictValue raw;\n        raw.Set(\"keyBase64\", base::Base64Encode(entry->key));\n        raw.Set(\"valueBase64\", base::Base64Encode(entry->value));\n        records.Append(std::move(raw));\n      }\n      for (const auto& ns : map->session_ids) namespaces.Append(ns);\n      fact.Set(\"sourceSelectedRaw\", std::move(records));\n      fact.Set(\"nativeNamespaces\", std::move(namespaces));\n      maps.Append(std::move(fact));\n    }\n    domain.Set(\"maps\", std::move(maps)); domains.Append(std::move(domain));\n  }\n  capture.Set(\"domSourceFacts\", std::move(domains));\n  capture.Set(\"rendererSourceSealed\", true);",
+          "count": 1
+        },
+        {
+          "find": "void Controller::StartCleanup() {\n  // Reopen",
+          "replace": "void Controller::StartCleanup() {\n  dom_cursor_ = 0; CleanupDomNext();\n}\nvoid Controller::CleanupFrontend() {\n  // Reopen",
+          "count": 1
+        },
+        {
+          "find": "  if (extension_lease_ || frontend_begin_pending_ || frontend_io_pending_ ||",
+          "replace": "  if (std::ranges::any_of(dom_holds_, [](const auto& hold) { return hold.attempted && !hold.released; }) ||\n      extension_lease_ || frontend_begin_pending_ || frontend_io_pending_ ||",
+          "count": 1
+        },
+        {
+          "find": "  result.Set(\"backendWriterClosure\", false);",
+          "replace": "  result.Set(\"domCleanupPending\", std::ranges::any_of(dom_holds_,\n      [](const auto& hold) { return hold.attempted && !hold.released; }));\n  result.Set(\"backendWriterClosure\", false);",
+          "count": 1
+        },
+        {
+          "find": "void Controller::Persist() {\n  if (!Inventory(false)",
+          "replace": "void Controller::Persist() {\n  if (!DomCurrent() || !PairDomSources() || !Inventory(false)",
+          "count": 1
+        },
+        {
+          "find": "void Controller::RunTransfer() {\n  if (!Inventory(false)",
+          "replace": "void Controller::RunTransfer() {\n  if (!DomCurrent() || !Inventory(false)",
+          "count": 1
+        },
+        {
+          "find": "void Controller::TransferStep() {\n  if (!Inventory(false)",
+          "replace": "void Controller::TransferStep() {\n  if (!DomCurrent() || !Inventory(false)",
+          "count": 1
+        },
+        {
+          "find": "void Controller::DrainNext() {",
+          "replace": "std::optional<content::DOMStorageContext::AuxUiMigrationControls>\nController::DomControls(size_t index) const {\n  if (!profile_ || index >= dom_holds_.size()) return std::nullopt;\n  const auto& hold = dom_holds_[index];\n  if (hold.partition >= partitions_.size()) return std::nullopt;\n  auto* context = partitions_[hold.partition]->GetDOMStorageContext();\n  if (!context) return std::nullopt;\n  auto controls = context->GetExistingAuxUiMigrationControls();\n  if (!controls || !controls->local || !controls->session || !controls->generation ||\n      (hold.generation && hold.generation != controls->generation)) return std::nullopt;\n  return controls;\n}\nbool Controller::DomCurrent() const {\n  if (!Current() || dom_holds_.size() != partitions_.size() * 2 || dom_holds_.empty()) return false;\n  for (size_t i = 0; i < dom_holds_.size(); ++i) {\n    const auto& hold = dom_holds_[i];\n    if (!hold.attempted || hold.pending || hold.unknown || hold.released || !hold.token ||\n        !hold.source || !DomControls(i)) return false;\n  }\n  return true;\n}\nbool Controller::AcceptDom(size_t index, storage::mojom::AuxUiDomLeaseReplyPtr value) {\n  if (index >= dom_holds_.size() || !DomControls(index)) return false;\n  auto& hold = dom_holds_[index];\n  if (!value || value->request_id != hold.request || !value->held || value->released || value->aborted ||\n      !value->token || value->token->is_empty() || (hold.token && hold.token != value->token)) return false;\n  // Binding an exact original held token permits cleanup even when subsequent\n  // source/cache facts refuse. It does not turn those facts into readiness.\n  hold.token = value->token;\n  if (!value->ok || !value->error.empty() || !value->source_ready || !value->private_target_staged ||\n      !value->matches_source || !value->file_data_synced || value->ordinary_work_queued ||\n      value->target_attempted || value->cache_published || value->maps.size() > 4096 ||\n      value->source_topology_sha256.size() != 64 || value->target_topology_sha256.size() != 64) return false;\n  std::set<uint32_t> ordinals;\n  for (const auto& map : value->maps) {\n    if (!map || !ordinals.insert(map->map_ordinal).second || map->source_map_sha256.size() != 64 ||\n        map->target_map_sha256.size() != 64 || map->source_entries.size() > 4096 ||\n        map->cache_views.size() > 256) return false;\n  }\n  if (hold.source && (hold.source->maps != value->maps ||\n      hold.source->source_topology_sha256 != value->source_topology_sha256 ||\n      hold.source->target_topology_sha256 != value->target_topology_sha256)) return false;\n  hold.source = std::move(value); hold.unknown = false;\n  return true;\n}\nbool Controller::PairDomSources() const {\n  if (!DomCurrent()) return false;\n  std::vector<std::array<bool, 2>> covered(frames_.size(), {false, false});\n  size_t units = 0, views = 0;\n  for (const auto& hold : dom_holds_) {\n    for (const auto& map : hold.source->maps) {\n      for (const auto& view : map->cache_views) {\n        if (!view || !view->cache || ++views > 1024) return false;\n        const auto& cache = *view->cache;\n        if (!cache.ok || !cache.held || cache.tainted || cache.published || !cache.error.empty() ||\n            cache.sources.empty() || cache.sources.size() > 256 || cache.source_entries.size() > 4096 ||\n            (hold.local && !view->namespace_id.empty()) ||\n            (!hold.local && !std::ranges::contains(map->session_ids, view->namespace_id))) return false;\n        std::map<std::u16string, std::u16string> selected;\n        for (const auto& entry : cache.source_entries) {\n          if (!entry || entry->key.size() > 4194304 || entry->value.size() > 4194304 ||\n              units > 4194304 - entry->key.size() ||\n              units + entry->key.size() > 4194304 - entry->value.size()) return false;\n          units += entry->key.size() + entry->value.size();\n          std::u16string key(entry->key.begin(), entry->key.end());\n          if (!WireKey(key, hold.local)) continue;\n          if (!selected.emplace(std::move(key), std::u16string(entry->value.begin(), entry->value.end())).second) return false;\n        }\n        std::set<base::Token> source_ids;\n        for (const auto& source : cache.sources) {\n          if (!source || !source_ids.insert(source->source_id).second) return false;\n          size_t matches = 0;\n          for (size_t i = 0; i < frames_.size(); ++i) {\n            const auto& frame = *frames_[i];\n            auto* actual = frame.document.AsRenderFrameHostIfValid();\n            if (source->frame != frame.native_frame_token || source->document != frame.native_document_token) continue;\n            if (!DocumentCurrent(frame) || !frame.sealed || !frame.source_stores || !actual ||\n                actual->GetStoragePartition() != partitions_[hold.partition] ||\n                map->storage_key != actual->GetStorageKey() ||\n                (!hold.local && view->namespace_id != frame.namespace_id) ||\n                selected != (hold.local ? frame.source_stores->local : frame.source_stores->session)) return false;\n            covered[i][hold.local ? 0 : 1] = true; ++matches;\n          }\n          // No arbitrary renderer token can choose a document/root. Every\n          // observer source must join exactly one already held actual document.\n          if (matches != 1) return false;\n        }\n      }\n    }\n  }\n  return std::ranges::all_of(covered, [](const auto& row) { return row[0] && row[1]; });\n}\nvoid Controller::BeginDomNext() {\n  if (!Inventory(false) || !FrontendCurrent() || !HasValidUiStorageMigrationWorkerLease(profile_.get())) {\n    Finish(\"Actual source owners changed before DOM cohort closure\"); return;\n  }\n  if (dom_cursor_ == dom_holds_.size()) {\n    sealing_ = true; dom_cursor_ = 0; ValidateDomNext(); return;\n  }\n  const size_t index = dom_cursor_++;\n  auto controls = DomControls(index);\n  if (!controls) { Finish(\"Existing native DOM controls unavailable; no bind/open was attempted\"); return; }\n  auto& hold = dom_holds_[index];\n  hold.generation = controls->generation; hold.attempted = true; hold.pending = true;\n  auto callback = mojo::WrapCallbackWithDropHandler(\n      base::BindOnce(&Controller::BeganDom, weak_.GetWeakPtr(), index),\n      base::BindOnce(&Controller::DomLost, weak_.GetWeakPtr(), index));\n  if (hold.local) controls->local->BeginAuxUiPreferenceLease(hold.request, std::move(callback));\n  else controls->session->BeginAuxUiPreferenceLease(hold.request, std::move(callback));\n}\nvoid Controller::BeganDom(size_t index, storage::mojom::AuxUiDomLeaseReplyPtr value) {\n  dom_holds_[index].pending = false;\n  if (!AcceptDom(index, std::move(value))) {\n    dom_holds_[index].unknown = true; Finish(\"Actual DOM source cohort refused or remains unknown\"); return;\n  }\n  BeginDomNext();\n}\nvoid Controller::DomLost(size_t index) {\n  dom_holds_[index].pending = false; dom_holds_[index].unknown = true;\n  cleanup_unknown_ = true;\n  if (dom_cleaning_) { ReplyResult(); return; }\n  Finish(\"Original DOM cohort callback was lost; exact request remains retained\");\n}\nvoid Controller::ValidateDomNext() {\n  if (!Inventory(false) || !FrontendCurrent() || dom_holds_.empty() ||\n      !HasValidUiStorageMigrationWorkerLease(profile_.get())) {\n    Finish(\"Original native DOM source holds changed\"); return;\n  }\n  for (size_t i = 0; i < dom_holds_.size(); ++i) {\n    const auto& hold = dom_holds_[i];\n    if (!hold.attempted || hold.released || hold.pending || !hold.token || !hold.source || !DomControls(i)) {\n      Finish(\"Original native DOM lease custody is unavailable\"); return;\n    }\n  }\n  if (dom_cursor_ == dom_holds_.size()) {\n    if (sealing_) { cursor_ = 0; SealNext(); return; }\n    if (!PairDomSources()) { Finish(\"Sealed UTF16 source does not pair with actual native cache documents\"); return; }\n    ValidationComplete(); return;\n  }\n  const size_t index = dom_cursor_++;\n  auto controls = DomControls(index); auto& hold = dom_holds_[index];\n  hold.pending = true;\n  auto callback = mojo::WrapCallbackWithDropHandler(\n      base::BindOnce(&Controller::ValidatedDom, weak_.GetWeakPtr(), index),\n      base::BindOnce(&Controller::DomLost, weak_.GetWeakPtr(), index));\n  if (hold.unknown) {\n    // A lost validation is recovered by observing the original request/token;\n    // never re-Begin or mistake callback destruction for physical completion.\n    if (hold.local) controls->local->ReadAuxUiPreferenceLease(hold.request, std::move(callback));\n    else controls->session->ReadAuxUiPreferenceLease(hold.request, std::move(callback));\n  } else if (hold.local) controls->local->ValidateAuxUiPreferenceLease(hold.request, *hold.token, std::move(callback));\n  else controls->session->ValidateAuxUiPreferenceLease(hold.request, *hold.token, std::move(callback));\n}\nvoid Controller::ValidatedDom(size_t index, storage::mojom::AuxUiDomLeaseReplyPtr value) {\n  dom_holds_[index].pending = false;\n  if (!AcceptDom(index, std::move(value))) {\n    dom_holds_[index].unknown = true; Finish(\"Original physical DOM/cache source validation refused\"); return;\n  }\n  ValidateDomNext();\n}\nvoid Controller::SealNext() {\n  if (!DomCurrent() || !Inventory(false) || !FrontendCurrent() ||\n      !HasValidUiStorageMigrationWorkerLease(profile_.get())) {\n    Finish(\"Actual all-store source holds changed before final renderer seal\"); return;\n  }\n  if (cursor_ == frames_.size()) {\n    sealing_ = false; cursor_ = 0; ValidateNext(); return;\n  }\n  const size_t index = cursor_++;\n  Invoke(index, \"auxSealDraftMigrationCapture\", base::ListValue().Append(frames_[index]->lease_id)\n      .Append(frames_[index]->revision).Append(\"utf16-v1\"),\n      base::BindOnce(&Controller::Sealed, weak_.GetWeakPtr(), index, false));\n}\nvoid Controller::Sealed(size_t index, bool observed,\n    std::optional<base::DictValue> value, std::string error) {\n  if (!value || !AcceptLease(*frames_[index], *value, true)) {\n    if (!observed) {\n      // A lost Seal may have completed. Observe the exact original lease;\n      // never reflush, replace the lease or infer absence from a dropped reply.\n      Invoke(index, \"auxReadDraftMigrationCapture\", base::ListValue().Append(\"utf16-v1\"),\n          base::BindOnce(&Controller::Sealed, weak_.GetWeakPtr(), index, true)); return;\n    }\n    Finish(error.empty() ? \"Original renderer seal could not be observed\" : std::move(error)); return;\n  }\n  SealNext();\n}\nvoid Controller::CleanupDomNext() {\n  dom_cleaning_ = true;\n  while (dom_cursor_ < dom_holds_.size() &&\n      (!dom_holds_[dom_cursor_].attempted || dom_holds_[dom_cursor_].released)) ++dom_cursor_;\n  if (dom_cursor_ == dom_holds_.size()) { dom_cleaning_ = false; CleanupFrontend(); return; }\n  const size_t index = dom_cursor_++;\n  auto& hold = dom_holds_[index];\n  auto controls = DomControls(index);\n  if (!controls || hold.pending) { cleanup_unknown_ = true; ReplyResult(); return; }\n  hold.pending = true;\n  auto callback = mojo::WrapCallbackWithDropHandler(\n      base::BindOnce(&Controller::ObservedDomCleanup, weak_.GetWeakPtr(), index),\n      base::BindOnce(&Controller::DomLost, weak_.GetWeakPtr(), index));\n  if (hold.local) controls->local->ReadAuxUiPreferenceLease(hold.request, std::move(callback));\n  else controls->session->ReadAuxUiPreferenceLease(hold.request, std::move(callback));\n}\nvoid Controller::ObservedDomCleanup(size_t index, storage::mojom::AuxUiDomLeaseReplyPtr value) {\n  auto& hold = dom_holds_[index]; hold.pending = false;\n  auto controls = DomControls(index);\n  if (controls && value && value->request_id == hold.request && value->aborted &&\n      !value->ok && !value->held && !value->released && !value->token && !value->source_ready &&\n      !value->target_attempted && !value->error.empty() && !hold.token) {\n    // The SAME actual service recorded its definitive no-lease backend failure.\n    // This retires only our source attempt; it is not current writer readiness.\n    hold.released = true; hold.unknown = false; CleanupDomNext(); return;\n  }\n  if (!controls || !value || value->request_id != hold.request || !value->token ||\n      value->token->is_empty() || (hold.token && hold.token != value->token)) {\n    hold.unknown = true; cleanup_unknown_ = true; ReplyResult(); return;\n  }\n  hold.token = value->token;\n  if (value->ok && value->released && !value->held && !value->source_ready) {\n    hold.released = true; hold.unknown = false; CleanupDomNext(); return;\n  }\n  if (!value->held || value->released || value->aborted || value->target_attempted || value->cache_published) {\n    hold.unknown = true; cleanup_unknown_ = true; ReplyResult(); return;\n  }\n  hold.pending = true;\n  auto callback = mojo::WrapCallbackWithDropHandler(\n      base::BindOnce(&Controller::ReleasedDom, weak_.GetWeakPtr(), index),\n      base::BindOnce(&Controller::DomLost, weak_.GetWeakPtr(), index));\n  if (hold.local) controls->local->ReleaseAuxUiPreferenceLease(hold.request, *hold.token, std::move(callback));\n  else controls->session->ReleaseAuxUiPreferenceLease(hold.request, *hold.token, std::move(callback));\n}\nvoid Controller::ReleasedDom(size_t index, bool released) {\n  auto& hold = dom_holds_[index]; hold.pending = false;\n  if (!released || !DomControls(index)) {\n    hold.unknown = true; cleanup_unknown_ = true; ReplyResult(); return;\n  }\n  hold.released = true; hold.unknown = false; CleanupDomNext();\n}\n\nvoid Controller::DrainNext() {",
+          "count": 1
+        },
+        {
+          "find": "  void DrainNext();\n",
+          "replace": "",
+          "count": 1
+        },
+        {
+          "find": "  void Drained(bool);\n",
+          "replace": "",
+          "count": 1
+        },
+        {
+          "find": "void Controller::DrainNext() {\n  if (!Inventory(false) || !FrontendCurrent() || !HasValidUiStorageMigrationWorkerLease(profile_.get())) {\n    Finish(\"Original source holds changed before physical DOM drain\"); return;\n  }\n  if (cursor_ == partitions_.size()) { cursor_ = 0; ValidateNext(); return; }\n  auto* context = partitions_[cursor_++]->GetDOMStorageContext();\n  if (!context) { Finish(\"Actual DOM backend unavailable\"); return; }\n  context->DrainLoadedAreasForAuxUiMigration(base::BindOnce(&Controller::Drained, weak_.GetWeakPtr()));\n}\nvoid Controller::Drained(bool synced) {\n  if (!synced) { Finish(\"Actual loaded-area DOM drain/file-data sync refused\"); return; }\n  DrainNext();\n}\n",
+          "replace": "",
+          "count": 1
+        }
+      ]
+    }
+  ],
+  "dependencies": [
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/native-dom-control-result-observation-a1/source/components/services/storage/public/mojom/local_storage_control.mojom",
+      "sha256": "74f84005316e3ee9d0f097e6c1d8faf2f37ea22182d9947b3ef22ffd76d9df55",
+      "role": "finite DOM reply including released/aborted observations"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/native-dom-control-cohort-glue-a1/source/components/services/storage/public/mojom/session_storage_control.mojom",
+      "sha256": "d0be70fe6a617c450508d521de5dac426903c5b3ae62f198f7276cc7f4451762",
+      "role": "actual Session finite methods"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/content/public/browser/dom_storage_context.h",
+      "sha256": "c106dd8dd77ffc8fa071ec382cf285ee2bb5394646026fe37c5ab2b0b7da668c",
+      "role": "actual no-bind control-generation seam"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/third_party/blink/public/mojom/dom_storage/storage_area.mojom",
+      "sha256": "5d62cf6e4a250962b7565d745b14b7967b565ea5252a6d60608ed7c82966d3fa",
+      "role": "exact UTF16 cache document/source data"
+    }
+  ]
+}
