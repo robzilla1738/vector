@@ -1,0 +1,24 @@
+{
+  "format": "aux.feature-completion.ui-revision-review.v1",
+  "previousLedgerSha256": "9fea5e1fba4a8e99ab1fcbe701798ce07408778eee7619b6b338ad791550b1e8",
+  "nextLedgerSha256": "ca374b777c9df7c38212dc87ce1af55e5ef9c241be63260b4244233874d247f1",
+  "preflightSha256": "d44112d65eb1b80d5163a1717ed9313d7ac38c99d2bb41d6309716c5c24c4a2d",
+  "compositionSha256": "a8a24ec79fcd100264edc2161c832c3abfa87d68423e2d2a1696ba477e295042",
+  "review": {
+    "revision": 31,
+    "profile": "development",
+    "identityProfile": "aux-v1",
+    "stateIdentityVersion": 2,
+    "featureProfile": "desktop-v1",
+    "fingerprint": "6509023d4a2e3a912bc8034231663311f457beb3972c55f8e93bdb00d757ee72"
+  },
+  "adapters": {
+    "aux-ui-draft-capture.mjs": "3d0eefe5939f6bf9005951ac9c62f6acc370eefcb539b8dd2ac8b432102982c3",
+    "aux-ui-draft-closure.mjs": "a4f7c5d0b36fe354e10bceaecf1967318d16e143efcd89170f3c524c7743f9f6",
+    "aux-ui-draft-closure-runtime.js.txt": "e6f4fdf8162f97778c27fbc6debd29f8e3042b36f8d9bb662223e21e856a4734",
+    "aux-ui-background-writer-closure.mjs": "3beba6e3541c31c505be91a4bd0a04885801b7004b4dca1a856afc544d2b2ae1",
+    "aux-ui-background-writer-runtime.js.txt": "abf70036fdedb3aa0a3af3e3ac18241d7c096b14cdc8e8b9a7d2e8238cc8f823"
+  },
+  "candidateDeltaStillRequiresVerification": true,
+  "productExecuted": false
+}

@@ -1,4 +1,5 @@
 // Count-checked additions to the supplied owners after identity adaptation.
+import { transformAuxUiBackgroundWriterClosure } from './aux-ui-background-writer-closure.mjs';
 import { transformAuxNavigation } from './aux-navigation-command-bar.mjs';
 import { transformAuxPaletteAsk } from './aux-palette-ask.mjs';
 import { transformAuxContextActions } from './aux-context-actions.mjs';
@@ -73,7 +74,8 @@ export function transformAuxBrowserFeatureUi(input) {
       return {text: result.text, anchors: result.changes.map(change => ({...change, kind: 'aux-research-ui'}))};
     },
     value => value.relative === 'background.js'
-      ? applyAuxBrowserRouting({...value, component:'agent'}) : {text:value.text, anchors:[]}]);
+      ? applyAuxBrowserRouting({...value, component:'agent'}) : {text:value.text, anchors:[]},
+    value => transformAuxUiBackgroundWriterClosure({...value, stateIdentityVersion:input.stateIdentityVersion})]);
 }
 export function transformAuxBrowserFeatureDaemon(input) {
   return compose(input, [transformAuxProductivityDaemon, transformAuxContextReadDaemon,

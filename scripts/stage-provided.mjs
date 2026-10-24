@@ -67,7 +67,7 @@ const temporary = await mkdtemp(join(dirname(output), '.provided-stack-'));
 try {
   const ui = await stageProvidedUi({ sourceRoots: Object.fromEntries(Object.entries(pins.components).map(([name, value]) => [name, sourceSnapshot?.roots[name] ?? value.inputRoot])), outputRoot: join(temporary, 'ui'), identities, identityProfile, stateIdentityVersion, featureProfile, postIdentityTransformText(input) {
     if (featureProfile !== 'desktop-v1' || input.component !== 'agent') return {text: input.text, anchors: []};
-    return transformAuxBrowserFeatureUi({relative: input.path, text: input.text});
+    return transformAuxBrowserFeatureUi({relative: input.path, text: input.text, stateIdentityVersion});
   }, ...(cloudPolicy.mode !== 'local' ? { cloudProfile: cloudPolicy.mode } : {}), transformText(input) {
     const scope = transformProvidedPasswordManagerScope(input);
     const native = transformProvidedNativeUi({ ...input, text: scope.text });
