@@ -1,0 +1,8 @@
+{
+  "format": "aux.runtime-host-registration-runner-pins.v1",
+  "files": {
+    "/private/tmp/aux-features-execution-organization-20261023/docs/integration/proposed/profile-isolation-local-finish/runtime-host-registration-relink/run.py": "e94edac05fb5e5c1c66d9535bbac5b2c9596ffd9981e30e73cc7db618ab4faeb",
+    "/private/tmp/aux-features-execution-organization-20261023/docs/integration/proposed/profile-isolation-local-finish/runtime-host-registration-relink/prepare.py": "a0fb0ee102f97ad49429251761022a1cb5637c80d907c5d4cf57b76fea2214f9",
+    "/private/tmp/aux-features-execution-organization-20261023/docs/integration/proposed/profile-isolation-local-finish/runtime-host-registration-relink/plan.json": "d66e0852590994b5c9283769ca4a7fa7d08c1d14150fe06ebc9417fc6c00b830"
+  }
+}

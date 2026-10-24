@@ -1,0 +1,31 @@
+{
+  "format": "aux.runtime-host-registration-relink.proposal.v1",
+  "status": "prepared-not-executed",
+  "input": "/private/tmp/aux-async-writes-final/docs/integration/proposed/profile-isolation-final/writes/source/AuxDevelopmentWorkerHost.cc",
+  "inputSha256": "e36e5c25c822879302a7f83fa5329305ba79f4d000ac45cd721cb820eaa81dd7",
+  "output": "source/AuxDevelopmentWorkerHost.cc",
+  "outputSha256": "49718219a54d300bbb77abca4b8a1fcf50d999ac6bb129550d2b4d5a34329562",
+  "replacementCount": 1,
+  "files": {
+    "README.md": "43ae1fcd69d787e6bfedc78489a8b43d491d3c6e8250243045d41fb1fc4e56cb",
+    "change.patch": "97fd8e25cf1ddadc79edf7409bf7997b446d3cc9d98f161ca9bc03d94d4d81d8",
+    "plan.json": "d66e0852590994b5c9283769ca4a7fa7d08c1d14150fe06ebc9417fc6c00b830",
+    "prepare.py": "a0fb0ee102f97ad49429251761022a1cb5637c80d907c5d4cf57b76fea2214f9",
+    "run.py": "e94edac05fb5e5c1c66d9535bbac5b2c9596ffd9981e30e73cc7db618ab4faeb",
+    "runner-inputs.json": "b051a18c60b79c7c09c2a1153d0927be967bce4ca61e577a21b74df6e02c3711",
+    "source/AuxDevelopmentWorkerHost.cc": "49718219a54d300bbb77abca4b8a1fcf50d999ac6bb129550d2b4d5a34329562"
+  },
+  "checks": {
+    "pythonSyntaxParsed": true,
+    "exactCountPatch": true,
+    "nativeInputsVerified": 347,
+    "compilerDependencyPathsPinned": 92,
+    "unchangedSwiftSources": 48,
+    "unchangedOtherNativeObjects": 11
+  },
+  "compiled": false,
+  "linked": false,
+  "executed": false,
+  "signed": false,
+  "fullWriterIsolationProven": false
+}
