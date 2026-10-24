@@ -1,0 +1,17 @@
+{
+  "baseline": "root navigation proposal copied 2026-10-23; pinned per-file below",
+  "selectedNativeRoot": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src",
+  "files": [
+    {
+      "path": "chrome/browser/ui/aux_keyboard_shortcuts.h",
+      "baselineSha256": "aebfa0e8760dda73cc26d6380e506237ffb6abfd15a19c832333601d857276a5",
+      "sourceSha256": "5e6dbacce85d825d6c44e873357f4756e2ee29705674d389ff4df0968b33eb68"
+    },
+    {
+      "path": "chrome/browser/ui/aux_keyboard_shortcuts.mm",
+      "baselineSha256": "580883a9d058ff1b9036aa0977f2af9f787654c4780c6f4b7850131bae695d1f",
+      "sourceSha256": "8682b46ee0ae52f18657b991827a995bc5c651b4323b9797baa12bd84649ddf5"
+    }
+  ],
+  "patchSha256": "db30b641a05b6a24927514a4b4e9954445fb87b9c104bab8d03fc153b5fcacc9"
+}

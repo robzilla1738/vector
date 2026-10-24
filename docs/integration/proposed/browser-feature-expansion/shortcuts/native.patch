@@ -1,0 +1,363 @@
+--- a/chrome/browser/ui/aux_keyboard_shortcuts.h
++++ b/chrome/browser/ui/aux_keyboard_shortcuts.h
+@@ -22,6 +22,16 @@
+ namespace aux {
+ void RegisterKeyboardShortcutPrefs(user_prefs::PrefRegistrySyncable* registry);
+ base::ListValue GetKeyboardShortcuts(Profile* profile);
++// Atomic profile-local table operations. Global Mini popup (34069) is excluded.
++// Revisions cover native owner epoch and the actual stored override table.
++base::DictValue GetShortcutProfile(Profile* profile);
++base::DictValue ExportShortcutProfile(Profile* profile);
++base::DictValue ImportShortcutProfile(Profile* profile,
++    const std::string& owner_generation, const std::string& revision,
++    const base::DictValue& mappings);
++base::DictValue ResetShortcutProfile(Profile* profile,
++    const std::string& owner_generation, const std::string& revision);
++
+ base::ListValue GetNavigationCommandCatalog(BrowserWindowInterface* browser);
+ bool IsNavigationCommand(int command);
+ std::optional<std::string> SetKeyboardShortcut(Profile* profile,
+--- a/chrome/browser/ui/aux_keyboard_shortcuts.mm
++++ b/chrome/browser/ui/aux_keyboard_shortcuts.mm
+@@ -8,9 +8,19 @@
+ #include <iterator>
+ #include <set>
+ #include <string_view>
++#include <vector>
+ #include "base/no_destructor.h"
++#include "base/apple/scoped_cftyperef.h"
++#include "base/json/json_writer.h"
++#include "chrome/browser/aux/AuxBrowserPrivateRoots.h"
++#include "chrome/browser/aux/AuxSelectedStateHome.h"
++#include "chrome/browser/aux/profile_identity.h"
++#include "content/public/browser/browser_thread.h"
++#include "crypto/hash.h"
++
+ #include "chrome/app/chrome_command_ids.h"
+ #include "chrome/browser/ui/browser_commands.h"
++#include "chrome/browser/ui/aux_feature_commands.h"
+ #include "base/strings/string_number_conversions.h"
+ #include "base/strings/utf_string_conversions.h"
+ #include "base/supports_user_data.h"
+@@ -52,7 +62,27 @@
+     {IDC_RELOAD_BYPASSING_CACHE, "Command+Shift+R"},
+     {IDC_BACK, "Command+Left"}, {IDC_FORWARD, "Command+Right"},
+     {IDC_SHOW_DOWNLOADS, "Command+Shift+J"},
+-    {IDC_DEV_TOOLS, "Command+Alt+I"}, {IDC_VIEW_SOURCE, "Command+Alt+U"}};
++    {IDC_DEV_TOOLS, "Command+Alt+I"}, {IDC_VIEW_SOURCE, "Command+Alt+U"},
++    {34120, ""},
++    {34121, ""},
++    {34122, ""},
++    {34123, ""},
++    {34124, ""},
++    {34125, ""},
++    {34126, ""},
++    {34127, ""},
++    {34128, ""},
++    {34129, ""},
++    {34130, ""},
++    {34131, ""},
++    {34132, ""},
++    {34133, ""},
++    {34134, ""},
++    {34135, ""},
++    {34136, ""},
++    {34137, ""},
++    {34138, ""},
++    {34139, ""}};
+ struct NavigationCommand { int command; const char* id; const char* title; };
+ constexpr NavigationCommand kNavigationCommands[] = {
+     {IDC_NEW_TAB, "new-tab", "New tab"},
+@@ -69,7 +99,27 @@
+     {IDC_DEV_TOOLS_INSPECT, "inspect", "Inspect page"},
+     {IDC_VIEW_SOURCE, "view-source", "View source"},
+     {34061, "sidebar", "Toggle sidebar"},
+-    {34068, "ask-aux", "Ask Aux"}, {34071, "copy-url", "Copy URL"}};
++    {34068, "ask-aux", "Ask Aux"}, {34071, "copy-url", "Copy URL"},
++    {34120, "minimal", "Toggle minimal UI"},
++    {34121, "sidebar-navigation", "Toggle navigation in sidebar"},
++    {34122, "new-space", "New Space"},
++    {34123, "next-space", "Next Space"},
++    {34124, "previous-space", "Previous Space"},
++    {34125, "new-folder", "New folder"},
++    {34126, "pin-current", "Pin current tab"},
++    {34127, "keep-in-space", "Keep tab in Space"},
++    {34128, "archive-current", "Archive current tab"},
++    {34129, "unload-current-view", "Unload current tab view"},
++    {34130, "next-pane", "Next pane"},
++    {34131, "previous-pane", "Previous pane"},
++    {34132, "split-horizontal", "Split horizontally"},
++    {34133, "split-vertical", "Split vertically"},
++    {34134, "unsplit", "Remove split"},
++    {34135, "quick-window", "Quick window"},
++    {34136, "screenshot", "Take screenshot"},
++    {34137, "pip", "Picture in picture"},
++    {34138, "developer-mode", "Toggle developer mode"},
++    {34139, "theme-editor", "Edit theme"}};
+ 
+ const Binding* FindBinding(int command) {
+   const auto it = std::ranges::find(kBindings, command, &Binding::command);
+@@ -91,7 +141,7 @@
+   const auto* saved = profile->GetPrefs()
+                           ->GetDict(kOverrides)
+                           .FindString(base::NumberToString(binding.command));
+-  return saved && ParseKeyboardShortcut(*saved) ? *saved : Default(binding);
++  return saved && (saved->empty() || ParseKeyboardShortcut(*saved)) ? *saved : Default(binding);
+ }
+ class Capture;
+ std::set<Capture*>& Captures() {
+@@ -171,7 +221,10 @@
+   NSDictionary* original = OriginalMenuEquivalent(item);
+   if (binding && binding->command != kPopup) {
+     const auto parsed = ParseKeyboardShortcut(Effective(profile, *binding));
+-    if (!parsed) return;
++    if (!parsed) {
++      SetMenuEquivalent(item, @"", 0);
++      return;
++    }
+     auto* equivalent = ui::GetKeyEquivalentAndModifierMaskFromAccelerator(*parsed);
+     SetMenuEquivalent(item, equivalent.keyEquivalent, equivalent.modifierMask);
+     return;
+@@ -206,14 +259,18 @@
+   if (browser) RefreshKeyboardShortcutMenu(browser->GetProfile());
+ }
+ bool MenuConflict(Profile* profile, NSMenu* menu,
+-                  KeyEquivalentAndModifierMask* key, int command) {
++                  KeyEquivalentAndModifierMask* key, int command,
++                  const base::DictValue* prospective = nullptr) {
+   for (NSMenuItem* item in menu.itemArray) {
+-    if (item.submenu && MenuConflict(profile, item.submenu, key, command))
++    if (item.submenu && MenuConflict(profile, item.submenu, key, command, prospective))
+       return true;
+     if (item.tag == command) continue;
+     const auto* binding = FindBinding(item.tag);
+     if (binding && binding->command != kPopup) {
+-      const auto effective = ParseKeyboardShortcut(Effective(profile, *binding));
++      const auto* proposed = prospective
++          ? prospective->FindString(base::NumberToString(binding->command)) : nullptr;
++      const auto effective = ParseKeyboardShortcut(prospective
++          ? (proposed ? *proposed : Default(*binding)) : Effective(profile, *binding));
+       if (effective) {
+         auto* equivalent = ui::GetKeyEquivalentAndModifierMaskFromAccelerator(*effective);
+         if (SameEquivalent(equivalent.keyEquivalent, equivalent.modifierMask, key))
+@@ -228,6 +285,109 @@
+   }
+   return false;
+ }
++base::DictValue ShortcutFailure(std::string error) {
++  return base::DictValue().Set("success", false).Set("error", std::move(error));
++}
++std::string Digest(std::string_view text) {
++  return base::HexEncode(crypto::hash::Sha256(text));
++}
++std::string ShortcutOwner(Profile* profile) {
++  DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
++  if (!g_browser_process || !g_browser_process->local_state() ||
++      !profile || !profile->IsRegularProfile() || profile->IsOffTheRecord() ||
++      profile != profile->GetOriginalProfile() || IsProfileCookieRestorePending(profile))
++    return {};
++  const auto roots = peer::CaptureActualChromiumBrowserRoots();
++  const auto admission = peer::InspectNativeBrowserShutdown();
++  if (!roots || !roots->Revalidate() || !admission.admitted_generation ||
++      admission.wrong_process || admission.admission_closed || admission.sequence_uncertain)
++    return {};
++  const auto id = GetProfileId(profile);
++  const auto epoch = GetProfileCookieBindingEpoch(profile);
++  if (id.empty() || epoch.empty()) return {};
++  return Digest(id + ":" + epoch + ":" + base::NumberToString(admission.admitted_generation));
++}
++std::string ShortcutRevision(Profile* profile, const std::string& owner) {
++  // Dict iteration is key ordered. JSON includes raw stored values, so even an
++  // invalid/unknown existing entry changes CAS rather than disappearing in a UI
++  // normalized view. The global chord is read for collisions, never mutated.
++  base::ListValue canonical;
++  canonical.Append(owner);
++  canonical.Append(profile->GetPrefs()->GetDict(kOverrides).Clone());
++  canonical.Append(g_browser_process->local_state()->GetString(kPopupShortcut));
++  auto json = base::WriteJson(canonical);
++  return json ? Digest(*json) : std::string();
++}
++std::optional<std::string> ValidateMappings(const base::DictValue& mappings) {
++  if (mappings.size() >= std::size(kBindings)) return "Too many shortcut mappings";
++  for (const auto [key, value] : mappings) {
++    int command = 0;
++    if (!base::StringToInt(key, &command) || base::NumberToString(command) != key ||
++        command == kPopup || !FindBinding(command) || !value.is_string() ||
++        value.GetString().size() > 96 ||
++        (!value.GetString().empty() && !ParseKeyboardShortcut(value.GetString())))
++      return "Unknown or invalid shortcut mapping; Mini popup is configured separately";
++  }
++  return std::nullopt;
++}
++std::optional<std::string> ValidateProspective(Profile* profile,
++                                              const base::DictValue& mappings) {
++  if (auto error = ValidateMappings(mappings)) return error;
++  if (!NSApp.mainMenu) return "Browser menu reservations are unavailable";
++  // The OS returns enabled symbolic hotkeys without acquiring any new grants.
++  base::apple::ScopedCFTypeRef<CFArrayRef> hotkeys;
++  if (CopySymbolicHotKeys(hotkeys.InitializeInto()) != noErr || !hotkeys)
++    return "macOS shortcut reservations are unavailable; no shortcuts changed";
++  std::vector<ui::Accelerator> reserved;
++  for (CFIndex i = 0; i < CFArrayGetCount(hotkeys.get()); ++i) {
++    auto item = static_cast<CFDictionaryRef>(CFArrayGetValueAtIndex(hotkeys.get(), i));
++    if (!item || CFGetTypeID(item) != CFDictionaryGetTypeID()) continue;
++    auto enabled = CFDictionaryGetValue(item, kHISymbolicHotKeyEnabled);
++    if (!enabled || CFGetTypeID(enabled) != CFBooleanGetTypeID() ||
++        !CFBooleanGetValue(static_cast<CFBooleanRef>(enabled))) continue;
++    auto code = CFDictionaryGetValue(item, kHISymbolicHotKeyCode);
++    auto modifiers = CFDictionaryGetValue(item, kHISymbolicHotKeyModifiers);
++    int code_value = 0, modifiers_value = 0;
++    if (!code || !modifiers || CFGetTypeID(code) != CFNumberGetTypeID() ||
++        CFGetTypeID(modifiers) != CFNumberGetTypeID() ||
++        !CFNumberGetValue(static_cast<CFNumberRef>(code), kCFNumberIntType, &code_value) ||
++        !CFNumberGetValue(static_cast<CFNumberRef>(modifiers), kCFNumberIntType, &modifiers_value))
++      return "macOS shortcut reservations could not be read";
++    int flags = 0;
++    if (modifiers_value & cmdKey) flags |= ui::EF_COMMAND_DOWN;
++    if (modifiers_value & controlKey) flags |= ui::EF_CONTROL_DOWN;
++    if (modifiers_value & optionKey) flags |= ui::EF_ALT_DOWN;
++    if (modifiers_value & shiftKey) flags |= ui::EF_SHIFT_DOWN;
++    reserved.emplace_back(ui::KeyboardCodeFromKeyCode(code_value), flags);
++  }
++  reserved.emplace_back(ui::VKEY_TAB, ui::EF_COMMAND_DOWN);
++  reserved.emplace_back(ui::VKEY_TAB, ui::EF_COMMAND_DOWN | ui::EF_SHIFT_DOWN);
++  std::vector<std::pair<int, ui::Accelerator>> table;
++  for (const auto& binding : kBindings) {
++    const auto* mapping = mappings.FindString(base::NumberToString(binding.command));
++    const auto value = binding.command == kPopup ? Effective(profile, binding)
++                                                : mapping ? *mapping : Default(binding);
++    if (value.empty() && binding.command != kPopup) continue;
++    auto parsed = ParseKeyboardShortcut(value);
++    if (!parsed) return "Existing global shortcut is unavailable";
++    for (const auto& [other, accelerator] : table)
++      if (*parsed == accelerator)
++        return "Shortcut conflict between commands " + base::NumberToString(other) +
++               " and " + base::NumberToString(binding.command);
++    table.emplace_back(binding.command, *parsed);
++    if (binding.command == kPopup) continue;
++    if (std::ranges::find(reserved, *parsed) != reserved.end())
++      return "Command " + base::NumberToString(binding.command) + " conflicts with a macOS shortcut";
++    // Preserve the supplied command's own intentional default displacement,
++    // while comparing all other menu commands against the prospective table.
++    if (parsed != ParseKeyboardShortcut(Default(binding)) &&
++        MenuConflict(profile, NSApp.mainMenu,
++          ui::GetKeyEquivalentAndModifierMaskFromAccelerator(*parsed), binding.command, &mappings))
++      return "Command " + base::NumberToString(binding.command) + " conflicts with a browser menu shortcut";
++  }
++  return std::nullopt;
++}
++
+ }  // namespace
+ 
+ bool IsNavigationCommand(int command) {
+@@ -242,7 +402,9 @@
+     row.Set("id", command.id);
+     row.Set("commandId", command.command);
+     row.Set("title", command.title);
+-    row.Set("enabled", chrome::IsCommandEnabled(browser, command.command));
++    row.Set("enabled", IsAuxFeatureCommand(command.command)
++        ? IsAuxFeatureCommandEnabled(browser, command.command)
++        : chrome::IsCommandEnabled(browser, command.command));
+     if (const auto* binding = FindBinding(command.command))
+       row.Set("shortcut", Effective(browser->GetProfile()->GetOriginalProfile(), *binding));
+     result.Append(std::move(row));
+@@ -265,30 +427,93 @@
+     row.Set("shortcut",
+             effective_key ? base::UTF16ToUTF8(effective_key->GetShortcutText())
+                           : effective);
+-    row.Set(
+-        "defaultShortcut",
+-        base::UTF16ToUTF8(ParseKeyboardShortcut(initial)->GetShortcutText()));
++    const auto default_key = ParseKeyboardShortcut(initial);
++    row.Set("defaultShortcut", default_key
++        ? base::UTF16ToUTF8(default_key->GetShortcutText()) : std::string());
+     row.Set("isCustomized", effective != initial);
+     result.Append(std::move(row));
+   }
+   return result;
+ }
++base::DictValue GetShortcutProfile(Profile* profile) {
++  const auto owner = ShortcutOwner(profile);
++  if (owner.empty() || !profile->GetPrefs()->FindPreference(kOverrides))
++    return ShortcutFailure("Shortcut profile authority unavailable");
++  const auto revision = ShortcutRevision(profile, owner);
++  if (revision.empty()) return ShortcutFailure("Shortcut revision unavailable");
++  base::ListValue bindings;
++  for (auto& row : GetKeyboardShortcuts(profile))
++    if (row.GetDict().FindInt("commandId") != kPopup) bindings.Append(std::move(row));
++  return base::DictValue().Set("success", true).Set("format", "aux-shortcuts")
++      .Set("version", 1).Set("platform", "mac").Set("ownerGeneration", owner)
++      .Set("revision", revision).Set("bindings", std::move(bindings));
++}
++base::DictValue ExportShortcutProfile(Profile* profile) {
++  auto current = GetShortcutProfile(profile);
++  if (!current.FindBool("success").value_or(false)) return current;
++  base::DictValue mappings;
++  for (const auto& binding : kBindings) {
++    if (binding.command == kPopup) continue;
++    mappings.Set(base::NumberToString(binding.command), Effective(profile, binding));
++  }
++  return base::DictValue().Set("success", true)
++      .Set("ownerGeneration", *current.FindString("ownerGeneration"))
++      .Set("revision", *current.FindString("revision")).Set("configuration",
++      base::DictValue().Set("format", "aux-shortcuts").Set("version", 1)
++        .Set("platform", "mac").Set("mappings", std::move(mappings)));
++}
++base::DictValue ImportShortcutProfile(Profile* profile,
++    const std::string& owner_generation, const std::string& revision,
++    const base::DictValue& mappings) {
++  const auto owner = ShortcutOwner(profile);
++  if (owner.empty() || owner != owner_generation ||
++      !profile->GetPrefs()->FindPreference(kOverrides))
++    return ShortcutFailure("Shortcut profile changed; reopen settings");
++  if (revision != ShortcutRevision(profile, owner))
++    return ShortcutFailure("Shortcuts changed; review the current table before retrying");
++  if (profile->GetPrefs()->IsManagedPreference(kOverrides))
++    return ShortcutFailure("Shortcuts are managed");
++  if (auto error = ValidateProspective(profile, mappings)) return ShortcutFailure(*error);
++  base::DictValue normalized;
++  for (const auto [key, value] : mappings) {
++    int command = 0;
++    base::StringToInt(key, &command);
++    if (ParseKeyboardShortcut(value.GetString()) != ParseKeyboardShortcut(Default(*FindBinding(command))))
++      normalized.Set(key, value.Clone());
++  }
++  // All checks precede exactly one profile-local write. No global registration,
++  // second counter-pref, sequential per-command mutation or partial import.
++  if (ShortcutOwner(profile) != owner || ShortcutRevision(profile, owner) != revision)
++    return ShortcutFailure("Shortcut authority changed during validation");
++  profile->GetPrefs()->SetDict(kOverrides, normalized.Clone());
++  if (ShortcutOwner(profile) != owner || profile->GetPrefs()->GetDict(kOverrides) != normalized)
++    return ShortcutFailure("Shortcut state changed during publication; reload settings");
++  RefreshActiveMenu();
++  auto result = GetShortcutProfile(profile);
++  result.Set("persistence", "native-pref-queued");
++  return result;
++}
++base::DictValue ResetShortcutProfile(Profile* profile,
++    const std::string& owner_generation, const std::string& revision) {
++  return ImportShortcutProfile(profile, owner_generation, revision, base::DictValue());
++}
++
+ std::optional<std::string> SetKeyboardShortcut(Profile* profile,
+                                                int command,
+                                                const std::string& value) {
+   const auto* binding = FindBinding(command);
+   const auto parsed = ParseKeyboardShortcut(value);
+-  if (!binding || !parsed)
++  if (!binding || (!parsed && (!value.empty() || command == kPopup)))
+     return "Shortcut is not valid";
+   for (const auto& other : kBindings) {
+-    if (other.command != command &&
++    if (parsed && other.command != command &&
+         ParseKeyboardShortcut(Effective(profile, other)) == parsed)
+       return "This shortcut is already in use. Choose a different shortcut.";
+   }
+   // Allow a command's own supplied default even when it replaces a Chromium
+   // menu default (notably Toggle Sidebar / Save Page). Reject other menu
+   // clashes.
+-  if (value != Default(*binding) &&
++  if (parsed && value != Default(*binding) &&
+       MenuConflict(profile, NSApp.mainMenu,
+                    ui::GetKeyEquivalentAndModifierMaskFromAccelerator(*parsed),
+                    command))
