@@ -1,0 +1,57 @@
+{
+  "format": "aux.ui-peer-original-stage.actual.v1",
+  "passed": true,
+  "reports": [
+    {
+      "featureProfile": "baseline",
+      "output": "/private/tmp/aux-ui-peer-stage-20261024-a1/baseline",
+      "fileCount": 1263,
+      "exactDelta": [
+        "agent/assets/-types-Wy38XkNB.js",
+        "agent/assets/queries-ldd77hNk.js",
+        "agent/background.js",
+        "agent/content/content.js",
+        "agent/manifest.json"
+      ],
+      "cssAssetsAndOtherFilesByteIdentical": true,
+      "modesPreserved": true
+    },
+    {
+      "featureProfile": "desktop-v1",
+      "output": "/private/tmp/aux-ui-peer-stage-20261024-a1/desktop-v1",
+      "fileCount": 1263,
+      "exactDelta": [
+        "agent/assets/-types-Wy38XkNB.js",
+        "agent/assets/queries-ldd77hNk.js",
+        "agent/background.js",
+        "agent/content/content.js",
+        "agent/manifest.json"
+      ],
+      "cssAssetsAndOtherFilesByteIdentical": true,
+      "modesPreserved": true
+    }
+  ],
+  "callbackSourceSha256": "39b85afdcf302d686a3cea77bf2c18ab1f84115b0519dd611ca304068535e085",
+  "revisionReview": [
+    {
+      "revision": 18,
+      "profile": "development",
+      "identityProfile": "aux-v1",
+      "stateIdentityVersion": 2,
+      "fingerprint": "a7d190ae090326d19e9b72b10c17d3a92ca8ea1b41c7802aa6221d7c535e55d2"
+    },
+    {
+      "revision": 19,
+      "profile": "development",
+      "identityProfile": "aux-v1",
+      "stateIdentityVersion": 2,
+      "featureProfile": "desktop-v1",
+      "fingerprint": "fc1f871fd34f6d9a8d6e1fd3c752ae0348cf7b81109bf7da067a7e84037ce547"
+    }
+  ],
+  "completedStages": 2,
+  "uiGeometryChanged": false,
+  "productExecuted": false,
+  "nativeBuildPerformed": false,
+  "packaged": false
+}
