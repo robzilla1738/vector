@@ -1,0 +1,208 @@
+{
+  "format": "aux.dom-control-recovery.source.v1",
+  "predecessorCommits": [
+    "e638d5cd1",
+    "799f7b523",
+    "c16361728",
+    "f89e3c533",
+    "11af72f95"
+  ],
+  "nativeOwnerCommits": [
+    "e78b7fc6e",
+    "ac400b5d4",
+    "2a206a174"
+  ],
+  "dependencies": [
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-organization/web/docs/integration/proposed/standard-profile-isolation/native-recovery-restoration-a19/source-plan.json",
+      "sha256": "04e154fbdeeec82f88242f94ab226d989290a756b6ac19e9fc880fd5fe9aa2a7"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-organization/web/docs/integration/proposed/standard-profile-isolation/native-recovery-restoration-a19/source/components/services/storage/dom_storage/async_dom_storage_database.h",
+      "sha256": "5da00143d24990009544af71d6ac28033ad667a72ff100927e4ec235010d4612"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-organization/web/docs/integration/proposed/standard-profile-isolation/native-recovery-restoration-a19/source/components/services/storage/dom_storage/async_dom_storage_database.cc",
+      "sha256": "523ae22eb9aef56b088aafb08ffa86933808bee791c5f27f539254c64a9a1a0b"
+    }
+  ],
+  "files": [
+    {
+      "path": "components/services/storage/public/mojom/local_storage_control.mojom",
+      "inputSource": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/native-dom-control-mixture-wire-a17d/source/components/services/storage/public/mojom/local_storage_control.mojom",
+      "inputSha256": "66b453780758c30d87fb36af59e8b0ceafc272ea9d9ecb2b0c4766c87dd7bcf0",
+      "outputSha256": "b823be759e2cda8c95e6b52fb824231502af60e2a2e146f33feb12e29bfff2dc",
+      "source": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/native-dom-control-recovery-a21/source/components/services/storage/public/mojom/local_storage_control.mojom",
+      "anchors": [
+        {
+          "name": "Append actual native cache recovery facts without modifying Blink cache ABI",
+          "find": "  blink.mojom.AuxUiCacheReply cache;\n};",
+          "replace": "  blink.mojom.AuxUiCacheReply cache;\n  bool recovery_prepared;\n  bool recovery_restored;\n};",
+          "count": 1
+        },
+        {
+          "name": "Separate bounded journal observations from output cache/source-ready snapshots",
+          "find": "struct AuxUiDomLeaseReply {",
+          "replace": "// Data from an actual verified native journal only. These fields neither select\n// an actor nor grant authority; the service joins every row to its held backend.\n// Cache views/documents, readiness and arbitrary roots are deliberately absent.\nstruct AuxUiDomRecoveryMap {\n  blink.mojom.StorageKey storage_key;\n  array<string> session_ids;\n  uint32 map_ordinal;\n  int64? map_id;\n  bool source_persisted;\n  array<blink.mojom.KeyValue> source_entries;\n  array<blink.mojom.KeyValue> target_entries;\n  string source_map_sha256;\n  string target_map_sha256;\n  bool allocation_requested;\n  string allocation_action_sha256;\n  int64? allocated_map_id;\n  bool allocation_observed;\n  string? source_last_accessed_us;\n  string? source_last_modified_us;\n  string? source_total_size_bytes;\n};\nstruct AuxUiDomRecoveryDescriptor {\n  array<AuxUiDomRecoveryMap> maps;\n  string source_topology_sha256;\n  string target_topology_sha256;\n  string allocation_action_sha256;\n  // Historical physical-attempt data, never a request to perform that write.\n  bool target_attempted;\n};\nstruct AuxUiDomLeaseReply {",
+          "count": 1
+        },
+        {
+          "name": "Append factual recovery observations, never ordinary source readiness",
+          "find": "  bool known_source_target_mixture;\n};",
+          "replace": "  bool known_source_target_mixture;\n  bool recovery_cache_prepared;\n  bool recovery_original_restored;\n};",
+          "count": 1
+        },
+        {
+          "name": "Preserve old method ordinals and append finite recovery operations",
+          "find": "  PublishAuxUiPreferenceLease(mojo_base.mojom.UnguessableToken request_id,\n                             mojo_base.mojom.UnguessableToken token)\n      => (AuxUiDomLeaseReply reply);\n\n};",
+          "replace": "  PublishAuxUiPreferenceLease(mojo_base.mojom.UnguessableToken request_id,\n                             mojo_base.mojom.UnguessableToken token)\n      => (AuxUiDomLeaseReply reply);\n  // Privileged actual verified-journal controller only. Uses the exact fresh\n  // native-held lease; descriptor bytes cannot supply authority or readiness.\n  RequalifyAuxUiPreferenceLease(mojo_base.mojom.UnguessableToken request_id,\n                               mojo_base.mojom.UnguessableToken token,\n                               AuxUiDomRecoveryDescriptor recorded)\n      => (AuxUiDomLeaseReply reply);\n  PrepareAuxUiPreferenceRecoveryCaches(mojo_base.mojom.UnguessableToken request_id,\n                                      mojo_base.mojom.UnguessableToken token)\n      => (AuxUiDomLeaseReply reply);\n  ReadAuxUiPreferenceRecovery(mojo_base.mojom.UnguessableToken request_id,\n                             mojo_base.mojom.UnguessableToken token)\n      => (AuxUiDomLeaseReply reply);\n  // Caller first records actual immutable native recovery intent. This method\n  // only reaches that same lease's distinct original-source restoration API.\n  RestoreAuxUiPreferenceRecovery(mojo_base.mojom.UnguessableToken request_id,\n                                mojo_base.mojom.UnguessableToken token)\n      => (AuxUiDomLeaseReply reply);\n\n};",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "components/services/storage/public/mojom/session_storage_control.mojom",
+      "inputSource": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/native-dom-control-cohort-glue-a1/source/components/services/storage/public/mojom/session_storage_control.mojom",
+      "inputSha256": "d0be70fe6a617c450508d521de5dac426903c5b3ae62f198f7276cc7f4451762",
+      "outputSha256": "5ba367b18968341f8a85e5d9e7b24c9f4b230f80a991dd174f831d204fa8269d",
+      "source": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/native-dom-control-recovery-a21/source/components/services/storage/public/mojom/session_storage_control.mojom",
+      "anchors": [
+        {
+          "name": "Preserve old method ordinals and append finite recovery operations",
+          "find": "  PublishAuxUiPreferenceLease(mojo_base.mojom.UnguessableToken request_id,\n                             mojo_base.mojom.UnguessableToken token)\n      => (AuxUiDomLeaseReply reply);\n\n};",
+          "replace": "  PublishAuxUiPreferenceLease(mojo_base.mojom.UnguessableToken request_id,\n                             mojo_base.mojom.UnguessableToken token)\n      => (AuxUiDomLeaseReply reply);\n  // Privileged actual verified-journal controller only. Uses the exact fresh\n  // native-held lease; descriptor bytes cannot supply authority or readiness.\n  RequalifyAuxUiPreferenceLease(mojo_base.mojom.UnguessableToken request_id,\n                               mojo_base.mojom.UnguessableToken token,\n                               AuxUiDomRecoveryDescriptor recorded)\n      => (AuxUiDomLeaseReply reply);\n  PrepareAuxUiPreferenceRecoveryCaches(mojo_base.mojom.UnguessableToken request_id,\n                                      mojo_base.mojom.UnguessableToken token)\n      => (AuxUiDomLeaseReply reply);\n  ReadAuxUiPreferenceRecovery(mojo_base.mojom.UnguessableToken request_id,\n                             mojo_base.mojom.UnguessableToken token)\n      => (AuxUiDomLeaseReply reply);\n  // Caller first records actual immutable native recovery intent. This method\n  // only reaches that same lease's distinct original-source restoration API.\n  RestoreAuxUiPreferenceRecovery(mojo_base.mojom.UnguessableToken request_id,\n                                mojo_base.mojom.UnguessableToken token)\n      => (AuxUiDomLeaseReply reply);\n\n};",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "components/services/storage/dom_storage/local_storage_impl.h",
+      "inputSource": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/native-dom-control-result-observation-a1/source/components/services/storage/dom_storage/local_storage_impl.h",
+      "inputSha256": "a16b524702210be1f948f59a3ed1245da56a12ea4a8cf3d474aaa917a2113f40",
+      "outputSha256": "910294aff4cbee2afaa5bfdadb7c0e54a45e7aaaf77696124b5d2d27d937b57c",
+      "source": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/native-dom-control-recovery-a21/source/components/services/storage/dom_storage/local_storage_impl.h",
+      "anchors": [
+        {
+          "name": "Route only finite recovery methods through the retained native lease",
+          "find": "  enum class AuxUiOperation { kRead, kValidate, kCommit, kRestore, kPublish };",
+          "replace": "  enum class AuxUiOperation { kRead, kValidate, kCommit, kRestore, kPublish,\n                              kRecoveryPrepare, kRecoveryRead, kRecoveryRestore };",
+          "count": 1
+        },
+        {
+          "name": "Declare generated privileged control overrides preserving old methods",
+          "find": "  void PublishAuxUiPreferenceLease(const base::UnguessableToken& request_id, const base::UnguessableToken& token, PublishAuxUiPreferenceLeaseCallback callback) override;",
+          "replace": "  void PublishAuxUiPreferenceLease(const base::UnguessableToken& request_id, const base::UnguessableToken& token, PublishAuxUiPreferenceLeaseCallback callback) override;\n  void RequalifyAuxUiPreferenceLease(const base::UnguessableToken& request_id,\n      const base::UnguessableToken& token, mojom::AuxUiDomRecoveryDescriptorPtr recorded,\n      RequalifyAuxUiPreferenceLeaseCallback callback) override;\n  void PrepareAuxUiPreferenceRecoveryCaches(const base::UnguessableToken& request_id, const base::UnguessableToken& token, PrepareAuxUiPreferenceRecoveryCachesCallback callback) override;\n  void ReadAuxUiPreferenceRecovery(const base::UnguessableToken& request_id, const base::UnguessableToken& token, ReadAuxUiPreferenceRecoveryCallback callback) override;\n  void RestoreAuxUiPreferenceRecovery(const base::UnguessableToken& request_id, const base::UnguessableToken& token, RestoreAuxUiPreferenceRecoveryCallback callback) override;\n",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "components/services/storage/dom_storage/local_storage_impl.cc",
+      "inputSource": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/native-dom-control-mixture-wire-a17d/source/components/services/storage/dom_storage/local_storage_impl.cc",
+      "inputSha256": "72e4d278dfe879baf5f07a7ad682efa4f7e8534e0f08e41656f6b2159388b15e",
+      "outputSha256": "c556822376bee01548b19a84e6a5be4ae82d7abb372c4776e69e5c6abb661111",
+      "source": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/native-dom-control-recovery-a21/source/components/services/storage/dom_storage/local_storage_impl.cc",
+      "anchors": [
+        {
+          "name": "Preserve recovery facts as native observations, never inferred readiness",
+          "find": "  reply->known_source_target_mixture = snapshot.known_source_target_mixture;",
+          "replace": "  reply->known_source_target_mixture = snapshot.known_source_target_mixture;\n  reply->recovery_cache_prepared = snapshot.recovery_cache_prepared;\n  reply->recovery_original_restored = snapshot.recovery_original_restored;",
+          "count": 1
+        },
+        {
+          "name": "Serialize actual native cache adoption/restoration reports",
+          "find": "      cached->namespace_id = std::move(view.namespace_id);",
+          "replace": "      cached->namespace_id = std::move(view.namespace_id);\n      cached->recovery_prepared = view.recovery_prepared;\n      cached->recovery_restored = view.recovery_restored;",
+          "count": 1
+        },
+        {
+          "name": "Validate bounded journal facts without accepting cache/document/readiness payloads",
+          "find": "}  // namespace\n\nvoid LocalStorageImpl::BeginAuxUiPreferenceLease(",
+          "replace": "\nbool IsAuxRecoveryDigest(std::string_view value, bool allow_empty = false) {\n  return (allow_empty && value.empty()) || (value.size() == 64 &&\n      std::ranges::all_of(value, [](char byte) {\n        return (byte >= '0' && byte <= '9') || (byte >= 'a' && byte <= 'f');\n      }));\n}\nbool ParseAuxRecoveryTime(const std::optional<std::string>& encoded,\n                          std::optional<base::Time>* output) {\n  if (!encoded) return true;\n  int64_t value = 0;\n  if (encoded->size() > 20 || !base::StringToInt64(*encoded, &value) ||\n      base::NumberToString(value) != *encoded) return false;\n  const auto time = base::Time::FromDeltaSinceWindowsEpoch(base::Microseconds(value));\n  if (time.ToDeltaSinceWindowsEpoch().InMicroseconds() != value) return false;\n  *output = time;\n  return true;\n}\nbool ConvertAuxDomRecovery(mojom::AuxUiDomRecoveryDescriptorPtr input,\n                           AsyncDomStorageDatabase::AuxUiSnapshot* output) {\n  if (!input || input->maps.size() > 256 ||\n      !IsAuxRecoveryDigest(input->source_topology_sha256) ||\n      !IsAuxRecoveryDigest(input->target_topology_sha256, true) ||\n      !IsAuxRecoveryDigest(input->allocation_action_sha256, true)) return false;\n  AsyncDomStorageDatabase::AuxUiSnapshot recorded;\n  recorded.source_topology_sha256 = std::move(input->source_topology_sha256);\n  recorded.target_topology_sha256 = std::move(input->target_topology_sha256);\n  recorded.allocation_action_sha256 = std::move(input->allocation_action_sha256);\n  recorded.target_attempted = input->target_attempted;\n  size_t bytes = 0, entries = 0;\n  constexpr size_t kBytes = 16 * 1024 * 1024, kEntries = 65536;\n  const auto consume_bytes = [&](size_t size) {\n    if (size > kBytes - bytes) return false;\n    bytes += size; return true;\n  };\n  const auto convert_entries = [&](auto input_entries, auto* output_entries) {\n    if (input_entries.size() > kEntries - entries) return false;\n    entries += input_entries.size();\n    for (auto& entry : input_entries) {\n      if (!entry || !consume_bytes(entry->key.size()) || !consume_bytes(entry->value.size()) ||\n          !output_entries->emplace(std::move(entry->key), std::move(entry->value)).second)\n        return false;\n    }\n    return true;\n  };\n  for (auto& row : input->maps) {\n    if (!row || row->map_ordinal != recorded.maps.size() || row->session_ids.size() > 256 ||\n        !IsAuxRecoveryDigest(row->source_map_sha256) ||\n        !IsAuxRecoveryDigest(row->target_map_sha256, true) ||\n        !IsAuxRecoveryDigest(row->allocation_action_sha256, true) ||\n        row->storage_key.Serialize().size() > 4096) return false;\n    std::set<std::string> namespaces;\n    for (const auto& id : row->session_ids)\n      if (id.size() > 4096 || !consume_bytes(id.size()) || !namespaces.insert(id).second)\n        return false;\n    AsyncDomStorageDatabase::AuxUiMapSnapshot map;\n    map.storage_key = std::move(row->storage_key);\n    map.session_ids = std::move(row->session_ids);\n    map.map_ordinal = row->map_ordinal;\n    map.map_id = row->map_id;\n    map.source_persisted = row->source_persisted;\n    map.source_map_sha256 = std::move(row->source_map_sha256);\n    map.target_map_sha256 = std::move(row->target_map_sha256);\n    map.allocation_requested = row->allocation_requested;\n    map.allocation_action_sha256 = std::move(row->allocation_action_sha256);\n    map.allocated_map_id = row->allocated_map_id;\n    map.allocation_observed = row->allocation_observed;\n    if (!ParseAuxRecoveryTime(row->source_last_accessed_us, &map.source_last_accessed) ||\n        !ParseAuxRecoveryTime(row->source_last_modified_us, &map.source_last_modified)) return false;\n    if (row->source_total_size_bytes) {\n      uint64_t size = 0;\n      if (row->source_total_size_bytes->size() > 20 ||\n          !base::StringToUint64(*row->source_total_size_bytes, &size) ||\n          base::NumberToString(size) != *row->source_total_size_bytes) return false;\n      map.source_total_size = base::ByteSize(size);\n    }\n    if (!convert_entries(std::move(row->source_entries), &map.source) ||\n        !convert_entries(std::move(row->target_entries), &map.target)) return false;\n    // Leave all cache/docs/readiness flags at native defaults. Only the actual\n    // held owner may join these facts to its retained current map inventory.\n    recorded.maps.push_back(std::move(map));\n  }\n  *output = std::move(recorded);\n  return true;\n}\n}  // namespace\n\nvoid LocalStorageImpl::BeginAuxUiPreferenceLease(",
+          "count": 1
+        },
+        {
+          "name": "Dispatch actual dedicated backend recovery operations, preserving callback ownership",
+          "find": "    case AuxUiOperation::kPublish: database_->PublishAuxUiMigrationLease(*aux_ui_lease_, std::move(completed)); return;",
+          "replace": "    case AuxUiOperation::kPublish: database_->PublishAuxUiMigrationLease(*aux_ui_lease_, std::move(completed)); return;\n    case AuxUiOperation::kRecoveryPrepare: database_->PrepareAuxUiMigrationRecoveryCaches(*aux_ui_lease_, std::move(completed)); return;\n    case AuxUiOperation::kRecoveryRead: database_->ReadAuxUiMigrationRecovery(*aux_ui_lease_, std::move(completed)); return;\n    case AuxUiOperation::kRecoveryRestore: database_->RestoreAuxUiMigrationRecovery(*aux_ui_lease_, std::move(completed)); return;",
+          "count": 1
+        },
+        {
+          "name": "Reach real recovery from the concrete generated control entry, without rebinding stores",
+          "find": "\nvoid LocalStorageImpl::StageAuxUiPreferenceTargets(",
+          "replace": "\nvoid LocalStorageImpl::RequalifyAuxUiPreferenceLease(\n    const base::UnguessableToken& request_id, const base::UnguessableToken& token,\n    mojom::AuxUiDomRecoveryDescriptorPtr recorded, RequalifyAuxUiPreferenceLeaseCallback callback) {\n  AsyncDomStorageDatabase::AuxUiSnapshot converted;\n  if (!OwnsAuxUiLease(request_id, token, aux_ui_generation_) || aux_ui_release_pending_ ||\n      !ConvertAuxDomRecovery(std::move(recorded), &converted)) {\n    std::move(callback).Run(AuxDomLeaseFailure(aux_ui_request_, aux_ui_lease_.get(),\n        \"Exact fresh native lease and bounded original journal facts required\"));\n    return;\n  }\n  database_->RequalifyAuxUiMigrationLease(*aux_ui_lease_, std::move(converted),\n      base::BindOnce(&LocalStorageImpl::CompleteAuxUiOperation, weak_ptr_factory_.GetWeakPtr(),\n          request_id, token, aux_ui_generation_, std::move(callback)));\n}\n\nvoid LocalStorageImpl::PrepareAuxUiPreferenceRecoveryCaches(const base::UnguessableToken& request_id,\n    const base::UnguessableToken& token, PrepareAuxUiPreferenceRecoveryCachesCallback callback) {\n  RunAuxUiOperation(request_id, token, AuxUiOperation::kRecoveryPrepare, std::move(callback));\n}\n\nvoid LocalStorageImpl::ReadAuxUiPreferenceRecovery(const base::UnguessableToken& request_id,\n    const base::UnguessableToken& token, ReadAuxUiPreferenceRecoveryCallback callback) {\n  RunAuxUiOperation(request_id, token, AuxUiOperation::kRecoveryRead, std::move(callback));\n}\n\nvoid LocalStorageImpl::RestoreAuxUiPreferenceRecovery(const base::UnguessableToken& request_id,\n    const base::UnguessableToken& token, RestoreAuxUiPreferenceRecoveryCallback callback) {\n  RunAuxUiOperation(request_id, token, AuxUiOperation::kRecoveryRestore, std::move(callback));\n}\n\nvoid LocalStorageImpl::StageAuxUiPreferenceTargets(",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "components/services/storage/dom_storage/session_storage_impl.h",
+      "inputSource": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/native-dom-control-result-observation-a1/source/components/services/storage/dom_storage/session_storage_impl.h",
+      "inputSha256": "3efff4c1e4207a8cadfd59fa8bb186d22560f10f26ee497504d4bc59aa8e84eb",
+      "outputSha256": "d92383b5173c3550adb60f37948eb60a0bc3e45893f84cf4f24f91db67157d9d",
+      "source": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/native-dom-control-recovery-a21/source/components/services/storage/dom_storage/session_storage_impl.h",
+      "anchors": [
+        {
+          "name": "Route only finite recovery methods through the retained native lease",
+          "find": "  enum class AuxUiOperation { kRead, kValidate, kCommit, kRestore, kPublish };",
+          "replace": "  enum class AuxUiOperation { kRead, kValidate, kCommit, kRestore, kPublish,\n                              kRecoveryPrepare, kRecoveryRead, kRecoveryRestore };",
+          "count": 1
+        },
+        {
+          "name": "Declare generated privileged control overrides preserving old methods",
+          "find": "  void PublishAuxUiPreferenceLease(const base::UnguessableToken& request_id, const base::UnguessableToken& token, PublishAuxUiPreferenceLeaseCallback callback) override;",
+          "replace": "  void PublishAuxUiPreferenceLease(const base::UnguessableToken& request_id, const base::UnguessableToken& token, PublishAuxUiPreferenceLeaseCallback callback) override;\n  void RequalifyAuxUiPreferenceLease(const base::UnguessableToken& request_id,\n      const base::UnguessableToken& token, mojom::AuxUiDomRecoveryDescriptorPtr recorded,\n      RequalifyAuxUiPreferenceLeaseCallback callback) override;\n  void PrepareAuxUiPreferenceRecoveryCaches(const base::UnguessableToken& request_id, const base::UnguessableToken& token, PrepareAuxUiPreferenceRecoveryCachesCallback callback) override;\n  void ReadAuxUiPreferenceRecovery(const base::UnguessableToken& request_id, const base::UnguessableToken& token, ReadAuxUiPreferenceRecoveryCallback callback) override;\n  void RestoreAuxUiPreferenceRecovery(const base::UnguessableToken& request_id, const base::UnguessableToken& token, RestoreAuxUiPreferenceRecoveryCallback callback) override;\n",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "components/services/storage/dom_storage/session_storage_impl.cc",
+      "inputSource": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/native-dom-control-mixture-wire-a17d/source/components/services/storage/dom_storage/session_storage_impl.cc",
+      "inputSha256": "e081d64179ddf6e3bc81955fbf6e6d756babf9b729a9e8fad1fac66df9e342a7",
+      "outputSha256": "000988350ce3a285c86d5bff4b43bb8bdf86f64938e5f4fac89527ef4634c2ac",
+      "source": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/native-dom-control-recovery-a21/source/components/services/storage/dom_storage/session_storage_impl.cc",
+      "anchors": [
+        {
+          "name": "Declare bounded digest validation algorithm dependency",
+          "find": "#include <utility>",
+          "replace": "#include <algorithm>\n#include <string_view>\n#include <utility>",
+          "count": 1
+        },
+        {
+          "name": "Preserve recovery facts as native observations, never inferred readiness",
+          "find": "  reply->known_source_target_mixture = snapshot.known_source_target_mixture;",
+          "replace": "  reply->known_source_target_mixture = snapshot.known_source_target_mixture;\n  reply->recovery_cache_prepared = snapshot.recovery_cache_prepared;\n  reply->recovery_original_restored = snapshot.recovery_original_restored;",
+          "count": 1
+        },
+        {
+          "name": "Serialize actual native cache adoption/restoration reports",
+          "find": "      cached->namespace_id = std::move(view.namespace_id);",
+          "replace": "      cached->namespace_id = std::move(view.namespace_id);\n      cached->recovery_prepared = view.recovery_prepared;\n      cached->recovery_restored = view.recovery_restored;",
+          "count": 1
+        },
+        {
+          "name": "Validate bounded journal facts without accepting cache/document/readiness payloads",
+          "find": "}  // namespace\n\nvoid SessionStorageImpl::BeginAuxUiPreferenceLease(",
+          "replace": "\nbool IsAuxRecoveryDigest(std::string_view value, bool allow_empty = false) {\n  return (allow_empty && value.empty()) || (value.size() == 64 &&\n      std::ranges::all_of(value, [](char byte) {\n        return (byte >= '0' && byte <= '9') || (byte >= 'a' && byte <= 'f');\n      }));\n}\nbool ParseAuxRecoveryTime(const std::optional<std::string>& encoded,\n                          std::optional<base::Time>* output) {\n  if (!encoded) return true;\n  int64_t value = 0;\n  if (encoded->size() > 20 || !base::StringToInt64(*encoded, &value) ||\n      base::NumberToString(value) != *encoded) return false;\n  const auto time = base::Time::FromDeltaSinceWindowsEpoch(base::Microseconds(value));\n  if (time.ToDeltaSinceWindowsEpoch().InMicroseconds() != value) return false;\n  *output = time;\n  return true;\n}\nbool ConvertAuxDomRecovery(mojom::AuxUiDomRecoveryDescriptorPtr input,\n                           AsyncDomStorageDatabase::AuxUiSnapshot* output) {\n  if (!input || input->maps.size() > 256 ||\n      !IsAuxRecoveryDigest(input->source_topology_sha256) ||\n      !IsAuxRecoveryDigest(input->target_topology_sha256, true) ||\n      !IsAuxRecoveryDigest(input->allocation_action_sha256, true)) return false;\n  AsyncDomStorageDatabase::AuxUiSnapshot recorded;\n  recorded.source_topology_sha256 = std::move(input->source_topology_sha256);\n  recorded.target_topology_sha256 = std::move(input->target_topology_sha256);\n  recorded.allocation_action_sha256 = std::move(input->allocation_action_sha256);\n  recorded.target_attempted = input->target_attempted;\n  size_t bytes = 0, entries = 0;\n  constexpr size_t kBytes = 16 * 1024 * 1024, kEntries = 65536;\n  const auto consume_bytes = [&](size_t size) {\n    if (size > kBytes - bytes) return false;\n    bytes += size; return true;\n  };\n  const auto convert_entries = [&](auto input_entries, auto* output_entries) {\n    if (input_entries.size() > kEntries - entries) return false;\n    entries += input_entries.size();\n    for (auto& entry : input_entries) {\n      if (!entry || !consume_bytes(entry->key.size()) || !consume_bytes(entry->value.size()) ||\n          !output_entries->emplace(std::move(entry->key), std::move(entry->value)).second)\n        return false;\n    }\n    return true;\n  };\n  for (auto& row : input->maps) {\n    if (!row || row->map_ordinal != recorded.maps.size() || row->session_ids.size() > 256 ||\n        !IsAuxRecoveryDigest(row->source_map_sha256) ||\n        !IsAuxRecoveryDigest(row->target_map_sha256, true) ||\n        !IsAuxRecoveryDigest(row->allocation_action_sha256, true) ||\n        row->storage_key.Serialize().size() > 4096) return false;\n    std::set<std::string> namespaces;\n    for (const auto& id : row->session_ids)\n      if (id.size() > 4096 || !consume_bytes(id.size()) || !namespaces.insert(id).second)\n        return false;\n    AsyncDomStorageDatabase::AuxUiMapSnapshot map;\n    map.storage_key = std::move(row->storage_key);\n    map.session_ids = std::move(row->session_ids);\n    map.map_ordinal = row->map_ordinal;\n    map.map_id = row->map_id;\n    map.source_persisted = row->source_persisted;\n    map.source_map_sha256 = std::move(row->source_map_sha256);\n    map.target_map_sha256 = std::move(row->target_map_sha256);\n    map.allocation_requested = row->allocation_requested;\n    map.allocation_action_sha256 = std::move(row->allocation_action_sha256);\n    map.allocated_map_id = row->allocated_map_id;\n    map.allocation_observed = row->allocation_observed;\n    if (!ParseAuxRecoveryTime(row->source_last_accessed_us, &map.source_last_accessed) ||\n        !ParseAuxRecoveryTime(row->source_last_modified_us, &map.source_last_modified)) return false;\n    if (row->source_total_size_bytes) {\n      uint64_t size = 0;\n      if (row->source_total_size_bytes->size() > 20 ||\n          !base::StringToUint64(*row->source_total_size_bytes, &size) ||\n          base::NumberToString(size) != *row->source_total_size_bytes) return false;\n      map.source_total_size = base::ByteSize(size);\n    }\n    if (!convert_entries(std::move(row->source_entries), &map.source) ||\n        !convert_entries(std::move(row->target_entries), &map.target)) return false;\n    // Leave all cache/docs/readiness flags at native defaults. Only the actual\n    // held owner may join these facts to its retained current map inventory.\n    recorded.maps.push_back(std::move(map));\n  }\n  *output = std::move(recorded);\n  return true;\n}\n}  // namespace\n\nvoid SessionStorageImpl::BeginAuxUiPreferenceLease(",
+          "count": 1
+        },
+        {
+          "name": "Dispatch actual dedicated backend recovery operations, preserving callback ownership",
+          "find": "    case AuxUiOperation::kPublish: database_->PublishAuxUiMigrationLease(*aux_ui_lease_, std::move(completed)); return;",
+          "replace": "    case AuxUiOperation::kPublish: database_->PublishAuxUiMigrationLease(*aux_ui_lease_, std::move(completed)); return;\n    case AuxUiOperation::kRecoveryPrepare: database_->PrepareAuxUiMigrationRecoveryCaches(*aux_ui_lease_, std::move(completed)); return;\n    case AuxUiOperation::kRecoveryRead: database_->ReadAuxUiMigrationRecovery(*aux_ui_lease_, std::move(completed)); return;\n    case AuxUiOperation::kRecoveryRestore: database_->RestoreAuxUiMigrationRecovery(*aux_ui_lease_, std::move(completed)); return;",
+          "count": 1
+        },
+        {
+          "name": "Reach real recovery from the concrete generated control entry, without rebinding stores",
+          "find": "\nvoid SessionStorageImpl::StageAuxUiPreferenceTargets(",
+          "replace": "\nvoid SessionStorageImpl::RequalifyAuxUiPreferenceLease(\n    const base::UnguessableToken& request_id, const base::UnguessableToken& token,\n    mojom::AuxUiDomRecoveryDescriptorPtr recorded, RequalifyAuxUiPreferenceLeaseCallback callback) {\n  AsyncDomStorageDatabase::AuxUiSnapshot converted;\n  if (!OwnsAuxUiLease(request_id, token, aux_ui_generation_) || aux_ui_release_pending_ ||\n      !ConvertAuxDomRecovery(std::move(recorded), &converted)) {\n    std::move(callback).Run(AuxDomLeaseFailure(aux_ui_request_, aux_ui_lease_.get(),\n        \"Exact fresh native lease and bounded original journal facts required\"));\n    return;\n  }\n  database_->RequalifyAuxUiMigrationLease(*aux_ui_lease_, std::move(converted),\n      base::BindOnce(&SessionStorageImpl::CompleteAuxUiOperation, weak_ptr_factory_.GetWeakPtr(),\n          request_id, token, aux_ui_generation_, std::move(callback)));\n}\n\nvoid SessionStorageImpl::PrepareAuxUiPreferenceRecoveryCaches(const base::UnguessableToken& request_id,\n    const base::UnguessableToken& token, PrepareAuxUiPreferenceRecoveryCachesCallback callback) {\n  RunAuxUiOperation(request_id, token, AuxUiOperation::kRecoveryPrepare, std::move(callback));\n}\n\nvoid SessionStorageImpl::ReadAuxUiPreferenceRecovery(const base::UnguessableToken& request_id,\n    const base::UnguessableToken& token, ReadAuxUiPreferenceRecoveryCallback callback) {\n  RunAuxUiOperation(request_id, token, AuxUiOperation::kRecoveryRead, std::move(callback));\n}\n\nvoid SessionStorageImpl::RestoreAuxUiPreferenceRecovery(const base::UnguessableToken& request_id,\n    const base::UnguessableToken& token, RestoreAuxUiPreferenceRecoveryCallback callback) {\n  RunAuxUiOperation(request_id, token, AuxUiOperation::kRecoveryRestore, std::move(callback));\n}\n\nvoid SessionStorageImpl::StageAuxUiPreferenceTargets(",
+          "count": 1
+        }
+      ]
+    }
+  ],
+  "nativeMutation": false,
+  "compilerRun": false,
+  "runtimeAcceptance": false
+}

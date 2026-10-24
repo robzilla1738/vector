@@ -1,0 +1,485 @@
+--- a/components/services/storage/public/mojom/local_storage_control.mojom
++++ b/components/services/storage/public/mojom/local_storage_control.mojom
+@@ -18,6 +18,8 @@
+   // Observer data is factual until joined to the actual native document.
+   // Its private cache-control token is never exported by this service.
+   blink.mojom.AuxUiCacheReply cache;
++  bool recovery_prepared;
++  bool recovery_restored;
+ };
+ struct AuxUiDomMapSnapshot {
+   blink.mojom.StorageKey storage_key;
+@@ -44,6 +46,35 @@
+   // Ordinal only selects a map captured by this exact existing backend lease.
+   uint32 map_ordinal;
+   array<blink.mojom.KeyValue> desired_selected_entries;
++};
++// Data from an actual verified native journal only. These fields neither select
++// an actor nor grant authority; the service joins every row to its held backend.
++// Cache views/documents, readiness and arbitrary roots are deliberately absent.
++struct AuxUiDomRecoveryMap {
++  blink.mojom.StorageKey storage_key;
++  array<string> session_ids;
++  uint32 map_ordinal;
++  int64? map_id;
++  bool source_persisted;
++  array<blink.mojom.KeyValue> source_entries;
++  array<blink.mojom.KeyValue> target_entries;
++  string source_map_sha256;
++  string target_map_sha256;
++  bool allocation_requested;
++  string allocation_action_sha256;
++  int64? allocated_map_id;
++  bool allocation_observed;
++  string? source_last_accessed_us;
++  string? source_last_modified_us;
++  string? source_total_size_bytes;
++};
++struct AuxUiDomRecoveryDescriptor {
++  array<AuxUiDomRecoveryMap> maps;
++  string source_topology_sha256;
++  string target_topology_sha256;
++  string allocation_action_sha256;
++  // Historical physical-attempt data, never a request to perform that write.
++  bool target_attempted;
+ };
+ struct AuxUiDomLeaseReply {
+   bool ok;
+@@ -70,6 +101,8 @@
+   string allocation_action_sha256;
+   // Actual complete per-map source/target mixture; never a readiness grant.
+   bool known_source_target_mixture;
++  bool recovery_cache_prepared;
++  bool recovery_original_restored;
+ };
+ 
+ // Controls the state of Local Storage within a partition. This is a privileged
+@@ -147,5 +180,22 @@
+   PublishAuxUiPreferenceLease(mojo_base.mojom.UnguessableToken request_id,
+                              mojo_base.mojom.UnguessableToken token)
+       => (AuxUiDomLeaseReply reply);
+-
+-};
++  // Privileged actual verified-journal controller only. Uses the exact fresh
++  // native-held lease; descriptor bytes cannot supply authority or readiness.
++  RequalifyAuxUiPreferenceLease(mojo_base.mojom.UnguessableToken request_id,
++                               mojo_base.mojom.UnguessableToken token,
++                               AuxUiDomRecoveryDescriptor recorded)
++      => (AuxUiDomLeaseReply reply);
++  PrepareAuxUiPreferenceRecoveryCaches(mojo_base.mojom.UnguessableToken request_id,
++                                      mojo_base.mojom.UnguessableToken token)
++      => (AuxUiDomLeaseReply reply);
++  ReadAuxUiPreferenceRecovery(mojo_base.mojom.UnguessableToken request_id,
++                             mojo_base.mojom.UnguessableToken token)
++      => (AuxUiDomLeaseReply reply);
++  // Caller first records actual immutable native recovery intent. This method
++  // only reaches that same lease's distinct original-source restoration API.
++  RestoreAuxUiPreferenceRecovery(mojo_base.mojom.UnguessableToken request_id,
++                                mojo_base.mojom.UnguessableToken token)
++      => (AuxUiDomLeaseReply reply);
++
++};
+--- a/components/services/storage/public/mojom/session_storage_control.mojom
++++ b/components/services/storage/public/mojom/session_storage_control.mojom
+@@ -131,5 +131,22 @@
+   PublishAuxUiPreferenceLease(mojo_base.mojom.UnguessableToken request_id,
+                              mojo_base.mojom.UnguessableToken token)
+       => (AuxUiDomLeaseReply reply);
++  // Privileged actual verified-journal controller only. Uses the exact fresh
++  // native-held lease; descriptor bytes cannot supply authority or readiness.
++  RequalifyAuxUiPreferenceLease(mojo_base.mojom.UnguessableToken request_id,
++                               mojo_base.mojom.UnguessableToken token,
++                               AuxUiDomRecoveryDescriptor recorded)
++      => (AuxUiDomLeaseReply reply);
++  PrepareAuxUiPreferenceRecoveryCaches(mojo_base.mojom.UnguessableToken request_id,
++                                      mojo_base.mojom.UnguessableToken token)
++      => (AuxUiDomLeaseReply reply);
++  ReadAuxUiPreferenceRecovery(mojo_base.mojom.UnguessableToken request_id,
++                             mojo_base.mojom.UnguessableToken token)
++      => (AuxUiDomLeaseReply reply);
++  // Caller first records actual immutable native recovery intent. This method
++  // only reaches that same lease's distinct original-source restoration API.
++  RestoreAuxUiPreferenceRecovery(mojo_base.mojom.UnguessableToken request_id,
++                                mojo_base.mojom.UnguessableToken token)
++      => (AuxUiDomLeaseReply reply);
+ 
+ };
+--- a/components/services/storage/dom_storage/local_storage_impl.h
++++ b/components/services/storage/dom_storage/local_storage_impl.h
+@@ -99,6 +99,13 @@
+   void CommitAuxUiPreferenceLease(const base::UnguessableToken& request_id, const base::UnguessableToken& token, CommitAuxUiPreferenceLeaseCallback callback) override;
+   void RestoreAuxUiPreferenceLease(const base::UnguessableToken& request_id, const base::UnguessableToken& token, RestoreAuxUiPreferenceLeaseCallback callback) override;
+   void PublishAuxUiPreferenceLease(const base::UnguessableToken& request_id, const base::UnguessableToken& token, PublishAuxUiPreferenceLeaseCallback callback) override;
++  void RequalifyAuxUiPreferenceLease(const base::UnguessableToken& request_id,
++      const base::UnguessableToken& token, mojom::AuxUiDomRecoveryDescriptorPtr recorded,
++      RequalifyAuxUiPreferenceLeaseCallback callback) override;
++  void PrepareAuxUiPreferenceRecoveryCaches(const base::UnguessableToken& request_id, const base::UnguessableToken& token, PrepareAuxUiPreferenceRecoveryCachesCallback callback) override;
++  void ReadAuxUiPreferenceRecovery(const base::UnguessableToken& request_id, const base::UnguessableToken& token, ReadAuxUiPreferenceRecoveryCallback callback) override;
++  void RestoreAuxUiPreferenceRecovery(const base::UnguessableToken& request_id, const base::UnguessableToken& token, RestoreAuxUiPreferenceRecoveryCallback callback) override;
++
+   void ReleaseAuxUiPreferenceLease(const base::UnguessableToken& request_id, const base::UnguessableToken& token, ReleaseAuxUiPreferenceLeaseCallback callback) override;
+ 
+ 
+@@ -230,7 +237,8 @@
+   // `~StorageAreaHolder()`.
+   std::map<blink::StorageKey, std::unique_ptr<StorageAreaHolder>> areas_;
+ 
+-  enum class AuxUiOperation { kRead, kValidate, kCommit, kRestore, kPublish };
++  enum class AuxUiOperation { kRead, kValidate, kCommit, kRestore, kPublish,
++                              kRecoveryPrepare, kRecoveryRead, kRecoveryRestore };
+   using AuxUiReplyCallback = base::OnceCallback<void(mojom::AuxUiDomLeaseReplyPtr)>;
+   bool OwnsAuxUiLease(const base::UnguessableToken&, const base::UnguessableToken&, uint64_t generation) const;
+   void RunAuxUiOperation(const base::UnguessableToken&, const base::UnguessableToken&, AuxUiOperation, AuxUiReplyCallback);
+--- a/components/services/storage/dom_storage/local_storage_impl.cc
++++ b/components/services/storage/dom_storage/local_storage_impl.cc
+@@ -337,6 +337,8 @@
+   reply->target_topology_sha256 = std::move(snapshot.target_topology_sha256);
+   reply->allocation_action_sha256 = std::move(snapshot.allocation_action_sha256);
+   reply->known_source_target_mixture = snapshot.known_source_target_mixture;
++  reply->recovery_cache_prepared = snapshot.recovery_cache_prepared;
++  reply->recovery_original_restored = snapshot.recovery_original_restored;
+   for (auto& map : snapshot.maps) {
+     auto output = mojom::AuxUiDomMapSnapshot::New();
+     output->storage_key = std::move(map.storage_key);
+@@ -365,6 +367,8 @@
+     for (auto& view : map.cache_views) {
+       auto cached = mojom::AuxUiDomCacheView::New();
+       cached->namespace_id = std::move(view.namespace_id);
++      cached->recovery_prepared = view.recovery_prepared;
++      cached->recovery_restored = view.recovery_restored;
+       cached->cache = blink::mojom::AuxUiCacheReply::New();
+       cached->cache->ok = reply->ok;
+       cached->cache->held = true;
+@@ -406,6 +410,91 @@
+     converted.push_back(std::move(target));
+   }
+   *output = std::move(converted);
++  return true;
++}
++
++bool IsAuxRecoveryDigest(std::string_view value, bool allow_empty = false) {
++  return (allow_empty && value.empty()) || (value.size() == 64 &&
++      std::ranges::all_of(value, [](char byte) {
++        return (byte >= '0' && byte <= '9') || (byte >= 'a' && byte <= 'f');
++      }));
++}
++bool ParseAuxRecoveryTime(const std::optional<std::string>& encoded,
++                          std::optional<base::Time>* output) {
++  if (!encoded) return true;
++  int64_t value = 0;
++  if (encoded->size() > 20 || !base::StringToInt64(*encoded, &value) ||
++      base::NumberToString(value) != *encoded) return false;
++  const auto time = base::Time::FromDeltaSinceWindowsEpoch(base::Microseconds(value));
++  if (time.ToDeltaSinceWindowsEpoch().InMicroseconds() != value) return false;
++  *output = time;
++  return true;
++}
++bool ConvertAuxDomRecovery(mojom::AuxUiDomRecoveryDescriptorPtr input,
++                           AsyncDomStorageDatabase::AuxUiSnapshot* output) {
++  if (!input || input->maps.size() > 256 ||
++      !IsAuxRecoveryDigest(input->source_topology_sha256) ||
++      !IsAuxRecoveryDigest(input->target_topology_sha256, true) ||
++      !IsAuxRecoveryDigest(input->allocation_action_sha256, true)) return false;
++  AsyncDomStorageDatabase::AuxUiSnapshot recorded;
++  recorded.source_topology_sha256 = std::move(input->source_topology_sha256);
++  recorded.target_topology_sha256 = std::move(input->target_topology_sha256);
++  recorded.allocation_action_sha256 = std::move(input->allocation_action_sha256);
++  recorded.target_attempted = input->target_attempted;
++  size_t bytes = 0, entries = 0;
++  constexpr size_t kBytes = 16 * 1024 * 1024, kEntries = 65536;
++  const auto consume_bytes = [&](size_t size) {
++    if (size > kBytes - bytes) return false;
++    bytes += size; return true;
++  };
++  const auto convert_entries = [&](auto input_entries, auto* output_entries) {
++    if (input_entries.size() > kEntries - entries) return false;
++    entries += input_entries.size();
++    for (auto& entry : input_entries) {
++      if (!entry || !consume_bytes(entry->key.size()) || !consume_bytes(entry->value.size()) ||
++          !output_entries->emplace(std::move(entry->key), std::move(entry->value)).second)
++        return false;
++    }
++    return true;
++  };
++  for (auto& row : input->maps) {
++    if (!row || row->map_ordinal != recorded.maps.size() || row->session_ids.size() > 256 ||
++        !IsAuxRecoveryDigest(row->source_map_sha256) ||
++        !IsAuxRecoveryDigest(row->target_map_sha256, true) ||
++        !IsAuxRecoveryDigest(row->allocation_action_sha256, true) ||
++        row->storage_key.Serialize().size() > 4096) return false;
++    std::set<std::string> namespaces;
++    for (const auto& id : row->session_ids)
++      if (id.size() > 4096 || !consume_bytes(id.size()) || !namespaces.insert(id).second)
++        return false;
++    AsyncDomStorageDatabase::AuxUiMapSnapshot map;
++    map.storage_key = std::move(row->storage_key);
++    map.session_ids = std::move(row->session_ids);
++    map.map_ordinal = row->map_ordinal;
++    map.map_id = row->map_id;
++    map.source_persisted = row->source_persisted;
++    map.source_map_sha256 = std::move(row->source_map_sha256);
++    map.target_map_sha256 = std::move(row->target_map_sha256);
++    map.allocation_requested = row->allocation_requested;
++    map.allocation_action_sha256 = std::move(row->allocation_action_sha256);
++    map.allocated_map_id = row->allocated_map_id;
++    map.allocation_observed = row->allocation_observed;
++    if (!ParseAuxRecoveryTime(row->source_last_accessed_us, &map.source_last_accessed) ||
++        !ParseAuxRecoveryTime(row->source_last_modified_us, &map.source_last_modified)) return false;
++    if (row->source_total_size_bytes) {
++      uint64_t size = 0;
++      if (row->source_total_size_bytes->size() > 20 ||
++          !base::StringToUint64(*row->source_total_size_bytes, &size) ||
++          base::NumberToString(size) != *row->source_total_size_bytes) return false;
++      map.source_total_size = base::ByteSize(size);
++    }
++    if (!convert_entries(std::move(row->source_entries), &map.source) ||
++        !convert_entries(std::move(row->target_entries), &map.target)) return false;
++    // Leave all cache/docs/readiness flags at native defaults. Only the actual
++    // held owner may join these facts to its retained current map inventory.
++    recorded.maps.push_back(std::move(map));
++  }
++  *output = std::move(recorded);
+   return true;
+ }
+ }  // namespace
+@@ -511,6 +600,9 @@
+     case AuxUiOperation::kCommit: database_->CommitAuxUiMigrationLease(*aux_ui_lease_, std::move(completed)); return;
+     case AuxUiOperation::kRestore: database_->RestoreAuxUiMigrationLease(*aux_ui_lease_, std::move(completed)); return;
+     case AuxUiOperation::kPublish: database_->PublishAuxUiMigrationLease(*aux_ui_lease_, std::move(completed)); return;
++    case AuxUiOperation::kRecoveryPrepare: database_->PrepareAuxUiMigrationRecoveryCaches(*aux_ui_lease_, std::move(completed)); return;
++    case AuxUiOperation::kRecoveryRead: database_->ReadAuxUiMigrationRecovery(*aux_ui_lease_, std::move(completed)); return;
++    case AuxUiOperation::kRecoveryRestore: database_->RestoreAuxUiMigrationRecovery(*aux_ui_lease_, std::move(completed)); return;
+   }
+ }
+ void LocalStorageImpl::ReadAuxUiPreferenceLease(const base::UnguessableToken& request_id, ReadAuxUiPreferenceLeaseCallback callback) {
+@@ -538,6 +630,36 @@
+ void LocalStorageImpl::PublishAuxUiPreferenceLease(const base::UnguessableToken& request_id, const base::UnguessableToken& token, PublishAuxUiPreferenceLeaseCallback callback) {
+   RunAuxUiOperation(request_id, token, AuxUiOperation::kPublish, std::move(callback));
+ }
++void LocalStorageImpl::RequalifyAuxUiPreferenceLease(
++    const base::UnguessableToken& request_id, const base::UnguessableToken& token,
++    mojom::AuxUiDomRecoveryDescriptorPtr recorded, RequalifyAuxUiPreferenceLeaseCallback callback) {
++  AsyncDomStorageDatabase::AuxUiSnapshot converted;
++  if (!OwnsAuxUiLease(request_id, token, aux_ui_generation_) || aux_ui_release_pending_ ||
++      !ConvertAuxDomRecovery(std::move(recorded), &converted)) {
++    std::move(callback).Run(AuxDomLeaseFailure(aux_ui_request_, aux_ui_lease_.get(),
++        "Exact fresh native lease and bounded original journal facts required"));
++    return;
++  }
++  database_->RequalifyAuxUiMigrationLease(*aux_ui_lease_, std::move(converted),
++      base::BindOnce(&LocalStorageImpl::CompleteAuxUiOperation, weak_ptr_factory_.GetWeakPtr(),
++          request_id, token, aux_ui_generation_, std::move(callback)));
++}
++
++void LocalStorageImpl::PrepareAuxUiPreferenceRecoveryCaches(const base::UnguessableToken& request_id,
++    const base::UnguessableToken& token, PrepareAuxUiPreferenceRecoveryCachesCallback callback) {
++  RunAuxUiOperation(request_id, token, AuxUiOperation::kRecoveryPrepare, std::move(callback));
++}
++
++void LocalStorageImpl::ReadAuxUiPreferenceRecovery(const base::UnguessableToken& request_id,
++    const base::UnguessableToken& token, ReadAuxUiPreferenceRecoveryCallback callback) {
++  RunAuxUiOperation(request_id, token, AuxUiOperation::kRecoveryRead, std::move(callback));
++}
++
++void LocalStorageImpl::RestoreAuxUiPreferenceRecovery(const base::UnguessableToken& request_id,
++    const base::UnguessableToken& token, RestoreAuxUiPreferenceRecoveryCallback callback) {
++  RunAuxUiOperation(request_id, token, AuxUiOperation::kRecoveryRestore, std::move(callback));
++}
++
+ void LocalStorageImpl::StageAuxUiPreferenceTargets(
+     const base::UnguessableToken& request_id, const base::UnguessableToken& token,
+     std::vector<mojom::AuxUiDomTargetMapPtr> targets,
+--- a/components/services/storage/dom_storage/session_storage_impl.h
++++ b/components/services/storage/dom_storage/session_storage_impl.h
+@@ -98,6 +98,13 @@
+   void CommitAuxUiPreferenceLease(const base::UnguessableToken& request_id, const base::UnguessableToken& token, CommitAuxUiPreferenceLeaseCallback callback) override;
+   void RestoreAuxUiPreferenceLease(const base::UnguessableToken& request_id, const base::UnguessableToken& token, RestoreAuxUiPreferenceLeaseCallback callback) override;
+   void PublishAuxUiPreferenceLease(const base::UnguessableToken& request_id, const base::UnguessableToken& token, PublishAuxUiPreferenceLeaseCallback callback) override;
++  void RequalifyAuxUiPreferenceLease(const base::UnguessableToken& request_id,
++      const base::UnguessableToken& token, mojom::AuxUiDomRecoveryDescriptorPtr recorded,
++      RequalifyAuxUiPreferenceLeaseCallback callback) override;
++  void PrepareAuxUiPreferenceRecoveryCaches(const base::UnguessableToken& request_id, const base::UnguessableToken& token, PrepareAuxUiPreferenceRecoveryCachesCallback callback) override;
++  void ReadAuxUiPreferenceRecovery(const base::UnguessableToken& request_id, const base::UnguessableToken& token, ReadAuxUiPreferenceRecoveryCallback callback) override;
++  void RestoreAuxUiPreferenceRecovery(const base::UnguessableToken& request_id, const base::UnguessableToken& token, RestoreAuxUiPreferenceRecoveryCallback callback) override;
++
+   void ReleaseAuxUiPreferenceLease(const base::UnguessableToken& request_id, const base::UnguessableToken& token, ReleaseAuxUiPreferenceLeaseCallback callback) override;
+ 
+ 
+@@ -262,7 +269,8 @@
+   // DeleteAndRecreateDatabase() and consumed in OnConnectionFinished().
+   std::optional<DomStorageRecoveryState> recovery_state_;
+ 
+-  enum class AuxUiOperation { kRead, kValidate, kCommit, kRestore, kPublish };
++  enum class AuxUiOperation { kRead, kValidate, kCommit, kRestore, kPublish,
++                              kRecoveryPrepare, kRecoveryRead, kRecoveryRestore };
+   using AuxUiReplyCallback = base::OnceCallback<void(mojom::AuxUiDomLeaseReplyPtr)>;
+   bool OwnsAuxUiLease(const base::UnguessableToken&, const base::UnguessableToken&, uint64_t generation) const;
+   void RunAuxUiOperation(const base::UnguessableToken&, const base::UnguessableToken&, AuxUiOperation, AuxUiReplyCallback);
+--- a/components/services/storage/dom_storage/session_storage_impl.cc
++++ b/components/services/storage/dom_storage/session_storage_impl.cc
+@@ -7,6 +7,8 @@
+ 
+ #include <inttypes.h>
+ 
++#include <algorithm>
++#include <string_view>
+ #include <utility>
+ #include <limits>
+ #include <set>
+@@ -323,6 +325,8 @@
+   reply->target_topology_sha256 = std::move(snapshot.target_topology_sha256);
+   reply->allocation_action_sha256 = std::move(snapshot.allocation_action_sha256);
+   reply->known_source_target_mixture = snapshot.known_source_target_mixture;
++  reply->recovery_cache_prepared = snapshot.recovery_cache_prepared;
++  reply->recovery_original_restored = snapshot.recovery_original_restored;
+   for (auto& map : snapshot.maps) {
+     auto output = mojom::AuxUiDomMapSnapshot::New();
+     output->storage_key = std::move(map.storage_key);
+@@ -351,6 +355,8 @@
+     for (auto& view : map.cache_views) {
+       auto cached = mojom::AuxUiDomCacheView::New();
+       cached->namespace_id = std::move(view.namespace_id);
++      cached->recovery_prepared = view.recovery_prepared;
++      cached->recovery_restored = view.recovery_restored;
+       cached->cache = blink::mojom::AuxUiCacheReply::New();
+       cached->cache->ok = reply->ok;
+       cached->cache->held = true;
+@@ -392,6 +398,91 @@
+     converted.push_back(std::move(target));
+   }
+   *output = std::move(converted);
++  return true;
++}
++
++bool IsAuxRecoveryDigest(std::string_view value, bool allow_empty = false) {
++  return (allow_empty && value.empty()) || (value.size() == 64 &&
++      std::ranges::all_of(value, [](char byte) {
++        return (byte >= '0' && byte <= '9') || (byte >= 'a' && byte <= 'f');
++      }));
++}
++bool ParseAuxRecoveryTime(const std::optional<std::string>& encoded,
++                          std::optional<base::Time>* output) {
++  if (!encoded) return true;
++  int64_t value = 0;
++  if (encoded->size() > 20 || !base::StringToInt64(*encoded, &value) ||
++      base::NumberToString(value) != *encoded) return false;
++  const auto time = base::Time::FromDeltaSinceWindowsEpoch(base::Microseconds(value));
++  if (time.ToDeltaSinceWindowsEpoch().InMicroseconds() != value) return false;
++  *output = time;
++  return true;
++}
++bool ConvertAuxDomRecovery(mojom::AuxUiDomRecoveryDescriptorPtr input,
++                           AsyncDomStorageDatabase::AuxUiSnapshot* output) {
++  if (!input || input->maps.size() > 256 ||
++      !IsAuxRecoveryDigest(input->source_topology_sha256) ||
++      !IsAuxRecoveryDigest(input->target_topology_sha256, true) ||
++      !IsAuxRecoveryDigest(input->allocation_action_sha256, true)) return false;
++  AsyncDomStorageDatabase::AuxUiSnapshot recorded;
++  recorded.source_topology_sha256 = std::move(input->source_topology_sha256);
++  recorded.target_topology_sha256 = std::move(input->target_topology_sha256);
++  recorded.allocation_action_sha256 = std::move(input->allocation_action_sha256);
++  recorded.target_attempted = input->target_attempted;
++  size_t bytes = 0, entries = 0;
++  constexpr size_t kBytes = 16 * 1024 * 1024, kEntries = 65536;
++  const auto consume_bytes = [&](size_t size) {
++    if (size > kBytes - bytes) return false;
++    bytes += size; return true;
++  };
++  const auto convert_entries = [&](auto input_entries, auto* output_entries) {
++    if (input_entries.size() > kEntries - entries) return false;
++    entries += input_entries.size();
++    for (auto& entry : input_entries) {
++      if (!entry || !consume_bytes(entry->key.size()) || !consume_bytes(entry->value.size()) ||
++          !output_entries->emplace(std::move(entry->key), std::move(entry->value)).second)
++        return false;
++    }
++    return true;
++  };
++  for (auto& row : input->maps) {
++    if (!row || row->map_ordinal != recorded.maps.size() || row->session_ids.size() > 256 ||
++        !IsAuxRecoveryDigest(row->source_map_sha256) ||
++        !IsAuxRecoveryDigest(row->target_map_sha256, true) ||
++        !IsAuxRecoveryDigest(row->allocation_action_sha256, true) ||
++        row->storage_key.Serialize().size() > 4096) return false;
++    std::set<std::string> namespaces;
++    for (const auto& id : row->session_ids)
++      if (id.size() > 4096 || !consume_bytes(id.size()) || !namespaces.insert(id).second)
++        return false;
++    AsyncDomStorageDatabase::AuxUiMapSnapshot map;
++    map.storage_key = std::move(row->storage_key);
++    map.session_ids = std::move(row->session_ids);
++    map.map_ordinal = row->map_ordinal;
++    map.map_id = row->map_id;
++    map.source_persisted = row->source_persisted;
++    map.source_map_sha256 = std::move(row->source_map_sha256);
++    map.target_map_sha256 = std::move(row->target_map_sha256);
++    map.allocation_requested = row->allocation_requested;
++    map.allocation_action_sha256 = std::move(row->allocation_action_sha256);
++    map.allocated_map_id = row->allocated_map_id;
++    map.allocation_observed = row->allocation_observed;
++    if (!ParseAuxRecoveryTime(row->source_last_accessed_us, &map.source_last_accessed) ||
++        !ParseAuxRecoveryTime(row->source_last_modified_us, &map.source_last_modified)) return false;
++    if (row->source_total_size_bytes) {
++      uint64_t size = 0;
++      if (row->source_total_size_bytes->size() > 20 ||
++          !base::StringToUint64(*row->source_total_size_bytes, &size) ||
++          base::NumberToString(size) != *row->source_total_size_bytes) return false;
++      map.source_total_size = base::ByteSize(size);
++    }
++    if (!convert_entries(std::move(row->source_entries), &map.source) ||
++        !convert_entries(std::move(row->target_entries), &map.target)) return false;
++    // Leave all cache/docs/readiness flags at native defaults. Only the actual
++    // held owner may join these facts to its retained current map inventory.
++    recorded.maps.push_back(std::move(map));
++  }
++  *output = std::move(recorded);
+   return true;
+ }
+ }  // namespace
+@@ -530,6 +621,9 @@
+     case AuxUiOperation::kCommit: database_->CommitAuxUiMigrationLease(*aux_ui_lease_, std::move(completed)); return;
+     case AuxUiOperation::kRestore: database_->RestoreAuxUiMigrationLease(*aux_ui_lease_, std::move(completed)); return;
+     case AuxUiOperation::kPublish: database_->PublishAuxUiMigrationLease(*aux_ui_lease_, std::move(completed)); return;
++    case AuxUiOperation::kRecoveryPrepare: database_->PrepareAuxUiMigrationRecoveryCaches(*aux_ui_lease_, std::move(completed)); return;
++    case AuxUiOperation::kRecoveryRead: database_->ReadAuxUiMigrationRecovery(*aux_ui_lease_, std::move(completed)); return;
++    case AuxUiOperation::kRecoveryRestore: database_->RestoreAuxUiMigrationRecovery(*aux_ui_lease_, std::move(completed)); return;
+   }
+ }
+ void SessionStorageImpl::ReadAuxUiPreferenceLease(const base::UnguessableToken& request_id, ReadAuxUiPreferenceLeaseCallback callback) {
+@@ -557,6 +651,36 @@
+ void SessionStorageImpl::PublishAuxUiPreferenceLease(const base::UnguessableToken& request_id, const base::UnguessableToken& token, PublishAuxUiPreferenceLeaseCallback callback) {
+   RunAuxUiOperation(request_id, token, AuxUiOperation::kPublish, std::move(callback));
+ }
++void SessionStorageImpl::RequalifyAuxUiPreferenceLease(
++    const base::UnguessableToken& request_id, const base::UnguessableToken& token,
++    mojom::AuxUiDomRecoveryDescriptorPtr recorded, RequalifyAuxUiPreferenceLeaseCallback callback) {
++  AsyncDomStorageDatabase::AuxUiSnapshot converted;
++  if (!OwnsAuxUiLease(request_id, token, aux_ui_generation_) || aux_ui_release_pending_ ||
++      !ConvertAuxDomRecovery(std::move(recorded), &converted)) {
++    std::move(callback).Run(AuxDomLeaseFailure(aux_ui_request_, aux_ui_lease_.get(),
++        "Exact fresh native lease and bounded original journal facts required"));
++    return;
++  }
++  database_->RequalifyAuxUiMigrationLease(*aux_ui_lease_, std::move(converted),
++      base::BindOnce(&SessionStorageImpl::CompleteAuxUiOperation, weak_ptr_factory_.GetWeakPtr(),
++          request_id, token, aux_ui_generation_, std::move(callback)));
++}
++
++void SessionStorageImpl::PrepareAuxUiPreferenceRecoveryCaches(const base::UnguessableToken& request_id,
++    const base::UnguessableToken& token, PrepareAuxUiPreferenceRecoveryCachesCallback callback) {
++  RunAuxUiOperation(request_id, token, AuxUiOperation::kRecoveryPrepare, std::move(callback));
++}
++
++void SessionStorageImpl::ReadAuxUiPreferenceRecovery(const base::UnguessableToken& request_id,
++    const base::UnguessableToken& token, ReadAuxUiPreferenceRecoveryCallback callback) {
++  RunAuxUiOperation(request_id, token, AuxUiOperation::kRecoveryRead, std::move(callback));
++}
++
++void SessionStorageImpl::RestoreAuxUiPreferenceRecovery(const base::UnguessableToken& request_id,
++    const base::UnguessableToken& token, RestoreAuxUiPreferenceRecoveryCallback callback) {
++  RunAuxUiOperation(request_id, token, AuxUiOperation::kRecoveryRestore, std::move(callback));
++}
++
+ void SessionStorageImpl::StageAuxUiPreferenceTargets(
+     const base::UnguessableToken& request_id, const base::UnguessableToken& token,
+     std::vector<mojom::AuxUiDomTargetMapPtr> targets,

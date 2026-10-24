@@ -1,0 +1,13 @@
+{
+  "format": "aux.dom-control-recovery.compile.v1",
+  "rootMustGenerateBothControlMojoms": true,
+  "sourcePlan": "source-plan.json",
+  "actualOwners": [
+    "components/services/storage/dom_storage/local_storage_impl.cc",
+    "components/services/storage/dom_storage/session_storage_impl.cc"
+  ],
+  "pairedNativeHeaderRequired": "native-recovery-restoration-a19/source/components/services/storage/dom_storage/async_dom_storage_database.h",
+  "controllerProducerSeparate": true,
+  "nativeCompileRun": false,
+  "runtimeAcceptance": false
+}

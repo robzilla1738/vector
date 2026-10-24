@@ -1,0 +1,20 @@
+{
+  "format": "aux.dom-controls.recovery.static.v1",
+  "files": 6,
+  "countedAnchors": 20,
+  "patchReplay": true,
+  "patchReverse": true,
+  "descriptorExcludesCacheDocsReadinessRootsAndProfileSelectors": true,
+  "bounds": {
+    "maps": 256,
+    "rawSelectedBytesAndNamespaceBytes": 16777216,
+    "selectedEntries": 65536,
+    "namespaceCountPerMap": 256,
+    "namespaceOrSerializedStorageKeyBytes": 4096
+  },
+  "nullableDecimalMetadataCanonicalRoundtrip": true,
+  "allFourNativeApisReachableFromRealControlEntries": true,
+  "sameRequestTokenGenerationGuardsPreserved": true,
+  "nativeCompile": false,
+  "runtimeAcceptance": false
+}
