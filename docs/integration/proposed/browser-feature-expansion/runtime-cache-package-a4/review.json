@@ -38,11 +38,11 @@
       "sha256": "1f74499da0e59e03bf14af1efa3cf664ec6e5cbac118068c4c4de475dcd0c856"
     },
     "projection": {
-      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/async-daemon-projection-a2/actual-projection.json",
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/async-daemon-projection-research-v1/actual-projection.json",
       "sha256": null
     },
     "browserReceipt": {
-      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/unsigned-browser-features-full-build-20261023-a20/receipt.json",
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/unsigned-browser-features-full-build-20261023-a21/receipt.json",
       "sha256": null
     },
     "guardReview": {
@@ -60,6 +60,10 @@
     "linkToolAliases": {
       "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/runtime-cache-package-a4/link-tool-aliases.json",
       "sha256": "75ff23f4bcbc614394587ff29afef364672c15a9de9a12b69a882c310e7abec6"
+    },
+    "researchManifest": {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/research-v1/manifest.json",
+      "sha256": "fdff4549eb81825a52775fe800e20ccdc31a247b546198ea0147c45224087bbc"
     }
   },
   "relink": {
@@ -82,7 +86,7 @@
     "host": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/profile-isolation-local-finish/runtime-cache-async-relink-a3/source/AuxDevelopmentWorkerHost.cc"
   },
   "relinkStatus": "Retained exact a3 host/runner/plan references; reuse requires actual existing successful a3 receipts and unchanged frozen operands during new binding",
-  "expectedFeatureResourceDeltas": 14,
+  "expectedFeatureResourceDeltas": 16,
   "testable": false,
   "runtimeAuthorityGranted": false,
   "runtimeExecuted": false,
@@ -94,5 +98,55 @@
   "preparationOnly": true,
   "expectedProjectionOutput": "/private/tmp/aux-browser-features-async-daemon-20261023-a2",
   "expectedStagePair": "/Users/rcourson/Documents/Vibe/web/out/browser-feature-stage-pair-20261023-a5",
-  "expectedApp": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-browser-features-followup-20261023/Aux.app"
+  "expectedApp": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-browser-features-followup-20261023/Aux.app",
+  "expectedFeatureResourcePaths": [
+    "apps/cli/Aux CLI.app/Contents/MacOS/aux-cli-sea",
+    "apps/extension/dist/assets/appearance-C03x8vQf.js",
+    "apps/extension/dist/assets/appearance-Ceuw3-j6.js",
+    "apps/extension/dist/assets/ask-omnibox-panel-DkxXbN8c.js",
+    "apps/extension/dist/assets/browser-binding-CzDmxQNA.js",
+    "apps/extension/dist/assets/capture-result-nUfmrYC9.js",
+    "apps/extension/dist/assets/create-editor-B-Br5Wz9.js",
+    "apps/extension/dist/assets/general-3dgRbrRk.js",
+    "apps/extension/dist/assets/permission-approval-D-GTf91U.js",
+    "apps/extension/dist/assets/provider-Cw0zhujt.js",
+    "apps/extension/dist/assets/session-composer-Dc0LRfZA.js",
+    "apps/extension/dist/assets/tabsearch-3k_2hgil.js",
+    "apps/extension/dist/assets/use-shortcut-capture-DGr8Ws5Z.js",
+    "apps/extension/dist/assets/utils-Cl9zfMcr.js",
+    "apps/extension/dist/background.js",
+    "apps/extension/dist/manifest.json"
+  ],
+  "resourceDeltaReview": {
+    "predecessorRecipe": {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/runtime-cache-package-a3/prepared/feature-recipe.json",
+      "sha256": "a3935eb5367867e2df105558ca1dd54b5cc496dff7851890465e5aadf2b4cd8a"
+    },
+    "addedPaths": [
+      "apps/extension/dist/assets/session-composer-Dc0LRfZA.js",
+      "apps/extension/dist/assets/ask-omnibox-panel-DkxXbN8c.js"
+    ],
+    "finalStageDiffStillRequired": true,
+    "uiComposition": {
+      "path": "/private/tmp/aux-feature-ui-review-20261023-a5/composition.json",
+      "sha256": "51ec625bbcd3e1fc1a401e33c17c631dbf9dede24e720c41eb35d0631b712710"
+    },
+    "measuredChangedScriptPaths": [
+      "apps/extension/dist/assets/appearance-C03x8vQf.js",
+      "apps/extension/dist/assets/appearance-Ceuw3-j6.js",
+      "apps/extension/dist/assets/ask-omnibox-panel-DkxXbN8c.js",
+      "apps/extension/dist/assets/browser-binding-CzDmxQNA.js",
+      "apps/extension/dist/assets/capture-result-nUfmrYC9.js",
+      "apps/extension/dist/assets/create-editor-B-Br5Wz9.js",
+      "apps/extension/dist/assets/general-3dgRbrRk.js",
+      "apps/extension/dist/assets/permission-approval-D-GTf91U.js",
+      "apps/extension/dist/assets/provider-Cw0zhujt.js",
+      "apps/extension/dist/assets/session-composer-Dc0LRfZA.js",
+      "apps/extension/dist/assets/tabsearch-3k_2hgil.js",
+      "apps/extension/dist/assets/use-shortcut-capture-DGr8Ws5Z.js",
+      "apps/extension/dist/assets/utils-Cl9zfMcr.js",
+      "apps/extension/dist/background.js"
+    ],
+    "contextActionsPendingOnExistingTabsearchLeaf": true
+  }
 }

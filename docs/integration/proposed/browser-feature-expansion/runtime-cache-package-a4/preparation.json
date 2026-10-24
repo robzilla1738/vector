@@ -4,7 +4,9 @@
     "cache_package.py": {
       "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/runtime-cache-package-a3/cache_package.py",
       "sha256": "2cdf68130e0c095f50530db3dab696fe0585eb8d9745340f03b307ada01ec7d0",
-      "copiedByteIdentically": true
+      "copiedByteIdentically": false,
+      "successorSha256": "ad9e393e33ebc1229f391b3cf59513ea4fb8fe20740e6647172615f77575f33f",
+      "successorPatch": "research-successor.patch"
     },
     "bind_pair.py": {
       "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/runtime-cache-package-a3/bind_pair.py",
@@ -18,7 +20,7 @@
     }
   },
   "checks": {
-    "copiedToolsByteIdentical": true,
+    "copiedToolsByteIdentical": false,
     "pythonSourcesParsed": true,
     "unchangedReviewRefsMatch": [
       "featureTool",
@@ -34,13 +36,16 @@
       "guardPatch",
       "toolchainReview"
     ],
-    "retainedA3PlanRunnerHostPinsMatch": true
+    "retainedA3PlanRunnerHostPinsMatch": true,
+    "binderAndAliasByteIdentical": true,
+    "exactNamedResourceCountMeasured": 16,
+    "actualChangedScriptCountMeasured": 14,
+    "finalStageDiffPassed": false
   },
   "pendingInputs": [
     "projection",
     "browserReceipt"
   ],
-  "actualA20BuildChecked": false,
   "actualA2ProjectionChecked": false,
   "actualA3LinkRevalidated": false,
   "sourcePairCreated": false,
@@ -50,11 +55,13 @@
   "testable": false,
   "runtimeAuthorityGranted": false,
   "files": {
-    "README.md": "db20900d5f0b99e488c43e424269d14d8229cceff8e32f612dfa9b99136d5c97",
+    "README.md": "243ac637d154c324740e5675a91662cfe89df939a5bb6a5011ac21f2989ab329",
     "bind_pair.py": "cb79fa759ff13b6bec66cd924867002a031c21f8cd482303c22d5123cfdd8ba0",
-    "cache_package.py": "2cdf68130e0c095f50530db3dab696fe0585eb8d9745340f03b307ada01ec7d0",
-    "commands.json": "9afe254c53144c39d249642e470aa270c2b6828bab261372c7aea195468ea941",
+    "cache_package.py": "ad9e393e33ebc1229f391b3cf59513ea4fb8fe20740e6647172615f77575f33f",
+    "commands.json": "b208e8d4e826b11c7bf2f038b7f211c477a42db5eaab3d08e470450cea76be01",
     "link-tool-aliases.json": "75ff23f4bcbc614394587ff29afef364672c15a9de9a12b69a882c310e7abec6",
-    "review.json": "39aef05f54d026603a99a084f122733ad4694f54f66ee4b4084148ee4acdbee7"
-  }
+    "research-successor.patch": "74d51d4ce1c7703e870ebfd839704000f081a7409f57fbdd7d25003c49c46907",
+    "review.json": "79bc5cbc907bc1bca9a02aa17363c820a764c16678dcae3503e2962d71e729bc"
+  },
+  "actualA21BuildChecked": false
 }

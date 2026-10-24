@@ -13,7 +13,7 @@
     "--baseline-app",
     "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-final-local-completion-20261023/Aux.app",
     "--native-receipt",
-    "/private/tmp/aux-chromium-recovery-snapshot-20261023/unsigned-browser-features-full-build-20261023-a20/receipt.json",
+    "/private/tmp/aux-chromium-recovery-snapshot-20261023/unsigned-browser-features-full-build-20261023-a21/receipt.json",
     "--daemon-receipt",
     "/private/tmp/aux-runtime-cache-async-link-20261023-a3/results.json",
     "--source-pair",
@@ -84,5 +84,5 @@
     "verify",
     "assemble"
   ],
-  "prerequisite": "Freeze the actual successful a20 browser and actual a2 projection review pins first; complete a5 staging; preserve actual a3 native refs and every frozen operand."
+  "prerequisite": "Freeze the actual successful a21 browser and actual a2 projection review pins first; complete a5 staging; preserve actual a3 native refs and every frozen operand."
 }

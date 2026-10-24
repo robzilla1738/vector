@@ -1,0 +1,66 @@
+--- a/cache_package.py
++++ b/cache_package.py
+@@ -67,7 +67,49 @@
+     require(resolve(review['inputs']['featureTool']) == PACKAGE / 'feature_package.py', 'Original feature tool required')
+     require(resolve(review['inputs']['assembler']) == f.PACKAGE / 'assemble.py', 'Original assembler required')
+     require(resolve(review['inputs']['basePreparer']) == PACKAGE / 'prepare_base.py', 'Original base preparer required')
++    verify_research_projection(review)
+     return review
++
++
++def verify_research_projection(review):
++    # This successor permits only the fixed reviewed research stage after the
++    # immutable async adaptation; final leaves are no longer async intermediates.
++    manifest_path = resolve(review['inputs']['researchManifest'])
++    require(manifest_path == ROOT/'docs/integration/proposed/browser-feature-expansion/research-v1/manifest.json',
++            'Fixed research manifest required')
++    research = read(manifest_path)
++    expected = {item['kind']: item for item in research['daemonInputs']}
++    require(set(expected) == {'source', 'entry'} and len(research['daemonInputs']) == 2,
++            'Exact reviewed research leaves required')
++    projection = read(resolve(review['inputs']['projection']))
++    require(projection.get('passed') is True and projection.get('productExecuted') is False
++            and projection.get('runtimeAuthorityGranted') is False and projection.get('packaged') is False,
++            'Actual inactive research projection required')
++    output = Path(projection['output'])
++    require(str(output) == review['expectedProjectionOutput'], 'Exact fresh research output required')
++    composition_path = output/'composition.json'
++    m.pin(composition_path, projection['compositionSha256'])
++    composition = read(composition_path)
++    require(composition.get('researchManifest') == str(manifest_path)
++            and composition.get('researchManifestSha256') == m.sha(manifest_path),
++            'Research projection is not bound to reviewed implementation')
++    rows = {item['kind']: item for item in composition['files']}
++    require(set(rows) == {'source', 'entry'} and len(composition['files']) == 2,
++            'Exact independently composed leaves required')
++    for kind, item in rows.items():
++        stages = item['stages']
++        require([stage['kind'] for stage in stages] == ['features', 'async-runtime-inspection', 'research-v1'],
++                'Exact feature/async/research chain required')
++        async_stage, final_stage = stages[1:]
++        require(async_stage['afterSha256'] == expected[kind]['inputSha256']
++                and final_stage['beforeSha256'] == expected[kind]['inputSha256']
++                and final_stage['input'] == async_stage['output']
++                and final_stage['afterSha256'] == expected[kind]['outputSha256']
++                and item['afterSha256'] == expected[kind]['outputSha256']
++                and projection[kind+'Sha256'] == expected[kind]['outputSha256'],
++                'Reviewed research result or immutable async intermediate changed')
++        m.pin(async_stage['output'], expected[kind]['inputSha256'])
++        m.pin(item['output'], expected[kind]['outputSha256'])
+ 
+ 
+ def verify_link(link_result, plan_path, review):
+@@ -154,7 +196,12 @@
+     require(resolve(recipe['runtimeCacheTool']) == Path(__file__).resolve()
+             and resolve(recipe['runtimeCacheReview']) == HERE/'review.json', 'Successor wrapper/review must be pinned')
+     base_path, base = SUCCESSOR_VERIFY(recipe)
+-    require(len(recipe['replacements']) == 14, 'Exact fourteen feature resource deltas required')
++    review = review_inputs()
++    actual_paths = [item['path'] for item in recipe['replacements']]
++    require(review['expectedFeatureResourceDeltas'] == 16
++            and len(actual_paths) == 16
++            and sorted(actual_paths) == review['expectedFeatureResourcePaths'],
++            'Exact sixteen named feature resource deltas required')
+     manifest = read(base['runtimeIntegrationManifest'])
+     actual_inputs, _ = verify_link(Path(base['runtimeIntegrationEvidence']), resolve(manifest['relinkPlan']), review_inputs())
+     require(resolve(recipe['daemonInputs']) == actual_inputs.resolve(), 'Feature and runtime link inputs differ')
