@@ -1,0 +1,14 @@
+{
+  "modifiedCount": 1,
+  "addedCount": 0,
+  "replacementCount": 1,
+  "dependsOn": "90835845a organization-multiselect",
+  "patchSha256": "a1e963b68f69d15fa50e938953677425a53310316ee55503d8707288e4ca30c5",
+  "files": [
+    {
+      "path": "chrome/browser/ui/views/frame/aux_organization_tree_view.cc",
+      "beforeSha256": "50edd799937662ec2029a32aa553b57c9afc0f5a90aa8cb900539412b532e0f6",
+      "afterSha256": "8846dc9a9c4118174e8538f789f2bbaeb4fb171b2b9ea76c4073bf2f0e39bfd6"
+    }
+  ]
+}
