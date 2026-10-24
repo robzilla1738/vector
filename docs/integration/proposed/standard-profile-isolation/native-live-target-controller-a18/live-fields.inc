@@ -1,0 +1,10 @@
+  LiveAction live_action_ = LiveAction::kExtensionAttempt, live_after_record_ = LiveAction::kExtensionAttempt;
+  bool live_active_ = false, live_pending_ = false, live_rollback_ = false;
+  bool live_persistent_attempted_ = false, live_target_complete_ = false, live_source_complete_ = false;
+  bool live_extension_attempted_ = false, live_extension_target_ = false;
+  bool live_extension_synced_ = false;
+  size_t live_domain_ = 0, live_cursor_ = 0, live_record_bytes_ = 0;
+  int live_observation_domain_ = -1;
+  std::string live_failure_;
+  std::unique_ptr<IntentRecord> live_record_;
+  std::vector<std::unique_ptr<IntentRecord>> live_records_;
