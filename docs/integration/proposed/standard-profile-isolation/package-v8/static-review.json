@@ -1,0 +1,25 @@
+{
+  "format": "aux.standard-isolation.package-v8.static-review.v1",
+  "passed": true,
+  "pythonSyntaxParsed": true,
+  "jsonParsed": true,
+  "v7StandardValidatorFunctionAstsUnchanged": true,
+  "priorThreeBrowserTransitionsUnchanged": true,
+  "sourceAndNativeContractsUnchanged": true,
+  "a8LiteralReplay": {
+    "compositionSha256": "3ad8612a55d1c2e78786d5af747f59f4899069154104f7e1964235d6df17180d",
+    "layers": [
+      "native-host-constructor-a1",
+      "browser-custody-compiler-a1"
+    ],
+    "changedFiles": 3,
+    "fullNativeInputs": 322
+  },
+  "freshStageReceiptSha256": "159511cc615fe3d85fe310c8044083c5a42cc6cd84694084d39d72a2fe8e128a",
+  "fullBrowserReceiptStillRequired": true,
+  "toolsFrozen": false,
+  "packageVerified": false,
+  "appAssembled": false,
+  "productExecuted": false,
+  "signed": false
+}
