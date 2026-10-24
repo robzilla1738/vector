@@ -57,6 +57,9 @@ class OrganizationService final : public KeyedService {
   void Undo(Context context, std::string token, Reply reply);
   base::CallbackListSubscription Observe(
       base::RepeatingCallback<void(const Delta&)> callback);
+  // Signals an actual storage callback, including refusal/failure; observers
+  // must still inspect blocked()/pending(). Shutdown alone never signals it.
+  base::CallbackListSubscription ObserveSettled(base::RepeatingClosure callback);
   bool blocked() const;
   bool pending() const;
   void Shutdown() override;
@@ -73,6 +76,7 @@ class OrganizationService final : public KeyedService {
   std::unique_ptr<Pending> pending_;
   std::vector<UndoRecord> undo_;
   base::RepeatingCallbackList<void(const Delta&)> observers_;
+  base::RepeatingClosureList settled_;
   bool blocked_ = false;
   bool shutdown_ = false;
   SEQUENCE_CHECKER(sequence_checker_);

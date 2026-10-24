@@ -150,8 +150,11 @@ void OrganizationService::DidCommit(WriteReceipt receipt) {
     // All other cases require a fresh owned read/reconciliation, never rollback
     // another writer or publish an in-memory success to hide uncertainty.
     blocked_ |= error != Error::kStorageRefused;
-    if (pending->reply)
-      std::move(pending->reply).Run({error, snapshot_.revision, {}});
+    const auto alive = weak_.GetWeakPtr();
+    const auto revision = snapshot_.revision;
+    settled_.Notify();
+    if (alive && pending->reply)
+      std::move(pending->reply).Run({error, revision, {}});
     return;
   }
   snapshot_ = std::move(pending->mutation.snapshot);
@@ -170,12 +173,18 @@ void OrganizationService::DidCommit(WriteReceipt receipt) {
   // Delta publishes only after the actual tuple-bound commit receipt.
   observers_.Notify(pending->mutation.delta);
   if (!alive) return;
-  if (pending->reply) std::move(pending->reply).Run(std::move(result));
+  settled_.Notify();
+  if (alive && pending->reply) std::move(pending->reply).Run(std::move(result));
 }
 base::CallbackListSubscription OrganizationService::Observe(
     base::RepeatingCallback<void(const Delta&)> callback) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   return observers_.Add(std::move(callback));
+}
+base::CallbackListSubscription OrganizationService::ObserveSettled(
+    base::RepeatingClosure callback) {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+  return settled_.Add(std::move(callback));
 }
 void OrganizationService::Shutdown() {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
