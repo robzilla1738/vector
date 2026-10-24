@@ -41,6 +41,8 @@ Native paths in this document are relative to the frozen Chromium `src` root unl
 
 ### Foundational work that remains separate and necessary
 
+Execution update: the owner selected standard browser profile isolation on 2026-10-23. The [selected scope and parallel assignments](../integration/proposed/standard-profile-isolation/README.md) replace the unresolved same-UID architecture decision. All Aux writers, task descendants, clean recovery, runtime publication and actual-app acceptance remain required; no mechanism or gate is declared complete by this choice.
+
 The current [STATUS](../STATUS.md) and completion graph still require genuine protected startup, private-state writer custody, complete drain, safe admitted-root recovery and atomic runtime publication. The latest inventory recheck does not close the post-check race; external hardlink and staging-name races remain known gaps. No new feature may bypass those boundaries to appear runnable.
 
 New feature source, model checks and inactive builds can proceed against frozen ownership interfaces. Real profile isolation, restart persistence, and final-app acceptance require the corresponding existing `NATIVE`, `AUTH/OWNER/PEER`, `COLD/EMBED`, `PACKAGE` and runtime-authority gates. Track those existing IDs; do not create a second competing startup implementation in this roadmap.

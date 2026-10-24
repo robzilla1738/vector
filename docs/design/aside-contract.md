@@ -42,6 +42,8 @@ See [complete identity migration](../plans/2026-10-22-complete-aux-identity.md).
 
 ## Local behavior and isolation
 
+Owner-selected scope (2026-10-23): **standard browser profile isolation**. Personal/work cookies, extensions, site/provider/task state and all supervised Aux writers must remain separate and settle before clean recovery. Unrelated applications under the same macOS UID are outside this guarantee. This explicit choice supersedes the earlier mandatory same-UID-writer target; it does not exclude arbitrary code launched by Aux, weaken unknown/pending outcomes, grant OS permissions or authorize lifecycle/signing/release. See [the implementation scope](../integration/proposed/standard-profile-isolation/README.md).
+
 - Preserve actual account/profile state and original installation cryptography. Decouple local browsing and agent startup from the excluded Vault product. Do not synthesize onboarding completion, unlocked state, subscriptions or cloud responses.
 - Keep Aux state/endpoints separate from Aside. Defaults are daemon21520, bridge21522 and secure browser CDP45203. Never attach to or terminate the owner's Aside services.
 - Bundled runtime/model/catalog payloads are immutable seeds. Actual mutable npm/pip/bytecode state uses the private Aux home. Preserve original cached-runtime validation, update failures and task readiness behavior.

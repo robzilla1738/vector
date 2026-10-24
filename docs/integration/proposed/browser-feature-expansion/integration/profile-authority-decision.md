@@ -1,4 +1,6 @@
-# Profile authority decision for the next implementation batch
+# Profile authority decision — standard browser isolation selected
+
+Owner answer on 2026-10-23 selected **A. Standard browser profile isolation** (`call_03edf5c81ed64ea2a03f476d8a082345`). See ../../standard-profile-isolation/README.md for implementation ownership and remaining gates. This records the answer; it does not attest any new mechanism.
 
 The desktop feature build and inactive package do not change this contract. No installation, signing, OS grant or owner-state access is proposed here. Keep current refusal gates until an explicit contract is selected and implemented.
 
