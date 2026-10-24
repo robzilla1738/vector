@@ -1600,7 +1600,7 @@ bool ToolbarView::IsAuxNavigationInteractionActive() const {
     if (const auto* button = views::AsViewClass<ToolbarButton>(view);
         button && button->IsMenuShowing())
       return true;
-    for (const auto* child : view->children())
+    for (const views::View* child : view->children())
       pending.push_back(child);
   }
   return false;

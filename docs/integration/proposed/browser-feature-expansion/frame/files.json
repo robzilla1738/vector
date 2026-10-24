@@ -46,7 +46,7 @@
     {
       "path": "chrome/browser/ui/views/toolbar/toolbar_view.cc",
       "baselineSha256": "1cdfe9e803121f32d20b1f0e5ddce161b7eeab83d71645721739164ad8cddb3c",
-      "sourceSha256": "13229951317aa141eaaaac3ed85df42f66fdc5549f4a25e5c0379690231a7d63"
+      "sourceSha256": "cd705f16fde0661fbb7d779c54a0531018a97b9c98e8f84711fe4fbda272a5ef"
     },
     {
       "path": "chrome/browser/ui/views/toolbar/toolbar_view.h",
@@ -54,5 +54,5 @@
       "sourceSha256": "5110333dda4d47d6f5c667180ed8ac6085b863dfd5a67df53d52e0c620821584"
     }
   ],
-  "patchSha256": "04056e08ffe09e8a45b8e7605a7e5ce7be06a7b4922aa48399644501206de599"
+  "patchSha256": "b9870f554ae9b775f8021fe7208b79ce897aa605515220030f71ca378d4af1e8"
 }
