@@ -1,0 +1,335 @@
+--- a/components/services/storage/dom_storage/dom_storage_database.h
++++ b/components/services/storage/dom_storage/dom_storage_database.h
+@@ -343,6 +343,11 @@
+   virtual DbStatus PutVersionForTesting(int64_t version) = 0;
+   virtual void MakeAllCommitsFailForTesting() = 0;
+   virtual void SetDestructionCallbackForTesting(base::OnceClosure callback) = 0;
++
++  // Migration-only backend sync. Call on the DB sequence with writers closed.
++  // Keep this after existing virtual methods to retain their slot ordering.
++  // Unsupported/test implementations refuse rather than simulate completion.
++  virtual DbStatus SyncForAuxMigration();
+ };
+ 
+ // Required for the LevelDB implementation, which has separate schemas for
+--- a/components/services/storage/dom_storage/dom_storage_database.cc
++++ b/components/services/storage/dom_storage/dom_storage_database.cc
+@@ -39,6 +39,11 @@
+ 
+ namespace storage {
+ 
++DbStatus DomStorageDatabase::SyncForAuxMigration() {
++  return DbStatus::IOError("DOM storage sync is unsupported by this backend");
++}
++
++
+ namespace {
+ 
+ // Records the on-disk size of the database at `db_path` to the
+--- a/sql/database.h
++++ b/sql/database.h
+@@ -812,6 +812,11 @@
+   // until it is finished. Please use with care.
+   bool CheckpointDatabase(bool truncate = false);
+ 
++  // Migration-only sync of currently open main/journal files, journal first.
++  // Requires this connection's sequence, an open disk DB and no transaction.
++  // Never opens files or grants profile authority. Returns false on any error.
++  bool SyncOpenFilesForAuxMigration();
++
+   // Info querying -------------------------------------------------------------
+ 
+   // Returns true if the given structure exists.  Instead of test-then-create,
+--- a/sql/database.cc
++++ b/sql/database.cc
+@@ -2743,6 +2743,30 @@
+ #endif  // BUILDFLAG(IS_FUCHSIA)
+ }
+ 
++bool Database::SyncOpenFilesForAuxMigration() {
++  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
++  if (!is_open() || in_memory_ || transaction_nesting_ != 0) {
++    return false;
++  }
++  auto sync_file = [this](int operation, bool required) {
++    sqlite3_file* file = nullptr;
++    if (sqlite3_file_control(db_, "main", operation, &file) != SQLITE_OK) {
++      return false;
++    }
++    // A journal can be unopened when no journal writes exist. The main file
++    // is required; an unsupported xSync must never become a successful sync.
++    if (!file || !file->pMethods) {
++      return !required;
++    }
++    return file->pMethods->xSync &&
++           file->pMethods->xSync(file, SQLITE_SYNC_FULL) == SQLITE_OK;
++  };
++  // SQLite's JOURNAL_POINTER returns the WAL file in WAL mode. Use the actual
++  // VFS handles; do not bypass SandboxedVfs or reopen a path from caller data.
++  return sync_file(SQLITE_FCNTL_JOURNAL_POINTER, false) &&
++         sync_file(SQLITE_FCNTL_FILE_POINTER, true);
++}
++
+ bool Database::CheckpointDatabase(bool truncate) {
+   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+ 
+--- a/components/services/storage/dom_storage/leveldb/dom_storage_database_leveldb.h
++++ b/components/services/storage/dom_storage/leveldb/dom_storage_database_leveldb.h
+@@ -68,6 +68,8 @@
+   StatusOr<std::map<Key, Value>> GetMapKeyValues(KeyView prefix);
+ 
+   DbStatus RewriteDB();
++
++  DbStatus SyncForAuxMigration();
+ 
+   bool ShouldFailAllCommitsForTesting();
+   void SetDestructionCallbackForTesting(base::OnceClosure callback);
+--- a/components/services/storage/dom_storage/leveldb/dom_storage_database_leveldb.cc
++++ b/components/services/storage/dom_storage/leveldb/dom_storage_database_leveldb.cc
+@@ -41,6 +41,7 @@
+ #include "third_party/leveldatabase/src/include/leveldb/db.h"
+ #include "third_party/leveldatabase/src/include/leveldb/env.h"
+ #include "third_party/leveldatabase/src/include/leveldb/status.h"
++#include "third_party/leveldatabase/src/include/leveldb/write_batch.h"
+ 
+ namespace storage {
+ 
+@@ -274,6 +275,17 @@
+   return FromLevelDBStatus(status);
+ }
+ 
++DbStatus DomStorageDatabaseLevelDB::SyncForAuxMigration() {
++  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
++  if (!db_ || env_ || name_.empty() || fail_all_commits_for_testing_) {
++    return DbStatus::IOError("Aux sync requires an available disk LevelDB");
++  }
++  leveldb::WriteBatch batch;
++  leveldb::WriteOptions options;
++  options.sync = true;
++  return FromLevelDBStatus(db_->Write(options, &batch));
++}
++
+ bool DomStorageDatabaseLevelDB::ShouldFailAllCommitsForTesting() {
+   return fail_all_commits_for_testing_;
+ }
+--- a/components/services/storage/dom_storage/sqlite/sqlite_database_utils.h
++++ b/components/services/storage/dom_storage/sqlite/sqlite_database_utils.h
+@@ -32,6 +32,10 @@
+              CreateSchemaCallback create_schema_callback,
+              sql::Database::ErrorCallback error_callback);
+ 
++// Migration-only full WAL checkpoint; restores ordinary sync policy.
++// Refuses in-memory/non-WAL databases and active transactions.
++DbStatus SyncDatabaseForAuxMigration(sql::Database& database);
++
+ // Deletes the SQLite database file identified by `database_path`.
+ DbStatus DestroyDatabase(const base::FilePath& database_path);
+ 
+--- a/components/services/storage/dom_storage/sqlite/sqlite_database_utils.cc
++++ b/components/services/storage/dom_storage/sqlite/sqlite_database_utils.cc
+@@ -6,6 +6,7 @@
+ 
+ #include "sql/database.h"
+ #include "sql/meta_table.h"
++#include "sql/statement.h"
+ #include "sql/transaction.h"
+ 
+ namespace storage::sqlite {
+@@ -81,6 +82,64 @@
+   return std::make_tuple(std::move(database), std::move(meta_table));
+ }
+ 
++DbStatus SyncDatabaseForAuxMigration(sql::Database& database) {
++  if (!database.is_open() || database.transaction_nesting() != 0) {
++    return DbStatus::IOError("Aux sync requires an open idle SQLite backend");
++  }
++  {
++    sql::Statement mode(database.GetUniqueStatement("PRAGMA journal_mode"));
++    if (!mode.Step() || mode.ColumnString(0) != "wal") {
++      return DbStatus::IOError("Aux sync requires an existing WAL database");
++    }
++  }
++  int previous_mode;
++  {
++    sql::Statement mode(database.GetUniqueStatement("PRAGMA synchronous"));
++    if (!mode.Step()) {
++      return storage::FromSqliteCode(database);
++    }
++    previous_mode = mode.ColumnInt(0);
++    if (previous_mode < 0 || previous_mode > 3) {
++      return DbStatus::IOError("Unsupported SQLite synchronous mode");
++    }
++  }
++  // A checkpoint may skip xSync when earlier OFF-mode checkpointing already
++  // backfilled every page. Sync existing files before truncating that WAL.
++  if (!database.SyncOpenFilesForAuxMigration()) {
++    return DbStatus::IOError("SQLite migration pre-checkpoint sync failed");
++  }
++  // Do not weaken FULL/EXTRA. OFF/NORMAL temporarily become FULL so a
++  // completed checkpoint requests a real WAL/database sync from the VFS.
++  const bool change_mode = previous_mode < 2;
++  DbStatus result = DbStatus::OK();
++  if (change_mode && !database.Execute("PRAGMA synchronous=FULL")) {
++    result = storage::FromSqliteCode(database);
++  }
++  if (result.ok()) {
++    sql::Statement mode(database.GetUniqueStatement("PRAGMA synchronous"));
++    if (!mode.Step() || mode.ColumnInt(0) < 2) {
++      result = DbStatus::IOError("SQLite did not enable migration sync");
++    }
++  }
++  // The mode query is finalized before checkpointing. TRUNCATE refuses busy
++  // readers instead of reporting a partial passive checkpoint as completion.
++  if (result.ok() && !database.CheckpointDatabase(/*truncate=*/true)) {
++    result = storage::FromSqliteCode(database);
++  }
++  if (result.ok() && !database.SyncOpenFilesForAuxMigration()) {
++    result = DbStatus::IOError("SQLite migration post-checkpoint sync failed");
++  }
++  // Capture checkpoint errors before this call overwrites SQLite's last code.
++  // Restore the ordinary policy even on failure; restoration failure remains
++  // an unknown migration outcome and cannot authorize profile activation.
++  if (change_mode &&
++      !(previous_mode == 0 ? database.Execute("PRAGMA synchronous=OFF")
++                          : database.Execute("PRAGMA synchronous=NORMAL"))) {
++    return DbStatus::IOError("Could not restore SQLite sync policy");
++  }
++  return result;
++}
++
+ DbStatus DestroyDatabase(const base::FilePath& database_path) {
+   CHECK(!database_path.empty());
+   CHECK(database_path.IsAbsolute());
+--- a/components/services/storage/dom_storage/leveldb/local_storage_leveldb.h
++++ b/components/services/storage/dom_storage/leveldb/local_storage_leveldb.h
+@@ -122,6 +122,7 @@
+                           std::vector<MapLocator> maps_to_delete) override;
+   DbStatus PurgeOrigins(std::set<url::Origin> origins) override;
+   DbStatus CleanUpStaleData() override;
++  DbStatus SyncForAuxMigration() override;
+ 
+   // Test-only functions.
+   DbStatus PutVersionForTesting(int64_t version) override;
+--- a/components/services/storage/dom_storage/leveldb/local_storage_leveldb.cc
++++ b/components/services/storage/dom_storage/leveldb/local_storage_leveldb.cc
+@@ -339,6 +339,13 @@
+   return ::storage::PurgeOrigins(*this, std::move(origins));
+ }
+ 
++DbStatus LocalStorageLevelDB::SyncForAuxMigration() {
++  if (!leveldb_) {
++    return DbStatus::IOError("Aux sync requires an open LevelDB backend");
++  }
++  return leveldb_->SyncForAuxMigration();
++}
++
+ DbStatus LocalStorageLevelDB::CleanUpStaleData() {
+   return leveldb_->RewriteDB();
+ }
+--- a/components/services/storage/dom_storage/leveldb/session_storage_leveldb.h
++++ b/components/services/storage/dom_storage/leveldb/session_storage_leveldb.h
+@@ -107,6 +107,7 @@
+ 
+   DbStatus PurgeOrigins(std::set<url::Origin> origins) override;
+   DbStatus CleanUpStaleData() override;
++  DbStatus SyncForAuxMigration() override;
+ 
+   // Test-only functions.
+   DbStatus PutVersionForTesting(int64_t version) override;
+--- a/components/services/storage/dom_storage/leveldb/session_storage_leveldb.cc
++++ b/components/services/storage/dom_storage/leveldb/session_storage_leveldb.cc
+@@ -300,6 +300,13 @@
+   NOTREACHED();
+ }
+ 
++DbStatus SessionStorageLevelDB::SyncForAuxMigration() {
++  if (!leveldb_) {
++    return DbStatus::IOError("Aux sync requires an open LevelDB backend");
++  }
++  return leveldb_->SyncForAuxMigration();
++}
++
+ DbStatus SessionStorageLevelDB::CleanUpStaleData() {
+   return leveldb_->RewriteDB();
+ }
+--- a/components/services/storage/dom_storage/sqlite/local_storage_sqlite.h
++++ b/components/services/storage/dom_storage/sqlite/local_storage_sqlite.h
+@@ -67,6 +67,7 @@
+                           std::vector<MapLocator> maps_to_delete) override;
+   DbStatus PurgeOrigins(std::set<url::Origin> origins) override;
+   DbStatus CleanUpStaleData() override;
++  DbStatus SyncForAuxMigration() override;
+   void MakeAllCommitsFailForTesting() override;
+   void SetDestructionCallbackForTesting(base::OnceClosure callback) override;
+   DbStatus PutVersionForTesting(int64_t version) override;
+--- a/components/services/storage/dom_storage/sqlite/local_storage_sqlite.cc
++++ b/components/services/storage/dom_storage/sqlite/local_storage_sqlite.cc
+@@ -331,6 +331,13 @@
+   return ::storage::PurgeOrigins(*this, std::move(origins));
+ }
+ 
++DbStatus LocalStorageSqlite::SyncForAuxMigration() {
++  if (!database_ || should_fail_commits_for_testing_) {
++    return DbStatus::IOError("Aux sync requires an available SQLite backend");
++  }
++  return sqlite::SyncDatabaseForAuxMigration(*database_);
++}
++
+ DbStatus LocalStorageSqlite::CleanUpStaleData() {
+   RETURN_STATUS_ON_ERROR(database_->CheckpointDatabase(/*truncate=*/true));
+   return DbStatus::OK();
+--- a/components/services/storage/dom_storage/sqlite/session_storage_sqlite.h
++++ b/components/services/storage/dom_storage/sqlite/session_storage_sqlite.h
+@@ -74,6 +74,7 @@
+                           std::vector<MapLocator> maps_to_delete) override;
+   DbStatus PurgeOrigins(std::set<url::Origin> origins) override;
+   DbStatus CleanUpStaleData() override;
++  DbStatus SyncForAuxMigration() override;
+   void MakeAllCommitsFailForTesting() override;
+   void SetDestructionCallbackForTesting(base::OnceClosure callback) override;
+   DbStatus PutVersionForTesting(int64_t version) override;
+--- a/components/services/storage/dom_storage/sqlite/session_storage_sqlite.cc
++++ b/components/services/storage/dom_storage/sqlite/session_storage_sqlite.cc
+@@ -268,6 +268,13 @@
+   NOTREACHED();
+ }
+ 
++DbStatus SessionStorageSqlite::SyncForAuxMigration() {
++  if (!database_ || should_fail_commits_for_testing_) {
++    return DbStatus::IOError("Aux sync requires an available SQLite backend");
++  }
++  return sqlite::SyncDatabaseForAuxMigration(*database_);
++}
++
+ DbStatus SessionStorageSqlite::CleanUpStaleData() {
+   RETURN_STATUS_ON_ERROR(database_->CheckpointDatabase(/*truncate=*/true));
+   return DbStatus::OK();
+--- a/components/services/storage/dom_storage/async_dom_storage_database.h
++++ b/components/services/storage/dom_storage/async_dom_storage_database.h
+@@ -117,7 +117,8 @@
+   // Collects current commits and replies after previously queued DB tasks.
+   // A successful reply includes their retained write status. The caller must
+   // already hold writer quiescence; this does not close write admission, grant
+-  // migration authority, acknowledge fsync or cover future renderer writes.
++  // migration authority or cover future renderer writes. After queued tasks,
++  // the backend must acknowledge its explicit disk-sync operation.
+   // A lost frontend/task returns failure, never successful completion.
+   void DrainCommitsForAuxMigration(StatusCallback callback);
+ 
+--- a/components/services/storage/dom_storage/async_dom_storage_database.cc
++++ b/components/services/storage/dom_storage/async_dom_storage_database.cc
+@@ -275,7 +275,13 @@
+   // current batch: earlier posted writes must still reach this queue position.
+   database_.PostTaskWithThisObject(base::BindOnce(
+       [](std::shared_ptr<AuxMigrationWriteStatus> state, StatusCallback callback,
+-         DomStorageDatabase*) {
++         DomStorageDatabase* database) {
++        if (!state->first_error) {
++          DbStatus status = database->SyncForAuxMigration();
++          if (!status.ok()) {
++            state->first_error = std::move(status);
++          }
++        }
+         std::move(callback).Run(state->first_error.value_or(DbStatus::OK()));
+       },
+       aux_migration_write_status_, std::move(guarded_reply)));

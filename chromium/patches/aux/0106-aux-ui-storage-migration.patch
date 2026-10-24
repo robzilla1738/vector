@@ -1,0 +1,927 @@
+diff --git a/components/services/storage/dom_storage/async_dom_storage_database.cc b/components/services/storage/dom_storage/async_dom_storage_database.cc
+--- a/components/services/storage/dom_storage/async_dom_storage_database.cc
++++ b/components/services/storage/dom_storage/async_dom_storage_database.cc
+@@ -10,6 +10,7 @@
+ #include "base/strings/strcat.h"
+ #include "base/task/bind_post_task.h"
+ #include "components/services/storage/dom_storage/dom_storage_histogram_helper.h"
++#include "mojo/public/cpp/bindings/callback_helpers.h"
+ 
+ namespace storage {
+ 
+@@ -253,6 +254,39 @@
+       std::move(run_all));
+ }
+ 
++void AsyncDomStorageDatabase::DrainCommitsForAuxMigration(
++    StatusCallback callback) {
++  CHECK(is_database_opened_);
++  auto reply = base::BindOnce(
++      [](base::WeakPtr<AsyncDomStorageDatabase> owner, StatusCallback callback,
++         DbStatus status) {
++        if (!owner) {
++          status = DbStatus::IOError("Aux storage frontend was destroyed");
++        }
++        std::move(callback).Run(std::move(status));
++      },
++      weak_ptr_factory_.GetWeakPtr(), std::move(callback));
++  auto guarded_reply = mojo::WrapCallbackWithDefaultInvokeIfNotRun(
++      base::BindPostTaskToCurrentDefault(std::move(reply)),
++      DbStatus::IOError("Aux storage completion reply was lost"));
++
++  InitiateCommit();
++  // SequenceBound preserves DB task order. No successful shortcut for an empty
++  // current batch: earlier posted writes must still reach this queue position.
++  database_.PostTaskWithThisObject(base::BindOnce(
++      [](std::shared_ptr<AuxMigrationWriteStatus> state, StatusCallback callback,
++         DomStorageDatabase* database) {
++        if (!state->first_error) {
++          DbStatus status = database->SyncForAuxMigration();
++          if (!status.ok()) {
++            state->first_error = std::move(status);
++          }
++        }
++        std::move(callback).Run(state->first_error.value_or(DbStatus::OK()));
++      },
++      aux_migration_write_status_, std::move(guarded_reply)));
++}
++
+ void AsyncDomStorageDatabase::OnDatabaseOpened(
+     OpenCallback callback,
+     DomStorageDatabaseFactory::OpenResult result) {
+@@ -293,17 +327,21 @@
+     base::OnceCallback<DbStatus(DomStorageDatabase*)> db_task,
+     StatusCallback callback) {
+   database_.PostTaskWithThisObject(base::BindOnce(
+-      [](base::OnceCallback<DbStatus(DomStorageDatabase*)> db_task,
++      [](std::shared_ptr<AuxMigrationWriteStatus> state,
++         base::OnceCallback<DbStatus(DomStorageDatabase*)> db_task,
+          std::string status_histogram_name, std::string duration_histogram_name,
+          DatabaseMetricsType metrics_type, StatusCallback callback,
+          DomStorageDatabase* database) {
+         base::TimeTicks start = base::TimeTicks::Now();
+         DbStatus status = std::move(db_task).Run(database);
++        if (!status.ok() && !state->first_error) {
++          state->first_error = status;
++        }
+         RecordStatusAndDuration(status_histogram_name, duration_histogram_name,
+                                 metrics_type, start, status);
+         std::move(callback).Run(std::move(status));
+       },
+-      std::move(db_task), GetHistogram(operation),
++      aux_migration_write_status_, std::move(db_task), GetHistogram(operation),
+       GetDurationHistogram(operation), metrics_type_,
+       base::BindPostTaskToCurrentDefault(std::move(callback))));
+ }
+diff --git a/components/services/storage/dom_storage/async_dom_storage_database.h b/components/services/storage/dom_storage/async_dom_storage_database.h
+--- a/components/services/storage/dom_storage/async_dom_storage_database.h
++++ b/components/services/storage/dom_storage/async_dom_storage_database.h
+@@ -114,6 +114,14 @@
+   // completed callback for each `Committer` that provided a `Commit`.
+   void InitiateCommit();
+ 
++  // Collects current commits and replies after previously queued DB tasks.
++  // A successful reply includes their retained write status. The caller must
++  // already hold writer quiescence; this does not close write admission, grant
++  // migration authority or cover future renderer writes. After queued tasks,
++  // the backend must acknowledge its explicit disk-sync operation.
++  // A lost frontend/task returns failure, never successful completion.
++  void DrainCommitsForAuxMigration(StatusCallback callback);
++
+  private:
+   explicit AsyncDomStorageDatabase(StorageType storage_type);
+ 
+@@ -153,6 +161,14 @@
+   const StorageType storage_type_;
+   DatabaseMetricsType metrics_type_;
+ 
++  // Accessed only by tasks on database_'s sequence. Shared ownership keeps
++  // the status alive when already-posted work outlives this frontend.
++  struct AuxMigrationWriteStatus {
++    std::optional<DbStatus> first_error;
++  };
++  const std::shared_ptr<AuxMigrationWriteStatus> aux_migration_write_status_ =
++      std::make_shared<AuxMigrationWriteStatus>();
++
+   base::WeakPtrFactory<AsyncDomStorageDatabase> weak_ptr_factory_{this};
+ };
+ 
+diff --git a/components/services/storage/dom_storage/dom_storage_database.cc b/components/services/storage/dom_storage/dom_storage_database.cc
+--- a/components/services/storage/dom_storage/dom_storage_database.cc
++++ b/components/services/storage/dom_storage/dom_storage_database.cc
+@@ -39,6 +39,11 @@
+ 
+ namespace storage {
+ 
++DbStatus DomStorageDatabase::SyncForAuxMigration() {
++  return DbStatus::IOError("DOM storage sync is unsupported by this backend");
++}
++
++
+ namespace {
+ 
+ // Records the on-disk size of the database at `db_path` to the
+diff --git a/components/services/storage/dom_storage/dom_storage_database.h b/components/services/storage/dom_storage/dom_storage_database.h
+--- a/components/services/storage/dom_storage/dom_storage_database.h
++++ b/components/services/storage/dom_storage/dom_storage_database.h
+@@ -343,6 +343,11 @@
+   virtual DbStatus PutVersionForTesting(int64_t version) = 0;
+   virtual void MakeAllCommitsFailForTesting() = 0;
+   virtual void SetDestructionCallbackForTesting(base::OnceClosure callback) = 0;
++
++  // Migration-only backend sync. Call on the DB sequence with writers closed.
++  // Keep this after existing virtual methods to retain their slot ordering.
++  // Unsupported/test implementations refuse rather than simulate completion.
++  virtual DbStatus SyncForAuxMigration();
+ };
+ 
+ // Required for the LevelDB implementation, which has separate schemas for
+diff --git a/components/services/storage/dom_storage/leveldb/dom_storage_database_leveldb.cc b/components/services/storage/dom_storage/leveldb/dom_storage_database_leveldb.cc
+--- a/components/services/storage/dom_storage/leveldb/dom_storage_database_leveldb.cc
++++ b/components/services/storage/dom_storage/leveldb/dom_storage_database_leveldb.cc
+@@ -41,6 +41,7 @@
+ #include "third_party/leveldatabase/src/include/leveldb/db.h"
+ #include "third_party/leveldatabase/src/include/leveldb/env.h"
+ #include "third_party/leveldatabase/src/include/leveldb/status.h"
++#include "third_party/leveldatabase/src/include/leveldb/write_batch.h"
+ 
+ namespace storage {
+ 
+@@ -274,6 +275,17 @@
+   return FromLevelDBStatus(status);
+ }
+ 
++DbStatus DomStorageDatabaseLevelDB::SyncForAuxMigration() {
++  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
++  if (!db_ || env_ || name_.empty() || fail_all_commits_for_testing_) {
++    return DbStatus::IOError("Aux sync requires an available disk LevelDB");
++  }
++  leveldb::WriteBatch batch;
++  leveldb::WriteOptions options;
++  options.sync = true;
++  return FromLevelDBStatus(db_->Write(options, &batch));
++}
++
+ bool DomStorageDatabaseLevelDB::ShouldFailAllCommitsForTesting() {
+   return fail_all_commits_for_testing_;
+ }
+diff --git a/components/services/storage/dom_storage/leveldb/dom_storage_database_leveldb.h b/components/services/storage/dom_storage/leveldb/dom_storage_database_leveldb.h
+--- a/components/services/storage/dom_storage/leveldb/dom_storage_database_leveldb.h
++++ b/components/services/storage/dom_storage/leveldb/dom_storage_database_leveldb.h
+@@ -68,6 +68,8 @@
+   StatusOr<std::map<Key, Value>> GetMapKeyValues(KeyView prefix);
+ 
+   DbStatus RewriteDB();
++
++  DbStatus SyncForAuxMigration();
+ 
+   bool ShouldFailAllCommitsForTesting();
+   void SetDestructionCallbackForTesting(base::OnceClosure callback);
+diff --git a/components/services/storage/dom_storage/leveldb/local_storage_leveldb.cc b/components/services/storage/dom_storage/leveldb/local_storage_leveldb.cc
+--- a/components/services/storage/dom_storage/leveldb/local_storage_leveldb.cc
++++ b/components/services/storage/dom_storage/leveldb/local_storage_leveldb.cc
+@@ -339,6 +339,13 @@
+   return ::storage::PurgeOrigins(*this, std::move(origins));
+ }
+ 
++DbStatus LocalStorageLevelDB::SyncForAuxMigration() {
++  if (!leveldb_) {
++    return DbStatus::IOError("Aux sync requires an open LevelDB backend");
++  }
++  return leveldb_->SyncForAuxMigration();
++}
++
+ DbStatus LocalStorageLevelDB::CleanUpStaleData() {
+   return leveldb_->RewriteDB();
+ }
+diff --git a/components/services/storage/dom_storage/leveldb/local_storage_leveldb.h b/components/services/storage/dom_storage/leveldb/local_storage_leveldb.h
+--- a/components/services/storage/dom_storage/leveldb/local_storage_leveldb.h
++++ b/components/services/storage/dom_storage/leveldb/local_storage_leveldb.h
+@@ -122,6 +122,7 @@
+                           std::vector<MapLocator> maps_to_delete) override;
+   DbStatus PurgeOrigins(std::set<url::Origin> origins) override;
+   DbStatus CleanUpStaleData() override;
++  DbStatus SyncForAuxMigration() override;
+ 
+   // Test-only functions.
+   DbStatus PutVersionForTesting(int64_t version) override;
+diff --git a/components/services/storage/dom_storage/leveldb/session_storage_leveldb.cc b/components/services/storage/dom_storage/leveldb/session_storage_leveldb.cc
+--- a/components/services/storage/dom_storage/leveldb/session_storage_leveldb.cc
++++ b/components/services/storage/dom_storage/leveldb/session_storage_leveldb.cc
+@@ -300,6 +300,13 @@
+   NOTREACHED();
+ }
+ 
++DbStatus SessionStorageLevelDB::SyncForAuxMigration() {
++  if (!leveldb_) {
++    return DbStatus::IOError("Aux sync requires an open LevelDB backend");
++  }
++  return leveldb_->SyncForAuxMigration();
++}
++
+ DbStatus SessionStorageLevelDB::CleanUpStaleData() {
+   return leveldb_->RewriteDB();
+ }
+diff --git a/components/services/storage/dom_storage/leveldb/session_storage_leveldb.h b/components/services/storage/dom_storage/leveldb/session_storage_leveldb.h
+--- a/components/services/storage/dom_storage/leveldb/session_storage_leveldb.h
++++ b/components/services/storage/dom_storage/leveldb/session_storage_leveldb.h
+@@ -107,6 +107,7 @@
+ 
+   DbStatus PurgeOrigins(std::set<url::Origin> origins) override;
+   DbStatus CleanUpStaleData() override;
++  DbStatus SyncForAuxMigration() override;
+ 
+   // Test-only functions.
+   DbStatus PutVersionForTesting(int64_t version) override;
+diff --git a/components/services/storage/dom_storage/local_storage_impl.cc b/components/services/storage/dom_storage/local_storage_impl.cc
+--- a/components/services/storage/dom_storage/local_storage_impl.cc
++++ b/components/services/storage/dom_storage/local_storage_impl.cc
+@@ -32,6 +32,7 @@
+ #include "components/services/storage/dom_storage/features.h"
+ #include "components/services/storage/dom_storage/leveldb_status_helper.h"
+ #include "components/services/storage/dom_storage/storage_area_impl.h"
++#include "mojo/public/cpp/bindings/callback_helpers.h"
+ #include "storage/common/database/database_identifier.h"
+ #include "third_party/blink/public/common/storage_key/storage_key.h"
+ 
+@@ -259,6 +260,44 @@
+   } else {
+     std::move(callback).Run();
+   }
++}
++
++void LocalStorageImpl::DrainLoadedAreasForAuxMigration(
++    AsyncDomStorageDatabase::StatusCallback callback) {
++  if (connection_state_ != CONNECTION_FINISHED || !database_ || in_memory_ ||
++      storage_partition_directory_.empty()) {
++    std::move(callback).Run(
++        DbStatus::IOError("Aux migration requires an existing disk backend"));
++    return;
++  }
++  for (const auto& entry : areas_) {
++    StorageAreaImpl* area = entry.second->storage_area();
++    if (!area->initialized() || area->has_pending_load_tasks() ||
++        area->database() != database_.get()) {
++      std::move(callback).Run(
++          DbStatus::IOError("Aux storage areas are not ready to drain"));
++      return;
++    }
++  }
++  // Loaded areas have no deferred load callbacks. Scheduling their immediate
++  // commits posts existing batches before the DB queue sentinel below.
++  for (const auto& entry : areas_) {
++    entry.second->storage_area()->ScheduleImmediateCommit();
++  }
++  auto reply = base::BindOnce(
++      [](base::WeakPtr<LocalStorageImpl> owner,
++         AsyncDomStorageDatabase::StatusCallback callback, DbStatus status) {
++        if (!owner || owner->connection_state_ != CONNECTION_FINISHED ||
++            !owner->database_ || owner->in_memory_) {
++          status = DbStatus::IOError("Aux storage service changed during drain");
++        }
++        std::move(callback).Run(std::move(status));
++      },
++      weak_ptr_factory_.GetWeakPtr(), std::move(callback));
++  database_->DrainCommitsForAuxMigration(
++      mojo::WrapCallbackWithDefaultInvokeIfNotRun(
++          std::move(reply),
++          DbStatus::IOError("Aux storage service drain reply was lost")));
+ }
+ 
+ void LocalStorageImpl::Flush() {
+diff --git a/components/services/storage/dom_storage/local_storage_impl.h b/components/services/storage/dom_storage/local_storage_impl.h
+--- a/components/services/storage/dom_storage/local_storage_impl.h
++++ b/components/services/storage/dom_storage/local_storage_impl.h
+@@ -90,6 +90,12 @@
+                      DeleteStorageCallback callback) override;
+   void CleanUpStorage(CleanUpStorageCallback callback) override;
+   void Flush() override;
++
++  // Internal queue acknowledgment for currently loaded areas only. The native
++  // owner must already quiesce writers and qualify complete target coverage.
++  // Never opens/repairs a DB or claims fsync, capture or migration authority.
++  void DrainLoadedAreasForAuxMigration(
++      AsyncDomStorageDatabase::StatusCallback callback);
+   void PurgeMemory() override;
+   void ApplyPolicyUpdates(
+       std::vector<mojom::StoragePolicyUpdatePtr> policy_updates) override;
+diff --git a/components/services/storage/dom_storage/session_storage_impl.cc b/components/services/storage/dom_storage/session_storage_impl.cc
+--- a/components/services/storage/dom_storage/session_storage_impl.cc
++++ b/components/services/storage/dom_storage/session_storage_impl.cc
+@@ -237,6 +237,44 @@
+   }
+ }
+ 
++void SessionStorageImpl::DrainLoadedAreasForAuxMigration(
++    AsyncDomStorageDatabase::StatusCallback callback) {
++  if (connection_state_ != CONNECTION_FINISHED || !database_ || in_memory_ ||
++      storage_partition_directory_.empty()) {
++    std::move(callback).Run(
++        DbStatus::IOError("Aux migration requires an existing disk backend"));
++    return;
++  }
++  for (const auto& entry : data_maps_) {
++    StorageAreaImpl* area = entry.second->storage_area();
++    if (!area->initialized() || area->has_pending_load_tasks() ||
++        area->database() != database_.get()) {
++      std::move(callback).Run(
++          DbStatus::IOError("Aux storage areas are not ready to drain"));
++      return;
++    }
++  }
++  // Loaded areas have no deferred load callbacks. Scheduling their immediate
++  // commits posts existing batches before the DB queue sentinel below.
++  for (const auto& entry : data_maps_) {
++    entry.second->storage_area()->ScheduleImmediateCommit();
++  }
++  auto reply = base::BindOnce(
++      [](base::WeakPtr<SessionStorageImpl> owner,
++         AsyncDomStorageDatabase::StatusCallback callback, DbStatus status) {
++        if (!owner || owner->connection_state_ != CONNECTION_FINISHED ||
++            !owner->database_ || owner->in_memory_) {
++          status = DbStatus::IOError("Aux storage service changed during drain");
++        }
++        std::move(callback).Run(std::move(status));
++      },
++      weak_ptr_factory_.GetWeakPtr(), std::move(callback));
++  database_->DrainCommitsForAuxMigration(
++      mojo::WrapCallbackWithDefaultInvokeIfNotRun(
++          std::move(reply),
++          DbStatus::IOError("Aux storage service drain reply was lost")));
++}
++
+ void SessionStorageImpl::Flush() {
+   if (connection_state_ != CONNECTION_FINISHED) {
+     RunWhenConnected(base::BindOnce(&SessionStorageImpl::Flush,
+diff --git a/components/services/storage/dom_storage/session_storage_impl.h b/components/services/storage/dom_storage/session_storage_impl.h
+--- a/components/services/storage/dom_storage/session_storage_impl.h
++++ b/components/services/storage/dom_storage/session_storage_impl.h
+@@ -89,6 +89,12 @@
+   void CleanUpStorage(CleanUpStorageCallback callback) override;
+   void ScavengeUnusedNamespaces() override;
+   void Flush() override;
++
++  // Internal queue acknowledgment for currently loaded areas only. The native
++  // owner must already quiesce writers and qualify complete target coverage.
++  // Never opens/repairs a DB or claims fsync, capture or migration authority.
++  void DrainLoadedAreasForAuxMigration(
++      AsyncDomStorageDatabase::StatusCallback callback);
+   void PurgeMemory() override;
+   void CreateNamespace(const std::string& namespace_id) override;
+   void CloneNamespace(const std::string& namespace_id_to_clone,
+diff --git a/components/services/storage/dom_storage/sqlite/local_storage_sqlite.cc b/components/services/storage/dom_storage/sqlite/local_storage_sqlite.cc
+--- a/components/services/storage/dom_storage/sqlite/local_storage_sqlite.cc
++++ b/components/services/storage/dom_storage/sqlite/local_storage_sqlite.cc
+@@ -331,6 +331,13 @@
+   return ::storage::PurgeOrigins(*this, std::move(origins));
+ }
+ 
++DbStatus LocalStorageSqlite::SyncForAuxMigration() {
++  if (!database_ || should_fail_commits_for_testing_) {
++    return DbStatus::IOError("Aux sync requires an available SQLite backend");
++  }
++  return sqlite::SyncDatabaseForAuxMigration(*database_);
++}
++
+ DbStatus LocalStorageSqlite::CleanUpStaleData() {
+   RETURN_STATUS_ON_ERROR(database_->CheckpointDatabase(/*truncate=*/true));
+   return DbStatus::OK();
+diff --git a/components/services/storage/dom_storage/sqlite/local_storage_sqlite.h b/components/services/storage/dom_storage/sqlite/local_storage_sqlite.h
+--- a/components/services/storage/dom_storage/sqlite/local_storage_sqlite.h
++++ b/components/services/storage/dom_storage/sqlite/local_storage_sqlite.h
+@@ -67,6 +67,7 @@
+                           std::vector<MapLocator> maps_to_delete) override;
+   DbStatus PurgeOrigins(std::set<url::Origin> origins) override;
+   DbStatus CleanUpStaleData() override;
++  DbStatus SyncForAuxMigration() override;
+   void MakeAllCommitsFailForTesting() override;
+   void SetDestructionCallbackForTesting(base::OnceClosure callback) override;
+   DbStatus PutVersionForTesting(int64_t version) override;
+diff --git a/components/services/storage/dom_storage/sqlite/session_storage_sqlite.cc b/components/services/storage/dom_storage/sqlite/session_storage_sqlite.cc
+--- a/components/services/storage/dom_storage/sqlite/session_storage_sqlite.cc
++++ b/components/services/storage/dom_storage/sqlite/session_storage_sqlite.cc
+@@ -268,6 +268,13 @@
+   NOTREACHED();
+ }
+ 
++DbStatus SessionStorageSqlite::SyncForAuxMigration() {
++  if (!database_ || should_fail_commits_for_testing_) {
++    return DbStatus::IOError("Aux sync requires an available SQLite backend");
++  }
++  return sqlite::SyncDatabaseForAuxMigration(*database_);
++}
++
+ DbStatus SessionStorageSqlite::CleanUpStaleData() {
+   RETURN_STATUS_ON_ERROR(database_->CheckpointDatabase(/*truncate=*/true));
+   return DbStatus::OK();
+diff --git a/components/services/storage/dom_storage/sqlite/session_storage_sqlite.h b/components/services/storage/dom_storage/sqlite/session_storage_sqlite.h
+--- a/components/services/storage/dom_storage/sqlite/session_storage_sqlite.h
++++ b/components/services/storage/dom_storage/sqlite/session_storage_sqlite.h
+@@ -74,6 +74,7 @@
+                           std::vector<MapLocator> maps_to_delete) override;
+   DbStatus PurgeOrigins(std::set<url::Origin> origins) override;
+   DbStatus CleanUpStaleData() override;
++  DbStatus SyncForAuxMigration() override;
+   void MakeAllCommitsFailForTesting() override;
+   void SetDestructionCallbackForTesting(base::OnceClosure callback) override;
+   DbStatus PutVersionForTesting(int64_t version) override;
+diff --git a/components/services/storage/dom_storage/sqlite/sqlite_database_utils.cc b/components/services/storage/dom_storage/sqlite/sqlite_database_utils.cc
+--- a/components/services/storage/dom_storage/sqlite/sqlite_database_utils.cc
++++ b/components/services/storage/dom_storage/sqlite/sqlite_database_utils.cc
+@@ -6,6 +6,7 @@
+ 
+ #include "sql/database.h"
+ #include "sql/meta_table.h"
++#include "sql/statement.h"
+ #include "sql/transaction.h"
+ 
+ namespace storage::sqlite {
+@@ -81,6 +82,64 @@
+   return std::make_tuple(std::move(database), std::move(meta_table));
+ }
+ 
++DbStatus SyncDatabaseForAuxMigration(sql::Database& database) {
++  if (!database.is_open() || database.transaction_nesting() != 0) {
++    return DbStatus::IOError("Aux sync requires an open idle SQLite backend");
++  }
++  {
++    sql::Statement mode(database.GetUniqueStatement("PRAGMA journal_mode"));
++    if (!mode.Step() || mode.ColumnString(0) != "wal") {
++      return DbStatus::IOError("Aux sync requires an existing WAL database");
++    }
++  }
++  int previous_mode;
++  {
++    sql::Statement mode(database.GetUniqueStatement("PRAGMA synchronous"));
++    if (!mode.Step()) {
++      return storage::FromSqliteCode(database);
++    }
++    previous_mode = mode.ColumnInt(0);
++    if (previous_mode < 0 || previous_mode > 3) {
++      return DbStatus::IOError("Unsupported SQLite synchronous mode");
++    }
++  }
++  // A checkpoint may skip xSync when earlier OFF-mode checkpointing already
++  // backfilled every page. Sync existing files before truncating that WAL.
++  if (!database.SyncOpenFilesForAuxMigration()) {
++    return DbStatus::IOError("SQLite migration pre-checkpoint sync failed");
++  }
++  // Do not weaken FULL/EXTRA. OFF/NORMAL temporarily become FULL so a
++  // completed checkpoint requests a real WAL/database sync from the VFS.
++  const bool change_mode = previous_mode < 2;
++  DbStatus result = DbStatus::OK();
++  if (change_mode && !database.Execute("PRAGMA synchronous=FULL")) {
++    result = storage::FromSqliteCode(database);
++  }
++  if (result.ok()) {
++    sql::Statement mode(database.GetUniqueStatement("PRAGMA synchronous"));
++    if (!mode.Step() || mode.ColumnInt(0) < 2) {
++      result = DbStatus::IOError("SQLite did not enable migration sync");
++    }
++  }
++  // The mode query is finalized before checkpointing. TRUNCATE refuses busy
++  // readers instead of reporting a partial passive checkpoint as completion.
++  if (result.ok() && !database.CheckpointDatabase(/*truncate=*/true)) {
++    result = storage::FromSqliteCode(database);
++  }
++  if (result.ok() && !database.SyncOpenFilesForAuxMigration()) {
++    result = DbStatus::IOError("SQLite migration post-checkpoint sync failed");
++  }
++  // Capture checkpoint errors before this call overwrites SQLite's last code.
++  // Restore the ordinary policy even on failure; restoration failure remains
++  // an unknown migration outcome and cannot authorize profile activation.
++  if (change_mode &&
++      !(previous_mode == 0 ? database.Execute("PRAGMA synchronous=OFF")
++                          : database.Execute("PRAGMA synchronous=NORMAL"))) {
++    return DbStatus::IOError("Could not restore SQLite sync policy");
++  }
++  return result;
++}
++
+ DbStatus DestroyDatabase(const base::FilePath& database_path) {
+   CHECK(!database_path.empty());
+   CHECK(database_path.IsAbsolute());
+diff --git a/components/services/storage/dom_storage/sqlite/sqlite_database_utils.h b/components/services/storage/dom_storage/sqlite/sqlite_database_utils.h
+--- a/components/services/storage/dom_storage/sqlite/sqlite_database_utils.h
++++ b/components/services/storage/dom_storage/sqlite/sqlite_database_utils.h
+@@ -32,6 +32,10 @@
+              CreateSchemaCallback create_schema_callback,
+              sql::Database::ErrorCallback error_callback);
+ 
++// Migration-only full WAL checkpoint; restores ordinary sync policy.
++// Refuses in-memory/non-WAL databases and active transactions.
++DbStatus SyncDatabaseForAuxMigration(sql::Database& database);
++
+ // Deletes the SQLite database file identified by `database_path`.
+ DbStatus DestroyDatabase(const base::FilePath& database_path);
+ 
+diff --git a/components/value_store/BUILD.gn b/components/value_store/BUILD.gn
+--- a/components/value_store/BUILD.gn
++++ b/components/value_store/BUILD.gn
+@@ -53,6 +53,7 @@
+   testonly = true
+ 
+   sources = [
++    "aux_ui_preference_migration_unittest.cc",
+     "leveldb_value_store_unittest.cc",
+     "testing_value_store_unittest.cc",
+     "value_store_change_unittest.cc",
+diff --git a/components/value_store/aux_ui_preference_migration_unittest.cc b/components/value_store/aux_ui_preference_migration_unittest.cc
+new file mode 100644
+--- /dev/null
++++ b/components/value_store/aux_ui_preference_migration_unittest.cc
+@@ -0,0 +1,102 @@
++// Copyright 2026 Aux Contributors
++// Use of this source code is governed by a BSD-style license that can be
++// found in the LICENSE file.
++
++#include "components/value_store/leveldb_value_store.h"
++
++#include "base/files/scoped_temp_dir.h"
++#include "base/test/task_environment.h"
++#include "testing/gtest/include/gtest/gtest.h"
++#include "third_party/leveldatabase/src/include/leveldb/write_batch.h"
++
++namespace value_store {
++namespace {
++
++class AuxUiPreferenceMigrationTest : public testing::Test {
++ protected:
++  void SetUp() override {
++    ASSERT_TRUE(directory_.CreateUniqueTempDir());
++    store_ = std::make_unique<LeveldbValueStore>("Test", directory_.GetPath());
++    ASSERT_TRUE(store_->Get().status().ok());
++  }
++
++  void Seed(const std::string& key, const base::Value& value) {
++    ASSERT_TRUE(store_->Set(ValueStore::DEFAULTS, key, value).status().ok());
++  }
++
++  base::test::TaskEnvironment tasks_;
++  base::ScopedTempDir directory_;
++  std::unique_ptr<LeveldbValueStore> store_;
++};
++
++TEST_F(AuxUiPreferenceMigrationTest, PreservesFalseAndUnknownValuesAndReopens) {
++  Seed("aside.capture.enabled", base::Value(false));
++  Seed("aside.browserColorScheme", base::Value("dark"));
++  Seed("aside.tabsTidy.customPrompt", base::Value("Group by project"));
++  Seed("unrelated", base::Value("keep"));
++  auto capture = store_->CaptureAuxUiPreferencesForMigration();
++  ASSERT_TRUE(capture.has_value());
++  ASSERT_TRUE(store_->CommitAuxUiPreferenceMigration(std::move(*capture)).ok());
++  store_.reset();
++  store_ = std::make_unique<LeveldbValueStore>("Test", directory_.GetPath());
++  auto values = store_->Get();
++  ASSERT_TRUE(values.status().ok());
++  EXPECT_EQ(values.settings().FindBool("aux.capture.enabled.v2"), false);
++  ASSERT_TRUE(values.settings().FindString("aux.browserColorScheme.v2"));
++  EXPECT_EQ(*values.settings().FindString("aux.browserColorScheme.v2"), "dark");
++  ASSERT_TRUE(values.settings().FindString("unrelated"));
++  EXPECT_EQ(*values.settings().FindString("unrelated"), "keep");
++  EXPECT_FALSE(values.settings().contains("aside.capture.enabled"));
++  EXPECT_FALSE(values.settings().contains("aside.browserColorScheme"));
++  EXPECT_FALSE(values.settings().contains("aside.tabsTidy.customPrompt"));
++  auto retry = store_->CaptureAuxUiPreferencesForMigration();
++  ASSERT_TRUE(retry.has_value());
++  EXPECT_TRUE(store_->CommitAuxUiPreferenceMigration(std::move(*retry)).ok());
++}
++
++TEST_F(AuxUiPreferenceMigrationTest, ConflictingTargetLeavesBothValuesIntact) {
++  Seed("aside.capture.enabled", base::Value(false));
++  Seed("aux.capture.enabled.v2", base::Value(true));
++  EXPECT_FALSE(store_->CaptureAuxUiPreferencesForMigration().has_value());
++  auto values = store_->Get();
++  ASSERT_TRUE(values.status().ok());
++  EXPECT_EQ(values.settings().FindBool("aside.capture.enabled"), false);
++  EXPECT_EQ(values.settings().FindBool("aux.capture.enabled.v2"), true);
++}
++
++TEST_F(AuxUiPreferenceMigrationTest, CorruptRawRecordIsNotDeletedOrRepaired) {
++  leveldb::WriteBatch batch;
++  batch.Put("aside.capture.enabled", "not valid JSON");
++  ASSERT_TRUE(store_->WriteToDbForTest(&batch));
++  EXPECT_FALSE(store_->CaptureAuxUiPreferencesForMigration().has_value());
++  // A second migration capture must see the same corruption. Ordinary Get()
++  // would remove it, so it deliberately is not used to check this path.
++  EXPECT_FALSE(store_->CaptureAuxUiPreferencesForMigration().has_value());
++}
++
++TEST_F(AuxUiPreferenceMigrationTest, RejectsInterveningOperationsAndForeignStore) {
++  Seed("aside.capture.enabled", base::Value(false));
++  auto capture = store_->CaptureAuxUiPreferencesForMigration();
++  ASSERT_TRUE(capture.has_value());
++  Seed("unrelated", base::Value("changed"));
++  EXPECT_FALSE(store_->CommitAuxUiPreferenceMigration(std::move(*capture)).ok());
++
++  base::ScopedTempDir other_directory;
++  ASSERT_TRUE(other_directory.CreateUniqueTempDir());
++  LeveldbValueStore other("Test", other_directory.GetPath());
++  ASSERT_TRUE(other.Get().status().ok());
++  capture = store_->CaptureAuxUiPreferencesForMigration();
++  ASSERT_TRUE(capture.has_value());
++  EXPECT_FALSE(other.CommitAuxUiPreferenceMigration(std::move(*capture)).ok());
++}
++
++TEST_F(AuxUiPreferenceMigrationTest, UnopenedStoreDoesNotCreateDatabase) {
++  base::ScopedTempDir unused_directory;
++  ASSERT_TRUE(unused_directory.CreateUniqueTempDir());
++  LeveldbValueStore unused("Test", unused_directory.GetPath().AppendASCII("absent"));
++  EXPECT_FALSE(unused.CaptureAuxUiPreferencesForMigration().has_value());
++  EXPECT_FALSE(unused.CommitAuxUiPreferenceMigration(nullptr).ok());
++}
++
++}  // namespace
++}  // namespace value_store
+diff --git a/components/value_store/leveldb_value_store.cc b/components/value_store/leveldb_value_store.cc
+--- a/components/value_store/leveldb_value_store.cc
++++ b/components/value_store/leveldb_value_store.cc
+@@ -13,10 +13,12 @@
+ #include "base/json/json_reader.h"
+ #include "base/json/json_writer.h"
+ #include "base/notreached.h"
++#include "base/memory/ptr_util.h"
+ #include "base/strings/string_number_conversions.h"
+ #include "base/strings/string_util.h"
+ #include "base/strings/stringprintf.h"
+ #include "base/strings/sys_string_conversions.h"
++#include "base/strings/utf_string_conversions.h"
+ #include "base/task/sequenced_task_runner.h"
+ #include "base/threading/scoped_blocking_call.h"
+ #include "base/trace_event/memory_dump_manager.h"
+@@ -29,6 +31,27 @@
+ 
+ const char kInvalidJson[] = "Invalid JSON";
+ const char kCannotSerialize[] = "Cannot serialize value to JSON";
++
++constexpr std::array<const char*, 6> kAuxUiPreferenceKeys = {
++    "aside.browserColorScheme", "aux.browserColorScheme.v2",
++    "aside.capture.enabled", "aux.capture.enabled.v2",
++    "aside.tabsTidy.customPrompt", "aux.tabsTidy.customPrompt.v2"};
++
++bool IsValidAuxUiPreference(const base::Value& value, size_t family) {
++  if (family == 1) {
++    return value.is_bool();
++  }
++  if (!value.is_string()) {
++    return false;
++  }
++  const std::string& text = value.GetString();
++  if (family == 0) {
++    return text == "system" || text == "light" || text == "dark";
++  }
++  // The supplied UI's 300-character limit counts UTF-16 code units.
++  return base::UTF8ToUTF16(text).size() <= 300;
++}
++
+ 
+ }  // namespace
+ 
+@@ -71,6 +94,7 @@
+ }
+ 
+ ValueStore::ReadResult LeveldbValueStore::GetKeys() {
++  aux_migration_weak_factory_.InvalidateWeakPtrs();
+   Status status = EnsureDbIsOpen();
+   if (!status.ok()) {
+     return ReadResult(std::move(status));
+@@ -94,6 +118,7 @@
+ 
+ ValueStore::ReadResult LeveldbValueStore::Get(
+     const std::vector<std::string>& keys) {
++  aux_migration_weak_factory_.InvalidateWeakPtrs();
+   Status status = EnsureDbIsOpen();
+   if (!status.ok())
+     return ReadResult(std::move(status));
+@@ -113,6 +138,7 @@
+ }
+ 
+ ValueStore::ReadResult LeveldbValueStore::Get() {
++  aux_migration_weak_factory_.InvalidateWeakPtrs();
+   Status status = EnsureDbIsOpen();
+   if (!status.ok())
+     return ReadResult(std::move(status));
+@@ -145,6 +171,7 @@
+ ValueStore::WriteResult LeveldbValueStore::Set(WriteOptions options,
+                                                const std::string& key,
+                                                const base::Value& value) {
++  aux_migration_weak_factory_.InvalidateWeakPtrs();
+   Status status = EnsureDbIsOpen();
+   if (!status.ok())
+     return WriteResult(std::move(status));
+@@ -163,6 +190,7 @@
+ ValueStore::WriteResult LeveldbValueStore::Set(
+     WriteOptions options,
+     const base::DictValue& settings) {
++  aux_migration_weak_factory_.InvalidateWeakPtrs();
+   Status status = EnsureDbIsOpen();
+   if (!status.ok())
+     return WriteResult(std::move(status));
+@@ -187,6 +215,7 @@
+ 
+ ValueStore::WriteResult LeveldbValueStore::Remove(
+     const std::vector<std::string>& keys) {
++  aux_migration_weak_factory_.InvalidateWeakPtrs();
+   Status status = EnsureDbIsOpen();
+   if (!status.ok())
+     return WriteResult(std::move(status));
+@@ -216,6 +245,7 @@
+ }
+ 
+ ValueStore::WriteResult LeveldbValueStore::Clear() {
++  aux_migration_weak_factory_.InvalidateWeakPtrs();
+   ValueStoreChangeList changes;
+ 
+   ReadResult read_result = Get();
+@@ -233,7 +263,86 @@
+   return WriteResult(std::move(changes), read_result.PassStatus());
+ }
+ 
++
++LeveldbValueStore::AuxUiPreferenceCapture::AuxUiPreferenceCapture() = default;
++LeveldbValueStore::AuxUiPreferenceCapture::~AuxUiPreferenceCapture() = default;
++
++LeveldbValueStore::AuxUiPreferenceCaptureResult
++LeveldbValueStore::CaptureAuxUiPreferencesForMigration() {
++  if (!db()) {
++    return base::unexpected(Status(OTHER_ERROR,
++                                  "Aux migration requires an open backend"));
++  }
++  auto capture = base::WrapUnique(new AuxUiPreferenceCapture());
++  capture->owner = aux_migration_weak_factory_.GetWeakPtr();
++  for (size_t i = 0; i < kAuxUiPreferenceKeys.size(); ++i) {
++    std::string raw;
++    const leveldb::Status status =
++        db()->Get(read_options(), kAuxUiPreferenceKeys[i], &raw);
++    if (status.IsNotFound()) {
++      continue;
++    }
++    if (!status.ok()) {
++      return base::unexpected(ToValueStoreError(status));
++    }
++    std::optional<base::Value> value =
++        base::JSONReader::Read(raw, base::JSON_PARSE_CHROMIUM_EXTENSIONS);
++    if (!value || !IsValidAuxUiPreference(*value, i / 2)) {
++      return base::unexpected(Status(CORRUPTION,
++                                    "Invalid Aux migration preference"));
++    }
++    capture->records[i] = std::move(raw);
++  }
++  for (size_t i = 0; i < kAuxUiPreferenceKeys.size(); i += 2) {
++    if (capture->records[i] && capture->records[i + 1] &&
++        capture->records[i] != capture->records[i + 1]) {
++      return base::unexpected(Status(OTHER_ERROR,
++                                    "Conflicting Aux migration preference"));
++    }
++  }
++  return capture;
++}
++
++ValueStore::Status LeveldbValueStore::CommitAuxUiPreferenceMigration(
++    std::unique_ptr<AuxUiPreferenceCapture> capture) {
++  if (!capture || capture->owner.get() != this || !db()) {
++    return Status(OTHER_ERROR, "Stale or foreign Aux preference capture");
++  }
++  // Consume all captures before touching the database. A failed sync can have
++  // an unknown outcome; only a new native-authorized capture may retry.
++  aux_migration_weak_factory_.InvalidateWeakPtrs();
++  for (size_t i = 0; i < kAuxUiPreferenceKeys.size(); ++i) {
++    std::string raw;
++    const leveldb::Status status =
++        db()->Get(read_options(), kAuxUiPreferenceKeys[i], &raw);
++    if (!status.ok() && !status.IsNotFound()) {
++      return ToValueStoreError(status);
++    }
++    std::optional<std::string> current;
++    if (status.ok()) {
++      current = std::move(raw);
++    }
++    if (current != capture->records[i]) {
++      return Status(OTHER_ERROR, "Aux preference changed after capture");
++    }
++  }
++  leveldb::WriteBatch batch;
++  for (size_t i = 0; i < kAuxUiPreferenceKeys.size(); i += 2) {
++    if (capture->records[i]) {
++      // Preserve exact original JSON bytes, including explicit false values.
++      batch.Put(kAuxUiPreferenceKeys[i + 1], *capture->records[i]);
++      batch.Delete(kAuxUiPreferenceKeys[i]);
++    }
++  }
++  leveldb::WriteOptions options;
++  options.sync = true;
++  // An empty batch still requests sync; a retry must not mistake a previous
++  // write with an unknown sync outcome for a durable completed migration.
++  return ToValueStoreError(db()->Write(options, &batch));
++}
++
+ bool LeveldbValueStore::WriteToDbForTest(leveldb::WriteBatch* batch) {
++  aux_migration_weak_factory_.InvalidateWeakPtrs();
+   Status status = EnsureDbIsOpen();
+   if (!status.ok())
+     return false;
+diff --git a/components/value_store/leveldb_value_store.h b/components/value_store/leveldb_value_store.h
+--- a/components/value_store/leveldb_value_store.h
++++ b/components/value_store/leveldb_value_store.h
+@@ -7,11 +7,15 @@
+ 
+ #include <stddef.h>
+ 
++#include <array>
+ #include <memory>
++#include <optional>
+ #include <string>
+ #include <vector>
+ 
+ #include "base/compiler_specific.h"
++#include "base/memory/weak_ptr.h"
++#include "base/types/expected.h"
+ #include "base/files/file_path.h"
+ #include "base/trace_event/memory_dump_provider.h"
+ #include "components/value_store/lazy_leveldb.h"
+@@ -58,6 +62,27 @@
+   WriteResult Remove(const std::vector<std::string>& keys) override;
+   WriteResult Clear() override;
+ 
++
++  // Backend-only preparation. Never opens, repairs or deletes a database.
++  // Call on the owning backend sequence after profile writers are quiesced.
++  // The capture is invalidated by intervening ordinary store operations.
++  // These methods neither grant profile authority nor commit other UI stores.
++  class AuxUiPreferenceCapture {
++   public:
++    ~AuxUiPreferenceCapture();
++
++   private:
++    friend class LeveldbValueStore;
++    AuxUiPreferenceCapture();
++    base::WeakPtr<LeveldbValueStore> owner;
++    std::array<std::optional<std::string>, 6> records;
++  };
++  using AuxUiPreferenceCaptureResult =
++      base::expected<std::unique_ptr<AuxUiPreferenceCapture>, Status>;
++  AuxUiPreferenceCaptureResult CaptureAuxUiPreferencesForMigration();
++  Status CommitAuxUiPreferenceMigration(
++      std::unique_ptr<AuxUiPreferenceCapture> capture);
++
+   // Write directly to the backing levelDB. Only used for testing to cause
+   // corruption in the database.
+   bool WriteToDbForTest(leveldb::WriteBatch* batch);
+@@ -77,6 +102,8 @@
+ 
+   // Commits the changes in |batch| to the database.
+   ValueStore::Status WriteToDb(leveldb::WriteBatch* batch);
++
++  base::WeakPtrFactory<LeveldbValueStore> aux_migration_weak_factory_{this};
+ };
+ 
+ }  // namespace value_store
+diff --git a/sql/database.cc b/sql/database.cc
+--- a/sql/database.cc
++++ b/sql/database.cc
+@@ -2743,6 +2743,30 @@
+ #endif  // BUILDFLAG(IS_FUCHSIA)
+ }
+ 
++bool Database::SyncOpenFilesForAuxMigration() {
++  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
++  if (!is_open() || in_memory_ || transaction_nesting_ != 0) {
++    return false;
++  }
++  auto sync_file = [this](int operation, bool required) {
++    sqlite3_file* file = nullptr;
++    if (sqlite3_file_control(db_, "main", operation, &file) != SQLITE_OK) {
++      return false;
++    }
++    // A journal can be unopened when no journal writes exist. The main file
++    // is required; an unsupported xSync must never become a successful sync.
++    if (!file || !file->pMethods) {
++      return !required;
++    }
++    return file->pMethods->xSync &&
++           file->pMethods->xSync(file, SQLITE_SYNC_FULL) == SQLITE_OK;
++  };
++  // SQLite's JOURNAL_POINTER returns the WAL file in WAL mode. Use the actual
++  // VFS handles; do not bypass SandboxedVfs or reopen a path from caller data.
++  return sync_file(SQLITE_FCNTL_JOURNAL_POINTER, false) &&
++         sync_file(SQLITE_FCNTL_FILE_POINTER, true);
++}
++
+ bool Database::CheckpointDatabase(bool truncate) {
+   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+ 
+diff --git a/sql/database.h b/sql/database.h
+--- a/sql/database.h
++++ b/sql/database.h
+@@ -812,6 +812,11 @@
+   // until it is finished. Please use with care.
+   bool CheckpointDatabase(bool truncate = false);
+ 
++  // Migration-only sync of currently open main/journal files, journal first.
++  // Requires this connection's sequence, an open disk DB and no transaction.
++  // Never opens files or grants profile authority. Returns false on any error.
++  bool SyncOpenFilesForAuxMigration();
++
+   // Info querying -------------------------------------------------------------
+ 
+   // Returns true if the given structure exists.  Instead of test-then-create,

@@ -1,8 +1,14 @@
 # Native patch ownership
 
-The current155 series contains67 numbered areas, `0001`–`0067`, applied to
-Chromium155.0.8059.85. Current source, compiled and observed status belongs in
-[STATUS](../../docs/STATUS.md). Older consolidation evidence below describes its
+The registered [series](series) is the source of truth for active areas. The
+2026-10-24 area0106 pairs the native UI-storage queue, file-data sync and
+extension-preference migration backends. Its exact 26-file disposable replay
+and 11-object compilation are recorded in the
+[integration evidence](../../docs/integration/proposed/standard-profile-isolation/ui-storage-durable-drain-a1/README.md).
+It has not been applied to the native checkout, fully linked or executed; it
+does not activate migration or change the accepted app. Current source,
+compiled and observed status belongs in [STATUS](../../docs/STATUS.md).
+Older consolidation evidence below describes its
 explicit154 checkpoint and must not be used as155 build or acceptance evidence.
 
 Area0060 adds asynchronous runtime dispatch with bounded outgoing transport,

@@ -1,0 +1,14 @@
+{
+  "format": "aux.dom-storage-durable-drain.producers.v1",
+  "producerSha256": {
+    "compile-failed-a1.py": "4987ea4cf767c3bf797235add0d73a21eff41da153d52b2fd283a8d2a9a57bd4",
+    "project-failed-a1.py": "83406f5313c98b3164bdc829e721241270118b1cbd52722de595145b535089ab",
+    "integrate.py": "0272d17f07b95d16e6b7f1253e9c009d2244832ada4502fa7f7476aefa480419",
+    "compile.py": "0516b68fc58d83f8fd6266255cd4de67b8f737ea5b3e71b033017435ceaa7e20",
+    "project.py": "1eeb897ed54e9d0c3c7aa84053d6e643121b246b7f9eaf26f114951b3192574a"
+  },
+  "sourcePlanSha256": "ac137225c8fd1ecfa3407fdf15b8bf3b4ef0d44c6285de936a97a5bc6da4e1e9",
+  "compileReceiptSha256": "8503240f664db8deb98cb62c437f2970048bde36e9232169fdafee3a9420164d",
+  "integrationReceiptSha256": "7a902339f530ee0783f62d44019177c4978c4bb5626b040a9a204c8956f74900",
+  "sourceReviewSha256": "5b84e27482c9f6ed13c7936b1d976a2a18074917e9f95e0f4220f18f243ccd17"
+}

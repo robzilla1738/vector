@@ -77,6 +77,14 @@ The extension backend now has an instance-bound capture and a single sync LevelD
 
 These are source/backend advances, not a completed importer or migration. Native owner/epoch binding, complete capture, the cross-store journal, durable DOM writes, startup association and actual acceptance remain open. The latest inactive app and accepted preview are unchanged. No build job remains running.
 
+## Native storage sync source registration — 2026-10-24
+
+The DOM queue barrier has a coupled file-data sync implementation for all four database implementations. SQLite uses its real VFS handles before/after checkpointing, checks the actual mode and restores the previous policy; LevelDB uses a non-null empty synchronous batch. Missing/unsupported/in-memory backends, prior failures, busy or failed sync and lost callbacks refuse. Actual compilation passed all 11 affected objects, with 866 unique input pins. Source analysis preserves the distinction between file-data sync and directory/cross-store durability.
+
+The complete 26-file source slice is registered in `chromium/patches/series` as area0106. It includes the previous extension migration backend and native fixture registration. Disposable exact replay and reverse checks passed against the actual pinned native HEAD; the real checkout was not changed. `ui-storage-durable-drain-a1/` records source, compile and recipe-integration evidence, including the failed first version. This patch has not been fully linked, packaged or executed. The latest inactive app above remains unchanged; all runtime/testable/acceptance gates remain open.
+
+The importer, complete capture, native owner binding, writer closure, directory sync and multi-store journal/recovery still need implementation. No app/helper lifecycle, native API/database execution, signing, provider request, owner state or OS grant occurred. No build job remains live.
+
 ## Capability and acceptance gates
 
 The paired daemon requires the actual macOS27 descendant API and restricted Endpoint Security capability at fresh startup; unsigned output cannot satisfy that normal path. A read-only version check reports this Mac is already on 27.0.1 (`integration/host-version-readonly.json`); no API/client was run and no capability was granted. Its exact peer identity checks remain intact. Signing alone does not prove runtime completion or credential-lock behavior. Signing, installation/capabilities and release remain separate.

@@ -1,0 +1,56 @@
+{
+  "format": "aux.dom-storage-sync.source-review.v1",
+  "scope": "Actual pinned native sources only; no database or native API executed",
+  "findings": [
+    {
+      "path": "components/services/storage/dom_storage/sqlite/sqlite_database_utils.cc",
+      "sha256": "f4d04382902a26b3063cacbb9c6a80310a76fe9412aefd5372cffb6bbe7d2eed",
+      "finding": "DOM databases enable WAL and retain DatabaseOptions no_sync=false, giving NORMAL synchronous mode."
+    },
+    {
+      "path": "sql/database.h",
+      "sha256": "7b371c22e9a9ec9b61b45d04604fdca12bedc10428d3e09d6af15add722032f4",
+      "finding": "no_sync is false by default; no_sync=true selects OFF, otherwise WAL uses NORMAL."
+    },
+    {
+      "path": "sql/database.cc",
+      "sha256": "782a2094fecfd4d66135e1ce563e14df123ee61bcb78b9ed862710d901cb22ef",
+      "finding": "CheckpointDatabase delegates to WalCheckpointImpl; the private implementation can return success without new page backfill."
+    },
+    {
+      "path": "components/services/storage/sandboxed_vfs_file_impl.cc",
+      "sha256": "4a8bc96dc845bea452420a80e3b4f92c19c714dc837e7ca388562d24ee3dbcc0",
+      "finding": "Sandboxed VFS xSync forwards to the actual File::Flush status. It does not synchronize the containing directory."
+    },
+    {
+      "path": "components/services/storage/dom_storage/leveldb/dom_storage_database_leveldb.cc",
+      "sha256": "9c45d308550746a78684bf82162bad24b2a7f0d0b87e88295ffa2cbc20ed3edf",
+      "finding": "The wrapper owns disk or memory LevelDB; the new path refuses memory Env and failed-commit simulation."
+    },
+    {
+      "path": "third_party/leveldatabase/src/db/db_impl.cc",
+      "sha256": "8ec9ebbd813dfbb4186993154f1d7c392b62926f3b36f356ffd26f3fd0006a81",
+      "finding": "Write with a non-null empty WriteBatch still adds a log record and calls logfile Sync when options.sync is true."
+    },
+    {
+      "path": "third_party/sqlite/src/src/main.c",
+      "sha256": "318f5b725d7c1403a442e59cd1565672a6fe0c6b24c4c5d06a9c74c32b17f1de",
+      "finding": "SQLITE_FCNTL_JOURNAL_POINTER delegates to sqlite3PagerJrnlFile."
+    },
+    {
+      "path": "third_party/sqlite/src/src/pager.c",
+      "sha256": "58ada0bd1f081e31c4871d4933e1aed660ae81603c215cfbac0454b5c80f8343",
+      "finding": "sqlite3PagerJrnlFile returns the active WAL file when pWal exists."
+    },
+    {
+      "path": "third_party/sqlite/src/src/wal.c",
+      "sha256": "0c0467f7c4de773512b3327b0d3973fc31d50cf74603d6aec0e3b3e1c787e217",
+      "finding": "Checkpoint syncs WAL and database during backfill. That work is conditional; no-backfill success is insufficient as an unconditional file-sync acknowledgment."
+    }
+  ],
+  "limits": [
+    "File data sync is not directory durability, native authority, complete writer quiescence or a multi-store journal.",
+    "Runtime fault and actual-app acceptance remain unperformed."
+  ],
+  "integrationPreflight": "The first integrate.py invocation refused its incorrectly resolved repository parent before creating its replay directory or modifying any file. The parent selection was corrected before the recorded successful replay."
+}

@@ -1,0 +1,253 @@
+{
+  "format": "aux.dom-storage-durable-drain.source.v1",
+  "overlay": "/private/tmp/aux-dom-storage-durable-overlay-20261024-a1",
+  "predecessorPlanSha256": "a82ba0b547384045e1c5943cff17f4446b0ad78d8ee3e8d3149d22058c79e59e",
+  "files": [
+    {
+      "path": "components/services/storage/dom_storage/dom_storage_database.h",
+      "originalSha256": "d238ec51da51f0ab7046d9aeed42d67bf50928be1c7acd6abb6a8904b1a466c9",
+      "inputSha256": "d238ec51da51f0ab7046d9aeed42d67bf50928be1c7acd6abb6a8904b1a466c9",
+      "outputSha256": "9df50e67d7be0bcbf32f5a7a123f4e82bcbd95117b22512ea5369d36b2542b45",
+      "anchors": [
+        {
+          "find": "  virtual void SetDestructionCallbackForTesting(base::OnceClosure callback) = 0;",
+          "replace": "  virtual void SetDestructionCallbackForTesting(base::OnceClosure callback) = 0;\n\n  // Migration-only backend sync. Call on the DB sequence with writers closed.\n  // Keep this after existing virtual methods to retain their slot ordering.\n  // Unsupported/test implementations refuse rather than simulate completion.\n  virtual DbStatus SyncForAuxMigration();",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "components/services/storage/dom_storage/dom_storage_database.cc",
+      "originalSha256": "9d175af3d2275a81328e6c8fbc840b94c6d2831888781c342ee4404c99d5f864",
+      "inputSha256": "9d175af3d2275a81328e6c8fbc840b94c6d2831888781c342ee4404c99d5f864",
+      "outputSha256": "c2b09a8d5f28c26a5fbc6f8b1522c1c9158cacc156b501cf985f251697b0d82d",
+      "anchors": [
+        {
+          "find": "namespace storage {",
+          "replace": "namespace storage {\n\nDbStatus DomStorageDatabase::SyncForAuxMigration() {\n  return DbStatus::IOError(\"DOM storage sync is unsupported by this backend\");\n}\n",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "sql/database.h",
+      "originalSha256": "7b371c22e9a9ec9b61b45d04604fdca12bedc10428d3e09d6af15add722032f4",
+      "inputSha256": "7b371c22e9a9ec9b61b45d04604fdca12bedc10428d3e09d6af15add722032f4",
+      "outputSha256": "04961f3b9b706b376918f9621ba89e4ea2b02fb75f5bd0ea3489bd2d5c6d9978",
+      "anchors": [
+        {
+          "find": "  bool CheckpointDatabase(bool truncate = false);",
+          "replace": "  bool CheckpointDatabase(bool truncate = false);\n\n  // Migration-only sync of currently open main/journal files, journal first.\n  // Requires this connection's sequence, an open disk DB and no transaction.\n  // Never opens files or grants profile authority. Returns false on any error.\n  bool SyncOpenFilesForAuxMigration();",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "sql/database.cc",
+      "originalSha256": "782a2094fecfd4d66135e1ce563e14df123ee61bcb78b9ed862710d901cb22ef",
+      "inputSha256": "782a2094fecfd4d66135e1ce563e14df123ee61bcb78b9ed862710d901cb22ef",
+      "outputSha256": "7ec18b35d5709c48f2e165dd561051070be30161cd02ee0afdab63a058528100",
+      "anchors": [
+        {
+          "find": "bool Database::CheckpointDatabase(bool truncate) {",
+          "replace": "bool Database::SyncOpenFilesForAuxMigration() {\n  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);\n  if (!is_open() || in_memory_ || transaction_nesting_ != 0) {\n    return false;\n  }\n  auto sync_file = [this](int operation, bool required) {\n    sqlite3_file* file = nullptr;\n    if (sqlite3_file_control(db_, \"main\", operation, &file) != SQLITE_OK) {\n      return false;\n    }\n    // A journal can be unopened when no journal writes exist. The main file\n    // is required; an unsupported xSync must never become a successful sync.\n    if (!file || !file->pMethods) {\n      return !required;\n    }\n    return file->pMethods->xSync &&\n           file->pMethods->xSync(file, SQLITE_SYNC_FULL) == SQLITE_OK;\n  };\n  // SQLite's JOURNAL_POINTER returns the WAL file in WAL mode. Use the actual\n  // VFS handles; do not bypass SandboxedVfs or reopen a path from caller data.\n  return sync_file(SQLITE_FCNTL_JOURNAL_POINTER, false) &&\n         sync_file(SQLITE_FCNTL_FILE_POINTER, true);\n}\n\nbool Database::CheckpointDatabase(bool truncate) {",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "components/services/storage/dom_storage/leveldb/dom_storage_database_leveldb.h",
+      "originalSha256": "145549e1ccbc5150b4305c107be815e73bce4f4ba4ebc7ba355b8d6b12e00ee6",
+      "inputSha256": "145549e1ccbc5150b4305c107be815e73bce4f4ba4ebc7ba355b8d6b12e00ee6",
+      "outputSha256": "96ede192f5b75e46627480f3f4a5fda2ccbea086a1fb32b397db0c25d1be9104",
+      "anchors": [
+        {
+          "find": "  DbStatus RewriteDB();",
+          "replace": "  DbStatus RewriteDB();\n\n  DbStatus SyncForAuxMigration();",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "components/services/storage/dom_storage/leveldb/dom_storage_database_leveldb.cc",
+      "originalSha256": "9c45d308550746a78684bf82162bad24b2a7f0d0b87e88295ffa2cbc20ed3edf",
+      "inputSha256": "9c45d308550746a78684bf82162bad24b2a7f0d0b87e88295ffa2cbc20ed3edf",
+      "outputSha256": "109dd5d7121fb58f6ddeddcc4b14e153f30cab62dc0c2a0fcd4d600cc4da604a",
+      "anchors": [
+        {
+          "find": "#include \"third_party/leveldatabase/src/include/leveldb/status.h\"",
+          "replace": "#include \"third_party/leveldatabase/src/include/leveldb/status.h\"\n#include \"third_party/leveldatabase/src/include/leveldb/write_batch.h\"",
+          "count": 1
+        },
+        {
+          "find": "bool DomStorageDatabaseLevelDB::ShouldFailAllCommitsForTesting() {",
+          "replace": "DbStatus DomStorageDatabaseLevelDB::SyncForAuxMigration() {\n  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);\n  if (!db_ || env_ || name_.empty() || fail_all_commits_for_testing_) {\n    return DbStatus::IOError(\"Aux sync requires an available disk LevelDB\");\n  }\n  leveldb::WriteBatch batch;\n  leveldb::WriteOptions options;\n  options.sync = true;\n  return FromLevelDBStatus(db_->Write(options, &batch));\n}\n\nbool DomStorageDatabaseLevelDB::ShouldFailAllCommitsForTesting() {",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "components/services/storage/dom_storage/sqlite/sqlite_database_utils.h",
+      "originalSha256": "2432111d5400c2d36d50823abda9a5f686e213046e27fd312098cd527edd3ee6",
+      "inputSha256": "2432111d5400c2d36d50823abda9a5f686e213046e27fd312098cd527edd3ee6",
+      "outputSha256": "6027de7cf77d1ef385b590bcdf4ab17daed518efc6ff351aa016099b21119a07",
+      "anchors": [
+        {
+          "find": "// Deletes the SQLite database file identified by `database_path`.",
+          "replace": "// Migration-only full WAL checkpoint; restores ordinary sync policy.\n// Refuses in-memory/non-WAL databases and active transactions.\nDbStatus SyncDatabaseForAuxMigration(sql::Database& database);\n\n// Deletes the SQLite database file identified by `database_path`.",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "components/services/storage/dom_storage/sqlite/sqlite_database_utils.cc",
+      "originalSha256": "f4d04382902a26b3063cacbb9c6a80310a76fe9412aefd5372cffb6bbe7d2eed",
+      "inputSha256": "f4d04382902a26b3063cacbb9c6a80310a76fe9412aefd5372cffb6bbe7d2eed",
+      "outputSha256": "59afc9d68eb02dcc2f0b90c49cab8fce01cf6b92fac9cefba833e76b42a9363e",
+      "anchors": [
+        {
+          "find": "#include \"sql/meta_table.h\"",
+          "replace": "#include \"sql/meta_table.h\"\n#include \"sql/statement.h\"",
+          "count": 1
+        },
+        {
+          "find": "DbStatus DestroyDatabase(const base::FilePath& database_path) {",
+          "replace": "DbStatus SyncDatabaseForAuxMigration(sql::Database& database) {\n  if (!database.is_open() || database.transaction_nesting() != 0) {\n    return DbStatus::IOError(\"Aux sync requires an open idle SQLite backend\");\n  }\n  {\n    sql::Statement mode(database.GetUniqueStatement(\"PRAGMA journal_mode\"));\n    if (!mode.Step() || mode.ColumnString(0) != \"wal\") {\n      return DbStatus::IOError(\"Aux sync requires an existing WAL database\");\n    }\n  }\n  int previous_mode;\n  {\n    sql::Statement mode(database.GetUniqueStatement(\"PRAGMA synchronous\"));\n    if (!mode.Step()) {\n      return storage::FromSqliteCode(database);\n    }\n    previous_mode = mode.ColumnInt(0);\n    if (previous_mode < 0 || previous_mode > 3) {\n      return DbStatus::IOError(\"Unsupported SQLite synchronous mode\");\n    }\n  }\n  // A checkpoint may skip xSync when earlier OFF-mode checkpointing already\n  // backfilled every page. Sync existing files before truncating that WAL.\n  if (!database.SyncOpenFilesForAuxMigration()) {\n    return DbStatus::IOError(\"SQLite migration pre-checkpoint sync failed\");\n  }\n  // Do not weaken FULL/EXTRA. OFF/NORMAL temporarily become FULL so a\n  // completed checkpoint requests a real WAL/database sync from the VFS.\n  const bool change_mode = previous_mode < 2;\n  DbStatus result = DbStatus::OK();\n  if (change_mode && !database.Execute(\"PRAGMA synchronous=FULL\")) {\n    result = storage::FromSqliteCode(database);\n  }\n  if (result.ok()) {\n    sql::Statement mode(database.GetUniqueStatement(\"PRAGMA synchronous\"));\n    if (!mode.Step() || mode.ColumnInt(0) < 2) {\n      result = DbStatus::IOError(\"SQLite did not enable migration sync\");\n    }\n  }\n  // The mode query is finalized before checkpointing. TRUNCATE refuses busy\n  // readers instead of reporting a partial passive checkpoint as completion.\n  if (result.ok() && !database.CheckpointDatabase(/*truncate=*/true)) {\n    result = storage::FromSqliteCode(database);\n  }\n  if (result.ok() && !database.SyncOpenFilesForAuxMigration()) {\n    result = DbStatus::IOError(\"SQLite migration post-checkpoint sync failed\");\n  }\n  // Capture checkpoint errors before this call overwrites SQLite's last code.\n  // Restore the ordinary policy even on failure; restoration failure remains\n  // an unknown migration outcome and cannot authorize profile activation.\n  if (change_mode &&\n      !(previous_mode == 0 ? database.Execute(\"PRAGMA synchronous=OFF\")\n                          : database.Execute(\"PRAGMA synchronous=NORMAL\"))) {\n    return DbStatus::IOError(\"Could not restore SQLite sync policy\");\n  }\n  return result;\n}\n\nDbStatus DestroyDatabase(const base::FilePath& database_path) {",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "components/services/storage/dom_storage/leveldb/local_storage_leveldb.h",
+      "originalSha256": "c590c8d3d2ea8259fc892c24f8cfe20ed334b98dac4063231470905758ece684",
+      "inputSha256": "c590c8d3d2ea8259fc892c24f8cfe20ed334b98dac4063231470905758ece684",
+      "outputSha256": "b73b360454af23ec016ea07209b451808a4e26d7a45f478f84a6db8d866b6ae4",
+      "anchors": [
+        {
+          "find": "  DbStatus CleanUpStaleData() override;",
+          "replace": "  DbStatus CleanUpStaleData() override;\n  DbStatus SyncForAuxMigration() override;",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "components/services/storage/dom_storage/leveldb/local_storage_leveldb.cc",
+      "originalSha256": "393c0a6c62e2bb632c4c28ce47d7d861deca4321488da74e1996525286ade24e",
+      "inputSha256": "393c0a6c62e2bb632c4c28ce47d7d861deca4321488da74e1996525286ade24e",
+      "outputSha256": "1ebe0857276485a7bb3bc31d065c841b7326a0c53724d5ee8dd95441bb1e1bbb",
+      "anchors": [
+        {
+          "find": "DbStatus LocalStorageLevelDB::CleanUpStaleData() {",
+          "replace": "DbStatus LocalStorageLevelDB::SyncForAuxMigration() {\n  if (!leveldb_) {\n    return DbStatus::IOError(\"Aux sync requires an open LevelDB backend\");\n  }\n  return leveldb_->SyncForAuxMigration();\n}\n\nDbStatus LocalStorageLevelDB::CleanUpStaleData() {",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "components/services/storage/dom_storage/leveldb/session_storage_leveldb.h",
+      "originalSha256": "b82f626dce5ef0e16f7b979f27488e021f7bd09c5a082ee14e0ecf752f38973e",
+      "inputSha256": "b82f626dce5ef0e16f7b979f27488e021f7bd09c5a082ee14e0ecf752f38973e",
+      "outputSha256": "22c359e14852badaf44751a560e175aada40004adecdc5913d9af5baee6d65b4",
+      "anchors": [
+        {
+          "find": "  DbStatus CleanUpStaleData() override;",
+          "replace": "  DbStatus CleanUpStaleData() override;\n  DbStatus SyncForAuxMigration() override;",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "components/services/storage/dom_storage/leveldb/session_storage_leveldb.cc",
+      "originalSha256": "cb0634ed3a4f44f11e3579a7d60bad791f22f0158335ff968f34e2a3814b2024",
+      "inputSha256": "cb0634ed3a4f44f11e3579a7d60bad791f22f0158335ff968f34e2a3814b2024",
+      "outputSha256": "821463ae48ad4f364d87c3890a73769e778c624fe9ec36c5fbbde54b79af4105",
+      "anchors": [
+        {
+          "find": "DbStatus SessionStorageLevelDB::CleanUpStaleData() {",
+          "replace": "DbStatus SessionStorageLevelDB::SyncForAuxMigration() {\n  if (!leveldb_) {\n    return DbStatus::IOError(\"Aux sync requires an open LevelDB backend\");\n  }\n  return leveldb_->SyncForAuxMigration();\n}\n\nDbStatus SessionStorageLevelDB::CleanUpStaleData() {",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "components/services/storage/dom_storage/sqlite/local_storage_sqlite.h",
+      "originalSha256": "ed846fb2cb304167c09eb6dbbaf7fad2ec1c236f0b595869473dea6d6efcb29e",
+      "inputSha256": "ed846fb2cb304167c09eb6dbbaf7fad2ec1c236f0b595869473dea6d6efcb29e",
+      "outputSha256": "22cb9577ea78312b548a06931469483bdbcca3bdc2d2f4599956aa87fe2c28cb",
+      "anchors": [
+        {
+          "find": "  DbStatus CleanUpStaleData() override;",
+          "replace": "  DbStatus CleanUpStaleData() override;\n  DbStatus SyncForAuxMigration() override;",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "components/services/storage/dom_storage/sqlite/local_storage_sqlite.cc",
+      "originalSha256": "9f95a8b9b670baee1cb397f92a784706096a791a78bd80cf9ee1ba8c1fe6300e",
+      "inputSha256": "9f95a8b9b670baee1cb397f92a784706096a791a78bd80cf9ee1ba8c1fe6300e",
+      "outputSha256": "0601c10dc762dce7123b7c4e493eca8fb20e19b5b8ea90b3b333ebbc4b32367f",
+      "anchors": [
+        {
+          "find": "DbStatus LocalStorageSqlite::CleanUpStaleData() {",
+          "replace": "DbStatus LocalStorageSqlite::SyncForAuxMigration() {\n  if (!database_ || should_fail_commits_for_testing_) {\n    return DbStatus::IOError(\"Aux sync requires an available SQLite backend\");\n  }\n  return sqlite::SyncDatabaseForAuxMigration(*database_);\n}\n\nDbStatus LocalStorageSqlite::CleanUpStaleData() {",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "components/services/storage/dom_storage/sqlite/session_storage_sqlite.h",
+      "originalSha256": "876c70e2dfdfa02c7b03265cff630573b7a7d3d831bc302dfed597c572d0139c",
+      "inputSha256": "876c70e2dfdfa02c7b03265cff630573b7a7d3d831bc302dfed597c572d0139c",
+      "outputSha256": "c86839e2da5b4e33225089716366c1239759845a0602a96fcc64537e86c3e6e5",
+      "anchors": [
+        {
+          "find": "  DbStatus CleanUpStaleData() override;",
+          "replace": "  DbStatus CleanUpStaleData() override;\n  DbStatus SyncForAuxMigration() override;",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "components/services/storage/dom_storage/sqlite/session_storage_sqlite.cc",
+      "originalSha256": "44ea6b81a9f9c6cd589883aecf4f9bdf6cbe12254a525c9aadce69d92b8072f1",
+      "inputSha256": "44ea6b81a9f9c6cd589883aecf4f9bdf6cbe12254a525c9aadce69d92b8072f1",
+      "outputSha256": "9c6e3c2e7cdbc576e5dfee9af58de7818281aff24002ef3c91c3a5e2eea718f5",
+      "anchors": [
+        {
+          "find": "DbStatus SessionStorageSqlite::CleanUpStaleData() {",
+          "replace": "DbStatus SessionStorageSqlite::SyncForAuxMigration() {\n  if (!database_ || should_fail_commits_for_testing_) {\n    return DbStatus::IOError(\"Aux sync requires an available SQLite backend\");\n  }\n  return sqlite::SyncDatabaseForAuxMigration(*database_);\n}\n\nDbStatus SessionStorageSqlite::CleanUpStaleData() {",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "components/services/storage/dom_storage/async_dom_storage_database.h",
+      "originalSha256": "dad0a6d851028460129b419e133e738125ceec7bd2f756fd8dc07f07cf706aea",
+      "inputSha256": "d7c259d73f288b0092f06d4d5f7a06df05c6bc04ba648280f86b73bbce3eda35",
+      "outputSha256": "520e6aecaf29b3aa7214a90c8876bab84074f500077bb266ddeb0e2244f7f28b",
+      "anchors": [
+        {
+          "find": "  // migration authority, acknowledge fsync or cover future renderer writes.",
+          "replace": "  // migration authority or cover future renderer writes. After queued tasks,\n  // the backend must acknowledge its explicit disk-sync operation.",
+          "count": 1
+        }
+      ],
+      "predecessor": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/ui-storage-native-drain-a1/source/components/services/storage/dom_storage/async_dom_storage_database.h"
+    },
+    {
+      "path": "components/services/storage/dom_storage/async_dom_storage_database.cc",
+      "originalSha256": "e5a8ad854c55a1f8f1d9fc1545c6bbefc8aa90f2b6bec709017f81321d1db6d3",
+      "inputSha256": "61a951a5a3a340c881b29221081c03ba2d40818d77511bbebdf7d55e05504a24",
+      "outputSha256": "90bcb90fa1acc193be54211777ffd6137ce66c8ad7d7911fd20d81930ffb3b53",
+      "anchors": [
+        {
+          "find": "         DomStorageDatabase*) {\n        std::move(callback).Run(state->first_error.value_or(DbStatus::OK()));",
+          "replace": "         DomStorageDatabase* database) {\n        if (!state->first_error) {\n          DbStatus status = database->SyncForAuxMigration();\n          if (!status.ok()) {\n            state->first_error = std::move(status);\n          }\n        }\n        std::move(callback).Run(state->first_error.value_or(DbStatus::OK()));",
+          "count": 1
+        }
+      ],
+      "predecessor": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/ui-storage-native-drain-a1/source/components/services/storage/dom_storage/async_dom_storage_database.cc"
+    }
+  ]
+}

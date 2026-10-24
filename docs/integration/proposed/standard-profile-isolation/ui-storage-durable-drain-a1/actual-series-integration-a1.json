@@ -1,0 +1,153 @@
+{
+  "format": "aux.ui-storage.native-series.integration.actual.v1",
+  "passed": true,
+  "base": "0e66b94549a8bd85f03fbdf189b752d6e7b63c32",
+  "patch": "/Users/rcourson/Documents/Vibe/web/chromium/patches/aux/0106-aux-ui-storage-migration.patch",
+  "patchSha256": "cd3e67e7d22547ffc949eab441269167924686f84ce6cd619fbd0461eb515f5b",
+  "seriesBeforeSha256": "cfd2abd6fd86713c0aab487130886b95ad5ede29e75ef13cb79c662e061fa3ad",
+  "seriesAfterSha256": "9a60e211c45e18063c6828e72bc1f3ea41fa1968cae76f8d66204d534d14c0f9",
+  "output": "/private/tmp/aux-ui-storage-native-series-replay-20261024-a1",
+  "sourcePlanSha256": "ac137225c8fd1ecfa3407fdf15b8bf3b4ef0d44c6285de936a97a5bc6da4e1e9",
+  "files": [
+    {
+      "path": "components/services/storage/dom_storage/async_dom_storage_database.cc",
+      "inputSha256": "e5a8ad854c55a1f8f1d9fc1545c6bbefc8aa90f2b6bec709017f81321d1db6d3",
+      "outputSha256": "90bcb90fa1acc193be54211777ffd6137ce66c8ad7d7911fd20d81930ffb3b53"
+    },
+    {
+      "path": "components/services/storage/dom_storage/async_dom_storage_database.h",
+      "inputSha256": "dad0a6d851028460129b419e133e738125ceec7bd2f756fd8dc07f07cf706aea",
+      "outputSha256": "520e6aecaf29b3aa7214a90c8876bab84074f500077bb266ddeb0e2244f7f28b"
+    },
+    {
+      "path": "components/services/storage/dom_storage/dom_storage_database.cc",
+      "inputSha256": "9d175af3d2275a81328e6c8fbc840b94c6d2831888781c342ee4404c99d5f864",
+      "outputSha256": "c2b09a8d5f28c26a5fbc6f8b1522c1c9158cacc156b501cf985f251697b0d82d"
+    },
+    {
+      "path": "components/services/storage/dom_storage/dom_storage_database.h",
+      "inputSha256": "d238ec51da51f0ab7046d9aeed42d67bf50928be1c7acd6abb6a8904b1a466c9",
+      "outputSha256": "9df50e67d7be0bcbf32f5a7a123f4e82bcbd95117b22512ea5369d36b2542b45"
+    },
+    {
+      "path": "components/services/storage/dom_storage/leveldb/dom_storage_database_leveldb.cc",
+      "inputSha256": "9c45d308550746a78684bf82162bad24b2a7f0d0b87e88295ffa2cbc20ed3edf",
+      "outputSha256": "109dd5d7121fb58f6ddeddcc4b14e153f30cab62dc0c2a0fcd4d600cc4da604a"
+    },
+    {
+      "path": "components/services/storage/dom_storage/leveldb/dom_storage_database_leveldb.h",
+      "inputSha256": "145549e1ccbc5150b4305c107be815e73bce4f4ba4ebc7ba355b8d6b12e00ee6",
+      "outputSha256": "96ede192f5b75e46627480f3f4a5fda2ccbea086a1fb32b397db0c25d1be9104"
+    },
+    {
+      "path": "components/services/storage/dom_storage/leveldb/local_storage_leveldb.cc",
+      "inputSha256": "393c0a6c62e2bb632c4c28ce47d7d861deca4321488da74e1996525286ade24e",
+      "outputSha256": "1ebe0857276485a7bb3bc31d065c841b7326a0c53724d5ee8dd95441bb1e1bbb"
+    },
+    {
+      "path": "components/services/storage/dom_storage/leveldb/local_storage_leveldb.h",
+      "inputSha256": "c590c8d3d2ea8259fc892c24f8cfe20ed334b98dac4063231470905758ece684",
+      "outputSha256": "b73b360454af23ec016ea07209b451808a4e26d7a45f478f84a6db8d866b6ae4"
+    },
+    {
+      "path": "components/services/storage/dom_storage/leveldb/session_storage_leveldb.cc",
+      "inputSha256": "cb0634ed3a4f44f11e3579a7d60bad791f22f0158335ff968f34e2a3814b2024",
+      "outputSha256": "821463ae48ad4f364d87c3890a73769e778c624fe9ec36c5fbbde54b79af4105"
+    },
+    {
+      "path": "components/services/storage/dom_storage/leveldb/session_storage_leveldb.h",
+      "inputSha256": "b82f626dce5ef0e16f7b979f27488e021f7bd09c5a082ee14e0ecf752f38973e",
+      "outputSha256": "22c359e14852badaf44751a560e175aada40004adecdc5913d9af5baee6d65b4"
+    },
+    {
+      "path": "components/services/storage/dom_storage/local_storage_impl.cc",
+      "inputSha256": "5d768d92ba81bce3b8ae74eb80a27043aaf7a283759053d73e18bbbbd523c4cc",
+      "outputSha256": "9baf9f764694d7c3f408894612b5d89c03102625b1d0a564acbf93bb7b4de67b"
+    },
+    {
+      "path": "components/services/storage/dom_storage/local_storage_impl.h",
+      "inputSha256": "8a3aee90a19d9151ee54caebcfd17f87caa23c824ce7842c349bde1addec6ca3",
+      "outputSha256": "4d29fc4be14f6b15077544cf9908d613f1f6e0e0a7025d0f351f8b83218209b2"
+    },
+    {
+      "path": "components/services/storage/dom_storage/session_storage_impl.cc",
+      "inputSha256": "dce7eb8bac5f1562c97f1f315881ee8df95931b212e81488c8c87aa285bfc74a",
+      "outputSha256": "2f8fd62bc71304357a51cd8a9e41c00a9ad262f7dcc76c4cb693b5f813a24a3f"
+    },
+    {
+      "path": "components/services/storage/dom_storage/session_storage_impl.h",
+      "inputSha256": "65e7713d37c77da8911f44c4fc8a5460d17ecd9cb02a7eed379f479d6f468fdb",
+      "outputSha256": "a16fc19a67393cef1a64a218e04615403e34f5dacf12d54a00f6fb4327bfbd76"
+    },
+    {
+      "path": "components/services/storage/dom_storage/sqlite/local_storage_sqlite.cc",
+      "inputSha256": "9f95a8b9b670baee1cb397f92a784706096a791a78bd80cf9ee1ba8c1fe6300e",
+      "outputSha256": "0601c10dc762dce7123b7c4e493eca8fb20e19b5b8ea90b3b333ebbc4b32367f"
+    },
+    {
+      "path": "components/services/storage/dom_storage/sqlite/local_storage_sqlite.h",
+      "inputSha256": "ed846fb2cb304167c09eb6dbbaf7fad2ec1c236f0b595869473dea6d6efcb29e",
+      "outputSha256": "22cb9577ea78312b548a06931469483bdbcca3bdc2d2f4599956aa87fe2c28cb"
+    },
+    {
+      "path": "components/services/storage/dom_storage/sqlite/session_storage_sqlite.cc",
+      "inputSha256": "44ea6b81a9f9c6cd589883aecf4f9bdf6cbe12254a525c9aadce69d92b8072f1",
+      "outputSha256": "9c6e3c2e7cdbc576e5dfee9af58de7818281aff24002ef3c91c3a5e2eea718f5"
+    },
+    {
+      "path": "components/services/storage/dom_storage/sqlite/session_storage_sqlite.h",
+      "inputSha256": "876c70e2dfdfa02c7b03265cff630573b7a7d3d831bc302dfed597c572d0139c",
+      "outputSha256": "c86839e2da5b4e33225089716366c1239759845a0602a96fcc64537e86c3e6e5"
+    },
+    {
+      "path": "components/services/storage/dom_storage/sqlite/sqlite_database_utils.cc",
+      "inputSha256": "f4d04382902a26b3063cacbb9c6a80310a76fe9412aefd5372cffb6bbe7d2eed",
+      "outputSha256": "59afc9d68eb02dcc2f0b90c49cab8fce01cf6b92fac9cefba833e76b42a9363e"
+    },
+    {
+      "path": "components/services/storage/dom_storage/sqlite/sqlite_database_utils.h",
+      "inputSha256": "2432111d5400c2d36d50823abda9a5f686e213046e27fd312098cd527edd3ee6",
+      "outputSha256": "6027de7cf77d1ef385b590bcdf4ab17daed518efc6ff351aa016099b21119a07"
+    },
+    {
+      "path": "components/value_store/BUILD.gn",
+      "inputSha256": "5885538f2dd88d9c93607b057880eda259272c4ea844873695f9a5389db709ee",
+      "outputSha256": "63ae34e0dcacb212d25300512bbf4f8a08327bb94278807b20f5ab39d2fc8317"
+    },
+    {
+      "path": "components/value_store/aux_ui_preference_migration_unittest.cc",
+      "inputSha256": null,
+      "outputSha256": "1586b3733fd05255f66bb7f8238aa668fc4c460f764db4f4afdf6ef0cc662fb0"
+    },
+    {
+      "path": "components/value_store/leveldb_value_store.cc",
+      "inputSha256": "5277dedde0146ce20883151e9abb372fd5924e489e8461e1c6c6307e70feaae9",
+      "outputSha256": "b3d627eae8bbec6ff073b5320e6a0648cdcfbd62585abba72c70932d8fbdac51"
+    },
+    {
+      "path": "components/value_store/leveldb_value_store.h",
+      "inputSha256": "23cf9626d3152f4253eacdd1e5c26113905db60c11e90d6ea0551cdf69735edd",
+      "outputSha256": "f2924f6064f76cb5b1e78b8e0fd7fc49e309488b47686079dc79c358f4f8900e"
+    },
+    {
+      "path": "sql/database.cc",
+      "inputSha256": "782a2094fecfd4d66135e1ce563e14df123ee61bcb78b9ed862710d901cb22ef",
+      "outputSha256": "7ec18b35d5709c48f2e165dd561051070be30161cd02ee0afdab63a058528100"
+    },
+    {
+      "path": "sql/database.h",
+      "inputSha256": "7b371c22e9a9ec9b61b45d04604fdca12bedc10428d3e09d6af15add722032f4",
+      "outputSha256": "04961f3b9b706b376918f9621ba89e4ea2b02fb75f5bd0ea3489bd2d5c6d9978"
+    }
+  ],
+  "overlapWithExistingSeries": [],
+  "exactReplayPassed": true,
+  "reverseCheckPassed": true,
+  "unitFixtureRegistered": true,
+  "nativeRootChanged": false,
+  "fullBrowserBuilt": false,
+  "testsExecuted": false,
+  "productExecuted": false,
+  "browserImporterIntegrated": false,
+  "runtimeAcceptance": false
+}
