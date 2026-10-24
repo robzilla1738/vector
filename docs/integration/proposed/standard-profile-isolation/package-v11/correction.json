@@ -1,0 +1,8 @@
+{
+  "format": "aux.guard-intersection.observed.correction.v1",
+  "predecessor": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/package-v10/successor_verify.py",
+  "predecessorSha256": "66dc963461ecb5c6d946e9e15a14bddc91b398c792d59b1f5c1713af659bfef9",
+  "actualObservation": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/integration/guarded-intersection-v10.json",
+  "actualObservationSha256": "beec4c59bf1a2e22230506e01dfe1c629fe7b5075942743b8e01995011678353",
+  "productSourceChanged": false
+}
