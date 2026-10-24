@@ -1,0 +1,19 @@
+{
+  "format": "aux.browser-skill-link.actual.v1",
+  "passed": true,
+  "originalSha256": "e854c4c2285106c1e86cd59e6bea8db333137175c2fae19218c4eded6ee6c4c4",
+  "beforeSha256": "052a5b05f83e454bbbed3c1f645d6ed9e97c668f91f07eed244f0409e777ce4d",
+  "afterSha256": "ff095e4c0678326fecac01d2d23ae141b34d0c106bfbade6b420d39ef681de64",
+  "anchors": [
+    {
+      "kind": "identity",
+      "name": "Aux runtime contract",
+      "find": "https://aside.com",
+      "replace": "https://getaux.co",
+      "count": 1
+    }
+  ],
+  "uiChanged": false,
+  "packaged": false,
+  "productExecuted": false
+}

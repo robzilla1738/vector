@@ -1,0 +1,80 @@
+{
+  "format": "aux.ui-peer-identity.inputs.v1",
+  "sourceVersion": "1.26.1016.1852",
+  "files": [
+    {
+      "path": "background.js",
+      "sourceSha256": "ed19abc67a8a23d7868005ea1db84e2abe3a3f70609ab7b4ab2c1455c92131f7",
+      "rules": [
+        {
+          "name": "Aux development origin selector",
+          "find": "VITE_ASIDE_WEB_DEV_ORIGIN",
+          "replace": "VITE_AUX_WEB_DEV_ORIGIN",
+          "count": 1
+        },
+        {
+          "name": "Aux missing development token diagnostic",
+          "find": "ASIDE_DAEMON_AUTH_TOKEN",
+          "replace": "AUX_DAEMON_AUTH_TOKEN",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "content/content.js",
+      "sourceSha256": "a94f1914511c11c3ef3cfdf4362fa27e9e3b86856409ded7e3a2ae324f03cfc2",
+      "rules": [
+        {
+          "name": "Aux development origin selector",
+          "find": "VITE_ASIDE_WEB_DEV_ORIGIN",
+          "replace": "VITE_AUX_WEB_DEV_ORIGIN",
+          "count": 1
+        },
+        {
+          "name": "Aux missing development token diagnostic",
+          "find": "ASIDE_DAEMON_AUTH_TOKEN",
+          "replace": "AUX_DAEMON_AUTH_TOKEN",
+          "count": 1
+        },
+        {
+          "name": "Match the actual Aux capture custom-element constructor",
+          "find": "ASIDE-CAPTURE-SHRINK",
+          "replace": "AUX-CAPTURE-SHRINK",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "assets/queries-ldd77hNk.js",
+      "sourceSha256": "9764119d271913b72da78acc72aa8596a3cb7b642c6cddbe0a8ac93bee3d280d",
+      "rules": [
+        {
+          "name": "Aux development origin selector",
+          "find": "VITE_ASIDE_WEB_DEV_ORIGIN",
+          "replace": "VITE_AUX_WEB_DEV_ORIGIN",
+          "count": 1
+        },
+        {
+          "name": "Aux missing development token diagnostic",
+          "find": "ASIDE_DAEMON_AUTH_TOKEN",
+          "replace": "AUX_DAEMON_AUTH_TOKEN",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "assets/-types-Wy38XkNB.js",
+      "sourceSha256": "22df7f0ce3efd4eacb8df317b81c139c8b86c52aab1563e9dc335205f39d8e32",
+      "rules": [
+        {
+          "name": "Match the actual Aux daemon account error code",
+          "find": "ASIDE_LOCAL_ACCOUNT_ALREADY_SIGNED_IN",
+          "replace": "AUX_LOCAL_ACCOUNT_ALREADY_SIGNED_IN",
+          "count": 1
+        }
+      ]
+    }
+  ],
+  "persistentStateChanged": false,
+  "cryptographicFormatsChanged": false
+}

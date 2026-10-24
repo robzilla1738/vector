@@ -19,8 +19,13 @@ test('binary streaming retains split ASCII and both UTF-16 encodings without dup
   assert.equal(whole.sha256, createHash('sha256').update(input).digest('hex'));
   assert.equal(whole.bytes, input.length);
 });
-test('HTML aside semantics and Aux strings are not raw product tokens', async () => {
-  assert.deepEqual((await scanDeliveredBytes([Buffer.from('<aside>Aux</aside> aux.dk.v2')])).counts, {});
+test('raw lowercase scan includes HTML for classification and finds product protocols outside the original fixed list', async () => {
+  const html = await scanDeliveredBytes([Buffer.from('<aside>Aux</aside> aux.dk.v2')]);
+  assert.deepEqual(html.counts, {'ascii:aside': 2});
+  const product = Buffer.from('aside.daemonAuth aside.lasso.v1');
+  const whole = await scanDeliveredBytes([product]);
+  assert.deepEqual(whole.counts, {'ascii:aside': 2});
+  assert.deepEqual(await scanDeliveredBytes(Array.from(product, byte => Buffer.from([byte]))), whole);
 });
 test('candidate traversal records links without scanning their targets and refuses a linked marker', async () => {
   const temp = await realpath(await mkdtemp(path.join(os.tmpdir(), 'aux-package-audit-')));

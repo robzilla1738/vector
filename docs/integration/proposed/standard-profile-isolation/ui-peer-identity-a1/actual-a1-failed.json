@@ -1,0 +1,12 @@
+{
+  "format": "aux.ui-peer-identity.actual.v1",
+  "passed": false,
+  "phase": "original-cohort-observation",
+  "exitCode": 1,
+  "reason": "Bare token also matched nine environment variable references already transformed by the existing adapter. Observed12 versus assumed6. No package or product execution.",
+  "producerSha256": "5e599ed9164987671f8e7b3ae54809400c1961e936a695872af1fd3071c17836",
+  "inputsSha256": "00a9e929da4d6ebec67252430c264fdac6c277d2150e82ecfdbabf3189c8d98c",
+  "output": "/private/tmp/aux-ui-peer-identity-20261024-a1",
+  "productExecuted": false,
+  "packaged": false
+}

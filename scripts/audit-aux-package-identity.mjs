@@ -9,7 +9,7 @@ import { fileURLToPath } from 'node:url';
 // Fixed tokens permit bounded streaming across arbitrary binary/chunk boundaries.
 // Counts overlap intentionally; they are findings, not classified product bugs.
 export const deliveredIdentityTokens = Object.freeze([
-  'Aside', 'ASIDE', 'aside-native', 'aside-browser', 'aside-daemon',
+  'Aside', 'ASIDE', 'aside', 'aside-native', 'aside-browser', 'aside-daemon',
   'aside-agent', 'aside-vault', 'aside-memory', 'aside-runtime',
   'aside.dk.', 'aside.wrap.', 'aside.install.', 'aside.daemon.auth.',
   'aside.com', 'asidehq.com', 'AsideNativeSwift', '__aside', 'aside_dom',

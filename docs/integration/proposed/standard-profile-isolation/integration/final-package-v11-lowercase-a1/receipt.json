@@ -1,0 +1,25 @@
+{
+  "format": "aux.standard-profile-lowercase-audit.actual.v1",
+  "passed": true,
+  "appExecuted": false,
+  "productSigned": false,
+  "runtimeAuthorityGranted": false,
+  "acceptedAppReplaced": false,
+  "testable": false,
+  "identityClassificationComplete": false,
+  "packageReceipt": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-standard-profile-finish-20261024/receipt.json",
+  "packageReceiptSha256": "098761236ab2507fccc0151d49f95b2f4646f69b4e26f1199badcae902853a6f",
+  "packageExecution": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/package-v11/actual-run-a2.json",
+  "packageExecutionSha256": "895446c1118eebc420714c361d49acdd8627999ca605905d53d1a3a0b79bee1e",
+  "bridgeEvidenceSha256": "c2a7c58dc8268f5adeb7e5d7b456bbcac4f803db4c67f895c4bcae62fc751453",
+  "identityReportSha256": "5eb856b11a1cca5d15e23a93bf283913e4749e20f793e35d979bcfebc7f59ad6",
+  "filesWithIdentityTokens": 1581,
+  "identityToolSha256": "685d0d765d64fd15287fdba75ac7bc19c6594b72f3d1604da152ab32e494c7c7",
+  "command": [
+    "node",
+    "/Users/rcourson/Documents/Vibe/web/scripts/audit-aux-package-identity.mjs",
+    "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-standard-profile-finish-20261024/Aux.app",
+    "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/integration/final-package-v11-lowercase-a1/delivered-identity.json"
+  ],
+  "exitCode": 0
+}

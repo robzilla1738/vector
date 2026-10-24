@@ -1,0 +1,11 @@
+# Nonpersistent UI peer corrections
+
+The actual v11 delivered-resource review found two mismatched consumers: the Agent's already-signed-in check still used the original error code while the actual daemon emits the Aux code, and capture event exclusion still checked the original uppercase tag although the constructor now creates the Aux custom element. Both are corrected through eight literal anchors in four source-pinned supplied Agent scripts. The other edits align three development-origin selectors and their missing-token diagnostics with the Aux namespace. No stored key, encryption domain, layout, CSS, permission or default visual state changes.
+
+`vendor/provided/aux-ui-peer-identity.mjs` is wired into the real UI staging pipeline after identity composition. Its source pins are in the real staging provenance list. It runs only for the Aux state-v2 Agent. All anchors are independently replayed by the existing stager.
+
+The first focused check failed because its original-cohort assertion used a bare diagnostic token that also matched environment-variable references already handled by an earlier adapter. The actual failed producer/inputs/result are preserved. The corrected producer pins the complete diagnostic text instead. `actual-a2.json` records successful original-cohort coverage, exact replay, syntax for the four actual successors, wrong-source/repeated-generation refusal, unchanged state-v1 compatibility, actual daemon error-code pairing and an inert extracted capture-event consumer check. This is not a real app or capture session.
+
+The supplied browser skill's one bookmark example now points to the owner's Aux domain, using the existing source-pinned skill contract transform. `browser-skill-a1.json` records actual source/previous-output replay. No website was opened.
+
+These changes are implemented in staging source and materialized in a separate temporary resource projection. They are **not in the completed v11 app**. A fresh revision/resource/package association is still required; the accepted app and v11 evidence remain unchanged. The recovery-key text envelope, persisted UI preferences/drafts and other legacy protocol/storage names are separate coordinated migrations; this narrow correction does not claim complete identity parity.

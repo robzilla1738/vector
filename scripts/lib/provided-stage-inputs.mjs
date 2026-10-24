@@ -30,6 +30,8 @@ export const providedStageInputs = Object.freeze([
   'vendor/provided-ui/branding/channel-bots/slack.jpg',
   'vendor/provided-ui/branding/channel-bots/telegram.jpg',
   'vendor/provided/aux-product-links.mjs',
+  'vendor/provided/aux-ui-peer-identity.mjs',
+  'docs/integration/proposed/standard-profile-isolation/ui-peer-identity-a1/inputs.json',
   'vendor/provided/provider-funded-launch.mjs',
   'vendor/provided/provider-launch-stage.mjs',
   'vendor/provided/aux-command-path-parsers.mjs',

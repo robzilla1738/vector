@@ -402,6 +402,18 @@
           "count": 1
         }
       ]
+    },
+    {
+      "component": "skill",
+      "path": "builtin/chrome/SKILL.md",
+      "sourceSha256": "e854c4c2285106c1e86cd59e6bea8db333137175c2fae19218c4eded6ee6c4c4",
+      "rules": [
+        {
+          "find": "https://aside.com",
+          "replace": "https://getaux.co",
+          "count": 1
+        }
+      ]
     }
   ]
 }
