@@ -1,0 +1,8 @@
+Traceback (most recent call last):
+  File "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/memory-runtime-identity-a1/source/binary_identity.py", line 133, in <module>
+    output, receipt = derive(Path(sys.argv[1]).read_bytes())
+                      ~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/memory-runtime-identity-a1/source/binary_identity.py", line 109, in derive
+    if len(rebuilt) > export_size: raise ValueError('rebuilt trie exceeds fixed range')
+                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+ValueError: rebuilt trie exceeds fixed range

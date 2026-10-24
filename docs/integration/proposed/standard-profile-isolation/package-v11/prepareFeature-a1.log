@@ -1,0 +1,21 @@
+Traceback (most recent call last):
+  File "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/package-v11/cache_package.py", line 348, in <module>
+    main()
+    ~~~~^^
+  File "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/package-v11/cache_package.py", line 337, in main
+    prepare_feature(args)
+    ~~~~~~~~~~~~~~~^^^^^^
+  File "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/package-v11/cache_package.py", line 311, in prepare_feature
+    f.prepare(args)
+    ~~~~~~~~~^^^^^^
+  File "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/package/feature_package.py", line 350, in prepare
+    verify(r)
+    ~~~~~~^^^
+  File "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/package-v11/cache_package.py", line 309, in initial
+    return verify(recipe)
+  File "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/package-v11/cache_package.py", line 268, in verify
+    require(resolve(recipe['daemonInputs']) == actual_inputs.resolve(), 'Feature and runtime link inputs differ')
+    ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/package/feature_package.py", line 43, in require
+    raise ValueError(message)
+ValueError: Feature and runtime link inputs differ

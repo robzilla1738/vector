@@ -1,0 +1,10 @@
+/private/tmp/aux-memory-identity-20261024-a1/aux-memory [arm64]:
+    -linked_dylibs:
+        attributes       load path
+                         /usr/lib/libc++.1.dylib
+                         /System/Library/Frameworks/CoreML.framework/Versions/A/CoreML
+                         /System/Library/Frameworks/Foundation.framework/Versions/C/Foundation
+                         /usr/lib/libiconv.2.dylib
+                         /usr/lib/libSystem.B.dylib
+                         /System/Library/Frameworks/CoreFoundation.framework/Versions/A/CoreFoundation
+                         /usr/lib/libobjc.A.dylib
