@@ -72,3 +72,18 @@ Four focused fixtures pass: filename/path/control/provider rejection; no implici
 ### Interrupted rename reconciliation
 
 Installing the admitted owner now reconciles planned/undo-planned receipts before accepting a new rename. It inspects only the tracked DownloadManager GUID and the two journaled names in its actual current directory. If the original file remains, the request did not complete. If the exclusive move completed, the native item/history is repaired through its normal RenameWithMove completion using a verified no-move callback. Conflicting, removed or externally changed files receive needs-review status without moving anything. `sourceName` records the pre-operation name, including Undo; older planned receipts fall back to originalName, while an ambiguous interrupted Undo is refused. A failed durable write leaves rename disabled until the owner is reloaded. Pending covers background inspection, any metadata repair task and actual journal persistence. Native crash/recovery acceptance remains an integration test, not established by JavaScript fixtures.
+
+### Native sidebar recent files
+
+`aux_recent_files_section.{h,cc}` is mounted by the root sidebar owner after
+Chats and before Tabs. Register `AuxRecentFilesSection::RegisterPrefs`, construct
+with the actual `BrowserWindowInterface&`, and call `PauseProfileObservation`
+when the owner retires, then `BindBrowser` only with its actual replacement.
+An empty or private profile produces no header. Up to five safe completed native
+downloads use the supplied section/header, clip animation, row typography,
+spacing, icons and hover colors. Native DownloadManager/DownloadItem observers
+refresh asynchronously, so completion/rename/removal updates the displayed list.
+The header uses the ordinary per-profile UI expansion preference (not an
+operation-completion receipt). Clicking reveals the file; dragging uses the
+existing OS file-drag implementation. This source still requires the integrator's
+native compilation and disposable actual-app drag/collapse acceptance.
