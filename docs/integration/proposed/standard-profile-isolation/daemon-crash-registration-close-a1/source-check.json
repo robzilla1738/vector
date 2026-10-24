@@ -1,0 +1,9 @@
+{
+  "passed": true,
+  "kind": "literal replay and exact native ownership-order checks",
+  "files": 2,
+  "anchors": 4,
+  "nativeCompiled": false,
+  "taskPortsAccessed": false,
+  "runtimeAccepted": false
+}

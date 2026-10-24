@@ -1,0 +1,19 @@
+--- a/AuxNativeDaemonMain.cc
++++ b/AuxNativeDaemonMain.cc
+@@ -3,0 +4 @@
++#include "AuxInheritedCrashRegistration.h"
+@@ -195,0 +197,3 @@
++  const int crash_registration = AuxCaptureInheritedCrashRegistration();
++  if (crash_registration != 0)
++    return Refuse("inherited-crash-registration", crash_registration, 78);
+--- a/AuxDevelopmentOwnerDrain.swift
++++ b/AuxDevelopmentOwnerDrain.swift
+@@ -5,0 +6,3 @@
++
++@_silgen_name("AuxCloseInheritedCrashRegistration")
++private func closeInheritedCrashRegistration()->Int32
+@@ -12,0 +16,4 @@
++    // Only the actual native all-writer settlement permits releasing this
++    // process's inherited Crashpad registration before requesting browser CLEAN.
++    let crashStatus=closeInheritedCrashRegistration()
++    guard crashStatus==0 else{return crashStatus}

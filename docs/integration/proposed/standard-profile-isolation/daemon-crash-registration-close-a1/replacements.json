@@ -1,0 +1,26 @@
+[
+  {
+    "path": "AuxNativeDaemonMain.cc",
+    "old": "#include \"AuxTaskDescendantObserver.h\"",
+    "new": "#include \"AuxTaskDescendantObserver.h\"\n#include \"AuxInheritedCrashRegistration.h\"",
+    "count": 1
+  },
+  {
+    "path": "AuxNativeDaemonMain.cc",
+    "old": "  // Fixed fresh native entry: before any bootstrap/image/Node/worker/user code.",
+    "new": "  const int crash_registration = AuxCaptureInheritedCrashRegistration();\n  if (crash_registration != 0)\n    return Refuse(\"inherited-crash-registration\", crash_registration, 78);\n  // Fixed fresh native entry: before any bootstrap/image/Node/worker/user code.",
+    "count": 1
+  },
+  {
+    "path": "AuxDevelopmentOwnerDrain.swift",
+    "old": "@_cdecl(\"AuxCompleteDevelopmentOwnerBrowserCleanShutdown\")",
+    "new": "@_silgen_name(\"AuxCloseInheritedCrashRegistration\")\nprivate func closeInheritedCrashRegistration()->Int32\n\n@_cdecl(\"AuxCompleteDevelopmentOwnerBrowserCleanShutdown\")",
+    "count": 1
+  },
+  {
+    "path": "AuxDevelopmentOwnerDrain.swift",
+    "old": "    guard status==0 else{return status}\n    let owner=",
+    "new": "    guard status==0 else{return status}\n    // Only the actual native all-writer settlement permits releasing this\n    // process's inherited Crashpad registration before requesting browser CLEAN.\n    let crashStatus=closeInheritedCrashRegistration()\n    guard crashStatus==0 else{return crashStatus}\n    let owner=",
+    "count": 1
+  }
+]

@@ -1,0 +1,34 @@
+{
+  "format": "aux.daemon-crash-registration-close.overlay.v1",
+  "files": [
+    {
+      "path": "AuxNativeDaemonMain.cc",
+      "beforeSha256": "a08bdb486d414ae78466b1a385bced411215218c71ee5ce1dcb8908659746ffc",
+      "afterSha256": "baf0266ee957b652787aa91c0fe1d49b2ddbe35aa938c23dd4f6d37784764982"
+    },
+    {
+      "path": "AuxDevelopmentOwnerDrain.swift",
+      "beforeSha256": "ba42b6767b8ebd2d7a419a6d7ec5690e4bb5b8bea1115de185bc18cd6f181698",
+      "afterSha256": "990a816ff7ba364144e532bd6959699bdbf3a0efc8bebf1507c55da72bdecaa2"
+    }
+  ],
+  "newFiles": [
+    {
+      "path": "AuxInheritedCrashRegistration.cc",
+      "sha256": "d26b9d5bf21c1b325e9697dca3a5b8a585ffad3184708ff959fee175daeb0bba"
+    },
+    {
+      "path": "AuxInheritedCrashRegistration.h",
+      "sha256": "4eb3eaff5708bf4d45cbe9149e859e5c73a7f1bc6f5090ba1161c4a093f996e1"
+    }
+  ],
+  "countedAdaptations": 4,
+  "patchSha256": "98d18fb180f845a6aaf1b12fc4f405fb2a82f8dc2cef1c8928d475ce661d2a59",
+  "newPrivateDefinitions": [
+    "AuxCaptureInheritedCrashRegistration",
+    "AuxCloseInheritedCrashRegistration"
+  ],
+  "addonImportsChanged": false,
+  "nativeCompiled": false,
+  "runtimeAccepted": false
+}
