@@ -1,0 +1,13 @@
+{
+  "format": "aux.refresh-skill.focused.v1",
+  "pairedExactReplay": true,
+  "pairedSyntax": true,
+  "editsPerLeaf": 15,
+  "connectorAndSocketAndDnsPhysicalClosure": true,
+  "responseCancellationAwaited": true,
+  "lateFsCallbackDrain": true,
+  "productExecuted": false,
+  "providerRequests": 0,
+  "nativeBuild": false,
+  "nativePairingPending": true
+}

@@ -1,0 +1,56 @@
+{
+  "format": "aux.refresh-skill.source.v1",
+  "daemonInputs": [
+    {
+      "kind": "source",
+      "input": "/private/tmp/aux-standard-daemon-projection-20261024-a1/index.mjs",
+      "inputSha256": "00607ee3555eb8c8c8f6d7641d93ac009ca9a3b4e2fc7444dfe898109d9d863c",
+      "outputSha256": "c8d26083dd40cadbf6a4d29708c054db5b614c51f06822cc33bc68573fe47af9",
+      "edits": 15
+    },
+    {
+      "kind": "entry",
+      "input": "/private/tmp/aux-standard-daemon-projection-20261024-a1/projected-entry/aux-native-entry.mjs",
+      "inputSha256": "fe85ca92a82b957f61727729ba61ca732d061df8534f3f64a3afd2a2af5c0400",
+      "outputSha256": "beacf4d6cbfa19bc66d8b0f1f717b5594177c80b6d85ead584b4985adedc11d8",
+      "edits": 15
+    }
+  ],
+  "files": [
+    {
+      "path": "source/changes.json",
+      "sha256": "325db967bb34e7851a1ac4ad46335906d0459b0ccecf23c418e4c6a3b40826ae"
+    },
+    {
+      "path": "source/refresh-lifetimes.js",
+      "sha256": "b6113ecce5d7a636aa74fa65237b2edc527c7abffd4239861a712fc651a95a98"
+    },
+    {
+      "path": "source/transform.mjs",
+      "sha256": "a8320835bf66eaf7124b6bd3040d597ed0794d83e4c31a7f726f81c9b7d00d09"
+    }
+  ],
+  "nativePairRequirements": [
+    {
+      "path": "docs/integration/proposed/standard-profile-isolation/descendant-custody/source/AuxTaskDescendantObserver.cc",
+      "sha256": "cb10bb7e05caed1baa661e67430d33f1aa9532fd82b44804166d619c4043d56d"
+    },
+    {
+      "path": "docs/integration/proposed/standard-profile-isolation/descendant-custody/source/AuxTaskDescendantObserver.h",
+      "sha256": "60a1a872cad6f791f61061aa7a15d2d8ac3bb7fb8144b5f25c5fabcb3fd44969"
+    },
+    {
+      "path": "docs/integration/proposed/standard-profile-isolation/integration/native-build-a2.json",
+      "sha256": "47c19b1c3ded0fbcf6d6cd9c28ba1d9fa7a6575d81d954b6fbaaa17788a652b2"
+    },
+    {
+      "path": "docs/integration/proposed/profile-isolation-continuation/build/evidence/archives.json",
+      "sha256": "1bb039916d103b9a5725b60b9f74f745702ecd242cb89953d1c0f982c3c40a57"
+    }
+  ],
+  "freshObserverRequired": true,
+  "oldNativePairCompatible": false,
+  "sourceOnly": true,
+  "productExecuted": false,
+  "nativePaired": false
+}
