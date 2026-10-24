@@ -123,7 +123,7 @@ void AuxTabsActions::Tidy() {
   auto self = weak_.GetWeakPtr();
   if (!tidy_enabled_.Run() || !self || !self->ScopeCurrent()) return;
   auto* widget = views::Widget::GetWidgetForNativeWindow(browser_->GetWindow()->GetNativeWindow());
-  auto* screen = display::Screen::GetScreen();
+  auto* screen = display::Screen::Get();
   if (!widget || !screen) return;
   scope_runner_.reset();
   scope_menu_ = std::make_unique<ui::SimpleMenuModel>(this);

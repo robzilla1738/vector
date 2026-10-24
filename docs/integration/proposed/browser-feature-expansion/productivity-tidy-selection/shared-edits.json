@@ -5,7 +5,7 @@
       "path": "chrome/browser/ui/views/frame/aux_tabs_actions.h",
       "baselineSource": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/ui/views/frame/aux_tabs_actions.h",
       "beforeSha256": "51c067a2b2f4f0c1b1b4dc5eeca9c4e4eea06a8a5b49fc9264e8fc46ff17cdaf",
-      "afterSha256": "8e49b81cf98fc3f1f40f489ba766bccf5afe0cade24aa4923ebb8cd9c815e255",
+      "afterSha256": "7cdd1f48bdf8d95201e4bb345b938297e4e96aa4f56a414e41ec5913df764361",
       "edits": [
         {
           "find": "#include \"base/functional/callback.h\"",
@@ -26,6 +26,11 @@
           "find": "  bool ScopeCurrent() const;",
           "replace": "  bool ScopeCurrent() const;\n  bool IsCommandIdEnabled(int command) const override;\n  void ExecuteCommand(int command, int flags) override;\n  void RunTidyScope(std::string token);\n  std::unique_ptr<ui::SimpleMenuModel> scope_menu_;\n  std::unique_ptr<views::MenuRunner> scope_runner_;",
           "count": 1
+        },
+        {
+          "find": "  ~AuxTabsActions();",
+          "replace": "  ~AuxTabsActions() override;",
+          "count": 1
         }
       ]
     },
@@ -33,7 +38,7 @@
       "path": "chrome/browser/ui/views/frame/aux_tabs_actions.cc",
       "baselineSource": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/ui/views/frame/aux_tabs_actions.cc",
       "beforeSha256": "aa9a2159194a22191932df62759c746f7386763be75f59126332c34785a496bb",
-      "afterSha256": "45e7ded8def5489e3de93e70512cbee29da58ceccf0a6ecf43ae974419686edf",
+      "afterSha256": "03e5acaf05f8caf351fedbbce7e217c40e40a6d5ab6272337b6263dc71cb688f",
       "edits": [
         {
           "find": "#include \"chrome/browser/ui/views/frame/aux_tabs_actions.h\"",
@@ -47,7 +52,7 @@
         },
         {
           "find": "void AuxTabsActions::Tidy() {",
-          "replace": "void AuxTabsActions::Tidy() {\n  if (!ScopeCurrent() || !browser_->GetWindow()) return;\n  auto self = weak_.GetWeakPtr();\n  if (!tidy_enabled_.Run() || !self || !self->ScopeCurrent()) return;\n  auto* widget = views::Widget::GetWidgetForNativeWindow(browser_->GetWindow()->GetNativeWindow());\n  auto* screen = display::Screen::GetScreen();\n  if (!widget || !screen) return;\n  scope_runner_.reset();\n  scope_menu_ = std::make_unique<ui::SimpleMenuModel>(this);\n  scope_menu_->AddItem(1, u\"Tidy current Space\");\n  scope_menu_->AddItem(2, u\"Tidy selected tabs\");\n  scope_runner_ = std::make_unique<views::MenuRunner>(scope_menu_.get(), views::MenuRunner::CONTEXT_MENU);\n  scope_runner_->RunMenuAt(widget, nullptr, gfx::Rect(screen->GetCursorScreenPoint(), gfx::Size()),\n      views::MenuAnchorPosition::kTopLeft, ui::mojom::MenuSourceType::kMouse);\n}\nbool AuxTabsActions::IsCommandIdEnabled(int command) const {\n  return ScopeCurrent() && CanCreateAuxTidyScope(browser_.get()) && (command == 1 ||\n      (command == 2 && GetAuxTidySelectedCount(browser_.get()) >= 2));\n}\nvoid AuxTabsActions::ExecuteCommand(int command, int) {\n  if (!IsCommandIdEnabled(command)) return;\n  auto token = CreateAuxTidyScope(browser_.get(), command == 2);\n  if (!token.empty()) RunTidyScope(std::move(token));\n}\nvoid AuxTabsActions::RunTidyScope(std::string token) {",
+          "replace": "void AuxTabsActions::Tidy() {\n  if (!ScopeCurrent() || !browser_->GetWindow()) return;\n  auto self = weak_.GetWeakPtr();\n  if (!tidy_enabled_.Run() || !self || !self->ScopeCurrent()) return;\n  auto* widget = views::Widget::GetWidgetForNativeWindow(browser_->GetWindow()->GetNativeWindow());\n  auto* screen = display::Screen::Get();\n  if (!widget || !screen) return;\n  scope_runner_.reset();\n  scope_menu_ = std::make_unique<ui::SimpleMenuModel>(this);\n  scope_menu_->AddItem(1, u\"Tidy current Space\");\n  scope_menu_->AddItem(2, u\"Tidy selected tabs\");\n  scope_runner_ = std::make_unique<views::MenuRunner>(scope_menu_.get(), views::MenuRunner::CONTEXT_MENU);\n  scope_runner_->RunMenuAt(widget, nullptr, gfx::Rect(screen->GetCursorScreenPoint(), gfx::Size()),\n      views::MenuAnchorPosition::kTopLeft, ui::mojom::MenuSourceType::kMouse);\n}\nbool AuxTabsActions::IsCommandIdEnabled(int command) const {\n  return ScopeCurrent() && CanCreateAuxTidyScope(browser_.get()) && (command == 1 ||\n      (command == 2 && GetAuxTidySelectedCount(browser_.get()) >= 2));\n}\nvoid AuxTabsActions::ExecuteCommand(int command, int) {\n  if (!IsCommandIdEnabled(command)) return;\n  auto token = CreateAuxTidyScope(browser_.get(), command == 2);\n  if (!token.empty()) RunTidyScope(std::move(token));\n}\nvoid AuxTabsActions::RunTidyScope(std::string token) {",
           "count": 1
         },
         {

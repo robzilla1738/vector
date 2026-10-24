@@ -1,0 +1,37 @@
+{
+  "format": "aux.counted-overlay.v1",
+  "files": [
+    {
+      "path": "chrome/browser/ui/views/frame/aux_tabs_actions.h",
+      "beforeSha256": "8e49b81cf98fc3f1f40f489ba766bccf5afe0cade24aa4923ebb8cd9c815e255",
+      "afterSha256": "7cdd1f48bdf8d95201e4bb345b938297e4e96aa4f56a414e41ec5913df764361",
+      "edits": [
+        {
+          "find": "  ~AuxTabsActions();",
+          "replace": "  ~AuxTabsActions() override;",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_tabs_actions.cc",
+      "beforeSha256": "45e7ded8def5489e3de93e70512cbee29da58ceccf0a6ecf43ae974419686edf",
+      "afterSha256": "03e5acaf05f8caf351fedbbce7e217c40e40a6d5ab6272337b6263dc71cb688f",
+      "edits": [
+        {
+          "find": "display::Screen::GetScreen()",
+          "replace": "display::Screen::Get()",
+          "count": 1
+        }
+      ]
+    }
+  ],
+  "staticHeaderChecks": {
+    "ui/display/screen.h": "Screen::Get(), GetCursorScreenPoint()",
+    "ui/menus/simple_menu_model.h": "Delegate destructor virtual; IsCommandIdEnabled(int) const; ExecuteCommand(int,int)",
+    "ui/views/widget/widget.h": "GetWidgetForNativeWindow(gfx::NativeWindow)",
+    "ui/views/controls/menu/menu_runner.h": "MenuRunner(MenuModel*,int32_t); five-argument RunMenuAt defaults match",
+    "ui/views/controls/menu/menu_types.h": "MenuAnchorPosition::kTopLeft",
+    "ui/base/base_window.h": "GetNativeWindow() const"
+  }
+}

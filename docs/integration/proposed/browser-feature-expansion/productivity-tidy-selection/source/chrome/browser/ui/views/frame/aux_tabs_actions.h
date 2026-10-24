@@ -21,7 +21,7 @@ class AuxTabsActions : public ui::SimpleMenuModel::Delegate {
   AuxTabsActions(BrowserWindowInterface& browser,
                  base::RepeatingCallback<bool()> tidy_enabled,
                  base::RepeatingCallback<void(bool)> tidy_busy);
-  ~AuxTabsActions();
+  ~AuxTabsActions() override;
   AuxTabsActions(const AuxTabsActions&) = delete;
   AuxTabsActions& operator=(const AuxTabsActions&) = delete;
   void Tidy();
