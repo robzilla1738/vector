@@ -1,0 +1,17 @@
+{
+  "format": "aux.dom-cohort.controls.static-check.v1",
+  "passed": true,
+  "nativeFiles": 6,
+  "singleMatchAnchors": 14,
+  "exactPatchReplayedAndReversed": true,
+  "nativePublicApiPaired": true,
+  "namespaceFreezeResumeReholdPaired": true,
+  "duplicateRawKeysAndOrdinalsRejected": true,
+  "privateObserverTokensExported": false,
+  "actualNativeMutation": false,
+  "mojoGenerationRun": false,
+  "compilerRun": false,
+  "nativeApiExecuted": false,
+  "productExecuted": false,
+  "runtimeAcceptance": false
+}

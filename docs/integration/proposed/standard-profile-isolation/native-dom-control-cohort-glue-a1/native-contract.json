@@ -1,0 +1,36 @@
+{
+  "format": "aux.dom-cohort.controls.native-contract.v1",
+  "asyncHeader": "/Users/rcourson/.codex/worktrees/aux-features-organization/web/docs/integration/proposed/standard-profile-isolation/native-cache-cohort-integration-a9/source/components/services/storage/dom_storage/async_dom_storage_database.h",
+  "asyncHeaderSha256": "02a8ff4733c3078205f45fb5f3a5513940718bd65cf90401d8a8c4c273c0dd92",
+  "asyncPublicContractStrings": [
+    "ValidateAuxUiMigrationLease",
+    "StageAuxUiMigrationTargets",
+    "PublishAuxUiMigrationLease",
+    "AuxUiTargetMap",
+    "desired_selected_entries",
+    "source_topology_sha256",
+    "target_topology_sha256",
+    "source_map_sha256",
+    "target_map_sha256",
+    "AuxUiCacheView",
+    "source_ready",
+    "private_target_staged",
+    "cache_published",
+    "native_error",
+    "using AuxUiBeforeReopen = base::OnceCallback<DbStatus()>;",
+    "AuxUiBeforeReopen before_reopen, StatusCallback callback"
+  ],
+  "namespaceHeader": "/Users/rcourson/.codex/worktrees/aux-features-organization/web/docs/integration/proposed/standard-profile-isolation/native-cache-cohort-integration-a9/source/components/services/storage/dom_storage/session_storage_namespace_impl.h",
+  "namespaceHeaderSha256": "c62c63d4a7b1b0c06e39d9908f8e59a9670d0ec4409dd91d49b1791e0505637e",
+  "namespaceImplementation": "/Users/rcourson/.codex/worktrees/aux-features-organization/web/docs/integration/proposed/standard-profile-isolation/native-cache-cohort-integration-a9/source/components/services/storage/dom_storage/session_storage_namespace_impl.cc",
+  "namespaceImplementationSha256": "2757d3d039452ff010100a954e67c0db628894839f9a613c61fc346dfb3b0d10",
+  "namespacePublicContractStrings": [
+    "CanFreezeAuxUiMigrationNamespace() const",
+    "FreezeAuxUiMigrationNamespace(const base::UnguessableToken& request)",
+    "CanResumeAuxUiMigrationNamespace(const base::UnguessableToken& request) const",
+    "ResumeAuxUiMigrationNamespace(const base::UnguessableToken& request)",
+    "ReholdAuxUiMigrationNamespaceAfterFailedResume(const base::UnguessableToken& request)"
+  ],
+  "backendOwnerLaneStillIntegratesImplementation": true,
+  "nativeBuildRun": false
+}

@@ -1,0 +1,53 @@
+{
+  "format": "aux.dom-cohort.controls.dependencies.v1",
+  "files": [
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-organization/web/docs/integration/proposed/standard-profile-isolation/native-cache-cohort-integration-a9/source/components/services/storage/dom_storage/async_dom_storage_database.h",
+      "sha256": "02a8ff4733c3078205f45fb5f3a5513940718bd65cf90401d8a8c4c273c0dd92"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-organization/web/docs/integration/proposed/standard-profile-isolation/native-cache-cohort-integration-a9/source/components/services/storage/dom_storage/session_storage_namespace_impl.cc",
+      "sha256": "2757d3d039452ff010100a954e67c0db628894839f9a613c61fc346dfb3b0d10"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-organization/web/docs/integration/proposed/standard-profile-isolation/native-cache-cohort-integration-a9/source/components/services/storage/dom_storage/session_storage_namespace_impl.h",
+      "sha256": "c62c63d4a7b1b0c06e39d9908f8e59a9670d0ec4409dd91d49b1791e0505637e"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/components/services/storage/dom_storage/db_status.h",
+      "sha256": "6c0be047702bda99bb134c62f47591c231b38ed645a2c3f0ac516724dcbe176e"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/components/services/storage/dom_storage/dom_storage_database.h",
+      "sha256": "9df50e67d7be0bcbf32f5a7a123f4e82bcbd95117b22512ea5369d36b2542b45"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/components/services/storage/dom_storage/local_storage_impl.cc",
+      "sha256": "6cf448a4ea6a57b0998bdcfaaa2ba07ba8917dcfc47b6747b78f5b77c39880af"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/components/services/storage/dom_storage/local_storage_impl.h",
+      "sha256": "e8759ec03ff0dd805cb2ef78d0be233cfade1976638b3effa8e8cbde1caf2806"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/components/services/storage/dom_storage/session_storage_impl.cc",
+      "sha256": "2bfb39f7700040b3dc9a878969658c7a1daaadeebf9e52b24b5f2f24409c202d"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/components/services/storage/dom_storage/session_storage_impl.h",
+      "sha256": "e29920bb539a07db7398a33c686413e498ef5fa599c1926639d74ba57b3ec96f"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/components/services/storage/public/mojom/local_storage_control.mojom",
+      "sha256": "fc3c2509a36b784df009628e3eb3e323f881e81009f016a514e83230e02d8c56"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/components/services/storage/public/mojom/session_storage_control.mojom",
+      "sha256": "65942da5213f70d5ba6405b3758f81679ec12c5ee97537e70efd420cbff60f59"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/third_party/blink/public/mojom/dom_storage/storage_area.mojom",
+      "sha256": "5d62cf6e4a250962b7565d745b14b7967b565ea5252a6d60608ed7c82966d3fa"
+    }
+  ]
+}
