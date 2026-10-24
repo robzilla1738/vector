@@ -1,0 +1,27 @@
+{
+  "modifiedCount": 3,
+  "addedCount": 1,
+  "patchSha256": "c1fdcab4e08f21315fe00f69c4f768ac3861977077b849779da716a8a6506ce4",
+  "files": [
+    {
+      "path": "components/sessions/core/tab_restore_service_helper.cc",
+      "beforeSha256": "d2a804247ce8ff5426d7f52d4f94a2eee8ef84a38afec587f5be4668e9d6e606",
+      "afterSha256": "cfde345bc2402e11cb5230af34a834fbb90432753f7da1a0aeec7469ceb4684a"
+    },
+    {
+      "path": "components/sessions/core/live_tab_context.h",
+      "beforeSha256": "c4010a02ee898a31d6240e1d9e6f7432e7fe793b76ec3596799d7987e9093a22",
+      "afterSha256": "307f2823f9739b988df3bdb1ee28beda28a7dbb4d62ed5ade3d200ff0afce1fa"
+    },
+    {
+      "path": "components/sessions/BUILD.gn",
+      "beforeSha256": "e5412ef21667652c2951f85ea930a9a5a5e7bdac4624da09b22fb85d94752526",
+      "afterSha256": "1d66dbc59b2820fed5e6d9cd5e5a7df2f7495f04503ad01b5ddc8f54932510f3"
+    },
+    {
+      "path": "components/sessions/core/live_tab_context.cc",
+      "beforeSha256": null,
+      "afterSha256": "4a9fabbadb9309eea428db9c2bdeb5bf8953b27964d5e25c15e3c69a64514ad7"
+    }
+  ]
+}

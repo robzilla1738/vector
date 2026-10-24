@@ -1,0 +1,65 @@
+diff --git a/components/sessions/core/tab_restore_service_helper.cc b/components/sessions/core/tab_restore_service_helper.cc
+--- a/components/sessions/core/tab_restore_service_helper.cc
++++ b/components/sessions/core/tab_restore_service_helper.cc
+@@ -1719,7 +1719,7 @@
+ 
+ bool TabRestoreServiceHelper::IsSplitInteresting(const Split& split) {
+   return split.tabs.size() >= 2 && split.tabs.size() <= split_tabs::SplitPaneTree::kMaxPanes &&
+-      std::ranges::any_of(split.tabs, [](const auto& tab) { return tab && IsTabInteresting(*tab); });
++      std::ranges::any_of(split.tabs, [this](const auto& tab) { return tab && IsTabInteresting(*tab); });
+ }
+ 
+ bool TabRestoreServiceHelper::FilterEntry(const Entry& entry) {
+diff --git a/components/sessions/core/live_tab_context.h b/components/sessions/core/live_tab_context.h
+--- a/components/sessions/core/live_tab_context.h
++++ b/components/sessions/core/live_tab_context.h
+@@ -108,11 +108,10 @@
+       split_tabs::SplitTabId split_id,
+       const split_tabs::SplitTabVisualData& visual_data) = 0;
+ 
+-  virtual void ReconstructSplit(const std::vector<LiveTab*>& tabs,
+-                                split_tabs::SplitTabId id,
+-                                const split_tabs::SplitTabVisualData& visual_data) {
+-    if (tabs.size() == 2) ReconstructSplit(tabs[0], tabs[1], id, visual_data);
+-  }
++  virtual void ReconstructSplit(
++      const std::vector<LiveTab*>& tabs,
++      split_tabs::SplitTabId id,
++      const split_tabs::SplitTabVisualData& visual_data);
+ 
+   virtual void CloseTab() = 0;
+ 
+diff --git a/components/sessions/BUILD.gn b/components/sessions/BUILD.gn
+--- a/components/sessions/BUILD.gn
++++ b/components/sessions/BUILD.gn
+@@ -111,6 +111,7 @@
+     "core/command_storage_manager_delegate.h",
+     "core/live_tab.cc",
+     "core/live_tab.h",
++    "core/live_tab_context.cc",
+     "core/live_tab_context.h",
+     "core/serialized_navigation_driver.h",
+     "core/serialized_navigation_entry.cc",
+diff --git a/components/sessions/core/live_tab_context.cc b/components/sessions/core/live_tab_context.cc
+new file mode 100644
+--- /dev/null
++++ b/components/sessions/core/live_tab_context.cc
+@@ -0,0 +1,18 @@
++// Copyright 2026 The Aux Authors
++// Use of this source code is governed by a BSD-style license that can be
++// found in the LICENSE file.
++
++#include "components/sessions/core/live_tab_context.h"
++
++namespace sessions {
++
++void LiveTabContext::ReconstructSplit(
++    const std::vector<LiveTab*>& tabs,
++    split_tabs::SplitTabId id,
++    const split_tabs::SplitTabVisualData& visual_data) {
++  if (tabs.size() == 2) {
++    ReconstructSplit(tabs[0], tabs[1], id, visual_data);
++  }
++}
++
++}  // namespace sessions
