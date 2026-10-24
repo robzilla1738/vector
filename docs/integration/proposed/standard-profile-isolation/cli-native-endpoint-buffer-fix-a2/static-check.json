@@ -1,0 +1,13 @@
+{
+  "format": "aux.cli-native-endpoint.static.v1",
+  "inputSha256": "3765060b84d88a7f63cdcfb695bcbc3f58ab1f92ca9905ccc5d37b629944c57d",
+  "outputSha256": "4a339c23563949a7abd73f3c84a95f2210e8e8754dd736a61e82ad960d2b7ba3",
+  "exactAnchors": 5,
+  "patchReplay": true,
+  "patchReverse": true,
+  "preservesExactWireOffsets": true,
+  "typedKernelReceiveStorageBytes": 1024,
+  "sourceWarningSuppressionAdded": false,
+  "nativeCompile": false,
+  "runtimeAcceptance": false
+}

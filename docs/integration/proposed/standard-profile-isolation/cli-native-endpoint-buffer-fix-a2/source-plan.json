@@ -1,0 +1,48 @@
+{
+  "format": "aux.cli-native-endpoint.buffer-successor.v1",
+  "files": [
+    {
+      "path": "chrome/browser/aux/cli/AuxNativeEndpointDelivery.cc",
+      "inputRoot": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src",
+      "inputSha256": "3765060b84d88a7f63cdcfb695bcbc3f58ab1f92ca9905ccc5d37b629944c57d",
+      "outputSha256": "4a339c23563949a7abd73f3c84a95f2210e8e8754dd736a61e82ad960d2b7ba3",
+      "source": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/cli-native-endpoint-buffer-fix-a2/source/chrome/browser/aux/cli/AuxNativeEndpointDelivery.cc",
+      "anchors": [
+        {
+          "name": "Use fixed extents and bounded algorithm copies",
+          "find": "#include <array>\n",
+          "replace": "#include <algorithm>\n#include <array>\n#include <cstddef>\n#include <span>\n",
+          "count": 1
+        },
+        {
+          "name": "Actual typed kernel message base retains the complete maximum receive extent",
+          "find": "  alignas(mach_msg_audit_trailer_t) std::array<uint8_t, 1024> received{};\n  auto* header = reinterpret_cast<mach_msg_header_t*>(received.data());",
+          "replace": "  struct alignas(mach_msg_audit_trailer_t) ReceiveStorage {\n    mach_msg_base_t base{};\n    std::array<std::byte, 1024 - sizeof(mach_msg_base_t)> tail{};\n  };\n  static_assert(sizeof(ReceiveStorage) == 1024);\n  static_assert(offsetof(ReceiveStorage, base) == 0);\n  std::array<ReceiveStorage, 1> received{};\n  // The Mach receive ABI starts at this real header and has the full owned\n  // storage extent below. Decode the variable wire tail by bounded copies;\n  // its uint64 payload is not guaranteed to have C++ uint64 alignment.\n  auto* header = &received.front().base.header;",
+          "count": 1
+        },
+        {
+          "name": "Pass actual receive capacity to the kernel",
+          "find": "MACH_RCV_TRAILER_ELEMENTS(MACH_RCV_TRAILER_AUDIT), 0, received.size(), reply.name,",
+          "replace": "MACH_RCV_TRAILER_ELEMENTS(MACH_RCV_TRAILER_AUDIT), 0, sizeof(received), reply.name,",
+          "count": 1
+        },
+        {
+          "name": "Decode exact wire offsets and audit trailer through bounded value copies",
+          "find": "  auto* base = reinterpret_cast<mach_msg_base_t*>(header);\n  if (base->body.msgh_descriptor_count != 1) return MACH_PORT_NULL;\n  auto* port = reinterpret_cast<mach_msg_port_descriptor_t*>(received.data() + sizeof(mach_msg_base_t));\n  uint32_t key = 0;\n  uint64_t additional = 1;\n  memcpy(&key, received.data() + sizeof(mach_msg_base_t) + sizeof(*port), sizeof(key));\n  memcpy(&additional, received.data() + sizeof(mach_msg_base_t) + sizeof(*port) + sizeof(key), sizeof(additional));\n  auto* trailer = reinterpret_cast<mach_msg_audit_trailer_t*>(received.data() + kSize);\n  if (port->type != MACH_MSG_PORT_DESCRIPTOR || port->disposition != MACH_MSG_TYPE_PORT_SEND ||\n      port->name == MACH_PORT_NULL || key != kEndpointKey || additional != 0 ||\n      trailer->msgh_trailer_type != MACH_MSG_TRAILER_FORMAT_0 ||\n      trailer->msgh_trailer_size != sizeof(*trailer) || audit_token_to_pid(trailer->msgh_audit) != parent ||",
+          "replace": "  if (received.front().base.body.msgh_descriptor_count != 1) return MACH_PORT_NULL;\n  constexpr size_t kPortOffset = sizeof(mach_msg_base_t);\n  constexpr size_t kKeyOffset = kPortOffset + sizeof(mach_msg_port_descriptor_t);\n  constexpr size_t kAdditionalOffset = kKeyOffset + sizeof(uint32_t);\n  static_assert(kAdditionalOffset + sizeof(uint64_t) == kSize);\n  static_assert(kSize + sizeof(mach_msg_audit_trailer_t) <= sizeof(received));\n  const auto bytes = std::as_bytes(std::span(received));\n  std::array<mach_msg_port_descriptor_t, 1> ports{};\n  std::array<uint32_t, 1> keys{};\n  std::array<uint64_t, 1> additional{};\n  std::array<mach_msg_audit_trailer_t, 1> trailers{};\n  std::ranges::copy(bytes.subspan(kPortOffset, sizeof(ports)),\n                    std::as_writable_bytes(std::span(ports)).begin());\n  std::ranges::copy(bytes.subspan(kKeyOffset, sizeof(keys)),\n                    std::as_writable_bytes(std::span(keys)).begin());\n  std::ranges::copy(bytes.subspan(kAdditionalOffset, sizeof(additional)),\n                    std::as_writable_bytes(std::span(additional)).begin());\n  std::ranges::copy(bytes.subspan(kSize, sizeof(trailers)),\n                    std::as_writable_bytes(std::span(trailers)).begin());\n  auto& port = ports.front();\n  const auto& trailer = trailers.front();\n  if (port.type != MACH_MSG_PORT_DESCRIPTOR || port.disposition != MACH_MSG_TYPE_PORT_SEND ||\n      port.name == MACH_PORT_NULL || keys.front() != kEndpointKey || additional.front() != 0 ||\n      trailer.msgh_trailer_type != MACH_MSG_TRAILER_FORMAT_0 ||\n      trailer.msgh_trailer_size != sizeof(trailer) || audit_token_to_pid(trailer.msgh_audit) != parent ||",
+          "count": 1
+        },
+        {
+          "name": "Detach exactly the actual received send right before message destruction",
+          "find": "  const auto endpoint = port->name;\n  port->name = MACH_PORT_NULL; // Transfer exactly the received send right.\n  return endpoint;",
+          "replace": "  const auto endpoint = port.name;\n  port.name = MACH_PORT_NULL;\n  // Update the original owned Mach descriptor, not merely the decoded value,\n  // so MessageOwner transfers exactly this send right and destroys the rest.\n  std::ranges::copy(std::as_bytes(std::span(ports)),\n      std::as_writable_bytes(std::span(received))\n          .subspan(kPortOffset, sizeof(ports)).begin());\n  return endpoint;",
+          "count": 1
+        }
+      ]
+    }
+  ],
+  "nativeMutation": false,
+  "compilerRun": false,
+  "productExecuted": false,
+  "runtimeAcceptance": false
+}
