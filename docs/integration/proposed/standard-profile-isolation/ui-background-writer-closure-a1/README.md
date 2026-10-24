@@ -65,3 +65,10 @@ prepare/read/validate/release around the real physical gate and whole-cohort
 inventory. Actual background worker drain, termination/lost-result recovery and
 paired-package behavior remain to be compiled and observed by those owners.
 Complete writer coverage and runtime acceptance remain explicitly false.
+
+`actual-lineage-a1.json` independently checks the completed revision30/a5 stage
+manifest and actual background bytes: desktop-v1/state-v2,378235 bytes, exact
+SHA and byte equivalence with the pinned revision29/a2 predecessor. This checks
+the actual final staged pipeline rather than mistaking an intermediate pure
+feature-composition output for the installed/staged product. No source rebase or
+older fixture substitution is involved.

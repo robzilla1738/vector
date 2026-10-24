@@ -57,5 +57,6 @@
   "nativeExecuted": false,
   "productExecuted": false,
   "completeWriterCoverage": false,
-  "runtimeAccepted": false
+  "runtimeAccepted": false,
+  "currentStageEquivalenceReceiptSha256": "fbe45ad9e56a5a308fd23d901f9d147fc4bf177881792fdd748c91d4fe5a9e9d"
 }

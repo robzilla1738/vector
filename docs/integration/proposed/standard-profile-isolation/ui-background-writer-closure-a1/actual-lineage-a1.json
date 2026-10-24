@@ -1,0 +1,17 @@
+{
+  "format": "aux.ui-background-writer-closure.current-stage-equivalence.actual.v1",
+  "passed": true,
+  "currentStage": "/private/tmp/aux-ui-controller-integration-stage-20261024-a5",
+  "currentManifestSha256": "15a30f747221b1167141e543b98f93889ece6628282e3eed5c894b9299f46e9e",
+  "identityProfile": "aux-v1",
+  "stateIdentityVersion": 2,
+  "featureProfile": "desktop-v1",
+  "path": "background.js",
+  "currentBytes": 378235,
+  "currentOutputSha256": "bd97a84088d75a0a58a7f9519336b277f2dd0ec5adbee7e843e85c6ac2f8d032",
+  "currentManifestOutputSha256": "bd97a84088d75a0a58a7f9519336b277f2dd0ec5adbee7e843e85c6ac2f8d032",
+  "predecessor": "/private/tmp/aux-feature-completion-ui-stage-20261024-a2/agent/background.js",
+  "exactBytesEqual": true,
+  "nativeExecuted": false,
+  "productExecuted": false
+}
