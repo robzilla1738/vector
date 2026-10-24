@@ -1,0 +1,29 @@
+{
+  "modifiedCount": 3,
+  "addedCount": 0,
+  "baseline": "Current root integration/source captured 2026-10-23; do not overwrite broader integration sources",
+  "patchSha256": "091fdf73dd41be9c96f4377c6de5ffec756d3166e586d44e83fe25697b8510dc",
+  "files": [
+    {
+      "path": "chrome/browser/ui/views/frame/aux_organization_tree_view.cc",
+      "beforeSha256": "02834d5fb3d24d7048b58ac7de7e135e96ad50341b957dc737a0703644717169",
+      "afterSha256": "877cf8140c22525dcfc08ef8ccd26cf6f65994454dfe8336891ecf36a455ec80"
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_organization_window_controller.cc",
+      "beforeSha256": "1f1dece764f70899e455e6a77b1c3be791260ab95f0390a513b95e3ce826e2f0",
+      "afterSha256": "afdf4f33b88e0b968a99522b530e081c65436c65034ca01ca705e13599ee4355"
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_organization_window_controller.h",
+      "beforeSha256": "211631eb6c1b539b7210339beff5009c3e83ffdb0b9b14959e0e3b591b3367f1",
+      "afterSha256": "03630e500adb934835a8d40133a83dc16b166895a36c168225d7ac7da9b09670"
+    }
+  ],
+  "verification": {
+    "countedPatchReplay": "passed exact bytes for all 3 files",
+    "patchWhitespace": "passed git apply --whitespace=error",
+    "nativeCompile": "not run by worker; root integrates after a14",
+    "runtime": "not run; existing no launch/restart instruction preserved"
+  }
+}
