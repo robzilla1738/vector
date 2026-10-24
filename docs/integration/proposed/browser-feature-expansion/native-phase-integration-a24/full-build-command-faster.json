@@ -1,0 +1,22 @@
+{
+  "command": [
+    "/opt/homebrew/opt/python@3.15/bin/python3.15",
+    "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/integration/full-build.py",
+    "--snapshot",
+    "/private/tmp/aux-chromium-recovery-snapshot-20261023",
+    "--input-pins",
+    "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/native-phase-integration-a24/full-native-input-pins-a1.json",
+    "--require-input-pins",
+    "--build",
+    "--jobs",
+    "12",
+    "--receipt-name",
+    "unsigned-feature-completion-browser-build-20261024-a24-fast"
+  ],
+  "inputPinsSha256": "fa146746c1fc1bbcb9964c2ebc601d267b840ba5f3c1971536a1de3519f364c0",
+  "priorInterruptedReceiptSha256": "c2bb6470d0bbec4826ca6df748b969b3f4208b1883e2751b8a175481ae6662f9",
+  "sameSourceInputs": true,
+  "completedObjectsReused": true,
+  "productExecuted": false,
+  "productSigned": false
+}
