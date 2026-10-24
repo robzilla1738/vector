@@ -1,0 +1,2 @@
+PASS exact inactive package; runtime acceptance remains required
+Assembled inactive feature candidate; runtime acceptance and signing remain separate

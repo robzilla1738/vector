@@ -1,3 +1,11 @@
+# Standard-isolation package assembled; next bounded source batch in progress — 2026-10-24
+
+The actual browser a4 full build, daemon a3 native link, independent 182-anchor source/entry pairing, final helper derivation and all seven package-v6 phases passed. The inactive unsigned app is `out/provided-candidate-standard-profile-isolation-20261024/Aux.app`. Its 11,191-leaf inventory is `1f7258d555bf3c5d91b7b719394d1bf9da2b54bd82623e6ca0e532079d8c1a5b`; final receipt SHA256 is `8a0ab2d88ead8094a00720ee5a49e4e87ac4bbb97241735774768f1f6d6d4839`. Exact 16 feature-resource deltas, native CLI wrapper and unrelated CSS/assets/resources passed their original checks. Actual evidence: `docs/integration/proposed/standard-profile-isolation/integration/standard-package-v6-passed.json`.
+
+This is a completed inactive package, not runtime readiness: `testable:false`, `runtimeAuthorityGranted:false`, `appExecuted:false`, `productSigned:false`, `acceptedAppReplaced:false`. The accepted UI/app is intact. No app lifecycle, provider request, owner-state access, signing/release or OS grant occurred. This Mac reports macOS27.0.1; restricted descendant-observer capability remains ungranted.
+
+The next parallel source batch implements a fixed native ChatGPT credential lease, actual Meta connection/context ownership, early applied-policy receipts for content children and removal of inherited native-host stderr authority. These successors are outside the frozen package and still require their own compile/link/source/package integration. Remaining implementation versus acceptance gates are recorded in `docs/integration/proposed/standard-profile-isolation/LOCAL-CHECKPOINT.md`. Old status entries below are historical.
+
 # Browser correctness build passed; race successor and sign-in cleanup in progress — 2026-10-24
 
 The actual a3 full unsigned browser build passed after the six-file descendant-uncertainty correction. A later bounded source review found a reserve/bind/reap snapshot race. Its two-header, two-edit successor is now projected only after a3 completed, and the serialized a4 full build is running. Failed/unknown writer outcomes stay conservative; no coverage is invented. `docs/integration/proposed/standard-profile-isolation/integration/browser-build-a3-passed.json` preserves actual a3 evidence.

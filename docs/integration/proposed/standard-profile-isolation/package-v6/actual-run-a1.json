@@ -1,0 +1,134 @@
+{
+  "format": "aux.standard-profile-package.execution.v1",
+  "commandsSha256": "9f8747ab43df902a0c0d1d5111759b947d0f400f8817dad38b377ef301d7efa9",
+  "runnerSha256": "667694e8019f3634bea5569dc0c3015931143b44a3b1328d490cf77cedd08745",
+  "passed": true,
+  "runs": [
+    {
+      "name": "freezeReview",
+      "command": [
+        "/opt/homebrew/opt/python@3.15/bin/python3.15",
+        "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/package-v6/freeze-review.py"
+      ],
+      "exitCode": 0,
+      "seconds": 0.06451599998399615
+    },
+    {
+      "name": "checkInputs",
+      "command": [
+        "/opt/homebrew/opt/python@3.15/bin/python3.15",
+        "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/package-v6/cache_package.py",
+        "check-inputs"
+      ],
+      "exitCode": 0,
+      "seconds": 4.68959512503352
+    },
+    {
+      "name": "bindPair",
+      "command": [
+        "/opt/homebrew/opt/python@3.15/bin/python3.15",
+        "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/package-v6/bind_pair.py",
+        "--link-result",
+        "/private/tmp/aux-standard-daemon-objects-20261023-a2/results.json",
+        "--output",
+        "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/package-v6/source-pair-final.json"
+      ],
+      "exitCode": 0,
+      "seconds": 15.483134582987987
+    },
+    {
+      "name": "prepareBase",
+      "command": [
+        "/opt/homebrew/opt/python@3.15/bin/python3.15",
+        "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/package-v6/cache_package.py",
+        "prepare-base",
+        "--link-result",
+        "/private/tmp/aux-standard-daemon-objects-20261023-a2/results.json",
+        "--relink-plan",
+        "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/integration/native-build-a2.json",
+        "--runtime-manifest",
+        "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/package-v6/prepared/runtime-integration.json",
+        "--baseline-app",
+        "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-final-local-completion-20261023/Aux.app",
+        "--native-receipt",
+        "/private/tmp/aux-chromium-recovery-snapshot-20261023/unsigned-standard-profile-browser-build-20261024-a4/receipt.json",
+        "--daemon-receipt",
+        "/private/tmp/aux-standard-daemon-link-20261023-a3/results.json",
+        "--source-pair",
+        "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/package-v6/source-pair-final.json",
+        "--source",
+        "/private/tmp/aux-standard-daemon-projection-20261024-a4/index.mjs",
+        "--source-receipt",
+        "/private/tmp/aux-standard-daemon-projection-20261024-a4/source-receipt.json",
+        "--entry",
+        "/private/tmp/aux-standard-daemon-projection-20261024-a4/projected-entry/aux-native-entry.mjs",
+        "--entry-receipt",
+        "/private/tmp/aux-standard-daemon-projection-20261024-a4/projected-entry/results.json",
+        "--loader",
+        "/private/tmp/aux-standard-daemon-projection-20261024-a4/projected-entry/aux-owned-native.cjs",
+        "--pty",
+        "/private/tmp/aux-contained-pty-module-20261023-r2/pty.node",
+        "--output",
+        "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-standard-profile-isolation-20261024",
+        "--recipe",
+        "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/package-v6/prepared/base-recipe.json"
+      ],
+      "exitCode": 0,
+      "seconds": 87.49331533303484
+    },
+    {
+      "name": "prepareFeature",
+      "command": [
+        "/opt/homebrew/opt/python@3.15/bin/python3.15",
+        "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/package-v6/cache_package.py",
+        "prepare",
+        "--base-recipe",
+        "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/package-v6/prepared/base-recipe.json",
+        "--native-composition",
+        "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/integration/browser-composition-a4.json",
+        "--daemon-composition",
+        "/private/tmp/aux-standard-daemon-projection-20261024-a4/composition.json",
+        "--daemon-inputs",
+        "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/integration/daemon-link-a3-inputs.json",
+        "--baseline-stage",
+        "/Users/rcourson/Documents/Vibe/web/out/standard-profile-stage-pair-20261024-a1/baseline",
+        "--feature-stage",
+        "/Users/rcourson/Documents/Vibe/web/out/standard-profile-stage-pair-20261024-a1/desktop-v1",
+        "--recipe",
+        "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/package-v6/prepared/feature-recipe.json"
+      ],
+      "exitCode": 0,
+      "seconds": 188.72021258308087
+    },
+    {
+      "name": "verify",
+      "command": [
+        "/opt/homebrew/opt/python@3.15/bin/python3.15",
+        "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/package-v6/cache_package.py",
+        "verify",
+        "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/package-v6/prepared/feature-recipe.json"
+      ],
+      "exitCode": 0,
+      "seconds": 227.5057058329694
+    },
+    {
+      "name": "assemble",
+      "command": [
+        "/opt/homebrew/opt/python@3.15/bin/python3.15",
+        "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/package-v6/cache_package.py",
+        "assemble",
+        "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/package-v6/prepared/feature-recipe.json"
+      ],
+      "exitCode": 0,
+      "seconds": 622.6469924170524
+    }
+  ],
+  "appExecuted": false,
+  "productSigned": false,
+  "runtimeAuthorityGranted": false,
+  "acceptedAppReplaced": false,
+  "testable": false,
+  "app": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-standard-profile-isolation-20261024/Aux.app",
+  "finalReceipt": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-standard-profile-isolation-20261024/receipt.json",
+  "finalReceiptSha256": "8a0ab2d88ead8094a00720ee5a49e4e87ac4bbb97241735774768f1f6d6d4839"
+}

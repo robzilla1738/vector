@@ -1,0 +1,14 @@
+{
+  "date": "2026-10-24",
+  "command": [
+    "/usr/bin/sw_vers",
+    "-productVersion"
+  ],
+  "exitCode": 0,
+  "productVersion": "27.0.1",
+  "readOnly": true,
+  "descendantApiExecuted": false,
+  "endpointSecurityClientCreated": false,
+  "entitlementGranted": false,
+  "productExecuted": false
+}

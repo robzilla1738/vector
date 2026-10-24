@@ -1,0 +1,19 @@
+{
+  "format": "aux.standard-profile-package.actual-summary.v1",
+  "passed": true,
+  "recipeSha256": "c53351f744b26853f808b03f66ea82613a76fd921720de81c935cfadc31d6afb",
+  "baseAssemblyReceiptSha256": "8ef6bf8751227b3e1d3bb6578b5c8527eedd3984d2ce7f986c30e18f9f660184",
+  "inventorySha256": "1f7258d555bf3c5d91b7b719394d1bf9da2b54bd82623e6ca0e532079d8c1a5b",
+  "testable": false,
+  "runtimeAuthorityGranted": false,
+  "appExecuted": false,
+  "productSigned": false,
+  "acceptedAppReplaced": false,
+  "unchangedNativeWrapperAndUnrelatedResources": true,
+  "app": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-standard-profile-isolation-20261024/Aux.app",
+  "receipt": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-standard-profile-isolation-20261024/receipt.json",
+  "receiptSha256": "8a0ab2d88ead8094a00720ee5a49e4e87ac4bbb97241735774768f1f6d6d4839",
+  "leafCount": 11191,
+  "executionReceipt": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/package-v6/actual-run-a1.json",
+  "executionReceiptSha256": "ffb03d3ae082f6ae505031a6911fb316b0c280189a69d990e3840064e369a730"
+}
