@@ -1,0 +1,24 @@
+{
+  "status": "blocked-before-implementation",
+  "checkedInputs": {
+    "client": {
+      "path": "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include/EndpointSecurity/ESClient.h",
+      "sha256": "900e1cafa947ba3ba1cfcac02dd4c22a1ba01ed7c03dda8196971c1d0f88f004"
+    },
+    "message": {
+      "path": "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include/EndpointSecurity/ESMessage.h",
+      "sha256": "2a05238ee9eb74adb9ad21ac6d68e7ff3389d9c35b23a1bf04355282bdec65cf"
+    },
+    "event": {
+      "path": "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include/sys/event.h",
+      "sha256": "435ed8fe99ae70c19404c3da14be6e2d217686ac256aed3b5df721b353dbb350"
+    },
+    "selectedHost": {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/profile-isolation-local-finish/runtime-cache-async-integration/source/AuxDevelopmentWorkerHost.cc",
+      "sha256": "3bda3d49671811e93b1890ef712328eecbb840ec32f0c3389ba43888765b5e39"
+    }
+  },
+  "nativeExecution": false,
+  "observerImplemented": false,
+  "descendantSettlementProven": false
+}
