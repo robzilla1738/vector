@@ -21,7 +21,7 @@
     }
   ],
   "addedInclude": "AuxRuntimeMutablePins.inc",
-  "addedIncludeSha256": "13d344158d2e40b7c6c5e7d52b8ea3d19a7fe07b1814e9fbc13edfaeeb79224c",
-  "mutablePins": 4892,
-  "fixedPins": 32
+  "addedIncludeSha256": "0a53aee75c07770f8f39793ec5c490aef7a9e1f26b0e7bc80c49db046c61d1df",
+  "mutablePins": 4903,
+  "fixedPins": 29
 }

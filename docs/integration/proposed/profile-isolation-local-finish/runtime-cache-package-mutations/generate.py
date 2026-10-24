@@ -1,5 +1,5 @@
 """Derive exact removable pins from pinned supplied package metadata, offline."""
-import csv,hashlib,json,pathlib,posixpath,difflib
+import csv,hashlib,json,pathlib,posixpath,difflib,re
 HERE=pathlib.Path(__file__).resolve().parent
 ASYNC=HERE.parent/'runtime-cache-async-integration'
 ROOT=pathlib.Path('/Users/rcourson/Documents/Vibe/web')
@@ -41,9 +41,19 @@ assert 'pip._internal.cli.main' in read(site+'/pip/__main__.py')
 # Actual fixed entrypoint targets, not a blanket exempt site-packages prefix.
 fixed={name for name in by if name.startswith('bin/')}
 fixed.update({'version.txt','env.sh','openssl.cnf','prepare-python.py','manifest.txt','node/bin/node','node/bin/npm','node/bin/npx',
- 'python/venv/bin/python','python/venv/bin/python3','python/venv/bin/python3.13','python/venv/bin/pip','python/venv/bin/pip3','python/venv/bin/pip3.13',
- site+'/pip/__main__.py',site+'/pip/_internal/cli/main.py',npm_root+'/package.json',npm_root+'/lib/cli.js'})
+ 'python/venv/bin/python','python/venv/bin/python3','python/venv/bin/python3.13'})
+# Package-internal modules/metadata and pip-generated scripts are deliberately
+# NOT fixed: an upgrade can replace their structure while launchers stay valid.
 fixed.update(npm_root+'/'+target for target in npm['bin'].values())
+daemon_path=pathlib.Path('/private/tmp/aux-browser-features-daemon-source-20261023-a4/index.mjs');daemon_bytes=daemon_path.read_bytes()
+assert sha(daemon_bytes)=='4e5c2710ddeb7b1f57f2524088ece6678b0f091ec6f7af68564c355cabae4723'
+daemon=daemon_bytes.decode('utf8')
+macho_text=re.search(r'MACOS_RUNTIME_MACHO_FILES=\[([^\]]*)\]',daemon).group(1)
+entry_text=re.search(r'MACOS_RUNTIME_ENTRYPOINTS=\[(.*?)\],MACOS_RUNTIME_RELEASE_FILES',daemon).group(1)
+macho=re.findall(r'`([^`]+)`',macho_text);entrypoints=re.findall(r'\[`([^`]+)`,\[',entry_text)
+assert len(macho)==6 and len(entrypoints)==12
+fixed.update(macho);fixed.update(entrypoints)
+required_contract={'path':str(daemon_path),'sha256':sha(daemon_bytes),'macOSMachO':macho,'macOSEntrypoints':entrypoints}
 # Resolve all fixed symlink targets using authenticated inventory, not files.
 for name in list(fixed):
  if name not in by:continue
@@ -92,7 +102,7 @@ counts=[1,1,4]
 for (old,new),count in zip(changes,counts):assert text.count(old)==count,(old,text.count(old));text=text.replace(old,new)
 (HERE/'source/AuxRuntimeCacheInspection.inc').write_text(text)
 (HERE/'inspection.patch').write_text(''.join(difflib.unified_diff(base.splitlines(True),text.splitlines(True),fromfile='a/AuxRuntimeCacheInspection.inc',tofile='b/AuxRuntimeCacheInspection.inc')))
-summary={'format':'aux.runtime-package-mutation-pins.v1','sourceInventorySha256':sha(PINS.read_bytes()),'recordCount':len(records),'npm':{'name':npm['name'],'version':npm['version'],'location':npm_root},'mutablePins':len(allow),'mutableFiles':sum(by[x]['type']=='file' for x in allow),'mutableLinks':sum(by[x]['type']=='symlink' for x in allow),'mutableDirectories':sum(by[x]['type']=='directory' for x in allow),'fixedPins':sorted(fixed&set(by)),'fixedContainers':sorted(containers),'provenance':provenance,'allowlist':allow}
+summary={'format':'aux.runtime-package-mutation-pins.v1','sourceInventorySha256':sha(PINS.read_bytes()),'recordCount':len(records),'npm':{'name':npm['name'],'version':npm['version'],'location':npm_root},'mutablePins':len(allow),'mutableFiles':sum(by[x]['type']=='file' for x in allow),'mutableLinks':sum(by[x]['type']=='symlink' for x in allow),'mutableDirectories':sum(by[x]['type']=='directory' for x in allow),'requiredRuntimeContract':required_contract,'fixedPins':sorted(fixed&set(by)),'fixedPinBasis':{'rootWrappers':'Exact supplied runtime/bin files, outside package installation roots','interpreters':'Actual node/bin/node and python/venv/bin/python variants','npmLaunchers':'Actual node/bin/npm and node/bin/npx symlinks plus package.json bin target paths they resolve to','configuration':'Fixed seed version/config inventory files, not package internals'},'fixedContainers':sorted(containers),'provenance':provenance,'allowlist':allow}
 (HERE/'provenance.json').write_text(json.dumps(summary,indent=2)+'\n')
 manifest={'format':'aux.runtime-package-mutation-overlay.v1','active':False,'inputInspectionSha256':sha(base.encode()),'outputInspectionSha256':sha(text.encode()),'changes':[{'old':a,'new':b,'count':c} for (a,b),c in zip(changes,counts)],'addedInclude':'AuxRuntimeMutablePins.inc','addedIncludeSha256':sha((HERE/'source/AuxRuntimeMutablePins.inc').read_bytes()),'mutablePins':len(allow),'fixedPins':len(fixed&set(by))}
 (HERE/'overlay.json').write_text(json.dumps(manifest,indent=2)+'\n')
