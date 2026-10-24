@@ -1,0 +1,16 @@
+{
+  "format": "aux.profile-window-completion.source-check.actual.v1",
+  "passed": true,
+  "sourcePlanSha256": "b720a92e5033d4d5f071e10b56e6a1f00948c42892616c4729f19af2b259a513",
+  "patchSha256": "82d1feee76806dbb4ad5f3a7e8d2995374e35286633d999a32a735b878fa6913",
+  "files": 12,
+  "countedAnchors": 61,
+  "replayDirectory": "/private/tmp/aux-profile-window-completion-replay-_gt288sb",
+  "exactReplayPassed": true,
+  "reverseCheckPassed": true,
+  "nativeCheckoutChanged": false,
+  "nativeCompiled": false,
+  "testsExecuted": false,
+  "productExecuted": false,
+  "runtimeAcceptance": false
+}

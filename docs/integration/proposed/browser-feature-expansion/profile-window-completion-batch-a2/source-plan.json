@@ -1,0 +1,412 @@
+{
+  "format": "aux.profile-window-completion.source.v1",
+  "nativeRoot": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src",
+  "files": [
+    {
+      "path": "chrome/browser/ui/views/frame/aux_profile_switch_request.cc",
+      "inputSha256": "a801af8c2acc83ed32843eb289cf7989f9bd2aec5a8af2fe0e09759015fd82a3",
+      "outputSha256": "5dbd0c246451d7fd5fd403822bf2c17b360cf7acc59d64144a2a06b19c6563a2",
+      "output": "/Users/rcourson/.codex/worktrees/aux-features-organization/web/docs/integration/proposed/browser-feature-expansion/profile-window-completion-batch-a2/source/chrome/browser/ui/views/frame/aux_profile_switch_request.cc",
+      "anchors": [
+        {
+          "find": "namespace aux {\nnamespace {\nvoid ReportCurrentSwitchFailure(",
+          "replace": "namespace aux {\nnamespace {\nBrowser* CurrentSwitchWindow(base::WeakPtr<BrowserWindowInterface> window,\n                             base::WeakPtr<Profile> expected) {\n  const auto* unload = window ? UnloadController::From(window.get()) : nullptr;\n  if (!window || !expected || window->GetProfile() != expected.get() || !window->GetWindow() ||\n      !unload || unload->is_attempting_to_close_browser() || unload->is_delete_scheduled() ||\n      browser_shutdown::HasShutdownStarted() || browser_shutdown::IsTryingToQuit()) return nullptr;\n  return static_cast<Browser*>(window.get());\n}\nBrowser* CurrentSwitchResult(base::WeakPtr<BrowserWindowInterface> window,\n                             base::WeakPtr<Profile> expected, uint64_t generation) {\n  auto* browser = CurrentSwitchWindow(window, expected);\n  const auto* state = browser ? BrowserInitState::From(browser) : nullptr;\n  return state && state->IsCurrentAuxProfileSwitchRequest(generation) ? browser : nullptr;\n}\nvoid ReportCurrentSwitchFailure(",
+          "count": 1
+        },
+        {
+          "find": "  const uint64_t generation = state->BeginAuxProfileSwitchRequest();\n  if (target ==",
+          "replace": "  const uint64_t generation = state->BeginAuxProfileSwitchRequest();\n  const auto source_weak = profile->GetWeakPtr();\n  if (target ==",
+          "count": 1
+        },
+        {
+          "find": "      std::move(completion).Run(sender_weak ? sender : nullptr);\n    }\n    return;\n  }\n  state->KeepAuxProfileSwitchProfileAlive(profile);",
+          "replace": "      std::move(completion).Run(CurrentSwitchResult(sender_weak, source_weak, generation));\n    }\n    return;\n  }\n  state->KeepAuxProfileSwitchProfileAlive(profile);",
+          "count": 1
+        },
+        {
+          "find": "                         sender_weak, profile->GetWeakPtr(), generation,",
+          "replace": "                         sender_weak, source_weak, generation,",
+          "count": 1
+        },
+        {
+          "find": "        recovered->GetWindow()->Activate();\n        // Activation can dispatch observers and close either native window.",
+          "replace": "        recovered->GetWindow()->Activate();\n        const auto current_recovery = [&]() -> Browser* {\n          return CurrentSwitchResult(sender_weak, source, generation)\n              ? CurrentSwitchWindow(recovered_weak, target_weak) : nullptr;\n        };\n        // Activation can dispatch observers and close or rebind either native window.",
+          "count": 1
+        },
+        {
+          "find": "        if (notify && recovered_weak && recovered_weak->GetWindow()) {",
+          "replace": "        if (notify && current_recovery()) {",
+          "count": 1
+        },
+        {
+          "find": "        if (completion) std::move(completion).Run(\n            recovered_weak ? static_cast<Browser*>(recovered_weak.get()) : nullptr);",
+          "replace": "        if (completion) std::move(completion).Run(current_recovery());",
+          "count": 1
+        },
+        {
+          "find": "    std::move(completion).Run(sender_weak ? sender : nullptr);\n  }\n}\n\nvoid ProfileSwitchRequest::ContinueAfterCacheSetup(",
+          "replace": "    std::move(completion).Run(CurrentSwitchResult(sender_weak, target_weak, generation));\n  }\n}\n\nvoid ProfileSwitchRequest::ContinueAfterCacheSetup(",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_profile_switch_workspaces.cc",
+      "inputSha256": "d84eef6fe1df107b681e67bdc10be181938824e9947804fc51031b4b5e0c3d17",
+      "outputSha256": "96725202c3d3ad2b5f02fe050704e8a7b28a2adaaa45d0436a32caaff8ed44c1",
+      "output": "/Users/rcourson/.codex/worktrees/aux-features-organization/web/docs/integration/proposed/browser-feature-expansion/profile-window-completion-batch-a2/source/chrome/browser/ui/views/frame/aux_profile_switch_workspaces.cc",
+      "anchors": [
+        {
+          "find": "  if (!loaded || loaded->IsOffTheRecord()) {",
+          "replace": "  if (!loaded || !loaded->IsRegularProfile() || loaded->IsOffTheRecord()) {",
+          "count": 1
+        },
+        {
+          "find": "  BrowserInitState::From(owner)->KeepAuxProfileSwitchProfileAlive(target);\n  BrowserInitState::From(cache)->KeepAuxProfileSwitchProfileAlive(target);",
+          "replace": "  const auto owner_weak = owner->GetWeakPtr(), cache_weak = cache->GetWeakPtr();\n  const auto target_weak = target->GetWeakPtr();\n  auto* owner_state = BrowserInitState::From(owner);\n  if (!owner_state) return;\n  owner_state->KeepAuxProfileSwitchProfileAlive(target);\n  if (!owner_weak || !cache_weak || !target_weak) return;\n  if (auto* cache_state = BrowserInitState::From(cache_weak.get()))\n    cache_state->KeepAuxProfileSwitchProfileAlive(target_weak.get());",
+          "count": 1
+        },
+        {
+          "find": "BrowserWindowInterface* GetOrCreateProfileSwitchWorkspace(\n    BrowserWindowInterface* owner,\n    Profile* target,\n    bool ensure_tab) {\n  if (!owner || !target || !g_browser_process ||\n      !g_browser_process->profile_manager() ||\n      owner->GetType() != BrowserWindowInterface::TYPE_NORMAL ||\n      owner->GetProfile()->IsOffTheRecord() || IsClosing(owner) ||\n      browser_shutdown::HasShutdownStarted() ||\n      browser_shutdown::IsTryingToQuit() || g_browser_process->IsShuttingDown()) {\n    return nullptr;\n  }\n  const auto* source = BrowserInitState::From(owner);\n  if (!source || source->is_aux_profile_switch_cache()) {\n    return nullptr;\n  }\n  target = target->GetOriginalProfile();\n  if (!target || target->IsOffTheRecord() || target->GetPath().empty() ||\n      profiles::IsProfileLocked(target->GetPath()) ||\n      g_browser_process->profile_manager()->GetProfileByPath(target->GetPath()) !=\n          target) {\n    return nullptr;\n  }\n  if (auto* cache = FindProfileSwitchWorkspace(owner, target->GetPath())) {\n    KeepTargetAlive(owner, cache, target);\n    return cache;\n  }\n  BrowserWindowCreateParams params(BrowserWindowInterface::TYPE_NORMAL, target,\n                                   /*from_user_gesture=*/false);\n  params.omit_from_session_restore = true;\n  params.should_trigger_session_restore = false;\n  params.aux_profile_switch_cache = true;\n  params.aux_profile_switch_workspace_id =\n      source->aux_profile_switch_workspace_id();\n  params.vertical_tab_strip_collapsed = false;\n  if (const auto* strip =\n          tabs::VerticalTabStripStateController::From(owner)) {\n    params.vertical_tab_strip_uncollapsed_width = strip->GetUncollapsedWidth();\n  } else {\n    params.vertical_tab_strip_uncollapsed_width =\n        source->get_vertical_tabs_initial_uncollapsed_width();\n  }\n  auto* cache = CreateBrowserWindow(std::move(params));\n  if (!cache) {\n    return nullptr;\n  }\n  if (ensure_tab && cache->GetTabStripModel() &&\n      cache->GetTabStripModel()->empty()) {\n    chrome::AddAndReturnTabAt(\n        cache, GURL(), -1, /*foreground=*/true, std::nullopt,\n        /*pinned=*/false);\n  }\n  KeepTargetAlive(owner, cache, target);\n  return cache;\n}\n",
+          "replace": "BrowserWindowInterface* GetOrCreateProfileSwitchWorkspace(\n    BrowserWindowInterface* owner, Profile* target, bool ensure_tab) {\n  if (!owner || !target || !g_browser_process || !g_browser_process->profile_manager() ||\n      owner->GetType() != BrowserWindowInterface::TYPE_NORMAL || !owner->GetProfile() ||\n      !owner->GetProfile()->IsRegularProfile() || owner->GetProfile()->IsOffTheRecord() ||\n      IsClosing(owner) || browser_shutdown::HasShutdownStarted() ||\n      browser_shutdown::IsTryingToQuit() || g_browser_process->IsShuttingDown()) return nullptr;\n  const auto* source_state = BrowserInitState::From(owner);\n  if (!source_state || source_state->is_aux_profile_switch_cache()) return nullptr;\n  target = target->GetOriginalProfile();\n  if (!target || !target->IsRegularProfile() || target->IsOffTheRecord() || target->GetPath().empty() ||\n      profiles::IsProfileLocked(target->GetPath()) ||\n      g_browser_process->profile_manager()->GetProfileByPath(target->GetPath()) != target) return nullptr;\n  const auto owner_weak = owner->GetWeakPtr();\n  const auto source_profile = owner->GetProfile()->GetWeakPtr(), target_weak = target->GetWeakPtr();\n  const uint64_t workspace = source_state->aux_profile_switch_workspace_id();\n  const auto current = [&](base::WeakPtr<BrowserWindowInterface> cache) {\n    if (!owner_weak || !source_profile || !target_weak || !cache ||\n        owner_weak->GetProfile() != source_profile.get() || cache->GetProfile() != target_weak.get() ||\n        IsClosing(owner_weak.get()) || IsClosing(cache.get()) || browser_shutdown::HasShutdownStarted() ||\n        browser_shutdown::IsTryingToQuit() || !g_browser_process || g_browser_process->IsShuttingDown() ||\n        !g_browser_process->profile_manager() || profiles::IsProfileLocked(target_weak->GetPath()) ||\n        g_browser_process->profile_manager()->GetProfileByPath(target_weak->GetPath()) != target_weak.get()) return false;\n    const auto* source = BrowserInitState::From(owner_weak.get());\n    const auto* destination = BrowserInitState::From(cache.get());\n    return source && !source->is_aux_profile_switch_cache() && source->aux_profile_switch_workspace_id() == workspace &&\n        destination && destination->is_aux_profile_switch_cache() &&\n        destination->aux_profile_switch_workspace_id() == workspace;\n  };\n  if (auto* cache = FindProfileSwitchWorkspace(owner, target->GetPath())) {\n    const auto cache_weak = cache->GetWeakPtr();\n    if (!current(cache_weak)) return nullptr;\n    KeepTargetAlive(owner_weak.get(), cache_weak.get(), target_weak.get());\n    return current(cache_weak) ? cache_weak.get() : nullptr;\n  }\n  BrowserWindowCreateParams params(BrowserWindowInterface::TYPE_NORMAL, target, /*from_user_gesture=*/false);\n  params.omit_from_session_restore = true;\n  params.should_trigger_session_restore = false;\n  params.aux_profile_switch_cache = true;\n  params.aux_profile_switch_workspace_id = workspace;\n  params.vertical_tab_strip_collapsed = false;\n  if (const auto* strip = tabs::VerticalTabStripStateController::From(owner))\n    params.vertical_tab_strip_uncollapsed_width = strip->GetUncollapsedWidth();\n  else params.vertical_tab_strip_uncollapsed_width = source_state->get_vertical_tabs_initial_uncollapsed_width();\n  auto* cache = CreateBrowserWindow(std::move(params));\n  if (!cache) return nullptr;\n  const auto cache_weak = cache->GetWeakPtr();\n  // Constructors/attachment observers may reenter close or profile switching.\n  // Keep an unfinished cache intact; never borrow another window's contents.\n  if (!current(cache_weak)) return nullptr;\n  if (ensure_tab && cache_weak->GetTabStripModel() && cache_weak->GetTabStripModel()->empty()) {\n    chrome::AddAndReturnTabAt(cache_weak.get(), GURL(), -1, /*foreground=*/true, std::nullopt, /*pinned=*/false);\n    if (!current(cache_weak)) return nullptr;\n  }\n  KeepTargetAlive(owner_weak.get(), cache_weak.get(), target_weak.get());\n  return current(cache_weak) ? cache_weak.get() : nullptr;\n}\n",
+          "count": 1
+        },
+        {
+          "find": "            !BrowserInitState::From(candidate)->is_aux_profile_switch_cache()) {",
+          "replace": "            BrowserInitState::From(candidate) &&\n            !BrowserInitState::From(candidate)->is_aux_profile_switch_cache()) {",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/aux/account_profile_avatar.h",
+      "inputSha256": "2bc56b09a90b0f93e5644f245e1f9ad5754ef1fa3ecbf22b07d77727272a0745",
+      "outputSha256": "e972a1b2bf574815d38ed87fa34ca75e0e9393486b052102df1f99ef6ba65d3f",
+      "output": "/Users/rcourson/.codex/worktrees/aux-features-organization/web/docs/integration/proposed/browser-feature-expansion/profile-window-completion-batch-a2/source/chrome/browser/aux/account_profile_avatar.h",
+      "anchors": [
+        {
+          "find": "#include <string>",
+          "replace": "#include <cstdint>\n#include <string>",
+          "count": 1
+        },
+        {
+          "find": "  void DidFetch(std::string url, const gfx::Image& image,",
+          "replace": "  void DidFetch(std::string url, uint64_t generation, std::string epoch, const gfx::Image& image,",
+          "count": 1
+        },
+        {
+          "find": "  std::string requested_url_;",
+          "replace": "  std::string requested_url_;\n  uint64_t request_generation_ = 0;",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/aux/account_profile_avatar.cc",
+      "inputSha256": "edb0e31fd9fdaf2f56742d865f5b94ee09629fa5d6b28f3fc314b40c74f09b56",
+      "outputSha256": "4d9ba7851e109d7f5502961b72ea84c9e68f55bda6d742ab459412c6fa4ceda0",
+      "output": "/Users/rcourson/.codex/worktrees/aux-features-organization/web/docs/integration/proposed/browser-feature-expansion/profile-window-completion-batch-a2/source/chrome/browser/aux/account_profile_avatar.cc",
+      "anchors": [
+        {
+          "find": "  if (!weak || requested_url_ != picture_url) return;",
+          "replace": "  if (!weak || requested_url_ != picture_url || request_generation_ != generation) return;",
+          "count": 1
+        },
+        {
+          "find": "#include \"chrome/browser/aux/account_profile_prefs.h\"",
+          "replace": "#include \"chrome/browser/aux/account_profile_prefs.h\"\n#include \"chrome/browser/aux/profile_identity.h\"",
+          "count": 1
+        },
+        {
+          "find": "void AccountProfileAvatar::ClearOwnedPicture() {",
+          "replace": "void AccountProfileAvatar::ClearOwnedPicture() {\n  ++request_generation_;",
+          "count": 1
+        },
+        {
+          "find": "void AccountProfileAvatar::Refresh(const std::string& picture_url) {\n  requested_url_ = picture_url;",
+          "replace": "void AccountProfileAvatar::Refresh(const std::string& picture_url) {\n  const uint64_t generation = ++request_generation_;\n  requested_url_ = picture_url;",
+          "count": 1
+        },
+        {
+          "find": "  image_fetcher::ImageFetcherParams params(kAvatarAnnotation, \"AuxProfileAvatar\");",
+          "replace": "  const auto epoch = GetProfileCookieBindingEpoch(profile_);\n  if (epoch.empty() || IsProfileCookieRestorePending(profile_)) return;\n  image_fetcher::ImageFetcherParams params(kAvatarAnnotation, \"AuxProfileAvatar\");",
+          "count": 1
+        },
+        {
+          "find": "      weak_.GetWeakPtr(), picture_url), std::move(params));",
+          "replace": "      weak_.GetWeakPtr(), picture_url, generation, epoch), std::move(params));",
+          "count": 1
+        },
+        {
+          "find": "    std::string url, const gfx::Image& image,\n    const image_fetcher::RequestMetadata&) {\n  if (!profile_ || !storage_ || requested_url_ != url) return;",
+          "replace": "    std::string url, uint64_t generation, std::string epoch, const gfx::Image& image,\n    const image_fetcher::RequestMetadata&) {\n  if (!profile_ || !storage_ || requested_url_ != url || request_generation_ != generation ||\n      epoch.empty() || GetProfileCookieBindingEpoch(profile_) != epoch || IsProfileCookieRestorePending(profile_)) return;",
+          "count": 1
+        },
+        {
+          "find": "  if (!weak || requested_url_ != url) return;\n  if (auto* current = Entry()) current->SetIsUsingGAIAPicture(!image.IsEmpty());",
+          "replace": "  if (!weak || requested_url_ != url || request_generation_ != generation ||\n      GetProfileCookieBindingEpoch(profile_) != epoch || IsProfileCookieRestorePending(profile_)) return;\n  if (auto* current = Entry()) current->SetIsUsingGAIAPicture(!image.IsEmpty());",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/aux/account_profile_updater.cc",
+      "inputSha256": "5fbf6369da60987471cf815297fef6eada042c13966b0c42101f2a42f3bc97b8",
+      "outputSha256": "2f5a798eb8b8397d716c1d02de69a86e42456e74397d63a7d138c14992b26554",
+      "output": "/Users/rcourson/.codex/worktrees/aux-features-organization/web/docs/integration/proposed/browser-feature-expansion/profile-window-completion-batch-a2/source/chrome/browser/aux/account_profile_updater.cc",
+      "anchors": [
+        {
+          "find": "#include \"components/prefs/pref_service.h\"",
+          "replace": "#include \"components/prefs/pref_service.h\"\n#include \"components/prefs/pref_change_registrar.h\"",
+          "count": 1
+        },
+        {
+          "find": "    storage_observation_.Observe(storage);\n    cookie_restore_subscription_",
+          "replace": "    storage_observation_.Observe(storage);\n    identity_prefs_.Init(profile->GetPrefs());\n    if (profile->GetPrefs()->FindPreference(\"aux.profile_id\"))\n      identity_prefs_.Add(\"aux.profile_id\", base::BindRepeating(\n          &AccountProfileUpdater::Refresh, weak_.GetWeakPtr(), true));\n    cookie_restore_subscription_",
+          "count": 1
+        },
+        {
+          "find": "    authorization_subscription_ = {};\n    cookie_restore_subscription_",
+          "replace": "    authorization_subscription_ = {};\n    identity_prefs_.Reset();\n    cookie_restore_subscription_",
+          "count": 1
+        },
+        {
+          "find": "  AccountProfileAvatar avatar_;",
+          "replace": "  AccountProfileAvatar avatar_;\n  PrefChangeRegistrar identity_prefs_;",
+          "count": 1
+        },
+        {
+          "find": "    const auto home = StateHome();\n    if (home.empty()) {\n      DidRead(allow_binding, std::nullopt);\n      return;\n    }\n    if (watcher_.is_null()) StartWatch(home);\n    base::ThreadPool::PostTaskAndReplyWithResult(FROM_HERE, {base::MayBlock()},\n        base::BindOnce(&ReadPrivateAccountRegistry, home),\n        base::BindOnce(&AccountProfileUpdater::DidRead, weak_.GetWeakPtr(),\n                       allow_binding));",
+          "replace": "    const auto home = StateHome();\n    const auto binding_epoch = GetProfileCookieBindingEpoch(profile_);\n    const auto restore_epoch = GetProfileCookieRestoreEpoch(profile_);\n    if (binding_epoch.empty() || restore_epoch.empty()) { reading_ = false; return; }\n    if (home.empty()) { DidRead(allow_binding, home, binding_epoch, restore_epoch, std::nullopt); return; }\n    if (!watcher_.is_null() && watch_home_ != home) { ++watch_generation_; watcher_.Reset(); }\n    if (watcher_.is_null()) StartWatch(home);\n    const bool posted = base::ThreadPool::PostTaskAndReplyWithResult(FROM_HERE, {base::MayBlock()},\n        base::BindOnce(&ReadPrivateAccountRegistry, home),\n        base::BindOnce(&AccountProfileUpdater::DidRead, weak_.GetWeakPtr(),\n                       allow_binding, home, binding_epoch, restore_epoch));\n    // False is a definite non-start, not a failed read or projection. Do not\n    // leave all later native refreshes stuck behind reading_ during shutdown.\n    if (!posted) reading_ = false;",
+          "count": 1
+        },
+        {
+          "find": "    if (!weak) return std::nullopt;\n    auto* prefs = profile_->GetPrefs();",
+          "replace": "    if (!weak || input.profile_id.empty()) return std::nullopt;\n    auto* prefs = profile_->GetPrefs();",
+          "count": 1
+        },
+        {
+          "find": "    const uint64_t generation = ++watch_generation_;\n    watcher_ =",
+          "replace": "    const uint64_t generation = ++watch_generation_;\n    watch_home_ = home;\n    watcher_ =",
+          "count": 1
+        },
+        {
+          "find": "                                weak_.GetWeakPtr())));\n    watcher_.AsyncCall",
+          "replace": "                                weak_.GetWeakPtr(), generation)));\n    watcher_.AsyncCall",
+          "count": 1
+        },
+        {
+          "find": "  void RegistryChanged(bool error) {\n    if (error) {",
+          "replace": "  void RegistryChanged(uint64_t generation, bool error) {\n    if (generation != watch_generation_) return;\n    if (error) {",
+          "count": 1
+        },
+        {
+          "find": "  void DidRead(bool allow_binding, std::optional<base::DictValue> state) {",
+          "replace": "  void DidRead(bool allow_binding, base::FilePath home, std::string binding_epoch,\n               std::string restore_epoch, std::optional<base::DictValue> state) {",
+          "count": 1
+        },
+        {
+          "find": "    const bool stale_cookie_read = std::exchange(discard_cookie_read_, false);",
+          "replace": "    const bool stale_cookie_read = std::exchange(discard_cookie_read_, false) ||\n        home != StateHome() || binding_epoch != GetProfileCookieBindingEpoch(profile_) ||\n        restore_epoch != GetProfileCookieRestoreEpoch(profile_);",
+          "count": 1
+        },
+        {
+          "find": "  uint64_t watch_generation_ = 0;",
+          "replace": "  uint64_t watch_generation_ = 0;\n  base::FilePath watch_home_;",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_sidebar_view.cc",
+      "inputSha256": "6ad3e83f6b49ff2c40f76ef8f3af22e6d176d7308b0f9afbc6d6686acbb67723",
+      "outputSha256": "5ac9aca124e4df028730d2bfea824df426cfaf06d28cc181a639a436b8ac68ad",
+      "output": "/Users/rcourson/.codex/worktrees/aux-features-organization/web/docs/integration/proposed/browser-feature-expansion/profile-window-completion-batch-a2/source/chrome/browser/ui/views/frame/aux_sidebar_view.cc",
+      "anchors": [
+        {
+          "find": "#include \"chrome/browser/ui/browser_commands.h\"",
+          "replace": "#include \"chrome/browser/ui/browser_commands.h\"\n#include \"chrome/browser/ui/browser_init_state.h\"",
+          "count": 1
+        },
+        {
+          "find": "  if (!sender || !sender->GetProfile() ||\n      sender->GetProfile()->IsOffTheRecord()) {",
+          "replace": "  if (!sender || !sender->GetProfile() ||\n      !sender->GetProfile()->IsRegularProfile() || sender->GetProfile()->IsOffTheRecord()) {",
+          "count": 1
+        },
+        {
+          "find": "  ProfileManager::CreateMultiProfileAsync(\n      name, /*icon_index=*/26, /*is_hidden=*/false,",
+          "replace": "  auto* state = BrowserInitState::From(sender.get());\n  if (!state || state->is_aux_profile_switch_cache()) return;\n  const auto source = sender->GetProfile()->GetWeakPtr();\n  const auto epoch = aux::GetProfileCookieBindingEpoch(source.get());\n  if (epoch.empty() || aux::IsProfileCookieRestorePending(source.get())) return;\n  const uint64_t generation = state->BeginAuxProfileSwitchRequest();\n  ProfileManager::CreateMultiProfileAsync(\n      name, /*icon_index=*/26, /*is_hidden=*/false,",
+          "count": 1
+        },
+        {
+          "find": "          [](base::WeakPtr<BrowserWindowInterface> browser, Profile* profile) {\n            if (browser && profile) {\n              DispatchSelectedProfile(browser, profile->GetPath());\n            }\n          },\n          sender));",
+          "replace": "          [](base::WeakPtr<BrowserWindowInterface> browser,\n             base::WeakPtr<Profile> source, std::string epoch,\n             uint64_t generation, Profile* profile) {\n            const auto current = [&]() {\n              const auto* state = browser ? BrowserInitState::From(browser.get()) : nullptr;\n              return browser && source && browser->GetProfile() == source.get() && state &&\n                  state->IsCurrentAuxProfileSwitchRequest(generation) &&\n                  aux::GetProfileCookieBindingEpoch(source.get()) == epoch &&\n                  !aux::IsProfileCookieRestorePending(source.get());\n            };\n            if (!current() || !profile) return;\n            const auto target = profile->GetWeakPtr();\n            const auto identity = aux::InitializeFreshProfileIdentity(profile);\n            if (current() && target &&\n                identity != aux::FreshProfileIdentityInitialization::kUnavailable)\n              DispatchSelectedProfile(browser, target->GetPath());\n          },\n          sender, source, epoch, generation));",
+          "count": 1
+        },
+        {
+          "find": "// Supplied040fe7a4 receives the actual weak sender, not a global active window.",
+          "replace": "// Menu retirement is asynchronous. An old command must not retarget a\n// window that switched profiles/accounts before the posted action executes.\nvoid RunProfileMenuAction(base::WeakPtr<BrowserWindowInterface> sender,\n                          base::WeakPtr<Profile> source, std::string epoch,\n                          base::OnceClosure action) {\n  if (!sender || !source || epoch.empty() || sender->GetProfile() != source.get() ||\n      aux::GetProfileCookieBindingEpoch(source.get()) != epoch ||\n      aux::IsProfileCookieRestorePending(source.get())) return;\n  std::move(action).Run();\n}\n// Supplied040fe7a4 receives the actual weak sender, not a global active window.",
+          "count": 1
+        },
+        {
+          "find": "        browser_(browser), sender_(browser->GetWeakPtr()) {",
+          "replace": "        browser_(browser), sender_(browser->GetWeakPtr()), source_(browser->GetProfile()->GetWeakPtr()),\n        source_epoch_(aux::GetProfileCookieBindingEpoch(browser->GetProfile())) {",
+          "count": 1
+        },
+        {
+          "find": "          FROM_HERE, std::move(pending_switch_));",
+          "replace": "          FROM_HERE, base::BindOnce(&RunProfileMenuAction, sender_, source_, source_epoch_,\n                                    std::move(pending_switch_)));",
+          "count": 1
+        },
+        {
+          "find": "  const base::WeakPtr<BrowserWindowInterface> sender_;\n  raw_ptr<views::View> contents_",
+          "replace": "  const base::WeakPtr<BrowserWindowInterface> sender_;\n  const base::WeakPtr<Profile> source_;\n  const std::string source_epoch_;\n  raw_ptr<views::View> contents_",
+          "count": 1
+        },
+        {
+          "find": "        owner_(browser),\n        path_(std::move(path)) {",
+          "replace": "        owner_(browser),\n        path_(std::move(path)),\n        source_(browser->GetProfile()->GetWeakPtr()),\n        source_epoch_(aux::GetProfileCookieBindingEpoch(browser->GetProfile())) {",
+          "count": 1
+        },
+        {
+          "find": "          FROM_HERE, std::move(pending_));",
+          "replace": "          FROM_HERE, base::BindOnce(&RunProfileMenuAction, browser_, source_, source_epoch_,\n                                    std::move(pending_)));",
+          "count": 1
+        },
+        {
+          "find": "  const base::FilePath path_;\n  raw_ptr<views::View> contents_",
+          "replace": "  const base::FilePath path_;\n  const base::WeakPtr<Profile> source_;\n  const std::string source_epoch_;\n  raw_ptr<views::View> contents_",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/aux/profile_identity.h",
+      "inputSha256": "aecd4902b984a42ae2a6256949049050e42e99fe657bdecfdf845dde41732b5f",
+      "outputSha256": "ddd97b8a3a95050d5e5fb63c80e6ae34f4fce775b9a2ed96994921760328d163",
+      "output": "/Users/rcourson/.codex/worktrees/aux-features-organization/web/docs/integration/proposed/browser-feature-expansion/profile-window-completion-batch-a2/source/chrome/browser/aux/profile_identity.h",
+      "anchors": [
+        {
+          "find": "// Existing nonempty IDs are retained; only the actual loaded profile is mutated.\nstd::string GetProfileId(Profile* profile);",
+          "replace": "// Read-only: returns unavailable for an absent/unregistered ID; never invents one.\nstd::string GetProfileId(Profile* profile);\nenum class FreshProfileIdentityInitialization {\n  kExisting,\n  kCreatedPending,\n  kUnavailable,\n};\n// Creation lifecycle only. Requires the actual admitted, newly created native\n// preference store and no existing user ID. kCreatedPending means SetString\n// accepted into that store, not durable commit or a browser-drain certificate.\nFreshProfileIdentityInitialization InitializeFreshProfileIdentity(Profile* profile);",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/aux/profile_identity.cc",
+      "inputSha256": "0484f233a2e4660de483a49e77591be3ab69ea2ad9ca2a542688c1fbc0b24270",
+      "outputSha256": "674b2d6d93c1a67a194c94ecd93c5212789f63172c030cf19c1a4703c2735def",
+      "output": "/Users/rcourson/.codex/worktrees/aux-features-organization/web/docs/integration/proposed/browser-feature-expansion/profile-window-completion-batch-a2/source/chrome/browser/aux/profile_identity.cc",
+      "anchors": [
+        {
+          "find": "#include \"chrome/browser/profiles/profile_manager.h\"",
+          "replace": "#include \"chrome/browser/profiles/profile_manager.h\"\n#include \"chrome/browser/ui/aux_feature_lifecycle.h\"",
+          "count": 1
+        },
+        {
+          "find": "std::string GetProfileId(Profile* profile) {\n  DCHECK_CURRENTLY_ON(content::BrowserThread::UI);\n  if (!profile) return {};\n  auto* prefs = profile->GetOriginalProfile()->GetPrefs();\n  if (!prefs) return {};\n  const bool registered = prefs->FindPreference(\"aux.profile_id\") != nullptr;\n  auto id = registered ? prefs->GetString(\"aux.profile_id\") : std::string();\n  if (id.empty()) {\n    id = base::Uuid::GenerateRandomV4().AsLowercaseString();\n    if (registered) prefs->SetString(\"aux.profile_id\", id);\n  }\n  return id;\n}\n",
+          "replace": "std::string GetProfileId(Profile* profile) {\n  DCHECK_CURRENTLY_ON(content::BrowserThread::UI);\n  if (!profile) return {};\n  auto* prefs = profile->GetOriginalProfile()->GetPrefs();\n  return prefs && prefs->FindPreference(\"aux.profile_id\")\n      ? prefs->GetString(\"aux.profile_id\") : std::string();\n}\nFreshProfileIdentityInitialization InitializeFreshProfileIdentity(Profile* profile) {\n  DCHECK_CURRENTLY_ON(content::BrowserThread::UI);\n  using Result = FreshProfileIdentityInitialization;\n  if (!profile || !profile->IsRegularProfile() || profile->IsOffTheRecord() ||\n      profile->GetOriginalProfile() != profile) return Result::kUnavailable;\n  auto* prefs = profile->GetPrefs();\n  const auto* pref = prefs ? prefs->FindPreference(\"aux.profile_id\") : nullptr;\n  if (!pref) return Result::kUnavailable;\n  // Preserve all nonempty existing identities, including legacy formats.\n  if (!prefs->GetString(\"aux.profile_id\").empty()) return Result::kExisting;\n  // IsNewProfile() also returns true during Chrome first-run. The actual store\n  // initialization result and absent user value are the stronger fresh facts.\n  if (prefs->GetInitializationStatus() != PrefService::INITIALIZATION_STATUS_CREATED_NEW_PREF_STORE ||\n      prefs->GetUserPrefValue(\"aux.profile_id\") || !pref->IsUserModifiable() ||\n      !IsAuxLocalProfileAdmitted(profile)) return Result::kUnavailable;\n  const auto alive = profile->GetWeakPtr();\n  const auto id = base::Uuid::GenerateRandomV4().AsLowercaseString();\n  // Preserve the real PrefService writer path. This queues persistence and\n  // deliberately does not settle any native ticket or assert durable success.\n  prefs->SetString(\"aux.profile_id\", id);\n  return alive && GetProfileId(alive.get()) == id\n      ? Result::kCreatedPending : Result::kUnavailable;\n}\n",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/aux/profile_gate.cc",
+      "inputSha256": "941a73387e63a3df5c0b85c49c4c030bbd54986fe941f3c413ed910f31ebd9d2",
+      "outputSha256": "0222927632c3e40268bbb068935a462db2968ec5fe01bca7f597be0c7a264374",
+      "output": "/Users/rcourson/.codex/worktrees/aux-features-organization/web/docs/integration/proposed/browser-feature-expansion/profile-window-completion-batch-a2/source/chrome/browser/aux/profile_gate.cc",
+      "anchors": [
+        {
+          "find": "#include \"chrome/browser/aux/ntp_prerender_service.h\"",
+          "replace": "#include \"chrome/browser/aux/ntp_prerender_service.h\"\n#include \"chrome/browser/aux/profile_identity.h\"",
+          "count": 1
+        },
+        {
+          "find": "  if (!stopping && profile)\n    SetNtpPrerenderEnabled(profile, true);",
+          "replace": "  if (!stopping && profile) {\n    const auto alive = profile->GetWeakPtr();\n    InitializeFreshProfileIdentity(profile);\n    if (alive) SetNtpPrerenderEnabled(alive.get(), true);\n  }",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/aux/organization/organization_profile_service.cc",
+      "inputSha256": "7c50ffff360e13d830586c4941b6830d57a494c668de899db8bbd020a9e88a5d",
+      "outputSha256": "835e186e6de68e0149395e72126e4904d4261e07e4e62f90aa77f474a537888b",
+      "output": "/Users/rcourson/.codex/worktrees/aux-features-organization/web/docs/integration/proposed/browser-feature-expansion/profile-window-completion-batch-a2/source/chrome/browser/aux/organization/organization_profile_service.cc",
+      "anchors": [
+        {
+          "find": "    if (aux::features::IsNativeFeatureIoAdmissionClosed() || !profile_ || lifetime_->revoked.load() || profile_id != profile_id_ ||",
+          "replace": "    if (aux::features::IsNativeFeatureIoAdmissionClosed() || !profile_ || profile_id_.empty() || lifetime_->revoked.load() || profile_id != profile_id_ ||",
+          "count": 1
+        },
+        {
+          "find": "OrganizationProfileService* OrganizationProfileServiceFactory::GetForProfile(Profile* profile) {\n  if (!profile || !profile->IsRegularProfile() || profile->IsOffTheRecord())",
+          "replace": "OrganizationProfileService* OrganizationProfileServiceFactory::GetForProfile(Profile* profile) {\n  // Creation may precede the admitted fresh-identity hook. Do not cache an\n  // owner for an empty ID; a later real lookup can create it after setup.\n  if (!profile || !profile->IsRegularProfile() || profile->IsOffTheRecord() ||\n      aux::GetProfileId(profile).empty())",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_organization_window_controller.h",
+      "inputSha256": "8183d81aace58350e385e0f93b23d2236ca78715eade05fa425b8ac06fdea9a7",
+      "outputSha256": "338109dda5b04e6991a4213b0fc8baf4c6aa8851689257739e4ebb30daedb283",
+      "output": "/Users/rcourson/.codex/worktrees/aux-features-organization/web/docs/integration/proposed/browser-feature-expansion/profile-window-completion-batch-a2/source/chrome/browser/ui/views/frame/aux_organization_window_controller.h",
+      "anchors": [
+        {
+          "find": "#include \"base/values.h\"",
+          "replace": "#include \"base/values.h\"\n#include \"components/prefs/pref_change_registrar.h\"",
+          "count": 1
+        },
+        {
+          "find": "  void Bind();",
+          "replace": "  void BindFreshIdentity();\n  void Bind();",
+          "count": 1
+        },
+        {
+          "find": "  base::RepeatingTimer cleanup_timer_;",
+          "replace": "  base::RepeatingTimer cleanup_timer_;\n  PrefChangeRegistrar fresh_identity_;",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_organization_window_controller.cc",
+      "inputSha256": "3443b7ef044b2bdcabe44a54aea99073ee802da5260773b7d477517947f9fb75",
+      "outputSha256": "c51e167184c418e8bc0aab7d779c77494efbea135d2b7108b30a4fc1744e826a",
+      "output": "/Users/rcourson/.codex/worktrees/aux-features-organization/web/docs/integration/proposed/browser-feature-expansion/profile-window-completion-batch-a2/source/chrome/browser/ui/views/frame/aux_organization_window_controller.cc",
+      "anchors": [
+        {
+          "find": "#include \"chrome/browser/aux/ntp_prerender_service.h\"",
+          "replace": "#include \"chrome/browser/aux/ntp_prerender_service.h\"\n#include \"chrome/browser/aux/profile_identity.h\"\n#include \"components/prefs/pref_service.h\"",
+          "count": 1
+        },
+        {
+          "find": "  shutdown_ = true;\n  cleanup_timer_.Stop();",
+          "replace": "  shutdown_ = true;\n  fresh_identity_.Reset();\n  cleanup_timer_.Stop();",
+          "count": 1
+        },
+        {
+          "find": "void AuxOrganizationWindowController::RebindForProfileSwitch() {\n  if (shutdown_) return;\n  cleanup_timer_.Stop();",
+          "replace": "void AuxOrganizationWindowController::RebindForProfileSwitch() {\n  if (shutdown_) return;\n  fresh_identity_.Reset();\n  cleanup_timer_.Stop();",
+          "count": 1
+        },
+        {
+          "find": "  auto* owner = organization::OrganizationProfileServiceFactory::GetForProfile(profile_);\n  if (owner) ready_subscription_",
+          "replace": "  // New-profile setup can finish after this window was constructed. Wait\n  // only for a genuinely missing identity; existing nonempty owners never\n  // mutate/rebind IDs or cancel their pending work through this observer.\n  if (GetProfileId(profile_).empty() && profile_->GetPrefs()->FindPreference(\"aux.profile_id\")) {\n    fresh_identity_.Init(profile_->GetPrefs());\n    fresh_identity_.Add(\"aux.profile_id\", base::BindRepeating(\n        [](base::WeakPtr<AuxOrganizationWindowController> self) {\n          if (!self || !self->Current() || GetProfileId(self->profile_).empty()) return;\n          // Let the actual PrefService change finish before rebinding views.\n          base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(FROM_HERE,\n              base::BindOnce(&AuxOrganizationWindowController::BindFreshIdentity, self));\n        }, weak_.GetWeakPtr()));\n  }\n  auto* owner = organization::OrganizationProfileServiceFactory::GetForProfile(profile_);\n  if (owner) ready_subscription_",
+          "count": 1
+        },
+        {
+          "find": "void AuxOrganizationWindowController::Bind() {",
+          "replace": "void AuxOrganizationWindowController::BindFreshIdentity() {\n  if (!Current() || GetProfileId(profile_).empty()) return;\n  fresh_identity_.Reset();\n  // Retain the actual native tabs, supplied row eligibility and any restored\n  // Space selection; only attach the owner that was unavailable during setup.\n  auto* owner = organization::OrganizationProfileServiceFactory::GetForProfile(profile_);\n  if (owner) ready_subscription_ = owner->ObserveReady(base::BindRepeating(\n      &AuxOrganizationWindowController::Bind, weak_.GetWeakPtr()));\n  Bind();\n}\nvoid AuxOrganizationWindowController::Bind() {",
+          "count": 1
+        }
+      ]
+    }
+  ],
+  "nativeCheckoutChanged": false,
+  "uiStylesChanged": false,
+  "nativeCompiled": false,
+  "productExecuted": false,
+  "runtimeAcceptance": false
+}
