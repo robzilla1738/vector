@@ -1,0 +1,9 @@
+{
+  "format": "aux.actual-link-manifest-path.correction.v1",
+  "originalPath": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/integration/daemon-link-a6-inputs.json",
+  "actualCompilerPath": "/private/tmp/aux-daemon-crash-registration-close-check/daemon-inputs.json",
+  "bytesEqual": true,
+  "sha256": "051d3207b4f529c6c9d67f28bfeed78de151b8779a68e58f5886496b8a7ff76d",
+  "reason": "Strict package requires original actual compiler link-manifest path, not byte-identical archived evidence copy",
+  "productChanged": false
+}

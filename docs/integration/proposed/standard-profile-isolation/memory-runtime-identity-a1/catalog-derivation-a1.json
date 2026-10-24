@@ -1,0 +1,20 @@
+{
+  "format": "aux.memory-catalog.derivation.v1",
+  "passed": true,
+  "originalCatalogSha256": "7aa00d742d40b5fcd013db3bdd39ab691f81ebaf3d6a70918d1a1c5736eb0ccb",
+  "originalSignatureVerified": true,
+  "originalPublicKeySha256": "8fd30425c8fd8ca59d1372e9d3891b5e52e779aaaf24652b8590265a836b42e4",
+  "originalSourceSha256": "d0632af5fb69929ed52a7dc5aa78cfb0d27853933763dfcf51d6c84823fe9515",
+  "originalRuntimeSha256": "c6a883c7b43f4db4199812ac98168af82b8ec4ec204b51bc82fcb07b125e08f1",
+  "derivedBinarySha256": "b4c7d12efa87ed88515092527c7d1e7d9b43e605f39f03543e2b0e8e7005b3c0",
+  "derivedRuntimeManifestSha256": "a3a6ff1214564e80f18999e80e3125da517530794e30661bbf16c320124d4e33",
+  "derivedCatalogSha256": "0d2d898a03982cae2a15366c4a6feba4815ef171e25add7ac00e152a5e6f19cd",
+  "derivedCatalogSigned": false,
+  "modelsPreserved": true,
+  "target": "darwin-arm64",
+  "otherPlatformSupportClaimed": false,
+  "nativeIntegrityAssociationImplemented": false,
+  "callersMigrated": false,
+  "packaged": false,
+  "productExecuted": false
+}

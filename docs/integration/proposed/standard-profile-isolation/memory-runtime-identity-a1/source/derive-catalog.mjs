@@ -1,0 +1,42 @@
+/** Derive an explicitly unsigned Aux bundled catalog after authentic original verification. */
+import fs from 'node:fs';
+import path from 'node:path';
+import crypto from 'node:crypto';
+import assert from 'node:assert/strict';
+const hash=b=>crypto.createHash('sha256').update(b).digest('hex');
+const sourcePath='/private/tmp/aux-standard-daemon-projection-20261024-a5/index.mjs';
+const source=fs.readFileSync(sourcePath,'utf8');
+assert.equal(hash(source),'d0632af5fb69929ed52a7dc5aa78cfb0d27853933763dfcf51d6c84823fe9515');
+const marker='MEMORY_CATALOG_PUBLIC_KEY=`';
+assert.equal(source.split(marker).length-1,1);
+const start=source.indexOf(marker)+marker.length,end=source.indexOf('`',start);
+const publicKey=source.slice(start,end);
+assert(publicKey.startsWith('-----BEGIN PUBLIC KEY-----\n')&&publicKey.endsWith('-----END PUBLIC KEY-----\n'));
+const root=path.resolve('out/provided-candidate-standard-profile-isolation-20261024/Aux.app/Contents/Resources/aux/memory-distribution');
+const catalog=fs.readFileSync(path.join(root,'memory-catalog.json'));
+assert.equal(hash(catalog),'7aa00d742d40b5fcd013db3bdd39ab691f81ebaf3d6a70918d1a1c5736eb0ccb');
+const original=JSON.parse(catalog),signedBytes=Buffer.from('aside-memory-catalog-v1\n'+original.payload);
+assert.equal(original.formatVersion,1);
+assert(crypto.verify('sha256',signedBytes,publicKey,Buffer.from(original.signature,'base64')),'Original catalog signature invalid');
+const payload=JSON.parse(original.payload);
+assert.equal(payload.formatVersion,1);
+const derivation=JSON.parse(fs.readFileSync(new URL('../derivation-a2.json',import.meta.url)));
+const binary=fs.readFileSync('/private/tmp/aux-memory-identity-20261024-a1/aux-memory');
+assert.equal(hash(binary),derivation.outputSha256);
+assert.equal(derivation.signed,false);assert.equal(derivation.executed,false);
+const runtime=payload.runtimes.filter(x=>x.target==='darwin-arm64');assert.equal(runtime.length,1);
+const before=runtime[0];assert.equal(before.id,'aside-memory-runtime-v1');assert.equal(before.executable,'aside-memory');
+assert.deepEqual(Object.keys(before.files),['aside-memory']);assert.equal(before.files['aside-memory'].sha256,derivation.inputSha256);
+// No original signature is copied onto edited fields. This hash-bound manifest
+// will require a separate native bundle-integrity association before use.
+const next={formatVersion:2,id:'aux-memory-runtime-v2',target:'darwin-arm64',executable:'aux-memory',files:{'aux-memory':{bytes:binary.length,sha256:hash(binary)}}};
+const metadata=Buffer.from(JSON.stringify(next));
+const catalogV2={format:'aux.bundled-memory-catalog.v1',formatVersion:2,sequence:payload.sequence,runtimes:[next],models:payload.models};
+const output=Buffer.from(JSON.stringify(catalogV2));
+assert(!output.toString().toLowerCase().includes('aside'));
+const directory=path.resolve('/private/tmp/aux-memory-identity-20261024-a1');
+fs.writeFileSync(path.join(directory,'runtime.json'),metadata,{flag:'wx'});
+fs.writeFileSync(path.join(directory,'aux-memory-catalog-v2.json'),output,{flag:'wx'});
+const report={format:'aux.memory-catalog.derivation.v1',passed:true,originalCatalogSha256:hash(catalog),originalSignatureVerified:true,originalPublicKeySha256:hash(publicKey),originalSourceSha256:hash(source),originalRuntimeSha256:derivation.inputSha256,derivedBinarySha256:hash(binary),derivedRuntimeManifestSha256:hash(metadata),derivedCatalogSha256:hash(output),derivedCatalogSigned:false,modelsPreserved:true,target:'darwin-arm64',otherPlatformSupportClaimed:false,nativeIntegrityAssociationImplemented:false,callersMigrated:false,packaged:false,productExecuted:false};
+const reportPath=new URL('../catalog-derivation-a1.json',import.meta.url);fs.writeFileSync(reportPath,JSON.stringify(report,null,2)+'\n',{flag:'wx'});
+console.log(JSON.stringify({passed:true,originalSignatureVerified:true,derivedCatalogSigned:false,packaged:false}));
