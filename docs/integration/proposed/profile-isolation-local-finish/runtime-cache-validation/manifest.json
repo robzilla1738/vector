@@ -1,0 +1,42 @@
+{
+  "format": "aux.runtime-cache-inspection.proposal.v1",
+  "active": false,
+  "files": [
+    {
+      "path": "README.md",
+      "sha256": "e13b642f45afd49d9282869847eaf213d299af2c6c802d395513b95893c7fc0b"
+    },
+    {
+      "path": "discarded-fd-fixture.cjs",
+      "sha256": "d487b75f234de28ca5b82ca4358f6aacbdb82b54694f7f12fc95b25bc3695c62"
+    },
+    {
+      "path": "evidence.json",
+      "sha256": "47b955459f7bc4680c815f94dcc8bd2870c4bdc13917320333ddbb9f10f82224"
+    },
+    {
+      "path": "generate-pins.py",
+      "sha256": "d6675c2e8125e6f83e59545036f464ab3ae4168789de8f2533705094278f4c4e"
+    },
+    {
+      "path": "inputs.json",
+      "sha256": "9971c42e9bc4c8811e1b52186448795d29a8b599e317dbc6182223f774781914"
+    },
+    {
+      "path": "source/AuxRuntimeCacheInspection.inc",
+      "sha256": "9fdc7b754b33861dccb0115bde857f69f6066bb18e57a6d50ec43c0830fdc077"
+    },
+    {
+      "path": "source/AuxRuntimeCacheOwner.inc",
+      "sha256": "74cc740a11f56ebe5f6ab8462cd38a9b0f0ddfac12911874dc3d79334b84274b"
+    },
+    {
+      "path": "source/AuxRuntimeCachePins.inc",
+      "sha256": "0cdad8ab9b147222b80dcd89847f48f6ba97f4f874d20c86d1b2a2ebc139fd5a"
+    },
+    {
+      "path": "source-check.cc",
+      "sha256": "c4a389752c07c131eb30addbf7f21bfecd5cb1383867c666e3f7738c5f6e1ec1"
+    }
+  ]
+}

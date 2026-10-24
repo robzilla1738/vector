@@ -1,0 +1,59 @@
+{
+  "format": "aux.runtime-cache-inspection.inputs.v1",
+  "inputs": {
+    "seed": {
+      "path": "/Users/rcourson/Documents/Vibe/web/vendor/provided/runtime-seed.cjs",
+      "sha256": "3051dea5ccc9d74126bf71ddc0bb72a4d3db19c59f890a8f48d572b215f092af"
+    },
+    "daemon": {
+      "path": "/private/tmp/aux-queued-delivery-source-20261023/index.mjs",
+      "sha256": "156c9361fc37848175c920d2fab53b89526870a2358803ef01f147af5ecb1ed6"
+    },
+    "bootstrap": {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/profile-isolation-local-finish/runtime-bootstrap/source/runtime-bootstrap.cjs",
+      "sha256": "2e8c8db62e67e7ee812c5beb4606f11ed063e9aef6453db3d44e8c939255f604"
+    },
+    "sourcePins": {
+      "path": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-final-local-completion-20261023/Aux.app/Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/native/runtime-source-pins.json",
+      "sha256": "7fa5c41acab7c3e9c052bf44b9daa4c0892e717f70718ca9f6a65b030e13bba8"
+    },
+    "workerHost": {
+      "path": "/private/tmp/aux-async-writes-final/docs/integration/proposed/profile-isolation-final/writes/source/AuxDevelopmentWorkerHost.cc",
+      "sha256": "e36e5c25c822879302a7f83fa5329305ba79f4d000ac45cd721cb820eaa81dd7"
+    },
+    "brokerOwner": {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/profile-isolation-continuation/broker-writes/source/AuxBrokerWritesNapi.inc",
+      "sha256": "fdac90ec6345980cbdcac929a507afcf67670bde03c18aba23ef07dcd2cc2033"
+    },
+    "storageRootsNapi": {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/profile-isolation-continuation/broker-writes/source/AuxStorageRootsNapi.inc",
+      "sha256": "f9c1549670b1ebc0d7825402c57079814d4095f27b8ec3b76f8c0bb9aeb57ec6"
+    },
+    "storageRootsBridge": {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/profile-isolation-continuation/broker-writes/source/AuxStorageRootsBridge.h",
+      "sha256": "4e14e4c3ea1977fc8c23f362de37c16ad20047be0461056c06d7b163ecf0bd60"
+    }
+  },
+  "sourceFunctions": {
+    "getLocalAgentRuntimeVersion": {
+      "offset": 6840525,
+      "sha256": "313cce62df111dab5868970f4bc6a638d726356bdfa1bb3bc6ed8017161b6317",
+      "text": "function getLocalAgentRuntimeVersion(Cn){let ei=path.resolve(Cn.runtimeDir??AUX_RUNTIME_DIR),ti=resolveAgentRuntimeTarget(Cn.platform,Cn.arch),ni=await readFile(path.join(ei,`version.txt`),`utf8`).then(Cn=>Cn.trim()).catch(()=>``),ri=agentRuntimeVersionSchema.safeParse(ni);if(!ri.success)return;let ii=ti!==`win-x64`;return(await Promise.all(requiredRuntimeFiles(ti).map(Cn=>isRequiredFile(path.join(ei,Cn),ii)))).every(Boolean)?ri.data:void 0}"
+    },
+    "isRequiredFile": {
+      "offset": 6839447,
+      "sha256": "821383e3e8326ea5e25494fce105f1f99663e8dd9f0726c734527b98a39eb640",
+      "text": "function isRequiredFile(Cn,ei){return stat$1(Cn).then(Cn=>Cn.isFile()&&(!ei||!!(Cn.mode&73))).catch(()=>!1)}"
+    },
+    "requiredRuntimeFiles": {
+      "offset": 6838975,
+      "sha256": "5d70e896426ff4338df7ac6253e39d3ac7285751acc53a59de459cae05acbbda",
+      "text": "function requiredRuntimeFiles(Cn){switch(Cn){case`darwin-arm64`:case`darwin-x64`:return[...MACOS_RUNTIME_RELEASE_FILES];case`linux-x64`:return[...UNIX_RUNTIME_ENTRYPOINT_FILES,`node/bin/node`,`python/venv/bin/python`,`native/bin/rg`];case`win-x64`:return[...WINDOWS_RUNTIME_ENTRYPOINT_FILES,`node/node.exe`,`node/npm.cmd`,`node/npx.cmd`,`python/runtime/python.exe`,`native/bin/rg.exe`,`powershell/pwsh.exe`];default:throw Error(`Unsupported runtime target: ${Cn}`)}}"
+    },
+    "compareRuntimeVersions": {
+      "offset": 6839751,
+      "sha256": "e16921c8052dc0276ee25d0cc79a17c6528c0d4dc8e9aa745c88069469f3552e",
+      "text": "function compareRuntimeVersions(Cn,ei){let ti=Cn.split(/[.-]/),ni=ei.split(/[.-]/),ri=Math.max(ti.length,ni.length);for(let Cn=0;Cn<ri;Cn+=1){let ei=ti[Cn]??`0`,ri=ni[Cn]??`0`,ii=/^\\d+$/.test(ei)?Number(ei):void 0,ai=/^\\d+$/.test(ri)?Number(ri):void 0;if(ii!==void 0&&ai!==void 0){if(ii!==ai)return ii>ai?1:-1;continue}let oi=ei.localeCompare(ri);if(oi!==0)return oi>0?1:-1}return 0}"
+    }
+  }
+}

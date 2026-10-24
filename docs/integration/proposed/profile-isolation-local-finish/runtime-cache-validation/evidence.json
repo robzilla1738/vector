@@ -1,0 +1,33 @@
+{
+  "format": "aux.runtime-cache-inspection.evidence.v1",
+  "active": false,
+  "nativeCoreSyntax": {
+    "command": "/usr/bin/clang++ -std=c++17 -fsyntax-only -Werror -Wno-deprecated-declarations source-check.cc",
+    "exitCode": 0,
+    "scope": "private reader core plus exact 10929 compiled pins; no real host wrapper compilation"
+  },
+  "disposableFixture": {
+    "attempts": 1,
+    "language": "JavaScript",
+    "result": "failed closed before payload reading",
+    "cause": "macOS does not support directory-fd child traversal via /dev/fd/<fd>/<child>",
+    "initialStatus": "incomplete",
+    "observedVersion": null,
+    "checkedEntries": 0,
+    "approachDiscarded": true
+  },
+  "nativeExecuted": false,
+  "productExecuted": false,
+  "network": false,
+  "providerCalls": false,
+  "signed": false,
+  "ownerDataRead": false,
+  "generatedPins": 10929,
+  "missingGates": [
+    "real-host async dispatcher/lifetime integration and wrapper compilation",
+    "retained-cache/downstream/acquire policy composition",
+    "authenticated provenance for newer/modified runtimes",
+    "fresh staging native Owner/action integration",
+    "runtime execution acceptance and namespace custody"
+  ]
+}
