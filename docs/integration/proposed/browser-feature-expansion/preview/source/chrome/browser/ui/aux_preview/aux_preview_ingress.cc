@@ -18,6 +18,7 @@
 #include "components/prefs/pref_service.h"
 #include "components/tabs/public/tab_interface.h"
 #include "content/public/browser/navigation_handle.h"
+#include "content/public/browser/global_routing_id.h"
 #include "content/public/browser/page_navigator.h"
 #include "content/public/browser/render_frame_host.h"
 #include "content/public/browser/weak_document_ptr.h"
@@ -26,6 +27,7 @@
 #include "content/public/browser/web_contents_user_data.h"
 #include "third_party/blink/public/common/input/web_mouse_event.h"
 #include "ui/base/page_transition_types.h"
+#include "ui/base/window_open_disposition.h"
 namespace aux::preview {
 namespace {
 BrowserWindowInterface* WindowFor(content::WebContents* contents) {

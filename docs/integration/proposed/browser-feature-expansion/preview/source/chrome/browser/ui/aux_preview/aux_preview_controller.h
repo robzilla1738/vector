@@ -4,6 +4,7 @@
 #include <optional>
 #include <string>
 #include "base/functional/callback.h"
+#include "base/memory/raw_ptr.h"
 #include "base/callback_list.h"
 #include "base/values.h"
 #include "url/gurl.h"
@@ -17,7 +18,10 @@ enum class Trigger { kContextMenu, kModifierClick, kOptInLinkClick };
 // back/dismiss/promote controls before any popup is shown. No JS registration.
 void SetNativeWindowDecorator(base::RepeatingCallback<bool(BrowserWindowInterface*)>);
 base::CallbackListSubscription ObservePresentation(BrowserWindowInterface*, base::RepeatingClosure);
-struct OpenResult { BrowserWindowInterface* browser = nullptr; std::string error; };
+struct OpenResult {
+  raw_ptr<BrowserWindowInterface> browser = nullptr;
+  std::string error;
+};
 // Native user intent only. These are NOT renderer-selected permission flags.
 // The frame must belong to the active source tab/document at the actual event.
 OpenResult OpenPeek(BrowserWindowInterface*, content::RenderFrameHost*,

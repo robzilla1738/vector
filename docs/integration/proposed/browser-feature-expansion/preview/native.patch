@@ -366,13 +366,14 @@
 +}  // namespace aux::preview
 --- /dev/null
 +++ b/chrome/browser/ui/aux_preview/aux_preview_controller.h
-@@ -0,0 +1,47 @@
+@@ -0,0 +1,51 @@
 +// Copyright 2026 Aux Authors. BSD-style license: see //LICENSE.
 +#ifndef CHROME_BROWSER_UI_AUX_PREVIEW_AUX_PREVIEW_CONTROLLER_H_
 +#define CHROME_BROWSER_UI_AUX_PREVIEW_AUX_PREVIEW_CONTROLLER_H_
 +#include <optional>
 +#include <string>
 +#include "base/functional/callback.h"
++#include "base/memory/raw_ptr.h"
 +#include "base/callback_list.h"
 +#include "base/values.h"
 +#include "url/gurl.h"
@@ -386,7 +387,10 @@
 +// back/dismiss/promote controls before any popup is shown. No JS registration.
 +void SetNativeWindowDecorator(base::RepeatingCallback<bool(BrowserWindowInterface*)>);
 +base::CallbackListSubscription ObservePresentation(BrowserWindowInterface*, base::RepeatingClosure);
-+struct OpenResult { BrowserWindowInterface* browser = nullptr; std::string error; };
++struct OpenResult {
++  raw_ptr<BrowserWindowInterface> browser = nullptr;
++  std::string error;
++};
 +// Native user intent only. These are NOT renderer-selected permission flags.
 +// The frame must belong to the active source tab/document at the actual event.
 +OpenResult OpenPeek(BrowserWindowInterface*, content::RenderFrameHost*,
@@ -416,7 +420,7 @@
 +#endif
 --- /dev/null
 +++ b/chrome/browser/ui/aux_preview/aux_preview_controls.cc
-@@ -0,0 +1,141 @@
+@@ -0,0 +1,143 @@
 +// Copyright 2026 Aux Authors. BSD-style license: see //LICENSE.
 +#include "chrome/browser/ui/aux_preview/aux_preview_controls.h"
 +#include "chrome/browser/ui/aux_preview/aux_preview_controller.h"
@@ -428,12 +432,14 @@
 +#include "base/strings/utf_string_conversions.h"
 +#include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
 +#include "chrome/browser/ui/tabs/tab_strip_model.h"
++#include "chrome/browser/ui/color/chrome_color_id.h"
 +#include "chrome/browser/ui/views/frame/browser_view.h"
 +#include "chrome/browser/ui/views/toolbar/toolbar_button.h"
 +#include "chrome/browser/ui/views/toolbar/toolbar_view.h"
 +#include "components/vector_icons/vector_icons.h"
 +#include "content/public/browser/web_contents.h"
 +#include "content/public/browser/web_contents_observer.h"
++#include "ui/base/metadata/metadata_header_macros.h"
 +#include "ui/base/metadata/metadata_impl_macros.h"
 +#include "ui/views/controls/label.h"
 +#include "ui/views/layout/flex_layout.h"
@@ -574,7 +580,7 @@
 +#endif
 --- /dev/null
 +++ b/chrome/browser/ui/aux_preview/aux_preview_ingress.cc
-@@ -0,0 +1,175 @@
+@@ -0,0 +1,177 @@
 +// Copyright 2026 Aux Authors. BSD-style license: see //LICENSE.
 +#include "chrome/browser/ui/aux_preview/aux_preview_ingress.h"
 +#include <optional>
@@ -595,6 +601,7 @@
 +#include "components/prefs/pref_service.h"
 +#include "components/tabs/public/tab_interface.h"
 +#include "content/public/browser/navigation_handle.h"
++#include "content/public/browser/global_routing_id.h"
 +#include "content/public/browser/page_navigator.h"
 +#include "content/public/browser/render_frame_host.h"
 +#include "content/public/browser/weak_document_ptr.h"
@@ -603,6 +610,7 @@
 +#include "content/public/browser/web_contents_user_data.h"
 +#include "third_party/blink/public/common/input/web_mouse_event.h"
 +#include "ui/base/page_transition_types.h"
++#include "ui/base/window_open_disposition.h"
 +namespace aux::preview {
 +namespace {
 +BrowserWindowInterface* WindowFor(content::WebContents* contents) {

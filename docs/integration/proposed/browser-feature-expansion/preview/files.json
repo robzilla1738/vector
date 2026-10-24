@@ -11,12 +11,12 @@
     {
       "path": "chrome/browser/ui/aux_preview/aux_preview_controller.h",
       "baselineSha256": null,
-      "sourceSha256": "3185d7a0681ee10f1bfe96c38650bb6fe919b6dbeb727cc3441cb1f20495dc32"
+      "sourceSha256": "24e3fe2648b5c7fe0371e2c7c4509e5d458885a8f87c4ea1073500e941732610"
     },
     {
       "path": "chrome/browser/ui/aux_preview/aux_preview_controls.cc",
       "baselineSha256": null,
-      "sourceSha256": "1621c5ac47cbcd281317dc63ffdc716de2b4f9ec48b4c5ce3487ce48a7de500d"
+      "sourceSha256": "13f9d1a7cea819986290ef79cd2c7c19f83e8daa48f073761454738f9a8557f8"
     },
     {
       "path": "chrome/browser/ui/aux_preview/aux_preview_controls.h",
@@ -26,7 +26,7 @@
     {
       "path": "chrome/browser/ui/aux_preview/aux_preview_ingress.cc",
       "baselineSha256": null,
-      "sourceSha256": "8f45f242eaf5f23e5a9b25b408e666820abacc94bdae9f872d4a4cd7cca6f8ec"
+      "sourceSha256": "4d996ef4174c865e8d4400aabb670dbda1380fdec08df31310c95ffb406a3ec5"
     },
     {
       "path": "chrome/browser/ui/aux_preview/aux_preview_ingress.h",
@@ -44,5 +44,5 @@
       "sourceSha256": "08754e59b1709bf6d73830273a92cd92444eec7410be94804919f7e53b548d2e"
     }
   ],
-  "patchSha256": "41b8a014577e4dca5a9f2a5ac8064bc138b18f186f6737cf1624796f96bfb8a1"
+  "patchSha256": "545ad9898e0f9d9b81fd9765fb2196e12e4f87b47569d819b8e9865aea6fc516"
 }
