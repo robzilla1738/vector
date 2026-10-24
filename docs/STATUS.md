@@ -1,8 +1,8 @@
-# Feature resources paired; final menu compile in progress — 2026-10-23
+# Feature focused compilation passed; full unsigned build a17 running — 2026-10-23
 
-The reviewed local feature deltas are integrated. Updated supplied UI composition passes1064-script count replay/syntax with12 changed scripts; actual revision16 baseline/feature staging and14 exact resource replacements pass. Dormant daemon/source-entry a4 pairing passes with unchanged loader/ABI and cold refusal. No CSS, image, launcher, addon or runtime drift.
+The reviewed local feature deltas are integrated and all eleven affected feature targets have compiled across the focused a15/a16/a17 corrections. The final Tidy menu object passes with actual nonempty output. The full unsigned app build is running against259 immutable native inputs with12 compiler jobs; completed a14 objects are retained.
 
-Focused a15 compiled the new mention/Tidy helpers, shared recovery/controller, minimal BrowserView/Toolbar, theme and generated registration; it caught two missing include declarations. a16 passed the corrected row object but exposed two further Tidy menu API mismatches. Exact current-header fixes are projected as a17; that one menu object is compiling. The next full unsigned build uses a fresh259-input manifest. No full link, assembly or actual-app acceptance yet; accepted app stays intact. No app lifecycle, signing, release, provider/cloud or owner-state action occurred. Existing startup/custody/drain/recovery/publication gates remain open.
+Updated supplied UI composition passes1064-script count replay/syntax with12 changed scripts. Actual revision16 baseline/feature staging,14 exact resource replacements, and dormant daemon/source-entry a4 pairing pass with unchanged loader/ABI/cold refusal. No CSS, image, launcher, addon or runtime drift. Full link/assembly and actual-app/UI acceptance are still pending; accepted app stays intact. No app lifecycle, product signing/release, provider/cloud or owner-state action occurred. Existing startup/custody/drain/recovery/publication gates remain open.
 
 # Sidebar compiler fixes and theme propagation compiled; full build a14 running — 2026-10-23
 
