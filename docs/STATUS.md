@@ -1,3 +1,11 @@
+# Actual daemon/source package preflight passed; full browser remains live — 2026-10-24
+
+The bounded actual package-v9 preflight passed genuine v6 source/native history and the new v5 source plus a4→a5→a6 native successors. It read no pending browser receipt and did not freeze/assemble anything. Two concrete tool corrections preserve only the exact SDK libbsm linker alias and the immutable producer’s original87-input prefix plus its actual23 appended inputs. Failed checks and counted corrections are retained under `package-v8-preflight`, `package-v9-preflight` and their exact overlays.
+
+Full unsigned browser a8 remains live (session52546); every changed focused object already passed. Corrected v9 packaging waits on the same native-build lock (session71924), and requires actual full-browser success plus actual primary-only bridge export/library inspection before any freeze or assembly. The older v8 queue was verified childless/unstarted and retired; no app or active build was stopped. Current handles are in `docs/integration/proposed/standard-profile-isolation/integration/in-flight-v9.json`.
+
+Fresh revision17 resource stages already passed exact UI byte/mode equivalence. The final successor remains unassembled, unsigned and unexecuted; current UI and accepted app are unchanged. Capability/lifecycle/provider/extension/UI acceptance and later release/update infrastructure remain separate. No new owner state or OS grant was used.
+
 # Changed browser boundaries compile; complete app build running — 2026-10-24
 
 The actual focused a9 check passed all 25 requested native object targets after the exact three-file a8 compiler correction. This includes the native observer engine/bridge, primary and helper main, content policy receipt, native messaging, Crashpad close, shutdown drain and corrected asynchronous Meta protocol/ProfileImpl paths. The final isolated source retains 322 pinned inputs. The original full unsigned a8 browser build is now running; focused success is not a completed browser or runtime acceptance.
