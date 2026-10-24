@@ -1,0 +1,64 @@
+--- a/chrome/browser/ui/views/frame/aux_profile_switch_request.cc
++++ b/chrome/browser/ui/views/frame/aux_profile_switch_request.cc
+@@ -15,6 +15,7 @@
+ #include "base/task/sequenced_task_runner.h"
+ #include "chrome/browser/profiles/profile.h"
+ #include "chrome/browser/aux/profile_identity.h"
++#include "chrome/browser/aux/cli/AuxCliOpenCommand.h"
+ #include "chrome/browser/lifetime/browser_shutdown.h"
+ #include "chrome/browser/ui/simple_message_box.h"
+ #include "chrome/browser/ui/unload_controller.h"
+@@ -34,7 +35,8 @@
+   const auto* unload = window ? UnloadController::From(window.get()) : nullptr;
+   if (!window || !expected || window->GetProfile() != expected.get() || !window->GetWindow() ||
+       !unload || unload->is_attempting_to_close_browser() || unload->is_delete_scheduled() ||
+-      browser_shutdown::HasShutdownStarted() || browser_shutdown::IsTryingToQuit()) return nullptr;
++      browser_shutdown::HasShutdownStarted() || browser_shutdown::IsTryingToQuit() ||
++      aux::cli::IsNativeCliOpenPendingForProfile(expected.get())) return nullptr;
+   return static_cast<Browser*>(window.get());
+ }
+ Browser* CurrentSwitchResult(base::WeakPtr<BrowserWindowInterface> window,
+--- a/chrome/browser/ui/views/frame/aux_profile_switch_transaction.cc
++++ b/chrome/browser/ui/views/frame/aux_profile_switch_transaction.cc
+@@ -1,5 +1,6 @@
+ // Copyright 2026 Aux Authors. All rights reserved.
+ #include "chrome/browser/ui/views/frame/aux_profile_switch_transaction.h"
++#include "chrome/browser/aux/cli/AuxCliOpenCommand.h"
+ 
+ #include <array>
+ #include <utility>
+@@ -185,6 +186,11 @@
+     LOG(ERROR) << "Aux profile transition rejected: transaction.entry-state.12";
+     return Result::kRejected;
+   }
++  if (aux::cli::IsNativeCliOpenPendingForProfile(previous) ||
++      aux::cli::IsNativeCliOpenPendingForProfile(target)) {
++    LOG(ERROR) << "Aux profile transition rejected: native-cli-open-pending";
++    return Result::kRejected;
++  }
+   if (target == previous) {
+     return Result::kNoChange;
+   }
+--- a/chrome/browser/aux/profile_identity.cc
++++ b/chrome/browser/aux/profile_identity.cc
+@@ -1,6 +1,10 @@
+ // Copyright 2026 Aux Authors. All rights reserved.
+ #include "chrome/browser/aux/profile_identity.h"
+ #include "base/uuid.h"
++#include "build/build_config.h"
++#if BUILDFLAG(IS_MAC)
++#include "chrome/browser/aux/cli/AuxCliOpenCommand.h"
++#endif
+ #include "base/functional/bind.h"
+ #include "base/scoped_observation.h"
+ #include "base/supports_user_data.h"
+@@ -86,6 +90,9 @@
+   return static_cast<CookieBindingEpoch*>(profile->GetUserData(&kCookieBindingEpochKey))->restore_epoch();
+ }
+ bool BeginProfileCookieRestore(Profile* profile, const std::string& epoch) {
++#if BUILDFLAG(IS_MAC)
++  if (aux::cli::IsNativeCliOpenPendingForProfile(profile)) return false;
++#endif
+   DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
+   if (GetProfileCookieBindingEpoch(profile).empty()) return false;
+   return static_cast<CookieBindingEpoch*>(profile->GetUserData(&kCookieBindingEpochKey))->BeginRestore(epoch);

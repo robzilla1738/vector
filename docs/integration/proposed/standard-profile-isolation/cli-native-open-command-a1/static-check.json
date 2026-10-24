@@ -1,0 +1,16 @@
+{
+  "format": "aux.cli-native-open.static-check.v1",
+  "passed": true,
+  "sourceCount": 12,
+  "sourceAnchors": 15,
+  "rootRegistrationAnchors": 8,
+  "dependencyCount": 31,
+  "nativeCheckoutChanged": false,
+  "compilerRun": false,
+  "nativeApiExecuted": false,
+  "localAuthenticationInvoked": false,
+  "productExecuted": false,
+  "registered": false,
+  "packageSelected": false,
+  "runtimeAcceptance": false
+}

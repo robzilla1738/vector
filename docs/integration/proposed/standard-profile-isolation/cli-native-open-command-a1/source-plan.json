@@ -1,0 +1,195 @@
+{
+  "format": "aux.cli-native-open.sources.v1",
+  "files": [
+    {
+      "path": "chrome/browser/aux/cli/AuxCliIngress.h",
+      "source": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/cli-native-open-command-a1/source/AuxCliIngress.h",
+      "input": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/cli-manual-profile-approval-a1/source/AuxCliIngress.h",
+      "inputSha256": "42de8847e39525bf61116f1e72c049976b27fe64356f0276d22cc3a48a0bd5a8",
+      "outputSha256": "4515848fafc4dad25e5180130640d28c28bf1a3333610f232b34816a7e64e8d6",
+      "anchors": [
+        {
+          "name": "Native-only open producer friends",
+          "find": "  friend class ApprovedCliInvocation;",
+          "replace": "  friend class ApprovedCliInvocation;\n  friend class NativeOpenService;\n  friend class NativeOpenOperation;",
+          "count": 1
+        },
+        {
+          "name": "Distinct native action completion sink",
+          "find": "  bool CompleteAfterObservedExit(int exit_code);",
+          "replace": "  bool CompleteAfterObservedExit(int exit_code);\n  bool CompleteAfterNativeOpenResult(int exit_code);",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/aux/cli/AuxCliIngress.cc",
+      "source": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/cli-native-open-command-a1/source/AuxCliIngress.cc",
+      "input": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/cli-native-embedding-a1/source/common/AuxCliIngress.cc",
+      "inputSha256": "d5187ed6bdf9fb002a9a24a1c319e891904802739651029a78dd7816b7f38982",
+      "outputSha256": "d40c06b4b0e02c692281b2ef2b495a962f888c5492c0a9049f9b65b8ef30fd59",
+      "anchors": [
+        {
+          "name": "No credentials/environment forwarded for narrow native open",
+          "find": " for(const auto* name:{\"PATH\",\"HOME\",\"TMPDIR\",\"TZ\",\"LANG\",\"LC_CTYPE\",\"LC_MESSAGES\",\"TERM\",\"TERM_PROGRAM\",\"AUX_API_TOKEN\",\"DAEMON_AUTH_JWT\",\"DAEMON_BASE_URL\",\"AUX_RELEASE_BASE_URL\",\"AUX_CLI_INSTALL_URL\",\"AUX_CLI_LATEST_URL\",\"AUX_CLI_UPDATE_CHECK\",\"AUX_MCP_DEBUG\",\"CLAUDE_CONFIG_DIR\",\"CODEX_HOME\",\"XDG_CONFIG_HOME\",\"NO_COLOR\",\"FORCE_COLOR\",\"CLICOLOR_FORCE\",\"AUX_CLI_AUTH_PATH\",\"AUX_CLI_INSTALL_DIR\"})if(const auto* value=getenv(name)){if(strnlen(value,kArgumentBytes+1)>kArgumentBytes)return 64;arguments.environment.emplace_back(name,value);}",
+          "replace": " // Native open needs no caller environment or provider/authentication tokens.",
+          "count": 1
+        },
+        {
+          "name": "Native-open completion implementation",
+          "find": "struct Ingress::State{",
+          "replace": "// Only NativeOpenOperation/Service may publish this narrow native action result.\n// Exit zero means a genuine native tab/navigation start, never page-load success.\nbool Invocation::CompleteAfterNativeOpenResult(int code){return CompleteAfterObservedExit(code);}\nstruct Ingress::State{",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/aux/cli/AuxCliManualProfileApproval.h",
+      "source": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/cli-native-open-command-a1/source/AuxCliManualProfileApproval.h",
+      "input": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/cli-manual-profile-approval-a1/source/AuxCliManualProfileApproval.h",
+      "inputSha256": "02b743604480764f9bbc7d688619c55a9d8a304b80bb134ecafed8a4f8653cc8",
+      "outputSha256": "1755a7637a24e7e2379ca7b03f2579c0584725c08a6ea190c85eeb1bffabef4b",
+      "anchors": [
+        {
+          "name": "Single-use private native Profile consumption",
+          "find": "  friend class BrowserInvocation;",
+          "replace": "  friend class BrowserInvocation;\n  friend class NativeOpenOperation;\n  // Single-use, called only immediately before the real native navigation.\n  std::unique_ptr<Invocation> ConsumeForNativeOpen(Profile* actual_target);",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/aux/cli/AuxCliManualProfileApproval.mm",
+      "source": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/cli-native-open-command-a1/source/AuxCliManualProfileApproval.mm",
+      "input": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/cli-manual-profile-approval-a1/source/AuxCliManualProfileApproval.mm",
+      "inputSha256": "41ee6bdd71f9b2acb47504d0fb717f4b57084bb1282b57e072132cf389cc26db",
+      "outputSha256": "cdb90bafc1a6bc45283c9b907bbbfc3f5efacb21cf43f26b8153a4ea9c055428",
+      "anchors": [
+        {
+          "name": "Consume only actual currently approved target",
+          "find": "struct ManualProfileApprovalRequest::State {",
+          "replace": "std::unique_ptr<Invocation> ApprovedCliInvocation::ConsumeForNativeOpen(Profile* target) {\n  DCHECK_CURRENTLY_ON(content::BrowserThread::UI);\n  if (!target || !Current() || state_->target.profile.get() != target) return {};\n  return std::move(state_->invocation);\n}\nstruct ManualProfileApprovalRequest::State {",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/aux/cli/AuxNativeCliFrontend.cc",
+      "source": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/cli-native-open-command-a1/source/AuxNativeCliFrontend.cc",
+      "input": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/cli-native-embedding-a1/source/common/AuxNativeCliFrontend.cc",
+      "inputSha256": "896180208e311451d8d4f9b607d7337089e0cebcdf5989fc17013491f510f311",
+      "outputSha256": "bb47d7c3f54b043235d1186e6e39f67c10092d0425838b4d6bb29c3fb5cf0237",
+      "anchors": [
+        {
+          "name": "Real narrow parser dependency",
+          "find": "#include \"AuxCliIngress.h\"",
+          "replace": "#include \"AuxCliIngress.h\"\n#include \"AuxCliOpenArguments.h\"\n#include <vector>",
+          "count": 1
+        },
+        {
+          "name": "Bounded argv inspection dependency",
+          "find": "#include <cstdio>",
+          "replace": "#include <cstdio>\n#include <cstring>",
+          "count": 1
+        },
+        {
+          "name": "Only native open reaches audited browser ingress",
+          "find": " return aux::cli::ForwardTerminalInvocation(argc,argv);",
+          "replace": " std::vector<std::string> arguments;\n if(argc<1||argc>257||!argv)return 64;\n for(int i=1;i<argc;++i){if(!argv[i]||strnlen(argv[i],8193)>8192)return 64;arguments.emplace_back(argv[i]);}\n const auto parsed=aux::cli::ParseNativeOpenArguments(arguments);\n if(parsed.status==aux::cli::OpenParseStatus::help){\n  std::fputs(\"Usage: aux open <https://URL> [--profile <native profile ID or unique name>]\\n\",stdout);return 0;\n }\n if(parsed.status!=aux::cli::OpenParseStatus::accepted){\n  std::fputs(\"Aux currently supports native open only; installation/account CLI commands remain unavailable\\n\",stderr);return 64;\n }\n return aux::cli::ForwardTerminalInvocation(argc,argv);",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_profile_switch_request.cc",
+      "inputSha256": "178a5e03a6a8bf00f87ab5d1cd3313c8597ffdfd56e9655adaacb504a4443840",
+      "outputSha256": "c632065ec4bfd1e40eed807bd06ae62eb1b881ca47a097055eaf28e53c8d6299",
+      "source": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/cli-native-open-command-a1/source/chrome/browser/ui/views/frame/aux_profile_switch_request.cc",
+      "anchors": [
+        {
+          "name": "Native open profile exclusion dependency",
+          "find": "#include \"chrome/browser/aux/profile_identity.h\"",
+          "replace": "#include \"chrome/browser/aux/profile_identity.h\"\n#include \"chrome/browser/aux/cli/AuxCliOpenCommand.h\"",
+          "count": 1
+        },
+        {
+          "name": "Refuse switches before preview/load side effects",
+          "find": "      browser_shutdown::HasShutdownStarted() || browser_shutdown::IsTryingToQuit()) return nullptr;",
+          "replace": "      browser_shutdown::HasShutdownStarted() || browser_shutdown::IsTryingToQuit() ||\n      aux::cli::IsNativeCliOpenPendingForProfile(expected.get())) return nullptr;",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_profile_switch_transaction.cc",
+      "inputSha256": "67540c89b7eb3a64ae82d13176cd9d8fa5afb9976929bd3b7036cffc9b1f08c3",
+      "outputSha256": "87a34ece94c31f21b0a951c4a5746cf0fbe1138a533818dcda81b0fd7a22ff23",
+      "source": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/cli-native-open-command-a1/source/chrome/browser/ui/views/frame/aux_profile_switch_transaction.cc",
+      "anchors": [
+        {
+          "name": "Native open profile exclusion dependency",
+          "find": "#include \"chrome/browser/ui/views/frame/aux_profile_switch_transaction.h\"",
+          "replace": "#include \"chrome/browser/ui/views/frame/aux_profile_switch_transaction.h\"\n#include \"chrome/browser/aux/cli/AuxCliOpenCommand.h\"",
+          "count": 1
+        },
+        {
+          "name": "Native transaction source and target exclusion before mutation",
+          "find": "  if (target == previous) {",
+          "replace": "  if (aux::cli::IsNativeCliOpenPendingForProfile(previous) ||\n      aux::cli::IsNativeCliOpenPendingForProfile(target)) {\n    LOG(ERROR) << \"Aux profile transition rejected: native-cli-open-pending\";\n    return Result::kRejected;\n  }\n  if (target == previous) {",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/aux/profile_identity.cc",
+      "inputSha256": "223f9654c089aa762d0f6bec283f198d202a3495fd9495965b29775e413b47e1",
+      "outputSha256": "cb320311061997b02e0554c56feaeb7e6030e5ed86bc6fdac8ebb88371b5ceb6",
+      "source": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/cli-native-open-command-a1/source/chrome/browser/aux/profile_identity.cc",
+      "anchors": [
+        {
+          "name": "Finite Mac native open exclusion dependency",
+          "find": "#include \"base/uuid.h\"",
+          "replace": "#include \"base/uuid.h\"\n#include \"build/build_config.h\"\n#if BUILDFLAG(IS_MAC)\n#include \"chrome/browser/aux/cli/AuxCliOpenCommand.h\"\n#endif",
+          "count": 1
+        },
+        {
+          "name": "Refuse new cookie restore while actual profile command is pending",
+          "find": "bool BeginProfileCookieRestore(Profile* profile, const std::string& epoch) {",
+          "replace": "bool BeginProfileCookieRestore(Profile* profile, const std::string& epoch) {\n#if BUILDFLAG(IS_MAC)\n  if (aux::cli::IsNativeCliOpenPendingForProfile(profile)) return false;\n#endif",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/aux/cli/AuxCliOpenArguments.cc",
+      "source": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/cli-native-open-command-a1/source/AuxCliOpenArguments.cc",
+      "outputSha256": "d2f946689e5f5a6d5c82adbb1c3c685ddc58ac92ab9ef0dbebcd07edb4282f92",
+      "newSource": true,
+      "anchors": []
+    },
+    {
+      "path": "chrome/browser/aux/cli/AuxCliOpenArguments.h",
+      "source": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/cli-native-open-command-a1/source/AuxCliOpenArguments.h",
+      "outputSha256": "6c9761c47b8d76f2bde4bfadeb78f5b24cbaeba457ad1b0a2b99cf2a6f2e2a6d",
+      "newSource": true,
+      "anchors": []
+    },
+    {
+      "path": "chrome/browser/aux/cli/AuxCliOpenCommand.h",
+      "source": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/cli-native-open-command-a1/source/AuxCliOpenCommand.h",
+      "outputSha256": "bd226a9cf3c557e00af71451e5069baab9b9330d2040c3d48168252147fc3c44",
+      "newSource": true,
+      "anchors": []
+    },
+    {
+      "path": "chrome/browser/aux/cli/AuxCliOpenCommand.mm",
+      "source": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/cli-native-open-command-a1/source/AuxCliOpenCommand.mm",
+      "outputSha256": "dc71fe9b0abb5ce7850de440a9b23d9e5f763b3effb75886b0c59d0d07dd6915",
+      "newSource": true,
+      "anchors": []
+    }
+  ],
+  "sourceCount": 12,
+  "nativeMutation": false,
+  "rootOwnsGNAndRegistration": true
+}

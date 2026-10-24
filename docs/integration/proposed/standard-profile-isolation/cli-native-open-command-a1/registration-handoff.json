@@ -1,0 +1,72 @@
+{
+  "format": "aux.cli-native-open.registration-handoff.v1",
+  "files": [
+    {
+      "path": "chrome/browser/chrome_browser_main.cc",
+      "inputSha256": "44cf3fbd07ce89cac0a42d2ced4e96e2174564f140a7d99387777eb66b1b7290",
+      "anchors": [
+        {
+          "name": "CLI startup include inside existing native compile guard",
+          "find": "#include \"chrome/browser/aux/AuxBrowserPrivateRoots.h\"",
+          "replace": "#include \"chrome/browser/aux/AuxBrowserPrivateRoots.h\"\n#include \"chrome/browser/aux/cli/AuxCliOpenCommand.h\"",
+          "count": 1
+        },
+        {
+          "name": "Actual post-browser-start native CLI registration",
+          "find": "  TRACE_EVENT0(\"startup\", \"ChromeBrowserMainParts::PostBrowserStart\");",
+          "replace": "  TRACE_EVENT0(\"startup\", \"ChromeBrowserMainParts::PostBrowserStart\");\n#if BUILDFLAG(ENABLE_AUX_BROWSER) && defined(AUX_SEALED_NATIVE_COLD_ENTRY) && BUILDFLAG(IS_MAC)\n  aux::cli::StartNativeOpenServiceAtActualBrowserStartup();\n#endif",
+          "count": 1
+        }
+      ],
+      "rootOwnedIntegration": true,
+      "proposedOutputSha256": "4b97ab390a605a35e5f6e580d106d157aaeff95e7eaf64996480abe206623098"
+    },
+    {
+      "path": "chrome/browser/ui/aux_browser_shutdown_drain.cc",
+      "inputSha256": "24deafb22e065fdf4e30dd324d8a0e03aefb04e92e8d4bae8028e9bad1b73f08",
+      "anchors": [
+        {
+          "name": "Native CLI lifecycle dependency",
+          "find": "#include \"chrome/browser/aux/installation_auth.h\"",
+          "replace": "#include \"chrome/browser/aux/installation_auth.h\"\n#include \"chrome/browser/aux/cli/AuxCliOpenCommand.h\"",
+          "count": 1
+        },
+        {
+          "name": "Close real native receiver and pending UI admissions before drain",
+          "find": "void PrepareNativeBrowserShutdownDrain() {",
+          "replace": "void PrepareNativeBrowserShutdownDrain() {\n  aux::cli::CloseNativeOpenServiceAdmission();",
+          "count": 1
+        },
+        {
+          "name": "Read process-lifetime CLI observation outside shutdown-state lock",
+          "find": "  const auto native = peer::InspectNativeBrowserShutdown();",
+          "replace": "  const auto native = peer::InspectNativeBrowserShutdown();\n  const auto native_cli = aux::cli::InspectNativeOpenService();",
+          "count": 1
+        },
+        {
+          "name": "Wrong-process CLI observation refuses CLEAN",
+          "find": "      state.crash_registration == 2) status = 2;",
+          "replace": "      state.crash_registration == 2 || native_cli.wrong_process) status = 2;",
+          "count": 1
+        },
+        {
+          "name": "Require actual native CLI closure in final CLEAN branch",
+          "find": "             !native.active_authority_reads && carriers.drained() &&",
+          "replace": "             !native.active_authority_reads && carriers.drained() &&\n             native_cli.admission_closed && !native_cli.receiver_running &&\n             !native_cli.queued_ui_invocations && !native_cli.pending_profile_operations &&",
+          "count": 1
+        },
+        {
+          "name": "Bind actual CLI counters to authenticated cohort digest",
+          "find": "    std::copy(state.session.begin(), state.session.end(), cohort.begin() + 64);",
+          "replace": "    std::copy(state.session.begin(), state.session.end(), cohort.begin() + 64);\n    Put(cohort, 96, native_cli.started, 8);\n    Put(cohort, 104, native_cli.queued_ui_invocations, 8);\n    Put(cohort, 112, native_cli.pending_profile_operations, 8);\n    Put(cohort, 120, (native_cli.admission_closed ? 1 : 0) |\n        (native_cli.receiver_running ? 2 : 0) | (native_cli.wrong_process ? 4 : 0), 8);",
+          "count": 1
+        }
+      ],
+      "rootOwnedIntegration": true,
+      "proposedOutputSha256": "8883912416877f5f7d1a73ec14c76e128b2c32ff5bdf4a3f5abbd75087647cde"
+    }
+  ],
+  "actualNativeMutation": false,
+  "registrationApplied": false,
+  "rootOwnsGNAndRegistration": true
+}

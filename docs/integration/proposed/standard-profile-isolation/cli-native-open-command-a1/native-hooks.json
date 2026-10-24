@@ -1,0 +1,66 @@
+{
+  "format": "aux.cli-open.native-hooks.v1",
+  "files": [
+    {
+      "path": "chrome/browser/ui/views/frame/aux_profile_switch_request.cc",
+      "inputSha256": "178a5e03a6a8bf00f87ab5d1cd3313c8597ffdfd56e9655adaacb504a4443840",
+      "outputSha256": "c632065ec4bfd1e40eed807bd06ae62eb1b881ca47a097055eaf28e53c8d6299",
+      "source": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/cli-native-open-command-a1/source/chrome/browser/ui/views/frame/aux_profile_switch_request.cc",
+      "anchors": [
+        {
+          "name": "Native open profile exclusion dependency",
+          "find": "#include \"chrome/browser/aux/profile_identity.h\"",
+          "replace": "#include \"chrome/browser/aux/profile_identity.h\"\n#include \"chrome/browser/aux/cli/AuxCliOpenCommand.h\"",
+          "count": 1
+        },
+        {
+          "name": "Refuse switches before preview/load side effects",
+          "find": "      browser_shutdown::HasShutdownStarted() || browser_shutdown::IsTryingToQuit()) return nullptr;",
+          "replace": "      browser_shutdown::HasShutdownStarted() || browser_shutdown::IsTryingToQuit() ||\n      aux::cli::IsNativeCliOpenPendingForProfile(expected.get())) return nullptr;",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_profile_switch_transaction.cc",
+      "inputSha256": "67540c89b7eb3a64ae82d13176cd9d8fa5afb9976929bd3b7036cffc9b1f08c3",
+      "outputSha256": "87a34ece94c31f21b0a951c4a5746cf0fbe1138a533818dcda81b0fd7a22ff23",
+      "source": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/cli-native-open-command-a1/source/chrome/browser/ui/views/frame/aux_profile_switch_transaction.cc",
+      "anchors": [
+        {
+          "name": "Native open profile exclusion dependency",
+          "find": "#include \"chrome/browser/ui/views/frame/aux_profile_switch_transaction.h\"",
+          "replace": "#include \"chrome/browser/ui/views/frame/aux_profile_switch_transaction.h\"\n#include \"chrome/browser/aux/cli/AuxCliOpenCommand.h\"",
+          "count": 1
+        },
+        {
+          "name": "Native transaction source and target exclusion before mutation",
+          "find": "  if (target == previous) {",
+          "replace": "  if (aux::cli::IsNativeCliOpenPendingForProfile(previous) ||\n      aux::cli::IsNativeCliOpenPendingForProfile(target)) {\n    LOG(ERROR) << \"Aux profile transition rejected: native-cli-open-pending\";\n    return Result::kRejected;\n  }\n  if (target == previous) {",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/aux/profile_identity.cc",
+      "inputSha256": "223f9654c089aa762d0f6bec283f198d202a3495fd9495965b29775e413b47e1",
+      "outputSha256": "cb320311061997b02e0554c56feaeb7e6030e5ed86bc6fdac8ebb88371b5ceb6",
+      "source": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/cli-native-open-command-a1/source/chrome/browser/aux/profile_identity.cc",
+      "anchors": [
+        {
+          "name": "Finite Mac native open exclusion dependency",
+          "find": "#include \"base/uuid.h\"",
+          "replace": "#include \"base/uuid.h\"\n#include \"build/build_config.h\"\n#if BUILDFLAG(IS_MAC)\n#include \"chrome/browser/aux/cli/AuxCliOpenCommand.h\"\n#endif",
+          "count": 1
+        },
+        {
+          "name": "Refuse new cookie restore while actual profile command is pending",
+          "find": "bool BeginProfileCookieRestore(Profile* profile, const std::string& epoch) {",
+          "replace": "bool BeginProfileCookieRestore(Profile* profile, const std::string& epoch) {\n#if BUILDFLAG(IS_MAC)\n  if (aux::cli::IsNativeCliOpenPendingForProfile(profile)) return false;\n#endif",
+          "count": 1
+        }
+      ]
+    }
+  ],
+  "nativeCheckoutChanged": false
+}
