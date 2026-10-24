@@ -4,7 +4,7 @@
   "nativeFiles": {
     "chrome/browser/extensions/api/aux_browser_preferences/aux_feature_expansion_api.cc": "71bbdfc61a65eb2aee6168bc72b4ccc7a5ad017918ce06a9a7d469266aa2ca3b",
     "chrome/browser/extensions/api/aux_browser_preferences/aux_feature_expansion_api.h": "7f9aac8f99165debe5d98c64ca4bf7fe3d8da9776503f5a973e723507500b354",
-    "chrome/browser/ui/aux_tab_mention_spaces.cc": "6623973136614d1d651d9d2259209e7dd49e3bb42f50aa076e2fa7bdbbed3568",
+    "chrome/browser/ui/aux_tab_mention_spaces.cc": "950d180a1e521910dea34a18a5a4db6038e5727c63d0ca82aee9bddf65ad2495",
     "chrome/browser/ui/aux_tab_mention_spaces.h": "a4a1ec168fc09c9067cd2fd86266a043f3f64f1fe6b8d1238c4ca094dfec042a"
   },
   "resourceAdapter": "vendor/provided/aux-productivity-spaces.mjs",

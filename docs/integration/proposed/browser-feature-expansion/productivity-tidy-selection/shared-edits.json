@@ -1,0 +1,99 @@
+{
+  "format": "aux.counted-overlay.v1",
+  "files": [
+    {
+      "path": "chrome/browser/ui/views/frame/aux_tabs_actions.h",
+      "baselineSource": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/ui/views/frame/aux_tabs_actions.h",
+      "beforeSha256": "51c067a2b2f4f0c1b1b4dc5eeca9c4e4eea06a8a5b49fc9264e8fc46ff17cdaf",
+      "afterSha256": "9abf17ff229f74fb7d793564ff64498d07c681a962b47cf2f036a1e4f3c52dd0",
+      "edits": [
+        {
+          "find": "#include \"base/functional/callback.h\"",
+          "replace": "#include <memory>\n#include <string>\n#include \"ui/base/models/simple_menu_model.h\"\n#include \"base/functional/callback.h\"",
+          "count": 1
+        },
+        {
+          "find": "class Profile;",
+          "replace": "class Profile;\nnamespace views { class MenuRunner; }",
+          "count": 1
+        },
+        {
+          "find": "class AuxTabsActions {",
+          "replace": "class AuxTabsActions : public ui::SimpleMenuModel::Delegate {",
+          "count": 1
+        },
+        {
+          "find": "  bool ScopeCurrent() const;",
+          "replace": "  bool ScopeCurrent() const;\n  bool IsCommandIdEnabled(int command) const override;\n  void ExecuteCommand(int command, int flags) override;\n  void RunTidyScope(std::string token);\n  std::unique_ptr<ui::SimpleMenuModel> scope_menu_;\n  std::unique_ptr<views::MenuRunner> scope_runner_;",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_tabs_actions.cc",
+      "baselineSource": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/ui/views/frame/aux_tabs_actions.cc",
+      "beforeSha256": "aa9a2159194a22191932df62759c746f7386763be75f59126332c34785a496bb",
+      "afterSha256": "45e7ded8def5489e3de93e70512cbee29da58ceccf0a6ecf43ae974419686edf",
+      "edits": [
+        {
+          "find": "#include \"chrome/browser/ui/views/frame/aux_tabs_actions.h\"",
+          "replace": "#include \"chrome/browser/ui/views/frame/aux_tabs_actions.h\"\n#include \"chrome/browser/ui/aux_tidy_scope.h\"\n#include \"ui/display/screen.h\"\n#include \"ui/base/mojom/menu_source_type.mojom.h\"\n#include \"ui/views/controls/menu/menu_types.h\"\n#include \"ui/views/controls/menu/menu_runner.h\"\n#include \"ui/views/widget/widget.h\"",
+          "count": 1
+        },
+        {
+          "find": "  retired_ = true;",
+          "replace": "  retired_ = true;\n  scope_runner_.reset();\n  scope_menu_.reset();",
+          "count": 1
+        },
+        {
+          "find": "void AuxTabsActions::Tidy() {",
+          "replace": "void AuxTabsActions::Tidy() {\n  if (!ScopeCurrent() || !browser_->GetWindow()) return;\n  auto self = weak_.GetWeakPtr();\n  if (!tidy_enabled_.Run() || !self || !self->ScopeCurrent()) return;\n  auto* widget = views::Widget::GetWidgetForNativeWindow(browser_->GetWindow()->GetNativeWindow());\n  auto* screen = display::Screen::GetScreen();\n  if (!widget || !screen) return;\n  scope_runner_.reset();\n  scope_menu_ = std::make_unique<ui::SimpleMenuModel>(this);\n  scope_menu_->AddItem(1, u\"Tidy current Space\");\n  scope_menu_->AddItem(2, u\"Tidy selected tabs\");\n  scope_runner_ = std::make_unique<views::MenuRunner>(scope_menu_.get(), views::MenuRunner::CONTEXT_MENU);\n  scope_runner_->RunMenuAt(widget, nullptr, gfx::Rect(screen->GetCursorScreenPoint(), gfx::Size()),\n      views::MenuAnchorPosition::kTopLeft, ui::mojom::MenuSourceType::kMouse);\n}\nbool AuxTabsActions::IsCommandIdEnabled(int command) const {\n  return ScopeCurrent() && CanCreateAuxTidyScope(browser_.get()) && (command == 1 ||\n      (command == 2 && GetAuxTidySelectedCount(browser_.get()) >= 2));\n}\nvoid AuxTabsActions::ExecuteCommand(int command, int) {\n  if (!IsCommandIdEnabled(command)) return;\n  auto token = CreateAuxTidyScope(browser_.get(), command == 2);\n  if (!token.empty()) RunTidyScope(std::move(token));\n}\nvoid AuxTabsActions::RunTidyScope(std::string token) {",
+          "count": 1
+        },
+        {
+          "find": "  payload.Set(\"action\", \"tidy\");",
+          "replace": "  payload.Set(\"action\", \"tidy\");\n  payload.Set(\"scopeToken\", token);",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/extensions/api/aux_browser_preferences/aux_feature_expansion_api.cc",
+      "baselineSource": "/private/tmp/aux-features-execution-navigation-20261023/docs/integration/proposed/browser-feature-expansion/productivity-spaces/source/chrome/browser/extensions/api/aux_browser_preferences/aux_feature_expansion_api.cc",
+      "beforeSha256": "71bbdfc61a65eb2aee6168bc72b4ccc7a5ad017918ce06a9a7d469266aa2ca3b",
+      "afterSha256": "6d8e662c89dae5c4b490dc70bf09097cc2d0041c466811ba96a11927e58b50d2",
+      "edits": [
+        {
+          "find": "#include \"chrome/browser/ui/aux_tab_mention_spaces.h\"",
+          "replace": "#include \"chrome/browser/ui/aux_tab_mention_spaces.h\"\n#include \"chrome/browser/ui/aux_tidy_scope.h\"",
+          "count": 1
+        },
+        {
+          "find": "  auto current = Snapshot(profile, browser);\n  auto* service = Model(profile);",
+          "replace": "  const auto* scope_token = proposal.FindString(\"scopeToken\");\n  if (!scope_token || GetAuxTidyScopeBrowser(profile, *scope_token) != browser) return std::nullopt;\n  auto current = ConstrainAuxTidySnapshot(profile, *scope_token, Snapshot(profile, browser));\n  auto* service = Model(profile);",
+          "count": 1
+        },
+        {
+          "find": "  std::set<std::string> moved;",
+          "replace": "  std::set<std::string> moved, permitted;\n  for (const auto& tab : *current.FindList(\"tabs\"))\n    if (const auto* id = tab.GetDict().FindString(\"id\")) permitted.insert(*id);",
+          "count": 1
+        },
+        {
+          "find": "!moved.insert(*id).second) return std::nullopt;",
+          "replace": "!moved.insert(*id).second || !permitted.contains(*id)) return std::nullopt;",
+          "count": 1
+        },
+        {
+          "find": "  if (method == \"getOrganizationSnapshot\") {\n    if (!args().empty()) return RespondNow(Error(\"This method takes no arguments\"));\n    return RespondNow(WithArguments(Snapshot(profile(), browser)));\n  }",
+          "replace": "  if (method == \"getOrganizationSnapshot\") {\n    if (args().empty()) return RespondNow(WithArguments(Snapshot(profile(), browser)));\n    const auto* token = request ? request->FindString(\"scopeToken\") : nullptr;\n    if (!token || request->size() != 1 || token->size() > 128)\n      return RespondNow(Error(\"Choose a native Tidy scope first\"));\n    browser = GetAuxTidyScopeBrowser(profile(), *token);\n    if (!browser) return RespondNow(WithArguments(Failure(\"Tidy scope changed; choose it again.\")));\n    return RespondNow(WithArguments(ConstrainAuxTidySnapshot(profile(), *token, Snapshot(profile(), browser))));\n  }",
+          "count": 1
+        },
+        {
+          "find": "    const auto* proposal = request ? request->FindDict(\"proposal\") : nullptr;\n    base::ListValue rows;",
+          "replace": "    const auto* proposal = request ? request->FindDict(\"proposal\") : nullptr;\n    const auto* token = proposal ? proposal->FindString(\"scopeToken\") : nullptr;\n    browser = token ? GetAuxTidyScopeBrowser(profile(), *token) : nullptr;\n    base::ListValue rows;",
+          "count": 1
+        }
+      ]
+    }
+  ]
+}

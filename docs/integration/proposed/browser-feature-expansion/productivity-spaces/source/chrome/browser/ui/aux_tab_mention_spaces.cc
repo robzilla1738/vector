@@ -22,7 +22,7 @@ base::DictValue Failure(const char* message) {
 }
 base::DictValue GetAuxTabMentionSpaces(content::WebContents* sender) {
   auto* profile = sender ? Profile::FromBrowserContext(sender->GetBrowserContext()) : nullptr;
-  if (!profile || profile->IsOffTheRecord() || !aux::IsAuxLocalProfileAdmitted(profile))
+  if (!profile || profile->IsOffTheRecord() || !IsAuxLocalProfileAdmitted(profile))
     return Failure("Profile context is unavailable.");
   auto* owner = org::OrganizationProfileServiceFactory::GetForProfile(profile);
   auto* service = owner ? owner->model() : nullptr;

@@ -1,0 +1,21 @@
+{
+  "format": "aux.feature-source-overlay.v1",
+  "status": "inactive-awaiting-root-composition",
+  "nativeFiles": {
+    "chrome/browser/extensions/api/aux_browser_preferences/aux_feature_expansion_api.cc": "6d8e662c89dae5c4b490dc70bf09097cc2d0041c466811ba96a11927e58b50d2",
+    "chrome/browser/ui/aux_tidy_scope.cc": "5591d8cccd099ec6c4b168744fac09b206f1c0a7e0429dff25bd359eb1cd7fb7",
+    "chrome/browser/ui/aux_tidy_scope.h": "08f286f1ad5c8ef41b64a54bbd28e568cad088faa6d6c0ed72f981ca99f2dde7",
+    "chrome/browser/ui/views/frame/aux_tabs_actions.cc": "45e7ded8def5489e3de93e70512cbee29da58ceccf0a6ecf43ae974419686edf",
+    "chrome/browser/ui/views/frame/aux_tabs_actions.h": "9abf17ff229f74fb7d793564ff64498d07c681a962b47cf2f036a1e4f3c52dd0"
+  },
+  "resourceAdapter": "vendor/provided/aux-productivity-tidy-selection.mjs",
+  "composeAfter": "transformAuxProductivityUi",
+  "transform": "transformAuxTidySelection",
+  "sharedEdits": "shared-edits.json",
+  "schemaRequest": "schema-request.json",
+  "requires": [
+    "productivity-spaces",
+    "native organization-row modifier selection"
+  ],
+  "resourceAdapterSha256": "6865871e172c192c0ecad2d9b4d6074462fdaa977a336648d2f95add0b74e4fd"
+}

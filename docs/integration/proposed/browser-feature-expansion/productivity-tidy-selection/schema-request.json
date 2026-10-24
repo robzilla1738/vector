@@ -1,0 +1,16 @@
+{
+  "method": "getOrganizationSnapshot",
+  "parameters": [
+    {
+      "name": "request",
+      "type": "object",
+      "optional": true,
+      "properties": {
+        "scopeToken": {
+          "type": "string"
+        }
+      }
+    }
+  ],
+  "compatibility": "No arguments retain the existing unscoped read. A present request must contain only the native-issued scopeToken. Scoped responses additionally include scopeToken and scope; native review/apply require scoped proof."
+}
