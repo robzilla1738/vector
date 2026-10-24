@@ -1,0 +1,25 @@
+{
+  "format": "aux.dom-control-metadata-wire.dependencies.v1",
+  "files": [
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-organization/web/docs/integration/proposed/standard-profile-isolation/native-recovery-metadata-a17a/source-plan.json",
+      "sha256": "23a372ec17cdaa4de3dbe3747b962c2801b65355659b37ad6f4a0e96f4ec1006"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-organization/web/docs/integration/proposed/standard-profile-isolation/native-recovery-metadata-a17a/source/components/services/storage/dom_storage/async_dom_storage_database.h",
+      "sha256": "e54d239c7e4f7c36c529455fb050d0ccf180d69810c48dfdab09a39abc7ac635"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-organization/web/docs/integration/proposed/standard-profile-isolation/native-recovery-metadata-a17a/source/components/services/storage/dom_storage/async_dom_storage_database.cc",
+      "sha256": "7516a9b132509201322cc9105b16713b48ade3183a9189b0dc11289ad266c4c6"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/native-dom-control-allocation-wire-a16/source-plan.json",
+      "sha256": "0e6634f226f285ca8049f6a7c20bf713947a52d04b655fb6530f346cc904e037"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/native-dom-control-owner-repin-a1/dependency-successor.json",
+      "sha256": "28561d04d2d65bd4e5f3c6182037fd57c650f9749bed82c3cc474d29a32eb23c"
+    }
+  ]
+}

@@ -1,0 +1,63 @@
+{
+  "format": "aux.dom-control-metadata-wire.v1",
+  "predecessorCommit": "c16361728",
+  "nativeOwnerCommit": "e87143b44",
+  "nativeOwnerSourcePlan": "/Users/rcourson/.codex/worktrees/aux-features-organization/web/docs/integration/proposed/standard-profile-isolation/native-recovery-metadata-a17a/source-plan.json",
+  "nativeOwnerSourcePlanSha256": "23a372ec17cdaa4de3dbe3747b962c2801b65355659b37ad6f4a0e96f4ec1006",
+  "files": [
+    {
+      "path": "components/services/storage/public/mojom/local_storage_control.mojom",
+      "inputSource": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/native-dom-control-allocation-wire-a16/source/components/services/storage/public/mojom/local_storage_control.mojom",
+      "inputSha256": "8fa2f64846fee55043ebe6a6f45827e9fafd1ecf1f2ad302c43a32627031e3c6",
+      "outputSha256": "479bd288148e7c1e4ec14695e88e6b4e7056c1ec762327a41ec7dcef7765a13e",
+      "source": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/native-dom-control-metadata-wire-a17a/source/components/services/storage/public/mojom/local_storage_control.mojom",
+      "anchors": [
+        {
+          "name": "Append exact source metadata as nullable decimal strings, never JSON doubles",
+          "find": "  bool allocation_observed;\n};",
+          "replace": "  bool allocation_observed;\n  // Signed Windows-epoch microseconds and uint64 bytes remain exact above 2^53.\n  string? source_last_accessed_us;\n  string? source_last_modified_us;\n  string? source_total_size_bytes;\n};",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "components/services/storage/dom_storage/local_storage_impl.cc",
+      "inputSource": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/native-dom-control-allocation-wire-a16/source/components/services/storage/dom_storage/local_storage_impl.cc",
+      "inputSha256": "11b8fb8bb3cadd91b15786e863dcbec85c51741164ffd235d2bdfd147ed4fee7",
+      "outputSha256": "dd692170ab4ec69f8d525e8871dc4fa53c8d8e8ee7329334e977143997d10473",
+      "source": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/native-dom-control-metadata-wire-a17a/source/components/services/storage/dom_storage/local_storage_impl.cc",
+      "anchors": [
+        {
+          "name": "Declare actual native integer-to-decimal conversion dependency",
+          "find": "#include \"base/strings/strcat.h\"\n",
+          "replace": "#include \"base/strings/strcat.h\"\n#include \"base/strings/string_number_conversions.h\"\n",
+          "count": 1
+        },
+        {
+          "name": "Serialize original optional native metadata with exact integer precision",
+          "find": "    output->allocation_observed = map.allocation_observed;",
+          "replace": "    output->allocation_observed = map.allocation_observed;\n    if (map.source_last_accessed)\n      output->source_last_accessed_us = base::NumberToString(\n          map.source_last_accessed->ToDeltaSinceWindowsEpoch().InMicroseconds());\n    if (map.source_last_modified)\n      output->source_last_modified_us = base::NumberToString(\n          map.source_last_modified->ToDeltaSinceWindowsEpoch().InMicroseconds());\n    if (map.source_total_size)\n      output->source_total_size_bytes = base::NumberToString(map.source_total_size->InBytes());",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "components/services/storage/dom_storage/session_storage_impl.cc",
+      "inputSource": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/native-dom-control-allocation-wire-a16/source/components/services/storage/dom_storage/session_storage_impl.cc",
+      "inputSha256": "2039a123ed9c7a55787b347e86650e3fbf588d049d4f185374243e56640dc17f",
+      "outputSha256": "2d4de35ec2a218daa020bee2dfb35e0d629c1b4a6582828d4ff8fd2f9d7f4f3d",
+      "source": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/native-dom-control-metadata-wire-a17a/source/components/services/storage/dom_storage/session_storage_impl.cc",
+      "anchors": [
+        {
+          "name": "Serialize original optional native metadata with exact integer precision",
+          "find": "    output->allocation_observed = map.allocation_observed;",
+          "replace": "    output->allocation_observed = map.allocation_observed;\n    if (map.source_last_accessed)\n      output->source_last_accessed_us = base::NumberToString(\n          map.source_last_accessed->ToDeltaSinceWindowsEpoch().InMicroseconds());\n    if (map.source_last_modified)\n      output->source_last_modified_us = base::NumberToString(\n          map.source_last_modified->ToDeltaSinceWindowsEpoch().InMicroseconds());\n    if (map.source_total_size)\n      output->source_total_size_bytes = base::NumberToString(map.source_total_size->InBytes());",
+          "count": 1
+        }
+      ]
+    }
+  ],
+  "nativeMutation": false,
+  "compilerRun": false,
+  "runtimeAcceptance": false
+}

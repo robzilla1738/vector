@@ -1,0 +1,9 @@
+# Exact original metadata observations for recovery
+
+This three-file successor composes over allocation wire `c16361728` and the paired native owner `e87143b44`. It appends three factual nullable string fields to `AuxUiDomMapSnapshot`: `source_last_accessed_us`, `source_last_modified_us` and `source_total_size_bytes`. The actual original source values come from the retained native map snapshot, never from caller restoration maps or a future allocated map.
+
+Both Local and Session serializers convert optional `base::Time` values using their actual `ToDeltaSinceWindowsEpoch().InMicroseconds()` and optional `base::ByteSize` using `InBytes()`, followed directly by native `base::NumberToString`. Signed timestamps and uint64 sizes therefore retain decimal integer precision above 2^53. Missing native metadata stays null, distinct from a present zero. No intermediate JavaScript double or JSON numeric timestamp is introduced. Session already declares the conversion include; Local gains the same explicit native include.
+
+Allocation actions, original `map_id`, observed `allocated_map_id`, source/target digests and held/released/aborted semantics remain unchanged. These metadata observations alone do not requalify a fresh-process cache, grant a lease, restore values or permit backend reopen. Actual read-only requalification and distinct native source adoption require the separate real owner/controller integration; no such operation is invented here.
+
+`source-plan.json` supplies exact predecessor beforeimages and four single-match anchors, and pins the native owner source plan `23a372ec17cdaa4de3dbe3747b962c2801b65355659b37ad6f4a0e96f4ec1006`. The patch replayed and reversed in an isolated source mirror. No native projection, Mojo generation, compilation, product/API execution, signing or owner-state access occurred. Root owns paired generation/changed-owner compilation and actual acceptance.

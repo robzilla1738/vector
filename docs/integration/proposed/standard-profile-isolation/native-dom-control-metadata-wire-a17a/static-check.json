@@ -1,0 +1,15 @@
+{
+  "format": "aux.dom-control-metadata-wire.static.v1",
+  "files": 3,
+  "countedAnchors": 4,
+  "patchReplay": true,
+  "patchReverse": true,
+  "wireFieldsNullableString": true,
+  "signedMicrosecondsAndUnsignedBytesUseNativeNumberToString": true,
+  "metadataReadFromOriginalNativeSnapshot": true,
+  "noDoubleConversionOrJSONNumericTimestamp": true,
+  "allocatorActionAndPhysicalDigestFieldsUnchanged": true,
+  "noLeaseAbortAndSameLeaseReadUnchanged": true,
+  "compilerRun": false,
+  "runtimeAcceptance": false
+}

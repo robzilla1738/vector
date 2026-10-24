@@ -1,0 +1,55 @@
+--- a/components/services/storage/public/mojom/local_storage_control.mojom
++++ b/components/services/storage/public/mojom/local_storage_control.mojom
+@@ -35,6 +35,10 @@
+   string allocation_action_sha256;
+   int64? allocated_map_id;
+   bool allocation_observed;
++  // Signed Windows-epoch microseconds and uint64 bytes remain exact above 2^53.
++  string? source_last_accessed_us;
++  string? source_last_modified_us;
++  string? source_total_size_bytes;
+ };
+ struct AuxUiDomTargetMap {
+   // Ordinal only selects a map captured by this exact existing backend lease.
+--- a/components/services/storage/dom_storage/local_storage_impl.cc
++++ b/components/services/storage/dom_storage/local_storage_impl.cc
+@@ -20,6 +20,7 @@
+ #include "base/memory/raw_ptr.h"
+ #include "base/metrics/histogram_functions.h"
+ #include "base/strings/strcat.h"
++#include "base/strings/string_number_conversions.h"
+ #include "base/strings/stringprintf.h"
+ #include "base/system/sys_info.h"
+ #include "base/task/thread_pool.h"
+@@ -348,6 +349,14 @@
+     output->allocation_action_sha256 = std::move(map.allocation_action_sha256);
+     output->allocated_map_id = map.allocated_map_id;
+     output->allocation_observed = map.allocation_observed;
++    if (map.source_last_accessed)
++      output->source_last_accessed_us = base::NumberToString(
++          map.source_last_accessed->ToDeltaSinceWindowsEpoch().InMicroseconds());
++    if (map.source_last_modified)
++      output->source_last_modified_us = base::NumberToString(
++          map.source_last_modified->ToDeltaSinceWindowsEpoch().InMicroseconds());
++    if (map.source_total_size)
++      output->source_total_size_bytes = base::NumberToString(map.source_total_size->InBytes());
+     for (auto& [key, value] : map.source)
+       output->source_entries.push_back(blink::mojom::KeyValue::New(key, std::move(value)));
+     for (auto& [key, value] : map.target)
+--- a/components/services/storage/dom_storage/session_storage_impl.cc
++++ b/components/services/storage/dom_storage/session_storage_impl.cc
+@@ -335,6 +335,14 @@
+     output->allocation_action_sha256 = std::move(map.allocation_action_sha256);
+     output->allocated_map_id = map.allocated_map_id;
+     output->allocation_observed = map.allocation_observed;
++    if (map.source_last_accessed)
++      output->source_last_accessed_us = base::NumberToString(
++          map.source_last_accessed->ToDeltaSinceWindowsEpoch().InMicroseconds());
++    if (map.source_last_modified)
++      output->source_last_modified_us = base::NumberToString(
++          map.source_last_modified->ToDeltaSinceWindowsEpoch().InMicroseconds());
++    if (map.source_total_size)
++      output->source_total_size_bytes = base::NumberToString(map.source_total_size->InBytes());
+     for (auto& [key, value] : map.source)
+       output->source_entries.push_back(blink::mojom::KeyValue::New(key, std::move(value)));
+     for (auto& [key, value] : map.target)
