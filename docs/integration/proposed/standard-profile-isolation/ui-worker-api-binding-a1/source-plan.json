@@ -1,0 +1,120 @@
+{
+  "format": "aux.ui-worker.api-binding.source.v1",
+  "files": [
+    {
+      "path": "chrome/browser/extensions/api/aux_browser_preferences/aux_browser_preferences_api.cc",
+      "inputSha256": "b017dbc2dc68327221aeeab04e3e2e15d408465628f4f8f238f50018b4fe45cc",
+      "outputSha256": "fa35ca03b8456878aea05bd3501b19239e0248970872e03ffdd83bd68e5ef5b1",
+      "anchors": [
+        {
+          "find": "#include \"chrome/browser/aux/ui_storage_migration_controller.h\"",
+          "replace": "#include \"chrome/browser/aux/ui_storage_migration_controller.h\"\n#include \"chrome/browser/aux/ui_storage_migration_worker.h\"",
+          "count": 1
+        },
+        {
+          "find": "  auto* prefs = profile()->GetPrefs();\n",
+          "replace": "  if (method == \"replyUiMigrationWorkerControl\") {\n    if (args().size() != 1 || !args()[0].is_dict())\n      return RespondNow(Error(\"A finite worker-control reply is required\"));\n    const auto& request = args()[0].GetDict();\n    const auto* request_id = request.FindString(\"requestId\");\n    const auto* operation = request.FindString(\"operation\");\n    const auto* result_json = request.FindString(\"resultJson\");\n    if (request.size() != 3 || !request_id || !operation || !result_json ||\n        request_id->size() != 36 || operation->size() > 8 ||\n        result_json->size() > 65536)\n      return RespondNow(Error(\"Malformed or oversized worker-control reply\"));\n    // The helper binds the actual ExtensionFunction worker, Profile, process,\n    // version/start token and retained native RPC. JSON supplies no identity.\n    return RespondNow(WithArguments(aux::AcceptUiStorageMigrationWorkerReply(\n        *this, *request_id, *operation, *result_json)));\n  }\n  auto* prefs = profile()->GetPrefs();\n",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/extensions/api/aux_browser_preferences/aux_browser_preferences_api.h",
+      "inputSha256": "04f3ae9ab32bf2192a95f8f7c4662d0668f0ede2d6a2fc3f1488f2d1a614bc7f",
+      "outputSha256": "c21aec55762b33faf3e509a00e6a8272e8b62d622628cb0abd23928b1a5348af",
+      "anchors": [
+        {
+          "find": "}  // namespace extensions\n#endif\n",
+          "replace": "class AuxBrowserPreferencesReplyUiMigrationWorkerControlFunction final\n    : public AuxBrowserPreferencesFunction {\n public:\n  DECLARE_EXTENSION_FUNCTION(\"auxBrowserPreferences.replyUiMigrationWorkerControl\",\n                             AUXBROWSERPREFERENCES_REPLYUIMIGRATIONWORKERCONTROL)\n protected:\n  ~AuxBrowserPreferencesReplyUiMigrationWorkerControlFunction() override = default;\n};\n}  // namespace extensions\n#endif\n",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/ui/BUILD.gn",
+      "inputSha256": "8214d1514c47e6b318cd4adeef8507c235e4a5ededd2370f8a06a2b7db98c4fa",
+      "outputSha256": "4eb9bba269b73f8569f632a84b5b407d104d1e56b61000fcb3525542c9683723",
+      "anchors": [
+        {
+          "find": "      \"../aux/ui_storage_migration_controller.h\",",
+          "replace": "      \"../aux/ui_storage_migration_controller.h\",\n      \"../aux/ui_storage_migration_worker.cc\",\n      \"../aux/ui_storage_migration_worker.h\",",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/aux/BUILD.gn",
+      "inputSha256": "8235f54f9e78966a301db907b963f4629fe7bec4324a5f81db68bbaf35fae548",
+      "outputSha256": "dbf23257b66ca9d4b236371aab78a9303bda0f1bbfb2698dcce47f46ce6d83f4",
+      "anchors": [
+        {
+          "find": "  public = [ \"ui_storage_migration_controller.h\" ]",
+          "replace": "  public = [ \"ui_storage_migration_controller.h\", \"ui_storage_migration_worker.h\" ]",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "chrome/common/extensions/api/aux_browser_preferences.json",
+      "inputSha256": "3034469ce041b154eb6f75801c2c6289e856ac1a22edf03789476391ed1add65",
+      "outputSha256": "0dae39b7d5ccd0f355a4129ddf9efbd1ed30ec2ef6df4a817a6e9a205e853aa6",
+      "anchors": [
+        {
+          "find": "    \"functions\": [\n",
+          "replace": "    \"functions\": [\n      {\n        \"name\": \"replyUiMigrationWorkerControl\",\n        \"type\": \"function\",\n        \"parameters\": [\n          {\n            \"name\": \"request\",\n            \"type\": \"object\",\n            \"properties\": {\n              \"requestId\": {\n                \"type\": \"string\"\n              },\n              \"operation\": {\n                \"type\": \"string\",\n                \"enum\": [\n                  \"prepare\",\n                  \"read\",\n                  \"validate\",\n                  \"release\"\n                ]\n              },\n              \"resultJson\": {\n                \"type\": \"string\"\n              }\n            }\n          }\n        ],\n        \"returns_async\": {\n          \"name\": \"callback\",\n          \"parameters\": [\n            {\n              \"name\": \"accepted\",\n              \"type\": \"boolean\"\n            }\n          ]\n        }\n      },\n",
+          "count": 1
+        },
+        {
+          "find": "    \"events\": [\n",
+          "replace": "    \"events\": [\n      {\n        \"name\": \"onUiMigrationWorkerControl\",\n        \"type\": \"function\",\n        \"parameters\": [\n          {\n            \"name\": \"request\",\n            \"type\": \"object\",\n            \"properties\": {\n              \"requestId\": {\n                \"type\": \"string\"\n              },\n              \"operation\": {\n                \"type\": \"string\",\n                \"enum\": [\n                  \"prepare\",\n                  \"read\",\n                  \"validate\",\n                  \"release\"\n                ]\n              },\n              \"leaseId\": {\n                \"type\": \"string\",\n                \"optional\": true\n              },\n              \"revision\": {\n                \"type\": \"number\",\n                \"optional\": true\n              }\n            }\n          }\n        ]\n      },\n",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "extensions/browser/extension_event_histogram_value.h",
+      "inputSha256": "3fcb7b1c9be371dcba33230cb14d4ec194e41c3e1cdbe19d94afe1bfb8d08507",
+      "outputSha256": "d18b782112708e35c53a0f04cbf454bdc1026b07ac797dd4dc88ec438acfd1d9",
+      "anchors": [
+        {
+          "find": "  AUXBROWSERPREFERENCES_ONPAGECAPTUREREQUESTED = 583,",
+          "replace": "  AUXBROWSERPREFERENCES_ONPAGECAPTUREREQUESTED = 583,\n  AUXBROWSERPREFERENCES_ONUIMIGRATIONWORKERCONTROL = 584,",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "extensions/browser/extension_function_histogram_value.h",
+      "inputSha256": "a53d471f596e119780c84acc6136f036397d4622cdd1191f28fd7dbbeb3ab5ad",
+      "outputSha256": "685feb30e94cfcf0ae34f72382007e49fdd333b8d814e63ff6e892f52ac88b4a",
+      "anchors": [
+        {
+          "find": "  AUXBROWSERPREFERENCES_CAPTURETABMENTIONSPACE = 2141,",
+          "replace": "  AUXBROWSERPREFERENCES_CAPTURETABMENTIONSPACE = 2141,\n  AUXBROWSERPREFERENCES_REPLYUIMIGRATIONWORKERCONTROL = 2142,",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "tools/metrics/histograms/metadata/extensions/enums.xml",
+      "inputSha256": "857e15383e7ed9602c9e86e9fea51a04ffb325aba9e84b69c330faf3fd8a5149",
+      "outputSha256": "12938a6974109eecbba876ba0dfd707d279637a6712cc9b14a6ffc296e4256f0",
+      "anchors": [
+        {
+          "find": "  <int value=\"583\" label=\"AUXBROWSERPREFERENCES_ONPAGECAPTUREREQUESTED\"/>",
+          "replace": "  <int value=\"583\" label=\"AUXBROWSERPREFERENCES_ONPAGECAPTUREREQUESTED\"/>\n  <int value=\"584\" label=\"AUXBROWSERPREFERENCES_ONUIMIGRATIONWORKERCONTROL\"/>",
+          "count": 1
+        },
+        {
+          "find": "  <int value=\"2141\" label=\"AUXBROWSERPREFERENCES_CAPTURETABMENTIONSPACE\"/>",
+          "replace": "  <int value=\"2141\" label=\"AUXBROWSERPREFERENCES_CAPTURETABMENTIONSPACE\"/>\n  <int value=\"2142\" label=\"AUXBROWSERPREFERENCES_REPLYUIMIGRATIONWORKERCONTROL\"/>",
+          "count": 1
+        }
+      ]
+    }
+  ],
+  "registration": "Actual ChromeGeneratedFunctionRegistry derives the native class from this schema; generated outputs must be rebuilt.",
+  "nativeCheckoutChanged": false,
+  "productExecuted": false,
+  "runtimeAuthorityGranted": false
+}

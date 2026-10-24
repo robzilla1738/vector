@@ -1,5 +1,9 @@
 # Desktop feature expansion execution
 
+## Current worker/cache and CLI batch — 2026-10-24
+
+UI revision31 exact staging passed; renderer cleanup and background control are paired. Root projected18 actual native worker/API/Blink/cache-interface/type-fix files with113 changed/383 selected inputs; generation and6 affected-owner compilations are running. Organization continues native cache-cohort/COW consumption; navigation delivers the real worker/frontend controller successor; productivity implements the narrow native URL/profile command without installation-wide authority. The complete A3 inactive app remains the latest packaged app. COLD admission, legacy target transaction/recovery, wider CLI authority and actual app/UI journeys remain open. No runtime readiness or lifecycle/signing/release action is claimed.
+
 ## Current substantial parallel batch — 2026-10-24
 
 The reviewed63-file source set is now actually projected into the isolated native build tree after preserving/verifying the previous native app and original inputs. Full unsigned build session49461 is live with359 frozen input pins; `completion-batch-a1/native-in-flight-a1.json` locates the live handle/receipt/logs. The three same worktrees, cleanly advanced to `12fa305ef`, now carry a second substantial parallel slice: navigation/frame/theme; profile/window switching; and native files/AI/tools. They may not mutate the frozen native tree or launch competing native builds. Their proposals integrate only after the current build becomes terminal. Full app/UI acceptance remains open.

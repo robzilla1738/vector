@@ -1,0 +1,26 @@
+{
+  "passed": true,
+  "exitCode": 0,
+  "command": [
+    "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/third_party/ninja/ninja",
+    "-C",
+    "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/out/AuxFast",
+    "-j4",
+    "gen/components/services/storage/public/mojom/local_storage_control.mojom.h",
+    "gen/components/services/storage/public/mojom/local_storage_control.mojom-shared.h",
+    "gen/components/services/storage/public/mojom/local_storage_control.mojom-shared-internal.h",
+    "gen/components/services/storage/public/mojom/session_storage_control.mojom.h",
+    "gen/components/services/storage/public/mojom/session_storage_control.mojom-shared.h",
+    "gen/components/services/storage/public/mojom/session_storage_control.mojom-shared-internal.h"
+  ],
+  "headers": {
+    "gen/components/services/storage/public/mojom/local_storage_control.mojom.h": "dc075a53d90ac184037dbaea3edd33c0956b1e402b7ab0acb6df5c743d1473f3",
+    "gen/components/services/storage/public/mojom/local_storage_control.mojom-shared.h": "48862676e4634119bc39bf13d08812a5d14864085cee131bbcc70942bc900a81",
+    "gen/components/services/storage/public/mojom/local_storage_control.mojom-shared-internal.h": "015b0b904315a78a783f2850618d87ddd596dc2303549600821a7961680ecd14",
+    "gen/components/services/storage/public/mojom/session_storage_control.mojom.h": "4935c696ea89b226231063c6d116188aa7b0e59b182d15a7b690a2a68f5a6081",
+    "gen/components/services/storage/public/mojom/session_storage_control.mojom-shared.h": "3f6066d2110d3751a0710d30c17afac05ab4c7937f9b33af80c888d725e44b7a",
+    "gen/components/services/storage/public/mojom/session_storage_control.mojom-shared-internal.h": "52c9cf3ead836c0d7076e47fe23801c43f22c8f77e1600a4009e8e0cdfc7a0bd"
+  },
+  "productExecuted": false,
+  "fullBrowserBuilt": false
+}

@@ -1,0 +1,19 @@
+{
+  "format": "aux.native-dom-type-include-fix.source.v1",
+  "files": [
+    {
+      "path": "components/services/storage/dom_storage/session_storage_impl.cc",
+      "inputSha256": "b80f8d3bf53dfab3b184e45fd9d9477dd63f1a31a31b3169ed53648f1f3defe6",
+      "outputSha256": "2bfb39f7700040b3dc9a878969658c7a1daaadeebf9e52b24b5f2f24409c202d",
+      "anchors": [
+        {
+          "find": "#include \"components/services/storage/dom_storage/session_storage_impl.h\"",
+          "replace": "#include \"components/services/storage/dom_storage/session_storage_impl.h\"\n#include \"components/services/storage/public/mojom/local_storage_control.mojom.h\"",
+          "count": 1
+        }
+      ]
+    }
+  ],
+  "nativeCheckoutChanged": false,
+  "productExecuted": false
+}

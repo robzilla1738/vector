@@ -1,0 +1,35 @@
+{
+  "format": "aux.integration-completion.native-projection.actual.v1",
+  "passed": true,
+  "predecessorNativeReceipt": "/private/tmp/aux-chromium-recovery-snapshot-20261023/unsigned-feature-completion-browser-build-20261024-a3b/receipt.json",
+  "predecessorNativeReceiptSha256": "8f18420f80a296d4fc1b2548dfa0a48b3296ba364a744c239deffb48876260cc",
+  "preservedNativeApp": "/private/tmp/aux-chromium-recovery-snapshot-20261023/native-backend-lease-integration-20261024-a7/previous-native-a3/Aux.app",
+  "sourceBeforeImages": "/private/tmp/aux-chromium-recovery-snapshot-20261023/native-backend-lease-integration-20261024-a7/before",
+  "originals": {
+    "extensions/browser/api/storage/storage_frontend.h": "7cb718fd35c674a08ad825a4af1329924ff948a00d2d68d0c5f15b73347fc915",
+    "extensions/browser/api/storage/storage_frontend.cc": "a2250f8c6851b0ba1546040629b10af2693011279fcdd227986e7cdbd3305354",
+    "components/services/storage/dom_storage/async_dom_storage_database.h": "520e6aecaf29b3aa7214a90c8876bab84074f500077bb266ddeb0e2244f7f28b",
+    "components/services/storage/dom_storage/async_dom_storage_database.cc": "90bcb90fa1acc193be54211777ffd6137ce66c8ad7d7911fd20d81930ffb3b53",
+    "components/services/storage/public/mojom/local_storage_control.mojom": "82f97d65cbc2c675de7b5c3a6df0d135a03e1c8f1e78bb874fd02535c0576fb7",
+    "components/services/storage/public/mojom/session_storage_control.mojom": "266015391dfe129ca3c85e773c8648a65ad5336d71958c87fa41e71aea44ecf6",
+    "components/services/storage/dom_storage/local_storage_impl.h": "144e33b571980556a4cf37738ddee5e57c2fd79d95d346ef911d5b56e734676c",
+    "components/services/storage/dom_storage/local_storage_impl.cc": "a602f0bb3e45156ee6c128369532134aa1fb7a5e26f8a1f8eeb96225cd1dd693",
+    "components/services/storage/dom_storage/session_storage_impl.h": "ee5c205c527bed5fed5d164e77d41da3e4a2efa059360866b250c78af3a1e566",
+    "components/services/storage/dom_storage/session_storage_impl.cc": "3ead284327254e4812e21bbb66e5c85a256f068d2105637f6895992427bb3490"
+  },
+  "projected": [
+    "extensions/browser/api/storage/storage_frontend.h",
+    "extensions/browser/api/storage/storage_frontend.cc",
+    "components/services/storage/dom_storage/async_dom_storage_database.h",
+    "components/services/storage/dom_storage/async_dom_storage_database.cc",
+    "components/services/storage/public/mojom/local_storage_control.mojom",
+    "components/services/storage/public/mojom/session_storage_control.mojom",
+    "components/services/storage/dom_storage/local_storage_impl.h",
+    "components/services/storage/dom_storage/local_storage_impl.cc",
+    "components/services/storage/dom_storage/session_storage_impl.h",
+    "components/services/storage/dom_storage/session_storage_impl.cc"
+  ],
+  "ownerChangesReset": false,
+  "productExecuted": false,
+  "acceptedAppReplaced": false
+}
