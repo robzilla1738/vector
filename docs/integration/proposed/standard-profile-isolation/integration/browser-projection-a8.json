@@ -1,0 +1,42 @@
+{
+  "format": "aux.standard-browser-source-projection.v7",
+  "previousInputPinsSha256": "e2a4f6788ce81eee8f37cc78f4064df5b068cb2c09f6654117fc2b013d7c1f36",
+  "compositionSha256": "3ad8612a55d1c2e78786d5af747f59f4899069154104f7e1964235d6df17180d",
+  "inputPinsSha256": "7544fdab9e0cf554d4fe4ea1b98120ff74a903874132c7d38f4772480197a8fd",
+  "filesProjected": 3,
+  "nativeInputCount": 322,
+  "stages": [
+    {
+      "name": "native-host-constructor-a1",
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/native-host-constructor-a1/manifest.json",
+      "sha256": "5fb0defe5bf070363a3d609ef9caa3de7c40aa3c084994da9544a49c822abdd4",
+      "anchorsPath": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/native-host-constructor-a1/replacements.json",
+      "anchorsSha256": "aee1cbb6492cbd2c5ada75cf70b36b75c858ef0e3d7a9dd4d6322aefa8a4b5e1",
+      "appliedFiles": [
+        "chrome/browser/extensions/api/messaging/aux_native_messaging_lifetime.h",
+        "chrome/browser/extensions/api/messaging/native_message_process_host.cc"
+      ],
+      "skippedFiles": [],
+      "countedEdits": 2,
+      "newFileCount": 0
+    },
+    {
+      "name": "browser-custody-compiler-a1",
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/browser-custody-compiler-a1/manifest.json",
+      "sha256": "ec495e53b4760f955afa9ccd3924cf78263d8bc26b1cfd3e1af87350c6ae1e9f",
+      "anchorsPath": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/browser-custody-compiler-a1/replacements.json",
+      "anchorsSha256": "aed4680c2345fec3582a4dfc416c86d71b5d1a3fe57831a838f38d41b94b8486",
+      "appliedFiles": [
+        "base/process/mac/aux_browser_descendant_engine.cc"
+      ],
+      "skippedFiles": [],
+      "countedEdits": 4,
+      "newFileCount": 0
+    }
+  ],
+  "ownerCheckoutChanged": false,
+  "uiChanged": false,
+  "appExecuted": false,
+  "productSigned": false,
+  "cleanRecoveryProven": false
+}
