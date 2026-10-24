@@ -1,0 +1,27 @@
+{
+  "format": "aux.meta-context-profile-owned-callback.review.v1",
+  "predecessor": {
+    "path": "/private/tmp/aux-features-execution-organization-20261023/docs/integration/proposed/standard-profile-isolation/meta-connection-lifetime-a1/overlay.json",
+    "sha256": "3749e7200c18cee34fa21aa7c33d1f3218aea02173af76f6ef543108bfb7c993"
+  },
+  "nativeReplacementsSha256": "5cec09d5324aefa7db33925a07da12aa88a20fa9133250265977cb97e0c94e48",
+  "patchSha256": "8a25a58dc1290d17190ee6f84de9d6e864b3dc48758af8fcd2b550f1ad490f4d",
+  "files": 6,
+  "anchors": 12,
+  "daemonChanges": 0,
+  "daemonStageAnchorsUnchanged": 14,
+  "gnInputs": [
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/profiles/BUILD.gn",
+      "sha256": "9fc8bf8e2479b5c3b7130f77809dd4ae274847419dcf5b350f205c49a453629f"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/devtools/BUILD.gn",
+      "sha256": "9a3decf8ab0cb83636ac4ab0c31875023a5020280ef3886616f52703d1a10a33"
+    }
+  ],
+  "sourceReplayPassed": true,
+  "callbackOrderingSourceCheckPassed": true,
+  "nativeBuild": false,
+  "runtimeExecuted": false
+}

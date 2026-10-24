@@ -1,0 +1,205 @@
+--- a/chrome/browser/profiles/profile.h
++++ b/chrome/browser/profiles/profile.h
+@@ -12,6 +12,7 @@
+ #include <string>
+ #include <vector>
+ 
++#include "base/functional/callback.h"
+ #include "base/memory/raw_ptr.h"
+ #include "base/memory/scoped_refptr.h"
+ #include "base/memory/weak_ptr.h"
+@@ -265,6 +266,14 @@
+ 
+   // Destroys the OffTheRecord profile.
+   virtual void DestroyOffTheRecordProfile(Profile* otr_profile) = 0;
++
++  // Parent-owned observation of one exact OTR object's destruction. Registration
++  // never invokes the callback synchronously. The boolean describes native
++  // partition storage configuration, not background service settlement.
++  // Unsupported Profile implementations refuse without retaining the callback.
++  virtual bool ObserveAuxOTRDestruction(
++      Profile* child, base::OnceCallback<void(bool)> callback);
++  virtual void CancelAuxOTRDestruction(Profile* child);
+ 
+   // True if an OffTheRecord profile with given id exists.
+   virtual bool HasOffTheRecordProfile(const OTRProfileID& otr_profile_id) = 0;
+--- a/chrome/browser/profiles/profile.cc
++++ b/chrome/browser/profiles/profile.cc
+@@ -298,6 +298,13 @@
+   return FromBrowserContext(web_ui->GetWebContents()->GetBrowserContext());
+ }
+ 
++bool Profile::ObserveAuxOTRDestruction(
++    Profile*, base::OnceCallback<void(bool)>) {
++  return false;
++}
++
++void Profile::CancelAuxOTRDestruction(Profile*) {}
++
+ void Profile::AddObserver(ProfileObserver* observer) {
+   observers_.AddObserver(observer);
+ }
+--- a/chrome/browser/profiles/profile_impl.h
++++ b/chrome/browser/profiles/profile_impl.h
+@@ -127,6 +127,9 @@
+                                   bool create_if_needed) override;
+   std::vector<Profile*> GetAllOffTheRecordProfiles() override;
+   void DestroyOffTheRecordProfile(Profile* otr_profile) override;
++  bool ObserveAuxOTRDestruction(
++      Profile* child, base::OnceCallback<void(bool)> callback) override;
++  void CancelAuxOTRDestruction(Profile* child) override;
+   bool HasOffTheRecordProfile(const OTRProfileID& otr_profile_id) override;
+   bool HasAnyOffTheRecordProfile() override;
+   Profile* GetOriginalProfile() override;
+@@ -297,6 +300,10 @@
+ #endif
+ 
+   std::map<OTRProfileID, std::unique_ptr<Profile>> otr_profiles_;
++  // Owned by the original Profile, separate from the exact OTR unique_ptr.
++  // Dropping a callback at parent teardown is never a completion notification.
++  std::map<OTRProfileID, base::OnceCallback<void(bool)>>
++      aux_otr_destruction_callbacks_;
+ 
+   // See GetStartTime for details.
+   base::Time start_time_;
+--- a/chrome/browser/profiles/profile_impl.cc
++++ b/chrome/browser/profiles/profile_impl.cc
+@@ -4,7 +4,6 @@
+ 
+ #include "chrome/browser/profiles/profile_impl.h"
+ 
+-#include "chrome/browser/devtools/devtools_browser_context_manager.h"
+ 
+ #include <stddef.h>
+ 
+@@ -1108,22 +1107,52 @@
+   return raw_otr_profiles;
+ }
+ 
++bool ProfileImpl::ObserveAuxOTRDestruction(
++    Profile* child, base::OnceCallback<void(bool)> callback) {
++  if (!child || !child->IsOffTheRecord() || !callback)
++    return false;
++  const OTRProfileID id = child->GetOTRProfileID();
++  const auto entry = otr_profiles_.find(id);
++  if (!id.IsDevTools() || entry == otr_profiles_.end() ||
++      entry->second.get() != child || aux_otr_destruction_callbacks_.contains(id))
++    return false;
++  aux_otr_destruction_callbacks_.emplace(id, std::move(callback));
++  return true;
++}
++
++void ProfileImpl::CancelAuxOTRDestruction(Profile* child) {
++  if (!child || !child->IsOffTheRecord())
++    return;
++  const OTRProfileID id = child->GetOTRProfileID();
++  const auto entry = otr_profiles_.find(id);
++  if (entry != otr_profiles_.end() && entry->second.get() == child)
++    aux_otr_destruction_callbacks_.erase(id);
++}
++
+ void ProfileImpl::DestroyOffTheRecordProfile(Profile* otr_profile) {
+   CHECK(otr_profile);
+   OTRProfileID profile_id = otr_profile->GetOTRProfileID();
+   DCHECK(HasOffTheRecordProfile(profile_id));
+-  const std::string aux_context_id = otr_profile->UniqueId();
+-  bool aux_storage_memory_only = otr_profile->IsOffTheRecord() &&
+-                                 profile_id.IsDevTools() &&
+-                                 otr_profile->GetLoadedStoragePartitionCount() > 0;
+-  otr_profile->ForEachLoadedStoragePartition(
+-      [&aux_storage_memory_only](content::StoragePartition* partition) {
+-        aux_storage_memory_only &=
+-            partition->HasAuxMemoryOnlyStorageConfiguration();
+-      });
++  base::OnceCallback<void(bool)> aux_destroyed;
++  auto aux_pending = aux_otr_destruction_callbacks_.find(profile_id);
++  if (aux_pending != aux_otr_destruction_callbacks_.end()) {
++    aux_destroyed = std::move(aux_pending->second);
++    aux_otr_destruction_callbacks_.erase(aux_pending);
++  }
++  bool aux_storage_memory_only = false;
++  if (aux_destroyed) {
++    aux_storage_memory_only = otr_profile->IsOffTheRecord() &&
++                              profile_id.IsDevTools() &&
++                              otr_profile->GetLoadedStoragePartitionCount() > 0;
++    otr_profile->ForEachLoadedStoragePartition(
++        [&aux_storage_memory_only](content::StoragePartition* partition) {
++          aux_storage_memory_only &=
++              partition->HasAuxMemoryOnlyStorageConfiguration();
++        });
++  }
+   otr_profiles_.erase(profile_id);
+-  DevToolsBrowserContextManager::NotifyAuxContextObjectDestroyed(
+-      aux_context_id, aux_storage_memory_only);
++  if (aux_destroyed)
++    std::move(aux_destroyed).Run(aux_storage_memory_only);
+ #if BUILDFLAG(ENABLE_EXTENSIONS_CORE)
+   // Extensions are only supported on primary OTR profile.
+   if (profile_id == OTRProfileID::PrimaryID() &&
+--- a/chrome/browser/devtools/devtools_browser_context_manager.h
++++ b/chrome/browser/devtools/devtools_browser_context_manager.h
+@@ -39,9 +39,10 @@
+   void DisposeAuxBrowserContextAndObserve(
+       content::BrowserContext* context,
+       content::DevToolsManagerDelegate::DisposeCallback callback);
+-  // Called only after the exact OTR unique_ptr erase/destructor has returned.
+-  static void NotifyAuxContextObjectDestroyed(const std::string& context_id,
+-                                              bool storage_memory_only);
++  // Called by the original Profile after exact OTR destruction, never from a
++  // lower-layer dependency on DevTools.
++  void OnAuxContextObjectDestroyed(const std::string& context_id,
++                                   bool storage_memory_only);
+ 
+  private:
+   friend class base::NoDestructor<DevToolsBrowserContextManager>;
+--- a/chrome/browser/devtools/devtools_browser_context_manager.cc
++++ b/chrome/browser/devtools/devtools_browser_context_manager.cc
+@@ -187,25 +187,41 @@
+     std::move(callback).Run(false, "Aux context is unavailable or already closing");
+     return;
+   }
++  Profile* child = found->second;
++  Profile* original = child->GetOriginalProfile();
++  if (!original->ObserveAuxOTRDestruction(
++          child, base::BindOnce(
++                     &DevToolsBrowserContextManager::OnAuxContextObjectDestroyed,
++                     weak_factory_.GetWeakPtr(), id))) {
++    std::move(callback).Run(false, "Aux context destruction observation unavailable");
++    return;
++  }
++  // The parent retained the exact child observer before any disposal begins.
++  // Registration cannot invoke it synchronously, so publication cannot race it.
+   aux_context_object_observers_.emplace(id, std::move(callback));
+   DisposeBrowserContext(context, base::BindOnce(
+       [](base::WeakPtr<DevToolsBrowserContextManager> self,
++         base::WeakPtr<Profile> weak_original, base::WeakPtr<Profile> weak_child,
+          const std::string& observed_id, bool accepted, const std::string& error) {
+-        if (!self || accepted)
++        if (accepted)
+           return;  // Request accepted is not destruction completion.
++        if (weak_original && weak_child)
++          weak_original->CancelAuxOTRDestruction(weak_child.get());
++        if (!self)
++          return;
+         auto pending = self->aux_context_object_observers_.find(observed_id);
+         if (pending == self->aux_context_object_observers_.end())
+           return;
+         auto done = std::move(pending->second);
+         self->aux_context_object_observers_.erase(pending);
+         std::move(done).Run(false, error);
+-      }, weak_factory_.GetWeakPtr(), id));
+-}
+-
+-// static
+-void DevToolsBrowserContextManager::NotifyAuxContextObjectDestroyed(
++      }, weak_factory_.GetWeakPtr(), original->GetWeakPtr(), child->GetWeakPtr(),
++      id));
++}
++
++void DevToolsBrowserContextManager::OnAuxContextObjectDestroyed(
+     const std::string& context_id, bool storage_memory_only) {
+-  auto& self = GetInstance();
++  auto& self = *this;
+   auto found = self.aux_context_object_observers_.find(context_id);
+   if (found == self.aux_context_object_observers_.end())
+     return;
