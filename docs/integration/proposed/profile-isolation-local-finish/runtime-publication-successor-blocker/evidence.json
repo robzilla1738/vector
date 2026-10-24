@@ -1,0 +1,108 @@
+{
+  "format": "aux.runtime-publication.successor-blocker.v1",
+  "result": "blocked-missing-stage-namespace-custody",
+  "implemented": false,
+  "nativeAbiChanged": false,
+  "inputs": {
+    "runtimeSeed": {
+      "path": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-final-local-completion-20261023/Aux.app/Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/native/runtime-seed.cjs",
+      "sha256": "3051dea5ccc9d74126bf71ddc0bb72a4d3db19c59f890a8f48d572b215f092af"
+    },
+    "bootstrap": {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/profile-isolation-local-finish/runtime-bootstrap/source/runtime-bootstrap.cjs",
+      "sha256": "2e8c8db62e67e7ee812c5beb4606f11ed063e9aef6453db3d44e8c939255f604"
+    },
+    "workerHost": {
+      "path": "/private/tmp/aux-async-writes-final/docs/integration/proposed/profile-isolation-final/writes/source/AuxDevelopmentWorkerHost.cc",
+      "sha256": "e36e5c25c822879302a7f83fa5329305ba79f4d000ac45cd721cb820eaa81dd7"
+    },
+    "storageNapi": {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/profile-isolation-continuation/broker-writes/source/AuxStorageRootsNapi.inc",
+      "sha256": "f9c1549670b1ebc0d7825402c57079814d4095f27b8ec3b76f8c0bb9aeb57ec6"
+    },
+    "storageBridge": {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/profile-isolation-continuation/broker-writes/source/AuxStorageRootsBridge.h",
+      "sha256": "4e14e4c3ea1977fc8c23f362de37c16ad20047be0461056c06d7b163ecf0bd60"
+    },
+    "dispatcher": {
+      "path": "/private/tmp/aux-browser-admitted-recovery/docs/integration/proposed/profile-isolation-completion/restart/source/AuxOwnedCommandDispatcher.swift",
+      "sha256": "fbb2782491b242573c60433f98df39f7d7ef283392190d0e627f23fedc003a0c"
+    },
+    "taskLayout": {
+      "path": "/private/tmp/aux-profile-startup-next/docs/integration/proposed/profile-isolation-next/startup/v5-source/AuxNativeTaskLayout.swift",
+      "sha256": "4b27a1008a34640976e2e40a5c47fb08fdd28591e6a6df12522464d2474bd8dc"
+    },
+    "linkReceipt": {
+      "path": "/private/tmp/aux-delivery-link-20261023/results.json",
+      "sha256": "78cfe6b6966ea4d0d8081dfe9ebc6b043bf40990a242b4f7f25b849a818b9ce2"
+    },
+    "objectReceipt": {
+      "path": "/private/tmp/aux-awaited-writes-native-20261023-r3/results.json",
+      "sha256": "feb649389b0912c46e858c87bfc549eb441eb6ef866c4cf3e16b87425ad5428a"
+    },
+    "objectDependencies": {
+      "path": "/private/tmp/aux-awaited-writes-native-20261023-r3/worker-host.d",
+      "sha256": "2fe7870a730562921a2374ed33e91397fd59cb494a4e447a1f04f6c8d2fa2204"
+    },
+    "awaitedBroker": {
+      "path": "/private/tmp/aux-async-writes-final/docs/integration/proposed/profile-isolation-final/writes/source/AuxBrokerAwaitedNapi.inc",
+      "sha256": "52248c2b091e1f40cae069c60f05b9332115f260abcdef4dd702a0a8d1faf642"
+    },
+    "syncBroker": {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/profile-isolation-continuation/broker-writes/source/AuxBrokerWritesNapi.inc",
+      "sha256": "fdac90ec6345980cbdcac929a507afcf67670bde03c18aba23ef07dcd2cc2033"
+    },
+    "ownerTaskProjection": {
+      "path": "/private/tmp/aux-profile-startup-next/docs/integration/proposed/profile-isolation-next/startup/v5-source/AuxNativeFreshStageCoordinator.swift",
+      "sha256": "2d7559e726bbcb6cbd8a0d9be86fea7829b15c1ed83496e4472bc62283733e31"
+    }
+  },
+  "sourceChecks": {
+    "awaitedPendingAdmission": {
+      "path": "/private/tmp/aux-async-writes-final/docs/integration/proposed/profile-isolation-final/writes/source/AuxBrokerAwaitedNapi.inc",
+      "anchor": "++work->captured.worker->broker_pending;work->counted=true;",
+      "count": 1,
+      "line": 61
+    },
+    "awaitedArbitraryJsCallback": {
+      "path": "/private/tmp/aux-async-writes-final/docs/integration/proposed/profile-isolation-final/writes/source/AuxBrokerAwaitedNapi.inc",
+      "anchor": "napi_call_function(env,receiver,args[0],0,nullptr,&result)",
+      "count": 1,
+      "line": 66
+    },
+    "dispatcherNativeActionLock": {
+      "path": "/private/tmp/aux-browser-admitted-recovery/docs/integration/proposed/profile-isolation-completion/restart/source/AuxOwnedCommandDispatcher.swift",
+      "anchor": "entry.execution.lock()",
+      "count": 1,
+      "line": 257
+    },
+    "taskFdDuplication": {
+      "path": "/private/tmp/aux-profile-startup-next/docs/integration/proposed/profile-isolation-next/startup/v5-source/AuxNativeTaskLayout.swift",
+      "anchor": "try revalidate();let fd=fcntl(home,F_DUPFD_CLOEXEC,0)",
+      "count": 1,
+      "line": 109
+    },
+    "taskEntrySeparateIdentityCheck": {
+      "path": "/private/tmp/aux-profile-startup-next/docs/integration/proposed/profile-isolation-next/startup/v5-source/AuxNativeTaskLayout.swift",
+      "anchor": "fstatat(parent,name,&actual,AT_SYMLINK_NOFOLLOW)",
+      "count": 1,
+      "line": 125
+    },
+    "pathnameChildPublication": {
+      "path": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-final-local-completion-20261023/Aux.app/Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/native/runtime-seed.cjs",
+      "anchor": "await fs.rename(path.join(staging, name), path.join(runtime, name));",
+      "count": 1,
+      "line": 124
+    },
+    "pathnameStagingCleanup": {
+      "path": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-final-local-completion-20261023/Aux.app/Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/native/runtime-seed.cjs",
+      "anchor": "await fs.rm(staging, { recursive: true, force: true });",
+      "count": 1,
+      "line": 128
+    }
+  },
+  "authenticatedActionSeam": "exists: retained dispatcher Entry with execution lock and native Owner task FD projection",
+  "missingSeam": "No mandatory source-entry custody shared by JS staging writers and native publication across final identity validation and renameatx_np. Descriptor retention and advisory/in-process mutexes do not establish it.",
+  "permittedFutureOutcome": "Only a coupled successor retaining cold refusal; no claims of same-UID custody, whole drain or cache completeness",
+  "verification": "One bounded hash/count source check. No native/product/module execution, build, signing, state access or provider calls."
+}
