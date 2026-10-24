@@ -1,0 +1,90 @@
+{
+  "files": [
+    {
+      "path": "chrome/browser/aux/AuxSelectedStateHome.cc",
+      "kind": "modified",
+      "baselineSha256": "ba49614b3b912387ce8425ffa274dc9e35910576a76b8e28956fee5d38edbf57",
+      "sourceSha256": "d1570801ecc1794abea41ba4c796fc7dfd3c273b11713e94d466010edfd78b56"
+    },
+    {
+      "path": "chrome/browser/aux/AuxSelectedStateHome.h",
+      "kind": "modified",
+      "baselineSha256": "511178394945890f0b8cfa1c6232a667da5dd4ebaca02a416b1a14edc1b2c779",
+      "sourceSha256": "81f5a9138ffd7eccf173b081134a6c5e304184d1012557d4b6a1ccbf6971ddb7"
+    },
+    {
+      "path": "chrome/browser/aux/feature_store/feature_profile_store.cc",
+      "kind": "modified",
+      "baselineSha256": "00921f288b481b6d27da185e9d4f7f983a40bdd0c41133b31c817db40a16e3e5",
+      "sourceSha256": "6189cb68e91ada667de554ae846a37d7dd2916b4d28d694704c4ad6ec828e895"
+    },
+    {
+      "path": "chrome/browser/aux/feature_store/feature_write_participant.cc",
+      "kind": "new",
+      "baselineSha256": null,
+      "sourceSha256": "2a1ef1c19401afd93e3dec0bd2ff2e48a0443de6e8af76f03e05378650fc8cc8"
+    },
+    {
+      "path": "chrome/browser/aux/feature_store/feature_write_participant.h",
+      "kind": "new",
+      "baselineSha256": null,
+      "sourceSha256": "a7db1e6b87daf66bce72c7b542e31d4b5b5e0147101ece0df85ad5c3387a37cc"
+    },
+    {
+      "path": "chrome/browser/aux/feature_store/feature_write_participant_unittest.cc",
+      "kind": "new",
+      "baselineSha256": null,
+      "sourceSha256": "ab949f598da2f1564a99c3f2a3cb480f5784a2ea7576eb9de2285e0de00906e7"
+    },
+    {
+      "path": "chrome/browser/aux/organization/organization_profile_service.cc",
+      "kind": "modified",
+      "baselineSha256": "afdc5bd5a9d30a1891e0739f7cdf1e6f74fd3a30754886d2797e54f6dc8c170c",
+      "sourceSha256": "7c50ffff360e13d830586c4941b6830d57a494c668de899db8bbd020a9e88a5d"
+    },
+    {
+      "path": "chrome/browser/ui/aux_chosen_files_service.cc",
+      "kind": "modified",
+      "baselineSha256": "5567f2555a84694b74031faa790f03a86305f648bdf0ee220bf1f4b592c2691c",
+      "sourceSha256": "12a0444fa8c880eb5267023dab64851f4c3d25c61d351cc4ec5dd807bd0d74ba"
+    },
+    {
+      "path": "chrome/browser/ui/aux_feature_profile_owners.cc",
+      "kind": "modified",
+      "baselineSha256": "fc230fbc363898999dda4095cd755c0fe0fb9589a4585694ccd020fc1235407b",
+      "sourceSha256": "79f0b86640b4d95e9e33d430f908b270664ba4d0c7b2f2ef200a4d06f6fcb010"
+    },
+    {
+      "path": "chrome/browser/ui/aux_file_operation_lifetime.cc",
+      "kind": "modified",
+      "baselineSha256": "88d27f6f043630171b3419625a1c617cbbeb45ab8db59b688ba08699033a2151",
+      "sourceSha256": "d8761ca81129dbf36bca9d845d371d7de947fb958d9df8bb0a487bea547b6b24"
+    },
+    {
+      "path": "chrome/browser/ui/aux_file_operation_lifetime.h",
+      "kind": "modified",
+      "baselineSha256": "e01ce2cfd29a7df655a46244a01d0373c6993746c18a81a74b0636beb650c4e4",
+      "sourceSha256": "10c1efa0aca04ff2aebdc65c44f9424ddab819c3c0497fbdae4a1b3f5bd90071"
+    },
+    {
+      "path": "chrome/browser/ui/aux_owned_browser_quiesce.cc",
+      "kind": "modified",
+      "baselineSha256": "f58124990bb3b83220af36ebac00ad535ef4c3176b6b66d9274ccb754aa74724",
+      "sourceSha256": "d8fb7b6084597827336063ba9b70be16f58d4cff405d165f62965a97a82395f1"
+    },
+    {
+      "path": "chrome/browser/ui/aux_owned_browser_quiesce.h",
+      "kind": "modified",
+      "baselineSha256": "0a23d1509d22d39b0c41081d44e937911b04a6c7b8ad8cfdf2ea42d5b6193df3",
+      "sourceSha256": "16e65be831601477acf05a81b66d2032ad6147ce1e8ca4b563939764e668d8f7"
+    },
+    {
+      "path": "chrome/browser/ui/aux_recent_files_service.cc",
+      "kind": "modified",
+      "baselineSha256": "6a75e7f8c656cfd0a566cd72cfe2e2f22f2361c9372fcc0abbc78c3c3a69941c",
+      "sourceSha256": "35386f0658e1bfb64a1958625a7b9f1cb5bd9e1d5ac90b19d7f69961afd88907"
+    }
+  ],
+  "modified": 11,
+  "new": 3
+}

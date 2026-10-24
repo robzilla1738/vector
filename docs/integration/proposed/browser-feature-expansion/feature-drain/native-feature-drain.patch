@@ -1,0 +1,752 @@
+--- a/chrome/browser/aux/AuxSelectedStateHome.cc
++++ b/chrome/browser/aux/AuxSelectedStateHome.cc
+@@ -402,7 +402,10 @@
+   state.browser_shutdown_phase = expected;
+ }
+ }
+-void BeginNativeBrowserShutdown() { AdvanceNativeBrowserShutdown(1); }
++void BeginNativeBrowserShutdown() {
++  aux::features::CloseNativeFeatureIoAdmission();
++  AdvanceNativeBrowserShutdown(1);
++}
+ void ObserveNativeBrowserProfileTeardown() { AdvanceNativeBrowserShutdown(2); }
+ void ObserveNativeBrowserThreadsDestroyed() { AdvanceNativeBrowserShutdown(3); }
+ void ObserveNativeBrowserProcessDestroyed() { AdvanceNativeBrowserShutdown(4); }
+@@ -412,12 +415,14 @@
+   auto& state = CurrentState();
+   if (getpid() != state.process) return {.wrong_process = true};
+   std::lock_guard<std::mutex> lock(state.mutex);
++  // Later content/service/file writers are not proven drained.
+   return {false, state.browser_shutdown_phase != 0,
+           state.browser_shutdown_uncertain, state.browser_shutdown_phase,
+           state.browser_generation, state.active_reads, state.monitor_running,
+-          false}; // Later content/service/file writers are not proven drained.
++          false, aux::features::InspectNativeFeatureWrites()};
+ }
+ SelectedStateHomeObservation CloseNativeSelectedStateHome() {
++  aux::features::CloseNativeFeatureIoAdmission();
+   auto& state = CurrentState();
+   if (getpid() != state.process) return {SelectedStateHomeRoute::wrongProcess};
+   std::shared_ptr<SelectedNativeHome> owner;
+--- a/chrome/browser/aux/AuxSelectedStateHome.h
++++ b/chrome/browser/aux/AuxSelectedStateHome.h
+@@ -1,5 +1,6 @@
+ #pragma once
+ #include "AuxOwnedNativePeerChild.h"
++#include "chrome/browser/aux/feature_store/feature_write_participant.h"
+ #include "base/files/file_path.h"
+ #include "base/command_line.h"
+ #include <memory>
+@@ -19,6 +20,7 @@
+   uint64_t active_authority_reads = 0;
+   bool monitor_running = false;
+   bool whole_writer_drain_proven = false;
++  aux::features::NativeFeatureWriteObservation feature_writes;
+ };
+ void BeginNativeBrowserShutdown();
+ void ObserveNativeBrowserProfileTeardown();
+--- a/chrome/browser/aux/feature_store/feature_profile_store.cc
++++ b/chrome/browser/aux/feature_store/feature_profile_store.cc
+@@ -1,5 +1,6 @@
+ // Copyright 2026 Aux Authors. BSD-style license: see //LICENSE.
+ #include "chrome/browser/aux/feature_store/feature_profile_store.h"
++#include "chrome/browser/aux/feature_store/feature_write_participant.h"
+ #include <array>
+ #include <atomic>
+ #include <cerrno>
+@@ -130,17 +131,17 @@
+   if (!value || !ValidEnvelope(*value, lease->profile_id)) return {};
+   return {.value = std::move(value)};
+ }
+-bool Write(const base::FilePath& path, const std::shared_ptr<Lease>& lease,
++NativeFeatureIoOutcome Write(const base::FilePath& path, const std::shared_ptr<Lease>& lease,
+            bool expected_missing, const base::DictValue& expected,
+-           const std::string& bytes) {
++           const std::string& bytes, const std::shared_ptr<NativeFeatureIoTicket>& ticket) {
+   const auto before = Read(path, lease);
+   if (before.missing != expected_missing ||
+       (!expected_missing && (!before.value || *before.value != expected)) ||
+-      !ValidPath(path, *lease)) return false;
++      !ValidPath(path, *lease) || ticket->IsCancelled()) return NativeFeatureIoOutcome::kRefused;
+   // Actual completed atomic replacement, not a queued preference flush. The
+   // broader native custody/race guarantees remain separate integration gates.
+   return base::ImportantFileWriter::WriteFileAtomically(path, bytes) &&
+-      ValidPath(path, *lease);
++      ValidPath(path, *lease) ? NativeFeatureIoOutcome::kCompleted : NativeFeatureIoOutcome::kUncertain;
+ }
+ class Store final : public base::SupportsUserData::Data {
+  public:
+@@ -152,7 +153,7 @@
+              base::TaskShutdownBehavior::BLOCK_SHUTDOWN})) {}
+   ~Store() override { if (lease_) lease_->revoked.store(true); }
+   void Initialize() {
+-    if (slot_->pending || (ready_ && Current())) return;
++    if (IsNativeFeatureIoAdmissionClosed() || slot_->pending || (ready_ && Current())) return;
+     ready_ = false;
+     if (lease_) lease_->revoked.store(true);
+     if (!Regular(profile_.get()) || aux::IsProfileCookieRestorePending(profile_.get())) return;
+@@ -167,9 +168,16 @@
+     if (!base::Uuid::ParseLowercase(lease->profile_id).is_valid() || lease->epoch.empty()) return;
+     if (slot_->lease) slot_->lease->revoked.store(true);
+     slot_->lease = lease_ = std::move(lease);
++    auto ticket = BeginNativeFeatureIo(path_.DirName(), NativeFeatureIoKind::kFeatureState);
++    if (!ticket) return;
+     slot_->pending = true;
+     const bool posted = runner_->PostTaskAndReplyWithResult(FROM_HERE,
+-        base::BindOnce(&Read, path_, lease_),
++        base::BindOnce([](base::FilePath path, std::shared_ptr<Lease> lease,
++                         std::shared_ptr<NativeFeatureIoTicket> ticket) {
++          auto result = ticket->IsCancelled() ? ReadResult{} : Read(path, lease);
++          ticket->Settle(result.value || result.missing ? NativeFeatureIoOutcome::kCompleted : NativeFeatureIoOutcome::kRefused);
++          return result;
++        }, path_, lease_, ticket),
+         base::BindOnce([](std::shared_ptr<Slot> slot, base::WeakPtr<Store> owner,
+                           ReadResult result) {
+           slot->pending = false;
+@@ -178,6 +186,7 @@
+           slot->settled.Notify();
+         }, slot_, weak_.GetWeakPtr()));
+     if (!posted) {
++      ticket->Settle(NativeFeatureIoOutcome::kRefused);
+       auto slot = slot_;
+       slot->pending = false; slot->ready.Notify(); slot->settled.Notify();
+     }
+@@ -205,10 +214,19 @@
+         !base::JSONWriter::Write(next, &bytes) || bytes.size() > kMaximumBytes) {
+       std::move(done).Run(false); return;
+     }
++    auto ticket = BeginNativeFeatureIo(path_.DirName(), NativeFeatureIoKind::kFeatureState);
++    if (!ticket) { std::move(done).Run(false); return; }
+     slot_->pending = true;
+     auto callbacks = base::SplitOnceCallback(std::move(done));
+     const bool posted = runner_->PostTaskAndReplyWithResult(FROM_HERE,
+-        base::BindOnce(&Write, path_, lease_, missing_, snapshot_.Clone(), std::move(bytes)),
++        base::BindOnce([](base::FilePath path, std::shared_ptr<Lease> lease, bool missing,
++                         base::DictValue expected, std::string bytes,
++                         std::shared_ptr<NativeFeatureIoTicket> ticket) {
++          if (ticket->IsCancelled()) { ticket->Settle(NativeFeatureIoOutcome::kRefused); return false; }
++          const auto outcome = Write(path, lease, missing, expected, bytes, ticket);
++          ticket->Settle(outcome);
++          return outcome == NativeFeatureIoOutcome::kCompleted;
++        }, path_, lease_, missing_, snapshot_.Clone(), std::move(bytes), ticket),
+         base::BindOnce([](std::shared_ptr<Slot> slot, base::WeakPtr<Store> owner,
+                           base::DictValue next, base::OnceCallback<void(bool)> done,
+                           bool written) {
+@@ -220,6 +238,7 @@
+           slot->settled.Notify();
+         }, slot_, weak_.GetWeakPtr(), std::move(next), std::move(callbacks.first)));
+     if (!posted) {
++      ticket->Settle(NativeFeatureIoOutcome::kRefused);
+       slot_->pending = false; ready_ = false;
+       auto slot = slot_;
+       std::move(callbacks.second).Run(false);
+@@ -228,7 +247,7 @@
+   }
+  private:
+   bool Current() const {
+-    if (!Regular(profile_.get()) || !lease_ || lease_ != slot_->lease ||
++    if (IsNativeFeatureIoAdmissionClosed() || !Regular(profile_.get()) || !lease_ || lease_ != slot_->lease ||
+         lease_->revoked.load() || !lease_->roots || !lease_->roots->Revalidate() ||
+         aux::IsProfileCookieRestorePending(profile_.get()) ||
+         aux::GetProfileId(profile_.get()) != lease_->profile_id ||
+@@ -271,7 +290,8 @@
+   DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
+   if (!Regular(p)) return false;
+   const auto found = Slots().find(p->GetPath());
+-  return found != Slots().end() && found->second->pending;
++  return IsNativeFeatureIoPendingForProfilePath(p->GetPath()) ||
++      (found != Slots().end() && found->second->pending);
+ }
+ base::CallbackListSubscription ObserveSettled(Profile* p, base::RepeatingClosure callback) {
+   DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
+--- /dev/null
++++ b/chrome/browser/aux/feature_store/feature_write_participant.cc
+@@ -0,0 +1,147 @@
++// Copyright 2026 The Aux Authors. BSD-style license: see //LICENSE.
++#include "chrome/browser/aux/feature_store/feature_write_participant.h"
++#include <limits>
++#include <map>
++#include <mutex>
++#include <utility>
++#include <vector>
++#include <unistd.h>
++#include "base/functional/bind.h"
++#include "base/location.h"
++#include "base/no_destructor.h"
++#include "base/task/sequenced_task_runner.h"
++namespace aux::features {
++namespace {
++struct Record {
++  base::FilePath profile_path;
++  NativeFeatureIoKind kind;
++  std::weak_ptr<std::atomic_bool> authorization;
++  bool abandoned = false;
++};
++struct Waiter {
++  scoped_refptr<base::SequencedTaskRunner> runner;
++  base::OnceCallback<void(NativeFeatureWriteObservation)> callback;
++};
++struct Registry {
++  const pid_t process = getpid();
++  std::mutex mutex;
++  uint64_t next_id = 1;
++  NativeFeatureWriteObservation observation;
++  std::map<uint64_t, Record> records;
++  std::vector<Waiter> waiters;
++};
++Registry& State() { static base::NoDestructor<Registry> state; return *state; }
++void ReportSettled() {
++  auto& state = State();
++  if (getpid() != state.process) return;
++  std::vector<Waiter> waiters;
++  NativeFeatureWriteObservation observation;
++  {
++    std::lock_guard<std::mutex> guard(state.mutex);
++    if (!state.observation.admission_closed || state.observation.pending) return;
++    observation = state.observation;
++    waiters = std::exchange(state.waiters, {});
++  }
++  for (auto& waiter : waiters)
++    waiter.runner->PostTask(FROM_HERE,
++        base::BindOnce(std::move(waiter.callback), observation));
++}
++}  // namespace
++NativeFeatureIoTicket::NativeFeatureIoTicket(uint64_t id) : id_(id) {}
++NativeFeatureIoTicket::~NativeFeatureIoTicket() {
++  if (settled_.load()) return;
++  auto& state = State();
++  if (getpid() != state.process) return;
++  std::lock_guard<std::mutex> guard(state.mutex);
++  const auto found = state.records.find(id_);
++  if (found != state.records.end() && !found->second.abandoned) {
++    found->second.abandoned = true;
++    ++state.observation.abandoned;
++    // Keep pending: losing a completion is not evidence that I/O stopped.
++  }
++}
++bool NativeFeatureIoTicket::IsCancelled() const {
++  return settled_.load() || IsNativeFeatureIoAdmissionClosed();
++}
++void NativeFeatureIoTicket::Settle(NativeFeatureIoOutcome outcome) {
++  if (settled_.exchange(true)) return;
++  auto& state = State();
++  if (getpid() != state.process) return;
++  {
++    std::lock_guard<std::mutex> guard(state.mutex);
++    const auto found = state.records.find(id_);
++    if (found == state.records.end()) { ++state.observation.uncertain; return; }
++    state.records.erase(found);
++    --state.observation.pending;
++    ++state.observation.settled;
++    if (outcome == NativeFeatureIoOutcome::kRefused) ++state.observation.refused;
++    if (outcome == NativeFeatureIoOutcome::kUncertain) ++state.observation.uncertain;
++  }
++  ReportSettled();
++}
++std::shared_ptr<NativeFeatureIoTicket> BeginNativeFeatureIo(
++    const base::FilePath& native_profile_path, NativeFeatureIoKind kind,
++    std::shared_ptr<std::atomic_bool> write_authorization) {
++  auto& state = State();
++  if (getpid() != state.process || native_profile_path.empty() || !native_profile_path.IsAbsolute()) return {};
++  std::lock_guard<std::mutex> guard(state.mutex);
++  if (state.observation.admission_closed || state.next_id == std::numeric_limits<uint64_t>::max()) return {};
++  // A replacement receiver cannot overtake an older snapshot task for the
++  // same native profile, even after the old Profile/KeyedService disappears.
++  if (kind == NativeFeatureIoKind::kOrganization || kind == NativeFeatureIoKind::kFeatureState)
++    for (const auto& [id, record] : state.records)
++      if (record.profile_path == native_profile_path && record.kind == kind) return {};
++  const uint64_t id = state.next_id++;
++  state.records.emplace(id, Record{native_profile_path, kind, write_authorization});
++  ++state.observation.pending;
++  return std::shared_ptr<NativeFeatureIoTicket>(new NativeFeatureIoTicket(id));
++}
++void CloseNativeFeatureIoAdmission() {
++  auto& state = State();
++  if (getpid() != state.process) return;
++  {
++    std::lock_guard<std::mutex> guard(state.mutex);
++    state.observation.admission_closed = true;
++    for (const auto& [id, record] : state.records)
++      if (auto authorization = record.authorization.lock()) authorization->store(false, std::memory_order_release);
++  }
++  ReportSettled();
++}
++bool IsNativeFeatureIoAdmissionClosed() {
++  auto& state = State();
++  if (getpid() != state.process) return true;
++  std::lock_guard<std::mutex> guard(state.mutex);
++  return state.observation.admission_closed;
++}
++bool IsNativeFeatureIoPendingForProfilePath(const base::FilePath& native_profile_path) {
++  auto& state = State();
++  if (getpid() != state.process) return true;
++  std::lock_guard<std::mutex> guard(state.mutex);
++  for (const auto& [id, record] : state.records)
++    if (record.profile_path == native_profile_path) return true;
++  return false;
++}
++NativeFeatureWriteObservation InspectNativeFeatureWrites() {
++  auto& state = State();
++  if (getpid() != state.process) return {.wrong_process = true};
++  std::lock_guard<std::mutex> guard(state.mutex);
++  return state.observation;
++}
++void CloseNativeFeatureWritesForMigration(
++    base::OnceCallback<void(NativeFeatureWriteObservation)> done) {
++  auto runner = base::SequencedTaskRunner::GetCurrentDefault();
++  auto& state = State();
++  if (getpid() != state.process) {
++    runner->PostTask(FROM_HERE, base::BindOnce(std::move(done), NativeFeatureWriteObservation{.wrong_process = true}));
++    return;
++  }
++  {
++    std::lock_guard<std::mutex> guard(state.mutex);
++    state.observation.admission_closed = true;
++    for (const auto& [id, record] : state.records)
++      if (auto authorization = record.authorization.lock()) authorization->store(false, std::memory_order_release);
++    state.waiters.push_back({std::move(runner), std::move(done)});
++  }
++  ReportSettled();
++}
++}  // namespace aux::features
+--- /dev/null
++++ b/chrome/browser/aux/feature_store/feature_write_participant.h
+@@ -0,0 +1,54 @@
++// Copyright 2026 The Aux Authors. BSD-style license: see //LICENSE.
++#ifndef CHROME_BROWSER_AUX_FEATURE_STORE_FEATURE_WRITE_PARTICIPANT_H_
++#define CHROME_BROWSER_AUX_FEATURE_STORE_FEATURE_WRITE_PARTICIPANT_H_
++#include <atomic>
++#include <cstdint>
++#include <memory>
++#include "base/files/file_path.h"
++#include "base/functional/callback.h"
++namespace aux::features {
++enum class NativeFeatureIoKind { kOrganization, kFeatureState, kDownloadTransaction, kChosenFiles };
++enum class NativeFeatureIoOutcome { kCompleted, kRefused, kUncertain };
++// These are observations of registered feature I/O only, never authority,
++// credential custody, durability, or a whole-browser drain certificate.
++struct NativeFeatureWriteObservation {
++  bool wrong_process = false;
++  bool admission_closed = false;
++  uint64_t pending = 0;
++  uint64_t settled = 0;
++  uint64_t refused = 0;
++  uint64_t uncertain = 0;
++  uint64_t abandoned = 0;
++};
++class NativeFeatureIoTicket final {
++ public:
++  ~NativeFeatureIoTicket();
++  NativeFeatureIoTicket(const NativeFeatureIoTicket&) = delete;
++  NativeFeatureIoTicket& operator=(const NativeFeatureIoTicket&) = delete;
++  bool IsCancelled() const;
++  // Call only from the actual operation completion or a definite pre-submit
++  // refusal. Dropped receivers/callbacks/destruction are not settlement.
++  void Settle(NativeFeatureIoOutcome outcome);
++ private:
++  explicit NativeFeatureIoTicket(uint64_t id);
++  const uint64_t id_;
++  std::atomic_bool settled_{false};
++  friend std::shared_ptr<NativeFeatureIoTicket> BeginNativeFeatureIo(
++      const base::FilePath&, NativeFeatureIoKind, std::shared_ptr<std::atomic_bool>);
++};
++// The path is the actual native Profile::GetPath(), not renderer input. This
++// registry never opens that path or substitutes for an existing write owner.
++std::shared_ptr<NativeFeatureIoTicket> BeginNativeFeatureIo(
++    const base::FilePath& native_profile_path, NativeFeatureIoKind kind,
++    std::shared_ptr<std::atomic_bool> write_authorization = {});
++bool IsNativeFeatureIoAdmissionClosed();
++void CloseNativeFeatureIoAdmission();
++bool IsNativeFeatureIoPendingForProfilePath(const base::FilePath& native_profile_path);
++NativeFeatureWriteObservation InspectNativeFeatureWrites();
++// Thread safe, irreversible in this process. Cancellation requests do not
++// erase outstanding tickets. Replies are posted to the invoking sequence only
++// once genuine completions leave zero pending; uncertainty remains explicit.
++void CloseNativeFeatureWritesForMigration(
++    base::OnceCallback<void(NativeFeatureWriteObservation)> done);
++}  // namespace aux::features
++#endif
+--- /dev/null
++++ b/chrome/browser/aux/feature_store/feature_write_participant_unittest.cc
+@@ -0,0 +1,43 @@
++// Copyright 2026 The Aux Authors. BSD-style license: see //LICENSE.
++#include "chrome/browser/aux/feature_store/feature_write_participant.h"
++#include "base/functional/bind.h"
++#include "base/test/task_environment.h"
++#include "testing/gtest/include/gtest/gtest.h"
++namespace aux::features {
++// Admission closure is intentionally process-wide and irreversible. Keep this
++// scenario together; no reset API is exposed to production or test callers.
++TEST(NativeFeatureWriteParticipantTest, LateSettlementSurvivesReceiverAndRetainsUncertainty) {
++  base::test::TaskEnvironment tasks;
++  const base::FilePath profile(FILE_PATH_LITERAL("/synthetic/aux-profile"));
++  auto authorization = std::make_shared<std::atomic_bool>(true);
++  auto first = BeginNativeFeatureIo(profile, NativeFeatureIoKind::kFeatureState);
++  auto receiver = BeginNativeFeatureIo(profile, NativeFeatureIoKind::kDownloadTransaction, authorization);
++  ASSERT_TRUE(first); ASSERT_TRUE(receiver);
++  EXPECT_FALSE(BeginNativeFeatureIo(profile, NativeFeatureIoKind::kFeatureState));
++  auto worker = receiver;
++  receiver.reset();
++  EXPECT_EQ(InspectNativeFeatureWrites().pending, 2u);
++  bool replied = false;
++  NativeFeatureWriteObservation reply;
++  CloseNativeFeatureWritesForMigration(base::BindOnce(
++      [](bool* replied, NativeFeatureWriteObservation* reply, NativeFeatureWriteObservation value) {
++        *replied = true; *reply = value;
++      }, &replied, &reply));
++  EXPECT_FALSE(authorization->load());
++  EXPECT_TRUE(worker->IsCancelled());
++  EXPECT_FALSE(BeginNativeFeatureIo(profile, NativeFeatureIoKind::kOrganization));
++  tasks.RunUntilIdle(); EXPECT_FALSE(replied);
++  first->Settle(NativeFeatureIoOutcome::kRefused);
++  EXPECT_TRUE(IsNativeFeatureIoPendingForProfilePath(profile));
++  tasks.RunUntilIdle(); EXPECT_FALSE(replied);
++  worker->Settle(NativeFeatureIoOutcome::kUncertain);
++  tasks.RunUntilIdle();
++  EXPECT_TRUE(replied);
++  EXPECT_TRUE(reply.admission_closed);
++  EXPECT_EQ(reply.pending, 0u);
++  EXPECT_EQ(reply.uncertain, 1u);
++  EXPECT_EQ(reply.refused, 1u);
++  EXPECT_EQ(reply.settled, 2u);
++  EXPECT_FALSE(IsNativeFeatureIoPendingForProfilePath(profile));
++}
++}  // namespace aux::features
+--- a/chrome/browser/aux/organization/organization_profile_service.cc
++++ b/chrome/browser/aux/organization/organization_profile_service.cc
+@@ -21,6 +21,7 @@
+ #include "chrome/browser/aux/AuxSelectedStateHome.h"
+ #include "chrome/browser/aux/organization/organization_codec.h"
+ #include "chrome/browser/aux/profile_identity.h"
++#include "chrome/browser/aux/feature_store/feature_write_participant.h"
+ #include "chrome/browser/profiles/profile.h"
+ #include "chrome/browser/profiles/profile_selections.h"
+ #include "chrome/browser/ui/tabs/aux_pinned_tab_entries.h"
+@@ -58,8 +59,9 @@
+ // Namespace custody beyond these admitted roots remains part of the existing
+ // protected-startup implementation; these checks do not certify whole custody.
+ ReadResult ReadSnapshot(const base::FilePath& path,
+-                        const std::shared_ptr<NativeWriteLifetime>& lifetime) {
+-  if (lifetime->revoked.load() || !lifetime->roots ||
++                        const std::shared_ptr<NativeWriteLifetime>& lifetime,
++                        const std::shared_ptr<aux::features::NativeFeatureIoTicket>& ticket) {
++  if (ticket->IsCancelled() || lifetime->revoked.load() || !lifetime->roots ||
+       !lifetime->roots->Revalidate() || !PathUnderActualRoots(path, *lifetime))
+     return {.error = "Organization storage authority unavailable"};
+   if (base::IsLink(path))
+@@ -83,13 +85,14 @@
+                            const std::shared_ptr<NativeWriteLifetime>& lifetime,
+                            const std::string& profile_id,
+                            uint64_t expected_revision,
+-                           const std::string& serialized) {
++                           const std::string& serialized,
++                           const std::shared_ptr<aux::features::NativeFeatureIoTicket>& ticket) {
+   // The caller retains lifetime and the real root descriptors through this
+   // actual blocking write, including after the UI receiver is destroyed.
+-  if (lifetime->revoked.load() || !lifetime->roots ||
++  if (ticket->IsCancelled() || lifetime->revoked.load() || !lifetime->roots ||
+       !lifetime->roots->Revalidate())
+     return WriteOutcome::kRefused;
+-  auto previous = ReadSnapshot(path, lifetime);
++  auto previous = ReadSnapshot(path, lifetime, ticket);
+   if (!previous.error.empty())
+     return WriteOutcome::kRefused;
+   if (previous.value) {
+@@ -99,7 +102,7 @@
+   } else if (expected_revision != 0) {
+     return WriteOutcome::kRefused;
+   }
+-  if (lifetime->revoked.load() || !lifetime->roots->Revalidate())
++  if (ticket->IsCancelled() || lifetime->revoked.load() || !lifetime->roots->Revalidate())
+     return WriteOutcome::kRefused;
+   // This bool is the actual completed atomic write result, not a queued-pref
+   // callback. A failure is uncertain because effects may have reached storage.
+@@ -132,7 +135,7 @@
+   bool IsCurrentOwner(std::string_view profile_id,
+                       std::string_view generation) const override {
+     DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
+-    if (!profile_ || lifetime_->revoked.load() || profile_id != profile_id_ ||
++    if (aux::features::IsNativeFeatureIoAdmissionClosed() || !profile_ || lifetime_->revoked.load() || profile_id != profile_id_ ||
+         generation != generation_ || !profile_->IsRegularProfile() ||
+         profile_->IsOffTheRecord() || generation_.empty() ||
+         aux::GetProfileId(profile_) != profile_id_ ||
+@@ -156,22 +159,28 @@
+                              "Organization storage admission unavailable");
+       return;
+     }
++    auto ticket = aux::features::BeginNativeFeatureIo(path_.DirName(), aux::features::NativeFeatureIoKind::kOrganization);
++    if (!ticket) { std::move(callback).Run(std::nullopt, false, "Organization I/O admission closed"); return; }
+     lifetime_->pending.fetch_add(1);
+     auto completion = std::make_shared<Loaded>(std::move(callback));
+     const bool posted = runner_->PostTaskAndReplyWithResult(
+         FROM_HERE,
+         base::BindOnce(
+-            [](base::FilePath path, std::shared_ptr<NativeWriteLifetime> lifetime) {
+-              auto result = ReadSnapshot(path, lifetime);
++            [](base::FilePath path, std::shared_ptr<NativeWriteLifetime> lifetime,
++               std::shared_ptr<aux::features::NativeFeatureIoTicket> ticket) {
++              auto result = ReadSnapshot(path, lifetime, ticket);
++              ticket->Settle(result.error.empty() ? aux::features::NativeFeatureIoOutcome::kCompleted
++                                                 : aux::features::NativeFeatureIoOutcome::kRefused);
+               lifetime->pending.fetch_sub(1);
+               return result;
+-            }, path_, lifetime_),
++            }, path_, lifetime_, ticket),
+         base::BindOnce(
+             [](std::shared_ptr<Loaded> done, ReadResult result) {
+               std::move(*done).Run(std::move(result.value), result.missing,
+                                    std::move(result.error));
+             }, completion));
+     if (!posted) {
++      ticket->Settle(aux::features::NativeFeatureIoOutcome::kRefused);
+       lifetime_->pending.fetch_sub(1);
+       std::move(*completion).Run(std::nullopt, false,
+                                  "Organization read could not be queued");
+@@ -193,6 +202,8 @@
+       std::move(done).Run(std::move(receipt));
+       return;
+     }
++    auto ticket = aux::features::BeginNativeFeatureIo(path_.DirName(), aux::features::NativeFeatureIoKind::kOrganization);
++    if (!ticket) { std::move(done).Run(std::move(receipt)); return; }
+     lifetime_->pending.fetch_add(1);
+     auto completion = std::make_shared<base::OnceCallback<void(WriteReceipt)>>(std::move(done));
+     const auto refused = receipt;
+@@ -201,13 +212,16 @@
+         base::BindOnce(
+             [](base::FilePath path, std::shared_ptr<NativeWriteLifetime> lifetime,
+                std::string profile_id, uint64_t expected_revision,
+-               std::string bytes) {
++               std::string bytes, std::shared_ptr<aux::features::NativeFeatureIoTicket> ticket) {
+               auto outcome = WriteSnapshot(path, lifetime, profile_id,
+-                                           expected_revision, bytes);
++                                           expected_revision, bytes, ticket);
++              ticket->Settle(outcome == WriteOutcome::kCommitted ? aux::features::NativeFeatureIoOutcome::kCompleted
++                  : outcome == WriteOutcome::kRefused ? aux::features::NativeFeatureIoOutcome::kRefused
++                                                     : aux::features::NativeFeatureIoOutcome::kUncertain);
+               lifetime->pending.fetch_sub(1);
+               return outcome;
+             }, path_, lifetime_, profile_id, expected_revision,
+-            std::move(serialized)),
++            std::move(serialized), ticket),
+         base::BindOnce(
+             [](WriteReceipt receipt, std::shared_ptr<base::OnceCallback<void(WriteReceipt)>> reply,
+                WriteOutcome outcome) {
+@@ -215,6 +229,7 @@
+               std::move(*reply).Run(std::move(receipt));
+             }, std::move(receipt), completion));
+     if (!posted) {
++      ticket->Settle(aux::features::NativeFeatureIoOutcome::kRefused);
+       lifetime_->pending.fetch_sub(1);
+       std::move(*completion).Run(refused);
+     }
+@@ -402,6 +417,7 @@
+ }
+ bool IsProfileOrganizationWritePending(Profile* profile) {
+   auto* service = OrganizationProfileServiceFactory::GetForProfileIfExists(profile);
+-  return service && service->HasPendingWrite();
++  return (profile && aux::features::IsNativeFeatureIoPendingForProfilePath(profile->GetPath())) ||
++         (service && service->HasPendingWrite());
+ }
+ }  // namespace aux::organization
+--- a/chrome/browser/ui/aux_chosen_files_service.cc
++++ b/chrome/browser/ui/aux_chosen_files_service.cc
+@@ -27,10 +27,12 @@
+   base::DictValue files;
+   base::RepeatingClosureList changed;
+   std::shared_ptr<FileOperationLifetime> lifetime;
+-  void SetPending(bool value) {
+-    if (pending == value) return;
++  bool SetPending(bool value) {
++    if (pending == value) return true;
++    if (value && !lifetime->Begin()) return false;
+     pending = value;
+-    if (value) lifetime->Begin(); else lifetime->End();
++    if (!value) lifetime->End();
++    return true;
+   }
+   uint64_t epoch = 0;
+   bool pending = false, ready = true;
+@@ -126,7 +128,7 @@
+     if (paths.size() == 50) break;
+   }
+   if (paths.empty()) return;
+-  state->SetPending(true);
++  if (!state->SetPending(true)) return;
+   const uint64_t epoch = state->epoch;
+   base::ThreadPool::PostTaskAndReplyWithResult(FROM_HERE, {base::MayBlock()},
+     base::BindOnce(&FingerprintSelection, std::move(paths)),
+--- a/chrome/browser/ui/aux_feature_profile_owners.cc
++++ b/chrome/browser/ui/aux_feature_profile_owners.cc
+@@ -1,5 +1,6 @@
+ // Copyright 2026 The Aux Authors. BSD-style license: see //LICENSE.
+ #include "chrome/browser/ui/aux_feature_lifecycle.h"
++#include "chrome/browser/aux/feature_store/feature_write_participant.h"
+ #include <utility>
+ #include "base/functional/bind.h"
+ #include "base/memory/weak_ptr.h"
+@@ -132,7 +133,7 @@
+       aux::IsProfileCookieRestorePending(profile)) return false;
+   const auto state = aux::peer::InspectNativeBrowserShutdown();
+   auto roots = aux::peer::CaptureActualChromiumBrowserRoots();
+-  return !state.wrong_process && !state.admission_closed &&
++  return !aux::features::IsNativeFeatureIoAdmissionClosed() && !state.wrong_process && !state.admission_closed &&
+       !state.sequence_uncertain && state.admitted_generation != 0 &&
+       roots && roots->Revalidate();
+ }
+--- a/chrome/browser/ui/aux_file_operation_lifetime.cc
++++ b/chrome/browser/ui/aux_file_operation_lifetime.cc
+@@ -22,11 +22,17 @@
+   // Losing an owner is not proof that its worker or durable write finished.
+ }
+ void FileOperationLifetime::Revoke() { authorized_->store(false, std::memory_order_release); }
+-void FileOperationLifetime::Begin() {
+-  CHECK(!pending_); pending_ = true; ++ForPath(path_).pending;
++bool FileOperationLifetime::Begin() {
++  CHECK(!pending_);
++  ticket_ = aux::features::BeginNativeFeatureIo(path_, aux::features::NativeFeatureIoKind::kDownloadTransaction, authorized_);
++  if (!ticket_) { Revoke(); return false; }
++  pending_ = true; ++ForPath(path_).pending;
++  return true;
+ }
+ void FileOperationLifetime::End() {
+   CHECK(pending_); pending_ = false;
++  ticket_->Settle(aux::features::NativeFeatureIoOutcome::kCompleted);
++  ticket_.reset();
+   auto& fence = ForPath(path_); CHECK_GT(fence.pending, 0u);
+   if (--fence.pending == 0) fence.settled.Notify();
+ }
+--- a/chrome/browser/ui/aux_file_operation_lifetime.h
++++ b/chrome/browser/ui/aux_file_operation_lifetime.h
+@@ -5,6 +5,7 @@
+ #include <memory>
+ #include "base/callback_list.h"
+ #include "base/files/file_path.h"
++#include "chrome/browser/aux/feature_store/feature_write_participant.h"
+ namespace aux::files {
+ // UI-owned pending accounting outlives Profile user data. Workers receive only
+ // the immutable shared revocation flag, never a Profile or UI callback.
+@@ -13,13 +14,14 @@
+   explicit FileOperationLifetime(base::FilePath actual_profile_path);
+   ~FileOperationLifetime();
+   void Revoke();
+-  void Begin();
++  bool Begin();
+   void End();
+   std::shared_ptr<const std::atomic_bool> authorization() const { return authorized_; }
+  private:
+   base::FilePath path_;
+   std::shared_ptr<std::atomic_bool> authorized_;
+   bool pending_ = false;
++  std::shared_ptr<aux::features::NativeFeatureIoTicket> ticket_;
+ };
+ bool HasFileOperationsPending(const base::FilePath& actual_profile_path);
+ base::CallbackListSubscription ObserveFileOperationsSettled(
+--- a/chrome/browser/ui/aux_owned_browser_quiesce.cc
++++ b/chrome/browser/ui/aux_owned_browser_quiesce.cc
+@@ -24,6 +24,7 @@
+   bool profile_manager_unavailable = false;
+   bool helper_pending = false;
+   bool session_pending = false;
++  bool feature_pending = false;
+   bool helper_observed = false;
+   std::optional<SessionWriterParticipantObservation> sessions;
+   std::vector<QuiesceCallback> waiters;
+@@ -37,7 +38,7 @@
+ void ReportAvailableObservations() {
+   auto& state = State();
+   if (state.participant_submission_pending || state.helper_pending ||
+-      state.session_pending) {
++      state.session_pending || state.feature_pending) {
+     return;
+   }
+   auto waiters = std::exchange(state.waiters, {});
+@@ -69,6 +70,8 @@
+   result.profile_manager_unavailable = state.profile_manager_unavailable;
+   result.helper_observation_pending = state.helper_pending;
+   result.session_observation_pending = state.session_pending;
++  result.feature_observation_pending = state.feature_pending;
++  result.feature_writes = features::InspectNativeFeatureWrites();
+   result.async_profile_creation = InspectAsyncProfileCreationAdmission();
+   result.extension_worker_starts = extensions::ServiceWorkerTaskQueue::
+       InspectStartAdmissionForMigration();
+@@ -99,6 +102,14 @@
+   state.participant_submission_pending = true;
+   state.helper_pending = true;
+   state.session_pending = true;
++  state.feature_pending = true;
++  // Close feature admission before helpers/native authority can start closing.
++  // Tickets persist past Profile/receiver destruction and settle from actual I/O.
++  features::CloseNativeFeatureWritesForMigration(base::BindOnce(
++      [](features::NativeFeatureWriteObservation) {
++        State().feature_pending = false;
++        ReportAvailableObservations();
++      }));
+   content::aux_migration::CloseRendererNavigationAdmissionForMigration();
+   content::aux_migration::CloseServiceWorkerStartAdmissionForMigration();
+   CloseAsyncProfileCreationAdmission();
+--- a/chrome/browser/ui/aux_owned_browser_quiesce.h
++++ b/chrome/browser/ui/aux_owned_browser_quiesce.h
+@@ -5,6 +5,7 @@
+ #include <optional>
+ 
+ #include "base/functional/callback.h"
++#include "chrome/browser/aux/feature_store/feature_write_participant.h"
+ #include "chrome/browser/aux/owned_direct_helper_quiesce.h"
+ #include "chrome/browser/profiles/aux_async_profile_creation_admission.h"
+ #include "chrome/browser/ui/aux_session_writer_participant.h"
+@@ -21,6 +22,8 @@
+   bool profile_manager_unavailable = false;
+   bool helper_observation_pending = false;
+   bool session_observation_pending = false;
++  bool feature_observation_pending = false;
++  features::NativeFeatureWriteObservation feature_writes;
+   AsyncProfileCreationAdmissionSnapshot async_profile_creation;
+   extensions::ServiceWorkerTaskQueue::ProcessStartAdmissionSnapshot
+       extension_worker_starts;
+--- a/chrome/browser/ui/aux_recent_files_service.cc
++++ b/chrome/browser/ui/aux_recent_files_service.cc
+@@ -62,10 +62,12 @@
+   base::DictValue receipts;
+   std::map<std::string, Candidate> candidates;
+   std::shared_ptr<FileOperationLifetime> lifetime;
+-  void SetPending(bool value) {
+-    if (pending == value) return;
++  bool SetPending(bool value) {
++    if (pending == value) return true;
++    if (value && !lifetime->Begin()) return false;
+     pending = value;
+-    if (value) lifetime->Begin(); else lifetime->End();
++    if (!value) lifetime->End();
++    return true;
+   }
+   uint64_t owner_epoch = 0;
+   bool pending = false;
+@@ -290,7 +292,7 @@
+     if (phase && (*phase == "planned" || *phase == "undo-planned")) recovery->ids.push_back(id);
+   }
+   if (recovery->ids.empty()) return;
+-  state->SetPending(true); recovery->Start();
++  if (state->SetPending(true)) recovery->Start();
+ }
+ }  // namespace
+ void SetWriteOwner(Profile* profile, base::RepeatingCallback<bool()> current,
+@@ -396,7 +398,8 @@
+   request->candidate = std::move(found->second); state->candidates.erase(found);
+   request->original = request->candidate.path.BaseName().AsUTF8Unsafe();
+   request->stem = stem; request->receipt_id = base::Uuid::GenerateRandomV4().AsLowercaseString();
+-  request->reply = std::move(reply); state->SetPending(true); request->Start();
++  if (!state->SetPending(true)) { std::move(reply).Run(Error("File operations are closing; nothing was renamed.")); return; }
++  request->reply = std::move(reply); request->Start();
+ }
+ void UndoDownloadRename(Profile* profile, const std::string& id, Reply reply) {
+   auto state = Get(profile, false);
+@@ -419,7 +422,8 @@
+   auto request = std::make_shared<Rename>(); request->state = state;
+   request->candidate = Candidate{*guid, item->GetTargetFilePath(), fingerprint->Clone(), base::Time::Now() + base::Minutes(1)};
+   request->original = *original; request->receipt_id = id; request->undo = true;
+-  request->reply = std::move(reply); state->SetPending(true); request->Start();
++  if (!state->SetPending(true)) { std::move(reply).Run(Error("File operations are closing; nothing was renamed.")); return; }
++  request->reply = std::move(reply); request->Start();
+ }
+ base::DictValue DragRecentDownload(Profile* profile, const std::string& guid,
+                                    gfx::NativeView view) {
