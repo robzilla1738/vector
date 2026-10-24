@@ -63,6 +63,18 @@ bool JoinNativeSplit(BrowserWindowInterface& browser,
   return joined;
 }
 
+bool RestoreNativeSplitPane(BrowserWindowInterface& browser, tabs::TabInterface* tab,
+                            split_tabs::SplitTabId id,
+                            const split_tabs::SplitPaneTree& previous, uint32_t slot) {
+  auto* model = browser.GetTabStripModel();
+  if (!Eligible(browser, tab) || !model->ContainsSplit(id)) return false;
+  for (auto* member : model->GetSplitData(id)->ListTabs())
+    if (!Eligible(browser, member)) return false;
+  const bool restored = model->RestorePaneToSplit(id, model->GetIndexOfTab(tab), previous, slot);
+  if (restored) Persist(browser, tab);
+  return restored;
+}
+
 bool CycleNativeSplitPane(BrowserWindowInterface& browser, int direction) {
   auto* model = browser.GetTabStripModel();
   auto* active = model ? model->GetActiveTab() : nullptr;

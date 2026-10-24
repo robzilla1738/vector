@@ -2194,6 +2194,37 @@ bool TabStripModel::UpdateSplitPaneTree(
   return true;
 }
 
+bool TabStripModel::RestorePaneToSplit(split_tabs::SplitTabId split_id,
+    int source_index, const split_tabs::SplitPaneTree& previous, uint32_t slot) {
+  ReentrancyCheck reentrancy_check(&reentrancy_guard_);
+  if (!ContainsSplit(split_id) || !ContainsIndex(source_index) || closing_all() ||
+      !previous.IsValid() || previous.pane_slots().size() < 3) return false;
+  auto* source = GetTabAtIndex(source_index);
+  auto* data = GetSplitData(split_id);
+  auto members = data->ListTabs();
+  if (source->IsSplit() || !data->visual_data()->pane_tree() || members.empty() ||
+      source->GetGroup() != members.front()->GetGroup() ||
+      source->IsPinned() != members.front()->IsPinned()) return false;
+  auto reduced = previous;
+  if (!reduced.RemoveLeaf(slot) || reduced != *data->visual_data()->pane_tree()) return false;
+  std::map<tabs::TabInterface*, uint32_t> slots;
+  for (size_t i = 0; i < members.size(); ++i) slots[members[i]] = reduced.pane_slots()[i];
+  slots[source] = slot;
+  members.push_back(source);
+  auto visual = *data->visual_data();
+  auto* pivot = members.front();
+  RemoveSplitImpl(split_id, SplitTabChange::SplitTabRemoveReason::kSplitTabRemoved);
+  std::ranges::sort(members, {}, [this](auto* member) { return GetIndexOfTab(member); });
+  std::vector<int> indices;
+  std::vector<uint32_t> order;
+  for (auto* member : members) { indices.push_back(GetIndexOfTab(member)); order.push_back(slots.at(member)); }
+  auto restored = previous;
+  restored.SetPaneOrder(std::move(order)); visual.SetPaneTree(std::move(restored));
+  AddToSplitImpl(split_id, indices, GetIndexOfTab(pivot), visual,
+      SplitTabChange::SplitTabAddReason::kNewSplitTabAdded);
+  return true;
+}
+
 bool TabStripModel::JoinTabToSplit(int target_index, int source_index,
     split_tabs::SplitPaneTree::Axis axis, bool before) {
   ReentrancyCheck reentrancy_check(&reentrancy_guard_);

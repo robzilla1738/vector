@@ -675,6 +675,9 @@ class TabStripModel {
                            bool is_intermediate = false);
   bool JoinTabToSplit(int target_index, int source_index,
                       split_tabs::SplitPaneTree::Axis axis, bool before);
+  bool RestorePaneToSplit(split_tabs::SplitTabId split_id, int source_index,
+                          const split_tabs::SplitPaneTree& previous, uint32_t slot);
+
 
 
   // Updates the split tab at index `split_index` with the tab at

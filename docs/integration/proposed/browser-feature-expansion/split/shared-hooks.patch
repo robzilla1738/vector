@@ -40,6 +40,106 @@
      }
    }
  
+--- a/chrome/browser/ui/browser_live_tab_context.cc
++++ b/chrome/browser/ui/browser_live_tab_context.cc
+@@ -2,6 +2,8 @@
+ // Use of this source code is governed by a BSD-style license that can be
+ // found in the LICENSE file.
+ 
++#include "base/strings/string_number_conversions.h"
++#include "chrome/browser/ui/views/frame/aux_split_commands.h"
+ #include "chrome/browser/ui/browser_live_tab_context.h"
+ 
+ #include "build/build_config.h"
+@@ -223,6 +225,16 @@
+   glic::PopulateGlicExtraData(tab_strip_model_->GetTabAtIndex(index),
+                               &extra_data);
+ 
++  if (auto split_id = tab_strip_model_->GetSplitForTab(index)) {
++    auto* data = tab_strip_model_->GetSplitData(*split_id);
++    if (data->visual_data()->pane_tree()) {
++      const auto members = data->ListTabs();
++      const auto found = std::ranges::find(members, tab_strip_model_->GetTabAtIndex(index));
++      const size_t offset = std::distance(members.begin(), found);
++      if (offset < data->visual_data()->pane_tree()->pane_slots().size())
++        extra_data["aux_split_slot"] = base::NumberToString(data->visual_data()->pane_tree()->pane_slots()[offset]);
++    }
++  }
+   return extra_data;
+ }
+ 
+@@ -370,6 +382,11 @@
+     bool select,
+     bool is_restoring_group_or_window,
+     sessions::tab_restore::Type original_session_type) {
++  const bool restore_pane = !is_restoring_group_or_window && tab.split_id &&
++      tab.split_visual_data && tab.split_visual_data->pane_tree() &&
++      tab.extra_data.contains("aux_split_slot") && tab_strip_model_->ContainsSplit(*tab.split_id);
++  // Inserting inside a surviving split would dissolve it before exact undo admission.
++  if (restore_pane) tab_index = tab_strip_model_->count();
+   tab_groups::TabGroupSyncService* tab_group_service =
+       tab_groups::TabGroupSyncServiceFactory::GetForProfile(&profile_.get());
+   CHECK(tab_group_service);
+@@ -458,6 +475,13 @@
+         /*from_session_restore=*/false, /*is_active_browser=*/std::nullopt);
+   }
+ 
++  if (web_contents && restore_pane) {
++    uint32_t slot;
++    const auto& encoded = tab.extra_data.at("aux_split_slot");
++    if (base::StringToUint(encoded, &slot) && slot && base::NumberToString(slot) == encoded)
++      aux::RestoreNativeSplitPane(*browser_, tab_strip_model_->GetTabForWebContents(web_contents),
++          *tab.split_id, *tab.split_visual_data->pane_tree(), slot);
++  }
+   CHECK(web_contents);
+ 
+   if (performance_manager::policies::CanScheduleLoadForRestoredTabs()) {
+@@ -507,6 +531,33 @@
+     tab_strip_model_->RestoreSplit(split_id, {leading_index, trailing_index},
+                                    visual_data);
+   }
++}
++
++void BrowserLiveTabContext::ReconstructSplit(
++    const std::vector<sessions::LiveTab*>& tabs, split_tabs::SplitTabId id,
++    const split_tabs::SplitTabVisualData& visual_data) {
++  if (tabs.size() < 2 || tabs.size() > split_tabs::SplitPaneTree::kMaxPanes ||
++      (visual_data.pane_tree() ? visual_data.pane_tree()->pane_slots().size() != tabs.size()
++                              : tabs.size() != 2)) return;
++  std::vector<std::pair<int, uint32_t>> mapped;
++  for (size_t i = 0; i < tabs.size(); ++i) {
++    if (!tabs[i]) return;
++    auto* live = static_cast<sessions::ContentLiveTab*>(tabs[i]);
++    const int index = tab_strip_model_->GetIndexOfWebContents(&live->GetWebContents());
++    if (index < 0 || tab_strip_model_->GetTabAtIndex(index)->IsSplit()) return;
++    mapped.emplace_back(index, visual_data.pane_tree() ? visual_data.pane_tree()->pane_slots()[i] : 0);
++  }
++  std::ranges::sort(mapped);
++  std::vector<int> indices;
++  std::vector<uint32_t> slots;
++  for (auto [index, slot] : mapped) { indices.push_back(index); slots.push_back(slot); }
++  auto visual = visual_data;
++  if (visual.pane_tree()) {
++    auto tree = *visual.pane_tree();
++    if (!tree.SetPaneOrder(std::move(slots))) return;
++    visual.SetPaneTree(std::move(tree));
++  }
++  tab_strip_model_->RestoreSplit(id, indices, visual);
+ }
+ 
+ void BrowserLiveTabContext::CloseTab() {
+--- a/chrome/browser/ui/browser_live_tab_context.h
++++ b/chrome/browser/ui/browser_live_tab_context.h
+@@ -113,6 +113,9 @@
+       sessions::LiveTab* trailing_tab,
+       split_tabs::SplitTabId split_id,
+       const split_tabs::SplitTabVisualData& visual_data) override;
++  void ReconstructSplit(const std::vector<sessions::LiveTab*>& tabs,
++                        split_tabs::SplitTabId id,
++                        const split_tabs::SplitTabVisualData& visual_data) override;
+   void CloseTab() override;
+ 
+   // see Browser::Create
 --- a/chrome/browser/ui/tabs/tab_strip_model.cc
 +++ b/chrome/browser/ui/tabs/tab_strip_model.cc
 @@ -2,6 +2,7 @@
@@ -73,7 +173,7 @@
  
    if (source.has_value()) {
      split_tabs::RecordSplitTabOrientationChanged(source.value());
-@@ -2161,11 +2169,90 @@
+@@ -2161,11 +2169,121 @@
    }
  
    split_tabs::SplitTabVisualData old_visual_data = *split_data->visual_data();
@@ -99,6 +199,37 @@
 +  if (!data->visual_data()->SetPaneTree(tree)) return false;
 +  NotifySplitTabVisualsChanged(split_id, previous, *data->visual_data(),
 +      SplitTabChange::SplitVisualChangeReason::kRatioUpdated, is_intermediate);
++  return true;
++}
++
++bool TabStripModel::RestorePaneToSplit(split_tabs::SplitTabId split_id,
++    int source_index, const split_tabs::SplitPaneTree& previous, uint32_t slot) {
++  ReentrancyCheck reentrancy_check(&reentrancy_guard_);
++  if (!ContainsSplit(split_id) || !ContainsIndex(source_index) || closing_all() ||
++      !previous.IsValid() || previous.pane_slots().size() < 3) return false;
++  auto* source = GetTabAtIndex(source_index);
++  auto* data = GetSplitData(split_id);
++  auto members = data->ListTabs();
++  if (source->IsSplit() || !data->visual_data()->pane_tree() || members.empty() ||
++      source->GetGroup() != members.front()->GetGroup() ||
++      source->IsPinned() != members.front()->IsPinned()) return false;
++  auto reduced = previous;
++  if (!reduced.RemoveLeaf(slot) || reduced != *data->visual_data()->pane_tree()) return false;
++  std::map<tabs::TabInterface*, uint32_t> slots;
++  for (size_t i = 0; i < members.size(); ++i) slots[members[i]] = reduced.pane_slots()[i];
++  slots[source] = slot;
++  members.push_back(source);
++  auto visual = *data->visual_data();
++  auto* pivot = members.front();
++  RemoveSplitImpl(split_id, SplitTabChange::SplitTabRemoveReason::kSplitTabRemoved);
++  std::ranges::sort(members, {}, [this](auto* member) { return GetIndexOfTab(member); });
++  std::vector<int> indices;
++  std::vector<uint32_t> order;
++  for (auto* member : members) { indices.push_back(GetIndexOfTab(member)); order.push_back(slots.at(member)); }
++  auto restored = previous;
++  restored.SetPaneOrder(std::move(order)); visual.SetPaneTree(std::move(restored));
++  AddToSplitImpl(split_id, indices, GetIndexOfTab(pivot), visual,
++      SplitTabChange::SplitTabAddReason::kNewSplitTabAdded);
 +  return true;
 +}
 +
@@ -164,7 +295,7 @@
  }
  
  void TabStripModel::UpdateTabInSplit(tabs::TabInterface* split_tab,
-@@ -2200,6 +2287,16 @@
+@@ -2200,6 +2318,16 @@
  void TabStripModel::ReverseTabsInSplit(split_tabs::SplitTabId split_id) {
    ReentrancyCheck reentrancy_check(&reentrancy_guard_);
  
@@ -181,7 +312,7 @@
    tabs::TabInterface* first_tab = GetSplitData(split_id)->ListTabs()[0];
    const int index_of_first_tab_in_split = GetIndexOfTab(first_tab);
    MoveTabToIndexImpl(index_of_first_tab_in_split,
-@@ -2213,7 +2310,7 @@
+@@ -2213,7 +2341,7 @@
      split_tabs::SplitTabCreatedSource source) {
    ReentrancyCheck reentrancy_check(&reentrancy_guard_);
  
@@ -190,7 +321,7 @@
        << "Invalid index count: " << indices.size();
  
    // If there is only one entry in `indices`, use the active index as the pivot
-@@ -2221,6 +2318,9 @@
+@@ -2221,6 +2349,9 @@
    if (indices.size() == 1u) {
      indices.insert(indices.begin(), active_index());
    }
@@ -200,7 +331,7 @@
    int pivot_index = indices[0];
    CHECK(pivot_index != kNoTab);
    // Check that the indices are unique.
-@@ -2256,7 +2356,10 @@
+@@ -2256,7 +2387,10 @@
                                   split_tabs::SplitTabVisualData visual_data) {
    ReentrancyCheck reentrancy_check(&reentrancy_guard_);
    CHECK(std::ranges::is_sorted(indices));
@@ -212,7 +343,7 @@
  
    // Ideally these are consecutive indices from the restore flow and the pivot
    // index does not matter. However, given there are numerous steps in restore
-@@ -5092,11 +5195,24 @@
+@@ -5092,11 +5226,24 @@
    if (!creator_close_invocation.is_empty() &&
        (removed_tab_is_split || tab_to_remove->GetGroup())) return nullptr;
  #endif
@@ -241,7 +372,7 @@
    }
  
  #if BUILDFLAG(ENABLE_AUX_SHELL)
-@@ -5188,6 +5304,11 @@
+@@ -5188,6 +5335,11 @@
                           std::nullopt);
    }
  
@@ -253,7 +384,7 @@
    return old_data;
  }
  
-@@ -5233,7 +5354,21 @@
+@@ -5233,7 +5385,21 @@
    TabStripSelectionChange selection(GetActiveTab(),
                                      selection_model().GetListSelectionModel());
    if (move_within_split) {
@@ -276,7 +407,7 @@
    } else {
      contents_data_->MoveTabRecursive(initial_index, final_index, group, pin);
    }
-@@ -6288,7 +6423,7 @@
+@@ -6288,7 +6454,7 @@
        }
      }
      for (const auto& [split_id, count] : split_closing_counts) {
@@ -295,7 +426,7 @@
  #include <stddef.h>
  #include <stdint.h>
  
-@@ -669,6 +670,12 @@
+@@ -669,6 +670,15 @@
    void UpdateSplitRatio(split_tabs::SplitTabId split_id,
                          double start_content_ratio,
                          bool is_intermediate = false);
@@ -304,6 +435,9 @@
 +                           bool is_intermediate = false);
 +  bool JoinTabToSplit(int target_index, int source_index,
 +                      split_tabs::SplitPaneTree::Axis axis, bool before);
++  bool RestorePaneToSplit(split_tabs::SplitTabId split_id, int source_index,
++                          const split_tabs::SplitPaneTree& previous, uint32_t slot);
++
 +
  
    // Updates the split tab at index `split_index` with the tab at
@@ -386,6 +520,453 @@
    }
    return contents_views;
  }
+--- a/components/sessions/core/live_tab_context.h
++++ b/components/sessions/core/live_tab_context.h
+@@ -108,6 +108,12 @@
+       split_tabs::SplitTabId split_id,
+       const split_tabs::SplitTabVisualData& visual_data) = 0;
+ 
++  virtual void ReconstructSplit(const std::vector<LiveTab*>& tabs,
++                                split_tabs::SplitTabId id,
++                                const split_tabs::SplitTabVisualData& visual_data) {
++    if (tabs.size() == 2) ReconstructSplit(tabs[0], tabs[1], id, visual_data);
++  }
++
+   virtual void CloseTab() = 0;
+ 
+  protected:
+--- a/components/sessions/core/tab_restore_service_helper.cc
++++ b/components/sessions/core/tab_restore_service_helper.cc
+@@ -68,6 +68,33 @@
+   }
+ }
+ 
++// Preserve a surviving branch when one member is restored out of window/group history.
++void RemoveSplitMemberMetadata(
++    std::vector<std::unique_ptr<tab_restore::Tab>>& tabs,
++    std::map<split_tabs::SplitTabId, std::unique_ptr<tab_restore::Split>>& splits,
++    size_t removed) {
++  const auto id = tabs[removed]->split_id;
++  if (!id) return;
++  size_t offset = 0;
++  for (size_t i = 0; i < removed; ++i) if (tabs[i]->split_id == id) ++offset;
++  auto visual = tabs[removed]->split_visual_data;
++  bool retain = false;
++  const size_t count = std::ranges::count_if(tabs, [&](const auto& tab) { return tab->split_id == id; });
++  if (visual && visual->pane_tree() && visual->pane_tree()->pane_slots().size() == count && count > 2 &&
++      offset < visual->pane_tree()->pane_slots().size()) {
++    auto tree = *visual->pane_tree();
++    retain = tree.RemoveLeaf(tree.pane_slots()[offset]);
++    if (retain) visual->SetPaneTree(std::move(tree));
++  }
++  for (size_t i = 0; i < tabs.size(); ++i) {
++    if (i == removed || tabs[i]->split_id != id) continue;
++    if (retain) tabs[i]->split_visual_data = visual;
++    else { tabs[i]->split_id.reset(); tabs[i]->split_visual_data.reset(); }
++  }
++  if (retain && splits.contains(*id)) splits.at(*id)->visual_data = *visual;
++  else splits.erase(*id);
++}
++
+ // Specifies what entries are added.
+ enum class AddBehavior {
+   // Adds the current entry, and entries preceeding it.
+@@ -186,17 +213,18 @@
+                    std::vector<raw_ptr<tab_restore::Tab>>>& split_tabs_map,
+     const std::map<SessionID, LiveTab*>& restored_tab_map) {
+   for (const auto& [split_id, tabs] : split_tabs_map) {
+-    CHECK(tabs.size() == 2);
+-    auto leading_it = restored_tab_map.find(tabs[0]->id);
+-    auto trailing_it = restored_tab_map.find(tabs[1]->id);
+-    if (leading_it != restored_tab_map.end() &&
+-        trailing_it != restored_tab_map.end()) {
+-      const split_tabs::SplitTabVisualData visual_data =
+-          tabs[0]->split_visual_data.value_or(split_tabs::SplitTabVisualData());
+-
+-      context->ReconstructSplit(leading_it->second, trailing_it->second,
+-                                split_id, visual_data);
+-    }
++    if (tabs.size() < 2 || tabs.size() > split_tabs::SplitPaneTree::kMaxPanes) continue;
++    std::vector<LiveTab*> restored;
++    for (const auto& tab : tabs) {
++      auto found = restored_tab_map.find(tab->id);
++      if (found == restored_tab_map.end()) { restored.clear(); break; }
++      restored.push_back(found->second);
++    }
++    if (restored.size() != tabs.size()) continue;
++    const auto visual = tabs[0]->split_visual_data.value_or(split_tabs::SplitTabVisualData());
++    if (visual.pane_tree() ? visual.pane_tree()->pane_slots().size() != tabs.size()
++                          : tabs.size() != 2) continue;
++    context->ReconstructSplit(restored, split_id, visual);
+   }
+ }
+ 
+@@ -420,23 +448,16 @@
+ 
+   auto split = CreateHistoricalSplitImpl(context, id, split_tabs);
+ 
+-  if (split && split->tabs.size() == 2) {
+-    bool tab0_valid = ValidateTab(*split->tabs[0]);
+-    bool tab1_valid = ValidateTab(*split->tabs[1]);
+-
+-    if (tab0_valid && tab1_valid) {
+-      AddEntry(std::move(split), true, true);
+-    } else if (tab0_valid) {
+-      AddEntry(std::move(split->tabs[0]), true, true);
+-    } else if (tab1_valid) {
+-      AddEntry(std::move(split->tabs[1]), true, true);
+-    } else {
+-      closing_split_tabs_.erase(id);
+-    }
++  if (split && ValidateSplit(*split)) {
++    AddEntry(std::move(split), true, true);
+   } else {
+-    // In the case of an error, clear the cache so that the history can proceed
+-    // normally.
++    // Never discard valid pages because another pane cannot be serialized.
+     closing_split_tabs_.erase(id);
++    if (split) for (auto& tab : split->tabs) {
++      if (!tab || !ValidateTab(*tab)) continue;
++      tab->split_id.reset(); tab->split_visual_data.reset();
++      AddEntry(std::move(tab), true, true);
++    }
+   }
+ }
+ 
+@@ -466,7 +487,7 @@
+     LiveTabContext* context,
+     const split_tabs::SplitTabId& id,
+     const std::vector<std::pair<int, LiveTab*>>& split_tabs) {
+-  if (split_tabs.size() != 2) {
++  if (split_tabs.size() < 2 || split_tabs.size() > split_tabs::SplitPaneTree::kMaxPanes) {
+     return nullptr;
+   }
+ 
+@@ -584,18 +605,20 @@
+     Split* split,
+     std::unique_ptr<Tab>& remaining_tab) {
+   CHECK(ValidateSplit(*split));
+-  DCHECK_EQ(split->tabs.size(), 2u);
+-  bool leading_deleted = DeleteFromTab(predicate, split->tabs[0].get());
+-  bool trailing_deleted = DeleteFromTab(predicate, split->tabs[1].get());
+-
+-  if (leading_deleted && trailing_deleted) {
+-    return true;
+-  }
+-  if (leading_deleted) {
+-    remaining_tab = std::move(split->tabs[1]);
+-  } else if (trailing_deleted) {
+-    remaining_tab = std::move(split->tabs[0]);
+-  }
++  for (size_t i = split->tabs.size(); i-- > 0;) {
++    if (!DeleteFromTab(predicate, split->tabs[i].get())) continue;
++    if (split->visual_data.pane_tree() && split->tabs.size() > 1) {
++      auto tree = *split->visual_data.pane_tree();
++      tree.RemoveLeaf(tree.pane_slots()[i]);
++      split->visual_data.SetPaneTree(std::move(tree));
++    }
++    split->tabs.erase(split->tabs.begin() + i);
++  }
++  if (split->tabs.empty()) return true;
++  if (split->tabs.size() == 1) {
++    remaining_tab = std::move(split->tabs.front());
++    remaining_tab->split_id.reset(); remaining_tab->split_visual_data.reset();
++  } else for (auto& tab : split->tabs) tab->split_visual_data = split->visual_data;
+   return false;
+ }
+ 
+@@ -713,7 +736,7 @@
+ 
+     // Cleanup.
+     std::optional<tab_groups::TabGroupId> group_id = tab.group;
+-    std::optional<split_tabs::SplitTabId> split_id = tab.split_id;
++    RemoveSplitMemberMetadata(window.tabs, window.split_tabs, tab_i);
+     window.tabs.erase(window.tabs.begin() + tab_i);
+ 
+     if (group_id.has_value()) {
+@@ -727,18 +750,6 @@
+       }
+     }
+ 
+-    if (split_id.has_value()) {
+-      auto other_tabs_in_split = std::find_if(
+-          window.tabs.begin(), window.tabs.end(), [&split_id](const auto& t) {
+-            return t->split_id.has_value() && t->split_id.value() == split_id;
+-          });
+-
+-      if (other_tabs_in_split != window.tabs.end()) {
+-        (*other_tabs_in_split)->split_id = std::nullopt;
+-        (*other_tabs_in_split)->split_visual_data = std::nullopt;
+-        window.split_tabs.erase(split_id.value());
+-      }
+-    }
+ 
+     if (!window.tabs.empty()) {
+       // Adjust |selected_tab index| to keep the window in a valid state.
+@@ -1137,6 +1148,8 @@
+                          /*is_restoring_group_or_window=*/false);
+           live_tabs.push_back(restored_tab);
+           CHECK(ValidateGroup(group));
++          RemoveSplitMemberMetadata(group.tabs, group.split_tabs,
++              std::distance(group.tabs.begin(), it));
+           group.tabs.erase(it);
+         } else {
+           // 2. Restore a split view from the group.
+@@ -1154,7 +1167,7 @@
+     case tab_restore::Type::SPLIT: {
+       auto& split = static_cast<tab_restore::Split&>(entry);
+       CHECK(ValidateSplit(split));
+-      CHECK_EQ(split.tabs.size(), 2u);
++      CHECK_GE(split.tabs.size(), 2u);
+ 
+       if (entry_id_matches_restore_id) {
+         if (split.timestamp != base::Time() &&
+@@ -1164,32 +1177,22 @@
+               TimeNow() - split.timestamp);
+         }
+ 
+-        LiveTab* restored_leading_tab = nullptr;
+-        context = RestoreTab(*split.tabs[0], context, disposition, entry.type,
+-                             &restored_leading_tab, false);
+-        if (restored_leading_tab) {
+-          live_tabs.push_back(restored_leading_tab);
+-        }
+-
+-        // Directly restore the trailing tab into the same context as the
+-        // leading tab to ensure that they remain unified in a single browser
+-        // window.
+-        LiveTab* restored_trailing_tab = context->AddRestoredTab(
+-            *split.tabs[1], context->GetTabCount(), false, false, entry.type);
+-        if (restored_trailing_tab && !split.tabs[1]->navigations.empty()) {
+-          int nav_index = std::clamp(
+-              split.tabs[1]->current_navigation_index, 0,
+-              static_cast<int>(split.tabs[1]->navigations.size() - 1));
+-          client_->OnTabRestored(
+-              split.tabs[1]->navigations.at(nav_index).virtual_url());
+-          live_tabs.push_back(restored_trailing_tab);
+-        }
+-
+-        if (restored_leading_tab && restored_trailing_tab &&
+-            split.split_id.has_value()) {
+-          context->ReconstructSplit(restored_leading_tab, restored_trailing_tab,
+-                                    split.split_id.value(), split.visual_data);
+-        }
++        std::vector<LiveTab*> restored;
++        LiveTab* leading = nullptr;
++        context = RestoreTab(*split.tabs[0], context, disposition, entry.type, &leading, false);
++        if (leading) { restored.push_back(leading); live_tabs.push_back(leading); }
++        for (size_t i = 1; context && i < split.tabs.size(); ++i) {
++          auto* next = context->AddRestoredTab(*split.tabs[i], context->GetTabCount(), false, false, entry.type);
++          if (!next) continue;
++          restored.push_back(next); live_tabs.push_back(next);
++          if (!split.tabs[i]->navigations.empty()) {
++            const int index = std::clamp(split.tabs[i]->current_navigation_index, 0,
++                static_cast<int>(split.tabs[i]->navigations.size()) - 1);
++            client_->OnTabRestored(split.tabs[i]->navigations[index].virtual_url());
++          }
++        }
++        if (context && restored.size() == split.tabs.size() && split.split_id)
++          context->ReconstructSplit(restored, *split.split_id, split.visual_data);
+ 
+       } else {
+         std::unique_ptr<Tab> remaining_tab = RestoreOneTabFromSplit(
+@@ -1579,7 +1582,16 @@
+         live_tabs.push_back(restored_tab);
+       }
+ 
+-      // Extract the remaining tab, remove split association, and return it.
++      if (!restored_tab) return nullptr;
++      if (split.tabs.size() > 2 && split.visual_data.pane_tree()) {
++        auto tree = *split.visual_data.pane_tree();
++        tree.RemoveLeaf(tree.pane_slots()[i]);
++        split.visual_data.SetPaneTree(std::move(tree));
++        split.tabs.erase(split.tabs.begin() + i);
++        for (auto& remaining : split.tabs) remaining->split_visual_data = split.visual_data;
++        return nullptr;
++      }
++      // A single remaining tab returns to ordinary history.
+       std::unique_ptr<Tab> remaining_tab = std::move(split.tabs[1 - i]);
+       remaining_tab->split_id = std::nullopt;
+       remaining_tab->split_visual_data = std::nullopt;
+@@ -1669,11 +1681,11 @@
+ }
+ 
+ bool TabRestoreServiceHelper::ValidateSplit(const Split& split) {
+-  if (split.tabs.size() != 2) {
+-    return false;
+-  }
+-  return split.tabs[0] && split.tabs[1] && ValidateTab(*split.tabs[0]) &&
+-         ValidateTab(*split.tabs[1]);
++  if (split.tabs.size() < 2 || split.tabs.size() > split_tabs::SplitPaneTree::kMaxPanes) return false;
++  if (split.visual_data.pane_tree()
++      ? (!split.visual_data.pane_tree()->IsValid() || split.visual_data.pane_tree()->pane_slots().size() != split.tabs.size())
++      : split.tabs.size() != 2) return false;
++  return std::ranges::all_of(split.tabs, [](const auto& tab) { return tab && ValidateTab(*tab); });
+ }
+ 
+ bool TabRestoreServiceHelper::IsTabInteresting(const Tab& tab) {
+@@ -1706,11 +1718,8 @@
+ }
+ 
+ bool TabRestoreServiceHelper::IsSplitInteresting(const Split& split) {
+-  if (split.tabs.size() != 2) {
+-    return false;
+-  }
+-  return (split.tabs[0] && IsTabInteresting(*split.tabs[0])) ||
+-         (split.tabs[1] && IsTabInteresting(*split.tabs[1]));
++  return split.tabs.size() >= 2 && split.tabs.size() <= split_tabs::SplitPaneTree::kMaxPanes &&
++      std::ranges::any_of(split.tabs, [](const auto& tab) { return tab && IsTabInteresting(*tab); });
+ }
+ 
+ bool TabRestoreServiceHelper::FilterEntry(const Entry& entry) {
+--- a/components/sessions/core/tab_restore_service_impl.cc
++++ b/components/sessions/core/tab_restore_service_impl.cc
+@@ -292,6 +292,26 @@
+ 
+ // Reads split tab visual data from a pickle iterator. Returns true on success
+ // and if the values are valid, false otherwise.
++void WriteSplitPaneExtension(base::Pickle* pickle,
++                             const split_tabs::SplitTabVisualData& visual) {
++  if (visual.pane_tree()) {
++    const auto& tree = *visual.pane_tree();
++    pickle->WriteUInt32(1);  // Versioned extension; absent for legacy two panes.
++    pickle->WriteUInt32(tree.root());
++    pickle->WriteUInt32(static_cast<uint32_t>(tree.nodes().size()));
++    for (const auto& node : tree.nodes()) {
++      pickle->WriteUInt32(node.id);
++      pickle->WriteUInt32(node.slot);
++      pickle->WriteUInt32(static_cast<uint32_t>(node.axis));
++      pickle->WriteUInt32(node.first);
++      pickle->WriteUInt32(node.second);
++      pickle->WriteDouble(node.ratio);
++    }
++    pickle->WriteUInt32(static_cast<uint32_t>(tree.pane_slots().size()));
++    for (uint32_t slot : tree.pane_slots()) pickle->WriteUInt32(slot);
++  }
++}
++
+ bool ReadSplitTabVisualData(base::PickleIterator* iter,
+                             split_tabs::SplitTabVisualData* visual_data) {
+   double split_ratio = 0.5;
+@@ -304,7 +324,37 @@
+   split_tabs::SplitTabLayout layout;
+   if (split_ratio >= 0.0 && split_ratio <= 1.0 &&
+       DeserializeSplitTabLayout(split_layout_type, &layout)) {
+-    *visual_data = split_tabs::SplitTabVisualData(layout, split_ratio);
++    split_tabs::SplitTabVisualData candidate(layout, split_ratio);
++        if (!iter->ReachedEnd()) {
++          uint32_t version, root, count;
++          if (!iter->ReadUInt32(&version) || version != 1 ||
++              !iter->ReadUInt32(&root) || !iter->ReadUInt32(&count) ||
++              count == 0 || count > 15) return false;
++          std::vector<split_tabs::SplitPaneTree::Node> nodes;
++          for (uint32_t i = 0; i < count; ++i) {
++            split_tabs::SplitPaneTree::Node node;
++            uint32_t axis;
++            if (!iter->ReadUInt32(&node.id) || !iter->ReadUInt32(&node.slot) ||
++                !iter->ReadUInt32(&axis) || axis > 1 ||
++                !iter->ReadUInt32(&node.first) ||
++                !iter->ReadUInt32(&node.second) ||
++                !iter->ReadDouble(&node.ratio)) return false;
++            node.axis = static_cast<split_tabs::SplitPaneTree::Axis>(axis);
++            nodes.push_back(node);
++          }
++          if (!iter->ReadUInt32(&count) || count < 2 || count > 8) return false;
++          std::vector<uint32_t> slots;
++          for (uint32_t i = 0; i < count; ++i) {
++            uint32_t slot;
++            if (!iter->ReadUInt32(&slot)) return false;
++            slots.push_back(slot);
++          }
++          if (!iter->ReachedEnd()) return false;
++          auto tree = split_tabs::SplitPaneTree::Decode(
++              root, std::move(nodes), std::move(slots));
++          if (!tree || !candidate.SetPaneTree(std::move(*tree))) return false;
++        }
++    *visual_data = std::move(candidate);
+     return true;
+   }
+   return false;
+@@ -547,7 +597,7 @@
+       base::Time::FromDeltaSinceWindowsEpoch(base::Microseconds(timestamp));
+   *session_id = SessionID::FromSerializedValue(session_id_val);
+ 
+-  ReadSplitTabVisualData(&it, &split->visual_data);
++  if (!ReadSplitTabVisualData(&it, &split->visual_data)) return nullptr;
+ 
+   return split;
+ }
+@@ -963,7 +1013,7 @@
+ 
+ void TabRestoreServiceImpl::PersistenceDelegate::ScheduleCommandsForSplit(
+     const tab_restore::Split& split) {
+-  DCHECK_EQ(split.tabs.size(), 2u);
++  DCHECK_GE(split.tabs.size(), 2u);
+ 
+   // Count how many tabs in the split are valid to persist.
+   std::vector<std::pair<const tab_restore::Tab*, int>> valid_tabs;
+@@ -974,7 +1024,7 @@
+     }
+   }
+ 
+-  if (valid_tabs.size() == 2) {
++  if (valid_tabs.size() == split.tabs.size()) {
+     command_storage_manager_->ScheduleCommand(CreateSplitCommand(
+         split.id,
+         split.split_id.value_or(split_tabs::SplitTabId::CreateEmpty()),
+@@ -982,10 +1032,9 @@
+     for (const auto& [tab, index] : valid_tabs) {
+       ScheduleCommandsForTab(*tab, index);
+     }
+-  } else if (valid_tabs.size() == 1) {
+-    // If there's only one valid tab, schedule it as a regular tab.
+-    const auto& [tab, index] = valid_tabs[0];
+-    ScheduleCommandsForTab(*tab, index);
++  } else {
++    // Preserve recoverable pages individually when a complete tree cannot be written.
++    for (const auto& [tab, index] : valid_tabs) ScheduleCommandsForTab(*tab, index);
+   }
+ }
+ 
+@@ -1058,6 +1107,7 @@
+         tab.split_visual_data.value_or(split_tabs::SplitTabVisualData());
+     pickle.WriteDouble(visual_data.split_ratio());
+     pickle.WriteInt(static_cast<int>(visual_data.split_layout()));
++    WriteSplitPaneExtension(&pickle, visual_data);
+     command_storage_manager_->ScheduleCommand(
+         std::make_unique<SessionCommand>(kCommandSetTabSplitData, pickle));
+   }
+@@ -1175,6 +1225,7 @@
+   pickle.WriteInt64(timestamp.ToDeltaSinceWindowsEpoch().InMicroseconds());
+   pickle.WriteDouble(visual_data.split_ratio());
+   pickle.WriteInt(static_cast<int>(visual_data.split_layout()));
++  WriteSplitPaneExtension(&pickle, visual_data);
+ 
+   std::unique_ptr<SessionCommand> command =
+       std::make_unique<SessionCommand>(kCommandCreateSplit, pickle);
+@@ -1362,7 +1413,9 @@
+ 
+         RemoveEntryByID(split_id, &entries);
+         split->original_id = split_id;
+-        current_split = std::make_optional(std::make_pair(split.get(), 2));
++        const int pane_count = split->visual_data.pane_tree()
++            ? static_cast<int>(split->visual_data.pane_tree()->pane_slots().size()) : 2;
++        current_split = std::make_optional(std::make_pair(split.get(), pane_count));
+         entries.push_back(std::move(split));
+         break;
+       }
+@@ -1601,9 +1654,8 @@
+           current_tab->split_id =
+               split_tabs::SplitTabId::FromRawToken(split_token.value());
+           split_tabs::SplitTabVisualData visual_data;
+-          if (ReadSplitTabVisualData(&iter, &visual_data)) {
+-            current_tab->split_visual_data = visual_data;
+-          }
++          if (!ReadSplitTabVisualData(&iter, &visual_data)) return;
++          current_tab->split_visual_data = std::move(visual_data);
+         }
+         break;
+       }
 --- a/components/tabs/impl/tab_strip_collection.cc
 +++ b/components/tabs/impl/tab_strip_collection.cc
 @@ -458,6 +458,17 @@

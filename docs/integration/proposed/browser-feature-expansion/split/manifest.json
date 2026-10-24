@@ -6,12 +6,12 @@
   "sources": [
     {
       "path": "chrome/browser/ui/views/frame/aux_split_commands.cc",
-      "sha256": "afc8157dda827dbfa4c0c5e148c0eb0c3b93ead6d468ba0ed21a9672ad56e1da",
+      "sha256": "945511b4577bd546c02f99759a07e5c81c80cb6be63338c5efe9bee8af55cdaf",
       "baseline_sha256": null
     },
     {
       "path": "chrome/browser/ui/views/frame/aux_split_commands.h",
-      "sha256": "6050e830014137062f08e43e03fdd52618f3f7295a5e6e391130e1d3ca7e243a",
+      "sha256": "1d13e09c959dec4d2da9e6f71edf285b781339376592a6fcca287bcfbee6086c",
       "baseline_sha256": null
     },
     {
@@ -75,7 +75,7 @@
       "baseline_sha256": "0b9a0749ecab70cd014782e15cb45270f5d0083a6ba3eb9577623e88f8f09508"
     }
   ],
-  "patch_sha256": "1a0e3ac813f2a57858ecaf5c659262d144252b81a3d7f8bf40a312768be1da73",
+  "patch_sha256": "6f8dc848b7d57c5e31d5ba4579081064a553580c5cd40c5527be02e5fffef47b",
   "shared_hooks": [
     {
       "path": "chrome/browser/sessions/session_restore.cc",
@@ -83,19 +83,44 @@
       "baseline_sha256": "b999e51752a9964e2c59ac1345cabdf25e2984566badc00cae22f2383223faf2"
     },
     {
+      "path": "chrome/browser/ui/browser_live_tab_context.cc",
+      "sha256": "e2cf847710ec0a873bf489af1a157f639f612906690557db08e5301412c209dd",
+      "baseline_sha256": "395478a3f73870f66e7a3c9ce7db05d3e8c7c5f1670448ca6d53ce89d03a90ff"
+    },
+    {
+      "path": "chrome/browser/ui/browser_live_tab_context.h",
+      "sha256": "9787b8ce41c9d6cacc5ed75ec0cbf9a976a6c1af0ac74be1040ae1c00c9cdfc9",
+      "baseline_sha256": "f92822132248d31ed352def93ac7efce98c91de0b5846455297b15d05fbaa28c"
+    },
+    {
       "path": "chrome/browser/ui/tabs/tab_strip_model.cc",
-      "sha256": "c96e2cfff4f1d1ad339962bd00aa89bb3913907d96bb3f43095518169b474067",
+      "sha256": "d6790854a6c1b784cc6c9e5139061fad9411f57462d5706b8d0918485361e71d",
       "baseline_sha256": "6860e0de77c3be9f127f70cc577ec6a311b7f0f32652c983243b1448885fd93c"
     },
     {
       "path": "chrome/browser/ui/tabs/tab_strip_model.h",
-      "sha256": "0b47e2860251ffc017f2c5c2aca996196780cba117a42a8344a479ef7d61f93e",
+      "sha256": "91a91180817ba16fedafe465313906f0cbb001574fed631069662cf084c6ff1c",
       "baseline_sha256": "9d944b3029763e441bc6979c58deba9c1482b095542c73b8a79cac8941690ca8"
     },
     {
       "path": "chrome/browser/ui/views/frame/browser_view.cc",
       "sha256": "3e84d46972029f05e9875aa000716723ee2a709bf25e34dd79970062dd0354c8",
       "baseline_sha256": "cf57a912b3d621ef170e6e20b236e36ad4bff7ac6143bada614177c3298e2a1c"
+    },
+    {
+      "path": "components/sessions/core/live_tab_context.h",
+      "sha256": "c4010a02ee898a31d6240e1d9e6f7432e7fe793b76ec3596799d7987e9093a22",
+      "baseline_sha256": "7e0d72940e03ada91de98cbf8e123700682cc34709b956197a161f026f5bff0d"
+    },
+    {
+      "path": "components/sessions/core/tab_restore_service_helper.cc",
+      "sha256": "d2a804247ce8ff5426d7f52d4f94a2eee8ef84a38afec587f5be4668e9d6e606",
+      "baseline_sha256": "7151c62dce5b4330d64edbb0645332cdc942b0a13a78d05bb7065584a90c0cfa"
+    },
+    {
+      "path": "components/sessions/core/tab_restore_service_impl.cc",
+      "sha256": "4a760e3a49243a40cb0b72a566e3bba98b913acfc94dc61216cab55df4cd87e2",
+      "baseline_sha256": "9c42cd559028c5ec6725c36ee7875225507d6ffbdd4da5d41f1d591656bc5c57"
     },
     {
       "path": "components/tabs/impl/tab_strip_collection.cc",
@@ -108,5 +133,5 @@
       "baseline_sha256": "2a04873e086b81ab541d7663afe5a57feb1304408e800863969e1b9adf8a8aa7"
     }
   ],
-  "shared_hooks_patch_sha256": "204d6a92fff4d9771d88b67fcf0a56a85310c08fda04646eadad99555f83c3c6"
+  "shared_hooks_patch_sha256": "1f1bce2cad797c32364a972874cfaf2fabe97c40a485363bced9f12ab19e832c"
 }
