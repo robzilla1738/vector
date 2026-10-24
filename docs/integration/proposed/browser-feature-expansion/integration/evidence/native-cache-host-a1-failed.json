@@ -1,0 +1,13 @@
+{
+  "receipt": "/private/tmp/aux-runtime-cache-async-object-20261023-a1/results.json",
+  "receiptSha256": "beafe2117876b846662d0e03d41a3ba7d8ecffc24881c4a55c619cb86c49e938",
+  "passed": false,
+  "compiled": false,
+  "linked": false,
+  "error": "Native host compile failed; see compile.log",
+  "reason": "Root checkout resolves two moved quoted includes to duplicate root lifetime headers; fresh a2 pins original canonical header identities",
+  "signed": false,
+  "executableRun": false,
+  "policyActivated": false,
+  "acceptedAppChanged": false
+}
