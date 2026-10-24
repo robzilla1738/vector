@@ -468,10 +468,10 @@
     },
     {
       "path": "chrome/browser/ui/views/frame/aux_organization_tree_view.cc",
-      "source": "docs/integration/proposed/browser-feature-expansion/organization-multiselect/source/chrome/browser/ui/views/frame/aux_organization_tree_view.cc",
+      "source": "docs/integration/proposed/browser-feature-expansion/organization-row-skia-include/source/chrome/browser/ui/views/frame/aux_organization_tree_view.cc",
       "beforeSha256": "5ab306a698aeb7e99a9fb9f81f642da4774ec0ad55a9e930cfc11bbd3afede3d",
       "overridesNativeSourceSha256": "5ab306a698aeb7e99a9fb9f81f642da4774ec0ad55a9e930cfc11bbd3afede3d",
-      "afterSha256": "50edd799937662ec2029a32aa553b57c9afc0f5a90aa8cb900539412b532e0f6"
+      "afterSha256": "8846dc9a9c4118174e8538f789f2bbaeb4fb171b2b9ea76c4073bf2f0e39bfd6"
     },
     {
       "path": "chrome/browser/ui/views/frame/aux_organization_window_delegate.h",
@@ -616,13 +616,13 @@
     {
       "path": "chrome/browser/ui/views/frame/aux_tabs_actions.cc",
       "beforeSha256": "aa9a2159194a22191932df62759c746f7386763be75f59126332c34785a496bb",
-      "afterSha256": "45e7ded8def5489e3de93e70512cbee29da58ceccf0a6ecf43ae974419686edf",
+      "afterSha256": "03e5acaf05f8caf351fedbbce7e217c40e40a6d5ab6272337b6263dc71cb688f",
       "source": "docs/integration/proposed/browser-feature-expansion/productivity-tidy-selection/source/chrome/browser/ui/views/frame/aux_tabs_actions.cc"
     },
     {
       "path": "chrome/browser/ui/views/frame/aux_tabs_actions.h",
       "beforeSha256": "51c067a2b2f4f0c1b1b4dc5eeca9c4e4eea06a8a5b49fc9264e8fc46ff17cdaf",
-      "afterSha256": "9abf17ff229f74fb7d793564ff64498d07c681a962b47cf2f036a1e4f3c52dd0",
+      "afterSha256": "7cdd1f48bdf8d95201e4bb345b938297e4e96aa4f56a414e41ec5913df764361",
       "source": "docs/integration/proposed/browser-feature-expansion/productivity-tidy-selection/source/chrome/browser/ui/views/frame/aux_tabs_actions.h"
     }
   ]

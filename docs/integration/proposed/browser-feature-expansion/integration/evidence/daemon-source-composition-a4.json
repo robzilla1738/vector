@@ -1,0 +1,27 @@
+{
+  "format": "aux.browser-features.daemon-source-composition.v1",
+  "predecessorSourcePair": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/profile-isolation-protected-startup/integration/source-pair.json",
+  "predecessorSourcePairSha256": "1eb6698864691d5affacc52f860ffb9a917fdf07a36cc5ffcc8fb55d26f4d8e4",
+  "passed": true,
+  "coldFeatureEnabled": false,
+  "runtimeAuthorityGranted": false,
+  "productExecuted": false,
+  "receiptSha256": "f7b0349fd51fcea2edb725da2fe084b07d97e8b124ec9cacc558a0c661ca8f34",
+  "files": [
+    {
+      "kind": "source",
+      "input": "/private/tmp/aux-offline-runtime-source-20261023/index.mjs",
+      "beforeSha256": "ecff19ddbc7fa76529c50111152f8324ef0ba6b87de11e7ecf872f76270a7484",
+      "output": "/private/tmp/aux-browser-features-daemon-source-20261023-a4/index.mjs",
+      "afterSha256": "4e5c2710ddeb7b1f57f2524088ece6678b0f091ec6f7af68564c355cabae4723"
+    },
+    {
+      "kind": "entry",
+      "input": "/private/tmp/aux-offline-runtime-entry-20261023/aux-native-entry.mjs",
+      "beforeSha256": "541917242bf9134a2bb7915cb8b65a1ecb28d84c2ed91264639c82245e3f3b7e",
+      "output": "/private/tmp/aux-browser-features-daemon-source-20261023-a4/aux-native-entry.mjs",
+      "afterSha256": "aba6ebad5e4abd9e563770dc6be80e6b9c181a22fd41a16c7112417863cf1823"
+    }
+  ],
+  "adapterInputCount": 147
+}

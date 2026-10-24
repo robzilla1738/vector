@@ -1,0 +1,59 @@
+{
+  "format": "aux.browser-features.stage-pair.v1",
+  "passed": true,
+  "stager": {
+    "path": "/Users/rcourson/Documents/Vibe/web/scripts/stage-provided.mjs",
+    "sha256": "39b85afdcf302d686a3cea77bf2c18ab1f84115b0519dd611ca304068535e085"
+  },
+  "sourceSnapshot": "/Users/rcourson/Documents/Vibe/web/out/provided-source-snapshot-1.26.1016.1852",
+  "finalApp": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-browser-features-20261023/Aux.app",
+  "productExecuted": false,
+  "commands": [
+    [
+      "/opt/homebrew/Cellar/node/26.12.1/bin/node",
+      "/Users/rcourson/Documents/Vibe/web/scripts/stage-provided.mjs",
+      "--source-snapshot",
+      "/Users/rcourson/Documents/Vibe/web/out/provided-source-snapshot-1.26.1016.1852",
+      "--output",
+      "/Users/rcourson/Documents/Vibe/web/out/browser-feature-stage-pair-20261023-a3/baseline",
+      "--app-path",
+      "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-browser-features-20261023/Aux.app",
+      "--identity-profile",
+      "aux-v1",
+      "--state-identity-version",
+      "2",
+      "--cloud-profile",
+      "development",
+      "--feature-profile",
+      "baseline"
+    ],
+    [
+      "/opt/homebrew/Cellar/node/26.12.1/bin/node",
+      "/Users/rcourson/Documents/Vibe/web/scripts/stage-provided.mjs",
+      "--source-snapshot",
+      "/Users/rcourson/Documents/Vibe/web/out/provided-source-snapshot-1.26.1016.1852",
+      "--output",
+      "/Users/rcourson/Documents/Vibe/web/out/browser-feature-stage-pair-20261023-a3/desktop-v1",
+      "--app-path",
+      "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-browser-features-20261023/Aux.app",
+      "--identity-profile",
+      "aux-v1",
+      "--state-identity-version",
+      "2",
+      "--cloud-profile",
+      "development",
+      "--feature-profile",
+      "desktop-v1"
+    ]
+  ],
+  "stages": {
+    "baseline": {
+      "path": "/Users/rcourson/Documents/Vibe/web/out/browser-feature-stage-pair-20261023-a3/baseline",
+      "inventorySha256": "b67a7428eeb8a36053cc298d26b16d574b3138d5f6091833a01ce27349d2fafe"
+    },
+    "desktop-v1": {
+      "path": "/Users/rcourson/Documents/Vibe/web/out/browser-feature-stage-pair-20261023-a3/desktop-v1",
+      "inventorySha256": "521012a432987004f775e3bef6b416b8d1017d755b66258fa2d1f6ecb1912091"
+    }
+  }
+}
