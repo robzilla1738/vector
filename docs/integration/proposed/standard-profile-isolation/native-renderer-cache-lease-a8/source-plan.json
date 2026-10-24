@@ -1,0 +1,239 @@
+{
+  "format": "aux.native-renderer-cache-lease.source.v1",
+  "nativeRoot": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src",
+  "files": [
+    {
+      "path": "third_party/blink/public/mojom/dom_storage/storage_area.mojom",
+      "inputSha256": "bb870c77a3532861495abb44126bf58ffb30d8146deedbd3761d62fa5c2b66ca",
+      "outputSha256": "5d62cf6e4a250962b7565d745b14b7967b565ea5252a6d60608ed7c82966d3fa",
+      "output": "/Users/rcourson/.codex/worktrees/aux-features-organization/web/docs/integration/proposed/standard-profile-isolation/native-renderer-cache-lease-a8/source/third_party/blink/public/mojom/dom_storage/storage_area.mojom",
+      "anchors": [
+        {
+          "find": "import \"mojo/public/mojom/base/token.mojom\";",
+          "replace": "import \"mojo/public/mojom/base/token.mojom\";\nimport \"mojo/public/mojom/base/unguessable_token.mojom\";\nimport \"third_party/blink/public/mojom/tokens/tokens.mojom\";",
+          "count": 1
+        },
+        {
+          "find": "interface StorageAreaObserver {",
+          "replace": "// A cache-owner acknowledgment, not native profile/root/epoch authority.\n// UTF16 code units preserve JavaScript strings without a lossy UTF8 roundtrip.\nstruct AuxUiCacheEntry {\n  array<uint16> key;\n  array<uint16> value;\n};\nstruct AuxUiCacheDocument {\n  mojo_base.mojom.Token source_id;\n  LocalFrameToken frame;\n  DocumentToken document;\n};\nstruct AuxUiCacheReply {\n  bool ok;\n  bool held;\n  bool tainted;\n  bool published;\n  string error;\n  mojo_base.mojom.UnguessableToken? request_id;\n  mojo_base.mojom.UnguessableToken? token;\n  array<AuxUiCacheDocument> sources;\n  array<AuxUiCacheEntry> source_entries;\n  array<AuxUiCacheEntry> staged_entries;\n};\n\ninterface StorageAreaObserver {",
+          "count": 1
+        },
+        {
+          "find": "  ShouldSendOldValueOnMutations(bool value);",
+          "replace": "  ShouldSendOldValueOnMutations(bool value);\n\n  // Only the actual privileged storage service selects this observer endpoint.\n  // The source remains script-visible until final publish. No productive\n  // StorageEvents or ordinary storage writes are synthesized by these RPCs.\n  BeginAuxUiCacheMigration(mojo_base.mojom.UnguessableToken request)\n      => (AuxUiCacheReply reply);\n  ReadAuxUiCacheMigration(mojo_base.mojom.UnguessableToken request)\n      => (AuxUiCacheReply reply);\n  ValidateAuxUiCacheMigration(mojo_base.mojom.UnguessableToken request,\n                              mojo_base.mojom.UnguessableToken token)\n      => (AuxUiCacheReply reply);\n  StageAuxUiCacheMigration(mojo_base.mojom.UnguessableToken request,\n                           mojo_base.mojom.UnguessableToken token,\n                           array<AuxUiCacheEntry> expected_source,\n                           array<AuxUiCacheEntry> target)\n      => (AuxUiCacheReply reply);\n  PublishAuxUiCacheMigration(mojo_base.mojom.UnguessableToken request,\n                             mojo_base.mojom.UnguessableToken token)\n      => (AuxUiCacheReply reply);\n  RestoreAuxUiCacheMigration(mojo_base.mojom.UnguessableToken request,\n                             mojo_base.mojom.UnguessableToken token)\n      => (AuxUiCacheReply reply);\n  ReleaseAuxUiCacheMigration(mojo_base.mojom.UnguessableToken request,\n                             mojo_base.mojom.UnguessableToken token)\n      => (bool released);\n",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "third_party/blink/renderer/modules/storage/cached_storage_area.h",
+      "inputSha256": "b6df0ff16d24659ff46e1a7334c592140e6cefacb46f6d0398c56bccd8ef9e90",
+      "outputSha256": "043ba2361b97f905feb35acc853f056de666a4b1830adf83663d7dd07c9e08f9",
+      "output": "/Users/rcourson/.codex/worktrees/aux-features-organization/web/docs/integration/proposed/standard-profile-isolation/native-renderer-cache-lease-a8/source/third_party/blink/renderer/modules/storage/cached_storage_area.h",
+      "anchors": [
+        {
+          "find": "#include \"base/token.h\"",
+          "replace": "#include <optional>\n\n#include \"base/functional/callback.h\"\n#include \"base/memory/weak_ptr.h\"\n#include \"base/token.h\"\n#include \"base/unguessable_token.h\"",
+          "count": 1
+        },
+        {
+          "find": "  // Allow this object to keep track of the Source instances corresponding to",
+          "replace": "  // A real StorageAreaObserver endpoint owns this hold. The token is\n  // correlation, never Profile/path/admission authority. Normal JS reads keep\n  // the source until explicit final native publish; writes refuse and taint.\n  bool RejectAuxUiMigrationWrite();\n\n  // Allow this object to keep track of the Source instances corresponding to",
+          "count": 1
+        },
+        {
+          "find": "  const AreaType type_;",
+          "replace": "  struct AuxUiCacheSource {\n    base::Token source_id;\n    LocalFrameToken frame;\n    DocumentToken document;\n    bool operator==(const AuxUiCacheSource&) const = default;\n  };\n  struct AuxUiCacheLease {\n    base::UnguessableToken request;\n    base::UnguessableToken token = base::UnguessableToken::Create();\n    Vector<AuxUiCacheSource> sources;\n    std::unique_ptr<StorageAreaMap> original;\n    std::unique_ptr<StorageAreaMap> target;\n    Vector<base::OnceClosure> deferred;\n    bool tainted = false;\n    bool published = false;\n  };\n  bool IsAuxUiMigrationOrigin() const;\n  std::optional<Vector<AuxUiCacheSource>> CollectAuxUiCacheSources() const;\n  mojom::blink::AuxUiCacheReplyPtr ReadAuxUiCacheReply(\n      const base::UnguessableToken& request,\n      const std::optional<base::UnguessableToken>& token);\n  base::OnceClosure TrackAuxStorageCallback(base::OnceClosure callback);\n  void BeginAuxUiCacheMigration(const base::UnguessableToken& request,\n                                BeginAuxUiCacheMigrationCallback callback) override;\n  void ReadAuxUiCacheMigration(const base::UnguessableToken& request,\n                               ReadAuxUiCacheMigrationCallback callback) override;\n  void ValidateAuxUiCacheMigration(const base::UnguessableToken& request,\n      const base::UnguessableToken& token,\n      ValidateAuxUiCacheMigrationCallback callback) override;\n  void StageAuxUiCacheMigration(const base::UnguessableToken& request,\n      const base::UnguessableToken& token,\n      Vector<mojom::blink::AuxUiCacheEntryPtr> expected_source,\n      Vector<mojom::blink::AuxUiCacheEntryPtr> target,\n      StageAuxUiCacheMigrationCallback callback) override;\n  void PublishAuxUiCacheMigration(const base::UnguessableToken& request,\n      const base::UnguessableToken& token,\n      PublishAuxUiCacheMigrationCallback callback) override;\n  void RestoreAuxUiCacheMigration(const base::UnguessableToken& request,\n      const base::UnguessableToken& token,\n      RestoreAuxUiCacheMigrationCallback callback) override;\n  void ReleaseAuxUiCacheMigration(const base::UnguessableToken& request,\n      const base::UnguessableToken& token,\n      ReleaseAuxUiCacheMigrationCallback callback) override;\n\n  const AreaType type_;",
+          "count": 1
+        },
+        {
+          "find": "  std::unique_ptr<StorageAreaMap> map_;",
+          "replace": "  std::unique_ptr<StorageAreaMap> map_;\n  std::unique_ptr<AuxUiCacheLease> aux_ui_cache_lease_;\n  size_t aux_storage_callbacks_pending_ = 0;",
+          "count": 1
+        },
+        {
+          "find": "  Persistent<GCedHeapHashMap<WeakMember<Source>, base::Token>> areas_;",
+          "replace": "  Persistent<GCedHeapHashMap<WeakMember<Source>, base::Token>> areas_;\n  base::WeakPtrFactory<CachedStorageArea> aux_weak_{this};",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "third_party/blink/renderer/modules/storage/cached_storage_area.cc",
+      "inputSha256": "92a53b484ce3276c3155890549c8d38cfe91129996550a29c1d82f7c5f744e21",
+      "outputSha256": "4e5471a27b92b7da26f4b26cdf4d1692f100b2f728b342e9552bc4ab1572cbe5",
+      "output": "/Users/rcourson/.codex/worktrees/aux-features-organization/web/docs/integration/proposed/standard-profile-isolation/native-renderer-cache-lease-a8/source/third_party/blink/renderer/modules/storage/cached_storage_area.cc",
+      "anchors": [
+        {
+          "find": "#include <algorithm>",
+          "replace": "#include <algorithm>\n#include <map>\n#include <string>",
+          "count": 1
+        },
+        {
+          "find": "#include \"third_party/blink/renderer/core/frame/local_dom_window.h\"",
+          "replace": "#include \"third_party/blink/renderer/core/frame/local_dom_window.h\"\n#include \"third_party/blink/renderer/core/frame/local_frame.h\"\n#include \"third_party/blink/renderer/platform/weborigin/security_origin.h\"",
+          "count": 1
+        },
+        {
+          "find": "unsigned CachedStorageArea::GetLength() {",
+          "replace": "namespace {\nstruct AuxCacheRule { std::string_view source; std::string_view target; bool prefix; int scope; };\nconstexpr AuxCacheRule kAuxCacheRules[] = {\n  {\"aside.new-tab.omnibox-mode.v1\", \"aux.new-tab.omnibox-mode.v2\", false, 1},\n  {\"aside.browserTabStyle\", \"aux.browserTabStyle.v2\", false, 1},\n  {\"aside.last-final-confirm.v1\", \"aux.last-final-confirm.v2\", false, 1},\n  {\"aside.last-permission-mode.v1\", \"aux.last-permission-mode.v2\", false, 1},\n  {\"aside.new-tab.onboarding-helper-state.v1\", \"aux.new-tab.onboarding-helper-state.v2\", false, 1},\n  {\"aside.chat-draft.v2:\", \"aux.chat-draft.v3:\", true, 0},\n  {\"aside.chat-draft.v1:\", \"aux.chat-draft-text.v1:\", true, 0},\n  {\"aside.sidepanel-new-session-settings.v1:\", \"aux.sidepanel-new-session-settings.v2:\", true, 2},\n  {\"aside.chat-pending-new-session-message.v1\", \"aux.chat-pending-new-session-message.v2\", false, 2},\n};\nusing AuxCacheEntries = std::map<std::u16string, std::u16string>;\nstd::u16string AuxCacheUnits(const String& text) {\n  std::u16string result;\n  result.reserve(text.length());\n  for (unsigned i = 0; i < text.length(); ++i) result.push_back(text[i]);\n  return result;\n}\nString AuxCacheString(const std::u16string& text) {\n  return String(base::span<const UChar>(text));\n}\nstd::optional<std::string> AuxCacheAscii(const std::u16string& units) {\n  std::string result;\n  for (char16_t unit : units) {\n    if (unit < 0x20 || unit > 0x7e) return std::nullopt;\n    result.push_back(static_cast<char>(unit));\n  }\n  return result;\n}\nbool AuxCacheMatches(std::string_view key, std::string_view rule, bool prefix) {\n  return prefix ? key.starts_with(rule) : key == rule;\n}\nbool AuxCacheKnownKey(std::string_view key, bool local) {\n  for (const auto& rule : kAuxCacheRules) {\n    if ((rule.scope == 1 && !local) || (rule.scope == 2 && local)) continue;\n    if (AuxCacheMatches(key, rule.source, rule.prefix) ||\n        AuxCacheMatches(key, rule.target, rule.prefix)) return true;\n  }\n  return false;\n}\nAuxCacheEntries AuxSelectedCacheEntries(const StorageAreaMap& map, bool local) {\n  AuxCacheEntries entries;\n  for (unsigned i = 0; i < map.GetLength(); ++i) {\n    String key = map.GetKey(i);\n    auto units = AuxCacheUnits(key);\n    auto ascii = AuxCacheAscii(units);\n    if (ascii && AuxCacheKnownKey(*ascii, local)) entries.emplace(std::move(units), AuxCacheUnits(map.GetItem(key)));\n  }\n  return entries;\n}\nVector<mojom::blink::AuxUiCacheEntryPtr> AuxCacheWireEntries(const AuxCacheEntries& entries) {\n  Vector<mojom::blink::AuxUiCacheEntryPtr> result;\n  for (const auto& [key, value] : entries) {\n    auto entry = mojom::blink::AuxUiCacheEntry::New();\n    for (char16_t unit : key) entry->key.push_back(unit);\n    for (char16_t unit : value) entry->value.push_back(unit);\n    result.push_back(std::move(entry));\n  }\n  return result;\n}\nstd::optional<AuxCacheEntries> AuxCacheReadEntries(\n    const Vector<mojom::blink::AuxUiCacheEntryPtr>& entries, bool local) {\n  AuxCacheEntries result;\n  size_t units = 0;\n  for (const auto& entry : entries) {\n    if (!entry) return std::nullopt;\n    units += entry->key.size() + entry->value.size();\n    if (units > 8 * 1024 * 1024 || entry->key.size() > 8192) return std::nullopt;\n    std::u16string key, value;\n    for (uint16_t unit : entry->key) key.push_back(unit);\n    for (uint16_t unit : entry->value) value.push_back(unit);\n    auto ascii = AuxCacheAscii(key);\n    if (!ascii || !AuxCacheKnownKey(*ascii, local) || !result.emplace(std::move(key), std::move(value)).second)\n      return std::nullopt;\n  }\n  return result;\n}\nstd::optional<AuxCacheEntries> AuxCacheExpectedTarget(AuxCacheEntries source, bool local) {\n  const AuxCacheEntries original = source;\n  for (const auto& [key, value] : original) {\n    auto ascii = AuxCacheAscii(key);\n    if (!ascii) return std::nullopt;\n    for (const auto& rule : kAuxCacheRules) {\n      if ((rule.scope == 1 && !local) || (rule.scope == 2 && local) ||\n          !AuxCacheMatches(*ascii, rule.source, rule.prefix)) continue;\n      std::string next = std::string(rule.target) + ascii->substr(rule.source.size());\n      std::u16string target(next.begin(), next.end());\n      auto existing = source.find(target);\n      if (existing != source.end() && existing->second != value) return std::nullopt;\n      source[target] = value;\n      source.erase(key);\n      break;\n    }\n  }\n  return source;\n}\nstd::unique_ptr<StorageAreaMap> AuxCloneCacheMap(const StorageAreaMap& source) {\n  auto result = std::make_unique<StorageAreaMap>(source.quota());\n  for (unsigned i = 0; i < source.GetLength(); ++i) {\n    String key = source.GetKey(i);\n    result->SetItemIgnoringQuota(key, source.GetItem(key));\n  }\n  return result;\n}\n}  // namespace\n\nbool CachedStorageArea::IsAuxUiMigrationOrigin() const {\n  return storage_key_.GetSecurityOrigin()->ToString() ==\n      \"chrome-extension://gokkffaiccpmoeodpmeamcjajcagjmkm\";\n}\nbool CachedStorageArea::RejectAuxUiMigrationWrite() {\n  if (!aux_ui_cache_lease_) return false;\n  aux_ui_cache_lease_->tainted = true;\n  return true;\n}\nbase::OnceClosure CachedStorageArea::TrackAuxStorageCallback(base::OnceClosure callback) {\n  if (!IsAuxUiMigrationOrigin()) return callback;\n  ++aux_storage_callbacks_pending_;\n  // The actual physical reply, not a timeout or map clear, retires this work.\n  // A dropped callback leaves the counter unresolved; no completion is made up.\n  return BindOnce([](scoped_refptr<CachedStorageArea> owner, base::OnceClosure callback) {\n    CHECK_GT(owner->aux_storage_callbacks_pending_, 0u);\n    --owner->aux_storage_callbacks_pending_;\n    std::move(callback).Run();\n  }, scoped_refptr<CachedStorageArea>(this), std::move(callback));\n}\nstd::optional<Vector<CachedStorageArea::AuxUiCacheSource>>\nCachedStorageArea::CollectAuxUiCacheSources() const {\n  Vector<AuxUiCacheSource> result;\n  for (const auto& entry : *areas_) {\n    Source* source = entry.key.Get();\n    auto* window = source ? source->GetDOMWindow() : nullptr;\n    auto* frame = window ? window->GetFrame() : nullptr;\n    if (!frame || frame->DomWindow() != window) return std::nullopt;\n    result.push_back({entry.value, frame->GetLocalFrameToken(), frame->GetDocumentToken()});\n  }\n  if (result.empty() || result.size() > 256) return std::nullopt;\n  std::sort(result.begin(), result.end(), [](const auto& a, const auto& b) { return a.source_id < b.source_id; });\n  return result;\n}\nmojom::blink::AuxUiCacheReplyPtr CachedStorageArea::ReadAuxUiCacheReply(\n    const base::UnguessableToken& request,\n    const std::optional<base::UnguessableToken>& token) {\n  auto reply = mojom::blink::AuxUiCacheReply::New();\n  if (!aux_ui_cache_lease_) { reply->error = \"No retained Aux cache lease\"; return reply; }\n  auto& held = *aux_ui_cache_lease_;\n  reply->held = true;\n  reply->request_id = held.request;\n  reply->token = held.token;\n  reply->tainted = held.tainted;\n  reply->published = held.published;\n  auto sources = CollectAuxUiCacheSources();\n  bool valid = request == held.request && (!token || *token == held.token) &&\n      sources && *sources == held.sources && map_ && held.original &&\n      remote_area_.is_bound() && receiver_.is_bound() &&\n      aux_storage_callbacks_pending_ == 0 && pending_mutations_by_source_.empty() &&\n      pending_mutations_by_key_.empty() && !held.tainted && !is_session_storage_for_prerendering_;\n  if (valid) {\n    const auto& expected = held.published ? held.target : held.original;\n    valid = expected && AuxSelectedCacheEntries(*map_, !IsSessionStorage()) ==\n        AuxSelectedCacheEntries(*expected, !IsSessionStorage());\n  }\n  if (!valid) { reply->error = \"Actual cache/source/physical writer hold changed\"; return reply; }\n  reply->ok = true;\n  for (const auto& source : held.sources) {\n    auto stamp = mojom::blink::AuxUiCacheDocument::New();\n    stamp->source_id = source.source_id; stamp->frame = source.frame; stamp->document = source.document;\n    reply->sources.push_back(std::move(stamp));\n  }\n  reply->source_entries = AuxCacheWireEntries(AuxSelectedCacheEntries(*held.original, !IsSessionStorage()));\n  if (held.target) reply->staged_entries = AuxCacheWireEntries(AuxSelectedCacheEntries(*held.target, !IsSessionStorage()));\n  return reply;\n}\nvoid CachedStorageArea::BeginAuxUiCacheMigration(\n    const base::UnguessableToken& request, BeginAuxUiCacheMigrationCallback callback) {\n  if (request.is_empty() || aux_ui_cache_lease_ || !IsAuxUiMigrationOrigin() ||\n      !map_ || !remote_area_.is_bound() || !receiver_.is_bound() ||\n      is_session_storage_for_prerendering_ || aux_storage_callbacks_pending_ ||\n      !pending_mutations_by_source_.empty() || !pending_mutations_by_key_.empty()) {\n    auto reply = mojom::blink::AuxUiCacheReply::New();\n    reply->held = !!aux_ui_cache_lease_;\n    reply->error = \"Actual Aux cache is not ready for a new hold\";\n    std::move(callback).Run(std::move(reply)); return;\n  }\n  auto sources = CollectAuxUiCacheSources();\n  if (!sources) {\n    auto reply = mojom::blink::AuxUiCacheReply::New(); reply->error = \"Unknown Aux cache document owner\";\n    std::move(callback).Run(std::move(reply)); return;\n  }\n  aux_ui_cache_lease_ = std::make_unique<AuxUiCacheLease>();\n  aux_ui_cache_lease_->request = request;\n  aux_ui_cache_lease_->sources = std::move(*sources);\n  aux_ui_cache_lease_->original = AuxCloneCacheMap(*map_);\n  std::move(callback).Run(ReadAuxUiCacheReply(request, std::nullopt));\n}\nvoid CachedStorageArea::ReadAuxUiCacheMigration(\n    const base::UnguessableToken& request, ReadAuxUiCacheMigrationCallback callback) {\n  std::move(callback).Run(ReadAuxUiCacheReply(request, std::nullopt));\n}\nvoid CachedStorageArea::ValidateAuxUiCacheMigration(\n    const base::UnguessableToken& request, const base::UnguessableToken& token,\n    ValidateAuxUiCacheMigrationCallback callback) {\n  std::move(callback).Run(ReadAuxUiCacheReply(request, token));\n}\nvoid CachedStorageArea::StageAuxUiCacheMigration(\n    const base::UnguessableToken& request, const base::UnguessableToken& token,\n    Vector<mojom::blink::AuxUiCacheEntryPtr> expected_source,\n    Vector<mojom::blink::AuxUiCacheEntryPtr> target, StageAuxUiCacheMigrationCallback callback) {\n  auto reply = ReadAuxUiCacheReply(request, token);\n  if (!reply->ok || aux_ui_cache_lease_->published) {\n    reply->ok = false; std::move(callback).Run(std::move(reply)); return;\n  }\n  auto source = AuxCacheReadEntries(expected_source, !IsSessionStorage());\n  auto proposed = AuxCacheReadEntries(target, !IsSessionStorage());\n  auto actual = AuxSelectedCacheEntries(*aux_ui_cache_lease_->original, !IsSessionStorage());\n  auto derived = AuxCacheExpectedTarget(actual, !IsSessionStorage());\n  if (!source || *source != actual || !proposed || !derived || *proposed != *derived) {\n    reply->ok = false; reply->error = \"Exact retained source and fixed Aux target required\";\n    std::move(callback).Run(std::move(reply)); return;\n  }\n  auto staged = AuxCloneCacheMap(*aux_ui_cache_lease_->original);\n  for (const auto& [key, value] : actual) staged->RemoveItem(AuxCacheString(key), nullptr);\n  for (const auto& [key, value] : *proposed) {\n    if (!staged->SetItem(AuxCacheString(key), AuxCacheString(value), nullptr)) {\n      reply->ok = false; reply->error = \"Actual target cache quota refused\";\n      std::move(callback).Run(std::move(reply)); return;\n    }\n  }\n  // Private only: no ordinary read view, StorageEvent, original callback,\n  // backend write or admission state changes at this stage.\n  aux_ui_cache_lease_->target = std::move(staged);\n  std::move(callback).Run(ReadAuxUiCacheReply(request, token));\n}\nvoid CachedStorageArea::PublishAuxUiCacheMigration(\n    const base::UnguessableToken& request, const base::UnguessableToken& token,\n    PublishAuxUiCacheMigrationCallback callback) {\n  auto reply = ReadAuxUiCacheReply(request, token);\n  if (!reply->ok || !aux_ui_cache_lease_->target) {\n    reply->ok = false; std::move(callback).Run(std::move(reply)); return;\n  }\n  // The genuine native controller must have committed/read back every backend\n  // and its durable intent before requesting final publish. This RPC supplies\n  // no such authority and performs no backend write or productive event.\n  map_ = AuxCloneCacheMap(*aux_ui_cache_lease_->target);\n  aux_ui_cache_lease_->published = true;\n  std::move(callback).Run(ReadAuxUiCacheReply(request, token));\n}\nvoid CachedStorageArea::RestoreAuxUiCacheMigration(\n    const base::UnguessableToken& request, const base::UnguessableToken& token,\n    RestoreAuxUiCacheMigrationCallback callback) {\n  auto reply = ReadAuxUiCacheReply(request, token);\n  if (!reply->ok) { std::move(callback).Run(std::move(reply)); return; }\n  map_ = AuxCloneCacheMap(*aux_ui_cache_lease_->original);\n  aux_ui_cache_lease_->published = false;\n  std::move(callback).Run(ReadAuxUiCacheReply(request, token));\n}\nvoid CachedStorageArea::ReleaseAuxUiCacheMigration(\n    const base::UnguessableToken& request, const base::UnguessableToken& token,\n    ReleaseAuxUiCacheMigrationCallback callback) {\n  if (!aux_ui_cache_lease_ || aux_ui_cache_lease_->request != request || aux_ui_cache_lease_->token != token) {\n    std::move(callback).Run(false); return;\n  }\n  // Exact original-owner release is cleanup, never proof of physical success.\n  // Tainted source holds may be aborted, but target recovery remains native.\n  scoped_refptr<CachedStorageArea> keep_alive(this);\n  auto deferred = std::move(aux_ui_cache_lease_->deferred);\n  aux_ui_cache_lease_.reset();\n  for (auto& operation : deferred) std::move(operation).Run();\n  std::move(callback).Run(true);\n}\n\nunsigned CachedStorageArea::GetLength() {",
+          "count": 1
+        },
+        {
+          "find": "base::IgnoreArgs<bool>(MakeVirtualTimePauserCallback(source))",
+          "replace": "base::IgnoreArgs<bool>(TrackAuxStorageCallback(MakeVirtualTimePauserCallback(source)))",
+          "count": 1
+        },
+        {
+          "find": "        MakeVirtualTimePauserCallback(source));",
+          "replace": "        TrackAuxStorageCallback(MakeVirtualTimePauserCallback(source)));",
+          "count": 1
+        },
+        {
+          "find": "        std::move(new_observer), MakeVirtualTimePauserCallback(source));",
+          "replace": "        std::move(new_observer), TrackAuxStorageCallback(MakeVirtualTimePauserCallback(source)));",
+          "count": 1
+        },
+        {
+          "find": "bool CachedStorageArea::SetItem(const String& key,\n                                const String& value,\n                                Source* source) {",
+          "replace": "bool CachedStorageArea::SetItem(const String& key,\n                                const String& value,\n                                Source* source) {\n  if (RejectAuxUiMigrationWrite()) return false;",
+          "count": 1
+        },
+        {
+          "find": "void CachedStorageArea::RemoveItem(const String& key, Source* source) {",
+          "replace": "void CachedStorageArea::RemoveItem(const String& key, Source* source) {\n  if (aux_ui_cache_lease_) {\n    aux_ui_cache_lease_->tainted = true;\n    aux_ui_cache_lease_->deferred.push_back(BindOnce(&CachedStorageArea::RemoveItem,\n        aux_weak_.GetWeakPtr(), key, WrapWeakPersistent(source)));\n    return;\n  }",
+          "count": 1
+        },
+        {
+          "find": "void CachedStorageArea::Clear(Source* source) {",
+          "replace": "void CachedStorageArea::Clear(Source* source) {\n  if (aux_ui_cache_lease_) {\n    aux_ui_cache_lease_->tainted = true;\n    aux_ui_cache_lease_->deferred.push_back(BindOnce(&CachedStorageArea::Clear,\n        aux_weak_.GetWeakPtr(), WrapWeakPersistent(source)));\n    return;\n  }",
+          "count": 1
+        },
+        {
+          "find": "base::Token CachedStorageArea::RegisterSource(Source* source) {",
+          "replace": "base::Token CachedStorageArea::RegisterSource(Source* source) {\n  if (aux_ui_cache_lease_) aux_ui_cache_lease_->tainted = true;",
+          "count": 1
+        },
+        {
+          "find": "void CachedStorageArea::ResetConnection(\n    mojo::PendingRemote<mojom::blink::StorageArea> new_area) {",
+          "replace": "void CachedStorageArea::ResetConnection(\n    mojo::PendingRemote<mojom::blink::StorageArea> new_area) {\n  if (aux_ui_cache_lease_) {\n    aux_ui_cache_lease_->tainted = true;\n    aux_ui_cache_lease_->deferred.push_back(BindOnce(&CachedStorageArea::ResetConnection,\n        aux_weak_.GetWeakPtr(), std::move(new_area)));\n    return;\n  }",
+          "count": 1
+        },
+        {
+          "find": "void CachedStorageArea::EvictCachedData() {",
+          "replace": "void CachedStorageArea::EvictCachedData() {\n  if (aux_ui_cache_lease_) {\n    aux_ui_cache_lease_->tainted = true;\n    aux_ui_cache_lease_->deferred.push_back(BindOnce(&CachedStorageArea::EvictCachedData,\n        aux_weak_.GetWeakPtr()));\n    return;\n  }",
+          "count": 1
+        },
+        {
+          "find": "void CachedStorageArea::KeyChanged(\n    const Vector<uint8_t>& key,\n    const Vector<uint8_t>& new_value,\n    const std::optional<Vector<uint8_t>>& old_value,\n    mojom::blink::StorageAreaSourcePtr source) {",
+          "replace": "void CachedStorageArea::KeyChanged(\n    const Vector<uint8_t>& key,\n    const Vector<uint8_t>& new_value,\n    const std::optional<Vector<uint8_t>>& old_value,\n    mojom::blink::StorageAreaSourcePtr source) {\n  if (aux_ui_cache_lease_) {\n    aux_ui_cache_lease_->tainted = true;\n    aux_ui_cache_lease_->deferred.push_back(BindOnce(&CachedStorageArea::KeyChanged,\n        aux_weak_.GetWeakPtr(), key, new_value, old_value, std::move(source)));\n    return;\n  }",
+          "count": 1
+        },
+        {
+          "find": "void CachedStorageArea::KeyChangeFailed(\n    const Vector<uint8_t>& key,\n    mojom::blink::StorageAreaSourcePtr source) {",
+          "replace": "void CachedStorageArea::KeyChangeFailed(\n    const Vector<uint8_t>& key,\n    mojom::blink::StorageAreaSourcePtr source) {\n  if (aux_ui_cache_lease_) {\n    aux_ui_cache_lease_->tainted = true;\n    aux_ui_cache_lease_->deferred.push_back(BindOnce(&CachedStorageArea::KeyChangeFailed,\n        aux_weak_.GetWeakPtr(), key, std::move(source)));\n    return;\n  }",
+          "count": 1
+        },
+        {
+          "find": "void CachedStorageArea::KeyDeleted(\n    const Vector<uint8_t>& key,\n    const std::optional<Vector<uint8_t>>& old_value,\n    mojom::blink::StorageAreaSourcePtr source) {",
+          "replace": "void CachedStorageArea::KeyDeleted(\n    const Vector<uint8_t>& key,\n    const std::optional<Vector<uint8_t>>& old_value,\n    mojom::blink::StorageAreaSourcePtr source) {\n  if (aux_ui_cache_lease_) {\n    aux_ui_cache_lease_->tainted = true;\n    aux_ui_cache_lease_->deferred.push_back(BindOnce(&CachedStorageArea::KeyDeleted,\n        aux_weak_.GetWeakPtr(), key, old_value, std::move(source)));\n    return;\n  }",
+          "count": 1
+        },
+        {
+          "find": "void CachedStorageArea::AllDeleted(bool was_nonempty,\n                                   mojom::blink::StorageAreaSourcePtr source) {",
+          "replace": "void CachedStorageArea::AllDeleted(bool was_nonempty,\n                                   mojom::blink::StorageAreaSourcePtr source) {\n  if (aux_ui_cache_lease_) {\n    aux_ui_cache_lease_->tainted = true;\n    aux_ui_cache_lease_->deferred.push_back(BindOnce(&CachedStorageArea::AllDeleted,\n        aux_weak_.GetWeakPtr(), was_nonempty, std::move(source)));\n    return;\n  }",
+          "count": 1
+        },
+        {
+          "find": "void CachedStorageArea::ShouldSendOldValueOnMutations(bool value) {",
+          "replace": "void CachedStorageArea::ShouldSendOldValueOnMutations(bool value) {\n  if (aux_ui_cache_lease_) {\n    aux_ui_cache_lease_->tainted = true;\n    aux_ui_cache_lease_->deferred.push_back(BindOnce(&CachedStorageArea::ShouldSendOldValueOnMutations,\n        aux_weak_.GetWeakPtr(), value));\n    return;\n  }",
+          "count": 1
+        },
+        {
+          "find": "      remote_area_->Delete(\n          StringToUint8Vector(delta.key, GetKeyFormat()),\n          StringToUint8Vector(delta.value.restored_value, GetValueFormat()),\n          /*source=*/nullptr, base::DoNothing());",
+          "replace": "      remote_area_->Delete(\n          StringToUint8Vector(delta.key, GetKeyFormat()),\n          StringToUint8Vector(delta.value.restored_value, GetValueFormat()),\n          /*source=*/nullptr, TrackAuxStorageCallback(base::DoNothing()));",
+          "count": 1
+        },
+        {
+          "find": "      remote_area_->Put(\n          StringToUint8Vector(delta.key, GetKeyFormat()),\n          StringToUint8Vector(delta.value.previously_cached_value,\n                              value_format),\n          StringToUint8Vector(delta.value.restored_value, value_format),\n          /*source=*/nullptr, base::DoNothing());",
+          "replace": "      remote_area_->Put(\n          StringToUint8Vector(delta.key, GetKeyFormat()),\n          StringToUint8Vector(delta.value.previously_cached_value,\n                              value_format),\n          StringToUint8Vector(delta.value.restored_value, value_format),\n          /*source=*/nullptr, base::IgnoreArgs<bool>(TrackAuxStorageCallback(base::DoNothing())));",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "third_party/blink/renderer/modules/storage/storage_area.cc",
+      "inputSha256": "ee91f1a6b5452088f5d1acc96c9e35a4ace155a7bdf5c408637876e7158a4df1",
+      "outputSha256": "04512a5465a498825e11c57ea097357e898fbd799f552e4b2d6646f9426f3f89",
+      "output": "/Users/rcourson/.codex/worktrees/aux-features-organization/web/docs/integration/proposed/standard-profile-isolation/native-renderer-cache-lease-a8/source/third_party/blink/renderer/modules/storage/storage_area.cc",
+      "anchors": [
+        {
+          "find": "NamedPropertySetterResult StorageArea::setItem(\n    const String& key,\n    const String& value,\n    ExceptionState& exception_state) {\n  if (!CanAccessStorage()) {\n    exception_state.ThrowSecurityError(StorageArea::kAccessDeniedMessage);\n    return NamedPropertySetterResult::kIntercepted;\n  }",
+          "replace": "NamedPropertySetterResult StorageArea::setItem(\n    const String& key,\n    const String& value,\n    ExceptionState& exception_state) {\n  if (!CanAccessStorage()) {\n    exception_state.ThrowSecurityError(StorageArea::kAccessDeniedMessage);\n    return NamedPropertySetterResult::kIntercepted;\n  }\n  if (cached_area_->RejectAuxUiMigrationWrite()) {\n    exception_state.ThrowDOMException(DOMExceptionCode::kInvalidStateError,\n        \"Aux is updating this profile's storage. Try again shortly.\");\n    return NamedPropertySetterResult::kIntercepted;\n  }",
+          "count": 1
+        },
+        {
+          "find": "NamedPropertyDeleterResult StorageArea::removeItem(\n    const String& key,\n    ExceptionState& exception_state) {\n  if (!CanAccessStorage()) {\n    exception_state.ThrowSecurityError(StorageArea::kAccessDeniedMessage);\n    return NamedPropertyDeleterResult::kDidNotDelete;\n  }",
+          "replace": "NamedPropertyDeleterResult StorageArea::removeItem(\n    const String& key,\n    ExceptionState& exception_state) {\n  if (!CanAccessStorage()) {\n    exception_state.ThrowSecurityError(StorageArea::kAccessDeniedMessage);\n    return NamedPropertyDeleterResult::kDidNotDelete;\n  }\n  if (cached_area_->RejectAuxUiMigrationWrite()) {\n    exception_state.ThrowDOMException(DOMExceptionCode::kInvalidStateError,\n        \"Aux is updating this profile's storage. Try again shortly.\");\n    return NamedPropertyDeleterResult::kDidNotDelete;\n  }",
+          "count": 1
+        },
+        {
+          "find": "void StorageArea::clear(ExceptionState& exception_state) {\n  if (!CanAccessStorage()) {\n    exception_state.ThrowSecurityError(StorageArea::kAccessDeniedMessage);\n    return;\n  }",
+          "replace": "void StorageArea::clear(ExceptionState& exception_state) {\n  if (!CanAccessStorage()) {\n    exception_state.ThrowSecurityError(StorageArea::kAccessDeniedMessage);\n    return;\n  }\n  if (cached_area_->RejectAuxUiMigrationWrite()) {\n    exception_state.ThrowDOMException(DOMExceptionCode::kInvalidStateError,\n        \"Aux is updating this profile's storage. Try again shortly.\");\n    return;\n  }",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "components/services/storage/dom_storage/test_support/storage_area_test_util.h",
+      "inputSha256": "0473810d47e537eb7a354397ca8d814e9bde20092405f5a80556a9152f9a0500",
+      "outputSha256": "344a3ef4f14be44d81bc54262286382a27f8cfc437bf58e796109b915c3daea6",
+      "output": "/Users/rcourson/.codex/worktrees/aux-features-organization/web/docs/integration/proposed/standard-profile-isolation/native-renderer-cache-lease-a8/source/components/services/storage/dom_storage/test_support/storage_area_test_util.h",
+      "anchors": [
+        {
+          "find": "// Mock observer implementation for use with StorageArea.",
+          "replace": "// Compatibility only: these observers do not implement real cache custody.\nclass UnsupportedAuxMigrationObserver : public blink::mojom::StorageAreaObserver {\n public:\n  void BeginAuxUiCacheMigration(const base::UnguessableToken& request, BeginAuxUiCacheMigrationCallback callback) override {\n    auto reply = blink::mojom::AuxUiCacheReply::New();\n    reply->error = \"Observer has no actual Aux cache owner\";\n    std::move(callback).Run(std::move(reply));\n  }\n  void ReadAuxUiCacheMigration(const base::UnguessableToken& request, ReadAuxUiCacheMigrationCallback callback) override {\n    auto reply = blink::mojom::AuxUiCacheReply::New();\n    reply->error = \"Observer has no actual Aux cache owner\";\n    std::move(callback).Run(std::move(reply));\n  }\n  void ValidateAuxUiCacheMigration(const base::UnguessableToken& request, const base::UnguessableToken& token, ValidateAuxUiCacheMigrationCallback callback) override {\n    auto reply = blink::mojom::AuxUiCacheReply::New();\n    reply->error = \"Observer has no actual Aux cache owner\";\n    std::move(callback).Run(std::move(reply));\n  }\n  void StageAuxUiCacheMigration(const base::UnguessableToken& request, const base::UnguessableToken& token, std::vector<blink::mojom::AuxUiCacheEntryPtr> source, std::vector<blink::mojom::AuxUiCacheEntryPtr> target, StageAuxUiCacheMigrationCallback callback) override {\n    auto reply = blink::mojom::AuxUiCacheReply::New();\n    reply->error = \"Observer has no actual Aux cache owner\";\n    std::move(callback).Run(std::move(reply));\n  }\n  void PublishAuxUiCacheMigration(const base::UnguessableToken& request, const base::UnguessableToken& token, PublishAuxUiCacheMigrationCallback callback) override {\n    auto reply = blink::mojom::AuxUiCacheReply::New();\n    reply->error = \"Observer has no actual Aux cache owner\";\n    std::move(callback).Run(std::move(reply));\n  }\n  void RestoreAuxUiCacheMigration(const base::UnguessableToken& request, const base::UnguessableToken& token, RestoreAuxUiCacheMigrationCallback callback) override {\n    auto reply = blink::mojom::AuxUiCacheReply::New();\n    reply->error = \"Observer has no actual Aux cache owner\";\n    std::move(callback).Run(std::move(reply));\n  }\n  void ReleaseAuxUiCacheMigration(const base::UnguessableToken& request, const base::UnguessableToken& token, ReleaseAuxUiCacheMigrationCallback callback) override {\n    std::move(callback).Run(false);\n  }\n};\n\n// Mock observer implementation for use with StorageArea.",
+          "count": 1
+        },
+        {
+          "find": "class MockStorageAreaObserver : public blink::mojom::StorageAreaObserver {",
+          "replace": "class MockStorageAreaObserver : public UnsupportedAuxMigrationObserver {",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "components/services/storage/dom_storage/local_storage_impl_unittest.cc",
+      "inputSha256": "f5ec67aa67c917fe9ab4d52c306bb18c0fae3d6c6cc71684500ba44a93fe21bd",
+      "outputSha256": "e529d02437e04004d7fae9d97d5cd3a72a47dd3fdff1e5eb2cc9fd754267def8",
+      "output": "/Users/rcourson/.codex/worktrees/aux-features-organization/web/docs/integration/proposed/standard-profile-isolation/native-renderer-cache-lease-a8/source/components/services/storage/dom_storage/local_storage_impl_unittest.cc",
+      "anchors": [
+        {
+          "find": "class TestStorageAreaObserver : public blink::mojom::StorageAreaObserver {",
+          "replace": "class TestStorageAreaObserver : public test::UnsupportedAuxMigrationObserver {",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "components/services/storage/dom_storage/storage_area_impl_unittest.cc",
+      "inputSha256": "98bdb0ad281dc65083cea5b2c653685f114eb2838dfc193d55b49a4dfb98b4e8",
+      "outputSha256": "c56329ffd0e82b66b5f54776afd26f9d44de798df1859e3aea038c0484a833ac",
+      "output": "/Users/rcourson/.codex/worktrees/aux-features-organization/web/docs/integration/proposed/standard-profile-isolation/native-renderer-cache-lease-a8/source/components/services/storage/dom_storage/storage_area_impl_unittest.cc",
+      "anchors": [
+        {
+          "find": "                                public blink::mojom::StorageAreaObserver {",
+          "replace": "                                public test::UnsupportedAuxMigrationObserver {",
+          "count": 1
+        }
+      ]
+    }
+  ],
+  "nativeCheckoutChanged": false,
+  "nativeCompiled": false,
+  "productExecuted": false,
+  "actualBackendCacheCohortConsumed": false,
+  "crossStoreRecoveryImplemented": false,
+  "directoryDurabilityProven": false,
+  "activationAuthorized": false
+}
