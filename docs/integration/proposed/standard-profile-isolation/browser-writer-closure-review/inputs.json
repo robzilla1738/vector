@@ -1,0 +1,199 @@
+{
+  "format": "aux.browser-writer-closure.source-review.v1",
+  "date": "2026-10-24",
+  "scope": "read-only source feasibility; no runtime/build acceptance",
+  "inputs": [
+    {
+      "kind": "selected-native",
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/aux/AuxBrowserPrivateRoots.h",
+      "sha256": "5b9b84ca04000046b99b59ed9967d2ddce14afdd1c8b0a36bcf0d50a4aa30636",
+      "bytes": 1356
+    },
+    {
+      "kind": "selected-native",
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/aux/AuxBrowserPrivateRoots.cc",
+      "sha256": "403d6e5e1d8367b5317be06ec120ed9d65b032ed0fc176a379b7d7293373c998",
+      "bytes": 3092
+    },
+    {
+      "kind": "selected-native",
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/aux/AuxChromiumBrowserRootProducer.cc",
+      "sha256": "e38a850dec4b8f6105fe75b94ad31a617a1a719af81b7fdc2c94202dc65bb3a7",
+      "bytes": 3350
+    },
+    {
+      "kind": "selected-native",
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/aux/AuxSelectedStateHome.cc",
+      "sha256": "d1570801ecc1794abea41ba4c796fc7dfd3c273b11713e94d466010edfd78b56",
+      "bytes": 22636
+    },
+    {
+      "kind": "selected-native",
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/aux/AuxBrowserNetworkPaths.cc",
+      "sha256": "2996381f1265fd2af903c78a18f16bb8c31fdc762dba0c487dedc24a8cdcebda",
+      "bytes": 3107
+    },
+    {
+      "kind": "selected-native",
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/chrome_content_browser_client.cc",
+      "sha256": "bafac29ed6899bcb8db8b4c3aaa97f88d6ec1ffc26b633491924ec58f629aa95",
+      "bytes": 418005
+    },
+    {
+      "kind": "selected-native",
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/net/profile_network_context_service.cc",
+      "sha256": "55d29972186221adc500576187a5ac9f4b4084aa5384bda05a6f9359ed2350bc",
+      "bytes": 70864
+    },
+    {
+      "kind": "selected-native",
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/extensions/api/messaging/launch_context_posix.cc",
+      "sha256": "5007bc9ed3ab70693ffbebc5687cda1105246f74cce234b07cae58afb4d6c382",
+      "bytes": 6406
+    },
+    {
+      "kind": "selected-native",
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/extensions/api/messaging/launch_context.cc",
+      "sha256": "9bff0d744b9e435dcc71c0df738ba64aa46eb3643ab745e3be614ec3157c9d75",
+      "bytes": 13843
+    },
+    {
+      "kind": "selected-native",
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/extensions/api/messaging/aux_native_messaging_lifetime.h",
+      "sha256": "55a77918bbb40ba07a9fcf1b1e4d217b62f92d7e4f9d2bc7e6900205d9f4cb47",
+      "bytes": 6181
+    },
+    {
+      "kind": "selected-native",
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/base/process/launch_mac.cc",
+      "sha256": "2c62e962f5b2fdabcfaaf8a5e4155e15e40ae332cda3a6c9c51261933877e80a",
+      "bytes": 17024
+    },
+    {
+      "kind": "selected-native",
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/content/browser/child_process_launcher_helper_mac.cc",
+      "sha256": "3593313f53dc2a6b149679340f148525b853354354b27f08e2374ddaf94115dd",
+      "bytes": 10470
+    },
+    {
+      "kind": "selected-native",
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/content/browser/aux_child_lifetime.h",
+      "sha256": "446f4dac61201c937cae66c4f7515e4aac7bb8cbe0ce14f613cb7661028d2fc6",
+      "bytes": 5526
+    },
+    {
+      "kind": "selected-native",
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/content/browser/aux_child_process_drain.cc",
+      "sha256": "17ff56890fc349692ff79e575c9f8f017eaa6c0473cc6a894a25ed7d7402ed53",
+      "bytes": 1089
+    },
+    {
+      "kind": "selected-native",
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/content/browser/sandbox_parameters_mac.mm",
+      "sha256": "3a0b8bcc6b8a801aa481ce1f62ea72b0a63f4a02d67d34397924bb13616bb8b6",
+      "bytes": 10442
+    },
+    {
+      "kind": "selected-native",
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/content/browser/storage_partition_impl.cc",
+      "sha256": "80c07c1407f823576830d9b4a742c75cc1477af4273be1ade8e2c888e50097b6",
+      "bytes": 164878
+    },
+    {
+      "kind": "selected-native",
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/content/browser/webnn/webnn_browser_host_impl.cc",
+      "sha256": "e37d93cf0c2987ac1ac3a18b3a8903e8c7987ad5c986a3d1acc1a11f8b3c7ae8",
+      "bytes": 16748
+    },
+    {
+      "kind": "selected-native",
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/app/chrome_exe_main_mac.cc",
+      "sha256": "96ed48f2bd53d81cebba0063f1408fec4da7c952af2d7446f047a5d46fa885df",
+      "bytes": 10143
+    },
+    {
+      "kind": "selected-native",
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/sandbox/mac/seatbelt_exec.cc",
+      "sha256": "47c09440e41b26b8f7495b06e7d4ea7cd7eb84df4f83dd6abff2f0453fcf7b01",
+      "bytes": 5544
+    },
+    {
+      "kind": "selected-native",
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/sandbox/policy/mac/common.sb",
+      "sha256": "b6eb971c2f5cac96f5a843c5753e44f73ee3be6b8659a90e1caacafc20aec09b",
+      "bytes": 12359
+    },
+    {
+      "kind": "selected-native",
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/sandbox/policy/mac/network.sb",
+      "sha256": "c0caf5154640f69bfc2cd94c45ba708a1106ab926a1973bdf19d04e0791c50ea",
+      "bytes": 3972
+    },
+    {
+      "kind": "selected-native",
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/sandbox/policy/mac/gpu.sb",
+      "sha256": "771e53cb9e38d9dd907f91f9f346fbf92fd1038faac2578d0449a1cfdfeb7825",
+      "bytes": 5635
+    },
+    {
+      "kind": "selected-native",
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/sandbox/policy/mac/renderer.sb",
+      "sha256": "45bc78ba343d70a31e3ac93a1949274e99681e2ffa7f0904cfbfc7baa6b31806",
+      "bytes": 3203
+    },
+    {
+      "kind": "selected-native",
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/sandbox/policy/mac/on_device_model_execution.sb",
+      "sha256": "2ab527d0a598d488fcac3200898845ab04eeda0c4b53572805f3d584a5bb254c",
+      "bytes": 2089
+    },
+    {
+      "kind": "selected-native",
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/sandbox/policy/mac/webnn_model_compilation.sb",
+      "sha256": "4f11c48cb8ad4400dacc307c59e6840ba94144b746b6bbc7db6e4b20b7c08958",
+      "bytes": 1070
+    },
+    {
+      "kind": "existing-source-contract",
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/README.md",
+      "sha256": "a3f2fb4d5fc544807c79de91d96ebc62eceafbc00a300eb2126f447b2b7da0ab",
+      "bytes": 4859
+    },
+    {
+      "kind": "existing-source-contract",
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/browser-descendant-uncertainty-a1/README.md",
+      "sha256": "dd40a78b56c3f422f9b8260739d6a567cd053e61b42614bbfaf17a9af5e44aff",
+      "bytes": 4482
+    },
+    {
+      "kind": "existing-source-contract",
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/descendant-custody/source/AuxTaskDescendantObserver.h",
+      "sha256": "60a1a872cad6f791f61061aa7a15d2d8ac3bb7fb8144b5f25c5fabcb3fd44969",
+      "bytes": 1390
+    },
+    {
+      "kind": "existing-source-contract",
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/restart-recovery/source/AuxBrowserFreshRootAdmission.swift",
+      "sha256": "435ef261a1abab8e5c573368941337e714d00b167f71c81268d5dace4b10ca09",
+      "bytes": 16715
+    },
+    {
+      "kind": "existing-source-contract",
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/profile-isolation-final/startup/source/AuxFreshBootstrapPolicy.swift",
+      "sha256": "dcba5bbb5baee4a5d3b248cd19bf40df35db8ca315e9529c62e255b6e6782d2e",
+      "bytes": 17650
+    },
+    {
+      "kind": "existing-source-contract",
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/profile-isolation-continuation/broker-writes/source/AuxStorageRootsBridge.h",
+      "sha256": "4e14e4c3ea1977fc8c23f362de37c16ad20047be0461056c06d7b163ecf0bd60",
+      "bytes": 466
+    },
+    {
+      "kind": "existing-source-contract",
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/profile-isolation-continuation/native-startup/README.md",
+      "sha256": "9273433f0873fdf7c68acc8f92396a32052c5d82a1a319c04009a0af4949a718",
+      "bytes": 6956
+    }
+  ]
+}
