@@ -1,3 +1,11 @@
+# Obsolete daemon addon excluded from new state-v2 resource stage — 2026-10-24
+
+Actual source/entry route review and the a6 native link manifest establish that the protected daemon selects the linked Aux owner, while the original module whose50 imports are checked is the PTY module. The real stager now omits only the original daemon common addon for state-v2; the preservation checker requires that exact omission and separately requires CLI/compatibility retention. No binary was string-patched or replaced by a stub.
+
+Actual resource staging and the corrected post-stage comparison passed. The only omission is the daemon `provided-native.node` (original hashbfe946e05fbaf2ae68d0560258f50e63a6c3ff6da2937e0aa8f9f19016e1f7fb); the earlier browser-skill URL correction is the only other changed existing resource. All CLI bytes and all remaining resource bytes/modes are preserved. Evidence: `standard-profile-isolation/daemon-addon-retirement-a1/actual-stage-a2.json`; the first comparison's duplicated-path failure remains recorded. New UI/app-resource stages are not yet a newly associated full package. The v11 app and accepted UI/app remain intact, unsigned/execution restrictions unchanged.
+
+This does not retire the separate CLI dependency or complete Computer Use/memory/persisted UI identity work. Full-stack packaging and actual protected startup/profile/recovery/provider/extension/UI acceptance remain open. No lifecycle, signing, owner state or permission operation occurred.
+
 # UI peer mismatches corrected; lowercase delivered audit expanded — 2026-10-24
 
 The owner reaffirmed standard browser profile isolation. The completed unsigned v11 app below remains intact and inactive. No browser or package build is currently running; actual app acceptance remains unperformed.

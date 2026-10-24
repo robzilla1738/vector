@@ -2,6 +2,7 @@
 import {relocateAuxAssetPath} from '../vendor/provided/aux-asset-path-identity.mjs';
 import {applyAuxBuiltinIconIdentity} from '../vendor/provided/aux-builtin-icon-identity.mjs';
 import {applyAuxRuntimeContractIdentity} from '../vendor/provided/aux-runtime-contract-identity.mjs';
+import {assertObsoleteDaemonAddonDisposition} from '../vendor/provided/aux-daemon-obsolete-addon.mjs';
 import {CLI_COMMAND} from '../vendor/aside/patches/brand.mjs';
 import {disabledSeed} from '../vendor/provided/vault-product-exclusion.mjs';
 import {loadAuxBrowserIconReplacement} from './lib/aux-browser-icon.mjs';
@@ -128,6 +129,7 @@ const appPins = await json(join(repository, 'docs/source/provided-app-inputs.jso
 let appFiles = 0;
 for (const component of ['daemon', 'cli']) {
   const report = apps.components[component];
+  assertObsoleteDaemonAddonDisposition({component, stateIdentityVersion, files:report.files, removed:report.removed});
   const builtinIconEdits = [];
   if (!safe(report.app)) throw new Error('Unsafe app report path');
   for (const name of providedIntegrationFiles[component]) {

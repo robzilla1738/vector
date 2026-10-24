@@ -1,0 +1,11 @@
+{
+  "format": "aux.daemon-addon-retirement.actual.v1",
+  "passed": false,
+  "phase": "post-stage-resource-comparison",
+  "stageCompleted": true,
+  "exitCode": 1,
+  "error": "The comparison incorrectly prepended daemon to report.app, which already contains daemon/Aux Daemon.app. ENOENT on daemon/daemon. No stager or product failure.",
+  "stageManifestSha256": "a8a26279f22274c724a84751e99f33eb5f620268477c4a5976475dc399518242",
+  "productExecuted": false,
+  "packaged": false
+}

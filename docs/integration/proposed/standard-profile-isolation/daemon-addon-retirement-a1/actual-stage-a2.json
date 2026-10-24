@@ -1,0 +1,30 @@
+{
+  "format": "aux.daemon-addon-retirement.actual.v1",
+  "passed": true,
+  "output": "/private/tmp/aux-daemon-addon-retirement-stage-20261024-a1",
+  "stageManifestSha256": "a8a26279f22274c724a84751e99f33eb5f620268477c4a5976475dc399518242",
+  "linkInputSha256": "051d3207b4f529c6c9d67f28bfeed78de151b8779a68e58f5886496b8a7ff76d",
+  "sourceSha256": "3ce70424305191a2345ea070b00b1d36b9935b7e348950167316f4386ecd45b1",
+  "entrySha256": "b8d82b141dbab76def7ef6cdf462366d3e1786d93fae330965b7099ed3522d8e",
+  "sourceOwnerRoutingVerified": true,
+  "ordinaryColdRefusalPreserved": true,
+  "originalLinkModuleIsPty": true,
+  "linkedHostLinkManifestContainsProvidedAddon": false,
+  "removed": [
+    {
+      "component": "daemon",
+      "path": "Contents/Resources/native/provided-native.node",
+      "sha256": "bfe946e05fbaf2ae68d0560258f50e63a6c3ff6da2937e0aa8f9f19016e1f7fb"
+    }
+  ],
+  "cliPreservedByteForByte": true,
+  "otherExistingResourcesUnchangedExceptBrowserSkill": true,
+  "modesPreserved": true,
+  "differences": [
+    "daemon/Contents/Resources/static/skills/builtin/chrome/SKILL.md"
+  ],
+  "legacyDiagnosticShimRetainedButCannotLoadExcludedAddon": true,
+  "packaged": false,
+  "nativeRuntimeAccepted": false,
+  "productExecuted": false
+}

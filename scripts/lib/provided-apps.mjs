@@ -1,5 +1,6 @@
 import { applyAuxRuntimeContractIdentity } from '../../vendor/provided/aux-runtime-contract-identity.mjs';
 import { applyAuxBuiltinIconIdentity } from '../../vendor/provided/aux-builtin-icon-identity.mjs';
+import { excludeObsoleteDaemonAddon, obsoleteDaemonAddon } from '../../vendor/provided/aux-daemon-obsolete-addon.mjs';
 /** Static app staging. Incomplete native integration is explicit and never silently substituted. */
 import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
@@ -108,6 +109,10 @@ export async function stageProvidedApps({ sourceRoots = providedAppRoots, output
       for (const file of actual.components[component].files) {
         const source = await readFile(join(sourceRoots[component], file.path));
         if (hash(source) !== file.sha256) throw new Error('Static app input changed during staging');
+        if (excludeObsoleteDaemonAddon({component, path: file.path, stateIdentityVersion})) {
+          removed.push({path: file.path, sha256: file.sha256, reason: obsoleteDaemonAddon.reason});
+          continue;
+        }
         // Original signatures/profiles cannot authenticate modified local Aux artifacts.
         if (/(?:^|\/)_CodeSignature\/|(?:^|\/)CodeResources$|(?:^|\/)embedded\.provisionprofile$/.test(file.path)) {
           removed.push({ path: file.path, sha256: file.sha256, reason: 'Original signatures cannot authenticate modified local artifacts' });
