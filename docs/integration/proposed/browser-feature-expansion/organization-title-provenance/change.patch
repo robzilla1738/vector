@@ -1,0 +1,528 @@
+--- a/chrome/browser/aux/organization/organization_codec.cc
++++ b/chrome/browser/aux/organization/organization_codec.cc
+@@ -78,6 +78,8 @@
+     row.Set("kind", entry.kind == EntryKind::kTab ? "tab" : "folder");
+     row.Set("spaceId", entry.space_id); row.Set("parentId", entry.parent_id);
+     row.Set("title", entry.title); row.Set("launchUrl", entry.launch_url);
++    row.Set("titleMode", entry.title_mode == TitleMode::kAutomatic ? "automatic" :
++        entry.title_mode == TitleMode::kManual ? "manual" : "legacy-preserved");
+     row.Set("currentUrl", entry.current_url);
+     row.Set("order", std::to_string(entry.order));
+     row.Set("archived", entry.archived);
+@@ -105,8 +107,12 @@
+   if (!Keys(value, {"schemaVersion", "profileId", "revision", "bookmarksCollapsed",
+                     "pinsCollapsed", "spaces", "entries", "replay"}, {"cleanup"}))
+     return Fail("organization fields unknown or missing; original retained");
+-  if (value.FindInt("schemaVersion") != static_cast<int>(kSchemaVersion))
++  const auto version = value.FindInt("schemaVersion");
++  if (!version || (*version != 1 && *version != static_cast<int>(kSchemaVersion)))
+     return Fail("unsupported organization schema; original retained");
++  // Explicit v1 -> v2 read migration. No old bytes are rewritten on load.
++  // The next admitted durable mutation persists v2 with preserved authorship;
++  // future/unknown fields still refuse, and old binaries cannot decode v2.
+   const auto* profile = String(value, "profileId");
+   const auto revision = Number(value, "revision");
+   const auto bookmarks = value.FindBool("bookmarksCollapsed");
+@@ -153,7 +159,10 @@
+     const auto* row = item.GetIfDict();
+     if (!row || !Keys(*row, {"id", "kind", "spaceId", "parentId", "title",
+           "launchUrl", "currentUrl", "order", "archived", "archiveOperationId",
+-          "collapsed"}, {"keepInSpace", "lastActiveUnixMs"})) return Fail("unknown or invalid entry fields");
++          "collapsed"}, {"keepInSpace", "lastActiveUnixMs", "titleMode"})) return Fail("unknown or invalid entry fields");
++    if ((*version == 1 && row->contains("titleMode")) ||
++        (*version == static_cast<int>(kSchemaVersion) && !row->contains("titleMode")))
++      return Fail("title provenance does not match organization schema");
+     const auto* id = String(*row, "id"); const auto* kind = String(*row, "kind");
+     const auto* space = String(*row, "spaceId");
+     const auto* parent = String(*row, "parentId");
+@@ -172,6 +181,13 @@
+     Entry entry;
+     entry.id = *id; entry.kind = *kind == "tab" ? EntryKind::kTab : EntryKind::kFolder;
+     entry.space_id = *space; entry.parent_id = *parent; entry.title = *title;
++    if (*version == static_cast<int>(kSchemaVersion)) {
++      const auto* mode = String(*row, "titleMode");
++      if (!mode || (*mode != "automatic" && *mode != "manual" && *mode != "legacy-preserved"))
++        return Fail("invalid title provenance; original retained");
++      entry.title_mode = *mode == "automatic" ? TitleMode::kAutomatic :
++          *mode == "manual" ? TitleMode::kManual : TitleMode::kLegacyPreserved;
++    }
+     entry.launch_url = *launch; entry.current_url = *current; entry.order = *order;
+     entry.archived = *archived; entry.archive_operation_id = *batch;
+     entry.collapsed = *collapsed;
+@@ -230,6 +246,7 @@
+ }
+ bool CommandUrlsValid(const Command& command) {
+   return (command.action != Action::kCreateTab &&
+-          command.action != Action::kUpdateTabUrl) || Url(command.url);
++          command.action != Action::kUpdateTabUrl &&
++          command.action != Action::kUpdateAutomaticTitle) || Url(command.url);
+ }
+ }  // namespace aux::organization
+--- a/chrome/browser/aux/organization/organization_model.cc
++++ b/chrome/browser/aux/organization/organization_model.cc
+@@ -21,9 +21,13 @@
+     if (!IsCanonicalId(id) || !seen.insert(id).second) return false;
+   return true;
+ }
++bool ValidTitleMode(TitleMode mode) {
++  return mode == TitleMode::kLegacyPreserved || mode == TitleMode::kAutomatic || mode == TitleMode::kManual;
++}
+ bool ValidCommandScope(const Command& command) {
+   return (!command.space_ids || command.action == Action::kSetCleanupPolicy) &&
+-         ValidScope(command.space_ids);
++         ValidScope(command.space_ids) &&
++         (!command.title_mode || (command.action == Action::kCreateTab && ValidTitleMode(*command.title_mode)));
+ }
+ using Group = std::tuple<std::string, std::string, bool>;
+ Group GroupOf(const Entry& entry) {
+@@ -232,6 +236,8 @@
+   std::map<Group, std::set<uint64_t>> orders;
+   for (const auto& [id, entry] : snapshot.entries) {
+     if (!IsCanonicalId(id) || id != entry.id || !Text(entry.title, 4096) ||
++        !ValidTitleMode(entry.title_mode) ||
++        (entry.kind == EntryKind::kFolder && entry.title_mode == TitleMode::kAutomatic) ||
+         entry.last_active_unix_ms > 253402300799999ULL ||
+         !Text(entry.launch_url, 32768) || !Text(entry.current_url, 32768) ||
+         (entry.kind != EntryKind::kTab && entry.kind != EntryKind::kFolder) ||
+@@ -287,6 +293,7 @@
+   }
+   result += ":" + std::to_string(command.index) + ":" +
+             (command.value ? "1" : "0");
++  if (command.title_mode) result += ":title-mode:" + std::to_string(static_cast<int>(*command.title_mode));
+   // Leave the legacy unscoped fingerprint unchanged for persisted replay IDs.
+   if (command.space_ids) {
+     result += ":spaces:" + std::to_string(command.space_ids->size()) + ":";
+@@ -368,6 +375,7 @@
+       entry.parent_id = command.parent_id;
+       entry.title = command.title;
+       if (entry.kind == EntryKind::kTab) {
++        entry.title_mode = command.title_mode.value_or(TitleMode::kLegacyPreserved);
+         entry.launch_url = command.url;
+         entry.current_url = command.url;
+       }
+@@ -399,6 +407,7 @@
+       next.entries.erase(command.id);
+       break;
+     }
++    case Action::kUpdateAutomaticTitle:
+     case Action::kMarkTabActive:
+     case Action::kSetKeepInSpace:
+     case Action::kRenameEntry:
+@@ -410,14 +419,21 @@
+       auto it = next.entries.find(command.id);
+       if (it == next.entries.end()) return {Error::kMissing, {}, {}};
+       auto& entry = it->second;
+-      if (command.action == Action::kMarkTabActive) {
++      if (command.action == Action::kUpdateAutomaticTitle) {
++        if (entry.kind != EntryKind::kTab || entry.archived ||
++            entry.title_mode != TitleMode::kAutomatic || entry.current_url != command.url)
++          return {Error::kInvalid, {}, {}};
++        entry.title = command.title;
++      } else if (command.action == Action::kMarkTabActive) {
+         if (entry.kind != EntryKind::kTab || entry.archived || !command.index || command.index > 253402300799999ULL)
+           return {Error::kInvalid, {}, {}};
+         entry.last_active_unix_ms = std::max(entry.last_active_unix_ms, command.index);
+       } else if (command.action == Action::kSetKeepInSpace) {
+         if (entry.archived || IsGlobalPin(entry)) return {Error::kInvalid, {}, {}};
+         entry.keep_in_space = command.value;
+-      } else if (command.action == Action::kRenameEntry) entry.title = command.title;
++      } else if (command.action == Action::kRenameEntry) {
++        entry.title = command.title; entry.title_mode = TitleMode::kManual;
++      }
+       else if (command.action == Action::kSetFolderCollapsed) {
+         if (entry.kind != EntryKind::kFolder) return {Error::kInvalid, {}, {}};
+         entry.collapsed = command.value;
+@@ -512,8 +528,11 @@
+   Snapshot restored = previous;
+   for (auto& [id, entry] : restored.entries) {
+     const auto live = current.entries.find(id);
+-    if (live != current.entries.end()) entry.last_active_unix_ms =
+-        std::max(entry.last_active_unix_ms, live->second.last_active_unix_ms);
++    if (live != current.entries.end()) {
++      entry.last_active_unix_ms = std::max(entry.last_active_unix_ms, live->second.last_active_unix_ms);
++      if (entry.title_mode == TitleMode::kAutomatic && live->second.title_mode == TitleMode::kAutomatic &&
++          entry.current_url == live->second.current_url) entry.title = live->second.title;
++    }
+   }
+   return Finish(current, std::move(restored), context, fingerprint);
+ }
+--- a/chrome/browser/aux/organization/organization_model.h
++++ b/chrome/browser/aux/organization/organization_model.h
+@@ -10,7 +10,7 @@
+ #include <vector>
+ 
+ namespace aux::organization {
+-inline constexpr uint32_t kSchemaVersion = 1;
++inline constexpr uint32_t kSchemaVersion = 2;
+ inline constexpr size_t kMaxEntries = 100000;
+ inline constexpr size_t kMaxSpaces = 1024;
+ inline constexpr size_t kMaxDepth = 128;
+@@ -19,6 +19,9 @@
+ inline constexpr char kOrganizationPref[] = "aux.organization";
+ 
+ enum class EntryKind { kTab, kFolder };
++// V1 snapshots and historical pins have unknown title authorship. Preserve
++// those strings until explicitly renamed; never guess from title/URL equality.
++enum class TitleMode { kLegacyPreserved, kAutomatic, kManual };
+ struct Space {
+   std::string id;
+   std::string name;
+@@ -41,6 +44,7 @@
+   bool collapsed = false;
+   bool keep_in_space = false;
+   uint64_t last_active_unix_ms = 0;  // Unknown is never an old-tab candidate.
++  TitleMode title_mode = TitleMode::kLegacyPreserved;
+   bool operator==(const Entry&) const = default;
+ };
+ struct ReplayRecord {
+@@ -80,6 +84,7 @@
+   kArchive, kRestore, kSetFolderCollapsed,
+   kSetBookmarksCollapsed, kSetPinsCollapsed, kUpdateTabUrl,
+   kSetKeepInSpace, kDissolveFolder, kMarkTabActive, kSetCleanupPolicy,
++  kUpdateAutomaticTitle,  // Browser-owned page metadata, never a rename.
+ };
+ struct Command {
+   Action action = Action::kCreateSpace;
+@@ -93,6 +98,9 @@
+   bool value = false;
+   // Only kSetCleanupPolicy: absent selects all Spaces; present selects these IDs.
+   std::optional<std::vector<std::string>> space_ids;
++  // Only explicit native new-tab capture opts into automatic page titles.
++  // Omission preserves earlier callers and their exact replay fingerprints.
++  std::optional<TitleMode> title_mode;
+ };
+ enum class Error {
+   kNone, kReplay, kInvalid, kForeignProfile, kStaleRevision,
+--- a/chrome/browser/aux/organization/organization_model_unittest.cc
++++ b/chrome/browser/aux/organization/organization_model_unittest.cc
+@@ -126,7 +126,7 @@
+   Snapshot snapshot = Initial();
+   snapshot.revision = std::numeric_limits<uint64_t>::max();
+   EXPECT_EQ(Run(snapshot, Create(Action::kCreateTab, kTab)).error, Error::kOverflow);
+-  snapshot = Initial(); snapshot.schema_version = 2;
++  snapshot = Initial(); snapshot.schema_version = kSchemaVersion + 1;
+   EXPECT_EQ(Run(snapshot, Create(Action::kCreateTab, kTab)).error, Error::kInvalid);
+ }
+ TEST(OrganizationModel, InvalidParentAndLastSpaceRemovalRefuse) {
+@@ -242,5 +242,55 @@
+   encoded.FindDict("cleanup")->Set("futureScope", true);
+   EXPECT_FALSE(DecodeSnapshot(encoded, snapshot.profile_id).snapshot);
+ }
++TEST(OrganizationModel, TitleMigrationPreservesUnknownAndManualNames) {
++  auto created = Run(Initial(), Create(Action::kCreateTab, kTab));
++  ASSERT_EQ(created.error, Error::kNone);
++  auto legacy = EncodeSnapshot(created.snapshot);
++  legacy.Set("schemaVersion", 1);
++  legacy.FindList("entries")->front().GetDict().Remove("titleMode");
++  auto decoded = DecodeSnapshot(legacy, created.snapshot.profile_id);
++  ASSERT_TRUE(decoded.snapshot);
++  EXPECT_EQ(decoded.snapshot->schema_version, 2u);
++  EXPECT_EQ(decoded.snapshot->entries.at(kTab).title, "Entry");
++  EXPECT_EQ(decoded.snapshot->entries.at(kTab).title_mode, TitleMode::kLegacyPreserved);
++  Command title; title.action = Action::kUpdateAutomaticTitle; title.id = kTab;
++  title.url = created.snapshot.entries.at(kTab).current_url; title.title = "Page title";
++  EXPECT_EQ(Run(*decoded.snapshot, title, 2).error, Error::kInvalid);
++  auto rewritten = EncodeSnapshot(*decoded.snapshot);
++  EXPECT_EQ(rewritten.FindInt("schemaVersion"), 2);
++  EXPECT_EQ(*rewritten.FindList("entries")->front().GetDict().FindString("titleMode"), "legacy-preserved");
++  rewritten.FindList("entries")->front().GetDict().Set("titleMode", "unknown-future-mode");
++  EXPECT_FALSE(DecodeSnapshot(rewritten, created.snapshot.profile_id).snapshot);
++  rewritten = EncodeSnapshot(*decoded.snapshot); rewritten.Set("schemaVersion", 3);
++  EXPECT_FALSE(DecodeSnapshot(rewritten, created.snapshot.profile_id).snapshot);
++  legacy.FindList("entries")->front().GetDict().Set("titleMode", "automatic");
++  EXPECT_FALSE(DecodeSnapshot(legacy, created.snapshot.profile_id).snapshot);
++}
++TEST(OrganizationModel, AutomaticTitleRequiresExactUrlAndManualRenameWins) {
++  auto create = Create(Action::kCreateTab, kTab);
++  const auto prior_fingerprint = Fingerprint(create);
++  create.title_mode = TitleMode::kAutomatic;
++  EXPECT_NE(Fingerprint(create), prior_fingerprint);
++  auto created = Run(Initial(), create);
++  ASSERT_EQ(created.error, Error::kNone);
++  Command title; title.action = Action::kUpdateAutomaticTitle; title.id = kTab;
++  title.url = "https://example.test/other"; title.title = "New page title";
++  EXPECT_EQ(Run(created.snapshot, title, 2).error, Error::kInvalid);
++  title.url = create.url;
++  auto updated = Run(created.snapshot, title, 2);
++  ASSERT_EQ(updated.error, Error::kNone);
++  EXPECT_EQ(updated.snapshot.entries.at(kTab).title, "New page title");
++  Command rename; rename.action = Action::kRenameEntry; rename.id = kTab;
++  rename.title = "My permanent label";
++  auto named = Run(updated.snapshot, rename, 3);
++  ASSERT_EQ(named.error, Error::kNone);
++  EXPECT_EQ(named.snapshot.entries.at(kTab).title_mode, TitleMode::kManual);
++  EXPECT_EQ(Run(named.snapshot, title, 4).error, Error::kInvalid);
++  auto roundtrip = DecodeSnapshot(EncodeSnapshot(named.snapshot), named.snapshot.profile_id);
++  ASSERT_TRUE(roundtrip.snapshot);
++  EXPECT_EQ(*roundtrip.snapshot, named.snapshot);
++  create.title_mode.reset();
++  EXPECT_EQ(Fingerprint(create), prior_fingerprint);
++}
+ }  // namespace
+ }  // namespace aux::organization
+--- a/chrome/browser/aux/organization/organization_service.cc
++++ b/chrome/browser/aux/organization/organization_service.cc
+@@ -115,6 +115,16 @@
+   auto mutation = ApplyBatch(snapshot_, context, commands);
+   Start(std::move(context), std::move(mutation), std::move(reply), false, true);
+ }
++void OrganizationService::RecordTabTitles(Context context, std::vector<Command> commands, Reply reply) {
++  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_); CHECK(reply);
++  if (auto error = Check(context); error != Error::kNone) { std::move(reply).Run({error, snapshot_.revision, {}}); return; }
++  for (const auto& command : commands)
++    if (command.action != Action::kUpdateAutomaticTitle || !CommandUrlsValid(command)) {
++      std::move(reply).Run({Error::kInvalid, snapshot_.revision, {}}); return;
++    }
++  auto mutation = ApplyBatch(snapshot_, context, commands);
++  Start(std::move(context), std::move(mutation), std::move(reply), false, true);
++}
+ std::string OrganizationService::LastUndoToken() const {
+   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+   return !blocked() && !pending_ && !undo_.empty() && undo_.back().revision == snapshot_.revision
+--- a/chrome/browser/aux/organization/organization_service.h
++++ b/chrome/browser/aux/organization/organization_service.h
+@@ -56,6 +56,9 @@
+   void ExecuteBatch(Context context, std::vector<Command> commands, Reply reply);
+   // Browser-native activity only. Not a renderer-supplied activation claim.
+   void RecordActivity(Context context, std::vector<Command> commands, Reply reply);
++  // Exact current document/URL is checked by the native caller. Metadata is a
++  // maintenance write, preserving the existing bounded user Undo frontier.
++  void RecordTabTitles(Context context, std::vector<Command> commands, Reply reply);
+   bool TryClaimStartupCleanup();
+   std::string LastUndoToken() const;
+   void Undo(Context context, std::string token, Reply reply);
+--- a/chrome/browser/ui/tabs/aux_organization_pin_adapter.cc
++++ b/chrome/browser/ui/tabs/aux_organization_pin_adapter.cc
+@@ -52,7 +52,7 @@
+ }
+ void CommitOrganizationPin(Profile& profile, const GURL& url,
+                            const std::u16string& title, size_t index,
+-                           std::string existing_id, PinCommitReply reply) {
++                           std::string existing_id, PinCommitReply reply, bool automatic_title) {
+   auto* owner = Owner(profile);
+   auto* model = owner ? owner->model() : nullptr;
+   if (!model || !url.is_valid()) { std::move(reply).Run(false, {}); return; }
+@@ -69,6 +69,7 @@
+     command.action = organization::Action::kCreateTab;
+     command.id = base::Uuid::GenerateRandomV4().AsLowercaseString();
+     command.title = base::UTF16ToUTF8(title); command.url = url.spec();
++    if (automatic_title) command.title_mode = organization::TitleMode::kAutomatic;
+   }
+   command.index = index;
+   Commit(*owner, std::move(command), std::move(reply));
+--- a/chrome/browser/ui/tabs/aux_organization_pin_adapter.h
++++ b/chrome/browser/ui/tabs/aux_organization_pin_adapter.h
+@@ -12,7 +12,7 @@
+ // nullopt means loading/unavailable, not an empty successful organization.
+ std::optional<std::vector<PinnedTabEntry>> ReadOrganizationPinnedEntries(Profile&, bool include_descendants = false);
+ void CommitOrganizationPin(Profile&, const GURL&, const std::u16string&, size_t index,
+-                           std::string existing_id, PinCommitReply);
++                           std::string existing_id, PinCommitReply, bool automatic_title = false);
+ void ReorderOrganizationPin(Profile&, std::string id, size_t index,
+                             base::OnceCallback<void(bool)>);
+ void UnpinOrganizationEntry(Profile&, std::string id, std::string destination_space,
+--- a/chrome/browser/ui/tabs/pinned_tab_service.cc
++++ b/chrome/browser/ui/tabs/pinned_tab_service.cc
+@@ -277,7 +277,7 @@
+   if (!organization) { std::move(done).Run(false, {}); return; }
+   if (pinned) {
+     aux::CommitOrganizationPin(*profile_, contents->GetVisibleURL(), contents->GetTitle(),
+-        std::numeric_limits<size_t>::max(), id, std::move(done));
++        std::numeric_limits<size_t>::max(), id, std::move(done), true);
+   } else if (!id.empty()) {
+     auto* window = aux::AuxOrganizationWindowController::FromBrowser(tab->GetBrowserWindowInterface());
+     if (!window) { std::move(done).Run(false, {}); return; }
+--- a/chrome/browser/ui/views/frame/aux_organization_window_controller.cc
++++ b/chrome/browser/ui/views/frame/aux_organization_window_controller.cc
+@@ -85,6 +85,7 @@
+     if (owner_ && navigation->HasCommitted() && navigation->IsInPrimaryMainFrame()) owner_->NavigationCommitted(handle_);
+   }
+   void PrimaryPageChanged(content::Page&) override { if (owner_) owner_->DocumentChanged(handle_); }
++  void TitleWasSet(content::NavigationEntry*) override { if (owner_) owner_->TitleChanged(handle_); }
+  private:
+   base::WeakPtr<AuxOrganizationWindowController> owner_;
+   tabs::TabHandle handle_;
+@@ -118,7 +119,7 @@
+   weak_.InvalidateWeakPtrs();
+   TabStripModelObserver::StopObservingAll(this);
+   ready_subscription_ = {}; model_changes_ = {}; settled_ = {}; session_restored_ = {}; activation_ = {};
+-  ordinary_eligible_.Reset(); views_.clear(); candidate_observers_.clear(); explicit_unloads_.clear(); dirty_navigation_.clear(); dirty_activation_.clear();
++  ordinary_eligible_.Reset(); views_.clear(); candidate_observers_.clear(); explicit_unloads_.clear(); dirty_navigation_.clear(); dirty_activation_.clear(); dirty_titles_.clear();
+   automatic_archive_.reset();
+   cleanup_ids_.clear(); cleanup_running_ = false; cleanup_waiting_ = false;
+   profile_ = nullptr; model_ = nullptr; active_space_.clear(); restored_space_.clear();
+@@ -165,7 +166,7 @@
+   if (shutdown_) return;
+   TabStripModelObserver::StopObservingAll(this);
+   weak_.InvalidateWeakPtrs(); ready_subscription_ = {}; model_changes_ = {}; settled_ = {}; session_restored_ = {}; activation_ = {};
+-  views_.clear(); candidate_observers_.clear(); explicit_unloads_.clear(); dirty_navigation_.clear(); dirty_activation_.clear();
++  views_.clear(); candidate_observers_.clear(); explicit_unloads_.clear(); dirty_navigation_.clear(); dirty_activation_.clear(); dirty_titles_.clear();
+   automatic_archive_.reset();
+   cleanup_ids_.clear(); cleanup_running_ = false; cleanup_waiting_ = false; cleanup_cursor_ = 0;
+   reconcile_queued_ = false; registering_ = false; opening_ = false;
+@@ -291,6 +292,14 @@
+         view.pending_shared_url.clear();
+         continue;
+       }
++      // Only a newly observed automatic title (including Undo of a manual
++      // rename) schedules a native read. Unrelated model refreshes do not let
++      // independent same-URL windows continually overwrite one another.
++      if (view.title_mode != entry.title_mode) {
++        view.title_mode = entry.title_mode;
++        if (entry.title_mode == organization::TitleMode::kAutomatic)
++          dirty_titles_.insert(tab->GetHandle());
++      }
+       if (view.loaded_url == entry.current_url) view.pending_shared_url.clear();
+       if (view.shared_url != entry.current_url) {
+         view.shared_url = entry.current_url;
+@@ -324,6 +333,7 @@
+     organization::Command command; command.action = organization::Action::kCreateTab;
+     command.id = base::Uuid::GenerateRandomV4().AsLowercaseString();
+     command.space_id = active_space_; command.title = base::UTF16ToUTF8(contents->GetTitle());
++    command.title_mode = organization::TitleMode::kAutomatic;
+     command.url = url.spec(); command.index = std::numeric_limits<uint64_t>::max();
+     assigned.push_back({tab->GetHandle(), command.id}); commands.push_back(std::move(command));
+   }
+@@ -349,6 +359,9 @@
+     PublishNavigation(handle);
+   } else if (!organization->pending() && !dirty_activation_.empty()) {
+     PublishActivity();
++  } else if (!organization->pending() && !dirty_titles_.empty()) {
++    const auto handle = *dirty_titles_.begin(); dirty_titles_.erase(handle);
++    PublishTitle(handle);
+   } else if (!organization->pending()) {
+     MaybeRunCleanup();
+   }
+@@ -365,7 +378,7 @@
+   auto it = views_.find(handle);
+   if (it != views_.end() && handle.Get() && handle.Get()->GetContents())
+     it->second.loaded_url = LogicalTabUrl(*handle.Get()->GetContents()).spec();
+-  dirty_navigation_.insert(handle); QueueReconcile();
++  dirty_navigation_.insert(handle); dirty_titles_.insert(handle); QueueReconcile();
+ }
+ void AuxOrganizationWindowController::PublishNavigation(tabs::TabHandle handle) {
+   auto* organization = Current() ? Organization(browser_.get()) : nullptr;
+@@ -402,6 +415,66 @@
+   dirty_activation_[handle] = static_cast<uint64_t>(now);
+   InvalidateAutomaticArchive(handle, static_cast<uint64_t>(now));
+   QueueReconcile();
++}
++void AuxOrganizationWindowController::TitleChanged(tabs::TabHandle handle) {
++  if (!Current()) return;
++  InvalidateAutomaticArchive(handle);
++  dirty_titles_.insert(handle); QueueReconcile();
++}
++void AuxOrganizationWindowController::PublishTitle(tabs::TabHandle handle) {
++  auto* service = Current() ? Organization(browser_.get()) : nullptr;
++  auto* tab = handle.Get();
++  if (!service || service->blocked() || !tab || model_->GetIndexOfTab(tab) < 0 ||
++      !tab->GetContents() || tab->GetContents()->GetBrowserContext() != profile_) return;
++  if (service->pending()) { dirty_titles_.insert(handle); return; }
++  const auto* identity = PageIdentity::FromWebContents(tab->GetContents());
++  if (IsBookmarkTabExcluded(tab, model_) || (identity && identity->runtime_owned()) ||
++      (!tab->IsPinned() && (!ordinary_eligible_ || !ordinary_eligible_.Run(*tab)))) return;
++  const auto view = views_.find(handle);
++  if (view == views_.end() || view->second.document_id.empty() ||
++      !view->second.pending_shared_url.empty() || dirty_navigation_.contains(handle)) return;
++  const auto found = service->snapshot().entries.find(view->second.logical_id);
++  if (found == service->snapshot().entries.end() || found->second.archived ||
++      found->second.title_mode != organization::TitleMode::kAutomatic ||
++      GetRememberedPinnedTabEntryId(*tab->GetContents()) != found->first) return;
++  const auto url = LogicalTabUrl(*tab->GetContents());
++  const auto title = base::UTF16ToUTF8(tab->GetContents()->GetTitle());
++  if (!url.is_valid() || url.spec() != found->second.current_url ||
++      url.spec() != view->second.loaded_url || title.empty() || title.size() > 4096 ||
++      title == found->second.title) return;
++  auto context = CaptureOrganizationContext(*browser_);
++  if (!context) { dirty_titles_.insert(handle); return; }
++  const auto id = found->first, document = view->second.document_id;
++  const auto generation = context->owner_generation;
++  organization::Command command; command.action = organization::Action::kUpdateAutomaticTitle;
++  command.id = id; command.url = url.spec(); command.title = title;
++  // CaptureOrganizationContext plus the native document check above are on
++  // this UI sequence; the model also checks revision, URL and automatic mode.
++  service->RecordTabTitles(std::move(*context), {std::move(command)}, base::BindOnce(
++      [](base::WeakPtr<AuxOrganizationWindowController> owner, tabs::TabHandle target,
++         std::string logical, std::string captured_document, std::string captured_url,
++         std::string captured_title, std::string expected_generation,
++         organization::CommitResult result) {
++        if (!owner || !owner->Current()) return;
++        auto* coordinator = organization::OrganizationProfileServiceFactory::GetForProfileIfExists(owner->profile_);
++        if (!coordinator || coordinator->owner_generation() != expected_generation ||
++            !coordinator->model() || coordinator->model()->blocked()) return;
++        auto* current_tab = target.Get();
++        const auto live = owner->views_.find(target);
++        if (!current_tab || owner->model_->GetIndexOfTab(current_tab) < 0 || !current_tab->GetContents() ||
++            live == owner->views_.end() || live->second.logical_id != logical ||
++            GetRememberedPinnedTabEntryId(*current_tab->GetContents()) != logical) return;
++        // A newer document/title can arrive during storage. Never replay the
++        // captured string: queue a fresh native read guarded by the new shared
++        // URL/revision. A different logical/profile owner is never touched.
++        if (result.error == organization::Error::kBusy || result.error == organization::Error::kStaleRevision ||
++            (result.error == organization::Error::kNone &&
++             (live->second.document_id != captured_document ||
++              LogicalTabUrl(*current_tab->GetContents()).spec() != captured_url ||
++              base::UTF16ToUTF8(current_tab->GetContents()->GetTitle()) != captured_title)))
++          owner->dirty_titles_.insert(target);
++        owner->QueueReconcile();
++      }, weak_.GetWeakPtr(), handle, id, document, url.spec(), title, generation));
+ }
+ void AuxOrganizationWindowController::PublishActivity() {
+   auto* organization = Current() ? Organization(browser_.get()) : nullptr;
+@@ -1174,7 +1247,10 @@
+   command.id = base::Uuid::GenerateRandomV4().AsLowercaseString();
+   command.space_id = original->second.archived ? active_space_ : original->second.space_id;
+   command.parent_id = original->second.archived ? "" : original->second.parent_id;
+-  command.title = base::UTF16ToUTF8(contents->GetTitle()); command.url = url.spec();
++  command.title_mode = original->second.title_mode;
++  command.title = original->second.title_mode == organization::TitleMode::kAutomatic
++      ? base::UTF16ToUTF8(contents->GetTitle()) : original->second.title;
++  command.url = url.spec();
+   command.index = std::numeric_limits<uint64_t>::max();
+   const std::string new_id = command.id, generation = context->owner_generation;
+   const bool new_pin = command.space_id.empty();
+--- a/chrome/browser/ui/views/frame/aux_organization_window_controller.h
++++ b/chrome/browser/ui/views/frame/aux_organization_window_controller.h
+@@ -76,6 +76,7 @@
+   struct ViewRecord {
+     std::string logical_id, view_id, document_id, loaded_url, shared_url, pending_shared_url;
+     std::unique_ptr<PageObserver> observer;
++    std::optional<organization::TitleMode> title_mode;
+   };
+   std::optional<tabs::TabHandle> FindLocalView(const std::string&) const;
+   void Bind();
+@@ -84,6 +85,8 @@
+   void PublishNavigation(tabs::TabHandle);
+   void RecordActivation(tabs::TabHandle);
+   void PublishActivity();
++  void TitleChanged(tabs::TabHandle);
++  void PublishTitle(tabs::TabHandle);
+   void MaybeRunCleanup();
+   void CleanupNext();
+   bool CanCleanup(const std::string&) const;
+@@ -109,6 +112,7 @@
+   std::map<tabs::TabHandle, std::unique_ptr<PageObserver>> candidate_observers_;
+   std::set<tabs::TabHandle> explicit_unloads_;
+   std::set<tabs::TabHandle> dirty_navigation_;
++  std::set<tabs::TabHandle> dirty_titles_;
+   std::map<tabs::TabHandle, uint64_t> dirty_activation_;
+   // One startup-cleanup archive or its exact compensation. Reconciliation is
+   // awakened by genuine storage settlement, never by a polling/reclose loop.
+--- a/chrome/browser/ui/views/tabs/vertical/vertical_pinned_tab_entries_view.cc
++++ b/chrome/browser/ui/views/tabs/vertical/vertical_pinned_tab_entries_view.cc
+@@ -602,7 +602,14 @@
+       auto* tab = model_->GetTabAtIndex(*entry.live_index);
+       if (auto* helper = TabUIHelper::From(tab)) {
+         const auto title = helper->GetTitle();
+-        if (!title.empty())
++        bool automatic_title = !projected;
++        if (auto* owner = aux::organization::OrganizationProfileServiceFactory::GetForProfileIfExists(browser_->GetProfile());
++            owner && owner->model()) {
++          const auto found = owner->model()->snapshot().entries.find(entry.saved.logical_id);
++          automatic_title = found != owner->model()->snapshot().entries.end() &&
++              found->second.title_mode == aux::organization::TitleMode::kAutomatic;
++        }
++        if (automatic_title && !title.empty())
+           entry.title = title;
+         const auto icon = helper->GetFavicon();
+         if (!icon.IsEmpty()) {

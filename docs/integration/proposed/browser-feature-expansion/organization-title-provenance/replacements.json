@@ -1,0 +1,248 @@
+[
+  {
+    "path": "chrome/browser/aux/organization/organization_model.h",
+    "old": "kSchemaVersion = 1",
+    "new": "kSchemaVersion = 2",
+    "count": 1
+  },
+  {
+    "path": "chrome/browser/aux/organization/organization_model.h",
+    "old": "enum class EntryKind { kTab, kFolder };",
+    "new": "enum class EntryKind { kTab, kFolder };\n// V1 snapshots and historical pins have unknown title authorship. Preserve\n// those strings until explicitly renamed; never guess from title/URL equality.\nenum class TitleMode { kLegacyPreserved, kAutomatic, kManual };",
+    "count": 1
+  },
+  {
+    "path": "chrome/browser/aux/organization/organization_model.h",
+    "old": "  uint64_t last_active_unix_ms = 0;  // Unknown is never an old-tab candidate.",
+    "new": "  uint64_t last_active_unix_ms = 0;  // Unknown is never an old-tab candidate.\n  TitleMode title_mode = TitleMode::kLegacyPreserved;",
+    "count": 1
+  },
+  {
+    "path": "chrome/browser/aux/organization/organization_model.h",
+    "old": "  kSetKeepInSpace, kDissolveFolder, kMarkTabActive, kSetCleanupPolicy,",
+    "new": "  kSetKeepInSpace, kDissolveFolder, kMarkTabActive, kSetCleanupPolicy,\n  kUpdateAutomaticTitle,  // Browser-owned page metadata, never a rename.",
+    "count": 1
+  },
+  {
+    "path": "chrome/browser/aux/organization/organization_model.h",
+    "old": "  std::optional<std::vector<std::string>> space_ids;",
+    "new": "  std::optional<std::vector<std::string>> space_ids;\n  // Only explicit native new-tab capture opts into automatic page titles.\n  // Omission preserves earlier callers and their exact replay fingerprints.\n  std::optional<TitleMode> title_mode;",
+    "count": 1
+  },
+  {
+    "path": "chrome/browser/aux/organization/organization_model.cc",
+    "old": "bool ValidCommandScope(const Command& command) {\n  return (!command.space_ids || command.action == Action::kSetCleanupPolicy) &&\n         ValidScope(command.space_ids);\n}",
+    "new": "bool ValidTitleMode(TitleMode mode) {\n  return mode == TitleMode::kLegacyPreserved || mode == TitleMode::kAutomatic || mode == TitleMode::kManual;\n}\nbool ValidCommandScope(const Command& command) {\n  return (!command.space_ids || command.action == Action::kSetCleanupPolicy) &&\n         ValidScope(command.space_ids) &&\n         (!command.title_mode || (command.action == Action::kCreateTab && ValidTitleMode(*command.title_mode)));\n}",
+    "count": 1
+  },
+  {
+    "path": "chrome/browser/aux/organization/organization_model.cc",
+    "old": "    if (!IsCanonicalId(id) || id != entry.id || !Text(entry.title, 4096) ||",
+    "new": "    if (!IsCanonicalId(id) || id != entry.id || !Text(entry.title, 4096) ||\n        !ValidTitleMode(entry.title_mode) ||\n        (entry.kind == EntryKind::kFolder && entry.title_mode == TitleMode::kAutomatic) ||",
+    "count": 1
+  },
+  {
+    "path": "chrome/browser/aux/organization/organization_model.cc",
+    "old": "  // Leave the legacy unscoped fingerprint unchanged for persisted replay IDs.",
+    "new": "  if (command.title_mode) result += \":title-mode:\" + std::to_string(static_cast<int>(*command.title_mode));\n  // Leave the legacy unscoped fingerprint unchanged for persisted replay IDs.",
+    "count": 1
+  },
+  {
+    "path": "chrome/browser/aux/organization/organization_model.cc",
+    "old": "      if (entry.kind == EntryKind::kTab) {\n        entry.launch_url = command.url;",
+    "new": "      if (entry.kind == EntryKind::kTab) {\n        entry.title_mode = command.title_mode.value_or(TitleMode::kLegacyPreserved);\n        entry.launch_url = command.url;",
+    "count": 1
+  },
+  {
+    "path": "chrome/browser/aux/organization/organization_model.cc",
+    "old": "    case Action::kMarkTabActive:\n    case Action::kSetKeepInSpace:",
+    "new": "    case Action::kUpdateAutomaticTitle:\n    case Action::kMarkTabActive:\n    case Action::kSetKeepInSpace:",
+    "count": 1
+  },
+  {
+    "path": "chrome/browser/aux/organization/organization_model.cc",
+    "old": "      if (command.action == Action::kMarkTabActive) {",
+    "new": "      if (command.action == Action::kUpdateAutomaticTitle) {\n        if (entry.kind != EntryKind::kTab || entry.archived ||\n            entry.title_mode != TitleMode::kAutomatic || entry.current_url != command.url)\n          return {Error::kInvalid, {}, {}};\n        entry.title = command.title;\n      } else if (command.action == Action::kMarkTabActive) {",
+    "count": 1
+  },
+  {
+    "path": "chrome/browser/aux/organization/organization_model.cc",
+    "old": "      } else if (command.action == Action::kRenameEntry) entry.title = command.title;",
+    "new": "      } else if (command.action == Action::kRenameEntry) {\n        entry.title = command.title; entry.title_mode = TitleMode::kManual;\n      }",
+    "count": 1
+  },
+  {
+    "path": "chrome/browser/aux/organization/organization_codec.cc",
+    "old": "    row.Set(\"title\", entry.title); row.Set(\"launchUrl\", entry.launch_url);",
+    "new": "    row.Set(\"title\", entry.title); row.Set(\"launchUrl\", entry.launch_url);\n    row.Set(\"titleMode\", entry.title_mode == TitleMode::kAutomatic ? \"automatic\" :\n        entry.title_mode == TitleMode::kManual ? \"manual\" : \"legacy-preserved\");",
+    "count": 1
+  },
+  {
+    "path": "chrome/browser/aux/organization/organization_codec.cc",
+    "old": "  if (value.FindInt(\"schemaVersion\") != static_cast<int>(kSchemaVersion))\n    return Fail(\"unsupported organization schema; original retained\");",
+    "new": "  const auto version = value.FindInt(\"schemaVersion\");\n  if (!version || (*version != 1 && *version != static_cast<int>(kSchemaVersion)))\n    return Fail(\"unsupported organization schema; original retained\");\n  // Explicit v1 -> v2 read migration. No old bytes are rewritten on load.\n  // The next admitted durable mutation persists v2 with preserved authorship;\n  // future/unknown fields still refuse, and old binaries cannot decode v2.",
+    "count": 1
+  },
+  {
+    "path": "chrome/browser/aux/organization/organization_codec.cc",
+    "old": "          \"collapsed\"}, {\"keepInSpace\", \"lastActiveUnixMs\"})) return Fail(\"unknown or invalid entry fields\");",
+    "new": "          \"collapsed\"}, {\"keepInSpace\", \"lastActiveUnixMs\", \"titleMode\"})) return Fail(\"unknown or invalid entry fields\");\n    if ((*version == 1 && row->contains(\"titleMode\")) ||\n        (*version == static_cast<int>(kSchemaVersion) && !row->contains(\"titleMode\")))\n      return Fail(\"title provenance does not match organization schema\");",
+    "count": 1
+  },
+  {
+    "path": "chrome/browser/aux/organization/organization_codec.cc",
+    "old": "    entry.space_id = *space; entry.parent_id = *parent; entry.title = *title;",
+    "new": "    entry.space_id = *space; entry.parent_id = *parent; entry.title = *title;\n    if (*version == static_cast<int>(kSchemaVersion)) {\n      const auto* mode = String(*row, \"titleMode\");\n      if (!mode || (*mode != \"automatic\" && *mode != \"manual\" && *mode != \"legacy-preserved\"))\n        return Fail(\"invalid title provenance; original retained\");\n      entry.title_mode = *mode == \"automatic\" ? TitleMode::kAutomatic :\n          *mode == \"manual\" ? TitleMode::kManual : TitleMode::kLegacyPreserved;\n    }",
+    "count": 1
+  },
+  {
+    "path": "chrome/browser/aux/organization/organization_codec.cc",
+    "old": "          command.action != Action::kUpdateTabUrl) || Url(command.url);",
+    "new": "          command.action != Action::kUpdateTabUrl &&\n          command.action != Action::kUpdateAutomaticTitle) || Url(command.url);",
+    "count": 1
+  },
+  {
+    "path": "chrome/browser/aux/organization/organization_service.h",
+    "old": "  bool TryClaimStartupCleanup();",
+    "new": "  // Exact current document/URL is checked by the native caller. Metadata is a\n  // maintenance write, preserving the existing bounded user Undo frontier.\n  void RecordTabTitles(Context context, std::vector<Command> commands, Reply reply);\n  bool TryClaimStartupCleanup();",
+    "count": 1
+  },
+  {
+    "path": "chrome/browser/aux/organization/organization_service.cc",
+    "old": "std::string OrganizationService::LastUndoToken() const {",
+    "new": "void OrganizationService::RecordTabTitles(Context context, std::vector<Command> commands, Reply reply) {\n  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_); CHECK(reply);\n  if (auto error = Check(context); error != Error::kNone) { std::move(reply).Run({error, snapshot_.revision, {}}); return; }\n  for (const auto& command : commands)\n    if (command.action != Action::kUpdateAutomaticTitle || !CommandUrlsValid(command)) {\n      std::move(reply).Run({Error::kInvalid, snapshot_.revision, {}}); return;\n    }\n  auto mutation = ApplyBatch(snapshot_, context, commands);\n  Start(std::move(context), std::move(mutation), std::move(reply), false, true);\n}\nstd::string OrganizationService::LastUndoToken() const {",
+    "count": 1
+  },
+  {
+    "path": "chrome/browser/ui/tabs/aux_organization_pin_adapter.h",
+    "old": "                           std::string existing_id, PinCommitReply);",
+    "new": "                           std::string existing_id, PinCommitReply, bool automatic_title = false);",
+    "count": 1
+  },
+  {
+    "path": "chrome/browser/ui/tabs/aux_organization_pin_adapter.cc",
+    "old": "                           std::string existing_id, PinCommitReply reply) {",
+    "new": "                           std::string existing_id, PinCommitReply reply, bool automatic_title) {",
+    "count": 1
+  },
+  {
+    "path": "chrome/browser/ui/tabs/aux_organization_pin_adapter.cc",
+    "old": "    command.title = base::UTF16ToUTF8(title); command.url = url.spec();",
+    "new": "    command.title = base::UTF16ToUTF8(title); command.url = url.spec();\n    if (automatic_title) command.title_mode = organization::TitleMode::kAutomatic;",
+    "count": 1
+  },
+  {
+    "path": "chrome/browser/ui/tabs/pinned_tab_service.cc",
+    "old": "        std::numeric_limits<size_t>::max(), id, std::move(done));",
+    "new": "        std::numeric_limits<size_t>::max(), id, std::move(done), true);",
+    "count": 1
+  },
+  {
+    "path": "chrome/browser/ui/views/frame/aux_organization_window_controller.h",
+    "old": "  void PublishActivity();",
+    "new": "  void PublishActivity();\n  void TitleChanged(tabs::TabHandle);\n  void PublishTitle(tabs::TabHandle);",
+    "count": 1
+  },
+  {
+    "path": "chrome/browser/ui/views/frame/aux_organization_window_controller.h",
+    "old": "  std::set<tabs::TabHandle> dirty_navigation_;",
+    "new": "  std::set<tabs::TabHandle> dirty_navigation_;\n  std::set<tabs::TabHandle> dirty_titles_;",
+    "count": 1
+  },
+  {
+    "path": "chrome/browser/ui/views/frame/aux_organization_window_controller.cc",
+    "old": "  void PrimaryPageChanged(content::Page&) override { if (owner_) owner_->DocumentChanged(handle_); }",
+    "new": "  void PrimaryPageChanged(content::Page&) override { if (owner_) owner_->DocumentChanged(handle_); }\n  void TitleWasSet(content::NavigationEntry*) override { if (owner_) owner_->TitleChanged(handle_); }",
+    "count": 1
+  },
+  {
+    "path": "chrome/browser/ui/views/frame/aux_organization_window_controller.cc",
+    "old": "  ordinary_eligible_.Reset(); views_.clear(); candidate_observers_.clear(); explicit_unloads_.clear(); dirty_navigation_.clear(); dirty_activation_.clear();",
+    "new": "  ordinary_eligible_.Reset(); views_.clear(); candidate_observers_.clear(); explicit_unloads_.clear(); dirty_navigation_.clear(); dirty_activation_.clear(); dirty_titles_.clear();",
+    "count": 1
+  },
+  {
+    "path": "chrome/browser/ui/views/frame/aux_organization_window_controller.cc",
+    "old": "  views_.clear(); candidate_observers_.clear(); explicit_unloads_.clear(); dirty_navigation_.clear(); dirty_activation_.clear();",
+    "new": "  views_.clear(); candidate_observers_.clear(); explicit_unloads_.clear(); dirty_navigation_.clear(); dirty_activation_.clear(); dirty_titles_.clear();",
+    "count": 1
+  },
+  {
+    "path": "chrome/browser/ui/views/frame/aux_organization_window_controller.cc",
+    "old": "      if (view.loaded_url == entry.current_url) view.pending_shared_url.clear();",
+    "new": "      if (entry.title_mode == organization::TitleMode::kAutomatic &&\n          LogicalTabUrl(*contents).spec() == entry.current_url &&\n          base::UTF16ToUTF8(contents->GetTitle()) != entry.title)\n        dirty_titles_.insert(tab->GetHandle());\n      if (view.loaded_url == entry.current_url) view.pending_shared_url.clear();",
+    "count": 1
+  },
+  {
+    "path": "chrome/browser/ui/views/frame/aux_organization_window_controller.cc",
+    "old": "    command.space_id = active_space_; command.title = base::UTF16ToUTF8(contents->GetTitle());",
+    "new": "    command.space_id = active_space_; command.title = base::UTF16ToUTF8(contents->GetTitle());\n    command.title_mode = organization::TitleMode::kAutomatic;",
+    "count": 1
+  },
+  {
+    "path": "chrome/browser/ui/views/frame/aux_organization_window_controller.cc",
+    "old": "  } else if (!organization->pending()) {\n    MaybeRunCleanup();",
+    "new": "  } else if (!organization->pending() && !dirty_titles_.empty()) {\n    const auto handle = *dirty_titles_.begin(); dirty_titles_.erase(handle);\n    PublishTitle(handle);\n  } else if (!organization->pending()) {\n    MaybeRunCleanup();",
+    "count": 1
+  },
+  {
+    "path": "chrome/browser/ui/views/frame/aux_organization_window_controller.cc",
+    "old": "  dirty_navigation_.insert(handle); QueueReconcile();",
+    "new": "  dirty_navigation_.insert(handle); dirty_titles_.insert(handle); QueueReconcile();",
+    "count": 1
+  },
+  {
+    "path": "chrome/browser/ui/views/frame/aux_organization_window_controller.cc",
+    "old": "  command.title = base::UTF16ToUTF8(contents->GetTitle()); command.url = url.spec();",
+    "new": "  command.title = base::UTF16ToUTF8(contents->GetTitle()); command.url = url.spec();\n  command.title_mode = organization::TitleMode::kAutomatic;",
+    "count": 1
+  },
+  {
+    "path": "chrome/browser/ui/views/frame/aux_organization_window_controller.h",
+    "old": "    std::unique_ptr<PageObserver> observer;\n  };",
+    "new": "    std::unique_ptr<PageObserver> observer;\n    std::optional<organization::TitleMode> title_mode;\n  };",
+    "count": 1
+  },
+  {
+    "path": "chrome/browser/ui/views/frame/aux_organization_window_controller.cc",
+    "old": "      if (entry.title_mode == organization::TitleMode::kAutomatic &&\n          LogicalTabUrl(*contents).spec() == entry.current_url &&\n          base::UTF16ToUTF8(contents->GetTitle()) != entry.title)\n        dirty_titles_.insert(tab->GetHandle());",
+    "new": "      // Only a newly observed automatic title (including Undo of a manual\n      // rename) schedules a native read. Unrelated model refreshes do not let\n      // independent same-URL windows continually overwrite one another.\n      if (view.title_mode != entry.title_mode) {\n        view.title_mode = entry.title_mode;\n        if (entry.title_mode == organization::TitleMode::kAutomatic)\n          dirty_titles_.insert(tab->GetHandle());\n      }",
+    "count": 1
+  },
+  {
+    "path": "chrome/browser/ui/views/frame/aux_organization_window_controller.cc",
+    "old": "void AuxOrganizationWindowController::PublishActivity() {",
+    "new": "void AuxOrganizationWindowController::TitleChanged(tabs::TabHandle handle) {\n  if (!Current()) return;\n  InvalidateAutomaticArchive(handle);\n  dirty_titles_.insert(handle); QueueReconcile();\n}\nvoid AuxOrganizationWindowController::PublishTitle(tabs::TabHandle handle) {\n  auto* service = Current() ? Organization(browser_.get()) : nullptr;\n  auto* tab = handle.Get();\n  if (!service || service->blocked() || !tab || model_->GetIndexOfTab(tab) < 0 ||\n      !tab->GetContents() || tab->GetContents()->GetBrowserContext() != profile_) return;\n  if (service->pending()) { dirty_titles_.insert(handle); return; }\n  const auto* identity = PageIdentity::FromWebContents(tab->GetContents());\n  if (IsBookmarkTabExcluded(tab, model_) || (identity && identity->runtime_owned()) ||\n      (!tab->IsPinned() && (!ordinary_eligible_ || !ordinary_eligible_.Run(*tab)))) return;\n  const auto view = views_.find(handle);\n  if (view == views_.end() || view->second.document_id.empty() ||\n      !view->second.pending_shared_url.empty() || dirty_navigation_.contains(handle)) return;\n  const auto found = service->snapshot().entries.find(view->second.logical_id);\n  if (found == service->snapshot().entries.end() || found->second.archived ||\n      found->second.title_mode != organization::TitleMode::kAutomatic ||\n      GetRememberedPinnedTabEntryId(*tab->GetContents()) != found->first) return;\n  const auto url = LogicalTabUrl(*tab->GetContents());\n  const auto title = base::UTF16ToUTF8(tab->GetContents()->GetTitle());\n  if (!url.is_valid() || url.spec() != found->second.current_url ||\n      url.spec() != view->second.loaded_url || title.empty() || title.size() > 4096 ||\n      title == found->second.title) return;\n  auto context = CaptureOrganizationContext(*browser_);\n  if (!context) { dirty_titles_.insert(handle); return; }\n  const auto id = found->first, document = view->second.document_id;\n  const auto generation = context->owner_generation;\n  organization::Command command; command.action = organization::Action::kUpdateAutomaticTitle;\n  command.id = id; command.url = url.spec(); command.title = title;\n  // CaptureOrganizationContext plus the native document check above are on\n  // this UI sequence; the model also checks revision, URL and automatic mode.\n  service->RecordTabTitles(std::move(*context), {std::move(command)}, base::BindOnce(\n      [](base::WeakPtr<AuxOrganizationWindowController> owner, tabs::TabHandle target,\n         std::string logical, std::string captured_document, std::string captured_url,\n         std::string captured_title, std::string expected_generation,\n         organization::CommitResult result) {\n        if (!owner || !owner->Current()) return;\n        auto* coordinator = organization::OrganizationProfileServiceFactory::GetForProfileIfExists(owner->profile_);\n        if (!coordinator || coordinator->owner_generation() != expected_generation ||\n            !coordinator->model() || coordinator->model()->blocked()) return;\n        auto* current_tab = target.Get();\n        const auto live = owner->views_.find(target);\n        if (!current_tab || owner->model_->GetIndexOfTab(current_tab) < 0 || !current_tab->GetContents() ||\n            live == owner->views_.end() || live->second.logical_id != logical ||\n            GetRememberedPinnedTabEntryId(*current_tab->GetContents()) != logical) return;\n        // A newer document/title can arrive during storage. Never replay the\n        // captured string: queue a fresh native read guarded by the new shared\n        // URL/revision. A different logical/profile owner is never touched.\n        if (result.error == organization::Error::kBusy || result.error == organization::Error::kStaleRevision ||\n            (result.error == organization::Error::kNone &&\n             (live->second.document_id != captured_document ||\n              LogicalTabUrl(*current_tab->GetContents()).spec() != captured_url ||\n              base::UTF16ToUTF8(current_tab->GetContents()->GetTitle()) != captured_title)))\n          owner->dirty_titles_.insert(target);\n        owner->QueueReconcile();\n      }, weak_.GetWeakPtr(), handle, id, document, url.spec(), title, generation));\n}\nvoid AuxOrganizationWindowController::PublishActivity() {",
+    "count": 1
+  },
+  {
+    "path": "chrome/browser/aux/organization/organization_model.cc",
+    "old": "    if (live != current.entries.end()) entry.last_active_unix_ms =\n        std::max(entry.last_active_unix_ms, live->second.last_active_unix_ms);",
+    "new": "    if (live != current.entries.end()) {\n      entry.last_active_unix_ms = std::max(entry.last_active_unix_ms, live->second.last_active_unix_ms);\n      if (entry.title_mode == TitleMode::kAutomatic && live->second.title_mode == TitleMode::kAutomatic &&\n          entry.current_url == live->second.current_url) entry.title = live->second.title;\n    }",
+    "count": 1
+  },
+  {
+    "path": "chrome/browser/aux/organization/organization_model_unittest.cc",
+    "old": "snapshot = Initial(); snapshot.schema_version = 2;",
+    "new": "snapshot = Initial(); snapshot.schema_version = kSchemaVersion + 1;",
+    "count": 1
+  },
+  {
+    "path": "chrome/browser/aux/organization/organization_model_unittest.cc",
+    "old": "}  // namespace\n}  // namespace aux::organization\n",
+    "new": "TEST(OrganizationModel, TitleMigrationPreservesUnknownAndManualNames) {\n  auto created = Run(Initial(), Create(Action::kCreateTab, kTab));\n  ASSERT_EQ(created.error, Error::kNone);\n  auto legacy = EncodeSnapshot(created.snapshot);\n  legacy.Set(\"schemaVersion\", 1);\n  legacy.FindList(\"entries\")->front().GetDict().Remove(\"titleMode\");\n  auto decoded = DecodeSnapshot(legacy, created.snapshot.profile_id);\n  ASSERT_TRUE(decoded.snapshot);\n  EXPECT_EQ(decoded.snapshot->schema_version, 2u);\n  EXPECT_EQ(decoded.snapshot->entries.at(kTab).title, \"Entry\");\n  EXPECT_EQ(decoded.snapshot->entries.at(kTab).title_mode, TitleMode::kLegacyPreserved);\n  Command title; title.action = Action::kUpdateAutomaticTitle; title.id = kTab;\n  title.url = created.snapshot.entries.at(kTab).current_url; title.title = \"Page title\";\n  EXPECT_EQ(Run(*decoded.snapshot, title, 2).error, Error::kInvalid);\n  auto rewritten = EncodeSnapshot(*decoded.snapshot);\n  EXPECT_EQ(rewritten.FindInt(\"schemaVersion\"), 2);\n  EXPECT_EQ(*rewritten.FindList(\"entries\")->front().GetDict().FindString(\"titleMode\"), \"legacy-preserved\");\n  rewritten.FindList(\"entries\")->front().GetDict().Set(\"titleMode\", \"unknown-future-mode\");\n  EXPECT_FALSE(DecodeSnapshot(rewritten, created.snapshot.profile_id).snapshot);\n  rewritten = EncodeSnapshot(*decoded.snapshot); rewritten.Set(\"schemaVersion\", 3);\n  EXPECT_FALSE(DecodeSnapshot(rewritten, created.snapshot.profile_id).snapshot);\n  legacy.FindList(\"entries\")->front().GetDict().Set(\"titleMode\", \"automatic\");\n  EXPECT_FALSE(DecodeSnapshot(legacy, created.snapshot.profile_id).snapshot);\n}\nTEST(OrganizationModel, AutomaticTitleRequiresExactUrlAndManualRenameWins) {\n  auto create = Create(Action::kCreateTab, kTab);\n  const auto prior_fingerprint = Fingerprint(create);\n  create.title_mode = TitleMode::kAutomatic;\n  EXPECT_NE(Fingerprint(create), prior_fingerprint);\n  auto created = Run(Initial(), create);\n  ASSERT_EQ(created.error, Error::kNone);\n  Command title; title.action = Action::kUpdateAutomaticTitle; title.id = kTab;\n  title.url = \"https://example.test/other\"; title.title = \"New page title\";\n  EXPECT_EQ(Run(created.snapshot, title, 2).error, Error::kInvalid);\n  title.url = create.url;\n  auto updated = Run(created.snapshot, title, 2);\n  ASSERT_EQ(updated.error, Error::kNone);\n  EXPECT_EQ(updated.snapshot.entries.at(kTab).title, \"New page title\");\n  Command rename; rename.action = Action::kRenameEntry; rename.id = kTab;\n  rename.title = \"My permanent label\";\n  auto named = Run(updated.snapshot, rename, 3);\n  ASSERT_EQ(named.error, Error::kNone);\n  EXPECT_EQ(named.snapshot.entries.at(kTab).title_mode, TitleMode::kManual);\n  EXPECT_EQ(Run(named.snapshot, title, 4).error, Error::kInvalid);\n  auto roundtrip = DecodeSnapshot(EncodeSnapshot(named.snapshot), named.snapshot.profile_id);\n  ASSERT_TRUE(roundtrip.snapshot);\n  EXPECT_EQ(*roundtrip.snapshot, named.snapshot);\n  create.title_mode.reset();\n  EXPECT_EQ(Fingerprint(create), prior_fingerprint);\n}\n}  // namespace\n}  // namespace aux::organization\n",
+    "count": 1
+  },
+  {
+    "path": "chrome/browser/ui/views/tabs/vertical/vertical_pinned_tab_entries_view.cc",
+    "old": "        if (!title.empty())\n          entry.title = title;",
+    "new": "        bool automatic_title = !projected;\n        if (auto* owner = aux::organization::OrganizationProfileServiceFactory::GetForProfileIfExists(browser_->GetProfile());\n            owner && owner->model()) {\n          const auto found = owner->model()->snapshot().entries.find(entry.saved.logical_id);\n          automatic_title = found != owner->model()->snapshot().entries.end() &&\n              found->second.title_mode == aux::organization::TitleMode::kAutomatic;\n        }\n        if (automatic_title && !title.empty())\n          entry.title = title;",
+    "count": 1
+  },
+  {
+    "path": "chrome/browser/ui/views/frame/aux_organization_window_controller.cc",
+    "old": "  command.title = base::UTF16ToUTF8(contents->GetTitle()); command.url = url.spec();\n  command.title_mode = organization::TitleMode::kAutomatic;",
+    "new": "  command.title_mode = original->second.title_mode;\n  command.title = original->second.title_mode == organization::TitleMode::kAutomatic\n      ? base::UTF16ToUTF8(contents->GetTitle()) : original->second.title;\n  command.url = url.spec();",
+    "count": 1
+  }
+]

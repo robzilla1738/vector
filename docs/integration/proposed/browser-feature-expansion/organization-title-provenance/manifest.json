@@ -1,0 +1,75 @@
+{
+  "modifiedCount": 12,
+  "addedCount": 0,
+  "countedAdaptations": 41,
+  "files": [
+    {
+      "path": "chrome/browser/aux/organization/organization_codec.cc",
+      "beforeSha256": "bdf55a5c5e1ad5266ce70c461339b6614fdf8070be1674b15466a5949e06260c",
+      "afterSha256": "f0515622f11c418c38b59510bd25e3f02108c38cab48bcf87637254a8d359249"
+    },
+    {
+      "path": "chrome/browser/aux/organization/organization_model.cc",
+      "beforeSha256": "877820286f212d2354f150520cc9a612ec0be9d547655941618bb4f8118f4815",
+      "afterSha256": "6f9be191caa8fde23979f7734d1bfdc5a10369a9008b26a3115d7b2f240a1303"
+    },
+    {
+      "path": "chrome/browser/aux/organization/organization_model.h",
+      "beforeSha256": "f1d0c83d136e5c2ba485322d309b0f35541b6143abb5ae8b6e1a2c823ccf5a8a",
+      "afterSha256": "7fd5c2d5168252a6bcf51fa181df60d8973b23a44bf5097dc7abda6a353872f6"
+    },
+    {
+      "path": "chrome/browser/aux/organization/organization_model_unittest.cc",
+      "beforeSha256": "e88b67479224a1b2dbe0848138fea89647c87303d42f8a72a41438281b9fd1f4",
+      "afterSha256": "27ff1bfa6fb6d750311170433954cffc6ae27a435458cfc0e3da0df23d2e7991"
+    },
+    {
+      "path": "chrome/browser/aux/organization/organization_service.cc",
+      "beforeSha256": "f4a6cc05a69a64c005c203a19f8af47144aea687bdfc4136e06403076e9879c2",
+      "afterSha256": "7bf3a55c6014d433e8ee1753b68b3cb8a84b9d55ea67a53f274ff65894686fc0"
+    },
+    {
+      "path": "chrome/browser/aux/organization/organization_service.h",
+      "beforeSha256": "aa2262439c918953ed069b8b666f2e1149b4874c0a77fa5dc7334b8941914b7b",
+      "afterSha256": "aa6124c1f4317efe4c40343d0472364422adc44b45be0bb1a765190ffa5d2651"
+    },
+    {
+      "path": "chrome/browser/ui/tabs/aux_organization_pin_adapter.cc",
+      "beforeSha256": "a63e4dd66c3494799dd2a6add914d1c49e12812ac776a962d122508baf953708",
+      "afterSha256": "82752b8cec8accd4e458cc78ba62251397b11c9a7ca39e51af4936cac93007b3"
+    },
+    {
+      "path": "chrome/browser/ui/tabs/aux_organization_pin_adapter.h",
+      "beforeSha256": "bcb167e330aa98575550581b28852da311d4f4ec9f8173d7ad6a06b6f6a1f7a6",
+      "afterSha256": "6b6c3a481c7ae6f7692e1de4297c71acd559c9516a107b71f664e8b938679152"
+    },
+    {
+      "path": "chrome/browser/ui/tabs/pinned_tab_service.cc",
+      "beforeSha256": "f95f190161928cdec5e44650bc214b9b8f37c6392d6db2cbdbf0e0922120135c",
+      "afterSha256": "76adc641eab4db00f5fe12c93bb9e501f32a59cd07671d76b3a666fc2dabb072"
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_organization_window_controller.cc",
+      "beforeSha256": "e22204196a121902b50fc5aef953282522a906a200c84ef49d02162ef386aa63",
+      "afterSha256": "f45bb0d24ef580b2ff9d0bbda697af014d9f84e819f353605e62babb5a7839b4"
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_organization_window_controller.h",
+      "beforeSha256": "f1d039714ef603478f8f4d277b64817ce2bc75aef83b0b62abb66676d769628d",
+      "afterSha256": "aeccff9abeadd82903528e935f68a09a13e54fe25e4b4b3acc132d0821044614"
+    },
+    {
+      "path": "chrome/browser/ui/views/tabs/vertical/vertical_pinned_tab_entries_view.cc",
+      "beforeSha256": "0ed7cb1184fd63ecaeafd8e65cbef85607772f03ca7bcfa2959dbe21796423ff",
+      "afterSha256": "69dba57b2bf0d2fa1f0867cf1de838a5ab59e8bc18f64e52dbc743fd14aacc07"
+    }
+  ],
+  "patchSha256": "cb87ee77edf8f900534aa3c2535c542744bb76f6e7c2727dc852c6fcd368723b",
+  "verification": {
+    "exactOrderedReplay": "passed",
+    "unifiedPatchReplay": "passed",
+    "whitespaceErrorCheck": "passed",
+    "nativeCompile": "not run by worker",
+    "runtime": "not run"
+  }
+}
