@@ -1,6 +1,12 @@
 // Copyright 2026 The Aux Authors. BSD-style license: see //LICENSE.
 #include "chrome/browser/ui/aux_developer_commands.h"
 #include <memory>
+#include "base/strings/string_util.h"
+#include "base/strings/utf_string_conversions.h"
+#include "chrome/browser/extensions/extension_tab_util.h"
+#include "chrome/browser/infobars/simple_alert_infobar_creator.h"
+#include "chrome/browser/ui/browser_window/public/global_browser_collection.h"
+#include "components/infobars/content/content_infobar_manager.h"
 #include "base/supports_user_data.h"
 #include "base/time/time.h"
 #include "chrome/browser/aux/component_bootstrap.h"
@@ -124,4 +130,27 @@ bool ShowAuxPageCapture(BrowserWindowInterface* browser) {
           extensions::events::AUXBROWSERPREFERENCES_ONPAGECAPTUREREQUESTED,
           kCaptureEvent, std::move(args), browser->GetProfile()));
   return true;
+}
+
+base::DictValue ReportAuxPageCaptureError(Profile* profile, int tab_id,
+    std::string_view document_id, std::string_view message) {
+  if (!profile || !IsAuxLocalProfileAdmitted(profile) || message.empty() || message.size() > 512 ||
+      !base::IsStringUTF8(message) || document_id.empty() || document_id.size() > 64)
+    return Error("A current screenshot error is required.");
+  for (unsigned char value : message)
+    if (value < 32 || value == 127) return Error("Screenshot errors must be plain text.");
+  auto* intent = static_cast<CaptureIntent*>(profile->GetUserData(&kCaptureIntentKey));
+  auto* browser = intent ? intent->browser.get() : nullptr;
+  auto* pane = CapturePane(browser);
+  if (!browser || browser->GetProfile() != profile ||
+      GlobalBrowserCollection::GetInstance()->GetActiveBrowser() != browser || !pane ||
+      extensions::ExtensionTabUtil::GetTabId(pane) != tab_id)
+    return Error("The screenshot window changed.");
+  auto* manager = infobars::ContentInfoBarManager::FromWebContents(pane);
+  if (!manager || !ConsumeAuxPageCaptureIntent(browser, document_id))
+    return Error("The screenshot document changed.");
+  CreateSimpleAlertInfoBar(manager,
+      infobars::InfoBarDelegate::AUX_PAGE_CAPTURE_INFOBAR_DELEGATE, nullptr,
+      u"Aux screenshot: " + base::UTF8ToUTF16(message));
+  return base::DictValue().Set("success", true);
 }

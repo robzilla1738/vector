@@ -59,6 +59,12 @@
       "method": "auxBrowserPreferences.openExtensionManager",
       "class": "extensions::AuxBrowserPreferencesOpenExtensionManagerFunction",
       "histogram": "AUXBROWSERPREFERENCES_OPENEXTENSIONMANAGER"
+    },
+    {
+      "id": 2139,
+      "method": "auxBrowserPreferences.reportPageCaptureError",
+      "class": "extensions::AuxBrowserPreferencesReportPageCaptureErrorFunction",
+      "histogram": "AUXBROWSERPREFERENCES_REPORTPAGECAPTUREERROR"
     }
   ],
   "event": {
@@ -86,8 +92,9 @@
   },
   "verification": {
     "sourceComposition": "4 focused checks passed; actual selected packaged JavaScript parses",
-    "nativeEventAdapter": "1 focused exact-document/disabled-setting check passed",
+    "nativeEventAdapter": "Focused exact-document/disabled-state/native-error-reporting check passed",
     "nativeCompile": "pending integrator",
     "actualApp": "not run"
-  }
+  },
+  "infobarIdentifier": "AUX_PAGE_CAPTURE_INFOBAR_DELEGATE"
 }

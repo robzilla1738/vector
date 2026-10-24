@@ -16,4 +16,6 @@ bool AuthorizeAuxPageCapture(BrowserWindowInterface*);
 bool ConsumeAuxPageCaptureIntent(BrowserWindowInterface*, std::string_view document_id);
 bool CanShowAuxPageCapture(BrowserWindowInterface*);
 bool ShowAuxPageCapture(BrowserWindowInterface*);
+base::DictValue ReportAuxPageCaptureError(Profile*, int tab_id,
+    std::string_view document_id, std::string_view message);
 #endif

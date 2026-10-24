@@ -69,7 +69,8 @@ ExtensionFunction::ResponseAction AuxDeveloperExpansionFunction::RunAux() {
   }
   if (request) {
     for (const auto [key, value] : *request) {
-      const bool allowed = method == "beginPageSurfaceCapture" ? key == "tabId" || key == "documentId" :
+      const bool allowed = method == "reportPageCaptureError" ? key == "tabId" || key == "documentId" || key == "error" :
+          method == "beginPageSurfaceCapture" ? key == "tabId" || key == "documentId" :
           method == "setDeveloperMode" ? key == "enabled" :
           method == "getPageCaptureTarget" || method == "openDeveloperTools" || method == "openExtensionManager"
               ? key == "generation" : key == "capability";
@@ -97,6 +98,14 @@ ExtensionFunction::ResponseAction AuxDeveloperExpansionFunction::RunAux() {
     if (method == "openDeveloperTools") return RespondNow(WithArguments(OpenAuxDeveloperTools(profile(), Pane(browser))));
     if (!AuthorizeAuxPageCapture(browser)) return RespondNow(Error("Screenshot is unavailable for this page"));
     return RespondNow(WithArguments(GetAuxPageCaptureTarget(profile(), Pane(browser))));
+  }
+  if (method == "reportPageCaptureError") {
+    const auto tab_id = request->FindInt("tabId");
+    const auto* document = request->FindString("documentId");
+    const auto* message = request->FindString("error");
+    if (!tab_id || *tab_id < 0 || !document || !message)
+      return RespondNow(Error("An exact screenshot error target is required"));
+    return RespondNow(WithArguments(ReportAuxPageCaptureError(profile(), *tab_id, *document, *message)));
   }
   if (method == "beginPageSurfaceCapture") {
     const auto tab_id = request ? request->FindInt("tabId") : std::nullopt;

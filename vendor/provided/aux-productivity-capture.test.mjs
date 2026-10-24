@@ -39,13 +39,17 @@ test('supplied capture/full-page/command/settings adapters compose and parse',()
  }finally{rmSync(out,{recursive:true,force:true})}
 });
 
-test('native screenshot ingress preserves exact document and respects disabled setting',async()=>{
- let listener,sent,errors=[];
- const api={onPageCaptureRequested:{addListener:fn=>listener=fn}},tabs={sendMessage:async(...args)=>{sent=args}};
+test('native screenshot ingress reports disabled state to its exact native intent owner',async()=>{
+ let listener,sent,reports=[],errors=[];
+ const api={onPageCaptureRequested:{addListener:fn=>listener=fn},reportPageCaptureError:async request=>{reports.push(request);return {success:true}}},tabs={sendMessage:async(...args)=>{sent=args}};
  installNativeCaptureListener(api,tabs,async()=>true,error=>errors.push(error));
  await listener({tabId:5,documentId:'original-document'});
  assert.deepEqual(sent,[5,{type:'capture:open'},{documentId:'original-document'}]);
- sent=undefined;await listener({tabId:5});assert.equal(sent,undefined);assert.equal(errors.length,1);
+ sent=undefined;
  installNativeCaptureListener(api,tabs,async()=>false,error=>errors.push(error));
- await listener({tabId:5,documentId:'original-document'});assert.equal(sent,undefined);assert.match(errors[1],/Enable Screenshot/);
+ await listener({tabId:5,documentId:'original-document'});
+ assert.equal(sent,undefined);assert.deepEqual(reports,[{tabId:5,documentId:'original-document',error:'Enable Screenshot in Settings to capture this page.'}]);assert.equal(errors.length,0);
+ api.reportPageCaptureError=async request=>{reports.push(request);return{success:false,error:'The screenshot document changed.'}};
+ await listener({tabId:5,documentId:'original-document'});
+ assert.equal(sent,undefined);assert.equal(errors[0],'The screenshot document changed.');
 });

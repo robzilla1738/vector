@@ -39,7 +39,13 @@ export function installNativeCaptureListener(api,tabs,enabled,onError){
    if(!Number.isInteger(target?.tabId)||typeof target.documentId!=="string")throw Error("The screenshot page changed.");
    if(!await enabled())throw Error("Enable Screenshot in Settings to capture this page.");
    await tabs.sendMessage(target.tabId,{type:"capture:open"},{documentId:target.documentId});
-  }catch(error){onError(error instanceof Error?error.message:String(error));}
+  }catch(error){
+   const message=(error instanceof Error?error.message:String(error)).replace(/[\x00-\x1f\x7f]/g," ").slice(0,160);
+   try{
+    const reported=await api.reportPageCaptureError({tabId:target?.tabId,documentId:target?.documentId,error:message});
+    if(!reported?.success)onError(reported?.error??message);
+   }catch(reportError){onError(reportError instanceof Error?reportError.message:String(reportError));}
+  }
  });
 }
 export function transformAuxCaptureUi({relative,text}){

@@ -70,5 +70,11 @@ class AuxBrowserPreferencesOpenExtensionManagerFunction final : public AuxDevelo
  protected:
   ~AuxBrowserPreferencesOpenExtensionManagerFunction() override = default;
 };
+class AuxBrowserPreferencesReportPageCaptureErrorFunction final : public AuxDeveloperExpansionFunction {
+ public:
+  DECLARE_EXTENSION_FUNCTION("auxBrowserPreferences.reportPageCaptureError", AUXBROWSERPREFERENCES_REPORTPAGECAPTUREERROR)
+ protected:
+  ~AuxBrowserPreferencesReportPageCaptureErrorFunction() override = default;
+};
 }  // namespace extensions
 #endif
