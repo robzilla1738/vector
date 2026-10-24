@@ -1,0 +1,43 @@
+{
+  "format": "aux.standard-isolation.in-flight.v1",
+  "browser": {
+    "session": 84348,
+    "receipt": "/private/tmp/aux-chromium-recovery-snapshot-20261023/unsigned-standard-profile-browser-build-20261023-a2/receipt.json",
+    "phase": "framework linker active at latest observation",
+    "passed": false,
+    "inputPins": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/integration/full-native-input-pins-a2.json"
+  },
+  "daemon": {
+    "session": 23322,
+    "receipt": "/private/tmp/aux-standard-daemon-link-20261023-a3/results.json",
+    "phase": "queued behind serialized browser build at latest observation",
+    "passed": false,
+    "actualCompiledUnits": 6,
+    "actualNativeObjects": 13,
+    "swiftSources": 48,
+    "priorLinkFailure": "/private/tmp/aux-standard-daemon-link-20261023-a2/results.json",
+    "manifest": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/integration/daemon-link-a3-inputs.json",
+    "manifestSha256": "a71af23aeb15f8c7108e19355a6028af41e330d21b9a11be07fc4d5f789efe95"
+  },
+  "stage": {
+    "session": 92664,
+    "output": "/Users/rcourson/Documents/Vibe/web/out/standard-profile-stage-pair-20261024-a1",
+    "phase": "running",
+    "passed": false
+  },
+  "sourceProjection": {
+    "passed": true,
+    "output": "/private/tmp/aux-standard-daemon-projection-20261024-a1",
+    "nativePairingPending": true
+  },
+  "packaging": {
+    "phase": "unexecuted scaffolding, strict verifier proposal in progress",
+    "outputApp": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-standard-profile-isolation-20261024/Aux.app",
+    "previousA21PackagePassed": true,
+    "standardPackageAssembled": false
+  },
+  "productExecuted": false,
+  "productSigned": false,
+  "runtimeAuthorityGranted": false,
+  "acceptedAppReplaced": false
+}

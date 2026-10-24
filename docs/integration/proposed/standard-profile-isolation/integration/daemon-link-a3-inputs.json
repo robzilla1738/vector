@@ -667,7 +667,7 @@
     "_AuxCompleteDevelopmentOwnerBrowserCleanShutdown"
   ],
   "swiftSourceCount": 48,
-  "nativeObjectCount": 12,
+  "nativeObjectCount": 13,
   "acceptedAppChanged": false,
   "policyFormat": "aux.fresh.bootstrap.policy.v8",
   "activated": false,
@@ -677,5 +677,6 @@
     "path": "/private/tmp/aux-standard-native-source-20261023-a4/composition.json",
     "sha256": "031c1496f4964524fc222798c40ac57e85d06df4023ae9c239c6d96e6b37a87b"
   },
-  "linkOnlySuccessorOf": "/private/tmp/aux-standard-daemon-link-20261023-a2/results.json"
+  "linkOnlySuccessorOf": "/private/tmp/aux-standard-daemon-link-20261023-a2/results.json",
+  "nativeObjectClosureChanged": true
 }
