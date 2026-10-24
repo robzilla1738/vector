@@ -12,7 +12,7 @@ Read the [supplied contract](docs/design/aside-contract.md), [active reuse plan]
 
 The [final completion execution plan](docs/ROADMAP-EXECUTION-GRAPH.md) defines the remaining implementation, three parallel worker lanes, shared ownership, focused acceptance journeys, and separate development-signing/production/distribution gates. It is a plan, not a readiness claim or authorization to release.
 
-The [desktop feature expansion plan](docs/plans/2026-10-23-browser-feature-expansion.md) covers the owner's new organization, navigation, window and productivity requirements while preserving the accepted UI. Desktop windows share a tab list with independent viewing; mobile is explicitly deferred. This planning-only roadmap supplements the existing startup/isolation and pre-release gates.
+The [desktop feature expansion plan](docs/plans/2026-10-23-browser-feature-expansion.md) covers the owner's new organization, navigation, window and productivity requirements while preserving the accepted UI. Desktop windows share a tab list with independent viewing; mobile is explicitly deferred. The a17 desktop feature candidate passed the full native build and inactive package assembly; the [execution matrix](docs/integration/proposed/browser-feature-expansion/execution.md) records the unaccepted runtime/UI journeys and remaining startup/isolation implementation. The existing pre-release gates still apply.
 
 ## Current local preview
 

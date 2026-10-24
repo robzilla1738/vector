@@ -3,16 +3,22 @@
   "baselineCommit": "02ce77253",
   "files": [
     {
-      "path": "chrome/browser/ui/views/frame/aux_tabs_actions.cc",
-      "beforeSha256": "45e7ded8def5489e3de93e70512cbee29da58ceccf0a6ecf43ae974419686edf",
-      "afterSha256": "03e5acaf05f8caf351fedbbce7e217c40e40a6d5ab6272337b6263dc71cb688f",
-      "source": "docs/integration/proposed/browser-feature-expansion/productivity-tidy-selection/source/chrome/browser/ui/views/frame/aux_tabs_actions.cc"
+      "path": "chrome/browser/ui/aux_chosen_files_service.cc",
+      "beforeSha256": "12a0444fa8c880eb5267023dab64851f4c3d25c61d351cc4ec5dd807bd0d74ba",
+      "afterSha256": "8522fdb6c3f9777a410a485e4887d9d1f8c97c79a90cff4c50961ed88fa594e2",
+      "source": "docs/integration/proposed/browser-feature-expansion/chosen-file-submit-settlement/source/chrome/browser/ui/aux_chosen_files_service.cc"
     },
     {
-      "path": "chrome/browser/ui/views/frame/aux_tabs_actions.h",
-      "beforeSha256": "8e49b81cf98fc3f1f40f489ba766bccf5afe0cade24aa4923ebb8cd9c815e255",
-      "afterSha256": "7cdd1f48bdf8d95201e4bb345b938297e4e96aa4f56a414e41ec5913df764361",
-      "source": "docs/integration/proposed/browser-feature-expansion/productivity-tidy-selection/source/chrome/browser/ui/views/frame/aux_tabs_actions.h"
+      "path": "chrome/browser/ui/aux_file_operation_lifetime.cc",
+      "beforeSha256": "2b19dafe262878f46ca2802f3be0b7515ba8ee5d11f1caa9ff6b084fdae9008e",
+      "afterSha256": "808fd1ebef8ebb4d7349795aafab7b9b23469135f13d795a9f8c69ee1b9facb5",
+      "source": "docs/integration/proposed/browser-feature-expansion/chosen-file-submit-settlement/source/chrome/browser/ui/aux_file_operation_lifetime.cc"
+    },
+    {
+      "path": "chrome/browser/ui/aux_file_operation_lifetime.h",
+      "beforeSha256": "07ce25807ffa1a55cb031b77d699fdb4666da21d2ea3ee79db8f55ea2389a54e",
+      "afterSha256": "d692e67f55138170edb1cd6a3efc9d79a565c819a0613417a39e96d08a5bf231",
+      "source": "docs/integration/proposed/browser-feature-expansion/chosen-file-submit-settlement/source/chrome/browser/ui/aux_file_operation_lifetime.h"
     }
   ],
   "inputPins": {
@@ -67,7 +73,7 @@
     "chrome/browser/themes/theme_service.h": "faf0ede4723cdd043aa27b8454d36046a02e50b79da8348a64680c59cfa37999",
     "chrome/browser/ui/BUILD.gn": "c6cb4dea4080f79ce05ad32ed0125f404d380ff0f028e47f9618a613eb12c274",
     "chrome/browser/ui/aux_chosen_files_drag_mac.mm": "a67d5915a9df58358b803eef3db365d2c6374909555323107205ded22238f19d",
-    "chrome/browser/ui/aux_chosen_files_service.cc": "12a0444fa8c880eb5267023dab64851f4c3d25c61d351cc4ec5dd807bd0d74ba",
+    "chrome/browser/ui/aux_chosen_files_service.cc": "8522fdb6c3f9777a410a485e4887d9d1f8c97c79a90cff4c50961ed88fa594e2",
     "chrome/browser/ui/aux_chosen_files_service.h": "fe22e1351238e741392016deb9f9f23db737d98eb4247ba20c14b489d0f8e24b",
     "chrome/browser/ui/aux_developer_commands.cc": "0f898dee3b59c4a1a23998f852749b3dc5d8a4274521244ccea4075cfb1fa36b",
     "chrome/browser/ui/aux_developer_commands.h": "a4a9e7f8f57998e18a16bc186f1c34ea6d953b9bdd8c9517e1011011cb5222bb",
@@ -75,8 +81,8 @@
     "chrome/browser/ui/aux_feature_commands.h": "bfb003710caef314b86e68c682d66d5c826097e34d597c55e95d7066fc2dc93a",
     "chrome/browser/ui/aux_feature_lifecycle.h": "24afb23c687e5e6d36e012df349970e4e4ec338b0e8eb93f84887f0e40affa9c",
     "chrome/browser/ui/aux_feature_profile_owners.cc": "a5ef886ed10c9a3bbfee146333742fb0373b705ac953411082cd2703abaa841c",
-    "chrome/browser/ui/aux_file_operation_lifetime.cc": "2b19dafe262878f46ca2802f3be0b7515ba8ee5d11f1caa9ff6b084fdae9008e",
-    "chrome/browser/ui/aux_file_operation_lifetime.h": "07ce25807ffa1a55cb031b77d699fdb4666da21d2ea3ee79db8f55ea2389a54e",
+    "chrome/browser/ui/aux_file_operation_lifetime.cc": "808fd1ebef8ebb4d7349795aafab7b9b23469135f13d795a9f8c69ee1b9facb5",
+    "chrome/browser/ui/aux_file_operation_lifetime.h": "d692e67f55138170edb1cd6a3efc9d79a565c819a0613417a39e96d08a5bf231",
     "chrome/browser/ui/aux_keyboard_shortcuts.h": "5e6dbacce85d825d6c44e873357f4756e2ee29705674d389ff4df0968b33eb68",
     "chrome/browser/ui/aux_keyboard_shortcuts.mm": "933c361887fb6b80c1efe40ff34f136db1fd332303d8690ee22b6598ebccba86",
     "chrome/browser/ui/aux_media_commands.cc": "c2260314c33ff0743c64f28d52ab1cbda50a3526c583f62e12103e93023442fb",

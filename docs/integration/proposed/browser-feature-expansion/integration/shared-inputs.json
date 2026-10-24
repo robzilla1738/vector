@@ -372,23 +372,23 @@
     {
       "path": "chrome/browser/ui/aux_chosen_files_service.cc",
       "beforeSha256": "5567f2555a84694b74031faa790f03a86305f648bdf0ee220bf1f4b592c2691c",
-      "source": "docs/integration/proposed/browser-feature-expansion/integration/source/chrome/browser/ui/aux_chosen_files_service.cc",
+      "source": "docs/integration/proposed/browser-feature-expansion/chosen-file-submit-settlement/source/chrome/browser/ui/aux_chosen_files_service.cc",
       "overridesNativeSourceSha256": "5567f2555a84694b74031faa790f03a86305f648bdf0ee220bf1f4b592c2691c",
-      "afterSha256": "12a0444fa8c880eb5267023dab64851f4c3d25c61d351cc4ec5dd807bd0d74ba"
+      "afterSha256": "8522fdb6c3f9777a410a485e4887d9d1f8c97c79a90cff4c50961ed88fa594e2"
     },
     {
       "path": "chrome/browser/ui/aux_file_operation_lifetime.cc",
       "beforeSha256": "88d27f6f043630171b3419625a1c617cbbeb45ab8db59b688ba08699033a2151",
-      "source": "docs/integration/proposed/browser-feature-expansion/integration/source/chrome/browser/ui/aux_file_operation_lifetime.cc",
+      "source": "docs/integration/proposed/browser-feature-expansion/chosen-file-submit-settlement/source/chrome/browser/ui/aux_file_operation_lifetime.cc",
       "overridesNativeSourceSha256": "88d27f6f043630171b3419625a1c617cbbeb45ab8db59b688ba08699033a2151",
-      "afterSha256": "2b19dafe262878f46ca2802f3be0b7515ba8ee5d11f1caa9ff6b084fdae9008e"
+      "afterSha256": "808fd1ebef8ebb4d7349795aafab7b9b23469135f13d795a9f8c69ee1b9facb5"
     },
     {
       "path": "chrome/browser/ui/aux_file_operation_lifetime.h",
       "beforeSha256": "e01ce2cfd29a7df655a46244a01d0373c6993746c18a81a74b0636beb650c4e4",
-      "source": "docs/integration/proposed/browser-feature-expansion/integration/source/chrome/browser/ui/aux_file_operation_lifetime.h",
+      "source": "docs/integration/proposed/browser-feature-expansion/chosen-file-submit-settlement/source/chrome/browser/ui/aux_file_operation_lifetime.h",
       "overridesNativeSourceSha256": "e01ce2cfd29a7df655a46244a01d0373c6993746c18a81a74b0636beb650c4e4",
-      "afterSha256": "07ce25807ffa1a55cb031b77d699fdb4666da21d2ea3ee79db8f55ea2389a54e"
+      "afterSha256": "d692e67f55138170edb1cd6a3efc9d79a565c819a0613417a39e96d08a5bf231"
     },
     {
       "path": "chrome/browser/ui/aux_owned_browser_quiesce.cc",
