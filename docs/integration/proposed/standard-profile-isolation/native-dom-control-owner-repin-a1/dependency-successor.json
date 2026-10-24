@@ -1,0 +1,44 @@
+{
+  "format": "aux.dom-cohort.controls.owner-repin.v1",
+  "pairedOwnerCommit": "b5b08c03c",
+  "pairedOwnerSourcePlan": "/Users/rcourson/.codex/worktrees/aux-features-organization/web/docs/integration/proposed/standard-profile-isolation/native-cache-cohort-integration-a9/source-plan.json",
+  "pairedOwnerSourcePlanSha256": "6b61232abb23a6f3019ffd857c9b26c7779246a1d4c9ce3ae4631deb3dd5ffe4",
+  "serviceGlueCommit": "e638d5cd1",
+  "resultObservationCommit": "799f7b523",
+  "files": [
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-organization/web/docs/integration/proposed/standard-profile-isolation/native-cache-cohort-integration-a9/source/components/services/storage/dom_storage/async_dom_storage_database.h",
+      "previousSha256": "02a8ff4733c3078205f45fb5f3a5513940718bd65cf90401d8a8c4c273c0dd92",
+      "sha256": "d915588e4d5e1b54ab5f641c2be99c7c3839147d1d1565c5b9444820caea978f",
+      "changed": true
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-organization/web/docs/integration/proposed/standard-profile-isolation/native-cache-cohort-integration-a9/source/components/services/storage/dom_storage/session_storage_namespace_impl.cc",
+      "previousSha256": "2757d3d039452ff010100a954e67c0db628894839f9a613c61fc346dfb3b0d10",
+      "sha256": "2757d3d039452ff010100a954e67c0db628894839f9a613c61fc346dfb3b0d10",
+      "changed": false
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-organization/web/docs/integration/proposed/standard-profile-isolation/native-cache-cohort-integration-a9/source/components/services/storage/dom_storage/session_storage_namespace_impl.h",
+      "previousSha256": "c62c63d4a7b1b0c06e39d9908f8e59a9670d0ec4409dd91d49b1791e0505637e",
+      "sha256": "c62c63d4a7b1b0c06e39d9908f8e59a9670d0ec4409dd91d49b1791e0505637e",
+      "changed": false
+    }
+  ],
+  "publicContractStringChecks": {
+    "void ValidateAuxUiMigrationLease(": true,
+    "void StageAuxUiMigrationTargets(": true,
+    "void PublishAuxUiMigrationLease(": true,
+    "using AuxUiBeforeReopen = base::OnceCallback<DbStatus()>;": true,
+    "AuxUiBeforeReopen before_reopen, StatusCallback callback);": true,
+    "bool CanFreezeAuxUiMigrationNamespace() const;": true,
+    "bool FreezeAuxUiMigrationNamespace(": true,
+    "bool CanResumeAuxUiMigrationNamespace(": true,
+    "bool ResumeAuxUiMigrationNamespace(": true,
+    "bool ReholdAuxUiMigrationNamespaceAfterFailedResume(": true
+  },
+  "serviceSourceChanges": false,
+  "privateOwnerOrchestrationChangeOnly": true,
+  "nativeCompilationPerformed": false,
+  "runtimeAcceptance": false
+}

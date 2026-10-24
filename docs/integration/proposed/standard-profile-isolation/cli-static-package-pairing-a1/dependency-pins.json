@@ -1,0 +1,105 @@
+{
+  "format": "aux.cli-native-open.static-package-audit.inputs.v1",
+  "files": [
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/cli-native-product-buffer-fix-a1/source/chrome/browser/aux/cli/AuxCliIngress.cc",
+      "sha256": "884e2d83edc447aa75b612eb828f87f95baf84b007639382e8a2faf823ac7fd2"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/cli-native-product-buffer-fix-a1/source/chrome/browser/aux/cli/AuxCliSealedImages.cc",
+      "sha256": "ce2b89fa21fab68eff9cf45e0215b3d802c34926c06908d255df32f714184756"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/cli-native-product-buffer-fix-a1/source/chrome/browser/aux/cli/AuxCliWire.cc",
+      "sha256": "457cd1fa9a78e3427cc45c1978e91a92e290656497d2faa52a838962bfbcbcd9"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/cli-native-product-buffer-fix-a1/source/chrome/browser/aux/cli/AuxCliWire.h",
+      "sha256": "e104b5b424c8441c1b6f24885039246891ede8cfad24c90e9287de39c8fea01d"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/cli-native-product-buffer-fix-a1/source/chrome/browser/aux/cli/AuxNativeCliFrontend.mm",
+      "sha256": "cd79cf887952b79cb9a8cd3b4e226a1e5bb81ec5ff02f0b5d4dd1f0134e3793c"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/cli-native-product-buffer-fix-a1/source/chrome/browser/aux/cli/packaged-identity-admission.h",
+      "sha256": "10abe5ead6bbbe3bcfd4d28a99aa89690adb0b9ae22cdf4d06cae034ff2feabb"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-desktop-completion-20261024-a3/Aux.app/Contents/Info.plist",
+      "sha256": "ce4ef0823e6bbf21e3b31ca6b0cc8e6b0af56fcd2fe7471763760da0e9c8e49c"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-desktop-completion-20261024-a3/Aux.app/Contents/Resources/aux/apps/cli/Aux CLI.app/Contents/Info.plist",
+      "sha256": "dbbf78f58ab327253c70addeaf6e0abf9d9167980d784ae42de3d181353a162c"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-desktop-completion-20261024-a3/Aux.app/Contents/Resources/aux/apps/cli/Aux CLI.app/Contents/MacOS/aux-cli",
+      "sha256": "7874f6b80def71d65c42750b393fa512531d6d031ad28942f950078b667b9955"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-desktop-completion-20261024-a3/Aux.app/Contents/Resources/aux/apps/cli/Aux CLI.app/Contents/MacOS/aux-cli-sea",
+      "sha256": "6c4eb44167a474ab0d643b031d0f8a7fb5459d0047ce4ef9aacdd92935e8fbb7"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-desktop-completion-20261024-a3/Aux.app/Contents/Resources/aux/bundle.json",
+      "sha256": "cfb82cbb8c24aeb15730cafae0b33c17a1ceecba757bd7aa9585ac97b1e9d260"
+    },
+    {
+      "path": "/private/tmp/aux-browser-root-restart/docs/integration/proposed/profile-isolation-recovery/restart/source/AuxFreshBootstrapPolicy.swift",
+      "sha256": "4aedad8ea6875c2d5aa8c51c05563c8cc4a094a901bdf05eec1f33f1ae0a9b22"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/base/process/mac/aux_browser_descendant_engine.cc",
+      "sha256": "189b9706842f77503d5a25c321817cb6d58b308da1d1623335f09868a286cfab"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/aux/AuxSelectedStateHome.h",
+      "sha256": "340e954939b4b9d08ef532b266ef37c403abf85a31b74599d5ed19ff3ebb0c52"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/aux/cli/AuxCliIngress.h",
+      "sha256": "4515848fafc4dad25e5180130640d28c28bf1a3333610f232b34816a7e64e8d6"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/aux/cli/AuxCliManualProfileApproval.h",
+      "sha256": "1755a7637a24e7e2379ca7b03f2579c0584725c08a6ea190c85eeb1bffabef4b"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/aux/cli/AuxCliManualProfileApproval.mm",
+      "sha256": "44c40ecbb16258dcb0ae23e05a6a33d724c62f2a9db8d5e5c5e2974ec4e5ac2b"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/aux/cli/AuxCliOpenArguments.cc",
+      "sha256": "d2f946689e5f5a6d5c82adbb1c3c685ddc58ac92ab9ef0dbebcd07edb4282f92"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/aux/cli/AuxCliOpenArguments.h",
+      "sha256": "6c9761c47b8d76f2bde4bfadeb78f5b24cbaeba457ad1b0a2b99cf2a6f2e2a6d"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/aux/cli/AuxCliOpenCommand.h",
+      "sha256": "bd226a9cf3c557e00af71451e5069baab9b9330d2040c3d48168252147fc3c44"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/aux/cli/AuxCliOpenCommand.mm",
+      "sha256": "877d188359dea891638ca135144e464ac83e18017fc3b79bac445a92b2bf0a65"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/aux/cli/AuxCliSealedImages.h",
+      "sha256": "6f1df6f4b83809e8e4ae4fec2cfcd4a6a8e7b0cd40e8bcbb1e7bc25bec59087b"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/aux/cli/AuxNativeEndpointDelivery.cc",
+      "sha256": "3765060b84d88a7f63cdcfb695bcbc3f58ab1f92ca9905ccc5d37b629944c57d"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/aux/cli/AuxNativeEndpointDelivery.h",
+      "sha256": "f3d78409fec2b84a5304626e144e84314954bce0ea29762f0f30740c62ca6b89"
+    },
+    {
+      "path": "/private/tmp/aux-final-native-link/docs/integration/proposed/final-completion/native/exec-parent/source/AuxSignedFreshBootstrapPolicyLoader.swift",
+      "sha256": "5932be30b0230f57fa09f88b28770ef9ddc016944f1d3b02e39fd9704faa0877"
+    }
+  ]
+}

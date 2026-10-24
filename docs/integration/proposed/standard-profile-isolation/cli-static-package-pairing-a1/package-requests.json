@@ -1,0 +1,81 @@
+{
+  "format": "aux.cli-native-open.scoped-package-requests.v1",
+  "baselineCandidate": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-desktop-completion-20261024-a3/Aux.app",
+  "baselineManifestSha256": "cfb82cbb8c24aeb15730cafae0b33c17a1ceecba757bd7aa9585ac97b1e9d260",
+  "runtimeActivationAuthorized": false,
+  "requests": [
+    {
+      "id": "CLI-PKG-1",
+      "action": "Link final actual GN native_cli_open target from current integrated sources with all product checks enabled.",
+      "target": "//chrome/browser/aux:native_cli_open",
+      "requiredEvidence": [
+        "actual relative-source Ninja success",
+        "final executable SHA256 and mode",
+        "actual Mach-O dependencies/minimum OS",
+        "no ad hoc signature from this development link"
+      ],
+      "expectedExecutableSha256": null
+    },
+    {
+      "id": "CLI-PKG-2",
+      "action": "In a fresh inactive successor only, replace the old fixed CLI wrapper with that exact final artifact and pair it with the complete linked browser containing the same CLI service/query/startup integration.",
+      "targetRelativePath": "Contents/Resources/aux/apps/cli/Aux CLI.app/Contents/MacOS/aux-cli",
+      "previousSha256": "7874f6b80def71d65c42750b393fa512531d6d031ad28942f950078b667b9955",
+      "mode": 493,
+      "replaceInstalledOrAcceptedApp": false,
+      "copyHistoricalSdkPrototype": false,
+      "changeOriginalSeaAddonOrNodeResources": false
+    },
+    {
+      "id": "CLI-PKG-3",
+      "action": "Refresh the exact bundle files row and add truthful nativeCliOpenIntegration provenance referencing final artifact/source composition/actual build/package receipts. Preserve historical original-source delivery evidence and broad CLI settlement scope.",
+      "manifestRelativePath": "Contents/Resources/aux/bundle.json",
+      "fileRowPath": "apps/cli/Aux CLI.app/Contents/MacOS/aux-cli",
+      "oldFileRowSha256": "7874f6b80def71d65c42750b393fa512531d6d031ad28942f950078b667b9955",
+      "mustNotSet": [
+        "productionReady",
+        "signedPolicyAccepted",
+        "authorityGranted",
+        "coldHookEnabled"
+      ],
+      "newCapabilityScope": "native browser open only; no installation/account/Node/provider ownership"
+    },
+    {
+      "id": "CLI-PKG-4",
+      "action": "Retain current matching Info identifiers/executable names; later separately authorized signing must satisfy exact source identity and strict nested graph, not merely any valid signer.",
+      "expectedInfo": {
+        "browser": {
+          "CFBundleIdentifier": "dev.aux.browser",
+          "CFBundleExecutable": "Aux",
+          "CFBundlePackageType": "APPL"
+        },
+        "cli": {
+          "CFBundleIdentifier": "dev.aux.browser.cli",
+          "CFBundleExecutable": "aux-cli",
+          "CFBundlePackageType": "APPL"
+        }
+      },
+      "existingPinnedTeam": "9F2JXY8TCK",
+      "existingPinnedLeafSha256": "ff0293a06f20704a1f3b3f2571b3362ef439a2dfb3b0bc90bcf3d5debfc73a1c",
+      "performSigningNow": false,
+      "prepareNewSigningOrReleaseFlow": false
+    },
+    {
+      "id": "CLI-PKG-5",
+      "action": "Document direct full nested CLI path for local testing. A PATH command named aux requires separate explicit installation/alias setup; do not run an unrelated SDK binary or CLI from another app copy.",
+      "directInvocationSuffix": "Contents/Resources/aux/apps/cli/Aux CLI.app/Contents/MacOS/aux-cli open https://example.com --profile <actual native ID or unique registered name>",
+      "modifyShellProfileOrInstallSymlinkNow": false
+    },
+    {
+      "id": "CLI-PKG-6",
+      "action": "Keep fresh policy/startup and OS support gaps explicit. Do not invent policy resources, chown developer paths, add dormant Node resources, weaken identity checks or flip manifest booleans to make startup appear admitted.",
+      "nativeOpenNeedsNodeEntry": false,
+      "existingBrowserStartupStillRequiresRealAdmission": true,
+      "currentMacOS13MetadataVsMacOS27EntryConstraintNeedsSeparatePlatformReview": true
+    }
+  ],
+  "candidateModified": false,
+  "securityFrameworkCallsExecuted": false,
+  "signingPerformed": false,
+  "runtimeAcceptance": false
+}

@@ -1,0 +1,154 @@
+{
+  "format": "aux.cli-native-open.static-package-audit.v1",
+  "candidate": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-desktop-completion-20261024-a3/Aux.app",
+  "manifestSha256": "cfb82cbb8c24aeb15730cafae0b33c17a1ceecba757bd7aa9585ac97b1e9d260",
+  "metadata": {
+    "browser": {
+      "CFBundleIdentifier": "dev.aux.browser",
+      "CFBundleExecutable": "Aux",
+      "CFBundleName": "Aux",
+      "CFBundlePackageType": "APPL",
+      "CFBundleVersion": "8059.85",
+      "CFBundleShortVersionString": "155.0.8059.85",
+      "LSMinimumSystemVersion": "13.0",
+      "CFBundleIconFile": "app.icns"
+    },
+    "cli": {
+      "CFBundleIdentifier": "dev.aux.browser.cli",
+      "CFBundleExecutable": "aux-cli",
+      "CFBundleName": "Aux CLI",
+      "CFBundlePackageType": "APPL",
+      "CFBundleVersion": "1.26.1015.732",
+      "CFBundleShortVersionString": "1.26.1015",
+      "LSMinimumSystemVersion": "13.0",
+      "CFBundleIconFile": "Aux.icns"
+    }
+  },
+  "expectedInfoIdentityMatches": true,
+  "currentCliLeaf": {
+    "path": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-desktop-completion-20261024-a3/Aux.app/Contents/Resources/aux/apps/cli/Aux CLI.app/Contents/MacOS/aux-cli",
+    "sha256": "7874f6b80def71d65c42750b393fa512531d6d031ad28942f950078b667b9955",
+    "bytes": 145776,
+    "mode": 493,
+    "uid": 502,
+    "manifestRowMatches": true,
+    "manifestSource": "reviewed-native-pre-home-wrapper",
+    "machO": {
+      "cpuType": 16777228,
+      "fileType": 2,
+      "dependencies": [
+        "/System/Library/Frameworks/Foundation.framework/Versions/C/Foundation",
+        "/System/Library/Frameworks/Security.framework/Versions/A/Security",
+        "/System/Library/Frameworks/LocalAuthentication.framework/Versions/A/LocalAuthentication",
+        "/usr/lib/libobjc.A.dylib",
+        "/usr/lib/libc++.1.dylib",
+        "/usr/lib/libSystem.B.dylib",
+        "/System/Library/Frameworks/CoreFoundation.framework/Versions/A/CoreFoundation"
+      ],
+      "buildVersion": [
+        {
+          "platform": 1,
+          "minimumOS": "27.0.0",
+          "sdk": "27.0.0"
+        }
+      ],
+      "codeSignatureLoadCommandPresent": true,
+      "embeddedCodeDirectories": [
+        {
+          "slot": 0,
+          "flags": 131074,
+          "adHocFlag": true,
+          "identifier": "aux-cli-launcher",
+          "codeDirectorySha256": "fc5c8ba04c86e5b02d3598fb1870e7431768fc11aa13ab34467af7ce6d6a63f4"
+        }
+      ],
+      "signatureValidated": false
+    }
+  },
+  "currentSeaUnchanged": {
+    "path": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-desktop-completion-20261024-a3/Aux.app/Contents/Resources/aux/apps/cli/Aux CLI.app/Contents/MacOS/aux-cli-sea",
+    "sha256": "6c4eb44167a474ab0d643b031d0f8a7fb5459d0047ce4ef9aacdd92935e8fbb7"
+  },
+  "activeNarrowCodePolicy": {
+    "browserIdentifier": "dev.aux.browser",
+    "cliIdentifier": "dev.aux.browser.cli",
+    "cliExecutable": "aux-cli",
+    "team": "9F2JXY8TCK",
+    "leafCertificateSha256": "ff0293a06f20704a1f3b3f2571b3362ef439a2dfb3b0bc90bcf3d5debfc73a1c",
+    "rejectsAdHoc": true,
+    "strictNestedCodeValidationRequired": true,
+    "locatorInputs": [
+      "canonical outer app path",
+      "current browser CDHash",
+      "current nested CLI CDHash",
+      "effective uid"
+    ],
+    "requiresSameAppCopy": true,
+    "signaturesValidatedByThisAudit": false
+  },
+  "dormantBroadResourceCheck": {
+    "references": [
+      {
+        "path": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/cli-native-product-buffer-fix-a1/source/chrome/browser/aux/cli/AuxCliSealedImages.cc",
+        "line": 184,
+        "text": "bool SealedImages::ValidateCliLaunchResources()const{"
+      },
+      {
+        "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/aux/cli/AuxCliSealedImages.h",
+        "line": 19,
+        "text": "bool ValidateCliLaunchResources() const;"
+      }
+    ],
+    "narrowCallers": 0,
+    "requiresRootOwnedCanonicalAncestors": true,
+    "fixedNodeEntry": "Contents/Resources/node-development/aux-native-cli-entry.mjs",
+    "currentResources": {
+      "Resources/node-development/aux-native-cli-entry.mjs": {
+        "lexists": false
+      },
+      "Resources/node-development/index.mjs": {
+        "lexists": false
+      },
+      "Resources/AuxFreshBootstrapPolicy.json": {
+        "lexists": false
+      }
+    },
+    "requiredForNarrowOpen": false,
+    "doNotAddResourcesOrWeakenCheckForNarrowOpen": true
+  },
+  "freshPolicy": {
+    "currentResources": {
+      "daemon": {
+        "path": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-desktop-completion-20261024-a3/Aux.app/Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/AuxFreshBootstrapPolicy.json",
+        "lexists": false
+      },
+      "cli": {
+        "path": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-desktop-completion-20261024-a3/Aux.app/Contents/Resources/aux/apps/cli/Aux CLI.app/Contents/Resources/AuxFreshBootstrapPolicy.json",
+        "lexists": false
+      }
+    },
+    "metadataPolicyFormat": "aux.fresh.bootstrap.policy.v8",
+    "signedPolicyAccepted": false,
+    "coldHookEnabled": false,
+    "nativeOpenDoesNotLoadCliFreshPolicy": true,
+    "browserStartupAdmissionRemainsSeparate": true
+  },
+  "operatingSystemObservations": {
+    "candidateInfoMinimum": "13.0",
+    "currentCandidateCliMachMinimum": [
+      {
+        "platform": 1,
+        "minimumOS": "27.0.0",
+        "sdk": "27.0.0"
+      }
+    ],
+    "currentProtectedBrowserEntryRequiresMacOS27": true,
+    "finalGnBinaryMinimumMustBeReadAfterLink": true,
+    "noOSMetadataChanged": true
+  },
+  "actualProductExecution": false,
+  "securityFrameworkCallsExecuted": false,
+  "signingOrReleasePreparationPerformed": false,
+  "candidateModified": false,
+  "runtimeAcceptance": false
+}
