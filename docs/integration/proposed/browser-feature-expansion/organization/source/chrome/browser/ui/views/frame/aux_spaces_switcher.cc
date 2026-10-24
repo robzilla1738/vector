@@ -27,6 +27,15 @@
 #include "ui/views/widget/widget.h"
 namespace aux {
 namespace {
+class SpaceSelectorButton final : public views::LabelButton {
+ public:
+  explicit SpaceSelectorButton(PressedCallback callback)
+      : LabelButton(std::move(callback), u"Space") {
+    const gfx::FontList font;
+    label()->SetFontList(font.Derive(12 - font.GetFontSize(), gfx::Font::NORMAL,
+                                    gfx::Font::Weight::MEDIUM));
+  }
+};
 std::vector<organization::Space> Spaces(BrowserWindowInterface& browser) {
   auto* owner = organization::OrganizationProfileServiceFactory::GetForProfileIfExists(browser.GetProfile());
   std::vector<organization::Space> result;
@@ -41,11 +50,9 @@ AuxSpacesSwitcher::AuxSpacesSwitcher(BrowserWindowInterface& browser,
                                      OrganizationWindowDelegate& window)
     : browser_(browser.GetWeakPtr()), window_(window) {
   SetLayoutManager(std::make_unique<views::BoxLayout>(views::BoxLayout::Orientation::kHorizontal));
-  select_ = AddChildView(std::make_unique<views::LabelButton>(
-      base::BindRepeating(&AuxSpacesSwitcher::ShowMenu, weak_.GetWeakPtr()), u"Space"));
+  select_ = AddChildView(std::make_unique<SpaceSelectorButton>(
+      base::BindRepeating(&AuxSpacesSwitcher::ShowMenu, weak_.GetWeakPtr())));
   select_->SetTooltipText(u"Switch Space");
-  const gfx::FontList font;
-  select_->label()->SetFontList(font.Derive(12 - font.GetFontSize(), gfx::Font::NORMAL, gfx::Font::Weight::MEDIUM));
   select_->SetAnimateOnStateChange(false);
   select_->SetHasInkDropActionOnClick(false);
   select_->SetMaxSize(gfx::Size(112, 24));

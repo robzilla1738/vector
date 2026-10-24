@@ -549,8 +549,8 @@ void AuxOrganizationWindowController::ArchiveEntry(const std::string& id, bool a
   std::set<std::string> subtree{id};
   for (size_t depth = 0; depth < organization::kMaxDepth; ++depth) {
     bool added = false;
-    for (const auto& [entry_id, entry] : snapshot.entries)
-      if (!entry.archived && subtree.contains(entry.parent_id) && subtree.insert(entry_id).second) added = true;
+    for (const auto& [entry_id, descendant] : snapshot.entries)
+      if (!descendant.archived && subtree.contains(descendant.parent_id) && subtree.insert(entry_id).second) added = true;
     if (!added) break;
   }
   std::vector<std::pair<base::WeakPtr<AuxOrganizationWindowController>, tabs::TabHandle>> targets;
