@@ -112,4 +112,7 @@ signing or release operation was run here.
 Actual native object compilation, EventRouter/API registration, controller gate
 integration, worker replacement/lost-result behavior and the complete paired app
 remain root/organization integration and observation. Full writer coverage and
-runtime acceptance remain false.
+runtime acceptance remain false. Repeated native faults explicitly fail any still
+pending control callbacks, including an external-request balancing failure; prior
+identity loss cannot silently suppress that cleanup. Physical uncertainty stays
+retained throughout.

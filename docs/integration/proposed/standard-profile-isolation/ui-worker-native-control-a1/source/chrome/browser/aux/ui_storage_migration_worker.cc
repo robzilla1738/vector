@@ -166,7 +166,7 @@ class WorkerOwner final : public base::SupportsUserData::Data,
   void Dispatch(Operation operation, std::string request, Reply reply);
   void DidDispatch(std::string request, const extensions::EventTarget& target);
   void CannotDispatch(std::string request);
-  void Fault(std::string error);
+  void Fault(std::string error, Reply reply = Reply(), const std::string& json = {});
   bool FinishExternal();
   base::DictValue Result(bool success, const std::string& json = {}) const;
   void OnProfileWillBeDestroyed(Profile* profile) override;
@@ -290,8 +290,7 @@ void WorkerOwner::Begin(Reply reply) {
   if (!CaptureOwner()) {
     // No event was issued. A failed physical hold is never source readiness.
     if (!FinishExternal()) {
-      identity_lost_ = true;
-      std::move(reply).Run(Refused("The failed physical hold remains unresolved", true));
+      Fault("The failed physical hold remains unresolved", std::move(reply));
       return;
     }
     manager_observation_.Reset(); registry_observation_.Reset();
@@ -449,8 +448,8 @@ base::DictValue WorkerOwner::Result(bool success, const std::string& json) const
 }
 void WorkerOwner::Settle(bool released, const std::string& json, Reply reply) {
   if (!FinishExternal()) {
-    failure_ = "The actual external worker request could not be balanced";
-    identity_lost_ = true; std::move(reply).Run(Result(false, json)); return;
+    Fault("The actual external worker request could not be balanced", std::move(reply), json);
+    return;
   }
   attempted_ = false; releasing_ = false; source_held_ = false;
   failure_ = released ? "" : "The authenticated source refused before creating a producer lease";
@@ -516,15 +515,18 @@ bool WorkerOwner::Accept(extensions::ExtensionFunction& sender,
   for (auto& [callback, value] : recovered) std::move(callback).Run(std::move(value));
   return true;
 }
-void WorkerOwner::Fault(std::string error) {
-  if (identity_lost_) return;
-  identity_lost_ = true; source_held_ = false; failure_ = std::move(error);
+void WorkerOwner::Fault(std::string error, Reply current, const std::string& json) {
+  if (!identity_lost_ || failure_.empty()) failure_ = std::move(error);
+  identity_lost_ = true; source_held_ = false;
   auto pending = std::move(requests_); requests_.clear();
   std::vector<std::pair<Reply, base::DictValue>> callbacks;
   for (auto& [id, request] : pending)
     callbacks.emplace_back(std::move(request.reply), Result(false));
+  if (current) callbacks.emplace_back(std::move(current), Result(false, json));
   // Preserve unresolved attempt/lifetime until actual owner destruction; never
   // redirect source cleanup to a new worker, nor activate a target on failure.
+  // Repeated faults still drain any pending controls, never silently destroy
+  // callbacks because an earlier physical failure already marked identity lost.
   for (auto& [reply, value] : callbacks) std::move(reply).Run(std::move(value));
 }
 void WorkerOwner::OnProfileWillBeDestroyed(Profile* profile) {
