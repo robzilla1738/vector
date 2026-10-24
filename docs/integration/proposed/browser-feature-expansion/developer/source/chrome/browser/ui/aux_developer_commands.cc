@@ -91,11 +91,15 @@ bool ConsumeAuxPageCaptureIntent(BrowserWindowInterface* browser, std::string_vi
   auto* pane = CapturePane(browser);
   auto* intent = profile ? static_cast<CaptureIntent*>(profile->GetUserData(&kCaptureIntentKey)) : nullptr;
   if (!intent) return false;
-  const bool current = intent->browser.get() == browser && IsAuxLocalProfileAdmitted(profile) &&
-      pane && CanAuxCapturePage(pane) && intent->expires > base::TimeTicks::Now() &&
-      intent->epoch == aux::GetProfileCookieBindingEpoch(profile) &&
-      intent->document.AsRenderFrameHostIfValid() == pane->GetPrimaryMainFrame() &&
-      extensions::ExtensionApiFrameIdMap::GetDocumentId(pane->GetPrimaryMainFrame()).ToString() == document_id;
+  auto* frame = pane ? pane->GetPrimaryMainFrame() : nullptr;
+  // A request for another document cannot consume this document's intent.
+  if (!frame || intent->browser.get() != browser ||
+      intent->document.AsRenderFrameHostIfValid() != frame ||
+      extensions::ExtensionApiFrameIdMap::GetDocumentId(frame).ToString() != document_id)
+    return false;
+  const bool current = IsAuxLocalProfileAdmitted(profile) && CanAuxCapturePage(pane) &&
+      intent->expires > base::TimeTicks::Now() &&
+      intent->epoch == aux::GetProfileCookieBindingEpoch(profile);
   profile->RemoveUserData(&kCaptureIntentKey);
   return current;
 }

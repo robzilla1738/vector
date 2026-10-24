@@ -17,6 +17,7 @@
 #include "content/public/browser/render_frame_host.h"
 #include "content/public/browser/web_contents.h"
 #include "extensions/browser/extension_registry.h"
+#include "extensions/browser/extension_api_frame_id_map.h"
 #include "extensions/common/constants.h"
 namespace {
 base::DictValue Failure(const char* reason) {
@@ -28,7 +29,9 @@ content::WebContents* Pane(BrowserWindowInterface* browser) {
 }
 bool SettingsDocument(content::WebContents* sender, Profile* profile) {
   if (!sender || sender->GetBrowserContext() != profile) return false;
-  const auto& url = sender->GetPrimaryMainFrame()->GetLastCommittedURL();
+  auto* frame = sender->GetPrimaryMainFrame();
+  if (!frame) return false;
+  const auto& url = frame->GetLastCommittedURL();
   return url.SchemeIs(extensions::kExtensionScheme) && url.host() == aux::kAgentExtensionId;
 }
 BrowserWindowInterface* SettingsWindow(content::WebContents* sender) {
@@ -45,7 +48,7 @@ BrowserWindowInterface* CommandWindow(content::WebContents* sender,
   auto context = GetAuxCommandContext(sender);
   const auto* wanted = request->FindString("generation");
   const auto* current = context.FindString("generation");
-  return wanted && current && *wanted == *current && context.FindBool("success").value_or(false)
+  return wanted && !wanted->empty() && wanted->size() <= 256 && current && *wanted == *current && context.FindBool("success").value_or(false)
       ? GetAuxProfileSearchBrowser(sender) : nullptr;
 }
 }  // namespace
@@ -59,6 +62,20 @@ ExtensionFunction::ResponseAction AuxDeveloperExpansionFunction::RunAux() {
     return RespondNow(Error("Aux profile authority is unavailable"));
   const std::string_view method = std::string_view(name()).substr(22);
   const auto* request = args().size() == 1 && args()[0].is_dict() ? &args()[0].GetDict() : nullptr;
+  if (method == "getDeveloperSettings") {
+    if (!args().empty()) return RespondNow(Error("This method takes no arguments"));
+  } else if (!request) {
+    return RespondNow(Error("One action object is required"));
+  }
+  if (request) {
+    for (const auto [key, value] : *request) {
+      const bool allowed = method == "beginPageSurfaceCapture" ? key == "tabId" || key == "documentId" :
+          method == "setDeveloperMode" ? key == "enabled" :
+          method == "getPageCaptureTarget" || method == "openDeveloperTools" || method == "openExtensionManager"
+              ? key == "generation" : key == "capability";
+      if (!allowed) return RespondNow(Error("Unexpected action field"));
+    }
+  }
   auto* sender = GetSenderWebContents();
   if (method == "getDeveloperSettings" || method == "setDeveloperMode") {
     if (!SettingsDocument(sender, profile()) ||
@@ -86,10 +103,16 @@ ExtensionFunction::ResponseAction AuxDeveloperExpansionFunction::RunAux() {
     const auto* document = request ? request->FindString("documentId") : nullptr;
     auto* browser = GlobalBrowserCollection::GetInstance()->GetActiveBrowser();
     auto* pane = Pane(browser);
-    if (!tab_id || !document || !browser || browser->GetProfile() != profile() || !pane ||
-        ExtensionTabUtil::GetTabId(pane) != *tab_id ||
-        (!user_gesture() && !ConsumeAuxPageCaptureIntent(browser, *document)))
-      return RespondNow(Error("The selected screenshot page or capture interaction expired"));
+    auto* frame = pane ? pane->GetPrimaryMainFrame() : nullptr;
+    if (!tab_id || *tab_id < 0 || !document || document->empty() || document->size() > 64 ||
+        !browser || browser->GetProfile() != profile() || !pane || !frame ||
+        pane->GetBrowserContext() != profile() || ExtensionTabUtil::GetTabId(pane) != *tab_id ||
+        ExtensionApiFrameIdMap::GetDocumentId(frame).ToString() != *document)
+      return RespondNow(Error("The selected screenshot page expired"));
+    // Consume a matching native intent even when this call also has a gesture.
+    const bool native_intent = ConsumeAuxPageCaptureIntent(browser, *document);
+    if (!user_gesture() && !native_intent)
+      return RespondNow(Error("The screenshot interaction expired"));
     const auto epoch = aux::GetProfileCookieBindingEpoch(profile());
     auto guard = base::BindRepeating([](base::WeakPtr<Profile> profile,
         base::WeakPtr<BrowserWindowInterface> browser, base::WeakPtr<content::WebContents> pane,
@@ -102,7 +125,7 @@ ExtensionFunction::ResponseAction AuxDeveloperExpansionFunction::RunAux() {
     return RespondNow(WithArguments(BeginAuxPageSurfaceCapture(profile(), pane, *document, std::move(guard))));
   }
   const auto* capability = request ? request->FindString("capability") : nullptr;
-  if (!capability || capability->size() > 64) return RespondNow(Error("A native capture capability is required"));
+  if (!capability || capability->empty() || capability->size() > 64) return RespondNow(Error("A native capture capability is required"));
   if (method == "validatePageSurfaceCapture")
     return RespondNow(WithArguments(ValidateAuxPageSurfaceCapture(profile(), *capability)));
   if (method == "cancelPageSurfaceCapture") {
