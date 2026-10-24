@@ -975,6 +975,15 @@ void VerticalTabStripRegionView::SetAuxSidebarMode(aux::SidebarMode mode) {
   state_controller_->RequestCollapse(auto_hide);
 }
 
+void VerticalTabStripRegionView::SetAuxNavigationPlacementHold(bool held) {
+  if (aux_navigation_placement_hold_ == held)
+    return;
+  aux_navigation_placement_hold_ = held;
+  // Root owns this placement lifetime. Do not count the hold as a menu lock
+  // in the public input snapshot: that would make deferred relocation sticky.
+  UpdateExpandOnHoverState();
+}
+
 aux::FramePresentationInputs
 VerticalTabStripRegionView::GetAuxFramePresentationInputs() const {
   aux::FramePresentationInputs inputs;
@@ -1046,6 +1055,7 @@ void VerticalTabStripRegionView::OnTabStripViewSet() {
 
 void VerticalTabStripRegionView::OnTabStripViewWillClear() {
   aux_empty_pinned_drop_active_ = false;
+  aux_navigation_placement_hold_ = false;
   aux_sidebar_->Unmount();
   RetireAuxProfilePreviewInput();
   aux_profile_preview_owner_.reset();
@@ -1560,7 +1570,7 @@ bool VerticalTabStripRegionView::KeepExpandedLocked() const {
   // The retention timer must honor the same real menu/drag/focus ownership as
   // hover expansion. In particular a keep-current drag lock cannot lose its
   // overlay when the native cursor briefly leaves the region.
-  return keep_expanded_lock_count_ > 0 ||
+  return aux_navigation_placement_hold_ || keep_expanded_lock_count_ > 0 ||
       (keep_current_state_lock_count_ > 0 &&
        (is_expanded_on_hover_ ||
         (aux_profile_preview_admission_ &&

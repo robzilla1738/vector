@@ -4,6 +4,11 @@
 
 namespace aux {
 
+inline constexpr char kSidebarNavigationEnabledPref[] =
+    "aux.sidebar_navigation_enabled";
+inline constexpr char kMinimalUiEnabledPref[] = "aux.minimal_ui_enabled";
+
+
 // Preferences request a mode; the real vertical-tab controller remains the
 // collapse/animation owner. Do not persist transient hover/focus state.
 enum class SidebarMode { kDocked, kAutoHide };

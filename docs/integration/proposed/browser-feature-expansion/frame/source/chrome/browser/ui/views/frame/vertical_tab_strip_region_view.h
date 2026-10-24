@@ -122,6 +122,7 @@ class VerticalTabStripRegionView final
   // Root supplies persisted per-profile preferences. This method delegates to
   // the existing collapse/animation controller; it creates no second timer.
   void SetAuxSidebarMode(aux::SidebarMode mode);
+  void SetAuxNavigationPlacementHold(bool held);
   aux::FramePresentationInputs GetAuxFramePresentationInputs() const;
 
   void RefreshAuxPinnedPresentation();
@@ -352,6 +353,7 @@ class VerticalTabStripRegionView final
   raw_ptr<aux::AuxSidebarBody> aux_sidebar_ = nullptr;
   // Original source839 starts clear; actual native drag producer owns changes.
   bool aux_empty_pinned_drop_active_ = false;
+  bool aux_navigation_placement_hold_ = false;
   raw_ptr<VerticalTabStripBottomContainer> bottom_button_container_ = nullptr;
   raw_ptr<views::View> gemini_button_ = nullptr;
   raw_ptr<views::ResizeArea> resize_area_ = nullptr;

@@ -2,12 +2,17 @@ diff --git a/chrome/browser/ui/views/frame/aux_frame_presentation_state.h b/chro
 new file mode 100644
 --- /dev/null
 +++ b/chrome/browser/ui/views/frame/aux_frame_presentation_state.h
-@@ -0,0 +1,70 @@
+@@ -0,0 +1,75 @@
 +// Copyright 2026 Aux Authors. BSD-style license: see //LICENSE.
 +#ifndef CHROME_BROWSER_UI_VIEWS_FRAME_AUX_FRAME_PRESENTATION_STATE_H_
 +#define CHROME_BROWSER_UI_VIEWS_FRAME_AUX_FRAME_PRESENTATION_STATE_H_
 +
 +namespace aux {
++
++inline constexpr char kSidebarNavigationEnabledPref[] =
++    "aux.sidebar_navigation_enabled";
++inline constexpr char kMinimalUiEnabledPref[] = "aux.minimal_ui_enabled";
++
 +
 +// Preferences request a mode; the real vertical-tab controller remains the
 +// collapse/animation owner. Do not persist transient hover/focus state.
@@ -253,6 +258,390 @@ new file mode 100644
 +
 +}  // namespace aux
 +#endif  // CHROME_BROWSER_UI_VIEWS_FRAME_AUX_NAVIGATION_PLACEMENT_H_
+diff --git a/chrome/browser/ui/views/frame/browser_view.cc b/chrome/browser/ui/views/frame/browser_view.cc
+--- a/chrome/browser/ui/views/frame/browser_view.cc
++++ b/chrome/browser/ui/views/frame/browser_view.cc
+@@ -3,6 +3,9 @@
+ // found in the LICENSE file.
+ 
+ #include "chrome/browser/ui/views/frame/browser_view.h"
++#include "chrome/browser/ui/views/frame/aux_navigation_placement.h"
++#include "components/omnibox/browser/omnibox_pref_names.h"
++
+ #if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
+ #include "third_party/blink/public/mojom/page/draggable_region.mojom.h"
+ #endif
+@@ -1015,6 +1018,16 @@
+     }
+     vertical_tab_strip_region_view_ =
+         AddChildView(std::move(vertical_tab_strip_container));
++#if BUILDFLAG(ENABLE_AUX_BROWSER)
++    // A genuine header slot before saved pins/body; hidden by default. The
++    // existing vertical FlexLayout owns its preferred height and width.
++    aux_navigation_sidebar_host_ = vertical_tab_strip_region_view_->AddChildViewAt(
++        std::make_unique<views::View>(), 2);
++    aux_navigation_sidebar_host_->SetLayoutManager(
++        std::make_unique<views::FillLayout>());
++    aux_navigation_sidebar_host_->SetVisible(false);
++#endif
++
+ 
+     vertical_tab_strip_top_corner_ =
+         AddChildView(std::make_unique<CustomFloatingCorner>(
+@@ -1128,6 +1141,12 @@
+ }
+ 
+ BrowserView::~BrowserView() {
++#if BUILDFLAG(ENABLE_AUX_BROWSER)
++  aux_frame_tearing_down_ = true;
++  aux_navigation_placement_.reset();
++  aux_navigation_sidebar_host_ = nullptr;
++#endif
++
+   // Remove the layout manager to avoid dangling. This needs to be earlier than
+   // other cleanups that destroy views referenced in the layout manager.
+   SetLayoutManager(nullptr);
+@@ -3137,6 +3156,9 @@
+ }
+ 
+ bool BrowserView::IsBookmarkBarVisible() const {
++  if (IsAuxMinimalUiEnabled())
++    return false;
++
+   if (!WindowFeatureController::From(browser_)->SupportsWindowFeature(
+           WindowFeatureController::WindowFeature::kFeatureBookmarkBar)) {
+     return false;
+@@ -4007,7 +4029,9 @@
+ void BrowserView::EnsureFocusOrder() {
+   // We want the infobar to come before the content pane, but after the bookmark
+   // bar (if present) or top container (i.e. toolbar, again if present).
+-  if (bookmark_bar_view_ && bookmark_bar_view_->parent() == this) {
++  if (IsAuxSidebarNavigationHosted() && vertical_tab_strip_region_view_) {
++    infobar_container_->InsertAfterInFocusList(vertical_tab_strip_region_view_);
++  } else if (bookmark_bar_view_ && bookmark_bar_view_->parent() == this) {
+     infobar_container_->InsertAfterInFocusList(bookmark_bar_view_.get());
+   } else if (top_container_->parent() == this) {
+     infobar_container_->InsertAfterInFocusList(top_container_);
+@@ -5024,6 +5048,9 @@
+   }
+ 
+   LayoutSuperclass<views::View>(this);
++  // Reparent only in a posted update after this layout traversal. This also
++  // provides the latest measured sidebar width without a second layout owner.
++  ScheduleAuxFramePresentationUpdate();
+ 
+   // TODO(jamescook): Why was this in the middle of layout code?
+   toolbar_->location_bar()->UpdateFocusBehavior(IsToolbarVisible());
+@@ -5325,6 +5352,7 @@
+       kFallbackPopupAnchorElementId, *this);
+ 
+   initialized_ = true;
++  ScheduleAuxFramePresentationUpdate();
+ }
+ 
+ void BrowserView::RemovedFromWidget() {
+@@ -6196,6 +6224,7 @@
+ }
+ void BrowserView::OnDidChangeFocus(View* focused_before, View* focused_now) {
+   UpdateAccessibleNameForRootView();
++  ScheduleAuxFramePresentationUpdate();
+ }
+ 
+ WebAppFrameToolbarView* BrowserView::web_app_frame_toolbar() {
+@@ -6207,6 +6236,7 @@
+ }
+ 
+ void BrowserView::PaintAsActiveChanged() {
++  ScheduleAuxFramePresentationUpdate();
+   // Do not propagate Browser active state changes if the Browser has already
+   // been scheduled for destruction.
+   if (browser_->IsDeleteScheduled()) {
+@@ -6280,6 +6310,124 @@
+   }
+ }
+ 
++bool BrowserView::IsAuxSidebarNavigationHosted() const {
++#if BUILDFLAG(ENABLE_AUX_BROWSER)
++  return toolbar_ && aux_navigation_sidebar_host_ &&
++         toolbar_->parent() == aux_navigation_sidebar_host_;
++#else
++  return false;
++#endif
++}
++
++bool BrowserView::IsAuxMinimalUiEnabled() const {
++#if BUILDFLAG(ENABLE_AUX_BROWSER)
++  return aux_minimal_ui_enabled_;
++#else
++  return false;
++#endif
++}
++
++void BrowserView::ScheduleAuxFramePresentationUpdate() {
++#if BUILDFLAG(ENABLE_AUX_BROWSER)
++  if (!initialized_ || aux_frame_tearing_down_ || aux_frame_update_pending_ ||
++      aux_profile_switch_paused_ || suppress_layout_for_teardown_)
++    return;
++  aux_frame_update_pending_ = true;
++  base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
++      FROM_HERE, base::BindOnce(&BrowserView::UpdateAuxFramePresentation,
++                               weak_ptr_factory_.GetWeakPtr()));
++#endif
++}
++
++#if BUILDFLAG(ENABLE_AUX_BROWSER)
++void BrowserView::OnAuxFramePreferenceChanged() {
++  aux_navigation_refused_width_ = -1;
++  ScheduleAuxFramePresentationUpdate();
++}
++
++void BrowserView::UpdateAuxFramePresentation() {
++  aux_frame_update_pending_ = false;
++  if (!initialized_ || aux_frame_tearing_down_ || aux_profile_switch_paused_ ||
++      suppress_layout_for_teardown_ || in_process_fullscreen_ ||
++      !GetWidget() || !toolbar_ || !vertical_tab_strip_region_view_ ||
++      !aux_navigation_sidebar_host_ || !top_container_ ||
++      (browser_widget_ && browser_widget_->IsClosed()))
++    return;
++  const auto alive = weak_ptr_factory_.GetWeakPtr();
++  const auto* preferences = GetProfile()->GetPrefs();
++  const auto read_bool = [preferences](const char* name) {
++    return preferences->FindPreference(name) && preferences->GetBoolean(name);
++  };
++  auto inputs = vertical_tab_strip_region_view_->GetAuxFramePresentationInputs();
++  auto* vertical = tabs::VerticalTabStripStateController::From(browser_);
++  inputs.sidebar_navigation = vertical && vertical->ShouldDisplayVerticalTabs() &&
++      read_bool(aux::kSidebarNavigationEnabledPref) && !IsFullscreen() &&
++      GetIsNormalType();
++  inputs.minimal = read_bool(aux::kMinimalUiEnabledPref) && GetIsNormalType();
++  inputs.always_show_full_url = read_bool(omnibox::kPreventUrlElisionsInOmnibox);
++  inputs.navigation_has_focus = GetFocusManager() &&
++      toolbar_->Contains(GetFocusManager()->GetFocusedView());
++  inputs.menu_open |= toolbar_->IsAuxNavigationInteractionActive() ||
++                     !GetWidget()->IsActive();
++
++  if (!aux_navigation_placement_) {
++    if (toolbar_->parent() != top_container_)
++      return;
++    aux_navigation_placement_ = std::make_unique<aux::AuxNavigationPlacement>(
++        *toolbar_, *top_container_, *aux_navigation_sidebar_host_);
++  }
++  const bool was_hosted = IsAuxSidebarNavigationHosted();
++  const auto current_host = was_hosted ? aux::NavigationHost::kSidebar
++                                     : aux::NavigationHost::kTop;
++  const auto desired = aux::ResolveFramePresentation(inputs, current_host);
++  vertical_tab_strip_region_view_->SetAuxNavigationPlacementHold(
++      was_hosted && inputs.sidebar_collapsed && desired.relocation_deferred);
++  if (!alive)
++    return;
++  const int sidebar_width = vertical_tab_strip_region_view_->GetContentsBounds().width();
++  if (!inputs.sidebar_navigation || inputs.sidebar_collapsed)
++    aux_navigation_refused_width_ = -1;
++  if (desired.navigation == aux::NavigationHost::kSidebar && !was_hosted) {
++    if (sidebar_width == aux_navigation_refused_width_ ||
++        !toolbar_->CanUseAuxSidebarNavigationLayout()) {
++      inputs.sidebar_navigation = false;
++    } else if (!desired.relocation_deferred) {
++      toolbar_->SetAuxSidebarNavigationLayout(true);
++    }
++  }
++  if (!alive)
++    return;
++  const auto result = aux_navigation_placement_->Update(inputs, sidebar_width);
++  if (!alive)
++    return;
++  if (result == aux::AuxNavigationPlacement::Result::kUnavailable)
++    return;
++  const bool is_hosted = IsAuxSidebarNavigationHosted();
++  if (!is_hosted)
++    vertical_tab_strip_region_view_->SetAuxNavigationPlacementHold(false);
++  if (!alive)
++    return;
++  if (!is_hosted && toolbar_->IsAuxSidebarNavigationLayout())
++    toolbar_->SetAuxSidebarNavigationLayout(false);
++  if (!alive)
++    return;
++  if (result == aux::AuxNavigationPlacement::Result::kInsufficientWidth)
++    aux_navigation_refused_width_ = sidebar_width;
++  aux_navigation_sidebar_host_->SetVisible(is_hosted);
++  if (!alive)
++    return;
++  const bool minimal_changed = aux_minimal_ui_enabled_ != inputs.minimal;
++  aux_minimal_ui_enabled_ = inputs.minimal;
++  if (was_hosted != is_hosted)
++    EnsureFocusOrder();
++  if (was_hosted != is_hosted || minimal_changed) {
++    InvalidateLayout();
++    if (alive)
++      SchedulePaint();
++  }
++}
++#endif
++
+ #if BUILDFLAG(ENABLE_AUX_BROWSER)
+ bool BrowserView::CanRebindForAuxProfileSwitch(Profile* target) const {
+   if (!(!aux_profile_switch_paused_)) {
+@@ -6327,6 +6475,16 @@
+       base::BindRepeating(&BrowserView::UpdateFullscreenAllowedFromPolicy,
+                           base::Unretained(this),
+                           aux_fullscreen_allowed_without_policy_));
++  for (const auto* pref : {aux::kSidebarNavigationEnabledPref,
++                           aux::kMinimalUiEnabledPref,
++                           omnibox::kPreventUrlElisionsInOmnibox}) {
++    if (registrar_.prefs()->FindPreference(pref)) {
++      registrar_.Add(pref, base::BindRepeating(
++          &BrowserView::OnAuxFramePreferenceChanged, base::Unretained(this)));
++    }
++  }
++  aux_navigation_refused_width_ = -1;
++
+ }
+ 
+ void BrowserView::RebindAuxProfileSwitch(uint64_t generation) {
+@@ -6352,6 +6510,7 @@
+   aux_profile_switch_source_.reset();
+   aux_profile_switch_target_.reset();
+   UpdateFullscreenAllowedFromPolicy(aux_fullscreen_allowed_without_policy_);
++  ScheduleAuxFramePresentationUpdate();
+ }
+ #endif
+ 
+diff --git a/chrome/browser/ui/views/frame/browser_view.h b/chrome/browser/ui/views/frame/browser_view.h
+--- a/chrome/browser/ui/views/frame/browser_view.h
++++ b/chrome/browser/ui/views/frame/browser_view.h
+@@ -101,6 +101,7 @@
+ class TabStripRegionView;
+ class ToolbarButtonProvider;
+ class ToolbarView;
++namespace aux { class AuxNavigationPlacement; }
+ class TopContainerView;
+ class TopControlsSlideController;
+ class TopControlsSlideControllerTest;
+@@ -192,6 +193,12 @@
+   const BrowserWindowInterface* browser() const { return browser_; }
+ 
+   Profile* GetProfile() const;
++
++  // Frame consumers use actual native parenting, never just a requested pref.
++  bool IsAuxSidebarNavigationHosted() const;
++  bool IsAuxMinimalUiEnabled() const;
++  void ScheduleAuxFramePresentationUpdate();
++
+ 
+ #if BUILDFLAG(ENABLE_AUX_BROWSER)
+   bool CanRebindForAuxProfileSwitch(Profile* target) const;
+@@ -1422,6 +1429,15 @@
+   base::WeakPtr<Profile> aux_profile_switch_source_;
+   base::WeakPtr<Profile> aux_profile_switch_target_;
+   void BindPrefsForAuxProfileSwitch();
++  void UpdateAuxFramePresentation();
++  void OnAuxFramePreferenceChanged();
++  std::unique_ptr<aux::AuxNavigationPlacement> aux_navigation_placement_;
++  raw_ptr<views::View> aux_navigation_sidebar_host_ = nullptr;
++  bool aux_frame_update_pending_ = false;
++  bool aux_frame_tearing_down_ = false;
++  bool aux_minimal_ui_enabled_ = false;
++  int aux_navigation_refused_width_ = -1;
++
+ #endif
+ 
+ 
+diff --git a/chrome/browser/ui/views/frame/layout/browser_view_tabbed_layout_impl.cc b/chrome/browser/ui/views/frame/layout/browser_view_tabbed_layout_impl.cc
+--- a/chrome/browser/ui/views/frame/layout/browser_view_tabbed_layout_impl.cc
++++ b/chrome/browser/ui/views/frame/layout/browser_view_tabbed_layout_impl.cc
+@@ -74,6 +74,12 @@
+ 
+ namespace {
+ 
++bool AuxNavigationIsInSidebar(const BrowserViewLayoutViews& frame_views) {
++  const auto* browser = views::AsViewClass<BrowserView>(frame_views.browser_view.get());
++  return browser && browser->IsAuxSidebarNavigationHosted();
++}
++
++
+ // Minimum area next to caption buttons to use as a grab handle.
+ constexpr int kVerticalTabsGrabHandleSize = 40;
+ 
+@@ -468,7 +474,8 @@
+   layout.min_content_width = kContentsContainerMinimumWidth;
+ 
+   // Get information about the vertical tabstrip, if present.
+-  const int toolbar_minimum_width = views().toolbar->GetMinimumSize().width();
++  const int toolbar_minimum_width = AuxNavigationIsInSidebar(views())
++      ? 0 : views().toolbar->GetMinimumSize().width();
+   int min_vertical_tab_strip_width = 0;
+   int preferred_vertical_tab_strip_width = 0;
+   if (layout_data_->tab_strip_type == TabStripType::kVertical) {
+@@ -719,7 +726,8 @@
+       // Preserve the typed layout's .25/.75 geometry checkpoints, driven by
+       // the existing recovered SlideAnimation rather than a second clock.
+       const double top_progress = std::clamp((expanded - 0.25) / 0.5, 0.0, 1.0);
+-      const int toolbar_bottom = delegate().IsToolbarVisible()
++      const int toolbar_bottom = delegate().IsToolbarVisible() &&
++              !AuxNavigationIsInSidebar(views())
+           ? GetBoundsWithExclusion(layout_data_->revised_params,
+                                    views().toolbar).height()
+           : 0;
+@@ -757,7 +765,8 @@
+ 
+ gfx::Size BrowserViewTabbedLayoutImpl::GetMinimumMainAreaSize(
+     const BrowserLayoutParams& params) const {
+-  gfx::Size toolbar_size = views().toolbar->GetMinimumSize();
++  gfx::Size toolbar_size = AuxNavigationIsInSidebar(views())
++      ? gfx::Size() : views().toolbar->GetMinimumSize();
+   const auto tab_strip_type = delegate().GetTabStripType();
+   if (tab_strip_type == TabStripType::kVertical) {
+     toolbar_size.Enlarge(GetExclusionWidth(params), 0);
+@@ -828,7 +837,7 @@
+       base::ClampCeil(params.leading_exclusion.ContentWithPadding().height());
+ 
+   // Try to align with toolbar. But if it's not visible, then don't.
+-  if (!delegate().IsToolbarVisible()) {
++  if (!delegate().IsToolbarVisible() || AuxNavigationIsInSidebar(views())) {
+     return exclusion_height;
+   }
+ 
+@@ -1432,6 +1441,12 @@
+                                ->GetWindowRoundedCorners().lower_left();
+       content_corners.set_lower_left(radius);
+       content_corners.set_lower_right(radius);
++      if (AuxNavigationIsInSidebar(views())) {
++        const auto window_corners = browser_view->browser_widget()->GetFrameView()
++                                        ->GetWindowRoundedCorners();
++        content_corners.set_upper_left(window_corners.upper_left());
++        content_corners.set_upper_right(window_corners.upper_right());
++      }
+     }
+     views().multi_contents_view->SetBackgroundRadii(content_corners);
+   }
+@@ -2021,7 +2036,14 @@
+     toolbar_corners[CornerOrientation::kTopTrailing] =
+         toolbar_background->GetWindowCorner(true);
+   }
++  const bool sidebar_navigation = AuxNavigationIsInSidebar(views());
++  if (sidebar_navigation)
++    toolbar_corners = CustomCornersBackground::Corners{};
+   toolbar_background->SetCorners(toolbar_corners);
++  // The existing sidebar material owns this header's background. Keep the
++  // actual toolbar background object for its native type contract, but do not
++  // paint a second opaque page surface or cut corner wedges inside the pane.
++  toolbar_background->SetVisible(!sidebar_navigation);
+ 
+   auto* const top_container_background =
+       views().top_container->background()->AsA<CustomCornersBackground>();
+@@ -2032,9 +2054,10 @@
+   // is active for the current window.
+   if (features::IsGlassFrameEnabled()) {
+     if (!is_fullscreen(layout_data_->window_state)) {
+-      toolbar_background->SetCutoutFrom(top_container_cutout_views);
++      toolbar_background->SetCutoutFrom(sidebar_navigation
++          ? CustomCornersBackground::Cutouts{} : top_container_cutout_views);
+       // Cut the toolbar corners out of the top container itself.
+-      if (in_glass_mode()) {
++      if (in_glass_mode() && !sidebar_navigation) {
+         top_container_cutout_views.push_back(
+             CustomCornersBackground::InverseOf(*toolbar_background));
+       }
 diff --git a/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.cc b/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.cc
 --- a/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.cc
 +++ b/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.cc
@@ -264,7 +653,7 @@ diff --git a/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.cc b/c
  #include "chrome/browser/ui/views/tabs/vertical/vertical_pinned_tab_entries_view.h"
  #include "chrome/browser/profiles/profile.h"
  #include "components/prefs/pref_service.h"
-@@ -968,6 +969,31 @@
+@@ -968,6 +969,40 @@
    }
  }
  
@@ -272,6 +661,15 @@ diff --git a/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.cc b/c
 +  const bool auto_hide = mode == aux::SidebarMode::kAutoHide;
 +  state_controller_->SetExpandOnHoverEnabled(auto_hide);
 +  state_controller_->RequestCollapse(auto_hide);
++}
++
++void VerticalTabStripRegionView::SetAuxNavigationPlacementHold(bool held) {
++  if (aux_navigation_placement_hold_ == held)
++    return;
++  aux_navigation_placement_hold_ = held;
++  // Root owns this placement lifetime. Do not count the hold as a menu lock
++  // in the public input snapshot: that would make deferred relocation sticky.
++  UpdateExpandOnHoverState();
 +}
 +
 +aux::FramePresentationInputs
@@ -296,7 +694,15 @@ diff --git a/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.cc b/c
  void VerticalTabStripRegionView::RefreshAuxPinnedPresentation() {
    auto* strip = tab_strip_view();
    if (!strip || !strip->GetPinnedTabsContainer() || !aux_profile_preview_admission_)
-@@ -1181,7 +1207,7 @@
+@@ -1020,6 +1055,7 @@
+ 
+ void VerticalTabStripRegionView::OnTabStripViewWillClear() {
+   aux_empty_pinned_drop_active_ = false;
++  aux_navigation_placement_hold_ = false;
+   aux_sidebar_->Unmount();
+   RetireAuxProfilePreviewInput();
+   aux_profile_preview_owner_.reset();
+@@ -1181,7 +1217,7 @@
    }
  
    // If the keep expanded lock is held, expand the tab strip.
@@ -305,7 +711,7 @@ diff --git a/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.cc b/c
      if (!is_expanded_on_hover_) {
        AnimateExpandOnHover(/*expand=*/true);
      }
-@@ -1206,10 +1232,11 @@
+@@ -1206,10 +1242,11 @@
        retained && (aux_profile_preview_admission_->browser_retention() ||
                     aux_profile_preview_admission_->edge_retention() ||
                     pointer_inside);
@@ -320,7 +726,7 @@ diff --git a/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.cc b/c
    const bool should_expand =
        retained_should_show ||
        (!suppress_expand_on_hover_ &&
-@@ -1484,8 +1511,12 @@
+@@ -1484,8 +1521,12 @@
  void VerticalTabStripRegionView::OnOmniboxPopupVisibilityChanged(bool is_open) {
    if (is_open) {
      if (!omnibox_open_lock_) {
@@ -335,7 +741,7 @@ diff --git a/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.cc b/c
        UpdateExpandOnHoverState();
      }
    } else {
-@@ -1524,7 +1555,17 @@
+@@ -1524,7 +1565,17 @@
           aux_profile_preview_retention_->RetainedPointerInside();
  }
  bool VerticalTabStripRegionView::KeepExpandedLocked() const {
@@ -345,7 +751,7 @@ diff --git a/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.cc b/c
 +  // The retention timer must honor the same real menu/drag/focus ownership as
 +  // hover expansion. In particular a keep-current drag lock cannot lose its
 +  // overlay when the native cursor briefly leaves the region.
-+  return keep_expanded_lock_count_ > 0 ||
++  return aux_navigation_placement_hold_ || keep_expanded_lock_count_ > 0 ||
 +      (keep_current_state_lock_count_ > 0 &&
 +       (is_expanded_on_hover_ ||
 +        (aux_profile_preview_admission_ &&
@@ -365,7 +771,7 @@ diff --git a/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.h b/ch
  #include "chrome/browser/ui/views/frame/aux_profile_preview_admission.h"
  #include "chrome/browser/ui/views/frame/aux_cross_section_drag_coordinator.h"
  #include "chrome/browser/ui/views/frame/aux_profile_preview_capture_cache.h"
-@@ -117,6 +118,11 @@
+@@ -117,6 +118,12 @@
    uint64_t BeginAuxProfileSwitch(Profile* target);
    void RebindAuxProfileSwitch();
    void EndAuxProfileSwitch(uint64_t generation);
@@ -373,7 +779,169 @@ diff --git a/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.h b/ch
 +  // Root supplies persisted per-profile preferences. This method delegates to
 +  // the existing collapse/animation controller; it creates no second timer.
 +  void SetAuxSidebarMode(aux::SidebarMode mode);
++  void SetAuxNavigationPlacementHold(bool held);
 +  aux::FramePresentationInputs GetAuxFramePresentationInputs() const;
  
    void RefreshAuxPinnedPresentation();
    void ClearAuxEmptyPinnedDrop();
+@@ -346,6 +353,7 @@
+   raw_ptr<aux::AuxSidebarBody> aux_sidebar_ = nullptr;
+   // Original source839 starts clear; actual native drag producer owns changes.
+   bool aux_empty_pinned_drop_active_ = false;
++  bool aux_navigation_placement_hold_ = false;
+   raw_ptr<VerticalTabStripBottomContainer> bottom_button_container_ = nullptr;
+   raw_ptr<views::View> gemini_button_ = nullptr;
+   raw_ptr<views::ResizeArea> resize_area_ = nullptr;
+diff --git a/chrome/browser/ui/views/toolbar/toolbar_view.cc b/chrome/browser/ui/views/toolbar/toolbar_view.cc
+--- a/chrome/browser/ui/views/toolbar/toolbar_view.cc
++++ b/chrome/browser/ui/views/toolbar/toolbar_view.cc
+@@ -1587,8 +1587,56 @@
+ ////////////////////////////////////////////////////////////////////////////////
+ // ToolbarView, views::View overrides:
+ 
++bool ToolbarView::IsAuxNavigationInteractionActive() const {
++  if (const auto* focus = GetFocusManager();
++      focus && Contains(focus->GetFocusedView()))
++    return true;
++  if (const auto* menu = GetAppMenuControl(); menu && menu->IsMenuShowing())
++    return true;
++  std::vector<const views::View*> pending{this};
++  while (!pending.empty()) {
++    const auto* view = pending.back();
++    pending.pop_back();
++    if (const auto* button = views::AsViewClass<ToolbarButton>(view);
++        button && button->IsMenuShowing())
++      return true;
++    for (const auto* child : view->children())
++      pending.push_back(child);
++  }
++  return false;
++}
++
++bool ToolbarView::CanUseAuxSidebarNavigationLayout() const {
++  return initialized_ && display_mode_ == DisplayMode::kNormal &&
++         location_bar_view_ && back_ && !toolbar_webview_ && layout_manager_;
++}
++
++bool ToolbarView::SetAuxSidebarNavigationLayout(bool enabled) {
++  if (enabled && !CanUseAuxSidebarNavigationLayout())
++    return false;
++  if (aux_sidebar_navigation_layout_ == enabled)
++    return true;
++  if (enabled)
++    aux_location_bar_was_ignored_ =
++        location_bar_view_->GetProperty(views::kViewIgnoredByLayoutKey);
++  aux_sidebar_navigation_layout_ = enabled;
++  location_bar_view_->SetProperty(views::kViewIgnoredByLayoutKey,
++      enabled ? true : aux_location_bar_was_ignored_);
++  LayoutCommon();
++  PreferredSizeChanged();
++  InvalidateLayout();
++  return true;
++}
++
+ gfx::Size ToolbarView::CalculatePreferredSize(
+     const views::SizeBounds& available_size) const {
++  if (aux_sidebar_navigation_layout_) {
++    auto compact = AccessiblePaneView::CalculatePreferredSize(available_size);
++    compact.set_width(std::max(compact.width(),
++        location_bar_->MinimumSize().width() +
++        GetLayoutInsets(LayoutInset::TOOLBAR_INTERIOR_MARGIN).width()));
++    return compact;
++  }
+   gfx::Size size;
+   switch (display_mode_) {
+     case DisplayMode::kCustomTab:
+@@ -1617,6 +1665,19 @@
+ }
+ 
+ gfx::Size ToolbarView::GetMinimumSize() const {
++  if (aux_sidebar_navigation_layout_) {
++    auto compact = AccessiblePaneView::GetMinimumSize();
++    compact.set_width(std::max(compact.width(),
++        location_bar_->MinimumSize().width() +
++        GetLayoutInsets(LayoutInset::TOOLBAR_INTERIOR_MARGIN).width()));
++    // The responsive controller still needs its actual overflow affordance.
++    if (overflow_button_ && !overflow_button_->GetVisible())
++      compact.set_width(std::max(compact.width(),
++          AccessiblePaneView::GetMinimumSize().width() +
++          overflow_button_->GetMinimumSize().width() +
++          GetLayoutConstant(LayoutConstant::kToolbarIconDefaultMargin)));
++    return compact;
++  }
+   gfx::Size size;
+   switch (display_mode_) {
+     case DisplayMode::kCustomTab:
+@@ -1690,8 +1751,16 @@
+     }
+   }
+ 
+-  // Call super implementation to ensure layout manager and child layouts
+-  // happen.
++  // The normal responsive flex row owns every existing button. Only the
++  // actual location bar is excluded from that row in sidebar mode; it occupies
++  // the reserved second row without replacing its controller/security UI.
++  if (aux_sidebar_navigation_layout_) {
++    const auto padding = GetLayoutInsets(LayoutInset::TOOLBAR_INTERIOR_MARGIN);
++    const int location_height = location_bar_->PreferredSize().height();
++    location_bar_view_->SetBounds(
++        padding.left(), std::max(0, height() - padding.bottom() - location_height),
++        std::max(0, width() - padding.width()), location_height);
++  }
+   LayoutSuperclass<AccessiblePaneView>(this);
+ }
+ 
+@@ -1964,6 +2033,13 @@
+       interior_margin.set_right(0);
+     }
+   }
++  if (aux_sidebar_navigation_layout_) {
++    // Reserve the real location bar below the ordinary responsive button row.
++    // Both rows reuse existing toolbar spacing; no new color/radius/motion.
++    interior_margin.set_bottom(interior_margin.bottom() +
++        location_bar_->PreferredSize().height() +
++        GetLayoutConstant(LayoutConstant::kToolbarIconDefaultMargin));
++  }
+   layout_manager_->SetInteriorMargin(interior_margin);
+ 
+   // Extend buttons to the window edge if we're either in a maximized or
+@@ -1974,7 +2050,8 @@
+   // `SetIsMaximizedOrFullscreen` remains reliably synchronized with window
+   // bounds without requiring supplemental widget observation hooks.
+   const bool is_maximized_or_fullscreen =
+-      browser_->GetWindow() && (browser_->GetWindow()->IsMaximized() ||
++      !aux_sidebar_navigation_layout_ && browser_->GetWindow() &&
++      (browser_->GetWindow()->IsMaximized() ||
+                                 browser_->GetWindow()->IsFullscreen());
+ 
+   const int margin = is_maximized_or_fullscreen ? leading_interior_margin : 0;
+diff --git a/chrome/browser/ui/views/toolbar/toolbar_view.h b/chrome/browser/ui/views/toolbar/toolbar_view.h
+--- a/chrome/browser/ui/views/toolbar/toolbar_view.h
++++ b/chrome/browser/ui/views/toolbar/toolbar_view.h
+@@ -134,6 +134,16 @@
+   void AbortOwnedActionsForAuxProfileSwitch(Profile* source_profile);
+ #endif
+ 
++  // Two-row native layout for an Aux sidebar host. The genuine location bar,
++  // navigation buttons and responsive overflow controller remain children of
++  // this ToolbarView. Unsupported alternate/WebUI editors refuse docking.
++  bool CanUseAuxSidebarNavigationLayout() const;
++  bool IsAuxNavigationInteractionActive() const;
++  bool SetAuxSidebarNavigationLayout(bool enabled);
++  bool IsAuxSidebarNavigationLayout() const {
++    return aux_sidebar_navigation_layout_;
++  }
++
+   // Forces the toolbar (and transitively the location bar) to update its
+   // current state.  If |tab| is non-NULL, we're switching (back?) to this tab
+   // and should restore any previous location bar state (such as user editing)
+@@ -485,6 +495,9 @@
+       scoped_unowned_user_data_;
+ 
+   raw_ptr<views::FlexLayout> layout_manager_ = nullptr;
++  bool aux_sidebar_navigation_layout_ = false;
++  bool aux_location_bar_was_ignored_ = false;
++
+ 
+   AppMenuIconController app_menu_icon_controller_;
+ 

@@ -1,83 +1,87 @@
-# Frame and actual navigation placement — inactive source proposal
+# Frame and native sidebar navigation — inactive source proposal
 
-Execution baseline `02ce77253`. This lane preserves existing materials, colors,
-corner radii, animation durations and the default top navigation. It changes two
-actual native region files and adds three native files. `files.json` pins the
-selected input bytes and every successor; `native.patch` replays only those files.
-The selected native tree and accepted app were not modified.
+Execution baseline `02ce77253`; first lane commit `1e688dd56` supplied the state
+contract, guarded reparent controller and hover correction. The consolidated
+successor now includes **actual BrowserView, ToolbarView and native layout
+consumers**, not only an unused controller. Ten native files (seven existing,
+three new) are pinned in `files.json`. `native.patch` applies to their recorded
+original baselines; it is not an incremental patch over the first proposal.
+Only proposal files were edited by this lane. Root projection/build is separate.
 
 ## Implemented source
 
-- `aux_frame_presentation_state.h`: one pure projection for docked/hidden/hover,
-  reserved width, pending navigation relocation, minimal-mode redundant chrome
-  and full-URL requirements. Hover never moves the top editor into the sidebar.
-  A currently sidebar-hosted editor keeps a floating preview during a deferred
-  collapse, instead of disappearing mid-edit. Minimal mode never hides the only
-  trusted origin control.
-- `aux_navigation_placement.{h,cc}`: reparents the genuine native navigation view,
-  preserving its URL/history/security controller. Checks actual focus, actual
-  parents, same-widget hosts, real minimum width, hierarchy destruction and
-  reentrant callbacks. Uses view trackers and weak lifetime guards. It creates
-  no editor and grants no profile/storage authority.
-- `VerticalTabStripRegionView::SetAuxSidebarMode` delegates docked/auto-hide to
-  the real state controller. `GetAuxFramePresentationInputs` exposes real native
-  hover, focus, menu locks and drag/resize state for the root frame owner.
-- Actual hover/retention now honors keyboard focus and keep-current menu/drag
-  locks. Previously, the retained-panel predicate explicitly discarded focus,
-  and its release timer saw only keep-expanded locks. Existing timing/animation
-  owners remain in control. Explicit force-collapse retains precedence.
-- The real omnibox popup takes keep-expanded only when its actual toolbar is in
-  the sidebar; the existing top-toolbar force-collapse behavior is preserved.
+- One pure frame projection resolves docked/hidden/hover presentation, reserved
+  width, pending navigation relocation, minimal-mode redundant chrome and full
+  URL requirements. No new animation timer, curve, radius or color is introduced.
+- `AuxNavigationPlacement` reparents the genuine native ToolbarView. It checks
+  actual focus, expected parents, same-widget hosts, minimum width, destruction
+  and reentrant callbacks; it creates no replacement editor or URL model.
+- BrowserView owns a real hidden-by-default sidebar header before pins/body,
+  and observes `aux.sidebar_navigation_enabled`, `aux.minimal_ui_enabled` and
+  Chromium's existing full-URL preference. Posted updates consume real region
+  focus/hover/menu/resize state and actual toolbar interaction state. Movement
+  occurs outside layout traversal and is retried on focus/activation/layout
+  changes. Old-profile preferences are detached/rebound with the existing
+  transaction; presentation waits until that transaction finishes.
+- ToolbarView's opt-in compact layout retains every real child and the existing
+  responsive Flex/overflow controller. The actual LocationBarView occupies a
+  reserved second row; navigation/actions remain in the first. Origin/security
+  controls are never shrunk below their minimum. Unsupported alternate/WebUI
+  toolbar implementations refuse docking; the selected native implementation
+  has a real compact route. Returning to top restores original layout behavior.
+- Root layout consumes actual parentage for main-content minimum size and top
+  toolbar allocation. A sidebar toolbar uses its parent material rather than
+  painting opaque page corners inside the sidebar. The page gets the existing
+  window's top radii when it becomes the top surface. Default top-toolbar
+  geometry, materials, colors, glass and radii remain unchanged.
+- Minimal mode removes the bookmarks row without changing its persisted
+  visibility preference. Sidebar navigation removes the redundant top toolbar
+  allocation. When navigation stays at the top, the trusted URL/permission UI
+  remains available, including full-URL mode.
+- Docked/auto-hide mode delegates to the real vertical-tab controller. Retained
+  hover now honors keyboard focus and keep-current menu/drag locks. A deferred
+  sidebar editor uses the real hover owner until it can relocate; that placement
+  hold is not fed back as a menu lock. Explicit force-collapse retains precedence.
+- An omnibox popup keeps its actual sidebar toolbar host expanded; historical
+  force-collapse remains for the top-hosted omnibox. Native focus ordering is
+  updated after reparenting. BrowserView destroys the controller before its
+  owned hierarchy; deferred callbacks refuse teardown/profile-transition state.
 
-## Root integration contract — required, not completed here
+## Root registration and remaining integration
 
-1. Register the three new files in the selected `chrome/browser/ui/BUILD.gn`
-   views target. Do not enable `enable_aux_shell`.
-2. BrowserView owns one `AuxNavigationPlacement`, passing its existing
-   `ToolbarView`, actual top parent and a real sidebar header host. Create that
-   header before the body without replacing supplied content. Keep native view
-   ownership in the hierarchy; destroy this controller before its owner views.
-3. Combine `GetAuxFramePresentationInputs()` with registered per-profile
-   sidebar-navigation/minimal/full-URL preferences and actual native-menu/tab-
-   drag state. Call `Update` outside a layout traversal when preferences,
-   focus/menu/drag state or collapse transitions change. Retry after a deferred
-   transition settles; never manufacture an editing=false input to force a move.
-4. Use the returned projection in root layout. A `kUnavailable` result is not
-   permission to hide a host: preserve actual hierarchy presentation and retry
-   only after a valid owner is present. `kInsufficientWidth` leaves navigation at
-   the top. Minimal suppresses redundant chrome only; full URL and trusted
-   origin/permission UI stay reachable.
-5. Root owns compact ToolbarView layout. A complete native toolbar may not fit a
-   280-DIP sidebar. This proposal **refuses overflow**; it does not claim sidebar
-   navigation accepted simply because a controller exists. Implement a reviewed
-   compact layout/overflow route preserving the actual nav/location controls,
-   then supply the measured content width. Do not shrink the origin/security
-   controls below their validated minimum.
-6. `layout/browser_view_tabbed_layout_impl.cc:1583` already skips top placement
-   when toolbar's parent differs. Remaining toolbar minimum width/height inputs
-   at lines471/583/724/837, and toolbar corner painting at1955+, must consume the
-   actual host. The sidebar-hosted toolbar cannot receive the page's top-corner
-   treatment. One root geometry owner coordinates both sidebars/chat/splits.
-7. Before replacing a sidebar host or beginning profile-rebind presentation,
-   invoke guarded `RestoreToTop`; respect `kDeferred` and preserve the live
-   toolbar/host until edit/menu/drag completion. Normal BrowserView teardown may
-   destroy its complete owned hierarchy after the controller; do not reparent
-   during destruction. New preference writes join existing admitted lifecycle.
-8. Expose toggles through the single command/Settings owner and actual profile
-   preference registry. This lane does not create an independent command store,
-   preference namespace or persistence path.
+1. Register these three files in the selected `chrome/browser/ui/BUILD.gn` views
+   target: `views/frame/aux_frame_presentation_state.h`,
+   `views/frame/aux_navigation_placement.h`, and
+   `views/frame/aux_navigation_placement.cc`. Do not enable the retired shell.
+2. Register Boolean profile preferences `aux.sidebar_navigation_enabled` and
+   `aux.minimal_ui_enabled`, both **false** by default, using the existing
+   admitted preference/lifecycle boundary. Constants are public in the pure
+   frame header. Existing `omnibox::kPreventUrlElisionsInOmnibox` registration
+   remains authoritative; no duplicate URL preference is introduced.
+3. Command/Settings integration invokes those profile preferences and
+   `VerticalTabStripRegionView::SetAuxSidebarMode`. UI strings/commands belong to
+   the navigation/Settings lane. This source does not create a separate command
+   registry or persist hover/focus state.
+4. Project consolidated source with all other accepted proposals, compile the
+   actual changed Chromium units, then build/package through the integrator.
+   The selected tree may already contain the first proposal; compare/replace
+   with these final source hashes rather than applying the whole patch twice.
+5. Verify actual dock/undock, focused edit and popup/menu close, narrow width,
+   hover/drag, both sidebars, profile switch and minimal-mode restoration. A
+   narrow host refuses rather than clips; actual default-width readability and
+   responsive overflow require observation, not an inference from this code.
 
-The root must also ensure a deferred sidebar editor retains its real preview
-host and its actual widget focus. The model's overlay result does not itself
-allocate native geometry or override an explicit user force-collapse action.
+## Focused evidence and limits
 
-## Focused evidence
+`python3 check.py` verifies baseline/successor pins and applies the exact patch
+only inside a disposable temporary directory. `--check-selected` additionally
+requires the live selected tree to remain at the original baseline; this is
+expected to refuse after root projects a successor. Plain replay is not proof
+that a changed native tree matches original inputs.
 
-`python3 check.py` validates pinned baseline/successor bytes and applies the exact
-patch only in a disposable temporary directory. `tests/frame_state_check.cc`
-uses compile-time assertions for default preservation, docked/hidden/hover,
-focus-held relocation, menu/drag/motion locks, and minimal/full-URL precedence.
-It was checked with:
+`tests/frame_state_check.cc` has compile-time checks for default preservation,
+zero reserved width when hidden, focus-held relocation, menu/drag/motion holds,
+and minimal/full-URL precedence. Its syntax-only command passed:
 
 ```
 python3 scripts/native-build.py xcrun clang++ -std=c++20 -fsyntax-only \
@@ -85,8 +89,8 @@ python3 scripts/native-build.py xcrun clang++ -std=c++20 -fsyntax-only \
   docs/integration/proposed/browser-feature-expansion/frame/tests/frame_state_check.cc
 ```
 
-This creates no executable or signature. Actual changed Chromium translation
-units, native view parenting, narrow-toolbar behavior, final build and live
-visual/interaction acceptance remain pending integrator projection. No app was
-launched, quit or restarted; no signing, profile access, provider or cloud
-operation occurred. Source implemented does not close FX-FRAME acceptance.
+No executable/signature results from that check. Actual changed Chromium
+translation-unit compilation, final build and live visual/interaction acceptance
+remain root integration gates. No app was launched, quit or restarted by this
+lane; no signing, owner-profile, provider or cloud operation occurred. This is
+implemented source, not accepted FX-FRAME completion.
