@@ -1,0 +1,101 @@
+--- a/third_party/blink/renderer/modules/storage/cached_storage_area.cc
++++ b/third_party/blink/renderer/modules/storage/cached_storage_area.cc
+@@ -182,7 +182,7 @@
+   ++aux_storage_callbacks_pending_;
+   // The actual physical reply, not a timeout or map clear, retires this work.
+   // A dropped callback leaves the counter unresolved; no completion is made up.
+-  return BindOnce([](scoped_refptr<CachedStorageArea> owner, base::OnceClosure callback) {
++  return blink::BindOnce([](scoped_refptr<CachedStorageArea> owner, base::OnceClosure callback) {
+     CHECK_GT(owner->aux_storage_callbacks_pending_, 0u);
+     --owner->aux_storage_callbacks_pending_;
+     std::move(callback).Run();
+@@ -196,7 +196,7 @@
+     auto* window = source ? source->GetDOMWindow() : nullptr;
+     auto* frame = window ? window->GetFrame() : nullptr;
+     if (!frame || frame->DomWindow() != window) return std::nullopt;
+-    result.push_back({entry.value, frame->GetLocalFrameToken(), frame->GetDocumentToken()});
++    result.push_back(AuxUiCacheSource{entry.value, frame->GetLocalFrameToken(), frame->GetDocumentToken()});
+   }
+   if (result.empty() || result.size() > 256) return std::nullopt;
+   std::sort(result.begin(), result.end(), [](const auto& a, const auto& b) { return a.source_id < b.source_id; });
+@@ -390,7 +390,7 @@
+ void CachedStorageArea::RemoveItem(const String& key, Source* source) {
+   if (aux_ui_cache_lease_) {
+     aux_ui_cache_lease_->tainted = true;
+-    aux_ui_cache_lease_->deferred.push_back(BindOnce(&CachedStorageArea::RemoveItem,
++    aux_ui_cache_lease_->deferred.push_back(blink::BindOnce(&CachedStorageArea::RemoveItem,
+         aux_weak_.GetWeakPtr(), key, WrapWeakPersistent(source)));
+     return;
+   }
+@@ -421,7 +421,7 @@
+ void CachedStorageArea::Clear(Source* source) {
+   if (aux_ui_cache_lease_) {
+     aux_ui_cache_lease_->tainted = true;
+-    aux_ui_cache_lease_->deferred.push_back(BindOnce(&CachedStorageArea::Clear,
++    aux_ui_cache_lease_->deferred.push_back(blink::BindOnce(&CachedStorageArea::Clear,
+         aux_weak_.GetWeakPtr(), WrapWeakPersistent(source)));
+     return;
+   }
+@@ -544,7 +544,7 @@
+     mojo::PendingRemote<mojom::blink::StorageArea> new_area) {
+   if (aux_ui_cache_lease_) {
+     aux_ui_cache_lease_->tainted = true;
+-    aux_ui_cache_lease_->deferred.push_back(BindOnce(&CachedStorageArea::ResetConnection,
++    aux_ui_cache_lease_->deferred.push_back(blink::BindOnce(&CachedStorageArea::ResetConnection,
+         aux_weak_.GetWeakPtr(), std::move(new_area)));
+     return;
+   }
+@@ -634,7 +634,7 @@
+     mojom::blink::StorageAreaSourcePtr source) {
+   if (aux_ui_cache_lease_) {
+     aux_ui_cache_lease_->tainted = true;
+-    aux_ui_cache_lease_->deferred.push_back(BindOnce(&CachedStorageArea::KeyChanged,
++    aux_ui_cache_lease_->deferred.push_back(blink::BindOnce(&CachedStorageArea::KeyChanged,
+         aux_weak_.GetWeakPtr(), key, new_value, old_value, std::move(source)));
+     return;
+   }
+@@ -672,7 +672,7 @@
+     mojom::blink::StorageAreaSourcePtr source) {
+   if (aux_ui_cache_lease_) {
+     aux_ui_cache_lease_->tainted = true;
+-    aux_ui_cache_lease_->deferred.push_back(BindOnce(&CachedStorageArea::KeyChangeFailed,
++    aux_ui_cache_lease_->deferred.push_back(blink::BindOnce(&CachedStorageArea::KeyChangeFailed,
+         aux_weak_.GetWeakPtr(), key, std::move(source)));
+     return;
+   }
+@@ -731,7 +731,7 @@
+     mojom::blink::StorageAreaSourcePtr source) {
+   if (aux_ui_cache_lease_) {
+     aux_ui_cache_lease_->tainted = true;
+-    aux_ui_cache_lease_->deferred.push_back(BindOnce(&CachedStorageArea::KeyDeleted,
++    aux_ui_cache_lease_->deferred.push_back(blink::BindOnce(&CachedStorageArea::KeyDeleted,
+         aux_weak_.GetWeakPtr(), key, old_value, std::move(source)));
+     return;
+   }
+@@ -766,7 +766,7 @@
+                                    mojom::blink::StorageAreaSourcePtr source) {
+   if (aux_ui_cache_lease_) {
+     aux_ui_cache_lease_->tainted = true;
+-    aux_ui_cache_lease_->deferred.push_back(BindOnce(&CachedStorageArea::AllDeleted,
++    aux_ui_cache_lease_->deferred.push_back(blink::BindOnce(&CachedStorageArea::AllDeleted,
+         aux_weak_.GetWeakPtr(), was_nonempty, std::move(source)));
+     return;
+   }
+@@ -818,7 +818,7 @@
+ void CachedStorageArea::ShouldSendOldValueOnMutations(bool value) {
+   if (aux_ui_cache_lease_) {
+     aux_ui_cache_lease_->tainted = true;
+-    aux_ui_cache_lease_->deferred.push_back(BindOnce(&CachedStorageArea::ShouldSendOldValueOnMutations,
++    aux_ui_cache_lease_->deferred.push_back(blink::BindOnce(&CachedStorageArea::ShouldSendOldValueOnMutations,
+         aux_weak_.GetWeakPtr(), value));
+     return;
+   }
+@@ -1176,7 +1176,7 @@
+ void CachedStorageArea::EvictCachedData() {
+   if (aux_ui_cache_lease_) {
+     aux_ui_cache_lease_->tainted = true;
+-    aux_ui_cache_lease_->deferred.push_back(BindOnce(&CachedStorageArea::EvictCachedData,
++    aux_ui_cache_lease_->deferred.push_back(blink::BindOnce(&CachedStorageArea::EvictCachedData,
+         aux_weak_.GetWeakPtr()));
+     return;
+   }

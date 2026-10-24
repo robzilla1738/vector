@@ -1,0 +1,16 @@
+{
+  "format": "aux.renderer-cache-compile-fix.source-check.actual.v1",
+  "passed": true,
+  "sourcePlanSha256": "039dccceaa481a38db9cf294189f6b479594e3a1645be791cf7172a07d1e7fcd",
+  "patchSha256": "df1609d2b2bf169ffa5bf2b5e3bb92b10c4695983a33899827bb71458a6626d0",
+  "files": 1,
+  "countedAnchors": 11,
+  "replayDirectory": "/private/tmp/aux-renderer-cache-compile-fix-replay-856cmb4h",
+  "exactReplayPassed": true,
+  "reverseCheckPassed": true,
+  "nativeCheckoutChanged": false,
+  "nativeCompiled": false,
+  "testsExecuted": false,
+  "productExecuted": false,
+  "runtimeAcceptance": false
+}

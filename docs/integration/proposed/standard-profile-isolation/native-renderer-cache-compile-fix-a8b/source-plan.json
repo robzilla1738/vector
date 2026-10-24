@@ -1,0 +1,73 @@
+{
+  "format": "aux.native-renderer-cache-compile-fix.source.v1",
+  "nativeRoot": "/Users/rcourson/.codex/worktrees/aux-features-organization/web/docs/integration/proposed/standard-profile-isolation/native-renderer-cache-lease-a8/source",
+  "files": [
+    {
+      "path": "third_party/blink/renderer/modules/storage/cached_storage_area.cc",
+      "inputSha256": "4e5471a27b92b7da26f4b26cdf4d1692f100b2f728b342e9552bc4ab1572cbe5",
+      "outputSha256": "5de5caeb0cf21af65517a72a112632b0742d064d6334cf4b8613c3821e9aae45",
+      "output": "/Users/rcourson/.codex/worktrees/aux-features-organization/web/docs/integration/proposed/standard-profile-isolation/native-renderer-cache-compile-fix-a8b/source/third_party/blink/renderer/modules/storage/cached_storage_area.cc",
+      "anchors": [
+        {
+          "find": "  return BindOnce([](scoped_refptr<CachedStorageArea> owner, base::OnceClosure callback) {",
+          "replace": "  return blink::BindOnce([](scoped_refptr<CachedStorageArea> owner, base::OnceClosure callback) {",
+          "count": 1
+        },
+        {
+          "find": "    result.push_back({entry.value, frame->GetLocalFrameToken(), frame->GetDocumentToken()});",
+          "replace": "    result.push_back(AuxUiCacheSource{entry.value, frame->GetLocalFrameToken(), frame->GetDocumentToken()});",
+          "count": 1
+        },
+        {
+          "find": "aux_ui_cache_lease_->deferred.push_back(BindOnce(&CachedStorageArea::RemoveItem,",
+          "replace": "aux_ui_cache_lease_->deferred.push_back(blink::BindOnce(&CachedStorageArea::RemoveItem,",
+          "count": 1
+        },
+        {
+          "find": "aux_ui_cache_lease_->deferred.push_back(BindOnce(&CachedStorageArea::Clear,",
+          "replace": "aux_ui_cache_lease_->deferred.push_back(blink::BindOnce(&CachedStorageArea::Clear,",
+          "count": 1
+        },
+        {
+          "find": "aux_ui_cache_lease_->deferred.push_back(BindOnce(&CachedStorageArea::ResetConnection,",
+          "replace": "aux_ui_cache_lease_->deferred.push_back(blink::BindOnce(&CachedStorageArea::ResetConnection,",
+          "count": 1
+        },
+        {
+          "find": "aux_ui_cache_lease_->deferred.push_back(BindOnce(&CachedStorageArea::KeyChanged,",
+          "replace": "aux_ui_cache_lease_->deferred.push_back(blink::BindOnce(&CachedStorageArea::KeyChanged,",
+          "count": 1
+        },
+        {
+          "find": "aux_ui_cache_lease_->deferred.push_back(BindOnce(&CachedStorageArea::KeyChangeFailed,",
+          "replace": "aux_ui_cache_lease_->deferred.push_back(blink::BindOnce(&CachedStorageArea::KeyChangeFailed,",
+          "count": 1
+        },
+        {
+          "find": "aux_ui_cache_lease_->deferred.push_back(BindOnce(&CachedStorageArea::KeyDeleted,",
+          "replace": "aux_ui_cache_lease_->deferred.push_back(blink::BindOnce(&CachedStorageArea::KeyDeleted,",
+          "count": 1
+        },
+        {
+          "find": "aux_ui_cache_lease_->deferred.push_back(BindOnce(&CachedStorageArea::AllDeleted,",
+          "replace": "aux_ui_cache_lease_->deferred.push_back(blink::BindOnce(&CachedStorageArea::AllDeleted,",
+          "count": 1
+        },
+        {
+          "find": "aux_ui_cache_lease_->deferred.push_back(BindOnce(&CachedStorageArea::ShouldSendOldValueOnMutations,",
+          "replace": "aux_ui_cache_lease_->deferred.push_back(blink::BindOnce(&CachedStorageArea::ShouldSendOldValueOnMutations,",
+          "count": 1
+        },
+        {
+          "find": "aux_ui_cache_lease_->deferred.push_back(BindOnce(&CachedStorageArea::EvictCachedData,",
+          "replace": "aux_ui_cache_lease_->deferred.push_back(blink::BindOnce(&CachedStorageArea::EvictCachedData,",
+          "count": 1
+        }
+      ]
+    }
+  ],
+  "nativeCheckoutChanged": false,
+  "nativeCompiled": false,
+  "productExecuted": false,
+  "activationAuthorized": false
+}
