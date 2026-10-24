@@ -1,0 +1,20 @@
+{
+  "format": "aux.standard-native-host-stderr.source.v1",
+  "baselineInputPins": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/integration/full-native-input-pins-a4.json",
+  "baselineInputPinsSha256": "67378a52720d9a88343d62afca1305e7bdcc8522494428d4357d6356bb1517d1",
+  "patchSha256": "aa2d45c6a439d4503644ec08b214d1aa074a3b0ea9e940c5ce9a3253e0f7e5b1",
+  "countedEdits": 2,
+  "files": [
+    {
+      "path": "chrome/browser/extensions/api/messaging/launch_context_posix.cc",
+      "beforeSha256": "5007bc9ed3ab70693ffbebc5687cda1105246f74cce234b07cae58afb4d6c382",
+      "afterSha256": "bb960b43c26f23233cc1ef929bb0136270568b2a300e72427c74b03020a28589"
+    }
+  ],
+  "nativeTreeChanged": false,
+  "uiChanged": false,
+  "compiled": false,
+  "productExecuted": false,
+  "productSigned": false,
+  "cleanRecoveryProven": false
+}

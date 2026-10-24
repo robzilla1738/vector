@@ -1,0 +1,31 @@
+--- a/chrome/browser/extensions/api/messaging/launch_context_posix.cc
++++ b/chrome/browser/extensions/api/messaging/launch_context_posix.cc
+@@ -3,6 +3,9 @@
+ // found in the LICENSE file.
+ 
+ #include "chrome/browser/extensions/api/messaging/launch_context.h"
++
++#include <fcntl.h>
++#include <sys/stat.h>
+ 
+ #include <memory>
+ #include <utility>
+@@ -133,6 +136,18 @@
+ #endif
+ 
+ #if BUILDFLAG(IS_MAC)
++  // A third-party host must not inherit a writable browser/profile log FD.
++  // Keep native-messaging stdin/stdout framing unchanged; stderr is diagnostic.
++  base::ScopedFD diagnostic_sink(
++      HANDLE_EINTR(open("/dev/null", O_WRONLY | O_CLOEXEC | O_NOFOLLOW)));
++  struct stat diagnostic_stat = {};
++  if (!diagnostic_sink.is_valid() ||
++      fstat(diagnostic_sink.get(), &diagnostic_stat) != 0 ||
++      !S_ISCHR(diagnostic_stat.st_mode) || diagnostic_stat.st_uid != 0) {
++    LOG(ERROR) << "Native messaging diagnostic sink unavailable";
++    return std::nullopt;
++  }
++  options.fds_to_remap.emplace_back(diagnostic_sink.get(), STDERR_FILENO);
+   auto sandboxed_host = aux::peer::PrepareNativeHostPathWriteRestrictions(command_line);
+   if (!sandboxed_host) {
+     LOG(ERROR) << "Native messaging path restrictions unavailable";

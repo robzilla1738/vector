@@ -1,0 +1,14 @@
+[
+  {
+    "path": "chrome/browser/extensions/api/messaging/launch_context_posix.cc",
+    "count": 1,
+    "old": "#include <memory>\n#include <utility>\n",
+    "new": "#include <fcntl.h>\n#include <sys/stat.h>\n\n#include <memory>\n#include <utility>\n"
+  },
+  {
+    "path": "chrome/browser/extensions/api/messaging/launch_context_posix.cc",
+    "count": 1,
+    "old": "#if BUILDFLAG(IS_MAC)\n  auto sandboxed_host = aux::peer::PrepareNativeHostPathWriteRestrictions(command_line);",
+    "new": "#if BUILDFLAG(IS_MAC)\n  // A third-party host must not inherit a writable browser/profile log FD.\n  // Keep native-messaging stdin/stdout framing unchanged; stderr is diagnostic.\n  base::ScopedFD diagnostic_sink(\n      HANDLE_EINTR(open(\"/dev/null\", O_WRONLY | O_CLOEXEC | O_NOFOLLOW)));\n  struct stat diagnostic_stat = {};\n  if (!diagnostic_sink.is_valid() ||\n      fstat(diagnostic_sink.get(), &diagnostic_stat) != 0 ||\n      !S_ISCHR(diagnostic_stat.st_mode) || diagnostic_stat.st_uid != 0) {\n    LOG(ERROR) << \"Native messaging diagnostic sink unavailable\";\n    return std::nullopt;\n  }\n  options.fds_to_remap.emplace_back(diagnostic_sink.get(), STDERR_FILENO);\n  auto sandboxed_host = aux::peer::PrepareNativeHostPathWriteRestrictions(command_line);"
+  }
+]
