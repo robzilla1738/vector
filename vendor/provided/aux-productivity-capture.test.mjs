@@ -1,6 +1,6 @@
 import test from 'node:test';import assert from 'node:assert/strict';
 import {readFileSync,mkdtempSync,writeFileSync,rmSync} from 'node:fs';import {tmpdir} from 'node:os';import {join} from 'node:path';import {spawnSync} from 'node:child_process';
-import {captureBoundPage,transformAuxCaptureUi,transformAuxCaptureDaemon,transformAuxCaptureNative} from './aux-productivity-capture.mjs';
+import {installNativeCaptureListener,captureBoundPage,transformAuxCaptureUi,transformAuxCaptureDaemon,transformAuxCaptureNative} from './aux-productivity-capture.mjs';
 import {developerSections,runDeveloperCommand,transformAuxDeveloperUi} from './aux-productivity-developer.mjs';
 import {transformAuxNavigation} from './aux-navigation-command-bar.mjs';import {transformAuxProductivityUi} from './aux-productivity-integration.mjs';import {transformAuxFilesUi} from './aux-productivity-files.mjs';import {transformAuxMediaUi} from './aux-productivity-media.mjs';
 const sender={tab:{id:7},frameId:0,documentId:'native-document'},png='data:image/png;base64,aGVsbG8=';
@@ -37,4 +37,15 @@ test('supplied capture/full-page/command/settings adapters compose and parse',()
  for(const [name,text] of files){const path=join(out,name.endsWith('.mjs')?name:name+'.mjs');writeFileSync(path,text);const parsed=spawnSync(process.execPath,['--check',path],{encoding:'utf8'});assert.equal(parsed.status,0,parsed.stderr)}
  const native='chrome/browser/devtools/chrome_devtools_manager_delegate.cc',nativeText=readFileSync('docs/integration/proposed/browser-feature-expansion/productivity/source/'+native,'utf8');assert.equal(transformAuxCaptureNative({relative:native,text:nativeText}).anchors.length,2);
  }finally{rmSync(out,{recursive:true,force:true})}
+});
+
+test('native screenshot ingress preserves exact document and respects disabled setting',async()=>{
+ let listener,sent,errors=[];
+ const api={onPageCaptureRequested:{addListener:fn=>listener=fn}},tabs={sendMessage:async(...args)=>{sent=args}};
+ installNativeCaptureListener(api,tabs,async()=>true,error=>errors.push(error));
+ await listener({tabId:5,documentId:'original-document'});
+ assert.deepEqual(sent,[5,{type:'capture:open'},{documentId:'original-document'}]);
+ sent=undefined;await listener({tabId:5});assert.equal(sent,undefined);assert.equal(errors.length,1);
+ installNativeCaptureListener(api,tabs,async()=>false,error=>errors.push(error));
+ await listener({tabId:5,documentId:'original-document'});assert.equal(sent,undefined);assert.match(errors[1],/Enable Screenshot/);
 });

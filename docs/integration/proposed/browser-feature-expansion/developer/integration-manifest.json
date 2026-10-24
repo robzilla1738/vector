@@ -1,0 +1,93 @@
+{
+  "schemaVersion": 1,
+  "nativeSources": [
+    "chrome/browser/ui/aux_developer_commands.cc",
+    "chrome/browser/ui/aux_page_capture.cc",
+    "chrome/browser/extensions/api/aux_browser_preferences/aux_developer_expansion_api.cc"
+  ],
+  "functions": [
+    {
+      "id": 2130,
+      "method": "auxBrowserPreferences.getPageCaptureTarget",
+      "class": "extensions::AuxBrowserPreferencesGetPageCaptureTargetFunction",
+      "histogram": "AUXBROWSERPREFERENCES_GETPAGECAPTURETARGET"
+    },
+    {
+      "id": 2131,
+      "method": "auxBrowserPreferences.beginPageSurfaceCapture",
+      "class": "extensions::AuxBrowserPreferencesBeginPageSurfaceCaptureFunction",
+      "histogram": "AUXBROWSERPREFERENCES_BEGINPAGESURFACECAPTURE"
+    },
+    {
+      "id": 2132,
+      "method": "auxBrowserPreferences.capturePageSurface",
+      "class": "extensions::AuxBrowserPreferencesCapturePageSurfaceFunction",
+      "histogram": "AUXBROWSERPREFERENCES_CAPTUREPAGESURFACE"
+    },
+    {
+      "id": 2133,
+      "method": "auxBrowserPreferences.validatePageSurfaceCapture",
+      "class": "extensions::AuxBrowserPreferencesValidatePageSurfaceCaptureFunction",
+      "histogram": "AUXBROWSERPREFERENCES_VALIDATEPAGESURFACECAPTURE"
+    },
+    {
+      "id": 2134,
+      "method": "auxBrowserPreferences.cancelPageSurfaceCapture",
+      "class": "extensions::AuxBrowserPreferencesCancelPageSurfaceCaptureFunction",
+      "histogram": "AUXBROWSERPREFERENCES_CANCELPAGESURFACECAPTURE"
+    },
+    {
+      "id": 2135,
+      "method": "auxBrowserPreferences.getDeveloperSettings",
+      "class": "extensions::AuxBrowserPreferencesGetDeveloperSettingsFunction",
+      "histogram": "AUXBROWSERPREFERENCES_GETDEVELOPERSETTINGS"
+    },
+    {
+      "id": 2136,
+      "method": "auxBrowserPreferences.setDeveloperMode",
+      "class": "extensions::AuxBrowserPreferencesSetDeveloperModeFunction",
+      "histogram": "AUXBROWSERPREFERENCES_SETDEVELOPERMODE"
+    },
+    {
+      "id": 2137,
+      "method": "auxBrowserPreferences.openDeveloperTools",
+      "class": "extensions::AuxBrowserPreferencesOpenDeveloperToolsFunction",
+      "histogram": "AUXBROWSERPREFERENCES_OPENDEVELOPERTOOLS"
+    },
+    {
+      "id": 2138,
+      "method": "auxBrowserPreferences.openExtensionManager",
+      "class": "extensions::AuxBrowserPreferencesOpenExtensionManagerFunction",
+      "histogram": "AUXBROWSERPREFERENCES_OPENEXTENSIONMANAGER"
+    }
+  ],
+  "event": {
+    "method": "auxBrowserPreferences.onPageCaptureRequested",
+    "histogram": "AUXBROWSERPREFERENCES_ONPAGECAPTUREREQUESTED",
+    "argument": {
+      "type": "object",
+      "properties": {
+        "success": {
+          "type": "boolean"
+        },
+        "tabId": {
+          "type": "integer"
+        },
+        "documentId": {
+          "type": "string"
+        }
+      }
+    }
+  },
+  "command": {
+    "id": 34136,
+    "enabled": "CanShowAuxPageCapture(browser)",
+    "execute": "ShowAuxPageCapture(browser)"
+  },
+  "verification": {
+    "sourceComposition": "4 focused checks passed; actual selected packaged JavaScript parses",
+    "nativeEventAdapter": "1 focused exact-document/disabled-setting check passed",
+    "nativeCompile": "pending integrator",
+    "actualApp": "not run"
+  }
+}

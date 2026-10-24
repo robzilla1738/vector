@@ -9,7 +9,8 @@ permissions. No owner page, file, account, vault or real provider was accessed.
 
 Add `source/chrome/browser/ui/aux_page_capture.cc` and
 `aux_developer_commands.cc` to the selected native target, with their headers.
-Private API wrappers remain root-owned and must restrict each method to the real
+The leaf `aux_developer_expansion_api.{h,cc}` implements the API wrappers.
+Root owns schema/registration/GN. Each method is restricted to the real
 installed Agent extension and sender-derived Profile. Never accept a Profile
 path, WebContents pointer, or alternate window fallback from the renderer.
 
@@ -100,3 +101,29 @@ The integrator still must compile the added native units/wrappers and inspect a
 small disposable page: area/viewport/full capture, native save cancellation,
 clipboard copy, page/pane navigation during capture, DevTools target, and the real
 extension manager/developer-mode control. Do not replay broad unrelated suites.
+
+## Leaf API registration and keyboard ingress
+
+Add the new leaf `source/chrome/browser/extensions/api/aux_browser_preferences/aux_developer_expansion_api.cc` to the extension browser target. Register its nine public classes from the matching header. Function histogram allocation (root-owned):
+
+| ID | Method / histogram suffix |
+|---|---|
+|2130|getPageCaptureTarget / GETPAGECAPTURETARGET|
+|2131|beginPageSurfaceCapture / BEGINPAGESURFACECAPTURE|
+|2132|capturePageSurface / CAPTUREPAGESURFACECAPTURE|
+|2133|validatePageSurfaceCapture / VALIDATEPAGESURFACECAPTURE|
+|2134|cancelPageSurfaceCapture / CANCELPAGESURFACECAPTURE|
+|2135|getDeveloperSettings / GETDEVELOPERSETTINGS|
+|2136|setDeveloperMode / SETDEVELOPERMODE|
+|2137|openDeveloperTools / OPENDEVELOPERTOOLS|
+|2138|openExtensionManager / OPENEXTENSIONMANAGER|
+
+Each function lives in `auxBrowserPreferences`, uses histogram prefix `AUXBROWSERPREFERENCES_`, and returns one object asynchronously. Argument shapes are listed above. The no-argument settings getter must be permitted with zero parameters. Native API feature permissions must allow only the installed Agent ID; the implementation also checks it explicitly.
+
+Add one Agent-only event, `auxBrowserPreferences.onPageCaptureRequested`, with one object argument `{success:boolean,tabId:integer,documentId:string}`. Allocate the separate event histogram `AUXBROWSERPREFERENCES_ONPAGECAPTUREREQUESTED` in extensions event histograms (not function ID 2139). The supplied background registers its listener at module initialization through the existing count-checked capture adapter. It checks the existing Screenshot preference and sends `capture:open` to only the returned tab/document. Failure is reported as an Aux screenshot warning; it never opens a different page.
+
+Native command 34136 enable uses `CanShowAuxPageCapture(browser)` and execution uses `ShowAuxPageCapture(browser)`. Availability requires the actual enabled Agent and registered event listener. The command records a one-use, one-minute exact-document/window/profile-epoch capture intent; the later supplied overlay selection consumes it. A validated command-search gesture can grant the same intent through `getPageCaptureTarget`. No event is marked as a fabricated extension user gesture. Calls without this native intent require Chromium's actual extension user gesture. An expired intent produces a retry error instead of capturing another page.
+
+Command context integration stays one native-owned field:
+`context.Set("developer", GetAuxDeveloperCommandState(profile, actualPane));`
+The screenshot overlay itself is unchanged. The function base constructor/destructor are out of line. Settings mutations additionally require the actual primary Agent extension document, actual user gesture and native profile admission. Capture replies recheck native capability and admission epoch after asynchronous bitmap encoding.

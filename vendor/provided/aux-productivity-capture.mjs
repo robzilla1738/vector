@@ -32,13 +32,23 @@ export async function captureBoundPage(request,sender,api,fullPage,crop,enabled)
  finally {if(capability)await api.cancelPageSurfaceCapture({capability}).catch(()=>{});}
 }
 function change(text,find,replace,anchors,kind){const count=text.split(find).length-1;if(count!==1)throw Error(`${kind}: expected one anchor, got ${count}`);anchors.push({find,replace,kind,count:1});return text.replace(find,replace)}
+export function installNativeCaptureListener(api,tabs,enabled,onError){
+ if(!api?.onPageCaptureRequested)return;
+ api.onPageCaptureRequested.addListener(async target=>{
+  try{
+   if(!Number.isInteger(target?.tabId)||typeof target.documentId!=="string")throw Error("The screenshot page changed.");
+   if(!await enabled())throw Error("Enable Screenshot in Settings to capture this page.");
+   await tabs.sendMessage(target.tabId,{type:"capture:open"},{documentId:target.documentId});
+  }catch(error){onError(error instanceof Error?error.message:String(error));}
+ });
+}
 export function transformAuxCaptureUi({relative,text}){
  const anchors=[];
  if(relative==='background.js'){
   const start=text.indexOf('async function zg(e, t) {'),end=text.indexOf('\nasync function Fg(e)',start);
   if(start<0||end<0)throw Error('Pinned screenshot handler unavailable');
   const original=text.slice(start,end);
-  text=change(text,original,`${captureBoundPage.toString()}\nasync function zg(e,t){return captureBoundPage(e,t,chrome.auxBrowserPreferences,input=>D.capture.fullPage.mutate(input),od,Cs)}`,anchors,'aux-capture-native-document-dispatch');
+  text=change(text,original,`${captureBoundPage.toString()}\n${installNativeCaptureListener.toString()}\ninstallNativeCaptureListener(chrome.auxBrowserPreferences,chrome.tabs,Cs,message=>console.warn("Aux screenshot:",message));\nasync function zg(e,t){return captureBoundPage(e,t,chrome.auxBrowserPreferences,input=>D.capture.fullPage.mutate(input),od,Cs)}`,anchors,'aux-capture-native-document-dispatch');
  }
  if(relative==='assets/capture-result-nUfmrYC9.js'){
   text=change(text,'var i=v(S());','import{n as auxCaptureToast}from"./dist-LyKrHgST.js";var i=v(S());',anchors,'aux-capture-existing-error-toast');

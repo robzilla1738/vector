@@ -1,5 +1,17 @@
 // Copyright 2026 The Aux Authors. BSD-style license: see //LICENSE.
 #include "chrome/browser/ui/aux_developer_commands.h"
+#include <memory>
+#include "base/supports_user_data.h"
+#include "base/time/time.h"
+#include "chrome/browser/aux/component_bootstrap.h"
+#include "chrome/browser/aux/profile_identity.h"
+#include "chrome/browser/ui/aux_feature_lifecycle.h"
+#include "components/tabs/public/tab_interface.h"
+#include "content/public/browser/render_frame_host.h"
+#include "content/public/browser/weak_document_ptr.h"
+#include "extensions/browser/event_router.h"
+#include "extensions/browser/extension_api_frame_id_map.h"
+#include "extensions/browser/extension_registry.h"
 #include "chrome/browser/devtools/devtools_availability_checker.h"
 #include "chrome/browser/devtools/devtools_window.h"
 #include "chrome/browser/profiles/profile.h"
@@ -45,4 +57,67 @@ base::DictValue OpenAuxDeveloperTools(Profile* profile, content::WebContents* pa
     return Error("Developer tools are unavailable for this page.");
   DevToolsWindow::OpenDevToolsWindow(pane, DevToolsOpenedByAction::kMainMenuOrMainShortcut);
   return base::DictValue().Set("success", true).Set("dispatched", true);
+}
+
+namespace {
+constexpr char kCaptureIntentKey = 0;
+constexpr char kCaptureEvent[] = "auxBrowserPreferences.onPageCaptureRequested";
+struct CaptureIntent : base::SupportsUserData::Data {
+  base::WeakPtr<BrowserWindowInterface> browser;
+  content::WeakDocumentPtr document;
+  std::string epoch;
+  base::TimeTicks expires;
+};
+content::WebContents* CapturePane(BrowserWindowInterface* browser) {
+  auto* tab = browser ? browser->GetActiveTabInterface() : nullptr;
+  return tab ? tab->GetContents() : nullptr;
+}
+}  // namespace
+bool AuthorizeAuxPageCapture(BrowserWindowInterface* browser) {
+  auto* pane = CapturePane(browser);
+  auto* profile = browser ? browser->GetProfile() : nullptr;
+  if (!profile || !IsAuxLocalProfileAdmitted(profile) || !CanAuxCapturePage(pane) ||
+      pane->GetBrowserContext() != profile) return false;
+  auto intent = std::make_unique<CaptureIntent>();
+  intent->browser = browser->GetWeakPtr();
+  intent->document = pane->GetPrimaryMainFrame()->GetWeakDocumentPtr();
+  intent->epoch = aux::GetProfileCookieBindingEpoch(profile);
+  intent->expires = base::TimeTicks::Now() + base::Minutes(1);
+  profile->SetUserData(&kCaptureIntentKey, std::move(intent));
+  return true;
+}
+bool ConsumeAuxPageCaptureIntent(BrowserWindowInterface* browser, std::string_view document_id) {
+  auto* profile = browser ? browser->GetProfile() : nullptr;
+  auto* pane = CapturePane(browser);
+  auto* intent = profile ? static_cast<CaptureIntent*>(profile->GetUserData(&kCaptureIntentKey)) : nullptr;
+  if (!intent) return false;
+  const bool current = intent->browser.get() == browser && IsAuxLocalProfileAdmitted(profile) &&
+      pane && CanAuxCapturePage(pane) && intent->expires > base::TimeTicks::Now() &&
+      intent->epoch == aux::GetProfileCookieBindingEpoch(profile) &&
+      intent->document.AsRenderFrameHostIfValid() == pane->GetPrimaryMainFrame() &&
+      extensions::ExtensionApiFrameIdMap::GetDocumentId(pane->GetPrimaryMainFrame()).ToString() == document_id;
+  profile->RemoveUserData(&kCaptureIntentKey);
+  return current;
+}
+bool CanShowAuxPageCapture(BrowserWindowInterface* browser) {
+  auto* profile = browser ? browser->GetProfile() : nullptr;
+  auto* pane = CapturePane(browser);
+  if (!profile || !IsAuxLocalProfileAdmitted(profile) || !pane ||
+      pane->GetBrowserContext() != profile || !CanAuxCapturePage(pane)) return false;
+  auto* registry = extensions::ExtensionRegistry::Get(profile);
+  auto* router = extensions::EventRouter::Get(profile);
+  return registry && registry->enabled_extensions().Contains(aux::kAgentExtensionId) && router &&
+      router->ExtensionHasEventListener(aux::kAgentExtensionId, kCaptureEvent);
+}
+bool ShowAuxPageCapture(BrowserWindowInterface* browser) {
+  if (!CanShowAuxPageCapture(browser) || !AuthorizeAuxPageCapture(browser)) return false;
+  auto target = GetAuxPageCaptureTarget(browser->GetProfile(), CapturePane(browser));
+  if (!target.FindBool("success").value_or(false)) return false;
+  base::ListValue args;
+  args.Append(std::move(target));
+  extensions::EventRouter::Get(browser->GetProfile())->DispatchEventToExtension(
+      aux::kAgentExtensionId, std::make_unique<extensions::Event>(
+          extensions::events::AUXBROWSERPREFERENCES_ONPAGECAPTUREREQUESTED,
+          kCaptureEvent, std::move(args), browser->GetProfile()));
+  return true;
 }
