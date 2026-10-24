@@ -1,0 +1,54 @@
+--- a/components/services/storage/public/mojom/local_storage_control.mojom
++++ b/components/services/storage/public/mojom/local_storage_control.mojom
+@@ -37,6 +37,8 @@
+   string allocation_action_sha256;
+   int64? allocated_map_id;
+   bool allocation_observed;
++  // Current actual map identity is observation only; original map_id is unchanged.
++  int64? fresh_map_id;
+   // Signed Windows-epoch microseconds and uint64 bytes remain exact above 2^53.
+   string? source_last_accessed_us;
+   string? source_last_modified_us;
+@@ -113,6 +115,8 @@
+   bool known_source_target_mixture;
+   bool recovery_cache_prepared;
+   bool recovery_original_restored;
++  // Exact original absence observation, never a restore/write or release grant.
++  bool source_absence_cancellation;
+ };
+ 
+ // Controls the state of Local Storage within a partition. This is a privileged
+--- a/components/services/storage/dom_storage/local_storage_impl.cc
++++ b/components/services/storage/dom_storage/local_storage_impl.cc
+@@ -339,12 +339,14 @@
+   reply->known_source_target_mixture = snapshot.known_source_target_mixture;
+   reply->recovery_cache_prepared = snapshot.recovery_cache_prepared;
+   reply->recovery_original_restored = snapshot.recovery_original_restored;
++  reply->source_absence_cancellation = snapshot.source_absence_cancellation;
+   for (auto& map : snapshot.maps) {
+     auto output = mojom::AuxUiDomMapSnapshot::New();
+     output->storage_key = std::move(map.storage_key);
+     output->session_ids = std::move(map.session_ids);
+     output->map_ordinal = map.map_ordinal;
+     output->map_id = map.map_id;
++    output->fresh_map_id = map.fresh_map_id;
+     output->source_persisted = map.source_persisted;
+     output->source_map_sha256 = std::move(map.source_map_sha256);
+     output->target_map_sha256 = std::move(map.target_map_sha256);
+--- a/components/services/storage/dom_storage/session_storage_impl.cc
++++ b/components/services/storage/dom_storage/session_storage_impl.cc
+@@ -327,12 +327,14 @@
+   reply->known_source_target_mixture = snapshot.known_source_target_mixture;
+   reply->recovery_cache_prepared = snapshot.recovery_cache_prepared;
+   reply->recovery_original_restored = snapshot.recovery_original_restored;
++  reply->source_absence_cancellation = snapshot.source_absence_cancellation;
+   for (auto& map : snapshot.maps) {
+     auto output = mojom::AuxUiDomMapSnapshot::New();
+     output->storage_key = std::move(map.storage_key);
+     output->session_ids = std::move(map.session_ids);
+     output->map_ordinal = map.map_ordinal;
+     output->map_id = map.map_id;
++    output->fresh_map_id = map.fresh_map_id;
+     output->source_persisted = map.source_persisted;
+     output->source_map_sha256 = std::move(map.source_map_sha256);
+     output->target_map_sha256 = std::move(map.target_map_sha256);

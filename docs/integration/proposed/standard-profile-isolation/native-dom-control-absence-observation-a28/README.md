@@ -1,0 +1,7 @@
+# Separate original-absence and fresh-map observations
+
+This three-file/six-anchor successor composes over target metadata wire `6dc72d1b3` and the real native absence owner `36a16a375`. The output map appends nullable `fresh_map_id`, copied from the actual new native observation. Existing `map_id` remains the original captured journal identity. The reply appends `source_absence_cancellation`, copied only from the actual native snapshot.
+
+Neither field appears in the recovery descriptor. They cannot supply a future map ID, select an actor, create a qualified recovery capsule, authorize writes or prove release readiness. The controller must still join actual freshly held memory/editor/worker state before cancellation/release. An exact old unpersisted Session identity that is now unreferenced and raw-empty is distinct from an invented identity or restoration; uncertain or changed content remains held. Source/target/action digests, exact metadata and all readiness semantics stay unchanged.
+
+The native header/source/plan are pinned in source-plan.json. The exact patch replayed and reversed in a disposable source mirror, and a structural check confirms both facts are output-only. No native mutation, generation, compile, app/API execution, signing, owner state or runtime acceptance occurred. Root owns the complete paired projection/compile and navigation owns the real controller consumer.

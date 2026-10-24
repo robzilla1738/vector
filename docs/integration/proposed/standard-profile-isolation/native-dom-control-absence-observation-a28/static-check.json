@@ -1,0 +1,12 @@
+{
+  "files": 3,
+  "countedAnchors": 6,
+  "patchReplay": true,
+  "patchReverse": true,
+  "bothFactsOutputOnly": true,
+  "originalMapIdPreserved": true,
+  "descriptorInputUnchanged": true,
+  "noRestoreOrReleaseGrantAdded": true,
+  "nativeCompile": false,
+  "runtimeAcceptance": false
+}

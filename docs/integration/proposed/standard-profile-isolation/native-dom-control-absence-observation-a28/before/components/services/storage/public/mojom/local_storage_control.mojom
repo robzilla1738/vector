@@ -1,0 +1,211 @@
+// Copyright 2019 The Chromium Authors
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+
+module storage.mojom;
+
+import "mojo/public/mojom/base/unguessable_token.mojom";
+import "components/services/storage/public/mojom/storage_policy_update.mojom";
+import "components/services/storage/public/mojom/storage_usage_info.mojom";
+import "third_party/blink/public/mojom/dom_storage/storage_area.mojom";
+import "third_party/blink/public/mojom/storage_key/storage_key.mojom";
+
+
+// Only reviewed UI key families are exported. Raw unrelated entries remain
+// private in the backend for exact full-map CAS and source restoration.
+struct AuxUiDomCacheView {
+  string namespace_id;
+  // Observer data is factual until joined to the actual native document.
+  // Its private cache-control token is never exported by this service.
+  blink.mojom.AuxUiCacheReply cache;
+  bool recovery_prepared;
+  bool recovery_restored;
+};
+struct AuxUiDomMapSnapshot {
+  blink.mojom.StorageKey storage_key;
+  array<string> session_ids;
+  array<blink.mojom.KeyValue> source_entries;
+  array<blink.mojom.KeyValue> target_entries;
+  uint32 map_ordinal;
+  int64? map_id;
+  bool source_persisted;
+  string source_map_sha256;
+  string target_map_sha256;
+  array<AuxUiDomCacheView> cache_views;
+  // A requested allocation is an immutable action, not a predicted map ID.
+  bool allocation_requested;
+  string allocation_action_sha256;
+  int64? allocated_map_id;
+  bool allocation_observed;
+  // Signed Windows-epoch microseconds and uint64 bytes remain exact above 2^53.
+  string? source_last_accessed_us;
+  string? source_last_modified_us;
+  string? source_total_size_bytes;
+  // Actual native pre-attempt LevelDB plan metadata; never a generated map ID.
+  bool target_metadata_is_explicit;
+  string? target_last_accessed_us;
+  string? target_last_modified_us;
+  string? target_total_size_bytes;
+};
+struct AuxUiDomTargetMap {
+  // Ordinal only selects a map captured by this exact existing backend lease.
+  uint32 map_ordinal;
+  array<blink.mojom.KeyValue> desired_selected_entries;
+};
+// Data from an actual verified native journal only. These fields neither select
+// an actor nor grant authority; the service joins every row to its held backend.
+// Cache views/documents, readiness and arbitrary roots are deliberately absent.
+struct AuxUiDomRecoveryMap {
+  blink.mojom.StorageKey storage_key;
+  array<string> session_ids;
+  uint32 map_ordinal;
+  int64? map_id;
+  bool source_persisted;
+  array<blink.mojom.KeyValue> source_entries;
+  array<blink.mojom.KeyValue> target_entries;
+  string source_map_sha256;
+  string target_map_sha256;
+  bool allocation_requested;
+  string allocation_action_sha256;
+  int64? allocated_map_id;
+  bool allocation_observed;
+  string? source_last_accessed_us;
+  string? source_last_modified_us;
+  string? source_total_size_bytes;
+  // Actual native pre-attempt LevelDB plan metadata; never a generated map ID.
+  bool target_metadata_is_explicit;
+  string? target_last_accessed_us;
+  string? target_last_modified_us;
+  string? target_total_size_bytes;
+};
+struct AuxUiDomRecoveryDescriptor {
+  array<AuxUiDomRecoveryMap> maps;
+  string source_topology_sha256;
+  string target_topology_sha256;
+  string allocation_action_sha256;
+  // Historical physical-attempt data, never a request to perform that write.
+  bool target_attempted;
+};
+struct AuxUiDomLeaseReply {
+  bool ok;
+  bool held;
+  string error;
+  mojo_base.mojom.UnguessableToken? request_id;
+  mojo_base.mojom.UnguessableToken? token;
+  array<AuxUiDomMapSnapshot> maps;
+  bool matches_source;
+  bool matches_target;
+  bool file_data_synced;
+  bool ordinary_work_queued;
+  bool target_attempted;
+  bool source_ready;
+  bool private_target_staged;
+  bool cache_published;
+  string source_topology_sha256;
+  string target_topology_sha256;
+  // Exact same-service successful release observation; never writer readiness.
+  bool released;
+  // Same-service original attempt returned no lease and native cleanup completed.
+  bool aborted;
+  // Physical target topology may be empty until the real allocator is observed.
+  string allocation_action_sha256;
+  // Actual complete per-map source/target mixture; never a readiness grant.
+  bool known_source_target_mixture;
+  bool recovery_cache_prepared;
+  bool recovery_original_restored;
+};
+
+// Controls the state of Local Storage within a partition. This is a privileged
+// interface and must not be brokered to untrusted clients.
+//
+// Currently this is consumed in the browser process and implemented in the
+// storage service.
+interface LocalStorageControl {
+  // Binds a blink.mojom.StorageArea `receiver` for a specific `storage_key`.
+  BindStorageArea(blink.mojom.StorageKey storage_key,
+                  pending_receiver<blink.mojom.StorageArea> receiver);
+
+  // Retrieves some basic usage information about the Local Storage state.
+  GetUsage() => (array<StorageUsageInfo> info);
+
+  // Deletes all Local State state for the given `storage_key`. Responds when
+  // the deletion is complete.
+  DeleteStorage(blink.mojom.StorageKey storage_key) => ();
+
+  // Ensures that no traces of deleted Local Storage data are left in the
+  // backing storage for this `storage_key`. Responds when the cleanup is
+  // complete.
+  CleanUpStorage() => ();
+
+  // Tells the service to immediately commit any pending operations to disk.
+  Flush();
+
+  // Purges any in-memory caches to free up as much memory as possible. The
+  // next access to the StorageArea will reload data from the backing database.
+  PurgeMemory();
+
+  // Applies changes to data retention policy which are relevant at shutdown.
+  // See StoragePolicyUpdate.
+  ApplyPolicyUpdates(array<StoragePolicyUpdate> policy_updates);
+
+  // Some StorageKeys may be configured to be purged at the end of a session
+  // rather than persisted as in the default Local Storage behavior. If this is
+  // called, that behavior is overridden and Local Storage data is persisted
+  // for all StorageKeys.
+  ForceKeepSessionState();
+
+  // Browser-only acknowledgment of the existing loaded-area DB queue
+  // and explicit backend file-data sync. It neither closes writers nor
+  // proves complete capture, directory sync or migration authority.
+  // An unopened/in-memory/failed backend refuses without opening it.
+  DrainAuxUiMigration() => (bool file_data_synced);
+
+  // Browser-only native backend/cache cohort. The service captures actual
+  // loaded owners; no caller supplies a root, Profile, map locator or restore map.
+  BeginAuxUiPreferenceLease(mojo_base.mojom.UnguessableToken request_id)
+      => (AuxUiDomLeaseReply reply);
+  // Original-request discovery never reruns Begin after an uncertain reply.
+  ReadAuxUiPreferenceLease(mojo_base.mojom.UnguessableToken request_id)
+      => (AuxUiDomLeaseReply reply);
+  // Preserve the existing control method ordinals; new operations append below.
+  CommitAuxUiPreferenceLease(mojo_base.mojom.UnguessableToken request_id,
+                            mojo_base.mojom.UnguessableToken token)
+      => (AuxUiDomLeaseReply reply);
+  RestoreAuxUiPreferenceLease(mojo_base.mojom.UnguessableToken request_id,
+                             mojo_base.mojom.UnguessableToken token)
+      => (AuxUiDomLeaseReply reply);
+  // Reply follows actual asynchronous cache/namespace release, never queueing.
+  ReleaseAuxUiPreferenceLease(mojo_base.mojom.UnguessableToken request_id,
+                             mojo_base.mojom.UnguessableToken token)
+      => (bool released);
+  ValidateAuxUiPreferenceLease(mojo_base.mojom.UnguessableToken request_id,
+                              mojo_base.mojom.UnguessableToken token)
+      => (AuxUiDomLeaseReply reply);
+  // Complete one row per captured ordinal; backend validates current reviewed
+  // key families/schema/bounds and retains unrelated raw entries privately.
+  StageAuxUiPreferenceTargets(mojo_base.mojom.UnguessableToken request_id,
+                             mojo_base.mojom.UnguessableToken token,
+                             array<AuxUiDomTargetMap> targets)
+      => (AuxUiDomLeaseReply reply);
+  PublishAuxUiPreferenceLease(mojo_base.mojom.UnguessableToken request_id,
+                             mojo_base.mojom.UnguessableToken token)
+      => (AuxUiDomLeaseReply reply);
+  // Privileged actual verified-journal controller only. Uses the exact fresh
+  // native-held lease; descriptor bytes cannot supply authority or readiness.
+  RequalifyAuxUiPreferenceLease(mojo_base.mojom.UnguessableToken request_id,
+                               mojo_base.mojom.UnguessableToken token,
+                               AuxUiDomRecoveryDescriptor recorded)
+      => (AuxUiDomLeaseReply reply);
+  PrepareAuxUiPreferenceRecoveryCaches(mojo_base.mojom.UnguessableToken request_id,
+                                      mojo_base.mojom.UnguessableToken token)
+      => (AuxUiDomLeaseReply reply);
+  ReadAuxUiPreferenceRecovery(mojo_base.mojom.UnguessableToken request_id,
+                             mojo_base.mojom.UnguessableToken token)
+      => (AuxUiDomLeaseReply reply);
+  // Caller first records actual immutable native recovery intent. This method
+  // only reaches that same lease's distinct original-source restoration API.
+  RestoreAuxUiPreferenceRecovery(mojo_base.mojom.UnguessableToken request_id,
+                                mojo_base.mojom.UnguessableToken token)
+      => (AuxUiDomLeaseReply reply);
+
+};

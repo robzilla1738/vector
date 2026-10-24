@@ -1,0 +1,81 @@
+{
+  "format": "aux.dom-control-absence-observation.source.v1",
+  "predecessorCommit": "6dc72d1b3",
+  "nativeOwnerCommit": "36a16a375",
+  "dependencies": [
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-organization/web/docs/integration/proposed/standard-profile-isolation/native-source-absence-cancellation-a26/source-plan.json",
+      "sha256": "8d0bd82d167fcccb52becd6d8644ad0ddf7196942103f98a16c3ac317f287dfe"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-organization/web/docs/integration/proposed/standard-profile-isolation/native-source-absence-cancellation-a26/source/components/services/storage/dom_storage/async_dom_storage_database.h",
+      "sha256": "59550ec870a5e2a146c2375f33417aacd0853f8e8ae8a6c3784a6004fb2cb8c6"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-organization/web/docs/integration/proposed/standard-profile-isolation/native-source-absence-cancellation-a26/source/components/services/storage/dom_storage/async_dom_storage_database.cc",
+      "sha256": "ce05e00a32c319b35df3f2ef7203a09306b7a3d535a7370585e63654bb13b130"
+    }
+  ],
+  "files": [
+    {
+      "path": "components/services/storage/public/mojom/local_storage_control.mojom",
+      "inputSource": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/native-dom-control-target-metadata-a27/source/components/services/storage/public/mojom/local_storage_control.mojom",
+      "inputSha256": "06f0634252485338eed9ff983be004da0b6ca0fa7f0a7064b4234c06e4031029",
+      "outputSha256": "e7d42b3348c195f39220fb848fa3297d736de13eda025f46d783fb6adfb8ea08",
+      "source": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/native-dom-control-absence-observation-a28/source/components/services/storage/public/mojom/local_storage_control.mojom",
+      "anchors": [
+        {
+          "find": "  // Signed Windows-epoch microseconds and uint64 bytes remain exact above 2^53.",
+          "replace": "  // Current actual map identity is observation only; original map_id is unchanged.\n  int64? fresh_map_id;\n  // Signed Windows-epoch microseconds and uint64 bytes remain exact above 2^53.",
+          "count": 1
+        },
+        {
+          "find": "  bool recovery_original_restored;\n};",
+          "replace": "  bool recovery_original_restored;\n  // Exact original absence observation, never a restore/write or release grant.\n  bool source_absence_cancellation;\n};",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "components/services/storage/dom_storage/local_storage_impl.cc",
+      "inputSource": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/native-dom-control-target-metadata-a27/source/components/services/storage/dom_storage/local_storage_impl.cc",
+      "inputSha256": "f80c3f614428f6db47ceee773013db7b9b857470b958fdb8c4a8858bcaa2519a",
+      "outputSha256": "514ed3621dde56404c5288a1d97d865fb58a15b385063656f21c444a3deaf27d",
+      "source": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/native-dom-control-absence-observation-a28/source/components/services/storage/dom_storage/local_storage_impl.cc",
+      "anchors": [
+        {
+          "find": "    output->map_id = map.map_id;",
+          "replace": "    output->map_id = map.map_id;\n    output->fresh_map_id = map.fresh_map_id;",
+          "count": 1
+        },
+        {
+          "find": "  reply->recovery_original_restored = snapshot.recovery_original_restored;",
+          "replace": "  reply->recovery_original_restored = snapshot.recovery_original_restored;\n  reply->source_absence_cancellation = snapshot.source_absence_cancellation;",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "components/services/storage/dom_storage/session_storage_impl.cc",
+      "inputSource": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/native-dom-control-target-metadata-a27/source/components/services/storage/dom_storage/session_storage_impl.cc",
+      "inputSha256": "3ecdf4b347db96a878cf2cd8668b875df23909f945a4c1642764bdd7a4eff808",
+      "outputSha256": "7e320f44b12372bf21f0c5bf9f2463ad8106ad9d9e0ac2c9f9c71fe60084801e",
+      "source": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/native-dom-control-absence-observation-a28/source/components/services/storage/dom_storage/session_storage_impl.cc",
+      "anchors": [
+        {
+          "find": "    output->map_id = map.map_id;",
+          "replace": "    output->map_id = map.map_id;\n    output->fresh_map_id = map.fresh_map_id;",
+          "count": 1
+        },
+        {
+          "find": "  reply->recovery_original_restored = snapshot.recovery_original_restored;",
+          "replace": "  reply->recovery_original_restored = snapshot.recovery_original_restored;\n  reply->source_absence_cancellation = snapshot.source_absence_cancellation;",
+          "count": 1
+        }
+      ]
+    }
+  ],
+  "nativeMutation": false,
+  "compilerRun": false,
+  "runtimeAcceptance": false
+}
