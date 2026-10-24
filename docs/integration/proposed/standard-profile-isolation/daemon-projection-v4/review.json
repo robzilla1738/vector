@@ -1,0 +1,79 @@
+{
+  "format": "aux.standard-daemon-projection-v4.preparation.v1",
+  "pairedLiteralReplay": true,
+  "pairedSyntax": true,
+  "isolatedLaneReviewsReplayed": true,
+  "shimLiteralReplay": true,
+  "shimSyntax": true,
+  "previousSourceSha256": "3ee2471769470b820bfaf16d64f6dfc7aa0bef1b8ad54493c7d2a0bffe725802",
+  "previousEntrySha256": "ba6194fbe579dec43ccaa2a7b788e58bc0a1cb9a0ff52ab5b5cfcea334890804",
+  "expectedOutputs": {
+    "source": "a37b3d7eb72707ca00729e39eae4aa90f3968ca7dfa5379f823ac1007f3157c4",
+    "entry": "edc8a98ed1bad63432c6ebf1e3244a27f690256f597933eb53054b4136dc9812"
+  },
+  "expectedStages": {
+    "source": [
+      {
+        "name": "claude-code-login",
+        "inputSha256": "3ee2471769470b820bfaf16d64f6dfc7aa0bef1b8ad54493c7d2a0bffe725802",
+        "outputSha256": "035fa507e59ba45eeacb50c7c79d9a99eae89aed00b9abcd5bb8b45255145daa",
+        "changesSha256": "2544a749772ceace39c909c6457c9e9605121aa5c6747607a2f27d42cee7b50a"
+      },
+      {
+        "name": "meta-login",
+        "inputSha256": "035fa507e59ba45eeacb50c7c79d9a99eae89aed00b9abcd5bb8b45255145daa",
+        "outputSha256": "c3158e520358410f557bab1aa3f512352ec5317f17811ad5104123fa6bee3e81",
+        "changesSha256": "7e961dce8fab15a100a0fd576b2fbf2fbb850501e9edd9c8c46636759fb60eaf"
+      },
+      {
+        "name": "chatgpt-login",
+        "inputSha256": "c3158e520358410f557bab1aa3f512352ec5317f17811ad5104123fa6bee3e81",
+        "outputSha256": "a37b3d7eb72707ca00729e39eae4aa90f3968ca7dfa5379f823ac1007f3157c4",
+        "changesSha256": "5454fc94c4895cb8512c261b041743b8f05b401f43bb79914c02915d978f672d"
+      }
+    ],
+    "entry": [
+      {
+        "name": "claude-code-login",
+        "inputSha256": "ba6194fbe579dec43ccaa2a7b788e58bc0a1cb9a0ff52ab5b5cfcea334890804",
+        "outputSha256": "04f55827426e985e656d60277ba73c0b8eb289d5c301cd9ffa54390946afaee1",
+        "changesSha256": "2544a749772ceace39c909c6457c9e9605121aa5c6747607a2f27d42cee7b50a"
+      },
+      {
+        "name": "meta-login",
+        "inputSha256": "04f55827426e985e656d60277ba73c0b8eb289d5c301cd9ffa54390946afaee1",
+        "outputSha256": "3330e51ebff8c494aabe7ec136fa6ab2ca2abc3e3f4533cd56e471b08863f72b",
+        "changesSha256": "7e961dce8fab15a100a0fd576b2fbf2fbb850501e9edd9c8c46636759fb60eaf"
+      },
+      {
+        "name": "chatgpt-login",
+        "inputSha256": "3330e51ebff8c494aabe7ec136fa6ab2ca2abc3e3f4533cd56e471b08863f72b",
+        "outputSha256": "edc8a98ed1bad63432c6ebf1e3244a27f690256f597933eb53054b4136dc9812",
+        "changesSha256": "5454fc94c4895cb8512c261b041743b8f05b401f43bb79914c02915d978f672d"
+      }
+    ]
+  },
+  "expectedShim": {
+    "kind": "chatgpt-shim",
+    "stage": "chatgpt-login",
+    "module": "docs/integration/proposed/standard-profile-isolation/chatgpt-login/source/transform.mjs",
+    "export": "transformAuxChatGPTShim",
+    "count": 4,
+    "input": "/Users/rcourson/Documents/Vibe/web/vendor/aside/shims/aux-chatgpt.cjs",
+    "packageRelativePath": "Contents/Resources/native/aux-chatgpt.cjs",
+    "inputSha256": "5fa0b56141c9fb515c6b5ff979340c0958bf3b9dd79fb60a7636357605e73ede",
+    "outputSha256": "43f8ce1e95d34c3deeca3f6c0a2cecd8b55dcce2342a09f490fbfc06d496e3ef",
+    "changesSha256": "72d0e49d9f74977f58a6bd22498dcac47ad1ab04ffa0a2a193be5e09a64c9812",
+    "overlay": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/chatgpt-login/overlay.json",
+    "overlaySha256": "2ce643624134497a39f45cace040e7215d969afecb7a342fe06740980d53e557"
+  },
+  "editsPerLeaf": 16,
+  "shimEdits": 4,
+  "frozenPriorAnchorCount": 166,
+  "plannedTotalAnchorCount": 182,
+  "originalProjectorRerun": false,
+  "producerRun": false,
+  "productExecuted": false,
+  "providerRequests": 0,
+  "nativeBuild": false
+}
