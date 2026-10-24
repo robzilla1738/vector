@@ -1,0 +1,23 @@
+# Actual codec memory capture
+
+The supplied draft module now exports `auxCaptureDraftMigration()` in the state-v2 source pipeline. It reads the actual page's draft/session stores and the codec's retained unsaved state. It is a data producer only: no native owner, profile ID, epoch, file path, grant, credential or startup-acceptance input can be supplied to it.
+
+The source adaptation tracks the actual durable/ephemeral destination of failed draft writes, failed settings serialization/storage, and pending-message writes/removals. Successful ordinary writes clear the corresponding tracking state. Existing UI reads, writes, unload warnings, claims and acknowledgements retain their behavior; this adds no screen or control. The capture method itself only reads. It preserves raw stored strings, serializes retained memory exactly as the original writer does, and reports desired `set`/`remove` mutations separately. A failed acknowledgement removal therefore becomes a tombstone instead of reviving the stale serialized message. Claim IDs, times and modes are not reset or reclaimed.
+
+## Data contract
+
+The capture returns `format: "aux.ui-draft-capture.v1"`, the actual extension origin, `sessionEntries`, `localEntries`, and `mutations`. Entries contain only the active codec's draft, legacy-text, settings and pending-message families. Other preference/authentication values are not read. Mutations contain storage scope, key, operation and a raw value only for `set`. The exporter requires the live extension's own origin and refuses unavailable storage, unsupported unsaved scopes, unserializable settings, changing records and bounds violations. It neither reads attachment files nor includes their contents beyond what the supplied draft serializer already stores.
+
+The native importer must bind this data to the actual authenticated profile/view and migration epoch; quiesce editors, file uploads, claims and all writers; qualify every required page and backend; capture/retain backups; validate and journal the exact mutations; resolve conflicting shared-local intents across pages; commit/sync all stores and directories; and verify interruption recovery before activation. The returned origin or payload is **not authority or proof of complete capture**. A live codec capture does not prove that every editor has submitted its latest state. Unknown/uncapturable state must remain pending/refused.
+
+This exporter is currently integrated only for state identity v2. Capturing an existing live state-v1 UI still requires the explicit native/transitional bootstrap path; the current accepted app does not acquire this capability merely because source staging passes. Neither old owner state nor a live legacy app was accessed or upgraded.
+
+## Actual verification and staging
+
+Ten count-checked adaptations are pinned against original supplied module SHA256 `4fd066c4a2b8c9d5021e9687463a0ce8bcbd193268f44a18b4ce12c2f05c38bc`. The actual supplied codec ran with synthetic stores: quota-failed durable and ephemeral drafts, attachment metadata, empty-draft tombstones, pending claims and failed acknowledgements, settings quota failures, serialization refusal, unavailable reads and wrong origins. Capturing writes nothing and does not read an unrelated synthetic provider key. `actual-focused-a1.json` records this bounded scope; no browser or provider ran.
+
+The first stage's byte comparison passed, but its new anchor classification was unsupported and is explicitly rejected in `stage-a1-disposition.json`. The metadata-only rerun initially selected the target revision instead of its predecessor and stopped before staging; its producer and preflight failure are retained. The corrected a3 run passed both real UI stages with allowed classifications and exact original-source anchor replay.
+
+Agent revisions26/27 produce versions `1.26.1016.1878`/`1.26.1016.1879`. Each 1,263-leaf stage changes only this codec and the revision manifest. All styles, fonts, assets, geometry, unrelated files and modes remain identical. Manifest permissions and identities remain identical. The corrected metadata emits **exactly the same code bytes** that the actual codec fixture executed; `actual-association-a1.json` binds the current adapter, focused receipt and corrected stages without rerunning unaffected behavior checks.
+
+No new app package was made. The native patch from the preceding batch and these UI stages still need the real importer/owner/journal integration before a coherent successor build. The accepted app, latest inactive app and native checkout are unchanged. No product launch, shutdown/restart, signing, owner-state access, OS grant or provider request occurred. This is not a testable/readiness claim.

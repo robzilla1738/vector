@@ -85,6 +85,14 @@ The complete 26-file source slice is registered in `chromium/patches/series` as 
 
 The importer, complete capture, native owner binding, writer closure, directory sync and multi-store journal/recovery still need implementation. No app/helper lifecycle, native API/database execution, signing, provider request, owner state or OS grant occurred. No build job remains live.
 
+## Supplied codec memory capture — 2026-10-24
+
+The state-v2 UI pipeline now exposes the actual codec's stored records and retained unsaved intents. Failed draft/settings writes and pending-message removal are captured without dropping draft text, attachment metadata, claims or tombstones. It is read-only capture, not native authority or complete editor/page coverage. The actual supplied module passed focused synthetic failure/claim checks; no real state or provider was accessed.
+
+Corrected baseline/desktop UI stages passed at revisions26/27 with exactly two changed files each, unchanged permissions/identities and all other bytes/modes/styles/assets preserved. The unsupported initial metadata classification and the rerun's predecessor-selection failure remain explicit historical failures. Final code bytes equal the actual codec fixture. `ui-draft-capture-a1/` records the contract, source, focused checks, corrected staging and association.
+
+No app package or native build was repeated for this source slice. The native importer, owned epoch and complete capture, shared-local conflict handling, cross-store/directory journal/recovery and activation remain unimplemented/unaccepted. Existing live state-v1 capture needs a separate explicit native/transitional bootstrap. The accepted app and latest inactive app remain intact and unexecuted by this work. No focused job remains live.
+
 ## Capability and acceptance gates
 
 The paired daemon requires the actual macOS27 descendant API and restricted Endpoint Security capability at fresh startup; unsigned output cannot satisfy that normal path. A read-only version check reports this Mac is already on 27.0.1 (`integration/host-version-readonly.json`); no API/client was run and no capability was granted. Its exact peer identity checks remain intact. Signing alone does not prove runtime completion or credential-lock behavior. Signing, installation/capabilities and release remain separate.

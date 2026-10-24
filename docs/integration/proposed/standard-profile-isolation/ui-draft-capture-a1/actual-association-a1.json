@@ -1,0 +1,28 @@
+{
+  "format": "aux.ui-draft-capture.association.actual.v1",
+  "passed": true,
+  "currentAdapterSha256": "07d17a6edcd9c7f59cd438153031cd011f128b11bc1580edae0f52b5819220f2",
+  "observedFocusedAdapterSha256": "d053cf205258e66ce107179080791471bdc95bb637ed81a036af27cf6b802377",
+  "emittedSourceByteIdenticalToObservedCodecFixture": true,
+  "correctedAnchorClassificationPassed": true,
+  "fullOriginalCodecReplayPassed": true,
+  "manifestPermissionsAndIdentityUnchanged": true,
+  "versions": [
+    {
+      "profile": "baseline",
+      "before": "1.26.1016.1876",
+      "after": "1.26.1016.1878"
+    },
+    {
+      "profile": "desktop-v1",
+      "before": "1.26.1016.1877",
+      "after": "1.26.1016.1879"
+    }
+  ],
+  "sourceSha256": "bddddc6df8a000becb1c6245bc732d258b405e71c5c933d4c3de991ebdc125fc",
+  "stagesSha256": "62da30170460322622a51e56f4eb685fa78267a2afb0b402633bb795a7416c4d",
+  "focusedReceiptSha256": "ecabb96dd13757ef259644fb3a63223090bcde76372f3b4cb1df0cc09fd5a70d",
+  "nativeRuntimeAcceptance": false,
+  "productExecuted": false,
+  "appPackaged": false
+}

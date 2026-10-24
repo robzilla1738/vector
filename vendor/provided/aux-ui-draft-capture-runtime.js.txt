@@ -1,0 +1,59 @@
+function auxCaptureDraftMigration(){
+  if(typeof window==="undefined"||typeof chrome==="undefined"||
+    !chrome.runtime?.id||window.location?.protocol!=="chrome-extension:"||
+    window.location.hostname!==chrome.runtime.id)
+    throw new Error("Aux draft capture requires its live extension context");
+  const session=f(),local=N();
+  if(!session||!local)throw new Error("Aux draft capture storage unavailable");
+  const prefixes=[`${l}:`,`${I}:`,`${C}:`],known=key=>key===m||prefixes.some(prefix=>key.startsWith(prefix));
+  let units=0,records=0;
+  const account=(key,value)=>{
+    units+=key.length+(typeof value==="string"?value.length:0);
+    if(++records>4096||units>33554432)throw new Error("Aux draft capture exceeds its bound");
+  };
+  const read=storage=>{
+    const entries=Object.create(null),length=storage.length;
+    if(!Number.isSafeInteger(length)||length<0||length>100000)
+      throw new Error("Aux draft capture storage enumeration unavailable");
+    for(let index=0;index<length;index++){
+      const key=storage.key(index);
+      if(typeof key!=="string"||!known(key))continue;
+      if(Object.hasOwn(entries,key))throw new Error("Aux draft storage changed during capture");
+      const value=storage.getItem(key);
+      if(typeof value!=="string")throw new Error("Aux draft storage changed during capture");
+      account(key,value);entries[key]=value;
+    }
+    return entries;
+  };
+  const sessionEntries=read(session),localEntries=read(local),mutations=[];
+  const intent=(storage,key,operation,value)=>{
+    if(!known(key)||operation==="set"&&typeof value!=="string")
+      throw new Error("Aux draft capture contains an unsupported intent");
+    account(key,value);
+    mutations.push({storage,key,operation,...operation==="set"?{value}:{}});
+  };
+  for(const [key,draft] of auxUnsavedDrafts){
+    const durable=auxUnsavedDraftScopes.get(key);
+    if(typeof durable!=="boolean"||!key.startsWith(`${l}:`))
+      throw new Error("Aux unsaved draft scope unavailable");
+    const legacy=`${I}:${key.slice(l.length+1)}`;
+    const empty=!draft||draft.plainText.length===0&&!draft.attachments?.length;
+    const raw=empty?undefined:JSON.stringify(draft);
+    intent("session-storage",key,empty?"remove":"set",raw);
+    intent("session-storage",legacy,"remove");
+    intent("local-storage",key,empty||!durable?"remove":"set",raw);
+    intent("local-storage",legacy,"remove");
+  }
+  for(const [key,raw] of auxUnsavedDraftSettings){
+    if(typeof raw!=="string")throw new Error("Aux unsaved settings cannot be serialized");
+    intent("session-storage",key,"set",raw);
+  }
+  if(a!==null){
+    const raw=JSON.stringify(a);
+    if(auxPendingMessageDirty||raw!==sessionEntries[m])intent("session-storage",m,"set",raw);
+  }else if(auxPendingMessageDirty){
+    intent("session-storage",m,"remove");
+  }
+  return {format:"aux.ui-draft-capture.v1",origin:window.location.origin,
+    sessionEntries,localEntries,mutations};
+}

@@ -1,0 +1,11 @@
+{
+  "format": "aux.ui-draft-capture.stage-preflight.actual.v1",
+  "passed": false,
+  "phase": "predecessor-revision-review",
+  "cause": "The metadata-only rerun selected the newly appended target review instead of the pinned predecessor review. The final producer limits predecessor selection to revisions before26.",
+  "producerSha256": "a7286b414630a4843f282efc09d4bb7190e59ac4ba0d6e0903c873201023fa6c",
+  "output": "/private/tmp/aux-ui-draft-capture-stage-20261024-a2",
+  "stageFilesWritten": 0,
+  "ledgerChanged": false,
+  "productExecuted": false
+}

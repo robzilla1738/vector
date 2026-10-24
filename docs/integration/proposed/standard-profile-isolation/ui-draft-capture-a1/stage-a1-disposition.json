@@ -1,0 +1,26 @@
+{
+  "format": "aux.ui-draft-capture.stage-disposition.v1",
+  "accepted": false,
+  "rawStagePassed": true,
+  "reason": "Unsupported platform-adaptation anchor kind; existing supplied UI classification requires integration. Runtime bytes passed their comparison but metadata is not accepted.",
+  "affected": [
+    {
+      "profile": "baseline",
+      "path": "agent/assets/draft-storage-ixLojjZ5.js",
+      "unsupportedKinds": [
+        "platform-adaptation"
+      ]
+    },
+    {
+      "profile": "desktop-v1",
+      "path": "agent/assets/draft-storage-ixLojjZ5.js",
+      "unsupportedKinds": [
+        "platform-adaptation"
+      ]
+    }
+  ],
+  "producerSha256": "1d1cb5e28831e78770df07456588562498c9e84663eee05c6ee5f4740aa2aec2",
+  "adapterSha256": "d053cf205258e66ce107179080791471bdc95bb637ed81a036af27cf6b802377",
+  "appPackaged": false,
+  "productExecuted": false
+}

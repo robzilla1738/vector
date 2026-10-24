@@ -1,0 +1,59 @@
+{
+  "format": "aux.ui-draft-capture.inputs.v1",
+  "path": "assets/draft-storage-ixLojjZ5.js",
+  "sourceSha256": "4fd066c4a2b8c9d5021e9687463a0ce8bcbd193268f44a18b4ce12c2f05c38bc",
+  "predecessorSha256": "3b5fa6fca0705e72690ee028e97a0e834a5668af6623626bda3dc28391defc64",
+  "runtimeSha256": "183879e669c0efec13ccb5e9267772c5945bb9c45477c46247b3895d22a75ea7",
+  "rules": [
+    {
+      "find": "var a=null;",
+      "replace": "var a=null,auxPendingMessageDirty=!1;",
+      "count": 1
+    },
+    {
+      "find": "var auxUnsavedDrafts=new Map,auxDraftUnload=",
+      "replace": "var auxUnsavedDrafts=new Map,auxUnsavedDraftScopes=new Map,auxUnsavedDraftSettings=new Map,auxDraftUnload=",
+      "count": 1
+    },
+    {
+      "find": "function J(e,n,t){const s=c(e,l,t);try{",
+      "replace": "function J(e,n,t){const s=c(e,l,t);let auxWriteScope=null;try{",
+      "count": 1
+    },
+    {
+      "find": "if(auxDurable?!o:!r)throw new Error(\"Draft storage unavailable\");",
+      "replace": "auxWriteScope=auxDurable;if(auxDurable?!o:!r)throw new Error(\"Draft storage unavailable\");",
+      "count": 1
+    },
+    {
+      "find": "auxUnsavedDrafts.delete(s);",
+      "replace": "auxUnsavedDrafts.delete(s);auxUnsavedDraftScopes.delete(s);",
+      "count": 1
+    },
+    {
+      "find": "auxUnsavedDrafts.set(s,n);",
+      "replace": "auxUnsavedDrafts.set(s,n);auxUnsavedDraftScopes.set(s,auxWriteScope);",
+      "count": 1
+    },
+    {
+      "find": "function j(e,n){const t=f();if(t)try{t.setItem(y(e),JSON.stringify({version:1,draftModelOverride:n.draftModelOverride,draftPermissionMode:n.draftPermissionMode,draftRuntimeConfig:n.draftRuntimeConfig,draftMode:n.draftMode,draftProjectId:n.draftProjectId}))}catch{}}",
+      "replace": "function j(e,n){const t=f();if(t){const auxKey=y(e);let auxRaw;try{auxRaw=JSON.stringify({version:1,draftModelOverride:n.draftModelOverride,draftPermissionMode:n.draftPermissionMode,draftRuntimeConfig:n.draftRuntimeConfig,draftMode:n.draftMode,draftProjectId:n.draftProjectId});t.setItem(auxKey,auxRaw);auxUnsavedDraftSettings.delete(auxKey)}catch{auxUnsavedDraftSettings.set(auxKey,auxRaw??null)}}}",
+      "count": 1
+    },
+    {
+      "find": "function S(e){a=e;try{window.sessionStorage.setItem(m,JSON.stringify(e))}catch{}}",
+      "replace": "function S(e){a=e;try{window.sessionStorage.setItem(m,JSON.stringify(e));auxPendingMessageDirty=!1}catch{auxPendingMessageDirty=!0}}",
+      "count": 1
+    },
+    {
+      "find": "function d(){a=null;try{window.sessionStorage.removeItem(m)}catch{}}",
+      "replace": "function d(){a=null;try{window.sessionStorage.removeItem(m);auxPendingMessageDirty=!1}catch{auxPendingMessageDirty=!0}}",
+      "count": 1
+    },
+    {
+      "find": "export{k as a,W as c,F as i,J as l,U as n,$ as o,b as r,X as s,H as t,j as u};",
+      "replace": "__AUX_CAPTURE_RUNTIME__\nexport{k as a,W as c,F as i,J as l,U as n,$ as o,b as r,X as s,H as t,j as u,auxCaptureDraftMigration};",
+      "count": 1
+    }
+  ]
+}

@@ -1,0 +1,40 @@
+{
+  "format": "aux.ui-draft-capture.provenance.v1",
+  "files": [
+    {
+      "path": "docs/integration/proposed/standard-profile-isolation/ui-draft-capture-a1/inputs.json",
+      "sha256": "667c8da7ebc11355d2db87a9ada757572d678b3753d9ce9b2ce37dd64cc52052"
+    },
+    {
+      "path": "docs/integration/proposed/standard-profile-isolation/ui-draft-capture-a1/check.mjs",
+      "sha256": "cd997bf1d4f3685ea4cd3fe0d473c9b9f86e5e089e2de5849644f13a7c65d129"
+    },
+    {
+      "path": "docs/integration/proposed/standard-profile-isolation/ui-draft-capture-a1/stage-ui.mjs",
+      "sha256": "b25168052ff52eafe2f1545a8cdaf6bd2451c1d7e332dc6da05940a5bc864f54"
+    },
+    {
+      "path": "docs/integration/proposed/standard-profile-isolation/ui-draft-capture-a1/actual-focused-a1.json",
+      "sha256": "ecabb96dd13757ef259644fb3a63223090bcde76372f3b4cb1df0cc09fd5a70d"
+    },
+    {
+      "path": "docs/integration/proposed/standard-profile-isolation/ui-draft-capture-a1/actual-stages-a3.json",
+      "sha256": "62da30170460322622a51e56f4eb685fa78267a2afb0b402633bb795a7416c4d"
+    },
+    {
+      "path": "docs/integration/proposed/standard-profile-isolation/ui-draft-capture-a1/actual-association-a1.json",
+      "sha256": "905ea4958c2e0578ebb97c51a528b9aabd104fd0635baa9511f4a4c1b8a1d8a3"
+    }
+  ],
+  "adapter": {
+    "path": "vendor/provided/aux-ui-draft-capture.mjs",
+    "sha256": "07d17a6edcd9c7f59cd438153031cd011f128b11bc1580edae0f52b5819220f2"
+  },
+  "runtime": {
+    "path": "vendor/provided/aux-ui-draft-capture-runtime.js.txt",
+    "sha256": "183879e669c0efec13ccb5e9267772c5945bb9c45477c46247b3895d22a75ea7"
+  },
+  "noAppPackaged": true,
+  "noProductExecuted": true,
+  "runtimeAcceptance": false
+}
