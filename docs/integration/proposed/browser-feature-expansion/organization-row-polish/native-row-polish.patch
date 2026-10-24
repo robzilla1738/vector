@@ -1,0 +1,180 @@
+--- a/chrome/browser/ui/views/frame/aux_organization_tree_view.cc
++++ b/chrome/browser/ui/views/frame/aux_organization_tree_view.cc
+@@ -11,6 +11,8 @@
+ #include "components/favicon/core/favicon_service.h"
+ #include "components/favicon_base/favicon_types.h"
+ #include "base/uuid.h"
++#include "base/time/time.h"
++#include "chrome/browser/themes/aux_theme_editor.h"
+ #include "cc/paint/paint_flags.h"
+ #include "chrome/browser/aux/organization/organization_profile_service.h"
+ #include "chrome/browser/aux/organization/organization_service.h"
+@@ -26,6 +28,14 @@
+ #include "ui/events/event.h"
+ #include "ui/events/keycodes/keyboard_codes.h"
+ #include "ui/gfx/canvas.h"
++#include "ui/gfx/animation/animation_delegate.h"
++#include "ui/gfx/animation/linear_animation.h"
++#include "ui/gfx/animation/tween.h"
++#include "ui/gfx/geometry/transform.h"
++#include "ui/gfx/shadow_value.h"
++#include "ui/gfx/skia_paint_util.h"
++#include "ui/gfx/skia_util.h"
++#include "third_party/skia/include/core/SkPath.h"
+ #include "ui/gfx/font_list.h"
+ #include "ui/gfx/geometry/rect_f.h"
+ #include "ui/gfx/text_constants.h"
+@@ -47,12 +57,13 @@
+ #include "chrome/browser/ui/views/frame/aux_vertical_bookmark_row_icons.inc"
+ constexpr uint64_t kEnd = std::numeric_limits<uint64_t>::max();
+ }  // namespace
+-class OrganizationTreeRow final : public views::View {
++class OrganizationTreeRow final : public views::View, public gfx::AnimationDelegate {
+   METADATA_HEADER(OrganizationTreeRow, views::View)
+  public:
+   OrganizationTreeRow(base::WeakPtr<AuxOrganizationTreeView> owner,
+-      const organization::Entry& entry, int depth, bool active)
+-      : owner_(owner), id_(entry.id), folder_(entry.kind == organization::EntryKind::kFolder), active_(active) {
++      const organization::Entry& entry, int depth, bool active, bool animate_selection = false)
++      : owner_(owner), id_(entry.id), folder_(entry.kind == organization::EntryKind::kFolder), active_(active),
++        animate_selection_(animate_selection), selection_(base::Milliseconds(140), 60, this) {
+     auto* layout = SetLayoutManager(std::make_unique<views::BoxLayout>(
+         views::BoxLayout::Orientation::kHorizontal, gfx::Insets::TLBR(6, 8 + depth * 14, 6, 8)));
+     layout->set_cross_axis_alignment(views::BoxLayout::CrossAxisAlignment::kCenter);
+@@ -98,6 +109,27 @@
+       }
+     }
+   }
++  bool active() const { return active_; }
++  void AddedToWidget() override {
++    views::View::AddedToWidget();
++    if (!std::exchange(animate_selection_, false) || !active_ ||
++        !gfx::Animation::ShouldRenderRichAnimation() || gfx::Animation::PrefersReducedMotion()) return;
++    const auto alive = weak_.GetWeakPtr();
++    gfx::Transform transform; transform.Translate(-2.f, 0.f);
++    SetTransform(transform);
++    if (alive) selection_.Start();
++  }
++  void AnimationProgressed(const gfx::Animation* animation) override {
++    if (!gfx::Animation::ShouldRenderRichAnimation() || gfx::Animation::PrefersReducedMotion()) {
++      selection_.End(); return;
++    }
++    const double remaining = 1.0 - gfx::Tween::CalculateValue(
++        gfx::Tween::FAST_OUT_SLOW_IN, animation->GetCurrentValue());
++    gfx::Transform transform; transform.Translate(-2.0 * remaining, 0.0);
++    SetTransform(transform);
++  }
++  void AnimationEnded(const gfx::Animation*) override { SetTransform(gfx::Transform()); }
++  void AnimationCanceled(const gfx::Animation*) override { SetTransform(gfx::Transform()); }
+   void MarkDrop(bool value, AuxOrganizationTreeView::DropEdge edge = AuxOrganizationTreeView::DropEdge::kNone) {
+     drop_ = value; drop_edge_ = edge; SchedulePaint();
+   }
+@@ -130,18 +162,42 @@
+   void OnThemeChanged() override {
+     views::View::OnThemeChanged(); if (!GetWidget()) return;
+     const bool dark = GetWidget()->GetColorMode() == ui::ColorProviderKey::ColorMode::kDark;
+-    label_->SetEnabledColor(active_ ? (dark ? 0xfffafafa : 0xff0a0a0a) : (dark ? 0xa6fafafa : 0xb80a0a0a));
++    label_->SetEnabledColor(ThemeForeground(active_ ? (dark ? 0xfffafafa : 0xff0a0a0a) : (dark ? 0xa6fafafa : 0xb80a0a0a)));
+     image_->SetImage(!favicon_.IsEmpty() ? favicon_ : ui::ImageModel::FromVectorIcon(folder_ ? kFolderIcon : kPageIcon,
+-        dark ? 0x8cfafafa : 0x8c0a0a0a, 16));
++        ThemeForeground(dark ? 0x8cfafafa : 0x8c0a0a0a), 16));
+   }
+  protected:
+   void OnPaintBackground(gfx::Canvas* canvas) override {
+     if (!GetWidget() || (!active_ && !hovered_ && !pressed_ && !drop_)) return;
+     const bool dark = GetWidget()->GetColorMode() == ui::ColorProviderKey::ColorMode::kDark;
++    const gfx::RectF bounds(GetLocalBounds());
++    if (active_) {
++      // Use the same native soft-shadow primitive as supplied pinned rows.
++      // The path and layout bounds remain unchanged; no space is reserved.
++      const SkPath path = SkPath::RRect(gfx::RectFToSkRect(bounds), 10, 10);
++      canvas->Save();
++      gfx::RectF shadow_bounds(bounds); shadow_bounds.Outset(8);
++      canvas->ClipRect(shadow_bounds);
++      canvas->ClipPath(path, true, SkClipOp::kDifference);
++      cc::PaintFlags shadow; shadow.setAntiAlias(true);
++      shadow.setLooper(gfx::CreateShadowDrawLooper(
++          {gfx::ShadowValue(gfx::Vector2d(0, 2), 5, 0x18000000)}));
++      canvas->DrawPath(path, shadow);
++      canvas->Restore();
++    }
+     cc::PaintFlags flags; flags.setAntiAlias(true);
+-    flags.setColor(pressed_ ? (dark ? 0x26fafafa : 0x260a0a0a) : active_ ? (dark ? 0x14fafafa : 0xffffffff) : 0x14fafafa);
+-    if (!dark && !active_ && !pressed_) flags.setColor(0x140a0a0a);
+-    canvas->DrawRoundRect(gfx::RectF(GetLocalBounds()), 10, flags);
++    const SkColor original_foreground = dark ? 0xfffafafa : 0xff0a0a0a;
++    const SkColor foreground = ThemeForeground(original_foreground);
++    if (foreground != original_foreground) {
++      // A real Aux contrast override maps to black/white. Keep fills translucent
++      // instead of mapping a light-mode opaque white fill to opaque black,
++      // which would make its matching dark foreground unreadable.
++      flags.setColor(SkColorSetA(foreground, pressed_ ? 0x26 : 0x14));
++    } else {
++      flags.setColor(pressed_ ? (dark ? 0x26fafafa : 0x260a0a0a) : active_ ? (dark ? 0x14fafafa : 0xffffffff) : 0x14fafafa);
++      if (!dark && !active_ && !pressed_) flags.setColor(0x140a0a0a);
++    }
++    canvas->DrawRoundRect(bounds, 10, flags);
+     if (drop_) {
+       auto rect = gfx::RectF(GetLocalBounds()); rect.Inset(0.75f);
+       using Edge = AuxOrganizationTreeView::DropEdge;
+@@ -155,18 +211,24 @@
+           if (drop_edge_ == Edge::kBottom) rect.set_y(rect.y() + half);
+           rect.set_height(half);
+         }
+-        flags.setColor(dark ? 0x26fafafa : 0x260a0a0a);
++        flags.setColor(ThemeForeground(dark ? 0x26fafafa : 0x260a0a0a));
+         canvas->DrawRoundRect(rect, 8, flags);
+       }
+       flags.setStyle(cc::PaintFlags::kStroke_Style);
+-      flags.setStrokeWidth(1.5f); flags.setColor(dark ? 0x66fafafa : 0x590a0a0a);
++      flags.setStrokeWidth(1.5f); flags.setColor(ThemeForeground(dark ? 0x66fafafa : 0x590a0a0a));
+       canvas->DrawRoundRect(rect, drop_edge_ == Edge::kNone ? 10 : 8, flags);
+     }
+   }
+  private:
++  SkColor ThemeForeground(SkColor fallback) const {
++    return GetWidget() ? aux_theme::SidebarForeground(
++        GetWidget()->GetCurrentColorProviderKey(), GetColorProvider(), fallback) : fallback;
++  }
+   base::WeakPtr<AuxOrganizationTreeView> owner_;
+   std::string id_;
+   bool folder_, active_, hovered_ = false, pressed_ = false, drop_ = false;
++  bool animate_selection_ = false;
++  gfx::LinearAnimation selection_;
+   AuxOrganizationTreeView::DropEdge drop_edge_ = AuxOrganizationTreeView::DropEdge::kNone;
+   raw_ptr<views::ImageView> image_ = nullptr;
+   raw_ptr<views::Label> label_ = nullptr;
+@@ -226,8 +288,11 @@
+   const bool changed = ready_ != next_ready;
+   ready_ = next_ready;
+   CancelDrag();
+-  std::string focused;
+-  for (const auto& [id, row] : row_by_id_) if (row->HasFocus()) focused = id;
++  std::string focused, previous_active;
++  for (const auto& [id, row] : row_by_id_) {
++    if (row->HasFocus()) focused = id;
++    if (row->active()) previous_active = id;
++  }
+   row_by_id_.clear(); visible_.clear(); rows_->RemoveAllChildViews();
+   if (ready_) {
+     struct Pending { std::string id; int depth; };
+@@ -252,7 +317,8 @@
+       const auto& entry = snapshot->entries.at(item.id);
+       if (!entry.archived && entry.kind == organization::EntryKind::kTab && !window_->ShouldDisplayLogicalEntry(item.id)) continue;
+       auto* row = rows_->AddChildView(std::make_unique<OrganizationTreeRow>(weak_.GetWeakPtr(), entry,
+-          item.depth, window_->SelectedLogicalTabId() == item.id));
++          item.depth, window_->SelectedLogicalTabId() == item.id,
++          !previous_active.empty() && previous_active != item.id));
+       row_by_id_[item.id] = row; visible_.push_back(item.id);
+       if (entry.kind == organization::EntryKind::kFolder && !entry.collapsed) {
+         auto nested = organization::OrderedChildren(*snapshot, entry.space_id, entry.id, archive_mode_);
+@@ -264,7 +330,8 @@
+         for (const auto& recovery : controller->RecoveryEntries()) {
+           if (recovery.space_id != scope) continue;
+           auto* row = rows_->AddChildView(std::make_unique<OrganizationTreeRow>(weak_.GetWeakPtr(),
+-              recovery, 0, controller->IsRecoveryActive(recovery.id)));
++              recovery, 0, controller->IsRecoveryActive(recovery.id),
++              !previous_active.empty() && previous_active != recovery.id));
+           row->SetTooltipText(base::UTF8ToUTF16(recovery.current_url) +
+               u"\nClosed from the shared list. This window's page and history were retained. Right-click to keep an independent copy or close this view.");
+           row_by_id_[recovery.id] = row; visible_.push_back(recovery.id);

@@ -1,0 +1,19 @@
+{
+  "modifiedCount": 1,
+  "addedCount": 0,
+  "dependsOn": "6a41685ad organization-window-recovery overlay",
+  "patchSha256": "d180316cfc0062f05ff3051fbd6eea9e1b25666bf30eff9467093dec05643244",
+  "files": [
+    {
+      "path": "chrome/browser/ui/views/frame/aux_organization_tree_view.cc",
+      "beforeSha256": "877cf8140c22525dcfc08ef8ccd26cf6f65994454dfe8336891ecf36a455ec80",
+      "afterSha256": "d557e96fd8d051346cfd8f5f1db4f372e4fe1c8c57837221a143fe2252db6936"
+    }
+  ],
+  "verification": {
+    "exactPatchReplay": "passed",
+    "whitespaceErrorCheck": "passed",
+    "nativeCompile": "not run by worker",
+    "runtime": "not run"
+  }
+}
