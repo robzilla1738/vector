@@ -1,0 +1,9 @@
+{
+  "format": "aux.ui-extension-binding.integration-preflight.v1",
+  "passed": false,
+  "canonicalPatchWritten": false,
+  "seriesChanged": false,
+  "reason": "The upstream-only baseline assertion failed for extensions/browser/BUILD.gn. The actual native checkout already contains a service-worker startup header registration. The corrected replay pins and preserves that existing prerequisite; it does not attribute it to this patch.",
+  "nativeCheckoutChanged": false,
+  "productExecuted": false
+}

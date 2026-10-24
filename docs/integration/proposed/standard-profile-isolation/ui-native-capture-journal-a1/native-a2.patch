@@ -1,0 +1,303 @@
+--- a/AuxOwnedCommandDispatcher.swift
++++ b/AuxOwnedCommandDispatcher.swift
+@@ -145,6 +145,256 @@
+         let handle=next;next += 1;entries[handle]=entry;return handle
+     }
+     // Trusted in-process operation seam. Scope is not an action argument.
++#if AUX_NATIVE_FRESH_RUNTIME_CONSUMER
++    // This private store can only be entered through the retained Entry below.
++    // It stores unqualified capture data; it cannot authorize a migration.
++    private final class UiCaptureJournal {
++        enum Failure:Error {case invalid,unsafe,incomplete,binding,io(Int32)}
++        private let context:NativeFreshStagedContext
++        private let generation:UInt64
++        private let rootFD:Int32
++        private let directoryFD:Int32
++        private let directoryName:String
++        private let transaction:String
++        private let process=getpid()
++        private static let prefix=".aux-ui-capture-v1-"
++        private static let limit=64*1024*1024
++
++        private static func metadata(_ fd:Int32,directory:Bool)throws->stat {
++            var value=stat()
++            guard fstat(fd,&value)==0 else{throw Failure.io(errno)}
++            let flags=fcntl(fd,F_GETFD)
++            guard value.st_uid==geteuid(),(value.st_mode & 0o7777)==(directory ? 0o700:0o600),
++                  (value.st_mode & S_IFMT)==(directory ? S_IFDIR:S_IFREG),
++                  directory || (value.st_nlink==1 && value.st_size>=0 && value.st_size<=limit),
++                  flags>=0,flags & FD_CLOEXEC != 0 else{throw Failure.unsafe}
++            errno=0
++            let acl=acl_get_fd_np(fd,ACL_TYPE_EXTENDED)
++            if acl==nil && errno==ENOENT{return value}
++            guard let acl else{throw Failure.unsafe}
++            defer{acl_free(UnsafeMutableRawPointer(acl))}
++            var entry:acl_entry_t?
++            errno=0
++            guard acl_valid(acl)==0,acl_get_entry(acl,0,&entry) == -1,
++                  errno==EINVAL,entry==nil else{throw Failure.unsafe}
++            return value
++        }
++        private static func sameEntry(parent:Int32,name:String,fd:Int32,directory:Bool)throws {
++            var named=stat()
++            guard fstatat(parent,name,&named,AT_SYMLINK_NOFOLLOW)==0 else{throw Failure.io(errno)}
++            let retained=try metadata(fd,directory:directory)
++            guard named.st_dev==retained.st_dev,named.st_ino==retained.st_ino,
++                  named.st_mode==retained.st_mode,named.st_uid==retained.st_uid else{throw Failure.binding}
++        }
++        private static func sync(_ fd:Int32)throws {
++            guard fsync(fd)==0 else{throw Failure.io(errno)}
++        }
++        private static func validateOwner(_ context:NativeFreshStagedContext,
++                                          root:Int32,generation:UInt64)throws {
++            try context.verifyUiCaptureJournalAdmission()
++            try context.revalidateNativeStageBinding()
++            let current=try context.duplicateAuthenticatedBrowserRoot(role:1)
++            defer{Darwin.close(current.descriptor)}
++            let before=try metadata(root,directory:true)
++            let after=try metadata(current.descriptor,directory:true)
++            guard generation != 0,current.generation==generation,
++                  before.st_dev==after.st_dev,before.st_ino==after.st_ino else{throw Failure.binding}
++        }
++        private init(context:NativeFreshStagedContext,transaction:String,create:Bool)throws {
++            guard UUID(uuidString:transaction)?.uuidString.lowercased()==transaction else{throw Failure.invalid}
++            let root=try context.duplicateAuthenticatedBrowserRoot(role:1)
++            var rootFD=root.descriptor,directoryFD:Int32 = -1
++            defer{if rootFD>=0{Darwin.close(rootFD)};if directoryFD>=0{Darwin.close(directoryFD)}}
++            try Self.validateOwner(context,root:rootFD,generation:root.generation)
++            let name=Self.prefix+transaction
++            if create {
++                // EXCL-by-mkdir: a collision is never adopted or overwritten.
++                guard mkdirat(rootFD,name,0o700)==0 else{throw Failure.io(errno)}
++                try Self.sync(rootFD)
++            }
++            directoryFD=openat(rootFD,name,O_RDONLY|O_DIRECTORY|O_NOFOLLOW|O_CLOEXEC|O_NONBLOCK)
++            guard directoryFD>=0 else{throw Failure.io(errno)}
++            try Self.sameEntry(parent:rootFD,name:name,fd:directoryFD,directory:true)
++            try Self.validateOwner(context,root:rootFD,generation:root.generation)
++            self.context=context;generation=root.generation;self.rootFD=rootFD;self.directoryFD=directoryFD
++            directoryName=name;self.transaction=transaction
++            rootFD = -1;directoryFD = -1
++        }
++        deinit {if getpid()==process{Darwin.close(directoryFD);Darwin.close(rootFD)}}
++        private func revalidate()throws {
++            guard getpid()==process else{throw Failure.binding}
++            try Self.validateOwner(context,root:rootFD,generation:generation)
++            try Self.sameEntry(parent:rootFD,name:directoryName,fd:directoryFD,directory:true)
++        }
++        private func writeNew(_ name:String,_ bytes:Data)throws {
++            guard !bytes.isEmpty,bytes.count<=Self.limit else{throw Failure.invalid}
++            try revalidate()
++            let fd=openat(directoryFD,name,O_WRONLY|O_CREAT|O_EXCL|O_NOFOLLOW|O_CLOEXEC|O_NONBLOCK,0o600)
++            guard fd>=0 else{throw Failure.io(errno)}
++            defer{Darwin.close(fd)}
++            _ = try Self.metadata(fd,directory:false)
++            var offset=0
++            while offset<bytes.count {
++                let amount=bytes.withUnsafeBytes{Darwin.write(fd,$0.baseAddress!.advanced(by:offset),bytes.count-offset)}
++                if amount<0 && errno==EINTR{continue}
++                guard amount>0 else{throw Failure.io(errno)}
++                offset += amount
++            }
++            try Self.sync(fd)
++            try Self.sameEntry(parent:directoryFD,name:name,fd:fd,directory:false)
++            guard try Self.metadata(fd,directory:false).st_size==bytes.count else{throw Failure.incomplete}
++            try Self.sync(directoryFD)
++            try revalidate()
++        }
++        private func read(_ name:String,limit:Int=64*1024*1024)throws->Data {
++            try revalidate()
++            let fd=openat(directoryFD,name,O_RDONLY|O_NONBLOCK|O_NOFOLLOW|O_CLOEXEC)
++            guard fd>=0 else{if errno==ENOENT{throw Failure.incomplete};throw Failure.io(errno)}
++            defer{Darwin.close(fd)}
++            let before=try Self.metadata(fd,directory:false)
++            guard before.st_size<=limit else{throw Failure.invalid}
++            try Self.sameEntry(parent:directoryFD,name:name,fd:fd,directory:false)
++            var bytes=[UInt8](repeating:0,count:Int(before.st_size)),offset=0
++            while offset<bytes.count {
++                let amount=bytes.withUnsafeMutableBytes{Darwin.read(fd,$0.baseAddress!.advanced(by:offset),bytes.count-offset)}
++                if amount<0 && errno==EINTR{continue}
++                guard amount>0 else{throw Failure.incomplete}
++                offset += amount
++            }
++            var extra:UInt8=0
++            guard Darwin.read(fd,&extra,1)==0 else{throw Failure.incomplete}
++            let after=try Self.metadata(fd,directory:false)
++            guard before.st_size==after.st_size,
++                  before.st_mtimespec.tv_sec==after.st_mtimespec.tv_sec,
++                  before.st_mtimespec.tv_nsec==after.st_mtimespec.tv_nsec,
++                  before.st_ctimespec.tv_sec==after.st_ctimespec.tv_sec,
++                  before.st_ctimespec.tv_nsec==after.st_ctimespec.tv_nsec else{throw Failure.binding}
++            try Self.sameEntry(parent:directoryFD,name:name,fd:fd,directory:false)
++            try revalidate()
++            return Data(bytes)
++        }
++        private static func hash(_ data:Data)->String {
++            SHA256.hash(data:data).map{String(format:"%02x",$0)}.joined()
++        }
++        private static func encode(_ value:[String:Any])throws->Data {
++            try JSONSerialization.data(withJSONObject:value,options:[.sortedKeys,.withoutEscapingSlashes])
++        }
++        private static func binding(context:NativeFreshStagedContext,transaction:String,
++                                    generation:UInt64,root:stat,capture:Data)throws->Data {
++            try encode(["format":"aux.ui-storage.capture-binding.v1",
++                "phase":"captured-unqualified","activationAuthorized":false,
++                "transactionId":transaction,"generation":String(generation),
++                "policySha256":context.journal.policySha256,
++                "initialJournalSha256":context.durableJournalSha256,
++                "rootDevice":String(root.st_dev),"rootInode":String(root.st_ino),
++                "captureSha256":hash(capture),"captureBytes":capture.count])
++        }
++        private static func receipt(transaction:String,binding:Data,capture:Data)throws->Data {
++            try encode(["format":"aux.ui-storage.capture-receipt.v1",
++                "phase":"captured-unqualified","activationAuthorized":false,
++                "transactionId":transaction,"bindingSha256":hash(binding),
++                "captureSha256":hash(capture)])
++        }
++        static func list(context:NativeFreshStagedContext)throws->[String] {
++            let root=try context.duplicateAuthenticatedBrowserRoot(role:1)
++            defer{Darwin.close(root.descriptor)}
++            try validateOwner(context,root:root.descriptor,generation:root.generation)
++            let copied=fcntl(root.descriptor,F_DUPFD_CLOEXEC,0)
++            guard copied>=0 else{throw Failure.io(errno)}
++            guard let stream=fdopendir(copied) else{let code=errno;Darwin.close(copied);throw Failure.io(code)}
++            defer{closedir(stream)}
++            var transactions=[String](),scanned=0
++            while true {
++                errno=0
++                guard let entry=readdir(stream) else{guard errno==0 else{throw Failure.io(errno)};break}
++                scanned += 1
++                guard scanned<=16_384 else{throw Failure.invalid}
++                let length=Int(entry.pointee.d_namlen)+1
++                guard length>0,length<=1024 else{throw Failure.invalid}
++                let name=withUnsafePointer(to:&entry.pointee.d_name){pointer in
++                    pointer.withMemoryRebound(to:CChar.self,capacity:length){String(cString:$0)}
++                }
++                if !name.hasPrefix(prefix){continue}
++                let transaction=String(name.dropFirst(prefix.count))
++                guard UUID(uuidString:transaction)?.uuidString.lowercased()==transaction else{throw Failure.invalid}
++                var value=stat()
++                guard fstatat(root.descriptor,name,&value,AT_SYMLINK_NOFOLLOW)==0 else{throw Failure.io(errno)}
++                guard value.st_uid==geteuid(),(value.st_mode & 0o7777)==0o700,
++                      (value.st_mode & S_IFMT)==S_IFDIR else{throw Failure.unsafe}
++                transactions.append(transaction)
++                guard transactions.count<=256 else{throw Failure.invalid}
++            }
++            try validateOwner(context,root:root.descriptor,generation:root.generation)
++            return transactions.sorted()
++        }
++        static func persist(context:NativeFreshStagedContext,capture:Data)throws->Data {
++            guard !capture.isEmpty,capture.count<=limit,
++                  let value=try JSONSerialization.jsonObject(with:capture) as? [String:Any],
++                  value["format"] as? String == "aux.ui-storage.capture-input.v1" else{throw Failure.invalid}
++            guard try list(context:context).count<256 else{throw Failure.invalid}
++            let store=try UiCaptureJournal(context:context,transaction:UUID().uuidString.lowercased(),create:true)
++            let root=try metadata(store.rootFD,directory:true)
++            let bindingBytes=try binding(context:context,transaction:store.transaction,
++                                         generation:store.generation,root:root,capture:capture)
++            try store.writeNew("capture.json",capture)
++            try store.writeNew("binding.json",bindingBytes)
++            guard try store.read("capture.json")==capture,
++                  try store.read("binding.json",limit:16_384)==bindingBytes else{throw Failure.binding}
++            let receipt=try Self.receipt(transaction:store.transaction,binding:bindingBytes,capture:capture)
++            // Only this final immutable record publishes a complete capture.
++            // Failed/partial directories stay intact for explicit recovery.
++            try store.writeNew("READY",receipt)
++            guard try store.read("READY",limit:16_384)==receipt else{throw Failure.binding}
++            try store.revalidate()
++            return receipt
++        }
++        static func load(context:NativeFreshStagedContext,transaction:String)throws->(receipt:Data,capture:Data,sourceGeneration:UInt64,currentGeneration:UInt64) {
++            let store=try UiCaptureJournal(context:context,transaction:transaction,create:false)
++            let receipt=try store.read("READY",limit:16_384)
++            let binding=try store.read("binding.json",limit:16_384)
++            let capture=try store.read("capture.json")
++            guard let b=try JSONSerialization.jsonObject(with:binding) as? [String:Any],
++                  let sourceGeneration=b["generation"] as? String,
++                  let parsed=UInt64(sourceGeneration),parsed != 0,String(parsed)==sourceGeneration else{throw Failure.binding}
++            let root=try metadata(store.rootFD,directory:true)
++            let expected=try Self.binding(context:context,transaction:transaction,generation:parsed,root:root,capture:capture)
++            guard expected==binding,
++                  try Self.receipt(transaction:transaction,binding:expected,capture:capture)==receipt else{throw Failure.binding}
++            // A previous generation's capture remains data, not current proof.
++            // Native migration must requalify every view/store/owner separately.
++            try store.revalidate()
++            return(receipt,capture,parsed,store.generation)
++        }
++    }
++    // Native-only seams: not registered in the string command dispatcher or
++    // NAPI. withEntry retains the real owner, active count and execution lock
++    // through every physical write/fsync/read and the final guard observation.
++    func prepareUiStorageCaptureJournal(_ handle:UInt64,capture:Data)throws->Data {
++        try withEntry(handle,guardGenericAction:false){entry in
++            guard let captured=entry.nativeFreshRuntime else{throw AuxDispatcherLifetimeError.invalidInput}
++            return try guardedFreshAction(entry,before:.beforeAction,after:.afterAction,afterThrow:.afterThrownAction){
++                try UiCaptureJournal.persist(context:captured.owner,capture:capture)
++            }
++        }
++    }
++    func readUiStorageCaptureJournal(_ handle:UInt64,transaction:String)throws->(receipt:Data,capture:Data,sourceGeneration:UInt64,currentGeneration:UInt64) {
++        try withEntry(handle,guardGenericAction:false){entry in
++            guard let captured=entry.nativeFreshRuntime else{throw AuxDispatcherLifetimeError.invalidInput}
++            return try guardedFreshAction(entry,before:.beforeAction,after:.afterAction,afterThrow:.afterThrownAction){
++                try UiCaptureJournal.load(context:captured.owner,transaction:transaction)
++            }
++        }
++    }
++    func listUiStorageCaptureJournals(_ handle:UInt64)throws->[String] {
++        try withEntry(handle,guardGenericAction:false){entry in
++            guard let captured=entry.nativeFreshRuntime else{throw AuxDispatcherLifetimeError.invalidInput}
++            return try guardedFreshAction(entry,before:.beforeAction,after:.afterAction,afterThrow:.afterThrownAction){
++                try UiCaptureJournal.list(context:captured.owner)
++            }
++        }
++    }
++#endif
++
+     func withContext<T>(_ handle:UInt64,_ action:(AuxInstallationCommandCore)throws->T)throws->T {
+         try withEntry(handle){try action($0.core)}
+     }
+--- a/AuxBrowserFreshRootAdmission.swift
++++ b/AuxBrowserFreshRootAdmission.swift
+@@ -150,6 +150,13 @@
+         guard getpid()==process else{throw AuxFreshColdGuardError.wrongProcess}
+         lock.lock();defer{lock.unlock()};try validateLocked()
+     }
++    // Read-only: journal copies cannot invalidate the fresh PREPARED inventory.
++    func verifyUiCaptureJournalAdmission()throws {
++        guard getpid()==process else{throw AuxFreshColdGuardError.wrongProcess}
++        lock.lock();defer{lock.unlock()}
++        try validateLocked()
++        guard phase == .admitted else{throw AuxFreshColdGuardError.path}
++    }
+     func receipt()throws->Data {
+         guard getpid()==process else{throw AuxFreshColdGuardError.wrongProcess}
+         lock.lock();defer{lock.unlock()};try validateLocked()
+--- a/AuxFreshColdInstallerGuard.swift
++++ b/AuxFreshColdInstallerGuard.swift
+@@ -189,6 +189,11 @@
+         let root=try browserRoots.duplicate(role:role,peer:peer)
+         do{try revalidate();return root}catch{close(root.descriptor);throw error}
+     }
++    func verifyUiCaptureJournalAdmission()throws {
++        try revalidate()
++        try browserAdmission.verifyUiCaptureJournalAdmission()
++        try revalidate()
++    }
+     func browserStartupReceipt()throws->Data {
+         try revalidate()
+         let receipt=try browserAdmission.receipt()
+--- a/AuxNativeFreshStageCoordinator.swift
++++ b/AuxNativeFreshStageCoordinator.swift
+@@ -45,6 +45,11 @@
+         try revalidateNativeStageBinding()
+         let root=try coldGuard.duplicateAuthenticatedBrowserRoot(role:role)
+         do{try revalidateNativeStageBinding();return root}catch{Darwin.close(root.descriptor);throw error}
++    }
++    func verifyUiCaptureJournalAdmission()throws {
++        try revalidateNativeStageBinding()
++        try coldGuard.verifyUiCaptureJournalAdmission()
++        try revalidateNativeStageBinding()
+     }
+     func browserStartupReceipt()throws->Data {
+         try revalidateNativeStageBinding()

@@ -1,0 +1,187 @@
+{
+  "format": "aux.ui-extension-native-binding.source.v1",
+  "overlay": "/private/tmp/aux-extension-native-binding-overlay-20261024-a1",
+  "agentIdentitySha256": "f58e1fac4aec038a01883a2200f20550f2ac56940071f98555b98528fd4648d9",
+  "files": [
+    {
+      "path": "components/value_store/value_store.h",
+      "originalSha256": "fe84e2af9e5794afe5e8626ba5a64a629ec158255fff726a4d70397439facfe3",
+      "inputSha256": "fe84e2af9e5794afe5e8626ba5a64a629ec158255fff726a4d70397439facfe3",
+      "outputSha256": "a18b6b18cb4cc8534e374dae62b5cbf1849483e3dbbe5b364dbba6718c789d41",
+      "anchors": [
+        {
+          "find": "#include <memory>",
+          "replace": "#include <array>\n#include <memory>",
+          "count": 1
+        },
+        {
+          "find": "#include \"base/functional/callback.h\"",
+          "replace": "#include \"base/functional/callback.h\"\n#include \"base/memory/weak_ptr.h\"\n#include \"base/types/expected.h\"",
+          "count": 1
+        },
+        {
+          "find": "  virtual WriteResult Clear() = 0;",
+          "replace": "  virtual WriteResult Clear() = 0;\n\n  // Native-only capture: private construction by the real LevelDB backend.\n  // Copying its data grants no authority; commit requires the live opaque token.\n  class AuxUiPreferenceCapture {\n   public:\n    ~AuxUiPreferenceCapture();\n    std::array<std::optional<std::string>, 6> CopyRecordsForNativeJournal() const;\n\n   private:\n    friend class LeveldbValueStore;\n    AuxUiPreferenceCapture();\n    base::WeakPtr<ValueStore> owner;\n    std::array<std::optional<std::string>, 6> records;\n  };\n  using AuxUiPreferenceCaptureResult =\n      base::expected<std::unique_ptr<AuxUiPreferenceCapture>, Status>;\n\n  // Unsupported backends refuse. These do not open/repair a DB, close writers\n  // or authorize startup. Existing virtual slot ordering remains unchanged.\n  virtual AuxUiPreferenceCaptureResult CaptureAuxUiPreferencesForMigration();\n  virtual Status CommitAuxUiPreferenceMigration(\n      std::unique_ptr<AuxUiPreferenceCapture> capture);\n",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "components/value_store/value_store.cc",
+      "originalSha256": "6b1a964f29c00bb388a76b17011bd6f5858eec3b4688acb033386fd4eb74f426",
+      "inputSha256": "6b1a964f29c00bb388a76b17011bd6f5858eec3b4688acb033386fd4eb74f426",
+      "outputSha256": "716489b2d9a4553c679316e6ba987563ff833d04cf27aaf48fc142274ff2738d",
+      "anchors": [
+        {
+          "find": "}  // namespace value_store",
+          "replace": "ValueStore::AuxUiPreferenceCapture::AuxUiPreferenceCapture() = default;\nValueStore::AuxUiPreferenceCapture::~AuxUiPreferenceCapture() = default;\n\nstd::array<std::optional<std::string>, 6>\nValueStore::AuxUiPreferenceCapture::CopyRecordsForNativeJournal() const {\n  return records;\n}\n\nValueStore::AuxUiPreferenceCaptureResult\nValueStore::CaptureAuxUiPreferencesForMigration() {\n  return base::unexpected(Status(OTHER_ERROR, \"Aux migration backend unsupported\"));\n}\n\nValueStore::Status ValueStore::CommitAuxUiPreferenceMigration(\n    std::unique_ptr<AuxUiPreferenceCapture> capture) {\n  return Status(OTHER_ERROR, \"Aux migration backend unsupported\");\n}\n\n}  // namespace value_store",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "components/value_store/leveldb_value_store.h",
+      "originalSha256": "23cf9626d3152f4253eacdd1e5c26113905db60c11e90d6ea0551cdf69735edd",
+      "inputSha256": "f2924f6064f76cb5b1e78b8e0fd7fc49e309488b47686079dc79c358f4f8900e",
+      "outputSha256": "107d19d62e4cd11f8ea6f4ab1d66314e4663838933b4f5d4753a2a22220174a7",
+      "predecessor": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/ui-extension-storage-migration-a1/source/components/value_store/leveldb_value_store.h",
+      "anchors": [
+        {
+          "find": "  class AuxUiPreferenceCapture {\n   public:\n    ~AuxUiPreferenceCapture();\n\n   private:\n    friend class LeveldbValueStore;\n    AuxUiPreferenceCapture();\n    base::WeakPtr<LeveldbValueStore> owner;\n    std::array<std::optional<std::string>, 6> records;\n  };\n  using AuxUiPreferenceCaptureResult =\n      base::expected<std::unique_ptr<AuxUiPreferenceCapture>, Status>;\n  AuxUiPreferenceCaptureResult CaptureAuxUiPreferencesForMigration();\n  Status CommitAuxUiPreferenceMigration(\n      std::unique_ptr<AuxUiPreferenceCapture> capture);\n",
+          "replace": "  AuxUiPreferenceCaptureResult CaptureAuxUiPreferencesForMigration() override;\n  Status CommitAuxUiPreferenceMigration(\n      std::unique_ptr<AuxUiPreferenceCapture> capture) override;\n",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "components/value_store/leveldb_value_store.cc",
+      "originalSha256": "5277dedde0146ce20883151e9abb372fd5924e489e8461e1c6c6307e70feaae9",
+      "inputSha256": "b3d627eae8bbec6ff073b5320e6a0648cdcfbd62585abba72c70932d8fbdac51",
+      "outputSha256": "9cfaa51c201575a6304df7825268270709c530b327351bf8aa0a4656f5c026c2",
+      "predecessor": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/ui-extension-storage-migration-a1/source/components/value_store/leveldb_value_store.cc",
+      "anchors": [
+        {
+          "find": "LeveldbValueStore::AuxUiPreferenceCapture::AuxUiPreferenceCapture() = default;\nLeveldbValueStore::AuxUiPreferenceCapture::~AuxUiPreferenceCapture() = default;\n\n",
+          "replace": "",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "extensions/browser/api/storage/settings_storage_quota_enforcer.h",
+      "originalSha256": "1ee8cee6585130b736dfc177a9e901cdb6c2c317e1006caa5f92b11436519727",
+      "inputSha256": "1ee8cee6585130b736dfc177a9e901cdb6c2c317e1006caa5f92b11436519727",
+      "outputSha256": "2307c24679e56e7ce88e2b93fa91d1bb2810e64ecf5258a5401c0d3f9f62a3a6",
+      "anchors": [
+        {
+          "find": "  WriteResult Clear() override;",
+          "replace": "  WriteResult Clear() override;\n  AuxUiPreferenceCaptureResult CaptureAuxUiPreferencesForMigration() override;\n  Status CommitAuxUiPreferenceMigration(\n      std::unique_ptr<AuxUiPreferenceCapture> capture) override;",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "extensions/browser/api/storage/settings_storage_quota_enforcer.cc",
+      "originalSha256": "abefd23d0c36094cac9f2502dcbd2e0ea8e60856e46ecdfcc59207d5ab1fadcf",
+      "inputSha256": "abefd23d0c36094cac9f2502dcbd2e0ea8e60856e46ecdfcc59207d5ab1fadcf",
+      "outputSha256": "b35c3503c9c6c9b60123b291e2403a0c266f21cffb6448bab85c1448c18d3cbc",
+      "anchors": [
+        {
+          "find": "}  // namespace extensions",
+          "replace": "ValueStore::AuxUiPreferenceCaptureResult\nSettingsStorageQuotaEnforcer::CaptureAuxUiPreferencesForMigration() {\n  return delegate_->CaptureAuxUiPreferencesForMigration();\n}\n\nValueStore::Status SettingsStorageQuotaEnforcer::CommitAuxUiPreferenceMigration(\n    std::unique_ptr<AuxUiPreferenceCapture> capture) {\n  // A sync error can have applied the batch. Invalidate on every attempt;\n  // do not read/repair storage here or treat a failed result as success.\n  usage_calculated_ = false;\n  used_total_ = 0;\n  used_per_setting_.clear();\n  return delegate_->CommitAuxUiPreferenceMigration(std::move(capture));\n}\n\n}  // namespace extensions",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "extensions/browser/api/storage/weak_unlimited_settings_storage.h",
+      "originalSha256": "cff979b1da9371f8c484cd392576f11a66fe581ff0087462b59e3b4670b11769",
+      "inputSha256": "cff979b1da9371f8c484cd392576f11a66fe581ff0087462b59e3b4670b11769",
+      "outputSha256": "5d84681e82a35b5111d70283d2f06d647dfeb63c2f543eed184d084fbbc5244d",
+      "anchors": [
+        {
+          "find": "#include <string>",
+          "replace": "#include <memory>\n#include <string>",
+          "count": 1
+        },
+        {
+          "find": "  WriteResult Clear() override;",
+          "replace": "  WriteResult Clear() override;\n  AuxUiPreferenceCaptureResult CaptureAuxUiPreferencesForMigration() override;\n  Status CommitAuxUiPreferenceMigration(\n      std::unique_ptr<AuxUiPreferenceCapture> capture) override;",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "extensions/browser/api/storage/weak_unlimited_settings_storage.cc",
+      "originalSha256": "685036939a5a38eb65eab23e8f7ae90a3fc9d91accc865526dfb54dc222d0a3e",
+      "inputSha256": "685036939a5a38eb65eab23e8f7ae90a3fc9d91accc865526dfb54dc222d0a3e",
+      "outputSha256": "7667705586d98188414ef0ef7533efcb2e065a64f619b3664e9b1760273f638a",
+      "anchors": [
+        {
+          "find": "#include \"extensions/browser/api/storage/weak_unlimited_settings_storage.h\"",
+          "replace": "#include \"extensions/browser/api/storage/weak_unlimited_settings_storage.h\"\n\n#include <memory>\n#include <utility>",
+          "count": 1
+        },
+        {
+          "find": "}  // namespace extensions",
+          "replace": "ValueStore::AuxUiPreferenceCaptureResult\nWeakUnlimitedSettingsStorage::CaptureAuxUiPreferencesForMigration() {\n  return delegate_->CaptureAuxUiPreferencesForMigration();\n}\n\nValueStore::Status WeakUnlimitedSettingsStorage::CommitAuxUiPreferenceMigration(\n    std::unique_ptr<AuxUiPreferenceCapture> capture) {\n  return delegate_->CommitAuxUiPreferenceMigration(std::move(capture));\n}\n\n}  // namespace extensions",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "extensions/browser/api/storage/storage_frontend.h",
+      "originalSha256": "e8f05b6a20f131c5ed3603bdb0c4cf51873b24c42bea8056d6ac852ea8bbc285",
+      "inputSha256": "e8f05b6a20f131c5ed3603bdb0c4cf51873b24c42bea8056d6ac852ea8bbc285",
+      "outputSha256": "7cb718fd35c674a08ad825a4af1329924ff948a00d2d68d0c5f15b73347fc915",
+      "anchors": [
+        {
+          "find": "  // Deletes the settings for the given `extension_id` and synchronously invokes",
+          "replace": "  // Internal Aux migration routing only, not an extension API or admission.\n  // The native owner must supply the actual regular profile/epoch and retain\n  // writer/journal ownership across these asynchronous operations.\n  using AuxUiPreferenceCaptureCallback = base::OnceCallback<void(\n      value_store::ValueStore::AuxUiPreferenceCaptureResult)>;\n  void CaptureAuxUiPreferencesForMigration(\n      scoped_refptr<const Extension> extension,\n      AuxUiPreferenceCaptureCallback callback);\n  void CommitAuxUiPreferenceMigration(\n      scoped_refptr<const Extension> extension,\n      std::unique_ptr<value_store::ValueStore::AuxUiPreferenceCapture> capture,\n      base::OnceCallback<void(value_store::ValueStore::Status)> callback);\n\n  // Deletes the settings for the given `extension_id` and synchronously invokes",
+          "count": 1
+        },
+        {
+          "find": "  // Constructor for tests.",
+          "replace": "  bool CanUseAuxUiMigrationBackend(const Extension& extension) const;\n\n  // Constructor for tests.",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "extensions/browser/api/storage/storage_frontend.cc",
+      "originalSha256": "a537a6d4cc8f5dca7f63e86b15a9a73d81b2506fe93da29edd41c47dbfd28b4f",
+      "inputSha256": "a537a6d4cc8f5dca7f63e86b15a9a73d81b2506fe93da29edd41c47dbfd28b4f",
+      "outputSha256": "a2250f8c6851b0ba1546040629b10af2693011279fcdd227986e7cdbd3305354",
+      "anchors": [
+        {
+          "find": "#include \"base/strings/stringprintf.h\"",
+          "replace": "#include \"base/strings/stringprintf.h\"\n#include \"base/task/bind_post_task.h\"",
+          "count": 1
+        },
+        {
+          "find": "#include \"third_party/leveldatabase/env_chromium.h\"",
+          "replace": "#include \"third_party/leveldatabase/env_chromium.h\"\n#include \"mojo/public/cpp/bindings/callback_helpers.h\"",
+          "count": 1
+        },
+        {
+          "find": "void StorageFrontend::RunWithStorage(",
+          "replace": "bool StorageFrontend::CanUseAuxUiMigrationBackend(\n    const Extension& extension) const {\n  DCHECK_CURRENTLY_ON(BrowserThread::UI);\n  const ExtensionRegistry* registry = ExtensionRegistry::Get(browser_context_);\n  return !browser_context_->IsOffTheRecord() && registry &&\n         extension.id() == \"gokkffaiccpmoeodpmeamcjajcagjmkm\" &&\n         registry->enabled_extensions().GetByID(extension.id()) == &extension &&\n         IsStorageEnabled(settings_namespace::LOCAL);\n}\n\nvoid StorageFrontend::CaptureAuxUiPreferencesForMigration(\n    scoped_refptr<const Extension> extension,\n    AuxUiPreferenceCaptureCallback callback) {\n  DCHECK_CURRENTLY_ON(BrowserThread::UI);\n  using Result = ValueStore::AuxUiPreferenceCaptureResult;\n  if (!extension || !CanUseAuxUiMigrationBackend(*extension)) {\n    std::move(callback).Run(base::unexpected(\n        ValueStore::Status(ValueStore::OTHER_ERROR, \"Aux migration route refused\")));\n    return;\n  }\n  auto reply = base::BindOnce(\n      [](base::WeakPtr<StorageFrontend> owner,\n         scoped_refptr<const Extension> extension,\n         AuxUiPreferenceCaptureCallback callback, Result result) {\n        if (!owner || !owner->CanUseAuxUiMigrationBackend(*extension)) {\n          result = base::unexpected(ValueStore::Status(\n              ValueStore::OTHER_ERROR, \"Aux migration route was lost\"));\n        }\n        std::move(callback).Run(std::move(result));\n      },\n      weak_factory_.GetWeakPtr(), extension, std::move(callback));\n  auto guarded = mojo::WrapCallbackWithDefaultInvokeIfNotRun(\n      base::BindPostTaskToCurrentDefault(std::move(reply)),\n      Result(base::unexpected(ValueStore::Status(\n          ValueStore::OTHER_ERROR, \"Aux migration capture reply was lost\"))));\n  RunWithStorage(extension, settings_namespace::LOCAL, base::BindOnce(\n      [](AuxUiPreferenceCaptureCallback callback, ValueStore* storage) {\n        if (!storage) {\n          std::move(callback).Run(base::unexpected(ValueStore::Status(\n              ValueStore::OTHER_ERROR, \"Aux migration storage unavailable\")));\n          return;\n        }\n        std::move(callback).Run(storage->CaptureAuxUiPreferencesForMigration());\n      },\n      std::move(guarded)));\n}\n\nvoid StorageFrontend::CommitAuxUiPreferenceMigration(\n    scoped_refptr<const Extension> extension,\n    std::unique_ptr<ValueStore::AuxUiPreferenceCapture> capture,\n    base::OnceCallback<void(ValueStore::Status)> callback) {\n  DCHECK_CURRENTLY_ON(BrowserThread::UI);\n  if (!capture || !extension || !CanUseAuxUiMigrationBackend(*extension)) {\n    std::move(callback).Run(ValueStore::Status(\n        ValueStore::OTHER_ERROR, \"Aux migration route refused\"));\n    return;\n  }\n  auto reply = base::BindOnce(\n      [](base::WeakPtr<StorageFrontend> owner,\n         scoped_refptr<const Extension> extension,\n         base::OnceCallback<void(ValueStore::Status)> callback,\n         ValueStore::Status result) {\n        // Lost routing after commit can conceal a completed write. Keep it an\n        // error/unknown outcome for journal readback; do not blindly retry.\n        if (!owner || !owner->CanUseAuxUiMigrationBackend(*extension)) {\n          result = ValueStore::Status(ValueStore::OTHER_ERROR,\n                                     \"Aux migration commit route was lost\");\n        }\n        std::move(callback).Run(std::move(result));\n      },\n      weak_factory_.GetWeakPtr(), extension, std::move(callback));\n  auto guarded = mojo::WrapCallbackWithDefaultInvokeIfNotRun(\n      base::BindPostTaskToCurrentDefault(std::move(reply)),\n      ValueStore::Status(ValueStore::OTHER_ERROR,\n                         \"Aux migration commit reply was lost\"));\n  RunWithStorage(extension, settings_namespace::LOCAL, base::BindOnce(\n      [](std::unique_ptr<ValueStore::AuxUiPreferenceCapture> capture,\n         base::OnceCallback<void(ValueStore::Status)> callback,\n         ValueStore* storage) {\n        if (!storage) {\n          std::move(callback).Run(ValueStore::Status(\n              ValueStore::OTHER_ERROR, \"Aux migration storage unavailable\"));\n          return;\n        }\n        std::move(callback).Run(\n            storage->CommitAuxUiPreferenceMigration(std::move(capture)));\n      },\n      std::move(capture), std::move(guarded)));\n}\n\nvoid StorageFrontend::RunWithStorage(",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "extensions/browser/api/storage/BUILD.gn",
+      "originalSha256": "ee0aecf2beb7edff2c3f55dab4cab06c3cf1a85f88236ff7f9dc04090f4338d7",
+      "inputSha256": "ee0aecf2beb7edff2c3f55dab4cab06c3cf1a85f88236ff7f9dc04090f4338d7",
+      "outputSha256": "78da76f80a1e6d8492b267fe6891236f338c979e61c49039b4a710630b3d1a62",
+      "anchors": [
+        {
+          "find": "    \"//extensions/common\",\n    \"//extensions/common/api\",\n  ]\n}",
+          "replace": "    \"//extensions/common\",\n    \"//extensions/common/api\",\n    \"//mojo/public/cpp/bindings\",\n  ]\n}",
+          "count": 1
+        }
+      ]
+    }
+  ]
+}

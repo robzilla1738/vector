@@ -1,0 +1,354 @@
+{
+  "format": "aux.ui-native-capture-journal.daemon-source-composition.v1",
+  "predecessorManifest": "docs/integration/proposed/standard-profile-isolation/integration/daemon-link-a6-inputs.json",
+  "predecessorManifestSha256": "051d3207b4f529c6c9d67f28bfeed78de151b8779a68e58f5886496b8a7ff76d",
+  "sourcePlanSha256": "1da803b7f789f83579e86dd5e513652fded9f110766d243023de34e6c5e7d8a2",
+  "typecheckReceiptSha256": "dc198e71e3c460c93d321516735ba4d55f69a9ac8380def2274206c044419007",
+  "sources": [
+    {
+      "predecessor": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-native-p256-envelope-port/source/EnvelopeRecords.swift",
+      "predecessorSha256": "e6b8b6bcae9f6b34cc5dfe757e5f0130297f1c4c3bae81636387a06e24dc34d6",
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-native-p256-envelope-port/source/EnvelopeRecords.swift",
+      "sha256": "e6b8b6bcae9f6b34cc5dfe757e5f0130297f1c4c3bae81636387a06e24dc34d6",
+      "changed": false
+    },
+    {
+      "predecessor": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-native-p256-envelope-port/source/RecoveredP256Authority.swift",
+      "predecessorSha256": "0713e381797ca552d1740e41729445c014347f476c01d1c7290663a606bdfcff",
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-native-p256-envelope-port/source/RecoveredP256Authority.swift",
+      "sha256": "0713e381797ca552d1740e41729445c014347f476c01d1c7290663a606bdfcff",
+      "changed": false
+    },
+    {
+      "predecessor": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-native-p256-envelope-port/source/AuxNativeEnvelopeV2.swift",
+      "predecessorSha256": "7041372ba6bdaf73a6a81422950d306c66e2ac06c78158efce20836f5a1a296f",
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-native-p256-envelope-port/source/AuxNativeEnvelopeV2.swift",
+      "sha256": "7041372ba6bdaf73a6a81422950d306c66e2ac06c78158efce20836f5a1a296f",
+      "changed": false
+    },
+    {
+      "predecessor": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-native-pq-continuation/source/PqEnvelopeRecords.swift",
+      "predecessorSha256": "ab0caa18e08af604c94b2d1f70f5ae04e4e56bf9678578861214593a51a075fc",
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-native-pq-continuation/source/PqEnvelopeRecords.swift",
+      "sha256": "ab0caa18e08af604c94b2d1f70f5ae04e4e56bf9678578861214593a51a075fc",
+      "changed": false
+    },
+    {
+      "predecessor": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-native-pq-continuation/source/RecoveredPqAuthority.swift",
+      "predecessorSha256": "01a893c2939606692da02249b0abc264ca5a80d2a4fd10bcacf9888688b65e42",
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-native-pq-continuation/source/RecoveredPqAuthority.swift",
+      "sha256": "01a893c2939606692da02249b0abc264ca5a80d2a4fd10bcacf9888688b65e42",
+      "changed": false
+    },
+    {
+      "predecessor": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-native-signing-port/source/RecoveredP256SigningAuthority.swift",
+      "predecessorSha256": "d678c329635f69fe1bbfaad0d82cd8a3bf2d422c7133adaa42d5050dada26ac4",
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-native-signing-port/source/RecoveredP256SigningAuthority.swift",
+      "sha256": "d678c329635f69fe1bbfaad0d82cd8a3bf2d422c7133adaa42d5050dada26ac4",
+      "changed": false
+    },
+    {
+      "predecessor": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-native-signing-port/source/RecoveredPqSigningAuthority.swift",
+      "predecessorSha256": "44a2ab0825edb95066db8fb1d1a4ef8f18393f372467a256848693d90651916f",
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-native-signing-port/source/RecoveredPqSigningAuthority.swift",
+      "sha256": "44a2ab0825edb95066db8fb1d1a4ef8f18393f372467a256848693d90651916f",
+      "changed": false
+    },
+    {
+      "predecessor": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-native-inbox-v2/source/AuxInstallationCommandCore.swift",
+      "predecessorSha256": "9009863cb5858f798eea3cb089964113c85ce706d7d02ee9bbcd5c08274ff947",
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-native-inbox-v2/source/AuxInstallationCommandCore.swift",
+      "sha256": "9009863cb5858f798eea3cb089964113c85ce706d7d02ee9bbcd5c08274ff947",
+      "changed": false
+    },
+    {
+      "predecessor": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-fresh-installation-factory/source/AuxFreshInstallationFactory.swift",
+      "predecessorSha256": "25e041d9ccc738b9cde9110b3790a6cd205dcd6ca2d4ea2965d25be9fe291086",
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-fresh-installation-factory/source/AuxFreshInstallationFactory.swift",
+      "sha256": "25e041d9ccc738b9cde9110b3790a6cd205dcd6ca2d4ea2965d25be9fe291086",
+      "changed": false
+    },
+    {
+      "predecessor": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-fresh-four-row-preparation/source/AuxFreshFourRowPreparation.swift",
+      "predecessorSha256": "bd7212b3061e6bcecd3a8c52490b8ebb29a3abb28123d67e75f9379c9ac342cb",
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-fresh-four-row-preparation/source/AuxFreshFourRowPreparation.swift",
+      "sha256": "bd7212b3061e6bcecd3a8c52490b8ebb29a3abb28123d67e75f9379c9ac342cb",
+      "changed": false
+    },
+    {
+      "predecessor": "/private/tmp/aux-final-native-link/docs/integration/proposed/final-completion/fresh-owner/source/AuxNativeFreshReservationLeaseRegistry.swift",
+      "predecessorSha256": "9d52ce0da42fe7e1b5ba1aad0cb4b9c0849592dc894c7c725f11dd64229cb39d",
+      "path": "/private/tmp/aux-final-native-link/docs/integration/proposed/final-completion/fresh-owner/source/AuxNativeFreshReservationLeaseRegistry.swift",
+      "sha256": "9d52ce0da42fe7e1b5ba1aad0cb4b9c0849592dc894c7c725f11dd64229cb39d",
+      "changed": false
+    },
+    {
+      "predecessor": "/private/tmp/aux-browser-root-restart/docs/integration/proposed/profile-isolation-recovery/restart/source/AuxFreshBootstrapPolicy.swift",
+      "predecessorSha256": "4aedad8ea6875c2d5aa8c51c05563c8cc4a094a901bdf05eec1f33f1ae0a9b22",
+      "path": "/private/tmp/aux-browser-root-restart/docs/integration/proposed/profile-isolation-recovery/restart/source/AuxFreshBootstrapPolicy.swift",
+      "sha256": "4aedad8ea6875c2d5aa8c51c05563c8cc4a094a901bdf05eec1f33f1ae0a9b22",
+      "changed": false
+    },
+    {
+      "predecessor": "/private/tmp/aux-final-native-link/docs/integration/proposed/final-completion/native/exec-parent/source/AuxSignedFreshBootstrapPolicyLoader.swift",
+      "predecessorSha256": "5932be30b0230f57fa09f88b28770ef9ddc016944f1d3b02e39fd9704faa0877",
+      "path": "/private/tmp/aux-final-native-link/docs/integration/proposed/final-completion/native/exec-parent/source/AuxSignedFreshBootstrapPolicyLoader.swift",
+      "sha256": "5932be30b0230f57fa09f88b28770ef9ddc016944f1d3b02e39fd9704faa0877",
+      "changed": false
+    },
+    {
+      "predecessor": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-fresh-native-secure-capture/source/AuxFreshNativeSecureCapture.swift",
+      "predecessorSha256": "b3230449886e1d1705345bbdf724952d90a4fefbd17c04cc594db6b8268c6e81",
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-fresh-native-secure-capture/source/AuxFreshNativeSecureCapture.swift",
+      "sha256": "b3230449886e1d1705345bbdf724952d90a4fefbd17c04cc594db6b8268c6e81",
+      "changed": false
+    },
+    {
+      "predecessor": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-native-fresh-stage-reconciliation/source/NativeFreshBootstrapJournal.swift",
+      "predecessorSha256": "471a3418d616342f87d03e538235fbae25bd26c9618c9cb61b1457a6015092b0",
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-native-fresh-stage-reconciliation/source/NativeFreshBootstrapJournal.swift",
+      "sha256": "471a3418d616342f87d03e538235fbae25bd26c9618c9cb61b1457a6015092b0",
+      "changed": false
+    },
+    {
+      "predecessor": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-native-fresh-retained-journal/source/PrivateNativeFreshBootstrapJournalStore.swift",
+      "predecessorSha256": "41acf84d6c2828d4093bb0efa47568408e3e69c9006fea628f587085aa0c3114",
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-native-fresh-retained-journal/source/PrivateNativeFreshBootstrapJournalStore.swift",
+      "sha256": "41acf84d6c2828d4093bb0efa47568408e3e69c9006fea628f587085aa0c3114",
+      "changed": false
+    },
+    {
+      "predecessor": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-native-fresh-target-cohort-lease/source/NativeFreshTargetJournal.swift",
+      "predecessorSha256": "28ee6d0e4a9705ab4c67e160fdb00686cdc64b89be7a6c7f9884e7ddbaef4172",
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-native-fresh-target-cohort-lease/source/NativeFreshTargetJournal.swift",
+      "sha256": "28ee6d0e4a9705ab4c67e160fdb00686cdc64b89be7a6c7f9884e7ddbaef4172",
+      "changed": false
+    },
+    {
+      "predecessor": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-native-fresh-target-coordinator/source/PrivateNativeFreshTargetJournalStore.swift",
+      "predecessorSha256": "d7cdbe6b4326d5209d912149aceba8658aefa44e5e63d3089443c8c146d34b52",
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-native-fresh-target-coordinator/source/PrivateNativeFreshTargetJournalStore.swift",
+      "sha256": "d7cdbe6b4326d5209d912149aceba8658aefa44e5e63d3089443c8c146d34b52",
+      "changed": false
+    },
+    {
+      "predecessor": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-native-fresh-runtime-consumer/source/AuxNativeFreshTargetCoordinator.swift",
+      "predecessorSha256": "6f9a1449828ed324a18375ead6a24faafbc0f6b461a39354f5c298feea35e50f",
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-native-fresh-runtime-consumer/source/AuxNativeFreshTargetCoordinator.swift",
+      "sha256": "6f9a1449828ed324a18375ead6a24faafbc0f6b461a39354f5c298feea35e50f",
+      "changed": false
+    },
+    {
+      "predecessor": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-native-fresh-target-boundary/source/AuxNativeFreshTargetBoundary.swift",
+      "predecessorSha256": "93ed889ac25ce89c0835e26656b32e824fa552b76a3c12456f07846d90785c2a",
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-native-fresh-target-boundary/source/AuxNativeFreshTargetBoundary.swift",
+      "sha256": "93ed889ac25ce89c0835e26656b32e824fa552b76a3c12456f07846d90785c2a",
+      "changed": false
+    },
+    {
+      "predecessor": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-runtime-target-capture/source/AuxRuntimeTargetCapture.swift",
+      "predecessorSha256": "a20562a0776d0e5a0992f2c5568243f522fd37909183a952027219338d3430f0",
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-runtime-target-capture/source/AuxRuntimeTargetCapture.swift",
+      "sha256": "a20562a0776d0e5a0992f2c5568243f522fd37909183a952027219338d3430f0",
+      "changed": false
+    },
+    {
+      "predecessor": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-native-fresh-runtime-consumer/source/AuxSecureStore.swift",
+      "predecessorSha256": "24fbf31b9a40228a4744bb094b475b096017dd29df62e7c97c8d0dfa14399a58",
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-native-fresh-runtime-consumer/source/AuxSecureStore.swift",
+      "sha256": "24fbf31b9a40228a4744bb094b475b096017dd29df62e7c97c8d0dfa14399a58",
+      "changed": false
+    },
+    {
+      "predecessor": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-native-fresh-runtime-readiness/source/ScopedAuxCommandContext.swift",
+      "predecessorSha256": "c11bed197cc847a3743dbd8ce8940b56890d3d1d47da9f16bb39f81004c6b7e1",
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-native-fresh-runtime-readiness/source/ScopedAuxCommandContext.swift",
+      "sha256": "c11bed197cc847a3743dbd8ce8940b56890d3d1d47da9f16bb39f81004c6b7e1",
+      "changed": false
+    },
+    {
+      "predecessor": "/private/tmp/aux-standard-native-source-20261023-a4/AuxOwnedCommandDispatcher.swift",
+      "predecessorSha256": "85153a74b4fc12b5e0374ac58ecdc95f588835b10b38811bf2fb6b267ab1f6b1",
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/ui-native-capture-journal-a1/source/AuxOwnedCommandDispatcher.swift",
+      "sha256": "dd1930e4def3fc0796b5850e9c497cfcdc37350f2339a265deae8b337482921b",
+      "changed": true
+    },
+    {
+      "predecessor": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-native-fresh-runtime-readiness/source/NativeFreshRuntimeCapturedContext.swift",
+      "predecessorSha256": "76d83aa5f418118bbd018bf8bd7c64da707ca69d86631509ba7c73c391ee99c4",
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-native-fresh-runtime-readiness/source/NativeFreshRuntimeCapturedContext.swift",
+      "sha256": "76d83aa5f418118bbd018bf8bd7c64da707ca69d86631509ba7c73c391ee99c4",
+      "changed": false
+    },
+    {
+      "predecessor": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-owned-dispatch-lifetime/source/AuxOSDrainResult.swift",
+      "predecessorSha256": "9a5886c30591940594906fb6ffd57ce4648933269414bd96ce136e3c4448579f",
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-owned-dispatch-lifetime/source/AuxOSDrainResult.swift",
+      "sha256": "9a5886c30591940594906fb6ffd57ce4648933269414bd96ce136e3c4448579f",
+      "changed": false
+    },
+    {
+      "predecessor": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-native-fresh-runtime-account-lock-revalidation/source/AuxAccountsCskCoordinator.swift",
+      "predecessorSha256": "4cf920a8be299e95314ca0324c3e5083e23762f92f5c556b7e6554a8e954feef",
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-native-fresh-runtime-account-lock-revalidation/source/AuxAccountsCskCoordinator.swift",
+      "sha256": "4cf920a8be299e95314ca0324c3e5083e23762f92f5c556b7e6554a8e954feef",
+      "changed": false
+    },
+    {
+      "predecessor": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-native-macos-utilities/source/AuxOSJobCustody.swift",
+      "predecessorSha256": "ef8f44ebc2da8633bbff8e527dced516c49d3d77949b63aac72f2b8cc9f043c4",
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-native-macos-utilities/source/AuxOSJobCustody.swift",
+      "sha256": "ef8f44ebc2da8633bbff8e527dced516c49d3d77949b63aac72f2b8cc9f043c4",
+      "changed": false
+    },
+    {
+      "predecessor": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-native-macos-utilities/source/AuxMacOSUtilityCommandCore.swift",
+      "predecessorSha256": "625388093933d923c14e66766f825bf5f49638b4d71299b535e918df87864dc8",
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-native-macos-utilities/source/AuxMacOSUtilityCommandCore.swift",
+      "sha256": "625388093933d923c14e66766f825bf5f49638b4d71299b535e918df87864dc8",
+      "changed": false
+    },
+    {
+      "predecessor": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-native-macos-utilities/source/AuxUtilityCompletion.swift",
+      "predecessorSha256": "fdf573db59912ed7288984e8eee958adf9c5455a88707cb0f78ff29d0d5d20f1",
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-native-macos-utilities/source/AuxUtilityCompletion.swift",
+      "sha256": "fdf573db59912ed7288984e8eee958adf9c5455a88707cb0f78ff29d0d5d20f1",
+      "changed": false
+    },
+    {
+      "predecessor": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-native-macos-utilities/source/AuxAppKitUtilityBoundary.swift",
+      "predecessorSha256": "04ee53525717955c107661f49de5be311ef08543fe07ad47d1da7e94537d743d",
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-native-macos-utilities/source/AuxAppKitUtilityBoundary.swift",
+      "sha256": "04ee53525717955c107661f49de5be311ef08543fe07ad47d1da7e94537d743d",
+      "changed": false
+    },
+    {
+      "predecessor": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-native-fresh-runtime-readiness/source/AuxPreparedFreshRuntimeProvider.swift",
+      "predecessorSha256": "e62a251dde870dec2aac77c457dda52f8567ed03df7f925ae9b268d94087c320",
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-native-fresh-runtime-readiness/source/AuxPreparedFreshRuntimeProvider.swift",
+      "sha256": "e62a251dde870dec2aac77c457dda52f8567ed03df7f925ae9b268d94087c320",
+      "changed": false
+    },
+    {
+      "predecessor": "/private/tmp/aux-final-native-link/docs/integration/proposed/final-completion/fresh-owner/source/AuxFreshNativeHome.swift",
+      "predecessorSha256": "d7542cc9a3ec48de3af729fc8d5bdf90bf89daf8262b21b263995aeb012da12b",
+      "path": "/private/tmp/aux-final-native-link/docs/integration/proposed/final-completion/fresh-owner/source/AuxFreshNativeHome.swift",
+      "sha256": "d7542cc9a3ec48de3af729fc8d5bdf90bf89daf8262b21b263995aeb012da12b",
+      "changed": false
+    },
+    {
+      "predecessor": "/private/tmp/aux-final-native-link/docs/integration/proposed/final-completion/fresh-owner/source/AuxResumedFreshNativeHome.swift",
+      "predecessorSha256": "81f659ea4f10b27f559628f9eebba2baacc4c8f3bd280eb5c6bbb8c10153485f",
+      "path": "/private/tmp/aux-final-native-link/docs/integration/proposed/final-completion/fresh-owner/source/AuxResumedFreshNativeHome.swift",
+      "sha256": "81f659ea4f10b27f559628f9eebba2baacc4c8f3bd280eb5c6bbb8c10153485f",
+      "changed": false
+    },
+    {
+      "predecessor": "/private/tmp/aux-standard-native-source-20261023-a4/AuxNativeFreshStageCoordinator.swift",
+      "predecessorSha256": "6893e93cbcedebbf9fb81b0e84c138d15b68c750dc0d2e75308f41b0f618168a",
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/ui-native-capture-journal-a1/source/AuxNativeFreshStageCoordinator.swift",
+      "sha256": "963436dbbbbe9ab779d48689dcd2f97243059c45356b150f447f916cc2ffc1fc",
+      "changed": true
+    },
+    {
+      "predecessor": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-native-fresh-cold-bootstrap/source/AuxNativeFreshBootstrapFactory.swift",
+      "predecessorSha256": "b5299aac3a874d193cfbcab06dbc5a28380eede6db1f19c8fd8bc39a280783cd",
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-native-fresh-cold-bootstrap/source/AuxNativeFreshBootstrapFactory.swift",
+      "sha256": "b5299aac3a874d193cfbcab06dbc5a28380eede6db1f19c8fd8bc39a280783cd",
+      "changed": false
+    },
+    {
+      "predecessor": "/private/tmp/aux-profile-startup-next/docs/integration/proposed/profile-isolation-next/startup/v5-source/AuxAuthenticatedFreshColdBootstrap.swift",
+      "predecessorSha256": "2f49786b05871c1a4473716f4f28a2febc898dbd31625aeb6cc115341459bd4b",
+      "path": "/private/tmp/aux-profile-startup-next/docs/integration/proposed/profile-isolation-next/startup/v5-source/AuxAuthenticatedFreshColdBootstrap.swift",
+      "sha256": "2f49786b05871c1a4473716f4f28a2febc898dbd31625aeb6cc115341459bd4b",
+      "changed": false
+    },
+    {
+      "predecessor": "/private/tmp/aux-standard-native-source-20261023-a4/AuxFreshColdInstallerGuard.swift",
+      "predecessorSha256": "027912387acceece77e627e53613e6964c102e2b79fa9673455cdc81e397ac8a",
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/ui-native-capture-journal-a1/source/AuxFreshColdInstallerGuard.swift",
+      "sha256": "36de079ca488250033b3c20f0d86ee2134a73dffa3c6f81bd87f88a8f556aa58",
+      "changed": true
+    },
+    {
+      "predecessor": "/private/tmp/aux-profile-startup-next/docs/integration/proposed/profile-isolation-next/startup/v5-source/AuxFreshColdBootstrapNativeBridge.swift",
+      "predecessorSha256": "dde9f4e2fbeac6d421c29296a7f1fb911966db74f1bee9837dda1cbd7ff1c6c4",
+      "path": "/private/tmp/aux-profile-startup-next/docs/integration/proposed/profile-isolation-next/startup/v5-source/AuxFreshColdBootstrapNativeBridge.swift",
+      "sha256": "dde9f4e2fbeac6d421c29296a7f1fb911966db74f1bee9837dda1cbd7ff1c6c4",
+      "changed": false
+    },
+    {
+      "predecessor": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-native-fresh-runtime-readiness/source/AuxNativeFreshGuardFailure.swift",
+      "predecessorSha256": "3467707af5da2b0337f6b105ec82425885b4531a4e0ce5811003a7364f002f63",
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-native-fresh-runtime-readiness/source/AuxNativeFreshGuardFailure.swift",
+      "sha256": "3467707af5da2b0337f6b105ec82425885b4531a4e0ce5811003a7364f002f63",
+      "changed": false
+    },
+    {
+      "predecessor": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-native-sealed-parent-entry/source/AuxSealedOuterBrowserParent.swift",
+      "predecessorSha256": "391b11b7c853fe06b52f501c919898fec890490a7ee6d2f9eed9ed173e7b2475",
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-native-sealed-parent-entry/source/AuxSealedOuterBrowserParent.swift",
+      "sha256": "391b11b7c853fe06b52f501c919898fec890490a7ee6d2f9eed9ed173e7b2475",
+      "changed": false
+    },
+    {
+      "predecessor": "/private/tmp/aux-native-current-entry-package/docs/integration/proposed/aux-native-current-entry-package/source/AuxSealedNativeDaemonEntry.swift",
+      "predecessorSha256": "1076fd852428f0db4d0ba4f2a2898b05f88656d9bec36d272418a1fe2bdac2b8",
+      "path": "/private/tmp/aux-native-current-entry-package/docs/integration/proposed/aux-native-current-entry-package/source/AuxSealedNativeDaemonEntry.swift",
+      "sha256": "1076fd852428f0db4d0ba4f2a2898b05f88656d9bec36d272418a1fe2bdac2b8",
+      "changed": false
+    },
+    {
+      "predecessor": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/daemon-crash-registration-close-a1/source/AuxDevelopmentOwnerDrain.swift",
+      "predecessorSha256": "990a816ff7ba364144e532bd6959699bdbf3a0efc8bebf1507c55da72bdecaa2",
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/daemon-crash-registration-close-a1/source/AuxDevelopmentOwnerDrain.swift",
+      "sha256": "990a816ff7ba364144e532bd6959699bdbf3a0efc8bebf1507c55da72bdecaa2",
+      "changed": false
+    },
+    {
+      "predecessor": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-native-daemon-main/source/AuxFreshRuntimeOwnerRelease.swift",
+      "predecessorSha256": "6924508e172a583e041575b496a02ec99de5cfeb412a1f6dc40d8c871d155048",
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-native-daemon-main/source/AuxFreshRuntimeOwnerRelease.swift",
+      "sha256": "6924508e172a583e041575b496a02ec99de5cfeb412a1f6dc40d8c871d155048",
+      "changed": false
+    },
+    {
+      "predecessor": "/private/tmp/aux-delivery-restart/docs/integration/proposed/profile-isolation-delivery/restart/source/AuxPreparedDaemonAuthority.swift",
+      "predecessorSha256": "1073843482b774f410225436cb7cc6e2bfd48126ef9dedd3d4b81e671aad32c0",
+      "path": "/private/tmp/aux-delivery-restart/docs/integration/proposed/profile-isolation-delivery/restart/source/AuxPreparedDaemonAuthority.swift",
+      "sha256": "1073843482b774f410225436cb7cc6e2bfd48126ef9dedd3d4b81e671aad32c0",
+      "changed": false
+    },
+    {
+      "predecessor": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-native-inbox-v2/source/AuxInboxV2Key.swift",
+      "predecessorSha256": "3286feaa01b4c4c108883cd2dc0dcceef082de5dea5a88248a87445abb4b2a4a",
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-native-inbox-v2/source/AuxInboxV2Key.swift",
+      "sha256": "3286feaa01b4c4c108883cd2dc0dcceef082de5dea5a88248a87445abb4b2a4a",
+      "changed": false
+    },
+    {
+      "predecessor": "/private/tmp/aux-profile-startup-next/docs/integration/proposed/profile-isolation-next/startup/v5-source/AuxNativeTaskLayout.swift",
+      "predecessorSha256": "4b27a1008a34640976e2e40a5c47fb08fdd28591e6a6df12522464d2474bd8dc",
+      "path": "/private/tmp/aux-profile-startup-next/docs/integration/proposed/profile-isolation-next/startup/v5-source/AuxNativeTaskLayout.swift",
+      "sha256": "4b27a1008a34640976e2e40a5c47fb08fdd28591e6a6df12522464d2474bd8dc",
+      "changed": false
+    },
+    {
+      "predecessor": "/private/tmp/aux-standard-native-source-20261023-a4/AuxBrowserFreshRootAdmission.swift",
+      "predecessorSha256": "435ef261a1abab8e5c573368941337e714d00b167f71c81268d5dace4b10ca09",
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/ui-native-capture-journal-a1/source/AuxBrowserFreshRootAdmission.swift",
+      "sha256": "ca63849e2858f9047641ed354bd310bba38ac618f0e10cd274656f817350c0ce",
+      "changed": true
+    }
+  ],
+  "sourceAssociationPassed": true,
+  "sourceCount": 48,
+  "changedSourceCount": 4,
+  "linked": false,
+  "packageIntegrated": false,
+  "nativeApiExecuted": false,
+  "filesystemFixtureExecuted": false,
+  "migrationActivationAuthorized": false,
+  "runtimeAcceptance": false
+}

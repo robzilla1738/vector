@@ -1,0 +1,47 @@
+{
+  "format": "aux.ui-extension-binding.association.actual.v1",
+  "passed": true,
+  "productionReceiptSha256": "bca9eaa4ce5b66efa7cccb950d85b9e4495673a322c2b13128f6e46447aa787f",
+  "fixtureReceiptSha256": "75d29fc9a8fe330bdda7197d2ea0bc9c1b218428a8f031accce1042abd7fae5b",
+  "originalFixturePlanSha256": "45a3eb92b98b992067583cd747c4dc4e6bf2c8a96658903f21c4b3b953be409f",
+  "activeFixturePlanSha256": "67cc63539a5a4bb0c2c26a3353b3d102a4d084a2e01125121a6d58c7616ab0bd",
+  "seriesReceiptSha256": "250380b495f617188d195c5f8f8347c60c308a7cebeb30976d5545809a3a7b3e",
+  "compiledFixtureBytesUnchanged": true,
+  "gnFormat": [
+    {
+      "path": "extensions/browser/BUILD.gn",
+      "sha256": "0c7cedbe785f4cd33bc8d237ff3713e4d6f7acfb09933c26b90837dffe01c99a",
+      "command": [
+        "python3",
+        "/Users/rcourson/Documents/Vibe/web/scripts/native-build.py",
+        "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/buildtools/mac/gn",
+        "format",
+        "--dry-run",
+        "/private/tmp/aux-extension-native-binding-overlay-20261024-a1/extensions/browser/BUILD.gn"
+      ],
+      "exitCode": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "path": "extensions/browser/api/storage/BUILD.gn",
+      "sha256": "78da76f80a1e6d8492b267fe6891236f338c979e61c49039b4a710630b3d1a62",
+      "command": [
+        "python3",
+        "/Users/rcourson/Documents/Vibe/web/scripts/native-build.py",
+        "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/buildtools/mac/gn",
+        "format",
+        "--dry-run",
+        "/private/tmp/aux-extension-native-binding-overlay-20261024-a1/extensions/browser/api/storage/BUILD.gn"
+      ],
+      "exitCode": 0,
+      "stdout": "",
+      "stderr": ""
+    }
+  ],
+  "oldGnRegistrationAccepted": false,
+  "fixtureRecompiled": false,
+  "testsExecuted": false,
+  "productExecuted": false,
+  "runtimeAcceptance": false
+}

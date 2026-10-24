@@ -1,0 +1,111 @@
+// Copyright 2026 Aux Contributors
+// Use of this source code is governed by a BSD-style license in //LICENSE.
+
+#include "extensions/browser/api/storage/settings_storage_quota_enforcer.h"
+#include "extensions/browser/api/storage/weak_unlimited_settings_storage.h"
+
+#include <memory>
+#include <utility>
+
+#include "base/files/scoped_temp_dir.h"
+#include "base/test/task_environment.h"
+#include "components/value_store/leveldb_value_store.h"
+#include "components/value_store/testing_value_store.h"
+#include "testing/gtest/include/gtest/gtest.h"
+#include "third_party/leveldatabase/src/include/leveldb/write_batch.h"
+
+namespace extensions {
+namespace {
+using value_store::ValueStore;
+constexpr SettingsStorageQuotaEnforcer::Limits kLimits = {1024 * 1024,
+                                                        1024 * 1024, 1000};
+constexpr char kOldCapture[] = "aside.capture.enabled";
+constexpr char kNewCapture[] = "aux.capture.enabled.v2";
+
+class AuxUiMigrationDecoratorTest : public testing::Test {
+ protected:
+  std::unique_ptr<SettingsStorageQuotaEnforcer> MakeStore(
+      const base::FilePath& directory,
+      bool capture_enabled) {
+    auto backend = std::make_unique<value_store::LeveldbValueStore>("Test", directory);
+    EXPECT_TRUE(backend->Set(ValueStore::DEFAULTS, kOldCapture,
+                             base::Value(capture_enabled)).status().ok());
+    return std::make_unique<SettingsStorageQuotaEnforcer>(kLimits,
+                                                         std::move(backend));
+  }
+  base::test::TaskEnvironment tasks_;
+};
+
+TEST_F(AuxUiMigrationDecoratorTest, BothDecoratorsPreserveTokenAndRefreshQuota) {
+  base::ScopedTempDir directory;
+  ASSERT_TRUE(directory.CreateUniqueTempDir());
+  auto backend = std::make_unique<value_store::LeveldbValueStore>("Test", directory.GetPath());
+  ASSERT_TRUE(backend->Set(ValueStore::DEFAULTS, kOldCapture, base::Value(false)).status().ok());
+  leveldb::WriteBatch original;
+  original.Put("aside.browserColorScheme", "  \"dark\"  ");
+  ASSERT_TRUE(backend->WriteToDbForTest(&original));
+  SettingsStorageQuotaEnforcer quota(kLimits, std::move(backend));
+  WeakUnlimitedSettingsStorage unlimited(&quota);
+  EXPECT_GT(unlimited.GetBytesInUse(kOldCapture), 0u);
+  auto capture = unlimited.CaptureAuxUiPreferencesForMigration();
+  ASSERT_TRUE(capture.has_value());
+  auto data_copy = (*capture)->CopyRecordsForNativeJournal();
+  EXPECT_EQ(data_copy[0], "  \"dark\"  ");
+  // Journal data cannot alter the immutable expected values in the token.
+  data_copy[2] = "true";
+  ASSERT_TRUE(unlimited.CommitAuxUiPreferenceMigration(std::move(*capture)).ok());
+  EXPECT_EQ(unlimited.GetBytesInUse(kOldCapture), 0u);
+  EXPECT_EQ(unlimited.GetBytesInUse(kNewCapture), sizeof(kNewCapture) - 1 + 5);
+  auto after = unlimited.CaptureAuxUiPreferencesForMigration();
+  ASSERT_TRUE(after.has_value());
+  const auto records = (*after)->CopyRecordsForNativeJournal();
+  EXPECT_FALSE(records[0]);
+  EXPECT_EQ(records[1], "  \"dark\"  ");
+  EXPECT_FALSE(records[2]);
+  EXPECT_EQ(records[3], "false");
+}
+
+TEST_F(AuxUiMigrationDecoratorTest, DifferentBackendCannotConsumeCapture) {
+  base::ScopedTempDir first_directory, second_directory;
+  ASSERT_TRUE(first_directory.CreateUniqueTempDir());
+  ASSERT_TRUE(second_directory.CreateUniqueTempDir());
+  auto first = MakeStore(first_directory.GetPath(), false);
+  auto second = MakeStore(second_directory.GetPath(), true);
+  auto capture = first->CaptureAuxUiPreferencesForMigration();
+  ASSERT_TRUE(capture.has_value());
+  EXPECT_FALSE(second->CommitAuxUiPreferenceMigration(std::move(*capture)).ok());
+  auto original = first->Get(kOldCapture);
+  ASSERT_TRUE(original.status().ok());
+  EXPECT_EQ(original.settings().FindBool(kOldCapture), false);
+  auto other = second->Get(kOldCapture);
+  ASSERT_TRUE(other.status().ok());
+  EXPECT_EQ(other.settings().FindBool(kOldCapture), true);
+  EXPECT_FALSE(other.settings().contains(kNewCapture));
+}
+
+TEST_F(AuxUiMigrationDecoratorTest, InterveningReadRejectsStaleCapture) {
+  base::ScopedTempDir directory;
+  ASSERT_TRUE(directory.CreateUniqueTempDir());
+  auto store = MakeStore(directory.GetPath(), false);
+  auto capture = store->CaptureAuxUiPreferencesForMigration();
+  ASSERT_TRUE(capture.has_value());
+  ASSERT_TRUE(store->Get(kOldCapture).status().ok());
+  EXPECT_FALSE(store->CommitAuxUiPreferenceMigration(std::move(*capture)).ok());
+  auto original = store->Get(kOldCapture);
+  ASSERT_TRUE(original.status().ok());
+  EXPECT_EQ(original.settings().FindBool(kOldCapture), false);
+  EXPECT_FALSE(original.settings().contains(kNewCapture));
+}
+
+TEST_F(AuxUiMigrationDecoratorTest, UnsupportedBackendDoesNotReportCompletion) {
+  value_store::TestingValueStore unsupported;
+  ASSERT_TRUE(unsupported.Set(ValueStore::DEFAULTS, kOldCapture,
+                               base::Value(false)).status().ok());
+  EXPECT_FALSE(unsupported.CaptureAuxUiPreferencesForMigration().has_value());
+  EXPECT_FALSE(unsupported.CommitAuxUiPreferenceMigration(nullptr).ok());
+  auto original = unsupported.Get(kOldCapture);
+  ASSERT_TRUE(original.status().ok());
+  EXPECT_EQ(original.settings().FindBool(kOldCapture), false);
+}
+}  // namespace
+}  // namespace extensions

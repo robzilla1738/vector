@@ -1,0 +1,486 @@
+diff --git a/components/value_store/leveldb_value_store.cc b/components/value_store/leveldb_value_store.cc
+--- a/components/value_store/leveldb_value_store.cc
++++ b/components/value_store/leveldb_value_store.cc
+@@ -264,9 +264,6 @@
+ }
+ 
+ 
+-LeveldbValueStore::AuxUiPreferenceCapture::AuxUiPreferenceCapture() = default;
+-LeveldbValueStore::AuxUiPreferenceCapture::~AuxUiPreferenceCapture() = default;
+-
+ LeveldbValueStore::AuxUiPreferenceCaptureResult
+ LeveldbValueStore::CaptureAuxUiPreferencesForMigration() {
+   if (!db()) {
+diff --git a/components/value_store/leveldb_value_store.h b/components/value_store/leveldb_value_store.h
+--- a/components/value_store/leveldb_value_store.h
++++ b/components/value_store/leveldb_value_store.h
+@@ -67,21 +67,9 @@
+   // Call on the owning backend sequence after profile writers are quiesced.
+   // The capture is invalidated by intervening ordinary store operations.
+   // These methods neither grant profile authority nor commit other UI stores.
+-  class AuxUiPreferenceCapture {
+-   public:
+-    ~AuxUiPreferenceCapture();
+-
+-   private:
+-    friend class LeveldbValueStore;
+-    AuxUiPreferenceCapture();
+-    base::WeakPtr<LeveldbValueStore> owner;
+-    std::array<std::optional<std::string>, 6> records;
+-  };
+-  using AuxUiPreferenceCaptureResult =
+-      base::expected<std::unique_ptr<AuxUiPreferenceCapture>, Status>;
+-  AuxUiPreferenceCaptureResult CaptureAuxUiPreferencesForMigration();
++  AuxUiPreferenceCaptureResult CaptureAuxUiPreferencesForMigration() override;
+   Status CommitAuxUiPreferenceMigration(
+-      std::unique_ptr<AuxUiPreferenceCapture> capture);
++      std::unique_ptr<AuxUiPreferenceCapture> capture) override;
+ 
+   // Write directly to the backing levelDB. Only used for testing to cause
+   // corruption in the database.
+diff --git a/components/value_store/value_store.cc b/components/value_store/value_store.cc
+--- a/components/value_store/value_store.cc
++++ b/components/value_store/value_store.cc
+@@ -68,4 +68,22 @@
+ ValueStore::WriteResult& ValueStore::WriteResult::operator=(WriteResult&& rhs) =
+     default;
+ 
++ValueStore::AuxUiPreferenceCapture::AuxUiPreferenceCapture() = default;
++ValueStore::AuxUiPreferenceCapture::~AuxUiPreferenceCapture() = default;
++
++std::array<std::optional<std::string>, 6>
++ValueStore::AuxUiPreferenceCapture::CopyRecordsForNativeJournal() const {
++  return records;
++}
++
++ValueStore::AuxUiPreferenceCaptureResult
++ValueStore::CaptureAuxUiPreferencesForMigration() {
++  return base::unexpected(Status(OTHER_ERROR, "Aux migration backend unsupported"));
++}
++
++ValueStore::Status ValueStore::CommitAuxUiPreferenceMigration(
++    std::unique_ptr<AuxUiPreferenceCapture> capture) {
++  return Status(OTHER_ERROR, "Aux migration backend unsupported");
++}
++
+ }  // namespace value_store
+diff --git a/components/value_store/value_store.h b/components/value_store/value_store.h
+--- a/components/value_store/value_store.h
++++ b/components/value_store/value_store.h
+@@ -7,6 +7,7 @@
+ 
+ #include <stddef.h>
+ 
++#include <array>
+ #include <memory>
+ #include <optional>
+ #include <string>
+@@ -14,6 +15,8 @@
+ #include <vector>
+ 
+ #include "base/functional/callback.h"
++#include "base/memory/weak_ptr.h"
++#include "base/types/expected.h"
+ #include "base/values.h"
+ #include "components/value_store/value_store_change.h"
+ 
+@@ -208,6 +211,29 @@
+ 
+   // Clears the storage.
+   virtual WriteResult Clear() = 0;
++
++  // Native-only capture: private construction by the real LevelDB backend.
++  // Copying its data grants no authority; commit requires the live opaque token.
++  class AuxUiPreferenceCapture {
++   public:
++    ~AuxUiPreferenceCapture();
++    std::array<std::optional<std::string>, 6> CopyRecordsForNativeJournal() const;
++
++   private:
++    friend class LeveldbValueStore;
++    AuxUiPreferenceCapture();
++    base::WeakPtr<ValueStore> owner;
++    std::array<std::optional<std::string>, 6> records;
++  };
++  using AuxUiPreferenceCaptureResult =
++      base::expected<std::unique_ptr<AuxUiPreferenceCapture>, Status>;
++
++  // Unsupported backends refuse. These do not open/repair a DB, close writers
++  // or authorize startup. Existing virtual slot ordering remains unchanged.
++  virtual AuxUiPreferenceCaptureResult CaptureAuxUiPreferencesForMigration();
++  virtual Status CommitAuxUiPreferenceMigration(
++      std::unique_ptr<AuxUiPreferenceCapture> capture);
++
+ };
+ 
+ }  // namespace value_store
+diff --git a/extensions/browser/BUILD.gn b/extensions/browser/BUILD.gn
+--- a/extensions/browser/BUILD.gn
++++ b/extensions/browser/BUILD.gn
+@@ -1085,6 +1085,7 @@
+     "api/proxy/proxy_api_helpers_unittest.cc",
+     "api/runtime/restart_after_delay_api_unittest.cc",
+     "api/runtime/runtime_api_unittest.cc",
++    "api/storage/aux_ui_migration_unittest.cc",
+     "api/storage/session_storage_manager_unittest.cc",
+     "api/storage/settings_quota_unittest.cc",
+     "api/storage/storage_api_unittest.cc",
+diff --git a/extensions/browser/api/storage/BUILD.gn b/extensions/browser/api/storage/BUILD.gn
+--- a/extensions/browser/api/storage/BUILD.gn
++++ b/extensions/browser/api/storage/BUILD.gn
+@@ -67,5 +67,6 @@
+     "//extensions/browser/api:extensions_api_client",
+     "//extensions/common",
+     "//extensions/common/api",
++    "//mojo/public/cpp/bindings",
+   ]
+ }
+diff --git a/extensions/browser/api/storage/aux_ui_migration_unittest.cc b/extensions/browser/api/storage/aux_ui_migration_unittest.cc
+new file mode 100644
+--- /dev/null
++++ b/extensions/browser/api/storage/aux_ui_migration_unittest.cc
+@@ -0,0 +1,111 @@
++// Copyright 2026 Aux Contributors
++// Use of this source code is governed by a BSD-style license in //LICENSE.
++
++#include "extensions/browser/api/storage/settings_storage_quota_enforcer.h"
++#include "extensions/browser/api/storage/weak_unlimited_settings_storage.h"
++
++#include <memory>
++#include <utility>
++
++#include "base/files/scoped_temp_dir.h"
++#include "base/test/task_environment.h"
++#include "components/value_store/leveldb_value_store.h"
++#include "components/value_store/testing_value_store.h"
++#include "testing/gtest/include/gtest/gtest.h"
++#include "third_party/leveldatabase/src/include/leveldb/write_batch.h"
++
++namespace extensions {
++namespace {
++using value_store::ValueStore;
++constexpr SettingsStorageQuotaEnforcer::Limits kLimits = {1024 * 1024,
++                                                        1024 * 1024, 1000};
++constexpr char kOldCapture[] = "aside.capture.enabled";
++constexpr char kNewCapture[] = "aux.capture.enabled.v2";
++
++class AuxUiMigrationDecoratorTest : public testing::Test {
++ protected:
++  std::unique_ptr<SettingsStorageQuotaEnforcer> MakeStore(
++      const base::FilePath& directory,
++      bool capture_enabled) {
++    auto backend = std::make_unique<value_store::LeveldbValueStore>("Test", directory);
++    EXPECT_TRUE(backend->Set(ValueStore::DEFAULTS, kOldCapture,
++                             base::Value(capture_enabled)).status().ok());
++    return std::make_unique<SettingsStorageQuotaEnforcer>(kLimits,
++                                                         std::move(backend));
++  }
++  base::test::TaskEnvironment tasks_;
++};
++
++TEST_F(AuxUiMigrationDecoratorTest, BothDecoratorsPreserveTokenAndRefreshQuota) {
++  base::ScopedTempDir directory;
++  ASSERT_TRUE(directory.CreateUniqueTempDir());
++  auto backend = std::make_unique<value_store::LeveldbValueStore>("Test", directory.GetPath());
++  ASSERT_TRUE(backend->Set(ValueStore::DEFAULTS, kOldCapture, base::Value(false)).status().ok());
++  leveldb::WriteBatch original;
++  original.Put("aside.browserColorScheme", "  \"dark\"  ");
++  ASSERT_TRUE(backend->WriteToDbForTest(&original));
++  SettingsStorageQuotaEnforcer quota(kLimits, std::move(backend));
++  WeakUnlimitedSettingsStorage unlimited(&quota);
++  EXPECT_GT(unlimited.GetBytesInUse(kOldCapture), 0u);
++  auto capture = unlimited.CaptureAuxUiPreferencesForMigration();
++  ASSERT_TRUE(capture.has_value());
++  auto data_copy = (*capture)->CopyRecordsForNativeJournal();
++  EXPECT_EQ(data_copy[0], "  \"dark\"  ");
++  // Journal data cannot alter the immutable expected values in the token.
++  data_copy[2] = "true";
++  ASSERT_TRUE(unlimited.CommitAuxUiPreferenceMigration(std::move(*capture)).ok());
++  EXPECT_EQ(unlimited.GetBytesInUse(kOldCapture), 0u);
++  EXPECT_EQ(unlimited.GetBytesInUse(kNewCapture), sizeof(kNewCapture) - 1 + 5);
++  auto after = unlimited.CaptureAuxUiPreferencesForMigration();
++  ASSERT_TRUE(after.has_value());
++  const auto records = (*after)->CopyRecordsForNativeJournal();
++  EXPECT_FALSE(records[0]);
++  EXPECT_EQ(records[1], "  \"dark\"  ");
++  EXPECT_FALSE(records[2]);
++  EXPECT_EQ(records[3], "false");
++}
++
++TEST_F(AuxUiMigrationDecoratorTest, DifferentBackendCannotConsumeCapture) {
++  base::ScopedTempDir first_directory, second_directory;
++  ASSERT_TRUE(first_directory.CreateUniqueTempDir());
++  ASSERT_TRUE(second_directory.CreateUniqueTempDir());
++  auto first = MakeStore(first_directory.GetPath(), false);
++  auto second = MakeStore(second_directory.GetPath(), true);
++  auto capture = first->CaptureAuxUiPreferencesForMigration();
++  ASSERT_TRUE(capture.has_value());
++  EXPECT_FALSE(second->CommitAuxUiPreferenceMigration(std::move(*capture)).ok());
++  auto original = first->Get(kOldCapture);
++  ASSERT_TRUE(original.status().ok());
++  EXPECT_EQ(original.settings().FindBool(kOldCapture), false);
++  auto other = second->Get(kOldCapture);
++  ASSERT_TRUE(other.status().ok());
++  EXPECT_EQ(other.settings().FindBool(kOldCapture), true);
++  EXPECT_FALSE(other.settings().contains(kNewCapture));
++}
++
++TEST_F(AuxUiMigrationDecoratorTest, InterveningReadRejectsStaleCapture) {
++  base::ScopedTempDir directory;
++  ASSERT_TRUE(directory.CreateUniqueTempDir());
++  auto store = MakeStore(directory.GetPath(), false);
++  auto capture = store->CaptureAuxUiPreferencesForMigration();
++  ASSERT_TRUE(capture.has_value());
++  ASSERT_TRUE(store->Get(kOldCapture).status().ok());
++  EXPECT_FALSE(store->CommitAuxUiPreferenceMigration(std::move(*capture)).ok());
++  auto original = store->Get(kOldCapture);
++  ASSERT_TRUE(original.status().ok());
++  EXPECT_EQ(original.settings().FindBool(kOldCapture), false);
++  EXPECT_FALSE(original.settings().contains(kNewCapture));
++}
++
++TEST_F(AuxUiMigrationDecoratorTest, UnsupportedBackendDoesNotReportCompletion) {
++  value_store::TestingValueStore unsupported;
++  ASSERT_TRUE(unsupported.Set(ValueStore::DEFAULTS, kOldCapture,
++                               base::Value(false)).status().ok());
++  EXPECT_FALSE(unsupported.CaptureAuxUiPreferencesForMigration().has_value());
++  EXPECT_FALSE(unsupported.CommitAuxUiPreferenceMigration(nullptr).ok());
++  auto original = unsupported.Get(kOldCapture);
++  ASSERT_TRUE(original.status().ok());
++  EXPECT_EQ(original.settings().FindBool(kOldCapture), false);
++}
++}  // namespace
++}  // namespace extensions
+diff --git a/extensions/browser/api/storage/settings_storage_quota_enforcer.cc b/extensions/browser/api/storage/settings_storage_quota_enforcer.cc
+--- a/extensions/browser/api/storage/settings_storage_quota_enforcer.cc
++++ b/extensions/browser/api/storage/settings_storage_quota_enforcer.cc
+@@ -253,4 +253,19 @@
+   used_per_setting_.erase(it);
+ }
+ 
++ValueStore::AuxUiPreferenceCaptureResult
++SettingsStorageQuotaEnforcer::CaptureAuxUiPreferencesForMigration() {
++  return delegate_->CaptureAuxUiPreferencesForMigration();
++}
++
++ValueStore::Status SettingsStorageQuotaEnforcer::CommitAuxUiPreferenceMigration(
++    std::unique_ptr<AuxUiPreferenceCapture> capture) {
++  // A sync error can have applied the batch. Invalidate on every attempt;
++  // do not read/repair storage here or treat a failed result as success.
++  usage_calculated_ = false;
++  used_total_ = 0;
++  used_per_setting_.clear();
++  return delegate_->CommitAuxUiPreferenceMigration(std::move(capture));
++}
++
+ }  // namespace extensions
+diff --git a/extensions/browser/api/storage/settings_storage_quota_enforcer.h b/extensions/browser/api/storage/settings_storage_quota_enforcer.h
+--- a/extensions/browser/api/storage/settings_storage_quota_enforcer.h
++++ b/extensions/browser/api/storage/settings_storage_quota_enforcer.h
+@@ -57,6 +57,9 @@
+   WriteResult Remove(const std::string& key) override;
+   WriteResult Remove(const std::vector<std::string>& keys) override;
+   WriteResult Clear() override;
++  AuxUiPreferenceCaptureResult CaptureAuxUiPreferencesForMigration() override;
++  Status CommitAuxUiPreferenceMigration(
++      std::unique_ptr<AuxUiPreferenceCapture> capture) override;
+ 
+   value_store::ValueStore* get_delegate_for_test() { return delegate_.get(); }
+ 
+diff --git a/extensions/browser/api/storage/storage_frontend.cc b/extensions/browser/api/storage/storage_frontend.cc
+--- a/extensions/browser/api/storage/storage_frontend.cc
++++ b/extensions/browser/api/storage/storage_frontend.cc
+@@ -19,6 +19,7 @@
+ #include "base/metrics/histogram_functions.h"
+ #include "base/strings/string_util.h"
+ #include "base/strings/stringprintf.h"
++#include "base/task/bind_post_task.h"
+ #include "base/trace_event/trace_event.h"
+ #include "components/value_store/value_store_factory.h"
+ #include "content/public/browser/browser_context.h"
+@@ -35,6 +36,7 @@
+ #include "extensions/common/extension_id.h"
+ #include "extensions/common/mojom/context_type.mojom.h"
+ #include "third_party/leveldatabase/env_chromium.h"
++#include "mojo/public/cpp/bindings/callback_helpers.h"
+ 
+ using content::BrowserContext;
+ using content::BrowserThread;
+@@ -582,6 +584,96 @@
+ bool StorageFrontend::IsStorageEnabled(
+     settings_namespace::Namespace settings_namespace) const {
+   return caches_.contains(settings_namespace);
++}
++
++bool StorageFrontend::CanUseAuxUiMigrationBackend(
++    const Extension& extension) const {
++  DCHECK_CURRENTLY_ON(BrowserThread::UI);
++  const ExtensionRegistry* registry = ExtensionRegistry::Get(browser_context_);
++  return !browser_context_->IsOffTheRecord() && registry &&
++         extension.id() == "gokkffaiccpmoeodpmeamcjajcagjmkm" &&
++         registry->enabled_extensions().GetByID(extension.id()) == &extension &&
++         IsStorageEnabled(settings_namespace::LOCAL);
++}
++
++void StorageFrontend::CaptureAuxUiPreferencesForMigration(
++    scoped_refptr<const Extension> extension,
++    AuxUiPreferenceCaptureCallback callback) {
++  DCHECK_CURRENTLY_ON(BrowserThread::UI);
++  using Result = ValueStore::AuxUiPreferenceCaptureResult;
++  if (!extension || !CanUseAuxUiMigrationBackend(*extension)) {
++    std::move(callback).Run(base::unexpected(
++        ValueStore::Status(ValueStore::OTHER_ERROR, "Aux migration route refused")));
++    return;
++  }
++  auto reply = base::BindOnce(
++      [](base::WeakPtr<StorageFrontend> owner,
++         scoped_refptr<const Extension> extension,
++         AuxUiPreferenceCaptureCallback callback, Result result) {
++        if (!owner || !owner->CanUseAuxUiMigrationBackend(*extension)) {
++          result = base::unexpected(ValueStore::Status(
++              ValueStore::OTHER_ERROR, "Aux migration route was lost"));
++        }
++        std::move(callback).Run(std::move(result));
++      },
++      weak_factory_.GetWeakPtr(), extension, std::move(callback));
++  auto guarded = mojo::WrapCallbackWithDefaultInvokeIfNotRun(
++      base::BindPostTaskToCurrentDefault(std::move(reply)),
++      Result(base::unexpected(ValueStore::Status(
++          ValueStore::OTHER_ERROR, "Aux migration capture reply was lost"))));
++  RunWithStorage(extension, settings_namespace::LOCAL, base::BindOnce(
++      [](AuxUiPreferenceCaptureCallback callback, ValueStore* storage) {
++        if (!storage) {
++          std::move(callback).Run(base::unexpected(ValueStore::Status(
++              ValueStore::OTHER_ERROR, "Aux migration storage unavailable")));
++          return;
++        }
++        std::move(callback).Run(storage->CaptureAuxUiPreferencesForMigration());
++      },
++      std::move(guarded)));
++}
++
++void StorageFrontend::CommitAuxUiPreferenceMigration(
++    scoped_refptr<const Extension> extension,
++    std::unique_ptr<ValueStore::AuxUiPreferenceCapture> capture,
++    base::OnceCallback<void(ValueStore::Status)> callback) {
++  DCHECK_CURRENTLY_ON(BrowserThread::UI);
++  if (!capture || !extension || !CanUseAuxUiMigrationBackend(*extension)) {
++    std::move(callback).Run(ValueStore::Status(
++        ValueStore::OTHER_ERROR, "Aux migration route refused"));
++    return;
++  }
++  auto reply = base::BindOnce(
++      [](base::WeakPtr<StorageFrontend> owner,
++         scoped_refptr<const Extension> extension,
++         base::OnceCallback<void(ValueStore::Status)> callback,
++         ValueStore::Status result) {
++        // Lost routing after commit can conceal a completed write. Keep it an
++        // error/unknown outcome for journal readback; do not blindly retry.
++        if (!owner || !owner->CanUseAuxUiMigrationBackend(*extension)) {
++          result = ValueStore::Status(ValueStore::OTHER_ERROR,
++                                     "Aux migration commit route was lost");
++        }
++        std::move(callback).Run(std::move(result));
++      },
++      weak_factory_.GetWeakPtr(), extension, std::move(callback));
++  auto guarded = mojo::WrapCallbackWithDefaultInvokeIfNotRun(
++      base::BindPostTaskToCurrentDefault(std::move(reply)),
++      ValueStore::Status(ValueStore::OTHER_ERROR,
++                         "Aux migration commit reply was lost"));
++  RunWithStorage(extension, settings_namespace::LOCAL, base::BindOnce(
++      [](std::unique_ptr<ValueStore::AuxUiPreferenceCapture> capture,
++         base::OnceCallback<void(ValueStore::Status)> callback,
++         ValueStore* storage) {
++        if (!storage) {
++          std::move(callback).Run(ValueStore::Status(
++              ValueStore::OTHER_ERROR, "Aux migration storage unavailable"));
++          return;
++        }
++        std::move(callback).Run(
++            storage->CommitAuxUiPreferenceMigration(std::move(capture)));
++      },
++      std::move(capture), std::move(guarded)));
+ }
+ 
+ void StorageFrontend::RunWithStorage(
+diff --git a/extensions/browser/api/storage/storage_frontend.h b/extensions/browser/api/storage/storage_frontend.h
+--- a/extensions/browser/api/storage/storage_frontend.h
++++ b/extensions/browser/api/storage/storage_frontend.h
+@@ -102,6 +102,19 @@
+                       settings_namespace::Namespace settings_namespace,
+                       ValueStoreCache::StorageCallback callback);
+ 
++  // Internal Aux migration routing only, not an extension API or admission.
++  // The native owner must supply the actual regular profile/epoch and retain
++  // writer/journal ownership across these asynchronous operations.
++  using AuxUiPreferenceCaptureCallback = base::OnceCallback<void(
++      value_store::ValueStore::AuxUiPreferenceCaptureResult)>;
++  void CaptureAuxUiPreferencesForMigration(
++      scoped_refptr<const Extension> extension,
++      AuxUiPreferenceCaptureCallback callback);
++  void CommitAuxUiPreferenceMigration(
++      scoped_refptr<const Extension> extension,
++      std::unique_ptr<value_store::ValueStore::AuxUiPreferenceCapture> capture,
++      base::OnceCallback<void(value_store::ValueStore::Status)> callback);
++
+   // Deletes the settings for the given `extension_id` and synchronously invokes
+   // `done_callback` once the settings are deleted.
+   void DeleteStorageSoon(const ExtensionId& extension_id,
+@@ -173,6 +186,8 @@
+                    raw_ptr<ValueStoreCache, CtnExperimental>>
+       CacheMap;
+ 
++  bool CanUseAuxUiMigrationBackend(const Extension& extension) const;
++
+   // Constructor for tests.
+   StorageFrontend(scoped_refptr<value_store::ValueStoreFactory> storage_factory,
+                   content::BrowserContext* context);
+diff --git a/extensions/browser/api/storage/weak_unlimited_settings_storage.cc b/extensions/browser/api/storage/weak_unlimited_settings_storage.cc
+--- a/extensions/browser/api/storage/weak_unlimited_settings_storage.cc
++++ b/extensions/browser/api/storage/weak_unlimited_settings_storage.cc
+@@ -3,6 +3,9 @@
+ // found in the LICENSE file.
+ 
+ #include "extensions/browser/api/storage/weak_unlimited_settings_storage.h"
++
++#include <memory>
++#include <utility>
+ 
+ using value_store::ValueStore;
+ 
+@@ -71,4 +74,14 @@
+   return delegate_->Clear();
+ }
+ 
++ValueStore::AuxUiPreferenceCaptureResult
++WeakUnlimitedSettingsStorage::CaptureAuxUiPreferencesForMigration() {
++  return delegate_->CaptureAuxUiPreferencesForMigration();
++}
++
++ValueStore::Status WeakUnlimitedSettingsStorage::CommitAuxUiPreferenceMigration(
++    std::unique_ptr<AuxUiPreferenceCapture> capture) {
++  return delegate_->CommitAuxUiPreferenceMigration(std::move(capture));
++}
++
+ }  // namespace extensions
+diff --git a/extensions/browser/api/storage/weak_unlimited_settings_storage.h b/extensions/browser/api/storage/weak_unlimited_settings_storage.h
+--- a/extensions/browser/api/storage/weak_unlimited_settings_storage.h
++++ b/extensions/browser/api/storage/weak_unlimited_settings_storage.h
+@@ -7,6 +7,7 @@
+ 
+ #include <stddef.h>
+ 
++#include <memory>
+ #include <string>
+ #include <vector>
+ 
+@@ -45,6 +46,9 @@
+   WriteResult Remove(const std::string& key) override;
+   WriteResult Remove(const std::vector<std::string>& keys) override;
+   WriteResult Clear() override;
++  AuxUiPreferenceCaptureResult CaptureAuxUiPreferencesForMigration() override;
++  Status CommitAuxUiPreferenceMigration(
++      std::unique_ptr<AuxUiPreferenceCapture> capture) override;
+ 
+  private:
+   // The delegate storage area, NOT OWNED.

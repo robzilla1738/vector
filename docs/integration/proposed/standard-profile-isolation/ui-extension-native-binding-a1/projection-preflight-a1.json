@@ -1,0 +1,8 @@
+{
+  "format": "aux.ui-extension-native-binding.projection-preflight.v1",
+  "passed": false,
+  "reason": "The shared GN dependency-tail anchor matched two targets; no source plan or native patch was published. The corrected producer includes the adjacent common dependency to select only the storage target.",
+  "producerSha256": "16eabb3987b953ce0ba32d2547cfe689170660ba14e1e3ce9ad1e6c6a09c1302",
+  "nativeRootChanged": false,
+  "productExecuted": false
+}

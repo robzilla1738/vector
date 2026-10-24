@@ -3,5 +3,7 @@ chromium/patches/**/*.patch -whitespace
 docs/integration/proposed/standard-profile-isolation/ui-storage-native-drain-a1/**/*.patch -whitespace
 docs/integration/proposed/standard-profile-isolation/ui-extension-storage-migration-a1/**/*.patch -whitespace
 docs/integration/proposed/standard-profile-isolation/ui-storage-durable-drain-a1/**/*.patch -whitespace
+docs/integration/proposed/standard-profile-isolation/ui-extension-native-binding-a1/**/*.patch -whitespace
+docs/integration/proposed/standard-profile-isolation/ui-native-capture-journal-a1/**/*.patch -whitespace
 # Vite output is byte-pinned and can contain whitespace from dependencies.
 chromium/shell-assets/** -diff -whitespace

@@ -1,0 +1,23 @@
+{
+  "format": "aux.ui-extension-native-binding.tests.source.v1",
+  "productionPlanSha256": "3adb08a55e98f0921f30557a60e1bc86124225e9c0f1265d08a00b6106b273ba",
+  "files": [
+    {
+      "path": "extensions/browser/BUILD.gn",
+      "inputSha256": "7626a577cae3849c4c3272deb4692d2fc37ce4331c3df17f6bd6491353ab6401",
+      "outputSha256": "0c7cedbe785f4cd33bc8d237ff3713e4d6f7acfb09933c26b90837dffe01c99a",
+      "anchors": [
+        {
+          "find": "    \"api/storage/session_storage_manager_unittest.cc\",",
+          "replace": "    \"api/storage/aux_ui_migration_unittest.cc\",\n    \"api/storage/session_storage_manager_unittest.cc\",",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "extensions/browser/api/storage/aux_ui_migration_unittest.cc",
+      "inputSha256": null,
+      "outputSha256": "bc4574e88be933209103278f15b42c52073c6e74227dfa826b142376f6d09714"
+    }
+  ]
+}

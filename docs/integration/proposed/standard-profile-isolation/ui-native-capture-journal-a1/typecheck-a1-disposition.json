@@ -1,0 +1,8 @@
+{
+  "format": "aux.ui-native-capture-journal.disposition.v1",
+  "accepted": false,
+  "typecheckPassed": true,
+  "reason": "Source review found no explicit ADMITTED-phase requirement before journal mkdir. A prepared fresh root still has a marker-only inventory requirement. The successor adds a read-only actual admission check; it does not call receipt() or grant startup.",
+  "originalTypecheckSha256": "5fc36f144b4c564c3ba99c30ea1908e130739140fdf9a9b8479a8a181ea25ef3",
+  "productExecuted": false
+}

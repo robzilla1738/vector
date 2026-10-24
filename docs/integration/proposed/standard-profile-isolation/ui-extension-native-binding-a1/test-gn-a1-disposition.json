@@ -1,0 +1,8 @@
+{
+  "format": "aux.ui-extension-native-binding.test-gn-disposition.v1",
+  "accepted": false,
+  "observedGnFormatExitCode": 2,
+  "reason": "The inserted test source was not in GN canonical order. Its compiled fixture bytes are unaffected; correct registration and formatting before native source integration.",
+  "originalTestPlanSha256": "45a3eb92b98b992067583cd747c4dc4e6bf2c8a96658903f21c4b3b953be409f",
+  "productExecuted": false
+}

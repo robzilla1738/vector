@@ -1,0 +1,18 @@
+{
+  "format": "aux.ui-native-capture-journal.typecheck.actual.v1",
+  "passed": true,
+  "exitCode": 0,
+  "sourceFiles": 48,
+  "changedSources": 4,
+  "sourcePlanSha256": "1da803b7f789f83579e86dd5e513652fded9f110766d243023de34e6c5e7d8a2",
+  "commandSha256": "b04717fa0700d44696bb6db2c640beb622da0ca3a91cf9bff586d92e76c6161c",
+  "output": "/private/tmp/aux-ui-native-capture-journal-typecheck-20261024-a2",
+  "originalNativeSourcesChanged": false,
+  "nativeApiExecuted": false,
+  "filesystemFixtureExecuted": false,
+  "linked": false,
+  "productSigned": false,
+  "productExecuted": false,
+  "migrationActivationAuthorized": false,
+  "runtimeAcceptance": false
+}
