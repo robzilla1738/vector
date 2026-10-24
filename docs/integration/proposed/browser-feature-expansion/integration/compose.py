@@ -65,12 +65,18 @@ for source in sorted((feature/'developer/source').rglob('*')):
     if source.is_file():
         path=str(source.relative_to(feature/'developer/source'))
         add(path,None,sha(source),source)
-for entry in json.loads((here/'shared-inputs.json').read_text())['files']:
+shared = json.loads((here/'shared-inputs.json').read_text())['files']
+for entry in shared:
     add(entry['path'],entry['beforeSha256'],entry['afterSha256'],repo/entry['source'],entry.get('overridesNativeSourceSha256'))
 for source in sorted((here/'source/chrome/browser/aux/organization').glob('*')):
     name='chrome/browser/aux/organization/'+source.name
     if name in entries:
-        if entries[name]['afterSha256'] != sha(source): raise RuntimeError('Root organization source mismatch: '+name)
+        if entries[name]['afterSha256'] != sha(source):
+            override = next((row for row in shared if row['path'] == name), None)
+            if (not override or
+                override.get('overridesRootOrganizationSourceSha256') != sha(source) or
+                override['source'] != entries[name]['source']):
+                raise RuntimeError('Root organization source mismatch: '+name)
     else: add(name,None,sha(source),source)
 manifest={'format':'aux.browser-features.composition.v1','baselineCommit':'02ce77253',
           'files':[entries[path] for path in sorted(entries) if entries[path]['beforeSha256'] != entries[path]['afterSha256']],

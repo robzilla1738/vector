@@ -2,6 +2,10 @@
 // silently passing after its branding/platform adaptation code has changed.
 export const providedStageInputs = Object.freeze([
   'vendor/provided/aux-navigation-command-bar.mjs',
+  'vendor/provided/aux-palette-ask.mjs',
+  'vendor/provided/aux-remix-context.mjs',
+  'docs/integration/proposed/browser-feature-expansion/research-v1/source/aux-research-ui.mjs',
+  'docs/integration/proposed/browser-feature-expansion/research-v1/source/research-ui.js',
   'vendor/provided/aux-browser-feature-composition.mjs',
   'vendor/provided/aux-browser-feature-settings.mjs',
   'vendor/provided/aux-shortcut-profiles.mjs',

@@ -1,0 +1,26 @@
+--- a/chrome/browser/ui/views/frame/BUILD.gn
++++ b/chrome/browser/ui/views/frame/BUILD.gn
+@@ -858,6 +858,7 @@
+   public_deps = [
+     "//base",
+     "//chrome/browser/ui/color:color_headers",
++    "//components/prefs",
+     "//ui/base/metadata",
+     "//ui/views",
+   ]
+@@ -877,6 +878,7 @@
+     "//chrome/app:generated_resources",
+     "//chrome/app/vector_icons",
+     "//chrome/browser/favicon",
++    "//chrome/browser/profiles:profile",
+     "//chrome/browser/search",
+     "//chrome/browser/ui:tab_ui_helper",
+     "//chrome/browser/ui/color:color_headers",
+@@ -884,6 +886,7 @@
+     "//chrome/browser/ui/tabs:tab_strip",
+     "//chrome/browser/ui/tabs/alert:tab_alert",
+     "//chrome/common:constants",
++    "//components/omnibox/browser",
+     "//components/tabs:enum",
+     "//components/tabs:public",
+     "//components/url_formatter",

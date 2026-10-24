@@ -1,5 +1,8 @@
 // Count-checked additions to the supplied owners after identity adaptation.
 import { transformAuxNavigation } from './aux-navigation-command-bar.mjs';
+import { transformAuxPaletteAsk } from './aux-palette-ask.mjs';
+import { transformAuxRemixContext } from './aux-remix-context.mjs';
+import { transformAuxResearchUi } from '../../docs/integration/proposed/browser-feature-expansion/research-v1/source/aux-research-ui.mjs';
 import { transformAuxProductivityUi, transformAuxProductivityDaemon } from './aux-productivity-integration.mjs';
 import { transformAuxTidySelection } from './aux-productivity-tidy-selection.mjs';
 import { transformAuxTabContext } from './aux-productivity-tab-context.mjs';
@@ -61,7 +64,12 @@ export function transformAuxBrowserFeatureUi(input) {
     transformAuxTabContext, transformAuxMentionSpaces, transformAuxContextReadUi, transformAuxThemeEditor,
     transformAuxFilesUi, transformAuxMediaUi, transformAuxRoutingSettings,
     transformAuxDeveloperUi, transformAuxCaptureUi,
-    transformAuxBrowserFeatureSettings, transformAuxShortcutProfiles,
+    transformAuxBrowserFeatureSettings, transformAuxShortcutProfiles, transformAuxPaletteAsk,
+    transformAuxRemixContext,
+    value => {
+      const result = transformAuxResearchUi(value.text, value.relative ?? '');
+      return {text: result.text, anchors: result.changes.map(change => ({...change, kind: 'aux-research-ui'}))};
+    },
     value => value.relative === 'background.js'
       ? applyAuxBrowserRouting({...value, component:'agent'}) : {text:value.text, anchors:[]}]);
 }

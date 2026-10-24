@@ -1,0 +1,13 @@
+{
+  "format": "aux.mini-toolbar-build-deps.overlay.v1",
+  "files": [
+    {
+      "path": "chrome/browser/ui/views/frame/BUILD.gn",
+      "beforeSha256": "c74cdd02f3b5aa3e834e8d42574d2f6d3a0ecd193bec8fb9585c19d34d6128f0",
+      "afterSha256": "90d40c27247649304ac5f884c65b8c92cf4d052cfe78853a6a1f622efba26713",
+      "source": "docs/integration/proposed/browser-feature-expansion/mini-toolbar-build-deps/source/chrome/browser/ui/views/frame/BUILD.gn"
+    }
+  ],
+  "nativeMutated": false,
+  "compiled": false
+}

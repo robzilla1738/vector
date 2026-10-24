@@ -1,0 +1,24 @@
+{
+  "receipt": "/private/tmp/aux-chromium-feature-compile-20261023-a19/receipt.json",
+  "receiptSha256": "19591d64ac3222080aa9526a9cee82a36dcd7be335796d4e0002492d3d6ea385",
+  "passed": false,
+  "error": null,
+  "buildLogSha256": "20c0fb8ba905241fe503a29fc7cf9ce5d2b4df3d645bf1fccf2a718648b6453d",
+  "targets": [
+    "obj/chrome/browser/ui/ui/aux_preview_ingress.o",
+    "obj/chrome/browser/ui/ui/multi_contents_view.o",
+    "obj/chrome/browser/ui/views/frame/multi_contents_view_mini_toolbar_impl/multi_contents_view_mini_toolbar.o",
+    "obj/components/split_tabs/split_tabs/split_pane_tree.o",
+    "obj/chrome/browser/ui/ui/aux_tab_search_bubble.o"
+  ],
+  "successfulActionsBeforeFailure": [
+    "split_pane_tree.o",
+    "aux_preview_ingress.o",
+    "multi_contents_view_mini_toolbar.o",
+    "aux_tab_search_bubble.o"
+  ],
+  "failure": "multi_contents_view.o: three protected ToolbarButton::SetText calls",
+  "runtimeAccepted": false,
+  "appExecuted": false,
+  "productSigned": false
+}

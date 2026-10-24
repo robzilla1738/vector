@@ -1,0 +1,12 @@
+{
+  "format": "aux.remix-context-compile-fix.v1",
+  "files": [
+    {
+      "path": "chrome/browser/extensions/api/aux_browser_preferences/aux_feature_expansion_api.cc",
+      "beforeSha256": "b6c2e1ea270b6e3f2fa4a4a4c5a92e7645024a844f7ff7e0e0309d43c2439f1b",
+      "afterSha256": "5cf6d62064c111ff0f3155cf90b733f2f742258feae819453badce7e52666222",
+      "source": "docs/integration/proposed/browser-feature-expansion/remix-context-compile-fix/source/chrome/browser/extensions/api/aux_browser_preferences/aux_feature_expansion_api.cc"
+    }
+  ],
+  "runtimeAccepted": false
+}

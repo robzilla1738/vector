@@ -1,0 +1,32 @@
+{
+  "receipt": "/private/tmp/aux-chromium-feature-compile-20261023-a20/receipt.json",
+  "receiptSha256": "4e9cbbf9fd3eb3a330f06f2edf453442d0a7d32965c3ce9a86fbfb77ff271a1d",
+  "passed": false,
+  "targets": [
+    "obj/chrome/browser/ui/ui/aux_organization_window_controller.o",
+    "obj/chrome/browser/ui/ui/organization_model.o",
+    "obj/chrome/browser/ui/ui/organization_codec.o",
+    "obj/chrome/browser/ui/ui/organization_service.o",
+    "obj/chrome/browser/ui/ui/aux_organization_pin_adapter.o",
+    "obj/chrome/browser/ui/tabs/impl/pinned_tab_service.o",
+    "obj/chrome/browser/ui/ui/vertical_pinned_tab_entries_view.o",
+    "obj/chrome/browser/ui/ui/multi_contents_view.o",
+    "obj/chrome/browser/extensions/api/aux_browser_preferences/aux_browser_preferences/aux_feature_expansion_api.o",
+    "obj/chrome/browser/ui/ui/aux_tab_reference_context.o"
+  ],
+  "successfulActions": [
+    "organization_model.o",
+    "organization_codec.o",
+    "aux_organization_pin_adapter.o",
+    "organization_service.o",
+    "aux_tab_reference_context.o",
+    "pinned_tab_service.o",
+    "aux_organization_window_controller.o",
+    "vertical_pinned_tab_entries_view.o",
+    "multi_contents_view.o"
+  ],
+  "failure": "aux_feature_expansion_api.o: lvalue DictValue.Set returns Value*, preventing chained Set",
+  "runtimeAccepted": false,
+  "appExecuted": false,
+  "productSigned": false
+}

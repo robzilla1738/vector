@@ -1,0 +1,13 @@
+--- a/chrome/browser/extensions/api/aux_browser_preferences/aux_feature_expansion_api.cc
++++ b/chrome/browser/extensions/api/aux_browser_preferences/aux_feature_expansion_api.cc
+@@ -575,7 +575,9 @@
+         result.Set("success", true);
+       }
+       if (!result.FindBool("success").value_or(false)) return RespondNow(WithArguments(std::move(result)));
+-      result.Set("ownerGeneration", epoch).Set("targetId", target->GetId()).Set("url", url);
++      result.Set("ownerGeneration", epoch);
++      result.Set("targetId", target->GetId());
++      result.Set("url", url);
+       return RespondNow(WithArguments(std::move(result)));
+     }
+     if (!references || args().size() != 1 || (method == "captureTabReferences" && !sender))
