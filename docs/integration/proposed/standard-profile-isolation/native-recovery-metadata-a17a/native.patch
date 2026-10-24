@@ -1,0 +1,24 @@
+--- a/components/services/storage/dom_storage/async_dom_storage_database.h
++++ b/components/services/storage/dom_storage/async_dom_storage_database.h
+@@ -152,6 +152,9 @@
+     std::string allocation_action_sha256;
+     std::optional<int64_t> allocated_map_id;
+     bool allocation_observed = false;
++    std::optional<base::Time> source_last_accessed;
++    std::optional<base::Time> source_last_modified;
++    std::optional<base::ByteSize> source_total_size;
+   };
+   struct AuxUiTargetMap {
+     uint32_t map_ordinal = 0;
+--- a/components/services/storage/dom_storage/async_dom_storage_database.cc
++++ b/components/services/storage/dom_storage/async_dom_storage_database.cc
+@@ -483,6 +483,9 @@
+     output.allocation_action_sha256 = AuxAllocationActionDigest(original, i);
+     output.allocated_map_id = original.allocated_map_id;
+     output.allocation_observed = original.allocated_map_id.has_value();
++    output.source_last_accessed = original.last_accessed;
++    output.source_last_modified = original.last_modified;
++    output.source_total_size = original.total_size;
+     for (const auto& selected : {output.source, output.target})
+       for (const auto& [key, value] : selected) export_bytes += key.size() + value.size();
+     if (export_bytes > 16 * 1024 * 1024)

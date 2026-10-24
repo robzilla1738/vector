@@ -1,0 +1,16 @@
+{
+  "format": "aux.recovery-metadata.source-check.actual.v1",
+  "passed": true,
+  "sourcePlanSha256": "23a372ec17cdaa4de3dbe3747b962c2801b65355659b37ad6f4a0e96f4ec1006",
+  "patchSha256": "b3d2e4b52a0b978a69cd62b60eac6e417e2070ba8fd48ba8008a562ff6587373",
+  "files": 2,
+  "countedAnchors": 2,
+  "replayDirectory": "/private/tmp/aux-recovery-metadata-replay-ov13at05",
+  "exactReplayPassed": true,
+  "reverseCheckPassed": true,
+  "nativeCheckoutChanged": false,
+  "nativeCompiled": false,
+  "testsExecuted": false,
+  "productExecuted": false,
+  "runtimeAcceptance": false
+}

@@ -1,0 +1,37 @@
+{
+  "format": "aux.native-recovery-metadata.source.v1",
+  "files": [
+    {
+      "path": "components/services/storage/dom_storage/async_dom_storage_database.h",
+      "inputRoot": "/Users/rcourson/.codex/worktrees/aux-features-organization/web/docs/integration/proposed/standard-profile-isolation/native-local-allocation-action-a16/source",
+      "inputSha256": "0050781f8c549a38d01d2431c8b498bde48c144dc3b1c6dc188e68a8a74d8317",
+      "outputSha256": "e54d239c7e4f7c36c529455fb050d0ccf180d69810c48dfdab09a39abc7ac635",
+      "output": "/Users/rcourson/.codex/worktrees/aux-features-organization/web/docs/integration/proposed/standard-profile-isolation/native-recovery-metadata-a17a/source/components/services/storage/dom_storage/async_dom_storage_database.h",
+      "anchors": [
+        {
+          "find": "    bool allocation_observed = false;\n  };",
+          "replace": "    bool allocation_observed = false;\n    std::optional<base::Time> source_last_accessed;\n    std::optional<base::Time> source_last_modified;\n    std::optional<base::ByteSize> source_total_size;\n  };",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "components/services/storage/dom_storage/async_dom_storage_database.cc",
+      "inputRoot": "/Users/rcourson/.codex/worktrees/aux-features-organization/web/docs/integration/proposed/standard-profile-isolation/native-local-allocation-action-a16/source",
+      "inputSha256": "5917a846a2636ad1cc93b490a7de6bf25695866b06fb31c568c6b4bc3de01853",
+      "outputSha256": "7516a9b132509201322cc9105b16713b48ade3183a9189b0dc11289ad266c4c6",
+      "output": "/Users/rcourson/.codex/worktrees/aux-features-organization/web/docs/integration/proposed/standard-profile-isolation/native-recovery-metadata-a17a/source/components/services/storage/dom_storage/async_dom_storage_database.cc",
+      "anchors": [
+        {
+          "find": "    output.allocation_observed = original.allocated_map_id.has_value();\n    for (const auto& selected",
+          "replace": "    output.allocation_observed = original.allocated_map_id.has_value();\n    output.source_last_accessed = original.last_accessed;\n    output.source_last_modified = original.last_modified;\n    output.source_total_size = original.total_size;\n    for (const auto& selected",
+          "count": 1
+        }
+      ]
+    }
+  ],
+  "nativeCheckoutChanged": false,
+  "nativeCompiled": false,
+  "productExecuted": false,
+  "runtimeAcceptance": false
+}
