@@ -1,0 +1,43 @@
+In file included from /Users/rcourson/Documents/Vibe/web/docs/integration/proposed/profile-isolation-local-finish/runtime-cache-async-relink/source/AuxDevelopmentWorkerHost.cc:15:
+/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/profile-isolation-local-finish/runtime-cache-async-relink/source/../../../aux-native-pdf-host-consumer/source/AuxLoadedPdfLifetime.h:10:12: error: redefinition of 'AuxPdfHostCapture'
+   10 | enum class AuxPdfHostCapture { absent, current, legacy, refusedImage };
+      |            ^
+/private/tmp/aux-async-writes-final/docs/integration/proposed/profile-isolation-next/spawn-custody/source/../../../aux-native-pdf-host-consumer/source/AuxLoadedPdfLifetime.h:10:12: note: previous definition is here
+   10 | enum class AuxPdfHostCapture { absent, current, legacy, refusedImage };
+      |            ^
+In file included from /Users/rcourson/Documents/Vibe/web/docs/integration/proposed/profile-isolation-local-finish/runtime-cache-async-relink/source/AuxDevelopmentWorkerHost.cc:15:
+/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/profile-isolation-local-finish/runtime-cache-async-relink/source/../../../aux-native-pdf-host-consumer/source/AuxLoadedPdfLifetime.h:11:12: error: redefinition of 'AuxPdfHostDrain'
+   11 | enum class AuxPdfHostDrain { notPresent, drained, pending, untracked, wrongProcess };
+      |            ^
+/private/tmp/aux-async-writes-final/docs/integration/proposed/profile-isolation-next/spawn-custody/source/../../../aux-native-pdf-host-consumer/source/AuxLoadedPdfLifetime.h:11:12: note: previous definition is here
+   11 | enum class AuxPdfHostDrain { notPresent, drained, pending, untracked, wrongProcess };
+      |            ^
+In file included from /Users/rcourson/Documents/Vibe/web/docs/integration/proposed/profile-isolation-local-finish/runtime-cache-async-relink/source/AuxDevelopmentWorkerHost.cc:15:
+/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/profile-isolation-local-finish/runtime-cache-async-relink/source/../../../aux-native-pdf-host-consumer/source/AuxLoadedPdfLifetime.h:14:7: error: redefinition of 'AuxLoadedPdfLifetime'
+   14 | class AuxLoadedPdfLifetime final : public std::enable_shared_from_this<AuxLoadedPdfLifetime> {
+      |       ^
+/private/tmp/aux-async-writes-final/docs/integration/proposed/profile-isolation-next/spawn-custody/source/../../../aux-native-pdf-host-consumer/source/AuxLoadedPdfLifetime.h:14:7: note: previous definition is here
+   14 | class AuxLoadedPdfLifetime final : public std::enable_shared_from_this<AuxLoadedPdfLifetime> {
+      |       ^
+In file included from /Users/rcourson/Documents/Vibe/web/docs/integration/proposed/profile-isolation-local-finish/runtime-cache-async-relink/source/AuxDevelopmentWorkerHost.cc:16:
+/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/profile-isolation-local-finish/runtime-cache-async-relink/source/../../../aux-native-utility-host-consumer/source/AuxLoadedUtilityLifetime.h:10:12: error: redefinition of 'AuxUtilityHostCapture'
+   10 | enum class AuxUtilityHostCapture { absent, current, refusedImage };
+      |            ^
+/private/tmp/aux-async-writes-final/docs/integration/proposed/profile-isolation-next/spawn-custody/source/../../../aux-native-utility-host-consumer/source/AuxLoadedUtilityLifetime.h:10:12: note: previous definition is here
+   10 | enum class AuxUtilityHostCapture { absent, current, refusedImage };
+      |            ^
+In file included from /Users/rcourson/Documents/Vibe/web/docs/integration/proposed/profile-isolation-local-finish/runtime-cache-async-relink/source/AuxDevelopmentWorkerHost.cc:16:
+/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/profile-isolation-local-finish/runtime-cache-async-relink/source/../../../aux-native-utility-host-consumer/source/AuxLoadedUtilityLifetime.h:11:12: error: redefinition of 'AuxUtilityHostDrain'
+   11 | enum class AuxUtilityHostDrain { notPresent, drained, pending, untracked, wrongProcess };
+      |            ^
+/private/tmp/aux-async-writes-final/docs/integration/proposed/profile-isolation-next/spawn-custody/source/../../../aux-native-utility-host-consumer/source/AuxLoadedUtilityLifetime.h:11:12: note: previous definition is here
+   11 | enum class AuxUtilityHostDrain { notPresent, drained, pending, untracked, wrongProcess };
+      |            ^
+In file included from /Users/rcourson/Documents/Vibe/web/docs/integration/proposed/profile-isolation-local-finish/runtime-cache-async-relink/source/AuxDevelopmentWorkerHost.cc:16:
+/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/profile-isolation-local-finish/runtime-cache-async-relink/source/../../../aux-native-utility-host-consumer/source/AuxLoadedUtilityLifetime.h:14:7: error: redefinition of 'AuxLoadedUtilityLifetime'
+   14 | class AuxLoadedUtilityLifetime final : public std::enable_shared_from_this<AuxLoadedUtilityLifetime> {
+      |       ^
+/private/tmp/aux-async-writes-final/docs/integration/proposed/profile-isolation-next/spawn-custody/source/../../../aux-native-utility-host-consumer/source/AuxLoadedUtilityLifetime.h:14:7: note: previous definition is here
+   14 | class AuxLoadedUtilityLifetime final : public std::enable_shared_from_this<AuxLoadedUtilityLifetime> {
+      |       ^
+6 errors generated.
