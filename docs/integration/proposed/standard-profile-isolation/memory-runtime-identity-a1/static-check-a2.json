@@ -1,0 +1,44 @@
+{
+  "format": "aux.memory-derivative.static-check.v1",
+  "passed": true,
+  "derivationSha256": "6ee2cd11734b67bac6e7f577cc816ba462dc2fc710c99fbd1b061a7ea3b36ae0",
+  "commands": [
+    {
+      "name": "exports",
+      "command": [
+        "/usr/bin/dyld_info",
+        "-exports",
+        "/private/tmp/aux-memory-identity-20261024-a1/aux-memory"
+      ],
+      "exitCode": 0,
+      "outputSha256": "1dc498f9f2fd4015868d8accf193952246cc1bb09b99256727e51ea538325aa9"
+    },
+    {
+      "name": "load-commands",
+      "command": [
+        "/usr/bin/otool",
+        "-l",
+        "/private/tmp/aux-memory-identity-20261024-a1/aux-memory"
+      ],
+      "exitCode": 0,
+      "outputSha256": "ed8ceb73b1b07fe7dd2eef9c8371caa4ce31c328eeab4b41f8e0c94dcb936f41"
+    },
+    {
+      "name": "libraries",
+      "command": [
+        "/usr/bin/dyld_info",
+        "-dependents",
+        "/private/tmp/aux-memory-identity-20261024-a1/aux-memory"
+      ],
+      "exitCode": 0,
+      "outputSha256": "07f0b2162ca831c3573ad4da306fa8dee9ae401b2c5c278600c501358c067293"
+    }
+  ],
+  "productExecuted": false,
+  "runtimeAccepted": false,
+  "exportCount": 844,
+  "renamedExports": 19,
+  "mappedSectionsUnchanged": 23,
+  "outputSha256": "b4c7d12efa87ed88515092527c7d1e7d9b43e605f39f03543e2b0e8e7005b3c0",
+  "unsigned": true
+}

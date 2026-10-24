@@ -1,0 +1,29 @@
+{
+  "format": "aux.standard-profile-package.execution.v1",
+  "commandsSha256": "311f2bfe3da0435f593a2ccc53dff4038fca396969e42275c5595b698d15c389",
+  "runnerSha256": "f76a11c7f4ac1157f01a4ee2af9b761850217eb2ac338388830895f3957a74fb",
+  "previousExecution": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/package-v9/actual-run-a1.json",
+  "previousExecutionSha256": "c6887f702ad2fd2a7ad5d9f3f8f6ec3485cf518969bbccd0b264cd04d4123c30",
+  "passed": false,
+  "runs": [
+    {
+      "name": "bindPair",
+      "command": [
+        "/opt/homebrew/opt/python@3.15/bin/python3.15",
+        "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/package-v9/bind_pair.py",
+        "--link-result",
+        "/private/tmp/aux-daemon-crash-registration-close-check/results.json",
+        "--output",
+        "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/package-v9/source-pair-final.json"
+      ],
+      "exitCode": 1,
+      "seconds": 33.861234540934674
+    }
+  ],
+  "appExecuted": false,
+  "productSigned": false,
+  "runtimeAuthorityGranted": false,
+  "acceptedAppReplaced": false,
+  "testable": false,
+  "error": "Reviewed package phase failed: bindPair"
+}

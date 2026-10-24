@@ -1,0 +1,52 @@
+{
+  "format": "aux.memory-identity.proposal.inputs.v1",
+  "files": [
+    {
+      "path": "README.md",
+      "sha256": "19f978d95b330af29bbf8624ce0a14cfe07f290676e45516b2ef5d93a396ad0d"
+    },
+    {
+      "path": "derivation-a2.json",
+      "sha256": "6ee2cd11734b67bac6e7f577cc816ba462dc2fc710c99fbd1b061a7ea3b36ae0"
+    },
+    {
+      "path": "derivation-command.json",
+      "sha256": "9baa604887e0a1f8a162d72861b34c3e7f5bb468c68601471254059bec47f797"
+    },
+    {
+      "path": "derive-a1.log",
+      "sha256": "5662a81c1d08af917bf47be4bc356c86544cd2a934b087438e83892b38b73160"
+    },
+    {
+      "path": "exports-a2.log",
+      "sha256": "1dc498f9f2fd4015868d8accf193952246cc1bb09b99256727e51ea538325aa9"
+    },
+    {
+      "path": "libraries-a2.log",
+      "sha256": "07f0b2162ca831c3573ad4da306fa8dee9ae401b2c5c278600c501358c067293"
+    },
+    {
+      "path": "load-commands-a2.log",
+      "sha256": "ed8ceb73b1b07fe7dd2eef9c8371caa4ce31c328eeab4b41f8e0c94dcb936f41"
+    },
+    {
+      "path": "original-macho-evidence.json",
+      "sha256": "3f9d99e0a5c213e41849f2343df3778242fa9a9d05fd1f9b0d4e478980b8b18e"
+    },
+    {
+      "path": "source/binary_identity.py",
+      "sha256": "ceeccbb4cfc11b3c7d7a1125313673bb87a8464d30fa14fdc58e664652d28a0e"
+    },
+    {
+      "path": "source/binary_identity_a2.py",
+      "sha256": "6adab8d0d6a43db1009ad6e836d58f715987b104607b4f9b339e24204020cb76"
+    },
+    {
+      "path": "static-check-a2.json",
+      "sha256": "8fbb46ac147b747f3c54c2210771c29cd3b4742951dddb31cac5b225baeff644"
+    }
+  ],
+  "integrated": false,
+  "productExecuted": false,
+  "signed": false
+}

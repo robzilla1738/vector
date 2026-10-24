@@ -1,0 +1,11 @@
+{
+  "command": [
+    "python3",
+    "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/memory-runtime-identity-a1/source/binary_identity.py",
+    "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-standard-profile-isolation-20261024/Aux.app/Contents/Resources/aux/memory-distribution/memory-runtimes/ad9092e10b360a769e6982dbbae9cc1268f97d5f0c274241eace7e8b21afb934/04175566-995b-42b3-840a-52d2d74d0605/aside-memory",
+    "/private/tmp/aux-memory-identity-20261024-a1/aux-memory"
+  ],
+  "exitCode": 1,
+  "productExecuted": false,
+  "originalUnchanged": true
+}

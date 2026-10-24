@@ -1,0 +1,11 @@
+{
+  "format": "aux.package-guard-intersection.correction.v1",
+  "predecessor": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/package-v9/successor_verify.py",
+  "predecessorSha256": "5af545f29da8438a84628651aa1b8336ef03a4f941a80be412ad0021b2811781",
+  "fixedGuardedIntersections": [
+    "chrome/browser/extensions/api/messaging/launch_context_posix.cc",
+    "chrome/browser/aux/AuxSelectedStateHome.cc"
+  ],
+  "sourceNativeContractUnchanged": true,
+  "productExecuted": false
+}
