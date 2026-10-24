@@ -1,0 +1,64 @@
+{
+  "format": "aux.authenticated-browser-drain.v1",
+  "length": 128,
+  "byteOrder": "big endian",
+  "status": {
+    "0": "supervised browser participants settled",
+    "1": "pending",
+    "2": "unknown",
+    "3": "refused"
+  },
+  "fields": [
+    {
+      "offset": 0,
+      "length": 4,
+      "name": "version",
+      "required": 1
+    },
+    {
+      "offset": 4,
+      "length": 4,
+      "name": "status"
+    },
+    {
+      "offset": 8,
+      "length": 8,
+      "name": "admittedRootGeneration"
+    },
+    {
+      "offset": 16,
+      "length": 8,
+      "name": "receiptSequence",
+      "settledRequires": "nonzero"
+    },
+    {
+      "offset": 24,
+      "length": 4,
+      "name": "shutdownPhase",
+      "settledRequires": 6
+    },
+    {
+      "offset": 28,
+      "length": 4,
+      "name": "reserved",
+      "required": 0
+    },
+    {
+      "offset": 32,
+      "length": 32,
+      "name": "callerChallenge"
+    },
+    {
+      "offset": 64,
+      "length": 32,
+      "name": "participantDigest"
+    },
+    {
+      "offset": 96,
+      "length": 32,
+      "name": "nativeProcessSessionNonce"
+    }
+  ],
+  "ack": "same retained audited/code-checked native connection, exact full report SHA256; notification after paired CLEAN fsync; never child-exit evidence",
+  "scope": "supervised browser participant cohort; daemon worker/OS/broker settlement independently required"
+}

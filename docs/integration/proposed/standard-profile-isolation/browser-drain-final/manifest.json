@@ -1,0 +1,69 @@
+{
+  "modifiedCount": 8,
+  "addedCount": 2,
+  "countedAdaptations": 16,
+  "files": [
+    {
+      "path": "chrome/browser/aux/daemon_supervisor.cc",
+      "beforeSha256": "3c8f32d8c268cc4baa182b7e08e74b6cfffd80d8b014fc7cbde09171bd4462cf",
+      "afterSha256": "ae01a9fddbdc5fb2ecbd78eaa72825adf752c859b6d3d00034bbfb209a362e29"
+    },
+    {
+      "path": "chrome/browser/chrome_browser_main.cc",
+      "beforeSha256": "6407d666a21e93b1bd43774045447bc369e86fa3491977b0ab4cd0a7920a2ca0",
+      "afterSha256": "6033ba7fd8223f03f226ba6bb384bb1bd3783da3552226b0ee587d538f71d954"
+    },
+    {
+      "path": "chrome/browser/extensions/api/messaging/native_message_process_host.cc",
+      "beforeSha256": "c97eafdb50c2e15f4895c4236f3a71ef5dfc81633940820de012889b30b2d937",
+      "afterSha256": "e1c256d805b21228fe2361b8500a5230a1743762d4c52474f0c7241334356294"
+    },
+    {
+      "path": "chrome/browser/sessions/session_service_base.cc",
+      "beforeSha256": "06f665a13b45886c314778f279650ff9c3b46ba324790a430dff646786d28827",
+      "afterSha256": "91ef376b0f857a8992372396c394a22abc1a5b69f1671c9cd13ed278f467e501"
+    },
+    {
+      "path": "chrome/browser/sessions/session_service_base.h",
+      "beforeSha256": "5a3c95999730dc1323a0aa9ec58e1b90fd2e95d37fe143c2cfb0038109eb25df",
+      "afterSha256": "b77230971497a61ee5744ecb3e7aea0c02c9218d10793faa30fcfcf1c7a0cc87"
+    },
+    {
+      "path": "chrome/browser/ui/aux_owned_browser_quiesce.cc",
+      "beforeSha256": "5f2d33791162d32cc94568256facc082c91a9b55dc0496b4d9788995e78bdb7f",
+      "afterSha256": "09c9480f923511922f2f073fda693b8dc202eadb46c9f8d73ef750041b29d91a"
+    },
+    {
+      "path": "chrome/browser/ui/aux_profile_switch_session_rebuild.cc",
+      "beforeSha256": "7a536fe8cd9ffef5549d9a668007dd861763bc842d3933b0cc17d0839f48758a",
+      "afterSha256": "de8890cc938e52a682ca54e333a312858882dff858833af790654f92ff6b732a"
+    },
+    {
+      "path": "chrome/browser/ui/aux_session_writer_participant.h",
+      "beforeSha256": "3d437254cad95ca64f4ac6283b7055981853e06948601becccc98e2570d0c0f9",
+      "afterSha256": "80a660e734628ae7c380a53938b21e51af7327079ad196ba91f6da67f596fa0a"
+    }
+  ],
+  "patchSha256": "525c4e51ee307761c40f499a6e3da8bce1bb77131d669b32ca373bee169179f1",
+  "verification": {
+    "exactOrderedReplay": "passed",
+    "unifiedPatchReplay": "passed",
+    "whitespaceErrorCheck": "passed",
+    "nativeCompile": "not run by worker",
+    "runtime": "not run"
+  },
+  "added": [
+    {
+      "path": "chrome/browser/ui/aux_browser_shutdown_drain.cc",
+      "sha256": "a15b0dff766ea2b7061e68ae62ebd722baa961825666a0b9cf49521493d40e79"
+    },
+    {
+      "path": "chrome/browser/ui/aux_browser_shutdown_drain.h",
+      "sha256": "97df7c43a25453f6c10daa749ecefee9a3169f4941ee6a636c5f571f3c817622"
+    }
+  ],
+  "dependsOn": [
+    "browser-drain",
+    "browser-drain-transport"
+  ]
+}

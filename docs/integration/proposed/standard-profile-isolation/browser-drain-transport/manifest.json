@@ -1,0 +1,39 @@
+{
+  "modifiedCount": 4,
+  "addedCount": 0,
+  "countedAdaptations": 15,
+  "files": [
+    {
+      "path": "chrome/browser/aux/AuxNativePeerTransport.cc",
+      "beforeSha256": "d9fc05d9adde67e5a11dd61761a635171221f557b6f01d3db5d2b7f518dfab74",
+      "afterSha256": "6d6598fc792bbb7a93bcb8c50a64bda65c33f011d201b6493757c38dc1320e9e"
+    },
+    {
+      "path": "chrome/browser/aux/AuxNativePeerTransport.h",
+      "beforeSha256": "2d7a3e9a22eea448c48c1cb952a3a5014046106c10cb7080b9706a2de9a44e1e",
+      "afterSha256": "240c7b66aaa51efec1e5450cfecdb3461c9d70a57ca11c3f66381d593e407e6a"
+    },
+    {
+      "path": "chrome/browser/aux/AuxNativePeerWire.h",
+      "beforeSha256": "018525272f12b4d8ffbda5158f7fbef0251027b7509b8e8ad2cfba475827290d",
+      "afterSha256": "b02072fde7e71b70a4443ed8eadcc6c3e32c8fedf6068c337fcf6c9b62ba57d5"
+    },
+    {
+      "path": "daemon/AuxNativeParentConnectionBridge.cc",
+      "beforeSha256": "0e92d23b8cecdcee80d0712bec6ad8f50976d25edad9e5135c6f89cca3526961",
+      "afterSha256": "cafa44cb342ebc208cdd1cf605b62f904bf34c04edccbf106b5095721e8aff8d"
+    }
+  ],
+  "patchSha256": "ff9509a3ec43dd1b5cd954bc8e28811935914a3a4ce38f0ee9d30aff5490f526",
+  "verification": {
+    "exactOrderedReplay": "passed",
+    "unifiedPatchReplay": "passed",
+    "whitespaceErrorCheck": "passed",
+    "nativeCompile": "not run by worker",
+    "runtime": "not run"
+  },
+  "added": [],
+  "dependsOn": [
+    "browser-drain"
+  ]
+}

@@ -1,0 +1,92 @@
+[
+  {
+    "path": "chrome/browser/aux/AuxNativePeerTransport.h",
+    "old": "#include <cstdint>",
+    "new": "#include <cstdint>\n#include <array>",
+    "count": 1
+  },
+  {
+    "path": "chrome/browser/aux/AuxNativePeerTransport.h",
+    "old": "class BrowserPrivateRoots;",
+    "new": "class BrowserPrivateRoots;\nusing BrowserDrainReport = std::array<uint8_t, 128>;\nusing BrowserDrainChallenge = std::array<uint8_t, 32>;\nusing BrowserDrainReportProvider = BrowserDrainReport (*)(uint64_t, const BrowserDrainChallenge&);\nusing BrowserDrainAckObserver = void (*)(const BrowserDrainReport&);\n// Native process wiring only. One immutable provider pair; never an IPC setter.\nbool RegisterBrowserDrainReportProvider(BrowserDrainReportProvider provider,\n                                        BrowserDrainAckObserver acknowledged);",
+    "count": 1
+  },
+  {
+    "path": "chrome/browser/aux/AuxNativePeerTransport.h",
+    "old": "  int32_t CopyBrowserPrivateRoot(uint32_t role, uint64_t* generation, int32_t* descriptor, uint32_t timeout_ms);",
+    "new": "  int32_t CopyBrowserPrivateRoot(uint32_t role, uint64_t* generation, int32_t* descriptor, uint32_t timeout_ms);\n  int32_t CopyBrowserDrainReport(uint64_t generation,\n      const BrowserDrainChallenge& challenge, BrowserDrainReport* report,\n      uint32_t timeout_ms);\n  int32_t AcknowledgeBrowserDrainReport(const BrowserDrainReport& report,\n      uint32_t timeout_ms);",
+    "count": 1
+  },
+  {
+    "path": "chrome/browser/aux/AuxNativePeerWire.h",
+    "old": "// Finite native daemon authority RPC; never a generic command envelope.",
+    "new": "// Authenticated finite browser shutdown report. Requests use Wire with the\n// expected admitted-root generation and challenge (ACK uses receipt SHA-256).\nconstexpr mach_msg_id_t kBrowserDrainRequest = 0x41555860;\nconstexpr mach_msg_id_t kBrowserDrainReply = 0x41555861;\nconstexpr mach_msg_id_t kBrowserDrainAck = 0x41555862;\nconstexpr mach_msg_id_t kBrowserDrainAckReply = 0x41555863;\nstruct BrowserDrainWire {\n  mach_msg_header_t header{};\n  std::array<uint8_t, 128> report{};\n};\nstruct BrowserDrainReceived {\n  BrowserDrainWire wire;\n  mach_msg_audit_trailer_t trailer;\n};\n\n// Finite native daemon authority RPC; never a generic command envelope.",
+    "count": 1
+  },
+  {
+    "path": "chrome/browser/aux/AuxNativePeerTransport.cc",
+    "old": "#include <sys/fileport.h>",
+    "new": "#include <sys/fileport.h>\n#include <CommonCrypto/CommonDigest.h>",
+    "count": 1
+  },
+  {
+    "path": "chrome/browser/aux/AuxNativePeerTransport.cc",
+    "old": "namespace aux::peer {\nnamespace {",
+    "new": "namespace aux::peer {\nnamespace {\nstd::mutex& DrainProviderMutex() { static auto* mutex = new std::mutex; return *mutex; }\nBrowserDrainReportProvider drain_provider = nullptr;\nBrowserDrainAckObserver drain_ack_observer = nullptr;\nuint64_t DrainInteger(const BrowserDrainReport& report, size_t offset, size_t length) {\n  uint64_t value = 0;\n  for (size_t i = 0; i < length; ++i) value = (value << 8) | report[offset + i];\n  return value;\n}\nBrowserDrainChallenge DrainDigest(const BrowserDrainReport& report) {\n  BrowserDrainChallenge digest{};\n  CC_SHA256(report.data(), report.size(), digest.data());\n  return digest;\n}\n}  // namespace\nbool RegisterBrowserDrainReportProvider(BrowserDrainReportProvider provider,\n                                        BrowserDrainAckObserver acknowledged) {\n  std::lock_guard<std::mutex> lock(DrainProviderMutex());\n  if (!provider || !acknowledged) return false;\n  if (drain_provider) return drain_provider == provider && drain_ack_observer == acknowledged;\n  drain_provider = provider;\n  drain_ack_observer = acknowledged;\n  return true;\n}\nnamespace {",
+    "count": 1
+  },
+  {
+    "path": "chrome/browser/aux/AuxNativePeerTransport.cc",
+    "old": "  bool selected_home_taken = false;",
+    "new": "  bool selected_home_taken = false;\n  std::optional<BrowserDrainReport> settled_drain_report;",
+    "count": 1
+  },
+  {
+    "path": "chrome/browser/aux/AuxNativePeerTransport.cc",
+    "old": "  const bool browser_roots_request = header->msgh_id == kBrowserRootsRequest;",
+    "new": "  const bool browser_roots_request = header->msgh_id == kBrowserRootsRequest;\n  const bool browser_drain_request = header->msgh_id == kBrowserDrainRequest;\n  const bool browser_drain_ack = header->msgh_id == kBrowserDrainAck;\n  uint64_t expected_browser_generation = 0;",
+    "count": 1
+  },
+  {
+    "path": "chrome/browser/aux/AuxNativePeerTransport.cc",
+    "old": "        !ValidWire(checked, browser_roots_request ? kBrowserRootsRequest : kRequest) || parsed.wire.generation != 0)",
+    "new": "        !ValidWire(checked, browser_roots_request ? kBrowserRootsRequest :\n            browser_drain_request ? kBrowserDrainRequest :\n            browser_drain_ack ? kBrowserDrainAck : kRequest) ||\n        ((browser_drain_request || browser_drain_ack) ? parsed.wire.generation == 0 :\n                                                     parsed.wire.generation != 0))",
+    "count": 1
+  },
+  {
+    "path": "chrome/browser/aux/AuxNativePeerTransport.cc",
+    "old": "    audit = parsed.trailer.msgh_audit;\n    nonce = parsed.wire.nonce;\n  }",
+    "new": "    audit = parsed.trailer.msgh_audit;\n    nonce = parsed.wire.nonce;\n    expected_browser_generation = parsed.wire.generation;\n  }",
+    "count": 1
+  },
+  {
+    "path": "chrome/browser/aux/AuxNativePeerTransport.cc",
+    "old": "  Wire reply{};\n  reply.header.msgh_bits = MACH_MSGH_BITS(MACH_MSG_TYPE_MOVE_SEND_ONCE, 0);",
+    "new": "  if (browser_drain_request || browser_drain_ack) {\n    BrowserDrainReportProvider provider;\n    BrowserDrainAckObserver acknowledged;\n    {\n      std::lock_guard<std::mutex> provider_lock(DrainProviderMutex());\n      provider = drain_provider;\n      acknowledged = drain_ack_observer;\n    }\n    if (!provider || !acknowledged || !state->browser_roots ||\n        !state->browser_roots->Revalidate()) return ExchangeStatus::refused;\n    BrowserDrainReport report{};\n    if (browser_drain_request) {\n      report = provider(expected_browser_generation, nonce);\n      if (DrainInteger(report, 0, 4) != 1 ||\n          DrainInteger(report, 8, 8) != expected_browser_generation ||\n          !std::equal(nonce.begin(), nonce.end(), report.begin() + 32))\n        return ExchangeStatus::refused;\n      if (DrainInteger(report, 4, 4) == 0) {\n        if (DrainInteger(report, 24, 4) != 6 || !DrainInteger(report, 16, 8))\n          return ExchangeStatus::refused;\n        state->settled_drain_report = report;\n      }\n    } else {\n      if (!state->settled_drain_report ||\n          DrainInteger(*state->settled_drain_report, 8, 8) != expected_browser_generation ||\n          DrainDigest(*state->settled_drain_report) != nonce)\n        return ExchangeStatus::refused;\n      report = *state->settled_drain_report;\n      // Notification after the actual authenticated child committed CLEAN.\n      // It does not settle writers or stand in for child exit/reaping.\n      acknowledged(report);\n    }\n    BrowserDrainWire drain_reply{};\n    drain_reply.header.msgh_bits = MACH_MSGH_BITS(MACH_MSG_TYPE_MOVE_SEND_ONCE, 0);\n    drain_reply.header.msgh_size = sizeof(drain_reply);\n    drain_reply.header.msgh_remote_port = header->msgh_remote_port;\n    drain_reply.header.msgh_id = browser_drain_ack ? kBrowserDrainAckReply : kBrowserDrainReply;\n    drain_reply.report = report;\n    header->msgh_remote_port = MACH_PORT_NULL;\n    DestroyMessage cleanup(&drain_reply.header);\n    result = mach_msg(&drain_reply.header, MACH_SEND_MSG | MACH_SEND_TIMEOUT,\n        sizeof(drain_reply), 0, MACH_PORT_NULL, timeout_ms, MACH_PORT_NULL);\n    if (result != KERN_SUCCESS) {\n      if (!RecoverableSendError(result)) {\n        cleanup.Disarm();\n        ++state->snapshot.unresolved_reply_cleanup;\n        state->snapshot.closed = true;\n        ++state->snapshot.generation;\n      }\n      return ExchangeStatus::refused;\n    }\n    cleanup.Disarm();\n    state->child_pid_version = version;\n    state->snapshot.child_pid_version_observed = true;\n    ++state->snapshot.authenticated_exchanges;\n    return ExchangeStatus::authenticated;\n  }\n  Wire reply{};\n  reply.header.msgh_bits = MACH_MSGH_BITS(MACH_MSG_TYPE_MOVE_SEND_ONCE, 0);",
+    "count": 1
+  },
+  {
+    "path": "chrome/browser/aux/AuxNativePeerTransport.h",
+    "old": "  friend struct AuthorityServer;\n  std::shared_ptr<State> state_;",
+    "new": "  friend struct AuthorityServer;\n  int32_t ExchangeBrowserDrain(uint64_t generation,\n      const BrowserDrainChallenge& nonce, bool acknowledgement,\n      BrowserDrainReport* output, uint32_t timeout_ms);\n  std::shared_ptr<State> state_;",
+    "count": 1
+  },
+  {
+    "path": "chrome/browser/aux/AuxNativePeerTransport.cc",
+    "old": "int32_t AuthenticatedNativeParentConnection::CopyBrowserPrivateRoot(uint32_t role,",
+    "new": "int32_t AuthenticatedNativeParentConnection::ExchangeBrowserDrain(\n    uint64_t generation, const BrowserDrainChallenge& nonce, bool acknowledgement,\n    BrowserDrainReport* output, uint32_t timeout_ms) {\n  if (output) *output = {};\n  auto state = state_;\n  if (!output || !generation || !ValidTimeout(timeout_ms) || getpid() != state->process)\n    return 3;\n  if (Revalidate(timeout_ms) != ExchangeStatus::authenticated) return 2;\n  std::optional<NativeSendRight> endpoint;\n  {\n    std::lock_guard<std::mutex> lock(state->mutex);\n    if (state->snapshot.closed) return 2;\n    endpoint.emplace(state->endpoint.CopyOwnedRight());\n    if (!endpoint->is_valid()) return 2;\n    ++state->snapshot.active_checks;\n  }\n  auto finish = +[](State* retained) {\n    std::lock_guard<std::mutex> lock(retained->mutex);\n    --retained->snapshot.active_checks;\n  };\n  std::unique_ptr<State, decltype(finish)> active(state.get(), finish);\n  ReceiveRight reply;\n  if (reply.get() == MACH_PORT_NULL) return 2;\n  Wire request{};\n  request.header.msgh_bits = MACH_MSGH_BITS(MACH_MSG_TYPE_COPY_SEND, MACH_MSG_TYPE_MAKE_SEND_ONCE);\n  request.header.msgh_size = sizeof(request);\n  request.header.msgh_remote_port = endpoint->BorrowNativeName();\n  request.header.msgh_local_port = reply.get();\n  request.header.msgh_id = acknowledgement ? kBrowserDrainAck : kBrowserDrainRequest;\n  request.generation = generation;\n  request.nonce = nonce;\n  auto result = mach_msg(&request.header, MACH_SEND_MSG | MACH_SEND_TIMEOUT,\n      sizeof(request), 0, MACH_PORT_NULL, timeout_ms, MACH_PORT_NULL);\n  if (result != KERN_SUCCESS) {\n    if (RecoverableSendError(result)) {\n      const auto local = MACH_MSGH_BITS_LOCAL(request.header.msgh_bits);\n      if (local == MACH_MSG_TYPE_MOVE_SEND || local == MACH_MSG_TYPE_MOVE_SEND_ONCE)\n        mach_port_deallocate(mach_task_self(), request.header.msgh_local_port);\n    } else {\n      std::lock_guard<std::mutex> lock(state->mutex);\n      ++state->snapshot.unresolved_send_cleanup;\n      state->snapshot.closed = true;\n    }\n    return 2;\n  }\n  BrowserDrainReceived received{};\n  result = mach_msg(&received.wire.header, kReceiveOptions, 0, sizeof(received),\n      reply.get(), timeout_ms, MACH_PORT_NULL);\n  if (result == MACH_RCV_TIMED_OUT) return 1;\n  if (result != KERN_SUCCESS) {\n    std::lock_guard<std::mutex> lock(state->mutex);\n    ++state->snapshot.unresolved_receive_cleanup;\n    state->snapshot.last_receive_error = result;\n    state->snapshot.closed = true;\n    return 2;\n  }\n  DestroyMessage destroy(&received.wire.header);\n  const auto audit = received.trailer.msgh_audit;\n  const auto& report = received.wire.report;\n  if (received.wire.header.msgh_size != sizeof(BrowserDrainWire) ||\n      received.wire.header.msgh_id != (acknowledgement ? kBrowserDrainAckReply : kBrowserDrainReply) ||\n      (received.wire.header.msgh_bits & MACH_MSGH_BITS_COMPLEX) ||\n      received.trailer.msgh_trailer_type != MACH_MSG_TRAILER_FORMAT_0 ||\n      received.trailer.msgh_trailer_size < sizeof(mach_msg_audit_trailer_t) ||\n      audit_token_to_pid(audit) != state->birth.pid ||\n      audit_token_to_pidversion(audit) != state->snapshot.parent_pid_version ||\n      getppid() != state->birth.pid || !SameBirth(state->birth, 0) ||\n      !NativeOperations::Validate(audit, *state->policy) ||\n      DrainInteger(report, 0, 4) != 1 || DrainInteger(report, 8, 8) != generation ||\n      DrainInteger(report, 28, 4) != 0 || DrainInteger(report, 4, 4) > 3 ||\n      (acknowledgement ? DrainDigest(report) != nonce :\n          !std::equal(nonce.begin(), nonce.end(), report.begin() + 32))) return 3;\n  std::lock_guard<std::mutex> lock(state->mutex);\n  if (state->snapshot.closed) return 2;\n  *output = report;\n  return static_cast<int32_t>(DrainInteger(report, 4, 4));\n}\nint32_t AuthenticatedNativeParentConnection::CopyBrowserDrainReport(\n    uint64_t generation, const BrowserDrainChallenge& challenge,\n    BrowserDrainReport* output, uint32_t timeout_ms) {\n  return ExchangeBrowserDrain(generation, challenge, false, output, timeout_ms);\n}\nint32_t AuthenticatedNativeParentConnection::AcknowledgeBrowserDrainReport(\n    const BrowserDrainReport& report, uint32_t timeout_ms) {\n  if (DrainInteger(report, 0, 4) != 1 || DrainInteger(report, 4, 4) != 0 ||\n      DrainInteger(report, 24, 4) != 6 || !DrainInteger(report, 16, 8)) return 3;\n  BrowserDrainReport reply{};\n  const auto result = ExchangeBrowserDrain(DrainInteger(report, 8, 8),\n      DrainDigest(report), true, &reply, timeout_ms);\n  return result == 0 && reply == report ? 0 : result == 0 ? 3 : result;\n}\nint32_t AuthenticatedNativeParentConnection::CopyBrowserPrivateRoot(uint32_t role,",
+    "count": 1
+  },
+  {
+    "path": "daemon/AuxNativeParentConnectionBridge.cc",
+    "old": "#include <limits>",
+    "new": "#include <limits>\n#include <algorithm>",
+    "count": 1
+  },
+  {
+    "path": "daemon/AuxNativeParentConnectionBridge.cc",
+    "old": "00) : -1;\n  } catch (...) { return -1; }\n}\n#endif\n",
+    "new": "00) : -1;\n  } catch (...) { return -1; }\n}\n#endif\n\n#if defined(AUX_NATIVE_DAEMON_AUTHORITY_SERVER)\nextern \"C\" int32_t AuxCopyAuthenticatedBrowserDrainReport(uint64_t parent,\n    uint64_t generation, const uint8_t* challenge, uint8_t* output) {\n  if (!challenge || !output || getpid() != kBridgeImageProcess) return 3;\n  try {\n    auto actual = ActualAuthorityConnection(parent);\n    if (!actual) return 3;\n    aux::peer::BrowserDrainChallenge nonce{};\n    std::copy_n(challenge, nonce.size(), nonce.begin());\n    aux::peer::BrowserDrainReport report{};\n    const auto result = actual->CopyBrowserDrainReport(generation, nonce, &report, 2'000);\n    std::copy(report.begin(), report.end(), output);\n    return result;\n  } catch (...) { return 2; }\n}\nextern \"C\" int32_t AuxAcknowledgeAuthenticatedBrowserDrainReport(uint64_t parent,\n    const uint8_t* input) {\n  if (!input || getpid() != kBridgeImageProcess) return 3;\n  try {\n    auto actual = ActualAuthorityConnection(parent);\n    if (!actual) return 3;\n    aux::peer::BrowserDrainReport report{};\n    std::copy_n(input, report.size(), report.begin());\n    return actual->AcknowledgeBrowserDrainReport(report, 2'000);\n  } catch (...) { return 2; }\n}\n#endif\n",
+    "count": 1
+  }
+]

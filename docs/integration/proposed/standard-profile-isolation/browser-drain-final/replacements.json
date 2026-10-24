@@ -1,0 +1,98 @@
+[
+  {
+    "path": "chrome/browser/chrome_browser_main.cc",
+    "old": "#include \"chrome/browser/aux/browser_platform.h\"",
+    "new": "#include \"chrome/browser/aux/browser_platform.h\"\n#include \"chrome/browser/ui/aux_browser_shutdown_drain.h\"",
+    "count": 1
+  },
+  {
+    "path": "chrome/browser/chrome_browser_main.cc",
+    "old": "  aux::peer::BeginNativeBrowserShutdown();",
+    "new": "  aux::peer::BeginNativeBrowserShutdown();\n  aux::PrepareNativeBrowserShutdownDrain();",
+    "count": 1
+  },
+  {
+    "path": "chrome/browser/chrome_browser_main.cc",
+    "old": "  aux::peer::ObserveNativeBrowserPartsDestroyed();",
+    "new": "  aux::peer::ObserveNativeBrowserPartsDestroyed();\n  aux::FinishNativeBrowserShutdownDrain();",
+    "count": 1
+  },
+  {
+    "path": "chrome/browser/aux/daemon_supervisor.cc",
+    "old": "void DaemonSupervisor::FinishNativeShutdown() {\n  loader_.reset();",
+    "new": "void DaemonSupervisor::FinishNativeShutdown() {\n  loader_.reset();\n  const auto browser_shutdown = peer::InspectNativeBrowserShutdown();\n  if (browser_shutdown.admission_closed && browser_shutdown.phase < 6) {\n    // Ordinary process shutdown must finish Profile/content/thread teardown\n    // before the native parent can attest its browser writer cohort. Retain\n    // the selected native owner/monitor; its late phase6 handshake owns CLEAN\n    // acknowledgement and original-child reap. This is not a stopped result.\n    DidFinishShutdown({false, std::nullopt});\n    return;\n  }",
+    "count": 1
+  },
+  {
+    "path": "chrome/browser/ui/aux_owned_browser_quiesce.cc",
+    "old": "  CloseLoadedSessionWritersForMigration(\n      *manager, base::BindOnce([](SessionWriterParticipantObservation observation) {",
+    "new": "  auto close_sessions = process_shutdown ? &CloseLoadedSessionWritersForShutdown\n                                         : &CloseLoadedSessionWritersForMigration;\n  close_sessions(\n      *manager, base::BindOnce([](SessionWriterParticipantObservation observation) {",
+    "count": 1
+  },
+  {
+    "path": "chrome/browser/sessions/session_service_base.h",
+    "old": "  // Native lifetime observation only; grants no profile/storage authority.",
+    "new": "  // Process shutdown flushes existing commands, preserving last-session state\n  // when no windows remain. It must not rebuild an empty current-window list.\n  void FlushPendingCommandsWithWriteCompletion(\n      base::OnceCallback<void(sessions::SessionWriteCompletion)> done);\n\n  // Native lifetime observation only; grants no profile/storage authority.",
+    "count": 1
+  },
+  {
+    "path": "chrome/browser/sessions/session_service_base.cc",
+    "old": "base::WeakPtr<SessionServiceBase>\nSessionServiceBase::GetWeakPtrForNativeSessionWriterParticipant() {",
+    "new": "void SessionServiceBase::FlushPendingCommandsWithWriteCompletion(\n    base::OnceCallback<void(sessions::SessionWriteCompletion)> done) {\n  auto report = base::BindPostTaskToCurrentDefault(std::move(done));\n  if (!is_saving_enabled_ || !command_storage_manager_) {\n    sessions::SessionWriteCompletion result;\n    result.backend_outcomes.push_back(!is_saving_enabled_\n        ? sessions::SessionBackendWriteOutcome::kSavingDisabled\n        : sessions::SessionBackendWriteOutcome::kBackendUnavailable);\n    std::move(report).Run(std::move(result));\n    return;\n  }\n  command_storage_manager_->SaveWithCompletion(std::move(report));\n}\n\nbase::WeakPtr<SessionServiceBase>\nSessionServiceBase::GetWeakPtrForNativeSessionWriterParticipant() {",
+    "count": 1
+  },
+  {
+    "path": "chrome/browser/ui/aux_session_writer_participant.h",
+    "old": "}  // namespace aux",
+    "new": "void CloseLoadedSessionWritersForShutdown(\n    ProfileManager& manager,\n    base::OnceCallback<void(SessionWriterParticipantObservation)> done);\n\n}  // namespace aux",
+    "count": 1
+  },
+  {
+    "path": "chrome/browser/ui/aux_profile_switch_session_rebuild.cc",
+    "old": "      base::OnceCallback<void(SessionWriterParticipantObservation)> done);",
+    "new": "      base::OnceCallback<void(SessionWriterParticipantObservation)> done,\n      bool process_shutdown = false);",
+    "count": 1
+  },
+  {
+    "path": "chrome/browser/ui/aux_profile_switch_session_rebuild.cc",
+    "old": "  bool advance_posted_ = false;",
+    "new": "  bool advance_posted_ = false;\n  const bool process_shutdown_;",
+    "count": 1
+  },
+  {
+    "path": "chrome/browser/ui/aux_profile_switch_session_rebuild.cc",
+    "old": "    base::OnceCallback<void(SessionWriterParticipantObservation)> done)\n    : profiles_",
+    "new": "    base::OnceCallback<void(SessionWriterParticipantObservation)> done,\n    bool process_shutdown)\n    : profiles_",
+    "count": 1
+  },
+  {
+    "path": "chrome/browser/ui/aux_profile_switch_session_rebuild.cc",
+    "old": "      runner_(base::SequencedTaskRunner::GetCurrentDefault()) {",
+    "new": "      runner_(base::SequencedTaskRunner::GetCurrentDefault()),\n      process_shutdown_(process_shutdown) {",
+    "count": 1
+  },
+  {
+    "path": "chrome/browser/ui/aux_profile_switch_session_rebuild.cc",
+    "old": "    service->ResetFromCurrentBrowsersWithWriteCompletion(base::BindOnce(\n        &LoadedSessionWriterParticipant::DidWrite, base::WrapRefCounted(this), i));",
+    "new": "    auto done = base::BindOnce(&LoadedSessionWriterParticipant::DidWrite,\n                              base::WrapRefCounted(this), i);\n    if (process_shutdown_)\n      service->FlushPendingCommandsWithWriteCompletion(std::move(done));\n    else\n      service->ResetFromCurrentBrowsersWithWriteCompletion(std::move(done));",
+    "count": 1
+  },
+  {
+    "path": "chrome/browser/ui/aux_profile_switch_session_rebuild.cc",
+    "old": "    service->ResetFromCurrentBrowsersWithWriteCompletion(base::BindOnce(\n        &LoadedSessionWriterParticipant::DidAppWrite, base::WrapRefCounted(this), i));",
+    "new": "    auto done = base::BindOnce(&LoadedSessionWriterParticipant::DidAppWrite,\n                              base::WrapRefCounted(this), i);\n    if (process_shutdown_)\n      service->FlushPendingCommandsWithWriteCompletion(std::move(done));\n    else\n      service->ResetFromCurrentBrowsersWithWriteCompletion(std::move(done));",
+    "count": 1
+  },
+  {
+    "path": "chrome/browser/ui/aux_profile_switch_session_rebuild.cc",
+    "old": "\n}  // namespace aux\n",
+    "new": "\nvoid CloseLoadedSessionWritersForShutdown(\n    ProfileManager& manager,\n    base::OnceCallback<void(SessionWriterParticipantObservation)> done) {\n  CHECK(content::BrowserThread::CurrentlyOn(content::BrowserThread::UI));\n  std::vector<base::WeakPtr<Profile>> profiles;\n  for (Profile* profile : manager.GetLoadedProfiles())\n    profiles.push_back(profile->GetWeakPtr());\n  base::MakeRefCounted<LoadedSessionWriterParticipant>(std::move(profiles),\n      std::move(done), true)->Start();\n}\n\n}  // namespace aux\n",
+    "count": 1
+  },
+  {
+    "path": "chrome/browser/extensions/api/messaging/native_message_process_host.cc",
+    "old": "        FROM_HERE, {base::MayBlock(), base::TaskPriority::BEST_EFFORT},",
+    "new": "        FROM_HERE, {base::MayBlock(), base::TaskPriority::BEST_EFFORT,\n                    base::TaskShutdownBehavior::BLOCK_SHUTDOWN},",
+    "count": 1
+  }
+]
