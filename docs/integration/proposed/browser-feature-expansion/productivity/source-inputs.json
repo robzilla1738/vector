@@ -1,0 +1,21 @@
+{
+  "sourceRoot": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-protected-startup-integration-20261023/Aux.app/Contents/Resources/aux",
+  "files": [
+    {
+      "path": "apps/extension/dist/background.js",
+      "sha256": "2aa4cff640db8118f6d5820e757860f4e24c637c4f6369c28065a819773b15d6"
+    },
+    {
+      "path": "apps/extension/dist/assets/tabsearch-3k_2hgil.js",
+      "sha256": "a988898d132dc507d84efe21f86184a67e62524381c69dbef645d2203d7988aa"
+    },
+    {
+      "path": "apps/daemon/Aux Daemon.app/Contents/Resources/node-development/index.mjs",
+      "sha256": "ecff19ddbc7fa76529c50111152f8324ef0ba6b87de11e7ecf872f76270a7484"
+    },
+    {
+      "path": "apps/daemon/Aux Daemon.app/Contents/Resources/node-development/aux-native-entry.mjs",
+      "sha256": "541917242bf9134a2bb7915cb8b65a1ecb28d84c2ed91264639c82245e3f3b7e"
+    }
+  ]
+}

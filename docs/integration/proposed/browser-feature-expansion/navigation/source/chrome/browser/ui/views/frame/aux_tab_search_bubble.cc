@@ -8,6 +8,7 @@
 #include <utility>
 
 #include "base/check.h"
+#include "base/json/json_writer.h"
 #include "base/strings/string_number_conversions.h"
 #include "base/strings/string_util.h"
 #include "base/strings/utf_string_conversions.h"
@@ -99,6 +100,7 @@ class SearchBrowserBinding : public content::WebContentsUserData<SearchBrowserBi
         ? browser : nullptr;
   }
   void Begin(AuxCommandBarMode mode) {
+    proposal_.reset();
     mode_ = mode;
     generation_ = base::Uuid::GenerateRandomV4().AsLowercaseString();
     auto* owner = browser();
@@ -108,7 +110,10 @@ class SearchBrowserBinding : public content::WebContentsUserData<SearchBrowserBi
     auto* entry = contents ? contents->GetController().GetLastCommittedEntry() : nullptr;
     navigation_id_ = entry ? entry->GetUniqueID() : 0;
   }
-  void Invalidate() { generation_.clear(); target_.reset(); }
+  void Invalidate() { generation_.clear(); target_.reset(); proposal_.reset(); }
+  void SetProposal(base::DictValue proposal) { proposal_ = std::move(proposal); }
+  const base::DictValue* proposal() const { return proposal_ ? &*proposal_ : nullptr; }
+  void ConsumeProposal() { proposal_.reset(); }
   content::WebContents* target() { return target_.get(); }
   AuxCommandBarMode mode() const { return mode_; }
   const std::string& generation() const { return generation_; }
@@ -131,6 +136,7 @@ class SearchBrowserBinding : public content::WebContentsUserData<SearchBrowserBi
   AuxCommandBarMode mode_ = AuxCommandBarMode::kSearchTabs;
   std::string generation_;
   int navigation_id_ = 0;
+  std::optional<base::DictValue> proposal_;
   WEB_CONTENTS_USER_DATA_KEY_DECL();
 };
 WEB_CONTENTS_USER_DATA_KEY_IMPL(SearchBrowserBinding);
@@ -207,9 +213,12 @@ class AuxTabSearchContentsView : public views::View {
     }
   }
   void ReloadForNextShow() { webview_->LoadInitialURL(SearchURL()); }
-  void BeginInvocation(AuxCommandBarMode mode) {
-    if (auto* binding = SearchBrowserBinding::FromWebContents(webview_->GetWebContents()))
+  void BeginInvocation(AuxCommandBarMode mode,
+                       std::optional<base::DictValue> proposal) {
+    if (auto* binding = SearchBrowserBinding::FromWebContents(webview_->GetWebContents())) {
       binding->Begin(mode);
+      if (proposal) binding->SetProposal(std::move(*proposal));
+    }
     ReloadForNextShow();
   }
   void InvalidateInvocation() {
@@ -278,7 +287,8 @@ class AuxProfileSearchOwner : public gfx::AnimationDelegate,
   views::Widget* widget() const { return widget_.get(); }
 
   bool Show(base::OnceClosure on_closed = {},
-            AuxCommandBarMode mode = AuxCommandBarMode::kSearchTabs) {
+            AuxCommandBarMode mode = AuxCommandBarMode::kSearchTabs,
+            std::optional<base::DictValue> proposal = std::nullopt) {
     auto* browser = browser_.get();
     auto* profile = browser ? browser->GetProfile() : nullptr;
     if (!browser || !parent_ || parent_->IsClosed() || !AgentInstalled(profile))
@@ -308,7 +318,7 @@ class AuxProfileSearchOwner : public gfx::AnimationDelegate,
     auto* contents = Contents();
     if (!contents || !widget_)
       return false;
-    contents->BeginInvocation(mode);
+    contents->BeginInvocation(mode, std::move(proposal));
     const auto target = CenteredBounds();
     if (visible_) {
       widget_->SetBounds(target);
@@ -619,6 +629,7 @@ const char* CommandModeName(AuxCommandBarMode mode) {
     case AuxCommandBarMode::kNewTab: return "new-tab";
     case AuxCommandBarMode::kNavigate: return "navigate";
     case AuxCommandBarMode::kCommands: return "commands";
+    case AuxCommandBarMode::kTidy: return "tidy";
   }
 }
 }
@@ -645,6 +656,8 @@ base::DictValue GetAuxCommandContext(content::WebContents* sender) {
     result.Set("activeUrl", target->GetLastCommittedURL().spec());
   }
   result.Set("commands", aux::GetNavigationCommandCatalog(browser));
+  if (const auto* proposal = binding->proposal())
+    result.Set("organizationProposal", proposal->Clone());
   return result;
 }
 base::DictValue CommitAuxCommand(content::WebContents* sender,
@@ -719,4 +732,30 @@ base::DictValue CommitAuxCommand(content::WebContents* sender,
   base::DictValue result;
   result.Set("success", true);
   return result;
+}
+
+bool ShowAuxOrganizationProposal(BrowserWindowInterface* browser,
+                                 base::DictValue proposal) {
+  const auto* id = proposal.FindString("proposalId");
+  auto encoded = base::WriteJson(proposal);
+  if (!id || id->empty() || id->size() > 64 || !encoded || encoded->size() > 131072)
+    return false;
+  auto* owner = SearchOwner(browser, true);
+  return owner && owner->Show({}, AuxCommandBarMode::kTidy, std::move(proposal));
+}
+std::optional<base::DictValue> GetAuxOrganizationProposal(
+    content::WebContents* sender, std::string_view proposal_id) {
+  auto* binding = sender ? aux::SearchBrowserBinding::FromWebContents(sender) : nullptr;
+  if (!binding || !binding->current() || binding->mode() != AuxCommandBarMode::kTidy)
+    return std::nullopt;
+  const auto* proposal = binding->proposal();
+  const auto* id = proposal ? proposal->FindString("proposalId") : nullptr;
+  if (!id || *id != proposal_id) return std::nullopt;
+  return proposal->Clone();
+}
+bool ConsumeAuxOrganizationProposal(content::WebContents* sender,
+                                    std::string_view proposal_id) {
+  if (!GetAuxOrganizationProposal(sender, proposal_id)) return false;
+  aux::SearchBrowserBinding::FromWebContents(sender)->ConsumeProposal();
+  return true;
 }

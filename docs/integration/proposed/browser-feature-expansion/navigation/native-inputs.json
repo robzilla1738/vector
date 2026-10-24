@@ -29,12 +29,12 @@
     {
       "path": "chrome/browser/ui/views/frame/aux_tab_search_bubble.cc",
       "beforeSha256": "13b1d57e4e5872f586ba8262579833c1e5050941d58bbb38c853fdf31e41d91e",
-      "afterSha256": "eef26e8e7d2713dc8f307cb85b9e19172678d72fa1a081175154cdd4417bbb3f"
+      "afterSha256": "85dbd06672dbf9dcbbbefa6da582e227423f01a41bad1f690c4706f0c72e7afa"
     },
     {
       "path": "chrome/browser/ui/views/frame/aux_tab_search_bubble.h",
       "beforeSha256": "6aa9d1c9bdd9cc0643d960a5a4906ceeb52b72e9fa73b79e1ec93b4b5738483e",
-      "afterSha256": "563e59469432f4aaaf31916d1e45af113faed3fb7291cfeef920c2da8906155e"
+      "afterSha256": "d5192c375f9d4d8bba83d384169046ee6575ab810fc2e9d1448c69668de616aa"
     }
   ],
   "built": false,

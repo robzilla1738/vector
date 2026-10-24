@@ -6,6 +6,8 @@
 
 #include "base/functional/callback.h"
 #include "base/values.h"
+#include <optional>
+#include <string_view>
 class BrowserWindowInterface;
 namespace content { class WebContents; }
 namespace views {
@@ -19,11 +21,18 @@ class Widget;
 void ToggleAuxProfileSearch(BrowserWindowInterface* browser, views::View* anchor);
 void CloseAuxProfileSearch(BrowserWindowInterface* browser);
 // The existing search surface owns all modes. Merely showing it creates no tab.
-enum class AuxCommandBarMode { kSearchTabs, kNewTab, kNavigate, kCommands };
+enum class AuxCommandBarMode { kSearchTabs, kNewTab, kNavigate, kCommands, kTidy };
 bool ShowAuxCommandBar(BrowserWindowInterface* browser, AuxCommandBarMode mode);
 // Only the actual current search WebContents may use these methods. Context
 // tokens expire on hide, navigation, active-view/profile change or replacement.
 base::DictValue GetAuxCommandContext(content::WebContents* sender);
+// Caller validates current native organization owner/revision/account before show.
+bool ShowAuxOrganizationProposal(BrowserWindowInterface* browser,
+                                 base::DictValue proposal);
+std::optional<base::DictValue> GetAuxOrganizationProposal(
+    content::WebContents* sender, std::string_view proposal_id);
+bool ConsumeAuxOrganizationProposal(content::WebContents* sender,
+                                    std::string_view proposal_id);
 base::DictValue CommitAuxCommand(content::WebContents* sender,
                                 const base::DictValue& request);
 // Original search WebContents user data retains a weak actual window. It does
