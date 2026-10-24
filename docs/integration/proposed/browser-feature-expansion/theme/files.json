@@ -41,7 +41,7 @@
     {
       "path": "chrome/browser/ui/views/frame/custom_corners_background.cc",
       "baselineSha256": "cb0ca567326ef5dab106c3d1465aa158d5037a3c4d0eba696912ddbbc4c1c51e",
-      "sourceSha256": "933cd4a91888a8d74fcc3388f9cba65da92627cba03d920df29cf9168f547d65"
+      "sourceSha256": "89bb798da9bf0d4bac1561dfe6830d934e1ff927558836fb0af5cdb8bd5be2c9"
     },
     {
       "path": "chrome/browser/ui/views/frame/custom_corners_background.h",
@@ -54,5 +54,5 @@
       "sourceSha256": "a34059e5568990bc7c2e7ac40033a1ee37c288877af6efeff33bd2311c0e640a"
     }
   ],
-  "patchSha256": "fdc62d3b3a30221be221857e52450a1c918c0fe0896ce70751888df48e460c38"
+  "patchSha256": "4a60e5142d8c3fff1fefb7a7e1b92ced964b9c208b277fa95a5df93c8aee1f6d"
 }

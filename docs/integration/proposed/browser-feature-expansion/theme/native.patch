@@ -878,7 +878,52 @@ diff --git a/chrome/browser/ui/views/frame/custom_corners_background.cc b/chrome
    layer->SetBackdropFilterBounds(GetBackgroundPath(view_->GetLocalBounds()));
    SchedulePaintHost();
  }
-@@ -347,8 +358,14 @@
+@@ -272,6 +283,11 @@
+     return;
+   }
+ 
++  auto corner_color = corner_color_;
++#if BUILDFLAG(ENABLE_AUX_BROWSER)
++  corner_color.opacity = aux_theme::MaterialOpacity(
++      browser_view().GetProfile(), view_->GetNativeTheme(), corner_color.opacity);
++#endif
+   if (view->layer()) {
+     CHECK(!view->layer()->fills_bounds_opaquely());
+   }
+@@ -311,7 +327,7 @@
+     const gfx::Rect bounds(0, 0, corner_radius, corner_radius);
+     const SkPath corner_path = SkPath::Rect(gfx::RectToSkRect(bounds));
+     const auto scope = maybe_clip(canvas, VisualCorner::kTopLeft, bounds);
+-    PaintPath(canvas, corner_path, corner_color_, /*anti_alias=*/false);
++    PaintPath(canvas, corner_path, corner_color, /*anti_alias=*/false);
+   }
+   if (corners[VisualCorner::kTopRight].type ==
+       CornerType::kRoundedWithBackground) {
+@@ -321,7 +337,7 @@
+                            corner_radius);
+     const SkPath corner_path = SkPath::Rect(gfx::RectToSkRect(bounds));
+     const auto scope = maybe_clip(canvas, VisualCorner::kTopRight, bounds);
+-    PaintPath(canvas, corner_path, corner_color_, /*anti_alias=*/false);
++    PaintPath(canvas, corner_path, corner_color, /*anti_alias=*/false);
+   }
+   if (corners[VisualCorner::kBottomRight].type ==
+       CornerType::kRoundedWithBackground) {
+@@ -332,7 +348,7 @@
+                            corner_radius);
+     const SkPath corner_path = SkPath::Rect(gfx::RectToSkRect(bounds));
+     const auto scope = maybe_clip(canvas, VisualCorner::kBottomRight, bounds);
+-    PaintPath(canvas, corner_path, corner_color_, /*anti_alias=*/false);
++    PaintPath(canvas, corner_path, corner_color, /*anti_alias=*/false);
+   }
+   if (corners[VisualCorner::kBottomLeft].type ==
+       CornerType::kRoundedWithBackground) {
+@@ -342,13 +358,19 @@
+                            corner_radius);
+     const SkPath corner_path = SkPath::Rect(gfx::RectToSkRect(bounds));
+     const auto scope = maybe_clip(canvas, VisualCorner::kBottomLeft, bounds);
+-    PaintPath(canvas, corner_path, corner_color_, /*anti_alias=*/false);
++    PaintPath(canvas, corner_path, corner_color, /*anti_alias=*/false);
+   }
  
    // Draw solid rect/rrect background:
    CornerRadii radii;
@@ -894,7 +939,7 @@ diff --git a/chrome/browser/ui/views/frame/custom_corners_background.cc b/chrome
  
    // Paint strokes around the outside. Corners get strokes if they are between
    // two sides with strokes and have a radius. Multiple paths may be drawn if
-@@ -454,6 +471,8 @@
+@@ -454,6 +476,8 @@
  
  void CustomCornersBackground::OnViewThemeChanged(views::View* view) {
    Background::OnViewThemeChanged(view);
