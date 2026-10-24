@@ -1,0 +1,18 @@
+{
+  "format": "aux.resource-package.actual.v1",
+  "passed": true,
+  "app": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-standard-profile-resources-20261024/Aux.app",
+  "receipt": {
+    "path": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-standard-profile-resources-20261024/receipt.json",
+    "sha256": "edbae95a34ffe128f11781248cf2026934b5a2e01de52cb28ab95e6f08d9edcd"
+  },
+  "inventorySha256": "34a31e763be5c1aa110d36f2e69294439bb7e230b5e04b9ddaea476e59ea6c9d",
+  "leaves": 11190,
+  "exactReplacements": 8,
+  "exactRemovals": 1,
+  "testable": false,
+  "runtimeAuthorityGranted": false,
+  "appExecuted": false,
+  "productSigned": false,
+  "acceptedAppReplaced": false
+}

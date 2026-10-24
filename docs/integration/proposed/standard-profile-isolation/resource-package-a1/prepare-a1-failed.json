@@ -1,0 +1,10 @@
+{
+  "format": "aux.resource-package.prepare.actual.v1",
+  "passed": false,
+  "exitCode": 1,
+  "toolSha256": "dad400847e5e514276b6cfed3368220d196777b52505308284467870e95c5c4f",
+  "phase": "resource-mode-validation",
+  "reason": "The original browser skill is mode0600, not0644. Preserve each existing mode instead of requiring all reviewed text resources to be0644. No output package/review was written.",
+  "productExecuted": false,
+  "appChanged": false
+}

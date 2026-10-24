@@ -1,0 +1,10 @@
+{
+  "format": "aux.resource-package.prepare.actual.v1",
+  "passed": false,
+  "exitCode": 1,
+  "toolSha256": "d4ee39f80f229fb0f335cdfce3e934106857d0b02bb8f500ba3a1c446c5d07dc",
+  "phase": "app-stage-layout-association",
+  "reason": "Packaged paths begin apps/daemon; the raw app-resource stage begins daemon. The reviewed staged skill therefore needs the exact apps/ prefix removed. No output package/review was written.",
+  "productExecuted": false,
+  "appChanged": false
+}

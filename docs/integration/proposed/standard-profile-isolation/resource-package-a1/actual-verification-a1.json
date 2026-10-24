@@ -1,0 +1,18 @@
+{
+  "format": "aux.resource-package.verification.actual.v1",
+  "passed": true,
+  "packageReceiptSha256": "edbae95a34ffe128f11781248cf2026934b5a2e01de52cb28ab95e6f08d9edcd",
+  "reviewSha256": "0a0cb20c599270e0a672af87cddced272920f7babbe6a6c7ff7765202fa07b51",
+  "sourcePairSha256": "91487d6222de290a7f8207b50687cebbc061e7c530f909ab22c4c3f07ff95d05",
+  "exactReplacements": 8,
+  "exactRemovals": 1,
+  "completePriorCopyAndInventoryProofReused": true,
+  "actualChangedLeavesAndNativePairAndCliRechecked": true,
+  "unrelatedNativeAndUiInventoryEntriesUnchanged": true,
+  "leaves": 11190,
+  "testable": false,
+  "runtimeAuthorityGranted": false,
+  "appExecuted": false,
+  "productSigned": false,
+  "acceptedAppReplaced": false
+}

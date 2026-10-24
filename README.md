@@ -16,6 +16,8 @@ The [desktop feature expansion plan](docs/plans/2026-10-23-browser-feature-expan
 
 ## Current local preview
 
+The latest inactive unsigned resource successor is `out/provided-candidate-standard-profile-resources-20261024/Aux.app`. It contains the profile-isolation native build plus the reviewed UI peer and vendor-privilege corrections, with the obsolete daemon addon excluded. Native/CLI bytes and unrelated UI/CSS/assets are preserved. It is **unexecuted and not yet runtime-accepted/testable**; it does not replace the accepted preview below. See [exact package evidence](docs/integration/proposed/standard-profile-isolation/resource-package-a1/README.md).
+
 The current copied app is `out/provided-candidate-local-browser-pass/Aux.app`. It uses an explicitly accepted, isolated disposable development profile; it is not installed or released. Ordinary opening now has an accepted-startup record for the exact reviewed app bytes. Replacing that app requires a verified successor record, not copying the old acceptance to new code. See [current status](docs/STATUS.md) and the [actual comparison](out/pass1-ui-completion/compare.html). Functional acceptance and remaining gaps are recorded in [the continuation ledger](docs/acceptance/completion-continuation-2026-10-20.json); this preview is not declared complete.
 
 When restaging this preview, pass `--app-path` with the exact absolute `finalApp` from its accepted baseline/cache. The staging default is `~/Applications/Aux.app`; using that default for this preview changes runtime relocation bytes and invalidates retained-helper reuse. Compare the fresh resource inventory before accepting a successor.
