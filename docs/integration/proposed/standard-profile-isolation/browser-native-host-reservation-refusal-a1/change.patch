@@ -1,0 +1,30 @@
+--- a/chrome/browser/extensions/api/messaging/aux_native_messaging_lifetime.h
++++ b/chrome/browser/extensions/api/messaging/aux_native_messaging_lifetime.h
+@@ -37 +37,6 @@
+-    if (!entry->cohort || !aux::browser_custody::MaySpawn(entry->cohort)) return nullptr;
++    if (!entry->cohort) return nullptr;
++    if (!aux::browser_custody::MaySpawn(entry->cohort)) {
++      // Admission closed after reservation, before any native spawn occurred.
++      aux::browser_custody::DidFailBeforeChild(entry->cohort);
++      return nullptr;
++    }
+--- a/content/browser/aux_child_lifetime.h
++++ b/content/browser/aux_child_lifetime.h
+@@ -36 +36,6 @@
+-    if (!entry->cohort || !aux::browser_custody::MaySpawn(entry->cohort)) return nullptr;
++    if (!entry->cohort) return nullptr;
++    if (!aux::browser_custody::MaySpawn(entry->cohort)) {
++      // Admission closed after reservation, before any native spawn occurred.
++      aux::browser_custody::DidFailBeforeChild(entry->cohort);
++      return nullptr;
++    }
+--- a/chrome/browser/aux/AuxOwnedNativePeerChild.cc
++++ b/chrome/browser/aux/AuxOwnedNativePeerChild.cc
+@@ -132 +132,6 @@
+-  if (!state->descendant_ticket || !aux::browser_custody::MaySpawn(state->descendant_ticket)) return false;
++  if (!state->descendant_ticket) return false;
++  if (!aux::browser_custody::MaySpawn(state->descendant_ticket)) {
++    // Admission closed after reservation, before any native spawn occurred.
++    aux::browser_custody::DidFailBeforeChild(state->descendant_ticket);
++    return false;
++  }

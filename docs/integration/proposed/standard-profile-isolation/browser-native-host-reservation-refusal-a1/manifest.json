@@ -1,0 +1,30 @@
+{
+  "format": "aux.browser-native-host-reservation-refusal.v1",
+  "predecessor": {
+    "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/browser-native-host-custody-a1/manifest.json",
+    "sha256": "d2bb82e4f024d82628820c581dbd94bccc70476594983e4f57d0b6b69f617535"
+  },
+  "files": [
+    {
+      "path": "chrome/browser/extensions/api/messaging/aux_native_messaging_lifetime.h",
+      "beforeSha256": "4eac06ece4604d8cd97483998917105cd53f905666859aae3d98036ae1e812fb",
+      "afterSha256": "a265e0f3dd5236e529f9f50c7060d11f4b4fcba084eda0dcfec6f65c89e7a7b0"
+    },
+    {
+      "path": "content/browser/aux_child_lifetime.h",
+      "beforeSha256": "2b338953aa589941250ff5fbd01816010f0fb08494263ba46f8c4c294b2ffdfe",
+      "afterSha256": "a617376339505c2df96b92937f5f6bbda061512b2cbe629d9785295ed354347b"
+    },
+    {
+      "path": "chrome/browser/aux/AuxOwnedNativePeerChild.cc",
+      "beforeSha256": "e58cf3a84cc074b0701e20bfdb634a9f3d8ada13e2b76edd3238d5f14fbfd678",
+      "afterSha256": "72bb8e0fa3510d35822e514c8c4f98f2901d7825a5d255faf019ffd870fd67f7"
+    }
+  ],
+  "countedAdaptations": 3,
+  "replacementsSha256": "410307445026ebbda0fa5b713cd53a168e85b3a3127601e681d54f2facea7f6b",
+  "patchSha256": "94195836b42de36bd7aa088fd8d8efad1dfedb26920b23913e9ca30ff7fc7cc7",
+  "sourceReplayPassed": true,
+  "nativeCompiled": false,
+  "runtimeExecuted": false
+}
