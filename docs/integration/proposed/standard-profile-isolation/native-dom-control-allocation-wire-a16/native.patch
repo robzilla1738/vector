@@ -1,0 +1,65 @@
+--- a/components/services/storage/public/mojom/local_storage_control.mojom
++++ b/components/services/storage/public/mojom/local_storage_control.mojom
+@@ -30,6 +30,11 @@
+   string source_map_sha256;
+   string target_map_sha256;
+   array<AuxUiDomCacheView> cache_views;
++  // A requested allocation is an immutable action, not a predicted map ID.
++  bool allocation_requested;
++  string allocation_action_sha256;
++  int64? allocated_map_id;
++  bool allocation_observed;
+ };
+ struct AuxUiDomTargetMap {
+   // Ordinal only selects a map captured by this exact existing backend lease.
+@@ -57,6 +62,8 @@
+   bool released;
+   // Same-service original attempt returned no lease and native cleanup completed.
+   bool aborted;
++  // Physical target topology may be empty until the real allocator is observed.
++  string allocation_action_sha256;
+ };
+ 
+ // Controls the state of Local Storage within a partition. This is a privileged
+--- a/components/services/storage/dom_storage/local_storage_impl.cc
++++ b/components/services/storage/dom_storage/local_storage_impl.cc
+@@ -334,6 +334,7 @@
+   reply->cache_published = snapshot.cache_published;
+   reply->source_topology_sha256 = std::move(snapshot.source_topology_sha256);
+   reply->target_topology_sha256 = std::move(snapshot.target_topology_sha256);
++  reply->allocation_action_sha256 = std::move(snapshot.allocation_action_sha256);
+   for (auto& map : snapshot.maps) {
+     auto output = mojom::AuxUiDomMapSnapshot::New();
+     output->storage_key = std::move(map.storage_key);
+@@ -343,6 +344,10 @@
+     output->source_persisted = map.source_persisted;
+     output->source_map_sha256 = std::move(map.source_map_sha256);
+     output->target_map_sha256 = std::move(map.target_map_sha256);
++    output->allocation_requested = map.allocation_requested;
++    output->allocation_action_sha256 = std::move(map.allocation_action_sha256);
++    output->allocated_map_id = map.allocated_map_id;
++    output->allocation_observed = map.allocation_observed;
+     for (auto& [key, value] : map.source)
+       output->source_entries.push_back(blink::mojom::KeyValue::New(key, std::move(value)));
+     for (auto& [key, value] : map.target)
+--- a/components/services/storage/dom_storage/session_storage_impl.cc
++++ b/components/services/storage/dom_storage/session_storage_impl.cc
+@@ -321,6 +321,7 @@
+   reply->cache_published = snapshot.cache_published;
+   reply->source_topology_sha256 = std::move(snapshot.source_topology_sha256);
+   reply->target_topology_sha256 = std::move(snapshot.target_topology_sha256);
++  reply->allocation_action_sha256 = std::move(snapshot.allocation_action_sha256);
+   for (auto& map : snapshot.maps) {
+     auto output = mojom::AuxUiDomMapSnapshot::New();
+     output->storage_key = std::move(map.storage_key);
+@@ -330,6 +331,10 @@
+     output->source_persisted = map.source_persisted;
+     output->source_map_sha256 = std::move(map.source_map_sha256);
+     output->target_map_sha256 = std::move(map.target_map_sha256);
++    output->allocation_requested = map.allocation_requested;
++    output->allocation_action_sha256 = std::move(map.allocation_action_sha256);
++    output->allocated_map_id = map.allocated_map_id;
++    output->allocation_observed = map.allocation_observed;
+     for (auto& [key, value] : map.source)
+       output->source_entries.push_back(blink::mojom::KeyValue::New(key, std::move(value)));
+     for (auto& [key, value] : map.target)

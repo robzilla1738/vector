@@ -1,0 +1,78 @@
+{
+  "format": "aux.dom-control-allocation-wire.v1",
+  "predecessorCommits": [
+    "e638d5cd1",
+    "799f7b523"
+  ],
+  "nativeOwnerCommit": "d8cf5fb29",
+  "nativeOwnerSourcePlan": "/Users/rcourson/.codex/worktrees/aux-features-organization/web/docs/integration/proposed/standard-profile-isolation/native-local-allocation-action-a16/source-plan.json",
+  "nativeOwnerSourcePlanSha256": "c37adbe29b9b4f2e0d45893c68f0c596aecd48f8954dda408bcfe0a0450640e0",
+  "files": [
+    {
+      "path": "components/services/storage/public/mojom/local_storage_control.mojom",
+      "inputSource": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/native-dom-control-result-observation-a1/source/components/services/storage/public/mojom/local_storage_control.mojom",
+      "inputSha256": "74f84005316e3ee9d0f097e6c1d8faf2f37ea22182d9947b3ef22ffd76d9df55",
+      "outputSha256": "8fa2f64846fee55043ebe6a6f45827e9fafd1ecf1f2ad302c43a32627031e3c6",
+      "source": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/native-dom-control-allocation-wire-a16/source/components/services/storage/public/mojom/local_storage_control.mojom",
+      "anchors": [
+        {
+          "name": "Append factual allocator action/result separate from original and physical target identities",
+          "find": "  array<AuxUiDomCacheView> cache_views;\n};",
+          "replace": "  array<AuxUiDomCacheView> cache_views;\n  // A requested allocation is an immutable action, not a predicted map ID.\n  bool allocation_requested;\n  string allocation_action_sha256;\n  int64? allocated_map_id;\n  bool allocation_observed;\n};",
+          "count": 1
+        },
+        {
+          "name": "Append aggregate native allocation action without replacing physical topology digest",
+          "find": "  bool aborted;\n};",
+          "replace": "  bool aborted;\n  // Physical target topology may be empty until the real allocator is observed.\n  string allocation_action_sha256;\n};",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "components/services/storage/dom_storage/local_storage_impl.cc",
+      "inputSource": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/native-dom-control-result-observation-a1/source/components/services/storage/dom_storage/local_storage_impl.cc",
+      "inputSha256": "ca08f7d83f35d684e327074501f3736c7f761044f25cca135dddfbaf5a4f0261",
+      "outputSha256": "11b8fb8bb3cadd91b15786e863dcbec85c51741164ffd235d2bdfd147ed4fee7",
+      "source": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/native-dom-control-allocation-wire-a16/source/components/services/storage/dom_storage/local_storage_impl.cc",
+      "anchors": [
+        {
+          "name": "Forward aggregate native action observation unchanged",
+          "find": "  reply->target_topology_sha256 = std::move(snapshot.target_topology_sha256);",
+          "replace": "  reply->target_topology_sha256 = std::move(snapshot.target_topology_sha256);\n  reply->allocation_action_sha256 = std::move(snapshot.allocation_action_sha256);",
+          "count": 1
+        },
+        {
+          "name": "Forward actual allocator observation; never substitute action for physical digest",
+          "find": "    output->target_map_sha256 = std::move(map.target_map_sha256);",
+          "replace": "    output->target_map_sha256 = std::move(map.target_map_sha256);\n    output->allocation_requested = map.allocation_requested;\n    output->allocation_action_sha256 = std::move(map.allocation_action_sha256);\n    output->allocated_map_id = map.allocated_map_id;\n    output->allocation_observed = map.allocation_observed;",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "components/services/storage/dom_storage/session_storage_impl.cc",
+      "inputSource": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/native-dom-control-result-observation-a1/source/components/services/storage/dom_storage/session_storage_impl.cc",
+      "inputSha256": "51df9b241107fcc000f353ac80a654f5a5340a9f93405ef81651fe98f176491d",
+      "outputSha256": "2039a123ed9c7a55787b347e86650e3fbf588d049d4f185374243e56640dc17f",
+      "source": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/native-dom-control-allocation-wire-a16/source/components/services/storage/dom_storage/session_storage_impl.cc",
+      "anchors": [
+        {
+          "name": "Forward aggregate native action observation unchanged",
+          "find": "  reply->target_topology_sha256 = std::move(snapshot.target_topology_sha256);",
+          "replace": "  reply->target_topology_sha256 = std::move(snapshot.target_topology_sha256);\n  reply->allocation_action_sha256 = std::move(snapshot.allocation_action_sha256);",
+          "count": 1
+        },
+        {
+          "name": "Forward actual allocator observation; never substitute action for physical digest",
+          "find": "    output->target_map_sha256 = std::move(map.target_map_sha256);",
+          "replace": "    output->target_map_sha256 = std::move(map.target_map_sha256);\n    output->allocation_requested = map.allocation_requested;\n    output->allocation_action_sha256 = std::move(map.allocation_action_sha256);\n    output->allocated_map_id = map.allocated_map_id;\n    output->allocation_observed = map.allocation_observed;",
+          "count": 1
+        }
+      ]
+    }
+  ],
+  "nativeMutation": false,
+  "compilerRun": false,
+  "runtimeAcceptance": false
+}

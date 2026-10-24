@@ -1,0 +1,29 @@
+{
+  "format": "aux.dom-control-allocation-wire.dependencies.v1",
+  "files": [
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-organization/web/docs/integration/proposed/standard-profile-isolation/native-local-allocation-action-a16/source-plan.json",
+      "sha256": "c37adbe29b9b4f2e0d45893c68f0c596aecd48f8954dda408bcfe0a0450640e0"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-organization/web/docs/integration/proposed/standard-profile-isolation/native-local-allocation-action-a16/source/components/services/storage/dom_storage/async_dom_storage_database.h",
+      "sha256": "0050781f8c549a38d01d2431c8b498bde48c144dc3b1c6dc188e68a8a74d8317"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-organization/web/docs/integration/proposed/standard-profile-isolation/native-local-allocation-action-a16/source/components/services/storage/dom_storage/async_dom_storage_database.cc",
+      "sha256": "5917a846a2636ad1cc93b490a7de6bf25695866b06fb31c568c6b4bc3de01853"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/native-dom-control-cohort-glue-a1/source-plan.json",
+      "sha256": "5e1262e5079c77644ea20fd7c25e7a83d7d64a5e48e79b14753b87e723032793"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/native-dom-control-result-observation-a1/source-plan.json",
+      "sha256": "8693c7a100beb3f24e694bc5a5142052f2a12df0f6a6feae4eedda63f6762ecc"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/native-dom-control-owner-repin-a1/dependency-successor.json",
+      "sha256": "28561d04d2d65bd4e5f3c6182037fd57c650f9749bed82c3cc474d29a32eb23c"
+    }
+  ]
+}

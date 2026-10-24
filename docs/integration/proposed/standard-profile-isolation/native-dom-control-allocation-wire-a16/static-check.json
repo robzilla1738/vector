@@ -1,0 +1,14 @@
+{
+  "format": "aux.dom-control-allocation-wire.static.v1",
+  "files": 3,
+  "countedAnchors": 6,
+  "patchReplay": true,
+  "patchReverse": true,
+  "actualSqliteSelectorRemainsPrivateNativeFact": true,
+  "callerSqliteOrFutureMapIdAdded": false,
+  "originalMapIdPreserved": true,
+  "physicalDigestEmptyPreserved": true,
+  "noLeaseAbortAndSameLeaseReadUnchanged": true,
+  "compilerRun": false,
+  "runtimeAcceptance": false
+}
