@@ -17,6 +17,7 @@ def sha(path):
 assert not OUTPUT.exists()
 OUTPUT.mkdir()
 result = {'format': 'aux.standard-profile-final-local.execution.v1', 'passed': False,
+    'runnerSha256': sha(__file__),
     'appExecuted': False, 'productSigned': False, 'runtimeAuthorityGranted': False,
     'acceptedAppReplaced': False, 'testable': False, 'runs': []}
 try:
@@ -27,19 +28,29 @@ try:
     for label, command in [
         ('primary-bridge', [sys.executable, str(HERE / 'inspect-browser-a8.py')]),
         ('package', [sys.executable, str(HERE.parent / 'package-v9/run-reviewed.py')]),
+        ('delivered-identity', ['node', str(ROOT / 'scripts/audit-aux-package-identity.mjs'),
+            str(ROOT / 'out/provided-candidate-standard-profile-finish-20261024/Aux.app'),
+            str(OUTPUT / 'delivered-identity.json')]),
     ]:
+        tool_digest = sha(command[1])
         started = time.monotonic()
         with (OUTPUT / (label + '.log')).open('xb') as stream:
             completed = subprocess.run(command, cwd=ROOT, stdout=stream, stderr=subprocess.STDOUT)
         result['runs'].append({'name': label, 'command': command, 'exitCode': completed.returncode,
+                               'toolSha256': tool_digest,
                                'seconds': time.monotonic() - started})
+        assert sha(command[1]) == tool_digest, label + ' tool changed'
         assert completed.returncode == 0, label + ' refused'
     final = ROOT / 'out/provided-candidate-standard-profile-finish-20261024/receipt.json'
     package = json.loads(final.read_text())
     assert package['passed'] is True
     for key in ['testable', 'runtimeAuthorityGranted', 'appExecuted', 'productSigned', 'acceptedAppReplaced']:
         assert package[key] is False, key
-    result.update(passed=True, finalReceipt=str(final), finalReceiptSha256=sha(final))
+    assert sha(__file__) == result['runnerSha256']
+    result.update(passed=True, finalReceipt=str(final), finalReceiptSha256=sha(final),
+                  deliveredIdentityReport=str(OUTPUT / 'delivered-identity.json'),
+                  deliveredIdentityReportSha256=sha(OUTPUT / 'delivered-identity.json'),
+                  identityClassificationComplete=False)
 except Exception as error:
     result['error'] = str(error)
 finally:
