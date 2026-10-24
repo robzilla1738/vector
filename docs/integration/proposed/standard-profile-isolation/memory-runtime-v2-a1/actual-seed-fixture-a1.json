@@ -1,0 +1,18 @@
+{
+  "format": "aux.memory-seed-v2.fixture.actual.v1",
+  "passed": true,
+  "fixture": "/private/tmp/aux-memory-seed-v2-fixture-20261024-a1",
+  "seedManifestSha256": "0b84ee82a7af237e08c89b7dab0266969210104e3b2930b6d79bbd81c55b7494",
+  "initialPublicationAndAllPayloadHashesPassed": true,
+  "validExistingGenerationsRetained": true,
+  "partialCacheRepairedWithNewGeneration": true,
+  "oldCorruptGenerationPreserved": true,
+  "unsafeCurrentLinkRefused": true,
+  "badSourceRefusedBeforeTargetMutation": true,
+  "fixtureGuardCallbacks": 1679,
+  "elapsedMs": 1519,
+  "nativeAuthorityTested": false,
+  "productExecutableRun": false,
+  "ownerStateAccessed": false,
+  "uiChanged": false
+}

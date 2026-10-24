@@ -1,0 +1,11 @@
+{
+  "format": "aux.memory-v2.app-stage.disposition.v1",
+  "rawStageEvidence": "actual-app-stage-a2.json",
+  "rawComparisonPassed": true,
+  "sourceIntegrationComplete": false,
+  "acceptedForPackaging": false,
+  "reason": "The general-purpose app producer still emits the predecessor daemon source that calls memory-bootstrap.cjs. Its three seed helpers must remain until the complete native-owned v7 source/entry is installed together with the v2 distribution.",
+  "correction": "Restore the general-purpose stager/checker to the retained compatibility path. Perform the three exact helper omissions only in the complete v7 source/entry/distribution successor package.",
+  "originalAppStageLeftIntact": true,
+  "productExecuted": false
+}

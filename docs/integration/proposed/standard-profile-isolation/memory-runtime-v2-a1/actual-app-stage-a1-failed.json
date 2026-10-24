@@ -1,0 +1,10 @@
+{
+  "format": "aux.memory-v2.app-stage.actual.v1",
+  "passed": false,
+  "output": "/private/tmp/aux-memory-v2-app-stage-20261024-a1",
+  "failure": "Cloud builds require a reviewed production or development profile",
+  "cause": "The initial static staging invocation omitted the predecessor's explicit development profile.",
+  "productExecuted": false,
+  "candidatePublished": false,
+  "cloudRequestMade": false
+}

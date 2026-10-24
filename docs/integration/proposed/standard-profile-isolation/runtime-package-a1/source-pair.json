@@ -1,0 +1,47 @@
+{
+  "format": "aux.exact-successor.source-pair.v1",
+  "passed": true,
+  "daemon": "/private/tmp/aux-standard-daemon-link-20261024-a6/Aux Daemon",
+  "daemonSha256": "7b3521946787f944756c077670e05052221682fbf1b120e1a8a89bbe463977fc",
+  "daemonReceiptSha256": "f2e5bb24ca213ac569a31fe7e88c40d92a0624e049a2e97fdf0dc630ce374975",
+  "pty": "/private/tmp/aux-contained-pty-module-20261023-r2/pty.node",
+  "ptySha256": "03f4124086be96716bf1666555aa6d1a2b3d055efd103d5af8b984de5d0c03be",
+  "source": "/private/tmp/aux-standard-daemon-projection-20261024-a7/index.mjs",
+  "sourceSha256": "c56057f14d25f622ec19df32d5da6989ce238477631f613c2502da0f56310707",
+  "entry": "/private/tmp/aux-standard-daemon-projection-20261024-a7/projected-entry/aux-native-entry.mjs",
+  "entrySha256": "0b1fe1660c8313db735cd590fca92f3cd8716c1dcbd1e2956917b06cdcaa80a9",
+  "loader": "/private/tmp/aux-standard-daemon-projection-20261024-a5/projected-entry/aux-owned-native.cjs",
+  "loaderSha256": "ec7ea0405f415d84e4afc695405eec07378d8c7233b926ffd9dd7db2edfed663",
+  "policyFormat": "aux.fresh.bootstrap.policy.v8",
+  "coldFeatureEnabled": false,
+  "runtimeAuthorityGranted": false,
+  "nativeBrowserBuildPending": false,
+  "uiModified": true,
+  "nativeBrowserReceiptSha256": "f404439f4715652672042281ce63a88357baba6b827442bb8e4ae6c36cabdbf2",
+  "predecessorSourcePairSha256": "91487d6222de290a7f8207b50687cebbc061e7c530f909ab22c4c3f07ff95d05",
+  "sourceCompositionReceiptSha256": "99d259aea229dc1cda6361f7e183a9425bf4c10eac1232c8d022820744cfb0e1",
+  "sourceReceiptSha256": "d3714520ba610489146c23a1173dca60a9b5b31a1f0cc1f3f74c7c1e09fbf0aa",
+  "entryReceiptSha256": "8fba90f936607199f324a6288e4521343bf59f573c8c389acb2f0b2f8f2cbc04",
+  "nativeInputManifestSha256": "051d3207b4f529c6c9d67f28bfeed78de151b8779a68e58f5886496b8a7ff76d",
+  "nativeRelinkResultSha256": "43de67baf42a974f9b18d776e404d85cb4a160eb4306059e7e3b78ad4f0c5fd4",
+  "nativeAbiChanged": false,
+  "nativeHostApiChanged": false,
+  "pairedModuleAbiChanged": false,
+  "nativePairingPending": false,
+  "productExecuted": false,
+  "pairProducer": {
+    "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/runtime-package-a1/runtime_package.py",
+    "sha256": "15bdfb4066eded784be22a6f29f7bf9e6a41d67e9a917dc889ec5cc822507887"
+  },
+  "pairProducerInputs": {
+    "projection": {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/daemon-projection-v6/actual-projection-a6.json",
+      "sha256": "e2f623b9a22c55ab41e98aa5676bbca4672a6625d1f05ab67e437aac607b11af"
+    },
+    "predecessor": {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/package-v11/source-pair-final.json",
+      "sha256": "edca6ee5f57b3cbb0415d2d4407f56283fb622b8568660d881b0fb4acc4d0a8d"
+    }
+  },
+  "pairingScope": "Existing broker/root API; unchanged native tuple, independent exact memory-v2 entry projection; no runtime acceptance"
+}

@@ -1,0 +1,36 @@
+{
+  "format": "aux.memory-runtime-v2.distribution.actual.v1",
+  "passed": true,
+  "output": "/private/tmp/aux-memory-runtime-v2-20261024-a1",
+  "distribution": "/private/tmp/aux-memory-runtime-v2-20261024-a1/distribution",
+  "originalCatalogSha256": "7aa00d742d40b5fcd013db3bdd39ab691f81ebaf3d6a70918d1a1c5736eb0ccb",
+  "originalSignatureVerified": true,
+  "derivedCatalogSigned": false,
+  "derivedCatalogSha256": "f42a7c27a9461ff3b09e319a41b4dbe40746248000ba18fc9546a4e7e10fbf26",
+  "seedManifestSha256": "0b84ee82a7af237e08c89b7dab0266969210104e3b2930b6d79bbd81c55b7494",
+  "runtimeManifestSha256": "a3a6ff1214564e80f18999e80e3125da517530794e30661bbf16c320124d4e33",
+  "runtimeSha256": "b4c7d12efa87ed88515092527c7d1e7d9b43e605f39f03543e2b0e8e7005b3c0",
+  "compressedBytes": 1094197,
+  "compressedSha256": "03f37c6a97a7d18903a70fe19f42e6552da6e99aaf465ad1a40ebaab1e254698",
+  "compressionRoundTripPassed": true,
+  "modelsPreserved": true,
+  "onlyDarwinArm64RuntimeClaimed": true,
+  "groups": [
+    {
+      "kind": "models",
+      "key": "2001e15f1ea3e79468db44b6ad772d05978b2787e1f414044cb0efb8c4bc78bc",
+      "generation": "6e23b637-b0d3-47c0-b9ed-d8edc42da9fc"
+    },
+    {
+      "kind": "memory-runtimes",
+      "key": "a3a6ff1214564e80f18999e80e3125da517530794e30661bbf16c320124d4e33",
+      "generation": "a3a6ff12-1456-5e80-b189-99e80e3125da"
+    }
+  ],
+  "originalSeedSourceSha256": "26b01830cd0d2d5a40b73e3de3406f9bd5de666ef2fa850a50bd0a844588aebe",
+  "zstdToolSha256": "f59db1267be3158941b6a70902ddcea423a294271ded955f0afb8e889b587426",
+  "productExecuted": false,
+  "ownerStateAccessed": false,
+  "sourceAndNativePairingPending": true,
+  "packaged": false
+}

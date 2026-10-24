@@ -1,0 +1,28 @@
+{
+  "format": "aux.memory-v2.app-stage.actual.v1",
+  "passed": true,
+  "output": "/private/tmp/aux-memory-v2-app-stage-20261024-a2",
+  "manifestSha256": "f90892dab9cc7044cd1aca0115b679d158107f8ea209c6b73474479ccf394bf4",
+  "removed": [
+    {
+      "component": "daemon",
+      "path": "Contents/Resources/native/memory-bootstrap.cjs",
+      "sha256": "aa21945643d6396f235ceee7b27bced9007dcba688b9fae1e4f2ba8aa4070f3f"
+    },
+    {
+      "component": "daemon",
+      "path": "Contents/Resources/native/memory-seed.cjs",
+      "sha256": "26b01830cd0d2d5a40b73e3de3406f9bd5de666ef2fa850a50bd0a844588aebe"
+    },
+    {
+      "component": "daemon",
+      "path": "Contents/Resources/native/memory-pins.json",
+      "sha256": "d73016f00854deed3b33fd65e95205b21a372e70faf480b261865283ff6a427d"
+    }
+  ],
+  "allRetainedBytesAndModesUnchanged": true,
+  "cliPreserved": true,
+  "productExecuted": false,
+  "uiChanged": false,
+  "packaged": false
+}

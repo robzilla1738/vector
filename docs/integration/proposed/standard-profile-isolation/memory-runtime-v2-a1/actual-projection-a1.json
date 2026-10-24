@@ -1,0 +1,21 @@
+{
+  "format": "aux.memory-v2.daemon-projection.actual.v1",
+  "passed": true,
+  "output": "/private/tmp/aux-standard-daemon-projection-20261024-a7",
+  "sourceSha256": "c56057f14d25f622ec19df32d5da6989ce238477631f613c2502da0f56310707",
+  "entrySha256": "0b1fe1660c8313db735cd590fca92f3cd8716c1dcbd1e2956917b06cdcaa80a9",
+  "loaderSha256": "ec7ea0405f415d84e4afc695405eec07378d8c7233b926ffd9dd7db2edfed663",
+  "compositionSha256": "99d259aea229dc1cda6361f7e183a9425bf4c10eac1232c8d022820744cfb0e1",
+  "sourceReceiptSha256": "d3714520ba610489146c23a1173dca60a9b5b31a1f0cc1f3f74c7c1e09fbf0aa",
+  "entryReceiptSha256": "8fba90f936607199f324a6288e4521343bf59f573c8c389acb2f0b2f8f2cbc04",
+  "totalAnchorCountPerLeaf": 216,
+  "appendedAnchorCountPerLeaf": 17,
+  "originalIndependentEntryMatches": true,
+  "publisherHelpersUnchanged": true,
+  "chatgptShimUnchanged": true,
+  "nativeApiChanged": false,
+  "nativePairingPending": true,
+  "productExecuted": false,
+  "uiChanged": false,
+  "packaged": false
+}

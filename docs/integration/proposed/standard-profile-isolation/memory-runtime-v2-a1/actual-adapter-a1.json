@@ -1,0 +1,19 @@
+{
+  "format": "aux.memory-runtime-v2.adapter.actual.v1",
+  "passed": true,
+  "input": "/private/tmp/aux-standard-daemon-projection-20261024-a6/index.mjs",
+  "inputSha256": "3ce70424305191a2345ea070b00b1d36b9935b7e348950167316f4386ecd45b1",
+  "output": "/private/tmp/aux-memory-v2-adapter-20261024-a1/index.mjs",
+  "outputSha256": "c56057f14d25f622ec19df32d5da6989ce238477631f613c2502da0f56310707",
+  "stages": 9,
+  "totalAnchors": 17,
+  "catalogSha256": "f42a7c27a9461ff3b09e319a41b4dbe40746248000ba18fc9546a4e7e10fbf26",
+  "sourceReplayPassed": true,
+  "wholeSourceSyntaxPassed": true,
+  "defaultColdRefusalPreserved": true,
+  "nativeApiChanged": false,
+  "independentEntryProjectionPending": true,
+  "packaged": false,
+  "productExecuted": false,
+  "uiChanged": false
+}

@@ -1,0 +1,16 @@
+{
+  "format": "aux.memory-v2.schema.fixture.actual.v1",
+  "passed": true,
+  "sourceSha256": "c56057f14d25f622ec19df32d5da6989ce238477631f613c2502da0f56310707",
+  "catalogSha256": "f42a7c27a9461ff3b09e319a41b4dbe40746248000ba18fc9546a4e7e10fbf26",
+  "runtimeV2AndBothOriginalModelsParsed": true,
+  "canonicalCacheKeyMatches": true,
+  "legacyRuntimeDescriptorRefused": true,
+  "changedCatalogBytesRefused": true,
+  "publicKeyAndUrlOverridesRefused": true,
+  "installedSchemaLibrary": "zod@4.6.7",
+  "catalogReaderFixtureUsed": true,
+  "nativeAuthorityTested": false,
+  "productExecutableRun": false,
+  "networkRequests": 0
+}

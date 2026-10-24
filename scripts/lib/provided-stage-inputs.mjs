@@ -32,6 +32,8 @@ export const providedStageInputs = Object.freeze([
   'vendor/provided/aux-product-links.mjs',
   'vendor/provided/aux-daemon-obsolete-addon.mjs',
   'vendor/provided/aux-computer-use-module-identity.mjs',
+  'vendor/provided/aux-memory-runtime-v2-stage.mjs',
+  'docs/integration/proposed/standard-profile-isolation/memory-runtime-v2-a1/source/stage-plan.json',
   'docs/integration/proposed/standard-profile-isolation/computer-use-module-identity-a1/source/patch-plan.json',
   'vendor/provided/aux-ui-peer-identity.mjs',
   'docs/integration/proposed/standard-profile-isolation/ui-peer-identity-a1/inputs.json',

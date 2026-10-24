@@ -1,0 +1,10 @@
+{
+  "format": "aux.runtime-package.prepare.actual.v1",
+  "passed": false,
+  "producerSha256": "fcb332f429ab83e0a91094204f7e23775612b7d2a61bcedaabae3ebb3a40cdf1",
+  "error": "Counted memory integration differs",
+  "cause": "Ordinary-source cold-refusal anchor was incorrectly reused for the independently projected owned-entry header. The original project-entry proof remained passed.",
+  "candidateWritten": false,
+  "reviewWritten": false,
+  "productExecuted": false
+}

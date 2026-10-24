@@ -1,0 +1,18 @@
+{
+  "format": "aux.memory-v2.static-stage.actual.v1",
+  "passed": true,
+  "outputRoot": "/private/tmp/aux-memory-v2-static-stage-20261024-a1",
+  "checkedFiles": 19,
+  "originalSourceCoveragePreserved": true,
+  "changedFiles": 4,
+  "modelsPreserved": true,
+  "legacySeedHelpersExcludedOnlyFromState2Daemon": true,
+  "compatibilityAndCliHelperListsUnchanged": true,
+  "manifestSha256": "353c90344cee28ea95b7c98e55df902161d238867a87963496f304e6e7bb6a57",
+  "nativeAuthorityTested": false,
+  "productExecutableRun": false,
+  "packaged": false,
+  "uiChanged": false,
+  "manifestPath": "/private/tmp/aux-memory-v2-static-stage-20261024-a1-manifest.json",
+  "componentCoverageRecheckedAfterExternalManifestPlacement": true
+}
