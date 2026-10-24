@@ -1,0 +1,118 @@
+{
+  "format": "aux.local-allocation-action.source.v1",
+  "files": [
+    {
+      "path": "components/services/storage/dom_storage/async_dom_storage_database.h",
+      "inputSha256": "d915588e4d5e1b54ab5f641c2be99c7c3839147d1d1565c5b9444820caea978f",
+      "outputSha256": "0050781f8c549a38d01d2431c8b498bde48c144dc3b1c6dc188e68a8a74d8317",
+      "inputRoot": "/Users/rcourson/.codex/worktrees/aux-features-organization/web/docs/integration/proposed/standard-profile-isolation/native-cache-cohort-integration-a9/source",
+      "output": "/Users/rcourson/.codex/worktrees/aux-features-organization/web/docs/integration/proposed/standard-profile-isolation/native-local-allocation-action-a16/source/components/services/storage/dom_storage/async_dom_storage_database.h",
+      "anchors": [
+        {
+          "find": "    std::vector<AuxUiCacheView> cache_views;\n  };",
+          "replace": "    std::vector<AuxUiCacheView> cache_views;\n    bool allocation_requested = false;\n    std::string allocation_action_sha256;\n    std::optional<int64_t> allocated_map_id;\n    bool allocation_observed = false;\n  };",
+          "count": 1
+        },
+        {
+          "find": "    std::string target_topology_sha256;\n  };",
+          "replace": "    std::string target_topology_sha256;\n    // Allocation action is not a physical topology digest. Until the real\n    // allocator result is observed, physical target digests remain empty.\n    std::string allocation_action_sha256;\n  };",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "components/services/storage/dom_storage/async_dom_storage_database.cc",
+      "inputSha256": "e0328cc2b21ea3c7a45647ce7d7aa9d108315b0e3d8d730de753877c0492a143",
+      "outputSha256": "5917a846a2636ad1cc93b490a7de6bf25695866b06fb31c568c6b4bc3de01853",
+      "inputRoot": "/Users/rcourson/.codex/worktrees/aux-features-organization/web/docs/integration/proposed/standard-profile-isolation/native-session-map-absence-recovery-a11/source",
+      "output": "/Users/rcourson/.codex/worktrees/aux-features-organization/web/docs/integration/proposed/standard-profile-isolation/native-local-allocation-action-a16/source/components/services/storage/dom_storage/async_dom_storage_database.cc",
+      "anchors": [
+        {
+          "find": "  bool source_persisted = true;\n};",
+          "replace": "  bool source_persisted = true;\n  bool allocation_requested = false;\n  std::optional<int64_t> allocated_map_id;\n};",
+          "count": 1
+        },
+        {
+          "find": "  bool captured = false;\n  bool target_attempted = false;",
+          "replace": "  std::string unrelated_metadata_sha256;\n  bool captured = false;\n  bool target_attempted = false;",
+          "count": 1
+        },
+        {
+          "find": "  AuxDigestLocator(bytes, map.locator);\n  const auto& entries = target ? map.target : map.source;",
+          "replace": "  if (target && map.allocation_requested && !map.allocated_map_id) return {};\n  if (target && map.allocation_requested) {\n    DomStorageDatabase::MapLocator actual(map.locator.storage_key(), *map.allocated_map_id);\n    AuxDigestLocator(bytes, actual);\n  } else {\n    AuxDigestLocator(bytes, map.locator);\n  }\n  const auto& entries = target ? map.target : map.source;",
+          "count": 1
+        },
+        {
+          "find": "  for (const auto& map : capture.maps) {\n    AuxDigestLocator(bytes, map.locator);\n    AuxDigestNumber(bytes, map.source_persisted || !(target ? map.target : map.source).empty());\n    AuxDigestBytes(bytes, AuxFullMapDigest(map, target, local));\n  }",
+          "replace": "  for (const auto& map : capture.maps) {\n    if (target && map.allocation_requested && !map.allocated_map_id) return {};\n    if (target && map.allocation_requested) {\n      DomStorageDatabase::MapLocator actual(map.locator.storage_key(), *map.allocated_map_id);\n      AuxDigestLocator(bytes, actual);\n    } else {\n      AuxDigestLocator(bytes, map.locator);\n    }\n    AuxDigestNumber(bytes, map.source_persisted || !(target ? map.target : map.source).empty());\n    AuxDigestBytes(bytes, AuxFullMapDigest(map, target, local));\n  }",
+          "count": 1
+        },
+        {
+          "find": "StatusOr<AsyncDomStorageDatabase::AuxUiSnapshot> AuxReadDomCapture(",
+          "replace": "std::string AuxUnrelatedMetadataDigest(const DomStorageDatabase::Metadata& metadata,\n                                       const url::Origin& agent) {\n  std::vector<std::string> records;\n  for (const auto& record : metadata.map_metadata) {\n    if (record.map_locator.storage_key().origin() == agent) continue;\n    std::string bytes;\n    AuxDigestLocator(bytes, record.map_locator);\n    for (const auto& time : {record.last_accessed, record.last_modified}) {\n      AuxDigestNumber(bytes, time.has_value());\n      if (time) AuxDigestNumber(bytes, static_cast<uint64_t>(time->ToDeltaSinceWindowsEpoch().InMicroseconds()));\n    }\n    AuxDigestNumber(bytes, record.total_size.has_value());\n    if (record.total_size) AuxDigestNumber(bytes, record.total_size->InBytes());\n    records.push_back(std::move(bytes));\n  }\n  std::sort(records.begin(), records.end());\n  std::string bytes(\"aux.ui-dom-unrelated-metadata.v1\"); bytes.push_back('\\0');\n  AuxDigestNumber(bytes, records.size());\n  for (const auto& record : records) AuxDigestBytes(bytes, record);\n  return base::HexEncodeLower(crypto::hash::Sha256(bytes));\n}\nstd::string AuxAllocationActionDigest(const AuxDomMap& map, size_t ordinal) {\n  if (!map.allocation_requested) return {};\n  std::string bytes(\"aux.ui-dom-local-allocation-action.v1\"); bytes.push_back('\\0');\n  AuxDigestNumber(bytes, ordinal);\n  AuxDigestLocator(bytes, map.locator);\n  AuxDigestNumber(bytes, map.source_persisted);\n  AuxDigestBytes(bytes, AuxFullMapDigest(map, false, true));\n  AuxDigestNumber(bytes, map.target.size());\n  for (const auto& [key, value] : map.target) { AuxDigestRaw(bytes, key); AuxDigestRaw(bytes, value); }\n  return base::HexEncodeLower(crypto::hash::Sha256(bytes));\n}\nstd::string AuxAllocationActionsDigest(const AuxDomCapture& capture) {\n  std::string bytes(\"aux.ui-dom-local-allocation-actions.v1\"); bytes.push_back('\\0');\n  AuxDigestBytes(bytes, AuxTopologyDigest(capture, false, true));\n  size_t count = 0;\n  for (size_t i = 0; i < capture.maps.size(); ++i) {\n    auto action = AuxAllocationActionDigest(capture.maps[i], i);\n    if (!action.empty()) { ++count; AuxDigestBytes(bytes, action); }\n  }\n  if (!count) return {};\n  AuxDigestNumber(bytes, count);\n  return base::HexEncodeLower(crypto::hash::Sha256(bytes));\n}\nStatusOr<AsyncDomStorageDatabase::AuxUiSnapshot> AuxReadDomCapture(",
+          "count": 1
+        },
+        {
+          "find": "  const url::Origin agent = url::Origin::Create(GURL(\"chrome-extension://gokkffaiccpmoeodpmeamcjajcagjmkm/\"));\n  std::vector<AuxDomMap> current;",
+          "replace": "  const url::Origin agent = url::Origin::Create(GURL(\"chrome-extension://gokkffaiccpmoeodpmeamcjajcagjmkm/\"));\n  if (AuxUnrelatedMetadataDigest(*metadata, agent) != capture.unrelated_metadata_sha256)\n    return base::unexpected(DbStatus::IOError(\"Unrelated native metadata changed\"));\n  std::vector<AuxDomMap> current;",
+          "count": 1
+        },
+        {
+          "find": "    const auto& original = capture.maps[i]; auto& observed = current[i];",
+          "replace": "    auto& original = capture.maps[i]; auto& observed = current[i];",
+          "count": 1
+        },
+        {
+          "find": "    observed.source = std::move(*entries);\n    const std::string current_digest",
+          "replace": "    observed.source = std::move(*entries);\n    if (original.allocation_requested && observed.source_persisted) {\n      if (!local || !capture.target_attempted || !observed.locator.map_id() ||\n          original.source_persisted || !original.source.empty() ||\n          observed.last_accessed != original.last_accessed ||\n          observed.last_modified != original.last_modified || observed.total_size != original.total_size ||\n          observed.source != original.target ||\n          (original.allocated_map_id && original.allocated_map_id != observed.locator.map_id()))\n        return base::unexpected(DbStatus::IOError(\"Actual allocated target identity/readback differs from original action\"));\n      // The real SQLite allocator has now supplied its ID through the unique\n      // metadata row, joined to the exact raw target and unchanged other maps.\n      // This is a past physical observation, never a predicted target ID.\n      original.allocated_map_id = observed.locator.map_id();\n    }\n    const std::string current_digest",
+          "count": 1
+        },
+        {
+          "find": "    output.source_map_sha256 = source_digest; output.target_map_sha256 = target_digest;\n    for (const auto& selected",
+          "replace": "    output.source_map_sha256 = source_digest; output.target_map_sha256 = target_digest;\n    output.allocation_requested = original.allocation_requested;\n    output.allocation_action_sha256 = AuxAllocationActionDigest(original, i);\n    output.allocated_map_id = original.allocated_map_id;\n    output.allocation_observed = original.allocated_map_id.has_value();\n    for (const auto& selected",
+          "count": 1
+        },
+        {
+          "find": "  result.target_topology_sha256 = AuxTopologyDigest(capture, true, local);\n  result.file_data_synced",
+          "replace": "  result.target_topology_sha256 = AuxTopologyDigest(capture, true, local);\n  result.allocation_action_sha256 = AuxAllocationActionsDigest(capture);\n  result.file_data_synced",
+          "count": 1
+        },
+        {
+          "find": "         std::shared_ptr<AuxMigrationWriteStatus> writes, bool local, int operation,",
+          "replace": "         std::shared_ptr<AuxMigrationWriteStatus> writes, bool local, bool sqlite, int operation,",
+          "count": 1
+        },
+        {
+          "find": "            if (!metadata.has_value()) return base::unexpected(metadata.error());\n            for (auto& record : metadata->map_metadata)",
+          "replace": "            if (!metadata.has_value()) return base::unexpected(metadata.error());\n            capture->unrelated_metadata_sha256 = AuxUnrelatedMetadataDigest(*metadata, agent);\n            for (auto& record : metadata->map_metadata)",
+          "count": 1
+        },
+        {
+          "find": "              if (!map.source_persisted && candidate != map.source &&\n                  (local || !map.locator.map_id() || map.locator.session_ids().size() != 1))\n                return base::unexpected(DbStatus::NotSupported(\"Actual single-namespace Session allocator identity required for new map\"));",
+          "replace": "              if (!map.source_persisted && candidate != map.source &&\n                  (local ? (!sqlite || map.locator.map_id() || !map.locator.session_ids().empty() || !map.source.empty()) :\n                   (!map.locator.map_id() || map.locator.session_ids().size() != 1)))\n                return base::unexpected(DbStatus::NotSupported(\"Actual SQLite absent Local or allocator-owned single-namespace Session map required\"));",
+          "count": 1
+        },
+        {
+          "find": "            for (size_t i = 0; i < capture->maps.size(); ++i) capture->maps[i].target = std::move(proposed[i]);",
+          "replace": "            for (size_t i = 0; i < capture->maps.size(); ++i) {\n              auto& map = capture->maps[i];\n              map.target = std::move(proposed[i]);\n              map.allocation_requested = local && !map.source_persisted && map.target != map.source;\n            }",
+          "count": 1
+        },
+        {
+          "find": "              if (operation == 4 && !map.source_persisted) {\n                if (local || !map.source.empty() || !map.locator.map_id() ||\n                    map.locator.session_ids().size() != 1)",
+          "replace": "              if (operation == 4 && !map.source_persisted) {\n                if (local) {\n                  if (!map.allocation_requested || !map.source.empty())\n                    return base::unexpected(DbStatus::NotSupported(\"Original Local absence action missing\"));\n                  // No observed allocation means the failed original write\n                  // left verified source absence. Never retry its allocator.\n                  if (!map.allocated_map_id) continue;\n                  std::vector<DomStorageDatabase::MapLocator> maps_to_delete;\n                  maps_to_delete.emplace_back(map.locator.storage_key(), *map.allocated_map_id);\n                  DbStatus removed = database->DeleteStorageKeysFromSession(\n                      {}, {map.locator.storage_key()}, std::move(maps_to_delete));\n                  if (!removed.ok()) return base::unexpected(removed);\n                  continue;\n                }\n                if (!map.source.empty() || !map.locator.map_id() ||\n                    map.locator.session_ids().size() != 1)",
+          "count": 1
+        },
+        {
+          "find": "      }, state->backend, aux_migration_write_status_, local, operation, std::move(targets), std::move(guarded)));",
+          "replace": "      }, state->backend, aux_migration_write_status_, local, is_sqlite_, operation, std::move(targets), std::move(guarded)));",
+          "count": 1
+        }
+      ]
+    }
+  ],
+  "nativeCheckoutChanged": false,
+  "nativeCompiled": false,
+  "productExecuted": false,
+  "restartRecoveryImplemented": false,
+  "runtimeAcceptance": false
+}

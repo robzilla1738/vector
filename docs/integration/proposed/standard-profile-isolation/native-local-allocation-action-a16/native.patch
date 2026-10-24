@@ -1,0 +1,243 @@
+--- a/components/services/storage/dom_storage/async_dom_storage_database.h
++++ b/components/services/storage/dom_storage/async_dom_storage_database.h
+@@ -148,6 +148,10 @@
+     std::string source_map_sha256;
+     std::string target_map_sha256;
+     std::vector<AuxUiCacheView> cache_views;
++    bool allocation_requested = false;
++    std::string allocation_action_sha256;
++    std::optional<int64_t> allocated_map_id;
++    bool allocation_observed = false;
+   };
+   struct AuxUiTargetMap {
+     uint32_t map_ordinal = 0;
+@@ -166,6 +170,9 @@
+     bool cache_published = false;
+     std::string source_topology_sha256;
+     std::string target_topology_sha256;
++    // Allocation action is not a physical topology digest. Until the real
++    // allocator result is observed, physical target digests remain empty.
++    std::string allocation_action_sha256;
+   };
+   class AuxUiMigrationLease {
+    public:
+--- a/components/services/storage/dom_storage/async_dom_storage_database.cc
++++ b/components/services/storage/dom_storage/async_dom_storage_database.cc
+@@ -78,12 +78,15 @@
+   std::optional<base::Time> last_modified;
+   std::optional<base::ByteSize> total_size;
+   bool source_persisted = true;
++  bool allocation_requested = false;
++  std::optional<int64_t> allocated_map_id;
+ };
+ // Only DB-sequence tasks access this state. It retains exact original raw
+ // maps, including unrelated entries, but exports only reviewed UI families.
+ struct AuxDomCapture {
+   std::vector<AuxDomMap> maps;
+   std::vector<DomStorageDatabase::MapLocator> live_locators;
++  std::string unrelated_metadata_sha256;
+   bool captured = false;
+   bool target_attempted = false;
+   bool file_data_synced = false;
+@@ -310,7 +313,13 @@
+ }
+ std::string AuxFullMapDigest(const AuxDomMap& map, bool target, bool local) {
+   std::string bytes("aux.ui-dom-complete-map.v1"); bytes.push_back('\0');
+-  AuxDigestLocator(bytes, map.locator);
++  if (target && map.allocation_requested && !map.allocated_map_id) return {};
++  if (target && map.allocation_requested) {
++    DomStorageDatabase::MapLocator actual(map.locator.storage_key(), *map.allocated_map_id);
++    AuxDigestLocator(bytes, actual);
++  } else {
++    AuxDigestLocator(bytes, map.locator);
++  }
+   const auto& entries = target ? map.target : map.source;
+   AuxDigestNumber(bytes, target ? map.source_persisted || !entries.empty() : map.source_persisted);
+   for (const auto& time : {map.last_accessed, map.last_modified}) {
+@@ -331,10 +340,60 @@
+   std::string bytes("aux.ui-dom-complete-topology.v1"); bytes.push_back('\0');
+   AuxDigestNumber(bytes, local); AuxDigestNumber(bytes, capture.maps.size());
+   for (const auto& map : capture.maps) {
+-    AuxDigestLocator(bytes, map.locator);
++    if (target && map.allocation_requested && !map.allocated_map_id) return {};
++    if (target && map.allocation_requested) {
++      DomStorageDatabase::MapLocator actual(map.locator.storage_key(), *map.allocated_map_id);
++      AuxDigestLocator(bytes, actual);
++    } else {
++      AuxDigestLocator(bytes, map.locator);
++    }
+     AuxDigestNumber(bytes, map.source_persisted || !(target ? map.target : map.source).empty());
+     AuxDigestBytes(bytes, AuxFullMapDigest(map, target, local));
+   }
++  return base::HexEncodeLower(crypto::hash::Sha256(bytes));
++}
++std::string AuxUnrelatedMetadataDigest(const DomStorageDatabase::Metadata& metadata,
++                                       const url::Origin& agent) {
++  std::vector<std::string> records;
++  for (const auto& record : metadata.map_metadata) {
++    if (record.map_locator.storage_key().origin() == agent) continue;
++    std::string bytes;
++    AuxDigestLocator(bytes, record.map_locator);
++    for (const auto& time : {record.last_accessed, record.last_modified}) {
++      AuxDigestNumber(bytes, time.has_value());
++      if (time) AuxDigestNumber(bytes, static_cast<uint64_t>(time->ToDeltaSinceWindowsEpoch().InMicroseconds()));
++    }
++    AuxDigestNumber(bytes, record.total_size.has_value());
++    if (record.total_size) AuxDigestNumber(bytes, record.total_size->InBytes());
++    records.push_back(std::move(bytes));
++  }
++  std::sort(records.begin(), records.end());
++  std::string bytes("aux.ui-dom-unrelated-metadata.v1"); bytes.push_back('\0');
++  AuxDigestNumber(bytes, records.size());
++  for (const auto& record : records) AuxDigestBytes(bytes, record);
++  return base::HexEncodeLower(crypto::hash::Sha256(bytes));
++}
++std::string AuxAllocationActionDigest(const AuxDomMap& map, size_t ordinal) {
++  if (!map.allocation_requested) return {};
++  std::string bytes("aux.ui-dom-local-allocation-action.v1"); bytes.push_back('\0');
++  AuxDigestNumber(bytes, ordinal);
++  AuxDigestLocator(bytes, map.locator);
++  AuxDigestNumber(bytes, map.source_persisted);
++  AuxDigestBytes(bytes, AuxFullMapDigest(map, false, true));
++  AuxDigestNumber(bytes, map.target.size());
++  for (const auto& [key, value] : map.target) { AuxDigestRaw(bytes, key); AuxDigestRaw(bytes, value); }
++  return base::HexEncodeLower(crypto::hash::Sha256(bytes));
++}
++std::string AuxAllocationActionsDigest(const AuxDomCapture& capture) {
++  std::string bytes("aux.ui-dom-local-allocation-actions.v1"); bytes.push_back('\0');
++  AuxDigestBytes(bytes, AuxTopologyDigest(capture, false, true));
++  size_t count = 0;
++  for (size_t i = 0; i < capture.maps.size(); ++i) {
++    auto action = AuxAllocationActionDigest(capture.maps[i], i);
++    if (!action.empty()) { ++count; AuxDigestBytes(bytes, action); }
++  }
++  if (!count) return {};
++  AuxDigestNumber(bytes, count);
+   return base::HexEncodeLower(crypto::hash::Sha256(bytes));
+ }
+ StatusOr<AsyncDomStorageDatabase::AuxUiSnapshot> AuxReadDomCapture(
+@@ -342,6 +401,8 @@
+   auto metadata = database->ReadAllMetadata();
+   if (!metadata.has_value()) return base::unexpected(metadata.error());
+   const url::Origin agent = url::Origin::Create(GURL("chrome-extension://gokkffaiccpmoeodpmeamcjajcagjmkm/"));
++  if (AuxUnrelatedMetadataDigest(*metadata, agent) != capture.unrelated_metadata_sha256)
++    return base::unexpected(DbStatus::IOError("Unrelated native metadata changed"));
+   std::vector<AuxDomMap> current;
+   for (const auto& original : capture.maps) {
+     current.push_back({original.locator.Clone(), {}, {}, {}, {}, {}, false});
+@@ -377,7 +438,7 @@
+   result.matches_source = true; result.matches_target = true;
+   size_t export_bytes = 0;
+   for (size_t i = 0; i < capture.maps.size(); ++i) {
+-    const auto& original = capture.maps[i]; auto& observed = current[i];
++    auto& original = capture.maps[i]; auto& observed = current[i];
+     const bool target_present = original.source_persisted || !original.target.empty();
+     if (observed.source_persisted != original.source_persisted &&
+         observed.source_persisted != target_present)
+@@ -389,6 +450,19 @@
+     auto entries = database->ReadMapKeyValues(observed.locator.Clone());
+     if (!entries.has_value()) return base::unexpected(entries.error());
+     observed.source = std::move(*entries);
++    if (original.allocation_requested && observed.source_persisted) {
++      if (!local || !capture.target_attempted || !observed.locator.map_id() ||
++          original.source_persisted || !original.source.empty() ||
++          observed.last_accessed != original.last_accessed ||
++          observed.last_modified != original.last_modified || observed.total_size != original.total_size ||
++          observed.source != original.target ||
++          (original.allocated_map_id && original.allocated_map_id != observed.locator.map_id()))
++        return base::unexpected(DbStatus::IOError("Actual allocated target identity/readback differs from original action"));
++      // The real SQLite allocator has now supplied its ID through the unique
++      // metadata row, joined to the exact raw target and unchanged other maps.
++      // This is a past physical observation, never a predicted target ID.
++      original.allocated_map_id = observed.locator.map_id();
++    }
+     const std::string current_digest = AuxFullMapDigest(observed, false, local);
+     const std::string source_digest = AuxFullMapDigest(original, false, local);
+     const std::string target_digest = AuxFullMapDigest(original, true, local);
+@@ -405,6 +479,10 @@
+     output.map_ordinal = i; output.map_id = original.locator.map_id();
+     output.source_persisted = original.source_persisted;
+     output.source_map_sha256 = source_digest; output.target_map_sha256 = target_digest;
++    output.allocation_requested = original.allocation_requested;
++    output.allocation_action_sha256 = AuxAllocationActionDigest(original, i);
++    output.allocated_map_id = original.allocated_map_id;
++    output.allocation_observed = original.allocated_map_id.has_value();
+     for (const auto& selected : {output.source, output.target})
+       for (const auto& [key, value] : selected) export_bytes += key.size() + value.size();
+     if (export_bytes > 16 * 1024 * 1024)
+@@ -413,6 +491,7 @@
+   }
+   result.source_topology_sha256 = AuxTopologyDigest(capture, false, local);
+   result.target_topology_sha256 = AuxTopologyDigest(capture, true, local);
++  result.allocation_action_sha256 = AuxAllocationActionsDigest(capture);
+   result.file_data_synced = capture.file_data_synced;
+   result.target_attempted = capture.target_attempted;
+   return result;
+@@ -598,7 +677,7 @@
+       StatusOr<AuxUiSnapshot>(base::unexpected(DbStatus::IOError("Actual backend reply lost"))));
+   database_.PostTaskWithThisObject(base::BindOnce(
+       [](std::shared_ptr<AuxDomCapture> capture,
+-         std::shared_ptr<AuxMigrationWriteStatus> writes, bool local, int operation,
++         std::shared_ptr<AuxMigrationWriteStatus> writes, bool local, bool sqlite, int operation,
+          std::vector<AuxUiTargetMap> targets, AuxUiReadCallback callback,
+          DomStorageDatabase* database) {
+         auto run = [&]() -> StatusOr<AuxUiSnapshot> {
+@@ -607,6 +686,7 @@
+             if (writes->first_error) return base::unexpected(*writes->first_error);
+             auto metadata = database->ReadAllMetadata();
+             if (!metadata.has_value()) return base::unexpected(metadata.error());
++            capture->unrelated_metadata_sha256 = AuxUnrelatedMetadataDigest(*metadata, agent);
+             for (auto& record : metadata->map_metadata) {
+               if (record.map_locator.storage_key().origin() != agent) continue;
+               AuxDomMap* existing = nullptr;
+@@ -703,11 +783,16 @@
+               if (!canonical.has_value() || canonical.value() != candidate)
+                 return base::unexpected(DbStatus::NotSupported("Ambiguous/non-current target key encoding"));
+               if (!map.source_persisted && candidate != map.source &&
+-                  (local || !map.locator.map_id() || map.locator.session_ids().size() != 1))
+-                return base::unexpected(DbStatus::NotSupported("Actual single-namespace Session allocator identity required for new map"));
++                  (local ? (!sqlite || map.locator.map_id() || !map.locator.session_ids().empty() || !map.source.empty()) :
++                   (!map.locator.map_id() || map.locator.session_ids().size() != 1)))
++                return base::unexpected(DbStatus::NotSupported("Actual SQLite absent Local or allocator-owned single-namespace Session map required"));
+               proposed[target.map_ordinal] = std::move(candidate);
+             }
+-            for (size_t i = 0; i < capture->maps.size(); ++i) capture->maps[i].target = std::move(proposed[i]);
++            for (size_t i = 0; i < capture->maps.size(); ++i) {
++              auto& map = capture->maps[i];
++              map.target = std::move(proposed[i]);
++              map.allocation_requested = local && !map.source_persisted && map.target != map.source;
++            }
+           } else if (operation == 3 || operation == 4) {
+             // AuxReadDomCapture has checked every complete map/topology
+             // against one exact retained alternative. A failed multi-map
+@@ -720,7 +805,20 @@
+             for (const auto& map : capture->maps) {
+               if (map.source == map.target) continue;
+               if (operation == 4 && !map.source_persisted) {
+-                if (local || !map.source.empty() || !map.locator.map_id() ||
++                if (local) {
++                  if (!map.allocation_requested || !map.source.empty())
++                    return base::unexpected(DbStatus::NotSupported("Original Local absence action missing"));
++                  // No observed allocation means the failed original write
++                  // left verified source absence. Never retry its allocator.
++                  if (!map.allocated_map_id) continue;
++                  std::vector<DomStorageDatabase::MapLocator> maps_to_delete;
++                  maps_to_delete.emplace_back(map.locator.storage_key(), *map.allocated_map_id);
++                  DbStatus removed = database->DeleteStorageKeysFromSession(
++                      {}, {map.locator.storage_key()}, std::move(maps_to_delete));
++                  if (!removed.ok()) return base::unexpected(removed);
++                  continue;
++                }
++                if (!map.source.empty() || !map.locator.map_id() ||
+                     map.locator.session_ids().size() != 1)
+                   return base::unexpected(DbStatus::NotSupported("Original native absence cannot be restored by this owner"));
+                 const std::string session = map.locator.session_ids().front();
+@@ -764,7 +862,7 @@
+           return AuxReadDomCapture(*capture, local, database);
+         };
+         std::move(callback).Run(run());
+-      }, state->backend, aux_migration_write_status_, local, operation, std::move(targets), std::move(guarded)));
++      }, state->backend, aux_migration_write_status_, local, is_sqlite_, operation, std::move(targets), std::move(guarded)));
+ }
+ void AsyncDomStorageDatabase::BeginAuxUiMigrationLease(AuxUiLeaseCallback callback) {
+   if (!is_database_opened_ || !aux_on_disk_ || aux_ui_migration_gate_) {

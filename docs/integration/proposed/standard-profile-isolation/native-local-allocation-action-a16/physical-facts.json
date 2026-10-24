@@ -1,0 +1,34 @@
+{
+  "nativeRoot": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src",
+  "facts": [
+    {
+      "path": "components/services/storage/dom_storage/async_dom_storage_database.cc",
+      "sha256": "30b5e952ad6118627f86ec5cda45f648f5bf0ea26c5a407942e1e0ce6f9e2a40",
+      "anchors": [
+        {
+          "find": "is_sqlite_ = result.is_sqlite;",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "components/services/storage/dom_storage/sqlite/local_storage_sqlite.cc",
+      "sha256": "0601c10dc762dce7123b7c4e493eca8fb20e19b5b8ea90b3b333ebbc4b32367f",
+      "anchors": [
+        {
+          "find": "DB_RETURN_IF_ERROR(PutMapMetadata(",
+          "count": 2
+        },
+        {
+          "find": "FindMapId(storage_key)",
+          "count": 2
+        },
+        {
+          "find": "map_update.map_locator = MapLocator(storage_key, map_id.value());",
+          "count": 1
+        }
+      ]
+    }
+  ],
+  "requiresExactSqliteDeletionCommit": "3087484af"
+}

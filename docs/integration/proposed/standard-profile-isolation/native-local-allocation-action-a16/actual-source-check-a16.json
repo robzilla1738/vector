@@ -1,0 +1,16 @@
+{
+  "format": "aux.local-allocation.source-check.actual.v1",
+  "passed": true,
+  "sourcePlanSha256": "c37adbe29b9b4f2e0d45893c68f0c596aecd48f8954dda408bcfe0a0450640e0",
+  "patchSha256": "8bc2e9a3cd071196f168f0a6a3066b68f40695be896a87ae151a9d4553c5a072",
+  "files": 2,
+  "countedAnchors": 18,
+  "replayDirectory": "/private/tmp/aux-local-allocation-replay-c7sekbgw",
+  "exactReplayPassed": true,
+  "reverseCheckPassed": true,
+  "nativeCheckoutChanged": false,
+  "nativeCompiled": false,
+  "testsExecuted": false,
+  "productExecuted": false,
+  "runtimeAcceptance": false
+}
