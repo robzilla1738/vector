@@ -1,3 +1,7 @@
+# Registry and command fixes compiled; full feature build resumed — 2026-10-23
+
+Generated extension registration compiled after exposing the new API headers. The a10b focused run compiled the final organization/cleanup/drop objects but caught two command-bar implementation errors; a11 then passed exactly those two failed objects. The current full unsigned app build uses a new immutable250-input manifest, retaining completed objects and the earlier failed receipts. Final stage pairing and14-leaf resource preflight have passed. Full app link, inactive assembly and actual-app acceptance are still pending; no runtime readiness or signing/release claim.
+
 # Full feature build registration fix in progress — 2026-10-23
 
 The first full unsigned feature build completed381actions before generated extension registration failed: its public API header did not expose the new feature/developer classes. Their implementation objects had compiled in a8. The counted a10b projection exposes those declarations through the existing public header, removes an unnecessary organization-service include from the declaration-only feature header, and adds the generated registry object to the focused compile targets. That check is running before resuming the full graph; completed objects are retained. The first failed full-build receipt and input manifest remain historical evidence, not success.
