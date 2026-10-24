@@ -481,10 +481,20 @@
    InvalidateLayout();
  }
  
-@@ -423,6 +499,42 @@
+@@ -394,6 +470,7 @@
+ std::vector<views::View*> MultiContentsView::GetAccessiblePanes() {
+   std::vector<views::View*> accessible_panes;
+   for (auto& contents_container_view : contents_container_views_) {
++    if (!contents_container_view->GetVisible()) continue;
+     auto contents_accessible_panes =
+         contents_container_view->GetAccessiblePanes();
+     accessible_panes.insert(accessible_panes.end(),
+@@ -421,6 +498,42 @@
+   if (done_resizing) {
+     initial_start_size_on_resize_ = std::nullopt;
    }
- }
- 
++}
++
 +double MultiContentsView::GetBranchRatio(uint32_t node) const {
 +  if (!node || !visual_data_.pane_tree()) return GetSplitRatio();
 +  const auto* branch = visual_data_.pane_tree()->Find(node);
@@ -519,12 +529,10 @@
 +    delegate_->ResizePaneBranch(node, ratio, done);
 +  }
 +  if (done) resizing_branch_.reset();
-+}
-+
+ }
+ 
  double MultiContentsView::CalculateRatioWithSnapPoints(
-     double start_size,
-     double total_size) const {
-@@ -448,7 +560,7 @@
+@@ -448,7 +561,7 @@
    if (IsInSplitView()) {
      // Check whether the widget is visible as otherwise during browser hide,
      // inactive web contents gets focus. See crbug.com/419335827
@@ -533,7 +541,7 @@
          GetWidget()->IsVisible()) {
        delegate_->WebContentsFocused(web_view->web_contents());
      }
-@@ -460,10 +572,10 @@
+@@ -460,10 +573,10 @@
      for (auto& contents_container_view : contents_container_views_) {
        if (contents_container_view->actor_overlay_web_view() &&
            contents_container_view->actor_overlay_web_view() == web_view &&
@@ -546,7 +554,7 @@
        }
      }
    }
-@@ -474,10 +586,10 @@
+@@ -474,10 +587,10 @@
      for (auto& contents_container_view : contents_container_views_) {
        if (contents_container_view->new_tab_footer_view() &&
            contents_container_view->new_tab_footer_view() == web_view &&
@@ -559,7 +567,7 @@
        }
      }
    }
-@@ -487,7 +599,7 @@
+@@ -487,7 +600,7 @@
      ContentsContainerView* container,
      views::WebView* web_view) {
    if (IsInSplitView() && GetWidget()->IsVisible()) {
@@ -568,7 +576,7 @@
        delegate_->WebContentsFocused(container->contents_view()->web_contents());
      }
    }
-@@ -521,6 +633,32 @@
+@@ -521,6 +634,32 @@
  
    if (IsInSplitView()) {
      available_space.Inset(split_view_insets_);
@@ -601,7 +609,7 @@
    }
    ViewSizes sizes = GetViewSizes(available_space);
  
-@@ -587,6 +725,18 @@
+@@ -587,6 +726,18 @@
          views::SizeBounds(target_content_bounds_->actual_size));
    }
  
@@ -610,9 +618,9 @@
 +      auto* current = layout.GetLayoutFor(container.get());
 +      auto* target = target_layout.GetLayoutFor(container.get());
 +      container->SetTargetContentBounds(current && target
-+          ? std::optional(gfx::Outsets::TLBR(0,
-+              std::max(0, target->bounds.width() - current->bounds.width()),
-+              std::max(0, target->bounds.height() - current->bounds.height()), 0))
++          ? std::optional(gfx::Outsets::TLBR(0, 0,
++              std::max(0, target->bounds.height() - current->bounds.height()),
++              std::max(0, target->bounds.width() - current->bounds.width())))
 +          : std::nullopt);
 +    }
 +    return;
@@ -622,6 +630,17 @@
    // Due to the way web contents resize, and the fact that both split views will
 --- a/chrome/browser/ui/views/frame/multi_contents_view.h
 +++ b/chrome/browser/ui/views/frame/multi_contents_view.h
+@@ -46,8 +46,8 @@
+ class WebView;
+ }  // namespace views
+ 
+-// MultiContentsView shows up to two contents web views side by side, and
+-// manages their layout relative to each other.
++// MultiContentsView lays out native contents views. Existing two-pane splits
++// retain their original layout; optional pane trees support nested splits.
+ class MultiContentsView
+     : public views::View,
+       public views::ResizeAreaDelegate,
 @@ -115,6 +115,13 @@
    // either 0 or 1 as we currently only support two contents. If |index| is 1
    // and we are not currently in a split view, displays the split views.

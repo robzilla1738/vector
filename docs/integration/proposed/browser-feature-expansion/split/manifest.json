@@ -26,12 +26,12 @@
     },
     {
       "path": "chrome/browser/ui/views/frame/multi_contents_view.cc",
-      "sha256": "694b03838ea835708796ae25c2341817976c7fd556b8030b4e281646db7a3a8d",
+      "sha256": "10e5127aef7b5d18df51ab4b974cc021666bd93e984b2ffaf9e97f37f03b9213",
       "baseline_sha256": "228656abe05ca719436c435e2ff872f761e7c7352d2e7b4d3daa080d8a3a22ce"
     },
     {
       "path": "chrome/browser/ui/views/frame/multi_contents_view.h",
-      "sha256": "ad8bc7539c213e470475119ceef9bb8f635d8a2b477891ca2337779cf796973b",
+      "sha256": "a6d4887b6265a426723a0cd9654517466c66ff451ba559ed557e3864b9575b35",
       "baseline_sha256": "789f2df783a9cf88c8006b521d8eb7a1bd57fabaaf89b4bd5ee154e3183aa237"
     },
     {
@@ -75,7 +75,7 @@
       "baseline_sha256": "0b9a0749ecab70cd014782e15cb45270f5d0083a6ba3eb9577623e88f8f09508"
     }
   ],
-  "patch_sha256": "6f8dc848b7d57c5e31d5ba4579081064a553580c5cd40c5527be02e5fffef47b",
+  "patch_sha256": "7197432f019a050a1025a7f6a8dc2d89ef468c6906a45d159171f69f5c0704c0",
   "shared_hooks": [
     {
       "path": "chrome/browser/sessions/session_restore.cc",

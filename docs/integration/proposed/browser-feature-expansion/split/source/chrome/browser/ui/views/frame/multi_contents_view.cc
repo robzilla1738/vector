@@ -470,6 +470,7 @@ void MultiContentsView::SetIsAnimatingContent(bool is_animating) {
 std::vector<views::View*> MultiContentsView::GetAccessiblePanes() {
   std::vector<views::View*> accessible_panes;
   for (auto& contents_container_view : contents_container_views_) {
+    if (!contents_container_view->GetVisible()) continue;
     auto contents_accessible_panes =
         contents_container_view->GetAccessiblePanes();
     accessible_panes.insert(accessible_panes.end(),
@@ -730,9 +731,9 @@ void MultiContentsView::BeforeApplyLayout(const views::ProposedLayout& layout) {
       auto* current = layout.GetLayoutFor(container.get());
       auto* target = target_layout.GetLayoutFor(container.get());
       container->SetTargetContentBounds(current && target
-          ? std::optional(gfx::Outsets::TLBR(0,
-              std::max(0, target->bounds.width() - current->bounds.width()),
-              std::max(0, target->bounds.height() - current->bounds.height()), 0))
+          ? std::optional(gfx::Outsets::TLBR(0, 0,
+              std::max(0, target->bounds.height() - current->bounds.height()),
+              std::max(0, target->bounds.width() - current->bounds.width())))
           : std::nullopt);
     }
     return;

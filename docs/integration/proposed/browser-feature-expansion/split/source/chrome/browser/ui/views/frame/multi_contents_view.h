@@ -46,8 +46,8 @@ namespace views {
 class WebView;
 }  // namespace views
 
-// MultiContentsView shows up to two contents web views side by side, and
-// manages their layout relative to each other.
+// MultiContentsView lays out native contents views. Existing two-pane splits
+// retain their original layout; optional pane trees support nested splits.
 class MultiContentsView
     : public views::View,
       public views::ResizeAreaDelegate,
