@@ -1,0 +1,20 @@
+{
+  "format": "aux.standard-daemon-projection.actual.v1",
+  "passed": true,
+  "output": "/private/tmp/aux-standard-daemon-projection-20261024-a1",
+  "compositionSha256": "fdd7a9f7cdd9b1ab46b0303e45baf3906f7e66dedce520665da3d475f230a274",
+  "sourceReceiptSha256": "6b3b854fa580dd6cfd8109fa2a8c2281a657f953faec58715e539d6fe3f5911d",
+  "entryReceiptSha256": "a77d1ade38e1049ba9cb1e8affaf2662baf539b234c4f3ce5a7f072fc3949b59",
+  "sourceSha256": "00607ee3555eb8c8c8f6d7641d93ac009ca9a3b4e2fc7444dfe898109d9d863c",
+  "entrySha256": "fe85ca92a82b957f61727729ba61ca732d061df8534f3f64a3afd2a2af5c0400",
+  "loaderSha256": "ec7ea0405f415d84e4afc695405eec07378d8c7233b926ffd9dd7db2edfed663",
+  "independentEntryMatchesProjection": true,
+  "newAnchorCountPerLeaf": 86,
+  "upstreamStagesPreserved": true,
+  "nativeAbiChanged": true,
+  "nativePairingPending": true,
+  "coldFeatureEnabled": false,
+  "runtimeAuthorityGranted": false,
+  "productExecuted": false,
+  "packaged": false
+}
