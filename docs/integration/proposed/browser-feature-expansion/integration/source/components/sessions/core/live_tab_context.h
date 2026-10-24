@@ -108,11 +108,10 @@ class SESSIONS_EXPORT LiveTabContext {
       split_tabs::SplitTabId split_id,
       const split_tabs::SplitTabVisualData& visual_data) = 0;
 
-  virtual void ReconstructSplit(const std::vector<LiveTab*>& tabs,
-                                split_tabs::SplitTabId id,
-                                const split_tabs::SplitTabVisualData& visual_data) {
-    if (tabs.size() == 2) ReconstructSplit(tabs[0], tabs[1], id, visual_data);
-  }
+  virtual void ReconstructSplit(
+      const std::vector<LiveTab*>& tabs,
+      split_tabs::SplitTabId id,
+      const split_tabs::SplitTabVisualData& visual_data);
 
   virtual void CloseTab() = 0;
 

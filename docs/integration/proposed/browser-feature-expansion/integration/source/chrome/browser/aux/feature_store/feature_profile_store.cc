@@ -1,5 +1,6 @@
 // Copyright 2026 Aux Authors. BSD-style license: see //LICENSE.
 #include "chrome/browser/aux/feature_store/feature_profile_store.h"
+#include "chrome/browser/aux/feature_store/feature_write_participant.h"
 #include <array>
 #include <atomic>
 #include <cerrno>
@@ -16,6 +17,7 @@
 #include "base/files/important_file_writer.h"
 #include "base/files/scoped_file.h"
 #include "base/functional/bind.h"
+#include "base/containers/span.h"
 #include "base/functional/callback_helpers.h"
 #include "base/json/json_reader.h"
 #include "base/json/json_writer.h"
@@ -116,7 +118,8 @@ ReadResult Read(const base::FilePath& path, const std::shared_ptr<Lease>& lease)
   std::string text(static_cast<size_t>(before.st_size), '\0');
   size_t offset = 0;
   while (offset < text.size()) {
-    const auto count = read(fd.get(), text.data() + offset, text.size() - offset);
+    auto buffer = base::as_writable_byte_span(text).subspan(offset);
+    const auto count = read(fd.get(), buffer.data(), buffer.size());
     if (count < 0 && errno == EINTR) continue;
     if (count <= 0) return {};
     offset += static_cast<size_t>(count);
@@ -130,17 +133,17 @@ ReadResult Read(const base::FilePath& path, const std::shared_ptr<Lease>& lease)
   if (!value || !ValidEnvelope(*value, lease->profile_id)) return {};
   return {.value = std::move(value)};
 }
-bool Write(const base::FilePath& path, const std::shared_ptr<Lease>& lease,
+NativeFeatureIoOutcome Write(const base::FilePath& path, const std::shared_ptr<Lease>& lease,
            bool expected_missing, const base::DictValue& expected,
-           const std::string& bytes) {
+           const std::string& bytes, const std::shared_ptr<NativeFeatureIoTicket>& ticket) {
   const auto before = Read(path, lease);
   if (before.missing != expected_missing ||
       (!expected_missing && (!before.value || *before.value != expected)) ||
-      !ValidPath(path, *lease)) return false;
+      !ValidPath(path, *lease) || ticket->IsCancelled()) return NativeFeatureIoOutcome::kRefused;
   // Actual completed atomic replacement, not a queued preference flush. The
   // broader native custody/race guarantees remain separate integration gates.
   return base::ImportantFileWriter::WriteFileAtomically(path, bytes) &&
-      ValidPath(path, *lease);
+      ValidPath(path, *lease) ? NativeFeatureIoOutcome::kCompleted : NativeFeatureIoOutcome::kUncertain;
 }
 class Store final : public base::SupportsUserData::Data {
  public:
@@ -152,7 +155,7 @@ class Store final : public base::SupportsUserData::Data {
              base::TaskShutdownBehavior::BLOCK_SHUTDOWN})) {}
   ~Store() override { if (lease_) lease_->revoked.store(true); }
   void Initialize() {
-    if (slot_->pending || (ready_ && Current())) return;
+    if (IsNativeFeatureIoAdmissionClosed() || slot_->pending || (ready_ && Current())) return;
     ready_ = false;
     if (lease_) lease_->revoked.store(true);
     if (!Regular(profile_.get()) || aux::IsProfileCookieRestorePending(profile_.get())) return;
@@ -167,9 +170,16 @@ class Store final : public base::SupportsUserData::Data {
     if (!base::Uuid::ParseLowercase(lease->profile_id).is_valid() || lease->epoch.empty()) return;
     if (slot_->lease) slot_->lease->revoked.store(true);
     slot_->lease = lease_ = std::move(lease);
+    auto ticket = BeginNativeFeatureIo(path_.DirName(), NativeFeatureIoKind::kFeatureState);
+    if (!ticket) return;
     slot_->pending = true;
     const bool posted = runner_->PostTaskAndReplyWithResult(FROM_HERE,
-        base::BindOnce(&Read, path_, lease_),
+        base::BindOnce([](base::FilePath path, std::shared_ptr<Lease> lease,
+                         std::shared_ptr<NativeFeatureIoTicket> ticket) {
+          auto result = ticket->IsCancelled() ? ReadResult{} : Read(path, lease);
+          ticket->Settle(result.value || result.missing ? NativeFeatureIoOutcome::kCompleted : NativeFeatureIoOutcome::kRefused);
+          return result;
+        }, path_, lease_, ticket),
         base::BindOnce([](std::shared_ptr<Slot> slot, base::WeakPtr<Store> owner,
                           ReadResult result) {
           slot->pending = false;
@@ -178,6 +188,7 @@ class Store final : public base::SupportsUserData::Data {
           slot->settled.Notify();
         }, slot_, weak_.GetWeakPtr()));
     if (!posted) {
+      ticket->Settle(NativeFeatureIoOutcome::kRefused);
       auto slot = slot_;
       slot->pending = false; slot->ready.Notify(); slot->settled.Notify();
     }
@@ -205,10 +216,19 @@ class Store final : public base::SupportsUserData::Data {
         !base::JSONWriter::Write(next, &bytes) || bytes.size() > kMaximumBytes) {
       std::move(done).Run(false); return;
     }
+    auto ticket = BeginNativeFeatureIo(path_.DirName(), NativeFeatureIoKind::kFeatureState);
+    if (!ticket) { std::move(done).Run(false); return; }
     slot_->pending = true;
     auto callbacks = base::SplitOnceCallback(std::move(done));
     const bool posted = runner_->PostTaskAndReplyWithResult(FROM_HERE,
-        base::BindOnce(&Write, path_, lease_, missing_, snapshot_.Clone(), std::move(bytes)),
+        base::BindOnce([](base::FilePath path, std::shared_ptr<Lease> lease, bool missing,
+                         base::DictValue expected, std::string bytes,
+                         std::shared_ptr<NativeFeatureIoTicket> ticket) {
+          if (ticket->IsCancelled()) { ticket->Settle(NativeFeatureIoOutcome::kRefused); return false; }
+          const auto outcome = Write(path, lease, missing, expected, bytes, ticket);
+          ticket->Settle(outcome);
+          return outcome == NativeFeatureIoOutcome::kCompleted;
+        }, path_, lease_, missing_, snapshot_.Clone(), std::move(bytes), ticket),
         base::BindOnce([](std::shared_ptr<Slot> slot, base::WeakPtr<Store> owner,
                           base::DictValue next, base::OnceCallback<void(bool)> done,
                           bool written) {
@@ -220,6 +240,7 @@ class Store final : public base::SupportsUserData::Data {
           slot->settled.Notify();
         }, slot_, weak_.GetWeakPtr(), std::move(next), std::move(callbacks.first)));
     if (!posted) {
+      ticket->Settle(NativeFeatureIoOutcome::kRefused);
       slot_->pending = false; ready_ = false;
       auto slot = slot_;
       std::move(callbacks.second).Run(false);
@@ -228,7 +249,7 @@ class Store final : public base::SupportsUserData::Data {
   }
  private:
   bool Current() const {
-    if (!Regular(profile_.get()) || !lease_ || lease_ != slot_->lease ||
+    if (IsNativeFeatureIoAdmissionClosed() || !Regular(profile_.get()) || !lease_ || lease_ != slot_->lease ||
         lease_->revoked.load() || !lease_->roots || !lease_->roots->Revalidate() ||
         aux::IsProfileCookieRestorePending(profile_.get()) ||
         aux::GetProfileId(profile_.get()) != lease_->profile_id ||
@@ -271,7 +292,8 @@ bool IsWritePending(Profile* p) {
   DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
   if (!Regular(p)) return false;
   const auto found = Slots().find(p->GetPath());
-  return found != Slots().end() && found->second->pending;
+  return IsNativeFeatureIoPendingForProfilePath(p->GetPath()) ||
+      (found != Slots().end() && found->second->pending);
 }
 base::CallbackListSubscription ObserveSettled(Profile* p, base::RepeatingClosure callback) {
   DCHECK_CURRENTLY_ON(content::BrowserThread::UI);

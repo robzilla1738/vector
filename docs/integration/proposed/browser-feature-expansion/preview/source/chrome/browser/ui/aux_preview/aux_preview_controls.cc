@@ -69,7 +69,7 @@ class Controls final : public views::View, public content::WebContentsObserver {
     const std::string title = mode && *mode == "quick" ? "Quick window" : "Peek";
     label_->SetText(base::UTF8ToUTF16(restriction && !restriction->empty()
         ? *restriction : title + " · " + (profile ? *profile : "Profile")));
-    label_->SetTooltipText(label_->GetText());
+    label_->SetTooltipText(std::u16string(label_->GetText()));
     InvalidateLayout();
   }
   void GoBack() {

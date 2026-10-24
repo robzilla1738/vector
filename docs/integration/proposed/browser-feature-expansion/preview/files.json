@@ -16,7 +16,7 @@
     {
       "path": "chrome/browser/ui/aux_preview/aux_preview_controls.cc",
       "baselineSha256": null,
-      "sourceSha256": "13f9d1a7cea819986290ef79cd2c7c19f83e8daa48f073761454738f9a8557f8"
+      "sourceSha256": "dee103c9c0d3364f9fa61f393538f9219771580a0fc1ab5a0e6e08a2ed1433aa"
     },
     {
       "path": "chrome/browser/ui/aux_preview/aux_preview_controls.h",
@@ -44,5 +44,5 @@
       "sourceSha256": "08754e59b1709bf6d73830273a92cd92444eec7410be94804919f7e53b548d2e"
     }
   ],
-  "patchSha256": "545ad9898e0f9d9b81fd9765fb2196e12e4f87b47569d819b8e9865aea6fc516"
+  "patchSha256": "b538e8cddc2f722ce0d6e44b66707f5c7e0249a5e855fbbaa63563d714b8aaa0"
 }

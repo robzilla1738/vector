@@ -201,11 +201,11 @@
 +  for (CFIndex i = 0; i < CFArrayGetCount(hotkeys.get()); ++i) {
 +    auto item = static_cast<CFDictionaryRef>(CFArrayGetValueAtIndex(hotkeys.get(), i));
 +    if (!item || CFGetTypeID(item) != CFDictionaryGetTypeID()) continue;
-+    auto enabled = CFDictionaryGetValue(item, kHISymbolicHotKeyEnabled);
++    const auto* enabled = CFDictionaryGetValue(item, kHISymbolicHotKeyEnabled);
 +    if (!enabled || CFGetTypeID(enabled) != CFBooleanGetTypeID() ||
 +        !CFBooleanGetValue(static_cast<CFBooleanRef>(enabled))) continue;
-+    auto code = CFDictionaryGetValue(item, kHISymbolicHotKeyCode);
-+    auto modifiers = CFDictionaryGetValue(item, kHISymbolicHotKeyModifiers);
++    const auto* code = CFDictionaryGetValue(item, kHISymbolicHotKeyCode);
++    const auto* modifiers = CFDictionaryGetValue(item, kHISymbolicHotKeyModifiers);
 +    int code_value = 0, modifiers_value = 0;
 +    if (!code || !modifiers || CFGetTypeID(code) != CFNumberGetTypeID() ||
 +        CFGetTypeID(modifiers) != CFNumberGetTypeID() ||

@@ -1,0 +1,146 @@
+--- a/chrome/browser/aux/feature_store/feature_write_participant.cc
++++ b/chrome/browser/aux/feature_store/feature_write_participant.cc
+@@ -13,16 +13,28 @@
+ namespace aux::features {
+ namespace {
+ struct Record {
++  Record(base::FilePath path, NativeFeatureIoKind kind,
++         std::weak_ptr<std::atomic_bool> authorization);
++  Record(Record&&) noexcept;
++  Record& operator=(Record&&) noexcept;
++  ~Record();
+   base::FilePath profile_path;
+   NativeFeatureIoKind kind;
+   std::weak_ptr<std::atomic_bool> authorization;
+   bool abandoned = false;
+ };
+ struct Waiter {
++  Waiter(scoped_refptr<base::SequencedTaskRunner> runner,
++         base::OnceCallback<void(NativeFeatureWriteObservation)> callback);
++  Waiter(Waiter&&) noexcept;
++  Waiter& operator=(Waiter&&) noexcept;
++  ~Waiter();
+   scoped_refptr<base::SequencedTaskRunner> runner;
+   base::OnceCallback<void(NativeFeatureWriteObservation)> callback;
+ };
+ struct Registry {
++  Registry();
++  ~Registry();
+   const pid_t process = getpid();
+   std::mutex mutex;
+   uint64_t next_id = 1;
+@@ -30,6 +42,21 @@
+   std::map<uint64_t, Record> records;
+   std::vector<Waiter> waiters;
+ };
++Record::Record(base::FilePath path, NativeFeatureIoKind io_kind,
++               std::weak_ptr<std::atomic_bool> write_authorization)
++    : profile_path(std::move(path)), kind(io_kind),
++      authorization(std::move(write_authorization)) {}
++Record::Record(Record&&) noexcept = default;
++Record& Record::operator=(Record&&) noexcept = default;
++Record::~Record() = default;
++Waiter::Waiter(scoped_refptr<base::SequencedTaskRunner> task_runner,
++               base::OnceCallback<void(NativeFeatureWriteObservation)> done)
++    : runner(std::move(task_runner)), callback(std::move(done)) {}
++Waiter::Waiter(Waiter&&) noexcept = default;
++Waiter& Waiter::operator=(Waiter&&) noexcept = default;
++Waiter::~Waiter() = default;
++Registry::Registry() = default;
++Registry::~Registry() = default;
+ Registry& State() { static base::NoDestructor<Registry> state; return *state; }
+ void ReportSettled() {
+   auto& state = State();
+--- a/chrome/browser/ui/aux_file_operation_lifetime.cc
++++ b/chrome/browser/ui/aux_file_operation_lifetime.cc
+@@ -26,15 +26,19 @@
+   CHECK(!pending_);
+   ticket_ = aux::features::BeginNativeFeatureIo(path_, aux::features::NativeFeatureIoKind::kDownloadTransaction, authorized_);
+   if (!ticket_) { Revoke(); return false; }
+-  pending_ = true; ++ForPath(path_).pending;
++  pending_ = true; uncertain_ = false; ++ForPath(path_).pending;
+   return true;
+ }
+ void FileOperationLifetime::End() {
+   CHECK(pending_); pending_ = false;
+-  ticket_->Settle(aux::features::NativeFeatureIoOutcome::kCompleted);
++  ticket_->Settle(uncertain_ ? aux::features::NativeFeatureIoOutcome::kUncertain
++                             : aux::features::NativeFeatureIoOutcome::kCompleted);
+   ticket_.reset();
+   auto& fence = ForPath(path_); CHECK_GT(fence.pending, 0u);
+   if (--fence.pending == 0) fence.settled.Notify();
++}
++void FileOperationLifetime::MarkUncertain() {
++  CHECK(pending_); uncertain_ = true;
+ }
+ bool HasFileOperationsPending(const base::FilePath& path) { return ForPath(path).pending != 0; }
+ base::CallbackListSubscription ObserveFileOperationsSettled(const base::FilePath& path, base::RepeatingClosure callback) {
+--- a/chrome/browser/ui/aux_file_operation_lifetime.h
++++ b/chrome/browser/ui/aux_file_operation_lifetime.h
+@@ -16,11 +16,14 @@
+   void Revoke();
+   bool Begin();
+   void End();
++  // The worker stopped, but its physical result/journal still needs recovery.
++  void MarkUncertain();
+   std::shared_ptr<const std::atomic_bool> authorization() const { return authorized_; }
+  private:
+   base::FilePath path_;
+   std::shared_ptr<std::atomic_bool> authorized_;
+   bool pending_ = false;
++  bool uncertain_ = false;
+   std::shared_ptr<aux::features::NativeFeatureIoTicket> ticket_;
+ };
+ bool HasFileOperationsPending(const base::FilePath& actual_profile_path);
+--- a/chrome/browser/ui/aux_recent_files_service.cc
++++ b/chrome/browser/ui/aux_recent_files_service.cc
+@@ -171,13 +171,18 @@
+     }
+     auto* receipt = state->receipts.FindDict(receipt_id);
+     if (receipt) receipt->Set("phase", result == Result::SUCCESS ? (undo ? "undone" : "complete") : "failed");
++    if (result == Result::FAILURE_UNKNOWN) state->lifetime->MarkUncertain();
+     if (!state->Current()) {
++      state->lifetime->MarkUncertain();
+       Finish(Error("Profile closed; the prepared rename receipt requires recovery.")); return;
+     }
+     state->persist.Run(state->receipts.Clone(), base::BindOnce(&Rename::Recorded, shared_from_this()));
+   }
+   void Recorded(bool durable) {
+-    if (!durable) state->journal_ready = false;
++    if (!durable) {
++      state->journal_ready = false;
++      state->lifetime->MarkUncertain();
++    }
+     if (result != Result::SUCCESS) {
+       Finish(Error(result == Result::FAILURE_NAME_CONFLICT ? "That filename is already in use." : "The file changed or is no longer available.")); return;
+     }
+@@ -216,6 +221,9 @@
+     Finish();
+   }
+   void Finish() {
++    // Remaining prepared receipts need another recovery pass even when this
++    // process has no worker left. Do not report them as a clean completion.
++    if (!Current() || index < ids.size()) state->lifetime->MarkUncertain();
+     state->SetPending(false);
+   }
+   bool Current() const { return state->Current() && state->owner_epoch == epoch; }
+@@ -224,7 +232,10 @@
+     if (index == ids.size()) {
+       if (changed) state->persist.Run(state->receipts.Clone(), base::BindOnce(
+           [](std::shared_ptr<Recovery> recovery, bool durable) {
+-            if (!durable) recovery->state->journal_ready = false;
++            if (!durable) {
++              recovery->state->journal_ready = false;
++              recovery->state->lifetime->MarkUncertain();
++            }
+             recovery->Finish(); }, shared_from_this()));
+       else Finish();
+       return;
+@@ -256,6 +267,7 @@
+                        *phase == "undo-planned"));
+   }
+   void Conflict(const std::string& id) {
++    state->lifetime->MarkUncertain();
+     if (auto* receipt = state->receipts.FindDict(id)) receipt->Set("phase", "needs-review");
+     changed = true; Next();
+   }

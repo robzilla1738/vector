@@ -3,31 +3,31 @@
     {
       "path": "chrome/browser/ui/browser_command_controller.cc",
       "beforeSha256": "36be4a8a12ebe9b9320788d15cd462b5ffb6998e0277c0e97f5a23f21f61d929",
-      "afterSha256": "8ae87f11661f8706bc800299d8caf8a45adb1ec1a04d4c036f75615ae1a1d719",
+      "afterSha256": "eab1ecf1959b8c9707282211f8227a6fe87accb5247f9c157f93142f3ce61c73",
       "source": "docs/integration/proposed/browser-feature-expansion/integration/source/chrome/browser/ui/browser_command_controller.cc"
     },
     {
       "path": "extensions/browser/extension_function_histogram_value.h",
       "beforeSha256": "91638c848bd71e47fcd867fe12215da1df1f1e0a8927132794e5b5ba438733af",
-      "afterSha256": "8c77c1853083b8271eb8d8f8c7098b8c0f6658d80906ff0dea4e22d04f112da2",
+      "afterSha256": "48502688a5072e9be61a8ed64836a0ec7c0c465c4138afc1dd88ec5327a339e4",
       "source": "docs/integration/proposed/browser-feature-expansion/integration/source/extensions/browser/extension_function_histogram_value.h"
     },
     {
       "path": "tools/metrics/histograms/metadata/extensions/enums.xml",
       "beforeSha256": "73fc3e1b3009c1c79df2326b99559967bc034e5fbe473d3b038931e9fd76b02d",
-      "afterSha256": "ebfdf1c563857c1b2af3cfbf97823c0d7a600ca6ed2b0c3d881952de63c59949",
+      "afterSha256": "80e8e170d391f1a4b4a15214d0824f2fc15f6c3b835925ee359e17529a918764",
       "source": "docs/integration/proposed/browser-feature-expansion/integration/source/tools/metrics/histograms/metadata/extensions/enums.xml"
     },
     {
       "path": "chrome/browser/ui/BUILD.gn",
       "beforeSha256": "ebe9c3440b573ff5bfe57723ec3890838e9e97a11632aed9ba37b4fc360e8577",
-      "afterSha256": "1d59225cf5d868dbb66337b9fd17ce5c81e70e76847d97e6b77e84a14436a912",
+      "afterSha256": "a8f448d0e9f01a11afa1cbadf3bc93911aad6ada5983481f7a63d20a14ad68dc",
       "source": "docs/integration/proposed/browser-feature-expansion/integration/source/chrome/browser/ui/BUILD.gn"
     },
     {
       "path": "chrome/browser/extensions/api/aux_browser_preferences/BUILD.gn",
       "beforeSha256": "081065a319d876a98ae377d515f595303b09b5574c9f0f15b16c983b34a689c0",
-      "afterSha256": "a3d6d3fa114d68f3ec544d9bcb693bce910722cdaac05d16f0320af867174a2a",
+      "afterSha256": "c394166d7528e3c2131498a48a02466bd495c1cbb9f7ad7abe3ddafb4522dcdd",
       "source": "docs/integration/proposed/browser-feature-expansion/integration/source/chrome/browser/extensions/api/aux_browser_preferences/BUILD.gn"
     },
     {
@@ -45,13 +45,13 @@
     {
       "path": "chrome/browser/extensions/api/aux_browser_preferences/aux_feature_expansion_api.cc",
       "beforeSha256": null,
-      "afterSha256": "1d48691abf82109eec38142d7513ec7adbcca56edf7a15329c7995642f5bdc87",
+      "afterSha256": "d0e621b9b82597ea00ab768d467dc4e8be4fda24b6b981dff9077348a3a53b7f",
       "source": "docs/integration/proposed/browser-feature-expansion/integration/source/chrome/browser/extensions/api/aux_browser_preferences/aux_feature_expansion_api.cc"
     },
     {
       "path": "chrome/common/extensions/api/aux_browser_preferences.json",
       "beforeSha256": "15f8a9c74516b92479f84862e766ff3fe43ae8f633b6436bdb99c433e1259c80",
-      "afterSha256": "e5627d940e18ef89cb425e68fbdd801877435b6bdc0745a3a40ad9f7acfc8813",
+      "afterSha256": "db05e92d2295cda027b6872ac4138dc9d4be64b1513db3a5cb264eb2523866aa",
       "source": "docs/integration/proposed/browser-feature-expansion/integration/source/chrome/common/extensions/api/aux_browser_preferences.json",
       "overridesNativeSourceSha256": "15f8a9c74516b92479f84862e766ff3fe43ae8f633b6436bdb99c433e1259c80"
     },
@@ -76,7 +76,7 @@
     {
       "path": "chrome/browser/ui/browser_window/internal/browser_window_features.cc",
       "beforeSha256": "eac70346220c4dd6f2d6d49f359181c6d6b10cb2733bdcb74742ed78b72f18c9",
-      "afterSha256": "b2c43807920ff7477847825796b36e0c428675cd52c69bf7c038be2f2adf071a",
+      "afterSha256": "cbf28b97004f06ddaae7e8f51485a0a304f8d99a9437932b665d1c3ce34414fc",
       "source": "docs/integration/proposed/browser-feature-expansion/integration/source/chrome/browser/ui/browser_window/internal/browser_window_features.cc"
     },
     {
@@ -100,7 +100,7 @@
     {
       "path": "chrome/browser/aux/BUILD.gn",
       "beforeSha256": "a8be48e7c155ddd624dcaccc2b55553d82b269e0d04c7fb2e6f68ea6272972eb",
-      "afterSha256": "161a37c055055460060364510c8d4805448f04da593055c7a15e98f8d584850a",
+      "afterSha256": "fd14e65efe7d2dc1436ddec0d7bfb7ae93fdbe6e006356c3587f4b7845e334ad",
       "source": "docs/integration/proposed/browser-feature-expansion/integration/source/chrome/browser/aux/BUILD.gn"
     },
     {
@@ -156,21 +156,21 @@
     {
       "path": "chrome/browser/ui/views/frame/aux_tab_search_bubble.cc",
       "beforeSha256": "85dbd06672dbf9dcbbbefa6da582e227423f01a41bad1f690c4706f0c72e7afa",
-      "afterSha256": "69904acd5c68bfc9df293cc4f471ae85445f7ca835a13d4ea84f9255b5b954f2",
+      "afterSha256": "75786b7a666eb166e624b3f2265745b42372ce3f152b180da027abeaa5c36e44",
       "source": "docs/integration/proposed/browser-feature-expansion/integration/source/chrome/browser/ui/views/frame/aux_tab_search_bubble.cc",
       "overridesNativeSourceSha256": "85dbd06672dbf9dcbbbefa6da582e227423f01a41bad1f690c4706f0c72e7afa"
     },
     {
       "path": "chrome/browser/aux/feature_store/feature_profile_store.cc",
       "beforeSha256": null,
-      "afterSha256": "00921f288b481b6d27da185e9d4f7f983a40bdd0c41133b31c817db40a16e3e5",
+      "afterSha256": "c6886c48031a1d2b27505bfed7449961075eed512f275a5a81314bea7d535121",
       "source": "docs/integration/proposed/browser-feature-expansion/integration/source/chrome/browser/aux/feature_store/feature_profile_store.cc",
       "overridesNativeSourceSha256": "f38724cd331a675bde344d6bfd022f9eea1b836fe62fd85af95f0e885cbbf637"
     },
     {
       "path": "chrome/browser/ui/aux_feature_profile_owners.cc",
       "beforeSha256": null,
-      "afterSha256": "fc230fbc363898999dda4095cd755c0fe0fb9589a4585694ccd020fc1235407b",
+      "afterSha256": "a5ef886ed10c9a3bbfee146333742fb0373b705ac953411082cd2703abaa841c",
       "source": "docs/integration/proposed/browser-feature-expansion/integration/source/chrome/browser/ui/aux_feature_profile_owners.cc"
     },
     {
@@ -190,14 +190,14 @@
       "path": "chrome/browser/ui/views/frame/browser_view.cc",
       "beforeSha256": "cf57a912b3d621ef170e6e20b236e36ad4bff7ac6143bada614177c3298e2a1c",
       "source": "docs/integration/proposed/browser-feature-expansion/integration/source/chrome/browser/ui/views/frame/browser_view.cc",
-      "afterSha256": "3e84d46972029f05e9875aa000716723ee2a709bf25e34dd79970062dd0354c8",
+      "afterSha256": "b6fecde06fb561b4fb5d2da9405981cede125be331286aecb19f1213bd884fd9",
       "overridesNativeSourceSha256": "cf57a912b3d621ef170e6e20b236e36ad4bff7ac6143bada614177c3298e2a1c"
     },
     {
       "path": "components/tabs/impl/tab_strip_collection.cc",
       "beforeSha256": "99616835b21b31e72bc405d88d9de8c13534ee4aa318250c5dfc8bd562d6ca83",
       "source": "docs/integration/proposed/browser-feature-expansion/integration/source/components/tabs/impl/tab_strip_collection.cc",
-      "afterSha256": "55952808686881d1e06dad7261d468bbdbc48d57cb62ee6ef8ee315aae26e0f1"
+      "afterSha256": "7ac46a134490a93ffe860a1f96dee2809b0476560caab87507289ab19d4052ac"
     },
     {
       "path": "components/tabs/public/tab_strip_collection.h",
@@ -252,13 +252,13 @@
       "path": "components/sessions/core/live_tab_context.h",
       "beforeSha256": "7e0d72940e03ada91de98cbf8e123700682cc34709b956197a161f026f5bff0d",
       "source": "docs/integration/proposed/browser-feature-expansion/integration/source/components/sessions/core/live_tab_context.h",
-      "afterSha256": "c4010a02ee898a31d6240e1d9e6f7432e7fe793b76ec3596799d7987e9093a22"
+      "afterSha256": "307f2823f9739b988df3bdb1ee28beda28a7dbb4d62ed5ade3d200ff0afce1fa"
     },
     {
       "path": "components/sessions/core/tab_restore_service_helper.cc",
       "beforeSha256": "7151c62dce5b4330d64edbb0645332cdc942b0a13a78d05bb7065584a90c0cfa",
       "source": "docs/integration/proposed/browser-feature-expansion/integration/source/components/sessions/core/tab_restore_service_helper.cc",
-      "afterSha256": "d2a804247ce8ff5426d7f52d4f94a2eee8ef84a38afec587f5be4668e9d6e606"
+      "afterSha256": "cfde345bc2402e11cb5230af34a834fbb90432753f7da1a0aeec7469ceb4684a"
     },
     {
       "path": "components/sessions/core/tab_restore_service_impl.cc",
@@ -269,8 +269,216 @@
     {
       "path": "chrome/browser/ui/aux_feature_commands.cc",
       "beforeSha256": null,
-      "afterSha256": "dc824b13a3b5cf8025469d2882a06ff2577cd9c631e1d21269d732163c449367",
+      "afterSha256": "b58bc12141f4de11e2eac72e7693d67e50bbad1fcce942886628cf125c634460",
       "source": "docs/integration/proposed/browser-feature-expansion/integration/source/chrome/browser/ui/aux_feature_commands.cc"
+    },
+    {
+      "path": "chrome/browser/chrome_content_browser_client.cc",
+      "beforeSha256": "1c276b6eb3218ab0f4c1aeb556d717aff7c0a43edc8190ec30dfb3e7ccd649c0",
+      "source": "docs/integration/proposed/browser-feature-expansion/integration/source/chrome/browser/chrome_content_browser_client.cc",
+      "afterSha256": "bafac29ed6899bcb8db8b4c3aaa97f88d6ec1ffc26b633491924ec58f629aa95"
+    },
+    {
+      "path": "chrome/browser/ui/tab_helpers.cc",
+      "beforeSha256": "568225916345b506648f637e68943a839f0b5226a1b6c361843278960467938b",
+      "source": "docs/integration/proposed/browser-feature-expansion/integration/source/chrome/browser/ui/tab_helpers.cc",
+      "afterSha256": "b19a5be8c29e25310d83913f84b0d7499df14a343575fe42cf1c2c0bc23f3533"
+    },
+    {
+      "path": "chrome/browser/ui/browser_web_contents_delegate/browser_web_contents_delegate.cc",
+      "beforeSha256": "7de709b96dc0d26f6532244f526f43229a8eeab453da3bbc2f888f3e5a36090d",
+      "source": "docs/integration/proposed/browser-feature-expansion/integration/source/chrome/browser/ui/browser_web_contents_delegate/browser_web_contents_delegate.cc",
+      "afterSha256": "a610fb22fc9f306dd699c656aaddb0605dfdd09135678b50862cb53c2ee7f152"
+    },
+    {
+      "path": "chrome/browser/download/chrome_download_manager_delegate.cc",
+      "beforeSha256": "887d35516e7a26a61fcaba1a682feb09e1a34cb7a6354d6bcc3b27406b166829",
+      "source": "docs/integration/proposed/browser-feature-expansion/integration/source/chrome/browser/download/chrome_download_manager_delegate.cc",
+      "afterSha256": "d4e412374de7ff2950011f7c342753c3ad9a9102b3737013eb047786d6a13f63"
+    },
+    {
+      "path": "chrome/browser/ui/unload_controller.cc",
+      "beforeSha256": "63faea6291d916716b0f98a6258c4c65f9ccd80e80fadde029e414c3676d6655",
+      "source": "docs/integration/proposed/browser-feature-expansion/integration/source/chrome/browser/ui/unload_controller.cc",
+      "afterSha256": "09220f0d6b2f9f93c3d3434cb05a0b2fd251592bda6485b8de49fd7454116dcf"
+    },
+    {
+      "path": "chrome/browser/ui/views/toolbar/toolbar_view.cc",
+      "beforeSha256": "cd705f16fde0661fbb7d779c54a0531018a97b9c98e8f84711fe4fbda272a5ef",
+      "source": "docs/integration/proposed/browser-feature-expansion/integration/source/chrome/browser/ui/views/toolbar/toolbar_view.cc",
+      "overridesNativeSourceSha256": "cd705f16fde0661fbb7d779c54a0531018a97b9c98e8f84711fe4fbda272a5ef",
+      "afterSha256": "076680b0b700efa5180f13676ea5c055c0c1691c1f04247bd7f4c5d16fd67632"
+    },
+    {
+      "path": "chrome/browser/renderer_context_menu/render_view_context_menu.cc",
+      "beforeSha256": "62fda4dd0463ca3b6c29c58d5f3024ff32c35f046f9c65ab52cb2d54b68a2333",
+      "source": "docs/integration/proposed/browser-feature-expansion/integration/source/chrome/browser/renderer_context_menu/render_view_context_menu.cc",
+      "afterSha256": "c7ed6d4df8f56bf6546bead44e73260f1032258f21e78b1ec5d32bfff2ef91ad"
+    },
+    {
+      "path": "chrome/browser/ui/startup/startup_tab.h",
+      "beforeSha256": "0553e1d9e2c1b74c23dc3ebfa17fcca7e01acda86a97e8ac459dbee1a7ac9484",
+      "source": "docs/integration/proposed/browser-feature-expansion/integration/source/chrome/browser/ui/startup/startup_tab.h",
+      "afterSha256": "32b4a6c67d9a42682d3b051bdacb711a9bc09697a6d726182b7f6f3a27866162"
+    },
+    {
+      "path": "chrome/browser/app_controller_mac.mm",
+      "beforeSha256": "2e5139d89df654da1b6d6b63251318d3b01ba40cf70efdc7162932a99464dfaf",
+      "source": "docs/integration/proposed/browser-feature-expansion/integration/source/chrome/browser/app_controller_mac.mm",
+      "afterSha256": "cd1f4d4a781bba1391f14ccdacad42c086d8d9e77af2916db514b91dfe73948e"
+    },
+    {
+      "path": "chrome/browser/ui/startup/startup_browser_creator.cc",
+      "beforeSha256": "7815d7e0caff70a851e33083420600f5c4ed01b8197b997b2437cc2bdc5caed3",
+      "source": "docs/integration/proposed/browser-feature-expansion/integration/source/chrome/browser/ui/startup/startup_browser_creator.cc",
+      "afterSha256": "1be9702fff5372a3f85ab88f72a7b78b460325b90836574f1cb9db6eb4a09859"
+    },
+    {
+      "path": "chrome/browser/aux/AuxSelectedStateHome.cc",
+      "beforeSha256": "ba49614b3b912387ce8425ffa274dc9e35910576a76b8e28956fee5d38edbf57",
+      "source": "docs/integration/proposed/browser-feature-expansion/integration/source/chrome/browser/aux/AuxSelectedStateHome.cc",
+      "afterSha256": "d1570801ecc1794abea41ba4c796fc7dfd3c273b11713e94d466010edfd78b56"
+    },
+    {
+      "path": "chrome/browser/aux/AuxSelectedStateHome.h",
+      "beforeSha256": "511178394945890f0b8cfa1c6232a667da5dd4ebaca02a416b1a14edc1b2c779",
+      "source": "docs/integration/proposed/browser-feature-expansion/integration/source/chrome/browser/aux/AuxSelectedStateHome.h",
+      "afterSha256": "81f5a9138ffd7eccf173b081134a6c5e304184d1012557d4b6a1ccbf6971ddb7"
+    },
+    {
+      "path": "chrome/browser/aux/feature_store/feature_write_participant.cc",
+      "beforeSha256": null,
+      "source": "docs/integration/proposed/browser-feature-expansion/integration/source/chrome/browser/aux/feature_store/feature_write_participant.cc",
+      "afterSha256": "ce1fe4b56c370b6b0369776eadc3d00530a7931d2963b81fb70c75f72079f14d"
+    },
+    {
+      "path": "chrome/browser/aux/feature_store/feature_write_participant.h",
+      "beforeSha256": null,
+      "source": "docs/integration/proposed/browser-feature-expansion/integration/source/chrome/browser/aux/feature_store/feature_write_participant.h",
+      "afterSha256": "a7db1e6b87daf66bce72c7b542e31d4b5b5e0147101ece0df85ad5c3387a37cc"
+    },
+    {
+      "path": "chrome/browser/aux/feature_store/feature_write_participant_unittest.cc",
+      "beforeSha256": null,
+      "source": "docs/integration/proposed/browser-feature-expansion/integration/source/chrome/browser/aux/feature_store/feature_write_participant_unittest.cc",
+      "afterSha256": "ab949f598da2f1564a99c3f2a3cb480f5784a2ea7576eb9de2285e0de00906e7"
+    },
+    {
+      "path": "chrome/browser/aux/organization/organization_profile_service.cc",
+      "beforeSha256": null,
+      "source": "docs/integration/proposed/browser-feature-expansion/integration/source/chrome/browser/aux/organization/organization_profile_service.cc",
+      "afterSha256": "7c50ffff360e13d830586c4941b6830d57a494c668de899db8bbd020a9e88a5d"
+    },
+    {
+      "path": "chrome/browser/ui/aux_chosen_files_service.cc",
+      "beforeSha256": "5567f2555a84694b74031faa790f03a86305f648bdf0ee220bf1f4b592c2691c",
+      "source": "docs/integration/proposed/browser-feature-expansion/integration/source/chrome/browser/ui/aux_chosen_files_service.cc",
+      "overridesNativeSourceSha256": "5567f2555a84694b74031faa790f03a86305f648bdf0ee220bf1f4b592c2691c",
+      "afterSha256": "12a0444fa8c880eb5267023dab64851f4c3d25c61d351cc4ec5dd807bd0d74ba"
+    },
+    {
+      "path": "chrome/browser/ui/aux_file_operation_lifetime.cc",
+      "beforeSha256": "88d27f6f043630171b3419625a1c617cbbeb45ab8db59b688ba08699033a2151",
+      "source": "docs/integration/proposed/browser-feature-expansion/integration/source/chrome/browser/ui/aux_file_operation_lifetime.cc",
+      "overridesNativeSourceSha256": "88d27f6f043630171b3419625a1c617cbbeb45ab8db59b688ba08699033a2151",
+      "afterSha256": "2b19dafe262878f46ca2802f3be0b7515ba8ee5d11f1caa9ff6b084fdae9008e"
+    },
+    {
+      "path": "chrome/browser/ui/aux_file_operation_lifetime.h",
+      "beforeSha256": "e01ce2cfd29a7df655a46244a01d0373c6993746c18a81a74b0636beb650c4e4",
+      "source": "docs/integration/proposed/browser-feature-expansion/integration/source/chrome/browser/ui/aux_file_operation_lifetime.h",
+      "overridesNativeSourceSha256": "e01ce2cfd29a7df655a46244a01d0373c6993746c18a81a74b0636beb650c4e4",
+      "afterSha256": "07ce25807ffa1a55cb031b77d699fdb4666da21d2ea3ee79db8f55ea2389a54e"
+    },
+    {
+      "path": "chrome/browser/ui/aux_owned_browser_quiesce.cc",
+      "beforeSha256": "f58124990bb3b83220af36ebac00ad535ef4c3176b6b66d9274ccb754aa74724",
+      "source": "docs/integration/proposed/browser-feature-expansion/integration/source/chrome/browser/ui/aux_owned_browser_quiesce.cc",
+      "afterSha256": "d8fb7b6084597827336063ba9b70be16f58d4cff405d165f62965a97a82395f1"
+    },
+    {
+      "path": "chrome/browser/ui/aux_owned_browser_quiesce.h",
+      "beforeSha256": "0a23d1509d22d39b0c41081d44e937911b04a6c7b8ad8cfdf2ea42d5b6193df3",
+      "source": "docs/integration/proposed/browser-feature-expansion/integration/source/chrome/browser/ui/aux_owned_browser_quiesce.h",
+      "afterSha256": "16e65be831601477acf05a81b66d2032ad6147ce1e8ca4b563939764e668d8f7"
+    },
+    {
+      "path": "chrome/browser/ui/aux_recent_files_service.cc",
+      "beforeSha256": "6a75e7f8c656cfd0a566cd72cfe2e2f22f2361c9372fcc0abbc78c3c3a69941c",
+      "source": "docs/integration/proposed/browser-feature-expansion/integration/source/chrome/browser/ui/aux_recent_files_service.cc",
+      "overridesNativeSourceSha256": "6a75e7f8c656cfd0a566cd72cfe2e2f22f2361c9372fcc0abbc78c3c3a69941c",
+      "afterSha256": "b7a5ba2a42137bee886606c8774db5e32210cd3e820b153edef38563ffc3666a"
+    },
+    {
+      "path": "chrome/browser/ui/startup/startup_browser_creator_impl.cc",
+      "beforeSha256": "d003b9548d0278be739b0c4c6f3ab9ab0bcd2cfcf19a701174c99a55748bb2c7",
+      "source": "docs/integration/proposed/browser-feature-expansion/integration/source/chrome/browser/ui/startup/startup_browser_creator_impl.cc",
+      "afterSha256": "caa2a48e7b5e31d065f5f1800a28eff87487a66cefb6dea0027ff814bafb0883"
+    },
+    {
+      "path": "extensions/browser/extension_event_histogram_value.h",
+      "source": "docs/integration/proposed/browser-feature-expansion/integration/source/extensions/browser/extension_event_histogram_value.h",
+      "beforeSha256": "cb48b459ec38fc1334703eb42048d920cf287208decd26e42acd4a3942dc76a0",
+      "afterSha256": "3fcb7b1c9be371dcba33230cb14d4ec194e41c3e1cdbe19d94afe1bfb8d08507"
+    },
+    {
+      "path": "components/infobars/core/infobar_delegate.h",
+      "source": "docs/integration/proposed/browser-feature-expansion/integration/source/components/infobars/core/infobar_delegate.h",
+      "beforeSha256": "41da3ffbf7e277b46418a37f42280a216662c880a1c8804849e6c493896d5bb5",
+      "afterSha256": "51c84512d81d90b62c5f672694883d64ddc42835fb5582fa7d6b91c28b69f307"
+    },
+    {
+      "path": "tools/metrics/histograms/metadata/browser/enums.xml",
+      "source": "docs/integration/proposed/browser-feature-expansion/integration/source/tools/metrics/histograms/metadata/browser/enums.xml",
+      "beforeSha256": "d468da667db2871bcf73b0ea99733f459d08b83627cb92527692d97c955f9f42",
+      "afterSha256": "9458cb5b3885c975856ea857d16e23240cef365bf22ae3e650715251396586d0"
+    },
+    {
+      "path": "components/sessions/BUILD.gn",
+      "beforeSha256": "e5412ef21667652c2951f85ea930a9a5a5e7bdac4624da09b22fb85d94752526",
+      "source": "docs/integration/proposed/browser-feature-expansion/integration/source/components/sessions/BUILD.gn",
+      "afterSha256": "1d66dbc59b2820fed5e6d9cd5e5a7df2f7495f04503ad01b5ddc8f54932510f3"
+    },
+    {
+      "path": "components/sessions/core/live_tab_context.cc",
+      "beforeSha256": null,
+      "source": "docs/integration/proposed/browser-feature-expansion/integration/source/components/sessions/core/live_tab_context.cc",
+      "afterSha256": "4a9fabbadb9309eea428db9c2bdeb5bf8953b27964d5e25c15e3c69a64514ad7"
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_organization_window_controller.cc",
+      "beforeSha256": "af7caf37b61f9037e9917246293380d562f50c8022d73812aae1b623e59ff20e",
+      "source": "docs/integration/proposed/browser-feature-expansion/integration/source/chrome/browser/ui/views/frame/aux_organization_window_controller.cc",
+      "overridesNativeSourceSha256": "af7caf37b61f9037e9917246293380d562f50c8022d73812aae1b623e59ff20e",
+      "afterSha256": "fe9364ddb47f01a4d42a9805de97e819a6a7e05bc5b574436ef74fe83df8e9b0"
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_organization_window_controller.h",
+      "beforeSha256": "8b80194c2d5deaa0dabc07f5117318e54e6a175d8fa37a9a28c519b10d7b9e0a",
+      "source": "docs/integration/proposed/browser-feature-expansion/integration/source/chrome/browser/ui/views/frame/aux_organization_window_controller.h",
+      "overridesNativeSourceSha256": "8b80194c2d5deaa0dabc07f5117318e54e6a175d8fa37a9a28c519b10d7b9e0a",
+      "afterSha256": "211631eb6c1b539b7210339beff5009c3e83ffdb0b9b14959e0e3b591b3367f1"
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_organization_tree_view.h",
+      "source": "docs/integration/proposed/browser-feature-expansion/integration/source/chrome/browser/ui/views/frame/aux_organization_tree_view.h",
+      "beforeSha256": "66595afb8f21823275545bdd529580eb9e0b06d95a7e98f041d051cbaa559593",
+      "overridesNativeSourceSha256": "66595afb8f21823275545bdd529580eb9e0b06d95a7e98f041d051cbaa559593",
+      "afterSha256": "7f66e52ae31d598cb24d23f7910430dcd7cf34c6c133ebbc0abdec5779d14971"
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_organization_tree_view.cc",
+      "source": "docs/integration/proposed/browser-feature-expansion/integration/source/chrome/browser/ui/views/frame/aux_organization_tree_view.cc",
+      "beforeSha256": "5ab306a698aeb7e99a9fb9f81f642da4774ec0ad55a9e930cfc11bbd3afede3d",
+      "overridesNativeSourceSha256": "5ab306a698aeb7e99a9fb9f81f642da4774ec0ad55a9e930cfc11bbd3afede3d",
+      "afterSha256": "f14282b737c56c6325a4469c95214c3fcae7b5e806e040f231a20792e75e42a1"
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_organization_window_delegate.h",
+      "source": "docs/integration/proposed/browser-feature-expansion/integration/source/chrome/browser/ui/views/frame/aux_organization_window_delegate.h",
+      "beforeSha256": "b597eeb22c9e4072ea2fbdf8cedc762319f03b5b68137b9a466ccf159625eb35",
+      "overridesNativeSourceSha256": "b597eeb22c9e4072ea2fbdf8cedc762319f03b5b68137b9a466ccf159625eb35",
+      "afterSha256": "319e3515541a790d07f9a8a9eff42adc7da230ec4c260196649c140c64733001"
     }
   ]
 }

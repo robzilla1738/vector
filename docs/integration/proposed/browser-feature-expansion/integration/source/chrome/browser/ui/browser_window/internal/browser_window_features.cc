@@ -382,6 +382,8 @@ void BrowserWindowFeatures::FinishAuxPrivateProfileServices() {
         browser_->GetWindow()->IsActive());
   }
   aux_private_profile_services_ = {};
+  InitializeAuxLocalFeatureOwners(browser_->GetProfile());
+  aux::routing::RememberProfile(browser_->GetProfile());
 }
 
 void BrowserWindowFeatures::AbortAuxPrivateProfileServices() {

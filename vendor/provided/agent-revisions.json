@@ -77,5 +77,13 @@
     "identityProfile": "aux-v1",
     "stateIdentityVersion": 2,
     "fingerprint": "99adcd0f17848b0ce02e9ccf2d16ca2fae5cfd9ff3d97f80a22549f503fb0dee"
+  },
+  {
+    "revision": 14,
+    "profile": "development",
+    "identityProfile": "aux-v1",
+    "stateIdentityVersion": 2,
+    "featureProfile": "desktop-v1",
+    "fingerprint": "244642ed148e4de7221f5361ddf1ff3ed92dbd71cb55dc9cbc8ad71e031bc43d"
   }
 ]

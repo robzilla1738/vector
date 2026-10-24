@@ -1,5 +1,6 @@
 // Copyright 2026 The Aux Authors. BSD-style license: see //LICENSE.
 #include "chrome/browser/ui/aux_feature_lifecycle.h"
+#include "chrome/browser/aux/feature_store/feature_write_participant.h"
 #include <utility>
 #include "base/functional/bind.h"
 #include "base/memory/weak_ptr.h"
@@ -14,6 +15,7 @@
 #include "chrome/browser/ui/aux_recent_files_service.h"
 #include "chrome/browser/ui/aux_chosen_files_service.h"
 #include "components/prefs/pref_change_registrar.h"
+#include "components/prefs/pref_service.h"
 namespace {
 constexpr char kOwnerData[] = "aux.local-feature-owners.v1";
 class FeatureOwners final : public base::SupportsUserData::Data {
@@ -28,6 +30,8 @@ class FeatureOwners final : public base::SupportsUserData::Data {
     if (auto* organization = aux::organization::OrganizationProfileServiceFactory::GetForProfileIfExists(profile))
       organization_settled_ = organization->ObserveSettled(base::BindRepeating(
           &FeatureOwners::Notify, weak_.GetWeakPtr()));
+    cookie_restored_ = aux::ObserveProfileCookieRestoreFinished(profile,
+        base::BindRepeating(&FeatureOwners::QueueRefresh, weak_.GetWeakPtr()));
     prefs_.Init(profile->GetPrefs());
     for (const char* pref : {"aux.profile_id", "aux.account_id", "aux.account_user_id",
                              "aux.account_has_persisted_session", "aux.account_auth_paused"})
@@ -37,6 +41,8 @@ class FeatureOwners final : public base::SupportsUserData::Data {
   void Refresh() {
     if (!profile_) return;
     if (aux::files::HasPendingWrite(profile_.get())) return;
+    if (!aux::features::IsWritePending(profile_.get()) &&
+        !aux::features::GetNamespace(profile_.get(), "downloads")) installed_epoch_.clear();
     aux::features::InitializeForProfile(profile_.get());
     Attach();
   }
@@ -103,7 +109,7 @@ class FeatureOwners final : public base::SupportsUserData::Data {
   std::string installed_epoch_;
   bool queued_ = false;
   PrefChangeRegistrar prefs_;
-  base::CallbackListSubscription ready_, store_settled_, files_settled_, organization_settled_;
+  base::CallbackListSubscription ready_, store_settled_, files_settled_, organization_settled_, cookie_restored_;
   base::RepeatingClosureList settled_;
   base::WeakPtrFactory<FeatureOwners> weak_{this};
 };
@@ -118,7 +124,8 @@ void InitializeAuxLocalFeatureOwners(Profile* profile) {
 }
 bool IsAuxLocalFeatureWritePending(Profile* profile) {
   if (!profile || !profile->IsRegularProfile() || profile->IsOffTheRecord()) return false;
-  return aux::organization::IsProfileOrganizationWritePending(profile) ||
+  return aux::features::IsNativeFeatureIoPendingForProfilePath(profile->GetPath()) ||
+      aux::organization::IsProfileOrganizationWritePending(profile) ||
       aux::features::IsWritePending(profile) || aux::files::HasPendingWrite(profile);
 }
 base::CallbackListSubscription ObserveAuxLocalFeatureSettled(Profile* profile,
@@ -132,7 +139,7 @@ bool IsAuxLocalProfileAdmitted(Profile* profile) {
       aux::IsProfileCookieRestorePending(profile)) return false;
   const auto state = aux::peer::InspectNativeBrowserShutdown();
   auto roots = aux::peer::CaptureActualChromiumBrowserRoots();
-  return !state.wrong_process && !state.admission_closed &&
+  return !aux::features::IsNativeFeatureIoAdmissionClosed() && !state.wrong_process && !state.admission_closed &&
       !state.sequence_uncertain && state.admitted_generation != 0 &&
       roots && roots->Revalidate();
 }

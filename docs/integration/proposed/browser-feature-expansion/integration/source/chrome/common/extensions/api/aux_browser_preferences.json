@@ -1361,6 +1361,274 @@
             }
           ]
         }
+      },
+      {
+        "name": "getPageCaptureTarget",
+        "type": "function",
+        "parameters": [
+          {
+            "name": "request",
+            "type": "object",
+            "additionalProperties": {
+              "type": "any"
+            }
+          }
+        ],
+        "returns_async": {
+          "name": "callback",
+          "parameters": [
+            {
+              "name": "result",
+              "type": "object",
+              "additionalProperties": {
+                "type": "any"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "name": "beginPageSurfaceCapture",
+        "type": "function",
+        "parameters": [
+          {
+            "name": "request",
+            "type": "object",
+            "additionalProperties": {
+              "type": "any"
+            }
+          }
+        ],
+        "returns_async": {
+          "name": "callback",
+          "parameters": [
+            {
+              "name": "result",
+              "type": "object",
+              "additionalProperties": {
+                "type": "any"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "name": "capturePageSurface",
+        "type": "function",
+        "parameters": [
+          {
+            "name": "request",
+            "type": "object",
+            "additionalProperties": {
+              "type": "any"
+            }
+          }
+        ],
+        "returns_async": {
+          "name": "callback",
+          "parameters": [
+            {
+              "name": "result",
+              "type": "object",
+              "additionalProperties": {
+                "type": "any"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "name": "validatePageSurfaceCapture",
+        "type": "function",
+        "parameters": [
+          {
+            "name": "request",
+            "type": "object",
+            "additionalProperties": {
+              "type": "any"
+            }
+          }
+        ],
+        "returns_async": {
+          "name": "callback",
+          "parameters": [
+            {
+              "name": "result",
+              "type": "object",
+              "additionalProperties": {
+                "type": "any"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "name": "cancelPageSurfaceCapture",
+        "type": "function",
+        "parameters": [
+          {
+            "name": "request",
+            "type": "object",
+            "additionalProperties": {
+              "type": "any"
+            }
+          }
+        ],
+        "returns_async": {
+          "name": "callback",
+          "parameters": [
+            {
+              "name": "result",
+              "type": "object",
+              "additionalProperties": {
+                "type": "any"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "name": "getDeveloperSettings",
+        "type": "function",
+        "parameters": [],
+        "returns_async": {
+          "name": "callback",
+          "parameters": [
+            {
+              "name": "result",
+              "type": "object",
+              "additionalProperties": {
+                "type": "any"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "name": "setDeveloperMode",
+        "type": "function",
+        "parameters": [
+          {
+            "name": "request",
+            "type": "object",
+            "additionalProperties": {
+              "type": "any"
+            }
+          }
+        ],
+        "returns_async": {
+          "name": "callback",
+          "parameters": [
+            {
+              "name": "result",
+              "type": "object",
+              "additionalProperties": {
+                "type": "any"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "name": "openDeveloperTools",
+        "type": "function",
+        "parameters": [
+          {
+            "name": "request",
+            "type": "object",
+            "additionalProperties": {
+              "type": "any"
+            }
+          }
+        ],
+        "returns_async": {
+          "name": "callback",
+          "parameters": [
+            {
+              "name": "result",
+              "type": "object",
+              "additionalProperties": {
+                "type": "any"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "name": "openExtensionManager",
+        "type": "function",
+        "parameters": [
+          {
+            "name": "request",
+            "type": "object",
+            "additionalProperties": {
+              "type": "any"
+            }
+          }
+        ],
+        "returns_async": {
+          "name": "callback",
+          "parameters": [
+            {
+              "name": "result",
+              "type": "object",
+              "additionalProperties": {
+                "type": "any"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "name": "reportPageCaptureError",
+        "type": "function",
+        "parameters": [
+          {
+            "name": "request",
+            "type": "object",
+            "additionalProperties": {
+              "type": "any"
+            }
+          }
+        ],
+        "returns_async": {
+          "name": "callback",
+          "parameters": [
+            {
+              "name": "result",
+              "type": "object",
+              "additionalProperties": {
+                "type": "any"
+              }
+            }
+          ]
+        }
+      }
+    ],
+    "events": [
+      {
+        "name": "onPageCaptureRequested",
+        "type": "function",
+        "parameters": [
+          {
+            "name": "target",
+            "type": "object",
+            "additionalProperties": {
+              "type": "any"
+            },
+            "properties": {
+              "success": {
+                "type": "boolean"
+              },
+              "tabId": {
+                "type": "integer"
+              },
+              "documentId": {
+                "type": "string"
+              }
+            }
+          }
+        ]
       }
     ]
   }

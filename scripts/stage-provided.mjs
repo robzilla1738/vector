@@ -34,7 +34,7 @@ for (let i = 0; i < args.length; i++) {
   if (!['--output', '--app-path', '--source-snapshot', '--cloud-profile', '--identity-profile', '--state-identity-version', '--feature-profile'].includes(args[i]) || !args[i + 1] || args[i + 1].startsWith('--') || options[args[i]]) throw new Error('Usage: stage-provided.mjs [--output PATH] [--app-path FINAL_AUX_APP] [--source-snapshot ROOT] [--cloud-profile development|production] [--identity-profile compatibility|aux-v1] [--state-identity-version 1|2] [--feature-profile baseline|desktop-v1] [--replace]');
   options[args[i]] = args[++i];
 }
-const featureProfile = options['--feature-profile'] ?? 'desktop-v1';
+const featureProfile = options['--feature-profile'] ?? 'baseline';
 if (!['baseline', 'desktop-v1'].includes(featureProfile)) throw Error('Unknown feature profile');
 const identityProfile = resolveProtocolIdentity(options['--identity-profile']);
 const stateIdentityVersion = resolveStateIdentityVersion(options['--state-identity-version'] === undefined ? 1 : Number(options['--state-identity-version']), identityProfile);
@@ -85,7 +85,7 @@ try {
   // Reports use their final locations, so the outer atomic rename leaves no stale temporary paths.
   for (const [name, component] of Object.entries(ui.components)) component.outputRoot = join(output, 'ui', name);
   await writeFile(join(temporary, 'ui/manifest.json'), `${JSON.stringify(ui, null, 2)}\n`);
-  const apps = await stageProvidedApps({ ...(sourceSnapshot ? { sourceRoots: { daemon: sourceSnapshot.roots.daemon, cli: sourceSnapshot.roots.cli } } : {}), outputRoot: join(temporary, 'apps'), cloudOptions, identityProfile, stateIdentityVersion });
+  const apps = await stageProvidedApps({ ...(sourceSnapshot ? { sourceRoots: { daemon: sourceSnapshot.roots.daemon, cli: sourceSnapshot.roots.cli } } : {}), outputRoot: join(temporary, 'apps'), cloudOptions, identityProfile, stateIdentityVersion, featureProfile });
   const runtimePins = JSON.parse(await readFile(join(repository, 'docs/source/provided-runtime-inputs.json'), 'utf8'));
   const distribution = await stageProvidedRuntime({
     sourceRoot: sourceSnapshot?.roots.runtime ?? runtimePins.components.runtime.inputRoot,

@@ -122,6 +122,7 @@ for (const component of ['agent', 'vault']) {
   }
 }
 const apps = await json(join(output, 'apps/manifest.json'));
+if ((apps.featureProfile ?? 'baseline') !== (stack.featureProfile ?? 'baseline')) throw Error('Apps browser feature profile mismatch');
 if ((apps.stateIdentityVersion ?? 1) !== stateIdentityVersion || resolveProtocolIdentity(apps.identityProfile) !== identityProfile) throw Error('Apps protocol profile mismatch');
 const appPins = await json(join(repository, 'docs/source/provided-app-inputs.json'));
 let appFiles = 0;
@@ -136,7 +137,7 @@ for (const component of ['daemon', 'cli']) {
   const root = join(output, 'apps', report.app);
   const binary = await readFile(join(sourceSnapshot?.roots[component] ?? providedAppRoots[component], 'Contents/MacOS', component === 'daemon' ? 'aside-daemon' : 'aside'));
   const section = findMachOSeaSection(binary), originalCode = readSeaBlob(binary.subarray(section.offset, section.offset + section.size)).code;
-  const expected = (component === 'daemon' ? adaptDaemonCode : adaptCliCode)(originalCode, cloudOptions, identityProfile, stateIdentityVersion);
+  const expected = (component === 'daemon' ? adaptDaemonCode : adaptCliCode)(originalCode, cloudOptions, identityProfile, stateIdentityVersion, stack.featureProfile ?? 'baseline');
   if (JSON.stringify(expected.cloudPolicy) !== JSON.stringify(report.executable.cloudPolicy) || JSON.stringify(expected.cloudAnchors) !== JSON.stringify(report.executable.cloudAnchors)) throw new Error('Unreported executable cloud composition');
   if (expected.sha256 !== report.executable.codeSha256) throw new Error(`Restage ${component}: current adaptation differs from this candidate`);
   if (JSON.stringify(await files(root)) !== JSON.stringify(report.files.map((file) => file.path).sort())) throw new Error('Unreported app resources');

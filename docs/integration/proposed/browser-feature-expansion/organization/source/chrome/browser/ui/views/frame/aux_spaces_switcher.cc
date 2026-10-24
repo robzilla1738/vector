@@ -28,6 +28,7 @@
 namespace aux {
 namespace {
 class SpaceSelectorButton final : public views::LabelButton {
+  METADATA_HEADER(SpaceSelectorButton, views::LabelButton)
  public:
   explicit SpaceSelectorButton(PressedCallback callback)
       : LabelButton(std::move(callback), u"Space") {
@@ -36,6 +37,8 @@ class SpaceSelectorButton final : public views::LabelButton {
                                     gfx::Font::Weight::MEDIUM));
   }
 };
+BEGIN_METADATA(SpaceSelectorButton)
+END_METADATA
 std::vector<organization::Space> Spaces(BrowserWindowInterface& browser) {
   auto* owner = organization::OrganizationProfileServiceFactory::GetForProfileIfExists(browser.GetProfile());
   std::vector<organization::Space> result;

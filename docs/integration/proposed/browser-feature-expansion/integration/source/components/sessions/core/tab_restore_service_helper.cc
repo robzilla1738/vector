@@ -1719,7 +1719,7 @@ bool TabRestoreServiceHelper::IsGroupInteresting(const Group& group) {
 
 bool TabRestoreServiceHelper::IsSplitInteresting(const Split& split) {
   return split.tabs.size() >= 2 && split.tabs.size() <= split_tabs::SplitPaneTree::kMaxPanes &&
-      std::ranges::any_of(split.tabs, [](const auto& tab) { return tab && IsTabInteresting(*tab); });
+      std::ranges::any_of(split.tabs, [this](const auto& tab) { return tab && IsTabInteresting(*tab); });
 }
 
 bool TabRestoreServiceHelper::FilterEntry(const Entry& entry) {

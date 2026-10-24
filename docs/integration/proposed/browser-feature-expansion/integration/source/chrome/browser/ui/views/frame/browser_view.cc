@@ -3,6 +3,11 @@
 // found in the LICENSE file.
 
 #include "chrome/browser/ui/views/frame/browser_view.h"
+#include "build/build_config.h"
+#include "chrome/browser/buildflags.h"
+#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
+#include "chrome/browser/ui/aux_preview/aux_preview_controller.h"
+#endif
 #include "chrome/browser/ui/views/frame/aux_navigation_placement.h"
 #include "components/omnibox/browser/omnibox_pref_names.h"
 
@@ -4754,6 +4759,15 @@ bool BrowserView::RotatePaneFocusFromView(views::View* focused_view,
 // BrowserView, views::ClientView overrides:
 
 views::CloseRequestResult BrowserView::OnWindowCloseRequested() {
+#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
+  std::string aux_preview_reason;
+  if (!aux::preview::CanClose(browser_, &aux_preview_reason)) {
+    if (auto* contents = browser_->GetTabStripModel()->GetActiveWebContents())
+      aux::preview::ReportRestriction(contents, aux_preview_reason);
+    return views::CloseRequestResult::kCannotClose;
+  }
+#endif
+
 #if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
   if (BrowserInitState::From(browser_) &&
       static_cast<Browser*>(browser_.get())->DeferCloseForAuxProfileSwitch()) {

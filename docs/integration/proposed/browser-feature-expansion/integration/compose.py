@@ -52,6 +52,10 @@ for source in sorted((feature/'productivity/source').rglob('*')):
     if source.is_file():
         path = str(source.relative_to(feature/'productivity/source'))
         add(path, productivity_before.get(path), sha(source), source)
+for entry in json.loads((feature/'routing-ingress/files.json').read_text())['files']:
+    add(entry['path'],entry['baselineSha256'],entry['sourceSha256'],feature/'routing-ingress/source'/entry['path'])
+for entry in json.loads((feature/'preview/files.json').read_text())['files']:
+    add(entry['path'],entry['baselineSha256'],entry['sourceSha256'],feature/'preview/source'/entry['path'])
 for entry in json.loads((feature/'shortcuts/files.json').read_text())['files']:
     path=entry['path']
     add(path,entry['baselineSha256'],entry['sourceSha256'],feature/'shortcuts/source'/path,entry['baselineSha256'])
@@ -65,7 +69,9 @@ for entry in json.loads((here/'shared-inputs.json').read_text())['files']:
     add(entry['path'],entry['beforeSha256'],entry['afterSha256'],repo/entry['source'],entry.get('overridesNativeSourceSha256'))
 for source in sorted((here/'source/chrome/browser/aux/organization').glob('*')):
     name='chrome/browser/aux/organization/'+source.name
-    add(name,None,sha(source),source)
+    if name in entries:
+        if entries[name]['afterSha256'] != sha(source): raise RuntimeError('Root organization source mismatch: '+name)
+    else: add(name,None,sha(source),source)
 manifest={'format':'aux.browser-features.composition.v1','baselineCommit':'02ce77253',
           'files':[entries[path] for path in sorted(entries) if entries[path]['beforeSha256'] != entries[path]['afterSha256']],
           'inputPins':{path: entries[path]['afterSha256'] for path in sorted(entries)},'runtimeAccepted':False,

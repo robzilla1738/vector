@@ -4,6 +4,7 @@
 #include <limits>
 #include <utility>
 #include "base/functional/bind.h"
+#include "base/functional/callback_helpers.h"
 #include "base/strings/utf_string_conversions.h"
 #include "base/uuid.h"
 #include "chrome/browser/aux/organization/organization_profile_service.h"
@@ -39,7 +40,7 @@ void Error(base::WeakPtr<BrowserWindowInterface> browser, std::u16string reason)
   auto* view = BrowserView::GetBrowserViewForBrowser(browser.get());
   if (!view || !view->GetWidget()) return;
   auto dialog = ui::DialogModel::Builder().SetTitle(u"Couldn’t complete that action")
-      .AddParagraph(ui::DialogModelLabel(std::move(reason))).AddOkButton(base::OnceClosure()).Build();
+      .AddParagraph(ui::DialogModelLabel(std::move(reason))).AddOkButton(base::DoNothing()).Build();
   constrained_window::ShowBrowserModal(std::move(dialog), view->GetWidget()->GetNativeWindow());
 }
 bool TogglePref(BrowserWindowInterface& browser, const char* name) {
@@ -52,16 +53,22 @@ bool TogglePref(BrowserWindowInterface& browser, const char* name) {
 void Commit(base::WeakPtr<BrowserWindowInterface> browser, org::Context context,
             org::Command command, bool select_created_space = false) {
   const auto id = command.id;
+  const auto profile_id = context.profile_id;
+  const auto owner_generation = context.owner_generation;
   ExecuteOrganizationCommand(browser, std::move(context), std::move(command),
       base::BindOnce([](base::WeakPtr<BrowserWindowInterface> browser, std::string id,
+                       std::string profile_id, std::string generation,
                        bool select, org::CommitResult result) {
         if (!browser) return;
+        auto* owner = org::OrganizationProfileServiceFactory::GetForProfileIfExists(browser->GetProfile());
+        if (!owner || owner->owner_generation() != generation || !owner->model() ||
+            owner->model()->snapshot().profile_id != profile_id) return;
         if (result.error != org::Error::kNone && result.error != org::Error::kReplay) {
           Error(browser, OrganizationErrorMessage(result.error)); return;
         }
         if (select) if (auto* controller = AuxOrganizationWindowController::FromBrowser(browser.get()))
-          controller->SelectSpace(id);
-      }, browser, id, select_created_space));
+          if (!controller->SelectSpace(id)) Error(browser, u"The Space was saved, but this window changed. Select it from the sidebar.");
+      }, browser, id, profile_id, owner_generation, select_created_space));
 }
 bool Edit(BrowserWindowInterface& browser, bool space) {
   auto context = CaptureOrganizationContext(browser);
@@ -119,8 +126,15 @@ bool IsAuxFeatureCommandEnabled(BrowserWindowInterface* browser, int command) {
     if (command == 34122 || command == 34125) return BrowserView::GetBrowserViewForBrowser(browser) != nullptr;
     const auto id = controller->SelectedLogicalTabId();
     const auto found = model->snapshot().entries.find(id);
-    if (found == model->snapshot().entries.end() || controller->IsLogicalEntryProtected(id)) return false;
-    return command != 34128 || !org::HasRetention(model->snapshot(), id);
+    if (found == model->snapshot().entries.end() || found->second.archived ||
+        found->second.kind != org::EntryKind::kTab) return false;
+    // Retention protects against archive, not explicit unpin or unload.
+    // Metadata moves never close or navigate a page. Unload performs its
+    // actual beforeunload/actor/split/download checks in the controller.
+    if (command == 34126) return true;
+    if (command == 34127) return !org::IsGlobalPin(found->second);
+    if (command == 34129) return true;
+    return !controller->IsLogicalEntryProtected(id);
   }
   if (command >= 34130 && command <= 34134) {
     if (!active) return false;
@@ -130,10 +144,10 @@ bool IsAuxFeatureCommandEnabled(BrowserWindowInterface* browser, int command) {
         strip->GetTabAtIndex((strip->active_index() + 1) % strip->count()));
   }
   if (command == 34135) return preview::CanOpenQuick(browser);
-  if (command == 34136) return pane && CanAuxCapturePage(pane);
+  if (command == 34136) return CanShowAuxPageCapture(browser);
   if (command == 34137) return pane && GetAuxVideoPictureInPictureState(pane).FindBool("available").value_or(false);
   if (command == 34138) return GetAuxDeveloperSettings(browser->GetProfile()).FindBool("canChange").value_or(false);
-  return command == 34139;
+  return command == 34139 && CanOpenNewChat(*browser);
 }
 bool ExecuteAuxFeatureCommand(BrowserWindowInterface* browser, int command) {
   if (!IsAuxFeatureCommandEnabled(browser, command)) return false;

@@ -64,11 +64,19 @@ def main():
         name = entry['path']
         relative(name)
         allowed = name.startswith('chrome/') or name in {
+            'components/sessions/BUILD.gn',
+            'components/sessions/core/live_tab_context.cc',
+            'components/sessions/core/live_tab_context.h',
+            'components/sessions/core/tab_restore_service_helper.cc',
+            'components/sessions/core/tab_restore_service_impl.cc',
             'components/split_tabs/BUILD.gn',
+            'components/infobars/core/infobar_delegate.h',
+            'tools/metrics/histograms/metadata/browser/enums.xml',
             'components/split_tabs/split_pane_tree.cc',
             'components/split_tabs/split_pane_tree.h',
             'components/split_tabs/split_pane_tree_unittest.cc',
             'components/split_tabs/split_tab_visual_data.h',
+            'components/split_tabs/split_tab_visual_data.cc',
             'components/sessions/core/session_service_commands.cc',
             'components/tabs/impl/tab_strip_collection.cc',
             'components/tabs/public/tab_strip_collection.h',
@@ -77,6 +85,7 @@ def main():
             'content/public/browser/devtools_manager_delegate.cc',
             'content/public/browser/devtools_manager_delegate.h',
             'extensions/browser/extension_function_histogram_value.h',
+            'extensions/browser/extension_event_histogram_value.h',
             'tools/metrics/histograms/metadata/extensions/enums.xml',
         }
         if not allowed or name in names:

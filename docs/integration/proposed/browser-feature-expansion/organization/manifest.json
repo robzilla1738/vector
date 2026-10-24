@@ -34,7 +34,7 @@
     "chrome/browser/ui/views/frame/aux_saved_entry_drop_target.cc": "fd3291a15d58affa738cec2335faf7155e6b5950a60f927b35f7ae5c75b782f8",
     "chrome/browser/ui/views/frame/aux_saved_pin_bookmark_conversion.cc": "fad9e21d22a124e1b47d14f09dec6b2999aef3b51d0a951788d483638a5dba8b",
     "chrome/browser/ui/views/frame/aux_saved_pin_bookmark_conversion.h": "8c567094c8455ee7ea8fe049027eccb6144be489dea964e8aa215923d2e9a66f",
-    "chrome/browser/ui/views/frame/aux_spaces_switcher.cc": "9ed9fa56820e29752019dcaa5da9b6b05e886fc07c49b3a13b897eedf15e278f",
+    "chrome/browser/ui/views/frame/aux_spaces_switcher.cc": "c67510c0de3895d768fdfd2948c088bc42d45e7728773f41aaa8919b4b566d8a",
     "chrome/browser/ui/views/frame/aux_spaces_switcher.h": "4d699386528f6ceae84409db478a3393873c866f8dce19ef24142522d9619944",
     "chrome/browser/ui/views/frame/aux_tabs_section.cc": "a7b4f093c84fa7bdbc270849b1f9dbf0d90bb67d615e1fac2bac570f159a42a4",
     "chrome/browser/ui/views/frame/aux_tabs_section.h": "3a30c690780140f857bfc57fa32f3ffaf46faa5b85eeb9e716b5b2070a721283",

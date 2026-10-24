@@ -70,6 +70,7 @@
 #include "chrome/browser/ui/browser_commands.h"
 #if BUILDFLAG(ENABLE_AUX_BROWSER)
 #include "chrome/browser/ui/views/frame/aux_tab_search_bubble.h"
+#include "chrome/browser/ui/aux_feature_commands.h"
 #endif
 #include "chrome/browser/ui/browser_element_identifiers.h"
 #include "chrome/browser/ui/browser_select_file_dialog_controller.h"
@@ -690,10 +691,16 @@ void BrowserCommandController::ShowCustomizeChromeSidePanel(
 // BrowserCommandController, CommandUpdater implementation:
 
 bool BrowserCommandController::SupportsCommand(int id) const {
+#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
+  if (aux::IsAuxFeatureCommand(id)) return true;
+#endif
   return command_updater_->SupportsCommand(id);
 }
 
 bool BrowserCommandController::IsCommandEnabled(int id) const {
+#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
+  if (aux::IsAuxFeatureCommand(id)) return aux::IsAuxFeatureCommandEnabled(browser_, id);
+#endif
 #if BUILDFLAG(ENABLE_AUX_BROWSER)
   // Aux delegates password management to the user's chosen extension.
   if (id == IDC_SHOW_PASSWORD_MANAGER ||
@@ -778,6 +785,9 @@ bool BrowserCommandController::ExecuteCommandWithDispositionAndContext(
 
   DCHECK(IsCommandEnabled(id)) << "Invalid/disabled command " << id;
 
+#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
+  if (aux::IsAuxFeatureCommand(id)) return aux::ExecuteAuxFeatureCommand(browser_, id);
+#endif
   return command_updater_->ExecuteCommandWithDisposition(
       id, disposition, std::move(context), time_stamp);
 }
@@ -788,6 +798,9 @@ void BrowserCommandController::HandleCommandWithDisposition(
     base::TimeTicks time_stamp) {
   DCHECK(IsCommandEnabled(id)) << "Invalid/disabled command " << id;
 
+#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
+  if (aux::IsAuxFeatureCommand(id)) { aux::ExecuteAuxFeatureCommand(browser_, id); return; }
+#endif
   // The order of commands in this switch statement must match the function
   // declaration order in browser.h!
   switch (id) {

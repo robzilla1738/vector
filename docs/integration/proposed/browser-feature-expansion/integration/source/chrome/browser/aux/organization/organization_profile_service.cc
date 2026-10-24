@@ -21,6 +21,7 @@
 #include "chrome/browser/aux/AuxSelectedStateHome.h"
 #include "chrome/browser/aux/organization/organization_codec.h"
 #include "chrome/browser/aux/profile_identity.h"
+#include "chrome/browser/aux/feature_store/feature_write_participant.h"
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/profiles/profile_selections.h"
 #include "chrome/browser/ui/tabs/aux_pinned_tab_entries.h"
@@ -58,8 +59,9 @@ bool PathUnderActualRoots(const base::FilePath& path,
 // Namespace custody beyond these admitted roots remains part of the existing
 // protected-startup implementation; these checks do not certify whole custody.
 ReadResult ReadSnapshot(const base::FilePath& path,
-                        const std::shared_ptr<NativeWriteLifetime>& lifetime) {
-  if (lifetime->revoked.load() || !lifetime->roots ||
+                        const std::shared_ptr<NativeWriteLifetime>& lifetime,
+                        const std::shared_ptr<aux::features::NativeFeatureIoTicket>& ticket) {
+  if (ticket->IsCancelled() || lifetime->revoked.load() || !lifetime->roots ||
       !lifetime->roots->Revalidate() || !PathUnderActualRoots(path, *lifetime))
     return {.error = "Organization storage authority unavailable"};
   if (base::IsLink(path))
@@ -83,13 +85,14 @@ WriteOutcome WriteSnapshot(const base::FilePath& path,
                            const std::shared_ptr<NativeWriteLifetime>& lifetime,
                            const std::string& profile_id,
                            uint64_t expected_revision,
-                           const std::string& serialized) {
+                           const std::string& serialized,
+                           const std::shared_ptr<aux::features::NativeFeatureIoTicket>& ticket) {
   // The caller retains lifetime and the real root descriptors through this
   // actual blocking write, including after the UI receiver is destroyed.
-  if (lifetime->revoked.load() || !lifetime->roots ||
+  if (ticket->IsCancelled() || lifetime->revoked.load() || !lifetime->roots ||
       !lifetime->roots->Revalidate())
     return WriteOutcome::kRefused;
-  auto previous = ReadSnapshot(path, lifetime);
+  auto previous = ReadSnapshot(path, lifetime, ticket);
   if (!previous.error.empty())
     return WriteOutcome::kRefused;
   if (previous.value) {
@@ -99,7 +102,7 @@ WriteOutcome WriteSnapshot(const base::FilePath& path,
   } else if (expected_revision != 0) {
     return WriteOutcome::kRefused;
   }
-  if (lifetime->revoked.load() || !lifetime->roots->Revalidate())
+  if (ticket->IsCancelled() || lifetime->revoked.load() || !lifetime->roots->Revalidate())
     return WriteOutcome::kRefused;
   // This bool is the actual completed atomic write result, not a queued-pref
   // callback. A failure is uncertain because effects may have reached storage.
@@ -132,7 +135,7 @@ class OrganizationFileStorage final : public OrganizationStorage {
   bool IsCurrentOwner(std::string_view profile_id,
                       std::string_view generation) const override {
     DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
-    if (!profile_ || lifetime_->revoked.load() || profile_id != profile_id_ ||
+    if (aux::features::IsNativeFeatureIoAdmissionClosed() || !profile_ || lifetime_->revoked.load() || profile_id != profile_id_ ||
         generation != generation_ || !profile_->IsRegularProfile() ||
         profile_->IsOffTheRecord() || generation_.empty() ||
         aux::GetProfileId(profile_) != profile_id_ ||
@@ -156,22 +159,28 @@ class OrganizationFileStorage final : public OrganizationStorage {
                              "Organization storage admission unavailable");
       return;
     }
+    auto ticket = aux::features::BeginNativeFeatureIo(path_.DirName(), aux::features::NativeFeatureIoKind::kOrganization);
+    if (!ticket) { std::move(callback).Run(std::nullopt, false, "Organization I/O admission closed"); return; }
     lifetime_->pending.fetch_add(1);
     auto completion = std::make_shared<Loaded>(std::move(callback));
     const bool posted = runner_->PostTaskAndReplyWithResult(
         FROM_HERE,
         base::BindOnce(
-            [](base::FilePath path, std::shared_ptr<NativeWriteLifetime> lifetime) {
-              auto result = ReadSnapshot(path, lifetime);
+            [](base::FilePath path, std::shared_ptr<NativeWriteLifetime> lifetime,
+               std::shared_ptr<aux::features::NativeFeatureIoTicket> ticket) {
+              auto result = ReadSnapshot(path, lifetime, ticket);
+              ticket->Settle(result.error.empty() ? aux::features::NativeFeatureIoOutcome::kCompleted
+                                                 : aux::features::NativeFeatureIoOutcome::kRefused);
               lifetime->pending.fetch_sub(1);
               return result;
-            }, path_, lifetime_),
+            }, path_, lifetime_, ticket),
         base::BindOnce(
             [](std::shared_ptr<Loaded> done, ReadResult result) {
               std::move(*done).Run(std::move(result.value), result.missing,
                                    std::move(result.error));
             }, completion));
     if (!posted) {
+      ticket->Settle(aux::features::NativeFeatureIoOutcome::kRefused);
       lifetime_->pending.fetch_sub(1);
       std::move(*completion).Run(std::nullopt, false,
                                  "Organization read could not be queued");
@@ -193,6 +202,8 @@ class OrganizationFileStorage final : public OrganizationStorage {
       std::move(done).Run(std::move(receipt));
       return;
     }
+    auto ticket = aux::features::BeginNativeFeatureIo(path_.DirName(), aux::features::NativeFeatureIoKind::kOrganization);
+    if (!ticket) { std::move(done).Run(std::move(receipt)); return; }
     lifetime_->pending.fetch_add(1);
     auto completion = std::make_shared<base::OnceCallback<void(WriteReceipt)>>(std::move(done));
     const auto refused = receipt;
@@ -201,13 +212,16 @@ class OrganizationFileStorage final : public OrganizationStorage {
         base::BindOnce(
             [](base::FilePath path, std::shared_ptr<NativeWriteLifetime> lifetime,
                std::string profile_id, uint64_t expected_revision,
-               std::string bytes) {
+               std::string bytes, std::shared_ptr<aux::features::NativeFeatureIoTicket> ticket) {
               auto outcome = WriteSnapshot(path, lifetime, profile_id,
-                                           expected_revision, bytes);
+                                           expected_revision, bytes, ticket);
+              ticket->Settle(outcome == WriteOutcome::kCommitted ? aux::features::NativeFeatureIoOutcome::kCompleted
+                  : outcome == WriteOutcome::kRefused ? aux::features::NativeFeatureIoOutcome::kRefused
+                                                     : aux::features::NativeFeatureIoOutcome::kUncertain);
               lifetime->pending.fetch_sub(1);
               return outcome;
             }, path_, lifetime_, profile_id, expected_revision,
-            std::move(serialized)),
+            std::move(serialized), ticket),
         base::BindOnce(
             [](WriteReceipt receipt, std::shared_ptr<base::OnceCallback<void(WriteReceipt)>> reply,
                WriteOutcome outcome) {
@@ -215,6 +229,7 @@ class OrganizationFileStorage final : public OrganizationStorage {
               std::move(*reply).Run(std::move(receipt));
             }, std::move(receipt), completion));
     if (!posted) {
+      ticket->Settle(aux::features::NativeFeatureIoOutcome::kRefused);
       lifetime_->pending.fetch_sub(1);
       std::move(*completion).Run(refused);
     }
@@ -402,6 +417,7 @@ OrganizationProfileServiceFactory::BuildServiceInstanceForBrowserContext(
 }
 bool IsProfileOrganizationWritePending(Profile* profile) {
   auto* service = OrganizationProfileServiceFactory::GetForProfileIfExists(profile);
-  return service && service->HasPendingWrite();
+  return (profile && aux::features::IsNativeFeatureIoPendingForProfilePath(profile->GetPath())) ||
+         (service && service->HasPendingWrite());
 }
 }  // namespace aux::organization

@@ -2,6 +2,8 @@
 import("//chrome/browser/buildflags.gni")
 source_set("platform") {
   sources = [
+    "feature_store/feature_write_participant.cc",
+    "feature_store/feature_write_participant.h",
     "installation_auth.cc",
     "installation_auth.h",
     "installation_carrier_custody.cc",

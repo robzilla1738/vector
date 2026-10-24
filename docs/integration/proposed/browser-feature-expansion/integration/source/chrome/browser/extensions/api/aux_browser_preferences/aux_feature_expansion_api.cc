@@ -23,6 +23,7 @@
 #include "chrome/browser/ui/aux_recent_files_service.h"
 #include "chrome/browser/ui/aux_media_commands.h"
 #include "chrome/browser/ui/aux_keyboard_shortcuts.h"
+#include "chrome/browser/ui/aux_feature_lifecycle.h"
 #include "chrome/browser/aux/routing/routing_service.h"
 #include "chrome/browser/browser_process.h"
 #include "chrome/browser/profiles/profile_manager.h"
@@ -56,6 +57,12 @@ BrowserWindowInterface* CallerWindow(content::WebContents* sender) {
   }
   return nullptr;
 }
+bool SettingsDocument(content::WebContents* sender, Profile* profile, content::RenderFrameHost* caller) {
+  if (!sender || sender->GetBrowserContext() != profile || !sender->GetPrimaryMainFrame() ||
+      caller != sender->GetPrimaryMainFrame()) return false;
+  const auto& url = sender->GetLastCommittedURL();
+  return url.SchemeIs("chrome-extension") && url.host() == aux::kAgentExtensionId;
+}
 bool Admitted(Profile* profile) {
   if (!profile || !profile->IsRegularProfile() || profile->IsOffTheRecord() ||
       aux::IsProfileCookieRestorePending(profile)) return false;
@@ -74,28 +81,42 @@ class ThemePreviewOwner final : public content::WebContentsObserver,
     static base::NoDestructor<std::set<ThemePreviewOwner*>> owners;
     return *owners;
   }
-  ~ThemePreviewOwner() override { Cancel(); Owners().erase(this); }
-  const std::string& Bind(Profile* profile) {
+  ~ThemePreviewOwner() override { Owners().erase(this); Cancel(); }
+  base::WeakPtr<ThemePreviewOwner> GetWeakPtr() { return weak_.GetWeakPtr(); }
+  std::optional<std::string> Bind(Profile* profile) {
     auto* frame = web_contents()->GetPrimaryMainFrame();
+    auto* window = CallerWindow(web_contents());
+    if (!frame || !window || window->GetProfile() != profile) return std::nullopt;
     const auto epoch = aux::GetProfileCookieBindingEpoch(profile);
-    if (profile_ != profile || epoch != epoch_ ||
+    if (profile_.get() != profile || epoch != epoch_ ||
         document_.AsRenderFrameHostIfValid() != frame) {
+      const auto self = weak_.GetWeakPtr();
+      const auto live_profile = profile->GetWeakPtr();
+      const auto live_window = window->GetWeakPtr();
+      const auto document = frame->GetWeakDocumentPtr();
       Cancel();
-      profile_ = profile;
-      browser_ = CallerWindow(web_contents())->GetWeakPtr();
-      observation_.Observe(profile);
+      if (!self || !live_profile || !live_window || !document.AsRenderFrameHostIfValid() ||
+          !self->owner_.empty() || live_window->GetProfile() != live_profile.get() ||
+          aux::GetProfileCookieBindingEpoch(live_profile.get()) != epoch)
+        return std::nullopt;
+      profile_ = live_profile;
+      browser_ = live_window;
+      observation_.Observe(live_profile.get());
       epoch_ = epoch;
-      document_ = frame->GetWeakDocumentPtr();
+      document_ = document;
       owner_ = base::Uuid::GenerateRandomV4().AsLowercaseString();
     }
     return owner_;
   }
   void Cancel() {
-    if (profile_ && !owner_.empty()) aux_theme::Cancel(profile_, owner_);
+    const auto profile = profile_;
+    auto owner = std::move(owner_);
     observation_.Reset(); profile_ = nullptr; owner_.clear(); epoch_.clear();
-    document_ = {};
+    document_ = {}; browser_ = nullptr;
+    // Notify theme observers only after revocation; callbacks may destroy us.
+    if (profile && !owner.empty()) aux_theme::Cancel(profile.get(), owner);
   }
-  Profile* profile() const { return profile_; }
+  Profile* profile() const { return profile_.get(); }
   BrowserWindowInterface* browser() const { return browser_.get(); }
   void PrimaryPageChanged(content::Page&) override { Cancel(); }
   void WebContentsDestroyed() override { Cancel(); }
@@ -107,11 +128,12 @@ class ThemePreviewOwner final : public content::WebContentsObserver,
         content::WebContentsUserData<ThemePreviewOwner>(*contents) {
     Owners().insert(this);
   }
-  raw_ptr<Profile> profile_ = nullptr;
+  base::WeakPtr<Profile> profile_;
   std::string epoch_, owner_;
   base::WeakPtr<BrowserWindowInterface> browser_;
   content::WeakDocumentPtr document_;
   base::ScopedObservation<Profile, ProfileObserver> observation_{this};
+  base::WeakPtrFactory<ThemePreviewOwner> weak_{this};
   WEB_CONTENTS_USER_DATA_KEY_DECL();
 };
 WEB_CONTENTS_USER_DATA_KEY_IMPL(ThemePreviewOwner);
@@ -236,12 +258,16 @@ std::optional<std::vector<org::Command>> ValidateProposal(Profile* profile,
 }  // namespace
 void CancelAuxThemePreviewsForProfile(Profile* profile) {
   // Cancel does not mutate this registry, unlike a WebContents destruction.
-  for (auto* owner : ThemePreviewOwner::Owners())
-    if (owner->profile() == profile) owner->Cancel();
+  std::vector<base::WeakPtr<ThemePreviewOwner>> owners;
+  for (auto* owner : ThemePreviewOwner::Owners()) owners.push_back(owner->GetWeakPtr());
+  for (const auto& owner : owners)
+    if (owner && owner->profile() == profile) owner->Cancel();
 }
 void CancelAuxThemePreviewsForWindow(BrowserWindowInterface* browser) {
-  for (auto* owner : ThemePreviewOwner::Owners())
-    if (owner->browser() == browser) owner->Cancel();
+  std::vector<base::WeakPtr<ThemePreviewOwner>> owners;
+  for (auto* owner : ThemePreviewOwner::Owners()) owners.push_back(owner->GetWeakPtr());
+  for (const auto& owner : owners)
+    if (owner && owner->browser() == browser) owner->Cancel();
 }
 namespace extensions {
 AuxFeatureExpansionFunction::AuxFeatureExpansionFunction() = default;
@@ -255,7 +281,7 @@ ExtensionFunction::ResponseAction AuxFeatureExpansionFunction::RunAux() {
   const base::DictValue* request = args().size() == 1 && args()[0].is_dict() ? &args()[0].GetDict() : nullptr;
   if (method == "getShortcutProfile" || method == "exportShortcutProfile" ||
       method == "importShortcutProfile" || method == "resetShortcutProfile") {
-    if (!sender || sender->GetBrowserContext() != profile() || !sender->GetPrimaryMainFrame())
+    if (!SettingsDocument(sender, profile(), render_frame_host()))
       return RespondNow(Error("Live shortcut settings document required"));
     if (method == "getShortcutProfile" || method == "exportShortcutProfile") {
       if (!args().empty()) return RespondNow(Error("This method takes no arguments"));
@@ -283,6 +309,7 @@ ExtensionFunction::ResponseAction AuxFeatureExpansionFunction::RunAux() {
     return RespondNow(WithArguments(aux::routing::GetState(profile())));
   }
   if (method == "setRoutingRules") {
+    if (!SettingsDocument(sender, profile(), render_frame_host())) return RespondNow(Error("Live routing settings document required"));
     const auto* revision = request ? request->FindString("revision") : nullptr;
     const auto* configuration = request ? request->FindDict("configuration") : nullptr;
     if (!revision || !configuration) return RespondNow(Error("Routing revision and configuration required"));
@@ -339,7 +366,7 @@ ExtensionFunction::ResponseAction AuxFeatureExpansionFunction::RunAux() {
     const auto* owner = request ? request->FindString("ownerGeneration") : nullptr;
     const auto* expected = request ? request->FindString("expectedRevision") : nullptr;
     const auto revision = expected ? org::ParseCanonicalUint64(*expected) : std::nullopt;
-    if (!sender || !browser || browser->GetProfile() != profile() || !enabled || !days ||
+    if (!SettingsDocument(sender, profile(), render_frame_host()) || !browser || browser->GetProfile() != profile() || !enabled || !days ||
         *days < 1 || *days > 3650 || !owner || *owner != generation || !revision)
       return RespondNow(Error("Current cleanup settings required"));
     pending_document_ = sender->GetPrimaryMainFrame()->GetWeakDocumentPtr();
@@ -361,7 +388,10 @@ ExtensionFunction::ResponseAction AuxFeatureExpansionFunction::RunAux() {
     if (!sender || !browser || browser->GetProfile() != profile() || !generation || !current ||
         *generation != *current || !context.FindBool("success").value_or(false))
       return RespondNow(WithArguments(Failure("The current command context has expired.")));
-    if (method == "listRecentFiles") return RespondNow(WithArguments(aux::files::ListRecentFiles(profile())));
+    if (method == "listRecentFiles") {
+      InitializeAuxLocalFeatureOwners(profile());
+      return RespondNow(WithArguments(aux::files::ListRecentFiles(profile())));
+    }
     if (method == "togglePictureInPicture") {
       if (!user_gesture()) return RespondNow(Error("A user gesture is required"));
       return RespondNow(WithArguments(ToggleAuxVideoPictureInPicture(browser->GetTabStripModel()->GetActiveWebContents())));
@@ -446,6 +476,7 @@ ExtensionFunction::ResponseAction AuxFeatureExpansionFunction::RunAux() {
   if (method == "getFramePresentation" || method == "setFramePresentation") {
     auto* prefs = profile()->GetPrefs();
     if (method == "setFramePresentation") {
+      if (!SettingsDocument(sender, profile(), render_frame_host())) return RespondNow(Error("Live appearance settings required"));
       if (!request) return RespondNow(Error("Frame settings required"));
       for (const auto [key, pref] : {std::pair{"sidebarNavigation", "aux.sidebar_navigation_enabled"},
                                     std::pair{"minimal", "aux.minimal_ui_enabled"}, std::pair{"peekLinks", "aux.peek_links_enabled"}}) {
@@ -466,11 +497,12 @@ ExtensionFunction::ResponseAction AuxFeatureExpansionFunction::RunAux() {
     if (!args().empty()) return RespondNow(Error("This method takes no arguments"));
     return RespondNow(WithArguments(aux_theme::GetState(profile())));
   }
-  if (!sender || !browser || browser->GetProfile() != profile() ||
-      sender->GetBrowserContext() != profile() || !sender->GetPrimaryMainFrame())
+  if (!SettingsDocument(sender, profile(), render_frame_host()) || !browser || browser->GetProfile() != profile())
     return RespondNow(Error("Live Appearance document required"));
   ThemePreviewOwner::CreateForWebContents(sender);
-  const auto& owner = ThemePreviewOwner::FromWebContents(sender)->Bind(profile());
+  const auto binding = ThemePreviewOwner::FromWebContents(sender)->Bind(profile());
+  if (!binding) return RespondNow(Error("Theme preview context changed"));
+  const auto owner = *binding;
   const auto* revision = request ? request->FindString("revision") : nullptr;
   const auto* tokens = request ? request->FindDict("tokens") : nullptr;
   if (method == "cancelTheme" && args().empty())

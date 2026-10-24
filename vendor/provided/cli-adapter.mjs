@@ -1,3 +1,4 @@
+import { applyAuxBrowserRouting } from './aux-browser-routing.mjs';
 import { applyAuxCliDeviceRegistration } from './aux-cli-device-registration.mjs';
 import { applyAuxColdEntryAdmission } from './aux-cold-entry-admission.mjs';
 import { applyAuxRuntimeContractIdentity } from './aux-runtime-contract-identity.mjs';
@@ -17,7 +18,7 @@ export const CLI_BINARY_SHA256 = '17a9477fd0e3fe523ff439b76823d7d44e8f3de49cca38
 export const CLI_CODE_SHA256 = '013dbd114ac574df1e4c72f53fd438d4b7da4d2aebbf3c45fa22a6fb2fe1dd62';
 const sha = (bytes) => createHash('sha256').update(bytes).digest('hex');
 
-export function adaptCliCode(original, cloudOptions = {}, identityProfile = 'compatibility', stateIdentityVersion = 1) {
+export function adaptCliCode(original, cloudOptions = {}, identityProfile = 'compatibility', stateIdentityVersion = 1, featureProfile = 'baseline') {
   resolveProtocolIdentity(identityProfile);
   resolveStateIdentityVersion(stateIdentityVersion, identityProfile);
   if (sha(original) !== CLI_CODE_SHA256) throw new Error('Supplied CLI code hash mismatch');
@@ -66,14 +67,19 @@ export function adaptCliCode(original, cloudOptions = {}, identityProfile = 'com
   }
   const admission = applyAuxColdEntryAdmission({component: 'cli', path: 'entry.mjs', text: code, original, stateIdentityVersion});
   code = admission.text; applied.push(...admission.anchors);
+  if (!['baseline', 'desktop-v1'].includes(featureProfile)) throw Error('Unknown browser feature profile');
+  if (featureProfile === 'desktop-v1') {
+    const features = applyAuxBrowserRouting({component: 'cli', text: code});
+    code = features.text; applied.push(...features.anchors);
+  }
   return { code, applied, sha256: sha(code), ...(cloud.policy.mode !== 'local' ? { cloudPolicy: cloud.policy, cloudAnchors: cloud.anchors } : {}) };
 }
 
-export function adaptCliBinary(original, cloudOptions = {}, identityProfile = 'compatibility', stateIdentityVersion = 1) {
+export function adaptCliBinary(original, cloudOptions = {}, identityProfile = 'compatibility', stateIdentityVersion = 1, featureProfile = 'baseline') {
   if (sha(original) !== CLI_BINARY_SHA256) throw new Error('Supplied CLI binary hash mismatch');
   const section = findMachOSeaSection(original);
   const blob = readSeaBlob(original.subarray(section.offset, section.offset + section.size));
-  const result = adaptCliCode(blob.code, cloudOptions, identityProfile, stateIdentityVersion);
+  const result = adaptCliCode(blob.code, cloudOptions, identityProfile, stateIdentityVersion, featureProfile);
   const sea = writeSeaBlob({ ...blob, code: result.code });
   const binary = result.cloudPolicy ? embedCloudSeaBlob(original, sea) : Buffer.from(original);
   if (!result.cloudPolicy) injectMachOSeaBlob(binary, sea);

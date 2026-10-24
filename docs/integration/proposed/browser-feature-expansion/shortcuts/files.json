@@ -10,8 +10,8 @@
     {
       "path": "chrome/browser/ui/aux_keyboard_shortcuts.mm",
       "baselineSha256": "580883a9d058ff1b9036aa0977f2af9f787654c4780c6f4b7850131bae695d1f",
-      "sourceSha256": "8682b46ee0ae52f18657b991827a995bc5c651b4323b9797baa12bd84649ddf5"
+      "sourceSha256": "933c361887fb6b80c1efe40ff34f136db1fd332303d8690ee22b6598ebccba86"
     }
   ],
-  "patchSha256": "db30b641a05b6a24927514a4b4e9954445fb87b9c104bab8d03fc153b5fcacc9"
+  "patchSha256": "cc24daf1639846606ccebbb960e111dd5a7c2aa7b4b12afab0ecf4b6a84bddd7"
 }

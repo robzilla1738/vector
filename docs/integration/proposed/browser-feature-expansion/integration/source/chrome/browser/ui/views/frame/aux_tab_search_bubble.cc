@@ -3,6 +3,7 @@
 // found in the LICENSE file.
 #include "chrome/browser/ui/views/frame/aux_tab_search_bubble.h"
 #include "chrome/browser/ui/aux_media_commands.h"
+#include "chrome/browser/ui/aux_developer_commands.h"
 
 #include <algorithm>
 #include <memory>
@@ -654,6 +655,7 @@ base::DictValue GetAuxCommandContext(content::WebContents* sender) {
   if (auto* target = binding->target()) {
     result.Set("activeTabId", extensions::ExtensionTabUtil::GetTabId(target));
     result.Set("pictureInPicture", GetAuxVideoPictureInPictureState(target));
+    result.Set("developer", GetAuxDeveloperCommandState(browser->GetProfile(), target));
     // The actual loaded URL, never a logical-tab URL from another view.
     result.Set("activeUrl", target->GetLastCommittedURL().spec());
   }
