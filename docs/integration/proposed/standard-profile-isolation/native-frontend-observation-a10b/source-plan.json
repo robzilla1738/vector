@@ -1,0 +1,122 @@
+{
+  "format": "aux.native-frontend-observation.source.v1",
+  "files": [
+    {
+      "path": "extensions/browser/api/storage/storage_frontend.h",
+      "input": "/Users/rcourson/.codex/worktrees/aux-features-navigation/web/docs/integration/proposed/standard-profile-isolation/native-extension-live-restore-a10/source/extensions/browser/api/storage/storage_frontend.h",
+      "inputSha256": "e30f9f583317a457997870eba0006c2867cdb69a8a0088b15fa23ce064ff5af5",
+      "outputSha256": "9b7287f31b86ba8097f0f7f9a31a41bb23dda037338e3c5d4c40f501a2a8036c",
+      "output": "/Users/rcourson/.codex/worktrees/aux-features-navigation/web/docs/integration/proposed/standard-profile-isolation/native-frontend-observation-a10b/source/extensions/browser/api/storage/storage_frontend.h",
+      "anchors": [
+        {
+          "find": "#include <map>",
+          "replace": "#include <map>\n#include <set>",
+          "count": 1
+        },
+        {
+          "find": "#include \"base/values.h\"",
+          "replace": "#include \"base/values.h\"\n#include \"base/unguessable_token.h\"",
+          "count": 1
+        },
+        {
+          "find": "    AuxUiMigrationLease(std::shared_ptr<State> state,\n        std::unique_ptr<value_store::ValueStore::AuxUiPreferenceCapture> capture);",
+          "replace": "    AuxUiMigrationLease(std::shared_ptr<State> state,\n        std::shared_ptr<value_store::ValueStore::AuxUiPreferenceCapture> capture);",
+          "count": 1
+        },
+        {
+          "find": "  using AuxUiMigrationLeaseResult = base::expected<",
+          "replace": "  struct AuxUiMigrationLeaseObservation {\n    std::unique_ptr<AuxUiMigrationLease> lease;\n    bool preparation_pending = false, aborted_before_target = false;\n    bool target_attempted = false;\n  };\n  using AuxUiMigrationLeaseObservationResult = base::expected<\n      AuxUiMigrationLeaseObservation, value_store::ValueStore::Status>;\n  using AuxUiMigrationLeaseResult = base::expected<",
+          "count": 1
+        },
+        {
+          "find": "  bool ValidateAuxUiMigrationLease(const AuxUiMigrationLease& lease) const;",
+          "replace": "  // Native nonce is correlation only. No caller Root/Profile/target selector.\n  void BeginAuxUiMigrationLease(scoped_refptr<const Extension> extension,\n      const base::UnguessableToken& request,\n      base::OnceCallback<void(AuxUiMigrationLeaseResult)> callback);\n  AuxUiMigrationLeaseObservationResult ObserveAuxUiMigrationLease(\n      const base::UnguessableToken& request);\n  bool ValidateAuxUiMigrationLease(const AuxUiMigrationLease& lease) const;",
+          "count": 1
+        },
+        {
+          "find": "  std::shared_ptr<AuxUiMigrationLease::State> aux_ui_migration_gate_;",
+          "replace": "  std::shared_ptr<AuxUiMigrationLease::State> aux_ui_migration_gate_;\n  std::optional<base::UnguessableToken> aux_ui_aborted_request_;\n  scoped_refptr<const Extension> aux_ui_aborted_extension_;\n  std::set<base::UnguessableToken> aux_ui_retired_requests_;",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "extensions/browser/api/storage/storage_frontend.cc",
+      "input": "/Users/rcourson/.codex/worktrees/aux-features-navigation/web/docs/integration/proposed/standard-profile-isolation/native-extension-live-restore-a10/source/extensions/browser/api/storage/storage_frontend.cc",
+      "inputSha256": "658011a9542474b40c706f7e4b2a7be8e05913f4fe30f5106ab986d7f04454ce",
+      "outputSha256": "dde0a3a41bfe0b356b318b3a11eb5b3832423a58852e35b47ea751561e911ea2",
+      "output": "/Users/rcourson/.codex/worktrees/aux-features-navigation/web/docs/integration/proposed/standard-profile-isolation/native-frontend-observation-a10b/source/extensions/browser/api/storage/storage_frontend.cc",
+      "anchors": [
+        {
+          "find": "  scoped_refptr<const Extension> extension;\n  std::array<std::optional<std::string>, 6> source, target;",
+          "replace": "  scoped_refptr<const Extension> extension;\n  base::UnguessableToken request;\n  std::shared_ptr<ValueStore::AuxUiPreferenceCapture> capture;\n  std::array<std::optional<std::string>, 6> source, target;",
+          "count": 1
+        },
+        {
+          "find": "    std::unique_ptr<ValueStore::AuxUiPreferenceCapture> capture)\n    : state_",
+          "replace": "    std::shared_ptr<ValueStore::AuxUiPreferenceCapture> capture)\n    : state_",
+          "count": 1
+        },
+        {
+          "find": "void StorageFrontend::BeginAuxUiMigrationLease(\n    scoped_refptr<const Extension> extension,\n    base::OnceCallback<void(AuxUiMigrationLeaseResult)> callback) {\n  DCHECK_CURRENTLY_ON(BrowserThread::UI);\n  if (!extension || aux_ui_migration_gate_ || !CanUseAuxUiMigrationBackend(*extension))",
+          "replace": "void StorageFrontend::BeginAuxUiMigrationLease(\n    scoped_refptr<const Extension> extension,\n    base::OnceCallback<void(AuxUiMigrationLeaseResult)> callback) {\n  BeginAuxUiMigrationLease(std::move(extension), base::UnguessableToken::Create(), std::move(callback));\n}\nvoid StorageFrontend::BeginAuxUiMigrationLease(\n    scoped_refptr<const Extension> extension, const base::UnguessableToken& request,\n    base::OnceCallback<void(AuxUiMigrationLeaseResult)> callback) {\n  DCHECK_CURRENTLY_ON(BrowserThread::UI);\n  if (request.is_empty() || aux_ui_retired_requests_.contains(request) ||\n      aux_ui_retired_requests_.size() >= 64 || !extension || aux_ui_migration_gate_ ||\n      !CanUseAuxUiMigrationBackend(*extension))",
+          "count": 1
+        },
+        {
+          "find": "  state->owner = weak_factory_.GetWeakPtr(); state->extension = extension;",
+          "replace": "  state->owner = weak_factory_.GetWeakPtr(); state->extension = extension;\n  state->request = request;",
+          "count": 1
+        },
+        {
+          "find": "        std::move(callback).Run(base::WrapUnique(new AuxUiMigrationLease(\n            state, std::move(captured.value()))));",
+          "replace": "        // The original frontend State owns custody BEFORE the consumer reply.\n        // A lost/destroyed callback must not strand the actual backend token.\n        state->capture = std::move(captured.value());\n        std::move(callback).Run(base::WrapUnique(new AuxUiMigrationLease(state, state->capture)));",
+          "count": 1
+        },
+        {
+          "find": "bool StorageFrontend::ValidateAuxUiMigrationLease(const AuxUiMigrationLease& lease) const {",
+          "replace": "StorageFrontend::AuxUiMigrationLeaseObservationResult\nStorageFrontend::ObserveAuxUiMigrationLease(const base::UnguessableToken& request) {\n  DCHECK_CURRENTLY_ON(BrowserThread::UI);\n  if (request.is_empty()) return base::unexpected(ValueStore::Status(ValueStore::OTHER_ERROR,\n      \"An original native frontend request is required\"));\n  const auto state = aux_ui_migration_gate_;\n  if (state && state->request == request && state->owner.get() == this &&\n      CanUseAuxUiMigrationBackend(*state->extension)) {\n    AuxUiMigrationLeaseObservation result;\n    result.preparation_pending = state->pending;\n    result.target_attempted = state->target_attempted;\n    if (!state->pending && state->capture)\n      result.lease = base::WrapUnique(new AuxUiMigrationLease(state, state->capture));\n    return result;\n  }\n  if (aux_ui_aborted_request_ == request && aux_ui_aborted_extension_ &&\n      CanUseAuxUiMigrationBackend(*aux_ui_aborted_extension_)) {\n    AuxUiMigrationLeaseObservation result; result.aborted_before_target = true; return result;\n  }\n  return base::unexpected(ValueStore::Status(ValueStore::OTHER_ERROR,\n      \"Original frontend request remains unknown; absence is not an abort\"));\n}\nbool StorageFrontend::ValidateAuxUiMigrationLease(const AuxUiMigrationLease& lease) const {",
+          "count": 1
+        },
+        {
+          "find": "  aux_ui_migration_gate_.reset();\n  auto pending = std::move(state->deferred);",
+          "replace": "  aux_ui_migration_gate_.reset();\n  aux_ui_retired_requests_.insert(state->request);\n  if (!state->target_attempted) {\n    // Past gate retirement only, never current writer-drain/readiness. Original\n    // ordinary callbacks below keep their real completion/ordering semantics.\n    aux_ui_aborted_request_ = state->request;\n    aux_ui_aborted_extension_ = state->extension;\n  }\n  auto pending = std::move(state->deferred);",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/aux/ui_storage_migration_controller.cc",
+      "input": "/Users/rcourson/.codex/worktrees/aux-features-navigation/web/docs/integration/proposed/standard-profile-isolation/native-document-token-bridge-a11b/source/chrome/browser/aux/ui_storage_migration_controller.cc",
+      "inputSha256": "ae64750186759e955bd226f6498e830bc135f3a140402d802e50860707203143",
+      "outputSha256": "effaefe59a7da4050d80afe3e75692c08376cd419ad4047cd4edfadfde49473e",
+      "output": "/Users/rcourson/.codex/worktrees/aux-features-navigation/web/docs/integration/proposed/standard-profile-isolation/native-frontend-observation-a10b/source/chrome/browser/aux/ui_storage_migration_controller.cc",
+      "anchors": [
+        {
+          "find": "  std::unique_ptr<ExtensionLease> extension_lease_;",
+          "replace": "  std::unique_ptr<ExtensionLease> extension_lease_;\n  base::UnguessableToken frontend_request_id_;",
+          "count": 1
+        },
+        {
+          "find": "  frontend_begin_pending_ = true;\n  frontend->BeginAuxUiMigrationLease(extension_, mojo::WrapCallbackWithDropHandler(",
+          "replace": "  frontend_request_id_ = base::UnguessableToken::Create();\n  frontend_begin_pending_ = true;\n  frontend->BeginAuxUiMigrationLease(extension_, frontend_request_id_, mojo::WrapCallbackWithDropHandler(",
+          "count": 1
+        },
+        {
+          "find": "  if (frontend_begin_pending_ || frontend_io_pending_ || frontend_begin_unknown_) {\n    cleanup_unknown_ = true; ReplyResult(); return;\n  }\n  if (extension_lease_)",
+          "replace": "  if (frontend_begin_pending_ || frontend_io_pending_) {\n    cleanup_unknown_ = true; ReplyResult(); return;\n  }\n  if (frontend_begin_unknown_) {\n    auto* frontend = profile_ ? Frontend::Get(profile_.get()) : nullptr;\n    if (!frontend || frontend_request_id_.is_empty()) { cleanup_unknown_ = true; ReplyResult(); return; }\n    auto observed = frontend->ObserveAuxUiMigrationLease(frontend_request_id_);\n    if (!observed.has_value() || observed->preparation_pending || observed->target_attempted ||\n        (!observed->lease && !observed->aborted_before_target)) {\n      cleanup_unknown_ = true; ReplyResult(); return;\n    }\n    if (observed->lease) extension_lease_ = std::move(observed->lease);\n    // Exact actual original State/abort observation, no reset or re-Capture.\n    frontend_begin_unknown_ = false;\n  }\n  if (extension_lease_)",
+          "count": 1
+        }
+      ]
+    }
+  ],
+  "countedAnchors": 16,
+  "priorFrontend": "native-extension-live-restore-a10",
+  "priorController": "native-document-token-bridge-a11b",
+  "nativeTreeUnchanged": true,
+  "nativeCompiled": false,
+  "nativeExecuted": false,
+  "productExecuted": false,
+  "backendWriterClosure": false,
+  "targetApisCalled": false,
+  "runtimeAccepted": false
+}

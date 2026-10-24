@@ -1,0 +1,202 @@
+--- a/extensions/browser/api/storage/storage_frontend.h
++++ b/extensions/browser/api/storage/storage_frontend.h
+@@ -7,6 +7,7 @@
+ 
+ #include <array>
+ #include <map>
++#include <set>
+ #include <optional>
+ #include <vector>
+ #include <memory>
+@@ -16,6 +17,7 @@
+ #include "base/memory/scoped_refptr.h"
+ #include "base/memory/weak_ptr.h"
+ #include "base/values.h"
++#include "base/unguessable_token.h"
+ #include "components/value_store/value_store.h"
+ #include "extensions/browser/api/storage/session_storage_manager.h"
+ #include "extensions/browser/api/storage/settings_namespace.h"
+@@ -131,7 +133,7 @@
+     friend class StorageFrontend;
+     struct State;
+     AuxUiMigrationLease(std::shared_ptr<State> state,
+-        std::unique_ptr<value_store::ValueStore::AuxUiPreferenceCapture> capture);
++        std::shared_ptr<value_store::ValueStore::AuxUiPreferenceCapture> capture);
+     std::shared_ptr<State> state_;
+     std::shared_ptr<value_store::ValueStore::AuxUiPreferenceCapture> capture_;
+   };
+@@ -148,12 +150,25 @@
+     bool readback_file_data_synced = false, source_file_data_synced = false;
+     bool restore_attempted = false;
+   };
++  struct AuxUiMigrationLeaseObservation {
++    std::unique_ptr<AuxUiMigrationLease> lease;
++    bool preparation_pending = false, aborted_before_target = false;
++    bool target_attempted = false;
++  };
++  using AuxUiMigrationLeaseObservationResult = base::expected<
++      AuxUiMigrationLeaseObservation, value_store::ValueStore::Status>;
+   using AuxUiMigrationLeaseResult = base::expected<
+       std::unique_ptr<AuxUiMigrationLease>, value_store::ValueStore::Status>;
+   using AuxUiMigrationReadbackResult = base::expected<
+       AuxUiMigrationReadback, value_store::ValueStore::Status>;
+   void BeginAuxUiMigrationLease(scoped_refptr<const Extension> extension,
+       base::OnceCallback<void(AuxUiMigrationLeaseResult)> callback);
++  // Native nonce is correlation only. No caller Root/Profile/target selector.
++  void BeginAuxUiMigrationLease(scoped_refptr<const Extension> extension,
++      const base::UnguessableToken& request,
++      base::OnceCallback<void(AuxUiMigrationLeaseResult)> callback);
++  AuxUiMigrationLeaseObservationResult ObserveAuxUiMigrationLease(
++      const base::UnguessableToken& request);
+   bool ValidateAuxUiMigrationLease(const AuxUiMigrationLease& lease) const;
+   void CommitAuxUiMigrationLease(AuxUiMigrationLease& lease,
+       base::OnceCallback<void(value_store::ValueStore::Status)> callback);
+@@ -295,6 +310,9 @@
+   CacheMap caches_;
+ 
+   std::shared_ptr<AuxUiMigrationLease::State> aux_ui_migration_gate_;
++  std::optional<base::UnguessableToken> aux_ui_aborted_request_;
++  scoped_refptr<const Extension> aux_ui_aborted_extension_;
++  std::set<base::UnguessableToken> aux_ui_retired_requests_;
+ 
+   base::WeakPtrFactory<StorageFrontend> weak_factory_{this};
+ };
+--- a/extensions/browser/api/storage/storage_frontend.cc
++++ b/extensions/browser/api/storage/storage_frontend.cc
+@@ -591,6 +591,8 @@
+   ~State();
+   base::WeakPtr<StorageFrontend> owner;
+   scoped_refptr<const Extension> extension;
++  base::UnguessableToken request;
++  std::shared_ptr<ValueStore::AuxUiPreferenceCapture> capture;
+   std::array<std::optional<std::string>, 6> source, target;
+   std::vector<base::OnceClosure> deferred;
+   bool pending = true, tainted = false, target_attempted = false;
+@@ -601,7 +603,7 @@
+ StorageFrontend::AuxUiMigrationLease::State::~State() = default;
+ StorageFrontend::AuxUiMigrationLease::AuxUiMigrationLease(
+     std::shared_ptr<State> state,
+-    std::unique_ptr<ValueStore::AuxUiPreferenceCapture> capture)
++    std::shared_ptr<ValueStore::AuxUiPreferenceCapture> capture)
+     : state_(std::move(state)), capture_(std::move(capture)) {}
+ StorageFrontend::AuxUiMigrationLease::~AuxUiMigrationLease() = default;
+ std::array<std::optional<std::string>, 6>
+@@ -620,13 +622,21 @@
+ void StorageFrontend::BeginAuxUiMigrationLease(
+     scoped_refptr<const Extension> extension,
+     base::OnceCallback<void(AuxUiMigrationLeaseResult)> callback) {
+-  DCHECK_CURRENTLY_ON(BrowserThread::UI);
+-  if (!extension || aux_ui_migration_gate_ || !CanUseAuxUiMigrationBackend(*extension)) {
++  BeginAuxUiMigrationLease(std::move(extension), base::UnguessableToken::Create(), std::move(callback));
++}
++void StorageFrontend::BeginAuxUiMigrationLease(
++    scoped_refptr<const Extension> extension, const base::UnguessableToken& request,
++    base::OnceCallback<void(AuxUiMigrationLeaseResult)> callback) {
++  DCHECK_CURRENTLY_ON(BrowserThread::UI);
++  if (request.is_empty() || aux_ui_retired_requests_.contains(request) ||
++      aux_ui_retired_requests_.size() >= 64 || !extension || aux_ui_migration_gate_ ||
++      !CanUseAuxUiMigrationBackend(*extension)) {
+     std::move(callback).Run(base::unexpected(ValueStore::Status(
+         ValueStore::OTHER_ERROR, "Actual Aux backend writer gate unavailable"))); return;
+   }
+   auto state = std::make_shared<AuxUiMigrationLease::State>();
+   state->owner = weak_factory_.GetWeakPtr(); state->extension = extension;
++  state->request = request;
+   // Admission closes on the actual frontend sequence before the backend queue
+   // sentinel. Every already submitted operation precedes the raw capture.
+   aux_ui_migration_gate_ = state;
+@@ -647,11 +657,35 @@
+         }
+         state->source = captured.value()->CopyRecordsForNativeJournal();
+         state->target = captured.value()->CopyTargetRecordsForNativeJournal();
+-        std::move(callback).Run(base::WrapUnique(new AuxUiMigrationLease(
+-            state, std::move(captured.value()))));
++        // The original frontend State owns custody BEFORE the consumer reply.
++        // A lost/destroyed callback must not strand the actual backend token.
++        state->capture = std::move(captured.value());
++        std::move(callback).Run(base::WrapUnique(new AuxUiMigrationLease(state, state->capture)));
+       }, weak_factory_.GetWeakPtr(), state, std::move(callback)));
+ }
+ 
++StorageFrontend::AuxUiMigrationLeaseObservationResult
++StorageFrontend::ObserveAuxUiMigrationLease(const base::UnguessableToken& request) {
++  DCHECK_CURRENTLY_ON(BrowserThread::UI);
++  if (request.is_empty()) return base::unexpected(ValueStore::Status(ValueStore::OTHER_ERROR,
++      "An original native frontend request is required"));
++  const auto state = aux_ui_migration_gate_;
++  if (state && state->request == request && state->owner.get() == this &&
++      CanUseAuxUiMigrationBackend(*state->extension)) {
++    AuxUiMigrationLeaseObservation result;
++    result.preparation_pending = state->pending;
++    result.target_attempted = state->target_attempted;
++    if (!state->pending && state->capture)
++      result.lease = base::WrapUnique(new AuxUiMigrationLease(state, state->capture));
++    return result;
++  }
++  if (aux_ui_aborted_request_ == request && aux_ui_aborted_extension_ &&
++      CanUseAuxUiMigrationBackend(*aux_ui_aborted_extension_)) {
++    AuxUiMigrationLeaseObservation result; result.aborted_before_target = true; return result;
++  }
++  return base::unexpected(ValueStore::Status(ValueStore::OTHER_ERROR,
++      "Original frontend request remains unknown; absence is not an abort"));
++}
+ bool StorageFrontend::ValidateAuxUiMigrationLease(const AuxUiMigrationLease& lease) const {
+   DCHECK_CURRENTLY_ON(BrowserThread::UI);
+   const auto state = lease.state_;
+@@ -813,6 +847,13 @@
+     std::shared_ptr<AuxUiMigrationLease::State> state) {
+   if (aux_ui_migration_gate_ != state) return;
+   aux_ui_migration_gate_.reset();
++  aux_ui_retired_requests_.insert(state->request);
++  if (!state->target_attempted) {
++    // Past gate retirement only, never current writer-drain/readiness. Original
++    // ordinary callbacks below keep their real completion/ordering semantics.
++    aux_ui_aborted_request_ = state->request;
++    aux_ui_aborted_extension_ = state->extension;
++  }
+   auto pending = std::move(state->deferred);
+   for (auto& operation : pending) std::move(operation).Run();
+ }
+--- a/chrome/browser/aux/ui_storage_migration_controller.cc
++++ b/chrome/browser/aux/ui_storage_migration_controller.cc
+@@ -355,6 +355,7 @@
+   std::vector<std::unique_ptr<Frame>> frames_;
+   std::vector<content::StoragePartition*> partitions_;
+   std::unique_ptr<ExtensionLease> extension_lease_;
++  base::UnguessableToken frontend_request_id_;
+   extensions::WorkerId worker_inventory_;
+   base::Uuid worker_context_id_;
+   std::string worker_request_id_, worker_report_json_;
+@@ -628,8 +629,9 @@
+   auto* frontend = Frontend::Get(profile_.get());
+   if (!frontend) { Finish("Actual extension frontend unavailable"); return; }
+   // Every actual frame has flushed BEFORE this native admission gate closes.
++  frontend_request_id_ = base::UnguessableToken::Create();
+   frontend_begin_pending_ = true;
+-  frontend->BeginAuxUiMigrationLease(extension_, mojo::WrapCallbackWithDropHandler(
++  frontend->BeginAuxUiMigrationLease(extension_, frontend_request_id_, mojo::WrapCallbackWithDropHandler(
+       base::BindOnce(&Controller::FrontendPrepared, weak_.GetWeakPtr()),
+       base::BindOnce(&Controller::FrontendLost, weak_.GetWeakPtr(), true)));
+ }
+@@ -854,8 +856,20 @@
+ void Controller::StartCleanup() {
+   // Reopen the ORIGINAL frontend gate before any productive renderer/worker
+   // restore. Unknown physical begin/readback keeps the token and all producers.
+-  if (frontend_begin_pending_ || frontend_io_pending_ || frontend_begin_unknown_) {
++  if (frontend_begin_pending_ || frontend_io_pending_) {
+     cleanup_unknown_ = true; ReplyResult(); return;
++  }
++  if (frontend_begin_unknown_) {
++    auto* frontend = profile_ ? Frontend::Get(profile_.get()) : nullptr;
++    if (!frontend || frontend_request_id_.is_empty()) { cleanup_unknown_ = true; ReplyResult(); return; }
++    auto observed = frontend->ObserveAuxUiMigrationLease(frontend_request_id_);
++    if (!observed.has_value() || observed->preparation_pending || observed->target_attempted ||
++        (!observed->lease && !observed->aborted_before_target)) {
++      cleanup_unknown_ = true; ReplyResult(); return;
++    }
++    if (observed->lease) extension_lease_ = std::move(observed->lease);
++    // Exact actual original State/abort observation, no reset or re-Capture.
++    frontend_begin_unknown_ = false;
+   }
+   if (extension_lease_) {
+     auto* frontend = profile_ ? Frontend::Get(profile_.get()) : nullptr;
