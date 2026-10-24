@@ -1,0 +1,22 @@
+{
+  "format": "aux.feature-completion.native-in-flight.v1",
+  "unifiedExecSessionId": 49461,
+  "liveObservedNow": true,
+  "observedProcesses": [
+    "4691 92861 /opt/homebrew/Cellar/python@3.15/3.15.0_1/Frameworks/Python.framework/Versions/3.15/Resources/Python.app/Contents/MacOS/Python scripts/native-build.py python3 docs/integration/proposed/browser-feature-expansion/completion-batch-a1/build-browser.py",
+    "4694  4691 /opt/homebrew/Cellar/python@3.15/3.15.0_1/Frameworks/Python.framework/Versions/3.15/Resources/Python.app/Contents/MacOS/Python docs/integration/proposed/browser-feature-expansion/completion-batch-a1/build-browser.py",
+    "4731  4694 /opt/homebrew/Cellar/python@3.15/3.15.0_1/Frameworks/Python.framework/Versions/3.15/Resources/Python.app/Contents/MacOS/Python /Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/integration/full-build.py --snapshot /private/tmp/aux-chromium-recovery-snapshot-20261023 --input-pins /Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/completion-batch-a1/full-native-input-pins-a1.json --require-input-pins --build --jobs 4 --receipt-name unsigned-feature-completion-browser-build-20261024-a1"
+  ],
+  "receipt": "/private/tmp/aux-chromium-recovery-snapshot-20261023/unsigned-feature-completion-browser-build-20261024-a1/receipt.json",
+  "buildLog": "/private/tmp/aux-chromium-recovery-snapshot-20261023/unsigned-feature-completion-browser-build-20261024-a1/build.log",
+  "sourcePins": "docs/integration/proposed/browser-feature-expansion/completion-batch-a1/full-native-input-pins-a1.json",
+  "productExecuted": false,
+  "productSigned": false,
+  "observationMustBeRevalidated": true,
+  "observedReceiptState": {
+    "passed": false,
+    "prepared": true,
+    "error": null,
+    "dryRunActionCount": 1
+  }
+}

@@ -22,3 +22,9 @@ Actual full UI staging passes at Agent revision28/version1.26.1016.1880 (`actual
 The resource stage is `/private/tmp/aux-feature-completion-ui-stage-20261024-a1`; it is not an app. The native overlay requires the paired version6 daemon and a full browser build. Current accepted app/UI and existing inactive apps remain untouched. Full native linking/app packaging and actual disposable feature/profile/window/extension/provider/UI journeys remain open. The real migration controller/target recovery/activation and remaining full CLI native startup/writer work are still implementation gaps, independent of these feature fixes.
 
 No signing, release, product/helper lifecycle, owner profile/credentials, provider request, cloud operation or OS grant occurred.
+
+## Full native build started
+
+`build-browser.py` preserves/verifies the full416-leaf successful a8 native app and the63 original source inputs before projecting only the reviewed changes into the isolated native build tree. `actual-native-projection-a1.json` and `full-native-input-pins-a1.json` bind the actual359-input successor. Owner changes are preserved; this is the first actual native checkout mutation in this batch. The accepted preview and existing inactive app copies are untouched.
+
+One complete unsigned build is running under `scripts/native-build.py`, session49461. Its receipt/log directory is `/private/tmp/aux-chromium-recovery-snapshot-20261023/unsigned-feature-completion-browser-build-20261024-a1`. The existing exact host-tool-only policy remains active; all product links require unsigned output and the full builder inspects final Mach-O files. Source stays frozen while the build runs. A prepared pending receipt is not success, and a saved in-flight file is not evidence that a process is still live. Revalidate the actual handle/process; preserve failures rather than replacing them with an old success.
