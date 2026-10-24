@@ -32,7 +32,7 @@ export function createTidyProposal(snapshot,plan,uuid) {
     }
   }
   return {proposalId:uuid(),operationId:uuid(),ownerGeneration:snapshot.ownerGeneration,
-    expectedRevision:snapshot.revision,spaceId:snapshot.spaceId,accountId:snapshot.accountId,
+    expectedRevision:snapshot.revision,spaceId:snapshot.spaceId,windowId:snapshot.windowId,accountId:snapshot.accountId,
     createFolders,moves,summaryRows};
 }
 export async function runProductivityPlan(input,deps) {

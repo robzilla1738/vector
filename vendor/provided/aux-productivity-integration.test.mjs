@@ -7,7 +7,7 @@ import {spawnSync} from 'node:child_process';
 import {eligibleTidyTabs,createTidyProposal,runProductivityPlan,productivitySections} from './aux-productivity-proposals.mjs';
 import {prepareTidyProposal,commitProductivityAction,transformAuxProductivityUi,transformAuxProductivityDaemon} from './aux-productivity-integration.mjs';
 import {transformAuxNavigation} from './aux-navigation-command-bar.mjs';
-const snapshot={success:true,accountId:7,ownerGeneration:'generation',revision:'42',spaceId:'space',tabs:[
+const snapshot={success:true,accountId:7,windowId:31,ownerGeneration:'generation',revision:'42',spaceId:'space',tabs:[
   {id:'a',title:'Docs',url:'https://example.test/docs?private=omitted',spaceId:'space'},
   {id:'b',title:'Docs copy',url:'https://example.test/docs?private=omitted',spaceId:'space'},
   {id:'pin',title:'Mail',url:'https://mail.test',spaceId:'space',pinned:true},
@@ -16,7 +16,7 @@ const snapshot={success:true,accountId:7,ownerGeneration:'generation',revision:'
 const plan={groups:[{title:'Research',tabIds:['a','b']}]};
 test('proposal keeps duplicate URLs as distinct tabs and refuses unknown or repeated identities',()=>{
  let id=0;const p=createTidyProposal(snapshot,plan,()=>`id-${++id}`);
- assert.equal(p.moves.length,2);assert.deepEqual(p.moves.map(x=>x.tabId),['a','b']);assert.equal(p.expectedRevision,'42');
+ assert.equal(p.moves.length,2);assert.deepEqual(p.moves.map(x=>x.tabId),['a','b']);assert.equal(p.expectedRevision,'42');assert.equal(p.windowId,31);
  assert.equal(eligibleTidyTabs(snapshot).length,2);
  assert.throws(()=>createTidyProposal(snapshot,{groups:[{title:'Bad',tabIds:['pin']}]},()=>''),/unknown/);
  assert.throws(()=>createTidyProposal(snapshot,{groups:[{title:'Bad',tabIds:['a','a']}]},()=>''),/duplicate/);
@@ -25,6 +25,7 @@ test('real dispatch requests only titles and origins, revalidates snapshot, and 
  let sent,shown;let id=0;const deps={snapshot:async()=>structuredClone(snapshot),account:async()=>({accountId:7}),uuid:()=>`id-${++id}`,customPrompt:async()=>'',plan:async input=>{sent=input;return plan},cancel:async()=>{},show:async input=>{shown=input;return{success:true}},interval:()=>1,clearInterval:()=>{}};
  const result=await prepareTidyProposal(deps);assert.equal(result.phase,'review');assert.equal(shown.proposal.moves.length,2);
  assert.deepEqual(sent.tabs.map(t=>t.origin),['https://example.test','https://example.test']);assert.ok(!JSON.stringify(sent).includes('private='));
+ let windows=0;await assert.rejects(prepareTidyProposal({...deps,snapshot:async()=>({...snapshot,windowId:++windows<3?31:32})}),/changed/);
  let n=0;await assert.rejects(prepareTidyProposal({...deps,snapshot:async()=>({...snapshot,revision:++n<3?'42':'43'})}),/changed/);
  await assert.rejects(prepareTidyProposal({...deps,account:async()=>({accountId:9})}),/Profile changed/);
 });

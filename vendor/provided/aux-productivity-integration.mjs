@@ -5,12 +5,13 @@ import {eligibleTidyTabs, validateTidyPlan, createTidyProposal, runProductivityP
 // and native organization snapshot. No tab mutation occurs in this producer.
 export async function prepareTidyProposal(deps) {
   const snapshot=await deps.snapshot(),tabs=eligibleTidyTabs(snapshot);
+  if(!Number.isSafeInteger(snapshot.windowId)) throw Error('The originating browser window is unavailable.');
   if(!Number.isSafeInteger(snapshot.accountId)||snapshot.accountId<0) throw Error('Connect this profile to an AI provider before using Tidy Tabs.');
   if(tabs.length<2) throw Error('Open at least two unpinned tabs in this Space to tidy.');
   const account=await deps.account();
   if(account.accountId!==snapshot.accountId) throw Error('Profile changed; try Tidy Tabs again.');
   const requestId=deps.uuid();let expired=false,checking=false;
-  const same=next=>next?.success&&next.ownerGeneration===snapshot.ownerGeneration&&next.revision===snapshot.revision&&next.spaceId===snapshot.spaceId&&next.accountId===snapshot.accountId;
+  const same=next=>next?.success&&next.ownerGeneration===snapshot.ownerGeneration&&next.revision===snapshot.revision&&next.spaceId===snapshot.spaceId&&next.windowId===snapshot.windowId&&next.accountId===snapshot.accountId;
   const timer=deps.interval(async()=>{
     if(checking)return;checking=true;
     try{if(!same(await deps.snapshot())){expired=true;await deps.cancel({accountId:snapshot.accountId,requestId})}}
