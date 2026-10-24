@@ -1,0 +1,20 @@
+[
+  {
+    "path": "content/browser/child_process_launcher_helper_mac.cc",
+    "old": "#include \"content/public/browser/content_browser_client.h\"\n#include \"content/public/common/content_paths.h\"",
+    "new": "#include \"content/public/browser/content_browser_client.h\"\n#include \"content/public/common/content_client.h\"\n#include \"content/public/common/content_paths.h\"",
+    "count": 1
+  },
+  {
+    "path": "content/browser/aux_child_lifetime.h",
+    "old": "  AuxChildLifetime() = default;",
+    "new": "  AuxChildLifetime();",
+    "count": 1
+  },
+  {
+    "path": "content/browser/aux_child_process_drain.cc",
+    "old": "#include <atomic>\nnamespace content::aux_migration {",
+    "new": "#include <atomic>\n\nnamespace content::internal {\nAuxChildLifetime::AuxChildLifetime() = default;\n}  // namespace content::internal\n\nnamespace content::aux_migration {",
+    "count": 1
+  }
+]

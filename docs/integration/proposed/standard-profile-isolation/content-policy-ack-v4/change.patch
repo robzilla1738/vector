@@ -1,0 +1,35 @@
+--- a/content/browser/child_process_launcher_helper_mac.cc
++++ b/content/browser/child_process_launcher_helper_mac.cc
+@@ -24,6 +24,7 @@
+ #include "content/grit/content_resources.h"
+ #include "content/public/browser/child_process_launcher_utils.h"
+ #include "content/public/browser/content_browser_client.h"
++#include "content/public/common/content_client.h"
+ #include "content/public/common/content_paths.h"
+ #include "content/public/common/content_switches.h"
+ #include "content/public/common/result_codes.h"
+--- a/content/browser/aux_child_lifetime.h
++++ b/content/browser/aux_child_lifetime.h
+@@ -124,7 +124,7 @@
+   }
+   std::mutex mutex;
+  private:
+-  AuxChildLifetime() = default;
++  AuxChildLifetime();
+   static pid_t RegistryOwner() { static const pid_t owner = getpid(); return owner; }
+   static bool& Closed() { static bool closed = false; return closed; }
+   static bool& AccountingUnknown() { static bool unknown = false; return unknown; }
+--- a/content/browser/aux_child_process_drain.cc
++++ b/content/browser/aux_child_process_drain.cc
+@@ -2,6 +2,11 @@
+ #include "content/public/browser/aux_child_process_drain.h"
+ #include "content/browser/aux_child_lifetime.h"
+ #include <atomic>
++
++namespace content::internal {
++AuxChildLifetime::AuxChildLifetime() = default;
++}  // namespace content::internal
++
+ namespace content::aux_migration {
+ namespace {
+ std::atomic<void (*)()> completion{nullptr};

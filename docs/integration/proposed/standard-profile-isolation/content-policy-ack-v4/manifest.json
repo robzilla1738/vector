@@ -1,0 +1,28 @@
+{
+  "format": "aux.content-policy-ack.compiler-correction.v4",
+  "files": [
+    {
+      "path": "content/browser/child_process_launcher_helper_mac.cc",
+      "baselinePath": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/content/browser/child_process_launcher_helper_mac.cc",
+      "beforeSha256": "b82927e5ef6cf609f67e1ad47a24254fe7f2e16af8203c5156f2d9f2507cb2c9",
+      "afterSha256": "d92c1f98f35368d62c565ed8614c83e7c4459e81fcd718dbe7fef32aa2af98ee"
+    },
+    {
+      "path": "content/browser/aux_child_lifetime.h",
+      "baselinePath": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/content/browser/aux_child_lifetime.h",
+      "beforeSha256": "7442ecebd1f40e2ac9d65f62b7689ab07f7daaf376b6e06d6482c061e672b33a",
+      "afterSha256": "369770282bc8edb196dba0eb1af6c604c3a79a7bafe61bc84ce2f8373f2554f0"
+    },
+    {
+      "path": "content/browser/aux_child_process_drain.cc",
+      "baselinePath": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/content/browser/aux_child_process_drain.cc",
+      "beforeSha256": "17ff56890fc349692ff79e575c9f8f017eaa6c0473cc6a894a25ed7d7402ed53",
+      "afterSha256": "862c5b8d2cc6af4fb2f7ddf04f3fea60fdf3a6e0c6506a032fd41f95252ccb13"
+    }
+  ],
+  "countedAdaptations": 3,
+  "replacementsSha256": "19201400b04c15096dbe552d35e680b232f1adc7d661ed6cd93fc11c5d6c53e9",
+  "patchSha256": "749cd7d371b56da2858e663f89c39cc1aa33b239e2991bf0055efd12eb71d1b5",
+  "compiled": false,
+  "runtimeAccepted": false
+}
