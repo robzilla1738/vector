@@ -18,6 +18,13 @@ bool ValidRatio(double ratio) {
 }
 }  // namespace
 
+SplitPaneTree::SplitPaneTree() = default;
+SplitPaneTree::~SplitPaneTree() = default;
+SplitPaneTree::SplitPaneTree(const SplitPaneTree&) = default;
+SplitPaneTree& SplitPaneTree::operator=(const SplitPaneTree&) = default;
+SplitPaneTree::SplitPaneTree(SplitPaneTree&&) noexcept = default;
+SplitPaneTree& SplitPaneTree::operator=(SplitPaneTree&&) noexcept = default;
+
 SplitPaneTree SplitPaneTree::Pair(Axis axis, double ratio) {
   SplitPaneTree tree;
   tree.root_ = 1;

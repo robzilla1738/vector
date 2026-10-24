@@ -16,6 +16,12 @@ namespace split_tabs {
 // survive branch edits; they are not current tab indexes or URLs.
 class SplitPaneTree {
  public:
+  SplitPaneTree();
+  ~SplitPaneTree();
+  SplitPaneTree(const SplitPaneTree&);
+  SplitPaneTree& operator=(const SplitPaneTree&);
+  SplitPaneTree(SplitPaneTree&&) noexcept;
+  SplitPaneTree& operator=(SplitPaneTree&&) noexcept;
   static constexpr size_t kMaxPanes = 8;
   enum class Axis { kHorizontal, kVertical };
   struct Node {

@@ -965,7 +965,7 @@
  
 --- /dev/null
 +++ b/components/split_tabs/split_pane_tree.cc
-@@ -0,0 +1,225 @@
+@@ -0,0 +1,232 @@
 +// Copyright 2026 The Chromium Authors
 +// Use of this source code is governed by a BSD-style license that can be
 +// found in the LICENSE file.
@@ -985,6 +985,13 @@
 +  return std::isfinite(ratio) && ratio >= 0.05 && ratio <= 0.95;
 +}
 +}  // namespace
++
++SplitPaneTree::SplitPaneTree() = default;
++SplitPaneTree::~SplitPaneTree() = default;
++SplitPaneTree::SplitPaneTree(const SplitPaneTree&) = default;
++SplitPaneTree& SplitPaneTree::operator=(const SplitPaneTree&) = default;
++SplitPaneTree::SplitPaneTree(SplitPaneTree&&) noexcept = default;
++SplitPaneTree& SplitPaneTree::operator=(SplitPaneTree&&) noexcept = default;
 +
 +SplitPaneTree SplitPaneTree::Pair(Axis axis, double ratio) {
 +  SplitPaneTree tree;
@@ -1193,7 +1200,7 @@
 +}  // namespace split_tabs
 --- /dev/null
 +++ b/components/split_tabs/split_pane_tree.h
-@@ -0,0 +1,75 @@
+@@ -0,0 +1,81 @@
 +// Copyright 2026 The Chromium Authors
 +// Use of this source code is governed by a BSD-style license that can be
 +// found in the LICENSE file.
@@ -1212,6 +1219,12 @@
 +// survive branch edits; they are not current tab indexes or URLs.
 +class SplitPaneTree {
 + public:
++  SplitPaneTree();
++  ~SplitPaneTree();
++  SplitPaneTree(const SplitPaneTree&);
++  SplitPaneTree& operator=(const SplitPaneTree&);
++  SplitPaneTree(SplitPaneTree&&) noexcept;
++  SplitPaneTree& operator=(SplitPaneTree&&) noexcept;
 +  static constexpr size_t kMaxPanes = 8;
 +  enum class Axis { kHorizontal, kVertical };
 +  struct Node {
