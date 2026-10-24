@@ -1,0 +1,7 @@
+[
+  {
+    "find": "function accountHasAllowedPlan(Cn,ei){if(!AUX_LAUNCH_POLICY.paymentsEnabled)return !!Cn;let ti=Cn?.email?.toLowerCase();return ti?.endsWith(`@aside.com`)||ti?.endsWith(`@at.studio`)?!0:ei.includes(Cn?.subscriptionPlan??`free`)}",
+    "replace": "function accountHasAllowedPlan(Cn,ei){if(!AUX_LAUNCH_POLICY.paymentsEnabled)return !!Cn;return ei.includes(Cn?.subscriptionPlan??`free`)}",
+    "count": 1
+  }
+]

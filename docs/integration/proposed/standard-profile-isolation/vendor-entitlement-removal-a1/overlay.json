@@ -1,0 +1,35 @@
+{
+  "format": "aux.vendor-entitlement-removal.v1",
+  "stage": "vendor-entitlement-removal",
+  "changes": 1,
+  "daemonInputs": [
+    {
+      "kind": "source",
+      "path": "/private/tmp/aux-standard-daemon-projection-20261024-a5/index.mjs",
+      "inputSha256": "d0632af5fb69929ed52a7dc5aa78cfb0d27853933763dfcf51d6c84823fe9515",
+      "outputSha256": "4ca05dc7e366e20642bfd25b8778a900067e721e45da704a9f801e40ff9136b7",
+      "changesSha256": "337549c1b659bd5912c81108cd440d3d5cf16964b02c3ee97e601c1d16ba1527"
+    },
+    {
+      "kind": "entry",
+      "path": "/private/tmp/aux-standard-daemon-projection-20261024-a5/projected-entry/aux-native-entry.mjs",
+      "inputSha256": "d62e557fdb8e1100f7362f6bae2ab83528122b8ed685baad943b7a3f68e74742",
+      "outputSha256": "3f59535341e1a2de3bae5c4545f411819cf84f67fe02f4d56ca8550e3ec0410b",
+      "changesSha256": "337549c1b659bd5912c81108cd440d3d5cf16964b02c3ee97e601c1d16ba1527"
+    }
+  ],
+  "sourceFiles": [
+    {
+      "path": "source/anchors.json",
+      "sha256": "d867e771f931be8a64eff581f26a57d7f8e31d0090ab4c32d0e51abb8049bb6a"
+    },
+    {
+      "path": "source/transform.mjs",
+      "sha256": "2c4f9d94ca6edd5ba37e5cf3d184271d4c58590e65a8498b0cd09934f0b09744"
+    }
+  ],
+  "paymentsEnabled": false,
+  "newDomainPrivilege": false,
+  "projected": false,
+  "productExecuted": false
+}

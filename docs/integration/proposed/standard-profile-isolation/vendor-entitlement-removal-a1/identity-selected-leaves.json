@@ -1,0 +1,125 @@
+{
+  "format": "aux.identity.selected-leaves.v1",
+  "scope": "Receipt-named static memory/native leaves plus actual a5 source only; not a final app scan",
+  "v6Receipt": {
+    "path": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-standard-profile-isolation-20261024/receipt.json",
+    "sha256": "8a0ab2d88ead8094a00720ee5a49e4e87ac4bbb97241735774768f1f6d6d4839",
+    "passed": true
+  },
+  "selectedLeaves": [
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-standard-profile-isolation-20261024/Aux.app/Contents/Resources/aux/apps/cli/Aux CLI.app/Contents/Resources/native/provided-native.node",
+      "receiptRelativePath": "Contents/Resources/aux/apps/cli/Aux CLI.app/Contents/Resources/native/provided-native.node",
+      "sha256": "66368b6846d2842a5ee0ba3d5c6d5d094fd40098d7819dbb63ef17600c85c3fc",
+      "kind": "native-addon",
+      "asciiOccurrences": {
+        "AsideNativeSwift": 618,
+        "AsideNativeRun": 1,
+        "AsideNativeFree": 1
+      }
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-standard-profile-isolation-20261024/Aux.app/Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/native/provided-native.node",
+      "receiptRelativePath": "Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/native/provided-native.node",
+      "sha256": "bfe946e05fbaf2ae68d0560258f50e63a6c3ff6da2937e0aa8f9f19016e1f7fb",
+      "kind": "native-addon",
+      "asciiOccurrences": {
+        "AsideNativeSwift": 610,
+        "AsideNativeRun": 1,
+        "AsideNativeFree": 1
+      }
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-standard-profile-isolation-20261024/Aux.app/Contents/Resources/aux/memory-distribution/memory-catalog.json",
+      "receiptRelativePath": "Contents/Resources/aux/memory-distribution/memory-catalog.json",
+      "sha256": "7aa00d742d40b5fcd013db3bdd39ab691f81ebaf3d6a70918d1a1c5736eb0ccb",
+      "kind": "signed-memory-catalog",
+      "runtimeIds": [
+        "aside-memory-runtime-v1"
+      ],
+      "executables": [
+        "aside-memory",
+        "aside-memory.exe"
+      ]
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-standard-profile-isolation-20261024/Aux.app/Contents/Resources/aux/memory-distribution/memory-runtimes/ad9092e10b360a769e6982dbbae9cc1268f97d5f0c274241eace7e8b21afb934/04175566-995b-42b3-840a-52d2d74d0605/runtime.json",
+      "receiptRelativePath": "Contents/Resources/aux/memory-distribution/memory-runtimes/ad9092e10b360a769e6982dbbae9cc1268f97d5f0c274241eace7e8b21afb934/04175566-995b-42b3-840a-52d2d74d0605/runtime.json",
+      "sha256": "ad9092e10b360a769e6982dbbae9cc1268f97d5f0c274241eace7e8b21afb934",
+      "kind": "memory-runtime-manifest",
+      "id": "aside-memory-runtime-v1",
+      "executable": "aside-memory"
+    }
+  ],
+  "sourceLeaves": [
+    {
+      "path": "/private/tmp/aux-standard-daemon-projection-20261024-a5/index.mjs",
+      "sha256": "d0632af5fb69929ed52a7dc5aa78cfb0d27853933763dfcf51d6c84823fe9515",
+      "tokens": [
+        {
+          "token": "aside-memory-runtime-v1",
+          "occurrences": 1,
+          "firstLine": 1146
+        },
+        {
+          "token": "aside-memory-catalog-v1",
+          "occurrences": 1,
+          "firstLine": 1160
+        },
+        {
+          "token": "aside-memory",
+          "occurrences": 10,
+          "firstLine": 1029
+        },
+        {
+          "token": "@aside.com",
+          "occurrences": 1,
+          "firstLine": 1345
+        },
+        {
+          "token": "@at.studio",
+          "occurrences": 2,
+          "firstLine": 1328
+        }
+      ]
+    },
+    {
+      "path": "/private/tmp/aux-standard-daemon-projection-20261024-a5/projected-entry/aux-native-entry.mjs",
+      "sha256": "d62e557fdb8e1100f7362f6bae2ab83528122b8ed685baad943b7a3f68e74742",
+      "tokens": [
+        {
+          "token": "aside-memory-runtime-v1",
+          "occurrences": 1,
+          "firstLine": 1146
+        },
+        {
+          "token": "aside-memory-catalog-v1",
+          "occurrences": 1,
+          "firstLine": 1160
+        },
+        {
+          "token": "aside-memory",
+          "occurrences": 10,
+          "firstLine": 1029
+        },
+        {
+          "token": "@aside.com",
+          "occurrences": 1,
+          "firstLine": 1345
+        },
+        {
+          "token": "@at.studio",
+          "occurrences": 2,
+          "firstLine": 1328
+        }
+      ]
+    }
+  ],
+  "runtimePayloadPathsFromReceipt": [
+    "Contents/Resources/aux/memory-distribution/memory-runtimes/ad9092e10b360a769e6982dbbae9cc1268f97d5f0c274241eace7e8b21afb934/04175566-995b-42b3-840a-52d2d74d0605/aside-memory"
+  ],
+  "olderAuditHistoricalOnly": "docs/integration/proposed/aux-delivered-identity-audit.md",
+  "productExecuted": false,
+  "ownerStateRead": false,
+  "finalCandidateAudited": false
+}

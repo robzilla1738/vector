@@ -1,0 +1,9 @@
+{
+  "passed": true,
+  "command": "node docs/integration/proposed/standard-profile-isolation/vendor-entitlement-removal-a1/check.mjs",
+  "pairedSourceReplay": true,
+  "purePredicateCases": 18,
+  "productExecuted": false,
+  "providerCalled": false,
+  "projectionWritten": false
+}
