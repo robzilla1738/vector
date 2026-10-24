@@ -1,3 +1,5 @@
+**Historical late-attachment analysis.** The fresh native entry source successor is described in [FRESH-ENTRY-PROPOSAL.md](FRESH-ENTRY-PROPOSAL.md). The missing initial-enumeration API is not being invented.
+
 # Native descendant custody: initialization contract unresolved
 
 This is a bounded source feasibility result, not an implemented observer or an acceptance receipt. No Endpoint Security client, product process, compiler, signing operation, entitlement request or OS grant was invoked. The current selected Exec/Pty unknown flags and runtime leases must remain conservative.

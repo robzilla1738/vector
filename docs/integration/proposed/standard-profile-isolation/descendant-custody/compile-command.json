@@ -1,0 +1,40 @@
+{
+  "schemaVersion": 1,
+  "status": "prepared-not-executed",
+  "workingDirectory": "/private/tmp/aux-features-execution-organization-20261023/docs/integration/proposed/standard-profile-isolation/descendant-custody",
+  "compiler": "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang++",
+  "compilerSha256": "5922f5f7843fee699497c45cc98134b6686e0a5e2fa8a5866ab74c5482fa87a5",
+  "argv": [
+    "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang++",
+    "-std=c++20",
+    "-arch",
+    "arm64",
+    "-mmacosx-version-min=13.5",
+    "-fblocks",
+    "-fPIC",
+    "-isysroot",
+    "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk",
+    "-MMD",
+    "-MF",
+    "/private/tmp/aux-standard-descendant-observer-20261023-a1/observer.d",
+    "-I",
+    "/private/tmp/aux-features-execution-organization-20261023/docs/integration/proposed/standard-profile-isolation/descendant-custody/source",
+    "-c",
+    "/private/tmp/aux-features-execution-organization-20261023/docs/integration/proposed/standard-profile-isolation/descendant-custody/source/AuxTaskDescendantObserver.cc",
+    "-o",
+    "/private/tmp/aux-standard-descendant-observer-20261023-a1/observer.o"
+  ],
+  "outputDirectory": "/private/tmp/aux-standard-descendant-observer-20261023-a1",
+  "sourceSha256": "cb10bb7e05caed1baa661e67430d33f1aa9532fd82b44804166d619c4043d56d",
+  "headerSha256": "60a1a872cad6f791f61061aa7a15d2d8ac3bb7fb8144b5f25c5fabcb3fd44969",
+  "sdkDeclarations": {
+    "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/EndpointSecurity/ESClient.h": "900e1cafa947ba3ba1cfcac02dd4c22a1ba01ed7c03dda8196971c1d0f88f004",
+    "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/EndpointSecurity/ESMessage.h": "2a05238ee9eb74adb9ad21ac6d68e7ff3389d9c35b23a1bf04355282bdec65cf",
+    "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/EndpointSecurity/ESMessageCore.h": "14ebe087bb8379549825be6dad7a324ba6b74ba1304e9e2faa6f8c0cd5ae8ed6"
+  },
+  "finalLinkAdditions": [
+    "-framework",
+    "EndpointSecurity"
+  ],
+  "instructions": "Root must serialize through scripts/native-build.py and create fresh output directory. Compile command only; no compile, link, signing, ES client or process test was executed. Preserve existing daemon libbsm/audit dependency and full frozen input tuple. Guarded deployment target remains macOS 13.5; runtime capability requires macOS 27 and approved restricted entitlement."
+}

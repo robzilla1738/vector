@@ -1,0 +1,49 @@
+{
+  "modifiedCount": 3,
+  "addedCount": 2,
+  "countedAdaptations": 25,
+  "files": [
+    {
+      "path": "AuxDevelopmentWorkerHost.cc",
+      "beforeSha256": "79dc88683e91ec24b80009021ccf120c35321da98d8d01cee9b01bc2057e81c1",
+      "afterSha256": "0bff6d04b4e0c7279d312889496bad42f71b11a62b21994dc35a60ebe162a10e"
+    },
+    {
+      "path": "AuxNativeDaemonMain.cc",
+      "beforeSha256": "16a394a12e8ab2d8541f172c4776f99cefce14a4098ea0697fae4d015c19cff3",
+      "afterSha256": "a08bdb486d414ae78466b1a385bced411215218c71ee5ce1dcb8908659746ffc"
+    },
+    {
+      "path": "AuxRuntimeCoordination.inc",
+      "beforeSha256": "b552a17a6046932e37fd863526f82abe5c0602da1a33b7f5ae1f00b83399f812",
+      "afterSha256": "342a44fab0360268ef4773c68406b30a0cc4fb2e2000493ec6f7c7a03fa497b9"
+    }
+  ],
+  "patchSha256": "4e0e380c62d02aafcc696e20dac0dae8f03693340c785ac943d846bdd04b948c",
+  "verification": {
+    "exactOrderedReplay": "passed",
+    "unifiedPatchReplay": "passed",
+    "whitespaceErrorCheck": "passed",
+    "nativeCompile": "not run by worker",
+    "runtime": "not run"
+  },
+  "addedFiles": [
+    {
+      "path": "AuxTaskDescendantObserver.h",
+      "sha256": "60a1a872cad6f791f61061aa7a15d2d8ac3bb7fb8144b5f25c5fabcb3fd44969"
+    },
+    {
+      "path": "AuxTaskDescendantObserver.cc",
+      "sha256": "cb10bb7e05caed1baa661e67430d33f1aa9532fd82b44804166d619c4043d56d"
+    }
+  ],
+  "compileRecipeSha256": "84500936e6b60ab19cbd90bb91e2433e8e5de4a8a1576ca5ab96f3cc34523bca",
+  "activation": {
+    "deploymentTarget": "macOS 13.5 unchanged",
+    "requiredRuntime": "macOS 27",
+    "restrictedEntitlement": "com.apple.developer.endpoint-security.client",
+    "entitlementPresent": false,
+    "runtimeStatus": "not activated; unavailable capability refuses this successor before supplied user code",
+    "signing": "not performed or authorized by this proposal"
+  }
+}

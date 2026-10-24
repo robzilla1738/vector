@@ -1,0 +1,152 @@
+[
+  {
+    "path": "AuxDevelopmentWorkerHost.cc",
+    "old": "#include \"AuxDevelopmentWorkerHost.h\"",
+    "new": "#include \"AuxDevelopmentWorkerHost.h\"\n#include \"AuxTaskDescendantObserver.h\"",
+    "count": 1
+  },
+  {
+    "path": "AuxDevelopmentWorkerHost.cc",
+    "old": "bool pty_descendants_unknown = false;",
+    "new": "bool pty_descendants_unknown = false;\n  size_t pty_descendant_pending = 0;",
+    "count": 1
+  },
+  {
+    "path": "AuxDevelopmentWorkerHost.cc",
+    "old": "bool exec_descendants_unknown = false;",
+    "new": "bool exec_descendants_unknown = false;\n  size_t exec_descendant_pending = 0;",
+    "count": 1
+  },
+  {
+    "path": "AuxDevelopmentWorkerHost.cc",
+    "old": "pty_pending || pty_direct || exec_pending || exec_direct || broker_pending || runtime_scope_pending",
+    "new": "pty_pending || pty_direct || pty_descendant_pending || exec_pending || exec_direct || exec_descendant_pending || broker_pending || runtime_scope_pending",
+    "count": 1
+  },
+  {
+    "path": "AuxDevelopmentWorkerHost.cc",
+    "old": "!worker->pty_descendants_unknown && !worker->exec_pending",
+    "new": "!worker->pty_descendants_unknown && !worker->pty_descendant_pending && !worker->exec_pending",
+    "count": 1
+  },
+  {
+    "path": "AuxDevelopmentWorkerHost.cc",
+    "old": "!worker->exec_descendants_unknown && !worker->broker_pending",
+    "new": "!worker->exec_descendants_unknown && !worker->exec_descendant_pending && !worker->broker_pending",
+    "count": 1
+  },
+  {
+    "path": "AuxDevelopmentWorkerHost.cc",
+    "old": "std::shared_ptr<RuntimeScope> runtime_scope;",
+    "new": "std::shared_ptr<RuntimeScope> runtime_scope;\n  aux::descendants::Ticket descendant_cohort;\n  bool descendant_counted = false;\n  bool descendant_completed = false;",
+    "count": 2
+  },
+  {
+    "path": "AuxDevelopmentWorkerHost.cc",
+    "old": "#include \"AuxRuntimeCoordination.inc\"",
+    "new": "#include \"AuxRuntimeCoordination.inc\"\n\n// Exact native reservation owns the observer ticket and the original runtime\n// lease. The observer's private callback fires only after a real complete cohort\n// fence AND the original direct reaper; no JS-provided PID/proof enters here.\ntemplate <class Reservation>\naux::descendants::Ticket ReserveDescendantCohort(\n    const std::shared_ptr<Worker>& worker,\n    const std::shared_ptr<Reservation>& reservation, bool pty) {\n  std::weak_ptr<Worker> weak_worker = worker;\n  std::weak_ptr<Reservation> weak_reservation = reservation;\n  return aux::descendants::Reserve(worker->generation,\n      [weak_worker, weak_reservation, pty] {\n        auto owner = weak_worker.lock();\n        auto item = weak_reservation.lock();\n        if (!owner || !item || getpid() != kHostProcess) return;\n        std::shared_ptr<RuntimeScope> runtime;\n        bool closed = false;\n        {\n          std::lock_guard<std::mutex> lock(owner->mutex);\n          if (item->descendant_completed) return;\n          item->descendant_completed = true;\n          if (item->descendant_counted) {\n            auto& pending = pty ? owner->pty_descendant_pending\n                                : owner->exec_descendant_pending;\n            if (!pending) {\n              if (pty) owner->pty_descendants_unknown = true;\n              else owner->exec_descendants_unknown = true;\n              return;\n            }\n            --pending;\n            runtime = item->runtime_scope;\n          }\n          closed = owner->terminal;\n        }\n        if (runtime) RuntimeChildCohortSettled(runtime);\n        if (closed) owner->Close();\n        DetachCompletedEnvironment(owner);\n      });\n}\n",
+    "count": 1
+  },
+  {
+    "path": "AuxDevelopmentWorkerHost.cc",
+    "old": "if (!reservation->runtime_scope) { AuxNativePtySpawnFailed(reservation.get()); return nullptr; }",
+    "new": "if (!reservation->runtime_scope) { AuxNativePtySpawnFailed(reservation.get()); return nullptr; }\n    reservation->descendant_cohort = ReserveDescendantCohort(worker, reservation, true);\n    if (!reservation->descendant_cohort) { AuxNativePtySpawnFailed(reservation.get()); return nullptr; }",
+    "count": 1
+  },
+  {
+    "path": "AuxDevelopmentWorkerHost.cc",
+    "old": "if (!reservation->runtime_scope) { AuxNativeExecSpawnFailed(reservation.get()); return nullptr; }",
+    "new": "if (!reservation->runtime_scope) { AuxNativeExecSpawnFailed(reservation.get()); return nullptr; }\n    reservation->descendant_cohort = ReserveDescendantCohort(worker, reservation, false);\n    if (!reservation->descendant_cohort) { AuxNativeExecSpawnFailed(reservation.get()); return nullptr; }",
+    "count": 1
+  },
+  {
+    "path": "AuxDevelopmentWorkerHost.cc",
+    "old": "return AuxNativeContextValidateCurrentAuthority(pending.owner->handle) == 0 &&\n      AuxAuthenticatedPtyHelperRevalidate",
+    "new": "return aux::descendants::MaySpawn(pending.reservation->descendant_cohort) &&\n      AuxNativeContextValidateCurrentAuthority(pending.owner->handle) == 0 &&\n      AuxAuthenticatedPtyHelperRevalidate",
+    "count": 1
+  },
+  {
+    "path": "AuxDevelopmentWorkerHost.cc",
+    "old": "return current_roots && SameExecRoots(*pending.roots, *current_roots) &&",
+    "new": "return aux::descendants::MaySpawn(pending.reservation->descendant_cohort) &&\n        current_roots && SameExecRoots(*pending.roots, *current_roots) &&",
+    "count": 1
+  },
+  {
+    "path": "AuxDevelopmentWorkerHost.cc",
+    "old": "RuntimeChildFailed(reservation->runtime_scope);",
+    "new": "aux::descendants::DidFailBeforeChild(reservation->descendant_cohort);\n  RuntimeChildFailed(reservation->runtime_scope);",
+    "count": 2
+  },
+  {
+    "path": "AuxDevelopmentWorkerHost.cc",
+    "old": "worker->pty_descendants_unknown = true;\n    RuntimeChildCreatedLocked",
+    "new": "++worker->pty_descendant_pending;\n    reservation->descendant_counted = true;\n    aux::descendants::DidCreate(reservation->descendant_cohort, child);\n    RuntimeChildCreatedLocked",
+    "count": 1
+  },
+  {
+    "path": "AuxDevelopmentWorkerHost.cc",
+    "old": "worker->exec_descendants_unknown = true;\n    RuntimeChildCreatedLocked",
+    "new": "++worker->exec_descendant_pending;\n    reservation->descendant_counted = true;\n    aux::descendants::DidCreate(reservation->descendant_cohort, child);\n    RuntimeChildCreatedLocked",
+    "count": 1
+  },
+  {
+    "path": "AuxDevelopmentWorkerHost.cc",
+    "old": "  // No second reaper, PID probe, JS onexit, or direct-child status can resolve\n  // descendant custody. The exact Worker+Owner remain quarantined.",
+    "new": "  aux::descendants::DidObserveOriginalReap(reservation->descendant_cohort,\n      reservation->phase == PtyPhase::settled);\n  // A direct reap alone cannot settle the retained descendant cohort.",
+    "count": 1
+  },
+  {
+    "path": "AuxDevelopmentWorkerHost.cc",
+    "old": "// Never clear descendants_unknown or release successful Owner custody.",
+    "new": "aux::descendants::DidObserveOriginalReap(reservation->descendant_cohort,\n      reservation->phase == PtyPhase::settled);",
+    "count": 1
+  },
+  {
+    "path": "AuxDevelopmentWorkerHost.cc",
+    "old": "// Direct native observation never settles descendants or releases the Owner.",
+    "new": "aux::descendants::DidObserveOriginalReap(reservation->descendant_cohort,\n      reservation->phase == PtyPhase::settled);",
+    "count": 1
+  },
+  {
+    "path": "AuxDevelopmentWorkerHost.cc",
+    "old": "AuxDevelopmentWorkerDrain AuxDevelopmentWorkerHost::CloseAndDrain() noexcept {\n  if (getpid() != state_->process) return AuxDevelopmentWorkerDrain::wrongProcess;",
+    "new": "AuxDevelopmentWorkerDrain AuxDevelopmentWorkerHost::CloseAndDrain() noexcept {\n  if (getpid() != state_->process) return AuxDevelopmentWorkerDrain::wrongProcess;\n  aux::descendants::CloseAdmission();",
+    "count": 1
+  },
+  {
+    "path": "AuxDevelopmentWorkerHost.cc",
+    "old": "  auto result = AuxDevelopmentWorkerDrain::drained;\n  if (state_->prepared_fresh_provider)",
+    "new": "  auto result = AuxDevelopmentWorkerDrain::drained;\n  const auto descendant_stream = aux::descendants::InspectStream();\n  if (descendant_stream == aux::descendants::Result::unknown ||\n      descendant_stream == aux::descendants::Result::refused)\n    result = AuxDevelopmentWorkerDrain::untracked;\n  else if (descendant_stream == aux::descendants::Result::pending)\n    result = AuxDevelopmentWorkerDrain::pending;\n  if (state_->prepared_fresh_provider)",
+    "count": 1
+  },
+  {
+    "path": "AuxRuntimeCoordination.inc",
+    "old": "  // The existing native reservation has no descendant-completion proof.\n  // Neither direct wait nor JS release may unlock this lease.\n  ++scope->unsettled_children;scope->captured.worker->runtime_scope_unknown=true;",
+    "new": "  // Admission required an actual native observer ticket before this spawn.\n  // The live cohort is pending; only an observer loss/error is unknown.\n  // Neither direct wait nor JS release may unlock this lease.\n  ++scope->unsettled_children;",
+    "count": 1
+  },
+  {
+    "path": "AuxRuntimeCoordination.inc",
+    "old": "(held->unknown||held->unsettled_children)",
+    "new": "held->unknown",
+    "count": 1
+  },
+  {
+    "path": "AuxRuntimeCoordination.inc",
+    "old": "// Reserved for a proved native cohort completion, never direct exit or JS.\n// The reservation owner must invoke exactly once after its kernel cohort is\n// settled. No selected predecessor invokes this hook; unknown remains today.",
+    "new": "// Only the reservation's native descendant observer completion invokes this\n// exactly once after its stream fence and original direct reaper have settled.\n// Direct exit and JS release never invoke it.",
+    "count": 1
+  },
+  {
+    "path": "AuxNativeDaemonMain.cc",
+    "old": "#include \"AuxNativeEndpointDelivery.h\"",
+    "new": "#include \"AuxNativeEndpointDelivery.h\"\n#include \"AuxTaskDescendantObserver.h\"",
+    "count": 1
+  },
+  {
+    "path": "AuxNativeDaemonMain.cc",
+    "old": "  if (argc != 1 || !argv || !argv[0]) return Refuse(\"arguments\", -1, 64);\n  NativeLifetime lifetime;",
+    "new": "  if (argc != 1 || !argv || !argv[0]) return Refuse(\"arguments\", -1, 64);\n  // Fixed fresh native entry: before any bootstrap/image/Node/worker/user code.\n  // No late WorkerHost attach may substitute an empty descendant inventory.\n  const int descendants = aux::descendants::InitializeAtFreshDaemonEntry();\n  if (descendants != 0) return Refuse(\"task-supervision\", descendants, 78);\n  NativeLifetime lifetime;",
+    "count": 1
+  }
+]
