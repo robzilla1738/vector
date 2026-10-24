@@ -1,0 +1,60 @@
+{
+  "format": "aux.runtime-cache-package.a4-preparation.v1",
+  "origin": {
+    "cache_package.py": {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/runtime-cache-package-a3/cache_package.py",
+      "sha256": "2cdf68130e0c095f50530db3dab696fe0585eb8d9745340f03b307ada01ec7d0",
+      "copiedByteIdentically": true
+    },
+    "bind_pair.py": {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/runtime-cache-package-a3/bind_pair.py",
+      "sha256": "cb79fa759ff13b6bec66cd924867002a031c21f8cd482303c22d5123cfdd8ba0",
+      "copiedByteIdentically": true
+    },
+    "link-tool-aliases.json": {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/runtime-cache-package-a3/link-tool-aliases.json",
+      "sha256": "75ff23f4bcbc614394587ff29afef364672c15a9de9a12b69a882c310e7abec6",
+      "copiedByteIdentically": true
+    }
+  },
+  "checks": {
+    "copiedToolsByteIdentical": true,
+    "pythonSourcesParsed": true,
+    "unchangedReviewRefsMatch": [
+      "featureTool",
+      "basePreparer",
+      "assembler",
+      "legacyPreparer",
+      "protectedRecipe",
+      "protectedPair",
+      "protectedInputs",
+      "protectedLink",
+      "sourceOverlay",
+      "guardReview",
+      "guardPatch",
+      "toolchainReview"
+    ],
+    "retainedA3PlanRunnerHostPinsMatch": true
+  },
+  "pendingInputs": [
+    "projection",
+    "browserReceipt"
+  ],
+  "actualA20BuildChecked": false,
+  "actualA2ProjectionChecked": false,
+  "actualA3LinkRevalidated": false,
+  "sourcePairCreated": false,
+  "recipePrepared": false,
+  "assembled": false,
+  "runtimeExecuted": false,
+  "testable": false,
+  "runtimeAuthorityGranted": false,
+  "files": {
+    "README.md": "db20900d5f0b99e488c43e424269d14d8229cceff8e32f612dfa9b99136d5c97",
+    "bind_pair.py": "cb79fa759ff13b6bec66cd924867002a031c21f8cd482303c22d5123cfdd8ba0",
+    "cache_package.py": "2cdf68130e0c095f50530db3dab696fe0585eb8d9745340f03b307ada01ec7d0",
+    "commands.json": "9afe254c53144c39d249642e470aa270c2b6828bab261372c7aea195468ea941",
+    "link-tool-aliases.json": "75ff23f4bcbc614394587ff29afef364672c15a9de9a12b69a882c310e7abec6",
+    "review.json": "39aef05f54d026603a99a084f122733ad4694f54f66ee4b4084148ee4acdbee7"
+  }
+}
