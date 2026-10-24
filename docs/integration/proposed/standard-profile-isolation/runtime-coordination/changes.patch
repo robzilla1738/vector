@@ -1,0 +1,154 @@
+--- a/AuxDevelopmentWorkerHost.cc
++++ b/AuxDevelopmentWorkerHost.cc
+@@ -35,6 +35,8 @@
+ #include <sys/file.h>
+ #include <time.h>
+ #include <stdio.h>
++#include <stdexcept>
++#include <sys/xattr.h>
+ #include "AuxRuntimePublicationBridge.h"
+ 
+ 
+@@ -57,6 +59,7 @@
+   Owner(uint64_t h, void* r) : handle(h), retained(r) {}
+   ~Owner() { AuxReleaseSignedDevelopmentOwner(retained); }
+ };
++struct RuntimeScope;
+ struct Worker {
+   const uint64_t generation;
+   const pid_t process;
+@@ -82,6 +85,8 @@
+   bool exec_descendants_unknown = false;
+   size_t broker_pending = 0;
+   bool broker_untracked = false;
++  size_t runtime_scope_pending = 0;
++  bool runtime_scope_unknown = false;
+   bool broker_closed = false;
+   bool terminal = false;
+   bool initializing = true;
+@@ -185,9 +190,9 @@
+       // then retain the authenticated Owner through all reservations, including
+       // reentrant close during a producer's JS property/conversion callbacks.
+       result = AuxMergeWorkerDrain(result, retirement_failure);
+-      if (pty_unknown || pty_descendants_unknown || exec_unknown || exec_descendants_unknown || broker_untracked) {
++      if (pty_unknown || pty_descendants_unknown || exec_unknown || exec_descendants_unknown || broker_untracked || runtime_scope_unknown) {
+         result = AuxMergeWorkerDrain(result, AuxDevelopmentWorkerDrain::untracked);
+-      } else if ((pty_pending || pty_direct || exec_pending || exec_direct || broker_pending) && result == AuxDevelopmentWorkerDrain::drained) {
++      } else if ((pty_pending || pty_direct || exec_pending || exec_direct || broker_pending || runtime_scope_pending) && result == AuxDevelopmentWorkerDrain::drained) {
+         result = AuxDevelopmentWorkerDrain::pending;
+       }
+       if (result == AuxDevelopmentWorkerDrain::drained) {
+@@ -211,6 +216,7 @@
+ };
+ enum class PtyPhase { pending, direct, unknown, settled, failed };
+ struct PtyReservation {
++  std::shared_ptr<RuntimeScope> runtime_scope;
+   std::shared_ptr<Worker> worker;
+   std::shared_ptr<Owner> owner;
+   std::shared_ptr<PtyHelper> helper; // released after native creation or proven failure
+@@ -229,6 +235,7 @@
+   ~ExecBrowserRoots() { for (int fd : fds) if (fd >= 0) close(fd); }
+ };
+ struct ExecReservation {
++  std::shared_ptr<RuntimeScope> runtime_scope;
+   // Registry.retained owns every pending/successful/unknown Worker. A failed
+   // inert token must not retain drained Worker/PDF/utility state forever.
+   // Assigned only before registry publication; every read locks locally.
+@@ -276,7 +283,7 @@
+         entry->second->generation == worker->generation) Registry().active.erase(entry);
+     worker->environment_detached = true;
+   }
+-  if (worker->retirement_failure == AuxDevelopmentWorkerDrain::drained && !worker->owner && !worker->initializing && !worker->pdf_close_unresolved && !worker->utility_close_unresolved && !worker->pty_pending && !worker->pty_direct && !worker->pty_unknown && !worker->pty_descendants_unknown && !worker->exec_pending && !worker->exec_direct && !worker->exec_unknown && !worker->exec_descendants_unknown && !worker->broker_pending && !worker->broker_untracked) Registry().retained.erase(worker->generation);
++  if (worker->retirement_failure == AuxDevelopmentWorkerDrain::drained && !worker->owner && !worker->initializing && !worker->pdf_close_unresolved && !worker->utility_close_unresolved && !worker->pty_pending && !worker->pty_direct && !worker->pty_unknown && !worker->pty_descendants_unknown && !worker->exec_pending && !worker->exec_direct && !worker->exec_unknown && !worker->exec_descendants_unknown && !worker->broker_pending && !worker->broker_untracked && !worker->runtime_scope_pending && !worker->runtime_scope_unknown) Registry().retained.erase(worker->generation);
+ }
+ std::shared_ptr<PtyReservation> LookupPty(void* token) noexcept {
+   if (getpid() != kHostProcess) return nullptr;
+@@ -335,6 +342,7 @@
+ #include "AuxRuntimeCacheAsync.inc"
+ #include "AuxRuntimePublication.inc"
+ #include "AuxRuntimePublicationNapi.inc"
++#include "AuxRuntimeCoordination.inc"
+ napi_value CaptureExecPrivateParent(napi_env env, napi_callback_info info) {
+   if (getpid() != kHostProcess) return nullptr;
+   auto refuse = [env]() -> napi_value {
+@@ -477,6 +485,8 @@
+       if (bound) reservation->helper = helper;
+     }
+     if (!bound) { AuxNativePtySpawnFailed(reservation.get()); return nullptr; }
++    reservation->runtime_scope = ReserveRuntimeChild(worker, owner);
++    if (!reservation->runtime_scope) { AuxNativePtySpawnFailed(reservation.get()); return nullptr; }
+     return reservation.get();
+   } catch (...) {
+     // Only Begin can allocate, before any child exists. An inserted pending
+@@ -563,6 +573,8 @@
+     // Keep Worker pointer stable in the tombstone for racing API lookups;
+     // release only the duplicate Owner retain outside the worker lock.
+   }
++  RuntimeChildFailed(reservation->runtime_scope);
++  reservation->runtime_scope.reset();
+   // Close never releases ownership while the pending count is nonzero. Revisit
+   // its actual owner after the failed creation unwinds, without faking drain.
+   if (closed) worker->Close();
+@@ -581,6 +593,7 @@
+         reservation->phase != PtyPhase::pending) return;
+     --worker->pty_pending;
+     worker->pty_descendants_unknown = true;
++    RuntimeChildCreatedLocked(reservation->runtime_scope);
+     // Success is recorded before releasing helper-validation descriptors. There
+     // is no post-spawn validation that could reinterpret an actual child as failure.
+     released_helper = std::move(reservation->helper);
+@@ -725,6 +738,8 @@
+     auto pending = CapturePendingExec(reservation.get());
+     if (!pending.owner || AuxNativeContextValidateCurrentAuthority(pending.owner->handle) != 0 ||
+         !StillPendingExec(pending)) { AuxNativeExecSpawnFailed(reservation.get()); return nullptr; }
++    reservation->runtime_scope = ReserveRuntimeChild(worker, reservation->owner);
++    if (!reservation->runtime_scope) { AuxNativeExecSpawnFailed(reservation.get()); return nullptr; }
+     return reservation.get();
+   } catch (...) {
+     if (reservation) AuxNativeExecSpawnFailed(reservation.get());
+@@ -807,6 +822,8 @@
+     released_roots = std::move(reservation->roots);
+     closed = worker->terminal;
+   }
++  RuntimeChildFailed(reservation->runtime_scope);
++  reservation->runtime_scope.reset();
+   if (closed) worker->Close();
+   DetachCompletedEnvironment(worker);
+ }
+@@ -822,6 +839,7 @@
+     if (!pthread_equal(pthread_self(), worker->thread) || reservation->phase != PtyPhase::pending) return;
+     --worker->exec_pending;
+     worker->exec_descendants_unknown = true;
++    RuntimeChildCreatedLocked(reservation->runtime_scope);
+     released_roots = std::move(reservation->roots);
+     if (child <= 0 || child > std::numeric_limits<pid_t>::max()) {
+       reservation->phase = PtyPhase::unknown;
+@@ -986,6 +1004,8 @@
+       {"captureStorageRoots",nullptr,CaptureStorageRoots,nullptr,nullptr,nullptr,napi_default,nullptr},
+       {"inspectRuntimeCache",nullptr,InspectRuntimeCache,nullptr,nullptr,nullptr,napi_default,nullptr},
+       {"seedBundledRuntime",nullptr,SeedBundledRuntime,nullptr,nullptr,nullptr,napi_default,nullptr},
++      {"acquireRuntimeMutation",nullptr,AcquireRuntimeMutation,nullptr,nullptr,nullptr,napi_default,nullptr},
++      {"acquireRuntimeUse",nullptr,AcquireRuntimeUse,nullptr,nullptr,nullptr,napi_default,nullptr},
+       {"assertBrokerOwner",nullptr,AssertBrokerOwner,nullptr,nullptr,nullptr,napi_default,nullptr},
+       {"withBrokerSync",nullptr,WithBrokerSync,nullptr,nullptr,nullptr,napi_default,nullptr},
+       {"withBrokerAwaited",nullptr,WithBrokerAwaited,nullptr,nullptr,nullptr,napi_default,nullptr},
+--- a/AuxRuntimePublication.inc
++++ b/AuxRuntimePublication.inc
+@@ -38,7 +38,7 @@
+     if (admission_locked) flock(task.fd, LOCK_UN);
+   }
+   bool Acquire(int authenticated_task, const std::function<bool()>& current,
+-               Mode requested = Mode::kExclusiveMutation) {
++               Mode requested = Mode::kExclusiveMutation, unsigned maximum_attempts = 3000) {
+     mode = requested;
+     task.fd = openat(authenticated_task, ".", aux_runtime_cache::kRead | O_DIRECTORY);
+     struct stat original{};
+@@ -49,7 +49,7 @@
+     auto lock = [&](int fd, int operation) {
+       // Waiting remains native pending work. Admission closure cancels waiting;
+       // neither timeout nor cancellation releases another holder's native job.
+-      for (unsigned attempt = 0; attempt < 3000 && current(); ++attempt) {
++      for (unsigned attempt = 0; attempt < maximum_attempts && current(); ++attempt) {
+         if (!flock(fd, operation | LOCK_NB)) return true;
+         if (errno != EWOULDBLOCK && errno != EAGAIN && errno != EINTR) return false;
+         struct timespec delay{0, 10000000}; nanosleep(&delay, nullptr);

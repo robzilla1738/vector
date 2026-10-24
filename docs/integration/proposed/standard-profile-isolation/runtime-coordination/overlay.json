@@ -1,0 +1,153 @@
+{
+  "format": "aux.runtime-coordination.overlay.v1",
+  "predecessorCommit": "c43844547",
+  "nativeFiles": [
+    {
+      "path": "AuxDevelopmentWorkerHost.cc",
+      "predecessor": "docs/integration/proposed/standard-profile-isolation/runtime-publication/source/AuxDevelopmentWorkerHost.cc",
+      "baseline": "baseline/AuxDevelopmentWorkerHost.cc",
+      "source": "source/AuxDevelopmentWorkerHost.cc",
+      "beforeSha256": "080fc7d251f36469e445665d89621c426e1822d0188584d89ab187e3f9936797",
+      "afterSha256": "79dc88683e91ec24b80009021ccf120c35321da98d8d01cee9b01bc2057e81c1",
+      "changes": [
+        {
+          "find": "#include <sys/file.h>\n#include <time.h>\n#include <stdio.h>\n#include \"AuxRuntimePublicationBridge.h\"\n\n\n",
+          "replace": "#include <sys/file.h>\n#include <time.h>\n#include <stdio.h>\n#include <stdexcept>\n#include <sys/xattr.h>\n#include \"AuxRuntimePublicationBridge.h\"\n\n\n",
+          "count": 1
+        },
+        {
+          "find": "  Owner(uint64_t h, void* r) : handle(h), retained(r) {}\n  ~Owner() { AuxReleaseSignedDevelopmentOwner(retained); }\n};\nstruct Worker {\n  const uint64_t generation;\n  const pid_t process;\n",
+          "replace": "  Owner(uint64_t h, void* r) : handle(h), retained(r) {}\n  ~Owner() { AuxReleaseSignedDevelopmentOwner(retained); }\n};\nstruct RuntimeScope;\nstruct Worker {\n  const uint64_t generation;\n  const pid_t process;\n",
+          "count": 1
+        },
+        {
+          "find": "  bool exec_descendants_unknown = false;\n  size_t broker_pending = 0;\n  bool broker_untracked = false;\n  bool broker_closed = false;\n  bool terminal = false;\n  bool initializing = true;\n",
+          "replace": "  bool exec_descendants_unknown = false;\n  size_t broker_pending = 0;\n  bool broker_untracked = false;\n  size_t runtime_scope_pending = 0;\n  bool runtime_scope_unknown = false;\n  bool broker_closed = false;\n  bool terminal = false;\n  bool initializing = true;\n",
+          "count": 1
+        },
+        {
+          "find": "      // then retain the authenticated Owner through all reservations, including\n      // reentrant close during a producer's JS property/conversion callbacks.\n      result = AuxMergeWorkerDrain(result, retirement_failure);\n      if (pty_unknown || pty_descendants_unknown || exec_unknown || exec_descendants_unknown || broker_untracked) {\n        result = AuxMergeWorkerDrain(result, AuxDevelopmentWorkerDrain::untracked);\n      } else if ((pty_pending || pty_direct || exec_pending || exec_direct || broker_pending) && result == AuxDevelopmentWorkerDrain::drained) {\n        result = AuxDevelopmentWorkerDrain::pending;\n      }\n      if (result == AuxDevelopmentWorkerDrain::drained) {\n",
+          "replace": "      // then retain the authenticated Owner through all reservations, including\n      // reentrant close during a producer's JS property/conversion callbacks.\n      result = AuxMergeWorkerDrain(result, retirement_failure);\n      if (pty_unknown || pty_descendants_unknown || exec_unknown || exec_descendants_unknown || broker_untracked || runtime_scope_unknown) {\n        result = AuxMergeWorkerDrain(result, AuxDevelopmentWorkerDrain::untracked);\n      } else if ((pty_pending || pty_direct || exec_pending || exec_direct || broker_pending || runtime_scope_pending) && result == AuxDevelopmentWorkerDrain::drained) {\n        result = AuxDevelopmentWorkerDrain::pending;\n      }\n      if (result == AuxDevelopmentWorkerDrain::drained) {\n",
+          "count": 1
+        },
+        {
+          "find": "};\nenum class PtyPhase { pending, direct, unknown, settled, failed };\nstruct PtyReservation {\n  std::shared_ptr<Worker> worker;\n  std::shared_ptr<Owner> owner;\n  std::shared_ptr<PtyHelper> helper; // released after native creation or proven failure\n",
+          "replace": "};\nenum class PtyPhase { pending, direct, unknown, settled, failed };\nstruct PtyReservation {\n  std::shared_ptr<RuntimeScope> runtime_scope;\n  std::shared_ptr<Worker> worker;\n  std::shared_ptr<Owner> owner;\n  std::shared_ptr<PtyHelper> helper; // released after native creation or proven failure\n",
+          "count": 1
+        },
+        {
+          "find": "  ~ExecBrowserRoots() { for (int fd : fds) if (fd >= 0) close(fd); }\n};\nstruct ExecReservation {\n  // Registry.retained owns every pending/successful/unknown Worker. A failed\n  // inert token must not retain drained Worker/PDF/utility state forever.\n  // Assigned only before registry publication; every read locks locally.\n",
+          "replace": "  ~ExecBrowserRoots() { for (int fd : fds) if (fd >= 0) close(fd); }\n};\nstruct ExecReservation {\n  std::shared_ptr<RuntimeScope> runtime_scope;\n  // Registry.retained owns every pending/successful/unknown Worker. A failed\n  // inert token must not retain drained Worker/PDF/utility state forever.\n  // Assigned only before registry publication; every read locks locally.\n",
+          "count": 1
+        },
+        {
+          "find": "        entry->second->generation == worker->generation) Registry().active.erase(entry);\n    worker->environment_detached = true;\n  }\n  if (worker->retirement_failure == AuxDevelopmentWorkerDrain::drained && !worker->owner && !worker->initializing && !worker->pdf_close_unresolved && !worker->utility_close_unresolved && !worker->pty_pending && !worker->pty_direct && !worker->pty_unknown && !worker->pty_descendants_unknown && !worker->exec_pending && !worker->exec_direct && !worker->exec_unknown && !worker->exec_descendants_unknown && !worker->broker_pending && !worker->broker_untracked) Registry().retained.erase(worker->generation);\n}\nstd::shared_ptr<PtyReservation> LookupPty(void* token) noexcept {\n  if (getpid() != kHostProcess) return nullptr;\n",
+          "replace": "        entry->second->generation == worker->generation) Registry().active.erase(entry);\n    worker->environment_detached = true;\n  }\n  if (worker->retirement_failure == AuxDevelopmentWorkerDrain::drained && !worker->owner && !worker->initializing && !worker->pdf_close_unresolved && !worker->utility_close_unresolved && !worker->pty_pending && !worker->pty_direct && !worker->pty_unknown && !worker->pty_descendants_unknown && !worker->exec_pending && !worker->exec_direct && !worker->exec_unknown && !worker->exec_descendants_unknown && !worker->broker_pending && !worker->broker_untracked && !worker->runtime_scope_pending && !worker->runtime_scope_unknown) Registry().retained.erase(worker->generation);\n}\nstd::shared_ptr<PtyReservation> LookupPty(void* token) noexcept {\n  if (getpid() != kHostProcess) return nullptr;\n",
+          "count": 1
+        },
+        {
+          "find": "#include \"AuxRuntimeCacheAsync.inc\"\n#include \"AuxRuntimePublication.inc\"\n#include \"AuxRuntimePublicationNapi.inc\"\nnapi_value CaptureExecPrivateParent(napi_env env, napi_callback_info info) {\n  if (getpid() != kHostProcess) return nullptr;\n  auto refuse = [env]() -> napi_value {\n",
+          "replace": "#include \"AuxRuntimeCacheAsync.inc\"\n#include \"AuxRuntimePublication.inc\"\n#include \"AuxRuntimePublicationNapi.inc\"\n#include \"AuxRuntimeCoordination.inc\"\nnapi_value CaptureExecPrivateParent(napi_env env, napi_callback_info info) {\n  if (getpid() != kHostProcess) return nullptr;\n  auto refuse = [env]() -> napi_value {\n",
+          "count": 1
+        },
+        {
+          "find": "      if (bound) reservation->helper = helper;\n    }\n    if (!bound) { AuxNativePtySpawnFailed(reservation.get()); return nullptr; }\n    return reservation.get();\n  } catch (...) {\n    // Only Begin can allocate, before any child exists. An inserted pending\n",
+          "replace": "      if (bound) reservation->helper = helper;\n    }\n    if (!bound) { AuxNativePtySpawnFailed(reservation.get()); return nullptr; }\n    reservation->runtime_scope = ReserveRuntimeChild(worker, owner);\n    if (!reservation->runtime_scope) { AuxNativePtySpawnFailed(reservation.get()); return nullptr; }\n    return reservation.get();\n  } catch (...) {\n    // Only Begin can allocate, before any child exists. An inserted pending\n",
+          "count": 1
+        },
+        {
+          "find": "    // Keep Worker pointer stable in the tombstone for racing API lookups;\n    // release only the duplicate Owner retain outside the worker lock.\n  }\n  // Close never releases ownership while the pending count is nonzero. Revisit\n  // its actual owner after the failed creation unwinds, without faking drain.\n  if (closed) worker->Close();\n",
+          "replace": "    // Keep Worker pointer stable in the tombstone for racing API lookups;\n    // release only the duplicate Owner retain outside the worker lock.\n  }\n  RuntimeChildFailed(reservation->runtime_scope);\n  reservation->runtime_scope.reset();\n  // Close never releases ownership while the pending count is nonzero. Revisit\n  // its actual owner after the failed creation unwinds, without faking drain.\n  if (closed) worker->Close();\n",
+          "count": 1
+        },
+        {
+          "find": "        reservation->phase != PtyPhase::pending) return;\n    --worker->pty_pending;\n    worker->pty_descendants_unknown = true;\n    // Success is recorded before releasing helper-validation descriptors. There\n    // is no post-spawn validation that could reinterpret an actual child as failure.\n    released_helper = std::move(reservation->helper);\n",
+          "replace": "        reservation->phase != PtyPhase::pending) return;\n    --worker->pty_pending;\n    worker->pty_descendants_unknown = true;\n    RuntimeChildCreatedLocked(reservation->runtime_scope);\n    // Success is recorded before releasing helper-validation descriptors. There\n    // is no post-spawn validation that could reinterpret an actual child as failure.\n    released_helper = std::move(reservation->helper);\n",
+          "count": 1
+        },
+        {
+          "find": "    auto pending = CapturePendingExec(reservation.get());\n    if (!pending.owner || AuxNativeContextValidateCurrentAuthority(pending.owner->handle) != 0 ||\n        !StillPendingExec(pending)) { AuxNativeExecSpawnFailed(reservation.get()); return nullptr; }\n    return reservation.get();\n  } catch (...) {\n    if (reservation) AuxNativeExecSpawnFailed(reservation.get());\n",
+          "replace": "    auto pending = CapturePendingExec(reservation.get());\n    if (!pending.owner || AuxNativeContextValidateCurrentAuthority(pending.owner->handle) != 0 ||\n        !StillPendingExec(pending)) { AuxNativeExecSpawnFailed(reservation.get()); return nullptr; }\n    reservation->runtime_scope = ReserveRuntimeChild(worker, reservation->owner);\n    if (!reservation->runtime_scope) { AuxNativeExecSpawnFailed(reservation.get()); return nullptr; }\n    return reservation.get();\n  } catch (...) {\n    if (reservation) AuxNativeExecSpawnFailed(reservation.get());\n",
+          "count": 1
+        },
+        {
+          "find": "    released_roots = std::move(reservation->roots);\n    closed = worker->terminal;\n  }\n  if (closed) worker->Close();\n  DetachCompletedEnvironment(worker);\n}\n",
+          "replace": "    released_roots = std::move(reservation->roots);\n    closed = worker->terminal;\n  }\n  RuntimeChildFailed(reservation->runtime_scope);\n  reservation->runtime_scope.reset();\n  if (closed) worker->Close();\n  DetachCompletedEnvironment(worker);\n}\n",
+          "count": 1
+        },
+        {
+          "find": "    if (!pthread_equal(pthread_self(), worker->thread) || reservation->phase != PtyPhase::pending) return;\n    --worker->exec_pending;\n    worker->exec_descendants_unknown = true;\n    released_roots = std::move(reservation->roots);\n    if (child <= 0 || child > std::numeric_limits<pid_t>::max()) {\n      reservation->phase = PtyPhase::unknown;\n",
+          "replace": "    if (!pthread_equal(pthread_self(), worker->thread) || reservation->phase != PtyPhase::pending) return;\n    --worker->exec_pending;\n    worker->exec_descendants_unknown = true;\n    RuntimeChildCreatedLocked(reservation->runtime_scope);\n    released_roots = std::move(reservation->roots);\n    if (child <= 0 || child > std::numeric_limits<pid_t>::max()) {\n      reservation->phase = PtyPhase::unknown;\n",
+          "count": 1
+        },
+        {
+          "find": "      {\"captureStorageRoots\",nullptr,CaptureStorageRoots,nullptr,nullptr,nullptr,napi_default,nullptr},\n      {\"inspectRuntimeCache\",nullptr,InspectRuntimeCache,nullptr,nullptr,nullptr,napi_default,nullptr},\n      {\"seedBundledRuntime\",nullptr,SeedBundledRuntime,nullptr,nullptr,nullptr,napi_default,nullptr},\n      {\"assertBrokerOwner\",nullptr,AssertBrokerOwner,nullptr,nullptr,nullptr,napi_default,nullptr},\n      {\"withBrokerSync\",nullptr,WithBrokerSync,nullptr,nullptr,nullptr,napi_default,nullptr},\n      {\"withBrokerAwaited\",nullptr,WithBrokerAwaited,nullptr,nullptr,nullptr,napi_default,nullptr},\n",
+          "replace": "      {\"captureStorageRoots\",nullptr,CaptureStorageRoots,nullptr,nullptr,nullptr,napi_default,nullptr},\n      {\"inspectRuntimeCache\",nullptr,InspectRuntimeCache,nullptr,nullptr,nullptr,napi_default,nullptr},\n      {\"seedBundledRuntime\",nullptr,SeedBundledRuntime,nullptr,nullptr,nullptr,napi_default,nullptr},\n      {\"acquireRuntimeMutation\",nullptr,AcquireRuntimeMutation,nullptr,nullptr,nullptr,napi_default,nullptr},\n      {\"acquireRuntimeUse\",nullptr,AcquireRuntimeUse,nullptr,nullptr,nullptr,napi_default,nullptr},\n      {\"assertBrokerOwner\",nullptr,AssertBrokerOwner,nullptr,nullptr,nullptr,napi_default,nullptr},\n      {\"withBrokerSync\",nullptr,WithBrokerSync,nullptr,nullptr,nullptr,napi_default,nullptr},\n      {\"withBrokerAwaited\",nullptr,WithBrokerAwaited,nullptr,nullptr,nullptr,napi_default,nullptr},\n",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "AuxRuntimePublication.inc",
+      "predecessor": "docs/integration/proposed/standard-profile-isolation/runtime-publication/source/AuxRuntimePublication.inc",
+      "baseline": "baseline/AuxRuntimePublication.inc",
+      "source": "source/AuxRuntimePublication.inc",
+      "beforeSha256": "4cecd5bee1eb6c88894c0710053b3c46a17ed9249196a7084380f44e6a5c69c9",
+      "afterSha256": "4e0dfe94fec7763adbb454bf7d4dd01c50e3095ab242108d784b0f7bbf5f8fa9",
+      "changes": [
+        {
+          "find": "    if (admission_locked) flock(task.fd, LOCK_UN);\n  }\n  bool Acquire(int authenticated_task, const std::function<bool()>& current,\n               Mode requested = Mode::kExclusiveMutation) {\n    mode = requested;\n    task.fd = openat(authenticated_task, \".\", aux_runtime_cache::kRead | O_DIRECTORY);\n    struct stat original{};\n",
+          "replace": "    if (admission_locked) flock(task.fd, LOCK_UN);\n  }\n  bool Acquire(int authenticated_task, const std::function<bool()>& current,\n               Mode requested = Mode::kExclusiveMutation, unsigned maximum_attempts = 3000) {\n    mode = requested;\n    task.fd = openat(authenticated_task, \".\", aux_runtime_cache::kRead | O_DIRECTORY);\n    struct stat original{};\n",
+          "count": 1
+        },
+        {
+          "find": "    auto lock = [&](int fd, int operation) {\n      // Waiting remains native pending work. Admission closure cancels waiting;\n      // neither timeout nor cancellation releases another holder's native job.\n      for (unsigned attempt = 0; attempt < 3000 && current(); ++attempt) {\n        if (!flock(fd, operation | LOCK_NB)) return true;\n        if (errno != EWOULDBLOCK && errno != EAGAIN && errno != EINTR) return false;\n        struct timespec delay{0, 10000000}; nanosleep(&delay, nullptr);\n",
+          "replace": "    auto lock = [&](int fd, int operation) {\n      // Waiting remains native pending work. Admission closure cancels waiting;\n      // neither timeout nor cancellation releases another holder's native job.\n      for (unsigned attempt = 0; attempt < maximum_attempts && current(); ++attempt) {\n        if (!flock(fd, operation | LOCK_NB)) return true;\n        if (errno != EWOULDBLOCK && errno != EAGAIN && errno != EINTR) return false;\n        struct timespec delay{0, 10000000}; nanosleep(&delay, nullptr);\n",
+          "count": 1
+        }
+      ]
+    }
+  ],
+  "newFiles": [
+    {
+      "path": "source/AuxRuntimeCoordination.inc",
+      "sha256": "b552a17a6046932e37fd863526f82abe5c0602da1a33b7f5ae1f00b83399f812"
+    },
+    {
+      "path": "source/runtime-coordination.js",
+      "sha256": "ebb1953b4958d757d50ab276804455e678f4b172a5233f802a717b712a757649"
+    },
+    {
+      "path": "transform.mjs",
+      "sha256": "10001237d16c1a276a21c708763471ad446db4a39600687a8fe015c5519a5900"
+    },
+    {
+      "path": "anchors.json",
+      "sha256": "da7660b0325aafb47d78619b5ced1ec5a1ea48ea7ff467e2ff5cd1f1702f3886"
+    },
+    {
+      "path": "check.mjs",
+      "sha256": "53bc773935602751e5190050375dddbf4a860b8c990d1a023c54b13d8d4eba6b"
+    }
+  ],
+  "daemonInputs": [
+    {
+      "name": "index.mjs",
+      "inputSha256": "2b1db7cebd8a7296b871dafdc4eb63955bbc13b4cee133c3c809c82b465ca02c",
+      "outputSha256": "dd6f31de1eebeea1e944eca2b2ad1badc1c0f0dce4f62882d7c5490e36adc592",
+      "anchors": 15
+    },
+    {
+      "name": "aux-native-entry.mjs",
+      "inputSha256": "cd7c8bb549b1187245ad3d6b308f9fd34512f3b7df0a45033126241161876438",
+      "outputSha256": "8e4ac101629ddde82cfc0d07455767a1b80b3ceb3d97112b20b52a71bb339d19",
+      "anchors": 15
+    }
+  ],
+  "patchSha256": "1e1714fce14eb1f98a85de8dcf72489d9a4e6c37addd964b4b9a2bf94191fbba",
+  "nativeCompiled": false,
+  "nativeIntegrated": false,
+  "descendantSettlementAvailable": false,
+  "auxReleasePolicyProvisioned": false,
+  "runtimeAccepted": false
+}

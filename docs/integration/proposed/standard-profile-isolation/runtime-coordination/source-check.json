@@ -1,0 +1,24 @@
+{
+  "format": "aux.runtime-coordination.source-check.v1",
+  "records": [
+    {
+      "name": "index.mjs",
+      "inputSha256": "2b1db7cebd8a7296b871dafdc4eb63955bbc13b4cee133c3c809c82b465ca02c",
+      "outputSha256": "dd6f31de1eebeea1e944eca2b2ad1badc1c0f0dce4f62882d7c5490e36adc592",
+      "anchors": 15
+    },
+    {
+      "name": "aux-native-entry.mjs",
+      "inputSha256": "cd7c8bb549b1187245ad3d6b308f9fd34512f3b7df0a45033126241161876438",
+      "outputSha256": "8e4ac101629ddde82cfc0d07455767a1b80b3ceb3d97112b20b52a71bb339d19",
+      "anchors": 15
+    }
+  ],
+  "sourceReplay": true,
+  "syntax": true,
+  "syntheticScopeChecks": 3,
+  "nativeCompiled": false,
+  "nativeIntegrated": false,
+  "runtimeAccepted": false,
+  "descendantSettlementAvailable": false
+}
