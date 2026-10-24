@@ -1,0 +1,142 @@
+--- a/vendor/provided/aux-browser-feature-settings.mjs
++++ b/vendor/provided/aux-browser-feature-settings.mjs
+@@ -7,13 +7,25 @@
+ export function createAuxFeatureSettingsSession(api, kind, onState, onError) {
+   let live=true, busy=false, state=null, owner=null;
+   const cleanup=kind==='cleanup';
++  const validScope=(ids,spaces,enabled)=>{
++    if(ids===undefined||ids===null)return true; // Legacy/all-Space policy.
++    if(!Array.isArray(ids)||ids.length>1024||(enabled&&!ids.length)||
++      !Array.isArray(spaces)||new Set(ids).size!==ids.length)return false;
++    const available=new Set(spaces.map(space=>space.id));
++    return ids.every(id=>typeof id==='string'&&available.has(id));
++  };
++  const validSpaces=spaces=>spaces===undefined||(Array.isArray(spaces)&&spaces.length<=1024&&
++    new Set(spaces.map(space=>space?.id)).size===spaces.length&&spaces.every(space=>
++      typeof space?.id==='string'&&/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(space.id)&&
++      typeof space.name==='string'&&space.name.length>0));
+   const read=async()=>{
+     const next=await (cleanup?api.getOrganizationSettings():api.getFramePresentation());
+     if(!next?.success) throw Error(next?.error||'Settings are unavailable.');
+     if(cleanup) {
+       if(typeof next.ownerGeneration!=='string'||!next.ownerGeneration||typeof next.revision!=='string'||!next.revision||
+         typeof next.cleanup?.enabled!=='boolean'||!Number.isInteger(next.cleanup?.inactivityDays)||
+-        next.cleanup.inactivityDays<1||next.cleanup.inactivityDays>3650) throw Error('Invalid tab cleanup settings.');
++        next.cleanup.inactivityDays<1||next.cleanup.inactivityDays>3650||!validSpaces(next.spaces)||
++        !validScope(next.cleanup.spaceIds,next.spaces,next.cleanup.enabled)) throw Error('Invalid tab cleanup settings.');
+       if(owner!==null&&owner!==next.ownerGeneration) throw Error('Profile changed. Reopen settings before making changes.');
+       owner=next.ownerGeneration;
+     } else if(['sidebarNavigation','minimal','peekLinks'].some(key=>typeof next[key]!=='boolean')) {
+@@ -33,9 +45,11 @@
+       try{
+         let request;
+         if(cleanup){
+-          if(Object.keys(patch).some(key=>!['enabled','inactivityDays'].includes(key))||
++          if(Object.keys(patch).some(key=>!['enabled','inactivityDays','spaceIds'].includes(key))||
+             typeof patch.enabled!=='boolean'||!Number.isInteger(patch.inactivityDays)||
+             patch.inactivityDays<1||patch.inactivityDays>3650)throw Error('Choose a whole number of days from 1 to 3650.');
++          const scope=Object.hasOwn(patch,'spaceIds')?patch.spaceIds:state.cleanup.spaceIds;
++          if(!validScope(scope,state.spaces,patch.enabled))throw Error('Select at least one available Space, or choose all Spaces.');
+           request={ownerGeneration:state.ownerGeneration,expectedRevision:state.revision,...patch};
+         }else{
+           if(!Object.keys(patch).length||Object.entries(patch).some(([key,value])=>
+@@ -87,20 +101,24 @@
+ }
+ function AuxCleanupDialog({onClose}) {
+   const el=at.createElement,[state,setState]=at.useState(null),[enabled,setEnabled]=at.useState(false),
+-    [days,setDays]=at.useState('30'),[busy,setBusy]=at.useState(false),[error,setError]=at.useState(''),[saved,setSaved]=at.useState(false);
++    [days,setDays]=at.useState('30'),[spaceIds,setSpaceIds]=at.useState(null),[busy,setBusy]=at.useState(false),[error,setError]=at.useState(''),[saved,setSaved]=at.useState(false);
+   const session=at.useRef(null),alive=at.useRef(false),initialized=at.useRef(false);
+   at.useEffect(()=>{
+     alive.current=true;
+     const client=createAuxFeatureSettingsSession(chrome.auxBrowserPreferences,'cleanup',value=>{
+-      setState(value);if(!initialized.current){initialized.current=true;setEnabled(value.cleanup.enabled);setDays(String(value.cleanup.inactivityDays));}
++      setState(value);if(!initialized.current){initialized.current=true;setEnabled(value.cleanup.enabled);setDays(String(value.cleanup.inactivityDays));setSpaceIds(value.cleanup.spaceIds??null);}
+     },setError);session.current=client;client.load().catch(()=>{});
+     return()=>{alive.current=false;client.close();session.current=null};
+   },[]);
+-  const number=Number(days),valid=/^\d+$/.test(days)&&Number.isInteger(number)&&number>=1&&number<=3650;
+-  const dirty=state&&(enabled!==state.cleanup.enabled||number!==state.cleanup.inactivityDays);
++  const number=Number(days),validDays=/^\d+$/.test(days)&&Number.isInteger(number)&&number>=1&&number<=3650;
++  const spaces=[...(state?.spaces??[])].sort((a,b)=>(a.order??0)-(b.order??0)||a.id.localeCompare(b.id));
++  const validScope=spaceIds===null||((!enabled||spaceIds.length>0)&&spaceIds.every(id=>spaces.some(space=>space.id===id)));
++  const canonicalScope=ids=>ids===null?'all':JSON.stringify([...ids].sort());
++  const dirty=state&&(enabled!==state.cleanup.enabled||number!==state.cleanup.inactivityDays||
++    canonicalScope(spaceIds)!==canonicalScope(state.cleanup.spaceIds??null));
+   const save=async()=>{
+     setBusy(true);setError('');setSaved(false);
+-    try{await session.current.save({enabled,inactivityDays:number});if(alive.current)setSaved(true)}catch{}
++    try{await session.current.save({enabled,inactivityDays:number,spaceIds});if(alive.current)setSaved(true)}catch{}
+     finally{if(alive.current)setBusy(false)}
+   };
+   return el(Ec,{open:true,onOpenChange:open=>{if(!open&&!busy)onClose()}},
+@@ -115,10 +133,17 @@
+             el('input',{type:'number',min:1,max:3650,step:1,value:days,disabled:busy,
+               className:'bg-surface-primary border-border rounded-lg border px-3 py-2',
+               onChange:event=>{setDays(event.target.value);setSaved(false)}})),
+-          !valid&&el('p',{role:'alert',className:'text-sm text-red-500'},'Enter a whole number from 1 to 3650.'),
++          !validDays&&el('p',{role:'alert',className:'text-sm text-red-500'},'Enter a whole number from 1 to 3650.'),
++          el(Bt,null,el(qt,{title:'All Spaces',description:'Include current and future Spaces in this profile.'}),
++            el(pn,null,el(Ds,{'aria-label':'Clean up all Spaces',checked:spaceIds===null,disabled:busy||!state.spaces,
++              onCheckedChange:value=>{setSpaceIds(value?null:spaces.map(space=>space.id));setSaved(false)}}))),
++          spaceIds!==null&&spaces.map(space=>el(Bt,{key:space.id},el(qt,{title:space.name}),
++            el(pn,null,el(Ds,{'aria-label':`Clean up ${space.name}`,checked:spaceIds.includes(space.id),disabled:busy,
++              onCheckedChange:value=>{setSpaceIds(ids=>value?[...ids,space.id]:ids.filter(id=>id!==space.id));setSaved(false)}})))),
++          !validScope&&el('p',{role:'alert',className:'text-sm text-red-500'},'Select at least one available Space, or choose all Spaces.'),
+           saved&&el('p',{role:'status',className:'text-muted-foreground text-sm'},'Saved.')),
+       el(po,null,el(yt,{variant:'secondary',disabled:busy,onClick:onClose},'Close'),
+-        el(yt,{disabled:busy||!dirty||!valid,onClick:save},busy?'Saving…':'Save'))));
++        el(yt,{disabled:busy||!dirty||!validDays||!validScope,onClick:save},busy?'Saving…':'Save'))));
+ }
+ 
+ export function transformAuxBrowserFeatureSettings({relative,text}) {
+--- a/vendor/provided/aux-browser-feature-settings.test.mjs
++++ b/vendor/provided/aux-browser-feature-settings.test.mjs
+@@ -71,3 +71,47 @@
+   const cleanup=createAuxFeatureSettingsSession({getOrganizationSettings:async()=>state(),setOrganizationCleanupPolicy:()=>assert.fail('invalid native write')},'cleanup',()=>{},()=>{});
+   await cleanup.load();for(const inactivityDays of [0,3651,1.5,NaN,'30'])await assert.rejects(cleanup.save({enabled:true,inactivityDays}),/whole number/);
+ });
++
++
++test('cleanup scope uses native Space IDs, refuses invalid selections and preserves older caller scope',async()=>{
++  const main='00000000-0000-4000-8000-000000000001',work='00000000-0000-4000-8000-000000000002';
++  const spaces=[{id:main,name:'Personal',order:0},{id:work,name:'Work',order:1}];
++  let current={...state(),spaces,cleanup:{enabled:false,inactivityDays:30,spaceIds:[work]}};
++  const requests=[];
++  const client=createAuxFeatureSettingsSession({getOrganizationSettings:async()=>current,
++    setOrganizationCleanupPolicy:async request=>{
++      requests.push(request);
++      current={...current,revision:String(Number(current.revision)+1),cleanup:{...current.cleanup,
++        enabled:request.enabled,inactivityDays:request.inactivityDays,
++        ...(Object.hasOwn(request,'spaceIds')?{spaceIds:request.spaceIds}:{})}};
++      return{success:true};
++    }},'cleanup',()=>{},()=>{});
++  await client.load();
++  await client.save({enabled:true,inactivityDays:14});
++  assert.equal(Object.hasOwn(requests[0],'spaceIds'),false);
++  assert.deepEqual(current.cleanup.spaceIds,[work]);
++  for(const spaceIds of [[],[main,main],['wrong-profile'],[main,...Array(1024).fill(work)],'all'])
++    await assert.rejects(client.save({enabled:true,inactivityDays:14,spaceIds}),/available Space/);
++  assert.equal(requests.length,1);
++  await client.save({enabled:true,inactivityDays:14,spaceIds:[main]});
++  assert.deepEqual(current.cleanup.spaceIds,[main]);
++  assert.equal(requests[1].expectedRevision,'2');
++  await client.save({enabled:true,inactivityDays:14,spaceIds:null});
++  assert.equal(current.cleanup.spaceIds,null);
++});
++
++test('cleanup refuses a saved scope outside the actual profile and a concurrently removed selected Space',async()=>{
++  const main='00000000-0000-4000-8000-000000000001',work='00000000-0000-4000-8000-000000000002';
++  let current={...state(),spaces:[{id:main,name:'Personal'}],cleanup:{enabled:true,inactivityDays:30,spaceIds:[work]}};
++  const invalid=createAuxFeatureSettingsSession({getOrganizationSettings:async()=>current},'cleanup',()=>{},()=>{});
++  await assert.rejects(invalid.load(),/Invalid tab cleanup/);
++  current={...state(),spaces:[{id:main,name:'Personal'},{id:work,name:'Work'}],cleanup:{enabled:true,inactivityDays:30,spaceIds:[work]}};
++  let writes=0;
++  const client=createAuxFeatureSettingsSession({getOrganizationSettings:async()=>current,
++    setOrganizationCleanupPolicy:async()=>{writes++;current={...current,revision:'2',spaces:[{id:main,name:'Personal'}],
++      cleanup:{enabled:false,inactivityDays:30,spaceIds:[]}};return{success:false,error:'Organization changed'}}},'cleanup',()=>{},()=>{});
++  await client.load();
++  await assert.rejects(client.save({enabled:true,inactivityDays:30,spaceIds:[work]}),/Organization changed/);
++  await assert.rejects(client.save({enabled:true,inactivityDays:30,spaceIds:[work]}),/available Space/);
++  assert.equal(writes,1);
++});

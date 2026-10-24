@@ -1,0 +1,76 @@
+{
+  "modifiedCount": 10,
+  "addedCount": 0,
+  "patches": {
+    "native-cleanup-scopes.patch": {
+      "sha256": "3397e9ac6f60001bb84006b22bf2d26a6b78b1d0c78580b945f287dbe84f84b8",
+      "modifiedCount": 8
+    },
+    "supplied-cleanup-scopes.patch": {
+      "sha256": "84ce48f4b5349e867139479f69198cec255704933025280563fe59a2b636473a",
+      "modifiedCount": 2
+    }
+  },
+  "files": [
+    {
+      "path": "chrome/browser/aux/organization/organization_codec.cc",
+      "target": "native",
+      "beforeSha256": "8fc6606d3cb2cca9813840b4f689aaa4c38ebdb370ba96e5db26a6077e145361",
+      "afterSha256": "bdf55a5c5e1ad5266ce70c461339b6614fdf8070be1674b15466a5949e06260c"
+    },
+    {
+      "path": "chrome/browser/aux/organization/organization_model.cc",
+      "target": "native",
+      "beforeSha256": "b12613cd73b0a1118bffc249fce2d03c076988f627afd9adec329b97b3a83c38",
+      "afterSha256": "877820286f212d2354f150520cc9a612ec0be9d547655941618bb4f8118f4815"
+    },
+    {
+      "path": "chrome/browser/aux/organization/organization_model.h",
+      "target": "native",
+      "beforeSha256": "385ed0531f6e259787f54cd87f87bbcbb4f2be720e7a1b056055ea6d9f985864",
+      "afterSha256": "f1d0c83d136e5c2ba485322d309b0f35541b6143abb5ae8b6e1a2c823ccf5a8a"
+    },
+    {
+      "path": "chrome/browser/aux/organization/organization_model_unittest.cc",
+      "target": "native",
+      "beforeSha256": "a8c46f0d20415a6b24b4f82a8e934408fe9436d97a4427a321891ae5df641891",
+      "afterSha256": "e88b67479224a1b2dbe0848138fea89647c87303d42f8a72a41438281b9fd1f4"
+    },
+    {
+      "path": "chrome/browser/aux/organization/organization_service.cc",
+      "target": "native",
+      "beforeSha256": "16bdc57d78a387a9c5b0ffe0c4c7e8a6d4ca7ada019e11d6160c8a14bbf810fb",
+      "afterSha256": "f4a6cc05a69a64c005c203a19f8af47144aea687bdfc4136e06403076e9879c2"
+    },
+    {
+      "path": "chrome/browser/extensions/api/aux_browser_preferences/aux_feature_expansion_api.cc",
+      "target": "native",
+      "beforeSha256": "d0e621b9b82597ea00ab768d467dc4e8be4fda24b6b981dff9077348a3a53b7f",
+      "afterSha256": "c0209446da9a6178c4dc858e8ca5070db0348818a2d465c3cb5c8892dc79908a"
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_organization_tree_view.cc",
+      "target": "native",
+      "beforeSha256": "f14282b737c56c6325a4469c95214c3fcae7b5e806e040f231a20792e75e42a1",
+      "afterSha256": "02834d5fb3d24d7048b58ac7de7e135e96ad50341b957dc737a0703644717169"
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_organization_window_controller.cc",
+      "target": "native",
+      "beforeSha256": "fe9364ddb47f01a4d42a9805de97e819a6a7e05bc5b574436ef74fe83df8e9b0",
+      "afterSha256": "1f1dece764f70899e455e6a77b1c3be791260ab95f0390a513b95e3ce826e2f0"
+    },
+    {
+      "path": "vendor/provided/aux-browser-feature-settings.mjs",
+      "target": "supplied",
+      "beforeSha256": "3425a2049be5218743eaa4b390f39c80102ec78d265320cf8d6b08a718e1d14d",
+      "afterSha256": "c1be2eb2724bded22ee69abf96a24bb1e85f6481641da6c92d24e8791367ccfa"
+    },
+    {
+      "path": "vendor/provided/aux-browser-feature-settings.test.mjs",
+      "target": "supplied",
+      "beforeSha256": "d8309c9d865ca929d9eab28be4339e156976fdc8122c723a290ee7026717572f",
+      "afterSha256": "3324bdd66a7b21c5bac6d5855c20a9578826e5a4130286a973a3e515be8285ce"
+    }
+  ]
+}

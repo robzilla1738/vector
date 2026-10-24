@@ -1,0 +1,356 @@
+--- a/chrome/browser/aux/organization/organization_codec.cc
++++ b/chrome/browser/aux/organization/organization_codec.cc
+@@ -54,8 +54,15 @@
+   value.Set("revision", std::to_string(snapshot.revision));
+   value.Set("bookmarksCollapsed", snapshot.bookmarks_collapsed);
+   value.Set("pinsCollapsed", snapshot.pins_collapsed);
+-  value.Set("cleanup", base::DictValue().Set("enabled", snapshot.cleanup_enabled)
+-      .Set("inactivityDays", std::to_string(snapshot.cleanup_inactivity_days)));
++  base::DictValue cleanup;
++  cleanup.Set("enabled", snapshot.cleanup_enabled);
++  cleanup.Set("inactivityDays", std::to_string(snapshot.cleanup_inactivity_days));
++  if (snapshot.cleanup_space_ids) {
++    base::ListValue ids;
++    for (const auto& id : *snapshot.cleanup_space_ids) ids.Append(id);
++    cleanup.Set("spaceIds", std::move(ids));
++  }
++  value.Set("cleanup", std::move(cleanup));
+   base::ListValue spaces;
+   for (const auto& [id, space] : snapshot.spaces) {
+     base::DictValue row;
+@@ -116,10 +123,19 @@
+   snapshot.bookmarks_collapsed = *bookmarks; snapshot.pins_collapsed = *pins;
+   if (value.contains("cleanup")) {
+     const auto* cleanup = value.FindDict("cleanup");
+-    if (!cleanup || !Keys(*cleanup, {"enabled", "inactivityDays"}) ||
++    if (!cleanup || !Keys(*cleanup, {"enabled", "inactivityDays"}, {"spaceIds"}) ||
+         !cleanup->FindBool("enabled") || !Number(*cleanup, "inactivityDays")) return Fail("invalid cleanup policy");
+     snapshot.cleanup_enabled = *cleanup->FindBool("enabled");
+     snapshot.cleanup_inactivity_days = *Number(*cleanup, "inactivityDays");
++    if (cleanup->contains("spaceIds")) {
++      const auto* ids = cleanup->FindList("spaceIds");
++      if (!ids || ids->size() > kMaxSpaces) return Fail("invalid cleanup Spaces");
++      snapshot.cleanup_space_ids.emplace();
++      for (const auto& id : *ids) {
++        if (!id.is_string()) return Fail("invalid cleanup Space ID");
++        snapshot.cleanup_space_ids->push_back(id.GetString());
++      }
++    }
+   }
+   for (const auto& item : *spaces) {
+     const auto* row = item.GetIfDict();
+--- a/chrome/browser/aux/organization/organization_model.cc
++++ b/chrome/browser/aux/organization/organization_model.cc
+@@ -13,6 +13,18 @@
+   return (empty || !value.empty()) && value.size() <= limit &&
+          value.find('\0') == std::string_view::npos;
+ }
++bool ValidScope(const std::optional<std::vector<std::string>>& ids) {
++  if (!ids) return true;
++  if (ids->size() > kMaxSpaces) return false;
++  std::set<std::string> seen;
++  for (const auto& id : *ids)
++    if (!IsCanonicalId(id) || !seen.insert(id).second) return false;
++  return true;
++}
++bool ValidCommandScope(const Command& command) {
++  return (!command.space_ids || command.action == Action::kSetCleanupPolicy) &&
++         ValidScope(command.space_ids);
++}
+ using Group = std::tuple<std::string, std::string, bool>;
+ Group GroupOf(const Entry& entry) {
+   return {entry.space_id, entry.parent_id, entry.archived};
+@@ -98,7 +110,8 @@
+   delta.sections_changed = old.bookmarks_collapsed != next.bookmarks_collapsed ||
+                            old.pins_collapsed != next.pins_collapsed ||
+                            old.cleanup_enabled != next.cleanup_enabled ||
+-                           old.cleanup_inactivity_days != next.cleanup_inactivity_days;
++                           old.cleanup_inactivity_days != next.cleanup_inactivity_days ||
++                           old.cleanup_space_ids != next.cleanup_space_ids;
+   return delta;
+ }
+ Error CheckContext(const Snapshot& current, const Context& context,
+@@ -187,7 +200,20 @@
+     result.push_back(entry->id);
+   return result;
+ }
++bool CleanupIncludesSpace(const Snapshot& snapshot, std::string_view space_id) {
++  if (!snapshot.spaces.contains(std::string(space_id))) return false;
++  return !snapshot.cleanup_space_ids ||
++         std::ranges::find(*snapshot.cleanup_space_ids, space_id) !=
++             snapshot.cleanup_space_ids->end();
++}
+ Error Validate(const Snapshot& snapshot) {
++  if (!ValidScope(snapshot.cleanup_space_ids) ||
++      (snapshot.cleanup_enabled && snapshot.cleanup_space_ids &&
++       snapshot.cleanup_space_ids->empty())) return Error::kInvalid;
++  if (snapshot.cleanup_space_ids) {
++    for (const auto& id : *snapshot.cleanup_space_ids)
++      if (!snapshot.spaces.contains(id)) return Error::kMissing;
++  }
+   if (snapshot.cleanup_inactivity_days < 1 || snapshot.cleanup_inactivity_days > 3650) return Error::kInvalid;
+   if (snapshot.schema_version != kSchemaVersion ||
+       !Text(snapshot.profile_id, 256, false) || snapshot.spaces.empty())
+@@ -261,11 +287,18 @@
+   }
+   result += ":" + std::to_string(command.index) + ":" +
+             (command.value ? "1" : "0");
++  // Leave the legacy unscoped fingerprint unchanged for persisted replay IDs.
++  if (command.space_ids) {
++    result += ":spaces:" + std::to_string(command.space_ids->size()) + ":";
++    for (const auto& id : *command.space_ids)
++      result += std::to_string(id.size()) + ":" + id;
++  }
+   return result;
+ }
+ Mutation Apply(const Snapshot& current, const Context& context,
+                const Command& command) {
+-  if (!Text(command.id, 36) || !Text(command.space_id, 36) ||
++  if (!ValidCommandScope(command) ||
++      !Text(command.id, 36) || !Text(command.space_id, 36) ||
+       !Text(command.parent_id, 36) || !Text(command.title, 4096) ||
+       !Text(command.icon, 256) || !Text(command.url, 32768))
+     return {Error::kInvalid, {}, {}};
+@@ -314,6 +347,10 @@
+         if (entry.space_id == command.id) return {Error::kNotEmpty, {}, {}};
+       }
+       next.spaces.erase(command.id);
++      if (next.cleanup_space_ids) {
++        std::erase(*next.cleanup_space_ids, command.id);
++        if (next.cleanup_space_ids->empty()) next.cleanup_enabled = false;
++      }
+       break;
+     }
+     case Action::kCreateTab:
+@@ -421,7 +458,10 @@
+     }
+     case Action::kSetCleanupPolicy:
+       if (command.index < 1 || command.index > 3650) return {Error::kInvalid, {}, {}};
+-      next.cleanup_enabled = command.value; next.cleanup_inactivity_days = command.index; break;
++      next.cleanup_enabled = command.value;
++      next.cleanup_inactivity_days = command.index;
++      next.cleanup_space_ids = command.space_ids;
++      break;
+     case Action::kSetBookmarksCollapsed:
+       next.bookmarks_collapsed = command.value; break;
+     case Action::kSetPinsCollapsed:
+@@ -436,7 +476,8 @@
+     return {Error::kCapacity, {}, {}};
+   std::string fingerprint = "batch:";
+   for (const auto& command : commands) {
+-    if (!Text(command.id, 36) || !Text(command.space_id, 36) ||
++    if (!ValidCommandScope(command) ||
++        !Text(command.id, 36) || !Text(command.space_id, 36) ||
+         !Text(command.parent_id, 36) || !Text(command.title, 4096) ||
+         !Text(command.icon, 256) || !Text(command.url, 32768))
+       return {Error::kInvalid, {}, {}};
+--- a/chrome/browser/aux/organization/organization_model.h
++++ b/chrome/browser/aux/organization/organization_model.h
+@@ -4,6 +4,7 @@
+ 
+ #include <cstdint>
+ #include <map>
++#include <optional>
+ #include <string>
+ #include <string_view>
+ #include <vector>
+@@ -59,6 +60,8 @@
+   bool pins_collapsed = false;
+   bool cleanup_enabled = false;
+   uint64_t cleanup_inactivity_days = 30;
++  // Absent preserves profile-wide cleanup. An empty selection is disabled.
++  std::optional<std::vector<std::string>> cleanup_space_ids;
+   std::vector<ReplayRecord> replay;
+   bool operator==(const Snapshot&) const = default;
+ };
+@@ -88,6 +91,8 @@
+   std::string url;
+   uint64_t index = 0;
+   bool value = false;
++  // Only kSetCleanupPolicy: absent selects all Spaces; present selects these IDs.
++  std::optional<std::vector<std::string>> space_ids;
+ };
+ enum class Error {
+   kNone, kReplay, kInvalid, kForeignProfile, kStaleRevision,
+@@ -113,6 +118,7 @@
+ bool IsCanonicalId(std::string_view id);
+ Error Validate(const Snapshot& snapshot);
+ std::string Fingerprint(const Command& command);
++bool CleanupIncludesSpace(const Snapshot&, std::string_view space_id);
+ std::vector<std::string> OrderedChildren(const Snapshot& snapshot,
+                                        std::string_view space_id,
+                                        std::string_view parent_id,
+--- a/chrome/browser/aux/organization/organization_model_unittest.cc
++++ b/chrome/browser/aux/organization/organization_model_unittest.cc
+@@ -1,5 +1,6 @@
+ // Copyright 2026 The Aux Authors. BSD-style license: see //LICENSE.
+ #include "chrome/browser/aux/organization/organization_model.h"
++#include "chrome/browser/aux/organization/organization_codec.h"
+ #include <limits>
+ #include "testing/gtest/include/gtest/gtest.h"
+ 
+@@ -172,5 +173,74 @@
+   policy.index = 30;
+   EXPECT_TRUE(Run(Initial(), policy).snapshot.cleanup_enabled);
+ }
++TEST(OrganizationModel, CleanupScopeIsExplicitBoundedAndReplayedExactly) {
++  auto snapshot = Initial();
++  snapshot.spaces.emplace(kOther, Space{kOther, "Work", "", 1});
++  Command policy; policy.action = Action::kSetCleanupPolicy;
++  policy.value = true; policy.index = 30;
++  const auto legacy_fingerprint = Fingerprint(policy);
++  policy.space_ids = std::vector<std::string>{kSpace};
++  auto scoped = Run(snapshot, policy);
++  ASSERT_EQ(scoped.error, Error::kNone);
++  EXPECT_TRUE(scoped.delta.sections_changed);
++  EXPECT_TRUE(CleanupIncludesSpace(scoped.snapshot, kSpace));
++  EXPECT_FALSE(CleanupIncludesSpace(scoped.snapshot, kOther));
++  EXPECT_FALSE(CleanupIncludesSpace(scoped.snapshot, ""));
++  const Context original{snapshot.profile_id, "native-generation", 0, Operation(1)};
++  EXPECT_EQ(Apply(scoped.snapshot, original, policy).error, Error::kReplay);
++  policy.space_ids = std::vector<std::string>{kOther};
++  EXPECT_EQ(Apply(scoped.snapshot, original, policy).error, Error::kOperationConflict);
++  policy.space_ids.reset();
++  EXPECT_EQ(Fingerprint(policy), legacy_fingerprint);
++  auto all = Run(scoped.snapshot, policy, 2);
++  ASSERT_EQ(all.error, Error::kNone);
++  EXPECT_TRUE(CleanupIncludesSpace(all.snapshot, kOther));
++  EXPECT_TRUE(all.delta.sections_changed);
++  policy.space_ids = std::vector<std::string>{};
++  EXPECT_EQ(Run(snapshot, policy).error, Error::kInvalid);
++  policy.space_ids = std::vector<std::string>{kSpace, kSpace};
++  EXPECT_EQ(Run(snapshot, policy).error, Error::kInvalid);
++  policy.space_ids = std::vector<std::string>{kFolder};
++  EXPECT_EQ(Run(snapshot, policy).error, Error::kMissing);
++  policy.space_ids = std::vector<std::string>(kMaxSpaces + 1, kSpace);
++  EXPECT_EQ(Run(snapshot, policy).error, Error::kInvalid);
++}
++TEST(OrganizationModel, RemovingLastSelectedSpaceDisablesInsteadOfWidening) {
++  auto snapshot = Initial();
++  snapshot.spaces.emplace(kOther, Space{kOther, "Work", "", 1});
++  snapshot.cleanup_enabled = true;
++  snapshot.cleanup_space_ids = std::vector<std::string>{kOther};
++  Command remove; remove.action = Action::kRemoveEmptySpace; remove.id = kOther;
++  auto removed = Run(snapshot, remove);
++  ASSERT_EQ(removed.error, Error::kNone);
++  ASSERT_TRUE(removed.snapshot.cleanup_space_ids);
++  EXPECT_TRUE(removed.snapshot.cleanup_space_ids->empty());
++  EXPECT_FALSE(removed.snapshot.cleanup_enabled);
++  EXPECT_FALSE(CleanupIncludesSpace(removed.snapshot, kSpace));
++  auto undo = ApplyUndo(removed.snapshot, snapshot,
++      {snapshot.profile_id, "native-generation", removed.snapshot.revision, Operation(2)}, kFolder);
++  ASSERT_EQ(undo.error, Error::kNone);
++  EXPECT_EQ(undo.snapshot.cleanup_space_ids, snapshot.cleanup_space_ids);
++  EXPECT_TRUE(undo.snapshot.cleanup_enabled);
++}
++TEST(OrganizationModel, CleanupScopeCodecPreservesLegacyAndRejectsUnknownState) {
++  auto snapshot = Initial();
++  auto legacy = EncodeSnapshot(snapshot);
++  EXPECT_FALSE(legacy.FindDict("cleanup")->contains("spaceIds"));
++  auto decoded_legacy = DecodeSnapshot(legacy, snapshot.profile_id);
++  ASSERT_TRUE(decoded_legacy.snapshot);
++  EXPECT_FALSE(decoded_legacy.snapshot->cleanup_space_ids);
++  snapshot.cleanup_enabled = true;
++  snapshot.cleanup_space_ids = std::vector<std::string>{kSpace};
++  auto encoded = EncodeSnapshot(snapshot);
++  auto decoded = DecodeSnapshot(encoded, snapshot.profile_id);
++  ASSERT_TRUE(decoded.snapshot);
++  EXPECT_EQ(*decoded.snapshot, snapshot);
++  encoded.FindDict("cleanup")->Set("spaceIds", base::ListValue().Append(kOther));
++  EXPECT_FALSE(DecodeSnapshot(encoded, snapshot.profile_id).snapshot);
++  encoded = EncodeSnapshot(snapshot);
++  encoded.FindDict("cleanup")->Set("futureScope", true);
++  EXPECT_FALSE(DecodeSnapshot(encoded, snapshot.profile_id).snapshot);
++}
+ }  // namespace
+ }  // namespace aux::organization
+--- a/chrome/browser/aux/organization/organization_service.cc
++++ b/chrome/browser/aux/organization/organization_service.cc
+@@ -22,6 +22,10 @@
+         entry.id.capacity() + entry.space_id.capacity() + entry.parent_id.capacity() +
+         entry.title.capacity() + entry.launch_url.capacity() + entry.current_url.capacity() +
+         entry.archive_operation_id.capacity();
++  if (snapshot.cleanup_space_ids) {
++    bytes += snapshot.cleanup_space_ids->capacity() * sizeof(std::string);
++    for (const auto& id : *snapshot.cleanup_space_ids) bytes += id.capacity();
++  }
+   bytes += snapshot.replay.capacity() * sizeof(ReplayRecord);
+   for (const auto& replay : snapshot.replay)
+     bytes += replay.operation_id.capacity() + replay.fingerprint.capacity();
+--- a/chrome/browser/extensions/api/aux_browser_preferences/aux_feature_expansion_api.cc
++++ b/chrome/browser/extensions/api/aux_browser_preferences/aux_feature_expansion_api.cc
+@@ -356,10 +356,23 @@
+     const auto generation = aux::GetProfileCookieBindingEpoch(profile());
+     if (method == "getOrganizationSettings") {
+       if (!args().empty()) return RespondNow(Error("This method takes no arguments"));
++      const auto& snapshot = service->snapshot();
++      base::ListValue spaces;
++      for (const auto& [id, space] : snapshot.spaces)
++        spaces.Append(base::DictValue().Set("id", id).Set("name", space.name)
++          .Set("icon", space.icon).Set("order", static_cast<int>(space.order)));
++      base::Value scope;
++      if (snapshot.cleanup_space_ids) {
++        base::ListValue ids;
++        for (const auto& id : *snapshot.cleanup_space_ids) ids.Append(id);
++        scope = base::Value(std::move(ids));
++      }
+       return RespondNow(WithArguments(base::DictValue().Set("success", true)
+-        .Set("ownerGeneration", generation).Set("revision", base::NumberToString(service->snapshot().revision))
+-        .Set("cleanup", base::DictValue().Set("enabled", service->snapshot().cleanup_enabled)
+-          .Set("inactivityDays", static_cast<int>(service->snapshot().cleanup_inactivity_days)))));
++        .Set("ownerGeneration", generation).Set("revision", base::NumberToString(snapshot.revision))
++        .Set("spaces", std::move(spaces))
++        .Set("cleanup", base::DictValue().Set("enabled", snapshot.cleanup_enabled)
++          .Set("inactivityDays", static_cast<int>(snapshot.cleanup_inactivity_days))
++          .Set("spaceIds", std::move(scope)))));
+     }
+     const auto enabled = request ? request->FindBool("enabled") : std::nullopt;
+     const auto days = request ? request->FindInt("inactivityDays") : std::nullopt;
+@@ -373,6 +386,21 @@
+     pending_browser_ = browser->GetWeakPtr(); pending_generation_ = generation;
+     org::Command command; command.action = org::Action::kSetCleanupPolicy;
+     command.value = *enabled; command.index = *days;
++    // Older settings callers change enabled/days without broadening a saved scope.
++    command.space_ids = service->snapshot().cleanup_space_ids;
++    if (const auto* scope = request->Find("spaceIds")) {
++      if (scope->is_none()) {
++        command.space_ids.reset();
++      } else {
++        if (!scope->is_list() || scope->GetList().size() > org::kMaxSpaces)
++          return RespondNow(Error("Valid cleanup Spaces required"));
++        command.space_ids.emplace();
++        for (const auto& id : scope->GetList()) {
++          if (!id.is_string()) return RespondNow(Error("Valid cleanup Space ID required"));
++          command.space_ids->push_back(id.GetString());
++        }
++      }
++    }
+     org::Context context{service->snapshot().profile_id, generation, *revision,
+       base::Uuid::GenerateRandomV4().AsLowercaseString()};
+     service->Execute(std::move(context), std::move(command),
+--- a/chrome/browser/ui/views/frame/aux_organization_tree_view.cc
++++ b/chrome/browser/ui/views/frame/aux_organization_tree_view.cc
+@@ -499,7 +499,10 @@
+   const auto* snapshot = Snapshot();
+   if (!drag || !drag->moved || !snapshot || !snapshot->entries.contains(drag->target)) return;
+   if (drag->edge != DropEdge::kNone) {
+-    if (snapshot->revision != drag->context.expected_revision) return;
++    const auto current = CaptureOrganizationContext(*browser_);
++    if (!current || current->profile_id != drag->context.profile_id ||
++        current->owner_generation != drag->context.owner_generation ||
++        snapshot->revision != drag->context.expected_revision) return;
+     const bool stacked = drag->edge == DropEdge::kTop || drag->edge == DropEdge::kBottom;
+     const bool leading = drag->edge == DropEdge::kTop || drag->edge == DropEdge::kLeft;
+     window_->SplitLogicalTabs(drag->id, drag->target, stacked, leading,
+--- a/chrome/browser/ui/views/frame/aux_organization_window_controller.cc
++++ b/chrome/browser/ui/views/frame/aux_organization_window_controller.cc
+@@ -397,7 +397,8 @@
+   const auto found = snapshot.entries.find(id);
+   if (found == snapshot.entries.end() || found->second.archived ||
+       found->second.kind != organization::EntryKind::kTab ||
+-      organization::HasRetention(snapshot, id) || !found->second.last_active_unix_ms) return false;
++      organization::HasRetention(snapshot, id) || !found->second.last_active_unix_ms ||
++      !organization::CleanupIncludesSpace(snapshot, found->second.space_id)) return false;
+   const int64_t now = base::Time::Now().InMillisecondsSinceUnixEpoch();
+   if (now <= 0 || static_cast<uint64_t>(now) <= found->second.last_active_unix_ms ||
+       static_cast<uint64_t>(now) - found->second.last_active_unix_ms <
