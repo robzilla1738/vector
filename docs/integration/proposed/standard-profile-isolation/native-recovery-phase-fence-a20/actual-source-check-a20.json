@@ -1,0 +1,16 @@
+{
+  "format": "aux.recovery-phase-fence.source-check.actual.v1",
+  "passed": true,
+  "sourcePlanSha256": "5f8ed121add8d4fed3bb2c72260ac54a42881a72ab86d42420e6b0c0405e420c",
+  "patchSha256": "00b1cbdc8f667d72bebf8cb3d756a3f1c319513751d663fb63ac2cf4abeacedb",
+  "files": 1,
+  "countedAnchors": 1,
+  "replayDirectory": "/private/tmp/aux-recovery-phase-fence-replay-v_aieed1",
+  "exactReplayPassed": true,
+  "reverseCheckPassed": true,
+  "nativeCheckoutChanged": false,
+  "nativeCompiled": false,
+  "testsExecuted": false,
+  "productExecuted": false,
+  "runtimeAcceptance": false
+}

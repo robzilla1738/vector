@@ -1,0 +1,23 @@
+{
+  "format": "aux.native-recovery-phase-fence.source.v1",
+  "files": [
+    {
+      "path": "components/services/storage/dom_storage/async_dom_storage_database.cc",
+      "inputRoot": "/Users/rcourson/.codex/worktrees/aux-features-organization/web/docs/integration/proposed/standard-profile-isolation/native-recovery-restoration-a19/source",
+      "inputSha256": "523ae22eb9aef56b088aafb08ffa86933808bee791c5f27f539254c64a9a1a0b",
+      "outputSha256": "9d5529761f7719135cfba9098a050b52142cf846320efc5683193bde6bee7216",
+      "output": "/Users/rcourson/.codex/worktrees/aux-features-organization/web/docs/integration/proposed/standard-profile-isolation/native-recovery-phase-fence-a20/source/components/services/storage/dom_storage/async_dom_storage_database.cc",
+      "anchors": [
+        {
+          "find": "      state->target_attempted || state->tainted ||\n      (!state->recovery_descriptor_sha256.empty() && state->recovery_descriptor_sha256 != descriptor)) {",
+          "replace": "      state->target_attempted || state->tainted || state->recovery_write_attempted ||\n      (!state->recovery_descriptor_sha256.empty() && state->recovery_descriptor_sha256 != descriptor)) {",
+          "count": 1
+        }
+      ]
+    }
+  ],
+  "nativeCheckoutChanged": false,
+  "nativeCompiled": false,
+  "productExecuted": false,
+  "runtimeAcceptance": false
+}
