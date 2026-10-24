@@ -1,0 +1,1386 @@
+--- /dev/null
++++ b/chrome/browser/ui/tabs/aux_organization_pin_adapter.cc
+@@ -0,0 +1,109 @@
++// Copyright 2026 The Aux Authors. BSD-style license: see //LICENSE.
++#include "chrome/browser/ui/tabs/aux_organization_pin_adapter.h"
++#include <limits>
++#include <utility>
++#include "base/functional/bind.h"
++#include "base/strings/utf_string_conversions.h"
++#include "base/uuid.h"
++#include "chrome/browser/aux/organization/organization_profile_service.h"
++#include "chrome/browser/aux/organization/organization_service.h"
++namespace aux {
++namespace {
++using namespace organization;
++OrganizationProfileService* Owner(Profile& profile) {
++  return OrganizationProfileServiceFactory::GetForProfile(&profile);
++}
++void Commit(OrganizationProfileService& owner, Command command,
++            PinCommitReply reply) {
++  auto* model = owner.model();
++  if (!model || model->blocked()) {
++    std::move(reply).Run(false, {}); return;
++  }
++  const auto& snapshot = model->snapshot();
++  Context context{snapshot.profile_id, owner.owner_generation(), snapshot.revision,
++                  base::Uuid::GenerateRandomV4().AsLowercaseString()};
++  std::string id = command.id;
++  model->Execute(std::move(context), std::move(command),
++      base::BindOnce([](PinCommitReply done, std::string id, CommitResult result) {
++        const bool success = result.error == Error::kNone || result.error == Error::kReplay;
++        std::move(done).Run(success, success ? std::move(id) : std::string());
++      }, std::move(reply), std::move(id)));
++}
++}  // namespace
++std::optional<std::vector<PinnedTabEntry>> ReadOrganizationPinnedEntries(Profile& profile, bool include_descendants) {
++  auto* owner = Owner(profile);
++  auto* model = owner ? owner->model() : nullptr;
++  if (!model) return std::nullopt;
++  const auto& snapshot = model->snapshot();
++  std::vector<PinnedTabEntry> entries;
++  for (const auto& id : organization::OrderedChildren(snapshot, "", "")) {
++    const auto& entry = snapshot.entries.at(id);
++    if (entry.kind == organization::EntryKind::kTab)
++      entries.push_back({GURL(entry.launch_url), base::UTF8ToUTF16(entry.title), id});
++  }
++  if (include_descendants) {
++    for (const auto& [id, entry] : snapshot.entries) {
++      if (entry.space_id.empty() && !entry.parent_id.empty() && !entry.archived &&
++          entry.kind == organization::EntryKind::kTab)
++        entries.push_back({GURL(entry.launch_url), base::UTF8ToUTF16(entry.title), id});
++    }
++  }
++  return entries;
++}
++void CommitOrganizationPin(Profile& profile, const GURL& url,
++                           const std::u16string& title, size_t index,
++                           std::string existing_id, PinCommitReply reply) {
++  auto* owner = Owner(profile);
++  auto* model = owner ? owner->model() : nullptr;
++  if (!model || !url.is_valid()) { std::move(reply).Run(false, {}); return; }
++  organization::Command command;
++  if (!existing_id.empty()) {
++    const auto it = model->snapshot().entries.find(existing_id);
++    if (it == model->snapshot().entries.end() || it->second.archived ||
++        it->second.kind != organization::EntryKind::kTab) {
++      std::move(reply).Run(false, {}); return;
++    }
++    command.action = organization::Action::kMoveEntry;
++    command.id = std::move(existing_id);
++  } else {
++    command.action = organization::Action::kCreateTab;
++    command.id = base::Uuid::GenerateRandomV4().AsLowercaseString();
++    command.title = base::UTF16ToUTF8(title); command.url = url.spec();
++  }
++  command.index = index;
++  Commit(*owner, std::move(command), std::move(reply));
++}
++void ReorderOrganizationPin(Profile& profile, std::string id, size_t index,
++                            base::OnceCallback<void(bool)> reply) {
++  auto* owner = Owner(profile);
++  if (!owner) { std::move(reply).Run(false); return; }
++  organization::Command command;
++  command.action = organization::Action::kMoveEntry;
++  command.id = std::move(id); command.index = index;
++  Commit(*owner, std::move(command), base::BindOnce(
++      [](base::OnceCallback<void(bool)> done, bool success, std::string) {
++        std::move(done).Run(success);
++      }, std::move(reply)));
++}
++void UnpinOrganizationEntry(Profile& profile, std::string id,
++                            base::OnceCallback<void(bool)> reply) {
++  auto* owner = Owner(profile);
++  auto* model = owner ? owner->model() : nullptr;
++  if (!model) { std::move(reply).Run(false); return; }
++  // The main Space is deterministic until the per-window active-Space adapter
++  // supplies an explicit destination. Never infer another profile/window.
++  const organization::Space* first = nullptr;
++  for (const auto& [space_id, space] : model->snapshot().spaces) {
++    if (!first || space.order < first->order) first = &space;
++  }
++  if (!first) { std::move(reply).Run(false); return; }
++  organization::Command command;
++  command.action = organization::Action::kMoveEntry;
++  command.id = std::move(id); command.space_id = first->id;
++  command.index = std::numeric_limits<uint64_t>::max();
++  Commit(*owner, std::move(command), base::BindOnce(
++      [](base::OnceCallback<void(bool)> done, bool success, std::string) {
++        std::move(done).Run(success);
++      }, std::move(reply)));
++}
++}  // namespace aux
+--- /dev/null
++++ b/chrome/browser/ui/tabs/aux_organization_pin_adapter.h
+@@ -0,0 +1,21 @@
++// Copyright 2026 The Aux Authors. BSD-style license: see //LICENSE.
++#ifndef CHROME_BROWSER_UI_TABS_AUX_ORGANIZATION_PIN_ADAPTER_H_
++#define CHROME_BROWSER_UI_TABS_AUX_ORGANIZATION_PIN_ADAPTER_H_
++#include <optional>
++#include <string>
++#include <vector>
++#include "base/functional/callback.h"
++#include "chrome/browser/ui/tabs/aux_pinned_tab_entries.h"
++class Profile;
++namespace aux {
++using PinCommitReply = base::OnceCallback<void(bool, std::string)>;
++// nullopt means loading/unavailable, not an empty successful organization.
++std::optional<std::vector<PinnedTabEntry>> ReadOrganizationPinnedEntries(Profile&, bool include_descendants = false);
++void CommitOrganizationPin(Profile&, const GURL&, const std::u16string&, size_t index,
++                           std::string existing_id, PinCommitReply);
++void ReorderOrganizationPin(Profile&, std::string id, size_t index,
++                            base::OnceCallback<void(bool)>);
++void UnpinOrganizationEntry(Profile&, std::string id,
++                            base::OnceCallback<void(bool)>);
++}  // namespace aux
++#endif
+--- a/chrome/browser/ui/tabs/aux_pinned_tab_entries.h
++++ b/chrome/browser/ui/tabs/aux_pinned_tab_entries.h
+@@ -23,6 +23,8 @@
+ struct PinnedTabEntry {
+   GURL url;
+   std::u16string title;
++  // Empty only for the historical preference before native migration is ready.
++  std::string logical_id;
+ };
+ 
+ struct PinnedTabEntryCandidate {
+--- a/chrome/browser/ui/tabs/aux_pinned_tab_entry_identity.cc
++++ b/chrome/browser/ui/tabs/aux_pinned_tab_entry_identity.cc
+@@ -3,12 +3,20 @@
+ // found in the LICENSE file.
+ #include "chrome/browser/ui/tabs/aux_pinned_tab_entry_identity.h"
+ #include <memory>
++#include <utility>
++#include "chrome/browser/aux/organization/organization_model.h"
+ #include "base/supports_user_data.h"
+ #include "content/public/browser/web_contents.h"
+ namespace aux {
+ namespace {
+ 
+ const char kPinnedTabEntryUrlKey = 0;
++const char kPinnedTabEntryIdKey = 0;
++class PinnedTabEntryIdData : public base::SupportsUserData::Data {
++ public:
++  explicit PinnedTabEntryIdData(std::string value) : id(std::move(value)) {}
++  const std::string id;
++};
+ 
+ class PinnedTabEntryUrlData : public base::SupportsUserData::Data {
+  public:
+@@ -17,6 +25,18 @@
+ };
+ 
+ }  // namespace
++
++void RememberPinnedTabEntryId(content::WebContents& contents, const std::string& id) {
++  if (organization::IsCanonicalId(id))
++    contents.SetUserData(&kPinnedTabEntryIdKey, std::make_unique<PinnedTabEntryIdData>(id));
++}
++std::optional<std::string> GetRememberedPinnedTabEntryId(const content::WebContents& contents) {
++  const auto* data = static_cast<const PinnedTabEntryIdData*>(contents.GetUserData(&kPinnedTabEntryIdKey));
++  return data ? std::optional<std::string>(data->id) : std::nullopt;
++}
++void ClearRememberedPinnedTabEntryId(content::WebContents& contents) {
++  contents.RemoveUserData(&kPinnedTabEntryIdKey);
++}
+ 
+ void RememberPinnedTabEntryUrl(content::WebContents& contents,
+                                const GURL& url) {
+--- a/chrome/browser/ui/tabs/aux_pinned_tab_entry_identity.h
++++ b/chrome/browser/ui/tabs/aux_pinned_tab_entry_identity.h
+@@ -4,11 +4,15 @@
+ #ifndef CHROME_BROWSER_UI_TABS_AUX_PINNED_TAB_ENTRY_IDENTITY_H_
+ #define CHROME_BROWSER_UI_TABS_AUX_PINNED_TAB_ENTRY_IDENTITY_H_
+ #include <optional>
++#include <string>
+ #include "url/gurl.h"
+ namespace content {
+ class WebContents;
+ }
+ namespace aux {
++void RememberPinnedTabEntryId(content::WebContents&, const std::string& id);
++std::optional<std::string> GetRememberedPinnedTabEntryId(const content::WebContents&);
++void ClearRememberedPinnedTabEntryId(content::WebContents&);
+ void RememberPinnedTabEntryUrl(content::WebContents& contents, const GURL& url);
+ std::optional<GURL> GetRememberedPinnedTabEntryUrl(
+     const content::WebContents& contents);
+--- a/chrome/browser/ui/tabs/pinned_tab_service.cc
++++ b/chrome/browser/ui/tabs/pinned_tab_service.cc
+@@ -18,6 +18,10 @@
+ #if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
+ #include "base/auto_reset.h"
+ #include "base/check.h"
++#include <limits>
++#include "chrome/browser/aux/organization/organization_profile_service.h"
++#include "chrome/browser/aux/organization/organization_service.h"
++#include "chrome/browser/ui/tabs/aux_organization_pin_adapter.h"
+ #include "base/task/single_thread_task_runner.h"
+ #include "chrome/browser/sessions/session_restore.h"
+ #include "chrome/browser/sessions/session_service_factory.h"
+@@ -42,6 +46,11 @@
+       aux::kPinnedTabEntriesPref,
+       base::BindRepeating(&PinnedTabService::SchedulePinnedTabsReconciliation,
+                           weak_factory_.GetWeakPtr()));
++  if (auto* organization = aux::organization::OrganizationProfileServiceFactory::GetForProfile(profile_)) {
++    organization_ready_ = organization->ObserveReady(base::BindRepeating(
++        &PinnedTabService::BindOrganization, weak_factory_.GetWeakPtr()));
++  }
++  BindOrganization();
+   session_restored_subscription_ =
+       SessionRestore::RegisterOnSessionRestoredCallback(base::BindRepeating(
+           &PinnedTabService::OnSessionRestored, weak_factory_.GetWeakPtr()));
+@@ -140,8 +149,12 @@
+       CachePinnedEntryIdentity(inserted.tab);
+   } else if (change.type() == TabStripModelChange::kRemoved) {
+     for (const auto& removed : change.GetRemove()->contents) {
+-      if (removed.tab)
+-        pinned_entry_urls_.erase(removed.tab->GetHandle());
++      if (removed.tab) {
++        const auto handle = removed.tab->GetHandle();
++        pinned_entry_urls_.erase(handle);
++        organization_entry_ids_.erase(handle);
++        organization_requests_.erase(handle);
++      }
+     }
+   } else if (change.type() == TabStripModelChange::kReplaced) {
+     CachePinnedEntryIdentity(change.GetReplace()->tab);
+@@ -160,38 +173,15 @@
+ void PinnedTabService::OnTabPinnedStateChanged(tabs::TabInterface* tab,
+                                                int index) {
+ #if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
+-  if (!tab || closing_all_browsers_ || !profile_switch_pauses_.empty())
+-    return;
+-  auto* contents = tab->GetContents();
+-  // The source service is profile-bound;155 owner transactions must not let
+-  // an old model observer write a target profile's tab into this profile.
+-  if (!contents || contents->GetBrowserContext() != profile_)
+-    return;
+-  const auto handle = tab->GetHandle();
+-  if (tab->IsPinned()) {
+-    const GURL url = contents->GetVisibleURL();
+-    if (!url.is_valid())
+-      return;
+-    pinned_entry_urls_.insert_or_assign(handle, url);
+-    aux::RememberPinnedTabEntryUrl(*contents, url);
+-    UpdatePinnedEntrySessionData(tab, url);
+-    aux::AddPinnedTabEntryIfAbsent(*profile_->GetPrefs(), url,
+-                                   contents->GetTitle());
+-  } else {
+-    GURL url;
+-    if (auto remembered = pinned_entry_urls_.find(handle);
+-        remembered != pinned_entry_urls_.end())
+-      url = remembered->second;
+-    else if (auto saved_url = aux::GetRememberedPinnedTabEntryUrl(*contents);
+-             saved_url && saved_url->is_valid())
+-      url = *saved_url;
+-    else
+-      url = contents->GetVisibleURL();
+-    pinned_entry_urls_.erase(handle);
+-    aux::ClearRememberedPinnedTabEntryUrl(*contents);
+-    UpdatePinnedEntrySessionData(tab, GURL());
+-    aux::RemoveFirstPinnedTabEntry(*profile_->GetPrefs(), url);
+-  }
++  if (!tab || organization_observer_change_ || closing_all_browsers_ ||
++      !profile_switch_pauses_.empty() || !tab->GetContents() ||
++      tab->GetContents()->GetBrowserContext() != profile_) return;
++  if (organization_request_generation_ == std::numeric_limits<uint64_t>::max()) return;
++  const uint64_t generation = ++organization_request_generation_;
++  organization_requests_[tab->GetHandle()] = generation;
++  base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(FROM_HERE,
++      base::BindOnce(&PinnedTabService::ApplyOrganizationPinChange,
++          weak_factory_.GetWeakPtr(), tab->GetHandle(), generation, tab->IsPinned()));
+ #else
+   need_to_write_pinned_tabs_ = true;
+ #endif
+@@ -217,6 +207,83 @@
+ #endif
+ 
+ #if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++void PinnedTabService::BindOrganization() {
++  organization_changes_ = {};
++  auto* owner = aux::organization::OrganizationProfileServiceFactory::GetForProfileIfExists(profile_);
++  if (!owner || !owner->model()) return;
++  organization_changes_ = owner->model()->Observe(base::BindRepeating(
++      [](base::WeakPtr<PinnedTabService> service, const aux::organization::Delta&) {
++        if (service) service->SchedulePinnedTabsReconciliation();
++      }, weak_factory_.GetWeakPtr()));
++  ReconcileAfterSessionRestore();
++}
++void PinnedTabService::ApplyOrganizationPinChange(tabs::TabHandle handle,
++                                                  uint64_t generation, bool pinned) {
++  auto* tab = handle.Get();
++  if (!tab || closing_all_browsers_ || !profile_switch_pauses_.empty() ||
++      (!organization_requests_.contains(handle) || organization_requests_.at(handle) != generation) || tab->IsPinned() != pinned ||
++      !tab->GetContents() || tab->GetContents()->GetBrowserContext() != profile_) return;
++  auto* contents = tab->GetContents();
++  auto* owner = aux::organization::OrganizationProfileServiceFactory::GetForProfile(profile_);
++  auto* organization = owner ? owner->model() : nullptr;
++  const auto id = aux::GetRememberedPinnedTabEntryId(*contents).value_or("");
++  if (organization && !id.empty()) {
++    auto found = organization->snapshot().entries.find(id);
++    if (found != organization->snapshot().entries.end() &&
++        aux::organization::IsGlobalPin(found->second) == pinned) {
++      UpdatePinnedEntrySessionData(tab, GURL(found->second.launch_url));
++      organization_requests_.erase(handle);
++      return;
++    }
++  }
++  auto done = base::BindOnce([](base::WeakPtr<PinnedTabService> service,
++      tabs::TabHandle handle, uint64_t generation, bool wanted,
++      bool success, std::string id) {
++    if (!service) return;
++    base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(FROM_HERE,
++        base::BindOnce([](base::WeakPtr<PinnedTabService> service,
++            tabs::TabHandle handle, uint64_t generation, bool wanted,
++            bool success, std::string id) {
++          auto* tab = handle.Get();
++          if (!service || !tab || !tab->GetContents() ||
++              tab->GetContents()->GetBrowserContext() != service->profile_ ||
++              (!service->organization_requests_.contains(handle) || service->organization_requests_.at(handle) != generation)) return;
++          service->organization_requests_.erase(handle);
++          if (success && !id.empty()) {
++            aux::RememberPinnedTabEntryId(*tab->GetContents(), id);
++            auto* owner = aux::organization::OrganizationProfileServiceFactory::GetForProfileIfExists(service->profile_);
++            auto* model = owner ? owner->model() : nullptr;
++            if (model) {
++              auto record = model->snapshot().entries.find(id);
++              if (record != model->snapshot().entries.end()) {
++                const GURL launch_url(record->second.launch_url);
++                aux::RememberPinnedTabEntryUrl(*tab->GetContents(), launch_url);
++                service->UpdatePinnedEntrySessionData(tab, launch_url);
++              }
++            }
++          } else if (!success && tab->IsPinned() == wanted) {
++            auto* browser = tab->GetBrowserWindowInterface();
++            if (!browser || browser->GetProfile() != service->profile_) return;
++            auto* model = browser->GetTabStripModel();
++            const int index = model->GetIndexOfTab(tab);
++            if (index != TabStripModel::kNoTab) {
++              base::AutoReset<bool> changing(&service->organization_observer_change_, true);
++              model->SetTabPinned(index, !wanted);
++            }
++          }
++        }, service, handle, generation, wanted, success, std::move(id)));
++  }, weak_factory_.GetWeakPtr(), handle, generation, pinned);
++  if (!organization) { std::move(done).Run(false, {}); return; }
++  if (pinned) {
++    aux::CommitOrganizationPin(*profile_, contents->GetVisibleURL(), contents->GetTitle(),
++        std::numeric_limits<size_t>::max(), id, std::move(done));
++  } else if (!id.empty()) {
++    aux::UnpinOrganizationEntry(*profile_, id, base::BindOnce(
++        [](aux::PinCommitReply done, std::string id, bool success) {
++          std::move(done).Run(success, std::move(id));
++        }, std::move(done), id));
++  } else std::move(done).Run(false, {});
++}
+ void PinnedTabService::OnTabChangedAt(tabs::TabInterface* tab,
+                                       TabChangeType type) {
+   if (!tab || !profile_switch_pauses_.empty() ||
+@@ -271,7 +338,8 @@
+   reconciliation_pending_ = false;
+   if (!profile_switch_pauses_.empty())
+     return;
+-  const auto entries = aux::ReadPinnedTabEntries(*profile_->GetPrefs());
++  const auto projected = aux::ReadOrganizationPinnedEntries(*profile_, true);
++  const auto entries = projected ? *projected : aux::ReadPinnedTabEntries(*profile_->GetPrefs());
+   ForEachCurrentBrowserWindowInterfaceOrderedByActivation(
+       [this, &entries](BrowserWindowInterface* browser) {
+         if (browser->GetProfile() != profile_ ||
+@@ -282,13 +350,15 @@
+         for (int i = 0; i < model->count(); ++i) {
+           auto* tab = model->GetTabAtIndex(i);
+           auto* contents = tab->GetContents();
+-          if (!tab->IsPinned() || !contents ||
++          if (!tab->IsPinned() || !contents || organization_requests_.contains(tab->GetHandle()) ||
+               contents->GetBrowserContext() != profile_)
+             continue;
+           const auto url = aux::GetRememberedPinnedTabEntryUrl(*contents);
+-          if (url && url->is_valid() &&
+-              std::ranges::none_of(entries, [&url](const auto& entry) {
+-                return entry.url == *url;
++          const auto logical_id = aux::GetRememberedPinnedTabEntryId(*contents);
++          if ((logical_id || (url && url->is_valid())) &&
++              std::ranges::none_of(entries, [&url, &logical_id](const auto& entry) {
++                return !entry.logical_id.empty() ? logical_id == entry.logical_id
++                                                : url && entry.url == *url;
+               }))
+             removed.push_back(i);
+         }
+@@ -304,7 +374,31 @@
+ void PinnedTabService::ReconcilePinnedEntries(TabStripModel* model) {
+   if (!model || !profile_switch_pauses_.empty())
+     return;
+-  const auto saved = aux::ReadPinnedTabEntries(*profile_->GetPrefs());
++  const auto projected = aux::ReadOrganizationPinnedEntries(*profile_, true);
++  const auto saved = projected ? *projected : aux::ReadPinnedTabEntries(*profile_->GetPrefs());
++  if (projected) {
++    std::set<std::string> used;
++    for (auto* tab : *model) {
++      if (tab->GetContents()) {
++        if (auto id = aux::GetRememberedPinnedTabEntryId(*tab->GetContents())) used.insert(*id);
++      }
++    }
++    for (auto* tab : *model) {
++      auto* contents = tab->GetContents();
++      if (!tab->IsPinned() || !contents || contents->GetBrowserContext() != profile_ ||
++          aux::GetRememberedPinnedTabEntryId(*contents) || organization_requests_.contains(tab->GetHandle())) continue;
++      const auto original = aux::GetRememberedPinnedTabEntryUrl(*contents).value_or(contents->GetVisibleURL());
++      for (const auto& entry : saved) {
++        if (entry.url == original && !used.contains(entry.logical_id)) {
++          aux::RememberPinnedTabEntryId(*contents, entry.logical_id);
++          used.insert(entry.logical_id);
++          UpdatePinnedEntrySessionData(tab, entry.url);
++          break;
++        }
++      }
++    }
++    return;
++  }
+   if (saved.empty())
+     return;
+   std::vector<GURL> remembered;
+@@ -366,10 +460,14 @@
+   const auto tab_id = sessions::SessionTabHelper::IdForTab(tab->GetContents());
+   if (!tab_id.is_valid() || !browser->GetSessionID().is_valid())
+     return;
++  if (auto logical_id = aux::GetRememberedPinnedTabEntryId(*tab->GetContents()))
++    organization_entry_ids_[tab->GetHandle()] = *logical_id;
+   if (auto* service = SessionServiceFactory::GetForProfile(profile_)) {
+     service->AddTabExtraData(browser->GetSessionID(), tab_id,
+                              "pinned_tab_entry_url",
+                              url.is_valid() ? url.spec() : std::string());
++    service->AddTabExtraData(browser->GetSessionID(), tab_id,
++        "aux_organization_tab_id", aux::GetRememberedPinnedTabEntryId(*tab->GetContents()).value_or(""));
+   }
+ }
+ void PinnedTabService::CachePinnedEntryIdentity(tabs::TabInterface* tab) {
+@@ -378,6 +476,11 @@
+   auto* contents = tab->GetContents();
+   if (!contents || contents->GetBrowserContext() != profile_)
+     return;
++  if (auto logical_id = aux::GetRememberedPinnedTabEntryId(*contents))
++    organization_entry_ids_[tab->GetHandle()] = *logical_id;
++  else if (auto cached = organization_entry_ids_.find(tab->GetHandle());
++           cached != organization_entry_ids_.end())
++    aux::RememberPinnedTabEntryId(*contents, cached->second);
+   auto url = aux::GetRememberedPinnedTabEntryUrl(*contents);
+   if (!url || !url->is_valid()) {
+     auto cached = pinned_entry_urls_.find(tab->GetHandle());
+--- a/chrome/browser/ui/tabs/pinned_tab_service.h
++++ b/chrome/browser/ui/tabs/pinned_tab_service.h
+@@ -8,6 +8,7 @@
+ #include <cstdint>
+ #include <map>
+ #include <set>
++#include <string>
+ 
+ #include "base/callback_list.h"
+ #include "base/memory/raw_ptr.h"
+@@ -69,6 +70,8 @@
+   void ObserveBrowserIfOwned(BrowserWindowInterface* browser);
+   void RefreshBrowserObservations();
+   void CachePinnedEntryIdentity(tabs::TabInterface* tab);
++  void BindOrganization();
++  void ApplyOrganizationPinChange(tabs::TabHandle handle, uint64_t generation, bool pinned);
+   void OnSessionRestored(Profile* profile, int restored_tab_count);
+   void ReconcileAfterSessionRestore();
+   void SchedulePinnedTabsReconciliation();
+@@ -85,11 +88,17 @@
+ 
+ #if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
+   bool closing_all_browsers_ = false;
++  bool organization_observer_change_ = false;
++  std::map<tabs::TabHandle, uint64_t> organization_requests_;
++  uint64_t organization_request_generation_ = 0;
++  base::CallbackListSubscription organization_ready_;
++  base::CallbackListSubscription organization_changes_;
+   bool reconciliation_pending_ = false;
+   PrefChangeRegistrar pinned_pref_changes_;
+   base::CallbackListSubscription session_restored_subscription_;
+   bool restore_reconciliation_pending_ = false;
+   std::map<tabs::TabHandle, GURL> pinned_entry_urls_;
++  std::map<tabs::TabHandle, std::string> organization_entry_ids_;
+   std::set<uint64_t> profile_switch_pauses_;
+   uint64_t next_profile_switch_pause_ = 0;
+ #else
+--- a/chrome/browser/ui/views/frame/aux_bookmark_pin_conversion.cc
++++ b/chrome/browser/ui/views/frame/aux_bookmark_pin_conversion.cc
+@@ -4,7 +4,11 @@
+ #include <array>
+ #include <cstdint>
+ #include <string>
++#include <utility>
+ #include "base/location.h"
++#include "base/uuid.h"
++#include "base/functional/bind.h"
++#include "chrome/browser/ui/tabs/aux_pinned_tab_entry_identity.h"
+ #include "chrome/browser/bookmarks/bookmark_model_factory.h"
+ #include "chrome/browser/profiles/profile.h"
+ #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
+@@ -13,6 +17,7 @@
+ #include "components/bookmarks/browser/bookmark_model.h"
+ #include "components/bookmarks/browser/bookmark_node.h"
+ #include "components/bookmarks/common/bookmark_metrics.h"
++#include "content/public/browser/web_contents.h"
+ #include "ui/views/view_tracker.h"
+ #include "url/gurl.h"
+ 
+@@ -43,57 +48,62 @@
+ }
+ }  // namespace
+ 
+-bool ConvertBookmarkToPinnedEntry(
++void ConvertBookmarkToPinnedEntry(
+     BrowserWindowInterface& browser,
+     VerticalPinnedTabEntriesView& pinned_entries,
+     const bookmarks::BookmarkNode& node,
+-    std::optional<tabs::TabHandle> associated_tab) {
+-  if (!node.is_url()) return false;
++    std::optional<tabs::TabHandle> associated_tab,
++    base::OnceCallback<void(bool)> done) {
+   auto* model = browser.GetTabStripModel();
+-  if (!model) return false;
++  if (!node.is_url() || !model) { std::move(done).Run(false); return; }
+   const auto browser_alive = browser.GetWeakPtr();
+   auto* const profile = browser.GetProfile();
+-  views::ViewTracker pinned_alive(&pinned_entries);
+-  // Preference/model notifications can reenter the real region. Snapshot the
+-  // dragged identity/content and reacquire its actual model node afterwards.
+   const int64_t node_id = node.id();
+   const auto node_uuid = node.uuid();
+   const GURL url = node.url();
+   const std::u16string title = node.GetTitle();
+-  const auto still_current = [&] {
+-    return browser_alive && pinned_alive.view() &&
+-        browser_alive->GetProfile() == profile &&
+-        browser_alive->GetTabStripModel() == model;
+-  };
+-
+-  // Original462d740..77c pins only the exact live associated tab when needed.
+-  const int index = FindAssociatedTab(*model, associated_tab);
+-  const bool newly_pinned = index >= 0 && !model->IsTabPinned(index);
+-  if (newly_pinned) {
+-    model->SetTabPinned(index, true);
+-    if (!still_current()) return false;
++  std::string existing_id;
++  if (associated_tab && associated_tab->Get() &&
++      associated_tab->Get()->GetContents() &&
++      associated_tab->Get()->GetContents()->GetBrowserContext() == profile) {
++    existing_id = GetRememberedPinnedTabEntryId(
++        *associated_tab->Get()->GetContents()).value_or("");
+   }
+-  if (!pinned_entries.CommitDroppedEntry(url, title)) {
+-    if (!still_current()) return false;
+-    // SetTabPinned can change indices: original failure path searches again.
+-    if (newly_pinned) {
+-      const int current_index = FindAssociatedTab(*model, associated_tab);
+-      if (current_index >= 0) model->SetTabPinned(current_index, false);
+-    }
+-    return false;
+-  }
+-  if (!still_current()) return false;
+-
+-  // Original462d6f4..838: saved-entry success comes first. A missing/unloaded
+-  // bookmark model skips removal; it must not undo the saved pin.
+-  auto* bookmark_model = BookmarkModelFactory::GetForBrowserContext(profile);
+-  if (bookmark_model && bookmark_model->loaded()) {
+-    const auto* current = FindRepresentedNode(*bookmark_model, node_id);
+-    if (current && current->uuid() == node_uuid && current->parent()) {
+-      bookmark_model->Remove(current, bookmarks::metrics::BookmarkEditSource::kUser,
+-                        FROM_HERE);
+-    }
+-  }
+-  return true;
++  pinned_entries.CommitDroppedEntryAsync(url, title, std::move(existing_id),
++      base::BindOnce([](base::WeakPtr<BrowserWindowInterface> browser,
++                        Profile* expected_profile, TabStripModel* expected_model,
++                        int64_t node_id, base::Uuid node_uuid, GURL url,
++                        std::u16string title, std::optional<tabs::TabHandle> associated,
++                        base::OnceCallback<void(bool)> done, bool success,
++                        std::string logical_id) {
++        if (!success || !browser || browser->GetProfile() != expected_profile ||
++            browser->GetTabStripModel() != expected_model) {
++          std::move(done).Run(false); return;
++        }
++        const int index = FindAssociatedTab(*expected_model, associated);
++        if (index >= 0) {
++          auto* contents = expected_model->GetWebContentsAt(index);
++          if (contents && contents->GetBrowserContext() == expected_profile) {
++            RememberPinnedTabEntryId(*contents, logical_id);
++            RememberPinnedTabEntryUrl(*contents, url);
++            expected_model->SetTabPinned(index, true);
++          }
++        }
++        if (!browser || browser->GetProfile() != expected_profile ||
++            browser->GetTabStripModel() != expected_model) {
++          std::move(done).Run(false); return;
++        }
++        auto* bookmarks = BookmarkModelFactory::GetForBrowserContext(expected_profile);
++        if (bookmarks && bookmarks->loaded()) {
++          const auto* current = FindRepresentedNode(*bookmarks, node_id);
++          // A changed bookmark belongs to the user; retain it even though the
++          // original pin proposal committed. Never delete by stale ID alone.
++          if (current && current->uuid() == node_uuid && current->parent() &&
++              current->url() == url && current->GetTitle() == title)
++            bookmarks->Remove(current, bookmarks::metrics::BookmarkEditSource::kUser, FROM_HERE);
++        }
++        std::move(done).Run(true);
++      }, browser_alive, profile, model, node_id, node_uuid, url, title,
++         associated_tab, std::move(done)));
+ }
+ }  // namespace aux
+--- a/chrome/browser/ui/views/frame/aux_bookmark_pin_conversion.h
++++ b/chrome/browser/ui/views/frame/aux_bookmark_pin_conversion.h
+@@ -3,6 +3,7 @@
+ #define CHROME_BROWSER_UI_VIEWS_FRAME_AUX_BOOKMARK_PIN_CONVERSION_H_
+ 
+ #include <optional>
++#include "base/functional/callback.h"
+ #include "components/tabs/public/tab_interface.h"
+ 
+ class BrowserWindowInterface;
+@@ -13,11 +14,12 @@
+ // Original region462d5e0: commit the genuine dragged URL bookmark to saved
+ // pins. The optional handle comes from the actual bookmark association owner.
+ // Conversion success precedes removal from the real loaded BookmarkModel.
+-bool ConvertBookmarkToPinnedEntry(
++void ConvertBookmarkToPinnedEntry(
+     BrowserWindowInterface& browser,
+     VerticalPinnedTabEntriesView& pinned_entries,
+     const bookmarks::BookmarkNode& node,
+-    std::optional<tabs::TabHandle> associated_tab);
++    std::optional<tabs::TabHandle> associated_tab,
++    base::OnceCallback<void(bool)> done);
+ 
+ }  // namespace aux
+ #endif
+--- a/chrome/browser/ui/views/frame/aux_cross_section_drag_coordinator.cc
++++ b/chrome/browser/ui/views/frame/aux_cross_section_drag_coordinator.cc
+@@ -67,8 +67,10 @@
+             weak_.GetWeakPtr()),
+         base::BindRepeating(
+             [](base::WeakPtr<Impl> owner,
+-               const VerticalPinnedTabEntriesView::EntryDragData& data) {
+-              return owner && owner->SavedFinish(data);
++               const VerticalPinnedTabEntriesView::EntryDragData& data,
++               base::OnceCallback<void(bool)> done) {
++              if (owner) owner->SavedFinish(data, std::move(done));
++              else std::move(done).Run(false);
+             },
+             weak_.GetWeakPtr()),
+         base::BindRepeating(&Impl::SavedCleanup, weak_.GetWeakPtr()));
+@@ -247,31 +249,23 @@
+     }
+     return std::nullopt;  // intra-saved-pin reorder remains leaf-owned.
+   }
+-  bool SavedFinish(const VerticalPinnedTabEntriesView::EntryDragData& data) {
+-    if (!Current())
+-      return false;
+-    const bool remove_only = remove_only_;
+-    if (remove_only)
+-      remove_only_ = false;
+-    const auto alive = weak_.GetWeakPtr();
+-    const bool changed = ConvertSavedPinToBookmark(
+-        *browser_, *Pins(), *Bookmarks(), {data.saved.url, data.title},
+-        data.live_tab, remove_only);
+-    if (!alive || !Current())
+-      return changed;
+-    // Remove-only can mutate the first duplicate yet return false if another
+-    // remains. Its genuine layout/association effects still run in that case.
+-    if (remove_only)
+-      hint_.Hide();
+-    if (!alive || !Current())
+-      return changed;
+-    if (!remove_only)
+-      HidePreview();
+-    if (!alive || !Current())
+-      return changed;
+-    if (remove_only || changed)
+-      delegate_->SavedPinConversionCompleted();
+-    return changed;
++  void SavedFinish(const VerticalPinnedTabEntriesView::EntryDragData& data,
++                   base::OnceCallback<void(bool)> done) {
++    if (!Current()) { std::move(done).Run(false); return; }
++    const bool remove_only = std::exchange(remove_only_, false);
++    auto saved = data.saved;
++    saved.title = data.title;
++    ConvertSavedPinToBookmark(*browser_, *Pins(), *Bookmarks(), saved,
++        data.live_tab, remove_only, base::BindOnce(
++          [](base::WeakPtr<Impl> owner, bool remove_only,
++             base::OnceCallback<void(bool)> done, bool success) {
++            if (!owner || !owner->Current()) { std::move(done).Run(false); return; }
++            if (remove_only) owner->hint_.Hide();
++            else owner->HidePreview();
++            if (!owner || !owner->Current()) { std::move(done).Run(false); return; }
++            if (success) owner->delegate_->SavedPinConversionCompleted();
++            std::move(done).Run(success);
++          }, weak_.GetWeakPtr(), remove_only, std::move(done)));
+   }
+   void SavedCleanup() {
+     const auto alive = weak_.GetWeakPtr();
+@@ -331,18 +325,16 @@
+     return false;
+   }
+   void BookmarkFinish(const bookmarks::BookmarkNode* node) {
+-    if (!Current() || !node || !node->is_url())
+-      return;
++    if (!Current() || !node || !node->is_url()) return;
+     const auto associated = Bookmarks()->GetAssociatedTabHandle(*node);
+-    const auto alive = weak_.GetWeakPtr();
+-    ConvertBookmarkToPinnedEntry(*browser_, *Pins(), *node, associated);
+-    if (!alive || !Current())
+-      return;
+-    candidate_id_.reset();
+-    HidePreview();
+-    if (!alive || !Current())
+-      return;
+-    delegate_->BookmarkConversionCompleted();
++    ConvertBookmarkToPinnedEntry(*browser_, *Pins(), *node, associated,
++        base::BindOnce([](base::WeakPtr<Impl> owner, bool success) {
++          if (!owner || !owner->Current()) return;
++          owner->candidate_id_.reset();
++          owner->HidePreview();
++          if (owner && owner->Current() && success)
++            owner->delegate_->BookmarkConversionCompleted();
++        }, weak_.GetWeakPtr()));
+   }
+   void BookmarkCleanup() {
+     candidate_id_.reset();
+--- a/chrome/browser/ui/views/frame/aux_saved_entry_drop_target.cc
++++ b/chrome/browser/ui/views/frame/aux_saved_entry_drop_target.cc
+@@ -2,6 +2,8 @@
+ #include "chrome/browser/ui/views/frame/aux_saved_entry_drop_target.h"
+ #include <algorithm>
+ #include "base/check.h"
++#include "base/functional/bind.h"
++#include "chrome/browser/ui/tabs/aux_pinned_tab_entry_identity.h"
+ #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
+ #include "chrome/browser/ui/tabs/tab_strip_model.h"
+ #include "chrome/browser/ui/views/frame/aux_cross_section_drag_preview.h"
+@@ -197,35 +199,44 @@
+ bool SavedEntryDropTarget::CanDropTab() { return Current() && url_.is_valid(); }
+ void SavedEntryDropTarget::HandleTabDrop(DragController& controller) {
+   if (!CanDropTab()) return;
+-  auto alive = weak_.GetWeakPtr();
+-  const bool committed = static_cast<VerticalPinnedTabEntriesView*>(pins_.view())
+-      ->CommitDroppedEntry(url_, title_);
+-  if (!alive || !Current()) return;
+-  if (committed) {
+-    auto* context = drag_->GetDragContext();
+-    auto* model = context->GetTabStripModel();
+-    std::vector<int> indices;
+-    bool valid = !controller.GetSessionData().group_header_id();
+-    for (const auto& data : controller.GetSessionData().tab_drag_data_) {
+-      if (!data.contents) continue;
+-      const int index = model->GetIndexOfWebContents(data.contents);
+-      if (index == TabStripModel::kNoTab || model->GetTabAtIndex(index)->GetGroup()) {
+-        valid = false; break;
+-      }
+-      indices.push_back(index);
++  auto* model = browser_->GetTabStripModel();
++  std::vector<tabs::TabHandle> handles;
++  if (controller.GetSessionData().group_header_id()) { Cleanup(true); return; }
++  for (const auto& data : controller.GetSessionData().tab_drag_data_) {
++    if (!data.contents) continue;
++    const int index = model->GetIndexOfWebContents(data.contents);
++    if (index == TabStripModel::kNoTab || model->GetTabAtIndex(index)->GetGroup()) {
++      Cleanup(true); return;
+     }
+-    if (valid && !indices.empty()) {
+-      std::ranges::sort(indices);
+-      indices.erase(std::unique(indices.begin(), indices.end()), indices.end());
+-      model->PinTabsForAuxSavedEntryDrop(indices);
+-      if (!alive || !Current()) return;
+-      context->GetPositioningDelegate()->ForceLayout();
+-      if (!alive || !Current()) return;
+-      completed_.Run();
+-      if (!alive || !Current()) return;
+-    }
+-  }
+-  Cleanup(true);
++    handles.push_back(model->GetTabAtIndex(index)->GetHandle());
++  }
++  if (handles.size() != 1 || !handles.front().Get()) { Cleanup(true); return; }
++  const auto existing = GetRememberedPinnedTabEntryId(
++      *handles.front().Get()->GetContents()).value_or("");
++  static_cast<VerticalPinnedTabEntriesView*>(pins_.view())->CommitDroppedEntryAsync(
++      url_, title_, existing, base::BindOnce(
++        [](base::WeakPtr<SavedEntryDropTarget> owner,
++           std::vector<tabs::TabHandle> handles, bool success, std::string id) {
++          if (!owner || !owner->Current()) return;
++          if (success) {
++            auto* model = owner->browser_->GetTabStripModel();
++            std::vector<int> indices;
++            for (auto handle : handles) {
++              auto* tab = handle.Get();
++              const int index = tab ? model->GetIndexOfTab(tab) : TabStripModel::kNoTab;
++              if (index == TabStripModel::kNoTab || tab->GetGroup() ||
++                  !tab->GetContents() || tab->GetContents()->GetBrowserContext() != owner->profile_) {
++                owner->Cleanup(true); return;
++              }
++              RememberPinnedTabEntryId(*tab->GetContents(), id);
++              indices.push_back(index);
++            }
++            model->PinTabsForAuxSavedEntryDrop(indices);
++            if (!owner || !owner->Current()) return;
++            owner->completed_.Run();
++          }
++          if (owner && owner->Current()) owner->Cleanup(true);
++        }, weak_.GetWeakPtr(), std::move(handles)));
+ }
+ base::CallbackListSubscription SavedEntryDropTarget::RegisterWillDestroyCallback(
+     base::OnceClosure callback) { return destroying_.Add(std::move(callback)); }
+--- a/chrome/browser/ui/views/frame/aux_saved_pin_bookmark_conversion.cc
++++ b/chrome/browser/ui/views/frame/aux_saved_pin_bookmark_conversion.cc
+@@ -1,7 +1,9 @@
+ // Copyright 2026 Aux Authors. BSD-style license: see //LICENSE.
+ #include "chrome/browser/ui/views/frame/aux_saved_pin_bookmark_conversion.h"
+ 
+-#include <algorithm>
++#include <utility>
++#include "base/functional/bind.h"
++#include "chrome/browser/ui/tabs/aux_pinned_tab_entry_identity.h"
+ #include "chrome/browser/profiles/profile.h"
+ #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
+ #include "chrome/browser/ui/tabs/tab_strip_model.h"
+@@ -11,63 +13,48 @@
+ #include "ui/views/view_tracker.h"
+ 
+ namespace aux {
+-bool ConvertSavedPinToBookmark(BrowserWindowInterface& browser,
++void ConvertSavedPinToBookmark(BrowserWindowInterface& browser,
+                                VerticalPinnedTabEntriesView& saved_pins,
+                                VerticalTabBookmarksView& bookmarks,
+                                const PinnedTabEntry& entry,
+                                std::optional<tabs::TabHandle> associated_tab,
+-                               bool remove_without_insertion) {
+-  if (!entry.url.is_valid())
+-    return false;
++                               bool remove_without_insertion,
++                               base::OnceCallback<void(bool)> done) {
+   auto* const model = browser.GetTabStripModel();
+   auto* const profile = browser.GetProfile();
+-  if (!model || !profile)
+-    return false;
++  if (!entry.url.is_valid() || entry.logical_id.empty() || !model || !profile) {
++    std::move(done).Run(false); return;
++  }
+   const auto browser_alive = browser.GetWeakPtr();
+-  views::ViewTracker bookmarks_alive(&bookmarks);
+   views::ViewTracker pins_alive(&saved_pins);
+-  // Source callbacks/observers may retire this window's profile-bound owners.
+-  // Snapshot data before AddURL and revalidate after every notifying mutation.
+-  const GURL url = entry.url;
+-  const std::u16string title = entry.title;
+-  const auto current = [&] {
+-    return browser_alive && bookmarks_alive.view() && pins_alive.view() &&
+-           browser_alive->GetProfile() == profile &&
+-           browser_alive->GetTabStripModel() == model;
+-  };
+-  if (!remove_without_insertion) {
+-    const bool created =
+-        bookmarks.CommitExternalBookmark(url, title) != nullptr;
+-    if (!current() || !created)
+-      return false;
++  // Create the bookmark before removing pin retention. Failure retains the
++  // original pin. A later failed unpin may leave both references, never loss.
++  if (!remove_without_insertion &&
++      !bookmarks.CommitExternalBookmark(entry.url, entry.title)) {
++    std::move(done).Run(false); return;
+   }
+-  // Original462bac4..b68/462bd28..b90: only the exact optional live handle,
+-  // searched again in the actual current model. URL equality grants no
+-  // authority.
+-  if (associated_tab && associated_tab->Get()) {
+-    auto* tab = associated_tab->Get();
+-    const int index = model->GetIndexOfTab(tab);
+-    if (index >= 0 && tab->GetContents() &&
+-        tab->GetContents()->GetBrowserContext() == profile &&
+-        model->IsTabPinned(index)) {
+-      model->SetTabPinned(index, false);
+-      if (!current())
+-        return false;
+-    }
++  if (!browser_alive || !pins_alive.view() ||
++      browser_alive->GetProfile() != profile ||
++      browser_alive->GetTabStripModel() != model) {
++    std::move(done).Run(false); return;
+   }
+-  // Actual source41d4f20 removes only the first exact saved URL. A genuine
+-  // failed AddURL above leaves both the saved entry and pinned live tab intact.
+-  RemoveFirstPinnedTabEntry(*profile->GetPrefs(), url);
+-  if (!current())
+-    return false;
+-  saved_pins.RefreshAfterSavedEntryChange();
+-  if (!current())
+-    return false;
+-  if (!remove_without_insertion)
+-    return true;
+-  const auto entries = ReadPinnedTabEntries(*profile->GetPrefs());
+-  return std::ranges::none_of(entries, [&url](const PinnedTabEntry& saved) {
+-    return saved.url == url;
+-  });
++  saved_pins.UnpinEntryAsync(entry, base::BindOnce(
++      [](base::WeakPtr<BrowserWindowInterface> browser, Profile* profile,
++         TabStripModel* expected, std::optional<tabs::TabHandle> associated,
++         std::string logical_id, base::OnceCallback<void(bool)> done, bool success) {
++        if (!success || !browser || browser->GetProfile() != profile ||
++            browser->GetTabStripModel() != expected) {
++          std::move(done).Run(false); return;
++        }
++        if (associated && associated->Get()) {
++          auto* tab = associated->Get();
++          const int index = expected->GetIndexOfTab(tab);
++          if (index >= 0 && tab->GetContents() &&
++              tab->GetContents()->GetBrowserContext() == profile &&
++              GetRememberedPinnedTabEntryId(*tab->GetContents()) == logical_id)
++            expected->SetTabPinned(index, false);
++        }
++        std::move(done).Run(true);
++      }, browser_alive, profile, model, associated_tab, entry.logical_id, std::move(done)));
+ }
+ }  // namespace aux
+--- a/chrome/browser/ui/views/frame/aux_saved_pin_bookmark_conversion.h
++++ b/chrome/browser/ui/views/frame/aux_saved_pin_bookmark_conversion.h
+@@ -3,6 +3,7 @@
+ #define CHROME_BROWSER_UI_VIEWS_FRAME_AUX_SAVED_PIN_BOOKMARK_CONVERSION_H_
+ 
+ #include <optional>
++#include "base/functional/callback.h"
+ #include "chrome/browser/ui/tabs/aux_pinned_tab_entries.h"
+ #include "components/tabs/public/tab_interface.h"
+ 
+@@ -14,11 +15,12 @@
+ // remove-without-insertion state; this helper does not infer a destination.
+ // Never adds a bookmark in that branch. Normal insertion must create a genuine
+ // BookmarkNode before unpin/removal. Neither branch closes any browser tab.
+-bool ConvertSavedPinToBookmark(BrowserWindowInterface&,
++void ConvertSavedPinToBookmark(BrowserWindowInterface&,
+                                VerticalPinnedTabEntriesView&,
+                                VerticalTabBookmarksView&,
+                                const PinnedTabEntry&,
+                                std::optional<tabs::TabHandle> associated_tab,
+-                               bool remove_without_insertion);
++                               bool remove_without_insertion,
++                               base::OnceCallback<void(bool)> done);
+ }  // namespace aux
+ #endif
+--- a/chrome/browser/ui/views/tabs/vertical/aux_pinned_tab_entry_actions.cc
++++ b/chrome/browser/ui/views/tabs/vertical/aux_pinned_tab_entry_actions.cc
+@@ -7,12 +7,57 @@
+ #include "chrome/browser/ui/navigator/browser_navigator.h"
+ #include "chrome/browser/ui/navigator/browser_navigator_params.h"
+ #include "chrome/browser/ui/tabs/aux_pinned_tab_entry_identity.h"
++#include "chrome/browser/aux/organization/organization_profile_service.h"
++#include "chrome/browser/aux/organization/organization_service.h"
+ #include "chrome/browser/ui/tabs/tab_enums.h"
+ #include "chrome/browser/ui/tabs/tab_strip_model.h"
+ #include "chrome/browser/ui/tabs/tab_strip_user_gesture_details.h"
+ #include "content/public/browser/web_contents.h"
+ 
+ namespace aux {
++std::optional<int> FindPinnedTabEntry(const TabStripModel& model, const PinnedTabEntry& entry) {
++  if (entry.logical_id.empty()) return FindPinnedTabEntry(model, entry.url);
++  for (int index = 0; index < model.count(); ++index) {
++    auto* contents = model.GetWebContentsAt(index);
++    if (contents && model.IsTabPinned(index) &&
++        GetRememberedPinnedTabEntryId(*contents) == entry.logical_id)
++      return index;
++  }
++  return std::nullopt;
++}
++void OpenPinnedTabEntry(BrowserWindowInterface& browser, const PinnedTabEntry& entry) {
++  if (entry.logical_id.empty()) { OpenPinnedTabEntry(browser, entry.url); return; }
++  auto* owner = organization::OrganizationProfileServiceFactory::GetForProfileIfExists(browser.GetProfile());
++  auto* organization_model = owner ? owner->model() : nullptr;
++  if (!organization_model || organization_model->blocked()) return;
++  const auto& records = organization_model->snapshot().entries;
++  const auto found = records.find(entry.logical_id);
++  if (found == records.end() || found->second.archived ||
++      !organization::IsGlobalPin(found->second) ||
++      found->second.kind != organization::EntryKind::kTab) return;
++  const GURL current_url(found->second.current_url);
++  if (!current_url.is_valid()) return;
++  if (auto* model = browser.GetTabStripModel()) {
++    if (auto index = FindPinnedTabEntry(*model, entry)) {
++      model->ActivateTabAt(*index, TabStripUserGestureDetails(TabStripUserGestureDetails::GestureType::kNone));
++      return;
++    }
++  }
++  // Insert ordinary first so the pin observer sees an assigned logical identity.
++  NavigateParams params(&browser, current_url, ui::PAGE_TRANSITION_AUTO_BOOKMARK);
++  params.disposition = WindowOpenDisposition::NEW_FOREGROUND_TAB;
++  Navigate(&params);
++  if (params.navigated_or_inserted_contents) {
++    auto* contents = params.navigated_or_inserted_contents.get();
++    RememberPinnedTabEntryId(*contents, entry.logical_id);
++    RememberPinnedTabEntryUrl(*contents, entry.url);
++    if (auto* model = browser.GetTabStripModel()) {
++      const int index = model->GetIndexOfWebContents(contents);
++      if (index != TabStripModel::kNoTab) model->SetTabPinned(index, true);
++    }
++  }
++}
++
+ std::optional<int> FindPinnedTabEntry(const TabStripModel& model,
+                                       const GURL& url) {
+   if (!url.is_valid()) {
+--- a/chrome/browser/ui/views/tabs/vertical/aux_pinned_tab_entry_actions.h
++++ b/chrome/browser/ui/views/tabs/vertical/aux_pinned_tab_entry_actions.h
+@@ -8,6 +8,7 @@
+ 
+ #include "chrome/browser/ui/tabs/aux_pinned_tab_entry_identity.h"
+ #include "url/gurl.h"
++#include "chrome/browser/ui/tabs/aux_pinned_tab_entries.h"
+ 
+ class BrowserWindowInterface;
+ class TabStripModel;
+@@ -17,6 +18,8 @@
+ 
+ namespace aux {
+ 
++std::optional<int> FindPinnedTabEntry(const TabStripModel&, const PinnedTabEntry&);
++void OpenPinnedTabEntry(BrowserWindowInterface&, const PinnedTabEntry&);
+ std::optional<int> FindPinnedTabEntry(const TabStripModel& model,
+                                       const GURL& url);
+ void OpenPinnedTabEntry(BrowserWindowInterface& browser, const GURL& url);
+--- a/chrome/browser/ui/views/tabs/vertical/vertical_pinned_tab_entries_view.cc
++++ b/chrome/browser/ui/views/tabs/vertical/vertical_pinned_tab_entries_view.cc
+@@ -17,6 +17,9 @@
+ #include "cc/paint/paint_flags.h"
+ #include "chrome/browser/profiles/profile.h"
+ #include "chrome/browser/aux/component_bootstrap.h"
++#include "chrome/browser/aux/organization/organization_profile_service.h"
++#include "chrome/browser/aux/organization/organization_service.h"
++#include "chrome/browser/ui/tabs/aux_organization_pin_adapter.h"
+ #include "chrome/browser/ui/color/chrome_color_id.h"
+ #include "ui/gfx/vector_icon_types.h"
+ #include "chrome/browser/favicon/favicon_service_factory.h"
+@@ -211,7 +214,7 @@
+     return !owner_->paused_ && !owner_->IsEntryDragInProgress() &&
+            owner_->model_ && index_ < owner_->entries_.size() &&
+            aux::FindPinnedTabEntry(*owner_->model_,
+-                                  owner_->entries_[index_].saved.url).has_value();
++                                  owner_->entries_[index_].saved).has_value();
+   }
+   views::BubbleAnchor GetAnchor() override { return views::BubbleAnchor(this); }
+   views::BubbleBorder::Arrow GetAnchorPosition() const override {
+@@ -359,7 +362,7 @@
+     HoverCardAnchorTarget* target = nullptr;
+     if (IsValidHoverCardTarget()) {
+       const int live = *aux::FindPinnedTabEntry(
+-          *owner_->model_, owner_->entries_[index_].saved.url);
++          *owner_->model_, owner_->entries_[index_].saved);
+       SetHoverCardDataFrom(
+           tabs::TabData::FromTabInterface(owner_->model_->GetTabAtIndex(live)));
+       target = this;
+@@ -479,6 +482,23 @@
+       aux::kPinnedTabEntriesPref,
+       base::BindRepeating(&VerticalPinnedTabEntriesView::ScheduleRefresh,
+                           weak_factory_.GetWeakPtr()));
++  auto* organization = aux::organization::OrganizationProfileServiceFactory::GetForProfile(browser_->GetProfile());
++  if (organization) {
++    organization_ready_ = organization->ObserveReady(base::BindRepeating(
++        &VerticalPinnedTabEntriesView::BindOrganization, weak_factory_.GetWeakPtr()));
++  }
++  BindOrganization();
++}
++void VerticalPinnedTabEntriesView::BindOrganization() {
++  organization_changes_ = {};
++  if (paused_) return;
++  auto* owner = aux::organization::OrganizationProfileServiceFactory::GetForProfileIfExists(browser_->GetProfile());
++  if (owner && owner->model()) {
++    organization_changes_ = owner->model()->Observe(base::BindRepeating(
++        [](base::WeakPtr<VerticalPinnedTabEntriesView> view,
++           const aux::organization::Delta&) { if (view) view->ScheduleRefresh(); },
++        weak_factory_.GetWeakPtr()));
++  }
+   Refresh();
+ }
+ void VerticalPinnedTabEntriesView::PauseForProfileSwitch() {
+@@ -513,6 +533,8 @@
+   refresh_pending_ = false;
+   ui_changes_.clear();
+   pref_changes_.Reset();
++  organization_ready_ = {};
++  organization_changes_ = {};
+   TabStripModelObserver::StopObservingAll(this);
+   model_ = nullptr;
+ }
+@@ -546,7 +568,9 @@
+   if (paused_ || !model_)
+     return;
+   ui_changes_.clear();
+-  auto saved = aux::ReadPinnedTabEntries(*browser_->GetProfile()->GetPrefs());
++  auto projected = aux::ReadOrganizationPinnedEntries(*browser_->GetProfile());
++  auto saved = projected ? std::move(*projected)
++                         : aux::ReadPinnedTabEntries(*browser_->GetProfile()->GetPrefs());
+   std::vector<Entry> entries;
+   for (auto& value : saved) {
+     Entry entry;
+@@ -559,7 +583,7 @@
+     if (auto cached = icon_cache_.find(entry.saved.url.spec());
+         cached != icon_cache_.end())
+       entry.image = cached->second;
+-    entry.live_index = aux::FindPinnedTabEntry(*model_, entry.saved.url);
++    entry.live_index = aux::FindPinnedTabEntry(*model_, entry.saved);
+     if (entry.live_index) {
+       auto* tab = model_->GetTabAtIndex(*entry.live_index);
+       if (auto* helper = TabUIHelper::From(tab)) {
+@@ -653,6 +677,12 @@
+     const tabs::TabInterface& tab) const {
+   if (paused_ || !model_ || !tab.IsPinned() || !tab.GetContents())
+     return false;
++  if (const auto logical_id = aux::GetRememberedPinnedTabEntryId(*tab.GetContents())) {
++    return std::ranges::any_of(entries_, [&logical_id](const auto& entry) {
++      return entry.saved.logical_id == *logical_id;
++    });
++  }
++  if (aux::ReadOrganizationPinnedEntries(*browser_->GetProfile())) return false;
+   const auto remembered = aux::GetRememberedPinnedTabEntryUrl(*tab.GetContents());
+   const GURL& candidate = remembered && remembered->is_valid()
+       ? *remembered : tab.GetContents()->GetVisibleURL();
+@@ -755,7 +785,7 @@
+   const Entry& entry = entries_[index];
+   EntryDragData data{entry.saved, entry.title, entry.image, std::nullopt,
+                      entry.accent};
+-  if (auto live = aux::FindPinnedTabEntry(*model_, entry.saved.url))
++  if (auto live = aux::FindPinnedTabEntry(*model_, entry.saved))
+     data.live_tab = model_->GetTabAtIndex(*live)->GetHandle();
+   const gfx::Rect local_bounds(pointer - grab_offset.OffsetFromOrigin(),
+                                 view->size());
+@@ -899,43 +929,39 @@
+     cleanup.Run();
+ }
+ void VerticalPinnedTabEntriesView::ReleaseEntryDrag() {
+-  if (!dragging_view_)
+-    return;
++  if (!dragging_view_) return;
+   const auto data = drag_data_;
+   const bool routed = drag_region_bounds_.has_value();
+   const bool dirty = reorder_dirty_;
+-  std::vector<aux::PinnedTabEntry> saved;
+-  if (!routed && dirty) {
+-    for (const auto& entry : entries_)
+-      saved.push_back(entry.saved);
+-  }
+-  Profile* const profile = browser_->GetProfile();
++  size_t destination = 0;
++  if (data) {
++    const auto found = std::ranges::find_if(entries_, [&data](const auto& entry) {
++      return entry.saved.logical_id == data->saved.logical_id;
++    });
++    if (found != entries_.end()) destination = found - entries_.begin();
++  }
+   const auto finish = drag_finish_;
+   const auto cleanup = drag_cleanup_;
+   auto weak = weak_factory_.GetWeakPtr();
+   ResetEntryDrag();
+-  if (!weak)
+-    return;
+-  if (routed && data) {
+-    const bool completed = finish && finish.Run(*data);
+-    if (!weak)
+-      return;
+-    if (cleanup)
+-      cleanup.Run();
+-    if (weak && !completed)
+-      Refresh();
+-    return;
+-  }
+-  if (dirty) {
+-    base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
+-        FROM_HERE, base::BindOnce(
+-            [](base::WeakPtr<VerticalPinnedTabEntriesView> owner,
+-               Profile* expected, std::vector<aux::PinnedTabEntry> entries) {
+-              if (owner && !owner->paused_ &&
+-                  owner->browser_->GetProfile() == expected) {
+-                aux::WritePinnedTabEntries(*expected->GetPrefs(), entries);
+-              }
+-            }, weak, profile, std::move(saved)));
++  if (!weak) return;
++  if (routed && data && finish) {
++    finish.Run(*data, base::BindOnce(
++        [](base::WeakPtr<VerticalPinnedTabEntriesView> owner,
++           base::RepeatingClosure cleanup, bool) {
++          if (!owner || owner->paused_) return;
++          if (cleanup) cleanup.Run();
++          if (owner) owner->ScheduleRefresh();
++        }, weak, cleanup));
++    return;
++  }
++  if (dirty && data && !data->saved.logical_id.empty()) {
++    aux::ReorderOrganizationPin(*browser_->GetProfile(), data->saved.logical_id,
++        destination, base::BindOnce([](base::WeakPtr<VerticalPinnedTabEntriesView> view, bool) {
++          if (view) view->ScheduleRefresh();
++        }, weak));
++  } else if (dirty) {
++    ScheduleRefresh();
+   }
+ }
+ std::optional<gfx::Rect> VerticalPinnedTabEntriesView::UpdateDropInsertion(
+@@ -986,46 +1012,28 @@
+   SchedulePaint();
+   PreferredSizeChanged();
+ }
+-bool VerticalPinnedTabEntriesView::CommitDroppedEntry(
+-    const GURL& dropped_url,
+-    const std::u16string& dropped_title) {
+-  if (paused_ || !model_ || !dropped_url.is_valid())
+-    return false;
+-  // The caller may supply a reference to an existing entry rebuilt below.
+-  const GURL url = dropped_url;
+-  const std::u16string title = dropped_title;
+-  Profile* const profile = browser_->GetProfile();
+-  PrefService& prefs = *profile->GetPrefs();
+-  auto entries = aux::ReadPinnedTabEntries(prefs);
+-  size_t insertion = std::min(drop_insertion_.value_or(entries.size()),
+-                              entries.size());
+-  const auto existing = std::ranges::find_if(
+-      entries, [&url](const auto& entry) { return entry.url == url; });
+-  aux::PinnedTabEntry entry{url, title};
+-  if (existing != entries.end()) {
+-    const size_t previous = existing - entries.begin();
+-    entry = std::move(*existing);
+-    entries.erase(existing);
+-    if (previous < insertion)
+-      --insertion;
+-    if (!title.empty())
+-      entry.title = title;
+-  }
+-  insertion = std::min(insertion, entries.size());
+-  entries.insert(entries.begin() + insertion, std::move(entry));
+-  auto weak = weak_factory_.GetWeakPtr();
+-  aux::WritePinnedTabEntries(prefs, entries);
+-  if (!weak || paused_ || browser_->GetProfile() != profile)
+-    return false;
+-  SetDropInsertion(std::nullopt);
+-  if (!weak || paused_ || browser_->GetProfile() != profile)
+-    return false;
+-  Refresh();
+-  if (!weak || paused_ || browser_->GetProfile() != profile)
+-    return false;
+-  const auto stored = aux::ReadPinnedTabEntries(prefs);
+-  return std::ranges::any_of(
+-      stored, [&url](const auto& entry) { return entry.url == url; });
++void VerticalPinnedTabEntriesView::CommitDroppedEntryAsync(
++    const GURL& url, const std::u16string& title, std::string existing_id,
++    base::OnceCallback<void(bool, std::string)> done) {
++  if (paused_ || !model_ || !url.is_valid()) {
++    std::move(done).Run(false, {}); return;
++  }
++  aux::CommitOrganizationPin(*browser_->GetProfile(), url, title,
++      drop_insertion_.value_or(entries_.size()), std::move(existing_id),
++      base::BindOnce([](base::WeakPtr<VerticalPinnedTabEntriesView> owner,
++                       base::OnceCallback<void(bool, std::string)> done,
++                       bool success, std::string id) {
++        if (!owner || owner->paused_) { std::move(done).Run(false, {}); return; }
++        owner->SetDropInsertion(std::nullopt);
++        if (!owner || owner->paused_) { std::move(done).Run(false, {}); return; }
++        owner->ScheduleRefresh();
++        std::move(done).Run(success, std::move(id));
++      }, weak_factory_.GetWeakPtr(), std::move(done)));
++}
++void VerticalPinnedTabEntriesView::UnpinEntryAsync(
++    const aux::PinnedTabEntry& entry, base::OnceCallback<void(bool)> done) {
++  if (paused_ || entry.logical_id.empty()) { std::move(done).Run(false); return; }
++  aux::UnpinOrganizationEntry(*browser_->GetProfile(), entry.logical_id, std::move(done));
+ }
+ void VerticalPinnedTabEntriesView::OnPaint(gfx::Canvas* canvas) {
+   views::View::OnPaint(canvas);
+@@ -1043,13 +1051,12 @@
+ void VerticalPinnedTabEntriesView::Activate(size_t index) {
+   if (paused_ || !model_ || index >= entries_.size())
+     return;
+-  const GURL url = entries_[index].saved.url;
+-  aux::OpenPinnedTabEntry(*browser_, url);
++  aux::OpenPinnedTabEntry(*browser_, entries_[index].saved);
+ }
+ void VerticalPinnedTabEntriesView::Close(size_t index) {
+   if (paused_ || !model_ || index >= entries_.size())
+     return;
+-  if (auto live = aux::FindPinnedTabEntry(*model_, entries_[index].saved.url))
++  if (auto live = aux::FindPinnedTabEntry(*model_, entries_[index].saved))
+     model_->CloseWebContentsAt(*live, CLOSE_USER_GESTURE);
+ }
+ void VerticalPinnedTabEntriesView::ShowEntryContextMenu(size_t index,
+@@ -1058,7 +1065,7 @@
+     return;
+   CancelContextMenu();
+   const GURL url = entries_[index].saved.url;
+-  if (auto live = aux::FindPinnedTabEntry(*model_, url)) {
++  if (auto live = aux::FindPinnedTabEntry(*model_, entries_[index].saved)) {
+     auto* browser_view = BrowserView::GetBrowserViewForBrowser(browser_);
+     auto* region =
+         browser_view ? browser_view->vertical_tab_strip_region_view() : nullptr;
+@@ -1086,6 +1093,7 @@
+     return;
+   }
+   menu_url_ = url;
++  menu_entry_ = entries_[index].saved;
+   menu_model_ = std::make_unique<ui::SimpleMenuModel>(this);
+   menu_model_->AddItem(1, l10n_util::GetStringUTF16(IDS_TAB_CXMENU_UNPIN_TAB));
+   menu_runner_ = std::make_unique<views::MenuRunner>(
+@@ -1116,8 +1124,11 @@
+ }
+ void VerticalPinnedTabEntriesView::ExecuteCommand(int command_id, int) {
+   if (IsCommandIdEnabled(command_id)) {
+-    const GURL url = std::exchange(menu_url_, GURL());
+-    aux::RemoveFirstPinnedTabEntry(*browser_->GetProfile()->GetPrefs(), url);
++    menu_url_ = GURL();
++    UnpinEntryAsync(menu_entry_, base::BindOnce(
++        [](base::WeakPtr<VerticalPinnedTabEntriesView> view, bool) {
++          if (view) view->ScheduleRefresh();
++        }, weak_factory_.GetWeakPtr()));
+   }
+ }
+ void VerticalPinnedTabEntriesView::MenuClosed(ui::SimpleMenuModel* source) {
+--- a/chrome/browser/ui/views/tabs/vertical/vertical_pinned_tab_entries_view.h
++++ b/chrome/browser/ui/views/tabs/vertical/vertical_pinned_tab_entries_view.h
+@@ -55,7 +55,8 @@
+   };
+   using EntryDragUpdate = base::RepeatingCallback<std::optional<gfx::Rect>(
+       const EntryDragData&, const gfx::Rect&, const gfx::Point&)>;
+-  using EntryDragFinish = base::RepeatingCallback<bool(const EntryDragData&)>;
++  using EntryDragFinish = base::RepeatingCallback<void(
++      const EntryDragData&, base::OnceCallback<void(bool)>)>;
+   // Update consumes actual SCREEN tile bounds/pointer. An engaged rectangle
+   // routes to the region; even an empty rectangle is a genuine routed result.
+   void SetEntryDragCallbacks(EntryDragUpdate update, EntryDragFinish finish,
+@@ -70,7 +71,9 @@
+   std::optional<gfx::Rect> UpdateDropInsertion(const gfx::Point& screen_point);
+   void SetDropInsertion(std::optional<size_t> index);
+   std::optional<size_t> drop_insertion() const { return drop_insertion_; }
+-  bool CommitDroppedEntry(const GURL& url, const std::u16string& title);
++  void CommitDroppedEntryAsync(const GURL& url, const std::u16string& title,
++      std::string existing_id, base::OnceCallback<void(bool, std::string)> done);
++  void UnpinEntryAsync(const aux::PinnedTabEntry&, base::OnceCallback<void(bool)>);
+ 
+   // Original462ba98 calls the existing source refresh after saved-pref removal.
+   void RefreshAfterSavedEntryChange();
+@@ -112,6 +115,7 @@
+     bool active = false;
+   };
+   void BindProfile();
++  void BindOrganization();
+   void PrepareEntryDrag(size_t index);
+   void DragEntry(EntryView* view, const gfx::Point& pointer,
+                  const gfx::Point& grab_offset);
+@@ -137,6 +141,8 @@
+   const raw_ptr<TabHoverCardController> hover_card_controller_;
+   raw_ptr<TabStripModel> model_ = nullptr;
+   PrefChangeRegistrar pref_changes_;
++  base::CallbackListSubscription organization_ready_;
++  base::CallbackListSubscription organization_changes_;
+   std::vector<base::CallbackListSubscription> ui_changes_;
+   std::vector<Entry> entries_;
+   std::map<std::string, ui::ImageModel> icon_cache_;
+@@ -145,6 +151,7 @@
+   std::unique_ptr<TabContextMenuController> live_menu_;
+   std::unique_ptr<ExpandOnHoverLock> menu_hover_lock_;
+   GURL menu_url_;
++  aux::PinnedTabEntry menu_entry_;
+   std::unique_ptr<ui::SimpleMenuModel> menu_model_;
+   std::unique_ptr<views::MenuRunner> menu_runner_;
+   EntryDragUpdate drag_update_;
