@@ -1,0 +1,11 @@
+# A11 — genuine Session map creation and original-absence restoration
+
+This seven-anchor successor changes only the reviewed A9 async DOM implementation. It permits a target for an originally unpersisted Session map only when the real native factory already registered its actual allocator map ID and exactly one native namespace in the captured locator. No caller supplies or predicts that identity; Local absent maps and ambiguous Session references still refuse.
+
+The real Session backend's existing `UpdateMaps` writes that exact native locator, metadata and target entries. The predicted complete target digest binds the known allocator ID, namespace, real storage key and exact target bytes. Readback accepts actual source absence or that exact target presence and rejects extra/unindexed metadata, unknown raw values or unknown alternatives.
+
+Source restoration of such a map calls the backend's real `DeleteStorageKeysFromSession` operation with the retained native namespace/storage key and now-unreferenced allocator locator. The LevelDB batch and SQLite transaction remove that exact namespace metadata and map entries. Actual explicit backend sync and complete source readback still follow. No unrelated key, map or namespace is removed.
+
+An interrupted restore across several maps can leave a known mixture. Every complete map/topology must independently match its exact retained source or target; any unknown map refuses. That permits a subsequent original-owned restore to finish after a partial failure, without blanket overwrites or treating the mixture as successful source/target completion. Overall `matches_source` and `matches_target` remain false until the entire respective alternative is present.
+
+The input is the exact A9 output. Native backend deletion owners are pinned separately. One source/patch replay, reverse/hash/input preservation and whitespace check passed; no native build, backend execution, owner state, signing or runtime acceptance occurred in this lane. Root owns actual compiler/integration checks. Restart lease recovery and directory/cross-store durability remain separate gates. The real Local SQLite map allocation action/readback path is still under investigation; no future local ID is invented.

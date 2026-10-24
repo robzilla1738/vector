@@ -1,0 +1,85 @@
+--- a/components/services/storage/dom_storage/async_dom_storage_database.cc
++++ b/components/services/storage/dom_storage/async_dom_storage_database.cc
+@@ -312,7 +312,7 @@
+   std::string bytes("aux.ui-dom-complete-map.v1"); bytes.push_back('\0');
+   AuxDigestLocator(bytes, map.locator);
+   const auto& entries = target ? map.target : map.source;
+-  AuxDigestNumber(bytes, map.source_persisted || !entries.empty());
++  AuxDigestNumber(bytes, target ? map.source_persisted || !entries.empty() : map.source_persisted);
+   for (const auto& time : {map.last_accessed, map.last_modified}) {
+     AuxDigestNumber(bytes, time.has_value());
+     if (time) AuxDigestNumber(bytes, static_cast<uint64_t>(time->ToDeltaSinceWindowsEpoch().InMicroseconds()));
+@@ -357,7 +357,7 @@
+         index = i;
+       }
+     }
+-    if (index == capture.maps.size() || !capture.maps[index].source_persisted)
++    if (index == capture.maps.size())
+       return base::unexpected(DbStatus::IOError("Native map inventory changed"));
+     auto& map = current[index];
+     if (!map.source_persisted) {
+@@ -378,7 +378,9 @@
+   size_t export_bytes = 0;
+   for (size_t i = 0; i < capture.maps.size(); ++i) {
+     const auto& original = capture.maps[i]; auto& observed = current[i];
+-    if (observed.source_persisted != original.source_persisted)
++    const bool target_present = original.source_persisted || !original.target.empty();
++    if (observed.source_persisted != original.source_persisted &&
++        observed.source_persisted != target_present)
+       return base::unexpected(DbStatus::IOError("Native persisted topology changed"));
+     std::vector<std::string> before = original.locator.session_ids();
+     std::vector<std::string> after = observed.locator.session_ids();
+@@ -390,6 +392,8 @@
+     const std::string current_digest = AuxFullMapDigest(observed, false, local);
+     const std::string source_digest = AuxFullMapDigest(original, false, local);
+     const std::string target_digest = AuxFullMapDigest(original, true, local);
++    if (current_digest != source_digest && current_digest != target_digest)
++      return base::unexpected(DbStatus::IOError("Native map differs from every retained alternative"));
+     result.matches_source &= current_digest == source_digest;
+     result.matches_target &= current_digest == target_digest;
+     AsyncDomStorageDatabase::AuxUiMapSnapshot output;
+@@ -698,19 +702,39 @@
+               auto canonical = AuxBuildTarget(candidate, local);
+               if (!canonical.has_value() || canonical.value() != candidate)
+                 return base::unexpected(DbStatus::NotSupported("Ambiguous/non-current target key encoding"));
+-              if (!map.source_persisted && candidate != map.source)
+-                return base::unexpected(DbStatus::NotSupported("New persisted map creation/absence rollback is not implemented"));
++              if (!map.source_persisted && candidate != map.source &&
++                  (local || !map.locator.map_id() || map.locator.session_ids().size() != 1))
++                return base::unexpected(DbStatus::NotSupported("Actual single-namespace Session allocator identity required for new map"));
+               proposed[target.map_ordinal] = std::move(candidate);
+             }
+             for (size_t i = 0; i < capture->maps.size(); ++i) capture->maps[i].target = std::move(proposed[i]);
+           } else if (operation == 3 || operation == 4) {
+-            if ((operation == 3 && (capture->target_attempted || !before->matches_source)) ||
+-                (operation == 4 && !before->matches_source && !before->matches_target))
+-              return base::unexpected(DbStatus::IOError("Exact retained source/target CAS required"));
++            // AuxReadDomCapture has checked every complete map/topology
++            // against one exact retained alternative. A failed multi-map
++            // absence restore may leave a known mixture; recovery may finish
++            // those same originals, never overwrite an unknown map.
++            if (operation == 3 && (capture->target_attempted || !before->matches_source))
++              return base::unexpected(DbStatus::IOError("Exact retained source CAS required"));
+             capture->target_attempted = true; capture->file_data_synced = false;
+             std::vector<DomStorageDatabase::MapBatchUpdate> updates;
+             for (const auto& map : capture->maps) {
+               if (map.source == map.target) continue;
++              if (operation == 4 && !map.source_persisted) {
++                if (local || !map.source.empty() || !map.locator.map_id() ||
++                    map.locator.session_ids().size() != 1)
++                  return base::unexpected(DbStatus::NotSupported("Original native absence cannot be restored by this owner"));
++                const std::string session = map.locator.session_ids().front();
++                auto unreferenced = map.locator.Clone();
++                unreferenced.RemoveSession(session);
++                std::vector<DomStorageDatabase::MapLocator> maps_to_delete;
++                maps_to_delete.push_back(std::move(unreferenced));
++                // Real Session backend operation removes this exact owned
++                // namespace reference and allocator map data transactionally.
++                DbStatus removed = database->DeleteStorageKeysFromSession(
++                    session, {map.locator.storage_key()}, std::move(maps_to_delete));
++                if (!removed.ok()) return base::unexpected(removed);
++                continue;
++              }
+               const auto& desired = operation == 3 ? map.target : map.source;
+               const auto& previous = operation == 3 ? map.source : map.target;
+               DomStorageDatabase::MapBatchUpdate update(map.locator.Clone());

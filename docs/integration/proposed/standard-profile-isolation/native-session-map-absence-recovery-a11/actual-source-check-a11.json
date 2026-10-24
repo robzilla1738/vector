@@ -1,0 +1,16 @@
+{
+  "format": "aux.session-absence.source-check.actual.v1",
+  "passed": true,
+  "sourcePlanSha256": "161e9efc21b96db546b8879c904062c2359be5bdd52d39fbbc63cdda1c63232b",
+  "patchSha256": "406ba53c48f55fe76ee6f2a331ccb495587f80534b2d3076d70a9e688e32ffe8",
+  "files": 1,
+  "countedAnchors": 7,
+  "replayDirectory": "/private/tmp/aux-session-absence-replay-zg9_9pc2",
+  "exactReplayPassed": true,
+  "reverseCheckPassed": true,
+  "nativeCheckoutChanged": false,
+  "nativeCompiled": false,
+  "testsExecuted": false,
+  "productExecuted": false,
+  "runtimeAcceptance": false
+}

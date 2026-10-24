@@ -1,0 +1,90 @@
+{
+  "format": "aux.native-session-absence-recovery.source.v1",
+  "nativeRoot": "/Users/rcourson/.codex/worktrees/aux-features-organization/web/docs/integration/proposed/standard-profile-isolation/native-cache-cohort-integration-a9/source",
+  "physicalRoot": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src",
+  "consumedNativeBackend": [
+    {
+      "path": "components/services/storage/dom_storage/leveldb/session_storage_leveldb.cc",
+      "sha256": "821463ae48ad4f364d87c3890a73769e778c624fe9ec36c5fbbde54b79af4105",
+      "anchors": [
+        {
+          "find": "DbStatus SessionStorageLevelDB::DeleteStorageKeysFromSession(",
+          "count": 1
+        },
+        {
+          "find": "    CHECK(map.session_ids().empty());",
+          "count": 2
+        }
+      ]
+    },
+    {
+      "path": "components/services/storage/dom_storage/sqlite/session_storage_sqlite.cc",
+      "sha256": "9c6e3c2e7cdbc576e5dfee9af58de7818281aff24002ef3c91c3a5e2eea718f5",
+      "anchors": [
+        {
+          "find": "DbStatus SessionStorageSqlite::DeleteStorageKeysFromSession(",
+          "count": 1
+        },
+        {
+          "find": "    CHECK(map_locator.session_ids().empty());",
+          "count": 2
+        },
+        {
+          "find": "        map_entries_table_->DeleteMap(map_locator.map_id().value()));",
+          "count": 2
+        }
+      ]
+    }
+  ],
+  "files": [
+    {
+      "path": "components/services/storage/dom_storage/async_dom_storage_database.cc",
+      "inputSha256": "94c5dae95e368b4477d16a246fb67fcb514d1afe82d897d40ca7ed759c8eb988",
+      "outputSha256": "e0328cc2b21ea3c7a45647ce7d7aa9d108315b0e3d8d730de753877c0492a143",
+      "output": "/Users/rcourson/.codex/worktrees/aux-features-organization/web/docs/integration/proposed/standard-profile-isolation/native-session-map-absence-recovery-a11/source/components/services/storage/dom_storage/async_dom_storage_database.cc",
+      "anchors": [
+        {
+          "find": "  AuxDigestNumber(bytes, map.source_persisted || !entries.empty());",
+          "replace": "  AuxDigestNumber(bytes, target ? map.source_persisted || !entries.empty() : map.source_persisted);",
+          "count": 1
+        },
+        {
+          "find": "    if (index == capture.maps.size() || !capture.maps[index].source_persisted)\n      return base::unexpected(DbStatus::IOError(\"Native map inventory changed\"));",
+          "replace": "    if (index == capture.maps.size())\n      return base::unexpected(DbStatus::IOError(\"Native map inventory changed\"));",
+          "count": 1
+        },
+        {
+          "find": "    if (observed.source_persisted != original.source_persisted)\n      return base::unexpected(DbStatus::IOError(\"Native persisted topology changed\"));",
+          "replace": "    const bool target_present = original.source_persisted || !original.target.empty();\n    if (observed.source_persisted != original.source_persisted &&\n        observed.source_persisted != target_present)\n      return base::unexpected(DbStatus::IOError(\"Native persisted topology changed\"));",
+          "count": 1
+        },
+        {
+          "find": "    result.matches_source &= current_digest == source_digest;\n    result.matches_target &= current_digest == target_digest;",
+          "replace": "    if (current_digest != source_digest && current_digest != target_digest)\n      return base::unexpected(DbStatus::IOError(\"Native map differs from every retained alternative\"));\n    result.matches_source &= current_digest == source_digest;\n    result.matches_target &= current_digest == target_digest;",
+          "count": 1
+        },
+        {
+          "find": "              if (!map.source_persisted && candidate != map.source)\n                return base::unexpected(DbStatus::NotSupported(\"New persisted map creation/absence rollback is not implemented\"));",
+          "replace": "              if (!map.source_persisted && candidate != map.source &&\n                  (local || !map.locator.map_id() || map.locator.session_ids().size() != 1))\n                return base::unexpected(DbStatus::NotSupported(\"Actual single-namespace Session allocator identity required for new map\"));",
+          "count": 1
+        },
+        {
+          "find": "            if ((operation == 3 && (capture->target_attempted || !before->matches_source)) ||\n                (operation == 4 && !before->matches_source && !before->matches_target))\n              return base::unexpected(DbStatus::IOError(\"Exact retained source/target CAS required\"));",
+          "replace": "            // AuxReadDomCapture has checked every complete map/topology\n            // against one exact retained alternative. A failed multi-map\n            // absence restore may leave a known mixture; recovery may finish\n            // those same originals, never overwrite an unknown map.\n            if (operation == 3 && (capture->target_attempted || !before->matches_source))\n              return base::unexpected(DbStatus::IOError(\"Exact retained source CAS required\"));",
+          "count": 1
+        },
+        {
+          "find": "              if (map.source == map.target) continue;\n              const auto& desired = operation == 3 ? map.target : map.source;",
+          "replace": "              if (map.source == map.target) continue;\n              if (operation == 4 && !map.source_persisted) {\n                if (local || !map.source.empty() || !map.locator.map_id() ||\n                    map.locator.session_ids().size() != 1)\n                  return base::unexpected(DbStatus::NotSupported(\"Original native absence cannot be restored by this owner\"));\n                const std::string session = map.locator.session_ids().front();\n                auto unreferenced = map.locator.Clone();\n                unreferenced.RemoveSession(session);\n                std::vector<DomStorageDatabase::MapLocator> maps_to_delete;\n                maps_to_delete.push_back(std::move(unreferenced));\n                // Real Session backend operation removes this exact owned\n                // namespace reference and allocator map data transactionally.\n                DbStatus removed = database->DeleteStorageKeysFromSession(\n                    session, {map.locator.storage_key()}, std::move(maps_to_delete));\n                if (!removed.ok()) return base::unexpected(removed);\n                continue;\n              }\n              const auto& desired = operation == 3 ? map.target : map.source;",
+          "count": 1
+        }
+      ]
+    }
+  ],
+  "nativeCheckoutChanged": false,
+  "nativeCompiled": false,
+  "productExecuted": false,
+  "restartRecoveryImplemented": false,
+  "localAbsentAllocationImplemented": false,
+  "activationAuthorized": false
+}
