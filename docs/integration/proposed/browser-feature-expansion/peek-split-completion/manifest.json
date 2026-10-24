@@ -1,0 +1,139 @@
+{
+  "format": "aux.peek-split-completion.overlay.v1",
+  "files": [
+    {
+      "path": "chrome/browser/ui/aux_preview/aux_preview_ingress.cc",
+      "beforeSha256": "4d996ef4174c865e8d4400aabb670dbda1380fdec08df31310c95ffb406a3ec5",
+      "afterSha256": "7e57e29cef0d8cc60e80a2b4e251e000328ac05b559d9ea7c5ed36b299e2759f",
+      "edits": [
+        {
+          "before": "#include \"chrome/browser/ui/aux_preview/aux_preview_controller.h\"",
+          "after": "#include \"chrome/browser/ui/aux_preview/aux_preview_controller.h\"\n#include \"chrome/browser/ui/browser_window.h\"\n#include \"chrome/browser/ui/simple_message_box.h\"",
+          "count": 1
+        },
+        {
+          "before": "  if (!result.browser && intent.browser) {\n    auto* live_frame = intent.document.AsRenderFrameHostIfValid();\n    auto* source = live_frame ? content::WebContents::FromRenderFrameHost(live_frame) : nullptr;\n    if (IsPreviewContents(source)) ReportRestriction(source, result.error);\n  }",
+          "after": "  if (!result.browser && Valid(intent)) {\n    auto* live_frame = intent.document.AsRenderFrameHostIfValid();\n    auto* source = live_frame ? content::WebContents::FromRenderFrameHost(live_frame) : nullptr;\n    // The click was consumed on an ordinary page. Report refusal only while\n    // that exact source document is still the selected view of this owner;\n    // never show a late warning over a different tab, document or profile.\n    if (!source || source->GetPrimaryMainFrame() != live_frame ||\n        intent.browser->GetTabStripModel()->GetActiveWebContents() != source)\n      return;\n    chrome::ShowWarningMessageBoxAsync(\n        intent.browser->GetWindow()->GetNativeWindow(), u\"Aux could not open Peek\",\n        u\"The preview could not be opened while this page or browser has active \"\n        u\"work. Finish that work and try again. Your original page has not changed.\");\n  }",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "components/split_tabs/split_pane_tree.h",
+      "beforeSha256": "57c14023461cbdb8c6228960aeb9091677e358188ee02641d11f8fb1a1f98f88",
+      "afterSha256": "51dd6ab9b1c51c3393e63dcea5b2e01806867a8ac0c468c557f38c770a689f35",
+      "edits": [
+        {
+          "before": "  std::vector<Placement> Layout(Rect bounds, int divider, int minimum) const;",
+          "after": "  // Required dimensions without compressing minimum pane sizes. The view may\n  // offer an explicit focus presentation when these do not fit; no tree edits.\n  Rect MinimumBounds(int divider, int minimum) const;\n  std::vector<Placement> Layout(Rect bounds, int divider, int minimum) const;",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "components/split_tabs/split_pane_tree.cc",
+      "beforeSha256": "4055cd1c1178dff8b0d235b2cb26070d2387f126e530be76d9bac5be54a4437e",
+      "afterSha256": "1ffec49e783ceab649576fdf49f2ec2eb26dec4660c972b65c4880d55312e0a6",
+      "edits": [
+        {
+          "before": "std::vector<SplitPaneTree::Placement> SplitPaneTree::Layout(",
+          "after": "SplitPaneTree::Rect SplitPaneTree::MinimumBounds(int divider, int minimum) const {\n  if (!IsValid()) return {};\n  divider = std::clamp(divider, 0, 64);\n  minimum = std::clamp(minimum, 0, 10000);\n  std::function<Rect(uint32_t)> measure = [&](uint32_t id) -> Rect {\n    const Node& node = *Find(id);\n    if (node.slot) return {0, 0, minimum, minimum};\n    const auto first = measure(node.first);\n    const auto second = measure(node.second);\n    return node.axis == Axis::kHorizontal\n        ? Rect{0, 0, first.width + second.width + divider,\n               std::max(first.height, second.height)}\n        : Rect{0, 0, std::max(first.width, second.width),\n               first.height + second.height + divider};\n  };\n  return measure(root_);\n}\n\nstd::vector<SplitPaneTree::Placement> SplitPaneTree::Layout(",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/multi_contents_view.h",
+      "beforeSha256": "a6d4887b6265a426723a0cd9654517466c66ff451ba559ed557e3864b9575b35",
+      "afterSha256": "5d40a05f3c453cb39fb9dc6596099dae3321fa93fcb370d67d82855ac102591e",
+      "edits": [
+        {
+          "before": "class MultiContentsViewMiniToolbar;",
+          "after": "class MultiContentsViewMiniToolbar;\nclass ToolbarButton;",
+          "count": 1
+        },
+        {
+          "before": "  void ConfigureBranchHandles();",
+          "after": "  void ConfigureBranchHandles();\n  void ToggleNarrowPaneFocus();\n  void CycleNarrowPane(int direction);\n  void UpdateNarrowPaneControls();",
+          "count": 1
+        },
+        {
+          "before": "  std::vector<raw_ptr<MultiContentsResizeArea>> branch_resize_areas_;",
+          "after": "  std::vector<raw_ptr<MultiContentsResizeArea>> branch_resize_areas_;\n\n  // Window-local presentation only: real panes/history and split tree persist.\n  raw_ptr<views::View> narrow_pane_controls_ = nullptr;\n  raw_ptr<ToolbarButton> narrow_focus_button_ = nullptr;\n  bool narrow_split_available_ = false;\n  bool narrow_pane_focus_ = false;",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/multi_contents_view.cc",
+      "beforeSha256": "10e5127aef7b5d18df51ab4b974cc021666bd93e984b2ffaf9e97f37f03b9213",
+      "afterSha256": "1871ebba7cbe6594b9fdb23bdbe352dc4b2ec2e2337040ad48e06e9345816f08",
+      "edits": [
+        {
+          "before": "#include \"chrome/browser/ui/views/toolbar/toolbar_view.h\"",
+          "after": "#include \"chrome/browser/ui/views/toolbar/toolbar_view.h\"\n#include \"chrome/browser/ui/views/toolbar/toolbar_button.h\"\n#include \"chrome/browser/ui/views/frame/aux_split_commands.h\"\n#include \"base/strings/utf_string_conversions.h\"\n#include \"ui/views/layout/flex_layout.h\"",
+          "count": 1
+        },
+        {
+          "before": "  lens_overlay_view_ = AddChildView(std::move(lens_overlay_view));",
+          "after": "  lens_overlay_view_ = AddChildView(std::move(lens_overlay_view));\n\n  narrow_pane_controls_ = AddChildView(std::make_unique<views::View>());\n  narrow_pane_controls_->SetVisible(false);\n  narrow_pane_controls_->SetLayoutManager(std::make_unique<views::FlexLayout>())\n      ->SetOrientation(views::LayoutOrientation::kHorizontal)\n      .SetCrossAxisAlignment(views::LayoutAlignment::kCenter);\n  narrow_focus_button_ = narrow_pane_controls_->AddChildView(\n      std::make_unique<ToolbarButton>(base::BindRepeating(\n          &MultiContentsView::ToggleNarrowPaneFocus, base::Unretained(this))));\n  narrow_focus_button_->SetText(u\"Focus selected pane\");\n  narrow_focus_button_->SetAccessibleName(u\"Focus selected split pane\");\n  narrow_focus_button_->SetTooltipText(u\"Split panes do not fit. Show one pane without closing the others.\");\n  for (int direction : {-1, 1}) {\n    auto* button = narrow_pane_controls_->AddChildView(\n        std::make_unique<ToolbarButton>(base::BindRepeating(\n            &MultiContentsView::CycleNarrowPane, base::Unretained(this), direction)));\n    button->SetText(direction < 0 ? u\"Previous pane\" : u\"Next pane\");\n    button->SetAccessibleName(direction < 0 ? u\"Select previous split pane\" : u\"Select next split pane\");\n    button->SetTooltipText(direction < 0 ? u\"Select previous split pane\" : u\"Select next split pane\");\n  }",
+          "count": 1
+        },
+        {
+          "before": "  pane_count_ = 1;\n  visual_data_.ClearPaneTree();",
+          "after": "  pane_count_ = 1;\n  narrow_pane_focus_ = false;\n  narrow_split_available_ = false;\n  narrow_pane_controls_->SetVisible(false);\n  visual_data_.ClearPaneTree();",
+          "count": 1
+        },
+        {
+          "before": "  // We will only activate a visible contents view.\n  CHECK(contents_container_views_[index]->GetVisible());",
+          "after": "  // Explicit pane selection may reveal a retained view hidden by the local\n  // narrow presentation; it never creates or reloads its WebContents.\n  if (narrow_pane_focus_ && narrow_split_available_ &&\n      static_cast<size_t>(index) < pane_count_) {\n    contents_container_views_[index]->SetVisible(true);\n    InvalidateLayout();\n  }\n  CHECK(contents_container_views_[index]->GetVisible());",
+          "count": 1
+        },
+        {
+          "before": "  active_index_ = index;\n  GetActiveContentsView()->set_is_primary_web_contents_for_window(true);",
+          "after": "  active_index_ = index;\n  UpdateNarrowPaneControls();\n  GetActiveContentsView()->set_is_primary_web_contents_for_window(true);",
+          "count": 1
+        },
+        {
+          "before": "void MultiContentsView::UpdateSplitVisualData(",
+          "after": "void MultiContentsView::UpdateNarrowPaneControls() {\n  if (!narrow_focus_button_) return;\n  const std::u16string label = narrow_pane_focus_\n      ? u\"Show all panes\" : u\"Focus selected pane\";\n  narrow_focus_button_->SetText(label);\n  narrow_focus_button_->SetAccessibleName(label + u\" (pane \" +\n      base::UTF8ToUTF16(std::to_string(active_index_ + 1)) + u\" of \" +\n      base::UTF8ToUTF16(std::to_string(pane_count_)) + u\")\");\n}\n\nvoid MultiContentsView::ToggleNarrowPaneFocus() {\n  if (!narrow_split_available_ || !IsInSplitView()) return;\n  narrow_pane_focus_ = !narrow_pane_focus_;\n  UpdateNarrowPaneControls();\n  InvalidateLayout();\n}\n\nvoid MultiContentsView::CycleNarrowPane(int direction) {\n  if (!narrow_split_available_ || !IsInSplitView()) return;\n  // The existing native command changes the actual local tab/pane selection.\n  // Do not merely swap visual URLs or rebuild a page to emulate selection.\n  aux::CycleNativeSplitPane(*browser_view_->browser(), direction);\n}\n\nvoid MultiContentsView::UpdateSplitVisualData(",
+          "count": 1
+        },
+        {
+          "before": "  if (visual_data_.pane_tree() && IsInSplitView()) {\n    const auto& tree = *visual_data_.pane_tree();\n    const auto placements = tree.Layout(",
+          "after": "  if (visual_data_.pane_tree() && IsInSplitView()) {\n    const auto& tree = *visual_data_.pane_tree();\n    const int divider = MultiContentsResizeArea::kHandleResizeAxisSize +\n                        MultiContentsResizeArea::kHandleResizeAxisPadding;\n    const auto minimum = tree.MinimumBounds(divider, kMinWebContentsSize);\n    const bool narrow = available_space.width() < minimum.width ||\n                        available_space.height() < minimum.height;\n    const int control_height = narrow ? std::min(32, available_space.height()) : 0;\n    layouts.child_layouts.emplace_back(narrow_pane_controls_.get(), narrow,\n        gfx::Rect(available_space.x(), available_space.y(), available_space.width(), control_height));\n    available_space.Inset(gfx::Insets::TLBR(control_height, 0, 0, 0));\n    if (narrow && narrow_pane_focus_) {\n      for (size_t i = 0; i < contents_container_views_.size(); ++i)\n        layouts.child_layouts.emplace_back(contents_container_views_[i].get(),\n            i == static_cast<size_t>(active_index_),\n            i == static_cast<size_t>(active_index_) ? available_space : gfx::Rect());\n      for (const auto& handle : branch_resize_areas_)\n        layouts.child_layouts.emplace_back(handle.get(), false, gfx::Rect());\n      layouts.child_layouts.emplace_back(resize_area_.get(), false, gfx::Rect());\n      layouts.child_layouts.emplace_back(lens_overlay_view_.get(), lens_overlay_view_->GetVisible(), gfx::Rect(width, height));\n      layouts.host_size = gfx::Size(width, height);\n      return layouts;\n    }\n    const auto placements = tree.Layout(",
+          "count": 1
+        },
+        {
+          "before": "  ViewSizes sizes = GetViewSizes(available_space);",
+          "after": "  layouts.child_layouts.emplace_back(narrow_pane_controls_.get(), false, gfx::Rect());\n  ViewSizes sizes = GetViewSizes(available_space);",
+          "count": 1
+        },
+        {
+          "before": "void MultiContentsView::BeforeApplyLayout(const views::ProposedLayout& layout) {\n  if (!target_content_bounds_) {",
+          "after": "void MultiContentsView::BeforeApplyLayout(const views::ProposedLayout& layout) {\n  const auto* controls = layout.GetLayoutFor(narrow_pane_controls_);\n  narrow_split_available_ = controls && controls->visible;\n  if (!narrow_split_available_ && narrow_pane_focus_) {\n    // Restore the unchanged recursive layout automatically when it fits again.\n    // The accepted tree and its branch ratios were never modified.\n    narrow_pane_focus_ = false;\n    UpdateNarrowPaneControls();\n  }\n  if (!target_content_bounds_) {",
+          "count": 1
+        },
+        {
+          "before": "#include <cstdlib>",
+          "after": "#include <cstdlib>\n#include <string>",
+          "count": 1
+        },
+        {
+          "before": "  narrow_pane_controls_->SetVisible(false);\n  narrow_pane_controls_->SetLayoutManager",
+          "after": "  narrow_pane_controls_->SetVisible(false);\n  narrow_pane_controls_->SetFocusBehavior(views::View::FocusBehavior::ACCESSIBLE_ONLY);\n  narrow_pane_controls_->SetAccessibleName(u\"Narrow split presentation\");\n  narrow_pane_controls_->SetLayoutManager",
+          "count": 1
+        },
+        {
+          "before": "  std::vector<views::View*> accessible_panes;\n  for (auto& contents_container_view",
+          "after": "  std::vector<views::View*> accessible_panes;\n  if (narrow_pane_controls_->GetVisible())\n    accessible_panes.push_back(narrow_pane_controls_);\n  for (auto& contents_container_view",
+          "count": 1
+        }
+      ]
+    }
+  ],
+  "patchSha256": "7e41ec19ce28dea5444895f00fe7431a62120a0becb9a5a78f1423e3c15fad1a",
+  "nativeMutated": false,
+  "compiled": false,
+  "runtimeAccepted": false
+}

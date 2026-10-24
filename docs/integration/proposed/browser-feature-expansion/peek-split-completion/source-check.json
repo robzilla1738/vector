@@ -1,0 +1,11 @@
+{
+  "format": "aux.peek-split-completion.source-check.v1",
+  "passed": true,
+  "fiveFileExactReplay": true,
+  "countedAnchors": 19,
+  "standaloneTreeSyntaxPassed": true,
+  "nativeViewsCompiled": false,
+  "executablesProduced": false,
+  "nativeSourceMutated": false,
+  "runtimeAccepted": false
+}
