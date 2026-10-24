@@ -1,0 +1,116 @@
+{
+  "format": "aux.standard.daemon-composition.inputs.v1",
+  "workspace": "/Users/rcourson/Documents/Vibe/web",
+  "files": [
+    {
+      "path": "docs/integration/proposed/standard-profile-isolation/background-writers/source/aux-background-writers.mjs",
+      "sha256": "925f8df47ddbe80939f3ccf8f9fc5d449fe18305a70611217b030d5009107589"
+    },
+    {
+      "path": "docs/integration/proposed/standard-profile-isolation/background-writers/manifest.json",
+      "sha256": "4158d1a9f2896e5396e0d373b88c0afd2efbd42a8fc27ef31f494332ae1449d2"
+    },
+    {
+      "path": "docs/integration/proposed/standard-profile-isolation/background-writers/source/changes.json",
+      "sha256": "eee6bfe62395ec3c7c94c0385b670d316bb1cedcb37998b64752a1d8670a3f96"
+    },
+    {
+      "path": "docs/integration/proposed/standard-profile-isolation/background-writers/source/background-writer-lifetimes.js",
+      "sha256": "2a3a37ad1e042a000a24132bae65729d305d5b7d10c1c870d543b989daee3485"
+    },
+    {
+      "path": "docs/integration/proposed/standard-profile-isolation/daemon-shutdown/source/aux-daemon-shutdown.mjs",
+      "sha256": "e09e50f8d2160085c83a6e9ce71f57dc2506f8cc3218970de06975540c6e2b90"
+    },
+    {
+      "path": "docs/integration/proposed/standard-profile-isolation/daemon-shutdown/manifest.json",
+      "sha256": "df6435a2f7aded9592a9075f3d3128f212713a2004bebcc62eec2871a3dd11bc"
+    },
+    {
+      "path": "docs/integration/proposed/standard-profile-isolation/daemon-shutdown/source/changes.json",
+      "sha256": "1695825edeebd8ce270c116a95a67b4d5f040e4a47c727a81f1d1a42e85be8a3"
+    },
+    {
+      "path": "docs/integration/proposed/standard-profile-isolation/daemon-shutdown/source/shutdown-lifetimes.js",
+      "sha256": "6796e4369f6337919fb16521ef0048f5dd48dfed4512baf2b05dc50cbfe7f84f"
+    },
+    {
+      "path": "docs/integration/proposed/standard-profile-isolation/runtime-coordination/transform.mjs",
+      "sha256": "10001237d16c1a276a21c708763471ad446db4a39600687a8fe015c5519a5900"
+    },
+    {
+      "path": "docs/integration/proposed/standard-profile-isolation/runtime-coordination/anchors.json",
+      "sha256": "da7660b0325aafb47d78619b5ced1ec5a1ea48ea7ff467e2ff5cd1f1702f3886"
+    },
+    {
+      "path": "docs/integration/proposed/standard-profile-isolation/runtime-coordination/source/runtime-coordination.js",
+      "sha256": "ebb1953b4958d757d50ab276804455e678f4b172a5233f802a717b712a757649"
+    },
+    {
+      "path": "docs/integration/proposed/standard-profile-isolation/runtime-coordination/overlay.json",
+      "sha256": "f510fadd56e0cdb06edf7a0bc2fc1a4b556b609c8eb924175f686c2dc444d5ac"
+    },
+    {
+      "path": "docs/integration/proposed/standard-profile-isolation/runtime-coordination/source-check.json",
+      "sha256": "4f0633221944789aa78889239ebb87ec7a65a09b3252d4755fb0a3366f76e008"
+    },
+    {
+      "path": "docs/integration/proposed/browser-feature-expansion/async-daemon-projection-research-v1/actual-projection.json",
+      "sha256": "650d135dbb57a32a8ba726ee7a9c2fe718ec43d5f0d4dfb9163f41a48382715c"
+    }
+  ],
+  "artifacts": [
+    {
+      "kind": "source",
+      "path": "/private/tmp/aux-browser-features-async-daemon-20261023-a2/index.mjs",
+      "sha256": "2b1db7cebd8a7296b871dafdc4eb63955bbc13b4cee133c3c809c82b465ca02c"
+    },
+    {
+      "kind": "entry",
+      "path": "/private/tmp/aux-browser-features-async-daemon-20261023-a2/projected-entry/aux-native-entry.mjs",
+      "sha256": "cd7c8bb549b1187245ad3d6b308f9fd34512f3b7df0a45033126241161876438"
+    },
+    {
+      "kind": "loader",
+      "path": "/private/tmp/aux-browser-features-async-daemon-20261023-a2/projected-entry/aux-owned-native.cjs",
+      "sha256": "ec7ea0405f415d84e4afc695405eec07378d8c7233b926ffd9dd7db2edfed663"
+    },
+    {
+      "kind": "upstream-composition",
+      "path": "/private/tmp/aux-browser-features-async-daemon-20261023-a2/composition.json",
+      "sha256": "b6ad388be2fd2d8de657af5d48209e36b17d86958b6e6fd63490304e0ff3aed7"
+    },
+    {
+      "kind": "upstream-source-receipt",
+      "path": "/private/tmp/aux-browser-features-async-daemon-20261023-a2/source-receipt.json",
+      "sha256": "da365ab2e8e45b4a3e1b39e0a61ad74bcde23e375955d5f959c3ce41ff4d274b"
+    },
+    {
+      "kind": "upstream-entry-receipt",
+      "path": "/private/tmp/aux-browser-features-async-daemon-20261023-a2/projected-entry/results.json",
+      "sha256": "0c7965bb81e472f4f4a60f0f1408e592169d33796670cbda292a0faf1de72e17"
+    },
+    {
+      "kind": "upstream-evidence",
+      "path": "/private/tmp/aux-browser-features-async-daemon-20261023-a2/projection-evidence.json",
+      "sha256": "650d135dbb57a32a8ba726ee7a9c2fe718ec43d5f0d4dfb9163f41a48382715c"
+    }
+  ],
+  "stages": [
+    {
+      "name": "background-writers",
+      "module": "docs/integration/proposed/standard-profile-isolation/background-writers/source/aux-background-writers.mjs",
+      "export": "transformAuxBackgroundWriters"
+    },
+    {
+      "name": "daemon-shutdown",
+      "module": "docs/integration/proposed/standard-profile-isolation/daemon-shutdown/source/aux-daemon-shutdown.mjs",
+      "export": "transformAuxDaemonShutdown"
+    },
+    {
+      "name": "runtime-coordination",
+      "module": "docs/integration/proposed/standard-profile-isolation/runtime-coordination/transform.mjs",
+      "export": "transformRuntimeCoordination"
+    }
+  ]
+}
