@@ -2,6 +2,7 @@
 """Exact inactive runtime-cache successor; never launches or signs products."""
 import argparse
 import importlib.util
+import inspect
 import json
 import os
 from pathlib import Path
@@ -20,6 +21,42 @@ read, ref, resolve, require = f.read, f.reference, f.resolve, f.require
 ORIGINAL_RUNTIME = m.runtime_changes
 ORIGINAL_VERIFY = f.verify
 PREFIX = 'apps/daemon/Aux Daemon.app/Contents/Resources/native/'
+
+
+def verify_link_tool_alias(path, digest):
+    review = read(HERE / 'review.json')
+    aliases = read(resolve(review['inputs']['linkToolAliases']))
+    require(aliases['format'] == 'aux.runtime-cache.existing-link-tool-aliases.v1', 'Exact link-tool aliases required')
+    original_path = resolve(review['inputs']['protectedInputs'])
+    original = read(original_path)
+    require(aliases['protectedInputsSha256'] == m.sha(original_path), 'Original tool operand manifest changed')
+    expected = {original['commands'][0][0], original['otool'], original['nm']}
+    require(len(aliases['files']) == 3 and {item['path'] for item in aliases['files']} == expected,
+            'Only the three original link/check tool operands may be aliases')
+    records = [item for item in aliases['files'] if item['path'] == str(path)]
+    require(len(records) == 1, 'No product/source alias allowed')
+    item = records[0]
+    require(path.is_symlink() and os.readlink(path) == item['linkTarget']
+            and path.resolve() == Path(item['resolved']) and digest == item['sha256'],
+            'Existing link-tool alias changed')
+    m.pin(item['resolved'], digest)
+
+
+# Keep the original verifier file and every other check intact. The successor
+# manifest additionally pins three original compiler/checker tool aliases that
+# the predecessor named as operands but did not include in frozenFiles.
+_original = inspect.getsource(ORIGINAL_VERIFY)
+_before = '''        if source.is_symlink():
+            require(path == compiler and value == alias['sha256']'''
+_after = '''        if source.is_symlink() and path != compiler:
+            verify_link_tool_alias(source, value)
+        elif source.is_symlink():
+            require(path == compiler and value == alias['sha256']'''
+require(_original.count(_before) == 1, 'Original frozen-alias verifier anchor changed')
+_scope = {}
+f.verify_link_tool_alias = verify_link_tool_alias
+exec(compile(_original.replace(_before, _after, 1), str(HERE / 'cache-link-alias-verifier'), 'exec'), f.__dict__, _scope)
+SUCCESSOR_VERIFY = _scope['verify']
 
 
 def review_inputs():
@@ -116,7 +153,7 @@ def runtime_changes(base):
 def verify(recipe):
     require(resolve(recipe['runtimeCacheTool']) == Path(__file__).resolve()
             and resolve(recipe['runtimeCacheReview']) == HERE/'review.json', 'Successor wrapper/review must be pinned')
-    base_path, base = ORIGINAL_VERIFY(recipe)
+    base_path, base = SUCCESSOR_VERIFY(recipe)
     require(len(recipe['replacements']) == 14, 'Exact fourteen feature resource deltas required')
     manifest = read(base['runtimeIntegrationManifest'])
     actual_inputs, _ = verify_link(Path(base['runtimeIntegrationEvidence']), resolve(manifest['relinkPlan']), review_inputs())

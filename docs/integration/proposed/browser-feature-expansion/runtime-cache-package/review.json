@@ -56,15 +56,32 @@
     "toolchainReview": {
       "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/package/toolchain-alias-review.json",
       "sha256": "010dfbfca72c07c059ea5790ec38d506e3b17bb839cb10bde7d0df5c2c68a390"
+    },
+    "linkToolAliases": {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/runtime-cache-package/link-tool-aliases.json",
+      "sha256": "75ff23f4bcbc614394587ff29afef364672c15a9de9a12b69a882c310e7abec6"
     }
   },
-  "relink": null,
+  "relink": {
+    "plan": {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/profile-isolation-local-finish/runtime-cache-async-relink-a2/plan.json",
+      "sha256": "5c7bed10349ebf977526361b524675fe62840edc8a243a510021a15b8c89b5b1"
+    },
+    "runner": {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/profile-isolation-local-finish/runtime-cache-async-relink-a2/run.py",
+      "sha256": "41bac357ebed59d7f8504a8bb1c051f213b6d389546e1bb1baf49ca96acb4c8d"
+    },
+    "host": {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/profile-isolation-local-finish/runtime-cache-async-relink-a2/source/AuxDevelopmentWorkerHost.cc",
+      "sha256": "e490c7008be53d06162705d4d69f18f8512c80b73e631c42cbac2c81f62de411"
+    }
+  },
   "reservedRelinkPaths": {
     "plan": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/profile-isolation-local-finish/runtime-cache-async-relink-a2/plan.json",
     "runner": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/profile-isolation-local-finish/runtime-cache-async-relink-a2/run.py",
     "host": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/profile-isolation-local-finish/runtime-cache-async-relink-a2/source/AuxDevelopmentWorkerHost.cc"
   },
-  "relinkStatus": "Pending actual final corrected plan and successful compile/link; no receipts invented",
+  "relinkStatus": "Reviewed exact root a2 inputs; actual serialized compile/link success remains independently required",
   "expectedFeatureResourceDeltas": 14,
   "testable": false,
   "runtimeAuthorityGranted": false,

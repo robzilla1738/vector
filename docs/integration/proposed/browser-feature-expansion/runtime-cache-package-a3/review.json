@@ -62,13 +62,26 @@
       "sha256": "75ff23f4bcbc614394587ff29afef364672c15a9de9a12b69a882c310e7abec6"
     }
   },
-  "relink": null,
+  "relink": {
+    "plan": {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/profile-isolation-local-finish/runtime-cache-async-relink-a3/plan.json",
+      "sha256": "9e800c538013eeb10efded31d35c86766bb5842caf475a1636b2d1d15edf8b1e"
+    },
+    "runner": {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/profile-isolation-local-finish/runtime-cache-async-relink-a3/run.py",
+      "sha256": "4e5acc0328fad0052c7b2e36124a74c8d8f6c1a631eabe41a85440dbf8b11e3c"
+    },
+    "host": {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/profile-isolation-local-finish/runtime-cache-async-relink-a3/source/AuxDevelopmentWorkerHost.cc",
+      "sha256": "e490c7008be53d06162705d4d69f18f8512c80b73e631c42cbac2c81f62de411"
+    }
+  },
   "reservedRelinkPaths": {
     "plan": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/profile-isolation-local-finish/runtime-cache-async-relink-a3/plan.json",
     "runner": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/profile-isolation-local-finish/runtime-cache-async-relink-a3/run.py",
     "host": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/profile-isolation-local-finish/runtime-cache-async-relink-a3/source/AuxDevelopmentWorkerHost.cc"
   },
-  "relinkStatus": "Awaiting frozen a3 RAII/errno correction and actual successful fresh a3 compile/link; a2 receipts cannot satisfy this review",
+  "relinkStatus": "Root-frozen a3 RAII/errno inputs; actual successful fresh a3 compile/link remains required",
   "expectedFeatureResourceDeltas": 14,
   "testable": false,
   "runtimeAuthorityGranted": false,

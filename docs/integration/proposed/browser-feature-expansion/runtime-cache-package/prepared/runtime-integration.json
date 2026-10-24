@@ -1,0 +1,45 @@
+{
+  "format": "aux.runtime-cache-package.runtime.v1",
+  "review": {
+    "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/runtime-cache-package/review.json",
+    "sha256": "f4db9f90ebfab3c5db9633c1b1a0bf28106f04731f49109b779f132b1f308347"
+  },
+  "tool": {
+    "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/runtime-cache-package/cache_package.py",
+    "sha256": "2cdf68130e0c095f50530db3dab696fe0585eb8d9745340f03b307ada01ec7d0"
+  },
+  "relinkPlan": {
+    "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/profile-isolation-local-finish/runtime-cache-async-relink-a2/plan.json",
+    "sha256": "5c7bed10349ebf977526361b524675fe62840edc8a243a510021a15b8c89b5b1"
+  },
+  "runtimeIntegration": [
+    {
+      "path": "apps/daemon/Aux Daemon.app/Contents/Resources/native/runtime-bootstrap.cjs",
+      "input": "/private/tmp/aux-browser-features-async-daemon-20261023-a1/native/runtime-bootstrap.cjs",
+      "previousSha256": "14624cffb7cd9d0852255f6557d6714b06ce6593981c2eede2bfcb2a75cdcf93",
+      "sha256": "13657bf3e1c3a0477c15eb154ba74f336a82c4af3b9800a1c86713a5a395d7a5",
+      "mode": 420,
+      "mustBeAbsent": false
+    },
+    {
+      "path": "apps/daemon/Aux Daemon.app/Contents/Resources/native/runtime-seed.cjs",
+      "input": "/private/tmp/aux-browser-features-async-daemon-20261023-a1/native/runtime-seed.cjs",
+      "previousSha256": "3051dea5ccc9d74126bf71ddc0bb72a4d3db19c59f890a8f48d572b215f092af",
+      "sha256": "54bd9cf68d25b9db0827af32ad323ea03821f7adae4066b677849a3e5b28a039",
+      "mode": 420,
+      "mustBeAbsent": false
+    },
+    {
+      "path": "apps/daemon/Aux Daemon.app/Contents/Resources/native/runtime-text-root.json",
+      "previousSha256": null,
+      "mustBeAbsent": true,
+      "input": "/private/tmp/aux-writes-local-finish/docs/integration/proposed/profile-isolation-local-finish/runtime-bootstrap/source/runtime-text-root.json",
+      "sha256": "225e0eb0faad6e021a6ed181d6b07a262e6ec43a053a6103c804b3aae2d27be6",
+      "mode": 420
+    }
+  ],
+  "testable": false,
+  "runtimeAuthorityGranted": false,
+  "runtimeExecuted": false,
+  "evidenceMeaning": "Actual compiler/link success only; no runtime integration acceptance"
+}

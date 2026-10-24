@@ -2,7 +2,7 @@
 
 This is preparation tooling, not a package or runtime acceptance receipt. No assembly was run in this lane. The a18 full browser receipt and existing source/entry projection are real; the corrected daemon relink and final review pins were pending when prepared.
 
-The original `package/feature_package.py`, `package/prepare_base.py`, and delivery `package/assemble.py` remain unchanged. The wrapper imports those exact pinned files. It replaces only `legacy.runtime_changes` with a three-leaf validator and wraps feature verification with additional review, actual relink, and exact 14-resource checks. All original guard/GN replay, toolchain alias, protected daemon frozen input, native inventory/signature, source pairing, CLI wrapper, addon, feature delta and unrelated-resource comparisons still run.
+The original `package/feature_package.py`, `package/prepare_base.py`, and delivery `package/assemble.py` remain unchanged. The wrapper imports those exact pinned files. It replaces `legacy.runtime_changes` with a three-leaf validator and wraps feature verification with additional review, actual relink and exact 14-resource checks. One count-one in-memory successor of the original frozen-alias branch additionally validates the three original linker/checker tool aliases newly frozen by a2; every other original verification statement remains unchanged. All original guard/GN replay, toolchain alias, protected daemon frozen input, native inventory/signature, source pairing, CLI wrapper, addon, feature delta and unrelated-resource comparisons still run.
 
 The three exact runtime leaves are:
 
@@ -64,3 +64,9 @@ python3 "$TOOL" assemble "$REVIEW_OUTPUT/feature-recipe.json"
 ```
 
 The final fresh app path is `out/provided-candidate-browser-features-cache-20261023/Aux.app`. Assembly retains `testable: false`, `runtimeAuthorityGranted: false`, unsigned product, unexecuted app and unchanged accepted app. The new recipe pins the wrapper and review; runtime metadata pins them again. Existing assembly rechecks inputs after copying and compares every unrelated leaf. Runtime acceptance, mandatory custody, atomic publisher, owner state, signing and release remain separate unresolved boundaries.
+
+## Exact additional tool alias review
+
+The successful a2 manifest newly freezes the original Swift compiler, otool and nm operand bytes. On this installed Xcode these are respectively swiftc→swift-frontend, otool→llvm-otool and nm→llvm-nm. link-tool-aliases.json pins those three exact names, literal link targets, canonical regular targets and hashes against the protected predecessor operand manifest. The wrapper applies one counted verifier-branch insertion to permit only these original tool operands, then requires exact link text, canonical target and bytes. The existing clang++→clang exception remains unchanged. Product/source aliases and every other unexpected alias still refuse; original validator files are unmodified.
+
+The real source-pair producer is bind_pair.py. It checks the actual serialized native result/plan, all current frozen operands, a18 native source composition, original predecessor, every current source adapter, actual source/entry receipts, independent entry equality and unchanged loader/paired module. source-pair-final.json is the intended package input; it pins the producer plus its wrapper/review dependencies and explicitly records the added native host API separately from unchanged paired-module ABI. No pending source projection receipt is relabeled as a successful native link.
