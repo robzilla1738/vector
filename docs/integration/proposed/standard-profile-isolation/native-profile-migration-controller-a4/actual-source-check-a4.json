@@ -1,0 +1,16 @@
+{
+  "format": "aux.native-ui-drain.source-check.actual.v1",
+  "passed": true,
+  "sourcePlanSha256": "0aaa148287f33ec34630a405bd9ed766a1407069151d066faf22a28fc3c0781f",
+  "patchSha256": "52eab3874c24aa70ceaebff99c968dae2304bdde4650755d9fc0f963059aab56",
+  "files": 9,
+  "countedAnchors": 20,
+  "replayDirectory": "/private/tmp/aux-native-ui-drain-replay-rltojrg6",
+  "exactReplayPassed": true,
+  "reverseCheckPassed": true,
+  "nativeCheckoutChanged": false,
+  "nativeCompiled": false,
+  "testsExecuted": false,
+  "productExecuted": false,
+  "runtimeAcceptance": false
+}

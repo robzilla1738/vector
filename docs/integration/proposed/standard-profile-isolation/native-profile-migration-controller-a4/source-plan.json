@@ -1,0 +1,188 @@
+{
+  "format": "aux.native-profile-migration-controller.source.v1",
+  "nativeRoot": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src",
+  "files": [
+    {
+      "path": "components/services/storage/public/mojom/local_storage_control.mojom",
+      "inputSha256": "162f2f8eadc21167bdf22029c134cc5516cf61fe35d9af353cf920a4f07fcfc2",
+      "outputSha256": "82f97d65cbc2c675de7b5c3a6df0d135a03e1c8f1e78bb874fd02535c0576fb7",
+      "output": "/Users/rcourson/.codex/worktrees/aux-features-organization/web/docs/integration/proposed/standard-profile-isolation/native-profile-migration-controller-a4/source/components/services/storage/public/mojom/local_storage_control.mojom",
+      "anchors": [
+        {
+          "find": "  ForceKeepSessionState();\n};",
+          "replace": "  ForceKeepSessionState();\n\n  // Browser-only acknowledgment of the existing loaded-area DB queue\n  // and explicit backend file-data sync. It neither closes writers nor\n  // proves complete capture, directory sync or migration authority.\n  // An unopened/in-memory/failed backend refuses without opening it.\n  DrainAuxUiMigration() => (bool file_data_synced);\n};",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "components/services/storage/dom_storage/local_storage_impl.h",
+      "inputSha256": "4d29fc4be14f6b15077544cf9908d613f1f6e0e0a7025d0f351f8b83218209b2",
+      "outputSha256": "144e33b571980556a4cf37738ddee5e57c2fd79d95d346ef911d5b56e734676c",
+      "output": "/Users/rcourson/.codex/worktrees/aux-features-organization/web/docs/integration/proposed/standard-profile-isolation/native-profile-migration-controller-a4/source/components/services/storage/dom_storage/local_storage_impl.h",
+      "anchors": [
+        {
+          "find": "  void Flush() override;\n",
+          "replace": "  void Flush() override;\n  void DrainAuxUiMigration(DrainAuxUiMigrationCallback callback) override;\n",
+          "count": 1
+        },
+        {
+          "find": "  // Never opens/repairs a DB or claims fsync, capture or migration authority.",
+          "replace": "  // Acknowledges backend file-data sync, not directory/cross-store\n  // durability. Never opens/repairs a DB or grants migration authority.",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "components/services/storage/dom_storage/local_storage_impl.cc",
+      "inputSha256": "9baf9f764694d7c3f408894612b5d89c03102625b1d0a564acbf93bb7b4de67b",
+      "outputSha256": "a602f0bb3e45156ee6c128369532134aa1fb7a5e26f8a1f8eeb96225cd1dd693",
+      "output": "/Users/rcourson/.codex/worktrees/aux-features-organization/web/docs/integration/proposed/standard-profile-isolation/native-profile-migration-controller-a4/source/components/services/storage/dom_storage/local_storage_impl.cc",
+      "anchors": [
+        {
+          "find": "void LocalStorageImpl::DrainLoadedAreasForAuxMigration(",
+          "replace": "void LocalStorageImpl::DrainAuxUiMigration(DrainAuxUiMigrationCallback callback) {\n  DrainLoadedAreasForAuxMigration(base::BindOnce(\n      [](DrainAuxUiMigrationCallback reply, DbStatus status) {\n        std::move(reply).Run(status.ok());\n      }, std::move(callback)));\n}\n\nvoid LocalStorageImpl::DrainLoadedAreasForAuxMigration(",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "components/services/storage/public/mojom/session_storage_control.mojom",
+      "inputSha256": "44714369ec4d411b40ed54dd8e807167d8b348bcce30c26d8f27e504155930b6",
+      "outputSha256": "266015391dfe129ca3c85e773c8648a65ad5336d71958c87fa41e71aea44ecf6",
+      "output": "/Users/rcourson/.codex/worktrees/aux-features-organization/web/docs/integration/proposed/standard-profile-isolation/native-profile-migration-controller-a4/source/components/services/storage/public/mojom/session_storage_control.mojom",
+      "anchors": [
+        {
+          "find": "  DeleteNamespace(string namespace_id, bool should_persist);\n};",
+          "replace": "  DeleteNamespace(string namespace_id, bool should_persist);\n\n  // Browser-only acknowledgment of the existing loaded-area DB queue\n  // and explicit backend file-data sync. It neither closes writers nor\n  // proves complete capture, directory sync or migration authority.\n  // An unopened/in-memory/failed backend refuses without opening it.\n  DrainAuxUiMigration() => (bool file_data_synced);\n};",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "components/services/storage/dom_storage/session_storage_impl.h",
+      "inputSha256": "a16fc19a67393cef1a64a218e04615403e34f5dacf12d54a00f6fb4327bfbd76",
+      "outputSha256": "ee5c205c527bed5fed5d164e77d41da3e4a2efa059360866b250c78af3a1e566",
+      "output": "/Users/rcourson/.codex/worktrees/aux-features-organization/web/docs/integration/proposed/standard-profile-isolation/native-profile-migration-controller-a4/source/components/services/storage/dom_storage/session_storage_impl.h",
+      "anchors": [
+        {
+          "find": "  void Flush() override;\n",
+          "replace": "  void Flush() override;\n  void DrainAuxUiMigration(DrainAuxUiMigrationCallback callback) override;\n",
+          "count": 1
+        },
+        {
+          "find": "  // Never opens/repairs a DB or claims fsync, capture or migration authority.",
+          "replace": "  // Acknowledges backend file-data sync, not directory/cross-store\n  // durability. Never opens/repairs a DB or grants migration authority.",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "components/services/storage/dom_storage/session_storage_impl.cc",
+      "inputSha256": "2f8fd62bc71304357a51cd8a9e41c00a9ad262f7dcc76c4cb693b5f813a24a3f",
+      "outputSha256": "3ead284327254e4812e21bbb66e5c85a256f068d2105637f6895992427bb3490",
+      "output": "/Users/rcourson/.codex/worktrees/aux-features-organization/web/docs/integration/proposed/standard-profile-isolation/native-profile-migration-controller-a4/source/components/services/storage/dom_storage/session_storage_impl.cc",
+      "anchors": [
+        {
+          "find": "void SessionStorageImpl::DrainLoadedAreasForAuxMigration(",
+          "replace": "void SessionStorageImpl::DrainAuxUiMigration(DrainAuxUiMigrationCallback callback) {\n  DrainLoadedAreasForAuxMigration(base::BindOnce(\n      [](DrainAuxUiMigrationCallback reply, DbStatus status) {\n        std::move(reply).Run(status.ok());\n      }, std::move(callback)));\n}\n\nvoid SessionStorageImpl::DrainLoadedAreasForAuxMigration(",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "content/public/browser/dom_storage_context.h",
+      "inputSha256": "966a0c1ed0166c837e94513e05bab06568dc910c9ad321cbb9c864500720d3cb",
+      "outputSha256": "dda866985da4739030e8c53da74ea74680b9cc784694beb1e2077d9ea4805470",
+      "output": "/Users/rcourson/.codex/worktrees/aux-features-organization/web/docs/integration/proposed/standard-profile-isolation/native-profile-migration-controller-a4/source/content/public/browser/dom_storage_context.h",
+      "anchors": [
+        {
+          "find": "#include \"base/functional/callback.h\"",
+          "replace": "#include \"base/functional/callback.h\"\n#include \"content/common/content_export.h\"",
+          "count": 1
+        },
+        {
+          "find": "  // Deletes the local storage for `storage_key`.",
+          "replace": "  // Native browser migration queue only. The actual service must already\n  // have disk backends and loaded areas. Success covers queued file-data sync\n  // only, not writer closure, full inventory, directory sync or target import.\n  // Unsupported implementations and lost/rebound services refuse.\n  CONTENT_EXPORT virtual void DrainLoadedAreasForAuxUiMigration(\n      base::OnceCallback<void(bool)> callback);\n\n  // Deletes the local storage for `storage_key`.",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "content/browser/dom_storage/dom_storage_context_wrapper.h",
+      "inputSha256": "97b0c2602e6f328d1e8f1e3f35f22627ba3e67683d4550c6f59200b32f9a52c5",
+      "outputSha256": "c39eb726f0be482fe50c62eb7a3329c364e04cd94e076e14e2ba9d1f9ad5b928",
+      "output": "/Users/rcourson/.codex/worktrees/aux-features-organization/web/docs/integration/proposed/standard-profile-isolation/native-profile-migration-controller-a4/source/content/browser/dom_storage/dom_storage_context_wrapper.h",
+      "anchors": [
+        {
+          "find": "#include <map>",
+          "replace": "#include <cstdint>\n#include <map>",
+          "count": 1
+        },
+        {
+          "find": "  void StartScavengingUnusedSessionStorage() override;",
+          "replace": "  void StartScavengingUnusedSessionStorage() override;\n  void DrainLoadedAreasForAuxUiMigration(\n      base::OnceCallback<void(bool)> callback) override;",
+          "count": 1
+        },
+        {
+          "find": "  mojo::Remote<storage::mojom::LocalStorageControl> local_storage_control_;",
+          "replace": "  mojo::Remote<storage::mojom::LocalStorageControl> local_storage_control_;\n  uint64_t aux_control_generation_ = 0;",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "content/browser/dom_storage/dom_storage_context_wrapper.cc",
+      "inputSha256": "0504e43e25a2e91876f4460a3e97da585792afd5c8ae2518688ac1540ebd0055",
+      "outputSha256": "dfb67720ced4159fc2ea532a1a127535305705dd7d297352551a1076e3b7fc3e",
+      "output": "/Users/rcourson/.codex/worktrees/aux-features-organization/web/docs/integration/proposed/standard-profile-isolation/native-profile-migration-controller-a4/source/content/browser/dom_storage/dom_storage_context_wrapper.cc",
+      "anchors": [
+        {
+          "find": "#include \"base/command_line.h\"",
+          "replace": "#include \"base/command_line.h\"\n#include \"base/barrier_callback.h\"",
+          "count": 1
+        },
+        {
+          "find": "#include \"storage/browser/quota/special_storage_policy.h\"",
+          "replace": "#include \"mojo/public/cpp/bindings/callback_helpers.h\"\n#include \"storage/browser/quota/special_storage_policy.h\"",
+          "count": 1
+        },
+        {
+          "find": "namespace content {\n",
+          "replace": "namespace content {\n\nvoid DOMStorageContext::DrainLoadedAreasForAuxUiMigration(\n    base::OnceCallback<void(bool)> callback) {\n  std::move(callback).Run(false);\n}\n",
+          "count": 1
+        },
+        {
+          "find": "void DOMStorageContextWrapper::GetLocalStorageUsage(",
+          "replace": "void DOMStorageContextWrapper::DrainLoadedAreasForAuxUiMigration(\n    base::OnceCallback<void(bool)> callback) {\n  DCHECK_CURRENTLY_ON(BrowserThread::UI);\n  // Use only the actual currently bound controls. Do not open/rebind a service\n  // to manufacture an acknowledgment for a missing original queue.\n  if (!partition_ || !local_storage_control_ || !session_storage_control_) {\n    std::move(callback).Run(false);\n    return;\n  }\n  const uint64_t generation = aux_control_generation_;\n  auto joined = base::BarrierCallback<bool>(2, base::BindOnce(\n      [](scoped_refptr<DOMStorageContextWrapper> owner, uint64_t generation,\n         base::OnceCallback<void(bool)> callback, std::vector<bool> replies) {\n        const bool current = owner->partition_ && owner->local_storage_control_ &&\n            owner->session_storage_control_ && owner->aux_control_generation_ == generation;\n        std::move(callback).Run(current && std::ranges::all_of(\n            replies, [](bool synced) { return synced; }));\n      }, base::WrapRefCounted(this), generation, std::move(callback)));\n  local_storage_control_->DrainAuxUiMigration(\n      mojo::WrapCallbackWithDefaultInvokeIfNotRun(base::BindOnce(joined), false));\n  session_storage_control_->DrainAuxUiMigration(\n      mojo::WrapCallbackWithDefaultInvokeIfNotRun(base::BindOnce(joined), false));\n}\n\nvoid DOMStorageContextWrapper::GetLocalStorageUsage(",
+          "count": 1
+        },
+        {
+          "find": "  partition_ = nullptr;\n",
+          "replace": "  ++aux_control_generation_;\n  partition_ = nullptr;\n",
+          "count": 1
+        },
+        {
+          "find": "  session_storage_control_.reset();\n  partition_->GetStorageService()->BindSessionStorageControl(",
+          "replace": "  ++aux_control_generation_;\n  session_storage_control_.reset();\n  partition_->GetStorageService()->BindSessionStorageControl(",
+          "count": 1
+        },
+        {
+          "find": "  local_storage_control_.reset();\n  partition_->GetStorageService()->BindLocalStorageControl(",
+          "replace": "  ++aux_control_generation_;\n  local_storage_control_.reset();\n  partition_->GetStorageService()->BindLocalStorageControl(",
+          "count": 1
+        }
+      ]
+    }
+  ],
+  "nativeCheckoutChanged": false,
+  "uiStylesChanged": false,
+  "nativeCompiled": false,
+  "productExecuted": false,
+  "runtimeAcceptance": false,
+  "drainScope": "existing-loaded-areas-and-backend-file-data-only",
+  "writerClosureImplemented": false,
+  "captureQualification": false,
+  "targetImportImplemented": false,
+  "activationAuthorized": false
+}

@@ -1,0 +1,225 @@
+--- a/components/services/storage/public/mojom/local_storage_control.mojom
++++ b/components/services/storage/public/mojom/local_storage_control.mojom
+@@ -47,4 +47,10 @@
+   // called, that behavior is overridden and Local Storage data is persisted
+   // for all StorageKeys.
+   ForceKeepSessionState();
++
++  // Browser-only acknowledgment of the existing loaded-area DB queue
++  // and explicit backend file-data sync. It neither closes writers nor
++  // proves complete capture, directory sync or migration authority.
++  // An unopened/in-memory/failed backend refuses without opening it.
++  DrainAuxUiMigration() => (bool file_data_synced);
+ };
+--- a/components/services/storage/dom_storage/local_storage_impl.h
++++ b/components/services/storage/dom_storage/local_storage_impl.h
+@@ -90,10 +90,12 @@
+                      DeleteStorageCallback callback) override;
+   void CleanUpStorage(CleanUpStorageCallback callback) override;
+   void Flush() override;
++  void DrainAuxUiMigration(DrainAuxUiMigrationCallback callback) override;
+ 
+   // Internal queue acknowledgment for currently loaded areas only. The native
+   // owner must already quiesce writers and qualify complete target coverage.
+-  // Never opens/repairs a DB or claims fsync, capture or migration authority.
++  // Acknowledges backend file-data sync, not directory/cross-store
++  // durability. Never opens/repairs a DB or grants migration authority.
+   void DrainLoadedAreasForAuxMigration(
+       AsyncDomStorageDatabase::StatusCallback callback);
+   void PurgeMemory() override;
+--- a/components/services/storage/dom_storage/local_storage_impl.cc
++++ b/components/services/storage/dom_storage/local_storage_impl.cc
+@@ -262,6 +262,13 @@
+   }
+ }
+ 
++void LocalStorageImpl::DrainAuxUiMigration(DrainAuxUiMigrationCallback callback) {
++  DrainLoadedAreasForAuxMigration(base::BindOnce(
++      [](DrainAuxUiMigrationCallback reply, DbStatus status) {
++        std::move(reply).Run(status.ok());
++      }, std::move(callback)));
++}
++
+ void LocalStorageImpl::DrainLoadedAreasForAuxMigration(
+     AsyncDomStorageDatabase::StatusCallback callback) {
+   if (connection_state_ != CONNECTION_FINISHED || !database_ || in_memory_ ||
+--- a/components/services/storage/public/mojom/session_storage_control.mojom
++++ b/components/services/storage/public/mojom/session_storage_control.mojom
+@@ -92,4 +92,10 @@
+   // `should_persist` is true, the namespace's data is left in the database;
+   // otherwise it is permanently deleted.
+   DeleteNamespace(string namespace_id, bool should_persist);
++
++  // Browser-only acknowledgment of the existing loaded-area DB queue
++  // and explicit backend file-data sync. It neither closes writers nor
++  // proves complete capture, directory sync or migration authority.
++  // An unopened/in-memory/failed backend refuses without opening it.
++  DrainAuxUiMigration() => (bool file_data_synced);
+ };
+--- a/components/services/storage/dom_storage/session_storage_impl.h
++++ b/components/services/storage/dom_storage/session_storage_impl.h
+@@ -89,10 +89,12 @@
+   void CleanUpStorage(CleanUpStorageCallback callback) override;
+   void ScavengeUnusedNamespaces() override;
+   void Flush() override;
++  void DrainAuxUiMigration(DrainAuxUiMigrationCallback callback) override;
+ 
+   // Internal queue acknowledgment for currently loaded areas only. The native
+   // owner must already quiesce writers and qualify complete target coverage.
+-  // Never opens/repairs a DB or claims fsync, capture or migration authority.
++  // Acknowledges backend file-data sync, not directory/cross-store
++  // durability. Never opens/repairs a DB or grants migration authority.
+   void DrainLoadedAreasForAuxMigration(
+       AsyncDomStorageDatabase::StatusCallback callback);
+   void PurgeMemory() override;
+--- a/components/services/storage/dom_storage/session_storage_impl.cc
++++ b/components/services/storage/dom_storage/session_storage_impl.cc
+@@ -237,6 +237,13 @@
+   }
+ }
+ 
++void SessionStorageImpl::DrainAuxUiMigration(DrainAuxUiMigrationCallback callback) {
++  DrainLoadedAreasForAuxMigration(base::BindOnce(
++      [](DrainAuxUiMigrationCallback reply, DbStatus status) {
++        std::move(reply).Run(status.ok());
++      }, std::move(callback)));
++}
++
+ void SessionStorageImpl::DrainLoadedAreasForAuxMigration(
+     AsyncDomStorageDatabase::StatusCallback callback) {
+   if (connection_state_ != CONNECTION_FINISHED || !database_ || in_memory_ ||
+--- a/content/public/browser/dom_storage_context.h
++++ b/content/public/browser/dom_storage_context.h
+@@ -9,6 +9,7 @@
+ #include <vector>
+ 
+ #include "base/functional/callback.h"
++#include "content/common/content_export.h"
+ 
+ namespace blink {
+ class StorageKey;
+@@ -30,6 +31,13 @@
+   // Returns a collection of StorageKeys using local storage to the given
+   // callback.
+   virtual void GetLocalStorageUsage(GetLocalStorageUsageCallback callback) = 0;
++
++  // Native browser migration queue only. The actual service must already
++  // have disk backends and loaded areas. Success covers queued file-data sync
++  // only, not writer closure, full inventory, directory sync or target import.
++  // Unsupported implementations and lost/rebound services refuse.
++  CONTENT_EXPORT virtual void DrainLoadedAreasForAuxUiMigration(
++      base::OnceCallback<void(bool)> callback);
+ 
+   // Deletes the local storage for `storage_key`. `callback` is called when the
+   // deletion is sent to the database and GetLocalStorageUsage() will not return
+--- a/content/browser/dom_storage/dom_storage_context_wrapper.h
++++ b/content/browser/dom_storage/dom_storage_context_wrapper.h
+@@ -5,6 +5,7 @@
+ #ifndef CONTENT_BROWSER_DOM_STORAGE_DOM_STORAGE_CONTEXT_WRAPPER_H_
+ #define CONTENT_BROWSER_DOM_STORAGE_DOM_STORAGE_CONTEXT_WRAPPER_H_
+ 
++#include <cstdint>
+ #include <map>
+ #include <optional>
+ #include <string>
+@@ -92,6 +93,8 @@
+   scoped_refptr<SessionStorageNamespaceHandle> RecreateSessionStorage(
+       const std::string& namespace_id) override;
+   void StartScavengingUnusedSessionStorage() override;
++  void DrainLoadedAreasForAuxUiMigration(
++      base::OnceCallback<void(bool)> callback) override;
+   bool scavenging_started_for_testing() const {
+     return scavenging_started_for_testing_;
+   }
+@@ -194,6 +197,7 @@
+   // within the Storage Service.
+   mojo::Remote<storage::mojom::SessionStorageControl> session_storage_control_;
+   mojo::Remote<storage::mojom::LocalStorageControl> local_storage_control_;
++  uint64_t aux_control_generation_ = 0;
+ 
+   std::optional<storage::StoragePolicyObserver> storage_policy_observer_;
+   bool scavenging_started_for_testing_ = false;
+--- a/content/browser/dom_storage/dom_storage_context_wrapper.cc
++++ b/content/browser/dom_storage/dom_storage_context_wrapper.cc
+@@ -9,6 +9,7 @@
+ #include <vector>
+ 
+ #include "base/command_line.h"
++#include "base/barrier_callback.h"
+ #include "base/functional/bind.h"
+ #include "base/functional/callback_helpers.h"
+ #include "base/location.h"
+@@ -38,12 +39,18 @@
+ #include "content/public/common/content_client.h"
+ #include "content/public/common/content_features.h"
+ #include "content/public/common/content_switches.h"
++#include "mojo/public/cpp/bindings/callback_helpers.h"
+ #include "storage/browser/quota/special_storage_policy.h"
+ #include "third_party/blink/public/common/features.h"
+ #include "third_party/blink/public/common/permissions/permission_utils.h"
+ #include "third_party/blink/public/common/storage_key/storage_key.h"
+ 
+ namespace content {
++
++void DOMStorageContext::DrainLoadedAreasForAuxUiMigration(
++    base::OnceCallback<void(bool)> callback) {
++  std::move(callback).Run(false);
++}
+ 
+ namespace {
+ 
+@@ -127,6 +134,30 @@
+   return local_storage_control_.get();
+ }
+ 
++void DOMStorageContextWrapper::DrainLoadedAreasForAuxUiMigration(
++    base::OnceCallback<void(bool)> callback) {
++  DCHECK_CURRENTLY_ON(BrowserThread::UI);
++  // Use only the actual currently bound controls. Do not open/rebind a service
++  // to manufacture an acknowledgment for a missing original queue.
++  if (!partition_ || !local_storage_control_ || !session_storage_control_) {
++    std::move(callback).Run(false);
++    return;
++  }
++  const uint64_t generation = aux_control_generation_;
++  auto joined = base::BarrierCallback<bool>(2, base::BindOnce(
++      [](scoped_refptr<DOMStorageContextWrapper> owner, uint64_t generation,
++         base::OnceCallback<void(bool)> callback, std::vector<bool> replies) {
++        const bool current = owner->partition_ && owner->local_storage_control_ &&
++            owner->session_storage_control_ && owner->aux_control_generation_ == generation;
++        std::move(callback).Run(current && std::ranges::all_of(
++            replies, [](bool synced) { return synced; }));
++      }, base::WrapRefCounted(this), generation, std::move(callback)));
++  local_storage_control_->DrainAuxUiMigration(
++      mojo::WrapCallbackWithDefaultInvokeIfNotRun(base::BindOnce(joined), false));
++  session_storage_control_->DrainAuxUiMigration(
++      mojo::WrapCallbackWithDefaultInvokeIfNotRun(base::BindOnce(joined), false));
++}
++
+ void DOMStorageContextWrapper::GetLocalStorageUsage(
+     GetLocalStorageUsageCallback callback) {
+   if (!local_storage_control_) {
+@@ -228,6 +259,7 @@
+ void DOMStorageContextWrapper::Shutdown() {
+   // |partition_| is about to be destroyed, so we must not dereference it after
+   // this call.
++  ++aux_control_generation_;
+   partition_ = nullptr;
+ 
+   // Signals the implementation to perform shutdown operations.
+@@ -351,6 +383,7 @@
+     bool clear_on_open) {
+   if (!partition_)
+     return;
++  ++aux_control_generation_;
+   session_storage_control_.reset();
+   partition_->GetStorageService()->BindSessionStorageControl(
+       partition_->GetStoragePartitionPath(), clear_on_open,
+@@ -371,6 +404,7 @@
+   if (!partition_) {
+     return;
+   }
++  ++aux_control_generation_;
+   local_storage_control_.reset();
+   partition_->GetStorageService()->BindLocalStorageControl(
+       partition_->GetStoragePartitionPath(),
