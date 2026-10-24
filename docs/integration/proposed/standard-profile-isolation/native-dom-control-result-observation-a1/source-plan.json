@@ -1,0 +1,120 @@
+{
+  "format": "aux.dom-cohort.control-result-observation.v1",
+  "predecessorCommit": "e638d5cd1",
+  "files": [
+    {
+      "path": "components/services/storage/public/mojom/local_storage_control.mojom",
+      "inputSource": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/native-dom-control-cohort-glue-a1/source/components/services/storage/public/mojom/local_storage_control.mojom",
+      "inputSha256": "42fcf8666e30073cca044b75cb9a358192def48258bebd44371a7025728c55e1",
+      "outputSha256": "74f84005316e3ee9d0f097e6c1d8faf2f37ea22182d9947b3ef22ffd76d9df55",
+      "source": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/native-dom-control-result-observation-a1/source/components/services/storage/public/mojom/local_storage_control.mojom",
+      "anchors": [
+        {
+          "name": "Distinct definitive no-lease observation, never inferred from absence",
+          "find": "  bool released;\n};",
+          "replace": "  bool released;\n  // Same-service original attempt returned no lease and native cleanup completed.\n  bool aborted;\n};",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "components/services/storage/dom_storage/local_storage_impl.h",
+      "inputSource": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/native-dom-control-cohort-glue-a1/source/components/services/storage/dom_storage/local_storage_impl.h",
+      "inputSha256": "37542145bb001cf61394b62ac02b71d97431d12b842674bf2d44d46f5eee62a3",
+      "outputSha256": "a16b524702210be1f948f59a3ed1245da56a12ea4a8cf3d474aaa917a2113f40",
+      "source": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/native-dom-control-result-observation-a1/source/components/services/storage/dom_storage/local_storage_impl.h",
+      "anchors": [
+        {
+          "name": "Finite definitive pre-gate result correlation",
+          "find": "  std::optional<AuxUiReleasedReceipt> aux_ui_released_;",
+          "replace": "  std::optional<AuxUiReleasedReceipt> aux_ui_released_;\n  struct AuxUiAbortedReceipt {\n    base::UnguessableToken request;\n    uint64_t generation;\n    std::string error;\n  };\n  std::optional<AuxUiAbortedReceipt> aux_ui_aborted_;",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "components/services/storage/dom_storage/local_storage_impl.cc",
+      "inputSource": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/native-dom-control-cohort-glue-a1/source/components/services/storage/dom_storage/local_storage_impl.cc",
+      "inputSha256": "683f27aa9333809b415e30980f744ad21861511d85cb5619ea9ca366c5ec6fef",
+      "outputSha256": "ca08f7d83f35d684e327074501f3736c7f761044f25cca135dddfbaf5a4f0261",
+      "source": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/native-dom-control-result-observation-a1/source/components/services/storage/dom_storage/local_storage_impl.cc",
+      "anchors": [
+        {
+          "name": "No-lease result has its own explicit correlated reply",
+          "find": "mojom::AuxUiDomLeaseReplyPtr AuxDomLeaseSnapshot(",
+          "replace": "mojom::AuxUiDomLeaseReplyPtr AuxDomLeaseAborted(\n    const base::UnguessableToken& request, std::string error) {\n  auto reply = mojom::AuxUiDomLeaseReply::New();\n  reply->ok = false;\n  reply->held = false;\n  reply->source_ready = false;\n  reply->aborted = true;\n  reply->request_id = request;\n  reply->error = std::move(error);\n  return reply;\n}\nmojom::AuxUiDomLeaseReplyPtr AuxDomLeaseSnapshot(",
+          "count": 1
+        },
+        {
+          "name": "Retired failed Begin cannot recreate a hold",
+          "find": "  if (aux_ui_released_ && aux_ui_released_->request == request_id) {",
+          "replace": "  if (aux_ui_aborted_ && aux_ui_aborted_->request == request_id) {\n    if (aux_ui_aborted_->generation == aux_ui_generation_)\n      std::move(callback).Run(AuxDomLeaseAborted(request_id, aux_ui_aborted_->error));\n    else\n      std::move(callback).Run(AuxDomLeaseFailure(std::nullopt, nullptr,\n          \"Retired original DOM request cannot prepare again\"));\n    return;\n  }\n  if (aux_ui_released_ && aux_ui_released_->request == request_id) {",
+          "count": 1
+        },
+        {
+          "name": "Record only actual no-lease result after concrete native cleanup",
+          "find": "        if (!lease.has_value()) {\n          owner->aux_ui_request_.reset();\n          std::move(callback).Run(AuxDomLeaseFailure(owner->aux_ui_request_, nullptr,\n              lease.error().ToString()));\n          return;\n        }",
+          "replace": "        if (!lease.has_value()) {\n          const std::string error = lease.error().ToString();\n          owner->aux_ui_retired_requests_.insert(request);\n          owner->aux_ui_aborted_ = AuxUiAbortedReceipt{request, generation, error};\n          owner->aux_ui_request_.reset();\n          // Only this actual no-lease callback and concrete native cleanup\n          // create the observation. Timeout, missing owner and null-success\n          // lease remain unknown and never enter this branch.\n          std::move(callback).Run(AuxDomLeaseAborted(request, error));\n          return;\n        }",
+          "count": 1
+        },
+        {
+          "name": "Read recovers only exact same-service-generation no-lease observation",
+          "find": "void LocalStorageImpl::ReadAuxUiPreferenceLease(const base::UnguessableToken& request_id, ReadAuxUiPreferenceLeaseCallback callback) {\n",
+          "replace": "void LocalStorageImpl::ReadAuxUiPreferenceLease(const base::UnguessableToken& request_id, ReadAuxUiPreferenceLeaseCallback callback) {\n  if (aux_ui_aborted_ && aux_ui_aborted_->request == request_id &&\n      aux_ui_aborted_->generation == aux_ui_generation_) {\n    std::move(callback).Run(AuxDomLeaseAborted(request_id, aux_ui_aborted_->error));\n    return;\n  }\n",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "components/services/storage/dom_storage/session_storage_impl.h",
+      "inputSource": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/native-dom-control-cohort-glue-a1/source/components/services/storage/dom_storage/session_storage_impl.h",
+      "inputSha256": "38dcd0098b4eea458e3a48baace6597807acb98d5f71ea4b2fcfdca233637e3f",
+      "outputSha256": "3efff4c1e4207a8cadfd59fa8bb186d22560f10f26ee497504d4bc59aa8e84eb",
+      "source": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/native-dom-control-result-observation-a1/source/components/services/storage/dom_storage/session_storage_impl.h",
+      "anchors": [
+        {
+          "name": "Finite definitive pre-gate result correlation",
+          "find": "  std::optional<AuxUiReleasedReceipt> aux_ui_released_;",
+          "replace": "  std::optional<AuxUiReleasedReceipt> aux_ui_released_;\n  struct AuxUiAbortedReceipt {\n    base::UnguessableToken request;\n    uint64_t generation;\n    std::string error;\n  };\n  std::optional<AuxUiAbortedReceipt> aux_ui_aborted_;",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "components/services/storage/dom_storage/session_storage_impl.cc",
+      "inputSource": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/native-dom-control-cohort-glue-a1/source/components/services/storage/dom_storage/session_storage_impl.cc",
+      "inputSha256": "877f0454d4b0b888ca68dd80aa74d3af734dd32036204127889354c77c948698",
+      "outputSha256": "51df9b241107fcc000f353ac80a654f5a5340a9f93405ef81651fe98f176491d",
+      "source": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/native-dom-control-result-observation-a1/source/components/services/storage/dom_storage/session_storage_impl.cc",
+      "anchors": [
+        {
+          "name": "No-lease result has its own explicit correlated reply",
+          "find": "mojom::AuxUiDomLeaseReplyPtr AuxDomLeaseSnapshot(",
+          "replace": "mojom::AuxUiDomLeaseReplyPtr AuxDomLeaseAborted(\n    const base::UnguessableToken& request, std::string error) {\n  auto reply = mojom::AuxUiDomLeaseReply::New();\n  reply->ok = false;\n  reply->held = false;\n  reply->source_ready = false;\n  reply->aborted = true;\n  reply->request_id = request;\n  reply->error = std::move(error);\n  return reply;\n}\nmojom::AuxUiDomLeaseReplyPtr AuxDomLeaseSnapshot(",
+          "count": 1
+        },
+        {
+          "name": "Retired failed Begin cannot recreate a hold",
+          "find": "  if (aux_ui_released_ && aux_ui_released_->request == request_id) {",
+          "replace": "  if (aux_ui_aborted_ && aux_ui_aborted_->request == request_id) {\n    if (aux_ui_aborted_->generation == aux_ui_generation_)\n      std::move(callback).Run(AuxDomLeaseAborted(request_id, aux_ui_aborted_->error));\n    else\n      std::move(callback).Run(AuxDomLeaseFailure(std::nullopt, nullptr,\n          \"Retired original DOM request cannot prepare again\"));\n    return;\n  }\n  if (aux_ui_released_ && aux_ui_released_->request == request_id) {",
+          "count": 1
+        },
+        {
+          "name": "Record only actual no-lease result after concrete native cleanup",
+          "find": "        if (!lease.has_value()) {\n          if (owner->ResumeAuxUiNamespaces(request)) {\n            owner->aux_ui_frozen_namespaces_.clear();\n            owner->aux_ui_namespaces_resumed_ = false;\n            owner->aux_ui_namespace_error_.clear();\n            owner->aux_ui_request_.reset();\n          }\n          std::move(callback).Run(AuxDomLeaseFailure(owner->aux_ui_request_, nullptr,\n              lease.error().ToString()));\n          return;\n        }",
+          "replace": "        if (!lease.has_value()) {\n          if (!owner->ResumeAuxUiNamespaces(request)) {\n            std::move(callback).Run(AuxDomLeaseFailure(owner->aux_ui_request_, nullptr,\n                owner->aux_ui_namespace_error_));\n            return;\n          }\n          owner->aux_ui_frozen_namespaces_.clear();\n          owner->aux_ui_namespaces_resumed_ = false;\n          owner->aux_ui_namespace_error_.clear();\n          const std::string error = lease.error().ToString();\n          owner->aux_ui_retired_requests_.insert(request);\n          owner->aux_ui_aborted_ = AuxUiAbortedReceipt{request, generation, error};\n          owner->aux_ui_request_.reset();\n          // Only this actual no-lease callback and concrete native cleanup\n          // create the observation. Timeout, missing owner and null-success\n          // lease remain unknown and never enter this branch.\n          std::move(callback).Run(AuxDomLeaseAborted(request, error));\n          return;\n        }",
+          "count": 1
+        },
+        {
+          "name": "Read recovers only exact same-service-generation no-lease observation",
+          "find": "void SessionStorageImpl::ReadAuxUiPreferenceLease(const base::UnguessableToken& request_id, ReadAuxUiPreferenceLeaseCallback callback) {\n",
+          "replace": "void SessionStorageImpl::ReadAuxUiPreferenceLease(const base::UnguessableToken& request_id, ReadAuxUiPreferenceLeaseCallback callback) {\n  if (aux_ui_aborted_ && aux_ui_aborted_->request == request_id &&\n      aux_ui_aborted_->generation == aux_ui_generation_) {\n    std::move(callback).Run(AuxDomLeaseAborted(request_id, aux_ui_aborted_->error));\n    return;\n  }\n",
+          "count": 1
+        }
+      ]
+    }
+  ],
+  "actualNativeMutation": false,
+  "compilerRun": false,
+  "runtimeAcceptance": false
+}

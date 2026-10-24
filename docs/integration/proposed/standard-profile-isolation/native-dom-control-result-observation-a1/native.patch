@@ -1,0 +1,182 @@
+--- a/components/services/storage/public/mojom/local_storage_control.mojom
++++ b/components/services/storage/public/mojom/local_storage_control.mojom
+@@ -55,6 +55,8 @@
+   string target_topology_sha256;
+   // Exact same-service successful release observation; never writer readiness.
+   bool released;
++  // Same-service original attempt returned no lease and native cleanup completed.
++  bool aborted;
+ };
+ 
+ // Controls the state of Local Storage within a partition. This is a privileged
+--- a/components/services/storage/dom_storage/local_storage_impl.h
++++ b/components/services/storage/dom_storage/local_storage_impl.h
+@@ -246,6 +246,12 @@
+     uint64_t generation;
+   };
+   std::optional<AuxUiReleasedReceipt> aux_ui_released_;
++  struct AuxUiAbortedReceipt {
++    base::UnguessableToken request;
++    uint64_t generation;
++    std::string error;
++  };
++  std::optional<AuxUiAbortedReceipt> aux_ui_aborted_;
+   // Bounded process-local tombstones prevent old successful request replay
+   // after the one detailed release observation has advanced to a newer attempt.
+   std::set<base::UnguessableToken> aux_ui_retired_requests_;
+--- a/components/services/storage/dom_storage/local_storage_impl.cc
++++ b/components/services/storage/dom_storage/local_storage_impl.cc
+@@ -301,6 +301,17 @@
+   reply->released = true;
+   reply->request_id = request;
+   reply->token = token;
++  return reply;
++}
++mojom::AuxUiDomLeaseReplyPtr AuxDomLeaseAborted(
++    const base::UnguessableToken& request, std::string error) {
++  auto reply = mojom::AuxUiDomLeaseReply::New();
++  reply->ok = false;
++  reply->held = false;
++  reply->source_ready = false;
++  reply->aborted = true;
++  reply->request_id = request;
++  reply->error = std::move(error);
+   return reply;
+ }
+ mojom::AuxUiDomLeaseReplyPtr AuxDomLeaseSnapshot(
+@@ -387,6 +398,14 @@
+ void LocalStorageImpl::BeginAuxUiPreferenceLease(
+     const base::UnguessableToken& request_id,
+     BeginAuxUiPreferenceLeaseCallback callback) {
++  if (aux_ui_aborted_ && aux_ui_aborted_->request == request_id) {
++    if (aux_ui_aborted_->generation == aux_ui_generation_)
++      std::move(callback).Run(AuxDomLeaseAborted(request_id, aux_ui_aborted_->error));
++    else
++      std::move(callback).Run(AuxDomLeaseFailure(std::nullopt, nullptr,
++          "Retired original DOM request cannot prepare again"));
++    return;
++  }
+   if (aux_ui_released_ && aux_ui_released_->request == request_id) {
+     if (aux_ui_released_->generation == aux_ui_generation_)
+       std::move(callback).Run(AuxDomLeaseReleased(request_id, aux_ui_released_->token));
+@@ -428,9 +447,14 @@
+           return;
+         }
+         if (!lease.has_value()) {
++          const std::string error = lease.error().ToString();
++          owner->aux_ui_retired_requests_.insert(request);
++          owner->aux_ui_aborted_ = AuxUiAbortedReceipt{request, generation, error};
+           owner->aux_ui_request_.reset();
+-          std::move(callback).Run(AuxDomLeaseFailure(owner->aux_ui_request_, nullptr,
+-              lease.error().ToString()));
++          // Only this actual no-lease callback and concrete native cleanup
++          // create the observation. Timeout, missing owner and null-success
++          // lease remain unknown and never enter this branch.
++          std::move(callback).Run(AuxDomLeaseAborted(request, error));
+           return;
+         }
+         // A real held lease remains discoverable even if cache preparation
+@@ -475,6 +499,11 @@
+   }
+ }
+ void LocalStorageImpl::ReadAuxUiPreferenceLease(const base::UnguessableToken& request_id, ReadAuxUiPreferenceLeaseCallback callback) {
++  if (aux_ui_aborted_ && aux_ui_aborted_->request == request_id &&
++      aux_ui_aborted_->generation == aux_ui_generation_) {
++    std::move(callback).Run(AuxDomLeaseAborted(request_id, aux_ui_aborted_->error));
++    return;
++  }
+   if (aux_ui_released_ && aux_ui_released_->request == request_id &&
+       aux_ui_released_->generation == aux_ui_generation_) {
+     std::move(callback).Run(AuxDomLeaseReleased(request_id, aux_ui_released_->token));
+--- a/components/services/storage/dom_storage/session_storage_impl.h
++++ b/components/services/storage/dom_storage/session_storage_impl.h
+@@ -278,6 +278,12 @@
+     uint64_t generation;
+   };
+   std::optional<AuxUiReleasedReceipt> aux_ui_released_;
++  struct AuxUiAbortedReceipt {
++    base::UnguessableToken request;
++    uint64_t generation;
++    std::string error;
++  };
++  std::optional<AuxUiAbortedReceipt> aux_ui_aborted_;
+   // Bounded process-local tombstones prevent old successful request replay
+   // after the one detailed release observation has advanced to a newer attempt.
+   std::set<base::UnguessableToken> aux_ui_retired_requests_;
+--- a/components/services/storage/dom_storage/session_storage_impl.cc
++++ b/components/services/storage/dom_storage/session_storage_impl.cc
+@@ -288,6 +288,17 @@
+   reply->released = true;
+   reply->request_id = request;
+   reply->token = token;
++  return reply;
++}
++mojom::AuxUiDomLeaseReplyPtr AuxDomLeaseAborted(
++    const base::UnguessableToken& request, std::string error) {
++  auto reply = mojom::AuxUiDomLeaseReply::New();
++  reply->ok = false;
++  reply->held = false;
++  reply->source_ready = false;
++  reply->aborted = true;
++  reply->request_id = request;
++  reply->error = std::move(error);
+   return reply;
+ }
+ mojom::AuxUiDomLeaseReplyPtr AuxDomLeaseSnapshot(
+@@ -374,6 +385,14 @@
+ void SessionStorageImpl::BeginAuxUiPreferenceLease(
+     const base::UnguessableToken& request_id,
+     BeginAuxUiPreferenceLeaseCallback callback) {
++  if (aux_ui_aborted_ && aux_ui_aborted_->request == request_id) {
++    if (aux_ui_aborted_->generation == aux_ui_generation_)
++      std::move(callback).Run(AuxDomLeaseAborted(request_id, aux_ui_aborted_->error));
++    else
++      std::move(callback).Run(AuxDomLeaseFailure(std::nullopt, nullptr,
++          "Retired original DOM request cannot prepare again"));
++    return;
++  }
+   if (aux_ui_released_ && aux_ui_released_->request == request_id) {
+     if (aux_ui_released_->generation == aux_ui_generation_)
+       std::move(callback).Run(AuxDomLeaseReleased(request_id, aux_ui_released_->token));
+@@ -436,14 +455,22 @@
+           return;
+         }
+         if (!lease.has_value()) {
+-          if (owner->ResumeAuxUiNamespaces(request)) {
+-            owner->aux_ui_frozen_namespaces_.clear();
+-            owner->aux_ui_namespaces_resumed_ = false;
+-            owner->aux_ui_namespace_error_.clear();
+-            owner->aux_ui_request_.reset();
++          if (!owner->ResumeAuxUiNamespaces(request)) {
++            std::move(callback).Run(AuxDomLeaseFailure(owner->aux_ui_request_, nullptr,
++                owner->aux_ui_namespace_error_));
++            return;
+           }
+-          std::move(callback).Run(AuxDomLeaseFailure(owner->aux_ui_request_, nullptr,
+-              lease.error().ToString()));
++          owner->aux_ui_frozen_namespaces_.clear();
++          owner->aux_ui_namespaces_resumed_ = false;
++          owner->aux_ui_namespace_error_.clear();
++          const std::string error = lease.error().ToString();
++          owner->aux_ui_retired_requests_.insert(request);
++          owner->aux_ui_aborted_ = AuxUiAbortedReceipt{request, generation, error};
++          owner->aux_ui_request_.reset();
++          // Only this actual no-lease callback and concrete native cleanup
++          // create the observation. Timeout, missing owner and null-success
++          // lease remain unknown and never enter this branch.
++          std::move(callback).Run(AuxDomLeaseAborted(request, error));
+           return;
+         }
+         // A real held lease remains discoverable even if cache preparation
+@@ -492,6 +519,11 @@
+   }
+ }
+ void SessionStorageImpl::ReadAuxUiPreferenceLease(const base::UnguessableToken& request_id, ReadAuxUiPreferenceLeaseCallback callback) {
++  if (aux_ui_aborted_ && aux_ui_aborted_->request == request_id &&
++      aux_ui_aborted_->generation == aux_ui_generation_) {
++    std::move(callback).Run(AuxDomLeaseAborted(request_id, aux_ui_aborted_->error));
++    return;
++  }
+   if (aux_ui_released_ && aux_ui_released_->request == request_id &&
+       aux_ui_released_->generation == aux_ui_generation_) {
+     std::move(callback).Run(AuxDomLeaseReleased(request_id, aux_ui_released_->token));

@@ -1,0 +1,13 @@
+{
+  "format": "aux.dom-cohort.control-result-observation.static.v1",
+  "passed": true,
+  "files": 5,
+  "singleMatchAnchors": 11,
+  "patchAppliedAndReversedInDisposableMirror": true,
+  "actualNativeMutation": false,
+  "mojoGenerationRun": false,
+  "compilerRun": false,
+  "nativeApiExecuted": false,
+  "productExecuted": false,
+  "runtimeAcceptance": false
+}
