@@ -1,0 +1,35 @@
+{
+  "version": 1,
+  "inactive": true,
+  "native": {
+    "path": "chrome/browser/ui/views/frame/aux_tab_search_bubble.cc",
+    "predecessor": "palette-ask-v1/source/aux_tab_search_bubble.cc (21bd95bf8 + d32887a05)",
+    "inputSha256": "715ad2f1d91f7df35f997de3d2e082341881129d1c0aa3e845a385e6a2613377",
+    "outputSha256": "3be3a1b0377b56c7c15b5cc14b08fe8d1dbe42b701efca1a98abef1c08ed50e6",
+    "changesFile": "native-overlay.json"
+  },
+  "ui": {
+    "relative": "assets/tabsearch-3k_2hgil.js",
+    "inputSha256": "29b3f114c30acfd9ad3c514cda08c71ca6f7e81642384c09bdad95865534c1e8",
+    "outputSha256": "dfe24ac522874111318c36925800457aaeaf3f4920bab4ea4e8b91187b70a602",
+    "anchors": 3,
+    "module": "source/aux-context-actions.mjs",
+    "export": "transformAuxContextActions",
+    "after": "transformAuxPaletteAsk"
+  },
+  "daemonChanged": false,
+  "files": {
+    "README.md": "0e463a9670e047c89ace9a6f789d6c8ff1c0b60cbc969df7615b8231792d0676",
+    "baseline/aux_tab_search_bubble.cc": "715ad2f1d91f7df35f997de3d2e082341881129d1c0aa3e845a385e6a2613377",
+    "check-result.json": "4ccb21aca4a155c12ed7de8831e44b346f7ed023ce9aebb9747883c537d1a45d",
+    "check.mjs": "32ad356331ccffa3193bb36291f3c0c9d2fb96bd21fc18d99eea4f17052c0a6b",
+    "generate.py": "27af428268849b9bbf2efb44e302f513165b0f9abaf1dd7269b4b897978f505a",
+    "native-overlay.json": "7144788bf150d92157c148535bd078fd5f7279f10e8fff81b561356259461e33",
+    "native.patch": "286e59db6b1c9f831e362e637661385fb759182d95bd32c5fc6c9a1a2a250188",
+    "source/aux-context-actions.mjs": "c4b59997df0faf589c9ddef3a08a8e8f4ca7181adddf9e0815d31604c4318514",
+    "source/aux_tab_search_bubble.cc": "3be3a1b0377b56c7c15b5cc14b08fe8d1dbe42b701efca1a98abef1c08ed50e6",
+    "source/context-binding.inc": "a514cf0bceb6c308761d70128fd90cbd6437680e028c41f7d00fdf45f1202974",
+    "source/context-commit.inc": "6e84862d9633d5702a00bf42495521678b5a259ab95d3508e5d510c7336cb07e",
+    "source/context-methods.inc": "09cd7bdabd93e2b7ed1c1b167f62f8f1e0edfe1f4e0390f29069fc0c0f7f64fb"
+  }
+}

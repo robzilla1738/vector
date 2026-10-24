@@ -1,0 +1,23 @@
+{
+  "scope": "Synthetic boundary fixture and exact source replay only; no provider/app/native execution",
+  "cases": [
+    "passive result generation never submits",
+    "native active/selected receipt preserved in original RPC",
+    "profile mismatch refuses before authorization",
+    "expired selection refuses before RPC",
+    "created-session open failure never retries mutation",
+    "three UI anchors plus nine native anchors replay",
+    "actual composed tabsearch parses"
+  ],
+  "ui": {
+    "relative": "assets/tabsearch-3k_2hgil.js",
+    "inputSha256": "29b3f114c30acfd9ad3c514cda08c71ca6f7e81642384c09bdad95865534c1e8",
+    "outputSha256": "dfe24ac522874111318c36925800457aaeaf3f4920bab4ea4e8b91187b70a602",
+    "anchors": 3
+  },
+  "native": {
+    "inputSha256": "715ad2f1d91f7df35f997de3d2e082341881129d1c0aa3e845a385e6a2613377",
+    "outputSha256": "3be3a1b0377b56c7c15b5cc14b08fe8d1dbe42b701efca1a98abef1c08ed50e6",
+    "anchors": 9
+  }
+}
