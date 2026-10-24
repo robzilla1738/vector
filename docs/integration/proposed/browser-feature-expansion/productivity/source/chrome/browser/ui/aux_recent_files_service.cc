@@ -10,6 +10,7 @@
 #include <utility>
 #include "base/functional/bind.h"
 #include "base/memory/weak_ptr.h"
+#include "base/memory/raw_ptr.h"
 #include "base/strings/string_number_conversions.h"
 #include "base/strings/string_util.h"
 #include "base/strings/utf_string_conversions.h"
@@ -102,7 +103,7 @@ struct Rename : Item::Observer, std::enable_shared_from_this<Rename> {
   bool recover_only = false, keep_pending = false;
   int attempt = 1;
   Result result = Result::FAILURE_UNKNOWN;
-  Item* item = nullptr;
+  raw_ptr<Item> item = nullptr;
   Reply reply;
   ~Rename() override { if (item) item->RemoveObserver(this); }
   void OnDownloadDestroyed(Item* destroyed) override { item = nullptr; MaybeFinish(); }
@@ -191,7 +192,7 @@ struct Recovery : content::DownloadManager::Observer, std::enable_shared_from_th
   size_t index = 0;
   bool changed = false;
   uint64_t epoch = 0;
-  content::DownloadManager* waiting_manager = nullptr;
+  raw_ptr<content::DownloadManager> waiting_manager = nullptr;
   std::shared_ptr<Recovery> waiting_self;
   ~Recovery() override { if (waiting_manager) waiting_manager->RemoveObserver(this); }
   void Start() {
@@ -318,7 +319,7 @@ base::DictValue ListRecentFiles(Profile* profile) {
   std::ranges::sort(items, [](const Item* a, const Item* b) { return a->GetEndTime() > b->GetEndTime(); });
   base::ListValue rows = ListChosenFiles(profile);
   int download_count = 0;
-  for (auto* item : items) {
+  for (Item* item : items) {
     if (item->GetState() != Item::COMPLETE || item->IsDangerous()) continue;
     rows.Append(base::DictValue().Set("id", item->GetGuid())
         .Set("name", item->GetTargetFilePath().BaseName().AsUTF8Unsafe())

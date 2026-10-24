@@ -163,7 +163,7 @@ void AuxRecentFilesSection::BindBrowser(BrowserWindowInterface& browser) {
   manager_->AddObserver(this);
   content::DownloadManager::DownloadVector items;
   manager_->GetAllDownloads(&items);
-  for (auto* item : items) { observed_.insert(item); item->AddObserver(this); }
+  for (download::DownloadItem* item : items) { observed_.insert(item); item->AddObserver(this); }
   prefs_.Init(profile->GetPrefs());
   prefs_.Add(kExpanded, base::BindRepeating(&AuxRecentFilesSection::PreferenceChanged,
                                          base::Unretained(this)));
