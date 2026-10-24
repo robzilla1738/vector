@@ -2,7 +2,7 @@
   "format": "aux.ui-editor-writer-closure.inputs.v1",
   "baselineCommit": "130acfb8c",
   "predecessorStage": "/private/tmp/aux-feature-completion-ui-stage-20261024-a2/agent",
-  "runtimeSha256": "b4c07d22e847dff77b71cf3980bee3329016bb763acbea0e4957f3a229afa9b3",
+  "runtimeSha256": "49a7135094655b4d689ebabe31a1fd884c97db7d2bdbf28d025ef86ed292ad66",
   "files": [
     {
       "path": "assets/draft-storage-ixLojjZ5.js",
@@ -41,7 +41,7 @@
         },
         {
           "find": "export{k as a,W as c,F as i,J as l,U as n,$ as o,b as r,X as s,H as t,j as u,auxCaptureDraftMigration};",
-          "replace": "__AUX_CLOSURE_RUNTIME__\nexport{k as a,W as c,F as i,J as l,U as n,$ as o,b as r,X as s,H as t,j as u,auxCaptureDraftMigration,auxPrepareDraftMigrationCapture,auxValidateDraftMigrationCapture,auxSealDraftMigrationCapture,auxReadDraftMigrationCapture,auxReleaseDraftMigrationCapture,auxRegisterDraftMigrationOwner,auxBeginDraftMigrationWork,auxDraftMigrationBlocked,auxDraftMigrationChanged,auxGetNewtabDraftSettingsOwner};",
+          "replace": "__AUX_CLOSURE_RUNTIME__\nexport{k as a,W as c,F as i,J as l,U as n,$ as o,b as r,X as s,H as t,j as u,auxCaptureDraftMigration,auxPrepareDraftMigrationCapture,auxValidateDraftMigrationCapture,auxSealDraftMigrationCapture,auxObserveDraftMigrationTarget,auxReadDraftMigrationCapture,auxReleaseDraftMigrationCapture,auxRegisterDraftMigrationOwner,auxBeginDraftMigrationWork,auxDraftMigrationBlocked,auxDraftMigrationChanged,auxGetNewtabDraftSettingsOwner};",
           "count": 1
         }
       ]

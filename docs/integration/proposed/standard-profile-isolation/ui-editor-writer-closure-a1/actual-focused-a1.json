@@ -1,13 +1,14 @@
 {
   "format": "aux.ui-editor-writer-closure.focused.actual.v1",
   "passed": true,
-  "cases": 15,
+  "cases": 16,
   "actualCodecEditorFactoryFileReaderAndComposerCallbacksExecuted": true,
   "actualChatWireMethodAndSessionCreateCallbacksExecuted": true,
   "unknownSentCommandsAndCreateResultsRemainRefused": true,
   "retainedLeaseReadOnlyRecoveryAndRequestCorrelationPassed": true,
   "zeroOwnerMountingManagerMismatchAndUnknownRouteRefused": true,
   "cohortReadOnlySealAndPostSealByteValidationPassed": true,
+  "readOnlyTargetObservationPreservesSealedSourceAndRefusesProductiveWrites": true,
   "exactAckTombstoneAndStoredClaimFencesPassed": true,
   "privateModeAndSessionSettingsCallbacksChecked": true,
   "consumedCaptureAdapterCompositionPassed": true,
@@ -23,6 +24,6 @@
   "productExecuted": false,
   "completeWriterCoverage": false,
   "runtimeAccepted": false,
-  "sourcePlanSha256": "115300733060f9b7498540aa50e04c1a1b033214e4218c59c563f43c504d7b62",
+  "sourcePlanSha256": "8e376657a00c12916443b1f8c296e5a0cca9127530f265f61e94dc3a88a74014",
   "consumedAdapterSha256": "3d0eefe5939f6bf9005951ac9c62f6acc370eefcb539b8dd2ac8b432102982c3"
 }

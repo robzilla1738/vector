@@ -19,6 +19,7 @@ normalizing conversion refuses. Draft storage values remain original strings.
 | `auxReadDraftMigrationCapture` | None | Read-only observation of the currently retained lease/result. No freeze, flush, write, new lease or counter increment. Native adopts a recovered result only when its own exact request UUID and actual held document match. |
 | `auxValidateDraftMigrationCapture` | Exact lease UUID, original safe-integer revision | Inspect the same real local owners, work, memory and claims. After sealing, also require exact store bytes. It never creates or repairs state. |
 | `auxSealDraftMigrationCapture` | Exact lease UUID, original revision | After native has genuinely closed ALL cohort/backend writers, read final actual stores once and retain sealed bytes. It does not flush or write. Repeated seal/read observes the same retained sealed capture; a later byte change refuses. |
+| `auxObserveDraftMigrationTarget` | Exact sealed lease UUID, original revision | Read current known-family stores while checking actual held owner/work/memory signatures. Returns `stores:{origin,sessionEntries,localEntries}` only; no mutation intents or target authorization. Native compares exact planned target bytes. Original sealed source baseline remains immutable. |
 | `auxReleaseDraftMigrationCapture` | Exact lease UUID | Release only that lease and restore actual editor editability. No timeout/reset/delete/claim-reclaim/credential operation exists. |
 
 A successful prepare returns:
@@ -83,3 +84,12 @@ release UUID never unfreezes an existing lease. Restore failure remains failure.
 No test-only JavaScript execution or permission widening is provided. The paired
 native lane is evaluating actual own-extension ScriptExecutor permissions with
 exact frame/document matching. This producer does not assert that path works.
+
+After native target writes, use target observation rather than source validation
+for readback. Source validation remains strict and intentionally fails if target
+bytes differ. Target observation does not consult stored-claim inference, since
+that key can be intentionally transformed by native CAS; the actual in-memory
+claim is still covered by its unchanged memory signature. Any new actual owner,
+work, memory edit or attempted renderer write still refuses observation. Native
+must retain/route productive storage notifications rather than ignore new work.
+No successful observation proves target correctness or permits recovery.

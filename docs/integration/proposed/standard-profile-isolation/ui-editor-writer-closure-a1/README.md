@@ -66,7 +66,7 @@ The integrator must add these exact three provenance inputs to its owned
 
 The existing capture adapter path is already listed; its changed hash must also
 participate. Root owns the next exact UI revision and full stage. Native caller
-binding uses the five exports in [PROTOCOL.md](PROTOCOL.md); there is no renderer
+binding uses the six exports in [PROTOCOL.md](PROTOCOL.md); there is no renderer
 migration API registration, new permission, test-only execution or caller-owned
 profile/path/generation parameter in this slice.
 
@@ -111,3 +111,10 @@ separate explicit bootstrap preserving unsaved work; they must not be reloaded o
 cleared to fabricate support. Root must stage/build the coherent successor and
 observe bounded disposable multi-document/profile/interruption and real UI
 journeys before acceptance. This slice enables none of COLD/signing/release.
+
+The follow-up target observer preserves the sealed source baseline while exposing
+current store bytes for native planned-target comparison. A focused synthetic
+case changes known store bytes directly: source validation refuses, target
+observation reports those bytes, restoring the bytes recovers the original source
+capture, and a productive late renderer write still taints both paths. No native
+CAS or target acceptance is claimed.

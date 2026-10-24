@@ -230,25 +230,46 @@ function auxPrepareDraftMigrationCapture(requestId){
     return{format:auxDraftMigrationFormat,ok:false,requestId,error:String(error?.message??error),restored};
   }
 }
+function auxAssertDraftMigrationOwners(leaseId,revision){
+  const lease=auxDraftMigrationLease;
+  if(!lease||lease.phase!=="held"||lease.id!==leaseId||lease.revision!==revision||
+     !Number.isSafeInteger(revision)||lease.tainted||auxDraftMigrationRevision!==revision||
+     auxDraftMigrationWork.size||auxDraftMigrationUnknownWork.size||auxDraftMigrationOwnerOverflow||auxDraftMigrationOwners.size!==lease.signatures.length)
+    throw Error("Aux draft capture lease changed");
+  auxDraftMigrationCheckInputs();
+  let index=0;
+  for(const {owner} of auxDraftMigrationOwners.values())
+    if(auxDraftMigrationSignature(owner)!==lease.signatures[index++])throw Error("An editor changed after capture");
+  if(auxDraftMigrationMemorySignature()!==lease.memoryJson||auxDraftMigrationLease!==lease||
+     lease.tainted||auxDraftMigrationRevision!==revision||auxDraftMigrationWork.size||
+     auxDraftMigrationUnknownWork.size||auxDraftMigrationOwnerOverflow)
+    throw Error("Aux draft owners or memory changed after capture");
+  return lease;
+}
 function auxValidateDraftMigrationCapture(leaseId,revision){
   const lease=auxDraftMigrationLease;
   try{
-    if(!lease||lease.phase!=="held"||lease.id!==leaseId||lease.revision!==revision||
-       !Number.isSafeInteger(revision)||lease.tainted||auxDraftMigrationRevision!==revision||
-       auxDraftMigrationWork.size||auxDraftMigrationUnknownWork.size||auxDraftMigrationOwnerOverflow||auxDraftMigrationOwners.size!==lease.signatures.length)
-      throw Error("Aux draft capture lease changed");
-    auxDraftMigrationCheckInputs();
-    let index=0;
-    for(const {owner} of auxDraftMigrationOwners.values())
-      if(auxDraftMigrationSignature(owner)!==lease.signatures[index++])throw Error("An editor changed after capture");
-    if(auxDraftMigrationHasClaim()||auxDraftMigrationMemorySignature()!==lease.memoryJson||
-       lease.sealed&&auxDraftMigrationCaptureJson()!==lease.captureJson||
-       auxDraftMigrationLease!==lease||lease.tainted||auxDraftMigrationRevision!==revision||
-       auxDraftMigrationWork.size||auxDraftMigrationUnknownWork.size||auxDraftMigrationOwnerOverflow)
-      throw Error("Aux draft stores, owners or claims changed after capture");
+    auxAssertDraftMigrationOwners(leaseId,revision);
+    if(auxDraftMigrationHasClaim()||lease.sealed&&auxDraftMigrationCaptureJson()!==lease.captureJson)
+      throw Error("Aux draft stores or claims changed after capture");
+    auxAssertDraftMigrationOwners(leaseId,revision);
     return{format:auxDraftMigrationFormat,ok:true,requestId:lease.requestId,leaseId,revision,ownerCount:lease.signatures.length,sealed:lease.sealed,closed:true};
   }catch(error){return{format:auxDraftMigrationFormat,ok:false,requestId:lease?.requestId,
     leaseId:lease?.id,revision:lease?.revision,sealed:lease?.sealed??false,closed:false,error:String(error?.message??error)}}
+}
+function auxObserveDraftMigrationTarget(leaseId,revision){
+  const lease=auxDraftMigrationLease;
+  try{
+    auxAssertDraftMigrationOwners(leaseId,revision);
+    if(!lease.sealed)throw Error("Aux target observation requires a sealed source lease");
+    // Native alone compares these current bytes with its exact planned target.
+    // Never reset the sealed source baseline or infer new mutation intentions.
+    const {origin,sessionEntries,localEntries}=JSON.parse(auxDraftMigrationCaptureJson());
+    auxAssertDraftMigrationOwners(leaseId,revision);
+    return{format:auxDraftMigrationFormat,ok:true,requestId:lease.requestId,leaseId,revision,
+      ownerCount:lease.signatures.length,sealed:true,stores:{origin,sessionEntries,localEntries}};
+  }catch(error){return{format:auxDraftMigrationFormat,ok:false,requestId:lease?.requestId,
+    leaseId:lease?.id,revision:lease?.revision,sealed:lease?.sealed??false,error:String(error?.message??error)}}
 }
 function auxReadDraftMigrationCapture(){
   const lease=auxDraftMigrationLease;
@@ -287,6 +308,6 @@ function auxReleaseDraftMigrationCapture(leaseId){
 if(typeof window!=="undefined")for(const type of ["beforeinput","paste","drop","keydown","click","submit","compositionstart"])
   window.addEventListener(type,event=>{if(auxDraftMigrationLease&&auxDraftMigrationLease.phase!=="releasing"&&!auxDraftMigrationFlushing){event.preventDefault();event.stopImmediatePropagation()}},true);
 
-export{k as a,W as c,F as i,J as l,U as n,$ as o,b as r,X as s,H as t,j as u,auxCaptureDraftMigration,auxPrepareDraftMigrationCapture,auxValidateDraftMigrationCapture,auxSealDraftMigrationCapture,auxReadDraftMigrationCapture,auxReleaseDraftMigrationCapture,auxRegisterDraftMigrationOwner,auxBeginDraftMigrationWork,auxDraftMigrationBlocked,auxDraftMigrationChanged,auxGetNewtabDraftSettingsOwner};
+export{k as a,W as c,F as i,J as l,U as n,$ as o,b as r,X as s,H as t,j as u,auxCaptureDraftMigration,auxPrepareDraftMigrationCapture,auxValidateDraftMigrationCapture,auxSealDraftMigrationCapture,auxObserveDraftMigrationTarget,auxReadDraftMigrationCapture,auxReleaseDraftMigrationCapture,auxRegisterDraftMigrationOwner,auxBeginDraftMigrationWork,auxDraftMigrationBlocked,auxDraftMigrationChanged,auxGetNewtabDraftSettingsOwner};
 
 //# chunkId=dc29686c-6219-5808-a0c8-7bc52066a228

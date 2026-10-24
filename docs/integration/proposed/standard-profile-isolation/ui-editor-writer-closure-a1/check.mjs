@@ -21,7 +21,7 @@ function fixture(){
    addEventListener:(type,fn)=>{if(!listeners.has(type))listeners.set(type,new Set);listeners.get(type).add(fn)},removeEventListener:(type,fn)=>listeners.get(type)?.delete(fn)},
   p:fn=>Object.assign(value=>fn(value),{flush(){}}),v:()=>({}),h:()=>({}),P:{},_:()=>({catch:()=>({})}),E:()=>({nullable(){return this},catch(){return this},parse:value=>value})};
  let source=sources['draft-storage-ixLojjZ5.js'].replace(/import\{[^;]+\}from"[^"]+";/g,'');
- source=source.replace(/export\{[^;]+\};/,'globalThis.fixture={read:F,write:J,settings:j,readSettings:$,put:W,claim:H,ack:U,releaseClaim:X,rawPrepare:auxPrepareDraftMigrationCapture,prepare:()=>auxPrepareDraftMigrationCapture("00000000-0000-4000-8000-000000000002"),readCapture:auxReadDraftMigrationCapture,seal:auxSealDraftMigrationCapture,settingsOwner:auxGetNewtabDraftSettingsOwner,validate:auxValidateDraftMigrationCapture,release:auxReleaseDraftMigrationCapture,register:auxRegisterDraftMigrationOwner,begin:auxBeginDraftMigrationWork,changed:auxDraftMigrationChanged};');
+ source=source.replace(/export\{[^;]+\};/,'globalThis.fixture={read:F,write:J,settings:j,readSettings:$,put:W,claim:H,ack:U,releaseClaim:X,rawPrepare:auxPrepareDraftMigrationCapture,prepare:()=>auxPrepareDraftMigrationCapture("00000000-0000-4000-8000-000000000002"),readCapture:auxReadDraftMigrationCapture,seal:auxSealDraftMigrationCapture,observeTarget:auxObserveDraftMigrationTarget,settingsOwner:auxGetNewtabDraftSettingsOwner,validate:auxValidateDraftMigrationCapture,release:auxReleaseDraftMigrationCapture,register:auxRegisterDraftMigrationOwner,begin:auxBeginDraftMigrationWork,changed:auxDraftMigrationChanged};');
  runInNewContext(source,context,{timeout:1000});
  const f={api:context.fixture,context,sessionStorage,localStorage,elements,listeners,editor:null};
  const prepare=f.api.prepare;f.api.prepare=()=>{if(!f.editor)editor(f);return prepare()};return f;
@@ -61,6 +61,22 @@ function editor(f,{text='latest unreported text',onChange}={}){
  const before=JSON.stringify([...f.sessionStorage.map]),observed=plain(f.api.readCapture());assert.equal(observed.ok,true);assert.equal(observed.requestId,lease.requestId);assert.deepEqual(observed.capture,lease.capture);assert.equal(JSON.stringify([...f.sessionStorage.map]),before);assert.equal(f.api.rawPrepare(null).ok,false);
  assert.equal(f.api.release('wrong').released,false);assert.equal(e.editor.isEditable,false);
  assert.equal(f.api.release(lease.leaseId).released,true);assert.equal(e.editor.isEditable,true);cases++;
+}
+// Native target key changes do not rewrite the sealed source or owner baseline.
+{
+ const f=fixture();editor(f);const lease=f.api.prepare();
+ assert.equal(f.api.observeTarget(lease.leaseId,lease.revision).ok,false);
+ const sealed=plain(f.api.seal(lease.leaseId,lease.revision));assert.equal(sealed.ok,true);
+ const key='aux.chat-draft.v3:session-one',target='{"version":2,"plainText":"native target"}';
+ f.localStorage.map.set(key,target);
+ assert.equal(f.api.validate(lease.leaseId,lease.revision).ok,false);
+ const observed=plain(f.api.observeTarget(lease.leaseId,lease.revision));assert.equal(observed.ok,true);
+ assert.equal(observed.stores.localEntries[key],target);assert.equal('mutations' in observed.stores,false);
+ assert.equal(observed.requestId,lease.requestId);assert.equal('closed' in observed,false);
+ f.localStorage.map.set(key,sealed.capture.localEntries[key]);
+ assert.deepEqual(plain(f.api.readCapture()).capture,sealed.capture);
+ f.api.write('session-one',{version:2,plainText:'productive late edit'});
+ assert.equal(f.api.observeTarget(lease.leaseId,lease.revision).ok,false);f.api.release(lease.leaseId);cases++;
 }
 // IME is a real owner predicate; refusal does not alter editable state or draft.
 {
@@ -195,7 +211,7 @@ const receipt={format:'aux.ui-editor-writer-closure.focused.actual.v1',passed:tr
  actualChatWireMethodAndSessionCreateCallbacksExecuted:true,unknownSentCommandsAndCreateResultsRemainRefused:true,
  retainedLeaseReadOnlyRecoveryAndRequestCorrelationPassed:true,
  zeroOwnerMountingManagerMismatchAndUnknownRouteRefused:true,
- cohortReadOnlySealAndPostSealByteValidationPassed:true,exactAckTombstoneAndStoredClaimFencesPassed:true,privateModeAndSessionSettingsCallbacksChecked:true,consumedCaptureAdapterCompositionPassed:true,
+ cohortReadOnlySealAndPostSealByteValidationPassed:true,readOnlyTargetObservationPreservesSealedSourceAndRefusesProductiveWrites:true,exactAckTombstoneAndStoredClaimFencesPassed:true,privateModeAndSessionSettingsCallbacksChecked:true,consumedCaptureAdapterCompositionPassed:true,
  latestEditorFlushPassed:true,imeUploadPublicationAndClaimRefusalPassed:true,heldLateWritesRetainedAndTainted:true,
  unknownInputsAndOwnerChangesRefused:true,unrelatedStorageValuesUnread:true,
  originalUiClassesPreserved:true,stateV1Unchanged:true,syntheticStoresOnly:true,
