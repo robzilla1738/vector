@@ -1,0 +1,34 @@
+{
+  "format": "aux.meta-owned-context.scope-inputs.v1",
+  "purpose": "Static policy and existing independent browser-owner evidence; not runtime or whole-writer proof.",
+  "inputs": [
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/content/public/browser/storage_partition_config.cc",
+      "sha256": "ef46e797c276190ea03edf5f98e472de5284beed74dd7249cff78136456c104e"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/net/profile_network_context_service.cc",
+      "sha256": "55d29972186221adc500576187a5ac9f4b4084aa5384bda05a6f9359ed2350bc"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/profiles/off_the_record_profile_impl.cc",
+      "sha256": "285616f80f298e8f62d6c0f80a971226c404b84c2c65696196e11fe6163be15a"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/aux/organization/organization_profile_service.cc",
+      "sha256": "7c50ffff360e13d830586c4941b6830d57a494c668de899db8bbd020a9e88a5d"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/ui/aux_owned_browser_quiesce.h",
+      "sha256": "e4993dec9f21a643bf51e5c4a11b52903abe183ff4e562f91159f5099433618d"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/ui/aux_owned_browser_quiesce.cc",
+      "sha256": "b894dca0c9eb487f854912643b380bfbe27708e377303a801170c9cce2094212"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/content/browser/devtools/protocol/target_handler.cc",
+      "sha256": "ce70690bcf25deb41135373090c38cfe304d4c7611d00cf4d511553dc2c743ad"
+    }
+  ]
+}

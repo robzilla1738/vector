@@ -1,0 +1,72 @@
+[
+  {
+    "find": "async function openOAuthWindow(Cn,ei){let{CdpClient:ti}=await Promise.resolve().then(()=>(init_client$7(),client_exports)),ni=new ti({logId:`cdp-oauth-window`}),ri=()=>{ei.removeEventListener(`abort`,ri),ni.close()},ii=()=>ei.throwIfAborted();ei.addEventListener(`abort`,ri,{once:!0});try{ii();let{browserContextId:ei}=await ni.send(`Target.createBrowserContext`,{disposeOnDetach:!0},void 0,{beforeSend:ii}),{targetId:ti}=await ni.send(`Target.createTarget`,{browserContextId:ei,url:Cn,newWindow:!0,width:540,height:720},void 0,{beforeSend:ii});return ii(),{async focus(){ii(),await ni.send(`Target.activateTarget`,{targetId:ti},void 0,{beforeSend:ii})}}}catch(Cn){throw ri(),Error(`Could not open the private Meta sign-in window. Please try again.`,{cause:Cn})}}",
+    "replace": "/* AUX_OWNED_CDP_LIFETIME */\n/* AUX_OWNED_OAUTH_WINDOW */",
+    "count": 1
+  },
+  {
+    "find": "CdpClient=class{cdpUrl;logId;#e;",
+    "replace": "CdpClient=class{cdpUrl;logId;#auxLifetime=null;#e;",
+    "count": 1
+  },
+  {
+    "find": "async ensureConnected(){if(this.#c=!0,this.isConnected)return;",
+    "replace": "async ensureConnected(){this.#auxLifetime?.assertOpen();if(this.#c=!0,this.isConnected)return;",
+    "count": 1
+  },
+  {
+    "find": "let Cn=this.#b();this.#o=Cn;",
+    "replace": "let Cn=this.#auxLifetime?this.#auxLifetime.trackAttempt(()=>this.#b()):this.#b();this.#o=Cn;",
+    "count": 1
+  },
+  {
+    "find": "setDialogAutoAccept(Cn,ei){let ti=this.#p.get(Cn)??0,",
+    "replace": "enableOwnedLifetime(unknown){if(this.#auxLifetime||this.#c||this.#i||this.#o||this.#a||this.#t||this.#y())throw Error('Owned CDP lifetime requires a fresh authenticated default client');this.#auxLifetime=auxCreateOwnedCdpLifetime(unknown)}async closeOwnedAndWait(){if(!this.#auxLifetime)throw Error('Owned CDP lifetime missing');this.#c=!1;this.#auxLifetime.beginClose();await this.close();await this.#auxLifetime.waitClosed()}setDialogAutoAccept(Cn,ei){let ti=this.#p.get(Cn)??0,",
+    "count": 1
+  },
+  {
+    "find": "Cn=ni,isAuthorizationError(ni)&&(ei=!0)}}throw Cn instanceof Error?",
+    "replace": "Cn=ni;if((this.#auxLifetime?.closing||this.#auxLifetime?.unavailable))throw ni;isAuthorizationError(ni)&&(ei=!0)}}throw Cn instanceof Error?",
+    "count": 1
+  },
+  {
+    "find": "async#x(Cn={}){let{headers:ei,wsUrl:ti}=await this.#v(Cn),ni=await this.#a?.(ti);await new Promise",
+    "replace": "async#x(Cn={}){this.#auxLifetime?.assertOpen();let{headers:ei,wsUrl:ti}=await this.#v(Cn),ni=await this.#a?.(ti);if(this.#auxLifetime?.closing){if(ni)this.#auxLifetime.trackSocket(ni);throw Error('Aux OAuth connection is closing')}await new Promise",
+    "count": 1
+  },
+  {
+    "find": "new WebSocket(ti)),ai=!1,oi=Cn=>{ai||(ai=!0,ri(Cn))};ii.addEventListener",
+    "replace": "new WebSocket(ti));this.#auxLifetime?.trackSocket(ii);let ai=!1,oi=Cn=>{ai||(ai=!0,ri(Cn))};ii.addEventListener",
+    "count": 1
+  },
+  {
+    "find": "ii.addEventListener(`open`,()=>{ai||(ai=!0,this.#S(ii),Cn())})",
+    "replace": "ii.addEventListener(`open`,()=>{if(ai)return;if(this.#auxLifetime?.closing){oi(Error('Aux OAuth connection is closing'));return}ai=!0,this.#S(ii),Cn()})",
+    "count": 1
+  },
+  {
+    "find": "ii.readyState===WebSocket.OPEN&&(ai=!0,this.#S(ii),Cn())",
+    "replace": "ii.readyState===WebSocket.OPEN&&(this.#auxLifetime?.closing?oi(Error('Aux OAuth connection is closing')):(ai=!0,this.#S(ii),Cn()))",
+    "count": 1
+  },
+  {
+    "find": "#w(){if(!this.#c||this.isConnected||this.#o||this.#s)return;",
+    "replace": "#w(){if(!this.#c||this.#auxLifetime?.closing||this.#auxLifetime?.unavailable||this.isConnected||this.#o||this.#s)return;",
+    "count": 1
+  },
+  {
+    "find": "return !!entry && (id==='anthropic' || id==='github-copilot' ||",
+    "replace": "return !!entry && (id==='anthropic' || id==='github-copilot' || id==='meta-muse' ||",
+    "count": 1
+  },
+  {
+    "find": "provider===anthropicOAuth && provider.login===loginAnthropic ||",
+    "replace": "provider===anthropicOAuth && provider.login===loginAnthropic ||\n        provider===metaOAuth && provider.login===loginMeta ||",
+    "count": 1
+  },
+  {
+    "find": "function auxRunMetaLogin(signal, operation) {\n  if (auxDaemonClosing) throw Error('AUX_DAEMON_SHUTTING_DOWN');\n  const owner = auxBrokerBoundary();\n  owner.registerProducerStop(auxStopRefreshProducers);\n  owner.noteUntracked();\n  return owner.awaited(async () => {",
+    "replace": "function auxRunMetaLogin(signal, operation) {\n  if (auxDaemonClosing) throw Error('AUX_DAEMON_SHUTTING_DOWN');\n  const owner = auxBrokerBoundary();\n  owner.registerProducerStop(auxStopRefreshProducers);\n  signal.throwIfAborted();\n  // The reviewed manager already owns this exact AsyncLocal transport. Reuse\n  // it so its request-count and physical-close checks observe the real requests.\n  if (auxRefreshIoContext.getStore()) return owner.awaited(operation);\n  return owner.awaited(async () => {",
+    "count": 1
+  }
+]

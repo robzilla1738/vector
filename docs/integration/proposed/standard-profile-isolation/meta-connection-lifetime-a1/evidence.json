@@ -1,0 +1,21 @@
+{
+  "format": "aux.meta-owned-connection.source-evidence.v1",
+  "pairedLiteralReplay": true,
+  "pairedSyntax": true,
+  "nativeLiteralReplay": true,
+  "nativeSnapshotInputsUnchanged": true,
+  "daemonAnchorsPerLeaf": 14,
+  "nativeFiles": 13,
+  "nativeAnchors": 18,
+  "inertFixtures": [
+    "error is not socket close",
+    "late admitted authorization/socket remains retained",
+    "owned session loss forbids reconnect",
+    "native object observation precedes separate physical close",
+    "qualified local completion does not clear global browser ownership"
+  ],
+  "nativeCompiled": false,
+  "providerRequests": 0,
+  "browserRequests": 0,
+  "productExecuted": false
+}

@@ -1,0 +1,62 @@
+{
+  "version": 1,
+  "stage": "meta-connection-lifetime",
+  "changes": 14,
+  "sourceFiles": [
+    {
+      "path": "source/transform.mjs",
+      "sha256": "bc31c8f1837f9ffd674793aa95d2625b94989d42310241c9842303fe8b48ad58"
+    },
+    {
+      "path": "source/anchors.json",
+      "sha256": "99063eafd5272ee80579a1863a97e6a38f2704d7be0feed979e0406a0119d69b"
+    },
+    {
+      "path": "source/owned-cdp-lifetime.js",
+      "sha256": "1df0d8c7a67d6f563ba0117fc67d413a2b1170792ec7db45fcf8f987a807e860"
+    },
+    {
+      "path": "source/oauth-window.js",
+      "sha256": "70db159525c9d5a1af477af5d528e016b4b4d00e6b67ee57e27aa0220053e9d8"
+    },
+    {
+      "path": "native-replacements.json",
+      "sha256": "9e79a93105cc5550132259aacb77245471f8b5795dc4caef6e8caf58c0271050"
+    },
+    {
+      "path": "native.patch",
+      "sha256": "aee29e51a4009115e6bab2a1bb4d509692d634b881e4ee487deb0dc0c8781929"
+    }
+  ],
+  "daemonInputs": [
+    {
+      "kind": "source",
+      "input": "/private/tmp/aux-standard-daemon-projection-20261024-a4/index.mjs",
+      "inputSha256": "a37b3d7eb72707ca00729e39eae4aa90f3968ca7dfa5379f823ac1007f3157c4",
+      "outputSha256": "ecc53e38bf59c3ccb887501f42cbafbc4981d1274b038240b2fb6c6f21510df1",
+      "changesSha256": "8ed4c3efd4c805ac9eab60667defaefdc536d869a5810e284eb7842153fc6f3c"
+    },
+    {
+      "kind": "entry",
+      "input": "/private/tmp/aux-standard-daemon-projection-20261024-a4/projected-entry/aux-native-entry.mjs",
+      "inputSha256": "edc8a98ed1bad63432c6ebf1e3244a27f690256f597933eb53054b4136dc9812",
+      "outputSha256": "79d651ecc0a4d9cd0f45ac5811189d43883e963d676ade4805be943119828ee9",
+      "changesSha256": "8ed4c3efd4c805ac9eab60667defaefdc536d869a5810e284eb7842153fc6f3c"
+    }
+  ],
+  "browserComposition": {
+    "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/integration/browser-composition-a4.json",
+    "sha256": "84b753a79f240dd991dc4f05be71f719354fd2500ac6b4f8d7396a7ac72d635c"
+  },
+  "nativeFiles": 13,
+  "nativeEdits": 18,
+  "nativeRequirements": [
+    "Generate Target protocol bindings from the exact PDL overlay.",
+    "Original authenticated CDP endpoint, fresh daemon observer and broker requirements remain unchanged."
+  ],
+  "preservedUnknown": [
+    "Memory-only qualification is not service-drain proof; browser-global work retains independent native browser ownership.",
+    "Missing socket close or context destruction remains pending; unexpected connection loss stays unknown."
+  ],
+  "integrated": false
+}

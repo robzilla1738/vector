@@ -1,0 +1,298 @@
+--- a/third_party/blink/public/devtools_protocol/domains/Target.pdl
++++ b/third_party/blink/public/devtools_protocol/domains/Target.pdl
+@@ -197,6 +197,18 @@
+     parameters
+       Browser.BrowserContextID browserContextId
+ 
++  # Aux-only observation for a dispose-on-detach context owned by this session.
++  # Object destruction does not imply asynchronous service cleanup.
++  experimental command disposeAuxBrowserContextAndObserve
++    parameters
++      Browser.BrowserContextID browserContextId
++    returns
++      boolean profileObjectDestroyed
++      # Snapshot of actual partition storage configuration immediately before destruction.
++      # This is not generic service settlement or browser-global writer completion.
++      boolean storagePartitionsMemoryOnly
++      string serviceCleanupState
++
+   # Returns information about a target.
+   experimental command getTargetInfo
+     parameters
+--- a/content/public/browser/devtools_manager_delegate.h
++++ b/content/public/browser/devtools_manager_delegate.h
+@@ -148,6 +148,10 @@
+   virtual void DisposeBrowserContext(BrowserContext* context,
+                                      DisposeCallback callback);
+ 
++  // Aux object-lifetime observation only. Success is not service/writer drain.
++  virtual void DisposeAuxBrowserContextAndObserve(BrowserContext* context,
++                                                  DisposeCallback callback);
++
+   // Called when a new client is attached/detached.
+   virtual void ClientAttached(DevToolsAgentHostClientChannel* channel);
+   virtual void ClientDetached(DevToolsAgentHostClientChannel* channel);
+--- a/content/public/browser/devtools_manager_delegate.cc
++++ b/content/public/browser/devtools_manager_delegate.cc
+@@ -99,6 +99,11 @@
+   std::move(callback).Run(false, "Browser Context disposal is not supported");
+ }
+ 
++void DevToolsManagerDelegate::DisposeAuxBrowserContextAndObserve(
++    BrowserContext*, DisposeCallback callback) {
++  std::move(callback).Run(false, "Aux context observation is unavailable");
++}
++
+ void DevToolsManagerDelegate::ClientAttached(
+     DevToolsAgentHostClientChannel* channel) {}
+ void DevToolsManagerDelegate::ClientDetached(
+--- a/chrome/browser/devtools/chrome_devtools_manager_delegate.h
++++ b/chrome/browser/devtools/chrome_devtools_manager_delegate.h
+@@ -91,6 +91,9 @@
+   void DisposeBrowserContext(content::BrowserContext*,
+                              DisposeCallback callback) override;
+ 
++  void DisposeAuxBrowserContextAndObserve(content::BrowserContext*,
++                                          DisposeCallback callback) override;
++
+   bool AllowInspectingRenderFrameHost(content::RenderFrameHost* rfh) override;
+   bool AllowInspectingTarget(content::DevToolsAgentHost* agent_host) override;
+   void ClientAttached(
+--- a/chrome/browser/devtools/chrome_devtools_manager_delegate.cc
++++ b/chrome/browser/devtools/chrome_devtools_manager_delegate.cc
+@@ -485,6 +485,12 @@
+       context, std::move(callback));
+ }
+ 
++void ChromeDevToolsManagerDelegate::DisposeAuxBrowserContextAndObserve(
++    content::BrowserContext* context, DisposeCallback callback) {
++  DevToolsBrowserContextManager::GetInstance().DisposeAuxBrowserContextAndObserve(
++      context, std::move(callback));
++}
++
+ bool ChromeDevToolsManagerDelegate::HasBundledFrontendResources() {
+   return true;
+ }
+--- a/chrome/browser/devtools/devtools_browser_context_manager.h
++++ b/chrome/browser/devtools/devtools_browser_context_manager.h
+@@ -36,6 +36,13 @@
+       content::BrowserContext* context,
+       content::DevToolsManagerDelegate::DisposeCallback callback);
+ 
++  void DisposeAuxBrowserContextAndObserve(
++      content::BrowserContext* context,
++      content::DevToolsManagerDelegate::DisposeCallback callback);
++  // Called only after the exact OTR unique_ptr erase/destructor has returned.
++  static void NotifyAuxContextObjectDestroyed(const std::string& context_id,
++                                              bool storage_memory_only);
++
+  private:
+   friend class base::NoDestructor<DevToolsBrowserContextManager>;
+   DevToolsBrowserContextManager();
+@@ -59,6 +66,11 @@
+   base::flat_map<std::string, content::DevToolsManagerDelegate::DisposeCallback>
+       pending_context_disposals_;
+ 
++  // Independent of Profile/window/handler lifetimes. Missing destruction keeps
++  // the observation pending; standard disposal success never removes it.
++  base::flat_map<std::string, content::DevToolsManagerDelegate::DisposeCallback>
++      aux_context_object_observers_;
++
+   base::WeakPtrFactory<DevToolsBrowserContextManager> weak_factory_{this};
+ };
+ 
+--- a/chrome/browser/devtools/devtools_browser_context_manager.cc
++++ b/chrome/browser/devtools/devtools_browser_context_manager.cc
+@@ -67,6 +67,8 @@
+ 
+ Profile* DevToolsBrowserContextManager::GetProfileById(
+     const std::string& context_id) {
++  if (aux_context_object_observers_.contains(context_id))
++    return nullptr;  // Close admission for this exact context only.
+ #if BUILDFLAG(ENABLE_AUX_BROWSER)
+   // Explicit, unguessable native IDs may resolve only already-loaded regular
+   // Aux profiles. Never substitute the last-used profile or load a disk path.
+@@ -175,6 +177,45 @@
+ #endif  // BUILDFLAG(IS_ANDROID)
+ }
+ 
++void DevToolsBrowserContextManager::DisposeAuxBrowserContextAndObserve(
++    content::BrowserContext* context,
++    content::DevToolsManagerDelegate::DisposeCallback callback) {
++  const std::string id = context->UniqueId();
++  const auto found = otr_profiles_.find(id);
++  if (found == otr_profiles_.end() || found->second.get() != context ||
++      aux_context_object_observers_.contains(id)) {
++    std::move(callback).Run(false, "Aux context is unavailable or already closing");
++    return;
++  }
++  aux_context_object_observers_.emplace(id, std::move(callback));
++  DisposeBrowserContext(context, base::BindOnce(
++      [](base::WeakPtr<DevToolsBrowserContextManager> self,
++         const std::string& observed_id, bool accepted, const std::string& error) {
++        if (!self || accepted)
++          return;  // Request accepted is not destruction completion.
++        auto pending = self->aux_context_object_observers_.find(observed_id);
++        if (pending == self->aux_context_object_observers_.end())
++          return;
++        auto done = std::move(pending->second);
++        self->aux_context_object_observers_.erase(pending);
++        std::move(done).Run(false, error);
++      }, weak_factory_.GetWeakPtr(), id));
++}
++
++// static
++void DevToolsBrowserContextManager::NotifyAuxContextObjectDestroyed(
++    const std::string& context_id, bool storage_memory_only) {
++  auto& self = GetInstance();
++  auto found = self.aux_context_object_observers_.find(context_id);
++  if (found == self.aux_context_object_observers_.end())
++    return;
++  auto done = std::move(found->second);
++  self.aux_context_object_observers_.erase(found);
++  // Storage and network teardown may continue after Profile destruction.
++  std::move(done).Run(true, storage_memory_only ? "memory-only-partitions"
++                                             : "unverified-partitions");
++}
++
+ void DevToolsBrowserContextManager::OnProfileWillBeDestroyed(Profile* profile) {
+ #if BUILDFLAG(IS_ANDROID)
+   CloseAndroidTabsForProfile(profile);
+--- a/chrome/browser/profiles/profile_impl.cc
++++ b/chrome/browser/profiles/profile_impl.cc
+@@ -3,6 +3,8 @@
+ // found in the LICENSE file.
+ 
+ #include "chrome/browser/profiles/profile_impl.h"
++
++#include "chrome/browser/devtools/devtools_browser_context_manager.h"
+ 
+ #include <stddef.h>
+ 
+@@ -1110,7 +1112,18 @@
+   CHECK(otr_profile);
+   OTRProfileID profile_id = otr_profile->GetOTRProfileID();
+   DCHECK(HasOffTheRecordProfile(profile_id));
++  const std::string aux_context_id = otr_profile->UniqueId();
++  bool aux_storage_memory_only = otr_profile->IsOffTheRecord() &&
++                                 profile_id.IsDevTools() &&
++                                 otr_profile->GetLoadedStoragePartitionCount() > 0;
++  otr_profile->ForEachLoadedStoragePartition(
++      [&aux_storage_memory_only](content::StoragePartition* partition) {
++        aux_storage_memory_only &=
++            partition->HasAuxMemoryOnlyStorageConfiguration();
++      });
+   otr_profiles_.erase(profile_id);
++  DevToolsBrowserContextManager::NotifyAuxContextObjectDestroyed(
++      aux_context_id, aux_storage_memory_only);
+ #if BUILDFLAG(ENABLE_EXTENSIONS_CORE)
+   // Extensions are only supported on primary OTR profile.
+   if (profile_id == OTRProfileID::PrimaryID() &&
+--- a/content/browser/devtools/protocol/target_handler.h
++++ b/content/browser/devtools/protocol/target_handler.h
+@@ -114,6 +114,9 @@
+   void DisposeBrowserContext(
+       const std::string& context_id,
+       std::unique_ptr<DisposeBrowserContextCallback> callback) override;
++  void DisposeAuxBrowserContextAndObserve(
++      const std::string& context_id,
++      std::unique_ptr<DisposeAuxBrowserContextAndObserveCallback> callback) override;
+   Response GetBrowserContexts(
+       std::unique_ptr<protocol::Array<String>>* browser_context_ids,
+       std::optional<std::string>* default_browser_context_id) override;
+--- a/content/browser/devtools/protocol/target_handler.cc
++++ b/content/browser/devtools/protocol/target_handler.cc
+@@ -1678,6 +1678,34 @@
+           std::move(callback)));
+ }
+ 
++void TargetHandler::DisposeAuxBrowserContextAndObserve(
++    const std::string& context_id,
++    std::unique_ptr<DisposeAuxBrowserContextAndObserveCallback> callback) {
++  if (access_mode_ != AccessMode::kBrowser ||
++      !dispose_on_detach_context_ids_.contains(context_id)) {
++    callback->sendFailure(Response::ServerError(
++        "Aux context is not owned by this authenticated session"));
++    return;
++  }
++  auto* delegate = DevToolsManager::GetInstance()->delegate();
++  auto* context = delegate ? delegate->GetBrowserContext(context_id) : nullptr;
++  if (!context || context == delegate->GetDefaultBrowserContext()) {
++    callback->sendFailure(Response::ServerError("Aux context is unavailable"));
++    return;
++  }
++  // The exact current handler/session created this dispose-on-detach context.
++  // A reconnected handler cannot claim its predecessor's owned set.
++  delegate->DisposeAuxBrowserContextAndObserve(context, base::BindOnce(
++      [](std::unique_ptr<DisposeAuxBrowserContextAndObserveCallback> response,
++         bool destroyed, const std::string& state) {
++        if (!destroyed) {
++          response->sendFailure(Response::ServerError(state));
++          return;
++        }
++        response->sendSuccess(true, state == "memory-only-partitions", "unknown");
++      }, std::move(callback)));
++}
++
+ void TargetHandler::ApplyNetworkContextParamsOverrides(
+     BrowserContext* browser_context,
+     network::mojom::NetworkContextParams* context_params) {
+--- a/content/public/browser/storage_partition.h
++++ b/content/public/browser/storage_partition.h
+@@ -94,6 +94,10 @@
+  public:
+   // Returns the StoragePartitionConfig that represents this StoragePartition.
+   virtual const StoragePartitionConfig& GetConfig() const = 0;
++
++  // Native configuration observation only, not asynchronous service settlement.
++  // Implementations without this observation must report false.
++  virtual bool HasAuxMemoryOnlyStorageConfiguration() const;
+ 
+   virtual const base::FilePath& GetPath() const = 0;
+ 
+--- a/content/browser/storage_partition_impl.h
++++ b/content/browser/storage_partition_impl.h
+@@ -152,6 +152,7 @@
+ 
+   // StoragePartition interface.
+   const StoragePartitionConfig& GetConfig() const override;
++  bool HasAuxMemoryOnlyStorageConfiguration() const override;
+   const base::FilePath& GetPath() const override;
+   network::mojom::NetworkContext* GetNetworkContext() override;
+   bool IsNetworkContextInitialized() override;
+@@ -778,6 +779,9 @@
+   // Until a StoragePartitionImpl is initialized using Initialize(), only
+   // querying its path abd BrowserContext is allowed.
+   bool initialized_ = false;
++  // Sticky across actual NetworkContext reinitializations. Records supplied
++  // persistent paths after embedder and DevTools overrides, before dispatch.
++  bool aux_persistent_network_storage_seen_ = false;
+ 
+   scoped_refptr<QuotaContext> quota_context_;
+   scoped_refptr<storage::QuotaManager> quota_manager_;
+--- a/content/browser/storage_partition_impl.cc
++++ b/content/browser/storage_partition_impl.cc
+@@ -1638,6 +1638,15 @@
+   return config_;
+ }
+ 
++bool StoragePartition::HasAuxMemoryOnlyStorageConfiguration() const {
++  return false;
++}
++
++bool StoragePartitionImpl::HasAuxMemoryOnlyStorageConfiguration() const {
++  return initialized_ && is_in_memory() &&
++         !aux_persistent_network_storage_seen_ && !generated_code_cache_context_;
++}
++
+ const base::FilePath& StoragePartitionImpl::GetPath() const {
+   return partition_path_;
+ }
+@@ -3586,6 +3595,7 @@
+   }
+ 
+   network_context_owner_->network_context.reset();
++  aux_persistent_network_storage_seen_ |= !!context_params->file_paths;
+   CreateNetworkContextInNetworkService(
+       network_context_owner_->network_context.BindNewPipeAndPassReceiver(),
+       std::move(context_params));
