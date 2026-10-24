@@ -1,0 +1,26 @@
+{
+  "format": "aux.remix-context-source-overlay.v1",
+  "inactive": true,
+  "files": {
+    "README.md": "8c4538ed2a9c45b707703310f061ea834325d7280b95d3bf69ac38d109e7207d",
+    "baseline/chrome/browser/extensions/api/aux_browser_preferences/aux_feature_expansion_api.cc": "6d8e662c89dae5c4b490dc70bf09097cc2d0041c466811ba96a11927e58b50d2",
+    "baseline/chrome/browser/ui/aux_tab_reference_context.cc": "b8b716e0c0767bb970ec3a398da1f4d8e12254df1bd480f8bdefef46a15e23c0",
+    "check-result.json": "0a3639d042cdb3124363c074e829decd6465c03a390df60eef47323ddc5ef92f",
+    "check.mjs": "027280cf374b66f0cd4edc49245d9a0bd36db86e77486b8531113b060141110f",
+    "native-overlay.json": "013b23c77022eb0a0cb62d8ac1a93a52d00910cbb5a645d113422f2948c86ca6",
+    "native.patch": "d8612cce0904f805cc0a3d6d2161d58039471b5686ed61306a9fdd48eeff04e3",
+    "source/aux-remix-context.mjs": "ab19e0d5a2a1ae36bc820d2a376bb195144eb85518b2f1f7ac941c8cc3cb6a5c",
+    "source/chrome/browser/extensions/api/aux_browser_preferences/aux_feature_expansion_api.cc": "b6c2e1ea270b6e3f2fa4a4a4c5a92e7645024a844f7ff7e0e0309d43c2439f1b",
+    "source/chrome/browser/ui/aux_tab_reference_context.cc": "33e854c67657db748acd6c449d8d86ddb7bcc5a213032501c19ecfd7872c2ee8"
+  },
+  "nativeFileCount": 2,
+  "nativeAnchorCounts": [
+    2,
+    3
+  ],
+  "resourceAnchorCount": 2,
+  "resourceAppendCount": 1,
+  "schemaChanges": 0,
+  "runtimeObserved": false,
+  "nativeCompiled": false
+}

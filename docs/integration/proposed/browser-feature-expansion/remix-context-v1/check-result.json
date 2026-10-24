@@ -1,0 +1,17 @@
+{
+  "checks": "native mint invoked before awaits; origin from MessageSender; retained explicit capability/no remint; stale profile refusal; real gesture refusal propagated; foreign sender refused; exact source replay and syntax",
+  "inputSha256": "8be6b070f7230bb8efe8f3dc7386e9774de15d5e0d4a39d0aef21cbf96e8bc84",
+  "outputSha256": "adbd37ca858ecc94815012046f56cc145a6a3a40d8e1a21fc92f057633140eb4",
+  "nativeFiles": [
+    {
+      "path": "chrome/browser/extensions/api/aux_browser_preferences/aux_feature_expansion_api.cc",
+      "outputSha256": "b6c2e1ea270b6e3f2fa4a4a4c5a92e7645024a844f7ff7e0e0309d43c2439f1b"
+    },
+    {
+      "path": "chrome/browser/ui/aux_tab_reference_context.cc",
+      "outputSha256": "33e854c67657db748acd6c449d8d86ddb7bcc5a213032501c19ecfd7872c2ee8"
+    }
+  ],
+  "runtimeObserved": false,
+  "nativeCompiled": false
+}

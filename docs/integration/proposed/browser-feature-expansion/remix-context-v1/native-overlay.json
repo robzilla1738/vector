@@ -1,0 +1,43 @@
+{
+  "files": [
+    {
+      "path": "chrome/browser/extensions/api/aux_browser_preferences/aux_feature_expansion_api.cc",
+      "inputSha256": "6d8e662c89dae5c4b490dc70bf09097cc2d0041c466811ba96a11927e58b50d2",
+      "outputSha256": "b6c2e1ea270b6e3f2fa4a4a4c5a92e7645024a844f7ff7e0e0309d43c2439f1b",
+      "changes": [
+        {
+          "find": "#include \"chrome/browser/ui/aux_tab_reference_context.h\"",
+          "replace": "#include \"chrome/browser/ui/aux_tab_reference_context.h\"\n#include \"content/public/browser/devtools_agent_host.h\"\n#include \"content/public/browser/navigation_controller.h\"\n#include \"extensions/browser/extension_api_frame_id_map.h\"\n#include \"extensions/browser/extension_registry.h\"\n#include \"chrome/browser/extensions/extension_tab_util.h\"",
+          "count": 1
+        },
+        {
+          "find": "    if (!references || args().size() != 1 || (method == \"captureTabReferences\" && !sender))\n      return RespondNow(Error(\"Live composer and tab references required\"));",
+          "replace": "    if (request && request->contains(\"origin\")) {\n      // MessageSender selectors are checked against native state; they never\n      // establish a profile or confer authority on another extension/document.\n      if (sender || !is_from_service_worker() || !references || references->size() > 64 ||\n          !ExtensionRegistry::Get(profile())->enabled_extensions().Contains(aux::kAgentExtensionId))\n        return RespondNow(Error(\"The installed Aux worker and original page are required\"));\n      for (const auto [key, value] : *request)\n        if (key != \"origin\" && key != \"references\" && key != \"ownerGeneration\")\n          return RespondNow(Error(\"Unexpected origin reference field\"));\n      const auto* origin = request->FindDict(\"origin\");\n      const auto tab_id = origin ? origin->FindInt(\"tabId\") : std::nullopt;\n      const auto window_id = origin ? origin->FindInt(\"windowId\") : std::nullopt;\n      const auto* document_id = origin ? origin->FindString(\"documentId\") : nullptr;\n      if (!origin || origin->size() != 3 || !tab_id || *tab_id < 0 || !window_id ||\n          !document_id || document_id->empty() || document_id->size() > 64)\n        return RespondNow(Error(\"An exact original tab, window and document are required\"));\n      content::WebContents* page = nullptr;\n      for (auto* candidate : GetAllBrowserWindowInterfaces()) {\n        if (candidate->GetProfile() != profile() || candidate->GetSessionID().id() != *window_id) continue;\n        auto* tabs = candidate->GetTabStripModel();\n        if (!tabs) continue;\n        for (int i = 0; i < tabs->count(); ++i) {\n          auto* current = tabs->GetWebContentsAt(i);\n          if (ExtensionTabUtil::GetTabId(current) == *tab_id) { page = current; break; }\n        }\n      }\n      auto* frame = page ? page->GetPrimaryMainFrame() : nullptr;\n      if (!page || page->IsBeingDestroyed() || !frame || frame->IsErrorDocument() ||\n          page->GetController().GetPendingEntry() || !page->GetLastCommittedURL().SchemeIsHTTPOrHTTPS() ||\n          ExtensionApiFrameIdMap::GetDocumentId(frame).ToString() != *document_id)\n        return RespondNow(WithArguments(Failure(\"The original Remix page changed; invoke it again.\")));\n      const auto epoch = aux::GetProfileCookieBindingEpoch(profile());\n      const auto* expected = request->FindString(\"ownerGeneration\");\n      if (request->contains(\"ownerGeneration\") && (!expected || *expected != epoch))\n        return RespondNow(WithArguments(Failure(\"The original Remix profile changed.\")));\n      if (method == \"captureTabReferences\" &&\n          (!user_gesture() || !references->empty() || expected))\n        return RespondNow(WithArguments(Failure(\"Click the Remix action again to attach this page. Unattended page capture is unavailable.\")));\n      auto target = content::DevToolsAgentHost::GetOrCreateFor(page);\n      const auto url = page->GetLastCommittedURL().spec();\n      base::DictValue result;\n      if (method == \"captureTabReferences\") {\n        base::ListValue one;\n        one.Append(base::DictValue().Set(\"targetId\", target->GetId()).Set(\"url\", url));\n        result = CaptureAuxTabReferences(page, one);\n      } else if (!references->empty()) {\n        result = ValidateAuxTabReferencesForProfile(profile(), *references);\n      } else {\n        result.Set(\"success\", true);\n      }\n      if (!result.FindBool(\"success\").value_or(false)) return RespondNow(WithArguments(std::move(result)));\n      result.Set(\"ownerGeneration\", epoch).Set(\"targetId\", target->GetId()).Set(\"url\", url);\n      return RespondNow(WithArguments(std::move(result)));\n    }\n    if (!references || args().size() != 1 || (method == \"captureTabReferences\" && !sender))\n      return RespondNow(Error(\"Live composer and tab references required\"));",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/ui/aux_tab_reference_context.cc",
+      "inputSha256": "b8b716e0c0767bb970ec3a398da1f4d8e12254df1bd480f8bdefef46a15e23c0",
+      "outputSha256": "33e854c67657db748acd6c449d8d86ddb7bcc5a213032501c19ecfd7872c2ee8",
+      "changes": [
+        {
+          "find": "#include \"chrome/browser/profiles/profile.h\"",
+          "replace": "#include \"chrome/browser/profiles/profile.h\"\n#include \"chrome/browser/aux/profile_identity.h\"",
+          "count": 1
+        },
+        {
+          "find": "    auto* frame = sender->GetPrimaryMainFrame();\n    if (sender_document_.AsRenderFrameHostIfValid() != frame) {",
+          "replace": "    auto* frame = sender->GetPrimaryMainFrame();\n    auto* profile = Profile::FromBrowserContext(sender->GetBrowserContext());\n    const auto epoch = aux::GetProfileCookieBindingEpoch(profile);\n    if (sender_document_.AsRenderFrameHostIfValid() != frame || owner_epoch_ != epoch) {\n      owner_epoch_ = epoch;",
+          "count": 1
+        },
+        {
+          "find": "  content::WeakDocumentPtr sender_document_;",
+          "replace": "  content::WeakDocumentPtr sender_document_;\n  std::string owner_epoch_;",
+          "count": 1
+        }
+      ]
+    }
+  ]
+}

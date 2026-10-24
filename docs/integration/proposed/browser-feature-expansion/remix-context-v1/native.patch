@@ -1,0 +1,105 @@
+--- a/chrome/browser/extensions/api/aux_browser_preferences/aux_feature_expansion_api.cc
++++ b/chrome/browser/extensions/api/aux_browser_preferences/aux_feature_expansion_api.cc
+@@ -20,6 +20,11 @@
+ #include "chrome/browser/profiles/profile_observer.h"
+ #include "chrome/browser/themes/aux_theme_editor.h"
+ #include "chrome/browser/ui/aux_tab_reference_context.h"
++#include "content/public/browser/devtools_agent_host.h"
++#include "content/public/browser/navigation_controller.h"
++#include "extensions/browser/extension_api_frame_id_map.h"
++#include "extensions/browser/extension_registry.h"
++#include "chrome/browser/extensions/extension_tab_util.h"
+ #include "chrome/browser/ui/aux_tab_mention_spaces.h"
+ #include "chrome/browser/ui/aux_tidy_scope.h"
+ #include "chrome/browser/ui/aux_recent_files_service.h"
+@@ -519,6 +524,60 @@
+   }
+   if (method == "captureTabReferences" || method == "validateTabReferences") {
+     const auto* references = request ? request->FindList("references") : nullptr;
++    if (request && request->contains("origin")) {
++      // MessageSender selectors are checked against native state; they never
++      // establish a profile or confer authority on another extension/document.
++      if (sender || !is_from_service_worker() || !references || references->size() > 64 ||
++          !ExtensionRegistry::Get(profile())->enabled_extensions().Contains(aux::kAgentExtensionId))
++        return RespondNow(Error("The installed Aux worker and original page are required"));
++      for (const auto [key, value] : *request)
++        if (key != "origin" && key != "references" && key != "ownerGeneration")
++          return RespondNow(Error("Unexpected origin reference field"));
++      const auto* origin = request->FindDict("origin");
++      const auto tab_id = origin ? origin->FindInt("tabId") : std::nullopt;
++      const auto window_id = origin ? origin->FindInt("windowId") : std::nullopt;
++      const auto* document_id = origin ? origin->FindString("documentId") : nullptr;
++      if (!origin || origin->size() != 3 || !tab_id || *tab_id < 0 || !window_id ||
++          !document_id || document_id->empty() || document_id->size() > 64)
++        return RespondNow(Error("An exact original tab, window and document are required"));
++      content::WebContents* page = nullptr;
++      for (auto* candidate : GetAllBrowserWindowInterfaces()) {
++        if (candidate->GetProfile() != profile() || candidate->GetSessionID().id() != *window_id) continue;
++        auto* tabs = candidate->GetTabStripModel();
++        if (!tabs) continue;
++        for (int i = 0; i < tabs->count(); ++i) {
++          auto* current = tabs->GetWebContentsAt(i);
++          if (ExtensionTabUtil::GetTabId(current) == *tab_id) { page = current; break; }
++        }
++      }
++      auto* frame = page ? page->GetPrimaryMainFrame() : nullptr;
++      if (!page || page->IsBeingDestroyed() || !frame || frame->IsErrorDocument() ||
++          page->GetController().GetPendingEntry() || !page->GetLastCommittedURL().SchemeIsHTTPOrHTTPS() ||
++          ExtensionApiFrameIdMap::GetDocumentId(frame).ToString() != *document_id)
++        return RespondNow(WithArguments(Failure("The original Remix page changed; invoke it again.")));
++      const auto epoch = aux::GetProfileCookieBindingEpoch(profile());
++      const auto* expected = request->FindString("ownerGeneration");
++      if (request->contains("ownerGeneration") && (!expected || *expected != epoch))
++        return RespondNow(WithArguments(Failure("The original Remix profile changed.")));
++      if (method == "captureTabReferences" &&
++          (!user_gesture() || !references->empty() || expected))
++        return RespondNow(WithArguments(Failure("Click the Remix action again to attach this page. Unattended page capture is unavailable.")));
++      auto target = content::DevToolsAgentHost::GetOrCreateFor(page);
++      const auto url = page->GetLastCommittedURL().spec();
++      base::DictValue result;
++      if (method == "captureTabReferences") {
++        base::ListValue one;
++        one.Append(base::DictValue().Set("targetId", target->GetId()).Set("url", url));
++        result = CaptureAuxTabReferences(page, one);
++      } else if (!references->empty()) {
++        result = ValidateAuxTabReferencesForProfile(profile(), *references);
++      } else {
++        result.Set("success", true);
++      }
++      if (!result.FindBool("success").value_or(false)) return RespondNow(WithArguments(std::move(result)));
++      result.Set("ownerGeneration", epoch).Set("targetId", target->GetId()).Set("url", url);
++      return RespondNow(WithArguments(std::move(result)));
++    }
+     if (!references || args().size() != 1 || (method == "captureTabReferences" && !sender))
+       return RespondNow(Error("Live composer and tab references required"));
+     if (!sender) return RespondNow(WithArguments(ValidateAuxTabReferencesForProfile(profile(), *references)));
+--- a/chrome/browser/ui/aux_tab_reference_context.cc
++++ b/chrome/browser/ui/aux_tab_reference_context.cc
+@@ -10,6 +10,7 @@
+ #include "base/functional/bind.h"
+ #include "base/uuid.h"
+ #include "chrome/browser/profiles/profile.h"
++#include "chrome/browser/aux/profile_identity.h"
+ #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
+ #include "chrome/browser/ui/browser_window/public/browser_window_interface_iterator.h"
+ #include "chrome/browser/ui/tabs/tab_strip_model.h"
+@@ -79,7 +80,10 @@
+   }
+   void RefreshDocument(content::WebContents* sender) {
+     auto* frame = sender->GetPrimaryMainFrame();
+-    if (sender_document_.AsRenderFrameHostIfValid() != frame) {
++    auto* profile = Profile::FromBrowserContext(sender->GetBrowserContext());
++    const auto epoch = aux::GetProfileCookieBindingEpoch(profile);
++    if (sender_document_.AsRenderFrameHostIfValid() != frame || owner_epoch_ != epoch) {
++      owner_epoch_ = epoch;
+       Clear();
+       sender_document_ = frame ? frame->GetWeakDocumentPtr() : content::WeakDocumentPtr();
+     }
+@@ -92,6 +96,7 @@
+  private:
+   friend class content::WebContentsUserData<ReferenceOwner>;
+   content::WeakDocumentPtr sender_document_;
++  std::string owner_epoch_;
+   WEB_CONTENTS_USER_DATA_KEY_DECL();
+ };
+ WEB_CONTENTS_USER_DATA_KEY_IMPL(ReferenceOwner);
