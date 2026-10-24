@@ -51,7 +51,7 @@ for x in old['commands'][0]:
  elif x=='/private/tmp/aux-runtime-cache-async-link-20261023-a3/Aux Daemon':x=str(link/'Aux Daemon')
  elif x=='/private/tmp/aux-runtime-cache-async-link-20261023-a3/swift-cache':x=str(link/'swift-cache')
  linkcmd.append(x)
-linkcmd.extend([str(objects/'observer.o'),'-framework','EndpointSecurity'])
+linkcmd.extend([str(objects/'observer.o'),'-lEndpointSecurity'])
 manifest=dict(old);manifest['commands']=[linkcmd];manifest['output']=str(link)
 manifest['privateDefinitions']=list(old['privateDefinitions'])+['_AuxDevelopmentOwnerCleanSettlementStatus','_AuxObserveDevelopmentMainLoopReturned','_AuxCompleteDevelopmentOwnerBrowserCleanShutdown']
 plan={'format':'aux.standard-daemon.compile-plan.v1','output':str(objects),'linkManifestTemplate':manifest,'commands':commands,'replacements':replacements,'sourceComposition':{'path':str(source/'composition.json'),'sha256':sha(source/'composition.json')},'frozenNewSources':{str(p):sha(p) for root in [source,browser] for p in root.rglob('*') if p.is_file()},'moduleUnchanged':True,'productExecuted':False,'productSigned':False,'runtimeAuthorityGranted':False}
