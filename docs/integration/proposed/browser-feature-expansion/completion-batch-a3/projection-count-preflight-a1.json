@@ -1,0 +1,8 @@
+{
+  "passed": false,
+  "phase": "before-native-mutation",
+  "reason": "Expected26 combined A2/A3 paths, actual28; A3 preview/tabsearch overlap A1 rather than A2.",
+  "nativeCheckoutChanged": false,
+  "productExecuted": false,
+  "scriptSha256": "cfb117a07bab3569f016e38730a67c0c05c17cc1afc33eb4cdd2108ee55359f5"
+}
