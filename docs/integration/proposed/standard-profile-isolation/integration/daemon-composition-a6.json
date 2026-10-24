@@ -1,0 +1,44 @@
+{
+  "format": "aux.standard-daemon-native-composition.v2",
+  "predecessor": {
+    "path": "/private/tmp/aux-standard-native-source-20261023-a4/composition.json",
+    "sha256": "031c1496f4964524fc222798c40ac57e85d06df4023ae9c239c6d96e6b37a87b"
+  },
+  "predecessorLinkInputs": {
+    "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/integration/daemon-link-a5-inputs.json",
+    "sha256": "a9287ea3a1cf936e6f839085c18c326646a24b560783db1b6732716440661d91"
+  },
+  "credentialLock": {
+    "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/native-credential-lock-a1/overlay.json",
+    "sha256": "d6bc4ab8f93851383d3a2405b6cdf5ec6981ccf6d5e89ac61271a304b1c6981e"
+  },
+  "observerReverse": {
+    "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/daemon-observer-reverse-coverage-a1/overlay.json",
+    "sha256": "b242ef8e84d0a18832040e86cf005138741460d807e249597fa41deba129be66"
+  },
+  "crashRegistration": {
+    "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/daemon-crash-registration-close-a1/manifest.json",
+    "sha256": "c967a66b355e18ddf387d8948be8b6d6d3e45b7c095a4f571a09cc9a03471143"
+  },
+  "sourceFiles": [
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/daemon-crash-registration-close-a1/source/AuxNativeDaemonMain.cc",
+      "sha256": "baf0266ee957b652787aa91c0fe1d49b2ddbe35aa938c23dd4f6d37784764982"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/daemon-crash-registration-close-a1/source/AuxDevelopmentOwnerDrain.swift",
+      "sha256": "990a816ff7ba364144e532bd6959699bdbf3a0efc8bebf1507c55da72bdecaa2"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/daemon-crash-registration-close-a1/source/AuxInheritedCrashRegistration.cc",
+      "sha256": "d26b9d5bf21c1b325e9697dca3a5b8a585ffad3184708ff959fee175daeb0bba"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/daemon-crash-registration-close-a1/source/AuxInheritedCrashRegistration.h",
+      "sha256": "4eb3eaff5708bf4d45cbe9149e859e5c73a7f1bc6f5090ba1161c4a093f996e1"
+    }
+  ],
+  "runtimeAccepted": false,
+  "productExecuted": false,
+  "productSigned": false
+}

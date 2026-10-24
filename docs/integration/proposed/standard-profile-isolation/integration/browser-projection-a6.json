@@ -1,0 +1,11 @@
+{
+  "format": "aux.standard-browser-source-projection.v5",
+  "inputPinsSha256": "819283865c0cdb3ed80e18f5f28cbe27af82340bd8c22f078d70869b70016df1",
+  "compositionSha256": "9827fabeb6b48915f760e3ef5c1b04eaca8d8e1c4369d1be9695cdc3089e8e41",
+  "previousInputPinsSha256": "fcad0b61dedf7ae611b6353f44df58e20c3111f5806a35b00338ad125ecfa96b",
+  "filesProjected": 1,
+  "countedEdits": 1,
+  "ownerCheckoutChanged": false,
+  "uiChanged": false,
+  "productSigned": false
+}

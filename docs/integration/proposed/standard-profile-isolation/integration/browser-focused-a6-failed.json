@@ -1,0 +1,51 @@
+{
+  "format": "aux.standard-browser-focused.actual.v1",
+  "passed": false,
+  "source": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src",
+  "targets": [
+    "obj/sandbox/mac/seatbelt/seatbelt_exec.o",
+    "obj/chrome/browser/aux/platform/AuxContentPolicyBinding.o",
+    "obj/chrome/browser/core/chrome_content_browser_client.o",
+    "obj/content/public/browser/browser_sources/content_browser_client.o",
+    "obj/content/browser/browser/child_process_launcher_helper_mac.o",
+    "obj/chrome/browser/profiles/misc/profile_impl.o",
+    "obj/chrome/browser/profiles/profile/profile.o",
+    "obj/chrome/browser/devtools/devtools/devtools_browser_context_manager.o",
+    "obj/chrome/browser/devtools/devtools/chrome_devtools_manager_delegate.o",
+    "obj/content/public/browser/browser_sources/devtools_manager_delegate.o",
+    "obj/content/browser/browser/storage_partition_impl.o",
+    "obj/content/browser/browser/target_handler.o"
+  ],
+  "runs": [
+    {
+      "name": "commands",
+      "command": [
+        "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/third_party/ninja/ninja",
+        "-C",
+        "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/out/AuxFast",
+        "-t",
+        "commands",
+        "obj/sandbox/mac/seatbelt/seatbelt_exec.o",
+        "obj/chrome/browser/aux/platform/AuxContentPolicyBinding.o",
+        "obj/chrome/browser/core/chrome_content_browser_client.o",
+        "obj/content/public/browser/browser_sources/content_browser_client.o",
+        "obj/content/browser/browser/child_process_launcher_helper_mac.o",
+        "obj/chrome/browser/profiles/misc/profile_impl.o",
+        "obj/chrome/browser/profiles/profile/profile.o",
+        "obj/chrome/browser/devtools/devtools/devtools_browser_context_manager.o",
+        "obj/chrome/browser/devtools/devtools/chrome_devtools_manager_delegate.o",
+        "obj/content/public/browser/browser_sources/devtools_manager_delegate.o",
+        "obj/content/browser/browser/storage_partition_impl.o",
+        "obj/content/browser/browser/target_handler.o"
+      ],
+      "exitCode": 0,
+      "seconds": 36.853792082984
+    }
+  ],
+  "nativeInputPinsPath": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/integration/full-native-input-pins-a6.json",
+  "nativeInputPinsSha256": "819283865c0cdb3ed80e18f5f28cbe27af82340bd8c22f078d70869b70016df1",
+  "appExecuted": false,
+  "productSigned": false,
+  "fullBrowserBuilt": false,
+  "error": "'utf-8' codec can't decode byte 0xc3 in position 79660: invalid continuation byte"
+}

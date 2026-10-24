@@ -1,0 +1,87 @@
+{
+  "format": "aux.daemon-observer-reverse.actual.v1",
+  "passed": true,
+  "commands": [
+    {
+      "name": "dependencies",
+      "command": [
+        "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang++",
+        "-fvisibility=hidden",
+        "-fblocks",
+        "-I/private/tmp/aux-standard-native-source-20261023-a4",
+        "-I/private/tmp/aux-standard-browser-source-20261023-a2/chrome/browser/aux",
+        "-I/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/profile-isolation-local-finish/runtime-cache-async-relink-a3/source",
+        "-std=c++20",
+        "-arch",
+        "arm64",
+        "-mmacosx-version-min=13.5",
+        "-fblocks",
+        "-fPIC",
+        "-isysroot",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk",
+        "-I",
+        "/private/tmp/aux-features-execution-organization-20261023/docs/integration/proposed/standard-profile-isolation/descendant-custody/source",
+        "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/daemon-observer-reverse-coverage-a1/source/AuxTaskDescendantObserver.cc",
+        "-MM",
+        "-MF",
+        "/private/tmp/aux-daemon-observer-reverse-a1/observer.scan.d",
+        "-MT",
+        "observer.o"
+      ],
+      "exitCode": 0,
+      "seconds": 0.9006724999053404
+    },
+    {
+      "name": "compile",
+      "command": [
+        "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang++",
+        "-fvisibility=hidden",
+        "-fblocks",
+        "-I/private/tmp/aux-standard-native-source-20261023-a4",
+        "-I/private/tmp/aux-standard-browser-source-20261023-a2/chrome/browser/aux",
+        "-I/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/profile-isolation-local-finish/runtime-cache-async-relink-a3/source",
+        "-std=c++20",
+        "-arch",
+        "arm64",
+        "-mmacosx-version-min=13.5",
+        "-fblocks",
+        "-fPIC",
+        "-isysroot",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk",
+        "-MMD",
+        "-MF",
+        "/private/tmp/aux-daemon-observer-reverse-a1/observer.d",
+        "-I",
+        "/private/tmp/aux-features-execution-organization-20261023/docs/integration/proposed/standard-profile-isolation/descendant-custody/source",
+        "-c",
+        "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/daemon-observer-reverse-coverage-a1/source/AuxTaskDescendantObserver.cc",
+        "-o",
+        "/private/tmp/aux-daemon-observer-reverse-a1/observer.o"
+      ],
+      "exitCode": 0,
+      "seconds": 0.9305654999334365
+    },
+    {
+      "name": "link",
+      "command": [
+        "/opt/homebrew/opt/python@3.15/bin/python3.15",
+        "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/profile-isolation-continuation/build/link-daemon.py",
+        "/private/tmp/aux-daemon-observer-reverse-a1/daemon-inputs.json"
+      ],
+      "exitCode": 0,
+      "seconds": 34.93711162498221
+    }
+  ],
+  "compileReviewSha256": "0de0852fc056e2fc859cbf2a4ec63fcdb29ebcb2b71224c5ffb1009a7705a9ae",
+  "overlaySha256": "b242ef8e84d0a18832040e86cf005138741460d807e249597fa41deba129be66",
+  "baseLinkInputsSha256": "be6fc38ad89b41ebb183869a81084ee927468dc7fa1defbe93283c447ecabc8d",
+  "productExecuted": false,
+  "productSigned": false,
+  "runtimeAuthorityGranted": false,
+  "linkManifest": "/private/tmp/aux-daemon-observer-reverse-a1/daemon-inputs.json",
+  "linkManifestSha256": "a9287ea3a1cf936e6f839085c18c326646a24b560783db1b6732716440661d91",
+  "dependencyCount": 3,
+  "objectSha256": "0416617c43b0551d766ac493294502465a4df903b909a1475b91bf3f578cb40a",
+  "linkReceipt": "/private/tmp/aux-standard-daemon-link-20261024-a5/results.json",
+  "linkReceiptSha256": "48b155fbd6f71c8f106029626a7612cfcfb35e7fabda274cb8a75793eaee8ef7"
+}

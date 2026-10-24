@@ -1,0 +1,9 @@
+{
+  "format": "aux.native-projection.preflight-failure.v1",
+  "passed": false,
+  "scriptSha256": "4317aafec69a537e951dab1056406dac2bbd46b9381eec8f14642ef6d692b144",
+  "error": "KeyError: 'find'; correction anchor uses old/new",
+  "nativeSourceChanged": false,
+  "compilerRun": false,
+  "outputCreated": false
+}
