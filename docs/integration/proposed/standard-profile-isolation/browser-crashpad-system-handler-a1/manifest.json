@@ -1,0 +1,14 @@
+{
+  "format": "aux.browser-crashpad-system-handler.overlay.v1",
+  "files": [
+    {
+      "path": "third_party/crashpad/crashpad/client/crashpad_client_mac.cc",
+      "beforeSha256": "82e91ae2ba635795f4fca34b46722e05c9acd2b08c4aeae7c7a1c423d2df16d4",
+      "afterSha256": "d3648e00805f79b7f0489fb2979eef53623bb495e735eb220f99de8e3aded54c"
+    }
+  ],
+  "countedAdaptations": 1,
+  "patchSha256": "997f9a9bafc71eb6917ded5ec250ef6672b162efaf8287a052a055b9f6d8f9ab",
+  "nativeCompiled": false,
+  "runtimeAccepted": false
+}

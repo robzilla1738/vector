@@ -1,0 +1,8 @@
+[
+  {
+    "path": "third_party/crashpad/crashpad/client/crashpad_client_mac.cc",
+    "old": "      base::apple::ScopedMachSendRight system(SystemCrashReporterHandler());\n      if (!SetCrashExceptionPorts(system.get())) {",
+    "new": "      base::apple::ScopedMachSendRight system(SystemCrashReporterHandler());\n      if (!system.is_valid() || !SetCrashExceptionPorts(system.get())) {",
+    "count": 1
+  }
+]

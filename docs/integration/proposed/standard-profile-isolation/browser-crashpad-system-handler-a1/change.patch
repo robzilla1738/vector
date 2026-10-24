@@ -1,0 +1,5 @@
+--- a/third_party/crashpad/crashpad/client/crashpad_client_mac.cc
++++ b/third_party/crashpad/crashpad/client/crashpad_client_mac.cc
+@@ -623 +623 @@
+-      if (!SetCrashExceptionPorts(system.get())) {
++      if (!system.is_valid() || !SetCrashExceptionPorts(system.get())) {
