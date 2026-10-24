@@ -1,0 +1,186 @@
+{
+  "format": "aux.navigation-completion.source.v1",
+  "baselineCommit": "d11d6108b",
+  "nativeRoot": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src",
+  "files": [
+    {
+      "path": "chrome/browser/ui/aux_keyboard_shortcuts.mm",
+      "inputSha256": "933c361887fb6b80c1efe40ff34f136db1fd332303d8690ee22b6598ebccba86",
+      "output": "/Users/rcourson/.codex/worktrees/aux-features-navigation/web/docs/integration/proposed/browser-feature-expansion/navigation-completion-batch-a3/source/chrome/browser/ui/aux_keyboard_shortcuts.mm",
+      "outputSha256": "d57dbf41e14df60ed4cfa81025e766891a07fe54f252687ca7c2c193b49d41d2",
+      "anchors": [
+        {
+          "find": "#include \"components/prefs/scoped_user_pref_update.h\"\n",
+          "replace": "",
+          "count": 1
+        },
+        {
+          "find": "  if (parsed && value != Default(*binding) &&",
+          "replace": "  if (parsed && parsed != ParseKeyboardShortcut(Default(*binding)) &&",
+          "count": 1
+        },
+        {
+          "find": "  profile->GetPrefs()->SetDict(kOverrides, normalized.Clone());\n  if (ShortcutOwner(profile) != owner || profile->GetPrefs()->GetDict(kOverrides) != normalized)\n    return ShortcutFailure(\"Shortcut state changed during publication; reload settings\");\n  RefreshActiveMenu();\n  auto result = GetShortcutProfile(profile);",
+          "replace": "  const auto live_profile = profile->GetWeakPtr();\n  profile->GetPrefs()->SetDict(kOverrides, normalized.Clone());\n  // Preference/menu observers may synchronously retire or rebind the owner.\n  if (!live_profile || ShortcutOwner(live_profile.get()) != owner ||\n      live_profile->GetPrefs()->GetDict(kOverrides) != normalized)\n    return ShortcutFailure(\"Shortcut state changed during publication; reload settings\");\n  RefreshActiveMenu();\n  if (!live_profile || ShortcutOwner(live_profile.get()) != owner)\n    return ShortcutFailure(\"Shortcut profile changed during menu refresh\");\n  auto result = GetShortcutProfile(live_profile.get());",
+          "count": 1
+        },
+        {
+          "find": "  auto* prefs = profile->GetPrefs();\n  if (prefs->IsManagedPreference(kOverrides))\n    return \"Shortcuts are managed\";\n  {\n    ScopedDictPrefUpdate update(prefs, kOverrides);\n    update->Set(base::NumberToString(command), value);\n  }\n  RefreshActiveMenu();\n  return std::nullopt;",
+          "replace": "  // Single-row edits use the SAME prospective-table/OS reservation and\n  // profile-CAS boundary as import. Never publish a chord the bulk editor would\n  // reject, nor silently repair unknown persisted entries during one-row edit.\n  const auto owner = ShortcutOwner(profile);\n  if (owner.empty() || !profile->GetPrefs()->FindPreference(kOverrides))\n    return \"Shortcut profile authority unavailable\";\n  const auto revision = ShortcutRevision(profile, owner);\n  if (revision.empty())\n    return \"Shortcut revision unavailable\";\n  auto mappings = profile->GetPrefs()->GetDict(kOverrides).Clone();\n  mappings.Set(base::NumberToString(command), value);\n  auto result = ImportShortcutProfile(profile, owner, revision, mappings);\n  if (!result.FindBool(\"success\").value_or(false)) {\n    const auto* error = result.FindString(\"error\");\n    return error ? *error : \"Shortcuts were not changed\";\n  }\n  return std::nullopt;",
+          "count": 1
+        },
+        {
+          "find": "  if (auto error = SetKeyboardShortcut(profile, command, Default(*binding)))\n    return error;\n  if (command != kPopup) {\n    ScopedDictPrefUpdate update(profile->GetPrefs(), kOverrides);\n    update->Remove(base::NumberToString(command));\n  }\n  return std::nullopt;",
+          "replace": "  // Import's normalization removes a default override in its one write.\n  return SetKeyboardShortcut(profile, command, Default(*binding));",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_tab_search_bubble.cc",
+      "inputSha256": "603db464e995af56ca9c8e9893e5ef7b619ae389dc6341475c2e833a2fed52bc",
+      "output": "/Users/rcourson/.codex/worktrees/aux-features-navigation/web/docs/integration/proposed/browser-feature-expansion/navigation-completion-batch-a3/source/chrome/browser/ui/views/frame/aux_tab_search_bubble.cc",
+      "outputSha256": "9b2646b7583215760f190b7fd559e2a00618bac4b9acc82419fcd227ce1fa29d",
+      "anchors": [
+        {
+          "find": "constexpr int kToggleModifiers = ui::EF_COMMAND_DOWN | ui::EF_SHIFT_DOWN;",
+          "replace": "constexpr int kShortcutModifiers = ui::EF_COMMAND_DOWN | ui::EF_CONTROL_DOWN |\n                                   ui::EF_ALT_DOWN | ui::EF_SHIFT_DOWN;",
+          "count": 1
+        },
+        {
+          "find": "bool ToggleKey(const ui::KeyEvent& event) {\n  return event.key_code() == ui::VKEY_A &&\n      (event.flags() & kToggleModifiers) == kToggleModifiers;\n}\nbool ToggleKey",
+          "replace": "bool ToggleKey(const ui::KeyEvent& event, Profile* profile) {\n  ui::Accelerator toggle;\n  return profile && GetKeyboardShortcut(profile, IDC_TAB_SEARCH, &toggle) &&\n      ui::Accelerator(event.key_code(), event.flags() & kShortcutModifiers) == toggle;\n}\nbool ToggleKey",
+          "count": 1
+        },
+        {
+          "find": "bool ToggleKey(const input::NativeWebKeyboardEvent& event) {\n  constexpr int kModifiers = blink::WebInputEvent::kMetaKey |\n                            blink::WebInputEvent::kShiftKey;\n  return event.windows_key_code == ui::VKEY_A &&\n      (event.GetModifiers() & kModifiers) == kModifiers;\n}",
+          "replace": "bool ToggleKey(const input::NativeWebKeyboardEvent& event, Profile* profile) {\n  int flags = 0;\n  const int modifiers = event.GetModifiers();\n  if (modifiers & blink::WebInputEvent::kMetaKey) flags |= ui::EF_COMMAND_DOWN;\n  if (modifiers & blink::WebInputEvent::kControlKey) flags |= ui::EF_CONTROL_DOWN;\n  if (modifiers & blink::WebInputEvent::kAltKey) flags |= ui::EF_ALT_DOWN;\n  if (modifiers & blink::WebInputEvent::kShiftKey) flags |= ui::EF_SHIFT_DOWN;\n  ui::Accelerator toggle;\n  return profile && GetKeyboardShortcut(profile, IDC_TAB_SEARCH, &toggle) &&\n      ui::Accelerator(static_cast<ui::KeyboardCode>(event.windows_key_code), flags) == toggle;\n}",
+          "count": 1
+        },
+        {
+          "find": "        ToggleKey(event)) {",
+          "replace": "        ToggleKey(event, Profile::FromBrowserContext(source->GetBrowserContext()))) {",
+          "count": 1
+        },
+        {
+          "find": "      : close_(std::move(close)) {\n    SetLayoutManager",
+          "replace": "      : close_(std::move(close)), profile_(profile->GetWeakPtr()) {\n    SetLayoutManager",
+          "count": 1
+        },
+        {
+          "find": "    AddAccelerator(ui::Accelerator(ui::VKEY_A, kToggleModifiers));",
+          "replace": "    RefreshToggleAccelerator();",
+          "count": 1
+        },
+        {
+          "find": "    if (accelerator.key_code() == ui::VKEY_ESCAPE ||\n        (accelerator.key_code() == ui::VKEY_A &&\n         (accelerator.modifiers() & kToggleModifiers) == kToggleModifiers)) {",
+          "replace": "    ui::Accelerator toggle;\n    if (accelerator.key_code() == ui::VKEY_ESCAPE ||\n        (profile_ && GetKeyboardShortcut(profile_.get(), IDC_TAB_SEARCH, &toggle) &&\n         accelerator == toggle)) {",
+          "count": 1
+        },
+        {
+          "find": "  void BeginInvocation(AuxCommandBarMode mode,\n                       std::optional<base::DictValue> proposal) {\n    if (auto* binding",
+          "replace": "  void BeginInvocation(AuxCommandBarMode mode,\n                       std::optional<base::DictValue> proposal) {\n    RefreshToggleAccelerator();\n    if (auto* binding",
+          "count": 1
+        },
+        {
+          "find": " private:\n  const base::RepeatingClosure close_;\n  raw_ptr<AuxTabSearchWebView> webview_ = nullptr;",
+          "replace": " private:\n  void RefreshToggleAccelerator() {\n    if (toggle_accelerator_)\n      RemoveAccelerator(*toggle_accelerator_);\n    toggle_accelerator_.reset();\n    ui::Accelerator toggle;\n    if (profile_ && GetKeyboardShortcut(profile_.get(), IDC_TAB_SEARCH, &toggle)) {\n      toggle_accelerator_ = toggle;\n      AddAccelerator(toggle);\n    }\n  }\n  const base::RepeatingClosure close_;\n  base::WeakPtr<Profile> profile_;\n  std::optional<ui::Accelerator> toggle_accelerator_;\n  raw_ptr<AuxTabSearchWebView> webview_ = nullptr;",
+          "count": 1
+        },
+        {
+          "find": "    if (ToggleKey(key))\n      CloseAndReload();",
+          "replace": "    if (ToggleKey(key, profile_.get()))\n      CloseAndReload();",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/ui/aux_preview/aux_preview_controller.cc",
+      "inputSha256": "7655f785cd8e03891a98aa493936f52a93ec16bbe261122b2440e91f6fc861d7",
+      "output": "/Users/rcourson/.codex/worktrees/aux-features-navigation/web/docs/integration/proposed/browser-feature-expansion/navigation-completion-batch-a3/source/chrome/browser/ui/aux_preview/aux_preview_controller.cc",
+      "outputSha256": "0f3baf4b51d0acb9801ab945f08ed74b1ae5a1097c8f17ed57010fe9e75c06c7",
+      "anchors": [
+        {
+          "find": "  auto source_weak = source->GetWeakPtr();\n  auto window = std::make_shared<Window>();",
+          "replace": "  auto source_weak = source->GetWeakPtr();\n  const auto source_contents = contents->GetWeakPtr();\n  auto window = std::make_shared<Window>();",
+          "count": 1
+        },
+        {
+          "find": "  auto* browser = CreateBrowserWindow(std::move(params));",
+          "replace": "  const auto source_current = [&]() {\n    auto* live_frame = document.AsRenderFrameHostIfValid();\n    return source_weak && source_contents && live_frame && live_frame->IsActive() &&\n        !BusyBrowser(source_weak.get()) &&\n        source_weak->GetProfile() == window->profile.get() &&\n        source_weak->GetTabStripModel()->GetActiveWebContents() == source_contents.get() &&\n        content::WebContents::FromRenderFrameHost(live_frame) == source_contents.get() &&\n        !AgentOwned(source_contents.get());\n  };\n  auto* browser = CreateBrowserWindow(std::move(params));",
+          "count": 1
+        },
+        {
+          "find": "  if (!Current(window) || !source_weak || !document.AsRenderFrameHostIfValid() ||\n      source_weak->GetProfile() != window->profile.get()) {",
+          "replace": "  if (!Current(window) || !source_current()) {",
+          "count": 1
+        },
+        {
+          "find": "  if (!blank || !window->browser || !Decorator().Run(browser) || !Current(window) ||\n      !source_weak || !document.AsRenderFrameHostIfValid() ||\n      source_weak->GetProfile() != window->profile.get()) {",
+          "replace": "  const auto blank_contents = blank ? blank->GetWeakPtr() : nullptr;\n  if (!blank_contents || !window->browser || !Decorator().Run(window->browser.get()) ||\n      !Current(window) || !source_current() || !blank_contents ||\n      window->browser->GetTabStripModel()->count() != 1 ||\n      window->browser->GetTabStripModel()->GetActiveWebContents() != blank_contents.get()) {",
+          "count": 1
+        },
+        {
+          "find": "    NavigateParams navigation(browser, url, ui::PAGE_TRANSITION_LINK);",
+          "replace": "    NavigateParams navigation(window->browser.get(), url, ui::PAGE_TRANSITION_LINK);",
+          "count": 1
+        },
+        {
+          "find": "    if (!window->browser || !navigation.navigated_or_inserted_contents) {",
+          "replace": "    if (!Current(window) || !blank_contents ||\n        navigation.navigated_or_inserted_contents != blank_contents.get() ||\n        window->browser->GetTabStripModel()->GetActiveWebContents() != blank_contents.get()) {",
+          "count": 1
+        },
+        {
+          "find": "  window->initialized = true;\n  browser->GetWindow()->Show(); browser->GetWindow()->Activate();\n  if (url.is_empty()) chrome::FocusLocationBar(browser);\n  return {.browser = browser};",
+          "replace": "  window->initialized = true;\n  window->browser->GetWindow()->Show();\n  if (!Current(window) || BusyBrowser(window->browser.get()))\n    return {.error = \"Preview owner changed while showing the window\"};\n  window->browser->GetWindow()->Activate();\n  if (!Current(window) || BusyBrowser(window->browser.get()))\n    return {.error = \"Preview owner changed while activating the window\"};\n  if (url.is_empty()) chrome::FocusLocationBar(window->browser.get());\n  if (!Current(window) || BusyBrowser(window->browser.get()))\n    return {.error = \"Preview owner changed before opening completed\"};\n  return {.browser = window->browser.get()};",
+          "count": 1
+        },
+        {
+          "find": "  const bool moved = destination && window->profile && contents && handle.Get() &&\n      destination->GetProfile() == window->profile.get() &&\n      aux::GetProfileCookieBindingEpoch(window->profile.get()) == window->epoch &&\n      !aux::IsProfileCookieRestorePending(window->profile.get()) &&\n      handle.Get()->GetContents() == contents.get() &&\n      handle.Get()->GetBrowserWindowInterface() == destination.get();\n  window->promoting = false;\n  if (moved) {\n    destination->GetWindow()->Show(); destination->GetWindow()->Activate();\n    std::move(done).Run(Result(true));\n  } else {",
+          "replace": "  const auto moved_here = [&]() {\n    const auto native = aux::peer::InspectNativeBrowserShutdown();\n    return destination && window->profile && contents && handle.Get() &&\n        !BusyBrowser(destination.get()) &&\n        destination->GetProfile() == window->profile.get() &&\n        aux::GetProfileCookieBindingEpoch(window->profile.get()) == window->epoch &&\n        !aux::IsProfileCookieRestorePending(window->profile.get()) &&\n        window->roots && window->roots->Revalidate() && window->generation &&\n        native.admitted_generation == window->generation && !native.wrong_process &&\n        !native.admission_closed && !native.sequence_uncertain &&\n        handle.Get()->GetContents() == contents.get() &&\n        handle.Get()->GetBrowserWindowInterface() == destination.get();\n  };\n  window->promoting = false;\n  if (moved_here()) {\n    destination->GetWindow()->Show();\n    if (!moved_here()) {\n      std::move(done).Run(Result(false, \"Destination changed after handoff; the tab was not reopened\"));\n      return;\n    }\n    destination->GetWindow()->Activate();\n    std::move(done).Run(moved_here() ? Result(true) :\n        Result(false, \"Destination changed during activation; the tab was not reopened\"));\n  } else {",
+          "count": 1
+        },
+        {
+          "find": "  window->promoting = true;\n  window->changes.Notify();",
+          "replace": "  const bool explicit_destination = destination != nullptr;\n  const auto requested_destination = destination ? destination->GetWeakPtr() : nullptr;\n  window->promoting = true;\n  window->changes.Notify();",
+          "count": 1
+        },
+        {
+          "find": "  if (destination) { Move(window, space, std::move(done), destination); return; }",
+          "replace": "  if (explicit_destination) {\n    if (!requested_destination) {\n      window->promoting = false;\n      std::move(done).Run(Result(false, \"The chosen destination closed\"));\n      return;\n    }\n    Move(window, space, std::move(done), requested_destination.get()); return;\n  }",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/ui/aux_preview/aux_preview_controls.cc",
+      "inputSha256": "dee103c9c0d3364f9fa61f393538f9219771580a0fc1ab5a0e6e08a2ed1433aa",
+      "output": "/Users/rcourson/.codex/worktrees/aux-features-navigation/web/docs/integration/proposed/browser-feature-expansion/navigation-completion-batch-a3/source/chrome/browser/ui/aux_preview/aux_preview_controls.cc",
+      "outputSha256": "f4cd9468e7eb9f6122c3c3fdf0040a3493733c6c163de42f16085c667c1b89e3",
+      "anchors": [
+        {
+          "find": "    if (!moved && web_contents())\n      ReportRestriction(web_contents(), \"Back is unavailable while this page has active work.\");\n    Refresh();",
+          "replace": "    if (!moved && web_contents())\n      ReportRestriction(web_contents(), \"Back is unavailable while this page has active work.\");\n    if (weak)\n      Refresh();",
+          "count": 1
+        },
+        {
+          "find": "    std::string reason;\n    if (!Dismiss(browser_.get(), &reason) && web_contents())\n      ReportRestriction(web_contents(), reason);",
+          "replace": "    std::string reason;\n    const auto alive = weak_.GetWeakPtr();\n    const bool dismissed = Dismiss(browser_.get(), &reason);\n    if (alive && !dismissed && web_contents())\n      ReportRestriction(web_contents(), reason);",
+          "count": 1
+        },
+        {
+          "find": "  void OnPromoted(base::DictValue result) {\n    if (!result.FindBool(\"ok\").value_or(false) && web_contents()) {",
+          "replace": "  void OnPromoted(base::DictValue result) {\n    const auto alive = weak_.GetWeakPtr();\n    if (!result.FindBool(\"ok\").value_or(false) && web_contents()) {",
+          "count": 1
+        },
+        {
+          "find": "      ReportRestriction(web_contents(), error ? *error : \"The tab could not be promoted.\");\n    }\n    Refresh();",
+          "replace": "      ReportRestriction(web_contents(), error ? *error : \"The tab could not be promoted.\");\n    }\n    if (alive)\n      Refresh();",
+          "count": 1
+        }
+      ]
+    }
+  ],
+  "nativeRootChanged": false,
+  "actualAppAcceptance": false
+}

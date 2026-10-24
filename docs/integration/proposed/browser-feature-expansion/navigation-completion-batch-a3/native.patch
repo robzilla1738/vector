@@ -1,0 +1,380 @@
+--- a/chrome/browser/ui/aux_keyboard_shortcuts.mm
++++ b/chrome/browser/ui/aux_keyboard_shortcuts.mm
+@@ -32,7 +32,6 @@
+ #include "chrome/browser/ui/browser_window/public/global_browser_collection.h"
+ #include "components/pref_registry/pref_registry_syncable.h"
+ #include "components/prefs/pref_service.h"
+-#include "components/prefs/scoped_user_pref_update.h"
+ #include "content/public/browser/web_contents.h"
+ #include "content/public/browser/web_contents_observer.h"
+ #include "ui/base/accelerators/accelerator.h"
+@@ -485,11 +484,16 @@
+   // second counter-pref, sequential per-command mutation or partial import.
+   if (ShortcutOwner(profile) != owner || ShortcutRevision(profile, owner) != revision)
+     return ShortcutFailure("Shortcut authority changed during validation");
++  const auto live_profile = profile->GetWeakPtr();
+   profile->GetPrefs()->SetDict(kOverrides, normalized.Clone());
+-  if (ShortcutOwner(profile) != owner || profile->GetPrefs()->GetDict(kOverrides) != normalized)
++  // Preference/menu observers may synchronously retire or rebind the owner.
++  if (!live_profile || ShortcutOwner(live_profile.get()) != owner ||
++      live_profile->GetPrefs()->GetDict(kOverrides) != normalized)
+     return ShortcutFailure("Shortcut state changed during publication; reload settings");
+   RefreshActiveMenu();
+-  auto result = GetShortcutProfile(profile);
++  if (!live_profile || ShortcutOwner(live_profile.get()) != owner)
++    return ShortcutFailure("Shortcut profile changed during menu refresh");
++  auto result = GetShortcutProfile(live_profile.get());
+   result.Set("persistence", "native-pref-queued");
+   return result;
+ }
+@@ -513,7 +517,7 @@
+   // Allow a command's own supplied default even when it replaces a Chromium
+   // menu default (notably Toggle Sidebar / Save Page). Reject other menu
+   // clashes.
+-  if (parsed && value != Default(*binding) &&
++  if (parsed && parsed != ParseKeyboardShortcut(Default(*binding)) &&
+       MenuConflict(profile, NSApp.mainMenu,
+                    ui::GetKeyEquivalentAndModifierMaskFromAccelerator(*parsed),
+                    command))
+@@ -523,14 +527,22 @@
+     if (!error) RefreshActiveMenu();
+     return error;
+   }
+-  auto* prefs = profile->GetPrefs();
+-  if (prefs->IsManagedPreference(kOverrides))
+-    return "Shortcuts are managed";
+-  {
+-    ScopedDictPrefUpdate update(prefs, kOverrides);
+-    update->Set(base::NumberToString(command), value);
+-  }
+-  RefreshActiveMenu();
++  // Single-row edits use the SAME prospective-table/OS reservation and
++  // profile-CAS boundary as import. Never publish a chord the bulk editor would
++  // reject, nor silently repair unknown persisted entries during one-row edit.
++  const auto owner = ShortcutOwner(profile);
++  if (owner.empty() || !profile->GetPrefs()->FindPreference(kOverrides))
++    return "Shortcut profile authority unavailable";
++  const auto revision = ShortcutRevision(profile, owner);
++  if (revision.empty())
++    return "Shortcut revision unavailable";
++  auto mappings = profile->GetPrefs()->GetDict(kOverrides).Clone();
++  mappings.Set(base::NumberToString(command), value);
++  auto result = ImportShortcutProfile(profile, owner, revision, mappings);
++  if (!result.FindBool("success").value_or(false)) {
++    const auto* error = result.FindString("error");
++    return error ? *error : "Shortcuts were not changed";
++  }
+   return std::nullopt;
+ }
+ std::optional<std::string> ResetKeyboardShortcut(Profile* profile,
+@@ -538,13 +550,8 @@
+   const auto* binding = FindBinding(command);
+   if (!binding)
+     return "Unknown shortcut command";
+-  if (auto error = SetKeyboardShortcut(profile, command, Default(*binding)))
+-    return error;
+-  if (command != kPopup) {
+-    ScopedDictPrefUpdate update(profile->GetPrefs(), kOverrides);
+-    update->Remove(base::NumberToString(command));
+-  }
+-  return std::nullopt;
++  // Import's normalization removes a default override in its one write.
++  return SetKeyboardShortcut(profile, command, Default(*binding));
+ }
+ void SetShortcutCapture(content::WebContents* sender, bool suspended) {
+   auto* capture = static_cast<Capture*>(sender->GetUserData(&kCaptureKey));
+--- a/chrome/browser/ui/views/frame/aux_tab_search_bubble.cc
++++ b/chrome/browser/ui/views/frame/aux_tab_search_bubble.cc
+@@ -82,7 +82,8 @@
+ namespace aux {
+ namespace {
+ constexpr gfx::Size kSearchSize(620, 340);
+-constexpr int kToggleModifiers = ui::EF_COMMAND_DOWN | ui::EF_SHIFT_DOWN;
++constexpr int kShortcutModifiers = ui::EF_COMMAND_DOWN | ui::EF_CONTROL_DOWN |
++                                   ui::EF_ALT_DOWN | ui::EF_SHIFT_DOWN;
+ 
+ bool AgentInstalled(Profile* profile) {
+   auto* registry = profile ? extensions::ExtensionRegistry::Get(profile) : nullptr;
+@@ -93,15 +94,21 @@
+   return GURL("chrome-extension://" + std::string(kAgentExtensionId) +
+               "/tabsearch.html");
+ }
+-bool ToggleKey(const ui::KeyEvent& event) {
+-  return event.key_code() == ui::VKEY_A &&
+-      (event.flags() & kToggleModifiers) == kToggleModifiers;
+-}
+-bool ToggleKey(const input::NativeWebKeyboardEvent& event) {
+-  constexpr int kModifiers = blink::WebInputEvent::kMetaKey |
+-                            blink::WebInputEvent::kShiftKey;
+-  return event.windows_key_code == ui::VKEY_A &&
+-      (event.GetModifiers() & kModifiers) == kModifiers;
++bool ToggleKey(const ui::KeyEvent& event, Profile* profile) {
++  ui::Accelerator toggle;
++  return profile && GetKeyboardShortcut(profile, IDC_TAB_SEARCH, &toggle) &&
++      ui::Accelerator(event.key_code(), event.flags() & kShortcutModifiers) == toggle;
++}
++bool ToggleKey(const input::NativeWebKeyboardEvent& event, Profile* profile) {
++  int flags = 0;
++  const int modifiers = event.GetModifiers();
++  if (modifiers & blink::WebInputEvent::kMetaKey) flags |= ui::EF_COMMAND_DOWN;
++  if (modifiers & blink::WebInputEvent::kControlKey) flags |= ui::EF_CONTROL_DOWN;
++  if (modifiers & blink::WebInputEvent::kAltKey) flags |= ui::EF_ALT_DOWN;
++  if (modifiers & blink::WebInputEvent::kShiftKey) flags |= ui::EF_SHIFT_DOWN;
++  ui::Accelerator toggle;
++  return profile && GetKeyboardShortcut(profile, IDC_TAB_SEARCH, &toggle) &&
++      ui::Accelerator(static_cast<ui::KeyboardCode>(event.windows_key_code), flags) == toggle;
+ }
+ 
+ struct ContextPage {
+@@ -290,7 +297,7 @@
+       const input::NativeWebKeyboardEvent& event) override {
+     if (source == GetWebContents() &&
+         event.GetType() == blink::WebInputEvent::Type::kRawKeyDown &&
+-        ToggleKey(event)) {
++        ToggleKey(event, Profile::FromBrowserContext(source->GetBrowserContext()))) {
+       close_.Run();
+     }
+     // Original45a2284 returns1 (NOT_HANDLED), retaining renderer input.
+@@ -311,21 +318,22 @@
+   METADATA_HEADER(AuxTabSearchContentsView, views::View)
+  public:
+   AuxTabSearchContentsView(Profile* profile, base::RepeatingClosure close)
+-      : close_(std::move(close)) {
++      : close_(std::move(close)), profile_(profile->GetWeakPtr()) {
+     SetLayoutManager(std::make_unique<views::FillLayout>());
+     SetPreferredSize(kSearchSize);
+     webview_ = AddChildView(
+         std::make_unique<AuxTabSearchWebView>(profile, close_));
+     AddAccelerator(ui::Accelerator(ui::VKEY_ESCAPE, ui::EF_NONE));
+-    AddAccelerator(ui::Accelerator(ui::VKEY_A, kToggleModifiers));
++    RefreshToggleAccelerator();
+     views::WebContentsSetBackgroundColor::CreateForWebContentsWithColor(
+         webview_->GetWebContents(), SK_ColorTRANSPARENT);
+     webview_->LoadInitialURL(SearchURL());
+   }
+   bool AcceleratorPressed(const ui::Accelerator& accelerator) override {
++    ui::Accelerator toggle;
+     if (accelerator.key_code() == ui::VKEY_ESCAPE ||
+-        (accelerator.key_code() == ui::VKEY_A &&
+-         (accelerator.modifiers() & kToggleModifiers) == kToggleModifiers)) {
++        (profile_ && GetKeyboardShortcut(profile_.get(), IDC_TAB_SEARCH, &toggle) &&
++         accelerator == toggle)) {
+       close_.Run();
+       return true;
+     }
+@@ -348,6 +356,7 @@
+   void ReloadForNextShow() { webview_->LoadInitialURL(SearchURL()); }
+   void BeginInvocation(AuxCommandBarMode mode,
+                        std::optional<base::DictValue> proposal) {
++    RefreshToggleAccelerator();
+     if (auto* binding = SearchBrowserBinding::FromWebContents(webview_->GetWebContents())) {
+       binding->Begin(mode);
+       if (proposal) binding->SetProposal(std::move(*proposal));
+@@ -363,7 +372,19 @@
+       SearchBrowserBinding::CreateForWebContents(contents, browser);
+   }
+  private:
++  void RefreshToggleAccelerator() {
++    if (toggle_accelerator_)
++      RemoveAccelerator(*toggle_accelerator_);
++    toggle_accelerator_.reset();
++    ui::Accelerator toggle;
++    if (profile_ && GetKeyboardShortcut(profile_.get(), IDC_TAB_SEARCH, &toggle)) {
++      toggle_accelerator_ = toggle;
++      AddAccelerator(toggle);
++    }
++  }
+   const base::RepeatingClosure close_;
++  base::WeakPtr<Profile> profile_;
++  std::optional<ui::Accelerator> toggle_accelerator_;
+   raw_ptr<AuxTabSearchWebView> webview_ = nullptr;
+ };
+ BEGIN_METADATA(AuxTabSearchContentsView)
+@@ -549,7 +570,7 @@
+     if (!visible_ || event.type() != ui::EventType::kKeyPressed)
+       return;
+     const auto& key = *event.AsKeyEvent();
+-    if (ToggleKey(key))
++    if (ToggleKey(key, profile_.get()))
+       CloseAndReload();
+     else if (key.key_code() == ui::VKEY_ESCAPE)
+       Hide();
+--- a/chrome/browser/ui/aux_preview/aux_preview_controller.cc
++++ b/chrome/browser/ui/aux_preview/aux_preview_controller.cc
+@@ -143,6 +143,7 @@
+     return {.error = "The source document is unavailable or controlled by active work"};
+   auto document = frame->GetWeakDocumentPtr();
+   auto source_weak = source->GetWeakPtr();
++  const auto source_contents = contents->GetWeakPtr();
+   auto window = std::make_shared<Window>();
+   window->kind = kind; window->source = source_weak;
+   window->profile = source->GetProfile()->GetWeakPtr();
+@@ -166,14 +167,22 @@
+   params.omit_from_session_restore = true;
+   params.should_trigger_session_restore = false;
+   params.is_trusted_source = false;  // Always retain the actual native origin UI.
++  const auto source_current = [&]() {
++    auto* live_frame = document.AsRenderFrameHostIfValid();
++    return source_weak && source_contents && live_frame && live_frame->IsActive() &&
++        !BusyBrowser(source_weak.get()) &&
++        source_weak->GetProfile() == window->profile.get() &&
++        source_weak->GetTabStripModel()->GetActiveWebContents() == source_contents.get() &&
++        content::WebContents::FromRenderFrameHost(live_frame) == source_contents.get() &&
++        !AgentOwned(source_contents.get());
++  };
+   auto* browser = CreateBrowserWindow(std::move(params));
+   if (!browser) return {.error = "Could not create a native preview window"};
+   window->browser = browser->GetWeakPtr();
+   Windows().windows[browser] = window;
+   // Creation can run native callbacks. Recheck the original document/owner
+   // before starting any network request; no speculative loads were scheduled.
+-  if (!Current(window) || !source_weak || !document.AsRenderFrameHostIfValid() ||
+-      source_weak->GetProfile() != window->profile.get()) {
++  if (!Current(window) || !source_current()) {
+     browser->GetWindow()->Close();
+     return {.error = "The source profile or document changed"};
+   }
+@@ -181,26 +190,37 @@
+   // already exists when the target request's navigation throttles are created.
+   auto* blank = chrome::AddAndReturnTabAt(browser, GURL("about:blank"), -1, true,
+       std::nullopt, false, NavigateParams::WindowAction::kNoAction);
+-  if (!blank || !window->browser || !Decorator().Run(browser) || !Current(window) ||
+-      !source_weak || !document.AsRenderFrameHostIfValid() ||
+-      source_weak->GetProfile() != window->profile.get()) {
++  const auto blank_contents = blank ? blank->GetWeakPtr() : nullptr;
++  if (!blank_contents || !window->browser || !Decorator().Run(window->browser.get()) ||
++      !Current(window) || !source_current() || !blank_contents ||
++      window->browser->GetTabStripModel()->count() != 1 ||
++      window->browser->GetTabStripModel()->GetActiveWebContents() != blank_contents.get()) {
+     if (window->browser) window->browser->GetWindow()->Close();
+     return {.error = "The source or native preview controls became unavailable"};
+   }
+   if (!url.is_empty()) {
+-    NavigateParams navigation(browser, url, ui::PAGE_TRANSITION_LINK);
++    NavigateParams navigation(window->browser.get(), url, ui::PAGE_TRANSITION_LINK);
+     navigation.disposition = WindowOpenDisposition::CURRENT_TAB;
+     navigation.initiator_origin = url::Origin();
+     Navigate(&navigation);
+-    if (!window->browser || !navigation.navigated_or_inserted_contents) {
++    if (!Current(window) || !blank_contents ||
++        navigation.navigated_or_inserted_contents != blank_contents.get() ||
++        window->browser->GetTabStripModel()->GetActiveWebContents() != blank_contents.get()) {
+       if (window->browser) window->browser->GetWindow()->Close();
+       return {.error = "Preview navigation was refused"};
+     }
+   }
+   window->initialized = true;
+-  browser->GetWindow()->Show(); browser->GetWindow()->Activate();
+-  if (url.is_empty()) chrome::FocusLocationBar(browser);
+-  return {.browser = browser};
++  window->browser->GetWindow()->Show();
++  if (!Current(window) || BusyBrowser(window->browser.get()))
++    return {.error = "Preview owner changed while showing the window"};
++  window->browser->GetWindow()->Activate();
++  if (!Current(window) || BusyBrowser(window->browser.get()))
++    return {.error = "Preview owner changed while activating the window"};
++  if (url.is_empty()) chrome::FocusLocationBar(window->browser.get());
++  if (!Current(window) || BusyBrowser(window->browser.get()))
++    return {.error = "Preview owner changed before opening completed"};
++  return {.browser = window->browser.get()};
+ }
+ base::DictValue Result(bool ok, std::string message = {}) {
+   return base::DictValue().Set("ok", ok).Set("error", message);
+@@ -243,16 +263,29 @@
+   // Chromium transfers the real TabModel/WebContents and navigation history.
+   // The source popup can close synchronously as its final tab leaves.
+   chrome::MoveTabsToExistingWindow(browser, destination.get(), {0});
+-  const bool moved = destination && window->profile && contents && handle.Get() &&
+-      destination->GetProfile() == window->profile.get() &&
+-      aux::GetProfileCookieBindingEpoch(window->profile.get()) == window->epoch &&
+-      !aux::IsProfileCookieRestorePending(window->profile.get()) &&
+-      handle.Get()->GetContents() == contents.get() &&
+-      handle.Get()->GetBrowserWindowInterface() == destination.get();
++  const auto moved_here = [&]() {
++    const auto native = aux::peer::InspectNativeBrowserShutdown();
++    return destination && window->profile && contents && handle.Get() &&
++        !BusyBrowser(destination.get()) &&
++        destination->GetProfile() == window->profile.get() &&
++        aux::GetProfileCookieBindingEpoch(window->profile.get()) == window->epoch &&
++        !aux::IsProfileCookieRestorePending(window->profile.get()) &&
++        window->roots && window->roots->Revalidate() && window->generation &&
++        native.admitted_generation == window->generation && !native.wrong_process &&
++        !native.admission_closed && !native.sequence_uncertain &&
++        handle.Get()->GetContents() == contents.get() &&
++        handle.Get()->GetBrowserWindowInterface() == destination.get();
++  };
+   window->promoting = false;
+-  if (moved) {
+-    destination->GetWindow()->Show(); destination->GetWindow()->Activate();
+-    std::move(done).Run(Result(true));
++  if (moved_here()) {
++    destination->GetWindow()->Show();
++    if (!moved_here()) {
++      std::move(done).Run(Result(false, "Destination changed after handoff; the tab was not reopened"));
++      return;
++    }
++    destination->GetWindow()->Activate();
++    std::move(done).Run(moved_here() ? Result(true) :
++        Result(false, "Destination changed during activation; the tab was not reopened"));
+   } else {
+     std::move(done).Run(Result(false, "The tab could not be moved; it was not reopened"));
+   }
+@@ -334,13 +367,22 @@
+       Protected(browser->GetTabStripModel()->GetActiveWebContents(), true)) {
+     std::move(done).Run(Result(false, "Preview is unavailable or has active work")); return;
+   }
++  const bool explicit_destination = destination != nullptr;
++  const auto requested_destination = destination ? destination->GetWeakPtr() : nullptr;
+   window->promoting = true;
+   window->changes.Notify();
+   if (!Current(window)) {
+     window->promoting = false;
+     std::move(done).Run(Result(false, "Preview owner changed")); return;
+   }
+-  if (destination) { Move(window, space, std::move(done), destination); return; }
++  if (explicit_destination) {
++    if (!requested_destination) {
++      window->promoting = false;
++      std::move(done).Run(Result(false, "The chosen destination closed"));
++      return;
++    }
++    Move(window, space, std::move(done), requested_destination.get()); return;
++  }
+   if (window->source && !BusyBrowser(window->source.get()) &&
+       window->source->GetType() == BrowserWindowInterface::TYPE_NORMAL &&
+       window->source->GetProfile() == window->profile.get()) {
+--- a/chrome/browser/ui/aux_preview/aux_preview_controls.cc
++++ b/chrome/browser/ui/aux_preview/aux_preview_controls.cc
+@@ -79,12 +79,15 @@
+     if (!weak) return;
+     if (!moved && web_contents())
+       ReportRestriction(web_contents(), "Back is unavailable while this page has active work.");
+-    Refresh();
++    if (weak)
++      Refresh();
+   }
+   void Close() {
+     if (!browser_) return;
+     std::string reason;
+-    if (!Dismiss(browser_.get(), &reason) && web_contents())
++    const auto alive = weak_.GetWeakPtr();
++    const bool dismissed = Dismiss(browser_.get(), &reason);
++    if (alive && !dismissed && web_contents())
+       ReportRestriction(web_contents(), reason);
+   }
+   void OpenAsTab() {
+@@ -92,11 +95,13 @@
+     Promote(browser_.get(), nullptr, {}, base::BindOnce(&Controls::OnPromoted, weak_.GetWeakPtr()));
+   }
+   void OnPromoted(base::DictValue result) {
++    const auto alive = weak_.GetWeakPtr();
+     if (!result.FindBool("ok").value_or(false) && web_contents()) {
+       const auto* error = result.FindString("error");
+       ReportRestriction(web_contents(), error ? *error : "The tab could not be promoted.");
+     }
+-    Refresh();
++    if (alive)
++      Refresh();
+   }
+   base::WeakPtr<BrowserWindowInterface> browser_;
+   raw_ptr<ToolbarButton> back_ = nullptr;

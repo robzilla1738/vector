@@ -1,0 +1,28 @@
+{
+  "format": "aux.navigation-completion.replay.actual.v1",
+  "passed": true,
+  "sourcePlanSha256": "0dfd83b11e7c9edda78777737c5cb77181a58804c4aaff4996fa81e90188321f",
+  "patchSha256": "700ff6d70ec08097820ae5d7a25409d4c0b27a03b136ebf6ce304a635b55e55e",
+  "files": 4,
+  "countedAnchors": 29,
+  "output": "/private/tmp/aux-navigation-replay-20261024-a3-f9qevgh_",
+  "reviewedContracts": {
+    "chrome/browser/ui/navigator/browser_navigator_params.h": "4b8c40a70ecc29d49eb2c0018a5ce05967eab2d610f7118c4c421030679b35b9",
+    "chrome/app/chrome_command_ids.h": "fdc0bf334cfc96894ac03665789a5ecb15335f2aa91ad43d5f71ab0edeb3dfba",
+    "ui/views/view.h": "54ccc761d8f2100ba7e38a30a9f4c5dbf601df7f72c26ad88d45d3cd6727849a",
+    "chrome/browser/ui/aux_keyboard_shortcut_parser.h": "a8648e1570bd55a579747ba1e8d33fa164d17398c00c3998b0942ea3565d22c4",
+    "chrome/browser/extensions/api/aux_browser_preferences/aux_browser_preferences_api.cc": "276506304349c8718bfb1dfae68653c357b2702b584d53d9de8ca16afe811e69",
+    "chrome/browser/ui/views/frame/aux_navigation_placement.cc": "b8fbe684517fbcda3d32bbe7b23f3e9db6a9925a76fee05b9f5f829a2bd3be24",
+    "chrome/browser/ui/views/frame/aux_frame_presentation_state.h": "75a03dd72306172dad94afab2b1c7d44903c1585ef130646521037fa8f9b3028",
+    "chrome/browser/ui/views/frame/multi_contents_view_mini_toolbar.cc": "26ef28b6e6f6a2c5751983b97bf9407aa1ea733d46291ecd073a0506a51e84a1"
+  },
+  "exactReplayPassed": true,
+  "reverseCheckPassed": true,
+  "existingPaletteAndPreviewGeometryUnchanged": true,
+  "nativePreviewDecorationUnchanged": true,
+  "existingStartupAndProtectedWorkPredicatesUnchanged": true,
+  "nativeRootChanged": false,
+  "nativeCompiled": false,
+  "productExecuted": false,
+  "runtimeAccepted": false
+}
