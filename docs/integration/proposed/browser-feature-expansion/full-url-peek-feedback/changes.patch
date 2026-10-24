@@ -1,0 +1,122 @@
+--- a/chrome/browser/ui/views/frame/multi_contents_view_mini_toolbar.h
++++ b/chrome/browser/ui/views/frame/multi_contents_view_mini_toolbar.h
+@@ -9,6 +9,7 @@
+ 
+ #include "base/memory/raw_ptr.h"
+ #include "chrome/browser/ui/color/chrome_color_id.h"
++#include "components/prefs/pref_change_registrar.h"
+ #include "ui/base/metadata/metadata_header_macros.h"
+ #include "ui/views/view.h"
+ 
+@@ -75,6 +76,9 @@
+   base::CallbackListSubscription web_contents_detached_subscription_;
+   std::optional<base::CallbackListSubscription> tab_alert_status_subscription_;
+   std::optional<base::CallbackListSubscription> tab_ui_updated_subscription_;
++  // Rebound on every actual WebContents attachment. Registrar also clears its
++  // service reference when that profile's PrefService is destroyed.
++  PrefChangeRegistrar full_url_preferences_;
+ };
+ 
+ #endif  // CHROME_BROWSER_UI_VIEWS_FRAME_MULTI_CONTENTS_VIEW_MINI_TOOLBAR_H_
+--- a/chrome/browser/ui/views/frame/multi_contents_view_mini_toolbar.cc
++++ b/chrome/browser/ui/views/frame/multi_contents_view_mini_toolbar.cc
+@@ -13,6 +13,9 @@
+ #include "chrome/app/vector_icons/vector_icons.h"
+ #include "chrome/browser/favicon/favicon_utils.h"
+ #include "chrome/browser/search/search.h"
++#include "chrome/browser/profiles/profile.h"
++#include "components/omnibox/browser/omnibox_prefs.h"
++#include "components/prefs/pref_service.h"
+ #include "chrome/browser/ui/tab_ui_helper.h"
+ #include "chrome/browser/ui/tabs/alert/tab_alert_controller.h"
+ #include "chrome/browser/ui/tabs/alert/tab_alert_icon.h"
+@@ -181,9 +184,18 @@
+     domain_url = tab_ui_helper->GetLastCommittedURL();
+   }
+ 
+-  // Create the formatted domain, this will match the hover card domain.
++  const auto* preferences = full_url_preferences_.prefs();
++  const bool full_url = preferences && preferences->GetBoolean(
++      omnibox::kPreventUrlElisionsInOmnibox);
++  // Match native omnibox security formatting: retain scheme, complete host,
++  // path, query and fragment; never expose embedded username/password. The
++  // Label already uses DIRECTIONALITY_AS_URL and the formatter's IDN checks.
+   std::u16string domain;
+-  if (IsNTP(domain_url)) {
++  if (full_url && domain_url.is_valid() && !IsNTP(domain_url)) {
++    domain = url_formatter::FormatUrl(domain_url,
++        url_formatter::kFormatUrlOmitUsernamePassword,
++        base::UnescapeRule::SPACES, nullptr, nullptr, nullptr);
++  } else if (IsNTP(domain_url)) {
+     domain = u"";
+   } else if (domain_url.SchemeIsFile()) {
+     domain = l10n_util::GetStringUTF16(IDS_HOVER_CARD_FILE_URL_SOURCE);
+@@ -203,12 +215,14 @@
+         base::UnescapeRule::SPACES, nullptr, nullptr, nullptr);
+   }
+   domain_label_->SetText(domain);
+-  domain_label_->SetElideBehavior(domain_url.IsStandard() &&
++  domain_label_->SetElideBehavior(!full_url && domain_url.IsStandard() &&
+                                           !domain_url.SchemeIsFile() &&
+                                           !domain_url.SchemeIsFileSystem()
+                                       ? gfx::ELIDE_HEAD
+                                       : gfx::ELIDE_TAIL);
+-  domain_label_->SetCustomTooltipText(base::ASCIIToUTF16(domain_url.spec()));
++  // Tail elision keeps the origin visible. The native tooltip reveals the
++  // complete formatted address; activating this pane exposes its real omnibox.
++  domain_label_->SetCustomTooltipText(full_url ? domain : base::ASCIIToUTF16(domain_url.spec()));
+ 
+   UpdateFavicon(tab_ui_helper);
+ }
+@@ -221,6 +235,8 @@
+ }
+ 
+ void MultiContentsViewMiniToolbar::ClearWebContents(views::WebView*) {
++  full_url_preferences_.Reset();
++  tab_ui_updated_subscription_.reset();
+   tab_alert_status_subscription_.reset();
+   OnAlertStatusIndicatorChanged(std::nullopt);
+   web_contents_ = nullptr;
+@@ -247,6 +263,17 @@
+ }
+ 
+ void MultiContentsViewMiniToolbar::RegisterTabSubscriptions() {
++  full_url_preferences_.Reset();
++  if (web_contents_) {
++    auto* profile = Profile::FromBrowserContext(web_contents_->GetBrowserContext());
++    auto* preferences = profile ? profile->GetPrefs() : nullptr;
++    if (preferences && preferences->FindPreference(omnibox::kPreventUrlElisionsInOmnibox)) {
++      full_url_preferences_.Init(preferences);
++      full_url_preferences_.Add(omnibox::kPreventUrlElisionsInOmnibox,
++          base::BindRepeating(&MultiContentsViewMiniToolbar::UpdateContents,
++                              base::Unretained(this)));
++    }
++  }
+   if (auto* interface = GetTabInterface(web_contents_)) {
+     auto* tab_alert_controller = tabs::TabAlertController::From(interface);
+     OnAlertStatusIndicatorChanged(tab_alert_controller->GetAlertToShow());
+--- a/chrome/browser/ui/aux_preview/aux_preview_ingress.cc
++++ b/chrome/browser/ui/aux_preview/aux_preview_ingress.cc
+@@ -8,6 +8,7 @@
+ #include "base/memory/weak_ptr.h"
+ #include "base/task/single_thread_task_runner.h"
+ #include "base/time/time.h"
++#include "base/strings/utf_string_conversions.h"
+ #include "chrome/browser/aux/AuxBrowserPrivateRoots.h"
+ #include "chrome/browser/aux/AuxSelectedStateHome.h"
+ #include "chrome/browser/aux/profile_identity.h"
+@@ -70,10 +71,12 @@
+     if (!source || source->GetPrimaryMainFrame() != live_frame ||
+         intent.browser->GetTabStripModel()->GetActiveWebContents() != source)
+       return;
++    const std::u16string reason = result.error.empty()
++        ? u"The preview could not be opened."
++        : base::UTF8ToUTF16(result.error);
+     chrome::ShowWarningMessageBoxAsync(
+         intent.browser->GetWindow()->GetNativeWindow(), u"Aux could not open Peek",
+-        u"The preview could not be opened while this page or browser has active "
+-        u"work. Finish that work and try again. Your original page has not changed.");
++        reason + u" Your original page has not changed.");
+   }
+ }
+ class Ingress final : public content::WebContentsObserver,

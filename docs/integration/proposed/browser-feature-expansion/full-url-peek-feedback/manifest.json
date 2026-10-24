@@ -1,0 +1,84 @@
+{
+  "format": "aux.full-url-peek-feedback.overlay.v1",
+  "predecessorPeekOverlay": "peek-split-completion",
+  "files": [
+    {
+      "path": "chrome/browser/ui/views/frame/multi_contents_view_mini_toolbar.h",
+      "baselineInput": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/ui/views/frame/multi_contents_view_mini_toolbar.h",
+      "beforeSha256": "9aee98e834a6a7c9c776b6e8c7076e965099201a5a5f8ba858a05763cdfb9a0c",
+      "afterSha256": "fbb5856109227de45150c587c19834c3c53d4e017191ae38eda7ba5abd3e5659",
+      "edits": [
+        {
+          "before": "#include \"chrome/browser/ui/color/chrome_color_id.h\"",
+          "after": "#include \"chrome/browser/ui/color/chrome_color_id.h\"\n#include \"components/prefs/pref_change_registrar.h\"",
+          "count": 1
+        },
+        {
+          "before": "  std::optional<base::CallbackListSubscription> tab_ui_updated_subscription_;",
+          "after": "  std::optional<base::CallbackListSubscription> tab_ui_updated_subscription_;\n  // Rebound on every actual WebContents attachment. Registrar also clears its\n  // service reference when that profile's PrefService is destroyed.\n  PrefChangeRegistrar full_url_preferences_;",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/multi_contents_view_mini_toolbar.cc",
+      "baselineInput": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/ui/views/frame/multi_contents_view_mini_toolbar.cc",
+      "beforeSha256": "d4b6ab0d0c85ddbc5151629c4e424783fe38b52aa24579408a097601b18a7c47",
+      "afterSha256": "26ef28b6e6f6a2c5751983b97bf9407aa1ea733d46291ecd073a0506a51e84a1",
+      "edits": [
+        {
+          "before": "#include \"chrome/browser/search/search.h\"",
+          "after": "#include \"chrome/browser/search/search.h\"\n#include \"chrome/browser/profiles/profile.h\"\n#include \"components/omnibox/browser/omnibox_prefs.h\"\n#include \"components/prefs/pref_service.h\"",
+          "count": 1
+        },
+        {
+          "before": "  // Create the formatted domain, this will match the hover card domain.\n  std::u16string domain;\n  if (IsNTP(domain_url)) {",
+          "after": "  const auto* preferences = full_url_preferences_.prefs();\n  const bool full_url = preferences && preferences->GetBoolean(\n      omnibox::kPreventUrlElisionsInOmnibox);\n  // Match native omnibox security formatting: retain scheme, complete host,\n  // path, query and fragment; never expose embedded username/password. The\n  // Label already uses DIRECTIONALITY_AS_URL and the formatter's IDN checks.\n  std::u16string domain;\n  if (full_url && domain_url.is_valid() && !IsNTP(domain_url)) {\n    domain = url_formatter::FormatUrl(domain_url,\n        url_formatter::kFormatUrlOmitUsernamePassword,\n        base::UnescapeRule::SPACES, nullptr, nullptr, nullptr);\n  } else if (IsNTP(domain_url)) {",
+          "count": 1
+        },
+        {
+          "before": "  domain_label_->SetElideBehavior(domain_url.IsStandard() &&\n                                          !domain_url.SchemeIsFile() &&",
+          "after": "  domain_label_->SetElideBehavior(!full_url && domain_url.IsStandard() &&\n                                          !domain_url.SchemeIsFile() &&",
+          "count": 1
+        },
+        {
+          "before": "  domain_label_->SetCustomTooltipText(base::ASCIIToUTF16(domain_url.spec()));",
+          "after": "  // Tail elision keeps the origin visible. The native tooltip reveals the\n  // complete formatted address; activating this pane exposes its real omnibox.\n  domain_label_->SetCustomTooltipText(full_url ? domain : base::ASCIIToUTF16(domain_url.spec()));",
+          "count": 1
+        },
+        {
+          "before": "void MultiContentsViewMiniToolbar::ClearWebContents(views::WebView*) {\n  tab_alert_status_subscription_.reset();",
+          "after": "void MultiContentsViewMiniToolbar::ClearWebContents(views::WebView*) {\n  full_url_preferences_.Reset();\n  tab_ui_updated_subscription_.reset();\n  tab_alert_status_subscription_.reset();",
+          "count": 1
+        },
+        {
+          "before": "void MultiContentsViewMiniToolbar::RegisterTabSubscriptions() {\n  if (auto* interface = GetTabInterface(web_contents_)) {",
+          "after": "void MultiContentsViewMiniToolbar::RegisterTabSubscriptions() {\n  full_url_preferences_.Reset();\n  if (web_contents_) {\n    auto* profile = Profile::FromBrowserContext(web_contents_->GetBrowserContext());\n    auto* preferences = profile ? profile->GetPrefs() : nullptr;\n    if (preferences && preferences->FindPreference(omnibox::kPreventUrlElisionsInOmnibox)) {\n      full_url_preferences_.Init(preferences);\n      full_url_preferences_.Add(omnibox::kPreventUrlElisionsInOmnibox,\n          base::BindRepeating(&MultiContentsViewMiniToolbar::UpdateContents,\n                              base::Unretained(this)));\n    }\n  }\n  if (auto* interface = GetTabInterface(web_contents_)) {",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/ui/aux_preview/aux_preview_ingress.cc",
+      "baselineInput": "/private/tmp/aux-features-execution-frame-20261023/docs/integration/proposed/browser-feature-expansion/peek-split-completion/source/chrome/browser/ui/aux_preview/aux_preview_ingress.cc",
+      "beforeSha256": "7e57e29cef0d8cc60e80a2b4e251e000328ac05b559d9ea7c5ed36b299e2759f",
+      "afterSha256": "6f9f1040aca37af1fc6a2546a7be35f99284c4c07c7ac9e483f988bd261c22ad",
+      "edits": [
+        {
+          "before": "#include \"base/time/time.h\"",
+          "after": "#include \"base/time/time.h\"\n#include \"base/strings/utf_string_conversions.h\"",
+          "count": 1
+        },
+        {
+          "before": "    chrome::ShowWarningMessageBoxAsync(\n        intent.browser->GetWindow()->GetNativeWindow(), u\"Aux could not open Peek\",\n        u\"The preview could not be opened while this page or browser has active \"\n        u\"work. Finish that work and try again. Your original page has not changed.\");",
+          "after": "    const std::u16string reason = result.error.empty()\n        ? u\"The preview could not be opened.\"\n        : base::UTF8ToUTF16(result.error);\n    chrome::ShowWarningMessageBoxAsync(\n        intent.browser->GetWindow()->GetNativeWindow(), u\"Aux could not open Peek\",\n        reason + u\" Your original page has not changed.\");",
+          "count": 1
+        }
+      ]
+    }
+  ],
+  "patchSha256": "f444e5e87bdf90878974623c9c192d1e0158d356b246202b17ee17e53371b720",
+  "nativeMutated": false,
+  "compiled": false,
+  "runtimeAccepted": false
+}

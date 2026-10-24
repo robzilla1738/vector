@@ -1,0 +1,14 @@
+{
+  "format": "aux.full-url-peek-feedback.api-inspection.v1",
+  "inputs": {
+    "components/url_formatter/url_formatter.h": "e1d082c538ea729cc8642163f9634db3c46a0843fe22b9a66ae241cfbc768c9a",
+    "components/prefs/pref_change_registrar.h": "4a0f8d27a8ef8165c033341ff6bc8d81386a26d52a67078885cf72b9ce2a2e01",
+    "components/prefs/pref_change_registrar.cc": "9d4c1459f0929b063c558106713566d4c7c59d9e42288125f191a8792e104fb5",
+    "chrome/browser/ui/toolbar/chrome_location_bar_model_delegate.cc": "873b3584cba565f5fc62bc8874596dcdc9d3448634356e8d64f639ffecaf49da"
+  },
+  "formatter": "FormatUrl + kFormatUrlOmitUsernamePassword preserves scheme/path and Chromium IDN safety; default formatting unchanged",
+  "observation": "PrefChangeRegistrar Reset/Init/Add; OnServiceDestroyed clears service; actual WebContents profile binding",
+  "compiled": false,
+  "testsRun": false,
+  "runtimeAccepted": false
+}
