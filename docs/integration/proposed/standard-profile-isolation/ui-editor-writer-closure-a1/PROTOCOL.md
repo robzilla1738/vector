@@ -93,3 +93,10 @@ claim is still covered by its unchanged memory signature. Any new actual owner,
 work, memory edit or attempted renderer write still refuses observation. Native
 must retain/route productive storage notifications rather than ignore new work.
 No successful observation proves target correctness or permits recovery.
+
+Release acknowledgments include the exact original requestId, leaseId and
+revision. A read after successful release retains that correlated result. Failed
+restoration keeps the same cleanup lease and failed restorer closures for explicit
+retry; no absent lease is manufactured from failed restoration. A reviewed
+pre-lease refusal can retain a correlated `noLeaseCreated` observation instead.
+None of these cleanup outcomes grants target admission or writer closure.

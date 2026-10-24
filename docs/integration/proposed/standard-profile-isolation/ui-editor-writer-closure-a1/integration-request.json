@@ -13,11 +13,11 @@
     },
     {
       "path": "vendor/provided/aux-ui-draft-closure-runtime.js.txt",
-      "sha256": "49a7135094655b4d689ebabe31a1fd884c97db7d2bdbf28d025ef86ed292ad66"
+      "sha256": "e6f4fdf8162f97778c27fbc6debd29f8e3042b36f8d9bb662223e21e856a4734"
     },
     {
       "path": "docs/integration/proposed/standard-profile-isolation/ui-editor-writer-closure-a1/inputs.json",
-      "sha256": "5695bcaa80ac9841b371e2acc8140fe32f1ddf8e412a54c0d6d7853a4112b8d5"
+      "sha256": "d7755162cf66fb93dbcd10a954a2931d9e5710029751510d73cc166ced83ef0e"
     }
   ],
   "actualModule": "assets/draft-storage-ixLojjZ5.js",
@@ -29,10 +29,10 @@
     "release": "auxReleaseDraftMigrationCapture(leaseId)",
     "observeTarget": "auxObserveDraftMigrationTarget(leaseId, revision)"
   },
-  "protocolSha256": "c4dfa965ffc09a017647eea80e44e5351fdb63387903981fad5dd2cf0167c5d1",
-  "sourcePlanSha256": "8e376657a00c12916443b1f8c296e5a0cca9127530f265f61e94dc3a88a74014",
-  "focusedReceiptSha256": "f2051a7240a196a9692978484622c2a728fa1aa3714d936ef3472c8c2d49284e",
-  "compositionReceiptSha256": "ac23ce4df327c84848cd0c5fd03eb6b90c216d9014aa2c649e1725ab5274dbfc",
+  "protocolSha256": "877c598299aa1afbaaf30143c3d54ccd3e71dde9befee5e6d7ed42ef48735e85",
+  "sourcePlanSha256": "f528141575c1ffb299099a90d408c407d4a30c971c709d8e5abd89421922f9bf",
+  "focusedReceiptSha256": "933731c8941b99cf8799703133dedb56648fd83508521daf29ebfafc438b7641",
+  "compositionReceiptSha256": "a5ff8ea10531014a2c37d235e29a39b1d295b29b0e454df80996117dd6d03d1e",
   "rootOwnsProvenanceRevisionNativeCallerBackendGatesStageAndPackage": true,
   "nativeExecuted": false,
   "productExecuted": false,

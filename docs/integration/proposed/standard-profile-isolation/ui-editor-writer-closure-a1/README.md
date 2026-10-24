@@ -118,3 +118,9 @@ case changes known store bytes directly: source validation refuses, target
 observation reports those bytes, restoring the bytes recovers the original source
 capture, and a productive late renderer write still taints both paths. No native
 CAS or target acceptance is claimed.
+
+The paired native cleanup correction adds missing leaseId/revision to release
+acknowledgments. Failed restoration retains the original cleanup lease and failed
+closures for explicit retry, and successful release is available through correlated
+readback if its result is lost. One focused failure/retry case brings the actual
+source suite to17 cases. Ordinary UI paths and classes remain unchanged.

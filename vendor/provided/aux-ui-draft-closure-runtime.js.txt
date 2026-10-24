@@ -1,7 +1,7 @@
 // UI-data closure only. Native profile/document/startup authority is external.
 const auxDraftMigrationOwners=new Map,auxDraftMigrationWork=new Set,auxDraftMigrationUnknownWork=new Set;
 let auxDraftMigrationAckedClaim=null;
-let auxDraftMigrationRevision=0,auxDraftMigrationLease=null,auxDraftMigrationFlushing=false,auxDraftMigrationOwnerOverflow=0;
+let auxDraftMigrationRevision=0,auxDraftMigrationLease=null,auxDraftMigrationLastRelease=null,auxDraftMigrationFlushing=false,auxDraftMigrationOwnerOverflow=0;
 const auxDraftMigrationFormat="aux.ui-draft-capture-lease.v1";
 function auxDraftMigrationChanged(){
   if(auxDraftMigrationRevision===Number.MAX_SAFE_INTEGER)throw Error("Aux draft revision exhausted");
@@ -115,13 +115,17 @@ function auxDraftMigrationCheckInputs(){
   }
 }
 function auxDraftMigrationRelease(lease){
-  // Keep the lease visible as releasing until restorers finish, so a
-  // synchronous callback cannot start a competing prepare inside release.
+  // Keep the original lease until every actual restorer succeeds. A failed
+  // restorer is retryable cleanup, never anonymous absence of source work.
   lease.phase="releasing";auxDraftMigrationFlushing=false;
-  let restored=true;
-  for(const restore of lease.restores.reverse())try{restore()}catch{restored=false}
+  const remaining=[];
+  for(const restore of lease.restores.reverse())try{restore()}catch{remaining.push(restore)}
+  lease.restores=remaining.reverse();
+  if(remaining.length){lease.phase="cleanup";return false}
   if(auxDraftMigrationLease===lease)auxDraftMigrationLease=null;
-  return restored;
+  auxDraftMigrationLastRelease={format:auxDraftMigrationFormat,ok:true,retained:false,
+    requestId:lease.requestId,leaseId:lease.id,revision:lease.revision,released:true,restored:true};
+  return true;
 }
 function auxPrepareDraftMigrationCapture(requestId){
   if(typeof requestId!=="string"||!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(requestId))
@@ -142,7 +146,7 @@ function auxPrepareDraftMigrationCapture(requestId){
     auxDraftMigrationCheckInputs();
     const owners=[...auxDraftMigrationOwners.values()];
     for(const {owner} of owners)auxDraftMigrationSignature(owner);
-    auxDraftMigrationLease=lease;
+    auxDraftMigrationLastRelease=null;auxDraftMigrationLease=lease;
     for(const {owner} of owners){
       const restore=owner.freeze();
       if(typeof restore!=="function")throw Error("Aux editor freeze is unsupported");
@@ -166,8 +170,12 @@ function auxPrepareDraftMigrationCapture(requestId){
     return{format:auxDraftMigrationFormat,ok:true,requestId:lease.requestId,leaseId:lease.id,revision:lease.revision,
       ownerCount:owners.length,sealed:false,capture:JSON.parse(lease.captureJson)};
   }catch(error){
-    const restored=auxDraftMigrationLease===lease?auxDraftMigrationRelease(lease):true;
-    return{format:auxDraftMigrationFormat,ok:false,requestId,error:String(error?.message??error),restored};
+    const owned=auxDraftMigrationLease===lease;
+    const restored=owned?auxDraftMigrationRelease(lease):true;
+    const failure={format:auxDraftMigrationFormat,ok:false,requestId,error:String(error?.message??error),restored,
+      retained:auxDraftMigrationLease===lease,...owned?{leaseId:lease.id,revision:lease.revision}:{}};
+    if(!owned&&!auxDraftMigrationLease)auxDraftMigrationLastRelease={...failure,noLeaseCreated:true,attemptState:"not-started"};
+    return failure;
   }
 }
 function auxAssertDraftMigrationOwners(leaseId,revision){
@@ -213,7 +221,8 @@ function auxObserveDraftMigrationTarget(leaseId,revision){
 }
 function auxReadDraftMigrationCapture(){
   const lease=auxDraftMigrationLease;
-  if(!lease)return{format:auxDraftMigrationFormat,ok:false,retained:false,error:"No retained Aux draft capture"};
+  if(!lease)return auxDraftMigrationLastRelease?{...auxDraftMigrationLastRelease}:
+    {format:auxDraftMigrationFormat,ok:false,retained:false,error:"No retained Aux draft capture"};
   if(lease.phase!=="held")return{format:auxDraftMigrationFormat,ok:false,retained:true,requestId:lease.requestId,leaseId:lease.id,revision:lease.revision,sealed:lease.sealed,error:"Aux draft capture owner is changing"};
   const current=auxValidateDraftMigrationCapture(lease.id,lease.revision);
   if(!current.ok)return{...current,retained:true,requestId:lease.requestId,leaseId:lease.id,revision:lease.revision};
@@ -241,7 +250,8 @@ function auxReleaseDraftMigrationCapture(leaseId){
   const lease=auxDraftMigrationLease;
   if(!lease||lease.id!==leaseId)return{format:auxDraftMigrationFormat,ok:false,released:false,error:"Aux draft capture lease changed"};
   const restored=auxDraftMigrationRelease(lease);
-  return{format:auxDraftMigrationFormat,ok:restored,requestId:lease.requestId,released:true,restored};
+  return{format:auxDraftMigrationFormat,ok:restored,requestId:lease.requestId,leaseId:lease.id,
+    revision:lease.revision,released:restored,retained:!restored,restored};
 }
 // Freeze productive user input only for the finite native-owned capture lease.
 // Backend writes still require the independent native DOM/extension barriers.

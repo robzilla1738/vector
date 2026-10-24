@@ -78,6 +78,16 @@ function editor(f,{text='latest unreported text',onChange}={}){
  f.api.write('session-one',{version:2,plainText:'productive late edit'});
  assert.equal(f.api.observeTarget(lease.leaseId,lease.revision).ok,false);f.api.release(lease.leaseId);cases++;
 }
+// Failed restoration retains only failed callbacks and exact cleanup identity.
+{
+ const f=fixture(),e=editor(f),lease=f.api.prepare();let failed=false;
+ const original=e.editor.setEditable.bind(e.editor);
+ e.editor.setEditable=(value,emit)=>{if(value&&!failed){failed=true;throw Error('synthetic restore failure')}return original(value,emit)};
+ const first=plain(f.api.release(lease.leaseId));assert.equal(first.released,false);assert.equal(first.retained,true);assert.equal(first.leaseId,lease.leaseId);
+ const held=plain(f.api.readCapture());assert.equal(held.retained,true);assert.equal(held.requestId,lease.requestId);assert.equal(held.leaseId,lease.leaseId);
+ const second=plain(f.api.release(lease.leaseId));assert.equal(second.released,true);assert.equal(second.restored,true);assert.equal(e.editor.isEditable,true);
+ const observed=plain(f.api.readCapture());assert.equal(observed.retained,false);assert.equal(observed.released,true);assert.equal(observed.leaseId,lease.leaseId);assert.equal(observed.requestId,lease.requestId);cases++;
+}
 // IME is a real owner predicate; refusal does not alter editable state or draft.
 {
  const f=fixture(),e=editor(f);e.runtime.composition.isComposing=true;const before=JSON.stringify([...f.sessionStorage.map]);
@@ -209,7 +219,7 @@ function editor(f,{text='latest unreported text',onChange}={}){
 const receipt={format:'aux.ui-editor-writer-closure.focused.actual.v1',passed:true,cases,
  actualCodecEditorFactoryFileReaderAndComposerCallbacksExecuted:true,
  actualChatWireMethodAndSessionCreateCallbacksExecuted:true,unknownSentCommandsAndCreateResultsRemainRefused:true,
- retainedLeaseReadOnlyRecoveryAndRequestCorrelationPassed:true,
+ retainedLeaseReadOnlyRecoveryAndRequestCorrelationPassed:true,failedRestorationRetriesAndCorrelatedReleaseObservationPassed:true,
  zeroOwnerMountingManagerMismatchAndUnknownRouteRefused:true,
  cohortReadOnlySealAndPostSealByteValidationPassed:true,readOnlyTargetObservationPreservesSealedSourceAndRefusesProductiveWrites:true,exactAckTombstoneAndStoredClaimFencesPassed:true,privateModeAndSessionSettingsCallbacksChecked:true,consumedCaptureAdapterCompositionPassed:true,
  latestEditorFlushPassed:true,imeUploadPublicationAndClaimRefusalPassed:true,heldLateWritesRetainedAndTainted:true,
