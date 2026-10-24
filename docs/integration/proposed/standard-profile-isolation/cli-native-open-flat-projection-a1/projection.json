@@ -1,0 +1,606 @@
+{
+  "format": "aux.cli-native-open.flat-projection.v1",
+  "actualNativeRoot": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src",
+  "priorActualComposition": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/storage-restore-integration-a10/source-composition.json",
+  "priorActualCompositionSha256": "53562febf53463747d93f08234b6b9dfc282dc6dafdb40cb3e8ce5b5ccec29dc",
+  "priorSelectedFileCount": 383,
+  "priorChangedFileCount": 113,
+  "files": [
+    {
+      "path": "base/BUILD.gn",
+      "kind": "existing-counted-overlay",
+      "inputSha256": "5afe0d309e34842b08185c56d8fce7f0269656754b1bec0ea125846ce868fec8",
+      "outputSha256": "f5ecbd00c9664ab5a4bffded070536dada339de82bc71a876e41427d5d6bb1a8",
+      "source": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/cli-native-open-flat-projection-a1/source/base/BUILD.gn",
+      "beforeImage": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/cli-native-open-flat-projection-a1/before/base/BUILD.gn",
+      "anchors": [
+        {
+          "name": "Headers-only factual CLI query, primary implementation remains private",
+          "find": "    public = [\n      \"process/mac/aux_browser_descendant_bridge.h\",\n      \"process/mac/aux_browser_descendant_client.h\",\n    ]",
+          "replace": "    public = [\n      \"process/mac/aux_browser_descendant_bridge.h\",\n      \"process/mac/aux_browser_descendant_client.h\",\n      \"process/mac/aux_browser_descendant_cli_membership.h\",\n    ]",
+          "count": 1
+        }
+      ],
+      "appendBlocks": []
+    },
+    {
+      "path": "base/process/mac/aux_browser_descendant_bridge.cc",
+      "kind": "existing-counted-overlay",
+      "inputSha256": "c241367f4c2095554e2e11f9a0dde1776a2d85f46e9d242b7183def60ddbefbe",
+      "outputSha256": "f55420ae4a34ceb5dedc485edf1f65117500274e45280073e4c4482539f27826",
+      "source": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/cli-native-open-flat-projection-a1/source/base/process/mac/aux_browser_descendant_bridge.cc",
+      "beforeImage": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/cli-native-open-flat-projection-a1/before/base/process/mac/aux_browser_descendant_bridge.cc",
+      "anchors": [],
+      "appendBlocks": [
+        {
+          "name": "Reviewed fixed native implementation/target block",
+          "bytes": "\n// Separate finite factual query. The V1 custody table/layout stays unchanged.\nextern \"C\" __attribute__((visibility(\"default\")))\nuint32_t AuxGetActualCliClientMembershipV1(audit_token_t peer) noexcept {\n  return aux::browser_descendants::InspectActualCliClientInPrimaryImage(peer) ==\n      aux::browser_descendants::CliClientMembership::managed ? 1 : 0;\n}\n",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "base/process/mac/aux_browser_descendant_engine.cc",
+      "kind": "existing-counted-overlay",
+      "inputSha256": "2dfc668e5cf7d6ca8461eb793f99d09949439c3519f611667a3db1023addd989",
+      "outputSha256": "189b9706842f77503d5a25c321817cb6d58b308da1d1623335f09868a286cfab",
+      "source": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/cli-native-open-flat-projection-a1/source/base/process/mac/aux_browser_descendant_engine.cc",
+      "beforeImage": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/cli-native-open-flat-projection-a1/before/base/process/mac/aux_browser_descendant_engine.cc",
+      "anchors": [
+        {
+          "name": "Actual retained identity query, never absence-as-manual",
+          "find": "Result InspectStream() noexcept {",
+          "replace": "CliClientMembership InspectActualCliClientInPrimaryImage(audit_token_t token) noexcept {\n  if (!SameProcess()) return CliClientMembership::unknown;\n  const Identity client = Id(token);\n  if (client.pid <= 0 || !client.version) return CliClientMembership::unknown;\n  auto& s = State(); std::lock_guard<std::mutex> lock(s.mutex);\n  // Positive retained custody remains managed even if the stream later loses\n  // certainty. Live stores the genuine original root through exec/reparenting.\n  if (client == s.self || s.live.contains(client))\n    return CliClientMembership::managed;\n  for (const auto& birth : s.roots)\n    if (birth.id == client) return CliClientMembership::managed;\n  // This observer proves its own browser subtree, never the absence of a task\n  // owner in another Aux instance or an earlier/reparented native lineage.\n  return CliClientMembership::unknown;\n}\nResult InspectStream() noexcept {",
+          "count": 1
+        }
+      ],
+      "appendBlocks": []
+    },
+    {
+      "path": "base/process/mac/aux_browser_descendant_engine.h",
+      "kind": "existing-counted-overlay",
+      "inputSha256": "ccd36116505b67a3bfd196857d50cc0c41d4f218e852d9e30930892991defb4d",
+      "outputSha256": "acc756b7d090f1a61a5b28c32134dc3c662fc34f47cbb7d27a4af14f5577c1a9",
+      "source": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/cli-native-open-flat-projection-a1/source/base/process/mac/aux_browser_descendant_engine.h",
+      "beforeImage": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/cli-native-open-flat-projection-a1/before/base/process/mac/aux_browser_descendant_engine.h",
+      "anchors": [
+        {
+          "name": "Primary engine imports only the narrow factual client declaration",
+          "find": "#include <memory>",
+          "replace": "#include <memory>\n#include \"base/process/mac/aux_browser_descendant_cli_membership.h\"",
+          "count": 1
+        },
+        {
+          "name": "Primary-only actual implementation declaration",
+          "find": "enum class Result { pending, settled, unknown, refused };",
+          "replace": "enum class Result { pending, settled, unknown, refused };\n// Primary executable implementation; Framework clients use the narrow main-image query.\nCliClientMembership InspectActualCliClientInPrimaryImage(audit_token_t) noexcept;",
+          "count": 1
+        }
+      ],
+      "appendBlocks": []
+    },
+    {
+      "path": "chrome/BUILD.gn",
+      "kind": "existing-counted-overlay",
+      "inputSha256": "2758b3eb6b016012c570e1412b6d6027ab504ff459a7b869dd331aaa4ff25d90",
+      "outputSha256": "0b97bafecccd7310d4273def283cefb795deb277a5641c2ccd37665948cfc627",
+      "source": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/cli-native-open-flat-projection-a1/source/chrome/BUILD.gn",
+      "beforeImage": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/cli-native-open-flat-projection-a1/before/chrome/BUILD.gn",
+      "anchors": [
+        {
+          "name": "Retain the separate factual main-image CLI query export",
+          "find": "      ldflags += [ \"-Wl,-u,_AuxGetBrowserDescendantBridgeV1\" ]",
+          "replace": "      ldflags += [ \"-Wl,-u,_AuxGetBrowserDescendantBridgeV1\",\n                   \"-Wl,-u,_AuxGetActualCliClientMembershipV1\" ]",
+          "count": 1
+        }
+      ],
+      "appendBlocks": []
+    },
+    {
+      "path": "chrome/app/aux_browser_app.exports",
+      "kind": "existing-counted-overlay",
+      "inputSha256": "6ec08b85012cd535c6aba8416fdf9a6eddd6910a53ac691d8c3894acccf492c3",
+      "outputSha256": "777b3f341ee9805c329a52dd89c484a7bb0411e9b9f1b73da9e7ebe7bad32eea",
+      "source": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/cli-native-open-flat-projection-a1/source/chrome/app/aux_browser_app.exports",
+      "beforeImage": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/cli-native-open-flat-projection-a1/before/chrome/app/aux_browser_app.exports",
+      "anchors": [
+        {
+          "name": "Expose only the actual primary query beside the unchanged V1 getter",
+          "find": "_AuxGetBrowserDescendantBridgeV1\n",
+          "replace": "_AuxGetBrowserDescendantBridgeV1\n_AuxGetActualCliClientMembershipV1\n",
+          "count": 1
+        }
+      ],
+      "appendBlocks": []
+    },
+    {
+      "path": "chrome/browser/BUILD.gn",
+      "kind": "existing-counted-overlay",
+      "inputSha256": "699fd76e3019c3a5dc3a298c7477c16f9b0df2935d873b8522b0bd9437eff347",
+      "outputSha256": "a1241bd149a63328dfca61eb014598fc63063e26228c86e3c90b54178a5da334",
+      "source": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/cli-native-open-flat-projection-a1/source/chrome/browser/BUILD.gn",
+      "beforeImage": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/cli-native-open-flat-projection-a1/before/chrome/browser/BUILD.gn",
+      "anchors": [
+        {
+          "name": "Actual PostBrowserStart caller header dependency",
+          "find": "  if (enable_aux_browser && is_mac) {\n    deps += [ \"//chrome/browser/extensions/api/aux_mini_popup\" ]\n  }",
+          "replace": "  if (enable_aux_browser && is_mac) {\n    deps += [ \"//chrome/browser/extensions/api/aux_mini_popup\",\n              \"//chrome/browser/aux:native_cli_open_headers\" ]\n  }",
+          "count": 1
+        }
+      ],
+      "appendBlocks": []
+    },
+    {
+      "path": "chrome/browser/aux/BUILD.gn",
+      "kind": "existing-counted-overlay",
+      "inputSha256": "dbf23257b66ca9d4b236371aab78a9303bda0f1bbfb2698dcce47f46ce6d83f4",
+      "outputSha256": "300940d48c436a8e8580fb65c632dfb1e1018019775e9781e0a084608d57d241",
+      "source": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/cli-native-open-flat-projection-a1/source/chrome/browser/aux/BUILD.gn",
+      "beforeImage": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/cli-native-open-flat-projection-a1/before/chrome/browser/aux/BUILD.gn",
+      "anchors": [
+        {
+          "name": "Profile identity header dependency without UI cycle",
+          "find": "    \"//chrome/browser/profiles:profile_util\",\n    \"//components/prefs\",\n    \"//content/public/browser\",\n  ]\n}\n\nsource_set(\"profile_security_client\")",
+          "replace": "    \"//chrome/browser/profiles:profile_util\",\n    \"//components/prefs\",\n    \"//content/public/browser\",\n  ]\n  if (enable_aux_browser && is_mac) {\n    deps += [ \":native_cli_open_headers\" ]\n  }\n}\n\nsource_set(\"profile_security_client\")",
+          "count": 1
+        }
+      ],
+      "appendBlocks": [
+        {
+          "name": "Reviewed fixed native implementation/target block",
+          "bytes": "\n# Narrow native browser URL command. Common transport has only SDK dependencies;\n# the actual profile/approval/navigation implementation remains in :ui.\nif (enable_aux_browser && is_mac) {\n  source_set(\"native_cli_open_headers\") {\n    public = [ \"cli/AuxCliOpenCommand.h\" ]\n  }\n  source_set(\"native_cli_ingress\") {\n    public = [\n      \"cli/AuxCliIngress.h\",\n      \"cli/AuxCliSealedImages.h\",\n      \"cli/AuxCliWire.h\",\n      \"cli/AuxCliOpenArguments.h\",\n    ]\n    sources = public + [\n      \"cli/AuxCliIngress.cc\",\n      \"cli/AuxCliSealedImages.cc\",\n      \"cli/AuxCliWire.cc\",\n      \"cli/AuxCliOpenArguments.cc\",\n    ]\n    frameworks = [ \"CoreFoundation.framework\", \"Security.framework\" ]\n    libs = [ \"bsm\" ]\n  }\n  executable(\"native_cli_open\") {\n    # Genuine standalone SDK-only native frontend, not a Node/SEA launcher.\n    # Root packaging places this output in the fixed signed CLI bundle later.\n    sources = [\n      \"cli/AuxNativeCliFrontend.mm\",\n      \"cli/AuxNativeEndpointDelivery.cc\",\n      \"cli/AuxNativeEndpointDelivery.h\",\n      \"cli/packaged-identity-admission.h\",\n    ]\n    deps = [ \":native_cli_ingress\" ]\n    frameworks = [ \"Foundation.framework\" ]\n    libs = [ \"bsm\" ]\n    configs += [ \"//build/config/compiler:enable_arc\" ]\n    ldflags = [ \"-Wl,-no_adhoc_codesign\" ]\n  }\n}\n",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/aux/profile_identity.cc",
+      "kind": "existing-counted-overlay",
+      "inputSha256": "223f9654c089aa762d0f6bec283f198d202a3495fd9495965b29775e413b47e1",
+      "outputSha256": "cb320311061997b02e0554c56feaeb7e6030e5ed86bc6fdac8ebb88371b5ceb6",
+      "source": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/cli-native-open-flat-projection-a1/source/chrome/browser/aux/profile_identity.cc",
+      "beforeImage": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/cli-native-open-flat-projection-a1/before/chrome/browser/aux/profile_identity.cc",
+      "anchors": [
+        {
+          "name": "Finite Mac native open exclusion dependency",
+          "find": "#include \"base/uuid.h\"",
+          "replace": "#include \"base/uuid.h\"\n#include \"build/build_config.h\"\n#if BUILDFLAG(IS_MAC)\n#include \"chrome/browser/aux/cli/AuxCliOpenCommand.h\"\n#endif",
+          "count": 1
+        },
+        {
+          "name": "Refuse new cookie restore while actual profile command is pending",
+          "find": "bool BeginProfileCookieRestore(Profile* profile, const std::string& epoch) {",
+          "replace": "bool BeginProfileCookieRestore(Profile* profile, const std::string& epoch) {\n#if BUILDFLAG(IS_MAC)\n  if (aux::cli::IsNativeCliOpenPendingForProfile(profile)) return false;\n#endif",
+          "count": 1
+        }
+      ],
+      "appendBlocks": []
+    },
+    {
+      "path": "chrome/browser/chrome_browser_main.cc",
+      "kind": "existing-counted-overlay",
+      "inputSha256": "44cf3fbd07ce89cac0a42d2ced4e96e2174564f140a7d99387777eb66b1b7290",
+      "outputSha256": "4b97ab390a605a35e5f6e580d106d157aaeff95e7eaf64996480abe206623098",
+      "source": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/cli-native-open-flat-projection-a1/source/chrome/browser/chrome_browser_main.cc",
+      "beforeImage": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/cli-native-open-flat-projection-a1/before/chrome/browser/chrome_browser_main.cc",
+      "anchors": [
+        {
+          "name": "CLI startup include inside existing native compile guard",
+          "find": "#include \"chrome/browser/aux/AuxBrowserPrivateRoots.h\"",
+          "replace": "#include \"chrome/browser/aux/AuxBrowserPrivateRoots.h\"\n#include \"chrome/browser/aux/cli/AuxCliOpenCommand.h\"",
+          "count": 1
+        },
+        {
+          "name": "Actual post-browser-start native CLI registration",
+          "find": "  TRACE_EVENT0(\"startup\", \"ChromeBrowserMainParts::PostBrowserStart\");",
+          "replace": "  TRACE_EVENT0(\"startup\", \"ChromeBrowserMainParts::PostBrowserStart\");\n#if BUILDFLAG(ENABLE_AUX_BROWSER) && defined(AUX_SEALED_NATIVE_COLD_ENTRY) && BUILDFLAG(IS_MAC)\n  aux::cli::StartNativeOpenServiceAtActualBrowserStartup();\n#endif",
+          "count": 1
+        }
+      ],
+      "appendBlocks": []
+    },
+    {
+      "path": "chrome/browser/ui/BUILD.gn",
+      "kind": "existing-counted-overlay",
+      "inputSha256": "4eb9bba269b73f8569f632a84b5b407d104d1e56b61000fcb3525542c9683723",
+      "outputSha256": "56b91a9ea98e67910d50ca536af0143eac81637069d07022683671d779345b86",
+      "source": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/cli-native-open-flat-projection-a1/source/chrome/browser/ui/BUILD.gn",
+      "beforeImage": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/cli-native-open-flat-projection-a1/before/chrome/browser/ui/BUILD.gn",
+      "anchors": [
+        {
+          "name": "Native CLI UI implementation and genuine dependencies in existing Aux block",
+          "find": "  if (enable_aux_browser && is_mac) {\n    deps += [\n      \"//chrome/browser/profiles:profile\",",
+          "replace": "  if (enable_aux_browser && is_mac) {\n    sources += [\n      \"../aux/cli/AuxCliManualProfileApproval.h\",\n      \"../aux/cli/AuxCliManualProfileApproval.mm\",\n      \"../aux/cli/AuxCliOpenCommand.h\",\n      \"../aux/cli/AuxCliOpenCommand.mm\",\n    ]\n    deps += [\n      \"//chrome/browser/aux:native_cli_open_headers\",\n      \"//chrome/browser/aux:native_cli_ingress\",\n      \"//chrome/browser/profiles/keep_alive\",\n      \"//chrome/browser/profiles:profile\",",
+          "count": 1
+        },
+        {
+          "name": "Native OS approval frameworks on actual UI Mac target",
+          "find": "    frameworks = [\n      \"Carbon.framework\",\n      \"Quartz.framework\",\n    ]",
+          "replace": "    frameworks = [\n      \"Carbon.framework\",\n      \"Quartz.framework\",\n    ]\n    if (enable_aux_browser) {\n      frameworks += [ \"AppKit.framework\", \"Foundation.framework\", \"LocalAuthentication.framework\" ]\n    }",
+          "count": 1
+        }
+      ],
+      "appendBlocks": []
+    },
+    {
+      "path": "chrome/browser/ui/aux_browser_shutdown_drain.cc",
+      "kind": "existing-counted-overlay",
+      "inputSha256": "24deafb22e065fdf4e30dd324d8a0e03aefb04e92e8d4bae8028e9bad1b73f08",
+      "outputSha256": "8883912416877f5f7d1a73ec14c76e128b2c32ff5bdf4a3f5abbd75087647cde",
+      "source": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/cli-native-open-flat-projection-a1/source/chrome/browser/ui/aux_browser_shutdown_drain.cc",
+      "beforeImage": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/cli-native-open-flat-projection-a1/before/chrome/browser/ui/aux_browser_shutdown_drain.cc",
+      "anchors": [
+        {
+          "name": "Native CLI lifecycle dependency",
+          "find": "#include \"chrome/browser/aux/installation_auth.h\"",
+          "replace": "#include \"chrome/browser/aux/installation_auth.h\"\n#include \"chrome/browser/aux/cli/AuxCliOpenCommand.h\"",
+          "count": 1
+        },
+        {
+          "name": "Close real native receiver and pending UI admissions before drain",
+          "find": "void PrepareNativeBrowserShutdownDrain() {",
+          "replace": "void PrepareNativeBrowserShutdownDrain() {\n  aux::cli::CloseNativeOpenServiceAdmission();",
+          "count": 1
+        },
+        {
+          "name": "Read process-lifetime CLI observation outside shutdown-state lock",
+          "find": "  const auto native = peer::InspectNativeBrowserShutdown();",
+          "replace": "  const auto native = peer::InspectNativeBrowserShutdown();\n  const auto native_cli = aux::cli::InspectNativeOpenService();",
+          "count": 1
+        },
+        {
+          "name": "Wrong-process CLI observation refuses CLEAN",
+          "find": "      state.crash_registration == 2) status = 2;",
+          "replace": "      state.crash_registration == 2 || native_cli.wrong_process) status = 2;",
+          "count": 1
+        },
+        {
+          "name": "Require actual native CLI closure in final CLEAN branch",
+          "find": "             !native.active_authority_reads && carriers.drained() &&",
+          "replace": "             !native.active_authority_reads && carriers.drained() &&\n             native_cli.admission_closed && !native_cli.receiver_running &&\n             !native_cli.queued_ui_invocations && !native_cli.pending_profile_operations &&",
+          "count": 1
+        },
+        {
+          "name": "Bind actual CLI counters to authenticated cohort digest",
+          "find": "    std::copy(state.session.begin(), state.session.end(), cohort.begin() + 64);",
+          "replace": "    std::copy(state.session.begin(), state.session.end(), cohort.begin() + 64);\n    Put(cohort, 96, native_cli.started, 8);\n    Put(cohort, 104, native_cli.queued_ui_invocations, 8);\n    Put(cohort, 112, native_cli.pending_profile_operations, 8);\n    Put(cohort, 120, (native_cli.admission_closed ? 1 : 0) |\n        (native_cli.receiver_running ? 2 : 0) | (native_cli.wrong_process ? 4 : 0), 8);",
+          "count": 1
+        }
+      ],
+      "appendBlocks": []
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_profile_switch_request.cc",
+      "kind": "existing-counted-overlay",
+      "inputSha256": "178a5e03a6a8bf00f87ab5d1cd3313c8597ffdfd56e9655adaacb504a4443840",
+      "outputSha256": "c632065ec4bfd1e40eed807bd06ae62eb1b881ca47a097055eaf28e53c8d6299",
+      "source": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/cli-native-open-flat-projection-a1/source/chrome/browser/ui/views/frame/aux_profile_switch_request.cc",
+      "beforeImage": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/cli-native-open-flat-projection-a1/before/chrome/browser/ui/views/frame/aux_profile_switch_request.cc",
+      "anchors": [
+        {
+          "name": "Native open profile exclusion dependency",
+          "find": "#include \"chrome/browser/aux/profile_identity.h\"",
+          "replace": "#include \"chrome/browser/aux/profile_identity.h\"\n#include \"chrome/browser/aux/cli/AuxCliOpenCommand.h\"",
+          "count": 1
+        },
+        {
+          "name": "Refuse switches before preview/load side effects",
+          "find": "      browser_shutdown::HasShutdownStarted() || browser_shutdown::IsTryingToQuit()) return nullptr;",
+          "replace": "      browser_shutdown::HasShutdownStarted() || browser_shutdown::IsTryingToQuit() ||\n      aux::cli::IsNativeCliOpenPendingForProfile(expected.get())) return nullptr;",
+          "count": 1
+        }
+      ],
+      "appendBlocks": []
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_profile_switch_transaction.cc",
+      "kind": "existing-counted-overlay",
+      "inputSha256": "67540c89b7eb3a64ae82d13176cd9d8fa5afb9976929bd3b7036cffc9b1f08c3",
+      "outputSha256": "87a34ece94c31f21b0a951c4a5746cf0fbe1138a533818dcda81b0fd7a22ff23",
+      "source": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/cli-native-open-flat-projection-a1/source/chrome/browser/ui/views/frame/aux_profile_switch_transaction.cc",
+      "beforeImage": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/cli-native-open-flat-projection-a1/before/chrome/browser/ui/views/frame/aux_profile_switch_transaction.cc",
+      "anchors": [
+        {
+          "name": "Native open profile exclusion dependency",
+          "find": "#include \"chrome/browser/ui/views/frame/aux_profile_switch_transaction.h\"",
+          "replace": "#include \"chrome/browser/ui/views/frame/aux_profile_switch_transaction.h\"\n#include \"chrome/browser/aux/cli/AuxCliOpenCommand.h\"",
+          "count": 1
+        },
+        {
+          "name": "Native transaction source and target exclusion before mutation",
+          "find": "  if (target == previous) {",
+          "replace": "  if (aux::cli::IsNativeCliOpenPendingForProfile(previous) ||\n      aux::cli::IsNativeCliOpenPendingForProfile(target)) {\n    LOG(ERROR) << \"Aux profile transition rejected: native-cli-open-pending\";\n    return Result::kRejected;\n  }\n  if (target == previous) {",
+          "count": 1
+        }
+      ],
+      "appendBlocks": []
+    },
+    {
+      "path": "base/process/mac/aux_browser_descendant_cli_membership.h",
+      "kind": "new-absent-native-file",
+      "inputSha256": null,
+      "outputSha256": "459c840be2e6316adc8bb5a955a5dd897e678a775da265f510f7eab568f2cdb0",
+      "source": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/cli-native-open-flat-projection-a1/source/base/process/mac/aux_browser_descendant_cli_membership.h",
+      "sourceInput": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/cli-native-open-build-handoff-a1/source/aux_browser_descendant_cli_membership.h",
+      "sourceInputSha256": "459c840be2e6316adc8bb5a955a5dd897e678a775da265f510f7eab568f2cdb0",
+      "absenceProof": {
+        "nativePath": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/base/process/mac/aux_browser_descendant_cli_membership.h",
+        "lexists": false,
+        "checkedDuringPreparation": true
+      },
+      "anchors": [],
+      "appendBlocks": []
+    },
+    {
+      "path": "chrome/browser/aux/cli/AuxCliIngress.cc",
+      "kind": "new-absent-native-file",
+      "inputSha256": null,
+      "outputSha256": "32c4ebdebec5e08df2b4b365f5c0c67276eb1fba953506526a4480ba86bc314c",
+      "source": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/cli-native-open-flat-projection-a1/source/chrome/browser/aux/cli/AuxCliIngress.cc",
+      "sourceInput": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/cli-native-open-build-handoff-a1/source/AuxCliIngress.cc",
+      "sourceInputSha256": "32c4ebdebec5e08df2b4b365f5c0c67276eb1fba953506526a4480ba86bc314c",
+      "absenceProof": {
+        "nativePath": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/aux/cli/AuxCliIngress.cc",
+        "lexists": false,
+        "checkedDuringPreparation": true
+      },
+      "anchors": [],
+      "appendBlocks": []
+    },
+    {
+      "path": "chrome/browser/aux/cli/AuxCliIngress.h",
+      "kind": "new-absent-native-file",
+      "inputSha256": null,
+      "outputSha256": "4515848fafc4dad25e5180130640d28c28bf1a3333610f232b34816a7e64e8d6",
+      "source": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/cli-native-open-flat-projection-a1/source/chrome/browser/aux/cli/AuxCliIngress.h",
+      "sourceInput": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/cli-native-open-command-a1/source/AuxCliIngress.h",
+      "sourceInputSha256": "4515848fafc4dad25e5180130640d28c28bf1a3333610f232b34816a7e64e8d6",
+      "absenceProof": {
+        "nativePath": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/aux/cli/AuxCliIngress.h",
+        "lexists": false,
+        "checkedDuringPreparation": true
+      },
+      "anchors": [],
+      "appendBlocks": []
+    },
+    {
+      "path": "chrome/browser/aux/cli/AuxCliManualProfileApproval.h",
+      "kind": "new-absent-native-file",
+      "inputSha256": null,
+      "outputSha256": "1755a7637a24e7e2379ca7b03f2579c0584725c08a6ea190c85eeb1bffabef4b",
+      "source": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/cli-native-open-flat-projection-a1/source/chrome/browser/aux/cli/AuxCliManualProfileApproval.h",
+      "sourceInput": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/cli-native-open-command-a1/source/AuxCliManualProfileApproval.h",
+      "sourceInputSha256": "1755a7637a24e7e2379ca7b03f2579c0584725c08a6ea190c85eeb1bffabef4b",
+      "absenceProof": {
+        "nativePath": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/aux/cli/AuxCliManualProfileApproval.h",
+        "lexists": false,
+        "checkedDuringPreparation": true
+      },
+      "anchors": [],
+      "appendBlocks": []
+    },
+    {
+      "path": "chrome/browser/aux/cli/AuxCliManualProfileApproval.mm",
+      "kind": "new-absent-native-file",
+      "inputSha256": null,
+      "outputSha256": "44c40ecbb16258dcb0ae23e05a6a33d724c62f2a9db8d5e5c5e2974ec4e5ac2b",
+      "source": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/cli-native-open-flat-projection-a1/source/chrome/browser/aux/cli/AuxCliManualProfileApproval.mm",
+      "sourceInput": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/cli-native-open-build-handoff-a1/source/AuxCliManualProfileApproval.mm",
+      "sourceInputSha256": "44c40ecbb16258dcb0ae23e05a6a33d724c62f2a9db8d5e5c5e2974ec4e5ac2b",
+      "absenceProof": {
+        "nativePath": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/aux/cli/AuxCliManualProfileApproval.mm",
+        "lexists": false,
+        "checkedDuringPreparation": true
+      },
+      "anchors": [],
+      "appendBlocks": []
+    },
+    {
+      "path": "chrome/browser/aux/cli/AuxCliOpenArguments.cc",
+      "kind": "new-absent-native-file",
+      "inputSha256": null,
+      "outputSha256": "d2f946689e5f5a6d5c82adbb1c3c685ddc58ac92ab9ef0dbebcd07edb4282f92",
+      "source": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/cli-native-open-flat-projection-a1/source/chrome/browser/aux/cli/AuxCliOpenArguments.cc",
+      "sourceInput": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/cli-native-open-command-a1/source/AuxCliOpenArguments.cc",
+      "sourceInputSha256": "d2f946689e5f5a6d5c82adbb1c3c685ddc58ac92ab9ef0dbebcd07edb4282f92",
+      "absenceProof": {
+        "nativePath": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/aux/cli/AuxCliOpenArguments.cc",
+        "lexists": false,
+        "checkedDuringPreparation": true
+      },
+      "anchors": [],
+      "appendBlocks": []
+    },
+    {
+      "path": "chrome/browser/aux/cli/AuxCliOpenArguments.h",
+      "kind": "new-absent-native-file",
+      "inputSha256": null,
+      "outputSha256": "6c9761c47b8d76f2bde4bfadeb78f5b24cbaeba457ad1b0a2b99cf2a6f2e2a6d",
+      "source": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/cli-native-open-flat-projection-a1/source/chrome/browser/aux/cli/AuxCliOpenArguments.h",
+      "sourceInput": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/cli-native-open-command-a1/source/AuxCliOpenArguments.h",
+      "sourceInputSha256": "6c9761c47b8d76f2bde4bfadeb78f5b24cbaeba457ad1b0a2b99cf2a6f2e2a6d",
+      "absenceProof": {
+        "nativePath": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/aux/cli/AuxCliOpenArguments.h",
+        "lexists": false,
+        "checkedDuringPreparation": true
+      },
+      "anchors": [],
+      "appendBlocks": []
+    },
+    {
+      "path": "chrome/browser/aux/cli/AuxCliOpenCommand.h",
+      "kind": "new-absent-native-file",
+      "inputSha256": null,
+      "outputSha256": "bd226a9cf3c557e00af71451e5069baab9b9330d2040c3d48168252147fc3c44",
+      "source": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/cli-native-open-flat-projection-a1/source/chrome/browser/aux/cli/AuxCliOpenCommand.h",
+      "sourceInput": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/cli-native-open-command-a1/source/AuxCliOpenCommand.h",
+      "sourceInputSha256": "bd226a9cf3c557e00af71451e5069baab9b9330d2040c3d48168252147fc3c44",
+      "absenceProof": {
+        "nativePath": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/aux/cli/AuxCliOpenCommand.h",
+        "lexists": false,
+        "checkedDuringPreparation": true
+      },
+      "anchors": [],
+      "appendBlocks": []
+    },
+    {
+      "path": "chrome/browser/aux/cli/AuxCliOpenCommand.mm",
+      "kind": "new-absent-native-file",
+      "inputSha256": null,
+      "outputSha256": "0117c63f701e11c8c5f30e3d6ce5fab164e6836256f18dcee2a489481d0ee5bf",
+      "source": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/cli-native-open-flat-projection-a1/source/chrome/browser/aux/cli/AuxCliOpenCommand.mm",
+      "sourceInput": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/cli-native-open-command-a1/source/AuxCliOpenCommand.mm",
+      "sourceInputSha256": "0117c63f701e11c8c5f30e3d6ce5fab164e6836256f18dcee2a489481d0ee5bf",
+      "absenceProof": {
+        "nativePath": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/aux/cli/AuxCliOpenCommand.mm",
+        "lexists": false,
+        "checkedDuringPreparation": true
+      },
+      "anchors": [],
+      "appendBlocks": []
+    },
+    {
+      "path": "chrome/browser/aux/cli/AuxCliSealedImages.cc",
+      "kind": "new-absent-native-file",
+      "inputSha256": null,
+      "outputSha256": "fb28fb6fd341165d229670befb2bb5d3ff108054c5e7e286362ca7c7ba12a959",
+      "source": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/cli-native-open-flat-projection-a1/source/chrome/browser/aux/cli/AuxCliSealedImages.cc",
+      "sourceInput": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/cli-native-embedding-a1/source/common/AuxCliSealedImages.cc",
+      "sourceInputSha256": "fb28fb6fd341165d229670befb2bb5d3ff108054c5e7e286362ca7c7ba12a959",
+      "absenceProof": {
+        "nativePath": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/aux/cli/AuxCliSealedImages.cc",
+        "lexists": false,
+        "checkedDuringPreparation": true
+      },
+      "anchors": [],
+      "appendBlocks": []
+    },
+    {
+      "path": "chrome/browser/aux/cli/AuxCliSealedImages.h",
+      "kind": "new-absent-native-file",
+      "inputSha256": null,
+      "outputSha256": "6f1df6f4b83809e8e4ae4fec2cfcd4a6a8e7b0cd40e8bcbb1e7bc25bec59087b",
+      "source": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/cli-native-open-flat-projection-a1/source/chrome/browser/aux/cli/AuxCliSealedImages.h",
+      "sourceInput": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/cli-native-embedding-a1/source/common/AuxCliSealedImages.h",
+      "sourceInputSha256": "6f1df6f4b83809e8e4ae4fec2cfcd4a6a8e7b0cd40e8bcbb1e7bc25bec59087b",
+      "absenceProof": {
+        "nativePath": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/aux/cli/AuxCliSealedImages.h",
+        "lexists": false,
+        "checkedDuringPreparation": true
+      },
+      "anchors": [],
+      "appendBlocks": []
+    },
+    {
+      "path": "chrome/browser/aux/cli/AuxCliWire.cc",
+      "kind": "new-absent-native-file",
+      "inputSha256": null,
+      "outputSha256": "94ba5d5e076cc6fbfb7163512c1f8600b326969ef7e83dde236ac483c8a1fb68",
+      "source": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/cli-native-open-flat-projection-a1/source/chrome/browser/aux/cli/AuxCliWire.cc",
+      "sourceInput": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/cli-native-embedding-a1/source/common/AuxCliWire.cc",
+      "sourceInputSha256": "94ba5d5e076cc6fbfb7163512c1f8600b326969ef7e83dde236ac483c8a1fb68",
+      "absenceProof": {
+        "nativePath": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/aux/cli/AuxCliWire.cc",
+        "lexists": false,
+        "checkedDuringPreparation": true
+      },
+      "anchors": [],
+      "appendBlocks": []
+    },
+    {
+      "path": "chrome/browser/aux/cli/AuxCliWire.h",
+      "kind": "new-absent-native-file",
+      "inputSha256": null,
+      "outputSha256": "e95c86ea68e13b9265ab3a48d983824dba128eab260687ab061387f18f788774",
+      "source": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/cli-native-open-flat-projection-a1/source/chrome/browser/aux/cli/AuxCliWire.h",
+      "sourceInput": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/cli-native-embedding-a1/source/common/AuxCliWire.h",
+      "sourceInputSha256": "e95c86ea68e13b9265ab3a48d983824dba128eab260687ab061387f18f788774",
+      "absenceProof": {
+        "nativePath": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/aux/cli/AuxCliWire.h",
+        "lexists": false,
+        "checkedDuringPreparation": true
+      },
+      "anchors": [],
+      "appendBlocks": []
+    },
+    {
+      "path": "chrome/browser/aux/cli/AuxNativeCliFrontend.mm",
+      "kind": "new-absent-native-file",
+      "inputSha256": null,
+      "outputSha256": "bb65a82e22c85768cf81184fb083026b2371edfe23d95e78e9133133c54d7fb2",
+      "source": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/cli-native-open-flat-projection-a1/source/chrome/browser/aux/cli/AuxNativeCliFrontend.mm",
+      "sourceInput": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/cli-native-open-build-handoff-a1/source/AuxNativeCliFrontend.mm",
+      "sourceInputSha256": "bb65a82e22c85768cf81184fb083026b2371edfe23d95e78e9133133c54d7fb2",
+      "absenceProof": {
+        "nativePath": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/aux/cli/AuxNativeCliFrontend.mm",
+        "lexists": false,
+        "checkedDuringPreparation": true
+      },
+      "anchors": [],
+      "appendBlocks": []
+    },
+    {
+      "path": "chrome/browser/aux/cli/AuxNativeEndpointDelivery.cc",
+      "kind": "new-absent-native-file",
+      "inputSha256": null,
+      "outputSha256": "3765060b84d88a7f63cdcfb695bcbc3f58ab1f92ca9905ccc5d37b629944c57d",
+      "source": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/cli-native-open-flat-projection-a1/source/chrome/browser/aux/cli/AuxNativeEndpointDelivery.cc",
+      "sourceInput": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-native-daemon-main/source/AuxNativeEndpointDelivery.cc",
+      "sourceInputSha256": "3765060b84d88a7f63cdcfb695bcbc3f58ab1f92ca9905ccc5d37b629944c57d",
+      "absenceProof": {
+        "nativePath": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/aux/cli/AuxNativeEndpointDelivery.cc",
+        "lexists": false,
+        "checkedDuringPreparation": true
+      },
+      "anchors": [],
+      "appendBlocks": []
+    },
+    {
+      "path": "chrome/browser/aux/cli/AuxNativeEndpointDelivery.h",
+      "kind": "new-absent-native-file",
+      "inputSha256": null,
+      "outputSha256": "f3d78409fec2b84a5304626e144e84314954bce0ea29762f0f30740c62ca6b89",
+      "source": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/cli-native-open-flat-projection-a1/source/chrome/browser/aux/cli/AuxNativeEndpointDelivery.h",
+      "sourceInput": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-native-daemon-main/source/AuxNativeEndpointDelivery.h",
+      "sourceInputSha256": "f3d78409fec2b84a5304626e144e84314954bce0ea29762f0f30740c62ca6b89",
+      "absenceProof": {
+        "nativePath": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/aux/cli/AuxNativeEndpointDelivery.h",
+        "lexists": false,
+        "checkedDuringPreparation": true
+      },
+      "anchors": [],
+      "appendBlocks": []
+    },
+    {
+      "path": "chrome/browser/aux/cli/packaged-identity-admission.h",
+      "kind": "new-absent-native-file",
+      "inputSha256": null,
+      "outputSha256": "3f56e834ea18353f8ec7ed554336eb94104ff86f84dcfe1952de258520c4f50a",
+      "source": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/cli-native-open-flat-projection-a1/source/chrome/browser/aux/cli/packaged-identity-admission.h",
+      "sourceInput": "/Users/rcourson/Documents/Vibe/web/vendor/provided/native/packaged-identity-admission.h",
+      "sourceInputSha256": "3f56e834ea18353f8ec7ed554336eb94104ff86f84dcfe1952de258520c4f50a",
+      "absenceProof": {
+        "nativePath": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/aux/cli/packaged-identity-admission.h",
+        "lexists": false,
+        "checkedDuringPreparation": true
+      },
+      "anchors": [],
+      "appendBlocks": []
+    }
+  ],
+  "existingFileCount": 14,
+  "newFileCount": 17,
+  "excludedUnusedBroadLaunchFiles": [
+    "base/process/launch.h",
+    "base/process/launch_mac.cc",
+    "chrome/browser/aux/AuxOwnedNativePeerChild.h",
+    "chrome/browser/aux/AuxOwnedNativePeerChild.cc"
+  ],
+  "standaloneSdkCompileReceipt": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/cli-native-open-build-handoff-a1/actual-sdk-compile-a1.json",
+  "standaloneSdkCompileReceiptSha256": "b2983ee989e964246d7dc48818199bec50bde38337893a5b44602be192ada964",
+  "actualNativeMutation": false,
+  "compilerRunByThisLane": false,
+  "registered": false,
+  "productExecuted": false,
+  "runtimeAcceptance": false
+}

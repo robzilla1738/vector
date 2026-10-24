@@ -1,0 +1,1998 @@
+--- a/base/BUILD.gn
++++ b/base/BUILD.gn
+@@ -249,6 +249,7 @@
+     public = [
+       "process/mac/aux_browser_descendant_bridge.h",
+       "process/mac/aux_browser_descendant_client.h",
++      "process/mac/aux_browser_descendant_cli_membership.h",
+     ]
+     sources = public
+   }
+--- a/base/process/mac/aux_browser_descendant_bridge.cc
++++ b/base/process/mac/aux_browser_descendant_bridge.cc
+@@ -38,3 +38,10 @@
+ const AuxBrowserDescendantBridgeV1* AuxGetBrowserDescendantBridgeV1() noexcept {
+   return getpid()==kBrowserImageProcess?&kBridge:nullptr;
+ }
++
++// Separate finite factual query. The V1 custody table/layout stays unchanged.
++extern "C" __attribute__((visibility("default")))
++uint32_t AuxGetActualCliClientMembershipV1(audit_token_t peer) noexcept {
++  return aux::browser_descendants::InspectActualCliClientInPrimaryImage(peer) ==
++      aux::browser_descendants::CliClientMembership::managed ? 1 : 0;
++}
+--- a/base/process/mac/aux_browser_descendant_engine.cc
++++ b/base/process/mac/aux_browser_descendant_engine.cc
+@@ -478,6 +478,21 @@
+   if (FenceUsefulLocked(s)) ScheduleFenceLocked(s);
+   return Result::pending;
+ }
++CliClientMembership InspectActualCliClientInPrimaryImage(audit_token_t token) noexcept {
++  if (!SameProcess()) return CliClientMembership::unknown;
++  const Identity client = Id(token);
++  if (client.pid <= 0 || !client.version) return CliClientMembership::unknown;
++  auto& s = State(); std::lock_guard<std::mutex> lock(s.mutex);
++  // Positive retained custody remains managed even if the stream later loses
++  // certainty. Live stores the genuine original root through exec/reparenting.
++  if (client == s.self || s.live.contains(client))
++    return CliClientMembership::managed;
++  for (const auto& birth : s.roots)
++    if (birth.id == client) return CliClientMembership::managed;
++  // This observer proves its own browser subtree, never the absence of a task
++  // owner in another Aux instance or an earlier/reparented native lineage.
++  return CliClientMembership::unknown;
++}
+ Result InspectStream() noexcept {
+   if (!SameProcess()) return Result::refused;
+   auto& s = State(); std::lock_guard<std::mutex> lock(s.mutex);
+--- a/base/process/mac/aux_browser_descendant_engine.h
++++ b/base/process/mac/aux_browser_descendant_engine.h
+@@ -2,6 +2,7 @@
+ #include <cstdint>
+ #include <functional>
+ #include <memory>
++#include "base/process/mac/aux_browser_descendant_cli_membership.h"
+ 
+ namespace aux::browser_descendants {
+ // Native-only capabilities. Never exported as a JS handle, path, PID selector,
+@@ -9,6 +10,8 @@
+ class Cohort;
+ using Ticket = std::shared_ptr<Cohort>;
+ enum class Result { pending, settled, unknown, refused };
++// Primary executable implementation; Framework clients use the narrow main-image query.
++CliClientMembership InspectActualCliClientInPrimaryImage(audit_token_t) noexcept;
+ 
+ // Exactly once, at the fixed executable's first native main entry, before
+ // bootstrap/image loading/Node/worker creation. Refuses unavailable capability.
+--- a/chrome/BUILD.gn
++++ b/chrome/BUILD.gn
+@@ -634,7 +634,8 @@
+       defines = [ "AUX_BROWSER_DESCENDANT_CUSTODY" ]
+       deps += [ "//base:aux_browser_descendant_engine" ]
+       # The Framework resolves only this main-image symbol via RTLD_MAIN_ONLY.
+-      ldflags += [ "-Wl,-u,_AuxGetBrowserDescendantBridgeV1" ]
++      ldflags += [ "-Wl,-u,_AuxGetBrowserDescendantBridgeV1",
++                   "-Wl,-u,_AuxGetActualCliClientMembershipV1" ]
+     }
+ 
+     if (enable_updater) {
+--- a/chrome/app/aux_browser_app.exports
++++ b/chrome/app/aux_browser_app.exports
+@@ -2,3 +2,4 @@
+ # Primary browser only; helper executables retain app.exports unchanged.
+ _main
+ _AuxGetBrowserDescendantBridgeV1
++_AuxGetActualCliClientMembershipV1
+--- a/chrome/browser/BUILD.gn
++++ b/chrome/browser/BUILD.gn
+@@ -1271,7 +1271,8 @@
+   ]
+ 
+   if (enable_aux_browser && is_mac) {
+-    deps += [ "//chrome/browser/extensions/api/aux_mini_popup" ]
++    deps += [ "//chrome/browser/extensions/api/aux_mini_popup",
++              "//chrome/browser/aux:native_cli_open_headers" ]
+   }
+ 
+   if (!is_android) {
+--- a/chrome/browser/aux/BUILD.gn
++++ b/chrome/browser/aux/BUILD.gn
+@@ -95,6 +95,9 @@
+     "//components/prefs",
+     "//content/public/browser",
+   ]
++  if (enable_aux_browser && is_mac) {
++    deps += [ ":native_cli_open_headers" ]
++  }
+ }
+ 
+ source_set("profile_security_client") {
+@@ -247,3 +250,42 @@
+     "//testing/gtest",
+   ]
+ }
++
++# Narrow native browser URL command. Common transport has only SDK dependencies;
++# the actual profile/approval/navigation implementation remains in :ui.
++if (enable_aux_browser && is_mac) {
++  source_set("native_cli_open_headers") {
++    public = [ "cli/AuxCliOpenCommand.h" ]
++  }
++  source_set("native_cli_ingress") {
++    public = [
++      "cli/AuxCliIngress.h",
++      "cli/AuxCliSealedImages.h",
++      "cli/AuxCliWire.h",
++      "cli/AuxCliOpenArguments.h",
++    ]
++    sources = public + [
++      "cli/AuxCliIngress.cc",
++      "cli/AuxCliSealedImages.cc",
++      "cli/AuxCliWire.cc",
++      "cli/AuxCliOpenArguments.cc",
++    ]
++    frameworks = [ "CoreFoundation.framework", "Security.framework" ]
++    libs = [ "bsm" ]
++  }
++  executable("native_cli_open") {
++    # Genuine standalone SDK-only native frontend, not a Node/SEA launcher.
++    # Root packaging places this output in the fixed signed CLI bundle later.
++    sources = [
++      "cli/AuxNativeCliFrontend.mm",
++      "cli/AuxNativeEndpointDelivery.cc",
++      "cli/AuxNativeEndpointDelivery.h",
++      "cli/packaged-identity-admission.h",
++    ]
++    deps = [ ":native_cli_ingress" ]
++    frameworks = [ "Foundation.framework" ]
++    libs = [ "bsm" ]
++    configs += [ "//build/config/compiler:enable_arc" ]
++    ldflags = [ "-Wl,-no_adhoc_codesign" ]
++  }
++}
+--- a/chrome/browser/aux/profile_identity.cc
++++ b/chrome/browser/aux/profile_identity.cc
+@@ -1,6 +1,10 @@
+ // Copyright 2026 Aux Authors. All rights reserved.
+ #include "chrome/browser/aux/profile_identity.h"
+ #include "base/uuid.h"
++#include "build/build_config.h"
++#if BUILDFLAG(IS_MAC)
++#include "chrome/browser/aux/cli/AuxCliOpenCommand.h"
++#endif
+ #include "base/functional/bind.h"
+ #include "base/scoped_observation.h"
+ #include "base/supports_user_data.h"
+@@ -86,6 +90,9 @@
+   return static_cast<CookieBindingEpoch*>(profile->GetUserData(&kCookieBindingEpochKey))->restore_epoch();
+ }
+ bool BeginProfileCookieRestore(Profile* profile, const std::string& epoch) {
++#if BUILDFLAG(IS_MAC)
++  if (aux::cli::IsNativeCliOpenPendingForProfile(profile)) return false;
++#endif
+   DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
+   if (GetProfileCookieBindingEpoch(profile).empty()) return false;
+   return static_cast<CookieBindingEpoch*>(profile->GetUserData(&kCookieBindingEpochKey))->BeginRestore(epoch);
+--- a/chrome/browser/chrome_browser_main.cc
++++ b/chrome/browser/chrome_browser_main.cc
+@@ -58,6 +58,7 @@
+ #if defined(AUX_SEALED_NATIVE_COLD_ENTRY)
+ #include "chrome/browser/aux/AuxNativeParentColdLaunch.h"
+ #include "chrome/browser/aux/AuxBrowserPrivateRoots.h"
++#include "chrome/browser/aux/cli/AuxCliOpenCommand.h"
+ #endif
+ #include "chrome/browser/aux/profile_gate.h"
+ #include "chrome/browser/extensions/api/aux_mini_popup/aux_mini_popup_api.h"
+@@ -1752,6 +1753,9 @@
+ 
+ void ChromeBrowserMainParts::PostBrowserStart() {
+   TRACE_EVENT0("startup", "ChromeBrowserMainParts::PostBrowserStart");
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && defined(AUX_SEALED_NATIVE_COLD_ENTRY) && BUILDFLAG(IS_MAC)
++  aux::cli::StartNativeOpenServiceAtActualBrowserStartup();
++#endif
+   for (auto& chrome_extra_part : chrome_extra_parts_) {
+     chrome_extra_part->PostBrowserStart();
+   }
+--- a/chrome/browser/ui/BUILD.gn
++++ b/chrome/browser/ui/BUILD.gn
+@@ -1126,7 +1126,16 @@
+   ]
+ 
+   if (enable_aux_browser && is_mac) {
++    sources += [
++      "../aux/cli/AuxCliManualProfileApproval.h",
++      "../aux/cli/AuxCliManualProfileApproval.mm",
++      "../aux/cli/AuxCliOpenCommand.h",
++      "../aux/cli/AuxCliOpenCommand.mm",
++    ]
+     deps += [
++      "//chrome/browser/aux:native_cli_open_headers",
++      "//chrome/browser/aux:native_cli_ingress",
++      "//chrome/browser/profiles/keep_alive",
+       "//chrome/browser/profiles:profile",
+       "//components/keyed_service/core",
+       "//chrome/browser/autocomplete",
+@@ -2868,6 +2877,9 @@
+       "Carbon.framework",
+       "Quartz.framework",
+     ]
++    if (enable_aux_browser) {
++      frameworks += [ "AppKit.framework", "Foundation.framework", "LocalAuthentication.framework" ]
++    }
+   }
+ 
+   if (is_win) {
+--- a/chrome/browser/ui/aux_browser_shutdown_drain.cc
++++ b/chrome/browser/ui/aux_browser_shutdown_drain.cc
+@@ -17,6 +17,7 @@
+ #include "chrome/browser/aux/AuxNativePeerTransport.h"
+ #include "chrome/browser/aux/AuxSelectedStateHome.h"
+ #include "chrome/browser/aux/installation_auth.h"
++#include "chrome/browser/aux/cli/AuxCliOpenCommand.h"
+ #include "chrome/browser/extensions/api/messaging/aux_native_messaging_lifetime.h"
+ #include "chrome/browser/ui/aux_owned_browser_quiesce.h"
+ #include "components/crash/core/app/crashpad.h"
+@@ -52,6 +53,7 @@
+   auto& state = State();
+   peer::BrowserDrainReport report{};
+   const auto native = peer::InspectNativeBrowserShutdown();
++  const auto native_cli = aux::cli::InspectNativeOpenService();
+   std::lock_guard<std::mutex> lock(state.mutex);
+   Put(report, 0, 1, 4);
+   Put(report, 8, expected_generation, 8);
+@@ -62,7 +64,7 @@
+   if (getpid() != state.process || native.wrong_process || native.sequence_uncertain ||
+       !expected_generation || native.admitted_generation != expected_generation ||
+       state.provider_failed || state.final_wait_exhausted ||
+-      state.crash_registration == 2) status = 2;
++      state.crash_registration == 2 || native_cli.wrong_process) status = 2;
+   else if (state.frozen && state.observation) {
+     auto observed = *state.observation;
+     // These process-lifetime registries remain valid after Profile/UI teardown.
+@@ -85,6 +87,8 @@
+     else if (readiness.close_requested && readiness.process_shutdown &&
+              !readiness.pending && native.admission_closed && native.phase == 6 &&
+              !native.active_authority_reads && carriers.drained() &&
++             native_cli.admission_closed && !native_cli.receiver_running &&
++             !native_cli.queued_ui_invocations && !native_cli.pending_profile_operations &&
+              state.main_loop_destroyed && state.crash_registration == 1 && descendants == aux::browser_custody::Result::kSettled) status = 0;
+     // Canonical digest binds the exact closed process cohort counters. It is
+     // descriptive integrity inside authenticated IPC, not a signature/grant.
+@@ -98,6 +102,11 @@
+     Put(cohort, 48, observed.sessions ? observed.sessions->loaded_profile_count : 0, 8);
+     Put(cohort, 56, observed.service_workers.observed_context_stop_callbacks, 8);
+     std::copy(state.session.begin(), state.session.end(), cohort.begin() + 64);
++    Put(cohort, 96, native_cli.started, 8);
++    Put(cohort, 104, native_cli.queued_ui_invocations, 8);
++    Put(cohort, 112, native_cli.pending_profile_operations, 8);
++    Put(cohort, 120, (native_cli.admission_closed ? 1 : 0) |
++        (native_cli.receiver_running ? 2 : 0) | (native_cli.wrong_process ? 4 : 0), 8);
+     std::array<uint8_t, 32> digest{};
+     CC_SHA256(cohort.data(), cohort.size(), digest.data());
+     std::copy(digest.begin(), digest.end(), report.begin() + 64);
+@@ -117,6 +126,7 @@
+ }
+ }  // namespace
+ void PrepareNativeBrowserShutdownDrain() {
++  aux::cli::CloseNativeOpenServiceAdmission();
+   auto& state = State();
+   {
+     std::lock_guard<std::mutex> lock(state.mutex);
+--- a/chrome/browser/ui/views/frame/aux_profile_switch_request.cc
++++ b/chrome/browser/ui/views/frame/aux_profile_switch_request.cc
+@@ -15,6 +15,7 @@
+ #include "base/task/sequenced_task_runner.h"
+ #include "chrome/browser/profiles/profile.h"
+ #include "chrome/browser/aux/profile_identity.h"
++#include "chrome/browser/aux/cli/AuxCliOpenCommand.h"
+ #include "chrome/browser/lifetime/browser_shutdown.h"
+ #include "chrome/browser/ui/simple_message_box.h"
+ #include "chrome/browser/ui/unload_controller.h"
+@@ -34,7 +35,8 @@
+   const auto* unload = window ? UnloadController::From(window.get()) : nullptr;
+   if (!window || !expected || window->GetProfile() != expected.get() || !window->GetWindow() ||
+       !unload || unload->is_attempting_to_close_browser() || unload->is_delete_scheduled() ||
+-      browser_shutdown::HasShutdownStarted() || browser_shutdown::IsTryingToQuit()) return nullptr;
++      browser_shutdown::HasShutdownStarted() || browser_shutdown::IsTryingToQuit() ||
++      aux::cli::IsNativeCliOpenPendingForProfile(expected.get())) return nullptr;
+   return static_cast<Browser*>(window.get());
+ }
+ Browser* CurrentSwitchResult(base::WeakPtr<BrowserWindowInterface> window,
+--- a/chrome/browser/ui/views/frame/aux_profile_switch_transaction.cc
++++ b/chrome/browser/ui/views/frame/aux_profile_switch_transaction.cc
+@@ -1,5 +1,6 @@
+ // Copyright 2026 Aux Authors. All rights reserved.
+ #include "chrome/browser/ui/views/frame/aux_profile_switch_transaction.h"
++#include "chrome/browser/aux/cli/AuxCliOpenCommand.h"
+ 
+ #include <array>
+ #include <utility>
+@@ -185,6 +186,11 @@
+     LOG(ERROR) << "Aux profile transition rejected: transaction.entry-state.12";
+     return Result::kRejected;
+   }
++  if (aux::cli::IsNativeCliOpenPendingForProfile(previous) ||
++      aux::cli::IsNativeCliOpenPendingForProfile(target)) {
++    LOG(ERROR) << "Aux profile transition rejected: native-cli-open-pending";
++    return Result::kRejected;
++  }
+   if (target == previous) {
+     return Result::kNoChange;
+   }
+--- /dev/null
++++ b/base/process/mac/aux_browser_descendant_cli_membership.h
+@@ -0,0 +1,19 @@
++#pragma once
++#include <bsm/audit.h>
++#include <cstdint>
++#include <dlfcn.h>
++namespace aux::browser_descendants {
++// Factual native-only query; the primary image retains the sole ES registry.
++// Only a real kernel trailer supplies this audit token. Managed includes live
++// retained/reparented identities. Absence remains unknown and grants nothing.
++enum class CliClientMembership { managed, unknown };
++inline CliClientMembership InspectActualCliClient(audit_token_t kernel_peer) noexcept {
++  using Query = uint32_t (*)(audit_token_t) noexcept;
++  // Match the existing custody client: never search a plugin, Framework-wide
++  // replacement symbol, caller callback, dylib path or environment locator.
++  static const auto query = reinterpret_cast<Query>(
++      dlsym(RTLD_MAIN_ONLY, "AuxGetActualCliClientMembershipV1"));
++  return query && query(kernel_peer) == 1 ? CliClientMembership::managed
++                                        : CliClientMembership::unknown;
++}
++}
+--- /dev/null
++++ b/chrome/browser/aux/cli/AuxCliIngress.cc
+@@ -0,0 +1,182 @@
++#include "AuxCliIngress.h"
++#include <Security/SecRandom.h>
++#include <bsm/libbsm.h>
++#include <servers/bootstrap.h>
++#include <sys/fileport.h>
++#include <sys/stat.h>
++#include <fcntl.h>
++#include <unistd.h>
++#include <signal.h>
++#include <algorithm>
++#include <array>
++#include <cstring>
++#include <cstdlib>
++#include <mutex>
++#include <vector>
++#include <atomic>
++#include <limits>
++namespace aux::cli {
++namespace {
++const pid_t kIngressProcess=getpid();
++constexpr mach_msg_id_t kHello=0x41584348,kHelloReply=0x41584349,kSignal=0x41584353;
++constexpr uint32_t kHandshake=2000,kInvokeWait=5000;
++struct Hello{mach_msg_header_t header{};uint32_t version=kVersion;Nonce nonce{};};
++struct HelloReply{mach_msg_header_t header{};mach_msg_body_t body{};mach_msg_port_descriptor_t invocation{};uint32_t version=kVersion;Nonce nonce{};};
++struct Signal{mach_msg_header_t header{};uint32_t version=kVersion;int32_t signal=0;Nonce nonce{};};
++struct Right{
++ mach_port_t value=MACH_PORT_NULL;const pid_t process=getpid();bool receiver=false;
++ Right()=default;explicit Right(bool receive):receiver(receive){}
++ ~Right(){Reset();}Right(const Right&)=delete;Right&operator=(const Right&)=delete;
++ Right(Right&& other)noexcept:value(other.value),receiver(other.receiver){other.value=MACH_PORT_NULL;}
++ Right&operator=(Right&& other)noexcept{if(this!=&other){Reset();value=other.value;receiver=other.receiver;other.value=MACH_PORT_NULL;}return *this;}
++ void Reset(){if(value!=MACH_PORT_NULL&&getpid()==process){if(receiver)mach_port_mod_refs(mach_task_self(),value,MACH_PORT_RIGHT_RECEIVE,-1);else mach_port_deallocate(mach_task_self(),value);}value=MACH_PORT_NULL;}
++ bool Create(){return receiver&&value==MACH_PORT_NULL&&mach_port_allocate(mach_task_self(),MACH_PORT_RIGHT_RECEIVE,&value)==KERN_SUCCESS;}
++};
++struct File{
++ int value=-1;File()=default;~File(){if(value>=0)close(value);}File(const File&)=delete;File&operator=(const File&)=delete;
++ File(File&& other)noexcept:value(other.value){other.value=-1;}File&operator=(File&& other)noexcept{if(this!=&other){if(value>=0)close(value);value=other.value;other.value=-1;}return *this;}
++};
++struct Message {
++ alignas(mach_msg_audit_trailer_t) std::array<uint8_t,sizeof(Request)+sizeof(mach_msg_audit_trailer_t)+64> bytes{};
++ mach_msg_header_t* Header(){return reinterpret_cast<mach_msg_header_t*>(bytes.data());}
++ bool received=false;
++ ~Message(){if(received)mach_msg_destroy(Header());}
++ const mach_msg_audit_trailer_t* Audit()const{
++  const auto* header=reinterpret_cast<const mach_msg_header_t*>(bytes.data());
++  const auto offset=(static_cast<size_t>(header->msgh_size)+3)&~size_t{3};
++  if(offset>bytes.size()-sizeof(mach_msg_audit_trailer_t))return nullptr;
++  const auto* trailer=reinterpret_cast<const mach_msg_audit_trailer_t*>(bytes.data()+offset);
++  return trailer->msgh_trailer_type==MACH_MSG_TRAILER_FORMAT_0&&trailer->msgh_trailer_size==sizeof(*trailer)?trailer:nullptr;
++ }
++};
++bool Receive(mach_port_t port,uint32_t timeout,Message& message){
++ const auto status=mach_msg(message.Header(),MACH_RCV_MSG|MACH_RCV_TIMEOUT|MACH_RCV_TRAILER_TYPE(MACH_MSG_TRAILER_FORMAT_0)|MACH_RCV_TRAILER_ELEMENTS(MACH_RCV_TRAILER_AUDIT),0,message.bytes.size(),port,timeout,MACH_PORT_NULL);
++ message.received=status==KERN_SUCCESS;return message.received;
++}
++// An unknown send error cannot be treated as a clean rights transfer. Retain
++// its actual post-call message, rather than destroy an assumed representation.
++struct UnresolvedSend{std::vector<uint8_t> bytes;};
++std::mutex& SendMutex(){static auto* mutex=new std::mutex;return *mutex;}
++std::vector<std::unique_ptr<UnresolvedSend>>& Sends(){static auto* values=new std::vector<std::unique_ptr<UnresolvedSend>>;return *values;}
++bool Send(mach_msg_header_t* header,uint32_t timeout){
++ const auto status=mach_msg(header,MACH_SEND_MSG|MACH_SEND_TIMEOUT,header->msgh_size,0,MACH_PORT_NULL,timeout,MACH_PORT_NULL);
++ if(status==KERN_SUCCESS)return true;
++ if(status==MACH_SEND_INVALID_DEST||status==MACH_SEND_TIMED_OUT||status==MACH_SEND_INTERRUPTED){mach_msg_destroy(header);return false;}
++ auto retained=std::make_unique<UnresolvedSend>();retained->bytes.assign(reinterpret_cast<uint8_t*>(header),reinterpret_cast<uint8_t*>(header)+header->msgh_size);
++ if(header->msgh_id==kInvoke&&retained->bytes.size()>=offsetof(Request,payload))std::fill(retained->bytes.begin()+offsetof(Request,payload),retained->bytes.end(),0);
++ std::lock_guard<std::mutex> lock(SendMutex());Sends().push_back(std::move(retained));return false;
++}
++bool SendOnce(mach_port_t& right,mach_msg_header_t* header,uint32_t timeout){
++ if(right==MACH_PORT_NULL)return false;header->msgh_remote_port=right;right=MACH_PORT_NULL;
++ header->msgh_bits=MACH_MSGH_BITS(MACH_MSG_TYPE_MOVE_SEND_ONCE,0)|(header->msgh_bits&MACH_MSGH_BITS_COMPLEX);
++ return Send(header,timeout);
++}
++bool Nonzero(const Nonce& n){return std::any_of(n.begin(),n.end(),[](auto b){return b!=0;});}
++bool FileShape(int descriptor,size_t role){struct stat metadata{};const int flags=fcntl(descriptor,F_GETFL);
++ if(flags<0||fstat(descriptor,&metadata)!=0)return false;
++ if(role==0)return S_ISDIR(metadata.st_mode);
++ if(!(S_ISREG(metadata.st_mode)||S_ISCHR(metadata.st_mode)||S_ISFIFO(metadata.st_mode)||S_ISSOCK(metadata.st_mode)))return false;
++ const int mode=flags&O_ACCMODE;return role==1?mode!=O_WRONLY:mode!=O_RDONLY;
++}
++volatile sig_atomic_t signals=0;
++void SignalHandler(int sig){if(sig==SIGINT)signals=signals|1;else if(sig==SIGTERM)signals=signals|2;else if(sig==SIGHUP)signals=signals|4;else if(sig==SIGWINCH)signals=signals|8;}
++class SignalScope{
++ public:SignalScope(){sigset_t mask;sigfillset(&mask);struct sigaction next{};next.sa_handler=SignalHandler;next.sa_mask=mask;signals=0;for(size_t i=0;i<names.size();++i){if(sigaction(names[i],&next,&previous[i])!=0){valid=false;break;}installed++;}}
++ ~SignalScope(){for(size_t i=0;i<installed;++i)sigaction(names[i],&previous[i],nullptr);}
++ bool valid=true;
++ private:const std::array<int,4> names{SIGINT,SIGTERM,SIGHUP,SIGWINCH};std::array<struct sigaction,4> previous{};size_t installed=0;
++};
++}
++struct Invocation::State{
++ const pid_t process=getpid();std::shared_ptr<const SealedImages> images;PeerBirth birth;audit_token_t token{};Nonce nonce{};
++ Right receiver{true},reply;std::array<File,4> files;Arguments arguments;bool completed=false;
++};
++Invocation::Invocation(std::unique_ptr<State> state):state_(std::move(state)){}
++Invocation::~Invocation()=default;
++audit_token_t Invocation::KernelPeerForNativeAdmission()const{return state_->token;}
++bool Invocation::Current()const{return getpid()==state_->process&&!state_->completed&&state_->images->SameCli(state_->token,state_->birth);}
++const Arguments& Invocation::arguments()const{return state_->arguments;}
++int Invocation::directory()const{return state_->files[0].value;}int Invocation::input()const{return state_->files[1].value;}int Invocation::output()const{return state_->files[2].value;}int Invocation::error()const{return state_->files[3].value;}
++int Invocation::PollSignal(uint32_t timeout){
++ if(!Current())return 0;Message received;if(!Receive(state_->receiver.value,timeout,received))return 0;
++ const auto* header=received.Header();const auto* audit=received.Audit();
++ if(!audit||header->msgh_id!=kSignal||header->msgh_size!=sizeof(Signal)||(header->msgh_bits&MACH_MSGH_BITS_COMPLEX)||header->msgh_remote_port!=MACH_PORT_NULL||!state_->images->SameCli(audit->msgh_audit,state_->birth))return 0;
++ const auto* signal=reinterpret_cast<const Signal*>(header);
++ return signal->version==kVersion&&signal->nonce==state_->nonce&&(signal->signal==SIGINT||signal->signal==SIGTERM||signal->signal==SIGHUP||signal->signal==SIGWINCH)?signal->signal:0;
++}
++bool Invocation::CompleteAfterObservedExit(int code){
++ if(!Current()||code<0||code>255)return false;Completion response;response.header.msgh_size=sizeof(response);response.header.msgh_id=kCompleted;response.nonce=state_->nonce;response.exit_code=code;
++ state_->completed=true;return SendOnce(state_->reply.value,&response.header,kHandshake);
++}
++// Only NativeOpenOperation/Service may publish this narrow native action result.
++// Exit zero means a genuine native tab/navigation start, never page-load success.
++bool Invocation::CompleteAfterNativeOpenResult(int code){return CompleteAfterObservedExit(code);}
++struct Ingress::State{const pid_t process=getpid();std::atomic_bool closing{false};std::shared_ptr<const SealedImages> images;Right service{true};};
++Ingress::Ingress(std::shared_ptr<State> state):state_(std::move(state)){}
++Ingress::~Ingress(){CloseAdmission();}
++void Ingress::CloseAdmission(){if(getpid()==state_->process)state_->closing.store(true);}
++bool Ingress::AdmissionClosed()const{return getpid()!=state_->process||state_->closing.load();}
++std::unique_ptr<Ingress> Ingress::CreateForActualBrowser(){
++ auto state=std::make_shared<State>();state->images=SealedImages::ForCurrentBrowser();
++ if(!state->images||!state->service.Create()||mach_port_insert_right(mach_task_self(),state->service.value,state->service.value,MACH_MSG_TYPE_MAKE_SEND)!=KERN_SUCCESS)return{};
++ Right send;send.value=state->service.value;
++ if(!state->images->RevalidateSelf()||bootstrap_register(bootstrap_port,const_cast<char*>(state->images->service().c_str()),send.value)!=KERN_SUCCESS||!state->images->RevalidateSelf())return{};
++ return std::unique_ptr<Ingress>(new Ingress(std::move(state)));
++}
++std::unique_ptr<Invocation> Ingress::ReceiveOne(uint32_t timeout){
++ auto state=state_;
++ if(state->closing.load()||getpid()!=state->process||!state->images->RevalidateSelf())return{};Message received;
++ if(!Receive(state->service.value,timeout,received))return{};const auto* audit=received.Audit();const auto* header=received.Header();
++ if(!audit||header->msgh_id!=kHello||header->msgh_size!=sizeof(Hello)||(header->msgh_bits&MACH_MSGH_BITS_COMPLEX)||MACH_MSGH_BITS_REMOTE(header->msgh_bits)!=MACH_MSG_TYPE_PORT_SEND_ONCE)return{};
++ const auto* hello=reinterpret_cast<const Hello*>(header);if(hello->version!=kVersion||!Nonzero(hello->nonce))return{};
++ auto invocation=std::make_unique<Invocation::State>();invocation->images=state->images;invocation->token=audit->msgh_audit;invocation->nonce=hello->nonce;
++ if(!invocation->images->CaptureCli(invocation->token,&invocation->birth)||!invocation->receiver.Create())return{};
++ HelloReply response;response.header.msgh_bits=MACH_MSGH_BITS_COMPLEX;response.header.msgh_id=kHelloReply;response.header.msgh_size=sizeof(response);response.body.msgh_descriptor_count=1;
++ response.invocation.name=invocation->receiver.value;response.invocation.disposition=MACH_MSG_TYPE_MAKE_SEND;response.invocation.type=MACH_MSG_PORT_DESCRIPTOR;response.nonce=invocation->nonce;
++ auto reply=received.Header()->msgh_remote_port;received.Header()->msgh_remote_port=MACH_PORT_NULL;
++ if(!SendOnce(reply,&response.header,kHandshake))return{};
++ Message request;if(!Receive(invocation->receiver.value,kInvokeWait,request))return{};const auto* request_audit=request.Audit();auto* message=reinterpret_cast<Request*>(request.Header());
++ if(!request_audit||message->header.msgh_id!=kInvoke||!(message->header.msgh_bits&MACH_MSGH_BITS_COMPLEX)||message->body.msgh_descriptor_count!=4||message->version!=kVersion||message->nonce!=invocation->nonce||message->payload_bytes>kPayloadLimit||message->header.msgh_size!=RequestBytes(message->payload_bytes)||MACH_MSGH_BITS_REMOTE(message->header.msgh_bits)!=MACH_MSG_TYPE_PORT_SEND_ONCE||!invocation->images->SameCli(request_audit->msgh_audit,invocation->birth))return{};
++ if(!Decode(std::span(message->payload.data(),message->payload_bytes),&invocation->arguments))return{};
++ for(size_t i=0;i<4;++i){const auto& port=message->files[i];if(port.type!=MACH_MSG_PORT_DESCRIPTOR||port.disposition!=MACH_MSG_TYPE_PORT_SEND||port.name==MACH_PORT_NULL)return{};
++  const int received_fd=fileport_makefd(port.name);if(received_fd<0)return{};const int copied=fcntl(received_fd,F_DUPFD_CLOEXEC,64);close(received_fd);if(copied<0)return{};invocation->files[i].value=copied;if(!FileShape(copied,i))return{};
++ }
++ if(state->closing.load()||!invocation->images->SameCli(request_audit->msgh_audit,invocation->birth))return{};
++ invocation->reply.value=request.Header()->msgh_remote_port;request.Header()->msgh_remote_port=MACH_PORT_NULL;
++ return std::unique_ptr<Invocation>(new Invocation(std::move(invocation)));
++}
++size_t Ingress::UnresolvedSendRights(){if(getpid()!=kIngressProcess)return std::numeric_limits<size_t>::max();std::lock_guard<std::mutex> lock(SendMutex());return Sends().size();}
++int ForwardTerminalInvocation(int argc,char* argv[]){
++ if(argc<1||argc>static_cast<int>(kArgumentLimit+1)||!argv)return 64;
++ auto images=SealedImages::ForCurrentCli();if(!images)return 78;Right public_endpoint;
++ if(bootstrap_look_up(bootstrap_port,images->service().c_str(),&public_endpoint.value)!=KERN_SUCCESS)return 69;
++ Right hello_reply{true};if(!hello_reply.Create())return 78;Hello hello;
++ if(SecRandomCopyBytes(kSecRandomDefault,hello.nonce.size(),hello.nonce.data())!=errSecSuccess)return 78;
++ hello.header.msgh_bits=MACH_MSGH_BITS(MACH_MSG_TYPE_COPY_SEND,MACH_MSG_TYPE_MAKE_SEND_ONCE);hello.header.msgh_id=kHello;hello.header.msgh_size=sizeof(hello);hello.header.msgh_remote_port=public_endpoint.value;hello.header.msgh_local_port=hello_reply.value;
++ if(!Send(&hello.header,kHandshake))return 75;Message response;if(!Receive(hello_reply.value,kHandshake,response))return 75;
++ const auto* audit=response.Audit();auto* reply=reinterpret_cast<HelloReply*>(response.Header());PeerBirth browser;
++ if(!audit||reply->header.msgh_id!=kHelloReply||reply->header.msgh_size!=sizeof(*reply)||!(reply->header.msgh_bits&MACH_MSGH_BITS_COMPLEX)||reply->body.msgh_descriptor_count!=1||reply->version!=kVersion||reply->nonce!=hello.nonce||reply->invocation.type!=MACH_MSG_PORT_DESCRIPTOR||reply->invocation.disposition!=MACH_MSG_TYPE_PORT_SEND||reply->invocation.name==MACH_PORT_NULL||!images->CaptureBrowser(audit->msgh_audit,&browser))return 78;
++ const audit_token_t browser_token=audit->msgh_audit;Right endpoint;endpoint.value=reply->invocation.name;reply->invocation.name=MACH_PORT_NULL;
++ // No credentials, stdio or directory capability crosses the public locator.
++ Arguments arguments;for(int i=1;i<argc;++i){if(!argv[i]||strnlen(argv[i],kArgumentBytes+1)>kArgumentBytes)return 64;arguments.argv.emplace_back(argv[i]);}
++ // Native open needs no caller environment or provider/authentication tokens.
++ std::vector<uint8_t> payload;if(!Encode(arguments,&payload))return 64;
++ Request request;request.nonce=hello.nonce;request.payload_bytes=payload.size();std::copy(payload.begin(),payload.end(),request.payload.begin());
++ std::array<Right,4> files;File directory;directory.value=open(".",O_RDONLY|O_DIRECTORY|O_CLOEXEC);if(directory.value<0)return 78;
++ for(size_t i=0;i<4;++i){const int source=i==0?directory.value:static_cast<int>(i-1);if(!FileShape(source,i)||fileport_makeport(source,&files[i].value)!=0)return 78;request.files[i].name=files[i].value;request.files[i].disposition=MACH_MSG_TYPE_COPY_SEND;request.files[i].type=MACH_MSG_PORT_DESCRIPTOR;}
++ Right completion{true};if(!completion.Create()||!images->SameBrowser(browser_token,browser))return 78;SignalScope signal_scope;if(!signal_scope.valid)return 78;
++ request.header.msgh_bits=MACH_MSGH_BITS(MACH_MSG_TYPE_COPY_SEND,MACH_MSG_TYPE_MAKE_SEND_ONCE)|MACH_MSGH_BITS_COMPLEX;request.header.msgh_size=RequestBytes(request.payload_bytes);request.header.msgh_id=kInvoke;request.header.msgh_remote_port=endpoint.value;request.header.msgh_local_port=completion.value;request.body.msgh_descriptor_count=4;
++ if(!Send(&request.header,kHandshake))return 75;
++ // Clear transient option bytes, which can include an explicit CLI API token.
++ std::fill(payload.begin(),payload.end(),0);std::fill(request.payload.begin(),request.payload.end(),0);
++ for(;;){Message result;if(Receive(completion.value,250,result)){
++  const auto* token=result.Audit();const auto* done=reinterpret_cast<const Completion*>(result.Header());
++  if(!token||done->header.msgh_id!=kCompleted||done->header.msgh_size!=sizeof(*done)||(done->header.msgh_bits&MACH_MSGH_BITS_COMPLEX)||done->version!=kVersion||done->nonce!=hello.nonce||done->exit_code<0||done->exit_code>255||!images->SameBrowser(token->msgh_audit,browser))return 75;
++  return done->exit_code;
++ }
++ if(!images->SameBrowser(browser_token,browser))return 75;
++ sigset_t all,previous;sigfillset(&all);sigprocmask(SIG_BLOCK,&all,&previous);const auto pending=signals;signals=0;sigprocmask(SIG_SETMASK,&previous,nullptr);
++ for(const auto [bit,number]:std::array<std::pair<int,int>,4>{{{1,SIGINT},{2,SIGTERM},{4,SIGHUP},{8,SIGWINCH}}})if(pending&bit){Signal control;control.header.msgh_bits=MACH_MSGH_BITS(MACH_MSG_TYPE_COPY_SEND,0);control.header.msgh_remote_port=endpoint.value;control.header.msgh_id=kSignal;control.header.msgh_size=sizeof(control);control.signal=number;control.nonce=hello.nonce;if(!Send(&control.header,kHandshake))return 75;}
++ }
++}
++}
+--- /dev/null
++++ b/chrome/browser/aux/cli/AuxCliIngress.h
+@@ -0,0 +1,47 @@
++#pragma once
++#include "AuxCliSealedImages.h"
++#include "AuxCliWire.h"
++#include <array>
++#include <memory>
++namespace aux::cli {
++// Native terminal frontend. Performs a credential-free audited Hello before
++// sending argv/environment or any actual stdio/directory capabilities.
++int ForwardTerminalInvocation(int argc,char* argv[]);
++class Invocation final {
++ public:
++  ~Invocation();
++  Invocation(const Invocation&)=delete;Invocation& operator=(const Invocation&)=delete;
++  bool Current()const;
++  const Arguments& arguments()const;
++  int directory()const;
++  int input()const;int output()const;int error()const;
++  // Returns only an authenticated request signal, never child completion.
++  int PollSignal(uint32_t timeout_ms);
++ private:
++  struct State;explicit Invocation(std::unique_ptr<State>);
++  std::unique_ptr<State> state_;
++  friend class Ingress;
++  friend class BrowserInvocation;
++  friend class ManualProfileApprovalRequest;
++  friend class ApprovedCliInvocation;
++  friend class NativeOpenService;
++  friend class NativeOpenOperation;
++  audit_token_t KernelPeerForNativeAdmission() const;
++  bool CompleteAfterObservedExit(int exit_code);
++  bool CompleteAfterNativeOpenResult(int exit_code);
++};
++class Ingress final {
++ public:
++  static std::unique_ptr<Ingress> CreateForActualBrowser();
++  ~Ingress();
++  // Call on an owned native service thread. Result retains the peer, private
++  // channel, cwd/stdin/out/err. It grants no installation/profile authority.
++  std::unique_ptr<Invocation> ReceiveOne(uint32_t timeout_ms);
++  void CloseAdmission();
++  bool AdmissionClosed() const;
++  static size_t UnresolvedSendRights();
++ private:
++  struct State;explicit Ingress(std::shared_ptr<State>);
++  std::shared_ptr<State> state_;
++};
++}
+--- /dev/null
++++ b/chrome/browser/aux/cli/AuxCliManualProfileApproval.h
+@@ -0,0 +1,51 @@
++#pragma once
++#include <memory>
++#include "base/functional/callback.h"
++namespace aux::cli {
++class Invocation;
++class BrowserInvocation;
++}
++class BrowserWindowInterface;
++class Profile;
++namespace aux::cli {
++// Native UI sequence only. There is no deserializer, caller Boolean or public
++// constructor. Only the actual LocalAuthentication reply can create this lease.
++// It retains the exact audited invocation and actual native Profile binding.
++class ApprovedCliInvocation final {
++ public:
++  ~ApprovedCliInvocation();
++  ApprovedCliInvocation(const ApprovedCliInvocation&) = delete;
++  ApprovedCliInvocation& operator=(const ApprovedCliInvocation&) = delete;
++  bool Current() const;
++  Profile* RevalidatedNativeProfile() const;
++ private:
++  struct State;
++  explicit ApprovedCliInvocation(std::unique_ptr<State>);
++  std::unique_ptr<State> state_;
++  friend class ManualProfileApprovalRequest;
++  friend class BrowserInvocation;
++  friend class NativeOpenOperation;
++  // Single-use, called only immediately before the real native navigation.
++  std::unique_ptr<Invocation> ConsumeForNativeOpen(Profile* actual_target);
++};
++// The native browser owner retains this pending operation; destroying it
++// invalidates its actual LAContext and all late callbacks. No prompt is created
++// by including this source or by receiving a public CLI request alone.
++class ManualProfileApprovalRequest final {
++ public:
++  using Done = base::OnceCallback<void(std::unique_ptr<ApprovedCliInvocation>)>;
++  static std::unique_ptr<ManualProfileApprovalRequest> BeginForActualWindow(
++      BrowserWindowInterface&, std::unique_ptr<Invocation>, Done);
++  ~ManualProfileApprovalRequest();
++  ManualProfileApprovalRequest(const ManualProfileApprovalRequest&) = delete;
++  ManualProfileApprovalRequest& operator=(const ManualProfileApprovalRequest&) = delete;
++  void Cancel();
++ private:
++  struct State;
++  explicit ManualProfileApprovalRequest(std::unique_ptr<State>);
++  void BeginActualAuthentication();
++  void PollPendingInvocation();
++  void AuthenticationReplied(bool actual_os_success);
++  std::unique_ptr<State> state_;
++};
++}
+--- /dev/null
++++ b/chrome/browser/aux/cli/AuxCliManualProfileApproval.mm
+@@ -0,0 +1,227 @@
++#import <AppKit/AppKit.h>
++#import <LocalAuthentication/LocalAuthentication.h>
++#include "AuxCliManualProfileApproval.h"
++#include "chrome/browser/aux/cli/AuxCliIngress.h"
++#include "chrome/browser/aux/AuxSelectedStateHome.h"
++#include "chrome/browser/aux/profile_identity.h"
++#include "base/functional/bind.h"
++#include "base/memory/weak_ptr.h"
++#include "base/strings/sys_string_conversions.h"
++#include "base/task/single_thread_task_runner.h"
++#include "base/time/time.h"
++#include "base/timer/timer.h"
++#include "base/process/mac/aux_browser_descendant_cli_membership.h"
++#include "chrome/browser/browser_process.h"
++#include "chrome/browser/profiles/profile.h"
++#include "chrome/browser/profiles/profile_attributes_entry.h"
++#include "chrome/browser/profiles/profile_attributes_storage.h"
++#include "chrome/browser/profiles/profile_manager.h"
++#include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
++#include "content/public/browser/browser_thread.h"
++#include "ui/base/base_window.h"
++#include "ui/gfx/native_ui_types.h"
++#include <signal.h>
++#include <string>
++#include <utility>
++namespace aux::cli {
++namespace {
++constexpr auto kPromptLimit = base::Seconds(60);
++constexpr auto kApprovalLifetime = base::Seconds(15);
++// UI sequence only. A flood of authenticated CLI clients cannot stack prompts.
++ManualProfileApprovalRequest* pending_request = nullptr;
++struct ActualProfileBinding {
++  base::WeakPtr<BrowserWindowInterface> browser;
++  base::WeakPtr<Profile> profile;
++  gfx::NativeWindow window;
++  std::string profile_id, binding_epoch, restore_epoch;
++  uint64_t admitted_generation = 0;
++  bool Current(bool require_focus = true) const {
++    DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
++    if (!browser || !profile || browser->GetProfile() != profile.get() ||
++        !profile->IsRegularProfile() || profile->IsOffTheRecord() ||
++        !browser->GetWindow() ||
++        browser->GetWindow()->GetNativeWindow() != window ||
++        !window.GetNativeNSWindow() || ![window.GetNativeNSWindow() isVisible] ||
++        (require_focus && (![window.GetNativeNSWindow() isKeyWindow] || !NSApp.active)) ||
++        aux::GetProfileId(profile.get()) != profile_id ||
++        aux::GetProfileCookieBindingEpoch(profile.get()) != binding_epoch ||
++        aux::GetProfileCookieRestoreEpoch(profile.get()) != restore_epoch ||
++        aux::IsProfileCookieRestorePending(profile.get())) return false;
++    const auto admission = aux::peer::InspectNativeBrowserShutdown();
++    return !admission.wrong_process && !admission.admission_closed &&
++        !admission.sequence_uncertain && admitted_generation &&
++        admission.admitted_generation == admitted_generation &&
++        aux::peer::ReadNativeSelectedStateHome().route ==
++            aux::peer::SelectedStateHomeRoute::current;
++  }
++};
++}
++struct ApprovedCliInvocation::State {
++  ActualProfileBinding target;
++  std::unique_ptr<Invocation> invocation;
++  base::TimeTicks expires;
++};
++ApprovedCliInvocation::ApprovedCliInvocation(std::unique_ptr<State> state)
++    : state_(std::move(state)) {}
++ApprovedCliInvocation::~ApprovedCliInvocation() {
++  DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
++  // This lease has not handed off to a child. An abandoned/expired approval
++  // reports definite no-start rather than leaving the real terminal waiting.
++  if (state_->invocation) state_->invocation->CompleteAfterObservedExit(78);
++}
++bool ApprovedCliInvocation::Current() const {
++  DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
++  return state_->invocation && base::TimeTicks::Now() < state_->expires &&
++      state_->target.Current() && state_->invocation->Current() &&
++      aux::browser_descendants::InspectActualCliClient(
++          state_->invocation->KernelPeerForNativeAdmission()) !=
++          aux::browser_descendants::CliClientMembership::managed;
++}
++Profile* ApprovedCliInvocation::RevalidatedNativeProfile() const {
++  return Current() ? state_->target.profile.get() : nullptr;
++}
++std::unique_ptr<Invocation> ApprovedCliInvocation::ConsumeForNativeOpen(Profile* target) {
++  DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
++  if (!target || !Current() || state_->target.profile.get() != target) return {};
++  return std::move(state_->invocation);
++}
++struct ManualProfileApprovalRequest::State {
++  ActualProfileBinding target;
++  std::unique_ptr<Invocation> invocation;
++  Done done;
++  LAContext* __strong context = nil;
++  NSString* __strong reason = nil;
++  base::OneShotTimer timeout;
++  base::RepeatingTimer pending;
++  bool finished = false;
++  base::WeakPtrFactory<ManualProfileApprovalRequest> weak;
++  explicit State(ManualProfileApprovalRequest* owner) : weak(owner) {}
++};
++ManualProfileApprovalRequest::ManualProfileApprovalRequest(std::unique_ptr<State> state)
++    : state_(std::move(state)) {}
++std::unique_ptr<ManualProfileApprovalRequest>
++ManualProfileApprovalRequest::BeginForActualWindow(
++    BrowserWindowInterface& browser, std::unique_ptr<Invocation> invocation,
++    Done done) {
++  DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
++  auto refuse = [&]() {
++    if (invocation) invocation->CompleteAfterObservedExit(78);
++    return std::unique_ptr<ManualProfileApprovalRequest>();
++  };
++  auto* profile = browser.GetProfile();
++  if (pending_request || !invocation || !invocation->Current() || !done ||
++      !profile || !profile->IsRegularProfile() || profile->IsOffTheRecord() ||
++      !browser.GetWindow() || !g_browser_process ||
++      !g_browser_process->profile_manager() ||
++      aux::browser_descendants::InspectActualCliClient(
++          invocation->KernelPeerForNativeAdmission()) ==
++          aux::browser_descendants::CliClientMembership::managed) return refuse();
++  auto* attributes = g_browser_process->profile_manager()
++      ->GetProfileAttributesStorage().GetProfileAttributesWithPath(profile->GetPath());
++  if (!attributes || attributes->GetName().empty()) return refuse();
++  const auto admission = aux::peer::InspectNativeBrowserShutdown();
++  ActualProfileBinding binding;
++  binding.browser = browser.GetWeakPtr();
++  binding.profile = profile->GetWeakPtr();
++  binding.window = browser.GetWindow()->GetNativeWindow();
++  binding.profile_id = aux::GetProfileId(profile);
++  binding.binding_epoch = aux::GetProfileCookieBindingEpoch(profile);
++  binding.restore_epoch = aux::GetProfileCookieRestoreEpoch(profile);
++  binding.admitted_generation = admission.admitted_generation;
++  if (binding.profile_id.empty() || binding.binding_epoch.empty() ||
++      binding.restore_epoch.empty() || !binding.Current()) return refuse();
++  // Capture the displayed name only from this actual loaded registered Profile.
++  // Never include argv, tokens, URLs, environment or caller-supplied text.
++  NSString* name = base::SysUTF16ToNSString(attributes->GetName());
++  auto request = std::unique_ptr<ManualProfileApprovalRequest>(
++      new ManualProfileApprovalRequest(nullptr));
++  request->state_ = std::make_unique<State>(request.get());
++  request->state_->target = std::move(binding);
++  request->state_->invocation = std::move(invocation);
++  request->state_->done = std::move(done);
++  request->state_->reason = [NSString stringWithFormat:
++      @"allow this Aux command-line request to use the browser profile “%@”", name];
++  pending_request = request.get();
++  request->BeginActualAuthentication();
++  return request;
++}
++void ManualProfileApprovalRequest::BeginActualAuthentication() {
++  DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
++  auto& s = *state_;
++  s.context = [[LAContext alloc] init];
++  s.context.touchIDAuthenticationAllowableReuseDuration = 0;
++  s.context.localizedCancelTitle = @"Cancel";
++  // Follow Chromium's TouchIdContext ownership pattern: the OS reply is on a
++  // private queue; all weak Profile/window/epoch access returns to the UI.
++  const auto ui = base::SingleThreadTaskRunner::GetCurrentDefault();
++  const auto weak = s.weak.GetWeakPtr();
++  s.timeout.Start(FROM_HERE, kPromptLimit,
++      base::BindOnce(&ManualProfileApprovalRequest::Cancel, weak));
++  s.pending.Start(FROM_HERE, base::Milliseconds(100),
++      base::BindRepeating(&ManualProfileApprovalRequest::PollPendingInvocation, weak));
++  [s.context evaluatePolicy:LAPolicyDeviceOwnerAuthentication
++           localizedReason:s.reason
++                     reply:^(BOOL success, NSError* error) {
++    ui->PostTask(FROM_HERE,
++        base::BindOnce(&ManualProfileApprovalRequest::AuthenticationReplied,
++                       weak, success == YES && error == nil));
++  }];
++}
++void ManualProfileApprovalRequest::PollPendingInvocation() {
++  DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
++  auto& s = *state_;
++  if (s.finished) return;
++  if (!s.invocation || !s.invocation->Current() || !s.target.Current(false)) {
++    Cancel(); return;
++  }
++  const int signal = s.invocation->PollSignal(0);
++  if (signal == SIGINT || signal == SIGTERM || signal == SIGHUP) Cancel();
++}
++void ManualProfileApprovalRequest::AuthenticationReplied(bool actual_os_success) {
++  DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
++  auto& s = *state_;
++  if (s.finished) return;
++  const bool admitted = actual_os_success && pending_request == this &&
++      s.target.Current() && s.invocation && s.invocation->Current() &&
++      aux::browser_descendants::InspectActualCliClient(
++          s.invocation->KernelPeerForNativeAdmission()) !=
++          aux::browser_descendants::CliClientMembership::managed;
++  s.finished = true;
++  s.timeout.Stop();
++  s.pending.Stop();
++  s.weak.InvalidateWeakPtrs();
++  [s.context invalidate];
++  if (pending_request == this) pending_request = nullptr;
++  auto done = std::move(s.done);
++  if (!admitted) { s.invocation->CompleteAfterObservedExit(78); std::move(done).Run({}); return; }
++  auto approval = std::make_unique<ApprovedCliInvocation::State>();
++  approval->target = std::move(s.target);
++  approval->invocation = std::move(s.invocation);
++  approval->expires = base::TimeTicks::Now() + kApprovalLifetime;
++  auto grant = std::unique_ptr<ApprovedCliInvocation>(
++      new ApprovedCliInvocation(std::move(approval)));
++  std::move(done).Run(std::move(grant));
++}
++void ManualProfileApprovalRequest::Cancel() {
++  DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
++  if (!state_ || state_->finished) return;
++  state_->finished = true;
++  state_->timeout.Stop();
++  state_->pending.Stop();
++  state_->weak.InvalidateWeakPtrs();
++  [state_->context invalidate];
++  if (pending_request == this) pending_request = nullptr;
++  if (state_->invocation) state_->invocation->CompleteAfterObservedExit(130);
++  auto done = std::move(state_->done);
++  if (done) std::move(done).Run({});
++}
++ManualProfileApprovalRequest::~ManualProfileApprovalRequest() {
++  DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
++  if (!state_) return;
++  state_->finished = true;
++  if (state_->invocation) state_->invocation->CompleteAfterObservedExit(78);
++  state_->weak.InvalidateWeakPtrs();
++  [state_->context invalidate];
++  if (pending_request == this) pending_request = nullptr;
++}
++}
+--- /dev/null
++++ b/chrome/browser/aux/cli/AuxCliOpenArguments.cc
+@@ -0,0 +1,26 @@
++#include "AuxCliOpenArguments.h"
++namespace aux::cli {
++OpenArguments ParseNativeOpenArguments(std::span<const std::string> args) {
++  if (args.empty() || args.front() != "open") return {OpenParseStatus::unsupported,{},{}};
++  if (args.size()==2 && args[1]=="--help") return {OpenParseStatus::help,{},{}};
++  OpenArguments parsed; bool literal=false, profile_seen=false;
++  for (size_t i=1;i<args.size();++i) {
++    const auto& item=args[i];
++    if (item.empty() || item.find('\0')!=std::string::npos) return {};
++    if (!literal && item=="--") { literal=true; continue; }
++    if (!literal && (item=="--profile" || item.starts_with("--profile="))) {
++      if (profile_seen) return {};
++      profile_seen=true;
++      if (item=="--profile") { if (++i==args.size()) return {}; parsed.profile=args[i]; }
++      else parsed.profile=item.substr(10);
++      if (parsed.profile.empty() || parsed.profile.size()>256 ||
++          parsed.profile.find_first_of("/\\\0",0,3)!=std::string::npos) return {};
++      continue;
++    }
++    if ((!literal && item.front()=='-') || !parsed.url.empty() || item.size()>8192) return {};
++    parsed.url=item;
++  }
++  if (parsed.url.empty()) return {};
++  parsed.status=OpenParseStatus::accepted; return parsed;
++}
++}
+--- /dev/null
++++ b/chrome/browser/aux/cli/AuxCliOpenArguments.h
+@@ -0,0 +1,9 @@
++#pragma once
++#include <span>
++#include <string>
++namespace aux::cli {
++enum class OpenParseStatus { accepted, help, unsupported, invalid };
++struct OpenArguments { OpenParseStatus status=OpenParseStatus::invalid; std::string url, profile; };
++// Data parsing only. A profile string never creates or loads a native Profile.
++OpenArguments ParseNativeOpenArguments(std::span<const std::string>);
++}
+--- /dev/null
++++ b/chrome/browser/aux/cli/AuxCliOpenCommand.h
+@@ -0,0 +1,20 @@
++#pragma once
++#include <cstdint>
++class Profile;
++namespace aux::cli {
++struct NativeOpenObservation {
++  bool started=false, admission_closed=true, receiver_running=false, wrong_process=false;
++  uint64_t queued_ui_invocations=0, pending_profile_operations=0;
++};
++// Native lifecycle registration only; never an extension/renderer entry point.
++// Root calls Start after genuine protected startup admits the browser and Close
++// before profile teardown. These methods never admit the broad supplied CLI.
++bool StartNativeOpenServiceAtActualBrowserStartup();
++void CloseNativeOpenServiceAdmission();
++// Process-lifetime atomic observation; safe for the retained drain provider
++// after UI/Profile teardown. It grants no target or writer authority.
++NativeOpenObservation InspectNativeOpenService();
++// UI sequence factual exclusion for native switching/cookie restore. A false
++// value is not a browser writer/descendant drain certificate.
++bool IsNativeCliOpenPendingForProfile(Profile*);
++}
+--- /dev/null
++++ b/chrome/browser/aux/cli/AuxCliOpenCommand.mm
+@@ -0,0 +1,295 @@
++#import <AppKit/AppKit.h>
++#include "AuxCliOpenCommand.h"
++#include "AuxCliOpenArguments.h"
++#include "AuxCliManualProfileApproval.h"
++#include "chrome/browser/aux/cli/AuxCliIngress.h"
++#include "chrome/browser/aux/AuxSelectedStateHome.h"
++#include "chrome/browser/aux/profile_identity.h"
++#include "base/functional/bind.h"
++#include "base/memory/weak_ptr.h"
++#include "base/strings/utf_string_conversions.h"
++#include "base/task/single_thread_task_runner.h"
++#include "base/threading/thread.h"
++#include "base/time/time.h"
++#include "base/timer/timer.h"
++#include "chrome/browser/browser_process.h"
++#include "chrome/browser/profiles/profile.h"
++#include "chrome/browser/profiles/profile_attributes_entry.h"
++#include "chrome/browser/profiles/profile_attributes_storage.h"
++#include "chrome/browser/profiles/profile_manager.h"
++#include "chrome/browser/profiles/keep_alive/profile_keep_alive_types.h"
++#include "chrome/browser/profiles/keep_alive/scoped_profile_keep_alive.h"
++#include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
++#include "chrome/browser/ui/browser_window/public/global_browser_collection.h"
++#include "chrome/browser/ui/navigator/browser_navigator.h"
++#include "chrome/browser/ui/navigator/browser_navigator_params.h"
++#include "chrome/browser/ui/tabs/tab_strip_model.h"
++#include "content/public/browser/browser_thread.h"
++#include "content/public/browser/navigation_handle.h"
++#include "content/public/browser/web_contents.h"
++#include "ui/base/base_window.h"
++#include "ui/base/window_open_disposition.h"
++#include "ui/base/page_transition_types.h"
++#include "url/gurl.h"
++#include "ui/gfx/native_ui_types.h"
++#include <signal.h>
++#include <unistd.h>
++#include <atomic>
++#include <map>
++#include <memory>
++#include <set>
++#include <utility>
++namespace aux::cli {
++class NativeOpenOperation;
++namespace {
++const pid_t kProcess = getpid();
++constexpr size_t kPendingLimit = 64;
++std::map<NativeOpenOperation*,std::shared_ptr<NativeOpenOperation>>& Pending(){
++  static auto* pending = new std::map<NativeOpenOperation*,std::shared_ptr<NativeOpenOperation>>;
++  return *pending;
++}
++bool admission_closed = true;  // Actual admission mutation stays on UI.
++struct OpenCounters {
++  std::atomic_bool started{false},closed{true},receiver_running{false};
++  std::atomic_uint64_t queued{0},profile_operations{0};
++};
++OpenCounters& Counters(){static auto* counters=new OpenCounters;return *counters;}
++bool ActualNativeReady(){
++  const auto state=aux::peer::InspectNativeBrowserShutdown();
++  return getpid()==kProcess && !state.wrong_process && !state.admission_closed &&
++      !state.sequence_uncertain && state.admitted_generation &&
++      aux::peer::ReadNativeSelectedStateHome().route==aux::peer::SelectedStateHomeRoute::current;
++}
++bool UsableWindow(BrowserWindowInterface* window){
++  return window && window->GetType()==BrowserWindowInterface::TYPE_NORMAL &&
++      window->GetProfile() && window->GetProfile()->IsRegularProfile() &&
++      !window->GetProfile()->IsOffTheRecord() && window->GetWindow() &&
++      window->GetWindow()->IsVisible();
++}
++base::WeakPtr<BrowserWindowInterface> SelectActualWindow(const std::string& selector){
++  auto* collection=GlobalBrowserCollection::GetInstance();
++  if(!collection || !g_browser_process || !g_browser_process->profile_manager())return{};
++  if(selector.empty()){
++    auto* active=collection->GetActiveBrowser();
++    return UsableWindow(active)?active->GetWeakPtr():base::WeakPtr<BrowserWindowInterface>();
++  }
++  auto& attributes=g_browser_process->profile_manager()->GetProfileAttributesStorage();
++  std::map<Profile*,base::WeakPtr<BrowserWindowInterface>> ids,names;
++  // Creation order only chooses among windows of the SAME native Profile.
++  // Multiple distinct matching Profiles always refuse, never first-match fallthrough.
++  collection->ForEach([&](BrowserWindowInterface* window){
++    if(!UsableWindow(window))return true;
++    auto* profile=window->GetProfile();
++    auto* entry=attributes.GetProfileAttributesWithPath(profile->GetPath());
++    if(!entry)return true;
++    if(aux::GetProfileId(profile)==selector)ids.try_emplace(profile,window->GetWeakPtr());
++    if(base::UTF16ToUTF8(entry->GetName())==selector)names.try_emplace(profile,window->GetWeakPtr());
++    return true;
++  },BrowserCollection::Order::kCreation);
++  if(!ids.empty())return ids.size()==1?ids.begin()->second:base::WeakPtr<BrowserWindowInterface>();
++  return names.size()==1?names.begin()->second:base::WeakPtr<BrowserWindowInterface>();
++}
++}
++class NativeOpenOperation final : public std::enable_shared_from_this<NativeOpenOperation> {
++ public:
++  static void Begin(std::unique_ptr<Invocation> invocation){
++    DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
++    if(!invocation)return;
++    const auto arguments=ParseNativeOpenArguments(invocation->arguments().argv);
++    const GURL url(arguments.url);
++    if(admission_closed || !ActualNativeReady() || Pending().size()>=kPendingLimit ||
++       arguments.status!=OpenParseStatus::accepted || !url.is_valid() ||
++       !url.SchemeIsHTTPOrHTTPS() || url.has_username() || url.has_password()){
++      invocation->CompleteAfterNativeOpenResult(64);return;
++    }
++    auto window=SelectActualWindow(arguments.profile);
++    if(!window || !invocation->Current()){
++      invocation->CompleteAfterNativeOpenResult(78);return;
++    }
++    auto operation=std::shared_ptr<NativeOpenOperation>(new NativeOpenOperation(std::move(invocation),window,url));
++    if(!operation->TargetCurrent()){
++      operation->invocation_->CompleteAfterNativeOpenResult(78);return;
++    }
++    // Register the exact native Profile BEFORE activation, permission callback,
++    // or navigation. The three native switch/restore gates consult this record.
++    Pending().emplace(operation.get(),operation);
++    Counters().profile_operations.fetch_add(1);
++    operation->focus_deadline_=base::TimeTicks::Now()+base::Seconds(3);
++    window->GetWindow()->Activate();
++    operation->focus_.Start(FROM_HERE,base::Milliseconds(50),
++        base::BindRepeating([](std::weak_ptr<NativeOpenOperation> weak){
++          if(auto operation=weak.lock())operation->FocusThenApprove();
++        },std::weak_ptr<NativeOpenOperation>(operation)));
++    operation->FocusThenApprove();
++  }
++  Profile* profile()const{return profile_.get();}
++  void Cancel(int code=130){
++    DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
++    if(phase_==Phase::finished)return;
++    if(phase_==Phase::navigating){canceled_during_navigation_=true;return;}
++    Finish(code);
++  }
++ private:
++  enum class Phase{focusing,approving,navigating,finished};
++  NativeOpenOperation(std::unique_ptr<Invocation> invocation,
++      base::WeakPtr<BrowserWindowInterface> window,GURL url)
++      :invocation_(std::move(invocation)),window_(window),profile_(window->GetProfile()->GetWeakPtr()),url_(std::move(url)),
++       profile_id_(aux::GetProfileId(profile_.get())),
++       binding_epoch_(aux::GetProfileCookieBindingEpoch(profile_.get())),
++       restore_epoch_(aux::GetProfileCookieRestoreEpoch(profile_.get())),
++       generation_(aux::peer::InspectNativeBrowserShutdown().admitted_generation){}
++  bool TargetCurrent()const{
++    return !admission_closed && ActualNativeReady() && window_ && profile_ &&
++        window_->GetProfile()==profile_.get() && UsableWindow(window_.get()) &&
++        !profile_id_.empty() && !binding_epoch_.empty() && !restore_epoch_.empty() &&
++        aux::GetProfileId(profile_.get())==profile_id_ &&
++        aux::GetProfileCookieBindingEpoch(profile_.get())==binding_epoch_ &&
++        aux::GetProfileCookieRestoreEpoch(profile_.get())==restore_epoch_ &&
++        !aux::IsProfileCookieRestorePending(profile_.get()) &&
++        aux::peer::InspectNativeBrowserShutdown().admitted_generation==generation_;
++  }
++  void FocusThenApprove(){
++    DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
++    auto keep=shared_from_this();
++    if(phase_!=Phase::focusing)return;
++    if(!TargetCurrent() || !invocation_ || !invocation_->Current() ||
++       base::TimeTicks::Now()>=focus_deadline_){Finish(78);return;}
++    const int signal=invocation_->PollSignal(0);
++    if(signal==SIGINT || signal==SIGTERM || signal==SIGHUP){Finish(130);return;}
++    auto* native=window_->GetWindow()->GetNativeWindow().GetNativeNSWindow();
++    if(!native || ![native isKeyWindow] || !NSApp.active)return;
++    focus_.Stop();phase_=Phase::approving;
++    request_=ManualProfileApprovalRequest::BeginForActualWindow(*window_,std::move(invocation_),
++        base::BindOnce([](std::weak_ptr<NativeOpenOperation> weak,std::unique_ptr<ApprovedCliInvocation> approval){
++          if(auto operation=weak.lock())operation->Approved(std::move(approval));
++        },std::weak_ptr<NativeOpenOperation>(keep)));
++    if(!request_)Finish(78);
++  }
++  void Approved(std::unique_ptr<ApprovedCliInvocation> approval){
++    DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
++    auto keep=shared_from_this();
++    if(phase_!=Phase::approving)return;
++    if(!approval || !TargetCurrent() || approval->RevalidatedNativeProfile()!=profile_.get()){
++      Finish(78);return;
++    }
++    auto retained_profile=ScopedProfileKeepAlive::TryAcquire(profile_.get(),ProfileKeepAliveOrigin::kBrowserWindow);
++    if(!retained_profile){Finish(78);return;}
++    invocation_=approval->ConsumeForNativeOpen(profile_.get());
++    if(!invocation_ || !invocation_->Current() || !TargetCurrent()){Finish(78);return;}
++    // The 15-second OS approval is now consumed. It is never used as a timer
++    // for active navigation ownership, cancellation or lifecycle settlement.
++    approval.reset();request_.reset();phase_=Phase::navigating;
++    NavigateParams params(window_.get(),url_,ui::PAGE_TRANSITION_TYPED);
++    params.disposition=WindowOpenDisposition::NEW_FOREGROUND_TAB;
++    params.should_trigger_session_restore=false;
++    auto navigation=Navigate(&params);
++    bool started=false;
++    // Navigate has returned to the same UI sequence. A live handle plus actual
++    // parented WebContents proves native start/handoff, not network/page success.
++    if(navigation && TargetCurrent() && params.browser==window_.get()){
++      auto* contents=navigation->GetWebContents();
++      started=contents && contents==params.navigated_or_inserted_contents &&
++          contents->GetBrowserContext()==profile_.get() &&
++          window_->GetTabStripModel()->GetIndexOfWebContents(contents)!=TabStripModel::kNoTab;
++    }
++    const int result=started&&!canceled_during_navigation_?0:75;
++    Finish(result);
++  }
++  void Finish(int code){
++    auto keep=shared_from_this();
++    if(phase_==Phase::finished)return;
++    phase_=Phase::finished;focus_.Stop();
++    if(request_)request_->Cancel();
++    request_.reset();
++    if(invocation_)invocation_->CompleteAfterNativeOpenResult(code);
++    invocation_.reset();
++    if(Pending().erase(this)==1)Counters().profile_operations.fetch_sub(1);
++  }
++  std::unique_ptr<Invocation> invocation_;
++  base::WeakPtr<BrowserWindowInterface> window_;
++  base::WeakPtr<Profile> profile_;
++  const GURL url_;
++  const std::string profile_id_,binding_epoch_,restore_epoch_;
++  const uint64_t generation_;
++  Phase phase_=Phase::focusing;
++  bool canceled_during_navigation_=false;
++  base::TimeTicks focus_deadline_;
++  base::RepeatingTimer focus_;
++  std::unique_ptr<ManualProfileApprovalRequest> request_;
++};
++class NativeOpenService final : public std::enable_shared_from_this<NativeOpenService> {
++ public:
++  NativeOpenService():receiver_("Aux native CLI open"){}
++  bool Start(){
++    ui_=base::SingleThreadTaskRunner::GetCurrentDefault();ingress_=Ingress::CreateForActualBrowser();
++    if(!ingress_){closing_.store(true);return false;}
++    if(!receiver_.Start()){ingress_->CloseAdmission();closing_.store(true);return false;}
++    running_.store(true);Counters().receiver_running.store(true);auto self=shared_from_this();
++    if(!receiver_.task_runner()->PostTask(FROM_HERE,base::BindOnce(&NativeOpenService::ReceiveNext,self))){
++      closing_.store(true);ingress_->CloseAdmission();receiver_.Stop();running_.store(false);Counters().receiver_running.store(false);return false;
++    }
++    return true;
++  }
++  void Close(){
++    if(closing_.exchange(true))return;
++    ingress_->CloseAdmission();receiver_.Stop();running_.store(false);Counters().receiver_running.store(false);
++  }
++ private:
++  void ReceiveNext(){
++    if(closing_.load())return;
++    auto invocation=ingress_->ReceiveOne(250);
++    if(invocation){
++      if(closing_.load() || queued_.load()>=kPendingLimit)invocation->CompleteAfterNativeOpenResult(78);
++      else{
++        queued_.fetch_add(1);Counters().queued.fetch_add(1);auto self=shared_from_this();
++        // A shared native receiver state survives a shutdown until every
++        // actually posted UI request reports no-start or hands off natively.
++        auto delivery=std::make_shared<std::unique_ptr<Invocation>>(std::move(invocation));
++        if(!ui_->PostTask(FROM_HERE,base::BindOnce([](std::shared_ptr<NativeOpenService> service,
++            std::shared_ptr<std::unique_ptr<Invocation>> actual){
++          service->queued_.fetch_sub(1);Counters().queued.fetch_sub(1);
++          if(service->closing_.load()){
++            if(*actual)(*actual)->CompleteAfterNativeOpenResult(78);
++          }else NativeOpenOperation::Begin(std::move(*actual));
++        },self,delivery))){
++          queued_.fetch_sub(1);Counters().queued.fetch_sub(1);if(*delivery)(*delivery)->CompleteAfterNativeOpenResult(78);
++        }
++      }
++    }
++    if(!closing_.load())receiver_.task_runner()->PostTask(FROM_HERE,
++        base::BindOnce(&NativeOpenService::ReceiveNext,shared_from_this()));
++  }
++  std::unique_ptr<Ingress> ingress_;
++  base::Thread receiver_;
++  scoped_refptr<base::SingleThreadTaskRunner> ui_;
++  std::atomic_bool closing_{false},running_{false};
++  std::atomic_uint64_t queued_{0};
++};
++namespace {std::shared_ptr<NativeOpenService> service;bool start_attempted=false;}
++bool StartNativeOpenServiceAtActualBrowserStartup(){
++  DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
++  if(getpid()!=kProcess || start_attempted || !ActualNativeReady())return false;
++  start_attempted=true;Counters().started.store(true);service=std::make_shared<NativeOpenService>();
++  if(!service->Start())return false;
++  admission_closed=false;Counters().closed.store(false);return true;
++}
++void CloseNativeOpenServiceAdmission(){
++  DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
++  if(getpid()!=kProcess)return;
++  admission_closed=true;Counters().closed.store(true);if(service)service->Close();
++  // Cancellation can reenter this map through the actual OS reply callback.
++  auto actual=Pending();for(auto& [identity,operation]:actual)operation->Cancel(78);
++}
++NativeOpenObservation InspectNativeOpenService(){
++  if(getpid()!=kProcess){NativeOpenObservation invalid;invalid.wrong_process=true;return invalid;}
++  auto& actual=Counters();
++  return{actual.started.load(),actual.closed.load(),actual.receiver_running.load(),false,
++         actual.queued.load(),actual.profile_operations.load()};
++}
++bool IsNativeCliOpenPendingForProfile(Profile* profile){
++  DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
++  if(getpid()!=kProcess || !profile)return true;
++  for(const auto& [identity,operation]:Pending())if(operation->profile()==profile)return true;
++  return false;
++}
++}
+--- /dev/null
++++ b/chrome/browser/aux/cli/AuxCliSealedImages.cc
+@@ -0,0 +1,207 @@
++// Signature/leaf/CDHash inspection ported from the actual reviewed native parent.
++#include "AuxCliSealedImages.h"
++#include <CommonCrypto/CommonDigest.h>
++#include <bsm/libbsm.h>
++#include <libproc.h>
++#include <sys/proc_info.h>
++#include <unistd.h>
++#include <array>
++#include <climits>
++#include <cstdlib>
++#include <cstring>
++#include <optional>
++#include <fcntl.h>
++#include <sys/acl.h>
++#include <sys/stat.h>
++namespace aux::cli {
++namespace {
++template<class T> class Cf {
++ public:
++  Cf()=default; explicit Cf(T value):value_(value){}
++  ~Cf(){if(value_)CFRelease(value_);}
++  Cf(Cf&& other)noexcept:value_(other.value_){other.value_=nullptr;}
++  Cf& operator=(Cf&& other)noexcept{if(this!=&other){if(value_)CFRelease(value_);value_=other.value_;other.value_=nullptr;}return *this;}
++  Cf(const Cf&)=delete;Cf& operator=(const Cf&)=delete;
++  T get()const{return value_;}explicit operator bool()const{return value_!=nullptr;}
++  T* InitializeInto(){return &value_;}
++ private:T value_=nullptr;
++};
++constexpr char kTeam[] = "9F2JXY8TCK";
++constexpr std::array<uint8_t, 32> kCertificate = {
++    0xff,0x02,0x93,0xa0,0x6f,0x20,0x70,0x4a,0x1f,0x3b,0x3f,0x25,0x71,0xb3,0x36,0x2e,
++    0xf4,0x39,0xa2,0xdf,0xb3,0xb0,0xbc,0x90,0xbc,0xf3,0xd5,0xde,0xbf,0xc7,0x3a,0x1c};
++constexpr char kDaemonSuffix[] = "/Contents/Resources/aux/apps/daemon/Aux Daemon.app";
++constexpr SecCSFlags kStrict = kSecCSStrictValidate | kSecCSCheckAllArchitectures |
++    kSecCSCheckNestedCode | kSecCSRestrictSymlinks | (1U << 29);
++CFTypeRef Value(CFDictionaryRef dictionary, CFStringRef key, CFTypeID type) {
++  auto* const value = CFDictionaryGetValue(dictionary, key);
++  return value && CFGetTypeID(value) == type ? value : nullptr;
++}
++std::optional<std::string> Text(CFTypeRef value) {
++  if (!value || CFGetTypeID(value) != CFStringGetTypeID()) return std::nullopt;
++  std::array<char, PATH_MAX> text{};
++  if (!CFStringGetCString(static_cast<CFStringRef>(value), text.data(), text.size(), kCFStringEncodingUTF8))
++    return std::nullopt;
++  return std::string(text.data());
++}
++std::optional<std::string> Path(CFURLRef url) {
++  std::array<UInt8, PATH_MAX> bytes{};
++  if (!CFURLGetFileSystemRepresentation(url, true, bytes.data(), bytes.size())) return std::nullopt;
++  const auto path = std::string(reinterpret_cast<char*>(bytes.data()));
++  std::array<char, PATH_MAX> physical{};
++  if (!realpath(path.c_str(), physical.data()) || path != physical.data()) return std::nullopt;
++  return path;
++}
++Cf<SecRequirementRef> Requirement(const char* identifier) {
++  const auto text = std::string("anchor apple generic and identifier \"") + identifier +
++      "\" and certificate leaf[subject.OU] = \"" + kTeam + "\"";
++  Cf<CFStringRef> string(CFStringCreateWithCString(
++      kCFAllocatorDefault, text.c_str(), kCFStringEncodingUTF8));
++  Cf<SecRequirementRef> requirement;
++  if (!string || SecRequirementCreateWithString(string.get(), kSecCSDefaultFlags,
++                                                requirement.InitializeInto()) != errSecSuccess)
++    return Cf<SecRequirementRef>();
++  return requirement;
++}
++struct Image {
++  std::string bundle;
++  std::string executable;
++  std::vector<uint8_t> cd_hash;
++};
++std::optional<Image> InspectImage(SecStaticCodeRef code, SecRequirementRef requirement,
++                                  const char* identifier, const char* executable) {
++  if (SecStaticCodeCheckValidity(code, kStrict, requirement) != errSecSuccess) return std::nullopt;
++  Cf<CFDictionaryRef> info;
++  if (SecCodeCopySigningInformation(code, kSecCSSigningInformation,
++                                    info.InitializeInto()) != errSecSuccess || !info) return std::nullopt;
++  if (Text(Value(info.get(), kSecCodeInfoIdentifier, CFStringGetTypeID())) != identifier ||
++      Text(Value(info.get(), kSecCodeInfoTeamIdentifier, CFStringGetTypeID())) != kTeam) return std::nullopt;
++  auto certificates = static_cast<CFArrayRef>(Value(info.get(), kSecCodeInfoCertificates, CFArrayGetTypeID()));
++  if (!certificates || CFArrayGetCount(certificates) < 1) return std::nullopt;
++  auto leaf = static_cast<SecCertificateRef>(const_cast<void*>(CFArrayGetValueAtIndex(certificates, 0)));
++  if (!leaf || CFGetTypeID(leaf) != SecCertificateGetTypeID()) return std::nullopt;
++  Cf<CFDataRef> certificate(SecCertificateCopyData(leaf));
++  if (!certificate || CFDataGetLength(certificate.get()) <= 0 || CFDataGetLength(certificate.get()) > 65'536)
++    return std::nullopt;
++  std::array<uint8_t, 32> digest{};
++  CC_SHA256(CFDataGetBytePtr(certificate.get()), static_cast<CC_LONG>(CFDataGetLength(certificate.get())), digest.data());
++  if (digest != kCertificate) return std::nullopt;
++  auto flags = static_cast<CFNumberRef>(Value(info.get(), kSecCodeInfoFlags, CFNumberGetTypeID()));
++  uint32_t flag_bits = 0;
++  if (!flags || !CFNumberGetValue(flags, kCFNumberSInt32Type, &flag_bits) || (flag_bits & 0x2)) return std::nullopt;
++  auto plist = static_cast<CFDictionaryRef>(Value(info.get(), kSecCodeInfoPList, CFDictionaryGetTypeID()));
++  if (!plist || Text(Value(plist, CFSTR("CFBundlePackageType"), CFStringGetTypeID())) != "APPL" ||
++      Text(Value(plist, CFSTR("CFBundleIdentifier"), CFStringGetTypeID())) != identifier) return std::nullopt;
++  const auto leaf_name = Text(Value(plist, CFSTR("CFBundleExecutable"), CFStringGetTypeID()));
++  if (!leaf_name || leaf_name->empty() || leaf_name->find('/') != std::string::npos ||
++      *leaf_name == "." || *leaf_name == ".." || (executable && *leaf_name != executable)) return std::nullopt;
++  Cf<CFURLRef> location;
++  if (SecCodeCopyPath(code, kSecCSDefaultFlags, location.InitializeInto()) != errSecSuccess || !location) return std::nullopt;
++  auto bundle = Path(location.get());
++  auto main = static_cast<CFURLRef>(Value(info.get(), kSecCodeInfoMainExecutable, CFURLGetTypeID()));
++  auto main_path = main ? Path(main) : std::nullopt;
++  auto hash = static_cast<CFDataRef>(Value(info.get(), kSecCodeInfoUnique, CFDataGetTypeID()));
++  if (!bundle || !bundle->ends_with(".app") || !main_path ||
++      *main_path != *bundle + "/Contents/MacOS/" + *leaf_name || !hash ||
++      (CFDataGetLength(hash) != 20 && CFDataGetLength(hash) != 32)) return std::nullopt;
++  // The preceding guard permits only20/32bytes; the copy range and owned
++  // destination have exactly that verified CFData length.
++  std::vector<uint8_t> captured_hash(static_cast<size_t>(CFDataGetLength(hash)));
++  CFDataGetBytes(hash, CFRangeMake(0, CFDataGetLength(hash)), captured_hash.data());
++  return Image{*bundle, *main_path, std::move(captured_hash)};
++}
++
++std::optional<PeerBirth> Birth(audit_token_t token) {
++  if(audit_token_to_euid(token)!=geteuid())return{};
++  const auto pid=audit_token_to_pid(token),version=audit_token_to_pidversion(token);
++  proc_bsdinfo info{};
++  if(pid<=1||version<0||proc_pidinfo(pid,PROC_PIDTBSDINFO,0,&info,sizeof(info))!=sizeof(info)||info.pbi_pid!=static_cast<uint32_t>(pid)||!info.pbi_start_tvsec)return{};
++  return PeerBirth{pid,version,info.pbi_start_tvsec,info.pbi_start_tvusec};
++}
++bool SameBirth(const PeerBirth& a,const PeerBirth& b){return a.pid==b.pid&&a.version==b.version&&a.seconds==b.seconds&&a.microseconds==b.microseconds;}
++bool ValidateGuest(audit_token_t token,SecRequirementRef requirement,const std::vector<uint8_t>& hash){
++  Cf<CFDataRef> audit(CFDataCreate(kCFAllocatorDefault,reinterpret_cast<const UInt8*>(&token),sizeof(token)));
++  if(!audit)return false;const void* key=kSecGuestAttributeAudit;const void* value=audit.get();
++  Cf<CFDictionaryRef> attributes(CFDictionaryCreate(kCFAllocatorDefault,&key,&value,1,&kCFTypeDictionaryKeyCallBacks,&kCFTypeDictionaryValueCallBacks));
++  Cf<SecCodeRef> guest;
++  if(!attributes||SecCodeCopyGuestWithAttributes(nullptr,attributes.get(),kSecCSDefaultFlags,guest.InitializeInto())!=errSecSuccess||!guest||SecCodeCheckValidity(guest.get(),kSecCSStrictValidate|(1U<<29),requirement)!=errSecSuccess)return false;
++  Cf<CFDictionaryRef> info;if(SecCodeCopySigningInformation(guest.get(),kSecCSSigningInformation,info.InitializeInto())!=errSecSuccess||!info)return false;
++  const auto unique=static_cast<CFDataRef>(Value(info.get(),kSecCodeInfoUnique,CFDataGetTypeID()));
++  return unique&&CFDataGetLength(unique)==static_cast<CFIndex>(hash.size())&&std::memcmp(CFDataGetBytePtr(unique),hash.data(),hash.size())==0;
++}
++}
++struct SealedImages::Data {
++  const pid_t process=getpid();int role=0;Image own,browser,cli;
++  Cf<SecRequirementRef> own_requirement,browser_requirement,cli_requirement;std::string locator;
++};
++SealedImages::SealedImages(std::unique_ptr<Data> data):data_(std::move(data)){}
++SealedImages::~SealedImages()=default;
++std::shared_ptr<const SealedImages> SealedImages::Capture(int role){
++  if(role<0||role>2)return{};auto data=std::make_unique<Data>();data->role=role;
++  data->browser_requirement=Requirement("dev.aux.browser");data->cli_requirement=Requirement("dev.aux.browser.cli");
++  data->own_requirement=Requirement(role==0?"dev.aux.browser":role==1?"dev.aux.browser.cli":"dev.aux.browser.daemon");
++  if(!data->browser_requirement||!data->cli_requirement||!data->own_requirement)return{};
++  Cf<SecCodeRef> dynamic;Cf<SecStaticCodeRef> own;
++  if(SecCodeCopySelf(kSecCSDefaultFlags,dynamic.InitializeInto())!=errSecSuccess||!dynamic||SecCodeCheckValidity(dynamic.get(),kSecCSStrictValidate|(1U<<29),data->own_requirement.get())!=errSecSuccess||SecCodeCopyStaticCode(dynamic.get(),kSecCSDefaultFlags,own.InitializeInto())!=errSecSuccess)return{};
++  auto image=InspectImage(own.get(),data->own_requirement.get(),role==0?"dev.aux.browser":role==1?"dev.aux.browser.cli":"dev.aux.browser.daemon",role==0?nullptr:role==1?"aux-cli":"aux-daemon");
++  if(!image)return{};data->own=*image;
++  constexpr char cli_suffix[]="/Contents/Resources/aux/apps/cli/Aux CLI.app";
++  std::string outer=image->bundle;
++  if(role!=0){const char* suffix=role==1?cli_suffix:kDaemonSuffix;if(!outer.ends_with(suffix))return{};outer.resize(outer.size()-std::strlen(suffix));}
++  auto read=[&](const std::string& path,SecRequirementRef requirement,const char* identifier,const char* executable)->std::optional<Image>{
++    Cf<CFURLRef> url(CFURLCreateFromFileSystemRepresentation(kCFAllocatorDefault,reinterpret_cast<const UInt8*>(path.data()),path.size(),true));Cf<SecStaticCodeRef> code;
++    if(!url||SecStaticCodeCreateWithPath(url.get(),kSecCSDefaultFlags,code.InitializeInto())!=errSecSuccess)return{};
++    auto value=InspectImage(code.get(),requirement,identifier,executable);return value&&value->bundle==path?value:std::nullopt;
++  };
++  auto browser=read(outer,data->browser_requirement.get(),"dev.aux.browser",nullptr);
++  auto cli=read(outer+cli_suffix,data->cli_requirement.get(),"dev.aux.browser.cli","aux-cli");
++  if(!browser||!cli)return{};data->browser=*browser;data->cli=*cli;
++  std::string locator=outer;locator.push_back('\0');locator.append(reinterpret_cast<const char*>(data->browser.cd_hash.data()),data->browser.cd_hash.size());locator.append(reinterpret_cast<const char*>(data->cli.cd_hash.data()),data->cli.cd_hash.size());locator+=std::to_string(geteuid());
++  std::array<uint8_t,32> digest{};CC_SHA256(locator.data(),static_cast<CC_LONG>(locator.size()),digest.data());
++  data->locator="dev.aux.browser.cli.";constexpr char hex[]="0123456789abcdef";for(const auto byte:digest){data->locator+=hex[byte>>4];data->locator+=hex[byte&15];}
++  auto result=std::shared_ptr<const SealedImages>(new SealedImages(std::move(data)));return result->RevalidateSelf()?result:nullptr;
++}
++std::shared_ptr<const SealedImages> SealedImages::ForCurrentBrowser(){return Capture(0);}
++std::shared_ptr<const SealedImages> SealedImages::ForCurrentCli(){return Capture(1);}
++std::shared_ptr<const SealedImages> SealedImages::ForCurrentDaemon(){return Capture(2);}
++bool SealedImages::RevalidateSelf()const{
++  if(getpid()!=data_->process)return false;Cf<SecCodeRef> current;Cf<CFDictionaryRef> info;
++  if(SecCodeCopySelf(kSecCSDefaultFlags,current.InitializeInto())!=errSecSuccess||!current||SecCodeCheckValidity(current.get(),kSecCSStrictValidate|(1U<<29),data_->own_requirement.get())!=errSecSuccess||SecCodeCopySigningInformation(current.get(),kSecCSSigningInformation,info.InitializeInto())!=errSecSuccess)return false;
++  const auto unique=static_cast<CFDataRef>(Value(info.get(),kSecCodeInfoUnique,CFDataGetTypeID()));return unique&&CFDataGetLength(unique)==static_cast<CFIndex>(data_->own.cd_hash.size())&&std::memcmp(CFDataGetBytePtr(unique),data_->own.cd_hash.data(),data_->own.cd_hash.size())==0;
++}
++bool SealedImages::ValidateCliLaunchResources()const{
++  if(!RevalidateSelf())return false;
++  std::vector<int> held;struct Cleanup{std::vector<int>& values;~Cleanup(){for(auto it=values.rbegin();it!=values.rend();++it)close(*it);}}cleanup{held};
++  auto metadata=[](int fd,bool directory,struct stat* out){
++    if(fstat(fd,out)!=0||out->st_uid!=0||(out->st_mode&0022)|| (directory?!S_ISDIR(out->st_mode):(!S_ISREG(out->st_mode)||out->st_nlink!=1||out->st_size<=0||out->st_size>32*1024*1024)))return false;
++    errno=0;acl_t acl=acl_get_fd_np(fd,ACL_TYPE_EXTENDED);if(!acl)return errno==ENOENT;acl_entry_t entry=nullptr;errno=0;const bool empty=acl_valid(acl)==0&&acl_get_entry(acl,ACL_FIRST_ENTRY,&entry)==-1&&errno==EINVAL&&entry==nullptr;acl_free(acl);return empty;
++  };
++  int parent=open("/",O_RDONLY|O_DIRECTORY|O_CLOEXEC);if(parent<0)return false;held.push_back(parent);struct stat ignored{};if(!metadata(parent,true,&ignored))return false;
++  const std::string path=data_->cli.bundle+"/Contents/Resources/node-development/aux-native-cli-entry.mjs";
++  size_t at=1;struct stat initial{};int entry=-1;
++  while(at<path.size()){
++    const auto end=path.find('/',at);const bool directory=end!=std::string::npos;const auto leaf=path.substr(at,directory?end-at:std::string::npos);
++    if(leaf.empty()||leaf=="."||leaf=="..")return false;const int next=openat(parent,leaf.c_str(),O_RDONLY|O_NOFOLLOW|O_CLOEXEC|O_NONBLOCK|(directory?O_DIRECTORY:0));
++    if(next<0)return false;held.push_back(next);struct stat observed{};if(!metadata(next,directory,&observed))return false;
++    if(!directory){entry=next;initial=observed;break;}parent=next;at=end+1;
++  }
++  if(entry<0)return false;std::vector<UInt8> bytes(static_cast<size_t>(initial.st_size));size_t offset=0;
++  while(offset<bytes.size()){const auto count=pread(entry,bytes.data()+offset,bytes.size()-offset,offset);if(count<0&&errno==EINTR)continue;if(count<=0)return false;offset+=count;}
++  constexpr char prefix[]="#!/usr/bin/env node\n/* aux-owned-cli-entry-v1 */\n";
++  if(bytes.size()<sizeof(prefix)-1||std::memcmp(bytes.data(),prefix,sizeof(prefix)-1)!=0)return false;
++  Cf<CFURLRef> url(CFURLCreateFromFileSystemRepresentation(kCFAllocatorDefault,reinterpret_cast<const UInt8*>(data_->cli.bundle.data()),data_->cli.bundle.size(),true));Cf<SecStaticCodeRef> code;
++  if(!url||SecStaticCodeCreateWithPath(url.get(),kSecCSDefaultFlags,code.InitializeInto())!=errSecSuccess||SecStaticCodeCheckValidity(code.get(),kStrict,data_->cli_requirement.get())!=errSecSuccess)return false;
++  Cf<CFDataRef> content(CFDataCreate(kCFAllocatorDefault,bytes.data(),bytes.size()));
++  if(!content||SecCodeValidateFileResource(code.get(),CFSTR("Resources/node-development/aux-native-cli-entry.mjs"),content.get(),kSecCSDefaultFlags)!=errSecSuccess)return false;
++  struct stat after{},named{};const bool same=metadata(entry,false,&after)&&fstatat(parent,"aux-native-cli-entry.mjs",&named,AT_SYMLINK_NOFOLLOW)==0&&initial.st_dev==after.st_dev&&initial.st_ino==after.st_ino&&initial.st_size==after.st_size&&initial.st_mtimespec.tv_sec==after.st_mtimespec.tv_sec&&initial.st_mtimespec.tv_nsec==after.st_mtimespec.tv_nsec&&initial.st_ctimespec.tv_sec==after.st_ctimespec.tv_sec&&initial.st_ctimespec.tv_nsec==after.st_ctimespec.tv_nsec&&named.st_dev==after.st_dev&&named.st_ino==after.st_ino;
++  return same&&RevalidateSelf();
++}
++bool SealedImages::SameCli(audit_token_t token,const PeerBirth& birth)const{const auto before=Birth(token);if(!before||!SameBirth(*before,birth)||!RevalidateSelf()||!ValidateGuest(token,data_->cli_requirement.get(),data_->cli.cd_hash))return false;const auto after=Birth(token);return after&&SameBirth(*before,*after)&&RevalidateSelf();}
++bool SealedImages::CaptureCli(audit_token_t token,PeerBirth* birth)const{const auto current=Birth(token);if(!birth||!current||!SameCli(token,*current))return false;*birth=*current;return true;}
++bool SealedImages::SameBrowser(audit_token_t token,const PeerBirth& birth)const{const auto before=Birth(token);if(!before||!SameBirth(*before,birth)||!RevalidateSelf()||!ValidateGuest(token,data_->browser_requirement.get(),data_->browser.cd_hash))return false;const auto after=Birth(token);return after&&SameBirth(*before,*after)&&RevalidateSelf();}
++bool SealedImages::CaptureBrowser(audit_token_t token,PeerBirth* birth)const{const auto current=Birth(token);if(!birth||!current||!SameBrowser(token,*current))return false;*birth=*current;return true;}
++const std::string& SealedImages::service()const{return data_->locator;}
++const std::string& SealedImages::cli_executable()const{return data_->cli.executable;}
++SecRequirementRef SealedImages::cli_requirement()const{return data_->cli_requirement.get();}
++const std::vector<uint8_t>& SealedImages::cli_hash()const{return data_->cli.cd_hash;}
++}
+--- /dev/null
++++ b/chrome/browser/aux/cli/AuxCliSealedImages.h
+@@ -0,0 +1,34 @@
++#pragma once
++#include <Security/Security.h>
++#include <bsm/audit.h>
++#include <cstdint>
++#include <memory>
++#include <string>
++#include <vector>
++namespace aux::cli {
++struct PeerBirth { int pid=-1; int version=-1; uint64_t seconds=0; uint64_t microseconds=0; };
++// Constructed only from the real current signed bundle and fixed nested image.
++// Copying image policy authenticates code, never a profile/installation owner.
++class SealedImages final {
++ public:
++  static std::shared_ptr<const SealedImages> ForCurrentBrowser();
++  static std::shared_ptr<const SealedImages> ForCurrentCli();
++  static std::shared_ptr<const SealedImages> ForCurrentDaemon();
++  ~SealedImages();
++  bool RevalidateSelf() const;
++  bool ValidateCliLaunchResources() const;
++  bool CaptureCli(audit_token_t,PeerBirth*) const;
++  bool SameCli(audit_token_t,const PeerBirth&) const;
++  bool CaptureBrowser(audit_token_t,PeerBirth*) const;
++  bool SameBrowser(audit_token_t,const PeerBirth&) const;
++  const std::string& service() const;
++  const std::string& cli_executable() const;
++  SecRequirementRef cli_requirement() const;
++  const std::vector<uint8_t>& cli_hash() const;
++ private:
++  struct Data;
++  explicit SealedImages(std::unique_ptr<Data>);
++  static std::shared_ptr<const SealedImages> Capture(int role);
++  std::unique_ptr<Data> data_;
++};
++}
+--- /dev/null
++++ b/chrome/browser/aux/cli/AuxCliWire.cc
+@@ -0,0 +1,63 @@
++#include "AuxCliWire.h"
++#include <algorithm>
++#include <cstring>
++#include <limits>
++#include <set>
++namespace aux::cli {
++namespace {
++constexpr std::string_view kEnvironment[] = {
++    "PATH","HOME","TMPDIR","TZ","LANG","LC_CTYPE","LC_MESSAGES","TERM",
++    "TERM_PROGRAM","AUX_API_TOKEN","DAEMON_AUTH_JWT","DAEMON_BASE_URL",
++    "AUX_RELEASE_BASE_URL","AUX_CLI_INSTALL_URL","AUX_CLI_LATEST_URL",
++    "AUX_CLI_UPDATE_CHECK","AUX_MCP_DEBUG","CLAUDE_CONFIG_DIR","CODEX_HOME",
++    "XDG_CONFIG_HOME","NO_COLOR","FORCE_COLOR","CLICOLOR_FORCE",
++    "AUX_CLI_AUTH_PATH","AUX_CLI_INSTALL_DIR"};
++void U32(std::vector<uint8_t>& out, uint32_t n) {
++  for (int shift : {24,16,8,0}) out.push_back(static_cast<uint8_t>(n >> shift));
++}
++bool Text(std::vector<uint8_t>& out, std::string_view text) {
++  if (text.size() > kArgumentBytes || text.find('\0') != std::string_view::npos ||
++      out.size() + text.size() + 4 > kPayloadLimit) return false;
++  U32(out, static_cast<uint32_t>(text.size()));
++  out.insert(out.end(), text.begin(), text.end()); return true;
++}
++class Reader {
++ public:
++  explicit Reader(std::span<const uint8_t> bytes) : bytes_(bytes) {}
++  bool U32(uint32_t& n) {
++    if (bytes_.size() - offset_ < 4) return false;
++    n=0; for (size_t i=0;i<4;++i) n=(n<<8)|bytes_[offset_++]; return true;
++  }
++  bool Text(std::string& text) {
++    uint32_t size=0; if(!U32(size)||size>kArgumentBytes||bytes_.size()-offset_<size) return false;
++    text.assign(reinterpret_cast<const char*>(bytes_.data()+offset_),size);offset_+=size;
++    return text.find('\0')==std::string::npos;
++  }
++  bool Done() const { return offset_==bytes_.size(); }
++ private: std::span<const uint8_t> bytes_; size_t offset_=0;
++};
++}
++bool IsCliEnvironmentName(std::string_view name) {
++  return std::find(std::begin(kEnvironment),std::end(kEnvironment),name)!=std::end(kEnvironment);
++}
++bool Encode(const Arguments& args, std::vector<uint8_t>* result) {
++  if(!result||args.argv.size()>kArgumentLimit||args.environment.size()>kEnvironmentLimit)return false;
++  std::vector<uint8_t> bytes;U32(bytes,static_cast<uint32_t>(args.argv.size()));
++  for(const auto& arg:args.argv)if(!Text(bytes,arg))return false;
++  U32(bytes,static_cast<uint32_t>(args.environment.size()));std::set<std::string> seen;
++  for(const auto& [name,value]:args.environment)
++    if(!IsCliEnvironmentName(name)||!seen.insert(name).second||!Text(bytes,name)||!Text(bytes,value))return false;
++  if(bytes.size()>kPayloadLimit)return false;*result=std::move(bytes);return true;
++}
++bool Decode(std::span<const uint8_t> bytes, Arguments* result) {
++  if(!result||bytes.size()>kPayloadLimit)return false;Reader reader(bytes);uint32_t argc=0,envc=0;
++  if(!reader.U32(argc)||argc>kArgumentLimit)return false;Arguments args;args.argv.resize(argc);
++  for(auto& arg:args.argv)if(!reader.Text(arg))return false;
++  if(!reader.U32(envc)||envc>kEnvironmentLimit)return false;std::set<std::string> seen;
++  for(uint32_t i=0;i<envc;++i){std::string name,value;if(!reader.Text(name)||!reader.Text(value)||!IsCliEnvironmentName(name)||!seen.insert(name).second)return false;args.environment.emplace_back(std::move(name),std::move(value));}
++  if(!reader.Done())return false;*result=std::move(args);return true;
++}
++size_t RequestBytes(uint32_t payload_bytes) {
++  return payload_bytes<=kPayloadLimit?(offsetof(Request,payload)+payload_bytes+3)&~size_t{3}:0;
++}
++}
+--- /dev/null
++++ b/chrome/browser/aux/cli/AuxCliWire.h
+@@ -0,0 +1,47 @@
++#pragma once
++#include <mach/mach.h>
++#include <array>
++#include <cstddef>
++#include <string_view>
++#include <cstdint>
++#include <span>
++#include <string>
++#include <utility>
++#include <vector>
++
++namespace aux::cli {
++inline constexpr mach_msg_id_t kInvoke = 0x41584351; // AXCQ
++inline constexpr mach_msg_id_t kCompleted = 0x41584352; // AXCR
++inline constexpr uint32_t kVersion = 1;
++inline constexpr size_t kArgumentLimit = 256;
++inline constexpr size_t kArgumentBytes = 8192;
++inline constexpr size_t kPayloadLimit = 32768;
++inline constexpr size_t kEnvironmentLimit = 32;
++using Nonce = std::array<uint8_t, 32>;
++// Fileports: directory, stdin, stdout, stderr. These kernel capabilities never
++// select an Aux installation/profile/owner. Native admission is separate.
++struct Request {
++  mach_msg_header_t header{};
++  mach_msg_body_t body{};
++  std::array<mach_msg_port_descriptor_t, 4> files{};
++  uint32_t version = kVersion;
++  uint32_t payload_bytes = 0;
++  Nonce nonce{};
++  std::array<uint8_t, kPayloadLimit> payload{};
++};
++struct Completion {
++  mach_msg_header_t header{};
++  uint32_t version = kVersion;
++  int32_t exit_code = 78;
++  Nonce nonce{};
++};
++struct Arguments {
++  std::vector<std::string> argv;
++  std::vector<std::pair<std::string, std::string>> environment;
++};
++// Fixed non-loader CLI options. None is read as native root/role authority.
++bool IsCliEnvironmentName(std::string_view name);
++bool Encode(const Arguments&, std::vector<uint8_t>*);
++bool Decode(std::span<const uint8_t>, Arguments*);
++size_t RequestBytes(uint32_t payload_bytes);
++}
+--- /dev/null
++++ b/chrome/browser/aux/cli/AuxNativeCliFrontend.mm
+@@ -0,0 +1,52 @@
++// Proposed native terminal frontend. This does not admit the existing SEA.
++#include "AuxCliIngress.h"
++#include "AuxCliOpenArguments.h"
++#include <vector>
++#include "AuxNativeEndpointDelivery.h"
++#include "packaged-identity-admission.h"
++#include <mach-o/dyld.h>
++#include <mach/mach.h>
++#include <climits>
++#include <cstdio>
++#include <cstring>
++#include <cstdlib>
++#include <string>
++int main(int argc,char* argv[]){
++ @autoreleasepool {
++ char executable[PATH_MAX];uint32_t length=sizeof(executable);if(_NSGetExecutablePath(executable,&length))return 78;
++ char resolved[PATH_MAX];if(!realpath(executable,resolved))return 78;
++ const std::string self(resolved),suffix="/apps/cli/Aux CLI.app/Contents/MacOS/aux-cli";
++ if(!self.ends_with(suffix)||self.size()<=suffix.size())return 78;
++ const auto root=self.substr(0,self.size()-suffix.size());
++ const auto endpoint=AuxTakeNativeParentEndpointForBootstrap();
++ if(endpoint!=MACH_PORT_NULL){
++  mach_port_deallocate(mach_task_self(),endpoint);
++  // A browser-owned Node/installation role remains unsupported regardless of
++  // immutable marker contents. No marker creates an installation owner.
++  if(!aux::packaged_identity::MarkerAllowedAt(root+"/bundle.json")){
++   std::fputs("Aux packaged state identity is unsupported or unaccepted\n",stderr);return 78;
++  }
++  // Explicit until the real typed proxy owner, role image graph and sealed
++  // Node entry are joined. Never recursively forward a browser-owned child.
++  std::fputs("Aux CLI retained runtime join is not paired\n",stderr);return 78;
++ }
++ std::vector<std::string> arguments;
++ if(argc<1||argc>257||!argv)return 64;
++ for(int i=1;i<argc;++i){if(!argv[i]||strnlen(argv[i],8193)>8192)return 64;arguments.emplace_back(argv[i]);}
++ const auto parsed=aux::cli::ParseNativeOpenArguments(arguments);
++ if(parsed.status==aux::cli::OpenParseStatus::help){
++  std::fputs("Usage: aux open <https://URL> [--profile <native profile ID or unique name>]\n",stdout);return 0;
++ }
++ if(parsed.status!=aux::cli::OpenParseStatus::accepted){
++  // Keep the old installation/account marker refusal in that unsupported role.
++  // The narrow native browser command never reads a mutable home or starts Node.
++  if(!aux::packaged_identity::MarkerAllowedAt(root+"/bundle.json")){
++   std::fputs("Aux packaged state identity is unsupported or unaccepted\n",stderr);return 78;
++  }
++  std::fputs("Aux currently supports native open only; installation/account CLI commands remain unavailable\n",stderr);return 64;
++ }
++ // Native open is admitted only by the exact browser peer, its genuine native
++ // startup/Profile binding and actual one-shot OS approval. Markers grant none.
++ return aux::cli::ForwardTerminalInvocation(argc,argv);
++ }
++}
+--- /dev/null
++++ b/chrome/browser/aux/cli/AuxNativeEndpointDelivery.cc
+@@ -0,0 +1,108 @@
++// Exact finite Chromium rendezvous wire consumer, system ABI only; no base link.
++#include "AuxNativeEndpointDelivery.h"
++#include <bsm/libbsm.h>
++#include <libproc.h>
++#include <servers/bootstrap.h>
++#include <sys/proc_info.h>
++#include <unistd.h>
++#include <array>
++#include <cstdint>
++#include <cstdio>
++#include <cstring>
++
++namespace {
++constexpr mach_msg_id_t kRequest = 0x6d727a76; // Chromium 'mrzv'
++constexpr mach_msg_id_t kResponse = 0x4d525a56; // Chromium 'MRZV'
++constexpr uint32_t kEndpointKey = 0x41555850;   // AUXP, native launch only.
++constexpr mach_msg_timeout_t kTimeout = 2000;
++struct OwnedRight {
++  mach_port_t name = MACH_PORT_NULL;
++  const pid_t process = getpid();
++  ~OwnedRight() {
++    if (getpid() == process && name != MACH_PORT_NULL)
++      mach_port_deallocate(mach_task_self(), name);
++  }
++};
++struct OwnedReceiver {
++  mach_port_t name = MACH_PORT_NULL;
++  const pid_t process = getpid();
++  ~OwnedReceiver() {
++    if (getpid() == process && name != MACH_PORT_NULL)
++      mach_port_mod_refs(mach_task_self(), name, MACH_PORT_RIGHT_RECEIVE, -1);
++  }
++};
++bool ReadParent(pid_t parent, proc_bsdinfo& value) {
++  return parent > 1 && proc_pidinfo(parent, PROC_PIDTBSDINFO, 0, &value,
++      sizeof(value)) == static_cast<int>(sizeof(value)) && value.pbi_pid == static_cast<uint32_t>(parent) &&
++      value.pbi_start_tvsec != 0;
++}
++}
++extern "C" mach_port_t AuxTakeNativeParentEndpointForBootstrap(void) {
++  const pid_t parent = getppid();
++  proc_bsdinfo before{}, after{};
++  if (!ReadParent(parent, before)) return MACH_PORT_NULL;
++  char service[BOOTSTRAP_MAX_NAME_LEN]{};
++  if (snprintf(service, sizeof(service), "dev.aux.browser.MachPortRendezvousServer.%d",
++               parent) >= static_cast<int>(sizeof(service))) return MACH_PORT_NULL;
++  OwnedRight server;
++  if (bootstrap_look_up(bootstrap_port, service, &server.name) != KERN_SUCCESS)
++    return MACH_PORT_NULL;
++  OwnedReceiver reply;
++  if (mach_port_allocate(mach_task_self(), MACH_PORT_RIGHT_RECEIVE, &reply.name) != KERN_SUCCESS)
++    return MACH_PORT_NULL;
++  mach_msg_header_t request{};
++  request.msgh_bits = MACH_MSGH_BITS(MACH_MSG_TYPE_COPY_SEND, MACH_MSG_TYPE_MAKE_SEND_ONCE);
++  request.msgh_size = sizeof(request);
++  request.msgh_remote_port = server.name;
++  request.msgh_local_port = reply.name;
++  request.msgh_id = kRequest;
++  auto status = mach_msg(&request, MACH_SEND_MSG | MACH_SEND_TIMEOUT,
++      sizeof(request), 0, MACH_PORT_NULL, kTimeout, MACH_PORT_NULL);
++  if (status != KERN_SUCCESS) {
++    // As in reviewed peer transport, only pseudo-received recoverable errors
++    // permit cleanup of the current local MOVE right. Unknown errors refuse;
++    // never destroy the original stale MAKE_SEND_ONCE representation.
++    if (status == MACH_SEND_INVALID_DEST || status == MACH_SEND_TIMED_OUT ||
++        status == MACH_SEND_INTERRUPTED) {
++      const auto local = MACH_MSGH_BITS_LOCAL(request.msgh_bits);
++      if ((local == MACH_MSG_TYPE_MOVE_SEND || local == MACH_MSG_TYPE_MOVE_SEND_ONCE) &&
++          request.msgh_local_port != MACH_PORT_NULL)
++        mach_port_deallocate(mach_task_self(), request.msgh_local_port);
++    }
++    return MACH_PORT_NULL;
++  }
++  // Bounded maximum upstream response, though this cold role accepts exactly1.
++  alignas(mach_msg_audit_trailer_t) std::array<uint8_t, 1024> received{};
++  auto* header = reinterpret_cast<mach_msg_header_t*>(received.data());
++  status = mach_msg(header, MACH_RCV_MSG | MACH_RCV_TIMEOUT |
++      MACH_RCV_TRAILER_TYPE(MACH_MSG_TRAILER_FORMAT_0) |
++      MACH_RCV_TRAILER_ELEMENTS(MACH_RCV_TRAILER_AUDIT), 0, received.size(), reply.name,
++      kTimeout, MACH_PORT_NULL);
++  if (status != KERN_SUCCESS) return MACH_PORT_NULL;
++  struct MessageOwner {
++    mach_msg_header_t* header;
++    ~MessageOwner() { mach_msg_destroy(header); }
++  } message{header};
++  constexpr size_t kSize = sizeof(mach_msg_base_t) + sizeof(mach_msg_port_descriptor_t) +
++                           sizeof(uint32_t) + sizeof(uint64_t);
++  if (header->msgh_id != kResponse || header->msgh_size != kSize ||
++      !(header->msgh_bits & MACH_MSGH_BITS_COMPLEX)) return MACH_PORT_NULL;
++  auto* base = reinterpret_cast<mach_msg_base_t*>(header);
++  if (base->body.msgh_descriptor_count != 1) return MACH_PORT_NULL;
++  auto* port = reinterpret_cast<mach_msg_port_descriptor_t*>(received.data() + sizeof(mach_msg_base_t));
++  uint32_t key = 0;
++  uint64_t additional = 1;
++  memcpy(&key, received.data() + sizeof(mach_msg_base_t) + sizeof(*port), sizeof(key));
++  memcpy(&additional, received.data() + sizeof(mach_msg_base_t) + sizeof(*port) + sizeof(key), sizeof(additional));
++  auto* trailer = reinterpret_cast<mach_msg_audit_trailer_t*>(received.data() + kSize);
++  if (port->type != MACH_MSG_PORT_DESCRIPTOR || port->disposition != MACH_MSG_TYPE_PORT_SEND ||
++      port->name == MACH_PORT_NULL || key != kEndpointKey || additional != 0 ||
++      trailer->msgh_trailer_type != MACH_MSG_TRAILER_FORMAT_0 ||
++      trailer->msgh_trailer_size != sizeof(*trailer) || audit_token_to_pid(trailer->msgh_audit) != parent ||
++      getppid() != parent || !ReadParent(parent, after) ||
++      before.pbi_start_tvsec != after.pbi_start_tvsec ||
++      before.pbi_start_tvusec != after.pbi_start_tvusec) return MACH_PORT_NULL;
++  const auto endpoint = port->name;
++  port->name = MACH_PORT_NULL; // Transfer exactly the received send right.
++  return endpoint; // Locator only: next mandatory sealed live-code handshake.
++}
+--- /dev/null
++++ b/chrome/browser/aux/cli/AuxNativeEndpointDelivery.h
+@@ -0,0 +1,12 @@
++#pragma once
++#include <mach/mach.h>
++#ifdef __cplusplus
++extern "C" {
++#endif
++// Native bootstrap only, called before Node initialization. Returns one owned
++// send-right reference, or MACH_PORT_NULL. Delivery is not peer authentication.
++// This header is the ONLY ABI between Chromium's C++ graph and Node's graph.
++mach_port_t AuxTakeNativeParentEndpointForBootstrap(void);
++#ifdef __cplusplus
++}
++#endif
+--- /dev/null
++++ b/chrome/browser/aux/cli/packaged-identity-admission.h
+@@ -0,0 +1,227 @@
++// Copyright 2026 Aux Authors. All rights reserved.
++// Read-only immutable bundle admission. Never inspects a mutable Aux home.
++#ifndef AUX_PROVIDED_PACKAGED_IDENTITY_ADMISSION_H_
++#define AUX_PROVIDED_PACKAGED_IDENTITY_ADMISSION_H_
++#import <Foundation/Foundation.h>
++#include <errno.h>
++#include <fcntl.h>
++#include <limits.h>
++#include <sys/stat.h>
++#include <unistd.h>
++#include <cstdint>
++#include <cstdlib>
++#include <set>
++#include <string>
++#include <string_view>
++namespace aux::packaged_identity {
++constexpr size_t kMaxMarkerBytes = 16 * 1024 * 1024;
++inline bool Whitespace(char ch) {
++  return ch == ' ' || ch == '\t' || ch == '\r' || ch == '\n';
++}
++// Constrain Foundation's parser to RFC JSON syntax (no comments, trailing
++// commas, fragments, invalid number tokens or extra trailing documents).
++class StrictJsonSyntax {
++ public:
++  explicit StrictJsonSyntax(std::string_view input) : input_(input) {}
++  bool Valid() {
++    Skip();
++    if (!Value(0)) return false;
++    Skip();
++    return offset_ == input_.size();
++  }
++ private:
++  void Skip() { while (offset_ < input_.size() && Whitespace(input_[offset_])) ++offset_; }
++  bool Take(char ch) {
++    if (offset_ == input_.size() || input_[offset_] != ch) return false;
++    ++offset_; return true;
++  }
++  bool String() {
++    if (!Take('"')) return false;
++    while (offset_ < input_.size()) {
++      const unsigned char ch = input_[offset_++];
++      if (ch == '"') return true;
++      if (ch < 0x20) return false;
++      if (ch != '\\') continue;
++      if (offset_ == input_.size()) return false;
++      const char escape = input_[offset_++];
++      if (escape == 'u') {
++        for (int count = 0; count < 4; ++count) {
++          if (offset_ == input_.size()) return false;
++          const char digit = input_[offset_++];
++          if (!((digit >= '0' && digit <= '9') ||
++                (digit >= 'a' && digit <= 'f') ||
++                (digit >= 'A' && digit <= 'F'))) return false;
++        }
++      } else if (std::string_view("\"\\/bfnrt").find(escape) == std::string_view::npos) {
++        return false;
++      }
++    }
++    return false;
++  }
++  bool Digits() {
++    const size_t start = offset_;
++    while (offset_ < input_.size() && input_[offset_] >= '0' && input_[offset_] <= '9') ++offset_;
++    return offset_ != start;
++  }
++  bool Number() {
++    Take('-');
++    if (!Take('0')) {
++      if (offset_ == input_.size() || input_[offset_] < '1' || input_[offset_] > '9' || !Digits()) return false;
++    }
++    if (Take('.') && !Digits()) return false;
++    if (Take('e') || Take('E')) {
++      if (!Take('+')) Take('-');
++      if (!Digits()) return false;
++    }
++    return true;
++  }
++  bool Value(unsigned depth) {
++    Skip();
++    if (offset_ == input_.size()) return false;
++    const char ch = input_[offset_];
++    if (ch == '{' || ch == '[') {
++      if (depth >= 200) return false;
++      ++offset_;
++      const char end = ch == '{' ? '}' : ']';
++      Skip(); if (Take(end)) return true;
++      for (;;) {
++        if (ch == '{') { Skip(); if (!String()) return false; Skip(); if (!Take(':')) return false; }
++        if (!Value(depth + 1)) return false;
++        Skip(); if (Take(end)) return true;
++        if (!Take(',')) return false;
++      }
++    }
++    if (ch == '"') return String();
++    for (const auto token : {std::string_view("true"), std::string_view("false"), std::string_view("null")}) {
++      if (input_.substr(offset_, token.size()) == token) { offset_ += token.size(); return true; }
++    }
++    return Number();
++  }
++  const std::string_view input_;
++  size_t offset_ = 0;
++};
++inline bool MarkerAllowed(std::string_view json) {
++  @autoreleasepool {
++    if (json.empty() || json.size() > kMaxMarkerBytes ||
++        json.substr(0, 3) == "\xEF\xBB\xBF") return false;
++    if (!StrictJsonSyntax(json).Valid()) return false;
++    NSData* data = [NSData dataWithBytes:json.data() length:json.size()];
++    // Foundation also supports other JSON encodings. The browser accepts UTF-8;
++    // reject any encoding conversion or invalid UTF-8 instead of broadening it.
++    NSString* utf8 = [[NSString alloc] initWithData:data encoding:NSUTF8StringEncoding];
++    if (!utf8 || ![[utf8 dataUsingEncoding:NSUTF8StringEncoding] isEqualToData:data])
++      return false;
++    id object = [NSJSONSerialization JSONObjectWithData:data options:0 error:nil];
++    if (![object isKindOfClass:[NSDictionary class]]) return false;
++    NSDictionary* marker = object;
++    std::set<std::string> keys;
++    std::string version_token, state_token;
++    bool has_version_token = false, has_state_token = false;
++    int depth = 0;
++    // JSON parsing validates structure. This second pass rejects duplicate
++    // decoded TOP-LEVEL keys (including escaped spellings), which Foundation
++    // otherwise resolves by selecting a value. It also retains exact numeric
++    // lexemes so 1.0, 1e0, strings and booleans cannot masquerade as an int.
++    for (size_t index = 0; index < json.size(); ++index) {
++      const char ch = json[index];
++      if (ch == '"') {
++        const size_t start = index++;
++        while (index < json.size()) {
++          if (json[index] == '\\') { index += 2; continue; }
++          if (json[index] == '"') break;
++          ++index;
++        }
++        if (index >= json.size()) return false;
++        size_t next = index + 1;
++        while (next < json.size() && Whitespace(json[next])) ++next;
++        if (depth == 1 && next < json.size() && json[next] == ':') {
++          NSData* encoded_key = [NSData dataWithBytes:json.data() + start
++                                               length:index - start + 1];
++          id decoded = [NSJSONSerialization JSONObjectWithData:encoded_key
++                   options:NSJSONReadingFragmentsAllowed error:nil];
++          if (![decoded isKindOfClass:[NSString class]]) return false;
++          NSData* decoded_bytes = [decoded dataUsingEncoding:NSUTF8StringEncoding];
++          if (!decoded_bytes) return false;
++          std::string key;
++          if (decoded_bytes.length) key.assign(
++              static_cast<const char*>(decoded_bytes.bytes), decoded_bytes.length);
++          if (!keys.insert(key).second) return false;
++          if (key == "version" || key == "stateIdentityVersion") {
++            size_t value_start = next + 1;
++            while (value_start < json.size() && Whitespace(json[value_start]))
++              ++value_start;
++            size_t value_end = value_start;
++            while (value_end < json.size() && !Whitespace(json[value_end]) &&
++                   json[value_end] != ',' && json[value_end] != '}' &&
++                   json[value_end] != ']') ++value_end;
++            const std::string token(json.substr(value_start, value_end - value_start));
++            if (key == "version") {
++              version_token = token;
++              has_version_token = true;
++            } else {
++              state_token = token;
++              has_state_token = true;
++            }
++          }
++        }
++      } else if (ch == '{' || ch == '[') {
++        ++depth;
++      } else if (ch == '}' || ch == ']') {
++        --depth;
++      }
++    }
++    if (!has_version_token || version_token != "1" ||
++        ![marker[@"version"] isKindOfClass:[NSNumber class]]) return false;
++    id implementation = marker[@"implementation"];
++    if (![implementation isKindOfClass:[NSString class]] ||
++        ![implementation isEqualToString:@"supplied"]) return false;
++    id profile = marker[@"identityProfile"];
++    if (profile && ![profile isKindOfClass:[NSString class]]) return false;
++    if (profile && ![profile isEqualToString:@"compatibility"] &&
++        ![profile isEqualToString:@"aux-v1"]) return false;
++    id state = marker[@"stateIdentityVersion"];
++    if (state && (![state isKindOfClass:[NSNumber class]] ||
++                  !has_state_token || state_token != "1")) return false;
++    // No acceptance record, environment or process switch can authorize state2.
++    return true;
++  }
++}
++inline bool SameMetadata(const struct stat& before, const struct stat& after) {
++  return before.st_dev == after.st_dev && before.st_ino == after.st_ino &&
++      before.st_size == after.st_size && before.st_mode == after.st_mode &&
++      before.st_uid == after.st_uid && before.st_nlink == after.st_nlink &&
++      before.st_mtimespec.tv_sec == after.st_mtimespec.tv_sec &&
++      before.st_mtimespec.tv_nsec == after.st_mtimespec.tv_nsec &&
++      before.st_ctimespec.tv_sec == after.st_ctimespec.tv_sec &&
++      before.st_ctimespec.tv_nsec == after.st_ctimespec.tv_nsec;
++}
++inline bool MarkerAllowedAt(const std::string& path) {
++  if (path.empty() || path[0] != '/' || path.find('\0') != std::string::npos)
++    return false;
++  char canonical[PATH_MAX];
++  if (!realpath(path.c_str(), canonical) || path != canonical) return false;
++  struct ScopedFd {
++    explicit ScopedFd(int value) : value(value) {}
++    ~ScopedFd() { if (value >= 0) close(value); }
++    int value;
++  } fd(open(path.c_str(), O_RDONLY | O_NOFOLLOW | O_CLOEXEC | O_NONBLOCK));
++  struct stat before, after;
++  if (fd.value < 0 || fstat(fd.value, &before) || !S_ISREG(before.st_mode) ||
++      (before.st_uid != getuid() && before.st_uid != 0) ||
++      (before.st_mode & 0022) || before.st_nlink != 1 || before.st_size <= 0 ||
++      static_cast<uint64_t>(before.st_size) > kMaxMarkerBytes) return false;
++  std::string bytes(static_cast<size_t>(before.st_size), '\0');
++  size_t offset = 0;
++  while (offset < bytes.size()) {
++    const ssize_t size = read(fd.value, bytes.data() + offset, bytes.size() - offset);
++    if (size < 0 && errno == EINTR) continue;
++    if (size <= 0) return false;
++    offset += static_cast<size_t>(size);
++  }
++  char extra;
++  if (read(fd.value, &extra, 1) != 0 || fstat(fd.value, &after) ||
++      !SameMetadata(before, after)) return false;
++  return MarkerAllowed(bytes);
++}
++}  // namespace aux::packaged_identity
++#endif

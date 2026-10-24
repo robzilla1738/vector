@@ -1,0 +1,121 @@
+{
+  "format": "aux.cli-native-open.flat.dependencies.v1",
+  "files": [
+    {
+      "path": "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/SDKSettings.json",
+      "sha256": "7b93ad7e534cc4b31c6a4e39d19b5e0288acf2168c2649479a796d1cb51939fb"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/aux-native-daemon-main/source/AuxNativeEndpointDelivery.cc",
+      "sha256": "3765060b84d88a7f63cdcfb695bcbc3f58ab1f92ca9905ccc5d37b629944c57d"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/aux-native-daemon-main/source/AuxNativeEndpointDelivery.h",
+      "sha256": "f3d78409fec2b84a5304626e144e84314954bce0ea29762f0f30740c62ca6b89"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/cli-native-embedding-a1/source/common/AuxCliSealedImages.cc",
+      "sha256": "fb28fb6fd341165d229670befb2bb5d3ff108054c5e7e286362ca7c7ba12a959"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/cli-native-embedding-a1/source/common/AuxCliSealedImages.h",
+      "sha256": "6f1df6f4b83809e8e4ae4fec2cfcd4a6a8e7b0cd40e8bcbb1e7bc25bec59087b"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/cli-native-embedding-a1/source/common/AuxCliWire.cc",
+      "sha256": "94ba5d5e076cc6fbfb7163512c1f8600b326969ef7e83dde236ac483c8a1fb68"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/cli-native-embedding-a1/source/common/AuxCliWire.h",
+      "sha256": "e95c86ea68e13b9265ab3a48d983824dba128eab260687ab061387f18f788774"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/cli-native-open-build-handoff-a1/gn-plan.json",
+      "sha256": "f4ebe7756882d9584fe4ee5efb6a77ddb6fcd732be76c12cb80a3e56156fea86"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/cli-native-open-build-handoff-a1/sdk-compile-plan.json",
+      "sha256": "bfcb8e4a5e40b0df6f35ac050e552071f3a5e93b81e907592d8e1b5daa568265"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/cli-native-open-build-handoff-a1/source/AuxCliIngress.cc",
+      "sha256": "32c4ebdebec5e08df2b4b365f5c0c67276eb1fba953506526a4480ba86bc314c"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/cli-native-open-build-handoff-a1/source/AuxCliManualProfileApproval.mm",
+      "sha256": "44c40ecbb16258dcb0ae23e05a6a33d724c62f2a9db8d5e5c5e2974ec4e5ac2b"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/cli-native-open-build-handoff-a1/source/AuxNativeCliFrontend.mm",
+      "sha256": "bb65a82e22c85768cf81184fb083026b2371edfe23d95e78e9133133c54d7fb2"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/cli-native-open-build-handoff-a1/source/aux_browser_descendant_bridge.cc",
+      "sha256": "f55420ae4a34ceb5dedc485edf1f65117500274e45280073e4c4482539f27826"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/cli-native-open-build-handoff-a1/source/aux_browser_descendant_cli_membership.h",
+      "sha256": "459c840be2e6316adc8bb5a955a5dd897e678a775da265f510f7eab568f2cdb0"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/cli-native-open-build-handoff-a1/source/aux_browser_descendant_engine.cc",
+      "sha256": "189b9706842f77503d5a25c321817cb6d58b308da1d1623335f09868a286cfab"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/cli-native-open-command-a1/native-hooks.json",
+      "sha256": "74e94e35d468eb7dbcb755fe53ef4af691466e00bf916bbcbdc6ca33c4692057"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/cli-native-open-command-a1/registration-handoff.json",
+      "sha256": "4a460abb19fabdf16a06a499fbbb2b50d00ca2e6330523aff35f64d6eb88a7e3"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/cli-native-open-command-a1/source/AuxCliIngress.h",
+      "sha256": "4515848fafc4dad25e5180130640d28c28bf1a3333610f232b34816a7e64e8d6"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/cli-native-open-command-a1/source/AuxCliManualProfileApproval.h",
+      "sha256": "1755a7637a24e7e2379ca7b03f2579c0584725c08a6ea190c85eeb1bffabef4b"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/cli-native-open-command-a1/source/AuxCliOpenArguments.cc",
+      "sha256": "d2f946689e5f5a6d5c82adbb1c3c685ddc58ac92ab9ef0dbebcd07edb4282f92"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/cli-native-open-command-a1/source/AuxCliOpenArguments.h",
+      "sha256": "6c9761c47b8d76f2bde4bfadeb78f5b24cbaeba457ad1b0a2b99cf2a6f2e2a6d"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/cli-native-open-command-a1/source/AuxCliOpenCommand.h",
+      "sha256": "bd226a9cf3c557e00af71451e5069baab9b9330d2040c3d48168252147fc3c44"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/cli-native-open-command-a1/source/AuxCliOpenCommand.mm",
+      "sha256": "0117c63f701e11c8c5f30e3d6ce5fab164e6836256f18dcee2a489481d0ee5bf"
+    },
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/vendor/provided/native/packaged-identity-admission.h",
+      "sha256": "3f56e834ea18353f8ec7ed554336eb94104ff86f84dcfe1952de258520c4f50a"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-native-daemon-main/source/AuxNativeEndpointDelivery.cc",
+      "sha256": "3765060b84d88a7f63cdcfb695bcbc3f58ab1f92ca9905ccc5d37b629944c57d"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-native-daemon-main/source/AuxNativeEndpointDelivery.h",
+      "sha256": "f3d78409fec2b84a5304626e144e84314954bce0ea29762f0f30740c62ca6b89"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/storage-restore-integration-a10/source-composition.json",
+      "sha256": "53562febf53463747d93f08234b6b9dfc282dc6dafdb40cb3e8ce5b5ccec29dc"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/cli-native-open-build-handoff-a1/actual-sdk-compile-a1.json",
+      "sha256": "b2983ee989e964246d7dc48818199bec50bde38337893a5b44602be192ada964"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/vendor/provided/native/packaged-identity-admission.h",
+      "sha256": "3f56e834ea18353f8ec7ed554336eb94104ff86f84dcfe1952de258520c4f50a"
+    }
+  ]
+}

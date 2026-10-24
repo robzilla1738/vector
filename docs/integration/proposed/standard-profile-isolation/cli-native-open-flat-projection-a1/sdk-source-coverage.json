@@ -1,0 +1,85 @@
+{
+  "format": "aux.cli-native-open.flat.sdk-coverage.v1",
+  "actualSdkReceipt": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/cli-native-open-build-handoff-a1/actual-sdk-compile-a1.json",
+  "actualSdkReceiptSha256": "b2983ee989e964246d7dc48818199bec50bde38337893a5b44602be192ada964",
+  "testedSourceHeaderCount": 12,
+  "files": [
+    {
+      "sdkInput": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/aux-native-daemon-main/source/AuxNativeEndpointDelivery.cc",
+      "sha256": "3765060b84d88a7f63cdcfb695bcbc3f58ab1f92ca9905ccc5d37b629944c57d",
+      "flatPath": "chrome/browser/aux/cli/AuxNativeEndpointDelivery.cc",
+      "flatSource": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/cli-native-open-flat-projection-a1/source/chrome/browser/aux/cli/AuxNativeEndpointDelivery.cc"
+    },
+    {
+      "sdkInput": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/aux-native-daemon-main/source/AuxNativeEndpointDelivery.h",
+      "sha256": "f3d78409fec2b84a5304626e144e84314954bce0ea29762f0f30740c62ca6b89",
+      "flatPath": "chrome/browser/aux/cli/AuxNativeEndpointDelivery.h",
+      "flatSource": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/cli-native-open-flat-projection-a1/source/chrome/browser/aux/cli/AuxNativeEndpointDelivery.h"
+    },
+    {
+      "sdkInput": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/cli-native-embedding-a1/source/common/AuxCliSealedImages.cc",
+      "sha256": "fb28fb6fd341165d229670befb2bb5d3ff108054c5e7e286362ca7c7ba12a959",
+      "flatPath": "chrome/browser/aux/cli/AuxCliSealedImages.cc",
+      "flatSource": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/cli-native-open-flat-projection-a1/source/chrome/browser/aux/cli/AuxCliSealedImages.cc"
+    },
+    {
+      "sdkInput": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/cli-native-embedding-a1/source/common/AuxCliSealedImages.h",
+      "sha256": "6f1df6f4b83809e8e4ae4fec2cfcd4a6a8e7b0cd40e8bcbb1e7bc25bec59087b",
+      "flatPath": "chrome/browser/aux/cli/AuxCliSealedImages.h",
+      "flatSource": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/cli-native-open-flat-projection-a1/source/chrome/browser/aux/cli/AuxCliSealedImages.h"
+    },
+    {
+      "sdkInput": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/cli-native-embedding-a1/source/common/AuxCliWire.cc",
+      "sha256": "94ba5d5e076cc6fbfb7163512c1f8600b326969ef7e83dde236ac483c8a1fb68",
+      "flatPath": "chrome/browser/aux/cli/AuxCliWire.cc",
+      "flatSource": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/cli-native-open-flat-projection-a1/source/chrome/browser/aux/cli/AuxCliWire.cc"
+    },
+    {
+      "sdkInput": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/cli-native-embedding-a1/source/common/AuxCliWire.h",
+      "sha256": "e95c86ea68e13b9265ab3a48d983824dba128eab260687ab061387f18f788774",
+      "flatPath": "chrome/browser/aux/cli/AuxCliWire.h",
+      "flatSource": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/cli-native-open-flat-projection-a1/source/chrome/browser/aux/cli/AuxCliWire.h"
+    },
+    {
+      "sdkInput": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/cli-native-open-build-handoff-a1/source/AuxCliIngress.cc",
+      "sha256": "32c4ebdebec5e08df2b4b365f5c0c67276eb1fba953506526a4480ba86bc314c",
+      "flatPath": "chrome/browser/aux/cli/AuxCliIngress.cc",
+      "flatSource": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/cli-native-open-flat-projection-a1/source/chrome/browser/aux/cli/AuxCliIngress.cc"
+    },
+    {
+      "sdkInput": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/cli-native-open-build-handoff-a1/source/AuxNativeCliFrontend.mm",
+      "sha256": "bb65a82e22c85768cf81184fb083026b2371edfe23d95e78e9133133c54d7fb2",
+      "flatPath": "chrome/browser/aux/cli/AuxNativeCliFrontend.mm",
+      "flatSource": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/cli-native-open-flat-projection-a1/source/chrome/browser/aux/cli/AuxNativeCliFrontend.mm"
+    },
+    {
+      "sdkInput": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/cli-native-open-command-a1/source/AuxCliIngress.h",
+      "sha256": "4515848fafc4dad25e5180130640d28c28bf1a3333610f232b34816a7e64e8d6",
+      "flatPath": "chrome/browser/aux/cli/AuxCliIngress.h",
+      "flatSource": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/cli-native-open-flat-projection-a1/source/chrome/browser/aux/cli/AuxCliIngress.h"
+    },
+    {
+      "sdkInput": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/cli-native-open-command-a1/source/AuxCliOpenArguments.cc",
+      "sha256": "d2f946689e5f5a6d5c82adbb1c3c685ddc58ac92ab9ef0dbebcd07edb4282f92",
+      "flatPath": "chrome/browser/aux/cli/AuxCliOpenArguments.cc",
+      "flatSource": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/cli-native-open-flat-projection-a1/source/chrome/browser/aux/cli/AuxCliOpenArguments.cc"
+    },
+    {
+      "sdkInput": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/cli-native-open-command-a1/source/AuxCliOpenArguments.h",
+      "sha256": "6c9761c47b8d76f2bde4bfadeb78f5b24cbaeba457ad1b0a2b99cf2a6f2e2a6d",
+      "flatPath": "chrome/browser/aux/cli/AuxCliOpenArguments.h",
+      "flatSource": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/cli-native-open-flat-projection-a1/source/chrome/browser/aux/cli/AuxCliOpenArguments.h"
+    },
+    {
+      "sdkInput": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/vendor/provided/native/packaged-identity-admission.h",
+      "sha256": "3f56e834ea18353f8ec7ed554336eb94104ff86f84dcfe1952de258520c4f50a",
+      "flatPath": "chrome/browser/aux/cli/packaged-identity-admission.h",
+      "flatSource": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/cli-native-open-flat-projection-a1/source/chrome/browser/aux/cli/packaged-identity-admission.h"
+    }
+  ],
+  "sdkCompilePassed": true,
+  "standaloneUnsignedLinkPassed": true,
+  "browserUiAndPrimaryCompilePassed": false,
+  "productExecuted": false,
+  "runtimeAcceptance": false
+}

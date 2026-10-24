@@ -1,0 +1,19 @@
+{
+  "format": "aux.cli-native-open.flat.static-check.v1",
+  "passed": true,
+  "existingFileCount": 14,
+  "newFileCount": 17,
+  "singleMatchAnchors": 24,
+  "appendBlocks": 2,
+  "preservedCurrentSelectedFiles": 383,
+  "patchAppliedAndReversedInDisposableMirror": true,
+  "newFilesAbsenceVerified": 17,
+  "actualNativeMutation": false,
+  "gnRun": false,
+  "compilerRunByThisLane": false,
+  "nativeApiExecuted": false,
+  "localAuthenticationInvoked": false,
+  "productExecuted": false,
+  "signed": false,
+  "runtimeAcceptance": false
+}
