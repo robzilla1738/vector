@@ -1,0 +1,24 @@
+--- a/chrome/browser/extensions/api/messaging/aux_native_messaging_lifetime.h
++++ b/chrome/browser/extensions/api/messaging/aux_native_messaging_lifetime.h
+@@ -117,7 +117,7 @@
+   }
+   std::mutex mutex;
+  private:
+-  AuxNativeMessagingLifetime() = default;
++  AuxNativeMessagingLifetime();
+   static pid_t RegistryOwner() { static const pid_t owner = getpid(); return owner; }
+   static bool& Closed() { static bool closed = false; return closed; }
+   static bool& AccountingUnknown() { static bool unknown = false; return unknown; }
+--- a/chrome/browser/extensions/api/messaging/native_message_process_host.cc
++++ b/chrome/browser/extensions/api/messaging/native_message_process_host.cc
+@@ -68,6 +68,10 @@
+ 
+ namespace extensions {
+ 
++#if BUILDFLAG(IS_MAC)
++AuxNativeMessagingLifetime::AuxNativeMessagingLifetime() = default;
++#endif
++
+ NativeMessageProcessHost::NativeMessageProcessHost(
+     const ExtensionId& source_extension_id,
+     const std::string& native_host_name,

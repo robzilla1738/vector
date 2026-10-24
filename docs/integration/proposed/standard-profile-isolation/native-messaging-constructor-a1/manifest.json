@@ -1,0 +1,22 @@
+{
+  "format": "aux.native-messaging-constructor.overlay.v1",
+  "files": [
+    {
+      "path": "chrome/browser/extensions/api/messaging/aux_native_messaging_lifetime.h",
+      "baselinePath": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/extensions/api/messaging/aux_native_messaging_lifetime.h",
+      "beforeSha256": "a265e0f3dd5236e529f9f50c7060d11f4b4fcba084eda0dcfec6f65c89e7a7b0",
+      "afterSha256": "25b3d277ea42891f183383383793d4a76d96564d3d571a1d2eac85a4987a9393"
+    },
+    {
+      "path": "chrome/browser/extensions/api/messaging/native_message_process_host.cc",
+      "baselinePath": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/extensions/api/messaging/native_message_process_host.cc",
+      "beforeSha256": "e1c256d805b21228fe2361b8500a5230a1743762d4c52474f0c7241334356294",
+      "afterSha256": "f4bc07980dde7ef9b16c331080481871dd83d8e0b25b19f97b16b2defc40e5d0"
+    }
+  ],
+  "countedAdaptations": 2,
+  "replacementsSha256": "aee1cbb6492cbd2c5ada75cf70b36b75c858ef0e3d7a9dd4d6322aefa8a4b5e1",
+  "patchSha256": "84724dff3f753ea8a776204392033548d1d4d964032a1c4b435b08c79c7a64d4",
+  "compiled": false,
+  "runtimeAccepted": false
+}

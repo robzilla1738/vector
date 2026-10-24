@@ -1,0 +1,14 @@
+[
+  {
+    "path": "chrome/browser/extensions/api/messaging/aux_native_messaging_lifetime.h",
+    "old": "  AuxNativeMessagingLifetime() = default;",
+    "new": "  AuxNativeMessagingLifetime();",
+    "count": 1
+  },
+  {
+    "path": "chrome/browser/extensions/api/messaging/native_message_process_host.cc",
+    "old": "namespace extensions {\n\nNativeMessageProcessHost::NativeMessageProcessHost(",
+    "new": "namespace extensions {\n\n#if BUILDFLAG(IS_MAC)\nAuxNativeMessagingLifetime::AuxNativeMessagingLifetime() = default;\n#endif\n\nNativeMessageProcessHost::NativeMessageProcessHost(",
+    "count": 1
+  }
+]
