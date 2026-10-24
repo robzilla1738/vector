@@ -1,0 +1,33 @@
+{
+  "format": "aux.standard-package.source-native-preflight.v1",
+  "passed": true,
+  "browserReceiptRead": false,
+  "reviewFrozen": false,
+  "packageExecuted": false,
+  "stageRepeated": false,
+  "productExecuted": false,
+  "signed": false,
+  "checks": [
+    "genuine-v6-source-history",
+    "genuine-v6-native-history",
+    "actual-v5-source-successor",
+    "actual-a4-a5-a6-native-successors"
+  ],
+  "sourceProjection": {
+    "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/daemon-projection-v5/actual-projection-a5.json",
+    "sha256": "67b59fa663873fa3ee602ed8ef933b01217c01cddc0f35d854b7c80832ac30de"
+  },
+  "finalNativeManifest": {
+    "path": "/private/tmp/aux-daemon-crash-registration-close-check/daemon-inputs.json",
+    "sha256": "051d3207b4f529c6c9d67f28bfeed78de151b8779a68e58f5886496b8a7ff76d"
+  },
+  "finalNativeLink": {
+    "path": "/private/tmp/aux-standard-daemon-link-20261024-a6/results.json",
+    "sha256": "f2e5bb24ca213ac569a31fe7e88c40d92a0624e049a2e97fdf0dc630ce374975"
+  },
+  "tool": {
+    "path": "/private/tmp/aux-features-execution-navigation-20261023/docs/integration/proposed/standard-profile-isolation/package-v9-source-ancestry-a1/source/successor_verify.py",
+    "sha256": "5af545f29da8438a84628651aa1b8336ef03a4f941a80be412ad0021b2811781"
+  },
+  "seconds": 32.98973150004167
+}

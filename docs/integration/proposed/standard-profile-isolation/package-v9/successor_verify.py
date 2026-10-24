@@ -120,7 +120,7 @@ class Successors:
                     'previousInteractiveProjectionSha256','previousInteractiveComposition','previousInteractiveCompositionSha256',
                     'previousInteractiveProjectionInputs','previousInteractiveAppendedStages','predecessorSourcePair',
                     'predecessorSourcePairSha256','upstreamComposition','upstreamCompositionSha256',
-                    'upstreamAdapterInputs','adapterInputs']:
+                    'upstreamAdapterInputs']:
             req(c[key] == old[key], 'Historical source association changed: '+key)
         immutable_ref = review['inputs']['standardProjectionV5Immutable']
         req(Path(immutable_ref['path']) == self.scope/'daemon-projection-v5/immutable-inputs.json', 'Fixed producer required')
@@ -135,6 +135,11 @@ class Successors:
             req(row in c['standardProjectionInputs'], 'Missing producer dependency')
             pin(row['path'], row['sha256'])
         for row in c['standardProjectionInputs']: pin(row['path'], row['sha256'])
+        expected_adapters = [dict(path=str(Path(row['path']).relative_to(self.root)),sha256=row['sha256'])
+            for row in c['standardProjectionInputs'] if Path(row['path']).is_relative_to(self.root)]
+        req(c['adapterInputs'] == expected_adapters
+            and c['adapterInputs'][:len(old['adapterInputs'])] == old['adapterInputs'],
+            'Exact extended producer inputs or immutable adapter prefix changed')
         req(len(c['files']) == 2 and {r['kind'] for r in c['files']} == {'source','entry'}, 'Exactly two leaves required')
         for row in c['files']:
             kind = row['kind']; prior = next(r for r in old['files'] if r['kind']==kind)

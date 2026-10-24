@@ -1,0 +1,12 @@
+[
+  {
+    "find": "                    'upstreamAdapterInputs','adapterInputs']:",
+    "replace": "                    'upstreamAdapterInputs']:",
+    "count": 1
+  },
+  {
+    "find": "        for row in c['standardProjectionInputs']: pin(row['path'], row['sha256'])\n",
+    "replace": "        for row in c['standardProjectionInputs']: pin(row['path'], row['sha256'])\n        expected_adapters = [dict(path=str(Path(row['path']).relative_to(self.root)),sha256=row['sha256'])\n            for row in c['standardProjectionInputs'] if Path(row['path']).is_relative_to(self.root)]\n        req(c['adapterInputs'] == expected_adapters\n            and c['adapterInputs'][:len(old['adapterInputs'])] == old['adapterInputs'],\n            'Exact extended producer inputs or immutable adapter prefix changed')\n",
+    "count": 1
+  }
+]

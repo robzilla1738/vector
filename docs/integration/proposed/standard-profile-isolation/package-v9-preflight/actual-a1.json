@@ -1,0 +1,16 @@
+{
+  "format": "aux.standard-package.source-native-preflight.v1",
+  "passed": false,
+  "browserReceiptRead": false,
+  "reviewFrozen": false,
+  "packageExecuted": false,
+  "stageRepeated": false,
+  "productExecuted": false,
+  "signed": false,
+  "checks": [
+    "genuine-v6-source-history",
+    "genuine-v6-native-history"
+  ],
+  "error": "ValueError: Historical source association changed: adapterInputs",
+  "seconds": 11.124095499981195
+}

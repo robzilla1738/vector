@@ -1,0 +1,8 @@
+{
+  "format": "aux.package-source-ancestry.successor.v1",
+  "input": "package-v9/successor_verify.py",
+  "inputSha256": "204538f23d700d1ba60dacfe1693bae1e407510bacfb53f5fe2d441cb3b340d1",
+  "outputSha256": "5af545f29da8438a84628651aa1b8336ef03a4f941a80be412ad0021b2811781",
+  "countedEdits": 2,
+  "source": "source/successor_verify.py"
+}

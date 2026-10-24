@@ -1,0 +1,5 @@
+# Exact v5 producer-input ancestry
+
+The original v9 preflight passed genuine v6 source/native history, then rejected the v5 producer's deliberate `adapterInputs` extension from 87 to 110 records. No original records were removed or changed. These two count-checked tool edits preserve the exact original 87-record prefix and require the full list to equal the actual producer algorithm: repository-relative records derived, in order, from the already pinned `standardProjectionInputs`. Other source fields and every 197-anchor replay remain unchanged.
+
+The corrected factored validators passed against actual v5 ordinary/dormant receipts and actual native a4/a5/a6 compile/link evidence in `../package-v9-preflight/actual-a2.json`. That invocation loaded this retained successor byte-for-byte; the package-v9 source is now identical. It did not freeze a review, read a browser success receipt, prepare/verify/assemble a package, repeat staging, or execute any product. Both failed preflight receipts remain preserved.

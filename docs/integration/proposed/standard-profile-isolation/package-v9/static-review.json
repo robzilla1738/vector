@@ -1,0 +1,31 @@
+{
+  "format": "aux.standard-isolation.package-v9.static-review.v1",
+  "passed": true,
+  "pythonSyntaxParsed": true,
+  "jsonParsed": true,
+  "v7StandardValidatorFunctionAstsUnchanged": true,
+  "priorThreeBrowserTransitionsUnchanged": true,
+  "sourceAndNativeContractsUnchanged": true,
+  "a8LiteralReplay": {
+    "compositionSha256": "3ad8612a55d1c2e78786d5af747f59f4899069154104f7e1964235d6df17180d",
+    "layers": [
+      "native-host-constructor-a1",
+      "browser-custody-compiler-a1"
+    ],
+    "changedFiles": 3,
+    "fullNativeInputs": 322
+  },
+  "freshStageReceiptSha256": "159511cc615fe3d85fe310c8044083c5a42cc6cd84694084d39d72a2fe8e128a",
+  "fullBrowserReceiptStillRequired": true,
+  "toolsFrozen": false,
+  "packageVerified": false,
+  "appAssembled": false,
+  "productExecuted": false,
+  "signed": false,
+  "sdkAliasExact": true,
+  "sourceAdapterPrefix": 87,
+  "sourceAdapterTotal": 110,
+  "sourceNativePreflightPassed": true,
+  "sourceNativePreflight": "package-v9-preflight/actual-a2.json",
+  "testedSuccessorSha256": "5af545f29da8438a84628651aa1b8336ef03a4f941a80be412ad0021b2811781"
+}
