@@ -13,5 +13,11 @@
   "nativeFrozenUntilTerminal": true,
   "productExecuted": false,
   "productSigned": false,
-  "runtimeAcceptance": false
+  "runtimeAcceptance": false,
+  "terminalDisposition": {
+    "exitCode": 0,
+    "passed": true,
+    "receiptSha256": "8f18420f80a296d4fc1b2548dfa0a48b3296ba364a744c239deffb48876260cc",
+    "currentlyRunning": false
+  }
 }

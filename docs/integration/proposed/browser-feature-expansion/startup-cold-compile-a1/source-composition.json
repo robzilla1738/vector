@@ -1,0 +1,24 @@
+{
+  "format": "aux.startup.conditional-compile-inputs.v1",
+  "passed": true,
+  "overlay": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src",
+  "laneFiles": [
+    "chrome/browser/metrics/chrome_feature_list_creator.cc",
+    "chrome/browser/chrome_browser_main.cc"
+  ],
+  "selectedFiles": {
+    "chrome/browser/metrics/chrome_feature_list_creator.cc": {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/metrics/chrome_feature_list_creator.cc",
+      "sha256": "7a0355ec29bdd62808d96c81d20ab718cef16d9c8650d1c9bf1305892569f621",
+      "changed": false
+    },
+    "chrome/browser/chrome_browser_main.cc": {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/chrome_browser_main.cc",
+      "sha256": "44cf3fbd07ce89cac0a42d2ced4e96e2174564f140a7d99387777eb66b1b7290",
+      "changed": false
+    }
+  },
+  "nativeCheckoutChanged": false,
+  "authorityGranted": false,
+  "productExecuted": false
+}

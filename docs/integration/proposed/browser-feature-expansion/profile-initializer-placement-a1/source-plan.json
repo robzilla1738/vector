@@ -1,0 +1,44 @@
+{
+  "format": "aux.profile-initializer-placement.source.v1",
+  "files": [
+    {
+      "path": "chrome/browser/aux/profile_identity.cc",
+      "inputSha256": "674b2d6d93c1a67a194c94ecd93c5212789f63172c030cf19c1a4703c2735def",
+      "outputSha256": "223f9654c089aa762d0f6bec283f198d202a3495fd9495965b29775e413b47e1",
+      "output": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/profile-initializer-placement-a1/source/chrome/browser/aux/profile_identity.cc",
+      "anchors": [
+        {
+          "find": "#include \"chrome/browser/ui/aux_feature_lifecycle.h\"\n",
+          "replace": "",
+          "count": 1
+        },
+        {
+          "find": "FreshProfileIdentityInitialization InitializeFreshProfileIdentity(Profile* profile) {\n  DCHECK_CURRENTLY_ON(content::BrowserThread::UI);\n  using Result = FreshProfileIdentityInitialization;\n  if (!profile || !profile->IsRegularProfile() || profile->IsOffTheRecord() ||\n      profile->GetOriginalProfile() != profile) return Result::kUnavailable;\n  auto* prefs = profile->GetPrefs();\n  const auto* pref = prefs ? prefs->FindPreference(\"aux.profile_id\") : nullptr;\n  if (!pref) return Result::kUnavailable;\n  // Preserve all nonempty existing identities, including legacy formats.\n  if (!prefs->GetString(\"aux.profile_id\").empty()) return Result::kExisting;\n  // IsNewProfile() also returns true during Chrome first-run. The actual store\n  // initialization result and absent user value are the stronger fresh facts.\n  if (prefs->GetInitializationStatus() != PrefService::INITIALIZATION_STATUS_CREATED_NEW_PREF_STORE ||\n      prefs->GetUserPrefValue(\"aux.profile_id\") || !pref->IsUserModifiable() ||\n      !IsAuxLocalProfileAdmitted(profile)) return Result::kUnavailable;\n  const auto alive = profile->GetWeakPtr();\n  const auto id = base::Uuid::GenerateRandomV4().AsLowercaseString();\n  // Preserve the real PrefService writer path. This queues persistence and\n  // deliberately does not settle any native ticket or assert durable success.\n  prefs->SetString(\"aux.profile_id\", id);\n  return alive && GetProfileId(alive.get()) == id\n      ? Result::kCreatedPending : Result::kUnavailable;\n}\n",
+          "replace": "",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/aux/profile_gate.cc",
+      "inputSha256": "0222927632c3e40268bbb068935a462db2968ec5fe01bca7f597be0c7a264374",
+      "outputSha256": "bb6e9b51233fab3d85e1c44a385fb7296af0a9ee88bd43fa7d9c2eb9a6c609a1",
+      "output": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/profile-initializer-placement-a1/source/chrome/browser/aux/profile_gate.cc",
+      "anchors": [
+        {
+          "find": "#include \"chrome/browser/aux/profile_identity.h\"",
+          "replace": "#include \"chrome/browser/aux/profile_identity.h\"\n#include \"base/uuid.h\"\n#include \"chrome/browser/ui/aux_feature_lifecycle.h\"\n#include \"components/prefs/pref_service.h\"\n#include \"content/public/browser/browser_thread.h\"",
+          "count": 1
+        },
+        {
+          "find": "void RequestProfileBootstrap(Profile* profile) {",
+          "replace": "FreshProfileIdentityInitialization InitializeFreshProfileIdentity(Profile* profile) {\n  DCHECK_CURRENTLY_ON(content::BrowserThread::UI);\n  using Result = FreshProfileIdentityInitialization;\n  if (!profile || !profile->IsRegularProfile() || profile->IsOffTheRecord() ||\n      profile->GetOriginalProfile() != profile) return Result::kUnavailable;\n  auto* prefs = profile->GetPrefs();\n  const auto* pref = prefs ? prefs->FindPreference(\"aux.profile_id\") : nullptr;\n  if (!pref) return Result::kUnavailable;\n  // Preserve all nonempty existing identities, including legacy formats.\n  if (!prefs->GetString(\"aux.profile_id\").empty()) return Result::kExisting;\n  // IsNewProfile() also returns true during Chrome first-run. The actual store\n  // initialization result and absent user value are the stronger fresh facts.\n  if (prefs->GetInitializationStatus() != PrefService::INITIALIZATION_STATUS_CREATED_NEW_PREF_STORE ||\n      prefs->GetUserPrefValue(\"aux.profile_id\") || !pref->IsUserModifiable() ||\n      !IsAuxLocalProfileAdmitted(profile)) return Result::kUnavailable;\n  const auto alive = profile->GetWeakPtr();\n  const auto id = base::Uuid::GenerateRandomV4().AsLowercaseString();\n  // Preserve the real PrefService writer path. This queues persistence and\n  // deliberately does not settle any native ticket or assert durable success.\n  prefs->SetString(\"aux.profile_id\", id);\n  return alive && GetProfileId(alive.get()) == id\n      ? Result::kCreatedPending : Result::kUnavailable;\n}\nvoid RequestProfileBootstrap(Profile* profile) {",
+          "count": 1
+        }
+      ]
+    }
+  ],
+  "behaviorChanged": false,
+  "gnFilesChanged": false,
+  "nativeCheckoutChanged": false
+}

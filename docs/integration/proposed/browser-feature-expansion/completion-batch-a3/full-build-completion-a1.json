@@ -1,0 +1,13 @@
+{
+  "passed": true,
+  "appLeafCount": 416,
+  "appInventorySha256": "bce4091d7a4fe82c653cfc5f2b57ecb48981db1de088082d0f509be117ea0c96",
+  "machoCount": 16,
+  "allInspectedMachoUnsigned": true,
+  "coldFeatureEnabled": false,
+  "productSigned": false,
+  "appExecuted": false,
+  "receipt": "/private/tmp/aux-chromium-recovery-snapshot-20261023/unsigned-feature-completion-browser-build-20261024-a3b/receipt.json",
+  "receiptSha256": "8f18420f80a296d4fc1b2548dfa0a48b3296ba364a744c239deffb48876260cc",
+  "runtimeAcceptance": false
+}
