@@ -1,0 +1,63 @@
+{
+  "format": "aux.local-sqlite-absence.source.v1",
+  "nativeRoot": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src",
+  "files": [
+    {
+      "path": "components/services/storage/dom_storage/sqlite/local_storage_sqlite.cc",
+      "inputSha256": "0601c10dc762dce7123b7c4e493eca8fb20e19b5b8ea90b3b333ebbc4b32367f",
+      "outputSha256": "c923b05d817d35daa7147f242c735c0568d3716948d65ef9126e2ae632e08ab1",
+      "output": "/Users/rcourson/.codex/worktrees/aux-features-organization/web/docs/integration/proposed/standard-profile-isolation/native-local-sqlite-absence-a12/source/components/services/storage/dom_storage/sqlite/local_storage_sqlite.cc",
+      "anchors": [
+        {
+          "find": "  DB_RETURN_IF_ERROR(DeleteMapMetadata(metadata_to_delete));\n\n  // Delete the key/value pairs in `maps_to_delete`.",
+          "replace": "  // Keep metadata until its actual allocated map ID has been looked up.\n  // There is no foreign-key cascade from maps to map_entries; deleting the\n  // metadata first would make FindMapId report absence and orphan raw rows.\n  // Both deletions remain in this transaction, so either failure rolls back.\n  // Delete the key/value pairs in `maps_to_delete`.",
+          "count": 1
+        },
+        {
+          "find": "      DB_RETURN_IF_ERROR(map_entries_table_->DeleteMap(*map_id));\n    }\n  }\n\n  RETURN_STATUS_ON_ERROR(transaction.Commit());\n  return DbStatus::OK();\n}\n\nDbStatus LocalStorageSqlite::DeleteSessions(",
+          "replace": "      DB_RETURN_IF_ERROR(map_entries_table_->DeleteMap(*map_id));\n    }\n  }\n\n  DB_RETURN_IF_ERROR(DeleteMapMetadata(metadata_to_delete));\n  RETURN_STATUS_ON_ERROR(transaction.Commit());\n  return DbStatus::OK();\n}\n\nDbStatus LocalStorageSqlite::DeleteSessions(",
+          "count": 1
+        }
+      ]
+    }
+  ],
+  "facts": [
+    {
+      "path": "components/services/storage/dom_storage/sqlite/local_storage_sqlite.cc",
+      "sha256": "0601c10dc762dce7123b7c4e493eca8fb20e19b5b8ea90b3b333ebbc4b32367f",
+      "anchors": [
+        {
+          "find": "\"row_id INTEGER PRIMARY KEY AUTOINCREMENT,\"",
+          "count": 1
+        },
+        {
+          "find": "\"CREATE UNIQUE INDEX maps_by_storage_key ON maps(storage_key)\"",
+          "count": 1
+        },
+        {
+          "find": "\"SELECT row_id FROM maps WHERE storage_key = ?\"",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "components/services/storage/dom_storage/sqlite/map_entries_table.cc",
+      "sha256": "a88829f3e93adccad56ae27e1be0a29a79dbbc969246f9bdfe9e0c324607a312",
+      "anchors": [
+        {
+          "find": "\"PRIMARY KEY(map_id, key)\"",
+          "count": 1
+        },
+        {
+          "find": "\"DELETE FROM map_entries WHERE map_id = ?\"",
+          "count": 1
+        }
+      ]
+    }
+  ],
+  "nativeCheckoutChanged": false,
+  "nativeCompiled": false,
+  "productExecuted": false,
+  "localAbsentAllocationImplemented": false,
+  "restartRecoveryImplemented": false
+}

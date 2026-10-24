@@ -1,0 +1,23 @@
+--- a/components/services/storage/dom_storage/sqlite/local_storage_sqlite.cc
++++ b/components/services/storage/dom_storage/sqlite/local_storage_sqlite.cc
+@@ -300,8 +300,10 @@
+   sql::Transaction transaction(database_.get());
+   RETURN_STATUS_ON_ERROR(transaction.Begin());
+ 
+-  DB_RETURN_IF_ERROR(DeleteMapMetadata(metadata_to_delete));
+-
++  // Keep metadata until its actual allocated map ID has been looked up.
++  // There is no foreign-key cascade from maps to map_entries; deleting the
++  // metadata first would make FindMapId report absence and orphan raw rows.
++  // Both deletions remain in this transaction, so either failure rolls back.
+   // Delete the key/value pairs in `maps_to_delete`.
+   for (const MapLocator& map : maps_to_delete) {
+     // A valid `map` must be in `metadata_to_delete`.
+@@ -315,6 +317,7 @@
+     }
+   }
+ 
++  DB_RETURN_IF_ERROR(DeleteMapMetadata(metadata_to_delete));
+   RETURN_STATUS_ON_ERROR(transaction.Commit());
+   return DbStatus::OK();
+ }

@@ -1,0 +1,14 @@
+{
+  "passed": true,
+  "sourcePlanSha256": "8f9fb905726c8264a695adc696697cf7c5e4adf513b679ba207bb322204d724c",
+  "patchSha256": "c986b353f6deb4bbb0add98b15c7b6c22a88c215d543168a1ce6312b1947f24f",
+  "files": 1,
+  "countedAnchors": 2,
+  "exactReplayPassed": true,
+  "reverseCheckPassed": true,
+  "syntheticSqlCases": 3,
+  "nativeCheckoutChanged": false,
+  "nativeCompiled": false,
+  "productExecuted": false,
+  "runtimeAcceptance": false
+}
