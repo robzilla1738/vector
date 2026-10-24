@@ -1,0 +1,37 @@
+{
+  "format": "aux.integration-completion.native-projection.actual.v1",
+  "passed": true,
+  "predecessorNativeReceipt": "/private/tmp/aux-chromium-recovery-snapshot-20261023/unsigned-feature-completion-browser-build-20261024-a3b/receipt.json",
+  "predecessorNativeReceiptSha256": "8f18420f80a296d4fc1b2548dfa0a48b3296ba364a744c239deffb48876260cc",
+  "preservedNativeApp": "/private/tmp/aux-chromium-recovery-snapshot-20261023/native-integration-completion-20261024-a4/previous-native-a3/Aux.app",
+  "sourceBeforeImages": "/private/tmp/aux-chromium-recovery-snapshot-20261023/native-integration-completion-20261024-a4/before",
+  "originals": {
+    "chrome/browser/aux/profile_identity.cc": "674b2d6d93c1a67a194c94ecd93c5212789f63172c030cf19c1a4703c2735def",
+    "chrome/browser/aux/profile_gate.cc": "0222927632c3e40268bbb068935a462db2968ec5fe01bca7f597be0c7a264374",
+    "components/services/storage/public/mojom/local_storage_control.mojom": "162f2f8eadc21167bdf22029c134cc5516cf61fe35d9af353cf920a4f07fcfc2",
+    "components/services/storage/dom_storage/local_storage_impl.h": "4d29fc4be14f6b15077544cf9908d613f1f6e0e0a7025d0f351f8b83218209b2",
+    "components/services/storage/dom_storage/local_storage_impl.cc": "9baf9f764694d7c3f408894612b5d89c03102625b1d0a564acbf93bb7b4de67b",
+    "components/services/storage/public/mojom/session_storage_control.mojom": "44714369ec4d411b40ed54dd8e807167d8b348bcce30c26d8f27e504155930b6",
+    "components/services/storage/dom_storage/session_storage_impl.h": "a16fc19a67393cef1a64a218e04615403e34f5dacf12d54a00f6fb4327bfbd76",
+    "components/services/storage/dom_storage/session_storage_impl.cc": "2f8fd62bc71304357a51cd8a9e41c00a9ad262f7dcc76c4cb693b5f813a24a3f",
+    "content/public/browser/dom_storage_context.h": "966a0c1ed0166c837e94513e05bab06568dc910c9ad321cbb9c864500720d3cb",
+    "content/browser/dom_storage/dom_storage_context_wrapper.h": "97b0c2602e6f328d1e8f1e3f35f22627ba3e67683d4550c6f59200b32f9a52c5",
+    "content/browser/dom_storage/dom_storage_context_wrapper.cc": "0504e43e25a2e91876f4460a3e97da585792afd5c8ae2518688ac1540ebd0055"
+  },
+  "projected": [
+    "chrome/browser/aux/profile_identity.cc",
+    "chrome/browser/aux/profile_gate.cc",
+    "components/services/storage/public/mojom/local_storage_control.mojom",
+    "components/services/storage/dom_storage/local_storage_impl.h",
+    "components/services/storage/dom_storage/local_storage_impl.cc",
+    "components/services/storage/public/mojom/session_storage_control.mojom",
+    "components/services/storage/dom_storage/session_storage_impl.h",
+    "components/services/storage/dom_storage/session_storage_impl.cc",
+    "content/public/browser/dom_storage_context.h",
+    "content/browser/dom_storage/dom_storage_context_wrapper.h",
+    "content/browser/dom_storage/dom_storage_context_wrapper.cc"
+  ],
+  "ownerChangesReset": false,
+  "productExecuted": false,
+  "acceptedAppReplaced": false
+}

@@ -1,0 +1,10 @@
+{
+  "passed": false,
+  "stage": "Ninja command discovery before compiler invocation",
+  "error": "UnicodeDecodeError scanning broad actual obj Ninja files as strict UTF-8",
+  "sourceProjectionPassed": true,
+  "mojoGenerationPassed": true,
+  "compilerStarted": false,
+  "scriptSha256": "170f0f35fcbd007ffd91d6cbe674d194fbed2eb7a00f7b10168840da5b23bf63",
+  "productExecuted": false
+}

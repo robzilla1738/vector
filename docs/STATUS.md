@@ -1,3 +1,9 @@
+# Physical storage interfaces generated and compiled — 2026-10-24
+
+The9-file privileged DOM drain interface plus2-file same-body initializer relocation are now projected with exact source/app before-images; actual Mojo generation and all5 native target objects pass. Combined source is92 changed/372 selected. The discovery wrapper's invalid-UTF8 failure happened before compilation and is preserved; its corrected successor passes. Native projection and compiler evidence are in `browser-feature-expansion/integration-completion-a4/`. This is not yet a full A4 browser/package; the verified inactive A3 app remains intact.
+
+Native controller capture/operation7 integration, renderer/editor/upload/claim closure and real audited CLI embedding continue in parallel. The UI lane is addressing genuine all-frame shared-store sealing, so another frame's legitimate flush cannot incorrectly invalidate an otherwise held capture. Backend writer closure, full capture/CAS/readback/target recovery/activation and actual app acceptance remain unfinished. File-data acknowledgment alone never proves complete quiescence or migration authority. No lifecycle, native command, owner/provider operation, signing or release occurred.
+
 # Actual inactive feature app assembled; native integration continues — 2026-10-24
 
 The full A3 browser and final inactive assembly both passed. The app is `out/provided-candidate-desktop-completion-20261024-a3/Aux.app`,11,187 leaves, inventory `857f4e484e3644592d455ce119133573760ac2d69d87233d2fd0efafdff5eb05`. Exactly8 leaves plus metadata change from the prior completed package: native framework,4 UI/revision leaves and3 daemon/source leaves. Every unrelated file/mode, CLI/runtime and all CSS/assets/fonts remain identical. Actual package review/inventory/metadata verification is in `completion-batch-a3/actual-package-a1.json`. No product ran; testable/authority/acceptance/signing/replacement remain false.
