@@ -1,0 +1,50 @@
+{
+  "format": "aux.standard-isolation.package-v3.tools.v1",
+  "files": [
+    {
+      "path": "cache_package.py",
+      "predecessor": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/package-v2/cache_package.py",
+      "sha256": "895a60a37e6afad686ad44bd28f79ae81b584e043cafa0748f375564a9da3478",
+      "byteIdentical": true
+    },
+    {
+      "path": "bind_pair.py",
+      "predecessor": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/package-v2/bind_pair.py",
+      "sha256": "5678511875407c63539abdfdf1201c104f6527db91658dfd5cfda59cc08eb87b",
+      "byteIdentical": true
+    },
+    {
+      "path": "link-tool-aliases.json",
+      "predecessor": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/package-v2/link-tool-aliases.json",
+      "sha256": "75ff23f4bcbc614394587ff29afef364672c15a9de9a12b69a882c310e7abec6",
+      "byteIdentical": true
+    },
+    {
+      "path": "freeze-review.py",
+      "predecessor": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/package-v2/freeze-review.py",
+      "sha256": "e7c1157f14eab605b43f4347f9cd9623749783c23441e75daef69bd66283bb03",
+      "byteIdentical": true
+    }
+  ],
+  "validator": {
+    "path": "standard_verify.py",
+    "sha256": "509525c61b4e4e14c923f2d0cd421dd5dfef71caa009dbcd6fc0bf9187c98c46",
+    "predecessor": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/package-v2/standard_verify.py",
+    "predecessorSha256": "bba86b9ef7056526848cb094cff6626fb97fcd19b77c29ad3ae38197a3585b54"
+  },
+  "nativeOverlayCommit": "736de3002",
+  "nativeOverlayManifestSha256": "8c78f7030af12ffd8023af02021a7fe84467ead790a25a00d70aee30633dbe94",
+  "sourceChecks": {
+    "pythonSyntax": true,
+    "unchangedSourceAndLinkValidationAST": true,
+    "byteIdenticalWrapperBinderAliases": true,
+    "twoHeaderLiteralReplay": true
+  },
+  "actualInputsFrozen": false,
+  "nativeBuildRun": false,
+  "bound": false,
+  "assembled": false,
+  "productExecuted": false,
+  "testable": false,
+  "freezeHelperRootCommit": "26b9d950b"
+}
