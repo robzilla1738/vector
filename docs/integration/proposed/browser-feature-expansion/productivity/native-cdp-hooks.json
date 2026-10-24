@@ -1,0 +1,177 @@
+{
+  "sourceRoot": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src",
+  "files": [
+    {
+      "path": "content/public/browser/devtools_manager_delegate.h",
+      "beforeSha256": "ec72689613e6d4ee971cfeeb5042e37cf8d39290d790a2a71a0cd56943112d8c",
+      "afterSha256": "40eb2ff2b3e7833d67c072841965487a6a91d58648575ddd5dc931a5cbc1a71f"
+    },
+    {
+      "path": "content/public/browser/devtools_manager_delegate.cc",
+      "beforeSha256": "e3f0528fcbf04a1f77c6fff208de214707037063cae5b82d08a82c3224d93b4a",
+      "afterSha256": "6bddf2a801e4afaa801a8580fc936d886cae196afd715b15022a8b8de977b6b8"
+    },
+    {
+      "path": "chrome/browser/devtools/chrome_devtools_manager_delegate.h",
+      "beforeSha256": "c7934fb5be32b4a2b6d3b97e773fce0df9d7af11c687ac4e2e8b696683599c45",
+      "afterSha256": "90a00de04115f74411b1f37bb276f09392f7eaec702e9b4c779e1758c7c41e1a"
+    },
+    {
+      "path": "chrome/browser/devtools/chrome_devtools_manager_delegate.cc",
+      "beforeSha256": "50f81a3fe8c199be9be4af4187f0e7a7f33b455317c0bdfaf8d224ca566b85b5",
+      "afterSha256": "65ae7a6a026ca3218f9cc250366c8cffac91d2dc94a5dcf777f4263445579f3f"
+    },
+    {
+      "path": "content/browser/devtools/devtools_session.h",
+      "beforeSha256": "1b1f2539001737ac2a9584d455dcb0a02b0a3ca7d6e5d277c038830480bc7733",
+      "afterSha256": "9f38e58227b26521fb3966fd440633e22c47bce66ad96d6aa81028e347599cc2"
+    },
+    {
+      "path": "content/browser/devtools/devtools_session.cc",
+      "beforeSha256": "73975372043a5b39d3d8267b00fc6c327b14c86ec4b9df64a0a40855de7198db",
+      "afterSha256": "6133f8ca4d8e8dada1f57b4aabd926a9c2d899d0d358ded1efaa4dc0cb7a093a"
+    }
+  ],
+  "anchors": [
+    {
+      "path": "content/public/browser/devtools_manager_delegate.h",
+      "kind": "aux-document-delegate-interface",
+      "find": "  // Call callback if command was not handled.",
+      "replace": "  // Optional embedder-issued document capability for authenticated CDP reads.\n  // The returned callback is checked at dispatch and before releasing data.\n  virtual base::RepeatingCallback<bool()> GetAuxDocumentCommandGuard(\n      DevToolsAgentHost* actual_target, const std::string& capability);\n\n  // Call callback if command was not handled.",
+      "count": 1
+    },
+    {
+      "path": "content/public/browser/devtools_manager_delegate.cc",
+      "kind": "aux-document-delegate-default",
+      "find": "void DevToolsManagerDelegate::HandleCommand(",
+      "replace": "base::RepeatingCallback<bool()> DevToolsManagerDelegate::GetAuxDocumentCommandGuard(\n    DevToolsAgentHost* actual_target, const std::string& capability) {\n  return {};\n}\n\nvoid DevToolsManagerDelegate::HandleCommand(",
+      "count": 1
+    },
+    {
+      "path": "chrome/browser/devtools/chrome_devtools_manager_delegate.h",
+      "kind": "aux-document-chrome-delegate-interface",
+      "find": "  void HandleCommand(content::DevToolsAgentHostClientChannel* channel,",
+      "replace": "  base::RepeatingCallback<bool()> GetAuxDocumentCommandGuard(\n      content::DevToolsAgentHost* actual_target,\n      const std::string& capability) override;\n  void HandleCommand(content::DevToolsAgentHostClientChannel* channel,",
+      "count": 1
+    },
+    {
+      "path": "chrome/browser/devtools/chrome_devtools_manager_delegate.cc",
+      "kind": "aux-document-chrome-helper-include",
+      "find": "#include \"chrome/browser/devtools/chrome_devtools_manager_delegate.h\"",
+      "replace": "#include \"chrome/browser/devtools/chrome_devtools_manager_delegate.h\"\n#include \"chrome/browser/ui/aux_tab_reference_context.h\"",
+      "count": 1
+    },
+    {
+      "path": "chrome/browser/devtools/chrome_devtools_manager_delegate.cc",
+      "kind": "aux-document-chrome-delegate-implementation",
+      "find": "void ChromeDevToolsManagerDelegate::HandleCommand(",
+      "replace": "base::RepeatingCallback<bool()> ChromeDevToolsManagerDelegate::GetAuxDocumentCommandGuard(\n    content::DevToolsAgentHost* actual_target, const std::string& capability) {\n  return GetAuxTabDocumentGuard(actual_target, capability);\n}\n\nvoid ChromeDevToolsManagerDelegate::HandleCommand(",
+      "count": 1
+    },
+    {
+      "path": "content/browser/devtools/devtools_session.h",
+      "kind": "aux-document-session-standard-includes",
+      "find": "#include <list>",
+      "replace": "#include <list>\n#include <optional>\n#include <cstdint>",
+      "count": 1
+    },
+    {
+      "path": "content/browser/devtools/devtools_session.h",
+      "kind": "aux-document-session-state",
+      "find": "  void DispatchProtocolMessageInternal(crdtp::Dispatchable dispatchable,\n                                       base::span<const uint8_t> message);",
+      "replace": "  void DispatchProtocolMessageInternal(crdtp::Dispatchable dispatchable,\n                                       base::span<const uint8_t> message,\n                                       std::optional<std::string> aux_capability);\n  bool PrepareAuxDocumentCommand(int call_id,\n                                 const std::optional<std::string>& capability);\n  bool AuxDocumentResponseIsCurrent(int call_id);\n  void RefuseAuxDocumentCommand(int call_id, uint64_t serial);\n  struct AuxDocumentCallGuard {\n    base::RepeatingCallback<bool()> current;\n    uint64_t serial;\n  };\n  base::RepeatingCallback<bool()> aux_document_guard_;\n  base::flat_map<int, AuxDocumentCallGuard> aux_document_calls_;\n  uint64_t aux_document_serial_ = 0;",
+      "count": 1
+    },
+    {
+      "path": "content/browser/devtools/devtools_session.cc",
+      "kind": "aux-document-session-includes",
+      "find": "#include \"base/functional/bind.h\"",
+      "replace": "#include \"base/functional/bind.h\"\n#include \"base/json/json_reader.h\"\n#include \"base/json/json_writer.h\"\n#include \"base/task/single_thread_task_runner.h\"",
+      "count": 1
+    },
+    {
+      "path": "content/browser/devtools/devtools_session.cc",
+      "kind": "aux-document-extract-protected-metadata",
+      "find": "  // At this point |message| is CBOR.",
+      "replace": "  // Aux metadata is removed before the strict protocol parser. Unmarked CDP\n  // messages retain their original bytes and behavior.\n  std::optional<std::string> aux_capability;\n  std::vector<uint8_t> aux_sanitized;\n  std::string_view raw(reinterpret_cast<const char*>(message.data()), message.size());\n  if (raw.find(\"auxDocumentCapability\") != std::string_view::npos) {\n    std::vector<uint8_t> json;\n    if (crdtp::json::ConvertCBORToJSON(crdtp::SpanFrom(message), &json).ok()) {\n      auto value = base::JSONReader::ReadDict(\n          std::string_view(reinterpret_cast<const char*>(json.data()), json.size()),\n          base::JSON_PARSE_RFC);\n      if (value && value->contains(\"auxDocumentCapability\")) {\n        const auto* token = value->FindString(\"auxDocumentCapability\");\n        aux_capability = token ? *token : std::string();\n        value->Remove(\"auxDocumentCapability\");\n        auto sanitized = base::WriteJson(*value);\n        if (!sanitized || !crdtp::json::ConvertJSONToCBOR(\n                crdtp::SpanFrom(*sanitized), &aux_sanitized).ok()) return;\n        message = aux_sanitized;\n      }\n    }\n  }\n  // At this point |message| is CBOR.",
+      "count": 1
+    },
+    {
+      "path": "content/browser/devtools/devtools_session.cc",
+      "kind": "aux-document-root-dispatch",
+      "find": "    DispatchProtocolMessageInternal(std::move(dispatchable), message);",
+      "replace": "    DispatchProtocolMessageInternal(std::move(dispatchable), message, std::move(aux_capability));",
+      "count": 1
+    },
+    {
+      "path": "content/browser/devtools/devtools_session.cc",
+      "kind": "aux-document-child-dispatch",
+      "find": "  session->DispatchProtocolMessageInternal(std::move(dispatchable), message);",
+      "replace": "  session->DispatchProtocolMessageInternal(std::move(dispatchable), message, std::move(aux_capability));",
+      "count": 1
+    },
+    {
+      "path": "content/browser/devtools/devtools_session.cc",
+      "kind": "aux-document-admit-command",
+      "find": "void DevToolsSession::DispatchProtocolMessageInternal(\n    crdtp::Dispatchable dispatchable,\n    base::span<const uint8_t> message) {",
+      "replace": "void DevToolsSession::DispatchProtocolMessageInternal(\n    crdtp::Dispatchable dispatchable,\n    base::span<const uint8_t> message,\n    std::optional<std::string> aux_capability) {\n  if (!PrepareAuxDocumentCommand(dispatchable.CallId(), aux_capability)) return;",
+      "count": 1
+    },
+    {
+      "path": "content/browser/devtools/devtools_session.cc",
+      "kind": "aux-document-runtime-resume-response",
+      "find": "    if (browser_only_) {\n      DispatchProtocolMessageToClient(",
+      "replace": "    if (browser_only_) {\n      if (!AuxDocumentResponseIsCurrent(dispatchable.CallId())) return;\n      DispatchProtocolMessageToClient(",
+      "count": 1
+    },
+    {
+      "path": "content/browser/devtools/devtools_session.cc",
+      "kind": "aux-document-browser-dispatch-recheck",
+      "find": "  DCHECK(dispatchable.ok());\n  TRACE_EVENT(",
+      "replace": "  DCHECK(dispatchable.ok());\n  const auto aux_guard = aux_document_calls_.find(dispatchable.CallId());\n  if (aux_guard != aux_document_calls_.end() && !aux_guard->second.current.Run()) {\n    RefuseAuxDocumentCommand(dispatchable.CallId(), aux_guard->second.serial);\n    return;\n  }\n  TRACE_EVENT(",
+      "count": 1
+    },
+    {
+      "path": "content/browser/devtools/devtools_session.cc",
+      "kind": "aux-document-actual-renderer-dispatch",
+      "find": "  DCHECK(!browser_only_);\n  // We send all messages on the IO channel",
+      "replace": "  DCHECK(!browser_only_);\n  const auto aux_guard = aux_document_calls_.find(message.call_id);\n  if (aux_guard != aux_document_calls_.end() && !aux_guard->second.current.Run()) {\n    // DispatchToAgent is also called while iterating deferred/replayed messages.\n    // Refuse without mutating that iteration; the serial protects reused ids.\n    base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(FROM_HERE,\n        base::BindOnce(&DevToolsSession::RefuseAuxDocumentCommand,\n                       weak_factory_.GetWeakPtr(), message.call_id,\n                       aux_guard->second.serial));\n    return;\n  }\n  // We send all messages on the IO channel",
+      "count": 1
+    },
+    {
+      "path": "content/browser/devtools/devtools_session.cc",
+      "kind": "aux-document-browser-response",
+      "find": "    std::unique_ptr<protocol::Serializable> message) {\n  DispatchProtocolMessageToClient(message->Serialize());\n  // |this| may be deleted at this point.\n}\n\nvoid DevToolsSession::SendProtocolNotification(",
+      "replace": "    std::unique_ptr<protocol::Serializable> message) {\n  if (!AuxDocumentResponseIsCurrent(call_id)) {\n    message = crdtp::CreateErrorResponse(call_id,\n        crdtp::DispatchResponse::ServerError(\"Referenced tab document changed; select it again.\"));\n  }\n  DispatchProtocolMessageToClient(message->Serialize());\n  // |this| may be deleted at this point.\n}\n\nvoid DevToolsSession::SendProtocolNotification(",
+      "count": 1
+    },
+    {
+      "path": "content/browser/devtools/devtools_session.cc",
+      "kind": "aux-document-browser-notifications",
+      "find": "void DevToolsSession::SendProtocolNotification(\n    std::unique_ptr<protocol::Serializable> message) {",
+      "replace": "void DevToolsSession::SendProtocolNotification(\n    std::unique_ptr<protocol::Serializable> message) {\n  if (aux_document_guard_ && !aux_document_guard_.Run()) return;",
+      "count": 1
+    },
+    {
+      "path": "content/browser/devtools/devtools_session.cc",
+      "kind": "aux-document-renderer-response",
+      "find": "  waiting_for_response_.erase(it);\n  DispatchProtocolResponseOrNotification(",
+      "replace": "  waiting_for_response_.erase(it);\n  if (!AuxDocumentResponseIsCurrent(call_id)) {\n    DispatchProtocolMessageToClient(crdtp::CreateErrorResponse(call_id,\n        crdtp::DispatchResponse::ServerError(\"Referenced tab document changed; select it again.\"))->Serialize());\n    return;\n  }\n  DispatchProtocolResponseOrNotification(",
+      "count": 1
+    },
+    {
+      "path": "content/browser/devtools/devtools_session.cc",
+      "kind": "aux-document-renderer-notifications",
+      "find": "void DevToolsSession::DispatchProtocolNotification(\n    blink::mojom::DevToolsMessagePtr message,\n    blink::mojom::RendererOriginatingSessionStatePtr updates) {",
+      "replace": "void DevToolsSession::DispatchProtocolNotification(\n    blink::mojom::DevToolsMessagePtr message,\n    blink::mojom::RendererOriginatingSessionStatePtr updates) {\n  if (aux_document_guard_ && !aux_document_guard_.Run()) return;",
+      "count": 1
+    },
+    {
+      "path": "content/browser/devtools/devtools_session.cc",
+      "kind": "aux-document-session-guard-implementation",
+      "find": "void DevToolsSession::DispatchProtocolMessage(\n",
+      "replace": "\nbool DevToolsSession::PrepareAuxDocumentCommand(\n    int call_id, const std::optional<std::string>& capability) {\n  auto refuse = [&]() {\n    DispatchProtocolMessageToClient(crdtp::CreateErrorResponse(call_id,\n        crdtp::DispatchResponse::ServerError(\"Referenced tab document changed; select it again.\"))->Serialize());\n    return false;\n  };\n  if (aux_document_calls_.contains(call_id)) return refuse();\n  if (capability) {\n    if (capability->empty() || capability->size() > 64 ||\n        !client_->IsAuthenticatedRemoteDebuggingSession()) return refuse();\n    auto* delegate = DevToolsManager::GetInstance()->delegate();\n    auto guard = delegate ? delegate->GetAuxDocumentCommandGuard(agent_host_, *capability)\n                          : base::RepeatingCallback<bool()>();\n    if (!guard || !guard.Run()) return refuse();\n    aux_document_guard_ = std::move(guard);\n  }\n  if (!aux_document_guard_) return true;\n  if (!aux_document_guard_.Run()) return refuse();\n  aux_document_calls_.emplace(call_id,\n      AuxDocumentCallGuard{aux_document_guard_, ++aux_document_serial_});\n  return true;\n}\nbool DevToolsSession::AuxDocumentResponseIsCurrent(int call_id) {\n  auto found = aux_document_calls_.find(call_id);\n  if (found == aux_document_calls_.end()) return true;\n  auto guard = std::move(found->second.current);\n  aux_document_calls_.erase(found);\n  return guard.Run();\n}\nvoid DevToolsSession::RefuseAuxDocumentCommand(int call_id, uint64_t serial) {\n  auto guard = aux_document_calls_.find(call_id);\n  if (guard == aux_document_calls_.end() || guard->second.serial != serial) return;\n  aux_document_calls_.erase(guard);\n  auto pending = waiting_for_response_.find(call_id);\n  if (pending != waiting_for_response_.end()) {\n    pending_messages_.erase(pending->second);\n    waiting_for_response_.erase(pending);\n  }\n  DispatchProtocolMessageToClient(crdtp::CreateErrorResponse(call_id,\n      crdtp::DispatchResponse::ServerError(\"Referenced tab document changed; select it again.\"))->Serialize());\n}\n\nvoid DevToolsSession::DispatchProtocolMessage(\n",
+      "count": 1
+    }
+  ]
+}

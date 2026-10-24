@@ -6,6 +6,8 @@
 #include <vector>
 
 #include "base/memory/weak_ptr.h"
+#include "base/no_destructor.h"
+#include "base/functional/bind.h"
 #include "base/uuid.h"
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
@@ -21,6 +23,11 @@
 namespace {
 constexpr size_t kMaxReferences = 64;
 constexpr size_t kMaxRetainedReferences = 256;
+using CapabilityOwners = std::map<std::string, base::WeakPtr<content::WebContents>>;
+CapabilityOwners& CapabilityIndex() {
+  static base::NoDestructor<CapabilityOwners> index;
+  return *index;
+}
 
 base::DictValue Failure(const char* message) {
   return base::DictValue().Set("success", false).Set("error", message);
@@ -65,14 +72,19 @@ class ReferenceOwner : public content::WebContentsUserData<ReferenceOwner> {
  public:
   explicit ReferenceOwner(content::WebContents* contents)
       : content::WebContentsUserData<ReferenceOwner>(*contents) {}
+  ~ReferenceOwner() override { Clear(); }
+  void Clear() {
+    for (const auto& [token, reference] : references_) CapabilityIndex().erase(token);
+    references_.clear();
+  }
   void RefreshDocument(content::WebContents* sender) {
     auto* frame = sender->GetPrimaryMainFrame();
     if (sender_document_.AsRenderFrameHostIfValid() != frame) {
-      references_.clear();
+      Clear();
       sender_document_ = frame ? frame->GetWeakDocumentPtr() : content::WeakDocumentPtr();
     }
     for (auto it = references_.begin(); it != references_.end();) {
-      if (!it->second.IsCurrent()) it = references_.erase(it);
+      if (!it->second.IsCurrent()) { CapabilityIndex().erase(it->first); it = references_.erase(it); }
       else ++it;
     }
   }
@@ -129,8 +141,10 @@ base::DictValue CaptureAuxTabReferences(content::WebContents* sender,
     result.Append(base::DictValue().Set("targetId", *id).Set("url", *url)
         .Set("documentCapability", capability));
   }
-  for (auto& [capability, reference] : pending)
+  for (auto& [capability, reference] : pending) {
+    CapabilityIndex().emplace(capability, sender->GetWeakPtr());
     owner->references_.emplace(std::move(capability), std::move(reference));
+  }
   return base::DictValue().Set("success", true).Set("references", std::move(result));
 }
 
@@ -156,4 +170,49 @@ base::DictValue ValidateAuxTabReferences(content::WebContents* sender,
         .Set("documentCapability", *capability));
   }
   return base::DictValue().Set("success", true).Set("references", std::move(result));
+}
+
+base::DictValue ValidateAuxTabReferencesForProfile(
+    Profile* profile, const base::ListValue& references) {
+  if (!profile || profile->IsOffTheRecord() || references.empty() ||
+      references.size() > kMaxReferences) return Failure("Tab context is unavailable.");
+  base::ListValue result;
+  for (const auto& input : references) {
+    const auto* value = input.GetIfDict();
+    const auto* capability = value ? value->FindString("documentCapability") : nullptr;
+    auto found = capability ? CapabilityIndex().find(*capability) : CapabilityIndex().end();
+    auto* sender = found != CapabilityIndex().end() ? found->second.get() : nullptr;
+    if (!sender || sender->GetBrowserContext() != profile)
+      return Failure("Tab context expired or belongs to another profile.");
+    base::ListValue one;
+    one.Append(input.Clone());
+    auto checked = ValidateAuxTabReferences(sender, one);
+    if (!checked.FindBool("success").value_or(false)) return checked;
+    result.Append(input.Clone());
+  }
+  return base::DictValue().Set("success", true).Set("references", std::move(result));
+}
+
+base::RepeatingCallback<bool()> GetAuxTabDocumentGuard(
+    content::DevToolsAgentHost* actual_target, std::string_view capability) {
+  const auto found = CapabilityIndex().find(std::string(capability));
+  auto* sender = found != CapabilityIndex().end() ? found->second.get() : nullptr;
+  auto* target = actual_target ? actual_target->GetWebContents() : nullptr;
+  if (!sender || !target || sender->GetBrowserContext() != target->GetBrowserContext())
+    return {};
+  auto guard = base::BindRepeating(
+      [](base::WeakPtr<content::WebContents> sender,
+         base::WeakPtr<content::WebContents> target, std::string capability) {
+        if (!sender || !target || sender->GetBrowserContext() != target->GetBrowserContext())
+          return false;
+        auto* owner = Owner(sender.get());
+        if (!owner) return false;
+        const auto found = owner->references_.find(capability);
+        if (found == owner->references_.end()) return false;
+        const auto& reference = found->second;
+        return reference.target.get() == target.get() && reference.IsCurrent() &&
+            ResolveTab(Profile::FromBrowserContext(sender->GetBrowserContext()),
+                       reference.target_id, reference.url) == target.get();
+      }, sender->GetWeakPtr(), target->GetWeakPtr(), std::string(capability));
+  return guard.Run() ? guard : base::RepeatingCallback<bool()>();
 }
