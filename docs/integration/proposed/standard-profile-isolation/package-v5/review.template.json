@@ -1,0 +1,235 @@
+{
+  "format": "aux.runtime-cache-package.review.v1",
+  "inputs": {
+    "featureTool": {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/package/feature_package.py",
+      "sha256": "bf631ba3ac0cb536bc7cb4f76a6f673ae6991d1a4319cc87a90f4401861bddaf"
+    },
+    "basePreparer": {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/package/prepare_base.py",
+      "sha256": "3f2d3320c3d6d9e4cffb06e7c0bdc5624c04aea87a79b2cbe8484a7541f87590"
+    },
+    "assembler": {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/profile-isolation-delivery/package/assemble.py",
+      "sha256": "e6ac0a786e9a443efa00beac35fe7eb4dc029c24a4dd7c752cf8dcc664e240f2"
+    },
+    "legacyPreparer": {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/profile-isolation-delivery/package/prepare.py",
+      "sha256": "0ab1853339753f8bd8c6913a7fa54127b03dca21f3ff362cc5ccd14543eaed54"
+    },
+    "protectedRecipe": {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/profile-isolation-protected-startup/integration/package-recipe.json",
+      "sha256": "6b41db40b135d075f620227cbd94dff49923c80862dc13976cd8fb56d5a49f26"
+    },
+    "protectedPair": {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/profile-isolation-protected-startup/integration/source-pair.json",
+      "sha256": "1eb6698864691d5affacc52f860ffb9a917fdf07a36cc5ffcc8fb55d26f4d8e4"
+    },
+    "protectedInputs": {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/profile-isolation-protected-startup/integration/daemon-inputs.json",
+      "sha256": "e2206c68f0be0cd024ed5b77b28be36dc2c88459cb445f4fd55193a9c3a7704d"
+    },
+    "protectedLink": {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/profile-isolation-protected-startup/integration/daemon-link.json",
+      "sha256": "4ef12198bbd92df5c40e2cefb4f95036f94b0e404ee3c6b47f4a6063a052fa3c"
+    },
+    "sourceOverlay": {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/package-v5/runtime-helper-overlay.json",
+      "sha256": null
+    },
+    "projection": {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/daemon-projection-v3/actual-projection-a3.json",
+      "sha256": null
+    },
+    "browserReceipt": {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/unsigned-standard-profile-browser-build-20261024-a4/receipt.json",
+      "sha256": null
+    },
+    "guardReview": {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/package/guard-transition.json",
+      "sha256": "c4d31fb767c0cfd40d46c79d2d714a67ac390859de02fa5253ba428594b5680d"
+    },
+    "guardPatch": {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/package/guard-transition.patch",
+      "sha256": "623e450656dc991e9ec9eaffcb9373aa37ebc57a04daa51fe5dbcd3388feb383"
+    },
+    "toolchainReview": {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/package/toolchain-alias-review.json",
+      "sha256": "010dfbfca72c07c059ea5790ec38d506e3b17bb839cb10bde7d0df5c2c68a390"
+    },
+    "linkToolAliases": {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/package-v5/link-tool-aliases.json",
+      "sha256": "75ff23f4bcbc614394587ff29afef364672c15a9de9a12b69a882c310e7abec6"
+    },
+    "researchManifest": {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/research-v1/manifest.json",
+      "sha256": "fdff4549eb81825a52775fe800e20ccdc31a247b546198ea0147c45224087bbc"
+    },
+    "standardReview": {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/package-v5/standard-review.json",
+      "sha256": null
+    },
+    "standardNativeComposition": {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/integration/browser-composition-a4.json",
+      "sha256": null
+    },
+    "standardVerifier": {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/package-v5/standard_verify.py",
+      "sha256": null
+    },
+    "standardCompileResult": {
+      "path": "/private/tmp/aux-standard-daemon-objects-20261023-a2/results.json",
+      "sha256": "336d7dac0d9d296ce7c82df038bdfea2dec570b0f2759586d20399f11f320fe3"
+    },
+    "standardLinkResult": {
+      "path": "/private/tmp/aux-standard-daemon-link-20261023-a3/results.json",
+      "sha256": "d4a21086d6cfd0704f7512101873762125d912307034f37f48f3084155cea1d6"
+    },
+    "previousStandardProjection": {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/daemon-projection/actual-projection-a1.json",
+      "sha256": null
+    },
+    "standardProjectionV2Immutable": {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/daemon-projection-v2/immutable-inputs.json",
+      "sha256": null
+    },
+    "standardNativePredecessorComposition": {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/integration/browser-composition-a2.json",
+      "sha256": null
+    },
+    "browserDescendantManifest": {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/browser-descendant-uncertainty-a1/manifest.json",
+      "sha256": null
+    },
+    "browserDescendantReplacements": {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/browser-descendant-uncertainty-a1/replacements.json",
+      "sha256": null
+    },
+    "standardNativeDescendantComposition": {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/integration/browser-composition-a3.json",
+      "sha256": null
+    },
+    "browserSnapshotRaceManifest": {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/browser-descendant-snapshot-race-a1/manifest.json",
+      "sha256": null
+    },
+    "browserSnapshotRaceReplacements": {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/browser-descendant-snapshot-race-a1/replacements.json",
+      "sha256": null
+    },
+    "previousManagedProjection": {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/daemon-projection-v2/actual-projection-a2.json",
+      "sha256": null
+    },
+    "standardProjectionV3Immutable": {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/daemon-projection-v3/immutable-inputs.json",
+      "sha256": null
+    },
+    "originalRuntimeSeed": {
+      "path": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-final-local-completion-20261023/Aux.app/Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/native/runtime-seed.cjs",
+      "sha256": "3051dea5ccc9d74126bf71ddc0bb72a4d3db19c59f890a8f48d572b215f092af"
+    },
+    "originalRuntimeSeedEvidence": {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/runtime-cache-package-a4/prepared/runtime-integration.json",
+      "sha256": "049e6e4046b9933b7edd4d4950005f4a460acc6fc171c94daa476286d0e79e70"
+    }
+  },
+  "relink": {
+    "plan": {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/integration/native-build-a2.json",
+      "sha256": "47c19b1c3ded0fbcf6d6cd9c28ba1d9fa7a6575d81d954b6fbaaa17788a652b2"
+    },
+    "runner": {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/integration/build-native.py",
+      "sha256": "794c03bed7c2c9cfd4083b1e7ccd07b6ea748be84199c7ea92a01c6b6b1de367"
+    },
+    "host": {
+      "path": "/private/tmp/aux-standard-native-source-20261023-a4/AuxDevelopmentWorkerHost.cc",
+      "sha256": "c9d68ac1284c7521aa857b4422205648e95adec5c3babb86783e15a71c1553a7"
+    }
+  },
+  "reservedRelinkPaths": {
+    "plan": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/integration/native-build-a2.json",
+    "runner": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/integration/build-native.py",
+    "host": "/private/tmp/aux-standard-native-source-20261023-a4/AuxDevelopmentWorkerHost.cc"
+  },
+  "relinkStatus": "Original six compiled units and successful a3 daemon link are unchanged; all existing exact operand/dependency/import checks still required.",
+  "expectedFeatureResourceDeltas": 16,
+  "testable": false,
+  "runtimeAuthorityGranted": false,
+  "runtimeExecuted": false,
+  "assembled": false,
+  "pendingInputs": [
+    "sourceOverlay",
+    "projection",
+    "browserReceipt",
+    "standardReview",
+    "standardNativeComposition",
+    "standardVerifier",
+    "previousStandardProjection",
+    "standardProjectionV2Immutable",
+    "standardNativePredecessorComposition",
+    "browserDescendantManifest",
+    "browserDescendantReplacements",
+    "standardNativeDescendantComposition",
+    "browserSnapshotRaceManifest",
+    "browserSnapshotRaceReplacements",
+    "previousManagedProjection",
+    "standardProjectionV3Immutable"
+  ],
+  "preparationOnly": true,
+  "expectedProjectionOutput": "/private/tmp/aux-standard-daemon-projection-20261024-a3",
+  "expectedStagePair": "/Users/rcourson/Documents/Vibe/web/out/standard-profile-stage-pair-20261024-a1",
+  "expectedApp": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-standard-profile-isolation-20261024/Aux.app",
+  "expectedFeatureResourcePaths": [
+    "apps/cli/Aux CLI.app/Contents/MacOS/aux-cli-sea",
+    "apps/extension/dist/assets/appearance-C03x8vQf.js",
+    "apps/extension/dist/assets/appearance-Ceuw3-j6.js",
+    "apps/extension/dist/assets/ask-omnibox-panel-DkxXbN8c.js",
+    "apps/extension/dist/assets/browser-binding-CzDmxQNA.js",
+    "apps/extension/dist/assets/capture-result-nUfmrYC9.js",
+    "apps/extension/dist/assets/create-editor-B-Br5Wz9.js",
+    "apps/extension/dist/assets/general-3dgRbrRk.js",
+    "apps/extension/dist/assets/permission-approval-D-GTf91U.js",
+    "apps/extension/dist/assets/provider-Cw0zhujt.js",
+    "apps/extension/dist/assets/session-composer-Dc0LRfZA.js",
+    "apps/extension/dist/assets/tabsearch-3k_2hgil.js",
+    "apps/extension/dist/assets/use-shortcut-capture-DGr8Ws5Z.js",
+    "apps/extension/dist/assets/utils-Cl9zfMcr.js",
+    "apps/extension/dist/background.js",
+    "apps/extension/dist/manifest.json"
+  ],
+  "resourceDeltaReview": {
+    "predecessorRecipe": {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/runtime-cache-package-a3/prepared/feature-recipe.json",
+      "sha256": "a3935eb5367867e2df105558ca1dd54b5cc496dff7851890465e5aadf2b4cd8a"
+    },
+    "addedPaths": [
+      "apps/extension/dist/assets/session-composer-Dc0LRfZA.js",
+      "apps/extension/dist/assets/ask-omnibox-panel-DkxXbN8c.js"
+    ],
+    "finalStageDiffStillRequired": true,
+    "uiComposition": {
+      "path": "/private/tmp/aux-feature-ui-review-20261023-a6/composition.json",
+      "sha256": "6bfc02e29fe94f48d920e878d5870a4a195874f4ff710a7c068a2b291f3ba3a1"
+    },
+    "measuredChangedScriptPaths": [
+      "apps/extension/dist/assets/appearance-C03x8vQf.js",
+      "apps/extension/dist/assets/appearance-Ceuw3-j6.js",
+      "apps/extension/dist/assets/ask-omnibox-panel-DkxXbN8c.js",
+      "apps/extension/dist/assets/browser-binding-CzDmxQNA.js",
+      "apps/extension/dist/assets/capture-result-nUfmrYC9.js",
+      "apps/extension/dist/assets/create-editor-B-Br5Wz9.js",
+      "apps/extension/dist/assets/general-3dgRbrRk.js",
+      "apps/extension/dist/assets/permission-approval-D-GTf91U.js",
+      "apps/extension/dist/assets/provider-Cw0zhujt.js",
+      "apps/extension/dist/assets/session-composer-Dc0LRfZA.js",
+      "apps/extension/dist/assets/tabsearch-3k_2hgil.js",
+      "apps/extension/dist/assets/use-shortcut-capture-DGr8Ws5Z.js",
+      "apps/extension/dist/assets/utils-Cl9zfMcr.js",
+      "apps/extension/dist/background.js"
+    ],
+    "contextActionsPendingOnExistingTabsearchLeaf": false
+  },
+  "nativeLinkPending": false
+}

@@ -1,0 +1,51 @@
+{
+  "format": "aux.standard-isolation.package-v5.tools.v1",
+  "predecessor": "package-v4",
+  "files": [
+    {
+      "path": "standard_verify.py",
+      "predecessor": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/package-v4/standard_verify.py",
+      "sha256": "23df1867fd7f5e2ae83c1db6c5e68638fabdb7820bff7065bc58cf7835cca210",
+      "byteIdentical": true
+    },
+    {
+      "path": "bind_pair.py",
+      "predecessor": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/package-v4/bind_pair.py",
+      "sha256": "5678511875407c63539abdfdf1201c104f6527db91658dfd5cfda59cc08eb87b",
+      "byteIdentical": true
+    },
+    {
+      "path": "link-tool-aliases.json",
+      "predecessor": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/package-v4/link-tool-aliases.json",
+      "sha256": "75ff23f4bcbc614394587ff29afef364672c15a9de9a12b69a882c310e7abec6",
+      "byteIdentical": true
+    },
+    {
+      "path": "freeze-review.py",
+      "predecessor": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/package-v4/freeze-review.py",
+      "sha256": "c09b153007d3dd405e24dfd39748075b99f76add88325553ccb962a745b1c510",
+      "byteIdentical": true
+    }
+  ],
+  "wrapper": {
+    "path": "cache_package.py",
+    "sha256": "afa794658d9d81e83b45e6ec0a51260d9803133e2bc4d2f0e8f6abdcf410e156",
+    "predecessor": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/package-v4/cache_package.py",
+    "predecessorSha256": "895a60a37e6afad686ad44bd28f79ae81b584e043cafa0748f375564a9da3478",
+    "expressionReplacements": 2,
+    "helperInsertions": 1,
+    "replacementsSha256": "11d5d1e44597f186e85f635beea28996e18f744cd6709055b5070be2fae4933a"
+  },
+  "sourceChecks": {
+    "pythonSyntax": true,
+    "exactCountedWrapperReplay": true,
+    "unchangedOtherToolBytes": true,
+    "pureSeedHelperActualPinnedInputs": true
+  },
+  "actualInputsFrozen": false,
+  "nativeBuildRun": false,
+  "bound": false,
+  "assembled": false,
+  "productExecuted": false,
+  "testable": false
+}

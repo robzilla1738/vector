@@ -1,0 +1,20 @@
+{
+  "format": "aux.standard-package-seed-fix.v1",
+  "edits": [
+    {
+      "find": "        previous = old_items[PREFIX + name]['previousSha256']",
+      "replace": "        previous = (old_items[PREFIX + name]['previousSha256'] if kind == 'bootstrap'\n                    else original_runtime_seed(review, oldbase))",
+      "count": 1
+    },
+    {
+      "find": "                          previousSha256=old_items[PREFIX+name]['previousSha256'],",
+      "replace": "                          previousSha256=(old_items[PREFIX+name]['previousSha256'] if kind == 'bootstrap'\n                                          else original_runtime_seed(review, oldbase)),",
+      "count": 1
+    },
+    {
+      "find": "def runtime_changes(base):",
+      "replace": "def original_runtime_seed(review, oldbase):\n    # The protected recipe replaces bootstrap and adds metadata; it does not\n    # replace seed. Authenticate seed's actual original baseline independently.\n    digest = '3051dea5ccc9d74126bf71ddc0bb72a4d3db19c59f890a8f48d572b215f092af'\n    expected = Path(oldbase['baselineApp']) / 'Contents/Resources/aux' / PREFIX / 'runtime-seed.cjs'\n    reference = review['inputs']['originalRuntimeSeed']\n    require(reference['path'] == str(expected) and reference['sha256'] == digest,\n            'Exact original baseline seed required')\n    require(not expected.is_symlink(), 'Original seed may not be redirected')\n    m.pin(expected, digest)\n    historical_path = ROOT / 'docs/integration/proposed/browser-feature-expansion/runtime-cache-package-a4/prepared/runtime-integration.json'\n    historical_digest = '049e6e4046b9933b7edd4d4950005f4a460acc6fc171c94daa476286d0e79e70'\n    historical_reference = review['inputs']['originalRuntimeSeedEvidence']\n    require(historical_reference == dict(path=str(historical_path), sha256=historical_digest),\n            'Exact historical seed association required')\n    m.pin(historical_path, historical_digest)\n    historical = read(historical_path)\n    require(historical['format'] == 'aux.runtime-cache-package.runtime.v1', 'Historical runtime manifest changed')\n    seeds = [item for item in historical['runtimeIntegration'] if item['path'] == PREFIX + 'runtime-seed.cjs']\n    require(len(seeds) == 1 and seeds[0]['previousSha256'] == digest\n            and seeds[0]['sha256'] == '54bd9cf68d25b9db0827af32ad323ea03821f7adae4066b677849a3e5b28a039'\n            and seeds[0]['mustBeAbsent'] is False and seeds[0]['mode'] == 0o644,\n            'Historical original seed replacement association changed')\n    return digest\n\n\ndef runtime_changes(base):",
+      "count": 1
+    }
+  ]
+}

@@ -1,0 +1,11 @@
+# Package v5 — original runtime seed baseline correction
+
+Tools only; root owns the actual freeze and packaging rerun. The successful v4 freeze, input check and binding, and the failed v4 prepare-base evidence remain immutable. No runtime manifest, source pair or app is generated here.
+
+The protected predecessor runtime change list contains bootstrap and metadata, but no seed. V4 incorrectly read both helper baselines from that list. V5 changes exactly the two seed/baseline selection expressions: bootstrap still uses the original predecessor item; seed uses `original_runtime_seed`. The new helper requires the exact `protectedRecipe.baselineApp/Contents/Resources/aux/` seed path, original SHA `3051dea5ccc9d74126bf71ddc0bb72a4d3db19c59f890a8f48d572b215f092af`, and matching current bytes. It also pins the historical successful `runtime-cache-package-a4/prepared/runtime-integration.json` and requires its sole seed row to associate that original previous hash with the existing `54bd…` adapted seed. The adapted seed is not treated as the shipped baseline.
+
+`wrapper-replacements.json` contains two count-one expression replacements and one count-one helper insertion. The wrapper must replay exactly from v4. There is no fallback for missing bootstrap, arbitrary helper, seed path or seed bytes. No aggregate receipt is promoted to runtime evidence.
+
+The strict validator, binder, aliases and freeze helper are byte-identical to v4. All 166-anchor source/entry checks, original projector comparison, native observer a3 link checks, browser a4 checks and 16 resource checks remain intact. Templates and commands change only package-local v5 destinations and add the two exact, already measured read-only inputs `originalRuntimeSeed` and `originalRuntimeSeedEvidence`. The unchanged freeze helper validates and pins those inputs through its existing mandatory input loop. Actual reviews remain absent until root explicitly runs it; the final app must still be absent.
+
+Lean verification: Python syntax, exact wrapper replay from v4, byte identity of unchanged tools, and direct extraction of the pure baseline helper against the real pinned seed and historical manifest. No package wrapper, freeze, bind, preparation, assembly, app, native build or provider operation executed in this lane.
