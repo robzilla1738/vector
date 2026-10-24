@@ -1,0 +1,18 @@
+{
+  "format": "aux.standard-browser-source-projection.v3",
+  "source": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src",
+  "filesProjected": 2,
+  "countedEdits": 2,
+  "previousInputPinsSha256": "e66b8bf5f3af2c079b4010c2b73e1ea3983d51eca80c52f2fd875bda4b098d08",
+  "inputPinsSha256": "67378a52720d9a88343d62afca1305e7bdcc8522494428d4357d6356bb1517d1",
+  "compositionSha256": "84b753a79f240dd991dc4f05be71f719354fd2500ac6b4f8d7396a7ac72d635c",
+  "manifestSha256": "8c78f7030af12ffd8023af02021a7fe84467ead790a25a00d70aee30633dbe94",
+  "replacementsSha256": "e5cda0fa8348c829508e97de3d33e610b7339690852a3f6a002c7b404f03a3fb",
+  "nativeInputCount": 274,
+  "featurePins": 220,
+  "ownerCheckoutChanged": false,
+  "uiChanged": false,
+  "appExecuted": false,
+  "productSigned": false,
+  "cleanRecoveryProven": false
+}

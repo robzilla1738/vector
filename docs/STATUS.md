@@ -1,3 +1,11 @@
+# Browser correctness build passed; race successor and sign-in cleanup in progress — 2026-10-24
+
+The actual a3 full unsigned browser build passed after the six-file descendant-uncertainty correction. A later bounded source review found a reserve/bind/reap snapshot race. Its two-header, two-edit successor is now projected only after a3 completed, and the serialized a4 full build is running. Failed/unknown writer outcomes stay conservative; no coverage is invented. `docs/integration/proposed/standard-profile-isolation/integration/browser-build-a3-passed.json` preserves actual a3 evidence.
+
+The actual daemon a2 projection passed all 153 anchors, preserved the prior 118-anchor prefix and original stages, and exactly matched the original independent entry projector. The loader and publisher helpers remain unchanged. Interactive login has a separate confirmed lifetime gap beyond refresh; a counted successor is in progress for manager shutdown and the exact reviewed Anthropic/Copilot/xAI/Kimi transport graphs. Meta, Claude-code and separate ChatGPT callback/client paths are not silently declared covered.
+
+Strict package-v3 tools accept only the exact browser race transition, retaining all native/import/resource defenses. They are not frozen/assembled; a source-only successor will also bind the new login stage. No new final app exists yet. The accepted app/UI is intact; no app launch/shutdown/restart, signing/release, provider call, owner-state access or OS grant occurred. Browser cohort completion and actual macOS/ES startup capability remain genuine implementation/capability gates, followed by actual-app acceptance.
+
 # Standard source/native binding passed; correctness successors integrated — 2026-10-24
 
 The corrected strict binder passed against the actual successful standard browser a2/daemon a3 receipts. It authenticates historical before-inputs by immutable five-layer replay, exact GN reversals and the literal compiler correction; original defenses remain checked. The inactive checkpoint pair is `docs/integration/proposed/standard-profile-isolation/package-v1/source-pair-final.json`. It is not assembled, activated or accepted.
