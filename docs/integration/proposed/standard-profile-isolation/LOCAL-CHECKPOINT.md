@@ -25,6 +25,16 @@ The final package attempt is in `package-v6/`. It includes the exact browser a4,
 
 The new strict package-v8 tools preserve v6/v7 history and require the exact a8 browser, native a6 daemon and v5 source/shim tuple. Fresh matching revision17 resource stages passed with exact prior UI byte/mode equivalence; their actual receipt is `out/standard-profile-finish-stage-pair-20261024/receipt.json`. Final freeze/assembly awaits complete browser success. No old success receipt is reused as new runtime proof. The current accepted app/UI remains intact.
 
+## Newly confirmed delivered identity gaps
+
+A bounded read-only check of actual v6 packaged leaves and current v5 daemon source found product identifiers still needing implementation, beyond runtime testing:
+
+- The memory runtime still uses the supplied executable/catalog identifier/signature domain (`aside-memory`, `aside-memory-runtime-v1`). The runtime, trustworthy catalog and every caller need coordinated Aux derivation without treating edited signed fields as an authentic original signature. New/untrusted updates must continue refusing until later Aux release trust exists.
+- Both delivered `provided-native.node` copies retain `AsideNativeSwift` and the `AsideNativeRun`/`AsideNativeFree` C ABI. These are product module/ABI identities, not attribution. Faithful source/recovered implementation rebuilding is being investigated; blind binary string replacement or a functional stub is not completion.
+- The current daemon retains dormant vendor staff-domain payment privileges. A paired source removal is in progress; the payment-free branch remains intact.
+
+Three existing agents are working on separate source/provenance proposals. They must not mutate the running a8 build or frozen-source v9 checkpoint. Actual new integration/build/package evidence will be required. The queued final v9 delivered-byte inventory is not yet run and cannot establish no-trace completeness. HTML semantics, required legal notices and external truthful historical evidence remain allowed.
+
 ## Capability and acceptance gates
 
 The paired daemon requires the actual macOS27 descendant API and restricted Endpoint Security capability at fresh startup; unsigned output cannot satisfy that normal path. A read-only version check reports this Mac is already on 27.0.1 (`integration/host-version-readonly.json`); no API/client was run and no capability was granted. Its exact peer identity checks remain intact. Signing alone does not prove runtime completion or credential-lock behavior. Signing, installation/capabilities and release remain separate.

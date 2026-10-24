@@ -1,3 +1,9 @@
+# Remaining delivered identity implementation confirmed; parallel work resumed — 2026-10-24
+
+The actual v6 package and current v5 source still contain memory-runtime product/catalog identities, native binding module/C ABI identities and a dormant vendor staff-domain privilege. These are real nonvisual implementation gaps; prior static pairing and UI preservation did not prove no-trace completion. Three lanes now cover coordinated runtime/catalog trust, faithful native module rebuilding, and payment-bypass removal plus exact inventory evidence. They are separate proposals and cannot mutate the live a8 source/build or v9 packaging checkpoint.
+
+Actual daemon/source preflight remains passed; the full a8 browser build is live past1,000 actions without a new error. Corrected v9 packaging plus primary dynamic-export/library inspection and read-only final delivered-byte inventory remain queued behind that build. Current UI/CSS/assets and accepted app remain unchanged. No new product execution, signing, cloud, owner state or OS grant occurred. Current implementation versus acceptance is recorded in `docs/integration/proposed/standard-profile-isolation/LOCAL-CHECKPOINT.md`.
+
 # Actual daemon/source package preflight passed; full browser remains live — 2026-10-24
 
 The bounded actual package-v9 preflight passed genuine v6 source/native history and the new v5 source plus a4→a5→a6 native successors. It read no pending browser receipt and did not freeze/assemble anything. Two concrete tool corrections preserve only the exact SDK libbsm linker alias and the immutable producer’s original87-input prefix plus its actual23 appended inputs. Failed checks and counted corrections are retained under `package-v8-preflight`, `package-v9-preflight` and their exact overlays.
