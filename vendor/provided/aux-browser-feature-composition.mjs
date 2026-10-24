@@ -1,7 +1,9 @@
 // Count-checked additions to the supplied owners after identity adaptation.
 import { transformAuxNavigation } from './aux-navigation-command-bar.mjs';
 import { transformAuxProductivityUi, transformAuxProductivityDaemon } from './aux-productivity-integration.mjs';
+import { transformAuxTidySelection } from './aux-productivity-tidy-selection.mjs';
 import { transformAuxTabContext } from './aux-productivity-tab-context.mjs';
+import { transformAuxMentionSpaces } from './aux-productivity-spaces.mjs';
 import { transformAuxContextReadUi, transformAuxContextReadDaemon } from './aux-productivity-context-read.mjs';
 import { transformAuxThemeEditor } from './aux-theme-editor.mjs';
 import { transformAuxFilesUi, transformAuxFilesDaemon } from './aux-productivity-files.mjs';
@@ -55,8 +57,8 @@ function compose(input, transforms) {
   return {text, anchors};
 }
 export function transformAuxBrowserFeatureUi(input) {
-  return compose(input, [transformAuxNavigation, transformAuxProductivityUi,
-    transformAuxTabContext, transformAuxContextReadUi, transformAuxThemeEditor,
+  return compose(input, [transformAuxNavigation, transformAuxProductivityUi, transformAuxTidySelection,
+    transformAuxTabContext, transformAuxMentionSpaces, transformAuxContextReadUi, transformAuxThemeEditor,
     transformAuxFilesUi, transformAuxMediaUi, transformAuxRoutingSettings,
     transformAuxDeveloperUi, transformAuxCaptureUi,
     transformAuxBrowserFeatureSettings, transformAuxShortcutProfiles,

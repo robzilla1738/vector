@@ -11,6 +11,8 @@ export const providedStageInputs = Object.freeze([
   'vendor/provided/aux-productivity-integration.mjs',
   'vendor/provided/aux-productivity-proposals.mjs',
   'vendor/provided/aux-productivity-tab-context.mjs',
+  'vendor/provided/aux-productivity-spaces.mjs',
+  'vendor/provided/aux-productivity-tidy-selection.mjs',
   'vendor/provided/aux-productivity-context-read.mjs',
   'vendor/provided/aux-theme-editor.mjs',
   'vendor/provided/aux-productivity-files.mjs',

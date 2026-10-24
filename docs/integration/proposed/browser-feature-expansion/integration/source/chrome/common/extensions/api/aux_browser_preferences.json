@@ -604,7 +604,18 @@
       {
         "name": "getOrganizationSnapshot",
         "type": "function",
-        "parameters": [],
+        "parameters": [
+          {
+            "name": "request",
+            "type": "object",
+            "optional": true,
+            "properties": {
+              "scopeToken": {
+                "type": "string"
+              }
+            }
+          }
+        ],
         "returns_async": {
           "name": "callback",
           "parameters": [
@@ -1588,6 +1599,70 @@
             "type": "object",
             "additionalProperties": {
               "type": "any"
+            }
+          }
+        ],
+        "returns_async": {
+          "name": "callback",
+          "parameters": [
+            {
+              "name": "result",
+              "type": "object",
+              "additionalProperties": {
+                "type": "any"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "name": "getTabMentionSpaces",
+        "type": "function",
+        "parameters": [],
+        "returns_async": {
+          "name": "callback",
+          "parameters": [
+            {
+              "name": "result",
+              "type": "object",
+              "additionalProperties": {
+                "type": "any"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "name": "captureTabMentionSpace",
+        "type": "function",
+        "parameters": [
+          {
+            "name": "request",
+            "type": "object",
+            "properties": {
+              "spaceId": {
+                "type": "string"
+              },
+              "ownerGeneration": {
+                "type": "string"
+              },
+              "revision": {
+                "type": "string"
+              },
+              "references": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "targetId": {
+                      "type": "string"
+                    },
+                    "url": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
             }
           }
         ],

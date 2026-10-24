@@ -1,0 +1,12 @@
+{
+  "files": [
+    {
+      "path": "chrome/browser/ui/views/frame/aux_tab_expand_chevron_view.cc",
+      "beforeSha256": "aaf63f1883697bb794ad73129cfc06e6d7019bee3e98b860d6571e542f424474",
+      "afterSha256": "9bfff0bc2c373ac7020f2cef36596804955579c11be4f8733bc1608c520c57b0",
+      "source": "docs/integration/proposed/browser-feature-expansion/organization-chevron-contrast/source/chrome/browser/ui/views/frame/aux_tab_expand_chevron_view.cc"
+    }
+  ],
+  "patchSha256": "443be781db0077909d66c0931a9840f6e87c6e65f3ae3a5cfd78d6aee7261124",
+  "runtimeAccepted": false
+}

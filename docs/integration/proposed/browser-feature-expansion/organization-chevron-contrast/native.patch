@@ -1,0 +1,25 @@
+--- a/chrome/browser/ui/views/frame/aux_tab_expand_chevron_view.cc
++++ b/chrome/browser/ui/views/frame/aux_tab_expand_chevron_view.cc
+@@ -2,6 +2,7 @@
+ #include "chrome/browser/ui/views/frame/aux_tab_expand_chevron_view.h"
+ 
+ #include "base/time/time.h"
++#include "chrome/browser/themes/aux_theme_editor.h"
+ #include "ui/base/metadata/metadata_impl_macros.h"
+ #include "ui/base/models/image_model.h"
+ #include "ui/color/color_provider_key.h"
+@@ -55,11 +56,13 @@
+   if (!GetWidget()) return;
+   const bool dark = GetWidget()->GetColorMode() ==
+       ui::ColorProviderKey::ColorMode::kDark;
+-  const SkColor color = foreground_ == Foreground::kPrimary
++  const SkColor fallback = foreground_ == Foreground::kPrimary
+       ? (dark ? 0xd9fafafa : 0xd90a0a0a)
+       : foreground_ == Foreground::kMuted
+           ? (dark ? 0x73fafafa : 0x730a0a0a)
+           : (dark ? 0x8cfafafa : 0x8c0a0a0a);
++  const SkColor color = aux_theme::SidebarForeground(
++      GetWidget()->GetCurrentColorProviderKey(), GetColorProvider(), fallback);
+   SetImage(ui::ImageModel::FromVectorIcon(kDisclosureIcon, color, 16));
+ }
+ void AuxTabExpandChevronView::AnimationProgressed(const gfx::Animation*) {

@@ -42,7 +42,7 @@ generate_allowlist_from_histograms_file("webui_name_variants") {
 # The implementation stays in :ui; extension actions use only this declaration.
 if (enable_aux_browser && is_mac) {
   source_set("aux_profile_search_headers") {
-    public = [ "views/frame/aux_tab_search_bubble.h", "views/frame/aux_organization_window_controller.h", "views/frame/aux_organization_window_delegate.h", "../aux/organization/organization_model.h", "../aux/organization/organization_codec.h", "../aux/organization/organization_service.h", "../aux/organization/organization_profile_service.h", "aux_tab_reference_context.h", "aux_recent_files_service.h", "aux_media_commands.h", "../aux/routing/routing_service.h", "../aux/routing/external_routing_ingress.h", "../aux/routing/routing_model.h", "aux_feature_lifecycle.h", "aux_feature_commands.h", "aux_preview/aux_preview_controller.h", "aux_preview/aux_preview_controls.h", "aux_preview/aux_preview_ingress.h", "aux_preview/aux_preview_navigation_throttle.h", "aux_page_capture.h", "aux_developer_commands.h", "aux_chosen_files_service.h", "../aux/feature_store/feature_profile_store.h" ]
+    public = [ "views/frame/aux_tab_search_bubble.h", "views/frame/aux_organization_window_controller.h", "views/frame/aux_organization_window_delegate.h", "../aux/organization/organization_model.h", "../aux/organization/organization_codec.h", "../aux/organization/organization_service.h", "../aux/organization/organization_profile_service.h", "aux_tab_reference_context.h", "aux_tab_mention_spaces.h", "aux_tidy_scope.h", "aux_recent_files_service.h", "aux_media_commands.h", "../aux/routing/routing_service.h", "../aux/routing/external_routing_ingress.h", "../aux/routing/routing_model.h", "aux_feature_lifecycle.h", "aux_feature_commands.h", "aux_preview/aux_preview_controller.h", "aux_preview/aux_preview_controls.h", "aux_preview/aux_preview_ingress.h", "aux_preview/aux_preview_navigation_throttle.h", "aux_page_capture.h", "aux_developer_commands.h", "aux_chosen_files_service.h", "../aux/feature_store/feature_profile_store.h" ]
     public_deps = [ "//base", "//chrome/browser/profiles:profile", "//chrome/browser/ui/tabs:tab_strip_model_observer", "//components/keyed_service/core", "//components/tabs:public" ]
   }
 }
@@ -1244,6 +1244,10 @@ static_library("ui") {
       "views/frame/aux_spaces_switcher.cc",
       "views/frame/aux_spaces_switcher.h",
       "aux_tab_reference_context.cc",
+      "aux_tab_mention_spaces.cc",
+      "aux_tidy_scope.cc",
+      "aux_tidy_scope.h",
+      "aux_tab_mention_spaces.h",
       "aux_tab_reference_context.h",
       "views/frame/aux_frame_presentation_state.h",
       "views/frame/aux_navigation_placement.h",

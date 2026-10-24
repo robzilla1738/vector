@@ -1,0 +1,11 @@
+{
+  "passed": true,
+  "revision": 16,
+  "expectedFingerprint": "070f4ddc65ea39836f6badd3f8517fcf58a5d1b4b4c487adf4ec8ce436404a31",
+  "predecessorStage": "out/browser-feature-stage-pair-20261023-a2/desktop-v1/ui",
+  "predecessorFingerprintReplayed": true,
+  "unchangedManifestBeforeRevision": true,
+  "changedScriptCount": 12,
+  "actualNewStagePassed": false,
+  "productExecuted": false
+}

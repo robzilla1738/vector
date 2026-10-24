@@ -3,10 +3,124 @@
   "baselineCommit": "02ce77253",
   "files": [
     {
-      "path": "chrome/browser/ui/views/frame/browser_widget.cc",
-      "beforeSha256": "74f3783fbea63c7c91433b3382665914e600ad8c69f522e5732bf103c78a6bad",
-      "afterSha256": "ead11967974eae0dfb36aecc6683fd8a74e37ec536615645170eff53226ef10a",
-      "source": "docs/integration/proposed/browser-feature-expansion/theme-widget-supplier/source/chrome/browser/ui/views/frame/browser_widget.cc"
+      "path": "chrome/browser/extensions/api/aux_browser_preferences/aux_feature_expansion_api.cc",
+      "beforeSha256": "c0209446da9a6178c4dc858e8ca5070db0348818a2d465c3cb5c8892dc79908a",
+      "afterSha256": "6d8e662c89dae5c4b490dc70bf09097cc2d0041c466811ba96a11927e58b50d2",
+      "source": "docs/integration/proposed/browser-feature-expansion/productivity-tidy-selection/source/chrome/browser/extensions/api/aux_browser_preferences/aux_feature_expansion_api.cc"
+    },
+    {
+      "path": "chrome/browser/extensions/api/aux_browser_preferences/aux_feature_expansion_api.h",
+      "beforeSha256": "fbc7de6bb9f4788ba5c372521e576beff22a8199014b8850fc31666980325431",
+      "afterSha256": "7f9aac8f99165debe5d98c64ca4bf7fe3d8da9776503f5a973e723507500b354",
+      "source": "docs/integration/proposed/browser-feature-expansion/productivity-spaces/source/chrome/browser/extensions/api/aux_browser_preferences/aux_feature_expansion_api.h"
+    },
+    {
+      "path": "chrome/browser/themes/aux_theme_editor.cc",
+      "beforeSha256": "16ffe2121f7312eebc34a333ea2ad06c9f866d113b63b6ded2eff9dc160d31e7",
+      "afterSha256": "60472eef6a2c6edd297cafeea186039a478963a355ba6114c705417d3a00844c",
+      "source": "docs/integration/proposed/browser-feature-expansion/theme-supplier-cache/source/chrome/browser/themes/aux_theme_editor.cc"
+    },
+    {
+      "path": "chrome/browser/ui/BUILD.gn",
+      "beforeSha256": "a8f448d0e9f01a11afa1cbadf3bc93911aad6ada5983481f7a63d20a14ad68dc",
+      "afterSha256": "c6cb4dea4080f79ce05ad32ed0125f404d380ff0f028e47f9618a613eb12c274",
+      "source": "docs/integration/proposed/browser-feature-expansion/integration/source/chrome/browser/ui/BUILD.gn"
+    },
+    {
+      "path": "chrome/browser/ui/aux_tab_mention_spaces.cc",
+      "beforeSha256": null,
+      "afterSha256": "950d180a1e521910dea34a18a5a4db6038e5727c63d0ca82aee9bddf65ad2495",
+      "source": "docs/integration/proposed/browser-feature-expansion/productivity-spaces/source/chrome/browser/ui/aux_tab_mention_spaces.cc"
+    },
+    {
+      "path": "chrome/browser/ui/aux_tab_mention_spaces.h",
+      "beforeSha256": null,
+      "afterSha256": "a4a1ec168fc09c9067cd2fd86266a043f3f64f1fe6b8d1238c4ca094dfec042a",
+      "source": "docs/integration/proposed/browser-feature-expansion/productivity-spaces/source/chrome/browser/ui/aux_tab_mention_spaces.h"
+    },
+    {
+      "path": "chrome/browser/ui/aux_tidy_scope.cc",
+      "beforeSha256": null,
+      "afterSha256": "5591d8cccd099ec6c4b168744fac09b206f1c0a7e0429dff25bd359eb1cd7fb7",
+      "source": "docs/integration/proposed/browser-feature-expansion/productivity-tidy-selection/source/chrome/browser/ui/aux_tidy_scope.cc"
+    },
+    {
+      "path": "chrome/browser/ui/aux_tidy_scope.h",
+      "beforeSha256": null,
+      "afterSha256": "08f286f1ad5c8ef41b64a54bbd28e568cad088faa6d6c0ed72f981ca99f2dde7",
+      "source": "docs/integration/proposed/browser-feature-expansion/productivity-tidy-selection/source/chrome/browser/ui/aux_tidy_scope.h"
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_organization_tree_view.cc",
+      "beforeSha256": "02834d5fb3d24d7048b58ac7de7e135e96ad50341b957dc737a0703644717169",
+      "afterSha256": "50edd799937662ec2029a32aa553b57c9afc0f5a90aa8cb900539412b532e0f6",
+      "source": "docs/integration/proposed/browser-feature-expansion/organization-multiselect/source/chrome/browser/ui/views/frame/aux_organization_tree_view.cc"
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_organization_window_controller.cc",
+      "beforeSha256": "1f1dece764f70899e455e6a77b1c3be791260ab95f0390a513b95e3ce826e2f0",
+      "afterSha256": "daf4d6414ffe1cb35d0a31d172f1a83d17e1deb60e8e873f1a4eb0b3b01bbd94",
+      "source": "docs/integration/proposed/browser-feature-expansion/organization-multiselect/source/chrome/browser/ui/views/frame/aux_organization_window_controller.cc"
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_organization_window_controller.h",
+      "beforeSha256": "211631eb6c1b539b7210339beff5009c3e83ffdb0b9b14959e0e3b591b3367f1",
+      "afterSha256": "1b58e79aef403bb33ebae8eb06c0999d85e542153d82d69c407b491ca0fd5c8e",
+      "source": "docs/integration/proposed/browser-feature-expansion/organization-multiselect/source/chrome/browser/ui/views/frame/aux_organization_window_controller.h"
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_tab_expand_chevron_view.cc",
+      "beforeSha256": "aaf63f1883697bb794ad73129cfc06e6d7019bee3e98b860d6571e542f424474",
+      "afterSha256": "9bfff0bc2c373ac7020f2cef36596804955579c11be4f8733bc1608c520c57b0",
+      "source": "docs/integration/proposed/browser-feature-expansion/organization-chevron-contrast/source/chrome/browser/ui/views/frame/aux_tab_expand_chevron_view.cc"
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_tabs_actions.cc",
+      "beforeSha256": "aa9a2159194a22191932df62759c746f7386763be75f59126332c34785a496bb",
+      "afterSha256": "45e7ded8def5489e3de93e70512cbee29da58ceccf0a6ecf43ae974419686edf",
+      "source": "docs/integration/proposed/browser-feature-expansion/productivity-tidy-selection/source/chrome/browser/ui/views/frame/aux_tabs_actions.cc"
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_tabs_actions.h",
+      "beforeSha256": "51c067a2b2f4f0c1b1b4dc5eeca9c4e4eea06a8a5b49fc9264e8fc46ff17cdaf",
+      "afterSha256": "9abf17ff229f74fb7d793564ff64498d07c681a962b47cf2f036a1e4f3c52dd0",
+      "source": "docs/integration/proposed/browser-feature-expansion/productivity-tidy-selection/source/chrome/browser/ui/views/frame/aux_tabs_actions.h"
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/browser_view.cc",
+      "beforeSha256": "b6fecde06fb561b4fb5d2da9405981cede125be331286aecb19f1213bd884fd9",
+      "afterSha256": "9e00e465d3b53f968697588594c05c43a7660b3744904890ef3ebd9fe7cde939",
+      "source": "docs/integration/proposed/browser-feature-expansion/frame-theme-completion/source/chrome/browser/ui/views/frame/browser_view.cc"
+    },
+    {
+      "path": "chrome/browser/ui/views/toolbar/toolbar_view.cc",
+      "beforeSha256": "076680b0b700efa5180f13676ea5c055c0c1691c1f04247bd7f4c5d16fd67632",
+      "afterSha256": "50fc4d3f77d198a4009dcf8f9c05a61216d965392d0cf0a652eb2a533d123587",
+      "source": "docs/integration/proposed/browser-feature-expansion/frame-theme-completion/source/chrome/browser/ui/views/toolbar/toolbar_view.cc"
+    },
+    {
+      "path": "chrome/browser/ui/views/toolbar/toolbar_view.h",
+      "beforeSha256": "5110333dda4d47d6f5c667180ed8ac6085b863dfd5a67df53d52e0c620821584",
+      "afterSha256": "377fe00219dcc78d75dece3f93b3beb35af2b61dccbccdbae36618d793f4c551",
+      "source": "docs/integration/proposed/browser-feature-expansion/frame-theme-completion/source/chrome/browser/ui/views/toolbar/toolbar_view.h"
+    },
+    {
+      "path": "chrome/common/extensions/api/aux_browser_preferences.json",
+      "beforeSha256": "db05e92d2295cda027b6872ac4138dc9d4be64b1513db3a5cb264eb2523866aa",
+      "afterSha256": "3034469ce041b154eb6f75801c2c6289e856ac1a22edf03789476391ed1add65",
+      "source": "docs/integration/proposed/browser-feature-expansion/integration/source/chrome/common/extensions/api/aux_browser_preferences.json"
+    },
+    {
+      "path": "extensions/browser/extension_function_histogram_value.h",
+      "beforeSha256": "48502688a5072e9be61a8ed64836a0ec7c0c465c4138afc1dd88ec5327a339e4",
+      "afterSha256": "a53d471f596e119780c84acc6136f036397d4622cdd1191f28fd7dbbeb3ab5ad",
+      "source": "docs/integration/proposed/browser-feature-expansion/integration/source/extensions/browser/extension_function_histogram_value.h"
+    },
+    {
+      "path": "tools/metrics/histograms/metadata/extensions/enums.xml",
+      "beforeSha256": "80e8e170d391f1a4b4a15214d0824f2fc15f6c3b835925ee359e17529a918764",
+      "afterSha256": "857e15383e7ed9602c9e86e9fea51a04ffb325aba9e84b69c330faf3fd8a5149",
+      "source": "docs/integration/proposed/browser-feature-expansion/integration/source/tools/metrics/histograms/metadata/extensions/enums.xml"
     }
   ],
   "inputPins": {
@@ -48,18 +162,18 @@
     "chrome/browser/extensions/api/aux_browser_preferences/aux_browser_preferences_api.h": "04f3ae9ab32bf2192a95f8f7c4662d0668f0ede2d6a2fc3f1488f2d1a614bc7f",
     "chrome/browser/extensions/api/aux_browser_preferences/aux_developer_expansion_api.cc": "b7e263be5cef6588501b7ec182a2740ec52426a2756785198959f73ac1d77386",
     "chrome/browser/extensions/api/aux_browser_preferences/aux_developer_expansion_api.h": "4af11e671db31400d78fdf4711f906ff5247c3683b9eeeff7e7105ff470f2c70",
-    "chrome/browser/extensions/api/aux_browser_preferences/aux_feature_expansion_api.cc": "c0209446da9a6178c4dc858e8ca5070db0348818a2d465c3cb5c8892dc79908a",
-    "chrome/browser/extensions/api/aux_browser_preferences/aux_feature_expansion_api.h": "fbc7de6bb9f4788ba5c372521e576beff22a8199014b8850fc31666980325431",
+    "chrome/browser/extensions/api/aux_browser_preferences/aux_feature_expansion_api.cc": "6d8e662c89dae5c4b490dc70bf09097cc2d0041c466811ba96a11927e58b50d2",
+    "chrome/browser/extensions/api/aux_browser_preferences/aux_feature_expansion_api.h": "7f9aac8f99165debe5d98c64ca4bf7fe3d8da9776503f5a973e723507500b354",
     "chrome/browser/file_select_helper.cc": "a74c777ef9fe97556f38feebbedba75790ac79657cb8a24c70addd8f7a353031",
     "chrome/browser/file_select_helper.h": "8664710e6b94683c1e593fb248a34b6aaa3d429bcf6d2426da7019b5be7014fd",
     "chrome/browser/renderer_context_menu/render_view_context_menu.cc": "c7ed6d4df8f56bf6546bead44e73260f1032258f21e78b1ec5d32bfff2ef91ad",
     "chrome/browser/sessions/session_restore.cc": "2e784be1d288473c62e483fa2ffd0eb83285653fa020b6ad4154b396621256ec",
     "chrome/browser/themes/BUILD.gn": "81b79a8ebe5bc83d4d38969e98ce070763d4434a0411a836e507e6b87ec97fb9",
-    "chrome/browser/themes/aux_theme_editor.cc": "16ffe2121f7312eebc34a333ea2ad06c9f866d113b63b6ded2eff9dc160d31e7",
+    "chrome/browser/themes/aux_theme_editor.cc": "60472eef6a2c6edd297cafeea186039a478963a355ba6114c705417d3a00844c",
     "chrome/browser/themes/aux_theme_editor.h": "31517af4c9fac364a110a3297456a7790e810abb93a1d820c27dcc6bcc0b9926",
     "chrome/browser/themes/theme_service.cc": "7704ce4ac98a0c80c44d522d829712f254ebfa959599d2a78bd54b2b04e96d7c",
     "chrome/browser/themes/theme_service.h": "faf0ede4723cdd043aa27b8454d36046a02e50b79da8348a64680c59cfa37999",
-    "chrome/browser/ui/BUILD.gn": "a8f448d0e9f01a11afa1cbadf3bc93911aad6ada5983481f7a63d20a14ad68dc",
+    "chrome/browser/ui/BUILD.gn": "c6cb4dea4080f79ce05ad32ed0125f404d380ff0f028e47f9618a613eb12c274",
     "chrome/browser/ui/aux_chosen_files_drag_mac.mm": "a67d5915a9df58358b803eef3db365d2c6374909555323107205ded22238f19d",
     "chrome/browser/ui/aux_chosen_files_service.cc": "12a0444fa8c880eb5267023dab64851f4c3d25c61d351cc4ec5dd807bd0d74ba",
     "chrome/browser/ui/aux_chosen_files_service.h": "fe22e1351238e741392016deb9f9f23db737d98eb4247ba20c14b489d0f8e24b",
@@ -90,8 +204,12 @@
     "chrome/browser/ui/aux_recent_files_move_mac.mm": "4be595663b7d8aa70cb3f3a140cfb736548a9b00729fc55d15007af455ec37d1",
     "chrome/browser/ui/aux_recent_files_service.cc": "b7a5ba2a42137bee886606c8774db5e32210cd3e820b153edef38563ffc3666a",
     "chrome/browser/ui/aux_recent_files_service.h": "ac4bbeaa79a6fa025dff411870380f26b2c5ae14e2387c06f29777bd2bb7f15a",
+    "chrome/browser/ui/aux_tab_mention_spaces.cc": "950d180a1e521910dea34a18a5a4db6038e5727c63d0ca82aee9bddf65ad2495",
+    "chrome/browser/ui/aux_tab_mention_spaces.h": "a4a1ec168fc09c9067cd2fd86266a043f3f64f1fe6b8d1238c4ca094dfec042a",
     "chrome/browser/ui/aux_tab_reference_context.cc": "b8b716e0c0767bb970ec3a398da1f4d8e12254df1bd480f8bdefef46a15e23c0",
     "chrome/browser/ui/aux_tab_reference_context.h": "2067239356ebd9d55376f409e742b2e130a2447f33ff7ab1dcd4e7732209a416",
+    "chrome/browser/ui/aux_tidy_scope.cc": "5591d8cccd099ec6c4b168744fac09b206f1c0a7e0429dff25bd359eb1cd7fb7",
+    "chrome/browser/ui/aux_tidy_scope.h": "08f286f1ad5c8ef41b64a54bbd28e568cad088faa6d6c0ed72f981ca99f2dde7",
     "chrome/browser/ui/browser_command_controller.cc": "eab1ecf1959b8c9707282211f8227a6fe87accb5247f9c157f93142f3ce61c73",
     "chrome/browser/ui/browser_live_tab_context.cc": "e2cf847710ec0a873bf489af1a157f639f612906690557db08e5301412c209dd",
     "chrome/browser/ui/browser_live_tab_context.h": "9787b8ce41c9d6cacc5ed75ec0cbf9a976a6c1af0ac74be1040ae1c00c9cdfc9",
@@ -123,12 +241,12 @@
     "chrome/browser/ui/views/frame/aux_navigation_placement.h": "a4c277ee916555b5b4471d7845972fe96602b8c1f280ef314f61d7db8cd29e97",
     "chrome/browser/ui/views/frame/aux_ordinary_tab_projection.cc": "f951e511ac6303b102901b14063a07bfed2b0da80d982d3ad1fc1b03d942a9f7",
     "chrome/browser/ui/views/frame/aux_ordinary_tab_projection.h": "2c0f769501ac68b3b490dc3dc03f77b31beb6fec8f24460e1a3c3ee18af5340a",
-    "chrome/browser/ui/views/frame/aux_organization_tree_view.cc": "02834d5fb3d24d7048b58ac7de7e135e96ad50341b957dc737a0703644717169",
+    "chrome/browser/ui/views/frame/aux_organization_tree_view.cc": "50edd799937662ec2029a32aa553b57c9afc0f5a90aa8cb900539412b532e0f6",
     "chrome/browser/ui/views/frame/aux_organization_tree_view.h": "7f66e52ae31d598cb24d23f7910430dcd7cf34c6c133ebbc0abdec5779d14971",
     "chrome/browser/ui/views/frame/aux_organization_ui_commands.cc": "97646d6b69dbbbf57fd01edcc6fe0c1a78b263d8300d31bc338720bec821a7ca",
     "chrome/browser/ui/views/frame/aux_organization_ui_commands.h": "5b109b4204d0585ee98c43cca10a6b5cff9d579b29a0bee6ebef2f35083e9261",
-    "chrome/browser/ui/views/frame/aux_organization_window_controller.cc": "1f1dece764f70899e455e6a77b1c3be791260ab95f0390a513b95e3ce826e2f0",
-    "chrome/browser/ui/views/frame/aux_organization_window_controller.h": "211631eb6c1b539b7210339beff5009c3e83ffdb0b9b14959e0e3b591b3367f1",
+    "chrome/browser/ui/views/frame/aux_organization_window_controller.cc": "daf4d6414ffe1cb35d0a31d172f1a83d17e1deb60e8e873f1a4eb0b3b01bbd94",
+    "chrome/browser/ui/views/frame/aux_organization_window_controller.h": "1b58e79aef403bb33ebae8eb06c0999d85e542153d82d69c407b491ca0fd5c8e",
     "chrome/browser/ui/views/frame/aux_organization_window_delegate.h": "319e3515541a790d07f9a8a9eff42adc7da230ec4c260196649c140c64733001",
     "chrome/browser/ui/views/frame/aux_pins_section.cc": "5a6ab5958add314aaf190ac4bf45368f93d19c638119a5aeb2b3b5614d255b2c",
     "chrome/browser/ui/views/frame/aux_pins_section.h": "d8da282cddc9bd76fe891ed47d6c7100781c94943de23c9673e0076a90508963",
@@ -146,12 +264,15 @@
     "chrome/browser/ui/views/frame/aux_spaces_switcher.h": "4d699386528f6ceae84409db478a3393873c866f8dce19ef24142522d9619944",
     "chrome/browser/ui/views/frame/aux_split_commands.cc": "945511b4577bd546c02f99759a07e5c81c80cb6be63338c5efe9bee8af55cdaf",
     "chrome/browser/ui/views/frame/aux_split_commands.h": "1d13e09c959dec4d2da9e6f71edf285b781339376592a6fcca287bcfbee6086c",
+    "chrome/browser/ui/views/frame/aux_tab_expand_chevron_view.cc": "9bfff0bc2c373ac7020f2cef36596804955579c11be4f8733bc1608c520c57b0",
     "chrome/browser/ui/views/frame/aux_tab_search_bubble.cc": "fb43406612104ae431ebe0ec20c79275cfad47050246ad394107e581aedc2c18",
     "chrome/browser/ui/views/frame/aux_tab_search_bubble.h": "3ed95b3465ed2f8ea3401a4f5574bc802e4d35fa81c6e6e484294d4cd6cec6f9",
+    "chrome/browser/ui/views/frame/aux_tabs_actions.cc": "45e7ded8def5489e3de93e70512cbee29da58ceccf0a6ecf43ae974419686edf",
+    "chrome/browser/ui/views/frame/aux_tabs_actions.h": "9abf17ff229f74fb7d793564ff64498d07c681a962b47cf2f036a1e4f3c52dd0",
     "chrome/browser/ui/views/frame/aux_tabs_section.cc": "a7b4f093c84fa7bdbc270849b1f9dbf0d90bb67d615e1fac2bac570f159a42a4",
     "chrome/browser/ui/views/frame/aux_tabs_section.h": "3a30c690780140f857bfc57fa32f3ffaf46faa5b85eeb9e716b5b2070a721283",
     "chrome/browser/ui/views/frame/aux_vertical_sidebar_profile_button.cc": "a6f2ddd75d9ed3375903e357fb54b5cf92239db434b872b6437fc4f756368a76",
-    "chrome/browser/ui/views/frame/browser_view.cc": "b6fecde06fb561b4fb5d2da9405981cede125be331286aecb19f1213bd884fd9",
+    "chrome/browser/ui/views/frame/browser_view.cc": "9e00e465d3b53f968697588594c05c43a7660b3744904890ef3ebd9fe7cde939",
     "chrome/browser/ui/views/frame/browser_view.h": "795df144d9073676c9ba12613829852825c08cdc59ee69ff42902707b4666281",
     "chrome/browser/ui/views/frame/browser_widget.cc": "ead11967974eae0dfb36aecc6683fd8a74e37ec536615645170eff53226ef10a",
     "chrome/browser/ui/views/frame/custom_corners_background.cc": "89bb798da9bf0d4bac1561dfe6830d934e1ff927558836fb0af5cdb8bd5be2c9",
@@ -171,9 +292,9 @@
     "chrome/browser/ui/views/tabs/vertical/aux_pinned_tab_entry_actions.h": "ddc9e464f4ee2c55100a2f5c41ffde77f4860366c836886705d85e4488beeea5",
     "chrome/browser/ui/views/tabs/vertical/vertical_pinned_tab_entries_view.cc": "7fa3fb0bc0e2379a3d934c4021fb4ea024a47bbb90f542cdd412df6ee0f34896",
     "chrome/browser/ui/views/tabs/vertical/vertical_pinned_tab_entries_view.h": "c2cd7a2fd7c8536782547c444dd281f67f78295443089807bc569ccc70865245",
-    "chrome/browser/ui/views/toolbar/toolbar_view.cc": "076680b0b700efa5180f13676ea5c055c0c1691c1f04247bd7f4c5d16fd67632",
-    "chrome/browser/ui/views/toolbar/toolbar_view.h": "5110333dda4d47d6f5c667180ed8ac6085b863dfd5a67df53d52e0c620821584",
-    "chrome/common/extensions/api/aux_browser_preferences.json": "db05e92d2295cda027b6872ac4138dc9d4be64b1513db3a5cb264eb2523866aa",
+    "chrome/browser/ui/views/toolbar/toolbar_view.cc": "50fc4d3f77d198a4009dcf8f9c05a61216d965392d0cf0a652eb2a533d123587",
+    "chrome/browser/ui/views/toolbar/toolbar_view.h": "377fe00219dcc78d75dece3f93b3beb35af2b61dccbccdbae36618d793f4c551",
+    "chrome/common/extensions/api/aux_browser_preferences.json": "3034469ce041b154eb6f75801c2c6289e856ac1a22edf03789476391ed1add65",
     "components/infobars/core/infobar_delegate.h": "51c84512d81d90b62c5f672694883d64ddc42835fb5582fa7d6b91c28b69f307",
     "components/sessions/BUILD.gn": "1d66dbc59b2820fed5e6d9cd5e5a7df2f7495f04503ad01b5ddc8f54932510f3",
     "components/sessions/core/live_tab_context.cc": "4a9fabbadb9309eea428db9c2bdeb5bf8953b27964d5e25c15e3c69a64514ad7",
@@ -194,9 +315,9 @@
     "content/public/browser/devtools_manager_delegate.cc": "6bddf2a801e4afaa801a8580fc936d886cae196afd715b15022a8b8de977b6b8",
     "content/public/browser/devtools_manager_delegate.h": "40eb2ff2b3e7833d67c072841965487a6a91d58648575ddd5dc931a5cbc1a71f",
     "extensions/browser/extension_event_histogram_value.h": "3fcb7b1c9be371dcba33230cb14d4ec194e41c3e1cdbe19d94afe1bfb8d08507",
-    "extensions/browser/extension_function_histogram_value.h": "48502688a5072e9be61a8ed64836a0ec7c0c465c4138afc1dd88ec5327a339e4",
+    "extensions/browser/extension_function_histogram_value.h": "a53d471f596e119780c84acc6136f036397d4622cdd1191f28fd7dbbeb3ab5ad",
     "tools/metrics/histograms/metadata/browser/enums.xml": "9458cb5b3885c975856ea857d16e23240cef365bf22ae3e650715251396586d0",
-    "tools/metrics/histograms/metadata/extensions/enums.xml": "80e8e170d391f1a4b4a15214d0824f2fc15f6c3b835925ee359e17529a918764",
+    "tools/metrics/histograms/metadata/extensions/enums.xml": "857e15383e7ed9602c9e86e9fea51a04ffb325aba9e84b69c330faf3fd8a5149",
     "ui/color/color_provider_source.h": "15ec370940d4a082f32d8261cd8846b4157a426629ec5ce1312627fe959c44b5"
   },
   "runtimeAccepted": false,

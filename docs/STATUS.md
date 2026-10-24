@@ -1,3 +1,9 @@
+# Reviewed feature gaps integrated for focused a15 build — 2026-10-23
+
+The source review identified and implemented explicit shared-close recovery/independent copies, genuine sidebar modifier multiselection for selected-tab Tidy, Space-aware @ mentions, meaningful minimal presentation, accent inheritance, bounded per-profile theme suppliers and theme-aware row contrast/selection feedback. The accepted UI/app remain untouched; no CSS/image change. The a14 full compiler job was intentionally interrupted after324 completed actions to fold in these final source deltas; its non-success receipt is retained and completed objects are reused. No app was shut down/restarted.
+
+Projection a15 applies20 exact deltas with195 complete feature source pins. Eleven affected native targets plus generated registration are in a focused compile. The updated12-script supplied composition passes exact count replay/syntax; fresh revision16 resource stage pairing and dormant daemon/source pairing are running. Full link, inactive assembly, provider behavior and actual-app/UI acceptance remain pending. Existing startup/custody/drain/recovery gates, no owner-state access, no app lifecycle and no product signing/release constraints remain unchanged.
+
 # Sidebar compiler fixes and theme propagation compiled; full build a14 running — 2026-10-23
 
 The two failed a12 sidebar/drop objects passed the exact a13 focused rebuild. The newly identified BrowserWidget opt-in theme supplier overwrite is corrected and its one affected object passed a14. Source projection a14 pins188 feature inputs; a fresh immutable252-input manifest now drives the full unsigned browser build. Current default UI and accepted app remain intact. Full link, inactive assembly and actual-app/UI acceptance are pending; no app lifecycle, signing or release action occurred.

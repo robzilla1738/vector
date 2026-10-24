@@ -1,0 +1,1 @@
+Exact native chevron contrast companion to the organization row theme correction. Three count-one edits reuse the existing actual widget/profile SidebarForeground resolver; original geometry, animation, icon and fallback colors remain. Inactive until serialized projection/compile; no app/UI acceptance claimed.
