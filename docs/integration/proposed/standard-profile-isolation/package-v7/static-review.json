@@ -1,0 +1,71 @@
+{
+  "format": "aux.standard-isolation.package-v7.static-tool-review.v1",
+  "syntaxParsed": [
+    "run-reviewed.py",
+    "successor_verify.py",
+    "freeze-review.py",
+    "standard_verify.py",
+    "cache_package.py",
+    "bind_pair.py"
+  ],
+  "toolsImported": false,
+  "toolsExecuted": false,
+  "nativeBuilt": false,
+  "packageFrozen": false,
+  "packageAssembled": false,
+  "productExecuted": false,
+  "historicalSourceAndNativeValidators": "AST-identical to v6 except renamed predecessor function identifiers",
+  "sourceContract": "197 total / 165 new / 15 appended; original nine-stage/166 and twelve-stage/182 prefixes retained",
+  "nativeContract": "a3 original closure, credential a4, observer a5, crash a6; original module 50 imports; 48 Swift and 14 objects",
+  "browserContract": "exact a4\u2192a5\u2192a6\u2192a7 composition metadata association; 25 final changes / 322 full input pins; full-build success still required",
+  "files": [
+    {
+      "path": "README.md",
+      "sha256": "f4c2d4533b51568ce07904574329792dba79c678e8519c845671a56dd068bcac"
+    },
+    {
+      "path": "bind_pair.py",
+      "sha256": "5678511875407c63539abdfdf1201c104f6527db91658dfd5cfda59cc08eb87b"
+    },
+    {
+      "path": "cache_package.py",
+      "sha256": "36a2d256f9e4380374b2e362c0fafd37b95e342d838afe8eae4fa461926a43a8"
+    },
+    {
+      "path": "commands.json",
+      "sha256": "aa5301c5d90c287f1bc7ce8089ed1de11618ab9f18fed05e22043163be1e9605"
+    },
+    {
+      "path": "freeze-review.py",
+      "sha256": "2cb3b4b2307817793640195b0a13a889d4b42f93c592ff5314e55d626709728b"
+    },
+    {
+      "path": "link-tool-aliases.json",
+      "sha256": "75ff23f4bcbc614394587ff29afef364672c15a9de9a12b69a882c310e7abec6"
+    },
+    {
+      "path": "review.template.json",
+      "sha256": "df996f5d73c4585b8e24b49eb25e9932deeb41f152adea95b0a96ad7f1be20cb"
+    },
+    {
+      "path": "run-reviewed.py",
+      "sha256": "667694e8019f3634bea5569dc0c3015931143b44a3b1328d490cf77cedd08745"
+    },
+    {
+      "path": "runtime-helper-overlay.template.json",
+      "sha256": "d80e618cfb4207a23626ec1b4970c53392e9a138772aeac4ec0059c957b738d7"
+    },
+    {
+      "path": "standard_verify.py",
+      "sha256": "67d172b7b775ad98077e8430abe1e46d63561471b2f50598d7b5ff655f683dda"
+    },
+    {
+      "path": "successor-contract.json",
+      "sha256": "681771985d602bc7d1bb2827f21585c298d27e0daecb879e7c3256eead60359d"
+    },
+    {
+      "path": "successor_verify.py",
+      "sha256": "3f3080b24f6e29981e6e8fd9097dc89126c3fdff897c50efb767dbe1992ea669"
+    }
+  ]
+}
