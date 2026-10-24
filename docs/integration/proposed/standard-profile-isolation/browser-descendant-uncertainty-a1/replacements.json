@@ -1,0 +1,86 @@
+[
+  {
+    "path": "chrome/browser/extensions/api/messaging/aux_native_messaging_lifetime.h",
+    "old": "    uint64_t settled = 0;\n",
+    "new": "    uint64_t settled = 0;\n    uint64_t unobserved_descendant_cohorts = 0;\n",
+    "count": 1
+  },
+  {
+    "path": "chrome/browser/extensions/api/messaging/aux_native_messaging_lifetime.h",
+    "old": "    if (pid > 0 && birth.is_null()) uncertain = true;\n",
+    "new": "    if (pid > 0) {\n      // A genuine direct-child reap does not prove that descendants stopped.\n      // Keep this process-lifetime tombstone until an actual native descendant\n      // authority is integrated; neither callback loss nor reaping clears it.\n      std::lock_guard<std::mutex> registry_lock(RegistryMutex());\n      if (UnobservedDescendantCohorts() == UINT64_MAX) AccountingUnknown() = true;\n      else ++UnobservedDescendantCohorts();\n      if (birth.is_null()) uncertain = true;\n    }\n",
+    "count": 1
+  },
+  {
+    "path": "chrome/browser/extensions/api/messaging/aux_native_messaging_lifetime.h",
+    "old": "      result.settled = Settled();\n",
+    "new": "      result.settled = Settled();\n      result.unobserved_descendant_cohorts = UnobservedDescendantCohorts();\n",
+    "count": 1
+  },
+  {
+    "path": "chrome/browser/extensions/api/messaging/aux_native_messaging_lifetime.h",
+    "old": "  static uint64_t& Settled() { static uint64_t settled = 0; return settled; }\n",
+    "new": "  static uint64_t& Settled() { static uint64_t settled = 0; return settled; }\n  static uint64_t& UnobservedDescendantCohorts() { static uint64_t count = 0; return count; }\n",
+    "count": 1
+  },
+  {
+    "path": "content/browser/aux_child_lifetime.h",
+    "old": "    uint64_t settled = 0;\n",
+    "new": "    uint64_t settled = 0;\n    uint64_t unobserved_descendant_cohorts = 0;\n",
+    "count": 1
+  },
+  {
+    "path": "content/browser/aux_child_lifetime.h",
+    "old": "    if (pid > 0 && birth.is_null()) uncertain = true;\n",
+    "new": "    if (pid > 0) {\n      // A genuine direct-child reap does not prove that descendants stopped.\n      // Keep this process-lifetime tombstone until an actual native descendant\n      // authority is integrated; neither callback loss nor reaping clears it.\n      std::lock_guard<std::mutex> registry_lock(RegistryMutex());\n      if (UnobservedDescendantCohorts() == UINT64_MAX) AccountingUnknown() = true;\n      else ++UnobservedDescendantCohorts();\n      if (birth.is_null()) uncertain = true;\n    }\n",
+    "count": 1
+  },
+  {
+    "path": "content/browser/aux_child_lifetime.h",
+    "old": "      result.settled = Settled();\n",
+    "new": "      result.settled = Settled();\n      result.unobserved_descendant_cohorts = UnobservedDescendantCohorts();\n",
+    "count": 1
+  },
+  {
+    "path": "content/browser/aux_child_lifetime.h",
+    "old": "  static uint64_t& Settled() { static uint64_t settled = 0; return settled; }\n",
+    "new": "  static uint64_t& Settled() { static uint64_t settled = 0; return settled; }\n  static uint64_t& UnobservedDescendantCohorts() { static uint64_t count = 0; return count; }\n",
+    "count": 1
+  },
+  {
+    "path": "content/public/browser/aux_child_process_drain.h",
+    "old": "  uint64_t settled = 0;\n",
+    "new": "  uint64_t settled = 0;\n  // Successful direct launches whose descendant write closure is unproved.\n  // This survives the direct process's actual reap; zero is not a census.\n  uint64_t unobserved_descendant_cohorts = 0;\n",
+    "count": 1
+  },
+  {
+    "path": "content/browser/aux_child_process_drain.cc",
+    "old": "          value.unresolved, value.unbound, value.uncertain, value.settled};",
+    "new": "          value.unresolved, value.unbound, value.uncertain, value.settled,\n          value.unobserved_descendant_cohorts};",
+    "count": 1
+  },
+  {
+    "path": "chrome/browser/ui/aux_owned_browser_quiesce.cc",
+    "old": "      messaging.uncertain, messaging.settled};",
+    "new": "      messaging.uncertain, messaging.settled, messaging.unobserved_descendant_cohorts};",
+    "count": 1
+  },
+  {
+    "path": "chrome/browser/ui/aux_owned_browser_quiesce.cc",
+    "old": "    result.unknown |= child.wrong_process || child.accounting_unknown || child.uncertain;",
+    "new": "    result.unknown |= child.wrong_process || child.accounting_unknown || child.uncertain ||\n        child.unobserved_descendant_cohorts != 0;",
+    "count": 1
+  },
+  {
+    "path": "chrome/browser/ui/aux_browser_shutdown_drain.cc",
+    "old": "        messaging.uncertain, messaging.settled};",
+    "new": "        messaging.uncertain, messaging.settled, messaging.unobserved_descendant_cohorts};",
+    "count": 1
+  },
+  {
+    "path": "chrome/browser/ui/aux_browser_shutdown_drain.cc",
+    "old": "    const auto readiness = EvaluateOwnedBrowserParticipantDrain(observed);",
+    "new": "    // Direct reaps cannot erase unobserved descendant cohorts. Evaluation\n    // retains their unknown status and cannot issue an authenticated CLEAN.\n    const auto readiness = EvaluateOwnedBrowserParticipantDrain(observed);",
+    "count": 1
+  }
+]

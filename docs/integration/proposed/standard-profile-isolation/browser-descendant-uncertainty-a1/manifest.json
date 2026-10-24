@@ -1,0 +1,45 @@
+{
+  "modifiedCount": 6,
+  "addedCount": 0,
+  "countedAdaptations": 14,
+  "files": [
+    {
+      "path": "chrome/browser/extensions/api/messaging/aux_native_messaging_lifetime.h",
+      "beforeSha256": "5e936b7cfaaff9c3c4ad8bfbab959d530f4c16ad0ba6b4439bed379ea917a460",
+      "afterSha256": "dc0bff27eabee9b7ba16a28be96905164da6481fb23231d6bb5ef68a283537ea"
+    },
+    {
+      "path": "chrome/browser/ui/aux_browser_shutdown_drain.cc",
+      "beforeSha256": "c9ed04b825e5614fa50dead287c692678663960f2745e876f184a8bf2d124607",
+      "afterSha256": "738f1570150e06ca4771637095513b9ccb82dafda062ea2bd80b89929f1cd064"
+    },
+    {
+      "path": "chrome/browser/ui/aux_owned_browser_quiesce.cc",
+      "beforeSha256": "09c9480f923511922f2f073fda693b8dc202eadb46c9f8d73ef750041b29d91a",
+      "afterSha256": "b894dca0c9eb487f854912643b380bfbe27708e377303a801170c9cce2094212"
+    },
+    {
+      "path": "content/browser/aux_child_lifetime.h",
+      "beforeSha256": "6dd37d40401d70cba57efc6be80e3f4db8365692f62d64eecae5ccd9bde7a8b1",
+      "afterSha256": "5c5f5de0075eab2d96d7ca015ed6124e291183c0fbbf640dd428719b038a9a10"
+    },
+    {
+      "path": "content/browser/aux_child_process_drain.cc",
+      "beforeSha256": "26717323c56cecd0dd918df4067b1c0c8e30e72f9e29050a669711850c447a6f",
+      "afterSha256": "17ff56890fc349692ff79e575c9f8f017eaa6c0473cc6a894a25ed7d7402ed53"
+    },
+    {
+      "path": "content/public/browser/aux_child_process_drain.h",
+      "beforeSha256": "e3e30f3d5a5f83d6b845f3aa327648088e969d955c086a752e6fed7276ccc6d7",
+      "afterSha256": "56a55962ae71a7355927be8cabe8c3d5e24731587fdcf5cd2e64c1678f05f725"
+    }
+  ],
+  "patchSha256": "80bffbd4e7a07ccacd9094ad9e5dc53a514adc91826efbff7fb26e802f072f31",
+  "verification": {
+    "exactOrderedReplay": "passed",
+    "unifiedPatchReplay": "passed",
+    "whitespaceErrorCheck": "passed",
+    "nativeCompile": "not run by worker",
+    "runtime": "not run"
+  }
+}
