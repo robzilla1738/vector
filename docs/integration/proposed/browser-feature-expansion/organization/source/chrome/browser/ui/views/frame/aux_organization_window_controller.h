@@ -25,6 +25,9 @@ class AuxOrganizationWindowController final : public OrganizationWindowDelegate,
   static AuxOrganizationWindowController* FromBrowser(BrowserWindowInterface*);
   static AuxOrganizationWindowController* GetForTabStripModel(TabStripModel*);
   void RebindForProfileSwitch();
+  // Bound to the supplied ordinary-row projection before its organization
+  // filter. No URL guesses or recursive eligibility query.
+  void SetOrdinaryEligibility(base::RepeatingCallback<bool(const tabs::TabInterface&)>);
   void RestoreActiveSpace(const std::string&);
   bool IsProjectionReady() const override;
   std::string ActiveSpaceId() const override;
@@ -76,6 +79,7 @@ class AuxOrganizationWindowController final : public OrganizationWindowDelegate,
   bool reconcile_queued_ = false, registering_ = false, opening_ = false;
   base::CallbackListSubscription ready_subscription_, model_changes_, settled_, session_restored_;
   base::RepeatingClosureList observers_;
+  base::RepeatingCallback<bool(const tabs::TabInterface&)> ordinary_eligible_;
   base::WeakPtrFactory<AuxOrganizationWindowController> weak_{this};
 };
 }  // namespace aux

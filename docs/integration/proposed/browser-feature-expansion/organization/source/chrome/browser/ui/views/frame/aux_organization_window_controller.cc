@@ -87,9 +87,9 @@ bool AuxOrganizationWindowController::Current() const {
 }
 bool AuxOrganizationWindowController::ready() const {
   auto* organization = Current() ? Organization(browser_.get()) : nullptr;
-  if (!organization || organization->blocked() || !organization->snapshot().spaces.contains(active_space_)) return false;
+  if (!organization || organization->blocked() || !ordinary_eligible_ || !organization->snapshot().spaces.contains(active_space_)) return false;
   for (auto* tab : *model_) {
-    auto* contents = tab->GetContents(); if (!contents || tab->IsPinned()) continue;
+    auto* contents = tab->GetContents(); if (!contents || tab->IsPinned() || !ordinary_eligible_.Run(*tab)) continue;
     const auto* identity = PageIdentity::FromWebContents(contents);
     if (identity && identity->runtime_owned()) continue;
     const auto id = GetRememberedPinnedTabEntryId(*contents).value_or("");
@@ -106,7 +106,7 @@ void AuxOrganizationWindowController::RebindForProfileSwitch() {
   reconcile_queued_ = false; registering_ = false; opening_ = false;
   profile_ = browser_ ? browser_->GetProfile() : nullptr;
   model_ = browser_ ? browser_->GetTabStripModel() : nullptr;
-  active_space_.clear(); restored_space_.clear();
+  active_space_.clear(); restored_space_.clear(); ordinary_eligible_.Reset();
   if (!Current() || browser_->GetType() != BrowserWindowInterface::TYPE_NORMAL) return;
   model_->AddObserver(this);
   session_restored_ = SessionRestore::RegisterOnSessionRestoredCallback(base::BindRepeating(
@@ -116,6 +116,10 @@ void AuxOrganizationWindowController::RebindForProfileSwitch() {
   auto* owner = organization::OrganizationProfileServiceFactory::GetForProfile(profile_);
   if (owner) ready_subscription_ = owner->ObserveReady(base::BindRepeating(&AuxOrganizationWindowController::Bind, weak_.GetWeakPtr()));
   Bind();
+}
+void AuxOrganizationWindowController::SetOrdinaryEligibility(
+    base::RepeatingCallback<bool(const tabs::TabInterface&)> eligible) {
+  ordinary_eligible_ = std::move(eligible); QueueReconcile();
 }
 void AuxOrganizationWindowController::Bind() {
   model_changes_ = {}; settled_ = {};
@@ -201,6 +205,7 @@ void AuxOrganizationWindowController::Reconcile() {
         view.loaded_url = contents->GetLastCommittedURL().spec();
         view.document_id = base::Uuid::GenerateRandomV4().AsLowercaseString();
       }
+      if (view.loaded_url == entry.current_url) view.pending_shared_url.clear();
       if (view.shared_url != entry.current_url) {
         view.shared_url = entry.current_url;
         view.pending_shared_url = view.loaded_url == entry.current_url ? "" : entry.current_url;
@@ -210,7 +215,9 @@ void AuxOrganizationWindowController::Reconcile() {
     // Restore retains an unknown ID until the authoritative snapshot is known;
     // never assign an existing record based on URL. Each ordinary tab gets its
     // own logical ID, even when several URLs are identical.
-    if (tab->IsPinned() || registering_ || organization->pending() || opening_ ||
+    if (tab->IsPinned() || tab->IsSplit() || IsBookmarkTabExcluded(tab, model_) ||
+        !ordinary_eligible_ || !ordinary_eligible_.Run(*tab) ||
+        registering_ || organization->pending() || opening_ ||
         SessionRestore::IsRestoring(profile_) || commands.size() == 512) continue;
     const auto* identity = PageIdentity::FromWebContents(contents);
     if (identity && identity->runtime_owned()) continue;
