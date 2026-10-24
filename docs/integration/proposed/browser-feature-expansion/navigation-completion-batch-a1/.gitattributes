@@ -1,0 +1,2 @@
+# A generated patch has space-prefixed empty context lines.
+*.patch -whitespace

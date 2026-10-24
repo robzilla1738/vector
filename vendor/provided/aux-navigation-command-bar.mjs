@@ -17,6 +17,13 @@ export function navigationSections(context, query, sections) {
       actionLabel:'Open',text,
     }]});
   }
+  if ((context.mode === 'new-tab' || context.mode === 'commands') &&
+      (!text || 'new blank tab'.includes(text.toLowerCase()))) {
+    result.push({id:'aux-new-blank-tab',title:'New tab',items:[{
+      id:'aux-new-blank-tab',kind:'aux-new-blank-tab',title:'New blank tab',
+      subtitle:'Open a new tab immediately',actionLabel:'Open',
+    }]});
+  }
   if (context.mode === 'commands') {
     const commands = (context.commands ?? []).filter(command => command.enabled &&
       (!text || `${command.title} ${command.id}`.toLowerCase().includes(text.toLowerCase())))
@@ -60,6 +67,7 @@ export async function commitNavigation(api, context, item) {
       organizationOwner:org.ownerGeneration,organizationRevision:org.revision});
   }
   else if (item.kind === 'aux-command') Object.assign(request,{kind:'command',commandId:item.commandId});
+  else if (item.kind === 'aux-new-blank-tab') Object.assign(request,{kind:'new-blank-tab'});
   else if (item.kind === 'open-tab') Object.assign(request,{kind:'activate-tab',tabId:item.tabId});
   else Object.assign(request,{kind:'navigate',text:item.text ?? item.url});
   const result = await api.commitCommand(request);
@@ -97,7 +105,7 @@ export function transformAuxNavigation({relative,text}) {
     change('I=(0,i.useMemo)(()=>Pe($,r),[r,$])',
       'I=(0,i.useMemo)(()=>navigationSections(auxNavContext,r,Pe($,r)),[r,$,auxNavContext])','aux-navigation-results');
     const begin='A=(0,i.useCallback)(async n=>{try{';
-    change(begin,'A=(0,i.useCallback)(async n=>{if(auxNavBusy.current)return;auxNavBusy.current=true;auxNavSetError("");let auxNavSuccess=false;try{if(n.kind==="aux-logical-tab"||n.kind==="aux-space"||n.kind==="aux-navigate"||n.kind==="aux-command"||n.kind==="open-tab"||n.url&&n.kind!=="extension"&&n.kind!=="recently-closed"){await commitNavigation(chrome.auxBrowserPreferences,auxNavContext,n);auxNavSuccess=true;return}const auxLive=await chrome.auxBrowserPreferences.getCommandContext();if(!auxLive.success||auxLive.generation!==auxNavContext?.generation)throw Error("Command context expired; reopen the command bar");','aux-navigation-activation');
+    change(begin,'A=(0,i.useCallback)(async n=>{if(auxNavBusy.current)return;auxNavBusy.current=true;auxNavSetError("");let auxNavSuccess=false;try{if(n.kind==="aux-logical-tab"||n.kind==="aux-space"||n.kind==="aux-navigate"||n.kind==="aux-command"||n.kind==="aux-new-blank-tab"||n.kind==="open-tab"||n.url&&n.kind!=="extension"&&n.kind!=="recently-closed"){await commitNavigation(chrome.auxBrowserPreferences,auxNavContext,n);auxNavSuccess=true;return}const auxLive=await chrome.auxBrowserPreferences.getCommandContext();if(!auxLive.success||auxLive.generation!==auxNavContext?.generation)throw Error("Command context expired; reopen the command bar");','aux-navigation-activation');
     change('}finally{O()}},[]);(0,i.useEffect)',
       ';auxNavSuccess=true}catch(error){auxNavSetError(error instanceof Error?error.message:String(error))}finally{auxNavBusy.current=false;if(auxNavSuccess)O()}},[auxNavContext]);(0,i.useEffect)', 'aux-navigation-errors');
     change('await chrome.sessions.restore(n.restoreSessionId);return}', 'await chrome.sessions.restore(n.restoreSessionId);auxNavSuccess=true;return}', 'aux-navigation-restored-close');

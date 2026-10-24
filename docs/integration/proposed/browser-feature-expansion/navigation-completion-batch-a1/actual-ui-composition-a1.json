@@ -1,0 +1,36 @@
+{
+  "format": "aux.navigation-completion.ui-composition.actual.v1",
+  "passed": true,
+  "baseline": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-protected-startup-integration-20261023/Aux.app/Contents/Resources/aux/apps/extension/dist/",
+  "adapterSha256": "6601d1411fb9485b3968e07f4e3d7b532764091357c6779d67cbe329a956028f",
+  "files": [
+    {
+      "relative": "assets/tabsearch-3k_2hgil.js",
+      "inputSha256": "a988898d132dc507d84efe21f86184a67e62524381c69dbef645d2203d7988aa",
+      "outputSha256": "f1f309786e312cab8048ba821bfdec029861ad3cb8a78a83a156f33f01c1267c",
+      "countedAnchors": 38,
+      "syntaxPassed": true,
+      "suppliedClassNamesPreserved": true
+    },
+    {
+      "relative": "assets/use-shortcut-capture-DGr8Ws5Z.js",
+      "inputSha256": "77946a7fa9d48fcb546f04d345c9eeed2ece6e332bdad4f35e9c91565d2aa652",
+      "outputSha256": "4948b274e6038eac50a7c0b0ea959d7b8fdc7356b8c1a30460e84b0b2d732249",
+      "countedAnchors": 4,
+      "syntaxPassed": true,
+      "suppliedClassNamesPreserved": true
+    },
+    {
+      "relative": "assets/appearance-Ceuw3-j6.js",
+      "inputSha256": "01c170f7f7ae1b7fd91509dd2525c4dbad466a4c3982281e674bec0954d8e80a",
+      "outputSha256": "6837e0fce2c3d2ddb1262de3df0d476fef00d590f4c157df9a380c81aeaf2cae",
+      "countedAnchors": 7,
+      "syntaxPassed": true,
+      "suppliedClassNamesPreserved": true
+    }
+  ],
+  "fullFeatureComposition": true,
+  "assetsOrStylesEdited": false,
+  "productExecuted": false,
+  "runtimeAccepted": false
+}

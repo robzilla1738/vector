@@ -7,16 +7,27 @@ const baseline='/Users/rcourson/Documents/Vibe/web/out/provided-candidate-protec
 const context={success:true,generation:'owned-generation',mode:'new-tab',commands:[]};
 test('opening and blank input create no navigation; existing sections retained',()=>{
  const sections=[{id:'tabs',items:[{id:'t1'}]}];
- assert.deepEqual(navigationSections(context,'',sections),sections);
+ const blank=navigationSections(context,'',sections);
+ assert.equal(blank[0].items[0].kind,'aux-new-blank-tab');assert.equal(blank[1],sections[0]);
  assert.deepEqual(navigationSections({...context,mode:'tabs'},'example.test',sections),sections);
  const result=navigationSections(context,' example.test ',sections);
  assert.equal(result[0].items[0].text,'example.test');assert.equal(result[1],sections[0]);
 });
 test('commands filter to enabled actions; text navigation is explicit',()=>{
  const c={...context,mode:'commands',commands:[{id:'reload',title:'Reload',commandId:33002,enabled:true},{id:'back',title:'Back',commandId:33000,enabled:false}]};
- assert.equal(navigationSections(c,'',[])[0].items.length,1);
+ assert.equal(navigationSections(c,'',[]).find(section=>section.id==='aux-commands').items.length,1);
  assert.equal(navigationSections(c,'reload',[])[0].items[0].commandId,33002);
  assert.equal(navigationSections(c,'https://example.test',[])[0].id,'aux-navigation');
+});
+test('explicit blank-tab action is discoverable and commits through the native owner',async()=>{
+ const item=navigationSections({...context,mode:'commands'},'blank',[])
+   .find(section=>section.id==='aux-new-blank-tab').items[0];
+ assert.equal(item.title,'New blank tab');
+ assert.ok(!navigationSections({...context,mode:'navigate'},'',[]).some(section=>section.id==='aux-new-blank-tab'));
+ assert.ok(!navigationSections({...context,mode:'tabs'},'',[]).some(section=>section.id==='aux-new-blank-tab'));
+ let seen;const api={commitCommand:async request=>(seen=request,{success:true})};
+ await commitNavigation(api,context,item);
+ assert.deepEqual(seen,{generation:context.generation,kind:'new-blank-tab'});
 });
 test('native commit carries exact ownership and refuses stale failures without fallback',async()=>{
  let seen;const api={commitCommand:async request=>{seen=request;return {success:false,error:'stale profile'}}};

@@ -1,0 +1,19 @@
+{
+  "format": "aux.navigation-completion.focused-ui.actual.v1",
+  "passed": true,
+  "observedCommand": [
+    "node",
+    "--test",
+    "vendor/provided/aux-navigation-command-bar.test.mjs"
+  ],
+  "observationSource": "Successful exec_command transcript in this worker turn",
+  "exitCode": 0,
+  "tests": 7,
+  "passedTests": 7,
+  "failedTests": 0,
+  "adapterSha256": "6601d1411fb9485b3968e07f4e3d7b532764091357c6779d67cbe329a956028f",
+  "testSha256": "1a639570a7faa873cffba5ab94a59e66144d98ef0b01e2116f8aa9d91edcf38d",
+  "nativeCompiled": false,
+  "productExecuted": false,
+  "runtimeAccepted": false
+}

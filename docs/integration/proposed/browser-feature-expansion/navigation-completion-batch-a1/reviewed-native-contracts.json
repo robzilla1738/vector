@@ -1,0 +1,14 @@
+{
+  "format": "aux.navigation-completion.reviewed-contracts.v1",
+  "nativeRoot": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src",
+  "files": {
+    "chrome/browser/ui/browser_commands.h": "1bae089abd944577d3e1fbd7d30130a2c51595a67a54eb7657a508b792b4371a",
+    "chrome/browser/ui/browser_commands.cc": "985d8c31ec1cf5cc93935ac98ac4b4b81a057cf8ff3448027c6ce921d09753be",
+    "chrome/browser/ui/browser_command_controller.cc": "eab1ecf1959b8c9707282211f8227a6fe87accb5247f9c157f93142f3ce61c73",
+    "chrome/browser/ui/tabs/tab_enums.h": "dd6e878329bdaeafeeb8836db0ca2fc04b43a83fd4321c9801892347d8bad0aa",
+    "chrome/browser/aux/profile_identity.h": "aecd4902b984a42ae2a6256949049050e42e99fe657bdecfdf845dde41732b5f",
+    "chrome/browser/ui/tabs/tab_strip_model.h": "91a91180817ba16fedafe465313906f0cbb001574fed631069662cf084c6ff1c",
+    "chrome/browser/ui/aux_preview/aux_preview_controller.h": "24e3fe2648b5c7fe0371e2c7c4509e5d458885a8f87c4ea1073500e941732610"
+  },
+  "compiled": false
+}

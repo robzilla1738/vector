@@ -1,0 +1,196 @@
+--- a/chrome/browser/ui/views/frame/aux_tab_search_bubble.cc
++++ b/chrome/browser/ui/views/frame/aux_tab_search_bubble.cc
+@@ -247,6 +247,8 @@
+     auto* contents = tab ? tab->GetContents() : nullptr;
+     if (generation_.empty() || !owner || contents != target_.get()) return false;
+     if (contents && contents->GetBrowserContext() != owner->GetProfile()) return false;
++    if (ask_profile_epoch_ != GetProfileCookieBindingEpoch(owner->GetProfile()) ||
++        IsProfileCookieRestorePending(owner->GetProfile())) return false;
+     auto* entry = contents ? contents->GetController().GetLastCommittedEntry() : nullptr;
+     return (entry ? entry->GetUniqueID() : 0) == navigation_id_;
+   }
+@@ -752,6 +754,37 @@
+   result.Set("error", std::move(error));
+   return result;
+ }
++// A palette hide can synchronously change the active tab or profile. Keep
++// these observations independently of its one-use binding, which is consumed
++// before dispatch. This is view identity, not profile/startup authority.
++struct CommandInvocation {
++  CommandInvocation(BrowserWindowInterface* owner, content::WebContents* source)
++      : browser(owner->GetWeakPtr()), profile(owner->GetProfile()->GetWeakPtr()),
++        target(source ? source->GetWeakPtr() : nullptr), had_target(source != nullptr),
++        epoch(aux::GetProfileCookieBindingEpoch(owner->GetProfile())) {
++    auto* entry = source ? source->GetController().GetLastCommittedEntry() : nullptr;
++    navigation_id = entry ? entry->GetUniqueID() : 0;
++  }
++  bool ProfileCurrent() const {
++    return browser && profile && browser->GetProfile() == profile.get() &&
++        aux::GetProfileCookieBindingEpoch(profile.get()) == epoch &&
++        !aux::IsProfileCookieRestorePending(profile.get());
++  }
++  bool Current() const {
++    if (!ProfileCurrent() || (had_target && !target)) return false;
++    auto* active = browser->GetActiveTabInterface();
++    if ((active ? active->GetContents() : nullptr) != target.get()) return false;
++    if (target && target->GetBrowserContext() != profile.get()) return false;
++    auto* entry = target ? target->GetController().GetLastCommittedEntry() : nullptr;
++    return (entry ? entry->GetUniqueID() : 0) == navigation_id;
++  }
++  base::WeakPtr<BrowserWindowInterface> browser;
++  base::WeakPtr<Profile> profile;
++  base::WeakPtr<content::WebContents> target;
++  bool had_target;
++  std::string epoch;
++  int navigation_id = 0;
++};
+ const char* CommandModeName(AuxCommandBarMode mode) {
+   switch (mode) {
+     case AuxCommandBarMode::kSearchTabs: return "tabs";
+@@ -783,8 +816,9 @@
+     result.Set("activeTabId", extensions::ExtensionTabUtil::GetTabId(target));
+     result.Set("pictureInPicture", GetAuxVideoPictureInPictureState(target));
+     result.Set("developer", GetAuxDeveloperCommandState(browser->GetProfile(), target));
+-    // The actual loaded URL, never a logical-tab URL from another view.
+-    result.Set("activeUrl", target->GetLastCommittedURL().spec());
++    // Match the actual location control, including a pending typed URL.
++    // A shared logical tab or the previous committed page never supplies it.
++    result.Set("activeUrl", target->GetVisibleURL().spec());
+   }
+   result.Set("commands", aux::GetNavigationCommandCatalog(browser));
+   const auto context_page = binding->ContextTargets(false);
+@@ -1017,10 +1051,22 @@
+     // The shared logical-view resolver will supply a same-window view for tabs
+     // projected from another window. Never focus a foreign window as fallback.
+     if (index < 0) return CommandFailure("This tab has no view in the current window");
++    const auto selected = model->GetWebContentsAt(index)->GetWeakPtr();
++    const CommandInvocation invocation(browser, binding->target());
+     binding->Invalidate();
+     CloseAuxProfileSearch(browser);
+-    if (!browser_weak) return CommandFailure("Window closed");
++    if (!invocation.Current() || !selected)
++      return CommandFailure("The originating window or tab changed");
++    model = invocation.browser->GetTabStripModel();
++    index = model ? model->GetIndexOfWebContents(selected.get()) : TabStripModel::kNoTab;
++    if (index == TabStripModel::kNoTab ||
++        selected->GetBrowserContext() != invocation.profile.get())
++      return CommandFailure("This tab is no longer available in the originating window");
+     model->ActivateTabAt(index);
++    model = invocation.browser ? invocation.browser->GetTabStripModel() : nullptr;
++    if (!invocation.ProfileCurrent() || !selected || !model ||
++        model->GetActiveWebContents() != selected.get())
++      return CommandFailure("The tab changed before it could be selected");
+   } else if (*kind == "ask") {
+     const auto* text = request.FindString("text");
+     auto* profile = browser->GetProfile();
+@@ -1075,11 +1121,32 @@
+     if (!destination) destination = opened->GetController().GetLastCommittedEntry();
+     if (!destination || destination->GetURL() != url)
+       return CommandFailure("The Ask destination could not be opened");
++  } else if (*kind == "new-blank-tab") {
++    if ((binding->mode() != AuxCommandBarMode::kNewTab && binding->mode() != AuxCommandBarMode::kCommands) ||
++        browser->GetType() != BrowserWindowInterface::TYPE_NORMAL ||
++        !chrome::IsCommandEnabled(browser, IDC_NEW_TAB))
++      return CommandFailure("A new tab is unavailable in this window");
++    const CommandInvocation invocation(browser, binding->target());
++    binding->Invalidate();
++    CloseAuxProfileSearch(browser);
++    if (!invocation.Current()) return CommandFailure("The originating window changed");
++    // Invoke the real NewTab implementation directly. Dispatching IDC_NEW_TAB
++    // would reopen this palette instead of honoring the explicit blank action.
++    auto* opened = &chrome::NewTab(invocation.browser.get(), NewTabTypes::kNewTabCommand);
++    auto* strip = invocation.browser ? invocation.browser->GetTabStripModel() : nullptr;
++    if (!invocation.ProfileCurrent() || !strip ||
++        strip->GetIndexOfWebContents(opened) == TabStripModel::kNoTab ||
++        opened->GetBrowserContext() != invocation.profile.get() ||
++        strip->GetActiveWebContents() != opened)
++      return CommandFailure("The new tab was not opened in the originating window");
+   } else if (*kind == "navigate") {
+     const auto* text = request.FindString("text");
+-    if (!text || text->size() > 32768 ||
++    if (!text || text->size() > 32768 || !base::IsStringUTF8(*text) ||
+         base::TrimWhitespaceASCII(*text, base::TRIM_ALL).empty())
+       return CommandFailure("Enter a URL or search");
++    const CommandInvocation invocation(browser, binding->target());
++    const auto disposition = binding->mode() == AuxCommandBarMode::kNavigate
++        ? WindowOpenDisposition::CURRENT_TAB : WindowOpenDisposition::NEW_FOREGROUND_TAB;
+     AutocompleteMatch match;
+     auto* classifier = AutocompleteClassifierFactory::GetForProfile(browser->GetProfile());
+     if (!classifier) return CommandFailure("Search is unavailable");
+@@ -1091,16 +1158,25 @@
+     if (!url.is_valid() || !(url.SchemeIsHTTPOrHTTPS() || url.SchemeIs("chrome") ||
+         (url.SchemeIs("about") && url.path() == "blank")))
+       return CommandFailure("This address cannot be opened from the command bar");
+-    NavigateParams params(browser, url, match.transition);
+-    params.source_contents = binding->target();
+-    params.disposition = binding->mode() == AuxCommandBarMode::kNavigate
+-        ? WindowOpenDisposition::CURRENT_TAB : WindowOpenDisposition::NEW_FOREGROUND_TAB;
+-    if (params.disposition == WindowOpenDisposition::CURRENT_TAB && !binding->target())
++    if (!invocation.Current() ||
++        (disposition == WindowOpenDisposition::CURRENT_TAB && !invocation.target))
+       return CommandFailure("The selected page is no longer available");
+     binding->Invalidate();
+     CloseAuxProfileSearch(browser);
+-    if (!browser_weak) return CommandFailure("Window closed");
++    if (!invocation.Current()) return CommandFailure("The originating window changed");
++    NavigateParams params(invocation.browser.get(), url, match.transition);
++    params.source_contents = invocation.target.get();
++    params.disposition = disposition;
+     Navigate(&params);
++    auto* opened = params.navigated_or_inserted_contents.get();
++    auto* strip = invocation.browser ? invocation.browser->GetTabStripModel() : nullptr;
++    if (!invocation.ProfileCurrent() || !strip || !opened ||
++        strip->GetIndexOfWebContents(opened) == TabStripModel::kNoTab ||
++        opened->GetBrowserContext() != invocation.profile.get() ||
++        (disposition == WindowOpenDisposition::CURRENT_TAB && opened != invocation.target.get()))
++      return CommandFailure("Navigation was not accepted in the originating window");
++    // Current-tab beforeunload confirmation remains owned by Chromium. Do not
++    // pretend that accepting this navigation means its network load finished.
+   } else {
+     return CommandFailure("Unsupported command");
+   }
+--- a/chrome/browser/ui/aux_preview/aux_preview_controller.cc
++++ b/chrome/browser/ui/aux_preview/aux_preview_controller.cc
+@@ -218,19 +218,36 @@
+   if (model->count() != 1 || Protected(model->GetActiveWebContents(), true)) {
+     window->promoting = false; std::move(done).Run(Result(false, "Finish active preview work before promoting")); return;
+   }
++  const auto handle = model->GetTabAtIndex(0)->GetHandle();
++  const auto contents = model->GetActiveWebContents()->GetWeakPtr();
++  auto destination = target->GetWeakPtr();
+   auto* organization = aux::AuxOrganizationWindowController::FromBrowser(target);
+   if (!organization || !organization->IsProjectionReady() ||
+       (!space.empty() && !organization->SelectSpace(space))) {
+     window->promoting = false; std::move(done).Run(Result(false, "Destination Space is unavailable or busy")); return;
+   }
+-  const auto handle = model->GetTabAtIndex(0)->GetHandle();
+-  auto* contents = model->GetActiveWebContents();
+-  auto destination = target->GetWeakPtr();
++  // Space selection can synchronously project tabs, switch ownership or close
++  // a window. Reacquire both real owners and the SAME source tab afterward.
++  browser = window->browser.get();
++  model = browser ? browser->GetTabStripModel() : nullptr;
++  organization = destination ? aux::AuxOrganizationWindowController::FromBrowser(destination.get()) : nullptr;
++  if (!Current(window) || !destination || BusyBrowser(destination.get()) ||
++      destination->GetProfile() != window->profile.get() || Find(destination.get()) ||
++      !organization || !organization->IsProjectionReady() ||
++      (!space.empty() && organization->ActiveSpaceId() != space) ||
++      !model || model->count() != 1 || !contents || !handle.Get() ||
++      model->GetTabAtIndex(0) != handle.Get() ||
++      model->GetActiveWebContents() != contents.get() || Protected(contents.get(), true)) {
++    window->promoting = false; std::move(done).Run(Result(false, "The preview or destination changed before handoff")); return;
++  }
+   // Chromium transfers the real TabModel/WebContents and navigation history.
+   // The source popup can close synchronously as its final tab leaves.
+-  chrome::MoveTabsToExistingWindow(browser, target, {0});
+-  const bool moved = destination && handle.Get() &&
+-      handle.Get()->GetContents() == contents &&
++  chrome::MoveTabsToExistingWindow(browser, destination.get(), {0});
++  const bool moved = destination && window->profile && contents && handle.Get() &&
++      destination->GetProfile() == window->profile.get() &&
++      aux::GetProfileCookieBindingEpoch(window->profile.get()) == window->epoch &&
++      !aux::IsProfileCookieRestorePending(window->profile.get()) &&
++      handle.Get()->GetContents() == contents.get() &&
+       handle.Get()->GetBrowserWindowInterface() == destination.get();
+   window->promoting = false;
+   if (moved) {

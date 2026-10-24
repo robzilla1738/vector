@@ -1,0 +1,15 @@
+{
+  "format": "aux.navigation-completion.replay.actual.v1",
+  "passed": true,
+  "sourcePlanSha256": "e4b68c422de36df0fc92fba1ba282f1dfbfd478d8e12b958924ff0adc658c640",
+  "patchSha256": "d4673f5ebeac43ed526a108fca1df0b92c8447966e67f8743fc447b0acf2cff4",
+  "output": "/private/tmp/aux-navigation-completion-replay-20261024-a1",
+  "files": 2,
+  "countedAnchors": 8,
+  "exactReplayPassed": true,
+  "reverseCheckPassed": true,
+  "nativeRootChanged": false,
+  "nativeCompiled": false,
+  "productExecuted": false,
+  "runtimeAccepted": false
+}
