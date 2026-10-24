@@ -1,0 +1,21 @@
+{
+  "format": "aux.ui-draft-migration.unit.actual.v1",
+  "command": [
+    "node",
+    "--test",
+    "vendor/provided/aux-ui-storage-migration.test.mjs",
+    "vendor/provided/aux-ui-draft-migration.test.mjs"
+  ],
+  "observedExitCode": 0,
+  "observedPassedTests": 10,
+  "sourceSha256": "df36e7cbfb221ecc329db3d5d406cfdb1fef4917e3ae663d909a739d309ff7dc",
+  "testSourceSha256": [
+    "f78bef46e6db14e8392f99f5c4c295a0955eabe728777ad2eec1b002c67f619d",
+    "a4ece9828f8c191328596d9379defda6a5c506094454cf9be992216fc4e49c09"
+  ],
+  "onlySyntheticSnapshotsUsed": true,
+  "realStorageReadOrChanged": false,
+  "fileContentsRead": false,
+  "appLaunched": false,
+  "runtimeAcceptance": false
+}

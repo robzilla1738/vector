@@ -1,0 +1,137 @@
+#!/usr/bin/env python3
+"""Fresh inactive UI-only successor, preserving the completed native/runtime tuple."""
+import importlib.util
+import json
+from pathlib import Path
+import subprocess
+import sys
+import tempfile
+
+sys.dont_write_bytecode = True
+HERE = Path(__file__).resolve().parent
+SCOPE = HERE.parent
+ROOT = HERE.parents[4]
+spec = importlib.util.spec_from_file_location('runtime_package_helpers', SCOPE/'runtime-package-a1/runtime_package.py')
+p = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(p)
+BASE = ROOT/'out/provided-candidate-standard-profile-state-20261024'
+OUT = ROOT/'out/provided-candidate-standard-profile-drafts-20261024'
+RES = Path('Contents/Resources/aux')
+UI = Path('apps/extension/dist')
+stage = Path('/private/tmp/aux-ui-draft-stage-20261024-a1/desktop-v1')
+
+p.require(not OUT.exists() and not (HERE/'package-review.json').exists(), 'Fresh exact successor required')
+p.require(p.sha(BASE/'receipt.json') == 'f8978566ef6f394659d77214150fa1ae4e1f7cd42a388fe1a0bbceddf8e2b5c4', 'Exact completed runtime predecessor required')
+receipt = p.read(BASE/'receipt.json')
+p.require(receipt['passed'] is True and all(receipt[key] is False for key in p.FLAGS) and
+          p.digest(receipt['files']) == receipt['inventorySha256'] == 'ae6261053ba7782fa7206e8f292326f05b31d80747b8f9d6966d55c2b69853b8', 'Inactive predecessor inventory differs')
+before = p.inventory(BASE/'Aux.app')
+p.require(before == receipt['files'], 'Actual predecessor app differs')
+prior = {row['path']:row for row in before}
+inputs = [p.ref(__file__), p.ref(SCOPE/'runtime-package-a1/runtime_package.py'), p.ref(p.LEGACY),
+          p.ref(BASE/'receipt.json'), p.ref(HERE/'inputs.json'), p.ref(HERE/'actual-stages-a1.json'),
+          p.ref(HERE/'actual-focused-a1.json'), p.ref(stage/'manifest.json')]
+source_report = p.read(stage/'manifest.json')['components']['agent']
+p.require(p.read(HERE/'actual-stages-a1.json')['passed'] is True and
+          p.read(HERE/'actual-focused-a1.json')['passed'] is True, 'Actual supplied stage/focused checks required')
+stage_leaves = p.inventory(stage/'agent')
+p.require(all(row['type'] == 'file' for row in stage_leaves) and
+          {row['path']:row['sha256'] for row in stage_leaves} ==
+          {row['path']:row['outputSha256'] for row in source_report['files']}, 'Complete UI stage inventory differs')
+old_ui = {name.removeprefix(str(RES/UI)+'/'):row for name,row in prior.items() if name.startswith(str(RES/UI)+'/')}
+p.require(set(old_ui) == {row['path'] for row in stage_leaves}, 'UI file coverage changed')
+expected = {row['path'] for row in p.read(HERE/'inputs.json')['files']} | {'manifest.json'}
+replacements = []
+for row in stage_leaves:
+    old = old_ui[row['path']]
+    p.require(row['mode'] == old['mode'], 'UI mode changed')
+    if row['sha256'] != old['sha256']:
+        item = p.ref(stage/'agent'/row['path'])
+        inputs.append(item)
+        replacements.append(dict(path=str(UI/row['path']), previousSha256=old['sha256'], input=item, mode=old['mode']))
+p.require({row['path'].removeprefix(str(UI)+'/') for row in replacements} == expected and len(replacements) == 4,
+          'Exact three-script/revision delta required')
+old_manifest = p.read(BASE/'Aux.app'/RES/UI/'manifest.json')
+new_manifest = p.read(stage/'agent/manifest.json')
+p.require(old_manifest.pop('version') == '1.26.1016.1875' and new_manifest.pop('version') == '1.26.1016.1877' and
+          old_manifest == new_manifest, 'Manifest identity/permissions changed beyond revision')
+paths = json.loads(subprocess.check_output(['node','--input-type=module','-e',
+    "import {providedStageInputs} from './scripts/lib/provided-stage-inputs.mjs';process.stdout.write(JSON.stringify(providedStageInputs))"],cwd=ROOT,text=True))
+adaptation = [p.ref(ROOT/name) for name in paths]
+inputs += adaptation
+unique = {}
+for item in inputs:
+    p.require(item['path'] not in unique or unique[item['path']] == item, 'Conflicting frozen inputs')
+    unique[item['path']] = item
+review = dict(format='aux.ui-draft-package.review.v1', base=str(BASE/'Aux.app'), output=str(OUT),
+              predecessorReceipt=p.ref(BASE/'receipt.json'), predecessorInventorySha256=receipt['inventorySha256'],
+              stage=p.ref(stage/'manifest.json'), inputs=list(unique.values()), replacements=replacements,
+              currentAdaptationInputs=adaptation, **{key:False for key in p.FLAGS})
+p.write_new(HERE/'package-review.json',review)
+temporary = Path(tempfile.mkdtemp(prefix='.aux-ui-draft-successor-',dir=OUT.parent))
+try:
+    app = temporary/'Aux.app'
+    # APFS copy-on-write clone; the final complete inventory proves every leaf.
+    # -P preserves links rather than following them; -p preserves source modes.
+    subprocess.run(['/bin/cp','-cRpP',str(BASE/'Aux.app'),str(app)],check=True)
+    for item in replacements:
+        target = app/RES/item['path']
+        p.require(target.is_file() and not target.is_symlink() and p.sha(target) == item['previousSha256'], 'Overlay predecessor differs')
+        target.write_bytes(p.pin(item['input']).read_bytes())
+        target.chmod(item['mode'])
+    marker = app/RES/'bundle.json'
+    bundle = p.read(marker)
+    old_metadata_sha = p.sha(marker)
+    records = {row['path']:row for row in bundle['files']}
+    for item in replacements:
+        p.require(records[item['path']]['sha256'] == item['previousSha256'], 'Marker predecessor differs')
+        records[item['path']].update(sha256=item['input']['sha256'],changeKinds=['identity'])
+    bundle.update(finalApp=str(OUT/'Aux.app'),productionReady=False,
+                  adaptationInputsScope='Historical source stage; current supplied UI inputs are in uiDraftIntegration')
+    feature = bundle['browserFeatureIntegration']
+    feature['predecessorResourceStage'] = feature['resourceStage']
+    feature['resourceStage'] = review['stage']
+    bundle['uiDraftIntegration'] = dict(format='aux.ui-draft-package.integration.v1',review=p.ref(HERE/'package-review.json'),
+        predecessorReceipt=review['predecessorReceipt'],predecessorMetadataSha256=old_metadata_sha,stage=review['stage'],
+        replacements=replacements,currentAdaptationInputs=adaptation,nativeAndDaemonSourceUnchanged=True,
+        **{key:False for key in p.FLAGS})
+    bundle['predecessorUiPreferenceMigration'] = bundle['uiPreferenceMigration']
+    bundle['uiPreferenceMigration'] = dict(format='aux.ui-storage-migration.v2',
+        targetKeys=bundle['predecessorUiPreferenceMigration']['targetKeys'],
+        draftFamilies=[dict(storages=row['storages'],keyPrefix=row['toPrefix'],kind=row['kind'],exact=row['exact'])
+                       for row in p.read(HERE/'inputs.json')['mappings']],
+        offlineImporter=p.ref(ROOT/'vendor/provided/aux-ui-storage-migration.mjs'),
+        existingProfileMigrationRequired=True,rawDraftValuesPreserved=True,
+        realStorageMigrationExecuted=False,nativeStorageCommitBarrierIntegrated=False,runtimeAcceptance=False)
+    marker.write_text(json.dumps(bundle,indent=2)+'\n')
+    after = p.inventory(app)
+    changed = {str(RES/'bundle.json')} | {str(RES/item['path']) for item in replacements}
+    p.require(len(before) == len(after) == 11187 and
+              [row for row in before if row['path'] not in changed] == [row for row in after if row['path'] not in changed],
+              'Unrelated native/source/CLI/runtime/style/resource changed')
+    actual = {row['path']:row for row in after}
+    for item in replacements:
+        p.require(actual[str(RES/item['path'])] == dict(path=str(RES/item['path']),type='file',sha256=item['input']['sha256'],mode=item['mode']),
+                  'Actual changed UI leaf differs')
+    for row in bundle['files']:
+        leaf = actual.get(str(RES/row['path']))
+        kind = 'link' if row['type'] == 'symlink' else row['type']
+        p.require(leaf is not None and leaf['type'] == kind and ('mode' not in row or leaf['mode'] == row['mode']) and
+                  (leaf.get('sha256') == row.get('sha256') if kind == 'file' else leaf['target'] == row.get('linkTarget',row.get('target'))),
+                  'Delivered marker differs: '+row['path'])
+    for item in review['inputs']:
+        p.pin(item)
+    result = dict(format='aux.ui-draft-package.inactive.v1',passed=True,reviewSha256=p.sha(HERE/'package-review.json'),
+        predecessorReceiptSha256=review['predecessorReceipt']['sha256'],files=after,inventorySha256=p.digest(after),
+        exactReplacements=4,nativeSourceCliRuntimeUnchanged=True,allStylesheetsAndAssetsUnchanged=True,
+        **{key:False for key in p.FLAGS})
+    p.write_new(temporary/'receipt.json',result)
+    temporary.rename(OUT)
+    p.write_new(HERE/'actual-package-a1.json',dict(format='aux.ui-draft-package.actual.v1',passed=True,app=str(OUT/'Aux.app'),
+        receipt=p.ref(OUT/'receipt.json'),inventorySha256=result['inventorySha256'],leaves=len(after),exactReplacements=4,
+        nativeSourceCliRuntimeUnchanged=True,allStylesheetsAndAssetsUnchanged=True,**{key:False for key in p.FLAGS}))
+    print('Assembled inactive draft-identity successor; no app execution, signing or styling change',flush=True)
+except Exception as error:
+    p.write_new(temporary/'failure.json',dict(passed=False,error=str(error),productExecuted=False))
+    print('Failed candidate retained at '+str(temporary),file=sys.stderr)
+    raise

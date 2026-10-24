@@ -1,0 +1,23 @@
+{
+  "format": "aux.ui-draft-revision-review.v1",
+  "previousLedgerSha256": "3669124de6d7ed77a9b0bf28ee7561c347928a534761a7607a05e950de0b1c7d",
+  "reviews": [
+    {
+      "revision": 24,
+      "profile": "development",
+      "identityProfile": "aux-v1",
+      "stateIdentityVersion": 2,
+      "fingerprint": "1c12701492f99ce5bf75d69d8ccffac3bd4953c870c4185f8eb4d25e9d6a76fc"
+    },
+    {
+      "revision": 25,
+      "profile": "development",
+      "identityProfile": "aux-v1",
+      "stateIdentityVersion": 2,
+      "featureProfile": "desktop-v1",
+      "fingerprint": "63ad46a4c6a21653aa47856e24810fe1dda54a7712663ec41c8b548824aec8dd"
+    }
+  ],
+  "uiChanged": false,
+  "productExecuted": false
+}

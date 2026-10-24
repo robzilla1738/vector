@@ -1,0 +1,10 @@
+{
+  "format": "aux.storage-db-drain.compile.actual.v1",
+  "passed": false,
+  "phase": "compiler-command discovery",
+  "producerSha256": "60b673b2ad0cdb3df662982e22f3dffb34f92ce11501d08ce8a7f4fa539799e1",
+  "error": "Ninja dependency-command output contained invalid UTF-8 outside the selected compile command; text-mode decoding aborted before compiler execution",
+  "compilerExecuted": false,
+  "nativeRootChanged": false,
+  "productExecuted": false
+}

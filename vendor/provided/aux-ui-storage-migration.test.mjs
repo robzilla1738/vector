@@ -9,7 +9,7 @@ test('preserves explicit search/layout/confirmation choices and unrelated raw Lo
     'aside.new-tab.omnibox-mode.v1':'ask','aside.browserTabStyle':'horizontal',
     'aside.last-final-confirm.v1':'false','aside.last-permission-mode.v1':'read-only',
     'aside.new-tab.onboarding-helper-state.v1':'folded','theme':'dark',
-    'aside.chat-draft.v2:fixture':'unmodified synthetic draft',
+    'aside.future-draft-format:fixture':'unmodified synthetic draft',
   }),before=structuredClone(input);
   const {snapshot:next,receipt}=migrateAuxUiPreferenceSnapshot(input);
   assert.deepEqual(input,before);
@@ -19,7 +19,7 @@ test('preserves explicit search/layout/confirmation choices and unrelated raw Lo
   assert.equal(next.entries['aux.last-permission-mode.v2'],'read-only');
   assert.equal(next.entries['aux.new-tab.onboarding-helper-state.v2'],'folded');
   assert.equal(next.entries.theme,'dark');
-  assert.equal(next.entries['aside.chat-draft.v2:fixture'],input.entries['aside.chat-draft.v2:fixture']);
+  assert.equal(next.entries['aside.future-draft-format:fixture'],input.entries['aside.future-draft-format:fixture']);
   assert.equal(receipt.moved.length,5);assert.equal(receipt.remainingLegacyEntries,1);
   assert(!JSON.stringify(receipt).includes('synthetic-profile-one'));
   assert(!JSON.stringify(receipt).includes('unmodified synthetic draft'));

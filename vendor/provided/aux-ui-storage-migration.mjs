@@ -16,6 +16,13 @@ export const AUX_UI_PREFERENCE_MIGRATIONS=Object.freeze([
   entry('chrome-local','aside.capture.enabled','aux.capture.enabled.v2','boolean'),
   entry('chrome-local','aside.tabsTidy.customPrompt','aux.tabsTidy.customPrompt.v2','prompt'),
 ]);
+const family=(storages,fromPrefix,toPrefix,kind,exact=false)=>Object.freeze({storages:Object.freeze(storages),fromPrefix,toPrefix,kind,exact});
+export const AUX_UI_DRAFT_MIGRATIONS=Object.freeze([
+  family(['local-storage','session-storage'],'aside.chat-draft.v2:','aux.chat-draft.v3:','draft-json-v2'),
+  family(['local-storage','session-storage'],'aside.chat-draft.v1:','aux.chat-draft-text.v1:','draft-text'),
+  family(['session-storage'],'aside.sidepanel-new-session-settings.v1:','aux.sidepanel-new-session-settings.v2:','session-settings-v1'),
+  family(['session-storage'],'aside.chat-pending-new-session-message.v1','aux.chat-pending-new-session-message.v2','pending-message',true),
+]);
 const own=(value,key)=>Object.hasOwn(value,key);
 const dictionary=value=>value!==null&&typeof value==='object'&&!Array.isArray(value)&&
   [Object.prototype,null].includes(Object.getPrototypeOf(value));
@@ -51,16 +58,38 @@ function valid(value,kind){
     default:throw Error('Unsupported UI preference schema');
   }
 }
+function validDraft(raw,kind){
+  if(typeof raw!=='string'||raw.length>5242880)return false;
+  if(kind==='draft-text')return true;
+  let value;try{value=JSON.parse(raw)}catch{return false}
+  if(!dictionary(value))return false;
+  if(kind==='draft-json-v2')return value.version===2&&typeof value.plainText==='string';
+  if(kind==='session-settings-v1')return value.version===1;
+  if(kind==='pending-message')return typeof value.sessionId==='string'&&value.sessionId.length>0&&
+    dictionary(value.message)&&(value.mode===undefined||['client-send','display-only'].includes(value.mode))&&
+    (value.claimId===undefined||typeof value.claimId==='string')&&
+    (value.claimedAt===undefined||typeof value.claimedAt==='number'&&Number.isFinite(value.claimedAt));
+  throw Error('Unsupported UI draft schema');
+}
+function draftSuffix(key,prefix,exact){
+  if(exact)return key===prefix?'':null;
+  if(!key.startsWith(prefix))return null;
+  const suffix=key.slice(prefix.length);
+  if(!suffix||suffix.length>4096||/[\p{Cc}]/u.test(suffix))throw Error('Unsupported UI draft scope');
+  return suffix;
+}
 export function migrateAuxUiPreferenceSnapshot(input){
   assertJson(input);
   if(!dictionary(input)||!['aux.ui-storage-snapshot.v1','aux.ui-storage-snapshot.v2'].includes(input.format)||input.identityProfile!=='aux-v1'||
       input.origin!=='chrome-extension://gokkffaiccpmoeodpmeamcjajcagjmkm'||
       typeof input.profileId!=='string'||input.profileId.length<1||input.profileId.length>256||
-      !['local-storage','chrome-local'].includes(input.storage)||!dictionary(input.entries)||
-      Object.keys(input).some(key=>!['format','identityProfile','origin','profileId','storage','entries'].includes(key)))
+      !['local-storage','chrome-local','session-storage'].includes(input.storage)||!dictionary(input.entries)||
+      Object.keys(input).some(key=>!['format','identityProfile','origin','profileId','storage','entries','pageId'].includes(key)))
     throw Error('Explicit single-profile Aux extension snapshot required');
-  if(input.storage==='local-storage'&&Object.values(input.entries).some(value=>typeof value!=='string'))
-    throw Error('Local Storage snapshot values must retain their raw string representation');
+  if(input.storage==='session-storage'?(typeof input.pageId!=='string'||!input.pageId||input.pageId.length>256):own(input,'pageId'))
+    throw Error('Session Storage requires its own captured page identity');
+  if(input.storage!=='chrome-local'&&Object.values(input.entries).some(value=>typeof value!=='string'))
+    throw Error('Web Storage snapshot values must retain their raw string representation');
   const snapshot=structuredClone(input),moved=[],alreadyEqual=[];
   snapshot.format='aux.ui-storage-snapshot.v2';
   for(const rule of AUX_UI_PREFERENCE_MIGRATIONS){
@@ -78,22 +107,42 @@ export function migrateAuxUiPreferenceSnapshot(input){
     else{snapshot.entries[rule.toKey]=structuredClone(input.entries[rule.fromKey]);moved.push(rule.toKey)}
     delete snapshot.entries[rule.fromKey];
   }
-  return{snapshot,receipt:{format:'aux.ui-preference-migration.v1',storage:input.storage,
+  const drafts={moved:0,alreadyEqual:0};
+  for(const rule of AUX_UI_DRAFT_MIGRATIONS){
+    for(const [key,raw] of Object.entries(input.entries)){
+      const oldSuffix=draftSuffix(key,rule.fromPrefix,rule.exact),newSuffix=draftSuffix(key,rule.toPrefix,rule.exact);
+      if(oldSuffix===null&&newSuffix===null)continue;
+      if(!rule.storages.includes(input.storage))throw Error('Draft key occurs in the wrong storage scope');
+      if(!validDraft(raw,rule.kind))throw Error('Invalid UI draft record: '+rule.kind);
+      if(oldSuffix===null)continue;
+      const target=rule.toPrefix+oldSuffix;
+      if(own(input.entries,target)&&input.entries[target]!==raw)throw Error('Conflicting UI draft values: '+rule.kind);
+      if(own(input.entries,target))drafts.alreadyEqual++;
+      else{snapshot.entries[target]=raw;drafts.moved++}
+      delete snapshot.entries[key];
+    }
+  }
+  return{snapshot,receipt:{format:'aux.ui-storage-migration.v2',storage:input.storage,
     sourceSha256:hash(input),outputSha256:hash(snapshot),moved,alreadyEqual,
+    drafts,rawDraftValuesPreserved:true,
     remainingLegacyEntries:Object.keys(snapshot.entries).filter(key=>key.startsWith('aside.')||key.startsWith('aside:')).length,
     changedEntries:!isDeepStrictEqual(input.entries,snapshot.entries),runtimeAcceptance:false}};
 }
 
-/** Prepare both stores for one profile before returning any commit candidate. */
+/** Prepare both shared stores and every captured page before returning a candidate. */
 export function migrateAuxUiPreferenceBatch(inputs){
   assertJson(inputs);
-  if(!Array.isArray(inputs)||inputs.length!==2||inputs.some(input=>!dictionary(input))||
-      new Set(inputs.map(input=>input.storage)).size!==2||
+  if(!Array.isArray(inputs)||inputs.length<2||inputs.length>130||inputs.some(input=>!dictionary(input))||
+      inputs.filter(input=>input.storage==='local-storage').length!==1||
+      inputs.filter(input=>input.storage==='chrome-local').length!==1||
+      inputs.some(input=>!['local-storage','chrome-local','session-storage'].includes(input.storage))||
+      new Set(inputs.filter(input=>input.storage==='session-storage').map(input=>input.pageId)).size!==
+        inputs.filter(input=>input.storage==='session-storage').length||
       inputs.some(input=>input.profileId!==inputs[0].profileId||input.origin!==inputs[0].origin))
-    throw Error('Both distinct UI storage scopes from one captured Aux profile are required');
+    throw Error('Both distinct shared stores and unique pages from one captured Aux profile are required');
   const prepared=inputs.map(migrateAuxUiPreferenceSnapshot);
-  return{format:'aux.ui-preference-batch.v1',snapshots:prepared.map(item=>item.snapshot),
-    receipt:{format:'aux.ui-preference-batch.receipt.v1',sourceSha256:hash(inputs),
+  return{format:'aux.ui-storage-batch.v2',snapshots:prepared.map(item=>item.snapshot),
+    receipt:{format:'aux.ui-storage-batch.receipt.v2',sourceSha256:hash(inputs),
       outputSha256:hash(prepared.map(item=>item.snapshot)),stores:prepared.map(item=>item.receipt),
       remainingLegacyEntries:prepared.reduce((sum,item)=>sum+item.receipt.remainingLegacyEntries,0),
       filesystemCommitted:false,runtimeAcceptance:false}};

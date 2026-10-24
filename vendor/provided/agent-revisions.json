@@ -154,5 +154,20 @@
     "stateIdentityVersion": 2,
     "featureProfile": "desktop-v1",
     "fingerprint": "83a3414e79f0cc29327c44315b4b6055206ef20d344400f872c29f36a0d4d029"
+  },
+  {
+    "revision": 24,
+    "profile": "development",
+    "identityProfile": "aux-v1",
+    "stateIdentityVersion": 2,
+    "fingerprint": "1c12701492f99ce5bf75d69d8ccffac3bd4953c870c4185f8eb4d25e9d6a76fc"
+  },
+  {
+    "revision": 25,
+    "profile": "development",
+    "identityProfile": "aux-v1",
+    "stateIdentityVersion": 2,
+    "featureProfile": "desktop-v1",
+    "fingerprint": "63ad46a4c6a21653aa47856e24810fe1dda54a7712663ec41c8b548824aec8dd"
   }
 ]

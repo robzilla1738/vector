@@ -1,0 +1,122 @@
+{
+  "format": "aux.ui-draft-identity.inputs.v1",
+  "sourceVersion": "1.26.1016.1852",
+  "migrationFormat": "aux.ui-storage-migration.v2",
+  "mappings": [
+    {
+      "storages": [
+        "local-storage",
+        "session-storage"
+      ],
+      "fromPrefix": "aside.chat-draft.v2:",
+      "toPrefix": "aux.chat-draft.v3:",
+      "kind": "draft-json-v2",
+      "exact": false
+    },
+    {
+      "storages": [
+        "local-storage",
+        "session-storage"
+      ],
+      "fromPrefix": "aside.chat-draft.v1:",
+      "toPrefix": "aux.chat-draft-text.v1:",
+      "kind": "draft-text",
+      "exact": false
+    },
+    {
+      "storages": [
+        "session-storage"
+      ],
+      "fromPrefix": "aside.sidepanel-new-session-settings.v1:",
+      "toPrefix": "aux.sidepanel-new-session-settings.v2:",
+      "kind": "session-settings-v1",
+      "exact": false
+    },
+    {
+      "storages": [
+        "session-storage"
+      ],
+      "fromPrefix": "aside.chat-pending-new-session-message.v1",
+      "toPrefix": "aux.chat-pending-new-session-message.v2",
+      "kind": "pending-message",
+      "exact": true
+    }
+  ],
+  "files": [
+    {
+      "path": "assets/-components-4o0FSqQ9.js",
+      "sourceSha256": "6310b674f032bc890715b6b0f35bd1e4983cd25886d697941b7120bc3510abfb",
+      "predecessorSha256": "aae85d42ce485429b9c975802f301e125ef4967f6063d1fa8c53c1fb6ce3abab",
+      "rules": [
+        {
+          "name": "Versioned Aux draft-json-v2 storage identity",
+          "find": "aside.chat-draft.v2",
+          "replace": "aux.chat-draft.v3",
+          "count": 1
+        },
+        {
+          "name": "Versioned Aux draft-text storage identity",
+          "find": "aside.chat-draft.v1",
+          "replace": "aux.chat-draft-text.v1",
+          "count": 1
+        },
+        {
+          "name": "Versioned Aux session-settings-v1 storage identity",
+          "find": "aside.sidepanel-new-session-settings.v1",
+          "replace": "aux.sidepanel-new-session-settings.v2",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "assets/draft-storage-ixLojjZ5.js",
+      "sourceSha256": "4fd066c4a2b8c9d5021e9687463a0ce8bcbd193268f44a18b4ce12c2f05c38bc",
+      "predecessorSha256": "5bd3eb0af6157d3002c28699176c24d26df09172fa0fa9de0053286388cd13c0",
+      "rules": [
+        {
+          "name": "Versioned Aux draft-json-v2 storage identity",
+          "find": "aside.chat-draft.v2",
+          "replace": "aux.chat-draft.v3",
+          "count": 1
+        },
+        {
+          "name": "Versioned Aux draft-text storage identity",
+          "find": "aside.chat-draft.v1",
+          "replace": "aux.chat-draft-text.v1",
+          "count": 1
+        },
+        {
+          "name": "Versioned Aux session-settings-v1 storage identity",
+          "find": "aside.sidepanel-new-session-settings.v1",
+          "replace": "aux.sidepanel-new-session-settings.v2",
+          "count": 1
+        },
+        {
+          "name": "Versioned Aux pending-message storage identity",
+          "find": "aside.chat-pending-new-session-message.v1",
+          "replace": "aux.chat-pending-new-session-message.v2",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "assets/newtab-editor-u_GbForB.js",
+      "sourceSha256": "243f687f9b3dfe34faa764533bb528d4c58b0571a25e945842d3824b747813a5",
+      "predecessorSha256": "37c9f04d75a49c009cab5a6d685d1fff0f39c2d9427b27334aad00151d43e4a1",
+      "rules": [
+        {
+          "name": "Versioned Aux draft-json-v2 storage identity",
+          "find": "aside.chat-draft.v2",
+          "replace": "aux.chat-draft.v3",
+          "count": 1
+        },
+        {
+          "name": "Versioned Aux draft-text storage identity",
+          "find": "aside.chat-draft.v1",
+          "replace": "aux.chat-draft-text.v1",
+          "count": 1
+        }
+      ]
+    }
+  ]
+}

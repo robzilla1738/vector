@@ -1,0 +1,13 @@
+{
+  "format": "aux.storage-db-drain.compile.actual.v1",
+  "passed": false,
+  "exitCode": 1,
+  "output": "/private/tmp/aux-ui-storage-native-drain-compile-20261024-a2",
+  "nativeRootChanged": false,
+  "productExecuted": false,
+  "nativeApiCallerIntegrated": false,
+  "fullBrowserBuilt": false,
+  "commandDiscoveryBytes": 13522691,
+  "commandDiscoverySha256": "43be4bec0578603975d7669f82145b5780d42f373775fd278906e19972dc192b",
+  "selectedCommandDecodedStrictly": true
+}

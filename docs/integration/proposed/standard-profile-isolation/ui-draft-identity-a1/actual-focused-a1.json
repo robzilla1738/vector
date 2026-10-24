@@ -1,0 +1,22 @@
+{
+  "format": "aux.ui-draft-identity.focused.actual.v1",
+  "passed": true,
+  "files": 3,
+  "countedReplacements": 9,
+  "exactPredecessorReplayPassed": true,
+  "changedScriptsParse": true,
+  "compatibilityStateUnchanged": true,
+  "actualSuppliedCodecExecutedWithSyntheticStores": true,
+  "sessionOverLocalPrecedencePreserved": true,
+  "legacyTextReaderPreserved": true,
+  "attachmentMetadataPreserved": true,
+  "pendingClaimAndAckBehaviorPreserved": true,
+  "quotaFailureKeepsUnsavedDraft": true,
+  "unloadGuardAndRetryPreserved": true,
+  "emptyDraftRemovalPreserved": true,
+  "realStorageReadOrChanged": false,
+  "fileAttachmentsRead": false,
+  "appLaunched": false,
+  "nativeExecuted": false,
+  "runtimeAcceptance": false
+}

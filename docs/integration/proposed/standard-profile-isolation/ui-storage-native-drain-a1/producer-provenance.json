@@ -1,0 +1,13 @@
+{
+  "format": "aux.storage-db-drain.producer-provenance.v1",
+  "producer": {
+    "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/ui-storage-native-drain-a1/compile.py",
+    "sha256": "a1386d6a71ddbc9d4f065609041caffcea64cb61ff2c6c12269172374a8d4c54"
+  },
+  "sourcePlanSha256": "a82ba0b547384045e1c5943cff17f4446b0ad78d8ee3e8d3149d22058c79e59e",
+  "actualCompileSha256": "dc89b495ae72549f0904fa4ac00b1e0534833853646c4518a476638dc6f0f2f2",
+  "nativeDependencyInputs": 274,
+  "nativeApiCallerIntegrated": false,
+  "nativeRootChanged": false,
+  "appLaunched": false
+}

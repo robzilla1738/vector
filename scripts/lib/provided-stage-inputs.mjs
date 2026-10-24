@@ -38,6 +38,8 @@ export const providedStageInputs = Object.freeze([
   'vendor/provided/aux-ui-peer-identity.mjs',
   'vendor/provided/aux-ui-transient-identity.mjs',
   'vendor/provided/aux-ui-storage-identity.mjs',
+  'vendor/provided/aux-ui-draft-identity.mjs',
+  'docs/integration/proposed/standard-profile-isolation/ui-draft-identity-a1/inputs.json',
   'vendor/provided/aux-ui-storage-migration.mjs',
   'vendor/provided/aux-cli-worker-settlement.mjs',
   'docs/integration/proposed/standard-profile-isolation/cli-worker-settlement-a1/inputs.json',

@@ -1,0 +1,55 @@
+{
+  "format": "aux.ui-draft-original-stage.actual.v1",
+  "passed": true,
+  "reports": [
+    {
+      "featureProfile": "baseline",
+      "output": "/private/tmp/aux-ui-draft-stage-20261024-a1/baseline",
+      "fileCount": 1263,
+      "exactDelta": [
+        "agent/assets/-components-4o0FSqQ9.js",
+        "agent/assets/draft-storage-ixLojjZ5.js",
+        "agent/assets/newtab-editor-u_GbForB.js",
+        "agent/manifest.json"
+      ],
+      "cssAssetsAndOtherFilesByteIdentical": true,
+      "modesPreserved": true
+    },
+    {
+      "featureProfile": "desktop-v1",
+      "output": "/private/tmp/aux-ui-draft-stage-20261024-a1/desktop-v1",
+      "fileCount": 1263,
+      "exactDelta": [
+        "agent/assets/-components-4o0FSqQ9.js",
+        "agent/assets/draft-storage-ixLojjZ5.js",
+        "agent/assets/newtab-editor-u_GbForB.js",
+        "agent/manifest.json"
+      ],
+      "cssAssetsAndOtherFilesByteIdentical": true,
+      "modesPreserved": true
+    }
+  ],
+  "callbackSourceSha256": "58b7d321c7bc9747d4f5529fbd4c50d5f2a70826715e46494bb3459b5bb6f11e",
+  "revisionReview": [
+    {
+      "revision": 24,
+      "profile": "development",
+      "identityProfile": "aux-v1",
+      "stateIdentityVersion": 2,
+      "fingerprint": "1c12701492f99ce5bf75d69d8ccffac3bd4953c870c4185f8eb4d25e9d6a76fc"
+    },
+    {
+      "revision": 25,
+      "profile": "development",
+      "identityProfile": "aux-v1",
+      "stateIdentityVersion": 2,
+      "featureProfile": "desktop-v1",
+      "fingerprint": "63ad46a4c6a21653aa47856e24810fe1dda54a7712663ec41c8b548824aec8dd"
+    }
+  ],
+  "completedStages": 2,
+  "uiGeometryChanged": false,
+  "productExecuted": false,
+  "nativeBuildPerformed": false,
+  "packaged": false
+}

@@ -1,0 +1,67 @@
+{
+  "format": "aux.storage-db-drain.source-plan.v1",
+  "nativeRoot": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src",
+  "files": [
+    {
+      "path": "components/services/storage/dom_storage/async_dom_storage_database.h",
+      "inputSha256": "dad0a6d851028460129b419e133e738125ceec7bd2f756fd8dc07f07cf706aea",
+      "outputSha256": "d7c259d73f288b0092f06d4d5f7a06df05c6bc04ba648280f86b73bbce3eda35",
+      "anchors": [
+        {
+          "name": "Public queued-write completion, distinct from one-way Flush",
+          "find": "  void InitiateCommit();\n",
+          "replace": "  void InitiateCommit();\n\n  // Collects current commits and replies after previously queued DB tasks.\n  // A successful reply includes their retained write status. The caller must\n  // already hold writer quiescence; this does not close write admission, grant\n  // migration authority, acknowledge fsync or cover future renderer writes.\n  // A lost frontend/task returns failure, never successful completion.\n  void DrainCommitsForAuxMigration(StatusCallback callback);\n",
+          "count": 1
+        },
+        {
+          "name": "DB-sequence-only retained failure status",
+          "find": "  base::WeakPtrFactory<AsyncDomStorageDatabase> weak_ptr_factory_{this};",
+          "replace": "  // Accessed only by tasks on database_'s sequence. Shared ownership keeps\n  // the status alive when already-posted work outlives this frontend.\n  struct AuxMigrationWriteStatus {\n    std::optional<DbStatus> first_error;\n  };\n  const std::shared_ptr<AuxMigrationWriteStatus> aux_migration_write_status_ =\n      std::make_shared<AuxMigrationWriteStatus>();\n\n  base::WeakPtrFactory<AsyncDomStorageDatabase> weak_ptr_factory_{this};",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "components/services/storage/dom_storage/async_dom_storage_database.cc",
+      "inputSha256": "e5a8ad854c55a1f8f1d9fc1545c6bbefc8aa90f2b6bec709017f81321d1db6d3",
+      "outputSha256": "61a951a5a3a340c881b29221081c03ba2d40818d77511bbebdf7d55e05504a24",
+      "anchors": [
+        {
+          "name": "Ordered DB-sequence sentinel and lost-reply refusal",
+          "find": "void AsyncDomStorageDatabase::OnDatabaseOpened(\n",
+          "replace": "void AsyncDomStorageDatabase::DrainCommitsForAuxMigration(\n    StatusCallback callback) {\n  CHECK(is_database_opened_);\n  auto reply = base::BindOnce(\n      [](base::WeakPtr<AsyncDomStorageDatabase> owner, StatusCallback callback,\n         DbStatus status) {\n        if (!owner) {\n          status = DbStatus::IOError(\"Aux storage frontend was destroyed\");\n        }\n        std::move(callback).Run(std::move(status));\n      },\n      weak_ptr_factory_.GetWeakPtr(), std::move(callback));\n  auto guarded_reply = base::WrapCallbackWithDefaultInvokeIfNotRun(\n      base::BindPostTaskToCurrentDefault(std::move(reply)),\n      DbStatus::IOError(\"Aux storage completion reply was lost\"));\n\n  InitiateCommit();\n  // SequenceBound preserves DB task order. No successful shortcut for an empty\n  // current batch: earlier posted writes must still reach this queue position.\n  database_.PostTaskWithThisObject(base::BindOnce(\n      [](std::shared_ptr<AuxMigrationWriteStatus> state, StatusCallback callback,\n         DomStorageDatabase*) {\n        std::move(callback).Run(state->first_error.value_or(DbStatus::OK()));\n      },\n      aux_migration_write_status_, std::move(guarded_reply)));\n}\n\nvoid AsyncDomStorageDatabase::OnDatabaseOpened(\n",
+          "count": 1
+        },
+        {
+          "name": "Retain first failed write before normal callback dispatch",
+          "find": "      [](base::OnceCallback<DbStatus(DomStorageDatabase*)> db_task,\n         std::string status_histogram_name, std::string duration_histogram_name,\n         DatabaseMetricsType metrics_type, StatusCallback callback,\n         DomStorageDatabase* database) {\n        base::TimeTicks start = base::TimeTicks::Now();\n        DbStatus status = std::move(db_task).Run(database);\n        RecordStatusAndDuration",
+          "replace": "      [](std::shared_ptr<AuxMigrationWriteStatus> state,\n         base::OnceCallback<DbStatus(DomStorageDatabase*)> db_task,\n         std::string status_histogram_name, std::string duration_histogram_name,\n         DatabaseMetricsType metrics_type, StatusCallback callback,\n         DomStorageDatabase* database) {\n        base::TimeTicks start = base::TimeTicks::Now();\n        DbStatus status = std::move(db_task).Run(database);\n        if (!status.ok() && !state->first_error) {\n          state->first_error = status;\n        }\n        RecordStatusAndDuration",
+          "count": 1
+        },
+        {
+          "name": "Share status only with the ordered mutation-task wrapper",
+          "find": "      std::move(db_task), GetHistogram(operation),\n      GetDurationHistogram(operation), metrics_type_,\n      base::BindPostTaskToCurrentDefault(std::move(callback))));\n}\n\ntemplate <typename T>",
+          "replace": "      aux_migration_write_status_, std::move(db_task), GetHistogram(operation),\n      GetDurationHistogram(operation), metrics_type_,\n      base::BindPostTaskToCurrentDefault(std::move(callback))));\n}\n\ntemplate <typename T>",
+          "count": 1
+        },
+        {
+          "name": "Use actual Mojo callback-loss helper namespace",
+          "find": "base::WrapCallbackWithDefaultInvokeIfNotRun",
+          "replace": "mojo::WrapCallbackWithDefaultInvokeIfNotRun",
+          "count": 1
+        },
+        {
+          "name": "Include actual callback-loss helper declaration",
+          "find": "#include \"components/services/storage/dom_storage/dom_storage_histogram_helper.h\"",
+          "replace": "#include \"components/services/storage/dom_storage/dom_storage_histogram_helper.h\"\n#include \"mojo/public/cpp/bindings/callback_helpers.h\"",
+          "count": 1
+        }
+      ]
+    }
+  ],
+  "writerQuiescenceProvided": false,
+  "diskFsyncAcknowledged": false,
+  "callerIntegrationComplete": false,
+  "appliedToNativeRoot": false,
+  "productExecuted": false
+}

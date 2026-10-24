@@ -1,0 +1,99 @@
+--- a/components/services/storage/dom_storage/async_dom_storage_database.h
++++ b/components/services/storage/dom_storage/async_dom_storage_database.h
+@@ -114,6 +114,13 @@
+   // completed callback for each `Committer` that provided a `Commit`.
+   void InitiateCommit();
+ 
++  // Collects current commits and replies after previously queued DB tasks.
++  // A successful reply includes their retained write status. The caller must
++  // already hold writer quiescence; this does not close write admission, grant
++  // migration authority, acknowledge fsync or cover future renderer writes.
++  // A lost frontend/task returns failure, never successful completion.
++  void DrainCommitsForAuxMigration(StatusCallback callback);
++
+  private:
+   explicit AsyncDomStorageDatabase(StorageType storage_type);
+ 
+@@ -153,6 +160,14 @@
+   const StorageType storage_type_;
+   DatabaseMetricsType metrics_type_;
+ 
++  // Accessed only by tasks on database_'s sequence. Shared ownership keeps
++  // the status alive when already-posted work outlives this frontend.
++  struct AuxMigrationWriteStatus {
++    std::optional<DbStatus> first_error;
++  };
++  const std::shared_ptr<AuxMigrationWriteStatus> aux_migration_write_status_ =
++      std::make_shared<AuxMigrationWriteStatus>();
++
+   base::WeakPtrFactory<AsyncDomStorageDatabase> weak_ptr_factory_{this};
+ };
+ 
+--- a/components/services/storage/dom_storage/async_dom_storage_database.cc
++++ b/components/services/storage/dom_storage/async_dom_storage_database.cc
+@@ -10,6 +10,7 @@
+ #include "base/strings/strcat.h"
+ #include "base/task/bind_post_task.h"
+ #include "components/services/storage/dom_storage/dom_storage_histogram_helper.h"
++#include "mojo/public/cpp/bindings/callback_helpers.h"
+ 
+ namespace storage {
+ 
+@@ -253,6 +254,33 @@
+       std::move(run_all));
+ }
+ 
++void AsyncDomStorageDatabase::DrainCommitsForAuxMigration(
++    StatusCallback callback) {
++  CHECK(is_database_opened_);
++  auto reply = base::BindOnce(
++      [](base::WeakPtr<AsyncDomStorageDatabase> owner, StatusCallback callback,
++         DbStatus status) {
++        if (!owner) {
++          status = DbStatus::IOError("Aux storage frontend was destroyed");
++        }
++        std::move(callback).Run(std::move(status));
++      },
++      weak_ptr_factory_.GetWeakPtr(), std::move(callback));
++  auto guarded_reply = mojo::WrapCallbackWithDefaultInvokeIfNotRun(
++      base::BindPostTaskToCurrentDefault(std::move(reply)),
++      DbStatus::IOError("Aux storage completion reply was lost"));
++
++  InitiateCommit();
++  // SequenceBound preserves DB task order. No successful shortcut for an empty
++  // current batch: earlier posted writes must still reach this queue position.
++  database_.PostTaskWithThisObject(base::BindOnce(
++      [](std::shared_ptr<AuxMigrationWriteStatus> state, StatusCallback callback,
++         DomStorageDatabase*) {
++        std::move(callback).Run(state->first_error.value_or(DbStatus::OK()));
++      },
++      aux_migration_write_status_, std::move(guarded_reply)));
++}
++
+ void AsyncDomStorageDatabase::OnDatabaseOpened(
+     OpenCallback callback,
+     DomStorageDatabaseFactory::OpenResult result) {
+@@ -293,17 +321,21 @@
+     base::OnceCallback<DbStatus(DomStorageDatabase*)> db_task,
+     StatusCallback callback) {
+   database_.PostTaskWithThisObject(base::BindOnce(
+-      [](base::OnceCallback<DbStatus(DomStorageDatabase*)> db_task,
++      [](std::shared_ptr<AuxMigrationWriteStatus> state,
++         base::OnceCallback<DbStatus(DomStorageDatabase*)> db_task,
+          std::string status_histogram_name, std::string duration_histogram_name,
+          DatabaseMetricsType metrics_type, StatusCallback callback,
+          DomStorageDatabase* database) {
+         base::TimeTicks start = base::TimeTicks::Now();
+         DbStatus status = std::move(db_task).Run(database);
++        if (!status.ok() && !state->first_error) {
++          state->first_error = status;
++        }
+         RecordStatusAndDuration(status_histogram_name, duration_histogram_name,
+                                 metrics_type, start, status);
+         std::move(callback).Run(std::move(status));
+       },
+-      std::move(db_task), GetHistogram(operation),
++      aux_migration_write_status_, std::move(db_task), GetHistogram(operation),
+       GetDurationHistogram(operation), metrics_type_,
+       base::BindPostTaskToCurrentDefault(std::move(callback))));
+ }
