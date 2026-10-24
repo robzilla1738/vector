@@ -42,3 +42,78 @@ The actual `chrome::MoveTabsToExistingWindow` transfers the same TabModel/WebCon
 Exact four-file source inventory and patch replay checked. Native source has not been compiled or run by this worker. Root must integrate the above mandatory hooks and controls before this feature is reachable or described as ready. No extra copied CSS/rounded-corner owner was added, so actual material/corner fidelity depends on the preserved native popup/frame owners and the integrated native controls.
 
 Later focused disposable acceptance: explicit link Peek → navigate → dismiss (source untouched); one POST/download refusal; exact-tab promotion preserving history; empty quick window and URL quick window → same-profile/Space promotion; one active-work refusal; ordinary click unchanged when off. This is sufficient without a broad repeated browser test suite.
+
+## Native ingress and decorator completion — 2026-10-23
+
+The earlier decorator/ingress gap now has source implementation. Root must apply
+`shared-edits.json` as counted narrow edits to its current composed shared sources,
+not replace shared files. `shared-native.patch` and `shared-baseline/` are the exact
+review/replay equivalents. They pin 8 shared files and 26 edits; BrowserView uses
+the root integration proposal as baseline, other files use the selected projected
+native tree. No selected native files were changed by this lane.
+
+New source owners:
+
+- `aux_preview_controls.{h,cc}` installs native `ToolbarButton` Back, Dismiss and
+  Promote plus a native profile/restriction label into TYPE_POPUP's existing
+  toolbar FlexLayout. The actual LocationBarView/security model is retained.
+  Controller `Open` calls `EnsureNativePreviewControls` before creation, so there
+  is no missing external initialization requirement. Native toolbar preferred
+  and minimum widths include the added controls. No existing colors, glass,
+  radii, corners or normal-window layout are replaced.
+- `aux_preview_ingress.{h,cc}` attaches a WebContents observer through TabHelpers.
+  Only native left mouse input with no modifiers (opt-in preference) or Option
+  alone can create a one-second, one-use pending intent. Cmd/middle/other clicks
+  retain normal behavior. The existing content input router's trusted link
+  receipt validates the native nonce, actual document and href; its selected
+  `OnNativeTrustedMouseDownLink(frame,href)` callback confirms the pending intent.
+  The requested URL must exactly match that acknowledged link. Browser-native
+  roots/admission generation, cookie epoch, weak source document and actual
+  active profile/window are rechecked before the queued native popup creation.
+  No renderer-selected permission flag or standalone URL endpoint is introduced.
+- `CanOpenQuick(actualBrowser)` supports root native command enablement.
+  `OpenQuick(..., GURL("about:blank"))` normalizes to the empty native new-window
+  path and focuses the real address bar. Ordinary URL input remains HTTP(S).
+
+Counted shared hooks implement:
+
+1. Context menu append/enable/execute for reserved command 34140, bound to the
+   exact context RenderFrameHost and actual link URL. The selected command header
+   had no 34140 use when reserved. No renderer-supplied profile selector.
+2. Automatic/Option-click via OpenURLFromTab and the actual main-frame navigation
+   throttle before starting the original navigation. Normal anchor-only movement,
+   POST, missing trusted receipt, unsupported schemes and explicit modified-tab
+   actions keep their existing path. Automatic mode is deliberately primary-frame
+   only; iframe links can use the actual context-menu action.
+3. Trusted-link callback wiring under ENABLE_AUX_BROWSER + IS_MAC. The retired
+   shell's ContentBlockingController remains separate and is not activated.
+4. Preview direct downloads, new windows/contents and external protocols refuse
+   before their relevant native delegation; ReviewNativePopupCreation handles
+   window creation before AddNewContents, which remains a second guard. Normal
+   profile Option-download dispatch can be consumed as Peek only with a confirmed
+   native modifier/link intent. No claim that arbitrary subresource network
+   traffic is suppressed; Chromium retains ordinary network/permission policy.
+5. Navigation throttle for start, redirects, responses/downloads and commits
+   without URLLoader. Quick windows use normal policy but retain current-owner
+   checks. Peek requires promotion for unsupported actions.
+6. Actual BrowserView window-close and UnloadController tab-close fences call
+   native active-work guards and show restrictions in the native preview toolbar.
+   Existing profile-switch/drain/shutdown owners remain independent.
+
+`PageIdentity` lives under `ui/aux/` but is NOT a retired-shell-only authority:
+selected `chrome/browser/ui/BUILD.gn` already depends on
+`//chrome/browser/aux:page_identity`, and the selected organization controller
+uses that same actual `runtime_owned()` marker. ActorUiTabController supplies the
+other existing active-work guard. No fallback shell service is used.
+
+Root integration needs the four new helper files in the native target, plus its
+already planned controller/throttle registrations. The counted patch includes
+all shared calls; a full source replacement would incorrectly overwrite root
+command/split work. No new private JS API is required for Peek/Quick; native
+context menu and command34135 are the user entry points.
+
+Source replay covers all 8 leaf files and all 26 shared edits in temporary
+storage. Native compile, actual input dispatch timing, tiny-window origin width,
+close/promotion behavior and comparison with the actual app are still runtime
+acceptance checks. If a trusted link receipt arrives too late for its request,
+that request retains normal navigation; no guessed receipt is substituted.

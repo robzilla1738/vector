@@ -1,0 +1,336 @@
+--- a/chrome/browser/chrome_content_browser_client.cc
++++ b/chrome/browser/chrome_content_browser_client.cc
+@@ -3,6 +3,13 @@
+ // found in the LICENSE file.
+ 
+ #include "chrome/browser/chrome_content_browser_client.h"
++#include "build/build_config.h"
++#include "chrome/browser/buildflags.h"
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++#include "chrome/browser/ui/aux_preview/aux_preview_controller.h"
++#include "chrome/browser/ui/aux_preview/aux_preview_ingress.h"
++#include "chrome/browser/ui/aux_preview/aux_preview_navigation_throttle.h"
++#endif
+ #include "chrome/browser/extensions/api/aux_adblock/filter_hooks.h"
+ 
+ #include <algorithm>
+@@ -4431,6 +4438,10 @@
+ void ChromeContentBrowserClient::OnNativeTrustedMouseDownLink(
+     content::RenderFrameHost* frame,
+     const GURL& actual_href) {
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++  aux::preview::TrustedMouseDownLink(frame, actual_href);
++#endif
++
+ #if BUILDFLAG(ENABLE_AUX_SHELL)
+   if (frame) {
+     aux::ContentBlockingController::ForProfile(
+@@ -4446,6 +4457,14 @@
+     bool effective_user_gesture,
+     bool opener_suppressed,
+     base::OnceCallback<void(bool)> callback) {
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++  if (opener && !aux::preview::AllowNewContents(
++      content::WebContents::FromRenderFrameHost(opener))) {
++    std::move(callback).Run(false);
++    return;
++  }
++#endif
++
+ #if BUILDFLAG(ENABLE_AUX_SHELL)
+   if (!opener) {
+     std::move(callback).Run(false);
+@@ -5750,6 +5769,10 @@
+ 
+ void ChromeContentBrowserClient::CreateThrottlesForNavigation(
+     content::NavigationThrottleRegistry& registry) {
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++  aux::preview::NavigationThrottle::MaybeCreateAndAdd(registry);
++#endif
++
+ #if BUILDFLAG(ENABLE_AUX_BROWSER)
+   aux_adblock::AddNavigationThrottle(registry);
+ #endif
+@@ -5767,6 +5790,10 @@
+ 
+ void ChromeContentBrowserClient::CreateThrottlesForCommitWithoutUrlLoader(
+     content::NavigationThrottleRegistry& registry) {
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++  aux::preview::NavigationThrottle::MaybeCreateAndAdd(registry);
++#endif
++
+ #if BUILDFLAG(ENABLE_AUX_SHELL)
+   aux::MaybeAddResultPreviewNavigationThrottle(registry);
+   aux::NativeProjectPreview::AddNavigationThrottle(registry);
+@@ -7726,6 +7753,10 @@
+     content::RenderFrameHost* initiator_document,
+     const net::IsolationInfo& isolation_info,
+     mojo::PendingRemote<network::mojom::URLLoaderFactory>* out_factory) {
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++  if (!aux::preview::AllowExternalProtocol(web_contents_getter.Run())) return false;
++#endif
++
+   CHECK(content::BrowserThread::CurrentlyOn(content::BrowserThread::UI));
+ 
+ #if BUILDFLAG(IS_CHROMEOS) || BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_MAC) || \
+--- a/chrome/browser/ui/tab_helpers.cc
++++ b/chrome/browser/ui/tab_helpers.cc
+@@ -3,6 +3,11 @@
+ // found in the LICENSE file.
+ 
+ #include "chrome/browser/ui/tab_helpers.h"
++#include "build/build_config.h"
++#include "chrome/browser/buildflags.h"
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++#include "chrome/browser/ui/aux_preview/aux_preview_ingress.h"
++#endif
+ 
+ #include <cstdint>
+ #include <memory>
+@@ -327,6 +332,9 @@
+                             std::make_unique<base::SupportsUserData::Data>());
+ 
+   // Create all the tab helpers.
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++  aux::preview::AttachIngress(web_contents);
++#endif
+ 
+   // SessionTabHelper comes first because it sets up the tab ID, and other
+   // helpers may rely on that.
+--- a/chrome/browser/ui/browser_web_contents_delegate/browser_web_contents_delegate.cc
++++ b/chrome/browser/ui/browser_web_contents_delegate/browser_web_contents_delegate.cc
+@@ -3,6 +3,12 @@
+ // found in the LICENSE file.
+ 
+ #include "chrome/browser/ui/browser_web_contents_delegate/browser_web_contents_delegate.h"
++#include "build/build_config.h"
++#include "chrome/browser/buildflags.h"
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++#include "chrome/browser/ui/aux_preview/aux_preview_controller.h"
++#include "chrome/browser/ui/aux_preview/aux_preview_ingress.h"
++#endif
+ #include "chrome/browser/ui/aux_ntp_url.h"
+ 
+ #include "base/check_deref.h"
+@@ -548,6 +554,12 @@
+     const content::OpenURLParams& params,
+     base::OnceCallback<void(content::NavigationHandle&)>
+         navigation_handle_callback) {
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++  if (source && params.disposition != WindowOpenDisposition::CURRENT_TAB &&
++      !aux::preview::AllowNewContents(source)) return nullptr;
++  if (aux::preview::MaybePeekOpenURL(source, params)) return nullptr;
++#endif
++
+   TRACE_EVENT1("navigation", "BrowserWebContentsDelegate::OpenURLFromTab",
+                "source", source);
+ #if DCHECK_IS_ON()
+@@ -685,6 +697,13 @@
+     const blink::mojom::WindowFeatures& window_features,
+     bool user_gesture,
+     bool* was_blocked) {
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++  if (!aux::preview::AllowNewContents(source)) {
++    if (was_blocked) *was_blocked = true;
++    return nullptr;
++  }
++#endif
++
+   FullscreenController* fullscreen_controller =
+       exclusive_access_manager_->fullscreen_controller();
+ #if BUILDFLAG(IS_MAC)
+--- a/chrome/browser/download/chrome_download_manager_delegate.cc
++++ b/chrome/browser/download/chrome_download_manager_delegate.cc
+@@ -3,6 +3,11 @@
+ // found in the LICENSE file.
+ 
+ #include "chrome/browser/download/chrome_download_manager_delegate.h"
++#include "build/build_config.h"
++#include "chrome/browser/buildflags.h"
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++#include "chrome/browser/ui/aux_preview/aux_preview_ingress.h"
++#endif
+ 
+ #include <algorithm>
+ #include <memory>
+@@ -2446,6 +2451,14 @@
+     const std::string& mime_type,
+     std::optional<ui::PageTransition> page_transition,
+     content::CheckDownloadAllowedCallback check_download_allowed_cb) {
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++  if (!aux::preview::AllowDownload(web_contents_getter.Run()) ||
++      (request_method == "GET" && aux::preview::MaybePeekDownload(web_contents_getter.Run(), url))) {
++    OnCheckDownloadAllowedFailed(std::move(check_download_allowed_cb));
++    return;
++  }
++#endif
++
+   DCHECK_CURRENTLY_ON(BrowserThread::UI);
+ #if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_CHROMEOS) || \
+     BUILDFLAG(IS_MAC)
+--- a/chrome/browser/ui/unload_controller.cc
++++ b/chrome/browser/ui/unload_controller.cc
+@@ -3,6 +3,11 @@
+ // found in the LICENSE file.
+ 
+ #include "chrome/browser/ui/unload_controller.h"
++#include "build/build_config.h"
++#include "chrome/browser/buildflags.h"
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++#include "chrome/browser/ui/aux_preview/aux_preview_ingress.h"
++#endif
+ 
+ #include <algorithm>
+ 
+@@ -254,6 +259,10 @@
+ }
+ 
+ bool UnloadController::CanCloseContents(content::WebContents* contents) {
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++  if (!aux::preview::AllowCloseContents(contents)) return false;
++#endif
++
+   // Don't try to close the tab when the whole browser is being closed, since
+   // that avoids the fast shutdown path where we just kill all the renderers.
+   if (is_attempting_to_close_browser_) {
+--- a/chrome/browser/ui/views/frame/browser_view.cc
++++ b/chrome/browser/ui/views/frame/browser_view.cc
+@@ -3,6 +3,11 @@
+ // found in the LICENSE file.
+ 
+ #include "chrome/browser/ui/views/frame/browser_view.h"
++#include "build/build_config.h"
++#include "chrome/browser/buildflags.h"
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++#include "chrome/browser/ui/aux_preview/aux_preview_controller.h"
++#endif
+ #include "chrome/browser/ui/views/frame/aux_navigation_placement.h"
+ #include "components/omnibox/browser/omnibox_pref_names.h"
+ 
+@@ -4755,6 +4760,15 @@
+ 
+ views::CloseRequestResult BrowserView::OnWindowCloseRequested() {
+ #if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++  std::string aux_preview_reason;
++  if (!aux::preview::CanClose(browser_, &aux_preview_reason)) {
++    if (auto* contents = browser_->GetTabStripModel()->GetActiveWebContents())
++      aux::preview::ReportRestriction(contents, aux_preview_reason);
++    return views::CloseRequestResult::kCannotClose;
++  }
++#endif
++
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
+   if (BrowserInitState::From(browser_) &&
+       static_cast<Browser*>(browser_.get())->DeferCloseForAuxProfileSwitch()) {
+     // Do not hide the frame or start teardown while its actual tabs/profile
+--- a/chrome/browser/ui/views/toolbar/toolbar_view.cc
++++ b/chrome/browser/ui/views/toolbar/toolbar_view.cc
+@@ -3,6 +3,11 @@
+ // found in the LICENSE file.
+ 
+ #include "chrome/browser/ui/views/toolbar/toolbar_view.h"
++#include "build/build_config.h"
++#include "chrome/browser/buildflags.h"
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++#include "chrome/browser/ui/aux_preview/aux_preview_controls.h"
++#endif
+ 
+ #include "chrome/browser/ui/views/toolbar/aux_profile_retained_collapse_button.h"
+ #include "chrome/browser/ui/views/toolbar/toolbar_chip_button.h"
+@@ -1644,6 +1649,9 @@
+       break;
+     case DisplayMode::kLocation:
+       size = location_bar_->PreferredSize();
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++      size.Enlarge(aux::preview::NativePreviewControlsWidth(browser_), 0);
++#endif
+       break;
+     case DisplayMode::kNormal:
+       size = AccessiblePaneView::CalculatePreferredSize(available_size);
+@@ -1685,6 +1693,9 @@
+       break;
+     case DisplayMode::kLocation:
+       size = location_bar_->MinimumSize();
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++      size.Enlarge(aux::preview::NativePreviewControlsWidth(browser_), 0);
++#endif
+       break;
+     case DisplayMode::kNormal:
+       size = AccessiblePaneView::GetMinimumSize();
+--- a/chrome/browser/renderer_context_menu/render_view_context_menu.cc
++++ b/chrome/browser/renderer_context_menu/render_view_context_menu.cc
+@@ -3,6 +3,12 @@
+ // found in the LICENSE file.
+ 
+ #include "chrome/browser/renderer_context_menu/render_view_context_menu.h"
++#include "build/build_config.h"
++#include "chrome/browser/buildflags.h"
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++#include "chrome/browser/ui/aux_preview/aux_preview_controller.h"
++#include "chrome/browser/ui/aux_preview/aux_preview_ingress.h"
++#endif
+ 
+ #include <stddef.h>
+ 
+@@ -1645,6 +1651,10 @@
+ }
+ 
+ void RenderViewContextMenu::RecordUsedItem(int id) {
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++  if (id == aux::preview::kPeekLinkCommand) return;
++#endif
++
+   // Log general ID.
+ 
+   int enum_id =
+@@ -1760,6 +1770,10 @@
+ }
+ 
+ void RenderViewContextMenu::RecordShownItem(int id, bool is_submenu) {
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++  if (id == aux::preview::kPeekLinkCommand) return;
++#endif
++
+   // The "RenderViewContextMenu.Shown" histogram is not recorded for submenus.
+   if (is_submenu) {
+     return;
+@@ -1895,6 +1909,12 @@
+ }
+ 
+ void RenderViewContextMenu::AppendLinkItems() {
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++  if (params_.link_url.SchemeIsHTTPOrHTTPS() && !params_.link_url.has_username() &&
++      !params_.link_url.has_password() && aux::preview::CanOpenQuick(GetBrowser()))
++    menu_model_.AddItem(aux::preview::kPeekLinkCommand, u"Open link in Peek");
++#endif
++
+   if (!params_.link_url.is_empty()) {
+     const bool in_app = IsInProgressiveWebApp();
+ 
+@@ -3335,6 +3355,12 @@
+ // Menu delegate functions -----------------------------------------------------
+ 
+ bool RenderViewContextMenu::IsCommandIdEnabled(int id) const {
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++  if (id == aux::preview::kPeekLinkCommand)
++    return GetRenderFrameHost() && params_.link_url.SchemeIsHTTPOrHTTPS() &&
++        aux::preview::CanOpenQuick(GetBrowser());
++#endif
++
+ #if BUILDFLAG(IS_CHROMEOS)
+   // Disable context menu in locked fullscreen mode to prevent users from
+   // exiting this mode (the menu is not really disabled as the user can still
+@@ -3772,6 +3798,13 @@
+     return;
+   }
+   command_executed_ = true;
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++  if (id == aux::preview::kPeekLinkCommand) {
++    aux::preview::OpenPeek(GetBrowser(), GetRenderFrameHost(), params_.link_url,
++                          aux::preview::Trigger::kContextMenu);
++    return;
++  }
++#endif
+ 
+   // Process extension menu items.
+   if (ContextMenuMatcher::IsExtensionsCustomCommandId(id)) {

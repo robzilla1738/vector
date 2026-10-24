@@ -1,6 +1,7 @@
 // Copyright 2026 Aux Authors. BSD-style license: see //LICENSE.
 #include "chrome/browser/ui/aux_preview/aux_preview_controller.h"
 #include <algorithm>
+#include "chrome/browser/ui/aux_preview/aux_preview_controls.h"
 #include <map>
 #include <memory>
 #include <utility>
@@ -134,6 +135,7 @@ OpenResult Open(BrowserWindowInterface* source, content::RenderFrameHost* frame,
   DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
   if (BusyBrowser(source) || !Regular(source->GetProfile()) || !frame || (!SafeUrl(url) && !(kind == Kind::kQuick && url.is_empty())))
     return {.error = "A regular active profile and HTTP(S) link are required"};
+  EnsureNativePreviewControls();
   if (!Decorator()) return {.error = "Native preview controls are unavailable"};
   auto* contents = source->GetTabStripModel()->GetActiveWebContents();
   if (!contents || !frame->IsActive() || content::WebContents::FromRenderFrameHost(frame) != contents ||
@@ -255,9 +257,19 @@ OpenResult OpenPeek(BrowserWindowInterface* browser, content::RenderFrameHost* f
     return {.error = "Ordinary-link Peek is disabled"};
   return Open(browser, frame, url, Kind::kPeek);
 }
+bool CanOpenQuick(BrowserWindowInterface* browser) {
+  if (BusyBrowser(browser) || !Regular(browser->GetProfile())) return false;
+  auto* contents = browser->GetTabStripModel()->GetActiveWebContents();
+  if (!contents || !contents->GetPrimaryMainFrame() || AgentOwned(contents)) return false;
+  const auto roots = aux::peer::CaptureActualChromiumBrowserRoots();
+  const auto native = aux::peer::InspectNativeBrowserShutdown();
+  return roots && roots->Revalidate() && native.admitted_generation &&
+      !native.wrong_process && !native.admission_closed && !native.sequence_uncertain;
+}
 OpenResult OpenQuick(BrowserWindowInterface* browser, const GURL& url) {
   auto* contents = browser ? browser->GetTabStripModel()->GetActiveWebContents() : nullptr;
-  return Open(browser, contents ? contents->GetPrimaryMainFrame() : nullptr, url, Kind::kQuick);
+  return Open(browser, contents ? contents->GetPrimaryMainFrame() : nullptr,
+              url == GURL("about:blank") ? GURL() : url, Kind::kQuick);
 }
 std::optional<Kind> GetKind(const BrowserWindowInterface* browser) {
   const auto window = Find(browser);

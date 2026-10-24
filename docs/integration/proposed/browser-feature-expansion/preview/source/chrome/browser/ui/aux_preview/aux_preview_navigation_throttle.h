@@ -11,6 +11,7 @@ class NavigationThrottle final : public content::NavigationThrottle {
   ThrottleCheckResult WillStartRequest() override;
   ThrottleCheckResult WillRedirectRequest() override;
   ThrottleCheckResult WillProcessResponse() override;
+  ThrottleCheckResult WillCommitWithoutUrlLoader() override;
   const char* GetNameForLogging() override;
  private:
   ThrottleCheckResult Check();

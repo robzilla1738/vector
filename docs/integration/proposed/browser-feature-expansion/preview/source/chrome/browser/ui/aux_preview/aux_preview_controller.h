@@ -22,6 +22,7 @@ struct OpenResult { BrowserWindowInterface* browser = nullptr; std::string error
 // The frame must belong to the active source tab/document at the actual event.
 OpenResult OpenPeek(BrowserWindowInterface*, content::RenderFrameHost*,
                     const GURL&, Trigger);
+bool CanOpenQuick(BrowserWindowInterface*);
 OpenResult OpenQuick(BrowserWindowInterface*, const GURL&);
 std::optional<Kind> GetKind(const BrowserWindowInterface*);
 bool IsPeekContents(content::WebContents*);

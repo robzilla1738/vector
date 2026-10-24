@@ -6,23 +6,43 @@
     {
       "path": "chrome/browser/ui/aux_preview/aux_preview_controller.cc",
       "baselineSha256": null,
-      "sourceSha256": "95c5c1d0d6428c1e4f93f2e2c4c65c4ebe524034960aa2626e7b027a036288df"
+      "sourceSha256": "4be201e6360cbcc6df875199cca6e66d0c249077bf29e911d9e74174b8797963"
     },
     {
       "path": "chrome/browser/ui/aux_preview/aux_preview_controller.h",
       "baselineSha256": null,
-      "sourceSha256": "a842d5ddbc635fe8418e9c4cad6ccce0c0f723f2cb6d1c3d681ea5d013794d23"
+      "sourceSha256": "3185d7a0681ee10f1bfe96c38650bb6fe919b6dbeb727cc3441cb1f20495dc32"
+    },
+    {
+      "path": "chrome/browser/ui/aux_preview/aux_preview_controls.cc",
+      "baselineSha256": null,
+      "sourceSha256": "1621c5ac47cbcd281317dc63ffdc716de2b4f9ec48b4c5ce3487ce48a7de500d"
+    },
+    {
+      "path": "chrome/browser/ui/aux_preview/aux_preview_controls.h",
+      "baselineSha256": null,
+      "sourceSha256": "5cf4d8f2869ff6efab8fe4e0517fa5150d3998de3e7966f7d22eaf577ca2c08b"
+    },
+    {
+      "path": "chrome/browser/ui/aux_preview/aux_preview_ingress.cc",
+      "baselineSha256": null,
+      "sourceSha256": "8f45f242eaf5f23e5a9b25b408e666820abacc94bdae9f872d4a4cd7cca6f8ec"
+    },
+    {
+      "path": "chrome/browser/ui/aux_preview/aux_preview_ingress.h",
+      "baselineSha256": null,
+      "sourceSha256": "32c07a5a6936d15326e8fa3eb92748a863af37854f78340c4c7b7d306fb6a17d"
     },
     {
       "path": "chrome/browser/ui/aux_preview/aux_preview_navigation_throttle.cc",
       "baselineSha256": null,
-      "sourceSha256": "00c9fa96eb33b8a0f83d1d3fd8fb011e4cd41914645fa7ebd6f6b93a76c50f68"
+      "sourceSha256": "b86501a6af46c710f5db79cc0a4e6058014f223e261316433109f65fe2bffad9"
     },
     {
       "path": "chrome/browser/ui/aux_preview/aux_preview_navigation_throttle.h",
       "baselineSha256": null,
-      "sourceSha256": "0c0b3a294fa34e29877ca1d588f4d32383fc80527af5fe20be39b0294545eeac"
+      "sourceSha256": "08754e59b1709bf6d73830273a92cd92444eec7410be94804919f7e53b548d2e"
     }
   ],
-  "patchSha256": "9791511e63685974e5d3dcd12d6707aeb5ab35ce6b29c26ceabe0fced8b92d53"
+  "patchSha256": "41b8a014577e4dca5a9f2a5ac8064bc138b18f186f6737cf1624796f96bfb8a1"
 }

@@ -1,0 +1,226 @@
+{
+  "scope": "counted shared integrations only; root applies to current composed source",
+  "files": [
+    {
+      "path": "chrome/browser/chrome_content_browser_client.cc",
+      "baselineOrigin": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/chrome_content_browser_client.cc",
+      "baselineSha256": "1c276b6eb3218ab0f4c1aeb556d717aff7c0a43edc8190ec30dfb3e7ccd649c0",
+      "sourceSha256": "bafac29ed6899bcb8db8b4c3aaa97f88d6ec1ffc26b633491924ec58f629aa95",
+      "edits": [
+        {
+          "name": "native-preview-includes",
+          "find": "#include \"chrome/browser/chrome_content_browser_client.h\"",
+          "replace": "#include \"chrome/browser/chrome_content_browser_client.h\"\n#include \"build/build_config.h\"\n#include \"chrome/browser/buildflags.h\"\n#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)\n#include \"chrome/browser/ui/aux_preview/aux_preview_controller.h\"\n#include \"chrome/browser/ui/aux_preview/aux_preview_ingress.h\"\n#include \"chrome/browser/ui/aux_preview/aux_preview_navigation_throttle.h\"\n#endif",
+          "count": 1
+        },
+        {
+          "name": "void ChromeContentBrowserClient::CreateThrottlesForNavigation(",
+          "find": "void ChromeContentBrowserClient::CreateThrottlesForNavigation(\n    content::NavigationThrottleRegistry& registry) {",
+          "replace": "void ChromeContentBrowserClient::CreateThrottlesForNavigation(\n    content::NavigationThrottleRegistry& registry) {\n#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)\n  aux::preview::NavigationThrottle::MaybeCreateAndAdd(registry);\n#endif\n",
+          "count": 1
+        },
+        {
+          "name": "void ChromeContentBrowserClient::CreateThrottlesForCommitWithoutUrlLoader(",
+          "find": "void ChromeContentBrowserClient::CreateThrottlesForCommitWithoutUrlLoader(\n    content::NavigationThrottleRegistry& registry) {",
+          "replace": "void ChromeContentBrowserClient::CreateThrottlesForCommitWithoutUrlLoader(\n    content::NavigationThrottleRegistry& registry) {\n#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)\n  aux::preview::NavigationThrottle::MaybeCreateAndAdd(registry);\n#endif\n",
+          "count": 1
+        },
+        {
+          "name": "void ChromeContentBrowserClient::OnNativeTrustedMouseDownLink(",
+          "find": "void ChromeContentBrowserClient::OnNativeTrustedMouseDownLink(\n    content::RenderFrameHost* frame,\n    const GURL& actual_href) {",
+          "replace": "void ChromeContentBrowserClient::OnNativeTrustedMouseDownLink(\n    content::RenderFrameHost* frame,\n    const GURL& actual_href) {\n#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)\n  aux::preview::TrustedMouseDownLink(frame, actual_href);\n#endif\n",
+          "count": 1
+        },
+        {
+          "name": "void ChromeContentBrowserClient::ReviewNativePopupCreation(",
+          "find": "void ChromeContentBrowserClient::ReviewNativePopupCreation(\n    content::RenderFrameHost* opener,\n    const GURL& target_url,\n    WindowOpenDisposition disposition,\n    bool effective_user_gesture,\n    bool opener_suppressed,\n    base::OnceCallback<void(bool)> callback) {",
+          "replace": "void ChromeContentBrowserClient::ReviewNativePopupCreation(\n    content::RenderFrameHost* opener,\n    const GURL& target_url,\n    WindowOpenDisposition disposition,\n    bool effective_user_gesture,\n    bool opener_suppressed,\n    base::OnceCallback<void(bool)> callback) {\n#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)\n  if (opener && !aux::preview::AllowNewContents(\n      content::WebContents::FromRenderFrameHost(opener))) {\n    std::move(callback).Run(false);\n    return;\n  }\n#endif\n",
+          "count": 1
+        },
+        {
+          "name": "bool ChromeContentBrowserClient::HandleExternalProtocol(",
+          "find": "bool ChromeContentBrowserClient::HandleExternalProtocol(\n    const GURL& url,\n    content::WebContents::Getter web_contents_getter,\n    content::FrameTreeNodeId frame_tree_node_id,\n    content::NavigationUIData* navigation_data,\n    bool is_primary_main_frame,\n    bool is_in_fenced_frame_tree,\n    network::mojom::WebSandboxFlags sandbox_flags,\n    ui::PageTransition page_transition,\n    bool has_user_gesture,\n    const std::optional<url::Origin>& initiating_origin,\n    content::RenderFrameHost* initiator_document,\n    const net::IsolationInfo& isolation_info,\n    mojo::PendingRemote<network::mojom::URLLoaderFactory>* out_factory) {",
+          "replace": "bool ChromeContentBrowserClient::HandleExternalProtocol(\n    const GURL& url,\n    content::WebContents::Getter web_contents_getter,\n    content::FrameTreeNodeId frame_tree_node_id,\n    content::NavigationUIData* navigation_data,\n    bool is_primary_main_frame,\n    bool is_in_fenced_frame_tree,\n    network::mojom::WebSandboxFlags sandbox_flags,\n    ui::PageTransition page_transition,\n    bool has_user_gesture,\n    const std::optional<url::Origin>& initiating_origin,\n    content::RenderFrameHost* initiator_document,\n    const net::IsolationInfo& isolation_info,\n    mojo::PendingRemote<network::mojom::URLLoaderFactory>* out_factory) {\n#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)\n  if (!aux::preview::AllowExternalProtocol(web_contents_getter.Run())) return false;\n#endif\n",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/ui/tab_helpers.cc",
+      "baselineOrigin": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/ui/tab_helpers.cc",
+      "baselineSha256": "568225916345b506648f637e68943a839f0b5226a1b6c361843278960467938b",
+      "sourceSha256": "b19a5be8c29e25310d83913f84b0d7499df14a343575fe42cf1c2c0bc23f3533",
+      "edits": [
+        {
+          "name": "native-preview-includes",
+          "find": "#include \"chrome/browser/ui/tab_helpers.h\"",
+          "replace": "#include \"chrome/browser/ui/tab_helpers.h\"\n#include \"build/build_config.h\"\n#include \"chrome/browser/buildflags.h\"\n#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)\n#include \"chrome/browser/ui/aux_preview/aux_preview_ingress.h\"\n#endif",
+          "count": 1
+        },
+        {
+          "name": "attach-native-preview-ingress",
+          "find": "  // Create all the tab helpers.",
+          "replace": "  // Create all the tab helpers.\n#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)\n  aux::preview::AttachIngress(web_contents);\n#endif",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/ui/browser_web_contents_delegate/browser_web_contents_delegate.cc",
+      "baselineOrigin": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/ui/browser_web_contents_delegate/browser_web_contents_delegate.cc",
+      "baselineSha256": "7de709b96dc0d26f6532244f526f43229a8eeab453da3bbc2f888f3e5a36090d",
+      "sourceSha256": "a610fb22fc9f306dd699c656aaddb0605dfdd09135678b50862cb53c2ee7f152",
+      "edits": [
+        {
+          "name": "native-preview-includes",
+          "find": "#include \"chrome/browser/ui/browser_web_contents_delegate/browser_web_contents_delegate.h\"",
+          "replace": "#include \"chrome/browser/ui/browser_web_contents_delegate/browser_web_contents_delegate.h\"\n#include \"build/build_config.h\"\n#include \"chrome/browser/buildflags.h\"\n#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)\n#include \"chrome/browser/ui/aux_preview/aux_preview_controller.h\"\n#include \"chrome/browser/ui/aux_preview/aux_preview_ingress.h\"\n#endif",
+          "count": 1
+        },
+        {
+          "name": "content::WebContents* BrowserWebContentsDelegate::OpenURLFromTab(",
+          "find": "content::WebContents* BrowserWebContentsDelegate::OpenURLFromTab(\n    content::WebContents* source,\n    const content::OpenURLParams& params,\n    base::OnceCallback<void(content::NavigationHandle&)>\n        navigation_handle_callback) {",
+          "replace": "content::WebContents* BrowserWebContentsDelegate::OpenURLFromTab(\n    content::WebContents* source,\n    const content::OpenURLParams& params,\n    base::OnceCallback<void(content::NavigationHandle&)>\n        navigation_handle_callback) {\n#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)\n  if (source && params.disposition != WindowOpenDisposition::CURRENT_TAB &&\n      !aux::preview::AllowNewContents(source)) return nullptr;\n  if (aux::preview::MaybePeekOpenURL(source, params)) return nullptr;\n#endif\n",
+          "count": 1
+        },
+        {
+          "name": "content::WebContents* BrowserWebContentsDelegate::AddNewContents(",
+          "find": "content::WebContents* BrowserWebContentsDelegate::AddNewContents(\n    content::WebContents* source,\n    std::unique_ptr<content::WebContents> new_contents,\n    const GURL& target_url,\n    WindowOpenDisposition disposition,\n    const blink::mojom::WindowFeatures& window_features,\n    bool user_gesture,\n    bool* was_blocked) {",
+          "replace": "content::WebContents* BrowserWebContentsDelegate::AddNewContents(\n    content::WebContents* source,\n    std::unique_ptr<content::WebContents> new_contents,\n    const GURL& target_url,\n    WindowOpenDisposition disposition,\n    const blink::mojom::WindowFeatures& window_features,\n    bool user_gesture,\n    bool* was_blocked) {\n#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)\n  if (!aux::preview::AllowNewContents(source)) {\n    if (was_blocked) *was_blocked = true;\n    return nullptr;\n  }\n#endif\n",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/download/chrome_download_manager_delegate.cc",
+      "baselineOrigin": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/download/chrome_download_manager_delegate.cc",
+      "baselineSha256": "887d35516e7a26a61fcaba1a682feb09e1a34cb7a6354d6bcc3b27406b166829",
+      "sourceSha256": "d4e412374de7ff2950011f7c342753c3ad9a9102b3737013eb047786d6a13f63",
+      "edits": [
+        {
+          "name": "native-preview-includes",
+          "find": "#include \"chrome/browser/download/chrome_download_manager_delegate.h\"",
+          "replace": "#include \"chrome/browser/download/chrome_download_manager_delegate.h\"\n#include \"build/build_config.h\"\n#include \"chrome/browser/buildflags.h\"\n#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)\n#include \"chrome/browser/ui/aux_preview/aux_preview_ingress.h\"\n#endif",
+          "count": 1
+        },
+        {
+          "name": "void ChromeDownloadManagerDelegate::CheckDownloadAllowed(",
+          "find": "void ChromeDownloadManagerDelegate::CheckDownloadAllowed(\n    const content::WebContents::Getter& web_contents_getter,\n    const GURL& url,\n    const std::string& request_method,\n    std::optional<url::Origin> request_initiator,\n    bool from_download_cross_origin_redirect,\n    bool content_initiated,\n    const std::string& mime_type,\n    std::optional<ui::PageTransition> page_transition,\n    content::CheckDownloadAllowedCallback check_download_allowed_cb) {",
+          "replace": "void ChromeDownloadManagerDelegate::CheckDownloadAllowed(\n    const content::WebContents::Getter& web_contents_getter,\n    const GURL& url,\n    const std::string& request_method,\n    std::optional<url::Origin> request_initiator,\n    bool from_download_cross_origin_redirect,\n    bool content_initiated,\n    const std::string& mime_type,\n    std::optional<ui::PageTransition> page_transition,\n    content::CheckDownloadAllowedCallback check_download_allowed_cb) {\n#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)\n  if (!aux::preview::AllowDownload(web_contents_getter.Run()) ||\n      (request_method == \"GET\" && aux::preview::MaybePeekDownload(web_contents_getter.Run(), url))) {\n    OnCheckDownloadAllowedFailed(std::move(check_download_allowed_cb));\n    return;\n  }\n#endif\n",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/ui/unload_controller.cc",
+      "baselineOrigin": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/ui/unload_controller.cc",
+      "baselineSha256": "63faea6291d916716b0f98a6258c4c65f9ccd80e80fadde029e414c3676d6655",
+      "sourceSha256": "09220f0d6b2f9f93c3d3434cb05a0b2fd251592bda6485b8de49fd7454116dcf",
+      "edits": [
+        {
+          "name": "native-preview-includes",
+          "find": "#include \"chrome/browser/ui/unload_controller.h\"",
+          "replace": "#include \"chrome/browser/ui/unload_controller.h\"\n#include \"build/build_config.h\"\n#include \"chrome/browser/buildflags.h\"\n#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)\n#include \"chrome/browser/ui/aux_preview/aux_preview_ingress.h\"\n#endif",
+          "count": 1
+        },
+        {
+          "name": "bool UnloadController::CanCloseContents(",
+          "find": "bool UnloadController::CanCloseContents(content::WebContents* contents) {",
+          "replace": "bool UnloadController::CanCloseContents(content::WebContents* contents) {\n#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)\n  if (!aux::preview::AllowCloseContents(contents)) return false;\n#endif\n",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/browser_view.cc",
+      "baselineOrigin": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/integration/source/chrome/browser/ui/views/frame/browser_view.cc",
+      "baselineSha256": "3e84d46972029f05e9875aa000716723ee2a709bf25e34dd79970062dd0354c8",
+      "sourceSha256": "b6fecde06fb561b4fb5d2da9405981cede125be331286aecb19f1213bd884fd9",
+      "edits": [
+        {
+          "name": "native-preview-includes",
+          "find": "#include \"chrome/browser/ui/views/frame/browser_view.h\"",
+          "replace": "#include \"chrome/browser/ui/views/frame/browser_view.h\"\n#include \"build/build_config.h\"\n#include \"chrome/browser/buildflags.h\"\n#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)\n#include \"chrome/browser/ui/aux_preview/aux_preview_controller.h\"\n#endif",
+          "count": 1
+        },
+        {
+          "name": "views::CloseRequestResult BrowserView::OnWindowCloseRequested(",
+          "find": "views::CloseRequestResult BrowserView::OnWindowCloseRequested() {",
+          "replace": "views::CloseRequestResult BrowserView::OnWindowCloseRequested() {\n#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)\n  std::string aux_preview_reason;\n  if (!aux::preview::CanClose(browser_, &aux_preview_reason)) {\n    if (auto* contents = browser_->GetTabStripModel()->GetActiveWebContents())\n      aux::preview::ReportRestriction(contents, aux_preview_reason);\n    return views::CloseRequestResult::kCannotClose;\n  }\n#endif\n",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/ui/views/toolbar/toolbar_view.cc",
+      "baselineOrigin": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/ui/views/toolbar/toolbar_view.cc",
+      "baselineSha256": "cd705f16fde0661fbb7d779c54a0531018a97b9c98e8f84711fe4fbda272a5ef",
+      "sourceSha256": "076680b0b700efa5180f13676ea5c055c0c1691c1f04247bd7f4c5d16fd67632",
+      "edits": [
+        {
+          "name": "native-preview-includes",
+          "find": "#include \"chrome/browser/ui/views/toolbar/toolbar_view.h\"",
+          "replace": "#include \"chrome/browser/ui/views/toolbar/toolbar_view.h\"\n#include \"build/build_config.h\"\n#include \"chrome/browser/buildflags.h\"\n#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)\n#include \"chrome/browser/ui/aux_preview/aux_preview_controls.h\"\n#endif",
+          "count": 1
+        },
+        {
+          "name": "preview-origin-preserves-PreferredSize",
+          "find": "      size = location_bar_->PreferredSize();",
+          "replace": "      size = location_bar_->PreferredSize();\n#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)\n      size.Enlarge(aux::preview::NativePreviewControlsWidth(browser_), 0);\n#endif",
+          "count": 1
+        },
+        {
+          "name": "preview-origin-preserves-MinimumSize",
+          "find": "      size = location_bar_->MinimumSize();",
+          "replace": "      size = location_bar_->MinimumSize();\n#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)\n      size.Enlarge(aux::preview::NativePreviewControlsWidth(browser_), 0);\n#endif",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/renderer_context_menu/render_view_context_menu.cc",
+      "baselineOrigin": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/renderer_context_menu/render_view_context_menu.cc",
+      "baselineSha256": "62fda4dd0463ca3b6c29c58d5f3024ff32c35f046f9c65ab52cb2d54b68a2333",
+      "sourceSha256": "c7ed6d4df8f56bf6546bead44e73260f1032258f21e78b1ec5d32bfff2ef91ad",
+      "edits": [
+        {
+          "name": "native-preview-includes",
+          "find": "#include \"chrome/browser/renderer_context_menu/render_view_context_menu.h\"",
+          "replace": "#include \"chrome/browser/renderer_context_menu/render_view_context_menu.h\"\n#include \"build/build_config.h\"\n#include \"chrome/browser/buildflags.h\"\n#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)\n#include \"chrome/browser/ui/aux_preview/aux_preview_controller.h\"\n#include \"chrome/browser/ui/aux_preview/aux_preview_ingress.h\"\n#endif",
+          "count": 1
+        },
+        {
+          "name": "void RenderViewContextMenu::RecordUsedItem(",
+          "find": "void RenderViewContextMenu::RecordUsedItem(int id) {",
+          "replace": "void RenderViewContextMenu::RecordUsedItem(int id) {\n#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)\n  if (id == aux::preview::kPeekLinkCommand) return;\n#endif\n",
+          "count": 1
+        },
+        {
+          "name": "void RenderViewContextMenu::RecordShownItem(",
+          "find": "void RenderViewContextMenu::RecordShownItem(int id, bool is_submenu) {",
+          "replace": "void RenderViewContextMenu::RecordShownItem(int id, bool is_submenu) {\n#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)\n  if (id == aux::preview::kPeekLinkCommand) return;\n#endif\n",
+          "count": 1
+        },
+        {
+          "name": "void RenderViewContextMenu::AppendLinkItems(",
+          "find": "void RenderViewContextMenu::AppendLinkItems() {",
+          "replace": "void RenderViewContextMenu::AppendLinkItems() {\n#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)\n  if (params_.link_url.SchemeIsHTTPOrHTTPS() && !params_.link_url.has_username() &&\n      !params_.link_url.has_password() && aux::preview::CanOpenQuick(GetBrowser()))\n    menu_model_.AddItem(aux::preview::kPeekLinkCommand, u\"Open link in Peek\");\n#endif\n",
+          "count": 1
+        },
+        {
+          "name": "bool RenderViewContextMenu::IsCommandIdEnabled(",
+          "find": "bool RenderViewContextMenu::IsCommandIdEnabled(int id) const {",
+          "replace": "bool RenderViewContextMenu::IsCommandIdEnabled(int id) const {\n#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)\n  if (id == aux::preview::kPeekLinkCommand)\n    return GetRenderFrameHost() && params_.link_url.SchemeIsHTTPOrHTTPS() &&\n        aux::preview::CanOpenQuick(GetBrowser());\n#endif\n",
+          "count": 1
+        },
+        {
+          "name": "execute-native-peek-link",
+          "find": "  command_executed_ = true;",
+          "replace": "  command_executed_ = true;\n#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)\n  if (id == aux::preview::kPeekLinkCommand) {\n    aux::preview::OpenPeek(GetBrowser(), GetRenderFrameHost(), params_.link_url,\n                          aux::preview::Trigger::kContextMenu);\n    return;\n  }\n#endif",
+          "count": 1
+        }
+      ]
+    }
+  ],
+  "patchSha256": "81accb95d9f6e23de5bbb900f35d3cff6889b3958535a0e06d2102230038d507"
+}
