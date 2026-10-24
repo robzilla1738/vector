@@ -1,0 +1,20 @@
+{
+  "format": "aux.ui-worker-controller-integration.source-check.actual.v1",
+  "passed": true,
+  "files": 2,
+  "countedAnchors": 32,
+  "exactCurrentCorrectedNativeInputsReplayed": true,
+  "explicitFrontendA6AndWorkerHelperDependenciesPinned": true,
+  "allFramesFlushBeforeWorkerHoldAndFrontendGate": true,
+  "frontendOpaqueTokenSourceReadbackAndCleanupPathsPresent": true,
+  "originalProfileEpochDocumentAndSettledWakeAnchorsPreserved": true,
+  "unknownControlAndReadbackOutcomesRetained": true,
+  "sourceOnly": true,
+  "nativeCompiled": false,
+  "nativeExecuted": false,
+  "productExecuted": false,
+  "backendWriterClosure": false,
+  "targetApisCalled": false,
+  "runtimeAccepted": false,
+  "sourcePlanSha256": "7acb6424b6c2f5265b57236d87f5cebace35f1612e2d984e4f85f77380668181"
+}

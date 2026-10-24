@@ -1,0 +1,224 @@
+{
+  "format": "aux.ui-worker-controller-integration.integration-request.v1",
+  "baselineNativeControllerSha256": "bd13c8b0ad260d399bf0f5f399f82884329cbbf1c85aabbcecf2cb925dee0ac7",
+  "files": [
+    {
+      "path": "chrome/browser/aux/ui_storage_migration_controller.cc",
+      "inputSha256": "bd13c8b0ad260d399bf0f5f399f82884329cbbf1c85aabbcecf2cb925dee0ac7",
+      "outputSha256": "aae943357053ca41a6e7afac86541f78d66c3548c6b385bf1eeae502ce224515",
+      "output": "/Users/rcourson/.codex/worktrees/aux-features-navigation/web/docs/integration/proposed/standard-profile-isolation/ui-worker-controller-integration-a1/source/chrome/browser/aux/ui_storage_migration_controller.cc",
+      "anchors": [
+        {
+          "find": "#include \"chrome/browser/aux/component_bootstrap.h\"",
+          "replace": "#include \"chrome/browser/aux/component_bootstrap.h\"\n#include \"chrome/browser/aux/ui_storage_migration_worker.h\"",
+          "count": 1
+        },
+        {
+          "find": "  return base::DictValue().Set(\"success\", false).Set(\"activationAuthorized\", false)\n      .Set(\"qualified\", false).Set(\"error\", std::move(reason));",
+          "replace": "  base::DictValue result;\n  result.Set(\"success\", false).Set(\"activationAuthorized\", false)\n      .Set(\"qualified\", false).Set(\"error\", std::move(reason));\n  return result;",
+          "count": 1
+        },
+        {
+          "find": "using Capture = value_store::ValueStore::AuxUiPreferenceCapture;",
+          "replace": "using Frontend = extensions::StorageFrontend;\nusing ExtensionLease = Frontend::AuxUiMigrationLease;",
+          "count": 1
+        },
+        {
+          "find": "  void CapturedExtension(value_store::ValueStore::AuxUiPreferenceCaptureResult);",
+          "replace": "  void BeginWorker();\n  void WorkerPrepared(base::DictValue);\n  bool WorkerCorrelation(const base::DictValue&, bool allow_bind);\n  void WorkerControlLost(bool cleanup);\n  void BeginFrontend();\n  void FrontendPrepared(Frontend::AuxUiMigrationLeaseResult);\n  void FrontendLost(bool begin);\n  bool FrontendCurrent() const;\n  void ReadWorkerForValidation();\n  void WorkerReadForValidation(base::DictValue);\n  void ValidateWorker();\n  void WorkerValidated(base::DictValue);\n  void ValidateFrontend();\n  void FrontendReadback(Frontend::AuxUiMigrationReadbackResult);\n  void ValidationComplete();\n  void StartCleanup();\n  void CleanupWorker();\n  void ObservedWorkerCleanup(base::DictValue);\n  void ReleasedWorker(base::DictValue);",
+          "count": 1
+        },
+        {
+          "find": "  std::unique_ptr<Capture> extension_capture_;",
+          "replace": "  std::unique_ptr<ExtensionLease> extension_lease_;\n  extensions::WorkerId worker_inventory_;\n  base::Uuid worker_context_id_;\n  std::string worker_request_id_, worker_report_json_;\n  bool worker_inventory_retained_ = false, worker_attempted_ = false;\n  bool frontend_begin_pending_ = false, frontend_io_pending_ = false;\n  bool frontend_begin_unknown_ = false, frontend_io_unknown_ = false;",
+          "count": 1
+        },
+        {
+          "find": "  return busy_ || cleanup_unknown_ || (transfer_ &&\n      (transfer_->running.load(std::memory_order_acquire) || !transfer_->complete));",
+          "replace": "  return busy_ || cleanup_unknown_ || extension_lease_ || worker_attempted_ ||\n      frontend_begin_pending_ || frontend_io_pending_ || frontend_begin_unknown_ || frontend_io_unknown_ ||\n      (transfer_ && (transfer_->running.load(std::memory_order_acquire) || !transfer_->complete));",
+          "count": 1
+        },
+        {
+          "find": "  if (!manager || !manager->GetServiceWorkersForExtension(kAgentExtensionId).empty()) return false;\n  const auto registered",
+          "replace": "  if (!manager) return false;\n  // Initial inventory pins the actual worker as UNclosed inventory only. The\n  // distinct helper later proves its own physical lifetime and source pause.\n  const auto workers = manager->GetServiceWorkersForExtension(kAgentExtensionId);\n  if (workers.size() != 1 || !workers.front().start_token) return false;\n  const auto context = manager->GetContextIdForWorker(workers.front());\n  if (!context.is_valid()) return false;\n  if (retain) {\n    worker_inventory_ = workers.front(); worker_context_id_ = context;\n    worker_inventory_retained_ = true;\n  } else if (!worker_inventory_retained_ || workers.front() != worker_inventory_ ||\n      workers.front().start_token != worker_inventory_.start_token || context != worker_context_id_) return false;\n  const auto registered",
+          "count": 1
+        },
+        {
+          "find": "void Controller::Begin(content::RenderFrameHost* sender, Reply reply) {\n  if (busy_ || (transfer_ && transfer_->running.load(std::memory_order_acquire))) {\n    std::move(reply).Run(Refused(\"The actual native capture task remains running\")); return;\n  }\n  // A repeated native request observes retained unfinished work first. It\n  // cannot start a fresh UUID or silently discard an unknown physical result.\n  if (cleanup_unknown_) {\n    busy_ = true; observing_cleanup_ = true; cleanup_unknown_ = false;\n    reply_ = std::move(reply); cursor_ = 0; ObserveCleanupNext(); return;\n  }\n  if (transfer_ && !transfer_->complete) {\n    if (!Current()) { std::move(reply).Run(Refused(\"Original native capture binding is unavailable for recovery\")); return; }\n    busy_ = true; reply_ = std::move(reply);\n    transfer_validation_ = true; cursor_ = 0; ValidateNext(); return;\n  }\n  if (profile_ && IsAuxLocalFeatureWritePending(profile_.get())) {\n    std::move(reply).Run(Refused(\"An existing native profile writer must settle before capture\")); return;\n  }\n  frames_.clear(); partitions_.clear(); transfer_.reset(); extension_capture_.reset(); error_.clear();\n  auto* registry = profile_ ? extensions::ExtensionRegistry::Get(profile_.get()) : nullptr;\n  extension_ = registry ? registry->enabled_extensions().GetByID(kAgentExtensionId) : nullptr;\n  if (!profile_ || !sender || sender->GetBrowserContext() != profile_.get() || !extension_ ||\n      !profile_->IsRegularProfile() || profile_->IsOffTheRecord() ||\n      sender->GetLastCommittedOrigin() != extension_->origin()) {\n    std::move(reply).Run(Refused(\"Actual regular Aux document required\")); return;\n  }\n  source_ = sender->GetWeakDocumentPtr(); profile_id_ = GetProfileId(profile_.get());\n  binding_ = GetProfileCookieBindingEpoch(profile_.get()); restoration_ = GetProfileCookieRestoreEpoch(profile_.get());\n  if (profile_id_.empty() || binding_.empty() || restoration_.empty() || !Inventory(true)) {\n    frames_.clear(); std::move(reply).Run(Refused(\"Actual admitted profile/document/backend inventory unavailable\")); return;\n  }\n  busy_ = true; observing_cleanup_ = false; post_persist_validation_ = false; reply_ = std::move(reply); cursor_ = 0; PrepareNext();\n}\n",
+          "replace": "void Controller::Begin(content::RenderFrameHost* sender, Reply reply) {\n  if (busy_ || (transfer_ && transfer_->running.load(std::memory_order_acquire))) {\n    std::move(reply).Run(Refused(\"The actual native capture task remains running\")); return;\n  }\n  // Unfinished native transfer keeps ALL original holds. Never resume producers\n  // or replace its upload UUID across an unknown physical capture result.\n  if (transfer_ && !transfer_->complete) {\n    if (!Current() || !Inventory(false) || !FrontendCurrent()) {\n      std::move(reply).Run(Refused(\"Original source holds remain unavailable for transfer recovery\")); return;\n    }\n    busy_ = true; reply_ = std::move(reply);\n    transfer_validation_ = true; cursor_ = 0; ReadWorkerForValidation(); return;\n  }\n  if (cleanup_unknown_ || extension_lease_ || worker_attempted_ ||\n      frontend_begin_unknown_ || frontend_io_unknown_) {\n    busy_ = true; observing_cleanup_ = true; reply_ = std::move(reply);\n    StartCleanup(); return;\n  }\n  if (profile_ && (IsAuxLocalFeatureWritePending(profile_.get()) ||\n      IsUiStorageMigrationWorkerPending(profile_.get()))) {\n    std::move(reply).Run(Refused(\"An existing native profile writer/worker operation must settle before capture\")); return;\n  }\n  frames_.clear(); partitions_.clear(); transfer_.reset(); error_.clear();\n  worker_inventory_retained_ = false; worker_request_id_.clear(); worker_report_json_.clear();\n  auto* registry = profile_ ? extensions::ExtensionRegistry::Get(profile_.get()) : nullptr;\n  extension_ = registry ? registry->enabled_extensions().GetByID(kAgentExtensionId) : nullptr;\n  if (!profile_ || !sender || sender->GetBrowserContext() != profile_.get() || !extension_ ||\n      !profile_->IsRegularProfile() || profile_->IsOffTheRecord() ||\n      sender->GetLastCommittedOrigin() != extension_->origin()) {\n    std::move(reply).Run(Refused(\"Actual regular Aux document required\")); return;\n  }\n  source_ = sender->GetWeakDocumentPtr(); profile_id_ = GetProfileId(profile_.get());\n  binding_ = GetProfileCookieBindingEpoch(profile_.get()); restoration_ = GetProfileCookieRestoreEpoch(profile_.get());\n  if (profile_id_.empty() || binding_.empty() || restoration_.empty() || !Inventory(true)) {\n    frames_.clear(); std::move(reply).Run(Refused(\"Actual admitted profile/document/backend inventory unavailable\")); return;\n  }\n  busy_ = true; observing_cleanup_ = false; cleanup_unknown_ = false;\n  post_persist_validation_ = false; transfer_validation_ = false;\n  reply_ = std::move(reply); cursor_ = 0; PrepareNext();\n}\n",
+          "count": 1
+        },
+        {
+          "find": "  if (cursor_ == frames_.size()) {\n    auto* frontend = extensions::StorageFrontend::Get(profile_.get());\n    if (!frontend) { Finish(\"Actual extension backend unavailable\"); return; }\n    frontend->CaptureAuxUiPreferencesForMigration(extension_, base::BindOnce(\n        &Controller::CapturedExtension, weak_.GetWeakPtr())); return;\n  }",
+          "replace": "  if (cursor_ == frames_.size()) { BeginWorker(); return; }",
+          "count": 1
+        },
+        {
+          "find": "      !owners || *owners < 0 || *owners > 256 || !capture ||",
+          "replace": "      !owners || *owners <= 0 || *owners > 256 || value.FindBool(\"sealed\") != false || !capture ||",
+          "count": 1
+        },
+        {
+          "find": "void Controller::ObservePrepared(size_t index, std::optional<base::DictValue> value, std::string error) {\n  auto& frame = *frames_[index];\n  if (value && Text(*value, \"requestId\", frame.request_id) && AcceptLease(frame, *value)) {\n    PrepareNext(); return;\n  }\n  if (value && Text(*value, \"requestId\", frame.request_id)) {\n    const auto* lease = value->FindString(\"leaseId\");\n    if (lease && CanonicalUuid(*lease)) { frame.lease_id = *lease; frame.prepared = true; }\n  }\n  // An explicit current no-lease observation differs from a lost/foreign reply.\n  frame.cleanup_unknown = !value || !Text(*value, \"format\", \"aux.ui-draft-capture-lease.v1\") ||\n      value->FindBool(\"retained\") != false;\n  Finish(error.empty() ? \"Renderer closure remains refused or uncertain\" : std::move(error));\n}\nvoid Controller::CapturedExtension(value_store::ValueStore::AuxUiPreferenceCaptureResult result) {\n  if (!result.has_value() || !Inventory(false)) { Finish(\"Actual extension capture/backend ownership unavailable\"); return; }\n  extension_capture_ = std::move(result.value()); cursor_ = 0; DrainNext();\n}\n",
+          "replace": "void Controller::ObservePrepared(size_t index, std::optional<base::DictValue> value, std::string error) {\n  auto& frame = *frames_[index];\n  if (value && Text(*value, \"requestId\", frame.request_id) && AcceptLease(frame, *value)) {\n    PrepareNext(); return;\n  }\n  if (value && Text(*value, \"requestId\", frame.request_id)) {\n    const auto* lease = value->FindString(\"leaseId\");\n    if (lease && CanonicalUuid(*lease)) { frame.lease_id = *lease; frame.prepared = true; }\n  }\n  const bool restored = value && Text(*value, \"format\", \"aux.ui-draft-capture-lease.v1\") &&\n      Text(*value, \"requestId\", frame.request_id) && value->FindBool(\"retained\") == false &&\n      value->FindBool(\"restored\") == true &&\n      ((value->FindBool(\"released\") == true && Text(*value, \"leaseId\", frame.lease_id)) ||\n       (value->FindBool(\"noLeaseCreated\") == true && Text(*value, \"attemptState\", \"not-started\")));\n  if (restored) frame.prepared = false;\n  frame.cleanup_unknown = !restored;\n  Finish(error.empty() ? \"Renderer closure remains refused or uncertain\" : std::move(error));\n}\nvoid Controller::BeginWorker() {\n  if (!Inventory(false)) { Finish(\"Actual native inventory changed before worker pause\"); return; }\n  worker_attempted_ = true;\n  BeginUiStorageMigrationWorker(profile_.get(), mojo::WrapCallbackWithDropHandler(\n      base::BindOnce(&Controller::WorkerPrepared, weak_.GetWeakPtr()),\n      base::BindOnce(&Controller::WorkerControlLost, weak_.GetWeakPtr(), false)));\n}\nbool Controller::WorkerCorrelation(const base::DictValue& value, bool allow_bind) {\n  const auto* request = value.FindString(\"prepareRequestId\");\n  if (!request && allow_bind) request = value.FindString(\"requestId\");\n  if (!request || !CanonicalUuid(*request)) return false;\n  if (worker_request_id_.empty() && allow_bind) worker_request_id_ = *request;\n  return *request == worker_request_id_;\n}\nvoid Controller::WorkerPrepared(base::DictValue value) {\n  if (value.FindBool(\"transportSuperseded\") == true) return;\n  const bool correlated = WorkerCorrelation(value, true);\n  if (!profile_ || !IsUiStorageMigrationWorkerPending(profile_.get())) {\n    worker_attempted_ = false;\n    Finish(\"The actual worker could not establish its source hold\"); return;\n  }\n  if (!correlated || !Inventory(false) || !HasValidUiStorageMigrationWorkerLease(profile_.get())) {\n    Finish(\"The actual worker source hold remains refused or uncertain\"); return;\n  }\n  if (const auto* report = value.FindString(\"reportJson\")) worker_report_json_ = *report;\n  BeginFrontend();\n}\nvoid Controller::WorkerControlLost(bool cleanup) {\n  cleanup_unknown_ = true;\n  if (cleanup) { error_ = \"An actual worker cleanup control remains unconfirmed\"; ReplyResult(); }\n  else Finish(\"An actual native worker control callback remains unconfirmed\");\n}\nvoid Controller::BeginFrontend() {\n  if (!Inventory(false) || !HasValidUiStorageMigrationWorkerLease(profile_.get())) {\n    Finish(\"Original worker/frame owners changed before frontend closure\"); return;\n  }\n  auto* frontend = Frontend::Get(profile_.get());\n  if (!frontend) { Finish(\"Actual extension frontend unavailable\"); return; }\n  // Every actual frame has flushed BEFORE this native admission gate closes.\n  frontend_begin_pending_ = true;\n  frontend->BeginAuxUiMigrationLease(extension_, mojo::WrapCallbackWithDropHandler(\n      base::BindOnce(&Controller::FrontendPrepared, weak_.GetWeakPtr()),\n      base::BindOnce(&Controller::FrontendLost, weak_.GetWeakPtr(), true)));\n}\nvoid Controller::FrontendPrepared(Frontend::AuxUiMigrationLeaseResult result) {\n  frontend_begin_pending_ = false;\n  if (!result.has_value()) { Finish(\"The actual frontend source gate refused\"); return; }\n  extension_lease_ = std::move(result.value());\n  if (!Inventory(false) || !HasValidUiStorageMigrationWorkerLease(profile_.get()) || !FrontendCurrent()) {\n    Finish(\"The original actual frontend/worker owner changed\"); return;\n  }\n  cursor_ = 0; DrainNext();\n}\nvoid Controller::FrontendLost(bool begin) {\n  if (begin) { frontend_begin_pending_ = false; frontend_begin_unknown_ = true; }\n  else { frontend_io_pending_ = false; frontend_io_unknown_ = true; }\n  cleanup_unknown_ = true;\n  Finish(\"An actual frontend callback was lost; gate state remains unknown\");\n}\nbool Controller::FrontendCurrent() const {\n  auto* frontend = profile_ ? Frontend::Get(profile_.get()) : nullptr;\n  return frontend && extension_lease_ && !frontend_begin_pending_ && !frontend_io_pending_ &&\n      !frontend_begin_unknown_ && frontend->ValidateAuxUiMigrationLease(*extension_lease_);\n}\n\n",
+          "count": 1
+        },
+        {
+          "find": "  if (!Inventory(false)) { Finish(\"Native inventory changed before physical DOM drain\"); return; }",
+          "replace": "  if (!Inventory(false) || !FrontendCurrent() || !HasValidUiStorageMigrationWorkerLease(profile_.get())) {\n    Finish(\"Original source holds changed before physical DOM drain\"); return;\n  }",
+          "count": 1
+        },
+        {
+          "find": "void Controller::ValidateNext() {\n  if (!Inventory(false)) { Finish(\"Native inventory changed after physical DOM drain\"); return; }\n  if (cursor_ == frames_.size()) {\n    if (post_persist_validation_)\n      Finish(\"Capture retained and read back; backend writer closure, target import and recovery are still required\");\n    else if (transfer_validation_) { transfer_validation_ = false; RunTransfer(); }\n    else Persist();\n    return;\n  }\n  const size_t index = cursor_++;\n  Invoke(index, \"auxValidateDraftMigrationCapture\", base::ListValue().Append(frames_[index]->lease_id).Append(frames_[index]->revision),\n      base::BindOnce(&Controller::Validated, weak_.GetWeakPtr(), index));\n}\n",
+          "replace": "void Controller::ValidateNext() {\n  if (!Inventory(false) || !FrontendCurrent() || !HasValidUiStorageMigrationWorkerLease(profile_.get())) {\n    Finish(\"Original source holds changed after physical DOM drain\"); return;\n  }\n  if (cursor_ == frames_.size()) { ValidateWorker(); return; }\n  const size_t index = cursor_++;\n  Invoke(index, \"auxValidateDraftMigrationCapture\", base::ListValue().Append(frames_[index]->lease_id).Append(frames_[index]->revision),\n      base::BindOnce(&Controller::Validated, weak_.GetWeakPtr(), index));\n}\n",
+          "count": 1
+        },
+        {
+          "find": "      value->FindBool(\"ok\") != true || value->FindBool(\"closed\") != true ||\n      !Text(*value, \"requestId\", frames_[index]->request_id)",
+          "replace": "      value->FindBool(\"ok\") != true || value->FindBool(\"closed\") != true || value->FindBool(\"sealed\") != false ||\n      !Text(*value, \"requestId\", frames_[index]->request_id)",
+          "count": 1
+        },
+        {
+          "find": "void Controller::Persist() {",
+          "replace": "void Controller::ReadWorkerForValidation() {\n  ReadUiStorageMigrationWorker(profile_.get(), mojo::WrapCallbackWithDropHandler(\n      base::BindOnce(&Controller::WorkerReadForValidation, weak_.GetWeakPtr()),\n      base::BindOnce(&Controller::WorkerControlLost, weak_.GetWeakPtr(), false)));\n}\nvoid Controller::WorkerReadForValidation(base::DictValue value) {\n  if (value.FindBool(\"transportSuperseded\") == true) return;\n  if (!WorkerCorrelation(value, false) || !Inventory(false) || !FrontendCurrent() ||\n      !HasValidUiStorageMigrationWorkerLease(profile_.get())) {\n    Finish(\"The retained actual worker/source hold could not be observed for recovery\"); return;\n  }\n  if (const auto* report = value.FindString(\"reportJson\")) worker_report_json_ = *report;\n  cursor_ = 0; ValidateNext();\n}\nvoid Controller::ValidateWorker() {\n  ValidateUiStorageMigrationWorker(profile_.get(), mojo::WrapCallbackWithDropHandler(\n      base::BindOnce(&Controller::WorkerValidated, weak_.GetWeakPtr()),\n      base::BindOnce(&Controller::WorkerControlLost, weak_.GetWeakPtr(), false)));\n}\nvoid Controller::WorkerValidated(base::DictValue value) {\n  if (value.FindBool(\"transportSuperseded\") == true) return;\n  if (!WorkerCorrelation(value, false) || !Inventory(false) || !FrontendCurrent() ||\n      !HasValidUiStorageMigrationWorkerLease(profile_.get())) {\n    Finish(\"Original actual worker lease changed during validation\"); return;\n  }\n  if (const auto* report = value.FindString(\"reportJson\")) worker_report_json_ = *report;\n  ValidateFrontend();\n}\nvoid Controller::ValidateFrontend() {\n  if (!FrontendCurrent()) { Finish(\"Original actual frontend lease is unavailable\"); return; }\n  auto* frontend = Frontend::Get(profile_.get());\n  frontend_io_pending_ = true;\n  frontend->ReadbackAuxUiMigrationLease(*extension_lease_, mojo::WrapCallbackWithDropHandler(\n      base::BindOnce(&Controller::FrontendReadback, weak_.GetWeakPtr()),\n      base::BindOnce(&Controller::FrontendLost, weak_.GetWeakPtr(), false)));\n}\nvoid Controller::FrontendReadback(Frontend::AuxUiMigrationReadbackResult result) {\n  frontend_io_pending_ = false; frontend_io_unknown_ = false;\n  // A confirmed read on the SAME opaque native lease resolves a lost readback\n  // observation; no past callback destruction or timer is called completion.\n  if (!result.has_value() || !Inventory(false) || !FrontendCurrent() ||\n      !HasValidUiStorageMigrationWorkerLease(profile_.get()) ||\n      !result->matches_source || result->ordinary_work_queued ||\n      result->records != extension_lease_->CopySourceRecords()) {\n    Finish(\"Actual frontend source readback or writer gate changed\"); return;\n  }\n  ValidationComplete();\n}\nvoid Controller::ValidationComplete() {\n  if (post_persist_validation_)\n    Finish(\"Capture retained and read back; genuine DOM writer gates, target import and recovery remain required\");\n  else if (transfer_validation_) { transfer_validation_ = false; RunTransfer(); }\n  else Persist();\n}\nvoid Controller::Persist() {",
+          "count": 1
+        },
+        {
+          "find": "  if (!Inventory(false) || !extension_capture_) { Finish(\"Native capture source was lost\"); return; }",
+          "replace": "  if (!Inventory(false) || !FrontendCurrent() || frontend_io_unknown_ || !HasValidUiStorageMigrationWorkerLease(profile_.get())) {\n    Finish(\"Native capture source holds were lost\"); return;\n  }",
+          "count": 1
+        },
+        {
+          "find": "extension_capture_->CopyRecordsForNativeJournal()",
+          "replace": "extension_lease_->CopySourceRecords()",
+          "count": 1
+        },
+        {
+          "find": "      .Set(\"pages\", std::move(pages)).Set(\"extensionRawRecords\", std::move(extension_records))",
+          "replace": "      .Set(\"pages\", std::move(pages)).Set(\"extensionRawRecords\", std::move(extension_records))\n      .Set(\"workerPrepareRequestId\", worker_request_id_).Set(\"workerReportJson\", worker_report_json_)",
+          "count": 1
+        },
+        {
+          "find": "  if (!Inventory(false)) { Finish(\"Native source changed before the next capture frame\"); return; }",
+          "replace": "  if (!Inventory(false) || !FrontendCurrent() || frontend_io_unknown_ || !HasValidUiStorageMigrationWorkerLease(profile_.get())) {\n    Finish(\"Native source holds changed before the next capture frame\"); return;\n  }",
+          "count": 1
+        },
+        {
+          "find": "  if (!Inventory(false)) {\n    transfer_->running.store(false); Finish(\"Native source changed before capture IPC\"); return;\n  }",
+          "replace": "  if (!Inventory(false) || !FrontendCurrent() || frontend_io_unknown_ || !HasValidUiStorageMigrationWorkerLease(profile_.get())) {\n    transfer_->running.store(false); Finish(\"Native source holds changed before capture IPC\"); return;\n  }",
+          "count": 1
+        },
+        {
+          "find": "  observing_cleanup_ = false; error_ = \"Retained renderer lease cleanup was observed; no migration activated\"; ReplyResult();",
+          "replace": "  observing_cleanup_ = false; error_ = \"Retained source cleanup was observed; no migration activated\"; CleanupWorker();",
+          "count": 1
+        },
+        {
+          "find": "  if (value && Text(*value, \"format\", \"aux.ui-draft-capture-lease.v1\") && value->FindBool(\"retained\") == false) {",
+          "replace": "  if (value && Text(*value, \"format\", \"aux.ui-draft-capture-lease.v1\") &&\n      Text(*value, \"requestId\", frame.request_id) && value->FindBool(\"retained\") == false &&\n      value->FindBool(\"restored\") == true &&\n      ((value->FindBool(\"released\") == true && Text(*value, \"leaseId\", frame.lease_id)) ||\n       (frame.lease_id.empty() && value->FindBool(\"noLeaseCreated\") == true && Text(*value, \"attemptState\", \"not-started\")))) {",
+          "count": 1
+        },
+        {
+          "find": "  cursor_ = 0; ReleaseNext();\n}\nvoid Controller::ReleaseNext()",
+          "replace": "  StartCleanup();\n}\nvoid Controller::StartCleanup() {\n  // Reopen the ORIGINAL frontend gate before any productive renderer/worker\n  // restore. Unknown physical begin/readback keeps the token and all producers.\n  if (frontend_begin_pending_ || frontend_io_pending_ || frontend_begin_unknown_) {\n    cleanup_unknown_ = true; ReplyResult(); return;\n  }\n  if (extension_lease_) {\n    auto* frontend = profile_ ? Frontend::Get(profile_.get()) : nullptr;\n    if (!frontend) { cleanup_unknown_ = true; ReplyResult(); return; }\n    auto alive = weak_.GetWeakPtr();\n    const bool released = frontend->ReleaseAuxUiMigrationLease(*extension_lease_);\n    if (!alive) return;\n    if (!released) { cleanup_unknown_ = true; ReplyResult(); return; }\n    extension_lease_.reset(); frontend_io_unknown_ = false;\n  }\n  if (frontend_io_unknown_) { cleanup_unknown_ = true; ReplyResult(); return; }\n  cleanup_unknown_ = false; cursor_ = 0;\n  if (observing_cleanup_) ObserveCleanupNext(); else ReleaseNext();\n}\nvoid Controller::ReleaseNext()",
+          "count": 1
+        },
+        {
+          "find": "  if (cursor_ == frames_.size()) { ReplyResult(); return; }",
+          "replace": "  if (cursor_ == frames_.size()) { CleanupWorker(); return; }",
+          "count": 1
+        },
+        {
+          "find": "      value->FindBool(\"ok\") == true && value->FindBool(\"released\") == true &&\n      Text(*value, \"leaseId\", frames_[index]->lease_id)",
+          "replace": "      value->FindBool(\"ok\") == true && value->FindBool(\"released\") == true && value->FindBool(\"restored\") == true &&\n      Text(*value, \"leaseId\", frames_[index]->lease_id)",
+          "count": 1
+        },
+        {
+          "find": "void Controller::ReplyResult() {",
+          "replace": "void Controller::CleanupWorker() {\n  if (!worker_attempted_) { ReplyResult(); return; }\n  if (extension_lease_ || frontend_begin_pending_ || frontend_io_pending_ ||\n      frontend_begin_unknown_ || frontend_io_unknown_ || !profile_) {\n    cleanup_unknown_ = true; ReplyResult(); return;\n  }\n  ReadUiStorageMigrationWorker(profile_.get(), mojo::WrapCallbackWithDropHandler(\n      base::BindOnce(&Controller::ObservedWorkerCleanup, weak_.GetWeakPtr()),\n      base::BindOnce(&Controller::WorkerControlLost, weak_.GetWeakPtr(), true)));\n}\nvoid Controller::ObservedWorkerCleanup(base::DictValue value) {\n  if (value.FindBool(\"transportSuperseded\") == true) return;\n  // This is the native helper's retained attempt result, never a worker-selected\n  // Profile or a bare renderer readiness Boolean. Missing correlation stays held.\n  const auto* actual_request = value.FindString(\"prepareRequestId\");\n  if (worker_request_id_.empty() && actual_request && CanonicalUuid(*actual_request))\n    worker_request_id_ = *actual_request;\n  if (!WorkerCorrelation(value, false) || !profile_) { cleanup_unknown_ = true; ReplyResult(); return; }\n  if (value.FindBool(\"ownExternalRequestRetired\") == true &&\n      !IsUiStorageMigrationWorkerPending(profile_.get()) &&\n      (value.FindBool(\"released\") == true || value.FindBool(\"noProducerLeaseCreated\") == true)) {\n    worker_attempted_ = false; ReplyResult(); return;\n  }\n  ReleaseUiStorageMigrationWorker(profile_.get(), mojo::WrapCallbackWithDropHandler(\n      base::BindOnce(&Controller::ReleasedWorker, weak_.GetWeakPtr()),\n      base::BindOnce(&Controller::WorkerControlLost, weak_.GetWeakPtr(), true)));\n}\nvoid Controller::ReleasedWorker(base::DictValue value) {\n  if (value.FindBool(\"transportSuperseded\") == true) return;\n  if (!profile_ || !WorkerCorrelation(value, false) || value.FindBool(\"released\") != true ||\n      value.FindBool(\"ownExternalRequestRetired\") != true || IsUiStorageMigrationWorkerPending(profile_.get())) {\n    cleanup_unknown_ = true; ReplyResult(); return;\n  }\n  worker_attempted_ = false; ReplyResult();\n}\nvoid Controller::ReplyResult() {",
+          "count": 1
+        },
+        {
+          "find": "  if (!transfer_ || transfer_->complete) extension_capture_.reset();",
+          "replace": "  // Opaque frontend/worker tokens survive any unconfirmed cleanup. Only their\n  // actual native release paths above may retire them.",
+          "count": 1
+        },
+        {
+          "find": "      .Set(\"rendererCleanupUnknown\", cleanup_unknown_).Set(\"targetImportAvailable\", false);",
+          "replace": "      .Set(\"rendererCleanupUnknown\", cleanup_unknown_).Set(\"workerCleanupPending\", worker_attempted_)\n      .Set(\"frontendCleanupPending\", !!extension_lease_ || frontend_begin_unknown_ || frontend_io_unknown_)\n      .Set(\"backendWriterClosure\", false).Set(\"targetImportAvailable\", false);",
+          "count": 1
+        },
+        {
+          "find": "  for (const auto& frame : frames_) pages.Append(base::DictValue()\n      .Set(\"nativeDocumentId\", frame->document_id.ToString()).Set(\"sessionNamespace\", frame->namespace_id)\n      .Set(\"requestId\", frame->request_id).Set(\"captureJson\", frame->capture_json));",
+          "replace": "  for (const auto& frame : frames_) {\n    base::DictValue page;\n    page.Set(\"nativeDocumentId\", frame->document_id.ToString()).Set(\"sessionNamespace\", frame->namespace_id)\n        .Set(\"requestId\", frame->request_id).Set(\"captureJson\", frame->capture_json);\n    pages.Append(std::move(page));\n  }",
+          "count": 1
+        },
+        {
+          "find": "  base::DictValue capture = base::DictValue().Set(\"format\", \"aux.ui-storage.capture-input.v1\")",
+          "replace": "  base::DictValue capture;\n  capture.Set(\"format\", \"aux.ui-storage.capture-input.v1\")",
+          "count": 1
+        },
+        {
+          "find": "  auto result = Refused(error_).Set(\"phase\", transfer_ && transfer_->complete ? \"captured-unqualified\" : \"refused-or-unknown\")",
+          "replace": "  auto result = Refused(error_);\n  result.Set(\"phase\", transfer_ && transfer_->complete ? \"captured-unqualified\" : \"refused-or-unknown\")",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/aux/ui_storage_migration_controller.h",
+      "inputSha256": "dfcd4b44cc8a852b6d4f5c184e4a8853d89e5bc298c364af5796e5034a0bbf4d",
+      "outputSha256": "9717a2f60a6269453fe0e174763a604cd2e4e1cb816c2715c756c1b95194710c",
+      "output": "/Users/rcourson/.codex/worktrees/aux-features-navigation/web/docs/integration/proposed/standard-profile-isolation/ui-worker-controller-integration-a1/source/chrome/browser/aux/ui_storage_migration_controller.h",
+      "anchors": [
+        {
+          "find": "// Captured/unqualified data and physical uncertainty never authorize activation.",
+          "replace": "// Captured/unqualified data and physical uncertainty never authorize activation.\n// Preliminary capture joins exact native worker and LOCAL frontend holds; real\n// DOM writer closure and cross-store target/recovery proofs remain separate.",
+          "count": 1
+        }
+      ]
+    }
+  ],
+  "dependencies": [
+    {
+      "path": "extensions/browser/api/storage/storage_frontend.h",
+      "proposal": "native-extension-writer-gate-a6",
+      "commit": "9642937cf",
+      "input": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/native-extension-writer-gate-a6/source/extensions/browser/api/storage/storage_frontend.h",
+      "requiredOutputSha256": "b96c424e44448fb8b4136235e0aaddc1f3841d898c6ac834a3642e414ac40f3a",
+      "projectionOwnedByRoot": true
+    },
+    {
+      "path": "extensions/browser/api/storage/storage_frontend.cc",
+      "proposal": "native-extension-writer-gate-a6",
+      "commit": "9642937cf",
+      "input": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/native-extension-writer-gate-a6/source/extensions/browser/api/storage/storage_frontend.cc",
+      "requiredOutputSha256": "a3a79fddb4c3fee691421663e111dd984452f3d586f3091718d220da5eef5425",
+      "projectionOwnedByRoot": true
+    },
+    {
+      "path": "chrome/browser/aux/ui_storage_migration_worker.h",
+      "proposal": "ui-worker-native-control-a1",
+      "input": "/Users/rcourson/.codex/worktrees/aux-features-navigation/web/docs/integration/proposed/standard-profile-isolation/ui-worker-native-control-a1/source/chrome/browser/aux/ui_storage_migration_worker.h",
+      "requiredOutputSha256": "e994ad290428a766623326d510d0499a54a4d24982faab92d09eddc8f253ce26",
+      "projectionOwnedByRoot": true
+    },
+    {
+      "path": "chrome/browser/aux/ui_storage_migration_worker.cc",
+      "proposal": "ui-worker-native-control-a1",
+      "input": "/Users/rcourson/.codex/worktrees/aux-features-navigation/web/docs/integration/proposed/standard-profile-isolation/ui-worker-native-control-a1/source/chrome/browser/aux/ui_storage_migration_worker.cc",
+      "requiredOutputSha256": "8add977c0034ee471d09bba85549f2a56aa3a4ca12ac5da66c3cc9f414a3d92a",
+      "projectionOwnedByRoot": true
+    }
+  ],
+  "sourcePlanSha256": "7acb6424b6c2f5265b57236d87f5cebace35f1612e2d984e4f85f77380668181",
+  "focusedSourceCheckSha256": "14759a1012eec4174d1dca3f4fa1d77132c30df846ba49f7b01aa80ae393f0a5",
+  "rendererCleanupProducerCommit": "19e98746f",
+  "rootOwnsActualProjectionApiRegistrationGnBuildStageAndPackage": true,
+  "nativeCompiled": false,
+  "nativeExecuted": false,
+  "productExecuted": false,
+  "backendWriterClosure": false,
+  "targetApisCalled": false,
+  "runtimeAccepted": false
+}

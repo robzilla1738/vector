@@ -1,0 +1,527 @@
+--- a/chrome/browser/aux/ui_storage_migration_controller.cc
++++ b/chrome/browser/aux/ui_storage_migration_controller.cc
+@@ -26,6 +26,7 @@
+ #include "base/uuid.h"
+ #include "chrome/browser/aux/AuxSelectedStateHome.h"
+ #include "chrome/browser/aux/component_bootstrap.h"
++#include "chrome/browser/aux/ui_storage_migration_worker.h"
+ #include "chrome/browser/aux/profile_identity.h"
+ #include "chrome/browser/profiles/profile.h"
+ #include "chrome/browser/profiles/profile_observer.h"
+@@ -62,11 +63,14 @@
+ constexpr size_t kCaptureLimit = 64 * 1024 * 1024;
+ using Reply = base::OnceCallback<void(base::DictValue)>;
+ using ScriptResults = std::vector<extensions::ScriptExecutor::FrameResult>;
+-using Capture = value_store::ValueStore::AuxUiPreferenceCapture;
++using Frontend = extensions::StorageFrontend;
++using ExtensionLease = Frontend::AuxUiMigrationLease;
+ 
+ base::DictValue Refused(std::string reason) {
+-  return base::DictValue().Set("success", false).Set("activationAuthorized", false)
++  base::DictValue result;
++  result.Set("success", false).Set("activationAuthorized", false)
+       .Set("qualified", false).Set("error", std::move(reason));
++  return result;
+ }
+ bool Text(const base::DictValue& value, std::string_view key, std::string_view expected) {
+   const auto* actual = value.FindString(key); return actual && *actual == expected;
+@@ -254,7 +258,25 @@
+   void Prepared(size_t, std::optional<base::DictValue>, std::string);
+   void ObservePrepared(size_t, std::optional<base::DictValue>, std::string);
+   bool AcceptLease(Frame&, const base::DictValue&);
+-  void CapturedExtension(value_store::ValueStore::AuxUiPreferenceCaptureResult);
++  void BeginWorker();
++  void WorkerPrepared(base::DictValue);
++  bool WorkerCorrelation(const base::DictValue&, bool allow_bind);
++  void WorkerControlLost(bool cleanup);
++  void BeginFrontend();
++  void FrontendPrepared(Frontend::AuxUiMigrationLeaseResult);
++  void FrontendLost(bool begin);
++  bool FrontendCurrent() const;
++  void ReadWorkerForValidation();
++  void WorkerReadForValidation(base::DictValue);
++  void ValidateWorker();
++  void WorkerValidated(base::DictValue);
++  void ValidateFrontend();
++  void FrontendReadback(Frontend::AuxUiMigrationReadbackResult);
++  void ValidationComplete();
++  void StartCleanup();
++  void CleanupWorker();
++  void ObservedWorkerCleanup(base::DictValue);
++  void ReleasedWorker(base::DictValue);
+   void DrainNext();
+   void Drained(bool);
+   void ValidateNext();
+@@ -276,7 +298,13 @@
+   std::string profile_id_, binding_, restoration_, error_;
+   std::vector<std::unique_ptr<Frame>> frames_;
+   std::vector<content::StoragePartition*> partitions_;
+-  std::unique_ptr<Capture> extension_capture_;
++  std::unique_ptr<ExtensionLease> extension_lease_;
++  extensions::WorkerId worker_inventory_;
++  base::Uuid worker_context_id_;
++  std::string worker_request_id_, worker_report_json_;
++  bool worker_inventory_retained_ = false, worker_attempted_ = false;
++  bool frontend_begin_pending_ = false, frontend_io_pending_ = false;
++  bool frontend_begin_unknown_ = false, frontend_io_unknown_ = false;
+   std::shared_ptr<Transfer> transfer_;
+   Reply reply_;
+   base::RepeatingClosureList settled_;
+@@ -293,8 +321,9 @@
+   return settled_.Add(std::move(callback));
+ }
+ bool Controller::pending() const {
+-  return busy_ || cleanup_unknown_ || (transfer_ &&
+-      (transfer_->running.load(std::memory_order_acquire) || !transfer_->complete));
++  return busy_ || cleanup_unknown_ || extension_lease_ || worker_attempted_ ||
++      frontend_begin_pending_ || frontend_io_pending_ || frontend_begin_unknown_ || frontend_io_unknown_ ||
++      (transfer_ && (transfer_->running.load(std::memory_order_acquire) || !transfer_->complete));
+ }
+ bool Controller::Current() const {
+   auto* source = source_.AsRenderFrameHostIfValid();
+@@ -316,7 +345,18 @@
+ bool Controller::Inventory(bool retain) {
+   if (!Current()) return false;
+   auto* manager = extensions::ProcessManager::Get(profile_.get());
+-  if (!manager || !manager->GetServiceWorkersForExtension(kAgentExtensionId).empty()) return false;
++  if (!manager) return false;
++  // Initial inventory pins the actual worker as UNclosed inventory only. The
++  // distinct helper later proves its own physical lifetime and source pause.
++  const auto workers = manager->GetServiceWorkersForExtension(kAgentExtensionId);
++  if (workers.size() != 1 || !workers.front().start_token) return false;
++  const auto context = manager->GetContextIdForWorker(workers.front());
++  if (!context.is_valid()) return false;
++  if (retain) {
++    worker_inventory_ = workers.front(); worker_context_id_ = context;
++    worker_inventory_retained_ = true;
++  } else if (!worker_inventory_retained_ || workers.front() != worker_inventory_ ||
++      workers.front().start_token != worker_inventory_.start_token || context != worker_context_id_) return false;
+   const auto registered = manager->GetRenderFrameHostsForExtension(kAgentExtensionId);
+   if (registered.empty() || registered.size() > 128) return false;
+   std::set<content::RenderFrameHost*> actual;
+@@ -359,21 +399,26 @@
+   if (busy_ || (transfer_ && transfer_->running.load(std::memory_order_acquire))) {
+     std::move(reply).Run(Refused("The actual native capture task remains running")); return;
+   }
+-  // A repeated native request observes retained unfinished work first. It
+-  // cannot start a fresh UUID or silently discard an unknown physical result.
+-  if (cleanup_unknown_) {
+-    busy_ = true; observing_cleanup_ = true; cleanup_unknown_ = false;
+-    reply_ = std::move(reply); cursor_ = 0; ObserveCleanupNext(); return;
+-  }
++  // Unfinished native transfer keeps ALL original holds. Never resume producers
++  // or replace its upload UUID across an unknown physical capture result.
+   if (transfer_ && !transfer_->complete) {
+-    if (!Current()) { std::move(reply).Run(Refused("Original native capture binding is unavailable for recovery")); return; }
++    if (!Current() || !Inventory(false) || !FrontendCurrent()) {
++      std::move(reply).Run(Refused("Original source holds remain unavailable for transfer recovery")); return;
++    }
+     busy_ = true; reply_ = std::move(reply);
+-    transfer_validation_ = true; cursor_ = 0; ValidateNext(); return;
+-  }
+-  if (profile_ && IsAuxLocalFeatureWritePending(profile_.get())) {
+-    std::move(reply).Run(Refused("An existing native profile writer must settle before capture")); return;
+-  }
+-  frames_.clear(); partitions_.clear(); transfer_.reset(); extension_capture_.reset(); error_.clear();
++    transfer_validation_ = true; cursor_ = 0; ReadWorkerForValidation(); return;
++  }
++  if (cleanup_unknown_ || extension_lease_ || worker_attempted_ ||
++      frontend_begin_unknown_ || frontend_io_unknown_) {
++    busy_ = true; observing_cleanup_ = true; reply_ = std::move(reply);
++    StartCleanup(); return;
++  }
++  if (profile_ && (IsAuxLocalFeatureWritePending(profile_.get()) ||
++      IsUiStorageMigrationWorkerPending(profile_.get()))) {
++    std::move(reply).Run(Refused("An existing native profile writer/worker operation must settle before capture")); return;
++  }
++  frames_.clear(); partitions_.clear(); transfer_.reset(); error_.clear();
++  worker_inventory_retained_ = false; worker_request_id_.clear(); worker_report_json_.clear();
+   auto* registry = profile_ ? extensions::ExtensionRegistry::Get(profile_.get()) : nullptr;
+   extension_ = registry ? registry->enabled_extensions().GetByID(kAgentExtensionId) : nullptr;
+   if (!profile_ || !sender || sender->GetBrowserContext() != profile_.get() || !extension_ ||
+@@ -386,7 +431,9 @@
+   if (profile_id_.empty() || binding_.empty() || restoration_.empty() || !Inventory(true)) {
+     frames_.clear(); std::move(reply).Run(Refused("Actual admitted profile/document/backend inventory unavailable")); return;
+   }
+-  busy_ = true; observing_cleanup_ = false; post_persist_validation_ = false; reply_ = std::move(reply); cursor_ = 0; PrepareNext();
++  busy_ = true; observing_cleanup_ = false; cleanup_unknown_ = false;
++  post_persist_validation_ = false; transfer_validation_ = false;
++  reply_ = std::move(reply); cursor_ = 0; PrepareNext();
+ }
+ void Controller::Invoke(size_t index, std::string_view method, base::ListValue arguments,
+     base::OnceCallback<void(std::optional<base::DictValue>, std::string)> callback) {
+@@ -428,12 +475,7 @@
+ }
+ void Controller::PrepareNext() {
+   if (!Inventory(false)) { Finish("Native frame/worker/profile inventory changed"); return; }
+-  if (cursor_ == frames_.size()) {
+-    auto* frontend = extensions::StorageFrontend::Get(profile_.get());
+-    if (!frontend) { Finish("Actual extension backend unavailable"); return; }
+-    frontend->CaptureAuxUiPreferencesForMigration(extension_, base::BindOnce(
+-        &Controller::CapturedExtension, weak_.GetWeakPtr())); return;
+-  }
++  if (cursor_ == frames_.size()) { BeginWorker(); return; }
+   const size_t index = cursor_++;
+   Invoke(index, "auxPrepareDraftMigrationCapture", base::ListValue().Append(frames_[index]->request_id),
+       base::BindOnce(&Controller::Prepared, weak_.GetWeakPtr(), index));
+@@ -446,7 +488,7 @@
+   if (!Text(value, "format", "aux.ui-draft-capture-lease.v1") ||
+       value.FindBool("ok") != true || !request || *request != frame.request_id || !lease || !CanonicalUuid(*lease) ||
+       !revision || *revision < 0 || *revision > 9007199254740991.0 || std::floor(*revision) != *revision ||
+-      !owners || *owners < 0 || *owners > 256 || !capture ||
++      !owners || *owners <= 0 || *owners > 256 || value.FindBool("sealed") != false || !capture ||
+       !DraftData(*capture, extension_->origin().Serialize())) return false;
+   if (frame.result_json.empty() || frame.result_json.size() > kCaptureLimit) return false;
+   frame.lease_id = *lease; frame.revision = *revision; frame.capture_json = frame.result_json; frame.prepared = true;
+@@ -470,17 +512,84 @@
+     const auto* lease = value->FindString("leaseId");
+     if (lease && CanonicalUuid(*lease)) { frame.lease_id = *lease; frame.prepared = true; }
+   }
+-  // An explicit current no-lease observation differs from a lost/foreign reply.
+-  frame.cleanup_unknown = !value || !Text(*value, "format", "aux.ui-draft-capture-lease.v1") ||
+-      value->FindBool("retained") != false;
++  const bool restored = value && Text(*value, "format", "aux.ui-draft-capture-lease.v1") &&
++      Text(*value, "requestId", frame.request_id) && value->FindBool("retained") == false &&
++      value->FindBool("restored") == true &&
++      ((value->FindBool("released") == true && Text(*value, "leaseId", frame.lease_id)) ||
++       (value->FindBool("noLeaseCreated") == true && Text(*value, "attemptState", "not-started")));
++  if (restored) frame.prepared = false;
++  frame.cleanup_unknown = !restored;
+   Finish(error.empty() ? "Renderer closure remains refused or uncertain" : std::move(error));
+ }
+-void Controller::CapturedExtension(value_store::ValueStore::AuxUiPreferenceCaptureResult result) {
+-  if (!result.has_value() || !Inventory(false)) { Finish("Actual extension capture/backend ownership unavailable"); return; }
+-  extension_capture_ = std::move(result.value()); cursor_ = 0; DrainNext();
+-}
++void Controller::BeginWorker() {
++  if (!Inventory(false)) { Finish("Actual native inventory changed before worker pause"); return; }
++  worker_attempted_ = true;
++  BeginUiStorageMigrationWorker(profile_.get(), mojo::WrapCallbackWithDropHandler(
++      base::BindOnce(&Controller::WorkerPrepared, weak_.GetWeakPtr()),
++      base::BindOnce(&Controller::WorkerControlLost, weak_.GetWeakPtr(), false)));
++}
++bool Controller::WorkerCorrelation(const base::DictValue& value, bool allow_bind) {
++  const auto* request = value.FindString("prepareRequestId");
++  if (!request && allow_bind) request = value.FindString("requestId");
++  if (!request || !CanonicalUuid(*request)) return false;
++  if (worker_request_id_.empty() && allow_bind) worker_request_id_ = *request;
++  return *request == worker_request_id_;
++}
++void Controller::WorkerPrepared(base::DictValue value) {
++  if (value.FindBool("transportSuperseded") == true) return;
++  const bool correlated = WorkerCorrelation(value, true);
++  if (!profile_ || !IsUiStorageMigrationWorkerPending(profile_.get())) {
++    worker_attempted_ = false;
++    Finish("The actual worker could not establish its source hold"); return;
++  }
++  if (!correlated || !Inventory(false) || !HasValidUiStorageMigrationWorkerLease(profile_.get())) {
++    Finish("The actual worker source hold remains refused or uncertain"); return;
++  }
++  if (const auto* report = value.FindString("reportJson")) worker_report_json_ = *report;
++  BeginFrontend();
++}
++void Controller::WorkerControlLost(bool cleanup) {
++  cleanup_unknown_ = true;
++  if (cleanup) { error_ = "An actual worker cleanup control remains unconfirmed"; ReplyResult(); }
++  else Finish("An actual native worker control callback remains unconfirmed");
++}
++void Controller::BeginFrontend() {
++  if (!Inventory(false) || !HasValidUiStorageMigrationWorkerLease(profile_.get())) {
++    Finish("Original worker/frame owners changed before frontend closure"); return;
++  }
++  auto* frontend = Frontend::Get(profile_.get());
++  if (!frontend) { Finish("Actual extension frontend unavailable"); return; }
++  // Every actual frame has flushed BEFORE this native admission gate closes.
++  frontend_begin_pending_ = true;
++  frontend->BeginAuxUiMigrationLease(extension_, mojo::WrapCallbackWithDropHandler(
++      base::BindOnce(&Controller::FrontendPrepared, weak_.GetWeakPtr()),
++      base::BindOnce(&Controller::FrontendLost, weak_.GetWeakPtr(), true)));
++}
++void Controller::FrontendPrepared(Frontend::AuxUiMigrationLeaseResult result) {
++  frontend_begin_pending_ = false;
++  if (!result.has_value()) { Finish("The actual frontend source gate refused"); return; }
++  extension_lease_ = std::move(result.value());
++  if (!Inventory(false) || !HasValidUiStorageMigrationWorkerLease(profile_.get()) || !FrontendCurrent()) {
++    Finish("The original actual frontend/worker owner changed"); return;
++  }
++  cursor_ = 0; DrainNext();
++}
++void Controller::FrontendLost(bool begin) {
++  if (begin) { frontend_begin_pending_ = false; frontend_begin_unknown_ = true; }
++  else { frontend_io_pending_ = false; frontend_io_unknown_ = true; }
++  cleanup_unknown_ = true;
++  Finish("An actual frontend callback was lost; gate state remains unknown");
++}
++bool Controller::FrontendCurrent() const {
++  auto* frontend = profile_ ? Frontend::Get(profile_.get()) : nullptr;
++  return frontend && extension_lease_ && !frontend_begin_pending_ && !frontend_io_pending_ &&
++      !frontend_begin_unknown_ && frontend->ValidateAuxUiMigrationLease(*extension_lease_);
++}
++
+ void Controller::DrainNext() {
+-  if (!Inventory(false)) { Finish("Native inventory changed before physical DOM drain"); return; }
++  if (!Inventory(false) || !FrontendCurrent() || !HasValidUiStorageMigrationWorkerLease(profile_.get())) {
++    Finish("Original source holds changed before physical DOM drain"); return;
++  }
+   if (cursor_ == partitions_.size()) { cursor_ = 0; ValidateNext(); return; }
+   auto* context = partitions_[cursor_++]->GetDOMStorageContext();
+   if (!context) { Finish("Actual DOM backend unavailable"); return; }
+@@ -491,21 +600,17 @@
+   DrainNext();
+ }
+ void Controller::ValidateNext() {
+-  if (!Inventory(false)) { Finish("Native inventory changed after physical DOM drain"); return; }
+-  if (cursor_ == frames_.size()) {
+-    if (post_persist_validation_)
+-      Finish("Capture retained and read back; backend writer closure, target import and recovery are still required");
+-    else if (transfer_validation_) { transfer_validation_ = false; RunTransfer(); }
+-    else Persist();
+-    return;
+-  }
++  if (!Inventory(false) || !FrontendCurrent() || !HasValidUiStorageMigrationWorkerLease(profile_.get())) {
++    Finish("Original source holds changed after physical DOM drain"); return;
++  }
++  if (cursor_ == frames_.size()) { ValidateWorker(); return; }
+   const size_t index = cursor_++;
+   Invoke(index, "auxValidateDraftMigrationCapture", base::ListValue().Append(frames_[index]->lease_id).Append(frames_[index]->revision),
+       base::BindOnce(&Controller::Validated, weak_.GetWeakPtr(), index));
+ }
+ void Controller::Validated(size_t index, std::optional<base::DictValue> value, std::string error) {
+   if (!value || !Text(*value, "format", "aux.ui-draft-capture-lease.v1") ||
+-      value->FindBool("ok") != true || value->FindBool("closed") != true ||
++      value->FindBool("ok") != true || value->FindBool("closed") != true || value->FindBool("sealed") != false ||
+       !Text(*value, "requestId", frames_[index]->request_id) ||
+       !Text(*value, "leaseId", frames_[index]->lease_id) ||
+       value->FindDouble("revision") != frames_[index]->revision) {
+@@ -513,17 +618,78 @@
+   }
+   ValidateNext();
+ }
++void Controller::ReadWorkerForValidation() {
++  ReadUiStorageMigrationWorker(profile_.get(), mojo::WrapCallbackWithDropHandler(
++      base::BindOnce(&Controller::WorkerReadForValidation, weak_.GetWeakPtr()),
++      base::BindOnce(&Controller::WorkerControlLost, weak_.GetWeakPtr(), false)));
++}
++void Controller::WorkerReadForValidation(base::DictValue value) {
++  if (value.FindBool("transportSuperseded") == true) return;
++  if (!WorkerCorrelation(value, false) || !Inventory(false) || !FrontendCurrent() ||
++      !HasValidUiStorageMigrationWorkerLease(profile_.get())) {
++    Finish("The retained actual worker/source hold could not be observed for recovery"); return;
++  }
++  if (const auto* report = value.FindString("reportJson")) worker_report_json_ = *report;
++  cursor_ = 0; ValidateNext();
++}
++void Controller::ValidateWorker() {
++  ValidateUiStorageMigrationWorker(profile_.get(), mojo::WrapCallbackWithDropHandler(
++      base::BindOnce(&Controller::WorkerValidated, weak_.GetWeakPtr()),
++      base::BindOnce(&Controller::WorkerControlLost, weak_.GetWeakPtr(), false)));
++}
++void Controller::WorkerValidated(base::DictValue value) {
++  if (value.FindBool("transportSuperseded") == true) return;
++  if (!WorkerCorrelation(value, false) || !Inventory(false) || !FrontendCurrent() ||
++      !HasValidUiStorageMigrationWorkerLease(profile_.get())) {
++    Finish("Original actual worker lease changed during validation"); return;
++  }
++  if (const auto* report = value.FindString("reportJson")) worker_report_json_ = *report;
++  ValidateFrontend();
++}
++void Controller::ValidateFrontend() {
++  if (!FrontendCurrent()) { Finish("Original actual frontend lease is unavailable"); return; }
++  auto* frontend = Frontend::Get(profile_.get());
++  frontend_io_pending_ = true;
++  frontend->ReadbackAuxUiMigrationLease(*extension_lease_, mojo::WrapCallbackWithDropHandler(
++      base::BindOnce(&Controller::FrontendReadback, weak_.GetWeakPtr()),
++      base::BindOnce(&Controller::FrontendLost, weak_.GetWeakPtr(), false)));
++}
++void Controller::FrontendReadback(Frontend::AuxUiMigrationReadbackResult result) {
++  frontend_io_pending_ = false; frontend_io_unknown_ = false;
++  // A confirmed read on the SAME opaque native lease resolves a lost readback
++  // observation; no past callback destruction or timer is called completion.
++  if (!result.has_value() || !Inventory(false) || !FrontendCurrent() ||
++      !HasValidUiStorageMigrationWorkerLease(profile_.get()) ||
++      !result->matches_source || result->ordinary_work_queued ||
++      result->records != extension_lease_->CopySourceRecords()) {
++    Finish("Actual frontend source readback or writer gate changed"); return;
++  }
++  ValidationComplete();
++}
++void Controller::ValidationComplete() {
++  if (post_persist_validation_)
++    Finish("Capture retained and read back; genuine DOM writer gates, target import and recovery remain required");
++  else if (transfer_validation_) { transfer_validation_ = false; RunTransfer(); }
++  else Persist();
++}
+ void Controller::Persist() {
+-  if (!Inventory(false) || !extension_capture_) { Finish("Native capture source was lost"); return; }
++  if (!Inventory(false) || !FrontendCurrent() || frontend_io_unknown_ || !HasValidUiStorageMigrationWorkerLease(profile_.get())) {
++    Finish("Native capture source holds were lost"); return;
++  }
+   base::ListValue pages, extension_records;
+-  for (const auto& frame : frames_) pages.Append(base::DictValue()
+-      .Set("nativeDocumentId", frame->document_id.ToString()).Set("sessionNamespace", frame->namespace_id)
+-      .Set("requestId", frame->request_id).Set("captureJson", frame->capture_json));
+-  for (const auto& raw : extension_capture_->CopyRecordsForNativeJournal())
++  for (const auto& frame : frames_) {
++    base::DictValue page;
++    page.Set("nativeDocumentId", frame->document_id.ToString()).Set("sessionNamespace", frame->namespace_id)
++        .Set("requestId", frame->request_id).Set("captureJson", frame->capture_json);
++    pages.Append(std::move(page));
++  }
++  for (const auto& raw : extension_lease_->CopySourceRecords())
+     extension_records.Append(raw ? base::Value(base::Base64Encode(*raw)) : base::Value());
+-  base::DictValue capture = base::DictValue().Set("format", "aux.ui-storage.capture-input.v1")
++  base::DictValue capture;
++  capture.Set("format", "aux.ui-storage.capture-input.v1")
+       .Set("nativeProfileId", profile_id_).Set("bindingEpoch", binding_).Set("restoreEpoch", restoration_)
+       .Set("pages", std::move(pages)).Set("extensionRawRecords", std::move(extension_records))
++      .Set("workerPrepareRequestId", worker_request_id_).Set("workerReportJson", worker_report_json_)
+       .Set("phase", "captured-unqualified").Set("qualified", false).Set("activationAuthorized", false)
+       .Set("backendWriterClosure", false).Set("targetImportAvailable", false);
+   auto encoded = base::WriteJson(capture);
+@@ -534,7 +700,9 @@
+   RunTransfer();
+ }
+ void Controller::RunTransfer() {
+-  if (!Inventory(false)) { Finish("Native source changed before the next capture frame"); return; }
++  if (!Inventory(false) || !FrontendCurrent() || frontend_io_unknown_ || !HasValidUiStorageMigrationWorkerLease(profile_.get())) {
++    Finish("Native source holds changed before the next capture frame"); return;
++  }
+   transfer_->running.store(true);
+   // One bounded native IPC on the real owner sequence per task. Yield before
+   // the next frame so document/profile/lease events can be processed. No
+@@ -548,8 +716,8 @@
+   }
+ }
+ void Controller::TransferStep() {
+-  if (!Inventory(false)) {
+-    transfer_->running.store(false); Finish("Native source changed before capture IPC"); return;
++  if (!Inventory(false) || !FrontendCurrent() || frontend_io_unknown_ || !HasValidUiStorageMigrationWorkerLease(profile_.get())) {
++    transfer_->running.store(false); Finish("Native source holds changed before capture IPC"); return;
+   }
+   TransferCapture(transfer_);  // Exactly one finite frame, never a chunk loop.
+   if (transfer_->complete || !transfer_->error.empty()) { Persisted(); return; }
+@@ -575,11 +743,15 @@
+     Invoke(index, "auxReadDraftMigrationCapture", base::ListValue(),
+         base::BindOnce(&Controller::ObservedCleanup, weak_.GetWeakPtr(), index)); return;
+   }
+-  observing_cleanup_ = false; error_ = "Retained renderer lease cleanup was observed; no migration activated"; ReplyResult();
++  observing_cleanup_ = false; error_ = "Retained source cleanup was observed; no migration activated"; CleanupWorker();
+ }
+ void Controller::ObservedCleanup(size_t index, std::optional<base::DictValue> value, std::string) {
+   auto& frame = *frames_[index];
+-  if (value && Text(*value, "format", "aux.ui-draft-capture-lease.v1") && value->FindBool("retained") == false) {
++  if (value && Text(*value, "format", "aux.ui-draft-capture-lease.v1") &&
++      Text(*value, "requestId", frame.request_id) && value->FindBool("retained") == false &&
++      value->FindBool("restored") == true &&
++      ((value->FindBool("released") == true && Text(*value, "leaseId", frame.lease_id)) ||
++       (frame.lease_id.empty() && value->FindBool("noLeaseCreated") == true && Text(*value, "attemptState", "not-started")))) {
+     frame.prepared = false; frame.cleanup_unknown = false; ObserveCleanupNext(); return;
+   }
+   const auto* lease = value ? value->FindString("leaseId") : nullptr;
+@@ -598,31 +770,89 @@
+     // the same pending frame and original bindings is required for recovery.
+     ReplyResult(); return;
+   }
+-  cursor_ = 0; ReleaseNext();
++  StartCleanup();
++}
++void Controller::StartCleanup() {
++  // Reopen the ORIGINAL frontend gate before any productive renderer/worker
++  // restore. Unknown physical begin/readback keeps the token and all producers.
++  if (frontend_begin_pending_ || frontend_io_pending_ || frontend_begin_unknown_) {
++    cleanup_unknown_ = true; ReplyResult(); return;
++  }
++  if (extension_lease_) {
++    auto* frontend = profile_ ? Frontend::Get(profile_.get()) : nullptr;
++    if (!frontend) { cleanup_unknown_ = true; ReplyResult(); return; }
++    auto alive = weak_.GetWeakPtr();
++    const bool released = frontend->ReleaseAuxUiMigrationLease(*extension_lease_);
++    if (!alive) return;
++    if (!released) { cleanup_unknown_ = true; ReplyResult(); return; }
++    extension_lease_.reset(); frontend_io_unknown_ = false;
++  }
++  if (frontend_io_unknown_) { cleanup_unknown_ = true; ReplyResult(); return; }
++  cleanup_unknown_ = false; cursor_ = 0;
++  if (observing_cleanup_) ObserveCleanupNext(); else ReleaseNext();
+ }
+ void Controller::ReleaseNext() {
+   while (cursor_ < frames_.size() && !frames_[cursor_]->prepared) {
+     cleanup_unknown_ |= frames_[cursor_]->cleanup_unknown; ++cursor_;
+   }
+-  if (cursor_ == frames_.size()) { ReplyResult(); return; }
++  if (cursor_ == frames_.size()) { CleanupWorker(); return; }
+   const size_t index = cursor_++;
+   Invoke(index, "auxReleaseDraftMigrationCapture", base::ListValue().Append(frames_[index]->lease_id),
+       base::BindOnce(&Controller::Released, weak_.GetWeakPtr(), index));
+ }
+ void Controller::Released(size_t index, std::optional<base::DictValue> value, std::string) {
+   const bool released = value && Text(*value, "format", "aux.ui-draft-capture-lease.v1") &&
+-      value->FindBool("ok") == true && value->FindBool("released") == true &&
++      value->FindBool("ok") == true && value->FindBool("released") == true && value->FindBool("restored") == true &&
+       Text(*value, "leaseId", frames_[index]->lease_id) &&
+       Text(*value, "requestId", frames_[index]->request_id);
+   frames_[index]->prepared = !released; frames_[index]->cleanup_unknown = !released;
+   cleanup_unknown_ |= !released;
+   if (observing_cleanup_) ObserveCleanupNext(); else ReleaseNext();
+ }
++void Controller::CleanupWorker() {
++  if (!worker_attempted_) { ReplyResult(); return; }
++  if (extension_lease_ || frontend_begin_pending_ || frontend_io_pending_ ||
++      frontend_begin_unknown_ || frontend_io_unknown_ || !profile_) {
++    cleanup_unknown_ = true; ReplyResult(); return;
++  }
++  ReadUiStorageMigrationWorker(profile_.get(), mojo::WrapCallbackWithDropHandler(
++      base::BindOnce(&Controller::ObservedWorkerCleanup, weak_.GetWeakPtr()),
++      base::BindOnce(&Controller::WorkerControlLost, weak_.GetWeakPtr(), true)));
++}
++void Controller::ObservedWorkerCleanup(base::DictValue value) {
++  if (value.FindBool("transportSuperseded") == true) return;
++  // This is the native helper's retained attempt result, never a worker-selected
++  // Profile or a bare renderer readiness Boolean. Missing correlation stays held.
++  const auto* actual_request = value.FindString("prepareRequestId");
++  if (worker_request_id_.empty() && actual_request && CanonicalUuid(*actual_request))
++    worker_request_id_ = *actual_request;
++  if (!WorkerCorrelation(value, false) || !profile_) { cleanup_unknown_ = true; ReplyResult(); return; }
++  if (value.FindBool("ownExternalRequestRetired") == true &&
++      !IsUiStorageMigrationWorkerPending(profile_.get()) &&
++      (value.FindBool("released") == true || value.FindBool("noProducerLeaseCreated") == true)) {
++    worker_attempted_ = false; ReplyResult(); return;
++  }
++  ReleaseUiStorageMigrationWorker(profile_.get(), mojo::WrapCallbackWithDropHandler(
++      base::BindOnce(&Controller::ReleasedWorker, weak_.GetWeakPtr()),
++      base::BindOnce(&Controller::WorkerControlLost, weak_.GetWeakPtr(), true)));
++}
++void Controller::ReleasedWorker(base::DictValue value) {
++  if (value.FindBool("transportSuperseded") == true) return;
++  if (!profile_ || !WorkerCorrelation(value, false) || value.FindBool("released") != true ||
++      value.FindBool("ownExternalRequestRetired") != true || IsUiStorageMigrationWorkerPending(profile_.get())) {
++    cleanup_unknown_ = true; ReplyResult(); return;
++  }
++  worker_attempted_ = false; ReplyResult();
++}
+ void Controller::ReplyResult() {
+   busy_ = false;
+-  if (!transfer_ || transfer_->complete) extension_capture_.reset();
+-  auto result = Refused(error_).Set("phase", transfer_ && transfer_->complete ? "captured-unqualified" : "refused-or-unknown")
+-      .Set("rendererCleanupUnknown", cleanup_unknown_).Set("targetImportAvailable", false);
++  // Opaque frontend/worker tokens survive any unconfirmed cleanup. Only their
++  // actual native release paths above may retire them.
++  auto result = Refused(error_);
++  result.Set("phase", transfer_ && transfer_->complete ? "captured-unqualified" : "refused-or-unknown")
++      .Set("rendererCleanupUnknown", cleanup_unknown_).Set("workerCleanupPending", worker_attempted_)
++      .Set("frontendCleanupPending", !!extension_lease_ || frontend_begin_unknown_ || frontend_io_unknown_)
++      .Set("backendWriterClosure", false).Set("targetImportAvailable", false);
+   if (transfer_ && transfer_->complete) {
+     result.Set("journalId", transfer_->journal);
+     result.Set("captureSha256", base::HexEncodeLower(transfer_->digest));
+--- a/chrome/browser/aux/ui_storage_migration_controller.h
++++ b/chrome/browser/aux/ui_storage_migration_controller.h
+@@ -10,6 +10,8 @@
+ // Native private API only. The actual ExtensionFunction supplies its current
+ // Profile and RenderFrameHost, never renderer-selected identities or paths.
+ // Captured/unqualified data and physical uncertainty never authorize activation.
++// Preliminary capture joins exact native worker and LOCAL frontend holds; real
++// DOM writer closure and cross-store target/recovery proofs remain separate.
+ void PrepareUiStorageMigration(Profile* profile, content::RenderFrameHost* sender,
+                                base::OnceCallback<void(base::DictValue)> reply);
+ // Actual retained native operation/cleanup ownership only, not whole-browser
