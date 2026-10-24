@@ -1,0 +1,22 @@
+{
+  "nativeBuildSession": 92911,
+  "nativeBuildReceipt": "/private/tmp/aux-chromium-recovery-snapshot-20261023/unsigned-browser-features-full-build-20261023-a21/receipt.json",
+  "nativeBuildLog": "/private/tmp/aux-chromium-recovery-snapshot-20261023/unsigned-browser-features-full-build-20261023-a21/build.log",
+  "buildState": "running",
+  "nativeInputPins": "docs/integration/proposed/browser-feature-expansion/integration/full-native-input-pins-a21.json",
+  "focusedCompile": "passed",
+  "stagePair": "out/browser-feature-stage-pair-20261023-a5/receipt.json",
+  "stagePairPassed": true,
+  "resourceCount": 16,
+  "sourceProjection": "/private/tmp/aux-browser-features-async-daemon-20261023-a2/projection-evidence.json",
+  "sourceProjectionPassed": true,
+  "nextSteps": [
+    "Wait on existing session; do not start another native build or infer completion from timeout.",
+    "If real full build succeeds, freeze exact browser and research projection receipt hashes in runtime-cache-package-a4/review.json.",
+    "Run commands.json bindPair, prepareBase, prepareFeature, verify and assemble sequentially, inspect exact final resource/native deltas.",
+    "Record actual evidence and preserved startup/authority/runtime acceptance gaps."
+  ],
+  "appExecuted": false,
+  "productSigned": false,
+  "runtimeAuthorityGranted": false
+}

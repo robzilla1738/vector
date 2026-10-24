@@ -1,0 +1,11 @@
+{
+  "receipt": "/Users/rcourson/Documents/Vibe/web/out/browser-feature-stage-pair-20261023-a5/receipt.json",
+  "receiptSha256": "e34670791989b0ac9998f4daddcfde76a6ffd310d5094e696e8cef0c1ca99b7b",
+  "passed": true,
+  "agentRevision": 17,
+  "agentVersion": "1.26.1016.1869",
+  "featureResources": 16,
+  "exactReviewedPaths": true,
+  "productExecuted": false,
+  "runtimeAccepted": false
+}

@@ -1,0 +1,21 @@
+{
+  "receipt": "/private/tmp/aux-chromium-feature-compile-20261023-a21/receipt.json",
+  "receiptSha256": "9813f0670307111b90b2e987475b0a69d7ec66ec200088769512bef58f8cd7cd",
+  "passed": true,
+  "targets": [
+    "obj/chrome/browser/extensions/api/aux_browser_preferences/aux_browser_preferences/aux_feature_expansion_api.o",
+    "obj/chrome/browser/ui/ui/aux_tab_search_bubble.o"
+  ],
+  "objects": {
+    "obj/chrome/browser/extensions/api/aux_browser_preferences/aux_browser_preferences/aux_feature_expansion_api.o": {
+      "bytes": 134680
+    },
+    "obj/chrome/browser/ui/ui/aux_tab_search_bubble.o": {
+      "bytes": 195896
+    }
+  },
+  "sourcePins": 198,
+  "productSigned": false,
+  "appExecuted": false,
+  "runtimeAccepted": false
+}
