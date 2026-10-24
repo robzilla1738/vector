@@ -15,7 +15,7 @@ void CommitOrganizationPin(Profile&, const GURL&, const std::u16string&, size_t 
                            std::string existing_id, PinCommitReply);
 void ReorderOrganizationPin(Profile&, std::string id, size_t index,
                             base::OnceCallback<void(bool)>);
-void UnpinOrganizationEntry(Profile&, std::string id,
+void UnpinOrganizationEntry(Profile&, std::string id, std::string destination_space,
                             base::OnceCallback<void(bool)>);
 }  // namespace aux
 #endif

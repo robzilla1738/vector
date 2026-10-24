@@ -8,14 +8,14 @@
 #include "base/task/single_thread_task_runner.h"
 #include "base/uuid.h"
 #include "chrome/browser/aux/organization/organization_profile_service.h"
+#include "chrome/browser/actor/ui/actor_ui_tab_controller.h"
+#include "chrome/browser/ui/views/frame/aux_bookmark_tab_exclusion.h"
 #include "chrome/browser/aux/organization/organization_service.h"
 #include "chrome/browser/media/webrtc/media_capture_devices_dispatcher.h"
 #include "chrome/browser/media/webrtc/media_stream_capture_indicator.h"
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/sessions/session_restore.h"
 #include "chrome/browser/sessions/session_service_factory.h"
-#include "chrome/browser/ui/aux/egress_controller.h"
-#include "chrome/browser/ui/aux/native_creator_close_receipt.h"
 #include "chrome/browser/ui/aux/page_identity.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_features.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
@@ -36,15 +36,6 @@
 #include "content/public/browser/web_contents_observer.h"
 namespace aux {
 namespace {
-// Navigation authorization can reject by dropping its closure. That is a
-// refusal, never a successful navigation or a callback left unresolved.
-struct NavigationReply {
-  explicit NavigationReply(base::OnceCallback<void(bool)> callback)
-      : callback(std::move(callback)) {}
-  ~NavigationReply() { if (callback) std::move(callback).Run(false); }
-  void Complete(bool success) { if (callback) std::move(callback).Run(success); }
-  base::OnceCallback<void(bool)> callback;
-};
 organization::OrganizationService* Organization(BrowserWindowInterface* browser) {
   if (!browser) return nullptr;
   auto* owner = organization::OrganizationProfileServiceFactory::GetForProfileIfExists(browser->GetProfile());
@@ -290,8 +281,15 @@ bool AuxOrganizationWindowController::Protected(tabs::TabInterface* tab) const {
   auto* contents = tab->GetContents();
   if (!contents || contents->GetBrowserContext() != profile_ || contents->IsLoading() ||
       contents->IsCurrentlyAudible() || contents->IsBeingCaptured() ||
-      contents->NeedToFireBeforeUnloadOrUnloadEvents() || NativeCreatorCloseReceipt::FromWebContents(contents)) return true;
-  if (!EgressController::ForProfile(profile_)->CanDiscardPage(contents)) return true;
+      contents->NeedToFireBeforeUnloadOrUnloadEvents() || IsBookmarkTabExcluded(tab, model_)) return true;
+  // Use actual selected-product activity owners. The older independent
+  // EgressController/creator service is not in this build and is not authority.
+  const auto* identity = PageIdentity::FromWebContents(contents);
+  if (identity && identity->runtime_owned()) return true;
+  if (content::DevToolsAgentHost::HasFor(contents) &&
+      content::DevToolsAgentHost::GetOrCreateFor(contents)->IsAttached()) return true;
+  auto* actor = actor::ui::ActorUiTabController::Get(tab->GetUnownedUserDataHost());
+  if (actor && !actor->IsColdForAuxProfileSwitch()) return true;
   const auto capture = MediaCaptureDevicesDispatcher::GetInstance()->GetMediaStreamCaptureIndicator();
   if (capture->IsCapturingUserMedia(contents) || capture->IsBeingMirrored(contents) ||
       capture->IsCapturingTab(contents) || capture->IsCapturingWindow(contents) || capture->IsCapturingDisplay(contents)) return true;
@@ -461,24 +459,12 @@ void AuxOrganizationWindowController::ApplyPendingSharedUpdate(const std::string
     const GURL url(view.pending_shared_url);
     auto* coordinator = organization::OrganizationProfileServiceFactory::GetForProfileIfExists(profile_);
     if (!coordinator || organization->blocked()) { std::move(reply).Run(false); return; }
-    EgressController::ForProfile(profile_)->NavigateForPerson(handle.Get()->GetContents(),
-        base::BindOnce([](base::WeakPtr<AuxOrganizationWindowController> owner,
-                         tabs::TabHandle handle, std::string id, std::string document,
-                         std::string loaded_url, std::string generation, GURL url,
-                         std::unique_ptr<NavigationReply> reply) {
-          if (!owner || !owner->Current() || owner->Protected(handle.Get())) return;
-          auto* coordinator = organization::OrganizationProfileServiceFactory::GetForProfileIfExists(owner->profile_);
-          const auto found = owner->views_.find(handle);
-          auto* model = Organization(owner->browser_.get());
-          if (!coordinator || coordinator->owner_generation() != generation ||
-              found == owner->views_.end() || found->second.logical_id != id ||
-              found->second.document_id != document || found->second.loaded_url != loaded_url ||
-              found->second.pending_shared_url != url.spec() || !model || model->blocked() || model->pending() ||
-              !model->snapshot().entries.contains(id) || model->snapshot().entries.at(id).current_url != url.spec()) return;
-          handle.Get()->GetContents()->GetController().LoadURLWithParams(content::NavigationController::LoadURLParams(url));
-          reply->Complete(true);
-        }, weak_.GetWeakPtr(), handle, id, view.document_id, view.loaded_url,
-           coordinator->owner_generation(), url, std::make_unique<NavigationReply>(std::move(reply))));
+    // Explicit person action targets this exact view; it does not focus a
+    // different tab or authorize a background/agent navigation.
+    const auto alive = weak_.GetWeakPtr();
+    auto* contents = handle.Get()->GetContents();
+    contents->GetController().LoadURLWithParams(content::NavigationController::LoadURLParams(url));
+    std::move(reply).Run(static_cast<bool>(alive));
     return;
   }
   std::move(reply).Run(false);

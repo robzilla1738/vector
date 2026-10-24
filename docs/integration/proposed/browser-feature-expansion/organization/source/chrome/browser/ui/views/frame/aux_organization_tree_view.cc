@@ -6,6 +6,10 @@
 #include "base/functional/bind.h"
 #include "base/strings/utf_string_conversions.h"
 #include "base/task/single_thread_task_runner.h"
+#include "base/task/cancelable_task_tracker.h"
+#include "chrome/browser/favicon/favicon_service_factory.h"
+#include "components/favicon/core/favicon_service.h"
+#include "components/favicon_base/favicon_types.h"
 #include "base/uuid.h"
 #include "cc/paint/paint_flags.h"
 #include "chrome/browser/aux/organization/organization_profile_service.h"
@@ -13,8 +17,10 @@
 #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
 #include "chrome/browser/ui/views/frame/aux_organization_ui_commands.h"
 #include "chrome/browser/ui/views/frame/aux_organization_window_delegate.h"
+#include "chrome/browser/ui/views/frame/aux_organization_window_controller.h"
 #include "chrome/browser/ui/views/frame/aux_tab_expand_chevron_view.h"
 #include "ui/base/metadata/metadata_impl_macros.h"
+#include "ui/base/mojom/menu_source_type.mojom.h"
 #include "ui/base/models/image_model.h"
 #include "ui/color/color_provider_key.h"
 #include "ui/events/event.h"
@@ -66,9 +72,30 @@ class OrganizationTreeRow final : public views::View {
     if (folder_) AddChildView(std::make_unique<AuxTabExpandChevronView>(!entry.collapsed));
     SetFocusBehavior(FocusBehavior::ALWAYS);
     SetNotifyEnterExitOnChild(true);
-    GetViewAccessibility().SetName(label_->GetText());
+    GetViewAccessibility().SetName(std::u16string(label_->GetText()));
     SetTooltipText(base::UTF8ToUTF16(folder_ ? entry.title : entry.current_url));
     views::InstallRoundRectHighlightPathGenerator(this, gfx::Insets(), 10);
+    if (!folder_ && owner_ && owner_->browser_) {
+      auto* profile = owner_->browser_->GetProfile();
+      if (auto* service = FaviconServiceFactory::GetForProfile(profile, ServiceAccessType::EXPLICIT_ACCESS)) {
+        service->GetFaviconImageForPageURL(GURL(entry.current_url), base::BindOnce(
+            [](base::WeakPtr<OrganizationTreeRow> row, Profile* expected,
+               const favicon_base::FaviconImageResult& result) {
+              if (!row || !row->owner_ || !row->owner_->browser_ ||
+                  row->owner_->browser_->GetProfile() != expected || result.image.IsEmpty()) return;
+              row->favicon_ = ui::ImageModel::FromImage(result.image);
+              row->image_->SetImage(row->favicon_);
+            }, weak_.GetWeakPtr(), profile), &icon_tasks_);
+      }
+      if (auto* window = AuxOrganizationWindowController::FromBrowser(owner_->browser_.get());
+          window && window->HasPendingSharedUpdate(entry.id)) {
+        SetTooltipText(base::UTF8ToUTF16(entry.current_url) + u"\nUpdated in another window. Right-click to use the shared URL.");
+        auto* marker = AddChildView(std::make_unique<views::Label>(u"•"));
+        marker->SetAutoColorReadabilityEnabled(false);
+        marker->SetEnabledColor(0xff30b4dc);
+        marker->SetCanProcessEventsWithinSubtree(false);
+      }
+    }
   }
   void MarkDrop(bool value) { drop_ = value; SchedulePaint(); }
   bool OnMousePressed(const ui::MouseEvent& event) override {
@@ -101,7 +128,7 @@ class OrganizationTreeRow final : public views::View {
     views::View::OnThemeChanged(); if (!GetWidget()) return;
     const bool dark = GetWidget()->GetColorMode() == ui::ColorProviderKey::ColorMode::kDark;
     label_->SetEnabledColor(active_ ? (dark ? 0xfffafafa : 0xff0a0a0a) : (dark ? 0xa6fafafa : 0xb80a0a0a));
-    image_->SetImage(ui::ImageModel::FromVectorIcon(folder_ ? kFolderIcon : kPageIcon,
+    image_->SetImage(!favicon_.IsEmpty() ? favicon_ : ui::ImageModel::FromVectorIcon(folder_ ? kFolderIcon : kPageIcon,
         dark ? 0x8cfafafa : 0x8c0a0a0a, 16));
   }
  protected:
@@ -121,6 +148,9 @@ class OrganizationTreeRow final : public views::View {
   bool folder_, active_, hovered_ = false, pressed_ = false, drop_ = false;
   raw_ptr<views::ImageView> image_ = nullptr;
   raw_ptr<views::Label> label_ = nullptr;
+  ui::ImageModel favicon_;
+  base::CancelableTaskTracker icon_tasks_;
+  base::WeakPtrFactory<OrganizationTreeRow> weak_{this};
 };
 BEGIN_METADATA(OrganizationTreeRow)
 END_METADATA
@@ -187,8 +217,8 @@ void AuxOrganizationTreeView::Refresh() {
           item.depth, window_->SelectedLogicalTabId() == item.id));
       row_by_id_[item.id] = row; visible_.push_back(item.id);
       if (entry.kind == organization::EntryKind::kFolder && !entry.collapsed) {
-        auto children = organization::OrderedChildren(*snapshot, entry.space_id, entry.id);
-        for (auto it = children.rbegin(); it != children.rend(); ++it) pending.push_back({*it, item.depth + 1});
+        auto nested = organization::OrderedChildren(*snapshot, entry.space_id, entry.id);
+        for (auto it = nested.rbegin(); it != nested.rend(); ++it) pending.push_back({*it, item.depth + 1});
       }
     }
     if (auto it = row_by_id_.find(focused); it != row_by_id_.end()) it->second->RequestFocus();
@@ -257,7 +287,11 @@ void AuxOrganizationTreeView::ContextMenu(const std::string& id, const gfx::Poin
   const auto& entry = snapshot->entries.at(id);
   menu_->AddItem(1, u"Rename…");
   if (entry.kind == organization::EntryKind::kFolder) menu_->AddItem(2, u"New folder inside…");
-  else menu_->AddItem(3, u"Unload tab");
+  else {
+    menu_->AddItem(3, u"Unload tab");
+    auto* window = AuxOrganizationWindowController::FromBrowser(browser_.get());
+    if (window && window->HasPendingSharedUpdate(id)) menu_->AddItem(8, u"Use shared URL from another window");
+  }
   menu_->AddItem(4, entry.space_id.empty() ? u"Move to this Space" : u"Pin to all Spaces");
   move_menu_ = std::make_unique<ui::SimpleMenuModel>(this);
   move_targets_.push_back({"", ""}); move_menu_->AddItem(100, u"All Spaces (Pins)");
@@ -289,6 +323,14 @@ void AuxOrganizationTreeView::ExecuteCommand(int command, int) {
     window_->UnloadLogicalTab(menu_entry_, base::BindOnce([](base::WeakPtr<AuxOrganizationTreeView> view, bool success) {
       if (view && !success) view->Status(u"This tab has active work and could not be unloaded.");
     }, weak_.GetWeakPtr())); return;
+  }
+  if (command == 8 && browser_) {
+    auto* window = AuxOrganizationWindowController::FromBrowser(browser_.get());
+    if (window) window->ApplyPendingSharedUpdate(menu_entry_, base::BindOnce(
+        [](base::WeakPtr<AuxOrganizationTreeView> view, bool success) {
+          if (view && !success) view->Status(u"This page changed or has active work. Its current URL was retained.");
+        }, weak_.GetWeakPtr()));
+    return;
   }
   if (command == 4) { Move(menu_entry_, found->second.space_id.empty() ? window_->ActiveSpaceId() : "", "", kEnd, menu_context_); return; }
   if (command >= 100 && static_cast<size_t>(command - 100) < move_targets_.size()) {

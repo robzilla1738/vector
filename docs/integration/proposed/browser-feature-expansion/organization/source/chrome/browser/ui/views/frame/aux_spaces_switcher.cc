@@ -13,6 +13,8 @@
 #include "chrome/browser/ui/views/frame/aux_organization_ui_commands.h"
 #include "chrome/browser/ui/views/frame/aux_organization_window_delegate.h"
 #include "ui/base/metadata/metadata_impl_macros.h"
+#include "ui/base/mojom/menu_source_type.mojom.h"
+#include "ui/views/controls/label.h"
 #include "ui/color/color_provider_key.h"
 #include "ui/gfx/font_list.h"
 #include "ui/events/event.h"
@@ -43,7 +45,7 @@ AuxSpacesSwitcher::AuxSpacesSwitcher(BrowserWindowInterface& browser,
       base::BindRepeating(&AuxSpacesSwitcher::ShowMenu, weak_.GetWeakPtr()), u"Space"));
   select_->SetTooltipText(u"Switch Space");
   const gfx::FontList font;
-  select_->SetFontList(font.Derive(12 - font.GetFontSize(), gfx::Font::NORMAL, gfx::Font::Weight::MEDIUM));
+  select_->label()->SetFontList(font.Derive(12 - font.GetFontSize(), gfx::Font::NORMAL, gfx::Font::Weight::MEDIUM));
   select_->SetAnimateOnStateChange(false);
   select_->SetHasInkDropActionOnClick(false);
   select_->SetMaxSize(gfx::Size(112, 24));

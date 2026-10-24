@@ -32,8 +32,11 @@ and active Space through SessionService extra data, and projects the shared list
 only after existing ordinary tabs are represented durably. Each window retains
 independent selected/loaded views. Remote URL updates become pending proposals;
 they never navigate existing pages implicitly. Explicit application rechecks the
-actual document, native ownership generation, Egress authorization and live-work
-protections. Dropped authorization callbacks report refusal.
+actual document, native ownership generation and live-work protections. The
+retired independent Egress service is not linked or used. Selected protections
+include real Agent groups/retained group markers, Actor tab state, attached
+DevTools clients, runtime-owned identities, beforeunload, capture, split and
+download state. This is not a fabricated daemon lease receipt.
 
 Pin close unloads the native view while retaining its record; ordinary archive
 checks all matching same-profile views and existing native protections. Browser
@@ -42,3 +45,10 @@ can conservatively retain the logical record rather than claim archive success.
 The parent integrator owns BrowserWindowFeatures lifetime, close/restore gates,
 sidebar mounts and GN registration. This source has not yet passed native compile
 or real multi-window acceptance; no app was launched or altered by this lane.
+
+Compile-driven follow-up: fixed current Chromium accessibility name ownership,
+LabelButton font API, menu enum include and local shadow errors. Unpin now uses
+the initiating native window's actual active Space. Logical rows reuse the real
+profile favicon service; pending remote URLs have a subtle marker and explicit
+context action. These remain source changes pending the integrator's compile
+and actual runtime checks.

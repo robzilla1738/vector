@@ -85,21 +85,19 @@ void ReorderOrganizationPin(Profile& profile, std::string id, size_t index,
         std::move(done).Run(success);
       }, std::move(reply)));
 }
-void UnpinOrganizationEntry(Profile& profile, std::string id,
+void UnpinOrganizationEntry(Profile& profile, std::string id, std::string destination_space,
                             base::OnceCallback<void(bool)> reply) {
   auto* owner = Owner(profile);
   auto* model = owner ? owner->model() : nullptr;
   if (!model) { std::move(reply).Run(false); return; }
-  // The main Space is deterministic until the per-window active-Space adapter
-  // supplies an explicit destination. Never infer another profile/window.
-  const organization::Space* first = nullptr;
-  for (const auto& [space_id, space] : model->snapshot().spaces) {
-    if (!first || space.order < first->order) first = &space;
+  // The initiating native window supplies its Space; never guess from another
+  // window or move a pin into a deterministic but unrelated first Space.
+  if (!model->snapshot().spaces.contains(destination_space)) {
+    std::move(reply).Run(false); return;
   }
-  if (!first) { std::move(reply).Run(false); return; }
   organization::Command command;
   command.action = organization::Action::kMoveEntry;
-  command.id = std::move(id); command.space_id = first->id;
+  command.id = std::move(id); command.space_id = std::move(destination_space);
   command.index = std::numeric_limits<uint64_t>::max();
   Commit(*owner, std::move(command), base::BindOnce(
       [](base::OnceCallback<void(bool)> done, bool success, std::string) {

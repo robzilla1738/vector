@@ -1,3 +1,4 @@
+#include "chrome/browser/ui/views/frame/aux_organization_window_controller.h"
 // Copyright 2026 The Aux Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
@@ -1033,7 +1034,9 @@ void VerticalPinnedTabEntriesView::CommitDroppedEntryAsync(
 void VerticalPinnedTabEntriesView::UnpinEntryAsync(
     const aux::PinnedTabEntry& entry, base::OnceCallback<void(bool)> done) {
   if (paused_ || entry.logical_id.empty()) { std::move(done).Run(false); return; }
-  aux::UnpinOrganizationEntry(*browser_->GetProfile(), entry.logical_id, std::move(done));
+  auto* window = aux::AuxOrganizationWindowController::FromBrowser(browser_.get());
+  if (!window) { std::move(done).Run(false); return; }
+  aux::UnpinOrganizationEntry(*browser_->GetProfile(), entry.logical_id, window->ActiveSpaceId(), std::move(done));
 }
 void VerticalPinnedTabEntriesView::OnPaint(gfx::Canvas* canvas) {
   views::View::OnPaint(canvas);

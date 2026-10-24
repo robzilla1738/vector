@@ -1,3 +1,4 @@
+#include "chrome/browser/ui/views/frame/aux_organization_window_controller.h"
 // Copyright 2012 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
@@ -278,7 +279,9 @@ void PinnedTabService::ApplyOrganizationPinChange(tabs::TabHandle handle,
     aux::CommitOrganizationPin(*profile_, contents->GetVisibleURL(), contents->GetTitle(),
         std::numeric_limits<size_t>::max(), id, std::move(done));
   } else if (!id.empty()) {
-    aux::UnpinOrganizationEntry(*profile_, id, base::BindOnce(
+    auto* window = aux::AuxOrganizationWindowController::FromBrowser(tab->GetBrowserWindowInterface());
+    if (!window) { std::move(done).Run(false, {}); return; }
+    aux::UnpinOrganizationEntry(*profile_, id, window->ActiveSpaceId(), base::BindOnce(
         [](aux::PinCommitReply done, std::string id, bool success) {
           std::move(done).Run(success, std::move(id));
         }, std::move(done), id));

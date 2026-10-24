@@ -2,7 +2,7 @@ diff --git a/chrome/browser/ui/tabs/aux_organization_pin_adapter.cc b/chrome/bro
 new file mode 100644
 --- /dev/null
 +++ b/chrome/browser/ui/tabs/aux_organization_pin_adapter.cc
-@@ -0,0 +1,109 @@
+@@ -0,0 +1,107 @@
 +// Copyright 2026 The Aux Authors. BSD-style license: see //LICENSE.
 +#include "chrome/browser/ui/tabs/aux_organization_pin_adapter.h"
 +#include <limits>
@@ -90,21 +90,19 @@ new file mode 100644
 +        std::move(done).Run(success);
 +      }, std::move(reply)));
 +}
-+void UnpinOrganizationEntry(Profile& profile, std::string id,
++void UnpinOrganizationEntry(Profile& profile, std::string id, std::string destination_space,
 +                            base::OnceCallback<void(bool)> reply) {
 +  auto* owner = Owner(profile);
 +  auto* model = owner ? owner->model() : nullptr;
 +  if (!model) { std::move(reply).Run(false); return; }
-+  // The main Space is deterministic until the per-window active-Space adapter
-+  // supplies an explicit destination. Never infer another profile/window.
-+  const organization::Space* first = nullptr;
-+  for (const auto& [space_id, space] : model->snapshot().spaces) {
-+    if (!first || space.order < first->order) first = &space;
++  // The initiating native window supplies its Space; never guess from another
++  // window or move a pin into a deterministic but unrelated first Space.
++  if (!model->snapshot().spaces.contains(destination_space)) {
++    std::move(reply).Run(false); return;
 +  }
-+  if (!first) { std::move(reply).Run(false); return; }
 +  organization::Command command;
 +  command.action = organization::Action::kMoveEntry;
-+  command.id = std::move(id); command.space_id = first->id;
++  command.id = std::move(id); command.space_id = std::move(destination_space);
 +  command.index = std::numeric_limits<uint64_t>::max();
 +  Commit(*owner, std::move(command), base::BindOnce(
 +      [](base::OnceCallback<void(bool)> done, bool success, std::string) {
@@ -134,7 +132,7 @@ new file mode 100644
 +                           std::string existing_id, PinCommitReply);
 +void ReorderOrganizationPin(Profile&, std::string id, size_t index,
 +                            base::OnceCallback<void(bool)>);
-+void UnpinOrganizationEntry(Profile&, std::string id,
++void UnpinOrganizationEntry(Profile&, std::string id, std::string destination_space,
 +                            base::OnceCallback<void(bool)>);
 +}  // namespace aux
 +#endif
@@ -215,7 +213,12 @@ diff --git a/chrome/browser/ui/tabs/aux_pinned_tab_entry_identity.h b/chrome/bro
 diff --git a/chrome/browser/ui/tabs/pinned_tab_service.cc b/chrome/browser/ui/tabs/pinned_tab_service.cc
 --- a/chrome/browser/ui/tabs/pinned_tab_service.cc
 +++ b/chrome/browser/ui/tabs/pinned_tab_service.cc
-@@ -18,6 +18,10 @@
+@@ -1,3 +1,4 @@
++#include "chrome/browser/ui/views/frame/aux_organization_window_controller.h"
+ // Copyright 2012 The Chromium Authors
+ // Use of this source code is governed by a BSD-style license that can be
+ // found in the LICENSE file.
+@@ -18,6 +19,10 @@
  #if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
  #include "base/auto_reset.h"
  #include "base/check.h"
@@ -226,7 +229,7 @@ diff --git a/chrome/browser/ui/tabs/pinned_tab_service.cc b/chrome/browser/ui/ta
  #include "base/task/single_thread_task_runner.h"
  #include "chrome/browser/sessions/session_restore.h"
  #include "chrome/browser/sessions/session_service_factory.h"
-@@ -42,6 +46,11 @@
+@@ -42,6 +47,11 @@
        aux::kPinnedTabEntriesPref,
        base::BindRepeating(&PinnedTabService::SchedulePinnedTabsReconciliation,
                            weak_factory_.GetWeakPtr()));
@@ -238,7 +241,7 @@ diff --git a/chrome/browser/ui/tabs/pinned_tab_service.cc b/chrome/browser/ui/ta
    session_restored_subscription_ =
        SessionRestore::RegisterOnSessionRestoredCallback(base::BindRepeating(
            &PinnedTabService::OnSessionRestored, weak_factory_.GetWeakPtr()));
-@@ -140,8 +149,12 @@
+@@ -140,8 +150,12 @@
        CachePinnedEntryIdentity(inserted.tab);
    } else if (change.type() == TabStripModelChange::kRemoved) {
      for (const auto& removed : change.GetRemove()->contents) {
@@ -253,7 +256,7 @@ diff --git a/chrome/browser/ui/tabs/pinned_tab_service.cc b/chrome/browser/ui/ta
      }
    } else if (change.type() == TabStripModelChange::kReplaced) {
      CachePinnedEntryIdentity(change.GetReplace()->tab);
-@@ -160,38 +173,15 @@
+@@ -160,38 +174,15 @@
  void PinnedTabService::OnTabPinnedStateChanged(tabs::TabInterface* tab,
                                                 int index) {
  #if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
@@ -301,7 +304,7 @@ diff --git a/chrome/browser/ui/tabs/pinned_tab_service.cc b/chrome/browser/ui/ta
  #else
    need_to_write_pinned_tabs_ = true;
  #endif
-@@ -217,6 +207,83 @@
+@@ -217,6 +208,85 @@
  #endif
  
  #if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
@@ -376,7 +379,9 @@ diff --git a/chrome/browser/ui/tabs/pinned_tab_service.cc b/chrome/browser/ui/ta
 +    aux::CommitOrganizationPin(*profile_, contents->GetVisibleURL(), contents->GetTitle(),
 +        std::numeric_limits<size_t>::max(), id, std::move(done));
 +  } else if (!id.empty()) {
-+    aux::UnpinOrganizationEntry(*profile_, id, base::BindOnce(
++    auto* window = aux::AuxOrganizationWindowController::FromBrowser(tab->GetBrowserWindowInterface());
++    if (!window) { std::move(done).Run(false, {}); return; }
++    aux::UnpinOrganizationEntry(*profile_, id, window->ActiveSpaceId(), base::BindOnce(
 +        [](aux::PinCommitReply done, std::string id, bool success) {
 +          std::move(done).Run(success, std::move(id));
 +        }, std::move(done), id));
@@ -385,7 +390,7 @@ diff --git a/chrome/browser/ui/tabs/pinned_tab_service.cc b/chrome/browser/ui/ta
  void PinnedTabService::OnTabChangedAt(tabs::TabInterface* tab,
                                        TabChangeType type) {
    if (!tab || !profile_switch_pauses_.empty() ||
-@@ -271,7 +338,8 @@
+@@ -271,7 +341,8 @@
    reconciliation_pending_ = false;
    if (!profile_switch_pauses_.empty())
      return;
@@ -395,7 +400,7 @@ diff --git a/chrome/browser/ui/tabs/pinned_tab_service.cc b/chrome/browser/ui/ta
    ForEachCurrentBrowserWindowInterfaceOrderedByActivation(
        [this, &entries](BrowserWindowInterface* browser) {
          if (browser->GetProfile() != profile_ ||
-@@ -282,13 +350,15 @@
+@@ -282,13 +353,15 @@
          for (int i = 0; i < model->count(); ++i) {
            auto* tab = model->GetTabAtIndex(i);
            auto* contents = tab->GetContents();
@@ -415,7 +420,7 @@ diff --git a/chrome/browser/ui/tabs/pinned_tab_service.cc b/chrome/browser/ui/ta
                }))
              removed.push_back(i);
          }
-@@ -304,7 +374,31 @@
+@@ -304,7 +377,31 @@
  void PinnedTabService::ReconcilePinnedEntries(TabStripModel* model) {
    if (!model || !profile_switch_pauses_.empty())
      return;
@@ -448,7 +453,7 @@ diff --git a/chrome/browser/ui/tabs/pinned_tab_service.cc b/chrome/browser/ui/ta
    if (saved.empty())
      return;
    std::vector<GURL> remembered;
-@@ -366,10 +460,14 @@
+@@ -366,10 +463,14 @@
    const auto tab_id = sessions::SessionTabHelper::IdForTab(tab->GetContents());
    if (!tab_id.is_valid() || !browser->GetSessionID().is_valid())
      return;
@@ -463,7 +468,7 @@ diff --git a/chrome/browser/ui/tabs/pinned_tab_service.cc b/chrome/browser/ui/ta
    }
  }
  void PinnedTabService::CachePinnedEntryIdentity(tabs::TabInterface* tab) {
-@@ -378,6 +476,11 @@
+@@ -378,6 +479,11 @@
    auto* contents = tab->GetContents();
    if (!contents || contents->GetBrowserContext() != profile_)
      return;
@@ -916,7 +921,7 @@ diff --git a/chrome/browser/ui/views/frame/aux_organization_tree_view.cc b/chrom
 new file mode 100644
 --- /dev/null
 +++ b/chrome/browser/ui/views/frame/aux_organization_tree_view.cc
-@@ -0,0 +1,371 @@
+@@ -0,0 +1,413 @@
 +// Copyright 2026 Aux Authors. BSD-style license: see //LICENSE.
 +#include "chrome/browser/ui/views/frame/aux_organization_tree_view.h"
 +#include <algorithm>
@@ -925,6 +930,10 @@ new file mode 100644
 +#include "base/functional/bind.h"
 +#include "base/strings/utf_string_conversions.h"
 +#include "base/task/single_thread_task_runner.h"
++#include "base/task/cancelable_task_tracker.h"
++#include "chrome/browser/favicon/favicon_service_factory.h"
++#include "components/favicon/core/favicon_service.h"
++#include "components/favicon_base/favicon_types.h"
 +#include "base/uuid.h"
 +#include "cc/paint/paint_flags.h"
 +#include "chrome/browser/aux/organization/organization_profile_service.h"
@@ -932,8 +941,10 @@ new file mode 100644
 +#include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
 +#include "chrome/browser/ui/views/frame/aux_organization_ui_commands.h"
 +#include "chrome/browser/ui/views/frame/aux_organization_window_delegate.h"
++#include "chrome/browser/ui/views/frame/aux_organization_window_controller.h"
 +#include "chrome/browser/ui/views/frame/aux_tab_expand_chevron_view.h"
 +#include "ui/base/metadata/metadata_impl_macros.h"
++#include "ui/base/mojom/menu_source_type.mojom.h"
 +#include "ui/base/models/image_model.h"
 +#include "ui/color/color_provider_key.h"
 +#include "ui/events/event.h"
@@ -985,9 +996,30 @@ new file mode 100644
 +    if (folder_) AddChildView(std::make_unique<AuxTabExpandChevronView>(!entry.collapsed));
 +    SetFocusBehavior(FocusBehavior::ALWAYS);
 +    SetNotifyEnterExitOnChild(true);
-+    GetViewAccessibility().SetName(label_->GetText());
++    GetViewAccessibility().SetName(std::u16string(label_->GetText()));
 +    SetTooltipText(base::UTF8ToUTF16(folder_ ? entry.title : entry.current_url));
 +    views::InstallRoundRectHighlightPathGenerator(this, gfx::Insets(), 10);
++    if (!folder_ && owner_ && owner_->browser_) {
++      auto* profile = owner_->browser_->GetProfile();
++      if (auto* service = FaviconServiceFactory::GetForProfile(profile, ServiceAccessType::EXPLICIT_ACCESS)) {
++        service->GetFaviconImageForPageURL(GURL(entry.current_url), base::BindOnce(
++            [](base::WeakPtr<OrganizationTreeRow> row, Profile* expected,
++               const favicon_base::FaviconImageResult& result) {
++              if (!row || !row->owner_ || !row->owner_->browser_ ||
++                  row->owner_->browser_->GetProfile() != expected || result.image.IsEmpty()) return;
++              row->favicon_ = ui::ImageModel::FromImage(result.image);
++              row->image_->SetImage(row->favicon_);
++            }, weak_.GetWeakPtr(), profile), &icon_tasks_);
++      }
++      if (auto* window = AuxOrganizationWindowController::FromBrowser(owner_->browser_.get());
++          window && window->HasPendingSharedUpdate(entry.id)) {
++        SetTooltipText(base::UTF8ToUTF16(entry.current_url) + u"\nUpdated in another window. Right-click to use the shared URL.");
++        auto* marker = AddChildView(std::make_unique<views::Label>(u"•"));
++        marker->SetAutoColorReadabilityEnabled(false);
++        marker->SetEnabledColor(0xff30b4dc);
++        marker->SetCanProcessEventsWithinSubtree(false);
++      }
++    }
 +  }
 +  void MarkDrop(bool value) { drop_ = value; SchedulePaint(); }
 +  bool OnMousePressed(const ui::MouseEvent& event) override {
@@ -1020,7 +1052,7 @@ new file mode 100644
 +    views::View::OnThemeChanged(); if (!GetWidget()) return;
 +    const bool dark = GetWidget()->GetColorMode() == ui::ColorProviderKey::ColorMode::kDark;
 +    label_->SetEnabledColor(active_ ? (dark ? 0xfffafafa : 0xff0a0a0a) : (dark ? 0xa6fafafa : 0xb80a0a0a));
-+    image_->SetImage(ui::ImageModel::FromVectorIcon(folder_ ? kFolderIcon : kPageIcon,
++    image_->SetImage(!favicon_.IsEmpty() ? favicon_ : ui::ImageModel::FromVectorIcon(folder_ ? kFolderIcon : kPageIcon,
 +        dark ? 0x8cfafafa : 0x8c0a0a0a, 16));
 +  }
 + protected:
@@ -1040,6 +1072,9 @@ new file mode 100644
 +  bool folder_, active_, hovered_ = false, pressed_ = false, drop_ = false;
 +  raw_ptr<views::ImageView> image_ = nullptr;
 +  raw_ptr<views::Label> label_ = nullptr;
++  ui::ImageModel favicon_;
++  base::CancelableTaskTracker icon_tasks_;
++  base::WeakPtrFactory<OrganizationTreeRow> weak_{this};
 +};
 +BEGIN_METADATA(OrganizationTreeRow)
 +END_METADATA
@@ -1106,8 +1141,8 @@ new file mode 100644
 +          item.depth, window_->SelectedLogicalTabId() == item.id));
 +      row_by_id_[item.id] = row; visible_.push_back(item.id);
 +      if (entry.kind == organization::EntryKind::kFolder && !entry.collapsed) {
-+        auto children = organization::OrderedChildren(*snapshot, entry.space_id, entry.id);
-+        for (auto it = children.rbegin(); it != children.rend(); ++it) pending.push_back({*it, item.depth + 1});
++        auto nested = organization::OrderedChildren(*snapshot, entry.space_id, entry.id);
++        for (auto it = nested.rbegin(); it != nested.rend(); ++it) pending.push_back({*it, item.depth + 1});
 +      }
 +    }
 +    if (auto it = row_by_id_.find(focused); it != row_by_id_.end()) it->second->RequestFocus();
@@ -1176,7 +1211,11 @@ new file mode 100644
 +  const auto& entry = snapshot->entries.at(id);
 +  menu_->AddItem(1, u"Rename…");
 +  if (entry.kind == organization::EntryKind::kFolder) menu_->AddItem(2, u"New folder inside…");
-+  else menu_->AddItem(3, u"Unload tab");
++  else {
++    menu_->AddItem(3, u"Unload tab");
++    auto* window = AuxOrganizationWindowController::FromBrowser(browser_.get());
++    if (window && window->HasPendingSharedUpdate(id)) menu_->AddItem(8, u"Use shared URL from another window");
++  }
 +  menu_->AddItem(4, entry.space_id.empty() ? u"Move to this Space" : u"Pin to all Spaces");
 +  move_menu_ = std::make_unique<ui::SimpleMenuModel>(this);
 +  move_targets_.push_back({"", ""}); move_menu_->AddItem(100, u"All Spaces (Pins)");
@@ -1208,6 +1247,14 @@ new file mode 100644
 +    window_->UnloadLogicalTab(menu_entry_, base::BindOnce([](base::WeakPtr<AuxOrganizationTreeView> view, bool success) {
 +      if (view && !success) view->Status(u"This tab has active work and could not be unloaded.");
 +    }, weak_.GetWeakPtr())); return;
++  }
++  if (command == 8 && browser_) {
++    auto* window = AuxOrganizationWindowController::FromBrowser(browser_.get());
++    if (window) window->ApplyPendingSharedUpdate(menu_entry_, base::BindOnce(
++        [](base::WeakPtr<AuxOrganizationTreeView> view, bool success) {
++          if (view && !success) view->Status(u"This page changed or has active work. Its current URL was retained.");
++        }, weak_.GetWeakPtr()));
++    return;
 +  }
 +  if (command == 4) { Move(menu_entry_, found->second.space_id.empty() ? window_->ActiveSpaceId() : "", "", kEnd, menu_context_); return; }
 +  if (command >= 100 && static_cast<size_t>(command - 100) < move_targets_.size()) {
@@ -1496,7 +1543,7 @@ diff --git a/chrome/browser/ui/views/frame/aux_organization_window_controller.cc
 new file mode 100644
 --- /dev/null
 +++ b/chrome/browser/ui/views/frame/aux_organization_window_controller.cc
-@@ -0,0 +1,523 @@
+@@ -0,0 +1,509 @@
 +// Copyright 2026 Aux Authors. BSD-style license: see //LICENSE.
 +#include "chrome/browser/ui/views/frame/aux_organization_window_controller.h"
 +#include <algorithm>
@@ -1507,14 +1554,14 @@ new file mode 100644
 +#include "base/task/single_thread_task_runner.h"
 +#include "base/uuid.h"
 +#include "chrome/browser/aux/organization/organization_profile_service.h"
++#include "chrome/browser/actor/ui/actor_ui_tab_controller.h"
++#include "chrome/browser/ui/views/frame/aux_bookmark_tab_exclusion.h"
 +#include "chrome/browser/aux/organization/organization_service.h"
 +#include "chrome/browser/media/webrtc/media_capture_devices_dispatcher.h"
 +#include "chrome/browser/media/webrtc/media_stream_capture_indicator.h"
 +#include "chrome/browser/profiles/profile.h"
 +#include "chrome/browser/sessions/session_restore.h"
 +#include "chrome/browser/sessions/session_service_factory.h"
-+#include "chrome/browser/ui/aux/egress_controller.h"
-+#include "chrome/browser/ui/aux/native_creator_close_receipt.h"
 +#include "chrome/browser/ui/aux/page_identity.h"
 +#include "chrome/browser/ui/browser_window/public/browser_window_features.h"
 +#include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
@@ -1535,15 +1582,6 @@ new file mode 100644
 +#include "content/public/browser/web_contents_observer.h"
 +namespace aux {
 +namespace {
-+// Navigation authorization can reject by dropping its closure. That is a
-+// refusal, never a successful navigation or a callback left unresolved.
-+struct NavigationReply {
-+  explicit NavigationReply(base::OnceCallback<void(bool)> callback)
-+      : callback(std::move(callback)) {}
-+  ~NavigationReply() { if (callback) std::move(callback).Run(false); }
-+  void Complete(bool success) { if (callback) std::move(callback).Run(success); }
-+  base::OnceCallback<void(bool)> callback;
-+};
 +organization::OrganizationService* Organization(BrowserWindowInterface* browser) {
 +  if (!browser) return nullptr;
 +  auto* owner = organization::OrganizationProfileServiceFactory::GetForProfileIfExists(browser->GetProfile());
@@ -1789,8 +1827,15 @@ new file mode 100644
 +  auto* contents = tab->GetContents();
 +  if (!contents || contents->GetBrowserContext() != profile_ || contents->IsLoading() ||
 +      contents->IsCurrentlyAudible() || contents->IsBeingCaptured() ||
-+      contents->NeedToFireBeforeUnloadOrUnloadEvents() || NativeCreatorCloseReceipt::FromWebContents(contents)) return true;
-+  if (!EgressController::ForProfile(profile_)->CanDiscardPage(contents)) return true;
++      contents->NeedToFireBeforeUnloadOrUnloadEvents() || IsBookmarkTabExcluded(tab, model_)) return true;
++  // Use actual selected-product activity owners. The older independent
++  // EgressController/creator service is not in this build and is not authority.
++  const auto* identity = PageIdentity::FromWebContents(contents);
++  if (identity && identity->runtime_owned()) return true;
++  if (content::DevToolsAgentHost::HasFor(contents) &&
++      content::DevToolsAgentHost::GetOrCreateFor(contents)->IsAttached()) return true;
++  auto* actor = actor::ui::ActorUiTabController::Get(tab->GetUnownedUserDataHost());
++  if (actor && !actor->IsColdForAuxProfileSwitch()) return true;
 +  const auto capture = MediaCaptureDevicesDispatcher::GetInstance()->GetMediaStreamCaptureIndicator();
 +  if (capture->IsCapturingUserMedia(contents) || capture->IsBeingMirrored(contents) ||
 +      capture->IsCapturingTab(contents) || capture->IsCapturingWindow(contents) || capture->IsCapturingDisplay(contents)) return true;
@@ -1960,24 +2005,12 @@ new file mode 100644
 +    const GURL url(view.pending_shared_url);
 +    auto* coordinator = organization::OrganizationProfileServiceFactory::GetForProfileIfExists(profile_);
 +    if (!coordinator || organization->blocked()) { std::move(reply).Run(false); return; }
-+    EgressController::ForProfile(profile_)->NavigateForPerson(handle.Get()->GetContents(),
-+        base::BindOnce([](base::WeakPtr<AuxOrganizationWindowController> owner,
-+                         tabs::TabHandle handle, std::string id, std::string document,
-+                         std::string loaded_url, std::string generation, GURL url,
-+                         std::unique_ptr<NavigationReply> reply) {
-+          if (!owner || !owner->Current() || owner->Protected(handle.Get())) return;
-+          auto* coordinator = organization::OrganizationProfileServiceFactory::GetForProfileIfExists(owner->profile_);
-+          const auto found = owner->views_.find(handle);
-+          auto* model = Organization(owner->browser_.get());
-+          if (!coordinator || coordinator->owner_generation() != generation ||
-+              found == owner->views_.end() || found->second.logical_id != id ||
-+              found->second.document_id != document || found->second.loaded_url != loaded_url ||
-+              found->second.pending_shared_url != url.spec() || !model || model->blocked() || model->pending() ||
-+              !model->snapshot().entries.contains(id) || model->snapshot().entries.at(id).current_url != url.spec()) return;
-+          handle.Get()->GetContents()->GetController().LoadURLWithParams(content::NavigationController::LoadURLParams(url));
-+          reply->Complete(true);
-+        }, weak_.GetWeakPtr(), handle, id, view.document_id, view.loaded_url,
-+           coordinator->owner_generation(), url, std::make_unique<NavigationReply>(std::move(reply))));
++    // Explicit person action targets this exact view; it does not focus a
++    // different tab or authorize a background/agent navigation.
++    const auto alive = weak_.GetWeakPtr();
++    auto* contents = handle.Get()->GetContents();
++    contents->GetController().LoadURLWithParams(content::NavigationController::LoadURLParams(url));
++    std::move(reply).Run(static_cast<bool>(alive));
 +    return;
 +  }
 +  std::move(reply).Run(false);
@@ -2495,7 +2528,7 @@ diff --git a/chrome/browser/ui/views/frame/aux_spaces_switcher.cc b/chrome/brows
 new file mode 100644
 --- /dev/null
 +++ b/chrome/browser/ui/views/frame/aux_spaces_switcher.cc
-@@ -0,0 +1,213 @@
+@@ -0,0 +1,215 @@
 +// Copyright 2026 Aux Authors. BSD-style license: see //LICENSE.
 +#include "chrome/browser/ui/views/frame/aux_spaces_switcher.h"
 +#include <algorithm>
@@ -2511,6 +2544,8 @@ new file mode 100644
 +#include "chrome/browser/ui/views/frame/aux_organization_ui_commands.h"
 +#include "chrome/browser/ui/views/frame/aux_organization_window_delegate.h"
 +#include "ui/base/metadata/metadata_impl_macros.h"
++#include "ui/base/mojom/menu_source_type.mojom.h"
++#include "ui/views/controls/label.h"
 +#include "ui/color/color_provider_key.h"
 +#include "ui/gfx/font_list.h"
 +#include "ui/events/event.h"
@@ -2541,7 +2576,7 @@ new file mode 100644
 +      base::BindRepeating(&AuxSpacesSwitcher::ShowMenu, weak_.GetWeakPtr()), u"Space"));
 +  select_->SetTooltipText(u"Switch Space");
 +  const gfx::FontList font;
-+  select_->SetFontList(font.Derive(12 - font.GetFontSize(), gfx::Font::NORMAL, gfx::Font::Weight::MEDIUM));
++  select_->label()->SetFontList(font.Derive(12 - font.GetFontSize(), gfx::Font::NORMAL, gfx::Font::Weight::MEDIUM));
 +  select_->SetAnimateOnStateChange(false);
 +  select_->SetHasInkDropActionOnClick(false);
 +  select_->SetMaxSize(gfx::Size(112, 24));
@@ -2911,7 +2946,12 @@ diff --git a/chrome/browser/ui/views/tabs/vertical/aux_pinned_tab_entry_actions.
 diff --git a/chrome/browser/ui/views/tabs/vertical/vertical_pinned_tab_entries_view.cc b/chrome/browser/ui/views/tabs/vertical/vertical_pinned_tab_entries_view.cc
 --- a/chrome/browser/ui/views/tabs/vertical/vertical_pinned_tab_entries_view.cc
 +++ b/chrome/browser/ui/views/tabs/vertical/vertical_pinned_tab_entries_view.cc
-@@ -17,6 +17,9 @@
+@@ -1,3 +1,4 @@
++#include "chrome/browser/ui/views/frame/aux_organization_window_controller.h"
+ // Copyright 2026 The Aux Authors
+ // Use of this source code is governed by a BSD-style license that can be
+ // found in the LICENSE file.
+@@ -17,6 +18,9 @@
  #include "cc/paint/paint_flags.h"
  #include "chrome/browser/profiles/profile.h"
  #include "chrome/browser/aux/component_bootstrap.h"
@@ -2921,7 +2961,7 @@ diff --git a/chrome/browser/ui/views/tabs/vertical/vertical_pinned_tab_entries_v
  #include "chrome/browser/ui/color/chrome_color_id.h"
  #include "ui/gfx/vector_icon_types.h"
  #include "chrome/browser/favicon/favicon_service_factory.h"
-@@ -211,7 +214,7 @@
+@@ -211,7 +215,7 @@
      return !owner_->paused_ && !owner_->IsEntryDragInProgress() &&
             owner_->model_ && index_ < owner_->entries_.size() &&
             aux::FindPinnedTabEntry(*owner_->model_,
@@ -2930,7 +2970,7 @@ diff --git a/chrome/browser/ui/views/tabs/vertical/vertical_pinned_tab_entries_v
    }
    views::BubbleAnchor GetAnchor() override { return views::BubbleAnchor(this); }
    views::BubbleBorder::Arrow GetAnchorPosition() const override {
-@@ -359,7 +362,7 @@
+@@ -359,7 +363,7 @@
      HoverCardAnchorTarget* target = nullptr;
      if (IsValidHoverCardTarget()) {
        const int live = *aux::FindPinnedTabEntry(
@@ -2939,7 +2979,7 @@ diff --git a/chrome/browser/ui/views/tabs/vertical/vertical_pinned_tab_entries_v
        SetHoverCardDataFrom(
            tabs::TabData::FromTabInterface(owner_->model_->GetTabAtIndex(live)));
        target = this;
-@@ -479,6 +482,23 @@
+@@ -479,6 +483,23 @@
        aux::kPinnedTabEntriesPref,
        base::BindRepeating(&VerticalPinnedTabEntriesView::ScheduleRefresh,
                            weak_factory_.GetWeakPtr()));
@@ -2963,7 +3003,7 @@ diff --git a/chrome/browser/ui/views/tabs/vertical/vertical_pinned_tab_entries_v
    Refresh();
  }
  void VerticalPinnedTabEntriesView::PauseForProfileSwitch() {
-@@ -513,6 +533,8 @@
+@@ -513,6 +534,8 @@
    refresh_pending_ = false;
    ui_changes_.clear();
    pref_changes_.Reset();
@@ -2972,7 +3012,7 @@ diff --git a/chrome/browser/ui/views/tabs/vertical/vertical_pinned_tab_entries_v
    TabStripModelObserver::StopObservingAll(this);
    model_ = nullptr;
  }
-@@ -546,7 +568,9 @@
+@@ -546,7 +569,9 @@
    if (paused_ || !model_)
      return;
    ui_changes_.clear();
@@ -2983,7 +3023,7 @@ diff --git a/chrome/browser/ui/views/tabs/vertical/vertical_pinned_tab_entries_v
    std::vector<Entry> entries;
    for (auto& value : saved) {
      Entry entry;
-@@ -559,7 +583,7 @@
+@@ -559,7 +584,7 @@
      if (auto cached = icon_cache_.find(entry.saved.url.spec());
          cached != icon_cache_.end())
        entry.image = cached->second;
@@ -2992,7 +3032,7 @@ diff --git a/chrome/browser/ui/views/tabs/vertical/vertical_pinned_tab_entries_v
      if (entry.live_index) {
        auto* tab = model_->GetTabAtIndex(*entry.live_index);
        if (auto* helper = TabUIHelper::From(tab)) {
-@@ -653,6 +677,12 @@
+@@ -653,6 +678,12 @@
      const tabs::TabInterface& tab) const {
    if (paused_ || !model_ || !tab.IsPinned() || !tab.GetContents())
      return false;
@@ -3005,7 +3045,7 @@ diff --git a/chrome/browser/ui/views/tabs/vertical/vertical_pinned_tab_entries_v
    const auto remembered = aux::GetRememberedPinnedTabEntryUrl(*tab.GetContents());
    const GURL& candidate = remembered && remembered->is_valid()
        ? *remembered : tab.GetContents()->GetVisibleURL();
-@@ -755,7 +785,7 @@
+@@ -755,7 +786,7 @@
    const Entry& entry = entries_[index];
    EntryDragData data{entry.saved, entry.title, entry.image, std::nullopt,
                       entry.accent};
@@ -3014,7 +3054,7 @@ diff --git a/chrome/browser/ui/views/tabs/vertical/vertical_pinned_tab_entries_v
      data.live_tab = model_->GetTabAtIndex(*live)->GetHandle();
    const gfx::Rect local_bounds(pointer - grab_offset.OffsetFromOrigin(),
                                  view->size());
-@@ -899,43 +929,39 @@
+@@ -899,43 +930,39 @@
      cleanup.Run();
  }
  void VerticalPinnedTabEntriesView::ReleaseEntryDrag() {
@@ -3084,7 +3124,7 @@ diff --git a/chrome/browser/ui/views/tabs/vertical/vertical_pinned_tab_entries_v
    }
  }
  std::optional<gfx::Rect> VerticalPinnedTabEntriesView::UpdateDropInsertion(
-@@ -986,46 +1012,28 @@
+@@ -986,46 +1013,30 @@
    SchedulePaint();
    PreferredSizeChanged();
  }
@@ -3149,11 +3189,13 @@ diff --git a/chrome/browser/ui/views/tabs/vertical/vertical_pinned_tab_entries_v
 +void VerticalPinnedTabEntriesView::UnpinEntryAsync(
 +    const aux::PinnedTabEntry& entry, base::OnceCallback<void(bool)> done) {
 +  if (paused_ || entry.logical_id.empty()) { std::move(done).Run(false); return; }
-+  aux::UnpinOrganizationEntry(*browser_->GetProfile(), entry.logical_id, std::move(done));
++  auto* window = aux::AuxOrganizationWindowController::FromBrowser(browser_.get());
++  if (!window) { std::move(done).Run(false); return; }
++  aux::UnpinOrganizationEntry(*browser_->GetProfile(), entry.logical_id, window->ActiveSpaceId(), std::move(done));
  }
  void VerticalPinnedTabEntriesView::OnPaint(gfx::Canvas* canvas) {
    views::View::OnPaint(canvas);
-@@ -1043,13 +1051,12 @@
+@@ -1043,13 +1054,12 @@
  void VerticalPinnedTabEntriesView::Activate(size_t index) {
    if (paused_ || !model_ || index >= entries_.size())
      return;
@@ -3169,7 +3211,7 @@ diff --git a/chrome/browser/ui/views/tabs/vertical/vertical_pinned_tab_entries_v
      model_->CloseWebContentsAt(*live, CLOSE_USER_GESTURE);
  }
  void VerticalPinnedTabEntriesView::ShowEntryContextMenu(size_t index,
-@@ -1058,7 +1065,7 @@
+@@ -1058,7 +1068,7 @@
      return;
    CancelContextMenu();
    const GURL url = entries_[index].saved.url;
@@ -3178,7 +3220,7 @@ diff --git a/chrome/browser/ui/views/tabs/vertical/vertical_pinned_tab_entries_v
      auto* browser_view = BrowserView::GetBrowserViewForBrowser(browser_);
      auto* region =
          browser_view ? browser_view->vertical_tab_strip_region_view() : nullptr;
-@@ -1086,6 +1093,7 @@
+@@ -1086,6 +1096,7 @@
      return;
    }
    menu_url_ = url;
@@ -3186,7 +3228,7 @@ diff --git a/chrome/browser/ui/views/tabs/vertical/vertical_pinned_tab_entries_v
    menu_model_ = std::make_unique<ui::SimpleMenuModel>(this);
    menu_model_->AddItem(1, l10n_util::GetStringUTF16(IDS_TAB_CXMENU_UNPIN_TAB));
    menu_runner_ = std::make_unique<views::MenuRunner>(
-@@ -1116,8 +1124,11 @@
+@@ -1116,8 +1127,11 @@
  }
  void VerticalPinnedTabEntriesView::ExecuteCommand(int command_id, int) {
    if (IsCommandIdEnabled(command_id)) {
