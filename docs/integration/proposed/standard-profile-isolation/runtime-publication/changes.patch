@@ -1,0 +1,286 @@
+--- a/AuxDevelopmentWorkerHost.cc
++++ b/AuxDevelopmentWorkerHost.cc
+@@ -31,6 +31,11 @@
+ #include <functional>
+ #include <iterator>
+ #include <CommonCrypto/CommonDigest.h>
++#include <dirent.h>
++#include <sys/file.h>
++#include <time.h>
++#include <stdio.h>
++#include "AuxRuntimePublicationBridge.h"
+ 
+ 
+ // Provided only by the actual Owner -> retained cold guard/parent root bridge.
+@@ -328,6 +333,8 @@
+ #include "AuxRuntimeCacheInspection.inc"
+ #include "AuxRuntimeCachePins.inc"
+ #include "AuxRuntimeCacheAsync.inc"
++#include "AuxRuntimePublication.inc"
++#include "AuxRuntimePublicationNapi.inc"
+ napi_value CaptureExecPrivateParent(napi_env env, napi_callback_info info) {
+   if (getpid() != kHostProcess) return nullptr;
+   auto refuse = [env]() -> napi_value {
+@@ -978,6 +985,7 @@
+       {"captureExecPrivateParent",nullptr,CaptureExecPrivateParent,nullptr,nullptr,nullptr,napi_default,nullptr},
+       {"captureStorageRoots",nullptr,CaptureStorageRoots,nullptr,nullptr,nullptr,napi_default,nullptr},
+       {"inspectRuntimeCache",nullptr,InspectRuntimeCache,nullptr,nullptr,nullptr,napi_default,nullptr},
++      {"seedBundledRuntime",nullptr,SeedBundledRuntime,nullptr,nullptr,nullptr,napi_default,nullptr},
+       {"assertBrokerOwner",nullptr,AssertBrokerOwner,nullptr,nullptr,nullptr,napi_default,nullptr},
+       {"withBrokerSync",nullptr,WithBrokerSync,nullptr,nullptr,nullptr,napi_default,nullptr},
+       {"withBrokerAwaited",nullptr,WithBrokerAwaited,nullptr,nullptr,nullptr,napi_default,nullptr},
+--- a/AuxOwnedCommandDispatcher.swift
++++ b/AuxOwnedCommandDispatcher.swift
+@@ -438,6 +438,42 @@
+ #endif
+         }
+     }
++    // Native synchronous action only. The C++ lease remains alive beyond this
++    // method's postguard; no JS callback, path, pin inventory or fd is admitted.
++    func withRuntimePublication(_ handle:UInt64,expected:UInt64,
++        invoked:inout Bool,action:(Int32,Int32,UInt64)->Void)throws {
++        try withEntry(handle){entry in
++#if AUX_NATIVE_FRESH_RUNTIME_CONSUMER
++            guard let captured=entry.nativeFreshRuntime,expected != 0 else{throw AuxDispatcherLifetimeError.invalidInput}
++            let projection=try captured.owner.duplicateAuthenticatedTaskHome()
++            defer{Darwin.close(projection.descriptor)}
++            guard projection.generation==expected,projection.descriptor>=0 else{throw AuxDispatcherLifetimeError.invalidInput}
++            let bundle=captured.owner.authenticatedPolicy.bundlePath
++            let suffix="/apps/daemon/Aux Daemon.app"
++            guard bundle.hasSuffix(suffix) else{throw AuxDispatcherLifetimeError.invalidInput}
++            let source=String(bundle.dropLast(suffix.count))+"/agent-runtime"
++            // Walk the fixed policy-derived distribution without following any
++            // intermediate symlink. Source bytes are fully checked against the
++            // compiled inventory by the native publication worker.
++            var fd=Darwin.open("/",O_RDONLY|O_DIRECTORY|O_NOFOLLOW|O_CLOEXEC)
++            guard fd>=0 else{throw AuxDispatcherLifetimeError.invalidInput}
++            defer{Darwin.close(fd)}
++            for part in source.split(separator:"/") {
++                guard part != ".",part != ".." else{throw AuxDispatcherLifetimeError.invalidInput}
++                let next=Darwin.openat(fd,String(part),O_RDONLY|O_DIRECTORY|O_NOFOLLOW|O_CLOEXEC)
++                guard next>=0 else{throw AuxDispatcherLifetimeError.invalidInput}
++                Darwin.close(fd);fd=next
++            }
++            var st=stat()
++            guard fstat(fd,&st)==0,st.st_uid==geteuid(),st.st_mode & 0o022==0 else{throw AuxDispatcherLifetimeError.invalidInput}
++            try requireFreshGuard(entry,moment:.beforeAction)
++            invoked=true
++            action(projection.descriptor,fd,projection.generation)
++#else
++            throw AuxDispatcherLifetimeError.invalidInput
++#endif
++        }
++    }
+     func validateCurrentAuthority(_ handle:UInt64)->Int32 {
+         do {
+             try withEntry(handle,guardGenericAction:false){entry in try requireFreshGuard(entry,moment:.beforeAction)}
+@@ -674,3 +710,18 @@
+         generation.pointee=roots.generation;control.pointee=roots.control;task.pointee=roots.task;return 0
+     }catch{return -1}
+ }
++
++// Native callback is synchronous and cannot escape borrowed directory FDs.
++@_cdecl("AuxNativeContextWithRuntimePublication")
++func auxNativeContextWithRuntimePublication(_ handle:UInt64,_ generation:UInt64,
++    _ action:(@convention(c)(UnsafeMutableRawPointer?,Int32,Int32,UInt64)->Void)?,
++    _ context:UnsafeMutableRawPointer?)->Int32 {
++    guard let action,let context,generation != 0 else{return -1}
++    var invoked=false
++    do {
++        try AuxCommandDispatcherRegistry.shared.withRuntimePublication(handle,expected:generation,invoked:&invoked){task,source,current in
++            action(context,task,source,current)
++        }
++        return 0
++    } catch {return invoked ? 2:-1}
++}
+--- a/runtime-seed.cjs
++++ b/runtime-seed.cjs
+@@ -1,137 +1,20 @@
+ 'use strict';
+-// Copy only pinned supplied runtime distribution. No native/model/network calls.
+-const fs = require('node:fs/promises');
+-const { constants } = require('node:fs');
++// The native owner selects source/task FDs, validates every pin/relocation,
++// creates/copies/chmods/links/cleans staging and atomically publishes it. JS has
++// no staging path, handle or mutation/cleanup route to bypass its native lease.
+ const path = require('node:path');
+-const crypto = require('node:crypto');
+-const sha = (b) => crypto.createHash('sha256').update(b).digest('hex');
+-const roots = new Set(['bin', 'native', 'node', 'python']);
+-const top = new Set(['env.sh', 'manifest.txt', 'openssl.cnf', 'prepare-python.py', 'version.txt']);
+-const textFiles = new Set(['env.sh', 'python/venv/bin/activate', 'python/venv/bin/activate.csh',
+-  'python/venv/bin/activate.fish', 'python/venv/bin/pip', 'python/venv/bin/pip3',
+-  'python/venv/bin/pip3.13', 'python/venv/bin/vba_extract.py', 'python/venv/pyvenv.cfg']);
+-const inside = (a, b) => { const r = path.relative(a, b); return !r || (!path.isAbsolute(r) && r !== '..' && !r.startsWith(`..${path.sep}`)); };
+-const stat = async (p) => { try { return await fs.lstat(p); } catch (e) { if (e.code !== 'ENOENT') throw e; } };
+-async function chain(p) {
+-  let current = path.parse(p).root;
+-  for (const part of p.slice(current.length).split(path.sep).filter(Boolean)) {
+-    current = path.join(current, part); const s = await fs.lstat(current);
+-    if (!s.isDirectory() || s.isSymbolicLink()) throw new Error('Runtime path traverses non-directory or symlink');
+-  }
++async function seedBundledRuntime({home, seedNativeRuntime, inspectRetainedRuntime}) {
++  if (typeof home !== 'string' || !path.isAbsolute(home) || path.resolve(home) !== home ||
++      typeof seedNativeRuntime !== 'function' || typeof inspectRetainedRuntime !== 'function')
++    throw Error('Authenticated native runtime seed required');
++  const result = await seedNativeRuntime();
++  const runtime = path.join(home, 'runtime');
++  if (result.status === 'retained' && result.renamed === false)
++    return {retained:true,seeded:false,runtime,inspection:await inspectRetainedRuntime()};
++  if (result.status === 'published' && result.renamed === true)
++    return {retained:false,seeded:true,runtime,relocatedTextFiles:result.relocatedTextFiles};
++  const unknown = result.status === 'unknown' || result.renamed;
++  throw Object.assign(Error(unknown ? 'Runtime publication outcome is unknown; retained state needs reconciliation' :
++    'Runtime publication was refused or cancelled'), {code:unknown?'AUX_RUNTIME_PUBLICATION_UNKNOWN':'AUX_RUNTIME_PUBLICATION_REFUSED'});
+ }
+-async function file(p) {
+-  if (!(await fs.lstat(p)).isFile()) throw new Error('Runtime payload is not regular');
+-  const h = await fs.open(p, constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK);
+-  try { if (!(await h.stat()).isFile()) throw new Error('Runtime payload is not regular'); return await h.readFile(); }
+-  finally { await h.close(); }
+-}
+-function originalBytes(bytes, entry, bundleRuntimeRoot) {
+-  if (!entry.anchors?.length) return bytes;
+-  if (!textFiles.has(entry.path) || bytes.includes(0) || !Buffer.from(bytes.toString('utf8')).equals(bytes)) throw new Error('Unallowlisted runtime relocation');
+-  let text = bytes.toString('utf8');
+-  for (const a of [...entry.anchors].reverse()) {
+-    const staged = a.replacement === 'runtimeRoot' ? bundleRuntimeRoot : a.replace;
+-    if (typeof staged !== 'string' || !staged || text.split(staged).length - 1 !== a.count) throw new Error('Staged runtime relocation anchor drift');
+-    text = text.split(staged).join(a.find);
+-  }
+-  return Buffer.from(text);
+-}
+-function relocate(original, entry, runtimeRoot) {
+-  if (!entry.anchors?.length) return original;
+-  let text = original.toString('utf8');
+-  for (const a of entry.anchors) {
+-    if (text.split(a.find).length - 1 !== a.count) throw new Error('Original runtime relocation anchor drift');
+-    text = text.split(a.find).join(a.replacement === 'runtimeRoot' ? runtimeRoot : a.replace);
+-  }
+-  return Buffer.from(text);
+-}
+-async function seedBundledRuntime({ source, home, bundleRuntimeRoot, pins, inspectRetainedRuntime }) {
+-  if (![source, home, bundleRuntimeRoot].every((p) => typeof p === 'string' && path.isAbsolute(p))) throw new Error('Absolute runtime source/home/text root required');
+-  source = path.resolve(source); home = path.resolve(home);
+-  if (inside(source, home) || inside(home, source)) throw new Error('Runtime seed source and home must be disjoint');
+-  await chain(source); await chain(home);
+-  const hs = await fs.lstat(home);
+-  if (hs.uid !== process.getuid() || (hs.mode & 0o7777) !== 0o700) throw new Error('Runtime home must be private0700');
+-  const runtime = path.join(home, 'runtime'), existing = await stat(runtime);
+-  if (existing) {
+-    if (!existing.isDirectory() || existing.isSymbolicLink() || existing.uid !== process.getuid() || (existing.mode & 0o022)) throw new Error('Unsafe existing runtime cache');
+-    // Mutable npm/pip caches and genuine newer versions are not original pins.
+-    if (typeof inspectRetainedRuntime !== 'function') throw Error('Native retained-runtime inspection required');
+-    const inspection = await inspectRetainedRuntime();
+-    return { retained: true, runtime, seeded: false, inspection };
+-  }
+-  if (pins?.version !== 1 || !Array.isArray(pins.files)) throw new Error('Invalid runtime pin inventory');
+-  const seen = new Set();
+-  for (const e of pins.files) {
+-    if (typeof e.path !== 'string' || path.isAbsolute(e.path) || e.path.includes('\\') || e.path.split('/').some((v) => !v || v === '.' || v === '..') || (!top.has(e.path) && !roots.has(e.path.split('/')[0])) || seen.has(e.path)) throw new Error('Invalid runtime payload path');
+-    seen.add(e.path);
+-    if (!['file', 'directory', 'symlink'].includes(e.type) || !Number.isInteger(e.mode) || e.mode < 0 || (e.mode & ~0o755)) throw new Error('Invalid runtime payload type/mode');
+-    if (e.type === 'file' && (!Number.isSafeInteger(e.size) || e.size < 0 || !/^[a-f0-9]{64}$/.test(e.sourceSha256))) throw new Error('Invalid runtime file pin');
+-    if (e.anchors?.length && (!textFiles.has(e.path) || e.type !== 'file')) throw new Error('Unallowlisted runtime relocation');
+-    for (const a of e.anchors ?? []) {
+-      if (typeof a.find !== 'string' || !a.find || !Number.isSafeInteger(a.count) || a.count <= 0 || !((a.kind === 'integration' && a.replacement === 'runtimeRoot') || (a.kind === 'identity' && a.find === 'ASIDE_' && a.replace === 'AUX_'))) throw new Error('Invalid runtime relocation anchor');
+-    }
+-  }
+-  const staging = await fs.mkdtemp(path.join(home, '.aux-runtime-seed-'));
+-  try {
+-    // Distribution is immutable for this seed operation. Cache only validated
+-    // source directories, never payload bytes or state across operations.
+-    const directories = new Set([source]);
+-    async function sourceDirectory(p) {
+-      if (directories.has(p)) return;
+-      if (!inside(source, p)) throw new Error('Runtime parent escapes distribution');
+-      await sourceDirectory(path.dirname(p));
+-      const s = await fs.lstat(p);
+-      if (!s.isDirectory() || s.isSymbolicLink()) throw new Error('Non-directory runtime source');
+-      directories.add(p);
+-    }
+-    for (const e of pins.files.filter((e) => e.type === 'directory').sort((a, b) => a.path.length - b.path.length)) {
+-      await sourceDirectory(path.join(source, e.path));
+-      await fs.mkdir(path.join(staging, e.path), { mode: e.mode });
+-    }
+-    let relocatedTextFiles = 0, next = 0;
+-    const files = pins.files.filter((e) => e.type === 'file');
+-    const completed = await Promise.allSettled(Array.from({ length: Math.min(8, files.length) }, async () => {
+-      while (next < files.length) {
+-        const e = files[next++];
+-        await sourceDirectory(path.dirname(path.join(source, e.path)));
+-        const original = originalBytes(await file(path.join(source, e.path)), e, bundleRuntimeRoot);
+-        if (original.length !== e.size || sha(original) !== e.sourceSha256) throw new Error('Runtime payload pin mismatch');
+-        const output = relocate(original, e, runtime);
+-        if (e.anchors?.length) relocatedTextFiles++;
+-        await fs.writeFile(path.join(staging, e.path), output, { flag: 'wx', mode: e.mode });
+-        await fs.chmod(path.join(staging, e.path), e.mode);
+-      }
+-    }));
+-    // Never remove staging while another worker can still write into it.
+-    const failed = completed.find((result) => result.status === 'rejected');
+-    if (failed) throw failed.reason;
+-    for (const e of pins.files.filter((e) => e.type === 'symlink')) {
+-      const p = path.join(source, e.path); await sourceDirectory(path.dirname(p));
+-      if (!(await fs.lstat(p)).isSymbolicLink() || await fs.readlink(p) !== e.linkTarget || path.isAbsolute(e.linkTarget) || !inside(source, path.resolve(path.dirname(p), e.linkTarget)) || !inside(source, await fs.realpath(p))) throw new Error('Runtime symlink pin changed or escapes distribution');
+-      await fs.symlink(e.linkTarget, path.join(staging, e.path));
+-    }
+-    await fs.mkdir(path.join(staging, 'tmp'), { mode: 0o700 });
+-    await fs.writeFile(path.join(staging, '.npmrc'), 'fund=false\naudit=false\nupdate-notifier=false\n', { flag: 'wx', mode: 0o600 });
+-    // Exclusive reservation; never POSIX-rename over an existing empty cache.
+-    try { await fs.mkdir(runtime, { mode: 0o700 }); }
+-    catch (e) {
+-      if (e.code !== 'EEXIST') throw e;
+-      const s = await fs.lstat(runtime);
+-      if (!s.isDirectory() || s.isSymbolicLink() || s.uid !== process.getuid() || (s.mode & 0o022)) throw new Error('Unsafe racing runtime cache');
+-      if (typeof inspectRetainedRuntime !== 'function') throw Error('Native retained-runtime inspection required');
+-    const inspection = await inspectRetainedRuntime();
+-    return { retained: true, runtime, seeded: false, inspection };
+-    }
+-    for (const name of (await fs.readdir(staging)).sort((a, b) => (a === 'version.txt') - (b === 'version.txt'))) {
+-      if (await stat(path.join(runtime, name))) throw new Error('Runtime publication destination changed');
+-      await fs.rename(path.join(staging, name), path.join(runtime, name));
+-    }
+-    return { seeded: true, retained: false, runtime, relocatedTextFiles };
+-  } finally {
+-    await fs.rm(staging, { recursive: true, force: true });
+-    // A crash/failed publication leaves a partial cache for original validation;
+-    // never delete/repair an existing runtime or imply it is installed.
+-  }
+-}
+-module.exports = { seedBundledRuntime };
++module.exports = {seedBundledRuntime};
+--- a/runtime-bootstrap.cjs
++++ b/runtime-bootstrap.cjs
+@@ -15,7 +15,7 @@
+ function captureNativeRuntime() {
+   const binding=process._linkedBinding('aux_owned_native');
+   const functions={};
+-  for(const name of ['captureStorageRoots','withBrokerAwaited','inspectRuntimeCache']) {
++  for(const name of ['captureStorageRoots','withBrokerAwaited','inspectRuntimeCache','seedBundledRuntime']) {
+     const d=Object.getOwnPropertyDescriptor(binding,name);
+     if(!d||!Object.hasOwn(d,'value')||typeof d.value!=='function'||d.writable||d.configurable)throw Error('Native runtime authority unavailable');
+     functions[name]=d.value.bind(binding);
+@@ -68,7 +68,21 @@
+     const current=authority.functions.captureStorageRoots();
+     if(authority.keys.some(key=>current[key]!==authority.roots[key]))throw Error('Native runtime owner changed before seeding');
+     return seedBundledRuntime({ source: path.join(root, 'agent-runtime'), home, bundleRuntimeRoot: report.runtimeRoot, pins,
+-      inspectRetainedRuntime: () => inspectWithAuthority(authority, destination) });
++      inspectRetainedRuntime: () => inspectWithAuthority(authority, destination),
++      seedNativeRuntime: async () => {
++        const result = await authority.functions.seedBundledRuntime();
++        const current = authority.functions.captureStorageRoots();
++        const fields=['format','status','ownerGeneration','transportGeneration','renamed','relocatedTextFiles'];
++        if (!result || !Object.isFrozen(result) || Object.keys(result).sort().join('\0')!==fields.sort().join('\0') ||
++            result.format!=='aux.runtime-publication.v1' ||
++            authority.keys.some(key=>current[key]!==authority.roots[key]) ||
++            result.ownerGeneration!==authority.roots.ownerGeneration || result.transportGeneration!==authority.roots.transportGeneration ||
++            !['published','retained','refused','cancelled','unknown'].includes(result.status) ||
++            typeof result.renamed!=='boolean' || !Number.isInteger(result.relocatedTextFiles) ||
++            result.relocatedTextFiles<0 || result.relocatedTextFiles>9)
++          throw Error('Native runtime publication outcome unavailable');
++        return result;
++      } });
+   });
+   const operation=active;operation.then(()=>{if(active===operation){active=undefined;activeRoots=undefined}},()=>{if(active===operation){active=undefined;activeRoots=undefined}});
+   return operation;
