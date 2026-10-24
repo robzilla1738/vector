@@ -1,3 +1,9 @@
+# Changed browser boundaries compile; complete app build running — 2026-10-24
+
+The actual focused a9 check passed all 25 requested native object targets after the exact three-file a8 compiler correction. This includes the native observer engine/bridge, primary and helper main, content policy receipt, native messaging, Crashpad close, shutdown drain and corrected asynchronous Meta protocol/ProfileImpl paths. The final isolated source retains 322 pinned inputs. The original full unsigned a8 browser build is now running; focused success is not a completed browser or runtime acceptance.
+
+The coupled daemon a6 remains successfully compiled/linked. Matching supplied revision17 resource staging is running against a fresh app path; strict final packaging is pending complete browser success. UI/CSS/assets and accepted app remain unchanged. No app lifecycle, signing/release, provider call, owner state or OS grant occurred.
+
 # Coupled daemon linked; final browser source projected — 2026-10-24
 
 Native daemon a6 compiled and linked with the fixed credential lease, reverse observer coverage and exact inherited crash-registration cleanup: 14 native objects, 48 Swift sources and the unchanged module’s 50 imports. The actual v5 ordinary/dormant source pair passes 197 anchors and independent original-entry equality; its ChatGPT shim passes nine exact edits. No product API or provider was executed.
