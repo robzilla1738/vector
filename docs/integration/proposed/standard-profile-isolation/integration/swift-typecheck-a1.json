@@ -1,0 +1,12 @@
+{
+  "passed": true,
+  "exitCode": 0,
+  "swiftSources": 48,
+  "productExecuted": false,
+  "linked": false,
+  "sourceComposition": {
+    "path": "/private/tmp/aux-standard-native-source-20261023-a1/composition.json",
+    "sha256": "99567ff09fc7b55d3d7b58c392a629ef56dcd45d302cfc57e467eb9b7284a90a"
+  },
+  "logSha256": "a075a3a44ae995f4e894bbda7ccad65ae35e07635abdea0b6fa28785afbbc09f"
+}

@@ -1,0 +1,288 @@
+{
+  "format": "aux.standard-browser-drain.composition.v1",
+  "inputs": [
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/browser-drain/manifest.json",
+      "sha256": "66a8105f031d14731848b1bca457c2e0d81887f0d1913afc082eb11d16550ec0"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/extensions/api/messaging/aux_native_messaging_lifetime.h",
+      "sha256": "cea96cac077371596371b95651dd2972607293e3f18295c73c0a78a6e59a3551"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/extensions/api/messaging/launch_context_posix.cc",
+      "sha256": "104a5914f95f4336aa54434cce59155963404dca2ea52bdee35e79aaea1b21ed"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/ui/aux_owned_browser_quiesce.cc",
+      "sha256": "d8fb7b6084597827336063ba9b70be16f58d4cff405d165f62965a97a82395f1"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/ui/aux_owned_browser_quiesce.h",
+      "sha256": "16e65be831601477acf05a81b66d2032ad6147ce1e8ca4b563939764e668d8f7"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/content/browser/aux_child_lifetime.h",
+      "sha256": "44b5aaf5d6c8a6ea48e92c7f00433b573860b06403a2f097ec80e9497764c7c9"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/content/browser/child_process_launcher_helper_mac.cc",
+      "sha256": "d0b0ec0d435e0729f41d2eae119e60a795141e2de0081fa8bd95a86a29869d7c"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/browser-drain/replacements.json",
+      "sha256": "65d515633d032428ff0470957559486db0374a363d72677c7b55563e64d60123"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/browser-drain/source/content/browser/aux_child_process_drain.cc",
+      "sha256": "9066cb23944a0494899337fe4740c1cd6975b168e40f17628c2e9b78854ef3ae"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/browser-drain/source/content/public/browser/aux_child_process_drain.h",
+      "sha256": "45d254d75f1c7ad8b1e40f3e91ed5ce6b2ade57e83fc8d332f5afb65c41a1449"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/browser-drain-transport/manifest.json",
+      "sha256": "b4508d8789318bad627916a2ffa6bdfe75e60825ebc87e71af8fba8722ed2586"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/aux/AuxNativePeerTransport.cc",
+      "sha256": "d9fc05d9adde67e5a11dd61761a635171221f557b6f01d3db5d2b7f518dfab74"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/aux/AuxNativePeerTransport.h",
+      "sha256": "2d7a3e9a22eea448c48c1cb952a3a5014046106c10cb7080b9706a2de9a44e1e"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/aux/AuxNativePeerWire.h",
+      "sha256": "018525272f12b4d8ffbda5158f7fbef0251027b7509b8e8ad2cfba475827290d"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/browser-drain-transport/external-baselines.json",
+      "sha256": "ae163ab18c3a1f876a48a7547fb7c3aa402e2b377faf7c6a0da791a6aeb5d373"
+    },
+    {
+      "path": "/private/tmp/aux-browser-authorized-bridge-20261023/AuxNativeParentConnectionBridge.cc",
+      "sha256": "0e92d23b8cecdcee80d0712bec6ad8f50976d25edad9e5135c6f89cca3526961"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/browser-drain-transport/replacements.json",
+      "sha256": "0abb5a88fce14a6588511825f7e3461fd1a68ca1a435e92087faf1c34081bad5"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/browser-drain-final/manifest.json",
+      "sha256": "5c712bb32bceebf698c58520182823f168a54a67f8a450a0da517fba68591817"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/aux/daemon_supervisor.cc",
+      "sha256": "3c8f32d8c268cc4baa182b7e08e74b6cfffd80d8b014fc7cbde09171bd4462cf"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/chrome_browser_main.cc",
+      "sha256": "6407d666a21e93b1bd43774045447bc369e86fa3491977b0ab4cd0a7920a2ca0"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/extensions/api/messaging/native_message_process_host.cc",
+      "sha256": "c97eafdb50c2e15f4895c4236f3a71ef5dfc81633940820de012889b30b2d937"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/sessions/session_service_base.cc",
+      "sha256": "06f665a13b45886c314778f279650ff9c3b46ba324790a430dff646786d28827"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/sessions/session_service_base.h",
+      "sha256": "5a3c95999730dc1323a0aa9ec58e1b90fd2e95d37fe143c2cfb0038109eb25df"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/ui/aux_profile_switch_session_rebuild.cc",
+      "sha256": "7a536fe8cd9ffef5549d9a668007dd861763bc842d3933b0cc17d0839f48758a"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/ui/aux_session_writer_participant.h",
+      "sha256": "3d437254cad95ca64f4ac6283b7055981853e06948601becccc98e2570d0c0f9"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/browser-drain-final/replacements.json",
+      "sha256": "8978677fc27ba63558d4002c9f013105e72f7c73469a996f45c8c74fe99fd6e0"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/browser-drain-final/source/chrome/browser/ui/aux_browser_shutdown_drain.cc",
+      "sha256": "a15b0dff766ea2b7061e68ae62ebd722baa961825666a0b9cf49521493d40e79"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/browser-drain-final/source/chrome/browser/ui/aux_browser_shutdown_drain.h",
+      "sha256": "97df7c43a25453f6c10daa749ecefee9a3169f4941ee6a636c5f571f3c817622"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/browser-drain-after-mainloop/manifest.json",
+      "sha256": "e125fa6cbf347006cd1535f8bcbfc66f81a4518b5b409a4d144f862b153af30f"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/content/browser/browser_main_runner_impl.cc",
+      "sha256": "69998f19d6fe4ac6f645e74a4c68907a7cc2a297886163700efe58da8be5ef6a"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/browser-drain-after-mainloop/replacements.json",
+      "sha256": "fa1aa020518775763ca9f463342a2e1b24f458ef406f4f0718aaf03205c7b753"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/browser-drain-shutdown-snapshots/manifest.json",
+      "sha256": "3d238a1f33ead4dfaf1a7b3b8e862ae07442c9dc2d05c0c2b462f64124b44b60"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/ui/aux_profile_switch_session_rebuild.h",
+      "sha256": "26a1f5be649a294b15a4d86775d4987d819f5efed0598726b58bbd0ab347ebd1"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/browser-drain-shutdown-snapshots/replacements.json",
+      "sha256": "99ac401d5ea473cc92cdfb820be21054bbc0a4579a91f6068ae04695c9c9493a"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/content/browser/BUILD.gn",
+      "sha256": "d6f937cee9919010cb4c8d6f5668bd893d433b41fa13ce08248da7a0252b579c"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/content/public/browser/BUILD.gn",
+      "sha256": "f56ec8ede325d5bcb29f825130d242c9b09febcf82d580e9718f434098c52c22"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/ui/BUILD.gn",
+      "sha256": "c6cb4dea4080f79ce05ad32ed0125f404d380ff0f028e47f9618a613eb12c274"
+    }
+  ],
+  "files": [
+    {
+      "path": "chrome/browser/aux/AuxNativePeerTransport.cc",
+      "beforeSha256": "d9fc05d9adde67e5a11dd61761a635171221f557b6f01d3db5d2b7f518dfab74",
+      "afterSha256": "6d6598fc792bbb7a93bcb8c50a64bda65c33f011d201b6493757c38dc1320e9e"
+    },
+    {
+      "path": "chrome/browser/aux/AuxNativePeerTransport.h",
+      "beforeSha256": "2d7a3e9a22eea448c48c1cb952a3a5014046106c10cb7080b9706a2de9a44e1e",
+      "afterSha256": "240c7b66aaa51efec1e5450cfecdb3461c9d70a57ca11c3f66381d593e407e6a"
+    },
+    {
+      "path": "chrome/browser/aux/AuxNativePeerWire.h",
+      "beforeSha256": "018525272f12b4d8ffbda5158f7fbef0251027b7509b8e8ad2cfba475827290d",
+      "afterSha256": "b02072fde7e71b70a4443ed8eadcc6c3e32c8fedf6068c337fcf6c9b62ba57d5"
+    },
+    {
+      "path": "chrome/browser/aux/daemon_supervisor.cc",
+      "beforeSha256": "3c8f32d8c268cc4baa182b7e08e74b6cfffd80d8b014fc7cbde09171bd4462cf",
+      "afterSha256": "ae01a9fddbdc5fb2ecbd78eaa72825adf752c859b6d3d00034bbfb209a362e29"
+    },
+    {
+      "path": "chrome/browser/chrome_browser_main.cc",
+      "beforeSha256": "6407d666a21e93b1bd43774045447bc369e86fa3491977b0ab4cd0a7920a2ca0",
+      "afterSha256": "44cf3fbd07ce89cac0a42d2ced4e96e2174564f140a7d99387777eb66b1b7290"
+    },
+    {
+      "path": "chrome/browser/extensions/api/messaging/aux_native_messaging_lifetime.h",
+      "beforeSha256": "cea96cac077371596371b95651dd2972607293e3f18295c73c0a78a6e59a3551",
+      "afterSha256": "5e936b7cfaaff9c3c4ad8bfbab959d530f4c16ad0ba6b4439bed379ea917a460"
+    },
+    {
+      "path": "chrome/browser/extensions/api/messaging/launch_context_posix.cc",
+      "beforeSha256": "104a5914f95f4336aa54434cce59155963404dca2ea52bdee35e79aaea1b21ed",
+      "afterSha256": "5007bc9ed3ab70693ffbebc5687cda1105246f74cce234b07cae58afb4d6c382"
+    },
+    {
+      "path": "chrome/browser/extensions/api/messaging/native_message_process_host.cc",
+      "beforeSha256": "c97eafdb50c2e15f4895c4236f3a71ef5dfc81633940820de012889b30b2d937",
+      "afterSha256": "e1c256d805b21228fe2361b8500a5230a1743762d4c52474f0c7241334356294"
+    },
+    {
+      "path": "chrome/browser/sessions/session_service_base.cc",
+      "beforeSha256": "06f665a13b45886c314778f279650ff9c3b46ba324790a430dff646786d28827",
+      "afterSha256": "91ef376b0f857a8992372396c394a22abc1a5b69f1671c9cd13ed278f467e501"
+    },
+    {
+      "path": "chrome/browser/sessions/session_service_base.h",
+      "beforeSha256": "5a3c95999730dc1323a0aa9ec58e1b90fd2e95d37fe143c2cfb0038109eb25df",
+      "afterSha256": "b77230971497a61ee5744ecb3e7aea0c02c9218d10793faa30fcfcf1c7a0cc87"
+    },
+    {
+      "path": "chrome/browser/ui/BUILD.gn",
+      "beforeSha256": "c6cb4dea4080f79ce05ad32ed0125f404d380ff0f028e47f9618a613eb12c274",
+      "afterSha256": "250662205793be4b2c65f31910b4e296b42a04da273f8d1f094ecec7fb99ccb8"
+    },
+    {
+      "path": "chrome/browser/ui/aux_browser_shutdown_drain.cc",
+      "beforeSha256": null,
+      "afterSha256": "db4d3302017b086c4fa3aa52a87b6aa82114eeeafe2d53d6342841c0178dc5b1"
+    },
+    {
+      "path": "chrome/browser/ui/aux_browser_shutdown_drain.h",
+      "beforeSha256": null,
+      "afterSha256": "97df7c43a25453f6c10daa749ecefee9a3169f4941ee6a636c5f571f3c817622"
+    },
+    {
+      "path": "chrome/browser/ui/aux_owned_browser_quiesce.cc",
+      "beforeSha256": "d8fb7b6084597827336063ba9b70be16f58d4cff405d165f62965a97a82395f1",
+      "afterSha256": "09c9480f923511922f2f073fda693b8dc202eadb46c9f8d73ef750041b29d91a"
+    },
+    {
+      "path": "chrome/browser/ui/aux_owned_browser_quiesce.h",
+      "beforeSha256": "16e65be831601477acf05a81b66d2032ad6147ce1e8ca4b563939764e668d8f7",
+      "afterSha256": "e4993dec9f21a643bf51e5c4a11b52903abe183ff4e562f91159f5099433618d"
+    },
+    {
+      "path": "chrome/browser/ui/aux_profile_switch_session_rebuild.cc",
+      "beforeSha256": "7a536fe8cd9ffef5549d9a668007dd861763bc842d3933b0cc17d0839f48758a",
+      "afterSha256": "54864c28a7c0a065aa79edf7d8b1b2c4cb0e74035d5ca155339e6ac42ea39c82"
+    },
+    {
+      "path": "chrome/browser/ui/aux_profile_switch_session_rebuild.h",
+      "beforeSha256": "26a1f5be649a294b15a4d86775d4987d819f5efed0598726b58bbd0ab347ebd1",
+      "afterSha256": "37f4cb29bf229ae228f89b35071f605e1a7e2e73487fe934752c1ce37cb62802"
+    },
+    {
+      "path": "chrome/browser/ui/aux_session_writer_participant.h",
+      "beforeSha256": "3d437254cad95ca64f4ac6283b7055981853e06948601becccc98e2570d0c0f9",
+      "afterSha256": "80a660e734628ae7c380a53938b21e51af7327079ad196ba91f6da67f596fa0a"
+    },
+    {
+      "path": "content/browser/BUILD.gn",
+      "beforeSha256": "d6f937cee9919010cb4c8d6f5668bd893d433b41fa13ce08248da7a0252b579c",
+      "afterSha256": "dd7bb4fda0507f7553aa07c1befdd6f391d0a7a448a6a50a5c42f0a0fd9d6622"
+    },
+    {
+      "path": "content/browser/aux_child_lifetime.h",
+      "beforeSha256": "44b5aaf5d6c8a6ea48e92c7f00433b573860b06403a2f097ec80e9497764c7c9",
+      "afterSha256": "6dd37d40401d70cba57efc6be80e3f4db8365692f62d64eecae5ccd9bde7a8b1"
+    },
+    {
+      "path": "content/browser/aux_child_process_drain.cc",
+      "beforeSha256": null,
+      "afterSha256": "26717323c56cecd0dd918df4067b1c0c8e30e72f9e29050a669711850c447a6f"
+    },
+    {
+      "path": "content/browser/browser_main_runner_impl.cc",
+      "beforeSha256": "69998f19d6fe4ac6f645e74a4c68907a7cc2a297886163700efe58da8be5ef6a",
+      "afterSha256": "e4c3c41dae7c2a98013c681539839651ddd2a43af79b030131b39a1fad3b2962"
+    },
+    {
+      "path": "content/browser/child_process_launcher_helper_mac.cc",
+      "beforeSha256": "d0b0ec0d435e0729f41d2eae119e60a795141e2de0081fa8bd95a86a29869d7c",
+      "afterSha256": "3593313f53dc2a6b149679340f148525b853354354b27f08e2374ddaf94115dd"
+    },
+    {
+      "path": "content/public/browser/BUILD.gn",
+      "beforeSha256": "f56ec8ede325d5bcb29f825130d242c9b09febcf82d580e9718f434098c52c22",
+      "afterSha256": "7894529f3b24ff21beb29805e1c1bda0cbd971549dc717a36f0ec02974ef2415"
+    },
+    {
+      "path": "content/public/browser/aux_child_process_drain.h",
+      "beforeSha256": null,
+      "afterSha256": "e3e30f3d5a5f83d6b845f3aa327648088e969d955c086a752e6fed7276ccc6d7"
+    },
+    {
+      "path": "daemon/AuxNativeParentConnectionBridge.cc",
+      "beforeSha256": "0e92d23b8cecdcee80d0712bec6ad8f50976d25edad9e5135c6f89cca3526961",
+      "afterSha256": "cafa44cb342ebc208cdd1cf605b62f904bf34c04edccbf106b5095721e8aff8d"
+    }
+  ],
+  "actualTreeChanged": false,
+  "compiled": false,
+  "productExecuted": false
+}

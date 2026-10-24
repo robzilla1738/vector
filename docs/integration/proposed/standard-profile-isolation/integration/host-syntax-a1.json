@@ -1,0 +1,12 @@
+{
+  "passed": true,
+  "exitCode": 0,
+  "commandFile": "docs/integration/proposed/standard-profile-isolation/integration/host-syntax-a1-command.json",
+  "productExecuted": false,
+  "linked": false,
+  "sourceComposition": {
+    "path": "/private/tmp/aux-standard-native-source-20261023-a1/composition.json",
+    "sha256": "99567ff09fc7b55d3d7b58c392a629ef56dcd45d302cfc57e467eb9b7284a90a"
+  },
+  "logSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+}
