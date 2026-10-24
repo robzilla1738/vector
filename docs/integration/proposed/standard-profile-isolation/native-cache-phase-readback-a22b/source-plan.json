@@ -1,0 +1,108 @@
+{
+  "format": "aux.native-cache-phase-readback.source.v1",
+  "files": [
+    {
+      "path": "components/services/storage/dom_storage/aux_ui_cache_cohort.h",
+      "inputRoot": "/Users/rcourson/.codex/worktrees/aux-features-organization/web/docs/integration/proposed/standard-profile-isolation/native-cache-recovery-original-a18/source",
+      "inputSha256": "db9f3099da9d1d03e0a5e00843d3e6b817788105998657359fc41d06fbf290c1",
+      "outputSha256": "c198f3c84e9b054a97bfb2eedd300477035e0e3c4eda09ba2b10d02b967831bb",
+      "output": "/Users/rcourson/.codex/worktrees/aux-features-organization/web/docs/integration/proposed/standard-profile-isolation/native-cache-phase-readback-a22b/source/components/services/storage/dom_storage/aux_ui_cache_cohort.h",
+      "anchors": [
+        {
+          "find": "  bool held() const { return request_.has_value(); }",
+          "replace": "  bool ObserveHeldPhase(const base::UnguessableToken& request, bool target) const;\n  bool held() const { return request_.has_value(); }",
+          "count": 1
+        },
+        {
+          "find": "  bool recovery_plan_set_ = false;",
+          "replace": "  std::optional<bool> zero_endpoint_phase_published_;\n  bool recovery_plan_set_ = false;",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "components/services/storage/dom_storage/aux_ui_cache_cohort.cc",
+      "inputRoot": "/Users/rcourson/.codex/worktrees/aux-features-organization/web/docs/integration/proposed/standard-profile-isolation/native-cache-recovery-original-a18/source",
+      "inputSha256": "691d3277777c08c45054d2712bd7f781e8f5b9271a46f8972f2d7e20d3e06ff5",
+      "outputSha256": "3834b889114c555f5c8bec201fec2d71ae226a074df04966e509554dc28bfdda",
+      "output": "/Users/rcourson/.codex/worktrees/aux-features-organization/web/docs/integration/proposed/standard-profile-isolation/native-cache-phase-readback-a22b/source/components/services/storage/dom_storage/aux_ui_cache_cohort.cc",
+      "anchors": [
+        {
+          "find": "StatusOr<AuxUiCacheCohort::Entries> AuxUiCacheCohort::DecodeSelected(",
+          "replace": "bool AuxUiCacheCohort::ObserveHeldPhase(const base::UnguessableToken& request, bool target) const {\n  if (request_ != request || pending_ || !prepared_ || recovery_plan_set_ || !SameEndpoints()) return false;\n  if (nodes_.empty())\n    return zero_endpoint_phase_published_ && *zero_endpoint_phase_published_ == target;\n  for (const auto& [id, node] : nodes_) {\n    if (node.custody != Custody::kHeld || !node.token || !node.original || !node.report) return false;\n    const auto& report = *node.report;\n    if (!report.ok || !report.held || report.tainted || report.request_id != request_ ||\n        report.token != node.token || report.published != target ||\n        !SameDocuments(report, *node.original) ||\n        !SameEntries(report.source_entries, node.original->source_entries) ||\n        !SameEntries(report.staged_entries, expected_target_)) return false;\n  }\n  return true;\n}\nStatusOr<AuxUiCacheCohort::Entries> AuxUiCacheCohort::DecodeSelected(",
+          "count": 1
+        },
+        {
+          "find": "  if (operation_ == Operation::kRelease && outcome.ok()) {",
+          "replace": "  if (outcome.ok() && nodes_.empty()) {\n    if (operation_ == Operation::kPrepare || operation_ == Operation::kRestore)\n      zero_endpoint_phase_published_ = false;\n    if (operation_ == Operation::kPublish) zero_endpoint_phase_published_ = true;\n  }\n  if (operation_ == Operation::kRelease && outcome.ok()) {\n    zero_endpoint_phase_published_.reset();",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "components/services/storage/dom_storage/storage_area_impl.h",
+      "inputRoot": "/Users/rcourson/.codex/worktrees/aux-features-organization/web/docs/integration/proposed/standard-profile-isolation/native-cache-cohort-integration-a9/source",
+      "inputSha256": "495e81c7dea4c99c2477b0f581367ea3cf1779fe95de571bdfc7c1964d674ba1",
+      "outputSha256": "4f2fb7ac429d9d663e7c93b1b0a07e426a7cce88876f32e2001b67dae8fc8535",
+      "output": "/Users/rcourson/.codex/worktrees/aux-features-organization/web/docs/integration/proposed/standard-profile-isolation/native-cache-phase-readback-a22b/source/components/services/storage/dom_storage/storage_area_impl.h",
+      "anchors": [
+        {
+          "find": "  DbStatus AdoptAuxUiMigrationMap(const AsyncDomStorageDatabase::AuxUiMapSnapshot& map, bool target) override;",
+          "replace": "  DbStatus AdoptAuxUiMigrationMap(const AsyncDomStorageDatabase::AuxUiMapSnapshot& map, bool target) override;\n  bool ObserveAuxUiMigrationCachePhase(const AsyncDomStorageDatabase::AuxUiMapSnapshot& map, bool target) const override;",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "components/services/storage/dom_storage/storage_area_impl.cc",
+      "inputRoot": "/Users/rcourson/.codex/worktrees/aux-features-organization/web/docs/integration/proposed/standard-profile-isolation/native-recovery-restoration-a19/source",
+      "inputSha256": "7e123398b9d4b5cd2f508e9675d855699fd3ef5618faa7a16f1d7d48b5fc2b05",
+      "outputSha256": "11f075f34e978092a4e778a2fcf52c331206c7bb5101aab9767e70a1ec47fe42",
+      "output": "/Users/rcourson/.codex/worktrees/aux-features-organization/web/docs/integration/proposed/standard-profile-isolation/native-cache-phase-readback-a22b/source/components/services/storage/dom_storage/storage_area_impl.cc",
+      "anchors": [
+        {
+          "find": "DbStatus StorageAreaImpl::AdoptAuxUiMigrationMap(",
+          "replace": "bool StorageAreaImpl::ObserveAuxUiMigrationCachePhase(\n    const AsyncDomStorageDatabase::AuxUiMapSnapshot& map, bool target) const {\n  if (!MatchesAuxUiMigrationMap(map) || has_pending_load_tasks() || commit_batch_ ||\n      commit_batches_in_flight_ || !database_ || !database_->IsAuxUiMigrationHeld() ||\n      !aux_cache_request_ || aux_cache_holds_.empty()) return false;\n  const auto& expected = target ? map.target : map.source;\n  const bool local = map_locator_->session_ids().empty();\n  size_t found = 0;\n  if (map_state_ == MapState::LOADED_KEYS_AND_VALUES) {\n    for (const auto& [key, value] : keys_values_map_) {\n      if (!AuxUiCacheCohort::IsReviewedKey(key, local)) continue;\n      auto entry = expected.find(key);\n      if (entry == expected.end() || entry->second != value) return false;\n      ++found;\n    }\n    if (found != expected.size()) return false;\n  } else if (map_state_ == MapState::LOADED_KEYS_ONLY) {\n    for (const auto& [key, size] : keys_only_map_) {\n      if (!AuxUiCacheCohort::IsReviewedKey(key, local)) continue;\n      auto entry = expected.find(key);\n      if (entry == expected.end() || entry->second.size() != size) return false;\n      ++found;\n    }\n    if (found != expected.size()) return false;\n  } else if (map_state_ != MapState::UNLOADED) {\n    return false;\n  }\n  // Every real wrapper is retained, including actual zero-renderer cohorts.\n  // No absent wrapper or generic all_of(empty) can certify a phase.\n  if (aux_cache_holds_.size() != aux_cache_participants_.size() + 1) return false;\n  for (const auto& participant : aux_cache_holds_)\n    if (!participant || !participant->ObserveHeldPhase(*aux_cache_request_, target)) return false;\n  return true;\n}\nDbStatus StorageAreaImpl::AdoptAuxUiMigrationMap(",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "components/services/storage/dom_storage/async_dom_storage_database.h",
+      "inputRoot": "/Users/rcourson/.codex/worktrees/aux-features-organization/web/docs/integration/proposed/standard-profile-isolation/native-recovery-restoration-a19/source",
+      "inputSha256": "5da00143d24990009544af71d6ac28033ad667a72ff100927e4ec235010d4612",
+      "outputSha256": "9bb6861ebf682bbc2b3f9db7d919ec01dac4071bebb8c95c017b41c67eee7255",
+      "output": "/Users/rcourson/.codex/worktrees/aux-features-organization/web/docs/integration/proposed/standard-profile-isolation/native-cache-phase-readback-a22b/source/components/services/storage/dom_storage/async_dom_storage_database.h",
+      "anchors": [
+        {
+          "find": "    virtual DbStatus AdoptAuxUiMigrationMap(const AuxUiMapSnapshot& map, bool target);",
+          "replace": "    virtual DbStatus AdoptAuxUiMigrationMap(const AuxUiMapSnapshot& map, bool target);\n    virtual bool ObserveAuxUiMigrationCachePhase(const AuxUiMapSnapshot& map, bool target) const;",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "components/services/storage/dom_storage/async_dom_storage_database.cc",
+      "inputRoot": "/Users/rcourson/.codex/worktrees/aux-features-organization/web/docs/integration/proposed/standard-profile-isolation/native-recovery-allocation-proof-a20b/source",
+      "inputSha256": "d49b232613d9becc600e15ccf60f35c6a9feabb4704c63f2d6e1c4cb6f33a9d2",
+      "outputSha256": "5c17ae52bd21dfbfb1b8c9d759ec36d85bd6110edaa5ae5e4bf7934ca8edb973",
+      "output": "/Users/rcourson/.codex/worktrees/aux-features-organization/web/docs/integration/proposed/standard-profile-isolation/native-cache-phase-readback-a22b/source/components/services/storage/dom_storage/async_dom_storage_database.cc",
+      "anchors": [
+        {
+          "find": "void AsyncDomStorageDatabase::NotifyAuxUiMigrationRegistryChanged() {",
+          "replace": "bool AsyncDomStorageDatabase::Committer::ObserveAuxUiMigrationCachePhase(const AuxUiMapSnapshot&, bool) const {\n  return false;\n}\nvoid AsyncDomStorageDatabase::NotifyAuxUiMigrationRegistryChanged() {",
+          "count": 1
+        },
+        {
+          "find": "void AsyncDomStorageDatabase::CompleteAuxUiOperation(\n    std::shared_ptr<AuxUiMigrationLease::State> state, AuxUiReadCallback callback, DbStatus status) {\n  state->pending = false;\n  state->source_ready = status.ok() && state->backend_captured && state->private_target_staged &&",
+          "replace": "void AsyncDomStorageDatabase::CompleteAuxUiOperation(\n    std::shared_ptr<AuxUiMigrationLease::State> state, AuxUiReadCallback callback, DbStatus status) {\n  state->pending = false;\n  if (status.ok() && !state->tainted && state->recovery_descriptor_sha256.empty() &&\n      CurrentAuxUiMigrationWriters(state) && state->snapshot.file_data_synced) {\n    auto actual_phase = [&](bool target) {\n      size_t observed_owners = 0;\n      for (const auto& writer : state->writers) {\n        const AuxUiMapSnapshot* map = nullptr;\n        for (const auto& candidate : state->snapshot.maps) {\n          if (!writer->MatchesAuxUiMigrationMap(candidate)) continue;\n          if (map) return false;\n          map = &candidate;\n        }\n        if (!map) {\n          auto locator = writer->CopyAuxUiMigrationLocator();\n          if (!locator.has_value() || locator->storage_key().origin() == url::Origin::Create(\n              GURL(\"chrome-extension://gokkffaiccpmoeodpmeamcjajcagjmkm/\"))) return false;\n          continue;\n        }\n        ++observed_owners;\n        if (!writer->ObserveAuxUiMigrationCachePhase(*map, target)) return false;\n      }\n      // New observation requires an actual native owner/retained cohort.\n      // An empty registry is never turned into a synthetic phase receipt.\n      return observed_owners != 0;\n    };\n    if (state->snapshot.matches_target && actual_phase(true)) state->cache_published = true;\n    else if (state->snapshot.matches_source && actual_phase(false)) state->cache_published = false;\n  }\n  state->source_ready = status.ok() && state->backend_captured && state->private_target_staged &&",
+          "count": 1
+        }
+      ]
+    }
+  ],
+  "nativeCheckoutChanged": false,
+  "nativeCompiled": false,
+  "productExecuted": false,
+  "runtimeAcceptance": false
+}

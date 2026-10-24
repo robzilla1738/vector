@@ -1,0 +1,165 @@
+--- a/components/services/storage/dom_storage/aux_ui_cache_cohort.h
++++ b/components/services/storage/dom_storage/aux_ui_cache_cohort.h
+@@ -42,6 +42,7 @@
+   void Publish(Callback callback);
+   void Restore(Callback callback);
+   void Release(const base::UnguessableToken& original_request, Callback callback);
++  bool ObserveHeldPhase(const base::UnguessableToken& request, bool target) const;
+   bool held() const { return request_.has_value(); }
+   bool pending() const { return pending_; }
+   bool has_frozen_bindings() const { return !frozen_receivers_.empty(); }
+@@ -80,6 +81,7 @@
+   std::optional<DbStatus> error_;
+   Entries expected_source_;
+   Entries expected_target_;
++  std::optional<bool> zero_endpoint_phase_published_;
+   bool recovery_plan_set_ = false;
+   Entries recovery_source_;
+   Entries recovery_target_;
+--- a/components/services/storage/dom_storage/aux_ui_cache_cohort.cc
++++ b/components/services/storage/dom_storage/aux_ui_cache_cohort.cc
+@@ -45,6 +45,21 @@
+   if (observers_->size() != nodes_.size()) return false;
+   for (auto iterator = observers_->begin(); iterator != observers_->end(); ++iterator)
+     if (!nodes_.contains(iterator.id())) return false;
++  return true;
++}
++bool AuxUiCacheCohort::ObserveHeldPhase(const base::UnguessableToken& request, bool target) const {
++  if (request_ != request || pending_ || !prepared_ || recovery_plan_set_ || !SameEndpoints()) return false;
++  if (nodes_.empty())
++    return zero_endpoint_phase_published_ && *zero_endpoint_phase_published_ == target;
++  for (const auto& [id, node] : nodes_) {
++    if (node.custody != Custody::kHeld || !node.token || !node.original || !node.report) return false;
++    const auto& report = *node.report;
++    if (!report.ok || !report.held || report.tainted || report.request_id != request_ ||
++        report.token != node.token || report.published != target ||
++        !SameDocuments(report, *node.original) ||
++        !SameEntries(report.source_entries, node.original->source_entries) ||
++        !SameEntries(report.staged_entries, expected_target_)) return false;
++  }
+   return true;
+ }
+ StatusOr<AuxUiCacheCohort::Entries> AuxUiCacheCohort::DecodeSelected(
+@@ -298,7 +313,13 @@
+   if (!outcome.ok()) prepared_ = false;
+   else if (operation_ == Operation::kPrepare || operation_ == Operation::kRead || operation_ == Operation::kValidate)
+     prepared_ = true;
++  if (outcome.ok() && nodes_.empty()) {
++    if (operation_ == Operation::kPrepare || operation_ == Operation::kRestore)
++      zero_endpoint_phase_published_ = false;
++    if (operation_ == Operation::kPublish) zero_endpoint_phase_published_ = true;
++  }
+   if (operation_ == Operation::kRelease && outcome.ok()) {
++    zero_endpoint_phase_published_.reset();
+     last_released_ = request_;
+     request_.reset(); nodes_.clear(); prepared_ = false;
+     expected_source_.clear(); expected_target_.clear();
+--- a/components/services/storage/dom_storage/storage_area_impl.h
++++ b/components/services/storage/dom_storage/storage_area_impl.h
+@@ -209,6 +209,7 @@
+   std::vector<AsyncDomStorageDatabase::AuxUiCacheView> CopyAuxUiMigrationCacheViews() const override;
+   bool MatchesAuxUiMigrationMap(const AsyncDomStorageDatabase::AuxUiMapSnapshot& map) const override;
+   DbStatus AdoptAuxUiMigrationMap(const AsyncDomStorageDatabase::AuxUiMapSnapshot& map, bool target) override;
++  bool ObserveAuxUiMigrationCachePhase(const AsyncDomStorageDatabase::AuxUiMapSnapshot& map, bool target) const override;
+ 
+   // Committer:
+   std::optional<DomStorageDatabase::MapBatchUpdate> CollectCommit() override;
+--- a/components/services/storage/dom_storage/storage_area_impl.cc
++++ b/components/services/storage/dom_storage/storage_area_impl.cc
+@@ -243,6 +243,40 @@
+     }
+   }
+   return result;
++}
++bool StorageAreaImpl::ObserveAuxUiMigrationCachePhase(
++    const AsyncDomStorageDatabase::AuxUiMapSnapshot& map, bool target) const {
++  if (!MatchesAuxUiMigrationMap(map) || has_pending_load_tasks() || commit_batch_ ||
++      commit_batches_in_flight_ || !database_ || !database_->IsAuxUiMigrationHeld() ||
++      !aux_cache_request_ || aux_cache_holds_.empty()) return false;
++  const auto& expected = target ? map.target : map.source;
++  const bool local = map_locator_->session_ids().empty();
++  size_t found = 0;
++  if (map_state_ == MapState::LOADED_KEYS_AND_VALUES) {
++    for (const auto& [key, value] : keys_values_map_) {
++      if (!AuxUiCacheCohort::IsReviewedKey(key, local)) continue;
++      auto entry = expected.find(key);
++      if (entry == expected.end() || entry->second != value) return false;
++      ++found;
++    }
++    if (found != expected.size()) return false;
++  } else if (map_state_ == MapState::LOADED_KEYS_ONLY) {
++    for (const auto& [key, size] : keys_only_map_) {
++      if (!AuxUiCacheCohort::IsReviewedKey(key, local)) continue;
++      auto entry = expected.find(key);
++      if (entry == expected.end() || entry->second.size() != size) return false;
++      ++found;
++    }
++    if (found != expected.size()) return false;
++  } else if (map_state_ != MapState::UNLOADED) {
++    return false;
++  }
++  // Every real wrapper is retained, including actual zero-renderer cohorts.
++  // No absent wrapper or generic all_of(empty) can certify a phase.
++  if (aux_cache_holds_.size() != aux_cache_participants_.size() + 1) return false;
++  for (const auto& participant : aux_cache_holds_)
++    if (!participant || !participant->ObserveHeldPhase(*aux_cache_request_, target)) return false;
++  return true;
+ }
+ DbStatus StorageAreaImpl::AdoptAuxUiMigrationMap(
+     const AsyncDomStorageDatabase::AuxUiMapSnapshot& map, bool target) {
+--- a/components/services/storage/dom_storage/async_dom_storage_database.h
++++ b/components/services/storage/dom_storage/async_dom_storage_database.h
+@@ -96,6 +96,7 @@
+     virtual std::vector<AuxUiCacheView> CopyAuxUiMigrationCacheViews() const;
+     virtual bool MatchesAuxUiMigrationMap(const AuxUiMapSnapshot& map) const;
+     virtual DbStatus AdoptAuxUiMigrationMap(const AuxUiMapSnapshot& map, bool target);
++    virtual bool ObserveAuxUiMigrationCachePhase(const AuxUiMapSnapshot& map, bool target) const;
+   };
+ 
+   base::SequenceBound<std::unique_ptr<DomStorageDatabase>>& database() {
+--- a/components/services/storage/dom_storage/async_dom_storage_database.cc
++++ b/components/services/storage/dom_storage/async_dom_storage_database.cc
+@@ -712,6 +712,9 @@
+ bool AsyncDomStorageDatabase::Committer::MatchesAuxUiMigrationMap(const AuxUiMapSnapshot&) const { return false; }
+ DbStatus AsyncDomStorageDatabase::Committer::AdoptAuxUiMigrationMap(const AuxUiMapSnapshot&, bool) {
+   return DbStatus::NotSupported("Actual native cache adoption is not instrumented");
++}
++bool AsyncDomStorageDatabase::Committer::ObserveAuxUiMigrationCachePhase(const AuxUiMapSnapshot&, bool) const {
++  return false;
+ }
+ void AsyncDomStorageDatabase::NotifyAuxUiMigrationRegistryChanged() {
+   if (aux_ui_migration_gate_) aux_ui_migration_gate_->tainted = true;
+@@ -1353,6 +1356,33 @@
+ void AsyncDomStorageDatabase::CompleteAuxUiOperation(
+     std::shared_ptr<AuxUiMigrationLease::State> state, AuxUiReadCallback callback, DbStatus status) {
+   state->pending = false;
++  if (status.ok() && !state->tainted && state->recovery_descriptor_sha256.empty() &&
++      CurrentAuxUiMigrationWriters(state) && state->snapshot.file_data_synced) {
++    auto actual_phase = [&](bool target) {
++      size_t observed_owners = 0;
++      for (const auto& writer : state->writers) {
++        const AuxUiMapSnapshot* map = nullptr;
++        for (const auto& candidate : state->snapshot.maps) {
++          if (!writer->MatchesAuxUiMigrationMap(candidate)) continue;
++          if (map) return false;
++          map = &candidate;
++        }
++        if (!map) {
++          auto locator = writer->CopyAuxUiMigrationLocator();
++          if (!locator.has_value() || locator->storage_key().origin() == url::Origin::Create(
++              GURL("chrome-extension://gokkffaiccpmoeodpmeamcjajcagjmkm/"))) return false;
++          continue;
++        }
++        ++observed_owners;
++        if (!writer->ObserveAuxUiMigrationCachePhase(*map, target)) return false;
++      }
++      // New observation requires an actual native owner/retained cohort.
++      // An empty registry is never turned into a synthetic phase receipt.
++      return observed_owners != 0;
++    };
++    if (state->snapshot.matches_target && actual_phase(true)) state->cache_published = true;
++    else if (state->snapshot.matches_source && actual_phase(false)) state->cache_published = false;
++  }
+   state->source_ready = status.ok() && state->backend_captured && state->private_target_staged &&
+       CurrentAuxUiMigrationWriters(state) && !state->tainted &&
+       state->snapshot.file_data_synced && (state->snapshot.matches_source || state->snapshot.matches_target);

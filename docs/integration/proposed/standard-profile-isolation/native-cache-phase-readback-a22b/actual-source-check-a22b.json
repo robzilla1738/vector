@@ -1,0 +1,16 @@
+{
+  "format": "aux.phase-readback.source-check.actual.v1",
+  "passed": true,
+  "sourcePlanSha256": "fa82e2e8a829ebd6374e04edcaece94631ef17d3fe723b39bd980af7b9a84564",
+  "patchSha256": "38cf1716964b1150e50a13298a78209b1d184adb4a07137915dab7f52985404e",
+  "files": 6,
+  "countedAnchors": 9,
+  "replayDirectory": "/private/tmp/aux-phase-readback-replay-060qsjpo",
+  "exactReplayPassed": true,
+  "reverseCheckPassed": true,
+  "nativeCheckoutChanged": false,
+  "nativeCompiled": false,
+  "testsExecuted": false,
+  "productExecuted": false,
+  "runtimeAcceptance": false
+}
