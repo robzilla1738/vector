@@ -22,7 +22,22 @@
  #include "chrome/browser/browser_process.h"
  #if BUILDFLAG(ENABLE_AUX_SHELL)
  #include "chrome/browser/ui/aux/little_window_controller.h"
-@@ -2203,7 +2206,12 @@
+@@ -450,6 +453,14 @@
+                                          Profile* profile);
+ 
+ void OpenStartupTabsInBrowser(StartupTabs tabs) {
++#if BUILDFLAG(ENABLE_AUX_BROWSER)
++  if (aux::routing::MaybeResolveExternalShortcutBatch(tabs,
++      base::BindRepeating([](const StartupTab& tab, Profile* profile) {
++        OpenStartupTabsInBrowserWithProfile(StartupTabs{tab}, profile);
++      }), base::BindRepeating([](const StartupTab& tab) {
++        OpenStartupTabsInBrowser(StartupTabs{tab});
++      }))) return;
++#endif
+   StartupTabs regular_tabs;
+   std::vector<base::FilePath> shortcuts;
+ 
+@@ -2203,7 +2214,12 @@
      }
    }
  
@@ -36,7 +51,7 @@
    if (!startupTabs.empty()) {
      [self openStartupTabsReplacingNTP:std::move(startupTabs)];
    }
-@@ -2773,6 +2781,14 @@
+@@ -2773,6 +2789,14 @@
      profile = ProfileManager::MaybeForceOffTheRecordMode(
          profile->GetOriginalProfile());
    }
@@ -113,3 +128,55 @@
  }
  
  // static
+--- a/chrome/browser/ui/startup/startup_browser_creator_impl.cc
++++ b/chrome/browser/ui/startup/startup_browser_creator_impl.cc
+@@ -3,6 +3,11 @@
+ // found in the LICENSE file.
+ 
+ #include "chrome/browser/ui/startup/startup_browser_creator_impl.h"
++#include "build/build_config.h"
++#include "chrome/browser/buildflags.h"
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++#include "chrome/browser/aux/routing/external_routing_ingress.h"
++#endif
+ 
+ #include <stddef.h>
+ 
+@@ -613,8 +618,20 @@
+         restore_tabbed_browser);
+   }
+ 
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++  // Behavior/options above use the original complete startup determination.
++  // Only native receipt argv is withheld; reset, pinned and restored session
++  // entries stay on their existing native path. No routed browser is fabricated.
++  auto aux_external_startup = aux::routing::PrepareColdStartupRouting(profile_, &tabs);
++  const bool aux_replace_placeholder = tabs.empty() &&
++      behavior != BrowserOpenBehavior::SYNCHRONOUS_RESTORE;
++#endif
+   BrowserWindowInterface* browser = RestoreOrCreateBrowser(
+       tabs, behavior, restore_options, process_startup, is_post_crash_launch);
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++  if (aux_external_startup)
++    std::move(aux_external_startup).Run(browser, aux_replace_placeholder);
++#endif
+ 
+   tab_groups::MaybeShowSharedTabGroupVersionOutOfDateModal(browser);
+   tab_groups::MaybeShowSharedTabGroupVersionUpToDateToast(browser);
+@@ -652,6 +669,16 @@
+     bool whats_new_enabled) {
+   StartupTabs tabs =
+       provider.GetCommandLineTabs(*command_line_, cur_dir_, profile_);
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++  // This is the real initial command-line provider, before reset/pinned/pref
++  // tabs are combined. Restart/resume arguments are not new external intent.
++  if (process_startup == chrome::startup::IsProcessStartup::kYes &&
++      profile_ && profile_->IsRegularProfile() && !profile_->IsOffTheRecord() &&
++      !StartupBrowserCreator::WasRestarted() &&
++      !base::mac::WasLaunchedAsLoginOrResumeItem()) {
++    aux::routing::MarkColdStartupArguments(*command_line_, &tabs);
++  }
++#endif
+   LaunchResult launch_result =
+       tabs.empty() ? LaunchResult::kNormally : LaunchResult::kWithGivenUrls;
+ 

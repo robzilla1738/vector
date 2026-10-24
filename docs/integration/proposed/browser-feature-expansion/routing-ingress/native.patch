@@ -1,6 +1,120 @@
 --- /dev/null
++++ b/chrome/browser/aux/routing/cold_start_routing.cc
+@@ -0,0 +1,111 @@
++// Copyright 2026 Aux Authors. BSD-style license: see //LICENSE.
++#include "chrome/browser/aux/routing/external_routing_ingress.h"
++#include <memory>
++#include <utility>
++#include "base/functional/bind.h"
++#include "chrome/browser/aux/AuxBrowserPrivateRoots.h"
++#include "chrome/browser/aux/AuxSelectedStateHome.h"
++#include "chrome/browser/aux/profile_identity.h"
++#include "chrome/browser/aux/routing/routing_service.h"
++#include "chrome/browser/browser_process.h"
++#include "chrome/browser/profiles/profile.h"
++#include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
++#include "chrome/browser/ui/simple_message_box.h"
++#include "chrome/browser/ui/startup/startup_browser_creator_impl.h"
++#include "chrome/browser/ui/startup/startup_types.h"
++#include "chrome/browser/ui/tabs/tab_strip_model.h"
++#include "chrome/common/url_constants.h"
++#include "components/prefs/pref_service.h"
++#include "content/public/browser/web_contents.h"
++namespace aux::routing {
++namespace {
++void RefuseStartup() {
++  chrome::ShowWarningMessageBoxAsync(gfx::NativeWindow(), u"Aux link routing paused",
++      u"Startup links were not opened because their profile or routing rules "
++      u"changed during startup. Check your routing settings and try again.");
++}
++}  // namespace
++bool MarkColdStartupArguments(const base::CommandLine& command, StartupTabs* tabs) {
++  if (command.GetArgs().empty() || command.GetArgs().size() != tabs->size()) return false;
++  for (const auto& [name, value] : command.GetSwitches())
++    if (name != "user-data-dir" && name != "profile-directory") return false;
++  size_t index = 0;
++  for (const auto& arg : command.GetArgs()) {
++    const GURL url(arg);
++    if (!url.is_valid() || !url.SchemeIsHTTPOrHTTPS() || (*tabs)[index++].url != url)
++      return false;
++  }
++  for (auto& tab : *tabs) {
++    tab.aux_native_external_receipt = true;
++    tab.is_untrusted_launch = true;
++  }
++  return true;
++}
++StartupRoutingContinuation PrepareColdStartupRouting(Profile* profile, StartupTabs* tabs) {
++  auto* local = g_browser_process ? g_browser_process->local_state() : nullptr;
++  if (!profile || !profile->IsRegularProfile() || profile->IsOffTheRecord() ||
++      !local || !local->FindPreference(kRulesPref) || local->GetDict(kRulesPref).empty()) return {};
++  bool handled = false;
++  for (const auto& tab : *tabs) {
++    if (!tab.aux_native_external_receipt) continue;
++    auto result = Resolve(profile, {.url = tab.url, .authority = Authority::kExternal});
++    handled |= result.FindBool("handled").value_or(true);
++  }
++  if (!handled) return {};
++  StartupTabs external, retained;
++  for (const auto& tab : *tabs)
++    (tab.aux_native_external_receipt ? external : retained).push_back(tab);
++  *tabs = std::move(retained);
++  const auto admitted = aux::peer::InspectNativeBrowserShutdown();
++  auto held_roots = aux::peer::CaptureActualChromiumBrowserRoots();
++  const bool admitted_when_prepared = !profile->ShutdownStarted() &&
++      !aux::IsProfileCookieRestorePending(profile) && held_roots &&
++      held_roots->Revalidate() && admitted.admitted_generation &&
++      !admitted.wrong_process && !admitted.admission_closed && !admitted.sequence_uncertain;
++  // Snapshot before native restore/create; no raw profile or stack launcher
++  // survives the continuation. Restore receives only its original native tabs.
++  return base::BindOnce(
++      [](base::WeakPtr<Profile> source, std::string epoch, uint64_t generation,
++         std::shared_ptr<const aux::peer::BrowserPrivateRoots> roots,
++         base::DictValue rules, StartupTabs pending, bool admitted_when_prepared,
++         BrowserWindowInterface* browser, bool replace_placeholder) {
++        auto* local = g_browser_process ? g_browser_process->local_state() : nullptr;
++        const auto state = aux::peer::InspectNativeBrowserShutdown();
++        if (!admitted_when_prepared || !source || source->ShutdownStarted() ||
++            !browser || browser->GetProfile() != source.get() ||
++            browser->GetType() != BrowserWindowInterface::TYPE_NORMAL ||
++            !roots || !roots->Revalidate() || !generation ||
++            state.admitted_generation != generation || state.wrong_process ||
++            state.admission_closed || state.sequence_uncertain ||
++            aux::IsProfileCookieRestorePending(source.get()) ||
++            aux::GetProfileCookieBindingEpoch(source.get()) != epoch ||
++            !local || local->GetDict(kRulesPref) != rules) { RefuseStartup(); return; }
++        auto target = browser->GetWeakPtr();
++        auto first = std::make_shared<bool>(replace_placeholder);
++        auto fallback = base::BindRepeating(
++            [](base::WeakPtr<BrowserWindowInterface> target, std::shared_ptr<bool> first,
++               const StartupTab& tab, Profile* selected) {
++              if (!target || target->GetProfile() != selected) { RefuseStartup(); return; }
++              auto* strip = target->GetTabStripModel();
++              auto* active = strip->GetActiveWebContents();
++              const bool replace = *first && strip->count() == 1 && active &&
++                  (active->GetVisibleURL() == chrome::kChromeUINewTabURL ||
++                   active->GetVisibleURL() == chrome::kChromeUINewTabPageURL);
++              *first = false;
++              base::CommandLine empty(base::CommandLine::NO_PROGRAM);
++              StartupBrowserCreatorImpl launcher(base::FilePath(), empty,
++                                                 chrome::startup::IsFirstRun::kNo);
++              launcher.OpenTabsInBrowser(target.get(), chrome::startup::IsProcessStartup::kNo,
++                  StartupTabs{tab}, replace ? StartupBrowserCreatorImpl::TabOverWrite::kYes
++                                           : StartupBrowserCreatorImpl::TabOverWrite::kNo);
++            }, target, first);
++        auto current = base::BindRepeating(
++            [](base::WeakPtr<BrowserWindowInterface> target) { return !!target; }, target);
++        if (!MaybeRouteExternalTabs(source.get(), pending, std::move(fallback), {},
++                                    std::move(current))) RefuseStartup();
++      }, profile->GetWeakPtr(), aux::GetProfileCookieBindingEpoch(profile),
++      aux::peer::InspectNativeBrowserShutdown().admitted_generation,
++      std::move(held_roots), local->GetDict(kRulesPref).Clone(),
++      std::move(external), admitted_when_prepared);
++}
++}  // namespace aux::routing
+--- /dev/null
 +++ b/chrome/browser/aux/routing/external_routing_ingress.cc
-@@ -0,0 +1,153 @@
+@@ -0,0 +1,164 @@
 +// Copyright 2026 Aux Authors. BSD-style license: see //LICENSE.
 +#include "chrome/browser/aux/routing/external_routing_ingress.h"
 +#include <memory>
@@ -28,20 +142,23 @@
 +}
 +class ExternalBatch : public base::RefCounted<ExternalBatch> {
 + public:
-+  ExternalBatch(Profile* profile, StartupTabs tabs, NativeTabFallback fallback)
++  ExternalBatch(Profile* profile, StartupTabs tabs, NativeTabFallback fallback,
++                base::OnceClosure settled, base::RepeatingCallback<bool()> owner_current)
 +      : profile_(profile->GetWeakPtr()),
 +        epoch_(aux::GetProfileCookieBindingEpoch(profile)),
 +        roots_(aux::peer::CaptureActualChromiumBrowserRoots()),
 +        generation_(aux::peer::InspectNativeBrowserShutdown().admitted_generation),
 +        rules_(Local()->GetDict(kRulesPref).Clone()), tabs_(std::move(tabs)),
-+        fallback_(std::move(fallback)) {}
++        fallback_(std::move(fallback)), settled_(std::move(settled)),
++        owner_current_(std::move(owner_current)) {}
 +  void Start() { Next(); }
 + private:
 +  friend class base::RefCounted<ExternalBatch>;
 +  ~ExternalBatch() = default;
 +  bool Current() const {
 +    const auto state = aux::peer::InspectNativeBrowserShutdown();
-+    return profile_ && profile_->IsRegularProfile() && !profile_->IsOffTheRecord() &&
++    return (!owner_current_ || owner_current_.Run()) &&
++        profile_ && !profile_->ShutdownStarted() && profile_->IsRegularProfile() && !profile_->IsOffTheRecord() &&
 +        !aux::IsProfileCookieRestorePending(profile_.get()) && roots_ && roots_->Revalidate() &&
 +        generation_ && state.admitted_generation == generation_ &&
 +        !state.admission_closed && !state.wrong_process && !state.sequence_uncertain &&
@@ -94,7 +211,10 @@
 +    Continue();
 +  }
 +  void Finish() {
-+    if (refused_ == 0) return;
++    if (refused_ == 0) {
++      if (settled_) std::move(settled_).Run();
++      return;
++    }
 +    // One visible native warning for the batch, with no URL/query or account
 +    // details. Do not log URLs, and do not create a fallback browser/profile.
 +    chrome::ShowWarningMessageBoxAsync(
@@ -102,6 +222,7 @@
 +        u"One or more links could not be opened because their routing profile "
 +        u"or Space is unavailable, or the profile changed while opening. "
 +        u"Check your link routing rules and try the links again.");
++    if (settled_) std::move(settled_).Run();
 +  }
 +  base::WeakPtr<Profile> profile_;
 +  const std::string epoch_;
@@ -110,12 +231,15 @@
 +  const base::DictValue rules_;
 +  const StartupTabs tabs_;
 +  NativeTabFallback fallback_;
++  base::OnceClosure settled_;
++  base::RepeatingCallback<bool()> owner_current_;
 +  size_t index_ = 0;
 +  size_t refused_ = 0;
 +};
 +}  // namespace
 +bool MaybeRouteExternalTabs(Profile* profile, const StartupTabs& tabs,
-+                            NativeTabFallback fallback) {
++                            NativeTabFallback fallback, base::OnceClosure settled,
++                            base::RepeatingCallback<bool()> owner_current) {
 +  DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
 +  if (!profile || !profile->IsRegularProfile() || profile->IsOffTheRecord() ||
 +      !Local() || !Local()->FindPreference(kRulesPref) ||
@@ -127,7 +251,8 @@
 +    handled |= result.FindBool("handled").value_or(true);
 +  }
 +  if (!handled) return false;  // Original native batch is completely unchanged.
-+  base::MakeRefCounted<ExternalBatch>(profile, tabs, std::move(fallback))->Start();
++  base::MakeRefCounted<ExternalBatch>(profile, tabs, std::move(fallback),
++      std::move(settled), std::move(owner_current))->Start();
 +  return true;
 +}
 +bool MaybeRouteExternalCommandLine(Profile* profile, const base::CommandLine& command,
@@ -156,7 +281,7 @@
 +}  // namespace aux::routing
 --- /dev/null
 +++ b/chrome/browser/aux/routing/external_routing_ingress.h
-@@ -0,0 +1,20 @@
+@@ -0,0 +1,31 @@
 +// Copyright 2026 Aux Authors. BSD-style license: see //LICENSE.
 +#ifndef CHROME_BROWSER_AUX_ROUTING_EXTERNAL_ROUTING_INGRESS_H_
 +#define CHROME_BROWSER_AUX_ROUTING_EXTERNAL_ROUTING_INGRESS_H_
@@ -164,11 +289,22 @@
 +#include "base/functional/callback.h"
 +#include "chrome/browser/ui/startup/startup_tab.h"
 +class Profile;
++class BrowserWindowInterface;
 +namespace aux::routing {
 +// Call only after native profile selection. Only receipt-marked tabs may acquire
 +// external authority. True transfers the entire ordered batch to this owner.
 +using NativeTabFallback = base::RepeatingCallback<void(const StartupTab&, Profile*)>;
-+bool MaybeRouteExternalTabs(Profile*, const StartupTabs&, NativeTabFallback);
++bool MaybeRouteExternalTabs(Profile*, const StartupTabs&, NativeTabFallback,
++                            base::OnceClosure settled = {},
++                            base::RepeatingCallback<bool()> owner_current = {});
++// Only called for actual initial argv after native startup admission.
++bool MarkColdStartupArguments(const base::CommandLine&, StartupTabs*);
++using StartupRoutingContinuation =
++    base::OnceCallback<void(BrowserWindowInterface*, bool replace_empty_placeholder)>;
++StartupRoutingContinuation PrepareColdStartupRouting(Profile*, StartupTabs*);
++// Actual OS file-open receipts only; existing ChromeWeblocFile parser/resolver.
++bool MaybeResolveExternalShortcutBatch(const StartupTabs&, NativeTabFallback,
++    base::RepeatingCallback<void(const StartupTab&)> unresolved_native);
 +// Actual ProcessSingleton argv receipt only. Ordinary HTTP(S) URL arguments and
 +// profile-directory/user-data-dir selectors; app/restore/private flags bypass.
 +using NativeCommandFallback =
@@ -177,3 +313,157 @@
 +                                   NativeCommandFallback);
 +}  // namespace aux::routing
 +#endif
+--- /dev/null
++++ b/chrome/browser/aux/routing/shortcut_routing_mac.mm
+@@ -0,0 +1,151 @@
++// Copyright 2026 Aux Authors. BSD-style license: see //LICENSE.
++// Native plist URL/profile extraction follows Chromium's ChromeWeblocFile.
++#include "chrome/browser/aux/routing/external_routing_ingress.h"
++#import <Foundation/Foundation.h>
++#include <optional>
++#include <utility>
++#include "base/apple/foundation_util.h"
++#include "base/files/file_util.h"
++#include "base/files/safe_base_name.h"
++#include "base/functional/bind.h"
++#include "base/memory/ref_counted.h"
++#include "base/strings/sys_string_conversions.h"
++#include "base/task/single_thread_task_runner.h"
++#include "base/task/thread_pool.h"
++#include "chrome/browser/app_controller_mac.h"
++#include "chrome/browser/browser_process.h"
++#include "chrome/browser/profiles/profile.h"
++#include "chrome/browser/profiles/profile_attributes_storage.h"
++#include "chrome/browser/profiles/profile_manager.h"
++#include "chrome/browser/shortcuts/chrome_webloc_file.h"
++#include "chrome/browser/ui/simple_message_box.h"
++#include "net/base/filename_util.h"
++namespace aux::routing {
++namespace {
++bool ShortcutPath(const StartupTab& tab, base::FilePath* path) {
++  return net::FileURLToFilePath(tab.url, path) &&
++      (path->Extension() == shortcuts::ChromeWeblocFile::kFileExtension ||
++       path->Extension() == ".webloc");
++}
++struct ResolvedShortcut {
++  GURL url;
++  base::FilePath profile_leaf;
++};
++std::optional<ResolvedShortcut> ResolveFile(const base::FilePath& path) {
++  // Same native property-list format/parser and SafeBaseName contract as the
++  // supplied ChromeWeblocFile resolver. Bound input, validate Objective-C types,
++  // and omit its diagnostic logging of file paths/whole plist contents.
++  std::string bytes;
++  if (!base::ReadFileToStringWithMaxSize(path, &bytes, 64 * 1024)) return std::nullopt;
++  @autoreleasepool {
++    NSData* data = [NSData dataWithBytes:bytes.data() length:bytes.size()];
++    NSDictionary* contents = base::apple::ObjCCast<NSDictionary>(
++        [NSPropertyListSerialization propertyListWithData:data
++            options:NSPropertyListImmutable format:nil error:nil]);
++    NSString* url = base::apple::ObjCCast<NSString>(contents[@"URL"]);
++    if (!url) return std::nullopt;
++    ResolvedShortcut result{GURL(base::SysNSStringToUTF8(url)), {}};
++    if (!result.url.is_valid() || !result.url.SchemeIsHTTPOrHTTPS() ||
++        result.url.has_username() || result.url.has_password()) return std::nullopt;
++    id raw_profile = contents[@"CrProfile"];
++    if (raw_profile || path.Extension() == shortcuts::ChromeWeblocFile::kFileExtension) {
++      NSString* profile = base::apple::ObjCCast<NSString>(raw_profile);
++      if (!profile) return std::nullopt;
++      auto leaf = base::SafeBaseName::Create(base::apple::NSStringToFilePath(profile));
++      if (!leaf || leaf->path().empty()) return std::nullopt;
++      result.profile_leaf = leaf->path();
++    }
++    return result;
++  }
++}
++class ShortcutBatch : public base::RefCounted<ShortcutBatch> {
++ public:
++  ShortcutBatch(StartupTabs tabs, NativeTabFallback fallback,
++                base::RepeatingCallback<void(const StartupTab&)> unresolved)
++      : tabs_(std::move(tabs)), fallback_(std::move(fallback)),
++        unresolved_(std::move(unresolved)) {}
++  void Start() { Next(); }
++ private:
++  friend class base::RefCounted<ShortcutBatch>;
++  ~ShortcutBatch() = default;
++  void Continue() {
++    base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
++        FROM_HERE, base::BindOnce(&ShortcutBatch::Next, base::RetainedRef(this)));
++  }
++  void Next() {
++    if (index_ == tabs_.size()) return;
++    StartupTab tab = tabs_[index_++];
++    base::FilePath path;
++    if (ShortcutPath(tab, &path)) {
++      if (!tab.aux_native_external_receipt) {
++        // A queued nonreceipt shortcut retains its existing native resolver.
++        unresolved_.Run(tab);
++        Continue();
++        return;
++      }
++      base::ThreadPool::PostTaskAndReplyWithResult(
++          FROM_HERE, {base::MayBlock(), base::TaskPriority::USER_BLOCKING},
++          base::BindOnce(&ResolveFile, path),
++          base::BindOnce(&ShortcutBatch::Resolved, base::RetainedRef(this), std::move(tab)));
++      return;
++    }
++    SelectProfile(std::move(tab), base::FilePath());
++  }
++  void Resolved(StartupTab receipt, std::optional<ResolvedShortcut> result) {
++    if (!result) { Refuse(); Continue(); return; }
++    receipt.url = result->url;
++    receipt.is_untrusted_launch = true;
++    SelectProfile(std::move(receipt), result->profile_leaf);
++  }
++  void SelectProfile(StartupTab tab, const base::FilePath& leaf) {
++    auto callback = base::BindOnce(&ShortcutBatch::Selected, base::RetainedRef(this),
++                                   std::move(tab));
++    auto* manager = g_browser_process ? g_browser_process->profile_manager() : nullptr;
++    if (!manager) { Refuse(); Continue(); return; }
++    if (!leaf.empty()) {
++      const auto path = manager->user_data_dir().Append(leaf);
++      // Keep Chromium's exact native shortcut behavior: a known target uses
++      // RunInProfileSafely; a missing shortcut profile uses the last safe one.
++      if (manager->GetProfileAttributesStorage().GetProfileAttributesWithPath(path)) {
++        app_controller_mac::RunInProfileSafely(path, std::move(callback),
++            app_controller_mac::kShowProfilePickerOnFailure);
++        return;
++      }
++    }
++    app_controller_mac::RunInLastProfileSafely(std::move(callback),
++        app_controller_mac::kShowProfilePickerOnFailure);
++  }
++  void Selected(StartupTab tab, Profile* profile) {
++    if (!profile) { Refuse(); Continue(); return; }
++    if (MaybeRouteExternalTabs(profile, StartupTabs{tab}, fallback_,
++          base::BindOnce(&ShortcutBatch::Continue, base::RetainedRef(this)))) return;
++    tab.aux_native_external_receipt = false;
++    fallback_.Run(tab, profile);
++    Continue();
++  }
++  void Refuse() {
++    if (warned_) return;
++    warned_ = true;
++    chrome::ShowWarningMessageBoxAsync(gfx::NativeWindow(), u"Aux could not open a shortcut",
++        u"A shortcut is unreadable, does not contain a supported web URL, or its "
++        u"profile is unavailable. The link was not opened in another profile.");
++  }
++  StartupTabs tabs_;
++  NativeTabFallback fallback_;
++  base::RepeatingCallback<void(const StartupTab&)> unresolved_;
++  size_t index_ = 0;
++  bool warned_ = false;
++};
++}  // namespace
++bool MaybeResolveExternalShortcutBatch(const StartupTabs& tabs, NativeTabFallback fallback,
++    base::RepeatingCallback<void(const StartupTab&)> unresolved) {
++  bool has_shortcut = false;
++  for (const auto& tab : tabs) {
++    base::FilePath path;
++    has_shortcut |= tab.aux_native_external_receipt && ShortcutPath(tab, &path);
++  }
++  if (!has_shortcut) return false;
++  base::MakeRefCounted<ShortcutBatch>(tabs, std::move(fallback), std::move(unresolved))->Start();
++  return true;
++}
++}  // namespace aux::routing

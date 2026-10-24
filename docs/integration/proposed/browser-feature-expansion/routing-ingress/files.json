@@ -2,15 +2,25 @@
   "selectedNativeRoot": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src",
   "files": [
     {
+      "path": "chrome/browser/aux/routing/cold_start_routing.cc",
+      "baselineSha256": null,
+      "sourceSha256": "5b28813ed8cac3a4c54c604dc407d71fccb98a44d97a2741ee69d80be7c4ed25"
+    },
+    {
       "path": "chrome/browser/aux/routing/external_routing_ingress.cc",
       "baselineSha256": null,
-      "sourceSha256": "a3765be5e645c455a547c31814298f12ce9f468dda8c46f93e054f78edf8457c"
+      "sourceSha256": "c148e6e86118652e242b9a5e8f4de6abb237036b2f1f7e68b919ea40901976c4"
     },
     {
       "path": "chrome/browser/aux/routing/external_routing_ingress.h",
       "baselineSha256": null,
-      "sourceSha256": "1310ed79d2cd16f65fe2588ef3df669209202f2d304dff8e4d28289cfcbe5894"
+      "sourceSha256": "a572c6d8ce51150fc19fe952ab5543cea8c05fd405cb89df408d8f4a9caf5ab5"
+    },
+    {
+      "path": "chrome/browser/aux/routing/shortcut_routing_mac.mm",
+      "baselineSha256": null,
+      "sourceSha256": "c7616bcaf416408e8c206b6d4818fe1a73dcde85662dc0a628f0b85f4f9edb9c"
     }
   ],
-  "patchSha256": "890187a1eb0ffb99aab7bd4def8654aad440bf4e44bfab0bcea67925cbd706e1"
+  "patchSha256": "f64aebe326d55ad7ea84a3df61b1cdff93ab8591184a4536bec16cb7551cc2a6"
 }

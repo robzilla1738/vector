@@ -25,20 +25,23 @@ PrefService* Local() {
 }
 class ExternalBatch : public base::RefCounted<ExternalBatch> {
  public:
-  ExternalBatch(Profile* profile, StartupTabs tabs, NativeTabFallback fallback)
+  ExternalBatch(Profile* profile, StartupTabs tabs, NativeTabFallback fallback,
+                base::OnceClosure settled, base::RepeatingCallback<bool()> owner_current)
       : profile_(profile->GetWeakPtr()),
         epoch_(aux::GetProfileCookieBindingEpoch(profile)),
         roots_(aux::peer::CaptureActualChromiumBrowserRoots()),
         generation_(aux::peer::InspectNativeBrowserShutdown().admitted_generation),
         rules_(Local()->GetDict(kRulesPref).Clone()), tabs_(std::move(tabs)),
-        fallback_(std::move(fallback)) {}
+        fallback_(std::move(fallback)), settled_(std::move(settled)),
+        owner_current_(std::move(owner_current)) {}
   void Start() { Next(); }
  private:
   friend class base::RefCounted<ExternalBatch>;
   ~ExternalBatch() = default;
   bool Current() const {
     const auto state = aux::peer::InspectNativeBrowserShutdown();
-    return profile_ && profile_->IsRegularProfile() && !profile_->IsOffTheRecord() &&
+    return (!owner_current_ || owner_current_.Run()) &&
+        profile_ && !profile_->ShutdownStarted() && profile_->IsRegularProfile() && !profile_->IsOffTheRecord() &&
         !aux::IsProfileCookieRestorePending(profile_.get()) && roots_ && roots_->Revalidate() &&
         generation_ && state.admitted_generation == generation_ &&
         !state.admission_closed && !state.wrong_process && !state.sequence_uncertain &&
@@ -91,7 +94,10 @@ class ExternalBatch : public base::RefCounted<ExternalBatch> {
     Continue();
   }
   void Finish() {
-    if (refused_ == 0) return;
+    if (refused_ == 0) {
+      if (settled_) std::move(settled_).Run();
+      return;
+    }
     // One visible native warning for the batch, with no URL/query or account
     // details. Do not log URLs, and do not create a fallback browser/profile.
     chrome::ShowWarningMessageBoxAsync(
@@ -99,6 +105,7 @@ class ExternalBatch : public base::RefCounted<ExternalBatch> {
         u"One or more links could not be opened because their routing profile "
         u"or Space is unavailable, or the profile changed while opening. "
         u"Check your link routing rules and try the links again.");
+    if (settled_) std::move(settled_).Run();
   }
   base::WeakPtr<Profile> profile_;
   const std::string epoch_;
@@ -107,12 +114,15 @@ class ExternalBatch : public base::RefCounted<ExternalBatch> {
   const base::DictValue rules_;
   const StartupTabs tabs_;
   NativeTabFallback fallback_;
+  base::OnceClosure settled_;
+  base::RepeatingCallback<bool()> owner_current_;
   size_t index_ = 0;
   size_t refused_ = 0;
 };
 }  // namespace
 bool MaybeRouteExternalTabs(Profile* profile, const StartupTabs& tabs,
-                            NativeTabFallback fallback) {
+                            NativeTabFallback fallback, base::OnceClosure settled,
+                            base::RepeatingCallback<bool()> owner_current) {
   DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
   if (!profile || !profile->IsRegularProfile() || profile->IsOffTheRecord() ||
       !Local() || !Local()->FindPreference(kRulesPref) ||
@@ -124,7 +134,8 @@ bool MaybeRouteExternalTabs(Profile* profile, const StartupTabs& tabs,
     handled |= result.FindBool("handled").value_or(true);
   }
   if (!handled) return false;  // Original native batch is completely unchanged.
-  base::MakeRefCounted<ExternalBatch>(profile, tabs, std::move(fallback))->Start();
+  base::MakeRefCounted<ExternalBatch>(profile, tabs, std::move(fallback),
+      std::move(settled), std::move(owner_current))->Start();
   return true;
 }
 bool MaybeRouteExternalCommandLine(Profile* profile, const base::CommandLine& command,

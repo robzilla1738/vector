@@ -19,12 +19,18 @@
       "path": "chrome/browser/app_controller_mac.mm",
       "baselineOrigin": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/app_controller_mac.mm",
       "baselineSha256": "2e5139d89df654da1b6d6b63251318d3b01ba40cf70efdc7162932a99464dfaf",
-      "sourceSha256": "18935db78d56fbf97abbd1a8dfeb75066032bef30b66ad8968090e035141d84c",
+      "sourceSha256": "cd1f4d4a781bba1391f14ccdacad42c086d8d9e77af2916db514b91dfe73948e",
       "edits": [
         {
           "name": "include-ingress",
           "find": "#include \"chrome/browser/buildflags.h\"",
           "replace": "#include \"chrome/browser/buildflags.h\"\n#if BUILDFLAG(ENABLE_AUX_BROWSER)\n#include \"chrome/browser/aux/routing/external_routing_ingress.h\"\n#endif",
+          "count": 1
+        },
+        {
+          "name": "resolve-native-shortcuts",
+          "find": "void OpenStartupTabsInBrowser(StartupTabs tabs) {",
+          "replace": "void OpenStartupTabsInBrowser(StartupTabs tabs) {\n#if BUILDFLAG(ENABLE_AUX_BROWSER)\n  if (aux::routing::MaybeResolveExternalShortcutBatch(tabs,\n      base::BindRepeating([](const StartupTab& tab, Profile* profile) {\n        OpenStartupTabsInBrowserWithProfile(StartupTabs{tab}, profile);\n      }), base::BindRepeating([](const StartupTab& tab) {\n        OpenStartupTabsInBrowser(StartupTabs{tab});\n      }))) return;\n#endif",
           "count": 1
         },
         {
@@ -60,7 +66,33 @@
           "count": 1
         }
       ]
+    },
+    {
+      "path": "chrome/browser/ui/startup/startup_browser_creator_impl.cc",
+      "baselineOrigin": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/ui/startup/startup_browser_creator_impl.cc",
+      "baselineSha256": "d003b9548d0278be739b0c4c6f3ab9ab0bcd2cfcf19a701174c99a55748bb2c7",
+      "sourceSha256": "caa2a48e7b5e31d065f5f1800a28eff87487a66cefb6dea0027ff814bafb0883",
+      "edits": [
+        {
+          "name": "include-cold-start-ingress",
+          "find": "#include \"chrome/browser/ui/startup/startup_browser_creator_impl.h\"",
+          "replace": "#include \"chrome/browser/ui/startup/startup_browser_creator_impl.h\"\n#include \"build/build_config.h\"\n#include \"chrome/browser/buildflags.h\"\n#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)\n#include \"chrome/browser/aux/routing/external_routing_ingress.h\"\n#endif",
+          "count": 1
+        },
+        {
+          "name": "mark-actual-cold-argv",
+          "find": "  LaunchResult launch_result =\n      tabs.empty() ? LaunchResult::kNormally : LaunchResult::kWithGivenUrls;",
+          "replace": "#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)\n  // This is the real initial command-line provider, before reset/pinned/pref\n  // tabs are combined. Restart/resume arguments are not new external intent.\n  if (process_startup == chrome::startup::IsProcessStartup::kYes &&\n      profile_ && profile_->IsRegularProfile() && !profile_->IsOffTheRecord() &&\n      !StartupBrowserCreator::WasRestarted() &&\n      !base::mac::WasLaunchedAsLoginOrResumeItem()) {\n    aux::routing::MarkColdStartupArguments(*command_line_, &tabs);\n  }\n#endif\n  LaunchResult launch_result =\n      tabs.empty() ? LaunchResult::kNormally : LaunchResult::kWithGivenUrls;",
+          "count": 1
+        },
+        {
+          "name": "preserve-restore-before-routing",
+          "find": "  BrowserWindowInterface* browser = RestoreOrCreateBrowser(\n      tabs, behavior, restore_options, process_startup, is_post_crash_launch);",
+          "replace": "#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)\n  // Behavior/options above use the original complete startup determination.\n  // Only native receipt argv is withheld; reset, pinned and restored session\n  // entries stay on their existing native path. No routed browser is fabricated.\n  auto aux_external_startup = aux::routing::PrepareColdStartupRouting(profile_, &tabs);\n  const bool aux_replace_placeholder = tabs.empty() &&\n      behavior != BrowserOpenBehavior::SYNCHRONOUS_RESTORE;\n#endif\n  BrowserWindowInterface* browser = RestoreOrCreateBrowser(\n      tabs, behavior, restore_options, process_startup, is_post_crash_launch);\n#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)\n  if (aux_external_startup)\n    std::move(aux_external_startup).Run(browser, aux_replace_placeholder);\n#endif",
+          "count": 1
+        }
+      ]
     }
   ],
-  "patchSha256": "02c2f2443fabf581846b8b081b3ac5ca539a15cc2e5042065cc87927d576e46f"
+  "patchSha256": "62ebba6082c7ba50fe254990dcf10dda18a96bffb44ee1dd917dbe2eb159fa7c"
 }
