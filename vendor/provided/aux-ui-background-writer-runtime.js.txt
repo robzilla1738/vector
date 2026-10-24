@@ -1,0 +1,145 @@
+// Native owns Profile/Extension/actual serviceworker identity. Reports are data.
+const auxWorkerPending=new Map,auxWorkerUnknown=new Set,auxWorkerDeferred=[];
+let auxWorkerLease=null,auxWorkerLastRelease=null,auxWorkerRevision=0,auxWorkerStarted=false,auxWorkerInspector=null;
+const auxWorkerFormat="aux.ui-background-writer-lease.v1",auxWorkerUuid=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
+function auxWorkerAdvance(){
+  if(auxWorkerRevision===Number.MAX_SAFE_INTEGER){auxWorkerUnknown.add("revision-exhausted");return}
+  auxWorkerRevision++;
+}
+function auxWorkerNoteUnknown(kind){auxWorkerUnknown.add(kind);auxWorkerAdvance()}
+function auxWorkerContextChanged(){if(auxWorkerLease)auxWorkerNoteUnknown("native-context-changed")}
+function auxWorkerTrack(kind,callback,uncertainOnError=false){
+  const ticket={kind,completion:null};auxWorkerPending.set(ticket,ticket);auxWorkerAdvance();
+  let promise;
+  try{promise=Promise.resolve(callback())}catch(error){promise=Promise.reject(error)}
+  // Observe the actual original callback/Promise, never its timeout/race/abort
+  // wrapper and never a map clear or disconnected request as its completion.
+  ticket.completion=promise.then(()=>{auxWorkerPending.delete(ticket);auxWorkerAdvance()},error=>{
+    if(uncertainOnError)auxWorkerNoteUnknown(kind);
+    auxWorkerPending.delete(ticket);auxWorkerAdvance();
+  });
+  return promise;
+}
+function auxWorkerDefer(kind,callback,uncertainOnError,options){
+  return new Promise((resolve,reject)=>{
+    auxWorkerDeferred.push({kind,callback,uncertainOnError,options,resolve,reject});
+    // Do not drop work or acknowledge it on overflow. Retain it for explicit
+    // native abort/release, and refuse qualification of this unknown bound.
+    if(auxWorkerDeferred.length>4096)auxWorkerNoteUnknown("deferred-bound-exceeded");
+  });
+}
+function auxWorkerProduce(kind,callback,options={}){
+  return auxWorkerLease?auxWorkerDefer(kind,callback,!!options.uncertainOnError,options):
+    auxWorkerTrack(kind,callback,!!options.uncertainOnError);
+}
+function auxWorkerPhysical(kind,callback,uncertainOnError=true){
+  // Existing admitted parents may finish child writes while preparing. Native
+  // closes its physical gate only AFTER this worker reaches a held idle turn.
+  return auxWorkerLease?.phase==="held"?auxWorkerDefer(kind,callback,uncertainOnError,{}):
+    auxWorkerTrack(kind,callback,uncertainOnError);
+}
+function auxWorkerCancelDeferred(kind,key,owner,error){
+  const index=auxWorkerDeferred.findIndex(work=>work.kind===kind&&work.options?.key===key&&work.options?.owner===owner);
+  if(index<0)return false;
+  const [work]=auxWorkerDeferred.splice(index,1);
+  try{work.options.onCancelled?.(error);work.resolve()}catch(failure){work.reject(failure)}
+  return true;
+}
+function auxWorkerReport(){
+  const lease=auxWorkerLease;
+  let inspectionError;
+  try{if(!auxWorkerStarted||!auxWorkerInspector)throw Error("Worker producer registration is incomplete");auxWorkerInspector()}catch(error){inspectionError=String(error?.message??error)}
+  const counts=Object.create(null);
+  for(const {kind} of auxWorkerPending.values())counts[kind]=(counts[kind]??0)+1;
+  const closed=!!lease&&lease.phase==="held"&&lease.revision===auxWorkerRevision&&!auxWorkerPending.size&&!auxWorkerUnknown.size&&!inspectionError;
+  return{format:auxWorkerFormat,ok:closed,retained:!!lease,requestId:lease?.requestId??auxWorkerLastRelease?.requestId,
+    leaseId:lease?.id??auxWorkerLastRelease?.leaseId,revision:lease?.revision??auxWorkerLastRelease?.revision,
+    phase:lease?.phase??"open",closed,pendingCount:auxWorkerPending.size,deferredCount:auxWorkerDeferred.length,
+    pendingKinds:counts,unknownKinds:[...auxWorkerUnknown].sort(),released:!lease&&!!auxWorkerLastRelease,
+    ...inspectionError?{error:inspectionError}:!closed?{error:"Worker writers are pending, unknown, or not held"}:{}};
+}
+function auxWorkerCopyArguments(args){
+  if(!auxWorkerLease)return args;
+  try{return structuredClone(args)}catch(error){auxWorkerNoteUnknown("uncapturable-deferred-arguments");throw error}
+}
+function auxWorkerStorageLocalSet(...args){
+  const captured=auxWorkerCopyArguments(args);
+  return auxWorkerPhysical("chrome-local-set",()=>chrome.storage.local.set(...captured));
+}
+function auxWorkerStorageLocalRemove(...args){
+  const captured=auxWorkerCopyArguments(args);
+  return auxWorkerPhysical("chrome-local-remove",()=>chrome.storage.local.remove(...captured));
+}
+function auxWorkerAlarmCreate(...args){
+  const captured=auxWorkerCopyArguments(args);
+  return auxWorkerPhysical("chrome-alarm",()=>chrome.alarms.create(...captured));
+}
+async function auxWorkerPrepare(requestId){
+  if(typeof document!=="undefined"||typeof window!=="undefined")return{format:auxWorkerFormat,ok:false,error:"A background serviceworker context is required"};
+  if(typeof requestId!=="string"||!auxWorkerUuid.test(requestId))return{format:auxWorkerFormat,ok:false,error:"A canonical worker prepare request ID is required"};
+  if(auxWorkerLease)return auxWorkerLease.requestId===requestId?auxWorkerReport():
+    {format:auxWorkerFormat,ok:false,retained:true,error:"Another worker lease is already retained"};
+  if(!auxWorkerStarted||!auxWorkerInspector)return{format:auxWorkerFormat,ok:false,retained:false,error:"Worker producer registration is incomplete"};
+  let id;
+  try{id=crypto.randomUUID()}catch{return{format:auxWorkerFormat,ok:false,error:"Worker lease identity unavailable"}}
+  if(!auxWorkerUuid.test(id))return{format:auxWorkerFormat,ok:false,error:"Worker lease identity unavailable"};
+  const lease={id,requestId,revision:null,phase:"preparing"};auxWorkerLease=lease;
+  // No timer can turn incomplete physical callbacks into a closed writer set.
+  while(auxWorkerLease===lease&&auxWorkerPending.size){
+    const completions=[...auxWorkerPending.values()].map(work=>work.completion);
+    if(completions.some(promise=>!promise)){auxWorkerNoteUnknown("unbound-physical-callback");break}
+    await Promise.all(completions);
+  }
+  if(auxWorkerLease!==lease)return auxWorkerReport();
+  lease.phase="held";lease.revision=auxWorkerRevision;
+  return auxWorkerReport();
+}
+function auxWorkerRead(){return auxWorkerReport()}
+function auxWorkerValidate(leaseId,revision){
+  const report=auxWorkerReport();
+  if(!auxWorkerLease||auxWorkerLease.id!==leaseId||auxWorkerLease.revision!==revision||
+     !Number.isSafeInteger(revision)||revision<0||auxWorkerRevision!==revision)
+    return{...report,ok:false,closed:false,error:"Worker lease changed"};
+  return report;
+}
+function auxWorkerRelease(leaseId){
+  const lease=auxWorkerLease;
+  if(!lease||lease.id!==leaseId)return{format:auxWorkerFormat,ok:false,released:false,error:"Worker lease changed"};
+  // Native opens its actual backend gate BEFORE dispatching this release to the
+  // SAME retained worker. No actor is silently retargeted to a successor owner.
+  auxWorkerLease=null;auxWorkerLastRelease={requestId:lease.requestId,leaseId:lease.id,revision:lease.revision};
+  const ready=auxWorkerDeferred.splice(0);
+  for(const work of ready)auxWorkerTrack(work.kind,work.callback,work.uncertainOnError).then(work.resolve,work.reject);
+  return{format:auxWorkerFormat,ok:true,released:true,requestId:lease.requestId,leaseId:lease.id,revision:lease.revision,
+    resumedCount:ready.length,pendingCount:auxWorkerPending.size,closed:false};
+}
+function auxWorkerInstallInspector(inspect){
+  if(auxWorkerInspector||typeof inspect!=="function")throw Error("Repeated worker producer registration");
+  auxWorkerInspector=inspect;auxWorkerStarted=true;
+}
+function auxWorkerControl(request){
+  if(!request||typeof request!=="object"||typeof request.requestId!=="string"||!auxWorkerUuid.test(request.requestId)||
+     !["prepare","read","validate","release"].includes(request.operation))
+    return{format:auxWorkerFormat,ok:false,error:"Invalid worker control request"};
+  const allowed=request.operation==="validate"?["requestId","operation","leaseId","revision"]:
+    request.operation==="release"?["requestId","operation","leaseId"]:["requestId","operation"];
+  if(Object.keys(request).some(key=>!allowed.includes(key)))return{format:auxWorkerFormat,ok:false,error:"Unexpected worker selector"};
+  if(request.operation==="prepare")return auxWorkerPrepare(request.requestId);
+  if(request.operation==="read")return auxWorkerRead();
+  if(typeof request.leaseId!=="string"||!auxWorkerUuid.test(request.leaseId))return{format:auxWorkerFormat,ok:false,error:"Worker lease ID required"};
+  return request.operation==="validate"?auxWorkerValidate(request.leaseId,request.revision):auxWorkerRelease(request.leaseId);
+}
+const auxWorkerControlApi=globalThis.chrome?.auxBrowserPreferences;
+if(auxWorkerControlApi?.onUiMigrationWorkerControl&&typeof auxWorkerControlApi.replyUiMigrationWorkerControl==="function")
+  auxWorkerControlApi.onUiMigrationWorkerControl.addListener(request=>{
+    // This is a native-only EventRouter event. The reply ExtensionFunction must
+    // bind the real SW sender/version/process/Profile and pending RPC UUID.
+    Promise.resolve(auxWorkerControl(request)).then(result=>{
+      const resultJson=JSON.stringify(result);
+      if(new TextEncoder().encode(resultJson).byteLength>65536)throw Error("Worker report exceeds its bound");
+      return auxWorkerControlApi.replyUiMigrationWorkerControl({requestId:request.requestId,operation:request.operation,resultJson});
+    }).catch(()=>{
+      // A dropped/rejected control reply does not release the retained lease.
+      // Native observes it with a fresh read RPC, never by replaying writes.
+    });
+  });

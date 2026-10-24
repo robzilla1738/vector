@@ -1,0 +1,30 @@
+{
+  "format": "aux.ui-background-writer-closure.focused.actual.v1",
+  "passed": true,
+  "cases": 10,
+  "actualProjectedBridgeCommandAndDisconnectMethodsExecuted": true,
+  "actualSuppliedSignTimeoutAndContextMenuCallbacksExecuted": true,
+  "nativePromiseCompletionNotAbortMapClearOrCallerCatch": true,
+  "deferredIntentBytesRetained": true,
+  "unknownOutcomesNeverReset": true,
+  "knownDeferredCommandCancellationRetainsOriginalReplySemantics": true,
+  "freshNativeRpcAndRetainedCaptureCorrelationChecked": true,
+  "startupAndActiveCaptureOwnerRefusalChecked": true,
+  "lastPostFeatureCompositionPassed": true,
+  "nativeContracts": [
+    {
+      "path": "extensions/common/api/alarms.webidl",
+      "sha256": "6cfe947b94322c89c51413c3e3faa9c74f1fa23bd184d109f2d3c341bf461aa7"
+    },
+    {
+      "path": "extensions/common/api/storage.json",
+      "sha256": "54a24ce3f49d14121b8df9aaac18ad72ce3d88dd5ff8b748c483577a706c3a9e"
+    }
+  ],
+  "sourcePlanSha256": "c2b622005b98bbbc08c34c6d59c611ed6c753fb2fc41024b3829d48f6b250256",
+  "syntheticNativeCallbacksOnly": true,
+  "nativeExecuted": false,
+  "productExecuted": false,
+  "completeWriterCoverage": false,
+  "runtimeAccepted": false
+}

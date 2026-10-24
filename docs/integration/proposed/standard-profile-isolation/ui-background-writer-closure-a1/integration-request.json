@@ -1,0 +1,61 @@
+{
+  "format": "aux.ui-background-writer-closure.integration-request.v1",
+  "baselineCommit": "f82c3229a",
+  "actualModule": "background.js",
+  "predecessorSha256": "bd97a84088d75a0a58a7f9519336b277f2dd0ec5adbee7e843e85c6ac2f8d032",
+  "outputSha256": "10c6d6328b07da44751a9c86b95bcbdb4da8e2b29235dd0f36abd0929f1a246e",
+  "provenanceInputsToRegister": [
+    {
+      "path": "vendor/provided/aux-ui-background-writer-closure.mjs",
+      "sha256": "3beba6e3541c31c505be91a4bd0a04885801b7004b4dca1a856afc544d2b2ae1"
+    },
+    {
+      "path": "vendor/provided/aux-ui-background-writer-runtime.js.txt",
+      "sha256": "655ef370f4fbee12fe73a3ea20f60c518b64511ea593ad59ff5d599af51a3ea9"
+    },
+    {
+      "path": "docs/integration/proposed/standard-profile-isolation/ui-background-writer-closure-a1/inputs.json",
+      "sha256": "06a2166aa0577b2c697f6758fa0a3ec2271fd947062b703d52c4587ccc0db9d3"
+    }
+  ],
+  "sharedCompositionRequests": [
+    {
+      "path": "vendor/provided/aux-browser-feature-composition.mjs",
+      "inputSha256": "ddf1b6dc11fede1c3ce73dfa915f02653cd312145e2c074bfd591f9de48cdd32",
+      "find": "import { transformAuxNavigation } from './aux-navigation-command-bar.mjs';",
+      "replace": "import { transformAuxUiBackgroundWriterClosure } from './aux-ui-background-writer-closure.mjs';\nimport { transformAuxNavigation } from './aux-navigation-command-bar.mjs';",
+      "count": 1
+    },
+    {
+      "path": "vendor/provided/aux-browser-feature-composition.mjs",
+      "inputSha256": "ddf1b6dc11fede1c3ce73dfa915f02653cd312145e2c074bfd591f9de48cdd32",
+      "find": "? applyAuxBrowserRouting({...value, component:'agent'}) : {text:value.text, anchors:[]}]);",
+      "replace": "? applyAuxBrowserRouting({...value, component:'agent'}) : {text:value.text, anchors:[]},\n    value => transformAuxUiBackgroundWriterClosure({...value, stateIdentityVersion:input.stateIdentityVersion})]);",
+      "count": 1
+    },
+    {
+      "path": "scripts/stage-provided.mjs",
+      "inputSha256": "58b7d321c7bc9747d4f5529fbd4c50d5f2a70826715e46494bb3459b5bb6f11e",
+      "find": "return transformAuxBrowserFeatureUi({relative: input.path, text: input.text});",
+      "replace": "return transformAuxBrowserFeatureUi({relative: input.path, text: input.text, stateIdentityVersion});",
+      "count": 1
+    }
+  ],
+  "nativeEvent": "auxBrowserPreferences.onUiMigrationWorkerControl",
+  "nativeReply": "auxBrowserPreferences.replyUiMigrationWorkerControl",
+  "operations": [
+    "prepare",
+    "read",
+    "validate",
+    "release"
+  ],
+  "maximumResultJsonUtf8Bytes": 65536,
+  "protocolSha256": "d2801997d363d91935dec1f031ab20107acd616d7ddd9ae0a17804d6012c9f76",
+  "sourcePlanSha256": "c2b622005b98bbbc08c34c6d59c611ed6c753fb2fc41024b3829d48f6b250256",
+  "focusedReceiptSha256": "189e5e61e0b4322b480bf5e3674b3c81b93e2f0615e5e38e4583ee051b59d138",
+  "rootOwnsSchemaNativeReplySenderBindingCompositionRevisionStageAndPackage": true,
+  "nativeExecuted": false,
+  "productExecuted": false,
+  "completeWriterCoverage": false,
+  "runtimeAccepted": false
+}

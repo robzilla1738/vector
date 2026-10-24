@@ -1,0 +1,216 @@
+{
+  "format": "aux.ui-background-writer-closure.inputs.v1",
+  "baselineCommit": "e9ff86849",
+  "path": "background.js",
+  "originalSha256": "ed19abc67a8a23d7868005ea1db84e2abe3a3f70609ab7b4ab2c1455c92131f7",
+  "predecessor": "/private/tmp/aux-feature-completion-ui-stage-20261024-a2/agent/background.js",
+  "predecessorSha256": "bd97a84088d75a0a58a7f9519336b277f2dd0ec5adbee7e843e85c6ac2f8d032",
+  "runtimeSha256": "655ef370f4fbee12fe73a3ea20f60c518b64511ea593ad59ff5d599af51a3ea9",
+  "rules": [
+    {
+      "find": "chrome.storage.local.set(",
+      "replace": "auxWorkerStorageLocalSet(",
+      "count": 4
+    },
+    {
+      "find": "chrome.storage.local.remove(",
+      "replace": "auxWorkerStorageLocalRemove(",
+      "count": 2
+    },
+    {
+      "find": "chrome.alarms.create(",
+      "replace": "auxWorkerAlarmCreate(",
+      "count": 4
+    },
+    {
+      "find": "chrome.contextMenus.removeAll()",
+      "replace": "auxWorkerPhysical(\"chrome-context-menu-remove\",()=>chrome.contextMenus.removeAll())",
+      "count": 1
+    },
+    {
+      "find": "chrome.history.deleteUrl({ url: i.url })",
+      "replace": "auxWorkerPhysical(\"chrome-history-delete\",()=>chrome.history.deleteUrl({url:i.url}))",
+      "count": 1
+    },
+    {
+      "find": "t()?.local?.remove(e.key)",
+      "replace": "auxWorkerPhysical(\"chrome-local-remove\",()=>t()?.local?.remove(e.key))",
+      "count": 1
+    },
+    {
+      "find": "t()?.session?.remove(e.key)",
+      "replace": "auxWorkerPhysical(\"chrome-session-remove\",()=>t()?.session?.remove(e.key))",
+      "count": 2
+    },
+    {
+      "find": "t()?.session?.set({ [e.key]: i })",
+      "replace": "auxWorkerPhysical(\"chrome-session-set\",()=>t()?.session?.set({[e.key]:i}))",
+      "count": 1
+    },
+    {
+      "find": "Ps(async () => t.signDaemonAuthChallenge(e),",
+      "replace": "Ps(async () => auxWorkerPhysical(\"native-auth-sign\",()=>t.signDaemonAuthChallenge(e)),",
+      "count": 1
+    },
+    {
+      "find": "  const n = chrome.runtime.sendMessage(La, {\n    ...t,\n    command: e\n  }), o =",
+      "replace": "  const n = auxWorkerPhysical(\"password-extension-message\",()=>chrome.runtime.sendMessage(La, {\n    ...t,\n    command: e\n  })), o =",
+      "count": 1
+    },
+    {
+      "find": "chrome.sidePanel.open({ tabId: i.id })",
+      "replace": "auxWorkerPhysical(\"remix-sidepanel-open\",()=>chrome.sidePanel.open({tabId:i.id}))",
+      "count": 1
+    },
+    {
+      "find": "fetchDaemon: v,",
+      "replace": "fetchDaemon: (request,options)=>auxWorkerPhysical(\"daemon-fetch\",()=>v(request,options),false),",
+      "count": 1
+    },
+    {
+      "find": "resolve: g,",
+      "replace": "resolve: ()=>auxWorkerPhysical(\"daemon-auth-resolve\",g,false),",
+      "count": 1
+    },
+    {
+      "find": "    connectWebsocketToDaemon: async (b) => {\n      const S =",
+      "replace": "    connectWebsocketToDaemon: (b) => auxWorkerPhysical(\"daemon-websocket\",async()=>{\n      const S =",
+      "count": 1
+    },
+    {
+      "find": "      return new WebSocket(As(b), `aux.daemon.auth.${A}`);\n    }\n",
+      "replace": "      return new WebSocket(As(b), `aux.daemon.auth.${A}`);\n    },false)\n",
+      "count": 1
+    },
+    {
+      "find": "function ji(e) {",
+      "replace": "function ji(...args){return auxWorkerProduce(\"history-cleanup\",()=>auxWorkerOriginalHistoryCleanup(...args))}\nfunction auxWorkerOriginalHistoryCleanup(e) {",
+      "count": 1
+    },
+    {
+      "find": "function dw() {",
+      "replace": "function dw(...args){return auxWorkerProduce(\"metadata-sync\",()=>auxWorkerOriginalMetadataSync(...args))}\nfunction auxWorkerOriginalMetadataSync() {",
+      "count": 1
+    },
+    {
+      "find": "async function bb() {",
+      "replace": "function bb(...args){return auxWorkerProduce(\"remix-init\",()=>auxWorkerOriginalRemixInit(...args))}\nasync function auxWorkerOriginalRemixInit() {",
+      "count": 1
+    },
+    {
+      "find": "async function Sb(e) {",
+      "replace": "function Sb(...args){return auxWorkerProduce(\"remix-sync\",()=>auxWorkerOriginalRemixSync(...args))}\nasync function auxWorkerOriginalRemixSync(e) {",
+      "count": 1
+    },
+    {
+      "find": "async function vb(e,t,r){",
+      "replace": "function vb(...args){return auxWorkerProduce(\"remix-prompt\",()=>auxWorkerOriginalRemixPrompt(...args))}\nasync function auxWorkerOriginalRemixPrompt(e,t,r){",
+      "count": 1
+    },
+    {
+      "find": "async function Er(e, t, r = {}) {",
+      "replace": "function Er(...args){return auxWorkerProduce(\"context-signal\",()=>auxWorkerOriginalContextSignal(...args))}\nasync function auxWorkerOriginalContextSignal(e, t, r = {}) {",
+      "count": 1
+    },
+    {
+      "find": "async function Pb() {",
+      "replace": "function Pb(...args){return auxWorkerPhysical(\"active-tab-sync\",()=>auxWorkerOriginalActiveTabSync(...args))}\nasync function auxWorkerOriginalActiveTabSync() {",
+      "count": 1
+    },
+    {
+      "find": "async function We(e, t) {",
+      "replace": "function We(...args){return auxWorkerPhysical(\"tab-capture\",()=>auxWorkerOriginalTabCapture(...args))}\nasync function auxWorkerOriginalTabCapture(e, t) {",
+      "count": 1
+    },
+    {
+      "find": "async function fc(e, t = Bn(), r) {",
+      "replace": "function fc(...args){return auxWorkerPhysical(\"translate\",()=>auxWorkerOriginalTranslate(...args))}\nasync function auxWorkerOriginalTranslate(e, t = Bn(), r) {",
+      "count": 1
+    },
+    {
+      "find": "async function ic(e, t) {",
+      "replace": "function ic(...args){return auxWorkerPhysical(\"notification-open\",()=>auxWorkerOriginalOpenNotification(...args))}\nasync function auxWorkerOriginalOpenNotification(e, t) {",
+      "count": 1
+    },
+    {
+      "find": "function Hg({ id: e, ...t }) {",
+      "replace": "function Hg(...args){return auxWorkerPhysical(\"chrome-context-menu\",()=>auxWorkerOriginalContextMenu(...args))}\nfunction auxWorkerOriginalContextMenu({ id: e, ...t }) {",
+      "count": 1
+    },
+    {
+      "find": "function Sc(e) {\n  const t = Hi.then(e);",
+      "replace": "function Sc(e) {\n  return auxWorkerPhysical(\"content-script-queue\",()=>auxWorkerOriginalContentScripts(e));\n}\nfunction auxWorkerOriginalContentScripts(e) {\n  const t = Hi.then(e);",
+      "count": 1
+    },
+    {
+      "find": "function fb(e) {\n  const t = Qi.then(e);",
+      "replace": "function fb(e) {\n  return auxWorkerPhysical(\"user-script-queue\",()=>auxWorkerOriginalUserScripts(e));\n}\nfunction auxWorkerOriginalUserScripts(e) {\n  const t = Qi.then(e);",
+      "count": 1
+    },
+    {
+      "find": "function Vt(e = !1) {\n  li = li.catch(() => {",
+      "replace": "function Vt(e = !1) {\n  return auxWorkerProduce(\"context-menu-rebuild\",()=>{\n  li = li.catch(() => {",
+      "count": 1
+    },
+    {
+      "find": "    console.error(\"[ContextMenus] Failed to register context menus.\", t);\n  });\n}\nasync function Vg",
+      "replace": "    auxWorkerNoteUnknown(\"context-menu-rebuild\");\n    console.error(\"[ContextMenus] Failed to register context menus.\", t);\n  });return li;\n  });\n}\nasync function Vg",
+      "count": 1
+    },
+    {
+      "find": "async function py(e, t) {\n  return new Promise((r, n) => {",
+      "replace": "async function py(e, t) {\n  return auxWorkerPhysical(\"chrome-privacy-setting\",()=>new Promise((r, n) => {",
+      "count": 1
+    },
+    {
+      "find": "      r();\n    });\n  });\n}\nasync function my()",
+      "replace": "      r();\n    });\n  }));\n}\nasync function my()",
+      "count": 1
+    },
+    {
+      "find": "  async ensureConnected(e = {}) {\n    const t =",
+      "replace": "  ensureConnected(e={}) {return auxWorkerPhysical(\"bridge-connect\",()=>this.auxWorkerEnsureConnected(e),false)}\n  async auxWorkerEnsureConnected(e = {}) {\n    const t =",
+      "count": 1
+    },
+    {
+      "find": "      this.runningCommands.get(a.data.id)?.abort(/* @__PURE__ */ new Error(`Extension command cancelled: ${a.data.id}`));",
+      "replace": "      const auxCancelError=new Error(`Extension command cancelled: ${a.data.id}`);\n      if(!auxWorkerCancelDeferred(\"bridge-command\",a.data.id,t,auxCancelError))this.runningCommands.get(a.data.id)?.abort(auxCancelError);",
+      "count": 1
+    },
+    {
+      "find": "    const l = await this.#i();\n    if (!n()) return;\n    if (u.data.route.accountId",
+      "replace": "    return auxWorkerProduce(\"bridge-command\",async()=>{\n    const l = await this.#i();\n    if (!n()) return;\n    if (u.data.route.accountId",
+      "count": 1
+    },
+    {
+      "find": "    } catch (d) {\n      o({\n        id: u.data.id,",
+      "replace": "    } catch (d) {\n      auxWorkerNoteUnknown(\"bridge-command\");\n      o({\n        id: u.data.id,",
+      "count": 1
+    },
+    {
+      "find": "      this.runningCommands.get(u.data.id) === f && this.runningCommands.delete(u.data.id);\n    }\n  }\n  #n(e)",
+      "replace": "      this.runningCommands.get(u.data.id) === f && this.runningCommands.delete(u.data.id);\n    }\n    },{key:u.data.id,owner:t,onCancelled:error=>o({id:u.data.id,result:null,error:String(error?.message??error)})});\n  }\n  #n(e)",
+      "count": 1
+    },
+    {
+      "find": "function Jv() {\n  _n += 1, ar = null;",
+      "replace": "function Jv() {\n  auxWorkerContextChanged();\n  _n += 1, ar = null;",
+      "count": 1
+    },
+    {
+      "find": "  e && typeof e.then == \"function\" && console.warn(\"[broquer] background main() should register listeners synchronously.\");",
+      "replace": "  e && typeof e.then == \"function\" && (auxWorkerPhysical(\"background-main\",()=>e),console.warn(\"[broquer] background main() should register listeners synchronously.\"));",
+      "count": 1
+    },
+    {
+      "find": "//# chunkId=ddda0258-b2d8-5731-95f2-6689ea8d2cfd",
+      "replace": "auxWorkerInstallInspector(()=>{\n  if(typeof ServiceWorkerGlobalScope===\"undefined\"||typeof window!==\"undefined\")throw Error(\"Canonical MV3 worker context required\");\n  if([..._r].some(stream=>stream.targetId||stream.visible))throw Error(\"Tab capture subscribers are still active\");\n});\n//# chunkId=ddda0258-b2d8-5731-95f2-6689ea8d2cfd",
+      "count": 1
+    },
+    {
+      "find": "!function(){try{var e=\"undefined\"!=typeof window?window:\"undefined\"!=typeof global?global:\"undefined\"!=typeof globalThis?globalThis:\"undefined\"!=typeof self?self:{};e._posthogReleaseId=e._posthogReleaseId||\"01a14421-bd0a-0000-3c62-ba3fbe2b6700\";var n=(new e.Error).stack;n&&(e._posthogChunkIds=e._posthogChunkIds||{},e._posthogChunkIds[n]=\"ddda0258-b2d8-5731-95f2-6689ea8d2cfd\")}catch(e){}}();var Uc = Object.create, lr = Object.defineProperty, xc = Object.getOwnPropertyDescriptor, zc = Object.getOwnPropertyNames, Fc = Object.getPrototypeOf, rs = Object.prototype.hasOwnProperty, ns = (e, t) => () => (t || (e((t = { exports: {} }).exports, t), e = null), t.exports), jc = (e, t) => {\n",
+      "replace": "__AUX_WORKER_RUNTIME__\n!function(){try{var e=\"undefined\"!=typeof window?window:\"undefined\"!=typeof global?global:\"undefined\"!=typeof globalThis?globalThis:\"undefined\"!=typeof self?self:{};e._posthogReleaseId=e._posthogReleaseId||\"01a14421-bd0a-0000-3c62-ba3fbe2b6700\";var n=(new e.Error).stack;n&&(e._posthogChunkIds=e._posthogChunkIds||{},e._posthogChunkIds[n]=\"ddda0258-b2d8-5731-95f2-6689ea8d2cfd\")}catch(e){}}();var Uc = Object.create, lr = Object.defineProperty, xc = Object.getOwnPropertyDescriptor, zc = Object.getOwnPropertyNames, Fc = Object.getPrototypeOf, rs = Object.prototype.hasOwnProperty, ns = (e, t) => () => (t || (e((t = { exports: {} }).exports, t), e = null), t.exports), jc = (e, t) => {\n",
+      "count": 1
+    }
+  ]
+}
