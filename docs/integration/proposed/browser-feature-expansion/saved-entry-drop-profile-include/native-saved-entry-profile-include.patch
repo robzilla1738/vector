@@ -1,0 +1,10 @@
+--- a/chrome/browser/ui/views/frame/aux_saved_entry_drop_target.cc
++++ b/chrome/browser/ui/views/frame/aux_saved_entry_drop_target.cc
+@@ -3,6 +3,7 @@
+ #include <algorithm>
+ #include "base/check.h"
+ #include "base/functional/bind.h"
++#include "chrome/browser/profiles/profile.h"
+ #include "chrome/browser/ui/tabs/aux_pinned_tab_entry_identity.h"
+ #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
+ #include "chrome/browser/ui/tabs/tab_strip_model.h"

@@ -1,0 +1,12 @@
+{
+  "modifiedCount": 1,
+  "addedCount": 0,
+  "patchSha256": "7d3eab431b1edd62c2be825ff398ef1262a5886e126daeb01d8ec1c2aaba2533",
+  "files": [
+    {
+      "path": "chrome/browser/ui/views/frame/aux_saved_entry_drop_target.cc",
+      "beforeSha256": "fd3291a15d58affa738cec2335faf7155e6b5950a60f927b35f7ae5c75b782f8",
+      "afterSha256": "e751bef5d02860b5c119b1eddd08b0b128644ffbd2abcca7ba5ce7a70e23c0cc"
+    }
+  ]
+}
