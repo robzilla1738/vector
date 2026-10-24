@@ -1,0 +1,16 @@
+{
+  "format": "aux.browser-features.followup-package.v1",
+  "receipt": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-browser-features-followup-20261023/receipt.json",
+  "receiptSha256": "24bcd3bcd722a58c02ae05bddc09d1cd91c315a089aefe8293045fad0e03833d",
+  "buildReceipt": "/private/tmp/aux-chromium-recovery-snapshot-20261023/unsigned-browser-features-full-build-20261023-a21/receipt.json",
+  "buildReceiptSha256": "9551ff52014e620e5d8592e154162776a01804de49c44d4c1834260632189856",
+  "nativeBuildPassed": true,
+  "actualPackageAssembled": true,
+  "featureResourceDeltas": 16,
+  "productSigned": false,
+  "appExecuted": false,
+  "acceptedAppReplaced": false,
+  "testable": false,
+  "runtimeAuthorityGranted": false,
+  "standardIsolationSuccessorIntegrated": false
+}

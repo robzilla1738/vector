@@ -39,11 +39,11 @@
     },
     "projection": {
       "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/async-daemon-projection-research-v1/actual-projection.json",
-      "sha256": null
+      "sha256": "650d135dbb57a32a8ba726ee7a9c2fe718ec43d5f0d4dfb9163f41a48382715c"
     },
     "browserReceipt": {
       "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/unsigned-browser-features-full-build-20261023-a21/receipt.json",
-      "sha256": null
+      "sha256": "9551ff52014e620e5d8592e154162776a01804de49c44d4c1834260632189856"
     },
     "guardReview": {
       "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/package/guard-transition.json",
@@ -90,12 +90,9 @@
   "testable": false,
   "runtimeAuthorityGranted": false,
   "runtimeExecuted": false,
-  "assembled": false,
-  "pendingInputs": [
-    "projection",
-    "browserReceipt"
-  ],
-  "preparationOnly": true,
+  "assembled": true,
+  "pendingInputs": [],
+  "preparationOnly": false,
   "expectedProjectionOutput": "/private/tmp/aux-browser-features-async-daemon-20261023-a2",
   "expectedStagePair": "/Users/rcourson/Documents/Vibe/web/out/browser-feature-stage-pair-20261023-a5",
   "expectedApp": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-browser-features-followup-20261023/Aux.app",
@@ -128,8 +125,8 @@
     ],
     "finalStageDiffStillRequired": true,
     "uiComposition": {
-      "path": "/private/tmp/aux-feature-ui-review-20261023-a5/composition.json",
-      "sha256": "51ec625bbcd3e1fc1a401e33c17c631dbf9dede24e720c41eb35d0631b712710"
+      "path": "/private/tmp/aux-feature-ui-review-20261023-a6/composition.json",
+      "sha256": "6bfc02e29fe94f48d920e878d5870a4a195874f4ff710a7c068a2b291f3ba3a1"
     },
     "measuredChangedScriptPaths": [
       "apps/extension/dist/assets/appearance-C03x8vQf.js",
@@ -147,6 +144,7 @@
       "apps/extension/dist/assets/utils-Cl9zfMcr.js",
       "apps/extension/dist/background.js"
     ],
-    "contextActionsPendingOnExistingTabsearchLeaf": true
-  }
+    "contextActionsPendingOnExistingTabsearchLeaf": false
+  },
+  "assemblyEvidence": "../integration/evidence/actual-followup-package-a4.json"
 }

@@ -1,3 +1,9 @@
+# Follow-up package a4 assembled, inactive
+
+Actual bind, base preparation, feature preparation, original verification and fresh final assembly all passed against the successful full a21 browser, actual a3 native daemon, independent a2 research source/entry and a5 revision17 resources. The fresh app is `out/provided-candidate-browser-features-followup-20261023/Aux.app`. Exact result: `../integration/evidence/actual-followup-package-a4.json` and the actual output receipt. Product remains unsigned, unexecuted, unaccepted and `testable:false`; standard-isolation successor sources are not yet in this package. Accepted app and earlier candidates remain intact.
+
+The initial prepare-base attempt required creation of its previously absent `prepared/` parent; it created no recipe. After making that directory, the exact remaining command sequence passed. No validator was bypassed. The preparation review below is retained as the original freeze procedure; its null pins have now been replaced only with actual successful receipt hashes.
+
 # Follow-up browser package: a4 preparation only
 
 This directory prepares a new inactive package for the follow-up browser work. It contains no copied successful source pair, native build receipt, projection receipt, prepared recipe or assembly result. All `runtime-cache-package-a3` files and previous candidates remain untouched.
