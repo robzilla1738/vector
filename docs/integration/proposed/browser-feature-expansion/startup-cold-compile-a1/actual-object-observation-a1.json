@@ -1,0 +1,22 @@
+{
+  "passed": true,
+  "conditionalObject": "/private/tmp/aux-feature-completion-native-compile-20261024-cold-conditional-a1/chrome_feature_list_creator.o",
+  "objectSha256": "2e28613d9dabf49d6e65f623d27c82222fab38545b036754d060f069f79216dd",
+  "requiredStartupReferences": {
+    "CaptureActualChromiumBrowserRoots": [
+      "__ZN3aux4peer33CaptureActualChromiumBrowserRootsEv"
+    ],
+    "PrepareBrowserPrivateRootsBeforeProfileIO": [
+      "__ZN3aux4peer41PrepareBrowserPrivateRootsBeforeProfileIOEv"
+    ],
+    "StartSealedNativeDaemonBeforeProfiles": [
+      "__ZN3aux4peer37StartSealedNativeDaemonBeforeProfilesEv"
+    ],
+    "AuthorizeNativeBrowserStartupBeforeLocalState": [
+      "__ZN3aux4peer45AuthorizeNativeBrowserStartupBeforeLocalStateEv"
+    ]
+  },
+  "actualBuildStillCOLDDisabled": true,
+  "linkOrProductExecuted": false,
+  "runtimeAuthorityGranted": false
+}

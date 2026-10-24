@@ -1,0 +1,197 @@
+{
+  "format": "aux.desktop-completion.package.review.v1",
+  "base": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-standard-profile-drafts-20261024/Aux.app",
+  "output": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-desktop-completion-20261024-a3",
+  "predecessorReceipt": {
+    "path": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-standard-profile-drafts-20261024/receipt.json",
+    "sha256": "3fd0400a7b36ccabb8194dbc88b64ba1629867c23b529db7899e262781f6da13"
+  },
+  "nativeBuild": {
+    "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/unsigned-feature-completion-browser-build-20261024-a3b/receipt.json",
+    "sha256": "8f18420f80a296d4fc1b2548dfa0a48b3296ba364a744c239deffb48876260cc"
+  },
+  "uiStage": {
+    "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/completion-batch-a2/actual-ui-stage-a1.json",
+    "sha256": "19e9e4828c579fd2868a25c2bb221ea26d8de032c7bed6fcb793d4899a6fcde5"
+  },
+  "daemonLink": {
+    "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/ui-native-capture-transport-a1/actual-daemon-link-a3.json",
+    "sha256": "fa23bbf4a3c5de9c7fabf031f98448ef61b02dc4e3099e4fb08bde7c7aae5fde"
+  },
+  "sourceProjection": {
+    "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/productivity-adapter-pairing-a2/actual-projection.json",
+    "sha256": "aaec23c959c7b593f30cb0e5f07276b192e9ee2647bfb3830e2fe5d990567af1"
+  },
+  "replacements": [
+    {
+      "path": "Contents/Frameworks/Aux Framework.framework/Versions/155.0.8059.85/Aux Framework",
+      "previousSha256": "684edf75e4a553dab614ee774ad6b3dbeb3d0fb754b4159ec3b2b6a620aaa0b9",
+      "input": {
+        "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/out/AuxFast/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/155.0.8059.85/Aux Framework",
+        "sha256": "d88390e9d09131b370cd076dad56488afe5e3690c76f05d1e80e0d1346c61b26"
+      },
+      "mode": 493
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/draft-storage-ixLojjZ5.js",
+      "previousSha256": "3b5fa6fca0705e72690ee028e97a0e834a5668af6623626bda3dc28391defc64",
+      "input": {
+        "path": "/private/tmp/aux-feature-completion-ui-stage-20261024-a2/agent/assets/draft-storage-ixLojjZ5.js",
+        "sha256": "bddddc6df8a000becb1c6245bc732d258b405e71c5c933d4c3de991ebdc125fc"
+      },
+      "mode": 420
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/tabsearch-3k_2hgil.js",
+      "previousSha256": "dfe24ac522874111318c36925800457aaeaf3f4920bab4ea4e8b91187b70a602",
+      "input": {
+        "path": "/private/tmp/aux-feature-completion-ui-stage-20261024-a2/agent/assets/tabsearch-3k_2hgil.js",
+        "sha256": "c9910b8c10b64f62db048a95d6f2ab003572fd9585b089ef8daa84ec1d446c25"
+      },
+      "mode": 420
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/background.js",
+      "previousSha256": "5d556c69449db9978ffbd6301491c4a6ec0ef41975a00a9cef1650e9cd9441ec",
+      "input": {
+        "path": "/private/tmp/aux-feature-completion-ui-stage-20261024-a2/agent/background.js",
+        "sha256": "bd97a84088d75a0a58a7f9519336b277f2dd0ec5adbee7e843e85c6ac2f8d032"
+      },
+      "mode": 420
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/manifest.json",
+      "previousSha256": "ae49932e0c1f815e9614dd8518d202b7950384072dc34583980d785969d97190",
+      "input": {
+        "path": "/private/tmp/aux-feature-completion-ui-stage-20261024-a2/agent/manifest.json",
+        "sha256": "83b36529497ad99637b671a467ca6f2bdf67af81baedccf8afea24c49cc59e7f"
+      },
+      "mode": 420
+    },
+    {
+      "path": "Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/node-development/index.mjs",
+      "previousSha256": "c56057f14d25f622ec19df32d5da6989ce238477631f613c2502da0f56310707",
+      "input": {
+        "path": "/private/tmp/aux-productivity-latest-context-20261024-a2/index.mjs",
+        "sha256": "f525f457b2c08df4fd3790ffe0acacf1e86101cc8c0c1706ff9fee7235706d57"
+      },
+      "mode": 420
+    },
+    {
+      "path": "Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/node-development/aux-native-entry.mjs",
+      "previousSha256": "0b1fe1660c8313db735cd590fca92f3cd8716c1dcbd1e2956917b06cdcaa80a9",
+      "input": {
+        "path": "/private/tmp/aux-productivity-latest-context-20261024-a2/projected-entry/aux-native-entry.mjs",
+        "sha256": "d30e8358be489e2e4f1a43a7194e78da6a939b85e871a89c7f983e6adc9bc465"
+      },
+      "mode": 420
+    },
+    {
+      "path": "Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/MacOS/aux-daemon",
+      "previousSha256": "7b3521946787f944756c077670e05052221682fbf1b120e1a8a89bbe463977fc",
+      "input": {
+        "path": "/private/tmp/aux-ui-native-capture-transport-daemon-link-20261024-a3/Aux Daemon",
+        "sha256": "6c1d34edb745017bbbe37b607291ee9e46c6c9011f59c29512c089c08bef6972"
+      },
+      "mode": 493
+    }
+  ],
+  "inputs": [
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/completion-batch-a3/package.py",
+      "sha256": "f10849ed58358b3813da0724ba26bb88145f939652221d96e079c794356b7523"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/profile-isolation-delivery/package/assemble.py",
+      "sha256": "e6ac0a786e9a443efa00beac35fe7eb4dc029c24a4dd7c752cf8dcc664e240f2"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/runtime-package-a1/runtime_package.py",
+      "sha256": "15bdfb4066eded784be22a6f29f7bf9e6a41d67e9a917dc889ec5cc822507887"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-standard-profile-drafts-20261024/receipt.json",
+      "sha256": "3fd0400a7b36ccabb8194dbc88b64ba1629867c23b529db7899e262781f6da13"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/unsigned-feature-completion-browser-build-20261024-a3b/receipt.json",
+      "sha256": "8f18420f80a296d4fc1b2548dfa0a48b3296ba364a744c239deffb48876260cc"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/unsigned-feature-completion-browser-build-20261024-a3b/app-inventory.json",
+      "sha256": "bb762885b4b3772412c0e8ced16f36fa5450f3923184baa37fdbe9f2ba35040b"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/completion-batch-a3/full-native-input-pins-a1.json",
+      "sha256": "8128f3da786f582cb33677ed0a3287532188309a0430f6919a00a60dec2c9fdb"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/completion-batch-a2/actual-ui-stage-a1.json",
+      "sha256": "19e9e4828c579fd2868a25c2bb221ea26d8de032c7bed6fcb793d4899a6fcde5"
+    },
+    {
+      "path": "/private/tmp/aux-feature-completion-ui-stage-20261024-a2/manifest.json",
+      "sha256": "5b361f84155051073736ff388e79b79b3680fda4099698dd5ccb8d9b9219770c"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/productivity-adapter-pairing-a2/actual-projection.json",
+      "sha256": "aaec23c959c7b593f30cb0e5f07276b192e9ee2647bfb3830e2fe5d990567af1"
+    },
+    {
+      "path": "/private/tmp/aux-productivity-latest-context-20261024-a2/composition.json",
+      "sha256": "fd4c3f3de000a4caa6fd798d4fdc05151e67a01034714477a6703ca1f9ab3ff2"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/ui-native-capture-transport-a1/actual-daemon-link-a3.json",
+      "sha256": "fa23bbf4a3c5de9c7fabf031f98448ef61b02dc4e3099e4fb08bde7c7aae5fde"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/ui-native-capture-transport-a1/daemon-link-inputs.json",
+      "sha256": "6b5ce4ebda63e9d206f65e91431548d27dfda50086d05de4475ff4dfff01adab"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/ui-native-capture-transport-a1/source-plan.json",
+      "sha256": "8720ff0175ad956ee52d56d2f7488beddffadf099c7e8923eee8038bf445c157"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/out/AuxFast/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/155.0.8059.85/Aux Framework",
+      "sha256": "d88390e9d09131b370cd076dad56488afe5e3690c76f05d1e80e0d1346c61b26"
+    },
+    {
+      "path": "/private/tmp/aux-feature-completion-ui-stage-20261024-a2/agent/assets/draft-storage-ixLojjZ5.js",
+      "sha256": "bddddc6df8a000becb1c6245bc732d258b405e71c5c933d4c3de991ebdc125fc"
+    },
+    {
+      "path": "/private/tmp/aux-feature-completion-ui-stage-20261024-a2/agent/assets/tabsearch-3k_2hgil.js",
+      "sha256": "c9910b8c10b64f62db048a95d6f2ab003572fd9585b089ef8daa84ec1d446c25"
+    },
+    {
+      "path": "/private/tmp/aux-feature-completion-ui-stage-20261024-a2/agent/background.js",
+      "sha256": "bd97a84088d75a0a58a7f9519336b277f2dd0ec5adbee7e843e85c6ac2f8d032"
+    },
+    {
+      "path": "/private/tmp/aux-feature-completion-ui-stage-20261024-a2/agent/manifest.json",
+      "sha256": "83b36529497ad99637b671a467ca6f2bdf67af81baedccf8afea24c49cc59e7f"
+    },
+    {
+      "path": "/private/tmp/aux-productivity-latest-context-20261024-a2/index.mjs",
+      "sha256": "f525f457b2c08df4fd3790ffe0acacf1e86101cc8c0c1706ff9fee7235706d57"
+    },
+    {
+      "path": "/private/tmp/aux-productivity-latest-context-20261024-a2/projected-entry/aux-native-entry.mjs",
+      "sha256": "d30e8358be489e2e4f1a43a7194e78da6a939b85e871a89c7f983e6adc9bc465"
+    },
+    {
+      "path": "/private/tmp/aux-ui-native-capture-transport-daemon-link-20261024-a3/Aux Daemon",
+      "sha256": "6c1d34edb745017bbbe37b607291ee9e46c6c9011f59c29512c089c08bef6972"
+    }
+  ],
+  "authorityWireVersion": 6,
+  "coldFeatureEnabled": false,
+  "runtimeAcceptance": false,
+  "testable": false,
+  "runtimeAuthorityGranted": false,
+  "appExecuted": false,
+  "productSigned": false,
+  "acceptedAppReplaced": false
+}

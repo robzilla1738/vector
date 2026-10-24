@@ -1,0 +1,17 @@
+{
+  "passed": true,
+  "app": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-desktop-completion-20261024-a3/Aux.app",
+  "receipt": {
+    "path": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-desktop-completion-20261024-a3/receipt.json",
+    "sha256": "ee76d98d8a18d4a1d885ebf8eb7020adc61344604416675c6f854f70ed95f211"
+  },
+  "inventorySha256": "857f4e484e3644592d455ce119133573760ac2d69d87233d2fd0efafdff5eb05",
+  "leaves": 11187,
+  "replacements": 8,
+  "runtimeAcceptance": false,
+  "testable": false,
+  "runtimeAuthorityGranted": false,
+  "appExecuted": false,
+  "productSigned": false,
+  "acceptedAppReplaced": false
+}
