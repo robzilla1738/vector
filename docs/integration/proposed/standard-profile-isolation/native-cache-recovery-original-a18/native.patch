@@ -1,0 +1,308 @@
+--- a/third_party/blink/public/mojom/dom_storage/storage_area.mojom
++++ b/third_party/blink/public/mojom/dom_storage/storage_area.mojom
+@@ -51,6 +51,10 @@
+   array<AuxUiCacheDocument> sources;
+   array<AuxUiCacheEntry> source_entries;
+   array<AuxUiCacheEntry> staged_entries;
++  bool recovery_prepared;
++  bool recovery_restored;
++  array<AuxUiCacheEntry> recovery_source_entries;
++  array<AuxUiCacheEntry> recovery_target_entries;
+ };
+ 
+ interface StorageAreaObserver {
+@@ -101,6 +105,13 @@
+   RestoreAuxUiCacheMigration(mojo_base.mojom.UnguessableToken request,
+                              mojo_base.mojom.UnguessableToken token)
+       => (AuxUiCacheReply reply);
++  StageAuxUiCacheRecovery(mojo_base.mojom.UnguessableToken request,
++      mojo_base.mojom.UnguessableToken token,
++      array<AuxUiCacheEntry> expected_current,
++      array<AuxUiCacheEntry> recorded_source,
++      array<AuxUiCacheEntry> recorded_target) => (AuxUiCacheReply reply);
++  RestoreAuxUiCacheRecovery(mojo_base.mojom.UnguessableToken request,
++      mojo_base.mojom.UnguessableToken token) => (AuxUiCacheReply reply);
+   ReleaseAuxUiCacheMigration(mojo_base.mojom.UnguessableToken request,
+                              mojo_base.mojom.UnguessableToken token)
+       => (bool released);
+--- a/third_party/blink/renderer/modules/storage/cached_storage_area.h
++++ b/third_party/blink/renderer/modules/storage/cached_storage_area.h
+@@ -218,6 +218,9 @@
+     Vector<AuxUiCacheSource> sources;
+     std::unique_ptr<StorageAreaMap> original;
+     std::unique_ptr<StorageAreaMap> target;
++    std::unique_ptr<StorageAreaMap> recovery_original;
++    std::unique_ptr<StorageAreaMap> recovery_target;
++    bool recovery_restored = false;
+     Vector<base::OnceClosure> deferred;
+     bool tainted = false;
+     bool published = false;
+@@ -246,6 +249,15 @@
+   void RestoreAuxUiCacheMigration(const base::UnguessableToken& request,
+       const base::UnguessableToken& token,
+       RestoreAuxUiCacheMigrationCallback callback) override;
++  void StageAuxUiCacheRecovery(const base::UnguessableToken& request,
++      const base::UnguessableToken& token,
++      Vector<mojom::blink::AuxUiCacheEntryPtr> expected_current,
++      Vector<mojom::blink::AuxUiCacheEntryPtr> recorded_source,
++      Vector<mojom::blink::AuxUiCacheEntryPtr> recorded_target,
++      StageAuxUiCacheRecoveryCallback callback) override;
++  void RestoreAuxUiCacheRecovery(const base::UnguessableToken& request,
++      const base::UnguessableToken& token,
++      RestoreAuxUiCacheRecoveryCallback callback) override;
+   void ReleaseAuxUiCacheMigration(const base::UnguessableToken& request,
+       const base::UnguessableToken& token,
+       ReleaseAuxUiCacheMigrationCallback callback) override;
+--- a/third_party/blink/renderer/modules/storage/cached_storage_area.cc
++++ b/third_party/blink/renderer/modules/storage/cached_storage_area.cc
+@@ -225,7 +225,7 @@
+       aux_storage_callbacks_pending_ == 0 && pending_mutations_by_source_.empty() &&
+       pending_mutations_by_key_.empty() && !held.tainted && !is_session_storage_for_prerendering_;
+   if (valid) {
+-    const auto& expected = held.published ? held.target : held.original;
++    const auto& expected = held.recovery_restored ? held.recovery_original : held.published ? held.target : held.original;
+     valid = expected && AuxSelectedCacheEntries(*map_, !IsSessionStorage()) ==
+         AuxSelectedCacheEntries(*expected, !IsSessionStorage());
+   }
+@@ -238,6 +238,10 @@
+   }
+   reply->source_entries = AuxCacheWireEntries(AuxSelectedCacheEntries(*held.original, !IsSessionStorage()));
+   if (held.target) reply->staged_entries = AuxCacheWireEntries(AuxSelectedCacheEntries(*held.target, !IsSessionStorage()));
++  reply->recovery_prepared = !!held.recovery_original;
++  reply->recovery_restored = held.recovery_restored;
++  if (held.recovery_original) reply->recovery_source_entries = AuxCacheWireEntries(AuxSelectedCacheEntries(*held.recovery_original, !IsSessionStorage()));
++  if (held.recovery_target) reply->recovery_target_entries = AuxCacheWireEntries(AuxSelectedCacheEntries(*held.recovery_target, !IsSessionStorage()));
+   return reply;
+ }
+ void CachedStorageArea::BeginAuxUiCacheMigration(
+@@ -285,7 +289,7 @@
+     Vector<mojom::blink::AuxUiCacheEntryPtr> expected_source,
+     Vector<mojom::blink::AuxUiCacheEntryPtr> target, StageAuxUiCacheMigrationCallback callback) {
+   auto reply = ReadAuxUiCacheReply(request, token);
+-  if (!reply->ok || aux_ui_cache_lease_->published) {
++  if (!reply->ok || aux_ui_cache_lease_->published || aux_ui_cache_lease_->recovery_original) {
+     reply->ok = false; std::move(callback).Run(std::move(reply)); return;
+   }
+   auto source = AuxCacheReadEntries(expected_source, !IsSessionStorage());
+@@ -316,7 +320,7 @@
+     const base::UnguessableToken& request, const base::UnguessableToken& token,
+     PublishAuxUiCacheMigrationCallback callback) {
+   auto reply = ReadAuxUiCacheReply(request, token);
+-  if (!reply->ok || !aux_ui_cache_lease_->target) {
++  if (!reply->ok || !aux_ui_cache_lease_->target || aux_ui_cache_lease_->recovery_original) {
+     reply->ok = false; std::move(callback).Run(std::move(reply)); return;
+   }
+   // The genuine native controller must have committed/read back every backend
+@@ -330,9 +334,70 @@
+     const base::UnguessableToken& request, const base::UnguessableToken& token,
+     RestoreAuxUiCacheMigrationCallback callback) {
+   auto reply = ReadAuxUiCacheReply(request, token);
+-  if (!reply->ok) { std::move(callback).Run(std::move(reply)); return; }
++  if (!reply->ok || aux_ui_cache_lease_->recovery_original) {
++    reply->ok = false; std::move(callback).Run(std::move(reply)); return;
++  }
+   map_ = AuxCloneCacheMap(*aux_ui_cache_lease_->original);
+   aux_ui_cache_lease_->published = false;
++  std::move(callback).Run(ReadAuxUiCacheReply(request, token));
++}
++void CachedStorageArea::StageAuxUiCacheRecovery(
++    const base::UnguessableToken& request, const base::UnguessableToken& token,
++    Vector<mojom::blink::AuxUiCacheEntryPtr> expected_current,
++    Vector<mojom::blink::AuxUiCacheEntryPtr> recorded_source,
++    Vector<mojom::blink::AuxUiCacheEntryPtr> recorded_target,
++    StageAuxUiCacheRecoveryCallback callback) {
++  auto reply = ReadAuxUiCacheReply(request, token);
++  if (!reply->ok || aux_ui_cache_lease_->published || aux_ui_cache_lease_->recovery_restored) {
++    reply->ok = false; std::move(callback).Run(std::move(reply)); return;
++  }
++  auto current = AuxCacheReadEntries(expected_current, !IsSessionStorage());
++  auto source = AuxCacheReadEntries(recorded_source, !IsSessionStorage());
++  auto target = AuxCacheReadEntries(recorded_target, !IsSessionStorage());
++  const auto actual = AuxSelectedCacheEntries(*aux_ui_cache_lease_->original, !IsSessionStorage());
++  if (!current || !source || !target || *current != actual ||
++      (actual != *source && actual != *target) || !AuxCacheCurrentTarget(*target, !IsSessionStorage())) {
++    reply->ok = false; reply->error = "Fresh actual cache differs from recorded native alternatives";
++    std::move(callback).Run(std::move(reply)); return;
++  }
++  auto& held = *aux_ui_cache_lease_;
++  if (held.recovery_original) {
++    if (AuxSelectedCacheEntries(*held.recovery_original, !IsSessionStorage()) != *source ||
++        AuxSelectedCacheEntries(*held.recovery_target, !IsSessionStorage()) != *target) {
++      reply->ok = false; reply->error = "Original recovery cache plan cannot be replaced";
++    }
++    std::move(callback).Run(std::move(reply)); return;
++  }
++  auto build = [&](const std::map<std::u16string, std::u16string>& selected)
++      -> std::unique_ptr<StorageAreaMap> {
++    auto result = AuxCloneCacheMap(*held.original);
++    for (const auto& [key, value] : actual) result->RemoveItem(AuxCacheString(key), nullptr);
++    for (const auto& [key, value] : selected)
++      if (!result->SetItem(AuxCacheString(key), AuxCacheString(value), nullptr)) return nullptr;
++    return result;
++  };
++  auto original = build(*source); auto destination = build(*target);
++  if (!original || !destination) {
++    reply->ok = false; reply->error = "Actual recovery cache quota refused";
++    std::move(callback).Run(std::move(reply)); return;
++  }
++  // Fresh original is immutable. Journal original is separately retained;
++  // neither ordinary reads nor callbacks/events change during preparation.
++  held.recovery_original = std::move(original);
++  held.recovery_target = std::move(destination);
++  std::move(callback).Run(ReadAuxUiCacheReply(request, token));
++}
++void CachedStorageArea::RestoreAuxUiCacheRecovery(
++    const base::UnguessableToken& request, const base::UnguessableToken& token,
++    RestoreAuxUiCacheRecoveryCallback callback) {
++  auto reply = ReadAuxUiCacheReply(request, token);
++  if (!reply->ok || !aux_ui_cache_lease_->recovery_original) {
++    reply->ok = false; std::move(callback).Run(std::move(reply)); return;
++  }
++  // The native owner must first restore/sync/read back the original physical
++  // data under explicit recovery intent. This RPC supplies no such authority.
++  map_ = AuxCloneCacheMap(*aux_ui_cache_lease_->recovery_original);
++  aux_ui_cache_lease_->recovery_restored = true;
+   std::move(callback).Run(ReadAuxUiCacheReply(request, token));
+ }
+ void CachedStorageArea::ReleaseAuxUiCacheMigration(
+--- a/components/services/storage/dom_storage/aux_ui_cache_cohort.h
++++ b/components/services/storage/dom_storage/aux_ui_cache_cohort.h
+@@ -37,6 +37,8 @@
+   void Read(Callback callback);
+   void Validate(Callback callback);
+   void Stage(const Entries& source, const Entries& target, Callback callback);
++  void StageRecovery(const Entries& source, const Entries& target, Callback callback);
++  void RestoreRecovery(Callback callback);
+   void Publish(Callback callback);
+   void Restore(Callback callback);
+   void Release(const base::UnguessableToken& original_request, Callback callback);
+@@ -47,7 +49,7 @@
+   base::WeakPtr<AuxUiCacheCohort> GetWeakPtr() { return weak_.GetWeakPtr(); }
+   std::vector<blink::mojom::AuxUiCacheReplyPtr> CopyReports() const;
+  private:
+-  enum class Operation { kPrepare, kRead, kValidate, kStage, kPublish, kRestore, kRelease };
++  enum class Operation { kPrepare, kRead, kValidate, kStage, kPublish, kRestore, kRelease, kRecoveryStage, kRecoveryRestore };
+   enum class Custody { kUnknown, kHeld, kNotHeld };
+   struct Node {
+     Custody custody = Custody::kUnknown;
+@@ -78,6 +80,9 @@
+   std::optional<DbStatus> error_;
+   Entries expected_source_;
+   Entries expected_target_;
++  bool recovery_plan_set_ = false;
++  Entries recovery_source_;
++  Entries recovery_target_;
+   Callback callback_;
+   base::WeakPtrFactory<AuxUiCacheCohort> weak_{this};
+ };
+--- a/components/services/storage/dom_storage/aux_ui_cache_cohort.cc
++++ b/components/services/storage/dom_storage/aux_ui_cache_cohort.cc
+@@ -136,6 +136,14 @@
+ void AuxUiCacheCohort::Stage(const Entries& source, const Entries& target, Callback callback) {
+   Run(Operation::kStage, source, target, std::move(callback));
+ }
++void AuxUiCacheCohort::StageRecovery(const Entries& source, const Entries& target, Callback callback) {
++  if (recovery_plan_set_ && (!SameEntries(source, recovery_source_) || !SameEntries(target, recovery_target_))) {
++    std::move(callback).Run(DbStatus::IOError("Original recovery cache plan is immutable")); return;
++  }
++  recovery_plan_set_ = true; recovery_source_ = CloneEntries(source); recovery_target_ = CloneEntries(target);
++  Run(Operation::kRecoveryStage, source, target, std::move(callback));
++}
++void AuxUiCacheCohort::RestoreRecovery(Callback callback) { Run(Operation::kRecoveryRestore, {}, {}, std::move(callback)); }
+ void AuxUiCacheCohort::Publish(Callback callback) { Run(Operation::kPublish, {}, {}, std::move(callback)); }
+ void AuxUiCacheCohort::Restore(Callback callback) { Run(Operation::kRestore, {}, {}, std::move(callback)); }
+ void AuxUiCacheCohort::Release(const base::UnguessableToken& original_request, Callback callback) {
+@@ -153,6 +161,9 @@
+   const bool ui_origin = storage_key_.origin() == url::Origin::Create(
+       GURL("chrome-extension://gokkffaiccpmoeodpmeamcjajcagjmkm/"));
+   if (!request_ || pending_ || (operation != Operation::kRelease && !SameEndpoints()) ||
++      ((operation == Operation::kRecoveryStage || operation == Operation::kRecoveryRestore) && !prepared_) ||
++      (recovery_plan_set_ && (operation == Operation::kStage || operation == Operation::kPublish || operation == Operation::kRestore)) ||
++      (operation == Operation::kRecoveryRestore && !recovery_plan_set_) ||
+       ((operation == Operation::kStage || operation == Operation::kPublish || operation == Operation::kValidate) && !prepared_)) {
+     std::move(callback).Run(DbStatus::IOError("Actual cache endpoint inventory is not held")); return;
+   }
+@@ -194,6 +205,11 @@
+       case Operation::kStage: observer->StageAuxUiCacheMigration(*request_, *node.token, CloneEntries(source), CloneEntries(target), std::move(reply)); break;
+       case Operation::kPublish: observer->PublishAuxUiCacheMigration(*request_, *node.token, std::move(reply)); break;
+       case Operation::kRestore: observer->RestoreAuxUiCacheMigration(*request_, *node.token, std::move(reply)); break;
++      case Operation::kRecoveryStage:
++        if (!node.original) { OneDone(DbStatus::IOError("Fresh actual cache source missing")); break; }
++        observer->StageAuxUiCacheRecovery(*request_, *node.token,
++            CloneEntries(node.original->source_entries), CloneEntries(source), CloneEntries(target), std::move(reply)); break;
++      case Operation::kRecoveryRestore: observer->RestoreAuxUiCacheRecovery(*request_, *node.token, std::move(reply)); break;
+       case Operation::kRelease: NOTREACHED();
+     }
+   }
+@@ -237,6 +253,14 @@
+     node.report = std::move(reply);
+     OneDone(DbStatus::IOError("Original cache source snapshot or documents changed")); return;
+   }
++  if (recovery_plan_set_ && (!reply->recovery_prepared ||
++      !SameEntries(reply->recovery_source_entries, recovery_source_) ||
++      !SameEntries(reply->recovery_target_entries, recovery_target_) ||
++      (operation == Operation::kRecoveryStage && reply->recovery_restored) ||
++      (operation == Operation::kRecoveryRestore && !reply->recovery_restored))) {
++    node.report = std::move(reply);
++    OneDone(DbStatus::IOError("Actual separate journal-original cache readback differs")); return;
++  }
+   if (operation == Operation::kStage &&
+       (reply->published || !SameEntries(reply->source_entries, expected_source_) ||
+        !SameEntries(reply->staged_entries, expected_target_))) {
+@@ -278,6 +302,7 @@
+     last_released_ = request_;
+     request_.reset(); nodes_.clear(); prepared_ = false;
+     expected_source_.clear(); expected_target_.clear();
++    recovery_plan_set_ = false; recovery_source_.clear(); recovery_target_.clear();
+     auto receivers = std::move(frozen_receivers_);
+     for (auto& receiver : receivers) receivers_->Add(&implementation_.get(), std::move(receiver));
+   }
+--- a/components/services/storage/dom_storage/async_dom_storage_database.h
++++ b/components/services/storage/dom_storage/async_dom_storage_database.h
+@@ -60,7 +60,7 @@
+       const base::FilePath& dir_to_destroy,
+       OpenCallback callback);
+ 
+-  enum class AuxUiCacheOperation { kRead, kValidate, kStage, kPublish, kRestore, kRelease };
++  enum class AuxUiCacheOperation { kRead, kValidate, kStage, kPublish, kRestore, kRelease, kRecoveryStage, kRecoveryRestore };
+   struct AuxUiCacheDocument {
+     base::Token source_id;
+     blink::LocalFrameToken frame;
+--- a/components/services/storage/dom_storage/storage_area_impl.cc
++++ b/components/services/storage/dom_storage/storage_area_impl.cc
+@@ -206,6 +206,16 @@
+       }
+       participant->Stage(source.value(), target.value(), std::move(reply)); break;
+     }
++    case Operation::kRecoveryStage: {
++      if (!aux_cache_map_) { std::move(reply).Run(DbStatus::IOError("Recorded recovery map missing")); return; }
++      auto source = AuxUiCacheCohort::DecodeSelected(aux_cache_map_->source, aux_cache_map_->session_ids.empty());
++      auto target = AuxUiCacheCohort::DecodeSelected(aux_cache_map_->target, aux_cache_map_->session_ids.empty());
++      if (!source.has_value() || !target.has_value()) {
++        std::move(reply).Run(DbStatus::NotSupported("Recovery original codec refused")); return;
++      }
++      participant->StageRecovery(source.value(), target.value(), std::move(reply)); break;
++    }
++    case Operation::kRecoveryRestore: participant->RestoreRecovery(std::move(reply)); break;
+     case Operation::kPublish: participant->Publish(std::move(reply)); break;
+     case Operation::kRestore: participant->Restore(std::move(reply)); break;
+     case Operation::kRelease: participant->Release(*aux_cache_request_, std::move(reply)); break;
+--- a/components/services/storage/dom_storage/test_support/storage_area_test_util.h
++++ b/components/services/storage/dom_storage/test_support/storage_area_test_util.h
+@@ -98,6 +98,16 @@
+     reply->error = "Observer has no actual Aux cache owner";
+     std::move(callback).Run(std::move(reply));
+   }
++  void StageAuxUiCacheRecovery(const base::UnguessableToken&,
++      const base::UnguessableToken&, std::vector<blink::mojom::AuxUiCacheEntryPtr>,
++      std::vector<blink::mojom::AuxUiCacheEntryPtr>, std::vector<blink::mojom::AuxUiCacheEntryPtr>,
++      StageAuxUiCacheRecoveryCallback callback) override {
++    std::move(callback).Run(blink::mojom::AuxUiCacheReply::New());
++  }
++  void RestoreAuxUiCacheRecovery(const base::UnguessableToken&,
++      const base::UnguessableToken&, RestoreAuxUiCacheRecoveryCallback callback) override {
++    std::move(callback).Run(blink::mojom::AuxUiCacheReply::New());
++  }
+   void ReleaseAuxUiCacheMigration(const base::UnguessableToken& request, const base::UnguessableToken& token, ReleaseAuxUiCacheMigrationCallback callback) override {
+     std::move(callback).Run(false);
+   }

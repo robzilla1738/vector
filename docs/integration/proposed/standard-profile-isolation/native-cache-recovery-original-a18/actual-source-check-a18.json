@@ -1,0 +1,16 @@
+{
+  "format": "aux.cache-recovery-original.source-check.actual.v1",
+  "passed": true,
+  "sourcePlanSha256": "c202ba29531096fe7965bef12f198bbe75b18184b689f4f37540117dc7a16c6c",
+  "patchSha256": "df06fb62d0d710c42093450107b5827af71df58fc068ed34c1628733e11cf377",
+  "files": 8,
+  "countedAnchors": 21,
+  "replayDirectory": "/private/tmp/aux-cache-recovery-original-replay-m5ymevse",
+  "exactReplayPassed": true,
+  "reverseCheckPassed": true,
+  "nativeCheckoutChanged": false,
+  "nativeCompiled": false,
+  "testsExecuted": false,
+  "productExecuted": false,
+  "runtimeAcceptance": false
+}

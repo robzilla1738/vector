@@ -1,0 +1,186 @@
+{
+  "format": "aux.native-cache-recovery-original.source.v1",
+  "files": [
+    {
+      "path": "third_party/blink/public/mojom/dom_storage/storage_area.mojom",
+      "inputRoot": "/Users/rcourson/.codex/worktrees/aux-features-organization/web/docs/integration/proposed/standard-profile-isolation/native-renderer-cache-lease-a8/source",
+      "inputSha256": "5d62cf6e4a250962b7565d745b14b7967b565ea5252a6d60608ed7c82966d3fa",
+      "outputSha256": "72f51b1f090fcb26c074409e4bb2dcb9b957e6464e800539fc6cad5f0e9fb5f0",
+      "output": "/Users/rcourson/.codex/worktrees/aux-features-organization/web/docs/integration/proposed/standard-profile-isolation/native-cache-recovery-original-a18/source/third_party/blink/public/mojom/dom_storage/storage_area.mojom",
+      "anchors": [
+        {
+          "find": "  array<AuxUiCacheEntry> staged_entries;\n};",
+          "replace": "  array<AuxUiCacheEntry> staged_entries;\n  bool recovery_prepared;\n  bool recovery_restored;\n  array<AuxUiCacheEntry> recovery_source_entries;\n  array<AuxUiCacheEntry> recovery_target_entries;\n};",
+          "count": 1
+        },
+        {
+          "find": "  ReleaseAuxUiCacheMigration(mojo_base.mojom.UnguessableToken request,",
+          "replace": "  StageAuxUiCacheRecovery(mojo_base.mojom.UnguessableToken request,\n      mojo_base.mojom.UnguessableToken token,\n      array<AuxUiCacheEntry> expected_current,\n      array<AuxUiCacheEntry> recorded_source,\n      array<AuxUiCacheEntry> recorded_target) => (AuxUiCacheReply reply);\n  RestoreAuxUiCacheRecovery(mojo_base.mojom.UnguessableToken request,\n      mojo_base.mojom.UnguessableToken token) => (AuxUiCacheReply reply);\n  ReleaseAuxUiCacheMigration(mojo_base.mojom.UnguessableToken request,",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "third_party/blink/renderer/modules/storage/cached_storage_area.h",
+      "inputRoot": "/Users/rcourson/.codex/worktrees/aux-features-organization/web/docs/integration/proposed/standard-profile-isolation/native-cache-prelease-receipt-a13b/source",
+      "inputSha256": "5fd45af42d2593677bb1fdf66dc44d25bd17651775833b8319b5cf5cb6e3975f",
+      "outputSha256": "9ed3d23d2b220ce9dceb52b4c2aa8c638f8e5376c1e00b0ae49dd5e9ddcfaf35",
+      "output": "/Users/rcourson/.codex/worktrees/aux-features-organization/web/docs/integration/proposed/standard-profile-isolation/native-cache-recovery-original-a18/source/third_party/blink/renderer/modules/storage/cached_storage_area.h",
+      "anchors": [
+        {
+          "find": "    std::unique_ptr<StorageAreaMap> target;",
+          "replace": "    std::unique_ptr<StorageAreaMap> target;\n    std::unique_ptr<StorageAreaMap> recovery_original;\n    std::unique_ptr<StorageAreaMap> recovery_target;\n    bool recovery_restored = false;",
+          "count": 1
+        },
+        {
+          "find": "  void ReleaseAuxUiCacheMigration(const base::UnguessableToken& request,",
+          "replace": "  void StageAuxUiCacheRecovery(const base::UnguessableToken& request,\n      const base::UnguessableToken& token,\n      Vector<mojom::blink::AuxUiCacheEntryPtr> expected_current,\n      Vector<mojom::blink::AuxUiCacheEntryPtr> recorded_source,\n      Vector<mojom::blink::AuxUiCacheEntryPtr> recorded_target,\n      StageAuxUiCacheRecoveryCallback callback) override;\n  void RestoreAuxUiCacheRecovery(const base::UnguessableToken& request,\n      const base::UnguessableToken& token,\n      RestoreAuxUiCacheRecoveryCallback callback) override;\n  void ReleaseAuxUiCacheMigration(const base::UnguessableToken& request,",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "third_party/blink/renderer/modules/storage/cached_storage_area.cc",
+      "inputRoot": "/Users/rcourson/.codex/worktrees/aux-features-organization/web/docs/integration/proposed/standard-profile-isolation/native-cache-prelease-receipt-a13b/source",
+      "inputSha256": "58b3517ae977a70fd6190399bac03214ecf6b8cbe952b2219066caf03dd2e665",
+      "outputSha256": "1d3f734191563e721e7fac5a7d0e7628ed7edce68c2f651c137acc96be2a58d4",
+      "output": "/Users/rcourson/.codex/worktrees/aux-features-organization/web/docs/integration/proposed/standard-profile-isolation/native-cache-recovery-original-a18/source/third_party/blink/renderer/modules/storage/cached_storage_area.cc",
+      "anchors": [
+        {
+          "find": "    const auto& expected = held.published ? held.target : held.original;",
+          "replace": "    const auto& expected = held.recovery_restored ? held.recovery_original : held.published ? held.target : held.original;",
+          "count": 1
+        },
+        {
+          "find": "  if (held.target) reply->staged_entries = AuxCacheWireEntries(AuxSelectedCacheEntries(*held.target, !IsSessionStorage()));\n  return reply;",
+          "replace": "  if (held.target) reply->staged_entries = AuxCacheWireEntries(AuxSelectedCacheEntries(*held.target, !IsSessionStorage()));\n  reply->recovery_prepared = !!held.recovery_original;\n  reply->recovery_restored = held.recovery_restored;\n  if (held.recovery_original) reply->recovery_source_entries = AuxCacheWireEntries(AuxSelectedCacheEntries(*held.recovery_original, !IsSessionStorage()));\n  if (held.recovery_target) reply->recovery_target_entries = AuxCacheWireEntries(AuxSelectedCacheEntries(*held.recovery_target, !IsSessionStorage()));\n  return reply;",
+          "count": 1
+        },
+        {
+          "find": "  if (!reply->ok || aux_ui_cache_lease_->published) {",
+          "replace": "  if (!reply->ok || aux_ui_cache_lease_->published || aux_ui_cache_lease_->recovery_original) {",
+          "count": 1
+        },
+        {
+          "find": "  if (!reply->ok || !aux_ui_cache_lease_->target) {",
+          "replace": "  if (!reply->ok || !aux_ui_cache_lease_->target || aux_ui_cache_lease_->recovery_original) {",
+          "count": 1
+        },
+        {
+          "find": "  if (!reply->ok) { std::move(callback).Run(std::move(reply)); return; }\n  map_ = AuxCloneCacheMap(*aux_ui_cache_lease_->original);",
+          "replace": "  if (!reply->ok || aux_ui_cache_lease_->recovery_original) {\n    reply->ok = false; std::move(callback).Run(std::move(reply)); return;\n  }\n  map_ = AuxCloneCacheMap(*aux_ui_cache_lease_->original);",
+          "count": 1
+        },
+        {
+          "find": "void CachedStorageArea::ReleaseAuxUiCacheMigration(",
+          "replace": "void CachedStorageArea::StageAuxUiCacheRecovery(\n    const base::UnguessableToken& request, const base::UnguessableToken& token,\n    Vector<mojom::blink::AuxUiCacheEntryPtr> expected_current,\n    Vector<mojom::blink::AuxUiCacheEntryPtr> recorded_source,\n    Vector<mojom::blink::AuxUiCacheEntryPtr> recorded_target,\n    StageAuxUiCacheRecoveryCallback callback) {\n  auto reply = ReadAuxUiCacheReply(request, token);\n  if (!reply->ok || aux_ui_cache_lease_->published || aux_ui_cache_lease_->recovery_restored) {\n    reply->ok = false; std::move(callback).Run(std::move(reply)); return;\n  }\n  auto current = AuxCacheReadEntries(expected_current, !IsSessionStorage());\n  auto source = AuxCacheReadEntries(recorded_source, !IsSessionStorage());\n  auto target = AuxCacheReadEntries(recorded_target, !IsSessionStorage());\n  const auto actual = AuxSelectedCacheEntries(*aux_ui_cache_lease_->original, !IsSessionStorage());\n  if (!current || !source || !target || *current != actual ||\n      (actual != *source && actual != *target) || !AuxCacheCurrentTarget(*target, !IsSessionStorage())) {\n    reply->ok = false; reply->error = \"Fresh actual cache differs from recorded native alternatives\";\n    std::move(callback).Run(std::move(reply)); return;\n  }\n  auto& held = *aux_ui_cache_lease_;\n  if (held.recovery_original) {\n    if (AuxSelectedCacheEntries(*held.recovery_original, !IsSessionStorage()) != *source ||\n        AuxSelectedCacheEntries(*held.recovery_target, !IsSessionStorage()) != *target) {\n      reply->ok = false; reply->error = \"Original recovery cache plan cannot be replaced\";\n    }\n    std::move(callback).Run(std::move(reply)); return;\n  }\n  auto build = [&](const std::map<std::u16string, std::u16string>& selected)\n      -> std::unique_ptr<StorageAreaMap> {\n    auto result = AuxCloneCacheMap(*held.original);\n    for (const auto& [key, value] : actual) result->RemoveItem(AuxCacheString(key), nullptr);\n    for (const auto& [key, value] : selected)\n      if (!result->SetItem(AuxCacheString(key), AuxCacheString(value), nullptr)) return nullptr;\n    return result;\n  };\n  auto original = build(*source); auto destination = build(*target);\n  if (!original || !destination) {\n    reply->ok = false; reply->error = \"Actual recovery cache quota refused\";\n    std::move(callback).Run(std::move(reply)); return;\n  }\n  // Fresh original is immutable. Journal original is separately retained;\n  // neither ordinary reads nor callbacks/events change during preparation.\n  held.recovery_original = std::move(original);\n  held.recovery_target = std::move(destination);\n  std::move(callback).Run(ReadAuxUiCacheReply(request, token));\n}\nvoid CachedStorageArea::RestoreAuxUiCacheRecovery(\n    const base::UnguessableToken& request, const base::UnguessableToken& token,\n    RestoreAuxUiCacheRecoveryCallback callback) {\n  auto reply = ReadAuxUiCacheReply(request, token);\n  if (!reply->ok || !aux_ui_cache_lease_->recovery_original) {\n    reply->ok = false; std::move(callback).Run(std::move(reply)); return;\n  }\n  // The native owner must first restore/sync/read back the original physical\n  // data under explicit recovery intent. This RPC supplies no such authority.\n  map_ = AuxCloneCacheMap(*aux_ui_cache_lease_->recovery_original);\n  aux_ui_cache_lease_->recovery_restored = true;\n  std::move(callback).Run(ReadAuxUiCacheReply(request, token));\n}\nvoid CachedStorageArea::ReleaseAuxUiCacheMigration(",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "components/services/storage/dom_storage/aux_ui_cache_cohort.h",
+      "inputRoot": "/Users/rcourson/.codex/worktrees/aux-features-organization/web/docs/integration/proposed/standard-profile-isolation/native-cohort-compile-fix-a17c/source",
+      "inputSha256": "cbb5e56f89257640b5946dc319ffcfae9e8670d1f2a53691c10d6b9a96c38958",
+      "outputSha256": "db9f3099da9d1d03e0a5e00843d3e6b817788105998657359fc41d06fbf290c1",
+      "output": "/Users/rcourson/.codex/worktrees/aux-features-organization/web/docs/integration/proposed/standard-profile-isolation/native-cache-recovery-original-a18/source/components/services/storage/dom_storage/aux_ui_cache_cohort.h",
+      "anchors": [
+        {
+          "find": "  void Publish(Callback callback);",
+          "replace": "  void StageRecovery(const Entries& source, const Entries& target, Callback callback);\n  void RestoreRecovery(Callback callback);\n  void Publish(Callback callback);",
+          "count": 1
+        },
+        {
+          "find": "enum class Operation { kPrepare, kRead, kValidate, kStage, kPublish, kRestore, kRelease };",
+          "replace": "enum class Operation { kPrepare, kRead, kValidate, kStage, kPublish, kRestore, kRelease, kRecoveryStage, kRecoveryRestore };",
+          "count": 1
+        },
+        {
+          "find": "  Entries expected_target_;",
+          "replace": "  Entries expected_target_;\n  bool recovery_plan_set_ = false;\n  Entries recovery_source_;\n  Entries recovery_target_;",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "components/services/storage/dom_storage/aux_ui_cache_cohort.cc",
+      "inputRoot": "/Users/rcourson/.codex/worktrees/aux-features-organization/web/docs/integration/proposed/standard-profile-isolation/native-cohort-compile-fix-a17c/source",
+      "inputSha256": "331ae9b9c7570ded051122b41c121c4dacd323e1aa1ed6826990c61669c3cd29",
+      "outputSha256": "691d3277777c08c45054d2712bd7f781e8f5b9271a46f8972f2d7e20d3e06ff5",
+      "output": "/Users/rcourson/.codex/worktrees/aux-features-organization/web/docs/integration/proposed/standard-profile-isolation/native-cache-recovery-original-a18/source/components/services/storage/dom_storage/aux_ui_cache_cohort.cc",
+      "anchors": [
+        {
+          "find": "void AuxUiCacheCohort::Publish(Callback callback)",
+          "replace": "void AuxUiCacheCohort::StageRecovery(const Entries& source, const Entries& target, Callback callback) {\n  if (recovery_plan_set_ && (!SameEntries(source, recovery_source_) || !SameEntries(target, recovery_target_))) {\n    std::move(callback).Run(DbStatus::IOError(\"Original recovery cache plan is immutable\")); return;\n  }\n  recovery_plan_set_ = true; recovery_source_ = CloneEntries(source); recovery_target_ = CloneEntries(target);\n  Run(Operation::kRecoveryStage, source, target, std::move(callback));\n}\nvoid AuxUiCacheCohort::RestoreRecovery(Callback callback) { Run(Operation::kRecoveryRestore, {}, {}, std::move(callback)); }\nvoid AuxUiCacheCohort::Publish(Callback callback)",
+          "count": 1
+        },
+        {
+          "find": "  if (!request_ || pending_ || (operation != Operation::kRelease && !SameEndpoints()) ||",
+          "replace": "  if (!request_ || pending_ || (operation != Operation::kRelease && !SameEndpoints()) ||\n      ((operation == Operation::kRecoveryStage || operation == Operation::kRecoveryRestore) && !prepared_) ||\n      (recovery_plan_set_ && (operation == Operation::kStage || operation == Operation::kPublish || operation == Operation::kRestore)) ||\n      (operation == Operation::kRecoveryRestore && !recovery_plan_set_) ||",
+          "count": 1
+        },
+        {
+          "find": "      case Operation::kRelease: NOTREACHED();",
+          "replace": "      case Operation::kRecoveryStage:\n        if (!node.original) { OneDone(DbStatus::IOError(\"Fresh actual cache source missing\")); break; }\n        observer->StageAuxUiCacheRecovery(*request_, *node.token,\n            CloneEntries(node.original->source_entries), CloneEntries(source), CloneEntries(target), std::move(reply)); break;\n      case Operation::kRecoveryRestore: observer->RestoreAuxUiCacheRecovery(*request_, *node.token, std::move(reply)); break;\n      case Operation::kRelease: NOTREACHED();",
+          "count": 1
+        },
+        {
+          "find": "  if (operation == Operation::kStage &&\n      (reply->published",
+          "replace": "  if (recovery_plan_set_ && (!reply->recovery_prepared ||\n      !SameEntries(reply->recovery_source_entries, recovery_source_) ||\n      !SameEntries(reply->recovery_target_entries, recovery_target_) ||\n      (operation == Operation::kRecoveryStage && reply->recovery_restored) ||\n      (operation == Operation::kRecoveryRestore && !reply->recovery_restored))) {\n    node.report = std::move(reply);\n    OneDone(DbStatus::IOError(\"Actual separate journal-original cache readback differs\")); return;\n  }\n  if (operation == Operation::kStage &&\n      (reply->published",
+          "count": 1
+        },
+        {
+          "find": "    expected_source_.clear(); expected_target_.clear();",
+          "replace": "    expected_source_.clear(); expected_target_.clear();\n    recovery_plan_set_ = false; recovery_source_.clear(); recovery_target_.clear();",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "components/services/storage/dom_storage/async_dom_storage_database.h",
+      "inputRoot": "/Users/rcourson/.codex/worktrees/aux-features-organization/web/docs/integration/proposed/standard-profile-isolation/native-recovery-requalification-a17b/source",
+      "inputSha256": "8e547bcca0a559ec96da7fd6725a6f09b683c7929de400ea6428f8ea9205c6e2",
+      "outputSha256": "3ad83e63a7f45ca80c0df300b9fc479fa8f4c6ff6109ebcac1c4c1c700af126e",
+      "output": "/Users/rcourson/.codex/worktrees/aux-features-organization/web/docs/integration/proposed/standard-profile-isolation/native-cache-recovery-original-a18/source/components/services/storage/dom_storage/async_dom_storage_database.h",
+      "anchors": [
+        {
+          "find": "enum class AuxUiCacheOperation { kRead, kValidate, kStage, kPublish, kRestore, kRelease };",
+          "replace": "enum class AuxUiCacheOperation { kRead, kValidate, kStage, kPublish, kRestore, kRelease, kRecoveryStage, kRecoveryRestore };",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "components/services/storage/dom_storage/storage_area_impl.cc",
+      "inputRoot": "/Users/rcourson/.codex/worktrees/aux-features-organization/web/docs/integration/proposed/standard-profile-isolation/native-cache-cohort-integration-a9/source",
+      "inputSha256": "df07426a0957a2c810fac6502d2c5dbff467d545c08798870afe58ef6dce6050",
+      "outputSha256": "06ee9f1214d0e310d306bf427d940da07505ffec9c466f0dea2b816eabf80f69",
+      "output": "/Users/rcourson/.codex/worktrees/aux-features-organization/web/docs/integration/proposed/standard-profile-isolation/native-cache-recovery-original-a18/source/components/services/storage/dom_storage/storage_area_impl.cc",
+      "anchors": [
+        {
+          "find": "    case Operation::kPublish: participant->Publish(std::move(reply)); break;",
+          "replace": "    case Operation::kRecoveryStage: {\n      if (!aux_cache_map_) { std::move(reply).Run(DbStatus::IOError(\"Recorded recovery map missing\")); return; }\n      auto source = AuxUiCacheCohort::DecodeSelected(aux_cache_map_->source, aux_cache_map_->session_ids.empty());\n      auto target = AuxUiCacheCohort::DecodeSelected(aux_cache_map_->target, aux_cache_map_->session_ids.empty());\n      if (!source.has_value() || !target.has_value()) {\n        std::move(reply).Run(DbStatus::NotSupported(\"Recovery original codec refused\")); return;\n      }\n      participant->StageRecovery(source.value(), target.value(), std::move(reply)); break;\n    }\n    case Operation::kRecoveryRestore: participant->RestoreRecovery(std::move(reply)); break;\n    case Operation::kPublish: participant->Publish(std::move(reply)); break;",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "components/services/storage/dom_storage/test_support/storage_area_test_util.h",
+      "inputRoot": "/Users/rcourson/.codex/worktrees/aux-features-organization/web/docs/integration/proposed/standard-profile-isolation/native-renderer-cache-lease-a8/source",
+      "inputSha256": "344a3ef4f14be44d81bc54262286382a27f8cfc437bf58e796109b915c3daea6",
+      "outputSha256": "9d8d1f33d06b024b123a0c0a8b9ae111a97905f27cf7cfee4ab7ef86cd3976dd",
+      "output": "/Users/rcourson/.codex/worktrees/aux-features-organization/web/docs/integration/proposed/standard-profile-isolation/native-cache-recovery-original-a18/source/components/services/storage/dom_storage/test_support/storage_area_test_util.h",
+      "anchors": [
+        {
+          "find": "  void ReleaseAuxUiCacheMigration(",
+          "replace": "  void StageAuxUiCacheRecovery(const base::UnguessableToken&,\n      const base::UnguessableToken&, std::vector<blink::mojom::AuxUiCacheEntryPtr>,\n      std::vector<blink::mojom::AuxUiCacheEntryPtr>, std::vector<blink::mojom::AuxUiCacheEntryPtr>,\n      StageAuxUiCacheRecoveryCallback callback) override {\n    std::move(callback).Run(blink::mojom::AuxUiCacheReply::New());\n  }\n  void RestoreAuxUiCacheRecovery(const base::UnguessableToken&,\n      const base::UnguessableToken&, RestoreAuxUiCacheRecoveryCallback callback) override {\n    std::move(callback).Run(blink::mojom::AuxUiCacheReply::New());\n  }\n  void ReleaseAuxUiCacheMigration(",
+          "count": 1
+        }
+      ]
+    }
+  ],
+  "nativeCheckoutChanged": false,
+  "nativeCompiled": false,
+  "productExecuted": false,
+  "runtimeAcceptance": false
+}
