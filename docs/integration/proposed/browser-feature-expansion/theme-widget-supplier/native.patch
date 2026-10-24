@@ -1,0 +1,29 @@
+--- a/chrome/browser/ui/views/frame/browser_widget.cc
++++ b/chrome/browser/ui/views/frame/browser_widget.cc
+@@ -17,6 +17,9 @@
+ #include "chrome/browser/themes/custom_theme_supplier.h"
+ #include "chrome/browser/themes/theme_service.h"
+ #include "chrome/browser/themes/theme_service_factory.h"
++#if BUILDFLAG(ENABLE_AUX_BROWSER)
++#include "chrome/browser/themes/aux_theme_editor.h"
++#endif
+ #include "chrome/browser/ui/browser_init_state.h"
+ #include "chrome/browser/ui/browser_manager_service.h"
+ #include "chrome/browser/ui/browser_window/public/browser_window_features.h"
+@@ -518,6 +521,16 @@
+ 
+   key = theme_service->GetColorProviderKey(key, profile);
+   key.custom_theme = GetCustomTheme();
++#if BUILDFLAG(ENABLE_AUX_BROWSER)
++  // GetCustomTheme selects the actual window/extension supplier after the
++  // ThemeService key. Restore the opt-in Aux wrapper on that final supplier;
++  // otherwise background/tint mixers and their contrast marker are discarded.
++  // Native privacy and explicit widget color overrides retain precedence.
++  if (!IsIncognitoBrowser() && !IsEnterpriseIsolatedModeBrowser() &&
++      !user_color_override().has_value()) {
++    key = aux_theme::DecorateColorProviderKey(profile, std::move(key));
++  }
++#endif
+ 
+   // Re-apply Widget overrides because GetColorProviderKey might have
+   // overwritten them.

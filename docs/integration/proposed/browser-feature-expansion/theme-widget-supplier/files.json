@@ -1,0 +1,26 @@
+{
+  "scope": "inactive opt-in Aux theme supplier propagation; no native mutation",
+  "files": [
+    {
+      "path": "chrome/browser/ui/views/frame/browser_widget.cc",
+      "baselineOrigin": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/ui/views/frame/browser_widget.cc",
+      "baselineSha256": "74f3783fbea63c7c91433b3382665914e600ad8c69f522e5732bf103c78a6bad",
+      "sourceSha256": "ead11967974eae0dfb36aecc6683fd8a74e37ec536615645170eff53226ef10a",
+      "edits": [
+        {
+          "name": "aux-theme-header",
+          "find": "#include \"chrome/browser/themes/theme_service_factory.h\"\n",
+          "replace": "#include \"chrome/browser/themes/theme_service_factory.h\"\n#if BUILDFLAG(ENABLE_AUX_BROWSER)\n#include \"chrome/browser/themes/aux_theme_editor.h\"\n#endif\n",
+          "count": 1
+        },
+        {
+          "name": "preserve-final-widget-supplier",
+          "find": "  key = theme_service->GetColorProviderKey(key, profile);\n  key.custom_theme = GetCustomTheme();\n",
+          "replace": "  key = theme_service->GetColorProviderKey(key, profile);\n  key.custom_theme = GetCustomTheme();\n#if BUILDFLAG(ENABLE_AUX_BROWSER)\n  // GetCustomTheme selects the actual window/extension supplier after the\n  // ThemeService key. Restore the opt-in Aux wrapper on that final supplier;\n  // otherwise background/tint mixers and their contrast marker are discarded.\n  // Native privacy and explicit widget color overrides retain precedence.\n  if (!IsIncognitoBrowser() && !IsEnterpriseIsolatedModeBrowser() &&\n      !user_color_override().has_value()) {\n    key = aux_theme::DecorateColorProviderKey(profile, std::move(key));\n  }\n#endif\n",
+          "count": 1
+        }
+      ]
+    }
+  ],
+  "patchSha256": "76cd7ffef224c0c0fc612ff06409a526c253e77af36f5c9400588ff290b7461a"
+}

@@ -1,0 +1,9 @@
+# Preserve the actual final browser theme supplier
+
+Source inspection proves that the feature `ThemeService::GetColorProviderKey` decorates `key.custom_theme` with the immutable Aux editor supplier, then `BrowserWidget::GetColorProviderKey` immediately overwrites it with `GetCustomTheme()`. That getter selects the original device/extension/web-app supplier and never returns the editor wrapper. Consequently native custom background/tint mixers and the sidebar contrast marker are lost even when the profile editor has valid tokens.
+
+This one-file, two-anchor overlay reapplies the existing opt-in decorator after BrowserWidget selects its actual final underlying supplier. The wrapper forwards original images/colors/tints and adds only configured Aux tokens. Subsequent explicit widget mode/color override ordering remains unchanged. Incognito, enterprise-isolated and explicit user-color override contexts bypass this addition; the existing decorator still refuses managed/private/unavailable profiles and forced/high-contrast colors. An unconfigured normal profile returns the original key unchanged. Non-Aux builds retain the original code path.
+
+The existing ThemeService decoration stays in place for its other consumers. The decorator's immutable supplier cache uses the underlying supplier and token dictionary, so a repeated call with the same final supplier reuses it rather than stacking wrappers. This overlay adds no new preference, UI, mode fallback or source authority.
+
+`files.json` records the selected actual native baseline, final hash and exact one-count anchors; `native.patch` is the root integration input. The native tree, root sources, running build and staged product resources were not modified. No compile, app execution, runtime acceptance or tests occurred in this lane. Root must compose the overlay and include the resulting source in the next native frozen build manifest.
