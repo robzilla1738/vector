@@ -1,0 +1,159 @@
+{
+  "format": "aux.standard-browser-source-projection.v6",
+  "previousInputPinsSha256": "819283865c0cdb3ed80e18f5f28cbe27af82340bd8c22f078d70869b70016df1",
+  "compositionSha256": "39a2492e73c922c0dfc33aad8c5285792139b8b6c85e13e5554b0e562db4a595",
+  "inputPinsSha256": "e2a4f6788ce81eee8f37cc78f4064df5b068cb2c09f6654117fc2b013d7c1f36",
+  "filesProjected": 25,
+  "nativeInputCount": 322,
+  "stages": [
+    {
+      "name": "browser-native-host-custody-a1",
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/browser-native-host-custody-a1/manifest.json",
+      "sha256": "d2bb82e4f024d82628820c581dbd94bccc70476594983e4f57d0b6b69f617535",
+      "anchorsPath": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/browser-native-host-custody-a1/replacements.json",
+      "anchorsSha256": "4a919344fdbff9831a51f89a6c10f1394cb7d073d48c17d76e7f9f4d447d8075",
+      "appliedFiles": [
+        "chrome/app/chrome_exe_main_mac.cc",
+        "chrome/browser/extensions/api/messaging/aux_native_messaging_lifetime.h",
+        "chrome/browser/aux/AuxOwnedNativePeerChild.cc",
+        "chrome/browser/aux/AuxOwnedNativePeerChild.h",
+        "chrome/browser/aux/AuxSelectedStateHome.cc",
+        "third_party/crashpad/crashpad/util/posix/spawn_subprocess.cc",
+        "chrome/browser/ui/aux_browser_shutdown_drain.cc",
+        "base/process/mac/aux_browser_descendant_bridge.cc",
+        "base/process/mac/aux_browser_descendant_bridge.h",
+        "base/process/mac/aux_browser_descendant_client.h",
+        "base/process/mac/aux_browser_descendant_engine.cc",
+        "base/process/mac/aux_browser_descendant_engine.h"
+      ],
+      "skippedFiles": [
+        "content/browser/aux_child_lifetime.h"
+      ],
+      "countedEdits": 28,
+      "newFileCount": 5
+    },
+    {
+      "name": "browser-custody-content-a5",
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/browser-custody-content-a5/manifest.json",
+      "sha256": "4891807aa378e321089e884d5552a3a208f80e10c44775d7bfbfc29198556db2",
+      "anchorsPath": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/browser-custody-content-a5/replacements.json",
+      "anchorsSha256": "afc6c251c70ce07cc395ac451e571cc68ea23af6b561be48a11b0077c0ae11f3",
+      "appliedFiles": [
+        "content/browser/aux_child_lifetime.h"
+      ],
+      "skippedFiles": [],
+      "countedEdits": 8,
+      "newFileCount": 0
+    },
+    {
+      "name": "browser-native-host-reservation-refusal-a1",
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/browser-native-host-reservation-refusal-a1/manifest.json",
+      "sha256": "da4cdd319696130c9ff9690fa7f9eca4fdd4937214590cf31a169d3e1337d078",
+      "anchorsPath": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/browser-native-host-reservation-refusal-a1/replacements.json",
+      "anchorsSha256": "410307445026ebbda0fa5b713cd53a168e85b3a3127601e681d54f2facea7f6b",
+      "appliedFiles": [
+        "chrome/browser/extensions/api/messaging/aux_native_messaging_lifetime.h",
+        "chrome/browser/aux/AuxOwnedNativePeerChild.cc"
+      ],
+      "skippedFiles": [
+        "content/browser/aux_child_lifetime.h"
+      ],
+      "countedEdits": 2,
+      "newFileCount": 0
+    },
+    {
+      "name": "browser-crashpad-close-a1",
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/browser-crashpad-close-a1/manifest.json",
+      "sha256": "9418c4f4fad071b5470a2a3f746b9643ec82d509d2d115736d15ba624f8c5771",
+      "anchorsPath": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/browser-crashpad-close-a1/replacements.json",
+      "anchorsSha256": "8bc755df098b44127b0e42aea34b70202acaa94146f6f62e96d72bb554c0cb49",
+      "appliedFiles": [
+        "third_party/crashpad/crashpad/client/crashpad_client.h",
+        "third_party/crashpad/crashpad/client/crashpad_client_mac.cc",
+        "components/crash/core/app/crashpad.h",
+        "components/crash/core/app/crashpad.cc",
+        "chrome/browser/ui/aux_browser_shutdown_drain.cc"
+      ],
+      "skippedFiles": [],
+      "countedEdits": 31,
+      "newFileCount": 0
+    },
+    {
+      "name": "browser-crashpad-system-handler-a1",
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/browser-crashpad-system-handler-a1/manifest.json",
+      "sha256": "aba02742b3801abdcf4dbe74c9cafebd306a511b2fd59dfc0c097bf86b7eab70",
+      "anchorsPath": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/browser-crashpad-system-handler-a1/replacements.json",
+      "anchorsSha256": "36d41ebd61946fa4340f83f1517061157de0d5ec15d8a0cb6c889eae7e91130f",
+      "appliedFiles": [
+        "third_party/crashpad/crashpad/client/crashpad_client_mac.cc"
+      ],
+      "skippedFiles": [],
+      "countedEdits": 1,
+      "newFileCount": 0
+    },
+    {
+      "name": "browser-custody-gn-a1",
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/browser-custody-gn-a1/manifest.json",
+      "sha256": "e61477e10dc746f595b3280ac8298484be4408b0a2f9ed87c4f1085cc1d3a7bc",
+      "anchorsPath": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/browser-custody-gn-a1/replacements.json",
+      "anchorsSha256": "150be39e4bb4cd632d726b809d562a6afca5fdad8efd8d73e5a43c43eae74aa9",
+      "appliedFiles": [
+        "base/BUILD.gn",
+        "chrome/BUILD.gn",
+        "third_party/crashpad/crashpad/util/BUILD.gn",
+        "chrome/app/aux_browser_app.exports"
+      ],
+      "skippedFiles": [],
+      "countedEdits": 7,
+      "newFileCount": 1
+    },
+    {
+      "name": "content-policy-ack-v4",
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/content-policy-ack-v4/manifest.json",
+      "sha256": "233a1755068e78178a595e5eed3bb1ad8a43c2e4cf586f76d6d0d77919cadeac",
+      "anchorsPath": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/content-policy-ack-v4/replacements.json",
+      "anchorsSha256": "19201400b04c15096dbe552d35e680b232f1adc7d661ed6cd93fc11c5d6c53e9",
+      "appliedFiles": [
+        "content/browser/child_process_launcher_helper_mac.cc",
+        "content/browser/aux_child_process_drain.cc"
+      ],
+      "skippedFiles": [
+        "content/browser/aux_child_lifetime.h"
+      ],
+      "countedEdits": 2,
+      "newFileCount": 0
+    },
+    {
+      "name": "content-policy-ack-v4-custody",
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/content-policy-ack-v4-custody/manifest.json",
+      "sha256": "c89b946bf66576a20e97cb005db39eba2ac83df6153f5bd84b3817d4ed965626",
+      "anchorsPath": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/content-policy-ack-v4-custody/replacements.json",
+      "anchorsSha256": "a1d50b37cb225ea914847b501f788f9f3bcfceaa1d0d660a4f184554385b3399",
+      "appliedFiles": [
+        "content/browser/aux_child_lifetime.h"
+      ],
+      "skippedFiles": [],
+      "countedEdits": 1,
+      "newFileCount": 0
+    },
+    {
+      "name": "meta-connection-lifetime-a3",
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/meta-connection-lifetime-a3/manifest.json",
+      "sha256": "3bc8c9d641ae690539d397fddc61f78d57e3b21fe96373f34e1cb0563ab7ef31",
+      "anchorsPath": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/meta-connection-lifetime-a3/replacements.json",
+      "anchorsSha256": "a14ed3d5d2e5a3d0571c54c94c4f7b24b13b94551cd56f72f721897f1368c3e5",
+      "appliedFiles": [
+        "content/browser/devtools/protocol_config.json",
+        "chrome/browser/profiles/profile_impl.cc"
+      ],
+      "skippedFiles": [],
+      "countedEdits": 3,
+      "newFileCount": 0
+    }
+  ],
+  "ownerCheckoutChanged": false,
+  "uiChanged": false,
+  "appExecuted": false,
+  "productSigned": false,
+  "cleanRecoveryProven": false
+}
