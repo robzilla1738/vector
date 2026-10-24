@@ -175,6 +175,24 @@ def resource_deltas(baseline_stage, feature_stage, baseline_app):
     return output
 
 
+def verify_composed_pair_leaf(base, pair, item):
+    kind = item['kind']
+    require(pair[kind + 'Sha256'] == item['afterSha256'],
+            'Paired leaf differs from independent feature composition')
+    expected = Path(item['output']).resolve()
+    if kind == 'entry':
+        receipt_path = Path(base['entryReceipt']).resolve()
+        legacy.pin(receipt_path, base['entryReceiptSha256'])
+        receipt = read(receipt_path)
+        require(receipt.get('passed') is True and receipt.get('defaultEntryRefusalPreserved') is True
+                and receipt.get('entrySha256') == item['afterSha256'],
+                'Successful projected entry must equal independently composed entry')
+        expected = receipt_path.parent / 'aux-native-entry.mjs'
+    require(Path(pair[kind]).resolve() == expected,
+            'Paired leaf must use the exact composed source or receipt-bound projected entry')
+    legacy.pin(expected, item['afterSha256'])
+
+
 def verify(recipe):
     require(recipe.get('format') == 'aux.browser-features.inactive-package.recipe.v1', 'Unknown feature recipe')
     require(Path(recipe['repository']).resolve() == ROOT, 'Recipe repository mismatch')
@@ -191,6 +209,8 @@ def verify(recipe):
     require(base['format'] == 'aux.inactive-successor.recipe.v1', 'Prepared protected recipe required')
     # These are the existing source, frozen-native, runtime, and admission gates.
     pair = legacy.verify_pair(base)
+    require(pair.get('nativeBrowserReceiptSha256') == base['nativeReceiptSha256'],
+            'Source pair must bind this exact full native browser receipt')
     legacy.runtime_changes(base)
     native_receipt = Path(base['nativeReceipt'])
     legacy.pin(native_receipt, base['nativeReceiptSha256'])
@@ -216,8 +236,7 @@ def verify(recipe):
         legacy.pin(item['output'], item['afterSha256'])
         require(item['beforeSha256'] == previous[kind + 'Sha256']
                 and Path(item['input']).resolve() == Path(previous[kind]).resolve(), 'Daemon predecessor mismatch')
-        require(pair[kind + 'Sha256'] == item['afterSha256'] and Path(pair[kind]).resolve() == Path(item['output']).resolve(),
-                'New native daemon tuple must contain the feature composition')
+        verify_composed_pair_leaf(base, pair, item)
     native_inputs_path = resolve(recipe['daemonInputs'])
     native_inputs = read(native_inputs_path)
     linked = read(base['daemonReceipt'])
