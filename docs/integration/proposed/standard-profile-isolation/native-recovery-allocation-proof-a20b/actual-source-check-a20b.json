@@ -1,0 +1,16 @@
+{
+  "format": "aux.recovery-allocation-proof.source-check.actual.v1",
+  "passed": true,
+  "sourcePlanSha256": "3d5280099a9bb1a8d3e55b2de43664de7c610cac2c8f675aeb76b526f3b9b835",
+  "patchSha256": "7b98930c5dee7851b927d699e76d823946c29445a01016a5541513634e458314",
+  "files": 1,
+  "countedAnchors": 2,
+  "replayDirectory": "/private/tmp/aux-recovery-allocation-proof-replay-905rkywm",
+  "exactReplayPassed": true,
+  "reverseCheckPassed": true,
+  "nativeCheckoutChanged": false,
+  "nativeCompiled": false,
+  "testsExecuted": false,
+  "productExecuted": false,
+  "runtimeAcceptance": false
+}

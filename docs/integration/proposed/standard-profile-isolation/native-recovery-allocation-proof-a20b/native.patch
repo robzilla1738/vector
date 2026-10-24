@@ -1,0 +1,24 @@
+--- a/components/services/storage/dom_storage/async_dom_storage_database.cc
++++ b/components/services/storage/dom_storage/async_dom_storage_database.cc
+@@ -548,6 +548,11 @@
+   if (!current.has_value()) return base::unexpected(current.error());
+   if (!current->matches_source || !current->file_data_synced)
+     return base::unexpected(DbStatus::IOError("Fresh actual source changed before recovery observation"));
++  bool unresolved_allocation = false;
++  for (const auto& row : recorded.maps)
++    unresolved_allocation |= row.allocation_requested && !row.allocation_observed;
++  if (unresolved_allocation ? !recorded.target_topology_sha256.empty() : recorded.target_topology_sha256.size() != 64)
++    return base::unexpected(DbStatus::IOError("Recorded action and physical topology observations disagree"));
+   AuxDomCapture proposed;
+   proposed.unrelated_metadata_sha256 = fresh.unrelated_metadata_sha256;
+   std::set<size_t> matched;
+@@ -604,7 +609,8 @@
+       return base::unexpected(DbStatus::NotSupported("Recovery target is not the exact current native codec"));
+     if (map.allocation_requested) {
+       if (!local || !sqlite || !recorded.target_attempted || map.source_persisted ||
+-          map.locator.map_id() || !map.source.empty() || map.last_accessed || map.last_modified || map.total_size ||
++          map.locator.map_id() || !map.source.empty() || map.target.empty() || map.last_accessed || map.last_modified || map.total_size ||
++          (row.allocation_observed ? row.target_map_sha256.size() != 64 : !row.target_map_sha256.empty()) ||
+           row.allocation_observed != row.allocated_map_id.has_value() ||
+           row.allocation_action_sha256 != AuxAllocationActionDigest(map, ordinal))
+         return base::unexpected(DbStatus::IOError("Original allocation action facts are incomplete"));

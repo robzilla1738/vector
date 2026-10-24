@@ -1,0 +1,3 @@
+# Consistent allocation action and observed physical proofs
+
+Only a genuinely unresolved allocation may omit physical target hashes. A recorded observed allocation requires its actual ID and complete physical target map SHA; a non-observed allocation must not smuggle a predicted physical target SHA. Aggregate target topology must be empty exactly while any allocation remains unresolved and must have a complete physical digest otherwise. A real source-absence allocation also requires a nonempty target. These checks preserve the separate pre-attempt action versus actual allocator-result contract. They add no authority and change no writes. Two exact anchors after A20; source replay/reverse/hash/whitespace only.

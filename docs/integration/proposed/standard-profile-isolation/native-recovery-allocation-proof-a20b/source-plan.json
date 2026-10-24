@@ -1,0 +1,28 @@
+{
+  "format": "aux.native-recovery-allocation-proof.source.v1",
+  "files": [
+    {
+      "path": "components/services/storage/dom_storage/async_dom_storage_database.cc",
+      "inputRoot": "/Users/rcourson/.codex/worktrees/aux-features-organization/web/docs/integration/proposed/standard-profile-isolation/native-recovery-phase-fence-a20/source",
+      "inputSha256": "9d5529761f7719135cfba9098a050b52142cf846320efc5683193bde6bee7216",
+      "outputSha256": "d49b232613d9becc600e15ccf60f35c6a9feabb4704c63f2d6e1c4cb6f33a9d2",
+      "output": "/Users/rcourson/.codex/worktrees/aux-features-organization/web/docs/integration/proposed/standard-profile-isolation/native-recovery-allocation-proof-a20b/source/components/services/storage/dom_storage/async_dom_storage_database.cc",
+      "anchors": [
+        {
+          "find": "  AuxDomCapture proposed;\n  proposed.unrelated_metadata_sha256 = fresh.unrelated_metadata_sha256;",
+          "replace": "  bool unresolved_allocation = false;\n  for (const auto& row : recorded.maps)\n    unresolved_allocation |= row.allocation_requested && !row.allocation_observed;\n  if (unresolved_allocation ? !recorded.target_topology_sha256.empty() : recorded.target_topology_sha256.size() != 64)\n    return base::unexpected(DbStatus::IOError(\"Recorded action and physical topology observations disagree\"));\n  AuxDomCapture proposed;\n  proposed.unrelated_metadata_sha256 = fresh.unrelated_metadata_sha256;",
+          "count": 1
+        },
+        {
+          "find": "      if (!local || !sqlite || !recorded.target_attempted || map.source_persisted ||\n          map.locator.map_id() || !map.source.empty() || map.last_accessed || map.last_modified || map.total_size ||",
+          "replace": "      if (!local || !sqlite || !recorded.target_attempted || map.source_persisted ||\n          map.locator.map_id() || !map.source.empty() || map.target.empty() || map.last_accessed || map.last_modified || map.total_size ||\n          (row.allocation_observed ? row.target_map_sha256.size() != 64 : !row.target_map_sha256.empty()) ||",
+          "count": 1
+        }
+      ]
+    }
+  ],
+  "nativeCheckoutChanged": false,
+  "nativeCompiled": false,
+  "productExecuted": false,
+  "runtimeAcceptance": false
+}
