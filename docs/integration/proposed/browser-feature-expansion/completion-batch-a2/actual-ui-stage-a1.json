@@ -1,0 +1,25 @@
+{
+  "format": "aux.feature-completion.ui-stage.actual.v1",
+  "passed": true,
+  "output": "/private/tmp/aux-feature-completion-ui-stage-20261024-a2",
+  "stageManifestSha256": "5b361f84155051073736ff388e79b79b3680fda4099698dd5ccb8d9b9219770c",
+  "priorManifestSha256": "88b7531d172b52ab8b201d72878814444dbc08028006997bc8b9b6bf05ad5367",
+  "agentRevision": 29,
+  "deltas": [
+    {
+      "path": "assets/tabsearch-3k_2hgil.js",
+      "beforeSha256": "793240b87bff3b3c6a2ed7c40d4fb9298aa107d39ebeb168b3bbbeec2b13fb45",
+      "afterSha256": "c9910b8c10b64f62db048a95d6f2ab003572fd9585b089ef8daa84ec1d446c25"
+    },
+    {
+      "path": "manifest.json",
+      "beforeSha256": "b4bbb5cdc9142fd7daa7521a5b658ee2a9f238a4c37bf0ebed00ac4438edd33d",
+      "afterSha256": "83b36529497ad99637b671a467ca6f2bdf67af81baedccf8afea24c49cc59e7f"
+    }
+  ],
+  "stylesAssetsFontsModesAndOtherBytesPreserved": true,
+  "identitiesAndPermissionsPreserved": true,
+  "productExecuted": false,
+  "appPackaged": false,
+  "runtimeAcceptance": false
+}

@@ -192,5 +192,13 @@
     "stateIdentityVersion": 2,
     "featureProfile": "desktop-v1",
     "fingerprint": "26f20a7f646055d1748c0f5b998f4bc2e3affff9da3d6cf347a68dae70d40bf9"
+  },
+  {
+    "revision": 29,
+    "profile": "development",
+    "identityProfile": "aux-v1",
+    "stateIdentityVersion": 2,
+    "featureProfile": "desktop-v1",
+    "fingerprint": "597ed80c8f85bb82dbd14d3738b4c7bc5700d1d211ae4811dfdb783b5b1fed81"
   }
 ]

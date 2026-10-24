@@ -1,0 +1,21 @@
+{
+  "format": "aux.feature-completion.ui-revision-review.v1",
+  "previousLedgerSha256": "2c48f1733163cf06e935447b4320eae0d845213d613a15b937436efa6b05460d",
+  "nextLedgerSha256": "2a70f6d5ee6da775ea42f7803b7acd83d152f538dbac326a44f756c398ed18b5",
+  "preflightSha256": "f4fe51884cdc9ee43ae77b0e5edbb7a954cfeaa46d49ddcc981a895d0a6ad503",
+  "compositionSha256": "898fddda9d66a4e29e2aa6904d351f98e7017522dbcfda90416c27a06738cea3",
+  "review": {
+    "revision": 29,
+    "profile": "development",
+    "identityProfile": "aux-v1",
+    "stateIdentityVersion": 2,
+    "featureProfile": "desktop-v1",
+    "fingerprint": "597ed80c8f85bb82dbd14d3738b4c7bc5700d1d211ae4811dfdb783b5b1fed81"
+  },
+  "adapters": {
+    "aux-productivity-files.mjs": "19c992da931dcddaa0e002aef94ce74038ce9dbb1682fe99449289f6e38a490f",
+    "aux-productivity-context-read.mjs": "120bb353ca2c426fbeb6deba78e1834c365405d18304865b1c31168f290b885a"
+  },
+  "candidateDeltaStillRequiresVerification": true,
+  "productExecuted": false
+}
