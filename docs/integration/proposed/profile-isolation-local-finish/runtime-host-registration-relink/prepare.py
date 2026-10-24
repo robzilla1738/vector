@@ -2,6 +2,7 @@
 """Pin actual predecessor inputs and prepare commands; never invokes a compiler."""
 from pathlib import Path
 import ast
+import difflib
 import hashlib
 import json
 import shlex
@@ -103,6 +104,24 @@ def main():
     runner_inputs = dict(format='aux.runtime-host-registration-runner-pins.v1',
                         files={str(path): sha(path) for path in [HERE / 'run.py', HERE / 'prepare.py', plan_path]})
     (HERE / 'runner-inputs.json').write_text(json.dumps(runner_inputs, indent=2) + '\n')
+    source_patch = ''.join(difflib.unified_diff(
+        text.splitlines(True), source.read_text().splitlines(True),
+        fromfile='a/AuxDevelopmentWorkerHost.cc', tofile='b/AuxDevelopmentWorkerHost.cc'))
+    (HERE / 'change.patch').write_text(source_patch)
+    proposal = dict(format='aux.runtime-host-registration-relink.proposal.v1',
+                    status='prepared-not-executed', input=old_source,
+                    inputSha256=sha(old_source), output='source/AuxDevelopmentWorkerHost.cc',
+                    outputSha256=sha(source), replacementCount=1,
+                    files={str(path.relative_to(HERE)): sha(path)
+                           for path in sorted(HERE.rglob('*'))
+                           if path.is_file() and path != HERE / 'manifest.json'},
+                    checks=dict(pythonSyntaxParsed=True, exactCountPatch=True,
+                                nativeInputsVerified=len(pins),
+                                compilerDependencyPathsPinned=len(dependencies),
+                                unchangedSwiftSources=48, unchangedOtherNativeObjects=11),
+                    compiled=False, linked=False, executed=False, signed=False,
+                    fullWriterIsolationProven=False)
+    (HERE / 'manifest.json').write_text(json.dumps(proposal, indent=2) + '\n')
     print(json.dumps(dict(prepared=str(HERE), pinsVerified=len(pins), compileDependencies=len(dependencies),
                           sourceSha256=sha(source), swiftSourcesPreserved=48,
                           otherNativeObjectsPreserved=11, compiled=False, linked=False)))
