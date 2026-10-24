@@ -1,5 +1,6 @@
 // Copyright 2026 The Aux Authors. BSD-style license: see //LICENSE.
 #include "chrome/browser/ui/aux_recent_files_service.h"
+#include "chrome/browser/ui/aux_file_operation_lifetime.h"
 #include <algorithm>
 #include <cstdint>
 #include <vector>
@@ -58,7 +59,12 @@ struct State {
   Persist persist;
   base::DictValue receipts;
   std::map<std::string, Candidate> candidates;
-  base::RepeatingClosureList settled;
+  std::shared_ptr<FileOperationLifetime> lifetime;
+  void SetPending(bool value) {
+    if (pending == value) return;
+    pending = value;
+    if (value) lifetime->Begin(); else lifetime->End();
+  }
   uint64_t owner_epoch = 0;
   bool pending = false;
   bool alive = true;
@@ -71,8 +77,9 @@ struct State {
 struct OwnerData : base::SupportsUserData::Data {
   explicit OwnerData(Profile* profile) : state(std::make_shared<State>()) {
     state->profile = profile->GetWeakPtr();
+    state->lifetime = std::make_shared<FileOperationLifetime>(profile->GetPath());
   }
-  ~OwnerData() override { state->alive = false; state->candidates.clear(); }
+  ~OwnerData() override { state->lifetime->Revoke(); state->alive = false; state->candidates.clear(); }
   std::shared_ptr<State> state;
 };
 std::shared_ptr<State> Get(Profile* profile, bool create = true) {
@@ -103,7 +110,7 @@ struct Rename : Item::Observer, std::enable_shared_from_this<Rename> {
     if (!reply) return;
     if (item) { item->RemoveObserver(this); item = nullptr; }
     auto done = std::move(reply);
-    if (!keep_pending) { state->pending = false; state->settled.Notify(); }
+    if (!keep_pending) { state->SetPending(false); }
     std::move(done).Run(std::move(value));
   }
   void Start() {
@@ -137,15 +144,17 @@ struct Rename : Item::Observer, std::enable_shared_from_this<Rename> {
     item->RenameWithMove(base::FilePath::FromUTF8Unsafe(filename),
       base::BindOnce([](std::shared_ptr<Rename> operation,
                        scoped_refptr<base::SequencedTaskRunner> ui,
+                       std::shared_ptr<const std::atomic_bool> authorization,
                        const base::FilePath& source, const base::FilePath& destination) {
-        auto result = operation->recover_only
+        auto result = !authorization->load(std::memory_order_acquire) ? Result::FAILURE_UNAVAILABLE : operation->recover_only
             ? (InspectRegularFileMove(operation->candidate.fingerprint, source, destination) == 1
                 ? Result::SUCCESS : Result::FAILURE_UNAVAILABLE)
             : static_cast<Result>(MoveRegularFileExclusive(
-                operation->candidate.fingerprint, operation->candidate.path, source, destination));
+                operation->candidate.fingerprint, operation->candidate.path, source, destination,
+                authorization));
         ui->PostTask(FROM_HERE, base::BindOnce(&Rename::PhysicalDone, operation, result));
         return result;
-      }, shared_from_this(), ui),
+      }, shared_from_this(), ui, state->lifetime->authorization()),
       base::BindOnce(&Rename::ItemDone, shared_from_this()));
   }
   void PhysicalDone(Result value) { physical_done = true; result = value; MaybeFinish(); }
@@ -182,7 +191,7 @@ struct Recovery : std::enable_shared_from_this<Recovery> {
   bool changed = false;
   uint64_t epoch = 0;
   void Finish() {
-    state->pending = false; state->settled.Notify();
+    state->SetPending(false);
   }
   bool Current() const { return state->Current() && state->owner_epoch == epoch; }
   void Next() {
@@ -258,23 +267,26 @@ void RecoverPending(const std::shared_ptr<State>& state) {
     if (phase && (*phase == "planned" || *phase == "undo-planned")) recovery->ids.push_back(id);
   }
   if (recovery->ids.empty()) return;
-  state->pending = true; recovery->Next();
+  state->SetPending(true); recovery->Next();
 }
 }  // namespace
 void SetWriteOwner(Profile* profile, base::RepeatingCallback<bool()> current,
                    Persist persist, base::DictValue restored) {
   auto state = Get(profile);
-  if (!state || state->pending) return;
+  if (!state) return;
+  state->lifetime->Revoke();
+  if (HasFileOperationsPending(profile->GetPath())) return;
+  state->lifetime = std::make_shared<FileOperationLifetime>(profile->GetPath());
   ++state->owner_epoch; state->journal_ready = true;
   state->current = std::move(current); state->persist = std::move(persist);
   state->receipts = std::move(restored); state->candidates.clear();
   RecoverPending(state);
 }
 bool HasPendingWrite(Profile* profile) {
-  auto state = Get(profile, false); return state && state->pending;
+  return profile && HasFileOperationsPending(profile->GetPath());
 }
 base::CallbackListSubscription ObserveSettled(Profile* profile, base::RepeatingClosure callback) {
-  auto state = Get(profile); return state ? state->settled.Add(std::move(callback)) : base::CallbackListSubscription();
+  return profile ? ObserveFileOperationsSettled(profile->GetPath(), std::move(callback)) : base::CallbackListSubscription();
 }
 base::DictValue ListRecentFiles(Profile* profile) {
   auto state = Get(profile);
@@ -355,7 +367,7 @@ void ApplyDownloadRename(Profile* profile, const std::string& capability,
   request->candidate = std::move(found->second); state->candidates.erase(found);
   request->original = request->candidate.path.BaseName().AsUTF8Unsafe();
   request->stem = stem; request->receipt_id = base::Uuid::GenerateRandomV4().AsLowercaseString();
-  request->reply = std::move(reply); state->pending = true; request->Start();
+  request->reply = std::move(reply); state->SetPending(true); request->Start();
 }
 void UndoDownloadRename(Profile* profile, const std::string& id, Reply reply) {
   auto state = Get(profile, false);
@@ -378,7 +390,7 @@ void UndoDownloadRename(Profile* profile, const std::string& id, Reply reply) {
   auto request = std::make_shared<Rename>(); request->state = state;
   request->candidate = Candidate{*guid, item->GetTargetFilePath(), fingerprint->Clone(), base::Time::Now() + base::Minutes(1)};
   request->original = *original; request->receipt_id = id; request->undo = true;
-  request->reply = std::move(reply); state->pending = true; request->Start();
+  request->reply = std::move(reply); state->SetPending(true); request->Start();
 }
 base::DictValue DragRecentDownload(Profile* profile, const std::string& guid,
                                    gfx::NativeView view) {

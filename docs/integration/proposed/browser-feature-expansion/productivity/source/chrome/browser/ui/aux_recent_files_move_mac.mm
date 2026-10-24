@@ -29,11 +29,13 @@ int InspectRegularFileMove(const base::DictValue& expected,
 int MoveRegularFileExclusive(const base::DictValue& fingerprint,
                              const base::FilePath& expected,
                              const base::FilePath& source,
-                             const base::FilePath& destination) {
+                             const base::FilePath& destination,
+                             std::shared_ptr<const std::atomic_bool> authorization) {
   using Result = download::DownloadItem::DownloadRenameResult;
   auto actual = FingerprintRegularFile(source);
   if (source != expected || source.DirName() != destination.DirName() ||
       !actual || *actual != fingerprint) return Result::FAILURE_UNAVAILABLE;
+  if (!authorization || !authorization->load(std::memory_order_acquire)) return Result::FAILURE_UNAVAILABLE;
   if (renamex_np(source.value().c_str(), destination.value().c_str(), RENAME_EXCL))
     return errno == EEXIST ? Result::FAILURE_NAME_CONFLICT : Result::FAILURE_UNKNOWN;
   return Result::SUCCESS;

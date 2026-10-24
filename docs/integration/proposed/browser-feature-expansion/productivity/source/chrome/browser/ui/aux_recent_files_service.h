@@ -2,6 +2,8 @@
 #ifndef CHROME_BROWSER_UI_AUX_RECENT_FILES_SERVICE_H_
 #define CHROME_BROWSER_UI_AUX_RECENT_FILES_SERVICE_H_
 #include <string>
+#include <atomic>
+#include <memory>
 #include <optional>
 #include "base/callback_list.h"
 #include "base/files/file_path.h"
@@ -34,6 +36,7 @@ std::optional<base::DictValue> FingerprintRegularFile(const base::FilePath&);
 int MoveRegularFileExclusive(const base::DictValue& fingerprint,
                              const base::FilePath& expected,
                              const base::FilePath& source,
-                             const base::FilePath& destination);
+                             const base::FilePath& destination,
+                             std::shared_ptr<const std::atomic_bool> authorization);
 }  // namespace aux::files
 #endif

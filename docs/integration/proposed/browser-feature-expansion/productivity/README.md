@@ -87,3 +87,16 @@ The header uses the ordinary per-profile UI expansion preference (not an
 operation-completion receipt). Clicking reveals the file; dragging uses the
 existing OS file-drag implementation. This source still requires the integrator's
 native compilation and disposable actual-app drag/collapse acceptance.
+
+### File-task lifetime and drain
+
+The actual-profile-path file operation registry outlives Profile user data.
+`HasPendingWrite` and `ObserveSettled` now consult that registry, so loss of a
+Profile receiver cannot falsely settle an in-flight native task or journal write.
+A rebuilt Profile at the same native path observes the same pending fence.
+Owner destruction/replacement revokes a shared atomic lease; download workers
+check that lease at dispatch and immediately before the physical rename after
+fingerprint comparison. Worker code never calls a Profile or UI authorization
+callback. Revocation cannot undo a syscall already in progress, and these guards
+do not claim whole filesystem namespace custody against external races.
+The integrator must include `aux_file_operation_lifetime.cc` in its native target.
