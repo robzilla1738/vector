@@ -1,0 +1,51 @@
+function runNativeHelperCommandAsync(command, input = "") {
+	const nativeBinding = loadBinding();
+	if (!nativeBinding || !loadedBindingPath) {
+		return Promise.resolve({ error: bindingLoadError ?? "Native helper binding is not available" });
+	}
+	return new Promise((resolve) => {
+		const worker = new Worker(`
+const { parentPort, workerData } = require('node:worker_threads');
+try {
+  const binding = require(workerData.bindingPath);
+  parentPort.postMessage({ output: binding.run(workerData.command, workerData.input) });
+} catch (error) {
+  parentPort.postMessage({ error: error instanceof Error ? error.message : String(error) });
+}
+`, {
+			eval: true,
+			execArgv: [],
+			workerData: {
+				bindingPath: loadedBindingPath,
+				command,
+				input
+			}
+		});
+		let settled = false;
+		const finish = (result) => {
+			if (settled) return;
+			settled = true;
+			resolve(result);
+			void worker.terminate();
+		};
+		worker.once("message", (message) => {
+			if (message.error) {
+				finish({ error: message.error });
+				return;
+			}
+			try {
+				finish(JSON.parse(message.output ?? "{}"));
+			} catch (error) {
+				finish({ error: error instanceof Error ? error.message : String(error) });
+			}
+		});
+		worker.once("error", (error) => finish({ error: error.message }));
+		worker.once("exit", (code) => {
+			if (code !== 0) {
+				finish({ error: `Native helper worker exited with code ${code}` });
+				return;
+			}
+			finish({ error: "Native helper worker exited without output" });
+		});
+	});
+}

@@ -1,0 +1,18 @@
+{
+  "format": "aux.cli-worker-stage.actual.v1",
+  "passed": true,
+  "output": "/private/tmp/aux-cli-worker-settlement-stage-20261024-a1",
+  "manifestSha256": "2959e420c89a0bc77c589084c34db23e85e363877277b0879fec42c365fcda90",
+  "cliSourceSha256": "6016a13426719597b2d64838425bfeb813e3092a911621836a18585dc1908cd5",
+  "cliBinarySha256": "6c4eb44167a474ab0d643b031d0f8a7fb5459d0047ce4ef9aacdd92935e8fbb7",
+  "changedCliLeaves": [
+    "Contents/MacOS/aux-cli"
+  ],
+  "otherCliResourcesAndModesUnchanged": true,
+  "defaultColdRefusalPreserved": true,
+  "nativeApiChanged": false,
+  "appLaunched": false,
+  "cliExecuted": false,
+  "nativeCommandRun": false,
+  "packaged": false
+}

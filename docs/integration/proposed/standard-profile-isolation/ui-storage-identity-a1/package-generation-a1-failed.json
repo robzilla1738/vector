@@ -1,0 +1,10 @@
+{
+  "format": "aux.ui-storage-cli-package.preparation.actual.v1",
+  "passed": false,
+  "error": "Version-pair assertion failed in the source generator before package.py was written",
+  "cause": "A global version replacement also changed the old-version comparison. The correction changes the old and new comparisons independently.",
+  "packageProducerWritten": false,
+  "candidateWritten": false,
+  "reviewWritten": false,
+  "appLaunched": false
+}

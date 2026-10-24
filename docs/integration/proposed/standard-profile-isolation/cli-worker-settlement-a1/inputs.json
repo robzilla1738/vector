@@ -1,0 +1,9 @@
+{
+  "format": "aux.cli-worker-settlement.inputs.v1",
+  "sourceSha256": "013dbd114ac574df1e4c72f53fd438d4b7da4d2aebbf3c45fa22a6fb2fe1dd62",
+  "originalFunctionSha256": "4240d7f47501a41b3b08a279a0b68a5cf1a6658b85b7bef08c5d0c0c646b5989",
+  "replacementFunctionSha256": "c3b7ccc6f7858d0fdbb546c08f91e31fcf7d68ff5de73b65d4020df9111c5720",
+  "anchorCount": 3,
+  "nativeApiChanged": false,
+  "workerBodyUnchanged": true
+}

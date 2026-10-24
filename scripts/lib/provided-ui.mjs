@@ -2,6 +2,7 @@ import { applyAuxChannelBotAssets } from '../../vendor/provided/aux-channel-bot-
 import { applyAuxProductLinks, applyAuxEditorGlobalIdentity } from '../../vendor/provided/aux-product-links.mjs';
 import { applyAuxUiPeerIdentity } from '../../vendor/provided/aux-ui-peer-identity.mjs';
 import { applyAuxUiTransientIdentity } from '../../vendor/provided/aux-ui-transient-identity.mjs';
+import { applyAuxUiStorageIdentity } from '../../vendor/provided/aux-ui-storage-identity.mjs';
 import { materializeAuxRecoveryEnrollmentUI } from '../../docs/integration/proposed/aux-sync-recovery-enrollment-ui/source/adapt.mjs';
 import { applyAuxBillingReturnFallback } from '../../vendor/provided/aux-billing-return-fallback.mjs';
 import { transformProviderFundedLaunch } from '../../vendor/provided/provider-funded-launch.mjs';
@@ -328,6 +329,8 @@ export async function stageProvidedUi({
           text = peerIdentity.text; anchors.push(...peerIdentity.anchors);
           const transientIdentity = applyAuxUiTransientIdentity({component, path: file.path, text, original: source.toString('utf8'), stateIdentityVersion});
           text = transientIdentity.text; anchors.push(...transientIdentity.anchors);
+          const storageIdentity = applyAuxUiStorageIdentity({component, path: file.path, text, original: source.toString('utf8'), stateIdentityVersion});
+          text = storageIdentity.text; anchors.push(...storageIdentity.anchors);
           const channelAssets = applyAuxChannelBotAssets({component, path: file.path, text, stateIdentityVersion});
           text = channelAssets.text; anchors.push(...channelAssets.anchors);
           const marks = file.inlineMarkCount

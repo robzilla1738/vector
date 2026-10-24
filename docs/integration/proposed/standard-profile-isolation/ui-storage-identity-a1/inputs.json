@@ -1,0 +1,218 @@
+{
+  "format": "aux.ui-storage-identity.inputs.v1",
+  "sourceVersion": "1.26.1016.1852",
+  "migrationFormat": "aux.ui-preference-migration.v1",
+  "mappings": [
+    {
+      "storage": "local-storage",
+      "fromKey": "aside.new-tab.omnibox-mode.v1",
+      "toKey": "aux.new-tab.omnibox-mode.v2",
+      "kind": "omnibox"
+    },
+    {
+      "storage": "local-storage",
+      "fromKey": "aside.browserTabStyle",
+      "toKey": "aux.browserTabStyle.v2",
+      "kind": "tab-style"
+    },
+    {
+      "storage": "local-storage",
+      "fromKey": "aside.last-final-confirm.v1",
+      "toKey": "aux.last-final-confirm.v2",
+      "kind": "boolean-text"
+    },
+    {
+      "storage": "local-storage",
+      "fromKey": "aside.last-permission-mode.v1",
+      "toKey": "aux.last-permission-mode.v2",
+      "kind": "permission"
+    },
+    {
+      "storage": "local-storage",
+      "fromKey": "aside.new-tab.onboarding-helper-state.v1",
+      "toKey": "aux.new-tab.onboarding-helper-state.v2",
+      "kind": "onboarding"
+    },
+    {
+      "storage": "chrome-local",
+      "fromKey": "aside.browserColorScheme",
+      "toKey": "aux.browserColorScheme.v2",
+      "kind": "color-scheme"
+    },
+    {
+      "storage": "chrome-local",
+      "fromKey": "aside.capture.enabled",
+      "toKey": "aux.capture.enabled.v2",
+      "kind": "boolean"
+    },
+    {
+      "storage": "chrome-local",
+      "fromKey": "aside.tabsTidy.customPrompt",
+      "toKey": "aux.tabsTidy.customPrompt.v2",
+      "kind": "prompt"
+    }
+  ],
+  "files": [
+    {
+      "path": "assets/appearance-Ceuw3-j6.js",
+      "sourceSha256": "5d6795dc6c007d961e8960cc41e6825634be81da00d023e179647bc22e20f318",
+      "predecessorSha256": "6837e0fce2c3d2ddb1262de3df0d476fef00d590f4c157df9a380c81aeaf2cae",
+      "rules": [
+        {
+          "name": "Versioned Aux prompt preference key",
+          "find": "aside.tabsTidy.customPrompt",
+          "replace": "aux.tabsTidy.customPrompt.v2",
+          "count": 2,
+          "storage": "chrome-local"
+        }
+      ]
+    },
+    {
+      "path": "assets/browser-color-scheme-Df5VSuPV.js",
+      "sourceSha256": "3fce1340a0762bc33f0595a61e1debd88beea6e9bcc4c11b97c988ab45273b9a",
+      "predecessorSha256": "907d1059a33cfa97ea0892d173b247da8553076fafa76674291dac29c367572d",
+      "rules": [
+        {
+          "name": "Versioned Aux color-scheme preference key",
+          "find": "aside.browserColorScheme",
+          "replace": "aux.browserColorScheme.v2",
+          "count": 1,
+          "storage": "chrome-local"
+        }
+      ]
+    },
+    {
+      "path": "assets/general-3dgRbrRk.js",
+      "sourceSha256": "e57dcde064f8872f2d8250123778924174deb2256d161b175cca751ef57f5ea4",
+      "predecessorSha256": "de4cbe9abb59b31e066ddd4e4ec8317eeff4845d6a4b4ad299e72152397a4dba",
+      "rules": [
+        {
+          "name": "Versioned Aux boolean preference key",
+          "find": "aside.capture.enabled",
+          "replace": "aux.capture.enabled.v2",
+          "count": 1,
+          "storage": "chrome-local"
+        }
+      ]
+    },
+    {
+      "path": "assets/omnibox-mode-preference-CWzOtieV.js",
+      "sourceSha256": "28349fe8e3477156c82d066e8f1259036db51aa0c8e53d121220fa7256c35c40",
+      "predecessorSha256": "28349fe8e3477156c82d066e8f1259036db51aa0c8e53d121220fa7256c35c40",
+      "rules": [
+        {
+          "name": "Versioned Aux omnibox preference key",
+          "find": "aside.new-tab.omnibox-mode.v1",
+          "replace": "aux.new-tab.omnibox-mode.v2",
+          "count": 2,
+          "storage": "local-storage"
+        }
+      ]
+    },
+    {
+      "path": "assets/onboarding-helper-BVYyPOep.js",
+      "sourceSha256": "b9aa6c6a106110d3a7098c70f0caceb690cbac68dd609aecdd463b04dfe720cb",
+      "predecessorSha256": "f2de93575eb2a7e29af18213b4bbbea8fe50c3c0becb94020b4539fcd8f2a5a5",
+      "rules": [
+        {
+          "name": "Versioned Aux onboarding preference key",
+          "find": "aside.new-tab.onboarding-helper-state.v1",
+          "replace": "aux.new-tab.onboarding-helper-state.v2",
+          "count": 1,
+          "storage": "local-storage"
+        }
+      ]
+    },
+    {
+      "path": "assets/use-default-permission-mode-DKp05vFQ.js",
+      "sourceSha256": "291f3f3d14671581455d8909b713305374043389ec5eef9f21885ab523a9ecb9",
+      "predecessorSha256": "291f3f3d14671581455d8909b713305374043389ec5eef9f21885ab523a9ecb9",
+      "rules": [
+        {
+          "name": "Versioned Aux boolean-text preference key",
+          "find": "aside.last-final-confirm.v1",
+          "replace": "aux.last-final-confirm.v2",
+          "count": 1,
+          "storage": "local-storage"
+        },
+        {
+          "name": "Versioned Aux permission preference key",
+          "find": "aside.last-permission-mode.v1",
+          "replace": "aux.last-permission-mode.v2",
+          "count": 1,
+          "storage": "local-storage"
+        }
+      ]
+    },
+    {
+      "path": "assets/utils-DCBm67_n.js",
+      "sourceSha256": "c95e1cdbfbee45c1354898d72aa8523d956249025847b14da0255c616aafc359",
+      "predecessorSha256": "4b98a667c792e287c2162481c588e6c8bd11c4e11aa40f147e1985bc928bbb54",
+      "rules": [
+        {
+          "name": "Versioned Aux tab-style preference key",
+          "find": "aside.browserTabStyle",
+          "replace": "aux.browserTabStyle.v2",
+          "count": 1,
+          "storage": "local-storage"
+        }
+      ]
+    },
+    {
+      "path": "background.js",
+      "sourceSha256": "ed19abc67a8a23d7868005ea1db84e2abe3a3f70609ab7b4ab2c1455c92131f7",
+      "predecessorSha256": "dfcb78db45229acc6c1fc9ed22ef4f1466850211ec651ed569ce590fcd6f6273",
+      "rules": [
+        {
+          "name": "Versioned Aux boolean preference key",
+          "find": "aside.capture.enabled",
+          "replace": "aux.capture.enabled.v2",
+          "count": 2,
+          "storage": "chrome-local"
+        },
+        {
+          "name": "Versioned Aux prompt preference key",
+          "find": "aside.tabsTidy.customPrompt",
+          "replace": "aux.tabsTidy.customPrompt.v2",
+          "count": 2,
+          "storage": "chrome-local"
+        }
+      ]
+    },
+    {
+      "path": "content/content.js",
+      "sourceSha256": "a94f1914511c11c3ef3cfdf4362fa27e9e3b86856409ded7e3a2ae324f03cfc2",
+      "predecessorSha256": "f2eeb7a96bbec14ecdd66f1bd70738599746230058e5af07241f8d965cb951dc",
+      "rules": [
+        {
+          "name": "Versioned Aux boolean preference key",
+          "find": "aside.capture.enabled",
+          "replace": "aux.capture.enabled.v2",
+          "count": 2,
+          "storage": "chrome-local"
+        }
+      ]
+    },
+    {
+      "path": "newtab-theme.js",
+      "sourceSha256": "27df830a06aa56e620818234c2ea5d73d735108321a888d8fc0510896d3b2da9",
+      "predecessorSha256": "7dc72b93c59fab532de7db23be6f9f421587ec21dae6fd63034606355a05cc57",
+      "rules": [
+        {
+          "name": "Versioned Aux omnibox preference key",
+          "find": "aside.new-tab.omnibox-mode.v1",
+          "replace": "aux.new-tab.omnibox-mode.v2",
+          "count": 1,
+          "storage": "local-storage"
+        },
+        {
+          "name": "Versioned Aux tab-style preference key",
+          "find": "aside.browserTabStyle",
+          "replace": "aux.browserTabStyle.v2",
+          "count": 1,
+          "storage": "local-storage"
+        }
+      ]
+    }
+  ]
+}

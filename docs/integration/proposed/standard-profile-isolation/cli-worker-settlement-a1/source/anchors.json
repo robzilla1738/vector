@@ -1,0 +1,23 @@
+[
+  {
+    "name": "Retain result until Worker exit, without early termination",
+    "kind": "integration",
+    "find": "\t\tlet settled = false;\n\t\tconst finish = (result) => {\n\t\t\tif (settled) return;\n\t\t\tsettled = true;\n\t\t\tresolve(result);\n\t\t\tvoid worker.terminate();\n\t\t};",
+    "replace": "\t\tlet settled = false;\n\t\tlet pendingResult;\n\t\tlet pendingError;\n\t\tconst finish = (result) => {\n\t\t\tif (settled) return;\n\t\t\tpendingResult = result;\n\t\t};",
+    "count": 1
+  },
+  {
+    "name": "Worker error remains pending until physical thread exit",
+    "kind": "integration",
+    "find": "\t\tworker.once(\"error\", (error) => finish({ error: error.message }));",
+    "replace": "\t\tworker.once(\"error\", (error) => {\n\t\t\tif (!settled) pendingError = { error: error.message };\n\t\t});",
+    "count": 1
+  },
+  {
+    "name": "Later Worker failure cannot be overwritten by an earlier success message",
+    "kind": "integration",
+    "find": "\t\tworker.once(\"exit\", (code) => {\n\t\t\tif (code !== 0) {\n\t\t\t\tfinish({ error: `Native helper worker exited with code ${code}` });\n\t\t\t\treturn;\n\t\t\t}\n\t\t\tfinish({ error: \"Native helper worker exited without output\" });\n\t\t});",
+    "replace": "\t\tworker.once(\"exit\", (code) => {\n\t\t\tif (settled) return;\n\t\t\tsettled = true;\n\t\t\tif (pendingError) { resolve(pendingError); return; }\n\t\t\tif (code !== 0) {\n\t\t\t\tresolve({ error: `Native helper worker exited with code ${code}` });\n\t\t\t\treturn;\n\t\t\t}\n\t\t\tresolve(pendingResult ?? { error: \"Native helper worker exited without output\" });\n\t\t});",
+    "count": 1
+  }
+]

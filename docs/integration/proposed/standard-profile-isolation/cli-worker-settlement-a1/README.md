@@ -1,0 +1,11 @@
+# Supplied CLI Worker result settlement
+
+The state-v2 CLI source now retains a native-command result until its Worker emits exit. Previously the supplied message handler resolved the promise and requested termination immediately. A later Worker error or nonzero exit could therefore arrive after the caller had already accepted success.
+
+Three count-pinned source edits retain the pending result, retain Worker errors and settle once on exit. Native Worker source, module path/data, JSON-string ABI, commands and the binding-unavailable behavior are unchanged. A Worker error takes precedence; a nonzero exit cannot report an earlier successful message. There is no timeout, cancellation request or termination promise standing in for observed exit. The state-v1 path and both state-v2 startup refusals remain intact.
+
+Actual source evidence is `actual-source-a1.json`. The complete current adapter independently matches the three-edit replay over the actually packaged predecessor CLI. Whole-source syntax passed. A synthetic EventEmitter fixture executes the actual supplied function: the predecessor resolves early, while the successor remains pending until exit and handles later nonzero exit, Worker error and malformed output. No real Worker, product executable, native helper, credential or provider operation ran.
+
+Actual complete app-resource staging passed in `actual-stage-a1.json`. Its CLI differs in exactly `Contents/MacOS/aux-cli`; every other CLI resource byte and mode is unchanged. The SEA was read back and its embedded source matches the checked adapter exactly. The ordinary first-statement quarantine remains present. The final package uses this staged SEA at the existing `aux-cli-sea` path beneath the unchanged native exec wrapper.
+
+This closes the JavaScript early-result gap only. It does not admit CLI startup, replace its original native addon, establish external native OS-job completion, complete CLI writer custody or authorize an original installation/storage contract under Aux. Those remain implementation and actual-runtime gates described in `../cli-identity-a1/README.md`. No symbol-only rename, new native API, signing, app launch/shutdown/restart or owner-state access occurred.

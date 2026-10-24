@@ -1,0 +1,17 @@
+{
+  "format": "aux.ui-storage-migration.unit.actual.v1",
+  "command": [
+    "node",
+    "--test",
+    "vendor/provided/aux-ui-storage-migration.test.mjs"
+  ],
+  "observedExitCode": 0,
+  "observedPassedTests": 6,
+  "sourceSha256": "26b8d6c76948790982152b73b2d118f3cd51492256f0339e1de089823cef7543",
+  "testSha256": "11fadcbee5510f4afec79158419efc4376a190d48022692503b297c0043f82b3",
+  "onlySyntheticSnapshotsUsed": true,
+  "realStorageReadOrChanged": false,
+  "appLaunched": false,
+  "filesystemMigrationCommitted": false,
+  "runtimeAcceptance": false
+}

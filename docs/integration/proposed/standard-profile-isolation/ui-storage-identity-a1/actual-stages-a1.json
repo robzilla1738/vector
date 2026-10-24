@@ -1,0 +1,69 @@
+{
+  "format": "aux.ui-storage-original-stage.actual.v1",
+  "passed": true,
+  "reports": [
+    {
+      "featureProfile": "baseline",
+      "output": "/private/tmp/aux-ui-storage-stage-20261024-a1/baseline",
+      "fileCount": 1263,
+      "exactDelta": [
+        "agent/assets/appearance-Ceuw3-j6.js",
+        "agent/assets/browser-color-scheme-Df5VSuPV.js",
+        "agent/assets/general-3dgRbrRk.js",
+        "agent/assets/omnibox-mode-preference-CWzOtieV.js",
+        "agent/assets/onboarding-helper-BVYyPOep.js",
+        "agent/assets/use-default-permission-mode-DKp05vFQ.js",
+        "agent/assets/utils-DCBm67_n.js",
+        "agent/background.js",
+        "agent/content/content.js",
+        "agent/manifest.json",
+        "agent/newtab-theme.js"
+      ],
+      "cssAssetsAndOtherFilesByteIdentical": true,
+      "modesPreserved": true
+    },
+    {
+      "featureProfile": "desktop-v1",
+      "output": "/private/tmp/aux-ui-storage-stage-20261024-a1/desktop-v1",
+      "fileCount": 1263,
+      "exactDelta": [
+        "agent/assets/appearance-Ceuw3-j6.js",
+        "agent/assets/browser-color-scheme-Df5VSuPV.js",
+        "agent/assets/general-3dgRbrRk.js",
+        "agent/assets/omnibox-mode-preference-CWzOtieV.js",
+        "agent/assets/onboarding-helper-BVYyPOep.js",
+        "agent/assets/use-default-permission-mode-DKp05vFQ.js",
+        "agent/assets/utils-DCBm67_n.js",
+        "agent/background.js",
+        "agent/content/content.js",
+        "agent/manifest.json",
+        "agent/newtab-theme.js"
+      ],
+      "cssAssetsAndOtherFilesByteIdentical": true,
+      "modesPreserved": true
+    }
+  ],
+  "callbackSourceSha256": "58b7d321c7bc9747d4f5529fbd4c50d5f2a70826715e46494bb3459b5bb6f11e",
+  "revisionReview": [
+    {
+      "revision": 22,
+      "profile": "development",
+      "identityProfile": "aux-v1",
+      "stateIdentityVersion": 2,
+      "fingerprint": "da75233938a3711421731d4f55fd0f465d1fbb4fd60a02d16dc3b5bcda04f095"
+    },
+    {
+      "revision": 23,
+      "profile": "development",
+      "identityProfile": "aux-v1",
+      "stateIdentityVersion": 2,
+      "featureProfile": "desktop-v1",
+      "fingerprint": "83a3414e79f0cc29327c44315b4b6055206ef20d344400f872c29f36a0d4d029"
+    }
+  ],
+  "completedStages": 2,
+  "uiGeometryChanged": false,
+  "productExecuted": false,
+  "nativeBuildPerformed": false,
+  "packaged": false
+}

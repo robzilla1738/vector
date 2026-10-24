@@ -1,0 +1,20 @@
+{
+  "format": "aux.ui-storage-cli-package.actual.v1",
+  "passed": true,
+  "app": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-standard-profile-state-20261024/Aux.app",
+  "receipt": {
+    "path": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-standard-profile-state-20261024/receipt.json",
+    "sha256": "f8978566ef6f394659d77214150fa1ae4e1f7cd42a388fe1a0bbceddf8e2b5c4"
+  },
+  "inventorySha256": "ae6261053ba7782fa7206e8f292326f05b31d80747b8f9d6966d55c2b69853b8",
+  "leaves": 11187,
+  "exactReplacements": 12,
+  "browserDaemonNativeRuntimeUnchanged": true,
+  "cliSeaOnlyChanged": true,
+  "allStylesheetsAndAssetsUnchanged": true,
+  "testable": false,
+  "runtimeAuthorityGranted": false,
+  "appExecuted": false,
+  "productSigned": false,
+  "acceptedAppReplaced": false
+}

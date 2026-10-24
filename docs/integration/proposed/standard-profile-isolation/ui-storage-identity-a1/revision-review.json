@@ -1,0 +1,23 @@
+{
+  "format": "aux.ui-storage-revision-review.v1",
+  "previousLedgerSha256": "04995886badbaad10dd7219a5f95442b5c707ee98d62a8b1c7e758e9ab3048df",
+  "reviews": [
+    {
+      "revision": 22,
+      "profile": "development",
+      "identityProfile": "aux-v1",
+      "stateIdentityVersion": 2,
+      "fingerprint": "da75233938a3711421731d4f55fd0f465d1fbb4fd60a02d16dc3b5bcda04f095"
+    },
+    {
+      "revision": 23,
+      "profile": "development",
+      "identityProfile": "aux-v1",
+      "stateIdentityVersion": 2,
+      "featureProfile": "desktop-v1",
+      "fingerprint": "83a3414e79f0cc29327c44315b4b6055206ef20d344400f872c29f36a0d4d029"
+    }
+  ],
+  "uiChanged": false,
+  "productExecuted": false
+}

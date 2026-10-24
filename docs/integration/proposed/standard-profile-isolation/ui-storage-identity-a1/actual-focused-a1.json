@@ -1,0 +1,22 @@
+{
+  "format": "aux.ui-storage-identity.focused.actual.v1",
+  "passed": true,
+  "files": 10,
+  "countedReplacements": 18,
+  "migrationMappings": 8,
+  "exactPredecessorReplayPassed": true,
+  "changedScriptsParse": true,
+  "compatibilityStateUnchanged": true,
+  "repeatedDerivationRefused": true,
+  "actualOmniboxReaderWriterPreserved": true,
+  "actualEarlyPaintStatesPreserved": 3,
+  "actualCaptureFalsePreserved": true,
+  "isolatedSuppliedFunctionsExecuted": true,
+  "snapshotInputUnchanged": true,
+  "realStorageReadOrChanged": false,
+  "appLaunched": false,
+  "nativeExecuted": false,
+  "filesystemMigrationCommitted": false,
+  "uiGeometryChanged": false,
+  "runtimeAcceptance": false
+}
