@@ -1,0 +1,97 @@
+{
+  "format": "aux.native-ui-completion-fact.v1",
+  "files": [
+    {
+      "path": "chrome/browser/aux/ui_storage_migration_controller.cc",
+      "input": "/Users/rcourson/.codex/worktrees/aux-features-navigation/web/docs/integration/proposed/standard-profile-isolation/native-live-target-controller-a18/source/chrome/browser/aux/ui_storage_migration_controller.cc",
+      "inputSha256": "7535cc74103583e00a48f95f6be5a632d5e9b69014f2f2e6fda53ddaf67548c4",
+      "output": "/Users/rcourson/.codex/worktrees/aux-features-navigation/web/docs/integration/proposed/standard-profile-isolation/native-ui-completion-fact-a19/source/chrome/browser/aux/ui_storage_migration_controller.cc",
+      "outputSha256": "643ebb05c32f1f375acc26cd377abfcb62ba2cec95ff98ce8149fc6b903eef37",
+      "anchors": [
+        {
+          "find": "#include \"chrome/browser/aux/ui_storage_migration_controller.h\"",
+          "replace": "#include \"chrome/browser/aux/ui_storage_migration_controller.h\"\n#include \"chrome/browser/aux/ui_storage_migration_completion.h\"",
+          "count": 1
+        },
+        {
+          "find": "namespace aux {\nnamespace {",
+          "replace": "namespace aux {\nnamespace migration_detail {",
+          "count": 1
+        },
+        {
+          "find": "  bool prepared = false, sealed = false, cleanup_unknown = false;",
+          "replace": "  bool prepared = false, sealed = false, cleanup_unknown = false;\n  std::string target_observation_sha;",
+          "count": 1
+        },
+        {
+          "find": "  bool pending() const;",
+          "replace": "  bool pending() const;\n  std::unique_ptr<UiStorageMigrationCompletion> TakeCompletion();\n  bool AcknowledgeCompletion(UiStorageMigrationOwnerAck);",
+          "count": 1
+        },
+        {
+          "find": "  void StartLive();",
+          "replace": "  bool CompletionCurrent();\n  std::string CompletionFingerprint() const;\n  void StartLive();",
+          "count": 1
+        },
+        {
+          "find": "  std::string live_failure_;",
+          "replace": "  std::string live_failure_;\n  bool live_terminal_written_ = false, completion_taken_ = false;\n  uint32_t terminal_ordinal_ = 0;\n  std::unique_ptr<UiStorageMigrationCompletion> completion_fact_;\n  std::optional<UiStorageMigrationOwnerAck> completion_ack_;",
+          "count": 1
+        },
+        {
+          "find": "  live_failure_.clear(); live_records_.clear(); live_record_.reset();",
+          "replace": "  live_failure_.clear(); live_records_.clear(); live_record_.reset();\n  live_terminal_written_ = false; terminal_ordinal_ = 0; completion_taken_ = false; completion_fact_.reset(); completion_ack_.reset();",
+          "count": 1
+        },
+        {
+          "find": "  LiveFrameNext();\n}\nvoid Controller::LiveFrontend",
+          "replace": "  const auto* units = value->FindDict(\"storeUnits\");\n  auto raw_units = units ? base::WriteJson(*units) : std::nullopt;\n  if (!raw_units) { HoldLive(\"Current renderer units could not be fingerprinted\"); return; }\n  frames_[index]->target_observation_sha = base::HexEncodeLower(Digest(*raw_units));\n  LiveFrameNext();\n}\nvoid Controller::LiveFrontend",
+          "count": 1
+        },
+        {
+          "find": "  fact.Set(\"domains\", std::move(domains)); return fact;",
+          "replace": "  fact.Set(\"domains\", std::move(domains));\n  base::ListValue pages;\n  for (const auto& frame : frames_) {\n    base::DictValue page; page.Set(\"nativeDocumentId\", frame->document_id.ToString());\n    page.Set(\"nativeLocalFrameToken\", frame->native_frame_token->ToString());\n    page.Set(\"nativeBlinkDocumentToken\", frame->native_document_token->ToString());\n    page.Set(\"currentStoreUnitsSha256\", frame->target_observation_sha);\n    pages.Append(std::move(page));\n  }\n  fact.Set(\"rendererCurrentStores\", std::move(pages));\n  fact.Set(\"terminalAllTargetObserved\", live_terminal_written_);\n  return fact;",
+          "count": 1
+        },
+        {
+          "find": "      live_target_complete_ = true;\n      HoldLive(\"Actual live target awaits typed selected-home terminal acceptance; no automatic cleanup\"); return;",
+          "replace": "      if (!live_terminal_written_) {\n        live_terminal_written_ = true; live_observation_domain_ = -2;\n        RecordLive(8, LiveAction::kComplete);\n        if (live_record_) terminal_ordinal_ = live_record_->ordinal;\n        else live_terminal_written_ = false;\n        return;\n      }\n      if (!terminal_ordinal_ || live_records_.empty() || live_records_.back()->ordinal != terminal_ordinal_ ||\n          live_records_.back()->kind != 8 || !live_records_.back()->complete) {\n        HoldLive(\"Actual aggregate terminal record is not durable\"); return;\n      }\n      live_target_complete_ = true;\n      if (!completion_ack_) {\n        if (!completion_fact_) completion_fact_ = TakeCompletion();\n        if (!completion_fact_ || !completion_fact_->IsCurrent()) {\n          HoldLive(\"Original one-shot native terminal fact is unavailable\"); return;\n        }\n        auto acknowledgement = peer::AcceptNativeSelectedUiMigrationCompletion(*completion_fact_);\n        if (!acknowledgement) {\n          HoldLive(\"Actual selected-home terminal observation is pending; retain original fact\"); return;\n        }\n        if (!AcknowledgeCompletion(std::move(*acknowledgement))) {\n          HoldLive(\"Actual selected-home acknowledgement no longer matches original fact\"); return;\n        }\n        return;\n      }\n      if (!completion_ack_->Matches(transfer_->generation, CompletionFingerprint()) || !CompletionCurrent()) {\n        HoldLive(\"Original selected-home acknowledgement or final actual target facts changed\"); return;\n      }\n      live_active_ = false; cleanup_unknown_ = false;\n      Finish(\"Actual UI transaction terminal accepted by the selected native owner; installation selection remains separate\"); return;",
+          "count": 1
+        },
+        {
+          "find": "  live_rollback_ = true; live_domain_ = dom_holds_.size(); live_action_ = LiveAction::kRestoreDomAttempt;",
+          "replace": "  live_target_complete_ = false; completion_ack_.reset(); completion_fact_.reset();\n  live_rollback_ = true; live_domain_ = dom_holds_.size(); live_action_ = LiveAction::kRestoreDomAttempt;",
+          "count": 1
+        },
+        {
+          "find": "void Controller::StartLive() {",
+          "replace": "bool Controller::CompletionCurrent() {\n  if (!live_active_ || !live_target_complete_ || live_source_complete_ || live_rollback_ ||\n      live_pending_ || live_record_ || !live_terminal_written_ || live_records_.empty() ||\n      !terminal_ordinal_ || live_records_.back()->ordinal != terminal_ordinal_ ||\n      !live_records_.back()->complete || live_records_.back()->kind != 8 ||\n      !LiveOwners(false) || !live_extension_target_ || !live_extension_synced_) return false;\n  return std::ranges::all_of(dom_holds_, [](const auto& hold) {\n    return hold.target_seen && !hold.mixed_seen && hold.published && !hold.pending && !hold.unknown &&\n        hold.source->file_data_synced && hold.source->source_ready &&\n        !hold.source->ordinary_work_queued && hold.source->target_topology_sha256.size() == 64 &&\n        std::ranges::all_of(hold.source->maps, [](const auto& map) {\n          return map->target_map_sha256.size() == 64 && (!map->allocation_requested || map->allocation_observed);\n        });\n  });\n}\nstd::string Controller::CompletionFingerprint() const {\n  if (!transfer_ || !intent_ || live_records_.empty()) return {};\n  const auto& terminal = *live_records_.back();\n  std::string bytes(\"aux.ui-storage.terminal-fact.v1\"); bytes.push_back('\\0');\n  bytes.append(transfer_->journal); bytes.append(base::NumberToString(terminal.ordinal)); bytes.push_back('\\0');\n  bytes.append(base::HexEncodeLower(transfer_->digest)); bytes.append(base::HexEncodeLower(intent_->digest));\n  bytes.append(base::HexEncodeLower(terminal.digest)); bytes.append(base::HexEncodeLower(terminal.receipt_digest));\n  bytes.append(base::NumberToString(transfer_->generation)); bytes.push_back('\\0');\n  bytes.append(profile_id_); bytes.push_back('\\0'); bytes.append(binding_); bytes.push_back('\\0'); bytes.append(restoration_);\n  return base::HexEncodeLower(Digest(bytes));\n}\nstd::unique_ptr<UiStorageMigrationCompletion> Controller::TakeCompletion() {\n  if (completion_taken_ || !CompletionCurrent()) return nullptr;\n  const auto& terminal = *live_records_.back();\n  const auto journal = UuidBytes(terminal.journal);\n  if (journal.size() != 16) return nullptr;\n  std::vector<uint8_t> frame{10}; frame.insert(frame.end(), journal.begin(), journal.end());\n  Integer(frame, terminal.ordinal, 4);\n  std::vector<uint8_t> expected{10}; Integer(expected, terminal.payload.size(), 4); expected.push_back(terminal.kind);\n  expected.insert(expected.end(), terminal.receipt_digest.begin(), terminal.receipt_digest.end());\n  Integer(expected, terminal.receipt.size(), 4); expected.insert(expected.end(), terminal.receipt.begin(), terminal.receipt.end());\n  const auto fingerprint = CompletionFingerprint();\n  if (fingerprint.size() != 64 || expected.size() > 8192) return nullptr;\n  completion_taken_ = true;\n  auto current = base::BindRepeating([](base::WeakPtr<Controller> owner, std::string expected_fingerprint) {\n    return owner && owner->CompletionCurrent() && owner->CompletionFingerprint() == expected_fingerprint;\n  }, weak_.GetWeakPtr(), fingerprint);\n  return std::unique_ptr<UiStorageMigrationCompletion>(new UiStorageMigrationCompletion(\n      transfer_->generation, fingerprint, std::move(frame), std::move(expected), std::move(current)));\n}\nbool Controller::AcknowledgeCompletion(UiStorageMigrationOwnerAck acknowledgement) {\n  if (!completion_taken_ || completion_ack_ || !CompletionCurrent() ||\n      !acknowledgement.Matches(transfer_->generation, CompletionFingerprint())) return false;\n  completion_ack_.emplace(std::move(acknowledgement));\n  busy_ = true;\n  // The typed owner ACK is not enough by itself. Repeat actual worker, editor,\n  // frontend, DOM/cache and current-store checks before opening any gate.\n  base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(FROM_HERE,\n      base::BindOnce(&Controller::RunLive, weak_.GetWeakPtr()));\n  return true;\n}\n\nvoid Controller::StartLive() {",
+          "count": 1
+        },
+        {
+          "find": "void Controller::Finish(std::string error) {\n  if (live_active_",
+          "replace": "void Controller::Finish(std::string error) {\n  if (live_target_complete_ && !completion_ack_) { HoldLive(std::move(error)); return; }\n  if (live_active_",
+          "count": 1
+        },
+        {
+          "find": "void Controller::CleanupDomNext() {",
+          "replace": "void Controller::CleanupDomNext() {\n  if (live_target_complete_ && (!completion_ack_ ||\n      !completion_ack_->Matches(transfer_->generation, CompletionFingerprint()))) {\n    cleanup_unknown_ = true; ReplyResult(); return;\n  }",
+          "count": 1
+        },
+        {
+          "find": "}  // namespace\nvoid PrepareUiStorageMigration",
+          "replace": "}  // namespace migration_detail\nusing migration_detail::Controller;\nusing migration_detail::Find;\nusing migration_detail::Reply;\nusing migration_detail::Refused;\nusing migration_detail::kController;\nUiStorageMigrationOwnerAck::UiStorageMigrationOwnerAck(uint64_t generation,\n    std::string fingerprint, base::RepeatingCallback<bool()> current)\n    : native_generation_(generation), terminal_fingerprint_(std::move(fingerprint)), owner_current_(std::move(current)) {}\nUiStorageMigrationOwnerAck::UiStorageMigrationOwnerAck(UiStorageMigrationOwnerAck&&) = default;\nUiStorageMigrationOwnerAck& UiStorageMigrationOwnerAck::operator=(UiStorageMigrationOwnerAck&&) = default;\nUiStorageMigrationOwnerAck::~UiStorageMigrationOwnerAck() = default;\nbool UiStorageMigrationOwnerAck::IsCurrent() const {\n  return native_generation_ && terminal_fingerprint_.size() == 64 && owner_current_ && owner_current_.Run();\n}\nbool UiStorageMigrationOwnerAck::Matches(uint64_t generation, std::string_view fingerprint) const {\n  return generation == native_generation_ && fingerprint == terminal_fingerprint_ && IsCurrent();\n}\nUiStorageMigrationCompletion::UiStorageMigrationCompletion(uint64_t generation, std::string fingerprint,\n    std::vector<uint8_t> frame, std::vector<uint8_t> reply, base::RepeatingCallback<bool()> current)\n    : native_generation_(generation), terminal_fingerprint_(std::move(fingerprint)), read_frame_(std::move(frame)),\n      expected_reply_(std::move(reply)), actual_current_(std::move(current)) {}\nUiStorageMigrationCompletion::UiStorageMigrationCompletion(UiStorageMigrationCompletion&&) = default;\nUiStorageMigrationCompletion& UiStorageMigrationCompletion::operator=(UiStorageMigrationCompletion&&) = default;\nUiStorageMigrationCompletion::~UiStorageMigrationCompletion() = default;\nuint64_t UiStorageMigrationCompletion::native_generation() const { return native_generation_; }\nstd::string_view UiStorageMigrationCompletion::terminal_fingerprint() const { return terminal_fingerprint_; }\nbool UiStorageMigrationCompletion::IsCurrent() const {\n  return native_generation_ && terminal_fingerprint_.size() == 64 && actual_current_ && actual_current_.Run();\n}\nstd::vector<uint8_t> UiStorageMigrationCompletion::TerminalReadFrame() const {\n  return IsCurrent() ? read_frame_ : std::vector<uint8_t>();\n}\nbool UiStorageMigrationCompletion::MatchesTerminalReply(base::span<const uint8_t> reply) const {\n  return IsCurrent() && std::ranges::equal(reply, expected_reply_);\n}\n\nstd::unique_ptr<UiStorageMigrationCompletion> TakeUiStorageMigrationCompletion(Profile* profile) {\n  DCHECK_CURRENTLY_ON(content::BrowserThread::UI);\n  auto* owner = Find(profile); return owner ? owner->TakeCompletion() : nullptr;\n}\nbool AcknowledgeUiStorageMigrationCompletion(Profile* profile, UiStorageMigrationOwnerAck acknowledgement) {\n  DCHECK_CURRENTLY_ON(content::BrowserThread::UI);\n  auto* owner = Find(profile); return owner && owner->AcknowledgeCompletion(std::move(acknowledgement));\n}\nvoid PrepareUiStorageMigration",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/aux/ui_storage_migration_completion.h",
+      "input": null,
+      "inputSha256": null,
+      "output": "/Users/rcourson/.codex/worktrees/aux-features-navigation/web/docs/integration/proposed/standard-profile-isolation/native-ui-completion-fact-a19/source/chrome/browser/aux/ui_storage_migration_completion.h",
+      "outputSha256": "6ef6e8a592f9976b84796da8d02718dd6660e8fa08dc982d8aff72466b1d37cc",
+      "anchors": []
+    }
+  ]
+}
