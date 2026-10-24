@@ -1,3 +1,9 @@
+# Desktop feature integration in progress; accepted UI preserved — 2026-10-23
+
+Parallel lanes delivered native organization/pins/folders/Spaces, real per-window views of shared tabs, original toolbar reparenting, theme previews/presets, atomic shortcut profiles, recursive split session/history source, files/rename ownership, routing, and supplied AI/media/capture/settings additions. Root has composed the native owners, close/account-switch/restore fences, private APIs and exact source projection; further Peek and capture/command integration continues. Current status is recorded in `docs/integration/proposed/browser-feature-expansion/execution.md`.
+
+Actual focused native compilation exposed source/API defects; corrected source is entering the next build. Several original sidebar/search/toolbar/model units compiled, but no complete feature app has linked or been observed. No runtime/UI readiness claim. Accepted app and prior inactive package remain unchanged. No app lifecycle, product signing, release, owner data or provider/cloud action occurred. Earlier protected-startup/custody/drain/recovery/publication gates remain open.
+
 # Desktop roadmap execution started in three isolated lanes — 2026-10-23
 
 Owner activated the full desktop feature roadmap. The accepted preview/UI and latest inactive package remain intact. Exact native input pins, fallback Git worktree reservations and initial interfaces are recorded under `docs/integration/proposed/browser-feature-expansion/`. Organization/storage, frame/sidebar and command/navigation workers are implementing in disjoint lanes; root owns shared wiring and source projection. The new projection utility preflights predecessor/output hashes and retains before-images/journal in the isolated tree only. No feature is runtime-accepted, and no app lifecycle, signing, provider/cloud or owner-state action occurred. Existing startup/custody/recovery gates stay open.

@@ -1,0 +1,1367 @@
+[
+  {
+    "namespace": "auxBrowserPreferences",
+    "description": "Aux private native browser capability.",
+    "functions": [
+      {
+        "name": "getCommandContext",
+        "type": "function",
+        "parameters": [],
+        "returns_async": {
+          "name": "callback",
+          "parameters": [
+            {
+              "name": "result",
+              "type": "object",
+              "additionalProperties": {
+                "type": "any"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "name": "commitCommand",
+        "type": "function",
+        "parameters": [
+          {
+            "name": "request",
+            "type": "object",
+            "additionalProperties": {
+              "type": "any"
+            }
+          }
+        ],
+        "returns_async": {
+          "name": "callback",
+          "parameters": [
+            {
+              "name": "result",
+              "type": "object",
+              "additionalProperties": {
+                "type": "any"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "name": "getAlwaysShowFullUrl",
+        "type": "function",
+        "parameters": [],
+        "returns_async": {
+          "name": "callback",
+          "parameters": [
+            {
+              "name": "result",
+              "type": "boolean"
+            }
+          ]
+        }
+      },
+      {
+        "name": "setAlwaysShowFullUrl",
+        "type": "function",
+        "parameters": [
+          {
+            "name": "value",
+            "type": "boolean"
+          }
+        ],
+        "returns_async": {
+          "name": "callback",
+          "parameters": []
+        }
+      },
+      {
+        "name": "getKeyboardShortcuts",
+        "type": "function",
+        "parameters": [],
+        "returns_async": {
+          "name": "callback",
+          "parameters": [
+            {
+              "name": "result",
+              "type": "array",
+              "items": {
+                "type": "any"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "name": "setKeyboardShortcut",
+        "type": "function",
+        "parameters": [
+          {
+            "name": "commandId",
+            "type": "integer"
+          },
+          {
+            "name": "shortcut",
+            "type": "string"
+          }
+        ],
+        "returns_async": {
+          "name": "callback",
+          "parameters": []
+        }
+      },
+      {
+        "name": "resetKeyboardShortcut",
+        "type": "function",
+        "parameters": [
+          {
+            "name": "commandId",
+            "type": "integer"
+          }
+        ],
+        "returns_async": {
+          "name": "callback",
+          "parameters": []
+        }
+      },
+      {
+        "name": "setShortcutHandlingSuspended",
+        "type": "function",
+        "parameters": [
+          {
+            "name": "suspended",
+            "type": "boolean"
+          }
+        ],
+        "returns_async": {
+          "name": "callback",
+          "parameters": []
+        }
+      },
+      {
+        "name": "getWindowBackgroundVibrancyEnabled",
+        "type": "function",
+        "parameters": [],
+        "returns_async": {
+          "name": "callback",
+          "parameters": [
+            {
+              "name": "result",
+              "type": "boolean"
+            }
+          ]
+        }
+      },
+      {
+        "name": "setWindowBackgroundVibrancyEnabled",
+        "type": "function",
+        "parameters": [
+          {
+            "name": "value",
+            "type": "boolean"
+          }
+        ],
+        "returns_async": {
+          "name": "callback",
+          "parameters": []
+        }
+      },
+      {
+        "name": "getBrowserColorScheme",
+        "type": "function",
+        "parameters": [],
+        "returns_async": {
+          "name": "callback",
+          "parameters": [
+            {
+              "name": "result",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      {
+        "name": "setBrowserColorScheme",
+        "type": "function",
+        "parameters": [
+          {
+            "name": "value",
+            "type": "string"
+          }
+        ],
+        "returns_async": {
+          "name": "callback",
+          "parameters": []
+        }
+      },
+      {
+        "name": "getTabStyle",
+        "type": "function",
+        "parameters": [],
+        "returns_async": {
+          "name": "callback",
+          "parameters": [
+            {
+              "name": "result",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      {
+        "name": "setTabStyle",
+        "type": "function",
+        "parameters": [
+          {
+            "name": "value",
+            "type": "string"
+          }
+        ],
+        "returns_async": {
+          "name": "callback",
+          "parameters": []
+        }
+      },
+      {
+        "name": "getVerticalTabInsertionPosition",
+        "type": "function",
+        "parameters": [],
+        "returns_async": {
+          "name": "callback",
+          "parameters": [
+            {
+              "name": "result",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      {
+        "name": "setVerticalTabInsertionPosition",
+        "type": "function",
+        "parameters": [
+          {
+            "name": "value",
+            "type": "string"
+          }
+        ],
+        "returns_async": {
+          "name": "callback",
+          "parameters": []
+        }
+      },
+      {
+        "name": "getHorizontalTabShrinkEnabled",
+        "type": "function",
+        "parameters": [],
+        "returns_async": {
+          "name": "callback",
+          "parameters": [
+            {
+              "name": "result",
+              "type": "boolean"
+            }
+          ]
+        }
+      },
+      {
+        "name": "setHorizontalTabShrinkEnabled",
+        "type": "function",
+        "parameters": [
+          {
+            "name": "value",
+            "type": "boolean"
+          }
+        ],
+        "returns_async": {
+          "name": "callback",
+          "parameters": []
+        }
+      },
+      {
+        "name": "getTabSwitcherSortByRecentlyUsed",
+        "type": "function",
+        "parameters": [],
+        "returns_async": {
+          "name": "callback",
+          "parameters": [
+            {
+              "name": "result",
+              "type": "boolean"
+            }
+          ]
+        }
+      },
+      {
+        "name": "setTabSwitcherSortByRecentlyUsed",
+        "type": "function",
+        "parameters": [
+          {
+            "name": "value",
+            "type": "boolean"
+          }
+        ],
+        "returns_async": {
+          "name": "callback",
+          "parameters": []
+        }
+      },
+      {
+        "name": "getDefaultZoom",
+        "type": "function",
+        "parameters": [],
+        "returns_async": {
+          "name": "callback",
+          "parameters": [
+            {
+              "name": "result",
+              "type": "number"
+            }
+          ]
+        }
+      },
+      {
+        "name": "setDefaultZoom",
+        "type": "function",
+        "parameters": [
+          {
+            "name": "value",
+            "type": "number"
+          }
+        ],
+        "returns_async": {
+          "name": "callback",
+          "parameters": []
+        }
+      },
+      {
+        "name": "getAutoPipEnabled",
+        "type": "function",
+        "parameters": [],
+        "returns_async": {
+          "name": "callback",
+          "parameters": [
+            {
+              "name": "result",
+              "type": "boolean"
+            }
+          ]
+        }
+      },
+      {
+        "name": "setAutoPipEnabled",
+        "type": "function",
+        "parameters": [
+          {
+            "name": "value",
+            "type": "boolean"
+          }
+        ],
+        "returns_async": {
+          "name": "callback",
+          "parameters": []
+        }
+      },
+      {
+        "name": "getVerticalTabsBookmarksSectionEnabled",
+        "type": "function",
+        "parameters": [],
+        "returns_async": {
+          "name": "callback",
+          "parameters": [
+            {
+              "name": "result",
+              "type": "boolean"
+            }
+          ]
+        }
+      },
+      {
+        "name": "setVerticalTabsBookmarksSectionEnabled",
+        "type": "function",
+        "parameters": [
+          {
+            "name": "value",
+            "type": "boolean"
+          }
+        ],
+        "returns_async": {
+          "name": "callback",
+          "parameters": []
+        }
+      },
+      {
+        "name": "getKeepTasksRunningState",
+        "type": "function",
+        "parameters": [],
+        "returns_async": {
+          "name": "callback",
+          "parameters": [
+            {
+              "name": "result",
+              "type": "any"
+            }
+          ]
+        }
+      },
+      {
+        "name": "setKeepTasksRunningEnabled",
+        "type": "function",
+        "parameters": [
+          {
+            "name": "enabled",
+            "type": "boolean"
+          }
+        ],
+        "returns_async": {
+          "name": "callback",
+          "parameters": []
+        }
+      },
+      {
+        "name": "getDefaultBrowserState",
+        "type": "function",
+        "parameters": [],
+        "returns_async": {
+          "name": "callback",
+          "parameters": [
+            {
+              "name": "result",
+              "type": "any"
+            }
+          ]
+        }
+      },
+      {
+        "name": "setAsDefaultBrowser",
+        "type": "function",
+        "parameters": [],
+        "returns_async": {
+          "name": "callback",
+          "parameters": [
+            {
+              "name": "result",
+              "type": "any"
+            }
+          ]
+        }
+      },
+      {
+        "name": "getDockState",
+        "type": "function",
+        "parameters": [],
+        "returns_async": {
+          "name": "callback",
+          "parameters": [
+            {
+              "name": "result",
+              "type": "any"
+            }
+          ]
+        }
+      },
+      {
+        "name": "addToDock",
+        "type": "function",
+        "parameters": [],
+        "returns_async": {
+          "name": "callback",
+          "parameters": [
+            {
+              "name": "result",
+              "type": "any"
+            }
+          ]
+        }
+      },
+      {
+        "name": "getBrowserVersion",
+        "type": "function",
+        "parameters": [],
+        "returns_async": {
+          "name": "callback",
+          "parameters": [
+            {
+              "name": "result",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      {
+        "name": "getSyncStatus",
+        "type": "function",
+        "parameters": [],
+        "returns_async": {
+          "name": "callback",
+          "parameters": [
+            {
+              "name": "result",
+              "type": "any"
+            }
+          ]
+        }
+      },
+      {
+        "name": "checkForUpdates",
+        "type": "function",
+        "parameters": [],
+        "returns_async": {
+          "name": "callback",
+          "parameters": [
+            {
+              "name": "result",
+              "type": "any"
+            }
+          ]
+        }
+      },
+      {
+        "name": "getLanguageSettings",
+        "type": "function",
+        "parameters": [],
+        "returns_async": {
+          "name": "callback",
+          "parameters": [
+            {
+              "name": "result",
+              "type": "any"
+            }
+          ]
+        }
+      },
+      {
+        "name": "getSupportedLanguages",
+        "type": "function",
+        "parameters": [],
+        "returns_async": {
+          "name": "callback",
+          "parameters": [
+            {
+              "name": "result",
+              "type": "any"
+            }
+          ]
+        }
+      },
+      {
+        "name": "setPreferredLanguages",
+        "type": "function",
+        "parameters": [
+          {
+            "name": "languageCodes",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        ],
+        "returns_async": {
+          "name": "callback",
+          "parameters": []
+        }
+      },
+      {
+        "name": "setSpellCheckEnabled",
+        "type": "function",
+        "parameters": [
+          {
+            "name": "enabled",
+            "type": "boolean"
+          }
+        ],
+        "returns_async": {
+          "name": "callback",
+          "parameters": []
+        }
+      },
+      {
+        "name": "getSearchEngines",
+        "type": "function",
+        "parameters": [],
+        "returns_async": {
+          "name": "callback",
+          "parameters": [
+            {
+              "name": "result",
+              "type": "any"
+            }
+          ]
+        }
+      },
+      {
+        "name": "setDefaultSearchEngine",
+        "type": "function",
+        "parameters": [
+          {
+            "name": "engineId",
+            "type": "string"
+          }
+        ],
+        "returns_async": {
+          "name": "callback",
+          "parameters": []
+        }
+      },
+      {
+        "name": "getOrganizationSnapshot",
+        "type": "function",
+        "parameters": [],
+        "returns_async": {
+          "name": "callback",
+          "parameters": [
+            {
+              "name": "result",
+              "type": "object",
+              "additionalProperties": {
+                "type": "any"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "name": "showOrganizationProposal",
+        "type": "function",
+        "parameters": [
+          {
+            "name": "request",
+            "type": "object",
+            "additionalProperties": {
+              "type": "any"
+            }
+          }
+        ],
+        "returns_async": {
+          "name": "callback",
+          "parameters": [
+            {
+              "name": "result",
+              "type": "object",
+              "additionalProperties": {
+                "type": "any"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "name": "applyOrganizationProposal",
+        "type": "function",
+        "parameters": [
+          {
+            "name": "request",
+            "type": "object",
+            "additionalProperties": {
+              "type": "any"
+            }
+          }
+        ],
+        "returns_async": {
+          "name": "callback",
+          "parameters": [
+            {
+              "name": "result",
+              "type": "object",
+              "additionalProperties": {
+                "type": "any"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "name": "undoOrganization",
+        "type": "function",
+        "parameters": [
+          {
+            "name": "request",
+            "type": "object",
+            "additionalProperties": {
+              "type": "any"
+            }
+          }
+        ],
+        "returns_async": {
+          "name": "callback",
+          "parameters": [
+            {
+              "name": "result",
+              "type": "object",
+              "additionalProperties": {
+                "type": "any"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "name": "captureTabReferences",
+        "type": "function",
+        "parameters": [
+          {
+            "name": "request",
+            "type": "object",
+            "additionalProperties": {
+              "type": "any"
+            }
+          }
+        ],
+        "returns_async": {
+          "name": "callback",
+          "parameters": [
+            {
+              "name": "result",
+              "type": "object",
+              "additionalProperties": {
+                "type": "any"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "name": "validateTabReferences",
+        "type": "function",
+        "parameters": [
+          {
+            "name": "request",
+            "type": "object",
+            "additionalProperties": {
+              "type": "any"
+            }
+          }
+        ],
+        "returns_async": {
+          "name": "callback",
+          "parameters": [
+            {
+              "name": "result",
+              "type": "object",
+              "additionalProperties": {
+                "type": "any"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "name": "getFramePresentation",
+        "type": "function",
+        "parameters": [],
+        "returns_async": {
+          "name": "callback",
+          "parameters": [
+            {
+              "name": "result",
+              "type": "object",
+              "additionalProperties": {
+                "type": "any"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "name": "setFramePresentation",
+        "type": "function",
+        "parameters": [
+          {
+            "name": "request",
+            "type": "object",
+            "additionalProperties": {
+              "type": "any"
+            }
+          }
+        ],
+        "returns_async": {
+          "name": "callback",
+          "parameters": [
+            {
+              "name": "result",
+              "type": "object",
+              "additionalProperties": {
+                "type": "any"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "name": "getThemeState",
+        "type": "function",
+        "parameters": [],
+        "returns_async": {
+          "name": "callback",
+          "parameters": [
+            {
+              "name": "result",
+              "type": "object",
+              "additionalProperties": {
+                "type": "any"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "name": "previewTheme",
+        "type": "function",
+        "parameters": [
+          {
+            "name": "request",
+            "type": "object",
+            "additionalProperties": {
+              "type": "any"
+            }
+          }
+        ],
+        "returns_async": {
+          "name": "callback",
+          "parameters": [
+            {
+              "name": "result",
+              "type": "object",
+              "additionalProperties": {
+                "type": "any"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "name": "applyTheme",
+        "type": "function",
+        "parameters": [
+          {
+            "name": "request",
+            "type": "object",
+            "additionalProperties": {
+              "type": "any"
+            }
+          }
+        ],
+        "returns_async": {
+          "name": "callback",
+          "parameters": [
+            {
+              "name": "result",
+              "type": "object",
+              "additionalProperties": {
+                "type": "any"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "name": "cancelTheme",
+        "type": "function",
+        "parameters": [],
+        "returns_async": {
+          "name": "callback",
+          "parameters": [
+            {
+              "name": "result",
+              "type": "object",
+              "additionalProperties": {
+                "type": "any"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "name": "resetTheme",
+        "type": "function",
+        "parameters": [
+          {
+            "name": "request",
+            "type": "object",
+            "additionalProperties": {
+              "type": "any"
+            }
+          }
+        ],
+        "returns_async": {
+          "name": "callback",
+          "parameters": [
+            {
+              "name": "result",
+              "type": "object",
+              "additionalProperties": {
+                "type": "any"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "name": "saveThemePreset",
+        "type": "function",
+        "parameters": [
+          {
+            "name": "request",
+            "type": "object",
+            "additionalProperties": {
+              "type": "any"
+            }
+          }
+        ],
+        "returns_async": {
+          "name": "callback",
+          "parameters": [
+            {
+              "name": "result",
+              "type": "object",
+              "additionalProperties": {
+                "type": "any"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "name": "deleteThemePreset",
+        "type": "function",
+        "parameters": [
+          {
+            "name": "request",
+            "type": "object",
+            "additionalProperties": {
+              "type": "any"
+            }
+          }
+        ],
+        "returns_async": {
+          "name": "callback",
+          "parameters": [
+            {
+              "name": "result",
+              "type": "object",
+              "additionalProperties": {
+                "type": "any"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "name": "exportThemePreset",
+        "type": "function",
+        "parameters": [
+          {
+            "name": "request",
+            "type": "object",
+            "additionalProperties": {
+              "type": "any"
+            }
+          }
+        ],
+        "returns_async": {
+          "name": "callback",
+          "parameters": [
+            {
+              "name": "result",
+              "type": "object",
+              "additionalProperties": {
+                "type": "any"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "name": "getOrganizationSettings",
+        "type": "function",
+        "parameters": [],
+        "returns_async": {
+          "name": "callback",
+          "parameters": [
+            {
+              "name": "result",
+              "type": "object",
+              "additionalProperties": {
+                "type": "any"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "name": "setOrganizationCleanupPolicy",
+        "type": "function",
+        "parameters": [
+          {
+            "name": "request",
+            "type": "object",
+            "additionalProperties": {
+              "type": "any"
+            }
+          }
+        ],
+        "returns_async": {
+          "name": "callback",
+          "parameters": [
+            {
+              "name": "result",
+              "type": "object",
+              "additionalProperties": {
+                "type": "any"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "name": "listRecentFiles",
+        "type": "function",
+        "parameters": [
+          {
+            "name": "request",
+            "type": "object",
+            "additionalProperties": {
+              "type": "any"
+            }
+          }
+        ],
+        "returns_async": {
+          "name": "callback",
+          "parameters": [
+            {
+              "name": "result",
+              "type": "object",
+              "additionalProperties": {
+                "type": "any"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "name": "prepareDownloadRename",
+        "type": "function",
+        "parameters": [
+          {
+            "name": "request",
+            "type": "object",
+            "additionalProperties": {
+              "type": "any"
+            }
+          }
+        ],
+        "returns_async": {
+          "name": "callback",
+          "parameters": [
+            {
+              "name": "result",
+              "type": "object",
+              "additionalProperties": {
+                "type": "any"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "name": "applyDownloadRename",
+        "type": "function",
+        "parameters": [
+          {
+            "name": "request",
+            "type": "object",
+            "additionalProperties": {
+              "type": "any"
+            }
+          }
+        ],
+        "returns_async": {
+          "name": "callback",
+          "parameters": [
+            {
+              "name": "result",
+              "type": "object",
+              "additionalProperties": {
+                "type": "any"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "name": "undoDownloadRename",
+        "type": "function",
+        "parameters": [
+          {
+            "name": "request",
+            "type": "object",
+            "additionalProperties": {
+              "type": "any"
+            }
+          }
+        ],
+        "returns_async": {
+          "name": "callback",
+          "parameters": [
+            {
+              "name": "result",
+              "type": "object",
+              "additionalProperties": {
+                "type": "any"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "name": "dragRecentFile",
+        "type": "function",
+        "parameters": [
+          {
+            "name": "request",
+            "type": "object",
+            "additionalProperties": {
+              "type": "any"
+            }
+          }
+        ],
+        "returns_async": {
+          "name": "callback",
+          "parameters": [
+            {
+              "name": "result",
+              "type": "object",
+              "additionalProperties": {
+                "type": "any"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "name": "revealRecentFile",
+        "type": "function",
+        "parameters": [
+          {
+            "name": "request",
+            "type": "object",
+            "additionalProperties": {
+              "type": "any"
+            }
+          }
+        ],
+        "returns_async": {
+          "name": "callback",
+          "parameters": [
+            {
+              "name": "result",
+              "type": "object",
+              "additionalProperties": {
+                "type": "any"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "name": "togglePictureInPicture",
+        "type": "function",
+        "parameters": [
+          {
+            "name": "request",
+            "type": "object",
+            "additionalProperties": {
+              "type": "any"
+            }
+          }
+        ],
+        "returns_async": {
+          "name": "callback",
+          "parameters": [
+            {
+              "name": "result",
+              "type": "object",
+              "additionalProperties": {
+                "type": "any"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "name": "getRoutingState",
+        "type": "function",
+        "parameters": [],
+        "returns_async": {
+          "name": "callback",
+          "parameters": [
+            {
+              "name": "result",
+              "type": "object",
+              "additionalProperties": {
+                "type": "any"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "name": "setRoutingRules",
+        "type": "function",
+        "parameters": [
+          {
+            "name": "request",
+            "type": "object",
+            "additionalProperties": {
+              "type": "any"
+            }
+          }
+        ],
+        "returns_async": {
+          "name": "callback",
+          "parameters": [
+            {
+              "name": "result",
+              "type": "object",
+              "additionalProperties": {
+                "type": "any"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "name": "testRoutingUrl",
+        "type": "function",
+        "parameters": [
+          {
+            "name": "request",
+            "type": "object",
+            "additionalProperties": {
+              "type": "any"
+            }
+          }
+        ],
+        "returns_async": {
+          "name": "callback",
+          "parameters": [
+            {
+              "name": "result",
+              "type": "object",
+              "additionalProperties": {
+                "type": "any"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "name": "routeBrowserLink",
+        "type": "function",
+        "parameters": [
+          {
+            "name": "request",
+            "type": "object",
+            "additionalProperties": {
+              "type": "any"
+            }
+          }
+        ],
+        "returns_async": {
+          "name": "callback",
+          "parameters": [
+            {
+              "name": "result",
+              "type": "object",
+              "additionalProperties": {
+                "type": "any"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "name": "getShortcutProfile",
+        "type": "function",
+        "parameters": [],
+        "returns_async": {
+          "name": "callback",
+          "parameters": [
+            {
+              "name": "result",
+              "type": "object",
+              "additionalProperties": {
+                "type": "any"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "name": "exportShortcutProfile",
+        "type": "function",
+        "parameters": [],
+        "returns_async": {
+          "name": "callback",
+          "parameters": [
+            {
+              "name": "result",
+              "type": "object",
+              "additionalProperties": {
+                "type": "any"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "name": "importShortcutProfile",
+        "type": "function",
+        "parameters": [
+          {
+            "name": "request",
+            "type": "object",
+            "additionalProperties": {
+              "type": "any"
+            }
+          }
+        ],
+        "returns_async": {
+          "name": "callback",
+          "parameters": [
+            {
+              "name": "result",
+              "type": "object",
+              "additionalProperties": {
+                "type": "any"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "name": "resetShortcutProfile",
+        "type": "function",
+        "parameters": [
+          {
+            "name": "request",
+            "type": "object",
+            "additionalProperties": {
+              "type": "any"
+            }
+          }
+        ],
+        "returns_async": {
+          "name": "callback",
+          "parameters": [
+            {
+              "name": "result",
+              "type": "object",
+              "additionalProperties": {
+                "type": "any"
+              }
+            }
+          ]
+        }
+      }
+    ]
+  }
+]

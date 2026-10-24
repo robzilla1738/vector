@@ -1,14 +1,22 @@
 # Desktop feature expansion execution
 
-Authorized by owner goal on 2026-10-23: implement the complete desktop roadmap, with mobile excluded. Baseline: local main `02ce77253`; exact selected native pins in `baseline.json`. Accepted app and current UI remain preserved. No shutdown/restart, product signing, release, owner-data or cloud operations are authorized by this execution.
+Owner goal: implement the complete desktop roadmap, mobile excluded. Same-profile desktop windows share logical tab records; selection, live document, navigation/scroll and focus remain window-owned. Source baseline local main `02ce77253`; input pins in `baseline.json` and rolling `integration/composition.json`. Accepted app/UI and inactive startup package stay intact. No shutdown/restart, product signing, release, owner-data or cloud operation has occurred.
 
-| Outcome | Source | Integrated | Built | Observed | Accepted | Next action |
-|---|---|---|---|---|---|---|
-| FX-BASE | pinned | yes | n/a | source only | yes for snapshot | create isolated lanes |
-| FX-CONTRACT | interface freeze underway | no | no | no | no | organization owner implements types; root freezes adapters |
-| FX-ORG | existing primitives | no new changes | no | no | no | native organization lane |
-| FX-FRAME | existing presentation | no new changes | no | no | no | native frame lane |
-| FX-NAV | existing search/shortcuts | no new changes | no | no | no | command/navigation lane |
-| Remaining FX nodes | planned | no | no | no | no | dispatch rolling ready queue |
+| Outcome | Working source | Native integration/build | Actual app acceptance | Remaining |
+|---|---|---|---|---|
+| Organization, global pins, nested folders, Spaces, cleanup | model, durable CAS owner, original sidebar projections and close protections | selected source projection; original model/UI units compiled in a4, newer additions pending | not observed | combined compile, storage/recovery and actual window journeys |
+| Shared desktop logical tabs | actual-window views, explicit changed-URL adoption, independent selected Space/tab | root window/close/restore hooks projected | not observed | combined lifecycle and multiwindow checks |
+| Frame, minimal mode, sidebar navigation | original address/navigation controls reparented; existing presentation retained | original toolbar/layout units compiled in a4; subsequent mounts pending | not observed | settings/command hookups and actual states comparison |
+| Themes | native token owner, preview lease, presets, supplied Appearance controls | compiler defect corrected after a5; successor pending | not observed | native build and actual light/dark/glass preview/revert |
+| Command bar/full URL/shortcuts | supplied centered search owner; atomic shortcut import/reset; new commands default unbound | command/search units compiled in a4; atomic registry and feature handlers pending | not observed | compile linked handlers, actual commands/import conflicts |
+| Recursive split layouts | validated stable branch/slot tree, real Views resize/focus, session and history codecs, exact-match pane undo | source/shared hooks composed, native compilation pending | not observed | native API integration and actual 3+ pane drag/restore |
+| Recent files/download rename | real DownloadItem moves/history, durable receipts, cancellation/recovery, actual chooser grants | native section and write owner projected; compiler fixes pending | not observed | combined owner, interrupted writes/chooser/drag checks |
+| AI Tidy/@tab/AI search | original provider path, native captured tab/document references and retained proposal apply | private APIs/source transforms composed, not staged/linked completely | not observed | combined byte-counted transforms, provider-free rejection and authorized provider journey |
+| Routing/CLI | native profile/Space routing and supplied authenticated RPC/action | native fix after a5; external ingress and final CLI pairing pending | not observed | exact profile name resolution, native OS ingress, package |
+| Peek/quick window | native actual popup/document lease/controller | ingress/decorator/close/download integration being added | not observed | finish shared hooks, native compile and actual previews |
+| PiP/developer/screenshot/extensions | real media-session actions, DevTools policy, supplied capture overlay/native document guard, developer settings | leaf APIs and native registration being integrated | not observed | compile, actual capture/extension/autofill/native messaging compatibility |
+| Mobile | deferred by owner | excluded | excluded | no mobile work |
 
-Existing startup, custody/drain, admitted-root recovery and atomic runtime publication gates remain open. Source/build evidence will not be called runtime acceptance.
+Focused native receipts: `integration/evidence/native-compile-a4.json` and `native-compile-a5.json`. a4 compiled several original owner units and exposed three corrected source defects. a5 failed on API construction, includes and current Chromium APIs; corrections are source work, not successful successor compilation. a6 is the running larger native composition. Exact projection before-images and journals remain under `/private/tmp/aux-feature-source-projection-20261023-a*/`.
+
+Working source, projected native source, a linked app, runtime observation and accepted behavior are distinct. None of the new desktop features is called runtime-accepted. Existing startup/custody/browser-drain/admitted-root recovery/atomic runtime-publication and external-hardlink gates remain open. Do not enable the dormant startup entry or replace the accepted app based on feature source or object compilation.

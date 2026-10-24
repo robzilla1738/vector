@@ -63,7 +63,23 @@ def main():
     for entry in entries:
         name = entry['path']
         relative(name)
-        if not name.startswith('chrome/') or name in names:
+        allowed = name.startswith('chrome/') or name in {
+            'components/split_tabs/BUILD.gn',
+            'components/split_tabs/split_pane_tree.cc',
+            'components/split_tabs/split_pane_tree.h',
+            'components/split_tabs/split_pane_tree_unittest.cc',
+            'components/split_tabs/split_tab_visual_data.h',
+            'components/sessions/core/session_service_commands.cc',
+            'components/tabs/impl/tab_strip_collection.cc',
+            'components/tabs/public/tab_strip_collection.h',
+            'content/browser/devtools/devtools_session.cc',
+            'content/browser/devtools/devtools_session.h',
+            'content/public/browser/devtools_manager_delegate.cc',
+            'content/public/browser/devtools_manager_delegate.h',
+            'extensions/browser/extension_function_histogram_value.h',
+            'tools/metrics/histograms/metadata/extensions/enums.xml',
+        }
+        if not allowed or name in names:
             raise ValueError('Unsupported or duplicate source path: ' + name)
         names.add(name)
         supplied = contained_regular(repo, entry['source'])
@@ -82,6 +98,22 @@ def main():
             raise ValueError('Native predecessor differs: ' + name)
         mode = stat.S_IMODE(target.stat().st_mode) if target.exists() else 0o644
         prepared.append((entry, supplied, target, mode))
+    pins = manifest.get('inputPins')
+    if not isinstance(pins, dict) or not names.issubset(pins):
+        raise ValueError('Complete input pins required')
+    changes = {entry['path']: entry for entry, _, _, _ in prepared}
+    def verify_read_set(final=False):
+        for name, after in pins.items():
+            relative(name)
+            change = changes.get(name)
+            expected = after if final or change is None else change.get('beforeSha256')
+            target = native / name
+            if target.exists():
+                contained_regular(native, name)
+            actual = digest(target) if target.exists() else None
+            if actual != expected or (change and change['afterSha256'] != after):
+                raise ValueError('Complete native input differs: ' + name)
+    verify_read_set()
     report = {
         'format': 'aux.browser-features.projection.v1',
         'manifestSha256': digest(manifest_path),
@@ -92,6 +124,7 @@ def main():
         'appExecuted': False,
         'signed': False,
         'changes': [dict(entry, mode=mode) for entry, _, _, mode in prepared],
+        'inputPins': manifest.get('inputPins', {}),
     }
     if not args.apply:
         print(json.dumps({'prepared': True, 'dryRun': True, 'files': len(prepared)}))
@@ -111,6 +144,7 @@ def main():
     applied = []
     try:
         # Revalidate the complete read set before the first mutation.
+        verify_read_set()
         for entry, supplied, target, _ in prepared:
             now = digest(target) if target.exists() else None
             if now != entry.get('beforeSha256') or digest(supplied) != entry['afterSha256']:
@@ -132,6 +166,7 @@ def main():
         for entry, _, target, _ in prepared:
             if digest(target) != entry['afterSha256']:
                 raise ValueError('Post-projection hash differs: ' + entry['path'])
+        verify_read_set(final=True)
         report['applied'] = True
     except Exception as error:
         # Do not overwrite an unexpected writer while attempting a rollback.

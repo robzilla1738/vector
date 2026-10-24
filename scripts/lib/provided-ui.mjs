@@ -142,6 +142,8 @@ export async function stageProvidedUi({
   outputRoot,
   identities,
   transformText,
+  postIdentityTransformText,
+  featureProfile = "baseline",
   cloudProfile,
   identityProfile = 'compatibility',
   stateIdentityVersion = 1,
@@ -203,7 +205,8 @@ export async function stageProvidedUi({
   } catch (error) {
     if (error.code !== 'ENOENT') throw error;
   }
-  const report = { version: 1, identityProfile, stateIdentityVersion, components: {} };
+  if (!["baseline", "desktop-v1"].includes(featureProfile)) throw Error("Unknown supplied feature profile");
+  const report = { version: 1, identityProfile, stateIdentityVersion, featureProfile, components: {} };
   const mark = await readAuxMark();
   const browserIcon = stateIdentityVersion === 2 ? await loadAuxBrowserIconReplacement() : null;
   const reviewedReplacements = browserIcon ? [browserIcon] : [];
@@ -411,6 +414,15 @@ export async function stageProvidedUi({
             text = apply(text, anchor);
             anchors.push(anchor);
           }
+          if (postIdentityTransformText) {
+            const result = await postIdentityTransformText({component, path: file.path, text});
+            let replayed = text;
+            for (const anchor of result.anchors) replayed = apply(replayed, anchor);
+            if (replayed !== result.text)
+              throw Error(`Unreported post-identity transformation: ${component}/${file.path}`);
+            text = replayed;
+            anchors.push(...result.anchors);
+          }
           output = Buffer.from(text);
         }
         if (
@@ -472,7 +484,7 @@ export async function stageProvidedUi({
         const manifestPath = join(temporary, component, 'manifest.json');
         const revisions = JSON.parse(await readFile(join(repository, 'vendor/provided/agent-revisions.json'), 'utf8'));
         if (!revisions.length || revisions.some((r, i) => r.revision !== i + 1)) throw new Error('Agent revision ledger must be consecutive');
-        const revised = reviseAgentManifest({manifestText: await readFile(manifestPath, 'utf8'), files, review: revisions.filter(review => review.profile === cloudProfile && (review.identityProfile ?? 'compatibility') === identityProfile && (review.stateIdentityVersion ?? 1) === stateIdentityVersion).at(-1)});
+        const revised = reviseAgentManifest({manifestText: await readFile(manifestPath, 'utf8'), files, review: revisions.filter(review => review.profile === cloudProfile && (review.featureProfile ?? "baseline") === featureProfile && (review.identityProfile ?? 'compatibility') === identityProfile && (review.stateIdentityVersion ?? 1) === stateIdentityVersion).at(-1)});
         const entry = files.find(f => f.path === 'manifest.json');
         entry.anchors = [...(entry.anchors ?? []), revised.anchor];
         entry.changeKinds = [...new Set([...entry.changeKinds, 'integration'])];

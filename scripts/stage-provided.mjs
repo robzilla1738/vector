@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import { resolveProtocolIdentity, resolveStateIdentityVersion } from '../vendor/provided/aux-protocol-identity.mjs';
+import { transformAuxBrowserFeatureUi } from '../vendor/provided/aux-browser-feature-composition.mjs';
 // Stage the supplied implementation. Never launch it or silently insert reconstructed components.
 import { lstat, mkdir, mkdtemp, readFile, rename, rm, writeFile } from 'node:fs/promises';
 import { dirname, join, resolve } from 'node:path';
@@ -30,9 +31,11 @@ const args = process.argv.slice(2);
 const options = {};
 for (let i = 0; i < args.length; i++) {
   if (args[i] === '--replace') { options.replace = true; continue; }
-  if (!['--output', '--app-path', '--source-snapshot', '--cloud-profile', '--identity-profile', '--state-identity-version'].includes(args[i]) || !args[i + 1] || args[i + 1].startsWith('--') || options[args[i]]) throw new Error('Usage: stage-provided.mjs [--output PATH] [--app-path FINAL_AUX_APP] [--source-snapshot ROOT] [--cloud-profile development|production] [--identity-profile compatibility|aux-v1] [--state-identity-version 1|2] [--replace]');
+  if (!['--output', '--app-path', '--source-snapshot', '--cloud-profile', '--identity-profile', '--state-identity-version', '--feature-profile'].includes(args[i]) || !args[i + 1] || args[i + 1].startsWith('--') || options[args[i]]) throw new Error('Usage: stage-provided.mjs [--output PATH] [--app-path FINAL_AUX_APP] [--source-snapshot ROOT] [--cloud-profile development|production] [--identity-profile compatibility|aux-v1] [--state-identity-version 1|2] [--feature-profile baseline|desktop-v1] [--replace]');
   options[args[i]] = args[++i];
 }
+const featureProfile = options['--feature-profile'] ?? 'desktop-v1';
+if (!['baseline', 'desktop-v1'].includes(featureProfile)) throw Error('Unknown feature profile');
 const identityProfile = resolveProtocolIdentity(options['--identity-profile']);
 const stateIdentityVersion = resolveStateIdentityVersion(options['--state-identity-version'] === undefined ? 1 : Number(options['--state-identity-version']), identityProfile);
 const cloudOptions = options['--cloud-profile'] ? { enableCloud: true, profile: options['--cloud-profile'] } : {};
@@ -62,7 +65,10 @@ for (const path of providedStageInputs) adaptationInputs.push({ path, sha256: cr
 await mkdir(dirname(output), { recursive: true });
 const temporary = await mkdtemp(join(dirname(output), '.provided-stack-'));
 try {
-  const ui = await stageProvidedUi({ sourceRoots: Object.fromEntries(Object.entries(pins.components).map(([name, value]) => [name, sourceSnapshot?.roots[name] ?? value.inputRoot])), outputRoot: join(temporary, 'ui'), identities, identityProfile, stateIdentityVersion, ...(cloudPolicy.mode !== 'local' ? { cloudProfile: cloudPolicy.mode } : {}), transformText(input) {
+  const ui = await stageProvidedUi({ sourceRoots: Object.fromEntries(Object.entries(pins.components).map(([name, value]) => [name, sourceSnapshot?.roots[name] ?? value.inputRoot])), outputRoot: join(temporary, 'ui'), identities, identityProfile, stateIdentityVersion, featureProfile, postIdentityTransformText(input) {
+    if (featureProfile !== 'desktop-v1' || input.component !== 'agent') return {text: input.text, anchors: []};
+    return transformAuxBrowserFeatureUi({relative: input.path, text: input.text});
+  }, ...(cloudPolicy.mode !== 'local' ? { cloudProfile: cloudPolicy.mode } : {}), transformText(input) {
     const scope = transformProvidedPasswordManagerScope(input);
     const native = transformProvidedNativeUi({ ...input, text: scope.text });
     const boundary = transformProvidedUiBoundary({ ...input, text: native.text });
@@ -102,7 +108,7 @@ try {
     if (createHash('sha256').update(await readFile(join(repository, input.path))).digest('hex') !== input.sha256) throw new Error('Aux artwork or adaptation code changed during staging; retry with stable inputs');
   }
   const report = {
-    version: 1, implementation: 'supplied', identityProfile, stateIdentityVersion, productionReady: false, finalApp, brandInputs, adaptationInputs,
+    version: 1, implementation: 'supplied', identityProfile, stateIdentityVersion, featureProfile, productionReady: false, finalApp, brandInputs, adaptationInputs,
     ...(cloudPolicy.mode !== 'local' ? { cloudPolicy } : {}),
     components: { ui: 'ui/manifest.json', apps: 'apps/manifest.json', distribution: 'distribution/manifest.json', computerUse: 'computer-use/manifest.json' },
     blockers: [...apps.blockers, ...unresolvedNativeCapabilities, 'Bundled runtime/native startup and memory-cache provisioning acceptance', ...computerUse.remaining, 'Packaged local UI and behavior acceptance'],

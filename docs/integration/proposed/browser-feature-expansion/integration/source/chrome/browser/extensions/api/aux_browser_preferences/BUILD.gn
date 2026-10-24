@@ -1,0 +1,16 @@
+import("//chrome/browser/buildflags.gni")
+
+source_set("aux_browser_preferences") {
+  sources = [ "aux_browser_preferences_api.cc", "aux_browser_preferences_api.h", "aux_browser_preferences_api_mac.mm", "aux_feature_expansion_api.cc", "aux_feature_expansion_api.h" ]
+  public_deps = [ "//chrome/browser/extensions/api/aux_common", "//chrome/browser:shell_integration" ]
+  deps = [ "//base", "//chrome/browser:browser_process", "//chrome/browser/content_settings:content_settings_factory", "//chrome/browser/profiles:profile", "//chrome/browser/profiles:profile_manager", "//chrome/browser/search_engines", "//chrome/browser/themes", "//chrome/browser/ui/zoom", "//chrome/browser/ui/tabs:tab_strip", "//chrome/browser/mac", "//components/content_settings/core/browser", "//components/keep_alive_registry", "//components/language/core/browser", "//components/prefs", "//components/search_engines", "//components/spellcheck/browser", "//components/user_prefs", "//components/version_info", "//ui/base", "//third_party/blink/public/common" ]
+  if (is_mac && enable_aux_browser) {
+    deps += [ "//chrome/browser/aux:keyboard_shortcuts", "//chrome/browser/ui:aux_profile_search_headers", "//components/omnibox/browser", "//chrome/browser/aux:profile_state", "//chrome/browser/aux:profile_identity", "//chrome/browser/aux:platform", "//content/public/browser", "//components/sessions:session_id" ]
+  }
+  frameworks = [ "Foundation.framework", "CoreFoundation.framework" ]
+}
+
+source_set("headers") {
+ sources = [ "aux_browser_preferences_api.h", "aux_feature_expansion_api.h" ]
+ public_deps = [ "//chrome/browser/extensions/api/aux_common", "//chrome/browser:shell_integration" ]
+}

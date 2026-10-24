@@ -1,6 +1,22 @@
 // Transform provenance prevents an older, internally consistent UI stage from
 // silently passing after its branding/platform adaptation code has changed.
 export const providedStageInputs = Object.freeze([
+  'vendor/provided/aux-navigation-command-bar.mjs',
+  'vendor/provided/aux-browser-feature-composition.mjs',
+  'vendor/provided/aux-browser-feature-settings.mjs',
+  'vendor/provided/aux-shortcut-profiles.mjs',
+  'vendor/provided/aux-productivity-capture.mjs',
+  'vendor/provided/aux-productivity-developer.mjs',
+  'vendor/provided/aux-productivity-file-chooser.mjs',
+  'vendor/provided/aux-productivity-integration.mjs',
+  'vendor/provided/aux-productivity-proposals.mjs',
+  'vendor/provided/aux-productivity-tab-context.mjs',
+  'vendor/provided/aux-productivity-context-read.mjs',
+  'vendor/provided/aux-theme-editor.mjs',
+  'vendor/provided/aux-productivity-files.mjs',
+  'vendor/provided/aux-productivity-media.mjs',
+  'vendor/provided/aux-browser-routing.mjs',
+
   'vendor/provided/aux-channel-bot-assets.mjs',
   'docs/integration/proposed/final-completion/channel-bot-assets.json',
   'vendor/provided-ui/branding/channel-bots/discord.jpg',

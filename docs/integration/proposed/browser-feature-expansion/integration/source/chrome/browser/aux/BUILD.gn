@@ -1,0 +1,239 @@
+# Independent native implementation: docs/spec/native/platform.md P1/P2/P4.
+import("//chrome/browser/buildflags.gni")
+source_set("platform") {
+  sources = [
+    "installation_auth.cc",
+    "installation_auth.h",
+    "installation_carrier_custody.cc",
+    "installation_carrier_custody.h",
+    "daemon_supervisor.cc",
+    "daemon_supervisor.h",
+    "direct_daemon_quiesce_result.h",
+    "owned_direct_helper_quiesce.h",
+    "component_bootstrap.cc",
+    "component_bootstrap.h",
+    "browser_platform.cc",
+    "browser_platform.h",
+    "../devtools/aux_cdp_authority.cc",
+    "../devtools/aux_cdp_authority.h",
+  ]
+  deps = [ "//base", "//crypto", "//net", "//services/network/public/cpp", "//components/crx_file" ]
+  if (is_mac) {
+    sources += [
+      "AuxNativeParentColdLaunch.cc",
+    "AuxBrowserNetworkPaths.cc",
+      "AuxNativeParentColdLaunch.h",
+      "AuxBrowserPrivateRoots.cc",
+      "AuxBrowserPrivateRoots.h",
+      "AuxChromiumBrowserRootProducer.cc",
+      "AuxNativePeerTransport.cc",
+      "AuxNativePeerTransport.h",
+      "AuxNativePeerWire.h",
+      "AuxOwnedNativePeerChild.cc",
+      "AuxOwnedNativePeerChild.h",
+      "AuxSelectedStateHome.cc",
+      "AuxSelectedStateHome.h",
+      "AuxSelectedHomePolicyBridge.h",
+    ]
+    deps += [ "native_peer_policy:aux_parent_sealed_policy" ]
+    frameworks = [ "CoreFoundation.framework", "Security.framework" ]
+    libs = [ "bsm" ]
+  }
+}
+
+executable("auth_probe") {
+  testonly = true
+  sources = [ "auth_probe.cc" ]
+  deps = [ ":platform", "//base", "//crypto", "//net" ]
+}
+
+# Public interface only. Implementation lives in ui to avoid a dependency
+# cycle with UI's browser/tab helpers and PrerenderWebContentsDelegateImpl.
+source_set("ntp_prerender") {
+  public = [ "ntp_prerender_service.h" ]
+}
+
+source_set("profile_state") {
+  sources = [ "profile_state.cc", "profile_state.h", "profile_account_metadata.cc", "profile_account_metadata.h" ]
+  public_deps = [ "//base" ]
+}
+
+source_set("account_bootstrap_state") {
+  sources = [ "account_bootstrap_state.cc", "account_bootstrap_state.h" ]
+  public_deps = [ "//base" ]
+}
+
+# Stable tab metadata shared by the supplied browser and optional legacy shell.
+# Keep it outside ui/aux/BUILD.gn, which asserts enable_aux_shell.
+source_set("page_identity") {
+  sources = [
+    "../ui/aux/page_identity.cc",
+    "../ui/aux/page_identity.h",
+  ]
+  public_deps = [ "//content/public/browser" ]
+  deps = [
+    "//base",
+    "//chrome/browser/profiles:profile",
+    "//chrome/browser/sessions",
+    "//components/sessions",
+    "//ui/gfx/geometry",
+  ]
+}
+
+source_set("profile_identity") {
+  sources = [ "profile_identity.cc", "profile_identity.h" ]
+  public_deps = [ "//base" ]
+  deps = [
+    "//chrome/browser:browser_process",
+    "//chrome/browser/profiles:profile",
+    "//chrome/browser/profiles:profile_manager",
+    "//chrome/browser/profiles:profile_util",
+    "//components/prefs",
+    "//content/public/browser",
+  ]
+}
+
+source_set("profile_security_client") {
+  sources = [ "profile_security_client.cc", "profile_security_client.h" ]
+  public_deps = [ ":profile_state", "//services/network/public/cpp" ]
+  deps = [ ":profile_identity", "//net", "//url" ]
+}
+
+# Interface only, exactly like ntp_prerender. Implemented by the full UI target.
+source_set("profile_gate") {
+  public = [ "profile_gate.h" ]
+  public_deps = [ "//base" ]
+}
+
+source_set("profile_gate_prefs") {
+  sources = [ "profile_gate_prefs.cc", "profile_gate_prefs.h", "account_profile_prefs.cc", "account_profile_prefs.h" ]
+  deps = [ "//components/prefs", "//components/pref_registry" ]
+}
+
+executable("profile_state_probe") {
+ testonly = true
+ sources = [ "profile_state_probe.cc" ]
+ deps = [ ":profile_state", "//base" ]
+}
+
+executable("auth_scheme_probe") {
+  testonly = true
+  sources = [ "auth_scheme_probe.cc" ]
+  deps = [ ":platform", "//base", "//crypto", "//net" ]
+}
+
+# Root-owned GN delta; do not paste into pure profile_state/profile_gate targets.
+# profile_gate_prefs already compiles actual account_profile_prefs.cc/h.
+source_set("account_profile_source") {
+  sources = [ "account_profile_source.cc", "account_profile_source.h" ]
+  public_deps = [ "//base" ]
+  deps = [ ":account_bootstrap_state" ]
+}
+source_set("account_profile_updater") {
+  sources = [ "account_profile_updater.cc", "account_profile_updater.h",
+              "account_profile_avatar.cc", "account_profile_avatar.h" ]
+  public_deps = [ "//chrome/browser/ui:aux_profile_search_headers", "//base", "//chrome/browser/profiles:profile",
+                  "//components/keyed_service/content" ]
+  deps = [
+    ":account_profile_source", ":platform", ":profile_gate_prefs",
+    ":profile_identity", ":profile_state",
+    "//chrome/browser:browser_process", "//chrome/browser/image_fetcher",
+    "//chrome/browser/net", "//chrome/browser/profiles",
+    "//chrome/browser/profiles:profile_manager",
+    "//chrome/browser/profiles:profile_util", "//chrome/browser/sync:factories",
+    "//components/image_fetcher/core", "//components/keyed_service/core",
+    "//components/prefs", "//components/sync/base", "//components/sync/service",
+    "//content/public/browser", "//google_apis", "//net",
+    "//services/network/public/cpp", "//ui/gfx", "//url",
+  ]
+}
+# chrome/browser/profiles/BUILD.gn profiles_extra_parts_impl (only when
+# enable_aux_browser): deps += [ "//chrome/browser/aux:account_profile_updater" ]
+# Also add //chrome/browser:buildflags if not already a direct dependency there.
+# Existing :misc owns profile_key.cc; its new getter needs no extra source/dep.
+# Existing :platform owns browser_platform.cc/h; callback_list belongs to base.
+# :account_bootstrap_state owns the modified actual evaluator source, unchanged
+# pure-base dependencies. :profile_state keeps L4's protected reader only.
+# No :profile_manager_impl dependency and no UI owner dependency introduced.
+executable("account_profile_source_probe") {
+  testonly = true
+  sources = [ "account_profile_source_probe.cc" ]
+  deps = [ ":account_profile_source", "//base" ]
+}
+
+# Supplied Settings keyboard shortcut contract: parser is deliberately below
+# both MiniPopup and the command resolver, so neither depends on full UI.
+if (is_mac && enable_aux_browser) {
+  source_set("keyboard_shortcut_parser") {
+    public = [ "../ui/aux_keyboard_shortcut_parser.h" ]
+    public_deps = [
+      "//base",
+      "//ui/base",
+      "//ui/events",
+    ]
+  }
+
+  source_set("keyboard_shortcuts") {
+    public = [ "../ui/aux_keyboard_shortcuts.h" ]
+    sources = [ "../ui/aux_keyboard_shortcuts.mm" ]
+    public_deps = [ "//base" ]
+    deps = [
+      ":keyboard_shortcut_parser",
+      ":platform",
+      ":profile_identity",
+      "//crypto",
+      "//chrome/browser/ui:aux_profile_search_headers",
+      "//chrome/browser:browser_process",
+      "//chrome/browser/extensions/api/aux_mini_popup",
+      "//chrome/browser/profiles:profile",
+      "//chrome/browser/ui/browser_window",
+      "//components/pref_registry",
+      "//components/prefs",
+      "//content/public/browser",
+      "//ui/base",
+      "//ui/base/accelerators/global_accelerator_listener",
+      "//ui/events",
+      "//ui/gfx",
+    ]
+    frameworks = [ "AppKit.framework", "Carbon.framework" ]
+  }
+}
+
+# Synthetic packaged-generation predicate; no browser, Keychain or user state.
+if (is_mac) {
+  executable("startup_identity_probe") {
+    testonly = true
+    sources = [
+      "../../app/aux_packaged_state_identity.h",
+      "../../app/aux_startup_identity_probe.cc",
+    ]
+    deps = [ "//base" ]
+  }
+}
+
+# Exercise the production direct-child gate/drain with synthetic owned children.
+executable("daemon_lifecycle_tests") {
+  testonly = true
+  sources = [ "daemon_supervisor_lifecycle_unittest.cc" ]
+  deps = [
+    ":platform",
+    "//base",
+    "//mojo/core/test:run_all_unittests",
+    "//base/test:test_support",
+    "//services/network:test_support",
+    "//testing/gtest",
+  ]
+}
+
+# Direct-carrier custody, using actual native launch/wait and production reaper.
+executable("installation_carrier_lifecycle_tests") {
+  testonly = true
+  sources = [ "installation_carrier_lifecycle_unittest.cc" ]
+  deps = [
+    ":platform",
+    "//base",
+    "//mojo/core/test:run_all_unittests",
+    "//base/test:test_support",
+    "//testing/gtest",
+  ]
+}

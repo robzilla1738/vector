@@ -41,6 +41,8 @@ async function files(root, directory = '') {
 }
 const stack = await json(join(output, 'manifest.json'));
 const identityProfile = resolveProtocolIdentity(stack.identityProfile);
+const featureProfile = stack.featureProfile ?? 'baseline';
+if (!['baseline', 'desktop-v1'].includes(featureProfile)) throw Error('Unknown feature composition');
 const stateIdentityVersion = resolveStateIdentityVersion(stack.stateIdentityVersion ?? 1, identityProfile);
 const cloudOptions = stack.cloudPolicy ? { enableCloud: true, profile: stack.cloudPolicy.mode } : {};
 if (JSON.stringify(resolveCloudServicePolicy(cloudOptions)) !== JSON.stringify(stack.cloudPolicy ?? resolveCloudServicePolicy())) throw new Error('Unreviewed stage cloud policy');
@@ -57,6 +59,7 @@ for (const input of stack.brandInputs) {
 }
 const pins = await json(join(repository, 'docs/source/provided-ui-inputs.json'));
 const ui = await json(join(output, 'ui/manifest.json'));
+if ((ui.featureProfile ?? 'baseline') !== featureProfile) throw Error('UI feature composition mismatch');
 if ((ui.stateIdentityVersion ?? 1) !== stateIdentityVersion || resolveProtocolIdentity(ui.identityProfile) !== identityProfile) throw Error('UI protocol profile mismatch');
 const browserIcon = stateIdentityVersion === 2 ? await loadAuxBrowserIconReplacement() : null;
 const reviewedReplacements = browserIcon ? [browserIcon] : [];
