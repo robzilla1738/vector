@@ -6,6 +6,7 @@
 #define COMPONENTS_SPLIT_TABS_SPLIT_TAB_VISUAL_DATA_H_
 
 #include <optional>
+#include <utility>
 
 #include "components/split_tabs/split_pane_tree.h"
 

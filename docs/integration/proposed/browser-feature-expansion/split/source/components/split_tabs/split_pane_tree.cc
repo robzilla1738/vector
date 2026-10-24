@@ -170,7 +170,7 @@ std::vector<SplitPaneTree::Placement> SplitPaneTree::Layout(
   std::function<void(uint32_t, Rect)> layout = [&](uint32_t id, Rect rect) {
     const Node& node = *Find(id);
     if (node.slot) {
-      result.push_back({id, node.slot, node.axis, rect});
+      result.push_back({id, node.slot, node.axis, rect, rect});
       return;
     }
     const bool horizontal = node.axis == Axis::kHorizontal;
@@ -200,7 +200,7 @@ std::vector<SplitPaneTree::Placement> SplitPaneTree::Layout(
       second.y += first_size + gap; second.height = usable - first_size;
     }
     layout(node.first, first);
-    result.push_back({id, 0, node.axis, handle});
+    result.push_back({id, 0, node.axis, handle, rect});
     layout(node.second, second);
   };
   layout(root_, bounds);

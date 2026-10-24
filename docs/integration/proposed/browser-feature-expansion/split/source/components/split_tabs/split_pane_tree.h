@@ -39,6 +39,7 @@ class SplitPaneTree {
     uint32_t slot = 0;  // Zero indicates a divider.
     Axis axis = Axis::kHorizontal;
     Rect bounds;
+    Rect region;  // Parent branch bounds for divider movement.
   };
 
   static SplitPaneTree Pair(Axis axis, double ratio = 0.5);
