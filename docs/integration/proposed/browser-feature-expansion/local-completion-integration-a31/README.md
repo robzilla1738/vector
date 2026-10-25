@@ -18,7 +18,9 @@ with product ad hoc signing disabled. Full A67 compiled the paired Swift policy
 and linked the native CLI but failed a native C++ unused `ScopedFD::release`
 return. A32 acknowledges that same handle transfer without changing ownership
 or behavior and resumes the unchanged reviewed graph as A68. A67's failed receipt
-and sources remain preserved. A68 runtime/assembly acceptance is not inferred.
+and sources remain preserved. A68 passed full link and final bundle checks;
+`../local-completion-integration-a32/actual-full-build.json` binds the frozen
+416-leaf unsigned app and standalone CLI. Runtime/assembly acceptance is not inferred.
 
 The daemon counterpart still needs its full current-source link and package;
 the finite memory helper's durable restart record is being paired separately.

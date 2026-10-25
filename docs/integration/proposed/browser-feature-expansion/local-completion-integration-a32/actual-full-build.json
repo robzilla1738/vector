@@ -1,0 +1,16 @@
+{
+  "passed": true,
+  "snapshot": "/private/tmp/aux-chromium-recovery-snapshot-20261023/unsigned-native-user-browser-build-20261025-a68/Aux.app",
+  "fullBuildReceipt": "/private/tmp/aux-chromium-recovery-snapshot-20261023/unsigned-native-user-browser-build-20261025-a68/receipt.json",
+  "fullBuildReceiptSha256": "f8ff6b0258a184e09ef06c5de261ad665602823e667102fdcfc361d764241baa",
+  "inventoryFileSha256": "619a3cf5b5da0b03cfc34107269b73a760b9d0e2e3aea280e30ab4a9e05271e0",
+  "leafCount": 416,
+  "nativeCli": {
+    "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/unsigned-native-user-browser-build-20261025-a68/aux-cli",
+    "sha256": "a1a96fdb3fe28ecfc76021267f19edf4e76ca5f3a5a8edc45a2629ffbe689551",
+    "unsigned": true
+  },
+  "unsigned": true,
+  "executed": false,
+  "acceptedAppUnchanged": true
+}

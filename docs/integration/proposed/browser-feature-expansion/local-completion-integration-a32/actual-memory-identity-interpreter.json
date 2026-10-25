@@ -1,0 +1,18 @@
+{
+  "passed": true,
+  "exitCode": 0,
+  "runner": "/usr/bin/swift",
+  "runnerWritesHostExecutable": false,
+  "sourcePins": {
+    "docs/integration/proposed/aux-native-p256-envelope-port/source/EnvelopeRecords.swift": "e6b8b6bcae9f6b34cc5dfe757e5f0130297f1c4c3bae81636387a06e24dc34d6",
+    "docs/integration/proposed/browser-feature-expansion/productivity-helper-compatibility-a40/source/AuxRegisteredMemoryAccountOwner.swift": "65c5a4686391764c15b2382e4de6f283a863c04bd9c0048f15abc008ef093c6e",
+    "docs/integration/proposed/browser-feature-expansion/productivity-helper-compatibility-a40/fixture/AccountIdentityFixture.swift": "775ed6cf5ed3b04f0990a36b1a344d49b18852eb1be321085b657da7df1e0ccf"
+  },
+  "harnessSha256": "2236e9b926844e8b028ed11b292ee04a7fce36741a0d3aa7160510f6dcae5f08",
+  "result": "PASS actual account parser: valid local identity, duplicate account/binding and missing owner refusal, changed incarnation/binding fencing, independent current selection, duplicate JSON-key refusal",
+  "diagnostics": "",
+  "nativeOwnerOperationsInvoked": false,
+  "ownerStateRead": false,
+  "productExecuted": false,
+  "signing": false
+}

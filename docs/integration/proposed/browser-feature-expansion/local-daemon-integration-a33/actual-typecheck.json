@@ -1,0 +1,11 @@
+{
+  "passed": true,
+  "exitCode": 0,
+  "planSha256": "056e4edc4ea938513709d3967593a8d64959dd5abddb852bcc97fc52ea5d7bf8",
+  "seconds": 18.322103667072952,
+  "sourceCount": 49,
+  "hostExecutableEmitted": false,
+  "productLinked": false,
+  "productExecuted": false,
+  "productSigned": false
+}
