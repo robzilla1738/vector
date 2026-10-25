@@ -1,0 +1,11 @@
+{
+  "format": "aux.ui-recovery-owner-preflight.adapter-request.v1",
+  "predecessorCommit": "64a41fbe3",
+  "sourcePlan": "source-plan.json",
+  "runtimeReplacement": "runtime-output.js.txt",
+  "exportsAdded": [
+    "auxCheckDraftMigrationRecoveryAdoption"
+  ],
+  "owner": "root",
+  "note": "Extracts the existing real A27 predicates once. Adopt keeps every prior check; only Check skips desired-store publication and invokes no setters."
+}

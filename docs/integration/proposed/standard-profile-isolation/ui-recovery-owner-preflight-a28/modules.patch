@@ -1,0 +1,73 @@
+--- a/assets/draft-storage-ixLojjZ5.js
++++ b/assets/draft-storage-ixLojjZ5.js
+@@ -502,22 +502,16 @@
+   }catch(error){return{format:"aux.ui-draft-owner-adoption.v1",ok:false,pending:true,complete:false,retained:!!lease,
+     requestId:lease?.requestId,leaseId:lease?.id,revision:lease?.revision,error:String(error?.message??error)}}
+ }
+-function auxAdoptDraftMigrationRecovery(leaseId,revision,plan){
+-  const lease=auxDraftMigrationLease;
+-  try{
+-    const raw=JSON.stringify(plan);
+-    if(typeof raw!=="string"||raw.length>67108864)throw Error("Owner adoption plan exceeds its bound");
+-    if(lease?.adoption){
+-      if(lease.adoption.planJson!==raw)throw Error("Original adoption plan is immutable");
+-      return auxReadDraftMigrationRecoveryAdoption(leaseId,revision);
+-    }
++function auxDraftRecoveryPrepareOwnerPlan(leaseId,revision,plan,requirePublishedStores){
++  const lease=auxDraftMigrationLease,raw=JSON.stringify(plan);
++  if(typeof raw!=="string"||raw.length>67108864)throw Error("Owner adoption plan exceeds its bound");
+     auxAssertDraftMigrationOwners(leaseId,revision);
+     if(!lease.recoveryReadOnly||!lease.sealed||plan?.format!=="aux.ui-draft-owner-adoption.v1"||
+        !["source","target"].includes(plan.desired))throw Error("Sealed fresh recovery lease and finite alternatives required");
+     if(auxDraftMigrationHasClaim())throw Error("A current claim is still owned");
+     const sourceCapture=auxDraftRecoveryParseCapture(plan.sourceCaptureJson),targetCapture=auxDraftRecoveryParseCapture(plan.targetCaptureJson);
+     const capture=plan.desired==="source"?sourceCapture:targetCapture,currentCapture=JSON.parse(auxDraftMigrationCaptureJson());
+-    if(!auxDraftRecoveryStoresEqual(currentCapture,capture))throw Error("Native desired stores are not actually observed");
++    if(requirePublishedStores&&!auxDraftRecoveryStoresEqual(currentCapture,capture))throw Error("Native desired stores are not actually observed");
+     const source=auxDraftRecoveryParseOwners(plan.sourceOwnerStateJson),target=auxDraftRecoveryParseOwners(plan.targetOwnerStateJson);
+     const entries=[...auxDraftMigrationOwners.values()],owners=[],seen=new Set;
+     if(source.size!==entries.length||target.size!==entries.length)throw Error("Actual owner inventory differs from the recorded alternatives");
+@@ -563,6 +557,34 @@
+     }
+     for(const [key] of memory.settings)if(!allowedScopes.has(key.slice(C.length+1)))
+       throw Error("Retained settings have no actual current scope owner");
++  return{lease,raw,owners,memory,memoryJson,capture};
++}
++function auxCheckDraftMigrationRecoveryAdoption(leaseId,revision,plan){
++  const lease=auxDraftMigrationLease;
++  try{
++    // A check happens BEFORE native physical Restore. The actual original
++    // fresh renderer source remains sealed and must still validate strictly.
++    const current=auxValidateDraftMigrationCapture(leaseId,revision);
++    if(!current.ok)throw Error(current.error??"Fresh source lease changed before owner preflight");
++    const prepared=auxDraftRecoveryPrepareOwnerPlan(leaseId,revision,plan,false);
++    // Setter closures are discarded without invocation. No plan, memory,
++    // owner, ACK, source baseline or adoption phase is changed by this read.
++    return{format:"aux.ui-draft-owner-adoption-preflight.v1",ok:true,readOnly:true,retained:true,
++      requestId:lease.requestId,leaseId,revision};
++  }catch(error){return{format:"aux.ui-draft-owner-adoption-preflight.v1",ok:false,readOnly:true,
++    retained:!!lease,requestId:lease?.requestId,leaseId:lease?.id,revision:lease?.revision,
++    error:String(error?.message??error)}}
++}
++function auxAdoptDraftMigrationRecovery(leaseId,revision,plan){
++  const lease=auxDraftMigrationLease;
++  try{
++    const raw=JSON.stringify(plan);
++    if(typeof raw!=="string"||raw.length>67108864)throw Error("Owner adoption plan exceeds its bound");
++    if(lease?.adoption){
++      if(lease.adoption.planJson!==raw)throw Error("Original adoption plan is immutable");
++      return auxReadDraftMigrationRecoveryAdoption(leaseId,revision);
++    }
++    const {owners,memory,memoryJson,capture}=auxDraftRecoveryPrepareOwnerPlan(leaseId,revision,plan,true);
+     lease.adoption={planJson:raw,owners,memoryJson,capture,complete:false};lease.phase="adopting";
+     // Every real owner has preflighted before the first mutation. Failures
+     // retain partial state/hold; no timeout or destructor reports completion.
+@@ -636,6 +658,6 @@
+ if(typeof window!=="undefined")for(const type of ["beforeinput","paste","drop","keydown","click","submit","compositionstart"])
+   window.addEventListener(type,event=>{if(auxDraftMigrationLease&&auxDraftMigrationLease.phase!=="releasing"&&!auxDraftMigrationFlushing){event.preventDefault();event.stopImmediatePropagation()}},true);
+ 
+-export{k as a,W as c,F as i,J as l,U as n,$ as o,b as r,X as s,H as t,j as u,auxCaptureDraftMigration,auxPrepareDraftMigrationCapture,auxPrepareDraftMigrationRecoveryCapture,auxValidateDraftMigrationCapture,auxSealDraftMigrationCapture,auxObserveDraftMigrationTarget,auxReadDraftMigrationCapture,auxReleaseDraftMigrationCapture,auxRegisterDraftMigrationOwner,auxBeginDraftMigrationWork,auxDraftMigrationBlocked,auxDraftMigrationChanged,auxGetNewtabDraftSettingsOwner,auxDraftMigrationRecoveryApplying,auxDraftRecoveryDraftForScope,auxDraftRecoverySettingsForScope,auxAdoptDraftMigrationRecovery,auxReadDraftMigrationRecoveryAdoption,auxHandoffDraftMigrationRecovery,auxReadDraftMigrationRecoveryHandoff};
++export{k as a,W as c,F as i,J as l,U as n,$ as o,b as r,X as s,H as t,j as u,auxCaptureDraftMigration,auxPrepareDraftMigrationCapture,auxPrepareDraftMigrationRecoveryCapture,auxValidateDraftMigrationCapture,auxSealDraftMigrationCapture,auxObserveDraftMigrationTarget,auxReadDraftMigrationCapture,auxReleaseDraftMigrationCapture,auxRegisterDraftMigrationOwner,auxBeginDraftMigrationWork,auxDraftMigrationBlocked,auxDraftMigrationChanged,auxGetNewtabDraftSettingsOwner,auxDraftMigrationRecoveryApplying,auxDraftRecoveryDraftForScope,auxDraftRecoverySettingsForScope,auxAdoptDraftMigrationRecovery,auxReadDraftMigrationRecoveryAdoption,auxHandoffDraftMigrationRecovery,auxReadDraftMigrationRecoveryHandoff,auxCheckDraftMigrationRecoveryAdoption};
+ 
+ //# chunkId=dc29686c-6219-5808-a0c8-7bc52066a228
+\ No newline at end of file

@@ -1,0 +1,17 @@
+{
+  "format": "aux.ui-owner-adoption.focused.actual.v1",
+  "passed": true,
+  "modules": 8,
+  "changedModules": 1,
+  "countedAnchors": 2,
+  "focusedActualCodeSyntheticCases": 8,
+  "exactReplayPassed": true,
+  "reversePatchPassed": true,
+  "moduleSyntaxPassed": true,
+  "providedClassStringsPreserved": true,
+  "sourcePlanSha256": "59368899035105f7384afecdadbab360cf00443d851992c2b80798bffea31d2d",
+  "activeAdaptersChanged": false,
+  "nativeExecuted": false,
+  "productExecuted": false,
+  "runtimeAcceptance": false
+}
