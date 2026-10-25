@@ -1,0 +1,58 @@
+--- a/chrome/browser/aux/profile_gate.h
++++ b/chrome/browser/aux/profile_gate.h
+@@ -11,6 +11,11 @@
+ class WebContents;
+ }
+ namespace aux {
++// Header-only lifecycle seam for the actual native Profile creation owner.
++// The definition and enum remain in the existing profile identity/UI owners;
++// this declaration introduces no reverse dependency on the full UI target.
++enum class FreshProfileIdentityInitialization;
++FreshProfileIdentityInitialization InitializeFreshProfileIdentity(Profile* profile);
+ // Local browser visibility lifecycle. Account and daemon authorization are
+ // separate from browser visibility; Aux does not include a password vault.
+ bool CanShowBrowser(
+--- a/chrome/browser/profiles/profile_impl.cc
++++ b/chrome/browser/profiles/profile_impl.cc
+@@ -119,6 +119,9 @@
+ #include "chrome/browser/webid/federated_identity_permission_context_factory.h"
+ #include "chrome/common/buildflags.h"
+ #include "chrome/browser/buildflags.h"
++#if BUILDFLAG(ENABLE_AUX_BROWSER)
++#include "chrome/browser/aux/profile_gate.h"
++#endif
+ #if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
+ #include "chrome/browser/profiles/aux_async_profile_creation_admission.h"
+ #endif
+@@ -1260,6 +1263,17 @@
+ 
+   g_browser_process->profile_manager()->InitProfileUserPrefs(this);
+ 
++#if BUILDFLAG(ENABLE_AUX_BROWSER)
++  // Actual PrefService setup is complete; initialize only the genuinely fresh
++  // admitted store before keyed services and extension UI can observe its ID.
++  // The existing initializer preserves nonempty/ambiguous state and reports
++  // queued persistence only, never durable completion or task authority.
++  const auto aux_profile_alive = GetWeakPtr();
++  aux::InitializeFreshProfileIdentity(this);
++  if (!aux_profile_alive)
++    return;
++#endif
++
+ #if BUILDFLAG(IS_CHROMEOS)
+   arc::ArcServiceLauncher::Get()->MaybeSetProfile(this);
+ #endif
+--- a/chrome/browser/profiles/BUILD.gn
++++ b/chrome/browser/profiles/BUILD.gn
+@@ -155,6 +155,11 @@
+     "//sql",
+     "//ui/base",
+   ]
++
++  if (enable_aux_browser) {
++    # Interface only; initializer implementation stays in the existing full UI.
++    deps += [ "//chrome/browser/aux:profile_gate" ]
++  }
+ 
+   if (is_android) {
+     sources += [

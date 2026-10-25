@@ -1,0 +1,53 @@
+{
+  "format": "aux.ordinary-fresh-profile-initialization.patch.v1",
+  "nativeRoot": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src",
+  "files": [
+    {
+      "path": "chrome/browser/aux/profile_gate.h",
+      "inputSha256": "00833461201bc5b681027c41da273662af86577e8efed84b627eed1fd36a30e1",
+      "outputSha256": "2869035545b5d5fbb640657c46a3e67c9da5f54b74daa2826a77710dd57b3579",
+      "anchors": [
+        {
+          "find": "namespace aux {\n",
+          "replace": "namespace aux {\n// Header-only lifecycle seam for the actual native Profile creation owner.\n// The definition and enum remain in the existing profile identity/UI owners;\n// this declaration introduces no reverse dependency on the full UI target.\nenum class FreshProfileIdentityInitialization;\nFreshProfileIdentityInitialization InitializeFreshProfileIdentity(Profile* profile);\n",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/profiles/profile_impl.cc",
+      "inputSha256": "0dd9073de623a40ce7c1ff5631c33c61c055d9ebf3565f1fa38235f5540189e3",
+      "outputSha256": "08ca6421d28676df19ecd027c3e9489a5043d50284d3cc5a2c83bf4c9d62a613",
+      "anchors": [
+        {
+          "find": "#include \"chrome/browser/buildflags.h\"\n",
+          "replace": "#include \"chrome/browser/buildflags.h\"\n#if BUILDFLAG(ENABLE_AUX_BROWSER)\n#include \"chrome/browser/aux/profile_gate.h\"\n#endif\n",
+          "count": 1
+        },
+        {
+          "find": "  g_browser_process->profile_manager()->InitProfileUserPrefs(this);\n",
+          "replace": "  g_browser_process->profile_manager()->InitProfileUserPrefs(this);\n\n#if BUILDFLAG(ENABLE_AUX_BROWSER)\n  // Actual PrefService setup is complete; initialize only the genuinely fresh\n  // admitted store before keyed services and extension UI can observe its ID.\n  // The existing initializer preserves nonempty/ambiguous state and reports\n  // queued persistence only, never durable completion or task authority.\n  const auto aux_profile_alive = GetWeakPtr();\n  aux::InitializeFreshProfileIdentity(this);\n  if (!aux_profile_alive)\n    return;\n#endif\n",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/profiles/BUILD.gn",
+      "inputSha256": "9fc8bf8e2479b5c3b7130f77809dd4ae274847419dcf5b350f205c49a453629f",
+      "outputSha256": "283b2178f185391228552f4c62713e44797885a19b1f8ab3e9a077c44a5cc60a",
+      "anchors": [
+        {
+          "find": "  if (is_android) {\n    sources += [\n      \"android/profile_manager_utils.cc\",",
+          "replace": "  if (enable_aux_browser) {\n    # Interface only; initializer implementation stays in the existing full UI.\n    deps += [ \"//chrome/browser/aux:profile_gate\" ]\n  }\n\n  if (is_android) {\n    sources += [\n      \"android/profile_manager_utils.cc\",",
+          "count": 1
+        }
+      ]
+    }
+  ],
+  "patch": "fresh-profile-initialization.patch",
+  "ordinaryOrNativeAdmissionChecksChanged": false,
+  "profileIdentityImplementationChanged": false,
+  "uiChanged": false,
+  "nativeExecuted": false,
+  "signed": false
+}

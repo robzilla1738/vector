@@ -1,0 +1,14 @@
+{
+  "passed": true,
+  "files": 3,
+  "countedAnchors": 4,
+  "exactReplay": true,
+  "reversePatch": true,
+  "changedWhitespace": true,
+  "actualLifecycleOrderChecked": true,
+  "sharedNativeUnchanged": true,
+  "nativeCompiled": false,
+  "productExecuted": false,
+  "signed": false,
+  "manifestSha256": "85fbeb759ba868aa65549b38eeb89bfe25707855f2da6755650c70d7463dff9e"
+}
