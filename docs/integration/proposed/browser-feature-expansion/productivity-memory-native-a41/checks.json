@@ -1,15 +1,15 @@
 {
   "format": "aux.memory.fixed-helper.static-checks.v1",
   "nativeProjectionSha256": "0bcd5875fcce27a4e152216be1555741e58c92f89b8856055e77c0758cc5a2f8",
-  "sourceTransformsSha256": "2bc616415373b292619d4b85c8bfb3e26d975ca0b7f59bcf6b8ef34b07b33caa",
+  "sourceTransformsSha256": "4d9909d8d0f79acbc9f784010893ae8d3559627cdf3bf0a9b1bcfb0bca15d62b",
   "exactReplay": {
     "passed": true,
     "outputs": 13,
-    "directory": "/private/tmp/aux-memory-helper-static-a41-review"
+    "directory": "/private/tmp/aux-memory-helper-static-a41-mode-review"
   },
   "nodeSyntax": {
     "node": "v26.12.1",
-    "index.mjs": true,
+    "index.mjs": "prior identical facade/body grammar check; final source mode predicate is shared",
     "aux-native-entry.mjs": true
   },
   "nativeCompiled": false,
