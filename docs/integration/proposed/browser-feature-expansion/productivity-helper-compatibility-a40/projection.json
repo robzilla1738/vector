@@ -85,10 +85,15 @@
       "create": true,
       "output": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/productivity-helper-compatibility-a40/source/AuxRegisteredMemoryAccountOwner.swift",
       "outputSha256": "65c5a4686391764c15b2382e4de6f283a863c04bd9c0048f15abc008ef093c6e"
+    },
+    {
+      "create": true,
+      "output": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/productivity-helper-compatibility-a40/source/AuxRegisteredMemoryAccountOwner.h",
+      "outputSha256": "bf61a0d513d28d260d62f11c9e7282ef83c91b7d3a6f962703de403a5ff7b8a2"
     }
   ],
   "anchorCount": 11,
-  "sourceCount": 4,
+  "sourceCount": 5,
   "nativeBuilt": false,
   "productExecuted": false
 }

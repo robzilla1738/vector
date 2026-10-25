@@ -199,7 +199,8 @@ emit('AuxOwnedCommandDispatcher.swift',[
         entries.removeValue(forKey:handle);condition.broadcast()'''),
  ('@_cdecl("AuxNativeContextCopyBrowserRoot")',exports+'@_cdecl("AuxNativeContextCopyBrowserRoot")'),
 ])
-new=HERE/'source/AuxRegisteredMemoryAccountOwner.swift'
-rows.append({'create':True,'output':str(ROOT/HERE.relative_to(Path('/Users/rcourson/.codex/worktrees/aux-features-frame/web'))/'source'/new.name),'outputSha256':sha(new.read_bytes())})
+for name in ['AuxRegisteredMemoryAccountOwner.swift','AuxRegisteredMemoryAccountOwner.h']:
+ new=HERE/'source'/name
+ rows.append({'create':True,'output':str(ROOT/HERE.relative_to(Path('/Users/rcourson/.codex/worktrees/aux-features-frame/web'))/'source'/new.name),'outputSha256':sha(new.read_bytes())})
 (HERE/'projection.json').write_text(json.dumps({'format':'aux.memory-account-native-owner.v1','baseline':str(BUILD),'files':rows,'anchorCount':sum(len(x.get('anchors',[])) for x in rows),'sourceCount':len(rows),'nativeBuilt':False,'productExecuted':False},indent=2)+'\n')
 (HERE/'account-memory-owner.patch').write_text(''.join(patch));print(json.dumps({'sources':len(rows),'anchors':sum(len(x.get('anchors',[]))for x in rows)}))
