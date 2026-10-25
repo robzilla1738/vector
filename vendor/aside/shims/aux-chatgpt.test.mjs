@@ -1,12 +1,13 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, rmSync, readFileSync, readdirSync, symlinkSync, chmodSync, realpathSync, writeFileSync, statSync } from 'node:fs';
+import { mkdtempSync, rmSync, readFileSync, readdirSync, symlinkSync, chmodSync, realpathSync, writeFileSync, statSync, linkSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { generateKeyPairSync, sign } from 'node:crypto';
 import { createRequire } from 'node:module';
 import { spawn } from 'node:child_process';
 import { once } from 'node:events';
+import { runInNewContext } from 'node:vm';
 import { applyOfficialChatGPT, applyOfficialChatGPTCallbackAsset } from '../patches/chatgpt.mjs';
 const require = createRequire(import.meta.url);
 const { LocalChatGPTStore, ChatGPTPlanClient, ISSUER, SCOPES, publicChatGPTError, hasPlanCredentials, AccountModelCatalog, planResponsesApi, completedResponsesFetch, planModels, normalizePlanPayload } = require('./aux-chatgpt.cjs');
@@ -86,7 +87,7 @@ test('failed exchange retains only issued registration; cancelled in-flight exch
   await assert.rejects(f.client.complete('retry',f.callback(retry)),/cancelled/);assert.equal(f.store.read('fixture-account'),undefined);
 });
 
-test('kernel auth lock survives utility exit, refuses live contenders and recovers after actual process crash', {skip:process.platform!=='darwin'}, async t=>{
+test('direct kernel auth lock refuses live contenders and recovers after actual process crash', {skip:process.platform!=='darwin'}, async t=>{
   const f=fixture(t); const other=new LocalChatGPTStore(join(f.dir,'local-only'));
   let release, entered;const ready=new Promise(r=>entered=r);const hold=new Promise(r=>release=r);
   const operation=f.store.locked('same-account',async()=>{entered();await hold;});await ready;
@@ -102,6 +103,25 @@ test('kernel auth lock survives utility exit, refuses live contenders and recove
   const ended=once(child,'exit');child.kill('SIGKILL');await ended;
   await other.locked('crash-account',()=>{});const after=statSync(lockPath);assert.equal(before.ino,after.ino);
   assert.equal(JSON.parse(readFileSync(lockPath)).schema,'aux.chatgpt.auth-lock.v2');
+});
+test('credential locking needs no child-process capability and releases on callback failure', {skip:process.platform!=='darwin'}, async t=>{
+  const sandbox={module:{exports:{}},process,Buffer,URL,URLSearchParams,AbortController,AbortSignal,Headers,TextDecoder,
+    require:name=>{assert.notEqual(name,'node:child_process','credential lock must not acquire process-execution capability');return require(name);}};
+  runInNewContext(readFileSync(require.resolve('./aux-chatgpt.cjs'),'utf8'),sandbox);
+  const f=fixture(t),store=new sandbox.module.exports.LocalChatGPTStore(join(f.dir,'local-only'));
+  let admissions=0,unknown=0;store.lifetime={admit(){admissions++;},unknown(){unknown++;},signal:new AbortController().signal};
+  await assert.rejects(store.locked('callback-failure',()=>{throw Error('fixture callback failed');}),/fixture callback failed/);
+  await store.locked('callback-failure',()=>{});assert.equal(admissions,2);assert.equal(unknown,0);
+  const marker=join(f.dir,'local-only',`${createHashForFixture('callback-failure')}.lock`),before=statSync(marker);
+  await store.locked('callback-failure',()=>{});assert.equal(statSync(marker).ino,before.ino);
+});
+test('direct locking preserves rejected symlink and multiply-linked marker data', {skip:process.platform!=='darwin'},async t=>{
+  const f=fixture(t),target=join(f.dir,'untouched');writeFileSync(target,'fixture untouched',{mode:0o600});
+  const symbolic=join(f.dir,'local-only',`${createHashForFixture('symbolic')}.lock`);symlinkSync(target,symbolic);
+  await assert.rejects(f.store.locked('symbolic',()=>assert.fail('symlink accepted')));
+  const hard=join(f.dir,'local-only',`${createHashForFixture('hard')}.lock`);linkSync(target,hard);
+  await assert.rejects(f.store.locked('hard',()=>assert.fail('hard link accepted')),/unsafe local lock/);
+  assert.equal(readFileSync(target,'utf8'),'fixture untouched');assert.equal(readFileSync(hard,'utf8'),'fixture untouched');
 });
 function createHashForFixture(value){return require('node:crypto').createHash('sha256').update(value).digest('hex');}
 test('unknown legacy lock is preserved and never guessed stale',async t=>{

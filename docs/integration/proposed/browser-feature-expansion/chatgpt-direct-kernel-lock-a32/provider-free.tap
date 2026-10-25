@@ -1,0 +1,27 @@
+✔ actual local registration, signature, account isolation, issued-client refresh and token-free completion (78.249125ms)
+✔ callback state, nonce, signature, identity, permissions and replay fail closed (81.2145ms)
+✔ unsafe storage refuses; logout retains registration and clears all local tokens (52.148625ms)
+✔ supplied Responses adapter forces public endpoint and stateless streaming after hooks (0.543583ms)
+✔ inference stream requires actual completion; interrupted and incomplete streams refuse (4.087583ms)
+✔ failed exchange retains only issued registration; cancelled in-flight exchange cannot save tokens (36.002709ms)
+✔ direct kernel auth lock refuses live contenders and recovers after actual process crash (145.326917ms)
+✔ credential locking needs no child-process capability and releases on callback failure (11.414334ms)
+✔ direct locking preserves rejected symlink and multiply-linked marker data (6.304ms)
+✔ unknown legacy lock is preserved and never guessed stale (3.710375ms)
+✔ plan metadata uses exact supplied slugs and conservative unknown bounds without inventing capabilities (0.407208ms)
+✔ official plan payload removes unsupported fields, preserves history and local tool names, refuses unsupported tools/modalities (0.328667ms)
+✔ rejected refresh sets truthful local expired state without exposing provider body or retrying (51.382167ms)
+✔ local disconnect aborts a pending refresh and cannot resurrect cleared tokens (49.248541ms)
+✔ policy, temporary and client-configuration refresh failures retain tokens and safe diagnostic metadata (115.596708ms)
+✔ only documented terminal codes on the actual refresh endpoint reject renewable credentials (0.913541ms)
+✔ unstructured admission detail and oversized errors retain safe status/shape without provider text (0.45175ms)
+✔ inflight authorization IDs remain reserved until the actual callback settles (24.194583ms)
+✔ actual account-bound catalog invalidates on credential change and never grants sign-in-only access (0.519583ms)
+ℹ tests 19
+ℹ suites 0
+ℹ pass 19
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 826.863625

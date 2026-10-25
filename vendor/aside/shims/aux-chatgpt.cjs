@@ -3,7 +3,6 @@ const { randomBytes, randomUUID, createHash, createPublicKey, verify, timingSafe
 const { constants, openSync, closeSync, readFileSync, writeFileSync, fsyncSync, renameSync, unlinkSync, mkdirSync, lstatSync, fstatSync, readSync } = require('node:fs');
 const { join, resolve, parse } = require('node:path');
 const { homedir } = require('node:os');
-const { spawn } = require('node:child_process');
 const ISSUER = 'https://auth.openai.com';
 const RESOURCE = 'https://api.openai.com/v1';
 const SCOPES = 'openid profile email offline_access resource.invoke chatgpt.tokens.use.direct';
@@ -14,6 +13,9 @@ const present = value => typeof value === 'string' && value.length > 0 && value.
 const equal = (a, b) => typeof a === 'string' && typeof b === 'string' && Buffer.byteLength(a) === Buffer.byteLength(b) && timingSafeEqual(Buffer.from(a), Buffer.from(b));
 const digest = value => createHash('sha256').update(value).digest('hex');
 const nofollow = constants.O_NOFOLLOW;
+// Darwin SDK sys/fcntl.h: O_EXLOCK = 0x00000020. Node does not export it.
+// The platform check in diskLocked prevents reinterpreting this flag elsewhere.
+const darwinExclusiveLock = constants.O_EXLOCK ?? 0x00000020;
 const terminalRefreshCodes = new Set(['invalid_grant', 'invalid_refresh_token', 'token_expired', 'refresh_token_expired', 'refresh_token_invalidated', 'refresh_token_reused']);
 const providerLimit = 1024 * 1024;
 const providerMetadata = new WeakMap();
@@ -129,6 +131,7 @@ class LocalChatGPTStore {
     try { return await operation; } finally { if (this.operations.get(key) === operation) this.operations.delete(key); }
   }
   async diskLocked(key, fn) {
+    this.lifetime?.admit();
     privateDirectory(this.root);
     need(process.platform === 'darwin', 'protected local locking is supported only on macOS');
     const path = join(this.root, `${digest(key)}.lock`);
@@ -136,30 +139,31 @@ class LocalChatGPTStore {
     let fd;
     try {
       try {
-        fd = openSync(path, constants.O_RDWR | constants.O_NONBLOCK | constants.O_CREAT | constants.O_EXCL | nofollow, 0o600);
+        fd = openSync(path, constants.O_RDWR | constants.O_NONBLOCK | darwinExclusiveLock | constants.O_CREAT | constants.O_EXCL | nofollow, 0o600);
         writeFileSync(fd, JSON.stringify(marker)); fsyncSync(fd);
       } catch (error) {
         if (fd !== undefined || error.code !== 'EEXIST') throw error;
-        fd = openSync(path, constants.O_RDWR | constants.O_NONBLOCK | nofollow);
+        try { fd = openSync(path, constants.O_RDWR | constants.O_NONBLOCK | darwinExclusiveLock | nofollow); }
+        catch (error) {
+          if (error.code === 'EAGAIN' || error.code === 'EWOULDBLOCK') throw Error('ChatGPT: another local credential operation is in progress');
+          throw error;
+        }
       }
       const stat = fstatSync(fd);
       need(stat.isFile() && stat.uid === process.getuid() && (stat.mode & 0o077) === 0 && stat.nlink === 1 && stat.size < 1024, 'unsafe local lock file');
       let existing; try { const bytes = Buffer.alloc(stat.size); need(readSync(fd, bytes, 0, bytes.length, 0) === bytes.length, 'incomplete lock marker'); existing = JSON.parse(bytes.toString('utf8')); } catch { throw Error('ChatGPT: legacy or incomplete lock needs explicit recovery review'); }
       need(existing.schema === marker.schema && existing.account === marker.account, 'legacy or mismatched lock needs explicit recovery review');
-      // macOS lockf's descriptor form takes BSD flock on the inherited open-file
-      // description. This process retains the same descriptor after lockf exits.
-      // Its crash releases the kernel lock; the permanent inode is never unlinked.
-      const code = await new Promise((resolve, reject) => {
-        const child = spawn('/usr/bin/lockf', ['-s', '-t', '0', '3'], { stdio: ['ignore', 'ignore', 'ignore', fd], env: { PATH: '/usr/bin:/bin', LANG: 'C' } });
-        const timeout = setTimeout(() => { child.kill('SIGKILL'); }, 5000);
-        child.once('error', error => { clearTimeout(timeout); reject(Error('ChatGPT: local lock service unavailable')); });
-        child.once('close', (code, signal) => { clearTimeout(timeout); signal ? reject(Error('ChatGPT: local lock acquisition interrupted')) : resolve(code); });
-      });
-      need(code === 0, code === 75 ? 'another local credential operation is in progress' : 'local lock acquisition failed');
+      // O_EXLOCK acquires the same kernel flock while opening this exact inode.
+      // NONBLOCK refuses live contenders; no subprocess or inferred child cleanup.
+      // Retain the descriptor across the entire operation and close in finally.
+      this.lifetime?.signal.throwIfAborted();
       const current = lstatSync(path); privateDirectory(this.root);
       need(current.dev === stat.dev && current.ino === stat.ino && current.nlink === 1, 'local lock namespace changed');
       return await fn();
-    } finally { if (fd !== undefined) closeSync(fd); }
+    } finally {
+      if (fd !== undefined) try { closeSync(fd); }
+      catch (error) { this.lifetime?.unknown(); throw error; }
+    }
   }
   hostId() {
     privateDirectory(this.root);

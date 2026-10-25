@@ -1,0 +1,33 @@
+{
+  "sdk": "27.0",
+  "inputs": [
+    {
+      "path": "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/sys/fcntl.h",
+      "sha256": "9aca8ca87031ab7b670617e5af8b15a0cad8f34f7ab3bdb5dd799eb153b3ad0e"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/src/node_file.cc",
+      "sha256": "f2b38a1a9ffbd4f4eaf148d82af2a157489c35b337089cb6ad692ff0e9ee123a"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/deps/uv/src/unix/fs.c",
+      "sha256": "895d46c60b30e12249ed6a6696a184fcc594fccaefb008ddb3a3b6a694f0388b"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/fresh-startup-milestone-a42/ordinary-storage-native/AuxDevelopmentWorkerHost.cc",
+      "sha256": "a7b3f15d1e13b611696ed01d49924742dd106b38e46326f131bc2cabdc09c95c"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/fresh-startup-milestone-a42/http-request-adapter-source/aux-native-entry.mjs",
+      "sha256": "1d1e348b5dbddfe3cf320238c1f357eece6f6364b5c3d97e01903687c05a48d1"
+    }
+  ],
+  "observations": {
+    "darwinO_EXLOCK": 32,
+    "darwinO_NONBLOCK": 4,
+    "nodePermissions": "actual flags select existing filesystem read/write checks",
+    "libuv": "actual numeric flags passed unchanged to open with O_CLOEXEC",
+    "workerHost": "no fs-open flag override found",
+    "nativeRuntimeExecuted": false
+  }
+}

@@ -1,0 +1,480 @@
+// Official public-client ChatGPT plan flow. Never import from a renderer or sync this directory.
+const { randomBytes, randomUUID, createHash, createPublicKey, verify, timingSafeEqual } = require('node:crypto');
+const { constants, openSync, closeSync, readFileSync, writeFileSync, fsyncSync, renameSync, unlinkSync, mkdirSync, lstatSync, fstatSync, readSync } = require('node:fs');
+const { join, resolve, parse } = require('node:path');
+const { homedir } = require('node:os');
+const ISSUER = 'https://auth.openai.com';
+const RESOURCE = 'https://api.openai.com/v1';
+const SCOPES = 'openid profile email offline_access resource.invoke chatgpt.tokens.use.direct';
+const scopes = value => typeof value === 'string' ? [...new Set(value.split(/\s+/).filter(Boolean))] : [];
+const requiredScopes = ['openid', 'resource.invoke', 'chatgpt.tokens.use.direct'];
+const need = (condition, message) => { if (!condition) throw Error(`ChatGPT: ${message}`); };
+const present = value => typeof value === 'string' && value.length > 0 && value.length < 65536;
+const equal = (a, b) => typeof a === 'string' && typeof b === 'string' && Buffer.byteLength(a) === Buffer.byteLength(b) && timingSafeEqual(Buffer.from(a), Buffer.from(b));
+const digest = value => createHash('sha256').update(value).digest('hex');
+const nofollow = constants.O_NOFOLLOW;
+// Darwin SDK sys/fcntl.h: O_EXLOCK = 0x00000020. Node does not export it.
+// The platform check in diskLocked prevents reinterpreting this flag elsewhere.
+const darwinExclusiveLock = constants.O_EXLOCK ?? 0x00000020;
+const terminalRefreshCodes = new Set(['invalid_grant', 'invalid_refresh_token', 'token_expired', 'refresh_token_expired', 'refresh_token_invalidated', 'refresh_token_reused']);
+const providerLimit = 1024 * 1024;
+const providerMetadata = new WeakMap();
+class ProviderBodyLimit extends Error {}
+function requestSecrets(options) {
+  const result = [];
+  const authorization = new Headers(options?.headers).get('authorization');
+  if (authorization) result.push(authorization.replace(/^Bearer\s+/i, ''));
+  if (options?.body instanceof URLSearchParams) for (const key of ['code', 'code_verifier', 'refresh_token', 'access_token', 'id_token', 'client_secret']) {
+    const value = options.body.get(key); if (value) result.push(value);
+  }
+  return result;
+}
+function diagnosticText(value, secrets, param = false) {
+  if (typeof value !== 'string' || !value || value.length > (param ? 512 : 256) ||
+      !(param ? /^[A-Za-z0-9_.\[\]-]+$/ : /^[A-Za-z0-9_.-]+$/).test(value) ||
+      secrets.some(secret => secret && value.includes(secret))) return undefined;
+  return value;
+}
+function bodyShape(value, depth = 0) {
+  if (value === null) return Object.freeze({kind:'null'});
+  if (Array.isArray(value)) return Object.freeze({kind:'array', length:value.length});
+  if (typeof value !== 'object') return Object.freeze({kind:typeof value});
+  const result = {kind:'object'};
+  // Retain actual known schema/presence/types, not arbitrary provider text,
+  // token fields, unknown property names, PII or echoed request contents.
+  if (depth < 2) for (const key of ['error', 'error_description', 'detail', 'code', 'param', 'message', 'type'])
+    if (Object.hasOwn(value, key)) result[key] = bodyShape(value[key], depth + 1);
+  return Object.freeze(result);
+}
+function providerError(response, body, options, message = 'provider request failed', shape) {
+  const secrets = requestSecrets(options);
+  const object = body && typeof body === 'object' && !Array.isArray(body) ? body : undefined;
+  const structured = object?.error && typeof object.error === 'object' ? object.error : undefined;
+  const code = diagnosticText(typeof object?.error === 'string' ? object.error : structured?.code, secrets);
+  const param = diagnosticText(structured?.param, secrets, true);
+  const requestId = diagnosticText(response.headers?.get('x-request-id') ?? response.headers?.get('request-id'), secrets);
+  const error = Error(`ChatGPT: ${message} (${response.status}${code ? `; ${code}` : ''})`);
+  error.name = 'ChatGPTProviderError';
+  const metadata = Object.freeze({status:response.status, ...(code && {code}), ...(param && {param}), ...(requestId && {requestId}), bodyShape:shape || bodyShape(body)});
+  Object.assign(error, metadata); providerMetadata.set(error, metadata);
+  const refresh = String(response.url || '').startsWith(`${ISSUER}/api/accounts/oauth/token`) && options?.body instanceof URLSearchParams && options.body.get('grant_type') === 'refresh_token';
+  // HTTP401/403 alone does not prove a renewable session was revoked. In
+  // particular, direct-route403 covers policy/region/eligibility restrictions.
+  error.authRejected = refresh && terminalRefreshCodes.has(code);
+  return error;
+}
+function publicChatGPTError(error, message = 'ChatGPT request did not complete') {
+  const metadata = providerMetadata.get(error);
+  const result = Error(`${message}${metadata ? ` (${metadata.status}${metadata.code ? `; ${metadata.code}` : ''})` : ''}`);
+  if (metadata) { Object.assign(result, metadata); providerMetadata.set(result, metadata); }
+  return result;
+}
+async function providerText(response) {
+  if (!response.body) return '';
+  const reader = response.body.getReader(), decoder = new TextDecoder();
+  let bytes = 0, text = '';
+  try {
+    for (;;) {
+      const next = await reader.read(); if (next.done) break;
+      bytes += next.value.byteLength;
+      if (bytes > providerLimit) { try { await reader.cancel(); } catch {} throw new ProviderBodyLimit('ChatGPT: provider response too large'); }
+      text += decoder.decode(next.value, {stream:true});
+    }
+    return text + decoder.decode();
+  } finally { reader.releaseLock(); }
+}
+function hasPlanCredentials(record) {
+  return present(record?.access) && record.state !== 'auth-expired' && record.planUsageEnabled !== false &&
+      Array.isArray(record.scopes) && requiredScopes.every(scope => record.scopes.includes(scope));
+}
+
+function privateDirectory(path) {
+  const absolute = resolve(path), root = parse(absolute).root;
+  let current = root;
+  for (const part of absolute.slice(root.length).split('/').filter(Boolean)) {
+    current = join(current, part);
+    try { mkdirSync(current, { mode: 0o700 }); } catch (error) { if (error.code !== 'EEXIST') throw error; }
+    const st = lstatSync(current);
+    need(st.isDirectory() && !st.isSymbolicLink() && (st.uid === process.getuid() || st.uid === 0) && ((st.mode & 0o022) === 0 || (st.uid === 0 && (st.mode & 0o1000) !== 0)), 'unsafe local storage directory');
+  }
+  const st = lstatSync(absolute);
+  need(st.uid === process.getuid() && (st.mode & 0o077) === 0, 'local storage must be private');
+  return absolute;
+}
+function readPrivate(path) {
+  let fd;
+  try {
+    fd = openSync(path, constants.O_RDONLY | constants.O_NONBLOCK | nofollow);
+    const st = fstatSync(fd);
+    need(st.isFile() && st.uid === process.getuid() && (st.mode & 0o077) === 0 && st.nlink === 1 && st.size < 1024 * 1024, 'unsafe local credential file');
+    return JSON.parse(readFileSync(fd, 'utf8'));
+  } catch (error) { if (error.code === 'ENOENT') return undefined; throw error; }
+  finally { if (fd !== undefined) closeSync(fd); }
+}
+function atomicWrite(path, value) {
+  const tmp = `${path}.${randomBytes(12).toString('hex')}.tmp`;
+  let fd;
+  try {
+    fd = openSync(tmp, constants.O_WRONLY | constants.O_CREAT | constants.O_EXCL | nofollow, 0o600);
+    writeFileSync(fd, JSON.stringify(value)); fsyncSync(fd); closeSync(fd); fd = undefined;
+    renameSync(tmp, path);
+  } finally { if (fd !== undefined) closeSync(fd); try { unlinkSync(tmp); } catch (e) { if (e.code !== 'ENOENT') throw e; } }
+}
+class LocalChatGPTStore {
+  constructor(root = join(process.env.AUX_HOME || join(homedir(), '.aux'), 'local-only', 'chatgpt')) {
+    this.root = privateDirectory(root); this.operations = new Map();
+  }
+  async locked(key, fn) {
+    const previous = this.operations.get(key) || Promise.resolve();
+    const operation = previous.catch(() => {}).then(() => this.diskLocked(key, fn));
+    this.operations.set(key, operation);
+    try { return await operation; } finally { if (this.operations.get(key) === operation) this.operations.delete(key); }
+  }
+  async diskLocked(key, fn) {
+    this.lifetime?.admit();
+    privateDirectory(this.root);
+    need(process.platform === 'darwin', 'protected local locking is supported only on macOS');
+    const path = join(this.root, `${digest(key)}.lock`);
+    const marker = { schema: 'aux.chatgpt.auth-lock.v2', account: digest(key) };
+    let fd;
+    try {
+      try {
+        fd = openSync(path, constants.O_RDWR | constants.O_NONBLOCK | darwinExclusiveLock | constants.O_CREAT | constants.O_EXCL | nofollow, 0o600);
+        writeFileSync(fd, JSON.stringify(marker)); fsyncSync(fd);
+      } catch (error) {
+        if (fd !== undefined || error.code !== 'EEXIST') throw error;
+        try { fd = openSync(path, constants.O_RDWR | constants.O_NONBLOCK | darwinExclusiveLock | nofollow); }
+        catch (error) {
+          if (error.code === 'EAGAIN' || error.code === 'EWOULDBLOCK') throw Error('ChatGPT: another local credential operation is in progress');
+          throw error;
+        }
+      }
+      const stat = fstatSync(fd);
+      need(stat.isFile() && stat.uid === process.getuid() && (stat.mode & 0o077) === 0 && stat.nlink === 1 && stat.size < 1024, 'unsafe local lock file');
+      let existing; try { const bytes = Buffer.alloc(stat.size); need(readSync(fd, bytes, 0, bytes.length, 0) === bytes.length, 'incomplete lock marker'); existing = JSON.parse(bytes.toString('utf8')); } catch { throw Error('ChatGPT: legacy or incomplete lock needs explicit recovery review'); }
+      need(existing.schema === marker.schema && existing.account === marker.account, 'legacy or mismatched lock needs explicit recovery review');
+      // O_EXLOCK acquires the same kernel flock while opening this exact inode.
+      // NONBLOCK refuses live contenders; no subprocess or inferred child cleanup.
+      // Retain the descriptor across the entire operation and close in finally.
+      this.lifetime?.signal.throwIfAborted();
+      const current = lstatSync(path); privateDirectory(this.root);
+      need(current.dev === stat.dev && current.ino === stat.ino && current.nlink === 1, 'local lock namespace changed');
+      return await fn();
+    } finally {
+      if (fd !== undefined) try { closeSync(fd); }
+      catch (error) { this.lifetime?.unknown(); throw error; }
+    }
+  }
+  hostId() {
+    privateDirectory(this.root);
+    const path = join(this.root, 'host.json');
+    let host = readPrivate(path);
+    if (!host) {
+      // Exclusive creation: competing initializers must reuse the winner's host ID.
+      const fd = (() => { try { return openSync(path, constants.O_WRONLY | constants.O_CREAT | constants.O_EXCL | nofollow, 0o600); } catch (e) { if (e.code === 'EEXIST') return undefined; throw e; } })();
+      if (fd !== undefined) { try { writeFileSync(fd, JSON.stringify({ version: 1, id: `urn:uuid:${randomUUID()}` })); fsyncSync(fd); } finally { closeSync(fd); } }
+      host = readPrivate(path);
+    }
+    need(host?.version === 1 && /^urn:uuid:[a-f0-9-]{36}$/.test(host.id), 'invalid saved host identity'); return host.id;
+  }
+  path(account) { privateDirectory(this.root); need(present(account), 'local account is required'); return join(this.root, `${digest(account)}.json`); }
+  read(account) {
+    const saved = readPrivate(this.path(account));
+    if (!saved) return undefined;
+    need(saved.version === 1 && saved.issuer === ISSUER && saved.hostId === this.hostId() && present(saved.clientId) && saved.clientId !== 'dynamic_agent_client' && present(saved.subject), 'invalid saved registration');
+    return saved;
+  }
+  write(account, record) { atomicWrite(this.path(account), record); }
+  registration(account) {
+    const registration = readPrivate(`${this.path(account)}.registration`);
+    if (!registration) return undefined;
+    need(registration.version === 1 && registration.hostId === this.hostId() && present(registration.clientId) && registration.clientId !== 'dynamic_agent_client', 'invalid pending registration');
+    return registration;
+  }
+  saveRegistration(account, clientId) { atomicWrite(`${this.path(account)}.registration`, { version: 1, hostId: this.hostId(), clientId }); }
+  clearRegistration(account) { try { unlinkSync(`${this.path(account)}.registration`); } catch (e) { if (e.code !== 'ENOENT') throw e; } }
+  clearTokens(account, state) {
+    const record = this.read(account); if (!record) return;
+    const { access, refresh, idToken, expires, ...registration } = record;
+    this.write(account, { ...registration, scopes: [], signedOut: true, ...(state && {state}) });
+  }
+}
+class ChatGPTPlanClient {
+  constructor({ store, fetch: request = globalThis.fetch, now = Date.now } = {}) {
+    need(store, 'local credential store required'); this.store = store; this.fetch = request; this.now = now; this.pending = new Map(); this.inflight = new Map(); this.refreshes = new Map();
+  }
+  async json(url, options) {
+    const response = await this.fetch(url, { ...options, redirect: 'error', signal: options?.signal ? AbortSignal.any([options.signal, AbortSignal.timeout(15000)]) : AbortSignal.timeout(15000) });
+    const observed = {status:response.status, headers:response.headers, url:String(url)};
+    let text;
+    try { text = await providerText(response); } catch (error) {
+      if (error instanceof ProviderBodyLimit) throw providerError(observed, undefined, options, 'provider response too large', Object.freeze({kind:'oversize', maximumBytes:providerLimit}));
+      throw error;
+    }
+    let body; try { body = JSON.parse(text); } catch {}
+    // Fetch fakes and some wrappers omit response.url; bind classification to
+    // this exact requested endpoint rather than untrusted body fields.
+    if (!response.ok) throw providerError(observed, body === undefined ? text : body, options);
+    if (body === undefined) throw providerError(observed, text, options, 'invalid provider response');
+    return body;
+  }
+  begin(flowId, redirectUri, account) {
+    for (const [id, attempt] of this.pending) if (this.now() - attempt.created > 600000) this.pending.delete(id);
+    const uri = new URL(redirectUri);
+    need(uri.protocol === 'http:' && uri.hostname === '127.0.0.1' && uri.pathname === '/auth/callback' && uri.port && !uri.search && !uri.hash && !uri.username && !uri.password, 'exact loopback callback required');
+    need(present(flowId) && !this.pending.has(flowId) && !this.inflight.has(flowId), 'duplicate authorization attempt');
+    const saved = this.store.read(account) || this.store.registration(account), verifier = randomBytes(32).toString('base64url');
+    const state = `${flowId}.${randomBytes(32).toString('base64url')}`, nonce = randomBytes(32).toString('base64url');
+    const clientId = saved?.clientId || 'dynamic_agent_client';
+    const params = new URLSearchParams({ client_id: clientId, ext_agent_host_id: this.store.hostId(), response_type: 'code', redirect_uri: redirectUri, scope: SCOPES, resource: RESOURCE, state, nonce, code_challenge_method: 'S256', code_challenge: createHash('sha256').update(verifier).digest('base64url') });
+    if (!saved) params.set('agent_name_hint', 'Aux');
+    // Retained ID tokens stay local; do not expose them in authorization URLs returned to extension UI.
+    this.pending.set(flowId, { account, clientId, subject: saved?.subject, redirectUri, state, nonce, verifier, created: this.now(), controller: new AbortController() });
+    return { redirectUri, state, url: `${ISSUER}/api/accounts/authorize?${params}` };
+  }
+  cancelAccount(account) { for (const [id, attempt] of [...this.pending, ...this.inflight]) if (attempt.account === account) this.cancel(id); for (const controller of this.refreshes.get(account) || []) controller.abort(); }
+  disconnectLocal(account) { this.cancelAccount(account); this.store.clearTokens(account); }
+  cancel(flowId) { const pending = this.pending.get(flowId) || this.inflight.get(flowId); if (pending) { pending.cancelled = true; pending.controller.abort(); } this.pending.delete(flowId); }
+  async verifyIdentity(token, clientId, nonce, expectedSubject, signal) {
+    need(present(token), 'ID token missing');
+    const parts = token.split('.'); need(parts.length === 3 && parts.every(p => /^[A-Za-z0-9_-]+$/.test(p)), 'invalid ID token');
+    let header, claims;
+    try { header = JSON.parse(Buffer.from(parts[0], 'base64url')); claims = JSON.parse(Buffer.from(parts[1], 'base64url')); } catch { throw Error('ChatGPT: invalid ID token'); }
+    need(header.alg === 'RS256' && present(header.kid) && !header.crit && !header.jku && !header.jwk && !header.x5u, 'unsupported ID token signature');
+    const jwks = await this.json(`${ISSUER}/.well-known/jwks.json`, {signal});
+    const keys = jwks.keys?.filter(k => k.kid === header.kid && k.kty === 'RSA' && (!k.use || k.use === 'sig') && (!k.alg || k.alg === 'RS256'));
+    need(keys?.length === 1, 'ID token signing key unavailable');
+    need(verify('RSA-SHA256', Buffer.from(`${parts[0]}.${parts[1]}`), createPublicKey({ key: keys[0], format: 'jwk' }), Buffer.from(parts[2], 'base64url')), 'invalid ID token signature');
+    const now = this.now() / 1000, audiences = Array.isArray(claims.aud) ? claims.aud : [claims.aud];
+    need(claims.iss === ISSUER && audiences.includes(clientId) && (audiences.length === 1 || claims.azp === clientId), 'ID token issuer/audience mismatch');
+    need(Number.isFinite(claims.exp) && claims.exp > now - 5 && Number.isFinite(claims.iat) && claims.iat <= now + 5 && (!claims.nbf || claims.nbf <= now + 5), 'ID token expired or not active');
+    need(present(claims.sub) && (!expectedSubject || equal(claims.sub, expectedSubject)), 'ChatGPT account mismatch');
+    if (nonce !== undefined) need(equal(claims.nonce, nonce), 'ID token nonce mismatch');
+    return claims;
+  }
+  async tokenRecord(body, clientId, pending, previous, signal) {
+    const granted = body.scope === undefined && previous ? previous.scopes : scopes(body.scope);
+    const planUsageEnabled = requiredScopes.every(s => granted.includes(s));
+    need(present(body.access_token) && (!planUsageEnabled || present(body.refresh_token) || present(previous?.refresh)) && body.token_type?.toLowerCase() === 'bearer' && Number.isFinite(body.expires_in) && body.expires_in > 0 && body.expires_in <= 86400, 'invalid token response');
+    const identity = body.id_token ? await this.verifyIdentity(body.id_token, clientId, pending?.nonce, pending?.subject || previous?.subject, signal) : undefined;
+    need(identity || previous, 'verified identity required');
+    return { version: 1, type: 'oauth', source: 'aux-chatgpt-plan-v1', issuer: ISSUER, clientId, hostId: this.store.hostId(), subject: identity?.sub || previous.subject, accountId: identity?.sub || previous.subject, email: identity?.email || previous?.email, idToken: body.id_token || previous?.idToken, access: body.access_token, refresh: present(body.refresh_token) ? body.refresh_token : previous?.refresh, scopes: granted, planUsageEnabled, expires: this.now() + body.expires_in * 1000, savedAt: new Date(this.now()).toISOString() };
+  }
+  async complete(flowId, callback) {
+    const pending = this.pending.get(flowId);
+    need(pending && this.now() - pending.created <= 600000, 'authorization attempt expired');
+    const url = new URL(callback);
+    need(url.origin + url.pathname === pending.redirectUri && !url.hash, 'callback URI mismatch');
+    for (const field of ['state', 'code', 'client_id', 'error']) need(url.searchParams.getAll(field).length <= 1, 'duplicate callback parameter');
+    need(equal(url.searchParams.get('state'), pending.state), 'state mismatch');
+    this.pending.delete(flowId); // One-time consumption before any network request.
+    need(!url.searchParams.has('error'), 'authorization denied');
+    const clientId = url.searchParams.get('client_id') || (pending.clientId !== 'dynamic_agent_client' ? pending.clientId : undefined);
+    need(present(clientId) && clientId !== 'dynamic_agent_client' && (pending.clientId === 'dynamic_agent_client' || clientId === pending.clientId), 'issued client ID mismatch');
+    const code = url.searchParams.get('code'); need(present(code), 'authorization code missing');
+    this.inflight.set(flowId, pending);
+    return this.store.locked(pending.account, async () => {
+      const existing = this.store.read(pending.account);
+      need(!pending.cancelled, 'authorization cancelled');
+      need(!existing || (pending.subject && existing.subject === pending.subject && existing.clientId === pending.clientId), 'selected registration changed');
+      this.store.saveRegistration(pending.account, clientId);
+      const body = await this.json(`${ISSUER}/api/accounts/oauth/token`, { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: new URLSearchParams({ grant_type: 'authorization_code', client_id: clientId, code, code_verifier: pending.verifier, redirect_uri: pending.redirectUri, resource: RESOURCE }), signal: pending.controller.signal });
+      const record = await this.tokenRecord(body, clientId, pending, undefined, pending.controller.signal);
+      need(!pending.cancelled, 'authorization cancelled');
+      this.store.write(pending.account, record); this.store.clearRegistration(pending.account);
+      return { status: 'completed', providerId: 'openai-codex', ...(!record.planUsageEnabled && {planUsageEnabled:false}) };
+    }).finally(() => { if (this.inflight.get(flowId) === pending) this.inflight.delete(flowId); });
+  }
+  async auth(account, rejectedAccess, signal) {
+    const controller = new AbortController(), abort = () => controller.abort();
+    signal?.addEventListener('abort', abort, {once: true}); if (signal?.aborted) abort();
+    const refreshes = this.refreshes.get(account) || new Set(); refreshes.add(controller); this.refreshes.set(account, refreshes);
+    try {
+      return await this.store.locked(account, async () => {
+        controller.signal.throwIfAborted();
+        let record = this.store.read(account);
+        need(record?.state !== 'auth-expired', 'connection expired; reconnect ChatGPT in settings');
+        if (!record?.access) return undefined;
+        need(Number.isFinite(record.expires) && record.expires > 0, 'invalid saved session expiry');
+        need(hasPlanCredentials(record), 'ChatGPT plan permission not granted');
+        if (record.expires <= this.now() + 300000 || rejectedAccess === record.access) {
+          let body;
+          try {
+            body = await this.json(`${ISSUER}/api/accounts/oauth/token`, { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: new URLSearchParams({ grant_type: 'refresh_token', client_id: record.clientId, refresh_token: record.refresh, resource: RESOURCE }), signal: controller.signal });
+          } catch (error) {
+            const latest = this.store.read(account);
+            if (error.authRejected && latest?.access === record.access && latest?.refresh === record.refresh) {
+              this.store.clearTokens(account, 'auth-expired');
+              throw publicChatGPTError(error, 'ChatGPT: connection expired; reconnect ChatGPT in settings');
+            }
+            throw error;
+          }
+          const current = this.store.read(account); need(current?.access === record.access && current?.refresh === record.refresh, 'local session changed during refresh');
+          record = await this.tokenRecord(body, record.clientId, undefined, record, controller.signal);
+          controller.signal.throwIfAborted();
+          const latest = this.store.read(account); need(latest?.access === current.access && latest?.refresh === current.refresh, 'local session changed during refresh');
+          this.store.write(account, record);
+        }
+        need(hasPlanCredentials(record), 'ChatGPT plan permission not granted');
+        return { apiKey: record.access };
+      });
+    } finally {
+      signal?.removeEventListener('abort', abort); refreshes.delete(controller); if (!refreshes.size) this.refreshes.delete(account);
+    }
+  }
+  async modelIds(access) {
+    const result = await this.json(`${RESOURCE}/models`, { headers: { Authorization: `Bearer ${access}` } });
+    need(Array.isArray(result.models), 'invalid model catalog');
+    const catalog = result.models.filter(m => m.visibility === 'list' && present(m.slug)).map(m => ({ slug: m.slug, displayName: present(m.display_name) ? m.display_name : m.slug }));
+    const ids = new Set(catalog.map(m => m.slug)); ids.catalog = catalog; return ids;
+  }
+  async signOut(account) {
+    this.cancelAccount(account);
+    return this.store.locked(account, async () => {
+      const record = this.store.read(account); let revoked = false;
+      try {
+        if (record?.refresh) {
+          const discovery = await this.json(`${ISSUER}/.well-known/openid-configuration`);
+          const endpoint = new URL(discovery.revocation_endpoint);
+          need(discovery.issuer === ISSUER && endpoint.origin === ISSUER && endpoint.protocol === 'https:' && !endpoint.username && !endpoint.password && !endpoint.hash, 'invalid revocation endpoint');
+          const result = await this.fetch(endpoint, { method: 'POST', redirect: 'error', signal: AbortSignal.timeout(15000), headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: new URLSearchParams({ token: record.refresh, token_type_hint: 'refresh_token', client_id: record.clientId }) });
+          revoked = result.status === 200;
+        }
+      } catch { revoked = false; } finally { this.store.clearTokens(account); }
+      return { revoked };
+    });
+  }
+}
+let client, configuredLifetime;
+function configureLifetime(lifetime) {
+  need(lifetime && ['run','request','unknown','admit'].every(name => typeof lifetime[name] === 'function') && lifetime.signal, 'lifetime owner required');
+  need(!client && (!configuredLifetime || configuredLifetime === lifetime), 'lifetime owner changed after initialization');
+  configuredLifetime = lifetime;
+}
+function daemonClient() {
+  configuredLifetime?.admit();
+  if (!client) {
+    const store = new LocalChatGPTStore(); store.lifetime = configuredLifetime;
+    client = new ChatGPTPlanClient({store, ...(configuredLifetime ? {fetch:configuredLifetime.request} : {})});
+    if (configuredLifetime) for (const name of ['complete','auth','modelIds','signOut']) {
+      const original = client[name];
+      client[name] = (...args) => configuredLifetime.run(() => original.apply(client,args));
+    }
+  }
+  return client;
+}
+const localAccount = value => value === undefined ? 'aux-local-default' : `account:${String(value)}`;
+
+class AccountModelCatalog {
+  constructor(readCredential, fetchCatalog = access => daemonClient().modelIds(access), now = Date.now) {
+    need(typeof readCredential === 'function', 'model catalog requires the selected credential owner');
+    this.readCredential = readCredential; this.fetchCatalog = fetchCatalog; this.now = now;
+  }
+  current(access) { const record = this.readCredential(); return hasPlanCredentials(record) && equal(record.access, access); }
+  getCachedModelIds() {
+    const record = this.readCredential();
+    return hasPlanCredentials(record) && this.entry?.fingerprint === digest(record.access) && this.now() < this.entry.until ? this.entry.modelIds : undefined;
+  }
+  async getModelIds(access) {
+    need(this.current(access), 'selected ChatGPT account or plan permission changed');
+    const fingerprint = digest(access), cached = this.getCachedModelIds();
+    if (cached) return cached;
+    if (this.inflight?.fingerprint === fingerprint) return this.inflight.promise;
+    const promise = this.fetchCatalog(access).then(modelIds => {
+      need(this.current(access), 'selected ChatGPT account changed during model discovery');
+      this.entry = {fingerprint, until:this.now() + 300000, modelIds};
+      return modelIds;
+    }).finally(() => { if (this.inflight?.promise === promise) this.inflight = undefined; });
+    this.inflight = {fingerprint, promise};
+    return promise;
+  }
+}
+
+function completedResponsesFetch(request = globalThis.fetch) {
+  return async (url, options) => {
+    const target = new URL(typeof url === 'string' || url instanceof URL ? url : url.url);
+    need(target.href === `${RESOURCE}/responses`, 'unexpected plan inference endpoint');
+    const response = await request(url, { ...options, redirect: 'error' });
+    if (!response.ok || !response.body) return response;
+    let buffer = '', completed = false;
+    const decoder = new TextDecoder();
+    const inspect = final => {
+      for (;;) {
+        const boundary = /\r?\n\r?\n/.exec(buffer);
+        if (!boundary) break;
+        const frame = buffer.slice(0, boundary.index); buffer = buffer.slice(boundary.index + boundary[0].length);
+        const payload = frame.split(/\r?\n/).filter(line => line.startsWith('data:')).map(line => line.slice(5).trim()).join('\n');
+        if (!payload || payload === '[DONE]') continue;
+        let event; try { event = JSON.parse(payload); } catch { throw Error('ChatGPT: invalid Responses event'); }
+        need(event.type !== 'response.incomplete', 'response incomplete');
+        if (event.type === 'response.completed') completed = true;
+      }
+      need(buffer.length < 16 * 1024 * 1024, 'Responses event too large');
+      if (final) need(completed, 'stream ended without response.completed');
+    };
+    const body = response.body.pipeThrough(new TransformStream({
+      transform(chunk, controller) { buffer += decoder.decode(chunk, { stream: true }); inspect(false); controller.enqueue(chunk); },
+      flush() { buffer += decoder.decode(); if (buffer.trim()) buffer += '\n\n'; inspect(true); }
+    }));
+    return new Response(body, { status: response.status, statusText: response.statusText, headers: response.headers });
+  };
+}
+const planCompat = Object.freeze({ supportsDeveloperRole: true, supportsAdditionalTools: true, supportsToolSearch: false, supportsMaxOutputTokens: false, supportsLongCacheRetention: false, supportsExplicitPromptCacheMode: false });
+const unsupportedPlanFields = ['background', 'conversation', 'max_output_tokens', 'max_tool_calls', 'metadata', 'moderation', 'multi_agent', 'prompt', 'prompt_cache_retention', 'safety_identifier', 'temperature', 'top_logprobs', 'top_p', 'truncation', 'user', 'previous_response_id'];
+function planModels(catalog, ...knownCatalogs) {
+  if (!Array.isArray(catalog)) return [];
+  const known = new Map(knownCatalogs.flat().map(model => [model.id, model]));
+  return catalog.map(entry => {
+    const supplied = known.get(entry.slug);
+    // Exact slugs can retain their pinned supplied metadata. The public plan
+    // catalog currently documents names/order, not arbitrary capability keys.
+    const input = supplied?.input?.filter(kind => kind === 'text' || kind === 'image') || ['text'];
+    const conservative = { contextWindow: 8192, maxTokens: 4096, reasoning: false, input: ['text'], cost: {input:0,output:0,cacheRead:0,cacheWrite:0} };
+    return { ...(supplied || conservative), id: entry.slug, name: entry.displayName, provider: 'openai-codex', api: 'openai-responses', baseUrl: RESOURCE, input: input.length ? input : ['text'], compat: { ...supplied?.compat, ...planCompat }, auxPlanMetadata: { source: supplied ? 'pinned-supplied-model' : 'conservative-local-bounds', capabilityVerified: !!supplied } };
+  });
+}
+function normalizePlanPayload(payload, model) {
+  need(payload && typeof payload === 'object' && !Array.isArray(payload), 'invalid Responses payload');
+  const result = {...payload, store: false, stream: true};
+  if (model?.id) need(result.model === model.id, 'selected plan model changed');
+  for (const field of unsupportedPlanFields) delete result[field];
+  need(Array.isArray(result.input), 'plan inference requires complete input history');
+  const checkTools = tools => {
+    need(Array.isArray(tools), 'invalid plan tools');
+    for (const tool of tools) {
+      need(tool && typeof tool === 'object', 'invalid plan tool');
+      if (tool.type === 'namespace') { need(present(tool.name), 'invalid tool namespace'); checkTools(tool.tools); }
+      else need(['function','custom'].includes(tool.type), 'tool is unsupported by the ChatGPT plan connection');
+    }
+  };
+  result.input = result.input.map(item => {
+    need(item && typeof item === 'object', 'invalid plan input item');
+    need(!['tool_search_call','tool_search_output'].includes(item.type), 'tool search history is unsupported by the ChatGPT plan connection');
+    if (item.type === 'additional_tools') checkTools(item.tools);
+    const message = item.role === 'system' ? {...item, role:'developer'} : item;
+    if (Array.isArray(message.content)) for (const part of message.content) {
+      need(!['input_audio','input_video'].includes(part?.type), 'audio/video input is unsupported by the ChatGPT plan connection');
+      if (part?.type === 'input_image' && model) need(model.input?.includes('image'), 'image input capability is not verified for this model');
+    }
+    return message;
+  });
+  if (result.tools?.length) {
+    const flat = [], declared = [];
+    for (const tool of result.tools) {
+      if (tool?.type === 'web_search' || tool?.type === 'web_search_preview') { declared.push(tool); continue; }
+      checkTools([tool]); (tool.type === 'namespace' ? declared : flat).push(tool);
+    }
+    if (flat.length) result.input.unshift({type:'additional_tools',role:'developer',tools:flat});
+    result.tools = declared; if (!declared.length) delete result.tools;
+  }
+  return result;
+}
+function planResponsesApi(api) {
+  const wrap = method => (model, context, options = {}) => {
+    const planModel = {...model, api:'openai-responses',baseUrl:RESOURCE,compat:{...model.compat,...planCompat}};
+    return api[method](planModel, context, { ...options, maxRetries: 0, fetch: completedResponsesFetch(options.fetch), onPayload: async payload => normalizePlanPayload(await options.onPayload?.(payload, planModel) ?? payload, planModel) });
+  };
+  return { ...api, stream: wrap('stream'), streamSimple: wrap('streamSimple') };
+}
+
+module.exports = { configureLifetime, cancel:flowId=>client?.cancel(flowId), ISSUER, RESOURCE, SCOPES, publicChatGPTError, hasPlanCredentials, AccountModelCatalog, LocalChatGPTStore, ChatGPTPlanClient, daemonClient, localAccount, planResponsesApi, completedResponsesFetch, planModels, normalizePlanPayload };

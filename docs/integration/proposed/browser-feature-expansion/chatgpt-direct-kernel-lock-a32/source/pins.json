@@ -1,0 +1,7 @@
+{
+  "format": "aux.chatgpt.direct-kernel-lock.v1",
+  "inputSha256": "772eebe9503b960fa26e185573d0c3bbd29b21ec12fe967ef78860b73a1be53d",
+  "outputSha256": "70337b44d476ce987d16f62fde3da606e55038348364820773db970edceb32a3",
+  "anchorsSha256": "1431979223137032790db28d3072cb0257184df058be484cb615530fda03e858",
+  "priorPairedShimSha256": "b08d0acbdaf61e28806fd40a3a364a679fe6df8923392eb6b83ff2395df6887a"
+}
