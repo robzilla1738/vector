@@ -1,0 +1,83 @@
+{
+  "format": "aux.organization-local-completion-a26.v1",
+  "nativeRoot": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src",
+  "files": [
+    {
+      "path": "chrome/browser/ui/views/frame/aux_spaces_switcher.cc",
+      "inputSha256": "b5627a43a61068825aaadf2e9d4c258dd49d6a958c31c933b5ede56a07babb9a",
+      "outputSha256": "4080f776257b65906f479ae2b2986dc2c332d4dae7f139790103f5997163fa8f",
+      "source": "docs/integration/proposed/browser-feature-expansion/organization-local-completion-a26/source/chrome/browser/ui/views/frame/aux_spaces_switcher.cc",
+      "anchors": [
+        {
+          "find": "          std::string id, bool create, std::u16string name, std::u16string icon) {\n        if (!view || name.empty()) return;\n        organization::Command command;\n",
+          "replace": "          std::string id, bool create, std::u16string previous_name,\n          std::u16string previous_icon, std::u16string name, std::u16string icon) {\n        if (!view || name.empty() || !view->browser_) return;\n        // Dialogs can stay open while native title/activity writes advance the\n        // revision. Re-read that revision, retaining the exact profile/epoch;\n        // only a concurrent edit of this Space invalidates the person's input.\n        auto current = CaptureOrganizationContext(*view->browser_);\n        if (!current || current->profile_id != context.profile_id ||\n            current->owner_generation != context.owner_generation) {\n          view->select_->SetTooltipText(u\"The profile changed or is saving. Please try again.\");\n          return;\n        }\n        if (!create) {\n          const auto spaces = Spaces(*view->browser_);\n          const auto found = std::ranges::find(spaces, id, &organization::Space::id);\n          if (found == spaces.end() || found->name != base::UTF16ToUTF8(previous_name) ||\n              found->icon != base::UTF16ToUTF8(previous_icon)) {\n            view->select_->SetTooltipText(u\"This Space changed. Open its editor again.\");\n            return;\n          }\n        }\n        organization::Command command;\n",
+          "count": 1
+        },
+        {
+          "find": "        ExecuteOrganizationCommand(view->browser_, std::move(context), std::move(command),\n          base::BindOnce([](base::WeakPtr<AuxSpacesSwitcher> view, std::string id, bool create,\n",
+          "replace": "        ExecuteOrganizationCommand(view->browser_, std::move(*current), std::move(command),\n          base::BindOnce([](base::WeakPtr<AuxSpacesSwitcher> view, std::string id, bool create,\n",
+          "count": 1
+        },
+        {
+          "find": "      }, weak_.GetWeakPtr(), std::move(*context), id, create));\n",
+          "replace": "      }, weak_.GetWeakPtr(), std::move(*context), id, create, name, icon));\n",
+          "count": 1
+        },
+        {
+          "find": "          std::string space, std::u16string name, std::u16string) {\n        if (!view || name.empty()) return;\n        organization::Command command; command.action = organization::Action::kCreateFolder;\n",
+          "replace": "          std::string space, std::u16string name, std::u16string) {\n        if (!view || name.empty() || !view->browser_) return;\n        auto current = CaptureOrganizationContext(*view->browser_);\n        if (!current || current->profile_id != context.profile_id ||\n            current->owner_generation != context.owner_generation) {\n          view->select_->SetTooltipText(u\"The profile changed or is saving. Please try again.\");\n          return;\n        }\n        organization::Command command; command.action = organization::Action::kCreateFolder;\n",
+          "count": 1
+        },
+        {
+          "find": "        ExecuteOrganizationCommand(view->browser_, std::move(context), std::move(command),\n            base::BindOnce([](base::WeakPtr<AuxSpacesSwitcher> view, organization::CommitResult result) {\n",
+          "replace": "        ExecuteOrganizationCommand(view->browser_, std::move(*current), std::move(command),\n            base::BindOnce([](base::WeakPtr<AuxSpacesSwitcher> view, organization::CommitResult result) {\n",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_organization_tree_view.cc",
+      "inputSha256": "5d30adbaeb54e4eb23dfa23c5c058cf6faa752cbcb2c4ec05db54de634daac37",
+      "outputSha256": "55adba32a3fcd550a3b64fd19ab05444e415b6fef9522c9ed24bd5db5c8980e6",
+      "source": "docs/integration/proposed/browser-feature-expansion/organization-local-completion-a26/source/chrome/browser/ui/views/frame/aux_organization_tree_view.cc",
+      "anchors": [
+        {
+          "find": "  const auto name = create_child ? std::u16string() : base::UTF8ToUTF16(entry->second.title);\n",
+          "replace": "  const auto name = create_child ? std::u16string() : base::UTF8ToUTF16(entry->second.title);\n  const auto previous = entry == snapshot->entries.end()\n      ? std::optional<organization::Entry>() : std::make_optional(entry->second);\n",
+          "count": 1
+        },
+        {
+          "find": "          organization::Command command, std::u16string name, std::u16string) {\n        if (!view || name.empty()) return;\n        command.title = base::UTF16ToUTF8(name); view->Apply(std::move(command), std::move(context));\n      }, weak_.GetWeakPtr(), std::move(*context), std::move(command)));\n",
+          "replace": "          organization::Command command, std::optional<organization::Entry> previous,\n          std::u16string name, std::u16string) {\n        if (!view || name.empty() || !view->browser_) return;\n        auto current = CaptureOrganizationContext(*view->browser_);\n        if (!current || current->profile_id != context.profile_id ||\n            current->owner_generation != context.owner_generation) {\n          view->Status(u\"The profile changed or is saving. Please try again.\"); return;\n        }\n        const auto* snapshot = view->Snapshot();\n        if (!snapshot) return;\n        if (previous) {\n          const auto found = snapshot->entries.find(previous->id);\n          if (found == snapshot->entries.end() || found->second.archived ||\n              found->second.kind != previous->kind ||\n              found->second.space_id != previous->space_id ||\n              (command.action == organization::Action::kRenameEntry &&\n               (found->second.title != previous->title ||\n                found->second.title_mode != previous->title_mode))) {\n            view->Status(u\"This item changed. Open its editor again.\"); return;\n          }\n        }\n        // Native navigation/activity in another tab must not invalidate a\n        // harmless name dialog. The actual model still checks this fresh\n        // revision and validates the unchanged destination before committing.\n        command.title = base::UTF16ToUTF8(name);\n        view->Apply(std::move(command), std::move(*current));\n      }, weak_.GetWeakPtr(), std::move(*context), std::move(command), previous));\n",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_organization_window_controller.cc",
+      "inputSha256": "c51e167184c418e8bc0aab7d779c77494efbea135d2b7108b30a4fc1744e826a",
+      "outputSha256": "06a4961e47609ce991f640ed136163cf1bd58b3fbcef792676bc7dc55374ca55",
+      "source": "docs/integration/proposed/browser-feature-expansion/organization-local-completion-a26/source/chrome/browser/ui/views/frame/aux_organization_window_controller.cc",
+      "anchors": [
+        {
+          "find": "  const std::string url = tab->GetContents()->GetLastCommittedURL().spec();\n  organization->ExecuteBatch(std::move(*context), std::move(commands), base::BindOnce(\n      [](base::WeakPtr<AuxOrganizationWindowController> owner, tabs::TabHandle handle, std::string url,\n",
+          "replace": "  const auto view = views_.find(handle);\n  if (view == views_.end() || view->second.logical_id != id || view->second.document_id.empty()) {\n    std::move(reply).Run(false); return;\n  }\n  const auto document = view->second.document_id;\n  const auto generation = context->owner_generation;\n  const std::string url = tab->GetContents()->GetLastCommittedURL().spec();\n  organization->ExecuteBatch(std::move(*context), std::move(commands), base::BindOnce(\n      [](base::WeakPtr<AuxOrganizationWindowController> owner, tabs::TabHandle handle,\n         std::string logical, std::string document, std::string generation, std::string url,\n",
+          "count": 1
+        },
+        {
+          "find": "        if (owner && result.error == organization::Error::kNone && handle.Get() &&\n            handle.Get()->GetContents() && handle.Get()->GetContents()->GetLastCommittedURL().spec() == url)\n          closed = owner->CloseViewNow(handle);\n        std::move(reply).Run(closed);\n      }, weak_.GetWeakPtr(), handle, url, std::move(reply)));\n",
+          "replace": "        if (owner && owner->Current() && result.error == organization::Error::kNone) {\n          auto* tab = handle.Get();\n          auto* coordinator = organization::OrganizationProfileServiceFactory::GetForProfileIfExists(owner->profile_);\n          const auto live = owner->views_.find(handle);\n          // The URL alone cannot identify the document: a same-URL reload or\n          // replacement can finish while this physical save is in progress.\n          // Only the originally requested native view may be closed.\n          if (coordinator && coordinator->owner_generation() == generation &&\n              coordinator->model() && !coordinator->model()->blocked() && tab &&\n              owner->model_->GetIndexOfTab(tab) >= 0 && tab->GetContents() &&\n              tab->GetContents()->GetBrowserContext() == owner->profile_ &&\n              live != owner->views_.end() && live->second.logical_id == logical &&\n              live->second.document_id == document &&\n              GetRememberedPinnedTabEntryId(*tab->GetContents()) == logical &&\n              tab->GetContents()->GetLastCommittedURL().spec() == url)\n            closed = owner->CloseViewNow(handle);\n        }\n        std::move(reply).Run(closed);\n      }, weak_.GetWeakPtr(), handle, id, document, generation, url, std::move(reply)));\n",
+          "count": 1
+        },
+        {
+          "find": "        if (tab->IsPinned() || organization::HasRetention(current->snapshot(), id)) owner->UnloadLogicalTab(id, std::move(done));\n",
+          "replace": "        if (tab->IsPinned() || organization::HasRetention(current->snapshot(), id)) owner->EnsureSavedThenClose(target, std::move(done));\n",
+          "count": 1
+        }
+      ]
+    }
+  ],
+  "patch": "source.patch",
+  "uiStyleChanged": false,
+  "nativeExecuted": false
+}

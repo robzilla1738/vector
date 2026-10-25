@@ -1,0 +1,21 @@
+{
+  "format": "aux.organization-dialog.focused-check.v1",
+  "sourcePlanSha256": "ba834c2a30740dc7af663bdda67c8498741ff60f573c6987a4087b754a85c472",
+  "modelSha256": "6f9be191caa8fde23979f7734d1bfdc5a10369a9008b26a3115d7b2f240a1303",
+  "fixtureSha256": "a808795de220dd8999a28731757ee04b6f622349e8b28c9586dfe6ad2e8e268f",
+  "countedAnchors": 10,
+  "independentPatchApplication": true,
+  "actualPureModelCompiled": true,
+  "result": "PASS: actual stale-dialog reproduction, fresh revision preserves native activity, nested cycle/foreign/pin guards remain",
+  "nativeProductBuilt": false,
+  "runtimeAccepted": false,
+  "asyncCloseSourceFences": [
+    "Current native browser/profile",
+    "actual coordinator generation",
+    "exact native handle/model membership",
+    "same logical identity",
+    "same document identity",
+    "actual remembered logical identity",
+    "captured URL"
+  ]
+}

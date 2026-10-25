@@ -1,0 +1,166 @@
+--- a/chrome/browser/ui/views/frame/aux_spaces_switcher.cc
++++ b/chrome/browser/ui/views/frame/aux_spaces_switcher.cc
+@@ -153,13 +153,32 @@
+   }
+   ShowOrganizationNameDialog(*this, create ? u"New Space" : u"Edit Space", name, icon,
+       base::BindOnce([](base::WeakPtr<AuxSpacesSwitcher> view, organization::Context context,
+-          std::string id, bool create, std::u16string name, std::u16string icon) {
+-        if (!view || name.empty()) return;
++          std::string id, bool create, std::u16string previous_name,
++          std::u16string previous_icon, std::u16string name, std::u16string icon) {
++        if (!view || name.empty() || !view->browser_) return;
++        // Dialogs can stay open while native title/activity writes advance the
++        // revision. Re-read that revision, retaining the exact profile/epoch;
++        // only a concurrent edit of this Space invalidates the person's input.
++        auto current = CaptureOrganizationContext(*view->browser_);
++        if (!current || current->profile_id != context.profile_id ||
++            current->owner_generation != context.owner_generation) {
++          view->select_->SetTooltipText(u"The profile changed or is saving. Please try again.");
++          return;
++        }
++        if (!create) {
++          const auto spaces = Spaces(*view->browser_);
++          const auto found = std::ranges::find(spaces, id, &organization::Space::id);
++          if (found == spaces.end() || found->name != base::UTF16ToUTF8(previous_name) ||
++              found->icon != base::UTF16ToUTF8(previous_icon)) {
++            view->select_->SetTooltipText(u"This Space changed. Open its editor again.");
++            return;
++          }
++        }
+         organization::Command command;
+         command.action = create ? organization::Action::kCreateSpace : organization::Action::kRenameSpace;
+         command.id = id; command.title = base::UTF16ToUTF8(name); command.icon = base::UTF16ToUTF8(icon);
+         command.index = std::numeric_limits<uint64_t>::max();
+-        ExecuteOrganizationCommand(view->browser_, std::move(context), std::move(command),
++        ExecuteOrganizationCommand(view->browser_, std::move(*current), std::move(command),
+           base::BindOnce([](base::WeakPtr<AuxSpacesSwitcher> view, std::string id, bool create,
+               organization::CommitResult result) {
+             if (!view) return;
+@@ -167,7 +186,7 @@
+             view->select_->SetTooltipText(OrganizationErrorMessage(result.error));
+             view->Refresh();
+           }, view, std::move(id), create));
+-      }, weak_.GetWeakPtr(), std::move(*context), id, create));
++      }, weak_.GetWeakPtr(), std::move(*context), id, create, name, icon));
+ }
+ void AuxSpacesSwitcher::NewFolder(bool global) {
+   if (!browser_) return;
+@@ -176,12 +195,18 @@
+   ShowOrganizationNameDialog(*this, global ? u"New pinned folder" : u"New folder", {}, std::nullopt,
+       base::BindOnce([](base::WeakPtr<AuxSpacesSwitcher> view, organization::Context context,
+           std::string space, std::u16string name, std::u16string) {
+-        if (!view || name.empty()) return;
++        if (!view || name.empty() || !view->browser_) return;
++        auto current = CaptureOrganizationContext(*view->browser_);
++        if (!current || current->profile_id != context.profile_id ||
++            current->owner_generation != context.owner_generation) {
++          view->select_->SetTooltipText(u"The profile changed or is saving. Please try again.");
++          return;
++        }
+         organization::Command command; command.action = organization::Action::kCreateFolder;
+         command.id = base::Uuid::GenerateRandomV4().AsLowercaseString();
+         command.space_id = space; command.title = base::UTF16ToUTF8(name);
+         command.index = std::numeric_limits<uint64_t>::max();
+-        ExecuteOrganizationCommand(view->browser_, std::move(context), std::move(command),
++        ExecuteOrganizationCommand(view->browser_, std::move(*current), std::move(command),
+             base::BindOnce([](base::WeakPtr<AuxSpacesSwitcher> view, organization::CommitResult result) {
+               if (view) view->select_->SetTooltipText(OrganizationErrorMessage(result.error));
+             }, view));
+--- a/chrome/browser/ui/views/frame/aux_organization_tree_view.cc
++++ b/chrome/browser/ui/views/frame/aux_organization_tree_view.cc
+@@ -412,12 +412,37 @@
+   command.space_id = scope_ == Scope::kPinnedFolders ? "" : window_->ActiveSpaceId();
+   command.parent_id = create_child ? id : ""; command.index = kEnd;
+   const auto name = create_child ? std::u16string() : base::UTF8ToUTF16(entry->second.title);
++  const auto previous = entry == snapshot->entries.end()
++      ? std::optional<organization::Entry>() : std::make_optional(entry->second);
+   ShowOrganizationNameDialog(*this, create_child ? u"New folder" : u"Rename", name, std::nullopt,
+       base::BindOnce([](base::WeakPtr<AuxOrganizationTreeView> view, organization::Context context,
+-          organization::Command command, std::u16string name, std::u16string) {
+-        if (!view || name.empty()) return;
+-        command.title = base::UTF16ToUTF8(name); view->Apply(std::move(command), std::move(context));
+-      }, weak_.GetWeakPtr(), std::move(*context), std::move(command)));
++          organization::Command command, std::optional<organization::Entry> previous,
++          std::u16string name, std::u16string) {
++        if (!view || name.empty() || !view->browser_) return;
++        auto current = CaptureOrganizationContext(*view->browser_);
++        if (!current || current->profile_id != context.profile_id ||
++            current->owner_generation != context.owner_generation) {
++          view->Status(u"The profile changed or is saving. Please try again."); return;
++        }
++        const auto* snapshot = view->Snapshot();
++        if (!snapshot) return;
++        if (previous) {
++          const auto found = snapshot->entries.find(previous->id);
++          if (found == snapshot->entries.end() || found->second.archived ||
++              found->second.kind != previous->kind ||
++              found->second.space_id != previous->space_id ||
++              (command.action == organization::Action::kRenameEntry &&
++               (found->second.title != previous->title ||
++                found->second.title_mode != previous->title_mode))) {
++            view->Status(u"This item changed. Open its editor again."); return;
++          }
++        }
++        // Native navigation/activity in another tab must not invalidate a
++        // harmless name dialog. The actual model still checks this fresh
++        // revision and validates the unchanged destination before committing.
++        command.title = base::UTF16ToUTF8(name);
++        view->Apply(std::move(command), std::move(*current));
++      }, weak_.GetWeakPtr(), std::move(*context), std::move(command), previous));
+ }
+ void AuxOrganizationTreeView::Move(const std::string& id, const std::string& space,
+     const std::string& parent, uint64_t index, std::optional<organization::Context> captured) {
+--- a/chrome/browser/ui/views/frame/aux_organization_window_controller.cc
++++ b/chrome/browser/ui/views/frame/aux_organization_window_controller.cc
+@@ -922,16 +922,37 @@
+   if (commands.empty()) { std::move(reply).Run(CloseViewNow(handle)); return; }
+   auto context = CaptureOrganizationContext(*browser_);
+   if (!context) { std::move(reply).Run(false); return; }
++  const auto view = views_.find(handle);
++  if (view == views_.end() || view->second.logical_id != id || view->second.document_id.empty()) {
++    std::move(reply).Run(false); return;
++  }
++  const auto document = view->second.document_id;
++  const auto generation = context->owner_generation;
+   const std::string url = tab->GetContents()->GetLastCommittedURL().spec();
+   organization->ExecuteBatch(std::move(*context), std::move(commands), base::BindOnce(
+-      [](base::WeakPtr<AuxOrganizationWindowController> owner, tabs::TabHandle handle, std::string url,
++      [](base::WeakPtr<AuxOrganizationWindowController> owner, tabs::TabHandle handle,
++         std::string logical, std::string document, std::string generation, std::string url,
+          base::OnceCallback<void(bool)> reply, organization::CommitResult result) {
+         bool closed = false;
+-        if (owner && result.error == organization::Error::kNone && handle.Get() &&
+-            handle.Get()->GetContents() && handle.Get()->GetContents()->GetLastCommittedURL().spec() == url)
+-          closed = owner->CloseViewNow(handle);
++        if (owner && owner->Current() && result.error == organization::Error::kNone) {
++          auto* tab = handle.Get();
++          auto* coordinator = organization::OrganizationProfileServiceFactory::GetForProfileIfExists(owner->profile_);
++          const auto live = owner->views_.find(handle);
++          // The URL alone cannot identify the document: a same-URL reload or
++          // replacement can finish while this physical save is in progress.
++          // Only the originally requested native view may be closed.
++          if (coordinator && coordinator->owner_generation() == generation &&
++              coordinator->model() && !coordinator->model()->blocked() && tab &&
++              owner->model_->GetIndexOfTab(tab) >= 0 && tab->GetContents() &&
++              tab->GetContents()->GetBrowserContext() == owner->profile_ &&
++              live != owner->views_.end() && live->second.logical_id == logical &&
++              live->second.document_id == document &&
++              GetRememberedPinnedTabEntryId(*tab->GetContents()) == logical &&
++              tab->GetContents()->GetLastCommittedURL().spec() == url)
++            closed = owner->CloseViewNow(handle);
++        }
+         std::move(reply).Run(closed);
+-      }, weak_.GetWeakPtr(), handle, url, std::move(reply)));
++      }, weak_.GetWeakPtr(), handle, id, document, generation, url, std::move(reply)));
+ }
+ void AuxOrganizationWindowController::UnloadLogicalTab(const std::string& id, base::OnceCallback<void(bool)> reply) {
+   if (!Current()) { std::move(reply).Run(false); return; }
+@@ -1084,7 +1105,7 @@
+         auto done = base::BindOnce([](base::WeakPtr<AuxOrganizationWindowController> owner, bool) {
+           if (owner) owner->Notify();
+         }, owner);
+-        if (tab->IsPinned() || organization::HasRetention(current->snapshot(), id)) owner->UnloadLogicalTab(id, std::move(done));
++        if (tab->IsPinned() || organization::HasRetention(current->snapshot(), id)) owner->EnsureSavedThenClose(target, std::move(done));
+         else owner->ArchiveLogicalEntry(id, std::move(done));
+       }, weak_.GetWeakPtr(), handle, id));
+   return true;
