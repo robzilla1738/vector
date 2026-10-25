@@ -1,0 +1,16 @@
+{
+  "format": "aux.memory-registry-c-linkage-fix.v1",
+  "input": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/productivity-memory-native-a41/source/AuxRegisteredMemoryAccountOwner.h",
+  "inputSha256": "ca7bc629359188097df2d1414af2720b3b656c7e8272e0ca1286b19c28eee284",
+  "output": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/local-daemon-memory-integration-a37/source/AuxRegisteredMemoryAccountOwner.h",
+  "outputSha256": "a38c60a80fa5b005cb166e1df54628358a9cc0cf0b9df84c8396b6dd59c74359",
+  "anchors": [
+    {
+      "before": "#ifdef __cplusplus\n}\n#endif\n\nint32_t AuxFinishRegisteredMemoryRegistryTarget(uint64_t dispatcher,const uint8_t* exact_target,uint32_t count);\n",
+      "after": "int32_t AuxFinishRegisteredMemoryRegistryTarget(uint64_t dispatcher,const uint8_t* exact_target,uint32_t count);\n#ifdef __cplusplus\n}\n#endif\n",
+      "count": 1
+    }
+  ],
+  "behaviorChange": false,
+  "productExecuted": false
+}

@@ -1,4 +1,12 @@
-# Native-user/profile/CLI integration in progress — 2026-10-25
+# Browser and memory daemon built; package pairing continues — 2026-10-25
+
+Full unsigned browser A69 passed after the four remaining popup ownership fixes and corrected native-close deferral; its416-leaf app and native CLI are frozen and inventory-verified. Existing style-call/value lines remain unchanged. The actual current50-Swift memory-enabled daemon now fully links as unsigned A63, reusing the retained Node/native cohort and including replacement WorkerHost plus one new ObjC++ helper object. Two C++ catch-syntax corrections and one C-linkage declaration correction are retained with their failed receipts; only affected objects were recompiled. See `browser-feature-expansion/local-completion-integration-a34/actual-full-build.json` and `local-daemon-memory-integration-a37/actual-build.json`.
+
+Provider source fixes on main address safe permission errors, selected-account catalog eligibility and direct Darwin file locking, with no `lockf` subprocess or general exec exception. Focused provider-free/kernel checks pass. A further actual allocator audit proved numeric account IDs can be reused while old ChatGPT sidecar files survive; the smallest versioned incarnation-bound namespace and exact cumulative source/entry upgrade are being completed. Older credentials will not be moved, deleted or silently reinterpreted. This privacy failure remains open until the paired fix is integrated and checked.
+
+The new app is not yet assembled, signed or executed. Fixed memory-image/policy packaging, latest provider/JS pairing, a concrete local development-signing/state review and actual disposable journeys remain. Accepted UI/app and current testable A25 are preserved; no owner state, new signing, OS grant, cloud change or release occurred.
+
+# Prior native-user/profile/CLI integration checkpoint — 2026-10-25
 
 The delivered native OS-user startup consumer and read-only control/task preflight are now on local main. Root projected the current browser policy pair, native fixed-directory startup, ordinary profile selectors and ordinary CLI ingress together, including the required narrow GN registration. The new development launcher performs package preflight only and creates no user roots; native code remains the actual signed-policy/location/admission owner. Five focused Node launcher checks pass, retaining the existing disposable route and rejecting caller root overrides before state creation.
 

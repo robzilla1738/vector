@@ -1,0 +1,19 @@
+{
+  "passed": false,
+  "planSha256": "84ca303a315a2e5a0c070146cdc443172e8d21dbfe89658c2deddb968da584aa",
+  "results": [
+    {
+      "label": "worker",
+      "exitCode": 0
+    },
+    {
+      "label": "helper",
+      "exitCode": 1
+    }
+  ],
+  "seconds": 12.257130582933314,
+  "swiftSourceCount": 50,
+  "changedCppObjects": 2,
+  "productExecuted": false,
+  "productSigned": false
+}

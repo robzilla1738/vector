@@ -1,0 +1,19 @@
+{
+  "passed": false,
+  "results": [
+    {
+      "label": "helper",
+      "exitCode": 0
+    },
+    {
+      "label": "link",
+      "exitCode": 1
+    }
+  ],
+  "seconds": 25.924147666897625,
+  "planSha256": "6a72ce9763edbf468579b5619117c1c98f426b0190bc33b5e76df755bea857ca",
+  "swiftSourceCount": 50,
+  "workerRecompiled": false,
+  "productExecuted": false,
+  "productSigned": false
+}

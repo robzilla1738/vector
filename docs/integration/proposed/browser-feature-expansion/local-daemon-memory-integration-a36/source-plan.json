@@ -1,0 +1,17 @@
+{
+  "format": "aux.memory-helper-cpp-catch-fix.v1",
+  "input": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/productivity-memory-launch-fence-a42/source/AuxAccountMemoryHelper.mm",
+  "inputSha256": "92bff4189d945bec513947f32b8e35d143da8501b5f4e12e70288ba8dd46a37d",
+  "output": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/local-daemon-memory-integration-a36/source/AuxAccountMemoryHelper.mm",
+  "outputSha256": "d3b38299dde1099d57fb52b0a30d31c567847fab3298dcfae18b267a769ff38d",
+  "anchors": [
+    {
+      "before": "catch{",
+      "after": "catch(...){",
+      "count": 2
+    }
+  ],
+  "behaviorChange": false,
+  "previousCompileRefusal": "local-daemon-memory-integration-a35/actual-build.json",
+  "productExecuted": false
+}

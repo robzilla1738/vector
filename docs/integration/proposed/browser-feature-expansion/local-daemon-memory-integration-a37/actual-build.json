@@ -1,0 +1,22 @@
+{
+  "passed": true,
+  "results": [
+    {
+      "label": "worker",
+      "exitCode": 0
+    },
+    {
+      "label": "link",
+      "exitCode": 0
+    }
+  ],
+  "seconds": 25.23372691590339,
+  "planSha256": "0f3d1f126162a5871e5d2f881dd31655b3ac59e83ff02c52754cb0c66e031e7d",
+  "swiftSourceCount": 50,
+  "helperRecompiled": false,
+  "productExecuted": false,
+  "productSigned": false,
+  "binary": "/private/tmp/aux-browser-only-daemon-build-20261025-a63/Aux Daemon",
+  "binarySha256": "4891d37f1dc60adc58c34392bf983e2dddb72ab87ec04f750b852f614827d6a4",
+  "codeSignatureLoadCommandPresent": false
+}
