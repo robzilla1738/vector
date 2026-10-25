@@ -1,0 +1,58 @@
+{
+  "format": "aux.ordinary-fresh.entry-lifetime.diagnosis.v1",
+  "candidate": "A44",
+  "signatureChecksPassed": 17,
+  "nativeReadinessAndHomeExportReached": true,
+  "nodeEntryReached": true,
+  "usableWindowObserved": false,
+  "secondsUntilFinalLog": 28.526127338409424,
+  "errorCode": "ERR_INVALID_URL",
+  "input": "./aux-crypto/",
+  "moduleBaseCorrupted": true,
+  "rawGarbageAndMemoryNotCopiedIntoEvidence": true,
+  "nodeVersion": "26.5.0",
+  "pinnedApiSource": {
+    "path": "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/src/api/environment.cc",
+    "sha256": "a15d309661ac722d9a3300546943f6d45959111bc5f6cfe6192375b82bc5e976"
+  },
+  "cause": "ModuleData keeps string_views but main frees source and resource URL before LoadEnvironment.",
+  "fix": "Own both native buffers with local unique_ptrs declared before ModuleData through execution/drain/teardown.",
+  "rootRecords": [
+    {
+      "root": "home/Library/Application Support/Aux/.aux-browser-ordinary-lease.v1",
+      "phase": "admitted",
+      "recordSha256": "2885c2941c547795838fc2f316ea0b29f556fef595496240702656e312381215"
+    },
+    {
+      "root": "home/Library/Caches/Aux/.aux-browser-ordinary-lease.v1",
+      "phase": "admitted",
+      "recordSha256": "0a6d3e7e1eaeab50d4723c0554ba447cf2322abfc8c5daad44c02e62a0666c63"
+    }
+  ],
+  "sameScopePreserved": "/private/tmp/aux-fresh-browser-c5mop317",
+  "policyUnchanged": true,
+  "noResetMigrationOrCredentialDeletion": true,
+  "working": [
+    "native daemon initialization/readiness",
+    "authenticated home export",
+    "Node environment reached"
+  ],
+  "failed": [
+    "daemon JavaScript entry",
+    "browser startup to usable window"
+  ],
+  "untested": [
+    "navigation",
+    "two-profile isolation",
+    "multiple windows",
+    "draft/attachment persistence",
+    "sidebar/chat/settings",
+    "actual visual comparison",
+    "ordinary restart"
+  ],
+  "followUps": [
+    "account-dependent BYOK/ChatGPT AI",
+    "third-party extension/autofill/native messaging",
+    "CLI routing"
+  ]
+}

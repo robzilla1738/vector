@@ -1,4 +1,16 @@
-# A43 signs but startup times out; A44 daemon correction assembled — 2026-10-24
+# Bounded fresh-browser milestone stopped: startup still blocked — 2026-10-25
+
+The assembled A45 candidate now contains the A49 browser/framework, A53 daemon, unchanged supplied UI revision33 and inactive packaged CLI. All17 local signatures verify under the owner's bounded authorization. The accepted app, owner profiles/credentials and UI remain untouched. No new scope, provisioning, OS grant, notarization or release occurred.
+
+Actual repairs progressed through native admission, file ESM loading and ordinary GPU/network helpers. A10 diagnostics conclusively exposed broker validation incorrectly rejected as command re-entry inside account-store initialization; A11 corrects pure validation of the exact already-active/open native entry while retaining the fresh guard and other re-entry refusals. A12b/A13 retain audit-bound Security objects and remove filesystem-inferring Foundation URLs from two lexical image-path checks, preserving actual signature/root/resource/image validation. These full builds and signatures are not runtime acceptance.
+
+**The actual A13 app is still not usable/testable.** No local health listener or usable normal window was observed; selected-native startup readiness failed at09:52:57.330. Later it lost parent authority and exited with SIGSEGV, forced cleanup and `groupStopped:false`. A subsequent inventory finds no candidate executable remaining; that is not proof of clean all-descendant closure. The owned loopback fixture is stopped and every failed preimage/state scope is preserved.
+
+The remaining implementation blocker is the ordinary startup storage/authorization lifecycle, plus failed-startup teardown. Repeated full protected-state validation still prevents readiness. A retained ordinary-startup owner tied to exact process/profile generation, held private roots and live peer is the smallest next design change to assess; it has **not** been implemented as an unreviewed guard bypass or expanded architecture. This bounded milestone stops here.
+
+Navigation, two-profile cookie isolation, multiple windows, draft/attachment/restart persistence, sidebar/chat/settings and actual visual comparison remain **untested, blocked at startup**. Account-dependent BYOK/ChatGPT AI, extensions/1Password/native messaging and CLI routing remain explicit follow-ups. Privileged tasks/addons remain disabled; legacy profiles remain refused and migration/advanced recovery deferred. [Clear working/failed/untested checklist and build path](integration/proposed/browser-feature-expansion/fresh-startup-milestone-a42/RESULT.md).
+
+# Historical: A43 signs but startup times out; A44 daemon correction assembled — 2026-10-24
 
 Owner approved and executed the exact A43 two-object signing review; both replacements and all17 signature checks pass. Actual A43 startup progresses through fresh installation/root creation, then fails its paired-daemon receipt deadline. A one-second process sample places all78 main-thread samples in initialization with repeated full native code/resource checks. A read-only real macOS API probe using the same flags measures76–90ms per new code object versus0.12–0.17ms for subsequent checks on a retained code object. This is a demonstrated startup bottleneck, not browser/UI acceptance.
 

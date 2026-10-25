@@ -1,0 +1,24 @@
+{
+  "passed": true,
+  "changes": [
+    {
+      "path": "content/browser/aux_child_lifetime.h",
+      "beforeSha256": "ccb7fe34dd5f2ef584d2bc616a39026bfa7f591931a4d73fc58f89626fa8af64",
+      "afterSha256": "96f0588c3cde4b9d394a0335a26ded1d05e1ccad31aaff0c47a27d31d3b96135"
+    },
+    {
+      "path": "content/browser/child_process_launcher_helper_mac.cc",
+      "beforeSha256": "d92c1f98f35368d62c565ed8614c83e7c4459e81fcd718dbe7fef32aa2af98ee",
+      "afterSha256": "5d8fc46a607d3d431834c4de98050ecacd2e0eb5a3beaba075fcd6a9be8c2269"
+    }
+  ],
+  "anchorCount": 3,
+  "ordinaryUsesUpstreamSandboxAndLaunch": true,
+  "supervisedReservationFailureStillFatal": true,
+  "noUnconsumedAuxReceipt": true,
+  "unobservedCoverageSticky": true,
+  "fakeCustodyOrClean": false,
+  "uiChanged": false,
+  "signed": false,
+  "productExecuted": false
+}

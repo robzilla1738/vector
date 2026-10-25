@@ -1,0 +1,57 @@
+{
+  "format": "aux.ordinary-fresh.bounded-repair.review.v1",
+  "iteration": "a6",
+  "app": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-fresh-browser-20261025-a45/Aux.app",
+  "scope": "/private/tmp/aux-fresh-browser-c5mop317",
+  "ownerAuthorization": {
+    "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/fresh-startup-milestone-a42/owner-signing-approval-a5.json",
+    "sha256": "094788979b58b8a6269e8b5fef67a6dc8a00e9e056c570441aca835e7f579599"
+  },
+  "trigger": "A45 actual entry ERR_UNKNOWN_BUILTIN_MODULE: embedder ESM only supports builtins.",
+  "snapshot": {
+    "path": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-fresh-browser-20261025-a45-before-loader-a6/receipt.json",
+    "sha256": "def37b9e1d52040c3ad9afa9b46a5a35f46150f9386ccf8f5c7f08cae2c6fe9d"
+  },
+  "unsignedInventorySha256": "fbbfda51ea2a501b50362e11fdb4b40c7856cd3dbd613e23443b099e85cf750b",
+  "source": {
+    "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/fresh-startup-milestone-a42/actual-default-esm-projection-a6.json",
+    "sha256": "8ec953057d6ca318c06fd8ea6f66c674ceccdf8f64b408dd643f6a6b2463b053"
+  },
+  "build": {
+    "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/fresh-startup-milestone-a42/actual-daemon-default-esm-build-a6.json",
+    "sha256": "4ca32895a6dd9f95f57f65aa82007160d95b6f8f854566248b24f5664226d3b8"
+  },
+  "targetsInSigningOrder": [
+    {
+      "codeObject": "Contents/Resources/aux/apps/daemon/Aux Daemon.app",
+      "executable": "Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/MacOS/aux-daemon",
+      "sha256": "5ce3690a8e2baa745850df3649522f6aa0d317cd4b11eee650fd9e0daa63ef41",
+      "identifier": "dev.aux.browser.daemon",
+      "entitlements": {
+        "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/fresh-startup-milestone-a42/daemon-local.plist",
+        "sha256": "d24cbaa888243f1f0b804d8a8d2310cee8e0184e811ff88ecf5a7a46eebddc1d"
+      }
+    },
+    {
+      "codeObject": ".",
+      "executable": "Contents/MacOS/Aux",
+      "sha256": "83dd070ccd4950552bfdead93f788a000597e89cecd6004eb6a0e0eaffcf88ac",
+      "identifier": "dev.aux.browser",
+      "entitlements": {
+        "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/fresh-startup-milestone-a42/browser-jit.plist",
+        "sha256": "958648f799e436860b51eaf55ec8f92d2c62da17001e23d96bc05ffc748f2a2a"
+      }
+    }
+  ],
+  "identitySha1": "47ACA5D1CFADD21CFEDC589B4DEED6E2B7A96D90",
+  "team": "9F2JXY8TCK",
+  "policySha256": "e342013f6ca2b6a6b2b985877df5deef525a3b7ab11e2b08f88a91d4889a1dce",
+  "newEntitlements": false,
+  "newScope": false,
+  "acceptedAppExcluded": true,
+  "sourceOnlyExistingStartupComponent": true,
+  "uiPreserved": true,
+  "newProvisioning": false,
+  "newOSGrants": false,
+  "release": false
+}

@@ -1,0 +1,19 @@
+{
+  "format": "aux.ordinary-fresh.actual-startup-result.v1",
+  "candidate": "A45",
+  "repairIteration": "a9",
+  "passed": false,
+  "deadlineWasNotSufficient": true,
+  "actualFailure": "AUX_BROKER_OWNER_UNAVAILABLE followed by native parent-readiness refusal before90sec",
+  "firstNormalWindow": false,
+  "healthListenerReady": false,
+  "browserSignal": "SIGSEGV",
+  "ownedProcessGroupStopped": true,
+  "privateLog": "/private/tmp/aux-fresh-browser-c5mop317/browser-launch-a9.log",
+  "privateSample": "/private/tmp/aux-fresh-browser-c5mop317/daemon-startup-sample-a9.txt",
+  "nativeMainThreadSample": "72 samples in actual entry/guarded storage-root capture and current native parent revalidation",
+  "brokerFailureStageNotYetIdentified": true,
+  "remainingFocusedJourneys": "blocked_at_startup",
+  "uiChanged": false,
+  "release": false
+}

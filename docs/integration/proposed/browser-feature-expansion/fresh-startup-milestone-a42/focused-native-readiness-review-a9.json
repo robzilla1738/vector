@@ -1,0 +1,13 @@
+{
+  "format": "aux.ordinary-fresh.focused-review.v1",
+  "passed": true,
+  "reviewer": "/root/productivity_finish_batch",
+  "demonstratedFailure": "A8 browser readiness failed at09:04:13.263, then broker-owner error and daemon closure09:04:15.902",
+  "existingBrowserBudgetSeconds": 10,
+  "existingDaemonSupervisorBudgetSeconds": 90,
+  "smallestRepair": "Align selected-native browser readiness wait to90sec; retain exact health/extensions/authorization conditions and failure result.",
+  "brokerChecksChanged": false,
+  "initialOwnerAbsentNotEstablished": true,
+  "finalGuardFailureNotUniquelyProvenByLog": true,
+  "appExecuted": false
+}

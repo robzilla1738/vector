@@ -1,0 +1,37 @@
+--- a/AuxFreshBootstrapPolicy.swift
++++ b/AuxFreshBootstrapPolicy.swift
+@@ -167,11 +167,22 @@
+     if policy.ptyArtifacts != nil {result[bundle+"/"+AuxFreshBootstrapPtyArtifacts.modulePath]=AuxFreshBootstrapPtyArtifacts.moduleIdentifier}
+     return result
+ }
++// Loaded image names must be absolute and already lexically normalized.
++// Do not ask Foundation to infer file/directory kind for every sealed-system
++// image. Actual non-system realpath, census and signature checks are separate.
++func freshBootstrapImagePathIsLexicallyCanonical(_ path:String)->Bool {
++    guard path.first == "/" else{return false}
++    let components=path.split(separator:"/",omittingEmptySubsequences:false)
++    return components.count>1 && components.dropFirst().allSatisfy{
++        !$0.isEmpty && $0 != "." && $0 != ".."
++    }
++}
++
+ func validateCapturedFreshBootstrapImagePaths(_ paths:[String],bundle:String,policy:AuxFreshBootstrapPolicyContents)throws {
+     let expected=freshBootstrapExpectedImageIdentifiers(bundle:bundle,policy:policy);var observed=Set<String>()
+     guard !paths.isEmpty,paths.count<=4096 else{throw AuxFreshBootstrapPolicyError.image}
+     for path in paths {
+-        guard path.hasPrefix("/"),URL(fileURLWithPath:path).standardizedFileURL.path==path else{throw AuxFreshBootstrapPolicyError.image}
++        guard freshBootstrapImagePathIsLexicallyCanonical(path) else{throw AuxFreshBootstrapPolicyError.image}
+         if path.hasPrefix("/System/Library/") || path.hasPrefix("/usr/lib/"){continue}
+         guard expected[path] != nil,observed.insert(path).inserted else{throw AuxFreshBootstrapPolicyError.image}
+     }
+--- a/AuxSignedFreshBootstrapPolicyLoader.swift
++++ b/AuxSignedFreshBootstrapPolicyLoader.swift
+@@ -190,7 +190,7 @@
+         let count=_dyld_image_count();guard count>0,count<=4096 else{throw AuxFreshBootstrapPolicyError.image};var observed=Set<String>(),paths=[String]()
+         for index in 0..<count {
+             guard let raw=_dyld_get_image_name(index)else{throw AuxFreshBootstrapPolicyError.image};let path=String(cString:raw);paths.append(path)
+-            guard path.hasPrefix("/"),URL(fileURLWithPath:path).standardizedFileURL.path==path else{throw AuxFreshBootstrapPolicyError.image}
++            guard freshBootstrapImagePathIsLexicallyCanonical(path) else{throw AuxFreshBootstrapPolicyError.image}
+             if path.hasPrefix("/System/Library/") || path.hasPrefix("/usr/lib/"){continue}
+             guard let identifier=expected[path],try canonical(path)==path else{throw AuxFreshBootstrapPolicyError.image}
+ #if AUX_BROWSER_ONLY_NATIVE_STARTUP

@@ -1,0 +1,21 @@
+{
+  "passed": true,
+  "input": "/private/tmp/aux-standard-native-source-20261023-a4/AuxNativeNodeRunner.cc",
+  "inputSha256": "3379d8ef6bb089acc052228713906517bdda21945f3840e7216a104714ef6e7a",
+  "output": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/fresh-startup-milestone-a42/startup-default-esm-source/AuxNativeNodeRunner.cc",
+  "outputSha256": "aaf4f09cc4394dc6c41b6850ab1130f6adadccf756de03ab678598bcc994416b",
+  "headerCopiedUnchanged": {
+    "input": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-native-node-runner/source/AuxNativeNodeRunner.h",
+    "sha256": "e44b71ac04e90297e74801bc7aacbf3f738b44a637a937963a5e126d1d515184"
+  },
+  "ordinaryOnly": true,
+  "nativeSealedBytesUsed": true,
+  "sourceNotInterpolated": true,
+  "entryUrlChecked": true,
+  "synchronousInThreadLoader": true,
+  "preloadExitEventLoopDrainUnchanged": true,
+  "authenticationAndPolicyUnchanged": true,
+  "uiChanged": false,
+  "signed": false,
+  "productExecuted": false
+}

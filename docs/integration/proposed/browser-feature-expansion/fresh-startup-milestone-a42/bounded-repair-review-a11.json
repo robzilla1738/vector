@@ -1,0 +1,57 @@
+{
+  "format": "aux.ordinary-fresh.bounded-repair.review.v1",
+  "iteration": "a11",
+  "app": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-fresh-browser-20261025-a45/Aux.app",
+  "scope": "/private/tmp/aux-fresh-browser-c5mop317",
+  "ownerAuthorization": {
+    "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/fresh-startup-milestone-a42/owner-signing-approval-a5.json",
+    "sha256": "094788979b58b8a6269e8b5fef67a6dc8a00e9e056c570441aca835e7f579599"
+  },
+  "trigger": "A10 actual account store callback nests broker authority validation inside withAccountRegistryLock; withEntry reentrant refusal before the fresh guard.",
+  "snapshot": {
+    "path": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-fresh-browser-20261025-a45-before-callback-a11/receipt.json",
+    "sha256": "3eecc26c4ef93f4968868a3f1fe92b688c110fa2636f8d43f9e8bada3e7c0dc6"
+  },
+  "unsignedInventorySha256": "ec205990be7dfe69a0cd027cdf2ed6120230d8d9c06a1879815ed5c5bafb99dd",
+  "source": {
+    "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/fresh-startup-milestone-a42/actual-callback-authority-projection-a11.json",
+    "sha256": "43a61ae7544eb105ff6b3f3f31f91d0273896ad1c2c183defed0910cf1545898"
+  },
+  "build": {
+    "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/fresh-startup-milestone-a42/actual-daemon-callback-authority-build-a11.json",
+    "sha256": "78e6ed96f35d28f91987ed73f8d721057465dcd54d2d57ac03a40c352157b716"
+  },
+  "targetsInSigningOrder": [
+    {
+      "codeObject": "Contents/Resources/aux/apps/daemon/Aux Daemon.app",
+      "executable": "Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/MacOS/aux-daemon",
+      "sha256": "4fc2e814867eaed198621ee2f97c8fd1fac5d5273d4a31de984065edf573721c",
+      "identifier": "dev.aux.browser.daemon",
+      "entitlements": {
+        "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/fresh-startup-milestone-a42/daemon-local.plist",
+        "sha256": "d24cbaa888243f1f0b804d8a8d2310cee8e0184e811ff88ecf5a7a46eebddc1d"
+      }
+    },
+    {
+      "codeObject": ".",
+      "executable": "Contents/MacOS/Aux",
+      "sha256": "25d3b1dd2e2ba67b0e2c99d37f49bd9506c732212b7c35e1304612e72faa97d4",
+      "identifier": "dev.aux.browser",
+      "entitlements": {
+        "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/fresh-startup-milestone-a42/browser-jit.plist",
+        "sha256": "958648f799e436860b51eaf55ec8f92d2c62da17001e23d96bc05ffc748f2a2a"
+      }
+    }
+  ],
+  "identitySha1": "47ACA5D1CFADD21CFEDC589B4DEED6E2B7A96D90",
+  "team": "9F2JXY8TCK",
+  "policySha256": "e342013f6ca2b6a6b2b985877df5deef525a3b7ab11e2b08f88a91d4889a1dce",
+  "newEntitlements": false,
+  "newScope": false,
+  "acceptedAppExcluded": true,
+  "sourceOnlyExistingStartupComponent": true,
+  "uiPreserved": true,
+  "newProvisioning": false,
+  "newOSGrants": false,
+  "release": false
+}

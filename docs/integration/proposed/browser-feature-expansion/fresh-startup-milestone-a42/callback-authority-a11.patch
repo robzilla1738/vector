@@ -1,0 +1,26 @@
+--- a/AuxOwnedCommandDispatcher.swift
++++ b/AuxOwnedCommandDispatcher.swift
+@@ -1297,7 +1297,22 @@
+     }
+     func validateCurrentAuthority(_ handle:UInt64)->Int32 {
+         do {
+-            try withEntry(handle,guardGenericAction:false){entry in try requireFreshGuard(entry,moment:.beforeAction)}
++            guard getpid()==process else{throw AuxNativeFreshGuardProcessError.wrongProcess}
++            let active=Thread.current.threadDictionary[threadKey] as? [UInt64:Int] ?? [:]
++            if active[handle,default:0]>0 {
++                // An authenticated account-lock callback may perform guarded
++                // filesystem writes. Its outer withEntry already holds this
++                // exact entry's execution lock and active lifetime on this
++                // thread. Revalidate it; do not open a nested command or return
++                // a cached admission result. Command re-entry stays forbidden.
++                condition.lock()
++                guard let entry=entries[handle] else{condition.unlock();throw AuxDispatcherLifetimeError.invalidHandle}
++                guard entry.phase == .open,entry.active>0 else{condition.unlock();throw AuxDispatcherLifetimeError.retiring}
++                condition.unlock()
++                try requireFreshGuard(entry,moment:.beforeAction)
++            }else{
++                try withEntry(handle,guardGenericAction:false){entry in try requireFreshGuard(entry,moment:.beforeAction)}
++            }
+             return 0
+         }catch let failure as AuxNativeFreshGuardFailure {
+             switch failure.disposition {

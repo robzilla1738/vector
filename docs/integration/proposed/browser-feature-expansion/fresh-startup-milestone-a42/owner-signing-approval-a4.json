@@ -1,0 +1,10 @@
+{
+  "format": "aux.ordinary-fresh.identity-reuse.owner-approval.v1",
+  "reviewSha256": "9135620eeed5a17b5583fdb14669084a13c4ca36025934f14ad0da152768de2c",
+  "ownerReply": "Approve daemon/app signing and new-scope checks",
+  "objectCount": 2,
+  "scope": "/private/tmp/aux-fresh-browser-c5mop317",
+  "newProvisioning": false,
+  "newOSGrants": false,
+  "release": false
+}

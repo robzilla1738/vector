@@ -1,0 +1,20 @@
+{
+  "format": "aux.ordinary-fresh.entry-lifetime.projection.v1",
+  "passed": true,
+  "input": "/private/tmp/aux-browser-only-daemon-build-20261024-a42e/source/AuxNativeDaemonMain.cc",
+  "inputSha256": "1711d0383cce5657e7332caf9ae61af717c8483fe67487cc0914fc5409566908",
+  "output": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/fresh-startup-milestone-a42/startup-entry-lifetime-source/AuxNativeDaemonMain.cc",
+  "outputSha256": "d5bb9a8ee9a5681ccb67495799e812e1d3fed6c7a343ce4d6b6c87341a4e283d",
+  "anchor": {
+    "before": "  node::ModuleData entry;\n  entry.set_source({static_cast<const char*>(source), source_length});\n  entry.set_format(node::ModuleFormat::kModule);\n  entry.set_resource_name(resource_url);\n  const auto script_path = FilePath(resource_url);\n  free(source);\n  free(resource_url);\n",
+    "after": "  // ModuleData stores borrowed string_views. Keep both native buffers\n  // alive through LoadEnvironment, the event loop and environment teardown.\n  const std::unique_ptr<void, decltype(&free)> entry_source(source, &free);\n  const std::unique_ptr<char, decltype(&free)> entry_resource_url(resource_url, &free);\n  node::ModuleData entry;\n  entry.set_source({static_cast<const char*>(entry_source.get()), source_length});\n  entry.set_format(node::ModuleFormat::kModule);\n  entry.set_resource_name(entry_resource_url.get());\n  const auto script_path = FilePath(entry_resource_url.get());\n",
+    "count": 1
+  },
+  "sourceAndResourceOwnersOutliveModuleData": true,
+  "failurePathFreesPreserved": true,
+  "authenticationUnchanged": true,
+  "policyUnchanged": true,
+  "uiChanged": false,
+  "productExecuted": false,
+  "signed": false
+}

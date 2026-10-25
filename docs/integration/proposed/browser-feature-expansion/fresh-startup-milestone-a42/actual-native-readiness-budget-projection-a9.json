@@ -1,0 +1,17 @@
+{
+  "passed": true,
+  "changes": [
+    {
+      "path": "chrome/browser/aux/browser_platform.cc",
+      "beforeSha256": "600148c4f62d39ce1bd3672b34d0af159e3f64b74f9e562f35afe528b119a00e",
+      "afterSha256": "68904471d8f8f9252107bba787fc1a46386b69d42d72561c8291d5d1c2e2367c"
+    }
+  ],
+  "nativeSelectedReadinessBudgetSeconds": 90,
+  "legacyBudgetSeconds": 10,
+  "authorizationAndHealthStillRequired": true,
+  "noFallbackOnDeadline": true,
+  "uiChanged": false,
+  "signed": false,
+  "productExecuted": false
+}

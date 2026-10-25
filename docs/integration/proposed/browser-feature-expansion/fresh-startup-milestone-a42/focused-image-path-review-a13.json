@@ -1,0 +1,13 @@
+{
+  "format": "aux.ordinary-fresh.focused-review.v1",
+  "passed": true,
+  "reviewer": "/root/navigation_finish_batch",
+  "scope": "Only two lexical loaded-image URL comparisons",
+  "absoluteRootAndNonemptyNonDotComponentsRequired": true,
+  "rootTrailingAndDoubleSlashConservativelyRefused": true,
+  "literalSystemAllowlistPrefixesUnchanged": true,
+  "nonSystemRealpathAndExpectedImagesAndSignatureResourceChecksUnchanged": true,
+  "fullDyldCensusStillRequired": true,
+  "noCachedAuthorization": true,
+  "appExecuted": false
+}

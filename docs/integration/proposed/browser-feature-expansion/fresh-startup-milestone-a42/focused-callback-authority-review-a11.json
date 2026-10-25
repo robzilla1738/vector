@@ -1,0 +1,16 @@
+{
+  "format": "aux.ordinary-fresh.focused-review.v1",
+  "passed": true,
+  "reviewer": "/root/productivity_finish_batch",
+  "demonstratedFailure": "A10 status1 before fresh-guard catch; actual FileJsonStore accounts lock callback nests broker validation; withEntry raises reentrantCall.",
+  "scope": "validateCurrentAuthority only",
+  "exactThreadActiveHandleRequired": true,
+  "openActiveRetainedEntryRequired": true,
+  "outerExecutionLifetimeRetained": true,
+  "freshGuardRuns": true,
+  "noSecondExecutionLock": true,
+  "noCachedAdmission": true,
+  "otherCommandReentryUnchanged": true,
+  "retirementStillRefused": true,
+  "appExecuted": false
+}

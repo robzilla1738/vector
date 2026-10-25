@@ -1,0 +1,10 @@
+{
+  "reviewer": "/root/productivity_finish_batch",
+  "readOnlyReview": true,
+  "causeConfirmedAgainstActualNodeSource": true,
+  "twoUniquePtrOwnersBeforeModuleDataCorrect": true,
+  "failurePathFreesPreserved": true,
+  "ownerLifetimeThroughEnvironmentTeardownConfirmed": true,
+  "additionalConfirmedIssues": [],
+  "runtimeAcceptance": false
+}

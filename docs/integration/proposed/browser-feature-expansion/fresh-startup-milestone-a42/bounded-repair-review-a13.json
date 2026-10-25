@@ -1,0 +1,57 @@
+{
+  "format": "aux.ordinary-fresh.bounded-repair.review.v1",
+  "iteration": "a13",
+  "app": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-fresh-browser-20261025-a45/Aux.app",
+  "scope": "/private/tmp/aux-fresh-browser-c5mop317",
+  "ownerAuthorization": {
+    "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/fresh-startup-milestone-a42/owner-signing-approval-a5.json",
+    "sha256": "094788979b58b8a6269e8b5fef67a6dc8a00e9e056c570441aca835e7f579599"
+  },
+  "trigger": "A12b still exceeds startup budget; actual OS sample shows Foundation directory-inference URLs for all loaded images dominating repeated guards. Replace only lexical path checks, retaining all real census/signature/FD checks.",
+  "snapshot": {
+    "path": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-fresh-browser-20261025-a45-before-image-a13/receipt.json",
+    "sha256": "1a8666afb7bab1884e55e4f10da607057453bb8332d8aac76b2b13e2985f4023"
+  },
+  "unsignedInventorySha256": "e86258f608f364991f7256d375309a1ebd29752be5eafa1a4a84ada2a55f6b05",
+  "source": {
+    "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/fresh-startup-milestone-a42/actual-image-path-check-projection-a13.json",
+    "sha256": "2101900fb750fe7d223ee35a2784bba8c35b2d1c7e0662906eafd912312434e0"
+  },
+  "build": {
+    "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/fresh-startup-milestone-a42/actual-daemon-image-path-check-build-a13.json",
+    "sha256": "cda93e974a0b69d5f51cb107fda3448e91a2deb4544ba23f360d415875cdc867"
+  },
+  "targetsInSigningOrder": [
+    {
+      "codeObject": "Contents/Resources/aux/apps/daemon/Aux Daemon.app",
+      "executable": "Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/MacOS/aux-daemon",
+      "sha256": "d1d8da41f0d0e7fa6ca1bc938bbd812c21966244e5f5776e7696807eb8c0672a",
+      "identifier": "dev.aux.browser.daemon",
+      "entitlements": {
+        "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/fresh-startup-milestone-a42/daemon-local.plist",
+        "sha256": "d24cbaa888243f1f0b804d8a8d2310cee8e0184e811ff88ecf5a7a46eebddc1d"
+      }
+    },
+    {
+      "codeObject": ".",
+      "executable": "Contents/MacOS/Aux",
+      "sha256": "b9d3bd4e901c374269b6286f553f701ca05a9cf348086d745277a565a375937b",
+      "identifier": "dev.aux.browser",
+      "entitlements": {
+        "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/fresh-startup-milestone-a42/browser-jit.plist",
+        "sha256": "958648f799e436860b51eaf55ec8f92d2c62da17001e23d96bc05ffc748f2a2a"
+      }
+    }
+  ],
+  "identitySha1": "47ACA5D1CFADD21CFEDC589B4DEED6E2B7A96D90",
+  "team": "9F2JXY8TCK",
+  "policySha256": "e342013f6ca2b6a6b2b985877df5deef525a3b7ab11e2b08f88a91d4889a1dce",
+  "newEntitlements": false,
+  "newScope": false,
+  "acceptedAppExcluded": true,
+  "sourceOnlyExistingStartupComponent": true,
+  "uiPreserved": true,
+  "newProvisioning": false,
+  "newOSGrants": false,
+  "release": false
+}

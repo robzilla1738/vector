@@ -1,0 +1,53 @@
+{
+  "format": "aux.ordinary-fresh.bounded-repair.review.v1",
+  "iteration": "a7",
+  "app": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-fresh-browser-20261025-a45/Aux.app",
+  "scope": "/private/tmp/aux-fresh-browser-c5mop317",
+  "ownerAuthorization": {
+    "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/fresh-startup-milestone-a42/owner-signing-approval-a5.json",
+    "sha256": "094788979b58b8a6269e8b5fef67a6dc8a00e9e056c570441aca835e7f579599"
+  },
+  "trigger": "A6 actual launch GPU/network helper error 1003: ordinary children incorrectly required ES custody.",
+  "snapshot": {
+    "path": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-fresh-browser-20261025-a45-before-content-a7/receipt.json",
+    "sha256": "e809b28de19afc638fd92504a55281242138ff5d6b783f812d3e4f6164bd8588"
+  },
+  "unsignedInventorySha256": "7ca8b1581c1c9e36ebcf77b580859ed9be27cacfd28e6b28bb33092b1de92775",
+  "source": {
+    "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/fresh-startup-milestone-a42/actual-ordinary-content-projection-a7.json",
+    "sha256": "fc2017d39294873edf8d33332e8ac0383586e329578b2a9899f88dfbaf1ad4f5"
+  },
+  "build": {
+    "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/unsigned-ordinary-content-launch-build-20261025-a47/receipt.json",
+    "sha256": "782a09c815a8ae87b514ba805428ef3b93f3d71c04758973554d1d3f62c68734"
+  },
+  "targetsInSigningOrder": [
+    {
+      "codeObject": "Contents/Frameworks/Aux Framework.framework",
+      "executable": "Contents/Frameworks/Aux Framework.framework/Versions/155.0.8059.85/Aux Framework",
+      "sha256": "6574f2b12b0e1cbc62fc015d06378d807692619ab3bef9536890e1e7dc8d7ee5",
+      "identifier": "dev.aux.browser.framework",
+      "entitlements": null
+    },
+    {
+      "codeObject": ".",
+      "executable": "Contents/MacOS/Aux",
+      "sha256": "31857bb13a81a10e34e5bf6e55b3b23350121d5aff25fcabdbc363e3b428a9ee",
+      "identifier": "dev.aux.browser",
+      "entitlements": {
+        "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/fresh-startup-milestone-a42/browser-jit.plist",
+        "sha256": "958648f799e436860b51eaf55ec8f92d2c62da17001e23d96bc05ffc748f2a2a"
+      }
+    }
+  ],
+  "identitySha1": "47ACA5D1CFADD21CFEDC589B4DEED6E2B7A96D90",
+  "team": "9F2JXY8TCK",
+  "policySha256": "e342013f6ca2b6a6b2b985877df5deef525a3b7ab11e2b08f88a91d4889a1dce",
+  "newEntitlements": false,
+  "newScope": false,
+  "uiPreserved": true,
+  "acceptedAppExcluded": true,
+  "newProvisioning": false,
+  "newOSGrants": false,
+  "release": false
+}

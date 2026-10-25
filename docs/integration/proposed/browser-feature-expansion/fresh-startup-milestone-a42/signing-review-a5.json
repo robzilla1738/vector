@@ -1,0 +1,240 @@
+{
+  "format": "aux.ordinary-fresh.entry-lifetime.signing-review.v1",
+  "approvalReady": true,
+  "app": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-fresh-browser-20261025-a45/Aux.app",
+  "packageReceipt": {
+    "path": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-fresh-browser-20261025-a45/receipt.json",
+    "sha256": "285184f947d123a79ffd085ae35091695912b1377a75e339e2a58c434f8e9501"
+  },
+  "applyScript": {
+    "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/fresh-startup-milestone-a42/sign-entry-lifetime-a5.py",
+    "sha256": "b5936fefc17baf47e7d81e45f2fdd87df7ab58bd395cabbf882af2a939f149b7"
+  },
+  "targetCount": 2,
+  "targetsInSigningOrder": [
+    {
+      "codeObject": "Contents/Resources/aux/apps/daemon/Aux Daemon.app",
+      "executable": "Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/MacOS/aux-daemon",
+      "sha256": "8fd5e53dd7e1bcf638a3a9a0daed944423d47dcf8b0d4e42da2056bcdf62db41",
+      "identifier": "dev.aux.browser.daemon",
+      "entitlements": {
+        "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/fresh-startup-milestone-a42/daemon-local.plist",
+        "sha256": "d24cbaa888243f1f0b804d8a8d2310cee8e0184e811ff88ecf5a7a46eebddc1d"
+      }
+    },
+    {
+      "codeObject": ".",
+      "executable": "Contents/MacOS/Aux",
+      "sha256": "61ddae62f4b689176d71caeeddee386f0196576d514572ba9f01963fcc6186d2",
+      "identifier": "dev.aux.browser",
+      "entitlements": {
+        "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/fresh-startup-milestone-a42/browser-jit.plist",
+        "sha256": "958648f799e436860b51eaf55ec8f92d2c62da17001e23d96bc05ffc748f2a2a"
+      }
+    }
+  ],
+  "verificationTargets": [
+    {
+      "codeObject": "Contents/Frameworks/Aux Framework.framework/Versions/155.0.8059.85/Libraries/libvulkan.dylib",
+      "executable": "Contents/Frameworks/Aux Framework.framework/Versions/155.0.8059.85/Libraries/libvulkan.dylib",
+      "sha256": "7368e11025c2f24fb926d4f1a1a46f87ae1f25a8b4f243e4efa36804c6af0bc7",
+      "identifier": "dev.aux.browser.libvulkan",
+      "entitlements": null
+    },
+    {
+      "codeObject": "Contents/Frameworks/Aux Framework.framework/Versions/155.0.8059.85/Libraries/libvk_swiftshader.dylib",
+      "executable": "Contents/Frameworks/Aux Framework.framework/Versions/155.0.8059.85/Libraries/libvk_swiftshader.dylib",
+      "sha256": "798ef2626f7030ad6bcd952a726bc18b8ce512d5b5c56bd0f620ccafbf8f59ef",
+      "identifier": "dev.aux.browser.libvk-swiftshader",
+      "entitlements": null
+    },
+    {
+      "codeObject": "Contents/Frameworks/Aux Framework.framework/Versions/155.0.8059.85/Libraries/libaperitif.dylib",
+      "executable": "Contents/Frameworks/Aux Framework.framework/Versions/155.0.8059.85/Libraries/libaperitif.dylib",
+      "sha256": "1789088defc4a596d29f0096df1636842998873c131b0f5e2bd61e7520d2bc67",
+      "identifier": "dev.aux.browser.libaperitif",
+      "entitlements": null
+    },
+    {
+      "codeObject": "Contents/Frameworks/Aux Framework.framework/Versions/155.0.8059.85/Helpers/web_app_shortcut_copier",
+      "executable": "Contents/Frameworks/Aux Framework.framework/Versions/155.0.8059.85/Helpers/web_app_shortcut_copier",
+      "sha256": "b3640a3cbc8c6fa79edbad0bcf546863e8c44bf4c1c0f8de7deb055b11abce5e",
+      "identifier": "dev.aux.browser.web-app-shortcut-copier",
+      "entitlements": null
+    },
+    {
+      "codeObject": "Contents/Frameworks/Aux Framework.framework/Versions/155.0.8059.85/Helpers/chrome_crashpad_handler",
+      "executable": "Contents/Frameworks/Aux Framework.framework/Versions/155.0.8059.85/Helpers/chrome_crashpad_handler",
+      "sha256": "61cfe14505c162a86a805634a9a14f826be1aaa47a50720edb5a3b3c1a2568d6",
+      "identifier": "dev.aux.browser.chrome-crashpad-handler",
+      "entitlements": null
+    },
+    {
+      "codeObject": "Contents/Frameworks/Aux Framework.framework/Versions/155.0.8059.85/Helpers/app_mode_loader",
+      "executable": "Contents/Frameworks/Aux Framework.framework/Versions/155.0.8059.85/Helpers/app_mode_loader",
+      "sha256": "10b5b95935260e56a012f7e8bbae1eadc2bb9419e0f9806c1918e00eed5e50c7",
+      "identifier": "dev.aux.browser.app-mode-loader",
+      "entitlements": null
+    },
+    {
+      "codeObject": "Contents/Frameworks/Aux Framework.framework/Versions/155.0.8059.85/Helpers/Aux Helper.app",
+      "executable": "Contents/Frameworks/Aux Framework.framework/Versions/155.0.8059.85/Helpers/Aux Helper.app/Contents/MacOS/Aux Helper",
+      "sha256": "9c3fb3d545c77e7b97cfefd371ba1fbbed10c3a5cf594040bb890b9096c5162d",
+      "identifier": "dev.aux.browser.helper",
+      "entitlements": {
+        "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/fresh-startup-milestone-a42/browser-jit.plist",
+        "sha256": "958648f799e436860b51eaf55ec8f92d2c62da17001e23d96bc05ffc748f2a2a"
+      }
+    },
+    {
+      "codeObject": "Contents/Frameworks/Aux Framework.framework/Versions/155.0.8059.85/Helpers/Aux Helper (Renderer).app",
+      "executable": "Contents/Frameworks/Aux Framework.framework/Versions/155.0.8059.85/Helpers/Aux Helper (Renderer).app/Contents/MacOS/Aux Helper (Renderer)",
+      "sha256": "9f1f7fd40571203511d3e6fb3029cd465645a34e8c24fb44d2f8019900e341d6",
+      "identifier": "dev.aux.browser.helper.renderer",
+      "entitlements": {
+        "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/fresh-startup-milestone-a42/browser-jit.plist",
+        "sha256": "958648f799e436860b51eaf55ec8f92d2c62da17001e23d96bc05ffc748f2a2a"
+      }
+    },
+    {
+      "codeObject": "Contents/Frameworks/Aux Framework.framework/Versions/155.0.8059.85/Helpers/Aux Helper (GPU).app",
+      "executable": "Contents/Frameworks/Aux Framework.framework/Versions/155.0.8059.85/Helpers/Aux Helper (GPU).app/Contents/MacOS/Aux Helper (GPU)",
+      "sha256": "fee2aa06352a2a5da6ea8b39a0b3da289f027814e354bb938bce9f4e9bfd670e",
+      "identifier": "dev.aux.browser.helper",
+      "entitlements": {
+        "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/fresh-startup-milestone-a42/browser-jit.plist",
+        "sha256": "958648f799e436860b51eaf55ec8f92d2c62da17001e23d96bc05ffc748f2a2a"
+      }
+    },
+    {
+      "codeObject": "Contents/Frameworks/Aux Framework.framework/Versions/155.0.8059.85/Helpers/Aux Helper (Aperitif).app",
+      "executable": "Contents/Frameworks/Aux Framework.framework/Versions/155.0.8059.85/Helpers/Aux Helper (Aperitif).app/Contents/MacOS/Aux Helper (Aperitif)",
+      "sha256": "a781430fc531a980cd605fa3e467b35f2070e42fcdbcca3788144dd107de9cfa",
+      "identifier": "dev.aux.browser.helper",
+      "entitlements": {
+        "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/fresh-startup-milestone-a42/browser-jit.plist",
+        "sha256": "958648f799e436860b51eaf55ec8f92d2c62da17001e23d96bc05ffc748f2a2a"
+      }
+    },
+    {
+      "codeObject": "Contents/Frameworks/Aux Framework.framework/Versions/155.0.8059.85/Helpers/Aux Helper (Aperitif Renderer).app",
+      "executable": "Contents/Frameworks/Aux Framework.framework/Versions/155.0.8059.85/Helpers/Aux Helper (Aperitif Renderer).app/Contents/MacOS/Aux Helper (Aperitif Renderer)",
+      "sha256": "54d2ba9a49ba252afbedad27df27abc72e58015ed9e5683d34519b6e50f39d99",
+      "identifier": "dev.aux.browser.helper.renderer",
+      "entitlements": {
+        "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/fresh-startup-milestone-a42/browser-jit.plist",
+        "sha256": "958648f799e436860b51eaf55ec8f92d2c62da17001e23d96bc05ffc748f2a2a"
+      }
+    },
+    {
+      "codeObject": "Contents/Frameworks/Aux Framework.framework/Versions/155.0.8059.85/Helpers/Aux Helper (Aperitif GPU).app",
+      "executable": "Contents/Frameworks/Aux Framework.framework/Versions/155.0.8059.85/Helpers/Aux Helper (Aperitif GPU).app/Contents/MacOS/Aux Helper (Aperitif GPU)",
+      "sha256": "8d3133a646e608c3d228633fdeb8723ebb1861ce94c1278015f9f5c75c130032",
+      "identifier": "dev.aux.browser.helper",
+      "entitlements": {
+        "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/fresh-startup-milestone-a42/browser-jit.plist",
+        "sha256": "958648f799e436860b51eaf55ec8f92d2c62da17001e23d96bc05ffc748f2a2a"
+      }
+    },
+    {
+      "codeObject": "Contents/Frameworks/Aux Framework.framework/Versions/155.0.8059.85/Helpers/Aux Helper (Aperitif Alerts).app",
+      "executable": "Contents/Frameworks/Aux Framework.framework/Versions/155.0.8059.85/Helpers/Aux Helper (Aperitif Alerts).app/Contents/MacOS/Aux Helper (Aperitif Alerts)",
+      "sha256": "982ea1ed78864a47331f2372ec3d98a96247b33eac8504cc664bc671b1cfd603",
+      "identifier": "dev.aux.browser.framework.AlertNotificationService",
+      "entitlements": {
+        "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/fresh-startup-milestone-a42/browser-jit.plist",
+        "sha256": "958648f799e436860b51eaf55ec8f92d2c62da17001e23d96bc05ffc748f2a2a"
+      }
+    },
+    {
+      "codeObject": "Contents/Frameworks/Aux Framework.framework/Versions/155.0.8059.85/Helpers/Aux Helper (Alerts).app",
+      "executable": "Contents/Frameworks/Aux Framework.framework/Versions/155.0.8059.85/Helpers/Aux Helper (Alerts).app/Contents/MacOS/Aux Helper (Alerts)",
+      "sha256": "b4ff8b813348a1e4dfc4d0e68d504f139e34219e79240f029740e88e88df6c8c",
+      "identifier": "dev.aux.browser.framework.AlertNotificationService",
+      "entitlements": {
+        "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/fresh-startup-milestone-a42/browser-jit.plist",
+        "sha256": "958648f799e436860b51eaf55ec8f92d2c62da17001e23d96bc05ffc748f2a2a"
+      }
+    },
+    {
+      "codeObject": "Contents/Frameworks/Aux Framework.framework",
+      "executable": "Contents/Frameworks/Aux Framework.framework/Versions/155.0.8059.85/Aux Framework",
+      "sha256": "ca590840f7957668d18176f575970eb4441304740c36179263e1ea031cfcdf38",
+      "identifier": "dev.aux.browser.framework",
+      "entitlements": null
+    },
+    {
+      "codeObject": "Contents/Resources/aux/apps/daemon/Aux Daemon.app",
+      "executable": "Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/MacOS/aux-daemon",
+      "sha256": "6e77e072867ac57d3dbae73474727366a4c33865fd7f92eae0b8156ff823cc41",
+      "identifier": "dev.aux.browser.daemon",
+      "entitlements": {
+        "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/fresh-startup-milestone-a42/daemon-local.plist",
+        "sha256": "d24cbaa888243f1f0b804d8a8d2310cee8e0184e811ff88ecf5a7a46eebddc1d"
+      }
+    },
+    {
+      "codeObject": ".",
+      "executable": "Contents/MacOS/Aux",
+      "sha256": "b7ede79122912003d213385619c791fbf78e8c03d7b4250b7ae143a102f6159c",
+      "identifier": "dev.aux.browser",
+      "entitlements": {
+        "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/fresh-startup-milestone-a42/browser-jit.plist",
+        "sha256": "958648f799e436860b51eaf55ec8f92d2c62da17001e23d96bc05ffc748f2a2a"
+      }
+    }
+  ],
+  "identity": "Apple Development: Robert Courson (68DV3N28DS)",
+  "identitySha1": "47ACA5D1CFADD21CFEDC589B4DEED6E2B7A96D90",
+  "team": "9F2JXY8TCK",
+  "certificateSha256": "ff0293a06f20704a1f3b3f2571b3362ef439a2dfb3b0bc90bcf3d5debfc73a1c",
+  "scope": "/private/tmp/aux-fresh-browser-c5mop317",
+  "keychainAccessGroup": "9F2JXY8TCK.dev.aux.local",
+  "existingProfileUnchanged": true,
+  "policyUnchanged": true,
+  "nativeBrowserAndFrameworkUnchanged": true,
+  "suppliedUiPreserved": true,
+  "retainedValidSigningObjects": 15,
+  "oldStateReset": false,
+  "proposedAction": "Sign corrected daemon and outer app, then resume focused checks in the same admitted disposable scope.",
+  "optionalBoundedRepairAuthorization": {
+    "purpose": "Finish this existing fresh-browser startup/test milestone only; stop after delivering its checklist.",
+    "app": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-fresh-browser-20261025-a45/Aux.app",
+    "scope": "/private/tmp/aux-fresh-browser-c5mop317",
+    "identitySha1": "47ACA5D1CFADD21CFEDC589B4DEED6E2B7A96D90",
+    "conditionalObjects": [
+      "Contents/Resources/aux/apps/daemon/Aux Daemon.app",
+      "Contents/Frameworks/Aux Framework.framework",
+      "."
+    ],
+    "objectIdentifiers": [
+      "dev.aux.browser.daemon",
+      "dev.aux.browser.framework",
+      "dev.aux.browser"
+    ],
+    "conditions": [
+      "Change only for a demonstrated failure in the existing startup/profile components.",
+      "Preserve failed candidate bytes and exact inventories before each repair.",
+      "Record exact source patches, build receipts, file hashes and minimal signing targets before applying signatures.",
+      "Use the existing profile and the same entitlements only; no additional code objects or scopes.",
+      "Preserve the accepted app and current UI; no new feature batch, task architecture, legacy migration or advanced recovery.",
+      "Request separate approval for any wider signing/access scope."
+    ],
+    "newProvisioning": false,
+    "newOSGrants": false,
+    "ownerStateExcluded": true,
+    "credentialDeletion": false,
+    "notarization": false,
+    "distribution": false,
+    "release": false
+  },
+  "newEntitlements": false,
+  "newProvisioning": false,
+  "newOSGrants": false,
+  "ownerStateExcluded": true,
+  "acceptedAppExcluded": true,
+  "signingPerformed": false,
+  "appExecuted": false,
+  "notarization": false,
+  "release": false
+}

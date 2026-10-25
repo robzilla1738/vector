@@ -1,0 +1,15 @@
+{
+  "format": "aux.ordinary-fresh.focused-review.v1",
+  "passed": true,
+  "reviewer": "/root/navigation_finish_batch",
+  "scope": "One-entry audit-bound native guest code lifetime in existing daemon transport",
+  "fullKernelAuditTokenAndCreatingProcess": true,
+  "liveValidityAndRequirementAndSigningHashEveryCall": true,
+  "staticDescriptorAndBirthChecksPreserved": true,
+  "creatorOnlyRaIIRelease": true,
+  "mutexNotRecursivelyAcquired": true,
+  "swiftDescriptorReaderHasNoTransportCallback": true,
+  "noCachedAuthorizationResult": true,
+  "performanceAcceptance": "Requires actual startup; retention does not prove readiness.",
+  "appExecuted": false
+}

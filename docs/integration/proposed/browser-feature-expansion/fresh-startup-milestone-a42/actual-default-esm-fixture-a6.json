@@ -1,0 +1,28 @@
+{
+  "format": "aux.ordinary-fresh.default-esm.fixture.v1",
+  "passed": true,
+  "nodeVersion": "v26.12.1",
+  "embeddedNodeVersion": "26.5.0",
+  "bootstrapExtractedFromActualCppSource": true,
+  "entrySealedBytesOverrideDisk": true,
+  "staticAndDynamicRelativeImports": true,
+  "topLevelAwait": true,
+  "entryUrlMismatchRefused": true,
+  "noAddonsFlag": true,
+  "checks": [
+    {
+      "mode": "matching",
+      "passed": true,
+      "exitCode": 0,
+      "markerSeen": true
+    },
+    {
+      "mode": "mismatch",
+      "passed": true,
+      "exitCode": 1,
+      "markerSeen": false
+    }
+  ],
+  "productExecuted": false,
+  "nativeAuthenticationNotTestedByFixture": true
+}

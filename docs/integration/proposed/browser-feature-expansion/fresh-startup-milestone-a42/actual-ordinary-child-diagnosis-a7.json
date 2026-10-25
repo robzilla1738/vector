@@ -1,0 +1,14 @@
+{
+  "format": "aux.ordinary-fresh.startup-diagnosis.v1",
+  "passed": false,
+  "iteration": "a6",
+  "usableWindow": false,
+  "demonstratedFailure": "GPU/network launches error 1003; browser SIGABRT GPU process unusable.",
+  "entryModuleImportErrorGone": true,
+  "localStateCreated": true,
+  "cause": "Ordinary content child launch unconditionally requires Endpoint Security bridge ticket although ordinary startup intentionally has no bridge.",
+  "smallestCorrection": "Keep normal Chromium sandbox/launch/reaper when bridge absent; retain fatal supervised reservation failures and sticky unknown accounting.",
+  "sourceProjection": "actual-ordinary-content-projection-a7.json",
+  "privateLog": "/private/tmp/aux-fresh-browser-c5mop317/browser-launch-a6.log",
+  "uiChanged": false
+}

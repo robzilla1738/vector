@@ -1,0 +1,23 @@
+--- a/AuxNativeDaemonMain.cc
++++ b/AuxNativeDaemonMain.cc
+@@ -301,13 +301,15 @@
+     free(resource_url);
+     return Refuse("entry", entry_status, 78);
+   }
++  // ModuleData stores borrowed string_views. Keep both native buffers
++  // alive through LoadEnvironment, the event loop and environment teardown.
++  const std::unique_ptr<void, decltype(&free)> entry_source(source, &free);
++  const std::unique_ptr<char, decltype(&free)> entry_resource_url(resource_url, &free);
+   node::ModuleData entry;
+-  entry.set_source({static_cast<const char*>(source), source_length});
++  entry.set_source({static_cast<const char*>(entry_source.get()), source_length});
+   entry.set_format(node::ModuleFormat::kModule);
+-  entry.set_resource_name(resource_url);
+-  const auto script_path = FilePath(resource_url);
+-  free(source);
+-  free(resource_url);
++  entry.set_resource_name(entry_resource_url.get());
++  const auto script_path = FilePath(entry_resource_url.get());
+   if (script_path.empty()) return Refuse("entry-url", -1, 78);
+ 
+   // Preserve supplied Node signal/default OpenSSL/stdio behavior and the exact

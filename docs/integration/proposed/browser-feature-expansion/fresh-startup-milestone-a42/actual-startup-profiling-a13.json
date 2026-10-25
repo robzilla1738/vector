@@ -1,0 +1,24 @@
+{
+  "format": "aux.ordinary-fresh.startup-profiling.v1",
+  "candidate": "A45",
+  "repairIteration": "a12b",
+  "usableWindow": false,
+  "listenerReady": false,
+  "deadlineExceeded": true,
+  "ownedDaemonPid": 2893,
+  "daemonCpuPercentObserved": 71.8,
+  "sampleSeconds": 1,
+  "privateSample": "/private/tmp/aux-fresh-browser-c5mop317/daemon-startup-sample-a12b.txt",
+  "recursiveFrameCounts": {
+    "loaderLoadAndPolicyRevalidate": 84,
+    "FoundationUrlConstructor": 26,
+    "SwiftUrlAllocation": 22,
+    "StandardizedFileUrl": 18,
+    "lstat": 17
+  },
+  "countsAreRecursiveFramesNotWholeProcessPercentages": true,
+  "diagnosis": "Every guarded write repeatedly constructs filesystem-inferring Foundation URLs for the full dyld image list in two lexical checks.",
+  "smallestRepair": "Pure lexical canonical spelling checks only; repeat the real census, non-system canonicalization/signature/resource/FD checks.",
+  "uiChanged": false,
+  "release": false
+}

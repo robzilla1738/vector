@@ -1,0 +1,16 @@
+{
+  "format": "aux.ordinary-fresh.startup-diagnosis.v1",
+  "passed": false,
+  "iteration": "a7",
+  "usableWindow": false,
+  "demonstratedFailure": "Sandboxed helpers abort at InitializeUserDataDir: ValidateOrdinaryUserDataSelection",
+  "helperExecInstallsSeatbeltBeforeFrameworkMain": true,
+  "primaryPathValidatedBeforeChildSpawn": true,
+  "smallestCorrection": "Keep primary native/filesystem admission; helpers install only explicit lexically private path overrides without post-sandbox directory probes or creation.",
+  "sandboxExpansion": false,
+  "uiChanged": false,
+  "privateLog": "/private/tmp/aux-fresh-browser-c5mop317/browser-launch-a7.log",
+  "launcherExit": [
+    "{\"event\":\"aux-fresh-child-exit\",\"pid\":87922,\"exitCode\":null,\"signal\":\"SIGABRT\",\"groupStopped\":true,\"forced\":false}"
+  ]
+}

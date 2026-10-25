@@ -1,0 +1,32 @@
+--- a/chrome/app/chrome_main_delegate.cc
++++ b/chrome/app/chrome_main_delegate.cc
+@@ -610,7 +610,7 @@
+       command_line->HasSwitch(switches::kDiskCacheDir) || command_line->HasSwitch(switches::kProfileDirectory)) return false;
+   const auto path = command_line->GetSwitchValuePath(switches::kUserDataDir);
+   if (path.empty() || !path.IsAbsolute() || path.ReferencesParent() ||
+-      path.value() == "/" || base::MakeAbsoluteFilePath(path) != path) return false;
++      path.value() == "/") return false;
+   constexpr std::string_view prefix = "/private/tmp/aux-fresh-browser-";
+   constexpr std::string_view suffix = "/home/Library/Application Support/Aux";
+   const std::string_view named = path.value();
+@@ -620,6 +620,20 @@
+   if (scope.size() > 128 || std::ranges::any_of(scope, [](unsigned char ch) {
+         return !base::IsAsciiAlpha(ch) && !base::IsAsciiDigit(ch) && ch != '-' && ch != '_';
+       })) return false;
++  if (!command_line->GetSwitchValueASCII(switches::kProcessType).empty()) {
++    // Helpers apply seatbelt in their executable before entering this framework.
++    // Reopening the primary's private roots here is both unnecessary and denied
++    // by that sandbox. Use only its explicit, lexically bounded paths; never
++    // resolve a default, consult policy, create a directory or widen seatbelt.
++    const auto app_data = path.DirName();
++    const auto home = app_data.DirName().DirName();
++    const auto cache = home.AppendASCII("Library/Caches");
++    return base::PathService::OverrideAndCreateIfNeeded(base::DIR_HOME, home, true, false) &&
++        base::PathService::OverrideAndCreateIfNeeded(base::DIR_APP_DATA, app_data, true, false) &&
++        base::PathService::OverrideAndCreateIfNeeded(base::DIR_CACHE, cache, true, false) &&
++        base::PathService::OverrideAndCreateIfNeeded(chrome::DIR_USER_DATA, path, true, false);
++  }
++  if (base::MakeAbsoluteFilePath(path) != path) return false;
+   auto policy_path = path;
+   policy::path_parser::CheckUserDataDirPolicy(&policy_path);
+   if (policy_path != path) return false;

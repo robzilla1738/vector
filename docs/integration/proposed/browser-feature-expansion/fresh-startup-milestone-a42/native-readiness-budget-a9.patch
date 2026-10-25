@@ -1,0 +1,17 @@
+--- a/chrome/browser/aux/browser_platform.cc
++++ b/chrome/browser/aux/browser_platform.cc
+@@ -148,7 +148,13 @@
+   if (startup_state_ == StartupState::kNotStarted) {
+     startup_state_ = StartupState::kWaiting;
+     startup_extensions_ready_ = std::move(extensions_ready);
+-    startup_deadline_ = base::TimeTicks::Now() + base::Seconds(10);
++    // A selected native daemon completes authenticated cold initialization
++    // before its HTTP listener is ready. Do not retire its owner at the older
++    // extension-only deadline; readiness and authorization remain mandatory.
++    const bool native_selected = peer::ReadNativeSelectedStateHome().route ==
++        peer::SelectedStateHomeRoute::current;
++    startup_deadline_ = base::TimeTicks::Now() +
++        base::Seconds(native_selected ? 90 : 10);
+     startup_timer_.Start(FROM_HERE, base::Milliseconds(250), this,
+                          &BrowserPlatform::CheckStartupReadiness);
+     CheckStartupReadiness();

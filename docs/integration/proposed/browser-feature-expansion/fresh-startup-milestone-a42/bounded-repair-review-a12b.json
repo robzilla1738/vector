@@ -1,0 +1,57 @@
+{
+  "format": "aux.ordinary-fresh.bounded-repair.review.v1",
+  "iteration": "a12b",
+  "app": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-fresh-browser-20261025-a45/Aux.app",
+  "scope": "/private/tmp/aux-fresh-browser-c5mop317",
+  "ownerAuthorization": {
+    "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/fresh-startup-milestone-a42/owner-signing-approval-a5.json",
+    "sha256": "094788979b58b8a6269e8b5fef67a6dc8a00e9e056c570441aca835e7f579599"
+  },
+  "trigger": "A11 actual cold initialization exceeds90sec with repeated guest/static signature object construction in OS sample; retain audit-bound native objects while repeating every actual validity/CDHash/descriptor check.",
+  "snapshot": {
+    "path": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-fresh-browser-20261025-a45-before-peer-a12b/receipt.json",
+    "sha256": "4a683ecb5762833ab5c2122b42777b06aa70b853bff82a81be71a9c494abef08"
+  },
+  "unsignedInventorySha256": "f116a2ddbbcb8822ff460478dca33cfd7a70131546ecded4ca15b540a9941b51",
+  "source": {
+    "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/fresh-startup-milestone-a42/actual-peer-identity-reuse-projection-a12b.json",
+    "sha256": "31b813e817b87212e8e802a99cb537da6ddb61ff0fd219c23397d1d9b842c1e5"
+  },
+  "build": {
+    "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/fresh-startup-milestone-a42/actual-daemon-peer-identity-reuse-build-a12b.json",
+    "sha256": "153492eaad80eedefdd706ba6540303425cb834cc0550d0fc8eb2bfc7cda4216"
+  },
+  "targetsInSigningOrder": [
+    {
+      "codeObject": "Contents/Resources/aux/apps/daemon/Aux Daemon.app",
+      "executable": "Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/MacOS/aux-daemon",
+      "sha256": "45eeb4edf8c7e0db2f103e5798b87478ad7a9450498f6dba4ad18d4b2074b8ed",
+      "identifier": "dev.aux.browser.daemon",
+      "entitlements": {
+        "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/fresh-startup-milestone-a42/daemon-local.plist",
+        "sha256": "d24cbaa888243f1f0b804d8a8d2310cee8e0184e811ff88ecf5a7a46eebddc1d"
+      }
+    },
+    {
+      "codeObject": ".",
+      "executable": "Contents/MacOS/Aux",
+      "sha256": "94990afd01760386f807c67ef3618772baccb1aad86cb4eb78dc2d43cac286db",
+      "identifier": "dev.aux.browser",
+      "entitlements": {
+        "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/fresh-startup-milestone-a42/browser-jit.plist",
+        "sha256": "958648f799e436860b51eaf55ec8f92d2c62da17001e23d96bc05ffc748f2a2a"
+      }
+    }
+  ],
+  "identitySha1": "47ACA5D1CFADD21CFEDC589B4DEED6E2B7A96D90",
+  "team": "9F2JXY8TCK",
+  "policySha256": "e342013f6ca2b6a6b2b985877df5deef525a3b7ab11e2b08f88a91d4889a1dce",
+  "newEntitlements": false,
+  "newScope": false,
+  "acceptedAppExcluded": true,
+  "sourceOnlyExistingStartupComponent": true,
+  "uiPreserved": true,
+  "newProvisioning": false,
+  "newOSGrants": false,
+  "release": false
+}

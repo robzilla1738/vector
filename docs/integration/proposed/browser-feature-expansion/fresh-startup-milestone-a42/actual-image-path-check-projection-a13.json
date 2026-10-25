@@ -1,0 +1,24 @@
+{
+  "passed": true,
+  "files": [
+    {
+      "input": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/ordinary-fresh-browser-startup-a1/source/AuxFreshBootstrapPolicy.swift",
+      "inputSha256": "b67d6233d0243ed209b9a1c2d14d58d820a9a82bfdaeb6bafd4e931af96f47c5",
+      "output": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/fresh-startup-milestone-a42/image-path-check-source/AuxFreshBootstrapPolicy.swift",
+      "outputSha256": "312bfec919853a2599a04a7e353736b6f499511b31a6a854199f76b351afefba"
+    },
+    {
+      "input": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/fresh-startup-milestone-a42/startup-identity-reuse-b4-source/AuxSignedFreshBootstrapPolicyLoader.swift",
+      "inputSha256": "9ef2936d2cedccc381fb16c74c2840b714ca7442c8d0e3f3365df390e4c9743f",
+      "output": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/fresh-startup-milestone-a42/image-path-check-source/AuxSignedFreshBootstrapPolicyLoader.swift",
+      "outputSha256": "1c9bb1bc20e6462a23251c6f30db215fdef5ed4a96a8387adc71676ba49c7a1c"
+    }
+  ],
+  "lexicalImagePathChecksOnly": true,
+  "fullDyldCensusStillCollectedEveryCall": true,
+  "nonSystemRealpathAndSignatureChecksUnchanged": true,
+  "resourceAndFdChecksUnchanged": true,
+  "noCachedAuthorizationOrCensus": true,
+  "uiChanged": false,
+  "productExecuted": false
+}

@@ -1,0 +1,14 @@
+{
+  "format": "aux.ordinary-fresh.focused-review.v1",
+  "passed": true,
+  "reviewer": "/root/navigation_finish_batch",
+  "scope": "Exact sandboxed-profile-path-a8.patch and source",
+  "findings": [],
+  "primaryAdmissionPreserved": true,
+  "helperPathGrammar": "Explicit fixed private scope, ASCII alphanumeric/hyphen/underscore; no dot/parent/slash/cache/profile override",
+  "helperFilesystemCalls": false,
+  "pathOverrides": "is_absolute=true, create=false",
+  "primaryBundleRejectsFakeHelperProcessType": true,
+  "sandboxUnchanged": true,
+  "appExecuted": false
+}

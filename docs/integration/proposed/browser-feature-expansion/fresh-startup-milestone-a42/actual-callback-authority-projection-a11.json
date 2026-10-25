@@ -1,0 +1,13 @@
+{
+  "passed": true,
+  "input": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/fresh-startup-milestone-a42/startup-diagnostics-source/AuxOwnedCommandDispatcher.swift",
+  "inputSha256": "b2e3ca10b5feb90a22f67ceed80f82c29135bb12fa27e1594f5a37e33f67b60c",
+  "output": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/fresh-startup-milestone-a42/callback-authority-source/AuxOwnedCommandDispatcher.swift",
+  "outputSha256": "6ed34e3a4c9e2b519091f58d6ceb14d3c64efa90d6db1696f6d0b2ab5bc75b30",
+  "onlyAuthorityValidationReentry": true,
+  "actualFreshGuardStillRuns": true,
+  "otherCommandReentryStillRefused": true,
+  "pidAndPhaseAndActiveLifetimeRequired": true,
+  "uiChanged": false,
+  "productExecuted": false
+}

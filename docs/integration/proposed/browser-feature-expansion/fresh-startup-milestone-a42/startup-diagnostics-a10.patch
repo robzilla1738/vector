@@ -1,0 +1,37 @@
+--- a/AuxNativeDaemonMain.cc
++++ b/AuxNativeDaemonMain.cc
+@@ -175,6 +175,7 @@
+         // Timeout is not successful readiness or observed peer loss. Parent
+         // expires its own real pulse; next attempt still authenticates same peer.
+         if (status != 0 && status != 1) {
++          fprintf(stderr, "Aux ready pulse refused: status %d\n", status);
+           failed_.store(true);
+           // Exact Node26 Stop→ExitEnv uses atomic stopping, V8 thread-safe
+           // termination and SetImmediateThreadsafe; setup stays alive until join.
+--- a/AuxBrokerWritesNapi.inc
++++ b/AuxBrokerWritesNapi.inc
+@@ -13,7 +13,9 @@
+   if(!worker||!SameRuntimeEnvironment(env,environment,isolate))return {};
+   std::shared_ptr<Owner> owner;
+   {std::lock_guard<std::mutex> lock(worker->mutex);if(CurrentWorker(*worker)&&!worker->terminal&&!worker->broker_closed&&!worker->initializing&&!worker->environment_detached)owner=worker->owner;}
+-  if(!owner||AuxNativeContextValidateCurrentAuthority(owner->handle)!=0)return {};
++  if(!owner){fprintf(stderr,"Aux broker refused: missing owner\n");return {};}
++  const auto authority=AuxNativeContextValidateCurrentAuthority(owner->handle);
++  if(authority!=0){fprintf(stderr,"Aux broker refused: authority status %d\n",authority);return {};}
+   {std::lock_guard<std::mutex> lock(worker->mutex);if(!CurrentWorker(*worker)||worker->terminal||worker->broker_closed||worker->initializing||worker->environment_detached||worker->owner!=owner)return {};}
+   return {worker,owner};
+ }
+--- a/AuxOwnedCommandDispatcher.swift
++++ b/AuxOwnedCommandDispatcher.swift
+@@ -1111,6 +1111,11 @@
+         guard open || !requiresOpen else{throw AuxDispatcherLifetimeError.retiring}
+         do{try captured.revalidateCurrentCommandBinding()}
+         catch {
++            // Type and finite status only: no paths, keys, rows or error payloads.
++            fputs("Aux native guard refused: \(String(reflecting:type(of:error)))\n",stderr)
++            if case AuxFreshColdGuardError.peer(let status)=error {
++                fputs("Aux native guard peer status: \(status)\n",stderr)
++            }
+             let classified=classifyAuxNativeFreshGuard(error)
+             let disposition:AuxNativeFreshGuardDisposition=classified == .provenBindingLoss ? .provenBindingLoss : (moment.beforeProtectedBoundary ? classified:.postOutcomeUnknown)
+             let failure=AuxNativeFreshGuardFailure(moment:moment,underlying:error,operationError:operationError,disposition:disposition)

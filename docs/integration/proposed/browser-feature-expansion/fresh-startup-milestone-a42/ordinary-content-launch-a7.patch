@@ -1,0 +1,64 @@
+--- a/content/browser/aux_child_lifetime.h
++++ b/content/browser/aux_child_lifetime.h
+@@ -25,6 +25,20 @@
+     uint64_t settled = 0;
+     uint64_t unobserved_descendant_cohorts = 0;
+   };
++  // An absent optional bridge is ordinary Chromium, not observer custody.
++  // Keep missing coverage sticky even after the direct child is reaped.
++  static bool MayLaunchWithoutCustody() {
++    std::lock_guard<std::mutex> lock(RegistryMutex());
++    AccountingUnknown() = true;
++    return getpid() == RegistryOwner() && !Closed();
++  }
++  static void ObserveLaunchWithoutCustody(pid_t child) {
++    std::lock_guard<std::mutex> lock(RegistryMutex());
++    AccountingUnknown() = true;
++    if (getpid() != RegistryOwner() || child <= 0) return;
++    if (UnobservedDescendantCohorts() < UINT64_MAX)
++      ++UnobservedDescendantCohorts();
++  }
+   static std::shared_ptr<AuxChildLifetime> Reserve() {
+     auto entry = std::shared_ptr<AuxChildLifetime>(new AuxChildLifetime);
+     std::lock_guard<std::mutex> lock(RegistryMutex());
+--- a/content/browser/child_process_launcher_helper_mac.cc
++++ b/content/browser/child_process_launcher_helper_mac.cc
+@@ -182,7 +182,7 @@
+     for (const auto& [key, value] : options->environment) {
+       if (key.starts_with("DYLD_")) injected_loader = true;
+     }
+-    if (!injected_loader) {
++    if (!injected_loader && aux::browser_custody::Bridge()) {
+       aux_policy_binding_ = GetContentClient()->browser()
+           ->CaptureAuxSandboxLaunchBinding(*command_line_);
+     }
+@@ -215,15 +215,24 @@
+     int* launch_result) {
+   *is_synchronous_launch = true;
+   ChildProcessLauncherHelper::Process process;
+-  process.aux_child_lifetime = AuxChildLifetime::Reserve();
+-  if (!process.aux_child_lifetime) {
++  if (aux::browser_custody::Bridge()) {
++    process.aux_child_lifetime = AuxChildLifetime::Reserve();
++    if (!process.aux_child_lifetime) {
++      *launch_result = LAUNCH_RESULT_FAILURE;
++      return process;
++    }
++  } else if (!AuxChildLifetime::MayLaunchWithoutCustody()) {
+     *launch_result = LAUNCH_RESULT_FAILURE;
+     return process;
+   }
+   process.process = base::LaunchProcess(*command_line(), *options);
+-  process.aux_child_lifetime->BindLaunch(
+-      process.process.IsValid() ? process.process.Pid() : -1,
+-      process.process.IsValid() ? process.process.CreationTime() : base::Time());
++  if (process.aux_child_lifetime) {
++    process.aux_child_lifetime->BindLaunch(
++        process.process.IsValid() ? process.process.Pid() : -1,
++        process.process.IsValid() ? process.process.CreationTime() : base::Time());
++  } else if (process.process.IsValid()) {
++    AuxChildLifetime::ObserveLaunchWithoutCustody(process.process.Pid());
++  }
+   *launch_result = process.process.IsValid() ? LAUNCH_RESULT_SUCCESS
+                                              : LAUNCH_RESULT_FAILURE;
+   return process;

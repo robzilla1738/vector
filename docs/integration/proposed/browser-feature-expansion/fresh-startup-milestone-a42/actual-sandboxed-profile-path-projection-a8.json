@@ -1,0 +1,17 @@
+{
+  "passed": true,
+  "changes": [
+    {
+      "path": "chrome/app/chrome_main_delegate.cc",
+      "beforeSha256": "2f8d943c81246f0c4190633ad940c511bf6641584986a5bb4f6712774ed73663",
+      "afterSha256": "f1d648b66d27bb47d1e080bf857429eb4c9305ede3c14bffa431068e88a7d5fc"
+    }
+  ],
+  "primaryNativeAdmissionAndFilesystemChecksPreserved": true,
+  "helpersUseOnlyExplicitPrivatePaths": true,
+  "helperFilesystemCreation": false,
+  "sandboxPermissionsChanged": false,
+  "uiChanged": false,
+  "signed": false,
+  "productExecuted": false
+}

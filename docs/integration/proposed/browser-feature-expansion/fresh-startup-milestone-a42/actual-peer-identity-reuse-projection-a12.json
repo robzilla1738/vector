@@ -1,0 +1,19 @@
+{
+  "passed": true,
+  "input": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/ui-native-capture-transport-a1/source/chrome/browser/aux/AuxNativePeerTransport.cc",
+  "inputSha256": "e24dd9886408bda5e3e18cdcf2edf45085163b4252db21570fff1aedb483a016",
+  "output": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/fresh-startup-milestone-a42/peer-identity-reuse-source/AuxNativePeerTransport.cc",
+  "outputSha256": "7dc34a56d2088056889ff8b3ee7361bf55a697a6e3cbdecb3596e90b4d6f1e1d",
+  "daemonOnly": true,
+  "fullAuditTokenKey": true,
+  "creatingProcessBeforeMutex": true,
+  "oneOwnedGuestObjectPerPolicy": true,
+  "noCachedAuthorizationResult": true,
+  "liveValidityFlagsAndRequirementUnchanged": true,
+  "signingInformationAndCdHashCheckedEveryCall": true,
+  "staticPolicyAndParentDescriptorChecksUnchanged": true,
+  "birthAndLivenessCallersUnchanged": true,
+  "failedValidationInvalidatesObject": true,
+  "uiChanged": false,
+  "productExecuted": false
+}

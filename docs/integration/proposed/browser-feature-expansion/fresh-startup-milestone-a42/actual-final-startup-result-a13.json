@@ -1,0 +1,43 @@
+{
+  "format": "aux.ordinary-fresh.actual-startup-result.v1",
+  "candidate": "A45",
+  "repairIteration": "a13",
+  "passed": false,
+  "readinessFailureTimestamp": "2026-10-25 09:52:57.330",
+  "localListenerReady": false,
+  "usableNormalWindowObserved": false,
+  "desktopObservation": "getApp timed out; no successful actual-window observation",
+  "launcherExitObservations": [
+    {
+      "event": "aux-fresh-child-exit",
+      "pid": 4750,
+      "exitCode": null,
+      "signal": "SIGSEGV",
+      "groupStopped": false,
+      "forced": true
+    }
+  ],
+  "candidateExecutableProcessesRemaining": 0,
+  "completeDescendantClosureProven": false,
+  "syntheticFixtureStopped": true,
+  "acceptedAppReplaced": false,
+  "uiResourcePreservation": true,
+  "scope": "/private/tmp/aux-fresh-browser-c5mop317",
+  "scopeReset": false,
+  "focusChecks": {
+    "navigation": "untested_blocked_at_startup",
+    "two_profile_isolation": "untested_blocked_at_startup",
+    "multiple_windows": "untested_blocked_at_startup",
+    "draft_attachment_persistence": "untested_blocked_at_startup",
+    "ordinary_restart": "untested_blocked_at_startup",
+    "sidebar_chat_settings": "untested_blocked_at_startup",
+    "actual_visual_comparison": "untested_blocked_at_startup"
+  },
+  "accountAI": "explicit_followup",
+  "extensionsAutofillNativeMessaging": "explicit_followup",
+  "cliRouting": "packaged_inactive_untested",
+  "privilegedAutomation": "disabled",
+  "legacyMigration": "deferred_refused",
+  "architectureExpansionStarted": false,
+  "release": false
+}

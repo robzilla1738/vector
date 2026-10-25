@@ -1,3 +1,15 @@
+# Fresh-browser milestone: actual startup remains blocked
+
+The bounded milestone stops at A13 on 2026-10-25. [RESULT.md](RESULT.md) is the authoritative working/failed/untested checklist, build path, remaining implementation and explicit follow-ups.
+
+The fixed A45 app contains browser/framework A49, daemon A53 and unchanged UI revision33. All17 local signatures verify. Actual startup still fails to reach its local service or a usable normal window, then crashes on teardown. The accepted app and owner state remain untouched. No next feature/architecture batch, new provisioning/OS grant or release has started.
+
+Latest exact evidence: `actual-bounded-repair-a13.json`, `actual-launch-attempt-a13.json`, `actual-final-startup-result-a13.json`, `actual-daemon-image-path-check-build-a13.json`, and the full A49 browser build receipt in the isolated native snapshot. The owner authorization is `owner-signing-approval-a5.json`.
+
+## Historical milestone preparation and earlier checkpoints
+
+The narrative below is historical. Its pending approval/build statements are superseded by the actual receipts and RESULT.md; they are not readiness claims for A13.
+
 # Fresh disposable browser milestone A42
 
 The owner authorized the smallest correction to ordinary startup. This milestone does not add features or replace the accepted preview. **A43's two approved replacement signatures passed and all17 objects verify, but startup timed out before a usable window. It is not testable/accepted.** The focused daemon performance correction built successfully and is assembled as A44; its two updated signatures and new disposable scope await approval.

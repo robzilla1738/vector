@@ -1,0 +1,53 @@
+{
+  "format": "aux.ordinary-fresh.bounded-repair.review.v1",
+  "iteration": "a9",
+  "app": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-fresh-browser-20261025-a45/Aux.app",
+  "scope": "/private/tmp/aux-fresh-browser-c5mop317",
+  "ownerAuthorization": {
+    "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/fresh-startup-milestone-a42/owner-signing-approval-a5.json",
+    "sha256": "094788979b58b8a6269e8b5fef67a6dc8a00e9e056c570441aca835e7f579599"
+  },
+  "trigger": "A8 actual launch failed browser readiness at10sec before the existing daemon90sec activation allowance; parent teardown preceded broker-owner failure.",
+  "snapshot": {
+    "path": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-fresh-browser-20261025-a45-before-deadline-a9/receipt.json",
+    "sha256": "c1a35228db0d63c2a4678a2410a0095a87dfd07cffedab88c05e1e5e981c8ee3"
+  },
+  "unsignedInventorySha256": "eaaf5762a776902e5778cc6aa57409f524968b5f54d4a59b1e40e3ecc2da8c76",
+  "source": {
+    "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/fresh-startup-milestone-a42/actual-native-readiness-budget-projection-a9.json",
+    "sha256": "a7e1719b2aeb09d061cced9d004d896189b650ac666430e0d9d821194847f16d"
+  },
+  "build": {
+    "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/unsigned-native-readiness-budget-build-20261025-a49/receipt.json",
+    "sha256": "219b3f73db9ea29aea7e59587618c0aac929601ee7c766fa54d13aaee44bb351"
+  },
+  "targetsInSigningOrder": [
+    {
+      "codeObject": "Contents/Frameworks/Aux Framework.framework",
+      "executable": "Contents/Frameworks/Aux Framework.framework/Versions/155.0.8059.85/Aux Framework",
+      "sha256": "d954cc1107cdb16c01a5731ec14525b9d98ad09e6da1c3386a1b812f32659c55",
+      "identifier": "dev.aux.browser.framework",
+      "entitlements": null
+    },
+    {
+      "codeObject": ".",
+      "executable": "Contents/MacOS/Aux",
+      "sha256": "c382c373947564d4141534f60d6600b81124d120e8d0c68e3bef1405b7b5dc06",
+      "identifier": "dev.aux.browser",
+      "entitlements": {
+        "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/fresh-startup-milestone-a42/browser-jit.plist",
+        "sha256": "958648f799e436860b51eaf55ec8f92d2c62da17001e23d96bc05ffc748f2a2a"
+      }
+    }
+  ],
+  "identitySha1": "47ACA5D1CFADD21CFEDC589B4DEED6E2B7A96D90",
+  "team": "9F2JXY8TCK",
+  "policySha256": "e342013f6ca2b6a6b2b985877df5deef525a3b7ab11e2b08f88a91d4889a1dce",
+  "newEntitlements": false,
+  "newScope": false,
+  "uiPreserved": true,
+  "acceptedAppExcluded": true,
+  "newProvisioning": false,
+  "newOSGrants": false,
+  "release": false
+}

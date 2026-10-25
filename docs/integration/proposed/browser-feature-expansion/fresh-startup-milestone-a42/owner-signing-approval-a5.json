@@ -1,0 +1,67 @@
+{
+  "format": "aux.ordinary-fresh.bounded-repair.owner-approval.v1",
+  "approvedDateLocal": "2026-10-25",
+  "ownerReply": "Approve fix and bounded repair signing",
+  "initialReviewSha256": "6cff62d88dda7d24165155e6bb1b27abe1256bb0939a40f93a2424944c9e3efd",
+  "app": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-fresh-browser-20261025-a45/Aux.app",
+  "scope": "/private/tmp/aux-fresh-browser-c5mop317",
+  "identitySha1": "47ACA5D1CFADD21CFEDC589B4DEED6E2B7A96D90",
+  "team": "9F2JXY8TCK",
+  "currentTargets": [
+    {
+      "codeObject": "Contents/Resources/aux/apps/daemon/Aux Daemon.app",
+      "executable": "Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/MacOS/aux-daemon",
+      "sha256": "8fd5e53dd7e1bcf638a3a9a0daed944423d47dcf8b0d4e42da2056bcdf62db41",
+      "identifier": "dev.aux.browser.daemon",
+      "entitlements": {
+        "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/fresh-startup-milestone-a42/daemon-local.plist",
+        "sha256": "d24cbaa888243f1f0b804d8a8d2310cee8e0184e811ff88ecf5a7a46eebddc1d"
+      }
+    },
+    {
+      "codeObject": ".",
+      "executable": "Contents/MacOS/Aux",
+      "sha256": "61ddae62f4b689176d71caeeddee386f0196576d514572ba9f01963fcc6186d2",
+      "identifier": "dev.aux.browser",
+      "entitlements": {
+        "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/fresh-startup-milestone-a42/browser-jit.plist",
+        "sha256": "958648f799e436860b51eaf55ec8f92d2c62da17001e23d96bc05ffc748f2a2a"
+      }
+    }
+  ],
+  "boundedRepairAuthorization": {
+    "purpose": "Finish this existing fresh-browser startup/test milestone only; stop after delivering its checklist.",
+    "app": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-fresh-browser-20261025-a45/Aux.app",
+    "scope": "/private/tmp/aux-fresh-browser-c5mop317",
+    "identitySha1": "47ACA5D1CFADD21CFEDC589B4DEED6E2B7A96D90",
+    "conditionalObjects": [
+      "Contents/Resources/aux/apps/daemon/Aux Daemon.app",
+      "Contents/Frameworks/Aux Framework.framework",
+      "."
+    ],
+    "objectIdentifiers": [
+      "dev.aux.browser.daemon",
+      "dev.aux.browser.framework",
+      "dev.aux.browser"
+    ],
+    "conditions": [
+      "Change only for a demonstrated failure in the existing startup/profile components.",
+      "Preserve failed candidate bytes and exact inventories before each repair.",
+      "Record exact source patches, build receipts, file hashes and minimal signing targets before applying signatures.",
+      "Use the existing profile and the same entitlements only; no additional code objects or scopes.",
+      "Preserve the accepted app and current UI; no new feature batch, task architecture, legacy migration or advanced recovery.",
+      "Request separate approval for any wider signing/access scope."
+    ],
+    "newProvisioning": false,
+    "newOSGrants": false,
+    "ownerStateExcluded": true,
+    "credentialDeletion": false,
+    "notarization": false,
+    "distribution": false,
+    "release": false
+  },
+  "fixedPolicySha256": "e342013f6ca2b6a6b2b985877df5deef525a3b7ab11e2b08f88a91d4889a1dce",
+  "newProvisioning": false,
+  "newOSGrants": false,
+  "release": false
+}

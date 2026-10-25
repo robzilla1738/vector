@@ -1,0 +1,34 @@
+{
+  "passed": true,
+  "files": [
+    {
+      "input": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/fresh-startup-milestone-a42/startup-entry-lifetime-source/AuxNativeDaemonMain.cc",
+      "inputSha256": "d5bb9a8ee9a5681ccb67495799e812e1d3fed6c7a343ce4d6b6c87341a4e283d",
+      "output": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/fresh-startup-milestone-a42/startup-diagnostics-source/AuxNativeDaemonMain.cc",
+      "outputSha256": "4b6cc5852d2296cb523175e61bcb9c5c5631e8759fb384f31621d1a53d7ab110"
+    },
+    {
+      "input": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/profile-isolation-continuation/broker-writes/source/AuxBrokerWritesNapi.inc",
+      "inputSha256": "fdac90ec6345980cbdcac929a507afcf67670bde03c18aba23ef07dcd2cc2033",
+      "output": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/fresh-startup-milestone-a42/startup-diagnostics-source/AuxBrokerWritesNapi.inc",
+      "outputSha256": "842f99f0375089d6f1282ff1cfc401137e2fd24dd27bab908c848fa415f86f6f"
+    },
+    {
+      "input": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/ordinary-fresh-browser-startup-a1/source/AuxOwnedCommandDispatcher.swift",
+      "inputSha256": "7ea94a189b86f7b52902841461952888f7f1adeba745854dad8357a48b2270e0",
+      "output": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/fresh-startup-milestone-a42/startup-diagnostics-source/AuxOwnedCommandDispatcher.swift",
+      "outputSha256": "b2e3ca10b5feb90a22f67ceed80f82c29135bb12fa27e1594f5a37e33f67b60c"
+    },
+    {
+      "input": "/private/tmp/aux-browser-only-daemon-build-20261024-a42e/source/AuxDevelopmentWorkerHost.cc",
+      "inputSha256": "a7b3f15d1e13b611696ed01d49924742dd106b38e46326f131bc2cabdc09c95c",
+      "output": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/fresh-startup-milestone-a42/startup-diagnostics-source/AuxDevelopmentWorkerHost.cc",
+      "outputSha256": "a7b3f15d1e13b611696ed01d49924742dd106b38e46326f131bc2cabdc09c95c",
+      "unchangedSourceLocalInclude": true
+    }
+  ],
+  "admissionBehaviorUnchanged": true,
+  "nonSecretFiniteDiagnosticsOnly": true,
+  "uiChanged": false,
+  "productExecuted": false
+}
