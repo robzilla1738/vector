@@ -1,0 +1,22 @@
+{
+  "format": "aux.organization-popup-lifetime-a32b.v1",
+  "files": [
+    {
+      "path": "chrome/browser/ui/views/frame/aux_sidebar_view.cc",
+      "inputPath": "/Users/rcourson/.codex/worktrees/aux-features-organization/web/docs/integration/proposed/browser-feature-expansion/organization-popup-lifetime-a32/source/chrome/browser/ui/views/frame/aux_sidebar_view.cc",
+      "inputSha256": "53e7dfc78d5eee6367e9825bf36cdcecf7c7ac6d11850c19b64fd48d945e2ed8",
+      "outputSha256": "1fd991f83b88158b2df5424644efd5252267ba189b45a2e1791780afd0fa38e5",
+      "source": "docs/integration/proposed/browser-feature-expansion/organization-popup-lifetime-a32b/source/chrome/browser/ui/views/frame/aux_sidebar_view.cc",
+      "anchors": [
+        {
+          "find": "    if (profile_actions) DestroyAuxProfilePopup(profile_actions.get());",
+          "replace": "    if (profile_actions) RetireAuxProfilePopup(profile_actions.get());",
+          "count": 1
+        }
+      ]
+    }
+  ],
+  "patch": "source.patch",
+  "nativeExecuted": false,
+  "visualOrActionOrProfileEpochChanges": false
+}

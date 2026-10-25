@@ -1,0 +1,11 @@
+{
+  "format": "aux.popup-close-order-source-check.v1",
+  "exactCountedAnchors": 1,
+  "callbackRetiresAndDefersChild": true,
+  "destructorDestroyUnchanged": true,
+  "sourceEpochAndPostedActionByteIdentical": true,
+  "realPinAndAnchorImplementationPinsVerified": true,
+  "nativeCompiled": false,
+  "nativeExecuted": false,
+  "fixtureExecutableCreated": false
+}

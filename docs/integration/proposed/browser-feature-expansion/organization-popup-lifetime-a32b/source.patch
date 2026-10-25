@@ -1,0 +1,11 @@
+--- a/chrome/browser/ui/views/frame/aux_sidebar_view.cc
++++ b/chrome/browser/ui/views/frame/aux_sidebar_view.cc
+@@ -1230,7 +1230,7 @@
+     profile_actions_.reset();
+     ForgetAuxProfileMenu(browser_, GetWidget());
+     // Closing a child may reenter teardown. Use only local values afterward.
+-    if (profile_actions) DestroyAuxProfilePopup(profile_actions.get());
++    if (profile_actions) RetireAuxProfilePopup(profile_actions.get());
+     if (action) {
+       const bool posted = runner->PostTask(FROM_HERE, std::move(action));
+       LOG(ERROR) << "Aux primary profile menu: closed_action_posted=" << posted;
