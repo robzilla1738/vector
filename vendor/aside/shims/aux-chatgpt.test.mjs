@@ -10,7 +10,7 @@ import { once } from 'node:events';
 import { runInNewContext } from 'node:vm';
 import { applyOfficialChatGPT, applyOfficialChatGPTCallbackAsset } from '../patches/chatgpt.mjs';
 const require = createRequire(import.meta.url);
-const { LocalChatGPTStore, ChatGPTPlanClient, ISSUER, SCOPES, publicChatGPTError, hasPlanCredentials, AccountModelCatalog, planResponsesApi, completedResponsesFetch, planModels, normalizePlanPayload } = require('./aux-chatgpt.cjs');
+const { LocalChatGPTStore, ChatGPTPlanClient, ISSUER, SCOPES, localAccount, captureAccount, requireAccount, publicChatGPTError, hasPlanCredentials, AccountModelCatalog, planResponsesApi, completedResponsesFetch, planModels, normalizePlanPayload } = require('./aux-chatgpt.cjs');
 globalThis.fetch = async () => { throw Error('Provider requests are forbidden in this fixture'); };
 const pair = generateKeyPairSync('rsa', { modulusLength: 2048 });
 const jwk = { ...pair.publicKey.export({format:'jwk'}), kid:'fixture-key', alg:'RS256', use:'sig' };
@@ -20,7 +20,7 @@ const jwt = (claims = {}) => {
   const p = Buffer.from(JSON.stringify({iss:ISSUER,aud:'oaiapp_fixture',sub:'fixture-sub',iat:epoch/1000,exp:epoch/1000+3600,...claims})).toString('base64url');
   return `${h}.${p}.${sign('RSA-SHA256',Buffer.from(`${h}.${p}`),pair.privateKey).toString('base64url')}`;
 };
-function fixture(t, response = {}) {
+function fixture(t, response = {}, account = 'fixture-account') {
   const dir = mkdtempSync(join(realpathSync(tmpdir()),'aux-chatgpt-fixture-')); t.after(()=>rmSync(dir,{recursive:true,force:true}));
   const store = new LocalChatGPTStore(join(dir,'local-only'));
   let nonce, calls=[];
@@ -30,7 +30,7 @@ function fixture(t, response = {}) {
     if(String(url).endsWith('/oauth/token')) return new Response(JSON.stringify({access_token:'fixture-access',refresh_token:'fixture-refresh',token_type:'Bearer',expires_in:3600,scope:SCOPES,id_token:jwt({nonce}),...response}));
     throw Error('unexpected fixture request');
   }});
-  const begin = id => {const result=client.begin(id,'http://127.0.0.1:1455/auth/callback','fixture-account');nonce=new URL(result.url).searchParams.get('nonce');return result;};
+  const begin = id => {const result=client.begin(id,'http://127.0.0.1:1455/auth/callback',account);nonce=new URL(result.url).searchParams.get('nonce');return result;};
   const callback = (attempt, extra={})=>{let u=new URL(attempt.redirectUri);u.search=new URLSearchParams({code:'fixture-code',state:attempt.state,client_id:'oaiapp_fixture',...extra});return u.href;};
   return {dir,store,client,begin,callback,calls};
 }
@@ -209,4 +209,51 @@ test('actual account-bound catalog invalidates on credential change and never gr
   await assert.rejects(catalog.getModelIds('fixture-A'),/changed/);
   const pending=catalog.getModelIds('fixture-B');await Promise.resolve();record={...record,access:'fixture-C'};release(new Set(['model-B']));await assert.rejects(pending,/changed during/);
   assert.equal(catalog.getCachedModelIds(),undefined);record={...record,planUsageEnabled:false};await assert.rejects(catalog.getModelIds('fixture-C'),/permission changed/);assert.equal(calls,2);
+});
+
+const oldIncarnation='11111111-1111-4111-8111-111111111111',newIncarnation='22222222-2222-4222-8222-222222222222';
+function accountFixture() {
+  let current={id:1,incarnationId:oldIncarnation,name:'Original',createdAt:1};
+  const read=()=>current,scope=localAccount(current,read);
+  return {scope,read,get current(){return current;},rename(){current={...current,name:'Renamed'};},replace(incarnationId=newIncarnation){const old=current;current={...current,incarnationId};return old;},next(){return localAccount(current,read);}};
+}
+test('versioned account binding isolates reused IDs and preserves refused numeric legacy files',async t=>{
+  const owner=accountFixture(),f=fixture(t,{},owner.scope);
+  const legacy=join(f.dir,'local-only',`${createHashForFixture('account:1')}.json`),legacyPending=legacy+'.registration';
+  writeFileSync(legacy,'synthetic legacy token',{mode:0o600});writeFileSync(legacyPending,'synthetic legacy client',{mode:0o600});
+  const first=f.begin('instance-original');await f.client.complete('instance-original',f.callback(first));
+  const record=f.store.read(owner.scope),oldPath=f.store.path(owner.scope),host=f.store.hostId();
+  assert.equal(record.version,1);assert.equal(record.clientId,'oaiapp_fixture');assert.equal(record.accountBinding.format,'aux.chatgpt.account-instance.v2');assert.equal(record.accountBinding.incarnationId,oldIncarnation);
+  assert.throws(()=>f.store.read('account:1'),/legacy unbound/);assert.throws(()=>f.store.registration('account:1'),/legacy unbound/);assert.throws(()=>localAccount(1),/incarnation/);
+  assert.equal(captureAccount(undefined,()=>assert.fail('unbound store touched registry')),undefined);assert.equal(captureAccount(1,()=>({id:1})),undefined);assert.throws(()=>requireAccount(undefined),/incarnation/);assert.throws(()=>requireAccount('unbound'),/incarnation/);
+  owner.rename();assert.equal(f.store.read(owner.scope).access,'fixture-access');const rebound=localAccount(owner.current,owner.read),reopened=new LocalChatGPTStore(join(f.dir,'local-only'));assert.equal(reopened.read(rebound).clientId,'oaiapp_fixture');const again=f.begin('same-instance');assert.equal(new URL(again.url).searchParams.get('client_id'),'oaiapp_fixture');f.client.cancel('same-instance');
+  owner.replace();const next=owner.next();assert.throws(()=>f.store.read(owner.scope),/incarnation changed/);assert.equal(f.store.read(next),undefined);assert.equal(f.store.registration(next),undefined);assert.notEqual(f.store.path(next),oldPath);
+  const nextAttempt=f.client.begin('replacement','http://127.0.0.1:1455/auth/callback',next);assert.equal(new URL(nextAttempt.url).searchParams.get('client_id'),'dynamic_agent_client');f.client.cancel('replacement');
+  assert.equal(f.store.hostId(),host);assert.equal(readFileSync(oldPath,'utf8').includes('fixture-access'),true);assert.equal(readFileSync(legacy,'utf8'),'synthetic legacy token');assert.equal(readFileSync(legacyPending,'utf8'),'synthetic legacy client');
+  writeFileSync(f.store.path(next),JSON.stringify({...record,accountBinding:{...record.accountBinding,incarnationId:oldIncarnation}}),{mode:0o600});assert.throws(()=>f.store.read(next),/mismatched ChatGPT/);
+});
+test('deleted account cancels only its exact instance and cannot publish a late authorization result',async t=>{
+  const owner=accountFixture(),f=fixture(t,{},owner.scope),attempt=f.begin('late-instance');let started,reply,observedSignal;
+  const began=new Promise(r=>started=r),gate=new Promise(r=>reply=r),original=f.client.fetch;
+  f.client.fetch=async(url,options)=>{if(String(url).endsWith('/oauth/token')){observedSignal=options.signal;started();await gate;}return original(url,options);};
+  const finishing=f.client.complete('late-instance',f.callback(attempt));await began;
+  const old=owner.replace(),next=owner.next(),newAttempt=f.client.begin('new-instance','http://127.0.0.1:1455/auth/callback',next);
+  f.client.cancelAccountInstance(old);assert.equal(observedSignal.aborted,true);assert.equal(f.client.pending.has('new-instance'),true);reply();await assert.rejects(finishing,/cancelled|incarnation changed/);
+  assert.equal(f.store.read(next),undefined);assert.equal(f.store.registration(next),undefined);f.client.cancel('new-instance');assert.ok(newAttempt.url);
+});
+test('registry replacement refuses late publication even if cancellation notification is missing',async t=>{
+  const owner=accountFixture(),f=fixture(t,{},owner.scope),attempt=f.begin('missed-notify');let started,reply;
+  const began=new Promise(r=>started=r),gate=new Promise(r=>reply=r),original=f.client.fetch;
+  f.client.fetch=async(url,options)=>{if(String(url).endsWith('/oauth/token')){started();await gate;}return original(url,options);};
+  const finishing=f.client.complete('missed-notify',f.callback(attempt));await began;owner.replace();const next=owner.next();reply();await assert.rejects(finishing,/incarnation changed/);assert.equal(f.store.read(next),undefined);
+});
+test('replacement during refresh or selected catalog fetch cannot reuse or publish credentials',async t=>{
+  const owner=accountFixture(),f=fixture(t,{},owner.scope),attempt=f.begin('refresh-instance');await f.client.complete('refresh-instance',f.callback(attempt));
+  let started,reply,signal;const began=new Promise(r=>started=r),gate=new Promise(r=>reply=r);
+  f.client.fetch=async(_url,options)=>{signal=options.signal;started();await gate;return new Response(JSON.stringify({access_token:'synthetic-late-access',token_type:'Bearer',expires_in:3600}));};
+  const refreshing=f.client.auth(owner.scope,'fixture-access');await began;const old=owner.replace(),next=owner.next();f.client.cancelAccountInstance(old);assert.equal(signal.aborted,true);reply();await assert.rejects(refreshing,/incarnation changed|Aborted/);assert.equal(f.store.read(next),undefined);
+  let finish;const catalog=new AccountModelCatalog(()=>f.store.read(next),()=>new Promise(r=>finish=r));
+  f.store.write(next,{...f.store.read(next),version:1,type:'oauth',issuer:ISSUER,hostId:f.store.hostId(),clientId:'oaiapp_new_fixture',subject:'fixture-new',access:'fixture-new',scopes:SCOPES.split(' '),expires:epoch+3600000});
+  const work=catalog.getModelIds('fixture-new');owner.replace('33333333-3333-4333-8333-333333333333');finish(new Set(['fixture-model']));
+  await assert.rejects(work,/incarnation changed/);assert.throws(()=>catalog.getCachedModelIds(),/incarnation changed/);
 });

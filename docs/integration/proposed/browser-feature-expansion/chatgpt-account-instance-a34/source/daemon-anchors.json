@@ -1,0 +1,104 @@
+[
+  {
+    "name": "credential owner captures actual account incarnation",
+    "before": "constructor(Cn,ei){this.storage=Cn,this.accountId=ei,this.reload();let ti=",
+    "after": "constructor(Cn,ei){this.storage=Cn,this.accountId=ei,this.auxChatGPTAccount=auxChatGPT().captureAccount(ei,()=>{init_accounts();return AccountRegistry.getAccount(ei)});this.reload();let ti=",
+    "count": 1
+  },
+  {
+    "name": "account deletion cancels only captured instance attempts",
+    "before": "removeAccount(Cn,ei=`remove_account`){",
+    "after": "removeAccount(Cn,ei=`remove_account`){auxChatGPT().cancelAccountInstance(this.getAccount(Cn));",
+    "count": 1
+  },
+  {
+    "name": "credential read is local-only",
+    "before": "get(Cn){if(Cn===`openai-codex`)return auxChatGPT().daemonClient().store.read(auxChatGPT().localAccount(this.accountId));return this.ensureLoaded(),this.data[Cn]??void 0}",
+    "after": "get(Cn){if(Cn===`openai-codex`)return this.auxChatGPTAccount?auxChatGPT().daemonClient().store.read(auxChatGPT().requireAccount(this.auxChatGPTAccount)):void 0;return this.ensureLoaded(),this.data[Cn]??void 0}",
+    "count": 1
+  },
+  {
+    "name": "local disconnect retains registration",
+    "before": "remove(Cn){if(Cn===`openai-codex`)return auxChatGPT().daemonClient().disconnectLocal(auxChatGPT().localAccount(this.accountId));this.ensureLoaded();this.persistProviderChange(Cn,void 0);delete this.data[Cn]}",
+    "after": "remove(Cn){if(Cn===`openai-codex`)return auxChatGPT().daemonClient().disconnectLocal(auxChatGPT().requireAccount(this.auxChatGPTAccount));this.ensureLoaded();this.persistProviderChange(Cn,void 0);delete this.data[Cn]}",
+    "count": 1
+  },
+  {
+    "name": "generic credential deletion stays local",
+    "before": "async deleteCredentialForPi(Cn){if(Cn===`openai-codex`)return auxChatGPT().daemonClient().signOut(auxChatGPT().localAccount(this.accountId));await this.storage.withLockAsync",
+    "after": "async deleteCredentialForPi(Cn){if(Cn===`openai-codex`)return auxChatGPT().daemonClient().signOut(auxChatGPT().requireAccount(this.auxChatGPTAccount));await this.storage.withLockAsync",
+    "count": 1
+  },
+  {
+    "name": "model auth uses issued-client refresh",
+    "before": "async getModelAuth(Cn){if(Cn===`openai-codex`)return auxChatGPT().daemonClient().auth(auxChatGPT().localAccount(this.accountId));let ei=this.get(Cn);",
+    "after": "async getModelAuth(Cn){if(Cn===`openai-codex`)return auxChatGPT().daemonClient().auth(auxChatGPT().requireAccount(this.auxChatGPTAccount));let ei=this.get(Cn);",
+    "count": 1
+  },
+  {
+    "name": "rejected token uses local refresh",
+    "before": "async refreshRejectedOAuthCredential(Cn,ei,ti){if(Cn===`openai-codex`){let auth=await auxChatGPT().daemonClient().auth(auxChatGPT().localAccount(this.accountId),ei,ti);return auth?{outcome:`refreshed`,auth}:{outcome:`unavailable`}}let ni=getOAuthProviderForCredential(Cn);",
+    "after": "async refreshRejectedOAuthCredential(Cn,ei,ti){if(Cn===`openai-codex`){let auth=await auxChatGPT().daemonClient().auth(auxChatGPT().requireAccount(this.auxChatGPTAccount),ei,ti);return auth?{outcome:`refreshed`,auth}:{outcome:`unavailable`}}let ni=getOAuthProviderForCredential(Cn);",
+    "count": 1
+  },
+  {
+    "name": "provider list uses local token presence",
+    "before": "has(Cn){if(Cn===`openai-codex`)return!!this.get(Cn)?.access;return this.ensureLoaded(),Cn in this.data}",
+    "after": "has(Cn){if(Cn===`openai-codex`)return auxChatGPT().hasPlanCredentials(this.get(Cn));return this.ensureLoaded(),Cn in this.data}",
+    "count": 1
+  },
+  {
+    "name": "legacy synced ChatGPT tokens never selected",
+    "before": "getAll(){this.ensureLoaded();let data={...this.data};delete data[`openai-codex`];let local=this.get(`openai-codex`);if(local?.access)data[`openai-codex`]={type:`oauth`};return data}",
+    "after": "getAll(){this.ensureLoaded();let data={...this.data};delete data[`openai-codex`];let local=this.get(`openai-codex`);if(auxChatGPT().hasPlanCredentials(local))data[`openai-codex`]={type:`oauth`};return data}",
+    "count": 1
+  },
+  {
+    "name": "remote revocation on logout",
+    "before": "logout(Cn){if(Cn===`openai-codex`)return auxChatGPT().daemonClient().signOut(auxChatGPT().localAccount(this.accountId));this.remove(Cn)}",
+    "after": "logout(Cn){if(Cn===`openai-codex`)return auxChatGPT().daemonClient().signOut(auxChatGPT().requireAccount(this.auxChatGPTAccount));this.remove(Cn)}",
+    "count": 1
+  },
+  {
+    "name": "official authorization with existing dialog",
+    "before": "let ti=await this.ensureOpenAICodexCallbackServer(),ni=auxChatGPT().daemonClient().begin(ri,`http://127.0.0.1:1455/auth/callback`,auxChatGPT().localAccount(this.credentials.accountId));",
+    "after": "let auxChatGPTAccount=auxChatGPT().requireAccount(this.credentials.auxChatGPTAccount),ti=await this.ensureOpenAICodexCallbackServer(),ni=auxChatGPT().daemonClient().begin(ri,`http://127.0.0.1:1455/auth/callback`,auxChatGPTAccount);",
+    "count": 1
+  },
+  {
+    "name": "verified completion with no public tokens",
+    "before": "if(ti.chatgptCompleting)throw Error(`ChatGPT callback already in progress`);ti.chatgptCompleting=!0;try{let result=await auxChatGPT().daemonClient().complete(ti.id,ni);if(ti.status===`cancelled`)throw Error(`OAuth flow cancelled`);ti.status=`completed`;return result}catch(error){ti.status=`failed`;ti.error=Error(`ChatGPT authorization did not complete`);throw ti.error}",
+    "after": "if(ti.chatgptCompleting)throw Error(`ChatGPT callback already in progress`);ti.chatgptCompleting=!0;try{let result=await auxChatGPT().daemonClient().complete(ti.id,ni);if(ti.status===`cancelled`)throw Error(`OAuth flow cancelled`);ti.status=`completed`;return result}catch(error){ti.status=`failed`;ti.error=auxChatGPT().publicChatGPTError(error,`ChatGPT authorization did not complete`);throw ti.error}",
+    "count": 1
+  },
+  {
+    "name": "catalog cache stays account-token bound and local",
+    "before": "OpenAICodexModelCatalog=class{entry;inflight;constructor(Cn){}getCachedModelIds(){return void 0}async getModelIds(access){let fingerprint=createHash(`sha256`).update(access).digest(`hex`);if(this.entry?.fingerprint===fingerprint&&Date.now()<this.entry.until)return this.entry.modelIds;if(this.inflight?.fingerprint===fingerprint)return this.inflight.promise;let promise=fetchOpenAICodexModelIds(access).then(modelIds=>(this.entry={fingerprint,until:Date.now()+300000,modelIds},modelIds)).finally(()=>{if(this.inflight?.promise===promise)this.inflight=void 0});this.inflight={fingerprint,promise};return promise}}",
+    "after": "OpenAICodexModelCatalog=class{constructor(Cn,readCredential){this.catalog=new(auxChatGPT().AccountModelCatalog)(readCredential)}getCachedModelIds(){return this.catalog.getCachedModelIds()}getModelIds(access){return this.catalog.getModelIds(access)}}",
+    "count": 1
+  },
+  {
+    "name": "catalog retains actual selected credential reader",
+    "before": "new OpenAICodexModelCatalog(ni)",
+    "after": "new OpenAICodexModelCatalog(ni,()=>Cn.get(`openai-codex`))",
+    "count": 1
+  },
+  {
+    "name": "model eligibility never decoded from opaque access tokens",
+    "before": "hasOpenAICodexPlanAccess(Cn){let ei=OPENAI_CODEX_MODEL_UNAVAILABLE_PLANS[Cn];if(!ei)return!0;let ti=this.credentials.get(OPENAI_CODEX_PROVIDER_ID);if(ti?.type!==`oauth`)return!0;let ni=extractOpenAICodexPlanType(ti.access)?.toLowerCase();return!ei.includes(ni??``)}",
+    "after": "hasOpenAICodexPlanAccess(Cn){return this.openAICodexModelCatalog.getCachedModelIds()?.has(Cn)??!1}",
+    "count": 1
+  },
+  {
+    "name": "only selected live catalog grants model access",
+    "before": "hasOpenAICodexModelAccess(Cn,ei){return ei?.has(Cn)??this.hasOpenAICodexPlanAccess(Cn)}",
+    "after": "hasOpenAICodexModelAccess(Cn,ei){return this.openAICodexModelCatalog.getCachedModelIds()?.has(Cn)??!1}",
+    "count": 1
+  },
+  {
+    "name": "sign-in-only records never populate inference catalog",
+    "before": "async getOpenAICodexModelIds(Cn){if(this.credentials.get(`openai-codex`)?.type!==`oauth`)return;",
+    "after": "async getOpenAICodexModelIds(Cn){if(!auxChatGPT().hasPlanCredentials(this.credentials.get(`openai-codex`)))return;",
+    "count": 1
+  }
+]

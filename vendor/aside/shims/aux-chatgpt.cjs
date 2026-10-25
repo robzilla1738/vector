@@ -16,6 +16,51 @@ const nofollow = constants.O_NOFOLLOW;
 // Darwin SDK sys/fcntl.h: O_EXLOCK = 0x00000020. Node does not export it.
 // The platform check in diskLocked prevents reinterpreting this flag elsewhere.
 const darwinExclusiveLock = constants.O_EXLOCK ?? 0x00000020;
+// Account authority comes from the actual daemon registry owner captured by
+// CredentialStorage, never a renderer account ID, provider subject or timestamp.
+const accountOwners = new WeakMap();
+const accountBindingFormat = 'aux.chatgpt.account-instance.v2';
+const validIncarnation = value => typeof value === 'string' && /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/.test(value) && value !== '00000000-0000-0000-0000-000000000000';
+function bindingForAccount(value) {
+  if (!Number.isSafeInteger(value?.id) || value.id < 0 || !validIncarnation(value.incarnationId)) return undefined;
+  return Object.freeze({format:accountBindingFormat, accountId:value.id, incarnationId:value.incarnationId});
+}
+function bindingKey(binding) { return `account-instance-v2:${binding.accountId}:${binding.incarnationId}`; }
+function localAccount(value, readCurrent) {
+  const binding = bindingForAccount(value);
+  need(binding && typeof readCurrent === 'function', 'a current account incarnation is required; reconnect ChatGPT from its profile');
+  const scope = Object.freeze({...binding});
+  accountOwners.set(scope, {binding, key:bindingKey(binding), readCurrent});
+  accountKey(scope); return scope;
+}
+function captureAccount(id, readCurrent) {
+  // In-memory/unbound credential stores retain their other provider behavior.
+  if (id === undefined) return undefined;
+  need(Number.isSafeInteger(id) && id >= 0 && typeof readCurrent === 'function', 'invalid account owner');
+  const account = readCurrent();
+  if (!account || account.id !== id || !bindingForAccount(account)) return undefined;
+  return localAccount(account, readCurrent);
+}
+function requireAccount(scope) { need(scope && typeof scope === 'object' && accountOwners.has(scope), 'a current account incarnation is required; reconnect ChatGPT from its profile'); accountKey(scope); return scope; }
+function accountKey(account, current = true) {
+  if (typeof account === 'string') {
+    // These are the historical unbound selectors. Never read, move, delete or
+    // reinterpret their credential/registration files as an incarnation.
+    need(present(account) && account !== 'aux-local-default' && !/^account(?::|-instance-v2:)/.test(account), 'legacy unbound ChatGPT credentials require explicit reconnection');
+    return account;
+  }
+  const owner = account && accountOwners.get(account);
+  need(owner, 'a current account incarnation is required; reconnect ChatGPT from its profile');
+  if (current) {
+    const value = owner.readCurrent();
+    need(value?.id === owner.binding.accountId && value.incarnationId === owner.binding.incarnationId, 'selected Aux account incarnation changed');
+  }
+  return owner.key;
+}
+function accountBinding(account) { accountKey(account); return typeof account === 'object' ? accountOwners.get(account).binding : undefined; }
+function matchesAccountBinding(value, binding) {
+  return value?.format === binding.format && value.accountId === binding.accountId && value.incarnationId === binding.incarnationId;
+}
 const terminalRefreshCodes = new Set(['invalid_grant', 'invalid_refresh_token', 'token_expired', 'refresh_token_expired', 'refresh_token_invalidated', 'refresh_token_reused']);
 const providerLimit = 1024 * 1024;
 const providerMetadata = new WeakMap();
@@ -125,17 +170,17 @@ class LocalChatGPTStore {
     this.root = privateDirectory(root); this.operations = new Map();
   }
   async locked(key, fn) {
-    const previous = this.operations.get(key) || Promise.resolve();
+    const ownerKey = accountKey(key), previous = this.operations.get(ownerKey) || Promise.resolve();
     const operation = previous.catch(() => {}).then(() => this.diskLocked(key, fn));
-    this.operations.set(key, operation);
-    try { return await operation; } finally { if (this.operations.get(key) === operation) this.operations.delete(key); }
+    this.operations.set(ownerKey, operation);
+    try { return await operation; } finally { if (this.operations.get(ownerKey) === operation) this.operations.delete(ownerKey); }
   }
   async diskLocked(key, fn) {
     this.lifetime?.admit();
     privateDirectory(this.root);
     need(process.platform === 'darwin', 'protected local locking is supported only on macOS');
-    const path = join(this.root, `${digest(key)}.lock`);
-    const marker = { schema: 'aux.chatgpt.auth-lock.v2', account: digest(key) };
+    const ownerKey = accountKey(key), path = join(this.root, `${digest(ownerKey)}.lock`);
+    const marker = { schema: 'aux.chatgpt.auth-lock.v2', account: digest(ownerKey) };
     let fd;
     try {
       try {
@@ -159,6 +204,7 @@ class LocalChatGPTStore {
       this.lifetime?.signal.throwIfAborted();
       const current = lstatSync(path); privateDirectory(this.root);
       need(current.dev === stat.dev && current.ino === stat.ino && current.nlink === 1, 'local lock namespace changed');
+      accountKey(key);
       return await fn();
     } finally {
       if (fd !== undefined) try { closeSync(fd); }
@@ -177,21 +223,28 @@ class LocalChatGPTStore {
     }
     need(host?.version === 1 && /^urn:uuid:[a-f0-9-]{36}$/.test(host.id), 'invalid saved host identity'); return host.id;
   }
-  path(account) { privateDirectory(this.root); need(present(account), 'local account is required'); return join(this.root, `${digest(account)}.json`); }
+  path(account) { privateDirectory(this.root); return join(this.root, `${digest(accountKey(account))}.json`); }
   read(account) {
     const saved = readPrivate(this.path(account));
     if (!saved) return undefined;
+    const binding = accountBinding(account);
+    need(!binding || matchesAccountBinding(saved.accountBinding, binding), 'unbound or mismatched ChatGPT registration; reconnect explicitly');
     need(saved.version === 1 && saved.issuer === ISSUER && saved.hostId === this.hostId() && present(saved.clientId) && saved.clientId !== 'dynamic_agent_client' && present(saved.subject), 'invalid saved registration');
     return saved;
   }
-  write(account, record) { atomicWrite(this.path(account), record); }
+  write(account, record) {
+    const binding = accountBinding(account);
+    atomicWrite(this.path(account), {...record, ...(binding && {accountBinding:binding})});
+  }
   registration(account) {
     const registration = readPrivate(`${this.path(account)}.registration`);
     if (!registration) return undefined;
+    const binding = accountBinding(account);
+    need(!binding || matchesAccountBinding(registration.accountBinding, binding), 'unbound or mismatched pending ChatGPT registration; reconnect explicitly');
     need(registration.version === 1 && registration.hostId === this.hostId() && present(registration.clientId) && registration.clientId !== 'dynamic_agent_client', 'invalid pending registration');
     return registration;
   }
-  saveRegistration(account, clientId) { atomicWrite(`${this.path(account)}.registration`, { version: 1, hostId: this.hostId(), clientId }); }
+  saveRegistration(account, clientId) { const binding=accountBinding(account); atomicWrite(`${this.path(account)}.registration`, { version: 1, hostId: this.hostId(), clientId, ...(binding && {accountBinding:binding}) }); }
   clearRegistration(account) { try { unlinkSync(`${this.path(account)}.registration`); } catch (e) { if (e.code !== 'ENOENT') throw e; } }
   clearTokens(account, state) {
     const record = this.read(account); if (!record) return;
@@ -232,7 +285,14 @@ class ChatGPTPlanClient {
     this.pending.set(flowId, { account, clientId, subject: saved?.subject, redirectUri, state, nonce, verifier, created: this.now(), controller: new AbortController() });
     return { redirectUri, state, url: `${ISSUER}/api/accounts/authorize?${params}` };
   }
-  cancelAccount(account) { for (const [id, attempt] of [...this.pending, ...this.inflight]) if (attempt.account === account) this.cancel(id); for (const controller of this.refreshes.get(account) || []) controller.abort(); }
+  cancelAccount(account) {
+    this.cancelAccountKey(accountKey(account, false));
+  }
+  cancelAccountKey(key) {
+    for (const [id, attempt] of [...this.pending, ...this.inflight]) if (accountKey(attempt.account, false) === key) this.cancel(id);
+    for (const controller of this.refreshes.get(key) || []) controller.abort();
+  }
+  cancelAccountInstance(value) { const binding=bindingForAccount(value); if (binding) this.cancelAccountKey(bindingKey(binding)); }
   disconnectLocal(account) { this.cancelAccount(account); this.store.clearTokens(account); }
   cancel(flowId) { const pending = this.pending.get(flowId) || this.inflight.get(flowId); if (pending) { pending.cancelled = true; pending.controller.abort(); } this.pending.delete(flowId); }
   async verifyIdentity(token, clientId, nonce, expectedSubject, signal) {
@@ -279,6 +339,8 @@ class ChatGPTPlanClient {
       need(!existing || (pending.subject && existing.subject === pending.subject && existing.clientId === pending.clientId), 'selected registration changed');
       this.store.saveRegistration(pending.account, clientId);
       const body = await this.json(`${ISSUER}/api/accounts/oauth/token`, { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: new URLSearchParams({ grant_type: 'authorization_code', client_id: clientId, code, code_verifier: pending.verifier, redirect_uri: pending.redirectUri, resource: RESOURCE }), signal: pending.controller.signal });
+      need(!pending.cancelled, 'authorization cancelled');
+      accountKey(pending.account);
       const record = await this.tokenRecord(body, clientId, pending, undefined, pending.controller.signal);
       need(!pending.cancelled, 'authorization cancelled');
       this.store.write(pending.account, record); this.store.clearRegistration(pending.account);
@@ -286,9 +348,9 @@ class ChatGPTPlanClient {
     }).finally(() => { if (this.inflight.get(flowId) === pending) this.inflight.delete(flowId); });
   }
   async auth(account, rejectedAccess, signal) {
-    const controller = new AbortController(), abort = () => controller.abort();
+    const key = accountKey(account), controller = new AbortController(), abort = () => controller.abort();
     signal?.addEventListener('abort', abort, {once: true}); if (signal?.aborted) abort();
-    const refreshes = this.refreshes.get(account) || new Set(); refreshes.add(controller); this.refreshes.set(account, refreshes);
+    const refreshes = this.refreshes.get(key) || new Set(); refreshes.add(controller); this.refreshes.set(key, refreshes);
     try {
       return await this.store.locked(account, async () => {
         controller.signal.throwIfAborted();
@@ -319,7 +381,7 @@ class ChatGPTPlanClient {
         return { apiKey: record.access };
       });
     } finally {
-      signal?.removeEventListener('abort', abort); refreshes.delete(controller); if (!refreshes.size) this.refreshes.delete(account);
+      signal?.removeEventListener('abort', abort); refreshes.delete(controller); if (!refreshes.size) this.refreshes.delete(key);
     }
   }
   async modelIds(access) {
@@ -347,7 +409,7 @@ class ChatGPTPlanClient {
 }
 let client;
 function daemonClient() { return client ||= new ChatGPTPlanClient({ store: new LocalChatGPTStore() }); }
-const localAccount = value => value === undefined ? 'aux-local-default' : `account:${String(value)}`;
+const cancelAccountInstance = value => client?.cancelAccountInstance(value);
 
 class AccountModelCatalog {
   constructor(readCredential, fetchCatalog = access => daemonClient().modelIds(access), now = Date.now) {
@@ -461,4 +523,4 @@ function planResponsesApi(api) {
   return { ...api, stream: wrap('stream'), streamSimple: wrap('streamSimple') };
 }
 
-module.exports = { ISSUER, RESOURCE, SCOPES, publicChatGPTError, hasPlanCredentials, AccountModelCatalog, LocalChatGPTStore, ChatGPTPlanClient, daemonClient, localAccount, planResponsesApi, completedResponsesFetch, planModels, normalizePlanPayload };
+module.exports = { ISSUER, RESOURCE, SCOPES, captureAccount, requireAccount, cancelAccountInstance, publicChatGPTError, hasPlanCredentials, AccountModelCatalog, LocalChatGPTStore, ChatGPTPlanClient, daemonClient, localAccount, planResponsesApi, completedResponsesFetch, planModels, normalizePlanPayload };

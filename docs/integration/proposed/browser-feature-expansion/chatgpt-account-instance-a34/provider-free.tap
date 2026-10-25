@@ -1,0 +1,31 @@
+✔ actual local registration, signature, account isolation, issued-client refresh and token-free completion (75.077875ms)
+✔ callback state, nonce, signature, identity, permissions and replay fail closed (97.833417ms)
+✔ unsafe storage refuses; logout retains registration and clears all local tokens (52.958916ms)
+✔ supplied Responses adapter forces public endpoint and stateless streaming after hooks (0.35275ms)
+✔ inference stream requires actual completion; interrupted and incomplete streams refuse (2.453333ms)
+✔ failed exchange retains only issued registration; cancelled in-flight exchange cannot save tokens (37.991959ms)
+✔ direct kernel auth lock refuses live contenders and recovers after actual process crash (157.986167ms)
+✔ credential locking needs no child-process capability and releases on callback failure (15.254542ms)
+✔ direct locking preserves rejected symlink and multiply-linked marker data (6.710208ms)
+✔ unknown legacy lock is preserved and never guessed stale (4.010208ms)
+✔ plan metadata uses exact supplied slugs and conservative unknown bounds without inventing capabilities (0.2965ms)
+✔ official plan payload removes unsupported fields, preserves history and local tool names, refuses unsupported tools/modalities (0.334375ms)
+✔ rejected refresh sets truthful local expired state without exposing provider body or retrying (56.551875ms)
+✔ local disconnect aborts a pending refresh and cannot resurrect cleared tokens (54.649667ms)
+✔ policy, temporary and client-configuration refresh failures retain tokens and safe diagnostic metadata (131.7455ms)
+✔ only documented terminal codes on the actual refresh endpoint reject renewable credentials (2.114959ms)
+✔ unstructured admission detail and oversized errors retain safe status/shape without provider text (1.215125ms)
+✔ inflight authorization IDs remain reserved until the actual callback settles (38.594875ms)
+✔ actual account-bound catalog invalidates on credential change and never grants sign-in-only access (0.551458ms)
+✔ versioned account binding isolates reused IDs and preserves refused numeric legacy files (75.19375ms)
+✔ deleted account cancels only its exact instance and cannot publish a late authorization result (31.21275ms)
+✔ registry replacement refuses late publication even if cancellation notification is missing (27.708791ms)
+✔ replacement during refresh or selected catalog fetch cannot reuse or publish credentials (62.159625ms)
+ℹ tests 23
+ℹ suites 0
+ℹ pass 23
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1141.427667

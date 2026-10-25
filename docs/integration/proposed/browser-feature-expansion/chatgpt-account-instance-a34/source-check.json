@@ -1,0 +1,69 @@
+{
+  "format": "aux.chatgpt.account-instance.source-check.v1",
+  "daemonAnchorsSha256": "cb640d49f5304927a82a5842ef28ddbef58416534f2b64e93af878545e95b9c5",
+  "memoryDependency": {
+    "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/productivity-memory-native-a41/source-transforms.json",
+    "sha256": "4d9909d8d0f79acbc9f784010893ae8d3559627cdf3bf0a9b1bcfb0bca15d62b"
+  },
+  "files": [
+    {
+      "input": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/fresh-startup-milestone-a42/http-request-adapter-source/index.mjs",
+      "inputSha256": "ab8314dabe8f6b2100a587e93deed2bd496ffe0db56dfa3610bbcd08c70b9938",
+      "outputName": "index.mjs",
+      "providerOnlySha256": "338d1af166fb9f73282cb1f29576c38e1ae794b7d3a74cd64fc9f3d2f60df7be",
+      "memoryInputSha256": "91a035d12eea79bad52bf5c692c32139192e1759753f93d7c6c4c8a029dd493d",
+      "combinedOutputSha256": "6585ab560a1f987940141c870105e2db2b160b7e465d55490be2c6c12c0b4f9f",
+      "providerAnchors": 17,
+      "memoryAnchors": 7,
+      "syntaxPassed": true,
+      "commutes": true
+    },
+    {
+      "input": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/fresh-startup-milestone-a42/http-request-adapter-source/aux-native-entry.mjs",
+      "inputSha256": "1d1e348b5dbddfe3cf320238c1f357eece6f6364b5c3d97e01903687c05a48d1",
+      "outputName": "aux-native-entry.mjs",
+      "providerOnlySha256": "0e333a092a4361697a45cfac5006fb7646222b9dbc88025a1b484ec8e7715ae9",
+      "memoryInputSha256": "0429a3c2069b45829026dd8d0c15477219bd20c9aab92c80f5196d56c9790385",
+      "combinedOutputSha256": "9827a7833c9f42905363aa0207da5f11c9a621347dadd13c0fcceb3d424d8cee",
+      "providerAnchors": 17,
+      "memoryAnchors": 7,
+      "syntaxPassed": true,
+      "commutes": true
+    }
+  ],
+  "fresh": [
+    {
+      "stateIdentityVersion": 1,
+      "sha256": "31b81237f887b5b83aed350f69847b3fccdf428d41af6e55e02271e63e55d245",
+      "anchors": 153,
+      "syntaxPassed": true
+    },
+    {
+      "stateIdentityVersion": 2,
+      "sha256": "f296b79d40d3426c62b43241be2300e6c83ea2cd06756e38d7d8a02634152a28",
+      "anchors": 314,
+      "syntaxPassed": true
+    }
+  ],
+  "shim": {
+    "inputSha256": "d41902beb64c7cec87441d28152607efce89e1dc1bce9c909d6fbe7f48b467c3",
+    "outputSha256": "4e33ecff5d588a710a7b61da93fc2a45962f545d6c410451fdb0fdfae035156e",
+    "anchorsSha256": "1431979223137032790db28d3072cb0257184df058be484cb615530fda03e858",
+    "memorySourceTransformsSha256": "4d9909d8d0f79acbc9f784010893ae8d3559627cdf3bf0a9b1bcfb0bca15d62b",
+    "countedEdits": 2,
+    "syntaxPassed": true
+  },
+  "actualRegistryProof": {
+    "idReused": true,
+    "incarnationChanged": true,
+    "staleOwnerRefused": true,
+    "replacementCredentialsAbsent": true,
+    "oldRecordPreserved": true,
+    "addSha256": "97f38b1a5535329ccc696dd15d7e93dee08fb29792ca63566807458a53a8c624",
+    "removeSha256": "ad19d3aa1cdc7fadf6b55d4443f7849abd2ee50850d250c0583a5e0b355899a6"
+  },
+  "providerRequests": 0,
+  "productExecuted": false,
+  "realCredentialsRead": false,
+  "runtimeAccepted": false
+}
