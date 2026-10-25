@@ -1,0 +1,22 @@
+{
+  "passed": true,
+  "changes": [
+    {
+      "path": "chrome/browser/aux/native_peer_policy/AuxAuthenticatedChildParentPolicyReader.swift",
+      "beforeSha256": "63a0203e6646c58bf5b303b73407e2d72356c694b836e5aba1b73f175afaaef5",
+      "afterSha256": "c1cc8b051fcc3bf431a9b8db1bff92b65146ed991e68d536e0aa70b4ce59c58d",
+      "anchorCount": 1
+    },
+    {
+      "path": "chrome/app/chrome_main_delegate.cc",
+      "beforeSha256": "24bcd93806c86e8dcbc2f0d623e43cd6b403282e83339375b958a162c563a33d",
+      "afterSha256": "2f8d943c81246f0c4190633ad940c511bf6641584986a5bb4f6712774ed73663",
+      "anchorCount": 1
+    }
+  ],
+  "reason": "The signed v8 ordinary policy was unconditionally refused by the parent legacy-only v2/v3 embedded-launch classifier.",
+  "authenticationAndResourceValidationPreserved": true,
+  "uiChanged": false,
+  "signed": false,
+  "appExecuted": false
+}

@@ -70,6 +70,9 @@ async function start(command, arguments_, env) {
   children.add(child);
   child.done.then(outcome => {
     children.delete(child);
+    if (ordinaryFresh) console.error(JSON.stringify({ event: 'aux-fresh-child-exit', pid: child.pid,
+      exitCode: outcome.childExitCode, signal: outcome.childSignal,
+      groupStopped: outcome.groupStopped, forced: outcome.forced, error: outcome.error }));
     if (!stopping) void stop(outcome.error || outcome.forced || !outcome.groupStopped || outcome.childSignal ? 1 : outcome.childExitCode ?? 1);
   });
   if (stopping) {

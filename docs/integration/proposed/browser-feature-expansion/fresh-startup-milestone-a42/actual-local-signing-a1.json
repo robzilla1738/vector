@@ -1,0 +1,326 @@
+{
+  "format": "aux.ordinary-fresh.local-signing.actual.v1",
+  "passed": false,
+  "approvedReviewSha256": "60cf25875ae104cc8f8877eaf785c5f95cebeafa59da2f2f8057a80b0eaa50ad",
+  "app": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-fresh-browser-20261024-a42/Aux.app",
+  "steps": [
+    {
+      "codeObject": "Contents/Frameworks/Aux Framework.framework/Versions/155.0.8059.85/Libraries/libvulkan.dylib",
+      "command": [
+        "/usr/bin/codesign",
+        "--force",
+        "--sign",
+        "47ACA5D1CFADD21CFEDC589B4DEED6E2B7A96D90",
+        "--options",
+        "runtime",
+        "--timestamp=none",
+        "--identifier",
+        "dev.aux.browser.libvulkan",
+        "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-fresh-browser-20261024-a42/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/155.0.8059.85/Libraries/libvulkan.dylib"
+      ],
+      "exitCode": 0,
+      "diagnostic": ""
+    },
+    {
+      "codeObject": "Contents/Frameworks/Aux Framework.framework/Versions/155.0.8059.85/Libraries/libvk_swiftshader.dylib",
+      "command": [
+        "/usr/bin/codesign",
+        "--force",
+        "--sign",
+        "47ACA5D1CFADD21CFEDC589B4DEED6E2B7A96D90",
+        "--options",
+        "runtime",
+        "--timestamp=none",
+        "--identifier",
+        "dev.aux.browser.libvk-swiftshader",
+        "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-fresh-browser-20261024-a42/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/155.0.8059.85/Libraries/libvk_swiftshader.dylib"
+      ],
+      "exitCode": 0,
+      "diagnostic": ""
+    },
+    {
+      "codeObject": "Contents/Frameworks/Aux Framework.framework/Versions/155.0.8059.85/Libraries/libaperitif.dylib",
+      "command": [
+        "/usr/bin/codesign",
+        "--force",
+        "--sign",
+        "47ACA5D1CFADD21CFEDC589B4DEED6E2B7A96D90",
+        "--options",
+        "runtime",
+        "--timestamp=none",
+        "--identifier",
+        "dev.aux.browser.libaperitif",
+        "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-fresh-browser-20261024-a42/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/155.0.8059.85/Libraries/libaperitif.dylib"
+      ],
+      "exitCode": 0,
+      "diagnostic": ""
+    },
+    {
+      "codeObject": "Contents/Frameworks/Aux Framework.framework/Versions/155.0.8059.85/Helpers/web_app_shortcut_copier",
+      "command": [
+        "/usr/bin/codesign",
+        "--force",
+        "--sign",
+        "47ACA5D1CFADD21CFEDC589B4DEED6E2B7A96D90",
+        "--options",
+        "runtime",
+        "--timestamp=none",
+        "--identifier",
+        "dev.aux.browser.web-app-shortcut-copier",
+        "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-fresh-browser-20261024-a42/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/155.0.8059.85/Helpers/web_app_shortcut_copier"
+      ],
+      "exitCode": 0,
+      "diagnostic": ""
+    },
+    {
+      "codeObject": "Contents/Frameworks/Aux Framework.framework/Versions/155.0.8059.85/Helpers/chrome_crashpad_handler",
+      "command": [
+        "/usr/bin/codesign",
+        "--force",
+        "--sign",
+        "47ACA5D1CFADD21CFEDC589B4DEED6E2B7A96D90",
+        "--options",
+        "runtime",
+        "--timestamp=none",
+        "--identifier",
+        "dev.aux.browser.chrome-crashpad-handler",
+        "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-fresh-browser-20261024-a42/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/155.0.8059.85/Helpers/chrome_crashpad_handler"
+      ],
+      "exitCode": 0,
+      "diagnostic": ""
+    },
+    {
+      "codeObject": "Contents/Frameworks/Aux Framework.framework/Versions/155.0.8059.85/Helpers/app_mode_loader",
+      "command": [
+        "/usr/bin/codesign",
+        "--force",
+        "--sign",
+        "47ACA5D1CFADD21CFEDC589B4DEED6E2B7A96D90",
+        "--options",
+        "runtime",
+        "--timestamp=none",
+        "--identifier",
+        "dev.aux.browser.app-mode-loader",
+        "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-fresh-browser-20261024-a42/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/155.0.8059.85/Helpers/app_mode_loader"
+      ],
+      "exitCode": 0,
+      "diagnostic": ""
+    },
+    {
+      "codeObject": "Contents/Frameworks/Aux Framework.framework/Versions/155.0.8059.85/Helpers/Aux Helper.app",
+      "command": [
+        "/usr/bin/codesign",
+        "--force",
+        "--sign",
+        "47ACA5D1CFADD21CFEDC589B4DEED6E2B7A96D90",
+        "--options",
+        "runtime",
+        "--timestamp=none",
+        "--identifier",
+        "dev.aux.browser.helper",
+        "--entitlements",
+        "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/fresh-startup-milestone-a42/browser-jit.plist",
+        "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-fresh-browser-20261024-a42/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/155.0.8059.85/Helpers/Aux Helper.app"
+      ],
+      "exitCode": 0,
+      "diagnostic": ""
+    },
+    {
+      "codeObject": "Contents/Frameworks/Aux Framework.framework/Versions/155.0.8059.85/Helpers/Aux Helper (Renderer).app",
+      "command": [
+        "/usr/bin/codesign",
+        "--force",
+        "--sign",
+        "47ACA5D1CFADD21CFEDC589B4DEED6E2B7A96D90",
+        "--options",
+        "runtime",
+        "--timestamp=none",
+        "--identifier",
+        "dev.aux.browser.helper.renderer",
+        "--entitlements",
+        "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/fresh-startup-milestone-a42/browser-jit.plist",
+        "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-fresh-browser-20261024-a42/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/155.0.8059.85/Helpers/Aux Helper (Renderer).app"
+      ],
+      "exitCode": 0,
+      "diagnostic": ""
+    },
+    {
+      "codeObject": "Contents/Frameworks/Aux Framework.framework/Versions/155.0.8059.85/Helpers/Aux Helper (GPU).app",
+      "command": [
+        "/usr/bin/codesign",
+        "--force",
+        "--sign",
+        "47ACA5D1CFADD21CFEDC589B4DEED6E2B7A96D90",
+        "--options",
+        "runtime",
+        "--timestamp=none",
+        "--identifier",
+        "dev.aux.browser.helper",
+        "--entitlements",
+        "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/fresh-startup-milestone-a42/browser-jit.plist",
+        "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-fresh-browser-20261024-a42/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/155.0.8059.85/Helpers/Aux Helper (GPU).app"
+      ],
+      "exitCode": 0,
+      "diagnostic": ""
+    },
+    {
+      "codeObject": "Contents/Frameworks/Aux Framework.framework/Versions/155.0.8059.85/Helpers/Aux Helper (Aperitif).app",
+      "command": [
+        "/usr/bin/codesign",
+        "--force",
+        "--sign",
+        "47ACA5D1CFADD21CFEDC589B4DEED6E2B7A96D90",
+        "--options",
+        "runtime",
+        "--timestamp=none",
+        "--identifier",
+        "dev.aux.browser.helper",
+        "--entitlements",
+        "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/fresh-startup-milestone-a42/browser-jit.plist",
+        "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-fresh-browser-20261024-a42/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/155.0.8059.85/Helpers/Aux Helper (Aperitif).app"
+      ],
+      "exitCode": 0,
+      "diagnostic": ""
+    },
+    {
+      "codeObject": "Contents/Frameworks/Aux Framework.framework/Versions/155.0.8059.85/Helpers/Aux Helper (Aperitif Renderer).app",
+      "command": [
+        "/usr/bin/codesign",
+        "--force",
+        "--sign",
+        "47ACA5D1CFADD21CFEDC589B4DEED6E2B7A96D90",
+        "--options",
+        "runtime",
+        "--timestamp=none",
+        "--identifier",
+        "dev.aux.browser.helper.renderer",
+        "--entitlements",
+        "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/fresh-startup-milestone-a42/browser-jit.plist",
+        "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-fresh-browser-20261024-a42/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/155.0.8059.85/Helpers/Aux Helper (Aperitif Renderer).app"
+      ],
+      "exitCode": 0,
+      "diagnostic": ""
+    },
+    {
+      "codeObject": "Contents/Frameworks/Aux Framework.framework/Versions/155.0.8059.85/Helpers/Aux Helper (Aperitif GPU).app",
+      "command": [
+        "/usr/bin/codesign",
+        "--force",
+        "--sign",
+        "47ACA5D1CFADD21CFEDC589B4DEED6E2B7A96D90",
+        "--options",
+        "runtime",
+        "--timestamp=none",
+        "--identifier",
+        "dev.aux.browser.helper",
+        "--entitlements",
+        "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/fresh-startup-milestone-a42/browser-jit.plist",
+        "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-fresh-browser-20261024-a42/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/155.0.8059.85/Helpers/Aux Helper (Aperitif GPU).app"
+      ],
+      "exitCode": 0,
+      "diagnostic": ""
+    },
+    {
+      "codeObject": "Contents/Frameworks/Aux Framework.framework/Versions/155.0.8059.85/Helpers/Aux Helper (Aperitif Alerts).app",
+      "command": [
+        "/usr/bin/codesign",
+        "--force",
+        "--sign",
+        "47ACA5D1CFADD21CFEDC589B4DEED6E2B7A96D90",
+        "--options",
+        "runtime",
+        "--timestamp=none",
+        "--identifier",
+        "dev.aux.browser.framework.AlertNotificationService",
+        "--entitlements",
+        "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/fresh-startup-milestone-a42/browser-jit.plist",
+        "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-fresh-browser-20261024-a42/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/155.0.8059.85/Helpers/Aux Helper (Aperitif Alerts).app"
+      ],
+      "exitCode": 0,
+      "diagnostic": ""
+    },
+    {
+      "codeObject": "Contents/Frameworks/Aux Framework.framework/Versions/155.0.8059.85/Helpers/Aux Helper (Alerts).app",
+      "command": [
+        "/usr/bin/codesign",
+        "--force",
+        "--sign",
+        "47ACA5D1CFADD21CFEDC589B4DEED6E2B7A96D90",
+        "--options",
+        "runtime",
+        "--timestamp=none",
+        "--identifier",
+        "dev.aux.browser.framework.AlertNotificationService",
+        "--entitlements",
+        "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/fresh-startup-milestone-a42/browser-jit.plist",
+        "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-fresh-browser-20261024-a42/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/155.0.8059.85/Helpers/Aux Helper (Alerts).app"
+      ],
+      "exitCode": 0,
+      "diagnostic": ""
+    },
+    {
+      "codeObject": "Contents/Frameworks/Aux Framework.framework",
+      "command": [
+        "/usr/bin/codesign",
+        "--force",
+        "--sign",
+        "47ACA5D1CFADD21CFEDC589B4DEED6E2B7A96D90",
+        "--options",
+        "runtime",
+        "--timestamp=none",
+        "--identifier",
+        "dev.aux.browser.framework",
+        "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-fresh-browser-20261024-a42/Aux.app/Contents/Frameworks/Aux Framework.framework"
+      ],
+      "exitCode": 0,
+      "diagnostic": ""
+    },
+    {
+      "codeObject": "Contents/Resources/aux/apps/daemon/Aux Daemon.app",
+      "command": [
+        "/usr/bin/codesign",
+        "--force",
+        "--sign",
+        "47ACA5D1CFADD21CFEDC589B4DEED6E2B7A96D90",
+        "--options",
+        "runtime",
+        "--timestamp=none",
+        "--identifier",
+        "dev.aux.browser.daemon",
+        "--entitlements",
+        "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/fresh-startup-milestone-a42/daemon-local.plist",
+        "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-fresh-browser-20261024-a42/Aux.app/Contents/Resources/aux/apps/daemon/Aux Daemon.app"
+      ],
+      "exitCode": 0,
+      "diagnostic": ""
+    },
+    {
+      "codeObject": ".",
+      "command": [
+        "/usr/bin/codesign",
+        "--force",
+        "--sign",
+        "47ACA5D1CFADD21CFEDC589B4DEED6E2B7A96D90",
+        "--options",
+        "runtime",
+        "--timestamp=none",
+        "--identifier",
+        "dev.aux.browser",
+        "--entitlements",
+        "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/fresh-startup-milestone-a42/browser-jit.plist",
+        "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-fresh-browser-20261024-a42/Aux.app"
+      ],
+      "exitCode": 0,
+      "diagnostic": ""
+    },
+    {
+      "verification": "Contents/Frameworks/Aux Framework.framework/Versions/155.0.8059.85/Libraries/libvulkan.dylib",
+      "exitCode": 1,
+      "diagnostic": "anchor apple generic and identifier \"dev.aux.browser.libvulkan\" and certificate leaf[subject.OU] = \"9F2JXY8TCK\": No such file or directory\ninvalid requirement specification\n"
+    }
+  ],
+  "appExecuted": false,
+  "provisioning": false,
+  "notarization": false,
+  "release": false
+}

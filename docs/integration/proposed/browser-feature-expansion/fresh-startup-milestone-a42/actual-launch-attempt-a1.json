@@ -1,0 +1,10 @@
+{
+  "format": "aux.ordinary-fresh.launch-attempt.v1",
+  "launcherPid": 64724,
+  "startedUnix": 1792899641.784533,
+  "app": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-fresh-browser-20261024-a42/Aux.app",
+  "scope": "/private/tmp/aux-fresh-browser-4qtjms51",
+  "privateLog": "/private/tmp/aux-fresh-browser-4qtjms51/browser-launch-a1.log",
+  "ownerSigningReviewSha256": "60cf25875ae104cc8f8877eaf785c5f95cebeafa59da2f2f8057a80b0eaa50ad",
+  "runtimeAcceptance": false
+}

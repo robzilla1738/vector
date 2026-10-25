@@ -1,0 +1,53 @@
+--- a/chrome/browser/aux/native_peer_policy/AuxAuthenticatedChildParentPolicyReader.swift
++++ b/chrome/browser/aux/native_peer_policy/AuxAuthenticatedChildParentPolicyReader.swift
+@@ -135,10 +135,15 @@
+             let bytes = try resource((path as URL).path)
+             let policy = try AuxFreshBootstrapPolicyContents.decode(bytes)
+             let format = try strictEnvelopeObject(bytes)["format"] as? String
++#if AUX_BROWSER_ONLY_NATIVE_STARTUP
++            guard format == "aux.fresh.bootstrap.policy.v8" else { return -1 }
++            try validateFreshBootstrapRebuiltDaemonRoute(policy)
++#else
+             guard policy.role == .daemon, policy.embeddedDaemon,
+                   format == "aux.fresh.bootstrap.policy.v2" || format == "aux.fresh.bootstrap.policy.v3",
+                   format != "aux.fresh.bootstrap.policy.v3" || policy.ptyArtifacts != nil
+             else { return -1 }
++#endif
+             let sealed = SecCodeValidateFileResource(code,
+                 AuxFreshBootstrapIdentity.resourceRelative as CFString, bytes as CFData, [])
+             guard sealed == errSecSuccess,
+--- a/chrome/app/chrome_main_delegate.cc
++++ b/chrome/app/chrome_main_delegate.cc
+@@ -1197,11 +1197,27 @@
+     // Before Crashpad, logging, histograms, Local State or singleton writes.
+     // Only an explicit existing private native path is eligible for the exact
+     // daemon/root/generation receipt below; there is no historical acceptance.
+-    if (!aux::state_identity::PackagedIdentityAllowsStartup() ||
+-        !ValidateOrdinaryUserDataSelection(ordinary_command) ||
+-        !aux::peer::PrepareBrowserPrivateRootsBeforeProfileIO() ||
+-        aux::peer::StartSealedNativeDaemonBeforeProfiles().route != aux::peer::SelectedStateHomeRoute::current ||
+-        !aux::peer::AuthorizeNativeBrowserStartupBeforeLocalState()) return 1;
++    if (!aux::state_identity::PackagedIdentityAllowsStartup()) {
++      RAW_LOG(ERROR, "Aux fresh startup refused: packaged identity");
++      return 1;
++    }
++    if (!ValidateOrdinaryUserDataSelection(ordinary_command)) {
++      RAW_LOG(ERROR, "Aux fresh startup refused: private path selection");
++      return 1;
++    }
++    if (!aux::peer::PrepareBrowserPrivateRootsBeforeProfileIO()) {
++      RAW_LOG(ERROR, "Aux fresh startup refused: native root capture");
++      return 1;
++    }
++    if (aux::peer::StartSealedNativeDaemonBeforeProfiles().route !=
++        aux::peer::SelectedStateHomeRoute::current) {
++      RAW_LOG(ERROR, "Aux fresh startup refused: paired daemon receipt");
++      return 1;
++    }
++    if (!aux::peer::AuthorizeNativeBrowserStartupBeforeLocalState()) {
++      RAW_LOG(ERROR, "Aux fresh startup refused: startup authorization");
++      return 1;
++    }
+   }
+ #endif
+ #if BUILDFLAG(IS_MAC) && BUILDFLAG(ENABLE_AUX_BROWSER)

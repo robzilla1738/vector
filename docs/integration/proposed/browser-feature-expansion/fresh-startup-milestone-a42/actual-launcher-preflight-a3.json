@@ -1,0 +1,15 @@
+{
+  "passed": true,
+  "app": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-fresh-browser-20261024-a43/Aux.app",
+  "identity": {
+    "identityProfile": "aux-v1",
+    "stateIdentityVersion": 2,
+    "service": "aux-daemon"
+  },
+  "scope": "/private/tmp/aux-fresh-browser-4qtjms51",
+  "home": "/private/tmp/aux-fresh-browser-4qtjms51/home",
+  "profile": "/private/tmp/aux-fresh-browser-4qtjms51/home/Library/Application Support/Aux",
+  "appExecuted": false,
+  "keychainAccessed": false,
+  "correctionSigned": false
+}

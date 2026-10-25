@@ -1,0 +1,37 @@
+{
+  "format": "aux.ordinary-fresh.startup-diagnosis.v1",
+  "candidate": "A42",
+  "all17ReviewedSignaturesVerified": true,
+  "deepStrictOuterSignatureVerified": true,
+  "observedChildExit": {
+    "event": "aux-fresh-child-exit",
+    "pid": 65299,
+    "exitCode": 1,
+    "signal": null,
+    "groupStopped": true,
+    "forced": false
+  },
+  "windowOpened": false,
+  "daemonListening": false,
+  "disposableDataAndControlDirectoriesEmpty": true,
+  "runtimeAcceptance": false,
+  "policyFormat": "aux.fresh.bootstrap.policy.v8",
+  "ordinaryRootFormat": "aux.browser.ordinary-root-lease.v1",
+  "nativeParentClassifierAcceptedOnly": [
+    "aux.fresh.bootstrap.policy.v2",
+    "aux.fresh.bootstrap.policy.v3"
+  ],
+  "concreteMismatchFound": true,
+  "firstRefusingSubstageNotInstrumented": true,
+  "correction": "Accept only compiled ordinary-v8 via the existing exact native route validator, preserve all code/resource/root checks, add per-stage startup refusal messages.",
+  "newSigningPerformedForCorrection": false,
+  "remainingChecks": {
+    "navigation": "blocked at startup",
+    "two-profile isolation": "blocked at startup",
+    "multiple windows": "blocked at startup",
+    "draft/attachment persistence": "blocked at startup",
+    "sidebar/chat/settings": "blocked at startup",
+    "actual UI comparison": "blocked at startup",
+    "restart": "blocked at startup"
+  }
+}

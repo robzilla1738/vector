@@ -1,0 +1,10 @@
+{
+  "format": "aux.ordinary-fresh.local-signing.owner-approval.v1",
+  "reviewSha256": "60cf25875ae104cc8f8877eaf785c5f95cebeafa59da2f2f8057a80b0eaa50ad",
+  "ownerReply": "Approve this local signing and disposable checks",
+  "scope": "/private/tmp/aux-fresh-browser-4qtjms51",
+  "objectCount": 17,
+  "newProvisioning": false,
+  "newOSGrants": false,
+  "release": false
+}
