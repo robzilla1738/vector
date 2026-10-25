@@ -111,7 +111,7 @@
         transferred=true;try owned.revalidate();return owned
     }
     private func validateOrdinaryLocked()throws {
-        guard phase != .failed,let browser=ordinaryBrowser else{throw AuxFreshColdGuardError.path}
+        guard phase == .prepared || phase == .admitted,let browser=ordinaryBrowser else{throw AuxFreshColdGuardError.path}
         try policy.revalidateCurrentIdentity();try browser.requireCurrent()
         if phase == .admitted || !ordinaryInstallationSha.isEmpty {
             guard try Self.ordinaryInstallation(policy)==ordinaryInstallationSha else{throw AuxFreshColdGuardError.path}
@@ -119,7 +119,8 @@
         for i in roots.indices {
             try Self.metadata(roots[i],directory:true);try Self.pathIdentity(paths[i],roots[i]);try Self.noSupervisedMarker(roots[i])
             try Self.metadata(markers[i],directory:false);try Self.entry(roots[i],Self.marker,markers[i])
-            guard try Self.readRecord(markers[i])==records[i] else{throw AuxFreshColdGuardError.path}
+            let expected=try Self.ordinaryBinding(policy:policy,role:i+1,root:roots[i],reservation:reservation,generation:generation,phase:phase == .admitted ? "admitted":"prepared",installation:ordinaryInstallationSha,existing:permitsExistingData,browser:browser)
+            guard expected==records[i],try Self.readRecord(markers[i])==records[i] else{throw AuxFreshColdGuardError.path}
         }
         if phase == .prepared {do{try validateStartupInventoriesLocked()}catch{phase = .failed;throw error}}
     }

@@ -1,0 +1,10 @@
+{
+  "format": "aux.ordinary-browser.current-directory-revalidation.v1",
+  "predecessorCommit": "7ad10ea34",
+  "source": "source/AuxBrowserFreshRootAdmission.swift",
+  "inputSha256": "85586e2a9f19a2bdd5ce439450a35c645d22c5cf8113bad8a73a19d28d5fde57",
+  "outputSha256": "a6a47585ec0283ec1149de48092e35a625b3b9084c4b0fe50479f9bc6dd68f31",
+  "ordinaryPhasesOnly": true,
+  "rederiveActualControlAndTaskDirectoryIdentities": true,
+  "runtimeExecuted": false
+}
