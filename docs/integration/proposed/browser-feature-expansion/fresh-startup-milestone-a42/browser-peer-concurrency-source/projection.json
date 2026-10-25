@@ -1,0 +1,23 @@
+{
+  "format": "aux.browser-peer-concurrency.source.v1",
+  "files": [
+    {
+      "nativeRelative": "chrome/browser/aux/native_peer_policy/AuxAuthenticatedChildParentPolicyReader.swift",
+      "input": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/aux/native_peer_policy/AuxAuthenticatedChildParentPolicyReader.swift",
+      "inputSha256": "c84760019233b7d796160542db340f049f398e7bbd6675c9a43bde5b4b7574d8",
+      "output": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/fresh-startup-milestone-a42/browser-peer-concurrency-source/AuxAuthenticatedChildParentPolicyReader.swift",
+      "outputSha256": "d721895d71c0988b245122204ae8da981024f58b690e07d982abca8d4b8fc07e",
+      "anchors": [
+        {
+          "before": "    private static var ordinaryFiles:OrdinaryGuestFiles?",
+          "after": "    // Every access is protected by ordinaryFilesLock after the process check.\n    nonisolated(unsafe) private static var ordinaryFiles:OrdinaryGuestFiles?",
+          "count": 1
+        }
+      ]
+    }
+  ],
+  "anchorCount": 1,
+  "onlyManuallyLockedVariableAnnotated": true,
+  "nativeBuilt": false,
+  "productExecuted": false
+}

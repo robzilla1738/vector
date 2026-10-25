@@ -1,0 +1,12 @@
+--- a/chrome/browser/aux/native_peer_policy/AuxAuthenticatedChildParentPolicyReader.swift
++++ b/chrome/browser/aux/native_peer_policy/AuxAuthenticatedChildParentPolicyReader.swift
+@@ -67,7 +67,8 @@
+     }
+     private static let ordinaryProcess=getpid()
+     private static let ordinaryFilesLock=NSLock()
+-    private static var ordinaryFiles:OrdinaryGuestFiles?
++    // Every access is protected by ordinaryFilesLock after the process check.
++    nonisolated(unsafe) private static var ordinaryFiles:OrdinaryGuestFiles?
+     private static func retainedOrdinaryFiles(_ code:SecStaticCode,_ hash:Data)throws->OrdinaryGuestFiles {
+         guard getpid()==ordinaryProcess else{throw AuxFreshBootstrapPolicyError.identity}
+         ordinaryFilesLock.lock();defer{ordinaryFilesLock.unlock()}
