@@ -20,3 +20,14 @@ export function assertFreshAuxLaunchIdentity(bundle) {
   }
   return {identityProfile: 'aux-v1', stateIdentityVersion: 2, service: 'aux-daemon'};
 }
+
+// Native code derives locations from OS user facts and authenticates the sealed
+// policy before creating state. This marker only selects that startup attempt.
+export function assertNativeUserAuxLaunchIdentity(bundle) {
+  if (bundle?.version !== 1 || bundle.implementation !== 'supplied' ||
+      bundle.identityProfile !== 'aux-v1' || bundle.stateIdentityVersion !== 2 ||
+      bundle.nativeStartupMode !== 'ordinary-user-v1') {
+    throw Error('An ordinary native-user Aux candidate is required. Legacy profiles remain unsupported.');
+  }
+  return {identityProfile: 'aux-v1', stateIdentityVersion: 2, service: 'aux-daemon'};
+}

@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import { assertAuxLaunchIdentity } from './lib/aux-launch-identity.mjs';
 import { readFreshAuxLaunch } from './lib/aux-fresh-launch.mjs';
+import { readNativeUserAuxLaunch } from './lib/aux-user-launch.mjs';
 // Development launcher. Production startup belongs to the native browser.
 import { launchOwnedProcess } from './lib/owned-process.mjs';
 import { existsSync } from 'node:fs';
@@ -42,18 +43,26 @@ try { supplied = JSON.parse(await readFile(join(resources, 'bundle.json'), 'utf8
 catch { throw new Error('Assemble the supplied app first with package:provided, then select it with --app.'); }
 if (options.temporary && (options.profile || args.includes('--home'))) throw new Error('Temporary profile cannot be combined with explicit home/profile.');
 const ordinaryFresh = supplied.nativeStartupMode === 'ordinary-fresh-v1';
+const ordinaryUser = supplied.nativeStartupMode === 'ordinary-user-v1';
+const ordinaryNative = ordinaryFresh || ordinaryUser;
 if (ordinaryFresh && (!options.temporary || !options.app || options.noBrowser ||
     options.chromium || browserArgs.some(value => value.startsWith('--')))) {
   throw Error('Use --temp-profile --app for this fresh candidate, without browser startup overrides.');
 }
+if (ordinaryUser && (!options.app || options.temporary || options.noBrowser ||
+    options.chromium || args.some(value => ['--home', '--profile', '--port'].includes(value)) ||
+    browserArgs.some(value => value.startsWith('--')))) {
+  throw Error('Use --app for this native-user candidate. Native startup owns its fixed locations; home/profile/port/browser overrides are unsupported.');
+}
 const fresh = ordinaryFresh ? await readFreshAuxLaunch(app, supplied) : undefined;
-const launchIdentity = fresh?.identity ?? assertAuxLaunchIdentity(supplied);
+const nativeUser = ordinaryUser ? await readNativeUserAuxLaunch(app, supplied) : undefined;
+const launchIdentity = fresh?.identity ?? nativeUser?.identity ?? assertAuxLaunchIdentity(supplied);
 // macOS tmpdir may begin with /var, a symlink. Cache guards require the
 // actual canonical disposable root before the supplied daemon seeds resources.
 const temporaryRoot = fresh?.scope ?? (options.temporary ? await realpath(await mkdtemp(join(tmpdir(), 'aux-provided-'))) : undefined);
-const home = fresh?.home ?? (temporaryRoot ? join(temporaryRoot, 'home') : options.home);
-const profile = fresh?.profile ?? (temporaryRoot ? join(temporaryRoot, 'profile') : options.profile ?? join(home, 'profile'));
-await mkdir(home, { recursive: true, mode: 0o700 });
+const home = ordinaryUser ? undefined : fresh?.home ?? (temporaryRoot ? join(temporaryRoot, 'home') : options.home);
+const profile = ordinaryUser ? undefined : fresh?.profile ?? (temporaryRoot ? join(temporaryRoot, 'profile') : options.profile ?? join(home, 'profile'));
+if (home) await mkdir(home, { recursive: true, mode: 0o700 });
 const children = new Set();
 let stopping = false;
 const pendingLaunches = new Set();
@@ -70,7 +79,7 @@ async function start(command, arguments_, env) {
   children.add(child);
   child.done.then(outcome => {
     children.delete(child);
-    if (ordinaryFresh) console.error(JSON.stringify({ event: 'aux-fresh-child-exit', pid: child.pid,
+    if (ordinaryNative) console.error(JSON.stringify({ event: 'aux-fresh-child-exit', pid: child.pid,
       exitCode: outcome.childExitCode, signal: outcome.childSignal,
       groupStopped: outcome.groupStopped, forced: outcome.forced, error: outcome.error }));
     if (!stopping) void stop(outcome.error || outcome.forced || !outcome.groupStopped || outcome.childSignal ? 1 : outcome.childExitCode ?? 1);
@@ -111,11 +120,11 @@ async function main() {
   if (stopping) return;
 // Foundation's home/Application Support lookup on macOS does not follow HOME
 // alone. Keep those native lookups in the same disposable development home.
-const inherited = ordinaryFresh
+const inherited = ordinaryNative
   ? Object.fromEntries(['PATH', 'TMPDIR', 'TZ', 'LANG', 'LC_CTYPE', 'LC_MESSAGES']
       .filter(key => process.env[key] !== undefined).map(key => [key, process.env[key]]))
   : process.env;
-const env = { ...inherited, ...(temporaryRoot ? { HOME: home, CFFIXED_USER_HOME: home } : {}), AUX_HOME: home, AUX_PORT: String(options.port),
+const env = ordinaryUser ? inherited : { ...inherited, ...(temporaryRoot ? { HOME: home, CFFIXED_USER_HOME: home } : {}), AUX_HOME: home, AUX_PORT: String(options.port),
   AUX_HOST: '127.0.0.1', DAEMON_BASE_URL: `http://127.0.0.1:${options.port}`,
   AUX_BROWSER_CDP_HOST: '127.0.0.1:45203',
   AUX_AGENT_RUNTIME_DIR: join(home, 'runtime'),
@@ -159,7 +168,7 @@ if (options.noBrowser) {
     throw new Error('The packaged Aux browser executable is missing.');
   }
   await start(executable, [
-    `--user-data-dir=${profile}`, '--no-first-run', '--no-default-browser-check', '--use-mock-keychain',
+    ...(profile ? [`--user-data-dir=${profile}`] : []), '--no-first-run', '--no-default-browser-check', '--use-mock-keychain',
     ...browserArgs,
   ], env);
 }

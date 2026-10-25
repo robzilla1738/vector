@@ -1,0 +1,21 @@
+{
+  "format": "aux.native-user-launcher.focused-check.v1",
+  "passed": true,
+  "command": "node --check scripts/aux.mjs && node --test scripts/lib/aux-launch-identity.test.mjs scripts/lib/aux-fresh-launch.test.mjs scripts/lib/aux-user-launch.test.mjs",
+  "observedChecks": 5,
+  "failures": 0,
+  "sourcePins": {
+    "scripts/aux.mjs": "37ab07bec2d8269ef834806082ff4e3f3335b961d8d02b73f35b94ee8ea43205",
+    "scripts/lib/aux-launch-identity.mjs": "48bfb7aa05323b968b2caa5ffc2d960c1aa93d0d152534bf168687f17ade6f67",
+    "scripts/lib/aux-user-launch.mjs": "7423a00f7b335d3ade4e70b3722fb5b8cb67eb5394ee5f08089cbe9d11ecf419",
+    "scripts/lib/aux-user-launch.test.mjs": "84c01260f71cfac16a63098933b9ff99e282422a8489e9461e128a4115a3a81d",
+    "scripts/lib/aux-launch-identity.test.mjs": "4006972bc1a862c9f767f0dca7ff9c43ce776b81210899c4465504318e511008",
+    "scripts/lib/aux-fresh-launch.test.mjs": "cc3c78ea6cd437739aa7c6c2de29a0c447e67be1fed350d4359936db08d6d106"
+  },
+  "nativeStartupAttemptOnly": true,
+  "realUserDirectoriesRead": false,
+  "realUserDirectoriesCreated": false,
+  "appExecuted": false,
+  "signing": false,
+  "runtimeAcceptance": false
+}

@@ -1,0 +1,28 @@
+{
+  "passed": true,
+  "projected": true,
+  "compiled": false,
+  "changedFiles": [
+    "chrome/browser/ui/views/frame/aux_profile_switch_request.cc",
+    "chrome/browser/ui/views/frame/aux_profile_preview_input.cc",
+    "chrome/browser/ui/browser_window/internal/profile_browser_collection.cc",
+    "chrome/browser/aux/cli/AuxCliOpenArguments.h",
+    "chrome/browser/aux/cli/AuxCliOpenArguments.cc",
+    "chrome/browser/aux/cli/AuxNativeCliFrontend.mm",
+    "chrome/browser/aux/routing/external_routing_ingress.cc",
+    "chrome/browser/aux/native_peer_policy/AuxFreshBootstrapPolicy.swift",
+    "chrome/browser/aux/native_peer_policy/AuxAuthenticatedChildParentPolicyReader.swift",
+    "chrome/browser/aux/AuxNativeParentColdLaunch.h",
+    "chrome/browser/aux/AuxNativeParentColdLaunch.cc",
+    "chrome/app/aux_packaged_state_identity.h",
+    "chrome/app/chrome_main_delegate.cc",
+    "chrome/common/chrome_paths_mac.mm",
+    "chrome/browser/aux/BUILD.gn",
+    "chrome/common/BUILD.gn"
+  ],
+  "sourceCompositionSha256": "5b1133606fa5a766f763524f90214fcfd4d8016dfed32844c5af0eba28858530",
+  "inputCount": 428,
+  "uiChanged": false,
+  "appExecuted": false,
+  "signing": false
+}
