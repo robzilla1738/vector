@@ -1,0 +1,29 @@
+{
+  "format": "aux.disposable-session-draft-identity-observation.v1",
+  "scope": "/private/tmp/aux-fresh-browser-c5mop317",
+  "profile": "Profile 1",
+  "profileDisplayName": "Aux Work Check",
+  "access": "read-only SQLite mode=ro immutable=1, LocalStorage WAL zero; native session binary selected command33 identifiers only",
+  "draft": {
+    "key": "aux.chat-draft.v3:sidepanel-page:6dfb91f2-3b6a-48a1-9bb4-8bc84112f9a5",
+    "encodedValueBytes": 669,
+    "compressionType": 1,
+    "valueRead": false
+  },
+  "logicalTabId": "3e681f3d-1fbd-4c6f-83dc-070323024e8f",
+  "previousSession": {
+    "file": "Session_13437420801370807",
+    "nativeTabId": 1363843367,
+    "pageId": "6dfb91f2-3b6a-48a1-9bb4-8bc84112f9a5"
+  },
+  "currentSession": {
+    "file": "Session_13437421133906436",
+    "nativeTabId": 1363843448,
+    "pageId": "10989d74-3b4e-4b2a-a95a-0a3569b88fb7"
+  },
+  "explicitStartupPreference": "absent",
+  "conclusion": "Exact durable draft key survives; same logical tab is rematerialized as new native page, so sidepanel uses a different draft scope.",
+  "ownerStateRead": false,
+  "contentsRead": false,
+  "originalFilesMutated": false
+}

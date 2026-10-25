@@ -1,0 +1,62 @@
+--- a/chrome/browser/aux/profile_gate.cc
++++ b/chrome/browser/aux/profile_gate.cc
+@@ -3,6 +3,9 @@
+ 
+ #include "chrome/browser/aux/ntp_prerender_service.h"
+ #include "chrome/browser/aux/profile_identity.h"
++#include "chrome/browser/buildflags.h"
++#include "chrome/browser/prefs/session_startup_pref.h"
++#include "chrome/common/pref_names.h"
+ #include "base/uuid.h"
+ #include "chrome/browser/ui/aux_feature_lifecycle.h"
+ #include "components/prefs/pref_service.h"
+@@ -47,8 +50,22 @@
+   // Preserve the real PrefService writer path. This queues persistence and
+   // deliberately does not settle any native ticket or assert durable success.
+   prefs->SetString("aux.profile_id", id);
+-  return alive && GetProfileId(alive.get()) == id
+-      ? Result::kCreatedPending : Result::kUnavailable;
++  if (!alive || GetProfileId(alive.get()) != id)
++    return Result::kUnavailable;
++#if BUILDFLAG(ENABLE_AUX_BROWSER)
++  // Set the Aux browser default once, at the genuine fresh admitted store
++  // boundary. Logical rows alone cannot restore the independent native views,
++  // histories and page identities that own durable chat drafts/attachments.
++  // Preserve explicit startup choices, policy and recommended configuration;
++  // do not rewrite the saved startup URL list or alter existing profiles.
++  if (!prefs->GetUserPrefValue(prefs::kRestoreOnStartup) &&
++      !SessionStartupPref::TypeIsManaged(prefs) &&
++      !SessionStartupPref::TypeHasRecommendedValue(prefs)) {
++    prefs->SetInteger(prefs::kRestoreOnStartup,
++                      SessionStartupPref::kPrefValueLast);
++  }
++#endif
++  return alive ? Result::kCreatedPending : Result::kUnavailable;
+ }
+ void RequestProfileBootstrap(Profile* profile) {
+   // Profile creation no longer opens the removed password-manager onboarding.
+--- a/chrome/browser/sessions/session_service_base.cc
++++ b/chrome/browser/sessions/session_service_base.cc
+@@ -25,6 +25,7 @@
+ #include "chrome/browser/buildflags.h"
+ #if BUILDFLAG(ENABLE_AUX_BROWSER) || BUILDFLAG(ENABLE_AUX_SHELL)
+ #include "chrome/browser/ui/aux/page_identity.h"
++#include "chrome/browser/ui/tabs/aux_pinned_tab_entry_identity.h"
+ #endif
+ #include "chrome/browser/profiles/profile.h"
+ #include "chrome/browser/sessions/session_service_base_observer.h"
+@@ -697,6 +698,14 @@
+         sessions::CreateAddTabExtraDataCommand(
+             session_id, "aux.page_id", identity->id()));
+   }
++  // A full session snapshot replaces incremental logical-tab bindings too.
++  // Restore both identities from this exact native view; never match by URL
++  // or borrow another window's independent PageIdentity.
++  if (auto logical_id = aux::GetRememberedPinnedTabEntryId(*tab)) {
++    command_storage_manager()->AppendRebuildCommand(
++        sessions::CreateAddTabExtraDataCommand(
++            session_id, "aux_organization_tab_id", *logical_id));
++  }
+ #endif
+ 
+   const int current_index = tab->GetController().GetCurrentEntryIndex();
