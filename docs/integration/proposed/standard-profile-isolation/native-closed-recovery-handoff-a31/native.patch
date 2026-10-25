@@ -1,0 +1,149 @@
+--- a/extensions/browser/api/storage/storage_frontend.h
++++ b/extensions/browser/api/storage/storage_frontend.h
+@@ -159,6 +159,9 @@
+     bool target_attempted = false;
+     bool recovery_requested = false, recovery_qualified = false;
+     bool recovery_source_released = false;
++    // Past same-owner transfer correlation. Neither flag is writer readiness.
++    bool handoff_pending = false, handed_off = false;
++    std::optional<base::UnguessableToken> handoff_request;
+     std::string recovery_descriptor_sha256;
+   };
+   using AuxUiMigrationLeaseObservationResult = base::expected<
+@@ -181,6 +184,12 @@
+       const base::UnguessableToken& request,
+       value_store::ValueStore::AuxUiPreferenceRecoveryDescriptor descriptor,
+       base::OnceCallback<void(AuxUiMigrationLeaseResult)> callback);
++  // Closed transition after actual original-source restoration and JS adoption.
++  // The native controller retains Profile/worker/editor custody across all stores.
++  // This never releases the gate or replays deferred ordinary work.
++  void BeginMigrationFromRestoredRecovery(AuxUiMigrationLease& original,
++      const base::UnguessableToken& new_request,
++      base::OnceCallback<void(AuxUiMigrationLeaseResult)> callback);
+   bool ValidateAuxUiMigrationLease(const AuxUiMigrationLease& lease) const;
+   void CommitAuxUiMigrationLease(AuxUiMigrationLease& lease,
+       base::OnceCallback<void(value_store::ValueStore::Status)> callback);
+@@ -330,6 +339,12 @@
+     std::string descriptor_sha256;
+   };
+   std::optional<AuxUiRecoveryReleasedReceipt> aux_ui_recovery_released_;
++  struct AuxUiHandoffReceipt {
++    // Retains the immutable old fresh capture/recovery descriptor independently
++    // of the new normal source capture, even after its consumer loses the reply.
++    std::shared_ptr<AuxUiMigrationLease::State> original, successor;
++  };
++  std::map<base::UnguessableToken, AuxUiHandoffReceipt> aux_ui_handoffs_;
+   std::set<base::UnguessableToken> aux_ui_retired_requests_;
+ 
+   base::WeakPtrFactory<StorageFrontend> weak_factory_{this};
+--- a/extensions/browser/api/storage/storage_frontend.cc
++++ b/extensions/browser/api/storage/storage_frontend.cc
+@@ -596,6 +596,8 @@
+   std::array<std::optional<std::string>, 6> source, target, fresh;
+   std::optional<ValueStore::AuxUiPreferenceRecoveryDescriptor> recovery_descriptor;
+   bool recovery_requested = false, recovery_qualified = false;
++  bool handoff_pending = false;
++  std::optional<base::UnguessableToken> handoff_request;
+   std::vector<base::OnceClosure> deferred;
+   bool pending = true, tainted = false, target_attempted = false;
+   bool target_file_data_synced = false, target_readback_matches = false;
+@@ -692,10 +694,29 @@
+     result.target_attempted = state->target_attempted;
+     result.recovery_requested = state->recovery_requested;
+     result.recovery_qualified = state->recovery_qualified;
++    result.handoff_pending = state->handoff_pending;
++    result.handoff_request = state->handoff_request;
+     if (state->recovery_descriptor)
+       result.recovery_descriptor_sha256 = state->recovery_descriptor->descriptor_sha256;
+     if (!state->pending && state->capture)
+       result.lease = base::WrapUnique(new AuxUiMigrationLease(state, state->capture));
++    return result;
++  }
++  auto handoff = aux_ui_handoffs_.find(request);
++  if (handoff != aux_ui_handoffs_.end() &&
++      handoff->second.original->owner.get() == this &&
++      handoff->second.successor->owner.get() == this &&
++      CanUseAuxUiMigrationBackend(*handoff->second.original->extension)) {
++    const auto successor = handoff->second.successor;
++    AuxUiMigrationLeaseObservation result;
++    result.handed_off = true;
++    result.handoff_request = successor->request;
++    result.recovery_requested = result.recovery_qualified = true;
++    result.recovery_descriptor_sha256 =
++        handoff->second.original->recovery_descriptor->descriptor_sha256;
++    result.preparation_pending = successor->pending;
++    if (aux_ui_migration_gate_ == successor && !successor->pending && successor->capture)
++      result.lease = base::WrapUnique(new AuxUiMigrationLease(successor, successor->capture));
+     return result;
+   }
+   if (aux_ui_recovery_released_ && aux_ui_recovery_released_->request == request &&
+@@ -784,6 +805,69 @@
+       }, weak_factory_.GetWeakPtr(), std::move(descriptor), std::move(callback)));
+ }
+ 
++void StorageFrontend::BeginMigrationFromRestoredRecovery(
++    AuxUiMigrationLease& original, const base::UnguessableToken& new_request,
++    base::OnceCallback<void(AuxUiMigrationLeaseResult)> callback) {
++  DCHECK_CURRENTLY_ON(BrowserThread::UI);
++  const auto state = original.state_;
++  if (!state || !ValidateAuxUiMigrationLease(original) || !original.capture_ ||
++      !state->recovery_requested || !state->recovery_qualified ||
++      !state->recovery_descriptor || !state->restore_attempted ||
++      !state->source_file_data_synced || !state->source_readback_matches ||
++      state->handoff_request || new_request.is_empty() || new_request == state->request ||
++      aux_ui_retired_requests_.contains(new_request) ||
++      aux_ui_retired_requests_.size() >= 64 || aux_ui_handoffs_.size() >= 64) {
++    std::move(callback).Run(base::unexpected(ValueStore::Status(ValueStore::OTHER_ERROR,
++        "Closed Aux recovery handoff requires the actual restored source and unchanged owner")));
++    return;
++  }
++  // The old gate remains installed throughout the real backend queue sentinel.
++  // An arriving ordinary operation taints/queues on that SAME state and refuses
++  // the transfer; it is never flushed or silently adopted as a new baseline.
++  state->pending = true;
++  state->handoff_pending = true;
++  state->handoff_request = new_request;
++  CaptureAuxUiPreferencesUngated(state->extension, base::BindOnce(
++      [](base::WeakPtr<StorageFrontend> owner,
++         std::shared_ptr<AuxUiMigrationLease::State> original,
++         base::UnguessableToken new_request,
++         base::OnceCallback<void(AuxUiMigrationLeaseResult)> callback,
++         ValueStore::AuxUiPreferenceCaptureResult captured) {
++        original->pending = false;
++        original->handoff_pending = false;
++        if (!owner || owner->aux_ui_migration_gate_ != original ||
++            !owner->CanUseAuxUiMigrationBackend(*original->extension) ||
++            original->tainted || !original->deferred.empty() ||
++            !original->source_file_data_synced || !original->source_readback_matches ||
++            !captured.has_value() || !captured.value() ||
++            captured.value()->CopyFreshRecordsForNativeJournal() != original->source ||
++            captured.value()->CopyRecordsForNativeJournal() != original->source) {
++          // A definite refusal/lost read response keeps the original lease and
++          // request discoverable. No normal state or readiness is fabricated.
++          std::move(callback).Run(base::unexpected(ValueStore::Status(ValueStore::OTHER_ERROR,
++              "Closed Aux source recapture remains refused or unknown; original gate retained")));
++          return;
++        }
++        auto successor = std::make_shared<AuxUiMigrationLease::State>();
++        successor->owner = owner;
++        successor->extension = original->extension;
++        successor->request = new_request;
++        successor->pending = false;
++        successor->capture = std::move(captured.value());
++        successor->fresh = successor->capture->CopyFreshRecordsForNativeJournal();
++        successor->source = successor->capture->CopyRecordsForNativeJournal();
++        successor->target = successor->capture->CopyTargetRecordsForNativeJournal();
++        // Publish both custody and the old-request receipt before any callback.
++        // Old lease operations now fail their actual gate/state identity check.
++        owner->aux_ui_handoffs_.emplace(original->request,
++            AuxUiHandoffReceipt{original, successor});
++        owner->aux_ui_retired_requests_.insert(original->request);
++        owner->aux_ui_migration_gate_ = successor;
++        std::move(callback).Run(base::WrapUnique(
++            new AuxUiMigrationLease(successor, successor->capture)));
++      }, weak_factory_.GetWeakPtr(), state, new_request, std::move(callback)));
++}
++
+ bool StorageFrontend::ValidateAuxUiMigrationLease(const AuxUiMigrationLease& lease) const {
+   DCHECK_CURRENTLY_ON(BrowserThread::UI);
+   const auto state = lease.state_;

@@ -1,0 +1,18 @@
+{
+  "exactReplay": [
+    {
+      "path": "extensions/browser/api/storage/storage_frontend.h",
+      "anchors": 3,
+      "exactReplay": true
+    },
+    {
+      "path": "extensions/browser/api/storage/storage_frontend.cc",
+      "anchors": 4,
+      "exactReplay": true
+    }
+  ],
+  "closedHandoffNoReleaseOrBegin": true,
+  "custodyBeforeReply": true,
+  "nativeCompilation": false,
+  "productExecution": false
+}
