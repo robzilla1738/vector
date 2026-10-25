@@ -1,0 +1,15 @@
+--- a/chrome/browser/ui/aux_preview/aux_preview_controller.cc
++++ b/chrome/browser/ui/aux_preview/aux_preview_controller.cc
+@@ -112,9 +112,10 @@
+   return actor_controller && !actor_controller->IsColdForAuxProfileSwitch();
+ }
+ bool Protected(content::WebContents* contents, bool moving = false) {
++  // Close and history navigation use Chromium's real beforeunload dispatch.
++  // The presence of a pagehide/visibility handler alone must not trap a preview.
+   if (!contents || AgentOwned(contents) || (moving && contents->IsLoading()) ||
+-      contents->IsCurrentlyAudible() || contents->IsBeingCaptured() ||
+-      (!moving && contents->NeedToFireBeforeUnloadOrUnloadEvents())) return true;
++      contents->IsCurrentlyAudible() || contents->IsBeingCaptured()) return true;
+   auto* tab = tabs::TabInterface::MaybeGetFromContents(contents);
+   if (!tab || tab->IsBlocked() || tab->IsSplit()) return true;
+   if (content::DevToolsAgentHost::HasFor(contents) &&

@@ -1,0 +1,39 @@
+{
+  "observedAt": "2026-10-25T18:56:40.864485+00:00",
+  "candidate": "out/provided-candidate-fresh-browser-20261025-a45/Aux.app",
+  "repair": "a25",
+  "scope": "/private/tmp/aux-fresh-browser-c5mop317",
+  "method": "Actual native CUA UI in existing Final Work disposable profile",
+  "passed": [
+    "Appearance sidebar navigation reparented actual trusted toolbar; minimal toggle takes effect; original settings reverted afterward",
+    "Theme material Clear preview selectable; Aux Local Check preset saves; Cancel exits preview",
+    "Peek opens synthetic /second with Work cookie/note; real document promotes into source profile full tab",
+    "Pin to all Spaces moves actual /second into Pins section"
+  ],
+  "failed": [
+    {
+      "requirement": "CmdT centered transient palette",
+      "observed": "CmdT creates fourth durable New Tab and Escape leaves it; no centered transient palette"
+    },
+    {
+      "requirement": "CmdK command palette",
+      "observed": "Standard trusted omnibox search popup instead of centered palette"
+    },
+    {
+      "requirement": "Create Space via plus",
+      "observed": "AX confirms Name value Aux Feature Check; Save closes; only Main exists in menu and durable revision44 model"
+    },
+    {
+      "requirement": "Peek dismissal",
+      "observed": "Static fixture Dismiss refuses generic active work reason, while real-document promotion passes; native unload-listener predicate wrongly blocks before normal beforeunload dispatch"
+    }
+  ],
+  "notAccepted": [
+    "theme pixel/color preview cancellation correctness beyond control behavior",
+    "advanced pin unload/history/draft preservation",
+    "other roadmap features not covered by listed observations"
+  ],
+  "ownerStateAccess": false,
+  "providerCalls": false,
+  "release": false
+}

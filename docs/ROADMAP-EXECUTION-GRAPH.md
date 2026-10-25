@@ -1,5 +1,24 @@
 # Aux final completion execution plan
 
+## Active continuation — 2026-10-25
+
+Owner authorized finishing the remaining items in parallel, with the accepted UI preserved and no release. Baseline `cb4f044a3`: assembled A45/A25 candidate runs in the approved disposable scope; actual startup, ordinary isolated-profile windows, shared tabs, draft/TXT restart recovery and observed frame/chat/settings pass. See [current actual result](integration/proposed/browser-feature-expansion/fresh-startup-milestone-a42/RESULT.md). Older blocked-startup and unrun-basic-journey statements below are historical; advanced features and external integrations are not accepted by those basic checks.
+
+| Existing outcomes | Current state and next action | Owner |
+| --- | --- | --- |
+| FX-NAV / FX-FRAME / FX-THEME / FX-PREVIEW | Fix demonstrated immediate Settings warm-up and popup lifetime; actual command/full-URL/shortcuts/minimal/theme/Peek/quick-window checks | navigation source lane; root actual UI |
+| FX-ORG / FX-WINDOWS / FX-CLEAN | Core windows/storage accepted; verify pins/folders/Spaces/archive/cleanup/protected shared close and fix concrete gaps | organization source lane; root actual UI |
+| FX-FILES / FX-SPLIT / FX-TOOLS / FX-COMPAT | Basic TXT accepted; trace disabled indexing/native-helper dependency, verify real splits/files/capture/PiP/extensions | productivity source lane; root actual UI |
+| COLD / EMBED / PACKAGE | Fresh fixed-scope startup accepted; finish normal-launch packaging and clean-install path without accepting owner/legacy state | root |
+| AI | Provider source integrated; real BYOK and eligible subscription consent/stream/cancel/restart/disconnect remain unverified | next free source lane; root authorized account integration |
+| CLOUD / PROD / OPS / FRAME | Reconcile existing source/deployed configuration, public content and backup runner prerequisites; do not duplicate resources or activate production under local authority | next free lane/root |
+| LEGACY | Synthetic upgrade/adoption and interrupted recovery remain open; actual owner state is excluded | next available independent lane after current model fixes |
+| READY | Final coherent candidate and scoped integrated actual journeys; no source-only completion claim | root |
+
+Dependency: concrete helper/spawn feasibility precedes enabling indexing/native messaging/automation; root explains any larger missing component before expanding it. Source fixes proceed independently of account acceptance. One writer per native file; workers use separate worktrees and return counted patches/commits. Only root projects the shared native tree, serializes builds with `scripts/native-build.py`, drives the actual app and integrates packaging. Existing bounded startup-repair signing authority is not generic approval for new feature objects. No provisioning, new OS grants, owner-state access, production activation or release is implied.
+
+Focused verification reuses A25 unaffected evidence and repeats only changed/previously unobserved journeys. Every original desktop requirement remains covered; mobile/payments/hosted speech remain explicitly deferred. Completion requires implemented, integrated and actually observed user outcomes; unresolved provider/permissions/operational prerequisites remain open.
+
 Owner scope decision (2026-10-23): standard browser profile isolation is selected. Unrelated same-UID apps are outside the guarantee; all actual Aux writers/tasks/descendants remain covered. Existing NATIVE/AUTH/OWNER/PEER/COLD/LEGACY/PACKAGE/JOURNEY gates remain open. The [parallel implementation scope](integration/proposed/standard-profile-isolation/README.md) records exact ownership and unchanged permission boundaries. Historical stronger-contract evidence is retained; no implementation is accepted merely by changing scope.
 
 

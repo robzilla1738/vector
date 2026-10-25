@@ -1,0 +1,15 @@
+{
+  "baselineCommit": "cb4f044a3",
+  "path": "chrome/browser/ui/aux_preview/aux_preview_controller.cc",
+  "beforeSha256": "0f3baf4b51d0acb9801ab945f08ed74b1ae5a1097c8f17ed57010fe9e75c06c7",
+  "afterSha256": "6d51e78c4bfc05d6fef4217f965272b51eaa0398cd5231dae3f304bff819dcb2",
+  "countedAnchors": 1,
+  "trigger": "Actual Peek /second opens with correct profile; Dismiss refuses generic active-work reason while promotion succeeds. The only differing positive predicate is NeedToFireBeforeUnloadOrUnloadEvents; that API includes mere pagehide/visibility handlers.",
+  "nativeCloseDispatchRetained": {
+    "browserViewSha256": "d635428d4d397641ddd6234b3c8684d6ba221c2348fbd0c808d01ba4913ecd36",
+    "unloadControllerSha256": "09220f0d6b2f9f93c3d3434cb05a0b2fd251592bda6485b8de49fd7454116dcf"
+  },
+  "uiChanged": false,
+  "compiled": false,
+  "actualSuccessorChecked": false
+}
