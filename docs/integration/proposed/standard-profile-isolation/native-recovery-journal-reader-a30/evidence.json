@@ -1,0 +1,13 @@
+{
+  "format": "aux.native-recovery-journal-reader-evidence.v1",
+  "sourceReplay": "passed",
+  "anchors": 23,
+  "anchorRules": 22,
+  "dependencyPins": "passed",
+  "readOnlyQualificationBoundary": "passed",
+  "actualNativeCompile": "not run; root owns compilation",
+  "actualAppAcceptance": "not run",
+  "completeRestartRecovery": false,
+  "qualification": false,
+  "activationAuthorized": false
+}
