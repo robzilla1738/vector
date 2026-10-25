@@ -1,0 +1,78 @@
+--- a/chrome/browser/ui/views/frame/aux_profile_switch_request.cc
++++ b/chrome/browser/ui/views/frame/aux_profile_switch_request.cc
+@@ -17,0 +18 @@
++#include "chrome/browser/aux/ordinary_startup_build.h"
+@@ -123,0 +125,37 @@
++#if defined(AUX_BROWSER_ONLY_NATIVE_STARTUP)
++  const auto source_weak = profile->GetWeakPtr();
++  const auto epoch = GetProfileCookieBindingEpoch(profile);
++  if (epoch.empty() || IsProfileCookieRestorePending(profile) ||
++      !CurrentSwitchWindow(sender_weak, source_weak)) {
++    if (completion) std::move(completion).Run(nullptr);
++    return;
++  }
++  // All ordinary selectors use the real isolated native-window path. Never
++  // enter workspace capture or retarget this source's live profile services.
++  profiles::SwitchToProfile(target, /*always_create=*/false,
++      mojo::WrapCallbackWithDefaultInvokeIfNotRun(base::BindOnce(
++          [](base::WeakPtr<BrowserWindowInterface> source_window,
++             base::WeakPtr<Profile> source_profile, std::string source_epoch,
++             base::FilePath selected_path, Completion done,
++             BrowserWindowInterface* selected_window) {
++            auto* result = static_cast<Browser*>(nullptr);
++            const auto* selected_state = selected_window
++                ? BrowserInitState::From(selected_window) : nullptr;
++            if (CurrentSwitchWindow(source_window, source_profile) &&
++                GetProfileCookieBindingEpoch(source_profile.get()) == source_epoch &&
++                selected_window && selected_state &&
++                !selected_state->is_aux_profile_switch_cache() &&
++                selected_window->GetType() == BrowserWindowInterface::TYPE_NORMAL &&
++                selected_window->GetProfile() &&
++                selected_window->GetProfile()->IsRegularProfile() &&
++                !selected_window->GetProfile()->IsOffTheRecord() &&
++                selected_window->GetProfile()->GetPath() == selected_path &&
++                CurrentSwitchWindow(selected_window->GetWeakPtr(),
++                    selected_window->GetProfile()->GetWeakPtr())) {
++              result = static_cast<Browser*>(selected_window);
++            }
++            if (done) std::move(done).Run(result);
++          }, sender_weak, source_weak, epoch, target, std::move(completion)),
++          static_cast<BrowserWindowInterface*>(nullptr)));
++  return;
++#else
+@@ -145,0 +184 @@
++#endif
+--- a/chrome/browser/ui/views/frame/aux_profile_preview_input.cc
++++ b/chrome/browser/ui/views/frame/aux_profile_preview_input.cc
+@@ -12,0 +13,2 @@
++#include "chrome/browser/aux/ordinary_startup_build.h"
++#include "chrome/browser/ui/views/frame/aux_profile_switch_request.h"
+@@ -325,0 +328,13 @@
++#if defined(AUX_BROWSER_ONLY_NATIVE_STARTUP)
++  // Retire genuine borrowed views before selecting a separate native window.
++  // Direct dots must not create a hidden in-place-switch workspace first.
++  preview_->Cancel();
++  if (!alive || !ValidSource()) return false;
++  crossfading_ = false;
++  ApplyContents(ContentsEffect::kClear);
++  if (!alive || !ValidSource()) return false;
++  committing_ = true;
++  ProfileSwitchRequest::Dispatch(browser_, target, base::BindOnce(
++      &ProfilePreviewInput::OnCommitted, weak_factory_.GetWeakPtr()));
++  return true;
++#else
+@@ -358,0 +374 @@
++#endif
+--- a/chrome/browser/ui/browser_window/internal/profile_browser_collection.cc
++++ b/chrome/browser/ui/browser_window/internal/profile_browser_collection.cc
+@@ -9,0 +10,4 @@
++#include "chrome/browser/buildflags.h"
++#if BUILDFLAG(ENABLE_AUX_BROWSER)
++#include "chrome/browser/ui/browser_init_state.h"
++#endif
+@@ -37,0 +42,5 @@
++#if BUILDFLAG(ENABLE_AUX_BROWSER)
++    // Internal borrowed-view workspaces are not user-visible profile windows.
++    const auto* state = BrowserInitState::From(browser);
++    if (state && state->is_aux_profile_switch_cache()) return true;
++#endif

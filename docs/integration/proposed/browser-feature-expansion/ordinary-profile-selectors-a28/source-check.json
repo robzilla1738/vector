@@ -1,0 +1,11 @@
+{
+  "files": 3,
+  "anchors": 7,
+  "exactReplay": true,
+  "activeWorkGuardBypass": false,
+  "sourceEpochFences": true,
+  "internalCachesNotUserWindows": true,
+  "nativeBuild": false,
+  "appRun": false,
+  "signing": false
+}

@@ -1,0 +1,454 @@
+// Copyright 2026 Aux Authors. All rights reserved.
+#include "chrome/browser/ui/views/frame/aux_profile_switch_request.h"
+
+#include <utility>
+#include <algorithm>
+#include <vector>
+
+#include "base/check.h"
+#include "base/barrier_callback.h"
+#include "chrome/browser/actor/ui/actor_ui_tab_controller.h"
+#include "chrome/browser/ui/tabs/tab_strip_model.h"
+#include "chrome/browser/ui/views/frame/aux_profile_switch_workspaces.h"
+#include "base/functional/bind.h"
+#include "base/time/time.h"
+#include "base/task/sequenced_task_runner.h"
+#include "chrome/browser/profiles/profile.h"
+#include "chrome/browser/aux/profile_identity.h"
+#include "chrome/browser/aux/ordinary_startup_build.h"
+#include "chrome/browser/aux/cli/AuxCliOpenCommand.h"
+#include "chrome/browser/lifetime/browser_shutdown.h"
+#include "chrome/browser/ui/simple_message_box.h"
+#include "chrome/browser/ui/unload_controller.h"
+#include "mojo/public/cpp/bindings/callback_helpers.h"
+#include "chrome/browser/profiles/profile_window.h"
+#include "chrome/browser/ui/browser.h"
+#include "chrome/browser/ui/browser_init_state.h"
+#include "chrome/browser/ui/browser_window.h"
+#include "chrome/browser/ui/browser_window/public/browser_window_features.h"
+#include "chrome/browser/ui/browser_window/public/browser_window_interface_iterator.h"
+#include "chrome/browser/ui/views/frame/aux_profile_switch_owner.h"
+
+namespace aux {
+namespace {
+Browser* CurrentSwitchWindow(base::WeakPtr<BrowserWindowInterface> window,
+                             base::WeakPtr<Profile> expected) {
+  const auto* unload = window ? UnloadController::From(window.get()) : nullptr;
+  if (!window || !expected || window->GetProfile() != expected.get() || !window->GetWindow() ||
+      !unload || unload->is_attempting_to_close_browser() || unload->is_delete_scheduled() ||
+      browser_shutdown::HasShutdownStarted() || browser_shutdown::IsTryingToQuit() ||
+      aux::cli::IsNativeCliOpenPendingForProfile(expected.get())) return nullptr;
+  return static_cast<Browser*>(window.get());
+}
+Browser* CurrentSwitchResult(base::WeakPtr<BrowserWindowInterface> window,
+                             base::WeakPtr<Profile> expected, uint64_t generation) {
+  auto* browser = CurrentSwitchWindow(window, expected);
+  const auto* state = browser ? BrowserInitState::From(browser) : nullptr;
+  return state && state->IsCurrentAuxProfileSwitchRequest(generation) ? browser : nullptr;
+}
+void ReportCurrentSwitchFailure(
+    base::WeakPtr<BrowserWindowInterface> sender,
+    base::WeakPtr<Profile> source, uint64_t generation,
+    const std::u16string& message) {
+  const auto* state = sender ? BrowserInitState::From(sender.get()) : nullptr;
+  const auto* unload = sender ? UnloadController::From(sender.get()) : nullptr;
+  if (!sender || !source || !state || !unload || !sender->GetWindow() ||
+      sender->GetProfile() != source.get() ||
+      !state->IsCurrentAuxProfileSwitchRequest(generation) ||
+      unload->is_attempting_to_close_browser() || unload->is_delete_scheduled() ||
+      browser_shutdown::HasShutdownStarted() || browser_shutdown::IsTryingToQuit()) {
+    return;
+  }
+  chrome::ShowWarningMessageBoxAsync(sender->GetWindow()->GetNativeWindow(),
+                                    u"Couldn't switch profiles", message);
+}
+}  // namespace
+ProfileSwitchRequest::ProfileSwitchRequest(BrowserWindowInterface& sender,
+                                         ProfilePreviewViews& preview)
+    : sender_(sender.GetWeakPtr()), preview_(preview) {}
+
+ProfileSwitchRequest::~ProfileSwitchRequest() = default;
+
+void ProfileSwitchRequest::Start(const base::FilePath& target,
+                                 Completion completion) {
+  CHECK(completion);
+  // Supplied4655ec8..cc ignores a new selection while one is committing.
+  if (pending_ || loading_) {
+    return;
+  }
+  const auto source = sender_ && sender_->GetProfile()
+      ? sender_->GetProfile()->GetWeakPtr() : base::WeakPtr<Profile>();
+  const auto epoch = source ? GetProfileCookieBindingEpoch(source.get()) : std::string();
+  if (!CurrentSwitchWindow(sender_, source) || epoch.empty() ||
+      IsProfileCookieRestorePending(source.get())) {
+    std::move(completion).Run(nullptr);
+    return;
+  }
+  loading_ = true;
+  completion = base::BindOnce(&ProfileSwitchRequest::Complete,
+                              weak_factory_.GetWeakPtr(), std::move(completion));
+  auto alive = weak_factory_.GetWeakPtr();
+  // Supplied465841c restores the actual ProfilePagePreviewPageView before
+  // resolving the sender and dispatching the asynchronous profile load.
+  preview_->Restore(false);
+  if (!alive) return;
+  // Restoring the borrowed native views can reenter a profile/account switch.
+  // The original intent must never dispatch against that replacement source.
+  if (!CurrentSwitchWindow(sender_, source) ||
+      GetProfileCookieBindingEpoch(source.get()) != epoch ||
+      IsProfileCookieRestorePending(source.get())) {
+    std::move(completion).Run(nullptr);
+    return;
+  }
+  Dispatch(sender_, target, std::move(completion));
+}
+
+void ProfileSwitchRequest::Dispatch(
+    base::WeakPtr<BrowserWindowInterface> sender_weak,
+    base::FilePath target, Completion completion) {
+  auto* sender = sender_weak ? static_cast<Browser*>(sender_weak.get()) : nullptr;
+  auto* profile = sender ? sender->GetProfile() : nullptr;
+  if (target.empty() || !profile || !profile->IsRegularProfile() ||
+      sender->GetType() != BrowserWindowInterface::TYPE_NORMAL) {
+    if (completion) {
+      std::move(completion).Run(nullptr);
+    }
+    return;
+  }
+  auto* state = BrowserInitState::From(sender);
+  if (!state || state->is_aux_profile_switch_cache()) {
+    if (completion) {
+      std::move(completion).Run(nullptr);
+    }
+    return;
+  }
+#if defined(AUX_BROWSER_ONLY_NATIVE_STARTUP)
+  const auto source_weak = profile->GetWeakPtr();
+  const auto epoch = GetProfileCookieBindingEpoch(profile);
+  if (epoch.empty() || IsProfileCookieRestorePending(profile) ||
+      !CurrentSwitchWindow(sender_weak, source_weak)) {
+    if (completion) std::move(completion).Run(nullptr);
+    return;
+  }
+  // All ordinary selectors use the real isolated native-window path. Never
+  // enter workspace capture or retarget this source's live profile services.
+  profiles::SwitchToProfile(target, /*always_create=*/false,
+      mojo::WrapCallbackWithDefaultInvokeIfNotRun(base::BindOnce(
+          [](base::WeakPtr<BrowserWindowInterface> source_window,
+             base::WeakPtr<Profile> source_profile, std::string source_epoch,
+             base::FilePath selected_path, Completion done,
+             BrowserWindowInterface* selected_window) {
+            auto* result = static_cast<Browser*>(nullptr);
+            const auto* selected_state = selected_window
+                ? BrowserInitState::From(selected_window) : nullptr;
+            if (CurrentSwitchWindow(source_window, source_profile) &&
+                GetProfileCookieBindingEpoch(source_profile.get()) == source_epoch &&
+                selected_window && selected_state &&
+                !selected_state->is_aux_profile_switch_cache() &&
+                selected_window->GetType() == BrowserWindowInterface::TYPE_NORMAL &&
+                selected_window->GetProfile() &&
+                selected_window->GetProfile()->IsRegularProfile() &&
+                !selected_window->GetProfile()->IsOffTheRecord() &&
+                selected_window->GetProfile()->GetPath() == selected_path &&
+                CurrentSwitchWindow(selected_window->GetWeakPtr(),
+                    selected_window->GetProfile()->GetWeakPtr())) {
+              result = static_cast<Browser*>(selected_window);
+            }
+            if (done) std::move(done).Run(result);
+          }, sender_weak, source_weak, epoch, target, std::move(completion)),
+          static_cast<BrowserWindowInterface*>(nullptr)));
+  return;
+#else
+  const uint64_t generation = state->BeginAuxProfileSwitchRequest();
+  const auto source_weak = profile->GetWeakPtr();
+  if (target == profile->GetOriginalProfile()->GetPath()) {
+    if (auto* window = BrowserWindow::FromBrowser(sender)) {
+      window->Activate();
+    }
+    if (completion) {
+      std::move(completion).Run(CurrentSwitchResult(sender_weak, source_weak, generation));
+    }
+    return;
+  }
+  state->KeepAuxProfileSwitchProfileAlive(profile);
+  // This is the actual supplied load-only algorithm, including immediate
+  // completion for initialized profiles and null-load callback destruction.
+  // It does not find/open another Browser or cancel an underlying load.
+  profiles::LoadProfileAsync(
+      target, mojo::WrapCallbackWithDefaultInvokeIfNotRun(
+          base::BindOnce(&ProfileSwitchRequest::OnProfileLoaded,
+                         sender_weak, source_weak, generation,
+                         /*allow_cache_continuation=*/true,
+                         std::move(completion)),
+          static_cast<Profile*>(nullptr)));
+#endif
+}
+
+void ProfileSwitchRequest::Complete(Completion completion, Browser* result) {
+  loading_ = false;
+  if (completion) {
+    std::move(completion).Run(result);
+  }
+}
+
+void ProfileSwitchRequest::OnProfileLoaded(
+    base::WeakPtr<BrowserWindowInterface> sender_weak,
+    base::WeakPtr<Profile> source, uint64_t generation,
+    bool allow_cache_continuation, Completion completion, Profile* target) {
+  auto* sender = sender_weak ? static_cast<Browser*>(sender_weak.get()) : nullptr;
+  const auto* state = sender ? BrowserInitState::From(sender) : nullptr;
+  if (!sender || !source || !target || !state ||
+      sender->GetProfile() != source.get() ||
+      !state->IsCurrentAuxProfileSwitchRequest(generation)) {
+    if (!target) {
+      ReportCurrentSwitchFailure(sender_weak, source, generation,
+          u"The selected profile could not be loaded. Try selecting it again.");
+    }
+    if (completion) {
+      std::move(completion).Run(nullptr);
+    }
+    return;
+  }
+  PrepareProfileSwitchWorkspace(sender, target, generation,
+      base::BindOnce(&ProfileSwitchRequest::OnWorkspaceReady, sender_weak, source,
+                     target->GetWeakPtr(), generation, allow_cache_continuation,
+                     std::move(completion)));
+}
+
+void ProfileSwitchRequest::OnWorkspaceReady(
+    base::WeakPtr<BrowserWindowInterface> sender_weak,
+    base::WeakPtr<Profile> source, base::WeakPtr<Profile> target_weak,
+    uint64_t generation, bool allow_cache_continuation,
+    Completion completion, bool ready) {
+  auto* sender = sender_weak ? static_cast<Browser*>(sender_weak.get()) : nullptr;
+  const auto* state = sender ? BrowserInitState::From(sender) : nullptr;
+  const auto* source_unload = sender ? UnloadController::From(sender) : nullptr;
+  if (!ready && sender && state && source && target_weak && source_unload &&
+      !source_unload->is_attempting_to_close_browser() &&
+      !source_unload->is_delete_scheduled() &&
+      sender->GetProfile() == source.get() &&
+      state->IsCurrentAuxProfileSwitchRequest(generation) &&
+      !browser_shutdown::HasShutdownStarted() && !browser_shutdown::IsTryingToQuit()) {
+    auto* cache = FindProfileSwitchWorkspace(sender, target_weak->GetPath());
+    auto* cache_state = cache ? BrowserInitState::From(cache) : nullptr;
+    if (cache_state && cache_state->aux_workspace_restore_state() ==
+                           BrowserInitState::AuxWorkspaceRestoreState::kRestoredSeparately) {
+      BrowserWindowInterface* recovered = nullptr;
+      ForEachCurrentBrowserWindowInterfaceOrderedByActivation(
+          [&](BrowserWindowInterface* candidate) {
+            const auto* candidate_state = BrowserInitState::From(candidate);
+            const auto* unload = UnloadController::From(candidate);
+            if (candidate->GetProfile() == target_weak.get() && candidate_state &&
+                !candidate_state->is_aux_profile_switch_cache() && unload &&
+                !unload->is_attempting_to_close_browser() && !unload->is_delete_scheduled() &&
+                (candidate->GetType() == BrowserWindowInterface::TYPE_NORMAL ||
+                 candidate->GetType() == BrowserWindowInterface::TYPE_POPUP ||
+                 candidate->GetType() == BrowserWindowInterface::TYPE_APP ||
+                 candidate->GetType() == BrowserWindowInterface::TYPE_APP_POPUP) &&
+                !candidate->GetTabStripModel()->empty()) {
+              recovered = candidate;
+              return false;
+            }
+            return true;
+          });
+      if (recovered && recovered->GetWindow()) {
+        auto recovered_weak = recovered->GetWeakPtr();
+        const bool notify = cache_state->TakeAuxWorkspaceSetupPending();
+        recovered->GetWindow()->Activate();
+        const auto current_recovery = [&]() -> Browser* {
+          return CurrentSwitchResult(sender_weak, source, generation)
+              ? CurrentSwitchWindow(recovered_weak, target_weak) : nullptr;
+        };
+        // Activation can dispatch observers and close or rebind either native window.
+        // Re-resolve the destination before touching its view again.
+        if (notify && current_recovery()) {
+          chrome::ShowWarningMessageBoxAsync(
+              recovered_weak->GetWindow()->GetNativeWindow(), u"Profile windows restored",
+              u"Aux restored this profile's saved windows separately, "
+              u"preserving their tabs and selections. Your original window "
+              u"and profile are unchanged.");
+        }
+        if (completion) std::move(completion).Run(current_recovery());
+        return;
+      }
+    }
+  }
+  if (!ready || !sender || !state || !source || !target_weak ||
+      sender->GetProfile() != source.get() ||
+      !state->IsCurrentAuxProfileSwitchRequest(generation)) {
+    if (!ready) {
+      auto* cache = sender && target_weak
+          ? FindProfileSwitchWorkspace(sender, target_weak->GetPath()) : nullptr;
+      const auto* cache_state = cache ? BrowserInitState::From(cache) : nullptr;
+      const bool ambiguous = cache_state && cache_state->aux_workspace_restore_state() ==
+          BrowserInitState::AuxWorkspaceRestoreState::kAmbiguous;
+      ReportCurrentSwitchFailure(sender_weak, source, generation, ambiguous
+          ? u"This profile has an incomplete or unsupported saved window, "
+            u"or an app record without its required identity. Aux has preserved "
+            u"that session. Open the profile separately to recover it."
+          : u"The profile's saved workspace could not be prepared. Finish any "
+            u"pending profile activity, then try again or reopen Aux.");
+    }
+    if (completion) std::move(completion).Run(nullptr);
+    return;
+  }
+  auto* target = target_weak.get();
+  bool awaiting_cache_setup = false;
+  const bool switched = sender->GetFeatures().RunAuxProfileSwitch(
+      target, &awaiting_cache_setup);
+  if (sender_weak && target_weak && awaiting_cache_setup && allow_cache_continuation) {
+    // First turn runs native attachment notifications. Their original
+    // ConcurrentClosures::Done posts its completion behind this first turn.
+    // Second turn then re-enters all guards; queue turns are not idle proof.
+    auto resume = base::BindOnce(&ProfileSwitchRequest::ContinueAfterCacheSetup,
+                                sender_weak, source, target_weak,
+                                generation, std::move(completion));
+    base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
+        FROM_HERE, base::BindOnce([](base::OnceClosure continuation) {
+          base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
+              FROM_HERE, std::move(continuation));
+        }, std::move(resume)));
+    return;
+  }
+  if (!sender_weak || !switched) {
+    ReportCurrentSwitchFailure(sender_weak, source, generation,
+        u"Aux could not safely switch this window yet. Finish open dialogs "
+        u"or pending browser activity, then select the profile again.");
+    // Rejection and awaiting the genuine profile security gate both preserve
+    // the original null Browser completion; a loaded Profile is not success.
+    if (completion) {
+      std::move(completion).Run(nullptr);
+    }
+    return;
+  }
+  if (auto* window = BrowserWindow::FromBrowser(sender)) {
+    window->Activate();
+  }
+  if (completion) {
+    std::move(completion).Run(CurrentSwitchResult(sender_weak, target_weak, generation));
+  }
+}
+
+void ProfileSwitchRequest::ContinueAfterCacheSetup(
+    base::WeakPtr<BrowserWindowInterface> sender,
+    base::WeakPtr<Profile> source, base::WeakPtr<Profile> target,
+    uint64_t generation, Completion completion) {
+  // Wait only on the original scrim updates already pending in this request's
+  // fixed caches. No cache creation, timer reset, polling or readiness override.
+  const auto* state = sender ? BrowserInitState::From(sender.get()) : nullptr;
+  if (!sender || !source || !target || !state ||
+      sender->GetProfile() != source.get() ||
+      !state->IsCurrentAuxProfileSwitchRequest(generation)) {
+    if (completion) {
+      std::move(completion).Run(nullptr);
+    }
+    return;
+  }
+  std::vector<actor::ui::ActorUiTabController*> pending;
+  for (auto* profile : {source.get(), target.get()}) {
+    auto* cache = FindProfileSwitchWorkspace(sender.get(), profile->GetPath());
+    if (!cache) {
+      if (completion) {
+        std::move(completion).Run(nullptr);
+      }
+      return;
+    }
+    auto* model = cache->GetTabStripModel();
+    for (int i = 0; model && i < model->count(); ++i) {
+      auto* controller = actor::ui::ActorUiTabController::Get(
+          model->GetTabAtIndex(i)->GetUnownedUserDataHost());
+      if (controller && controller->HasPendingAuxScrimUpdate()) {
+        pending.push_back(controller);
+      }
+    }
+  }
+  if (pending.empty()) {
+    OnCacheScrimUpdatesComplete(sender, source, target, generation,
+                               std::move(completion), {});
+    return;
+  }
+  auto settled = base::BarrierCallback<bool>(
+      pending.size(), base::BindOnce(
+          &ProfileSwitchRequest::OnCacheScrimUpdatesComplete,
+          sender, source, target, generation, std::move(completion)));
+  for (auto* actor : pending) {
+    // Registration never invokes callbacks synchronously. Raw owners are used
+    // only on this stack; timer/destruction notifications retain only the callbacks.
+    actor->RunAfterAuxScrimUpdate(base::BindOnce(settled));
+  }
+}
+
+void ProfileSwitchRequest::OnCacheScrimUpdatesComplete(
+    base::WeakPtr<BrowserWindowInterface> sender,
+    base::WeakPtr<Profile> source, base::WeakPtr<Profile> target,
+    uint64_t generation, Completion completion, std::vector<bool> completed) {
+  if (!std::ranges::all_of(completed, [](bool value) { return value; })) {
+    ReportCurrentSwitchFailure(sender, source, generation,
+        u"The profile workspace was closed before preparation finished. "
+        u"Select the profile again to retry.");
+    if (completion) {
+      std::move(completion).Run(nullptr);
+    }
+    return;
+  }
+  // One fresh full transaction, never another wait/retry. It rechecks source
+  // identity/generation, cache registration and every original active guard.
+  OnProfileLoaded(sender, source, generation,
+                  /*allow_cache_continuation=*/false,
+                  std::move(completion), target.get());
+}
+
+void ProfileSwitchRequest::QueuePreviewCommit(base::FilePath target,
+                                              Completion completion) {
+  CHECK(completion);
+  if (pending_ || loading_) {
+    return;
+  }
+  CHECK(!preview_->empty());
+  const auto source = sender_ && sender_->GetProfile()
+      ? sender_->GetProfile()->GetWeakPtr() : base::WeakPtr<Profile>();
+  const auto epoch = source ? GetProfileCookieBindingEpoch(source.get()) : std::string();
+  if (!CurrentSwitchWindow(sender_, source) || epoch.empty() ||
+      IsProfileCookieRestorePending(source.get())) {
+    std::move(completion).Run(nullptr);
+    return;
+  }
+  pending_.emplace(Pending{std::move(target), std::move(completion), source, epoch});
+}
+
+void ProfileSwitchRequest::OnPreviewFrame() {
+  if (!pending_) {
+    return;
+  }
+  const uint64_t generation = ++generation_;
+  // Supplied464b560..5f8: weak owner + captured generation, 50,000 us.
+  settle_timer_.Start(
+      FROM_HERE, base::Milliseconds(50),
+      base::BindOnce(&ProfileSwitchRequest::CommitSettledPreview,
+                     weak_factory_.GetWeakPtr(), generation));
+}
+
+void ProfileSwitchRequest::CommitSettledPreview(uint64_t generation) {
+  if (generation != generation_ || !pending_) {
+    return;
+  }
+  settle_timer_.Stop();
+  auto pending = std::move(*pending_);
+  pending_.reset();
+  // The 50ms frame-settle timer belongs to the actual source at queue time.
+  // A different profile/account in the same live window is not that source.
+  if (!CurrentSwitchWindow(sender_, pending.source) ||
+      GetProfileCookieBindingEpoch(pending.source.get()) != pending.source_epoch ||
+      IsProfileCookieRestorePending(pending.source.get())) {
+    std::move(pending.completion).Run(nullptr);
+    return;
+  }
+  Start(pending.target, std::move(pending.completion));
+}
+
+void ProfileSwitchRequest::CancelPendingPreviewCommit() {
+  pending_.reset();
+  ++generation_;
+  settle_timer_.Stop();
+}
+}  // namespace aux

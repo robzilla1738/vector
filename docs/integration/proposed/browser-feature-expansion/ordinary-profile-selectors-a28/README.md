@@ -1,0 +1,9 @@
+# Ordinary profile selectors — A28
+
+The real active-work failure has a distinct caller: the primary menu uses the corrected sidebar dispatcher, while direct profile indicator selection enters ProfilePreviewInput::Commit and the advanced in-place workspace transaction. Under the same split/extension-active source state, primary selection succeeds and direct selection refuses. No Busy guard should be weakened to reconcile these callers.
+
+The shared native ProfileSwitchRequest::Dispatch now uses Chromium SwitchToProfile in the fixed ordinary mode after original sender/type/not-cache and actual Profile/epoch/lifecycle checks. Its completion receives only a genuine matching native destination window; dropped profile-load callbacks settle through the existing Mojo default callback wrapper. No workspace capture or source service retargeting runs in this branch. Supervised behavior remains verbatim behind the compile-time alternative.
+
+Ordinary direct/gesture commit first restores any genuinely borrowed preview surfaces and clears transient capture, then invokes that native isolated-window dispatcher. Direct dots no longer create a hidden workspace before dispatch. The standard native FindTabbedBrowser excludes actual Aux internal switch caches, so an older/gesture-created hidden TYPE_NORMAL window cannot be activated as a user destination. This is existing window eligibility, not a profile admission or active-work guard bypass.
+
+Three native files/seven counted anchors. Exact source replay and directive/branch checks pass. No CSS, geometry, typography, material or permissions change. Root owns compilation and bounded active-work switching acceptance (source split, extension, draft preservation; correct target and return). No native mutation/build/signing/app action occurred here.

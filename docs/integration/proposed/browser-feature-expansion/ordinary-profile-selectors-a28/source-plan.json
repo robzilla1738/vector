@@ -1,0 +1,66 @@
+{
+  "format": "aux.native.counted-projection.v1",
+  "purpose": "Unify ordinary direct/profile/preview selectors on real isolated native windows, preserving source work",
+  "nativeRoot": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src",
+  "files": [
+    {
+      "path": "chrome/browser/ui/views/frame/aux_profile_switch_request.cc",
+      "inputSha256": "c632065ec4bfd1e40eed807bd06ae62eb1b881ca47a097055eaf28e53c8d6299",
+      "outputSha256": "4db5519625ca371851d12aef0a55a654d697efe762689a33fab3420cb02405fc",
+      "source": "/Users/rcourson/.codex/worktrees/aux-features-navigation/web/docs/integration/proposed/browser-feature-expansion/ordinary-profile-selectors-a28/source/chrome/browser/ui/views/frame/aux_profile_switch_request.cc",
+      "anchors": [
+        {
+          "before": "#include \"chrome/browser/aux/profile_identity.h\"",
+          "after": "#include \"chrome/browser/aux/profile_identity.h\"\n#include \"chrome/browser/aux/ordinary_startup_build.h\"",
+          "expectedCount": 1
+        },
+        {
+          "before": "  const uint64_t generation = state->BeginAuxProfileSwitchRequest();\n  const auto source_weak = profile->GetWeakPtr();",
+          "after": "#if defined(AUX_BROWSER_ONLY_NATIVE_STARTUP)\n  const auto source_weak = profile->GetWeakPtr();\n  const auto epoch = GetProfileCookieBindingEpoch(profile);\n  if (epoch.empty() || IsProfileCookieRestorePending(profile) ||\n      !CurrentSwitchWindow(sender_weak, source_weak)) {\n    if (completion) std::move(completion).Run(nullptr);\n    return;\n  }\n  // All ordinary selectors use the real isolated native-window path. Never\n  // enter workspace capture or retarget this source's live profile services.\n  profiles::SwitchToProfile(target, /*always_create=*/false,\n      mojo::WrapCallbackWithDefaultInvokeIfNotRun(base::BindOnce(\n          [](base::WeakPtr<BrowserWindowInterface> source_window,\n             base::WeakPtr<Profile> source_profile, std::string source_epoch,\n             base::FilePath selected_path, Completion done,\n             BrowserWindowInterface* selected_window) {\n            auto* result = static_cast<Browser*>(nullptr);\n            const auto* selected_state = selected_window\n                ? BrowserInitState::From(selected_window) : nullptr;\n            if (CurrentSwitchWindow(source_window, source_profile) &&\n                GetProfileCookieBindingEpoch(source_profile.get()) == source_epoch &&\n                selected_window && selected_state &&\n                !selected_state->is_aux_profile_switch_cache() &&\n                selected_window->GetType() == BrowserWindowInterface::TYPE_NORMAL &&\n                selected_window->GetProfile() &&\n                selected_window->GetProfile()->IsRegularProfile() &&\n                !selected_window->GetProfile()->IsOffTheRecord() &&\n                selected_window->GetProfile()->GetPath() == selected_path &&\n                CurrentSwitchWindow(selected_window->GetWeakPtr(),\n                    selected_window->GetProfile()->GetWeakPtr())) {\n              result = static_cast<Browser*>(selected_window);\n            }\n            if (done) std::move(done).Run(result);\n          }, sender_weak, source_weak, epoch, target, std::move(completion)),\n          static_cast<BrowserWindowInterface*>(nullptr)));\n  return;\n#else\n  const uint64_t generation = state->BeginAuxProfileSwitchRequest();\n  const auto source_weak = profile->GetWeakPtr();",
+          "expectedCount": 1
+        },
+        {
+          "before": "          static_cast<Profile*>(nullptr)));\n}\n\nvoid ProfileSwitchRequest::Complete",
+          "after": "          static_cast<Profile*>(nullptr)));\n#endif\n}\n\nvoid ProfileSwitchRequest::Complete",
+          "expectedCount": 1
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_profile_preview_input.cc",
+      "inputSha256": "3d95c6c8936ed835665f799a158e42f6061af1574c65e9479bf461963f05fb6a",
+      "outputSha256": "c2d6bb751f36ef2234f1ecccd3bb4a2675e856a839b999de5f85bd67cac8540d",
+      "source": "/Users/rcourson/.codex/worktrees/aux-features-navigation/web/docs/integration/proposed/browser-feature-expansion/ordinary-profile-selectors-a28/source/chrome/browser/ui/views/frame/aux_profile_preview_input.cc",
+      "anchors": [
+        {
+          "before": "#include \"chrome/browser/browser_process.h\"",
+          "after": "#include \"chrome/browser/browser_process.h\"\n#include \"chrome/browser/aux/ordinary_startup_build.h\"\n#include \"chrome/browser/ui/views/frame/aux_profile_switch_request.h\"",
+          "expectedCount": 1
+        },
+        {
+          "before": "bool ProfilePreviewInput::Commit(const base::FilePath& target, int direction) {\n  if (committing_ || !preview_ || target.empty()) {\n    return false;\n  }\n  auto alive = weak_factory_.GetWeakPtr();\n  if (target != bound_target_) {\n    if (!preview_->Begin(target, direction) || !alive) {\n      return false;\n    }\n    bound_target_ = target;\n  }\n  const bool settle = preview_->HasLivePreview() && std::abs(progress_) >= kEpsilon;\n  committing_ = true;\n  const bool crossfading = settle && ApplyContents(ContentsEffect::kBeginCrossfade);\n  if (!alive || !preview_) {\n    return false;\n  }\n  crossfading_ = crossfading;\n  if (!settle) {\n    // Original465618c..61d4 retires source capture before immediate dispatch.\n    ApplyContents(ContentsEffect::kClear);\n    if (!alive || !preview_) {\n      return false;\n    }\n  }\n  if (!preview_->Commit(base::BindOnce(&ProfilePreviewInput::OnCommitted,\n                                     weak_factory_.GetWeakPtr()))) {\n    if (alive) {\n      committing_ = false;\n      crossfading_ = false;\n      ApplyContents(ContentsEffect::kClear);\n    }\n    return false;\n  }\n  if (alive && committing_ && settle) {\n    AnimateTo(static_cast<float>(direction), true);\n  }\n  return true;\n}",
+          "after": "bool ProfilePreviewInput::Commit(const base::FilePath& target, int direction) {\n  if (committing_ || !preview_ || target.empty()) {\n    return false;\n  }\n  auto alive = weak_factory_.GetWeakPtr();\n#if defined(AUX_BROWSER_ONLY_NATIVE_STARTUP)\n  // Retire genuine borrowed views before selecting a separate native window.\n  // Direct dots must not create a hidden in-place-switch workspace first.\n  preview_->Cancel();\n  if (!alive || !ValidSource()) return false;\n  crossfading_ = false;\n  ApplyContents(ContentsEffect::kClear);\n  if (!alive || !ValidSource()) return false;\n  committing_ = true;\n  ProfileSwitchRequest::Dispatch(browser_, target, base::BindOnce(\n      &ProfilePreviewInput::OnCommitted, weak_factory_.GetWeakPtr()));\n  return true;\n#else\n  if (target != bound_target_) {\n    if (!preview_->Begin(target, direction) || !alive) {\n      return false;\n    }\n    bound_target_ = target;\n  }\n  const bool settle = preview_->HasLivePreview() && std::abs(progress_) >= kEpsilon;\n  committing_ = true;\n  const bool crossfading = settle && ApplyContents(ContentsEffect::kBeginCrossfade);\n  if (!alive || !preview_) {\n    return false;\n  }\n  crossfading_ = crossfading;\n  if (!settle) {\n    // Original465618c..61d4 retires source capture before immediate dispatch.\n    ApplyContents(ContentsEffect::kClear);\n    if (!alive || !preview_) {\n      return false;\n    }\n  }\n  if (!preview_->Commit(base::BindOnce(&ProfilePreviewInput::OnCommitted,\n                                     weak_factory_.GetWeakPtr()))) {\n    if (alive) {\n      committing_ = false;\n      crossfading_ = false;\n      ApplyContents(ContentsEffect::kClear);\n    }\n    return false;\n  }\n  if (alive && committing_ && settle) {\n    AnimateTo(static_cast<float>(direction), true);\n  }\n  return true;\n#endif\n}",
+          "expectedCount": 1
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/ui/browser_window/internal/profile_browser_collection.cc",
+      "inputSha256": "8b870e884a92991e671abcdfdc5b5b05686dc0c7fa3cd6f14bb9d2adddc21f24",
+      "outputSha256": "11cf12fc0b15296aaf767e7536ec075bb9e53f059287379c81c4cfb5febf57f3",
+      "source": "/Users/rcourson/.codex/worktrees/aux-features-navigation/web/docs/integration/proposed/browser-feature-expansion/ordinary-profile-selectors-a28/source/chrome/browser/ui/browser_window/internal/profile_browser_collection.cc",
+      "anchors": [
+        {
+          "before": "#include \"chrome/browser/profiles/profile.h\"",
+          "after": "#include \"chrome/browser/profiles/profile.h\"\n#include \"chrome/browser/buildflags.h\"\n#if BUILDFLAG(ENABLE_AUX_BROWSER)\n#include \"chrome/browser/ui/browser_init_state.h\"\n#endif",
+          "expectedCount": 1
+        },
+        {
+          "before": "    if (original && browser->GetProfile()->GetOriginalProfile() != original) {",
+          "after": "#if BUILDFLAG(ENABLE_AUX_BROWSER)\n    // Internal borrowed-view workspaces are not user-visible profile windows.\n    const auto* state = BrowserInitState::From(browser);\n    if (state && state->is_aux_profile_switch_cache()) return true;\n#endif\n    if (original && browser->GetProfile()->GetOriginalProfile() != original) {",
+          "expectedCount": 1
+        }
+      ]
+    }
+  ]
+}
