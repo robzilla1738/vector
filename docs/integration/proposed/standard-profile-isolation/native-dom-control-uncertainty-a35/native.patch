@@ -1,0 +1,55 @@
+--- a/components/services/storage/public/mojom/local_storage_control.mojom
++++ b/components/services/storage/public/mojom/local_storage_control.mojom
+@@ -87,6 +87,8 @@
+   string allocation_action_sha256;
+   // Historical physical-attempt data, never a request to perform that write.
+   bool target_attempted;
++  // Uncertain native outcome remains distinct from an observed actual attempt.
++  bool target_attempt_uncertain;
+ };
+ struct AuxUiDomLeaseReply {
+   bool ok;
+@@ -123,6 +125,7 @@
+   mojo_base.mojom.UnguessableToken? handoff_original_request;
+   mojo_base.mojom.UnguessableToken? handoff_original_token;
+   mojo_base.mojom.UnguessableToken? handoff_request;
++  bool target_attempt_uncertain;
+ };
+ 
+ // Controls the state of Local Storage within a partition. This is a privileged
+--- a/components/services/storage/dom_storage/local_storage_impl.cc
++++ b/components/services/storage/dom_storage/local_storage_impl.cc
+@@ -330,6 +330,7 @@
+   reply->file_data_synced = snapshot.file_data_synced;
+   reply->ordinary_work_queued = snapshot.ordinary_work_queued;
+   reply->target_attempted = snapshot.target_attempted;
++  reply->target_attempt_uncertain = snapshot.target_attempt_uncertain;
+   reply->source_ready = snapshot.source_ready;
+   reply->private_target_staged = snapshot.private_target_staged;
+   reply->cache_published = snapshot.cache_published;
+@@ -461,6 +462,7 @@
+   recorded.target_topology_sha256 = std::move(input->target_topology_sha256);
+   recorded.allocation_action_sha256 = std::move(input->allocation_action_sha256);
+   recorded.target_attempted = input->target_attempted;
++  recorded.target_attempt_uncertain = input->target_attempt_uncertain;
+   size_t bytes = 0, entries = 0;
+   constexpr size_t kBytes = 16 * 1024 * 1024, kEntries = 65536;
+   const auto consume_bytes = [&](size_t size) {
+--- a/components/services/storage/dom_storage/session_storage_impl.cc
++++ b/components/services/storage/dom_storage/session_storage_impl.cc
+@@ -318,6 +318,7 @@
+   reply->file_data_synced = snapshot.file_data_synced;
+   reply->ordinary_work_queued = snapshot.ordinary_work_queued;
+   reply->target_attempted = snapshot.target_attempted;
++  reply->target_attempt_uncertain = snapshot.target_attempt_uncertain;
+   reply->source_ready = snapshot.source_ready;
+   reply->private_target_staged = snapshot.private_target_staged;
+   reply->cache_published = snapshot.cache_published;
+@@ -449,6 +450,7 @@
+   recorded.target_topology_sha256 = std::move(input->target_topology_sha256);
+   recorded.allocation_action_sha256 = std::move(input->allocation_action_sha256);
+   recorded.target_attempted = input->target_attempted;
++  recorded.target_attempt_uncertain = input->target_attempt_uncertain;
+   size_t bytes = 0, entries = 0;
+   constexpr size_t kBytes = 16 * 1024 * 1024, kEntries = 65536;
+   const auto consume_bytes = [&](size_t size) {

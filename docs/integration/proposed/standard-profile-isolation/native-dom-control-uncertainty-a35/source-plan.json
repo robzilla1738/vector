@@ -1,0 +1,73 @@
+{
+  "format": "aux.dom-control-uncertainty.source.v1",
+  "predecessorCommit": "d9d00f08c",
+  "dependencies": [
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/native-recovery-uncertainty-a34/source-plan.json",
+      "sha256": "aaa688fadaafcbb2a9f1dd00c0c2d3597f17fa6b311b46bfba82a14ef91ea07b"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/native-recovery-uncertainty-a34/source/components/services/storage/dom_storage/async_dom_storage_database.h",
+      "sha256": "ed4f68c2c0fb567201a40f0c08b06d131e6bab945518f8dc6bac7fece03ecc01"
+    }
+  ],
+  "files": [
+    {
+      "path": "components/services/storage/public/mojom/local_storage_control.mojom",
+      "inputSource": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/native-dom-closed-handoff-a32/source/components/services/storage/public/mojom/local_storage_control.mojom",
+      "inputSha256": "3dd72657e4b0c8b43669af7045bddf0d3a2181fd615bd3dc89ace8813dc33336",
+      "outputSha256": "a9bc999ccf68514b7525cb5de9a51a6df1d30f737d52820e577abe8191a111d2",
+      "source": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/native-dom-control-uncertainty-a35/source/components/services/storage/public/mojom/local_storage_control.mojom",
+      "anchors": [
+        {
+          "find": "  // Historical physical-attempt data, never a request to perform that write.\n  bool target_attempted;\n};",
+          "replace": "  // Historical physical-attempt data, never a request to perform that write.\n  bool target_attempted;\n  // Uncertain native outcome remains distinct from an observed actual attempt.\n  bool target_attempt_uncertain;\n};",
+          "count": 1
+        },
+        {
+          "find": "  mojo_base.mojom.UnguessableToken? handoff_request;\n};",
+          "replace": "  mojo_base.mojom.UnguessableToken? handoff_request;\n  bool target_attempt_uncertain;\n};",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "components/services/storage/dom_storage/local_storage_impl.cc",
+      "inputSource": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/native-dom-closed-handoff-a32/source/components/services/storage/dom_storage/local_storage_impl.cc",
+      "inputSha256": "a7e01368b67d59abe244754f28dddb1a1a7c203d78ff17cd5269d276d1563705",
+      "outputSha256": "8749896ae615c732ca07a5a9f60a0a3850293b75324b5ad2e26181fd4f421af4",
+      "source": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/native-dom-control-uncertainty-a35/source/components/services/storage/dom_storage/local_storage_impl.cc",
+      "anchors": [
+        {
+          "find": "  reply->target_attempted = snapshot.target_attempted;",
+          "replace": "  reply->target_attempted = snapshot.target_attempted;\n  reply->target_attempt_uncertain = snapshot.target_attempt_uncertain;",
+          "count": 1
+        },
+        {
+          "find": "  recorded.target_attempted = input->target_attempted;",
+          "replace": "  recorded.target_attempted = input->target_attempted;\n  recorded.target_attempt_uncertain = input->target_attempt_uncertain;",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "components/services/storage/dom_storage/session_storage_impl.cc",
+      "inputSource": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/native-dom-closed-handoff-a32/source/components/services/storage/dom_storage/session_storage_impl.cc",
+      "inputSha256": "89619aa404a3f2ab750e3bbdd92118a4abc913e523eb0c8ee7d86c2b8cd0e961",
+      "outputSha256": "abca8eb4c36ca50b457be0b2e351189d2f8458d8c8cacf14aeed9645d8bf643d",
+      "source": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/native-dom-control-uncertainty-a35/source/components/services/storage/dom_storage/session_storage_impl.cc",
+      "anchors": [
+        {
+          "find": "  reply->target_attempted = snapshot.target_attempted;",
+          "replace": "  reply->target_attempted = snapshot.target_attempted;\n  reply->target_attempt_uncertain = snapshot.target_attempt_uncertain;",
+          "count": 1
+        },
+        {
+          "find": "  recorded.target_attempted = input->target_attempted;",
+          "replace": "  recorded.target_attempted = input->target_attempted;\n  recorded.target_attempt_uncertain = input->target_attempt_uncertain;",
+          "count": 1
+        }
+      ]
+    }
+  ]
+}
