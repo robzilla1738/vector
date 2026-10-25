@@ -1,0 +1,9 @@
+{
+  "format": "aux.fresh.bootstrap.policy.v9",
+  "role": "daemon",
+  "accessGroup": "9F2JXY8TCK.dev.aux.local",
+  "authoritySelection": "aux.fresh.authority.host-availability.v1",
+  "nativeHostLayout": "embedded-daemon",
+  "taskLayout": "aux.native.task-control-split.v1",
+  "storageLocation": {"format": "aux.current-os-user-location.v1"}
+}

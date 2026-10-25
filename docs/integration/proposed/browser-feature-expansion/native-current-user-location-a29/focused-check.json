@@ -1,0 +1,15 @@
+{
+  "format": "aux.native-current-user-location.focused-check.v1",
+  "sourcePlanSha256": "8d118f8b9e99e2712905a23ab1f54ea0ee8bbb5e980d903c1c59d4c0378b887f",
+  "harnessSha256": "c5e9d2ea4e3f888f974102b28ff50c95f7b6a62e926dd9903963f84e8cd5dc07",
+  "strictJsonSourceSha256": "e6b8b6bcae9f6b34cc5dfe757e5f0130297f1c4c3bae81636387a06e24dc34d6",
+  "countedAnchors": 12,
+  "policyAndParentTypecheck": true,
+  "independentPatchApplication": true,
+  "result": "PASS: synthetic fixed suffix/v9 fields; actual v8 decode; empty control creation; existing/partial/unknown data-cache preservation",
+  "fixtureAdapter": "Only native getpwuid_r capture in extracted v9 decoder branch replaced with synthetic captured home; actual product capture unexecuted. Filesystem owner extracted unchanged.",
+  "realUserHomeQueried": false,
+  "ownerDataAccessed": false,
+  "signaturesExecuted": false,
+  "browserOrDaemonLaunched": false
+}
