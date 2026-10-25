@@ -1,0 +1,21 @@
+{
+  "format": "aux.ordinary-legacy-refusal.fixture.v1",
+  "sourcePlanSha256": "9ece2ff2f466ae0ad97dcab603a01c93d509c575780108d0dc437badafe5a420",
+  "results": {
+    "baseline": {
+      "harnessSha256": "f81fc056a66c918853c52925b3d6de6ac9d7e125b6c2cad0bbc79415cfa9463e",
+      "result": "BASELINE CONFIRMED: refused legacy root still has two new markers; sentinel unchanged",
+      "actualNativePreparationAndInventoryExtracted": true
+    },
+    "patched": {
+      "harnessSha256": "c43c2e0e28e4c632faf182463de10fb2c63aa1fb660b12361ac82314b944d738",
+      "result": "PATCHED PASS: data/cache legacy refusal adds no marker; empty roots prepare; partial pair unchanged",
+      "actualNativePreparationAndInventoryExtracted": true
+    }
+  },
+  "syntheticDirectoriesOnly": true,
+  "ownerDataAccessed": false,
+  "browserLaunched": false,
+  "nativeDaemonExecuted": false,
+  "policySignatureOrPeerProven": false
+}

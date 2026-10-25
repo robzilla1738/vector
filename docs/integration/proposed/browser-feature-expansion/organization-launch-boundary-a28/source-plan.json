@@ -1,0 +1,21 @@
+{
+  "format": "aux.ordinary-legacy-refusal-no-mutation.v1",
+  "files": [
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/fresh-startup-milestone-a42/ordinary-storage-source/AuxBrowserFreshRootAdmission.swift",
+      "inputSha256": "244c9d61dd1cf36610bc616cfd772d03c5fc313063613b6950c2b6a8f9fdde5f",
+      "outputSha256": "c6832180f3256dcf8a5dc96ad3437211f63f08dbfbfb015f013c01ec5a1e5b7c",
+      "source": "/Users/rcourson/.codex/worktrees/aux-features-organization/web/docs/integration/proposed/browser-feature-expansion/organization-launch-boundary-a28/AuxBrowserFreshRootAdmission.swift",
+      "anchors": [
+        {
+          "find": "            try metadata(fd,directory:true);try pathIdentity(paths[i],fd);try noSupervisedMarker(fd)\n            var st=stat();let status=fstatat(fd,marker,&st,AT_SYMLINK_NOFOLLOW)\n            guard status==0 || errno==ENOENT else{throw AuxFreshColdGuardError.io(errno)};existing.append(status==0)\n        }\n        guard existing[0]==existing[1] else{throw AuxFreshColdGuardError.path}\n        let reopening=existing[0]\n        for root in roots {\n",
+          "replace": "            try metadata(fd,directory:true);try pathIdentity(paths[i],fd);try noSupervisedMarker(fd)\n            var st=stat();let status=fstatat(fd,marker,&st,AT_SYMLINK_NOFOLLOW)\n            guard status==0 || errno==ENOENT else{throw AuxFreshColdGuardError.io(errno)};existing.append(status==0)\n        }\n        guard existing[0]==existing[1] else{throw AuxFreshColdGuardError.path}\n        let reopening=existing[0]\n        if !reopening {\n            // Refusing an unknown/legacy root must not first create a marker\n            // inside it. Check both real retained roots before changing either;\n            // the existing post-lock inventory still checks again for races.\n            for root in roots{try inventory(root,allowed:[\".\",\"..\"])}\n        }\n        for root in roots {\n",
+          "count": 1
+        }
+      ]
+    }
+  ],
+  "nativeExecuted": false,
+  "signatureOrPolicyChecksChanged": false,
+  "existingStateAdopted": false
+}
