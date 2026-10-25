@@ -1,0 +1,39 @@
+{
+  "format": "aux.ordinary-peer-shutdown.source.v1",
+  "files": [
+    {
+      "input": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/fresh-startup-milestone-a42/startup-diagnostics-source/AuxNativeDaemonMain.cc",
+      "inputSha256": "4b6cc5852d2296cb523175e61bcb9c5c5631e8759fb384f31621d1a53d7ab110",
+      "output": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/fresh-startup-milestone-a42/ordinary-peer-shutdown-source/AuxNativeDaemonMain.cc",
+      "outputSha256": "714121b87cc3cdf87ed439892756aec3de7931fca2236b85fd96b1902b7ca50a",
+      "anchors": [
+        {
+          "before": "#include <vector>\n",
+          "after": "#include <vector>\n#if defined(AUX_BROWSER_ONLY_NATIVE_STARTUP) && AUX_BROWSER_ONLY_NATIVE_STARTUP\n#include \"env-inl.h\"\n#endif\n",
+          "count": 1
+        },
+        {
+          "before": "int Refuse(const char* stage, int status, int exit_code) {",
+          "after": "// Peer loss still records a native failure. Give only the existing, actually\n// registered SIGTERM listener the opportunity to drain its physical producers.\n// No listener/exception retains the fatal Stop behavior; no timeout is clean.\nvoid RequestPeerLossShutdown(node::Environment* environment) {\n#if defined(AUX_BROWSER_ONLY_NATIVE_STARTUP) && AUX_BROWSER_ONLY_NATIVE_STARTUP\n  environment->SetImmediateThreadsafe([](node::Environment* actual) {\n    if (!actual->can_call_into_js()) {\n      node::Stop(actual);\n      return;\n    }\n    auto* isolate = actual->isolate();\n    v8::HandleScope handles(isolate);\n    v8::Context::Scope context_scope(actual->context());\n    v8::TryCatch caught(isolate);\n    v8::Local<v8::Value> args[] = {\n        v8::String::NewFromUtf8Literal(isolate, \"SIGTERM\")};\n    v8::Local<v8::Value> emitted;\n    // EventEmitter.emit is true only if a real listener was invoked. The\n    // supplied listener synchronously starts its idempotent shutdown routine.\n    if (!node::MakeCallback(isolate, actual->process_object(), \"emit\", 1, args,\n                            {0, 0}).ToLocal(&emitted) || !emitted->IsTrue()) {\n      node::Stop(actual);\n    }\n  });\n#else\n  node::Stop(environment);\n#endif\n}\n\nint Refuse(const char* stage, int status, int exit_code) {",
+          "count": 1
+        },
+        {
+          "before": "        if (environment) node::Stop(environment);",
+          "after": "        if (environment) RequestPeerLossShutdown(environment);",
+          "count": 1
+        },
+        {
+          "before": "          // Exact Node26 Stop\u2192ExitEnv uses atomic stopping, V8 thread-safe\n          // termination and SetImmediateThreadsafe; setup stays alive until join.\n          node::Stop(environment_);",
+          "after": "          // Setup remains alive until this thread and actual native work join.\n          RequestPeerLossShutdown(environment_);",
+          "count": 1
+        }
+      ]
+    }
+  ],
+  "anchorCount": 4,
+  "nodeCompileProfile": "node-release-compile-additions.json",
+  "failureStatusPreserved": true,
+  "physicalDrainUnchanged": true,
+  "noNativeBuild": true,
+  "noRuntimeAcceptance": true
+}

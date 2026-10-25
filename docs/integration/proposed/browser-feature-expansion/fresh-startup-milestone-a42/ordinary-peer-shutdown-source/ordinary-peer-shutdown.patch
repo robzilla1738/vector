@@ -1,0 +1,69 @@
+--- a/AuxNativeDaemonMain.cc
++++ b/AuxNativeDaemonMain.cc
+@@ -26,6 +26,9 @@
+ #include <signal.h>
+ #include <cerrno>
+ #include <vector>
++#if defined(AUX_BROWSER_ONLY_NATIVE_STARTUP) && AUX_BROWSER_ONLY_NATIVE_STARTUP
++#include "env-inl.h"
++#endif
+ 
+ // Native-only actual Swift provider C ABI, not exported to JavaScript.
+ extern "C" void AuxReleasePreparedFreshRuntimeProvider(uint64_t);
+@@ -36,6 +39,35 @@
+ namespace {
+ constexpr uint32_t kPeerTimeoutMs = 2000;
+ constexpr auto kPulseInterval = std::chrono::seconds(1);
++// Peer loss still records a native failure. Give only the existing, actually
++// registered SIGTERM listener the opportunity to drain its physical producers.
++// No listener/exception retains the fatal Stop behavior; no timeout is clean.
++void RequestPeerLossShutdown(node::Environment* environment) {
++#if defined(AUX_BROWSER_ONLY_NATIVE_STARTUP) && AUX_BROWSER_ONLY_NATIVE_STARTUP
++  environment->SetImmediateThreadsafe([](node::Environment* actual) {
++    if (!actual->can_call_into_js()) {
++      node::Stop(actual);
++      return;
++    }
++    auto* isolate = actual->isolate();
++    v8::HandleScope handles(isolate);
++    v8::Context::Scope context_scope(actual->context());
++    v8::TryCatch caught(isolate);
++    v8::Local<v8::Value> args[] = {
++        v8::String::NewFromUtf8Literal(isolate, "SIGTERM")};
++    v8::Local<v8::Value> emitted;
++    // EventEmitter.emit is true only if a real listener was invoked. The
++    // supplied listener synchronously starts its idempotent shutdown routine.
++    if (!node::MakeCallback(isolate, actual->process_object(), "emit", 1, args,
++                            {0, 0}).ToLocal(&emitted) || !emitted->IsTrue()) {
++      node::Stop(actual);
++    }
++  });
++#else
++  node::Stop(environment);
++#endif
++}
++
+ int Refuse(const char* stage, int status, int exit_code) {
+   // Stage is always a source literal. Never print paths, policy or payloads.
+   fprintf(stderr, "Aux native daemon refused at %s (status %d).\n", stage, status);
+@@ -117,7 +149,7 @@
+           environment = environment_;
+         }
+         // Main joins this thread before freeing setup; no lock crosses Stop.
+-        if (environment) node::Stop(environment);
++        if (environment) RequestPeerLossShutdown(environment);
+         return;
+       }
+     });
+@@ -177,9 +209,8 @@
+         if (status != 0 && status != 1) {
+           fprintf(stderr, "Aux ready pulse refused: status %d\n", status);
+           failed_.store(true);
+-          // Exact Node26 Stop→ExitEnv uses atomic stopping, V8 thread-safe
+-          // termination and SetImmediateThreadsafe; setup stays alive until join.
+-          node::Stop(environment_);
++          // Setup remains alive until this thread and actual native work join.
++          RequestPeerLossShutdown(environment_);
+           return;
+         }
+         lock.lock();
