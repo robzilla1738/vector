@@ -1,0 +1,11 @@
+{
+  "files": 1,
+  "anchors": 6,
+  "exactReplay": true,
+  "guardBypass": false,
+  "callbackOrderChanged": false,
+  "styleChanged": false,
+  "nativeBuildRun": false,
+  "appRun": false,
+  "signing": false
+}

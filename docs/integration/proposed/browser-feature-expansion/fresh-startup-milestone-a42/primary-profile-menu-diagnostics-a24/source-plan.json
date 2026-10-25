@@ -1,0 +1,45 @@
+{
+  "format": "aux.native.counted-projection.v1",
+  "purpose": "Trace primary profile menu row, teardown, posted action and native dispatch; data-only no gate bypass",
+  "nativeRoot": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src",
+  "files": [
+    {
+      "path": "chrome/browser/ui/views/frame/aux_sidebar_view.cc",
+      "inputSha256": "dcb65fd370f6a161b8b65a255660459b1786fcb8a4889ca78d4640af23544b09",
+      "outputSha256": "44e1c3bf55b538b3f97125b70d3568461b2f868e6cedc1d7bad98f4aaa10131a",
+      "source": "docs/integration/proposed/browser-feature-expansion/fresh-startup-milestone-a42/primary-profile-menu-diagnostics-a24/source/chrome/browser/ui/views/frame/aux_sidebar_view.cc",
+      "anchors": [
+        {
+          "before": "#include \"base/functional/bind.h\"",
+          "after": "#include \"base/functional/bind.h\"\n#include \"base/logging.h\"",
+          "expectedCount": 1
+        },
+        {
+          "before": "  if (IsCurrentProfileMenuSource(sender, source, epoch)) std::move(action).Run();",
+          "after": "  const bool current = IsCurrentProfileMenuSource(sender, source, epoch);\n  LOG(ERROR) << \"Aux profile menu action: source_current=\" << current\n             << \" action_present=\" << !!action;\n  if (current) std::move(action).Run();",
+          "expectedCount": 1
+        },
+        {
+          "before": "      !IsCurrentProfileMenuSource(sender, source, epoch)) {\n    return;\n  }\n  // Ordinary profile selection",
+          "after": "      !IsCurrentProfileMenuSource(sender, source, epoch)) {\n    LOG(ERROR) << \"Aux ordinary profile selection: source gate rejected\"\n               << \" path_present=\" << !path.empty()\n               << \" source_present=\" << !!source\n               << \" state_present=\" << !!state;\n    return;\n  }\n  LOG(ERROR) << \"Aux ordinary profile selection: native window dispatch\";\n  // Ordinary profile selection",
+          "expectedCount": 1
+        },
+        {
+          "before": "  ~AuxProfileMenu() override {\n    ForgetAuxProfileMenu(browser_, GetWidget());",
+          "after": "  ~AuxProfileMenu() override {\n    LOG(ERROR) << \"Aux primary profile menu: destroying pending_action=\"\n               << !!pending_switch_;\n    ForgetAuxProfileMenu(browser_, GetWidget());",
+          "expectedCount": 1
+        },
+        {
+          "before": "      base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(\n          FROM_HERE, base::BindOnce(&RunProfileMenuAction, sender_, source_, source_epoch_,\n                                    std::move(pending_switch_)));",
+          "after": "      const bool posted = base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(\n          FROM_HERE, base::BindOnce(&RunProfileMenuAction, sender_, source_, source_epoch_,\n                                    std::move(pending_switch_)));\n      LOG(ERROR) << \"Aux primary profile menu: action_posted=\" << posted;",
+          "expectedCount": 1
+        },
+        {
+          "before": "  void SwitchTo(const base::FilePath& path) {\n    if (pending_switch_ || path == browser_->GetProfile()->GetPath()) {",
+          "after": "  void SwitchTo(const base::FilePath& path) {\n    LOG(ERROR) << \"Aux primary profile menu: row_selected pending_action=\"\n               << !!pending_switch_\n               << \" same_profile=\" << (path == browser_->GetProfile()->GetPath());\n    if (pending_switch_ || path == browser_->GetProfile()->GetPath()) {",
+          "expectedCount": 1
+        }
+      ]
+    }
+  ]
+}

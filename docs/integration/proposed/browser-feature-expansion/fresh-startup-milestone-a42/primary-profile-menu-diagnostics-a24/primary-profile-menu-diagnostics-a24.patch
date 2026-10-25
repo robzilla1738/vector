@@ -1,0 +1,32 @@
+--- a/chrome/browser/ui/views/frame/aux_sidebar_view.cc
++++ b/chrome/browser/ui/views/frame/aux_sidebar_view.cc
+@@ -17,0 +18 @@
++#include "base/logging.h"
+@@ -818 +819,4 @@
+-  if (IsCurrentProfileMenuSource(sender, source, epoch)) std::move(action).Run();
++  const bool current = IsCurrentProfileMenuSource(sender, source, epoch);
++  LOG(ERROR) << "Aux profile menu action: source_current=" << current
++             << " action_present=" << !!action;
++  if (current) std::move(action).Run();
+@@ -833,2 +837,7 @@
+-    return;
+-  }
++    LOG(ERROR) << "Aux ordinary profile selection: source gate rejected"
++               << " path_present=" << !path.empty()
++               << " source_present=" << !!source
++               << " state_present=" << !!state;
++    return;
++  }
++  LOG(ERROR) << "Aux ordinary profile selection: native window dispatch";
+@@ -1048,0 +1058,2 @@
++    LOG(ERROR) << "Aux primary profile menu: destroying pending_action="
++               << !!pending_switch_;
+@@ -1056 +1067 @@
+-      base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
++      const bool posted = base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
+@@ -1058,0 +1070 @@
++      LOG(ERROR) << "Aux primary profile menu: action_posted=" << posted;
+@@ -1306,0 +1319,3 @@
++    LOG(ERROR) << "Aux primary profile menu: row_selected pending_action="
++               << !!pending_switch_
++               << " same_profile=" << (path == browser_->GetProfile()->GetPath());
