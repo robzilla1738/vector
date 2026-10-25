@@ -1,0 +1,3 @@
+# Native launch admission serialization
+
+Three-leaf successor to A41. The already prepared/reserved helper executes its fixed posix_spawn and its post-journal SIGCONT under the actual retained Worker admission mutex. Worker.Close sets terminal under the same mutex before requesting helper cancellation, so a later physical launch/resume cannot race past closure. No Swift, JS, provider or registry-lock call crosses the native Worker lock; the journal/current-registry checks remain outside and before the physical action. General exec stays refused. Exact source replay passed; no compilation, product execution or signing. Root composes these three leaves over A41 for the complete daemon.

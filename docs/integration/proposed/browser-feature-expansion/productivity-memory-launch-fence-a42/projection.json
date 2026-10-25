@@ -1,0 +1,59 @@
+{
+  "format": "aux.memory.actual-worker-launch-fence.v1",
+  "files": [
+    {
+      "input": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/browser-feature-expansion/productivity-memory-native-a41/source/AuxAccountMemoryHelper.h",
+      "inputSha256": "d9e5673aca345532fefbc0c7d5f379837302eb987644375365d7eb2173314459",
+      "output": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/browser-feature-expansion/productivity-memory-launch-fence-a42/source/AuxAccountMemoryHelper.h",
+      "outputSha256": "049ef6f0f67ed9aa91ddd72837d916a57a28df9b6f3ddadcd628d260e4a7ec9f",
+      "name": "AuxAccountMemoryHelper.h",
+      "anchors": [
+        {
+          "before": "#include <cstdint>\n#include <cerrno>\n#include <sys/types.h>\n#include <memory>\n#include \"AuxDevelopmentWorkerHost.h\"\n\n",
+          "after": "#include <cstdint>\n#include <cerrno>\n#include <sys/types.h>\n#include <spawn.h>\n#include <memory>\n#include \"AuxDevelopmentWorkerHost.h\"\n\n",
+          "count": 1
+        },
+        {
+          "before": "  const void* WorkerKey() const;\n  bool PrepareLaunch();\n  bool PublishSuspended(pid_t);\n  bool SettlePhysical(pid_t=0,int=0,int=ECANCELED);\n  std::shared_ptr<State> state_;\n  friend class AuxAccountMemoryProcess;\n",
+          "after": "  const void* WorkerKey() const;\n  bool PrepareLaunch();\n  bool PublishSuspended(pid_t);\n  int SpawnStoppedAfterPrepared(pid_t*,const posix_spawn_file_actions_t*,const posix_spawnattr_t*,char* const[],char* const[]) const;\n  bool ResumeStoppedAfterPublished(pid_t) const;\n  bool SettlePhysical(pid_t=0,int=0,int=ECANCELED);\n  std::shared_ptr<State> state_;\n  friend class AuxAccountMemoryProcess;\n",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "input": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/browser-feature-expansion/productivity-memory-native-a41/source/AuxMemoryMainOwner.inc",
+      "inputSha256": "49729ab316cad5325c091d239d94eedf66143e0589ceefa6a7580d709d9d3b81",
+      "output": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/browser-feature-expansion/productivity-memory-launch-fence-a42/source/AuxMemoryMainOwner.inc",
+      "outputSha256": "97d451aa3a7a604e0d3fa2c11f0ce8bb7caf25ccde36d248d7b38d5dc561bf47",
+      "name": "AuxMemoryMainOwner.inc",
+      "anchors": [
+        {
+          "before": "bool AuxMemoryNativeOwner::PublishSuspended(pid_t pid) {\n  return Current() && AuxPublishSuspendedMemoryAccountLaunch(state_->owner->handle,state_->account_owner,pid)==0 && Current();\n}\nbool AuxMemoryNativeOwner::SettlePhysical(pid_t pid,int wait_status,int spawn_error) {\n  if (getpid() != state_->process) return false;\n  uint64_t lease = 0;\n",
+          "after": "bool AuxMemoryNativeOwner::PublishSuspended(pid_t pid) {\n  return Current() && AuxPublishSuspendedMemoryAccountLaunch(state_->owner->handle,state_->account_owner,pid)==0 && Current();\n}\n// Caller already holds this exact helper's durable prepared/spawned lease.\n// No Swift/JS/provider callback crosses the native Worker admission lock.\nint AuxMemoryNativeOwner::SpawnStoppedAfterPrepared(pid_t* pid,\n    const posix_spawn_file_actions_t* actions,const posix_spawnattr_t* attributes,\n    char* const argv[],char* const environment[]) const {\n  if(getpid()!=state_->process)return ECANCELED;\n  std::lock_guard<std::mutex> lock(state_->worker->mutex);\n  const auto& worker=*state_->worker;\n  if(!worker.ordinary_main_service||worker.terminal||worker.initializing||\n      worker.environment_detached||worker.owner!=state_->owner)return ECANCELED;\n  return posix_spawn(pid,\"/usr/bin/sandbox-exec\",actions,attributes,argv,environment);\n}\nbool AuxMemoryNativeOwner::ResumeStoppedAfterPublished(pid_t pid) const {\n  if(getpid()!=state_->process||pid<=1)return false;\n  std::lock_guard<std::mutex> lock(state_->worker->mutex);\n  const auto& worker=*state_->worker;\n  return worker.ordinary_main_service&&!worker.terminal&&!worker.initializing&&\n      !worker.environment_detached&&worker.owner==state_->owner&&kill(pid,SIGCONT)==0;\n}\nbool AuxMemoryNativeOwner::SettlePhysical(pid_t pid,int wait_status,int spawn_error) {\n  if (getpid() != state_->process) return false;\n  uint64_t lease = 0;\n",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "input": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/browser-feature-expansion/productivity-memory-native-a41/source/AuxAccountMemoryHelper.mm",
+      "inputSha256": "9eac48599a3c92b43643de25e16e400b58431affe3aff122dfa411185ecb5ce7",
+      "output": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/browser-feature-expansion/productivity-memory-launch-fence-a42/source/AuxAccountMemoryHelper.mm",
+      "outputSha256": "92bff4189d945bec513947f32b8e35d143da8501b5f4e12e70288ba8dd46a37d",
+      "name": "AuxAccountMemoryHelper.mm",
+      "anchors": [
+        {
+          "before": "  int result=ECANCELED;\n  {\n    std::lock_guard<std::mutex> lock(mutex_);\n    if(!stop_)result=posix_spawn(&pid_,\"/usr/bin/sandbox-exec\",&actions,&attributes,pointers.data(),environment.data());\n    spawn_error_=result;\n    if(result==0){no_child_=false;input_=std::move(parent_in);output_=std::move(parent_out);error_=std::move(parent_err);}\n  }\n",
+          "after": "  int result=ECANCELED;\n  {\n    std::lock_guard<std::mutex> lock(mutex_);\n    if(!stop_)result=owner_->SpawnStoppedAfterPrepared(&pid_,&actions,&attributes,pointers.data(),environment.data());\n    spawn_error_=result;\n    if(result==0){no_child_=false;input_=std::move(parent_in);output_=std::move(parent_out);error_=std::move(parent_err);}\n  }\n",
+          "count": 1
+        },
+        {
+          "before": "  // The original child cannot run a single helper instruction before its exact\n  // kernel PID/birth is durably published under the actual retained owner.\n  if(!owner_->PublishSuspended(pid_))throw std::runtime_error(\"Memory stopped-child publication is unknown\");\n  {std::lock_guard<std::mutex> lock(mutex_);if(stop_||kill(pid_,SIGCONT))throw std::runtime_error(\"Memory start was cancelled\");}\n  for(int fd:{input_.value,output_.value,error_.value})fcntl(fd,F_SETFL,fcntl(fd,F_GETFL)|O_NONBLOCK);\n  Emit({\"spawn\",{},uint64_t(pid_)});\n}\n",
+          "after": "  // The original child cannot run a single helper instruction before its exact\n  // kernel PID/birth is durably published under the actual retained owner.\n  if(!owner_->PublishSuspended(pid_))throw std::runtime_error(\"Memory stopped-child publication is unknown\");\n  {std::lock_guard<std::mutex> lock(mutex_);if(stop_||!owner_->ResumeStoppedAfterPublished(pid_))throw std::runtime_error(\"Memory start was cancelled\");}\n  for(int fd:{input_.value,output_.value,error_.value})fcntl(fd,F_SETFL,fcntl(fd,F_GETFL)|O_NONBLOCK);\n  Emit({\"spawn\",{},uint64_t(pid_)});\n}\n",
+          "count": 1
+        }
+      ]
+    }
+  ],
+  "nativeCompiled": false,
+  "productExecuted": false
+}
