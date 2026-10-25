@@ -1,0 +1,51 @@
+--- a/chrome/browser/ui/views/frame/aux_tab_search_bubble.cc
++++ b/chrome/browser/ui/views/frame/aux_tab_search_bubble.cc
+@@ -18,0 +19 @@
++#include "base/logging.h"
+@@ -448 +449,6 @@
+-    if (!browser || !parent_ || parent_->IsClosed() || !AgentInstalled(profile))
++    const bool agent_enabled = AgentInstalled(profile);
++    if (!browser || !parent_ || parent_->IsClosed() || !agent_enabled) {
++      LOG(ERROR) << "Aux command palette refused: owner-source"
++                 << " browser=" << !!browser << " parent=" << !!parent_
++                 << " parent_closed=" << (parent_ && parent_->IsClosed())
++                 << " agent_enabled=" << agent_enabled;
+@@ -449,0 +456 @@
++    }
+@@ -465 +472,2 @@
+-      if (!alive)
++      if (!alive) {
++        LOG(ERROR) << "Aux command palette refused: owner-retired-during-create";
+@@ -466,0 +475 @@
++      }
+@@ -473 +482,3 @@
+-    if (!contents || !widget_)
++    if (!contents || !widget_) {
++      LOG(ERROR) << "Aux command palette refused: created-view"
++                 << " contents=" << !!contents << " widget=" << !!widget_;
+@@ -474,0 +486,2 @@
++    }
++    LOG(ERROR) << "Aux command palette: show mode=" << static_cast<int>(mode);
+@@ -723 +736,4 @@
+-  if (!parent || parent->IsClosed())
++  if (!parent || parent->IsClosed()) {
++    LOG(ERROR) << "Aux command palette refused: browser-widget"
++               << " browser=" << !!browser << " view=" << !!view
++               << " parent=" << !!parent;
+@@ -724,0 +741 @@
++  }
+--- a/chrome/browser/ui/browser_command_controller.cc
++++ b/chrome/browser/ui/browser_command_controller.cc
+@@ -924 +924,7 @@
+-      if (ShowAuxCommandBar(browser_, AuxCommandBarMode::kNewTab)) break;
++      if (browser_->GetType() == BrowserWindowInterface::TYPE_NORMAL) {
++        // Cmd+T is a transient intent in Aux. A refused palette must not
++        // silently create a durable blank tab before the user commits.
++        if (!ShowAuxCommandBar(browser_, AuxCommandBarMode::kNewTab))
++          LOG(ERROR) << "Aux new-tab command: palette unavailable; no tab created";
++        break;
++      }
+@@ -1266,0 +1273 @@
++      LOG(ERROR) << "Aux URL command: palette unavailable; trusted location fallback";
+@@ -1276,0 +1284 @@
++      LOG(ERROR) << "Aux search command: palette unavailable; trusted search fallback";

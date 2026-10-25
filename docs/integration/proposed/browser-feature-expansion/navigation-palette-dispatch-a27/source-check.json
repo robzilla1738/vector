@@ -1,0 +1,13 @@
+{
+  "files": 2,
+  "anchors": 8,
+  "exactReplay": true,
+  "normalAuxNewTabFallbackSuppressed": true,
+  "trustedLocationFallbackRetained": true,
+  "missingOwnerGuardsRetained": true,
+  "uiStyleChanges": false,
+  "nativeBuild": false,
+  "appRun": false,
+  "signing": false,
+  "centeredPaletteRuntimeAccepted": false
+}
