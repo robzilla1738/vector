@@ -1,0 +1,19 @@
+{
+  "candidate": "A45",
+  "repairIteration": "a17",
+  "launcherPid": 29657,
+  "startedUnix": 1792947176.262466,
+  "privateLog": "/private/tmp/aux-fresh-browser-c5mop317/browser-launch-a17.log",
+  "command": [
+    "/opt/homebrew/bin/node",
+    "scripts/aux.mjs",
+    "--temp-profile",
+    "--app",
+    "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-fresh-browser-20261025-a45/Aux.app",
+    "--",
+    "http://127.0.0.1:64593/"
+  ],
+  "scope": "/private/tmp/aux-fresh-browser-c5mop317",
+  "fixtureUrl": "http://127.0.0.1:64593/",
+  "runtimeAcceptance": false
+}

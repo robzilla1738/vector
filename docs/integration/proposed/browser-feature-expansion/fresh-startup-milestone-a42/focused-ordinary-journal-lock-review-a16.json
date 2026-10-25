@@ -1,0 +1,11 @@
+{
+  "passed": true,
+  "reviewer": "/root/productivity_finish_batch",
+  "blockingSharedAndOrdinaryExclusiveLocks": true,
+  "eintrRetry": true,
+  "journalCriticalSections": "Native metadata/read/decode/write/fsync only",
+  "noJsEntryOrPeerRpcOrProgressLeaseWaitInsideJournalLock": true,
+  "initialAndTargetReadLocksReleasedSequentially": true,
+  "postLockIdentityAndJournalChecksPreserved": true,
+  "actualStartupStillRequired": true
+}

@@ -1,0 +1,14 @@
+{
+  "passed": true,
+  "changes": [
+    {
+      "path": "chrome/browser/ui/browser_window/internal/browser_window_features.cc",
+      "beforeSha256": "04227d3f9257eb6f955b2b1c102e81c58518f175c11c8c4722a6a7d463d5ea3c",
+      "afterSha256": "5e7a0d95aabba0f87eaa0a0f9d73603c83e7d9717ba9a6e2842dbc3cb27319d7"
+    }
+  ],
+  "activationDependencyCreatedBeforeSubscriber": true,
+  "subscriptionNotDropped": true,
+  "uiGeometryAndResourcesUnchanged": true,
+  "productExecuted": false
+}

@@ -1,0 +1,22 @@
+--- a/index.mjs
++++ b/index.mjs
+@@ -350,7 +350,7 @@
+     const control = new URL(request.url).pathname === '/shutdown';
+     const controller = new AbortController();
+     if (!control) controllers.add(controller);
+-    const input = control ? request : new Request(request, {signal:AbortSignal.any([request.signal,controller.signal])});
++    const input = control ? request : new Request$1$1(request, {signal:AbortSignal.any([request.signal,controller.signal])});
+     const pending = call(() => deps.fetch(input,...rest));
+     fetches.add(pending);
+     try{return await pending}finally{fetches.delete(pending);controllers.delete(controller)}
+--- a/aux-native-entry.mjs
++++ b/aux-native-entry.mjs
+@@ -350,7 +350,7 @@
+     const control = new URL(request.url).pathname === '/shutdown';
+     const controller = new AbortController();
+     if (!control) controllers.add(controller);
+-    const input = control ? request : new Request(request, {signal:AbortSignal.any([request.signal,controller.signal])});
++    const input = control ? request : new Request$1$1(request, {signal:AbortSignal.any([request.signal,controller.signal])});
+     const pending = call(() => deps.fetch(input,...rest));
+     fetches.add(pending);
+     try{return await pending}finally{fetches.delete(pending);controllers.delete(controller)}

@@ -1,0 +1,34 @@
+{
+  "passed": true,
+  "files": [
+    {
+      "input": "/private/tmp/aux-standard-browser-source-20261023-a2/daemon/AuxNativeParentConnectionBridge.cc",
+      "inputSha256": "cafa44cb342ebc208cdd1cf605b62f904bf34c04edccbf106b5095721e8aff8d",
+      "output": "docs/integration/proposed/browser-feature-expansion/fresh-startup-milestone-a42/ordinary-storage-native/AuxNativeParentConnectionBridge.cc",
+      "outputSha256": "2f4aa0ade027d86601d930ca4245c76ca7a5c4f9eb1e97d9a0787fafc60825fa"
+    },
+    {
+      "input": "docs/integration/proposed/browser-feature-expansion/fresh-startup-milestone-a42/startup-diagnostics-source/AuxBrokerWritesNapi.inc",
+      "inputSha256": "842f99f0375089d6f1282ff1cfc401137e2fd24dd27bab908c848fa415f86f6f",
+      "output": "docs/integration/proposed/browser-feature-expansion/fresh-startup-milestone-a42/ordinary-storage-native/AuxBrokerWritesNapi.inc",
+      "outputSha256": "4907fdf63d19ccf4f9f4ea7f8a067ec5c5ae3a233afe17838227f1528a732385"
+    },
+    {
+      "input": "docs/integration/proposed/browser-feature-expansion/fresh-startup-milestone-a42/startup-diagnostics-source/AuxDevelopmentWorkerHost.cc",
+      "inputSha256": "a7b3f15d1e13b611696ed01d49924742dd106b38e46326f131bc2cabdc09c95c",
+      "output": "docs/integration/proposed/browser-feature-expansion/fresh-startup-milestone-a42/ordinary-storage-native/AuxDevelopmentWorkerHost.cc",
+      "outputSha256": "a7b3f15d1e13b611696ed01d49924742dd106b38e46326f131bc2cabdc09c95c"
+    },
+    {
+      "input": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/profile-isolation-continuation/broker-writes/source/AuxStorageRootsNapi.inc",
+      "inputSha256": "f9c1549670b1ebc0d7825402c57079814d4095f27b8ec3b76f8c0bb9aeb57ec6",
+      "output": "docs/integration/proposed/browser-feature-expansion/fresh-startup-milestone-a42/ordinary-storage-native/AuxStorageRootsNapi.inc",
+      "outputSha256": "afaf22470b1a46b6984078722ebcb3c988553deee3aa04de6c84cfb5c0c670bf"
+    }
+  ],
+  "existingConnectionOnly": true,
+  "noNewFactoryOrGrant": true,
+  "sensitiveAuthorityApiUnchanged": true,
+  "productExecuted": false,
+  "storageRootProjectionRoutesToOrdinaryGuard": true
+}

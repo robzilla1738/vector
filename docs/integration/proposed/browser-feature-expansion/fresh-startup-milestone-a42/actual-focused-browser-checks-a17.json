@@ -1,0 +1,37 @@
+{
+  "format": "aux.ordinary-fresh.actual-app-checks.v1",
+  "candidate": "provided-candidate-fresh-browser-20261025-a45",
+  "repair": "a17",
+  "scope": "/private/tmp/aux-fresh-browser-c5mop317",
+  "observedUnix": 1792947655.487554,
+  "method": "CUA native accessibility plus actual screenshots; loopback synthetic page; no inference/accounts",
+  "passed": [
+    "daemon HTTP /health 200 service aux-daemon ready true",
+    "normal browser window opens",
+    "Work cookie work and saved work-note-a16 persist across app restart",
+    "fresh Personal cookie and localStorage initially empty",
+    "fresh Personal stores personal cookie and personal-note-a17 independently",
+    "chat connects: Work /u/1 and Personal /u/2",
+    "unsent personal draft survives settings tab round trip",
+    "work draft accepts synthetic TXT file; chip and Recent files entry visible",
+    "two Personal windows show shared tab list while retaining independent selected tab",
+    "actual sidebar collapsed/expanded and chat open/closed render",
+    "actual Settings General loads background service Running normally"
+  ],
+  "failed": [
+    "in-place Work\u2194Personal sidebar switch safely refuses at private-services pending-write gate",
+    "draft/attachment absent in tested restored third Work tab after normal quit/restart; stable-key cause under investigation",
+    "normal browser menu quit exits browser0 but guardian forced remaining descendant group; full drain not yet accepted"
+  ],
+  "untested": [
+    "authenticated AI inference and eligible subscription connection",
+    "third-party extensions/1Password/native messaging",
+    "genuine pointer hover transition (automation lacks move event)",
+    "CLI routing",
+    "all-profile multiple-window recovery"
+  ],
+  "uiChanges": false,
+  "ownerProfilesAccessed": false,
+  "releaseReady": false,
+  "milestoneReady": false
+}

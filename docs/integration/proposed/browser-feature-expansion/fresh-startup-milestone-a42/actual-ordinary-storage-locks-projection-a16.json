@@ -1,0 +1,24 @@
+{
+  "passed": true,
+  "files": [
+    {
+      "input": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/fresh-startup-milestone-a42/ordinary-storage-source/PrivateNativeFreshBootstrapJournalStore.swift",
+      "inputSha256": "963c4b6b0ab54bd96e4fc24b1eabf8ab4407c660db3137a8c165fb1ae4544064",
+      "output": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/fresh-startup-milestone-a42/ordinary-storage-locks-source/PrivateNativeFreshBootstrapJournalStore.swift",
+      "outputSha256": "576185d27988950549594c7f27573419a214d112d5f7a1014cbfc606a96374f5"
+    },
+    {
+      "input": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/fresh-startup-milestone-a42/ordinary-storage-source/PrivateNativeFreshTargetJournalStore.swift",
+      "inputSha256": "27085c2e9f6c482c4c5c93667ba6e8c34143633f8bc51b8d2dc5de79f4e710d8",
+      "output": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/fresh-startup-milestone-a42/ordinary-storage-locks-source/PrivateNativeFreshTargetJournalStore.swift",
+      "outputSha256": "7a83c4a23da22a32ec085e2cfc7fd47c3770a890ac2272c896d3337b7f5b43f1"
+    }
+  ],
+  "ordinaryNativeJournalLocksWaitForActualHolder": true,
+  "eintrRetry": true,
+  "postLockIdentityAndContentChecksPreserved": true,
+  "protectedNonordinaryLockBehaviorUnchanged": true,
+  "noCachedAuthority": true,
+  "uiChanged": false,
+  "productExecuted": false
+}

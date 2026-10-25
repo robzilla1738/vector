@@ -1,0 +1,57 @@
+{
+  "format": "aux.ordinary-fresh.bounded-repair.review.v1",
+  "iteration": "a16",
+  "app": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-fresh-browser-20261025-a45/Aux.app",
+  "scope": "/private/tmp/aux-fresh-browser-c5mop317",
+  "ownerAuthorization": {
+    "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/fresh-startup-milestone-a42/owner-signing-approval-a5.json",
+    "sha256": "094788979b58b8a6269e8b5fef67a6dc8a00e9e056c570441aca835e7f579599"
+  },
+  "trigger": "A15 actual startup ordinary journal read fails during native bootstrap lock contention. Wait for actual shared/exclusive native lock holders with EINTR retry; keep post-lock identity, hashes and native owner checks.",
+  "snapshot": {
+    "path": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-fresh-browser-20261025-a45-before-journal-locks-a16/receipt.json",
+    "sha256": "a87528c4038da0e9655bbcbbc14629646ef20942e6c9522a240de7de504360a9"
+  },
+  "unsignedInventorySha256": "dd7ea57f7710285866817a8d06813a794b3e53a4c8304f2e8b98cef7ffb705d0",
+  "source": {
+    "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/fresh-startup-milestone-a42/actual-ordinary-storage-locks-projection-a16.json",
+    "sha256": "e56402024e966c9c24d3f0689fb99e41a234463c5d4425924347491e65909bea"
+  },
+  "build": {
+    "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/fresh-startup-milestone-a42/actual-daemon-ordinary-storage-locks-build-a16.json",
+    "sha256": "54940ead131da2a286cc601fa261ee73a01842cec8dbb917d2d58ea949a6dc74"
+  },
+  "targetsInSigningOrder": [
+    {
+      "codeObject": "Contents/Resources/aux/apps/daemon/Aux Daemon.app",
+      "executable": "Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/MacOS/aux-daemon",
+      "sha256": "5067a524b1448bc562c3fb6427f9c3e9da63412c37bd320e76e68ec1a7f6bbfd",
+      "identifier": "dev.aux.browser.daemon",
+      "entitlements": {
+        "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/fresh-startup-milestone-a42/daemon-local.plist",
+        "sha256": "d24cbaa888243f1f0b804d8a8d2310cee8e0184e811ff88ecf5a7a46eebddc1d"
+      }
+    },
+    {
+      "codeObject": ".",
+      "executable": "Contents/MacOS/Aux",
+      "sha256": "fca89e344112f467bc21d007e272c94f3270658507ad402f8fbf53807ef20195",
+      "identifier": "dev.aux.browser",
+      "entitlements": {
+        "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/fresh-startup-milestone-a42/browser-jit.plist",
+        "sha256": "958648f799e436860b51eaf55ec8f92d2c62da17001e23d96bc05ffc748f2a2a"
+      }
+    }
+  ],
+  "identitySha1": "47ACA5D1CFADD21CFEDC589B4DEED6E2B7A96D90",
+  "team": "9F2JXY8TCK",
+  "policySha256": "e342013f6ca2b6a6b2b985877df5deef525a3b7ab11e2b08f88a91d4889a1dce",
+  "newEntitlements": false,
+  "newScope": false,
+  "acceptedAppExcluded": true,
+  "sourceOnlyExistingStartupComponent": true,
+  "uiPreserved": true,
+  "newProvisioning": false,
+  "newOSGrants": false,
+  "release": false
+}

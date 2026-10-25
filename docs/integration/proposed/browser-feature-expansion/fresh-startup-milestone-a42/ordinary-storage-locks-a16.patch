@@ -1,0 +1,54 @@
+--- a/PrivateNativeFreshBootstrapJournalStore.swift
++++ b/PrivateNativeFreshBootstrapJournalStore.swift
+@@ -92,7 +92,13 @@
+         guard fd>=0 else{throw NativeFreshBootstrapStoreError.io(errno)};defer{close(fd)}
+         try Self.metadata(fd,directory:false);try Self.sameEntry(parent:directoryFD,name:"LOCK",fd:fd)
+         guard try Self.statFD(fd).st_size==0 else{throw NativeFreshBootstrapStoreError.unsafeMetadata}
++#if AUX_BROWSER_ONLY_NATIVE_STARTUP
++        while flock(fd,LOCK_EX) != 0 {
++            guard errno==EINTR else{throw NativeFreshBootstrapStoreError.io(errno)}
++        }
++#else
+         guard flock(fd,LOCK_EX|LOCK_NB)==0 else{throw NativeFreshBootstrapStoreError.busy}
++#endif
+         defer{_ = flock(fd,LOCK_UN)}
+         try Self.sync(fd);try Self.sync(directoryFD);try validateDirectories()
+         let result=try action();try Self.sameEntry(parent:directoryFD,name:"LOCK",fd:fd);try validateDirectories();return result
+@@ -147,7 +153,9 @@
+         guard fd>=0 else{throw NativeFreshBootstrapStoreError.io(errno)};defer{close(fd)}
+         try Self.metadata(fd,directory:false);try Self.sameEntry(parent:directoryFD,name:"LOCK",fd:fd)
+         guard try Self.statFD(fd).st_size==0 else{throw NativeFreshBootstrapStoreError.unsafeMetadata}
+-        guard flock(fd,LOCK_SH|LOCK_NB)==0 else{throw NativeFreshBootstrapStoreError.busy}
++        while flock(fd,LOCK_SH) != 0 {
++            guard errno==EINTR else{throw NativeFreshBootstrapStoreError.io(errno)}
++        }
+         defer{_ = flock(fd,LOCK_UN)}
+         guard let bytes=try readFile("initial-journal.json") else{return nil}
+         let journal=try decode(bytes)
+--- a/PrivateNativeFreshTargetJournalStore.swift
++++ b/PrivateNativeFreshTargetJournalStore.swift
+@@ -94,7 +94,13 @@
+         guard fd>=0 else{throw NativeFreshTargetStoreError.io(errno)};defer{close(fd)}
+         try Self.metadata(fd,directory:false);try Self.sameEntry(parent:directoryFD,name:"LOCK",fd:fd)
+         guard try Self.statFD(fd).st_size==0 else{throw NativeFreshTargetStoreError.unsafeMetadata}
++#if AUX_BROWSER_ONLY_NATIVE_STARTUP
++        while flock(fd,LOCK_EX) != 0 {
++            guard errno==EINTR else{throw NativeFreshTargetStoreError.io(errno)}
++        }
++#else
+         guard flock(fd,LOCK_EX|LOCK_NB)==0 else{throw NativeFreshTargetStoreError.busy}
++#endif
+         defer{_ = flock(fd,LOCK_UN)}
+         try Self.sync(fd);try Self.sync(directoryFD);try validateDirectories()
+         let result=try action();try Self.sameEntry(parent:directoryFD,name:"LOCK",fd:fd);try validateDirectories();return result
+@@ -174,7 +180,9 @@
+         guard fd>=0 else{throw NativeFreshTargetStoreError.io(errno)};defer{close(fd)}
+         try Self.metadata(fd,directory:false);try Self.sameEntry(parent:directoryFD,name:"LOCK",fd:fd)
+         guard try Self.statFD(fd).st_size==0 else{throw NativeFreshTargetStoreError.unsafeMetadata}
+-        guard flock(fd,LOCK_SH|LOCK_NB)==0 else{throw NativeFreshTargetStoreError.busy}
++        while flock(fd,LOCK_SH) != 0 {
++            guard errno==EINTR else{throw NativeFreshTargetStoreError.io(errno)}
++        }
+         defer{_ = flock(fd,LOCK_UN)}
+         let result=try loadUnlocked()
+         try Self.sameEntry(parent:directoryFD,name:"LOCK",fd:fd);try validateDirectories()

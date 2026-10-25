@@ -1,0 +1,29 @@
+{
+  "passed": true,
+  "files": [
+    {
+      "input": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-fresh-browser-20261025-a45/Aux.app/Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/node-development/index.mjs",
+      "inputSha256": "faed45031be4a6e0240de08943decdd61684d0f77c472a46ecce9bf17dd5a81d",
+      "output": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/fresh-startup-milestone-a42/http-request-adapter-source/index.mjs",
+      "outputSha256": "ab8314dabe8f6b2100a587e93deed2bd496ffe0db56dfa3610bbcd08c70b9938",
+      "relative": "Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/node-development/index.mjs",
+      "anchorCount": 1,
+      "syntaxCheckPassed": true
+    },
+    {
+      "input": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-fresh-browser-20261025-a45/Aux.app/Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/node-development/aux-native-entry.mjs",
+      "inputSha256": "6e98124ac1d09b9275e81e4c36011daf06044a44c4c42ae50ecc1344c7028cf3",
+      "output": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/fresh-startup-milestone-a42/http-request-adapter-source/aux-native-entry.mjs",
+      "outputSha256": "1d1e348b5dbddfe3cf320238c1f357eece6f6364b5c3d97e01903687c05a48d1",
+      "relative": "Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/node-development/aux-native-entry.mjs",
+      "anchorCount": 1,
+      "syntaxCheckPassed": true
+    }
+  ],
+  "usesBundledNodeAdapterRequestConstructor": true,
+  "composedAbortSignalAndShutdownTrackingPreserved": true,
+  "noGlobalOverride": true,
+  "policyAndCredentialsUnchanged": true,
+  "uiChanged": false,
+  "productExecuted": false
+}

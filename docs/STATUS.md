@@ -1,4 +1,16 @@
-# Bounded fresh-browser milestone stopped: startup still blocked — 2026-10-25
+# Fresh-browser milestone: actual A17 startup works; focused failures remain — 2026-10-25
+
+The same A45 candidate now contains the full A54 browser/framework, A56 native daemon and A17 paired HTTP entry. The supplied UI revision33, assets/fonts/styles and accepted app remain untouched. All17 existing code signatures verify under the owner's bounded repair authorization, using the same identity/entitlements and disposable `/private/tmp/aux-fresh-browser-c5mop317` scope. No new provisioning, OS grants, owner profile/credentials, architecture or release.
+
+Actual native-app checks now pass startup (`/health` HTTP200, `aux-daemon`, `ready:true`), navigation, separate fresh Work/Personal cookie/localStorage and `/u/1` versus `/u/2` chat contexts, connected chat without a provider, settings, collapsed/expanded sidebar, and two-window shared tab list with independent selected views. Work page data survives normal app restart. Local draft text survives a settings-tab round trip; a synthetic TXT attachment appears in the work composer and Recent files. These are runtime observations, not transferred compilation claims.
+
+**The bounded milestone is not ready yet.** In-place profile switching still safely refuses because a local-feature pending-write gate remains set; diagnostics are being narrowed without removing the guard. The tested restored work tab has no draft/attachment after restart; stable draft identity is under investigation. Menu Quit exits the browser0, but the guardian forces remaining descendants; graceful daemon drain is under investigation. Exact working/failed/untested checkpoint: `fresh-startup-milestone-a42/actual-focused-browser-checks-a17.json`.
+
+The A14 fix corrects a UUID-symbolized first-window constructor crash by creating BrowserActiveStateManager before the organization activation subscriber. A15 retains genuine ordinary storage authority while rechecking live process/parent/private roots/generation/journals; sensitive validation remains full. A16 waits for genuine ordinary journal lock handoff. A17 uses the HTTP adapter's own request constructor so shutdown tracking can clone its lightweight requests; this fixes the observed empty500 before health routing. Every failed preimage and exact patch/build/signing receipt is preserved.
+
+Account-dependent BYOK/eligible ChatGPT AI and extensions/1Password/native messaging remain explicit untested follow-ups. Privileged tasks/addons remain disabled; legacy profiles are refused, migration/advanced recovery deferred. Genuine pointer-hover animation cannot be rechecked with the current input API. CLI routing is packaged but unverified and does not block the first usable browser. No new feature batch.
+
+# Historical A13 checkpoint: startup blocked — 2026-10-25
 
 The assembled A45 candidate now contains the A49 browser/framework, A53 daemon, unchanged supplied UI revision33 and inactive packaged CLI. All17 local signatures verify under the owner's bounded authorization. The accepted app, owner profiles/credentials and UI remain untouched. No new scope, provisioning, OS grant, notarization or release occurred.
 
