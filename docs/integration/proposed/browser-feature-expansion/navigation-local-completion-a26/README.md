@@ -1,0 +1,11 @@
+# Local navigation completion — A26
+
+This source-only slice closes two concrete native consumer gaps while preserving the current UI.
+
+The ordinary primary profile popup now explicitly owns both its non-View delegate and client-owned native Widget, using the existing CreateBubble/MakeCloseSynchronous idiom. A fixed native owner map retains the pair until genuine close, removes only the matching Widget, and defers deletion out of native/activation observer stacks. Widget destruction precedes delegate destruction. Native WindowClosing still moves and posts the original source/epoch-fenced action; it cannot execute twice. Replacing a menu cannot let an old native callback delete a newer owner. Supervised creation remains unchanged. This fixes repeated normal popup delegate leakage without new ownership passkeys, visual changes or release claims. The normal platform DeleteSoon shutdown limitation is retained; no privileged cleanup certificate is claimed.
+
+Settings/chat route requests now obtain actual daemon authorization through its asynchronous native API rather than snapshotting an empty/expired token at construction. An original profile/window/epoch-bound intent waits at most ten seconds for a real authorization event; time alone never makes it ready. A real HTTP401 permits exactly one native forced-authorization retry. Redirects/cookies remain prohibited, responses remain bounded, the real account-resolver result remains mandatory, and profile/epoch changes retire the intent. The original local-service failure UI remains the terminal outcome. No fallback account, fabricated token or provider request is introduced.
+
+The actual earlier Settings symptom did not retain HTTP status. These source defects are concrete; whether they were the exclusive cause of that earlier run remains unproven. Root must verify immediate Settings after profile activation against the real app.
+
+Two native source owners and five count-checked anchors; exact before/output hashes and API facts are retained in source-plan.json/source-check.json. Root exclusively compiles, builds, signs within approved scope and performs the bounded real popup/Settings checks. No app, helper, owner-profile, provider, build or signing action occurred in this lane. Cmd+T/K/L palette fallback investigation continues separately.

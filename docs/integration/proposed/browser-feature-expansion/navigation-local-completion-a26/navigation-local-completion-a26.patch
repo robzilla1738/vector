@@ -1,0 +1,199 @@
+--- a/chrome/browser/ui/views/frame/aux_sidebar_view.cc
++++ b/chrome/browser/ui/views/frame/aux_sidebar_view.cc
+@@ -888,0 +889,51 @@
++#if defined(AUX_BROWSER_ONLY_NATIVE_STARTUP)
++// The client owns both objects. Destroy the Widget before its non-View delegate
++// and defer deletion out of native widget/activation observer iterations.
++struct OwnedPrimaryProfileMenu {
++  std::unique_ptr<views::BubbleDialogDelegate> delegate;
++  std::unique_ptr<views::Widget> widget;
++  ~OwnedPrimaryProfileMenu() {
++    widget.reset();
++    delegate.reset();
++  }
++};
++using OwnedPrimaryProfileMenus =
++    std::map<BrowserWindowInterface*, std::unique_ptr<OwnedPrimaryProfileMenu>>;
++OwnedPrimaryProfileMenus& PrimaryProfileMenuOwners() {
++  static base::NoDestructor<OwnedPrimaryProfileMenus> owners;
++  return *owners;
++}
++void CloseOwnedPrimaryProfileMenu(BrowserWindowInterface* browser,
++                                  views::Widget* expected,
++                                  views::Widget::ClosedReason) {
++  auto& owners = PrimaryProfileMenuOwners();
++  const auto found = owners.find(browser);
++  if (found == owners.end() || found->second->widget.get() != expected) return;
++  auto owner = std::move(found->second);
++  owners.erase(found);
++  base::SingleThreadTaskRunner::GetCurrentDefault()->DeleteSoon(
++      FROM_HERE, std::move(owner));
++}
++views::Widget* CreateOwnedPrimaryProfileMenu(
++    BrowserWindowInterface* browser,
++    std::unique_ptr<views::BubbleDialogDelegate> delegate) {
++  auto& owners = PrimaryProfileMenuOwners();
++  // Retiring/replacing an earlier menu must not synchronously delete a Widget
++  // whose native close callback or observer notification is still on-stack.
++  if (const auto old = owners.find(browser); old != owners.end()) {
++    auto retired = std::move(old->second);
++    owners.erase(old);
++    base::SingleThreadTaskRunner::GetCurrentDefault()->DeleteSoon(
++        FROM_HERE, std::move(retired));
++  }
++  auto owner = std::make_unique<OwnedPrimaryProfileMenu>();
++  owner->delegate = std::move(delegate);
++  owner->widget = views::BubbleDialogDelegate::CreateBubble(owner->delegate.get());
++  auto* widget = owner->widget.get();
++  widget->MakeCloseSynchronous(base::BindOnce(
++      &CloseOwnedPrimaryProfileMenu, browser, widget));
++  owners.emplace(browser, std::move(owner));
++  return widget;
++}
++#endif
++
+@@ -1035,0 +1087,3 @@
++#if defined(AUX_BROWSER_ONLY_NATIVE_STARTUP)
++    auto* widget = CreateOwnedPrimaryProfileMenu(browser, std::move(menu));
++#else
+@@ -1037,0 +1092 @@
++#endif
+--- a/chrome/browser/ui/views/frame/aux_chat_navigation.cc
++++ b/chrome/browser/ui/views/frame/aux_chat_navigation.cc
+@@ -10,0 +11 @@
++#include "base/timer/timer.h"
+@@ -14,0 +16,2 @@
++#include "chrome/browser/lifetime/browser_shutdown.h"
++#include "chrome/browser/ui/unload_controller.h"
+@@ -104,2 +107,2 @@
+-        suffix_(std::move(suffix)),
+-        authorization_(BrowserPlatform::Get().authorization()) {}
++        profile_epoch_(GetProfileCookieBindingEpoch(browser.GetProfile())),
++        suffix_(std::move(suffix)) {}
+@@ -107,5 +110,69 @@
+-    if (!profile_ || profile_->IsOffTheRecord() || profile_id_.empty() ||
+-        !authorization_.starts_with("AuxDaemonSessionToken ")) {
+-      Fail();
+-      return;
+-    }
++    if (!Current()) return;
++    BeginAuthorization(false);
++  }
++ private:
++  friend class base::RefCounted<AccountRouteRequest>;
++  ~AccountRouteRequest() = default;
++  bool Current() const {
++    const auto* unload = browser_ ? UnloadController::From(browser_.get()) : nullptr;
++    return !finished_ && browser_ && profile_ && browser_->GetWindow() && unload &&
++        !unload->is_attempting_to_close_browser() && !unload->is_delete_scheduled() &&
++        !browser_shutdown::HasShutdownStarted() && !browser_shutdown::IsTryingToQuit() &&
++        browser_->GetProfile() == profile_.get() && profile_->IsRegularProfile() &&
++        !profile_->IsOffTheRecord() && !profile_id_.empty() && !profile_epoch_.empty() &&
++        GetProfileId(profile_.get()) == profile_id_ &&
++        GetProfileCookieBindingEpoch(profile_.get()) == profile_epoch_ &&
++        !IsProfileCookieRestorePending(profile_.get());
++  }
++  void BeginAuthorization(bool force) {
++    if (!Current()) { Finish(); return; }
++    if (!authorization_timeout_.IsRunning()) {
++      // This bounded wait observes real supervisor authorization; elapsed time
++      // never creates a token or declares the local service ready.
++      authorization_timeout_.Start(FROM_HERE, base::Seconds(10), base::BindOnce(
++          &AccountRouteRequest::Fail, base::WrapRefCounted(this)));
++    }
++    if (!authorization_subscription_) {
++      // The timeout or in-flight native callback retains this request while
++      // this non-inline UI-sequence observer is registered.
++      authorization_subscription_ = BrowserPlatform::Get().ObserveDaemonAuthorization(
++          base::BindRepeating(&AccountRouteRequest::AuthorizationAvailable,
++                              base::Unretained(this)));
++    }
++    RequestAuthorization(force);
++  }
++  void AuthorizationAvailable() {
++    if (authorization_pending_) {
++      authorization_event_pending_ = true;
++      return;
++    }
++    RequestAuthorization(false);
++  }
++  void RequestAuthorization(bool force) {
++    if (!Current()) { Finish(); return; }
++    if (authorization_pending_) return;
++    authorization_pending_ = true;
++    BrowserPlatform::Get().RequestDaemonAuthorization(force, base::BindOnce(
++        &AccountRouteRequest::Authorized, base::WrapRefCounted(this)));
++  }
++  void Authorized(std::optional<std::string> authorization) {
++    authorization_pending_ = false;
++    if (!Current()) { Finish(); return; }
++    if (!authorization || !authorization->starts_with("AuxDaemonSessionToken ") ||
++        authorization->size() <= sizeof("AuxDaemonSessionToken ") - 1) {
++      // Cover authorization becoming available while an earlier unavailable
++      // callback was already queued. Consume that actual event once.
++      if (authorization_event_pending_) {
++        authorization_event_pending_ = false;
++        RequestAuthorization(false);
++      }
++      // Keep the original route only until an actual event or bounded failure.
++      return;
++    }
++    authorization_ = std::move(*authorization);
++    authorization_subscription_ = {};
++    authorization_timeout_.Stop();
++    Send();
++  }
++  void Send() {
++    if (!Current()) { Finish(); return; }
+@@ -153,3 +219,0 @@
+- private:
+-  friend class base::RefCounted<AccountRouteRequest>;
+-  ~AccountRouteRequest() = default;
+@@ -157,5 +221,3 @@
+-    if (!browser_ || !profile_ || browser_->GetProfile() != profile_.get() ||
+-        GetProfileId(profile_.get()) != profile_id_ ||
+-        BrowserPlatform::Get().authorization() != authorization_) return;
+-    const bool ok = loader_->ResponseInfo() && loader_->ResponseInfo()->headers &&
+-        loader_->ResponseInfo()->headers->response_code() == net::HTTP_OK;
++    if (!Current()) { Finish(); return; }
++    const int code = loader_->ResponseInfo() && loader_->ResponseInfo()->headers
++        ? loader_->ResponseInfo()->headers->response_code() : 0;
+@@ -163 +225,10 @@
+-    auto reply = ok && body ? base::JSONReader::ReadDict(*body,
++    if (code == net::HTTP_UNAUTHORIZED && !authorization_retried_) {
++      authorization_retried_ = true;
++      BeginAuthorization(true);
++      return;
++    }
++    if (BrowserPlatform::Get().authorization() != authorization_) {
++      Finish();
++      return;
++    }
++    auto reply = code == net::HTTP_OK && body ? base::JSONReader::ReadDict(*body,
+@@ -172,0 +244 @@
++    Finish();
+@@ -174,0 +247,9 @@
++  void Finish() {
++    // An observer can be the caller while the timeout is the last owner.
++    // Keep this object alive until all member teardown has completed.
++    scoped_refptr<AccountRouteRequest> keep_alive(this);
++    finished_ = true;
++    authorization_subscription_ = {};
++    authorization_timeout_.Stop();
++    loader_.reset();
++  }
+@@ -176 +257,3 @@
+-    if (browser_) chrome::ShowWarningMessageBoxAsync(
++    const bool report = Current();
++    Finish();
++    if (report) chrome::ShowWarningMessageBoxAsync(
+@@ -182 +265,8 @@
+-  const std::string profile_id_, suffix_, authorization_;
++  const std::string profile_id_, profile_epoch_, suffix_;
++  std::string authorization_;
++  bool authorization_pending_ = false;
++  bool authorization_event_pending_ = false;
++  bool authorization_retried_ = false;
++  bool finished_ = false;
++  base::CallbackListSubscription authorization_subscription_;
++  base::OneShotTimer authorization_timeout_;
