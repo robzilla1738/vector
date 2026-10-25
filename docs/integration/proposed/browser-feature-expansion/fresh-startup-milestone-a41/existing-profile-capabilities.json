@@ -1,0 +1,9 @@
+{
+  "installedProfileCount": 14,
+  "profilesMatchingAuxBrowser": 2,
+  "profilesMatchingAuxDaemon": 2,
+  "endpointSecurityProfileCount": 0,
+  "acceptedEmbeddedProfilesInspected": 3,
+  "acceptedEmbeddedProfilesGrantEndpointSecurity": false,
+  "privateFullReport": "/private/tmp/aux-fresh-startup-diagnostics-a41/existing-profile-capabilities.json"
+}

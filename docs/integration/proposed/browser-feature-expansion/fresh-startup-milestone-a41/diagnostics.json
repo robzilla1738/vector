@@ -1,0 +1,68 @@
+{
+  "format": "aux.fresh-startup.diagnostics.v1",
+  "observedAtUtc": "2026-10-25T02:08:48.644907+00:00",
+  "candidate": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-converged-local-20261024-a40/Aux.app",
+  "priorLaunchReceipt": "../converged-local-build-a40/actual-launch-a1.json",
+  "priorNativeExitCode": -9,
+  "gatekeeperAssessment": {
+    "exitCode": 3,
+    "result": "rejected",
+    "output": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-converged-local-20261024-a40/Aux.app: rejected\nsource=no usable signature"
+  },
+  "codesignVerification": {
+    "exitCode": 1,
+    "result": "code object is not signed at all",
+    "architecture": "arm64"
+  },
+  "recentMatchingUnifiedLogsFound": false,
+  "recentMatchingCrashReportFound": false,
+  "sigkillAssessment": "Unsigned executable is rejected by macOS code-signing policy. No matching kernel/amfid crash record was available to independently attribute the earlier SIGKILL.",
+  "existingSigningIdentity": {
+    "name": "Apple Development: Robert Courson (68DV3N28DS)",
+    "sha1": "47ACA5D1CFADD21CFEDC589B4DEED6E2B7A96D90",
+    "team": "9F2JXY8TCK",
+    "certificateSha256": "ff0293a06f20704a1f3b3f2571b3362ef439a2dfb3b0bc90bcf3d5debfc73a1c",
+    "matchesNativePin": true
+  },
+  "platform": {
+    "version": "27.0.1",
+    "build": "26A434"
+  },
+  "requiredCapability": "com.apple.developer.endpoint-security.client",
+  "requiredBy": [
+    "browser primary executable before framework load",
+    "native daemon before rendezvous/bootstrap/Node"
+  ],
+  "sdkReference": {
+    "path": "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/EndpointSecurity/ESClient.h",
+    "entitlementRequirementLine": 818,
+    "requiresRoot": false,
+    "requiresTcc": false
+  },
+  "existingProfiles": {
+    "installedProfileCount": 14,
+    "profilesMatchingAuxBrowser": 2,
+    "profilesMatchingAuxDaemon": 2,
+    "endpointSecurityProfileCount": 0,
+    "acceptedEmbeddedProfilesInspected": 3,
+    "acceptedEmbeddedProfilesGrantEndpointSecurity": false,
+    "privateFullReport": "/private/tmp/aux-fresh-startup-diagnostics-a41/existing-profile-capabilities.json"
+  },
+  "sourceInputs": {
+    "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/app/chrome_exe_main_mac.cc": "371c931919e7455f980e28e0dd8a201a1e86b4f01c23de660a85a75360f5bddc",
+    "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/app/chrome_main_delegate.cc": "c505d4aae2719447e7aa2b3b652cd267b136d74ccc44ce087fbb90252cfb0708",
+    "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/metrics/chrome_feature_list_creator.cc": "7a0355ec29bdd62808d96c81d20ab718cef16d9c8650d1c9bf1305892569f621",
+    "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/profiles/profile_impl.cc": "0dd9073de623a40ce7c1ff5631c33c61c055d9ebf3565f1fa38235f5540189e3",
+    "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/aux/profile_gate.cc": "bb6e9b51233fab3d85e1c44a385fb7296af0a9ee88bd43fa7d9c2eb9a6c609a1",
+    "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/base/process/mac/aux_browser_descendant_engine.cc": "189b9706842f77503d5a25c321817cb6d58b308da1d1623335f09868a286cfab"
+  },
+  "missingDaemonSealedPolicy": true,
+  "sourcePolicyRejectsRequiredEsEntitlement": true,
+  "startupSourceChanged": false,
+  "newAppBuilt": false,
+  "signingPerformed": false,
+  "provisioningPerformed": false,
+  "ownerAppChanged": false,
+  "runtimeAcceptance": false,
+  "machoInventorySha256": "63df96a6f14047e942a76ef0829011b71eb4e7c10b57c471f923ffb9252b0259"
+}

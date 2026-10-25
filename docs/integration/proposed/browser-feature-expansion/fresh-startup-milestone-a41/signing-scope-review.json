@@ -1,0 +1,155 @@
+{
+  "format": "aux.fresh-startup.signing-scope.review.v1",
+  "approvalReady": false,
+  "blockedBy": "No existing Endpoint Security-enabled provisioning profile; startup source/resource corrections and final-byte review still required.",
+  "sourceCandidate": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-converged-local-20261024-a40/Aux.app",
+  "acceptedAppExcluded": true,
+  "identity": "Apple Development: Robert Courson (68DV3N28DS)",
+  "identitySha1": "47ACA5D1CFADD21CFEDC589B4DEED6E2B7A96D90",
+  "team": "9F2JXY8TCK",
+  "certificateSha256": "ff0293a06f20704a1f3b3f2571b3362ef439a2dfb3b0bc90bcf3d5debfc73a1c",
+  "signedCopyOnly": true,
+  "objectsNeedingRepair": [
+    {
+      "codeObject": "Contents/Frameworks/Aux Framework.framework",
+      "executable": "Contents/Frameworks/Aux Framework.framework/Versions/155.0.8059.85/Aux Framework",
+      "unsignedOrInvalidSha256": "98193704b56b20d1dd859dfc7ec70314e2966d202ffeab8ca8dd4ee0695574d3",
+      "executionChecked": false
+    },
+    {
+      "codeObject": "Contents/Frameworks/Aux Framework.framework/Versions/155.0.8059.85/Helpers/Aux Helper (Alerts).app",
+      "executable": "Contents/Frameworks/Aux Framework.framework/Versions/155.0.8059.85/Helpers/Aux Helper (Alerts).app/Contents/MacOS/Aux Helper (Alerts)",
+      "unsignedOrInvalidSha256": "b4ff8b813348a1e4dfc4d0e68d504f139e34219e79240f029740e88e88df6c8c",
+      "executionChecked": false
+    },
+    {
+      "codeObject": "Contents/Frameworks/Aux Framework.framework/Versions/155.0.8059.85/Helpers/Aux Helper (Aperitif Alerts).app",
+      "executable": "Contents/Frameworks/Aux Framework.framework/Versions/155.0.8059.85/Helpers/Aux Helper (Aperitif Alerts).app/Contents/MacOS/Aux Helper (Aperitif Alerts)",
+      "unsignedOrInvalidSha256": "982ea1ed78864a47331f2372ec3d98a96247b33eac8504cc664bc671b1cfd603",
+      "executionChecked": false
+    },
+    {
+      "codeObject": "Contents/Frameworks/Aux Framework.framework/Versions/155.0.8059.85/Helpers/Aux Helper (Aperitif GPU).app",
+      "executable": "Contents/Frameworks/Aux Framework.framework/Versions/155.0.8059.85/Helpers/Aux Helper (Aperitif GPU).app/Contents/MacOS/Aux Helper (Aperitif GPU)",
+      "unsignedOrInvalidSha256": "8d3133a646e608c3d228633fdeb8723ebb1861ce94c1278015f9f5c75c130032",
+      "executionChecked": false
+    },
+    {
+      "codeObject": "Contents/Frameworks/Aux Framework.framework/Versions/155.0.8059.85/Helpers/Aux Helper (Aperitif Renderer).app",
+      "executable": "Contents/Frameworks/Aux Framework.framework/Versions/155.0.8059.85/Helpers/Aux Helper (Aperitif Renderer).app/Contents/MacOS/Aux Helper (Aperitif Renderer)",
+      "unsignedOrInvalidSha256": "54d2ba9a49ba252afbedad27df27abc72e58015ed9e5683d34519b6e50f39d99",
+      "executionChecked": false
+    },
+    {
+      "codeObject": "Contents/Frameworks/Aux Framework.framework/Versions/155.0.8059.85/Helpers/Aux Helper (Aperitif).app",
+      "executable": "Contents/Frameworks/Aux Framework.framework/Versions/155.0.8059.85/Helpers/Aux Helper (Aperitif).app/Contents/MacOS/Aux Helper (Aperitif)",
+      "unsignedOrInvalidSha256": "a781430fc531a980cd605fa3e467b35f2070e42fcdbcca3788144dd107de9cfa",
+      "executionChecked": false
+    },
+    {
+      "codeObject": "Contents/Frameworks/Aux Framework.framework/Versions/155.0.8059.85/Helpers/Aux Helper (GPU).app",
+      "executable": "Contents/Frameworks/Aux Framework.framework/Versions/155.0.8059.85/Helpers/Aux Helper (GPU).app/Contents/MacOS/Aux Helper (GPU)",
+      "unsignedOrInvalidSha256": "fee2aa06352a2a5da6ea8b39a0b3da289f027814e354bb938bce9f4e9bfd670e",
+      "executionChecked": false
+    },
+    {
+      "codeObject": "Contents/Frameworks/Aux Framework.framework/Versions/155.0.8059.85/Helpers/Aux Helper (Renderer).app",
+      "executable": "Contents/Frameworks/Aux Framework.framework/Versions/155.0.8059.85/Helpers/Aux Helper (Renderer).app/Contents/MacOS/Aux Helper (Renderer)",
+      "unsignedOrInvalidSha256": "9f1f7fd40571203511d3e6fb3029cd465645a34e8c24fb44d2f8019900e341d6",
+      "executionChecked": false
+    },
+    {
+      "codeObject": "Contents/Frameworks/Aux Framework.framework/Versions/155.0.8059.85/Helpers/Aux Helper.app",
+      "executable": "Contents/Frameworks/Aux Framework.framework/Versions/155.0.8059.85/Helpers/Aux Helper.app/Contents/MacOS/Aux Helper",
+      "unsignedOrInvalidSha256": "9c3fb3d545c77e7b97cfefd371ba1fbbed10c3a5cf594040bb890b9096c5162d",
+      "executionChecked": false
+    },
+    {
+      "codeObject": "Contents/Frameworks/Aux Framework.framework/Versions/155.0.8059.85/Helpers/app_mode_loader",
+      "executable": "Contents/Frameworks/Aux Framework.framework/Versions/155.0.8059.85/Helpers/app_mode_loader",
+      "unsignedOrInvalidSha256": "10b5b95935260e56a012f7e8bbae1eadc2bb9419e0f9806c1918e00eed5e50c7",
+      "executionChecked": false
+    },
+    {
+      "codeObject": "Contents/Frameworks/Aux Framework.framework/Versions/155.0.8059.85/Helpers/chrome_crashpad_handler",
+      "executable": "Contents/Frameworks/Aux Framework.framework/Versions/155.0.8059.85/Helpers/chrome_crashpad_handler",
+      "unsignedOrInvalidSha256": "61cfe14505c162a86a805634a9a14f826be1aaa47a50720edb5a3b3c1a2568d6",
+      "executionChecked": false
+    },
+    {
+      "codeObject": "Contents/Frameworks/Aux Framework.framework/Versions/155.0.8059.85/Helpers/web_app_shortcut_copier",
+      "executable": "Contents/Frameworks/Aux Framework.framework/Versions/155.0.8059.85/Helpers/web_app_shortcut_copier",
+      "unsignedOrInvalidSha256": "b3640a3cbc8c6fa79edbad0bcf546863e8c44bf4c1c0f8de7deb055b11abce5e",
+      "executionChecked": false
+    },
+    {
+      "codeObject": "Contents/Frameworks/Aux Framework.framework/Versions/155.0.8059.85/Libraries/libaperitif.dylib",
+      "executable": "Contents/Frameworks/Aux Framework.framework/Versions/155.0.8059.85/Libraries/libaperitif.dylib",
+      "unsignedOrInvalidSha256": "1789088defc4a596d29f0096df1636842998873c131b0f5e2bd61e7520d2bc67",
+      "executionChecked": false
+    },
+    {
+      "codeObject": "Contents/Frameworks/Aux Framework.framework/Versions/155.0.8059.85/Libraries/libvk_swiftshader.dylib",
+      "executable": "Contents/Frameworks/Aux Framework.framework/Versions/155.0.8059.85/Libraries/libvk_swiftshader.dylib",
+      "unsignedOrInvalidSha256": "798ef2626f7030ad6bcd952a726bc18b8ce512d5b5c56bd0f620ccafbf8f59ef",
+      "executionChecked": false
+    },
+    {
+      "codeObject": "Contents/Frameworks/Aux Framework.framework/Versions/155.0.8059.85/Libraries/libvulkan.dylib",
+      "executable": "Contents/Frameworks/Aux Framework.framework/Versions/155.0.8059.85/Libraries/libvulkan.dylib",
+      "unsignedOrInvalidSha256": "7368e11025c2f24fb926d4f1a1a46f87ae1f25a8b4f243e4efa36804c6af0bc7",
+      "executionChecked": false
+    },
+    {
+      "codeObject": "Contents/MacOS/Aux",
+      "executable": "Contents/MacOS/Aux",
+      "unsignedOrInvalidSha256": "14e3c895dce3fc294df750da5e220b13f81b61d97a67c8c3a2ccf44d18aae259",
+      "executionChecked": false
+    },
+    {
+      "codeObject": "Contents/Resources/aux/apps/cli/Aux CLI.app",
+      "executable": "Contents/Resources/aux/apps/cli/Aux CLI.app/Contents/MacOS/aux-cli",
+      "unsignedOrInvalidSha256": "f9d14791f20e74c363bbe61729ae5c9eb35ae18bc25c48d767c3205ea21a20c1",
+      "executionChecked": false
+    },
+    {
+      "codeObject": "Contents/Resources/aux/apps/cli/Aux CLI.app",
+      "executable": "Contents/Resources/aux/apps/cli/Aux CLI.app/Contents/MacOS/aux-cli-sea",
+      "unsignedOrInvalidSha256": "6c4eb44167a474ab0d643b031d0f8a7fb5459d0047ce4ef9aacdd92935e8fbb7",
+      "executionChecked": false
+    },
+    {
+      "codeObject": "Contents/Resources/aux/apps/computer-use/Aux Computer Use.app",
+      "executable": "Contents/Resources/aux/apps/computer-use/Aux Computer Use.app/Contents/MacOS/aux-computer-use",
+      "unsignedOrInvalidSha256": "debc03deb3f94eb7e8b50fa88d25e617f970b75f1e515b757b131655ad3dde51",
+      "executionChecked": false
+    },
+    {
+      "codeObject": "Contents/Resources/aux/apps/daemon/Aux Daemon.app",
+      "executable": "Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/MacOS/aux-daemon",
+      "unsignedOrInvalidSha256": "9f8fbef080805bb6ced32edee281c6d32da8ef01e0b26fa2ec3f0dc34284cf92",
+      "executionChecked": false
+    },
+    {
+      "codeObject": "Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/native/node-pty/prebuilds/darwin-arm64/pty.node",
+      "executable": "Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/native/node-pty/prebuilds/darwin-arm64/pty.node",
+      "unsignedOrInvalidSha256": "03f4124086be96716bf1666555aa6d1a2b3d055efd103d5af8b984de5d0c03be",
+      "executionChecked": false
+    },
+    {
+      "codeObject": "Contents/Resources/aux/memory-distribution/memory-runtimes/a3a6ff1214564e80f18999e80e3125da517530794e30661bbf16c320124d4e33/a3a6ff12-1456-5e80-b189-99e80e3125da/aux-memory",
+      "executable": "Contents/Resources/aux/memory-distribution/memory-runtimes/a3a6ff1214564e80f18999e80e3125da517530794e30661bbf16c320124d4e33/a3a6ff12-1456-5e80-b189-99e80e3125da/aux-memory",
+      "unsignedOrInvalidSha256": "b4c7d12efa87ed88515092527c7d1e7d9b43e605f39f03543e2b0e8e7005b3c0",
+      "executionChecked": false
+    }
+  ],
+  "alreadyValidMachOImagesPreserved": 94,
+  "restrictedCapabilityRequiredBy": [
+    "dev.aux.browser",
+    "dev.aux.browser.daemon"
+  ],
+  "cliRoutingNotRequiredForBrowserMilestone": true,
+  "signingPerformed": false,
+  "provisioningAuthorized": false,
+  "releaseAuthorized": false
+}
