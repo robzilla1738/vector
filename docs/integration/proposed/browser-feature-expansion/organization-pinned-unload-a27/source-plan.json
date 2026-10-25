@@ -1,0 +1,82 @@
+{
+  "format": "aux.organization-true-native-unload-a27.v1",
+  "nativeRoot": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src",
+  "predecessorCommit": "d69e7c2e8",
+  "files": [
+    {
+      "path": "chrome/browser/ui/views/frame/aux_organization_window_controller.cc",
+      "inputSha256": "06a4961e47609ce991f640ed136163cf1bd58b3fbcef792676bc7dc55374ca55",
+      "inputSource": "docs/integration/proposed/browser-feature-expansion/organization-local-completion-a26/source/chrome/browser/ui/views/frame/aux_organization_window_controller.cc",
+      "outputSha256": "6fc8fcb12028b37a9ccd2a687be5ffd47b724dd0ced3cffbdd3af736caad4bdb",
+      "source": "docs/integration/proposed/browser-feature-expansion/organization-pinned-unload-a27/source/chrome/browser/ui/views/frame/aux_organization_window_controller.cc",
+      "anchors": [
+        {
+          "find": "#include \"chrome/browser/profiles/profile.h\"\n",
+          "replace": "#include \"chrome/browser/profiles/profile.h\"\n#include \"chrome/browser/resource_coordinator/tab_lifecycle_unit_external.h\"\n",
+          "count": 1
+        },
+        {
+          "find": "  void TitleWasSet(content::NavigationEntry*) override { if (owner_) owner_->TitleChanged(handle_); }\n",
+          "replace": "  void TitleWasSet(content::NavigationEntry*) override { if (owner_) owner_->TitleChanged(handle_); }\n  void AboutToBeDiscarded(content::WebContents* replacement) override {\n    if (!owner_ || !owner_->Current() || !web_contents() || !replacement ||\n        web_contents()->GetBrowserContext() != owner_->profile_ ||\n        replacement->GetBrowserContext() != owner_->profile_) return;\n    // This is Chromium's actual replacement for this exact native tab, before\n    // publication. Retain its draft identity and logical membership, not a\n    // different window's view or a URL-matched record.\n    PageIdentity::Transfer(web_contents(), replacement);\n    if (auto id = GetRememberedPinnedTabEntryId(*web_contents()))\n      RememberPinnedTabEntryId(*replacement, *id);\n    if (auto url = GetRememberedPinnedTabEntryUrl(*web_contents()))\n      RememberPinnedTabEntryUrl(*replacement, *url);\n  }\n",
+          "count": 1
+        },
+        {
+          "find": "void AuxOrganizationWindowController::EnsureSavedThenClose(",
+          "replace": "bool AuxOrganizationWindowController::UnloadViewNow(tabs::TabHandle handle) {\n  auto* tab = handle.Get();\n  if (Protected(tab)) return false;\n  const auto live = views_.find(handle);\n  if (live == views_.end() || live->second.document_id.empty()) return false;\n  const auto logical = live->second.logical_id;\n  const auto document = live->second.document_id;\n  const auto page = PageIdentity::GetOrCreate(profile_, tab->GetContents());\n  const auto alive = weak_.GetWeakPtr();\n  if (model_->GetActiveTab() == tab) {\n    // A retained page must not immediately reload because it stayed selected.\n    // Use this window's existing visible user page, or the real new-tab owner.\n    tabs::TabHandle next;\n    const auto* organization = Organization(browser_.get());\n    if (!organization || organization->blocked() || !ordinary_eligible_) return false;\n    for (auto* candidate : *model_) {\n      auto* contents = candidate->GetContents();\n      if (candidate == tab || !contents || contents->GetBrowserContext() != profile_ ||\n          candidate->IsSplit() || IsBookmarkTabExcluded(candidate, model_) ||\n          (!candidate->IsPinned() && !ordinary_eligible_.Run(*candidate))) continue;\n      const auto* identity = PageIdentity::FromWebContents(contents);\n      if (identity && identity->runtime_owned()) continue;\n      const auto id = GetRememberedPinnedTabEntryId(*contents).value_or(\"\");\n      const auto entry = organization->snapshot().entries.find(id);\n      if (entry != organization->snapshot().entries.end() && !entry->second.archived &&\n          (entry->second.space_id.empty() || entry->second.space_id == active_space_)) {\n        next = candidate->GetHandle(); break;\n      }\n    }\n    if (next.Get()) {\n      model_->ActivateTab(next.Get());\n    } else {\n      NavigateParams params(browser_.get(), GURL(chrome::kChromeUINewTabURL), ui::PAGE_TRANSITION_TYPED);\n      params.disposition = WindowOpenDisposition::NEW_FOREGROUND_TAB;\n      Navigate(&params);\n    }\n  }\n  if (!alive || !Current()) return false;\n  tab = handle.Get();\n  const auto current = views_.find(handle);\n  if (!tab || model_->GetIndexOfTab(tab) < 0 || model_->GetActiveTab() == tab || Protected(tab) ||\n      !tab->GetContents() || current == views_.end() ||\n      current->second.logical_id != logical || current->second.document_id != document ||\n      GetRememberedPinnedTabEntryId(*tab->GetContents()) != logical ||\n      PageIdentity::GetOrCreate(profile_, tab->GetContents()) != page) return false;\n  auto* lifecycle = resource_coordinator::TabLifecycleUnitExternal::FromWebContents(tab->GetContents());\n  if (!lifecycle) return false;\n  const bool discarded = lifecycle->GetTabState() == mojom::LifecycleUnitState::DISCARDED ||\n      lifecycle->DiscardTab(mojom::LifecycleUnitDiscardReason::EXTERNAL);\n  // Chromium may replace WebContents or discard it in place. Both retain this\n  // native tab, history and exact draft identity; neither closes/shared-archives\n  // a logical record. Reacquire after synchronous replacement notifications.\n  if (!alive || !Current()) return false;\n  tab = handle.Get();\n  auto* contents = tab ? tab->GetContents() : nullptr;\n  auto* current_lifecycle = contents\n      ? resource_coordinator::TabLifecycleUnitExternal::FromWebContents(contents) : nullptr;\n  const auto* identity = contents ? PageIdentity::FromWebContents(contents) : nullptr;\n  const bool retained = discarded && tab && model_->GetIndexOfTab(tab) >= 0 && contents &&\n      contents->GetBrowserContext() == profile_ && current_lifecycle &&\n      current_lifecycle->GetTabState() == mojom::LifecycleUnitState::DISCARDED &&\n      identity && identity->id() == page && GetRememberedPinnedTabEntryId(*contents) == logical;\n  if (retained) { QueueReconcile(); Notify(); }\n  return retained;\n}\nvoid AuxOrganizationWindowController::EnsureSavedThenClose(",
+          "count": 1
+        },
+        {
+          "find": "    std::move(reply).Run(CloseViewNow(handle)); return;\n",
+          "replace": "    std::move(reply).Run(UnloadViewNow(handle)); return;\n",
+          "count": 1
+        },
+        {
+          "find": "  if (commands.empty()) { std::move(reply).Run(CloseViewNow(handle)); return; }\n",
+          "replace": "  if (commands.empty()) { std::move(reply).Run(UnloadViewNow(handle)); return; }\n",
+          "count": 1
+        },
+        {
+          "find": "            closed = owner->CloseViewNow(handle);\n",
+          "replace": "            closed = owner->UnloadViewNow(handle);\n",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_organization_window_controller.h",
+      "inputSha256": "338109dda5b04e6991a4213b0fc8baf4c6aa8851689257739e4ebb30daedb283",
+      "inputSource": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/ui/views/frame/aux_organization_window_controller.h",
+      "outputSha256": "e06b4faa835945d21f0bdd0b9e284a5b38759b35e41f7470ff9d32ca73ebc37d",
+      "source": "docs/integration/proposed/browser-feature-expansion/organization-pinned-unload-a27/source/chrome/browser/ui/views/frame/aux_organization_window_controller.h",
+      "anchors": [
+        {
+          "find": "  bool CloseViewNow(tabs::TabHandle);\n",
+          "replace": "  bool CloseViewNow(tabs::TabHandle);\n  bool UnloadViewNow(tabs::TabHandle);\n",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/vertical_tab_strip_region_view.cc",
+      "inputSha256": "fffd13aa4507ec62ae1a964ee932af1e6d595c3d5477dc84a3bf71135efe327e",
+      "inputSource": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.cc",
+      "outputSha256": "9d978c742876beaae888bb4f5cb4bed02b3c48f94037f7330407e9a388eb92b8",
+      "source": "docs/integration/proposed/browser-feature-expansion/organization-pinned-unload-a27/source/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.cc",
+      "anchors": [
+        {
+          "find": "namespace {\nconstexpr int kResizeAreaWidth = 5;\n",
+          "replace": "namespace {\n// The animated clip caches this wrapper's natural size. Forward the actual\n// grid/tree size and visibility notifications across this intermediate View;\n// layout invalidation alone does not clear that clip's preferred-size cache.\nclass AuxPinsContentView final : public views::View {\n  METADATA_HEADER(AuxPinsContentView, views::View)\n protected:\n  void ChildPreferredSizeChanged(views::View*) override { PreferredSizeChanged(); }\n  void ChildVisibilityChanged(views::View*) override { PreferredSizeChanged(); }\n};\nBEGIN_METADATA(AuxPinsContentView)\nEND_METADATA\n\nconstexpr int kResizeAreaWidth = 5;\n",
+          "count": 1
+        },
+        {
+          "find": "  if (organization_window) {\n    auto contents = std::make_unique<views::View>();\n",
+          "replace": "  if (organization_window) {\n    auto contents = std::make_unique<AuxPinsContentView>();\n",
+          "count": 1
+        }
+      ]
+    }
+  ],
+  "patch": "source.patch",
+  "uiStyleChanged": false,
+  "nativeExecuted": false
+}

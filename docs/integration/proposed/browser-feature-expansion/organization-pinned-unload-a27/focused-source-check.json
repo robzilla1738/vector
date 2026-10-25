@@ -1,0 +1,20 @@
+{
+  "format": "aux.organization-native-unload.source-check.v1",
+  "sourcePlanSha256": "3fbf70b5635db2d238f94b2944d9d47e3819176c9b06fafb6e254a26a569d261",
+  "countedAnchors": 9,
+  "independentPatchApplication": true,
+  "actualSourceContracts": {
+    "chrome/browser/resource_coordinator/tab_lifecycle_unit_external.h": "a98339fa8e4fcb82dc8c6b9fb02d97c2aa35b03fc17b8651543fe458a57e8538",
+    "chrome/browser/resource_coordinator/tab_lifecycle_unit.cc": "ce5b827d6e5546a9c324618fed04518a56690dc4e1e229e9f7afd4074b02dd3d",
+    "chrome/browser/ui/tabs/tab_strip_model.cc": "d30702e35ceb70ff0ac6e858702513bdcff424063f56e77f68e1b51144933d7a",
+    "chrome/browser/ui/tabs/tab_model.cc": "fd56c295cbbf4578f47e180cdd3b217c79bae2e02d3d22501459b617aeb4ecb3",
+    "content/public/browser/web_contents_observer.h": "da8805b5e0ef00648a58f8c4b395b29b91a0c5f13dfd2cddc9160592c5051d26",
+    "chrome/browser/ui/aux/page_identity.cc": "f272e5b482d9064670866d0915ab4ba9cdb6af316ba3a083eaf1450cbc356f7d",
+    "components/tabs/public/supports_handles.h": "b5324805b10b7802b6a4055dd12a35941fba29db02b56ad968404d1d5448c218",
+    "ui/views/view.h": "54ccc761d8f2100ba7e38a30a9f4c5dbf601df7f72c26ad88d45d3cd6727849a",
+    "chrome/browser/ui/views/frame/aux_section_clip_view.cc": "d011166114c88a51204a89203e17eeec3c053cf1e4e10b4edd64fdc9473c1525",
+    "chrome/browser/ui/views/tabs/vertical/vertical_pinned_tab_entries_view.cc": "312c1397b07c244762bceea9402b5c6df96d0fdc65d6b1785df0b47f0ab72001"
+  },
+  "nativeProductBuilt": false,
+  "runtimeAccepted": false
+}
