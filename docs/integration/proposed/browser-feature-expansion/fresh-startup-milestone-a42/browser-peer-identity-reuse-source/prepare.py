@@ -33,7 +33,7 @@ newstatic='''    if (!policy.data_->guest_static_code) {
       const auto result = SecCodeCopyStaticCode(guest, kSecCSDefaultFlags, &created);
       OwnedGuestStaticCode owned(created);
       if (result != errSecSuccess || !owned) { InvalidateGuestLocked(policy); return -1; }
-      policy.data_->guest_static_code = std::move(owned);
+      policy.data_->guest_static_code.reset(owned.release());
     }
     SecStaticCodeRef code = policy.data_->guest_static_code.get();
 '''
