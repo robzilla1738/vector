@@ -1,0 +1,21 @@
+{
+  "files": 4,
+  "anchors": 14,
+  "exactReplay": true,
+  "parserFixtureExecuted": false,
+  "receiverFixtureExecuted": false,
+  "nativeBuild": false,
+  "appRun": false,
+  "signing": false,
+  "providerCalls": false,
+  "ownerStateRead": false,
+  "rootRegistrationRequired": {
+    "target": "//chrome/browser/aux:native_cli_open",
+    "defines": [
+      "AUX_BROWSER_ONLY_NATIVE_STARTUP=1"
+    ],
+    "frameworksAdd": [
+      "AppKit.framework"
+    ]
+  }
+}

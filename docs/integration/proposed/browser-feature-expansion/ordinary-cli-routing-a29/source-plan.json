@@ -1,0 +1,118 @@
+{
+  "format": "aux.native.counted-projection.v1",
+  "purpose": "Ordinary OS-receipted local CLI URL/profile routing with exact native destination resolution",
+  "nativeRoot": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src",
+  "files": [
+    {
+      "path": "chrome/browser/aux/cli/AuxCliOpenArguments.h",
+      "inputSha256": "6c9761c47b8d76f2bde4bfadeb78f5b24cbaeba457ad1b0a2b99cf2a6f2e2a6d",
+      "outputSha256": "4ea82b70f1de1461de31f0db31e0871331f00ab8df80c159e7e88f0a92f62e92",
+      "source": "/Users/rcourson/.codex/worktrees/aux-features-navigation/web/docs/integration/proposed/browser-feature-expansion/ordinary-cli-routing-a29/source/chrome/browser/aux/cli/AuxCliOpenArguments.h",
+      "anchors": [
+        {
+          "before": "#include <span>",
+          "after": "#include <span>\n#include <optional>\n#include <string_view>",
+          "expectedCount": 1
+        },
+        {
+          "before": "OpenArguments ParseNativeOpenArguments(std::span<const std::string>);\n}",
+          "after": "OpenArguments ParseNativeOpenArguments(std::span<const std::string>);\n// Bounded data-only ordinary URL envelope. The receiving native OS receipt,\n// actual Profile and normal routing owner provide authority, never these bytes.\nstd::optional<std::string> EncodeNativeOpenEnvelope(const OpenArguments&);\nOpenArguments ParseNativeOpenEnvelope(std::string_view);\n}",
+          "expectedCount": 1
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/aux/cli/AuxCliOpenArguments.cc",
+      "inputSha256": "d2f946689e5f5a6d5c82adbb1c3c685ddc58ac92ab9ef0dbebcd07edb4282f92",
+      "outputSha256": "795627ae62ce2228564c561cb3038a43cc319adc82985bf29aac63d9ac73a824",
+      "source": "/Users/rcourson/.codex/worktrees/aux-features-navigation/web/docs/integration/proposed/browser-feature-expansion/ordinary-cli-routing-a29/source/chrome/browser/aux/cli/AuxCliOpenArguments.cc",
+      "anchors": [
+        {
+          "before": "#include \"AuxCliOpenArguments.h\"\nnamespace aux::cli {\nOpenArguments ParseNativeOpenArguments(std::span<const std::string> args) {\n  if (args.empty() || args.front() != \"open\") return {OpenParseStatus::unsupported,{},{}};\n  if (args.size()==2 && args[1]==\"--help\") return {OpenParseStatus::help,{},{}};\n  OpenArguments parsed; bool literal=false, profile_seen=false;\n  for (size_t i=1;i<args.size();++i) {\n    const auto& item=args[i];\n    if (item.empty() || item.find('\\0')!=std::string::npos) return {};\n    if (!literal && item==\"--\") { literal=true; continue; }\n    if (!literal && (item==\"--profile\" || item.starts_with(\"--profile=\"))) {\n      if (profile_seen) return {};\n      profile_seen=true;\n      if (item==\"--profile\") { if (++i==args.size()) return {}; parsed.profile=args[i]; }\n      else parsed.profile=item.substr(10);\n      if (parsed.profile.empty() || parsed.profile.size()>256 ||\n          parsed.profile.find_first_of(\"/\\\\\\0\",0,3)!=std::string::npos) return {};\n      continue;\n    }\n    if ((!literal && item.front()=='-') || !parsed.url.empty() || item.size()>8192) return {};\n    parsed.url=item;\n  }\n  if (parsed.url.empty()) return {};\n  parsed.status=OpenParseStatus::accepted; return parsed;\n}\n}\n",
+          "after": "#include \"AuxCliOpenArguments.h\"\n#include <utility>\nnamespace aux::cli {\nOpenArguments ParseNativeOpenArguments(std::span<const std::string> args) {\n  if (args.empty() || args.front() != \"open\") return {OpenParseStatus::unsupported,{},{}};\n  if (args.size()==2 && args[1]==\"--help\") return {OpenParseStatus::help,{},{}};\n  OpenArguments parsed; bool literal=false, profile_seen=false;\n  for (size_t i=1;i<args.size();++i) {\n    const auto& item=args[i];\n    if (item.empty() || item.find('\\0')!=std::string::npos) return {};\n    if (!literal && item==\"--\") { literal=true; continue; }\n    if (!literal && (item==\"--profile\" || item.starts_with(\"--profile=\"))) {\n      if (profile_seen) return {};\n      profile_seen=true;\n      if (item==\"--profile\") { if (++i==args.size()) return {}; parsed.profile=args[i]; }\n      else parsed.profile=item.substr(10);\n      if (parsed.profile.empty() || parsed.profile.size()>256 ||\n          parsed.profile.find_first_of(\"/\\\\\\0\",0,3)!=std::string::npos) return {};\n      continue;\n    }\n    if ((!literal && item.front()=='-') || !parsed.url.empty() || item.size()>8192) return {};\n    parsed.url=item;\n  }\n  if (parsed.url.empty()) return {};\n  parsed.status=OpenParseStatus::accepted; return parsed;\n}\n\nnamespace {\nbool ProfileText(std::string_view text) {\n  if (text.size() > 256) return false;\n  for (const unsigned char c : text)\n    if (c < 0x20 || c == 0x7f || c == '/' || c == '\\\\') return false;\n  return true;\n}\nbool HttpText(std::string_view text) {\n  if (text.empty() || text.size() > 8192) return false;\n  const auto colon = text.find(\"://\");\n  if (colon == std::string_view::npos) return false;\n  std::string scheme(text.substr(0, colon));\n  for (char& c : scheme) if (c >= 'A' && c <= 'Z') c += 'a' - 'A';\n  if (scheme != \"http\" && scheme != \"https\") return false;\n  const auto rest = text.substr(colon + 3);\n  const auto authority = rest.substr(0, rest.find_first_of(\"/?#\"));\n  if (authority.empty() || authority.find('@') != std::string_view::npos) return false;\n  for (const unsigned char c : text) if (c <= 0x20 || c == 0x7f) return false;\n  return true;\n}\nstd::string EncodeField(std::string_view input) {\n  constexpr std::string_view hex = \"0123456789ABCDEF\";\n  std::string output;\n  for (const unsigned char c : input) {\n    if ((c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') ||\n        (c >= '0' && c <= '9') || c == '-' || c == '_' || c == '.' || c == '~') {\n      output.push_back(static_cast<char>(c));\n    } else {\n      output.push_back('%'); output.push_back(hex.at(c >> 4));\n      output.push_back(hex.at(c & 15));\n    }\n  }\n  return output;\n}\nint Hex(char c) {\n  if (c >= '0' && c <= '9') return c - '0';\n  if (c >= 'A' && c <= 'F') return c - 'A' + 10;\n  if (c >= 'a' && c <= 'f') return c - 'a' + 10;\n  return -1;\n}\nstd::optional<std::string> DecodeField(std::string_view input, size_t limit) {\n  std::string output;\n  while (!input.empty()) {\n    char c = input.front(); input.remove_prefix(1);\n    if (c == '+') return std::nullopt;  // Literal plus must be percent-encoded.\n    if (c == '%') {\n      if (input.size() < 2) return std::nullopt;\n      const int high = Hex(input.front()); input.remove_prefix(1);\n      const int low = Hex(input.front()); input.remove_prefix(1);\n      if (high < 0 || low < 0) return std::nullopt;\n      c = static_cast<char>(high * 16 + low);\n    }\n    if (!c || output.size() == limit) return std::nullopt;\n    output.push_back(c);\n  }\n  return output;\n}\n}  // namespace\nstd::optional<std::string> EncodeNativeOpenEnvelope(const OpenArguments& args) {\n  if (args.status != OpenParseStatus::accepted || !HttpText(args.url) ||\n      !ProfileText(args.profile)) return std::nullopt;\n  std::string result = \"aux://open?url=\" + EncodeField(args.url);\n  if (!args.profile.empty()) result += \"&profile=\" + EncodeField(args.profile);\n  return result.size() <= 32768 ? std::make_optional(std::move(result)) : std::nullopt;\n}\nOpenArguments ParseNativeOpenEnvelope(std::string_view envelope) {\n  if (envelope.empty() || envelope.size() > 32768 ||\n      envelope.find('#') != std::string_view::npos) return {};\n  if (envelope.starts_with(\"aux://open?\")) envelope.remove_prefix(11);\n  else if (envelope.starts_with(\"aux://open/?\")) envelope.remove_prefix(12);\n  else return {};\n  OpenArguments result;\n  bool url_seen = false, profile_seen = false;\n  for (;;) {\n    const auto separator = envelope.find('&');\n    const auto field = envelope.substr(0, separator);\n    const auto equal = field.find('=');\n    if (equal == std::string_view::npos) return {};\n    const auto key = field.substr(0, equal);\n    if (key == \"url\" && !url_seen) {\n      auto value = DecodeField(field.substr(equal + 1), 8192);\n      if (!value || !HttpText(*value)) return {};\n      result.url = std::move(*value); url_seen = true;\n    } else if (key == \"profile\" && !profile_seen) {\n      auto value = DecodeField(field.substr(equal + 1), 256);\n      if (!value || value->empty() || !ProfileText(*value)) return {};\n      result.profile = std::move(*value); profile_seen = true;\n    } else return {};\n    if (separator == std::string_view::npos) break;\n    envelope.remove_prefix(separator + 1);\n    if (envelope.empty()) return {};\n  }\n  if (!url_seen) return {};\n  result.status = OpenParseStatus::accepted;\n  return result;\n}\n}\n",
+          "expectedCount": 1
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/aux/cli/AuxNativeCliFrontend.mm",
+      "inputSha256": "cd79cf887952b79cb9a8cd3b4e226a1e5bb81ec5ff02f0b5d4dd1f0134e3793c",
+      "outputSha256": "64b0b1771bed0434bc4608709dd7f07c0b424c5dfa4a29321850145bff2ccb04",
+      "source": "/Users/rcourson/.codex/worktrees/aux-features-navigation/web/docs/integration/proposed/browser-feature-expansion/ordinary-cli-routing-a29/source/chrome/browser/aux/cli/AuxNativeCliFrontend.mm",
+      "anchors": [
+        {
+          "before": "#include <vector>",
+          "after": "#include <vector>\n#if defined(AUX_BROWSER_ONLY_NATIVE_STARTUP)\n#import <AppKit/AppKit.h>\n#include <atomic>\n#include <memory>\n#endif",
+          "expectedCount": 1
+        },
+        {
+          "before": "int main(int argc,char* argv[]){",
+          "after": "#if defined(AUX_BROWSER_ONLY_NATIVE_STARTUP)\nnamespace {\nint DispatchOrdinaryOpen(const std::string& root, const aux::cli::OpenArguments& parsed) {\n  const auto envelope = aux::cli::EncodeNativeOpenEnvelope(parsed);\n  constexpr std::string_view suffix = \"/Contents/Resources/aux\";\n  if (!envelope || !root.ends_with(suffix) || root.size() <= suffix.size()) {\n    std::cerr << \"Aux open requires one HTTP(S) URL and an optional exact profile name or ID\\n\";\n    return 64;\n  }\n  const std::string app = root.substr(0, root.size() - suffix.size());\n  NSString* app_path = [[NSString alloc] initWithBytes:app.data() length:app.size()\n                                           encoding:NSUTF8StringEncoding];\n  NSString* request = [[NSString alloc] initWithBytes:envelope->data() length:envelope->size()\n                                           encoding:NSUTF8StringEncoding];\n  NSURL* app_url = app_path ? [NSURL fileURLWithPath:app_path isDirectory:YES] : nil;\n  NSURL* url = request ? [NSURL URLWithString:request] : nil;\n  if (!app_url || !url) return 64;\n  auto status = std::make_shared<std::atomic_int>(-1);\n  NSWorkspaceOpenConfiguration* config = [NSWorkspaceOpenConfiguration configuration];\n  config.activates = YES;\n  config.createsNewApplicationInstance = NO;\n  [[NSWorkspace sharedWorkspace] openURLs:@[url] withApplicationAtURL:app_url\n      configuration:config completionHandler:^(NSRunningApplication* application, NSError* error) {\n        status->store(application && !error ? 0 : 69);\n      }];\n  NSDate* deadline = [NSDate dateWithTimeIntervalSinceNow:10];\n  while (status->load() < 0 && deadline.timeIntervalSinceNow > 0) {\n    [[NSRunLoop currentRunLoop] runMode:NSDefaultRunLoopMode\n                           beforeDate:[NSDate dateWithTimeIntervalSinceNow:0.05]];\n  }\n  const int code = status->load();\n  if (code == 0) {\n    std::cout << \"Aux queued the URL for browser destination validation.\\n\";\n    return 0;\n  }\n  std::cerr << (code < 0 ? \"Aux OS dispatch result is unknown; the request may still arrive.\\n\"\n                        : \"Aux could not dispatch this request to its browser app.\\n\");\n  return code < 0 ? 75 : code;\n}\n}  // namespace\n#endif\nint main(int argc,char* argv[]){",
+          "expectedCount": 1
+        },
+        {
+          "before": " return aux::cli::ForwardTerminalInvocation(argc,argv);",
+          "after": "#if defined(AUX_BROWSER_ONLY_NATIVE_STARTUP)\n // An OS URL receipt is ordinary external navigation only. It does not grant\n // task execution, installation ownership or privileged CLI peer admission.\n return DispatchOrdinaryOpen(root,parsed);\n#else\n return aux::cli::ForwardTerminalInvocation(argc,argv);\n#endif",
+          "expectedCount": 1
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/aux/routing/external_routing_ingress.cc",
+      "inputSha256": "1995d054d20ed10f5406b673fdb938b83bb95c288b2cba478080a1ca05b642b2",
+      "outputSha256": "1bc09c694285586c79a96e8e83b95b66e41c7b16419c33b7f8ae86d49738207a",
+      "source": "/Users/rcourson/.codex/worktrees/aux-features-navigation/web/docs/integration/proposed/browser-feature-expansion/ordinary-cli-routing-a29/source/chrome/browser/aux/routing/external_routing_ingress.cc",
+      "anchors": [
+        {
+          "before": "#include \"chrome/browser/aux/routing/routing_service.h\"",
+          "after": "#include \"chrome/browser/aux/routing/routing_service.h\"\n#include \"chrome/browser/aux/cli/AuxCliOpenArguments.h\"\n#include \"base/strings/string_util.h\"",
+          "expectedCount": 1
+        },
+        {
+          "before": "  return tab.aux_native_external_receipt && tab.url.SchemeIsHTTPOrHTTPS();",
+          "after": "  return tab.aux_native_external_receipt &&\n      (tab.url.SchemeIsHTTPOrHTTPS() || tab.url.SchemeIs(\"aux\"));",
+          "expectedCount": 1
+        },
+        {
+          "before": "    Intent intent{.url = tab.url, .authority = Authority::kExternal};\n    // Open repeats",
+          "after": "    Intent intent{.url = tab.url, .authority = Authority::kExternal};\n    auto fallback_tab = tab;\n    if (tab.url.SchemeIs(\"aux\")) {\n      const auto parsed = cli::ParseNativeOpenEnvelope(tab.url.spec());\n      const GURL inner(parsed.url);\n      if (parsed.status != cli::OpenParseStatus::accepted ||\n          !base::IsStringUTF8(parsed.profile) || !inner.is_valid() ||\n          !inner.SchemeIsHTTPOrHTTPS() || inner.has_username() || inner.has_password() ||\n          inner.spec().size() > 8192) {\n        ++refused_;\n        Continue();\n        return;\n      }\n      intent.url = inner;\n      intent.profile = parsed.profile;\n      fallback_tab.url = inner;\n    }\n    // Open repeats",
+          "expectedCount": 1
+        },
+        {
+          "before": "         base::BindOnce(&ExternalBatch::Opened, base::RetainedRef(this)));",
+          "after": "         base::BindOnce(&ExternalBatch::Opened, base::RetainedRef(this),\n                        std::move(fallback_tab)));",
+          "expectedCount": 1
+        },
+        {
+          "before": "  void Opened(base::DictValue result) {",
+          "after": "  void Opened(StartupTab fallback_tab, base::DictValue result) {",
+          "expectedCount": 1
+        },
+        {
+          "before": "      NativeFallback(tabs_[index_ - 1]);",
+          "after": "      NativeFallback(fallback_tab);",
+          "expectedCount": 1
+        },
+        {
+          "before": "      !Local() || !Local()->FindPreference(kRulesPref) ||\n      Local()->GetDict(kRulesPref).empty()) return false;\n  bool handled = false;",
+          "after": "      !Local() || !Local()->FindPreference(kRulesPref)) return false;\n  bool has_native_envelope = false;\n  for (const auto& tab : tabs)\n    has_native_envelope |= tab.aux_native_external_receipt && tab.url.SchemeIs(\"aux\");\n  if (Local()->GetDict(kRulesPref).empty() && !has_native_envelope) return false;\n  bool handled = false;",
+          "expectedCount": 1
+        },
+        {
+          "before": "    if (!Eligible(tab)) continue;\n    const auto result = Resolve(profile,",
+          "after": "    if (!Eligible(tab)) continue;\n    // Consume even malformed native Aux envelopes; never fall through to a\n    // different handler/profile or derive authority from inner query fields.\n    if (tab.url.SchemeIs(\"aux\")) { handled = true; continue; }\n    const auto result = Resolve(profile,",
+          "expectedCount": 1
+        }
+      ]
+    }
+  ],
+  "rootRegistrationRequired": {
+    "target": "//chrome/browser/aux:native_cli_open",
+    "defines": [
+      "AUX_BROWSER_ONLY_NATIVE_STARTUP=1"
+    ],
+    "frameworksAdd": [
+      "AppKit.framework"
+    ]
+  }
+}

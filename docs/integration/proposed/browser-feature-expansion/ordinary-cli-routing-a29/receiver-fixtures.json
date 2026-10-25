@@ -1,0 +1,13 @@
+{
+  "format": "aux.cli-native-receiver-fixtures.v1",
+  "cases": [
+    {"receipt": false, "input": "aux://open?url=https%3A%2F%2Fexample.test", "expected": "not eligible; no native external authority"},
+    {"receipt": true, "input": "aux://open?url=https%3A%2F%2Fexample.test&profile=Work", "rulesTarget": "Personal", "expected": "actual exact Work target wins over automatic rule"},
+    {"receipt": true, "input": "aux://open?url=https%3A%2F%2Fexample.test&profile=Missing", "expected": "consume with native destination error; never other-profile fallback"},
+    {"receipt": true, "input": "aux://open?url=https%3A%2F%2Fexample.test&profile=Duplicated", "matchingNativeNames": 2, "expected": "consume with native ambiguity error"},
+    {"receipt": true, "input": "aux://open?url=https%3A%2F%2Fexample.test", "rulesTarget": null, "expected": "clear one-use receipt; native fallback receives inner HTTPS URL and original selected Profile"},
+    {"receipt": true, "input": "aux://open?url=javascript%3Aalert%281%29", "expected": "consume malformed envelope; no navigation/fallback"}
+  ],
+  "executed": false,
+  "note": "Receiver cases require root's actual disposable build; they are not mock readiness or UI acceptance. The C++ fixture uses the actual parser source and is supplied unrun."
+}

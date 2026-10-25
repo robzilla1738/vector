@@ -1,0 +1,219 @@
+--- a/chrome/browser/aux/cli/AuxCliOpenArguments.h
++++ b/chrome/browser/aux/cli/AuxCliOpenArguments.h
+@@ -2,0 +3,2 @@
++#include <optional>
++#include <string_view>
+@@ -8,0 +11,4 @@
++// Bounded data-only ordinary URL envelope. The receiving native OS receipt,
++// actual Profile and normal routing owner provide authority, never these bytes.
++std::optional<std::string> EncodeNativeOpenEnvelope(const OpenArguments&);
++OpenArguments ParseNativeOpenEnvelope(std::string_view);
+--- a/chrome/browser/aux/cli/AuxCliOpenArguments.cc
++++ b/chrome/browser/aux/cli/AuxCliOpenArguments.cc
+@@ -1,0 +2 @@
++#include <utility>
+@@ -25,0 +27,7 @@
++
++namespace {
++bool ProfileText(std::string_view text) {
++  if (text.size() > 256) return false;
++  for (const unsigned char c : text)
++    if (c < 0x20 || c == 0x7f || c == '/' || c == '\\') return false;
++  return true;
+@@ -26,0 +35,90 @@
++bool HttpText(std::string_view text) {
++  if (text.empty() || text.size() > 8192) return false;
++  const auto colon = text.find("://");
++  if (colon == std::string_view::npos) return false;
++  std::string scheme(text.substr(0, colon));
++  for (char& c : scheme) if (c >= 'A' && c <= 'Z') c += 'a' - 'A';
++  if (scheme != "http" && scheme != "https") return false;
++  const auto rest = text.substr(colon + 3);
++  const auto authority = rest.substr(0, rest.find_first_of("/?#"));
++  if (authority.empty() || authority.find('@') != std::string_view::npos) return false;
++  for (const unsigned char c : text) if (c <= 0x20 || c == 0x7f) return false;
++  return true;
++}
++std::string EncodeField(std::string_view input) {
++  constexpr std::string_view hex = "0123456789ABCDEF";
++  std::string output;
++  for (const unsigned char c : input) {
++    if ((c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') ||
++        (c >= '0' && c <= '9') || c == '-' || c == '_' || c == '.' || c == '~') {
++      output.push_back(static_cast<char>(c));
++    } else {
++      output.push_back('%'); output.push_back(hex.at(c >> 4));
++      output.push_back(hex.at(c & 15));
++    }
++  }
++  return output;
++}
++int Hex(char c) {
++  if (c >= '0' && c <= '9') return c - '0';
++  if (c >= 'A' && c <= 'F') return c - 'A' + 10;
++  if (c >= 'a' && c <= 'f') return c - 'a' + 10;
++  return -1;
++}
++std::optional<std::string> DecodeField(std::string_view input, size_t limit) {
++  std::string output;
++  while (!input.empty()) {
++    char c = input.front(); input.remove_prefix(1);
++    if (c == '+') return std::nullopt;  // Literal plus must be percent-encoded.
++    if (c == '%') {
++      if (input.size() < 2) return std::nullopt;
++      const int high = Hex(input.front()); input.remove_prefix(1);
++      const int low = Hex(input.front()); input.remove_prefix(1);
++      if (high < 0 || low < 0) return std::nullopt;
++      c = static_cast<char>(high * 16 + low);
++    }
++    if (!c || output.size() == limit) return std::nullopt;
++    output.push_back(c);
++  }
++  return output;
++}
++}  // namespace
++std::optional<std::string> EncodeNativeOpenEnvelope(const OpenArguments& args) {
++  if (args.status != OpenParseStatus::accepted || !HttpText(args.url) ||
++      !ProfileText(args.profile)) return std::nullopt;
++  std::string result = "aux://open?url=" + EncodeField(args.url);
++  if (!args.profile.empty()) result += "&profile=" + EncodeField(args.profile);
++  return result.size() <= 32768 ? std::make_optional(std::move(result)) : std::nullopt;
++}
++OpenArguments ParseNativeOpenEnvelope(std::string_view envelope) {
++  if (envelope.empty() || envelope.size() > 32768 ||
++      envelope.find('#') != std::string_view::npos) return {};
++  if (envelope.starts_with("aux://open?")) envelope.remove_prefix(11);
++  else if (envelope.starts_with("aux://open/?")) envelope.remove_prefix(12);
++  else return {};
++  OpenArguments result;
++  bool url_seen = false, profile_seen = false;
++  for (;;) {
++    const auto separator = envelope.find('&');
++    const auto field = envelope.substr(0, separator);
++    const auto equal = field.find('=');
++    if (equal == std::string_view::npos) return {};
++    const auto key = field.substr(0, equal);
++    if (key == "url" && !url_seen) {
++      auto value = DecodeField(field.substr(equal + 1), 8192);
++      if (!value || !HttpText(*value)) return {};
++      result.url = std::move(*value); url_seen = true;
++    } else if (key == "profile" && !profile_seen) {
++      auto value = DecodeField(field.substr(equal + 1), 256);
++      if (!value || value->empty() || !ProfileText(*value)) return {};
++      result.profile = std::move(*value); profile_seen = true;
++    } else return {};
++    if (separator == std::string_view::npos) break;
++    envelope.remove_prefix(separator + 1);
++    if (envelope.empty()) return {};
++  }
++  if (!url_seen) return {};
++  result.status = OpenParseStatus::accepted;
++  return result;
++}
++}
+--- a/chrome/browser/aux/cli/AuxNativeCliFrontend.mm
++++ b/chrome/browser/aux/cli/AuxNativeCliFrontend.mm
+@@ -4,0 +5,5 @@
++#if defined(AUX_BROWSER_ONLY_NATIVE_STARTUP)
++#import <AppKit/AppKit.h>
++#include <atomic>
++#include <memory>
++#endif
+@@ -15,0 +21,41 @@
++#if defined(AUX_BROWSER_ONLY_NATIVE_STARTUP)
++namespace {
++int DispatchOrdinaryOpen(const std::string& root, const aux::cli::OpenArguments& parsed) {
++  const auto envelope = aux::cli::EncodeNativeOpenEnvelope(parsed);
++  constexpr std::string_view suffix = "/Contents/Resources/aux";
++  if (!envelope || !root.ends_with(suffix) || root.size() <= suffix.size()) {
++    std::cerr << "Aux open requires one HTTP(S) URL and an optional exact profile name or ID\n";
++    return 64;
++  }
++  const std::string app = root.substr(0, root.size() - suffix.size());
++  NSString* app_path = [[NSString alloc] initWithBytes:app.data() length:app.size()
++                                           encoding:NSUTF8StringEncoding];
++  NSString* request = [[NSString alloc] initWithBytes:envelope->data() length:envelope->size()
++                                           encoding:NSUTF8StringEncoding];
++  NSURL* app_url = app_path ? [NSURL fileURLWithPath:app_path isDirectory:YES] : nil;
++  NSURL* url = request ? [NSURL URLWithString:request] : nil;
++  if (!app_url || !url) return 64;
++  auto status = std::make_shared<std::atomic_int>(-1);
++  NSWorkspaceOpenConfiguration* config = [NSWorkspaceOpenConfiguration configuration];
++  config.activates = YES;
++  config.createsNewApplicationInstance = NO;
++  [[NSWorkspace sharedWorkspace] openURLs:@[url] withApplicationAtURL:app_url
++      configuration:config completionHandler:^(NSRunningApplication* application, NSError* error) {
++        status->store(application && !error ? 0 : 69);
++      }];
++  NSDate* deadline = [NSDate dateWithTimeIntervalSinceNow:10];
++  while (status->load() < 0 && deadline.timeIntervalSinceNow > 0) {
++    [[NSRunLoop currentRunLoop] runMode:NSDefaultRunLoopMode
++                           beforeDate:[NSDate dateWithTimeIntervalSinceNow:0.05]];
++  }
++  const int code = status->load();
++  if (code == 0) {
++    std::cout << "Aux queued the URL for browser destination validation.\n";
++    return 0;
++  }
++  std::cerr << (code < 0 ? "Aux OS dispatch result is unknown; the request may still arrive.\n"
++                        : "Aux could not dispatch this request to its browser app.\n");
++  return code < 0 ? 75 : code;
++}
++}  // namespace
++#endif
+@@ -50,0 +97,5 @@
++#if defined(AUX_BROWSER_ONLY_NATIVE_STARTUP)
++ // An OS URL receipt is ordinary external navigation only. It does not grant
++ // task execution, installation ownership or privileged CLI peer admission.
++ return DispatchOrdinaryOpen(root,parsed);
++#else
+@@ -51,0 +103 @@
++#endif
+--- a/chrome/browser/aux/routing/external_routing_ingress.cc
++++ b/chrome/browser/aux/routing/external_routing_ingress.cc
+@@ -12,0 +13,2 @@
++#include "chrome/browser/aux/cli/AuxCliOpenArguments.h"
++#include "base/strings/string_util.h"
+@@ -21 +23,2 @@
+-  return tab.aux_native_external_receipt && tab.url.SchemeIsHTTPOrHTTPS();
++  return tab.aux_native_external_receipt &&
++      (tab.url.SchemeIsHTTPOrHTTPS() || tab.url.SchemeIs("aux"));
+@@ -76,0 +80,16 @@
++    auto fallback_tab = tab;
++    if (tab.url.SchemeIs("aux")) {
++      const auto parsed = cli::ParseNativeOpenEnvelope(tab.url.spec());
++      const GURL inner(parsed.url);
++      if (parsed.status != cli::OpenParseStatus::accepted ||
++          !base::IsStringUTF8(parsed.profile) || !inner.is_valid() ||
++          !inner.SchemeIsHTTPOrHTTPS() || inner.has_username() || inner.has_password() ||
++          inner.spec().size() > 8192) {
++        ++refused_;
++        Continue();
++        return;
++      }
++      intent.url = inner;
++      intent.profile = parsed.profile;
++      fallback_tab.url = inner;
++    }
+@@ -80 +99,2 @@
+-         base::BindOnce(&ExternalBatch::Opened, base::RetainedRef(this)));
++         base::BindOnce(&ExternalBatch::Opened, base::RetainedRef(this),
++                        std::move(fallback_tab)));
+@@ -87 +107 @@
+-  void Opened(base::DictValue result) {
++  void Opened(StartupTab fallback_tab, base::DictValue result) {
+@@ -96 +116 @@
+-      NativeFallback(tabs_[index_ - 1]);
++      NativeFallback(fallback_tab);
+@@ -134,2 +154,5 @@
+-      !Local() || !Local()->FindPreference(kRulesPref) ||
+-      Local()->GetDict(kRulesPref).empty()) return false;
++      !Local() || !Local()->FindPreference(kRulesPref)) return false;
++  bool has_native_envelope = false;
++  for (const auto& tab : tabs)
++    has_native_envelope |= tab.aux_native_external_receipt && tab.url.SchemeIs("aux");
++  if (Local()->GetDict(kRulesPref).empty() && !has_native_envelope) return false;
+@@ -138,0 +162,3 @@
++    // Consume even malformed native Aux envelopes; never fall through to a
++    // different handler/profile or derive authority from inner query fields.
++    if (tab.url.SchemeIs("aux")) { handled = true; continue; }
