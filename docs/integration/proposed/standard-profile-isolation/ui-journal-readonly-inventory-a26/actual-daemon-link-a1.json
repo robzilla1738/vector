@@ -1,0 +1,15 @@
+{
+  "format": "aux.ui-transaction-record-journal.daemon-link.actual.v1",
+  "passed": true,
+  "exitCode": 0,
+  "inputManifestSha256": "5c36b2d4d990db16cfa00e487f777c0f0dc51e2666405cfcc31aac27b0767edd",
+  "output": "/private/tmp/aux-ui-journal-inventory-daemon-link-20261024-a26",
+  "productSigned": false,
+  "productExecuted": false,
+  "nativeApiExecuted": false,
+  "migrationActivationAuthorized": false,
+  "runtimeAcceptance": false,
+  "binarySha256": "9f8fbef080805bb6ced32edee281c6d32da8ef01e0b26fa2ec3f0dc34284cf92",
+  "codeSignatureLoadCommandPresent": false,
+  "captureEntryDefinitionCount": 1
+}
