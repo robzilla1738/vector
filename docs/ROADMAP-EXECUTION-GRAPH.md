@@ -2,18 +2,27 @@
 
 ## Active continuation — 2026-10-25
 
+Current checkpoint: A38 is one assembled, unsigned candidate containing A69
+browser/CLI, A63 memory-enabled daemon, UI33 and the paired memory/provider
+source. Package inventory and launcher policy-shape preflight pass. It has not
+run. The exact nineteen-object local signing/new-disposable-namespace review is
+[prepared here](integration/proposed/browser-feature-expansion/local-completion-package-a38/README.md)
+and awaits owner approval. Keep that candidate and its review inputs frozen.
+A25 remains the latest actual-app evidence; no success transfers to A38 merely
+because compilation or packaging passed. No native build is currently pending.
+
 Owner authorized finishing the remaining items in parallel, with the accepted UI preserved and no release. Baseline `cb4f044a3`: assembled A45/A25 candidate runs in the approved disposable scope; actual startup, ordinary isolated-profile windows, shared tabs, draft/TXT restart recovery and observed frame/chat/settings pass. See [current actual result](integration/proposed/browser-feature-expansion/fresh-startup-milestone-a42/RESULT.md). Older blocked-startup and unrun-basic-journey statements below are historical; advanced features and external integrations are not accepted by those basic checks.
 
 | Existing outcomes | Current state and next action | Owner |
 | --- | --- | --- |
-| FX-NAV / FX-FRAME / FX-THEME / FX-PREVIEW | Fix demonstrated immediate Settings warm-up and popup lifetime; actual command/full-URL/shortcuts/minimal/theme/Peek/quick-window checks | navigation source lane; root actual UI |
-| FX-ORG / FX-WINDOWS / FX-CLEAN | Core windows/storage accepted; verify pins/folders/Spaces/archive/cleanup/protected shared close and fix concrete gaps | organization source lane; root actual UI |
-| FX-FILES / FX-SPLIT / FX-TOOLS / FX-COMPAT | Basic TXT accepted; trace disabled indexing/native-helper dependency, verify real splits/files/capture/PiP/extensions | productivity source lane; root actual UI |
-| COLD / EMBED / PACKAGE | Fresh fixed-scope startup accepted; finish normal-launch packaging and clean-install path without accepting owner/legacy state | root |
-| AI | Provider source integrated; real BYOK and eligible subscription consent/stream/cancel/restart/disconnect remain unverified | next free source lane; root authorized account integration |
-| CLOUD / PROD / OPS / FRAME | Reconcile existing source/deployed configuration, public content and backup runner prerequisites; do not duplicate resources or activate production under local authority | next free lane/root |
-| LEGACY | Synthetic upgrade/adoption and interrupted recovery remain open; actual owner state is excluded | next available independent lane after current model fixes |
-| READY | Final coherent candidate and scoped integrated actual journeys; no source-only completion claim | root |
+| FX-NAV / FX-FRAME / FX-THEME / FX-PREVIEW | Warm-up/popup/Peek repairs compiled and packaged. CmdT/K centered palette still has an actual A25 failure; A38 adds refusal diagnostics, not proof of a functional fix. Observe exact failure after approved launch, fix only demonstrated cause, then check full URL/shortcuts/theme/quick window. | root actual app after approval |
+| FX-ORG / FX-WINDOWS / FX-CLEAN | A25 basic shared windows/drafts passed; Space-save/pin-layout/real-discard/stale-close/profile-selector corrections are in A38. Actual organization/cleanup/protected-close and new popup journeys remain unaccepted. | root actual app after approval |
+| FX-FILES / FX-SPLIT / FX-TOOLS / FX-COMPAT | Basic TXT and extension-storage isolation passed on A25. A38 finite memory producer/startup custody is fully linked but unsigned/unrun. Three-plus split, files/capture/PiP and extension/autofill/native messaging remain open. General automation is still disabled. Audit the existing native-host dependency without expanding architecture or altering the reviewed candidate. | root actual app; compatibility source audit only |
+| COLD / EMBED / PACKAGE | A25 fixed-scope startup/restart passed. Native OS-user v9 startup, current paired daemon/source/CLI and helper copy are assembled in A38; exact local signing/state authority and actual clean initialization/reopen remain pending. No legacy adoption. | root |
+| AI | Incarnation-bound ChatGPT storage/callbacks, safe errors, selected catalog and direct kernel lock are integrated/packaged;23 provider-free cases pass. Actual BYOK and eligible subscription consent/stream/cancel/restart/disconnect remain unverified. | root authorized account integration after local runtime |
+| CLOUD / PROD / OPS / FRAME | Existing project/health and disabled-payment flags reconciled read-only. Deployed source is older; actual current-source activation/schema/auth/sync/sharing and scheduled runner remain open. No new resource/deployment or hosted inference is authorized by local work. | root after concrete external reviews |
+| LEGACY | Deferred by owner for the fresh-profile milestone. Unknown/legacy/partial state stays refused and preserved. Do not make migration or the deferred task architecture a prerequisite for ordinary fresh browsing, or begin them automatically. Synthetic advanced recovery remains future work with explicit consequences. | deferred; no current implementation lane |
+| READY | Coherent A38 exists, but is not runtime-accepted. Perform the finite scoped app checks after exact approval; repeat only affected failures. Account/native-host/automation/cloud/operations gaps remain explicit and prevent a full-product completion claim. | root |
 
 Dependency: concrete helper/spawn feasibility precedes enabling indexing/native messaging/automation; root explains any larger missing component before expanding it. Source fixes proceed independently of account acceptance. One writer per native file; workers use separate worktrees and return counted patches/commits. Only root projects the shared native tree, serializes builds with `scripts/native-build.py`, drives the actual app and integrates packaging. Existing bounded startup-repair signing authority is not generic approval for new feature objects. No provisioning, new OS grants, owner-state access, production activation or release is implied.
 
