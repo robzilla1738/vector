@@ -1,0 +1,35 @@
+{
+  "format": "aux.cli-inherited-scope.pins.v1",
+  "files": [
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/integration/native-build-a2.json",
+      "sha256": "47c19b1c3ded0fbcf6d6cd9c28ba1d9fa7a6575d81d954b6fbaaa17788a652b2"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/ui-transaction-record-journal-a1/daemon-link-inputs-a3.json",
+      "sha256": "022ec56d97a81617d8f6ace804f1402650ea6671f195408cf6d975552efa85fc"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/ui-transaction-record-journal-a1/actual-daemon-link-a3.json",
+      "sha256": "b49d390bde6e95fc5c53f18ecd5e0122f22ebd84d59cefd3b698e14932bacffc"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/native-credential-lock-a1/source/AuxDevelopmentWorkerHost.cc",
+      "sha256": "660f3a55ab7d3b8a527ceadf01c1a212e7a7bff0afca3546797caa74357b0b87"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/native-credential-lock-a1/compile-review.json",
+      "sha256": "995f6eb7a7a58cf6f82294dbdf9df06573dc77002a493997727650ebdc6aa6ba"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/native-credential-lock-a1/overlay.json",
+      "sha256": "d6bc4ab8f93851383d3a2405b6cdf5ec6981ccf6d5e89ac61271a304b1c6981e"
+    },
+    {
+      "path": "/private/tmp/aux-cli-native-owner-source-20261024-a3/node-development/aux-native-cli-entry.mjs",
+      "sha256": "9cd3b8b8c2d74b11c71488e5c30461985d558a15c663736a0c2e171298f1da9a"
+    }
+  ],
+  "runtimeExecution": false,
+  "implementationGap": "Actual native browser task-to-account/Profile capability producer and admitted child receiver join"
+}
