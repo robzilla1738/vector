@@ -1,0 +1,16 @@
+{
+  "format": "aux.dom-closed-handoff.compile.v1",
+  "requiresMatchingNativeProducer": true,
+  "requiredApi": [
+    "void HandoffAuxUiMigrationRecovery(AuxUiMigrationLease& original, AuxUiLeaseCallback callback);",
+    "void ReadAuxUiMigrationHandoff(AuxUiMigrationLease& original, AuxUiLeaseCallback callback);"
+  ],
+  "generateMojoBeforeCompile": true,
+  "actualRelativeSourceChecksRequired": true,
+  "rootOwnsProjectionAndBuild": true,
+  "actualChangedSources": [
+    "components/services/storage/dom_storage/local_storage_impl.cc",
+    "components/services/storage/dom_storage/session_storage_impl.cc"
+  ],
+  "actualCompilation": false
+}

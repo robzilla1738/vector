@@ -1,0 +1,38 @@
+{
+  "exactReplay": [
+    {
+      "path": "components/services/storage/public/mojom/local_storage_control.mojom",
+      "anchors": 2,
+      "exactReplay": true
+    },
+    {
+      "path": "components/services/storage/public/mojom/session_storage_control.mojom",
+      "anchors": 1,
+      "exactReplay": true
+    },
+    {
+      "path": "components/services/storage/dom_storage/local_storage_impl.h",
+      "anchors": 3,
+      "exactReplay": true
+    },
+    {
+      "path": "components/services/storage/dom_storage/session_storage_impl.h",
+      "anchors": 4,
+      "exactReplay": true
+    },
+    {
+      "path": "components/services/storage/dom_storage/local_storage_impl.cc",
+      "anchors": 6,
+      "exactReplay": true
+    },
+    {
+      "path": "components/services/storage/dom_storage/session_storage_impl.cc",
+      "anchors": 12,
+      "exactReplay": true
+    }
+  ],
+  "closedHandoffNoReleaseOrBegin": true,
+  "nativeReadObservesSameSuccessor": true,
+  "actualCompilation": false,
+  "productExecution": false
+}

@@ -1,0 +1,210 @@
+{
+  "format": "aux.dom-closed-handoff.source.v1",
+  "status": "paired-exact-native-api-awaiting-root-producer-projection",
+  "files": [
+    {
+      "path": "components/services/storage/public/mojom/local_storage_control.mojom",
+      "inputSource": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/native-dom-control-absence-observation-a28/source/components/services/storage/public/mojom/local_storage_control.mojom",
+      "inputSha256": "e7d42b3348c195f39220fb848fa3297d736de13eda025f46d783fb6adfb8ea08",
+      "outputSha256": "3dd72657e4b0c8b43669af7045bddf0d3a2181fd615bd3dc89ace8813dc33336",
+      "source": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/native-dom-closed-handoff-a32/source/components/services/storage/public/mojom/local_storage_control.mojom",
+      "anchors": [
+        {
+          "find": "  bool source_absence_cancellation;\n};",
+          "replace": "  bool source_absence_cancellation;\n  // Same-service closed handoff correlation only; no writer readiness grant.\n  bool handoff_pending;\n  bool handed_off;\n  mojo_base.mojom.UnguessableToken? handoff_original_request;\n  mojo_base.mojom.UnguessableToken? handoff_original_token;\n  mojo_base.mojom.UnguessableToken? handoff_request;\n};",
+          "count": 1
+        },
+        {
+          "find": "  RestoreAuxUiPreferenceRecovery(mojo_base.mojom.UnguessableToken request_id,\n                                mojo_base.mojom.UnguessableToken token)\n      => (AuxUiDomLeaseReply reply);",
+          "replace": "  RestoreAuxUiPreferenceRecovery(mojo_base.mojom.UnguessableToken request_id,\n                                mojo_base.mojom.UnguessableToken token)\n      => (AuxUiDomLeaseReply reply);\n  // No release/reopen: transfer the actual restored owner to a freshly captured\n  // normal lease. new_request is native-controller correlation only.\n  HandoffAuxUiPreferenceRecovery(mojo_base.mojom.UnguessableToken request_id,\n                                mojo_base.mojom.UnguessableToken token,\n                                mojo_base.mojom.UnguessableToken new_request)\n      => (AuxUiDomLeaseReply reply);",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "components/services/storage/public/mojom/session_storage_control.mojom",
+      "inputSource": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/native-dom-control-recovery-a21/source/components/services/storage/public/mojom/session_storage_control.mojom",
+      "inputSha256": "5ba367b18968341f8a85e5d9e7b24c9f4b230f80a991dd174f831d204fa8269d",
+      "outputSha256": "eee17e3d7d54f4e99f893f7ac4ef55139ee36f9b4ce0758e585489c05a5c7cc6",
+      "source": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/native-dom-closed-handoff-a32/source/components/services/storage/public/mojom/session_storage_control.mojom",
+      "anchors": [
+        {
+          "find": "  RestoreAuxUiPreferenceRecovery(mojo_base.mojom.UnguessableToken request_id,\n                                mojo_base.mojom.UnguessableToken token)\n      => (AuxUiDomLeaseReply reply);",
+          "replace": "  RestoreAuxUiPreferenceRecovery(mojo_base.mojom.UnguessableToken request_id,\n                                mojo_base.mojom.UnguessableToken token)\n      => (AuxUiDomLeaseReply reply);\n  // No release/reopen: transfer the actual restored owner to a freshly captured\n  // normal lease. new_request is native-controller correlation only.\n  HandoffAuxUiPreferenceRecovery(mojo_base.mojom.UnguessableToken request_id,\n                                mojo_base.mojom.UnguessableToken token,\n                                mojo_base.mojom.UnguessableToken new_request)\n      => (AuxUiDomLeaseReply reply);",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "components/services/storage/dom_storage/local_storage_impl.h",
+      "inputSource": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/native-dom-control-recovery-a21/source/components/services/storage/dom_storage/local_storage_impl.h",
+      "inputSha256": "910294aff4cbee2afaa5bfdadb7c0e54a45e7aaaf77696124b5d2d27d937b57c",
+      "outputSha256": "16802e5531c19c87b716d8d1dc6d7b4d14ae853dd4eef4093ab07e4de7f64804",
+      "source": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/native-dom-closed-handoff-a32/source/components/services/storage/dom_storage/local_storage_impl.h",
+      "anchors": [
+        {
+          "find": "  void ReleaseAuxUiPreferenceLease(const base::UnguessableToken& request_id, const base::UnguessableToken& token, ReleaseAuxUiPreferenceLeaseCallback callback) override;",
+          "replace": "  void HandoffAuxUiPreferenceRecovery(const base::UnguessableToken& request_id,\n      const base::UnguessableToken& token, const base::UnguessableToken& new_request,\n      HandoffAuxUiPreferenceRecoveryCallback callback) override;\n\n  void ReleaseAuxUiPreferenceLease(const base::UnguessableToken& request_id, const base::UnguessableToken& token, ReleaseAuxUiPreferenceLeaseCallback callback) override;",
+          "count": 1
+        },
+        {
+          "find": "  bool aux_ui_release_pending_ = false;",
+          "replace": "  bool aux_ui_release_pending_ = false;\n  struct AuxUiHandoffReceipt {\n    base::UnguessableToken original_request, original_token, successor_request;\n    std::optional<base::UnguessableToken> successor_token;\n    uint64_t original_generation, successor_generation = 0;\n    bool pending = true, handed_off = false;\n  };\n  // Old native receipts remain separate from the new normal lease/source.\n  std::map<base::UnguessableToken, AuxUiHandoffReceipt> aux_ui_handoffs_;\n  std::optional<base::UnguessableToken> aux_ui_handoff_original_;\n  bool AuxUiHandoffBlocksOperations() const;\n  void ReadAuxUiHandoff(const base::UnguessableToken&, AuxUiReplyCallback);\n  static void AnnotateAuxUiHandoff(AuxUiHandoffReceipt, AuxUiReplyCallback,\n                                  mojom::AuxUiDomLeaseReplyPtr);\n  static void CompleteAuxUiHandoff(base::WeakPtr<LocalStorageImpl>, base::UnguessableToken,\n      base::UnguessableToken, uint64_t, AuxUiReplyCallback,\n      StatusOr<std::unique_ptr<AsyncDomStorageDatabase::AuxUiMigrationLease>>,\n      AsyncDomStorageDatabase::AuxUiSnapshot);",
+          "count": 1
+        },
+        {
+          "find": "    bool pending = true, handed_off = false;",
+          "replace": "    bool pending = true, handed_off = false, service_joined = false;\n    std::unique_ptr<AsyncDomStorageDatabase::AuxUiMigrationLease> original_lease;",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "components/services/storage/dom_storage/session_storage_impl.h",
+      "inputSource": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/native-dom-control-recovery-a21/source/components/services/storage/dom_storage/session_storage_impl.h",
+      "inputSha256": "d92383b5173c3550adb60f37948eb60a0bc3e45893f84cf4f24f91db67157d9d",
+      "outputSha256": "b6fb34fe6cf717b063ae098ac3added7d929be309a770af2f1914fa464f44f87",
+      "source": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/native-dom-closed-handoff-a32/source/components/services/storage/dom_storage/session_storage_impl.h",
+      "anchors": [
+        {
+          "find": "  void ReleaseAuxUiPreferenceLease(const base::UnguessableToken& request_id, const base::UnguessableToken& token, ReleaseAuxUiPreferenceLeaseCallback callback) override;",
+          "replace": "  void HandoffAuxUiPreferenceRecovery(const base::UnguessableToken& request_id,\n      const base::UnguessableToken& token, const base::UnguessableToken& new_request,\n      HandoffAuxUiPreferenceRecoveryCallback callback) override;\n\n  void ReleaseAuxUiPreferenceLease(const base::UnguessableToken& request_id, const base::UnguessableToken& token, ReleaseAuxUiPreferenceLeaseCallback callback) override;",
+          "count": 1
+        },
+        {
+          "find": "  bool aux_ui_release_pending_ = false;",
+          "replace": "  bool aux_ui_release_pending_ = false;\n  struct AuxUiHandoffReceipt {\n    base::UnguessableToken original_request, original_token, successor_request;\n    std::optional<base::UnguessableToken> successor_token;\n    uint64_t original_generation, successor_generation = 0;\n    bool pending = true, handed_off = false;\n  };\n  // Old native receipts remain separate from the new normal lease/source.\n  std::map<base::UnguessableToken, AuxUiHandoffReceipt> aux_ui_handoffs_;\n  std::optional<base::UnguessableToken> aux_ui_handoff_original_;\n  bool AuxUiHandoffBlocksOperations() const;\n  void ReadAuxUiHandoff(const base::UnguessableToken&, AuxUiReplyCallback);\n  static void AnnotateAuxUiHandoff(AuxUiHandoffReceipt, AuxUiReplyCallback,\n                                  mojom::AuxUiDomLeaseReplyPtr);\n  static void CompleteAuxUiHandoff(base::WeakPtr<SessionStorageImpl>, base::UnguessableToken,\n      base::UnguessableToken, uint64_t, AuxUiReplyCallback,\n      StatusOr<std::unique_ptr<AsyncDomStorageDatabase::AuxUiMigrationLease>>,\n      AsyncDomStorageDatabase::AuxUiSnapshot);",
+          "count": 1
+        },
+        {
+          "find": "  std::vector<std::string> aux_ui_frozen_namespaces_;",
+          "replace": "  // Namespace receiver custody keeps its exact original native freeze key\n  // across a closed lease retoken. It is never resumed during handoff.\n  std::optional<base::UnguessableToken> aux_ui_namespace_request_;\n  std::vector<std::string> aux_ui_frozen_namespaces_;",
+          "count": 1
+        },
+        {
+          "find": "    bool pending = true, handed_off = false;",
+          "replace": "    bool pending = true, handed_off = false, service_joined = false;\n    std::unique_ptr<AsyncDomStorageDatabase::AuxUiMigrationLease> original_lease;",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "components/services/storage/dom_storage/local_storage_impl.cc",
+      "inputSource": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/native-dom-control-absence-observation-a28/source/components/services/storage/dom_storage/local_storage_impl.cc",
+      "inputSha256": "514ed3621dde56404c5288a1d97d865fb58a15b385063656f21c444a3deaf27d",
+      "outputSha256": "a7e01368b67d59abe244754f28dddb1a1a7c203d78ff17cd5269d276d1563705",
+      "source": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/native-dom-closed-handoff-a32/source/components/services/storage/dom_storage/local_storage_impl.cc",
+      "anchors": [
+        {
+          "find": "void LocalStorageImpl::ReadAuxUiPreferenceLease(const base::UnguessableToken& request_id, ReadAuxUiPreferenceLeaseCallback callback) {",
+          "replace": "void LocalStorageImpl::ReadAuxUiPreferenceLease(const base::UnguessableToken& request_id, ReadAuxUiPreferenceLeaseCallback callback) {\n  if (aux_ui_handoffs_.contains(request_id)) {\n    ReadAuxUiHandoff(request_id, std::move(callback)); return;\n  }",
+          "count": 1
+        },
+        {
+          "find": "  if (!OwnsAuxUiLease(request, token, aux_ui_generation_) || aux_ui_release_pending_) {",
+          "replace": "  if (!OwnsAuxUiLease(request, token, aux_ui_generation_) || aux_ui_release_pending_ ||\n      (AuxUiHandoffBlocksOperations() && operation != AuxUiOperation::kRead &&\n       operation != AuxUiOperation::kValidate && operation != AuxUiOperation::kRecoveryRead)) {",
+          "count": 1
+        },
+        {
+          "find": "  if (!OwnsAuxUiLease(request_id, token, aux_ui_generation_) || aux_ui_release_pending_ ||\n      !ConvertAuxDomRecovery",
+          "replace": "  if (!OwnsAuxUiLease(request_id, token, aux_ui_generation_) || aux_ui_release_pending_ ||\n      AuxUiHandoffBlocksOperations() || !ConvertAuxDomRecovery",
+          "count": 1
+        },
+        {
+          "find": "  if (!OwnsAuxUiLease(request_id, token, aux_ui_generation_) || aux_ui_release_pending_ ||\n      !ConvertAuxDomTargets",
+          "replace": "  if (!OwnsAuxUiLease(request_id, token, aux_ui_generation_) || aux_ui_release_pending_ ||\n      AuxUiHandoffBlocksOperations() || !ConvertAuxDomTargets",
+          "count": 1
+        },
+        {
+          "find": "  if (!OwnsAuxUiLease(request_id, token, aux_ui_generation_) || aux_ui_release_pending_) {",
+          "replace": "  if (!OwnsAuxUiLease(request_id, token, aux_ui_generation_) || aux_ui_release_pending_ ||\n      AuxUiHandoffBlocksOperations()) {",
+          "count": 1
+        },
+        {
+          "find": "void LocalStorageImpl::StageAuxUiPreferenceTargets(",
+          "replace": "bool LocalStorageImpl::AuxUiHandoffBlocksOperations() const {\n  if (!aux_ui_handoff_original_) return false;\n  auto found = aux_ui_handoffs_.find(*aux_ui_handoff_original_);\n  return found == aux_ui_handoffs_.end() || !found->second.handed_off ||\n      !found->second.service_joined;\n}\nvoid LocalStorageImpl::AnnotateAuxUiHandoff(AuxUiHandoffReceipt receipt,\n    AuxUiReplyCallback callback, mojom::AuxUiDomLeaseReplyPtr reply) {\n  reply->handoff_pending = receipt.pending;\n  reply->handed_off = receipt.handed_off;\n  reply->handoff_original_request = receipt.original_request;\n  reply->handoff_original_token = receipt.original_token;\n  reply->handoff_request = receipt.successor_request;\n  if (receipt.handed_off && !receipt.service_joined) {\n    reply->ok = false; reply->source_ready = false;\n    reply->error = \"Closed native handoff has an uncertain service join; writer gates stay held\";\n  }\n  std::move(callback).Run(std::move(reply));\n}\nvoid LocalStorageImpl::ReadAuxUiHandoff(const base::UnguessableToken& original,\n    AuxUiReplyCallback callback) {\n  auto found = aux_ui_handoffs_.find(original);\n  CHECK(found != aux_ui_handoffs_.end());\n  const auto& receipt = found->second;\n  // The receipt has separate opaque predecessor custody; only its factual\n  // fields are copied into the annotation callback.\n  AuxUiHandoffReceipt observed;\n  observed.original_request = receipt.original_request;\n  observed.original_token = receipt.original_token;\n  observed.successor_request = receipt.successor_request;\n  observed.successor_token = receipt.successor_token;\n  observed.original_generation = receipt.original_generation;\n  observed.successor_generation = receipt.successor_generation;\n  observed.pending = receipt.pending;\n  observed.handed_off = receipt.handed_off;\n  observed.service_joined = receipt.service_joined;\n  if (!receipt.handed_off) {\n    if (OwnsAuxUiLease(receipt.original_request, receipt.original_token,\n                      receipt.original_generation)) {\n      // Observe the one native retained successor. This is not Handoff replay,\n      // a fresh Begin, a write, or a new token request.\n      database_->ReadAuxUiMigrationHandoff(*aux_ui_lease_, base::BindOnce(\n          &LocalStorageImpl::CompleteAuxUiHandoff, weak_ptr_factory_.GetWeakPtr(),\n          receipt.original_request, receipt.original_token,\n          receipt.original_generation, std::move(callback)));\n      return;\n    }\n    AnnotateAuxUiHandoff(std::move(observed), std::move(callback),\n        AuxDomLeaseFailure(aux_ui_request_, aux_ui_lease_.get(),\n            \"Closed native handoff owner remains unknown; retained receipt only\"));\n    return;\n  }\n  auto annotate = base::BindOnce(&LocalStorageImpl::AnnotateAuxUiHandoff,\n      std::move(observed), std::move(callback));\n  if (receipt.successor_token &&\n      OwnsAuxUiLease(receipt.successor_request, *receipt.successor_token,\n                    receipt.successor_generation)) {\n    RunAuxUiOperation(receipt.successor_request, *receipt.successor_token,\n                      AuxUiOperation::kRead, std::move(annotate)); return;\n  }\n  if (receipt.successor_token && aux_ui_released_ &&\n      aux_ui_released_->request == receipt.successor_request &&\n      aux_ui_released_->token == *receipt.successor_token &&\n      aux_ui_released_->generation == receipt.successor_generation &&\n      aux_ui_generation_ == receipt.successor_generation) {\n    std::move(annotate).Run(AuxDomLeaseReleased(receipt.successor_request,\n                                             *receipt.successor_token)); return;\n  }\n  // Historical handoff is not current release, notfound or writer readiness.\n  std::move(annotate).Run(AuxDomLeaseFailure(std::nullopt, nullptr,\n      \"Successor ownership changed; only the historical handoff is observed\"));\n}\nvoid LocalStorageImpl::CompleteAuxUiHandoff(base::WeakPtr<LocalStorageImpl> owner,\n    base::UnguessableToken request, base::UnguessableToken token, uint64_t generation,\n    AuxUiReplyCallback callback,\n    StatusOr<std::unique_ptr<AsyncDomStorageDatabase::AuxUiMigrationLease>> successor,\n    AsyncDomStorageDatabase::AuxUiSnapshot snapshot) {\n  if (owner) {\n    auto known = owner->aux_ui_handoffs_.find(request);\n    if (known != owner->aux_ui_handoffs_.end() && known->second.handed_off) {\n      owner->ReadAuxUiHandoff(request, std::move(callback)); return;\n    }\n  }\n  if (!owner || !owner->OwnsAuxUiLease(request, token, generation) ||\n      owner->aux_ui_handoff_original_ != request) {\n    std::move(callback).Run(AuxDomLeaseFailure(request, nullptr,\n        \"Closed handoff service owner changed; native custody remains unknown\")); return;\n  }\n  auto found = owner->aux_ui_handoffs_.find(request);\n  CHECK(found != owner->aux_ui_handoffs_.end());\n  auto& receipt = found->second;\n  if (!successor.has_value() || !successor.value()) {\n    // No sole successor is discarded. The original native gate and any\n    // partial cohort transfer stay held, with this immutable correlation.\n    auto reply = AuxDomLeaseFailure(owner->aux_ui_request_, owner->aux_ui_lease_.get(),\n        successor.has_value() ? \"Native closed handoff omitted a retained successor\" :\n              successor.error().ToString());\n    reply->handoff_pending = true;\n    reply->handoff_original_request = request;\n    reply->handoff_original_token = token;\n    reply->handoff_request = receipt.successor_request;\n    std::move(callback).Run(std::move(reply)); return;\n  }\n  if (successor.value()->token().is_empty() || successor.value()->token() == token) {\n    // Retain even an impossible native result; do not destroy its owner\n    // or pretend the original token can authorize release.\n    receipt.original_lease = std::move(successor.value());\n    auto reply = AuxDomLeaseFailure(owner->aux_ui_request_, owner->aux_ui_lease_.get(),\n        \"Native closed handoff returned an invalid token; both opaque owners stay held\");\n    reply->handoff_pending = true;\n    reply->handoff_original_request = request;\n    reply->handoff_original_token = token;\n    reply->handoff_request = receipt.successor_request;\n    std::move(callback).Run(std::move(reply)); return;\n  }\n  receipt.original_lease = std::move(owner->aux_ui_lease_);\n  owner->aux_ui_lease_ = std::move(successor.value());\n  owner->aux_ui_request_ = receipt.successor_request;\n  receipt.successor_generation = ++owner->aux_ui_generation_;\n  receipt.successor_token = owner->aux_ui_lease_->token();\n  receipt.pending = false;\n  receipt.handed_off = true;\n  receipt.service_joined = true;\n\n  owner->aux_ui_retired_requests_.insert(request);\n  // Actual successor custody + predecessor receipt precede the Mojo reply.\n  auto reply = AuxDomLeaseSnapshot(receipt.successor_request,\n      *owner->aux_ui_lease_, std::move(snapshot));\n  reply->handoff_original_request = request;\n  reply->handoff_original_token = token;\n  reply->handoff_request = receipt.successor_request;\n  reply->handed_off = true;\n  std::move(callback).Run(std::move(reply));\n}\nvoid LocalStorageImpl::HandoffAuxUiPreferenceRecovery(\n    const base::UnguessableToken& request_id, const base::UnguessableToken& token,\n    const base::UnguessableToken& new_request,\n    HandoffAuxUiPreferenceRecoveryCallback callback) {\n  auto existing = aux_ui_handoffs_.find(request_id);\n  if (existing != aux_ui_handoffs_.end()) {\n    if (existing->second.original_token == token &&\n        existing->second.successor_request == new_request) {\n      ReadAuxUiHandoff(request_id, std::move(callback)); return;\n    }\n    std::move(callback).Run(AuxDomLeaseFailure(aux_ui_request_, aux_ui_lease_.get(),\n        \"Original handoff correlation is immutable\")); return;\n  }\n  if (!OwnsAuxUiLease(request_id, token, aux_ui_generation_) || aux_ui_release_pending_ ||\n      AuxUiHandoffBlocksOperations() || new_request.is_empty() || new_request == request_id ||\n      aux_ui_retired_requests_.contains(new_request) ||\n      aux_ui_retired_requests_.size() >= 63 || aux_ui_handoffs_.size() >= 64 ||\n      aux_ui_generation_ == std::numeric_limits<uint64_t>::max()) {\n    std::move(callback).Run(AuxDomLeaseFailure(aux_ui_request_, aux_ui_lease_.get(),\n        \"Exact retained recovery lease and unused native handoff correlation required\")); return;\n  }\n\n  AuxUiHandoffReceipt pending;\n  pending.original_request = request_id;\n  pending.original_token = token;\n  pending.successor_request = new_request;\n  pending.original_generation = aux_ui_generation_;\n  aux_ui_handoffs_.emplace(request_id, std::move(pending));\n  aux_ui_handoff_original_ = request_id;\n  database_->HandoffAuxUiMigrationRecovery(*aux_ui_lease_, base::BindOnce(\n      &LocalStorageImpl::CompleteAuxUiHandoff, weak_ptr_factory_.GetWeakPtr(), request_id,\n      token, aux_ui_generation_, std::move(callback)));\n}\n\nvoid LocalStorageImpl::StageAuxUiPreferenceTargets(",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "components/services/storage/dom_storage/session_storage_impl.cc",
+      "inputSource": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/native-dom-control-absence-observation-a28/source/components/services/storage/dom_storage/session_storage_impl.cc",
+      "inputSha256": "7e320f44b12372bf21f0c5bf9f2463ad8106ad9d9e0ac2c9f9c71fe60084801e",
+      "outputSha256": "89619aa404a3f2ab750e3bbdd92118a4abc913e523eb0c8ee7d86c2b8cd0e961",
+      "source": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/native-dom-closed-handoff-a32/source/components/services/storage/dom_storage/session_storage_impl.cc",
+      "anchors": [
+        {
+          "find": "void SessionStorageImpl::ReadAuxUiPreferenceLease(const base::UnguessableToken& request_id, ReadAuxUiPreferenceLeaseCallback callback) {",
+          "replace": "void SessionStorageImpl::ReadAuxUiPreferenceLease(const base::UnguessableToken& request_id, ReadAuxUiPreferenceLeaseCallback callback) {\n  if (aux_ui_handoffs_.contains(request_id)) {\n    ReadAuxUiHandoff(request_id, std::move(callback)); return;\n  }",
+          "count": 1
+        },
+        {
+          "find": "  if (!OwnsAuxUiLease(request, token, aux_ui_generation_) || aux_ui_release_pending_) {",
+          "replace": "  if (!OwnsAuxUiLease(request, token, aux_ui_generation_) || aux_ui_release_pending_ ||\n      (AuxUiHandoffBlocksOperations() && operation != AuxUiOperation::kRead &&\n       operation != AuxUiOperation::kValidate && operation != AuxUiOperation::kRecoveryRead)) {",
+          "count": 1
+        },
+        {
+          "find": "  if (!OwnsAuxUiLease(request_id, token, aux_ui_generation_) || aux_ui_release_pending_ ||\n      !ConvertAuxDomRecovery",
+          "replace": "  if (!OwnsAuxUiLease(request_id, token, aux_ui_generation_) || aux_ui_release_pending_ ||\n      AuxUiHandoffBlocksOperations() || !ConvertAuxDomRecovery",
+          "count": 1
+        },
+        {
+          "find": "  if (!OwnsAuxUiLease(request_id, token, aux_ui_generation_) || aux_ui_release_pending_ ||\n      !ConvertAuxDomTargets",
+          "replace": "  if (!OwnsAuxUiLease(request_id, token, aux_ui_generation_) || aux_ui_release_pending_ ||\n      AuxUiHandoffBlocksOperations() || !ConvertAuxDomTargets",
+          "count": 1
+        },
+        {
+          "find": "  if (!OwnsAuxUiLease(request_id, token, aux_ui_generation_) || aux_ui_release_pending_) {",
+          "replace": "  if (!OwnsAuxUiLease(request_id, token, aux_ui_generation_) || aux_ui_release_pending_ ||\n      AuxUiHandoffBlocksOperations()) {",
+          "count": 1
+        },
+        {
+          "find": "void SessionStorageImpl::StageAuxUiPreferenceTargets(",
+          "replace": "bool SessionStorageImpl::AuxUiHandoffBlocksOperations() const {\n  if (!aux_ui_handoff_original_) return false;\n  auto found = aux_ui_handoffs_.find(*aux_ui_handoff_original_);\n  return found == aux_ui_handoffs_.end() || !found->second.handed_off ||\n      !found->second.service_joined;\n}\nvoid SessionStorageImpl::AnnotateAuxUiHandoff(AuxUiHandoffReceipt receipt,\n    AuxUiReplyCallback callback, mojom::AuxUiDomLeaseReplyPtr reply) {\n  reply->handoff_pending = receipt.pending;\n  reply->handed_off = receipt.handed_off;\n  reply->handoff_original_request = receipt.original_request;\n  reply->handoff_original_token = receipt.original_token;\n  reply->handoff_request = receipt.successor_request;\n  if (receipt.handed_off && !receipt.service_joined) {\n    reply->ok = false; reply->source_ready = false;\n    reply->error = \"Closed native handoff has an uncertain service join; writer gates stay held\";\n  }\n  std::move(callback).Run(std::move(reply));\n}\nvoid SessionStorageImpl::ReadAuxUiHandoff(const base::UnguessableToken& original,\n    AuxUiReplyCallback callback) {\n  auto found = aux_ui_handoffs_.find(original);\n  CHECK(found != aux_ui_handoffs_.end());\n  const auto& receipt = found->second;\n  // The receipt has separate opaque predecessor custody; only its factual\n  // fields are copied into the annotation callback.\n  AuxUiHandoffReceipt observed;\n  observed.original_request = receipt.original_request;\n  observed.original_token = receipt.original_token;\n  observed.successor_request = receipt.successor_request;\n  observed.successor_token = receipt.successor_token;\n  observed.original_generation = receipt.original_generation;\n  observed.successor_generation = receipt.successor_generation;\n  observed.pending = receipt.pending;\n  observed.handed_off = receipt.handed_off;\n  observed.service_joined = receipt.service_joined;\n  if (!receipt.handed_off) {\n    if (OwnsAuxUiLease(receipt.original_request, receipt.original_token,\n                      receipt.original_generation)) {\n      // Observe the one native retained successor. This is not Handoff replay,\n      // a fresh Begin, a write, or a new token request.\n      database_->ReadAuxUiMigrationHandoff(*aux_ui_lease_, base::BindOnce(\n          &SessionStorageImpl::CompleteAuxUiHandoff, weak_ptr_factory_.GetWeakPtr(),\n          receipt.original_request, receipt.original_token,\n          receipt.original_generation, std::move(callback)));\n      return;\n    }\n    AnnotateAuxUiHandoff(std::move(observed), std::move(callback),\n        AuxDomLeaseFailure(aux_ui_request_, aux_ui_lease_.get(),\n            \"Closed native handoff owner remains unknown; retained receipt only\"));\n    return;\n  }\n  auto annotate = base::BindOnce(&SessionStorageImpl::AnnotateAuxUiHandoff,\n      std::move(observed), std::move(callback));\n  if (receipt.successor_token &&\n      OwnsAuxUiLease(receipt.successor_request, *receipt.successor_token,\n                    receipt.successor_generation)) {\n    RunAuxUiOperation(receipt.successor_request, *receipt.successor_token,\n                      AuxUiOperation::kRead, std::move(annotate)); return;\n  }\n  if (receipt.successor_token && aux_ui_released_ &&\n      aux_ui_released_->request == receipt.successor_request &&\n      aux_ui_released_->token == *receipt.successor_token &&\n      aux_ui_released_->generation == receipt.successor_generation &&\n      aux_ui_generation_ == receipt.successor_generation) {\n    std::move(annotate).Run(AuxDomLeaseReleased(receipt.successor_request,\n                                             *receipt.successor_token)); return;\n  }\n  // Historical handoff is not current release, notfound or writer readiness.\n  std::move(annotate).Run(AuxDomLeaseFailure(std::nullopt, nullptr,\n      \"Successor ownership changed; only the historical handoff is observed\"));\n}\nvoid SessionStorageImpl::CompleteAuxUiHandoff(base::WeakPtr<SessionStorageImpl> owner,\n    base::UnguessableToken request, base::UnguessableToken token, uint64_t generation,\n    AuxUiReplyCallback callback,\n    StatusOr<std::unique_ptr<AsyncDomStorageDatabase::AuxUiMigrationLease>> successor,\n    AsyncDomStorageDatabase::AuxUiSnapshot snapshot) {\n  if (owner) {\n    auto known = owner->aux_ui_handoffs_.find(request);\n    if (known != owner->aux_ui_handoffs_.end() && known->second.handed_off) {\n      owner->ReadAuxUiHandoff(request, std::move(callback)); return;\n    }\n  }\n  if (!owner || !owner->OwnsAuxUiLease(request, token, generation) ||\n      owner->aux_ui_handoff_original_ != request) {\n    std::move(callback).Run(AuxDomLeaseFailure(request, nullptr,\n        \"Closed handoff service owner changed; native custody remains unknown\")); return;\n  }\n  auto found = owner->aux_ui_handoffs_.find(request);\n  CHECK(found != owner->aux_ui_handoffs_.end());\n  auto& receipt = found->second;\n  if (!successor.has_value() || !successor.value()) {\n    // No sole successor is discarded. The original native gate and any\n    // partial cohort transfer stay held, with this immutable correlation.\n    auto reply = AuxDomLeaseFailure(owner->aux_ui_request_, owner->aux_ui_lease_.get(),\n        successor.has_value() ? \"Native closed handoff omitted a retained successor\" :\n              successor.error().ToString());\n    reply->handoff_pending = true;\n    reply->handoff_original_request = request;\n    reply->handoff_original_token = token;\n    reply->handoff_request = receipt.successor_request;\n    std::move(callback).Run(std::move(reply)); return;\n  }\n  if (successor.value()->token().is_empty() || successor.value()->token() == token) {\n    // Retain even an impossible native result; do not destroy its owner\n    // or pretend the original token can authorize release.\n    receipt.original_lease = std::move(successor.value());\n    auto reply = AuxDomLeaseFailure(owner->aux_ui_request_, owner->aux_ui_lease_.get(),\n        \"Native closed handoff returned an invalid token; both opaque owners stay held\");\n    reply->handoff_pending = true;\n    reply->handoff_original_request = request;\n    reply->handoff_original_token = token;\n    reply->handoff_request = receipt.successor_request;\n    std::move(callback).Run(std::move(reply)); return;\n  }\n  receipt.original_lease = std::move(owner->aux_ui_lease_);\n  owner->aux_ui_lease_ = std::move(successor.value());\n  owner->aux_ui_request_ = receipt.successor_request;\n  receipt.successor_generation = ++owner->aux_ui_generation_;\n  receipt.successor_token = owner->aux_ui_lease_->token();\n  receipt.pending = false;\n  receipt.handed_off = true;\n  receipt.service_joined = owner->aux_ui_namespace_request_ &&\n      !owner->aux_ui_namespaces_resumed_ &&\n      owner->aux_ui_frozen_namespaces_.size() == owner->namespaces_.size();\n  if (receipt.service_joined) {\n    for (const auto& id : owner->aux_ui_frozen_namespaces_) {\n      auto found = owner->namespaces_.find(id);\n      if (found == owner->namespaces_.end() ||\n          !found->second->CanResumeAuxUiMigrationNamespace(*owner->aux_ui_namespace_request_))\n        receipt.service_joined = false;\n    }\n  }\n  if (!receipt.service_joined) {\n    snapshot.source_ready = false;\n    snapshot.native_error = \"Closed handoff retained: original namespace join changed\";\n  }\n\n  owner->aux_ui_retired_requests_.insert(request);\n  // Actual successor custody + predecessor receipt precede the Mojo reply.\n  auto reply = AuxDomLeaseSnapshot(receipt.successor_request,\n      *owner->aux_ui_lease_, std::move(snapshot));\n  reply->handoff_original_request = request;\n  reply->handoff_original_token = token;\n  reply->handoff_request = receipt.successor_request;\n  reply->handed_off = true;\n  std::move(callback).Run(std::move(reply));\n}\nvoid SessionStorageImpl::HandoffAuxUiPreferenceRecovery(\n    const base::UnguessableToken& request_id, const base::UnguessableToken& token,\n    const base::UnguessableToken& new_request,\n    HandoffAuxUiPreferenceRecoveryCallback callback) {\n  auto existing = aux_ui_handoffs_.find(request_id);\n  if (existing != aux_ui_handoffs_.end()) {\n    if (existing->second.original_token == token &&\n        existing->second.successor_request == new_request) {\n      ReadAuxUiHandoff(request_id, std::move(callback)); return;\n    }\n    std::move(callback).Run(AuxDomLeaseFailure(aux_ui_request_, aux_ui_lease_.get(),\n        \"Original handoff correlation is immutable\")); return;\n  }\n  if (!OwnsAuxUiLease(request_id, token, aux_ui_generation_) || aux_ui_release_pending_ ||\n      AuxUiHandoffBlocksOperations() || new_request.is_empty() || new_request == request_id ||\n      aux_ui_retired_requests_.contains(new_request) ||\n      aux_ui_retired_requests_.size() >= 63 || aux_ui_handoffs_.size() >= 64 ||\n      aux_ui_generation_ == std::numeric_limits<uint64_t>::max()) {\n    std::move(callback).Run(AuxDomLeaseFailure(aux_ui_request_, aux_ui_lease_.get(),\n        \"Exact retained recovery lease and unused native handoff correlation required\")); return;\n  }\n\n  if (!aux_ui_namespace_request_ || aux_ui_namespaces_resumed_ ||\n      aux_ui_frozen_namespaces_.size() != namespaces_.size()) {\n    std::move(callback).Run(AuxDomLeaseFailure(aux_ui_request_, aux_ui_lease_.get(),\n        \"Actual frozen namespace custody changed before closed handoff\")); return;\n  }\n  for (const auto& id : aux_ui_frozen_namespaces_) {\n    auto found = namespaces_.find(id);\n    if (found == namespaces_.end() ||\n        !found->second->CanResumeAuxUiMigrationNamespace(*aux_ui_namespace_request_)) {\n      std::move(callback).Run(AuxDomLeaseFailure(aux_ui_request_, aux_ui_lease_.get(),\n          \"Exact original namespace hold is required for closed handoff\")); return;\n    }\n  }\n\n  AuxUiHandoffReceipt pending;\n  pending.original_request = request_id;\n  pending.original_token = token;\n  pending.successor_request = new_request;\n  pending.original_generation = aux_ui_generation_;\n  aux_ui_handoffs_.emplace(request_id, std::move(pending));\n  aux_ui_handoff_original_ = request_id;\n  database_->HandoffAuxUiMigrationRecovery(*aux_ui_lease_, base::BindOnce(\n      &SessionStorageImpl::CompleteAuxUiHandoff, weak_ptr_factory_.GetWeakPtr(), request_id,\n      token, aux_ui_generation_, std::move(callback)));\n}\n\nvoid SessionStorageImpl::StageAuxUiPreferenceTargets(",
+          "count": 1
+        },
+        {
+          "find": "  aux_ui_request_ = request_id;\n  const uint64_t generation",
+          "replace": "  aux_ui_request_ = request_id;\n  aux_ui_namespace_request_ = request_id;\n  const uint64_t generation",
+          "count": 1
+        },
+        {
+          "find": "        aux_ui_namespace_error_.clear();\n        aux_ui_request_.reset();",
+          "replace": "        aux_ui_namespace_error_.clear();\n        aux_ui_namespace_request_.reset();\n        aux_ui_request_.reset();",
+          "count": 1
+        },
+        {
+          "find": "          owner->aux_ui_aborted_ = AuxUiAbortedReceipt{request, generation, error};\n          owner->aux_ui_request_.reset();",
+          "replace": "          owner->aux_ui_aborted_ = AuxUiAbortedReceipt{request, generation, error};\n          owner->aux_ui_namespace_request_.reset();\n          owner->aux_ui_request_.reset();",
+          "count": 1
+        },
+        {
+          "find": "    return DbStatus::IOError(\"Exact native service release owner changed\");\n  if (!owner->ResumeAuxUiNamespaces(request))",
+          "replace": "    return DbStatus::IOError(\"Exact native service release owner changed\");\n  if (!owner->aux_ui_namespace_request_ ||\n      !owner->ResumeAuxUiNamespaces(*owner->aux_ui_namespace_request_))",
+          "count": 1
+        },
+        {
+          "find": "    if (owner->aux_ui_namespaces_resumed_) owner->ReholdAuxUiNamespaces(request);",
+          "replace": "    if (owner->aux_ui_namespaces_resumed_ && owner->aux_ui_namespace_request_)\n      owner->ReholdAuxUiNamespaces(*owner->aux_ui_namespace_request_);",
+          "count": 1
+        },
+        {
+          "find": "  owner->aux_ui_frozen_namespaces_.clear();\n  owner->aux_ui_namespaces_resumed_ = false;",
+          "replace": "  owner->aux_ui_frozen_namespaces_.clear();\n  owner->aux_ui_namespace_request_.reset();\n  owner->aux_ui_namespaces_resumed_ = false;",
+          "count": 1
+        }
+      ]
+    }
+  ],
+  "nativeApi": [
+    "void HandoffAuxUiMigrationRecovery(AuxUiMigrationLease& original, AuxUiLeaseCallback callback);",
+    "void ReadAuxUiMigrationHandoff(AuxUiMigrationLease& original, AuxUiLeaseCallback callback);"
+  ],
+  "predecessorCommits": [
+    "e9a93e122",
+    "6dc72d1b3",
+    "5d437ae6f"
+  ],
+  "nativeBuildOwner": "root"
+}
