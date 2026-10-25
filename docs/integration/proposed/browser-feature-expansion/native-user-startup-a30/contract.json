@@ -1,0 +1,22 @@
+{
+  "format": "aux.native-user-startup-consumer.v1",
+  "policyProducerCommit": "df3ab69ee",
+  "nativeCAPI": "int32_t AuxGetValidatedEmbeddedNativeDaemonLaunchLocationMode(const void* static_code,const void* requirement,const uint8_t* expected_cd_hash,uintptr_t hash_length)",
+  "modes": {"-1": "refusal", "8": "existing fixed disposable v8", "9": "signed native OS-user v9"},
+  "mode9": {
+    "identity": "real UID equals effective UID, nonzero; bounded getpwuid_r(geteuid()), realpath(pw_dir); no HOME/environment selector",
+    "data": "<canonical OS home>/Library/Application Support/Aux Browser/User Data",
+    "control": "<canonical OS home>/Library/Application Support/Aux Browser/Control",
+    "tasks": "<canonical OS home>/Library/Application Support/Aux Browser/Tasks",
+    "cache": "<canonical OS home>/Library/Caches/Aux Browser",
+    "earlyCreator": "C++ creates only fixed private Aux namespace, data and cache after actual signed-pair proof and full preflight",
+    "postSealCreator": "signed daemon loader alone creates Control/Tasks subject to exact empty or genuine existing-pair rules",
+    "ancestors": "existing canonical OS home/Library/Application Support/Caches required; no global directory creation, chmod, ACL reset, deletion or legacy reinterpretation",
+    "helper": "explicit parent data flag + exact package mode + lexical fixed suffix; no getpwuid, private-root reopen or mkdir after seatbelt"
+  },
+  "mainOrdering": ["marker permits attempt", "actual current browser/daemon signature and policy mode", "native OS-user derivation and no caller path/policy redirect", "no-follow retained directory preflight/create", "native user-data/cache selection", "existing private roots capture", "existing sealed daemon launch", "actual 72-byte root/generation startup authorization"],
+  "rootRegistrationRequired": {"target": "chrome/common Mac owner", "define": "AUX_BROWSER_ONLY_NATIVE_STARTUP=1"},
+  "admissionOrInstallationAcceptanceFromMarker": false,
+  "realHomeExecution": false,
+  "compiledOrSignedHere": false
+}

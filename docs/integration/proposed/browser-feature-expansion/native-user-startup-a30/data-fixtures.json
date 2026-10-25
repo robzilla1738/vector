@@ -1,0 +1,24 @@
+{
+  "format": "aux.native-user-startup-data-fixtures.v1",
+  "executed": false,
+  "cases": [
+    {"markerMode": "ordinary-user-v1", "state": 2, "identity": "aux-v1", "sealedMode": 9, "expected": "permit attempt only"},
+    {"markerMode": "ordinary-user-v1", "state": 2, "identity": "aux-v1", "sealedMode": 8, "expected": "refuse before mkdir"},
+    {"markerMode": "ordinary-fresh-v1", "state": 2, "identity": "aux-v1", "sealedMode": 9, "expected": "refuse before mkdir"},
+    {"markerMode": "ordinary-fresh-v1", "state": 2, "identity": "aux-v1", "sealedMode": 8, "expected": "existing exact fixed v8 path only"},
+    {"markerMode": "ordinary-user-v1", "state": 1, "identity": "aux-v1", "sealedMode": 9, "expected": "refuse legacy state"},
+    {"sealedMode": 9, "primaryCallerUserDataFlag": true, "retainedNativeSelection": false, "expected": "refuse without directory creation"},
+    {"sealedMode": 9, "primaryDiskCacheOrProfileFlag": true, "expected": "refuse without directory creation"},
+    {"sealedMode": 9, "syntheticOSHome": "/Users/fixture", "expectedData": "/Users/fixture/Library/Application Support/Aux Browser/User Data", "expectedCache": "/Users/fixture/Library/Caches/Aux Browser", "filesystemAccess": false},
+    {"helperPath": "/Users/fixture/../other/Library/Application Support/Aux Browser/User Data", "expected": "lexical refusal; no private root probes"},
+    {"ancestors": "existing valid held chain", "support": "absent", "cache": "absent", "expected": "create only private fixed namespace/User Data/cache"},
+    {"ancestors": "missing or symlink", "expected": "refuse; no global ancestor creation"},
+    {"support": ["User Data", "Control", "Tasks"], "cache": "present valid", "expected": "metadata-only preflight; genuine daemon existing-pair checks still required"},
+    {"support": ["User Data", "Control"], "cache": "present valid", "expected": "refuse partial pair untouched"},
+    {"support": ["User Data", "unknown"], "cache": "present valid", "expected": "refuse unknown inventory untouched"},
+    {"support": "absent", "cache": "present", "expected": "refuse partial roots untouched"},
+    {"heldDirectoryIdentityOrOwnerChanged": true, "expected": "revalidation refusal; no grant"},
+    {"syntheticSelectedData": "/Users/fixture/Library/Application Support/Aux Browser/User Data", "profile": "Default", "expectedCache": "/Users/fixture/Library/Caches/Aux Browser/Default", "filesystemAccess": false}
+  ],
+  "note": "Finite data contracts only, not a filesystem/security fixture execution or readiness claim. Root owns actual unsigned compilation and any separately approved normal-user launch."
+}

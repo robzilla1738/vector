@@ -1,0 +1,20 @@
+{
+  "files": 5,
+  "anchors": 16,
+  "exactReplay": true,
+  "v8ValidatorBodyPreserved": true,
+  "currentPairModePrecedesMkdir": true,
+  "wrongProcessBeforeSecurityMutexObjects": true,
+  "noHelperPrivateDirectoryProbeAdded": true,
+  "noRealHomeExecution": true,
+  "noFixtureExecution": true,
+  "nativeBuild": false,
+  "signing": false,
+  "ownerStateRead": false,
+  "policyProducerCommit": "df3ab69ee",
+  "rootRegistrationRequired": {
+    "commonMacDefine": "AUX_BROWSER_ONLY_NATIVE_STARTUP=1",
+    "cApi": "AuxGetValidatedEmbeddedNativeDaemonLaunchLocationMode",
+    "policyContract": "native-current-user-location-a29/consumer-contract.h"
+  }
+}
