@@ -1,0 +1,10 @@
+{
+  "files": 1,
+  "anchors": 2,
+  "exactReplay": true,
+  "supervisedDispatchUnchanged": true,
+  "styleChanges": false,
+  "nativeBuildRun": false,
+  "appRun": false,
+  "signing": false
+}

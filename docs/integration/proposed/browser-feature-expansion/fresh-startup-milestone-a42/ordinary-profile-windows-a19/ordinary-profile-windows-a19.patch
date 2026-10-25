@@ -1,0 +1,21 @@
+--- a/chrome/browser/ui/views/frame/aux_sidebar_view.cc
++++ b/chrome/browser/ui/views/frame/aux_sidebar_view.cc
+@@ -30,0 +31 @@
++#include "chrome/browser/aux/ordinary_startup_build.h"
+@@ -823 +824,15 @@
+-#if BUILDFLAG(IS_MAC) && BUILDFLAG(ENABLE_AUX_BROWSER)
++#if defined(AUX_BROWSER_ONLY_NATIVE_STARTUP)
++  const auto source = sender && sender->GetProfile()
++      ? sender->GetProfile()->GetWeakPtr() : base::WeakPtr<Profile>();
++  const auto epoch = source ? aux::GetProfileCookieBindingEpoch(source.get())
++                            : std::string();
++  const auto* state = sender ? BrowserInitState::From(sender.get()) : nullptr;
++  if (path.empty() || !source || !state || state->is_aux_profile_switch_cache() ||
++      sender->GetType() != BrowserWindowInterface::TYPE_NORMAL ||
++      !IsCurrentProfileMenuSource(sender, source, epoch)) {
++    return;
++  }
++  // Ordinary profile selection activates/opens the native isolated window.
++  // Preserve this window's live tabs, unsent drafts and profile-owned services.
++  profiles::SwitchToProfile(path, /*always_create=*/false);
++#elif BUILDFLAG(IS_MAC) && BUILDFLAG(ENABLE_AUX_BROWSER)

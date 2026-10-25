@@ -1,0 +1,31 @@
+{
+  "format": "aux.native.counted-projection.v1",
+  "purpose": "Ordinary-only native isolated profile window selection; no in-place retargeting",
+  "nativeRoot": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src",
+  "dependencies": [
+    {
+      "path": "chrome/browser/aux/ordinary_startup_build.h",
+      "sha256": "e8844b6e7513a10fccfdb905ddc025316678c9ea33fbb4f3e4c1de5f5333dd3c"
+    }
+  ],
+  "files": [
+    {
+      "path": "chrome/browser/ui/views/frame/aux_sidebar_view.cc",
+      "inputSha256": "a9f370351d2962be935ea314ce5451a540eee984e0ecb72327732fe529e75421",
+      "outputSha256": "dcb65fd370f6a161b8b65a255660459b1786fcb8a4889ca78d4640af23544b09",
+      "source": "docs/integration/proposed/browser-feature-expansion/fresh-startup-milestone-a42/ordinary-profile-windows-a19/source/chrome/browser/ui/views/frame/aux_sidebar_view.cc",
+      "anchors": [
+        {
+          "before": "#include \"chrome/browser/aux/installation_auth.h\"",
+          "after": "#include \"chrome/browser/aux/installation_auth.h\"\n#include \"chrome/browser/aux/ordinary_startup_build.h\"",
+          "expectedCount": 1
+        },
+        {
+          "before": "void DispatchSelectedProfile(\n    base::WeakPtr<BrowserWindowInterface> sender, base::FilePath path) {\n#if BUILDFLAG(IS_MAC) && BUILDFLAG(ENABLE_AUX_BROWSER)\n  aux::ProfileSwitchRequest::Dispatch(std::move(sender), std::move(path));",
+          "after": "void DispatchSelectedProfile(\n    base::WeakPtr<BrowserWindowInterface> sender, base::FilePath path) {\n#if defined(AUX_BROWSER_ONLY_NATIVE_STARTUP)\n  const auto source = sender && sender->GetProfile()\n      ? sender->GetProfile()->GetWeakPtr() : base::WeakPtr<Profile>();\n  const auto epoch = source ? aux::GetProfileCookieBindingEpoch(source.get())\n                            : std::string();\n  const auto* state = sender ? BrowserInitState::From(sender.get()) : nullptr;\n  if (path.empty() || !source || !state || state->is_aux_profile_switch_cache() ||\n      sender->GetType() != BrowserWindowInterface::TYPE_NORMAL ||\n      !IsCurrentProfileMenuSource(sender, source, epoch)) {\n    return;\n  }\n  // Ordinary profile selection activates/opens the native isolated window.\n  // Preserve this window's live tabs, unsent drafts and profile-owned services.\n  profiles::SwitchToProfile(path, /*always_create=*/false);\n#elif BUILDFLAG(IS_MAC) && BUILDFLAG(ENABLE_AUX_BROWSER)\n  aux::ProfileSwitchRequest::Dispatch(std::move(sender), std::move(path));",
+          "expectedCount": 1
+        }
+      ]
+    }
+  ]
+}
