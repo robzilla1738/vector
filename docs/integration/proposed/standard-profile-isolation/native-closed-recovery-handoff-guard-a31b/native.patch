@@ -1,0 +1,28 @@
+--- a/extensions/browser/api/storage/storage_frontend.cc
++++ b/extensions/browser/api/storage/storage_frontend.cc
+@@ -816,7 +816,7 @@
+       !state->source_file_data_synced || !state->source_readback_matches ||
+       state->handoff_request || new_request.is_empty() || new_request == state->request ||
+       aux_ui_retired_requests_.contains(new_request) ||
+-      aux_ui_retired_requests_.size() >= 64 || aux_ui_handoffs_.size() >= 64) {
++      aux_ui_retired_requests_.size() >= 63 || aux_ui_handoffs_.size() >= 64) {
+     std::move(callback).Run(base::unexpected(ValueStore::Status(ValueStore::OTHER_ERROR,
+         "Closed Aux recovery handoff requires the actual restored source and unchanged owner")));
+     return;
+@@ -951,6 +951,7 @@
+   DCHECK_CURRENTLY_ON(BrowserThread::UI);
+   auto state = lease.state_;
+   if (!state || state->owner.get() != this || aux_ui_migration_gate_ != state || state->pending ||
++      state->handoff_request ||
+       (state->recovery_requested && (!CanUseAuxUiMigrationBackend(*state->extension) ||
+        !state->recovery_qualified || !state->source_file_data_synced || !state->source_readback_matches)) ||
+       (state->target_attempted && (!CanUseAuxUiMigrationBackend(*state->extension) ||
+@@ -1007,7 +1008,7 @@
+   // Queued ordinary callbacks stay queued. Exact source restoration is an abort
+   // path; it may later replay those originals after current source readback.
+   if (!state || state->owner.get() != this || aux_ui_migration_gate_ != state ||
+-      state->pending || !lease.capture_ ||
++      state->pending || state->handoff_request || !lease.capture_ ||
+       (state->recovery_requested && !state->recovery_qualified) ||
+       !CanUseAuxUiMigrationBackend(*state->extension)) {
+     std::move(callback).Run(ValueStore::Status(ValueStore::OTHER_ERROR,

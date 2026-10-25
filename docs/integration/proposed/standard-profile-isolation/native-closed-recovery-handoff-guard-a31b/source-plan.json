@@ -1,0 +1,30 @@
+{
+  "format": "aux.closed-recovery-handoff.guard.v1",
+  "predecessorCommit": "175dd6047",
+  "files": [
+    {
+      "path": "extensions/browser/api/storage/storage_frontend.cc",
+      "inputSource": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/native-closed-recovery-handoff-a31/source/extensions/browser/api/storage/storage_frontend.cc",
+      "inputSha256": "3f9b8f4dae724061428b28367a09d9496129431985260e78fe5d0dbc598eec2b",
+      "outputSha256": "65f6a1b47317e39c74aa7f4104b1fb4a78df43defe4026393abb54189a1d6c3b",
+      "source": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/native-closed-recovery-handoff-guard-a31b/source/extensions/browser/api/storage/storage_frontend.cc",
+      "anchors": [
+        {
+          "find": "aux_ui_retired_requests_.size() >= 64 || aux_ui_handoffs_.size() >= 64",
+          "replace": "aux_ui_retired_requests_.size() >= 63 || aux_ui_handoffs_.size() >= 64",
+          "count": 1
+        },
+        {
+          "find": "  if (!state || state->owner.get() != this || aux_ui_migration_gate_ != state || state->pending ||\n      (state->recovery_requested",
+          "replace": "  if (!state || state->owner.get() != this || aux_ui_migration_gate_ != state || state->pending ||\n      state->handoff_request ||\n      (state->recovery_requested",
+          "count": 1
+        },
+        {
+          "find": "      state->pending || !lease.capture_ ||\n      (state->recovery_requested",
+          "replace": "      state->pending || state->handoff_request || !lease.capture_ ||\n      (state->recovery_requested",
+          "count": 1
+        }
+      ]
+    }
+  ]
+}
