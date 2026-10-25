@@ -1,0 +1,167 @@
+--- a/AuxNativeTaskLayout.swift
++++ b/AuxNativeTaskLayout.swift
+@@ -2,6 +2,8 @@
+ // only; no JS/env roots and no migration/adoption of previous account data.
+ import Foundation
+ import Darwin
++@_silgen_name("AuxOrdinaryPriorBrowserHasExited")
++private func memoryHelperPriorProcessExited(_ pid:Int32,_ seconds:UInt64,_ microseconds:UInt64)->Int32
+ 
+ final class AuxNativeTaskLayout {
+     private static let reservationName=".aux-task-installation.v1"
+@@ -56,10 +58,141 @@
+             // topology; create:false is private native flow and never replays.
+             let layout=try acquire(policy:policy,scope:home.scope,transaction:home.transactionId,
+                 reservationHash:home.currentReservationSha256(),retainedTaskParent:retainedTaskParent,create:false)
+-            try layout.revalidate();try home.validateRetainedIdentity()
++            try layout.requireNoUnresolvedMemoryHelperLifetimes();try home.validateRetainedIdentity()
+         }
+         try pathIdentity(policy.contents.canonicalPrivateParent,retainedControlParent)
+         try same(checked,retainedTaskParent);try policy.revalidateCurrentIdentity()
++    }
++    // Startup-only. A live current owner may legitimately have a helper; normal
++    // revalidation must not invoke this prior-owner custody observation.
++    func requireNoUnresolvedMemoryHelperLifetimes()throws {
++        try revalidate()
++        let processes=try Self.memoryHelperProcesses(home:home,expected:expected)
++        for process in processes {
++            guard memoryHelperPriorProcessExited(process.pid,process.seconds,process.microseconds)==1 else {
++                throw AuxFreshColdBootstrapError.legacyOrUnknownExistingState
++            }
++        }
++        try revalidate()
++    }
++    private struct MemoryHelperProcess {
++        let pid:Int32
++        let seconds:UInt64
++        let microseconds:UInt64
++    }
++    private static let memoryHelperDirectory=".aux-memory-helper-lifetimes.v1"
++    // Decoder yields kernel queries, never a clean/ready flag. Persisted PID,
++    // account and generation fields are data; only the native process observer
++    // can establish that each original finite process has actually exited.
++    private static func decodeMemoryHelperProcesses(_ bytes:Data,filename:String,expected:Data)throws->[MemoryHelperProcess] {
++        let record=try strictEnvelopeObject(bytes),binding=try strictEnvelopeObject(expected)
++        func text(_ object:[String:Any],_ key:String)throws->String {
++            guard let value=object[key] as? String else{throw AuxFreshColdBootstrapError.legacyOrUnknownExistingState};return value
++        }
++        func unsigned(_ object:[String:Any],_ key:String,_ maximum:UInt64,_ minimum:UInt64=0)throws->UInt64 {
++            let raw=try text(object,key)
++            guard let value=UInt64(raw),String(value)==raw,value>=minimum,value<=maximum else{throw AuxFreshColdBootstrapError.legacyOrUnknownExistingState};return value
++        }
++        func canonicalUuid(_ object:[String:Any],_ key:String,lowercase:Bool=false)throws->String {
++            let raw=try text(object,key)
++            guard let value=UUID(uuidString:raw),(lowercase ? value.uuidString.lowercased():value.uuidString)==raw else{throw AuxFreshColdBootstrapError.legacyOrUnknownExistingState};return raw
++        }
++        func hash(_ key:String)throws {
++            let raw=try text(record,key)
++            guard raw.utf8.count==64,raw.utf8.allSatisfy({(48...57).contains($0)||(97...102).contains($0)}) else{throw AuxFreshColdBootstrapError.legacyOrUnknownExistingState}
++        }
++        func process(_ key:String)throws->MemoryHelperProcess {
++            guard let value=record[key] as? [String:Any],Set(value.keys)==["pid","seconds","microseconds"] else{throw AuxFreshColdBootstrapError.legacyOrUnknownExistingState}
++            return try .init(pid:Int32(unsigned(value,"pid",UInt64(Int32.max),2)),seconds:unsigned(value,"seconds",UInt64.max,1),microseconds:unsigned(value,"microseconds",999_999))
++        }
++        guard try text(record,"format")=="aux.memory.helper-lifetime.v1" else{throw AuxFreshColdBootstrapError.legacyOrUnknownExistingState}
++        let lease=try canonicalUuid(record,"leaseId",lowercase:true)
++        guard filename==lease+".json" else{throw AuxFreshColdBootstrapError.legacyOrUnknownExistingState}
++        for key in ["controlScope","controlReservationSha256","policySha256","profilePathSha256","recordSha256"] {try hash(key)}
++        _=try canonicalUuid(record,"controlTransactionId")
++        _=try canonicalUuid(record,"accountIncarnation");_=try canonicalUuid(record,"profileId")
++        for key in ["controlScope","controlTransactionId","controlReservationSha256","policySha256"] {
++            guard try text(record,key)==text(binding,key) else{throw AuxFreshColdBootstrapError.legacyOrUnknownExistingState}
++        }
++        _=try unsigned(record,"transportGeneration",UInt64.max,1)
++        _=try unsigned(record,"accountId",9_007_199_254_740_991)
++        let phase=try text(record,"phase")
++        let base:Set<String>=["format","leaseId","controlScope","controlTransactionId","controlReservationSha256","policySha256","transportGeneration","accountId","accountIncarnation","profileId","profilePathSha256","recordSha256","daemon","browser","phase"]
++        let extra:Set<String>
++        switch phase {
++        case "prepared":extra=[]
++        case "spawned":extra=["helper"]
++        case "reaped":extra=["helper","waitStatus"]
++        case "not-spawned":extra=["spawnError"]
++        default:throw AuxFreshColdBootstrapError.legacyOrUnknownExistingState
++        }
++        guard Set(record.keys)==base.union(extra) else{throw AuxFreshColdBootstrapError.legacyOrUnknownExistingState}
++        let daemon=try process("daemon"),browser=try process("browser")
++        guard daemon.pid != browser.pid else{throw AuxFreshColdBootstrapError.legacyOrUnknownExistingState}
++        // A missing PID publication can hide a successful suspended spawn.
++        // Parent absence alone cannot resolve that uncertainty.
++        guard phase != "prepared" else{throw AuxFreshColdBootstrapError.legacyOrUnknownExistingState}
++        if phase=="not-spawned" {
++            _=try unsigned(record,"spawnError",UInt64(Int32.max),1)
++            return [daemon,browser]
++        }
++        let helper=try process("helper")
++        guard helper.pid != daemon.pid,helper.pid != browser.pid else{throw AuxFreshColdBootstrapError.legacyOrUnknownExistingState}
++        if phase=="reaped" {
++            let raw=try text(record,"waitStatus")
++            guard let value=Int32(raw),String(value)==raw else{throw AuxFreshColdBootstrapError.legacyOrUnknownExistingState}
++        }
++        return [daemon,browser,helper]
++    }
++    private static func memoryHelperRecordNames(_ directory:Int32)throws->Set<String> {
++        let copied=openat(directory,".",O_RDONLY|O_DIRECTORY|O_NOFOLLOW|O_CLOEXEC|O_NONBLOCK)
++        guard copied>=0 else{throw AuxFreshColdGuardError.io(errno)}
++        guard let stream=fdopendir(copied)else{let error=errno;close(copied);throw AuxFreshColdGuardError.io(error)};defer{closedir(stream)}
++        var names=Set<String>();errno=0
++        while let item=readdir(stream) {
++            let name=withUnsafePointer(to:&item.pointee.d_name){$0.withMemoryRebound(to:CChar.self,capacity:Int(item.pointee.d_namlen)+1){String(cString:$0)}}
++            if name != "." && name != ".." {
++                guard name.hasSuffix(".json"),let id=UUID(uuidString:String(name.dropLast(5))),id.uuidString.lowercased()+".json"==name,
++                      names.insert(name).inserted,names.count<=256 else{throw AuxFreshColdBootstrapError.legacyOrUnknownExistingState}
++            }
++            errno=0
++        }
++        guard errno==0 else{throw AuxFreshColdGuardError.io(errno)};return names
++    }
++    private static func memoryHelperProcesses(home:Int32,expected:Data)throws->[MemoryHelperProcess] {
++        let directory=openat(home,memoryHelperDirectory,O_RDONLY|O_DIRECTORY|O_NOFOLLOW|O_CLOEXEC|O_NONBLOCK)
++        if directory<0 {
++            guard errno==ENOENT else{throw AuxFreshColdGuardError.io(errno)}
++            var absent=stat();guard fstatat(home,memoryHelperDirectory,&absent,AT_SYMLINK_NOFOLLOW) != 0,errno==ENOENT else{throw AuxFreshColdGuardError.path}
++            return []
++        }
++        defer{close(directory)}
++        try metadata(directory,directory:true);try entry(home,memoryHelperDirectory,directory)
++        let names=try memoryHelperRecordNames(directory);var processes=[MemoryHelperProcess]()
++        for name in names.sorted() {
++            let fd=openat(directory,name,O_RDONLY|O_NOFOLLOW|O_CLOEXEC|O_NONBLOCK)
++            guard fd>=0 else{throw AuxFreshColdGuardError.io(errno)}
++            defer{close(fd)}
++            try metadata(fd,directory:false);try entry(directory,name,fd)
++            var before=stat();guard fstat(fd,&before)==0,before.st_size>0,before.st_size<=16_384 else{throw AuxFreshColdGuardError.metadata}
++            var bytes=Data(count:Int(before.st_size))
++            try bytes.withUnsafeMutableBytes { raw in
++                var offset=0
++                while offset<raw.count {
++                    let count=pread(fd,raw.baseAddress!.advanced(by:offset),raw.count-offset,off_t(offset))
++                    if count<0 && errno==EINTR{continue}
++                    guard count>0 else{throw AuxFreshColdGuardError.io(errno)};offset += count
++                }
++            }
++            var after=stat();guard fstat(fd,&after)==0,before.st_dev==after.st_dev,before.st_ino==after.st_ino,
++                before.st_size==after.st_size,before.st_mtimespec.tv_sec==after.st_mtimespec.tv_sec,before.st_mtimespec.tv_nsec==after.st_mtimespec.tv_nsec,
++                before.st_ctimespec.tv_sec==after.st_ctimespec.tv_sec,before.st_ctimespec.tv_nsec==after.st_ctimespec.tv_nsec else{throw AuxFreshColdGuardError.metadata}
++            try metadata(fd,directory:false);try entry(directory,name,fd)
++            processes += try decodeMemoryHelperProcesses(bytes,filename:name,expected:expected)
++        }
++        guard try memoryHelperRecordNames(directory)==names else{throw AuxFreshColdGuardError.path}
++        try metadata(directory,directory:true);try entry(home,memoryHelperDirectory,directory)
++        return processes
+     }
+     private static func binding(policy:AuxAuthenticatedFreshBootstrapPolicy,scope:String,transaction:String,reservationHash:String)throws->(String,Data) {
+         guard UUID(uuidString:transaction)?.uuidString==transaction,
+--- a/AuxFreshColdInstallerGuard.swift
++++ b/AuxFreshColdInstallerGuard.swift
+@@ -197,6 +197,10 @@
+                 if errno==EWOULDBLOCK || errno==EAGAIN{throw AuxFreshColdGuardError.installerBusy}
+                 throw AuxFreshColdGuardError.io(errno)
+             }
++            // Repeat prior-helper observation only after the actual installer
++            // lock excludes a prior daemon from publishing another launch.
++            try AuxNativeTaskLayout.preflightExistingPair(policy:policy,
++                retainedControlParent:parent,retainedTaskParent:taskParent)
+             // Actual owner retains both descriptors and the live parent object.
+             let guardOwner=AuxFreshColdInstallerGuard(policy:policy,peer:peer,parentFD:parent,installerFD:installer,taskParentFD:taskParent,browserRoots:browserRoots,browserAdmission:browserAdmission)
+             // Ownership moved before callback-capable revalidation. Destruction

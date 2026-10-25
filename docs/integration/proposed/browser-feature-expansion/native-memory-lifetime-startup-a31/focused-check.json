@@ -1,0 +1,12 @@
+{
+  "format": "aux.memory-lifetime-startup-check.v1",
+  "cases": 18,
+  "interpreterExitCode": 0,
+  "interpreterStdout": "actual decoder/filesystem checks passed",
+  "noFixtureExecutable": true,
+  "allSyntheticNamesAndBytesUnchanged": true,
+  "kernelProcessObservationExecuted": false,
+  "kernelCallbackShimmed": false,
+  "helperLaunched": false,
+  "nativeGraphTypecheckPending": true
+}
