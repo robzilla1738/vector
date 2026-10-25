@@ -1,4 +1,12 @@
-# Browser and memory daemon built; package pairing continues — 2026-10-25
+# Complete inactive local candidate assembled; signing/state review pending — 2026-10-25
+
+One candidate is assembled at `out/provided-candidate-local-completion-20261025-a38/Aux.app`: A69 browser/native CLI, A63 memory-enabled daemon, exact cumulative paired source/entry, and incarnation-bound/direct-kernel-lock ChatGPT shim. All11,189 leaves pass inventory/resource metadata verification; inventory `e0100e456bfe99a6cc177168ed0d675911a2d01bd7c51fb920be425ba5de1fd0`. Existing UI33/styles/art/fonts and unrelated supplied runtime/source assets remain exact. Package and launcher policy-shape preflight pass without executing the app or reading/creating the new user namespace. Actual new-candidate behavior/UI acceptance is still pending.
+
+The exact local review is `browser-feature-expansion/local-completion-package-a38/README.md`, manifest SHA256 `f43813c285d0a0d439129f193f97cac1712c93f815cfc75da5b4e201bc8025e0`:19 objects with existing Robert Courson identity/profile, no new entitlements/provisioning/OS grants/release. It adds only the fixed memory executable and native CLI to the earlier seventeen-object cohort, plus a new disposable Aux Browser namespace. The helper launch resource is deliberately absent until approved signing supplies its actual signed-image digest. The executor refuses without exact review approval. Existing A45 bounded authority does not cover these new objects/location. Neither signing nor launch occurred; accepted app and A25 remain intact.
+
+Focused post-approval checks and persistent gaps are listed in that review, including actual command palette/profile/helper behavior, account-backed AI, extension/native messaging, current disabled privileged automation, manual hover, broader recovery and production cloud/operations. This is not completion or release readiness. The goal remains active.
+
+# Prior browser and memory daemon build checkpoint — 2026-10-25
 
 Full unsigned browser A69 passed after the four remaining popup ownership fixes and corrected native-close deferral; its416-leaf app and native CLI are frozen and inventory-verified. Existing style-call/value lines remain unchanged. The actual current50-Swift memory-enabled daemon now fully links as unsigned A63, reusing the retained Node/native cohort and including replacement WorkerHost plus one new ObjC++ helper object. Two C++ catch-syntax corrections and one C-linkage declaration correction are retained with their failed receipts; only affected objects were recompiled. See `browser-feature-expansion/local-completion-integration-a34/actual-full-build.json` and `local-daemon-memory-integration-a37/actual-build.json`.
 

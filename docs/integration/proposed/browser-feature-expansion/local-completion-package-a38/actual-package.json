@@ -1,0 +1,16 @@
+{
+  "passed": true,
+  "app": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-local-completion-20261025-a38/Aux.app",
+  "receipt": {
+    "path": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-local-completion-20261025-a38/receipt.json",
+    "sha256": "7aa37ab331efe1f8bdac3ec5832b6742e8f63646cd4970296d482813c70ca73b"
+  },
+  "inventorySha256": "e0100e456bfe99a6cc177168ed0d675911a2d01bd7c51fb920be425ba5de1fd0",
+  "leafCount": 11189,
+  "uiPreserved": true,
+  "memoryHelperPolicyPending": true,
+  "testable": false,
+  "appExecuted": false,
+  "signing": false,
+  "release": false
+}

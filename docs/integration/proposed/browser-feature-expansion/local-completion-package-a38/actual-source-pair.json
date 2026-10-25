@@ -1,0 +1,81 @@
+{
+  "passed": true,
+  "output": "/Users/rcourson/Documents/Vibe/web/out/local-completion-source-20261025-a38",
+  "files": [
+    {
+      "input": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/fresh-startup-milestone-a42/http-request-adapter-source/index.mjs",
+      "inputSha256": "ab8314dabe8f6b2100a587e93deed2bd496ffe0db56dfa3610bbcd08c70b9938",
+      "path": "/Users/rcourson/Documents/Vibe/web/out/local-completion-source-20261025-a38/index.mjs",
+      "sha256": "6585ab560a1f987940141c870105e2db2b160b7e465d55490be2c6c12c0b4f9f",
+      "memoryAnchors": 7,
+      "providerAnchors": 17,
+      "syntaxPassed": true,
+      "evaluated": false
+    },
+    {
+      "input": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/fresh-startup-milestone-a42/http-request-adapter-source/aux-native-entry.mjs",
+      "inputSha256": "1d1e348b5dbddfe3cf320238c1f357eece6f6364b5c3d97e01903687c05a48d1",
+      "path": "/Users/rcourson/Documents/Vibe/web/out/local-completion-source-20261025-a38/aux-native-entry.mjs",
+      "sha256": "9827a7833c9f42905363aa0207da5f11c9a621347dadd13c0fcceb3d424d8cee",
+      "memoryAnchors": 7,
+      "providerAnchors": 17,
+      "syntaxPassed": true,
+      "evaluated": false
+    },
+    {
+      "input": "/Users/rcourson/Documents/Vibe/web/vendor/aside/shims/aux-chatgpt.cjs",
+      "inputSha256": "d41902beb64c7cec87441d28152607efce89e1dc1bce9c909d6fbe7f48b467c3",
+      "path": "/Users/rcourson/Documents/Vibe/web/out/local-completion-source-20261025-a38/aux-chatgpt.cjs",
+      "sha256": "4e33ecff5d588a710a7b61da93fc2a45962f545d6c410451fdb0fdfae035156e",
+      "lifetimeAnchors": 2,
+      "syntaxPassed": true,
+      "evaluated": false
+    }
+  ],
+  "provenance": [
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/productivity-memory-native-a41/source-transforms.json",
+      "sha256": "4d9909d8d0f79acbc9f784010893ae8d3559627cdf3bf0a9b1bcfb0bca15d62b"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/chatgpt-account-instance-a34/source/daemon-transform.mjs",
+      "sha256": "fe29416cc0199bdb43a0bab1abdc6054f782edb6a72c76b057a08d3bb33e928e"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/chatgpt-account-instance-a34/source/daemon-anchors.json",
+      "sha256": "cb640d49f5304927a82a5842ef28ddbef58416534f2b64e93af878545e95b9c5"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/chatgpt-account-instance-a34/source/transform.mjs",
+      "sha256": "79c8c9bcba9b473367e854858f7d7d0dc5ecf3e0a7c2d1e105d14bcc8f1e3906"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/chatgpt-account-instance-a34/source/anchors.json",
+      "sha256": "1431979223137032790db28d3072cb0257184df058be484cb615530fda03e858"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/chatgpt-account-instance-a34/source/pins.json",
+      "sha256": "0786c4a7f81243d76c92a011c477813e69b6c17c911fd21756bb625ee35f390d"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/chatgpt-account-instance-a34/source-check.json",
+      "sha256": "6650e52a177bbcb96c7c7cfcda42995c9942a6545987f44f183faaed41e53d79"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/vendor/aside/patches/chatgpt.mjs",
+      "sha256": "cd0ffeb382a25278faac70dd213ce0b6e42f42aa7f902eba51c35d1c94d7bcb4"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/vendor/aside/shims/aux-chatgpt.cjs",
+      "sha256": "d41902beb64c7cec87441d28152607efce89e1dc1bce9c909d6fbe7f48b467c3"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/local-completion-package-a38/materialize.mjs",
+      "sha256": "f5c644b9d06fafb0417d0cb42d0ee61bcf33f1d78de051b60119e15614f65695"
+    }
+  ],
+  "uiChanged": false,
+  "productExecuted": false,
+  "providerRequests": 0,
+  "signing": false
+}
