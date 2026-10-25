@@ -9,3 +9,14 @@ export function assertAuxLaunchIdentity(bundle) {
   if (version === 2) throw Error('Aux state identity v2 is an unaccepted migration candidate. Transactional state migration and native authority acceptance are required before launch.');
   return {identityProfile: profile, stateIdentityVersion: version, service: profile === 'aux-v1' ? 'aux-daemon' : 'aside-daemon'};
 }
+
+// Selects a native startup attempt only; the signed native parent/factory must
+// still authenticate the exact installation and genuinely fresh profile roots.
+export function assertFreshAuxLaunchIdentity(bundle) {
+  if (bundle?.version !== 1 || bundle.implementation !== 'supplied' ||
+      bundle.identityProfile !== 'aux-v1' || bundle.stateIdentityVersion !== 2 ||
+      bundle.nativeStartupMode !== 'ordinary-fresh-v1') {
+    throw Error('An ordinary fresh Aux candidate is required. Legacy profiles remain unsupported.');
+  }
+  return {identityProfile: 'aux-v1', stateIdentityVersion: 2, service: 'aux-daemon'};
+}

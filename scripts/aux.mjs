@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import { assertAuxLaunchIdentity } from './lib/aux-launch-identity.mjs';
+import { readFreshAuxLaunch } from './lib/aux-fresh-launch.mjs';
 // Development launcher. Production startup belongs to the native browser.
 import { launchOwnedProcess } from './lib/owned-process.mjs';
 import { existsSync } from 'node:fs';
@@ -39,13 +40,19 @@ const app = dirname(dirname(dirname(executable))), resources = join(app, 'Conten
 let supplied;
 try { supplied = JSON.parse(await readFile(join(resources, 'bundle.json'), 'utf8')); }
 catch { throw new Error('Assemble the supplied app first with package:provided, then select it with --app.'); }
-const launchIdentity = assertAuxLaunchIdentity(supplied);
 if (options.temporary && (options.profile || args.includes('--home'))) throw new Error('Temporary profile cannot be combined with explicit home/profile.');
+const ordinaryFresh = supplied.nativeStartupMode === 'ordinary-fresh-v1';
+if (ordinaryFresh && (!options.temporary || !options.app || options.noBrowser ||
+    options.chromium || browserArgs.some(value => value.startsWith('--')))) {
+  throw Error('Use --temp-profile --app for this fresh candidate, without browser startup overrides.');
+}
+const fresh = ordinaryFresh ? await readFreshAuxLaunch(app, supplied) : undefined;
+const launchIdentity = fresh?.identity ?? assertAuxLaunchIdentity(supplied);
 // macOS tmpdir may begin with /var, a symlink. Cache guards require the
 // actual canonical disposable root before the supplied daemon seeds resources.
-const temporaryRoot = options.temporary ? await realpath(await mkdtemp(join(tmpdir(), 'aux-provided-'))) : undefined;
-const home = temporaryRoot ? join(temporaryRoot, 'home') : options.home;
-const profile = temporaryRoot ? join(temporaryRoot, 'profile') : options.profile ?? join(home, 'profile');
+const temporaryRoot = fresh?.scope ?? (options.temporary ? await realpath(await mkdtemp(join(tmpdir(), 'aux-provided-'))) : undefined);
+const home = fresh?.home ?? (temporaryRoot ? join(temporaryRoot, 'home') : options.home);
+const profile = fresh?.profile ?? (temporaryRoot ? join(temporaryRoot, 'profile') : options.profile ?? join(home, 'profile'));
 await mkdir(home, { recursive: true, mode: 0o700 });
 const children = new Set();
 let stopping = false;
@@ -101,7 +108,11 @@ async function main() {
   if (stopping) return;
 // Foundation's home/Application Support lookup on macOS does not follow HOME
 // alone. Keep those native lookups in the same disposable development home.
-const env = { ...process.env, ...(temporaryRoot ? { HOME: home, CFFIXED_USER_HOME: home } : {}), AUX_HOME: home, AUX_PORT: String(options.port),
+const inherited = ordinaryFresh
+  ? Object.fromEntries(['PATH', 'TMPDIR', 'TZ', 'LANG', 'LC_CTYPE', 'LC_MESSAGES']
+      .filter(key => process.env[key] !== undefined).map(key => [key, process.env[key]]))
+  : process.env;
+const env = { ...inherited, ...(temporaryRoot ? { HOME: home, CFFIXED_USER_HOME: home } : {}), AUX_HOME: home, AUX_PORT: String(options.port),
   AUX_HOST: '127.0.0.1', DAEMON_BASE_URL: `http://127.0.0.1:${options.port}`,
   AUX_BROWSER_CDP_HOST: '127.0.0.1:45203',
   AUX_AGENT_RUNTIME_DIR: join(home, 'runtime'),
@@ -141,7 +152,7 @@ if (options.noBrowser) {
   if (!ready && !stopping) { await stop(1); throw new Error('Daemon did not become ready within 30 seconds.'); }
 } else {
   if (!existsSync(executable)) {
-    if (temporaryRoot) await rm(temporaryRoot, { recursive: true, force: true });
+    if (temporaryRoot && !fresh) await rm(temporaryRoot, { recursive: true, force: true });
     throw new Error('The packaged Aux browser executable is missing.');
   }
   await start(executable, [

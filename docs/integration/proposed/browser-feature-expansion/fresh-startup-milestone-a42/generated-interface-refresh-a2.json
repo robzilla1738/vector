@@ -1,0 +1,24 @@
+{
+  "sourceBytesChanged": false,
+  "refreshed": [
+    {
+      "path": "third_party/blink/public/mojom/dom_storage/storage_area.mojom",
+      "sha256": "72f51b1f090fcb26c074409e4bb2dcb9b957e6464e800539fc6cad5f0e9fb5f0",
+      "beforeMtimeNs": 1792883602006559744,
+      "afterMtimeNs": 1792898025223309000
+    },
+    {
+      "path": "components/services/storage/public/mojom/local_storage_control.mojom",
+      "sha256": "b823be759e2cda8c95e6b52fb824231502af60e2a2e146f33feb12e29bfff2dc",
+      "beforeMtimeNs": 1792883928378540440,
+      "afterMtimeNs": 1792898025229084000
+    },
+    {
+      "path": "components/services/storage/public/mojom/session_storage_control.mojom",
+      "sha256": "5ba367b18968341f8a85e5d9e7b24c9f4b230f80a991dd174f831d204fa8269d",
+      "beforeMtimeNs": 1792883928378769234,
+      "afterMtimeNs": 1792898025233836000
+    }
+  ],
+  "reason": "Restored A24 source timestamps predated newer deferred generated interfaces."
+}

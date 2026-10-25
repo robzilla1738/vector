@@ -1,0 +1,23 @@
+{
+  "files": [
+    {
+      "path": "chrome/app/chrome_main_delegate.cc",
+      "inputSha256": "670ec5a45659f3ccd4a5e5cd42b3d667c55ad710e52ec569399420d27760ee1a",
+      "outputSha256": "24bcd93806c86e8dcbc2f0d623e43cd6b403282e83339375b958a162c563a33d",
+      "anchors": [
+        {
+          "find": "  CHECK(ValidateOrdinaryUserDataSelection(command_line));\n  return;\n#endif\n#if BUILDFLAG(IS_WIN)",
+          "replace": "  CHECK(ValidateOrdinaryUserDataSelection(command_line));\n#else\n#if BUILDFLAG(IS_WIN)",
+          "count": 1
+        },
+        {
+          "find": "#endif  // BUILDFLAG(IS_WIN)\n}\n#endif  // !defined(BUILDING_CHROME_RENDERER)",
+          "replace": "#endif  // BUILDFLAG(IS_WIN)\n#endif  // Ordinary startup excludes the legacy fallback.\n}\n#endif  // !defined(BUILDING_CHROME_RENDERER)",
+          "count": 1
+        }
+      ]
+    }
+  ],
+  "warningSuppressed": false,
+  "reason": "Compile only the selected startup path; preserve legacy branch for other builds."
+}

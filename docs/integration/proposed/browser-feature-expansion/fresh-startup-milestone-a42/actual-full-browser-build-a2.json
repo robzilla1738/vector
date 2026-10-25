@@ -1,0 +1,67 @@
+{
+  "passed": true,
+  "coldFeatureEnabled": true,
+  "ordinaryFreshNativeStartup": true,
+  "privilegedTasksEnabled": false,
+  "appPath": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/out/AuxFast/Aux.app",
+  "appLeafCount": 416,
+  "appInventorySha256": "abb6c141b7d96f9ddfabcd1bb149490a32c6eb164bc0a7ff5202bf499e13291c",
+  "machoCount": 16,
+  "allInspectedMachoUnsigned": true,
+  "nativeInputPinsSha256": "369d6677ed4bf08f83156460974beee6799672b19462ca6be239a49a7181ff97",
+  "runs": [
+    {
+      "name": "gn",
+      "command": [
+        "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/buildtools/mac/gn",
+        "gen",
+        "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/out/AuxFast"
+      ],
+      "exitCode": 0,
+      "seconds": 9.546076417085715
+    },
+    {
+      "name": "dryrun",
+      "command": [
+        "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/third_party/ninja/ninja",
+        "-C",
+        "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/out/AuxFast",
+        "-n",
+        "chrome"
+      ],
+      "exitCode": 0,
+      "seconds": 35.57249225000851
+    },
+    {
+      "name": "commands",
+      "command": [
+        "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/third_party/ninja/ninja",
+        "-C",
+        "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/out/AuxFast",
+        "-t",
+        "commands",
+        "chrome"
+      ],
+      "exitCode": 0,
+      "seconds": 39.36884866701439
+    },
+    {
+      "name": "full-build",
+      "command": [
+        "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/third_party/ninja/ninja",
+        "-C",
+        "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/out/AuxFast",
+        "-j12",
+        "chrome"
+      ],
+      "exitCode": 0,
+      "seconds": 928.0239500419702
+    }
+  ],
+  "fullReceipt": {
+    "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/unsigned-ordinary-fresh-browser-build-20261024-a42b/receipt.json",
+    "sha256": "69b5b3b462981a5d5b432deb3db1d7a1278afb8cbc504afab0a188a9ef3ad003"
+  },
+  "appExecuted": false,
+  "productSigned": false
+}

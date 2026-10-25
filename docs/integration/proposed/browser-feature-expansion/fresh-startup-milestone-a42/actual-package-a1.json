@@ -1,0 +1,17 @@
+{
+  "passed": true,
+  "app": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-fresh-browser-20261024-a42/Aux.app",
+  "receipt": {
+    "path": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-fresh-browser-20261024-a42/receipt.json",
+    "sha256": "9d0ea2c9f816604fe4c20488d5214fd3d47711d7c7e12a4b0a44a572668d2837"
+  },
+  "inventorySha256": "ebaaa36d9aac755d13840b0faba5b94b6a178c2859e7b05291196ed74ca75dbe",
+  "leaves": 11188,
+  "scope": "/private/tmp/aux-fresh-browser-4qtjms51",
+  "runtimeAcceptance": false,
+  "testable": false,
+  "runtimeAuthorityGranted": false,
+  "appExecuted": false,
+  "productSigned": false,
+  "acceptedAppReplaced": false
+}

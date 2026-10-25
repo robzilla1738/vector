@@ -1,0 +1,109 @@
+{
+  "format": "aux.ordinary-fresh.package.review.v1",
+  "inputs": [
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/fresh-startup-milestone-a42/package.py",
+      "sha256": "3f9205d9ea3c0d6959c6d0bbe8533064ac9e60e15b88d85de7258e2570e6b769"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/fresh-startup-milestone-a42/prepare-policy.py",
+      "sha256": "2e17ac00d546347ffdd1874d161a40d70c0dd731e9b61f4eb377b95416fb0a30"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-converged-local-20261024-a40/receipt.json",
+      "sha256": "541925afc00948ee3ef45f7669699cccb215f76c1802b2720ed140daa1ee18e7"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/unsigned-ordinary-fresh-browser-build-20261024-a42b/receipt.json",
+      "sha256": "69b5b3b462981a5d5b432deb3db1d7a1278afb8cbc504afab0a188a9ef3ad003"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/unsigned-ordinary-fresh-browser-build-20261024-a42b/app-inventory.json",
+      "sha256": "9313ad373fb44a55900c7dc2e22faf071ca157dd2873fe600d1ad8e41c4485a5"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/fresh-startup-milestone-a42/full-native-input-pins-a2.json",
+      "sha256": "369d6677ed4bf08f83156460974beee6799672b19462ca6be239a49a7181ff97"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/fresh-startup-milestone-a42/actual-daemon-build-a4.json",
+      "sha256": "eac6a4410865c07a0f612143f0b94166993a126ea96bbf6d52e85056d6840c6d"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/ordinary-fresh-browser-startup-a1/source-controls-receipt.json",
+      "sha256": "6434adeb61d316e6096c90cb7537d4247a73af943b3b4f47dd6a51ee929bcc33"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/out/AuxFast/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/155.0.8059.85/Aux Framework",
+      "sha256": "ca590840f7957668d18176f575970eb4441304740c36179263e1ea031cfcdf38"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/out/AuxFast/Aux.app/Contents/MacOS/Aux",
+      "sha256": "b7ede79122912003d213385619c791fbf78e8c03d7b4250b7ae143a102f6159c"
+    },
+    {
+      "path": "/private/tmp/aux-browser-only-daemon-build-20261024-a42e/Aux Daemon",
+      "sha256": "6e77e072867ac57d3dbae73474727366a4c33865fd7f92eae0b8156ff823cc41"
+    },
+    {
+      "path": "/private/tmp/aux-browser-only-daemon-source-20261024-a1/index.mjs",
+      "sha256": "faed45031be4a6e0240de08943decdd61684d0f77c472a46ecce9bf17dd5a81d"
+    },
+    {
+      "path": "/private/tmp/aux-browser-only-daemon-source-20261024-a1/aux-native-entry.mjs",
+      "sha256": "6e98124ac1d09b9275e81e4c36011daf06044a44c4c42ae50ecc1344c7028cf3"
+    }
+  ],
+  "replacements": [
+    {
+      "path": "Contents/Frameworks/Aux Framework.framework/Versions/155.0.8059.85/Aux Framework",
+      "previousSha256": "98193704b56b20d1dd859dfc7ec70314e2966d202ffeab8ca8dd4ee0695574d3",
+      "input": {
+        "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/out/AuxFast/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/155.0.8059.85/Aux Framework",
+        "sha256": "ca590840f7957668d18176f575970eb4441304740c36179263e1ea031cfcdf38"
+      },
+      "mode": 493
+    },
+    {
+      "path": "Contents/MacOS/Aux",
+      "previousSha256": "14e3c895dce3fc294df750da5e220b13f81b61d97a67c8c3a2ccf44d18aae259",
+      "input": {
+        "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/out/AuxFast/Aux.app/Contents/MacOS/Aux",
+        "sha256": "b7ede79122912003d213385619c791fbf78e8c03d7b4250b7ae143a102f6159c"
+      },
+      "mode": 493
+    },
+    {
+      "path": "Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/MacOS/aux-daemon",
+      "previousSha256": "9f8fbef080805bb6ced32edee281c6d32da8ef01e0b26fa2ec3f0dc34284cf92",
+      "input": {
+        "path": "/private/tmp/aux-browser-only-daemon-build-20261024-a42e/Aux Daemon",
+        "sha256": "6e77e072867ac57d3dbae73474727366a4c33865fd7f92eae0b8156ff823cc41"
+      },
+      "mode": 493
+    },
+    {
+      "path": "Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/node-development/index.mjs",
+      "previousSha256": "f525f457b2c08df4fd3790ffe0acacf1e86101cc8c0c1706ff9fee7235706d57",
+      "input": {
+        "path": "/private/tmp/aux-browser-only-daemon-source-20261024-a1/index.mjs",
+        "sha256": "faed45031be4a6e0240de08943decdd61684d0f77c472a46ecce9bf17dd5a81d"
+      },
+      "mode": 420
+    },
+    {
+      "path": "Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/node-development/aux-native-entry.mjs",
+      "previousSha256": "d30e8358be489e2e4f1a43a7194e78da6a939b85e871a89c7f983e6adc9bc465",
+      "input": {
+        "path": "/private/tmp/aux-browser-only-daemon-source-20261024-a1/aux-native-entry.mjs",
+        "sha256": "6e98124ac1d09b9275e81e4c36011daf06044a44c4c42ae50ecc1344c7028cf3"
+      },
+      "mode": 420
+    }
+  ],
+  "nativeStartupMode": "ordinary-fresh-v1",
+  "privilegedTasksEnabled": false,
+  "legacyProfilesAccepted": false,
+  "signingApprovalRequired": true,
+  "acceptedAppReplaced": false
+}
