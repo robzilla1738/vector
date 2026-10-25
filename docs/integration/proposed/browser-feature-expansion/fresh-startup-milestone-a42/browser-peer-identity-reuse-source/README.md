@@ -1,0 +1,9 @@
+# Retained browser guest identity objects
+
+A20's actual main-thread sample placed all 68 samples under supervisor polling, selected-home duplication and Swift's full static-code validation. The native caller rebuilt the guest and static Security objects for each poll, defeating Security's retained-object reuse.
+
+These two leaves are pinned to the actual A61 isolated inputs. In the ordinary build, each existing native ExactCodePolicy retains one SecCode/SecStaticCode pair for the exact complete kernel audit token. PID checks precede cache-mutex access; changed audit identity or any failed native/Swift validation invalidates both objects. Native validity, signing-information, exact CDHash, birth/liveness and root-generation checks still run on every call. The nonordinary implementation stays byte-for-byte in its previous conditional branch.
+
+The Swift reader retains a bounded single metadata owner for the same actual SecStaticCode object and expected hash. It holds no-follow read-only descriptors for the executable, Info.plist, CodeResources and fixed sealed policy; daemon identity also binds both sealed JavaScript entries. Every use checks canonical path, actual held/named inode, owner/group/mode/flags/link count/size, nanosecond modification/change times and empty ACLs. These checks surround the unchanged full SecStaticCodeCheckValidity calls, exact signing/hash/role checks, sealed resource validation, and private parent/root checks. Failures discard this metadata owner. No successful authorization result is cached.
+
+`projection.json` records two exact input/output hashes and six replayable anchors; `baseline/` holds the actual beforeimages. Root owns projection, native compile/link/sign and actual UI acceptance. This source lane performed only exact replay/hash and source-invariant checks, with no native execution.

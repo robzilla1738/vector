@@ -1,0 +1,250 @@
+--- a/chrome/browser/aux/AuxNativePeerTransport.cc
++++ b/chrome/browser/aux/AuxNativePeerTransport.cc
+@@ -230,12 +230,32 @@
+   return value;
+ }
+ using OwnedRequirement = std::unique_ptr<std::remove_pointer_t<SecRequirementRef>, ReleaseRequirement>;
++#if defined(AUX_BROWSER_ONLY_NATIVE_STARTUP) && AUX_BROWSER_ONLY_NATIVE_STARTUP
++struct ReleaseGuestCode {
++  const pid_t process = getpid();
++  void operator()(SecCodeRef code) const { if (getpid() == process && code) CFRelease(code); }
++};
++struct ReleaseGuestStaticCode {
++  const pid_t process = getpid();
++  void operator()(SecStaticCodeRef code) const { if (getpid() == process && code) CFRelease(code); }
++};
++using OwnedGuestCode = std::unique_ptr<std::remove_pointer_t<SecCodeRef>, ReleaseGuestCode>;
++using OwnedGuestStaticCode = std::unique_ptr<std::remove_pointer_t<SecStaticCodeRef>, ReleaseGuestStaticCode>;
++#endif
+ }
+ struct ExactCodePolicy::Data {
+   Data(SecRequirementRef value, std::span<const uint8_t> hash);
+   ~Data();
+   OwnedRequirement requirement;
+   std::vector<uint8_t> cd_hash;
++#if defined(AUX_BROWSER_ONLY_NATIVE_STARTUP) && AUX_BROWSER_ONLY_NATIVE_STARTUP
++  // One real Security object pair per actual kernel audit identity. No cached
++  // success/admission; every native and Swift validation still runs.
++  mutable std::mutex guest_mutex;
++  mutable std::optional<audit_token_t> guest_audit;
++  mutable OwnedGuestCode guest_code;
++  mutable OwnedGuestStaticCode guest_static_code;
++#endif
+   const pid_t process = getpid();
+ };
+ ExactCodePolicy::Data::Data(SecRequirementRef value, std::span<const uint8_t> hash)
+@@ -250,6 +270,98 @@
+       (hash.size() != 20 && hash.size() != 32)) return {};
+   return std::shared_ptr<const ExactCodePolicy>(new ExactCodePolicy(requirement, hash));
+ }
++#if defined(AUX_BROWSER_ONLY_NATIVE_STARTUP) && AUX_BROWSER_ONLY_NATIVE_STARTUP
++struct NativeOperations {
++  static mach_port_t Port(const NativeSendRight& right) {
++    return getpid() == right.process_ ? right.right_ : MACH_PORT_NULL;
++  }
++  // Caller holds guest_mutex, after checking the creating process. Reusing
++  // SecCode retains Security's native backing objects; every caller still
++  // performs the original live validity or static-policy/descriptor checks.
++  static SecCodeRef GuestLocked(audit_token_t token, const ExactCodePolicy& policy) {
++    auto& state = *policy.data_;
++    if (state.guest_audit && state.guest_code &&
++        std::bit_cast<std::array<uint8_t, sizeof(audit_token_t)>>(*state.guest_audit) ==
++            std::bit_cast<std::array<uint8_t, sizeof(audit_token_t)>>(token))
++      return state.guest_code.get();
++    state.guest_static_code.reset();
++    state.guest_code.reset();
++    state.guest_audit.reset();
++    CFDataRef audit = CFDataCreate(kCFAllocatorDefault,
++        reinterpret_cast<const UInt8*>(&token), sizeof(token));
++    if (!audit) return nullptr;
++    const void* key = kSecGuestAttributeAudit;
++    const void* value = audit;
++    CFDictionaryRef attributes = CFDictionaryCreate(kCFAllocatorDefault, &key, &value, 1,
++        &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks);
++    CFRelease(audit);
++    if (!attributes) return nullptr;
++    SecCodeRef code = nullptr;
++    const OSStatus status = SecCodeCopyGuestWithAttributes(nullptr, attributes, kSecCSDefaultFlags, &code);
++    CFRelease(attributes);
++    OwnedGuestCode owned(code);
++    if (status != errSecSuccess || !owned) return nullptr;
++    state.guest_code.reset(owned.release());
++    state.guest_audit = token;
++    return state.guest_code.get();
++  }
++  static void InvalidateGuestLocked(const ExactCodePolicy& policy) {
++    policy.data_->guest_static_code.reset();
++    policy.data_->guest_code.reset();
++    policy.data_->guest_audit.reset();
++  }
++  static bool Validate(audit_token_t token, const ExactCodePolicy& policy) {
++    if (getpid() != policy.data_->process) return false;
++    std::lock_guard<std::mutex> lock(policy.data_->guest_mutex);
++    SecCodeRef code = GuestLocked(token, policy);
++    if (!code) return false;
++    OSStatus status;
++    status = SecCodeCheckValidity(code, kSecCSDefaultFlags, policy.data_->requirement.get());
++    CFDictionaryRef information = nullptr;
++    if (status == errSecSuccess)
++      status = SecCodeCopySigningInformation(code, kSecCSSigningInformation, &information);
++    bool valid = false;
++    if (status == errSecSuccess && information) {
++      CFTypeRef unique = CFDictionaryGetValue(information, kSecCodeInfoUnique);
++      if (unique && CFGetTypeID(unique) == CFDataGetTypeID()) {
++        auto bytes = static_cast<CFDataRef>(unique);
++        const auto length = static_cast<CFIndex>(policy.data_->cd_hash.size());
++        if (CFDataGetLength(bytes) == length) {
++          // Policy construction admits only20/32bytes. CFDataGetBytes copies
++          // exactly this verified range into an equally sized owned vector.
++          std::vector<uint8_t> observed(policy.data_->cd_hash.size());
++          CFDataGetBytes(bytes, CFRangeMake(0, length), observed.data());
++          valid = observed == policy.data_->cd_hash;
++        }
++      }
++    }
++    if (information) CFRelease(information);
++    if (!valid) InvalidateGuestLocked(policy);
++    return valid;
++  }
++  static int AuthenticatedGuestParent(audit_token_t token, const ExactCodePolicy& policy) {
++    if (getpid() != policy.data_->process) return -1;
++    std::lock_guard<std::mutex> lock(policy.data_->guest_mutex);
++    SecCodeRef guest = GuestLocked(token, policy);
++    if (!guest) return -1;
++    if (!policy.data_->guest_static_code) {
++      SecStaticCodeRef created = nullptr;
++      const auto result = SecCodeCopyStaticCode(guest, kSecCSDefaultFlags, &created);
++      OwnedGuestStaticCode owned(created);
++      if (result != errSecSuccess || !owned) { InvalidateGuestLocked(policy); return -1; }
++      policy.data_->guest_static_code = std::move(owned);
++    }
++    SecStaticCodeRef code = policy.data_->guest_static_code.get();
++    int32_t descriptor = -1;
++    const int32_t status = AuxCopyAuthenticatedFreshChildParentDescriptor(
++        code, policy.data_->requirement.get(), policy.data_->cd_hash.data(),
++        static_cast<uint32_t>(policy.data_->cd_hash.size()), &descriptor);
++    if (status != 0) { if (descriptor >= 0) close(descriptor); InvalidateGuestLocked(policy); return -1; }
++    return descriptor;
++  }
++
++};
++#else
+ struct NativeOperations {
+   static mach_port_t Port(const NativeSendRight& right) {
+     return getpid() == right.process_ ? right.right_ : MACH_PORT_NULL;
+@@ -319,6 +431,7 @@
+   }
+ 
+ };
++#endif
+ NativeSendRight::NativeSendRight(mach_port_t value) : right_(value), process_(getpid()) {}
+ NativeSendRight NativeSendRight::AdoptReceivedRight(mach_port_t value) {
+   mach_port_type_t type = 0;
+--- a/chrome/browser/aux/native_peer_policy/AuxAuthenticatedChildParentPolicyReader.swift
++++ b/chrome/browser/aux/native_peer_policy/AuxAuthenticatedChildParentPolicyReader.swift
+@@ -6,6 +6,82 @@
+ 
+ enum AuxAuthenticatedChildParentPolicyReader {
+     private static let flags=SecCSFlags(rawValue:kSecCSStrictValidate|kSecCSCheckAllArchitectures|kSecCSCheckNestedCode|kSecCSRestrictSymlinks|UInt32(1<<29))
++#if AUX_BROWSER_ONLY_NATIVE_STARTUP
++    private final class OrdinaryFileBinding {
++        let path:String
++        let descriptor:Int32
++        let captured:stat
++        init(_ path:String)throws {
++            guard try canonical(path)==path else{throw AuxFreshBootstrapPolicyError.path}
++            let fd=open(path,O_RDONLY|O_NONBLOCK|O_NOFOLLOW|O_CLOEXEC)
++            guard fd>=0 else{throw AuxFreshBootstrapPolicyError.path}
++            do {
++                let value=try metadata(fd,directory:false,maximumSize:Int64.max)
++                self.path=path;descriptor=fd;captured=value
++            } catch {close(fd);throw error}
++        }
++        private func matches(_ value:stat)->Bool {
++            captured.st_dev==value.st_dev && captured.st_ino==value.st_ino &&
++            captured.st_mode==value.st_mode && captured.st_nlink==value.st_nlink &&
++            captured.st_uid==value.st_uid && captured.st_gid==value.st_gid &&
++            captured.st_flags==value.st_flags && captured.st_size==value.st_size &&
++            captured.st_mtimespec.tv_sec==value.st_mtimespec.tv_sec &&
++            captured.st_mtimespec.tv_nsec==value.st_mtimespec.tv_nsec &&
++            captured.st_ctimespec.tv_sec==value.st_ctimespec.tv_sec &&
++            captured.st_ctimespec.tv_nsec==value.st_ctimespec.tv_nsec
++        }
++        func revalidate()throws {
++            let held=try metadata(descriptor,directory:false,maximumSize:Int64.max)
++            var named=stat()
++            guard matches(held),try canonical(path)==path,lstat(path,&named)==0,
++                  matches(named) else{throw AuxFreshBootstrapPolicyError.identity}
++        }
++        deinit{close(descriptor)}
++    }
++    private final class OrdinaryGuestFiles {
++        let code:SecStaticCode
++        let expectedHash:Data
++        let files:[OrdinaryFileBinding]
++        init(code:SecStaticCode,expectedHash:Data)throws {
++            var rawPath:CFURL?
++            let status=SecCodeCopyPath(code,[],&rawPath)
++            guard status==errSecSuccess,let rawPath else{throw AuxFreshBootstrapPolicyError.signature(status)}
++            let bundle=(rawPath as URL).path
++            let info=try signingInfo(code),captured=try signature(info)
++            guard let role=[AuxFreshBootstrapPolicyContents.Role.daemon,.cli].first(where:{$0.identifier==captured.identifier}),
++                  let executable=info[kSecCodeInfoMainExecutable as String] as? URL,
++                  executable.path==bundle+"/Contents/MacOS/"+role.executable else{throw AuxFreshBootstrapPolicyError.identity}
++            var paths=[executable.path,bundle+"/Contents/Info.plist",bundle+"/Contents/_CodeSignature/CodeResources",
++                       bundle+"/Contents/Resources/"+AuxFreshBootstrapIdentity.resource]
++            if role == .daemon {
++                paths.append(bundle+"/Contents/Resources/node-development/index.mjs")
++                paths.append(bundle+"/Contents/Resources/node-development/aux-native-entry.mjs")
++            }
++            self.code=code;self.expectedHash=expectedHash
++            files=try paths.map{try OrdinaryFileBinding($0)}
++        }
++        func revalidate()throws {for file in files{try file.revalidate()}}
++        func matches(_ other:SecStaticCode,_ hash:Data)->Bool {
++            Unmanaged.passUnretained(code).toOpaque()==Unmanaged.passUnretained(other).toOpaque() && expectedHash==hash
++        }
++    }
++    private static let ordinaryProcess=getpid()
++    private static let ordinaryFilesLock=NSLock()
++    private static var ordinaryFiles:OrdinaryGuestFiles?
++    private static func retainedOrdinaryFiles(_ code:SecStaticCode,_ hash:Data)throws->OrdinaryGuestFiles {
++        guard getpid()==ordinaryProcess else{throw AuxFreshBootstrapPolicyError.identity}
++        ordinaryFilesLock.lock();defer{ordinaryFilesLock.unlock()}
++        if let current=ordinaryFiles,current.matches(code,hash) {try current.revalidate();return current}
++        ordinaryFiles=nil
++        let current=try OrdinaryGuestFiles(code:code,expectedHash:hash)
++        try current.revalidate();ordinaryFiles=current;return current
++    }
++    private static func invalidateOrdinaryFiles(_ code:SecStaticCode,_ hash:Data) {
++        guard getpid()==ordinaryProcess else{return}
++        ordinaryFilesLock.lock();defer{ordinaryFilesLock.unlock()}
++        if ordinaryFiles?.matches(code,hash)==true{ordinaryFiles=nil}
++    }
++#endif
+     private static func canonical(_ path:String)throws->String {
+         guard let result=realpath(path,nil)else{throw AuxFreshBootstrapPolicyError.path};defer{free(result)};return String(cString:result)
+     }
+@@ -46,6 +122,11 @@
+         code: SecStaticCode, requirement: SecRequirement, expectedCdHash: Data
+     ) throws -> Int32 {
+         guard [20, 32].contains(expectedCdHash.count) else { throw AuxFreshBootstrapPolicyError.identity }
++#if AUX_BROWSER_ONLY_NATIVE_STARTUP
++        var finished=false
++        defer{if !finished{invalidateOrdinaryFiles(code,expectedCdHash)}}
++        let retained=try retainedOrdinaryFiles(code,expectedCdHash)
++#endif
+         let validity = SecStaticCodeCheckValidity(code, flags, requirement)
+         guard validity == errSecSuccess else { throw AuxFreshBootstrapPolicyError.signature(validity) }
+         let info = try signingInfo(code)
+@@ -93,6 +174,10 @@
+               (try signingInfo(code))[kSecCodeInfoUnique as String] as? Data == expectedCdHash else {
+             throw AuxFreshBootstrapPolicyError.identity
+         }
++#if AUX_BROWSER_ONLY_NATIVE_STARTUP
++        try retained.revalidate()
++        finished=true
++#endif
+         returned = true
+         return descriptor
+     }
