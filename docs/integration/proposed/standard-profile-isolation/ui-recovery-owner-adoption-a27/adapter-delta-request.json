@@ -1,0 +1,17 @@
+{
+  "format": "aux.ui-recovery-owner-adoption.adapter-request.v1",
+  "baselineCommit": "4adbf76bd",
+  "sourcePlan": "source-plan.json",
+  "runtimeReplacement": "runtime-output.js.txt",
+  "activeAdapterOwner": "root",
+  "exportsAdded": [
+    "auxAdoptDraftMigrationRecovery",
+    "auxReadDraftMigrationRecoveryAdoption",
+    "auxHandoffDraftMigrationRecovery",
+    "auxReadDraftMigrationRecoveryHandoff",
+    "auxDraftMigrationRecoveryApplying",
+    "auxDraftRecoveryDraftForScope",
+    "auxDraftRecoverySettingsForScope"
+  ],
+  "note": "Recompose only exact counted module deltas over pinned A23; preserve original source/predecessor and class/CSS rules. No active adapter edited by this lane."
+}

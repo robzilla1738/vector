@@ -1,0 +1,46 @@
+{
+  "commit": "4adbf76bd",
+  "files": [
+    {
+      "path": "assets/draft-storage-ixLojjZ5.js",
+      "inputSha256": "b4265eba955989f4a7b1262f94d5b0941c8afa597ce2452e26730129c9fea02d",
+      "gitSource": "4adbf76bd:docs/integration/proposed/standard-profile-isolation/ui-recovery-owner-capture-a23/source/assets/draft-storage-ixLojjZ5.js"
+    },
+    {
+      "path": "assets/create-editor-B-Br5Wz9.js",
+      "inputSha256": "2648d8c6683527af3f150b3ab00be60c5a0c76f47eaf7a16f3e448a2e89a06a9",
+      "gitSource": "4adbf76bd:docs/integration/proposed/standard-profile-isolation/ui-recovery-owner-capture-a23/source/assets/create-editor-B-Br5Wz9.js"
+    },
+    {
+      "path": "assets/permission-approval-D-GTf91U.js",
+      "inputSha256": "08afcf585bf6707377424fa07557c2d335d08898adae2576b4340bddf2a5d03f",
+      "gitSource": "4adbf76bd:docs/integration/proposed/standard-profile-isolation/ui-recovery-owner-capture-a23/source/assets/permission-approval-D-GTf91U.js"
+    },
+    {
+      "path": "assets/session-composer-Dc0LRfZA.js",
+      "inputSha256": "7d9fd830a06e4bc846a7d81f849486a16013a36411c8d33a309ddc6a6d7f229d",
+      "gitSource": "4adbf76bd:docs/integration/proposed/standard-profile-isolation/ui-recovery-owner-capture-a23/source/assets/session-composer-Dc0LRfZA.js"
+    },
+    {
+      "path": "assets/newtab-editor-u_GbForB.js",
+      "inputSha256": "10575e00999d606490b41e21ccf954d47625bb9c724ef8abd7037a75c04babd7",
+      "gitSource": "4adbf76bd:docs/integration/proposed/standard-profile-isolation/ui-recovery-owner-capture-a23/source/assets/newtab-editor-u_GbForB.js"
+    },
+    {
+      "path": "assets/minipopup-LkDLFvnq.js",
+      "inputSha256": "3071da2f307abd83fdaedd2ffc0d2fa77dcb6aab3f5c8a06d2bf0c9f9cc89eaf",
+      "gitSource": "4adbf76bd:docs/integration/proposed/standard-profile-isolation/ui-recovery-owner-capture-a23/source/assets/minipopup-LkDLFvnq.js"
+    },
+    {
+      "path": "assets/provider-Cw0zhujt.js",
+      "inputSha256": "8aee4a9cc8229397e4067fb9a9a4772ef4bdfddc03d1db3f2c84836a1b6fe724",
+      "gitSource": "4adbf76bd:docs/integration/proposed/standard-profile-isolation/ui-recovery-owner-capture-a23/source/assets/provider-Cw0zhujt.js"
+    },
+    {
+      "path": "assets/file-attachments-D5m1O8aA.js",
+      "inputSha256": "57ccf50a480416d980bd1963eae88146a6e19a5fbafcd7a38ca17957e32ae62a",
+      "gitSource": "4adbf76bd:docs/integration/proposed/standard-profile-isolation/ui-recovery-owner-capture-a23/source/assets/file-attachments-D5m1O8aA.js"
+    }
+  ],
+  "runtimeSha256": "73ee3f1ac7777573da9333e6f27d502e0f63099c40ac6d8506a9e5e6d20f03a0"
+}

@@ -1,0 +1,350 @@
+{
+  "format": "aux.ui-recovery-owner-adoption.source.v1",
+  "baselineCommit": "4adbf76bd",
+  "files": [
+    {
+      "path": "assets/draft-storage-ixLojjZ5.js",
+      "input": "/Users/rcourson/.codex/worktrees/aux-features-organization/web/docs/integration/proposed/standard-profile-isolation/ui-recovery-owner-adoption-a27/inputs/assets/draft-storage-ixLojjZ5.js",
+      "inputSha256": "b4265eba955989f4a7b1262f94d5b0941c8afa597ce2452e26730129c9fea02d",
+      "outputSha256": "f841e553aa460e388477608d1b9aa9b93075dd67c897ddc70ab7bfb26e571ce2",
+      "output": "/Users/rcourson/.codex/worktrees/aux-features-organization/web/docs/integration/proposed/standard-profile-isolation/ui-recovery-owner-adoption-a27/source/assets/draft-storage-ixLojjZ5.js",
+      "anchors": [
+        {
+          "find": "return{getDraft:()=>t,write:",
+          "replace": "return{getDraft:()=>t,adoptMemory:o=>{if(!auxDraftMigrationRecoveryApplying())throw Error(\"A native recovery hold is required\");t=o},write:",
+          "count": 1
+        },
+        {
+          "find": "function g(e){if(a&&(!e||a.sessionId===e))return a;const n=window.sessionStorage.getItem(m);return n?JSON.parse(n):null}",
+          "replace": "function g(e){const cached=a&&(!e||a.sessionId===e)?a:null;let stored;try{const raw=window.sessionStorage.getItem(m);stored=raw?JSON.parse(raw):null}catch(error){if(cached)return cached;throw error}if(auxPendingMessageDirty&&auxDraftMigrationAckedClaim&&stored?.sessionId===auxDraftMigrationAckedClaim.sessionId&&stored?.claimId===auxDraftMigrationAckedClaim.claimId)stored=null;return stored?.claimId?stored:cached??stored}",
+          "count": 1
+        },
+        {
+          "find": "function H(e){if(typeof window>\"u\"||auxDraftMigrationBlocked())return null;",
+          "replace": "function H(e){if(typeof window>\"u\"||auxDraftMigrationBlocked()||a?.claimId&&!T(a))return null;",
+          "count": 1
+        },
+        {
+          "find": "return !(a===null&&auxPendingMessageDirty&&auxDraftMigrationAckedClaim&&",
+          "replace": "return !(auxPendingMessageDirty&&auxDraftMigrationAckedClaim&&",
+          "count": 1
+        },
+        {
+          "find": "    const ownerStates=owners.map(({kind},index)=>({kind,signatureJson:lease.signatures[index]}));",
+          "replace": "    const ownerStates=owners.map((entry,index)=>({kind:entry.kind,scope:auxDraftMigrationOwnerScope(entry,owners),signatureJson:lease.signatures[index]}));",
+          "count": 1
+        },
+        {
+          "find": "    ownerStates.sort((a,b)=>a.kind<b.kind?-1:a.kind>b.kind?1:a.signatureJson<b.signatureJson?-1:a.signatureJson>b.signatureJson?1:0);",
+          "replace": "    ownerStates.sort((a,b)=>auxDraftRecoveryCompare(a.kind,b.kind)||auxDraftRecoveryCompare(String(a.scope),String(b.scope))||auxDraftRecoveryCompare(a.signatureJson,b.signatureJson));",
+          "count": 1
+        },
+        {
+          "find": "function auxReleaseDraftMigrationCapture(leaseId){",
+          "replace": "function auxReleaseDraftMigrationCapture(leaseId){\n  if(auxDraftMigrationLease?.id===leaseId&&auxDraftMigrationLease.adoption&&!auxDraftMigrationLease.adoption.complete)\n    return{format:auxDraftMigrationFormat,ok:false,released:false,retained:true,requestId:auxDraftMigrationLease.requestId,\n      leaseId,revision:auxDraftMigrationLease.revision,error:\"Actual owner adoption remains pending\"};",
+          "count": 1
+        },
+        {
+          "find": "// Freeze productive user input only for the finite native-owned capture lease.",
+          "replace": "// Finite renderer data adoption. Native retains all actor/journal authority.\nfunction auxDraftRecoveryCompare(a,b){return a<b?-1:a>b?1:0}\nfunction auxDraftMigrationRecoveryApplying(){\n  return !!auxDraftMigrationLease&&(!!auxDraftMigrationLease.adoption&&[\"adopting\",\"adopted\"].includes(auxDraftMigrationLease.phase)||auxDraftMigrationLease.closedHandoff===true&&auxDraftMigrationLease.phase===\"held\");\n}\nfunction auxDraftMigrationOwnerScope(entry,owners=[...auxDraftMigrationOwners.values()]){\n  let owner=entry.owner;\n  if(entry.kind===\"rich-editor\"){\n    const controller=owner.controller?.();\n    const managers=owners.filter(value=>value.kind===\"composer\"&&value.owner.controller?.()===controller||\n      value.kind===\"newtab\"&&value.owner.standalone?.()&&value.owner.controller?.()===controller);\n    if(managers.length!==1)return null;\n    owner=managers[0].owner;\n  }\n  const scope=owner.recoveryScope?.();\n  return typeof scope===\"string\"&&scope.length>0&&scope.length<=4096?scope:null;\n}\nfunction auxDraftRecoveryDraftForScope(capture,scope){\n  const raw=capture.sessionEntries?.[`${l}:${scope}`]??capture.localEntries?.[`${l}:${scope}`];\n  if(raw!==undefined){\n    const value=JSON.parse(raw);\n    if(value?.version!==2||typeof value.plainText!==\"string\")throw Error(\"Recorded draft schema is unavailable\");\n    return value;\n  }\n  const text=capture.sessionEntries?.[`${I}:${scope}`]??capture.localEntries?.[`${I}:${scope}`];\n  return text===undefined?null:{version:2,plainText:text};\n}\nfunction auxDraftRecoverySettingsForScope(capture,scope){\n  const raw=capture.sessionEntries?.[`${C}:${scope}`];\n  if(raw===undefined)return null;\n  const value=JSON.parse(raw);\n  if(value?.version!==1)throw Error(\"Recorded draft settings schema is unavailable\");\n  return value;\n}\nfunction auxDraftRecoveryParseCapture(raw){\n  if(typeof raw!==\"string\"||raw.length>33554432)throw Error(\"Recorded draft capture exceeds its bound\");\n  const value=JSON.parse(raw);\n  if(value?.origin!==window.location.origin)throw Error(\"Recorded draft origin differs\");\n  const known=key=>key===m||[`${l}:`,`${I}:`,`${C}:`].some(prefix=>key.startsWith(prefix));\n  for(const entries of [value.sessionEntries,value.localEntries]){\n    if(!entries||typeof entries!==\"object\"||Array.isArray(entries)||Object.keys(entries).length>4096)\n      throw Error(\"Recorded draft store inventory is unavailable\");\n    for(const [key,data] of Object.entries(entries))if(!known(key)||typeof data!==\"string\")\n      throw Error(\"Recorded draft store has an unknown family\");\n  }\n  return value;\n}\nfunction auxDraftRecoveryStoresEqual(a,b){\n  const equal=(left,right)=>JSON.stringify(Object.keys(left).sort().map(key=>[key,left[key]]))===\n    JSON.stringify(Object.keys(right).sort().map(key=>[key,right[key]]));\n  return a.origin===b.origin&&equal(a.sessionEntries,b.sessionEntries)&&equal(a.localEntries,b.localEntries);\n}\nfunction auxDraftRecoveryParseOwners(raw){\n  if(typeof raw!==\"string\"||raw.length>33554432)throw Error(\"Recorded owner state exceeds its bound\");\n  const values=JSON.parse(raw),result=new Map;\n  if(!Array.isArray(values)||!values.length||values.length>256)throw Error(\"Recorded owner inventory is unavailable\");\n  for(const value of values){\n    if(![\"rich-editor\",\"composer\",\"newtab\",\"mini\",\"session-owner\",\"chat-client\"].includes(value?.kind)||\n       typeof value.scope!==\"string\"||!value.scope||value.scope.length>4096||typeof value.signatureJson!==\"string\")\n      throw Error(\"Recorded owner has no actual stable scope facts\");\n    const key=JSON.stringify([value.kind,value.scope]);\n    if(result.has(key))throw Error(\"Recorded owner scope is ambiguous\");\n    result.set(key,{...value,state:JSON.parse(value.signatureJson)});\n  }\n  return result;\n}\nfunction auxDraftRecoveryParseMemory(raw){\n  if(typeof raw!==\"string\"||raw.length>33554432)throw Error(\"Recorded draft memory exceeds its bound\");\n  const value=JSON.parse(raw);\n  if(!value||typeof value.dirty!==\"boolean\")throw Error(\"Recorded memory flags are unavailable\");\n  for(const name of [\"drafts\",\"scopes\",\"settings\"]){\n    if(!Array.isArray(value[name])||value[name].length>4096)throw Error(\"Recorded memory inventory is unavailable\");\n    const keys=new Set;\n    for(const row of value[name])if(!Array.isArray(row)||row.length!==2||typeof row[0]!==\"string\"||keys.has(row[0]))\n      throw Error(\"Recorded memory keys are ambiguous\");else keys.add(row[0]);\n  }\n  const scopes=new Map(value.scopes);\n  if(scopes.size!==value.drafts.length)throw Error(\"Recorded draft scopes are incomplete\");\n  for(const [key,draft] of value.drafts)if(!key.startsWith(`${l}:`)||typeof scopes.get(key)!==\"boolean\"||\n      draft!==null&&(draft?.version!==2||typeof draft.plainText!==\"string\"))throw Error(\"Recorded draft intent is unsupported\");\n  for(const [key,data] of value.settings)if(!key.startsWith(`${C}:`)||typeof data!==\"string\")\n    throw Error(\"Recorded settings intent is unsupported\");\n  if(value.pending!==null&&(!value.pending?.message||typeof value.pending.sessionId!==\"string\"||value.pending.claimId))\n    throw Error(\"Active or unknown claims cannot be adopted\");\n  if(value.acked!==null&&(typeof value.acked?.sessionId!==\"string\"||typeof value.acked?.claimId!==\"string\"))\n    throw Error(\"Claim acknowledgement provenance is unavailable\");\n  return value;\n}\nfunction auxDraftRecoveryMemoryCandidate(source,current,capture,target){\n  const same=(a,b)=>JSON.stringify(a)===JSON.stringify(b);\n  // A fresh or subset cache may receive captured latest data; a newer actual\n  // failed write, pending message or acknowledgement is never overwritten.\n  for(const name of [\"drafts\",\"scopes\",\"settings\"]){\n    const expected=new Map(source[name]);\n    for(const [key,value] of current[name])if(!expected.has(key)||!same(expected.get(key),value))\n      throw Error(\"Fresh draft memory contains a newer intent\");\n  }\n  if(current.pending!==null&&!same(current.pending,source.pending)||current.dirty&&!source.dirty||\n      !same(current.acked,source.acked))throw Error(\"Fresh pending/claim memory differs from the recorded owner\");\n  const result=JSON.parse(JSON.stringify(source)),scopes=new Map(result.scopes);\n  if(target){\n    const matches=(store,key,operation,value)=>operation===\"set\"?store[key]===value:!Object.hasOwn(store,key);\n    const retained=[];\n    for(const [key,draft] of result.drafts){\n      const legacy=`${I}:${key.slice(l.length+1)}`,durable=scopes.get(key);\n      const empty=!draft||draft.plainText.length===0&&!draft.attachments?.length,raw=empty?undefined:JSON.stringify(draft);\n      const done=matches(capture.sessionEntries,key,empty?\"remove\":\"set\",raw)&&\n        matches(capture.sessionEntries,legacy,\"remove\")&&\n        matches(capture.localEntries,key,empty||!durable?\"remove\":\"set\",raw)&&matches(capture.localEntries,legacy,\"remove\");\n      if(done)scopes.delete(key);else retained.push([key,draft]);\n    }\n    result.drafts=retained;result.scopes=[...scopes];\n    result.settings=result.settings.filter(([key,data])=>capture.sessionEntries[key]!==data);\n    if(result.dirty){\n      const raw=result.pending===null?undefined:JSON.stringify(result.pending);\n      if(result.pending===null?!Object.hasOwn(capture.sessionEntries,m):capture.sessionEntries[m]===raw)result.dirty=false;\n    }\n  }\n  return result;\n}\nfunction auxDraftRecoveryCurrentOwnerFacts(){\n  const entries=[...auxDraftMigrationOwners.values()],facts=[];\n  for(const entry of entries)facts.push({kind:entry.kind,scope:auxDraftMigrationOwnerScope(entry,entries),signatureJson:auxDraftMigrationSignature(entry.owner)});\n  facts.sort((a,b)=>auxDraftRecoveryCompare(a.kind,b.kind)||auxDraftRecoveryCompare(String(a.scope),String(b.scope))||auxDraftRecoveryCompare(a.signatureJson,b.signatureJson));\n  return facts;\n}\nfunction auxReadDraftMigrationRecoveryAdoption(leaseId,revision){\n  const lease=auxDraftMigrationLease,adoption=lease?.adoption;\n  try{\n    if(!lease||lease.id!==leaseId||lease.revision!==revision||!adoption||\n       ![\"adopting\",\"adopted\"].includes(lease.phase)||lease.tainted||auxDraftMigrationRevision!==revision||\n       auxDraftMigrationWork.size||auxDraftMigrationUnknownWork.size||auxDraftMigrationOwnerOverflow||\n       auxDraftMigrationOwners.size!==adoption.owners.length)throw Error(\"Actual adoption owner/lease changed\");\n    auxDraftMigrationCheckInputs();\n    for(const entry of adoption.owners)if(!auxDraftMigrationOwners.has(entry.ticket)||auxDraftMigrationOwnerScope(entry.ticket)!==entry.desired.scope)throw Error(\"An adopted owner or actual scope changed\");\n    const current=JSON.parse(auxDraftMigrationCaptureJson());\n    if(!auxDraftRecoveryStoresEqual(current,adoption.capture))throw Error(\"Actual adopted stores differ from the native desired alternative\");\n    const facts=auxDraftRecoveryCurrentOwnerFacts(),ownerStateJson=JSON.stringify(facts),memoryStateJson=auxDraftMigrationMemorySignature();\n    const complete=adoption.owners.every(entry=>entry.ticket.owner.adoptionSettled?.()!==false&&auxDraftMigrationSignature(entry.ticket.owner)===entry.desired.signatureJson)&&\n      memoryStateJson===adoption.memoryJson;\n    if(complete){adoption.complete=true;lease.phase=\"adopted\"}\n    return{format:\"aux.ui-draft-owner-adoption.v1\",ok:true,pending:!complete,complete,retained:true,\n      requestId:lease.requestId,leaseId,revision,ownerStateJson,memoryStateJson,storeUnits:auxDraftMigrationStoreUnits(current)};\n  }catch(error){return{format:\"aux.ui-draft-owner-adoption.v1\",ok:false,pending:true,complete:false,retained:!!lease,\n    requestId:lease?.requestId,leaseId:lease?.id,revision:lease?.revision,error:String(error?.message??error)}}\n}\nfunction auxAdoptDraftMigrationRecovery(leaseId,revision,plan){\n  const lease=auxDraftMigrationLease;\n  try{\n    const raw=JSON.stringify(plan);\n    if(typeof raw!==\"string\"||raw.length>67108864)throw Error(\"Owner adoption plan exceeds its bound\");\n    if(lease?.adoption){\n      if(lease.adoption.planJson!==raw)throw Error(\"Original adoption plan is immutable\");\n      return auxReadDraftMigrationRecoveryAdoption(leaseId,revision);\n    }\n    auxAssertDraftMigrationOwners(leaseId,revision);\n    if(!lease.recoveryReadOnly||!lease.sealed||plan?.format!==\"aux.ui-draft-owner-adoption.v1\"||\n       ![\"source\",\"target\"].includes(plan.desired))throw Error(\"Sealed fresh recovery lease and finite alternatives required\");\n    if(auxDraftMigrationHasClaim())throw Error(\"A current claim is still owned\");\n    const sourceCapture=auxDraftRecoveryParseCapture(plan.sourceCaptureJson),targetCapture=auxDraftRecoveryParseCapture(plan.targetCaptureJson);\n    const capture=plan.desired===\"source\"?sourceCapture:targetCapture,currentCapture=JSON.parse(auxDraftMigrationCaptureJson());\n    if(!auxDraftRecoveryStoresEqual(currentCapture,capture))throw Error(\"Native desired stores are not actually observed\");\n    const source=auxDraftRecoveryParseOwners(plan.sourceOwnerStateJson),target=auxDraftRecoveryParseOwners(plan.targetOwnerStateJson);\n    const entries=[...auxDraftMigrationOwners.values()],owners=[],seen=new Set;\n    if(source.size!==entries.length||target.size!==entries.length)throw Error(\"Actual owner inventory differs from the recorded alternatives\");\n    for(const ticket of entries){\n      const scope=auxDraftMigrationOwnerScope(ticket,entries),key=JSON.stringify([ticket.kind,scope]);\n      const left=source.get(key),right=target.get(key),desired=plan.desired===\"source\"?left:right;\n      if(!scope||seen.has(key)||!left||!right||!desired||typeof ticket.owner.prepareAdoption!==\"function\")\n        throw Error(\"Actual owner correspondence/setter is unavailable\");\n      seen.add(key);\n      const current=auxDraftMigrationSignature(ticket.owner),matched=current===left.signatureJson||current===right.signatureJson;\n      const context={scope,matched,sourceCapture,targetCapture,capture,goal:plan.desired};\n      const apply=ticket.owner.prepareAdoption(desired.state,context);\n      if(typeof apply!==\"function\")throw Error(\"An actual owner refused finite adoption\");\n      owners.push({ticket,desired,apply});\n    }\n    const memorySource=auxDraftRecoveryParseMemory(plan.sourceMemoryStateJson),memoryCurrent=auxDraftRecoveryParseMemory(lease.memoryJson);\n    const memory=auxDraftRecoveryMemoryCandidate(memorySource,memoryCurrent,currentCapture,plan.desired===\"target\");\n    const memoryJson=JSON.stringify(memory);\n    if(plan.targetMemoryStateJson!==plan.sourceMemoryStateJson&&plan.targetMemoryStateJson!==JSON.stringify(auxDraftRecoveryMemoryCandidate(memorySource,memoryCurrent,targetCapture,true)))\n      throw Error(\"Target memory must preserve captured latest data or retire only exact saved intents\");\n    const allowedScopes=new Set(entries.map(entry=>auxDraftMigrationOwnerScope(entry,entries)).filter(Boolean));\n    for(const [key,draft] of memory.drafts){\n      const scope=key.slice(l.length+1);\n      if(!allowedScopes.has(scope))throw Error(\"A retained failed draft has no actual current scope owner\");\n      if(draft?.attachments?.length){\n        const known=entries.some(entry=>{\n          const value=entry.owner.inspect(),attachments=value.attachments??value.snapshot?.attachments??value.record?.attachments??value.draft?.attachments??[];\n          return JSON.stringify(attachments)===JSON.stringify(draft.attachments);\n        });\n        if(!known)throw Error(\"Recorded attachment capability is not owned by a current editor\");\n      }\n    }\n    for(const [key] of memory.settings)if(!allowedScopes.has(key.slice(C.length+1)))\n      throw Error(\"Retained settings have no actual current scope owner\");\n    lease.adoption={planJson:raw,owners,memoryJson,capture,complete:false};lease.phase=\"adopting\";\n    // Every real owner has preflighted before the first mutation. Failures\n    // retain partial state/hold; no timeout or destructor reports completion.\n    for(const entry of owners){if(auxDraftMigrationLease!==lease||lease.tainted||auxDraftMigrationRevision!==revision||auxDraftMigrationOwnerScope(entry.ticket)!==entry.desired.scope)throw Error(\"Actual owner changed during adoption\");entry.apply()}\n    auxUnsavedDrafts=new Map(memory.drafts);auxUnsavedDraftScopes=new Map(memory.scopes);\n    auxUnsavedDraftSettings=new Map(memory.settings);a=memory.pending;auxPendingMessageDirty=memory.dirty;\n    // Acknowledgements are preserved only from the actual same fresh cache.\n    // No native task completion, claim ID or ACK tombstone is manufactured.\n    if(JSON.stringify(auxDraftMigrationAckedClaim)!==JSON.stringify(memory.acked))throw Error(\"Actual acknowledgement changed\");\n    if(auxUnsavedDrafts.size)window.addEventListener(\"beforeunload\",auxDraftUnload);\n    else window.removeEventListener(\"beforeunload\",auxDraftUnload);\n    return auxReadDraftMigrationRecoveryAdoption(leaseId,revision);\n  }catch(error){return{format:\"aux.ui-draft-owner-adoption.v1\",ok:false,pending:!!lease?.adoption,complete:false,retained:!!lease,\n    requestId:lease?.requestId,leaseId:lease?.id,revision:lease?.revision,error:String(error?.message??error)}}\n}\n\nlet auxDraftMigrationLastHandoff=null;\nfunction auxReadDraftMigrationRecoveryHandoff(leaseId,revision,newRequestId,wireFormat=\"utf16-v1\"){\n  const receipt=auxDraftMigrationLastHandoff;\n  if(!receipt||receipt.leaseId!==leaseId||receipt.revision!==revision||receipt.newRequestId!==newRequestId)\n    return{format:\"aux.ui-draft-recovery-handoff.v1\",ok:false,pending:true,error:\"Original handoff correlation is unavailable\"};\n  const successor=receipt.successor;\n  if(auxDraftMigrationLease!==successor){\n    if(auxDraftMigrationLastRelease?.leaseId===successor.id&&auxDraftMigrationLastRelease.requestId===newRequestId)\n      return{format:\"aux.ui-draft-recovery-handoff.v1\",ok:true,pending:false,retired:true,successorReleased:true,\n        originalRequestId:receipt.requestId,originalLeaseId:leaseId,originalRevision:revision,\n        requestId:newRequestId,leaseId:successor.id,revision:successor.revision};\n    return{format:\"aux.ui-draft-recovery-handoff.v1\",ok:false,pending:true,retired:true,error:\"Actual successor custody changed\"};\n  }\n  const current=auxReadDraftMigrationCapture(wireFormat);\n  return{...current,handoffFormat:\"aux.ui-draft-recovery-handoff.v1\",pending:!current.ok,retired:true,\n    originalRequestId:receipt.requestId,originalLeaseId:leaseId,originalRevision:revision,closedHandoff:true};\n}\nfunction auxHandoffDraftMigrationRecovery(leaseId,revision,newRequestId,wireFormat=\"utf16-v1\"){\n  const original=auxDraftMigrationLease;\n  try{\n    if(auxDraftMigrationLastHandoff?.leaseId===leaseId)\n      return auxReadDraftMigrationRecoveryHandoff(leaseId,revision,newRequestId,wireFormat);\n    const observed=auxReadDraftMigrationRecoveryAdoption(leaseId,revision);\n    if(!observed.ok||!observed.complete||!original?.recoveryReadOnly||original.phase!==\"adopted\")\n      throw Error(\"Actual owner adoption is not complete\");\n    if(typeof newRequestId!==\"string\"||newRequestId===original.requestId||\n       !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(newRequestId)||\n       typeof crypto.randomUUID!==\"function\")throw Error(\"Canonical successor correlation is required\");\n    const id=crypto.randomUUID();\n    if(!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(id))\n      throw Error(\"Successor draft lease identity unavailable\");\n    const entries=[...auxDraftMigrationOwners.values()];\n    const successor={id,requestId:newRequestId,phase:\"held\",tainted:false,restores:[],\n      signatures:entries.map(({owner})=>auxDraftMigrationSignature(owner)),\n      captureJson:auxDraftMigrationCaptureJson(),memoryJson:auxDraftMigrationMemorySignature(),\n      ownerStateJson:JSON.stringify(auxDraftRecoveryCurrentOwnerFacts()),recoveryReadOnly:false,\n      closedHandoff:true,sealed:false,revision:auxDraftMigrationRevision};\n    if(successor.revision!==revision||auxDraftMigrationLease!==original||original.tainted||\n       successor.memoryJson!==observed.memoryStateJson||successor.ownerStateJson!==observed.ownerStateJson)\n      throw Error(\"Actual current source changed during closed handoff\");\n    // Build/read back everything before retiring the old lease. Neither\n    // freeze restorers nor ordinary draft flush callbacks run here.\n    const envelope=auxDraftMigrationEnvelope(successor,wireFormat);\n    auxDraftMigrationLastHandoff={requestId:original.requestId,leaseId,revision,newRequestId,original,successor};\n    successor.restores=original.restores;original.restores=[];original.phase=\"retired\";\n    auxDraftMigrationLastRelease=null;auxDraftMigrationLease=successor;\n    return{...envelope,handoffFormat:\"aux.ui-draft-recovery-handoff.v1\",pending:false,retired:true,\n      originalRequestId:original.requestId,originalLeaseId:leaseId,originalRevision:revision,closedHandoff:true};\n  }catch(error){return{format:\"aux.ui-draft-recovery-handoff.v1\",ok:false,pending:true,retained:!!original,\n    requestId:original?.requestId,leaseId:original?.id,revision:original?.revision,error:String(error?.message??error)}}\n}\n\n// Freeze productive user input only for the finite native-owned capture lease.",
+          "count": 1
+        },
+        {
+          "find": "auxGetNewtabDraftSettingsOwner};",
+          "replace": "auxGetNewtabDraftSettingsOwner,auxDraftMigrationRecoveryApplying,auxDraftRecoveryDraftForScope,auxDraftRecoverySettingsForScope,auxAdoptDraftMigrationRecovery,auxReadDraftMigrationRecoveryAdoption,auxHandoffDraftMigrationRecovery,auxReadDraftMigrationRecoveryHandoff};",
+          "count": 1
+        },
+        {
+          "find": "      const context={scope,matched,sourceCapture,targetCapture,capture,goal:plan.desired};\n      const apply=ticket.owner.prepareAdoption(desired.state,context);",
+          "replace": "      const bases=[sourceCapture,targetCapture].map(value=>ticket.owner.recoveryBase?.(value));\n      const baseMatched=bases.some(value=>value&&JSON.stringify(value)===current);\n      let richBase=null;\n      if(ticket.kind===\"rich-editor\"){\n        const controller=ticket.owner.controller?.(),managers=entries.filter(value=>value.kind===\"composer\"&&value.owner.controller?.()===controller||value.kind===\"newtab\"&&value.owner.standalone?.()&&value.owner.controller?.()===controller);\n        if(managers.length!==1)throw Error(\"Actual editor manager correspondence differs\");\n        for(const value of [sourceCapture,targetCapture]){\n          const candidate=managers[0].owner.recoveryBase?.(value)?.snapshot;\n          if(candidate&&JSON.stringify(candidate)===JSON.stringify(JSON.parse(current).snapshot))richBase=candidate;\n        }\n      }\n      const context={scope,matched,baseMatched,richBase,sourceCapture,targetCapture,capture,goal:plan.desired};\n      const apply=ticket.owner.prepareAdoption(desired.state,context);",
+          "count": 1
+        }
+      ],
+      "unchangedPinned": false
+    },
+    {
+      "path": "assets/create-editor-B-Br5Wz9.js",
+      "input": "/Users/rcourson/.codex/worktrees/aux-features-organization/web/docs/integration/proposed/standard-profile-isolation/ui-recovery-owner-adoption-a27/inputs/assets/create-editor-B-Br5Wz9.js",
+      "inputSha256": "2648d8c6683527af3f150b3ab00be60c5a0c76f47eaf7a16f3e448a2e89a06a9",
+      "outputSha256": "a2d153f06d6a831010220cfcec0b4e47ddfccb3b13f1207e81223275fa28bff2",
+      "output": "/Users/rcourson/.codex/worktrees/aux-features-organization/web/docs/integration/proposed/standard-profile-isolation/ui-recovery-owner-adoption-a27/source/assets/create-editor-B-Br5Wz9.js",
+      "anchors": [
+        {
+          "find": "auxDraftMigrationChanged}",
+          "replace": "auxDraftMigrationChanged,auxDraftMigrationRecoveryApplying}",
+          "count": 1
+        },
+        {
+          "find": "let auxRetireDraftEditor=null;",
+          "replace": "let auxRetireDraftEditor=null,auxRecoveryEditRevision=0;",
+          "count": 1
+        },
+        {
+          "find": "onUpdate:()=>{auxDraftMigrationChanged();",
+          "replace": "onUpdate:()=>{auxRecoveryEditRevision++;auxDraftMigrationChanged();",
+          "count": 1
+        },
+        {
+          "find": "d={clear:()=>{i.commands.setContent(",
+          "replace": "d={clear:()=>{auxRecoveryEditRevision++;i.commands.setContent(",
+          "count": 1
+        },
+        {
+          "find": "l?.focus===\"immediate\"?(i.commands.setTextSelection",
+          "replace": "l?.focus===\"none\"&&auxDraftMigrationRecoveryApplying()?void 0:l?.focus===\"immediate\"?(i.commands.setTextSelection",
+          "count": 1
+        },
+        {
+          "find": "flush:()=>{if(i.isDestroyed)throw Error(\"An editor closed during capture\");",
+          "replace": "prepareAdoption:(value,context)=>{if(i.isDestroyed||i.isEditable||e.composition.isComposing||i.view.composing||value?.editable!==!1||!value?.snapshot)throw Error(\"Actual rich editor cannot adopt\");const current=d.getSnapshot();if(JSON.stringify(value.snapshot.attachments??[])!==JSON.stringify(current.attachments??[]))throw Error(\"A file/mention capability cannot be invented\");if(!context.matched){const base=context.richBase;if(auxRecoveryEditRevision!==0||!base||JSON.stringify(base)!==JSON.stringify(current))throw Error(\"Fresh editor contains a newer or unknown draft\")}const normalized=y(i.schema.nodeFromJSON(value.snapshot.doc).toJSON());if(JSON.stringify(normalized)!==JSON.stringify(value.snapshot))throw Error(\"Actual editor schema differs from recorded snapshot\");return()=>d.setSnapshot(value.snapshot,{emitUpdate:!1,focus:\"none\"})},flush:()=>{if(i.isDestroyed)throw Error(\"An editor closed during capture\");",
+          "count": 1
+        }
+      ],
+      "unchangedPinned": false
+    },
+    {
+      "path": "assets/permission-approval-D-GTf91U.js",
+      "input": "/Users/rcourson/.codex/worktrees/aux-features-organization/web/docs/integration/proposed/standard-profile-isolation/ui-recovery-owner-adoption-a27/inputs/assets/permission-approval-D-GTf91U.js",
+      "inputSha256": "08afcf585bf6707377424fa07557c2d335d08898adae2576b4340bddf2a5d03f",
+      "outputSha256": "63950de03a5e78d07a66179c71df9fe9dbc0894126aa8a3740a3f0247dcac31f",
+      "output": "/Users/rcourson/.codex/worktrees/aux-features-organization/web/docs/integration/proposed/standard-profile-isolation/ui-recovery-owner-adoption-a27/source/assets/permission-approval-D-GTf91U.js",
+      "anchors": [
+        {
+          "find": "const auxDraftMigrationInspect=(0,a.useEffectEvent)",
+          "replace": "(0,a.useEffect)(()=>{const pending=auxRecoveryComposerPending.current;if(auxDraftMigrationRecoveryApplying()&&pending&&te===pending.attachments&&wt===pending.snapshot.attachments&&Ue===pending.snapshot.plainText)auxRecoveryComposerPending.current=null},[te,wt,Ue]);const auxDraftMigrationInspect=(0,a.useEffectEvent)",
+          "count": 1
+        },
+        {
+          "find": "auxBeginDraftMigrationWork}",
+          "replace": "auxBeginDraftMigrationWork,auxDraftMigrationRecoveryApplying,auxDraftRecoveryDraftForScope}",
+          "count": 1
+        },
+        {
+          "find": "auxDraftSaveFailed=(0,a.useRef)(!1);",
+          "replace": "auxDraftSaveFailed=(0,a.useRef)(!1),auxRecoveryComposerPending=(0,a.useRef)(null);",
+          "count": 1
+        },
+        {
+          "find": "const pe=(c,d=te,x=!1)=>{if(U.current||Z.current!==Y)return;",
+          "replace": "const pe=(c,d=te,x=!1)=>{if(auxDraftMigrationRecoveryApplying()||U.current||Z.current!==Y)return;",
+          "count": 1
+        },
+        {
+          "find": "\"composer\",{controller:()=>M.current,inspect:",
+          "replace": "\"composer\",{controller:()=>M.current,adoptionSettled:()=>!auxRecoveryComposerPending.current,recoveryScope:()=>j?.recoveryScope??Y,recoveryBase:capture=>({scope:Y,snapshot:Je(auxDraftRecoveryDraftForScope(capture,j?.recoveryScope??Y)),attachments:ue(auxDraftRecoveryDraftForScope(capture,j?.recoveryScope??Y)?.attachments??[],{tabAttachment:B,selectionAttachment:g,suppressedTabTargetIds:L.current,suppressedSelectionRequestKey:Q.current})}),inspect:",
+          "count": 1
+        },
+        {
+          "find": "flush:()=>auxDraftMigrationFlush(),freeze:()=>()=>{}}),[]);",
+          "replace": "prepareAdoption:(value,context)=>{const current=auxDraftMigrationInspect();if(value?.scope!==Y||!M.current||JSON.stringify(value.attachments)!==JSON.stringify(te))throw Error(\"Actual composer scope/attachment ownership differs\");if(!context.matched&&!context.baseMatched)throw Error(\"Fresh composer contains newer state\");const snapshot=value.snapshot,attachments=value.attachments;if(!snapshot||typeof snapshot.plainText!==\"string\"||!Array.isArray(attachments))throw Error(\"Recorded composer schema is unavailable\");const kept=attachments.filter(ne=>ne.type===\"file\"||ne.type===\"directory\"||Ee(ne)),record=snapshot.plainText.length||snapshot.attachments.length||kept.length?{version:2,plainText:snapshot.plainText,doc:snapshot.doc,attachments:kept}:null;return()=>{auxRecoveryComposerPending.current={snapshot,attachments};M.current.setSnapshot(snapshot,{emitUpdate:!1,focus:\"none\"});z.current=snapshot;X.current=record;F({type:\"resetScope\",initialRichInputSnapshot:snapshot,richInputAttachments:snapshot.attachments,text:snapshot.plainText,attachments})}},flush:()=>auxDraftMigrationFlush(),freeze:()=>()=>{}}),[]);",
+          "count": 1
+        },
+        {
+          "find": "recoveryScope:()=>j?.recoveryScope??Y",
+          "replace": "recoveryScope:()=>auxRecoveryComposerScope()",
+          "count": 1
+        },
+        {
+          "find": "recoveryBase:capture=>({scope:Y,snapshot:Je(auxDraftRecoveryDraftForScope(capture,j?.recoveryScope??Y)),attachments:ue(auxDraftRecoveryDraftForScope(capture,j?.recoveryScope??Y)?.attachments??[],{tabAttachment:B,selectionAttachment:g,suppressedTabTargetIds:L.current,suppressedSelectionRequestKey:Q.current})})",
+          "replace": "recoveryBase:capture=>auxRecoveryComposerBase(capture)",
+          "count": 1
+        },
+        {
+          "find": "prepareAdoption:(value,context)=>{const current=auxDraftMigrationInspect();if(value?.scope!==Y||!M.current||JSON.stringify(value.attachments)!==JSON.stringify(te))throw Error(\"Actual composer scope/attachment ownership differs\");if(!context.matched&&!context.baseMatched)throw Error(\"Fresh composer contains newer state\");const snapshot=value.snapshot,attachments=value.attachments;if(!snapshot||typeof snapshot.plainText!==\"string\"||!Array.isArray(attachments))throw Error(\"Recorded composer schema is unavailable\");const kept=attachments.filter(ne=>ne.type===\"file\"||ne.type===\"directory\"||Ee(ne)),record=snapshot.plainText.length||snapshot.attachments.length||kept.length?{version:2,plainText:snapshot.plainText,doc:snapshot.doc,attachments:kept}:null;return()=>{auxRecoveryComposerPending.current={snapshot,attachments};M.current.setSnapshot(snapshot,{emitUpdate:!1,focus:\"none\"});z.current=snapshot;X.current=record;F({type:\"resetScope\",initialRichInputSnapshot:snapshot,richInputAttachments:snapshot.attachments,text:snapshot.plainText,attachments})}}",
+          "replace": "prepareAdoption:(value,context)=>auxRecoveryComposerAdopt(value,context)",
+          "count": 1
+        },
+        {
+          "find": "(0,a.useLayoutEffect)(()=>auxRegisterDraftMigrationOwner(\"composer\",",
+          "replace": "const auxRecoveryComposerScope=(0,a.useEffectEvent)(()=>j?.recoveryScope??Y);const auxRecoveryComposerBase=(0,a.useEffectEvent)(capture=>({scope:Y,snapshot:Je(auxDraftRecoveryDraftForScope(capture,j?.recoveryScope??Y)),attachments:ue(auxDraftRecoveryDraftForScope(capture,j?.recoveryScope??Y)?.attachments??[],{tabAttachment:B,selectionAttachment:g,suppressedTabTargetIds:L.current,suppressedSelectionRequestKey:Q.current})}));const auxRecoveryComposerAdopt=(0,a.useEffectEvent)((value,context)=>{const current=auxDraftMigrationInspect();if(value?.scope!==Y||!M.current||JSON.stringify(value.attachments)!==JSON.stringify(te))throw Error(\"Actual composer scope/attachment ownership differs\");if(!context.matched&&!context.baseMatched)throw Error(\"Fresh composer contains newer state\");const snapshot=value.snapshot,attachments=value.attachments;if(!snapshot||typeof snapshot.plainText!==\"string\"||!Array.isArray(attachments))throw Error(\"Recorded composer schema is unavailable\");const kept=attachments.filter(ne=>ne.type===\"file\"||ne.type===\"directory\"||Ee(ne)),record=snapshot.plainText.length||snapshot.attachments.length||kept.length?{version:2,plainText:snapshot.plainText,doc:snapshot.doc,attachments:kept}:null;return()=>{auxRecoveryComposerPending.current={snapshot,attachments};M.current.setSnapshot(snapshot,{emitUpdate:!1,focus:\"none\"});z.current=snapshot;X.current=record;F({type:\"resetScope\",initialRichInputSnapshot:snapshot,richInputAttachments:snapshot.attachments,text:snapshot.plainText,attachments})}});(0,a.useLayoutEffect)(()=>auxRegisterDraftMigrationOwner(\"composer\",",
+          "count": 1
+        }
+      ],
+      "unchangedPinned": false
+    },
+    {
+      "path": "assets/session-composer-Dc0LRfZA.js",
+      "input": "/Users/rcourson/.codex/worktrees/aux-features-organization/web/docs/integration/proposed/standard-profile-isolation/ui-recovery-owner-adoption-a27/inputs/assets/session-composer-Dc0LRfZA.js",
+      "inputSha256": "7d9fd830a06e4bc846a7d81f849486a16013a36411c8d33a309ddc6a6d7f229d",
+      "outputSha256": "9f5f83f356b860c369d85508af9f9ab722953e6e00c146555747641d3f814ef1",
+      "output": "/Users/rcourson/.codex/worktrees/aux-features-organization/web/docs/integration/proposed/standard-profile-isolation/ui-recovery-owner-adoption-a27/source/assets/session-composer-Dc0LRfZA.js",
+      "anchors": [
+        {
+          "find": "auxGetNewtabDraftSettingsOwner}",
+          "replace": "auxGetNewtabDraftSettingsOwner,auxDraftMigrationRecoveryApplying,auxDraftRecoverySettingsForScope}",
+          "count": 1
+        },
+        {
+          "find": "[w,I]=(0,g.useState)(()=>Hn(s,o,x)),R=",
+          "replace": "[w,I]=(0,g.useState)(()=>Hn(s,o,x)),auxRecoveryOptionsRevision=(0,g.useRef)(0),auxRecoveryOptionsPending=(0,g.useRef)(null),R=",
+          "count": 1
+        },
+        {
+          "find": "ye=(0,g.useCallback)(D=>{I($=>",
+          "replace": "ye=(0,g.useCallback)(D=>{auxRecoveryOptionsRevision.current++;I($=>",
+          "count": 1
+        },
+        {
+          "find": "(0,g.useEffect)(()=>{const D=o??null;",
+          "replace": "(0,g.useEffect)(()=>{if(auxDraftMigrationRecoveryApplying()){auxRecoveryOptionsPending.current===O&&(auxRecoveryOptionsPending.current=null);R.current=!0;j.current=o??null;return}const D=o??null;",
+          "count": 1
+        },
+        {
+          "find": "\"session-owner\",{inspect:()=>auxSessionDraftState(),flush:",
+          "replace": "\"session-owner\",{recoveryScope:()=>o??null,adoptionSettled:()=>!auxRecoveryOptionsPending.current,prepareAdoption:(value,context)=>{const current=auxSessionDraftState();if(value?.scope!==current.scope||value?.mode!==current.mode||!value?.settings||value.settings.draftMode===\"incognito\")throw Error(\"Actual session option scope/privacy differs\");if(!context.matched){const sameBase=capture=>JSON.stringify(O)===JSON.stringify(Hn(auxDraftRecoverySettingsForScope(capture,o),o,x));if(auxRecoveryOptionsRevision.current!==0||!sameBase(context.sourceCapture)&&!sameBase(context.targetCapture))throw Error(\"Fresh model options contain newer state\")}const settings=JSON.parse(JSON.stringify(value.settings)),model=settings.draftModelOverride;if(model&&!Gt(v,model.provider,model.modelId))throw Error(\"Recorded model is not in the actual available catalog\");if(JSON.stringify(value.settings)===JSON.stringify(current.settings))return()=>{};if(typeof i!==\"function\")throw Error(\"Options have no actual persistence owner\");return()=>{const next={...O,...settings,stateKey:o};auxRecoveryOptionsPending.current=next;I(next)}},inspect:()=>auxSessionDraftState(),flush:",
+          "count": 1
+        },
+        {
+          "find": "\"session-owner\",{inspect:()=>auxExistingSessionState(),flush:",
+          "replace": "\"session-owner\",{recoveryScope:()=>n.id,prepareAdoption:value=>{if(JSON.stringify(value)!==JSON.stringify(auxExistingSessionState()))throw Error(\"Existing session state is backend-owned\");return()=>{}},inspect:()=>auxExistingSessionState(),flush:",
+          "count": 1
+        },
+        {
+          "find": "recoveryScope:()=>o??null",
+          "replace": "recoveryScope:()=>auxRecoverySessionScope()",
+          "count": 1
+        },
+        {
+          "find": "prepareAdoption:(value,context)=>{const current=auxSessionDraftState();if(value?.scope!==current.scope||value?.mode!==current.mode||!value?.settings||value.settings.draftMode===\"incognito\")throw Error(\"Actual session option scope/privacy differs\");if(!context.matched){const sameBase=capture=>JSON.stringify(O)===JSON.stringify(Hn(auxDraftRecoverySettingsForScope(capture,o),o,x));if(auxRecoveryOptionsRevision.current!==0||!sameBase(context.sourceCapture)&&!sameBase(context.targetCapture))throw Error(\"Fresh model options contain newer state\")}const settings=JSON.parse(JSON.stringify(value.settings)),model=settings.draftModelOverride;if(model&&!Gt(v,model.provider,model.modelId))throw Error(\"Recorded model is not in the actual available catalog\");if(JSON.stringify(value.settings)===JSON.stringify(current.settings))return()=>{};if(typeof i!==\"function\")throw Error(\"Options have no actual persistence owner\");return()=>{const next={...O,...settings,stateKey:o};auxRecoveryOptionsPending.current=next;I(next)}}",
+          "replace": "prepareAdoption:(value,context)=>auxRecoverySessionAdopt(value,context)",
+          "count": 1
+        },
+        {
+          "find": "(0,g.useLayoutEffect)(()=>auxRegisterDraftMigrationOwner(\"session-owner\",{recoveryScope:()=>auxRecoverySessionScope(),",
+          "replace": "const auxRecoverySessionScope=(0,g.useEffectEvent)(()=>o??null);const auxRecoverySessionAdopt=(0,g.useEffectEvent)((value,context)=>{const current=auxSessionDraftState();if(value?.scope!==current.scope||value?.mode!==current.mode||!value?.settings||value.settings.draftMode===\"incognito\")throw Error(\"Actual session option scope/privacy differs\");if(!context.matched){const sameBase=capture=>JSON.stringify(O)===JSON.stringify(Hn(auxDraftRecoverySettingsForScope(capture,o),o,x));if(auxRecoveryOptionsRevision.current!==0||!sameBase(context.sourceCapture)&&!sameBase(context.targetCapture))throw Error(\"Fresh model options contain newer state\")}const settings=JSON.parse(JSON.stringify(value.settings)),model=settings.draftModelOverride;if(model&&!Gt(v,model.provider,model.modelId))throw Error(\"Recorded model is not in the actual available catalog\");if(JSON.stringify(value.settings)===JSON.stringify(current.settings))return()=>{};if(typeof i!==\"function\")throw Error(\"Options have no actual persistence owner\");return()=>{const next={...O,...settings,stateKey:o};auxRecoveryOptionsPending.current=next;I(next)}});(0,g.useLayoutEffect)(()=>auxRegisterDraftMigrationOwner(\"session-owner\",{recoveryScope:()=>auxRecoverySessionScope(),",
+          "count": 1
+        },
+        {
+          "find": "\"session-owner\",{recoveryScope:()=>n.id,prepareAdoption:value=>{if(JSON.stringify(value)!==JSON.stringify(auxExistingSessionState()))throw Error(\"Existing session state is backend-owned\");return()=>{}},inspect:",
+          "replace": "\"session-owner\",{recoveryScope:()=>auxExistingRecoveryScope(),prepareAdoption:value=>auxExistingRecoveryAdopt(value),inspect:",
+          "count": 1
+        },
+        {
+          "find": "(0,g.useLayoutEffect)(()=>auxRegisterDraftMigrationOwner(\"session-owner\",{recoveryScope:()=>auxExistingRecoveryScope(),",
+          "replace": "const auxExistingRecoveryScope=(0,g.useEffectEvent)(()=>n.id),auxExistingRecoveryAdopt=(0,g.useEffectEvent)(value=>{if(JSON.stringify(value)!==JSON.stringify(auxExistingSessionState()))throw Error(\"Existing session state is backend-owned\");return()=>{}});(0,g.useLayoutEffect)(()=>auxRegisterDraftMigrationOwner(\"session-owner\",{recoveryScope:()=>auxExistingRecoveryScope(),",
+          "count": 1
+        }
+      ],
+      "unchangedPinned": false
+    },
+    {
+      "path": "assets/newtab-editor-u_GbForB.js",
+      "input": "/Users/rcourson/.codex/worktrees/aux-features-organization/web/docs/integration/proposed/standard-profile-isolation/ui-recovery-owner-adoption-a27/inputs/assets/newtab-editor-u_GbForB.js",
+      "inputSha256": "10575e00999d606490b41e21ccf954d47625bb9c724ef8abd7037a75c04babd7",
+      "outputSha256": "3a819ba6cc0f7fb4f188f66fc3cf96e878632246b2dca2f9f280979f7d27016f",
+      "output": "/Users/rcourson/.codex/worktrees/aux-features-organization/web/docs/integration/proposed/standard-profile-isolation/ui-recovery-owner-adoption-a27/source/assets/newtab-editor-u_GbForB.js",
+      "anchors": [
+        {
+          "find": "auxDraftMigrationBlocked}",
+          "replace": "auxDraftMigrationBlocked,auxDraftMigrationRecoveryApplying,auxDraftRecoveryDraftForScope}",
+          "count": 1
+        },
+        {
+          "find": "let auxRestorePending=",
+          "replace": "let auxRecoveryModeRevision=0,auxRecoveryModeReady=!1;let auxRestorePending=",
+          "count": 1
+        },
+        {
+          "find": "setMode:e=>{if(auxRestorePending",
+          "replace": "setMode:e=>{auxRecoveryModeReady&&!auxDraftMigrationRecoveryApplying()&&a!==e&&auxRecoveryModeRevision++;if(auxRestorePending",
+          "count": 1
+        },
+        {
+          "find": "}i.flush(),l(!1),a=e,",
+          "replace": "}auxDraftMigrationRecoveryApplying()||i.flush(),l(!1),a=e,",
+          "count": 1
+        },
+        {
+          "find": "\"newtab\",{controller:()=>m,standalone:",
+          "replace": "\"newtab\",{controller:()=>m,recoveryScope:()=>auxScope,recoveryBase:capture=>({mode:a,draft:auxDraftRecoveryDraftForScope(capture,auxScope),managed:n.draftPersistenceManaged,snapshot:M(a===\"ask\"?auxDraftRecoveryDraftForScope(capture,auxScope):null)}),standalone:",
+          "count": 1
+        },
+        {
+          "find": "flush:()=>{if(a===\"ask\"&&!n.draftPersistenceManaged)",
+          "replace": "prepareAdoption:(value,context)=>{if(!auxScope.startsWith(\"newtab-page:\")||value?.managed!==n.draftPersistenceManaged||!C(value?.mode)||JSON.stringify(value.draft?.attachments??[])!==JSON.stringify(i.getDraft()?.attachments??[]))throw Error(\"Actual New Tab owner/capability differs\");if(!context.matched){const stored=capture=>JSON.stringify(i.getDraft())===JSON.stringify(auxDraftRecoveryDraftForScope(capture,auxScope));if(auxRecoveryModeRevision!==0||!stored(context.sourceCapture)&&!stored(context.targetCapture))throw Error(\"Fresh New Tab contains newer state\")}return()=>{i.adoptMemory(value.draft);auxRestorePending=!1;n.setMode(value.mode)}},flush:()=>{if(a===\"ask\"&&!n.draftPersistenceManaged)",
+          "count": 1
+        },
+        {
+          "find": "n.setMode(a),r.commands.setTextSelection",
+          "replace": "n.setMode(a),auxRecoveryModeReady=!0,r.commands.setTextSelection",
+          "count": 1
+        }
+      ],
+      "unchangedPinned": false
+    },
+    {
+      "path": "assets/minipopup-LkDLFvnq.js",
+      "input": "/Users/rcourson/.codex/worktrees/aux-features-organization/web/docs/integration/proposed/standard-profile-isolation/ui-recovery-owner-adoption-a27/inputs/assets/minipopup-LkDLFvnq.js",
+      "inputSha256": "3071da2f307abd83fdaedd2ffc0d2fa77dcb6aab3f5c8a06d2bf0c9f9cc89eaf",
+      "outputSha256": "c2e48e575913723aef95248188e2c292df6b3f73ef7da53c0f3fd6cc52e0dd23",
+      "output": "/Users/rcourson/.codex/worktrees/aux-features-organization/web/docs/integration/proposed/standard-profile-isolation/ui-recovery-owner-adoption-a27/source/assets/minipopup-LkDLFvnq.js",
+      "anchors": [
+        {
+          "find": "auxDraftMigrationChanged}",
+          "replace": "auxDraftMigrationChanged,auxDraftRecoveryDraftForScope}",
+          "count": 1
+        },
+        {
+          "find": "owner={record:privateContext?",
+          "replace": "let auxRecoveryMiniRevision=0;owner={scope,record:privateContext?",
+          "count": 1
+        },
+        {
+          "find": "set(record){auxDraftMigrationChanged();owner.record=record;",
+          "replace": "set(record){try{JSON.stringify(record)!==JSON.stringify(owner.record)&&auxRecoveryMiniRevision++}catch{auxRecoveryMiniRevision++}auxDraftMigrationChanged();owner.record=record;",
+          "count": 1
+        },
+        {
+          "find": "\"mini\",{inspect:",
+          "replace": "\"mini\",{recoveryScope:()=>scope,inspect:",
+          "count": 1
+        },
+        {
+          "find": "flush:()=>owner.set(owner.record),freeze:",
+          "replace": "prepareAdoption:(value,context)=>{if(privateContext||value?.scope!==scope||value?.mode!==owner.mode||JSON.stringify(value.record?.attachments??[])!==JSON.stringify(owner.record?.attachments??[]))throw Error(\"Actual Mini owner/privacy/capability differs\");if(!context.matched){const stored=capture=>JSON.stringify(owner.record)===JSON.stringify(auxDraftRecoveryDraftForScope(capture,scope));if(auxRecoveryMiniRevision!==0||!stored(context.sourceCapture)&&!stored(context.targetCapture))throw Error(\"Fresh Mini contains newer state\")}return()=>{owner.record=value.record;if(context.goal===\"target\"&&JSON.stringify(auxDraftRecoveryDraftForScope(context.capture,scope))===JSON.stringify(owner.record))window.removeEventListener(\"beforeunload\",unload)}},flush:()=>owner.set(owner.record),freeze:",
+          "count": 1
+        },
+        {
+          "find": "defaultDraftState:{draftMode:auxDraft.mode}})",
+          "replace": "defaultDraftState:{draftMode:auxDraft.mode},defaultDraftStateKey:auxDraft.scope})",
+          "count": 1
+        },
+        {
+          "find": "()=>({defaultDraftRecord:auxDraft.record,onDraftRecordChange:l})",
+          "replace": "()=>({recoveryScope:auxDraft.scope,defaultDraftRecord:auxDraft.record,onDraftRecordChange:l})",
+          "count": 1
+        }
+      ],
+      "unchangedPinned": false
+    },
+    {
+      "path": "assets/provider-Cw0zhujt.js",
+      "input": "/Users/rcourson/.codex/worktrees/aux-features-organization/web/docs/integration/proposed/standard-profile-isolation/ui-recovery-owner-adoption-a27/inputs/assets/provider-Cw0zhujt.js",
+      "inputSha256": "8aee4a9cc8229397e4067fb9a9a4772ef4bdfddc03d1db3f2c84836a1b6fe724",
+      "outputSha256": "240e57c61a859255ea02f2ceb5cbdd70aadcd827d0502d9779ca35e693100306",
+      "output": "/Users/rcourson/.codex/worktrees/aux-features-organization/web/docs/integration/proposed/standard-profile-isolation/ui-recovery-owner-adoption-a27/source/assets/provider-Cw0zhujt.js",
+      "anchors": [
+        {
+          "find": "\"chat-client\",{inspect:",
+          "replace": "\"chat-client\",{recoveryScope:()=>this.#c,prepareAdoption:value=>{if(JSON.stringify(value)!==JSON.stringify({sessionId:this.#c,status:this.#o().status}))throw Error(\"Chat task/stream state remains backend-owned\");return()=>{}},inspect:",
+          "count": 1
+        }
+      ],
+      "unchangedPinned": false
+    },
+    {
+      "path": "assets/file-attachments-D5m1O8aA.js",
+      "input": "/Users/rcourson/.codex/worktrees/aux-features-organization/web/docs/integration/proposed/standard-profile-isolation/ui-recovery-owner-adoption-a27/inputs/assets/file-attachments-D5m1O8aA.js",
+      "inputSha256": "57ccf50a480416d980bd1963eae88146a6e19a5fbafcd7a38ca17957e32ae62a",
+      "outputSha256": "57ccf50a480416d980bd1963eae88146a6e19a5fbafcd7a38ca17957e32ae62a",
+      "output": "/Users/rcourson/.codex/worktrees/aux-features-organization/web/docs/integration/proposed/standard-profile-isolation/ui-recovery-owner-adoption-a27/source/assets/file-attachments-D5m1O8aA.js",
+      "anchors": [],
+      "unchangedPinned": true
+    }
+  ],
+  "runtimeInputSha256": "73ee3f1ac7777573da9333e6f27d502e0f63099c40ac6d8506a9e5e6d20f03a0",
+  "runtimeOutputSha256": "6cca4e39ac510ea1d2b808c5dc12faf8cfe941e5d735304aacacfd52ffc66840",
+  "activeAdaptersChanged": false,
+  "productExecuted": false,
+  "runtimeAcceptance": false
+}

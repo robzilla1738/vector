@@ -1,0 +1,51 @@
+let auxDraftMigrationLastHandoff=null;
+function auxReadDraftMigrationRecoveryHandoff(leaseId,revision,newRequestId,wireFormat="utf16-v1"){
+  const receipt=auxDraftMigrationLastHandoff;
+  if(!receipt||receipt.leaseId!==leaseId||receipt.revision!==revision||receipt.newRequestId!==newRequestId)
+    return{format:"aux.ui-draft-recovery-handoff.v1",ok:false,pending:true,error:"Original handoff correlation is unavailable"};
+  const successor=receipt.successor;
+  if(auxDraftMigrationLease!==successor){
+    if(auxDraftMigrationLastRelease?.leaseId===successor.id&&auxDraftMigrationLastRelease.requestId===newRequestId)
+      return{format:"aux.ui-draft-recovery-handoff.v1",ok:true,pending:false,retired:true,successorReleased:true,
+        originalRequestId:receipt.requestId,originalLeaseId:leaseId,originalRevision:revision,
+        requestId:newRequestId,leaseId:successor.id,revision:successor.revision};
+    return{format:"aux.ui-draft-recovery-handoff.v1",ok:false,pending:true,retired:true,error:"Actual successor custody changed"};
+  }
+  const current=auxReadDraftMigrationCapture(wireFormat);
+  return{...current,handoffFormat:"aux.ui-draft-recovery-handoff.v1",pending:!current.ok,retired:true,
+    originalRequestId:receipt.requestId,originalLeaseId:leaseId,originalRevision:revision,closedHandoff:true};
+}
+function auxHandoffDraftMigrationRecovery(leaseId,revision,newRequestId,wireFormat="utf16-v1"){
+  const original=auxDraftMigrationLease;
+  try{
+    if(auxDraftMigrationLastHandoff?.leaseId===leaseId)
+      return auxReadDraftMigrationRecoveryHandoff(leaseId,revision,newRequestId,wireFormat);
+    const observed=auxReadDraftMigrationRecoveryAdoption(leaseId,revision);
+    if(!observed.ok||!observed.complete||!original?.recoveryReadOnly||original.phase!=="adopted")
+      throw Error("Actual owner adoption is not complete");
+    if(typeof newRequestId!=="string"||newRequestId===original.requestId||
+       !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(newRequestId)||
+       typeof crypto.randomUUID!=="function")throw Error("Canonical successor correlation is required");
+    const id=crypto.randomUUID();
+    if(!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(id))
+      throw Error("Successor draft lease identity unavailable");
+    const entries=[...auxDraftMigrationOwners.values()];
+    const successor={id,requestId:newRequestId,phase:"held",tainted:false,restores:[],
+      signatures:entries.map(({owner})=>auxDraftMigrationSignature(owner)),
+      captureJson:auxDraftMigrationCaptureJson(),memoryJson:auxDraftMigrationMemorySignature(),
+      ownerStateJson:JSON.stringify(auxDraftRecoveryCurrentOwnerFacts()),recoveryReadOnly:false,
+      closedHandoff:true,sealed:false,revision:auxDraftMigrationRevision};
+    if(successor.revision!==revision||auxDraftMigrationLease!==original||original.tainted||
+       successor.memoryJson!==observed.memoryStateJson||successor.ownerStateJson!==observed.ownerStateJson)
+      throw Error("Actual current source changed during closed handoff");
+    // Build/read back everything before retiring the old lease. Neither
+    // freeze restorers nor ordinary draft flush callbacks run here.
+    const envelope=auxDraftMigrationEnvelope(successor,wireFormat);
+    auxDraftMigrationLastHandoff={requestId:original.requestId,leaseId,revision,newRequestId,original,successor};
+    successor.restores=original.restores;original.restores=[];original.phase="retired";
+    auxDraftMigrationLastRelease=null;auxDraftMigrationLease=successor;
+    return{...envelope,handoffFormat:"aux.ui-draft-recovery-handoff.v1",pending:false,retired:true,
+      originalRequestId:original.requestId,originalLeaseId:leaseId,originalRevision:revision,closedHandoff:true};
+  }catch(error){return{format:"aux.ui-draft-recovery-handoff.v1",ok:false,pending:true,retained:!!original,
+    requestId:original?.requestId,leaseId:original?.id,revision:original?.revision,error:String(error?.message??error)}}
+}

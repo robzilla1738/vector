@@ -1,0 +1,211 @@
+// Finite renderer data adoption. Native retains all actor/journal authority.
+function auxDraftRecoveryCompare(a,b){return a<b?-1:a>b?1:0}
+function auxDraftMigrationRecoveryApplying(){
+  return !!auxDraftMigrationLease&&(!!auxDraftMigrationLease.adoption&&["adopting","adopted"].includes(auxDraftMigrationLease.phase)||auxDraftMigrationLease.closedHandoff===true&&auxDraftMigrationLease.phase==="held");
+}
+function auxDraftMigrationOwnerScope(entry,owners=[...auxDraftMigrationOwners.values()]){
+  let owner=entry.owner;
+  if(entry.kind==="rich-editor"){
+    const controller=owner.controller?.();
+    const managers=owners.filter(value=>value.kind==="composer"&&value.owner.controller?.()===controller||
+      value.kind==="newtab"&&value.owner.standalone?.()&&value.owner.controller?.()===controller);
+    if(managers.length!==1)return null;
+    owner=managers[0].owner;
+  }
+  const scope=owner.recoveryScope?.();
+  return typeof scope==="string"&&scope.length>0&&scope.length<=4096?scope:null;
+}
+function auxDraftRecoveryDraftForScope(capture,scope){
+  const raw=capture.sessionEntries?.[`${l}:${scope}`]??capture.localEntries?.[`${l}:${scope}`];
+  if(raw!==undefined){
+    const value=JSON.parse(raw);
+    if(value?.version!==2||typeof value.plainText!=="string")throw Error("Recorded draft schema is unavailable");
+    return value;
+  }
+  const text=capture.sessionEntries?.[`${I}:${scope}`]??capture.localEntries?.[`${I}:${scope}`];
+  return text===undefined?null:{version:2,plainText:text};
+}
+function auxDraftRecoverySettingsForScope(capture,scope){
+  const raw=capture.sessionEntries?.[`${C}:${scope}`];
+  if(raw===undefined)return null;
+  const value=JSON.parse(raw);
+  if(value?.version!==1)throw Error("Recorded draft settings schema is unavailable");
+  return value;
+}
+function auxDraftRecoveryParseCapture(raw){
+  if(typeof raw!=="string"||raw.length>33554432)throw Error("Recorded draft capture exceeds its bound");
+  const value=JSON.parse(raw);
+  if(value?.origin!==window.location.origin)throw Error("Recorded draft origin differs");
+  const known=key=>key===m||[`${l}:`,`${I}:`,`${C}:`].some(prefix=>key.startsWith(prefix));
+  for(const entries of [value.sessionEntries,value.localEntries]){
+    if(!entries||typeof entries!=="object"||Array.isArray(entries)||Object.keys(entries).length>4096)
+      throw Error("Recorded draft store inventory is unavailable");
+    for(const [key,data] of Object.entries(entries))if(!known(key)||typeof data!=="string")
+      throw Error("Recorded draft store has an unknown family");
+  }
+  return value;
+}
+function auxDraftRecoveryStoresEqual(a,b){
+  const equal=(left,right)=>JSON.stringify(Object.keys(left).sort().map(key=>[key,left[key]]))===
+    JSON.stringify(Object.keys(right).sort().map(key=>[key,right[key]]));
+  return a.origin===b.origin&&equal(a.sessionEntries,b.sessionEntries)&&equal(a.localEntries,b.localEntries);
+}
+function auxDraftRecoveryParseOwners(raw){
+  if(typeof raw!=="string"||raw.length>33554432)throw Error("Recorded owner state exceeds its bound");
+  const values=JSON.parse(raw),result=new Map;
+  if(!Array.isArray(values)||!values.length||values.length>256)throw Error("Recorded owner inventory is unavailable");
+  for(const value of values){
+    if(!["rich-editor","composer","newtab","mini","session-owner","chat-client"].includes(value?.kind)||
+       typeof value.scope!=="string"||!value.scope||value.scope.length>4096||typeof value.signatureJson!=="string")
+      throw Error("Recorded owner has no actual stable scope facts");
+    const key=JSON.stringify([value.kind,value.scope]);
+    if(result.has(key))throw Error("Recorded owner scope is ambiguous");
+    result.set(key,{...value,state:JSON.parse(value.signatureJson)});
+  }
+  return result;
+}
+function auxDraftRecoveryParseMemory(raw){
+  if(typeof raw!=="string"||raw.length>33554432)throw Error("Recorded draft memory exceeds its bound");
+  const value=JSON.parse(raw);
+  if(!value||typeof value.dirty!=="boolean")throw Error("Recorded memory flags are unavailable");
+  for(const name of ["drafts","scopes","settings"]){
+    if(!Array.isArray(value[name])||value[name].length>4096)throw Error("Recorded memory inventory is unavailable");
+    const keys=new Set;
+    for(const row of value[name])if(!Array.isArray(row)||row.length!==2||typeof row[0]!=="string"||keys.has(row[0]))
+      throw Error("Recorded memory keys are ambiguous");else keys.add(row[0]);
+  }
+  const scopes=new Map(value.scopes);
+  if(scopes.size!==value.drafts.length)throw Error("Recorded draft scopes are incomplete");
+  for(const [key,draft] of value.drafts)if(!key.startsWith(`${l}:`)||typeof scopes.get(key)!=="boolean"||
+      draft!==null&&(draft?.version!==2||typeof draft.plainText!=="string"))throw Error("Recorded draft intent is unsupported");
+  for(const [key,data] of value.settings)if(!key.startsWith(`${C}:`)||typeof data!=="string")
+    throw Error("Recorded settings intent is unsupported");
+  if(value.pending!==null&&(!value.pending?.message||typeof value.pending.sessionId!=="string"||value.pending.claimId))
+    throw Error("Active or unknown claims cannot be adopted");
+  if(value.acked!==null&&(typeof value.acked?.sessionId!=="string"||typeof value.acked?.claimId!=="string"))
+    throw Error("Claim acknowledgement provenance is unavailable");
+  return value;
+}
+function auxDraftRecoveryMemoryCandidate(source,current,capture,target){
+  const same=(a,b)=>JSON.stringify(a)===JSON.stringify(b);
+  // A fresh or subset cache may receive captured latest data; a newer actual
+  // failed write, pending message or acknowledgement is never overwritten.
+  for(const name of ["drafts","scopes","settings"]){
+    const expected=new Map(source[name]);
+    for(const [key,value] of current[name])if(!expected.has(key)||!same(expected.get(key),value))
+      throw Error("Fresh draft memory contains a newer intent");
+  }
+  if(current.pending!==null&&!same(current.pending,source.pending)||current.dirty&&!source.dirty||
+      !same(current.acked,source.acked))throw Error("Fresh pending/claim memory differs from the recorded owner");
+  const result=JSON.parse(JSON.stringify(source)),scopes=new Map(result.scopes);
+  if(target){
+    const matches=(store,key,operation,value)=>operation==="set"?store[key]===value:!Object.hasOwn(store,key);
+    const retained=[];
+    for(const [key,draft] of result.drafts){
+      const legacy=`${I}:${key.slice(l.length+1)}`,durable=scopes.get(key);
+      const empty=!draft||draft.plainText.length===0&&!draft.attachments?.length,raw=empty?undefined:JSON.stringify(draft);
+      const done=matches(capture.sessionEntries,key,empty?"remove":"set",raw)&&
+        matches(capture.sessionEntries,legacy,"remove")&&
+        matches(capture.localEntries,key,empty||!durable?"remove":"set",raw)&&matches(capture.localEntries,legacy,"remove");
+      if(done)scopes.delete(key);else retained.push([key,draft]);
+    }
+    result.drafts=retained;result.scopes=[...scopes];
+    result.settings=result.settings.filter(([key,data])=>capture.sessionEntries[key]!==data);
+    if(result.dirty){
+      const raw=result.pending===null?undefined:JSON.stringify(result.pending);
+      if(result.pending===null?!Object.hasOwn(capture.sessionEntries,m):capture.sessionEntries[m]===raw)result.dirty=false;
+    }
+  }
+  return result;
+}
+function auxDraftRecoveryCurrentOwnerFacts(){
+  const entries=[...auxDraftMigrationOwners.values()],facts=[];
+  for(const entry of entries)facts.push({kind:entry.kind,scope:auxDraftMigrationOwnerScope(entry,entries),signatureJson:auxDraftMigrationSignature(entry.owner)});
+  facts.sort((a,b)=>auxDraftRecoveryCompare(a.kind,b.kind)||auxDraftRecoveryCompare(String(a.scope),String(b.scope))||auxDraftRecoveryCompare(a.signatureJson,b.signatureJson));
+  return facts;
+}
+function auxReadDraftMigrationRecoveryAdoption(leaseId,revision){
+  const lease=auxDraftMigrationLease,adoption=lease?.adoption;
+  try{
+    if(!lease||lease.id!==leaseId||lease.revision!==revision||!adoption||
+       !["adopting","adopted"].includes(lease.phase)||lease.tainted||auxDraftMigrationRevision!==revision||
+       auxDraftMigrationWork.size||auxDraftMigrationUnknownWork.size||auxDraftMigrationOwnerOverflow||
+       auxDraftMigrationOwners.size!==adoption.owners.length)throw Error("Actual adoption owner/lease changed");
+    auxDraftMigrationCheckInputs();
+    for(const entry of adoption.owners)if(!auxDraftMigrationOwners.has(entry.ticket)||auxDraftMigrationOwnerScope(entry.ticket)!==entry.desired.scope)throw Error("An adopted owner or actual scope changed");
+    const current=JSON.parse(auxDraftMigrationCaptureJson());
+    if(!auxDraftRecoveryStoresEqual(current,adoption.capture))throw Error("Actual adopted stores differ from the native desired alternative");
+    const facts=auxDraftRecoveryCurrentOwnerFacts(),ownerStateJson=JSON.stringify(facts),memoryStateJson=auxDraftMigrationMemorySignature();
+    const complete=adoption.owners.every(entry=>entry.ticket.owner.adoptionSettled?.()!==false&&auxDraftMigrationSignature(entry.ticket.owner)===entry.desired.signatureJson)&&
+      memoryStateJson===adoption.memoryJson;
+    if(complete){adoption.complete=true;lease.phase="adopted"}
+    return{format:"aux.ui-draft-owner-adoption.v1",ok:true,pending:!complete,complete,retained:true,
+      requestId:lease.requestId,leaseId,revision,ownerStateJson,memoryStateJson,storeUnits:auxDraftMigrationStoreUnits(current)};
+  }catch(error){return{format:"aux.ui-draft-owner-adoption.v1",ok:false,pending:true,complete:false,retained:!!lease,
+    requestId:lease?.requestId,leaseId:lease?.id,revision:lease?.revision,error:String(error?.message??error)}}
+}
+function auxAdoptDraftMigrationRecovery(leaseId,revision,plan){
+  const lease=auxDraftMigrationLease;
+  try{
+    const raw=JSON.stringify(plan);
+    if(typeof raw!=="string"||raw.length>67108864)throw Error("Owner adoption plan exceeds its bound");
+    if(lease?.adoption){
+      if(lease.adoption.planJson!==raw)throw Error("Original adoption plan is immutable");
+      return auxReadDraftMigrationRecoveryAdoption(leaseId,revision);
+    }
+    auxAssertDraftMigrationOwners(leaseId,revision);
+    if(!lease.recoveryReadOnly||!lease.sealed||plan?.format!=="aux.ui-draft-owner-adoption.v1"||
+       !["source","target"].includes(plan.desired))throw Error("Sealed fresh recovery lease and finite alternatives required");
+    if(auxDraftMigrationHasClaim())throw Error("A current claim is still owned");
+    const sourceCapture=auxDraftRecoveryParseCapture(plan.sourceCaptureJson),targetCapture=auxDraftRecoveryParseCapture(plan.targetCaptureJson);
+    const capture=plan.desired==="source"?sourceCapture:targetCapture,currentCapture=JSON.parse(auxDraftMigrationCaptureJson());
+    if(!auxDraftRecoveryStoresEqual(currentCapture,capture))throw Error("Native desired stores are not actually observed");
+    const source=auxDraftRecoveryParseOwners(plan.sourceOwnerStateJson),target=auxDraftRecoveryParseOwners(plan.targetOwnerStateJson);
+    const entries=[...auxDraftMigrationOwners.values()],owners=[],seen=new Set;
+    if(source.size!==entries.length||target.size!==entries.length)throw Error("Actual owner inventory differs from the recorded alternatives");
+    for(const ticket of entries){
+      const scope=auxDraftMigrationOwnerScope(ticket,entries),key=JSON.stringify([ticket.kind,scope]);
+      const left=source.get(key),right=target.get(key),desired=plan.desired==="source"?left:right;
+      if(!scope||seen.has(key)||!left||!right||!desired||typeof ticket.owner.prepareAdoption!=="function")
+        throw Error("Actual owner correspondence/setter is unavailable");
+      seen.add(key);
+      const current=auxDraftMigrationSignature(ticket.owner),matched=current===left.signatureJson||current===right.signatureJson;
+      const context={scope,matched,sourceCapture,targetCapture,capture,goal:plan.desired};
+      const apply=ticket.owner.prepareAdoption(desired.state,context);
+      if(typeof apply!=="function")throw Error("An actual owner refused finite adoption");
+      owners.push({ticket,desired,apply});
+    }
+    const memorySource=auxDraftRecoveryParseMemory(plan.sourceMemoryStateJson),memoryCurrent=auxDraftRecoveryParseMemory(lease.memoryJson);
+    const memory=auxDraftRecoveryMemoryCandidate(memorySource,memoryCurrent,currentCapture,plan.desired==="target");
+    const memoryJson=JSON.stringify(memory);
+    if(plan.targetMemoryStateJson!==plan.sourceMemoryStateJson&&plan.targetMemoryStateJson!==JSON.stringify(auxDraftRecoveryMemoryCandidate(memorySource,memoryCurrent,targetCapture,true)))
+      throw Error("Target memory must preserve captured latest data or retire only exact saved intents");
+    const allowedScopes=new Set(entries.map(entry=>auxDraftMigrationOwnerScope(entry,entries)).filter(Boolean));
+    for(const [key,draft] of memory.drafts){
+      const scope=key.slice(l.length+1);
+      if(!allowedScopes.has(scope))throw Error("A retained failed draft has no actual current scope owner");
+      if(draft?.attachments?.length){
+        const known=entries.some(entry=>{
+          const value=entry.owner.inspect(),attachments=value.attachments??value.snapshot?.attachments??value.record?.attachments??value.draft?.attachments??[];
+          return JSON.stringify(attachments)===JSON.stringify(draft.attachments);
+        });
+        if(!known)throw Error("Recorded attachment capability is not owned by a current editor");
+      }
+    }
+    for(const [key] of memory.settings)if(!allowedScopes.has(key.slice(C.length+1)))
+      throw Error("Retained settings have no actual current scope owner");
+    lease.adoption={planJson:raw,owners,memoryJson,capture,complete:false};lease.phase="adopting";
+    // Every real owner has preflighted before the first mutation. Failures
+    // retain partial state/hold; no timeout or destructor reports completion.
+    for(const entry of owners){if(auxDraftMigrationLease!==lease||lease.tainted||auxDraftMigrationRevision!==revision||auxDraftMigrationOwnerScope(entry.ticket)!==entry.desired.scope)throw Error("Actual owner changed during adoption");entry.apply()}
+    auxUnsavedDrafts=new Map(memory.drafts);auxUnsavedDraftScopes=new Map(memory.scopes);
+    auxUnsavedDraftSettings=new Map(memory.settings);a=memory.pending;auxPendingMessageDirty=memory.dirty;
+    // Acknowledgements are preserved only from the actual same fresh cache.
+    // No native task completion, claim ID or ACK tombstone is manufactured.
+    if(JSON.stringify(auxDraftMigrationAckedClaim)!==JSON.stringify(memory.acked))throw Error("Actual acknowledgement changed");
+    if(auxUnsavedDrafts.size)window.addEventListener("beforeunload",auxDraftUnload);
+    else window.removeEventListener("beforeunload",auxDraftUnload);
+    return auxReadDraftMigrationRecoveryAdoption(leaseId,revision);
+  }catch(error){return{format:"aux.ui-draft-owner-adoption.v1",ok:false,pending:!!lease?.adoption,complete:false,retained:!!lease,
+    requestId:lease?.requestId,leaseId:lease?.id,revision:lease?.revision,error:String(error?.message??error)}}
+}
