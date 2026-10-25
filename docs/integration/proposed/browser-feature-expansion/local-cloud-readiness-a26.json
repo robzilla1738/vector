@@ -1,0 +1,56 @@
+{
+  "observedAt": "2026-10-25T19:19:18.334955+00:00",
+  "method": "Read-only connected Vercel metadata and unauthenticated public health GET; no dashboard writes/decryption/credentials use",
+  "account": "robzilla1738",
+  "team": "robzilla1738s-projects",
+  "project": "aux-cloud",
+  "projectId": "prj_WLAGrKLQ42G5unZOI5FUkk5gBwxB",
+  "existingDomains": [
+    "api.getaux.co",
+    "app.getaux.co",
+    "share.getaux.co",
+    "dev-cloud.getaux.co"
+  ],
+  "latestDeployment": {
+    "id": "dpl_4xeJYrXuUtcmFWFTjwevrCF3huQZ",
+    "readyState": "READY",
+    "targetSlot": "production",
+    "sourceCommit": "6fe912d4421f547e72e2833fb54238789167234b"
+  },
+  "publicHealth": [
+    {
+      "host": "dev-cloud.getaux.co",
+      "path": "/api/v1/health",
+      "status": 200,
+      "service": "aux-cloud"
+    },
+    {
+      "host": "api.getaux.co",
+      "path": "/api/v1/health",
+      "status": 200,
+      "service": "aux-cloud"
+    }
+  ],
+  "nonsecretConfiguration": {
+    "AUX_PAYMENTS_ENABLED": "false",
+    "AUX_HOSTED_AI_ENABLED": "false",
+    "targets": [
+      "production",
+      "preview",
+      "development"
+    ]
+  },
+  "environmentKeyInventoryPartial": true,
+  "notProved": [
+    "current local cloud source is deployed",
+    "current database migration readiness",
+    "actual desktop sign-in/sync/sharing/email",
+    "payment-free runtime enforcement on older deployed source",
+    "scheduled backup runner/independent key retrieval"
+  ],
+  "remainingAction": "Reconcile newer local cloud source/config against existing deployment and prepare explicit activation/migration review; do not recreate resources or resume payments",
+  "newResources": false,
+  "deploymentsCreated": false,
+  "settingsChanged": false,
+  "release": false
+}

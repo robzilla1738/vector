@@ -1,0 +1,2787 @@
+{
+  "format": "aux.ordinary-startup.native-composition.v1",
+  "selectedFiles": {
+    "base/process/kill.h": {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/base/process/kill.h",
+      "sha256": "7ee408e155a1d433ab7320267932305f99418ebcfa2450f39fbb9a6f4eb32f1b",
+      "changed": false
+    },
+    "base/process/kill_mac.cc": {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/base/process/kill_mac.cc",
+      "sha256": "ed8c96ff7ad08fcdd44beeacd513dd730fe0197d91a48195564fbb9332c4817d",
+      "changed": false
+    },
+    "base/process/kill_posix.cc": {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/base/process/kill_posix.cc",
+      "sha256": "ae7c6fd656a40ddc7b7c3a88a083cac75b038d8b8507f586bce707346b9bf08a",
+      "changed": false
+    },
+    "build/config/mac/BUILD.gn": {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/build/config/mac/BUILD.gn",
+      "sha256": "cd20bc4ae5d52b3fbb5a3e0537320dae017cc13db1265c3e5f09de0031ec30a4",
+      "changed": false
+    },
+    "build/rust/gni_impl/rustc_wrapper.py": {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/build/rust/gni_impl/rustc_wrapper.py",
+      "sha256": "f8a0727b1d8ec46ec63da72ebf62a24501dbb3ed73b998c018eba6e00dadcfbb",
+      "changed": false
+    },
+    "build/toolchain/apple/aux_host_link_filter.py": {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/build/toolchain/apple/aux_host_link_filter.py",
+      "sha256": "404875f1d5df38c6d1d7e37c96a1860b23445776a94b605be3087d7502dbde34",
+      "changed": false
+    },
+    "build/toolchain/apple/excluded-product-outputs.json": {
+      "path": "/private/tmp/aux-ordinary-startup-native-a42/build/toolchain/apple/excluded-product-outputs.json",
+      "sha256": "fe1e6db5126c656da5652bd6bd6e8965abeccc4f955bc54927e558cfca28713c",
+      "inputSha256": "cf5ff83bcb5768ecf18ba436694f8b175183829b81b5de0e2a7702ded90f3381",
+      "changed": true
+    },
+    "build/toolchain/apple/host-output-allowlist.json": {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/build/toolchain/apple/host-output-allowlist.json",
+      "sha256": "ec54f4421d200640b62a5298a18ab3957a22175f0ec52ba2ae9142ec4a8c7c28",
+      "changed": false
+    },
+    "build/toolchain/apple/host-proc-macro-allowlist.json": {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/build/toolchain/apple/host-proc-macro-allowlist.json",
+      "sha256": "94c8f65be4a6da042e74a759a59eb45e410906b62ff77c9b4ca6b552f3dd2759",
+      "changed": false
+    },
+    "build/toolchain/apple/linker_driver.py": {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/build/toolchain/apple/linker_driver.py",
+      "sha256": "b41a131f74e8ce415bd6f185a02d3025a17c5d4264bb289ad4ec65058430f585",
+      "changed": false
+    },
+    "chrome/browser/app_controller_mac.mm": {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/app_controller_mac.mm",
+      "sha256": "cd1f4d4a781bba1391f14ccdacad42c086d8d9e77af2916db514b91dfe73948e",
+      "changed": false
+    },
+    "chrome/browser/aux/AuxBrowserNetworkPaths.cc": {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/aux/AuxBrowserNetworkPaths.cc",
+      "sha256": "2996381f1265fd2af903c78a18f16bb8c31fdc762dba0c487dedc24a8cdcebda",
+      "changed": false
+    },
+    "chrome/browser/aux/AuxBrowserNetworkPaths.h": {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/aux/AuxBrowserNetworkPaths.h",
+      "sha256": "8a456e530cc1c6f3955f14daa43fa3e7cbdd67f2b085118215023c344b6cccdc",
+      "changed": false
+    },
+    "chrome/browser/aux/AuxBrowserPrivateRoots.cc": {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/aux/AuxBrowserPrivateRoots.cc",
+      "sha256": "403d6e5e1d8367b5317be06ec120ed9d65b032ed0fc176a379b7d7293373c998",
+      "changed": false
+    },
+    "chrome/browser/aux/AuxBrowserPrivateRoots.h": {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/aux/AuxBrowserPrivateRoots.h",
+      "sha256": "5b9b84ca04000046b99b59ed9967d2ddce14afdd1c8b0a36bcf0d50a4aa30636",
+      "changed": false
+    },
+    "chrome/browser/aux/AuxChromiumBrowserRootProducer.cc": {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/aux/AuxChromiumBrowserRootProducer.cc",
+      "sha256": "e38a850dec4b8f6105fe75b94ad31a617a1a719af81b7fdc2c94202dc65bb3a7",
+      "changed": false
+    },
+    "chrome/browser/aux/AuxNativeParentColdLaunch.h": {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/aux/AuxNativeParentColdLaunch.h",
+      "sha256": "516429b347f4f159b3ff25232dc4d56df8dabb6a1a00112393a7022ebe96b013",
+      "changed": false
+    },
+    "chrome/browser/aux/AuxNativePeerTransport.cc": {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/fresh-startup-milestone-a42/browser-peer-identity-reuse-source/chrome/browser/aux/AuxNativePeerTransport.cc",
+      "sha256": "186e088c403e38752a035833ee0cef8859a111ac055515ce83415e2a0cee683c",
+      "inputSha256": "e24dd9886408bda5e3e18cdcf2edf45085163b4252db21570fff1aedb483a016",
+      "changed": true
+    },
+    "chrome/browser/aux/AuxNativePeerTransport.h": {
+      "path": "/private/tmp/aux-ordinary-startup-native-a42/chrome/browser/aux/AuxNativePeerTransport.h",
+      "sha256": "200735d57b29147b258c46d81e610b9615b3fe38b2bf08a3c7f69c2776a19050",
+      "changed": true
+    },
+    "chrome/browser/aux/AuxNativePeerWire.h": {
+      "path": "/private/tmp/aux-ordinary-startup-native-a42/chrome/browser/aux/AuxNativePeerWire.h",
+      "sha256": "f15b5c11f1c79971b14b65e866acf7306763a421fe461d57cd1aed3523bcb3dd",
+      "changed": true
+    },
+    "chrome/browser/aux/AuxOwnedChildWait.h": {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/aux/AuxOwnedChildWait.h",
+      "sha256": "b5bc81eb518ecd1f5158eb2f65cf5e78db89eced0266257beb33fc11f1434582",
+      "changed": false
+    },
+    "chrome/browser/aux/AuxOwnedNativePeerChild.cc": {
+      "path": "/private/tmp/aux-ordinary-startup-native-a42/chrome/browser/aux/AuxOwnedNativePeerChild.cc",
+      "sha256": "079c3011091f6528b1de26400dcf9608f0b3eb17e0a6b56b2825061dd8416b79",
+      "changed": true
+    },
+    "chrome/browser/aux/AuxOwnedNativePeerChild.h": {
+      "path": "/private/tmp/aux-ordinary-startup-native-a42/chrome/browser/aux/AuxOwnedNativePeerChild.h",
+      "sha256": "28ed85a70c129d7a55e70536c5e2e5c42f98893716546825660dfe397278cc81",
+      "changed": true
+    },
+    "chrome/browser/aux/AuxPreparedDaemonAuthority.h": {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/aux/AuxPreparedDaemonAuthority.h",
+      "sha256": "3d775bb044891793e78fb79823079a94824db5912565f6d4de16c449c0e67cf8",
+      "changed": false
+    },
+    "chrome/browser/aux/AuxSelectedHomePolicyBridge.h": {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/aux/AuxSelectedHomePolicyBridge.h",
+      "sha256": "fc41a3b2ae1d9a757ddc4b84820bc39ffe958cf47c5f4a9ef7e9ad7a3e78007c",
+      "changed": false
+    },
+    "chrome/browser/aux/AuxSelectedStateHome.cc": {
+      "path": "/private/tmp/aux-ordinary-startup-native-a42/chrome/browser/aux/AuxSelectedStateHome.cc",
+      "sha256": "3e428cc87add669fff579ac0be8baaab3c278210047514cbe2e0ed5989c32271",
+      "changed": true
+    },
+    "chrome/browser/aux/AuxSelectedStateHome.h": {
+      "path": "/private/tmp/aux-ordinary-startup-native-a42/chrome/browser/aux/AuxSelectedStateHome.h",
+      "sha256": "340e954939b4b9d08ef532b266ef37c403abf85a31b74599d5ed19ff3ebb0c52",
+      "changed": true
+    },
+    "chrome/browser/aux/BUILD.gn": {
+      "path": "/private/tmp/aux-ordinary-startup-native-a42/chrome/browser/aux/BUILD.gn",
+      "sha256": "4d8702a447a0c666dec5e4d07819c6be19c2a1f2b144f8997ced1cf2ae989f27",
+      "changed": true
+    },
+    "chrome/browser/aux/account_bootstrap_state.h": {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/aux/account_bootstrap_state.h",
+      "sha256": "06734242878fbffc8791977b1b73add572a7b36d4af106a61e0a7c3603ef82ff",
+      "changed": false
+    },
+    "chrome/browser/aux/account_profile_avatar.h": {
+      "path": "/private/tmp/aux-ordinary-startup-native-a42/chrome/browser/aux/account_profile_avatar.h",
+      "sha256": "e972a1b2bf574815d38ed87fa34ca75e0e9393486b052102df1f99ef6ba65d3f",
+      "inputSha256": "2bc56b09a90b0f93e5644f245e1f9ad5754ef1fa3ecbf22b07d77727272a0745",
+      "changed": true
+    },
+    "chrome/browser/aux/account_profile_prefs.h": {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/aux/account_profile_prefs.h",
+      "sha256": "8145166b2b5404edca828e8c2f8bfa02638a3c84ccda4e87bf0006a7d4b1bff1",
+      "changed": false
+    },
+    "chrome/browser/aux/account_profile_source.h": {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/aux/account_profile_source.h",
+      "sha256": "6ae70b66812f8f9d3d0f91d0be7fe3c99cfe621764e1869de015e071d0e5f7d2",
+      "changed": false
+    },
+    "chrome/browser/aux/account_profile_updater.cc": {
+      "path": "/private/tmp/aux-ordinary-startup-native-a42/chrome/browser/aux/account_profile_updater.cc",
+      "sha256": "2f5a798eb8b8397d716c1d02de69a86e42456e74397d63a7d138c14992b26554",
+      "inputSha256": "5fbf6369da60987471cf815297fef6eada042c13966b0c42101f2a42f3bc97b8",
+      "changed": true
+    },
+    "chrome/browser/aux/account_profile_updater.h": {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/aux/account_profile_updater.h",
+      "sha256": "bcbbdda4a6a4113f891582f2071dfc8854fe4e569c3d15d0adbd5be7e8839caf",
+      "changed": false
+    },
+    "chrome/browser/aux/browser_platform.h": {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/aux/browser_platform.h",
+      "sha256": "90d1655f6121b69e3d9843bacbea96022595edec7915073017a7da2ceeb7615d",
+      "changed": false
+    },
+    "chrome/browser/aux/component_bootstrap.h": {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/aux/component_bootstrap.h",
+      "sha256": "712bd86de1bbed01daed81bf630b10c51a42dceedf84657ccfbf63c8aec22131",
+      "changed": false
+    },
+    "chrome/browser/aux/daemon_supervisor.h": {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/aux/daemon_supervisor.h",
+      "sha256": "39405df1cbc9a4c81b44bff371779d77e5ef8b1d1d7f97777b29933ef5fbc91f",
+      "changed": false
+    },
+    "chrome/browser/aux/direct_daemon_quiesce_result.h": {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/aux/direct_daemon_quiesce_result.h",
+      "sha256": "613a143f77fe7d9e5335c07d3672e30b515da162789a639b3ab6a4c7f774925f",
+      "changed": false
+    },
+    "chrome/browser/aux/feature_store/feature_profile_store.cc": {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/aux/feature_store/feature_profile_store.cc",
+      "sha256": "c6886c48031a1d2b27505bfed7449961075eed512f275a5a81314bea7d535121",
+      "changed": false
+    },
+    "chrome/browser/aux/feature_store/feature_profile_store.h": {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/aux/feature_store/feature_profile_store.h",
+      "sha256": "0fa60130e276a3aed3513dcc8c894e17abe42dac17049bfd1866b7005e676903",
+      "changed": false
+    },
+    "chrome/browser/aux/feature_store/feature_write_participant.cc": {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/aux/feature_store/feature_write_participant.cc",
+      "sha256": "ce1fe4b56c370b6b0369776eadc3d00530a7931d2963b81fb70c75f72079f14d",
+      "changed": false
+    },
+    "chrome/browser/aux/feature_store/feature_write_participant.h": {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/aux/feature_store/feature_write_participant.h",
+      "sha256": "a7db1e6b87daf66bce72c7b542e31d4b5b5e0147101ece0df85ad5c3387a37cc",
+      "changed": false
+    },
+    "chrome/browser/aux/feature_store/feature_write_participant_unittest.cc": {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/aux/feature_store/feature_write_participant_unittest.cc",
+      "sha256": "ab949f598da2f1564a99c3f2a3cb480f5784a2ea7576eb9de2285e0de00906e7",
+      "changed": false
+    },
+    "chrome/browser/aux/installation_auth.h": {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/aux/installation_auth.h",
+      "sha256": "fb9c4d9b26595bac83fbc4b77baee840608f2f2123b789ee48967f946beab5de",
+      "changed": false
+    },
+    "chrome/browser/aux/installation_carrier_custody.h": {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/aux/installation_carrier_custody.h",
+      "sha256": "19c3b38d65b1709ee977c2944a9503ff0414836e2bc3319d82805870d26cb9a2",
+      "changed": false
+    },
+    "chrome/browser/aux/ntp_prerender_service.h": {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/aux/ntp_prerender_service.h",
+      "sha256": "8812cb3f2b929f9c915353628ba586a81652782ab530f7dfb05855792ac61cef",
+      "changed": false
+    },
+    "chrome/browser/aux/organization/organization_codec.cc": {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/aux/organization/organization_codec.cc",
+      "sha256": "f0515622f11c418c38b59510bd25e3f02108c38cab48bcf87637254a8d359249",
+      "changed": false
+    },
+    "chrome/browser/aux/organization/organization_codec.h": {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/aux/organization/organization_codec.h",
+      "sha256": "2977da779fc63adbc09d02a41fd35c2352fb8b82b77f95ce99ae95ab0298c080",
+      "changed": false
+    },
+    "chrome/browser/aux/organization/organization_model.cc": {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/aux/organization/organization_model.cc",
+      "sha256": "6f9be191caa8fde23979f7734d1bfdc5a10369a9008b26a3115d7b2f240a1303",
+      "changed": false
+    },
+    "chrome/browser/aux/organization/organization_model.h": {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/aux/organization/organization_model.h",
+      "sha256": "7fd5c2d5168252a6bcf51fa181df60d8973b23a44bf5097dc7abda6a353872f6",
+      "changed": false
+    },
+    "chrome/browser/aux/organization/organization_model_unittest.cc": {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/aux/organization/organization_model_unittest.cc",
+      "sha256": "27ff1bfa6fb6d750311170433954cffc6ae27a435458cfc0e3da0df23d2e7991",
+      "changed": false
+    },
+    "chrome/browser/aux/organization/organization_profile_service.cc": {
+      "path": "/private/tmp/aux-ordinary-startup-native-a42/chrome/browser/aux/organization/organization_profile_service.cc",
+      "sha256": "835e186e6de68e0149395e72126e4904d4261e07e4e62f90aa77f474a537888b",
+      "inputSha256": "7c50ffff360e13d830586c4941b6830d57a494c668de899db8bbd020a9e88a5d",
+      "changed": true
+    },
+    "chrome/browser/aux/organization/organization_profile_service.h": {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/aux/organization/organization_profile_service.h",
+      "sha256": "f84549a91364652776d46d7cc89632d9b1e293ba839e2d52c85017463609c9c9",
+      "changed": false
+    },
+    "chrome/browser/aux/organization/organization_service.cc": {
+      "path": "/private/tmp/aux-ordinary-startup-native-a42/chrome/browser/aux/organization/organization_service.cc",
+      "sha256": "b520ad1dfea94381ce2cef20149a2ccc0ecf7d15dca33b0a61543112ce8185fb",
+      "inputSha256": "7bf3a55c6014d433e8ee1753b68b3cb8a84b9d55ea67a53f274ff65894686fc0",
+      "changed": true
+    },
+    "chrome/browser/aux/organization/organization_service.h": {
+      "path": "/private/tmp/aux-ordinary-startup-native-a42/chrome/browser/aux/organization/organization_service.h",
+      "sha256": "10d26f0dbe61a23341156622c2fb2a14535210f33ba020d25cbd56e3d12a0fc5",
+      "inputSha256": "aa6124c1f4317efe4c40343d0472364422adc44b45be0bb1a765190ffa5d2651",
+      "changed": true
+    },
+    "chrome/browser/aux/owned_direct_helper_quiesce.h": {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/aux/owned_direct_helper_quiesce.h",
+      "sha256": "f6ddb043ef84b700136e5dfa76e8d1ef58d6adcb6676e70c3693ca7a4f0f33ab",
+      "changed": false
+    },
+    "chrome/browser/aux/profile_account_metadata.h": {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/aux/profile_account_metadata.h",
+      "sha256": "4f9e8e96756194018e4ac7b9118b375042673dc92dcb1bab8242134e1eb16e0c",
+      "changed": false
+    },
+    "chrome/browser/aux/profile_gate.h": {
+      "path": "/private/tmp/aux-ordinary-startup-native-a42/chrome/browser/aux/profile_gate.h",
+      "sha256": "2869035545b5d5fbb640657c46a3e67c9da5f54b74daa2826a77710dd57b3579",
+      "changed": true
+    },
+    "chrome/browser/aux/profile_gate_prefs.cc": {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/aux/profile_gate_prefs.cc",
+      "sha256": "1d2b9aae42537f0c348717619a443e40ddcd71166ed6f963b24339c8fe1c0f97",
+      "changed": false
+    },
+    "chrome/browser/aux/profile_gate_prefs.h": {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/aux/profile_gate_prefs.h",
+      "sha256": "19b26129a95381793e33bba08e431205739dcc29bc9a56438d28667e739a05e4",
+      "changed": false
+    },
+    "chrome/browser/aux/profile_identity.h": {
+      "path": "/private/tmp/aux-ordinary-startup-native-a42/chrome/browser/aux/profile_identity.h",
+      "sha256": "ddd97b8a3a95050d5e5fb63c80e6ae34f4fce775b9a2ed96994921760328d163",
+      "inputSha256": "aecd4902b984a42ae2a6256949049050e42e99fe657bdecfdf845dde41732b5f",
+      "changed": true
+    },
+    "chrome/browser/aux/profile_security_client.h": {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/aux/profile_security_client.h",
+      "sha256": "4f807829f021c90c79c692b141089c1f0685df809712b26f513bc2cd796d1380",
+      "changed": false
+    },
+    "chrome/browser/aux/profile_state.h": {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/aux/profile_state.h",
+      "sha256": "9832c3b5bf5baf17f4f7cff6b5341b65e9a9e1219580061be1fe1ee7fd21b0ae",
+      "changed": false
+    },
+    "chrome/browser/aux/routing/cold_start_routing.cc": {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/aux/routing/cold_start_routing.cc",
+      "sha256": "5b28813ed8cac3a4c54c604dc407d71fccb98a44d97a2741ee69d80be7c4ed25",
+      "changed": false
+    },
+    "chrome/browser/aux/routing/external_routing_ingress.cc": {
+      "path": "/private/tmp/aux-ordinary-startup-native-a42/chrome/browser/aux/routing/external_routing_ingress.cc",
+      "sha256": "1995d054d20ed10f5406b673fdb938b83bb95c288b2cba478080a1ca05b642b2",
+      "inputSha256": "c148e6e86118652e242b9a5e8f4de6abb237036b2f1f7e68b919ea40901976c4",
+      "changed": true
+    },
+    "chrome/browser/aux/routing/external_routing_ingress.h": {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/aux/routing/external_routing_ingress.h",
+      "sha256": "a572c6d8ce51150fc19fe952ab5543cea8c05fd405cb89df408d8f4a9caf5ab5",
+      "changed": false
+    },
+    "chrome/browser/aux/routing/routing_model.cc": {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/aux/routing/routing_model.cc",
+      "sha256": "8693a282f61b269ec5957c320cf16361f3f595d3ea71d3c1499a82f4afb0a59d",
+      "changed": false
+    },
+    "chrome/browser/aux/routing/routing_model.h": {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/aux/routing/routing_model.h",
+      "sha256": "97253d31a3cf5409d247a4a2eb95738de844e8484477a2ae04ad859b6fec53a0",
+      "changed": false
+    },
+    "chrome/browser/aux/routing/routing_model_unittest.cc": {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/aux/routing/routing_model_unittest.cc",
+      "sha256": "24d53d8efda192f918ef13b45a51590b7b81966b67b41eae30c0bc9b5826dd2e",
+      "changed": false
+    },
+    "chrome/browser/aux/routing/routing_service.cc": {
+      "path": "/private/tmp/aux-ordinary-startup-native-a42/chrome/browser/aux/routing/routing_service.cc",
+      "sha256": "54517576199648eaccde1216bda347fd9f9f304217508841dc6c28aadf33a9ca",
+      "inputSha256": "2f99bbe4ac57aceda559c8c644e2d3be0733329af002205dd752e1d33e28030b",
+      "changed": true
+    },
+    "chrome/browser/aux/routing/routing_service.h": {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/aux/routing/routing_service.h",
+      "sha256": "000caf70a7d18b1fe577878a2b27a9753c97ab82cbc0568aa08379893e8ef362",
+      "changed": false
+    },
+    "chrome/browser/aux/routing/shortcut_routing_mac.mm": {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/aux/routing/shortcut_routing_mac.mm",
+      "sha256": "c7616bcaf416408e8c206b6d4818fe1a73dcde85662dc0a628f0b85f4f9edb9c",
+      "changed": false
+    },
+    "chrome/browser/chrome_browser_main.cc": {
+      "path": "/private/tmp/aux-ordinary-startup-native-a42/chrome/browser/chrome_browser_main.cc",
+      "sha256": "b398db8a560746e2d4bb256c1eac67145bdf6572776891f43ae4eda7cf8553a1",
+      "changed": true
+    },
+    "chrome/browser/chrome_content_browser_client.cc": {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/chrome_content_browser_client.cc",
+      "sha256": "0584d40c6a3d884a3510119ef787d15b18a7ed89ee5fab8a8f8516fc112c693a",
+      "changed": false
+    },
+    "chrome/browser/chrome_content_browser_client.h": {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/chrome_content_browser_client.h",
+      "sha256": "bfb9bb5975fca97f2ff1ae565baf69cae4d9437a2292541ccc856426630dd3e5",
+      "changed": false
+    },
+    "chrome/browser/devtools/chrome_devtools_manager_delegate.cc": {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/devtools/chrome_devtools_manager_delegate.cc",
+      "sha256": "a1d1a68ca25fee53efdb1980a82879e6875b21669be22c65f44e5560e4e2748a",
+      "changed": false
+    },
+    "chrome/browser/devtools/chrome_devtools_manager_delegate.h": {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/devtools/chrome_devtools_manager_delegate.h",
+      "sha256": "e687175087c5aec9433d4fe187df975a0301e580fdc196ec1a8bb3ada9fcf158",
+      "changed": false
+    },
+    "chrome/browser/download/chrome_download_manager_delegate.cc": {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/download/chrome_download_manager_delegate.cc",
+      "sha256": "d4e412374de7ff2950011f7c342753c3ad9a9102b3737013eb047786d6a13f63",
+      "changed": false
+    },
+    "chrome/browser/extensions/api/aux_browser_preferences/BUILD.gn": {
+      "path": "/private/tmp/aux-ordinary-startup-native-a42/chrome/browser/extensions/api/aux_browser_preferences/BUILD.gn",
+      "sha256": "b96c170e0335e182a0769f507b92e0c931d43e4a784623103cb55364156df2a3",
+      "inputSha256": "c394166d7528e3c2131498a48a02466bd495c1cbb9f7ad7abe3ddafb4522dcdd",
+      "changed": true
+    },
+    "chrome/browser/extensions/api/aux_browser_preferences/aux_browser_preferences_api.cc": {
+      "path": "/private/tmp/aux-ordinary-startup-native-a42/chrome/browser/extensions/api/aux_browser_preferences/aux_browser_preferences_api.cc",
+      "sha256": "c000a7099603e3d10e62c7049a5885f567746d8a834fd6fa95a4700f9211cd8e",
+      "changed": true
+    },
+    "chrome/browser/extensions/api/aux_browser_preferences/aux_browser_preferences_api.h": {
+      "path": "/private/tmp/aux-ordinary-startup-native-a42/chrome/browser/extensions/api/aux_browser_preferences/aux_browser_preferences_api.h",
+      "sha256": "c21aec55762b33faf3e509a00e6a8272e8b62d622628cb0abd23928b1a5348af",
+      "inputSha256": "04f3ae9ab32bf2192a95f8f7c4662d0668f0ede2d6a2fc3f1488f2d1a614bc7f",
+      "changed": true
+    },
+    "chrome/browser/extensions/api/aux_browser_preferences/aux_developer_expansion_api.cc": {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/extensions/api/aux_browser_preferences/aux_developer_expansion_api.cc",
+      "sha256": "b7e263be5cef6588501b7ec182a2740ec52426a2756785198959f73ac1d77386",
+      "changed": false
+    },
+    "chrome/browser/extensions/api/aux_browser_preferences/aux_developer_expansion_api.h": {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/extensions/api/aux_browser_preferences/aux_developer_expansion_api.h",
+      "sha256": "4af11e671db31400d78fdf4711f906ff5247c3683b9eeeff7e7105ff470f2c70",
+      "changed": false
+    },
+    "chrome/browser/extensions/api/aux_browser_preferences/aux_feature_expansion_api.cc": {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/extensions/api/aux_browser_preferences/aux_feature_expansion_api.cc",
+      "sha256": "5cf6d62064c111ff0f3155cf90b733f2f742258feae819453badce7e52666222",
+      "changed": false
+    },
+    "chrome/browser/extensions/api/aux_browser_preferences/aux_feature_expansion_api.h": {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/extensions/api/aux_browser_preferences/aux_feature_expansion_api.h",
+      "sha256": "7f9aac8f99165debe5d98c64ca4bf7fe3d8da9776503f5a973e723507500b354",
+      "changed": false
+    },
+    "chrome/browser/extensions/api/messaging/BUILD.gn": {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/extensions/api/messaging/BUILD.gn",
+      "sha256": "959c4edd614a6d759219754aac28d8418f5a3b24c50ab17adc022e61589043d5",
+      "changed": false
+    },
+    "chrome/browser/extensions/api/messaging/aux_native_messaging_lifetime.h": {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/extensions/api/messaging/aux_native_messaging_lifetime.h",
+      "sha256": "25b3d277ea42891f183383383793d4a76d96564d3d571a1d2eac85a4987a9393",
+      "changed": false
+    },
+    "chrome/browser/extensions/api/messaging/launch_context.cc": {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/extensions/api/messaging/launch_context.cc",
+      "sha256": "9bff0d744b9e435dcc71c0df738ba64aa46eb3643ab745e3be614ec3157c9d75",
+      "changed": false
+    },
+    "chrome/browser/extensions/api/messaging/launch_context.h": {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/extensions/api/messaging/launch_context.h",
+      "sha256": "99686b7bc4231aa94bb63bb3213a76df3bc7005e0b44ea7affb86bf53918c12e",
+      "changed": false
+    },
+    "chrome/browser/extensions/api/messaging/launch_context_posix.cc": {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/extensions/api/messaging/launch_context_posix.cc",
+      "sha256": "bb960b43c26f23233cc1ef929bb0136270568b2a300e72427c74b03020a28589",
+      "changed": false
+    },
+    "chrome/browser/extensions/api/messaging/native_message_process_host.cc": {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/extensions/api/messaging/native_message_process_host.cc",
+      "sha256": "f4bc07980dde7ef9b16c331080481871dd83d8e0b25b19f97b16b2defc40e5d0",
+      "changed": false
+    },
+    "chrome/browser/extensions/api/messaging/native_message_process_host.h": {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/extensions/api/messaging/native_message_process_host.h",
+      "sha256": "a0f38767553956fb6ae6d491e6f2bf2951a99e746410be93c792933f35fd9631",
+      "changed": false
+    },
+    "chrome/browser/extensions/api/messaging/native_process_launcher.cc": {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/extensions/api/messaging/native_process_launcher.cc",
+      "sha256": "c36c7333f6ec925884a125ab700b75cca75267cce2a8d681ec15b93e98737ad8",
+      "changed": false
+    },
+    "chrome/browser/extensions/api/messaging/native_process_launcher.h": {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/extensions/api/messaging/native_process_launcher.h",
+      "sha256": "06d71773dbc9b17f1bb76024d32ed252ccec49c16cf8881368f72f7c543abf53",
+      "changed": false
+    },
+    "chrome/browser/file_select_helper.cc": {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/file_select_helper.cc",
+      "sha256": "a74c777ef9fe97556f38feebbedba75790ac79657cb8a24c70addd8f7a353031",
+      "changed": false
+    },
+    "chrome/browser/file_select_helper.h": {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/file_select_helper.h",
+      "sha256": "8664710e6b94683c1e593fb248a34b6aaa3d429bcf6d2426da7019b5be7014fd",
+      "changed": false
+    },
+    "chrome/browser/metrics/BUILD.gn": {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/metrics/BUILD.gn",
+      "sha256": "c5aea6170d3f824b1a584eebf6e02c6c26c61cabe67ab27d28a16b09a0efea6f",
+      "changed": false
+    },
+    "chrome/browser/metrics/chrome_feature_list_creator.cc": {
+      "path": "/private/tmp/aux-ordinary-startup-native-a42/chrome/browser/metrics/chrome_feature_list_creator.cc",
+      "sha256": "9fea4389dd067c932f591f84349444fd9f8348d6d97eb1ea242115c442af0d06",
+      "changed": true
+    },
+    "chrome/browser/renderer_context_menu/render_view_context_menu.cc": {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/renderer_context_menu/render_view_context_menu.cc",
+      "sha256": "c7ed6d4df8f56bf6546bead44e73260f1032258f21e78b1ec5d32bfff2ef91ad",
+      "changed": false
+    },
+    "chrome/browser/sessions/session_restore.cc": {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/sessions/session_restore.cc",
+      "sha256": "2e784be1d288473c62e483fa2ffd0eb83285653fa020b6ad4154b396621256ec",
+      "changed": false
+    },
+    "chrome/browser/themes/BUILD.gn": {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/themes/BUILD.gn",
+      "sha256": "81b79a8ebe5bc83d4d38969e98ce070763d4434a0411a836e507e6b87ec97fb9",
+      "changed": false
+    },
+    "chrome/browser/themes/aux_theme_editor.cc": {
+      "path": "/private/tmp/aux-ordinary-startup-native-a42/chrome/browser/themes/aux_theme_editor.cc",
+      "sha256": "3ae36fdcae98959c808d289e6c77a4d0a468579a897c81442a460c14f0035bda",
+      "inputSha256": "60472eef6a2c6edd297cafeea186039a478963a355ba6114c705417d3a00844c",
+      "changed": true
+    },
+    "chrome/browser/themes/aux_theme_editor.h": {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/themes/aux_theme_editor.h",
+      "sha256": "31517af4c9fac364a110a3297456a7790e810abb93a1d820c27dcc6bcc0b9926",
+      "changed": false
+    },
+    "chrome/browser/themes/theme_service.cc": {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/themes/theme_service.cc",
+      "sha256": "7704ce4ac98a0c80c44d522d829712f254ebfa959599d2a78bd54b2b04e96d7c",
+      "changed": false
+    },
+    "chrome/browser/themes/theme_service.h": {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/themes/theme_service.h",
+      "sha256": "faf0ede4723cdd043aa27b8454d36046a02e50b79da8348a64680c59cfa37999",
+      "changed": false
+    },
+    "chrome/browser/ui/BUILD.gn": {
+      "path": "/private/tmp/aux-ordinary-startup-native-a42/chrome/browser/ui/BUILD.gn",
+      "sha256": "56b91a9ea98e67910d50ca536af0143eac81637069d07022683671d779345b86",
+      "inputSha256": "4eb9bba269b73f8569f632a84b5b407d104d1e56b61000fcb3525542c9683723",
+      "changed": true
+    },
+    "chrome/browser/ui/aux_chosen_files_drag_mac.mm": {
+      "path": "/private/tmp/aux-ordinary-startup-native-a42/chrome/browser/ui/aux_chosen_files_drag_mac.mm",
+      "sha256": "ac0ca261fdb808e9cc91855918ca3cc85cdc8d1780d1b5c1c2931b88a141211a",
+      "inputSha256": "a67d5915a9df58358b803eef3db365d2c6374909555323107205ded22238f19d",
+      "changed": true
+    },
+    "chrome/browser/ui/aux_chosen_files_service.cc": {
+      "path": "/private/tmp/aux-ordinary-startup-native-a42/chrome/browser/ui/aux_chosen_files_service.cc",
+      "sha256": "91abab5a413023f4ed644bf088b0b3f39324d17f2a4458281def250fbf548abb",
+      "inputSha256": "8522fdb6c3f9777a410a485e4887d9d1f8c97c79a90cff4c50961ed88fa594e2",
+      "changed": true
+    },
+    "chrome/browser/ui/aux_chosen_files_service.h": {
+      "path": "/private/tmp/aux-ordinary-startup-native-a42/chrome/browser/ui/aux_chosen_files_service.h",
+      "sha256": "ecf9c57ba04bc108f8ffc766aa154b6820f023269e51b8ea4df9f5b92e2b6820",
+      "inputSha256": "fe22e1351238e741392016deb9f9f23db737d98eb4247ba20c14b489d0f8e24b",
+      "changed": true
+    },
+    "chrome/browser/ui/aux_developer_commands.cc": {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/ui/aux_developer_commands.cc",
+      "sha256": "0f898dee3b59c4a1a23998f852749b3dc5d8a4274521244ccea4075cfb1fa36b",
+      "changed": false
+    },
+    "chrome/browser/ui/aux_developer_commands.h": {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/ui/aux_developer_commands.h",
+      "sha256": "a4a9e7f8f57998e18a16bc186f1c34ea6d953b9bdd8c9517e1011011cb5222bb",
+      "changed": false
+    },
+    "chrome/browser/ui/aux_feature_commands.cc": {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/ui/aux_feature_commands.cc",
+      "sha256": "b58bc12141f4de11e2eac72e7693d67e50bbad1fcce942886628cf125c634460",
+      "changed": false
+    },
+    "chrome/browser/ui/aux_feature_commands.h": {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/ui/aux_feature_commands.h",
+      "sha256": "bfb003710caef314b86e68c682d66d5c826097e34d597c55e95d7066fc2dc93a",
+      "changed": false
+    },
+    "chrome/browser/ui/aux_feature_lifecycle.h": {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/fresh-startup-milestone-a42/profile-pending-diagnostics-a18/source/chrome/browser/ui/aux_feature_lifecycle.h",
+      "sha256": "709216babc541428fa81a27583c8d3c61b43b2367567aa19e1b16f6e41e4f68e",
+      "inputSha256": "24afb23c687e5e6d36e012df349970e4e4ec338b0e8eb93f84887f0e40affa9c",
+      "changed": true
+    },
+    "chrome/browser/ui/aux_feature_profile_owners.cc": {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/fresh-startup-milestone-a42/profile-pending-diagnostics-a18/source/chrome/browser/ui/aux_feature_profile_owners.cc",
+      "sha256": "836149141c6c1bff0b1c85dd5750cb2a5ca16f4cadae4ba490324cd497068575",
+      "inputSha256": "5ea144e35a91f8596289690f7456b404bf8d6c05f8b532709671dec6ee2a368c",
+      "changed": true
+    },
+    "chrome/browser/ui/aux_file_operation_lifetime.cc": {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/ui/aux_file_operation_lifetime.cc",
+      "sha256": "808fd1ebef8ebb4d7349795aafab7b9b23469135f13d795a9f8c69ee1b9facb5",
+      "changed": false
+    },
+    "chrome/browser/ui/aux_file_operation_lifetime.h": {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/ui/aux_file_operation_lifetime.h",
+      "sha256": "d692e67f55138170edb1cd6a3efc9d79a565c819a0613417a39e96d08a5bf231",
+      "changed": false
+    },
+    "chrome/browser/ui/aux_keyboard_shortcuts.h": {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/ui/aux_keyboard_shortcuts.h",
+      "sha256": "5e6dbacce85d825d6c44e873357f4756e2ee29705674d389ff4df0968b33eb68",
+      "changed": false
+    },
+    "chrome/browser/ui/aux_keyboard_shortcuts.mm": {
+      "path": "/private/tmp/aux-ordinary-startup-native-a42/chrome/browser/ui/aux_keyboard_shortcuts.mm",
+      "sha256": "d57dbf41e14df60ed4cfa81025e766891a07fe54f252687ca7c2c193b49d41d2",
+      "inputSha256": "933c361887fb6b80c1efe40ff34f136db1fd332303d8690ee22b6598ebccba86",
+      "changed": true
+    },
+    "chrome/browser/ui/aux_media_commands.cc": {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/ui/aux_media_commands.cc",
+      "sha256": "c2260314c33ff0743c64f28d52ab1cbda50a3526c583f62e12103e93023442fb",
+      "changed": false
+    },
+    "chrome/browser/ui/aux_media_commands.h": {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/ui/aux_media_commands.h",
+      "sha256": "3036fc6d7f94b5c8ccc0b6274dccf61580fed0e8cff2c7f1036fc426aac6a8ee",
+      "changed": false
+    },
+    "chrome/browser/ui/aux_owned_browser_quiesce.cc": {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/ui/aux_owned_browser_quiesce.cc",
+      "sha256": "b894dca0c9eb487f854912643b380bfbe27708e377303a801170c9cce2094212",
+      "changed": false
+    },
+    "chrome/browser/ui/aux_owned_browser_quiesce.h": {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/ui/aux_owned_browser_quiesce.h",
+      "sha256": "e4993dec9f21a643bf51e5c4a11b52903abe183ff4e562f91159f5099433618d",
+      "changed": false
+    },
+    "chrome/browser/ui/aux_page_capture.cc": {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/ui/aux_page_capture.cc",
+      "sha256": "ec03b667be6786449090bf6b67052ec69ef4227c527c74c1db1aa6c117be3af8",
+      "changed": false
+    },
+    "chrome/browser/ui/aux_page_capture.h": {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/ui/aux_page_capture.h",
+      "sha256": "807cd2938cb179d1e395c09a716cafbdc32b3d0f53e0be4168078165550453a8",
+      "changed": false
+    },
+    "chrome/browser/ui/aux_preview/aux_preview_controller.cc": {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/preview-close-local-completion-a26/source/chrome/browser/ui/aux_preview/aux_preview_controller.cc",
+      "sha256": "6d51e78c4bfc05d6fef4217f965272b51eaa0398cd5231dae3f304bff819dcb2",
+      "inputSha256": "0f3baf4b51d0acb9801ab945f08ed74b1ae5a1097c8f17ed57010fe9e75c06c7",
+      "changed": true
+    },
+    "chrome/browser/ui/aux_preview/aux_preview_controller.h": {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/ui/aux_preview/aux_preview_controller.h",
+      "sha256": "24e3fe2648b5c7fe0371e2c7c4509e5d458885a8f87c4ea1073500e941732610",
+      "changed": false
+    },
+    "chrome/browser/ui/aux_preview/aux_preview_controls.cc": {
+      "path": "/private/tmp/aux-ordinary-startup-native-a42/chrome/browser/ui/aux_preview/aux_preview_controls.cc",
+      "sha256": "f4cd9468e7eb9f6122c3c3fdf0040a3493733c6c163de42f16085c667c1b89e3",
+      "inputSha256": "dee103c9c0d3364f9fa61f393538f9219771580a0fc1ab5a0e6e08a2ed1433aa",
+      "changed": true
+    },
+    "chrome/browser/ui/aux_preview/aux_preview_controls.h": {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/ui/aux_preview/aux_preview_controls.h",
+      "sha256": "5cf4d8f2869ff6efab8fe4e0517fa5150d3998de3e7966f7d22eaf577ca2c08b",
+      "changed": false
+    },
+    "chrome/browser/ui/aux_preview/aux_preview_ingress.cc": {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/ui/aux_preview/aux_preview_ingress.cc",
+      "sha256": "6f9f1040aca37af1fc6a2546a7be35f99284c4c07c7ac9e483f988bd261c22ad",
+      "changed": false
+    },
+    "chrome/browser/ui/aux_preview/aux_preview_ingress.h": {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/ui/aux_preview/aux_preview_ingress.h",
+      "sha256": "32c07a5a6936d15326e8fa3eb92748a863af37854f78340c4c7b7d306fb6a17d",
+      "changed": false
+    },
+    "chrome/browser/ui/aux_preview/aux_preview_navigation_throttle.cc": {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/ui/aux_preview/aux_preview_navigation_throttle.cc",
+      "sha256": "b86501a6af46c710f5db79cc0a4e6058014f223e261316433109f65fe2bffad9",
+      "changed": false
+    },
+    "chrome/browser/ui/aux_preview/aux_preview_navigation_throttle.h": {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/ui/aux_preview/aux_preview_navigation_throttle.h",
+      "sha256": "08754e59b1709bf6d73830273a92cd92444eec7410be94804919f7e53b548d2e",
+      "changed": false
+    },
+    "chrome/browser/ui/aux_recent_files_move_mac.mm": {
+      "path": "/private/tmp/aux-ordinary-startup-native-a42/chrome/browser/ui/aux_recent_files_move_mac.mm",
+      "sha256": "db72df01327f5dd01c65685d554cfa34e593356d76b70fd4a6c9ce4cd9b9c680",
+      "inputSha256": "4be595663b7d8aa70cb3f3a140cfb736548a9b00729fc55d15007af455ec37d1",
+      "changed": true
+    },
+    "chrome/browser/ui/aux_recent_files_service.cc": {
+      "path": "/private/tmp/aux-ordinary-startup-native-a42/chrome/browser/ui/aux_recent_files_service.cc",
+      "sha256": "46ec54e2041b87dfbd4332c5150ca32b69d72807d72145539945e51b81fabf6b",
+      "inputSha256": "b7a5ba2a42137bee886606c8774db5e32210cd3e820b153edef38563ffc3666a",
+      "changed": true
+    },
+    "chrome/browser/ui/aux_recent_files_service.h": {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/ui/aux_recent_files_service.h",
+      "sha256": "ac4bbeaa79a6fa025dff411870380f26b2c5ae14e2387c06f29777bd2bb7f15a",
+      "changed": false
+    },
+    "chrome/browser/ui/aux_tab_mention_spaces.cc": {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/ui/aux_tab_mention_spaces.cc",
+      "sha256": "950d180a1e521910dea34a18a5a4db6038e5727c63d0ca82aee9bddf65ad2495",
+      "changed": false
+    },
+    "chrome/browser/ui/aux_tab_mention_spaces.h": {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/ui/aux_tab_mention_spaces.h",
+      "sha256": "a4a1ec168fc09c9067cd2fd86266a043f3f64f1fe6b8d1238c4ca094dfec042a",
+      "changed": false
+    },
+    "chrome/browser/ui/aux_tab_reference_context.cc": {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/ui/aux_tab_reference_context.cc",
+      "sha256": "33e854c67657db748acd6c449d8d86ddb7bcc5a213032501c19ecfd7872c2ee8",
+      "changed": false
+    },
+    "chrome/browser/ui/aux_tab_reference_context.h": {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/ui/aux_tab_reference_context.h",
+      "sha256": "2067239356ebd9d55376f409e742b2e130a2447f33ff7ab1dcd4e7732209a416",
+      "changed": false
+    },
+    "chrome/browser/ui/aux_tidy_scope.cc": {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/ui/aux_tidy_scope.cc",
+      "sha256": "5591d8cccd099ec6c4b168744fac09b206f1c0a7e0429dff25bd359eb1cd7fb7",
+      "changed": false
+    },
+    "chrome/browser/ui/aux_tidy_scope.h": {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/ui/aux_tidy_scope.h",
+      "sha256": "08f286f1ad5c8ef41b64a54bbd28e568cad088faa6d6c0ed72f981ca99f2dde7",
+      "changed": false
+    },
+    "chrome/browser/ui/browser_command_controller.cc": {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/ui/browser_command_controller.cc",
+      "sha256": "eab1ecf1959b8c9707282211f8227a6fe87accb5247f9c157f93142f3ce61c73",
+      "changed": false
+    },
+    "chrome/browser/ui/browser_live_tab_context.cc": {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/ui/browser_live_tab_context.cc",
+      "sha256": "e2cf847710ec0a873bf489af1a157f639f612906690557db08e5301412c209dd",
+      "changed": false
+    },
+    "chrome/browser/ui/browser_live_tab_context.h": {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/ui/browser_live_tab_context.h",
+      "sha256": "9787b8ce41c9d6cacc5ed75ec0cbf9a976a6c1af0ac74be1040ae1c00c9cdfc9",
+      "changed": false
+    },
+    "chrome/browser/ui/browser_tabrestore.cc": {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/ui/browser_tabrestore.cc",
+      "sha256": "c0c5d1596ac5a7e78818796964141aed12f7351ce1b7c29b25d07e7732d5df7e",
+      "changed": false
+    },
+    "chrome/browser/ui/browser_web_contents_delegate/browser_web_contents_delegate.cc": {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/ui/browser_web_contents_delegate/browser_web_contents_delegate.cc",
+      "sha256": "a610fb22fc9f306dd699c656aaddb0605dfdd09135678b50862cb53c2ee7f152",
+      "changed": false
+    },
+    "chrome/browser/ui/browser_window/internal/browser_window_features.cc": {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/fresh-startup-milestone-a42/profile-pending-diagnostics-a18/source/chrome/browser/ui/browser_window/internal/browser_window_features.cc",
+      "sha256": "383ebec0e5e02fdcd53738ce2cffcebacae23485d0651ab625d5c7d754d3732e",
+      "inputSha256": "5e7a0d95aabba0f87eaa0a0f9d73603c83e7d9717ba9a6e2842dbc3cb27319d7",
+      "changed": true
+    },
+    "chrome/browser/ui/browser_window/public/browser_window_features.h": {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/ui/browser_window/public/browser_window_features.h",
+      "sha256": "0617d4b746dfbe6a945e11b5408d7efc6f862b9120f9d05e57d411e087d0684a",
+      "changed": false
+    },
+    "chrome/browser/ui/startup/startup_browser_creator.cc": {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/ui/startup/startup_browser_creator.cc",
+      "sha256": "1be9702fff5372a3f85ab88f72a7b78b460325b90836574f1cb9db6eb4a09859",
+      "changed": false
+    },
+    "chrome/browser/ui/startup/startup_browser_creator_impl.cc": {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/ui/startup/startup_browser_creator_impl.cc",
+      "sha256": "caa2a48e7b5e31d065f5f1800a28eff87487a66cefb6dea0027ff814bafb0883",
+      "changed": false
+    },
+    "chrome/browser/ui/startup/startup_tab.h": {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/ui/startup/startup_tab.h",
+      "sha256": "32b4a6c67d9a42682d3b051bdacb711a9bc09697a6d726182b7f6f3a27866162",
+      "changed": false
+    },
+    "chrome/browser/ui/tab_helpers.cc": {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/ui/tab_helpers.cc",
+      "sha256": "b19a5be8c29e25310d83913f84b0d7499df14a343575fe42cf1c2c0bc23f3533",
+      "changed": false
+    },
+    "chrome/browser/ui/tabs/aux_organization_pin_adapter.cc": {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/ui/tabs/aux_organization_pin_adapter.cc",
+      "sha256": "82752b8cec8accd4e458cc78ba62251397b11c9a7ca39e51af4936cac93007b3",
+      "changed": false
+    },
+    "chrome/browser/ui/tabs/aux_organization_pin_adapter.h": {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/ui/tabs/aux_organization_pin_adapter.h",
+      "sha256": "6b6c3a481c7ae6f7692e1de4297c71acd559c9516a107b71f664e8b938679152",
+      "changed": false
+    },
+    "chrome/browser/ui/tabs/aux_pinned_tab_entries.h": {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/ui/tabs/aux_pinned_tab_entries.h",
+      "sha256": "b7ab8968311ebb2b3b66f8d83689eb52f8f68aae483c7b4b9189f60c321ea64c",
+      "changed": false
+    },
+    "chrome/browser/ui/tabs/aux_pinned_tab_entry_identity.cc": {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/ui/tabs/aux_pinned_tab_entry_identity.cc",
+      "sha256": "1220f51e29368304ac2af76288561279162f8d41266634475fa472a80a7d2ae4",
+      "changed": false
+    },
+    "chrome/browser/ui/tabs/aux_pinned_tab_entry_identity.h": {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/ui/tabs/aux_pinned_tab_entry_identity.h",
+      "sha256": "a054d8029447ca6c769bbd41cc6f18b8b7b882dbf9c1b3d3f4adf406e37556c9",
+      "changed": false
+    },
+    "chrome/browser/ui/tabs/pinned_tab_service.cc": {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/ui/tabs/pinned_tab_service.cc",
+      "sha256": "76adc641eab4db00f5fe12c93bb9e501f32a59cd07671d76b3a666fc2dabb072",
+      "changed": false
+    },
+    "chrome/browser/ui/tabs/pinned_tab_service.h": {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/ui/tabs/pinned_tab_service.h",
+      "sha256": "a8fd0172b9e93e5bbe36625344b71a32809ce94f999c9ffc4058b5ce591e06fd",
+      "changed": false
+    },
+    "chrome/browser/ui/tabs/tab_strip_model.cc": {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/ui/tabs/tab_strip_model.cc",
+      "sha256": "d30702e35ceb70ff0ac6e858702513bdcff424063f56e77f68e1b51144933d7a",
+      "changed": false
+    },
+    "chrome/browser/ui/tabs/tab_strip_model.h": {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/ui/tabs/tab_strip_model.h",
+      "sha256": "91a91180817ba16fedafe465313906f0cbb001574fed631069662cf084c6ff1c",
+      "changed": false
+    },
+    "chrome/browser/ui/unload_controller.cc": {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/ui/unload_controller.cc",
+      "sha256": "09220f0d6b2f9f93c3d3434cb05a0b2fd251592bda6485b8de49fd7454116dcf",
+      "changed": false
+    },
+    "chrome/browser/ui/views/frame/BUILD.gn": {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/ui/views/frame/BUILD.gn",
+      "sha256": "90d40c27247649304ac5f884c65b8c92cf4d052cfe78853a6a1f622efba26713",
+      "changed": false
+    },
+    "chrome/browser/ui/views/frame/aux_bookmark_pin_conversion.cc": {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/ui/views/frame/aux_bookmark_pin_conversion.cc",
+      "sha256": "053b2f6e6865760491fafdcc4937d9f1566c5d24fd0b27b8bb12cc3f157140f8",
+      "changed": false
+    },
+    "chrome/browser/ui/views/frame/aux_bookmark_pin_conversion.h": {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/ui/views/frame/aux_bookmark_pin_conversion.h",
+      "sha256": "1a5cc868430e9adf337e87f9b47fcdf90c246b85112368abd338ce8b1ee5fd74",
+      "changed": false
+    },
+    "chrome/browser/ui/views/frame/aux_bookmarks_section.cc": {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/ui/views/frame/aux_bookmarks_section.cc",
+      "sha256": "492ed402ba0fcfcd5d517b0380deee330a04a0a62a0edff3355d7d0ed280e851",
+      "changed": false
+    },
+    "chrome/browser/ui/views/frame/aux_bookmarks_section.h": {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/ui/views/frame/aux_bookmarks_section.h",
+      "sha256": "6b5cdbb09d893130eef1250e614a73a519f853057ffe44103de17a5b6bc4b80d",
+      "changed": false
+    },
+    "chrome/browser/ui/views/frame/aux_cross_section_drag_coordinator.cc": {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/ui/views/frame/aux_cross_section_drag_coordinator.cc",
+      "sha256": "731312ae619601cb107b2f4c4baf56c0438ce6b2007dcbd4c0de99ee40763c1e",
+      "changed": false
+    },
+    "chrome/browser/ui/views/frame/aux_frame_presentation_state.h": {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/ui/views/frame/aux_frame_presentation_state.h",
+      "sha256": "75a03dd72306172dad94afab2b1c7d44903c1585ef130646521037fa8f9b3028",
+      "changed": false
+    },
+    "chrome/browser/ui/views/frame/aux_navigation_placement.cc": {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/ui/views/frame/aux_navigation_placement.cc",
+      "sha256": "b8fbe684517fbcda3d32bbe7b23f3e9db6a9925a76fee05b9f5f829a2bd3be24",
+      "changed": false
+    },
+    "chrome/browser/ui/views/frame/aux_navigation_placement.h": {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/ui/views/frame/aux_navigation_placement.h",
+      "sha256": "a4c277ee916555b5b4471d7845972fe96602b8c1f280ef314f61d7db8cd29e97",
+      "changed": false
+    },
+    "chrome/browser/ui/views/frame/aux_ordinary_tab_projection.cc": {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/ui/views/frame/aux_ordinary_tab_projection.cc",
+      "sha256": "f951e511ac6303b102901b14063a07bfed2b0da80d982d3ad1fc1b03d942a9f7",
+      "changed": false
+    },
+    "chrome/browser/ui/views/frame/aux_ordinary_tab_projection.h": {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/ui/views/frame/aux_ordinary_tab_projection.h",
+      "sha256": "2c0f769501ac68b3b490dc3dc03f77b31beb6fec8f24460e1a3c3ee18af5340a",
+      "changed": false
+    },
+    "chrome/browser/ui/views/frame/aux_organization_tree_view.cc": {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/organization-local-completion-a26/source/chrome/browser/ui/views/frame/aux_organization_tree_view.cc",
+      "sha256": "55adba32a3fcd550a3b64fd19ab05444e415b6fef9522c9ed24bd5db5c8980e6",
+      "inputSha256": "5d30adbaeb54e4eb23dfa23c5c058cf6faa752cbcb2c4ec05db54de634daac37",
+      "changed": true
+    },
+    "chrome/browser/ui/views/frame/aux_organization_tree_view.h": {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/ui/views/frame/aux_organization_tree_view.h",
+      "sha256": "7f66e52ae31d598cb24d23f7910430dcd7cf34c6c133ebbc0abdec5779d14971",
+      "changed": false
+    },
+    "chrome/browser/ui/views/frame/aux_organization_ui_commands.cc": {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/ui/views/frame/aux_organization_ui_commands.cc",
+      "sha256": "97646d6b69dbbbf57fd01edcc6fe0c1a78b263d8300d31bc338720bec821a7ca",
+      "changed": false
+    },
+    "chrome/browser/ui/views/frame/aux_organization_ui_commands.h": {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/ui/views/frame/aux_organization_ui_commands.h",
+      "sha256": "5b109b4204d0585ee98c43cca10a6b5cff9d579b29a0bee6ebef2f35083e9261",
+      "changed": false
+    },
+    "chrome/browser/ui/views/frame/aux_organization_window_controller.cc": {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/organization-local-completion-a26/source/chrome/browser/ui/views/frame/aux_organization_window_controller.cc",
+      "sha256": "06a4961e47609ce991f640ed136163cf1bd58b3fbcef792676bc7dc55374ca55",
+      "inputSha256": "c51e167184c418e8bc0aab7d779c77494efbea135d2b7108b30a4fc1744e826a",
+      "changed": true
+    },
+    "chrome/browser/ui/views/frame/aux_organization_window_controller.h": {
+      "path": "/private/tmp/aux-ordinary-startup-native-a42/chrome/browser/ui/views/frame/aux_organization_window_controller.h",
+      "sha256": "338109dda5b04e6991a4213b0fc8baf4c6aa8851689257739e4ebb30daedb283",
+      "inputSha256": "8183d81aace58350e385e0f93b23d2236ca78715eade05fa425b8ac06fdea9a7",
+      "changed": true
+    },
+    "chrome/browser/ui/views/frame/aux_organization_window_delegate.h": {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/ui/views/frame/aux_organization_window_delegate.h",
+      "sha256": "319e3515541a790d07f9a8a9eff42adc7da230ec4c260196649c140c64733001",
+      "changed": false
+    },
+    "chrome/browser/ui/views/frame/aux_pins_section.cc": {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/ui/views/frame/aux_pins_section.cc",
+      "sha256": "5a6ab5958add314aaf190ac4bf45368f93d19c638119a5aeb2b3b5614d255b2c",
+      "changed": false
+    },
+    "chrome/browser/ui/views/frame/aux_pins_section.h": {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/ui/views/frame/aux_pins_section.h",
+      "sha256": "d8da282cddc9bd76fe891ed47d6c7100781c94943de23c9673e0076a90508963",
+      "changed": false
+    },
+    "chrome/browser/ui/views/frame/aux_recent_files_section.cc": {
+      "path": "/private/tmp/aux-ordinary-startup-native-a42/chrome/browser/ui/views/frame/aux_recent_files_section.cc",
+      "sha256": "d6179fd3658038ae59941d6e3d205999d6ed74f3934a4e6b8ece0d62b3345f56",
+      "inputSha256": "f2049d1506fe826f846706fc6e23e41ee75d4297325d6a452621444d4738761a",
+      "changed": true
+    },
+    "chrome/browser/ui/views/frame/aux_recent_files_section.h": {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/ui/views/frame/aux_recent_files_section.h",
+      "sha256": "6252cebccb04eda78f2563acf1911a8c93a54c1c48a0c695c0a59a6bf0bcbd4a",
+      "changed": false
+    },
+    "chrome/browser/ui/views/frame/aux_saved_entry_drop_target.cc": {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/ui/views/frame/aux_saved_entry_drop_target.cc",
+      "sha256": "e751bef5d02860b5c119b1eddd08b0b128644ffbd2abcca7ba5ce7a70e23c0cc",
+      "changed": false
+    },
+    "chrome/browser/ui/views/frame/aux_saved_pin_bookmark_conversion.cc": {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/ui/views/frame/aux_saved_pin_bookmark_conversion.cc",
+      "sha256": "fad9e21d22a124e1b47d14f09dec6b2999aef3b51d0a951788d483638a5dba8b",
+      "changed": false
+    },
+    "chrome/browser/ui/views/frame/aux_saved_pin_bookmark_conversion.h": {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/ui/views/frame/aux_saved_pin_bookmark_conversion.h",
+      "sha256": "8c567094c8455ee7ea8fe049027eccb6144be489dea964e8aa215923d2e9a66f",
+      "changed": false
+    },
+    "chrome/browser/ui/views/frame/aux_sidebar_body.cc": {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/ui/views/frame/aux_sidebar_body.cc",
+      "sha256": "74a4cce16e8790e24ef5b1f2ffe14bc49dff2316cb59778861720699b9e2df3f",
+      "changed": false
+    },
+    "chrome/browser/ui/views/frame/aux_sidebar_presentation.cc": {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/ui/views/frame/aux_sidebar_presentation.cc",
+      "sha256": "ecc4eea41c75aabe624e98ed4c0a2c4c446b2b76eefe21c9118e8b628ccaa36a",
+      "changed": false
+    },
+    "chrome/browser/ui/views/frame/aux_sidebar_projection.cc": {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/ui/views/frame/aux_sidebar_projection.cc",
+      "sha256": "190c758ae34c880622c882ff3ed4d20bf97338c3f2b3679b70af14c2c62bae99",
+      "changed": false
+    },
+    "chrome/browser/ui/views/frame/aux_sidebar_projection.h": {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/ui/views/frame/aux_sidebar_projection.h",
+      "sha256": "042c83bc716fe53656e937f13e2d74852fae0f13ef29206459ef77cb1b37a158",
+      "changed": false
+    },
+    "chrome/browser/ui/views/frame/aux_sidebar_view.cc": {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/navigation-local-completion-a26/source/chrome/browser/ui/views/frame/aux_sidebar_view.cc",
+      "sha256": "7e47702c3a4df0aa6fa4e981fe79c50f2f58632e1da7fc6f65a514fb12a88dcc",
+      "inputSha256": "d831afa21cb7a5f1db4fd3ae80e244e98d08901d1c148c208eb873f0856da097",
+      "changed": true
+    },
+    "chrome/browser/ui/views/frame/aux_spaces_switcher.cc": {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/organization-local-completion-a26/source/chrome/browser/ui/views/frame/aux_spaces_switcher.cc",
+      "sha256": "4080f776257b65906f479ae2b2986dc2c332d4dae7f139790103f5997163fa8f",
+      "inputSha256": "b5627a43a61068825aaadf2e9d4c258dd49d6a958c31c933b5ede56a07babb9a",
+      "changed": true
+    },
+    "chrome/browser/ui/views/frame/aux_spaces_switcher.h": {
+      "path": "/private/tmp/aux-ordinary-startup-native-a42/chrome/browser/ui/views/frame/aux_spaces_switcher.h",
+      "sha256": "9254567de667adf26fb18c4511fa9c0ad6688c2994647dbcf90dec2e36213b6b",
+      "inputSha256": "4d699386528f6ceae84409db478a3393873c866f8dce19ef24142522d9619944",
+      "changed": true
+    },
+    "chrome/browser/ui/views/frame/aux_split_commands.cc": {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/ui/views/frame/aux_split_commands.cc",
+      "sha256": "945511b4577bd546c02f99759a07e5c81c80cb6be63338c5efe9bee8af55cdaf",
+      "changed": false
+    },
+    "chrome/browser/ui/views/frame/aux_split_commands.h": {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/ui/views/frame/aux_split_commands.h",
+      "sha256": "1d13e09c959dec4d2da9e6f71edf285b781339376592a6fcca287bcfbee6086c",
+      "changed": false
+    },
+    "chrome/browser/ui/views/frame/aux_tab_expand_chevron_view.cc": {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/ui/views/frame/aux_tab_expand_chevron_view.cc",
+      "sha256": "9bfff0bc2c373ac7020f2cef36596804955579c11be4f8733bc1608c520c57b0",
+      "changed": false
+    },
+    "chrome/browser/ui/views/frame/aux_tab_search_bubble.cc": {
+      "path": "/private/tmp/aux-ordinary-startup-native-a42/chrome/browser/ui/views/frame/aux_tab_search_bubble.cc",
+      "sha256": "9b2646b7583215760f190b7fd559e2a00618bac4b9acc82419fcd227ce1fa29d",
+      "inputSha256": "603db464e995af56ca9c8e9893e5ef7b619ae389dc6341475c2e833a2fed52bc",
+      "changed": true
+    },
+    "chrome/browser/ui/views/frame/aux_tab_search_bubble.h": {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/ui/views/frame/aux_tab_search_bubble.h",
+      "sha256": "3ed95b3465ed2f8ea3401a4f5574bc802e4d35fa81c6e6e484294d4cd6cec6f9",
+      "changed": false
+    },
+    "chrome/browser/ui/views/frame/aux_tabs_actions.cc": {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/ui/views/frame/aux_tabs_actions.cc",
+      "sha256": "03e5acaf05f8caf351fedbbce7e217c40e40a6d5ab6272337b6263dc71cb688f",
+      "changed": false
+    },
+    "chrome/browser/ui/views/frame/aux_tabs_actions.h": {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/ui/views/frame/aux_tabs_actions.h",
+      "sha256": "7cdd1f48bdf8d95201e4bb345b938297e4e96aa4f56a414e41ec5913df764361",
+      "changed": false
+    },
+    "chrome/browser/ui/views/frame/aux_tabs_section.cc": {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/ui/views/frame/aux_tabs_section.cc",
+      "sha256": "a7b4f093c84fa7bdbc270849b1f9dbf0d90bb67d615e1fac2bac570f159a42a4",
+      "changed": false
+    },
+    "chrome/browser/ui/views/frame/aux_tabs_section.h": {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/ui/views/frame/aux_tabs_section.h",
+      "sha256": "3a30c690780140f857bfc57fa32f3ffaf46faa5b85eeb9e716b5b2070a721283",
+      "changed": false
+    },
+    "chrome/browser/ui/views/frame/aux_vertical_sidebar_profile_button.cc": {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/ui/views/frame/aux_vertical_sidebar_profile_button.cc",
+      "sha256": "a6f2ddd75d9ed3375903e357fb54b5cf92239db434b872b6437fc4f756368a76",
+      "changed": false
+    },
+    "chrome/browser/ui/views/frame/browser_view.cc": {
+      "path": "/private/tmp/aux-ordinary-startup-native-a42/chrome/browser/ui/views/frame/browser_view.cc",
+      "sha256": "d635428d4d397641ddd6234b3c8684d6ba221c2348fbd0c808d01ba4913ecd36",
+      "inputSha256": "9e00e465d3b53f968697588594c05c43a7660b3744904890ef3ebd9fe7cde939",
+      "changed": true
+    },
+    "chrome/browser/ui/views/frame/browser_view.h": {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/ui/views/frame/browser_view.h",
+      "sha256": "795df144d9073676c9ba12613829852825c08cdc59ee69ff42902707b4666281",
+      "changed": false
+    },
+    "chrome/browser/ui/views/frame/browser_widget.cc": {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/ui/views/frame/browser_widget.cc",
+      "sha256": "ead11967974eae0dfb36aecc6683fd8a74e37ec536615645170eff53226ef10a",
+      "changed": false
+    },
+    "chrome/browser/ui/views/frame/custom_corners_background.cc": {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/ui/views/frame/custom_corners_background.cc",
+      "sha256": "89bb798da9bf0d4bac1561dfe6830d934e1ff927558836fb0af5cdb8bd5be2c9",
+      "changed": false
+    },
+    "chrome/browser/ui/views/frame/custom_corners_background.h": {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/ui/views/frame/custom_corners_background.h",
+      "sha256": "a93613a0d36b8fb8c4df2f7168ca651c6ff99bb629bc680f370a424394170bf6",
+      "changed": false
+    },
+    "chrome/browser/ui/views/frame/layout/browser_view_tabbed_layout_impl.cc": {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/ui/views/frame/layout/browser_view_tabbed_layout_impl.cc",
+      "sha256": "c202bbe1aee81c8a72f8b48bc9431c4e1adb3310388c3bc6b1f52da9beee039e",
+      "changed": false
+    },
+    "chrome/browser/ui/views/frame/multi_contents_resize_area.cc": {
+      "path": "/private/tmp/aux-ordinary-startup-native-a42/chrome/browser/ui/views/frame/multi_contents_resize_area.cc",
+      "sha256": "445065fe6ebdc8332b9ade730c82e010da626242e0da5b43d88944b745c6e675",
+      "inputSha256": "c810886c9b79940ec15a58d5ab8938357d8a0d8d08d9f918c84826950fa99346",
+      "changed": true
+    },
+    "chrome/browser/ui/views/frame/multi_contents_resize_area.h": {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/ui/views/frame/multi_contents_resize_area.h",
+      "sha256": "cf09be9ad7ce99920ead5b4ca51c7e21b8be24863bbd382ef0fb4b97d2c55539",
+      "changed": false
+    },
+    "chrome/browser/ui/views/frame/multi_contents_view.cc": {
+      "path": "/private/tmp/aux-ordinary-startup-native-a42/chrome/browser/ui/views/frame/multi_contents_view.cc",
+      "sha256": "b897b124ea477163405cfd83e8426e00124620a5b856e501655618f11de4fefd",
+      "inputSha256": "b1d489ee277bf17b7b1caa65be09cc00500cd728e635e6c77280f583b63d23d7",
+      "changed": true
+    },
+    "chrome/browser/ui/views/frame/multi_contents_view.h": {
+      "path": "/private/tmp/aux-ordinary-startup-native-a42/chrome/browser/ui/views/frame/multi_contents_view.h",
+      "sha256": "17a154276b156c5e36be2a3a9c43afe993d368817a31db85fe42d13e76c19bc8",
+      "inputSha256": "cc7e30689b84dec1dbf69461b2c1deef36bfe3ff68cbada6daa806a1f8ca0da4",
+      "changed": true
+    },
+    "chrome/browser/ui/views/frame/multi_contents_view_delegate.cc": {
+      "path": "/private/tmp/aux-ordinary-startup-native-a42/chrome/browser/ui/views/frame/multi_contents_view_delegate.cc",
+      "sha256": "d6e00acc0f6e3b033f5afb78c58a027fb236dfe26fde5fab7c3b7bde1b5d9ad1",
+      "inputSha256": "892cf8e0689c19d84ed9ba0e947bb4269a3c265580962f9052947a26b93e2b0d",
+      "changed": true
+    },
+    "chrome/browser/ui/views/frame/multi_contents_view_delegate.h": {
+      "path": "/private/tmp/aux-ordinary-startup-native-a42/chrome/browser/ui/views/frame/multi_contents_view_delegate.h",
+      "sha256": "3032b9708050f57dddf8acd557f409125985d93c7669a2dae359ee299ee66bc7",
+      "inputSha256": "45525e6fb9dd52c5f9713bae7140dfde913ed7a37b4dde3f0cf9076e0eeded73",
+      "changed": true
+    },
+    "chrome/browser/ui/views/frame/multi_contents_view_mini_toolbar.cc": {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/ui/views/frame/multi_contents_view_mini_toolbar.cc",
+      "sha256": "26ef28b6e6f6a2c5751983b97bf9407aa1ea733d46291ecd073a0506a51e84a1",
+      "changed": false
+    },
+    "chrome/browser/ui/views/frame/multi_contents_view_mini_toolbar.h": {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/ui/views/frame/multi_contents_view_mini_toolbar.h",
+      "sha256": "fbb5856109227de45150c587c19834c3c53d4e017191ae38eda7ba5abd3e5659",
+      "changed": false
+    },
+    "chrome/browser/ui/views/frame/themed_background.cc": {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/ui/views/frame/themed_background.cc",
+      "sha256": "a34059e5568990bc7c2e7ac40033a1ee37c288877af6efeff33bd2311c0e640a",
+      "changed": false
+    },
+    "chrome/browser/ui/views/frame/vertical_tab_strip_region_view.cc": {
+      "path": "/private/tmp/aux-ordinary-startup-native-a42/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.cc",
+      "sha256": "fffd13aa4507ec62ae1a964ee932af1e6d595c3d5477dc84a3bf71135efe327e",
+      "inputSha256": "c1a7edf26b4a26bf3b55f0ff41a49eda9a902d5c4d32c16ed2347ec0ef7304d2",
+      "changed": true
+    },
+    "chrome/browser/ui/views/frame/vertical_tab_strip_region_view.h": {
+      "path": "/private/tmp/aux-ordinary-startup-native-a42/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.h",
+      "sha256": "46d342fc18c50516db1e84435cbb6b4b5fe5c8bab980170b81add6e955a50b5e",
+      "inputSha256": "e18b0dae2e62f03e7cbf96bb200c1e1101db71ef7d9bb1304b537055a9c46717",
+      "changed": true
+    },
+    "chrome/browser/ui/views/tabs/common/split_tab_view.cc": {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/ui/views/tabs/common/split_tab_view.cc",
+      "sha256": "eef5b7089737a2c0b973293e3d0acf15e6af56a2227cbf9a867d2c3966c25382",
+      "changed": false
+    },
+    "chrome/browser/ui/views/tabs/vertical/aux_pinned_tab_entry_actions.cc": {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/ui/views/tabs/vertical/aux_pinned_tab_entry_actions.cc",
+      "sha256": "4ef5db850d68532d1ddc01a01ea4efc6d3c0722debffc480f756e86b845da93d",
+      "changed": false
+    },
+    "chrome/browser/ui/views/tabs/vertical/aux_pinned_tab_entry_actions.h": {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/ui/views/tabs/vertical/aux_pinned_tab_entry_actions.h",
+      "sha256": "ddc9e464f4ee2c55100a2f5c41ffde77f4860366c836886705d85e4488beeea5",
+      "changed": false
+    },
+    "chrome/browser/ui/views/tabs/vertical/vertical_pinned_tab_entries_view.cc": {
+      "path": "/private/tmp/aux-ordinary-startup-native-a42/chrome/browser/ui/views/tabs/vertical/vertical_pinned_tab_entries_view.cc",
+      "sha256": "312c1397b07c244762bceea9402b5c6df96d0fdc65d6b1785df0b47f0ab72001",
+      "inputSha256": "69dba57b2bf0d2fa1f0867cf1de838a5ab59e8bc18f64e52dbc743fd14aacc07",
+      "changed": true
+    },
+    "chrome/browser/ui/views/tabs/vertical/vertical_pinned_tab_entries_view.h": {
+      "path": "/private/tmp/aux-ordinary-startup-native-a42/chrome/browser/ui/views/tabs/vertical/vertical_pinned_tab_entries_view.h",
+      "sha256": "846e9a61409b723dca0f34c6cbccab8781b34b8110f00269caad8ecccb1f1b0c",
+      "inputSha256": "429aae7dc4216cb950de74bfc3dc8430b07519ea1494a5c727df613262f1b71e",
+      "changed": true
+    },
+    "chrome/browser/ui/views/toolbar/toolbar_view.cc": {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/ui/views/toolbar/toolbar_view.cc",
+      "sha256": "50fc4d3f77d198a4009dcf8f9c05a61216d965392d0cf0a652eb2a533d123587",
+      "changed": false
+    },
+    "chrome/browser/ui/views/toolbar/toolbar_view.h": {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/ui/views/toolbar/toolbar_view.h",
+      "sha256": "377fe00219dcc78d75dece3f93b3beb35af2b61dccbccdbae36618d793f4c551",
+      "changed": false
+    },
+    "chrome/common/extensions/api/aux_browser_preferences.json": {
+      "path": "/private/tmp/aux-ordinary-startup-native-a42/chrome/common/extensions/api/aux_browser_preferences.json",
+      "sha256": "20ed9157cc2fc007f58c76e93da38208807c54dabda8702ed0799e566d4dd6ca",
+      "inputSha256": "0dae39b7d5ccd0f355a4129ddf9efbd1ed30ec2ef6df4a817a6e9a205e853aa6",
+      "changed": true
+    },
+    "components/infobars/core/infobar_delegate.h": {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/components/infobars/core/infobar_delegate.h",
+      "sha256": "51c84512d81d90b62c5f672694883d64ddc42835fb5582fa7d6b91c28b69f307",
+      "changed": false
+    },
+    "components/sessions/BUILD.gn": {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/components/sessions/BUILD.gn",
+      "sha256": "1d66dbc59b2820fed5e6d9cd5e5a7df2f7495f04503ad01b5ddc8f54932510f3",
+      "changed": false
+    },
+    "components/sessions/core/live_tab_context.cc": {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/components/sessions/core/live_tab_context.cc",
+      "sha256": "4a9fabbadb9309eea428db9c2bdeb5bf8953b27964d5e25c15e3c69a64514ad7",
+      "changed": false
+    },
+    "components/sessions/core/live_tab_context.h": {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/components/sessions/core/live_tab_context.h",
+      "sha256": "307f2823f9739b988df3bdb1ee28beda28a7dbb4d62ed5ade3d200ff0afce1fa",
+      "changed": false
+    },
+    "components/sessions/core/session_service_commands.cc": {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/components/sessions/core/session_service_commands.cc",
+      "sha256": "294fdd0196c72568809f1356cd15ae6b0df7780c9664a74f9081b00a06e791ca",
+      "changed": false
+    },
+    "components/sessions/core/tab_restore_service_helper.cc": {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/components/sessions/core/tab_restore_service_helper.cc",
+      "sha256": "cfde345bc2402e11cb5230af34a834fbb90432753f7da1a0aeec7469ceb4684a",
+      "changed": false
+    },
+    "components/sessions/core/tab_restore_service_impl.cc": {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/components/sessions/core/tab_restore_service_impl.cc",
+      "sha256": "4a760e3a49243a40cb0b72a566e3bba98b913acfc94dc61216cab55df4cd87e2",
+      "changed": false
+    },
+    "components/split_tabs/BUILD.gn": {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/components/split_tabs/BUILD.gn",
+      "sha256": "a8a4fdb6f2371bb6d71008b5c75d61dc3399d68a10fe8c83692ed50295282903",
+      "changed": false
+    },
+    "components/split_tabs/split_pane_tree.cc": {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/components/split_tabs/split_pane_tree.cc",
+      "sha256": "1ffec49e783ceab649576fdf49f2ec2eb26dec4660c972b65c4880d55312e0a6",
+      "changed": false
+    },
+    "components/split_tabs/split_pane_tree.h": {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/components/split_tabs/split_pane_tree.h",
+      "sha256": "51dd6ab9b1c51c3393e63dcea5b2e01806867a8ac0c468c557f38c770a689f35",
+      "changed": false
+    },
+    "components/split_tabs/split_pane_tree_unittest.cc": {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/components/split_tabs/split_pane_tree_unittest.cc",
+      "sha256": "5a8ad153325038fd0e8fa8035d45f6ea490c2410ca7196cdf24f65455d58f89c",
+      "changed": false
+    },
+    "components/split_tabs/split_tab_visual_data.cc": {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/components/split_tabs/split_tab_visual_data.cc",
+      "sha256": "8cc1230156c36e4a90deb46332c86d439bb05941cf71f1ae6584ee7b4c50904e",
+      "changed": false
+    },
+    "components/split_tabs/split_tab_visual_data.h": {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/components/split_tabs/split_tab_visual_data.h",
+      "sha256": "3d5477136b8e6edc164ecbff9fa25259dfce8b5967619c5286dfe4c26ee6295b",
+      "changed": false
+    },
+    "components/tabs/impl/tab_strip_collection.cc": {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/components/tabs/impl/tab_strip_collection.cc",
+      "sha256": "7ac46a134490a93ffe860a1f96dee2809b0476560caab87507289ab19d4052ac",
+      "changed": false
+    },
+    "components/tabs/public/tab_strip_collection.h": {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/components/tabs/public/tab_strip_collection.h",
+      "sha256": "b29dc9daa5203233cdafe015db88df3d60a89fb781ebd3e3f495bf392ef140ee",
+      "changed": false
+    },
+    "content/browser/BUILD.gn": {
+      "path": "/private/tmp/aux-ordinary-startup-native-a42/content/browser/BUILD.gn",
+      "sha256": "6a0ea9238ae0a4d0471017e92247499025f0ca03651098411867b85bc8d47373",
+      "inputSha256": "dd7bb4fda0507f7553aa07c1befdd6f391d0a7a448a6a50a5c42f0a0fd9d6622",
+      "changed": true
+    },
+    "content/browser/aux_child_lifetime.h": {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/fresh-startup-milestone-a42/ordinary-content-launch-source/content/browser/aux_child_lifetime.h",
+      "sha256": "96f0588c3cde4b9d394a0335a26ded1d05e1ccad31aaff0c47a27d31d3b96135",
+      "inputSha256": "ccb7fe34dd5f2ef584d2bc616a39026bfa7f591931a4d73fc58f89626fa8af64",
+      "changed": true
+    },
+    "content/browser/child_process_launcher_helper.cc": {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/content/browser/child_process_launcher_helper.cc",
+      "sha256": "52eccd4f355a8756ba338d7bc8ff1dbc4fb30725259e7cba24919552b69b429e",
+      "changed": false
+    },
+    "content/browser/child_process_launcher_helper.h": {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/content/browser/child_process_launcher_helper.h",
+      "sha256": "3061dd8b0952c2d70e417f3e810c5b737329fefdb837f0497e870cd81c31b001",
+      "changed": false
+    },
+    "content/browser/child_process_launcher_helper_mac.cc": {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/fresh-startup-milestone-a42/ordinary-content-launch-source/content/browser/child_process_launcher_helper_mac.cc",
+      "sha256": "5d8fc46a607d3d431834c4de98050ecacd2e0eb5a3beaba075fcd6a9be8c2269",
+      "inputSha256": "d92c1f98f35368d62c565ed8614c83e7c4459e81fcd718dbe7fef32aa2af98ee",
+      "changed": true
+    },
+    "content/browser/devtools/devtools_session.cc": {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/content/browser/devtools/devtools_session.cc",
+      "sha256": "6133f8ca4d8e8dada1f57b4aabd926a9c2d899d0d358ded1efaa4dc0cb7a093a",
+      "changed": false
+    },
+    "content/browser/devtools/devtools_session.h": {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/content/browser/devtools/devtools_session.h",
+      "sha256": "9f38e58227b26521fb3966fd440633e22c47bce66ad96d6aa81028e347599cc2",
+      "changed": false
+    },
+    "content/browser/storage_partition_impl.cc": {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/content/browser/storage_partition_impl.cc",
+      "sha256": "d90e9e21503b529a0ac4cda5ab7538122e4e685a0e74316c659d83479d659b4a",
+      "changed": false
+    },
+    "content/public/browser/content_browser_client.cc": {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/content/public/browser/content_browser_client.cc",
+      "sha256": "3eb8ab9eea36db1493e272c2029e55172bcd01994e636a3ec3afb96b95d90787",
+      "changed": false
+    },
+    "content/public/browser/content_browser_client.h": {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/content/public/browser/content_browser_client.h",
+      "sha256": "b3e431dbd551a0bbe742a0322fa028645e17f4bdd607e01d693b90fc526d3601",
+      "changed": false
+    },
+    "content/public/browser/devtools_manager_delegate.cc": {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/content/public/browser/devtools_manager_delegate.cc",
+      "sha256": "a29e237c88f749fb0e2bd9b92fedf1c4fed489c65409196d5bcfd11effd393d5",
+      "changed": false
+    },
+    "content/public/browser/devtools_manager_delegate.h": {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/content/public/browser/devtools_manager_delegate.h",
+      "sha256": "a68762414021f680450d38670905e84836a2ddaf52ddd853ea4ab49bab5c7ce3",
+      "changed": false
+    },
+    "extensions/browser/extension_event_histogram_value.h": {
+      "path": "/private/tmp/aux-ordinary-startup-native-a42/extensions/browser/extension_event_histogram_value.h",
+      "sha256": "d18b782112708e35c53a0f04cbf454bdc1026b07ac797dd4dc88ec438acfd1d9",
+      "inputSha256": "3fcb7b1c9be371dcba33230cb14d4ec194e41c3e1cdbe19d94afe1bfb8d08507",
+      "changed": true
+    },
+    "extensions/browser/extension_function_histogram_value.h": {
+      "path": "/private/tmp/aux-ordinary-startup-native-a42/extensions/browser/extension_function_histogram_value.h",
+      "sha256": "685feb30e94cfcf0ae34f72382007e49fdd333b8d814e63ff6e892f52ac88b4a",
+      "inputSha256": "a53d471f596e119780c84acc6136f036397d4622cdd1191f28fd7dbbeb3ab5ad",
+      "changed": true
+    },
+    "tools/metrics/histograms/metadata/browser/enums.xml": {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/tools/metrics/histograms/metadata/browser/enums.xml",
+      "sha256": "9458cb5b3885c975856ea857d16e23240cef365bf22ae3e650715251396586d0",
+      "changed": false
+    },
+    "tools/metrics/histograms/metadata/extensions/enums.xml": {
+      "path": "/private/tmp/aux-ordinary-startup-native-a42/tools/metrics/histograms/metadata/extensions/enums.xml",
+      "sha256": "12938a6974109eecbba876ba0dfd707d279637a6712cc9b14a6ffc296e4256f0",
+      "inputSha256": "857e15383e7ed9602c9e86e9fea51a04ffb325aba9e84b69c330faf3fd8a5149",
+      "changed": true
+    },
+    "ui/color/color_provider_source.h": {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/ui/color/color_provider_source.h",
+      "sha256": "15ec370940d4a082f32d8261cd8846b4157a426629ec5ce1312627fe959c44b5",
+      "changed": false
+    },
+    "chrome/browser/aux/daemon_supervisor.cc": {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/aux/daemon_supervisor.cc",
+      "sha256": "ae01a9fddbdc5fb2ecbd78eaa72825adf752c859b6d3d00034bbfb209a362e29",
+      "changed": false
+    },
+    "chrome/browser/sessions/session_service_base.cc": {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/fresh-startup-milestone-a42/session-restore-source/chrome/browser/sessions/session_service_base.cc",
+      "sha256": "eb71bb4c39e90fb2c1d3423e777ff8913b8b29caa3f03feab54a37607e75c7b2",
+      "inputSha256": "91ef376b0f857a8992372396c394a22abc1a5b69f1671c9cd13ed278f467e501",
+      "changed": true
+    },
+    "chrome/browser/sessions/session_service_base.h": {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/sessions/session_service_base.h",
+      "sha256": "b77230971497a61ee5744ecb3e7aea0c02c9218d10793faa30fcfcf1c7a0cc87",
+      "changed": false
+    },
+    "chrome/browser/ui/aux_browser_shutdown_drain.cc": {
+      "path": "/private/tmp/aux-ordinary-startup-native-a42/chrome/browser/ui/aux_browser_shutdown_drain.cc",
+      "sha256": "bf4be99ca5e72171beeb794e4cccbe4cfabedb4cbe578c24a6f890a1cdac76c8",
+      "changed": true
+    },
+    "chrome/browser/ui/aux_browser_shutdown_drain.h": {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/ui/aux_browser_shutdown_drain.h",
+      "sha256": "97df7c43a25453f6c10daa749ecefee9a3169f4941ee6a636c5f571f3c817622",
+      "changed": false
+    },
+    "chrome/browser/ui/aux_profile_switch_session_rebuild.cc": {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/ui/aux_profile_switch_session_rebuild.cc",
+      "sha256": "54864c28a7c0a065aa79edf7d8b1b2c4cb0e74035d5ca155339e6ac42ea39c82",
+      "changed": false
+    },
+    "chrome/browser/ui/aux_profile_switch_session_rebuild.h": {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/ui/aux_profile_switch_session_rebuild.h",
+      "sha256": "37f4cb29bf229ae228f89b35071f605e1a7e2e73487fe934752c1ce37cb62802",
+      "changed": false
+    },
+    "chrome/browser/ui/aux_session_writer_participant.h": {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/ui/aux_session_writer_participant.h",
+      "sha256": "80a660e734628ae7c380a53938b21e51af7327079ad196ba91f6da67f596fa0a",
+      "changed": false
+    },
+    "content/browser/aux_child_process_drain.cc": {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/content/browser/aux_child_process_drain.cc",
+      "sha256": "862c5b8d2cc6af4fb2f7ddf04f3fea60fdf3a6e0c6506a032fd41f95252ccb13",
+      "changed": false
+    },
+    "content/browser/browser_main_runner_impl.cc": {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/content/browser/browser_main_runner_impl.cc",
+      "sha256": "e4c3c41dae7c2a98013c681539839651ddd2a43af79b030131b39a1fad3b2962",
+      "changed": false
+    },
+    "content/public/browser/BUILD.gn": {
+      "path": "/private/tmp/aux-ordinary-startup-native-a42/content/public/browser/BUILD.gn",
+      "sha256": "d8ae6e0f949736dafa3ed5944fcb058610b0b75535b4f918208b468fc05e40bb",
+      "inputSha256": "de1159e9ddd5eef7bba7b6e13d8b906ef256d1197a4d7e01996c68fda4a34ba3",
+      "changed": true
+    },
+    "content/public/browser/aux_child_process_drain.h": {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/content/public/browser/aux_child_process_drain.h",
+      "sha256": "223c82c4e8730f2c4c5a933b13061f13be1a970bdc1d930d1a430bd657f96c87",
+      "changed": false
+    },
+    "sandbox/policy/mac/common.sb": {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/sandbox/policy/mac/common.sb",
+      "sha256": "b6eb971c2f5cac96f5a843c5753e44f73ee3be6b8659a90e1caacafc20aec09b",
+      "changed": false
+    },
+    "sandbox/policy/mac/renderer.sb": {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/sandbox/policy/mac/renderer.sb",
+      "sha256": "45bc78ba343d70a31e3ac93a1949274e99681e2ffa7f0904cfbfc7baa6b31806",
+      "changed": false
+    },
+    "sandbox/policy/mac/sandbox_mac.mm": {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/sandbox/policy/mac/sandbox_mac.mm",
+      "sha256": "6cb531ee48582ef0f972af9a9fb98b4044bb858aa5736a8f396d5aae7181667c",
+      "changed": false
+    },
+    "content/browser/sandbox_parameters_mac.mm": {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/content/browser/sandbox_parameters_mac.mm",
+      "sha256": "3a0b8bcc6b8a801aa481ce1f62ea72b0a63f4a02d67d34397924bb13616bb8b6",
+      "changed": false
+    },
+    "chrome/app/chrome_exe_main_mac.cc": {
+      "path": "/private/tmp/aux-ordinary-startup-native-a42/chrome/app/chrome_exe_main_mac.cc",
+      "sha256": "1180a9c03b45d83ed3eec63a3fac3bee3439582628f6d5f1268dff9d04ca89d8",
+      "changed": true
+    },
+    "base/process/launch_mac.cc": {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/base/process/launch_mac.cc",
+      "sha256": "2c62e962f5b2fdabcfaaf8a5e4155e15e40ae332cda3a6c9c51261933877e80a",
+      "changed": false
+    },
+    "content/public/browser/storage_partition_config.cc": {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/content/public/browser/storage_partition_config.cc",
+      "sha256": "ef46e797c276190ea03edf5f98e472de5284beed74dd7249cff78136456c104e",
+      "changed": false
+    },
+    "chrome/browser/net/profile_network_context_service.cc": {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/net/profile_network_context_service.cc",
+      "sha256": "55d29972186221adc500576187a5ac9f4b4084aa5384bda05a6f9359ed2350bc",
+      "changed": false
+    },
+    "chrome/browser/profiles/off_the_record_profile_impl.cc": {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/profiles/off_the_record_profile_impl.cc",
+      "sha256": "285616f80f298e8f62d6c0f80a971226c404b84c2c65696196e11fe6163be15a",
+      "changed": false
+    },
+    "content/browser/devtools/protocol/target_handler.cc": {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/content/browser/devtools/protocol/target_handler.cc",
+      "sha256": "003af0e1fb8eb8de33da0f331c2a0e199334b8d5c6aa209837ae6d572092855f",
+      "changed": false
+    },
+    "chrome/browser/profiles/BUILD.gn": {
+      "path": "/private/tmp/aux-ordinary-startup-native-a42/chrome/browser/profiles/BUILD.gn",
+      "sha256": "283b2178f185391228552f4c62713e44797885a19b1f8ab3e9a077c44a5cc60a",
+      "changed": true
+    },
+    "chrome/browser/devtools/BUILD.gn": {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/devtools/BUILD.gn",
+      "sha256": "9a3decf8ab0cb83636ac4ab0c31875023a5020280ef3886616f52703d1a10a33",
+      "changed": false
+    },
+    "content/public/browser/aux_sandbox_launch_binding.h": {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/content/public/browser/aux_sandbox_launch_binding.h",
+      "sha256": "e4b0266fc3083fded6ac06d0e59b76d72e395afd70ce2de4bcbf2841f805a267",
+      "changed": false
+    },
+    "sandbox/mac/seatbelt_exec.h": {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/sandbox/mac/seatbelt_exec.h",
+      "sha256": "ea5387242a1775ad854a10eef8eda19d42e76d9a9e7af9837c247b770a8270d8",
+      "changed": false
+    },
+    "sandbox/mac/seatbelt_exec.cc": {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/sandbox/mac/seatbelt_exec.cc",
+      "sha256": "be6cf6300d90eda0f3f0d5150d53c8796990c1f58c37711d4c99026f13b4a751",
+      "changed": false
+    },
+    "chrome/browser/aux/AuxContentPolicyBinding.h": {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/aux/AuxContentPolicyBinding.h",
+      "sha256": "1d2d85faa8f79e179c01e8c0fbe27fcef7b527bff85e66afc21c7205ccc18ddc",
+      "changed": false
+    },
+    "chrome/browser/aux/AuxContentPolicyBinding.cc": {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/aux/AuxContentPolicyBinding.cc",
+      "sha256": "08d96e02ddd9ada130d9622ef4b88fabfa0156764c9d3b2d6ba12f4fd774a2ea",
+      "changed": false
+    },
+    "third_party/blink/public/devtools_protocol/domains/Target.pdl": {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/third_party/blink/public/devtools_protocol/domains/Target.pdl",
+      "sha256": "5a1e7b0ffa3fbfba1d8d7d1457a1c18065d6745f9a64f1b83e91c9120ec2575c",
+      "changed": false
+    },
+    "chrome/browser/devtools/devtools_browser_context_manager.h": {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/devtools/devtools_browser_context_manager.h",
+      "sha256": "fce2b07856ecc78f06564dcdadf8a0490a2461938a7c7dd0e614040381a96f98",
+      "changed": false
+    },
+    "chrome/browser/devtools/devtools_browser_context_manager.cc": {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/devtools/devtools_browser_context_manager.cc",
+      "sha256": "c33645d97b87ba2f24f9ed26789c579a987d582a5e86c6a153a9a9a5eb25f5bb",
+      "changed": false
+    },
+    "chrome/browser/profiles/profile_impl.cc": {
+      "path": "/private/tmp/aux-ordinary-startup-native-a42/chrome/browser/profiles/profile_impl.cc",
+      "sha256": "08ca6421d28676df19ecd027c3e9489a5043d50284d3cc5a2c83bf4c9d62a613",
+      "changed": true
+    },
+    "content/browser/devtools/protocol/target_handler.h": {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/content/browser/devtools/protocol/target_handler.h",
+      "sha256": "6ace70aada06cdcaff15e21085a21741cf373ce5282ec2ea44d0921a8d23dea3",
+      "changed": false
+    },
+    "content/public/browser/storage_partition.h": {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/content/public/browser/storage_partition.h",
+      "sha256": "7fbd4e60765ba2337f0dfbaf25703b7494aac19246ee9d17a649e762d299f17b",
+      "changed": false
+    },
+    "content/browser/storage_partition_impl.h": {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/content/browser/storage_partition_impl.h",
+      "sha256": "5f61cf49ecbb3a6c5d36128e7a59c8f495b2b60578978904bf9211a21ccdcf9a",
+      "changed": false
+    },
+    "chrome/browser/profiles/profile.h": {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/profiles/profile.h",
+      "sha256": "7fd40c408572939f885b3adf7be87a2906c0134cd009402ad10200fb151cfb2e",
+      "changed": false
+    },
+    "chrome/browser/profiles/profile.cc": {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/profiles/profile.cc",
+      "sha256": "9a8cc2d2a7b21d3a7bdc66246028b98fabb3b39a580a1b79c92ad4afb2ef129d",
+      "changed": false
+    },
+    "chrome/browser/profiles/profile_impl.h": {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/profiles/profile_impl.h",
+      "sha256": "9e36c91abdad94e5d1d6c14f8a17abfb470f5111b4a4fc32337827fcc9cf4ed2",
+      "changed": false
+    },
+    "build/config/mac/rules.gni": {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/build/config/mac/rules.gni",
+      "sha256": "386c9c81ba918548bdb69979d1dcf667e3f069144949cd11eb6555b92558fecf",
+      "changed": false
+    },
+    "build/config/BUILDCONFIG.gn": {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/build/config/BUILDCONFIG.gn",
+      "sha256": "074d2a608fb415e0359758c9bbff18930168690f719c854e3769f8e5c40015c2",
+      "changed": false
+    },
+    "build/config/compiler/BUILD.gn": {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/build/config/compiler/BUILD.gn",
+      "sha256": "270ea6da49e42e7701e05033c5cd5ef9d351dcdb3c9cabfb1f4566b71a2426b3",
+      "changed": false
+    },
+    "buildtools/third_party/libc++abi/BUILD.gn": {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/buildtools/third_party/libc++abi/BUILD.gn",
+      "sha256": "560588f347ec4de8fc61024a6c036047ce6a6e5f1f9f2f28295816933497118f",
+      "changed": false
+    },
+    "chrome/app/app.exports": {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/app/app.exports",
+      "sha256": "89423ca41c39a99de3627f4107e5b795cc3790f33efdb4cf179f67271438d69f",
+      "changed": false
+    },
+    "third_party/crashpad/crashpad/client/BUILD.gn": {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/third_party/crashpad/crashpad/client/BUILD.gn",
+      "sha256": "da905f5165e272c5ba5b976d0c8de8464a885eb9a69bdbbc9670b4674ab60896",
+      "changed": false
+    },
+    "third_party/crashpad/crashpad/util/posix/spawn_subprocess.cc": {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/third_party/crashpad/crashpad/util/posix/spawn_subprocess.cc",
+      "sha256": "6d573b348ca31f3bf9f2fa82fc7b46253ba71fac2d9f3fad478bf9c2f7055427",
+      "changed": false
+    },
+    "base/process/mac/aux_browser_descendant_bridge.cc": {
+      "path": "/private/tmp/aux-ordinary-startup-native-a42/base/process/mac/aux_browser_descendant_bridge.cc",
+      "sha256": "b152568ec7a43eac2ca17eb496406746e6c5c63de3df2afa31a62479f26b06d1",
+      "changed": true
+    },
+    "base/process/mac/aux_browser_descendant_bridge.h": {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/base/process/mac/aux_browser_descendant_bridge.h",
+      "sha256": "0f1a8aca4506ccf5b2eaa410e01f388e23a6de77717f2d1c274003c71e07e395",
+      "changed": false
+    },
+    "base/process/mac/aux_browser_descendant_client.h": {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/base/process/mac/aux_browser_descendant_client.h",
+      "sha256": "a0b37945caa903b40ef8e43ae24eee35e7abfa4ca4c80e5040edddda288864d6",
+      "changed": false
+    },
+    "base/process/mac/aux_browser_descendant_engine.cc": {
+      "path": "/private/tmp/aux-ordinary-startup-native-a42/base/process/mac/aux_browser_descendant_engine.cc",
+      "sha256": "189b9706842f77503d5a25c321817cb6d58b308da1d1623335f09868a286cfab",
+      "inputSha256": "2dfc668e5cf7d6ca8461eb793f99d09949439c3519f611667a3db1023addd989",
+      "changed": true
+    },
+    "base/process/mac/aux_browser_descendant_engine.h": {
+      "path": "/private/tmp/aux-ordinary-startup-native-a42/base/process/mac/aux_browser_descendant_engine.h",
+      "sha256": "acc756b7d090f1a61a5b28c32134dc3c662fc34f47cbb7d27a4af14f5577c1a9",
+      "inputSha256": "ccd36116505b67a3bfd196857d50cc0c41d4f218e852d9e30930892991defb4d",
+      "changed": true
+    },
+    "third_party/crashpad/crashpad/client/crashpad_client.h": {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/third_party/crashpad/crashpad/client/crashpad_client.h",
+      "sha256": "4946e8892244377129ddf23c2921f6e2e9623e96605a33cbceecd0025e587ed9",
+      "changed": false
+    },
+    "third_party/crashpad/crashpad/client/crashpad_client_mac.cc": {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/third_party/crashpad/crashpad/client/crashpad_client_mac.cc",
+      "sha256": "d3648e00805f79b7f0489fb2979eef53623bb495e735eb220f99de8e3aded54c",
+      "changed": false
+    },
+    "components/crash/core/app/crashpad.h": {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/components/crash/core/app/crashpad.h",
+      "sha256": "c46d78d46dc9b0cf80af43550def34363726d02909dc97d063b9c7bae83e6fe5",
+      "changed": false
+    },
+    "components/crash/core/app/crashpad.cc": {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/components/crash/core/app/crashpad.cc",
+      "sha256": "74c463c94f03ae0f317361e07ca1a8b55986b06cd2ff523b8e8bde6dcc15f3b9",
+      "changed": false
+    },
+    "base/BUILD.gn": {
+      "path": "/private/tmp/aux-ordinary-startup-native-a42/base/BUILD.gn",
+      "sha256": "09261d8c8d097ea1ef46e80f354268b0b7b9c106dc6d8998f030d3da332d377c",
+      "changed": true
+    },
+    "chrome/BUILD.gn": {
+      "path": "/private/tmp/aux-ordinary-startup-native-a42/chrome/BUILD.gn",
+      "sha256": "011f0446378ecf4f22e28088e4ec43166c7ae22fc77bcb30ac091806f5f929a8",
+      "changed": true
+    },
+    "third_party/crashpad/crashpad/util/BUILD.gn": {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/third_party/crashpad/crashpad/util/BUILD.gn",
+      "sha256": "b51349fe4437b871ebfe43bb1b2ca045aba4dd34ae04fc42e37d907c1b8dd25d",
+      "changed": false
+    },
+    "chrome/app/aux_browser_app.exports": {
+      "path": "/private/tmp/aux-ordinary-startup-native-a42/chrome/app/aux_browser_app.exports",
+      "sha256": "777b3f341ee9805c329a52dd89c484a7bb0411e9b9f1b73da9e7ebe7bad32eea",
+      "inputSha256": "6ec08b85012cd535c6aba8416fdf9a6eddd6910a53ac691d8c3894acccf492c3",
+      "changed": true
+    },
+    "content/browser/devtools/protocol_config.json": {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/content/browser/devtools/protocol_config.json",
+      "sha256": "2c28a36f1ca9440583cdb53b7401474592638fe5af83ec9f16ce97f93b51ef60",
+      "changed": false
+    },
+    "components/services/storage/dom_storage/async_dom_storage_database.cc": {
+      "path": "/private/tmp/aux-ordinary-startup-native-a42/components/services/storage/dom_storage/async_dom_storage_database.cc",
+      "sha256": "5c17ae52bd21dfbfb1b8c9d759ec36d85bd6110edaa5ae5e4bf7934ca8edb973",
+      "inputSha256": "d49b232613d9becc600e15ccf60f35c6a9feabb4704c63f2d6e1c4cb6f33a9d2",
+      "changed": true
+    },
+    "components/services/storage/dom_storage/async_dom_storage_database.h": {
+      "path": "/private/tmp/aux-ordinary-startup-native-a42/components/services/storage/dom_storage/async_dom_storage_database.h",
+      "sha256": "9bb6861ebf682bbc2b3f9db7d919ec01dac4071bebb8c95c017b41c67eee7255",
+      "inputSha256": "5da00143d24990009544af71d6ac28033ad667a72ff100927e4ec235010d4612",
+      "changed": true
+    },
+    "components/services/storage/dom_storage/dom_storage_database.cc": {
+      "path": "/private/tmp/aux-ordinary-startup-native-a42/components/services/storage/dom_storage/dom_storage_database.cc",
+      "sha256": "c2b09a8d5f28c26a5fbc6f8b1522c1c9158cacc156b501cf985f251697b0d82d",
+      "changed": true
+    },
+    "components/services/storage/dom_storage/dom_storage_database.h": {
+      "path": "/private/tmp/aux-ordinary-startup-native-a42/components/services/storage/dom_storage/dom_storage_database.h",
+      "sha256": "9df50e67d7be0bcbf32f5a7a123f4e82bcbd95117b22512ea5369d36b2542b45",
+      "changed": true
+    },
+    "components/services/storage/dom_storage/leveldb/dom_storage_database_leveldb.cc": {
+      "path": "/private/tmp/aux-ordinary-startup-native-a42/components/services/storage/dom_storage/leveldb/dom_storage_database_leveldb.cc",
+      "sha256": "109dd5d7121fb58f6ddeddcc4b14e153f30cab62dc0c2a0fcd4d600cc4da604a",
+      "changed": true
+    },
+    "components/services/storage/dom_storage/leveldb/dom_storage_database_leveldb.h": {
+      "path": "/private/tmp/aux-ordinary-startup-native-a42/components/services/storage/dom_storage/leveldb/dom_storage_database_leveldb.h",
+      "sha256": "96ede192f5b75e46627480f3f4a5fda2ccbea086a1fb32b397db0c25d1be9104",
+      "changed": true
+    },
+    "components/services/storage/dom_storage/leveldb/local_storage_leveldb.cc": {
+      "path": "/private/tmp/aux-ordinary-startup-native-a42/components/services/storage/dom_storage/leveldb/local_storage_leveldb.cc",
+      "sha256": "1ebe0857276485a7bb3bc31d065c841b7326a0c53724d5ee8dd95441bb1e1bbb",
+      "changed": true
+    },
+    "components/services/storage/dom_storage/leveldb/local_storage_leveldb.h": {
+      "path": "/private/tmp/aux-ordinary-startup-native-a42/components/services/storage/dom_storage/leveldb/local_storage_leveldb.h",
+      "sha256": "b73b360454af23ec016ea07209b451808a4e26d7a45f478f84a6db8d866b6ae4",
+      "changed": true
+    },
+    "components/services/storage/dom_storage/leveldb/session_storage_leveldb.cc": {
+      "path": "/private/tmp/aux-ordinary-startup-native-a42/components/services/storage/dom_storage/leveldb/session_storage_leveldb.cc",
+      "sha256": "821463ae48ad4f364d87c3890a73769e778c624fe9ec36c5fbbde54b79af4105",
+      "changed": true
+    },
+    "components/services/storage/dom_storage/leveldb/session_storage_leveldb.h": {
+      "path": "/private/tmp/aux-ordinary-startup-native-a42/components/services/storage/dom_storage/leveldb/session_storage_leveldb.h",
+      "sha256": "22c359e14852badaf44751a560e175aada40004adecdc5913d9af5baee6d65b4",
+      "changed": true
+    },
+    "components/services/storage/dom_storage/local_storage_impl.cc": {
+      "path": "/private/tmp/aux-ordinary-startup-native-a42/components/services/storage/dom_storage/local_storage_impl.cc",
+      "sha256": "c556822376bee01548b19a84e6a5be4ae82d7abb372c4776e69e5c6abb661111",
+      "inputSha256": "72e4d278dfe879baf5f07a7ad682efa4f7e8534e0f08e41656f6b2159388b15e",
+      "changed": true
+    },
+    "components/services/storage/dom_storage/local_storage_impl.h": {
+      "path": "/private/tmp/aux-ordinary-startup-native-a42/components/services/storage/dom_storage/local_storage_impl.h",
+      "sha256": "910294aff4cbee2afaa5bfdadb7c0e54a45e7aaaf77696124b5d2d27d937b57c",
+      "inputSha256": "a16b524702210be1f948f59a3ed1245da56a12ea4a8cf3d474aaa917a2113f40",
+      "changed": true
+    },
+    "components/services/storage/dom_storage/session_storage_impl.cc": {
+      "path": "/private/tmp/aux-ordinary-startup-native-a42/components/services/storage/dom_storage/session_storage_impl.cc",
+      "sha256": "000988350ce3a285c86d5bff4b43bb8bdf86f64938e5f4fac89527ef4634c2ac",
+      "inputSha256": "e081d64179ddf6e3bc81955fbf6e6d756babf9b729a9e8fad1fac66df9e342a7",
+      "changed": true
+    },
+    "components/services/storage/dom_storage/session_storage_impl.h": {
+      "path": "/private/tmp/aux-ordinary-startup-native-a42/components/services/storage/dom_storage/session_storage_impl.h",
+      "sha256": "d92383b5173c3550adb60f37948eb60a0bc3e45893f84cf4f24f91db67157d9d",
+      "inputSha256": "3efff4c1e4207a8cadfd59fa8bb186d22560f10f26ee497504d4bc59aa8e84eb",
+      "changed": true
+    },
+    "components/services/storage/dom_storage/sqlite/local_storage_sqlite.cc": {
+      "path": "/private/tmp/aux-ordinary-startup-native-a42/components/services/storage/dom_storage/sqlite/local_storage_sqlite.cc",
+      "sha256": "c923b05d817d35daa7147f242c735c0568d3716948d65ef9126e2ae632e08ab1",
+      "inputSha256": "0601c10dc762dce7123b7c4e493eca8fb20e19b5b8ea90b3b333ebbc4b32367f",
+      "changed": true
+    },
+    "components/services/storage/dom_storage/sqlite/local_storage_sqlite.h": {
+      "path": "/private/tmp/aux-ordinary-startup-native-a42/components/services/storage/dom_storage/sqlite/local_storage_sqlite.h",
+      "sha256": "22cb9577ea78312b548a06931469483bdbcca3bdc2d2f4599956aa87fe2c28cb",
+      "changed": true
+    },
+    "components/services/storage/dom_storage/sqlite/session_storage_sqlite.cc": {
+      "path": "/private/tmp/aux-ordinary-startup-native-a42/components/services/storage/dom_storage/sqlite/session_storage_sqlite.cc",
+      "sha256": "9c6e3c2e7cdbc576e5dfee9af58de7818281aff24002ef3c91c3a5e2eea718f5",
+      "changed": true
+    },
+    "components/services/storage/dom_storage/sqlite/session_storage_sqlite.h": {
+      "path": "/private/tmp/aux-ordinary-startup-native-a42/components/services/storage/dom_storage/sqlite/session_storage_sqlite.h",
+      "sha256": "c86839e2da5b4e33225089716366c1239759845a0602a96fcc64537e86c3e6e5",
+      "changed": true
+    },
+    "components/services/storage/dom_storage/sqlite/sqlite_database_utils.cc": {
+      "path": "/private/tmp/aux-ordinary-startup-native-a42/components/services/storage/dom_storage/sqlite/sqlite_database_utils.cc",
+      "sha256": "59afc9d68eb02dcc2f0b90c49cab8fce01cf6b92fac9cefba833e76b42a9363e",
+      "changed": true
+    },
+    "components/services/storage/dom_storage/sqlite/sqlite_database_utils.h": {
+      "path": "/private/tmp/aux-ordinary-startup-native-a42/components/services/storage/dom_storage/sqlite/sqlite_database_utils.h",
+      "sha256": "6027de7cf77d1ef385b590bcdf4ab17daed518efc6ff351aa016099b21119a07",
+      "changed": true
+    },
+    "components/value_store/BUILD.gn": {
+      "path": "/private/tmp/aux-ordinary-startup-native-a42/components/value_store/BUILD.gn",
+      "sha256": "c7a6bb3712ec3769a5edb73c5019def589248b36b3c49d29103a34103e1e7751",
+      "inputSha256": "63ae34e0dcacb212d25300512bbf4f8a08327bb94278807b20f5ab39d2fc8317",
+      "changed": true
+    },
+    "components/value_store/aux_ui_preference_migration_unittest.cc": {
+      "path": "/private/tmp/aux-ordinary-startup-native-a42/components/value_store/aux_ui_preference_migration_unittest.cc",
+      "sha256": "1586b3733fd05255f66bb7f8238aa668fc4c460f764db4f4afdf6ef0cc662fb0",
+      "changed": true
+    },
+    "components/value_store/leveldb_value_store.cc": {
+      "path": "/private/tmp/aux-ordinary-startup-native-a42/components/value_store/leveldb_value_store.cc",
+      "sha256": "7fb9442e9b43fce7a7c128da613c3a1b392697e0fcf1117de9d8f511f7519530",
+      "inputSha256": "47467f34db83f34794b35e60605746a85a94d1a59b340c886eca688492da6c00",
+      "changed": true
+    },
+    "components/value_store/leveldb_value_store.h": {
+      "path": "/private/tmp/aux-ordinary-startup-native-a42/components/value_store/leveldb_value_store.h",
+      "sha256": "cf26db0e17d689329c4fa0e30561a0ba9be11d3c36b7e4fb34960035914be32b",
+      "inputSha256": "8936aaa5b62337193610effba10bdf2764edc39e5de9883138364242f924b62a",
+      "changed": true
+    },
+    "sql/database.cc": {
+      "path": "/private/tmp/aux-ordinary-startup-native-a42/sql/database.cc",
+      "sha256": "7ec18b35d5709c48f2e165dd561051070be30161cd02ee0afdab63a058528100",
+      "changed": true
+    },
+    "sql/database.h": {
+      "path": "/private/tmp/aux-ordinary-startup-native-a42/sql/database.h",
+      "sha256": "04961f3b9b706b376918f9621ba89e4ea2b02fb75f5bd0ea3489bd2d5c6d9978",
+      "changed": true
+    },
+    "components/value_store/value_store.cc": {
+      "path": "/private/tmp/aux-ordinary-startup-native-a42/components/value_store/value_store.cc",
+      "sha256": "95595cdaba589b43cd69d8041a4a9b99b7cae9adbfc88b640663b5099386b50f",
+      "inputSha256": "d6190f63ad111f4da30b6e88c37c464aca6b051c1731be194604369ded2b75d6",
+      "changed": true
+    },
+    "components/value_store/value_store.h": {
+      "path": "/private/tmp/aux-ordinary-startup-native-a42/components/value_store/value_store.h",
+      "sha256": "4ea60c3b78da3e837cfc668195ac73aa99b03fdc8f4ec5bde538bf312d5d689d",
+      "inputSha256": "81a77d86cfcc1c58e4c30f7966052568c266153750223a75959d077e33f446d9",
+      "changed": true
+    },
+    "extensions/browser/BUILD.gn": {
+      "path": "/private/tmp/aux-ordinary-startup-native-a42/extensions/browser/BUILD.gn",
+      "sha256": "0c7cedbe785f4cd33bc8d237ff3713e4d6f7acfb09933c26b90837dffe01c99a",
+      "changed": true
+    },
+    "extensions/browser/api/storage/BUILD.gn": {
+      "path": "/private/tmp/aux-ordinary-startup-native-a42/extensions/browser/api/storage/BUILD.gn",
+      "sha256": "78da76f80a1e6d8492b267fe6891236f338c979e61c49039b4a710630b3d1a62",
+      "changed": true
+    },
+    "extensions/browser/api/storage/aux_ui_migration_unittest.cc": {
+      "path": "/private/tmp/aux-ordinary-startup-native-a42/extensions/browser/api/storage/aux_ui_migration_unittest.cc",
+      "sha256": "bc4574e88be933209103278f15b42c52073c6e74227dfa826b142376f6d09714",
+      "changed": true
+    },
+    "extensions/browser/api/storage/settings_storage_quota_enforcer.cc": {
+      "path": "/private/tmp/aux-ordinary-startup-native-a42/extensions/browser/api/storage/settings_storage_quota_enforcer.cc",
+      "sha256": "b36240ff30fc5743aa36462e9052c784f93310738ffd08094db7c3445643e33b",
+      "inputSha256": "5a918330a2f19ef4d292927b8cfa2f0041d2325bfbbc911e8747916c7e42a465",
+      "changed": true
+    },
+    "extensions/browser/api/storage/settings_storage_quota_enforcer.h": {
+      "path": "/private/tmp/aux-ordinary-startup-native-a42/extensions/browser/api/storage/settings_storage_quota_enforcer.h",
+      "sha256": "ec25b667bbd9521ccd0d331665b5f2750a868c801357416603a0a2ef29f011c0",
+      "inputSha256": "2802bcd9a91e5fff575eecd34a14605780140a934c8264c02d5052d986d85465",
+      "changed": true
+    },
+    "extensions/browser/api/storage/storage_frontend.cc": {
+      "path": "/private/tmp/aux-ordinary-startup-native-a42/extensions/browser/api/storage/storage_frontend.cc",
+      "sha256": "f3dae5de093a9455d0be547eee9230e3456ed56ea40c96ea13dbf2e2452826a3",
+      "inputSha256": "dde0a3a41bfe0b356b318b3a11eb5b3832423a58852e35b47ea751561e911ea2",
+      "changed": true
+    },
+    "extensions/browser/api/storage/storage_frontend.h": {
+      "path": "/private/tmp/aux-ordinary-startup-native-a42/extensions/browser/api/storage/storage_frontend.h",
+      "sha256": "e71dd5967dcf1fd0c340f0f42b47b9d564ddeeb2dd98565e56bd60a4af84d444",
+      "inputSha256": "9b7287f31b86ba8097f0f7f9a31a41bb23dda037338e3c5d4c40f501a2a8036c",
+      "changed": true
+    },
+    "extensions/browser/api/storage/weak_unlimited_settings_storage.cc": {
+      "path": "/private/tmp/aux-ordinary-startup-native-a42/extensions/browser/api/storage/weak_unlimited_settings_storage.cc",
+      "sha256": "9754f12fb7785940c670ed0614f28a3eb3aa2fdc94948a664b68e57bed46c93f",
+      "inputSha256": "281367a1bcf15bc0912318c5f0be1be7671a35081f6b270f9e2de2b0ebd232ea",
+      "changed": true
+    },
+    "extensions/browser/api/storage/weak_unlimited_settings_storage.h": {
+      "path": "/private/tmp/aux-ordinary-startup-native-a42/extensions/browser/api/storage/weak_unlimited_settings_storage.h",
+      "sha256": "5ae5569cfb8e604223f4df4e4e8cf6215c1ee696ad50c925648adddf2c346adf",
+      "inputSha256": "72dcadc4fd6bad15cd0ec7d22ebff978ddb23fe49b84af9638cb9ee42e1a63bf",
+      "changed": true
+    },
+    "chrome/browser/ui/views/frame/aux_profile_switch_request.cc": {
+      "path": "/private/tmp/aux-ordinary-startup-native-a42/chrome/browser/ui/views/frame/aux_profile_switch_request.cc",
+      "sha256": "c632065ec4bfd1e40eed807bd06ae62eb1b881ca47a097055eaf28e53c8d6299",
+      "inputSha256": "178a5e03a6a8bf00f87ab5d1cd3313c8597ffdfd56e9655adaacb504a4443840",
+      "changed": true
+    },
+    "chrome/browser/ui/views/frame/aux_profile_switch_workspaces.cc": {
+      "path": "/private/tmp/aux-ordinary-startup-native-a42/chrome/browser/ui/views/frame/aux_profile_switch_workspaces.cc",
+      "sha256": "96725202c3d3ad2b5f02fe050704e8a7b28a2adaaa45d0436a32caaff8ed44c1",
+      "inputSha256": "d84eef6fe1df107b681e67bdc10be181938824e9947804fc51031b4b5e0c3d17",
+      "changed": true
+    },
+    "chrome/browser/aux/account_profile_avatar.cc": {
+      "path": "/private/tmp/aux-ordinary-startup-native-a42/chrome/browser/aux/account_profile_avatar.cc",
+      "sha256": "4d9ba7851e109d7f5502961b72ea84c9e68f55bda6d742ab459412c6fa4ceda0",
+      "inputSha256": "edb0e31fd9fdaf2f56742d865f5b94ee09629fa5d6b28f3fc314b40c74f09b56",
+      "changed": true
+    },
+    "chrome/browser/aux/profile_identity.cc": {
+      "path": "/private/tmp/aux-ordinary-startup-native-a42/chrome/browser/aux/profile_identity.cc",
+      "sha256": "cb320311061997b02e0554c56feaeb7e6030e5ed86bc6fdac8ebb88371b5ceb6",
+      "inputSha256": "223f9654c089aa762d0f6bec283f198d202a3495fd9495965b29775e413b47e1",
+      "changed": true
+    },
+    "chrome/browser/aux/profile_gate.cc": {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/fresh-startup-milestone-a42/session-default-source/chrome/browser/aux/profile_gate.cc",
+      "sha256": "bb6e9b51233fab3d85e1c44a385fb7296af0a9ee88bd43fa7d9c2eb9a6c609a1",
+      "inputSha256": "00ce7633899424e621b8d8839173e4217d921eeb0bf2805c60e34f53390c4099",
+      "changed": true
+    },
+    "chrome/browser/ui/views/frame/aux_profile_preview_admission.h": {
+      "path": "/private/tmp/aux-ordinary-startup-native-a42/chrome/browser/ui/views/frame/aux_profile_preview_admission.h",
+      "sha256": "3ff6b21cf387d5a9fa8722edda3483da11c157e02c32ca94037c6c9568e0645a",
+      "inputSha256": "233722b90112c4db681b0d2900c85aaaf23ba01516e594594dd668e101502d64",
+      "changed": true
+    },
+    "chrome/browser/ui/views/frame/aux_profile_preview_admission.cc": {
+      "path": "/private/tmp/aux-ordinary-startup-native-a42/chrome/browser/ui/views/frame/aux_profile_preview_admission.cc",
+      "sha256": "8407ff5f3fda60dc296d8e9445b8c501ab056230cb873707b965431aaa4e8c7b",
+      "inputSha256": "aa1e8a5e3c91032cd5fbbd5f82478612c11456ff6ff66a385e542505141fbef5",
+      "changed": true
+    },
+    "chrome/browser/ui/views/frame/aux_profile_switch_request.h": {
+      "path": "/private/tmp/aux-ordinary-startup-native-a42/chrome/browser/ui/views/frame/aux_profile_switch_request.h",
+      "sha256": "c50dda31fd13c702ebb8ef447579020621b0d3d1f319b601eedfc31d5ed011a6",
+      "inputSha256": "f81e5a57f0ec56365b6d450b74662a68bb2e6a576c8e263a2512fc85d1afb321",
+      "changed": true
+    },
+    "components/services/storage/public/mojom/local_storage_control.mojom": {
+      "path": "/private/tmp/aux-ordinary-startup-native-a42/components/services/storage/public/mojom/local_storage_control.mojom",
+      "sha256": "b823be759e2cda8c95e6b52fb824231502af60e2a2e146f33feb12e29bfff2dc",
+      "inputSha256": "66b453780758c30d87fb36af59e8b0ceafc272ea9d9ecb2b0c4766c87dd7bcf0",
+      "changed": true
+    },
+    "components/services/storage/public/mojom/session_storage_control.mojom": {
+      "path": "/private/tmp/aux-ordinary-startup-native-a42/components/services/storage/public/mojom/session_storage_control.mojom",
+      "sha256": "5ba367b18968341f8a85e5d9e7b24c9f4b230f80a991dd174f831d204fa8269d",
+      "inputSha256": "d0be70fe6a617c450508d521de5dac426903c5b3ae62f198f7276cc7f4451762",
+      "changed": true
+    },
+    "content/public/browser/dom_storage_context.h": {
+      "path": "/private/tmp/aux-ordinary-startup-native-a42/content/public/browser/dom_storage_context.h",
+      "sha256": "c106dd8dd77ffc8fa071ec382cf285ee2bb5394646026fe37c5ab2b0b7da668c",
+      "inputSha256": "b75a30bbdfa2c2604f44e72141a7801fc46188006f40475b98a989b777124152",
+      "changed": true
+    },
+    "content/browser/dom_storage/dom_storage_context_wrapper.h": {
+      "path": "/private/tmp/aux-ordinary-startup-native-a42/content/browser/dom_storage/dom_storage_context_wrapper.h",
+      "sha256": "7bc184d988354367075efccc4d7b1e29c2dc3ab9c91abdd7b99217eaf5a545d6",
+      "inputSha256": "c39eb726f0be482fe50c62eb7a3329c364e04cd94e076e14e2ba9d1f9ad5b928",
+      "changed": true
+    },
+    "content/browser/dom_storage/dom_storage_context_wrapper.cc": {
+      "path": "/private/tmp/aux-ordinary-startup-native-a42/content/browser/dom_storage/dom_storage_context_wrapper.cc",
+      "sha256": "7acb499d2682f1c0395ae45e3f4c1b9b6f6d8a7980e1c28c8e237f52ca0e277c",
+      "inputSha256": "dfb67720ced4159fc2ea532a1a127535305705dd7d297352551a1076e3b7fc3e",
+      "changed": true
+    },
+    "chrome/browser/aux/ui_storage_migration_controller.cc": {
+      "path": "/private/tmp/aux-ordinary-startup-native-a42/chrome/browser/aux/ui_storage_migration_controller.cc",
+      "sha256": "5397a43a4fdb35eb06874ea0874f645bec36cf786ec59b62870ae18da4e363ce",
+      "inputSha256": "205f00f3d76292ee2b33c8b2c7a52c41fd3290e075445a093a3f0a3b8a86c627",
+      "changed": true
+    },
+    "chrome/browser/aux/ui_storage_migration_controller.h": {
+      "path": "/private/tmp/aux-ordinary-startup-native-a42/chrome/browser/aux/ui_storage_migration_controller.h",
+      "sha256": "9717a2f60a6269453fe0e174763a604cd2e4e1cb816c2715c756c1b95194710c",
+      "inputSha256": "dfcd4b44cc8a852b6d4f5c184e4a8853d89e5bc298c364af5796e5034a0bbf4d",
+      "changed": true
+    },
+    "chrome/browser/aux/ui_storage_migration_worker.h": {
+      "path": "/private/tmp/aux-ordinary-startup-native-a42/chrome/browser/aux/ui_storage_migration_worker.h",
+      "sha256": "ad7cc054d0975aa04015f664c367127f4f8e1388776c1b9527b3a5405209e8b6",
+      "inputSha256": "e994ad290428a766623326d510d0499a54a4d24982faab92d09eddc8f253ce26",
+      "changed": true
+    },
+    "chrome/browser/aux/ui_storage_migration_worker.cc": {
+      "path": "/private/tmp/aux-ordinary-startup-native-a42/chrome/browser/aux/ui_storage_migration_worker.cc",
+      "sha256": "45897978269cd30647920191aa216fbab923911d38cb6803cb58214f246f84bf",
+      "inputSha256": "8add977c0034ee471d09bba85549f2a56aa3a4ca12ac5da66c3cc9f414a3d92a",
+      "changed": true
+    },
+    "third_party/blink/public/mojom/dom_storage/storage_area.mojom": {
+      "path": "/private/tmp/aux-ordinary-startup-native-a42/third_party/blink/public/mojom/dom_storage/storage_area.mojom",
+      "sha256": "72f51b1f090fcb26c074409e4bb2dcb9b957e6464e800539fc6cad5f0e9fb5f0",
+      "inputSha256": "5d62cf6e4a250962b7565d745b14b7967b565ea5252a6d60608ed7c82966d3fa",
+      "changed": true
+    },
+    "third_party/blink/renderer/modules/storage/cached_storage_area.h": {
+      "path": "/private/tmp/aux-ordinary-startup-native-a42/third_party/blink/renderer/modules/storage/cached_storage_area.h",
+      "sha256": "9ed3d23d2b220ce9dceb52b4c2aa8c638f8e5376c1e00b0ae49dd5e9ddcfaf35",
+      "inputSha256": "5fd45af42d2593677bb1fdf66dc44d25bd17651775833b8319b5cf5cb6e3975f",
+      "changed": true
+    },
+    "third_party/blink/renderer/modules/storage/cached_storage_area.cc": {
+      "path": "/private/tmp/aux-ordinary-startup-native-a42/third_party/blink/renderer/modules/storage/cached_storage_area.cc",
+      "sha256": "1d3f734191563e721e7fac5a7d0e7628ed7edce68c2f651c137acc96be2a58d4",
+      "inputSha256": "58b3517ae977a70fd6190399bac03214ecf6b8cbe952b2219066caf03dd2e665",
+      "changed": true
+    },
+    "third_party/blink/renderer/modules/storage/storage_area.cc": {
+      "path": "/private/tmp/aux-ordinary-startup-native-a42/third_party/blink/renderer/modules/storage/storage_area.cc",
+      "sha256": "04512a5465a498825e11c57ea097357e898fbd799f552e4b2d6646f9426f3f89",
+      "inputSha256": "ee91f1a6b5452088f5d1acc96c9e35a4ace155a7bdf5c408637876e7158a4df1",
+      "changed": true
+    },
+    "components/services/storage/dom_storage/test_support/storage_area_test_util.h": {
+      "path": "/private/tmp/aux-ordinary-startup-native-a42/components/services/storage/dom_storage/test_support/storage_area_test_util.h",
+      "sha256": "9d8d1f33d06b024b123a0c0a8b9ae111a97905f27cf7cfee4ab7ef86cd3976dd",
+      "inputSha256": "344a3ef4f14be44d81bc54262286382a27f8cfc437bf58e796109b915c3daea6",
+      "changed": true
+    },
+    "components/services/storage/dom_storage/local_storage_impl_unittest.cc": {
+      "path": "/private/tmp/aux-ordinary-startup-native-a42/components/services/storage/dom_storage/local_storage_impl_unittest.cc",
+      "sha256": "e529d02437e04004d7fae9d97d5cd3a72a47dd3fdff1e5eb2cc9fd754267def8",
+      "inputSha256": "f5ec67aa67c917fe9ab4d52c306bb18c0fae3d6c6cc71684500ba44a93fe21bd",
+      "changed": true
+    },
+    "components/services/storage/dom_storage/storage_area_impl_unittest.cc": {
+      "path": "/private/tmp/aux-ordinary-startup-native-a42/components/services/storage/dom_storage/storage_area_impl_unittest.cc",
+      "sha256": "c56329ffd0e82b66b5f54776afd26f9d44de798df1859e3aea038c0484a833ac",
+      "inputSha256": "98bdb0ad281dc65083cea5b2c653685f114eb2838dfc193d55b49a4dfb98b4e8",
+      "changed": true
+    },
+    "chrome/browser/BUILD.gn": {
+      "path": "/private/tmp/aux-ordinary-startup-native-a42/chrome/browser/BUILD.gn",
+      "sha256": "a1241bd149a63328dfca61eb014598fc63063e26228c86e3c90b54178a5da334",
+      "inputSha256": "699fd76e3019c3a5dc3a298c7477c16f9b0df2935d873b8522b0bd9437eff347",
+      "changed": true
+    },
+    "chrome/browser/ui/views/frame/aux_profile_switch_transaction.cc": {
+      "path": "/private/tmp/aux-ordinary-startup-native-a42/chrome/browser/ui/views/frame/aux_profile_switch_transaction.cc",
+      "sha256": "87a34ece94c31f21b0a951c4a5746cf0fbe1138a533818dcda81b0fd7a22ff23",
+      "inputSha256": "67540c89b7eb3a64ae82d13176cd9d8fa5afb9976929bd3b7036cffc9b1f08c3",
+      "changed": true
+    },
+    "base/process/mac/aux_browser_descendant_cli_membership.h": {
+      "path": "/private/tmp/aux-ordinary-startup-native-a42/base/process/mac/aux_browser_descendant_cli_membership.h",
+      "sha256": "21bf9c251295aaea620bf0954c0cc732e0cdbc735f83685d83683e61ee06d87c",
+      "inputSha256": "459c840be2e6316adc8bb5a955a5dd897e678a775da265f510f7eab568f2cdb0",
+      "changed": true
+    },
+    "chrome/browser/aux/cli/AuxCliIngress.cc": {
+      "path": "/private/tmp/aux-ordinary-startup-native-a42/chrome/browser/aux/cli/AuxCliIngress.cc",
+      "sha256": "884e2d83edc447aa75b612eb828f87f95baf84b007639382e8a2faf823ac7fd2",
+      "inputSha256": "d4bbd7529c76cb093195024a85f151bf20dd55c89f6b45f7743145730e1f2bda",
+      "changed": true
+    },
+    "chrome/browser/aux/cli/AuxCliIngress.h": {
+      "path": "/private/tmp/aux-ordinary-startup-native-a42/chrome/browser/aux/cli/AuxCliIngress.h",
+      "sha256": "4515848fafc4dad25e5180130640d28c28bf1a3333610f232b34816a7e64e8d6",
+      "inputSha256": null,
+      "changed": true
+    },
+    "chrome/browser/aux/cli/AuxCliManualProfileApproval.h": {
+      "path": "/private/tmp/aux-ordinary-startup-native-a42/chrome/browser/aux/cli/AuxCliManualProfileApproval.h",
+      "sha256": "1755a7637a24e7e2379ca7b03f2579c0584725c08a6ea190c85eeb1bffabef4b",
+      "inputSha256": null,
+      "changed": true
+    },
+    "chrome/browser/aux/cli/AuxCliManualProfileApproval.mm": {
+      "path": "/private/tmp/aux-ordinary-startup-native-a42/chrome/browser/aux/cli/AuxCliManualProfileApproval.mm",
+      "sha256": "44c40ecbb16258dcb0ae23e05a6a33d724c62f2a9db8d5e5c5e2974ec4e5ac2b",
+      "inputSha256": null,
+      "changed": true
+    },
+    "chrome/browser/aux/cli/AuxCliOpenArguments.cc": {
+      "path": "/private/tmp/aux-ordinary-startup-native-a42/chrome/browser/aux/cli/AuxCliOpenArguments.cc",
+      "sha256": "d2f946689e5f5a6d5c82adbb1c3c685ddc58ac92ab9ef0dbebcd07edb4282f92",
+      "inputSha256": null,
+      "changed": true
+    },
+    "chrome/browser/aux/cli/AuxCliOpenArguments.h": {
+      "path": "/private/tmp/aux-ordinary-startup-native-a42/chrome/browser/aux/cli/AuxCliOpenArguments.h",
+      "sha256": "6c9761c47b8d76f2bde4bfadeb78f5b24cbaeba457ad1b0a2b99cf2a6f2e2a6d",
+      "inputSha256": null,
+      "changed": true
+    },
+    "chrome/browser/aux/cli/AuxCliOpenCommand.h": {
+      "path": "/private/tmp/aux-ordinary-startup-native-a42/chrome/browser/aux/cli/AuxCliOpenCommand.h",
+      "sha256": "bd226a9cf3c557e00af71451e5069baab9b9330d2040c3d48168252147fc3c44",
+      "inputSha256": null,
+      "changed": true
+    },
+    "chrome/browser/aux/cli/AuxCliOpenCommand.mm": {
+      "path": "/private/tmp/aux-ordinary-startup-native-a42/chrome/browser/aux/cli/AuxCliOpenCommand.mm",
+      "sha256": "877d188359dea891638ca135144e464ac83e18017fc3b79bac445a92b2bf0a65",
+      "inputSha256": "0117c63f701e11c8c5f30e3d6ce5fab164e6836256f18dcee2a489481d0ee5bf",
+      "changed": true
+    },
+    "chrome/browser/aux/cli/AuxCliSealedImages.cc": {
+      "path": "/private/tmp/aux-ordinary-startup-native-a42/chrome/browser/aux/cli/AuxCliSealedImages.cc",
+      "sha256": "ce2b89fa21fab68eff9cf45e0215b3d802c34926c06908d255df32f714184756",
+      "inputSha256": "c0eb4c06aaec80a9636ce1379a07837f544abef9ffc650f64c607e20abffba91",
+      "changed": true
+    },
+    "chrome/browser/aux/cli/AuxCliSealedImages.h": {
+      "path": "/private/tmp/aux-ordinary-startup-native-a42/chrome/browser/aux/cli/AuxCliSealedImages.h",
+      "sha256": "6f1df6f4b83809e8e4ae4fec2cfcd4a6a8e7b0cd40e8bcbb1e7bc25bec59087b",
+      "inputSha256": null,
+      "changed": true
+    },
+    "chrome/browser/aux/cli/AuxCliWire.cc": {
+      "path": "/private/tmp/aux-ordinary-startup-native-a42/chrome/browser/aux/cli/AuxCliWire.cc",
+      "sha256": "457cd1fa9a78e3427cc45c1978e91a92e290656497d2faa52a838962bfbcbcd9",
+      "inputSha256": "94ba5d5e076cc6fbfb7163512c1f8600b326969ef7e83dde236ac483c8a1fb68",
+      "changed": true
+    },
+    "chrome/browser/aux/cli/AuxCliWire.h": {
+      "path": "/private/tmp/aux-ordinary-startup-native-a42/chrome/browser/aux/cli/AuxCliWire.h",
+      "sha256": "e104b5b424c8441c1b6f24885039246891ede8cfad24c90e9287de39c8fea01d",
+      "inputSha256": "e95c86ea68e13b9265ab3a48d983824dba128eab260687ab061387f18f788774",
+      "changed": true
+    },
+    "chrome/browser/aux/cli/AuxNativeCliFrontend.mm": {
+      "path": "/private/tmp/aux-ordinary-startup-native-a42/chrome/browser/aux/cli/AuxNativeCliFrontend.mm",
+      "sha256": "cd79cf887952b79cb9a8cd3b4e226a1e5bb81ec5ff02f0b5d4dd1f0134e3793c",
+      "inputSha256": "bb65a82e22c85768cf81184fb083026b2371edfe23d95e78e9133133c54d7fb2",
+      "changed": true
+    },
+    "chrome/browser/aux/cli/AuxNativeEndpointDelivery.cc": {
+      "path": "/private/tmp/aux-ordinary-startup-native-a42/chrome/browser/aux/cli/AuxNativeEndpointDelivery.cc",
+      "sha256": "4a339c23563949a7abd73f3c84a95f2210e8e8754dd736a61e82ad960d2b7ba3",
+      "inputSha256": "3765060b84d88a7f63cdcfb695bcbc3f58ab1f92ca9905ccc5d37b629944c57d",
+      "changed": true
+    },
+    "chrome/browser/aux/cli/AuxNativeEndpointDelivery.h": {
+      "path": "/private/tmp/aux-ordinary-startup-native-a42/chrome/browser/aux/cli/AuxNativeEndpointDelivery.h",
+      "sha256": "f3d78409fec2b84a5304626e144e84314954bce0ea29762f0f30740c62ca6b89",
+      "inputSha256": null,
+      "changed": true
+    },
+    "chrome/browser/aux/cli/packaged-identity-admission.h": {
+      "path": "/private/tmp/aux-ordinary-startup-native-a42/chrome/browser/aux/cli/packaged-identity-admission.h",
+      "sha256": "10abe5ead6bbbe3bcfd4d28a99aa89690adb0b9ae22cdf4d06cae034ff2feabb",
+      "inputSha256": "3f56e834ea18353f8ec7ed554336eb94104ff86f84dcfe1952de258520c4f50a",
+      "changed": true
+    },
+    "content/public/browser/aux_ui_migration_document.h": {
+      "path": "/private/tmp/aux-ordinary-startup-native-a42/content/public/browser/aux_ui_migration_document.h",
+      "sha256": "7731641394116b8a6417163f35b1dfbb25b272c63482b4dcd445bfceee629589",
+      "inputSha256": null,
+      "changed": true
+    },
+    "content/browser/renderer_host/aux_ui_migration_document.cc": {
+      "path": "/private/tmp/aux-ordinary-startup-native-a42/content/browser/renderer_host/aux_ui_migration_document.cc",
+      "sha256": "bcf1ed9e33b71bcd9e6ca4fa33d622996f2d66cc28aa7ec962ef6721d8eb0b39",
+      "inputSha256": null,
+      "changed": true
+    },
+    "components/services/storage/dom_storage/session_storage_namespace_impl.h": {
+      "path": "/private/tmp/aux-ordinary-startup-native-a42/components/services/storage/dom_storage/session_storage_namespace_impl.h",
+      "sha256": "c62c63d4a7b1b0c06e39d9908f8e59a9670d0ec4409dd91d49b1791e0505637e",
+      "inputSha256": "ec7a9c7eab6146c85870a32004684ac5eec6af8d5575392766eb9e73237d3224",
+      "changed": true
+    },
+    "components/services/storage/dom_storage/session_storage_namespace_impl.cc": {
+      "path": "/private/tmp/aux-ordinary-startup-native-a42/components/services/storage/dom_storage/session_storage_namespace_impl.cc",
+      "sha256": "2757d3d039452ff010100a954e67c0db628894839f9a613c61fc346dfb3b0d10",
+      "inputSha256": "49a9d0e6100e6b61a9f2130a19f2501e9f68a699d962a5a0413b7dc521747677",
+      "changed": true
+    },
+    "components/services/storage/dom_storage/storage_area_impl.h": {
+      "path": "/private/tmp/aux-ordinary-startup-native-a42/components/services/storage/dom_storage/storage_area_impl.h",
+      "sha256": "4f2fb7ac429d9d663e7c93b1b0a07e426a7cce88876f32e2001b67dae8fc8535",
+      "inputSha256": "495e81c7dea4c99c2477b0f581367ea3cf1779fe95de571bdfc7c1964d674ba1",
+      "changed": true
+    },
+    "components/services/storage/dom_storage/storage_area_impl.cc": {
+      "path": "/private/tmp/aux-ordinary-startup-native-a42/components/services/storage/dom_storage/storage_area_impl.cc",
+      "sha256": "11f075f34e978092a4e778a2fcf52c331206c7bb5101aab9767e70a1ec47fe42",
+      "inputSha256": "7e123398b9d4b5cd2f508e9675d855699fd3ef5618faa7a16f1d7d48b5fc2b05",
+      "changed": true
+    },
+    "components/services/storage/dom_storage/session_storage_area_impl.h": {
+      "path": "/private/tmp/aux-ordinary-startup-native-a42/components/services/storage/dom_storage/session_storage_area_impl.h",
+      "sha256": "a5951ac0fea3a644b2e466845a563fbf120966443feeb8ef8908d75a2019bf39",
+      "inputSha256": "a3cbaf6137f7cb8581bb020bdd943e8f4f1176d072dbfae3f8ac47c870f0d9df",
+      "changed": true
+    },
+    "components/services/storage/dom_storage/session_storage_area_impl.cc": {
+      "path": "/private/tmp/aux-ordinary-startup-native-a42/components/services/storage/dom_storage/session_storage_area_impl.cc",
+      "sha256": "3c893f4992894ac8a957f715c73a76017d5c77712a3645ac43fe5106336b34e2",
+      "inputSha256": "d90a8c7e92399ab53dd3d24e74970ff79eb126c90b44c6e4000f720b3a6a20ce",
+      "changed": true
+    },
+    "components/services/storage/dom_storage/aux_ui_cache_cohort.h": {
+      "path": "/private/tmp/aux-ordinary-startup-native-a42/components/services/storage/dom_storage/aux_ui_cache_cohort.h",
+      "sha256": "c198f3c84e9b054a97bfb2eedd300477035e0e3c4eda09ba2b10d02b967831bb",
+      "inputSha256": "db9f3099da9d1d03e0a5e00843d3e6b817788105998657359fc41d06fbf290c1",
+      "changed": true
+    },
+    "components/services/storage/dom_storage/aux_ui_cache_cohort.cc": {
+      "path": "/private/tmp/aux-ordinary-startup-native-a42/components/services/storage/dom_storage/aux_ui_cache_cohort.cc",
+      "sha256": "3834b889114c555f5c8bec201fec2d71ae226a074df04966e509554dc28bfdda",
+      "inputSha256": "691d3277777c08c45054d2712bd7f781e8f5b9271a46f8972f2d7e20d3e06ff5",
+      "changed": true
+    },
+    "components/services/storage/BUILD.gn": {
+      "path": "/private/tmp/aux-ordinary-startup-native-a42/components/services/storage/BUILD.gn",
+      "sha256": "099947467b8a43715db89bd32d3e1ae78f0ffa28e58312998749ae35899f83db",
+      "inputSha256": "af07a624717a54abe1f3d2e78756a7ee386a26df29b1303e6f3d8e5da2de20a4",
+      "changed": true
+    },
+    "chrome/browser/aux/ui_storage_migration_completion.h": {
+      "path": "/private/tmp/aux-ordinary-startup-native-a42/chrome/browser/aux/ui_storage_migration_completion.h",
+      "sha256": "6ef6e8a592f9976b84796da8d02718dd6660e8fa08dc982d8aff72466b1d37cc",
+      "inputSha256": null,
+      "changed": true
+    },
+    "chrome/browser/aux/ordinary_startup_build.h": {
+      "path": "/private/tmp/aux-ordinary-startup-native-a42/chrome/browser/aux/ordinary_startup_build.h",
+      "sha256": "e8844b6e7513a10fccfdb905ddc025316678c9ea33fbb4f3e4c1de5f5333dd3c",
+      "changed": true
+    },
+    "chrome/app/aux_packaged_state_identity.h": {
+      "path": "/private/tmp/aux-ordinary-startup-native-a42/chrome/app/aux_packaged_state_identity.h",
+      "sha256": "e1cd9592cf65ac2dd88f9d1979d8eabd269870b90a2b1164bc8f01e6305cdb7e",
+      "changed": true
+    },
+    "chrome/app/chrome_main_delegate.cc": {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/fresh-startup-milestone-a42/sandboxed-profile-path-source/chrome/app/chrome_main_delegate.cc",
+      "sha256": "f1d648b66d27bb47d1e080bf857429eb4c9305ede3c14bffa431068e88a7d5fc",
+      "inputSha256": "2f8d943c81246f0c4190633ad940c511bf6641584986a5bb4f6712774ed73663",
+      "changed": true
+    },
+    "chrome/browser/aux/native_peer_policy/AuxFreshBootstrapPolicy.swift": {
+      "path": "/private/tmp/aux-ordinary-startup-native-a42/chrome/browser/aux/native_peer_policy/AuxFreshBootstrapPolicy.swift",
+      "sha256": "b67d6233d0243ed209b9a1c2d14d58d820a9a82bfdaeb6bafd4e931af96f47c5",
+      "changed": true
+    },
+    "chrome/browser/aux/native_peer_policy/BUILD.gn": {
+      "path": "/private/tmp/aux-ordinary-startup-native-a42/chrome/browser/aux/native_peer_policy/BUILD.gn",
+      "sha256": "69f2f6be74bfcf3a214323854ef34e209d4e4c139122a4f20b71fb89026679cf",
+      "changed": true
+    },
+    "chrome/browser/aux/native_peer_policy/AuxAuthenticatedChildParentPolicyReader.swift": {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/fresh-startup-milestone-a42/browser-peer-concurrency-source/AuxAuthenticatedChildParentPolicyReader.swift",
+      "sha256": "d721895d71c0988b245122204ae8da981024f58b690e07d982abca8d4b8fc07e",
+      "inputSha256": "c84760019233b7d796160542db340f049f398e7bbd6675c9a43bde5b4b7574d8",
+      "changed": true
+    },
+    "chrome/browser/aux/browser_platform.cc": {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/fresh-startup-milestone-a42/native-readiness-budget-source/chrome/browser/aux/browser_platform.cc",
+      "sha256": "68904471d8f8f9252107bba787fc1a46386b69d42d72561c8291d5d1c2e2367c",
+      "inputSha256": "600148c4f62d39ce1bd3672b34d0af159e3f64b74f9e562f35afe528b119a00e",
+      "changed": true
+    },
+    "chrome/browser/prefs/session_startup_pref.cc": {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/fresh-startup-milestone-a42/session-default-source/chrome/browser/prefs/session_startup_pref.cc",
+      "sha256": "52d3d50c2954670fd692acbec740533d00c476f9728772d36b8383569d6e446a",
+      "inputSha256": "ef4de33d52dc32f2037a5a714fd8ac1ded80fe0f0d61f6166e3e4caf82d3f9e4",
+      "changed": true
+    },
+    "chrome/browser/ui/views/frame/aux_chat_navigation.cc": {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/navigation-local-completion-a26/source/chrome/browser/ui/views/frame/aux_chat_navigation.cc",
+      "sha256": "7e00dcd2c9bb97971ee3cf9548bee92b3ec9ae926a642d9e80a020e0ccc4b9b4",
+      "inputSha256": "68b7ef2ca33c2ff7faa82ff6e97806d6e40de3887696e2b99ab896f830498c58",
+      "changed": true
+    }
+  },
+  "sourcePlans": [
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/ordinary-fresh-startup-a38/source-plan.json",
+      "sha256": "4c024921fd48feabeeda46aada9fcae2827eee0642ec353c2bf20dfc41d5c453"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/integration/fresh-profile-initialization.json",
+      "sha256": "85fbeb759ba868aa65549b38eeb89bfe25707855f2da6755650c70d7463dff9e"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/ordinary-fresh-browser-startup-a1/source/AuxFreshBootstrapPolicy.swift",
+      "sha256": "b67d6233d0243ed209b9a1c2d14d58d820a9a82bfdaeb6bafd4e931af96f47c5"
+    }
+  ],
+  "originals": {
+    "base/process/kill.h": "7ee408e155a1d433ab7320267932305f99418ebcfa2450f39fbb9a6f4eb32f1b",
+    "base/process/kill_mac.cc": "ed8c96ff7ad08fcdd44beeacd513dd730fe0197d91a48195564fbb9332c4817d",
+    "base/process/kill_posix.cc": "ae7c6fd656a40ddc7b7c3a88a083cac75b038d8b8507f586bce707346b9bf08a",
+    "build/config/mac/BUILD.gn": "cd20bc4ae5d52b3fbb5a3e0537320dae017cc13db1265c3e5f09de0031ec30a4",
+    "build/rust/gni_impl/rustc_wrapper.py": "f8a0727b1d8ec46ec63da72ebf62a24501dbb3ed73b998c018eba6e00dadcfbb",
+    "build/toolchain/apple/aux_host_link_filter.py": "404875f1d5df38c6d1d7e37c96a1860b23445776a94b605be3087d7502dbde34",
+    "build/toolchain/apple/excluded-product-outputs.json": "fe1e6db5126c656da5652bd6bd6e8965abeccc4f955bc54927e558cfca28713c",
+    "build/toolchain/apple/host-output-allowlist.json": "ec54f4421d200640b62a5298a18ab3957a22175f0ec52ba2ae9142ec4a8c7c28",
+    "build/toolchain/apple/host-proc-macro-allowlist.json": "94c8f65be4a6da042e74a759a59eb45e410906b62ff77c9b4ca6b552f3dd2759",
+    "build/toolchain/apple/linker_driver.py": "b41a131f74e8ce415bd6f185a02d3025a17c5d4264bb289ad4ec65058430f585",
+    "chrome/browser/app_controller_mac.mm": "cd1f4d4a781bba1391f14ccdacad42c086d8d9e77af2916db514b91dfe73948e",
+    "chrome/browser/aux/AuxBrowserNetworkPaths.cc": "2996381f1265fd2af903c78a18f16bb8c31fdc762dba0c487dedc24a8cdcebda",
+    "chrome/browser/aux/AuxBrowserNetworkPaths.h": "8a456e530cc1c6f3955f14daa43fa3e7cbdd67f2b085118215023c344b6cccdc",
+    "chrome/browser/aux/AuxBrowserPrivateRoots.cc": "403d6e5e1d8367b5317be06ec120ed9d65b032ed0fc176a379b7d7293373c998",
+    "chrome/browser/aux/AuxBrowserPrivateRoots.h": "5b9b84ca04000046b99b59ed9967d2ddce14afdd1c8b0a36bcf0d50a4aa30636",
+    "chrome/browser/aux/AuxChromiumBrowserRootProducer.cc": "e38a850dec4b8f6105fe75b94ad31a617a1a719af81b7fdc2c94202dc65bb3a7",
+    "chrome/browser/aux/AuxNativeParentColdLaunch.h": "516429b347f4f159b3ff25232dc4d56df8dabb6a1a00112393a7022ebe96b013",
+    "chrome/browser/aux/AuxNativePeerTransport.cc": "e24dd9886408bda5e3e18cdcf2edf45085163b4252db21570fff1aedb483a016",
+    "chrome/browser/aux/AuxNativePeerTransport.h": "200735d57b29147b258c46d81e610b9615b3fe38b2bf08a3c7f69c2776a19050",
+    "chrome/browser/aux/AuxNativePeerWire.h": "f15b5c11f1c79971b14b65e866acf7306763a421fe461d57cd1aed3523bcb3dd",
+    "chrome/browser/aux/AuxOwnedChildWait.h": "b5bc81eb518ecd1f5158eb2f65cf5e78db89eced0266257beb33fc11f1434582",
+    "chrome/browser/aux/AuxOwnedNativePeerChild.cc": "0f1ff7a11c2493fc03b9df20fdfc114e6e3ddac89d9b3f9ddc9c88614a790e56",
+    "chrome/browser/aux/AuxOwnedNativePeerChild.h": "28ed85a70c129d7a55e70536c5e2e5c42f98893716546825660dfe397278cc81",
+    "chrome/browser/aux/AuxPreparedDaemonAuthority.h": "3d775bb044891793e78fb79823079a94824db5912565f6d4de16c449c0e67cf8",
+    "chrome/browser/aux/AuxSelectedHomePolicyBridge.h": "fc41a3b2ae1d9a757ddc4b84820bc39ffe958cf47c5f4a9ef7e9ad7a3e78007c",
+    "chrome/browser/aux/AuxSelectedStateHome.cc": "d92dabe6b5a9eb60034c8cf891b5396fb4663b666d005f21b043a3ade5ca3109",
+    "chrome/browser/aux/AuxSelectedStateHome.h": "340e954939b4b9d08ef532b266ef37c403abf85a31b74599d5ed19ff3ebb0c52",
+    "chrome/browser/aux/BUILD.gn": "dd38e0cc4b321e140a6640efd22f55ccfa70ae35befdb993a3bf7eac5d0c660b",
+    "chrome/browser/aux/account_bootstrap_state.h": "06734242878fbffc8791977b1b73add572a7b36d4af106a61e0a7c3603ef82ff",
+    "chrome/browser/aux/account_profile_avatar.h": "e972a1b2bf574815d38ed87fa34ca75e0e9393486b052102df1f99ef6ba65d3f",
+    "chrome/browser/aux/account_profile_prefs.h": "8145166b2b5404edca828e8c2f8bfa02638a3c84ccda4e87bf0006a7d4b1bff1",
+    "chrome/browser/aux/account_profile_source.h": "6ae70b66812f8f9d3d0f91d0be7fe3c99cfe621764e1869de015e071d0e5f7d2",
+    "chrome/browser/aux/account_profile_updater.cc": "2f5a798eb8b8397d716c1d02de69a86e42456e74397d63a7d138c14992b26554",
+    "chrome/browser/aux/account_profile_updater.h": "bcbbdda4a6a4113f891582f2071dfc8854fe4e569c3d15d0adbd5be7e8839caf",
+    "chrome/browser/aux/browser_platform.h": "90d1655f6121b69e3d9843bacbea96022595edec7915073017a7da2ceeb7615d",
+    "chrome/browser/aux/component_bootstrap.h": "712bd86de1bbed01daed81bf630b10c51a42dceedf84657ccfbf63c8aec22131",
+    "chrome/browser/aux/daemon_supervisor.h": "39405df1cbc9a4c81b44bff371779d77e5ef8b1d1d7f97777b29933ef5fbc91f",
+    "chrome/browser/aux/direct_daemon_quiesce_result.h": "613a143f77fe7d9e5335c07d3672e30b515da162789a639b3ab6a4c7f774925f",
+    "chrome/browser/aux/feature_store/feature_profile_store.cc": "c6886c48031a1d2b27505bfed7449961075eed512f275a5a81314bea7d535121",
+    "chrome/browser/aux/feature_store/feature_profile_store.h": "0fa60130e276a3aed3513dcc8c894e17abe42dac17049bfd1866b7005e676903",
+    "chrome/browser/aux/feature_store/feature_write_participant.cc": "ce1fe4b56c370b6b0369776eadc3d00530a7931d2963b81fb70c75f72079f14d",
+    "chrome/browser/aux/feature_store/feature_write_participant.h": "a7db1e6b87daf66bce72c7b542e31d4b5b5e0147101ece0df85ad5c3387a37cc",
+    "chrome/browser/aux/feature_store/feature_write_participant_unittest.cc": "ab949f598da2f1564a99c3f2a3cb480f5784a2ea7576eb9de2285e0de00906e7",
+    "chrome/browser/aux/installation_auth.h": "fb9c4d9b26595bac83fbc4b77baee840608f2f2123b789ee48967f946beab5de",
+    "chrome/browser/aux/installation_carrier_custody.h": "19c3b38d65b1709ee977c2944a9503ff0414836e2bc3319d82805870d26cb9a2",
+    "chrome/browser/aux/ntp_prerender_service.h": "8812cb3f2b929f9c915353628ba586a81652782ab530f7dfb05855792ac61cef",
+    "chrome/browser/aux/organization/organization_codec.cc": "f0515622f11c418c38b59510bd25e3f02108c38cab48bcf87637254a8d359249",
+    "chrome/browser/aux/organization/organization_codec.h": "2977da779fc63adbc09d02a41fd35c2352fb8b82b77f95ce99ae95ab0298c080",
+    "chrome/browser/aux/organization/organization_model.cc": "6f9be191caa8fde23979f7734d1bfdc5a10369a9008b26a3115d7b2f240a1303",
+    "chrome/browser/aux/organization/organization_model.h": "7fd5c2d5168252a6bcf51fa181df60d8973b23a44bf5097dc7abda6a353872f6",
+    "chrome/browser/aux/organization/organization_model_unittest.cc": "27ff1bfa6fb6d750311170433954cffc6ae27a435458cfc0e3da0df23d2e7991",
+    "chrome/browser/aux/organization/organization_profile_service.cc": "835e186e6de68e0149395e72126e4904d4261e07e4e62f90aa77f474a537888b",
+    "chrome/browser/aux/organization/organization_profile_service.h": "f84549a91364652776d46d7cc89632d9b1e293ba839e2d52c85017463609c9c9",
+    "chrome/browser/aux/organization/organization_service.cc": "b520ad1dfea94381ce2cef20149a2ccc0ecf7d15dca33b0a61543112ce8185fb",
+    "chrome/browser/aux/organization/organization_service.h": "10d26f0dbe61a23341156622c2fb2a14535210f33ba020d25cbd56e3d12a0fc5",
+    "chrome/browser/aux/owned_direct_helper_quiesce.h": "f6ddb043ef84b700136e5dfa76e8d1ef58d6adcb6676e70c3693ca7a4f0f33ab",
+    "chrome/browser/aux/profile_account_metadata.h": "4f9e8e96756194018e4ac7b9118b375042673dc92dcb1bab8242134e1eb16e0c",
+    "chrome/browser/aux/profile_gate.h": "00833461201bc5b681027c41da273662af86577e8efed84b627eed1fd36a30e1",
+    "chrome/browser/aux/profile_gate_prefs.cc": "1d2b9aae42537f0c348717619a443e40ddcd71166ed6f963b24339c8fe1c0f97",
+    "chrome/browser/aux/profile_gate_prefs.h": "19b26129a95381793e33bba08e431205739dcc29bc9a56438d28667e739a05e4",
+    "chrome/browser/aux/profile_identity.h": "ddd97b8a3a95050d5e5fb63c80e6ae34f4fce775b9a2ed96994921760328d163",
+    "chrome/browser/aux/profile_security_client.h": "4f807829f021c90c79c692b141089c1f0685df809712b26f513bc2cd796d1380",
+    "chrome/browser/aux/profile_state.h": "9832c3b5bf5baf17f4f7cff6b5341b65e9a9e1219580061be1fe1ee7fd21b0ae",
+    "chrome/browser/aux/routing/cold_start_routing.cc": "5b28813ed8cac3a4c54c604dc407d71fccb98a44d97a2741ee69d80be7c4ed25",
+    "chrome/browser/aux/routing/external_routing_ingress.cc": "1995d054d20ed10f5406b673fdb938b83bb95c288b2cba478080a1ca05b642b2",
+    "chrome/browser/aux/routing/external_routing_ingress.h": "a572c6d8ce51150fc19fe952ab5543cea8c05fd405cb89df408d8f4a9caf5ab5",
+    "chrome/browser/aux/routing/routing_model.cc": "8693a282f61b269ec5957c320cf16361f3f595d3ea71d3c1499a82f4afb0a59d",
+    "chrome/browser/aux/routing/routing_model.h": "97253d31a3cf5409d247a4a2eb95738de844e8484477a2ae04ad859b6fec53a0",
+    "chrome/browser/aux/routing/routing_model_unittest.cc": "24d53d8efda192f918ef13b45a51590b7b81966b67b41eae30c0bc9b5826dd2e",
+    "chrome/browser/aux/routing/routing_service.cc": "54517576199648eaccde1216bda347fd9f9f304217508841dc6c28aadf33a9ca",
+    "chrome/browser/aux/routing/routing_service.h": "000caf70a7d18b1fe577878a2b27a9753c97ab82cbc0568aa08379893e8ef362",
+    "chrome/browser/aux/routing/shortcut_routing_mac.mm": "c7616bcaf416408e8c206b6d4818fe1a73dcde85662dc0a628f0b85f4f9edb9c",
+    "chrome/browser/chrome_browser_main.cc": "4b97ab390a605a35e5f6e580d106d157aaeff95e7eaf64996480abe206623098",
+    "chrome/browser/chrome_content_browser_client.cc": "0584d40c6a3d884a3510119ef787d15b18a7ed89ee5fab8a8f8516fc112c693a",
+    "chrome/browser/chrome_content_browser_client.h": "bfb9bb5975fca97f2ff1ae565baf69cae4d9437a2292541ccc856426630dd3e5",
+    "chrome/browser/devtools/chrome_devtools_manager_delegate.cc": "a1d1a68ca25fee53efdb1980a82879e6875b21669be22c65f44e5560e4e2748a",
+    "chrome/browser/devtools/chrome_devtools_manager_delegate.h": "e687175087c5aec9433d4fe187df975a0301e580fdc196ec1a8bb3ada9fcf158",
+    "chrome/browser/download/chrome_download_manager_delegate.cc": "d4e412374de7ff2950011f7c342753c3ad9a9102b3737013eb047786d6a13f63",
+    "chrome/browser/extensions/api/aux_browser_preferences/BUILD.gn": "b96c170e0335e182a0769f507b92e0c931d43e4a784623103cb55364156df2a3",
+    "chrome/browser/extensions/api/aux_browser_preferences/aux_browser_preferences_api.cc": "fa35ca03b8456878aea05bd3501b19239e0248970872e03ffdd83bd68e5ef5b1",
+    "chrome/browser/extensions/api/aux_browser_preferences/aux_browser_preferences_api.h": "c21aec55762b33faf3e509a00e6a8272e8b62d622628cb0abd23928b1a5348af",
+    "chrome/browser/extensions/api/aux_browser_preferences/aux_developer_expansion_api.cc": "b7e263be5cef6588501b7ec182a2740ec52426a2756785198959f73ac1d77386",
+    "chrome/browser/extensions/api/aux_browser_preferences/aux_developer_expansion_api.h": "4af11e671db31400d78fdf4711f906ff5247c3683b9eeeff7e7105ff470f2c70",
+    "chrome/browser/extensions/api/aux_browser_preferences/aux_feature_expansion_api.cc": "5cf6d62064c111ff0f3155cf90b733f2f742258feae819453badce7e52666222",
+    "chrome/browser/extensions/api/aux_browser_preferences/aux_feature_expansion_api.h": "7f9aac8f99165debe5d98c64ca4bf7fe3d8da9776503f5a973e723507500b354",
+    "chrome/browser/extensions/api/messaging/BUILD.gn": "959c4edd614a6d759219754aac28d8418f5a3b24c50ab17adc022e61589043d5",
+    "chrome/browser/extensions/api/messaging/aux_native_messaging_lifetime.h": "25b3d277ea42891f183383383793d4a76d96564d3d571a1d2eac85a4987a9393",
+    "chrome/browser/extensions/api/messaging/launch_context.cc": "9bff0d744b9e435dcc71c0df738ba64aa46eb3643ab745e3be614ec3157c9d75",
+    "chrome/browser/extensions/api/messaging/launch_context.h": "99686b7bc4231aa94bb63bb3213a76df3bc7005e0b44ea7affb86bf53918c12e",
+    "chrome/browser/extensions/api/messaging/launch_context_posix.cc": "bb960b43c26f23233cc1ef929bb0136270568b2a300e72427c74b03020a28589",
+    "chrome/browser/extensions/api/messaging/native_message_process_host.cc": "f4bc07980dde7ef9b16c331080481871dd83d8e0b25b19f97b16b2defc40e5d0",
+    "chrome/browser/extensions/api/messaging/native_message_process_host.h": "a0f38767553956fb6ae6d491e6f2bf2951a99e746410be93c792933f35fd9631",
+    "chrome/browser/extensions/api/messaging/native_process_launcher.cc": "c36c7333f6ec925884a125ab700b75cca75267cce2a8d681ec15b93e98737ad8",
+    "chrome/browser/extensions/api/messaging/native_process_launcher.h": "06d71773dbc9b17f1bb76024d32ed252ccec49c16cf8881368f72f7c543abf53",
+    "chrome/browser/file_select_helper.cc": "a74c777ef9fe97556f38feebbedba75790ac79657cb8a24c70addd8f7a353031",
+    "chrome/browser/file_select_helper.h": "8664710e6b94683c1e593fb248a34b6aaa3d429bcf6d2426da7019b5be7014fd",
+    "chrome/browser/metrics/BUILD.gn": "c5aea6170d3f824b1a584eebf6e02c6c26c61cabe67ab27d28a16b09a0efea6f",
+    "chrome/browser/metrics/chrome_feature_list_creator.cc": "7a0355ec29bdd62808d96c81d20ab718cef16d9c8650d1c9bf1305892569f621",
+    "chrome/browser/renderer_context_menu/render_view_context_menu.cc": "c7ed6d4df8f56bf6546bead44e73260f1032258f21e78b1ec5d32bfff2ef91ad",
+    "chrome/browser/sessions/session_restore.cc": "2e784be1d288473c62e483fa2ffd0eb83285653fa020b6ad4154b396621256ec",
+    "chrome/browser/themes/BUILD.gn": "81b79a8ebe5bc83d4d38969e98ce070763d4434a0411a836e507e6b87ec97fb9",
+    "chrome/browser/themes/aux_theme_editor.cc": "3ae36fdcae98959c808d289e6c77a4d0a468579a897c81442a460c14f0035bda",
+    "chrome/browser/themes/aux_theme_editor.h": "31517af4c9fac364a110a3297456a7790e810abb93a1d820c27dcc6bcc0b9926",
+    "chrome/browser/themes/theme_service.cc": "7704ce4ac98a0c80c44d522d829712f254ebfa959599d2a78bd54b2b04e96d7c",
+    "chrome/browser/themes/theme_service.h": "faf0ede4723cdd043aa27b8454d36046a02e50b79da8348a64680c59cfa37999",
+    "chrome/browser/ui/BUILD.gn": "56b91a9ea98e67910d50ca536af0143eac81637069d07022683671d779345b86",
+    "chrome/browser/ui/aux_chosen_files_drag_mac.mm": "ac0ca261fdb808e9cc91855918ca3cc85cdc8d1780d1b5c1c2931b88a141211a",
+    "chrome/browser/ui/aux_chosen_files_service.cc": "91abab5a413023f4ed644bf088b0b3f39324d17f2a4458281def250fbf548abb",
+    "chrome/browser/ui/aux_chosen_files_service.h": "ecf9c57ba04bc108f8ffc766aa154b6820f023269e51b8ea4df9f5b92e2b6820",
+    "chrome/browser/ui/aux_developer_commands.cc": "0f898dee3b59c4a1a23998f852749b3dc5d8a4274521244ccea4075cfb1fa36b",
+    "chrome/browser/ui/aux_developer_commands.h": "a4a9e7f8f57998e18a16bc186f1c34ea6d953b9bdd8c9517e1011011cb5222bb",
+    "chrome/browser/ui/aux_feature_commands.cc": "b58bc12141f4de11e2eac72e7693d67e50bbad1fcce942886628cf125c634460",
+    "chrome/browser/ui/aux_feature_commands.h": "bfb003710caef314b86e68c682d66d5c826097e34d597c55e95d7066fc2dc93a",
+    "chrome/browser/ui/aux_feature_lifecycle.h": "24afb23c687e5e6d36e012df349970e4e4ec338b0e8eb93f84887f0e40affa9c",
+    "chrome/browser/ui/aux_feature_profile_owners.cc": "5ea144e35a91f8596289690f7456b404bf8d6c05f8b532709671dec6ee2a368c",
+    "chrome/browser/ui/aux_file_operation_lifetime.cc": "808fd1ebef8ebb4d7349795aafab7b9b23469135f13d795a9f8c69ee1b9facb5",
+    "chrome/browser/ui/aux_file_operation_lifetime.h": "d692e67f55138170edb1cd6a3efc9d79a565c819a0613417a39e96d08a5bf231",
+    "chrome/browser/ui/aux_keyboard_shortcuts.h": "5e6dbacce85d825d6c44e873357f4756e2ee29705674d389ff4df0968b33eb68",
+    "chrome/browser/ui/aux_keyboard_shortcuts.mm": "d57dbf41e14df60ed4cfa81025e766891a07fe54f252687ca7c2c193b49d41d2",
+    "chrome/browser/ui/aux_media_commands.cc": "c2260314c33ff0743c64f28d52ab1cbda50a3526c583f62e12103e93023442fb",
+    "chrome/browser/ui/aux_media_commands.h": "3036fc6d7f94b5c8ccc0b6274dccf61580fed0e8cff2c7f1036fc426aac6a8ee",
+    "chrome/browser/ui/aux_owned_browser_quiesce.cc": "b894dca0c9eb487f854912643b380bfbe27708e377303a801170c9cce2094212",
+    "chrome/browser/ui/aux_owned_browser_quiesce.h": "e4993dec9f21a643bf51e5c4a11b52903abe183ff4e562f91159f5099433618d",
+    "chrome/browser/ui/aux_page_capture.cc": "ec03b667be6786449090bf6b67052ec69ef4227c527c74c1db1aa6c117be3af8",
+    "chrome/browser/ui/aux_page_capture.h": "807cd2938cb179d1e395c09a716cafbdc32b3d0f53e0be4168078165550453a8",
+    "chrome/browser/ui/aux_preview/aux_preview_controller.cc": "0f3baf4b51d0acb9801ab945f08ed74b1ae5a1097c8f17ed57010fe9e75c06c7",
+    "chrome/browser/ui/aux_preview/aux_preview_controller.h": "24e3fe2648b5c7fe0371e2c7c4509e5d458885a8f87c4ea1073500e941732610",
+    "chrome/browser/ui/aux_preview/aux_preview_controls.cc": "f4cd9468e7eb9f6122c3c3fdf0040a3493733c6c163de42f16085c667c1b89e3",
+    "chrome/browser/ui/aux_preview/aux_preview_controls.h": "5cf4d8f2869ff6efab8fe4e0517fa5150d3998de3e7966f7d22eaf577ca2c08b",
+    "chrome/browser/ui/aux_preview/aux_preview_ingress.cc": "6f9f1040aca37af1fc6a2546a7be35f99284c4c07c7ac9e483f988bd261c22ad",
+    "chrome/browser/ui/aux_preview/aux_preview_ingress.h": "32c07a5a6936d15326e8fa3eb92748a863af37854f78340c4c7b7d306fb6a17d",
+    "chrome/browser/ui/aux_preview/aux_preview_navigation_throttle.cc": "b86501a6af46c710f5db79cc0a4e6058014f223e261316433109f65fe2bffad9",
+    "chrome/browser/ui/aux_preview/aux_preview_navigation_throttle.h": "08754e59b1709bf6d73830273a92cd92444eec7410be94804919f7e53b548d2e",
+    "chrome/browser/ui/aux_recent_files_move_mac.mm": "db72df01327f5dd01c65685d554cfa34e593356d76b70fd4a6c9ce4cd9b9c680",
+    "chrome/browser/ui/aux_recent_files_service.cc": "46ec54e2041b87dfbd4332c5150ca32b69d72807d72145539945e51b81fabf6b",
+    "chrome/browser/ui/aux_recent_files_service.h": "ac4bbeaa79a6fa025dff411870380f26b2c5ae14e2387c06f29777bd2bb7f15a",
+    "chrome/browser/ui/aux_tab_mention_spaces.cc": "950d180a1e521910dea34a18a5a4db6038e5727c63d0ca82aee9bddf65ad2495",
+    "chrome/browser/ui/aux_tab_mention_spaces.h": "a4a1ec168fc09c9067cd2fd86266a043f3f64f1fe6b8d1238c4ca094dfec042a",
+    "chrome/browser/ui/aux_tab_reference_context.cc": "33e854c67657db748acd6c449d8d86ddb7bcc5a213032501c19ecfd7872c2ee8",
+    "chrome/browser/ui/aux_tab_reference_context.h": "2067239356ebd9d55376f409e742b2e130a2447f33ff7ab1dcd4e7732209a416",
+    "chrome/browser/ui/aux_tidy_scope.cc": "5591d8cccd099ec6c4b168744fac09b206f1c0a7e0429dff25bd359eb1cd7fb7",
+    "chrome/browser/ui/aux_tidy_scope.h": "08f286f1ad5c8ef41b64a54bbd28e568cad088faa6d6c0ed72f981ca99f2dde7",
+    "chrome/browser/ui/browser_command_controller.cc": "eab1ecf1959b8c9707282211f8227a6fe87accb5247f9c157f93142f3ce61c73",
+    "chrome/browser/ui/browser_live_tab_context.cc": "e2cf847710ec0a873bf489af1a157f639f612906690557db08e5301412c209dd",
+    "chrome/browser/ui/browser_live_tab_context.h": "9787b8ce41c9d6cacc5ed75ec0cbf9a976a6c1af0ac74be1040ae1c00c9cdfc9",
+    "chrome/browser/ui/browser_tabrestore.cc": "c0c5d1596ac5a7e78818796964141aed12f7351ce1b7c29b25d07e7732d5df7e",
+    "chrome/browser/ui/browser_web_contents_delegate/browser_web_contents_delegate.cc": "a610fb22fc9f306dd699c656aaddb0605dfdd09135678b50862cb53c2ee7f152",
+    "chrome/browser/ui/browser_window/internal/browser_window_features.cc": "04227d3f9257eb6f955b2b1c102e81c58518f175c11c8c4722a6a7d463d5ea3c",
+    "chrome/browser/ui/browser_window/public/browser_window_features.h": "0617d4b746dfbe6a945e11b5408d7efc6f862b9120f9d05e57d411e087d0684a",
+    "chrome/browser/ui/startup/startup_browser_creator.cc": "1be9702fff5372a3f85ab88f72a7b78b460325b90836574f1cb9db6eb4a09859",
+    "chrome/browser/ui/startup/startup_browser_creator_impl.cc": "caa2a48e7b5e31d065f5f1800a28eff87487a66cefb6dea0027ff814bafb0883",
+    "chrome/browser/ui/startup/startup_tab.h": "32b4a6c67d9a42682d3b051bdacb711a9bc09697a6d726182b7f6f3a27866162",
+    "chrome/browser/ui/tab_helpers.cc": "b19a5be8c29e25310d83913f84b0d7499df14a343575fe42cf1c2c0bc23f3533",
+    "chrome/browser/ui/tabs/aux_organization_pin_adapter.cc": "82752b8cec8accd4e458cc78ba62251397b11c9a7ca39e51af4936cac93007b3",
+    "chrome/browser/ui/tabs/aux_organization_pin_adapter.h": "6b6c3a481c7ae6f7692e1de4297c71acd559c9516a107b71f664e8b938679152",
+    "chrome/browser/ui/tabs/aux_pinned_tab_entries.h": "b7ab8968311ebb2b3b66f8d83689eb52f8f68aae483c7b4b9189f60c321ea64c",
+    "chrome/browser/ui/tabs/aux_pinned_tab_entry_identity.cc": "1220f51e29368304ac2af76288561279162f8d41266634475fa472a80a7d2ae4",
+    "chrome/browser/ui/tabs/aux_pinned_tab_entry_identity.h": "a054d8029447ca6c769bbd41cc6f18b8b7b882dbf9c1b3d3f4adf406e37556c9",
+    "chrome/browser/ui/tabs/pinned_tab_service.cc": "76adc641eab4db00f5fe12c93bb9e501f32a59cd07671d76b3a666fc2dabb072",
+    "chrome/browser/ui/tabs/pinned_tab_service.h": "a8fd0172b9e93e5bbe36625344b71a32809ce94f999c9ffc4058b5ce591e06fd",
+    "chrome/browser/ui/tabs/tab_strip_model.cc": "d30702e35ceb70ff0ac6e858702513bdcff424063f56e77f68e1b51144933d7a",
+    "chrome/browser/ui/tabs/tab_strip_model.h": "91a91180817ba16fedafe465313906f0cbb001574fed631069662cf084c6ff1c",
+    "chrome/browser/ui/unload_controller.cc": "09220f0d6b2f9f93c3d3434cb05a0b2fd251592bda6485b8de49fd7454116dcf",
+    "chrome/browser/ui/views/frame/BUILD.gn": "90d40c27247649304ac5f884c65b8c92cf4d052cfe78853a6a1f622efba26713",
+    "chrome/browser/ui/views/frame/aux_bookmark_pin_conversion.cc": "053b2f6e6865760491fafdcc4937d9f1566c5d24fd0b27b8bb12cc3f157140f8",
+    "chrome/browser/ui/views/frame/aux_bookmark_pin_conversion.h": "1a5cc868430e9adf337e87f9b47fcdf90c246b85112368abd338ce8b1ee5fd74",
+    "chrome/browser/ui/views/frame/aux_bookmarks_section.cc": "492ed402ba0fcfcd5d517b0380deee330a04a0a62a0edff3355d7d0ed280e851",
+    "chrome/browser/ui/views/frame/aux_bookmarks_section.h": "6b5cdbb09d893130eef1250e614a73a519f853057ffe44103de17a5b6bc4b80d",
+    "chrome/browser/ui/views/frame/aux_cross_section_drag_coordinator.cc": "731312ae619601cb107b2f4c4baf56c0438ce6b2007dcbd4c0de99ee40763c1e",
+    "chrome/browser/ui/views/frame/aux_frame_presentation_state.h": "75a03dd72306172dad94afab2b1c7d44903c1585ef130646521037fa8f9b3028",
+    "chrome/browser/ui/views/frame/aux_navigation_placement.cc": "b8fbe684517fbcda3d32bbe7b23f3e9db6a9925a76fee05b9f5f829a2bd3be24",
+    "chrome/browser/ui/views/frame/aux_navigation_placement.h": "a4c277ee916555b5b4471d7845972fe96602b8c1f280ef314f61d7db8cd29e97",
+    "chrome/browser/ui/views/frame/aux_ordinary_tab_projection.cc": "f951e511ac6303b102901b14063a07bfed2b0da80d982d3ad1fc1b03d942a9f7",
+    "chrome/browser/ui/views/frame/aux_ordinary_tab_projection.h": "2c0f769501ac68b3b490dc3dc03f77b31beb6fec8f24460e1a3c3ee18af5340a",
+    "chrome/browser/ui/views/frame/aux_organization_tree_view.cc": "5d30adbaeb54e4eb23dfa23c5c058cf6faa752cbcb2c4ec05db54de634daac37",
+    "chrome/browser/ui/views/frame/aux_organization_tree_view.h": "7f66e52ae31d598cb24d23f7910430dcd7cf34c6c133ebbc0abdec5779d14971",
+    "chrome/browser/ui/views/frame/aux_organization_ui_commands.cc": "97646d6b69dbbbf57fd01edcc6fe0c1a78b263d8300d31bc338720bec821a7ca",
+    "chrome/browser/ui/views/frame/aux_organization_ui_commands.h": "5b109b4204d0585ee98c43cca10a6b5cff9d579b29a0bee6ebef2f35083e9261",
+    "chrome/browser/ui/views/frame/aux_organization_window_controller.cc": "c51e167184c418e8bc0aab7d779c77494efbea135d2b7108b30a4fc1744e826a",
+    "chrome/browser/ui/views/frame/aux_organization_window_controller.h": "338109dda5b04e6991a4213b0fc8baf4c6aa8851689257739e4ebb30daedb283",
+    "chrome/browser/ui/views/frame/aux_organization_window_delegate.h": "319e3515541a790d07f9a8a9eff42adc7da230ec4c260196649c140c64733001",
+    "chrome/browser/ui/views/frame/aux_pins_section.cc": "5a6ab5958add314aaf190ac4bf45368f93d19c638119a5aeb2b3b5614d255b2c",
+    "chrome/browser/ui/views/frame/aux_pins_section.h": "d8da282cddc9bd76fe891ed47d6c7100781c94943de23c9673e0076a90508963",
+    "chrome/browser/ui/views/frame/aux_recent_files_section.cc": "d6179fd3658038ae59941d6e3d205999d6ed74f3934a4e6b8ece0d62b3345f56",
+    "chrome/browser/ui/views/frame/aux_recent_files_section.h": "6252cebccb04eda78f2563acf1911a8c93a54c1c48a0c695c0a59a6bf0bcbd4a",
+    "chrome/browser/ui/views/frame/aux_saved_entry_drop_target.cc": "e751bef5d02860b5c119b1eddd08b0b128644ffbd2abcca7ba5ce7a70e23c0cc",
+    "chrome/browser/ui/views/frame/aux_saved_pin_bookmark_conversion.cc": "fad9e21d22a124e1b47d14f09dec6b2999aef3b51d0a951788d483638a5dba8b",
+    "chrome/browser/ui/views/frame/aux_saved_pin_bookmark_conversion.h": "8c567094c8455ee7ea8fe049027eccb6144be489dea964e8aa215923d2e9a66f",
+    "chrome/browser/ui/views/frame/aux_sidebar_body.cc": "74a4cce16e8790e24ef5b1f2ffe14bc49dff2316cb59778861720699b9e2df3f",
+    "chrome/browser/ui/views/frame/aux_sidebar_presentation.cc": "ecc4eea41c75aabe624e98ed4c0a2c4c446b2b76eefe21c9118e8b628ccaa36a",
+    "chrome/browser/ui/views/frame/aux_sidebar_projection.cc": "190c758ae34c880622c882ff3ed4d20bf97338c3f2b3679b70af14c2c62bae99",
+    "chrome/browser/ui/views/frame/aux_sidebar_projection.h": "042c83bc716fe53656e937f13e2d74852fae0f13ef29206459ef77cb1b37a158",
+    "chrome/browser/ui/views/frame/aux_sidebar_view.cc": "a9f370351d2962be935ea314ce5451a540eee984e0ecb72327732fe529e75421",
+    "chrome/browser/ui/views/frame/aux_spaces_switcher.cc": "b5627a43a61068825aaadf2e9d4c258dd49d6a958c31c933b5ede56a07babb9a",
+    "chrome/browser/ui/views/frame/aux_spaces_switcher.h": "9254567de667adf26fb18c4511fa9c0ad6688c2994647dbcf90dec2e36213b6b",
+    "chrome/browser/ui/views/frame/aux_split_commands.cc": "945511b4577bd546c02f99759a07e5c81c80cb6be63338c5efe9bee8af55cdaf",
+    "chrome/browser/ui/views/frame/aux_split_commands.h": "1d13e09c959dec4d2da9e6f71edf285b781339376592a6fcca287bcfbee6086c",
+    "chrome/browser/ui/views/frame/aux_tab_expand_chevron_view.cc": "9bfff0bc2c373ac7020f2cef36596804955579c11be4f8733bc1608c520c57b0",
+    "chrome/browser/ui/views/frame/aux_tab_search_bubble.cc": "9b2646b7583215760f190b7fd559e2a00618bac4b9acc82419fcd227ce1fa29d",
+    "chrome/browser/ui/views/frame/aux_tab_search_bubble.h": "3ed95b3465ed2f8ea3401a4f5574bc802e4d35fa81c6e6e484294d4cd6cec6f9",
+    "chrome/browser/ui/views/frame/aux_tabs_actions.cc": "03e5acaf05f8caf351fedbbce7e217c40e40a6d5ab6272337b6263dc71cb688f",
+    "chrome/browser/ui/views/frame/aux_tabs_actions.h": "7cdd1f48bdf8d95201e4bb345b938297e4e96aa4f56a414e41ec5913df764361",
+    "chrome/browser/ui/views/frame/aux_tabs_section.cc": "a7b4f093c84fa7bdbc270849b1f9dbf0d90bb67d615e1fac2bac570f159a42a4",
+    "chrome/browser/ui/views/frame/aux_tabs_section.h": "3a30c690780140f857bfc57fa32f3ffaf46faa5b85eeb9e716b5b2070a721283",
+    "chrome/browser/ui/views/frame/aux_vertical_sidebar_profile_button.cc": "a6f2ddd75d9ed3375903e357fb54b5cf92239db434b872b6437fc4f756368a76",
+    "chrome/browser/ui/views/frame/browser_view.cc": "d635428d4d397641ddd6234b3c8684d6ba221c2348fbd0c808d01ba4913ecd36",
+    "chrome/browser/ui/views/frame/browser_view.h": "795df144d9073676c9ba12613829852825c08cdc59ee69ff42902707b4666281",
+    "chrome/browser/ui/views/frame/browser_widget.cc": "ead11967974eae0dfb36aecc6683fd8a74e37ec536615645170eff53226ef10a",
+    "chrome/browser/ui/views/frame/custom_corners_background.cc": "89bb798da9bf0d4bac1561dfe6830d934e1ff927558836fb0af5cdb8bd5be2c9",
+    "chrome/browser/ui/views/frame/custom_corners_background.h": "a93613a0d36b8fb8c4df2f7168ca651c6ff99bb629bc680f370a424394170bf6",
+    "chrome/browser/ui/views/frame/layout/browser_view_tabbed_layout_impl.cc": "c202bbe1aee81c8a72f8b48bc9431c4e1adb3310388c3bc6b1f52da9beee039e",
+    "chrome/browser/ui/views/frame/multi_contents_resize_area.cc": "445065fe6ebdc8332b9ade730c82e010da626242e0da5b43d88944b745c6e675",
+    "chrome/browser/ui/views/frame/multi_contents_resize_area.h": "cf09be9ad7ce99920ead5b4ca51c7e21b8be24863bbd382ef0fb4b97d2c55539",
+    "chrome/browser/ui/views/frame/multi_contents_view.cc": "b897b124ea477163405cfd83e8426e00124620a5b856e501655618f11de4fefd",
+    "chrome/browser/ui/views/frame/multi_contents_view.h": "17a154276b156c5e36be2a3a9c43afe993d368817a31db85fe42d13e76c19bc8",
+    "chrome/browser/ui/views/frame/multi_contents_view_delegate.cc": "d6e00acc0f6e3b033f5afb78c58a027fb236dfe26fde5fab7c3b7bde1b5d9ad1",
+    "chrome/browser/ui/views/frame/multi_contents_view_delegate.h": "3032b9708050f57dddf8acd557f409125985d93c7669a2dae359ee299ee66bc7",
+    "chrome/browser/ui/views/frame/multi_contents_view_mini_toolbar.cc": "26ef28b6e6f6a2c5751983b97bf9407aa1ea733d46291ecd073a0506a51e84a1",
+    "chrome/browser/ui/views/frame/multi_contents_view_mini_toolbar.h": "fbb5856109227de45150c587c19834c3c53d4e017191ae38eda7ba5abd3e5659",
+    "chrome/browser/ui/views/frame/themed_background.cc": "a34059e5568990bc7c2e7ac40033a1ee37c288877af6efeff33bd2311c0e640a",
+    "chrome/browser/ui/views/frame/vertical_tab_strip_region_view.cc": "fffd13aa4507ec62ae1a964ee932af1e6d595c3d5477dc84a3bf71135efe327e",
+    "chrome/browser/ui/views/frame/vertical_tab_strip_region_view.h": "46d342fc18c50516db1e84435cbb6b4b5fe5c8bab980170b81add6e955a50b5e",
+    "chrome/browser/ui/views/tabs/common/split_tab_view.cc": "eef5b7089737a2c0b973293e3d0acf15e6af56a2227cbf9a867d2c3966c25382",
+    "chrome/browser/ui/views/tabs/vertical/aux_pinned_tab_entry_actions.cc": "4ef5db850d68532d1ddc01a01ea4efc6d3c0722debffc480f756e86b845da93d",
+    "chrome/browser/ui/views/tabs/vertical/aux_pinned_tab_entry_actions.h": "ddc9e464f4ee2c55100a2f5c41ffde77f4860366c836886705d85e4488beeea5",
+    "chrome/browser/ui/views/tabs/vertical/vertical_pinned_tab_entries_view.cc": "312c1397b07c244762bceea9402b5c6df96d0fdc65d6b1785df0b47f0ab72001",
+    "chrome/browser/ui/views/tabs/vertical/vertical_pinned_tab_entries_view.h": "846e9a61409b723dca0f34c6cbccab8781b34b8110f00269caad8ecccb1f1b0c",
+    "chrome/browser/ui/views/toolbar/toolbar_view.cc": "50fc4d3f77d198a4009dcf8f9c05a61216d965392d0cf0a652eb2a533d123587",
+    "chrome/browser/ui/views/toolbar/toolbar_view.h": "377fe00219dcc78d75dece3f93b3beb35af2b61dccbccdbae36618d793f4c551",
+    "chrome/common/extensions/api/aux_browser_preferences.json": "20ed9157cc2fc007f58c76e93da38208807c54dabda8702ed0799e566d4dd6ca",
+    "components/infobars/core/infobar_delegate.h": "51c84512d81d90b62c5f672694883d64ddc42835fb5582fa7d6b91c28b69f307",
+    "components/sessions/BUILD.gn": "1d66dbc59b2820fed5e6d9cd5e5a7df2f7495f04503ad01b5ddc8f54932510f3",
+    "components/sessions/core/live_tab_context.cc": "4a9fabbadb9309eea428db9c2bdeb5bf8953b27964d5e25c15e3c69a64514ad7",
+    "components/sessions/core/live_tab_context.h": "307f2823f9739b988df3bdb1ee28beda28a7dbb4d62ed5ade3d200ff0afce1fa",
+    "components/sessions/core/session_service_commands.cc": "294fdd0196c72568809f1356cd15ae6b0df7780c9664a74f9081b00a06e791ca",
+    "components/sessions/core/tab_restore_service_helper.cc": "cfde345bc2402e11cb5230af34a834fbb90432753f7da1a0aeec7469ceb4684a",
+    "components/sessions/core/tab_restore_service_impl.cc": "4a760e3a49243a40cb0b72a566e3bba98b913acfc94dc61216cab55df4cd87e2",
+    "components/split_tabs/BUILD.gn": "a8a4fdb6f2371bb6d71008b5c75d61dc3399d68a10fe8c83692ed50295282903",
+    "components/split_tabs/split_pane_tree.cc": "1ffec49e783ceab649576fdf49f2ec2eb26dec4660c972b65c4880d55312e0a6",
+    "components/split_tabs/split_pane_tree.h": "51dd6ab9b1c51c3393e63dcea5b2e01806867a8ac0c468c557f38c770a689f35",
+    "components/split_tabs/split_pane_tree_unittest.cc": "5a8ad153325038fd0e8fa8035d45f6ea490c2410ca7196cdf24f65455d58f89c",
+    "components/split_tabs/split_tab_visual_data.cc": "8cc1230156c36e4a90deb46332c86d439bb05941cf71f1ae6584ee7b4c50904e",
+    "components/split_tabs/split_tab_visual_data.h": "3d5477136b8e6edc164ecbff9fa25259dfce8b5967619c5286dfe4c26ee6295b",
+    "components/tabs/impl/tab_strip_collection.cc": "7ac46a134490a93ffe860a1f96dee2809b0476560caab87507289ab19d4052ac",
+    "components/tabs/public/tab_strip_collection.h": "b29dc9daa5203233cdafe015db88df3d60a89fb781ebd3e3f495bf392ef140ee",
+    "content/browser/BUILD.gn": "6a0ea9238ae0a4d0471017e92247499025f0ca03651098411867b85bc8d47373",
+    "content/browser/aux_child_lifetime.h": "ccb7fe34dd5f2ef584d2bc616a39026bfa7f591931a4d73fc58f89626fa8af64",
+    "content/browser/child_process_launcher_helper.cc": "52eccd4f355a8756ba338d7bc8ff1dbc4fb30725259e7cba24919552b69b429e",
+    "content/browser/child_process_launcher_helper.h": "3061dd8b0952c2d70e417f3e810c5b737329fefdb837f0497e870cd81c31b001",
+    "content/browser/child_process_launcher_helper_mac.cc": "d92c1f98f35368d62c565ed8614c83e7c4459e81fcd718dbe7fef32aa2af98ee",
+    "content/browser/devtools/devtools_session.cc": "6133f8ca4d8e8dada1f57b4aabd926a9c2d899d0d358ded1efaa4dc0cb7a093a",
+    "content/browser/devtools/devtools_session.h": "9f38e58227b26521fb3966fd440633e22c47bce66ad96d6aa81028e347599cc2",
+    "content/browser/storage_partition_impl.cc": "d90e9e21503b529a0ac4cda5ab7538122e4e685a0e74316c659d83479d659b4a",
+    "content/public/browser/content_browser_client.cc": "3eb8ab9eea36db1493e272c2029e55172bcd01994e636a3ec3afb96b95d90787",
+    "content/public/browser/content_browser_client.h": "b3e431dbd551a0bbe742a0322fa028645e17f4bdd607e01d693b90fc526d3601",
+    "content/public/browser/devtools_manager_delegate.cc": "a29e237c88f749fb0e2bd9b92fedf1c4fed489c65409196d5bcfd11effd393d5",
+    "content/public/browser/devtools_manager_delegate.h": "a68762414021f680450d38670905e84836a2ddaf52ddd853ea4ab49bab5c7ce3",
+    "extensions/browser/extension_event_histogram_value.h": "d18b782112708e35c53a0f04cbf454bdc1026b07ac797dd4dc88ec438acfd1d9",
+    "extensions/browser/extension_function_histogram_value.h": "685feb30e94cfcf0ae34f72382007e49fdd333b8d814e63ff6e892f52ac88b4a",
+    "tools/metrics/histograms/metadata/browser/enums.xml": "9458cb5b3885c975856ea857d16e23240cef365bf22ae3e650715251396586d0",
+    "tools/metrics/histograms/metadata/extensions/enums.xml": "12938a6974109eecbba876ba0dfd707d279637a6712cc9b14a6ffc296e4256f0",
+    "ui/color/color_provider_source.h": "15ec370940d4a082f32d8261cd8846b4157a426629ec5ce1312627fe959c44b5",
+    "chrome/browser/aux/daemon_supervisor.cc": "ae01a9fddbdc5fb2ecbd78eaa72825adf752c859b6d3d00034bbfb209a362e29",
+    "chrome/browser/sessions/session_service_base.cc": "91ef376b0f857a8992372396c394a22abc1a5b69f1671c9cd13ed278f467e501",
+    "chrome/browser/sessions/session_service_base.h": "b77230971497a61ee5744ecb3e7aea0c02c9218d10793faa30fcfcf1c7a0cc87",
+    "chrome/browser/ui/aux_browser_shutdown_drain.cc": "8883912416877f5f7d1a73ec14c76e128b2c32ff5bdf4a3f5abbd75087647cde",
+    "chrome/browser/ui/aux_browser_shutdown_drain.h": "97df7c43a25453f6c10daa749ecefee9a3169f4941ee6a636c5f571f3c817622",
+    "chrome/browser/ui/aux_profile_switch_session_rebuild.cc": "54864c28a7c0a065aa79edf7d8b1b2c4cb0e74035d5ca155339e6ac42ea39c82",
+    "chrome/browser/ui/aux_profile_switch_session_rebuild.h": "37f4cb29bf229ae228f89b35071f605e1a7e2e73487fe934752c1ce37cb62802",
+    "chrome/browser/ui/aux_session_writer_participant.h": "80a660e734628ae7c380a53938b21e51af7327079ad196ba91f6da67f596fa0a",
+    "content/browser/aux_child_process_drain.cc": "862c5b8d2cc6af4fb2f7ddf04f3fea60fdf3a6e0c6506a032fd41f95252ccb13",
+    "content/browser/browser_main_runner_impl.cc": "e4c3c41dae7c2a98013c681539839651ddd2a43af79b030131b39a1fad3b2962",
+    "content/public/browser/BUILD.gn": "d8ae6e0f949736dafa3ed5944fcb058610b0b75535b4f918208b468fc05e40bb",
+    "content/public/browser/aux_child_process_drain.h": "223c82c4e8730f2c4c5a933b13061f13be1a970bdc1d930d1a430bd657f96c87",
+    "sandbox/policy/mac/common.sb": "b6eb971c2f5cac96f5a843c5753e44f73ee3be6b8659a90e1caacafc20aec09b",
+    "sandbox/policy/mac/renderer.sb": "45bc78ba343d70a31e3ac93a1949274e99681e2ffa7f0904cfbfc7baa6b31806",
+    "sandbox/policy/mac/sandbox_mac.mm": "6cb531ee48582ef0f972af9a9fb98b4044bb858aa5736a8f396d5aae7181667c",
+    "content/browser/sandbox_parameters_mac.mm": "3a0b8bcc6b8a801aa481ce1f62ea72b0a63f4a02d67d34397924bb13616bb8b6",
+    "chrome/app/chrome_exe_main_mac.cc": "371c931919e7455f980e28e0dd8a201a1e86b4f01c23de660a85a75360f5bddc",
+    "base/process/launch_mac.cc": "2c62e962f5b2fdabcfaaf8a5e4155e15e40ae332cda3a6c9c51261933877e80a",
+    "content/public/browser/storage_partition_config.cc": "ef46e797c276190ea03edf5f98e472de5284beed74dd7249cff78136456c104e",
+    "chrome/browser/net/profile_network_context_service.cc": "55d29972186221adc500576187a5ac9f4b4084aa5384bda05a6f9359ed2350bc",
+    "chrome/browser/profiles/off_the_record_profile_impl.cc": "285616f80f298e8f62d6c0f80a971226c404b84c2c65696196e11fe6163be15a",
+    "content/browser/devtools/protocol/target_handler.cc": "003af0e1fb8eb8de33da0f331c2a0e199334b8d5c6aa209837ae6d572092855f",
+    "chrome/browser/profiles/BUILD.gn": "9fc8bf8e2479b5c3b7130f77809dd4ae274847419dcf5b350f205c49a453629f",
+    "chrome/browser/devtools/BUILD.gn": "9a3decf8ab0cb83636ac4ab0c31875023a5020280ef3886616f52703d1a10a33",
+    "content/public/browser/aux_sandbox_launch_binding.h": "e4b0266fc3083fded6ac06d0e59b76d72e395afd70ce2de4bcbf2841f805a267",
+    "sandbox/mac/seatbelt_exec.h": "ea5387242a1775ad854a10eef8eda19d42e76d9a9e7af9837c247b770a8270d8",
+    "sandbox/mac/seatbelt_exec.cc": "be6cf6300d90eda0f3f0d5150d53c8796990c1f58c37711d4c99026f13b4a751",
+    "chrome/browser/aux/AuxContentPolicyBinding.h": "1d2d85faa8f79e179c01e8c0fbe27fcef7b527bff85e66afc21c7205ccc18ddc",
+    "chrome/browser/aux/AuxContentPolicyBinding.cc": "08d96e02ddd9ada130d9622ef4b88fabfa0156764c9d3b2d6ba12f4fd774a2ea",
+    "third_party/blink/public/devtools_protocol/domains/Target.pdl": "5a1e7b0ffa3fbfba1d8d7d1457a1c18065d6745f9a64f1b83e91c9120ec2575c",
+    "chrome/browser/devtools/devtools_browser_context_manager.h": "fce2b07856ecc78f06564dcdadf8a0490a2461938a7c7dd0e614040381a96f98",
+    "chrome/browser/devtools/devtools_browser_context_manager.cc": "c33645d97b87ba2f24f9ed26789c579a987d582a5e86c6a153a9a9a5eb25f5bb",
+    "chrome/browser/profiles/profile_impl.cc": "0dd9073de623a40ce7c1ff5631c33c61c055d9ebf3565f1fa38235f5540189e3",
+    "content/browser/devtools/protocol/target_handler.h": "6ace70aada06cdcaff15e21085a21741cf373ce5282ec2ea44d0921a8d23dea3",
+    "content/public/browser/storage_partition.h": "7fbd4e60765ba2337f0dfbaf25703b7494aac19246ee9d17a649e762d299f17b",
+    "content/browser/storage_partition_impl.h": "5f61cf49ecbb3a6c5d36128e7a59c8f495b2b60578978904bf9211a21ccdcf9a",
+    "chrome/browser/profiles/profile.h": "7fd40c408572939f885b3adf7be87a2906c0134cd009402ad10200fb151cfb2e",
+    "chrome/browser/profiles/profile.cc": "9a8cc2d2a7b21d3a7bdc66246028b98fabb3b39a580a1b79c92ad4afb2ef129d",
+    "chrome/browser/profiles/profile_impl.h": "9e36c91abdad94e5d1d6c14f8a17abfb470f5111b4a4fc32337827fcc9cf4ed2",
+    "build/config/mac/rules.gni": "386c9c81ba918548bdb69979d1dcf667e3f069144949cd11eb6555b92558fecf",
+    "build/config/BUILDCONFIG.gn": "074d2a608fb415e0359758c9bbff18930168690f719c854e3769f8e5c40015c2",
+    "build/config/compiler/BUILD.gn": "270ea6da49e42e7701e05033c5cd5ef9d351dcdb3c9cabfb1f4566b71a2426b3",
+    "buildtools/third_party/libc++abi/BUILD.gn": "560588f347ec4de8fc61024a6c036047ce6a6e5f1f9f2f28295816933497118f",
+    "chrome/app/app.exports": "89423ca41c39a99de3627f4107e5b795cc3790f33efdb4cf179f67271438d69f",
+    "third_party/crashpad/crashpad/client/BUILD.gn": "da905f5165e272c5ba5b976d0c8de8464a885eb9a69bdbbc9670b4674ab60896",
+    "third_party/crashpad/crashpad/util/posix/spawn_subprocess.cc": "6d573b348ca31f3bf9f2fa82fc7b46253ba71fac2d9f3fad478bf9c2f7055427",
+    "base/process/mac/aux_browser_descendant_bridge.cc": "f55420ae4a34ceb5dedc485edf1f65117500274e45280073e4c4482539f27826",
+    "base/process/mac/aux_browser_descendant_bridge.h": "0f1a8aca4506ccf5b2eaa410e01f388e23a6de77717f2d1c274003c71e07e395",
+    "base/process/mac/aux_browser_descendant_client.h": "a0b37945caa903b40ef8e43ae24eee35e7abfa4ca4c80e5040edddda288864d6",
+    "base/process/mac/aux_browser_descendant_engine.cc": "189b9706842f77503d5a25c321817cb6d58b308da1d1623335f09868a286cfab",
+    "base/process/mac/aux_browser_descendant_engine.h": "acc756b7d090f1a61a5b28c32134dc3c662fc34f47cbb7d27a4af14f5577c1a9",
+    "third_party/crashpad/crashpad/client/crashpad_client.h": "4946e8892244377129ddf23c2921f6e2e9623e96605a33cbceecd0025e587ed9",
+    "third_party/crashpad/crashpad/client/crashpad_client_mac.cc": "d3648e00805f79b7f0489fb2979eef53623bb495e735eb220f99de8e3aded54c",
+    "components/crash/core/app/crashpad.h": "c46d78d46dc9b0cf80af43550def34363726d02909dc97d063b9c7bae83e6fe5",
+    "components/crash/core/app/crashpad.cc": "74c463c94f03ae0f317361e07ca1a8b55986b06cd2ff523b8e8bde6dcc15f3b9",
+    "base/BUILD.gn": "f5ecbd00c9664ab5a4bffded070536dada339de82bc71a876e41427d5d6bb1a8",
+    "chrome/BUILD.gn": "0b97bafecccd7310d4273def283cefb795deb277a5641c2ccd37665948cfc627",
+    "third_party/crashpad/crashpad/util/BUILD.gn": "b51349fe4437b871ebfe43bb1b2ca045aba4dd34ae04fc42e37d907c1b8dd25d",
+    "chrome/app/aux_browser_app.exports": "777b3f341ee9805c329a52dd89c484a7bb0411e9b9f1b73da9e7ebe7bad32eea",
+    "content/browser/devtools/protocol_config.json": "2c28a36f1ca9440583cdb53b7401474592638fe5af83ec9f16ce97f93b51ef60",
+    "components/services/storage/dom_storage/async_dom_storage_database.cc": "478985161d8dfac705f13ef67fdef783a790d72ab271fa140dfb01152f63b8b5",
+    "components/services/storage/dom_storage/async_dom_storage_database.h": "99fe91227827f5a2185a3531e390a1e7c7ada6f29f90d6226478b37f1fe54153",
+    "components/services/storage/dom_storage/dom_storage_database.cc": "c2b09a8d5f28c26a5fbc6f8b1522c1c9158cacc156b501cf985f251697b0d82d",
+    "components/services/storage/dom_storage/dom_storage_database.h": "9df50e67d7be0bcbf32f5a7a123f4e82bcbd95117b22512ea5369d36b2542b45",
+    "components/services/storage/dom_storage/leveldb/dom_storage_database_leveldb.cc": "109dd5d7121fb58f6ddeddcc4b14e153f30cab62dc0c2a0fcd4d600cc4da604a",
+    "components/services/storage/dom_storage/leveldb/dom_storage_database_leveldb.h": "96ede192f5b75e46627480f3f4a5fda2ccbea086a1fb32b397db0c25d1be9104",
+    "components/services/storage/dom_storage/leveldb/local_storage_leveldb.cc": "1ebe0857276485a7bb3bc31d065c841b7326a0c53724d5ee8dd95441bb1e1bbb",
+    "components/services/storage/dom_storage/leveldb/local_storage_leveldb.h": "b73b360454af23ec016ea07209b451808a4e26d7a45f478f84a6db8d866b6ae4",
+    "components/services/storage/dom_storage/leveldb/session_storage_leveldb.cc": "821463ae48ad4f364d87c3890a73769e778c624fe9ec36c5fbbde54b79af4105",
+    "components/services/storage/dom_storage/leveldb/session_storage_leveldb.h": "22c359e14852badaf44751a560e175aada40004adecdc5913d9af5baee6d65b4",
+    "components/services/storage/dom_storage/local_storage_impl.cc": "8749896ae615c732ca07a5a9f60a0a3850293b75324b5ad2e26181fd4f421af4",
+    "components/services/storage/dom_storage/local_storage_impl.h": "16802e5531c19c87b716d8d1dc6d7b4d14ae853dd4eef4093ab07e4de7f64804",
+    "components/services/storage/dom_storage/session_storage_impl.cc": "73a44798aa99a5e322a5388ca7da0e69912c0b580ea2af008d56d87c0a15bbef",
+    "components/services/storage/dom_storage/session_storage_impl.h": "b6fb34fe6cf717b063ae098ac3added7d929be309a770af2f1914fa464f44f87",
+    "components/services/storage/dom_storage/sqlite/local_storage_sqlite.cc": "c923b05d817d35daa7147f242c735c0568d3716948d65ef9126e2ae632e08ab1",
+    "components/services/storage/dom_storage/sqlite/local_storage_sqlite.h": "22cb9577ea78312b548a06931469483bdbcca3bdc2d2f4599956aa87fe2c28cb",
+    "components/services/storage/dom_storage/sqlite/session_storage_sqlite.cc": "9c6e3c2e7cdbc576e5dfee9af58de7818281aff24002ef3c91c3a5e2eea718f5",
+    "components/services/storage/dom_storage/sqlite/session_storage_sqlite.h": "c86839e2da5b4e33225089716366c1239759845a0602a96fcc64537e86c3e6e5",
+    "components/services/storage/dom_storage/sqlite/sqlite_database_utils.cc": "59afc9d68eb02dcc2f0b90c49cab8fce01cf6b92fac9cefba833e76b42a9363e",
+    "components/services/storage/dom_storage/sqlite/sqlite_database_utils.h": "6027de7cf77d1ef385b590bcdf4ab17daed518efc6ff351aa016099b21119a07",
+    "components/value_store/BUILD.gn": "c7a6bb3712ec3769a5edb73c5019def589248b36b3c49d29103a34103e1e7751",
+    "components/value_store/aux_ui_preference_migration_unittest.cc": "1586b3733fd05255f66bb7f8238aa668fc4c460f764db4f4afdf6ef0cc662fb0",
+    "components/value_store/leveldb_value_store.cc": "7fb9442e9b43fce7a7c128da613c3a1b392697e0fcf1117de9d8f511f7519530",
+    "components/value_store/leveldb_value_store.h": "cf26db0e17d689329c4fa0e30561a0ba9be11d3c36b7e4fb34960035914be32b",
+    "sql/database.cc": "7ec18b35d5709c48f2e165dd561051070be30161cd02ee0afdab63a058528100",
+    "sql/database.h": "04961f3b9b706b376918f9621ba89e4ea2b02fb75f5bd0ea3489bd2d5c6d9978",
+    "components/value_store/value_store.cc": "95595cdaba589b43cd69d8041a4a9b99b7cae9adbfc88b640663b5099386b50f",
+    "components/value_store/value_store.h": "4ea60c3b78da3e837cfc668195ac73aa99b03fdc8f4ec5bde538bf312d5d689d",
+    "extensions/browser/BUILD.gn": "0c7cedbe785f4cd33bc8d237ff3713e4d6f7acfb09933c26b90837dffe01c99a",
+    "extensions/browser/api/storage/BUILD.gn": "78da76f80a1e6d8492b267fe6891236f338c979e61c49039b4a710630b3d1a62",
+    "extensions/browser/api/storage/aux_ui_migration_unittest.cc": "bc4574e88be933209103278f15b42c52073c6e74227dfa826b142376f6d09714",
+    "extensions/browser/api/storage/settings_storage_quota_enforcer.cc": "b36240ff30fc5743aa36462e9052c784f93310738ffd08094db7c3445643e33b",
+    "extensions/browser/api/storage/settings_storage_quota_enforcer.h": "ec25b667bbd9521ccd0d331665b5f2750a868c801357416603a0a2ef29f011c0",
+    "extensions/browser/api/storage/storage_frontend.cc": "65f6a1b47317e39c74aa7f4104b1fb4a78df43defe4026393abb54189a1d6c3b",
+    "extensions/browser/api/storage/storage_frontend.h": "6dc2eede9562ce1050d5882bc675b1f9c13b4c38c041f4df7d6888bb32144f7f",
+    "extensions/browser/api/storage/weak_unlimited_settings_storage.cc": "9754f12fb7785940c670ed0614f28a3eb3aa2fdc94948a664b68e57bed46c93f",
+    "extensions/browser/api/storage/weak_unlimited_settings_storage.h": "5ae5569cfb8e604223f4df4e4e8cf6215c1ee696ad50c925648adddf2c346adf",
+    "chrome/browser/ui/views/frame/aux_profile_switch_request.cc": "c632065ec4bfd1e40eed807bd06ae62eb1b881ca47a097055eaf28e53c8d6299",
+    "chrome/browser/ui/views/frame/aux_profile_switch_workspaces.cc": "96725202c3d3ad2b5f02fe050704e8a7b28a2adaaa45d0436a32caaff8ed44c1",
+    "chrome/browser/aux/account_profile_avatar.cc": "4d9ba7851e109d7f5502961b72ea84c9e68f55bda6d742ab459412c6fa4ceda0",
+    "chrome/browser/aux/profile_identity.cc": "cb320311061997b02e0554c56feaeb7e6030e5ed86bc6fdac8ebb88371b5ceb6",
+    "chrome/browser/aux/profile_gate.cc": "bb6e9b51233fab3d85e1c44a385fb7296af0a9ee88bd43fa7d9c2eb9a6c609a1",
+    "chrome/browser/ui/views/frame/aux_profile_preview_admission.h": "3ff6b21cf387d5a9fa8722edda3483da11c157e02c32ca94037c6c9568e0645a",
+    "chrome/browser/ui/views/frame/aux_profile_preview_admission.cc": "8407ff5f3fda60dc296d8e9445b8c501ab056230cb873707b965431aaa4e8c7b",
+    "chrome/browser/ui/views/frame/aux_profile_switch_request.h": "c50dda31fd13c702ebb8ef447579020621b0d3d1f319b601eedfc31d5ed011a6",
+    "components/services/storage/public/mojom/local_storage_control.mojom": "a9bc999ccf68514b7525cb5de9a51a6df1d30f737d52820e577abe8191a111d2",
+    "components/services/storage/public/mojom/session_storage_control.mojom": "eee17e3d7d54f4e99f893f7ac4ef55139ee36f9b4ce0758e585489c05a5c7cc6",
+    "content/public/browser/dom_storage_context.h": "c106dd8dd77ffc8fa071ec382cf285ee2bb5394646026fe37c5ab2b0b7da668c",
+    "content/browser/dom_storage/dom_storage_context_wrapper.h": "7bc184d988354367075efccc4d7b1e29c2dc3ab9c91abdd7b99217eaf5a545d6",
+    "content/browser/dom_storage/dom_storage_context_wrapper.cc": "7acb499d2682f1c0395ae45e3f4c1b9b6f6d8a7980e1c28c8e237f52ca0e277c",
+    "chrome/browser/aux/ui_storage_migration_controller.cc": "515ca0ef250d01ea0793be9db6a4b62603e53672a52efdb6bb658c5fc27faac9",
+    "chrome/browser/aux/ui_storage_migration_controller.h": "9717a2f60a6269453fe0e174763a604cd2e4e1cb816c2715c756c1b95194710c",
+    "chrome/browser/aux/ui_storage_migration_worker.h": "ad7cc054d0975aa04015f664c367127f4f8e1388776c1b9527b3a5405209e8b6",
+    "chrome/browser/aux/ui_storage_migration_worker.cc": "45897978269cd30647920191aa216fbab923911d38cb6803cb58214f246f84bf",
+    "third_party/blink/public/mojom/dom_storage/storage_area.mojom": "95523d0bfa12eba6801ec96509bb8dcc2cb7684265d1902e8e435c5d58a96b9d",
+    "third_party/blink/renderer/modules/storage/cached_storage_area.h": "0e6f725ea15621cd1a2631322345b02dbb031c81ddf07912bec1aa45da00d246",
+    "third_party/blink/renderer/modules/storage/cached_storage_area.cc": "abd91b29201515fa447f7779587b4c1b13b17c3663ef726f06ff0e5bf6c0876b",
+    "third_party/blink/renderer/modules/storage/storage_area.cc": "04512a5465a498825e11c57ea097357e898fbd799f552e4b2d6646f9426f3f89",
+    "components/services/storage/dom_storage/test_support/storage_area_test_util.h": "da5e5f8fc7980bc161ca33a5dd5ec0dd19fa91b679bfbaa73b50288dea3af0d3",
+    "components/services/storage/dom_storage/local_storage_impl_unittest.cc": "e529d02437e04004d7fae9d97d5cd3a72a47dd3fdff1e5eb2cc9fd754267def8",
+    "components/services/storage/dom_storage/storage_area_impl_unittest.cc": "c56329ffd0e82b66b5f54776afd26f9d44de798df1859e3aea038c0484a833ac",
+    "chrome/browser/BUILD.gn": "a1241bd149a63328dfca61eb014598fc63063e26228c86e3c90b54178a5da334",
+    "chrome/browser/ui/views/frame/aux_profile_switch_transaction.cc": "87a34ece94c31f21b0a951c4a5746cf0fbe1138a533818dcda81b0fd7a22ff23",
+    "base/process/mac/aux_browser_descendant_cli_membership.h": "21bf9c251295aaea620bf0954c0cc732e0cdbc735f83685d83683e61ee06d87c",
+    "chrome/browser/aux/cli/AuxCliIngress.cc": "884e2d83edc447aa75b612eb828f87f95baf84b007639382e8a2faf823ac7fd2",
+    "chrome/browser/aux/cli/AuxCliIngress.h": "4515848fafc4dad25e5180130640d28c28bf1a3333610f232b34816a7e64e8d6",
+    "chrome/browser/aux/cli/AuxCliManualProfileApproval.h": "1755a7637a24e7e2379ca7b03f2579c0584725c08a6ea190c85eeb1bffabef4b",
+    "chrome/browser/aux/cli/AuxCliManualProfileApproval.mm": "44c40ecbb16258dcb0ae23e05a6a33d724c62f2a9db8d5e5c5e2974ec4e5ac2b",
+    "chrome/browser/aux/cli/AuxCliOpenArguments.cc": "d2f946689e5f5a6d5c82adbb1c3c685ddc58ac92ab9ef0dbebcd07edb4282f92",
+    "chrome/browser/aux/cli/AuxCliOpenArguments.h": "6c9761c47b8d76f2bde4bfadeb78f5b24cbaeba457ad1b0a2b99cf2a6f2e2a6d",
+    "chrome/browser/aux/cli/AuxCliOpenCommand.h": "bd226a9cf3c557e00af71451e5069baab9b9330d2040c3d48168252147fc3c44",
+    "chrome/browser/aux/cli/AuxCliOpenCommand.mm": "877d188359dea891638ca135144e464ac83e18017fc3b79bac445a92b2bf0a65",
+    "chrome/browser/aux/cli/AuxCliSealedImages.cc": "ce2b89fa21fab68eff9cf45e0215b3d802c34926c06908d255df32f714184756",
+    "chrome/browser/aux/cli/AuxCliSealedImages.h": "6f1df6f4b83809e8e4ae4fec2cfcd4a6a8e7b0cd40e8bcbb1e7bc25bec59087b",
+    "chrome/browser/aux/cli/AuxCliWire.cc": "457cd1fa9a78e3427cc45c1978e91a92e290656497d2faa52a838962bfbcbcd9",
+    "chrome/browser/aux/cli/AuxCliWire.h": "e104b5b424c8441c1b6f24885039246891ede8cfad24c90e9287de39c8fea01d",
+    "chrome/browser/aux/cli/AuxNativeCliFrontend.mm": "cd79cf887952b79cb9a8cd3b4e226a1e5bb81ec5ff02f0b5d4dd1f0134e3793c",
+    "chrome/browser/aux/cli/AuxNativeEndpointDelivery.cc": "4a339c23563949a7abd73f3c84a95f2210e8e8754dd736a61e82ad960d2b7ba3",
+    "chrome/browser/aux/cli/AuxNativeEndpointDelivery.h": "f3d78409fec2b84a5304626e144e84314954bce0ea29762f0f30740c62ca6b89",
+    "chrome/browser/aux/cli/packaged-identity-admission.h": "10abe5ead6bbbe3bcfd4d28a99aa89690adb0b9ae22cdf4d06cae034ff2feabb",
+    "content/public/browser/aux_ui_migration_document.h": "7731641394116b8a6417163f35b1dfbb25b272c63482b4dcd445bfceee629589",
+    "content/browser/renderer_host/aux_ui_migration_document.cc": "bcf1ed9e33b71bcd9e6ca4fa33d622996f2d66cc28aa7ec962ef6721d8eb0b39",
+    "components/services/storage/dom_storage/session_storage_namespace_impl.h": "c62c63d4a7b1b0c06e39d9908f8e59a9670d0ec4409dd91d49b1791e0505637e",
+    "components/services/storage/dom_storage/session_storage_namespace_impl.cc": "2757d3d039452ff010100a954e67c0db628894839f9a613c61fc346dfb3b0d10",
+    "components/services/storage/dom_storage/storage_area_impl.h": "271514c3c0a2fd00d4c2bd6cf9b6bf7b6add974450b1c9f491012951bfee4e7c",
+    "components/services/storage/dom_storage/storage_area_impl.cc": "5b4daa2ac76485cf1fce82c30ebffa2b5ae343c3785e49537f5d8a282f496380",
+    "components/services/storage/dom_storage/session_storage_area_impl.h": "a5951ac0fea3a644b2e466845a563fbf120966443feeb8ef8908d75a2019bf39",
+    "components/services/storage/dom_storage/session_storage_area_impl.cc": "3c893f4992894ac8a957f715c73a76017d5c77712a3645ac43fe5106336b34e2",
+    "components/services/storage/dom_storage/aux_ui_cache_cohort.h": "092fe916859b9c6ac73cfd484e33925e5923e0ce65a296f6fa04f334855bad9c",
+    "components/services/storage/dom_storage/aux_ui_cache_cohort.cc": "32cc1ca5d903f7183da941282b2ddc7f4282e8ec4ed2920e3bf4c7daaa717b12",
+    "components/services/storage/BUILD.gn": "099947467b8a43715db89bd32d3e1ae78f0ffa28e58312998749ae35899f83db",
+    "chrome/browser/aux/ui_storage_migration_completion.h": "6ef6e8a592f9976b84796da8d02718dd6660e8fa08dc982d8aff72466b1d37cc",
+    "chrome/browser/aux/ordinary_startup_build.h": null,
+    "chrome/app/aux_packaged_state_identity.h": "c4bce5f91357457ac7108a20a058a7f34816803ac2f90d94e7c502e44d489dd7",
+    "chrome/app/chrome_main_delegate.cc": "c505d4aae2719447e7aa2b3b652cd267b136d74ccc44ce087fbb90252cfb0708",
+    "chrome/browser/aux/native_peer_policy/AuxFreshBootstrapPolicy.swift": "051553cf996da19550c64543cd2f50ade28eef86aa6d17e093bcdf40b2de0f5f",
+    "chrome/browser/aux/native_peer_policy/BUILD.gn": "42ef363550925fec98b366b70837327f171b3c8326779bc26971014f71725278"
+  },
+  "startupFiles": [
+    "chrome/browser/aux/ordinary_startup_build.h",
+    "chrome/app/chrome_exe_main_mac.cc",
+    "base/process/mac/aux_browser_descendant_bridge.cc",
+    "base/BUILD.gn",
+    "chrome/BUILD.gn",
+    "chrome/browser/aux/BUILD.gn",
+    "chrome/app/aux_packaged_state_identity.h",
+    "chrome/app/chrome_main_delegate.cc",
+    "chrome/browser/metrics/chrome_feature_list_creator.cc",
+    "chrome/browser/chrome_browser_main.cc",
+    "chrome/browser/aux/AuxSelectedStateHome.cc",
+    "chrome/browser/aux/AuxOwnedNativePeerChild.cc",
+    "chrome/browser/ui/aux_browser_shutdown_drain.cc",
+    "chrome/browser/extensions/api/aux_browser_preferences/aux_browser_preferences_api.cc",
+    "chrome/browser/aux/profile_gate.h",
+    "chrome/browser/profiles/profile_impl.cc",
+    "chrome/browser/profiles/BUILD.gn",
+    "chrome/browser/aux/native_peer_policy/AuxFreshBootstrapPolicy.swift",
+    "chrome/browser/aux/native_peer_policy/BUILD.gn"
+  ],
+  "ordinaryFreshMode": true,
+  "privilegedTasksEnabled": false,
+  "legacyStateAccepted": false,
+  "priorComposition": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/native-phase-integration-a24/source-composition.json",
+  "priorCompositionSha256": "66ba7e76618b89739915b41c64ba78a8fa1c854d27d8a849312f28bf871b62b1",
+  "actualCheckoutChanged": false,
+  "productExecuted": false,
+  "productSigned": false,
+  "compileFix": {
+    "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/fresh-startup-milestone-a42/browser-compile-fix.json",
+    "sha256": "ef9c6ab59ccbcdce05dedee42077f384a890d858aa8476b42c95508b52c89008"
+  },
+  "startupPolicyFix": {
+    "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/fresh-startup-milestone-a42/actual-policy-fix-projection-a3.json",
+    "sha256": "6ddb68b4a07a5b6aba0f5e1226a50363a32a10259055069bd04dd3e77688530e"
+  },
+  "ordinaryContentLaunchFix": {
+    "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/fresh-startup-milestone-a42/actual-ordinary-content-projection-a7.json",
+    "sha256": "fc2017d39294873edf8d33332e8ac0383586e329578b2a9899f88dfbaf1ad4f5"
+  },
+  "sandboxedProfilePathFix": {
+    "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/fresh-startup-milestone-a42/actual-sandboxed-profile-path-projection-a8.json",
+    "sha256": "579ac585956422faab2d2743cc0348d9490419b0d5a3154242ddbcffe32c65b7"
+  },
+  "nativeReadinessBudgetFix": {
+    "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/fresh-startup-milestone-a42/actual-native-readiness-budget-projection-a9.json",
+    "sha256": "a7e1719b2aeb09d061cced9d004d896189b650ac666430e0d9d821194847f16d"
+  },
+  "windowActivationOrderFix": {
+    "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/fresh-startup-milestone-a42/actual-window-activation-order-projection-a14.json",
+    "sha256": "be3bec4d451af49dcd332ec2035d8ccdf4596e7bd877583a9fbbcb6799a1e374"
+  },
+  "profilePendingDiagnostics": {
+    "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/fresh-startup-milestone-a42/profile-pending-diagnostics-a18/source-plan.json",
+    "sha256": "02f935052c1fa74b8666268cc5d7a4fc2c6b55794bbc9c2bdd8eb576a80e2d22"
+  },
+  "ordinaryNativeProfileWindows": {
+    "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/fresh-startup-milestone-a42/ordinary-profile-windows-a19/source-plan.json",
+    "sha256": "a9e2cfdc207a4ce5d37dc2afafad4a3c013ac4d2205096d5277cc3d64e50445c"
+  },
+  "nativeFreshSessionRestore": {
+    "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/integration/session-draft-restore.json",
+    "sha256": "995ac33417c02d7dd29615ba18fa40eb66dcb3b652fc8fe3256e13a0769700b3"
+  },
+  "nativeRegisteredSessionDefault": {
+    "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/integration/session-draft-restore-default-a2.json",
+    "sha256": "f8f7f694d8fd50232f56dde9660327258ef455e458c591ea960ce565bc22fb44"
+  },
+  "actualNativeGuestCodeReuse": {
+    "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/fresh-startup-milestone-a42/browser-peer-identity-reuse-source/projection.json",
+    "sha256": "a866b1942e9c7aaca4e6f8769c6ba63583d714303f6010605c05b3bee47d77e7"
+  },
+  "manuallyLockedNativeCodeCache": {
+    "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/fresh-startup-milestone-a42/browser-peer-concurrency-source/projection.json",
+    "sha256": "aa4580ad0f8944a4ad91e8a55dbe33d7516e24cf83d98ba07d29d8d5e9f178ca"
+  },
+  "primaryProfileMenuDiagnostics": {
+    "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/fresh-startup-milestone-a42/primary-profile-menu-diagnostics-a24/source-plan.json",
+    "sha256": "f410dc8dd80f4d5c93db097fd8727d32ed24b405c739c1799b551a8c362f97a2"
+  },
+  "ordinaryPrimaryMenuCloseDispatch": {
+    "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/fresh-startup-milestone-a42/primary-profile-menu-close-dispatch-a25/source-plan.json",
+    "sha256": "aae30f1eee2656cf98754512fdb15d90b65553966e9be38c9096c47cd6559d4d"
+  },
+  "localCompletionFixesA26": [
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/navigation-local-completion-a26/source-plan.json",
+      "sha256": "b0c98e87892fa46b54a6020ab3400e9e1611346d29eefc42f9278379511ee03e"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/organization-local-completion-a26/source-plan.json",
+      "sha256": "ba834c2a30740dc7af663bdda67c8498741ff60f573c6987a4087b754a85c472"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/preview-close-local-completion-a26/source-plan.json",
+      "sha256": "ab96b3b33ea1b8017663810dd285e470971a9678e398744cc099792cdd8e6655"
+    }
+  ]
+}

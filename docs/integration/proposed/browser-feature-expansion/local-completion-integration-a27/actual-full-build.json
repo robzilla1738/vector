@@ -1,0 +1,10 @@
+{
+  "passed": true,
+  "snapshot": "/private/tmp/aux-chromium-recovery-snapshot-20261023/unsigned-local-completion-build-20261025-a66/Aux.app",
+  "fullBuildReceipt": "/private/tmp/aux-chromium-recovery-snapshot-20261023/unsigned-local-completion-build-20261025-a66/receipt.json",
+  "inventoryFileSha256": "fbca6e56fbb6de47d3ed52390c63713e7cf996df109c175107824d292400ebd8",
+  "leafCount": 416,
+  "unsigned": true,
+  "executed": false,
+  "acceptedAppUnchanged": true
+}

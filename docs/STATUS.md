@@ -1,3 +1,13 @@
+# Local completion continuation — implementation/build in progress — 2026-10-25
+
+The owner authorized remaining local work in parallel, preserving UI and excluding release. The running candidate remains A25; the new full unsigned A66 browser build passes and is frozen separately with exact inventory. New source fixes cover real Settings authorization waiting, native popup lifetime, live Space/folder dialog commits, exact-document asynchronous close, true retained-tab discard, dynamic pin height and Peek's normal beforeunload path. Their successor runtime checks are pending; successful compilation is not delivery.
+
+Actual A25 advanced-feature checks found CmdT/K palette refusal, stale Space saves, invisible initially-empty pin grid, Peek dismissal refusal despite successful promotion, and active-work profile selectors falling into the old in-place/hidden-cache route. Basic two-pane split/navigation, native sidebar-navigation/minimal toggles and theme preset controls work. A local storage-only extension installs/runs independently in Work and Personal, with actual separate persisted notes; this is not 1Password/native-messaging acceptance. See `browser-feature-expansion/local-completion-actual-a26.json` and `local-extension-check-a26/actual-extension-isolation.json`.
+
+Remaining independent lanes are connecting a finite actual per-account memory helper (general exec still denied), pairing native OS-user fresh-install startup with existing signed admission, completing ordinary CLI ingress and legacy-refusal nonmutation. One real legacy fixture reproduced marker creation on refused old data; that narrow source guard is corrected. Current browser-side policy updates must preserve the A23 retained Security-object/file-binding successor; older parent code is not projected over it. No new product signing, owner-profile access, production changes or release occurred in this continuation. The existing goal remains active and all account/compatibility/operational requirements remain explicit.
+
+# Prior bounded-browser checkpoint (A25) — scope and evidence below
+
 # Fresh-browser A25 — ready for bounded local browser testing — 2026-10-25
 
 The assembled candidate `out/provided-candidate-fresh-browser-20261025-a45/Aux.app` is open and usable in the fixed approved disposable home. It contains A65 browser/framework, A59 native daemon, paired A17 HTTP entry and unchanged supplied UI33. All17 local signatures verify. The protected `Launch Aux.command` beside the app is the tested reopen path; the accepted app is untouched.

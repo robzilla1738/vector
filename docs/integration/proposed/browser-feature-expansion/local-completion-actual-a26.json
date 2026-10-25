@@ -8,7 +8,8 @@
     "Appearance sidebar navigation reparented actual trusted toolbar; minimal toggle takes effect; original settings reverted afterward",
     "Theme material Clear preview selectable; Aux Local Check preset saves; Cancel exits preview",
     "Peek opens synthetic /second with Work cookie/note; real document promotes into source profile full tab",
-    "Pin to all Spaces moves actual /second into Pins section"
+    "Pin to all Spaces moves actual /second into Pins section",
+    "Native two-pane split creation and independent navigation to /second and /third; actual arrange menu exposes stacked/separate/reverse actions"
   ],
   "failed": [
     {
@@ -26,12 +27,21 @@
     {
       "requirement": "Peek dismissal",
       "observed": "Static fixture Dismiss refuses generic active work reason, while real-document promotion passes; native unload-listener predicate wrongly blocks before normal beforeunload dispatch"
+    },
+    {
+      "requirement": "Dynamic pin visibility",
+      "observed": "Pin to all Spaces persists and exposes a native AX button, but initially empty pinned clip stays height0; no tile visible. Saved actual-pin-layout-a26.png."
+    },
+    {
+      "requirement": "Active-work profile selection",
+      "observed": "Direct sidebar selector safely refused after split/extension activity; primary could focus Personal but returning Work selected an internal cache instead of visible Work. Existing Window menu selects true Work. Common ordinary selector source fix is not yet integrated."
     }
   ],
   "notAccepted": [
     "theme pixel/color preview cancellation correctness beyond control behavior",
     "advanced pin unload/history/draft preservation",
-    "other roadmap features not covered by listed observations"
+    "other roadmap features not covered by listed observations",
+    "One third-pane drag gesture selected source tab; did not establish recursive split creation or prove it impossible; requires direct command/valid drag path after palette repair"
   ],
   "ownerStateAccess": false,
   "providerCalls": false,

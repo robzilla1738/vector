@@ -1,0 +1,30 @@
+{
+  "observedAt": "2026-10-25T19:18:46.738548+00:00",
+  "candidate": "out/provided-candidate-fresh-browser-20261025-a45/Aux.app",
+  "packageInventorySha256": "25af5a816007facfd05c0b3352c87976816b697308f42c103ff7a00c11ca5f5d",
+  "scope": "/private/tmp/aux-fresh-browser-c5mop317",
+  "extensionId": "pefmklncfbbopgdobchdpamdekifapkb",
+  "permissions": [
+    "storage"
+  ],
+  "hostPermissions": [],
+  "networkRequests": false,
+  "sourceHashes": {
+    "extension/check.html": "4c966e518cca706a2dfa6992e2ee1f2c11c401ef40d8d095b39b45d709c19562",
+    "extension/check.js": "ba10ab3e9dd090929ed29e4fa8e1594d8a19e8245d762b0c8648c05f953b6175",
+    "extension/manifest.json": "3523f71bf2eda246fb09b88e98d307d755b02ddf5321c46eab695b40b0223e25"
+  },
+  "method": "Actual native Extensions manager Load unpacked and extension popup UI",
+  "passed": [
+    "Work installs and executes local extension; storage initially empty and saves work-extension-only",
+    "Personal initially has no Work-installed fixture",
+    "Same fixture independently installed in Personal starts empty and saves personal-extension-only",
+    "Native Window menu reselects actual Work browser; fixture still reads work-extension-only"
+  ],
+  "limitations": [
+    "This storage-only fixture does not prove Chrome Web Store installation, content script/autofill behavior or native messaging",
+    "Fixture remains installed only in two approved disposable profiles while checks continue; no unrelated extension changed"
+  ],
+  "actualProfileSwitchFailure": "Direct sidebar selector refused during active split/extension state; primary selected Personal, returning Work could select hidden cache; ordinary native selector source correction pending integration",
+  "release": false
+}

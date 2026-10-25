@@ -1,0 +1,16 @@
+{
+  "passed": true,
+  "projected": true,
+  "changedFiles": [
+    "chrome/browser/ui/views/frame/aux_tab_search_bubble.cc",
+    "chrome/browser/ui/browser_command_controller.cc",
+    "chrome/browser/ui/views/frame/aux_organization_window_controller.cc",
+    "chrome/browser/ui/views/frame/aux_organization_window_controller.h",
+    "chrome/browser/ui/views/frame/vertical_tab_strip_region_view.cc"
+  ],
+  "sourceCompositionSha256": "573ec6796bc22fb710725d9af14b6ce2450819956bde79eedeebc74500993d63",
+  "uiChanged": false,
+  "appExecuted": false,
+  "signing": false,
+  "compiled": false
+}
