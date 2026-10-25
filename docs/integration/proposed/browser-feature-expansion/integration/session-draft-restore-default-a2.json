@@ -1,0 +1,49 @@
+{
+  "format": "aux.native-session-default-correction.v1",
+  "nativeRoot": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src",
+  "files": [
+    {
+      "path": "chrome/browser/aux/profile_gate.cc",
+      "inputSha256": "00ce7633899424e621b8d8839173e4217d921eeb0bf2805c60e34f53390c4099",
+      "outputSha256": "bb6e9b51233fab3d85e1c44a385fb7296af0a9ee88bd43fa7d9c2eb9a6c609a1",
+      "anchors": [
+        {
+          "find": "  if (!alive || GetProfileId(alive.get()) != id)\n    return Result::kUnavailable;\n#if BUILDFLAG(ENABLE_AUX_BROWSER)\n  // Set the Aux browser default once, at the genuine fresh admitted store\n  // boundary. Logical rows alone cannot restore the independent native views,\n  // histories and page identities that own durable chat drafts/attachments.\n  // Preserve explicit startup choices, policy and recommended configuration;\n  // do not rewrite the saved startup URL list or alter existing profiles.\n  if (!prefs->GetUserPrefValue(prefs::kRestoreOnStartup) &&\n      !SessionStartupPref::TypeIsManaged(prefs) &&\n      !SessionStartupPref::TypeHasRecommendedValue(prefs)) {\n    prefs->SetInteger(prefs::kRestoreOnStartup,\n                      SessionStartupPref::kPrefValueLast);\n  }\n#endif\n  return alive ? Result::kCreatedPending : Result::kUnavailable;\n",
+          "replace": "  return alive && GetProfileId(alive.get()) == id\n      ? Result::kCreatedPending : Result::kUnavailable;\n",
+          "count": 1
+        },
+        {
+          "find": "#include \"chrome/browser/aux/profile_identity.h\"\n#include \"chrome/browser/buildflags.h\"\n#include \"chrome/browser/prefs/session_startup_pref.h\"\n#include \"chrome/common/pref_names.h\"\n",
+          "replace": "#include \"chrome/browser/aux/profile_identity.h\"\n",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/prefs/session_startup_pref.cc",
+      "inputSha256": "ef4de33d52dc32f2037a5a714fd8ac1ded80fe0f0d61f6166e3e4caf82d3f9e4",
+      "outputSha256": "52d3d50c2954670fd692acbec740533d00c476f9728772d36b8383569d6e446a",
+      "anchors": [
+        {
+          "find": "#include \"build/build_config.h\"\n",
+          "replace": "#include \"build/build_config.h\"\n#include \"chrome/browser/buildflags.h\"\n",
+          "count": 1
+        },
+        {
+          "find": "SessionStartupPref::Type SessionStartupPref::GetDefaultStartupType() {\n#if BUILDFLAG(IS_CHROMEOS)\n",
+          "replace": "SessionStartupPref::Type SessionStartupPref::GetDefaultStartupType() {\n#if BUILDFLAG(ENABLE_AUX_BROWSER)\n  // Restore the genuine native windows, histories and stable page IDs rather\n  // than rematerializing saved logical rows as new pages. This is only the\n  // registered default: explicit user choices and policy retain precedence.\n  return SessionStartupPref::LAST;\n#elif BUILDFLAG(IS_CHROMEOS)\n",
+          "count": 1
+        }
+      ]
+    }
+  ],
+  "patch": "session-draft-restore-default-a2.patch",
+  "retainsPriorLogicalSessionSnapshotFix": true,
+  "profileIdentityImplementationRestoredToSha256": "bb6e9b51233fab3d85e1c44a385fb7296af0a9ee88bd43fa7d9c2eb9a6c609a1",
+  "explicitUserAndPolicyPrefsPreserved": true,
+  "changesRegisteredDefaultOnly": true,
+  "existingDraftKeysChanged": false,
+  "uiChanged": false,
+  "nativeExecuted": false,
+  "signed": false
+}
