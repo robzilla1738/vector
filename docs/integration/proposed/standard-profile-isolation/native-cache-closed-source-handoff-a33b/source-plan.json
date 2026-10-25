@@ -1,0 +1,46 @@
+{
+  "format": "aux.cache-closed-source-handoff.source.v1",
+  "predecessorCommit": "6a5663c4a",
+  "files": [
+    {
+      "path": "third_party/blink/renderer/modules/storage/cached_storage_area.cc",
+      "inputSource": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/native-cache-closed-handoff-a33/source/third_party/blink/renderer/modules/storage/cached_storage_area.cc",
+      "inputSha256": "85ad8da48956c0f533ad5370a439014f83eda1a9510c1a07c90f4edf0143b7b8",
+      "outputSha256": "abd91b29201515fa447f7779587b4c1b13b17c3663ef726f06ff0e5bf6c0876b",
+      "source": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/native-cache-closed-source-handoff-a33b/source/third_party/blink/renderer/modules/storage/cached_storage_area.cc",
+      "anchors": [
+        {
+          "find": "  auto reply = ReadAuxUiCacheReply(original_request, original_token);\n  if (!reply->ok || !source || !proposed ||",
+          "replace": "  auto reply = ReadAuxUiCacheReply(original_request, original_token);\n  const auto* held = aux_ui_cache_lease_.get();\n  const bool restored_source = reply->ok && source && held && held->recovery_original &&\n      held->recovery_restored &&\n      AuxSelectedCacheEntries(*map_, !IsSessionStorage()) == *source &&\n      AuxSelectedCacheEntries(*held->recovery_original, !IsSessionStorage()) == *source;\n  const bool fresh_source = reply->ok && source && held && held->original &&\n      !held->recovery_original && !held->recovery_restored && !held->published &&\n      AuxSelectedCacheEntries(*map_, !IsSessionStorage()) == *source &&\n      AuxSelectedCacheEntries(*held->original, !IsSessionStorage()) == *source;\n  // Both are observations of this actual closed cache owner. Only the native\n  // backend can admit the ordinary-source branch using its source-absence proof;\n  // no caller boolean or fabricated recovery-restored bit selects that grant.\n  if (!reply->ok || !source || !proposed ||",
+          "count": 1
+        },
+        {
+          "find": "      !aux_ui_cache_lease_->recovery_original || !aux_ui_cache_lease_->recovery_restored ||\n      !aux_ui_cache_lease_->deferred.empty() ||\n      AuxSelectedCacheEntries(*map_, !IsSessionStorage()) != *source ||\n      AuxSelectedCacheEntries(*aux_ui_cache_lease_->recovery_original, !IsSessionStorage()) != *source) {",
+          "replace": "      (!restored_source && !fresh_source) || !held->deferred.empty()) {",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "components/services/storage/dom_storage/aux_ui_cache_cohort.cc",
+      "inputSource": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/native-cache-closed-handoff-a33/source/components/services/storage/dom_storage/aux_ui_cache_cohort.cc",
+      "inputSha256": "e8db15b0180c54271762a025f45a0a7b84945164c6f7f71c297ecf3b27b22bd5",
+      "outputSha256": "32cc1ca5d903f7183da941282b2ddc7f4282e8ec4ed2920e3bf4c7daaa717b12",
+      "source": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/native-cache-closed-source-handoff-a33b/source/components/services/storage/dom_storage/aux_ui_cache_cohort.cc",
+      "anchors": [
+        {
+          "find": "  if (request_ != original_request || original_request.is_empty() || new_request.is_empty() ||",
+          "replace": "  bool fresh_source = !recovery_plan_set_ && ObserveHeldPhase(original_request, false);\n  if (fresh_source && !nodes_.empty()) {\n    for (const auto& [id, node] : nodes_) {\n      if (!node.original || !SameEntries(source, node.original->source_entries)) {\n        fresh_source = false; break;\n      }\n    }\n  }\n  const bool restored_source = recovery_plan_set_ && SameEntries(source, recovery_source_) &&\n      (!nodes_.empty() || recovery_restored_);\n  // Zero endpoints still require the actual native prepare/source-phase receipt\n  // through ObserveHeldPhase, plus StorageArea's real current-map proof and the\n  // backend's source-absence qualification. Empty registry alone proves nothing.\n  if (request_ != original_request || original_request.is_empty() || new_request.is_empty() ||",
+          "count": 1
+        },
+        {
+          "find": "      (IsUiOrigin() && (!ValidHandoffEntries(source, false) ||\n                       !ValidHandoffEntries(target, true) ||\n                       !recovery_plan_set_ || !SameEntries(source, recovery_source_) ||\n                       (nodes_.empty() && !recovery_restored_))) ||",
+          "replace": "      (IsUiOrigin() && (!ValidHandoffEntries(source, false) ||\n                       !ValidHandoffEntries(target, true) ||\n                       (!restored_source && !fresh_source))) ||",
+          "count": 1
+        }
+      ]
+    }
+  ],
+  "requiresRootBackendSourceAbsenceProof": true,
+  "nativeBuildOwner": "root"
+}

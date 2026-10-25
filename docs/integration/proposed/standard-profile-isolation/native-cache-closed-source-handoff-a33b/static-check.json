@@ -1,0 +1,9 @@
+{
+  "exactReplay": true,
+  "files": 2,
+  "anchors": 4,
+  "noNewCallerBoolean": true,
+  "noFabricatedRecoveryFlag": true,
+  "actualCompilation": false,
+  "productExecution": false
+}

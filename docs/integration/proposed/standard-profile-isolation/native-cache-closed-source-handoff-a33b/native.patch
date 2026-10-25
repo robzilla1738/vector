@@ -1,0 +1,59 @@
+--- a/third_party/blink/renderer/modules/storage/cached_storage_area.cc
++++ b/third_party/blink/renderer/modules/storage/cached_storage_area.cc
+@@ -443,13 +443,22 @@
+     ReadAuxUiCacheMigration(original_request, std::move(callback)); return;
+   }
+   auto reply = ReadAuxUiCacheReply(original_request, original_token);
++  const auto* held = aux_ui_cache_lease_.get();
++  const bool restored_source = reply->ok && source && held && held->recovery_original &&
++      held->recovery_restored &&
++      AuxSelectedCacheEntries(*map_, !IsSessionStorage()) == *source &&
++      AuxSelectedCacheEntries(*held->recovery_original, !IsSessionStorage()) == *source;
++  const bool fresh_source = reply->ok && source && held && held->original &&
++      !held->recovery_original && !held->recovery_restored && !held->published &&
++      AuxSelectedCacheEntries(*map_, !IsSessionStorage()) == *source &&
++      AuxSelectedCacheEntries(*held->original, !IsSessionStorage()) == *source;
++  // Both are observations of this actual closed cache owner. Only the native
++  // backend can admit the ordinary-source branch using its source-absence proof;
++  // no caller boolean or fabricated recovery-restored bit selects that grant.
+   if (!reply->ok || !source || !proposed ||
+       !AuxCacheCurrentTarget(*proposed, !IsSessionStorage()) || new_request.is_empty() || new_request == original_request ||
+       aux_ui_retired_cache_leases_.size() >= 64 ||
+-      !aux_ui_cache_lease_->recovery_original || !aux_ui_cache_lease_->recovery_restored ||
+-      !aux_ui_cache_lease_->deferred.empty() ||
+-      AuxSelectedCacheEntries(*map_, !IsSessionStorage()) != *source ||
+-      AuxSelectedCacheEntries(*aux_ui_cache_lease_->recovery_original, !IsSessionStorage()) != *source) {
++      (!restored_source && !fresh_source) || !held->deferred.empty()) {
+     reply->ok = false; reply->error = "Actual restored cache/docs/source hold required for closed handoff";
+     std::move(callback).Run(std::move(reply)); return;
+   }
+--- a/components/services/storage/dom_storage/aux_ui_cache_cohort.cc
++++ b/components/services/storage/dom_storage/aux_ui_cache_cohort.cc
+@@ -208,13 +208,25 @@
+   if (handoff_original_) {
+     ReadHandoff(original_request, new_request, source, target, std::move(callback)); return;
+   }
++  bool fresh_source = !recovery_plan_set_ && ObserveHeldPhase(original_request, false);
++  if (fresh_source && !nodes_.empty()) {
++    for (const auto& [id, node] : nodes_) {
++      if (!node.original || !SameEntries(source, node.original->source_entries)) {
++        fresh_source = false; break;
++      }
++    }
++  }
++  const bool restored_source = recovery_plan_set_ && SameEntries(source, recovery_source_) &&
++      (!nodes_.empty() || recovery_restored_);
++  // Zero endpoints still require the actual native prepare/source-phase receipt
++  // through ObserveHeldPhase, plus StorageArea's real current-map proof and the
++  // backend's source-absence qualification. Empty registry alone proves nothing.
+   if (request_ != original_request || original_request.is_empty() || new_request.is_empty() ||
+       new_request == original_request || pending_ || !prepared_ || !SameEndpoints() ||
+       handoff_history_.size() >= 64 ||
+       (IsUiOrigin() && (!ValidHandoffEntries(source, false) ||
+                        !ValidHandoffEntries(target, true) ||
+-                       !recovery_plan_set_ || !SameEntries(source, recovery_source_) ||
+-                       (nodes_.empty() && !recovery_restored_))) ||
++                       (!restored_source && !fresh_source))) ||
+       (!IsUiOrigin() && (!source.empty() || !target.empty()))) {
+     std::move(callback).Run(DbStatus::IOError("Exact restored cache cohort/source required for closed handoff")); return;
+   }
