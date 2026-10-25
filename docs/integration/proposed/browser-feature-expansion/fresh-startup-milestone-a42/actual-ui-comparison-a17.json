@@ -1,0 +1,29 @@
+{
+  "method": "Visual inspection of actual CUA candidate screenshot beside supplied Aside and accepted Aux references",
+  "images": [
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/out/pass1-ui-completion/aside-external-panel-ready.png",
+      "sha256": "ccdb9c17678c38b7284d16523ef6a6509aa416c9ac1333edc422692602f02e34"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/out/pass1-ui-completion/aux-external-panel-v617.jpg",
+      "sha256": "21f5977eef267f16f73ca1ce8d203aa63d8db825890c6a16d7fa200262f5884e"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-fresh-browser-20261025-a45/actual-example-chat-a17.png",
+      "sha256": "8f20151c6180539306c33f7b496080eba3a5fe3a4d33f86b98480b6d179282e8"
+    }
+  ],
+  "observed": [
+    "same seamless toolbar/page surface",
+    "rounded central pane and outer/sidebar junctions preserved with both sidebars open",
+    "glass-backed left and right panels preserved",
+    "right composer/header arrangement preserved; Aux artwork and local provider-required banner are visible"
+  ],
+  "limits": [
+    "different viewport dimensions and fresh empty profile contents",
+    "no claim of pixel-identical whole-window comparison",
+    "real hover animation not injected by tool"
+  ],
+  "uiChanges": false
+}

@@ -1,0 +1,18 @@
+{
+  "passed": true,
+  "files": [
+    {
+      "path": "chrome/browser/aux/profile_gate.cc",
+      "inputSha256": "00ce7633899424e621b8d8839173e4217d921eeb0bf2805c60e34f53390c4099",
+      "outputSha256": "bb6e9b51233fab3d85e1c44a385fb7296af0a9ee88bd43fa7d9c2eb9a6c609a1"
+    },
+    {
+      "path": "chrome/browser/prefs/session_startup_pref.cc",
+      "inputSha256": "ef4de33d52dc32f2037a5a714fd8ac1ded80fe0f0d61f6166e3e4caf82d3f9e4",
+      "outputSha256": "52d3d50c2954670fd692acbec740533d00c476f9728772d36b8383569d6e446a"
+    }
+  ],
+  "planSha256": "f8f7f694d8fd50232f56dde9660327258ef455e458c591ea960ce565bc22fb44",
+  "uiChanged": false,
+  "existingPreferencesAndDraftKeysUnchanged": true
+}

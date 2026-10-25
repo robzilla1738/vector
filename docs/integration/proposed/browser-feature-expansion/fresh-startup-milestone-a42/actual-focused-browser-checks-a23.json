@@ -1,0 +1,29 @@
+{
+  "repair": "a23",
+  "scope": "/private/tmp/aux-fresh-browser-c5mop317",
+  "method": "Actual native CUA UI and loopback synthetic page",
+  "passed": [
+    "health200 readytrue",
+    "native work session restores saved note and original unsent text plus TXT attachment",
+    "native personal session restores separate saved note and unsent text, /u/4 distinct from Work /u/3",
+    "direct sidebar selectors switch both ways promptly with correct native profile title/cookie/context",
+    "UI responsiveness: observed actions0.1\u20131.5sec and idle browser5.8%CPU versus131%atA20",
+    "native session page identities retained, no draft value rewrite or key migration",
+    "navigated both fixture tabs to URLwithoutquery for next cookie persistence check"
+  ],
+  "failed": [
+    "primary profile popup dismisses without target activation, verified pointer and focused keyboard button; stage trace in next native build"
+  ],
+  "exitEvents": [
+    {
+      "event": "aux-fresh-child-exit",
+      "pid": 44381,
+      "exitCode": 0,
+      "signal": null,
+      "groupStopped": true,
+      "forced": false
+    }
+  ],
+  "uiResourcesUnchanged": true,
+  "milestoneReady": false
+}

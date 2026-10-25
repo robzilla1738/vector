@@ -1,3 +1,23 @@
+# Fresh-browser A23 runtime: sessions/drafts and direct selectors work; popup handoff remains — 2026-10-25
+
+A63 browser/framework and A59 native daemon are paired in the same approved A45 app, with the supplied UI33 and paired A17 HTTP entry. All17 local signatures verify. Actual A23 restores the Work draft, TXT chip and saved note under the original page identity; Personal restores its independent draft/note in `/u/4` versus Work `/u/3`. Both direct sidebar profile selectors work promptly. The browser is responsive after genuine retained Security-object/file-binding validation (observed idle5.8%CPU versus A20's131%); validity calls/flags, live identity/root checks and invalidation remain. Normal menu Quit again yields browser exit0, groupStoppedtrue, forcedfalse.
+
+**Only the primary profile popup remains an observed milestone failure:** rows dismiss without target activation, including keyboard Space on the actual focused row. No in-place migration is involved. A one-file stage trace (A24/A64 building) will identify row/teardown/post/source/native-dispatch loss; no speculative guard or callback-order change. Native session registration default and logical-ID snapshots preserve explicit choices and existing keys; no stored draft migration/reset occurred. Both fixture URLs now have no query for the final cookie-persistence check.
+
+Actual evidence: `fresh-startup-milestone-a42/actual-focused-browser-checks-a23.json`; accepted app and owner state remain untouched. The current candidate is stopped for the trace integration. Still no provisioning, OS grants, cloud inference, new task architecture or release. Account-dependent AI, extension/native-messaging, CLI and genuine hover follow-ups remain explicit.
+
+# Historical A20 checkpoint — superseded by A23 evidence above
+
+# Fresh-browser milestone A20: usable startup; final session/responsiveness repairs building — 2026-10-25
+
+The selected A45 app was locally assembled/signed as A20 (A60 browser, A59 daemon, paired A17 HTTP entry, exact supplied UI33). All17 signatures verify. Actual fresh Final Work/Final Personal profiles have independent cookies/localStorage and connected `/u/3` and `/u/4` chat contexts. Work draft+TXT attachment are retained in the source window; multiple windows share logical tabs with independent viewing. Normal menu Quit now yields browser exit0, `groupStopped:true`, `forced:false`, with browser/daemon absent afterward. This is actual improvement, not a claim of OS-wide descendant custody. Candidate is stopped for the next exact repair.
+
+**Not ready yet:** actual fresh-profile startup preference hook was too late; native registered default correction now fully builds as A61, honoring explicit choices/policy without pref-file/key migration. Actual macOS sampling then exposed the UI supervisor spending all68 main-thread observations in repeated full guest-image Security hashing, delaying profile popup dispatch. The retained real Security-object/file-binding correction keeps every signature call/flag, live audit/process/root check and invalidation. A62 failed solely on Swift6 mutable-global ownership; the exact mutex annotation successor compiles in A63 and is linking. Neither A61 nor A63 is yet integrated/runtime accepted.
+
+Final checks remain the actual corrected profile selector, genuine native multi-window/session draft+attachment restore, final UI observation and normal exit/restart. A20 partial selector observation is not promoted to a successful Personal return. The accepted app, supplied UI, fixed disposable scope, identity/entitlements and approved signing objects remain unchanged. No new scope, provisioning, OS permission, owner state, cloud inference or release. Exact checkpoints: `fresh-startup-milestone-a42/actual-focused-browser-checks-a20.json` and `CHECKLIST-CURRENT.md`.
+
+# Historical A17 checkpoint — superseded by A20 evidence above
+
 # Fresh-browser milestone: actual A17 startup works; focused failures remain — 2026-10-25
 
 The same A45 candidate now contains the full A54 browser/framework, A56 native daemon and A17 paired HTTP entry. The supplied UI revision33, assets/fonts/styles and accepted app remain untouched. All17 existing code signatures verify under the owner's bounded repair authorization, using the same identity/entitlements and disposable `/private/tmp/aux-fresh-browser-c5mop317` scope. No new provisioning, OS grants, owner profile/credentials, architecture or release.

@@ -1,0 +1,38 @@
+{
+  "format": "aux.ordinary-fresh.actual-app-checks.v1",
+  "repair": "a20",
+  "scope": "/private/tmp/aux-fresh-browser-c5mop317",
+  "passed": [
+    "health200 aux-daemon ready true",
+    "new Final Work and Final Personal start with empty distinct cookie/localStorage, then separate work/personal values",
+    "connected /u/3 vs /u/4 chat contexts",
+    "work draft and synthetic TXT attachment visible and retained in original Work window",
+    "second Work window shows shared tab list with independent New Tab selection",
+    "native profile selection reaches Work without previous refusal",
+    "normal menu Quit yields browser exit0, groupStoppedtrue, forcedfalse; candidate browser and daemon absent afterward"
+  ],
+  "partial": [
+    "return through primary profile popup did not visibly reach Personal before UI became slow; do not call final profile route passed"
+  ],
+  "failed": [
+    "fresh profile initialization hook did not set restore preference; corrected in A21 native registration default source",
+    "UI operations pause20\u201330sec: actual macsample all68 main-thread observations in supervisor guest full signature validation"
+  ],
+  "exitEvents": [
+    {
+      "event": "aux-fresh-child-exit",
+      "pid": 37669,
+      "exitCode": 0,
+      "signal": null,
+      "groupStopped": true,
+      "forced": false
+    }
+  ],
+  "diagnosticSample": {
+    "path": "/private/tmp/aux-fresh-browser-c5mop317/browser-a20-ui-sample.txt",
+    "sha256": "ef6158ea1eba51d70594b6e6291125e8b51bcbd47a2de360e75c6515ea56a2ca"
+  },
+  "uiChanged": false,
+  "milestoneReady": false,
+  "accountDependentChecksNotRun": true
+}
