@@ -1,0 +1,47 @@
+{
+  "format": "aux.native-signature-object-reuse.benchmark.v1",
+  "app": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-fresh-browser-20261024-a43/Aux.app/Contents/Resources/aux/apps/daemon/Aux Daemon.app",
+  "flags": 536871065,
+  "results": [
+    {
+      "mode": "new-object-each-call",
+      "iteration": 1,
+      "status": 0,
+      "seconds": 0.08954716706648469
+    },
+    {
+      "mode": "new-object-each-call",
+      "iteration": 2,
+      "status": 0,
+      "seconds": 0.07613950001541525
+    },
+    {
+      "mode": "new-object-each-call",
+      "iteration": 3,
+      "status": 0,
+      "seconds": 0.07776279200334102
+    },
+    {
+      "mode": "retained-object",
+      "iteration": 1,
+      "status": 0,
+      "seconds": 0.07667729200329632
+    },
+    {
+      "mode": "retained-object",
+      "iteration": 2,
+      "status": 0,
+      "seconds": 0.00012000009883195162
+    },
+    {
+      "mode": "retained-object",
+      "iteration": 3,
+      "status": 0,
+      "seconds": 0.0001723329769447446
+    }
+  ],
+  "readOnly": true,
+  "productExecuted": false,
+  "keychainAccessed": false,
+  "newSigning": false
+}

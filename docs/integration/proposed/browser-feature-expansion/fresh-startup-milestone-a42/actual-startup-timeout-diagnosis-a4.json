@@ -1,0 +1,50 @@
+{
+  "format": "aux.ordinary-fresh.startup-timeout-diagnosis.v1",
+  "candidate": "A43",
+  "all17SignaturesPassed": true,
+  "exit": {
+    "event": "aux-fresh-child-exit",
+    "pid": 73236,
+    "exitCode": 1,
+    "signal": null,
+    "groupStopped": true,
+    "forced": false
+  },
+  "lastDiagnostic": "Aux fresh startup refused: paired daemon receipt",
+  "terminalDaemonDiagnostic": "Aux native daemon refused at readiness (status 8).",
+  "secondsUntilFinalLog": 97.01621985435486,
+  "nativeParentStartupLimitSeconds": 90,
+  "sample": {
+    "path": "/private/tmp/aux-fresh-browser-4qtjms51/daemon-a3.sample",
+    "sha256": "9e228412b852a0896645ea92cfecf0090f28d08d8e1b83107de96b84e0fcfea1",
+    "durationSeconds": 1,
+    "intervalMilliseconds": 10,
+    "mainThreadSampleCount": 78,
+    "allMainSamplesInside": "AuxNativeFreshTargetBoundary.addTarget / policy loader / native Security validation"
+  },
+  "concreteBottleneck": "Repeated new Security static-code objects rescan the same signed executable/resources during each initialization boundary.",
+  "nativeApiBenchmark": "actual-native-signature-object-benchmark-a4.json",
+  "fix": "Retain process-bound native code handles with six held-FD metadata bindings, keeping every validity flag/call, policy read/digest, image and root check.",
+  "newDaemonBuild": "actual-daemon-identity-reuse-build-a4b.json",
+  "newSigningNotYetApproved": true,
+  "working": [],
+  "failed": [
+    "A43 startup/readiness"
+  ],
+  "blocked": [
+    "navigation",
+    "two-profile isolation",
+    "multiple windows",
+    "draft/attachment persistence",
+    "sidebar/chat/settings",
+    "actual visual comparison",
+    "ordinary restart"
+  ],
+  "followUps": [
+    "BYOK/ChatGPT account-dependent AI",
+    "third-party extensions/autofill/native messaging",
+    "CLI routing"
+  ],
+  "oldStateReset": false,
+  "acceptedAppChanged": false
+}

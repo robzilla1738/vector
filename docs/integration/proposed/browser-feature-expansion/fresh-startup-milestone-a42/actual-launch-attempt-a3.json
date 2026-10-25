@@ -1,0 +1,21 @@
+{
+  "format": "aux.ordinary-fresh.launch-attempt.v1",
+  "candidate": "A43",
+  "launcherPid": 73232,
+  "startedUnix": 1792901271.354079,
+  "privateLog": "/private/tmp/aux-fresh-browser-4qtjms51/browser-launch-a3.log",
+  "command": [
+    "/opt/homebrew/bin/node",
+    "scripts/aux.mjs",
+    "--temp-profile",
+    "--app",
+    "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-fresh-browser-20261024-a43/Aux.app",
+    "--",
+    "http://127.0.0.1:62098/?profile=personal"
+  ],
+  "scope": "/private/tmp/aux-fresh-browser-4qtjms51",
+  "fixtureUrl": "http://127.0.0.1:62098",
+  "fixtureSession": 75922,
+  "ownerSigningReviewSha256": "16bbe6ffae1c117233c418afe509c61625f9bec642f751012da0a1c4aae2d4d6",
+  "runtimeAcceptance": false
+}

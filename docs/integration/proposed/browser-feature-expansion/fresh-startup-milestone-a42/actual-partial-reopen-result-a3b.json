@@ -1,0 +1,16 @@
+{
+  "format": "aux.ordinary-fresh.partial-reopen-result.v1",
+  "refused": true,
+  "exit": {
+    "event": "aux-fresh-child-exit",
+    "pid": 77328,
+    "exitCode": 1,
+    "signal": null,
+    "groupStopped": true,
+    "forced": false
+  },
+  "rootMarkersUnchanged": true,
+  "oldScopePreserved": "/private/tmp/aux-fresh-browser-4qtjms51",
+  "noResetOrMigration": true,
+  "keychainValuesPrinted": false
+}

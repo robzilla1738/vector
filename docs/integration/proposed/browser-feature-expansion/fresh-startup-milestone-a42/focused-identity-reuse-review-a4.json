@@ -1,0 +1,14 @@
+{
+  "format": "aux.ordinary-fresh.identity-reuse.focused-review.v1",
+  "reviewer": "/root/productivity_finish_batch",
+  "readOnlyReview": true,
+  "blockingIssuesFound": false,
+  "correctionIncluded": "Process refusal before inherited NSLock acquisition",
+  "finalFiveAnchorReplayMatches": true,
+  "nativeValidityCallsAndFlagsRetained": true,
+  "policyAndRootChecksRetained": true,
+  "cachedAdmission": false,
+  "final48SwiftLinkPassed": true,
+  "actualRuntimePerformanceAccepted": false,
+  "currentSigningReviewSha256": "9135620eeed5a17b5583fdb14669084a13c4ca36025934f14ad0da152768de2c"
+}

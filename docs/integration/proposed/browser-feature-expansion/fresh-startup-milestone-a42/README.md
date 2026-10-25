@@ -1,22 +1,36 @@
 # Fresh disposable browser milestone A42
 
-The owner authorized the smallest correction to ordinary startup. This milestone does not add features or replace the accepted preview. **A42's17 reviewed objects are signed and verified; actual startup exits1 before a usable window. It is not testable/accepted.** The focused policy correction built successfully and is assembled as A43; its two updated signatures await approval.
+The owner authorized the smallest correction to ordinary startup. This milestone does not add features or replace the accepted preview. **A43's two approved replacement signatures passed and all17 objects verify, but startup timed out before a usable window. It is not testable/accepted.** The focused daemon performance correction built successfully and is assembled as A44; its two updated signatures and new disposable scope await approval.
+
+## Current action: corrected daemon and fresh disposable scope
+
+A43 progressed past the policy mismatch and created actual installation/root records, then its parent startup limit expired. A one-second native process sample captured all78 main-thread samples in target initialization with repeated identity/signature checks. A direct read-only macOS API probe using the exact validation flags measured76–90ms with new signing objects and0.12–0.17ms for repeat checks on retained objects. This is evidence of the bottleneck and API behavior, not a successful app startup. See `actual-startup-timeout-diagnosis-a4.json` and `actual-native-signature-object-benchmark-a4.json`.
+
+The existing loader now retains real process-bound native signing objects. It still calls native static/live validity APIs with the same flags, reads and validates the sealed policy twice, compares the policy digest/CDHash, and checks images/private roots. Six held-FD metadata bindings cover executable, Info.plist, signature envelope, policy and both JS entry files before and after each load. Changed/replaced files and inherited processes refuse; no cached admission Boolean or new environment override exists. Non-ordinary mode is unchanged. The independent focused review found no blocker; its one small pre-lock process check was included. All48 Swift sources link with the same14 native objects, unsigned. This is one source-file correction inside the existing startup loader.
+
+Current candidate: `/Users/rcourson/Documents/Vibe/web/out/provided-candidate-fresh-browser-20261024-a44/Aux.app`. It preserves A43's browser/framework, UI, existing embedded profile and15 valid signing objects. Only daemon executable, its public policy and package metadata change before signing. The [exact two-object review](signing-review-a4.json), SHA256 `9135620eeed5a17b5583fdb14669084a13c4ca36025934f14ad0da152768de2c`, proposes signing the corrected daemon and containing app with the same existing Robert Courson identity and entitlements. No native browser rebuild/signing, new entitlement, provisioning, OS permission, notarization or release is included.
+
+The next runtime scope is `/private/tmp/aux-fresh-browser-c5mop317`, prepared as empty private directories only. The earlier partially initialized scope `/private/tmp/aux-fresh-browser-4qtjms51` correctly refuses a restart without changing either root marker; no reset, migration or credential deletion was attempted. Retain it for diagnosis. The new review includes initialization/authentication entries for only the new scope in the existing `9F2JXY8TCK.dev.aux.local` group. It does not authorize owner state or legacy adoption. Interrupted first initialization currently requires a new disposable scope; advanced partial-state recovery remains deferred.
+
+A44 is **unsigned at its changed boundaries, unexecuted and not yet testable**. Actual navigation/profile/window/draft/UI checks remain blocked, and account-dependent AI, extensions/autofill/native messaging and CLI routing remain explicit follow-ups. Resume the same finite checklist only after the exact signing/scope approval; do not begin another feature batch.
+
+References for native object reuse: [Apple Security source](https://github.com/apple-oss-distributions/Security/blob/main/OSX/libsecurity_codesigning/lib/StaticCode.cpp) stores validation state on its native code object. The local macOS API probe verifies the observed behavior of this machine's implementation. No Apple source was copied into the Aux implementation.
 
 The owner approved the exact A42 signing review and disposable checks. All17 signing commands succeeded. The first verifier used inline requirement syntax incorrectly; the corrected read-only verifier passed all17 without more signing, preserved every unrelated/UI resource, and the outer app also passed deep/strict verification. The actual second launch records exit1 with no signal, no window and empty disposable control/data roots. The parent native checker still unconditionally allowed only oldv2/v3 policies, despite decoding this candidate's genuine ordinaryv8 policy. A two-source correction uses the existing ordinary route validator and reports the failing startup stage. Authentication, sealed resources and private root checks remain. See `actual-startup-diagnosis-a3.json` and `startup-policy-fix-a3.patch`.
 
 The successor retains the daemon, existing profile, scope and15 valid code signatures. Only the corrected framework and containing outer app require a subsequent exact signing review. Account-dependent AI, extensions/native messaging and all actual UI/persistence checks remain follow-ups; none is passed by this signing result.
 
-Current correction candidate: `/Users/rcourson/Documents/Vibe/web/out/provided-candidate-fresh-browser-20261024-a43/Aux.app`.
+Historical policy correction candidate: `/Users/rcourson/Documents/Vibe/web/out/provided-candidate-fresh-browser-20261024-a43/Aux.app`.
 
 The signed, failed A42 predecessor remains intact at `/Users/rcourson/Documents/Vibe/web/out/provided-candidate-fresh-browser-20261024-a42/Aux.app`.
 
-## Current action: two updated signatures
+## Historical A43 action: two updated signatures — approved and executed
 
 The complete A43 native build passes with420 selected input pins. Native raw output differs from A42 only in `Contents/Frameworks/Aux Framework.framework/Versions/155.0.8059.85/Aux Framework`. Assembly clones the signed A42 candidate and changes that framework plus package metadata. Every unrelated leaf/mode, daemon/profile and UI resource remains identical. Fifteen valid code signatures are retained. This is not runtime acceptance.
 
-The [exact two-object review](signing-review-a3.json), SHA256 `16bbe6ffae1c117233c418afe509c61625f9bec642f751012da0a1c4aae2d4d6`, proposes re-signing the framework and containing outer app only. It retains the existing Apple Development identity, JIT-only outer entitlement, same daemon/profile/access group and same disposable scope. No new entitlements, provisioning, permissions, notarization or release. The prior owner approval was bound to A42's exact bytes; no A43 signing has occurred. `sign-policy-fix-a3.py` is inert without the exact separately approved review SHA256.
+The [exact two-object review](signing-review-a3.json), SHA256 `16bbe6ffae1c117233c418afe509c61625f9bec642f751012da0a1c4aae2d4d6`, was approved and executed for the framework and outer app. It retains the existing identity, JIT-only outer entitlement, same daemon/profile/access group and scope. Both commands and all17 signature checks pass. A43 still failed readiness as described above; do not rerun this immutable signing script.
 
-Evidence: `actual-full-browser-build-a3.json`, `actual-package-a3.json`, `source-composition-a3.json`, `actual-policy-fix-projection-a3.json`, `startup-policy-fix-a3.patch`. The successor's ordinary launcher preflight passes without product execution. A43 startup and every later focused check remain pending until this signing exception is approved.
+Evidence: `actual-full-browser-build-a3.json`, `actual-package-a3.json`, `source-composition-a3.json`, `actual-policy-fix-projection-a3.json`, `startup-policy-fix-a3.patch`, `owner-signing-approval-a3.json`, `actual-local-signing-a3.json`, `actual-launch-attempt-a3.json`. A43's preflight/signatures pass; its actual startup attempt failed readiness. Subsequent focused checks remain blocked; A44 now contains the narrowly scoped performance correction above.
 
 ## Implemented and assembled
 
@@ -40,7 +54,7 @@ JIT is the only browser entitlement. The daemon additionally receives its fixed 
 
 ## Finite actual-app checklist
 
-Startup was attempted and **failed on A42**. Every subsequent row remains blocked/untested. Source checks, successful compilation and resource equality are not runtime passes.
+Startup was attempted and **failed on A42 and A43**. A44 remains unexecuted pending its exact signing/scope approval. Every subsequent row remains blocked/untested. Source checks, successful compilation and resource equality are not runtime passes.
 
 | Check | Focused acceptance |
 | --- | --- |
@@ -61,6 +75,6 @@ Fix only demonstrated failures and repeat affected checks. If an unexpected depe
 - Supervised AI tools, agent automation, Computer Use, PTY/exec, PDF/OS utilities/native addons: **disabled in this ordinary candidate**. Opening the browser does not complete those features.
 - CLI URL routing: packaged but inactive/unexecuted; follows browser startup and does not hold up this first browser milestone.
 - Legacy migration, advanced crash/interrupted-write recovery and the new task-capability architecture: **deferred**. Existing profiles remain refused; this candidate is for the fixed fresh disposable scope and cannot be distributed for ordinary user installation.
-- A42 local development signing passed; startup failed. Correction signing and actual focused checks remain pending. Production signing, notarization, distribution, account-dependent acceptance and broader feature acceptance remain release blockers.
+- A42/A43 local development signing passed; startup failed. A44 correction signing and actual focused checks remain pending. Production signing, notarization, distribution, account-dependent acceptance and broader feature acceptance remain release blockers.
 
-Evidence: `actual-browser-compile-a1/a2.json`, `actual-daemon-build-a4.json`, `actual-full-browser-build-a2.json`, `actual-package-a1.json`, `actual-launcher-preflight-a1.json`, `signing-review.json`, `owner-signing-approval-a1.json`, `actual-local-signing-a1.json`, `actual-local-signing-verification-a2.json`, `actual-launch-attempt-a1/a2.json`, and `actual-startup-diagnosis-a3.json`. Approved A42 signing/launch attempts occurred; no owner-state operation, new provisioning/OS grant, notarization or release occurred.
+Evidence includes the A42/A43 build, package, exact approvals/signatures and failed launch receipts, plus `actual-startup-timeout-diagnosis-a4.json`, `actual-partial-reopen-result-a3b.json`, `actual-native-signature-object-benchmark-a4.json`, `actual-identity-reuse-projection-a4b.json`, `focused-identity-reuse-review-a4.json`, `actual-daemon-identity-reuse-build-a4b.json`, `actual-package-a4.json`, `actual-launcher-preflight-a4.json`, and `signing-review-a4.json`. Approved A42/A43 signing/launch attempts occurred; no A44 signing/execution, owner-state operation, new provisioning/OS grant, notarization or release occurred.

@@ -1,0 +1,13 @@
+{
+  "format": "aux.ordinary-fresh.partial-reopen-attempt.v1",
+  "launcherPid": 77323,
+  "startedUnix": 1792901911.747984,
+  "privateLog": "/private/tmp/aux-fresh-browser-4qtjms51/browser-partial-reopen-a3b.log",
+  "scope": "/private/tmp/aux-fresh-browser-4qtjms51",
+  "markersBeforeSha256": {
+    "/private/tmp/aux-fresh-browser-4qtjms51/home/Library/Application Support/Aux/.aux-browser-ordinary-lease.v1": "628b19a300649b444284d5be3cec65d774b128d881deb44be3750cdd2b7625f9",
+    "/private/tmp/aux-fresh-browser-4qtjms51/home/Library/Caches/Aux/.aux-browser-ordinary-lease.v1": "e593da5d938935ea15f5b9bb6b52039200b8ff323e09a6c491476fdd23890779"
+  },
+  "sameApprovedAppAndScope": true,
+  "noResetOrMigrationAttempted": true
+}

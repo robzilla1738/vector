@@ -1,0 +1,48 @@
+{
+  "format": "aux.ordinary-fresh.native-identity-handle-reuse.v1",
+  "passed": true,
+  "input": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/ordinary-fresh-browser-startup-a1/source/AuxSignedFreshBootstrapPolicyLoader.swift",
+  "inputSha256": "4d8db5a663a765e17508b6792a70dad25f89238431252fed99539c38284e5a7c",
+  "output": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/fresh-startup-milestone-a42/startup-identity-reuse-b4-source/AuxSignedFreshBootstrapPolicyLoader.swift",
+  "outputSha256": "9ef2936d2cedccc381fb16c74c2840b714ca7442c8d0e3f3365df390e4c9743f",
+  "anchors": [
+    {
+      "before": "    private static let flags=SecCSFlags(rawValue:kSecCSStrictValidate|kSecCSCheckAllArchitectures|kSecCSCheckNestedCode|kSecCSRestrictSymlinks|UInt32(1<<29))\n",
+      "after": "    private static let flags=SecCSFlags(rawValue:kSecCSStrictValidate|kSecCSCheckAllArchitectures|kSecCSCheckNestedCode|kSecCSRestrictSymlinks|UInt32(1<<29))\n#if AUX_BROWSER_ONLY_NATIVE_STARTUP\n    // Keep Apple's actual code objects alive so their successful validation is\n    // reusable. Every caller still runs the same native validity, live-image,\n    // sealed-policy and private-root checks. No admission result is cached.\n    private final class OrdinaryFileBinding {\n        let path:String\n        let descriptor:Int32\n        let captured:stat\n        init(_ path:String)throws {\n            guard try canonical(path)==path else{throw AuxFreshBootstrapPolicyError.path}\n            let fd=open(path,O_RDONLY|O_NONBLOCK|O_NOFOLLOW|O_CLOEXEC)\n            guard fd>=0 else{throw AuxFreshBootstrapPolicyError.path}\n            do {\n                let value=try metadata(fd,directory:false,maximumSize:Int64.max)\n                self.path=path;descriptor=fd;captured=value\n            } catch {close(fd);throw error}\n        }\n        private func matches(_ value:stat)->Bool {\n            captured.st_dev==value.st_dev && captured.st_ino==value.st_ino &&\n            captured.st_mode==value.st_mode && captured.st_nlink==value.st_nlink &&\n            captured.st_uid==value.st_uid && captured.st_gid==value.st_gid &&\n            captured.st_flags==value.st_flags && captured.st_size==value.st_size &&\n            captured.st_mtimespec.tv_sec==value.st_mtimespec.tv_sec &&\n            captured.st_mtimespec.tv_nsec==value.st_mtimespec.tv_nsec &&\n            captured.st_ctimespec.tv_sec==value.st_ctimespec.tv_sec &&\n            captured.st_ctimespec.tv_nsec==value.st_ctimespec.tv_nsec\n        }\n        func revalidate()throws {\n            let held=try metadata(descriptor,directory:false,maximumSize:Int64.max)\n            var named=stat()\n            guard matches(held),try canonical(path)==path,lstat(path,&named)==0,\n                  matches(named) else{throw AuxFreshBootstrapPolicyError.identity}\n        }\n        deinit{close(descriptor)}\n    }\n    private final class OrdinaryCurrentCode {\n        let process=getpid()\n        let dynamic:SecCode\n        let code:SecStaticCode\n        let requirement:SecRequirement\n        let executablePath:String\n        let files:[OrdinaryFileBinding]\n        init()throws {\n            var own:SecCode?\n            let ownStatus=SecCodeCopySelf([],&own)\n            guard ownStatus==errSecSuccess,let own else{throw AuxFreshBootstrapPolicyError.signature(ownStatus)}\n            var disk:SecStaticCode?\n            let diskStatus=SecCodeCopyStaticCode(own,[],&disk)\n            guard diskStatus==errSecSuccess,let disk else{throw AuxFreshBootstrapPolicyError.signature(diskStatus)}\n            let executable=try AuxSignedFreshBootstrapPolicyLoader.executable()\n            let bundle=URL(fileURLWithPath:executable).deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent().path\n            let names=[executable,bundle+\"/Contents/Info.plist\",\n                bundle+\"/Contents/_CodeSignature/CodeResources\",\n                bundle+\"/Contents/Resources/\"+AuxFreshBootstrapIdentity.resource,\n                bundle+\"/Contents/Resources/node-development/index.mjs\",\n                bundle+\"/Contents/Resources/node-development/aux-native-entry.mjs\"]\n            let bindings=try names.map{try OrdinaryFileBinding($0)}\n            dynamic=own;code=disk;requirement=try AuxSignedFreshBootstrapPolicyLoader.requirement()\n            executablePath=executable;files=bindings\n            try revalidate()\n        }\n        func revalidate()throws {\n            guard getpid()==process else{throw AuxFreshBootstrapPolicyError.identity}\n            for file in files{try file.revalidate()}\n        }\n    }\n    private static let ordinaryCodeLock=NSLock()\n    private static var ordinaryCode:OrdinaryCurrentCode?\n    private static func currentOrdinaryCode()throws->OrdinaryCurrentCode {\n        ordinaryCodeLock.lock();defer{ordinaryCodeLock.unlock()}\n        if let current=ordinaryCode{try current.revalidate();return current}\n        let current=try OrdinaryCurrentCode();ordinaryCode=current;return current\n    }\n#endif\n",
+      "count": 1
+    },
+    {
+      "before": "            var code:SecStaticCode?;let created=SecStaticCodeCreateWithPath(URL(fileURLWithPath:path) as CFURL,[],&code);guard created==errSecSuccess,let code=code else{throw AuxFreshBootstrapPolicyError.signature(created)}\n",
+      "after": "#if AUX_BROWSER_ONLY_NATIVE_STARTUP\n            let current=try currentOrdinaryCode()\n            guard path==current.executablePath else{throw AuxFreshBootstrapPolicyError.image}\n            let code=current.code\n#else\n            var code:SecStaticCode?;let created=SecStaticCodeCreateWithPath(URL(fileURLWithPath:path) as CFURL,[],&code);guard created==errSecSuccess,let code=code else{throw AuxFreshBootstrapPolicyError.signature(created)}\n#endif\n",
+      "count": 1
+    },
+    {
+      "before": "        var dynamic:SecCode?;let own=SecCodeCopySelf([],&dynamic);guard own==errSecSuccess,let dynamic=dynamic else{throw AuxFreshBootstrapPolicyError.signature(own)}\n        let requirement=try requirement(),dynamicFlags=SecCSFlags(rawValue:kSecCSStrictValidate|UInt32(1<<29))\n        let checked=SecCodeCheckValidity(dynamic,dynamicFlags,requirement);guard checked==errSecSuccess else{throw AuxFreshBootstrapPolicyError.signature(checked)}\n        var staticCode:SecStaticCode?;let copied=SecCodeCopyStaticCode(dynamic,[],&staticCode);guard copied==errSecSuccess,let staticCode=staticCode else{throw AuxFreshBootstrapPolicyError.signature(copied)}\n",
+      "after": "#if AUX_BROWSER_ONLY_NATIVE_STARTUP\n        let current=try currentOrdinaryCode()\n        let dynamic=current.dynamic,staticCode=current.code,requirement=current.requirement\n        let dynamicFlags=SecCSFlags(rawValue:kSecCSStrictValidate|UInt32(1<<29))\n        let checked=SecCodeCheckValidity(dynamic,dynamicFlags,requirement);guard checked==errSecSuccess else{throw AuxFreshBootstrapPolicyError.signature(checked)}\n#else\n        var dynamic:SecCode?;let own=SecCodeCopySelf([],&dynamic);guard own==errSecSuccess,let dynamic=dynamic else{throw AuxFreshBootstrapPolicyError.signature(own)}\n        let requirement=try requirement(),dynamicFlags=SecCSFlags(rawValue:kSecCSStrictValidate|UInt32(1<<29))\n        let checked=SecCodeCheckValidity(dynamic,dynamicFlags,requirement);guard checked==errSecSuccess else{throw AuxFreshBootstrapPolicyError.signature(checked)}\n        var staticCode:SecStaticCode?;let copied=SecCodeCopyStaticCode(dynamic,[],&staticCode);guard copied==errSecSuccess,let staticCode=staticCode else{throw AuxFreshBootstrapPolicyError.signature(copied)}\n#endif\n",
+      "count": 1
+    },
+    {
+      "before": "        guard let cdHash=info[kSecCodeInfoUnique as String] as? Data else{throw AuxFreshBootstrapPolicyError.identity}\n        return .init(contents:policy,bytes:bytes,bundle:bundle,cdHash:cdHash.map{String(format:\"%02x\",$0)}.joined())\n",
+      "after": "        guard let cdHash=info[kSecCodeInfoUnique as String] as? Data else{throw AuxFreshBootstrapPolicyError.identity}\n#if AUX_BROWSER_ONLY_NATIVE_STARTUP\n        try current.revalidate()\n#endif\n        return .init(contents:policy,bytes:bytes,bundle:bundle,cdHash:cdHash.map{String(format:\"%02x\",$0)}.joined())\n",
+      "count": 1
+    },
+    {
+      "before": "    private static func currentOrdinaryCode()throws->OrdinaryCurrentCode {\n        ordinaryCodeLock.lock();defer{ordinaryCodeLock.unlock()}\n",
+      "after": "    private static func currentOrdinaryCode()throws->OrdinaryCurrentCode {\n        // Refuse inherited processes before touching a possibly inherited lock.\n        guard getpid()==auxImagePreparationProcess else{throw AuxFreshBootstrapPolicyError.identity}\n        ordinaryCodeLock.lock();defer{ordinaryCodeLock.unlock()}\n",
+      "count": 1
+    }
+  ],
+  "signatureFlagsUnchanged": true,
+  "nativeValidityCallsRetained": true,
+  "policyReadsAndDigestChecksRetained": true,
+  "privateRootChecksRetained": true,
+  "processBound": true,
+  "identityAndEntryFileBindings": 6,
+  "cachedAdmission": false,
+  "nonOrdinaryModeUnchanged": true,
+  "productExecuted": false,
+  "signed": false,
+  "uiChanged": false,
+  "priorProjectionSha256": "2806819edb1b746fd60638e382bdb243136e077da40ea91c0cf1d4c987ea658f",
+  "reviewCorrection": "Reject inherited process before NSLock acquisition"
+}

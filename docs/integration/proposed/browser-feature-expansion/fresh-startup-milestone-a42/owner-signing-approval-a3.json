@@ -1,0 +1,10 @@
+{
+  "format": "aux.ordinary-fresh.policy-correction.owner-approval.v1",
+  "reviewSha256": "16bbe6ffae1c117233c418afe509c61625f9bec642f751012da0a1c4aae2d4d6",
+  "ownerReply": "Approve the two updated signatures and checks",
+  "objectCount": 2,
+  "scope": "/private/tmp/aux-fresh-browser-4qtjms51",
+  "newProvisioning": false,
+  "newOSGrants": false,
+  "release": false
+}
