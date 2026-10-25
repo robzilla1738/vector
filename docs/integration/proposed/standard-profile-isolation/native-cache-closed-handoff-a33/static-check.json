@@ -1,0 +1,51 @@
+{
+  "exactReplay": [
+    {
+      "path": "third_party/blink/public/mojom/dom_storage/storage_area.mojom",
+      "anchors": 1,
+      "exactReplay": true
+    },
+    {
+      "path": "third_party/blink/renderer/modules/storage/cached_storage_area.h",
+      "anchors": 3,
+      "exactReplay": true
+    },
+    {
+      "path": "third_party/blink/renderer/modules/storage/cached_storage_area.cc",
+      "anchors": 3,
+      "exactReplay": true
+    },
+    {
+      "path": "components/services/storage/dom_storage/test_support/storage_area_test_util.h",
+      "anchors": 1,
+      "exactReplay": true
+    },
+    {
+      "path": "components/services/storage/dom_storage/aux_ui_cache_cohort.h",
+      "anchors": 6,
+      "exactReplay": true
+    },
+    {
+      "path": "components/services/storage/dom_storage/aux_ui_cache_cohort.cc",
+      "anchors": 6,
+      "exactReplay": true
+    },
+    {
+      "path": "components/services/storage/dom_storage/storage_area_impl.h",
+      "anchors": 3,
+      "exactReplay": true
+    },
+    {
+      "path": "components/services/storage/dom_storage/storage_area_impl.cc",
+      "anchors": 4,
+      "exactReplay": true
+    }
+  ],
+  "closedRendererRetokenNoReleaseOrBegin": true,
+  "actualSourceCloneAndPrivateTargetBeforeSwap": true,
+  "retiredCustodyBeforeReply": true,
+  "oneShotNativeHandoffAndReadOnlyObservation": true,
+  "testObserversShareRefusingBase": true,
+  "nativeCompilation": false,
+  "productExecution": false
+}

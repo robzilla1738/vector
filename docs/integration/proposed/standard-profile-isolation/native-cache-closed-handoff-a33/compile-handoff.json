@@ -1,0 +1,15 @@
+{
+  "format": "aux.cache-closed-handoff.compile.v1",
+  "requiresRootAsyncOwnerAndCommitterVirtuals": true,
+  "generateStorageAreaMojoBeforeCompile": true,
+  "actualRelativeSourceChecksRequired": true,
+  "changedSources": [
+    "components/services/storage/dom_storage/aux_ui_cache_cohort.cc",
+    "components/services/storage/dom_storage/storage_area_impl.cc",
+    "third_party/blink/renderer/modules/storage/cached_storage_area.cc"
+  ],
+  "sharedTestObserverHeader": "components/services/storage/dom_storage/test_support/storage_area_test_util.h",
+  "rootOwnsNativeBuild": true,
+  "actualCompilation": false,
+  "productExecution": false
+}

@@ -1,0 +1,232 @@
+{
+  "format": "aux.cache-closed-handoff.source.v1",
+  "files": [
+    {
+      "path": "third_party/blink/public/mojom/dom_storage/storage_area.mojom",
+      "inputSource": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/third_party/blink/public/mojom/dom_storage/storage_area.mojom",
+      "inputSha256": "72f51b1f090fcb26c074409e4bb2dcb9b957e6464e800539fc6cad5f0e9fb5f0",
+      "outputSha256": "95523d0bfa12eba6801ec96509bb8dcc2cb7684265d1902e8e435c5d58a96b9d",
+      "source": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/native-cache-closed-handoff-a33/source/third_party/blink/public/mojom/dom_storage/storage_area.mojom",
+      "anchors": [
+        {
+          "find": "  ReleaseAuxUiCacheMigration(mojo_base.mojom.UnguessableToken request,\n                             mojo_base.mojom.UnguessableToken token)\n      => (bool released);",
+          "replace": "  ReleaseAuxUiCacheMigration(mojo_base.mojom.UnguessableToken request,\n                             mojo_base.mojom.UnguessableToken token)\n      => (bool released);\n  // Closed owner transfer only: no Release/Begin or ordinary callback replay.\n  // The actual held renderer mints one successor token and retains its original.\n  HandoffAuxUiCacheMigration(mojo_base.mojom.UnguessableToken original_request,\n      mojo_base.mojom.UnguessableToken original_token,\n      mojo_base.mojom.UnguessableToken new_request,\n      array<AuxUiCacheEntry> expected_source,\n      array<AuxUiCacheEntry> target) => (AuxUiCacheReply reply);",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "third_party/blink/renderer/modules/storage/cached_storage_area.h",
+      "inputSource": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/third_party/blink/renderer/modules/storage/cached_storage_area.h",
+      "inputSha256": "9ed3d23d2b220ce9dceb52b4c2aa8c638f8e5376c1e00b0ae49dd5e9ddcfaf35",
+      "outputSha256": "0e6f725ea15621cd1a2631322345b02dbb031c81ddf07912bec1aa45da00d246",
+      "source": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/native-cache-closed-handoff-a33/source/third_party/blink/renderer/modules/storage/cached_storage_area.h",
+      "anchors": [
+        {
+          "find": "    bool recovery_restored = false;",
+          "replace": "    bool recovery_restored = false;\n    // Immutable closed-handoff identity; old full fresh/recovery maps remain\n    // in the retired owner, separate from the successor's actual new original.\n    std::optional<base::UnguessableToken> successor_request, successor_token;\n    mojom::blink::AuxUiCacheReplyPtr successor_receipt;",
+          "count": 1
+        },
+        {
+          "find": "  void ReleaseAuxUiCacheMigration(const base::UnguessableToken& request,",
+          "replace": "  void HandoffAuxUiCacheMigration(const base::UnguessableToken& original_request,\n      const base::UnguessableToken& original_token,\n      const base::UnguessableToken& new_request,\n      Vector<mojom::blink::AuxUiCacheEntryPtr> expected_source,\n      Vector<mojom::blink::AuxUiCacheEntryPtr> target,\n      HandoffAuxUiCacheMigrationCallback callback) override;\n  void ReleaseAuxUiCacheMigration(const base::UnguessableToken& request,",
+          "count": 1
+        },
+        {
+          "find": "  std::unique_ptr<AuxUiCacheLease> aux_ui_cache_lease_;",
+          "replace": "  std::unique_ptr<AuxUiCacheLease> aux_ui_cache_lease_;\n  Vector<std::unique_ptr<AuxUiCacheLease>> aux_ui_retired_cache_leases_;",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "third_party/blink/renderer/modules/storage/cached_storage_area.cc",
+      "inputSource": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/third_party/blink/renderer/modules/storage/cached_storage_area.cc",
+      "inputSha256": "1d3f734191563e721e7fac5a7d0e7628ed7edce68c2f651c137acc96be2a58d4",
+      "outputSha256": "85ad8da48956c0f533ad5370a439014f83eda1a9510c1a07c90f4edf0143b7b8",
+      "source": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/native-cache-closed-handoff-a33/source/third_party/blink/renderer/modules/storage/cached_storage_area.cc",
+      "anchors": [
+        {
+          "find": "  if (request.is_empty() || aux_ui_cache_lease_ || !IsAuxUiMigrationOrigin() ||",
+          "replace": "  bool retired_request = false;\n  for (const auto& retired : aux_ui_retired_cache_leases_)\n    retired_request |= retired->request == request || retired->successor_request == request;\n  if (request.is_empty() || retired_request || aux_ui_retired_cache_leases_.size() >= 64 ||\n      aux_ui_cache_lease_ || !IsAuxUiMigrationOrigin() ||",
+          "count": 1
+        },
+        {
+          "find": "    const base::UnguessableToken& request, ReadAuxUiCacheMigrationCallback callback) {\n  std::move(callback).Run(ReadAuxUiCacheReply(request, std::nullopt));\n}",
+          "replace": "    const base::UnguessableToken& request, ReadAuxUiCacheMigrationCallback callback) {\n  for (const auto& retired : aux_ui_retired_cache_leases_) {\n    if (retired->request != request || !retired->successor_request ||\n        !retired->successor_token || !retired->successor_receipt) continue;\n    if (aux_ui_cache_lease_ && aux_ui_cache_lease_->request == retired->successor_request &&\n        aux_ui_cache_lease_->token == retired->successor_token) {\n      std::move(callback).Run(ReadAuxUiCacheReply(*retired->successor_request,\n                                                 *retired->successor_token)); return;\n    }\n    // Preserve the exact historical successor identity, but never report an\n    // old snapshot as a currently held/ready actor after its custody changed.\n    auto reply = retired->successor_receipt.Clone();\n    reply->ok = false; reply->held = false;\n    reply->error = \"Recorded cache successor is no longer the actual held owner\";\n    std::move(callback).Run(std::move(reply)); return;\n  }\n  std::move(callback).Run(ReadAuxUiCacheReply(request, std::nullopt));\n}",
+          "count": 1
+        },
+        {
+          "find": "void CachedStorageArea::ReleaseAuxUiCacheMigration(",
+          "replace": "void CachedStorageArea::HandoffAuxUiCacheMigration(\n    const base::UnguessableToken& original_request,\n    const base::UnguessableToken& original_token,\n    const base::UnguessableToken& new_request,\n    Vector<mojom::blink::AuxUiCacheEntryPtr> expected_source,\n    Vector<mojom::blink::AuxUiCacheEntryPtr> target,\n    HandoffAuxUiCacheMigrationCallback callback) {\n  auto source = AuxCacheReadEntries(expected_source, !IsSessionStorage());\n  auto proposed = AuxCacheReadEntries(target, !IsSessionStorage());\n  // A repeated request is observation of the SAME actual successor, never a\n  // second physical retoken. The actual old token and next nonce must agree.\n  for (const auto& retired : aux_ui_retired_cache_leases_) {\n    if (retired->request != original_request) continue;\n    if (retired->token != original_token || retired->successor_request != new_request ||\n        !retired->successor_receipt || !source || !proposed ||\n        AuxCacheReadEntries(retired->successor_receipt->source_entries, !IsSessionStorage()) != source ||\n        AuxCacheReadEntries(retired->successor_receipt->staged_entries, !IsSessionStorage()) != proposed) {\n      auto reply = mojom::blink::AuxUiCacheReply::New();\n      reply->error = \"Immutable original cache handoff correlation differs\";\n      std::move(callback).Run(std::move(reply)); return;\n    }\n    ReadAuxUiCacheMigration(original_request, std::move(callback)); return;\n  }\n  auto reply = ReadAuxUiCacheReply(original_request, original_token);\n  if (!reply->ok || !source || !proposed ||\n      !AuxCacheCurrentTarget(*proposed, !IsSessionStorage()) || new_request.is_empty() || new_request == original_request ||\n      aux_ui_retired_cache_leases_.size() >= 64 ||\n      !aux_ui_cache_lease_->recovery_original || !aux_ui_cache_lease_->recovery_restored ||\n      !aux_ui_cache_lease_->deferred.empty() ||\n      AuxSelectedCacheEntries(*map_, !IsSessionStorage()) != *source ||\n      AuxSelectedCacheEntries(*aux_ui_cache_lease_->recovery_original, !IsSessionStorage()) != *source) {\n    reply->ok = false; reply->error = \"Actual restored cache/docs/source hold required for closed handoff\";\n    std::move(callback).Run(std::move(reply)); return;\n  }\n  for (const auto& retired : aux_ui_retired_cache_leases_) {\n    if (retired->request == new_request || retired->successor_request == new_request) {\n      reply->ok = false; reply->error = \"A retired cache request cannot be reused\";\n      std::move(callback).Run(std::move(reply)); return;\n    }\n  }\n  auto staged = AuxCloneCacheMap(*map_);\n  for (const auto& [key, value] : *source) staged->RemoveItem(AuxCacheString(key), nullptr);\n  for (const auto& [key, value] : *proposed) {\n    if (!staged->SetItem(AuxCacheString(key), AuxCacheString(value), nullptr)) {\n      reply->ok = false; reply->error = \"Actual closed handoff target quota refused\";\n      std::move(callback).Run(std::move(reply)); return;\n    }\n  }\n  auto successor = std::make_unique<AuxUiCacheLease>();\n  successor->request = new_request;\n  while (successor->token == original_token)\n    successor->token = base::UnguessableToken::Create();\n  successor->sources = aux_ui_cache_lease_->sources;\n  successor->original = AuxCloneCacheMap(*map_);\n  successor->target = std::move(staged);\n  auto original = std::move(aux_ui_cache_lease_);\n  original->successor_request = new_request;\n  original->successor_token = successor->token;\n  aux_ui_cache_lease_ = std::move(successor);\n  original->successor_receipt = ReadAuxUiCacheReply(new_request, aux_ui_cache_lease_->token);\n  // Both states and the exact receipt are retained before returning. No map,\n  // event, queued write or admission state changes at this closed transfer.\n  aux_ui_retired_cache_leases_.push_back(std::move(original));\n  std::move(callback).Run(ReadAuxUiCacheReply(new_request, aux_ui_cache_lease_->token));\n}\nvoid CachedStorageArea::ReleaseAuxUiCacheMigration(",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "components/services/storage/dom_storage/test_support/storage_area_test_util.h",
+      "inputSource": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/components/services/storage/dom_storage/test_support/storage_area_test_util.h",
+      "inputSha256": "9d8d1f33d06b024b123a0c0a8b9ae111a97905f27cf7cfee4ab7ef86cd3976dd",
+      "outputSha256": "da5e5f8fc7980bc161ca33a5dd5ec0dd19fa91b679bfbaa73b50288dea3af0d3",
+      "source": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/native-cache-closed-handoff-a33/source/components/services/storage/dom_storage/test_support/storage_area_test_util.h",
+      "anchors": [
+        {
+          "find": "  void ReleaseAuxUiCacheMigration(const base::UnguessableToken& request,",
+          "replace": "  void HandoffAuxUiCacheMigration(const base::UnguessableToken&,\n      const base::UnguessableToken&, const base::UnguessableToken&,\n      std::vector<blink::mojom::AuxUiCacheEntryPtr>,\n      std::vector<blink::mojom::AuxUiCacheEntryPtr>,\n      HandoffAuxUiCacheMigrationCallback callback) override {\n    // Ordinary test observers are not actual renderer migration owners.\n    std::move(callback).Run(blink::mojom::AuxUiCacheReply::New());\n  }\n  void ReleaseAuxUiCacheMigration(const base::UnguessableToken& request,",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "components/services/storage/dom_storage/aux_ui_cache_cohort.h",
+      "inputSource": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/components/services/storage/dom_storage/aux_ui_cache_cohort.h",
+      "inputSha256": "c198f3c84e9b054a97bfb2eedd300477035e0e3c4eda09ba2b10d02b967831bb",
+      "outputSha256": "092fe916859b9c6ac73cfd484e33925e5923e0ce65a296f6fa04f334855bad9c",
+      "source": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/native-cache-closed-handoff-a33/source/components/services/storage/dom_storage/aux_ui_cache_cohort.h",
+      "anchors": [
+        {
+          "find": "#include <map>",
+          "replace": "#include <map>\n#include <memory>",
+          "count": 1
+        },
+        {
+          "find": "  void RestoreRecovery(Callback callback);",
+          "replace": "  void RestoreRecovery(Callback callback);\n  void Handoff(const base::UnguessableToken& original_request,\n      const base::UnguessableToken& new_request, const Entries& source, const Entries& target, Callback callback);\n  void ReadHandoff(const base::UnguessableToken& original_request,\n      const base::UnguessableToken& new_request, const Entries& source, const Entries& target, Callback callback);",
+          "count": 1
+        },
+        {
+          "find": "kRecoveryStage, kRecoveryRestore };",
+          "replace": "kRecoveryStage, kRecoveryRestore, kHandoff, kHandoffRead };",
+          "count": 1
+        },
+        {
+          "find": "    blink::mojom::AuxUiCacheReplyPtr original;\n  };",
+          "replace": "    blink::mojom::AuxUiCacheReplyPtr original;\n    bool handoff_attempted = false;\n    std::optional<base::UnguessableToken> handoff_token, retired_token;\n    blink::mojom::AuxUiCacheReplyPtr handoff_report, retired_original, retired_report;\n  };\n  struct RetiredHandoff {\n    base::UnguessableToken original_request, successor_request;\n    Entries source, target;\n    std::map<mojo::RemoteSetElementId, Node> nodes;\n  };",
+          "count": 1
+        },
+        {
+          "find": "  void Released(mojo::RemoteSetElementId id, bool released);",
+          "replace": "  void Released(mojo::RemoteSetElementId id, bool released);\n  void RunHandoff(bool observation_only, Callback callback);\n  void HandoffReply(mojo::RemoteSetElementId, blink::mojom::AuxUiCacheReplyPtr);\n  bool IsUiOrigin() const;",
+          "count": 1
+        },
+        {
+          "find": "  bool recovery_plan_set_ = false;",
+          "replace": "  bool recovery_plan_set_ = false;\n  bool recovery_restored_ = false;\n  std::optional<base::UnguessableToken> handoff_original_, handoff_next_;\n  Entries handoff_source_, handoff_target_;\n  bool handoff_complete_ = false;\n  std::vector<std::unique_ptr<RetiredHandoff>> handoff_history_;",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "components/services/storage/dom_storage/aux_ui_cache_cohort.cc",
+      "inputSource": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/components/services/storage/dom_storage/aux_ui_cache_cohort.cc",
+      "inputSha256": "3834b889114c555f5c8bec201fec2d71ae226a074df04966e509554dc28bfdda",
+      "outputSha256": "e8db15b0180c54271762a025f45a0a7b84945164c6f7f71c297ecf3b27b22bd5",
+      "source": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/native-cache-closed-handoff-a33/source/components/services/storage/dom_storage/aux_ui_cache_cohort.cc",
+      "anchors": [
+        {
+          "find": "void AuxUiCacheCohort::RestoreRecovery(Callback callback) { Run(Operation::kRecoveryRestore, {}, {}, std::move(callback)); }",
+          "replace": "void AuxUiCacheCohort::RestoreRecovery(Callback callback) { Run(Operation::kRecoveryRestore, {}, {}, std::move(callback)); }\nnamespace {\nbool ValidHandoffEntries(const AuxUiCacheCohort::Entries& entries, bool target) {\n  if (entries.size() > 65536) return false;\n  size_t total = 0;\n  std::optional<std::vector<uint16_t>> previous;\n  for (const auto& entry : entries) {\n    if (!entry || entry->key.size() > 8192 ||\n        entry->key.size() + entry->value.size() > 8 * 1024 * 1024 - total) return false;\n    total += entry->key.size() + entry->value.size();\n    if (previous && *previous >= entry->key) return false;\n    previous = entry->key;\n    std::string name;\n    std::vector<uint8_t> raw;\n    for (uint16_t unit : entry->key) {\n      if (unit < 0x20 || unit > 0x7e) return false;\n      name.push_back(static_cast<char>(unit)); raw.push_back(static_cast<uint8_t>(unit));\n    }\n    auto local_raw = raw;\n    local_raw.insert(local_raw.begin(), 1);\n    if (!AuxUiCacheCohort::IsReviewedKey(raw, false) &&\n        !AuxUiCacheCohort::IsReviewedKey(local_raw, true)) return false;\n    if (!target) continue;\n    bool current = name.starts_with(\"aux.chat-draft.v3:\") ||\n                   name.starts_with(\"aux.chat-draft-text.v1:\");\n    for (std::string_view exact : {\"aux.new-tab.omnibox-mode.v2\", \"aux.browserTabStyle.v2\",\n        \"aux.last-final-confirm.v2\", \"aux.last-permission-mode.v2\",\n        \"aux.new-tab.onboarding-helper-state.v2\"}) current |= name == exact;\n    current |= name.starts_with(\"aux.sidepanel-new-session-settings.v2:\") ||\n               name == \"aux.chat-pending-new-session-message.v2\";\n    if (!current) return false;\n  }\n  // The real backend and actual StorageArea map locator validate exact scope\n  // and value schemas. This guards finite wire names/order/bounds, including\n  // the primary Session native cohort whose namespace label is actually empty.\n  return true;\n}\n}  // namespace\nbool AuxUiCacheCohort::IsUiOrigin() const {\n  return storage_key_.origin() == url::Origin::Create(\n      GURL(\"chrome-extension://gokkffaiccpmoeodpmeamcjajcagjmkm/\"));\n}\nvoid AuxUiCacheCohort::Handoff(const base::UnguessableToken& original_request,\n    const base::UnguessableToken& new_request, const Entries& source, const Entries& target, Callback callback) {\n  if (handoff_original_) {\n    ReadHandoff(original_request, new_request, source, target, std::move(callback)); return;\n  }\n  if (request_ != original_request || original_request.is_empty() || new_request.is_empty() ||\n      new_request == original_request || pending_ || !prepared_ || !SameEndpoints() ||\n      handoff_history_.size() >= 64 ||\n      (IsUiOrigin() && (!ValidHandoffEntries(source, false) ||\n                       !ValidHandoffEntries(target, true) ||\n                       !recovery_plan_set_ || !SameEntries(source, recovery_source_) ||\n                       (nodes_.empty() && !recovery_restored_))) ||\n      (!IsUiOrigin() && (!source.empty() || !target.empty()))) {\n    std::move(callback).Run(DbStatus::IOError(\"Exact restored cache cohort/source required for closed handoff\")); return;\n  }\n  for (const auto& old : handoff_history_) {\n    if (old->original_request == new_request || old->successor_request == new_request) {\n      std::move(callback).Run(DbStatus::IOError(\"Retired cache handoff nonce cannot be reused\")); return;\n    }\n  }\n  handoff_original_ = original_request;\n  handoff_next_ = new_request;\n  handoff_source_ = CloneEntries(source); handoff_target_ = CloneEntries(target);\n  RunHandoff(false, std::move(callback));\n}\nvoid AuxUiCacheCohort::ReadHandoff(const base::UnguessableToken& original_request,\n    const base::UnguessableToken& new_request, const Entries& source, const Entries& target, Callback callback) {\n  if (handoff_original_ != original_request || handoff_next_ != new_request ||\n      !SameEntries(source, handoff_source_) || !SameEntries(target, handoff_target_) || pending_ || !SameEndpoints() ||\n      (request_ != original_request && request_ != new_request)) {\n    std::move(callback).Run(DbStatus::IOError(\"Original native cache handoff identity is not currently held\")); return;\n  }\n  RunHandoff(true, std::move(callback));\n}\nvoid AuxUiCacheCohort::RunHandoff(bool observation_only, Callback callback) {\n  CHECK(handoff_original_); CHECK(handoff_next_); CHECK(!pending_);\n  pending_ = true;\n  operation_ = observation_only ? Operation::kHandoffRead : Operation::kHandoff;\n  remaining_ = nodes_.size(); error_.reset(); callback_ = std::move(callback);\n  if (!IsUiOrigin() || nodes_.empty()) {\n    // Actual native receiver hold/zero-endpoint prepare and recovery receipt,\n    // never a fabricated renderer report or vacuous document proof.\n    remaining_ = 1; OneDone(DbStatus::OK()); return;\n  }\n  for (auto& [id, node] : nodes_) {\n    auto* observer = observers_->Get(id);\n    if (!observer || (!observation_only && (!node.token || node.handoff_attempted))) {\n      OneDone(DbStatus::IOError(\"Actual original cache endpoint/token unavailable\")); continue;\n    }\n    auto reply = mojo::WrapCallbackWithDefaultInvokeIfNotRun(base::BindOnce(\n        &AuxUiCacheCohort::HandoffReply, weak_.GetWeakPtr(), id),\n        blink::mojom::AuxUiCacheReplyPtr());\n    if (observation_only) {\n      // The old-request lookup returns the same retained renderer successor;\n      // no fresh nonce, Begin, Handoff resend or target replay occurs here.\n      observer->ReadAuxUiCacheMigration(*handoff_original_, std::move(reply));\n    } else {\n      node.handoff_attempted = true;\n      observer->HandoffAuxUiCacheMigration(*handoff_original_, *node.token,\n          *handoff_next_, CloneEntries(handoff_source_), CloneEntries(handoff_target_), std::move(reply));\n    }\n  }\n}\nvoid AuxUiCacheCohort::HandoffReply(mojo::RemoteSetElementId id,\n    blink::mojom::AuxUiCacheReplyPtr reply) {\n  auto found = nodes_.find(id);\n  if (!pending_ || (operation_ != Operation::kHandoff && operation_ != Operation::kHandoffRead) ||\n      found == nodes_.end()) return;\n  auto& node = found->second;\n  const auto old_token = node.retired_token ? node.retired_token : node.token;\n  const auto* old = node.retired_original ? node.retired_original.get() : node.original.get();\n  bool identity = reply && reply->held && reply->request_id == handoff_next_ &&\n      reply->token && !reply->token->is_empty() && old_token && reply->token != old_token &&\n      (!node.handoff_token || node.handoff_token == reply->token);\n  if (identity) {\n    // Retain an actual partial successor even if its source/docs proof failed.\n    // It remains unknown/held rather than being erased or minted a second time.\n    node.handoff_token = reply->token;\n    if (!node.handoff_report) node.handoff_report = reply.Clone();\n  }\n  if (!identity || !reply->ok || reply->tainted || !old || !SameEndpoints() ||\n      !SameDocuments(*reply, *old) || !SameEntries(reply->source_entries, handoff_source_) ||\n      reply->recovery_prepared || reply->recovery_restored ||\n      !SameEntries(reply->staged_entries, handoff_target_) ||\n      (!handoff_complete_ && reply->published)) {\n    OneDone(DbStatus::IOError(\"Actual closed cache successor/source/documents remain unknown\")); return;\n  }\n  if (!handoff_complete_) node.handoff_report = reply.Clone();\n  else node.report = reply.Clone();\n  OneDone(DbStatus::OK());\n}\n",
+          "count": 1
+        },
+        {
+          "find": "  if (request.is_empty() || request_ || pending_) {",
+          "replace": "  bool retired_request = false;\n  for (const auto& old : handoff_history_)\n    retired_request |= old->original_request == request || old->successor_request == request;\n  if (request.is_empty() || request_ || pending_ || retired_request || handoff_history_.size() >= 64) {",
+          "count": 1
+        },
+        {
+          "find": "  if (!request_ || pending_ || (operation != Operation::kRelease && !SameEndpoints()) ||",
+          "replace": "  if (!request_ || pending_ || (handoff_original_ && !handoff_complete_) ||\n      (operation != Operation::kRelease && !SameEndpoints()) ||",
+          "count": 1
+        },
+        {
+          "find": "      case Operation::kRelease: NOTREACHED();",
+          "replace": "      case Operation::kRelease: NOTREACHED();\n      case Operation::kHandoff: case Operation::kHandoffRead: NOTREACHED();",
+          "count": 1
+        },
+        {
+          "find": "  if (outcome.ok() && nodes_.empty()) {",
+          "replace": "  if (operation_ == Operation::kRecoveryRestore && outcome.ok()) recovery_restored_ = true;\n  if ((operation_ == Operation::kHandoff || operation_ == Operation::kHandoffRead) && outcome.ok()) {\n    if (!handoff_complete_) {\n      for (auto& [id, node] : nodes_) {\n        if (!IsUiOrigin()) continue;\n        CHECK(node.handoff_report); CHECK(node.handoff_token);\n        node.retired_token = node.token;\n        node.retired_original = std::move(node.original);\n        node.retired_report = std::move(node.report);\n        node.token = node.handoff_token;\n        node.original = node.handoff_report.Clone();\n        node.report = node.handoff_report.Clone();\n      }\n      request_ = handoff_next_;\n      expected_source_ = CloneEntries(handoff_source_); expected_target_ = CloneEntries(handoff_target_);\n      recovery_plan_set_ = false; recovery_restored_ = false;\n      recovery_source_.clear(); recovery_target_.clear();\n      zero_endpoint_phase_published_ = false;\n      handoff_complete_ = true;\n    }\n    prepared_ = true;\n  }\n  if (outcome.ok() && nodes_.empty()) {",
+          "count": 1
+        },
+        {
+          "find": "    request_.reset(); nodes_.clear(); prepared_ = false;",
+          "replace": "    request_.reset();\n    if (handoff_complete_) {\n      auto history = std::make_unique<RetiredHandoff>();\n      history->original_request = *handoff_original_;\n      history->successor_request = *handoff_next_;\n      history->source = CloneEntries(handoff_source_);\n      history->target = CloneEntries(handoff_target_);\n      history->nodes = std::move(nodes_);\n      handoff_history_.push_back(std::move(history));\n    }\n    nodes_.clear(); prepared_ = false;\n    handoff_original_.reset(); handoff_next_.reset(); handoff_source_.clear(); handoff_target_.clear();\n    handoff_complete_ = false; recovery_restored_ = false;",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "components/services/storage/dom_storage/storage_area_impl.h",
+      "inputSource": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/components/services/storage/dom_storage/storage_area_impl.h",
+      "inputSha256": "4f2fb7ac429d9d663e7c93b1b0a07e426a7cce88876f32e2001b67dae8fc8535",
+      "outputSha256": "271514c3c0a2fd00d4c2bd6cf9b6bf7b6add974450b1c9f491012951bfee4e7c",
+      "source": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/native-cache-closed-handoff-a33/source/components/services/storage/dom_storage/storage_area_impl.h",
+      "anchors": [
+        {
+          "find": "  std::vector<AsyncDomStorageDatabase::AuxUiCacheView> CopyAuxUiMigrationCacheViews() const override;",
+          "replace": "  void HandoffAuxUiMigrationCaches(const base::UnguessableToken& original,\n      const base::UnguessableToken& next,\n      const AsyncDomStorageDatabase::AuxUiMapSnapshot* map,\n      AsyncDomStorageDatabase::StatusCallback callback) override;\n  void ReadAuxUiMigrationCacheHandoff(const base::UnguessableToken& original,\n      const base::UnguessableToken& next,\n      const AsyncDomStorageDatabase::AuxUiMapSnapshot* map,\n      AsyncDomStorageDatabase::StatusCallback callback) override;\n  std::vector<AsyncDomStorageDatabase::AuxUiCacheView> CopyAuxUiMigrationCacheViews() const override;",
+          "count": 1
+        },
+        {
+          "find": "  void AuxUiCacheNext(DbStatus status);",
+          "replace": "  void AuxUiCacheNext(DbStatus status);\n  bool AuxUiHandoffSourceMatches(const AsyncDomStorageDatabase::AuxUiMapSnapshot*) const;\n  void RunAuxUiCacheHandoff(const base::UnguessableToken&, const base::UnguessableToken&,\n      const AsyncDomStorageDatabase::AuxUiMapSnapshot*, bool observation_only,\n      AsyncDomStorageDatabase::StatusCallback);\n  void AuxUiCacheHandoffNext(DbStatus);",
+          "count": 1
+        },
+        {
+          "find": "  bool aux_cache_preparing_ = false;",
+          "replace": "  bool aux_cache_preparing_ = false;\n  std::optional<base::UnguessableToken> aux_cache_handoff_original_, aux_cache_handoff_next_;\n  std::unique_ptr<AsyncDomStorageDatabase::AuxUiMapSnapshot> aux_cache_handoff_map_;\n  std::unique_ptr<AsyncDomStorageDatabase::AuxUiMapSnapshot> aux_cache_retired_map_;\n  std::vector<std::unique_ptr<AsyncDomStorageDatabase::AuxUiMapSnapshot>> aux_cache_handoff_history_;\n  std::optional<DbStatus> aux_cache_handoff_error_;\n  bool aux_cache_handoff_complete_ = false, aux_cache_handoff_observe_ = false;",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "components/services/storage/dom_storage/storage_area_impl.cc",
+      "inputSource": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/components/services/storage/dom_storage/storage_area_impl.cc",
+      "inputSha256": "11f075f34e978092a4e778a2fcf52c331206c7bb5101aab9767e70a1ec47fe42",
+      "outputSha256": "5b4daa2ac76485cf1fce82c30ebffa2b5ae343c3785e49537f5d8a282f496380",
+      "source": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/native-cache-closed-handoff-a33/source/components/services/storage/dom_storage/storage_area_impl.cc",
+      "anchors": [
+        {
+          "find": "#include \"third_party/abseil-cpp/absl/strings/str_format.h\"",
+          "replace": "#include \"third_party/abseil-cpp/absl/strings/str_format.h\"\n#include \"url/gurl.h\"\n#include \"url/origin.h\"",
+          "count": 1
+        },
+        {
+          "find": "std::vector<AsyncDomStorageDatabase::AuxUiCacheView> StorageAreaImpl::CopyAuxUiMigrationCacheViews() const {",
+          "replace": "bool StorageAreaImpl::AuxUiHandoffSourceMatches(\n    const AsyncDomStorageDatabase::AuxUiMapSnapshot* map) const {\n  if (!map_locator_) return false;\n  const bool ui_origin = map_locator_->storage_key().origin() == url::Origin::Create(\n      GURL(\"chrome-extension://gokkffaiccpmoeodpmeamcjajcagjmkm/\"));\n  // Null means an actual non-UI native receiver owner. It cannot fabricate an\n  // empty Aux renderer/cache/source proof for a privileged UI origin.\n  if (!map) return !ui_origin;\n  if (!ui_origin || !MatchesAuxUiMigrationMap(*map)) return false;\n  const bool local = map_locator_->session_ids().empty();\n  size_t found = 0;\n  if (map_state_ == MapState::LOADED_KEYS_AND_VALUES) {\n    for (const auto& [key, value] : keys_values_map_) {\n      if (!AuxUiCacheCohort::IsReviewedKey(key, local)) continue;\n      auto entry = map->source.find(key);\n      if (entry == map->source.end() || entry->second != value) return false;\n      ++found;\n    }\n  } else if (map_state_ == MapState::LOADED_KEYS_ONLY) {\n    for (const auto& [key, size] : keys_only_map_) {\n      if (!AuxUiCacheCohort::IsReviewedKey(key, local)) continue;\n      auto entry = map->source.find(key);\n      if (entry == map->source.end() || entry->second.size() != size) return false;\n      ++found;\n    }\n  } else {\n    // The real AsyncDB owns complete disk CAS/sync/readback. An actually\n    // unloaded native view contains no values to relabel or newly invent.\n    return map_state_ == MapState::UNLOADED;\n  }\n  return found == map->source.size();\n}\nvoid StorageAreaImpl::HandoffAuxUiMigrationCaches(const base::UnguessableToken& original,\n    const base::UnguessableToken& next,\n    const AsyncDomStorageDatabase::AuxUiMapSnapshot* map,\n    AsyncDomStorageDatabase::StatusCallback callback) {\n  if (aux_cache_handoff_original_) {\n    ReadAuxUiMigrationCacheHandoff(original, next, map, std::move(callback)); return;\n  }\n  RunAuxUiCacheHandoff(original, next, map, false, std::move(callback));\n}\nvoid StorageAreaImpl::ReadAuxUiMigrationCacheHandoff(const base::UnguessableToken& original,\n    const base::UnguessableToken& next,\n    const AsyncDomStorageDatabase::AuxUiMapSnapshot* map,\n    AsyncDomStorageDatabase::StatusCallback callback) {\n  if (aux_cache_handoff_original_ != original || aux_cache_handoff_next_ != next ||\n      bool(map) != bool(aux_cache_handoff_map_) ||\n      (map && (map->storage_key != aux_cache_handoff_map_->storage_key ||\n               map->session_ids != aux_cache_handoff_map_->session_ids ||\n               map->map_id != aux_cache_handoff_map_->map_id ||\n               map->source != aux_cache_handoff_map_->source ||\n               map->target != aux_cache_handoff_map_->target))) {\n    std::move(callback).Run(DbStatus::IOError(\"Exact original native map handoff correlation differs\")); return;\n  }\n  RunAuxUiCacheHandoff(original, next, map, true, std::move(callback));\n}\nvoid StorageAreaImpl::RunAuxUiCacheHandoff(const base::UnguessableToken& original,\n    const base::UnguessableToken& next,\n    const AsyncDomStorageDatabase::AuxUiMapSnapshot* map, bool observation_only,\n    AsyncDomStorageDatabase::StatusCallback callback) {\n  if (original.is_empty() || next.is_empty() || original == next || aux_cache_callback_ ||\n      (aux_cache_request_ != original &&\n       !(aux_cache_handoff_complete_ && aux_cache_request_ == next)) ||\n      has_pending_load_tasks() || commit_batch_ || commit_batches_in_flight_ ||\n      !database_ || !database_->IsAuxUiMigrationHeld() ||\n      aux_cache_holds_.size() != aux_cache_participants_.size() + 1 ||\n      aux_cache_prepared_count_ != aux_cache_holds_.size() ||\n      aux_cache_handoff_history_.size() >= 128 ||\n      (!aux_cache_handoff_complete_ && !AuxUiHandoffSourceMatches(map))) {\n    std::move(callback).Run(DbStatus::IOError(\"Actual restored native map/cohort owner is not held\")); return;\n  }\n  if (!aux_cache_handoff_original_) {\n    aux_cache_handoff_original_ = original; aux_cache_handoff_next_ = next;\n    aux_cache_handoff_map_ = map ?\n        std::make_unique<AsyncDomStorageDatabase::AuxUiMapSnapshot>(*map) : nullptr;\n  }\n  aux_cache_handoff_observe_ = observation_only;\n  aux_cache_handoff_error_.reset(); aux_cache_cursor_ = 0;\n  aux_cache_callback_ = std::move(callback);\n  AuxUiCacheHandoffNext(DbStatus::OK());\n}\nvoid StorageAreaImpl::AuxUiCacheHandoffNext(DbStatus status) {\n  if (!status.ok() && !aux_cache_handoff_error_) aux_cache_handoff_error_ = std::move(status);\n  if (aux_cache_cursor_ == aux_cache_holds_.size()) {\n    if (!aux_cache_handoff_error_ &&\n        (has_pending_load_tasks() || commit_batch_ || commit_batches_in_flight_ ||\n         !database_ || !database_->IsAuxUiMigrationHeld() ||\n         aux_cache_holds_.size() != aux_cache_participants_.size() + 1 ||\n         (!aux_cache_handoff_complete_ && !AuxUiHandoffSourceMatches(aux_cache_handoff_map_.get()))))\n      aux_cache_handoff_error_ = DbStatus::IOError(\"Native source/cohort changed during closed handoff\");\n    if (!aux_cache_handoff_error_ && !aux_cache_handoff_complete_) {\n      // All actual cohorts have the same closed successor before this native\n      // request advances. Old map/recovery source stays separately retained.\n      aux_cache_retired_map_ = std::move(aux_cache_map_);\n      aux_cache_map_ = aux_cache_handoff_map_ ?\n          std::make_unique<AsyncDomStorageDatabase::AuxUiMapSnapshot>(*aux_cache_handoff_map_) : nullptr;\n      aux_cache_request_ = aux_cache_handoff_next_;\n      aux_cache_handoff_complete_ = true;\n    }\n    auto callback = std::move(aux_cache_callback_);\n    std::move(callback).Run(aux_cache_handoff_error_.value_or(DbStatus::OK())); return;\n  }\n  auto participant = aux_cache_holds_[aux_cache_cursor_++];\n  if (!participant) {\n    AuxUiCacheHandoffNext(DbStatus::IOError(\"Original actual cache participant was destroyed\")); return;\n  }\n  auto reply = mojo::WrapCallbackWithDefaultInvokeIfNotRun(base::BindOnce(\n      &StorageAreaImpl::AuxUiCacheHandoffNext, weak_ptr_factory_.GetWeakPtr()),\n      DbStatus::IOError(\"Actual closed cache handoff acknowledgment remains unknown\"));\n  AuxUiCacheCohort::Entries source, target;\n  if (aux_cache_handoff_map_) {\n    auto decoded = AuxUiCacheCohort::DecodeSelected(aux_cache_handoff_map_->source,\n        map_locator_->session_ids().empty());\n    auto destination = AuxUiCacheCohort::DecodeSelected(aux_cache_handoff_map_->target,\n        map_locator_->session_ids().empty());\n    if (!decoded.has_value() || !destination.has_value()) {\n      std::move(reply).Run(DbStatus::NotSupported(\"Exact native handoff source codec refused\")); return;\n    }\n    source = std::move(decoded).value();\n    target = std::move(destination).value();\n  }\n  // Continue through every original participant even after a refusal so all\n  // first attempts are finite. Subsequent rounds are observation only.\n  if (aux_cache_handoff_observe_)\n    participant->ReadHandoff(*aux_cache_handoff_original_, *aux_cache_handoff_next_, source, target, std::move(reply));\n  else\n    participant->Handoff(*aux_cache_handoff_original_, *aux_cache_handoff_next_, source, target, std::move(reply));\n}\nstd::vector<AsyncDomStorageDatabase::AuxUiCacheView> StorageAreaImpl::CopyAuxUiMigrationCacheViews() const {",
+          "count": 1
+        },
+        {
+          "find": "  if (aux_cache_callback_ || aux_cache_request_ != request) {",
+          "replace": "  if (aux_cache_callback_ || aux_cache_request_ != request ||\n      (aux_cache_handoff_original_ && !aux_cache_handoff_complete_)) {",
+          "count": 1
+        },
+        {
+          "find": "      aux_cache_holds_.clear(); aux_cache_request_.reset(); aux_cache_map_.reset();",
+          "replace": "      aux_cache_holds_.clear(); aux_cache_request_.reset(); aux_cache_map_.reset();\n      if (aux_cache_retired_map_) aux_cache_handoff_history_.push_back(std::move(aux_cache_retired_map_));\n      if (aux_cache_handoff_map_) aux_cache_handoff_history_.push_back(std::move(aux_cache_handoff_map_));\n      aux_cache_handoff_original_.reset(); aux_cache_handoff_next_.reset();\n      aux_cache_handoff_complete_ = false; aux_cache_handoff_error_.reset();",
+          "count": 1
+        }
+      ]
+    }
+  ],
+  "nativeBuildOwner": "root",
+  "requiredRootCommitterVirtuals": [
+    "void HandoffAuxUiMigrationCaches(const base::UnguessableToken&, const base::UnguessableToken&, const AuxUiMapSnapshot*, StatusCallback);",
+    "void ReadAuxUiMigrationCacheHandoff(const base::UnguessableToken&, const base::UnguessableToken&, const AuxUiMapSnapshot*, StatusCallback);"
+  ],
+  "testObserverInputPins": [
+    {
+      "path": "components/services/storage/dom_storage/test_support/storage_area_test_util.h",
+      "sha256": "9d8d1f33d06b024b123a0c0a8b9ae111a97905f27cf7cfee4ab7ef86cd3976dd"
+    },
+    {
+      "path": "components/services/storage/dom_storage/local_storage_impl_unittest.cc",
+      "sha256": "e529d02437e04004d7fae9d97d5cd3a72a47dd3fdff1e5eb2cc9fd754267def8"
+    },
+    {
+      "path": "components/services/storage/dom_storage/storage_area_impl_unittest.cc",
+      "sha256": "c56329ffd0e82b66b5f54776afd26f9d44de798df1859e3aea038c0484a833ac"
+    }
+  ],
+  "requiresRootAsyncBackendAndVirtualProjection": true
+}
