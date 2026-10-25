@@ -1,0 +1,22 @@
+{
+  "format": "aux.memory-account-fixture.compile.v1",
+  "command": [
+    "/usr/bin/xcrun",
+    "swiftc",
+    "-parse-as-library",
+    "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-native-p256-envelope-port/source/EnvelopeRecords.swift",
+    "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/productivity-helper-compatibility-a40/source/AuxRegisteredMemoryAccountOwner.swift",
+    "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/productivity-helper-compatibility-a40/fixture/AccountIdentityFixture.swift",
+    "-o",
+    "/private/tmp/aux-registered-memory-account-fixture-a40"
+  ],
+  "sourcePin": {
+    "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-native-p256-envelope-port/source/EnvelopeRecords.swift": "e6b8b6bcae9f6b34cc5dfe757e5f0130297f1c4c3bae81636387a06e24dc34d6"
+  },
+  "run": [
+    "/private/tmp/aux-registered-memory-account-fixture-a40"
+  ],
+  "executed": false,
+  "readsRealState": false,
+  "nativeOwnerOperationsInvoked": false
+}

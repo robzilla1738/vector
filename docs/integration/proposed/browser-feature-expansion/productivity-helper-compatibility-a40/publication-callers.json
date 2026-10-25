@@ -1,0 +1,34 @@
+{
+  "format": "aux.memory-account-publication-callers.v1",
+  "files": [
+    {
+      "input": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/fresh-startup-milestone-a42/http-request-adapter-source/index.mjs",
+      "inputSha256": "ab8314dabe8f6b2100a587e93deed2bd496ffe0db56dfa3610bbcd08c70b9938",
+      "outputSha256": "1952d0efae3ba7fe13859df966df9f648a080b046f75575f5f34af7bb0f2af1d",
+      "anchors": [
+        {
+          "before": "function atomicWriteFileSync(Cn,ei){return auxBrokerBoundary().sync(()=>auxAtomicWriteFileSyncBody(Cn,ei))}",
+          "after": "function atomicWriteFileSync(Cn,ei){return auxBrokerBoundary().sync(()=>{\n if(process.platform==='darwin'&&Cn===ACCOUNTS_JSON_PATH){\n  const binding=process._linkedBinding('aux_owned_native');\n  const descriptor=Object.getOwnPropertyDescriptor(binding,'validateMemoryRegistryTarget');\n  if(!descriptor||typeof descriptor.value!=='function'||descriptor.writable||descriptor.configurable)\n   throw Error('Native memory/account publication coordination is unavailable');\n  Reflect.apply(descriptor.value,binding,[Buffer.from(ei,'utf8')]);\n }\n return auxAtomicWriteFileSyncBody(Cn,ei);\n})}",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "input": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/fresh-startup-milestone-a42/http-request-adapter-source/aux-native-entry.mjs",
+      "inputSha256": "1d1e348b5dbddfe3cf320238c1f357eece6f6364b5c3d97e01903687c05a48d1",
+      "outputSha256": "aaf9d179a97685b0f4a16cf82254c50ac253136a98d366c0ab094d2fa4735c39",
+      "anchors": [
+        {
+          "before": "function atomicWriteFileSync(Cn,ei){return auxBrokerBoundary().sync(()=>auxAtomicWriteFileSyncBody(Cn,ei))}",
+          "after": "function atomicWriteFileSync(Cn,ei){return auxBrokerBoundary().sync(()=>{\n if(process.platform==='darwin'&&Cn===ACCOUNTS_JSON_PATH){\n  const binding=process._linkedBinding('aux_owned_native');\n  const descriptor=Object.getOwnPropertyDescriptor(binding,'validateMemoryRegistryTarget');\n  if(!descriptor||typeof descriptor.value!=='function'||descriptor.writable||descriptor.configurable)\n   throw Error('Native memory/account publication coordination is unavailable');\n  Reflect.apply(descriptor.value,binding,[Buffer.from(ei,'utf8')]);\n }\n return auxAtomicWriteFileSyncBody(Cn,ei);\n})}",
+          "count": 1
+        }
+      ]
+    }
+  ],
+  "anchorCount": 2,
+  "actualAccountsLockRequired": true,
+  "pairBeforeEnablingHelper": true,
+  "entryFirstRefusalsAndBootstrapUnchanged": true,
+  "productExecuted": false
+}
