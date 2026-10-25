@@ -1,0 +1,301 @@
+{
+  "format": "aux.ordinary-fresh-startup.native-source.v1",
+  "baseComposition": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/native-phase-integration-a24/source-composition.json",
+  "baseCompositionSha256": "66ba7e76618b89739915b41c64ba78a8fa1c854d27d8a849312f28bf871b62b1",
+  "files": [
+    {
+      "path": "chrome/browser/aux/ordinary_startup_build.h",
+      "inputAbsent": true,
+      "output": "/Users/rcourson/.codex/worktrees/aux-features-navigation/web/docs/integration/proposed/browser-feature-expansion/ordinary-fresh-startup-a38/source/chrome/browser/aux/ordinary_startup_build.h",
+      "outputSha256": "e8844b6e7513a10fccfdb905ddc025316678c9ea33fbb4f3e4c1de5f5333dd3c"
+    },
+    {
+      "path": "chrome/app/chrome_exe_main_mac.cc",
+      "input": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/app/chrome_exe_main_mac.cc",
+      "inputSha256": "371c931919e7455f980e28e0dd8a201a1e86b4f01c23de660a85a75360f5bddc",
+      "output": "/Users/rcourson/.codex/worktrees/aux-features-navigation/web/docs/integration/proposed/browser-feature-expansion/ordinary-fresh-startup-a38/source/chrome/app/chrome_exe_main_mac.cc",
+      "outputSha256": "1180a9c03b45d83ed3eec63a3fac3bee3439582628f6d5f1268dff9d04ca89d8",
+      "anchors": [
+        {
+          "find": "#if defined(AUX_BROWSER_DESCENDANT_CUSTODY) && !defined(HELPER_EXECUTABLE)",
+          "replace": "#if defined(AUX_BROWSER_DESCENDANT_CUSTODY) && !defined(HELPER_EXECUTABLE) && !defined(AUX_BROWSER_ONLY_NATIVE_STARTUP)",
+          "count": 2
+        }
+      ]
+    },
+    {
+      "path": "base/process/mac/aux_browser_descendant_bridge.cc",
+      "input": "/private/tmp/aux-native-phase-overlay-20261024-a24/base/process/mac/aux_browser_descendant_bridge.cc",
+      "inputSha256": "f55420ae4a34ceb5dedc485edf1f65117500274e45280073e4c4482539f27826",
+      "output": "/Users/rcourson/.codex/worktrees/aux-features-navigation/web/docs/integration/proposed/browser-feature-expansion/ordinary-fresh-startup-a38/source/base/process/mac/aux_browser_descendant_bridge.cc",
+      "outputSha256": "b152568ec7a43eac2ca17eb496406746e6c5c63de3df2afa31a62479f26b06d1",
+      "anchors": [
+        {
+          "find": "#include <unistd.h>\nnamespace {",
+          "replace": "#include <unistd.h>\n#if !defined(AUX_BROWSER_ONLY_NATIVE_STARTUP)\nnamespace {",
+          "count": 1
+        },
+        {
+          "find": "}\nextern \"C\" __attribute__((visibility(\"default\")))",
+          "replace": "}\n#endif\nextern \"C\" __attribute__((visibility(\"default\")))",
+          "count": 1
+        },
+        {
+          "find": "  return getpid()==kBrowserImageProcess?&kBridge:nullptr;",
+          "replace": "#if defined(AUX_BROWSER_ONLY_NATIVE_STARTUP)\n  // ES is unavailable in this explicit ordinary build. Optional child custody\n  // must remain unavailable, never report a fake settled stream.\n  return nullptr;\n#else\n  return getpid()==kBrowserImageProcess?&kBridge:nullptr;\n#endif",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "base/BUILD.gn",
+      "input": "/private/tmp/aux-native-phase-overlay-20261024-a24/base/BUILD.gn",
+      "inputSha256": "f5ecbd00c9664ab5a4bffded070536dada339de82bc71a876e41427d5d6bb1a8",
+      "output": "/Users/rcourson/.codex/worktrees/aux-features-navigation/web/docs/integration/proposed/browser-feature-expansion/ordinary-fresh-startup-a38/source/base/BUILD.gn",
+      "outputSha256": "09261d8c8d097ea1ef46e80f354268b0b7b9c106dc6d8998f030d3da332d377c",
+      "anchors": [
+        {
+          "find": "  source_set(\"aux_browser_descendant_engine\") {",
+          "replace": "  source_set(\"aux_browser_descendant_engine\") {\n    defines = [ \"AUX_BROWSER_ONLY_NATIVE_STARTUP=1\" ]",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "chrome/BUILD.gn",
+      "input": "/private/tmp/aux-native-phase-overlay-20261024-a24/chrome/BUILD.gn",
+      "inputSha256": "0b97bafecccd7310d4273def283cefb795deb277a5641c2ccd37665948cfc627",
+      "output": "/Users/rcourson/.codex/worktrees/aux-features-navigation/web/docs/integration/proposed/browser-feature-expansion/ordinary-fresh-startup-a38/source/chrome/BUILD.gn",
+      "outputSha256": "011f0446378ecf4f22e28088e4ec43166c7ae22fc77bcb30ac091806f5f929a8",
+      "anchors": [
+        {
+          "find": "    if (enable_aux_browser) {\n      sources += [ \"app/aux_packaged_state_identity.h\" ]",
+          "replace": "    if (enable_aux_browser) {\n      deps += [ \"//chrome/browser/aux:platform\" ]\n      sources += [ \"app/aux_packaged_state_identity.h\" ]",
+          "count": 1
+        },
+        {
+          "find": "      defines = [ \"AUX_BROWSER_DESCENDANT_CUSTODY\" ]",
+          "replace": "      defines = [ \"AUX_BROWSER_DESCENDANT_CUSTODY\", \"AUX_BROWSER_ONLY_NATIVE_STARTUP=1\" ]",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/aux/BUILD.gn",
+      "input": "/private/tmp/aux-native-phase-overlay-20261024-a24/chrome/browser/aux/BUILD.gn",
+      "inputSha256": "fa833a4133cb298cb204b7c18d1e079bbcda0625bd4b547ece5f97ae2df420de",
+      "output": "/Users/rcourson/.codex/worktrees/aux-features-navigation/web/docs/integration/proposed/browser-feature-expansion/ordinary-fresh-startup-a38/source/chrome/browser/aux/BUILD.gn",
+      "outputSha256": "4d8702a447a0c666dec5e4d07819c6be19c2a1f2b144f8997ced1cf2ae989f27",
+      "anchors": [
+        {
+          "find": "  sources = [\n    \"feature_store/feature_write_participant.cc\",",
+          "replace": "  sources = [\n    \"ordinary_startup_build.h\",\n    \"feature_store/feature_write_participant.cc\",",
+          "count": 1
+        },
+        {
+          "find": "  if (is_mac) {\n    sources += [",
+          "replace": "  if (is_mac) {\n    defines = [ \"AUX_BROWSER_ONLY_NATIVE_STARTUP=1\" ]\n    deps += [ \"//chrome/browser:buildflags\" ]\n    sources += [",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "chrome/app/aux_packaged_state_identity.h",
+      "input": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/app/aux_packaged_state_identity.h",
+      "inputSha256": "c4bce5f91357457ac7108a20a058a7f34816803ac2f90d94e7c502e44d489dd7",
+      "output": "/Users/rcourson/.codex/worktrees/aux-features-navigation/web/docs/integration/proposed/browser-feature-expansion/ordinary-fresh-startup-a38/source/chrome/app/aux_packaged_state_identity.h",
+      "outputSha256": "e1cd9592cf65ac2dd88f9d1979d8eabd269870b90a2b1164bc8f01e6305cdb7e",
+      "anchors": [
+        {
+          "find": "  // Deliberate unconditional refusal: no acceptance Boolean, environment flag\n  // or command-line override exists for state2 (or a future unknown version).",
+          "replace": "  // Compatibility builds still refuse state2. The distinct compiled ordinary\n  // package mode below only permits attempting genuine native admission.",
+          "count": 1
+        },
+        {
+          "find": "  return state == 1 && (profile == \"compatibility\" || profile == \"aux-v1\");",
+          "replace": "#if defined(AUX_BROWSER_ONLY_NATIVE_STARTUP)\n  // This only permits ATTEMPTING actual ordinary native admission. It does not\n  // accept legacy state, settle migration, or mint any startup authority.\n  const auto* mode = marker->FindString(\"nativeStartupMode\");\n  return state == 2 && profile == \"aux-v1\" && mode && *mode == \"ordinary-fresh-v1\";\n#else\n  return state == 1 && (profile == \"compatibility\" || profile == \"aux-v1\");\n#endif",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "chrome/app/chrome_main_delegate.cc",
+      "input": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/app/chrome_main_delegate.cc",
+      "inputSha256": "c505d4aae2719447e7aa2b3b652cd267b136d74ccc44ce087fbb90252cfb0708",
+      "output": "/Users/rcourson/.codex/worktrees/aux-features-navigation/web/docs/integration/proposed/browser-feature-expansion/ordinary-fresh-startup-a38/source/chrome/app/chrome_main_delegate.cc",
+      "outputSha256": "670ec5a45659f3ccd4a5e5cd42b3d667c55ad710e52ec569399420d27760ee1a",
+      "anchors": [
+        {
+          "find": "#include \"chrome/browser/buildflags.h\"  // nogncheck",
+          "replace": "#include \"chrome/browser/buildflags.h\"  // nogncheck\n#include \"chrome/browser/aux/ordinary_startup_build.h\"\n#if BUILDFLAG(IS_MAC) && defined(AUX_BROWSER_ONLY_NATIVE_STARTUP)\n#include <algorithm>\n#include <string_view>\n#include <fcntl.h>\n#include <sys/stat.h>\n#include <unistd.h>\n#include \"base/files/scoped_file.h\"\n#include \"chrome/browser/aux/AuxBrowserPrivateRoots.h\"\n#include \"chrome/browser/aux/AuxNativeParentColdLaunch.h\"\n#endif",
+          "count": 1
+        },
+        {
+          "find": "// Initializes the user data dir. Must be called before InitializeLocalState().",
+          "replace": "#if BUILDFLAG(IS_MAC) && defined(AUX_BROWSER_ONLY_NATIVE_STARTUP)\n// This path must already exist. No default, policy redirect, symlink expansion,\n// accepted-startup record or directory creation selects an ordinary root.\nbool ValidateOrdinaryUserDataSelection(base::CommandLine* command_line) {\n  if (!command_line || !command_line->HasSwitch(switches::kUserDataDir) ||\n      command_line->HasSwitch(switches::kDiskCacheDir) || command_line->HasSwitch(switches::kProfileDirectory)) return false;\n  const auto path = command_line->GetSwitchValuePath(switches::kUserDataDir);\n  if (path.empty() || !path.IsAbsolute() || path.ReferencesParent() ||\n      path.value() == \"/\" || base::MakeAbsoluteFilePath(path) != path) return false;\n  constexpr std::string_view prefix = \"/private/tmp/aux-fresh-browser-\";\n  constexpr std::string_view suffix = \"/home/Library/Application Support/Aux\";\n  const std::string_view named = path.value();\n  if (!named.starts_with(prefix) || !named.ends_with(suffix) ||\n      named.size() <= prefix.size() + suffix.size()) return false;\n  const auto scope = named.substr(prefix.size(), named.size() - prefix.size() - suffix.size());\n  if (scope.size() > 128 || std::ranges::any_of(scope, [](unsigned char ch) {\n        return !base::IsAsciiAlpha(ch) && !base::IsAsciiDigit(ch) && ch != '-' && ch != '_';\n      })) return false;\n  auto policy_path = path;\n  policy::path_parser::CheckUserDataDirPolicy(&policy_path);\n  if (policy_path != path) return false;\n  base::ScopedFD descriptor(open(path.value().c_str(), O_RDONLY | O_DIRECTORY | O_NOFOLLOW | O_CLOEXEC | O_NONBLOCK));\n  struct stat identity{};\n  if (!descriptor.is_valid() || fstat(descriptor.get(), &identity) != 0 ||\n      !S_ISDIR(identity.st_mode) || identity.st_uid != geteuid() || (identity.st_mode & 0077)) return false;\n  const auto app_data = path.DirName();\n  const auto home = app_data.DirName().DirName();\n  const auto cache = home.AppendASCII(\"Library/Caches\");\n  const auto private_existing = [](const base::FilePath& candidate) {\n    if (base::MakeAbsoluteFilePath(candidate) != candidate) return false;\n    base::ScopedFD held(open(candidate.value().c_str(), O_RDONLY | O_DIRECTORY | O_NOFOLLOW | O_CLOEXEC | O_NONBLOCK));\n    struct stat value{};\n    return held.is_valid() && fstat(held.get(), &value) == 0 && S_ISDIR(value.st_mode) &&\n        value.st_uid == geteuid() && !(value.st_mode & 0077);\n  };\n  if (!private_existing(home) || !private_existing(app_data) || !private_existing(cache) ||\n      !base::PathService::OverrideAndCreateIfNeeded(base::DIR_HOME, home, true, false) ||\n      !base::PathService::OverrideAndCreateIfNeeded(base::DIR_APP_DATA, app_data, true, false) ||\n      !base::PathService::OverrideAndCreateIfNeeded(base::DIR_CACHE, cache, true, false) ||\n      !base::PathService::OverrideAndCreateIfNeeded(chrome::DIR_USER_DATA, path, true, false)) return false;\n  base::FilePath selected;\n  if (!base::PathService::Get(chrome::DIR_USER_DATA, &selected) || selected != path) return false;\n  base::ScopedFD current(open(path.value().c_str(), O_RDONLY | O_DIRECTORY | O_NOFOLLOW | O_CLOEXEC | O_NONBLOCK));\n  struct stat after{};\n  return current.is_valid() && fstat(current.get(), &after) == 0 &&\n      identity.st_dev == after.st_dev && identity.st_ino == after.st_ino &&\n      identity.st_uid == after.st_uid && identity.st_mode == after.st_mode;\n}\n#endif\n\n// Initializes the user data dir. Must be called before InitializeLocalState().",
+          "count": 1
+        },
+        {
+          "find": "void InitializeUserDataDir(base::CommandLine* command_line) {",
+          "replace": "void InitializeUserDataDir(base::CommandLine* command_line) {\n#if BUILDFLAG(IS_MAC) && defined(AUX_BROWSER_ONLY_NATIVE_STARTUP)\n  CHECK(ValidateOrdinaryUserDataSelection(command_line));\n  return;\n#endif",
+          "count": 1
+        },
+        {
+          "find": "#if !defined(BUILDING_CHROME_RENDERER)\n  if (!aux::development_startup::Apply()) {",
+          "replace": "#if !defined(BUILDING_CHROME_RENDERER) && !defined(AUX_BROWSER_ONLY_NATIVE_STARTUP)\n  if (!aux::development_startup::Apply()) {",
+          "count": 1
+        },
+        {
+          "find": "std::optional<int> ChromeMainDelegate::BasicStartupComplete() {",
+          "replace": "std::optional<int> ChromeMainDelegate::BasicStartupComplete() {\n#if BUILDFLAG(IS_MAC) && BUILDFLAG(ENABLE_AUX_BROWSER) && defined(AUX_BROWSER_ONLY_NATIVE_STARTUP) && !defined(BUILDING_CHROME_RENDERER)\n  auto* ordinary_command = base::CommandLine::ForCurrentProcess();\n  if (ordinary_command->GetSwitchValueASCII(switches::kProcessType).empty()) {\n    // Before Crashpad, logging, histograms, Local State or singleton writes.\n    // Only an explicit existing private native path is eligible for the exact\n    // daemon/root/generation receipt below; there is no historical acceptance.\n    if (!aux::state_identity::PackagedIdentityAllowsStartup() ||\n        !ValidateOrdinaryUserDataSelection(ordinary_command) ||\n        !aux::peer::PrepareBrowserPrivateRootsBeforeProfileIO() ||\n        aux::peer::StartSealedNativeDaemonBeforeProfiles().route != aux::peer::SelectedStateHomeRoute::current ||\n        !aux::peer::AuthorizeNativeBrowserStartupBeforeLocalState()) return 1;\n  }\n#endif",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/metrics/chrome_feature_list_creator.cc",
+      "input": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/metrics/chrome_feature_list_creator.cc",
+      "inputSha256": "7a0355ec29bdd62808d96c81d20ab718cef16d9c8650d1c9bf1305892569f621",
+      "output": "/Users/rcourson/.codex/worktrees/aux-features-navigation/web/docs/integration/proposed/browser-feature-expansion/ordinary-fresh-startup-a38/source/chrome/browser/metrics/chrome_feature_list_creator.cc",
+      "outputSha256": "9fea4389dd067c932f591f84349444fd9f8348d6d97eb1ea242115c442af0d06",
+      "anchors": [
+        {
+          "find": "#include \"chrome/browser/buildflags.h\"",
+          "replace": "#include \"chrome/browser/buildflags.h\"\n#include \"chrome/browser/aux/ordinary_startup_build.h\"",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/chrome_browser_main.cc",
+      "input": "/private/tmp/aux-native-phase-overlay-20261024-a24/chrome/browser/chrome_browser_main.cc",
+      "inputSha256": "4b97ab390a605a35e5f6e580d106d157aaeff95e7eaf64996480abe206623098",
+      "output": "/Users/rcourson/.codex/worktrees/aux-features-navigation/web/docs/integration/proposed/browser-feature-expansion/ordinary-fresh-startup-a38/source/chrome/browser/chrome_browser_main.cc",
+      "outputSha256": "b398db8a560746e2d4bb256c1eac67145bdf6572776891f43ae4eda7cf8553a1",
+      "anchors": [
+        {
+          "find": "#include \"chrome/browser/aux/browser_platform.h\"",
+          "replace": "#include \"chrome/browser/aux/browser_platform.h\"\n#include \"chrome/browser/aux/ordinary_startup_build.h\"",
+          "count": 1
+        },
+        {
+          "find": "#if BUILDFLAG(ENABLE_AUX_BROWSER) && defined(AUX_SEALED_NATIVE_COLD_ENTRY) && BUILDFLAG(IS_MAC)",
+          "replace": "#if BUILDFLAG(ENABLE_AUX_BROWSER) && defined(AUX_SEALED_NATIVE_COLD_ENTRY) && BUILDFLAG(IS_MAC) && !defined(AUX_BROWSER_ONLY_NATIVE_STARTUP)",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/aux/AuxSelectedStateHome.cc",
+      "input": "/private/tmp/aux-native-phase-overlay-20261024-a24/chrome/browser/aux/AuxSelectedStateHome.cc",
+      "inputSha256": "d92dabe6b5a9eb60034c8cf891b5396fb4663b666d005f21b043a3ade5ca3109",
+      "output": "/Users/rcourson/.codex/worktrees/aux-features-navigation/web/docs/integration/proposed/browser-feature-expansion/ordinary-fresh-startup-a38/source/chrome/browser/aux/AuxSelectedStateHome.cc",
+      "outputSha256": "3e428cc87add669fff579ac0be8baaab3c278210047514cbe2e0ed5989c32271",
+      "anchors": [
+        {
+          "find": "    if (!owner->BindBrowserDescendantScope(generation)) return false;",
+          "replace": "#if !defined(AUX_BROWSER_ONLY_NATIVE_STARTUP)\n    if (!owner->BindBrowserDescendantScope(generation)) return false;\n#endif",
+          "count": 1
+        },
+        {
+          "find": "DaemonAuthorityReply ExchangeNativeSelectedUiCaptureFrame(std::span<const uint8_t> frame) {",
+          "replace": "DaemonAuthorityReply ExchangeNativeSelectedUiCaptureFrame(std::span<const uint8_t> frame) {\n#if defined(AUX_BROWSER_ONLY_NATIVE_STARTUP)\n  // This bounded ordinary mode has no migration/privileged drain authority.\n  return {DaemonAuthorityStatus::refused, {}};\n#else",
+          "count": 1
+        },
+        {
+          "find": "  return reply;\n}\nstd::optional<UiStorageMigrationOwnerAck> AcceptNativeSelectedUiMigrationCompletion(",
+          "replace": "  return reply;\n#endif\n}\nstd::optional<UiStorageMigrationOwnerAck> AcceptNativeSelectedUiMigrationCompletion(",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/aux/AuxOwnedNativePeerChild.cc",
+      "input": "/private/tmp/aux-native-phase-overlay-20261024-a24/chrome/browser/aux/AuxOwnedNativePeerChild.cc",
+      "inputSha256": "0f1ff7a11c2493fc03b9df20fdfc114e6e3ddac89d9b3f9ddc9c88614a790e56",
+      "output": "/Users/rcourson/.codex/worktrees/aux-features-navigation/web/docs/integration/proposed/browser-feature-expansion/ordinary-fresh-startup-a38/source/chrome/browser/aux/AuxOwnedNativePeerChild.cc",
+      "outputSha256": "079c3011091f6528b1de26400dcf9608f0b3eb17e0a6b56b2825061dd8416b79",
+      "anchors": [
+        {
+          "find": "  state->descendant_ticket = aux::browser_custody::Reserve(aux::browser_custody::Family::kDaemon);",
+          "replace": "#if !defined(AUX_BROWSER_ONLY_NATIVE_STARTUP)\n  state->descendant_ticket = aux::browser_custody::Reserve(aux::browser_custody::Family::kDaemon);",
+          "count": 1
+        },
+        {
+          "find": "  State::RetainBeforeLaunch(state);\n  state->observation.launch_attempted = true;",
+          "replace": "#endif\n  // Ordinary mode still owns the real waitable child, Mach endpoint, audit/code\n  // binding, birth observation and sole reaper. It has no ES ticket or CLEAN.\n  State::RetainBeforeLaunch(state);\n  state->observation.launch_attempted = true;",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/ui/aux_browser_shutdown_drain.cc",
+      "input": "/private/tmp/aux-native-phase-overlay-20261024-a24/chrome/browser/ui/aux_browser_shutdown_drain.cc",
+      "inputSha256": "8883912416877f5f7d1a73ec14c76e128b2c32ff5bdf4a3f5abbd75087647cde",
+      "output": "/Users/rcourson/.codex/worktrees/aux-features-navigation/web/docs/integration/proposed/browser-feature-expansion/ordinary-fresh-startup-a38/source/chrome/browser/ui/aux_browser_shutdown_drain.cc",
+      "outputSha256": "bf4be99ca5e72171beeb794e4cccbe4cfabedb4cbe578c24a6f890a1cdac76c8",
+      "anchors": [
+        {
+          "find": "#include \"chrome/browser/ui/aux_browser_shutdown_drain.h\"",
+          "replace": "#include \"chrome/browser/ui/aux_browser_shutdown_drain.h\"\n#include \"chrome/browser/aux/ordinary_startup_build.h\"",
+          "count": 1
+        },
+        {
+          "find": "peer::BrowserDrainReport Report(uint64_t expected_generation,",
+          "replace": "[[maybe_unused]] peer::BrowserDrainReport Report(uint64_t expected_generation,",
+          "count": 1
+        },
+        {
+          "find": "void Acknowledged(const peer::BrowserDrainReport& report) {",
+          "replace": "[[maybe_unused]] void Acknowledged(const peer::BrowserDrainReport& report) {",
+          "count": 1
+        },
+        {
+          "find": "    state.provider_failed = !peer::RegisterBrowserDrainReportProvider(&Report, &Acknowledged) ||\n        !content::aux_migration::RegisterBrowserShutdownCompletion(&FinishNativeBrowserShutdownDrain);",
+          "replace": "#if defined(AUX_BROWSER_ONLY_NATIVE_STARTUP)\n    // Keep the real content teardown callback, without privileged ES reporting.\n    state.provider_failed = !content::aux_migration::RegisterBrowserShutdownCompletion(&FinishNativeBrowserShutdownDrain);\n#else\n    state.provider_failed = !peer::RegisterBrowserDrainReportProvider(&Report, &Acknowledged) ||\n        !content::aux_migration::RegisterBrowserShutdownCompletion(&FinishNativeBrowserShutdownDrain);\n#endif",
+          "count": 1
+        },
+        {
+          "find": "  const auto deadline = base::TimeTicks::Now() + base::Seconds(10);\n  for (;;) {",
+          "replace": "#if defined(AUX_BROWSER_ONLY_NATIVE_STARTUP)\n  // Called only after actual normal Profile/content/thread/session teardown.\n  // Peer close ends this owned ordinary daemon session; it is not ES-CLEAN.\n  const auto ordinary_deadline = base::TimeTicks::Now() + base::Seconds(5);\n  for (;;) {\n    const auto closed = peer::CloseNativeSelectedStateHome();\n    if (closed.child_close && closed.child_close->exit_observed_and_reaped &&\n        !closed.child_close->exit_ownership_unknown && !closed.monitor_running &&\n        !closed.monitor_join_pending && !closed.initialization_pending && !closed.active_reads) return;\n    if (base::TimeTicks::Now() >= ordinary_deadline) {\n      std::lock_guard<std::mutex> lock(state.mutex);\n      state.final_wait_exhausted = true;\n      return;  // Exact pending child custody remains unknown, never CLEAN.\n    }\n    base::PlatformThread::Sleep(base::Milliseconds(25));\n  }\n#else\n  const auto deadline = base::TimeTicks::Now() + base::Seconds(10);\n  for (;;) {",
+          "count": 1
+        },
+        {
+          "find": "    base::PlatformThread::Sleep(base::Milliseconds(25));\n  }\n}",
+          "replace": "    base::PlatformThread::Sleep(base::Milliseconds(25));\n  }\n#endif\n}",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/extensions/api/aux_browser_preferences/aux_browser_preferences_api.cc",
+      "input": "/private/tmp/aux-native-phase-overlay-20261024-a24/chrome/browser/extensions/api/aux_browser_preferences/aux_browser_preferences_api.cc",
+      "inputSha256": "fa35ca03b8456878aea05bd3501b19239e0248970872e03ffdd83bd68e5ef5b1",
+      "output": "/Users/rcourson/.codex/worktrees/aux-features-navigation/web/docs/integration/proposed/browser-feature-expansion/ordinary-fresh-startup-a38/source/chrome/browser/extensions/api/aux_browser_preferences/aux_browser_preferences_api.cc",
+      "outputSha256": "c000a7099603e3d10e62c7049a5885f567746d8a834fd6fa95a4700f9211cd8e",
+      "anchors": [
+        {
+          "find": "#include \"chrome/browser/aux/ui_storage_migration_controller.h\"",
+          "replace": "#include \"chrome/browser/aux/ui_storage_migration_controller.h\"\n#include \"chrome/browser/aux/ordinary_startup_build.h\"",
+          "count": 1
+        },
+        {
+          "find": "    if (kind && *kind == \"prepare-ui-state-upgrade\") {",
+          "replace": "    if (kind && *kind == \"prepare-ui-state-upgrade\") {\n#if defined(AUX_BROWSER_ONLY_NATIVE_STARTUP)\n      return RespondNow(Error(\"UI state migration is unavailable in ordinary local mode\"));\n#else",
+          "count": 1
+        },
+        {
+          "find": "      return did_respond() ? AlreadyResponded() : RespondLater();\n    }\n    CommitAuxCommandAsync",
+          "replace": "      return did_respond() ? AlreadyResponded() : RespondLater();\n#endif\n    }\n    CommitAuxCommandAsync",
+          "count": 1
+        }
+      ]
+    }
+  ],
+  "ordinaryMode": "ordinary-fresh-v1",
+  "macro": "AUX_BROWSER_ONLY_NATIVE_STARTUP=1",
+  "privilegedClean": false,
+  "migrationEnabled": false,
+  "actualNativeCheckoutChanged": false,
+  "productExecuted": false
+}

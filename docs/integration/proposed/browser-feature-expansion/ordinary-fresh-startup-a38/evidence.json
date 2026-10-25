@@ -1,0 +1,14 @@
+{
+  "format": "aux.ordinary-fresh-startup.source-evidence.v1",
+  "exactReplay": "passed",
+  "files": 14,
+  "rules": 33,
+  "replacements": 34,
+  "lexicalScopeCases": 6,
+  "scopeCases": "passed; not native authority",
+  "earlyStartupOrdering": "source checked",
+  "actualNativeCompile": "not run by lane; root owns",
+  "actualAppAcceptance": "not run",
+  "privilegedCleanClaimed": false,
+  "nativeCheckoutChanged": false
+}
