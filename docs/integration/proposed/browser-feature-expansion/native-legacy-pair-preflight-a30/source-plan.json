@@ -1,0 +1,40 @@
+{
+  "format": "aux.native-legacy-pair-preflight-a30.v1",
+  "files": [
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/fresh-startup-milestone-a42/ordinary-storage-source/AuxFreshColdInstallerGuard.swift",
+      "inputSha256": "3d1d485ed55429faf10b13ab023c4c7ba0b07ddea6ef40245e9e1c10780d8f9a",
+      "outputSha256": "59c0366d89984e871ddbb043f06301453ec701d290cec7434330bcd656796f35",
+      "source": "docs/integration/proposed/browser-feature-expansion/native-legacy-pair-preflight-a30/source/AuxFreshColdInstallerGuard.swift",
+      "anchors": [
+        {
+          "find": "#if AUX_BROWSER_ONLY_NATIVE_STARTUP\n        let browserLifetime=try AuxOrdinaryBrowserLifetime.capture(peer:peer)\n        let browserAdmission=try AuxBrowserFreshRootAdmission.acquire(policy:policy,generation:data.generation,data:data.descriptor,cache:cache.descriptor,ordinaryBrowser:browserLifetime)\n#else\n        let browserAdmission=try AuxBrowserFreshRootAdmission.acquire(policy:policy,generation:data.generation,data:data.descriptor,cache:cache.descriptor)\n#endif\n",
+          "replace": "",
+          "count": 1
+        },
+        {
+          "find": "            try requireFreshParentInventory(policy:policy,parentFD:parent)\n            installer=openat(parent,installerName,O_RDWR|O_CREAT|O_NOFOLLOW|O_CLOEXEC|O_NONBLOCK,0o600)\n",
+          "replace": "            try requireFreshParentInventory(policy:policy,parentFD:parent)\n            try AuxNativeTaskLayout.preflightExistingPair(policy:policy,\n                retainedControlParent:parent,retainedTaskParent:taskParent)\n    #if AUX_BROWSER_ONLY_NATIVE_STARTUP\n            let browserLifetime=try AuxOrdinaryBrowserLifetime.capture(peer:peer)\n            let browserAdmission=try AuxBrowserFreshRootAdmission.acquire(policy:policy,generation:data.generation,data:data.descriptor,cache:cache.descriptor,ordinaryBrowser:browserLifetime)\n    #else\n            let browserAdmission=try AuxBrowserFreshRootAdmission.acquire(policy:policy,generation:data.generation,data:data.descriptor,cache:cache.descriptor)\n    #endif\n            installer=openat(parent,installerName,O_RDWR|O_CREAT|O_NOFOLLOW|O_CLOEXEC|O_NONBLOCK,0o600)\n",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/fresh-startup-milestone-a42/ordinary-storage-source/AuxNativeTaskLayout.swift",
+      "inputSha256": "2315edf78c8697ce6187f8a8ea0eab044d6b25c956479128d5b2bc8fcb017345",
+      "outputSha256": "b47d82371c835b031a4ddff02165c5b8d95dbe86a91ba5e0bfedb471f877dd8c",
+      "source": "docs/integration/proposed/browser-feature-expansion/native-legacy-pair-preflight-a30/source/AuxNativeTaskLayout.swift",
+      "anchors": [
+        {
+          "find": "    private static func binding(policy:",
+          "replace": "    // Read-only before browser lease markers are acquired. These descriptors\n    // come from the actual authenticated policy/native guard, never a path or\n    // caller readiness flag. Existing records must prove the same real pair.\n    static func preflightExistingPair(policy:AuxAuthenticatedFreshBootstrapPolicy,\n        retainedControlParent:Int32,retainedTaskParent:Int32)throws {\n        try policy.revalidateCurrentIdentity()\n        let checked=try openAuthenticatedParent(policy:policy);defer{close(checked)}\n        try same(checked,retainedTaskParent)\n        try metadata(retainedControlParent,directory:true)\n        try pathIdentity(policy.contents.canonicalPrivateParent,retainedControlParent)\n        var control=stat(),task=stat()\n        let controlStatus=fstatat(retainedControlParent,AuxFreshNativeHome.reservationName,&control,AT_SYMLINK_NOFOLLOW)\n        guard controlStatus==0 || errno==ENOENT else{throw AuxFreshColdGuardError.io(errno)}\n        let taskStatus=fstatat(retainedTaskParent,reservationName,&task,AT_SYMLINK_NOFOLLOW)\n        guard taskStatus==0 || errno==ENOENT else{throw AuxFreshColdGuardError.io(errno)}\n        guard (controlStatus==0)==(taskStatus==0) else{throw AuxFreshColdBootstrapError.legacyOrUnknownExistingState}\n        if controlStatus != 0 {\n            try inventory(retainedTaskParent,allowed:[\".\",\"..\"])\n        }else{\n            let home=try AuxResumedFreshNativeHome.reopen(policy:policy,retainedParentDescriptor:retainedControlParent)\n            // Use the actual existing-only TaskLayout owner/codec. It verifies\n            // raw reservation bytes, scope, transaction, policy hash and home\n            // topology; create:false is private native flow and never replays.\n            let layout=try acquire(policy:policy,scope:home.scope,transaction:home.transactionId,\n                reservationHash:home.currentReservationSha256(),retainedTaskParent:retainedTaskParent,create:false)\n            try layout.revalidate();try home.validateRetainedIdentity()\n        }\n        try pathIdentity(policy.contents.canonicalPrivateParent,retainedControlParent)\n        try same(checked,retainedTaskParent);try policy.revalidateCurrentIdentity()\n    }\n    private static func binding(policy:",
+          "count": 1
+        }
+      ]
+    }
+  ],
+  "patch": "source.patch",
+  "readOnlyPreflightBeforeBrowserLease": true,
+  "cryptoOrAuthorityChecksChanged": false,
+  "nativeExecuted": false
+}

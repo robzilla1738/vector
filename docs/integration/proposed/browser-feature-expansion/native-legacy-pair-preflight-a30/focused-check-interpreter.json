@@ -1,0 +1,21 @@
+{
+  "format": "aux.legacy-pair-preflight.interpreter-check.v1",
+  "sourcePlanSha256": "0ddb4b101e4be699c314c498ffc816403a87243916b8d50dbfef5bb0f403e8de",
+  "harnessSha256": "a6bd76a0cb5fee0fd2c43586701084fe4f4f9838e29d4a63f58570972edc75c8",
+  "actualSources": {
+    "/private/tmp/aux-final-native-link/docs/integration/proposed/final-completion/fresh-owner/source/AuxFreshNativeHome.swift": "d7542cc9a3ec48de3af729fc8d5bdf90bf89daf8262b21b263995aeb012da12b",
+    "/private/tmp/aux-final-native-link/docs/integration/proposed/final-completion/fresh-owner/source/AuxResumedFreshNativeHome.swift": "81f659ea4f10b27f559628f9eebba2baacc4c8f3bd280eb5c6bbb8c10153485f",
+    "/private/tmp/aux-final-native-link/docs/integration/proposed/final-completion/fresh-owner/source/AuxNativeFreshReservationLeaseRegistry.swift": "9d52ce0da42fe7e1b5ba1aad0cb4b9c0849592dc894c7c725f11dd64229cb39d",
+    "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-native-p256-envelope-port/source/EnvelopeRecords.swift": "e6b8b6bcae9f6b34cc5dfe757e5f0130297f1c4c3bae81636387a06e24dc34d6",
+    "/Users/rcourson/.codex/worktrees/aux-features-organization/web/docs/integration/proposed/browser-feature-expansion/organization-launch-boundary-a28/AuxBrowserFreshRootAdmission.swift": "c6832180f3256dcf8a5dc96ad3437211f63f08dbfbfb015f013c01ec5a1e5b7c"
+  },
+  "countedAnchors": 3,
+  "independentPatchApplication": true,
+  "result": "PASS: old ordering mutates markers before rejection; six unknown/partial cases preserve every name/byte; matching and empty pair preflights read-only",
+  "fixtureAdapter": "Immutable synthetic policy/identity context only; actual retained-home/task codec, private constructors, record binding and filesystem methods unchanged. Native signatures/peer proof not exercised.",
+  "runner": "/usr/bin/swift",
+  "runnerWritesHostExecutable": false,
+  "compilerDefaultSigningPerformed": false,
+  "ownerStateAccessed": false,
+  "nativeProductExecuted": false
+}

@@ -1,0 +1,69 @@
+--- a/AuxFreshColdInstallerGuard.swift
++++ b/AuxFreshColdInstallerGuard.swift
+@@ -166,12 +166,6 @@
+         let data=try browserRoots.duplicate(role:1,peer:peer);defer{close(data.descriptor)}
+         let cache=try browserRoots.duplicate(role:2,peer:peer);defer{close(cache.descriptor)}
+         guard data.generation==cache.generation else{throw AuxFreshColdGuardError.path}
+-#if AUX_BROWSER_ONLY_NATIVE_STARTUP
+-        let browserLifetime=try AuxOrdinaryBrowserLifetime.capture(peer:peer)
+-        let browserAdmission=try AuxBrowserFreshRootAdmission.acquire(policy:policy,generation:data.generation,data:data.descriptor,cache:cache.descriptor,ordinaryBrowser:browserLifetime)
+-#else
+-        let browserAdmission=try AuxBrowserFreshRootAdmission.acquire(policy:policy,generation:data.generation,data:data.descriptor,cache:cache.descriptor)
+-#endif
+         let taskParent=try AuxNativeTaskLayout.openAuthenticatedParent(policy:policy)
+         var objectOwnsDescriptors=false
+         defer{if !objectOwnsDescriptors{close(taskParent)}}
+@@ -188,6 +182,14 @@
+             guard fstat(parent,&controlMetadata)==0,fstat(taskParent,&taskMetadata)==0,
+                   controlMetadata.st_dev != taskMetadata.st_dev || controlMetadata.st_ino != taskMetadata.st_ino else{throw AuxFreshColdGuardError.path}
+             try requireFreshParentInventory(policy:policy,parentFD:parent)
++            try AuxNativeTaskLayout.preflightExistingPair(policy:policy,
++                retainedControlParent:parent,retainedTaskParent:taskParent)
++    #if AUX_BROWSER_ONLY_NATIVE_STARTUP
++            let browserLifetime=try AuxOrdinaryBrowserLifetime.capture(peer:peer)
++            let browserAdmission=try AuxBrowserFreshRootAdmission.acquire(policy:policy,generation:data.generation,data:data.descriptor,cache:cache.descriptor,ordinaryBrowser:browserLifetime)
++    #else
++            let browserAdmission=try AuxBrowserFreshRootAdmission.acquire(policy:policy,generation:data.generation,data:data.descriptor,cache:cache.descriptor)
++    #endif
+             installer=openat(parent,installerName,O_RDWR|O_CREAT|O_NOFOLLOW|O_CLOEXEC|O_NONBLOCK,0o600)
+             guard installer>=0 else{throw AuxFreshColdGuardError.io(errno)}
+             try requirePrivate(installer,directory:false);try requireInstaller(parent:parent,fd:installer)
+--- a/AuxNativeTaskLayout.swift
++++ b/AuxNativeTaskLayout.swift
+@@ -30,6 +30,36 @@
+         guard fd>=0 else{throw AuxFreshColdGuardError.io(errno)}
+         do{try metadata(fd,directory:true);try pathIdentity(path,fd);try policy.revalidateCurrentIdentity();return fd}
+         catch{close(fd);throw error}
++    }
++    // Read-only before browser lease markers are acquired. These descriptors
++    // come from the actual authenticated policy/native guard, never a path or
++    // caller readiness flag. Existing records must prove the same real pair.
++    static func preflightExistingPair(policy:AuxAuthenticatedFreshBootstrapPolicy,
++        retainedControlParent:Int32,retainedTaskParent:Int32)throws {
++        try policy.revalidateCurrentIdentity()
++        let checked=try openAuthenticatedParent(policy:policy);defer{close(checked)}
++        try same(checked,retainedTaskParent)
++        try metadata(retainedControlParent,directory:true)
++        try pathIdentity(policy.contents.canonicalPrivateParent,retainedControlParent)
++        var control=stat(),task=stat()
++        let controlStatus=fstatat(retainedControlParent,AuxFreshNativeHome.reservationName,&control,AT_SYMLINK_NOFOLLOW)
++        guard controlStatus==0 || errno==ENOENT else{throw AuxFreshColdGuardError.io(errno)}
++        let taskStatus=fstatat(retainedTaskParent,reservationName,&task,AT_SYMLINK_NOFOLLOW)
++        guard taskStatus==0 || errno==ENOENT else{throw AuxFreshColdGuardError.io(errno)}
++        guard (controlStatus==0)==(taskStatus==0) else{throw AuxFreshColdBootstrapError.legacyOrUnknownExistingState}
++        if controlStatus != 0 {
++            try inventory(retainedTaskParent,allowed:[".",".."])
++        }else{
++            let home=try AuxResumedFreshNativeHome.reopen(policy:policy,retainedParentDescriptor:retainedControlParent)
++            // Use the actual existing-only TaskLayout owner/codec. It verifies
++            // raw reservation bytes, scope, transaction, policy hash and home
++            // topology; create:false is private native flow and never replays.
++            let layout=try acquire(policy:policy,scope:home.scope,transaction:home.transactionId,
++                reservationHash:home.currentReservationSha256(),retainedTaskParent:retainedTaskParent,create:false)
++            try layout.revalidate();try home.validateRetainedIdentity()
++        }
++        try pathIdentity(policy.contents.canonicalPrivateParent,retainedControlParent)
++        try same(checked,retainedTaskParent);try policy.revalidateCurrentIdentity()
+     }
+     private static func binding(policy:AuxAuthenticatedFreshBootstrapPolicy,scope:String,transaction:String,reservationHash:String)throws->(String,Data) {
+         guard UUID(uuidString:transaction)?.uuidString==transaction,
