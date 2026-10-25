@@ -1,0 +1,46 @@
+{
+  "format": "aux.native.counted-projection.v1",
+  "purpose": "A18 pending private profile services diagnostic; no pending guard bypass",
+  "nativeRoot": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src",
+  "files": [
+    {
+      "path": "chrome/browser/ui/aux_feature_lifecycle.h",
+      "inputSha256": "24afb23c687e5e6d36e012df349970e4e4ec338b0e8eb93f84887f0e40affa9c",
+      "outputSha256": "709216babc541428fa81a27583c8d3c61b43b2367567aa19e1b16f6e41e4f68e",
+      "source": "docs/integration/proposed/browser-feature-expansion/fresh-startup-milestone-a42/profile-pending-diagnostics-a18/source/chrome/browser/ui/aux_feature_lifecycle.h",
+      "anchors": [
+        {
+          "before": "bool IsAuxLocalFeatureWritePending(Profile* profile);",
+          "after": "// Data-only observations of the existing local feature gates. An empty snapshot\n// does not certify browser-wide quiescence or grant profile admission.\nstruct AuxLocalFeaturePending {\n  bool native_io = false;\n  bool organization = false;\n  bool feature_state = false;\n  bool files = false;\n  bool ui_migration = false;\n  bool pending() const {\n    return native_io || organization || feature_state || files || ui_migration;\n  }\n};\nAuxLocalFeaturePending GetAuxLocalFeaturePending(Profile* profile);\nbool IsAuxLocalFeatureWritePending(Profile* profile);",
+          "expectedCount": 1
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/ui/aux_feature_profile_owners.cc",
+      "inputSha256": "5ea144e35a91f8596289690f7456b404bf8d6c05f8b532709671dec6ee2a368c",
+      "outputSha256": "836149141c6c1bff0b1c85dd5750cb2a5ca16f4cadae4ba490324cd497068575",
+      "source": "docs/integration/proposed/browser-feature-expansion/fresh-startup-milestone-a42/profile-pending-diagnostics-a18/source/chrome/browser/ui/aux_feature_profile_owners.cc",
+      "anchors": [
+        {
+          "before": "bool IsAuxLocalFeatureWritePending(Profile* profile) {\n  if (!profile || !profile->IsRegularProfile() || profile->IsOffTheRecord()) return false;\n  return aux::features::IsNativeFeatureIoPendingForProfilePath(profile->GetPath()) ||\n      aux::organization::IsProfileOrganizationWritePending(profile) ||\n      aux::features::IsWritePending(profile) || aux::files::HasPendingWrite(profile) ||\n      aux::IsUiStorageMigrationPending(profile);\n}",
+          "after": "AuxLocalFeaturePending GetAuxLocalFeaturePending(Profile* profile) {\n  if (!profile || !profile->IsRegularProfile() || profile->IsOffTheRecord())\n    return {};\n  return {\n      .native_io = aux::features::IsNativeFeatureIoPendingForProfilePath(profile->GetPath()),\n      .organization = aux::organization::IsProfileOrganizationWritePending(profile),\n      .feature_state = aux::features::IsWritePending(profile),\n      .files = aux::files::HasPendingWrite(profile),\n      .ui_migration = aux::IsUiStorageMigrationPending(profile),\n  };\n}\nbool IsAuxLocalFeatureWritePending(Profile* profile) {\n  return GetAuxLocalFeaturePending(profile).pending();\n}",
+          "expectedCount": 1
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/ui/browser_window/internal/browser_window_features.cc",
+      "inputSha256": "5e7a0d95aabba0f87eaa0a0f9d73603c83e7d9717ba9a6e2842dbc3cb27319d7",
+      "outputSha256": "383ebec0e5e02fdcd53738ce2cffcebacae23485d0651ab625d5c7d754d3732e",
+      "source": "docs/integration/proposed/browser-feature-expansion/fresh-startup-milestone-a42/profile-pending-diagnostics-a18/source/chrome/browser/ui/browser_window/internal/browser_window_features.cc",
+      "anchors": [
+        {
+          "before": "  if (browser_ && (IsAuxLocalFeatureWritePending(browser_->GetProfile()) ||\n                   IsAuxLocalFeatureWritePending(target))) return false;",
+          "after": "  if (browser_) {\n    const auto source_pending = GetAuxLocalFeaturePending(browser_->GetProfile());\n    const auto target_pending = GetAuxLocalFeaturePending(target);\n    if (source_pending.pending() || target_pending.pending()) {\n      // Log the same observations that decide refusal, without profile paths,\n      // identifiers, URLs, draft contents, or a second pending-state query.\n      LOG(ERROR) << \"Aux profile transition rejected: readiness.private-services.pending\"\n                 << \" source(native_io=\" << source_pending.native_io\n                 << \",organization=\" << source_pending.organization\n                 << \",feature_state=\" << source_pending.feature_state\n                 << \",files=\" << source_pending.files\n                 << \",ui_migration=\" << source_pending.ui_migration << \")\"\n                 << \" target(native_io=\" << target_pending.native_io\n                 << \",organization=\" << target_pending.organization\n                 << \",feature_state=\" << target_pending.feature_state\n                 << \",files=\" << target_pending.files\n                 << \",ui_migration=\" << target_pending.ui_migration << \")\";\n      return false;\n    }\n  }",
+          "expectedCount": 1
+        }
+      ]
+    }
+  ]
+}

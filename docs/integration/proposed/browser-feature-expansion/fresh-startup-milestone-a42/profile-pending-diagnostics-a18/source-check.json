@@ -1,0 +1,10 @@
+{
+  "exactPinnedReplay": true,
+  "files": 3,
+  "anchors": 3,
+  "pendingUnionTruthTableCases": 32,
+  "nativeBuildRun": false,
+  "appRun": false,
+  "signing": false,
+  "guardBypass": false
+}
