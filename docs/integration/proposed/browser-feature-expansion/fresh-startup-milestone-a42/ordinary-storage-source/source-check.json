@@ -1,0 +1,12 @@
+{
+  "format": "aux.ordinary-storage.source-check.v1",
+  "sourceCount": 10,
+  "countedAnchors": 26,
+  "exactA13InputHashes": true,
+  "exactReplay": true,
+  "preprocessorBalance": true,
+  "fullSecretAuthorityMethodUnchanged": true,
+  "retainedJournalReadsNoCreateOrFsync": true,
+  "compiled": false,
+  "productExecuted": false
+}

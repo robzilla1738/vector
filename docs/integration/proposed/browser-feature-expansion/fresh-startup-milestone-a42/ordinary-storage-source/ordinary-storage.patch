@@ -1,0 +1,490 @@
+--- a/AuxSignedFreshBootstrapPolicyLoader.swift
++++ b/AuxSignedFreshBootstrapPolicyLoader.swift
+@@ -22,6 +22,11 @@
+         try revalidateCurrentIdentity()
+         return try AuxFreshNativeHome.create(inCanonicalPrivateParent:contents.canonicalPrivateParent)
+     }
++#if AUX_BROWSER_ONLY_NATIVE_STARTUP
++    func revalidateRetainedOrdinaryIdentity()throws {
++        try AuxSignedFreshBootstrapPolicyLoader.revalidateRetainedOrdinaryPolicy(self)
++    }
++#endif
+     // Native consumer revalidation; no captured bytes/Boolean substitute can
+     // authorize a policy, and this method grants no writer/provenance custody.
+     func revalidateCurrentIdentity()throws {
+@@ -105,6 +110,18 @@
+         ordinaryCodeLock.lock();defer{ordinaryCodeLock.unlock()}
+         if let current=ordinaryCode{try current.revalidate();return current}
+         let current=try OrdinaryCurrentCode();ordinaryCode=current;return current
++    }
++#endif
++#if AUX_BROWSER_ONLY_NATIVE_STARTUP
++    static func revalidateRetainedOrdinaryPolicy(_ policy:AuxAuthenticatedFreshBootstrapPolicy)throws {
++        guard getpid()==auxImagePreparationProcess else{throw AuxFreshBootstrapPolicyError.identity}
++        ordinaryCodeLock.lock()
++        guard let current=ordinaryCode else{ordinaryCodeLock.unlock();throw AuxFreshBootstrapPolicyError.identity}
++        ordinaryCodeLock.unlock()
++        guard policy.contents.role == .daemon,policy.contents.embeddedDaemon,
++              !policy.contents.includesPdf,!policy.contents.includesMacUtilities,policy.contents.ptyArtifacts == nil,
++              current.executablePath==policy.bundlePath+"/Contents/MacOS/"+policy.contents.role.executable else{throw AuxFreshBootstrapPolicyError.identity}
++        try current.revalidate()
+     }
+ #endif
+     private static func canonical(_ path:String)throws->String {
+--- a/AuxFreshColdInstallerGuard.swift
++++ b/AuxFreshColdInstallerGuard.swift
+@@ -2,6 +2,8 @@
+ import Foundation
+ import Darwin
+ import Security
++@_silgen_name("AuxInspectRetainedNativeParentConnection")
++private func inspectRetainedNativeParent(_ id:UInt64)->Int32
+ @_silgen_name("AuxCopyAuthenticatedBrowserDrainReport") private func copyAuthenticatedBrowserDrainReport(_ handle:UInt64,_ generation:UInt64,_ challenge:UnsafePointer<UInt8>,_ report:UnsafeMutablePointer<UInt8>)->Int32
+ @_silgen_name("AuxAcknowledgeAuthenticatedBrowserDrainReport") private func acknowledgeAuthenticatedBrowserDrainReport(_ handle:UInt64,_ report:UnsafePointer<UInt8>)->Int32
+ @_silgen_name("AuxRetainNativeParentConnection") private func retainNativeParent(_ id:UInt64)->Int32
+@@ -50,6 +52,13 @@
+         let status=revalidateNativeParent(handle,2_000)
+         guard status==0 else{throw AuxFreshColdGuardError.peer(status)}
+     }
++#if AUX_BROWSER_ONLY_NATIVE_STARTUP
++    func inspectRetained()throws {
++        guard getpid()==process else{throw AuxFreshColdGuardError.wrongProcess}
++        let status=inspectRetainedNativeParent(handle)
++        guard status==0 else{throw AuxFreshColdGuardError.peer(status)}
++    }
++#endif
+     // Finite native capability. Every successful query transfers one new FD;
+     // no path, caller PID, environment field or claimed generation is accepted.
+     func copyAuthenticatedBrowserRoot(role:UInt32)throws->(generation:UInt64,descriptor:Int32) {
+@@ -126,6 +135,7 @@
+         try requireSame(data,observedData.descriptor);try requireSame(cache,observedCache.descriptor)
+         try peer.revalidate()
+     }
++    var retainedGeneration:UInt64 { generation }
+     func duplicate(role:UInt32,peer:AuxLiveNativeParentConnection)throws->(generation:UInt64,descriptor:Int32) {
+         guard getpid()==process else{throw AuxFreshColdGuardError.wrongProcess}
+         guard role==1 || role==2 else{throw AuxFreshColdGuardError.metadata}
+@@ -212,6 +222,23 @@
+         try Self.requirePrivate(installerFD,directory:false)
+         try Self.requireInstaller(parent:parentFD,fd:installerFD)
+     }
++#if AUX_BROWSER_ONLY_NATIVE_STARTUP
++    var ordinaryStorageGeneration:UInt64 { browserRoots.retainedGeneration }
++    func revalidateOrdinaryStorageBinding()throws {
++        guard getpid()==process else{throw AuxFreshColdGuardError.wrongProcess}
++        try peer.inspectRetained()
++        try policy.revalidateRetainedOrdinaryIdentity()
++        try browserAdmission.revalidateOrdinaryStorageBinding(generation:ordinaryStorageGeneration)
++        try Self.requirePrivate(parentFD,directory:true)
++        try Self.requirePath(policy.contents.canonicalPrivateParent,fd:parentFD)
++        try Self.requirePrivate(installerFD,directory:false)
++        try Self.requireInstaller(parent:parentFD,fd:installerFD)
++        guard let taskPath=policy.contents.canonicalTaskParent else{throw AuxFreshColdGuardError.path}
++        try Self.requirePrivate(taskParentFD,directory:true)
++        try Self.requirePath(taskPath,fd:taskParentFD)
++        try peer.inspectRetained()
++    }
++#endif
+     func duplicateAuthenticatedBrowserRoot(role:UInt32)throws->(generation:UInt64,descriptor:Int32) {
+         try revalidate()
+         let root=try browserRoots.duplicate(role:role,peer:peer)
+--- a/AuxBrowserFreshRootAdmission.swift
++++ b/AuxBrowserFreshRootAdmission.swift
+@@ -352,8 +352,18 @@
+         transferred=true;try owned.revalidate();return owned
+     }
+     private func validateOrdinaryLocked()throws {
++        try policy.revalidateCurrentIdentity()
++        try validateRetainedOrdinaryLocked()
++    }
++    func revalidateOrdinaryStorageBinding(generation expected:UInt64)throws {
++        guard getpid()==process else{throw AuxFreshColdGuardError.wrongProcess}
++        lock.lock();defer{lock.unlock()}
++        guard expected>0,expected==generation else{throw AuxFreshColdGuardError.path}
++        try validateRetainedOrdinaryLocked()
++    }
++    private func validateRetainedOrdinaryLocked()throws {
+         guard phase == .prepared || phase == .admitted,let browser=ordinaryBrowser else{throw AuxFreshColdGuardError.path}
+-        try policy.revalidateCurrentIdentity();try browser.requireCurrent()
++        try browser.requireCurrent()
+         if phase == .admitted || !ordinaryInstallationSha.isEmpty {
+             guard try Self.ordinaryInstallation(policy)==ordinaryInstallationSha else{throw AuxFreshColdGuardError.path}
+         }
+--- a/AuxNativeTaskLayout.swift
++++ b/AuxNativeTaskLayout.swift
+@@ -105,6 +105,33 @@
+         try Self.entry(parent,Self.reservationName,reservation);try Self.pathIdentity(parentPath,parent)
+         try policy.revalidateCurrentIdentity()
+     }
++#if AUX_BROWSER_ONLY_NATIVE_STARTUP
++    func revalidateRetainedIdentity()throws {
++        guard getpid()==process else{throw AuxFreshColdGuardError.wrongProcess}
++        try Self.pathIdentity(parentPath,parent)
++        try Self.metadata(parent,directory:true);try Self.metadata(reservation,directory:false);try Self.metadata(home,directory:true)
++        try Self.entry(parent,Self.reservationName,reservation);try Self.entry(parent,name,home)
++        var value=stat();guard fstat(reservation,&value)==0,value.st_size==expected.count,value.st_size<=4096 else{throw NativeFreshBootstrapError.binding}
++        var bytes=Data(count:expected.count)
++        try bytes.withUnsafeMutableBytes { raw in
++            var offset=0
++            while offset<raw.count {
++                let count=pread(reservation,raw.baseAddress!.advanced(by:offset),raw.count-offset,off_t(offset))
++                if count<0 && errno==EINTR{continue}
++                guard count>0 else{throw AuxFreshColdGuardError.io(errno)};offset += count
++            }
++        }
++        guard bytes==expected else{throw NativeFreshBootstrapError.binding}
++        try Self.inventory(parent,allowed:[".","..",Self.reservationName,name])
++        try Self.entry(parent,Self.reservationName,reservation);try Self.pathIdentity(parentPath,parent)
++    }
++    func duplicateRetainedTaskHome()throws->Int32 {
++        try revalidateRetainedIdentity()
++        let fd=fcntl(home,F_DUPFD_CLOEXEC,0)
++        guard fd>=0 else{throw AuxFreshColdGuardError.io(errno)}
++        do{try revalidateRetainedIdentity();return fd}catch{close(fd);throw error}
++    }
++#endif
+     func duplicateTaskHome()throws->Int32 {
+         try revalidate();let fd=fcntl(home,F_DUPFD_CLOEXEC,0)
+         guard fd>=0 else{throw AuxFreshColdGuardError.io(errno)}
+--- a/AuxNativeFreshStageCoordinator.swift
++++ b/AuxNativeFreshStageCoordinator.swift
+@@ -83,6 +83,33 @@
+         try context.revalidateNativeStageBinding()
+         return context
+     }
++#if AUX_BROWSER_ONLY_NATIVE_STARTUP
++    func revalidateOrdinaryStorageBinding()throws {
++        try coldGuard.revalidateOrdinaryStorageBinding()
++        try taskLayout.revalidateRetainedIdentity()
++        switch owner {
++        case .fresh(let capture):
++            try capture.home.validateRetainedIdentity()
++            guard capture.scope==journal.scope,capture.transactionId==journal.reservationTransactionId,
++                  capture.policy.policySha256==journal.policySha256,
++                  try capture.home.currentReservationSha256()==journal.reservationSha256 else{throw NativeFreshBootstrapError.binding}
++        case .resumed(let home):
++            try home.validateRetainedIdentity()
++            guard home.scope==journal.scope,home.transactionId==journal.reservationTransactionId,
++                  try home.currentReservationSha256()==journal.reservationSha256 else{throw NativeFreshBootstrapError.binding}
++        }
++        guard authenticatedPolicy.policySha256==journal.policySha256,
++              authenticatedPolicy.contents.accessGroup==journal.accessGroup,
++              authenticatedPolicy.contents.role.rawValue==journal.role else{throw NativeFreshBootstrapError.binding}
++    }
++    func duplicateRetainedOrdinaryStorageRoots()throws->(generation:UInt64,control:Int32,task:Int32) {
++        let task=try taskLayout.duplicateRetainedTaskHome()
++        do {
++            let control=try duplicateRetainedHomeDescriptor()
++            return(coldGuard.ordinaryStorageGeneration,control,task)
++        }catch{Darwin.close(task);throw error}
++    }
++#endif
+     func revalidateNativeStageBinding() throws {
+         try coldGuard.revalidate()
+         try taskLayout.revalidate()
+--- a/NativeFreshRuntimeCapturedContext.swift
++++ b/NativeFreshRuntimeCapturedContext.swift
+@@ -9,9 +9,19 @@
+     let runtime:AuxRuntimeCapturedCommandContext
+     private let initialSha:String
+     private let targetSha:String
+-    private init(terminal:NativeFreshTerminalSelection,runtime:AuxRuntimeCapturedCommandContext){
+-        owner=terminal.context;self.runtime=runtime
++#if AUX_BROWSER_ONLY_NATIVE_STARTUP
++    private let retainedInitialStore:PrivateNativeFreshBootstrapJournalStore
++    private let retainedTargetStore:PrivateNativeFreshTargetJournalStore
++#endif
++    private init(terminal:NativeFreshTerminalSelection,runtime:AuxRuntimeCapturedCommandContext)throws {
++        let owner=terminal.context
++        self.owner=owner;self.runtime=runtime
+         initialSha=terminal.initialJournalSha256;targetSha=terminal.targetJournalSha256
++#if AUX_BROWSER_ONLY_NATIVE_STARTUP
++        let fd=try owner.duplicateRetainedHomeDescriptor();defer{Darwin.close(fd)}
++        retainedInitialStore=try PrivateNativeFreshBootstrapJournalStore(canonicalDisposableRoot:owner.canonicalHome,journal:owner.journal,retainedRootDescriptor:fd)
++        retainedTargetStore=try PrivateNativeFreshTargetJournalStore(canonicalDisposableRoot:owner.canonicalHome,transactionId:owner.journal.reservationTransactionId,retainedRootDescriptor:fd)
++#endif
+     }
+     // Actual protected read path, deliberately not invoked by parser/compile tests.
+     // No captured caller rows, selected-home strings or Boolean grants accepted.
+@@ -26,7 +36,7 @@
+               terminal.selection.accessGroup==owner.authenticatedPolicy.contents.accessGroup else{throw NativeFreshRuntimeConsumerError.binding}
+         let rows=try AuxRuntimeDataProtectionCapture.capture(terminal.selection)
+         let runtime=try AuxRuntimeCapturedCommandContext.validate(selection:terminal.selection,rows:rows)
+-        let captured=NativeFreshRuntimeCapturedContext(terminal:terminal,runtime:runtime)
++        let captured=try NativeFreshRuntimeCapturedContext(terminal:terminal,runtime:runtime)
+         try captured.revalidate()
+         return captured
+     }
+@@ -41,6 +51,20 @@
+               current.selection.generationId==runtime.selection.generationId else{throw NativeFreshRuntimeConsumerError.binding}
+         try revalidate()
+     }
++#if AUX_BROWSER_ONLY_NATIVE_STARTUP
++    func revalidateOrdinaryStorageBinding()throws {
++        try owner.revalidateOrdinaryStorageBinding()
++        guard initialSha==owner.durableJournalSha256,runtime.selection.scope==owner.journal.scope,
++              runtime.selection.generationId==owner.journal.reservationTransactionId,
++              runtime.selection.accessGroup==owner.journal.accessGroup,
++              runtime.selection.targetHashes==owner.journal.targetHashes,
++              let initial=try retainedInitialStore.loadRetained(),initial.journal==owner.journal,
++              initial.sha256==initialSha,
++              let current=try retainedTargetStore.loadRetained(),current.sha256==targetSha,
++              current.journal.phase == .ready else{throw NativeFreshRuntimeConsumerError.binding}
++        try NativeFreshTargetTransaction.validateBinding(current.journal,initial:owner.journal,initialSha256:initialSha)
++    }
++#endif
+     func revalidate()throws {
+         try owner.revalidateNativeStageBinding()
+         guard initialSha==owner.durableJournalSha256,runtime.selection.scope==owner.journal.scope,
+--- a/PrivateNativeFreshBootstrapJournalStore.swift
++++ b/PrivateNativeFreshBootstrapJournalStore.swift
+@@ -140,6 +140,23 @@
+         guard try readFile("initial-journal.json")==bytes else{throw NativeFreshBootstrapStoreError.corruptBinding}
+         return .init(journal:journal,sha256:nativeBootstrapHash(bytes))
+     }
++#if AUX_BROWSER_ONLY_NATIVE_STARTUP
++    func loadRetained()throws->StoredNativeFreshBootstrapJournal? {
++        try validateDirectories()
++        let fd=openat(directoryFD,"LOCK",O_RDONLY|O_NONBLOCK|O_NOFOLLOW|O_CLOEXEC)
++        guard fd>=0 else{throw NativeFreshBootstrapStoreError.io(errno)};defer{close(fd)}
++        try Self.metadata(fd,directory:false);try Self.sameEntry(parent:directoryFD,name:"LOCK",fd:fd)
++        guard try Self.statFD(fd).st_size==0 else{throw NativeFreshBootstrapStoreError.unsafeMetadata}
++        guard flock(fd,LOCK_SH|LOCK_NB)==0 else{throw NativeFreshBootstrapStoreError.busy}
++        defer{_ = flock(fd,LOCK_UN)}
++        guard let bytes=try readFile("initial-journal.json") else{return nil}
++        let journal=try decode(bytes)
++        guard try readFile("initial-journal.json")==bytes else{throw NativeFreshBootstrapStoreError.corruptBinding}
++        let result=StoredNativeFreshBootstrapJournal(journal:journal,sha256:nativeBootstrapHash(bytes))
++        try Self.sameEntry(parent:directoryFD,name:"LOCK",fd:fd);try validateDirectories()
++        return result
++    }
++#endif
+     func load()throws->StoredNativeFreshBootstrapJournal?{try locked{try loadUnlocked()}}
+     // Typed immutable nonsecret record only; no arbitrary secret Data/path API.
+     func publish()throws->StoredNativeFreshBootstrapJournal {
+--- a/PrivateNativeFreshTargetJournalStore.swift
++++ b/PrivateNativeFreshTargetJournalStore.swift
+@@ -167,6 +167,20 @@
+         guard valid else{throw NativeFreshTargetStoreError.invalidSuccessor}
+     }
+ 
++#if AUX_BROWSER_ONLY_NATIVE_STARTUP
++    func loadRetained()throws->StoredNativeFreshTargetCheckpoint? {
++        try validateDirectories()
++        let fd=openat(directoryFD,"LOCK",O_RDONLY|O_NONBLOCK|O_NOFOLLOW|O_CLOEXEC)
++        guard fd>=0 else{throw NativeFreshTargetStoreError.io(errno)};defer{close(fd)}
++        try Self.metadata(fd,directory:false);try Self.sameEntry(parent:directoryFD,name:"LOCK",fd:fd)
++        guard try Self.statFD(fd).st_size==0 else{throw NativeFreshTargetStoreError.unsafeMetadata}
++        guard flock(fd,LOCK_SH|LOCK_NB)==0 else{throw NativeFreshTargetStoreError.busy}
++        defer{_ = flock(fd,LOCK_UN)}
++        let result=try loadUnlocked()
++        try Self.sameEntry(parent:directoryFD,name:"LOCK",fd:fd);try validateDirectories()
++        return result
++    }
++#endif
+     func loadCurrent()throws->StoredNativeFreshTargetCheckpoint? { try locked{try loadUnlocked()} }
+     // Stage is deliberately separate: a crash here leaves an immutable orphan,
+     // while HEAD still points at the prior durable checkpoint. No evidence deleted.
+--- a/AuxPreparedFreshRuntimeProvider.swift
++++ b/AuxPreparedFreshRuntimeProvider.swift
+@@ -85,6 +85,12 @@
+         e.handoffs += 1;entry=e;lock.unlock()
+         var descriptor:Int32 = -1
+         do {
++#if AUX_BROWSER_ONLY_NATIVE_STARTUP
++            let current=entry.preparedCapture
++            try current.revalidateOrdinaryStorageBinding()
++            descriptor=try current.owner.duplicateRetainedHomeDescriptor()
++            try current.revalidateOrdinaryStorageBinding()
++#else
+             let current=try NativeFreshRuntimeCapturedContext.capture(entry.terminal)
+             let scoped=try ScopedAuxCommandContext.nativeFresh(current)
+             let expected=entry.preparedScoped.evidence,actual=scoped.evidence
+@@ -95,6 +101,7 @@
+             try current.revalidateCurrentCommandBinding()
+             descriptor=try current.owner.duplicateRetainedHomeDescriptor()
+             try current.revalidateCurrentCommandBinding()
++#endif
+         }catch {
+             guard getpid()==process else{throw AuxPreparedFreshRuntimeError.wrongProcess}
+             if descriptor>=0{Darwin.close(descriptor)}
+--- a/AuxOwnedCommandDispatcher.swift
++++ b/AuxOwnedCommandDispatcher.swift
+@@ -1053,12 +1053,23 @@
+ #endif
+ #if AUX_ATOMIC_CSK_DISPATCH && AUX_SCOPED_SECURE_STORE_DISPATCH
+     func withAccountRegistryLock(_ handle:UInt64,_ body:()throws->Int32)throws->Int32 {
++#if AUX_BROWSER_ONLY_NATIVE_STARTUP
++        try withEntry(handle,guardGenericAction:false){entry in
++            try guardedFreshAction(entry,before:.beforeAction,after:.afterAction,afterThrow:.afterThrownAction,validation:.ordinaryStorage){
++                guard let secure=entry.secureStore else{throw AuxAccountsCskError.unavailable}
++                return try secure.withAccountRegistryLock {
++                    try self.guardedFreshAction(entry,before:.beforeAccountCallback,after:.afterAccountCallback,afterThrow:.afterThrownAccountCallback,validation:.ordinaryStorage,body)
++                }
++            }
++        }
++#else
+         try withEntry(handle){entry in
+             guard let secure=entry.secureStore else{throw AuxAccountsCskError.unavailable}
+             return try secure.withAccountRegistryLock {
+                 try self.guardedFreshAction(entry,before:.beforeAccountCallback,after:.afterAccountCallback,afterThrow:.afterThrownAccountCallback,body)
+             }
+         }
++#endif
+     }
+ #endif
+     private func withEntry<T>(_ handle:UInt64,guardGenericAction:Bool=true,_ action:(Entry)throws->T)throws->T {
+@@ -1101,15 +1112,34 @@
+         return false
+ #endif
+     }
++    private enum GuardValidation:Equatable {case full,ordinaryStorage}
+     private func requireFreshGuard(_ entry:Entry,moment:AuxNativeFreshGuardMoment,operationError:Error?=nil)throws {
+-#if AUX_NATIVE_FRESH_RUNTIME_CONSUMER
+-        guard let captured=entry.nativeFreshRuntime else{return}
++        try requireGuard(entry,moment:moment,operationError:operationError,validation:.full)
++    }
++    private func requireOrdinaryStorageGuard(_ entry:Entry,moment:AuxNativeFreshGuardMoment)throws {
++        try requireGuard(entry,moment:moment,operationError:nil,validation:.ordinaryStorage)
++    }
++    private func requireGuard(_ entry:Entry,moment:AuxNativeFreshGuardMoment,operationError:Error?,validation:GuardValidation)throws {
++#if AUX_NATIVE_FRESH_RUNTIME_CONSUMER
++        guard let captured=entry.nativeFreshRuntime else{
++            guard validation == .full else{throw AuxDispatcherLifetimeError.invalidInput};return
++        }
+         guard getpid()==process else{throw AuxNativeFreshGuardProcessError.wrongProcess}
+         condition.lock();let prior=entry.nativeGuardFailure ?? entry.pendingPostGuardObservation;let open=entry.phase == .open;condition.unlock()
+         if let prior{throw prior}
+         let requiresOpen=moment == .beforeAction || moment == .beforeAccountCallback
+         guard open || !requiresOpen else{throw AuxDispatcherLifetimeError.retiring}
+-        do{try captured.revalidateCurrentCommandBinding()}
++        do{
++            switch validation {
++            case .full:try captured.revalidateCurrentCommandBinding()
++            case .ordinaryStorage:
++#if AUX_BROWSER_ONLY_NATIVE_STARTUP
++                try captured.revalidateOrdinaryStorageBinding()
++#else
++                throw AuxDispatcherLifetimeError.invalidInput
++#endif
++            }
++        }
+         catch {
+             // Type and finite status only: no paths, keys, rows or error payloads.
+             fputs("Aux native guard refused: \(String(reflecting:type(of:error)))\n",stderr)
+@@ -1143,8 +1173,8 @@
+         guard stillOpen || !requiresOpen else{throw AuxDispatcherLifetimeError.retiring}
+ #endif
+     }
+-    private func guardedFreshAction<T>(_ entry:Entry,before:AuxNativeFreshGuardMoment,after:AuxNativeFreshGuardMoment,afterThrow:AuxNativeFreshGuardMoment,_ action:()throws->T)throws->T {
+-        try requireFreshGuard(entry,moment:before)
++    private func guardedFreshAction<T>(_ entry:Entry,before:AuxNativeFreshGuardMoment,after:AuxNativeFreshGuardMoment,afterThrow:AuxNativeFreshGuardMoment,validation:GuardValidation = .full,_ action:()throws->T)throws->T {
++        try requireGuard(entry,moment:before,operationError:nil,validation:validation)
+         let result:T
+         do{result=try action()}
+         catch{
+@@ -1152,9 +1182,9 @@
+             // An inner acquired callback already records its exact boundary;
+             // don't relabel a before-callback timeout as an attempted command.
+             if original is AuxNativeFreshGuardFailure{throw original}
+-            try requireFreshGuard(entry,moment:afterThrow,operationError:original);throw original
+-        }
+-        try requireFreshGuard(entry,moment:after)
++            try requireGuard(entry,moment:afterThrow,operationError:original,validation:validation);throw original
++        }
++        try requireGuard(entry,moment:after,operationError:nil,validation:validation)
+         return result
+     }
+     // Owner destruction cannot wait on its own lease; close now and let the
+@@ -1240,6 +1270,28 @@
+     }
+     // One actual current native context produces this pair. No JS path/account
+     // can choose the control/task home, and v1-v4 layouts have no task capability.
++#if AUX_BROWSER_ONLY_NATIVE_STARTUP
++    func copyAuthenticatedStorageRoots(_ handle:UInt64)throws->(generation:UInt64,control:Int32,task:Int32) {
++        try withEntry(handle,guardGenericAction:false){entry in
++#if AUX_NATIVE_FRESH_RUNTIME_CONSUMER
++            guard let captured=entry.nativeFreshRuntime else{throw AuxDispatcherLifetimeError.invalidInput}
++            try requireOrdinaryStorageGuard(entry,moment:.beforeAction)
++            var control:Int32 = -1,task:Int32 = -1
++            do {
++                let copied=try captured.owner.duplicateRetainedOrdinaryStorageRoots()
++                let projection=(generation:copied.generation,descriptor:copied.task)
++                task=copied.task;control=copied.control
++                guard projection.generation != 0,control>=0,task>=0 else{throw AuxDispatcherLifetimeError.invalidInput}
++                try requireOrdinaryStorageGuard(entry,moment:.beforeAction)
++                return(projection.generation,control,task)
++            }catch{if control>=0{Darwin.close(control)};if task>=0{Darwin.close(task)};throw error}
++#else
++            throw AuxDispatcherLifetimeError.invalidInput
++#endif
++        }
++    }
++
++#else
+     func copyAuthenticatedStorageRoots(_ handle:UInt64)throws->(generation:UInt64,control:Int32,task:Int32) {
+         try withEntry(handle,guardGenericAction:false){entry in
+ #if AUX_NATIVE_FRESH_RUNTIME_CONSUMER
+@@ -1259,6 +1311,8 @@
+ #endif
+         }
+     }
++
++#endif
+     // Native synchronous action only. The C++ lease remains alive beyond this
+     // method's postguard; no JS callback, path, pin inventory or fd is admitted.
+     func withRuntimePublication(_ handle:UInt64,expected:UInt64,
+@@ -1325,6 +1379,38 @@
+         catch AuxDispatcherLifetimeError.retiring{return 3}
+         catch{return 1}
+     }
++#if AUX_BROWSER_ONLY_NATIVE_STARTUP
++    func validateOrdinaryStorageAuthority(_ handle:UInt64)->Int32 {
++        do {
++            guard getpid()==process else{throw AuxNativeFreshGuardProcessError.wrongProcess}
++            let active=Thread.current.threadDictionary[threadKey] as? [UInt64:Int] ?? [:]
++            if active[handle,default:0]>0 {
++                // An authenticated account-lock callback may perform guarded
++                // filesystem writes. Its outer withEntry already holds this
++                // exact entry's execution lock and active lifetime on this
++                // thread. Revalidate it; do not open a nested command or return
++                // a cached admission result. Command re-entry stays forbidden.
++                condition.lock()
++                guard let entry=entries[handle] else{condition.unlock();throw AuxDispatcherLifetimeError.invalidHandle}
++                guard entry.phase == .open,entry.active>0 else{condition.unlock();throw AuxDispatcherLifetimeError.retiring}
++                condition.unlock()
++                try requireOrdinaryStorageGuard(entry,moment:.beforeAction)
++            }else{
++                try withEntry(handle,guardGenericAction:false){entry in try requireOrdinaryStorageGuard(entry,moment:.beforeAction)}
++            }
++            return 0
++        }catch let failure as AuxNativeFreshGuardFailure {
++            switch failure.disposition {
++            case .provenBindingLoss:return 3
++            case .postOutcomeUnknown:return 2
++            case .retryableNoCommand,.unknownNoCommand:return 1
++            }
++        }catch AuxDispatcherLifetimeError.invalidHandle{return -1}
++        catch AuxNativeFreshGuardProcessError.wrongProcess{return -2}
++        catch AuxDispatcherLifetimeError.retiring{return 3}
++        catch{return 1}
++    }
++#endif
+     // Cancellation closes future commands while preserving this exact Entry.
+     // Returning pending is custody, not a settled retirement or recovery grant.
+     func closeBrowserAdmission(_ handle:UInt64)->Int32 {
+@@ -1571,6 +1657,14 @@
+ @_cdecl("AuxNativeContextValidateCurrentAuthority")
+ func auxNativeContextValidateCurrentAuthority(_ handle:UInt64)->Int32{AuxCommandDispatcherRegistry.shared.validateCurrentAuthority(handle)}
+ 
++@_cdecl("AuxNativeContextValidateOrdinaryStorageAuthority")
++func auxNativeContextValidateOrdinaryStorageAuthority(_ handle:UInt64)->Int32 {
++#if AUX_BROWSER_ONLY_NATIVE_STARTUP
++    return AuxCommandDispatcherRegistry.shared.validateOrdinaryStorageAuthority(handle)
++#else
++    return -1
++#endif
++}
+ @_cdecl("AuxNativeContextCopyBrowserRoot")
+ func auxNativeContextCopyBrowserRoot(_ owner:UInt64,_ role:UInt32,
+     _ generation:UnsafeMutablePointer<UInt64>?,_ descriptor:UnsafeMutablePointer<Int32>?)->Int32 {

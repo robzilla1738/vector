@@ -1,0 +1,224 @@
+{
+  "format": "aux.ordinary-storage.retained-source.v1",
+  "baseline": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/fresh-startup-milestone-a42/actual-daemon-image-path-check-build-a13.json",
+  "baselineSha256": "cda93e974a0b69d5f51cb107fda3448e91a2deb4544ba23f360d415875cdc867",
+  "files": [
+    {
+      "input": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/fresh-startup-milestone-a42/image-path-check-source/AuxSignedFreshBootstrapPolicyLoader.swift",
+      "inputSha256": "1c9bb1bc20e6462a23251c6f30db215fdef5ed4a96a8387adc71676ba49c7a1c",
+      "output": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/fresh-startup-milestone-a42/ordinary-storage-source/AuxSignedFreshBootstrapPolicyLoader.swift",
+      "outputSha256": "c8a596a76d26dc7bc84be93ffefb1f054106fad4207cbdd8b64f29afc9ad6493",
+      "anchors": [
+        {
+          "before": "    // Native consumer revalidation; no captured bytes/Boolean substitute can\n",
+          "after": "#if AUX_BROWSER_ONLY_NATIVE_STARTUP\n    func revalidateRetainedOrdinaryIdentity()throws {\n        try AuxSignedFreshBootstrapPolicyLoader.revalidateRetainedOrdinaryPolicy(self)\n    }\n#endif\n    // Native consumer revalidation; no captured bytes/Boolean substitute can\n",
+          "count": 1
+        },
+        {
+          "before": "    private static func canonical(_ path:String)throws->String {\n",
+          "after": "#if AUX_BROWSER_ONLY_NATIVE_STARTUP\n    static func revalidateRetainedOrdinaryPolicy(_ policy:AuxAuthenticatedFreshBootstrapPolicy)throws {\n        guard getpid()==auxImagePreparationProcess else{throw AuxFreshBootstrapPolicyError.identity}\n        ordinaryCodeLock.lock()\n        guard let current=ordinaryCode else{ordinaryCodeLock.unlock();throw AuxFreshBootstrapPolicyError.identity}\n        ordinaryCodeLock.unlock()\n        guard policy.contents.role == .daemon,policy.contents.embeddedDaemon,\n              !policy.contents.includesPdf,!policy.contents.includesMacUtilities,policy.contents.ptyArtifacts == nil,\n              current.executablePath==policy.bundlePath+\"/Contents/MacOS/\"+policy.contents.role.executable else{throw AuxFreshBootstrapPolicyError.identity}\n        try current.revalidate()\n    }\n#endif\n    private static func canonical(_ path:String)throws->String {\n",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "input": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/ordinary-fresh-browser-startup-a1/source/AuxFreshColdInstallerGuard.swift",
+      "inputSha256": "0dc9b4ca8bf374897aa86acdba31a4bef90bb8ea63ccaab8154df4a3056b98bb",
+      "output": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/fresh-startup-milestone-a42/ordinary-storage-source/AuxFreshColdInstallerGuard.swift",
+      "outputSha256": "3d1d485ed55429faf10b13ab023c4c7ba0b07ddea6ef40245e9e1c10780d8f9a",
+      "anchors": [
+        {
+          "before": "@_silgen_name(\"AuxCopyAuthenticatedBrowserDrainReport\")",
+          "after": "@_silgen_name(\"AuxInspectRetainedNativeParentConnection\")\nprivate func inspectRetainedNativeParent(_ id:UInt64)->Int32\n@_silgen_name(\"AuxCopyAuthenticatedBrowserDrainReport\")",
+          "count": 1
+        },
+        {
+          "before": "    // Finite native capability. Every successful query transfers one new FD;\n",
+          "after": "#if AUX_BROWSER_ONLY_NATIVE_STARTUP\n    func inspectRetained()throws {\n        guard getpid()==process else{throw AuxFreshColdGuardError.wrongProcess}\n        let status=inspectRetainedNativeParent(handle)\n        guard status==0 else{throw AuxFreshColdGuardError.peer(status)}\n    }\n#endif\n    // Finite native capability. Every successful query transfers one new FD;\n",
+          "count": 1
+        },
+        {
+          "before": "    func duplicate(role:UInt32,peer:AuxLiveNativeParentConnection)throws->(generation:UInt64,descriptor:Int32) {\n",
+          "after": "    var retainedGeneration:UInt64 { generation }\n    func duplicate(role:UInt32,peer:AuxLiveNativeParentConnection)throws->(generation:UInt64,descriptor:Int32) {\n",
+          "count": 1
+        },
+        {
+          "before": "    func duplicateAuthenticatedBrowserRoot(role:UInt32)throws->(generation:UInt64,descriptor:Int32) {\n",
+          "after": "#if AUX_BROWSER_ONLY_NATIVE_STARTUP\n    var ordinaryStorageGeneration:UInt64 { browserRoots.retainedGeneration }\n    func revalidateOrdinaryStorageBinding()throws {\n        guard getpid()==process else{throw AuxFreshColdGuardError.wrongProcess}\n        try peer.inspectRetained()\n        try policy.revalidateRetainedOrdinaryIdentity()\n        try browserAdmission.revalidateOrdinaryStorageBinding(generation:ordinaryStorageGeneration)\n        try Self.requirePrivate(parentFD,directory:true)\n        try Self.requirePath(policy.contents.canonicalPrivateParent,fd:parentFD)\n        try Self.requirePrivate(installerFD,directory:false)\n        try Self.requireInstaller(parent:parentFD,fd:installerFD)\n        guard let taskPath=policy.contents.canonicalTaskParent else{throw AuxFreshColdGuardError.path}\n        try Self.requirePrivate(taskParentFD,directory:true)\n        try Self.requirePath(taskPath,fd:taskParentFD)\n        try peer.inspectRetained()\n    }\n#endif\n    func duplicateAuthenticatedBrowserRoot(role:UInt32)throws->(generation:UInt64,descriptor:Int32) {\n",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "input": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/ordinary-fresh-browser-startup-a1/source/AuxBrowserFreshRootAdmission.swift",
+      "inputSha256": "a6a47585ec0283ec1149de48092e35a625b3b9084c4b0fe50479f9bc6dd68f31",
+      "output": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/fresh-startup-milestone-a42/ordinary-storage-source/AuxBrowserFreshRootAdmission.swift",
+      "outputSha256": "244c9d61dd1cf36610bc616cfd772d03c5fc313063613b6950c2b6a8f9fdde5f",
+      "anchors": [
+        {
+          "before": "    private func validateOrdinaryLocked()throws {\n        guard phase == .prepared || phase == .admitted,let browser=ordinaryBrowser else{throw AuxFreshColdGuardError.path}\n        try policy.revalidateCurrentIdentity();try browser.requireCurrent()\n",
+          "after": "    private func validateOrdinaryLocked()throws {\n        try policy.revalidateCurrentIdentity()\n        try validateRetainedOrdinaryLocked()\n    }\n    func revalidateOrdinaryStorageBinding(generation expected:UInt64)throws {\n        guard getpid()==process else{throw AuxFreshColdGuardError.wrongProcess}\n        lock.lock();defer{lock.unlock()}\n        guard expected>0,expected==generation else{throw AuxFreshColdGuardError.path}\n        try validateRetainedOrdinaryLocked()\n    }\n    private func validateRetainedOrdinaryLocked()throws {\n        guard phase == .prepared || phase == .admitted,let browser=ordinaryBrowser else{throw AuxFreshColdGuardError.path}\n        try browser.requireCurrent()\n",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "input": "/private/tmp/aux-profile-startup-next/docs/integration/proposed/profile-isolation-next/startup/v5-source/AuxNativeTaskLayout.swift",
+      "inputSha256": "4b27a1008a34640976e2e40a5c47fb08fdd28591e6a6df12522464d2474bd8dc",
+      "output": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/fresh-startup-milestone-a42/ordinary-storage-source/AuxNativeTaskLayout.swift",
+      "outputSha256": "2315edf78c8697ce6187f8a8ea0eab044d6b25c956479128d5b2bc8fcb017345",
+      "anchors": [
+        {
+          "before": "    func duplicateTaskHome()throws->Int32 {\n",
+          "after": "#if AUX_BROWSER_ONLY_NATIVE_STARTUP\n    func revalidateRetainedIdentity()throws {\n        guard getpid()==process else{throw AuxFreshColdGuardError.wrongProcess}\n        try Self.pathIdentity(parentPath,parent)\n        try Self.metadata(parent,directory:true);try Self.metadata(reservation,directory:false);try Self.metadata(home,directory:true)\n        try Self.entry(parent,Self.reservationName,reservation);try Self.entry(parent,name,home)\n        var value=stat();guard fstat(reservation,&value)==0,value.st_size==expected.count,value.st_size<=4096 else{throw NativeFreshBootstrapError.binding}\n        var bytes=Data(count:expected.count)\n        try bytes.withUnsafeMutableBytes { raw in\n            var offset=0\n            while offset<raw.count {\n                let count=pread(reservation,raw.baseAddress!.advanced(by:offset),raw.count-offset,off_t(offset))\n                if count<0 && errno==EINTR{continue}\n                guard count>0 else{throw AuxFreshColdGuardError.io(errno)};offset += count\n            }\n        }\n        guard bytes==expected else{throw NativeFreshBootstrapError.binding}\n        try Self.inventory(parent,allowed:[\".\",\"..\",Self.reservationName,name])\n        try Self.entry(parent,Self.reservationName,reservation);try Self.pathIdentity(parentPath,parent)\n    }\n    func duplicateRetainedTaskHome()throws->Int32 {\n        try revalidateRetainedIdentity()\n        let fd=fcntl(home,F_DUPFD_CLOEXEC,0)\n        guard fd>=0 else{throw AuxFreshColdGuardError.io(errno)}\n        do{try revalidateRetainedIdentity();return fd}catch{close(fd);throw error}\n    }\n#endif\n    func duplicateTaskHome()throws->Int32 {\n",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "input": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/ui-native-capture-journal-a1/source/AuxNativeFreshStageCoordinator.swift",
+      "inputSha256": "963436dbbbbe9ab779d48689dcd2f97243059c45356b150f447f916cc2ffc1fc",
+      "output": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/fresh-startup-milestone-a42/ordinary-storage-source/AuxNativeFreshStageCoordinator.swift",
+      "outputSha256": "82be5426a939748902340d5c0cc1fcdc437badc06b5289cc84dd1c426b0826a8",
+      "anchors": [
+        {
+          "before": "    func revalidateNativeStageBinding() throws {\n",
+          "after": "#if AUX_BROWSER_ONLY_NATIVE_STARTUP\n    func revalidateOrdinaryStorageBinding()throws {\n        try coldGuard.revalidateOrdinaryStorageBinding()\n        try taskLayout.revalidateRetainedIdentity()\n        switch owner {\n        case .fresh(let capture):\n            try capture.home.validateRetainedIdentity()\n            guard capture.scope==journal.scope,capture.transactionId==journal.reservationTransactionId,\n                  capture.policy.policySha256==journal.policySha256,\n                  try capture.home.currentReservationSha256()==journal.reservationSha256 else{throw NativeFreshBootstrapError.binding}\n        case .resumed(let home):\n            try home.validateRetainedIdentity()\n            guard home.scope==journal.scope,home.transactionId==journal.reservationTransactionId,\n                  try home.currentReservationSha256()==journal.reservationSha256 else{throw NativeFreshBootstrapError.binding}\n        }\n        guard authenticatedPolicy.policySha256==journal.policySha256,\n              authenticatedPolicy.contents.accessGroup==journal.accessGroup,\n              authenticatedPolicy.contents.role.rawValue==journal.role else{throw NativeFreshBootstrapError.binding}\n    }\n    func duplicateRetainedOrdinaryStorageRoots()throws->(generation:UInt64,control:Int32,task:Int32) {\n        let task=try taskLayout.duplicateRetainedTaskHome()\n        do {\n            let control=try duplicateRetainedHomeDescriptor()\n            return(coldGuard.ordinaryStorageGeneration,control,task)\n        }catch{Darwin.close(task);throw error}\n    }\n#endif\n    func revalidateNativeStageBinding() throws {\n",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "input": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-native-fresh-runtime-readiness/source/NativeFreshRuntimeCapturedContext.swift",
+      "inputSha256": "76d83aa5f418118bbd018bf8bd7c64da707ca69d86631509ba7c73c391ee99c4",
+      "output": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/fresh-startup-milestone-a42/ordinary-storage-source/NativeFreshRuntimeCapturedContext.swift",
+      "outputSha256": "3d776ff33877045c184aeefb09fad8121404c7dfef351b0853eeac08d2510df5",
+      "anchors": [
+        {
+          "before": "    private init(terminal:NativeFreshTerminalSelection,runtime:AuxRuntimeCapturedCommandContext){\n        owner=terminal.context;self.runtime=runtime\n        initialSha=terminal.initialJournalSha256;targetSha=terminal.targetJournalSha256\n    }",
+          "after": "#if AUX_BROWSER_ONLY_NATIVE_STARTUP\n    private let retainedInitialStore:PrivateNativeFreshBootstrapJournalStore\n    private let retainedTargetStore:PrivateNativeFreshTargetJournalStore\n#endif\n    private init(terminal:NativeFreshTerminalSelection,runtime:AuxRuntimeCapturedCommandContext)throws {\n        let owner=terminal.context\n        self.owner=owner;self.runtime=runtime\n        initialSha=terminal.initialJournalSha256;targetSha=terminal.targetJournalSha256\n#if AUX_BROWSER_ONLY_NATIVE_STARTUP\n        let fd=try owner.duplicateRetainedHomeDescriptor();defer{Darwin.close(fd)}\n        retainedInitialStore=try PrivateNativeFreshBootstrapJournalStore(canonicalDisposableRoot:owner.canonicalHome,journal:owner.journal,retainedRootDescriptor:fd)\n        retainedTargetStore=try PrivateNativeFreshTargetJournalStore(canonicalDisposableRoot:owner.canonicalHome,transactionId:owner.journal.reservationTransactionId,retainedRootDescriptor:fd)\n#endif\n    }",
+          "count": 1
+        },
+        {
+          "before": "        let captured=NativeFreshRuntimeCapturedContext(terminal:terminal,runtime:runtime)",
+          "after": "        let captured=try NativeFreshRuntimeCapturedContext(terminal:terminal,runtime:runtime)",
+          "count": 1
+        },
+        {
+          "before": "    func revalidate()throws {\n",
+          "after": "#if AUX_BROWSER_ONLY_NATIVE_STARTUP\n    func revalidateOrdinaryStorageBinding()throws {\n        try owner.revalidateOrdinaryStorageBinding()\n        guard initialSha==owner.durableJournalSha256,runtime.selection.scope==owner.journal.scope,\n              runtime.selection.generationId==owner.journal.reservationTransactionId,\n              runtime.selection.accessGroup==owner.journal.accessGroup,\n              runtime.selection.targetHashes==owner.journal.targetHashes,\n              let initial=try retainedInitialStore.loadRetained(),initial.journal==owner.journal,\n              initial.sha256==initialSha,\n              let current=try retainedTargetStore.loadRetained(),current.sha256==targetSha,\n              current.journal.phase == .ready else{throw NativeFreshRuntimeConsumerError.binding}\n        try NativeFreshTargetTransaction.validateBinding(current.journal,initial:owner.journal,initialSha256:initialSha)\n    }\n#endif\n    func revalidate()throws {\n",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "input": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-native-fresh-retained-journal/source/PrivateNativeFreshBootstrapJournalStore.swift",
+      "inputSha256": "41acf84d6c2828d4093bb0efa47568408e3e69c9006fea628f587085aa0c3114",
+      "output": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/fresh-startup-milestone-a42/ordinary-storage-source/PrivateNativeFreshBootstrapJournalStore.swift",
+      "outputSha256": "963c4b6b0ab54bd96e4fc24b1eabf8ab4407c660db3137a8c165fb1ae4544064",
+      "anchors": [
+        {
+          "before": "    func load()throws->StoredNativeFreshBootstrapJournal?{try locked{try loadUnlocked()}}",
+          "after": "#if AUX_BROWSER_ONLY_NATIVE_STARTUP\n    func loadRetained()throws->StoredNativeFreshBootstrapJournal? {\n        try validateDirectories()\n        let fd=openat(directoryFD,\"LOCK\",O_RDONLY|O_NONBLOCK|O_NOFOLLOW|O_CLOEXEC)\n        guard fd>=0 else{throw NativeFreshBootstrapStoreError.io(errno)};defer{close(fd)}\n        try Self.metadata(fd,directory:false);try Self.sameEntry(parent:directoryFD,name:\"LOCK\",fd:fd)\n        guard try Self.statFD(fd).st_size==0 else{throw NativeFreshBootstrapStoreError.unsafeMetadata}\n        guard flock(fd,LOCK_SH|LOCK_NB)==0 else{throw NativeFreshBootstrapStoreError.busy}\n        defer{_ = flock(fd,LOCK_UN)}\n        guard let bytes=try readFile(\"initial-journal.json\") else{return nil}\n        let journal=try decode(bytes)\n        guard try readFile(\"initial-journal.json\")==bytes else{throw NativeFreshBootstrapStoreError.corruptBinding}\n        let result=StoredNativeFreshBootstrapJournal(journal:journal,sha256:nativeBootstrapHash(bytes))\n        try Self.sameEntry(parent:directoryFD,name:\"LOCK\",fd:fd);try validateDirectories()\n        return result\n    }\n#endif\n    func load()throws->StoredNativeFreshBootstrapJournal?{try locked{try loadUnlocked()}}",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "input": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-native-fresh-target-coordinator/source/PrivateNativeFreshTargetJournalStore.swift",
+      "inputSha256": "d7cdbe6b4326d5209d912149aceba8658aefa44e5e63d3089443c8c146d34b52",
+      "output": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/fresh-startup-milestone-a42/ordinary-storage-source/PrivateNativeFreshTargetJournalStore.swift",
+      "outputSha256": "27085c2e9f6c482c4c5c93667ba6e8c34143633f8bc51b8d2dc5de79f4e710d8",
+      "anchors": [
+        {
+          "before": "    func loadCurrent()throws->StoredNativeFreshTargetCheckpoint? { try locked{try loadUnlocked()} }",
+          "after": "#if AUX_BROWSER_ONLY_NATIVE_STARTUP\n    func loadRetained()throws->StoredNativeFreshTargetCheckpoint? {\n        try validateDirectories()\n        let fd=openat(directoryFD,\"LOCK\",O_RDONLY|O_NONBLOCK|O_NOFOLLOW|O_CLOEXEC)\n        guard fd>=0 else{throw NativeFreshTargetStoreError.io(errno)};defer{close(fd)}\n        try Self.metadata(fd,directory:false);try Self.sameEntry(parent:directoryFD,name:\"LOCK\",fd:fd)\n        guard try Self.statFD(fd).st_size==0 else{throw NativeFreshTargetStoreError.unsafeMetadata}\n        guard flock(fd,LOCK_SH|LOCK_NB)==0 else{throw NativeFreshTargetStoreError.busy}\n        defer{_ = flock(fd,LOCK_UN)}\n        let result=try loadUnlocked()\n        try Self.sameEntry(parent:directoryFD,name:\"LOCK\",fd:fd);try validateDirectories()\n        return result\n    }\n#endif\n    func loadCurrent()throws->StoredNativeFreshTargetCheckpoint? { try locked{try loadUnlocked()} }",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "input": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/ordinary-fresh-browser-startup-a1/source/AuxPreparedFreshRuntimeProvider.swift",
+      "inputSha256": "5a0482d9fd73852d7a5dfff06c7292814ba830d3893b8768766f2a63268b2697",
+      "output": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/fresh-startup-milestone-a42/ordinary-storage-source/AuxPreparedFreshRuntimeProvider.swift",
+      "outputSha256": "cf5fa5b1ba06ffec48e85c5e96ff4c917f7e953b7695839b43a884c2cc56f07e",
+      "anchors": [
+        {
+          "before": "            let current=try NativeFreshRuntimeCapturedContext.capture(entry.terminal)\n",
+          "after": "#if AUX_BROWSER_ONLY_NATIVE_STARTUP\n            let current=entry.preparedCapture\n            try current.revalidateOrdinaryStorageBinding()\n            descriptor=try current.owner.duplicateRetainedHomeDescriptor()\n            try current.revalidateOrdinaryStorageBinding()\n#else\n            let current=try NativeFreshRuntimeCapturedContext.capture(entry.terminal)\n",
+          "count": 1
+        },
+        {
+          "before": "            try current.revalidateCurrentCommandBinding()\n        }catch {",
+          "after": "            try current.revalidateCurrentCommandBinding()\n#endif\n        }catch {",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "input": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/fresh-startup-milestone-a42/callback-authority-source/AuxOwnedCommandDispatcher.swift",
+      "inputSha256": "6ed34e3a4c9e2b519091f58d6ceb14d3c64efa90d6db1696f6d0b2ab5bc75b30",
+      "output": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/fresh-startup-milestone-a42/ordinary-storage-source/AuxOwnedCommandDispatcher.swift",
+      "outputSha256": "74442c0bfd0437be947c9afdc8242feb267dc3aaf98392e33aefaff96d7f93fb",
+      "anchors": [
+        {
+          "before": "        try withEntry(handle){entry in\n            guard let secure=entry.secureStore else{throw AuxAccountsCskError.unavailable}\n            return try secure.withAccountRegistryLock {\n                try self.guardedFreshAction(entry,before:.beforeAccountCallback,after:.afterAccountCallback,afterThrow:.afterThrownAccountCallback,body)\n            }\n        }",
+          "after": "#if AUX_BROWSER_ONLY_NATIVE_STARTUP\n        try withEntry(handle,guardGenericAction:false){entry in\n            try guardedFreshAction(entry,before:.beforeAction,after:.afterAction,afterThrow:.afterThrownAction,validation:.ordinaryStorage){\n                guard let secure=entry.secureStore else{throw AuxAccountsCskError.unavailable}\n                return try secure.withAccountRegistryLock {\n                    try self.guardedFreshAction(entry,before:.beforeAccountCallback,after:.afterAccountCallback,afterThrow:.afterThrownAccountCallback,validation:.ordinaryStorage,body)\n                }\n            }\n        }\n#else\n        try withEntry(handle){entry in\n            guard let secure=entry.secureStore else{throw AuxAccountsCskError.unavailable}\n            return try secure.withAccountRegistryLock {\n                try self.guardedFreshAction(entry,before:.beforeAccountCallback,after:.afterAccountCallback,afterThrow:.afterThrownAccountCallback,body)\n            }\n        }\n#endif",
+          "count": 1
+        },
+        {
+          "before": "    private func requireFreshGuard(_ entry:Entry,moment:AuxNativeFreshGuardMoment,operationError:Error?=nil)throws {\n",
+          "after": "    private enum GuardValidation:Equatable {case full,ordinaryStorage}\n    private func requireFreshGuard(_ entry:Entry,moment:AuxNativeFreshGuardMoment,operationError:Error?=nil)throws {\n        try requireGuard(entry,moment:moment,operationError:operationError,validation:.full)\n    }\n    private func requireOrdinaryStorageGuard(_ entry:Entry,moment:AuxNativeFreshGuardMoment)throws {\n        try requireGuard(entry,moment:moment,operationError:nil,validation:.ordinaryStorage)\n    }\n    private func requireGuard(_ entry:Entry,moment:AuxNativeFreshGuardMoment,operationError:Error?,validation:GuardValidation)throws {\n",
+          "count": 1
+        },
+        {
+          "before": "        guard let captured=entry.nativeFreshRuntime else{return}\n",
+          "after": "        guard let captured=entry.nativeFreshRuntime else{\n            guard validation == .full else{throw AuxDispatcherLifetimeError.invalidInput};return\n        }\n",
+          "count": 1
+        },
+        {
+          "before": "        guard open || !requiresOpen else{throw AuxDispatcherLifetimeError.retiring}\n        do{try captured.revalidateCurrentCommandBinding()}\n        catch {",
+          "after": "        guard open || !requiresOpen else{throw AuxDispatcherLifetimeError.retiring}\n        do{\n            switch validation {\n            case .full:try captured.revalidateCurrentCommandBinding()\n            case .ordinaryStorage:\n#if AUX_BROWSER_ONLY_NATIVE_STARTUP\n                try captured.revalidateOrdinaryStorageBinding()\n#else\n                throw AuxDispatcherLifetimeError.invalidInput\n#endif\n            }\n        }\n        catch {",
+          "count": 1
+        },
+        {
+          "before": "afterThrow:AuxNativeFreshGuardMoment,_ action:()throws->T)throws->T {\n        try requireFreshGuard(entry,moment:before)",
+          "after": "afterThrow:AuxNativeFreshGuardMoment,validation:GuardValidation = .full,_ action:()throws->T)throws->T {\n        try requireGuard(entry,moment:before,operationError:nil,validation:validation)",
+          "count": 1
+        },
+        {
+          "before": "            try requireFreshGuard(entry,moment:afterThrow,operationError:original);throw original",
+          "after": "            try requireGuard(entry,moment:afterThrow,operationError:original,validation:validation);throw original",
+          "count": 1
+        },
+        {
+          "before": "        try requireFreshGuard(entry,moment:after)\n        return result\n    }",
+          "after": "        try requireGuard(entry,moment:after,operationError:nil,validation:validation)\n        return result\n    }",
+          "count": 1
+        },
+        {
+          "before": "    func copyAuthenticatedStorageRoots(_ handle:UInt64)throws->(generation:UInt64,control:Int32,task:Int32) {\n        try withEntry(handle,guardGenericAction:false){entry in\n#if AUX_NATIVE_FRESH_RUNTIME_CONSUMER\n            guard let captured=entry.nativeFreshRuntime else{throw AuxDispatcherLifetimeError.invalidInput}\n            try requireFreshGuard(entry,moment:.beforeAction)\n            var control:Int32 = -1,task:Int32 = -1\n            do {\n                let projection=try captured.owner.duplicateAuthenticatedTaskHome()\n                task=projection.descriptor\n                control=try captured.owner.duplicateRetainedHomeDescriptor()\n                guard projection.generation != 0,control>=0,task>=0 else{throw AuxDispatcherLifetimeError.invalidInput}\n                try requireFreshGuard(entry,moment:.beforeAction)\n                return(projection.generation,control,task)\n            }catch{if control>=0{Darwin.close(control)};if task>=0{Darwin.close(task)};throw error}\n#else\n            throw AuxDispatcherLifetimeError.invalidInput\n#endif\n        }\n    }\n",
+          "after": "#if AUX_BROWSER_ONLY_NATIVE_STARTUP\n    func copyAuthenticatedStorageRoots(_ handle:UInt64)throws->(generation:UInt64,control:Int32,task:Int32) {\n        try withEntry(handle,guardGenericAction:false){entry in\n#if AUX_NATIVE_FRESH_RUNTIME_CONSUMER\n            guard let captured=entry.nativeFreshRuntime else{throw AuxDispatcherLifetimeError.invalidInput}\n            try requireOrdinaryStorageGuard(entry,moment:.beforeAction)\n            var control:Int32 = -1,task:Int32 = -1\n            do {\n                let copied=try captured.owner.duplicateRetainedOrdinaryStorageRoots()\n                let projection=(generation:copied.generation,descriptor:copied.task)\n                task=copied.task;control=copied.control\n                guard projection.generation != 0,control>=0,task>=0 else{throw AuxDispatcherLifetimeError.invalidInput}\n                try requireOrdinaryStorageGuard(entry,moment:.beforeAction)\n                return(projection.generation,control,task)\n            }catch{if control>=0{Darwin.close(control)};if task>=0{Darwin.close(task)};throw error}\n#else\n            throw AuxDispatcherLifetimeError.invalidInput\n#endif\n        }\n    }\n\n#else\n    func copyAuthenticatedStorageRoots(_ handle:UInt64)throws->(generation:UInt64,control:Int32,task:Int32) {\n        try withEntry(handle,guardGenericAction:false){entry in\n#if AUX_NATIVE_FRESH_RUNTIME_CONSUMER\n            guard let captured=entry.nativeFreshRuntime else{throw AuxDispatcherLifetimeError.invalidInput}\n            try requireFreshGuard(entry,moment:.beforeAction)\n            var control:Int32 = -1,task:Int32 = -1\n            do {\n                let projection=try captured.owner.duplicateAuthenticatedTaskHome()\n                task=projection.descriptor\n                control=try captured.owner.duplicateRetainedHomeDescriptor()\n                guard projection.generation != 0,control>=0,task>=0 else{throw AuxDispatcherLifetimeError.invalidInput}\n                try requireFreshGuard(entry,moment:.beforeAction)\n                return(projection.generation,control,task)\n            }catch{if control>=0{Darwin.close(control)};if task>=0{Darwin.close(task)};throw error}\n#else\n            throw AuxDispatcherLifetimeError.invalidInput\n#endif\n        }\n    }\n\n#endif\n",
+          "count": 1
+        },
+        {
+          "before": "    // Cancellation closes future commands",
+          "after": "#if AUX_BROWSER_ONLY_NATIVE_STARTUP\n    func validateOrdinaryStorageAuthority(_ handle:UInt64)->Int32 {\n        do {\n            guard getpid()==process else{throw AuxNativeFreshGuardProcessError.wrongProcess}\n            let active=Thread.current.threadDictionary[threadKey] as? [UInt64:Int] ?? [:]\n            if active[handle,default:0]>0 {\n                // An authenticated account-lock callback may perform guarded\n                // filesystem writes. Its outer withEntry already holds this\n                // exact entry's execution lock and active lifetime on this\n                // thread. Revalidate it; do not open a nested command or return\n                // a cached admission result. Command re-entry stays forbidden.\n                condition.lock()\n                guard let entry=entries[handle] else{condition.unlock();throw AuxDispatcherLifetimeError.invalidHandle}\n                guard entry.phase == .open,entry.active>0 else{condition.unlock();throw AuxDispatcherLifetimeError.retiring}\n                condition.unlock()\n                try requireOrdinaryStorageGuard(entry,moment:.beforeAction)\n            }else{\n                try withEntry(handle,guardGenericAction:false){entry in try requireOrdinaryStorageGuard(entry,moment:.beforeAction)}\n            }\n            return 0\n        }catch let failure as AuxNativeFreshGuardFailure {\n            switch failure.disposition {\n            case .provenBindingLoss:return 3\n            case .postOutcomeUnknown:return 2\n            case .retryableNoCommand,.unknownNoCommand:return 1\n            }\n        }catch AuxDispatcherLifetimeError.invalidHandle{return -1}\n        catch AuxNativeFreshGuardProcessError.wrongProcess{return -2}\n        catch AuxDispatcherLifetimeError.retiring{return 3}\n        catch{return 1}\n    }\n#endif\n    // Cancellation closes future commands",
+          "count": 1
+        },
+        {
+          "before": "@_cdecl(\"AuxNativeContextCopyBrowserRoot\")",
+          "after": "@_cdecl(\"AuxNativeContextValidateOrdinaryStorageAuthority\")\nfunc auxNativeContextValidateOrdinaryStorageAuthority(_ handle:UInt64)->Int32 {\n#if AUX_BROWSER_ONLY_NATIVE_STARTUP\n    return AuxCommandDispatcherRegistry.shared.validateOrdinaryStorageAuthority(handle)\n#else\n    return -1\n#endif\n}\n@_cdecl(\"AuxNativeContextCopyBrowserRoot\")",
+          "count": 1
+        }
+      ]
+    }
+  ],
+  "sourceCount": 10,
+  "anchorCount": 26,
+  "cppRequirement": "AuxInspectRetainedNativeParentConnection(uint64_t)->int32_t",
+  "cppBrokerSymbol": "AuxNativeContextValidateOrdinaryStorageAuthority(uint64_t)->int32_t",
+  "compiled": false,
+  "signed": false,
+  "productExecuted": false
+}
