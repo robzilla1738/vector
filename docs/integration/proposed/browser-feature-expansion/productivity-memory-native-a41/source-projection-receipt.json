@@ -1,0 +1,15 @@
+{
+  "format": "aux.memory-static-source-replay.v1",
+  "outputDirectory": "/var/folders/98/j36zgdnd0h507whjl16gxl780000gp/T/aux-memory-source-a41-eqhnbail",
+  "files": [
+    {
+      "path": "/var/folders/98/j36zgdnd0h507whjl16gxl780000gp/T/aux-memory-source-a41-eqhnbail/index.mjs",
+      "sha256": "82f04f8238beb6a51712590b3f566c27de1eca67d2f1e38129b35d992c80a22d"
+    },
+    {
+      "path": "/var/folders/98/j36zgdnd0h507whjl16gxl780000gp/T/aux-memory-source-a41-eqhnbail/aux-native-entry.mjs",
+      "sha256": "4c0de6b47c0cc37d1a98be39936d88c522cbaec9da11fd0eef42f6e5a4539e7b"
+    }
+  ],
+  "runtimeExecuted": false
+}

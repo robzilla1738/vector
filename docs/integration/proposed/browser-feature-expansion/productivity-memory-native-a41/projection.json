@@ -1,0 +1,223 @@
+{
+  "format": "aux.memory.fixed-helper-native-projection.v1",
+  "baseline": "actual A16 ordinary-storage + integrated A40 registered-account owner",
+  "files": [
+    {
+      "name": "AuxAccountMemoryHelper.h",
+      "output": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/browser-feature-expansion/productivity-memory-native-a41/source/AuxAccountMemoryHelper.h",
+      "outputSha256": "d9e5673aca345532fefbc0c7d5f379837302eb987644375365d7eb2173314459",
+      "create": true,
+      "input": null,
+      "inputSha256": null
+    },
+    {
+      "name": "AuxAccountMemoryHelper.mm",
+      "output": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/browser-feature-expansion/productivity-memory-native-a41/source/AuxAccountMemoryHelper.mm",
+      "outputSha256": "9eac48599a3c92b43643de25e16e400b58431affe3aff122dfa411185ecb5ce7",
+      "create": true,
+      "input": null,
+      "inputSha256": null
+    },
+    {
+      "name": "AuxAccountsCskCoordinator.swift",
+      "output": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/browser-feature-expansion/productivity-memory-native-a41/source/AuxAccountsCskCoordinator.swift",
+      "outputSha256": "fc8a62ba11aff116f3d8ad6bbf2c4de8822a60943f9b6699d8e84b8642e3b7ef",
+      "input": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/productivity-helper-compatibility-a40/source/AuxAccountsCskCoordinator.swift",
+      "inputSha256": "cb9ee0e4e8f33d32802c624ef3ef0914da128b5aaa0b89ab199db9f7253a713c",
+      "anchors": [
+        {
+          "before": "enum AuxAccountsCskError:Error { case unavailable }\nfinal class AuxAccountsCskCoordinator {\n    private let process=getpid()\n    private let retainedHomeFD:Int32?\n    private let home:String\n    private let review:ReviewedAuxSecureStoreScope\n",
+          "after": "enum AuxAccountsCskError:Error { case unavailable }\nfinal class AuxAccountsCskCoordinator {\n    private let process=getpid()\n    private let callbackDirectoryKey=\"aux.memory.registry-directory.\"+UUID().uuidString\n    private let retainedHomeFD:Int32?\n    private let home:String\n    private let review:ReviewedAuxSecureStoreScope\n",
+          "count": 1
+        },
+        {
+          "before": "    }\n    // Whole synchronous callback executes under the actual OS lock AND caller's\n    // owned dispatcher lease. Never release it between JSON read and write.\n    func withAccountRegistryLock<T>(_ body:()throws->T)throws->T {try withDirectoryLock{_ in try body()}}\n    private func withDirectoryLock<T>(_ body:(Int32)throws->T)throws->T {\n        guard getpid()==process else{throw AuxAccountsCskError.unavailable}\n        let directory:Int32\n",
+          "after": "    }\n    // Whole synchronous callback executes under the actual OS lock AND caller's\n    // owned dispatcher lease. Never release it between JSON read and write.\n    func withAccountRegistryLock<T>(_ body:()throws->T)throws->T {\n        try withDirectoryLock{directory in\n            guard Thread.current.threadDictionary[callbackDirectoryKey]==nil else{throw AuxAccountsCskError.unavailable}\n            Thread.current.threadDictionary[callbackDirectoryKey]=NSNumber(value:directory)\n            defer{Thread.current.threadDictionary.removeObject(forKey:callbackDirectoryKey)}\n            return try body()\n        }\n    }\n    private func withMemoryRegistryDirectory<T>(_ body:(Int32)throws->T)throws->T {\n        guard getpid()==process else{throw AuxAccountsCskError.unavailable}\n        if let held=Thread.current.threadDictionary[callbackDirectoryKey] as? NSNumber {\n            let directory=held.int32Value\n            try Self.requireRetainedHome(home,fd:directory)\n            return try body(directory) // Actual synchronous owner still holds its persistent flock.\n        }\n        return try withDirectoryLock(body)\n    }\n    private func withDirectoryLock<T>(_ body:(Int32)throws->T)throws->T {\n        guard getpid()==process else{throw AuxAccountsCskError.unavailable}\n        let directory:Int32\n",
+          "count": 1
+        },
+        {
+          "before": "    }\n    // Native caller already retains its actual dispatcher Entry. Account is\n    // lookup data only; no current-account/path fallback or session export.\n    func registeredMemoryAccount(_ account:Int64)throws->AuxMemoryAccountIdentity {\n        try withDirectoryLock {directory in\n            let fd=openat(directory,\"accounts.json\",O_RDONLY|O_NOFOLLOW|O_CLOEXEC|O_NONBLOCK)\n            guard fd>=0 else{throw AuxMemoryAccountError.unavailable};defer{close(fd)}\n            var before=stat(),named=stat()\n",
+          "after": "    }\n    // Native caller already retains its actual dispatcher Entry. Account is\n    // lookup data only; no current-account/path fallback or session export.\n    private func registeredMemoryRegistryBytes()throws->Data {\n        try withMemoryRegistryDirectory {directory in\n            let fd=openat(directory,\"accounts.json\",O_RDONLY|O_NOFOLLOW|O_CLOEXEC|O_NONBLOCK)\n            guard fd>=0 else{throw AuxMemoryAccountError.unavailable};defer{close(fd)}\n            var before=stat(),named=stat()\n",
+          "count": 1
+        },
+        {
+          "before": "                let amount=bytes.withUnsafeMutableBytes{Darwin.read(fd,$0.baseAddress!.advanced(by:offset),$0.count-offset)}\n                if amount<0 && errno==EINTR{continue};guard amount>0 else{throw AuxMemoryAccountError.unavailable};offset += amount\n            }\n            let identity=try AuxMemoryAccountIdentity.decode(bytes,account:account)\n            var after=stat(),entry=stat()\n            guard fstat(fd,&after)==0,fstatat(directory,\"accounts.json\",&entry,AT_SYMLINK_NOFOLLOW)==0,\n                  entry.st_dev==before.st_dev,entry.st_ino==before.st_ino,\n",
+          "after": "                let amount=bytes.withUnsafeMutableBytes{Darwin.read(fd,$0.baseAddress!.advanced(by:offset),$0.count-offset)}\n                if amount<0 && errno==EINTR{continue};guard amount>0 else{throw AuxMemoryAccountError.unavailable};offset += amount\n            }\n            var after=stat(),entry=stat()\n            guard fstat(fd,&after)==0,fstatat(directory,\"accounts.json\",&entry,AT_SYMLINK_NOFOLLOW)==0,\n                  entry.st_dev==before.st_dev,entry.st_ino==before.st_ino,\n",
+          "count": 1
+        },
+        {
+          "before": "                  after.st_mtimespec.tv_sec==before.st_mtimespec.tv_sec,after.st_mtimespec.tv_nsec==before.st_mtimespec.tv_nsec,\n                  after.st_ctimespec.tv_sec==before.st_ctimespec.tv_sec,after.st_ctimespec.tv_nsec==before.st_ctimespec.tv_nsec\n            else{throw AuxMemoryAccountError.changed}\n            return identity\n        }\n    }\n    private let info=Data(\"aux.dk.csk.v2\".utf8)\n    private func subkey(_ root:Data)->SymmetricKey {HKDF<SHA256>.deriveKey(inputKeyMaterial:SymmetricKey(data:root),salt:Data(),info:info,outputByteCount:32)}\n    private func record(_ key:Data,root:Data,account:Int64,owner:String,generation:Int64)throws->Data {\n",
+          "after": "                  after.st_mtimespec.tv_sec==before.st_mtimespec.tv_sec,after.st_mtimespec.tv_nsec==before.st_mtimespec.tv_nsec,\n                  after.st_ctimespec.tv_sec==before.st_ctimespec.tv_sec,after.st_ctimespec.tv_nsec==before.st_ctimespec.tv_nsec\n            else{throw AuxMemoryAccountError.changed}\n            _ = try strictEnvelopeObject(bytes)\n            return bytes\n        }\n    }\n    func registeredMemoryAccount(_ account:Int64)throws->AuxMemoryAccountIdentity {\n        try AuxMemoryAccountIdentity.decode(registeredMemoryRegistryBytes(),account:account)\n    }\n    func memoryRegistryMatches(_ bytes:Data)throws->Bool {try registeredMemoryRegistryBytes()==bytes}\n    private let info=Data(\"aux.dk.csk.v2\".utf8)\n    private func subkey(_ root:Data)->SymmetricKey {HKDF<SHA256>.deriveKey(inputKeyMaterial:SymmetricKey(data:root),salt:Data(),info:info,outputByteCount:32)}\n    private func record(_ key:Data,root:Data,account:Int64,owner:String,generation:Int64)throws->Data {\n",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "name": "AuxDevelopmentWorkerHost.cc",
+      "output": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/browser-feature-expansion/productivity-memory-native-a41/source/AuxDevelopmentWorkerHost.cc",
+      "outputSha256": "9fe8fdd273794d704626286c1ae7026af33d89c5fd082e986a1da14429421caf",
+      "input": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/fresh-startup-milestone-a42/ordinary-storage-native/AuxDevelopmentWorkerHost.cc",
+      "inputSha256": "a7b3f15d1e13b611696ed01d49924742dd106b38e46326f131bc2cabdc09c95c",
+      "anchors": [
+        {
+          "before": "#include \"AuxDevelopmentWorkerHost.h\"\n#include \"AuxTaskDescendantObserver.h\"\n#include \"AuxWorkerDrain.h\"\n#include \"AuxExecPrivateParent.h\"\n",
+          "after": "#include \"AuxDevelopmentWorkerHost.h\"\n#include \"AuxAccountMemoryHelper.h\"\n#include \"AuxTaskDescendantObserver.h\"\n#include \"AuxWorkerDrain.h\"\n#include \"AuxExecPrivateParent.h\"\n",
+          "count": 1
+        },
+        {
+          "before": "  bool broker_untracked = false;\n  size_t runtime_scope_pending = 0;\n  bool runtime_scope_unknown = false;\n  bool broker_closed = false;\n  bool terminal = false;\n  bool initializing = true;\n",
+          "after": "  bool broker_untracked = false;\n  size_t runtime_scope_pending = 0;\n  bool runtime_scope_unknown = false;\n  bool ordinary_main_service = false;\n  bool broker_closed = false;\n  bool terminal = false;\n  bool initializing = true;\n",
+          "count": 1
+        },
+        {
+          "before": "      retiring = true;\n    }\n    CloseChatGPTCredentialLocks(this);\n    // No host/worker lock crosses native retirement, OS drain or owner release.\n    // A concurrent/reentrant close observes pending instead of deadlocking.\n    int32_t status = captured ? AuxNativeContextRetire(captured->handle) : 0;\n    result = AuxDevelopmentWorkerDrain::drained;\n    if (status == -2) result = AuxDevelopmentWorkerDrain::reentrant;\n    else if (status == -3) result = AuxDevelopmentWorkerDrain::untracked;\n    else if (status == -4) result = AuxDevelopmentWorkerDrain::wrongProcess;\n    else if (status != 0 && status != -1) result = AuxDevelopmentWorkerDrain::pending;\n    if (captured && (status == 0 || status == -1 || status == -3)) {\n      const int32_t os = AuxCloseDevelopmentOwnerOSAdmission(captured->retained);\n      if (os == 2) result = AuxMergeWorkerDrain(result, AuxDevelopmentWorkerDrain::untracked);\n",
+          "after": "      retiring = true;\n    }\n    CloseChatGPTCredentialLocks(this);\n    const auto memory_drain=AuxCloseAccountMemoryProcessesForWorker(this);\n    // No host/worker lock crosses native retirement, OS drain or owner release.\n    // A concurrent/reentrant close observes pending instead of deadlocking.\n    int32_t status = captured ? AuxNativeContextRetire(captured->handle) : 0;\n    result = memory_drain;\n    if (status == -2) result = AuxMergeWorkerDrain(result,AuxDevelopmentWorkerDrain::reentrant);\n    else if (status == -3) result = AuxMergeWorkerDrain(result,AuxDevelopmentWorkerDrain::untracked);\n    else if (status == -4) result = AuxMergeWorkerDrain(result,AuxDevelopmentWorkerDrain::wrongProcess);\n    else if (status != 0 && status != -1) result = AuxMergeWorkerDrain(result,AuxDevelopmentWorkerDrain::pending);\n    if (captured && (status == 0 || status == -1 || status == -3)) {\n      const int32_t os = AuxCloseDevelopmentOwnerOSAdmission(captured->retained);\n      if (os == 2) result = AuxMergeWorkerDrain(result, AuxDevelopmentWorkerDrain::untracked);\n",
+          "count": 1
+        },
+        {
+          "before": "};\n\n}\n\nextern \"C\" __attribute__((visibility(\"hidden\"))) int32_t AuxDevelopmentOwnerCleanSettlementStatus(void* owner) noexcept {\n  return ObserveOwnerCleanSettlement(owner);\n",
+          "after": "};\n\n}\n\n#include \"AuxMemoryMainOwner.inc\"\n\nextern \"C\" __attribute__((visibility(\"hidden\"))) int32_t AuxDevelopmentOwnerCleanSettlementStatus(void* owner) noexcept {\n  return ObserveOwnerCleanSettlement(owner);\n",
+          "count": 1
+        },
+        {
+          "before": "    uint64_t generation = NextGeneration();\n    if (!generation) return napi_generic_failure;\n    worker = std::make_shared<Worker>(generation, environment, isolate, loop);\n    cleanup_retain = new std::shared_ptr<Worker>(worker);\n    {\n      std::lock_guard<std::mutex> lock(Registry().mutex);\n",
+          "after": "    uint64_t generation = NextGeneration();\n    if (!generation) return napi_generic_failure;\n    worker = std::make_shared<Worker>(generation, environment, isolate, loop);\n    worker->ordinary_main_service = kBrowserOnlyNativeStartup && environment == state_->browser_service_environment;\n    cleanup_retain = new std::shared_ptr<Worker>(worker);\n    {\n      std::lock_guard<std::mutex> lock(Registry().mutex);\n",
+          "count": 1
+        },
+        {
+          "before": "  }\n  if (status == napi_ok && worker->CanContinue()) {\n    const napi_property_descriptor properties[] = {\n      {\"captureExecPrivateParent\",nullptr,CaptureExecPrivateParent,nullptr,nullptr,nullptr,napi_default,nullptr},\n      {\"captureStorageRoots\",nullptr,CaptureStorageRoots,nullptr,nullptr,nullptr,napi_default,nullptr},\n      {\"inspectRuntimeCache\",nullptr,InspectRuntimeCache,nullptr,nullptr,nullptr,napi_default,nullptr},\n",
+          "after": "  }\n  if (status == napi_ok && worker->CanContinue()) {\n    const napi_property_descriptor properties[] = {\n      {\"createAccountMemoryProcess\",nullptr,AuxCreateAccountMemoryProcess,nullptr,nullptr,nullptr,napi_default,nullptr},\n      {\"validateMemoryRegistryTarget\",nullptr,AuxValidateMemoryRegistryTarget,nullptr,nullptr,nullptr,napi_default,nullptr},\n      {\"finishMemoryRegistryTarget\",nullptr,AuxFinishMemoryRegistryTarget,nullptr,nullptr,nullptr,napi_default,nullptr},\n      {\"captureExecPrivateParent\",nullptr,CaptureExecPrivateParent,nullptr,nullptr,nullptr,napi_default,nullptr},\n      {\"captureStorageRoots\",nullptr,CaptureStorageRoots,nullptr,nullptr,nullptr,napi_default,nullptr},\n      {\"inspectRuntimeCache\",nullptr,InspectRuntimeCache,nullptr,nullptr,nullptr,napi_default,nullptr},\n",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "name": "AuxMemoryHelperJournal.swift",
+      "output": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/browser-feature-expansion/productivity-memory-native-a41/source/AuxMemoryHelperJournal.swift",
+      "outputSha256": "9efd7f2aed4c980a83889e93e38a4c449463da642185e0d8aaf67c8d8a247324",
+      "create": true,
+      "input": null,
+      "inputSha256": null
+    },
+    {
+      "name": "AuxMemoryMainOwner.inc",
+      "output": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/browser-feature-expansion/productivity-memory-native-a41/source/AuxMemoryMainOwner.inc",
+      "outputSha256": "49729ab316cad5325c091d239d94eedf66143e0589ceefa6a7580d709d9d3b81",
+      "create": true,
+      "input": null,
+      "inputSha256": null
+    },
+    {
+      "name": "AuxMemoryModelPins.inc",
+      "output": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/browser-feature-expansion/productivity-memory-native-a41/source/AuxMemoryModelPins.inc",
+      "outputSha256": "5687f40e74f190930e1ddee90957f9f7a39e107b1d6a84a0a5e0c7af829037bd",
+      "create": true,
+      "input": null,
+      "inputSha256": null
+    },
+    {
+      "name": "AuxOwnedCommandDispatcher.swift",
+      "output": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/browser-feature-expansion/productivity-memory-native-a41/source/AuxOwnedCommandDispatcher.swift",
+      "outputSha256": "0cea620f860b6ae27f939dc97f42b129a57d29fa983dc7974735d81ccb8d265b",
+      "input": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/productivity-helper-compatibility-a40/source/AuxOwnedCommandDispatcher.swift",
+      "inputSha256": "1edd44ef56528b436617b52e59f3be8dfc206c68dd7f5aa8d2d1e844b5355fe5",
+      "anchors": [
+        {
+          "before": "#endif\n#if AUX_BROWSER_ONLY_NATIVE_STARTUP\n        var memoryAccounts=[UInt64:AuxRegisteredMemoryAccountOwner]()\n#endif\n        let core:AuxInstallationCommandCore\n#if AUX_MACOS_UTILITY_DISPATCH\n",
+          "after": "#endif\n#if AUX_BROWSER_ONLY_NATIVE_STARTUP\n        var memoryAccounts=[UInt64:AuxRegisteredMemoryAccountOwner]()\n        var memoryJournals=[UInt64:AuxMemoryHelperJournal]()\n        var pendingMemoryRegistryTarget:Data?\n#endif\n        let core:AuxInstallationCommandCore\n#if AUX_MACOS_UTILITY_DISPATCH\n",
+          "count": 1
+        },
+        {
+          "before": "    }\n    // Refusal fence only. The actual registered FileJsonStore producer passes\n    // its exact pending accounts.json bytes while holding the existing lock.\n    func validateMemoryRegistryTarget(_ handle:UInt64,bytes:Data)throws {\n        guard getpid()==process else{throw AuxMemoryAccountError.changed}\n        let held=Thread.current.threadDictionary[\"aux.native.memory.registry-callback.v1\"] as? [UInt64:Int] ?? [:]\n        guard held[handle,default:0]>0 else{throw AuxMemoryAccountError.unavailable}\n        condition.lock()\n        guard let entry=entries[handle],entry.phase == .open,entry.active>0 else{condition.unlock();throw AuxMemoryAccountError.unavailable}\n        let owners=Array(entry.memoryAccounts.values);condition.unlock()\n        try requireOrdinaryStorageGuard(entry,moment:.beforeAction)\n        for owner in owners{guard try AuxMemoryAccountIdentity.decode(bytes,account:owner.identity.accountId)==owner.identity else{throw AuxMemoryAccountError.changed}}\n        try requireOrdinaryStorageGuard(entry,moment:.afterAction)\n    }\n    // This C boundary is consumed only by the real embedding main Environment\n    // producer; it is not registered as a page, generic Worker or command API.\n",
+          "after": "    }\n    // Refusal fence only. The actual registered FileJsonStore producer passes\n    // its exact pending accounts.json bytes while holding the existing lock.\n    func validateMemoryRegistryTarget(_ handle:UInt64,bytes:Data)throws->Bool {\n        guard getpid()==process else{throw AuxMemoryAccountError.changed}\n        let held=Thread.current.threadDictionary[\"aux.native.memory.registry-callback.v1\"] as? [UInt64:Int] ?? [:]\n        guard held[handle,default:0]>0 else{throw AuxMemoryAccountError.unavailable}\n        _ = try strictEnvelopeObject(bytes)\n        condition.lock()\n        guard let entry=entries[handle],entry.phase == .open,entry.active>0 else{condition.unlock();throw AuxMemoryAccountError.unavailable}\n        let owners=Array(entry.memoryAccounts.values),pending=entry.pendingMemoryRegistryTarget;condition.unlock()\n        try requireOrdinaryStorageGuard(entry,moment:.beforeAction)\n        if let pending, pending != bytes{throw AuxMemoryAccountError.changed}\n        let changed=owners.contains{(try? AuxMemoryAccountIdentity.decode(bytes,account:$0.identity.accountId)) != $0.identity}\n        if changed{condition.lock();entry.pendingMemoryRegistryTarget=bytes;condition.unlock();return false}\n        try requireOrdinaryStorageGuard(entry,moment:.afterAction)\n        return true\n    }\n    func finishMemoryRegistryTarget(_ handle:UInt64,bytes:Data)throws {\n        guard getpid()==process else{throw AuxMemoryAccountError.changed}\n        let held=Thread.current.threadDictionary[\"aux.native.memory.registry-callback.v1\"] as? [UInt64:Int] ?? [:]\n        guard held[handle,default:0]>0 else{throw AuxMemoryAccountError.unavailable}\n        condition.lock();guard let entry=entries[handle],entry.phase == .open,entry.active>0 else{condition.unlock();throw AuxMemoryAccountError.unavailable}\n        let pending=entry.pendingMemoryRegistryTarget;condition.unlock()\n        guard let secure=entry.secureStore,try secure.memoryRegistryMatches(bytes),pending==nil || pending==bytes else{throw AuxMemoryAccountError.changed}\n        try requireOrdinaryStorageGuard(entry,moment:.afterAction)\n        condition.lock();entry.pendingMemoryRegistryTarget=nil;condition.unlock()\n    }\n    // This C boundary is consumed only by the real embedding main Environment\n    // producer; it is not registered as a page, generic Worker or command API.\n",
+          "count": 1
+        },
+        {
+          "before": "            let roots=try captured.owner.duplicateRetainedOrdinaryStorageRoots()\n            defer{Darwin.close(roots.control);Darwin.close(roots.task)}\n            guard roots.generation>0 else{throw AuxMemoryAccountError.unavailable}\n            let owner=try AuxRegisteredMemoryAccountOwner(identity:identity,controlRoot:roots.control,taskRoot:roots.task)\n            try owner.revalidate(secure.registeredMemoryAccount(account))\n            try requireOrdinaryStorageGuard(entry,moment:.afterAction)\n            condition.lock();defer{condition.unlock()}\n            guard entry.phase == .open,entry.memoryAccounts.count<64,nextMemoryAccount<UInt64.max,\n                  !entry.memoryAccounts.values.contains(where:{$0.identity.accountId==account}) else{throw AuxMemoryAccountError.exhausted}\n            let id=nextMemoryAccount;nextMemoryAccount += 1;entry.memoryAccounts[id]=owner\n            return id\n",
+          "after": "            let roots=try captured.owner.duplicateRetainedOrdinaryStorageRoots()\n            defer{Darwin.close(roots.control);Darwin.close(roots.task)}\n            guard roots.generation>0 else{throw AuxMemoryAccountError.unavailable}\n            let owner=try AuxRegisteredMemoryAccountOwner(identity:identity,controlRoot:roots.control,taskRoot:roots.task,transportGeneration:roots.generation)\n            try owner.revalidate(secure.registeredMemoryAccount(account))\n            try requireOrdinaryStorageGuard(entry,moment:.afterAction)\n            condition.lock();defer{condition.unlock()}\n            guard entry.phase == .open,entry.pendingMemoryRegistryTarget==nil,entry.memoryAccounts.count<64,nextMemoryAccount<UInt64.max,\n                  !entry.memoryAccounts.values.contains(where:{$0.identity.accountId==account}) else{throw AuxMemoryAccountError.exhausted}\n            let id=nextMemoryAccount;nextMemoryAccount += 1;entry.memoryAccounts[id]=owner\n            return id\n",
+          "count": 1
+        },
+        {
+          "before": "            try requireOrdinaryStorageGuard(entry,moment:.afterAction)\n        }\n    }\n    // Only the native physical-launch/reaper owner calls this after definite\n    // pre-child failure or original reap plus closed native stdio. No JS hook.\n    func releaseMemoryAccount(_ handle:UInt64,owner id:UInt64)->Int32 {\n        guard getpid()==process else{return -2}\n        condition.lock();guard let entry=entries[handle],let owner=entry.memoryAccounts.removeValue(forKey:id) else{condition.unlock();return -1}\n        if entry.active==0 && entry.phase == .retiring && !hasRetainedLifetime(entry){entry.phase = .closed;entries.removeValue(forKey:handle)}\n        condition.broadcast();condition.unlock();withExtendedLifetime(owner){};return 0\n    }\n",
+          "after": "            try requireOrdinaryStorageGuard(entry,moment:.afterAction)\n        }\n    }\n    func prepareMemoryLaunch(_ handle:UInt64,owner id:UInt64)throws {\n        try withEntry(handle,guardGenericAction:false){entry in\n            try requireOrdinaryStorageGuard(entry,moment:.beforeAction)\n            condition.lock();let owner=entry.memoryAccounts[id];let existing=entry.memoryJournals[id];condition.unlock()\n            guard let owner,let context=entry.nativeFreshRuntime,let secure=entry.secureStore else{throw AuxMemoryAccountError.unavailable}\n            try owner.revalidate(secure.registeredMemoryAccount(owner.identity.accountId))\n            let journal:AuxMemoryHelperJournal\n            if let existing{journal=existing}else{\n                journal=try AuxMemoryHelperJournal(owner:owner,context:context)\n                condition.lock();entry.memoryJournals[id]=journal;condition.unlock()\n            }\n            try journal.prepare()\n            try requireOrdinaryStorageGuard(entry,moment:.afterAction)\n        }\n    }\n    func publishMemorySuspended(_ handle:UInt64,owner id:UInt64,pid:Int32)throws {\n        try withEntry(handle,guardGenericAction:false){entry in\n            try requireOrdinaryStorageGuard(entry,moment:.beforeAction)\n            condition.lock();let owner=entry.memoryAccounts[id];let journal=entry.memoryJournals[id];condition.unlock()\n            guard let owner,let journal,let secure=entry.secureStore else{throw AuxMemoryAccountError.unavailable}\n            try owner.revalidate(secure.registeredMemoryAccount(owner.identity.accountId))\n            try journal.publishSuspended(pid)\n            try requireOrdinaryStorageGuard(entry,moment:.afterAction)\n        }\n    }\n    // Physical terminal observation is allowed after native admission closes.\n    // Original reaper/thread owner is the only C consumer; no JS registration.\n    func observeMemoryTerminal(_ handle:UInt64,owner id:UInt64,pid:Int32,status:Int32,spawnError:Int32)throws {\n        guard getpid()==process else{throw AuxMemoryAccountError.changed}\n        condition.lock();guard let entry=entries[handle],entry.memoryAccounts[id] != nil else{condition.unlock();throw AuxMemoryAccountError.unavailable}\n        let journal=entry.memoryJournals[id];condition.unlock()\n        entry.execution.lock();defer{entry.execution.unlock()}\n        if let journal{try journal.terminal(pid:pid,waitStatus:status,spawnError:spawnError)}\n        else{guard pid==0,spawnError>0 else{throw AuxMemoryAccountError.unavailable}}\n    }\n    // Only the native physical-launch/reaper owner calls this after definite\n    // pre-child failure or original reap plus closed native stdio. No JS hook.\n    func releaseMemoryAccount(_ handle:UInt64,owner id:UInt64)->Int32 {\n        guard getpid()==process else{return -2}\n        condition.lock();guard let entry=entries[handle],let owner=entry.memoryAccounts[id] else{condition.unlock();return -1}\n        let journal=entry.memoryJournals[id];condition.unlock()\n        if let journal{guard (try? journal.canRelease())==true else{return -1}}\n        condition.lock()\n        guard entry.memoryAccounts[id] === owner else{condition.unlock();return -1}\n        entry.memoryAccounts.removeValue(forKey:id);entry.memoryJournals.removeValue(forKey:id)\n        if entry.active==0 && entry.phase == .retiring && !hasRetainedLifetime(entry){entry.phase = .closed;entries.removeValue(forKey:handle)}\n        condition.broadcast();condition.unlock();withExtendedLifetime(owner){};return 0\n    }\n",
+          "count": 1
+        },
+        {
+          "before": "    return -1\n#endif\n}\n@_cdecl(\"AuxValidateRegisteredMemoryRegistryTarget\")\nfunc auxValidateRegisteredMemoryRegistryTarget(_ handle:UInt64,_ bytes:UnsafePointer<UInt8>?,_ count:UInt32)->Int32 {\n#if AUX_BROWSER_ONLY_NATIVE_STARTUP\n    guard let bytes,count>0,count<=4*1024*1024 else{return -1}\n    do{try AuxCommandDispatcherRegistry.shared.validateMemoryRegistryTarget(handle,bytes:Data(bytes:bytes,count:Int(count)));return 0}catch{return -1}\n#else\n    return -1\n#endif\n}\n// Private native helper adapters. The linked binding must select the actual\n// main Environment's retained dispatcher; no JS-supplied dispatcher is valid.\n@_cdecl(\"AuxCaptureRegisteredMemoryAccount\")\nfunc auxCaptureRegisteredMemoryAccount(_ handle:UInt64,_ account:Int64,_ owner:UnsafeMutablePointer<UInt64>?)->Int32 {\n    guard let owner else{return -1};owner.pointee=0\n",
+          "after": "    return -1\n#endif\n}\n@_cdecl(\"AuxFinishRegisteredMemoryRegistryTarget\")\nfunc auxFinishRegisteredMemoryRegistryTarget(_ handle:UInt64,_ bytes:UnsafePointer<UInt8>?,_ count:UInt32)->Int32 {\n#if AUX_BROWSER_ONLY_NATIVE_STARTUP\n    guard let bytes,count>0,count<=4*1024*1024 else{return -1}\n    do{try AuxCommandDispatcherRegistry.shared.finishMemoryRegistryTarget(handle,bytes:Data(bytes:bytes,count:Int(count)));return 0}catch{return -1}\n#else\n    return -1\n#endif\n}\n@_cdecl(\"AuxValidateRegisteredMemoryRegistryTarget\")\nfunc auxValidateRegisteredMemoryRegistryTarget(_ handle:UInt64,_ bytes:UnsafePointer<UInt8>?,_ count:UInt32)->Int32 {\n#if AUX_BROWSER_ONLY_NATIVE_STARTUP\n    guard let bytes,count>0,count<=4*1024*1024 else{return -1}\n    do{return try AuxCommandDispatcherRegistry.shared.validateMemoryRegistryTarget(handle,bytes:Data(bytes:bytes,count:Int(count))) ? 0:1}catch{return -1}\n#else\n    return -1\n#endif\n}\n// Private native helper adapters. The linked binding must select the actual\n// main Environment's retained dispatcher; no JS-supplied dispatcher is valid.\n@_cdecl(\"AuxPrepareMemoryAccountLaunch\")\nfunc auxPrepareMemoryAccountLaunch(_ handle:UInt64,_ owner:UInt64)->Int32 {\n#if AUX_BROWSER_ONLY_NATIVE_STARTUP\n    do{try AuxCommandDispatcherRegistry.shared.prepareMemoryLaunch(handle,owner:owner);return 0}catch{return -1}\n#else\n    return -1\n#endif\n}\n@_cdecl(\"AuxPublishSuspendedMemoryAccountLaunch\")\nfunc auxPublishSuspendedMemoryAccountLaunch(_ handle:UInt64,_ owner:UInt64,_ pid:Int32)->Int32 {\n#if AUX_BROWSER_ONLY_NATIVE_STARTUP\n    do{try AuxCommandDispatcherRegistry.shared.publishMemorySuspended(handle,owner:owner,pid:pid);return 0}catch{return -1}\n#else\n    return -1\n#endif\n}\n@_cdecl(\"AuxObserveMemoryAccountTerminal\")\nfunc auxObserveMemoryAccountTerminal(_ handle:UInt64,_ owner:UInt64,_ pid:Int32,_ status:Int32,_ spawnError:Int32)->Int32 {\n#if AUX_BROWSER_ONLY_NATIVE_STARTUP\n    do{try AuxCommandDispatcherRegistry.shared.observeMemoryTerminal(handle,owner:owner,pid:pid,status:status,spawnError:spawnError);return 0}catch{return -1}\n#else\n    return -1\n#endif\n}\n@_cdecl(\"AuxCaptureRegisteredMemoryAccount\")\nfunc auxCaptureRegisteredMemoryAccount(_ handle:UInt64,_ account:Int64,_ owner:UnsafeMutablePointer<UInt64>?)->Int32 {\n    guard let owner else{return -1};owner.pointee=0\n",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "name": "AuxRegisteredMemoryAccountOwner.h",
+      "output": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/browser-feature-expansion/productivity-memory-native-a41/source/AuxRegisteredMemoryAccountOwner.h",
+      "outputSha256": "ca7bc629359188097df2d1414af2720b3b656c7e8272e0ca1286b19c28eee284",
+      "input": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/productivity-helper-compatibility-a40/source/AuxRegisteredMemoryAccountOwner.h",
+      "inputSha256": "bf61a0d513d28d260d62f11c9e7282ef83c91b7d3a6f962703de403a5ff7b8a2",
+      "anchors": [
+        {
+          "before": "int32_t AuxCopyRegisteredMemoryDirectory(uint64_t dispatcher, uint64_t retained_owner,\n                                       int32_t* directory);\nint32_t AuxValidateRegisteredMemoryAccount(uint64_t dispatcher, uint64_t retained_owner);\n// Sole physical launcher/reaper calls only after definite pre-child failure or\n// original reap AND observed stdio closure. No JS settlement callback.\nint32_t AuxReleaseRegisteredMemoryAccount(uint64_t dispatcher, uint64_t retained_owner);\n",
+          "after": "int32_t AuxCopyRegisteredMemoryDirectory(uint64_t dispatcher, uint64_t retained_owner,\n                                       int32_t* directory);\nint32_t AuxValidateRegisteredMemoryAccount(uint64_t dispatcher, uint64_t retained_owner);\n// Journal prepare must durably ACK before physical spawn. Publish must\n// independently verify stopped original child PID/birth and ACK before resume.\nint32_t AuxPrepareMemoryAccountLaunch(uint64_t dispatcher,uint64_t retained_owner);\nint32_t AuxPublishSuspendedMemoryAccountLaunch(uint64_t dispatcher,uint64_t retained_owner,int32_t pid);\nint32_t AuxObserveMemoryAccountTerminal(uint64_t dispatcher,uint64_t retained_owner,\n                                      int32_t original_child,int32_t wait_status,int32_t spawn_error);\n// Sole physical launcher/reaper calls only after definite pre-child failure or\n// original reap AND observed stdio closure. No JS settlement callback.\nint32_t AuxReleaseRegisteredMemoryAccount(uint64_t dispatcher, uint64_t retained_owner);\n",
+          "count": 1
+        },
+        {
+          "before": "#ifdef __cplusplus\n}\n#endif\n",
+          "after": "#ifdef __cplusplus\n}\n#endif\n\nint32_t AuxFinishRegisteredMemoryRegistryTarget(uint64_t dispatcher,const uint8_t* exact_target,uint32_t count);\n",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "name": "AuxRegisteredMemoryAccountOwner.swift",
+      "output": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/browser-feature-expansion/productivity-memory-native-a41/source/AuxRegisteredMemoryAccountOwner.swift",
+      "outputSha256": "897f3c44ab48d8fd50469e47f436845eeaae53ee6b4ee6125e271f3d0ac6bc52",
+      "input": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/productivity-helper-compatibility-a40/source/AuxRegisteredMemoryAccountOwner.swift",
+      "inputSha256": "65c5a4686391764c15b2382e4de6f283a863c04bd9c0048f15abc008ef093c6e",
+      "anchors": [
+        {
+          "before": "final class AuxRegisteredMemoryAccountOwner {\n    private let process=getpid()\n    let identity:AuxMemoryAccountIdentity\n    private struct Directory {\n        let descriptor:Int32\n        let path:String\n",
+          "after": "final class AuxRegisteredMemoryAccountOwner {\n    private let process=getpid()\n    let identity:AuxMemoryAccountIdentity\n    let transportGeneration:UInt64\n    private let taskRootIndex:Int\n    private struct Directory {\n        let descriptor:Int32\n        let path:String\n",
+          "count": 1
+        },
+        {
+          "before": "    }\n    private var directories=[Directory]()\n    private let memoryIndex:Int\n    init(identity:AuxMemoryAccountIdentity,controlRoot:Int32,taskRoot:Int32)throws {\n        self.identity=identity\n        var held=[Directory]()\n        func capture(_ fd:Int32)throws->Directory {\n            let value=try Self.metadata(fd)\n",
+          "after": "    }\n    private var directories=[Directory]()\n    private let memoryIndex:Int\n    init(identity:AuxMemoryAccountIdentity,controlRoot:Int32,taskRoot:Int32,transportGeneration:UInt64)throws {\n        guard transportGeneration>0 else{throw AuxMemoryAccountError.unavailable}\n        self.identity=identity;self.transportGeneration=transportGeneration\n        var held=[Directory]()\n        func capture(_ fd:Int32)throws->Directory {\n            let value=try Self.metadata(fd)\n",
+          "count": 1
+        },
+        {
+          "before": "        do {\n            let control=try root(controlRoot),controlUsers=try child(control,\"u\")\n            _ = try child(controlUsers,String(identity.accountId))\n            let task=try root(taskRoot),taskUsers=try child(task,\"u\"),account=try child(taskUsers,String(identity.accountId))\n            _ = try child(account,\"memory\")\n            memoryIndex=held.count-1;directories=held\n        }catch{for directory in held.reversed(){close(directory.descriptor)};throw error}\n    }\n    private static func metadata(_ fd:Int32)throws->stat {\n",
+          "after": "        do {\n            let control=try root(controlRoot),controlUsers=try child(control,\"u\")\n            _ = try child(controlUsers,String(identity.accountId))\n            let taskIndex=held.count\n            let task=try root(taskRoot),taskUsers=try child(task,\"u\"),account=try child(taskUsers,String(identity.accountId))\n            _ = try child(account,\"memory\")\n            memoryIndex=held.count-1;taskRootIndex=taskIndex;directories=held\n        }catch{for directory in held.reversed(){close(directory.descriptor)};throw error}\n    }\n    private static func metadata(_ fd:Int32)throws->stat {\n",
+          "count": 1
+        },
+        {
+          "before": "        guard getpid()==process,current==identity else{throw AuxMemoryAccountError.changed}\n        for directory in directories{try Self.revalidate(directory)}\n    }\n    func duplicateMemoryDirectory()throws->Int32 {\n        guard getpid()==process else{throw AuxMemoryAccountError.changed}\n        for directory in directories{try Self.revalidate(directory)}\n",
+          "after": "        guard getpid()==process,current==identity else{throw AuxMemoryAccountError.changed}\n        for directory in directories{try Self.revalidate(directory)}\n    }\n    // Private native journal producer only, never exported by NAPI/C.\n    func duplicateTaskRootDirectory()throws->Int32 {\n        guard getpid()==process else{throw AuxMemoryAccountError.changed}\n        for directory in directories{try Self.revalidate(directory)}\n        let fd=fcntl(directories[taskRootIndex].descriptor,F_DUPFD_CLOEXEC,0)\n        guard fd>=0 else{throw AuxMemoryAccountError.unsafeDirectory};return fd\n    }\n    func duplicateMemoryDirectory()throws->Int32 {\n        guard getpid()==process else{throw AuxMemoryAccountError.changed}\n        for directory in directories{try Self.revalidate(directory)}\n",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "name": "AuxSecureStore.swift",
+      "output": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/browser-feature-expansion/productivity-memory-native-a41/source/AuxSecureStore.swift",
+      "outputSha256": "2ca167ffd3bf3c36a29032ec43e31324ae5ada6c188bcc3b0a3c9c5e8eeb9dc7",
+      "input": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/productivity-helper-compatibility-a40/source/AuxSecureStore.swift",
+      "inputSha256": "2d183a5273297997e1b04704e6557a0640582790b27c287e2de37625c3bcc8fd",
+      "anchors": [
+        {
+          "before": "        self.review=review;self.boundary=boundary\n        accounts=try AuxAccountsCskCoordinator(home:accountHome,review:review,installation:installation,boundary:boundary,retainedHomeDescriptor:retainedAccountHomeDescriptor)\n    }\n    func registeredMemoryAccount(_ account:Int64)throws->AuxMemoryAccountIdentity {\n        guard let accounts else{throw AuxMemoryAccountError.unavailable}\n        return try accounts.registeredMemoryAccount(account)\n",
+          "after": "        self.review=review;self.boundary=boundary\n        accounts=try AuxAccountsCskCoordinator(home:accountHome,review:review,installation:installation,boundary:boundary,retainedHomeDescriptor:retainedAccountHomeDescriptor)\n    }\n    func memoryRegistryMatches(_ bytes:Data)throws->Bool {guard let accounts else{throw AuxMemoryAccountError.unavailable};return try accounts.memoryRegistryMatches(bytes)}\n    func registeredMemoryAccount(_ account:Int64)throws->AuxMemoryAccountIdentity {\n        guard let accounts else{throw AuxMemoryAccountError.unavailable}\n        return try accounts.registeredMemoryAccount(account)\n",
+          "count": 1
+        }
+      ]
+    }
+  ],
+  "dependencies": [
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/native-memory-lifetime-startup-a31/source-plan.json",
+      "sha256": "53d3968b7878e0782793ac5dde4e29c99cd68a443bd8fceca2d77671dbb9c0d2"
+    }
+  ],
+  "nativeBuildPerformed": false,
+  "productExecuted": false
+}

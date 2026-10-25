@@ -1,0 +1,91 @@
+{
+  "format": "aux.memory-paired-supplied-source.v1",
+  "files": [
+    {
+      "input": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/fresh-startup-milestone-a42/http-request-adapter-source/index.mjs",
+      "inputSha256": "ab8314dabe8f6b2100a587e93deed2bd496ffe0db56dfa3610bbcd08c70b9938",
+      "outputName": "index.mjs",
+      "outputSha256": "82f04f8238beb6a51712590b3f566c27de1eca67d2f1e38129b35d992c80a22d",
+      "anchors": [
+        {
+          "before": "function atomicWriteFileSync(Cn,ei){return auxBrokerBoundary().sync(()=>auxAtomicWriteFileSyncBody(Cn,ei))}",
+          "after": "// Node stream facade for one native fixed account helper. No FD/path/argv API.\nfunction auxAccountMemoryProcess(account) {\n const binding=process._linkedBinding('aux_owned_native');\n const get=name=>{const d=Object.getOwnPropertyDescriptor(binding,name);if(!d||d.get||d.set||d.writable||d.configurable)throw Error('Native memory capability unavailable');return d.value};\n if(get('supervisedTasksEnabled')!==false)throw Error('Finite memory helper requires ordinary native mode');\n const create=get('createAccountMemoryProcess');if(typeof create!=='function'||!Number.isSafeInteger(account)||account<0)throw Error('Native registered memory account unavailable');\n const {EventEmitter}=require$2('node:events'),{Readable,Writable}=require$2('node:stream');\n const child=new EventEmitter();let native;\n child.stdout=new Readable({read(){}});child.stderr=new Readable({read(){}});\n child.stdin=new Writable({write(bytes,encoding,done){try{Promise.resolve(native.write(Buffer.from(bytes))).then(()=>done(),done)}catch(error){done(error)}},final(done){try{Promise.resolve(native.endInput()).then(()=>done(),done)}catch(error){done(error)}}});\n native=Reflect.apply(create,binding,[account,(kind,value)=>{\n  if(kind==='stdout'||kind==='stderr')child[kind].push(value);\n  else if(kind==='stdoutEnd'||kind==='stderrEnd')child[kind==='stdoutEnd'?'stdout':'stderr'].push(null);\n  else if(kind==='spawn'){child.pid=value;child.emit('spawn')}\n  else if(kind==='error')child.emit('error',Error(value));\n  else if(kind==='close'){child.stdout.push(null);child.stderr.push(null);child.emit('exit',value.code,value.signal);child.emit('close',value.code,value.signal)}\n }]);\n child.kill=signal=>native.kill(signal);\n child.auxClose=()=>native.close();\n return child;\n}\nfunction auxSpawnMemoryProcess(options){\n if(process.platform==='darwin'){\n  const binding=process._linkedBinding('aux_owned_native'),mode=Object.getOwnPropertyDescriptor(binding,'supervisedTasksEnabled');\n  if(mode&&!mode.get&&!mode.set&&!mode.writable&&!mode.configurable&&mode.value===false)return auxAccountMemoryProcess(options.accountId);\n }\n return spawn(options.executable,[options.modelDirectory,options.runtimeLibrary??''],{stdio:['pipe','pipe','pipe'],windowsHide:true,shell:false,env:{...process.env,ORT_DISABLE_TELEMETRY:'1'}});\n}\n\nfunction atomicWriteFileSync(Cn,ei){return auxBrokerBoundary().sync(()=>{\n let finish;\n if(process.platform==='darwin'&&Cn===ACCOUNTS_JSON_PATH){\n  const binding=process._linkedBinding('aux_owned_native');\n  const get=name=>{const d=Object.getOwnPropertyDescriptor(binding,name);if(!d||d.get||d.set||d.writable||d.configurable||typeof d.value!=='function')throw Error('Native memory/account publication coordination unavailable');return d.value};\n  Reflect.apply(get('validateMemoryRegistryTarget'),binding,[Buffer.from(ei,'utf8')]);\n  finish=()=>Reflect.apply(get('finishMemoryRegistryTarget'),binding,[Buffer.from(ei,'utf8')]);\n }\n const result=auxAtomicWriteFileSyncBody(Cn,ei);\n finish?.();return result;\n})}",
+          "count": 1
+        },
+        {
+          "before": "ei=spawn(Cn.executable,[Cn.modelDirectory,Cn.runtimeLibrary??``],{stdio:[`pipe`,`pipe`,`pipe`],windowsHide:!0,shell:!1,env:{...process.env,ORT_DISABLE_TELEMETRY:`1`}})",
+          "after": "ei=auxSpawnMemoryProcess(Cn)",
+          "count": 1
+        },
+        {
+          "before": "let ei=this.request(`shutdown`,{});return this.#n=",
+          "after": "if(typeof Cn.auxClose==='function')return this.#n=Cn.auxClose().finally(()=>{this.#n=void 0});let ei=this.request(`shutdown`,{});return this.#n=",
+          "count": 1
+        },
+        {
+          "before": "constructor(ei,ti,ni){this.accountRoot=ei,this.#g=memoryProcess??=new MemoryProcess({...ni,",
+          "after": "constructor(ei,ti,ni,accountId){this.accountRoot=ei,this.#g=new MemoryProcess({...ni,accountId,",
+          "count": 1
+        },
+        {
+          "before": "ai=new Cn(ri,ii,ei),this.#e.set(ii,ai)",
+          "after": "ai=new Cn(ri,ii,ei,auxTaskAccountId(ni??ri,auxTaskRoots())),this.#e.set(ii,ai)",
+          "count": 1
+        },
+        {
+          "before": "Cn.#e.size===0&&await this.#g.close()",
+          "after": "await this.#g.close()",
+          "count": 1
+        },
+        {
+          "before": "MEMORY_UNAVAILABLE_MESSAGE,memoryProcess,LocalMemoryManager",
+          "after": "MEMORY_UNAVAILABLE_MESSAGE,LocalMemoryManager",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "input": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/fresh-startup-milestone-a42/http-request-adapter-source/aux-native-entry.mjs",
+      "inputSha256": "1d1e348b5dbddfe3cf320238c1f357eece6f6364b5c3d97e01903687c05a48d1",
+      "outputName": "aux-native-entry.mjs",
+      "outputSha256": "4c0de6b47c0cc37d1a98be39936d88c522cbaec9da11fd0eef42f6e5a4539e7b",
+      "anchors": [
+        {
+          "before": "function atomicWriteFileSync(Cn,ei){return auxBrokerBoundary().sync(()=>auxAtomicWriteFileSyncBody(Cn,ei))}",
+          "after": "// Node stream facade for one native fixed account helper. No FD/path/argv API.\nfunction auxAccountMemoryProcess(account) {\n const binding=process._linkedBinding('aux_owned_native');\n const get=name=>{const d=Object.getOwnPropertyDescriptor(binding,name);if(!d||d.get||d.set||d.writable||d.configurable)throw Error('Native memory capability unavailable');return d.value};\n if(get('supervisedTasksEnabled')!==false)throw Error('Finite memory helper requires ordinary native mode');\n const create=get('createAccountMemoryProcess');if(typeof create!=='function'||!Number.isSafeInteger(account)||account<0)throw Error('Native registered memory account unavailable');\n const {EventEmitter}=require$2('node:events'),{Readable,Writable}=require$2('node:stream');\n const child=new EventEmitter();let native;\n child.stdout=new Readable({read(){}});child.stderr=new Readable({read(){}});\n child.stdin=new Writable({write(bytes,encoding,done){try{Promise.resolve(native.write(Buffer.from(bytes))).then(()=>done(),done)}catch(error){done(error)}},final(done){try{Promise.resolve(native.endInput()).then(()=>done(),done)}catch(error){done(error)}}});\n native=Reflect.apply(create,binding,[account,(kind,value)=>{\n  if(kind==='stdout'||kind==='stderr')child[kind].push(value);\n  else if(kind==='stdoutEnd'||kind==='stderrEnd')child[kind==='stdoutEnd'?'stdout':'stderr'].push(null);\n  else if(kind==='spawn'){child.pid=value;child.emit('spawn')}\n  else if(kind==='error')child.emit('error',Error(value));\n  else if(kind==='close'){child.stdout.push(null);child.stderr.push(null);child.emit('exit',value.code,value.signal);child.emit('close',value.code,value.signal)}\n }]);\n child.kill=signal=>native.kill(signal);\n child.auxClose=()=>native.close();\n return child;\n}\nfunction auxSpawnMemoryProcess(options){\n if(process.platform==='darwin'){\n  const binding=process._linkedBinding('aux_owned_native'),mode=Object.getOwnPropertyDescriptor(binding,'supervisedTasksEnabled');\n  if(mode&&!mode.get&&!mode.set&&!mode.writable&&!mode.configurable&&mode.value===false)return auxAccountMemoryProcess(options.accountId);\n }\n return spawn(options.executable,[options.modelDirectory,options.runtimeLibrary??''],{stdio:['pipe','pipe','pipe'],windowsHide:true,shell:false,env:{...process.env,ORT_DISABLE_TELEMETRY:'1'}});\n}\n\nfunction atomicWriteFileSync(Cn,ei){return auxBrokerBoundary().sync(()=>{\n let finish;\n if(process.platform==='darwin'&&Cn===ACCOUNTS_JSON_PATH){\n  const binding=process._linkedBinding('aux_owned_native');\n  const get=name=>{const d=Object.getOwnPropertyDescriptor(binding,name);if(!d||d.get||d.set||d.writable||d.configurable||typeof d.value!=='function')throw Error('Native memory/account publication coordination unavailable');return d.value};\n  Reflect.apply(get('validateMemoryRegistryTarget'),binding,[Buffer.from(ei,'utf8')]);\n  finish=()=>Reflect.apply(get('finishMemoryRegistryTarget'),binding,[Buffer.from(ei,'utf8')]);\n }\n const result=auxAtomicWriteFileSyncBody(Cn,ei);\n finish?.();return result;\n})}",
+          "count": 1
+        },
+        {
+          "before": "ei=spawn(Cn.executable,[Cn.modelDirectory,Cn.runtimeLibrary??``],{stdio:[`pipe`,`pipe`,`pipe`],windowsHide:!0,shell:!1,env:{...process.env,ORT_DISABLE_TELEMETRY:`1`}})",
+          "after": "ei=auxSpawnMemoryProcess(Cn)",
+          "count": 1
+        },
+        {
+          "before": "let ei=this.request(`shutdown`,{});return this.#n=",
+          "after": "if(typeof Cn.auxClose==='function')return this.#n=Cn.auxClose().finally(()=>{this.#n=void 0});let ei=this.request(`shutdown`,{});return this.#n=",
+          "count": 1
+        },
+        {
+          "before": "constructor(ei,ti,ni){this.accountRoot=ei,this.#g=memoryProcess??=new MemoryProcess({...ni,",
+          "after": "constructor(ei,ti,ni,accountId){this.accountRoot=ei,this.#g=new MemoryProcess({...ni,accountId,",
+          "count": 1
+        },
+        {
+          "before": "ai=new Cn(ri,ii,ei),this.#e.set(ii,ai)",
+          "after": "ai=new Cn(ri,ii,ei,auxTaskAccountId(ni??ri,auxTaskRoots())),this.#e.set(ii,ai)",
+          "count": 1
+        },
+        {
+          "before": "Cn.#e.size===0&&await this.#g.close()",
+          "after": "await this.#g.close()",
+          "count": 1
+        },
+        {
+          "before": "MEMORY_UNAVAILABLE_MESSAGE,memoryProcess,LocalMemoryManager",
+          "after": "MEMORY_UNAVAILABLE_MESSAGE,LocalMemoryManager",
+          "count": 1
+        }
+      ]
+    }
+  ]
+}
