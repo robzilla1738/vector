@@ -1,0 +1,11 @@
+{
+  "format": "aux.current-browser-policy-pair.check.v1",
+  "sourcePlanSha256": "640d21a9a4f1cf10d22931586335832691711ed5476f59359d4fc2077924e9de",
+  "countedAnchors": 8,
+  "independentPatchApplication": true,
+  "actualPairedSwiftTypecheck": true,
+  "retainedSecurityCacheImplementationPreserved": true,
+  "ownerHomeQueried": false,
+  "signaturesExecuted": false,
+  "productExecuted": false
+}

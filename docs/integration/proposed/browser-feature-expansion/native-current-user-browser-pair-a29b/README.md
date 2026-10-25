@@ -1,0 +1,9 @@
+# A29 browser lineage correction
+
+A29's daemon policy/loader were pinned to the actual A59 daemon inputs, but its browser parent-reader input was an older source and must not replace the current native reader. This correction applies the same v9 decoder and mode API to the actual browser policy `b67d6233…` and current concurrency reader `d721895d…` selected by `local-completion-integration-a27/source-composition.json`.
+
+The actual `OrdinaryFileBinding`/`OrdinaryGuestFiles` implementation, process checks, locks, identity/hash binding and `nonisolated(unsafe)` annotation remain byte-identical. The private policy proof retains and revalidates the actual Security object/file bindings; failures invalidate that retained owner. The existing parent-FD owner also retains the same bindings across its descriptor validation, preserves repeated resource/signature/hash checks and keeps its failure cleanup. No SecCode flags, signatures or validation calls are removed.
+
+Use these **two browser outputs**, and retain A29's **daemon policy and daemon loader** outputs separately. Do not project A29's old parent-reader source. Daemon/browser policy variants retain their pre-existing image-path helper differences; their v9 root resolver and decoder replacements are identical. The new C mode getter remains read-only -1/8/9; old Boolean v8 behavior and Control-directory validation remain.
+
+Eight counted anchors and independent patch application reproduce both output hashes. The exact paired browser sources pass actual Swift type checking with the real strict JSON parser. No user-home query, signature operation, process launch, native projection or signing occurred. A29's synthetic native-root fixtures remain the evidence for the identical v9 resolver/creation implementation; actual browser/daemon graph and normal-user launch acceptance remain root-owned.
