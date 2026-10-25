@@ -1,0 +1,12 @@
+{
+  "format": "aux.popup-lifetime-source-check.v1",
+  "countedAnchors": 12,
+  "exactPatchAndOwnershipSourcePins": true,
+  "styleCallsAndValuesByteIdentical": true,
+  "ordinaryOwnedSites": 4,
+  "widgetBeforeDelegateDestruction": true,
+  "profileEpochAndDispatchFencesUnchanged": true,
+  "nativeCompiled": false,
+  "nativeExecuted": false,
+  "fixtureExecutableCreated": false
+}

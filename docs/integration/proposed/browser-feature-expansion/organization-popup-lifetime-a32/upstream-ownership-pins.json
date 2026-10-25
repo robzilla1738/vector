@@ -1,0 +1,22 @@
+[
+  {
+    "path": "ui/views/bubble/bubble_dialog_delegate_view.cc",
+    "sha256": "4a6ec211afce9708559a517a4a397a7d50d240afcb1d59ec7d418305f94bf359"
+  },
+  {
+    "path": "ui/views/bubble/bubble_dialog_delegate_view.h",
+    "sha256": "fbd5a619c66ca5cfb952492c83027ff351155648a0d3cb058dd3689b7b7a7612"
+  },
+  {
+    "path": "ui/views/widget/widget.cc",
+    "sha256": "79d330de81f5cd78b8afdeb32d6569530b343f0913e9a17e707c1fb4e85f0524"
+  },
+  {
+    "path": "ui/views/widget/widget_delegate.cc",
+    "sha256": "1e80d16af66050128c5ad32c3d2acf8cfa08caee0fb1ece532ed9b13c45b2c33"
+  },
+  {
+    "path": "ui/views/widget/widget_delegate.h",
+    "sha256": "0bbd8b38a1217f30c63825bfe241d2bcd2c35b1d4b1359e8f55076d6659f59ca"
+  }
+]

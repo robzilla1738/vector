@@ -1,0 +1,222 @@
+--- a/chrome/browser/ui/views/frame/aux_sidebar_view.cc
++++ b/chrome/browser/ui/views/frame/aux_sidebar_view.cc
+@@ -871,8 +871,14 @@
+     return;
+   auto widget = found->second;
+   menus.erase(found);
+-  if (widget)
++  if (widget) {
++#if defined(AUX_BROWSER_ONLY_NATIVE_STARTUP)
++    // CloseNow bypasses the client-owned Widget's retirement callback.
++    widget->Close();
++#else
+     widget->CloseNow();
++#endif
++  }
+ }
+ void TrackAuxProfileMenu(BrowserWindowInterface* browser,
+                          views::Widget* widget) {
+@@ -935,7 +941,63 @@
+   owners.emplace(browser, std::move(owner));
+   return widget;
+ }
++// Child menus have independent native close boundaries. Keep their delegate
++// alive until after the client-owned Widget, just like the primary menu above.
++using OwnedAuxProfilePopups =
++    std::map<views::Widget*, std::unique_ptr<OwnedPrimaryProfileMenu>>;
++OwnedAuxProfilePopups& AuxProfilePopupOwners() {
++  static base::NoDestructor<OwnedAuxProfilePopups> owners;
++  return *owners;
++}
++void RetireOwnedAuxProfilePopup(views::Widget* widget,
++                                 views::Widget::ClosedReason) {
++  auto& owners = AuxProfilePopupOwners();
++  const auto found = owners.find(widget);
++  if (found == owners.end()) return;
++  auto owner = std::move(found->second);
++  owners.erase(found);
++  // No further row action may run while native teardown is deferred out of
++  // activation/close observer iterations.
++  widget->GetContentsView()->SetEnabled(false);
++  widget->Hide();
++  base::SingleThreadTaskRunner::GetCurrentDefault()->DeleteSoon(
++      FROM_HERE, std::move(owner));
++}
++views::Widget* CreateOwnedAuxProfilePopup(
++    std::unique_ptr<views::BubbleDialogDelegate> delegate) {
++  auto owner = std::make_unique<OwnedPrimaryProfileMenu>();
++  owner->delegate = std::move(delegate);
++  owner->widget = views::BubbleDialogDelegate::CreateBubble(owner->delegate.get());
++  auto* widget = owner->widget.get();
++  widget->MakeCloseSynchronous(base::BindOnce(
++      &RetireOwnedAuxProfilePopup, widget));
++  AuxProfilePopupOwners().emplace(widget, std::move(owner));
++  return widget;
++}
+ #endif
++void RetireAuxProfilePopup(views::Widget* widget) {
++  if (!widget) return;
++#if defined(AUX_BROWSER_ONLY_NATIVE_STARTUP)
++  RetireOwnedAuxProfilePopup(widget, views::Widget::ClosedReason::kUnspecified);
++#else
++  widget->CloseNow();
++#endif
++}
++void DestroyAuxProfilePopup(views::Widget* widget) {
++  if (!widget) return;
++#if defined(AUX_BROWSER_ONLY_NATIVE_STARTUP)
++  auto& owners = AuxProfilePopupOwners();
++  const auto found = owners.find(widget);
++  if (found == owners.end()) return;
++  auto owner = std::move(found->second);
++  owners.erase(found);
++  // Parent destruction already occurs outside the native callback stack. Tear
++  // down its current child before any parent delegate/row members disappear.
++  owner.reset();
++#else
++  widget->CloseNow();
++#endif
++}
+ 
+ // Native profile menu and browser navigation.
+ // The primary menu uses the same real ordered/non-omitted registry roster as
+@@ -1114,11 +1176,12 @@
+   }
+ 
+   ~AuxProfileMenu() override {
++    weak_factory_.InvalidateWeakPtrs();
+     LOG(ERROR) << "Aux primary profile menu: destroying pending_action="
+                << !!pending_switch_;
+     ForgetAuxProfileMenu(browser_, GetWidget());
+     if (profile_actions_)
+-      profile_actions_->CloseNow();
++      DestroyAuxProfilePopup(profile_actions_.get());
+     if (pending_switch_) {
+       // Original4572824 tears down the full menu before dispatch. Native
+       // Widget::Close is asynchronous, so dispatch on the UI sequence only
+@@ -1167,7 +1230,7 @@
+     profile_actions_.reset();
+     ForgetAuxProfileMenu(browser_, GetWidget());
+     // Closing a child may reenter teardown. Use only local values afterward.
+-    if (profile_actions) profile_actions->CloseNow();
++    if (profile_actions) DestroyAuxProfilePopup(profile_actions.get());
+     if (action) {
+       const bool posted = runner->PostTask(FROM_HERE, std::move(action));
+       LOG(ERROR) << "Aux primary profile menu: closed_action_posted=" << posted;
+@@ -1324,7 +1387,7 @@
+       return;
+     }
+     if (profile_actions_) {
+-      profile_actions_->CloseNow();
++      RetireAuxProfilePopup(profile_actions_.get());
+     }
+     submenu_anchor_ = anchor;
+     auto menu = std::make_unique<views::BubbleDialogDelegate>(
+@@ -1342,20 +1405,24 @@
+         views::BoxLayout::Orientation::kVertical));
+     contents->AddChildView(std::make_unique<AuxMenuRow>(
+         base::BindRepeating(&AuxProfileMenu::ExecuteCommand,
+-                            base::Unretained(this), IDC_SHOW_BOOKMARK_MANAGER,
++                            weak_factory_.GetWeakPtr(), IDC_SHOW_BOOKMARK_MANAGER,
+                             0),
+         ui::ImageModel::FromVectorIcon(kPrimaryAllBookmarksIcon,
+                                        ui::kColorSysOnSurface, 16),
+         u"All bookmarks"));
+     contents->AddChildView(std::make_unique<AuxMenuRow>(
+         base::BindRepeating(&AuxProfileMenu::ExecuteCommand,
+-                            base::Unretained(this), IDC_BOOKMARK_THIS_TAB, 0),
++                            weak_factory_.GetWeakPtr(), IDC_BOOKMARK_THIS_TAB, 0),
+         ui::ImageModel::FromVectorIcon(kPrimaryNewTabIcon,
+                                        ui::kColorSysOnSurface, 16),
+         u"Bookmark this tab"));
+     menu->SetContentsView(std::move(contents));
++#if defined(AUX_BROWSER_ONLY_NATIVE_STARTUP)
++    auto* widget = CreateOwnedAuxProfilePopup(std::move(menu));
++#else
+     auto* widget = views::BubbleDialogDelegate::CreateBubbleDeprecated(
+         std::move(menu), views::Widget::InitParams::NATIVE_WIDGET_OWNS_WIDGET);
++#endif
+     profile_actions_ = widget->GetWeakPtr();
+     widget->Show();
+   }
+@@ -1363,7 +1430,7 @@
+   void ShowProfileActions(views::View* anchor, const base::FilePath& path) {
+     submenu_anchor_ = anchor;
+     if (profile_actions_) {
+-      profile_actions_->CloseNow();
++      RetireAuxProfilePopup(profile_actions_.get());
+     }
+     action_profile_ = path;
+     auto menu = std::make_unique<views::BubbleDialogDelegate>(
+@@ -1379,22 +1446,26 @@
+     contents->SetLayoutManager(std::make_unique<views::BoxLayout>(
+         views::BoxLayout::Orientation::kVertical));
+     contents->AddChildView(std::make_unique<AuxMenuRow>(
+-        base::BindRepeating(&AuxProfileMenu::EditProfile, base::Unretained(this)),
++        base::BindRepeating(&AuxProfileMenu::EditProfile, weak_factory_.GetWeakPtr()),
+         ui::ImageModel::FromVectorIcon(kPrimaryEditIcon, ui::kColorSysOnSurface,
+                                        16),
+         u"Edit"));
+     if (PrimaryProfileRoster().size() >= 2) {
+       auto* remove = contents->AddChildView(std::make_unique<AuxMenuRow>(
+           base::BindRepeating(&AuxProfileMenu::DeleteProfile,
+-                              base::Unretained(this)),
++                              weak_factory_.GetWeakPtr()),
+           ui::ImageModel::FromVectorIcon(kPrimaryDeleteIcon,
+                                          ui::kColorSysOnSurface, 16),
+           u"Delete"));
+       remove->SetEnabled(CanRemoveIndicatorProfile(browser_, path));
+     }
+     menu->SetContentsView(std::move(contents));
++#if defined(AUX_BROWSER_ONLY_NATIVE_STARTUP)
++    auto* widget = CreateOwnedAuxProfilePopup(std::move(menu));
++#else
+     auto* widget = views::BubbleDialogDelegate::CreateBubbleDeprecated(
+         std::move(menu), views::Widget::InitParams::NATIVE_WIDGET_OWNS_WIDGET);
++#endif
+     profile_actions_ = widget->GetWeakPtr();
+     widget->Show();
+   }
+@@ -1446,6 +1517,7 @@
+   std::unique_ptr<ui::SimpleMenuModel> menu_model_;
+   std::unique_ptr<views::MenuRunner> menu_runner_;
+   base::OnceClosure pending_switch_;
++  base::WeakPtrFactory<AuxProfileMenu> weak_factory_{this};
+ };
+ 
+ // Supplied456bb40/456c300 icon grid. The existing catalog owns exact paths.
+@@ -1633,8 +1705,12 @@
+     RetireAuxProfileMenu(browser);
+     auto menu =
+         std::make_unique<AuxProfileIndicatorMenu>(browser, anchor, path);
++#if defined(AUX_BROWSER_ONLY_NATIVE_STARTUP)
++    auto* widget = CreateOwnedPrimaryProfileMenu(browser, std::move(menu));
++#else
+     auto* widget = views::BubbleDialogDelegate::CreateBubbleDeprecated(
+         std::move(menu), views::Widget::InitParams::NATIVE_WIDGET_OWNS_WIDGET);
++#endif
+     TrackAuxProfileMenu(browser, widget);
+     widget->Show();
+   }
+@@ -1675,7 +1751,7 @@
+     weak_factory_.InvalidateWeakPtrs();
+     ForgetAuxProfileMenu(owner_, GetWidget());
+     if (icons_)
+-      icons_->CloseNow();
++      DestroyAuxProfilePopup(icons_.get());
+     if (pending_)
+       base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
+           FROM_HERE, base::BindOnce(&RunProfileMenuAction, browser_, source_, source_epoch_,
+@@ -1712,8 +1788,12 @@
+         entry->GetAuxProfileIndicatorIconName(),
+         base::BindRepeating(&AuxProfileIndicatorMenu::ChooseIcon,
+                             weak_factory_.GetWeakPtr())));
++#if defined(AUX_BROWSER_ONLY_NATIVE_STARTUP)
++    auto* widget = CreateOwnedAuxProfilePopup(std::move(popup));
++#else
+     auto* widget = views::BubbleDialogDelegate::CreateBubbleDeprecated(
+         std::move(popup), views::Widget::InitParams::NATIVE_WIDGET_OWNS_WIDGET);
++#endif
+     icons_ = widget->GetWeakPtr();
+     widget->Show();
+   }
