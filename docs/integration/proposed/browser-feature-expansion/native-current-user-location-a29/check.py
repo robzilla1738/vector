@@ -95,10 +95,8 @@ with tempfile.TemporaryDirectory(prefix='aux-user-location-compile-') as t:
  q=subprocess.run(['/usr/bin/swiftc','-typecheck','-D','AUX_BROWSER_ONLY_NATIVE_STARTUP',str(P/'source/AuxFreshBootstrapPolicy.swift'),str(parent),str(strict)],capture_output=True,text=True)
  if q.returncode: print(q.stderr);q.check_returncode()
  harness=policy+'\n'+strictText+'\n'+helpers+'\n'+fixtureDecode+main
- source=t/'fixture.swift';source.write_text(harness);exe=t/'fixture'
- q=subprocess.run(['/usr/bin/swiftc','-D','AUX_BROWSER_ONLY_NATIVE_STARTUP',str(source),'-o',str(exe)],capture_output=True,text=True)
- if q.returncode: print(q.stderr);q.check_returncode()
- ran=subprocess.run([str(exe)],capture_output=True,text=True)
+ source=t/'fixture.swift';source.write_text(harness)
+ ran=subprocess.run(['/usr/bin/swift','-D','AUX_BROWSER_ONLY_NATIVE_STARTUP',str(source)],capture_output=True,text=True)
  if ran.returncode: print(ran.stderr);ran.check_returncode()
  print(ran.stdout.strip())
- (P/'focused-check.json').write_text(json.dumps(dict(format='aux.native-current-user-location.focused-check.v1',sourcePlanSha256=sha((P/'source-plan.json').read_bytes()),harnessSha256=sha(harness.encode()),strictJsonSourceSha256=sha(strict.read_bytes()),countedAnchors=sum(len(f['anchors']) for f in plan['files']),policyAndParentTypecheck=True,independentPatchApplication=True,result=ran.stdout.strip(),fixtureAdapter='Only native getpwuid_r capture in extracted v9 decoder branch replaced with synthetic captured home; actual product capture unexecuted. Filesystem owner extracted unchanged.',realUserHomeQueried=False,ownerDataAccessed=False,signaturesExecuted=False,browserOrDaemonLaunched=False),indent=2)+'\n')
+ (P/'focused-check-interpreter.json').write_text(json.dumps(dict(format='aux.native-current-user-location.interpreter-check.v2',sourcePlanSha256=sha((P/'source-plan.json').read_bytes()),harnessSha256=sha(harness.encode()),strictJsonSourceSha256=sha(strict.read_bytes()),countedAnchors=sum(len(f['anchors']) for f in plan['files']),policyAndParentTypecheck=True,independentPatchApplication=True,result=ran.stdout.strip(),fixtureAdapter='Only native getpwuid_r capture in extracted v9 decoder branch replaced with synthetic captured home; actual product capture unexecuted. Filesystem owner extracted unchanged.',runner="/usr/bin/swift",runnerWritesHostExecutable=False,compilerDefaultSigningPerformed=False,realUserHomeQueried=False,ownerDataAccessed=False,signaturesExecuted=False,browserOrDaemonLaunched=False),indent=2)+'\n')

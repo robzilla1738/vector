@@ -26,3 +26,7 @@ Use only the approved disposable profile and preserve the accepted UI:
 ## Separate remaining pin-unload fix
 
 The current physical close used for retained pins still destroys the view. Reopening its surviving logical row creates a fresh PageIdentity and loses access to the old draft/history. The parent explicitly assigned genuine Chromium discard as the next independent slice. It is not fixed or accepted here. Automatic age cleanup likewise has conservative source protection/compensation but no new timed actual-app acceptance in this slice; do not mutate stored timestamps merely to label it tested.
+
+## Historical fixture toolchain disclosure
+
+The pure-model fixture used `clang++` to produce a temporary host executable, which receives the platform linker’s default ad hoc signature. This did not sign the browser or use a developer identity; nevertheless it was outside the narrow build-tool exception. No further executable fixture is generated. Original receipts remain historical; upcoming checks use existing interpreters or no-output type checking.

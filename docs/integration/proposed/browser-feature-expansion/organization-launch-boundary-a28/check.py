@@ -84,9 +84,7 @@ with tempfile.TemporaryDirectory(prefix='aux-legacy-refusal-check-') as t:
  t=Path(t);results={}
  for label,text in [('baseline',s),('patched',updated)]:
   code=harness(text);source=t/(label+'.swift');source.write_text(code);exe=t/label
-  compiled=subprocess.run(['/usr/bin/swiftc',str(source),'-o',str(exe)],capture_output=True,text=True)
-  if compiled.returncode: print(compiled.stderr);compiled.check_returncode()
-  q=subprocess.run([str(exe)]+(['baseline'] if label=='baseline' else []),check=True,capture_output=True,text=True)
+  q=subprocess.run(['/usr/bin/swift',str(source)]+(['baseline'] if label=='baseline' else []),check=True,capture_output=True,text=True)
   results[label]=dict(harnessSha256=sha(code.encode()),result=q.stdout.strip(),actualNativePreparationAndInventoryExtracted=True)
   print(q.stdout.strip())
-(P/'focused-check.json').write_text(json.dumps(dict(format='aux.ordinary-legacy-refusal.fixture.v1',sourcePlanSha256=sha((P/'source-plan.json').read_bytes()),results=results,syntheticDirectoriesOnly=True,ownerDataAccessed=False,browserLaunched=False,nativeDaemonExecuted=False,policySignatureOrPeerProven=False),indent=2)+'\n')
+(P/'focused-check-interpreter.json').write_text(json.dumps(dict(format='aux.ordinary-legacy-refusal.interpreter-fixture.v2',sourcePlanSha256=sha((P/'source-plan.json').read_bytes()),results=results,syntheticDirectoriesOnly=True,runner="/usr/bin/swift",runnerWritesHostExecutable=False,compilerDefaultSigningPerformed=False,ownerDataAccessed=False,browserLaunched=False,nativeDaemonExecuted=False,policySignatureOrPeerProven=False),indent=2)+'\n')
