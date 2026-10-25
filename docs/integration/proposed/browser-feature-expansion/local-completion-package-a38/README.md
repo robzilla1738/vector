@@ -1,4 +1,6 @@
-# Assembled local candidate — development approval pending
+# Assembled local candidate — local signatures verified; launch preflight blocked
+
+Current execution result: [RESULT.md](RESULT.md). The owner approved the exact review; all19 signatures verify. Disposable launch stopped at the existing-container condition before reading contents or initializing state. The original preparation/review below is retained for scope context.
 
 App: `/Users/rcourson/Documents/Vibe/web/out/provided-candidate-local-completion-20261025-a38/Aux.app`.
 
@@ -17,7 +19,7 @@ same source and entry syntax-check; the daemon is never evaluated by that check.
 Actual package and launcher preflight pass. None initializes user state or
 proves that the compiled features work in the app.
 
-## Exact action for approval
+## Original exact action — now owner-approved
 
 [`signing-review.json`](signing-review.json) SHA-256:
 `f43813c285d0a0d439129f193f97cac1712c93f815cfc75da5b4e201bc8025e0`.
@@ -79,5 +81,4 @@ behavior. Release signing, notarization, updater and distribution are separate.
 
 The workspace instruction says “Never push, run hosted Actions, sign, provision,
 notarize or release during current development.” Its exact scoped exceptions
-do not cover the new candidate. No signing, user-root initialization, Keychain
-operation, new OS grant, provisioning, cloud change or release has occurred here.
+do not cover the new candidate. At original preparation, no signing or runtime action had occurred. The approved local signing and bounded CLI-layout repair are now recorded in RESULT.md. No user-root initialization, Keychain operation, new OS grant, provisioning, cloud change or release occurred. Runtime remains blocked before directory contents are read.

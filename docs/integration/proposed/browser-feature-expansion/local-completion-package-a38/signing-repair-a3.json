@@ -1,0 +1,20 @@
+{
+  "format": "aux.local-signing.bounded-repair.v1",
+  "approvedReviewSha256": "f43813c285d0a0d439129f193f97cac1712c93f815cfc75da5b4e201bc8025e0",
+  "ownerApproval": "owner-approval.json",
+  "failure": "Strict CLI bundle verification rejects obsolete SEA executable with the original product signature and incompatible Info.plist binding.",
+  "fix": "Exclude only the inactive old CLI SEA from this native-CLI candidate, retain its exact bytes in the complete original snapshot, remove its bundle inventory row, and re-sign only the same reviewed CLI bundle, daemon and outer app.",
+  "removed": {
+    "path": "Contents/Resources/aux/apps/cli/Aux CLI.app/Contents/MacOS/aux-cli-sea",
+    "sha256": "6c4eb44167a474ab0d643b031d0f8a7fb5459d0047ce4ef9aacdd92935e8fbb7",
+    "preserved": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-local-completion-20261025-a38/before-local-signing/Aux.app/Contents/Resources/aux/apps/cli/Aux CLI.app/Contents/MacOS/aux-cli-sea"
+  },
+  "nativeCliSource": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/ordinary-cli-routing-a29/source/chrome/browser/aux/cli/AuxNativeCliFrontend.mm",
+  "nativeCliSourceSha256": "64b0b1771bed0434bc4608709dd7f07c0b424c5dfa4a29321850145bff2ccb04",
+  "beforeReceiptSha256": "ecb4c3b2540a1c5147df548472a094aec1f23e6910df7e86ffe69cb040cf7180",
+  "failedReceiptSha256": "ac2c4118146cf6a08d24d50dbc3de7441ca3a15bcba0ff82c3fe78be3678781e",
+  "additionalSigningObjects": false,
+  "newEntitlements": false,
+  "release": false,
+  "resumeScriptSha256": "2091b3b08b7686f22973a9723377179c7438235696fee2f6bf5891d5be7b74b4"
+}

@@ -1,0 +1,18 @@
+{
+  "format": "aux.native-cli.help-check.v1",
+  "app": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-local-completion-20261025-a38/Aux.app",
+  "arguments": [
+    "open",
+    "--help"
+  ],
+  "previousCheck": "actual-cli-help.json",
+  "correction": "The implemented command exposes help for open, not global --help. No product change.",
+  "exitCode": 0,
+  "stdout": "Usage: aux open <https://URL> [--profile <native profile ID or unique name>]\n",
+  "stderr": "",
+  "passed": true,
+  "routingChecked": false,
+  "appOpened": false,
+  "userStateAccessed": false,
+  "release": false
+}

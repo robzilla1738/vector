@@ -1,0 +1,19 @@
+{
+  "format": "aux.local-completion.owner-approval.v1",
+  "approvedAtLocal": "2026-10-25T18:00:01.725441-05:00",
+  "reviewSha256": "f43813c285d0a0d439129f193f97cac1712c93f815cfc75da5b4e201bc8025e0",
+  "ownerReply": "Approve the scoped local signing review and disposable-profile checks. Preserve our UI, fix any failures within that scope, and get the build ready for me to test. No release.",
+  "targetCount": 19,
+  "boundedRepairs": "Only these same19 code objects and this newly owned namespace, after demonstrated failures in the listed focused checks; preserve the accepted UI and failed bytes, and record exact changes/hashes before necessary local re-signs. No new objects, entitlements, OS grants, legacy migration, feature expansion or architecture expansion.",
+  "runtimeScope": {
+    "support": "/Users/rcourson/Library/Application Support/Aux Browser",
+    "data": "/Users/rcourson/Library/Application Support/Aux Browser/User Data",
+    "control": "/Users/rcourson/Library/Application Support/Aux Browser/Control",
+    "tasks": "/Users/rcourson/Library/Application Support/Aux Browser/Tasks",
+    "cache": "/Users/rcourson/Library/Caches/Aux Browser"
+  },
+  "ownerProfilesExcluded": true,
+  "newOSGrants": false,
+  "provisioning": false,
+  "release": false
+}

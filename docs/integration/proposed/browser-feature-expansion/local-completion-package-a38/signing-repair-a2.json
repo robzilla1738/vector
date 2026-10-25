@@ -1,0 +1,14 @@
+{
+  "format": "aux.local-signing.bounded-repair.v1",
+  "approvedReviewSha256": "f43813c285d0a0d439129f193f97cac1712c93f815cfc75da5b4e201bc8025e0",
+  "ownerApproval": "owner-approval.json",
+  "failure": "The codesign requirement argument lacked the leading equals sign; the first signature is valid and will be verified without re-signing.",
+  "change": "Correct requirement verification syntax; resume only remaining eighteen approved objects with preserved complete original snapshot.",
+  "resumeScriptSha256": "592c34d35b2621f5b9a1dd244aa03dbaef5117b50a24ea3d4fe5599c1f099dd2",
+  "preservedSignedFirstObjectSha256": "3a523b1cddb6f2c484061cdd0a995f1d7019103ed299a6ee09e736f985ed70e5",
+  "failedReceiptSha256": "371a04a25d78ed15e3bf1707a54764867897b4a7e89791c5e0b97f0cfe8ec770",
+  "newObjects": false,
+  "newEntitlements": false,
+  "appExecuted": false,
+  "release": false
+}

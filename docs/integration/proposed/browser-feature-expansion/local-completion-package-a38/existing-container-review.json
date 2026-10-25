@@ -1,0 +1,25 @@
+{
+  "format": "aux.existing-empty-container.review.v1",
+  "reason": "The approved pre-launch metadata-only condition found the existing support container without this milestone creation receipt. Launch remains stopped. Native startup requires both roots absent for a fresh install; no native source change is needed if the support container is empty and preserved aside.",
+  "proposedAction": {
+    "source": "/Users/rcourson/Library/Application Support/Aux Browser",
+    "expectedMetadata": {
+      "uid": 502,
+      "mode": 448,
+      "device": 16777232,
+      "inode": 32049119
+    },
+    "inspect": "Check only whether this exact directory is empty; do not open files or report entry names.",
+    "ifEmpty": "Rename this empty directory to the absent sibling Aux Browser.empty-before-a38 using an exclusive non-overwriting rename, preserve its inode, then resume the already-approved disposable initialization at the original path.",
+    "destination": "/Users/rcourson/Library/Application Support/Aux Browser.empty-before-a38",
+    "ifNonemptyOrChanged": "Stop unchanged; do not inspect files, rename, delete, migrate or adopt contents."
+  },
+  "acceptedAppChanged": false,
+  "existingProfileOrCredentialAccess": false,
+  "newSigningObjects": false,
+  "newEntitlements": false,
+  "provisioning": false,
+  "newOSGrants": false,
+  "release": false,
+  "executed": false
+}

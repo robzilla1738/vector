@@ -1,0 +1,35 @@
+{
+  "metadataOnly": true,
+  "contentsRead": false,
+  "roots": [
+    {
+      "kind": "support",
+      "path": "/Users/rcourson/Library/Application Support/Aux Browser",
+      "exists": true,
+      "mode": 448,
+      "uid": 502,
+      "device": 16777232,
+      "inode": 32049119
+    },
+    {
+      "kind": "data",
+      "path": "/Users/rcourson/Library/Application Support/Aux Browser/User Data",
+      "exists": false
+    },
+    {
+      "kind": "control",
+      "path": "/Users/rcourson/Library/Application Support/Aux Browser/Control",
+      "exists": false
+    },
+    {
+      "kind": "tasks",
+      "path": "/Users/rcourson/Library/Application Support/Aux Browser/Tasks",
+      "exists": false
+    },
+    {
+      "kind": "cache",
+      "path": "/Users/rcourson/Library/Caches/Aux Browser",
+      "exists": false
+    }
+  ]
+}

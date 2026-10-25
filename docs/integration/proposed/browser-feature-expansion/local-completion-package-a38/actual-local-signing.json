@@ -1,0 +1,34 @@
+{
+  "passed": false,
+  "approvedReviewSha256": "f43813c285d0a0d439129f193f97cac1712c93f815cfc75da5b4e201bc8025e0",
+  "app": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-local-completion-20261025-a38/Aux.app",
+  "steps": [
+    {
+      "codeObject": "Contents/Frameworks/Aux Framework.framework/Versions/155.0.8059.85/Libraries/libvulkan.dylib",
+      "command": [
+        "/usr/bin/codesign",
+        "--force",
+        "--sign",
+        "47ACA5D1CFADD21CFEDC589B4DEED6E2B7A96D90",
+        "--options",
+        "runtime",
+        "--timestamp=none",
+        "--identifier",
+        "dev.aux.browser.libvulkan",
+        "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-local-completion-20261025-a38/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/155.0.8059.85/Libraries/libvulkan.dylib"
+      ],
+      "exitCode": 0,
+      "diagnostic": ""
+    },
+    {
+      "verification": "Contents/Frameworks/Aux Framework.framework/Versions/155.0.8059.85/Libraries/libvulkan.dylib",
+      "exitCode": 1,
+      "diagnostic": "anchor apple generic and identifier \"dev.aux.browser.libvulkan\" and certificate leaf[subject.OU] = \"9F2JXY8TCK\": No such file or directory\ninvalid requirement specification\n"
+    }
+  ],
+  "appExecuted": false,
+  "provisioning": false,
+  "newOSGrants": false,
+  "notarization": false,
+  "release": false
+}

@@ -1,0 +1,12 @@
+{
+  "format": "aux.native-cli.help-check.v1",
+  "app": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-local-completion-20261025-a38/Aux.app",
+  "exitCode": 78,
+  "stdout": "",
+  "stderr": "Aux packaged state identity is unsupported or unaccepted\n",
+  "passed": false,
+  "routingChecked": false,
+  "appOpened": false,
+  "userStateAccessed": false,
+  "release": false
+}
