@@ -1,0 +1,14 @@
+{
+  "repair": "a24",
+  "scope": "/private/tmp/aux-fresh-browser-c5mop317",
+  "actualRowSelection": true,
+  "lines": [
+    "[47753:50203438:1025/130937.623330:ERROR:chrome/browser/ui/views/frame/aux_sidebar_view.cc:1319] Aux primary profile menu: row_selected pending_action=0 same_profile=0"
+  ],
+  "observed": "row handler fires with pending0/same-profile0; popup disappears but delegate destructor/action post never occurs",
+  "cookieWorkPersistsAtQueryFreeUrl": true,
+  "savedWorkNotePersists": true,
+  "sourceAPI": "WidgetDelegate defaults not-widget-owned; deprecated unique_ptr bubble creator releases ownership; WindowClosing is genuine close event",
+  "fix": "A25 posts original fenced continuation from real WindowClosing, with moved once-only action",
+  "uiChanged": false
+}

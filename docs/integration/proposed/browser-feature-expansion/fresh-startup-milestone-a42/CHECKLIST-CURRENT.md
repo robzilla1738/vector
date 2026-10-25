@@ -1,36 +1,42 @@
-# Bounded local browser milestone — current checklist
+# Bounded local browser milestone — final checklist
 
-The selected app is `out/provided-candidate-fresh-browser-20261025-a45/Aux.app`; the accepted app remains intact. This checklist concerns a usable local browser candidate, not feature-complete product or release acceptance.
+A25 is ready for local browser testing in the fixed disposable scope. This is not full product or release acceptance. See [actual results and limitations](RESULT.md).
 
-## Must finish
+## Must finish — completed for this milestone
 
-- [x] Native first-window activation construction order and ordinary daemon storage startup.
-- [x] HTTP adapter request cloning; actual daemon health200 and connected chat observed in A17.
-- [ ] Integrate and actually verify standard isolated-profile window selection (focus/open target; source window stays intact).
-- [ ] Integrate genuine native session restore for newly admitted fresh profiles and logical-ID session snapshot persistence.
-- [ ] Integrate real registered graceful daemon shutdown entry; verify physical descendant closure without claiming peer loss is clean.
-- [ ] Preserve exact UI/art/styles and assemble/sign only the already approved candidate objects.
+- [x] Fix native first-window construction order and paired daemon startup.
+- [x] Retain genuine native validation objects/storage lifetime and handle ordinary journal lock handoff without bypassing live identity/root/signature checks.
+- [x] Correct HTTP adapter request cloning; actual health and connected UI.
+- [x] Standard profile selection opens/focuses real isolated native windows, preserves source state and dispatches on actual popup close.
+- [x] Native session defaults and logical-ID snapshots recover actual page-bound drafts/attachments without rewriting draft keys or explicit startup choices.
+- [x] Real registered shutdown handler gets an execution opportunity; normal final shutdown/restart verified.
+- [x] Assemble current browser A65, native daemon A59, paired entry A17, supplied UI33 and packaged CLI; preserve accepted app.
 
-## Must verify
+## Must verify — focused actual checks completed
 
-- [x] Actual A17 startup, loopback and public HTTPS navigation.
-- [x] Actual fresh Work/Personal cookie/localStorage and chat-context separation.
-- [x] Actual shared tab list with independent selected views in two windows.
-- [x] Actual local TXT attachment and unsent drafts; tab/settings round-trip.
-- [ ] Corrected native session restart recovers actual draft and attachment; A17 failure remains historical.
-- [ ] Corrected profile selector preserves source drafts and selects the real target window.
-- [ ] Corrected daemon exit physically drains; A17 forced cleanup remains historical.
-- [x] Actual sidebar collapse/expand, connected chat, settings and supplied/accepted screenshot comparison in A17.
-- [ ] Observe the final packaged UI after integration; repeat only affected behavior checks.
+- [x] Initial startup and same-package normal restart; HTTP200 ready true.
+- [x] Navigation, back/forward and public HTTPS.
+- [x] Work/Personal cookies, localStorage and chat context separation.
+- [x] Primary profile popup selects both native targets without losing source drafts.
+- [x] Multiple windows share logical tabs with independent selected views.
+- [x] Original Work text+TXT and separate Personal draft recover after native session restart; Work repeated after final same-package restart.
+- [x] Sidebar collapsed/expanded, chat, settled Settings; actual final screenshot/reference comparison.
+- [x] Normal browser exit0, process group stopped without force, no candidate executables remaining; same app reopened and left running.
+
+## Known limitation / still needing implementation or diagnosis
+
+- [ ] Immediate Settings during profile warm-up can refuse safely; retry works. No data loss observed.
+- [ ] Legacy non-View popup delegate ownership cleanup; repeated menu use may retain memory.
+- [ ] Subprocess-based memory indexing and privileged execution/native helpers remain disabled in ordinary mode. Broader authority work is deferred, not implemented.
+- [ ] CLI URL/profile routing is packaged but unverified; fix only after focused actual routing checks demonstrate a failure.
 
 ## Explicit follow-ups / can defer for this milestone
 
-- BYOK/eligible subscription-backed AI and hosted/account-dependent functions need an actual authorized account/provider check. No inference used in these local checks.
-- Third-party extension/1Password/native-messaging compatibility remains unverified; supervised native helper execution is disabled in ordinary mode. Do not call that complete.
-- Privileged tasks, exec/PTY, Computer Use and native addons remain disabled. Their authority architecture is a separate deferred milestone.
-- CLI routing is packaged but unverified and does not hold up the first local browser.
-- Legacy profiles remain refused. No credentials, ciphertext, draft keys or existing startup choices are silently migrated/reset. Existing disposable profiles created by older candidates keep their startup preference; new behavior is checked with newly created disposable profiles inside the same approved scope.
-- Advanced interrupted migration/recovery, broad crash testing, mobile and cloud/distribution are deferred. Consequence: this candidate is for bounded local browser use, not a migration/release candidate.
-- Genuine hover animation is not re-injected by the current computer-input API. Existing accepted implementation stays unchanged; manual hover follow-up remains explicit.
+- [ ] Account-dependent BYOK/eligible ChatGPT/Codex inference and hosted services: actual authorized end-to-end tests; no paid request used here.
+- [ ] Chrome extensions/profile isolation, 1Password autofill and native messaging: actual compatibility tests; disabled helpers may need implementation.
+- [ ] Genuine pointer-hover animation: manual observation; existing implementation preserved.
+- [ ] Large/missing attachment cases, broad crash/advanced interrupted-write recovery and clean installation outside approved scope.
+- [ ] Owner/legacy adoption and migration: refused until separately designed and authorized; existing credentials/state never reset.
+- [ ] Production signing, notarization, updater/distribution and release: separate milestone.
 
-No provisioning, OS grants, owner profiles/credentials or release work is included.
+Consequences: use the protected launch command and these disposable profiles for local testing. No general migration/release readiness, full automation/extension support or account-backed AI claim is made. No automatic next batch.

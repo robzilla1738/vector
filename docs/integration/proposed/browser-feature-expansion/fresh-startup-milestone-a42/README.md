@@ -1,14 +1,14 @@
-# Fresh-browser milestone: actual startup remains blocked
+# Fresh-browser milestone: ready for local browser testing
 
-The bounded milestone stops at A13 on 2026-10-25. [RESULT.md](RESULT.md) is the authoritative working/failed/untested checklist, build path, remaining implementation and explicit follow-ups.
+A25 ends this bounded milestone with the packaged app open. [RESULT.md](RESULT.md) is the authoritative build/launcher path, working/failed/untested checklist and remaining follow-ups. A65 browser/framework, A59 daemon, paired A17 HTTP entry and supplied UI33 are integrated; all17 signatures verify. Actual initial launch and normal same-package restart, navigation, isolated profiles, primary popup switching, multiple windows, draft/TXT recovery and observed UI states pass.
 
-The fixed A45 app contains browser/framework A49, daemon A53 and unchanged UI revision33. All17 local signatures verify. Actual startup still fails to reach its local service or a usable normal window, then crashes on teardown. The accepted app and owner state remain untouched. No next feature/architecture batch, new provisioning/OS grant or release has started.
+Settings can briefly refuse during account warm-up; settled retry works. Provider/account-dependent AI, extensions/native messaging, CLI and genuine hover remain follow-ups. Privileged automation and subprocess indexing are disabled. Accepted app/owner state stay intact; no provisioning, new OS grants or release. No next feature batch.
 
-Latest exact evidence: `actual-bounded-repair-a13.json`, `actual-launch-attempt-a13.json`, `actual-final-startup-result-a13.json`, `actual-daemon-image-path-check-build-a13.json`, and the full A49 browser build receipt in the isolated native snapshot. The owner authorization is `owner-signing-approval-a5.json`.
+Exact latest evidence: `actual-bounded-repair-a25.json`, `actual-focused-browser-checks-a25.json`, `actual-ui-comparison-a25.json`, `actual-launch-attempt-a25.json`, `actual-launch-restart-a25.json`. Prior failed checkpoints and preimages remain truthful historical evidence below.
 
 ## Historical milestone preparation and earlier checkpoints
 
-The narrative below is historical. Its pending approval/build statements are superseded by the actual receipts and RESULT.md; they are not readiness claims for A13.
+The narrative below is historical. Its pending approval/build statements are superseded by the actual receipts and RESULT.md; they are not current readiness claims.
 
 # Fresh disposable browser milestone A42
 

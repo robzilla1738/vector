@@ -1,0 +1,16 @@
+{
+  "candidate": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-fresh-browser-20261025-a45/Aux.app",
+  "repairIteration": "a24",
+  "launcherPid": 47746,
+  "startedUnix": 1792951677.0753121,
+  "privateLog": "/private/tmp/aux-fresh-browser-c5mop317/browser-launch-a24.log",
+  "command": [
+    "/opt/homebrew/bin/node",
+    "scripts/aux.mjs",
+    "--temp-profile",
+    "--app",
+    "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-fresh-browser-20261025-a45/Aux.app"
+  ],
+  "scope": "/private/tmp/aux-fresh-browser-c5mop317",
+  "runtimeAcceptance": false
+}

@@ -1,49 +1,50 @@
-# Bounded fresh-browser milestone: blocked at startup
+# Aux fresh-browser milestone — ready for local testing
 
-2026-10-25. This milestone stops here; no next feature or architecture batch has started.
+2026-10-25, repair A25. The bounded milestone ends here; no next feature batch has started. **The packaged browser is open and ready for local testing in the approved disposable scope. Aux is not feature-complete or release-ready.**
 
-Candidate: `/Users/rcourson/Documents/Vibe/web/out/provided-candidate-fresh-browser-20261025-a45/Aux.app`, incorporating repair A13. This is a complete paired diagnostic package, **not a usable or accepted browser build**. Its browser/framework is A49, daemon is A53, supplied UI is revision33, and the packaged CLI remains inactive. The accepted app at `out/provided-candidate-local-browser-pass/Aux.app` was not replaced.
+## Build and launch
 
-The only installation/state scope used after A44 is `/private/tmp/aux-fresh-browser-c5mop317`. It was initially fresh and now retains the admitted installation and partial state from these failed starts. It was never reset, migrated or represented as a new empty scope. No owner profiles or credentials were accessed. The older refused partial scope also remains intact.
+- App: `/Users/rcourson/Documents/Vibe/web/out/provided-candidate-fresh-browser-20261025-a45/Aux.app`.
+- Use [Launch Aux.command](../../../../../out/provided-candidate-fresh-browser-20261025-a45/Launch%20Aux.command) to reopen it. This starts the required protected development launcher; opening the raw app alone is not this tested launch path.
+- Browser/framework A65, native daemon A59, paired HTTP entry A17, unchanged supplied UI revision33; packaged CLI remains unverified.
+- Only `/private/tmp/aux-fresh-browser-c5mop317` was used. Final test profiles are **Aux Final Work** and **Aux Final Personal**. Earlier partial disposable profiles remain preserved; they were not reset or migrated.
+- The accepted app at `out/provided-candidate-local-browser-pass/Aux.app` remains intact. Fixed candidate paths/approved state are part of this development setup; do not move it or copy its acceptance to another package.
 
-## Actual result
+## Actual working / failed / untested checklist
 
-| Check | Result |
+| Check | Actual result |
 | --- | --- |
-| Full native browser and daemon builds | Passed for their selected sources; not runtime acceptance. |
-| Local signatures | All17 objects verify on A13. Only owner-approved candidate objects were re-signed. |
-| Installation/root admission and paired native entry | Reached with the real disposable installation and native owner. |
-| Node source lifetime and file ESM imports | Earlier concrete failures no longer occur. The sealed-source loader fixture also passed. |
-| GPU/network helper launch and path initialization | Earlier launch1003 and helper validator CHECK failures no longer occur. |
-| Account-store callback/broker validation | Corrected the demonstrated nested validation refusal; later runs advance beyond that immediate failure. |
-| Startup / local HTTP readiness | **Failed.** The daemon did not expose `/health` before selected-native startup readiness failed at09:52:57.330 in A13. No usable normal window was observed; desktop inspection timed out. |
-| Failed-startup shutdown | **Failed.** A13 eventually exits with SIGSEGV; launcher reports forced cleanup and `groupStopped:false`. Later process inventory finds no candidate executable remaining. That observation is not an all-descendant clean receipt. |
-| Navigation and back/forward | Untested; blocked at startup. |
-| Two fresh browser profiles / cookie and localStorage isolation | Untested on this successor; blocked at startup. |
-| Multiple windows and independent viewing | Untested; blocked at startup. |
-| Draft and attachment persistence / ordinary restart | Untested; blocked at startup. |
-| Actual sidebar/chat/settings and comparison with Aside | Untested; blocked at startup. Viewing the supplied reference capture is not a comparison of this candidate. |
-| UI resources | Exact preservation checks pass through package repairs; no CSS, layout, artwork, fonts or UI behavior changes were made in this milestone. |
+| Startup and paired daemon | **Passed.** Final A25 initial launch and normal restart return HTTP200, `aux-daemon`, `ready:true`. |
+| Navigation | **Passed.** Synthetic navigation/back-forward in the affected cohort and public HTTPS navigation in final A25. |
+| Two isolated fresh profiles | **Passed for tested storage.** Work and Personal keep distinct cookies, localStorage notes and chat contexts `/u/3` and `/u/4`. Extension isolation is still unverified. |
+| Profile switching | **Passed.** Primary popup activates actual Personal and Work profile windows in both directions. Source windows and drafts remain intact. Switching focuses/opens separate profile windows; it does not retarget a live window in place. |
+| Multiple windows | **Passed.** Shared logical tabs with independent selected views; native session restore retains original page identities. |
+| Draft and attachment persistence | **Passed for the synthetic TXT case.** Original unsent Work text and TXT chip recover after normal restart; Personal retains its separate draft. The final same-package restart repeats Work recovery successfully. Large/missing attachment cases remain untested. |
+| Sidebar / chat / Settings | **Passed after warm-up.** Actual collapsed/expanded sidebar, connected local chat and General Settings observed. AI responses were not tested. |
+| Immediate Settings during profile activation | **Known limitation.** First click can safely show a local-service-starting refusal; retry after account warm-up loads Settings. |
+| UI preservation and comparison | **Passed for observed surfaces.** UI33 assets/styles/fonts unchanged; final actual app compared to supplied Aside and accepted Aux captures. Rounded central pane, seamless toolbar and glass panels retained. Different viewport/profile data prevents a whole-window pixel-equality claim. |
+| Normal shutdown and restart | **Passed within measured process group.** Browser exit0, `groupStopped:true`, `forced:false`; no candidate executables remained, then same package restarted. This is not universal OS descendant custody proof. |
+| Local signatures / assembly | **All17 verify.** Same approved repair scope/identity/entitlements; compilation/signatures alone were not used as runtime evidence. |
 
-The owned candidate is stopped and the synthetic loopback server is stopped. Disposable state and all failed signed preimages remain preserved. No clean-recovery result, legacy acceptance or runtime-ready marker was fabricated.
+## Known limitations and explicit follow-ups
 
-## What remains implementation versus verification
+- **Provider/account integration:** authorized BYOK and eligible ChatGPT/Codex model responses, OAuth, hosted speech/sync/sharing require separate end-to-end checks. No inference or paid-provider request was used here.
+- **Extension compatibility:** Chrome extension installation/profile isolation, 1Password autofill and desktop/native messaging remain unverified. Ordinary mode disables supervised helper/native-addon execution, so native messaging may require implementation as well as testing.
+- **Deliberately disabled:** privileged tasks, exec/PTY, Computer Use and native addons. Subprocess-based memory indexing reports `spawn EPERM`; local chat/draft storage works, but indexing is not operational. The deferred task authority architecture is not part of this build.
+- **CLI:** included but URL/profile routing remains unverified; it did not hold up the browser.
+- **Hover:** existing accepted implementation preserved; genuine edge-hover animation needs a manual check because the current input API has no pointer-move primitive.
+- **Menu lifetime:** closed legacy non-View popup delegates may be retained. Actual close-event dispatch is fixed; broader ownership cleanup is deferred. Repeated popup use may retain memory.
+- **Data/recovery:** owner/legacy profiles remain refused; no migration, credential/key reset or owner-state access. Advanced interrupted-write/crash recovery and broad attachment cases remain separate. This is a fresh-profile development candidate, not a general migration/installation build.
+- **Google services:** no Google browser service keys were configured; ordinary HTTPS browsing passed. Provider-dependent browser features may show a missing-key notice.
 
-**Implementation blockers:** ordinary native-service initialization must reach actual listener/authorization readiness, and failed-startup teardown must terminate without SIGSEGV or unresolved forced cleanup. More deadline increases are not a solution. A11/A12 samples show repeated full protected policy/image/installation and peer revalidation during ordinary startup storage operations. Audit-bound Security-object reuse and lexical image-path optimization preserve those checks but did not make this startup usable.
+## Remaining release blockers
 
-The smallest next design change to assess is a retained ordinary-startup authorization lifetime: admit the existing native owner once, keep writes tied to the exact current process/profile generation, held private roots and live browser peer, and reserve full protected-state revalidation for the trust boundaries that actually require it. This is a change to the authorization lifecycle, **not implemented or authorized by a successful build/signature**. It needs a concrete bounded design before further edits; this milestone does not silently remove guard checks or begin the deferred task architecture. The observed shutdown failure must be diagnosed alongside that lifetime. These are the next known blockers, not proof that no later failures remain.
-
-**Focused verification after startup:** the navigation, two-profile, windows, draft/attachment, restart and sidebar/chat/settings rows above. Repeat only affected checks after demonstrated fixes. Genuine pointer hover remains unverified because the available desktop tool has no pointer-move API.
-
-**Explicit follow-ups:** account-dependent BYOK and eligible ChatGPT/Codex connection/model responses; Chrome extension installation and profile isolation; 1Password autofill and optional native messaging/desktop companion; CLI URL routing. None was accepted by this milestone or removed from the roadmap. Privileged tasks, exec/PTY, Computer Use and native addons remain disabled in this ordinary candidate.
-
-**Deferred:** owner/legacy profile adoption and migration, advanced interrupted-write recovery, new task-capability architecture, mobile, production signing, notarization, distribution and release. Legacy profiles remain refused. This fixed-scope diagnostic package is not a general installation or release candidate. No cloud-account setup is needed to investigate the current ordinary-startup blocker.
+Complete account/provider and extension/native-messaging acceptance; resolve or explicitly scope disabled automation/indexing and CLI; clean up the warm-up/menu-lifetime limitations; perform clean-install/packaging and intended release-platform acceptance. Production signing, notarization, updater/distribution and release remain a separate authorized milestone. No provisioning, new OS grants or release work was performed here.
 
 ## Evidence
 
-- Latest exact package/signature inventory: `actual-bounded-repair-a13.json`; prior failed signed bytes: `out/provided-candidate-fresh-browser-20261025-a45-before-image-a13/Aux.app`.
-- Actual launch command/PID/scope: `actual-launch-attempt-a13.json`; sanitized outcome: `actual-final-startup-result-a13.json`. Raw logs/samples remain private in the disposable scope.
-- Full browser build: `/private/tmp/aux-chromium-recovery-snapshot-20261023/unsigned-native-readiness-budget-build-20261025-a49/receipt.json`.
-- Daemon build: `actual-daemon-image-path-check-build-a13.json` (48 Swift sources,14 retained C++ objects).
-- Review and source history: `focused-callback-authority-review-a11.json`, `actual-startup-profiling-a13.json`, `focused-peer-identity-review-a12b.json`, `focused-image-path-review-a13.json`, corresponding exact patches and projection receipts. The failed A12 compilation and corrected A12b build are both retained truthfully.
-- Owner authorization: `owner-signing-approval-a5.json`. Same Robert Courson identity, fixed scope, existing entitlements/profile; no provisioning, new OS grants, owner-state access, notarization or release.
+- [Final actual runtime receipt](actual-focused-browser-checks-a25.json), [UI comparison](actual-ui-comparison-a25.json), [finite checklist](CHECKLIST-CURRENT.md).
+- [Exact package/signature inventory](actual-bounded-repair-a25.json), [source composition](source-composition-a25.json), [initial launch](actual-launch-attempt-a25.json), [same-package restart](actual-launch-restart-a25.json).
+- Actual screenshots: `out/provided-candidate-fresh-browser-20261025-a45/actual-example-chat-a25.png`, `actual-restored-chat-a25.png`, `actual-collapsed-chat-a25.png`, `actual-expanded-chat-a25.png`.
+- Prior failed source/build/signing preimages and A13/A17/A20/A23 runtime receipts remain preserved. Earlier startup failures are historical, not current readiness claims.
+- [Owner bounded repair approval](owner-signing-approval-a5.json). No formal release/owner runtime-acceptance marker was fabricated.

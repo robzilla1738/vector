@@ -1,0 +1,53 @@
+{
+  "format": "aux.ordinary-fresh.bounded-repair.review.v1",
+  "iteration": "a25",
+  "app": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-fresh-browser-20261025-a45/Aux.app",
+  "scope": "/private/tmp/aux-fresh-browser-c5mop317",
+  "ownerAuthorization": {
+    "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/fresh-startup-milestone-a42/owner-signing-approval-a5.json",
+    "sha256": "094788979b58b8a6269e8b5fef67a6dc8a00e9e056c570441aca835e7f579599"
+  },
+  "trigger": "A24 actual primary row handler fires, but deprecated non-View delegate is not destroyed on native close, so destructor-dependent action never posts. Move the original once-only, weak/source/epoch-fenced continuation to the genuine WindowClosing event; no styles or authorization change.",
+  "snapshot": {
+    "path": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-fresh-browser-20261025-a45-before-native-retention-a25/receipt.json",
+    "sha256": "aec90a012aeda360d4d44256cf6c3d6fed5ed5222b4e8fe0e4f56e898778be66"
+  },
+  "unsignedInventorySha256": "d42cf09cf65fdee97b4304c461024ba977dddb7aaa82716c62b974b6a50dcfdb",
+  "source": {
+    "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/fresh-startup-milestone-a42/source-composition-a25.json",
+    "sha256": "6c520b405cca2fd9273b0510e4a5464f0e94de38685eb6f3af1c1bbbf9172658"
+  },
+  "build": {
+    "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/unsigned-primary-menu-close-build-20261025-a65/receipt.json",
+    "sha256": "4ce6ca0a6d17c53983569fbf22442d09f94ec15e7d3c275fddf143daebaf299b"
+  },
+  "targetsInSigningOrder": [
+    {
+      "codeObject": "Contents/Frameworks/Aux Framework.framework",
+      "executable": "Contents/Frameworks/Aux Framework.framework/Versions/155.0.8059.85/Aux Framework",
+      "sha256": "92e813b33dfb72da58afcb5fd96650631837d8d1c0ab530a151b96f524bdd388",
+      "identifier": "dev.aux.browser.framework",
+      "entitlements": null
+    },
+    {
+      "codeObject": ".",
+      "executable": "Contents/MacOS/Aux",
+      "sha256": "6144b240eeb976e704d46566382aea70d291066ecf3a2e35d380c5bcab5a7ec9",
+      "identifier": "dev.aux.browser",
+      "entitlements": {
+        "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/fresh-startup-milestone-a42/browser-jit.plist",
+        "sha256": "958648f799e436860b51eaf55ec8f92d2c62da17001e23d96bc05ffc748f2a2a"
+      }
+    }
+  ],
+  "identitySha1": "47ACA5D1CFADD21CFEDC589B4DEED6E2B7A96D90",
+  "team": "9F2JXY8TCK",
+  "policySha256": "e342013f6ca2b6a6b2b985877df5deef525a3b7ab11e2b08f88a91d4889a1dce",
+  "newEntitlements": false,
+  "newScope": false,
+  "uiPreserved": true,
+  "acceptedAppExcluded": true,
+  "newProvisioning": false,
+  "newOSGrants": false,
+  "release": false
+}

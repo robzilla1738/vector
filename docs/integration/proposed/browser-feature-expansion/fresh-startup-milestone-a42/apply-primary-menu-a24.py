@@ -29,7 +29,7 @@ def main():
     p.require(APP.resolve(strict=True) == APP and p.sha(APP / POLICY) == owner['fixedPolicySha256'], 'Fixed candidate/policy required')
     commands = subprocess.run(['/bin/ps', '-axo', 'pid=,comm='], capture_output=True, text=True, check=True).stdout
     p.require(not any(str(APP) + '/' in line for line in commands.splitlines()), 'Candidate must be stopped')
-    before_path = HERE / 'actual-bounded-repair-a24.json'
+    before_path = HERE / 'actual-bounded-repair-a23.json'
     before = p.read(before_path)
     build = p.read(BUILD / 'receipt.json')
     p.require(before['passed'] and build['passed'] and build['allInspectedMachoUnsigned'], 'Verified predecessor/full unsigned build required')

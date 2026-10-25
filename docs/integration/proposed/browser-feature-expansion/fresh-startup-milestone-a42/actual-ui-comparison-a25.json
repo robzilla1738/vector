@@ -1,0 +1,45 @@
+{
+  "observedAt": "2026-10-25T18:35:24.955146+00:00",
+  "method": "Visual inspection of final packaged native CUA screenshots alongside saved supplied Aside and accepted Aux captures",
+  "images": [
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/out/pass1-ui-completion/aside-external-panel-ready.png",
+      "sha256": "ccdb9c17678c38b7284d16523ef6a6509aa416c9ac1333edc422692602f02e34"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/out/pass1-ui-completion/aux-external-panel-v617.jpg",
+      "sha256": "21f5977eef267f16f73ca1ce8d203aa63d8db825890c6a16d7fa200262f5884e"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-fresh-browser-20261025-a45/actual-example-chat-a25.png",
+      "sha256": "8d47b3c7bb5490b22f6068fc346b940993629abe05d49c97c17cac8e3a62eac4"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-fresh-browser-20261025-a45/actual-restored-chat-a25.png",
+      "sha256": "d4449711a0bb681d94bb921083edda1abc15a8d2e42396040a77f88410df2f0a"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-fresh-browser-20261025-a45/actual-collapsed-chat-a25.png",
+      "sha256": "b34bf2d651a233c458ac971ea722552d45505542ce0ca91703944ef2973cd07a"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-fresh-browser-20261025-a45/actual-expanded-chat-a25.png",
+      "sha256": "fe384d8313319169ed80297f928634fadce73ffe95e3eeb470f79ff698869cfa"
+    }
+  ],
+  "observed": [
+    "seamless toolbar/page surface retained",
+    "rounded central pane and outer/sidebar junctions retained with both panels open",
+    "translucent glass-backed sidebar and chat retained",
+    "supplied chat header, context chip, composer and Aux mark retained",
+    "collapsed and expanded sidebar states observed in A25"
+  ],
+  "limits": [
+    "different window size, sidebar widths and fresh profile contents; no whole-window pixel identity claim",
+    "reference captures are historical; no live owner Aside interaction",
+    "genuine hover animation not injected",
+    "provider-required banner correctly reflects absent provider"
+  ],
+  "uiResourcesChanged": false,
+  "suppliedUIRevision": 33
+}

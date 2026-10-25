@@ -1,0 +1,8 @@
+{
+  "stage": "preflight",
+  "failed": true,
+  "reason": "successor recipe referred to its own absent receipt instead of actual A23 predecessor",
+  "correctedPredecessor": "actual-bounded-repair-a23.json",
+  "appMutated": false,
+  "signingStarted": false
+}

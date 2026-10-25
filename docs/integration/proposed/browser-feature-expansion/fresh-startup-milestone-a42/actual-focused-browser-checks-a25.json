@@ -1,0 +1,81 @@
+{
+  "format": "aux.fresh-browser.focused-runtime.v1",
+  "observedAt": "2026-10-25T18:35:24.955146+00:00",
+  "repair": "a25",
+  "app": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-fresh-browser-20261025-a45/Aux.app",
+  "scope": "/private/tmp/aux-fresh-browser-c5mop317",
+  "packageInventorySha256": "25af5a816007facfd05c0b3352c87976816b697308f42c103ff7a00c11ca5f5d",
+  "cohort": {
+    "browserFramework": "a65",
+    "nativeDaemon": "a59",
+    "httpEntry": "a17",
+    "suppliedUI": "revision33"
+  },
+  "method": "Actual packaged native CUA app, owned synthetic loopback fixture, public HTTPS navigation, native normal Quit and same-package restart",
+  "passed": [
+    "A25 original launch and same-package restart: HTTP200 health, service aux-daemon, ready true",
+    "Query-free Work page restores cookie aux_profile=work and saved note final-work-note after normal app restart",
+    "Final Work native page restores original Final Work A20 durable draft and aux-disposable-attachment-a17.txt TXT after restart",
+    "A25 primary profile popup activates Final Personal actual native window and its separate cookie/note, then returns to Final Work",
+    "Work /u/3 and Personal /u/4 remain separate; Personal has its own draft without Work attachment",
+    "Native session restore retains actual page identities and multiple windows; shared logical tabs retain independent selected views (A17/A20/A23 evidence)",
+    "Public HTTPS example.com navigation on final A25; earlier affected-cohort back/forward check passed",
+    "Actual A25 collapsed and expanded left sidebar with right chat open; final same-page reference screenshot inspected",
+    "Actual General Settings via primary profile menu loads after account warm-up, background service Running normally",
+    "A25 normal Quit: browser exit0, signal null, groupStopped true, forced false; zero candidate executable processes afterward",
+    "Same exact package restarted and left open with Work fixture draft preserved in its separate tab"
+  ],
+  "failedChecksRemaining": [
+    {
+      "check": "Immediate Settings navigation during profile warm-up",
+      "result": "First click safely refuses with local-service starting message; settled retry loads actual General Settings. Not fixed in this bounded milestone."
+    }
+  ],
+  "notVerified": [
+    "Account-dependent BYOK/eligible ChatGPT/Codex inference, OAuth, speech, sync and sharing",
+    "Third-party extension installation/isolation, 1Password autofill and native messaging",
+    "CLI URL/profile routing",
+    "Genuine pointer-hover animation (input API has no pointer-move primitive)",
+    "Large/missing attachment edge cases and broad crash/interrupted-write recovery",
+    "Clean installation outside fixed approved scope and owner/legacy migration"
+  ],
+  "disabledInOrdinaryMode": [
+    "privileged tasks",
+    "exec/PTY",
+    "Computer Use",
+    "native addons/helper execution",
+    "subprocess-based memory indexing (observed spawn EPERM)"
+  ],
+  "limits": [
+    "Profile switching focuses/opens separate native profile windows; no in-place profile retargeting",
+    "Closed legacy non-View profile popup delegate may remain allocated; close-event action dispatch fixed, ownership cleanup deferred",
+    "Process-group exit evidence is not universal OS descendant custody proof",
+    "No live owner Aside app/service or owner data accessed; comparison uses saved supplied/accepted captures",
+    "No formal release/owner runtime acceptance marker generated; receipt establishes bounded local-test readiness only"
+  ],
+  "localBrowserTestReady": true,
+  "featureComplete": false,
+  "releaseReady": false,
+  "acceptedAppReplaced": false,
+  "newScope": false,
+  "provisioning": false,
+  "newOSGrants": false,
+  "evidence": [
+    "actual-bounded-repair-a25.json",
+    "actual-launch-attempt-a25.json",
+    "actual-launch-restart-a25.json",
+    "actual-focused-browser-checks-a17.json",
+    "actual-focused-browser-checks-a20.json",
+    "actual-focused-browser-checks-a23.json",
+    "actual-primary-menu-trace-a24.json",
+    "actual-ui-comparison-a25.json"
+  ],
+  "exitEvent": {
+    "event": "aux-fresh-child-exit",
+    "pid": 51051,
+    "exitCode": 0,
+    "signal": null,
+    "groupStopped": true,
+    "forced": false
+  }
+}
