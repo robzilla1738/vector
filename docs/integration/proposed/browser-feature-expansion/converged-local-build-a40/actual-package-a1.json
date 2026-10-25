@@ -1,0 +1,17 @@
+{
+  "passed": true,
+  "app": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-converged-local-20261024-a40/Aux.app",
+  "receipt": {
+    "path": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-converged-local-20261024-a40/receipt.json",
+    "sha256": "541925afc00948ee3ef45f7669699cccb215f76c1802b2720ed140daa1ee18e7"
+  },
+  "inventorySha256": "e4bcdd7dcd2bcc54e7f25c1f24cfacd7b4c7c784a0441a72642d8bdc9d18cc55",
+  "leaves": 11187,
+  "replacements": 14,
+  "runtimeAcceptance": false,
+  "testable": false,
+  "runtimeAuthorityGranted": false,
+  "appExecuted": false,
+  "productSigned": false,
+  "acceptedAppReplaced": false
+}

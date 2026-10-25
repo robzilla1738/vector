@@ -1,0 +1,272 @@
+{
+  "format": "aux.converged-local.package.review.v1",
+  "replacements": [
+    {
+      "path": "Contents/Frameworks/Aux Framework.framework/Versions/155.0.8059.85/Aux Framework",
+      "previousSha256": "d88390e9d09131b370cd076dad56488afe5e3690c76f05d1e80e0d1346c61b26",
+      "input": {
+        "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/native-a24-verified/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/155.0.8059.85/Aux Framework",
+        "sha256": "98193704b56b20d1dd859dfc7ec70314e2966d202ffeab8ca8dd4ee0695574d3"
+      },
+      "mode": 493
+    },
+    {
+      "path": "Contents/MacOS/Aux",
+      "previousSha256": "c76f180f22896bd039fb0555f4a922caff91b9ceb148c4fe22cb3b8d3b6be346",
+      "input": {
+        "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/native-a24-verified/Aux.app/Contents/MacOS/Aux",
+        "sha256": "14e3c895dce3fc294df750da5e220b13f81b61d97a67c8c3a2ccf44d18aae259"
+      },
+      "mode": 493
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/create-editor-B-Br5Wz9.js",
+      "previousSha256": "814f707acf1a1a455137ae23375aa6a41791a6dac99895f4439062285e66bdd5",
+      "input": {
+        "path": "/private/tmp/aux-converged-ui-stage-20261024-a40/agent/assets/create-editor-B-Br5Wz9.js",
+        "sha256": "2648d8c6683527af3f150b3ab00be60c5a0c76f47eaf7a16f3e448a2e89a06a9"
+      },
+      "mode": 420
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/draft-storage-ixLojjZ5.js",
+      "previousSha256": "bddddc6df8a000becb1c6245bc732d258b405e71c5c933d4c3de991ebdc125fc",
+      "input": {
+        "path": "/private/tmp/aux-converged-ui-stage-20261024-a40/agent/assets/draft-storage-ixLojjZ5.js",
+        "sha256": "b4265eba955989f4a7b1262f94d5b0941c8afa597ce2452e26730129c9fea02d"
+      },
+      "mode": 420
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/file-attachments-D5m1O8aA.js",
+      "previousSha256": "b94263913ff12de4b2d7960945469eb79d1624a48045e93cd2a4c94673da1b3a",
+      "input": {
+        "path": "/private/tmp/aux-converged-ui-stage-20261024-a40/agent/assets/file-attachments-D5m1O8aA.js",
+        "sha256": "57ccf50a480416d980bd1963eae88146a6e19a5fbafcd7a38ca17957e32ae62a"
+      },
+      "mode": 420
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/minipopup-LkDLFvnq.js",
+      "previousSha256": "f70c8c0328992493053ef4d61a205ba2800586fe44a79f29d9f188a7400ce762",
+      "input": {
+        "path": "/private/tmp/aux-converged-ui-stage-20261024-a40/agent/assets/minipopup-LkDLFvnq.js",
+        "sha256": "3071da2f307abd83fdaedd2ffc0d2fa77dcb6aab3f5c8a06d2bf0c9f9cc89eaf"
+      },
+      "mode": 420
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/newtab-editor-u_GbForB.js",
+      "previousSha256": "77c7374756c75ec386b2f3c9ae57b9b5c3890a190357d178105e0debed7b4dfc",
+      "input": {
+        "path": "/private/tmp/aux-converged-ui-stage-20261024-a40/agent/assets/newtab-editor-u_GbForB.js",
+        "sha256": "10575e00999d606490b41e21ccf954d47625bb9c724ef8abd7037a75c04babd7"
+      },
+      "mode": 420
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/permission-approval-D-GTf91U.js",
+      "previousSha256": "e4908ae0c13431dd77292d0df18504fc902ef9c725926b671a106e67e69b9e18",
+      "input": {
+        "path": "/private/tmp/aux-converged-ui-stage-20261024-a40/agent/assets/permission-approval-D-GTf91U.js",
+        "sha256": "08afcf585bf6707377424fa07557c2d335d08898adae2576b4340bddf2a5d03f"
+      },
+      "mode": 420
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/provider-Cw0zhujt.js",
+      "previousSha256": "1e64914a8267b82ea9bacbe04c4e1393495d84973130db7533928cc8b8abf133",
+      "input": {
+        "path": "/private/tmp/aux-converged-ui-stage-20261024-a40/agent/assets/provider-Cw0zhujt.js",
+        "sha256": "8aee4a9cc8229397e4067fb9a9a4772ef4bdfddc03d1db3f2c84836a1b6fe724"
+      },
+      "mode": 420
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/session-composer-Dc0LRfZA.js",
+      "previousSha256": "18979e7cb8bb5d09eb79c88b30b89b76ace3edaaf421a11785362eef4356468b",
+      "input": {
+        "path": "/private/tmp/aux-converged-ui-stage-20261024-a40/agent/assets/session-composer-Dc0LRfZA.js",
+        "sha256": "7d9fd830a06e4bc846a7d81f849486a16013a36411c8d33a309ddc6a6d7f229d"
+      },
+      "mode": 420
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/background.js",
+      "previousSha256": "bd97a84088d75a0a58a7f9519336b277f2dd0ec5adbee7e843e85c6ac2f8d032",
+      "input": {
+        "path": "/private/tmp/aux-converged-ui-stage-20261024-a40/agent/background.js",
+        "sha256": "02b2288a0c1691a1e55d4f16c1db1147385da5b7030740b62c37432a191591cc"
+      },
+      "mode": 420
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/manifest.json",
+      "previousSha256": "83b36529497ad99637b671a467ca6f2bdf67af81baedccf8afea24c49cc59e7f",
+      "input": {
+        "path": "/private/tmp/aux-converged-ui-stage-20261024-a40/agent/manifest.json",
+        "sha256": "d1d616d82f60e06309c0e8664144eb785d13451451eb63665f3b862fbb030828"
+      },
+      "mode": 420
+    },
+    {
+      "path": "Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/MacOS/aux-daemon",
+      "previousSha256": "6c1d34edb745017bbbe37b607291ee9e46c6c9011f59c29512c089c08bef6972",
+      "input": {
+        "path": "/private/tmp/aux-ui-journal-inventory-daemon-link-20261024-a26/Aux Daemon",
+        "sha256": "9f8fbef080805bb6ced32edee281c6d32da8ef01e0b26fa2ec3f0dc34284cf92"
+      },
+      "mode": 493
+    },
+    {
+      "path": "Contents/Resources/aux/apps/cli/Aux CLI.app/Contents/MacOS/aux-cli",
+      "previousSha256": "7874f6b80def71d65c42750b393fa512531d6d031ad28942f950078b667b9955",
+      "input": {
+        "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/native-cli-product-link-20261024-a5/native_cli_open",
+        "sha256": "f9d14791f20e74c363bbe61729ae5c9eb35ae18bc25c48d767c3205ea21a20c1"
+      },
+      "mode": 493
+    }
+  ],
+  "inputs": [
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/converged-local-build-a40/package.py",
+      "sha256": "7cb6cb517bfa573cc537b150baa8a1628dd8d1ad3d0332d2c25ba32bd9ab0ce6"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-desktop-completion-20261024-a3/receipt.json",
+      "sha256": "ee76d98d8a18d4a1d885ebf8eb7020adc61344604416675c6f854f70ed95f211"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/native-phase-integration-a24/full-build-completion-a1.json",
+      "sha256": "d4e4e4ea7a91a4263227cc7a61125f2c81371cf9430d5a8ad7bd266a507bcfdf"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/unsigned-feature-completion-browser-build-20261024-a24-fast/receipt.json",
+      "sha256": "bff1877c4d1c9ee0ec449c8cf5e326718416c953ac3973fe848529ce87cc70e3"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/unsigned-feature-completion-browser-build-20261024-a24-fast/app-inventory.json",
+      "sha256": "2d0fee38ef7fff5c4892e1ebb4f1c4798266b91dc3d84021d17aae59138b86da"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/converged-local-build-a40/actual-ui-stage-a1.json",
+      "sha256": "330720daed10e2d0ef6ed9e8bb53114dc8871cfc6cafcabc3066dfd7639e8196"
+    },
+    {
+      "path": "/private/tmp/aux-converged-ui-stage-20261024-a40/manifest.json",
+      "sha256": "e5564d738dfde4ce1b8fc01b0f684d3ec3a7f4a1c4e293caca94ac9844644180"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/productivity-adapter-pairing-a2/actual-projection.json",
+      "sha256": "aaec23c959c7b593f30cb0e5f07276b192e9ee2647bfb3830e2fe5d990567af1"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/ui-journal-readonly-inventory-a26/actual-daemon-link-a1.json",
+      "sha256": "3949710e8729a778dd4851d04412235b3046650b8ee2d31a2916fa822961111e"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/ui-journal-readonly-inventory-a26/actual-daemon-link-inputs-a1.json",
+      "sha256": "5c36b2d4d990db16cfa00e487f777c0f0dc51e2666405cfcc31aac27b0767edd"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/cli-unsigned-integration-a20/preserved-cli-artifact.json",
+      "sha256": "922e0cceb68cf8e07b10f5a061d1a9e665bbc3820726082e3ed085f2e4712d06"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/runtime-package-a1/runtime_package.py",
+      "sha256": "15bdfb4066eded784be22a6f29f7bf9e6a41d67e9a917dc889ec5cc822507887"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/native-a24-verified/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/155.0.8059.85/Aux Framework",
+      "sha256": "98193704b56b20d1dd859dfc7ec70314e2966d202ffeab8ca8dd4ee0695574d3"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/native-a24-verified/Aux.app/Contents/MacOS/Aux",
+      "sha256": "14e3c895dce3fc294df750da5e220b13f81b61d97a67c8c3a2ccf44d18aae259"
+    },
+    {
+      "path": "/private/tmp/aux-converged-ui-stage-20261024-a40/agent/assets/create-editor-B-Br5Wz9.js",
+      "sha256": "2648d8c6683527af3f150b3ab00be60c5a0c76f47eaf7a16f3e448a2e89a06a9"
+    },
+    {
+      "path": "/private/tmp/aux-converged-ui-stage-20261024-a40/agent/assets/draft-storage-ixLojjZ5.js",
+      "sha256": "b4265eba955989f4a7b1262f94d5b0941c8afa597ce2452e26730129c9fea02d"
+    },
+    {
+      "path": "/private/tmp/aux-converged-ui-stage-20261024-a40/agent/assets/file-attachments-D5m1O8aA.js",
+      "sha256": "57ccf50a480416d980bd1963eae88146a6e19a5fbafcd7a38ca17957e32ae62a"
+    },
+    {
+      "path": "/private/tmp/aux-converged-ui-stage-20261024-a40/agent/assets/minipopup-LkDLFvnq.js",
+      "sha256": "3071da2f307abd83fdaedd2ffc0d2fa77dcb6aab3f5c8a06d2bf0c9f9cc89eaf"
+    },
+    {
+      "path": "/private/tmp/aux-converged-ui-stage-20261024-a40/agent/assets/newtab-editor-u_GbForB.js",
+      "sha256": "10575e00999d606490b41e21ccf954d47625bb9c724ef8abd7037a75c04babd7"
+    },
+    {
+      "path": "/private/tmp/aux-converged-ui-stage-20261024-a40/agent/assets/permission-approval-D-GTf91U.js",
+      "sha256": "08afcf585bf6707377424fa07557c2d335d08898adae2576b4340bddf2a5d03f"
+    },
+    {
+      "path": "/private/tmp/aux-converged-ui-stage-20261024-a40/agent/assets/provider-Cw0zhujt.js",
+      "sha256": "8aee4a9cc8229397e4067fb9a9a4772ef4bdfddc03d1db3f2c84836a1b6fe724"
+    },
+    {
+      "path": "/private/tmp/aux-converged-ui-stage-20261024-a40/agent/assets/session-composer-Dc0LRfZA.js",
+      "sha256": "7d9fd830a06e4bc846a7d81f849486a16013a36411c8d33a309ddc6a6d7f229d"
+    },
+    {
+      "path": "/private/tmp/aux-converged-ui-stage-20261024-a40/agent/background.js",
+      "sha256": "02b2288a0c1691a1e55d4f16c1db1147385da5b7030740b62c37432a191591cc"
+    },
+    {
+      "path": "/private/tmp/aux-converged-ui-stage-20261024-a40/agent/manifest.json",
+      "sha256": "d1d616d82f60e06309c0e8664144eb785d13451451eb63665f3b862fbb030828"
+    },
+    {
+      "path": "/private/tmp/aux-ui-journal-inventory-daemon-link-20261024-a26/Aux Daemon",
+      "sha256": "9f8fbef080805bb6ced32edee281c6d32da8ef01e0b26fa2ec3f0dc34284cf92"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/native-cli-product-link-20261024-a5/native_cli_open",
+      "sha256": "f9d14791f20e74c363bbe61729ae5c9eb35ae18bc25c48d767c3205ea21a20c1"
+    }
+  ],
+  "nativeBuild": {
+    "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/unsigned-feature-completion-browser-build-20261024-a24-fast/receipt.json",
+    "sha256": "bff1877c4d1c9ee0ec449c8cf5e326718416c953ac3973fe848529ce87cc70e3"
+  },
+  "uiStage": {
+    "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/converged-local-build-a40/actual-ui-stage-a1.json",
+    "sha256": "330720daed10e2d0ef6ed9e8bb53114dc8871cfc6cafcabc3066dfd7639e8196"
+  },
+  "daemonLink": {
+    "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/ui-journal-readonly-inventory-a26/actual-daemon-link-a1.json",
+    "sha256": "3949710e8729a778dd4851d04412235b3046650b8ee2d31a2916fa822961111e"
+  },
+  "cliLink": {
+    "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/cli-unsigned-integration-a20/preserved-cli-artifact.json",
+    "sha256": "922e0cceb68cf8e07b10f5a061d1a9e665bbc3820726082e3ed085f2e4712d06"
+  },
+  "sourceProjection": {
+    "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/productivity-adapter-pairing-a2/actual-projection.json",
+    "sha256": "aaec23c959c7b593f30cb0e5f07276b192e9ee2647bfb3830e2fe5d990567af1"
+  },
+  "authorityWireVersion": 6,
+  "coldFeatureEnabled": false,
+  "knownLimitations": [
+    "Launcher refuses state identity v2 pending native acceptance; no acceptance marker is fabricated.",
+    "Protected native startup is compiled off; ordinary fallback Node entry remains quarantined.",
+    "Fresh profile feature admission and native CLI listener are unavailable on that startup route.",
+    "Products remain unsigned; native CLI also requires actual code identity validation.",
+    "Advanced migration/restart recovery and task-capability proposals are not selected.",
+    "Actual app journeys and visual comparison remain unverified."
+  ],
+  "testable": false,
+  "runtimeAuthorityGranted": false,
+  "appExecuted": false,
+  "productSigned": false,
+  "acceptedAppReplaced": false
+}

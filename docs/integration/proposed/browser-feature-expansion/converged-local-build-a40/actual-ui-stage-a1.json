@@ -1,0 +1,25 @@
+{
+  "format": "aux.feature-completion.ui-stage.actual.v1",
+  "passed": true,
+  "output": "/private/tmp/aux-converged-ui-stage-20261024-a40",
+  "stageManifestSha256": "e5564d738dfde4ce1b8fc01b0f684d3ec3a7f4a1c4e293caca94ac9844644180",
+  "priorManifestSha256": "73700c30bd0508a2249dd8dff3293fb1d8a0c47de5311d641e9b8ee2607a7bfd",
+  "agentRevision": 33,
+  "deltas": [
+    {
+      "path": "assets/draft-storage-ixLojjZ5.js",
+      "beforeSha256": "9b62901b3069e75a07d86b3dd353cd529ddc00beff7b5d18938c86493b854207",
+      "afterSha256": "b4265eba955989f4a7b1262f94d5b0941c8afa597ce2452e26730129c9fea02d"
+    },
+    {
+      "path": "manifest.json",
+      "beforeSha256": "0b658d8ca828fdd8e151acfbb1e262e8fd121d40fdf2daec38d6a35e36135612",
+      "afterSha256": "d1d616d82f60e06309c0e8664144eb785d13451451eb63665f3b862fbb030828"
+    }
+  ],
+  "stylesAssetsFontsModesAndOtherBytesPreserved": true,
+  "identitiesAndPermissionsPreserved": true,
+  "productExecuted": false,
+  "appPackaged": false,
+  "runtimeAcceptance": false
+}

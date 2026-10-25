@@ -1,0 +1,33 @@
+{
+  "format": "aux.converged-local.launch.actual.v1",
+  "app": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-converged-local-20261024-a40/Aux.app",
+  "disposableScope": "/private/tmp/aux-converged-launch-a40-znqxc8tt",
+  "passed": false,
+  "launcherExitCode": 1,
+  "launcherRefusedStateV2": true,
+  "fixedPortsFree": true,
+  "nativeEntry": {
+    "attempted": true,
+    "pid": 23296,
+    "command": [
+      "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-converged-local-20261024-a40/Aux.app/Contents/MacOS/Aux",
+      "--user-data-dir=/private/tmp/aux-converged-launch-a40-znqxc8tt/profile",
+      "--no-first-run",
+      "--no-default-browser-check",
+      "--use-mock-keychain",
+      "--disable-background-networking",
+      "--disable-component-update"
+    ],
+    "exitCode": -9,
+    "stillRunning": false
+  },
+  "signatureVerificationExitCode": 1,
+  "productSigned": false,
+  "admissionGuardChanged": false,
+  "acceptedAppReplaced": false,
+  "ownerStateRead": false,
+  "ownerAppsStopped": false,
+  "actualUiAcceptance": false,
+  "runtimeAcceptance": false,
+  "remainingJourneys": "Blocked at startup; not run or represented as passed"
+}

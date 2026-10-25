@@ -8,6 +8,8 @@ Owner-directed exception (2026-10-20): Aux will not ship its own password manage
 
 Read the [supplied contract](docs/design/aside-contract.md), [active reuse plan](docs/plans/2026-10-19-supplied-implementation-reuse.md), [workspace rules](AGENTS.md) and [current progress](docs/STATUS.md). Preserve the supplied components and matching runtime contracts. Independent replacements remain recoverable in Git and must not displace the supplied UI.
 
+Latest convergence checkpoint: [one paired A40 assembly and finite checklist](docs/integration/proposed/browser-feature-expansion/converged-local-build-a40/README.md). The package exists at `out/provided-candidate-converged-local-20261024-a40/Aux.app`, but its actual launch failed before a usable window. It is **not a testable/accepted successor**: fresh native startup/admission remains unfinished and product binaries remain unsigned. The accepted preview below stays intact. No next batch starts automatically.
+
 ## Completion plan
 
 The [final completion execution plan](docs/ROADMAP-EXECUTION-GRAPH.md) defines the remaining implementation, three parallel worker lanes, shared ownership, focused acceptance journeys, and separate development-signing/production/distribution gates. It is a plan, not a readiness claim or authorization to release.

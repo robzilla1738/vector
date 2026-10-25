@@ -1,0 +1,9 @@
+{
+  "format": "aux.feature-completion.ui-preflight.actual.v1",
+  "passed": false,
+  "expectedReviewRequired": true,
+  "observedFingerprint": "684f39c67766b9b961d92807695d98e1a1481ce661b836945ee4e92596a52c76",
+  "output": "/private/tmp/aux-converged-ui-preflight-20261024-a40",
+  "reason": "Agent revision review mismatch: 684f39c67766b9b961d92807695d98e1a1481ce661b836945ee4e92596a52c76",
+  "productExecuted": false
+}
