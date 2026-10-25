@@ -1,0 +1,91 @@
+{
+  "format": "aux.native-dom-closed-handoff.source.v1",
+  "files": [
+    {
+      "path": "components/services/storage/dom_storage/async_dom_storage_database.h",
+      "inputSha256": "ed4f68c2c0fb567201a40f0c08b06d131e6bab945518f8dc6bac7fece03ecc01",
+      "outputSha256": "99fe91227827f5a2185a3531e390a1e7c7ada6f29f90d6226478b37f1fe54153",
+      "anchors": [
+        {
+          "find": "    virtual std::vector<AuxUiCacheView> CopyAuxUiMigrationCacheViews() const;",
+          "replace": "    virtual void HandoffAuxUiMigrationCaches(const base::UnguessableToken& original,\n        const base::UnguessableToken& next, const AuxUiMapSnapshot* map, StatusCallback callback);\n    virtual void ReadAuxUiMigrationCacheHandoff(const base::UnguessableToken& original,\n        const base::UnguessableToken& next, const AuxUiMapSnapshot* map, StatusCallback callback);\n    virtual std::vector<AuxUiCacheView> CopyAuxUiMigrationCacheViews() const;",
+          "count": 1
+        },
+        {
+          "find": "  void CommitAuxUiMigrationLease(AuxUiMigrationLease& lease,",
+          "replace": "  // Closed transition from a verified original recovery into one actual normal\n  // successor. The predecessor and successor custody stay retained on loss.\n  void HandoffAuxUiMigrationRecovery(AuxUiMigrationLease& original, AuxUiLeaseCallback callback);\n  void ReadAuxUiMigrationHandoff(AuxUiMigrationLease& original, AuxUiLeaseCallback callback);\n  void CommitAuxUiMigrationLease(AuxUiMigrationLease& lease,",
+          "count": 1
+        },
+        {
+          "find": "  struct AuxUiCacheRound;",
+          "replace": "  struct AuxUiHandoffRound;\n  void CheckedAuxUiHandoffSource(std::shared_ptr<AuxUiMigrationLease::State> state,\n      AuxUiLeaseCallback callback, StatusOr<AuxUiSnapshot> result);\n  void CapturedAuxUiHandoffSource(std::shared_ptr<AuxUiMigrationLease::State> state,\n      AuxUiLeaseCallback callback, StatusOr<AuxUiSnapshot> result);\n  void StartAuxUiHandoffCaches(std::shared_ptr<AuxUiMigrationLease::State> state,\n      AuxUiLeaseCallback callback, bool observe_only);\n  void ContinueAuxUiHandoffCaches(std::shared_ptr<AuxUiHandoffRound> round, DbStatus status);\n  struct AuxUiCacheRound;",
+          "count": 1
+        },
+        {
+          "find": "AuxUiReadCallback callback, bool recovery = false);",
+          "replace": "AuxUiReadCallback callback, bool recovery = false, bool handoff_capture = false);",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "components/services/storage/dom_storage/async_dom_storage_database.cc",
+      "inputSha256": "1c6077098ef276e33c64b3b434d49a0cd6055380187a119b4941d907416d3404",
+      "outputSha256": "478985161d8dfac705f13ef67fdef783a790d72ab271fa140dfb01152f63b8b5",
+      "anchors": [
+        {
+          "find": "  std::shared_ptr<AuxDomCapture> recovery_backend;",
+          "replace": "  std::shared_ptr<AuxDomCapture> recovery_backend;\n  // Strong retained successor is minted once before asynchronous work. The\n  // old lease never changes identity or loses its immutable original captures.\n  std::shared_ptr<State> handoff_successor;\n  bool handoff_issued = false;\n  bool handoff_installed = false;\n  bool source_absence_proven = false;\n",
+          "count": 1
+        },
+        {
+          "find": "struct AsyncDomStorageDatabase::AuxUiCacheRound {",
+          "replace": "void AsyncDomStorageDatabase::Committer::HandoffAuxUiMigrationCaches(\n    const base::UnguessableToken&, const base::UnguessableToken&,\n    const AuxUiMapSnapshot*, StatusCallback callback) {\n  std::move(callback).Run(DbStatus::NotSupported(\"Actual closed cache handoff unavailable\"));\n}\nvoid AsyncDomStorageDatabase::Committer::ReadAuxUiMigrationCacheHandoff(\n    const base::UnguessableToken&, const base::UnguessableToken&,\n    const AuxUiMapSnapshot*, StatusCallback callback) {\n  std::move(callback).Run(DbStatus::NotSupported(\"Actual cache handoff receipt unavailable\"));\n}\nstruct AsyncDomStorageDatabase::AuxUiCacheRound {",
+          "count": 1
+        },
+        {
+          "find": "AuxUiReadCallback callback, bool recovery) {",
+          "replace": "AuxUiReadCallback callback, bool recovery, bool handoff_capture) {\n  if (handoff_capture && (recovery || operation != 0 || !state->handoff_successor)) {\n    std::move(callback).Run(base::unexpected(DbStatus::IOError(\"Exact native handoff source sentinel required\"))); return;\n  }",
+          "count": 1
+        },
+        {
+          "find": "recovery ? state->recovery_backend : state->backend, aux_migration_write_status_",
+          "replace": "recovery ? state->recovery_backend : handoff_capture ? state->handoff_successor->backend : state->backend, aux_migration_write_status_",
+          "count": 1
+        },
+        {
+          "find": "        state->recovery_requalified = result.has_value() && !result->source_absence_cancellation;",
+          "replace": "        state->source_absence_proven = result.has_value() && result->source_absence_cancellation;\n        state->recovery_requalified = result.has_value() && !result->source_absence_cancellation;",
+          "count": 1
+        },
+        {
+          "find": "state->target_attempted || state->tainted || state->recovery_write_attempted ||",
+          "replace": "state->target_attempted || state->tainted || state->recovery_write_attempted || state->handoff_successor ||",
+          "count": 1
+        },
+        {
+          "find": "  if (!CurrentAuxUiMigrationWriters(state) || state->pending || state->tainted ||\n      state->recovery_descriptor_sha256.empty()",
+          "replace": "  if (!CurrentAuxUiMigrationWriters(state) || state->pending || state->tainted || state->handoff_successor ||\n      state->recovery_descriptor_sha256.empty()",
+          "count": 1
+        },
+        {
+          "find": "  if (!CurrentAuxUiMigrationWriters(state) || state->pending ||\n      (operation >= 2",
+          "replace": "  if (!CurrentAuxUiMigrationWriters(state) || state->pending || state->handoff_successor ||\n      (operation >= 2",
+          "count": 1
+        },
+        {
+          "find": "  if (!CurrentAuxUiMigrationWriters(state) || state->pending || !before_reopen ||",
+          "replace": "  if (!CurrentAuxUiMigrationWriters(state) || state->pending || state->handoff_successor || !before_reopen ||",
+          "count": 1
+        },
+        {
+          "find": "void AsyncDomStorageDatabase::BeginAuxUiMigrationLease(AuxUiLeaseCallback callback) {",
+          "replace": "void AsyncDomStorageDatabase::HandoffAuxUiMigrationRecovery(\n    AuxUiMigrationLease& original, AuxUiLeaseCallback callback) {\n  auto state = original.state_;\n  if (state->handoff_installed) {\n    ReadAuxUiMigrationHandoff(original, std::move(callback)); return;\n  }\n  if (!CurrentAuxUiMigrationWriters(state) || state->pending || state->tainted ||\n      !state->deferred.empty() || state->recovery_descriptor_sha256.empty() ||\n      (!state->recovery_original_restored && !state->source_absence_proven)) {\n    std::move(callback).Run(base::unexpected(DbStatus::IOError(\n        \"Actual restored source and closed original ownership required\")), {}); return;\n  }\n  if (!state->handoff_successor) {\n    auto next = std::make_shared<AuxUiMigrationLease::State>();\n    next->owner = weak_ptr_factory_.GetWeakPtr();\n    next->writers = state->writers;\n    next->prepared_writers = state->prepared_writers;\n    state->handoff_successor = std::move(next);\n  }\n  state->pending = true;\n  // Verify the original again on the real DB sequence. This is an original\n  // read/sync only; it cannot allocate or repeat a target write.\n  RunAuxUiBackend(state, 1, {}, base::BindOnce(\n      &AsyncDomStorageDatabase::CheckedAuxUiHandoffSource,\n      weak_ptr_factory_.GetWeakPtr(), state, std::move(callback)),\n      state->recovery_original_restored);\n}\nvoid AsyncDomStorageDatabase::CheckedAuxUiHandoffSource(\n    std::shared_ptr<AuxUiMigrationLease::State> state,\n    AuxUiLeaseCallback callback, StatusOr<AuxUiSnapshot> result) {\n  if (!result.has_value() || !result->matches_source || !result->file_data_synced ||\n      !CurrentAuxUiMigrationWriters(state) || state->tainted || !state->deferred.empty()) {\n    state->pending = false;\n    std::move(callback).Run(base::unexpected(result.has_value() ?\n        DbStatus::IOError(\"Original source readback changed during closed handoff\") : result.error()), {});\n    return;\n  }\n  auto next = state->handoff_successor;\n  if (next->backend_captured) {\n    StartAuxUiHandoffCaches(state, std::move(callback), false); return;\n  }\n  // A failed read may be recaptured before any cache transition was issued.\n  // No future plan has escaped and no target IO is repeated by this sentinel.\n  CHECK(!state->handoff_issued);\n  next->backend = std::make_shared<AuxDomCapture>();\n  for (const auto& writer : state->writers) {\n    auto locator = writer->CopyAuxUiMigrationLocator();\n    if (!locator.has_value()) {\n      state->pending = false;\n      std::move(callback).Run(base::unexpected(locator.error()), {}); return;\n    }\n    next->backend->live_locators.push_back(std::move(locator).value());\n  }\n  RunAuxUiBackend(state, 0, {}, base::BindOnce(\n      &AsyncDomStorageDatabase::CapturedAuxUiHandoffSource,\n      weak_ptr_factory_.GetWeakPtr(), state, std::move(callback)), false, true);\n}\nvoid AsyncDomStorageDatabase::CapturedAuxUiHandoffSource(\n    std::shared_ptr<AuxUiMigrationLease::State> state,\n    AuxUiLeaseCallback callback, StatusOr<AuxUiSnapshot> result) {\n  if (!result.has_value() || !result->matches_source || !result->file_data_synced ||\n      !CurrentAuxUiMigrationWriters(state) || state->tainted || !state->deferred.empty()) {\n    state->pending = false;\n    std::move(callback).Run(base::unexpected(result.has_value() ?\n        DbStatus::IOError(\"Closed successor source capture changed\") : result.error()), {}); return;\n  }\n  auto next = state->handoff_successor;\n  next->snapshot = std::move(result).value();\n  next->backend_captured = true;\n  StartAuxUiHandoffCaches(state, std::move(callback), false);\n}\nstruct AsyncDomStorageDatabase::AuxUiHandoffRound {\n  std::shared_ptr<AuxUiMigrationLease::State> original;\n  AuxUiLeaseCallback callback;\n  size_t cursor = 0;\n  bool observe_only = false;\n  std::optional<DbStatus> error;\n};\nvoid AsyncDomStorageDatabase::StartAuxUiHandoffCaches(\n    std::shared_ptr<AuxUiMigrationLease::State> state,\n    AuxUiLeaseCallback callback, bool observe_only) {\n  auto round = std::make_shared<AuxUiHandoffRound>();\n  round->original = state;\n  round->callback = std::move(callback);\n  round->observe_only = observe_only || state->handoff_issued;\n  state->handoff_issued = true;\n  ContinueAuxUiHandoffCaches(std::move(round), DbStatus::OK());\n}\nvoid AsyncDomStorageDatabase::ContinueAuxUiHandoffCaches(\n    std::shared_ptr<AuxUiHandoffRound> round, DbStatus status) {\n  auto state = round->original;\n  auto next = state->handoff_successor;\n  if (!status.ok() && !round->error) round->error = std::move(status);\n  if (!CurrentAuxUiMigrationWriters(state) || state->tainted || !state->deferred.empty()) {\n    state->pending = false;\n    std::move(round->callback).Run(base::unexpected(DbStatus::IOError(\n        \"Actual closed handoff owner changed; all custody is retained\")), {}); return;\n  }\n  if (round->cursor == state->writers.size()) {\n    state->pending = false;\n    if (round->error) {\n      std::move(round->callback).Run(base::unexpected(*round->error), {}); return;\n    }\n    // Every original participant now reports its exact same native successor,\n    // actual source and private target plan. Ordinary dispatch never reopened.\n    next->pending = true;\n    next->private_target_staged = true;\n    state->handoff_installed = true;\n    aux_ui_migration_gate_ = next;\n    RunAuxUiMigrationCaches(next, AuxUiCacheOperation::kValidate, false, next->snapshot,\n        base::BindOnce(&AsyncDomStorageDatabase::CompleteAuxUiBegin,\n            weak_ptr_factory_.GetWeakPtr(), next, std::move(round->callback)));\n    return;\n  }\n  auto writer = state->writers[round->cursor++];\n  const AuxUiMapSnapshot* map = nullptr;\n  for (const auto& candidate : next->snapshot.maps) {\n    if (!writer->MatchesAuxUiMigrationMap(candidate)) continue;\n    if (map) {\n      ContinueAuxUiHandoffCaches(round, DbStatus::IOError(\"Ambiguous native successor map\")); return;\n    }\n    map = &candidate;\n  }\n  if (!map) {\n    auto locator = writer->CopyAuxUiMigrationLocator();\n    if (!locator.has_value() || locator->storage_key().origin() == url::Origin::Create(\n        GURL(\"chrome-extension://gokkffaiccpmoeodpmeamcjajcagjmkm/\"))) {\n      ContinueAuxUiHandoffCaches(round, DbStatus::IOError(\"Actual UI successor map missing\")); return;\n    }\n  }\n  auto reply = mojo::WrapCallbackWithDefaultInvokeIfNotRun(base::BindOnce(\n      &AsyncDomStorageDatabase::ContinueAuxUiHandoffCaches,\n      weak_ptr_factory_.GetWeakPtr(), round), DbStatus::IOError(\"Native cache handoff reply unknown\"));\n  if (round->observe_only)\n    writer->ReadAuxUiMigrationCacheHandoff(state->token, next->token, map, std::move(reply));\n  else\n    writer->HandoffAuxUiMigrationCaches(state->token, next->token, map, std::move(reply));\n}\nvoid AsyncDomStorageDatabase::ReadAuxUiMigrationHandoff(\n    AuxUiMigrationLease& original, AuxUiLeaseCallback callback) {\n  auto state = original.state_;\n  auto next = state->handoff_successor;\n  if (!next || state->owner.get() != this || state->pending) {\n    std::move(callback).Run(base::unexpected(DbStatus::IOError(\n        \"Exact original handoff remains unavailable or pending\")), {}); return;\n  }\n  if (!state->handoff_installed) {\n    if (!CurrentAuxUiMigrationWriters(state) || !next->backend_captured || !state->handoff_issued) {\n      std::move(callback).Run(base::unexpected(DbStatus::IOError(\n          \"Closed native handoff source has not completed\")), {}); return;\n    }\n    state->pending = true;\n    // No Handoff RPC is resent. Exact retained participant receipts settle\n    // the already-requested transition; no backend/renderer target is written.\n    StartAuxUiHandoffCaches(state, std::move(callback), true); return;\n  }\n  if (!CurrentAuxUiMigrationWriters(next)) {\n    std::move(callback).Run(base::unexpected(DbStatus::IOError(\"Native successor owner changed\")), {}); return;\n  }\n  AuxUiMigrationLease actual(next);\n  ReadAuxUiMigrationLease(actual, base::BindOnce(\n      [](std::shared_ptr<AuxUiMigrationLease::State> next, AuxUiLeaseCallback callback,\n         StatusOr<AuxUiSnapshot> result) {\n        AuxUiSnapshot snapshot = next->snapshot;\n        if (result.has_value()) snapshot = std::move(result).value();\n        else { snapshot.source_ready = false; snapshot.native_error = result.error().ToString(); }\n        std::move(callback).Run(std::unique_ptr<AuxUiMigrationLease>(new AuxUiMigrationLease(next)),\n                                std::move(snapshot));\n      }, next, std::move(callback)));\n}\n\nvoid AsyncDomStorageDatabase::BeginAuxUiMigrationLease(AuxUiLeaseCallback callback) {",
+          "count": 1
+        }
+      ]
+    }
+  ],
+  "nativeMutation": false,
+  "productExecuted": false
+}

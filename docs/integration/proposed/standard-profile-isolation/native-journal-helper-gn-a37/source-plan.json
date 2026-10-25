@@ -1,0 +1,17 @@
+{
+  "format": "aux.journal-helper.gn.source.v1",
+  "files": [
+    {
+      "path": "chrome/browser/aux/BUILD.gn",
+      "inputSha256": "fa833a4133cb298cb204b7c18d1e079bbcda0625bd4b547ece5f97ae2df420de",
+      "outputSha256": "dd38e0cc4b321e140a6640efd22f55ccfa70ae35befdb993a3bf7eac5d0c660b",
+      "anchors": [
+        {
+          "find": "source_set(\"ui_storage_migration\") {\n  public = [ \"ui_storage_migration_controller.h\", \"ui_storage_migration_worker.h\", \"ui_storage_migration_completion.h\" ]\n  public_deps = [ \"//base\" ]\n}",
+          "replace": "source_set(\"ui_storage_migration\") {\n  public = [ \"ui_storage_migration_controller.h\", \"ui_storage_migration_worker.h\", \"ui_storage_migration_completion.h\", \"ui_storage_migration_journal_protocol.h\" ]\n  public_deps = [ \"//base\", \"//crypto\" ]\n}",
+          "count": 1
+        }
+      ]
+    }
+  ]
+}

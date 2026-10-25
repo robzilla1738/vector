@@ -1,0 +1,7 @@
+# Actual closed native recovery successor
+
+The real backend reads/syncs original source again, then captures one native normal successor while the original physical and cache gates remain held. Actual cache participants retoken once and privately stage the captured native target. Unknown replies retain the original plus the one backend-minted successor. ReadHandoff only reads retained participant receipts; it never resends a cache Handoff or backend target write. Only complete native/cohort observations install the successor physical gate, followed by actual validation and a real opaque lease.
+
+Original capture and recovery backend remain separately retained. Original write/recovery/release APIs refuse after handoff begins. Dropping a returned unique wrapper does not drop either actual State: predecessor/successor and backend gate retain custody. Session namespace ownership remains the service's original frozen key, independent of new request correlation.
+
+Source-absence cancellation is accepted only from the actual native requalification result, never caller flags. No Begin/Release or ordinary flush gap occurs. A failed readonly sentinel before any cache transition may be recaptured under the same retained successor; no private target plan has escaped. The real protocol, service/renderer/owner handoffs and actual relative compilation must be paired before readiness. No signing, execution or authority activation occurred.

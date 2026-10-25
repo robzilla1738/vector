@@ -1,0 +1,19 @@
+{
+  "format": "aux.source-plan.v1",
+  "files": [
+    {
+      "path": "components/services/storage/dom_storage/session_storage_impl.cc",
+      "inputSha256": "abca8eb4c36ca50b457be0b2e351189d2f8458d8c8cacf14aeed9645d8bf643d",
+      "outputSha256": "73a44798aa99a5e322a5388ca7da0e69912c0b580ea2af008d56d87c0a15bbef",
+      "anchors": [
+        {
+          "find": "      auto found = owner->namespaces_.find(id);\n      if (found == owner->namespaces_.end() ||\n          !found->second->CanResumeAuxUiMigrationNamespace(*owner->aux_ui_namespace_request_))",
+          "replace": "      auto namespace_entry = owner->namespaces_.find(id);\n      if (namespace_entry == owner->namespaces_.end() ||\n          !namespace_entry->second->CanResumeAuxUiMigrationNamespace(*owner->aux_ui_namespace_request_))",
+          "count": 1
+        }
+      ]
+    }
+  ],
+  "reason": "Rename only the inner namespace iterator so Chromium -Wshadow remains enabled.",
+  "productExecuted": false
+}

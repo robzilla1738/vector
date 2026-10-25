@@ -1,0 +1,61 @@
+{
+  "format": "aux.native-recovery-uncertainty.source.v1",
+  "files": [
+    {
+      "path": "components/services/storage/dom_storage/async_dom_storage_database.h",
+      "inputSha256": "59550ec870a5e2a146c2375f33417aacd0853f8e8ae8a6c3784a6004fb2cb8c6",
+      "outputSha256": "ed4f68c2c0fb567201a40f0c08b06d131e6bab945518f8dc6bac7fece03ecc01",
+      "anchors": [
+        {
+          "find": "    bool target_attempted = false;\n",
+          "replace": "    bool target_attempted = false;\n    // Verified journal uncertainty is observational, never a write grant.\n    bool target_attempt_uncertain = false;\n",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "components/services/storage/dom_storage/async_dom_storage_database.cc",
+      "inputSha256": "ce05e00a32c319b35df3f2ef7203a09306b7a3d535a7370585e63654bb13b130",
+      "outputSha256": "1c6077098ef276e33c64b3b434d49a0cd6055380187a119b4941d907416d3404",
+      "anchors": [
+        {
+          "find": "  bool captured = false;\n  bool target_attempted = false;\n",
+          "replace": "  bool captured = false;\n  bool target_attempted = false;\n  bool target_attempt_uncertain = false;\n",
+          "count": 1
+        },
+        {
+          "find": "!capture.target_attempted ||",
+          "replace": "!(capture.target_attempted || capture.target_attempt_uncertain) ||",
+          "count": 1
+        },
+        {
+          "find": "!recorded.target_attempted ||",
+          "replace": "!(recorded.target_attempted || recorded.target_attempt_uncertain) ||",
+          "count": 1
+        },
+        {
+          "find": "  proposed.target_attempted = recorded.target_attempted;",
+          "replace": "  proposed.target_attempted = recorded.target_attempted;\n  proposed.target_attempt_uncertain = recorded.target_attempt_uncertain;",
+          "count": 1
+        },
+        {
+          "find": "  AuxDigestNumber(bytes, recorded.target_attempted);",
+          "replace": "  AuxDigestNumber(bytes, recorded.target_attempted);\n  AuxDigestNumber(bytes, recorded.target_attempt_uncertain);",
+          "count": 1
+        },
+        {
+          "find": "  result.target_attempted = capture.target_attempted;",
+          "replace": "  result.target_attempted = capture.target_attempted;\n  result.target_attempt_uncertain = capture.target_attempt_uncertain;",
+          "count": 1
+        },
+        {
+          "find": "aux.ui-dom-recovery-descriptor.v1",
+          "replace": "aux.ui-dom-recovery-descriptor.v2",
+          "count": 1
+        }
+      ]
+    }
+  ],
+  "nativeMutation": false,
+  "productExecuted": false
+}
