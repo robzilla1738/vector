@@ -9,7 +9,8 @@ import { spawn } from 'node:child_process';
 import { once } from 'node:events';
 import { applyOfficialChatGPT, applyOfficialChatGPTCallbackAsset } from '../patches/chatgpt.mjs';
 const require = createRequire(import.meta.url);
-const { LocalChatGPTStore, ChatGPTPlanClient, ISSUER, SCOPES, planResponsesApi, completedResponsesFetch, planModels, normalizePlanPayload } = require('./aux-chatgpt.cjs');
+const { LocalChatGPTStore, ChatGPTPlanClient, ISSUER, SCOPES, publicChatGPTError, hasPlanCredentials, AccountModelCatalog, planResponsesApi, completedResponsesFetch, planModels, normalizePlanPayload } = require('./aux-chatgpt.cjs');
+globalThis.fetch = async () => { throw Error('Provider requests are forbidden in this fixture'); };
 const pair = generateKeyPairSync('rsa', { modulusLength: 2048 });
 const jwk = { ...pair.publicKey.export({format:'jwk'}), kid:'fixture-key', alg:'RS256', use:'sig' };
 const epoch = 1792771200000;
@@ -48,7 +49,7 @@ test('actual local registration, signature, account isolation, issued-client ref
 test('callback state, nonce, signature, identity, permissions and replay fail closed',async t=>{
   const f=fixture(t), attempt=f.begin('bad-state');await assert.rejects(f.client.complete('bad-state',f.callback(attempt,{state:'wrong'})),/state mismatch/);assert.equal(f.calls.length,0);
   await assert.rejects(f.client.complete('bad-state',f.callback(attempt,{client_id:'dynamic_agent_client'})),/issued client/);
-  const g=fixture(t,{scope:'openid profile email'}), denied=g.begin('denied');await assert.rejects(g.client.complete('denied',g.callback(denied)),/permission not granted/);assert.equal(g.store.read('fixture-account'),undefined);
+  const g=fixture(t,{scope:'openid profile email'}), denied=g.begin('denied');assert.deepEqual(await g.client.complete('denied',g.callback(denied)),{status:'completed',providerId:'openai-codex',planUsageEnabled:false});const signInOnly=g.store.read('fixture-account');assert.equal(signInOnly.subject,'fixture-sub');assert.equal(signInOnly.planUsageEnabled,false);assert.equal(hasPlanCredentials(signInOnly),false);await assert.rejects(g.client.auth('fixture-account'),/permission not granted/);
   await assert.rejects(f.client.verifyIdentity(jwt({nonce:'wrong'}),'oaiapp_fixture','expected'),/nonce mismatch/);
   await assert.rejects(f.client.verifyIdentity(jwt({aud:'other'}),'oaiapp_fixture'),/audience mismatch/);
   await assert.rejects(f.client.verifyIdentity(jwt({exp:1}),'oaiapp_fixture'),/expired/);
@@ -127,11 +128,65 @@ test('rejected refresh sets truthful local expired state without exposing provid
   const f=fixture(t),attempt=f.begin('expire');await f.client.complete('expire',f.callback(attempt));let requests=0;
   f.client.fetch=async()=>{requests++;return new Response(JSON.stringify({error:'invalid_grant',error_description:'fixture-sensitive-provider-body'}),{status:400});};
   await assert.rejects(f.client.auth('fixture-account','fixture-access'),error=>/connection expired/.test(error.message)&&!error.message.includes('fixture-sensitive'));
-  assert.equal(f.store.read('fixture-account').state,'auth-expired');await assert.rejects(f.client.auth('fixture-account'),/connection expired/);assert.equal(requests,1);
+  assert.equal(f.store.read('fixture-account').state,'auth-expired');for(const key of ['access','refresh','idToken'])assert.equal(f.store.read('fixture-account')[key],undefined);assert.equal(f.store.read('fixture-account').clientId,'oaiapp_fixture');await assert.rejects(f.client.auth('fixture-account'),/connection expired/);assert.equal(requests,1);
 });
 test('local disconnect aborts a pending refresh and cannot resurrect cleared tokens',async t=>{
   const f=fixture(t),attempt=f.begin('refresh-cancel');await f.client.complete('refresh-cancel',f.callback(attempt));let started;
   const ready=new Promise(resolve=>started=resolve);
   f.client.fetch=async(url,options)=>new Promise((resolve,reject)=>{started();options.signal.addEventListener('abort',()=>reject(new DOMException('Aborted','AbortError')),{once:true});});
   const refreshing=f.client.auth('fixture-account','fixture-access');await ready;f.client.disconnectLocal('fixture-account');await assert.rejects(refreshing,/Aborted/);assert.equal(f.store.read('fixture-account').access,undefined);assert.equal(f.store.read('fixture-account').refresh,undefined);
+});
+
+test('policy, temporary and client-configuration refresh failures retain tokens and safe diagnostic metadata', async t => {
+  for (const [status, code] of [[403,'subscription_sharing_user_not_eligible'], [401,'invalid_client'], [503,'subscription_sharing_usage_unavailable']]) {
+    const f=fixture(t), attempt=f.begin(`keep-${status}`); await f.client.complete(`keep-${status}`,f.callback(attempt));
+    f.client.fetch=async()=>new Response(JSON.stringify({error:{code,param:'model',message:'private@example.test fixture-refresh'}}),{status,headers:{'x-request-id':`fixture-request-${status}`}});
+    await assert.rejects(f.client.auth('fixture-account','fixture-access'),error=>{
+      assert.equal(error.status,status);assert.equal(error.code,code);assert.equal(error.param,'model');assert.equal(error.requestId,`fixture-request-${status}`);
+      assert.deepEqual(error.bodyShape,{kind:'object',error:{kind:'object',code:{kind:'string'},param:{kind:'string'},message:{kind:'string'}}});
+      assert.doesNotMatch(JSON.stringify(error),/private@example|fixture-refresh/);
+      const publicError=publicChatGPTError(error,'ChatGPT authorization did not complete');
+      assert.equal(publicError.code,code);assert.equal(publicError.requestId,error.requestId);assert.doesNotMatch(publicError.message,/private@example|fixture-refresh/);
+      return true;
+    });
+    const saved=f.store.read('fixture-account');assert.equal(saved.access,'fixture-access');assert.equal(saved.refresh,'fixture-refresh');assert.equal(saved.state,undefined);
+  }
+});
+test('only documented terminal codes on the actual refresh endpoint reject renewable credentials', async()=>{
+  for(const code of ['invalid_grant','invalid_refresh_token','token_expired','refresh_token_expired','refresh_token_invalidated','refresh_token_reused']) {
+    const client=new ChatGPTPlanClient({store:{},fetch:async()=>new Response(JSON.stringify({error:code}),{status:400})});
+    const options={method:'POST',body:new URLSearchParams({grant_type:'refresh_token',refresh_token:'fixture-refresh'})};
+    await assert.rejects(client.json(`${ISSUER}/api/accounts/oauth/token`,options),error=>error.authRejected===true&&error.code===code);
+    await assert.rejects(client.json('https://api.openai.com/v1/models',options),error=>error.authRejected===false);
+  }
+});
+test('unstructured admission detail and oversized errors retain safe status/shape without provider text', async()=>{
+  const client=new ChatGPTPlanClient({store:{},fetch:async()=>new Response(JSON.stringify({detail:'private@example.test fixture-access'}),{status:403,headers:{'x-request-id':'fixture-access'}})});
+  await assert.rejects(client.json('https://api.openai.com/v1/models',{headers:{Authorization:'Bearer fixture-access'}}),error=>{
+    assert.equal(error.status,403);assert.equal(error.requestId,undefined);assert.equal(error.authRejected,false);
+    assert.deepEqual(error.bodyShape,{kind:'object',detail:{kind:'string'}});assert.doesNotMatch(JSON.stringify(error),/private@example|fixture-access/);return true;
+  });
+  const untrusted=publicChatGPTError({status:403,code:'private@example.test',bodyShape:{access_token:'fixture-secret'}});
+  assert.equal(untrusted.status,undefined);assert.doesNotMatch(JSON.stringify(untrusted),/fixture-secret|private@example/);
+  let cancelled=false;
+  client.fetch=async()=>new Response(new ReadableStream({start(controller){controller.enqueue(new Uint8Array(1024*1024+1));},cancel(){cancelled=true;}}),{status:502,headers:{'x-request-id':'fixture-limit'}});
+  await assert.rejects(client.json('https://api.openai.com/v1/models'),error=>error.status===502&&error.requestId==='fixture-limit'&&error.bodyShape.kind==='oversize');
+  assert.equal(cancelled,true);
+});
+test('inflight authorization IDs remain reserved until the actual callback settles',async t=>{
+  const f=fixture(t), attempt=f.begin('reserved');let started;
+  const ready=new Promise(resolve=>started=resolve);
+  f.client.fetch=async(url,options)=>new Promise((resolve,reject)=>{started();options.signal.addEventListener('abort',()=>reject(new DOMException('Aborted','AbortError')),{once:true});});
+  const completing=f.client.complete('reserved',f.callback(attempt));await ready;
+  assert.throws(()=>f.begin('reserved'),/duplicate/);f.client.cancel('reserved');await assert.rejects(completing,/Aborted/);
+  assert.equal(f.client.inflight.size,0);assert.equal(f.store.read('fixture-account'),undefined);
+});
+test('actual account-bound catalog invalidates on credential change and never grants sign-in-only access',async()=>{
+  let record={access:'fixture-A',scopes:SCOPES.split(' '),planUsageEnabled:true}, calls=0, release;
+  const catalog=new AccountModelCatalog(()=>record,async access=>{calls++;if(access==='fixture-B')return new Promise(resolve=>release=resolve);return new Set(['model-A']);},()=>epoch);
+  const first=await catalog.getModelIds('fixture-A');assert.equal(catalog.getCachedModelIds(),first);
+  record={...record,access:'fixture-B'};assert.equal(catalog.getCachedModelIds(),undefined);
+  await assert.rejects(catalog.getModelIds('fixture-A'),/changed/);
+  const pending=catalog.getModelIds('fixture-B');await Promise.resolve();record={...record,access:'fixture-C'};release(new Set(['model-B']));await assert.rejects(pending,/changed during/);
+  assert.equal(catalog.getCachedModelIds(),undefined);record={...record,planUsageEnabled:false};await assert.rejects(catalog.getModelIds('fixture-C'),/permission changed/);assert.equal(calls,2);
 });

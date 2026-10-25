@@ -1,0 +1,25 @@
+✔ actual local registration, signature, account isolation, issued-client refresh and token-free completion (76.369917ms)
+✔ callback state, nonce, signature, identity, permissions and replay fail closed (77.914792ms)
+✔ unsafe storage refuses; logout retains registration and clears all local tokens (49.161334ms)
+✔ supplied Responses adapter forces public endpoint and stateless streaming after hooks (0.459875ms)
+✔ inference stream requires actual completion; interrupted and incomplete streams refuse (3.788166ms)
+✔ failed exchange retains only issued registration; cancelled in-flight exchange cannot save tokens (40.75475ms)
+✔ kernel auth lock survives utility exit, refuses live contenders and recovers after actual process crash (156.565583ms)
+✔ unknown legacy lock is preserved and never guessed stale (3.346208ms)
+✔ plan metadata uses exact supplied slugs and conservative unknown bounds without inventing capabilities (0.301792ms)
+✔ official plan payload removes unsupported fields, preserves history and local tool names, refuses unsupported tools/modalities (0.452083ms)
+✔ rejected refresh sets truthful local expired state without exposing provider body or retrying (57.512833ms)
+✔ local disconnect aborts a pending refresh and cannot resurrect cleared tokens (51.98225ms)
+✔ policy, temporary and client-configuration refresh failures retain tokens and safe diagnostic metadata (119.844084ms)
+✔ only documented terminal codes on the actual refresh endpoint reject renewable credentials (0.828875ms)
+✔ unstructured admission detail and oversized errors retain safe status/shape without provider text (0.396166ms)
+✔ inflight authorization IDs remain reserved until the actual callback settles (24.801084ms)
+✔ actual account-bound catalog invalidates on credential change and never grants sign-in-only access (0.389959ms)
+ℹ tests 17
+ℹ suites 0
+ℹ pass 17
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 830.188834

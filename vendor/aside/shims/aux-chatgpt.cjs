@@ -14,6 +14,78 @@ const present = value => typeof value === 'string' && value.length > 0 && value.
 const equal = (a, b) => typeof a === 'string' && typeof b === 'string' && Buffer.byteLength(a) === Buffer.byteLength(b) && timingSafeEqual(Buffer.from(a), Buffer.from(b));
 const digest = value => createHash('sha256').update(value).digest('hex');
 const nofollow = constants.O_NOFOLLOW;
+const terminalRefreshCodes = new Set(['invalid_grant', 'invalid_refresh_token', 'token_expired', 'refresh_token_expired', 'refresh_token_invalidated', 'refresh_token_reused']);
+const providerLimit = 1024 * 1024;
+const providerMetadata = new WeakMap();
+class ProviderBodyLimit extends Error {}
+function requestSecrets(options) {
+  const result = [];
+  const authorization = new Headers(options?.headers).get('authorization');
+  if (authorization) result.push(authorization.replace(/^Bearer\s+/i, ''));
+  if (options?.body instanceof URLSearchParams) for (const key of ['code', 'code_verifier', 'refresh_token', 'access_token', 'id_token', 'client_secret']) {
+    const value = options.body.get(key); if (value) result.push(value);
+  }
+  return result;
+}
+function diagnosticText(value, secrets, param = false) {
+  if (typeof value !== 'string' || !value || value.length > (param ? 512 : 256) ||
+      !(param ? /^[A-Za-z0-9_.\[\]-]+$/ : /^[A-Za-z0-9_.-]+$/).test(value) ||
+      secrets.some(secret => secret && value.includes(secret))) return undefined;
+  return value;
+}
+function bodyShape(value, depth = 0) {
+  if (value === null) return Object.freeze({kind:'null'});
+  if (Array.isArray(value)) return Object.freeze({kind:'array', length:value.length});
+  if (typeof value !== 'object') return Object.freeze({kind:typeof value});
+  const result = {kind:'object'};
+  // Retain actual known schema/presence/types, not arbitrary provider text,
+  // token fields, unknown property names, PII or echoed request contents.
+  if (depth < 2) for (const key of ['error', 'error_description', 'detail', 'code', 'param', 'message', 'type'])
+    if (Object.hasOwn(value, key)) result[key] = bodyShape(value[key], depth + 1);
+  return Object.freeze(result);
+}
+function providerError(response, body, options, message = 'provider request failed', shape) {
+  const secrets = requestSecrets(options);
+  const object = body && typeof body === 'object' && !Array.isArray(body) ? body : undefined;
+  const structured = object?.error && typeof object.error === 'object' ? object.error : undefined;
+  const code = diagnosticText(typeof object?.error === 'string' ? object.error : structured?.code, secrets);
+  const param = diagnosticText(structured?.param, secrets, true);
+  const requestId = diagnosticText(response.headers?.get('x-request-id') ?? response.headers?.get('request-id'), secrets);
+  const error = Error(`ChatGPT: ${message} (${response.status}${code ? `; ${code}` : ''})`);
+  error.name = 'ChatGPTProviderError';
+  const metadata = Object.freeze({status:response.status, ...(code && {code}), ...(param && {param}), ...(requestId && {requestId}), bodyShape:shape || bodyShape(body)});
+  Object.assign(error, metadata); providerMetadata.set(error, metadata);
+  const refresh = String(response.url || '').startsWith(`${ISSUER}/api/accounts/oauth/token`) && options?.body instanceof URLSearchParams && options.body.get('grant_type') === 'refresh_token';
+  // HTTP401/403 alone does not prove a renewable session was revoked. In
+  // particular, direct-route403 covers policy/region/eligibility restrictions.
+  error.authRejected = refresh && terminalRefreshCodes.has(code);
+  return error;
+}
+function publicChatGPTError(error, message = 'ChatGPT request did not complete') {
+  const metadata = providerMetadata.get(error);
+  const result = Error(`${message}${metadata ? ` (${metadata.status}${metadata.code ? `; ${metadata.code}` : ''})` : ''}`);
+  if (metadata) { Object.assign(result, metadata); providerMetadata.set(result, metadata); }
+  return result;
+}
+async function providerText(response) {
+  if (!response.body) return '';
+  const reader = response.body.getReader(), decoder = new TextDecoder();
+  let bytes = 0, text = '';
+  try {
+    for (;;) {
+      const next = await reader.read(); if (next.done) break;
+      bytes += next.value.byteLength;
+      if (bytes > providerLimit) { try { await reader.cancel(); } catch {} throw new ProviderBodyLimit('ChatGPT: provider response too large'); }
+      text += decoder.decode(next.value, {stream:true});
+    }
+    return text + decoder.decode();
+  } finally { reader.releaseLock(); }
+}
+function hasPlanCredentials(record) {
+  return present(record?.access) && record.state !== 'auth-expired' && record.planUsageEnabled !== false &&
+      Array.isArray(record.scopes) && requiredScopes.every(scope => record.scopes.includes(scope));
+}
+
 function privateDirectory(path) {
   const absolute = resolve(path), root = parse(absolute).root;
   let current = root;
@@ -117,10 +189,10 @@ class LocalChatGPTStore {
   }
   saveRegistration(account, clientId) { atomicWrite(`${this.path(account)}.registration`, { version: 1, hostId: this.hostId(), clientId }); }
   clearRegistration(account) { try { unlinkSync(`${this.path(account)}.registration`); } catch (e) { if (e.code !== 'ENOENT') throw e; } }
-  clearTokens(account) {
+  clearTokens(account, state) {
     const record = this.read(account); if (!record) return;
     const { access, refresh, idToken, expires, ...registration } = record;
-    this.write(account, { ...registration, scopes: [], signedOut: true });
+    this.write(account, { ...registration, scopes: [], signedOut: true, ...(state && {state}) });
   }
 }
 class ChatGPTPlanClient {
@@ -129,20 +201,24 @@ class ChatGPTPlanClient {
   }
   async json(url, options) {
     const response = await this.fetch(url, { ...options, redirect: 'error', signal: options?.signal ? AbortSignal.any([options.signal, AbortSignal.timeout(15000)]) : AbortSignal.timeout(15000) });
-    const text = await response.text(); need(text.length <= 1024 * 1024, 'provider response too large');
-    if (!response.ok) {
-      const error = Error(`ChatGPT: provider request failed (${response.status})`); error.status = response.status;
-      let code; try { const body = JSON.parse(text); code = typeof body.error === 'string' ? body.error : body.error?.code; } catch {}
-      error.authRejected = response.status === 401 || response.status === 403 || code === 'invalid_grant' || code === 'invalid_token';
+    const observed = {status:response.status, headers:response.headers, url:String(url)};
+    let text;
+    try { text = await providerText(response); } catch (error) {
+      if (error instanceof ProviderBodyLimit) throw providerError(observed, undefined, options, 'provider response too large', Object.freeze({kind:'oversize', maximumBytes:providerLimit}));
       throw error;
     }
-    try { return JSON.parse(text); } catch { throw Error('ChatGPT: invalid provider response'); }
+    let body; try { body = JSON.parse(text); } catch {}
+    // Fetch fakes and some wrappers omit response.url; bind classification to
+    // this exact requested endpoint rather than untrusted body fields.
+    if (!response.ok) throw providerError(observed, body === undefined ? text : body, options);
+    if (body === undefined) throw providerError(observed, text, options, 'invalid provider response');
+    return body;
   }
   begin(flowId, redirectUri, account) {
     for (const [id, attempt] of this.pending) if (this.now() - attempt.created > 600000) this.pending.delete(id);
     const uri = new URL(redirectUri);
     need(uri.protocol === 'http:' && uri.hostname === '127.0.0.1' && uri.pathname === '/auth/callback' && uri.port && !uri.search && !uri.hash && !uri.username && !uri.password, 'exact loopback callback required');
-    need(present(flowId) && !this.pending.has(flowId), 'duplicate authorization attempt');
+    need(present(flowId) && !this.pending.has(flowId) && !this.inflight.has(flowId), 'duplicate authorization attempt');
     const saved = this.store.read(account) || this.store.registration(account), verifier = randomBytes(32).toString('base64url');
     const state = `${flowId}.${randomBytes(32).toString('base64url')}`, nonce = randomBytes(32).toString('base64url');
     const clientId = saved?.clientId || 'dynamic_agent_client';
@@ -174,11 +250,11 @@ class ChatGPTPlanClient {
   }
   async tokenRecord(body, clientId, pending, previous, signal) {
     const granted = body.scope === undefined && previous ? previous.scopes : scopes(body.scope);
-    need(requiredScopes.every(s => granted.includes(s)), 'ChatGPT plan permission not granted');
-    need(present(body.access_token) && (present(body.refresh_token) || previous?.refresh) && body.token_type?.toLowerCase() === 'bearer' && Number.isFinite(body.expires_in) && body.expires_in > 0 && body.expires_in <= 86400, 'invalid token response');
+    const planUsageEnabled = requiredScopes.every(s => granted.includes(s));
+    need(present(body.access_token) && (!planUsageEnabled || present(body.refresh_token) || present(previous?.refresh)) && body.token_type?.toLowerCase() === 'bearer' && Number.isFinite(body.expires_in) && body.expires_in > 0 && body.expires_in <= 86400, 'invalid token response');
     const identity = body.id_token ? await this.verifyIdentity(body.id_token, clientId, pending?.nonce, pending?.subject || previous?.subject, signal) : undefined;
     need(identity || previous, 'verified identity required');
-    return { version: 1, type: 'oauth', source: 'aux-chatgpt-plan-v1', issuer: ISSUER, clientId, hostId: this.store.hostId(), subject: identity?.sub || previous.subject, accountId: identity?.sub || previous.subject, email: identity?.email || previous?.email, idToken: body.id_token || previous?.idToken, access: body.access_token, refresh: body.refresh_token || previous?.refresh, scopes: granted, expires: this.now() + body.expires_in * 1000, savedAt: new Date(this.now()).toISOString() };
+    return { version: 1, type: 'oauth', source: 'aux-chatgpt-plan-v1', issuer: ISSUER, clientId, hostId: this.store.hostId(), subject: identity?.sub || previous.subject, accountId: identity?.sub || previous.subject, email: identity?.email || previous?.email, idToken: body.id_token || previous?.idToken, access: body.access_token, refresh: present(body.refresh_token) ? body.refresh_token : previous?.refresh, scopes: granted, planUsageEnabled, expires: this.now() + body.expires_in * 1000, savedAt: new Date(this.now()).toISOString() };
   }
   async complete(flowId, callback) {
     const pending = this.pending.get(flowId);
@@ -202,8 +278,8 @@ class ChatGPTPlanClient {
       const record = await this.tokenRecord(body, clientId, pending, undefined, pending.controller.signal);
       need(!pending.cancelled, 'authorization cancelled');
       this.store.write(pending.account, record); this.store.clearRegistration(pending.account);
-      return { status: 'completed', providerId: 'openai-codex' };
-    }).finally(() => this.inflight.delete(flowId));
+      return { status: 'completed', providerId: 'openai-codex', ...(!record.planUsageEnabled && {planUsageEnabled:false}) };
+    }).finally(() => { if (this.inflight.get(flowId) === pending) this.inflight.delete(flowId); });
   }
   async auth(account, rejectedAccess, signal) {
     const controller = new AbortController(), abort = () => controller.abort();
@@ -213,9 +289,10 @@ class ChatGPTPlanClient {
       return await this.store.locked(account, async () => {
         controller.signal.throwIfAborted();
         let record = this.store.read(account);
+        need(record?.state !== 'auth-expired', 'connection expired; reconnect ChatGPT in settings');
         if (!record?.access) return undefined;
-        need(record.state !== 'auth-expired', 'connection expired; reconnect ChatGPT in settings');
-        need(requiredScopes.every(s => record.scopes.includes(s)), 'ChatGPT plan permission not granted');
+        need(Number.isFinite(record.expires) && record.expires > 0, 'invalid saved session expiry');
+        need(hasPlanCredentials(record), 'ChatGPT plan permission not granted');
         if (record.expires <= this.now() + 300000 || rejectedAccess === record.access) {
           let body;
           try {
@@ -223,8 +300,8 @@ class ChatGPTPlanClient {
           } catch (error) {
             const latest = this.store.read(account);
             if (error.authRejected && latest?.access === record.access && latest?.refresh === record.refresh) {
-              this.store.write(account, {...latest, state: 'auth-expired'});
-              throw Error('ChatGPT: connection expired; reconnect ChatGPT in settings');
+              this.store.clearTokens(account, 'auth-expired');
+              throw publicChatGPTError(error, 'ChatGPT: connection expired; reconnect ChatGPT in settings');
             }
             throw error;
           }
@@ -234,6 +311,7 @@ class ChatGPTPlanClient {
           const latest = this.store.read(account); need(latest?.access === current.access && latest?.refresh === current.refresh, 'local session changed during refresh');
           this.store.write(account, record);
         }
+        need(hasPlanCredentials(record), 'ChatGPT plan permission not granted');
         return { apiKey: record.access };
       });
     } finally {
@@ -266,6 +344,32 @@ class ChatGPTPlanClient {
 let client;
 function daemonClient() { return client ||= new ChatGPTPlanClient({ store: new LocalChatGPTStore() }); }
 const localAccount = value => value === undefined ? 'aux-local-default' : `account:${String(value)}`;
+
+class AccountModelCatalog {
+  constructor(readCredential, fetchCatalog = access => daemonClient().modelIds(access), now = Date.now) {
+    need(typeof readCredential === 'function', 'model catalog requires the selected credential owner');
+    this.readCredential = readCredential; this.fetchCatalog = fetchCatalog; this.now = now;
+  }
+  current(access) { const record = this.readCredential(); return hasPlanCredentials(record) && equal(record.access, access); }
+  getCachedModelIds() {
+    const record = this.readCredential();
+    return hasPlanCredentials(record) && this.entry?.fingerprint === digest(record.access) && this.now() < this.entry.until ? this.entry.modelIds : undefined;
+  }
+  async getModelIds(access) {
+    need(this.current(access), 'selected ChatGPT account or plan permission changed');
+    const fingerprint = digest(access), cached = this.getCachedModelIds();
+    if (cached) return cached;
+    if (this.inflight?.fingerprint === fingerprint) return this.inflight.promise;
+    const promise = this.fetchCatalog(access).then(modelIds => {
+      need(this.current(access), 'selected ChatGPT account changed during model discovery');
+      this.entry = {fingerprint, until:this.now() + 300000, modelIds};
+      return modelIds;
+    }).finally(() => { if (this.inflight?.promise === promise) this.inflight = undefined; });
+    this.inflight = {fingerprint, promise};
+    return promise;
+  }
+}
+
 function completedResponsesFetch(request = globalThis.fetch) {
   return async (url, options) => {
     const target = new URL(typeof url === 'string' || url instanceof URL ? url : url.url);
@@ -353,4 +457,4 @@ function planResponsesApi(api) {
   return { ...api, stream: wrap('stream'), streamSimple: wrap('streamSimple') };
 }
 
-module.exports = { ISSUER, RESOURCE, SCOPES, LocalChatGPTStore, ChatGPTPlanClient, daemonClient, localAccount, planResponsesApi, completedResponsesFetch, planModels, normalizePlanPayload };
+module.exports = { ISSUER, RESOURCE, SCOPES, publicChatGPTError, hasPlanCredentials, AccountModelCatalog, LocalChatGPTStore, ChatGPTPlanClient, daemonClient, localAccount, planResponsesApi, completedResponsesFetch, planModels, normalizePlanPayload };
