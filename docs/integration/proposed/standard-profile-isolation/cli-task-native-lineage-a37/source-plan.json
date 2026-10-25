@@ -1,0 +1,71 @@
+{
+  "format": "aux.cli-task-native-lineage.source.v1",
+  "files": [
+    {
+      "path": "AuxTaskDescendantObserver.h",
+      "inputSource": "/private/tmp/aux-standard-native-source-20261023-a4/AuxTaskDescendantObserver.h",
+      "inputSha256": "60a1a872cad6f791f61061aa7a15d2d8ac3bb7fb8144b5f25c5fabcb3fd44969",
+      "outputSha256": "e608b0b7415cf9e630a5cfc427fb0cd8775a2032e9b11309bc902230e6649d30",
+      "source": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/cli-task-native-lineage-a37/source/AuxTaskDescendantObserver.h",
+      "anchors": [
+        {
+          "find": "#include <cstdint>",
+          "replace": "#include <cstdint>\n#include <bsm/audit.h>\n#include <mach/mach.h>",
+          "count": 1
+        },
+        {
+          "find": "Result InspectStream() noexcept;",
+          "replace": "Result InspectStream() noexcept;\n// Native facts only. The caller supplies the genuine kernel Mach audit trailer,\n// never a claimed PID/parent/JSON identity. Returns one actual live published\n// reservation cohort; missing, ambiguous or not-yet-published membership stays\n// unknown. This is NOT a Profile/account grant or a human-terminal classifier.\nTicket RetainActualClientCohort(const audit_token_t& kernel_peer) noexcept;",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "AuxTaskDescendantObserver.cc",
+      "inputSource": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/daemon-observer-reverse-coverage-a1/source/AuxTaskDescendantObserver.cc",
+      "inputSha256": "a0cd63fad2f860c47829b91fcd1d8f3a0715492f657f89f8f6158046b6d41bdb",
+      "outputSha256": "1b65145c6b26ed830504866c7220c98b563491412052d5b1875ae422ef2b1462",
+      "source": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/standard-profile-isolation/cli-task-native-lineage-a37/source/AuxTaskDescendantObserver.cc",
+      "anchors": [
+        {
+          "find": "  std::map<Identity, uint64_t> live;\n  std::vector<Birth> roots;",
+          "replace": "  std::map<Identity, uint64_t> live;\n  // Stable first self-child birth for each live kernel audit identity. Keep it\n  // through fork, exec identity changes and reparenting; never a PID census.\n  std::map<Identity, Identity> lineage;\n  std::vector<Birth> roots;",
+          "count": 1
+        },
+        {
+          "find": "  if (s.unknown || !s.baseline_seen || !s.live.empty()) return false;",
+          "replace": "  if (s.unknown || !s.baseline_seen || !s.live.empty() || !s.lineage.empty()) return false;",
+          "count": 1
+        },
+        {
+          "find": "        s.live.emplace(child, m.mach_time);\n        if (process == s.self",
+          "replace": "        Identity root = child;\n        if (process != s.self) {\n          auto inherited = s.lineage.find(process);\n          if (inherited == s.lineage.end()) { UnknownLocked(s); return; }\n          root = inherited->second;\n        }\n        if (!s.lineage.emplace(child, root).second) { UnknownLocked(s); return; }\n        s.live.emplace(child, m.mach_time);\n        if (process == s.self",
+          "count": 1
+        },
+        {
+          "find": "          s.live.emplace(target, m.mach_time);\n        } else {\n          const uint64_t born = previous->second;\n          s.live.erase(previous);\n          s.live.emplace(target, born);\n        }",
+          "replace": "          Identity root = process;\n          if (parent != s.self) {\n            auto inherited = s.lineage.find(parent);\n            if (inherited == s.lineage.end()) { UnknownLocked(s); return; }\n            root = inherited->second;\n          }\n          if (!s.lineage.emplace(target, root).second) { UnknownLocked(s); return; }\n          s.live.emplace(target, m.mach_time);\n        } else {\n          auto inherited = s.lineage.find(process);\n          if (inherited == s.lineage.end()) { UnknownLocked(s); return; }\n          const Identity root = inherited->second;\n          const uint64_t born = previous->second;\n          s.lineage.erase(inherited);\n          if (!s.lineage.emplace(target, root).second) { UnknownLocked(s); return; }\n          s.live.erase(previous);\n          s.live.emplace(target, born);\n        }",
+          "count": 1
+        },
+        {
+          "find": "        if (process == s.self || s.live.erase(process) != 1) {",
+          "replace": "        if (process == s.self || s.live.erase(process) != 1 || s.lineage.erase(process) != 1) {",
+          "count": 1
+        },
+        {
+          "find": "            if (s.epoch || !s.live.empty() || !s.cohorts.empty()) {",
+          "replace": "            if (s.epoch || !s.live.empty() || !s.lineage.empty() || !s.cohorts.empty()) {",
+          "count": 1
+        },
+        {
+          "find": "Result InspectStream() noexcept {",
+          "replace": "Ticket RetainActualClientCohort(const audit_token_t& kernel_peer) noexcept {\n  if (!SameProcess()) return {};\n  auto& s = State();\n  try {\n    std::lock_guard<std::mutex> lock(s.mutex);\n    if (!s.initialized || !s.ready || s.closed || s.unknown) return {};\n    const Identity client = Id(kernel_peer);\n    if (client.pid <= 0 || client == s.self || !s.live.contains(client)) return {};\n    auto lineage = s.lineage.find(client);\n    if (lineage == s.lineage.end()) return {};\n    const Birth* root = nullptr;\n    for (const auto& birth : s.roots) {\n      if (birth.id != lineage->second) continue;\n      if (root) return {};  // Ambiguous native birth is never membership.\n      root = &birth;\n    }\n    if (!root) return {};\n    Ticket captured;\n    for (const auto& cohort : s.cohorts) {\n      // A publication still in flight may own this recorded birth. Observe\n      // again later; do not infer absence or select another published owner.\n      if (cohort->publication_pending && cohort->reserved_at <= root->time) return {};\n      if (cohort->failed_before_child || cohort->publication_pending || cohort->unknown ||\n          cohort->settled || cohort->child != root->id.pid ||\n          root->time < cohort->reserved_at || root->time > cohort->published_at) continue;\n      if (!MatchBirthLocked(s, *cohort) || captured) return {};\n      captured = cohort;\n    }\n    // The real WorkerHost must additionally join this exact shared Ticket to\n    // its retained ExecReservation/Owner and genuine immutable task grant.\n    return captured;\n  } catch (...) { return {}; }\n}\nResult InspectStream() noexcept {",
+          "count": 1
+        }
+      ]
+    }
+  ],
+  "currentObserverObject": "/private/tmp/aux-daemon-observer-reverse-a1/observer.o",
+  "membershipIsNotProfileAuthority": true,
+  "nativeBuildOwner": "root"
+}

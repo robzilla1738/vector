@@ -1,0 +1,9 @@
+{
+  "exactReplay": true,
+  "files": 2,
+  "anchors": 9,
+  "actualCompilation": false,
+  "productExecution": false,
+  "newCExport": false,
+  "newNapiEntry": false
+}
