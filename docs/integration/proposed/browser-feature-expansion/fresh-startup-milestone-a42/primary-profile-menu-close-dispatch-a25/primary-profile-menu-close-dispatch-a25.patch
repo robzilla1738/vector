@@ -1,0 +1,33 @@
+--- a/chrome/browser/ui/views/frame/aux_sidebar_view.cc
++++ b/chrome/browser/ui/views/frame/aux_sidebar_view.cc
+@@ -1054,0 +1055,4 @@
++#if defined(AUX_BROWSER_ONLY_NATIVE_STARTUP)
++    RegisterWindowClosingCallback(base::BindOnce(
++        &AuxProfileMenu::OnOrdinaryWindowClosing, base::Unretained(this)));
++#endif
+@@ -1093,0 +1098,25 @@
++#if defined(AUX_BROWSER_ONLY_NATIVE_STARTUP)
++  void OnOrdinaryWindowClosing() {
++    LOG(ERROR) << "Aux primary profile menu: native_window_closing pending_action="
++               << !!pending_switch_;
++    // Create the weak, epoch-fenced continuation while the delegate is alive.
++    // The real native close boundary, not delegate destruction, retires intent:
++    // CreateBubbleDeprecated does not make this non-View delegate widget-owned.
++    base::OnceClosure action;
++    if (pending_switch_) {
++      action = base::BindOnce(&RunProfileMenuAction, sender_, source_, source_epoch_,
++                              std::move(pending_switch_));
++    }
++    auto runner = base::SingleThreadTaskRunner::GetCurrentDefault();
++    auto profile_actions = profile_actions_;
++    profile_actions_.reset();
++    ForgetAuxProfileMenu(browser_, GetWidget());
++    // Closing a child may reenter teardown. Use only local values afterward.
++    if (profile_actions) profile_actions->CloseNow();
++    if (action) {
++      const bool posted = runner->PostTask(FROM_HERE, std::move(action));
++      LOG(ERROR) << "Aux primary profile menu: closed_action_posted=" << posted;
++    }
++  }
++#endif
++

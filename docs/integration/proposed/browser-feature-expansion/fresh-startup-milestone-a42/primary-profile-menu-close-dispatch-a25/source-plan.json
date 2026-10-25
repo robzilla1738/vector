@@ -1,0 +1,25 @@
+{
+  "format": "aux.native.counted-projection.v1",
+  "purpose": "Ordinary primary profile menu dispatch after actual native WindowClosing; original weak/epoch fences retained",
+  "nativeRoot": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src",
+  "files": [
+    {
+      "path": "chrome/browser/ui/views/frame/aux_sidebar_view.cc",
+      "inputSha256": "44e1c3bf55b538b3f97125b70d3568461b2f868e6cedc1d7bad98f4aaa10131a",
+      "outputSha256": "d831afa21cb7a5f1db4fd3ae80e244e98d08901d1c148c208eb873f0856da097",
+      "source": "docs/integration/proposed/browser-feature-expansion/fresh-startup-milestone-a42/primary-profile-menu-close-dispatch-a25/source/chrome/browser/ui/views/frame/aux_sidebar_view.cc",
+      "anchors": [
+        {
+          "before": "    contents_ = SetContentsView(std::move(contents));\n    Build();\n  }\n\n  ~AuxProfileMenu() override {",
+          "after": "    contents_ = SetContentsView(std::move(contents));\n    Build();\n#if defined(AUX_BROWSER_ONLY_NATIVE_STARTUP)\n    RegisterWindowClosingCallback(base::BindOnce(\n        &AuxProfileMenu::OnOrdinaryWindowClosing, base::Unretained(this)));\n#endif\n  }\n\n  ~AuxProfileMenu() override {",
+          "expectedCount": 1
+        },
+        {
+          "before": " private:\n  void Build() {\n    contents_->AddChildView(std::make_unique<AuxProfileMenuCaption>(u\"Profiles\"));",
+          "after": " private:\n#if defined(AUX_BROWSER_ONLY_NATIVE_STARTUP)\n  void OnOrdinaryWindowClosing() {\n    LOG(ERROR) << \"Aux primary profile menu: native_window_closing pending_action=\"\n               << !!pending_switch_;\n    // Create the weak, epoch-fenced continuation while the delegate is alive.\n    // The real native close boundary, not delegate destruction, retires intent:\n    // CreateBubbleDeprecated does not make this non-View delegate widget-owned.\n    base::OnceClosure action;\n    if (pending_switch_) {\n      action = base::BindOnce(&RunProfileMenuAction, sender_, source_, source_epoch_,\n                              std::move(pending_switch_));\n    }\n    auto runner = base::SingleThreadTaskRunner::GetCurrentDefault();\n    auto profile_actions = profile_actions_;\n    profile_actions_.reset();\n    ForgetAuxProfileMenu(browser_, GetWidget());\n    // Closing a child may reenter teardown. Use only local values afterward.\n    if (profile_actions) profile_actions->CloseNow();\n    if (action) {\n      const bool posted = runner->PostTask(FROM_HERE, std::move(action));\n      LOG(ERROR) << \"Aux primary profile menu: closed_action_posted=\" << posted;\n    }\n  }\n#endif\n\n  void Build() {\n    contents_->AddChildView(std::make_unique<AuxProfileMenuCaption>(u\"Profiles\"));",
+          "expectedCount": 1
+        }
+      ]
+    }
+  ]
+}
