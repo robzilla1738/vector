@@ -1,0 +1,387 @@
+{
+  "format": "aux.ordinary-fresh-browser-startup.source.v1",
+  "mode": "AUX_BROWSER_ONLY_NATIVE_STARTUP=1",
+  "sourceCount": 11,
+  "anchorCount": 55,
+  "files": [
+    {
+      "input": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/daemon-crash-registration-close-a1/source/AuxNativeDaemonMain.cc",
+      "inputSha256": "baf0266ee957b652787aa91c0fe1d49b2ddbe35aa938c23dd4f6d37784764982",
+      "baseline": "baseline/AuxNativeDaemonMain.cc",
+      "output": "source/AuxNativeDaemonMain.cc",
+      "outputSha256": "1711d0383cce5657e7332caf9ae61af717c8483fe67487cc0914fc5409566908",
+      "anchors": [
+        {
+          "before": "#include <thread>\n",
+          "after": "#include <thread>\n#include <libproc.h>\n#include <signal.h>\n#include <cerrno>\n",
+          "count": 1
+        },
+        {
+          "before": "int main(int argc, char** argv) {\n",
+          "after": "// Private native observations for the ordinary-only root record. No source,\n// path, Profile, rights or caller-selected current process is accepted.\nextern \"C\" int32_t AuxCopyOrdinaryBrowserParentLifetime(\n    int32_t* pid, uint64_t* seconds, uint64_t* microseconds) {\n  if (!pid || !seconds || !microseconds) return -1;\n  *pid = -1; *seconds = 0; *microseconds = 0;\n#if defined(AUX_BROWSER_ONLY_NATIVE_STARTUP) && AUX_BROWSER_ONLY_NATIVE_STARTUP\n  const pid_t parent = getppid();\n  proc_bsdinfo first{}, second{};\n  if (parent <= 1 ||\n      proc_pidinfo(parent, PROC_PIDTBSDINFO, 0, &first, sizeof(first)) != sizeof(first) ||\n      first.pbi_pid != static_cast<uint32_t>(parent) || first.pbi_uid != geteuid() ||\n      !first.pbi_start_tvsec || first.pbi_start_tvusec >= 1'000'000 ||\n      getppid() != parent ||\n      proc_pidinfo(parent, PROC_PIDTBSDINFO, 0, &second, sizeof(second)) != sizeof(second) ||\n      second.pbi_start_tvsec != first.pbi_start_tvsec ||\n      second.pbi_start_tvusec != first.pbi_start_tvusec || getppid() != parent) return -1;\n  *pid = parent; *seconds = first.pbi_start_tvsec; *microseconds = first.pbi_start_tvusec;\n  return 0;\n#else\n  return -1;\n#endif\n}\nextern \"C\" int32_t AuxOrdinaryPriorBrowserHasExited(\n    int32_t pid, uint64_t seconds, uint64_t microseconds) {\n#if defined(AUX_BROWSER_ONLY_NATIVE_STARTUP) && AUX_BROWSER_ONLY_NATIVE_STARTUP\n  if (pid <= 1 || !seconds || microseconds >= 1'000'000) return -1;\n  proc_bsdinfo info{};\n  if (proc_pidinfo(pid, PROC_PIDTBSDINFO, 0, &info, sizeof(info)) == sizeof(info)) {\n    if (info.pbi_pid != static_cast<uint32_t>(pid) || !info.pbi_start_tvsec ||\n        info.pbi_start_tvusec >= 1'000'000) return -1;\n    // A reused PID with a different actual birth proves this original exited.\n    return info.pbi_start_tvsec != seconds || info.pbi_start_tvusec != microseconds ? 1 : 0;\n  }\n  errno = 0;\n  return kill(pid, 0) == -1 && errno == ESRCH ? 1 : -1;\n#else\n  return -1;\n#endif\n}\n\nint main(int argc, char** argv) {\n",
+          "count": 1
+        },
+        {
+          "before": "    if (parent) {\n      while (AuxClosePreparedDaemonAuthorityServer(parent) != 0)\n        std::this_thread::sleep_for(std::chrono::milliseconds(250));\n    }",
+          "after": "    if (parent) {\n#if defined(AUX_BROWSER_ONLY_NATIVE_STARTUP) && AUX_BROWSER_ONLY_NATIVE_STARTUP\n      // A browser-startup grant is NOT an ES CLEAN receipt. Keep its exact\n      // registry-owned graph until physical process exit if still pending.\n      if (AuxClosePreparedDaemonAuthorityServer(parent) != 0) return;\n#else\n      while (AuxClosePreparedDaemonAuthorityServer(parent) != 0)\n        std::this_thread::sleep_for(std::chrono::milliseconds(250));\n#endif\n    }",
+          "count": 1
+        },
+        {
+          "before": "    while (status != 0) {\n      std::this_thread::sleep_for(std::chrono::milliseconds(250));\n      status = AuxClosePreparedDaemonAuthorityServer(lifetime_.parent);\n    }",
+          "after": "#if !defined(AUX_BROWSER_ONLY_NATIVE_STARTUP) || !AUX_BROWSER_ONLY_NATIVE_STARTUP\n    while (status != 0) {\n      std::this_thread::sleep_for(std::chrono::milliseconds(250));\n      status = AuxClosePreparedDaemonAuthorityServer(lifetime_.parent);\n    }\n#else\n    // Own server work has physically joined. Pending browser grant state\n    // remains in the native registry; this branch never emits CLEAN or\n    // claims all-browser-writer drain. NativeLifetime retains it to exit.\n    (void)status;\n#endif",
+          "count": 1
+        },
+        {
+          "before": "  // Fixed fresh native entry: before any bootstrap/image/Node/worker/user code.\n  // No late WorkerHost attach may substitute an empty descendant inventory.\n  const int descendants = aux::descendants::InitializeAtFreshDaemonEntry();\n  if (descendants != 0) return Refuse(\"task-supervision\", descendants, 78);",
+          "after": "#if !defined(AUX_BROWSER_ONLY_NATIVE_STARTUP) || !AUX_BROWSER_ONLY_NATIVE_STARTUP\n  // Supervised mode still requires actual descendant admission before user code.\n  const int descendants = aux::descendants::InitializeAtFreshDaemonEntry();\n  if (descendants != 0) return Refuse(\"task-supervision\", descendants, 78);\n#endif\n  // Browser-only mode never initializes ES and cannot launch supervised work.\n  // Parent, sealed image, fresh installation and selected-home checks below\n  // remain mandatory. No environment or argv value can enable task rights.",
+          "count": 1
+        },
+        {
+          "before": "  auto host = std::make_shared<AuxDevelopmentWorkerHost>(lifetime.provider);\n  AuxNativeEnvironmentPreload preload(host);",
+          "after": "  auto host = std::make_shared<AuxDevelopmentWorkerHost>(lifetime.provider, setup->env());\n  AuxNativeEnvironmentPreload preload(host, setup->env());",
+          "count": 1
+        },
+        {
+          "before": "      {argv[0], \"--disable-sigusr1\", \"--use-system-ca\", script_path},",
+          "after": "#if defined(AUX_BROWSER_ONLY_NATIVE_STARTUP) && AUX_BROWSER_ONLY_NATIVE_STARTUP\n      {argv[0], \"--disable-sigusr1\", \"--use-system-ca\", \"--no-addons\", script_path},\n#else\n      {argv[0], \"--disable-sigusr1\", \"--use-system-ca\", script_path},\n#endif",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "input": "/private/tmp/aux-worker-close-successor/docs/integration/proposed/aux-native-worker-close-successor/source/AuxDevelopmentWorkerHost.h",
+      "inputSha256": "6f53de035eee66ec52239906e5655d3298ab4ba534650980a7b23de3ad8bbaa4",
+      "baseline": "baseline/AuxDevelopmentWorkerHost.h",
+      "output": "source/AuxDevelopmentWorkerHost.h",
+      "outputSha256": "48652684cacf62bf8f30ca043e0c144dcf3c61daf1ae863afb7f0effe347827d",
+      "anchors": [
+        {
+          "before": "enum class AuxDevelopmentWorkerDrain",
+          "after": "namespace node { class Environment; }\n\nenum class AuxDevelopmentWorkerDrain",
+          "count": 1
+        },
+        {
+          "before": "  explicit AuxDevelopmentWorkerHost(uint64_t prepared_fresh_provider);",
+          "after": "  explicit AuxDevelopmentWorkerHost(uint64_t prepared_fresh_provider,\n      node::Environment* browser_service_environment = nullptr);",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "input": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/native-credential-lock-a1/source/AuxDevelopmentWorkerHost.cc",
+      "inputSha256": "660f3a55ab7d3b8a527ceadf01c1a212e7a7bff0afca3546797caa74357b0b87",
+      "baseline": "baseline/AuxDevelopmentWorkerHost.cc",
+      "output": "source/AuxDevelopmentWorkerHost.cc",
+      "outputSha256": "ab280613db84812c6ec869910cf62f61f85c9115a854eb86aeb1680d99a860f9",
+      "anchors": [
+        {
+          "before": "const pid_t kHostProcess = getpid();",
+          "after": "const pid_t kHostProcess = getpid();\n#if defined(AUX_BROWSER_ONLY_NATIVE_STARTUP) && AUX_BROWSER_ONLY_NATIVE_STARTUP\nconstexpr bool kBrowserOnlyNativeStartup = true;\n#else\nconstexpr bool kBrowserOnlyNativeStartup = false;\n#endif\nnapi_value RefuseSupervisedTaskBinding(napi_env env, napi_callback_info) {\n  napi_throw_error(env, \"AUX_SUPERVISED_TASKS_DISABLED\",\n      \"Supervised task execution is disabled in this browser build\");\n  return nullptr;\n}\n",
+          "count": 1
+        },
+        {
+          "before": "napi_value CaptureExecPrivateParent(napi_env env, napi_callback_info info) {\n",
+          "after": "napi_value CaptureExecPrivateParent(napi_env env, napi_callback_info info) {\n  if (kBrowserOnlyNativeStartup) return RefuseSupervisedTaskBinding(env, info);\n",
+          "count": 1
+        },
+        {
+          "before": "extern \"C\" void* AuxNativePtyBeginCurrent(void) noexcept {\n",
+          "after": "extern \"C\" void* AuxNativePtyBeginCurrent(void) noexcept {\n  if (kBrowserOnlyNativeStartup) return nullptr; // Before helper/owner/reservation.\n",
+          "count": 1
+        },
+        {
+          "before": "extern \"C\" void* AuxNativeExecBeginCurrent(void) noexcept {\n",
+          "after": "extern \"C\" void* AuxNativeExecBeginCurrent(void) noexcept {\n  if (kBrowserOnlyNativeStartup) return nullptr; // Before any child/ticket admission.\n",
+          "count": 1
+        },
+        {
+          "before": "  uint64_t prepared_fresh_provider = 0;\n",
+          "after": "  uint64_t prepared_fresh_provider = 0;\n  node::Environment* const browser_service_environment;\n",
+          "count": 1
+        },
+        {
+          "before": "  State() {\n",
+          "after": "  explicit State(node::Environment* environment) : browser_service_environment(environment) {\n",
+          "count": 1
+        },
+        {
+          "before": "  explicit State(uint64_t provider) : State() {\n    if (closed || !provider || AuxRetainPreparedFreshRuntimeProvider(provider)) closed = true;",
+          "after": "  State(uint64_t provider, node::Environment* environment) : State(environment) {\n    if ((kBrowserOnlyNativeStartup && !environment) || closed || !provider ||\n        AuxRetainPreparedFreshRuntimeProvider(provider)) closed = true;",
+          "count": 1
+        },
+        {
+          "before": "AuxDevelopmentWorkerHost::AuxDevelopmentWorkerHost(uint64_t provider)\n    : state_(std::make_shared<State>(provider)) {}",
+          "after": "AuxDevelopmentWorkerHost::AuxDevelopmentWorkerHost(uint64_t provider,\n    node::Environment* browser_service_environment)\n    : state_(std::make_shared<State>(provider, browser_service_environment)) {}",
+          "count": 1
+        },
+        {
+          "before": "  if (state_->closed) return napi_closing;\n",
+          "after": "  if (state_->closed) return napi_closing;\n  if (kBrowserOnlyNativeStartup &&\n      (environment != state_->browser_service_environment || !state_->workers.empty()))\n    return napi_generic_failure; // Only the actual embedding main Environment.\n",
+          "count": 1
+        },
+        {
+          "before": "  if (status == napi_ok && worker->CanContinue()) {\n    const napi_property_descriptor properties[] = {",
+          "after": "  if (status == napi_ok && worker->CanContinue()) {\n    napi_value supervised_tasks;\n    status = napi_get_boolean(env, !kBrowserOnlyNativeStartup, &supervised_tasks);\n    if (status == napi_ok) {\n      const napi_property_descriptor capability = {\n        \"supervisedTasksEnabled\", nullptr, nullptr, nullptr, nullptr,\n        supervised_tasks, napi_default, nullptr};\n      status = napi_define_properties(env, target, 1, &capability);\n    }\n  }\n  if (status == napi_ok && worker->CanContinue()) {\n    const napi_property_descriptor properties[] = {",
+          "count": 1
+        },
+        {
+          "before": "  aux::descendants::CloseAdmission();\n",
+          "after": "  if (!kBrowserOnlyNativeStartup) aux::descendants::CloseAdmission();\n",
+          "count": 1
+        },
+        {
+          "before": "  const auto descendant_stream = aux::descendants::InspectStream();\n  if (descendant_stream == aux::descendants::Result::unknown ||\n      descendant_stream == aux::descendants::Result::refused)\n    result = AuxDevelopmentWorkerDrain::untracked;\n  else if (descendant_stream == aux::descendants::Result::pending)\n    result = AuxDevelopmentWorkerDrain::pending;",
+          "after": "  if (!kBrowserOnlyNativeStartup) {\n    const auto descendant_stream = aux::descendants::InspectStream();\n    if (descendant_stream == aux::descendants::Result::unknown ||\n        descendant_stream == aux::descendants::Result::refused)\n      result = AuxDevelopmentWorkerDrain::untracked;\n    else if (descendant_stream == aux::descendants::Result::pending)\n      result = AuxDevelopmentWorkerDrain::pending;\n  }\n  // Browser-only settlement below covers actual provider/main/broker/image\n  // lifetimes. It neither observes nor reports an ES descendant census.",
+          "count": 1
+        },
+        {
+          "before": "nullptr,SeedBundledRuntime,nullptr,nullptr,nullptr,napi_default,nullptr",
+          "after": "nullptr,kBrowserOnlyNativeStartup ? RefuseSupervisedTaskBinding : SeedBundledRuntime,nullptr,nullptr,nullptr,napi_default,nullptr",
+          "count": 1
+        },
+        {
+          "before": "nullptr,AcquireRuntimeMutation,nullptr,nullptr,nullptr,napi_default,nullptr",
+          "after": "nullptr,kBrowserOnlyNativeStartup ? RefuseSupervisedTaskBinding : AcquireRuntimeMutation,nullptr,nullptr,nullptr,napi_default,nullptr",
+          "count": 1
+        },
+        {
+          "before": "nullptr,AcquireRuntimeUse,nullptr,nullptr,nullptr,napi_default,nullptr",
+          "after": "nullptr,kBrowserOnlyNativeStartup ? RefuseSupervisedTaskBinding : AcquireRuntimeUse,nullptr,nullptr,nullptr,napi_default,nullptr",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "input": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-native-environment-preload/source/AuxNativeEnvironmentPreload.h",
+      "inputSha256": "8fc9494209576427fb37038a1862eacb42ed1c59c28cba1e5010483c5158ab62",
+      "baseline": "baseline/AuxNativeEnvironmentPreload.h",
+      "output": "source/AuxNativeEnvironmentPreload.h",
+      "outputSha256": "abc1e1ba6b7eaa5b5240b8345d576f899c5d86971a98cff645b4620be776b456",
+      "anchors": [
+        {
+          "before": "      std::shared_ptr<AuxDevelopmentWorkerHost> native_host);",
+          "after": "      std::shared_ptr<AuxDevelopmentWorkerHost> native_host,\n      node::Environment* browser_service_environment = nullptr);",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "input": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-native-environment-preload/source/AuxNativeEnvironmentPreload.cc",
+      "inputSha256": "4864d389114736b0c3ac8d5439e5715f67af0b1a227deb7de46a5e9fe0580f2c",
+      "baseline": "baseline/AuxNativeEnvironmentPreload.cc",
+      "output": "source/AuxNativeEnvironmentPreload.cc",
+      "outputSha256": "ddd42e4b1cc661513ba9b4c67324712abe7feef14054a9786c7f606f169de585",
+      "anchors": [
+        {
+          "before": "  explicit State(std::shared_ptr<AuxDevelopmentWorkerHost> value)\n      : host(std::move(value)) {}",
+          "after": "  State(std::shared_ptr<AuxDevelopmentWorkerHost> value, node::Environment* environment)\n      : host(std::move(value)), browser_service_environment(environment) {}",
+          "count": 1
+        },
+        {
+          "before": "  const std::shared_ptr<AuxDevelopmentWorkerHost> host;\n",
+          "after": "  const std::shared_ptr<AuxDevelopmentWorkerHost> host;\n  node::Environment* const browser_service_environment;\n",
+          "count": 1
+        },
+        {
+          "before": "    std::shared_ptr<AuxDevelopmentWorkerHost> native_host) {\n  if (!native_host) throw std::invalid_argument(\"Actual native host required\");\n  state_ = std::make_shared<State>(std::move(native_host));",
+          "after": "    std::shared_ptr<AuxDevelopmentWorkerHost> native_host,\n    node::Environment* browser_service_environment) {\n  if (!native_host) throw std::invalid_argument(\"Actual native host required\");\n#if defined(AUX_BROWSER_ONLY_NATIVE_STARTUP) && AUX_BROWSER_ONLY_NATIVE_STARTUP\n  if (!browser_service_environment)\n    throw std::invalid_argument(\"Actual main browser-service Environment required\");\n#endif\n  state_ = std::make_shared<State>(std::move(native_host), browser_service_environment);",
+          "count": 1
+        },
+        {
+          "before": "    auto record = std::make_shared<EnvironmentRecord>();\n",
+          "after": "#if defined(AUX_BROWSER_ONLY_NATIVE_STARTUP) && AUX_BROWSER_ONLY_NATIVE_STARTUP\n    // Node invokes this before child Worker user code. Main is the exact\n    // CommonEnvironmentSetup Environment, never whichever environment arrived first.\n    if (actual != state->browser_service_environment) {\n      ThrowPreload(isolate);\n      return;\n    }\n#endif\n    auto record = std::make_shared<EnvironmentRecord>();\n",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "input": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-native-fresh-runtime-readiness/source/AuxPreparedFreshRuntimeProvider.swift",
+      "inputSha256": "e62a251dde870dec2aac77c457dda52f8567ed03df7f925ae9b268d94087c320",
+      "baseline": "baseline/AuxPreparedFreshRuntimeProvider.swift",
+      "output": "source/AuxPreparedFreshRuntimeProvider.swift",
+      "outputSha256": "5a0482d9fd73852d7a5dfff06c7292814ba830d3893b8768766f2a63268b2697",
+      "anchors": [
+        {
+          "before": "            let custody=AuxOSJobCustody()\n            let utilities=AuxMacOSUtilityCommandCore(boundary:AuxAppKitUtilityBoundary(custody:custody))\n            owner=try AuxOwnedCommandDispatcher(scopedTerminal:scoped,macOSUtilities:utilities)",
+          "after": "#if AUX_BROWSER_ONLY_NATIVE_STARTUP\n            // Retain the genuine installation/secure-store context, without\n            // issuing OS utility or supervised task capability to this owner.\n            owner=try AuxOwnedCommandDispatcher(scopedTerminal:scoped)\n#else\n            let custody=AuxOSJobCustody()\n            let utilities=AuxMacOSUtilityCommandCore(boundary:AuxAppKitUtilityBoundary(custody:custody))\n            owner=try AuxOwnedCommandDispatcher(scopedTerminal:scoped,macOSUtilities:utilities)\n#endif",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "input": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/ui-journal-readonly-inventory-a26/source/AuxOwnedCommandDispatcher.swift",
+      "inputSha256": "b3bd0bcea5e41143c19eafb49d701332fe29588f8004968f9c4ccbf7fad1c1b9",
+      "baseline": "baseline/AuxOwnedCommandDispatcher.swift",
+      "output": "source/AuxOwnedCommandDispatcher.swift",
+      "outputSha256": "7ea94a189b86f7b52902841461952888f7f1adeba745854dad8357a48b2270e0",
+      "anchors": [
+        {
+          "before": "    private func dispatchKnownCommand(_ entry:Entry,command:String,input:String)->String {\n",
+          "after": "    private func dispatchKnownCommand(_ entry:Entry,command:String,input:String)->String {\n#if AUX_BROWSER_ONLY_NATIVE_STARTUP\n        if AuxMacOSUtilityCommandCore.commands.contains(command) {\n            return \"{\\\"error\\\":\\\"Supervised OS utility execution is disabled in this browser build\\\",\\\"code\\\":\\\"AUX_SUPERVISED_TASKS_DISABLED\\\"}\"\n        }\n#endif\n",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "input": "/private/tmp/aux-browser-root-restart/docs/integration/proposed/profile-isolation-recovery/restart/source/AuxFreshBootstrapPolicy.swift",
+      "inputSha256": "4aedad8ea6875c2d5aa8c51c05563c8cc4a094a901bdf05eec1f33f1ae0a9b22",
+      "baseline": "baseline/AuxFreshBootstrapPolicy.swift",
+      "output": "source/AuxFreshBootstrapPolicy.swift",
+      "outputSha256": "b67d6233d0243ed209b9a1c2d14d58d820a9a82bfdaeb6bafd4e931af96f47c5",
+      "anchors": [
+        {
+          "before": "    var includesPdf:Bool{role == .daemon}\n    var includesMacUtilities:Bool{role == .daemon}",
+          "after": "#if AUX_BROWSER_ONLY_NATIVE_STARTUP\n    var includesPdf:Bool{false}\n    var includesMacUtilities:Bool{false}\n#else\n    var includesPdf:Bool{role == .daemon}\n    var includesMacUtilities:Bool{role == .daemon}\n#endif",
+          "count": 1
+        },
+        {
+          "before": "        if role == .daemon {keys.formUnion([\"pdfModule\",\"macOSUtilitiesModule\"]);try AuxFreshBootstrapPdfIdentity.validate(object[\"pdfModule\"]);try AuxFreshBootstrapMacUtilitiesIdentity.validate(object[\"macOSUtilitiesModule\"])}",
+          "after": "#if !AUX_BROWSER_ONLY_NATIVE_STARTUP\n        if role == .daemon {keys.formUnion([\"pdfModule\",\"macOSUtilitiesModule\"]);try AuxFreshBootstrapPdfIdentity.validate(object[\"pdfModule\"]);try AuxFreshBootstrapMacUtilitiesIdentity.validate(object[\"macOSUtilitiesModule\"])}\n#endif",
+          "count": 1
+        },
+        {
+          "before": "        let containedPty=object[\"format\"] as? String==\"aux.fresh.bootstrap.policy.v6\" || browserStartup",
+          "after": "#if AUX_BROWSER_ONLY_NATIVE_STARTUP\n        let containedPty=false\n#else\n        let containedPty=object[\"format\"] as? String==\"aux.fresh.bootstrap.policy.v6\" || browserStartup\n#endif",
+          "count": 1
+        },
+        {
+          "before": "        let rebuiltPty=object[\"format\"] as? String==\"aux.fresh.bootstrap.policy.v4\" || splitTask\n        let ptyVersion=object[\"format\"] as? String==\"aux.fresh.bootstrap.policy.v3\" || rebuiltPty",
+          "after": "#if AUX_BROWSER_ONLY_NATIVE_STARTUP\n        let rebuiltPty=false,ptyVersion=false\n#else\n        let rebuiltPty=object[\"format\"] as? String==\"aux.fresh.bootstrap.policy.v4\" || splitTask\n        let ptyVersion=object[\"format\"] as? String==\"aux.fresh.bootstrap.policy.v3\" || rebuiltPty\n#endif",
+          "count": 1
+        },
+        {
+          "before": "        let splitTask=object[\"format\"] as? String==\"aux.fresh.bootstrap.policy.v5\" || containedPty",
+          "after": "        let splitTask=object[\"format\"] as? String==\"aux.fresh.bootstrap.policy.v5\" || containedPty || browserStartup",
+          "count": 1
+        },
+        {
+          "before": "        let embedded=object[\"format\"] as? String==\"aux.fresh.bootstrap.policy.v2\" || ptyVersion",
+          "after": "        let embedded=object[\"format\"] as? String==\"aux.fresh.bootstrap.policy.v2\" || ptyVersion || browserStartup",
+          "count": 1
+        },
+        {
+          "before": "        if browserStartup {\n            guard let b=object[\"browserStartup\"] as? [String:Any],Set(b.keys)==[\"format\",\"dataRoot\",\"cacheRoot\"],\n                  b[\"format\"] as? String==(recoverable ? \"aux.browser.recoverable-root-lease.v2\":\"aux.browser.fresh-root-lease.v1\"),",
+          "after": "        if browserStartup {\n#if AUX_BROWSER_ONLY_NATIVE_STARTUP\n            guard recoverable else{throw AuxFreshBootstrapPolicyError.policy}\n            let expectedRootFormat=\"aux.browser.ordinary-root-lease.v1\"\n#else\n            let expectedRootFormat=recoverable ? \"aux.browser.recoverable-root-lease.v2\":\"aux.browser.fresh-root-lease.v1\"\n#endif\n            guard let b=object[\"browserStartup\"] as? [String:Any],Set(b.keys)==[\"format\",\"dataRoot\",\"cacheRoot\"],\n                  b[\"format\"] as? String==expectedRootFormat,",
+          "count": 1
+        },
+        {
+          "before": "        return .init(role:role,canonicalPrivateParent:parent,accessGroup:group,canonicalTaskParent:taskParent,browserStartupRoots:browserRoots,browserPreparedRecovery:recoverable,embeddedDaemon:embedded,ptyArtifacts:pty,includesRebuiltPtyModule:rebuiltPty,includesContainedPtyModule:containedPty)",
+          "after": "#if AUX_BROWSER_ONLY_NATIVE_STARTUP\n        guard recoverable,browserRoots != nil else{throw AuxFreshBootstrapPolicyError.policy}\n#endif\n        return .init(role:role,canonicalPrivateParent:parent,accessGroup:group,canonicalTaskParent:taskParent,browserStartupRoots:browserRoots,browserPreparedRecovery:recoverable,embeddedDaemon:embedded,ptyArtifacts:pty,includesRebuiltPtyModule:rebuiltPty,includesContainedPtyModule:containedPty)",
+          "count": 1
+        },
+        {
+          "before": "    guard policy.role != .daemon || (policy.includesContainedPtyModule && policy.browserStartupRoots != nil && policy.browserPreparedRecovery) else {throw AuxFreshBootstrapPolicyError.policy}",
+          "after": "#if AUX_BROWSER_ONLY_NATIVE_STARTUP\n    guard policy.role == .daemon,policy.embeddedDaemon,policy.browserStartupRoots != nil,\n          policy.browserPreparedRecovery,!policy.includesPdf,!policy.includesMacUtilities,\n          !policy.includesRebuiltPtyModule,!policy.includesContainedPtyModule,policy.ptyArtifacts == nil else{throw AuxFreshBootstrapPolicyError.policy}\n#else\n    guard policy.role != .daemon || (policy.includesContainedPtyModule && policy.browserStartupRoots != nil && policy.browserPreparedRecovery) else {throw AuxFreshBootstrapPolicyError.policy}\n#endif",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "input": "/private/tmp/aux-final-native-link/docs/integration/proposed/final-completion/native/exec-parent/source/AuxSignedFreshBootstrapPolicyLoader.swift",
+      "inputSha256": "5932be30b0230f57fa09f88b28770ef9ddc016944f1d3b02e39fd9704faa0877",
+      "baseline": "baseline/AuxSignedFreshBootstrapPolicyLoader.swift",
+      "output": "source/AuxSignedFreshBootstrapPolicyLoader.swift",
+      "outputSha256": "4d8db5a663a765e17508b6792a70dad25f89238431252fed99539c38284e5a7c",
+      "anchors": [
+        {
+          "before": "        // dlopen has no reviewed retained-FD loading API on macOS. Hold the\n",
+          "after": "#if AUX_BROWSER_ONLY_NATIVE_STARTUP\n        guard geteuid() != 0,!policy.contents.includesPdf,!policy.contents.includesMacUtilities,\n              policy.contents.ptyArtifacts == nil else{throw AuxFreshBootstrapPolicyError.policy}\n        // Main-only exact image census is checked by authenticatedBase.\n        // No addon constructor is run, and Node --no-addons prevents later loads.\n        let final=try authenticatedBase(preparing:false)\n        guard final.policySha256==policy.policySha256,final.bundlePath==policy.bundlePath,\n              final.hostCdHash==policy.hostCdHash else{throw AuxFreshBootstrapPolicyError.identity}\n#else\n        // dlopen has no reviewed retained-FD loading API on macOS. Hold the\n",
+          "count": 1
+        },
+        {
+          "before": "        guard final.policySha256==policy.policySha256,final.bundlePath==policy.bundlePath,final.hostCdHash==policy.hostCdHash else{throw AuxFreshBootstrapPolicyError.identity}\n    }\n}\n@_cdecl(\"AuxPrepareSealedNativeDaemonImages\")",
+          "after": "        guard final.policySha256==policy.policySha256,final.bundlePath==policy.bundlePath,final.hostCdHash==policy.hostCdHash else{throw AuxFreshBootstrapPolicyError.identity}\n#endif\n    }\n}\n@_cdecl(\"AuxPrepareSealedNativeDaemonImages\")",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "input": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/ui-native-capture-journal-a1/source/AuxFreshColdInstallerGuard.swift",
+      "inputSha256": "36de079ca488250033b3c20f0d86ee2134a73dffa3c6f81bd87f88a8f556aa58",
+      "baseline": "baseline/AuxFreshColdInstallerGuard.swift",
+      "output": "source/AuxFreshColdInstallerGuard.swift",
+      "outputSha256": "0dc9b4ca8bf374897aa86acdba31a4bef90bb8ea63ccaab8154df4a3056b98bb",
+      "anchors": [
+        {
+          "before": "enum AuxFreshColdGuardError:Error",
+          "after": "@_silgen_name(\"AuxCopyOrdinaryBrowserParentLifetime\")\nprivate func copyOrdinaryParentLifetime(_ pid:UnsafeMutablePointer<Int32>,_ seconds:UnsafeMutablePointer<UInt64>,_ microseconds:UnsafeMutablePointer<UInt64>)->Int32\n@_silgen_name(\"AuxOrdinaryPriorBrowserHasExited\")\nprivate func ordinaryPriorBrowserExited(_ pid:Int32,_ seconds:UInt64,_ microseconds:UInt64)->Int32\nstruct AuxOrdinaryBrowserLifetime:Equatable {\n    let pid:Int32\n    let seconds:UInt64\n    let microseconds:UInt64\n    private static func current()throws->Self {\n        var pid:Int32 = -1,seconds:UInt64=0,microseconds:UInt64=0\n        guard copyOrdinaryParentLifetime(&pid,&seconds,&microseconds)==0,pid>1,seconds>0,microseconds<1_000_000 else{throw AuxFreshColdGuardError.path}\n        return .init(pid:pid,seconds:seconds,microseconds:microseconds)\n    }\n    static func capture(peer:AuxLiveNativeParentConnection)throws->Self {\n        // Kernel direct-parent facts are sampled between actual retained peer\n        // authentication, never supplied as JSON/PID/approval by a caller.\n        try peer.revalidate();let value=try current();try peer.revalidate()\n        guard try current()==value else{throw AuxFreshColdGuardError.path};return value\n    }\n    func requireCurrent()throws {guard try Self.current()==self else{throw AuxFreshColdGuardError.path}}\n    func hasExited()->Bool {ordinaryPriorBrowserExited(pid,seconds,microseconds)==1}\n}\n\nenum AuxFreshColdGuardError:Error",
+          "count": 1
+        },
+        {
+          "before": "        let browserAdmission=try AuxBrowserFreshRootAdmission.acquire(policy:policy,generation:data.generation,data:data.descriptor,cache:cache.descriptor)",
+          "after": "#if AUX_BROWSER_ONLY_NATIVE_STARTUP\n        let browserLifetime=try AuxOrdinaryBrowserLifetime.capture(peer:peer)\n        let browserAdmission=try AuxBrowserFreshRootAdmission.acquire(policy:policy,generation:data.generation,data:data.descriptor,cache:cache.descriptor,ordinaryBrowser:browserLifetime)\n#else\n        let browserAdmission=try AuxBrowserFreshRootAdmission.acquire(policy:policy,generation:data.generation,data:data.descriptor,cache:cache.descriptor)\n#endif",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "input": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/ui-native-capture-journal-a1/source/AuxBrowserFreshRootAdmission.swift",
+      "inputSha256": "ca63849e2858f9047641ed354bd310bba38ac618f0e10cd274656f817350c0ce",
+      "baseline": "baseline/AuxBrowserFreshRootAdmission.swift",
+      "output": "source/AuxBrowserFreshRootAdmission.swift",
+      "outputSha256": "85586e2a9f19a2bdd5ce439450a35c645d22c5cf8113bad8a73a19d28d5fde57",
+      "anchors": [
+        {
+          "before": "    private static let marker=\".aux-browser-startup-lease.v2\"",
+          "after": "#if AUX_BROWSER_ONLY_NATIVE_STARTUP\n    private static let marker=\".aux-browser-ordinary-lease.v1\"\n#else\n    private static let marker=\".aux-browser-startup-lease.v2\"\n#endif\n    private let ordinaryBrowser:AuxOrdinaryBrowserLifetime?\n    private var ordinaryInstallationSha=\"\"",
+          "count": 1
+        },
+        {
+          "before": "permitsExistingData:Bool,priorCleanReceipt:String) {\n",
+          "after": "permitsExistingData:Bool,priorCleanReceipt:String,ordinaryBrowser:AuxOrdinaryBrowserLifetime? = nil) {\n",
+          "count": 1
+        },
+        {
+          "before": "self.priorCleanReceipt=priorCleanReceipt\n",
+          "after": "self.priorCleanReceipt=priorCleanReceipt;self.ordinaryBrowser=ordinaryBrowser\n",
+          "count": 1
+        },
+        {
+          "before": "static func acquire(policy:AuxAuthenticatedFreshBootstrapPolicy,generation:UInt64,data:Int32,cache:Int32)throws->AuxBrowserFreshRootAdmission {\n",
+          "after": "static func acquire(policy:AuxAuthenticatedFreshBootstrapPolicy,generation:UInt64,data:Int32,cache:Int32,ordinaryBrowser:AuxOrdinaryBrowserLifetime? = nil)throws->AuxBrowserFreshRootAdmission {\n#if AUX_BROWSER_ONLY_NATIVE_STARTUP\n        guard let browser=ordinaryBrowser else{throw AuxFreshColdGuardError.path}\n        return try acquireOrdinary(policy:policy,generation:generation,data:data,cache:cache,browser:browser)\n#else\n",
+          "count": 1
+        },
+        {
+          "before": "        // Missing/mixed/truncated/mismatched records never recreate or reset.\n    }",
+          "after": "        // Missing/mixed/truncated/mismatched records never recreate or reset.\n#endif\n    }",
+          "count": 1
+        },
+        {
+          "before": "    private func validateLocked()throws {\n",
+          "after": "    private func validateLocked()throws {\n#if AUX_BROWSER_ONLY_NATIVE_STARTUP\n        try validateOrdinaryLocked()\n#else\n",
+          "count": 1
+        },
+        {
+          "before": "    }\n    func revalidate()throws {\n",
+          "after": "#endif\n    }\n    func revalidate()throws {\n",
+          "count": 1
+        },
+        {
+          "before": "    func receipt()throws->Data {\n",
+          "after": "    func receipt()throws->Data {\n#if AUX_BROWSER_ONLY_NATIVE_STARTUP\n        return try ordinaryReceipt()\n#else\n",
+          "count": 1
+        },
+        {
+          "before": "        return bytes\n    }\n",
+          "after": "        return bytes\n#endif\n    }\n",
+          "count": 1
+        },
+        {
+          "before": "    func completeCleanShutdown(peer:AuxLiveNativeParentConnection)throws {\n",
+          "after": "    func completeCleanShutdown(peer:AuxLiveNativeParentConnection)throws {\n#if AUX_BROWSER_ONLY_NATIVE_STARTUP\n        throw AuxFreshColdGuardError.path // Ordinary mode never emits ES CLEAN.\n#else\n",
+          "count": 1
+        },
+        {
+          "before": "        pendingCleanAcknowledgement=nil\n    }\n    private static func metadata",
+          "after": "        pendingCleanAcknowledgement=nil\n#endif\n    }\n    // Ordinary mode is a distinct sealed-policy/storage contract. Its ADMITTED\n    // history does not mean ES CLEAN and is never accepted by supervised mode.\n#if AUX_BROWSER_ONLY_NATIVE_STARTUP\n    private struct OrdinaryStored:Equatable {\n        let reservation:String\n        let generation:UInt64\n        let phase:String\n        let installation:String\n        let existing:Bool\n        let browser:AuxOrdinaryBrowserLifetime\n    }\n    private static func ordinaryParent(_ path:String)throws->Int32 {\n        let fd=open(path,O_RDONLY|O_DIRECTORY|O_NOFOLLOW|O_CLOEXEC|O_NONBLOCK)\n        guard fd>=0 else{throw AuxFreshColdGuardError.io(errno)}\n        do{try metadata(fd,directory:true);try pathIdentity(path,fd);return fd}\n        catch{close(fd);throw error}\n    }\n    private static func ordinaryInstallation(_ policy:AuxAuthenticatedFreshBootstrapPolicy)throws->String {\n        let parent=try ordinaryParent(policy.contents.canonicalPrivateParent);defer{close(parent)}\n        let fd=openat(parent,AuxFreshNativeHome.reservationName,O_RDONLY|O_NOFOLLOW|O_CLOEXEC|O_NONBLOCK)\n        if fd<0 {guard errno==ENOENT else{throw AuxFreshColdGuardError.io(errno)};return \"\"}\n        defer{close(fd)}\n        try metadata(fd,directory:false);try entry(parent,AuxFreshNativeHome.reservationName,fd)\n        let bytes=try readRecord(fd)\n        let object=try strictEnvelopeObject(bytes)\n        guard object[\"format\"] as? String==\"aux.first-installation.reservation.v1\" else{throw AuxFreshColdGuardError.path}\n        return freshBootstrapDigest(bytes)\n    }\n    private static func ordinaryBinding(policy:AuxAuthenticatedFreshBootstrapPolicy,role:Int,root:Int32,\n        reservation:String,generation:UInt64,phase:String,installation:String,existing:Bool,browser:AuxOrdinaryBrowserLifetime)throws->Data {\n        guard let taskPath=policy.contents.canonicalTaskParent else{throw AuxFreshColdGuardError.path}\n        let control=try ordinaryParent(policy.contents.canonicalPrivateParent);defer{close(control)}\n        let task=try ordinaryParent(taskPath);defer{close(task)}\n        var r=stat(),c=stat(),t=stat()\n        guard fstat(root,&r)==0,fstat(control,&c)==0,fstat(task,&t)==0 else{throw AuxFreshColdGuardError.metadata}\n        return try JSONSerialization.data(withJSONObject:[\n            \"format\":\"aux.browser.ordinary-root-lease.v1\",\"policySha256\":policy.policySha256,\n            \"role\":role,\"device\":String(r.st_dev),\"inode\":String(r.st_ino),\n            \"controlDevice\":String(c.st_dev),\"controlInode\":String(c.st_ino),\n            \"taskDevice\":String(t.st_dev),\"taskInode\":String(t.st_ino),\n            \"generation\":String(generation),\"reservation\":reservation,\"phase\":phase,\n            \"installationReservationSha256\":installation,\n            \"existingData\":existing,\n            \"browserPid\":String(browser.pid),\"browserBirthSeconds\":String(browser.seconds),\n            \"browserBirthMicroseconds\":String(browser.microseconds)\n        ],options:[.sortedKeys,.withoutEscapingSlashes])\n    }\n    private static func decodeOrdinary(_ bytes:Data,policy:AuxAuthenticatedFreshBootstrapPolicy,role:Int,root:Int32)throws->OrdinaryStored {\n        let object=try strictEnvelopeObject(bytes)\n        guard let reservation=object[\"reservation\"] as? String,UUID(uuidString:reservation)?.uuidString==reservation,\n              let gs=object[\"generation\"] as? String,let g=UInt64(gs),g>0,String(g)==gs,\n              let phase=object[\"phase\"] as? String,[\"prepared\",\"admitted\"].contains(phase),\n              let installation=object[\"installationReservationSha256\"] as? String,\n              let existing=object[\"existingData\"] as? Bool,\n              installation.isEmpty || (installation.count==64 && installation.allSatisfy({\"0123456789abcdef\".contains($0)})),\n              !(existing || phase==\"admitted\") || !installation.isEmpty,\n              let ps=object[\"browserPid\"] as? String,let pid=Int32(ps),pid>1,String(pid)==ps,\n              let ss=object[\"browserBirthSeconds\"] as? String,let seconds=UInt64(ss),seconds>0,String(seconds)==ss,\n              let us=object[\"browserBirthMicroseconds\"] as? String,let microseconds=UInt64(us),microseconds<1_000_000,String(microseconds)==us else{throw AuxFreshColdGuardError.path}\n        let browser=AuxOrdinaryBrowserLifetime(pid:pid,seconds:seconds,microseconds:microseconds)\n        guard bytes == (try ordinaryBinding(policy:policy,role:role,root:root,reservation:reservation,generation:g,phase:phase,installation:installation,existing:existing,browser:browser)) else{throw AuxFreshColdGuardError.path}\n        return .init(reservation:reservation,generation:g,phase:phase,installation:installation,existing:existing,browser:browser)\n    }\n    private static func noSupervisedMarker(_ root:Int32)throws {\n        for name in [\".aux-browser-startup-lease.v1\",\".aux-browser-startup-lease.v2\"] {\n            var st=stat()\n            guard fstatat(root,name,&st,AT_SYMLINK_NOFOLLOW) != 0,errno==ENOENT else{throw AuxFreshColdBootstrapError.legacyOrUnknownExistingState}\n        }\n    }\n    private static func acquireOrdinary(policy:AuxAuthenticatedFreshBootstrapPolicy,generation:UInt64,\n        data:Int32,cache:Int32,browser:AuxOrdinaryBrowserLifetime)throws->AuxBrowserFreshRootAdmission {\n        try policy.revalidateCurrentIdentity();try browser.requireCurrent()\n        guard generation>0,let paths=policy.contents.browserStartupRoots,paths.count==2 else{throw AuxFreshColdGuardError.path}\n        var roots=[Int32](),markers=[Int32](),records=[Data]();var transferred=false\n        defer{if !transferred{for fd in markers+roots{close(fd)}}}\n        var existing=[Bool]()\n        for (i,source) in [data,cache].enumerated() {\n            let fd=fcntl(source,F_DUPFD_CLOEXEC,0);guard fd>=0 else{throw AuxFreshColdGuardError.io(errno)};roots.append(fd)\n            try metadata(fd,directory:true);try pathIdentity(paths[i],fd);try noSupervisedMarker(fd)\n            var st=stat();let status=fstatat(fd,marker,&st,AT_SYMLINK_NOFOLLOW)\n            guard status==0 || errno==ENOENT else{throw AuxFreshColdGuardError.io(errno)};existing.append(status==0)\n        }\n        guard existing[0]==existing[1] else{throw AuxFreshColdGuardError.path}\n        let reopening=existing[0]\n        for root in roots {\n            let fd=openat(root,marker,O_RDWR|O_NOFOLLOW|O_CLOEXEC|O_NONBLOCK|(reopening ? 0:O_CREAT|O_EXCL),0o600)\n            guard fd>=0 else{throw AuxFreshColdGuardError.io(errno)};markers.append(fd)\n            try metadata(fd,directory:false);try entry(root,marker,fd)\n            guard flock(fd,LOCK_EX|LOCK_NB)==0 else{throw AuxFreshColdGuardError.installerBusy}\n        }\n        let installation=try ordinaryInstallation(policy)\n        var permitsExisting=false\n        if reopening {\n            let first=try decodeOrdinary(readRecord(markers[0]),policy:policy,role:1,root:roots[0])\n            let second=try decodeOrdinary(readRecord(markers[1]),policy:policy,role:2,root:roots[1])\n            guard first==second,first.installation==installation,\n                  first.browser != browser,first.browser.hasExited() else{throw AuxFreshColdBootstrapError.legacyOrUnknownExistingState}\n            permitsExisting=first.phase==\"admitted\" || first.existing\n            if !permitsExisting {for root in roots{try inventory(root,allowed:[\".\",\"..\",marker])}}\n        }else{\n            // A missing ordinary marker never adopts pre-existing browser data.\n            for root in roots{try inventory(root,allowed:[\".\",\"..\",marker])}\n        }\n        let reservation=UUID().uuidString\n        for i in roots.indices {\n            let record=try ordinaryBinding(policy:policy,role:i+1,root:roots[i],reservation:reservation,generation:generation,phase:\"prepared\",installation:installation,existing:permitsExisting,browser:browser)\n            try writeRecord(record,fd:markers[i]);guard fsync(roots[i])==0 else{throw AuxFreshColdGuardError.io(errno)};records.append(record)\n        }\n        let owned=AuxBrowserFreshRootAdmission(policy:policy,generation:generation,paths:paths,roots:roots,markers:markers,records:records,reservation:reservation,permitsExistingData:permitsExisting,priorCleanReceipt:\"\",ordinaryBrowser:browser)\n        owned.ordinaryInstallationSha=installation\n        transferred=true;try owned.revalidate();return owned\n    }\n    private func validateOrdinaryLocked()throws {\n        guard phase != .failed,let browser=ordinaryBrowser else{throw AuxFreshColdGuardError.path}\n        try policy.revalidateCurrentIdentity();try browser.requireCurrent()\n        if phase == .admitted || !ordinaryInstallationSha.isEmpty {\n            guard try Self.ordinaryInstallation(policy)==ordinaryInstallationSha else{throw AuxFreshColdGuardError.path}\n        }\n        for i in roots.indices {\n            try Self.metadata(roots[i],directory:true);try Self.pathIdentity(paths[i],roots[i]);try Self.noSupervisedMarker(roots[i])\n            try Self.metadata(markers[i],directory:false);try Self.entry(roots[i],Self.marker,markers[i])\n            guard try Self.readRecord(markers[i])==records[i] else{throw AuxFreshColdGuardError.path}\n        }\n        if phase == .prepared {do{try validateStartupInventoriesLocked()}catch{phase = .failed;throw error}}\n    }\n    private func ordinaryReceipt()throws->Data {\n        guard getpid()==process else{throw AuxFreshColdGuardError.wrongProcess}\n        lock.lock();defer{lock.unlock()};try validateOrdinaryLocked()\n        guard phase == .prepared || phase == .admitted,let browser=ordinaryBrowser else{throw AuxFreshColdGuardError.path}\n        if phase == .prepared {\n            let installation=try Self.ordinaryInstallation(policy)\n            guard !installation.isEmpty else{throw AuxFreshColdGuardError.path}\n            phase = .failed // Any partial record remains refused; never reset/retry it.\n            var admitted=[Data]()\n            for i in roots.indices {\n                if !permitsExistingData {try Self.inventory(roots[i],allowed:[\".\",\"..\",Self.marker])}\n                let record=try Self.ordinaryBinding(policy:policy,role:i+1,root:roots[i],reservation:reservation,generation:generation,phase:\"admitted\",installation:installation,existing:permitsExistingData,browser:browser)\n                try Self.writeRecord(record,fd:markers[i]);guard fsync(roots[i])==0 else{throw AuxFreshColdGuardError.io(errno)};admitted.append(record)\n            }\n            records=admitted;ordinaryInstallationSha=installation;phase = .admitted\n            do{try validateOrdinaryLocked();try validateStartupInventoriesLocked()}catch{phase = .failed;throw error}\n        }\n        var g=generation.littleEndian\n        var bytes=withUnsafeBytes(of:&g){Data($0)}\n        for path in paths{bytes.append(contentsOf:SHA256.hash(data:Data(path.utf8)))}\n        return bytes // Existing authenticated generation+root-digest contract,72bytes.\n    }\n#endif\n\n    private static func metadata",
+          "count": 1
+        }
+      ]
+    }
+  ],
+  "productExecuted": false,
+  "compiled": false,
+  "signed": false,
+  "selectedHomeContractUnchanged": true,
+  "esReadinessFabricated": false
+}

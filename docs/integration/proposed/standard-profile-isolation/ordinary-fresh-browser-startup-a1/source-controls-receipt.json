@@ -1,0 +1,25 @@
+{
+  "format": "aux.ordinary-browser.source-controls.v1",
+  "files": [
+    {
+      "input": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-desktop-completion-20261024-a3/Aux.app/Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/node-development/index.mjs",
+      "inputSha256": "f525f457b2c08df4fd3790ffe0acacf1e86101cc8c0c1706ff9fee7235706d57",
+      "output": "/private/tmp/aux-browser-only-daemon-source-20261024-a1/index.mjs",
+      "outputSha256": "faed45031be4a6e0240de08943decdd61684d0f77c472a46ecce9bf17dd5a81d",
+      "anchorCount": 11
+    },
+    {
+      "input": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-desktop-completion-20261024-a3/Aux.app/Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/node-development/aux-native-entry.mjs",
+      "inputSha256": "d30e8358be489e2e4f1a43a7194e78da6a939b85e871a89c7f983e6adc9bc465",
+      "output": "/private/tmp/aux-browser-only-daemon-source-20261024-a1/aux-native-entry.mjs",
+      "outputSha256": "6e98124ac1d09b9275e81e4c36011daf06044a44c4c42ae50ecc1344c7028cf3",
+      "anchorCount": 11
+    }
+  ],
+  "anchorCountPerLeaf": 11,
+  "baseAnchorCount": 217,
+  "allPredecessorBytesPreservedOutsideAnchors": true,
+  "productExecuted": false,
+  "signed": false,
+  "sourceOnly": true
+}

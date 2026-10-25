@@ -1,0 +1,20 @@
+{
+  "format": "aux.ordinary-browser.source-check.v1",
+  "exactReplay": true,
+  "sourceCount": 11,
+  "anchorCount": 55,
+  "pairedSourceAnchorsPerLeaf": 11,
+  "nativePreprocessorBalanced": true,
+  "dormantEntrySyntaxCheck": {
+    "command": [
+      "node",
+      "--check",
+      "/private/tmp/aux-browser-only-daemon-source-20261024-a1/aux-native-entry.mjs"
+    ],
+    "exitCode": 0
+  },
+  "compiled": false,
+  "productExecuted": false,
+  "signed": false,
+  "runtimeAccepted": false
+}
