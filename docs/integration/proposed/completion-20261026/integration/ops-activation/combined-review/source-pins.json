@@ -70,5 +70,7 @@
   "noNetworkOrProviderActions": true,
   "noSecretValuesRead": true,
   "testsRun": false,
-  "postDeploymentRepinRequired": true
+  "postDeploymentRepinRequired": true,
+  "referencedCloudReviewSnapshot": "f349a5dc9270d8eb50ce1b10be6e4076c1cd364c",
+  "referencedCloudReviewStatus": "prepared-unapproved"
 }
