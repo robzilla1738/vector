@@ -1,0 +1,14 @@
+{
+  "format": "aux.cloud.typecheck.v1",
+  "date": "2026-10-26",
+  "command": [
+    "pnpm",
+    "typecheck"
+  ],
+  "cwd": "/Users/rcourson/Documents/Vibe/web/services/aux-cloud",
+  "exitCode": 0,
+  "scope": "Full current service TypeScript including four new product-information routes and existing app layout",
+  "deployed": false,
+  "runtimeAccepted": false,
+  "credentialsRead": false
+}

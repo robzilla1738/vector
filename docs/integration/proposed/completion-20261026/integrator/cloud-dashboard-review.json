@@ -44,5 +44,74 @@
   "serviceCredentialsRead": false,
   "ownerProfileFilesRead": false,
   "asideDaemonStoppedOrReplaced": false,
-  "cloudActivationAccepted": false
+  "cloudActivationAccepted": false,
+  "vercel": {
+    "team": "robzilla1738s-projects",
+    "project": "aux-cloud",
+    "environmentFilter": "Production",
+    "correctedEarlierIncompleteMetadata": true,
+    "allSixPreviouslyReportedMissingNamesPresent": true,
+    "variables": {
+      "CLERK_SECRET_KEY": {
+        "type": "Secret",
+        "scope": "Production",
+        "valueRead": false
+      },
+      "NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY": {
+        "type": "Config",
+        "scope": "Production",
+        "valueRead": false
+      },
+      "RESEND_API_KEY": {
+        "type": "Secret",
+        "scope": "Production",
+        "valueRead": false
+      },
+      "RESEND_FROM": {
+        "type": "Config",
+        "scope": "All Environments",
+        "valueRead": false
+      },
+      "NEXT_PUBLIC_APP_URL": {
+        "type": "Config",
+        "scope": "Production",
+        "observedPublicValue": "https://app.getaux.co"
+      },
+      "AUX_API_ORIGIN": {
+        "type": "Config",
+        "scope": "Production",
+        "observedPublicValue": "https://api.getaux.co"
+      },
+      "AUX_PAYMENTS_ENABLED": {
+        "type": "Config",
+        "scope": "All Environments",
+        "observedPublicValue": "false"
+      },
+      "AUX_HOSTED_AI_ENABLED": {
+        "type": "Config",
+        "scope": "All Environments",
+        "observedPublicValue": "false"
+      }
+    },
+    "remainingPublicValues": [
+      "AUX_ALLOWED_ORIGINS",
+      "CLERK_AUTHORIZED_PARTIES",
+      "RESEND_FROM"
+    ],
+    "stepUp": {
+      "trigger": "Reveal AUX_ALLOWED_ORIGINS",
+      "observed": "Verify to reveal this value; authenticator code or passkey required",
+      "credentialEntered": false,
+      "completed": false,
+      "resolution": "Navigated back to original deployments page; leave field unverified"
+    },
+    "databaseMetadata": {
+      "DATABASE_URL": "Production; Config; Needs Attention",
+      "DATABASE_URL_UNPOOLED": "Production; Config; Needs Attention",
+      "valuesRead": false,
+      "expiryOrCompromiseInferred": false
+    },
+    "settingsChanged": false,
+    "productionDeploymentCreated": false
+  }
 }
