@@ -1,0 +1,2180 @@
+--- a/daemon/AuxNativeHostJournal.swift
++++ b/daemon/AuxNativeHostJournal.swift
+@@ -0,0 +1,170 @@
++// One finite helper lease journal. No caller paths, roots or readiness flags.
++import Foundation
++import CryptoKit
++import Darwin
++@_silgen_name("AuxMemoryCopyCurrentLifetime") private func memoryCurrentLifetime(_ pid:UnsafeMutablePointer<Int32>,_ seconds:UnsafeMutablePointer<UInt64>,_ micros:UnsafeMutablePointer<UInt64>)->Int32
++@_silgen_name("AuxCopyOrdinaryBrowserParentLifetime") private func memoryBrowserLifetime(_ pid:UnsafeMutablePointer<Int32>,_ seconds:UnsafeMutablePointer<UInt64>,_ micros:UnsafeMutablePointer<UInt64>)->Int32
++@_silgen_name("AuxNativeHostCopyStoppedBrowserChildLifetime") private func nativeHostStoppedLifetime(_ pid:Int32,_ seconds:UnsafeMutablePointer<UInt64>,_ micros:UnsafeMutablePointer<UInt64>)->Int32
++
++enum AuxNativeHostJournalError:Error {case unavailable,unknown,conflict}
++final class AuxNativeHostJournal {
++    private let process=getpid()
++    private let root:Int32
++    private var directory:Int32 = -1
++    let leaseId=UUID().uuidString.lowercased()
++    private let base:[String:Any]
++    private var recorded:Data?
++    private var phase=""
++    private var child:[String:String]?
++    private var unknown=false
++    private var retired=false
++    private static let leaf=".aux-native-host-lifetimes.v1"
++    init(identity:AuxMemoryAccountIdentity,taskRoot:Int32,generation:UInt64,
++         context:NativeFreshRuntimeCapturedContext,extensionOrigin:String,
++         hostName:String,imageSha256:String,intentId:String)throws {
++        let journal=context.owner.journal
++        guard let transaction=UUID(uuidString:journal.reservationTransactionId),generation>0,
++              UUID(uuidString:intentId)?.uuidString.lowercased()==intentId,
++              imageSha256.count==64,imageSha256.allSatisfy({"0123456789abcdef".contains($0)}),
++              [journal.scope,journal.reservationSha256,journal.policySha256].allSatisfy({$0.count==64&&$0.allSatisfy{"0123456789abcdef".contains($0)}})
++        else{throw AuxNativeHostJournalError.unavailable}
++        root=fcntl(taskRoot,F_DUPFD_CLOEXEC,0)
++        guard root>=0 else{throw AuxNativeHostJournalError.unavailable}
++        func lifetime(_ browser:Bool)throws->[String:String] {
++            var pid:Int32 = -1,seconds:UInt64=0,micros:UInt64=0
++            let status=browser ? memoryBrowserLifetime(&pid,&seconds,&micros):memoryCurrentLifetime(&pid,&seconds,&micros)
++            guard status==0,pid>1,seconds>0,micros<1_000_000 else{throw AuxNativeHostJournalError.unavailable}
++            return ["pid":String(pid),"seconds":String(seconds),"microseconds":String(micros)]
++        }
++        func hex(_ value:Data)->String{value.map{String(format:"%02x",$0)}.joined()}
++        do {
++            base=["format":"aux.native-host-lifetime.v1","leaseId":leaseId,
++                  "controlScope":journal.scope,"controlTransactionId":transaction.uuidString,
++                  "controlReservationSha256":journal.reservationSha256,"policySha256":journal.policySha256,
++                  "transportGeneration":String(generation),"accountId":String(identity.accountId),
++                  "accountIncarnation":identity.incarnation.uuidString,"profileId":identity.profileId.uuidString,
++                  "profilePathSha256":hex(identity.profilePathSha256),"recordSha256":hex(identity.recordSha256),
++                  "extensionOriginSha256":hex(Data(SHA256.hash(data:Data(extensionOrigin.utf8)))),
++                  "nativeHostNameSha256":hex(Data(SHA256.hash(data:Data(hostName.utf8)))),
++                  "hostImageSha256":imageSha256,"intentId":intentId,
++                  "daemon":try lifetime(false),"browser":try lifetime(true)]
++        }catch{close(root);throw error}
++    }
++    deinit{if getpid()==process{if directory>=0{close(directory)};close(root)}}
++    private func safe(_ fd:Int32,directory:Bool)throws->stat {
++        var value=stat()
++        guard fstat(fd,&value)==0,(value.st_mode&S_IFMT)==(directory ? S_IFDIR:S_IFREG),value.st_uid==geteuid(),
++              value.st_mode&0o7777==(directory ? 0o700:0o600),directory || (value.st_nlink==1&&value.st_size>0&&value.st_size<=16_384)
++        else{throw AuxNativeHostJournalError.unavailable}
++        errno=0;let captured=acl_get_fd_np(fd,ACL_TYPE_EXTENDED)
++        if captured==nil&&errno==ENOENT{return value}
++        guard let acl=captured else{throw AuxNativeHostJournalError.unavailable};defer{acl_free(UnsafeMutableRawPointer(acl))}
++        var entry:acl_entry_t?;errno=0
++        guard acl_valid(acl)==0,acl_get_entry(acl,0,&entry)==(-1),errno==EINVAL,entry==nil else{throw AuxNativeHostJournalError.unavailable}
++        return value
++    }
++    private func directoryCurrent()throws {
++        guard getpid()==process,directory>=0 else{throw AuxNativeHostJournalError.unavailable}
++        _ = try safe(root,directory:true);let held=try safe(directory,directory:true);var named=stat()
++        guard fstatat(root,Self.leaf,&named,AT_SYMLINK_NOFOLLOW)==0,named.st_dev==held.st_dev,named.st_ino==held.st_ino else{throw AuxNativeHostJournalError.conflict}
++    }
++    private func read()throws->Data {
++        try directoryCurrent()
++        let fd=openat(directory,leaseId+".json",O_RDONLY|O_NOFOLLOW|O_NONBLOCK|O_CLOEXEC)
++        guard fd>=0 else{throw AuxNativeHostJournalError.unavailable};defer{close(fd)}
++        let before=try safe(fd,directory:false);var named=stat()
++        guard fstatat(directory,leaseId+".json",&named,AT_SYMLINK_NOFOLLOW)==0,named.st_dev==before.st_dev,named.st_ino==before.st_ino else{throw AuxNativeHostJournalError.conflict}
++        var bytes=Data(count:Int(before.st_size)),offset=0
++        while offset<bytes.count{let amount=bytes.withUnsafeMutableBytes{Darwin.read(fd,$0.baseAddress!.advanced(by:offset),$0.count-offset)};if amount<0&&errno==EINTR{continue};guard amount>0 else{throw AuxNativeHostJournalError.unavailable};offset += amount}
++        let after=try safe(fd,directory:false)
++        guard before.st_dev==after.st_dev,before.st_ino==after.st_ino,before.st_size==after.st_size,
++              before.st_mtimespec.tv_sec==after.st_mtimespec.tv_sec,before.st_mtimespec.tv_nsec==after.st_mtimespec.tv_nsec,
++              before.st_ctimespec.tv_sec==after.st_ctimespec.tv_sec,before.st_ctimespec.tv_nsec==after.st_ctimespec.tv_nsec else{throw AuxNativeHostJournalError.conflict}
++        _ = try strictEnvelopeObject(bytes);try directoryCurrent();return bytes
++    }
++    private func publish(_ next:[String:Any],phase nextPhase:String)throws {
++        guard !unknown else{throw AuxNativeHostJournalError.unknown}
++        try directoryCurrent()
++        if let recorded{guard try read()==recorded else{throw AuxNativeHostJournalError.conflict}}
++        else{var entry=stat();guard fstatat(directory,leaseId+".json",&entry,AT_SYMLINK_NOFOLLOW)<0,errno==ENOENT else{throw AuxNativeHostJournalError.conflict}}
++        let bytes=try JSONSerialization.data(withJSONObject:next,options:[.sortedKeys,.withoutEscapingSlashes])
++        guard bytes.count>0,bytes.count<=16_384 else{throw AuxNativeHostJournalError.unavailable}
++        let temporary="."+leaseId+"-"+UUID().uuidString.lowercased()+".next"
++        unknown=true // Retain any failed/lost filesystem mutation; no replay.
++        let fd=openat(directory,temporary,O_WRONLY|O_CREAT|O_EXCL|O_NOFOLLOW|O_CLOEXEC,0o600)
++        guard fd>=0 else{throw AuxNativeHostJournalError.unknown}
++        do {
++            var offset=0
++            while offset<bytes.count{let amount=bytes.withUnsafeBytes{Darwin.write(fd,$0.baseAddress!.advanced(by:offset),$0.count-offset)};if amount<0&&errno==EINTR{continue};guard amount>0 else{throw AuxNativeHostJournalError.unknown};offset += amount}
++            guard fsync(fd)==0 else{throw AuxNativeHostJournalError.unknown}
++            close(fd)
++        }catch{close(fd);throw error}
++        guard renameat(directory,temporary,directory,leaseId+".json")==0,fsync(directory)==0 else{throw AuxNativeHostJournalError.unknown}
++        guard try read()==bytes else{throw AuxNativeHostJournalError.unknown}
++        recorded=bytes;phase=nextPhase;unknown=false
++    }
++    func prepare()throws {
++        guard getpid()==process,!unknown else{throw AuxNativeHostJournalError.unknown}
++        if let recorded{guard phase=="prepared",try read()==recorded else{throw AuxNativeHostJournalError.conflict};return}
++        // Actual retained task root only. No account/profile directory scan.
++        if mkdirat(root,Self.leaf,0o700)<0&&errno != EEXIST{unknown=true;throw AuxNativeHostJournalError.unknown}
++        directory=openat(root,Self.leaf,O_RDONLY|O_DIRECTORY|O_NOFOLLOW|O_CLOEXEC)
++        guard directory>=0 else{unknown=true;throw AuxNativeHostJournalError.unknown}
++        try directoryCurrent()
++        let cursor=openat(directory,".",O_RDONLY|O_DIRECTORY|O_NOFOLLOW|O_CLOEXEC)
++        guard cursor>=0,let stream=fdopendir(cursor) else{if cursor>=0{close(cursor)};throw AuxNativeHostJournalError.unavailable};defer{closedir(stream)}
++        var count=0
++        errno=0
++        while let row=readdir(stream){let name=withUnsafePointer(to:&row.pointee.d_name){$0.withMemoryRebound(to:CChar.self,capacity:256){String(cString:$0)}};if name=="."||name==".."{continue};count += 1;guard count<256 else{throw AuxNativeHostJournalError.unavailable};errno=0}
++        guard errno==0 else{throw AuxNativeHostJournalError.unavailable}
++        var next=base;next["phase"]="prepared";try publish(next,phase:"prepared")
++        guard fsync(root)==0 else{unknown=true;throw AuxNativeHostJournalError.unknown}
++    }
++    func publishSuspended(_ pid:Int32)throws {
++        guard getpid()==process,!unknown,phase=="prepared",let recorded,try read()==recorded else{throw AuxNativeHostJournalError.conflict}
++        var seconds:UInt64=0,micros:UInt64=0
++        guard nativeHostStoppedLifetime(pid,&seconds,&micros)==0,pid>1,seconds>0,micros<1_000_000 else{throw AuxNativeHostJournalError.unavailable}
++        let facts=["pid":String(pid),"seconds":String(seconds),"microseconds":String(micros)]
++        child=facts
++        var next=base;next["phase"]="spawned";next["helper"]=facts;try publish(next,phase:"spawned")
++    }
++    // Invoked only by joined native process owner after exact original wait and
++    // closed stdio, or definite native no-child spawn failure. No JS endpoint.
++    func terminal(pid:Int32,waitStatus:Int32,spawnError:Int32)throws {
++        guard getpid()==process,!unknown else{throw AuxNativeHostJournalError.unknown}
++        if retired{return}
++        if phase=="reaped"||phase=="not-spawned"{guard let recorded,try read()==recorded else{throw AuxNativeHostJournalError.conflict};try retireTerminal();return}
++        if recorded==nil,phase.isEmpty,pid==0,spawnError>0,waitStatus==0 {
++            try directoryCurrent();var named=stat()
++            guard fstatat(directory,leaseId+".json",&named,AT_SYMLINK_NOFOLLOW)<0,errno==ENOENT else{throw AuxNativeHostJournalError.conflict}
++            retired=true;return // Definite original no-spawn; no journal mutation was issued.
++        }
++        var next=base
++        if pid>1 {
++            guard phase=="spawned",let child,child["pid"]==String(pid),waitStatus>=0,spawnError==0 else{throw AuxNativeHostJournalError.conflict}
++            next["phase"]="reaped";next["helper"]=child;next["waitStatus"]=String(waitStatus);try publish(next,phase:"reaped")
++        }else {
++            guard phase=="prepared",child==nil,spawnError>0,waitStatus==0 else{throw AuxNativeHostJournalError.conflict}
++            next["phase"]="not-spawned";next["spawnError"]=String(spawnError);try publish(next,phase:"not-spawned")
++        }
++        try retireTerminal()
++    }
++    private func retireTerminal()throws {
++        guard !unknown,!retired,phase=="reaped"||phase=="not-spawned",let recorded,try read()==recorded else{throw AuxNativeHostJournalError.conflict}
++        let fd=openat(directory,leaseId+".json",O_RDONLY|O_NOFOLLOW|O_NONBLOCK|O_CLOEXEC)
++        guard fd>=0 else{throw AuxNativeHostJournalError.unknown};defer{close(fd)}
++        let held=try safe(fd,directory:false);var named=stat()
++        guard fstatat(directory,leaseId+".json",&named,AT_SYMLINK_NOFOLLOW)==0,named.st_dev==held.st_dev,named.st_ino==held.st_ino,try read()==recorded else{throw AuxNativeHostJournalError.conflict}
++        unknown=true
++        guard unlinkat(directory,leaseId+".json",0)==0,fsync(directory)==0 else{throw AuxNativeHostJournalError.unknown}
++        try directoryCurrent()
++        guard fstatat(directory,leaseId+".json",&named,AT_SYMLINK_NOFOLLOW)<0,errno==ENOENT else{throw AuxNativeHostJournalError.unknown}
++        retired=true;unknown=false
++    }
++    func canRelease()throws->Bool {
++        guard getpid()==process,!unknown else{return false}
++        if !retired{try retireTerminal()}
++        try directoryCurrent();var named=stat()
++        return retired && fstatat(directory,leaseId+".json",&named,AT_SYMLINK_NOFOLLOW)<0 && errno==ENOENT
++    }
++}
+--- a/daemon/AuxAccountsCskCoordinator.swift
++++ b/daemon/AuxAccountsCskCoordinator.swift
+@@ -140,6 +140,13 @@
+     func registeredMemoryAccount(_ account:Int64)throws->AuxMemoryAccountIdentity {
+         try AuxMemoryAccountIdentity.decode(registeredMemoryRegistryBytes(),account:account)
+     }
++    func registeredNativeHostProfile(_ path:String)throws->AuxMemoryAccountIdentity {
++        let bytes=try registeredMemoryRegistryBytes(),registry=try strictEnvelopeObject(bytes)
++        guard let bindings=registry["profileAccountBindings"] as? [String:Any],bindings.count<=4096 else{throw AuxMemoryAccountError.unavailable}
++        let matches=bindings.values.compactMap{$0 as? [String:Any]}.filter{$0["profilePath"] as? String==path}
++        guard matches.count==1,let account=integer(matches[0]["accountId"]) else{throw AuxMemoryAccountError.unavailable}
++        return try AuxMemoryAccountIdentity.decode(bytes,account:account)
++    }
+     func memoryRegistryMatches(_ bytes:Data)throws->Bool {try registeredMemoryRegistryBytes()==bytes}
+     private let info=Data("aux.dk.csk.v2".utf8)
+     private func subkey(_ root:Data)->SymmetricKey {HKDF<SHA256>.deriveKey(inputKeyMaterial:SymmetricKey(data:root),salt:Data(),info:info,outputByteCount:32)}
+--- a/daemon/AuxSecureStore.swift
++++ b/daemon/AuxSecureStore.swift
+@@ -116,6 +116,10 @@
+         guard let accounts else{throw AuxMemoryAccountError.unavailable}
+         return try accounts.registeredMemoryAccount(account)
+     }
++    func registeredNativeHostProfile(_ path:String)throws->AuxMemoryAccountIdentity {
++        guard let accounts else{throw AuxMemoryAccountError.unavailable}
++        return try accounts.registeredNativeHostProfile(path)
++    }
+     func withAccountRegistryLock<T>(_ body:()throws->T)throws->T {
+         guard let accounts else{throw AuxAccountsCskError.unavailable};return try accounts.withAccountRegistryLock(body)
+     }
+--- a/daemon/AuxOwnedCommandDispatcher.swift
++++ b/daemon/AuxOwnedCommandDispatcher.swift
+@@ -21,6 +21,18 @@
+     // actual absent-state generation is refused by the unchanged core.
+     private static let readOnlyCommands:Set<String>=["install-status","keys-status","get-public-keys","public-keys","install-init","init-keys","cdp-sign","dk-unwrap","secure-read","inbox-key-v2"]
+     private static func requestDigest(_ input:String)->Data{Data(SHA256.hash(data:Data(input.utf8)))}
++    private final class NativeHostLease {
++        let profilePath:String
++        let identity:AuxMemoryAccountIdentity
++        let journal:AuxNativeHostJournal
++        let controlRoot:String
++        let taskRoot:String
++        var stopRequested=false
++        init(profilePath:String,identity:AuxMemoryAccountIdentity,journal:AuxNativeHostJournal,controlRoot:String,taskRoot:String){
++            self.profilePath=profilePath;self.identity=identity;self.journal=journal
++            self.controlRoot=controlRoot;self.taskRoot=taskRoot
++        }
++    }
+     private final class Entry {
+ #if AUX_NATIVE_FRESH_RUNTIME_CONSUMER
+         var nativeFreshRuntime:NativeFreshRuntimeCapturedContext? = nil
+@@ -37,6 +49,7 @@
+         var reconcilingRead=false
+ #endif
+ #if AUX_BROWSER_ONLY_NATIVE_STARTUP
++        var nativeHostLeases=[String:NativeHostLease]()
+         var memoryAccounts=[UInt64:AuxRegisteredMemoryAccountOwner]()
+         var memoryJournals=[UInt64:AuxMemoryHelperJournal]()
+         var pendingMemoryRegistryTarget:Data?
+@@ -1112,7 +1125,7 @@
+     }
+     private func hasRetainedLifetime(_ entry:Entry)->Bool {
+ #if AUX_BROWSER_ONLY_NATIVE_STARTUP
+-        if !entry.memoryAccounts.isEmpty{return true}
++        if !entry.memoryAccounts.isEmpty || !entry.nativeHostLeases.isEmpty{return true}
+ #endif
+         return entry.browserGrantUnresolved || hasUntrackedFreshGuard(entry)
+     }
+@@ -1227,7 +1240,7 @@
+         guard let entry=entries[handle]else{return -1}
+         if entry.active>0{return 1}
+ #if AUX_BROWSER_ONLY_NATIVE_STARTUP
+-        if !entry.memoryAccounts.isEmpty{return 1}
++        if !entry.memoryAccounts.isEmpty || !entry.nativeHostLeases.isEmpty{return 1}
+ #endif
+ #if AUX_NATIVE_FRESH_RUNTIME_CONSUMER
+         if entry.reconcilingRead{return 1}
+@@ -1502,11 +1515,32 @@
+         _ = try strictEnvelopeObject(bytes)
+         condition.lock()
+         guard let entry=entries[handle],entry.phase == .open,entry.active>0 else{condition.unlock();throw AuxMemoryAccountError.unavailable}
+-        let owners=Array(entry.memoryAccounts.values),pending=entry.pendingMemoryRegistryTarget;condition.unlock()
++        let owners=Array(entry.memoryAccounts.values),hosts=Array(entry.nativeHostLeases.values),pending=entry.pendingMemoryRegistryTarget;condition.unlock()
+         try requireOrdinaryStorageGuard(entry,moment:.beforeAction)
+-        if let pending, pending != bytes{throw AuxMemoryAccountError.changed}
+-        let changed=owners.contains{(try? AuxMemoryAccountIdentity.decode(bytes,account:$0.identity.accountId)) != $0.identity}
+-        if changed{condition.lock();entry.pendingMemoryRegistryTarget=bytes;condition.unlock();return false}
++        if let pending,pending != bytes {
++            let stillBlocked=owners.contains{(try? AuxMemoryAccountIdentity.decode(pending,account:$0.identity.accountId)) != $0.identity} ||
++                hosts.contains{(try? AuxMemoryAccountIdentity.decode(pending,account:$0.identity.accountId)) != $0.identity}
++            guard !stillBlocked else{throw AuxMemoryAccountError.changed}
++            // The previous callback refused before atomicWriteFileSyncBody.
++            // Only after its affected actual owners settle may a new target
++            // supersede that unsubmitted proposal, under the same registry lock.
++            condition.lock();entry.pendingMemoryRegistryTarget=nil;condition.unlock()
++        }
++        let changed=owners.contains{(try? AuxMemoryAccountIdentity.decode(bytes,account:$0.identity.accountId)) != $0.identity} ||
++            hosts.contains{(try? AuxMemoryAccountIdentity.decode(bytes,account:$0.identity.accountId)) != $0.identity}
++        if changed {
++            condition.lock();entry.pendingMemoryRegistryTarget=bytes;condition.unlock()
++            guard let context=entry.nativeFreshRuntime else{throw AuxMemoryAccountError.unavailable}
++            for host in hosts where (try? AuxMemoryAccountIdentity.decode(bytes,account:host.identity.accountId)) != host.identity {
++                host.stopRequested=true
++                guard let lease=UUID(uuidString:host.journal.leaseId) else{throw AuxMemoryAccountError.unavailable}
++                // Request cancellation only; do not wait while holding the
++                // account-registry lock. Terminal publication happens after this
++                // callback refuses and releases the original writer's lock.
++                try context.owner.requestNativeHostStop(lease)
++            }
++            return false
++        }
+         try requireOrdinaryStorageGuard(entry,moment:.afterAction)
+         return true
+     }
+@@ -1522,6 +1556,97 @@
+     }
+     // This C boundary is consumed only by the real embedding main Environment
+     // producer; it is not registered as a page, generic Worker or command API.
++    // Only the authenticated native browser transport calls this finite
++    // protocol. No daemon HTTP/JS/Worker method accepts a lease or terminal flag.
++    func exchangeNativeHostFrame(_ handle:UInt64,frame:Data)throws->Data {
++        guard frame.count>0,frame.count<=8192 else{throw AuxDispatcherLifetimeError.invalidInput}
++        let request=try strictEnvelopeObject(frame)
++        guard let phase=request["phase"] as? String else{throw AuxDispatcherLifetimeError.invalidInput}
++        func text(_ key:String)throws->String {
++            guard let value=request[key] as? String,!value.isEmpty,value.utf8.count<4096,!value.utf8.contains(0) else{throw AuxDispatcherLifetimeError.invalidInput};return value
++        }
++        func integer(_ key:String,_ minimum:Int64,_ maximum:Int64)throws->Int64 {
++            let value=try text(key)
++            guard let number=Int64(value),String(number)==value,number>=minimum,number<=maximum else{throw AuxDispatcherLifetimeError.invalidInput};return number
++        }
++        return try withEntry(handle,guardGenericAction:false){entry in
++            guard let secure=entry.secureStore,let context=entry.nativeFreshRuntime else{throw AuxMemoryAccountError.unavailable}
++            try requireOrdinaryStorageGuard(entry,moment:.beforeAction)
++            func binding(_ identity:AuxMemoryAccountIdentity)->[String:String] {
++                func hex(_ bytes:Data)->String {bytes.map{String(format:"%02x",$0)}.joined()}
++                return ["accountId":String(identity.accountId),"accountIncarnation":identity.incarnation.uuidString,
++                    "profileId":identity.profileId.uuidString,"profilePathSha256":hex(identity.profilePathSha256),
++                    "recordSha256":hex(identity.recordSha256)]
++            }
++            if phase=="capture" {
++                guard Set(request.keys)==["phase","profilePath","profileId","accountId","captureNonce"],
++                      let nonce=UUID(uuidString:try text("captureNonce")),nonce.uuidString.lowercased()==(try text("captureNonce"))
++                else{throw AuxDispatcherLifetimeError.invalidInput}
++                let identity=try secure.registeredNativeHostProfile(text("profilePath"))
++                guard identity.accountId==(try integer("accountId",0,9_007_199_254_740_991)),
++                      identity.profileId==UUID(uuidString:try text("profileId")) else{throw AuxMemoryAccountError.changed}
++                try requireOrdinaryStorageGuard(entry,moment:.afterAction)
++                return try JSONSerialization.data(withJSONObject:binding(identity),options:[.sortedKeys,.withoutEscapingSlashes])
++            }
++            let lease:NativeHostLease
++            switch phase {
++            case "prepare":
++                do {
++                guard Set(request.keys)==["phase","profilePath","extensionOrigin","hostName","imageSha256","binding","intentId"] else{throw AuxDispatcherLifetimeError.invalidInput}
++                let path=try text("profilePath"),origin=try text("extensionOrigin"),host=try text("hostName"),image=try text("imageSha256")
++                guard path.hasPrefix("/"),origin.hasPrefix("chrome-extension://"),origin.hasSuffix("/"),
++                      origin.dropFirst(19).dropLast().count==32,
++                      origin.dropFirst(19).dropLast().allSatisfy({("a"..."p").contains(String($0))}),
++                      host.utf8.count<=255,!host.hasPrefix("."),!host.hasSuffix("."),!host.contains(".."),
++                      host.allSatisfy({$0.isASCII && ($0.isLowercase || $0.isNumber || $0=="_" || $0==".")})
++                else{throw AuxDispatcherLifetimeError.invalidInput}
++                let identity=try secure.registeredNativeHostProfile(path)
++                guard let captured=request["binding"] as? [String:String],captured==binding(identity) else{throw AuxMemoryAccountError.changed}
++                let roots=try context.owner.duplicateRetainedOrdinaryStorageRoots()
++                defer{Darwin.close(roots.control);Darwin.close(roots.task)}
++                let journal=try AuxNativeHostJournal(identity:identity,taskRoot:roots.task,generation:roots.generation,
++                    context:context,extensionOrigin:origin,hostName:host,imageSha256:image,intentId:text("intentId"))
++                func rootPath(_ fd:Int32)throws->String {
++                    var bytes=[CChar](repeating:0,count:Int(PATH_MAX))
++                    guard fcntl(fd,F_GETPATH,&bytes)==0 else{throw AuxMemoryAccountError.unsafeDirectory}
++                    return String(cString:bytes)
++                }
++                lease=try NativeHostLease(profilePath:path,identity:identity,journal:journal,
++                    controlRoot:rootPath(roots.control),taskRoot:rootPath(roots.task))
++                condition.lock()
++                guard entry.nativeHostLeases.count<256,entry.pendingMemoryRegistryTarget==nil else{condition.unlock();throw AuxMemoryAccountError.exhausted}
++                entry.nativeHostLeases[journal.leaseId]=lease
++                condition.unlock()
++                }catch{
++                    return try JSONSerialization.data(withJSONObject:["noIntent":true],options:[.sortedKeys])
++                }
++                try lease.journal.prepare() // Retained before any durable mutation.
++            case "publish", "terminal":
++                let id=try text("leaseId")
++                guard let uuid=UUID(uuidString:id),uuid.uuidString.lowercased()==id else{throw AuxDispatcherLifetimeError.invalidInput}
++                condition.lock();let existing=entry.nativeHostLeases[id];condition.unlock()
++                guard let existing else{throw AuxMemoryAccountError.unavailable};lease=existing
++                guard try secure.registeredNativeHostProfile(lease.profilePath)==lease.identity else{throw AuxMemoryAccountError.changed}
++                if phase=="publish" {
++                    guard !lease.stopRequested else{throw AuxMemoryAccountError.changed}
++                    guard Set(request.keys)==["phase","leaseId","pid"] else{throw AuxDispatcherLifetimeError.invalidInput}
++                    try lease.journal.publishSuspended(Int32(integer("pid",2,Int64(Int32.max))))
++                }else{
++                    guard Set(request.keys)==["phase","leaseId","pid","waitStatus","spawnError"] else{throw AuxDispatcherLifetimeError.invalidInput}
++                    try lease.journal.terminal(pid:Int32(integer("pid",0,Int64(Int32.max))),
++                        waitStatus:Int32(integer("waitStatus",0,Int64(Int32.max))),
++                        spawnError:Int32(integer("spawnError",0,Int64(Int32.max))))
++                    guard try lease.journal.canRelease() else{throw AuxMemoryAccountError.unavailable}
++                    condition.lock();entry.nativeHostLeases.removeValue(forKey:id);condition.broadcast();condition.unlock()
++                }
++            default:throw AuxDispatcherLifetimeError.invalidInput
++            }
++            try requireOrdinaryStorageGuard(entry,moment:.afterAction)
++            var response=["leaseId":lease.journal.leaseId]
++            if phase=="prepare"{response["controlRoot"]=lease.controlRoot;response["taskRoot"]=lease.taskRoot}
++            return try JSONSerialization.data(withJSONObject:response,options:[.sortedKeys,.withoutEscapingSlashes])
++        }
++    }
+     func captureMemoryAccount(_ handle:UInt64,account:Int64)throws->UInt64 {
+         try withEntry(handle,guardGenericAction:false){entry in
+             try requireOrdinaryStorageGuard(entry,moment:.beforeAction)
+@@ -1622,7 +1747,7 @@
+         // No public callback exists to relabel that grant as drained.
+         guard !entry.browserGrantUnresolved else{condition.unlock();throw AuxDispatcherLifetimeError.retiring}
+ #if AUX_BROWSER_ONLY_NATIVE_STARTUP
+-        guard entry.memoryAccounts.isEmpty else{condition.unlock();throw AuxDispatcherLifetimeError.retiring}
++        guard entry.memoryAccounts.isEmpty,entry.nativeHostLeases.isEmpty else{condition.unlock();throw AuxDispatcherLifetimeError.retiring}
+ #endif
+         while entry.active>0 {condition.wait()}
+         condition.unlock()
+--- a/daemon/AuxPreparedDaemonAuthority.swift
++++ b/daemon/AuxPreparedDaemonAuthority.swift
+@@ -7,7 +7,7 @@
+ private var daemonAuthorityNext:UInt64=1
+ private var daemonAuthorities=[UInt64:PreparedDaemonAuthority]()
+ private let daemonAuthPrefix=Data("Aux Daemon Auth v1\0".utf8) //19 exact bytes.
+-private enum DaemonAuthorityKind:Equatable{case signature,publicKeys,inboxKey,browserStartup,uiCapture}
++private enum DaemonAuthorityKind:Equatable{case signature,publicKeys,inboxKey,browserStartup,uiCapture,nativeHost}
+ // Exact backend-owned cache allocation; no Data COW alias can retain its old
+ // cache buffer after wipe. This does not promise zeroization of Foundation's
+ // transient JSON/base64 String copies or separately owned transport buffers.
+@@ -42,7 +42,7 @@
+         case .signature:command="cdp-sign"
+         case .publicKeys:command="get-public-keys"
+         case .inboxKey:command="inbox-key-v2"
+-        case .browserStartup,.uiCapture:command="" // Native-only routes, never generic command dispatch.
++        case .browserStartup,.uiCapture,.nativeHost:command="" // Native-only routes, never generic command dispatch.
+         }
+         input=kind == .signature ? "{\"challenge\":\""+message.base64EncodedString()+"\"}":"{}"
+     }
+@@ -101,6 +101,13 @@
+             return .completed(DaemonAuthorityPayload(&receipt))
+         }catch{return .failed}
+     }
++    if request.kind == .nativeHost {
++        do {
++            var reply=try AuxCommandDispatcherRegistry.shared.exchangeNativeHostFrame(entry.owner.handle,frame:request.message)
++            guard !reply.isEmpty,reply.count<=8192 else{return .failed}
++            return .completed(DaemonAuthorityPayload(&reply))
++        }catch{return .failed}
++    }
+     if request.kind == .uiCapture {
+         do {
+             var reply=try AuxCommandDispatcherRegistry.shared.exchangeUiStorageCaptureFrame(entry.owner.handle,frame:request.message)
+@@ -168,7 +175,7 @@
+     if kind == .signature {
+         guard let message else{return -1};bytes=Data(bytes:message,count:51)
+         guard validDaemonAuthMessage(bytes)else{return -1}
+-    }else if kind == .uiCapture {
++    }else if kind == .uiCapture || kind == .nativeHost {
+         guard let message,messageCount>0,messageCount<=8192 else{return -1}
+         bytes=Data(bytes:message,count:Int(messageCount))
+     }else{bytes=Data()}
+@@ -313,3 +320,8 @@
+ func AuxBeginPreparedBrowserStartup(_ id:UInt64,_ sequence:UInt64,_ nonce:UnsafePointer<UInt8>?,_ output:UnsafeMutablePointer<UInt8>?,_ capacity:UInt32,_ written:UnsafeMutablePointer<UInt32>?)->Int32 {
+     operatePreparedDaemonAuthority(id,sequence:sequence,nonce:nonce,kind:.browserStartup,message:nil,output:output,capacity:capacity,written:written)
+ }
++
++@_cdecl("AuxBeginPreparedNativeHost")
++func AuxBeginPreparedNativeHost(_ id:UInt64,_ sequence:UInt64,_ nonce:UnsafePointer<UInt8>?,_ message:UnsafePointer<UInt8>?,_ count:UInt32,_ output:UnsafeMutablePointer<UInt8>?,_ capacity:UInt32,_ written:UnsafeMutablePointer<UInt32>?)->Int32 {
++    operatePreparedDaemonAuthority(id,sequence:sequence,nonce:nonce,kind:.nativeHost,message:message,output:output,capacity:capacity,written:written,messageCount:count)
++}
+--- a/daemon/AuxNativeTaskLayout.swift
++++ b/daemon/AuxNativeTaskLayout.swift
+@@ -73,6 +73,11 @@
+                 throw AuxFreshColdBootstrapError.legacyOrUnknownExistingState
+             }
+         }
++        for process in try Self.nativeHostProcesses(home:home,expected:expected) {
++            guard memoryHelperPriorProcessExited(process.pid,process.seconds,process.microseconds)==1 else {
++                throw AuxFreshColdBootstrapError.legacyOrUnknownExistingState
++            }
++        }
+         try revalidate()
+     }
+     private struct MemoryHelperProcess {
+@@ -192,6 +197,125 @@
+         }
+         guard try memoryHelperRecordNames(directory)==names else{throw AuxFreshColdGuardError.path}
+         try metadata(directory,directory:true);try entry(home,memoryHelperDirectory,directory)
++        return processes
++    }
++    private struct NativeHostProcess {
++        let pid:Int32
++        let seconds:UInt64
++        let microseconds:UInt64
++    }
++    private static let nativeHostDirectory=".aux-native-host-lifetimes.v1"
++    // Decoder yields kernel queries, never a clean/ready flag. Persisted PID,
++    // account and generation fields are data; only the native process observer
++    // can establish that each original finite process has actually exited.
++    private static func decodeNativeHostProcesses(_ bytes:Data,filename:String,expected:Data)throws->[NativeHostProcess] {
++        let record=try strictEnvelopeObject(bytes),binding=try strictEnvelopeObject(expected)
++        func text(_ object:[String:Any],_ key:String)throws->String {
++            guard let value=object[key] as? String else{throw AuxFreshColdBootstrapError.legacyOrUnknownExistingState};return value
++        }
++        func unsigned(_ object:[String:Any],_ key:String,_ maximum:UInt64,_ minimum:UInt64=0)throws->UInt64 {
++            let raw=try text(object,key)
++            guard let value=UInt64(raw),String(value)==raw,value>=minimum,value<=maximum else{throw AuxFreshColdBootstrapError.legacyOrUnknownExistingState};return value
++        }
++        func canonicalUuid(_ object:[String:Any],_ key:String,lowercase:Bool=false)throws->String {
++            let raw=try text(object,key)
++            guard let value=UUID(uuidString:raw),(lowercase ? value.uuidString.lowercased():value.uuidString)==raw else{throw AuxFreshColdBootstrapError.legacyOrUnknownExistingState};return raw
++        }
++        func hash(_ key:String)throws {
++            let raw=try text(record,key)
++            guard raw.utf8.count==64,raw.utf8.allSatisfy({(48...57).contains($0)||(97...102).contains($0)}) else{throw AuxFreshColdBootstrapError.legacyOrUnknownExistingState}
++        }
++        func process(_ key:String)throws->NativeHostProcess {
++            guard let value=record[key] as? [String:Any],Set(value.keys)==["pid","seconds","microseconds"] else{throw AuxFreshColdBootstrapError.legacyOrUnknownExistingState}
++            return try .init(pid:Int32(unsigned(value,"pid",UInt64(Int32.max),2)),seconds:unsigned(value,"seconds",UInt64.max,1),microseconds:unsigned(value,"microseconds",999_999))
++        }
++        guard try text(record,"format")=="aux.native-host-lifetime.v1" else{throw AuxFreshColdBootstrapError.legacyOrUnknownExistingState}
++        let lease=try canonicalUuid(record,"leaseId",lowercase:true)
++        guard filename==lease+".json" else{throw AuxFreshColdBootstrapError.legacyOrUnknownExistingState}
++        for key in ["controlScope","controlReservationSha256","policySha256","profilePathSha256","recordSha256","extensionOriginSha256","nativeHostNameSha256","hostImageSha256"] {try hash(key)}
++        _=try canonicalUuid(record,"controlTransactionId")
++        _=try canonicalUuid(record,"accountIncarnation");_=try canonicalUuid(record,"profileId");_=try canonicalUuid(record,"intentId",lowercase:true)
++        for key in ["controlScope","controlTransactionId","controlReservationSha256","policySha256"] {
++            guard try text(record,key)==text(binding,key) else{throw AuxFreshColdBootstrapError.legacyOrUnknownExistingState}
++        }
++        _=try unsigned(record,"transportGeneration",UInt64.max,1)
++        _=try unsigned(record,"accountId",9_007_199_254_740_991)
++        let phase=try text(record,"phase")
++        let base:Set<String>=["format","leaseId","controlScope","controlTransactionId","controlReservationSha256","policySha256","transportGeneration","accountId","accountIncarnation","profileId","profilePathSha256","recordSha256","daemon","browser","phase","extensionOriginSha256","nativeHostNameSha256","hostImageSha256","intentId"]
++        let extra:Set<String>
++        switch phase {
++        case "prepared":extra=[]
++        case "spawned":extra=["helper"]
++        case "reaped":extra=["helper","waitStatus"]
++        case "not-spawned":extra=["spawnError"]
++        default:throw AuxFreshColdBootstrapError.legacyOrUnknownExistingState
++        }
++        guard Set(record.keys)==base.union(extra) else{throw AuxFreshColdBootstrapError.legacyOrUnknownExistingState}
++        let daemon=try process("daemon"),browser=try process("browser")
++        guard daemon.pid != browser.pid else{throw AuxFreshColdBootstrapError.legacyOrUnknownExistingState}
++        // A missing PID publication can hide a successful suspended spawn.
++        // Parent absence alone cannot resolve that uncertainty.
++        guard phase != "prepared" else{throw AuxFreshColdBootstrapError.legacyOrUnknownExistingState}
++        if phase=="not-spawned" {
++            _=try unsigned(record,"spawnError",UInt64(Int32.max),1)
++            return [daemon,browser]
++        }
++        let helper=try process("helper")
++        guard helper.pid != daemon.pid,helper.pid != browser.pid else{throw AuxFreshColdBootstrapError.legacyOrUnknownExistingState}
++        if phase=="reaped" {
++            let raw=try text(record,"waitStatus")
++            guard let value=Int32(raw),String(value)==raw else{throw AuxFreshColdBootstrapError.legacyOrUnknownExistingState}
++        }
++        return [daemon,browser,helper]
++    }
++    private static func nativeHostRecordNames(_ directory:Int32)throws->Set<String> {
++        let copied=openat(directory,".",O_RDONLY|O_DIRECTORY|O_NOFOLLOW|O_CLOEXEC|O_NONBLOCK)
++        guard copied>=0 else{throw AuxFreshColdGuardError.io(errno)}
++        guard let stream=fdopendir(copied)else{let error=errno;close(copied);throw AuxFreshColdGuardError.io(error)};defer{closedir(stream)}
++        var names=Set<String>();errno=0
++        while let item=readdir(stream) {
++            let name=withUnsafePointer(to:&item.pointee.d_name){$0.withMemoryRebound(to:CChar.self,capacity:Int(item.pointee.d_namlen)+1){String(cString:$0)}}
++            if name != "." && name != ".." {
++                guard name.hasSuffix(".json"),let id=UUID(uuidString:String(name.dropLast(5))),id.uuidString.lowercased()+".json"==name,
++                      names.insert(name).inserted,names.count<=256 else{throw AuxFreshColdBootstrapError.legacyOrUnknownExistingState}
++            }
++            errno=0
++        }
++        guard errno==0 else{throw AuxFreshColdGuardError.io(errno)};return names
++    }
++    private static func nativeHostProcesses(home:Int32,expected:Data)throws->[NativeHostProcess] {
++        let directory=openat(home,nativeHostDirectory,O_RDONLY|O_DIRECTORY|O_NOFOLLOW|O_CLOEXEC|O_NONBLOCK)
++        if directory<0 {
++            guard errno==ENOENT else{throw AuxFreshColdGuardError.io(errno)}
++            var absent=stat();guard fstatat(home,nativeHostDirectory,&absent,AT_SYMLINK_NOFOLLOW) != 0,errno==ENOENT else{throw AuxFreshColdGuardError.path}
++            return []
++        }
++        defer{close(directory)}
++        try metadata(directory,directory:true);try entry(home,nativeHostDirectory,directory)
++        let names=try nativeHostRecordNames(directory);var processes=[NativeHostProcess]()
++        for name in names.sorted() {
++            let fd=openat(directory,name,O_RDONLY|O_NOFOLLOW|O_CLOEXEC|O_NONBLOCK)
++            guard fd>=0 else{throw AuxFreshColdGuardError.io(errno)}
++            defer{close(fd)}
++            try metadata(fd,directory:false);try entry(directory,name,fd)
++            var before=stat();guard fstat(fd,&before)==0,before.st_size>0,before.st_size<=16_384 else{throw AuxFreshColdGuardError.metadata}
++            var bytes=Data(count:Int(before.st_size))
++            try bytes.withUnsafeMutableBytes { raw in
++                var offset=0
++                while offset<raw.count {
++                    let count=pread(fd,raw.baseAddress!.advanced(by:offset),raw.count-offset,off_t(offset))
++                    if count<0 && errno==EINTR{continue}
++                    guard count>0 else{throw AuxFreshColdGuardError.io(errno)};offset += count
++                }
++            }
++            var after=stat();guard fstat(fd,&after)==0,before.st_dev==after.st_dev,before.st_ino==after.st_ino,
++                before.st_size==after.st_size,before.st_mtimespec.tv_sec==after.st_mtimespec.tv_sec,before.st_mtimespec.tv_nsec==after.st_mtimespec.tv_nsec,
++                before.st_ctimespec.tv_sec==after.st_ctimespec.tv_sec,before.st_ctimespec.tv_nsec==after.st_ctimespec.tv_nsec else{throw AuxFreshColdGuardError.metadata}
++            try metadata(fd,directory:false);try entry(directory,name,fd)
++            processes += try decodeNativeHostProcesses(bytes,filename:name,expected:expected)
++        }
++        guard try nativeHostRecordNames(directory)==names else{throw AuxFreshColdGuardError.path}
++        try metadata(directory,directory:true);try entry(home,nativeHostDirectory,directory)
+         return processes
+     }
+     private static func binding(policy:AuxAuthenticatedFreshBootstrapPolicy,scope:String,transaction:String,reservationHash:String)throws->(String,Data) {
+--- a/daemon/AuxNativeDaemonMain.cc
++++ b/daemon/AuxNativeDaemonMain.cc
+@@ -23,6 +23,7 @@
+ #include <string>
+ #include <thread>
+ #include <libproc.h>
++#include <sys/proc.h>
+ #include <signal.h>
+ #include <cerrno>
+ #include <vector>
+@@ -395,3 +396,28 @@
+   node::TearDownOncePerProcess();
+   return exit_code;
+ }
++
++// Actual stopped direct child of the authenticated browser parent only.
++extern "C" int32_t AuxNativeHostCopyStoppedBrowserChildLifetime(
++    int32_t pid,uint64_t* seconds,uint64_t* microseconds) {
++  if(!seconds||!microseconds)return -1;
++  *seconds=0;*microseconds=0;
++#if defined(AUX_BROWSER_ONLY_NATIVE_STARTUP) && AUX_BROWSER_ONLY_NATIVE_STARTUP
++  int32_t parent=-1;uint64_t parent_seconds=0,parent_micros=0;
++  if(AuxCopyOrdinaryBrowserParentLifetime(&parent,&parent_seconds,&parent_micros)!=0)return -1;
++  proc_bsdinfo first{},second{};
++  if(pid<=1||proc_pidinfo(pid,PROC_PIDTBSDINFO,0,&first,sizeof(first))!=sizeof(first)||
++      proc_pidinfo(pid,PROC_PIDTBSDINFO,0,&second,sizeof(second))!=sizeof(second)||
++      first.pbi_pid!=uint32_t(pid)||second.pbi_pid!=first.pbi_pid||
++      first.pbi_ppid!=uint32_t(parent)||second.pbi_ppid!=first.pbi_ppid||
++      first.pbi_status!=SSTOP||second.pbi_status!=SSTOP||!first.pbi_start_tvsec||
++      first.pbi_start_tvusec>=1'000'000||second.pbi_start_tvsec!=first.pbi_start_tvsec||
++      second.pbi_start_tvusec!=first.pbi_start_tvusec||getppid()!=parent)return -1;
++  int32_t checked=-1;uint64_t checked_seconds=0,checked_micros=0;
++  if(AuxCopyOrdinaryBrowserParentLifetime(&checked,&checked_seconds,&checked_micros)!=0||
++      checked!=parent||checked_seconds!=parent_seconds||checked_micros!=parent_micros)return -1;
++  *seconds=first.pbi_start_tvsec;*microseconds=first.pbi_start_tvusec;return 0;
++#else
++  return -1;
++#endif
++}
+--- a/chrome/browser/aux/AuxNativePeerWire.h
++++ b/chrome/browser/aux/AuxNativePeerWire.h
+@@ -5,6 +5,7 @@
+ 
+ namespace aux::peer::detail {
+ constexpr mach_msg_id_t kRequest = 0x41555851;  // AUXQ
++constexpr mach_msg_id_t kNativeHostStopRequest = 0x41555864;
+ constexpr mach_msg_id_t kReply = 0x41555852;    // AUXR
+ constexpr uint32_t kVersion = 1;
+ constexpr uint32_t kMaximumTimeoutMs = 2'000;
+@@ -116,7 +117,7 @@
+ constexpr mach_msg_id_t kAuthorityRequest = 0x4155584c; // AUXL
+ constexpr mach_msg_id_t kAuthorityReply = 0x4155584d; // AUXM
+ constexpr uint32_t kAuthorityVersion = 6;
+-constexpr uint32_t kSign = 1, kPublicKeys = 2, kInboxKey = 3, kObserve = 4, kAcknowledge = 5, kBrowserStartup = 6, kUiCapture = 7;
++constexpr uint32_t kSign = 1, kPublicKeys = 2, kInboxKey = 3, kObserve = 4, kAcknowledge = 5, kBrowserStartup = 6, kUiCapture = 7, kNativeHost = 8;
+ struct AuthorityWire {
+   mach_msg_header_t header{};
+   uint32_t version = kAuthorityVersion;
+--- a/chrome/browser/aux/AuxNativePeerTransport.h
++++ b/chrome/browser/aux/AuxNativePeerTransport.h
+@@ -117,6 +117,7 @@
+   DaemonAuthorityReply GetInstallationPublicKeys(uint32_t timeout_ms);
+   DaemonAuthorityReply GetBrowserStartupLease(uint32_t timeout_ms);
+   // Finite capture-data frames only; no profile/migration admission.
++  DaemonAuthorityReply ExchangeNativeHostFrame(std::span<const uint8_t> frame, uint32_t timeout_ms);
+   DaemonAuthorityReply ExchangeUiCaptureFrame(std::span<const uint8_t> frame, uint32_t timeout_ms);
+   DaemonAuthorityReply GetAgentInboxV2MasterKey(uint32_t timeout_ms);
+   // Caller invokes only after its actual owner/pulse publication fence.
+@@ -195,6 +196,7 @@
+   AuthenticatedNativeParentConnection(const AuthenticatedNativeParentConnection&) = delete;
+   AuthenticatedNativeParentConnection& operator=(const AuthenticatedNativeParentConnection&) = delete;
+   ExchangeStatus Revalidate(uint32_t timeout_ms);
++  int32_t RequestNativeHostStop(std::span<const uint8_t,16> lease, uint32_t timeout_ms);
+   int32_t CopyBrowserPrivateRoot(uint32_t role, uint64_t* generation, int32_t* descriptor, uint32_t timeout_ms);
+   int32_t CopyBrowserDrainReport(uint64_t generation,
+       const BrowserDrainChallenge& challenge, BrowserDrainReport* report,
+--- a/chrome/browser/aux/AuxOwnedNativePeerChild.h
++++ b/chrome/browser/aux/AuxOwnedNativePeerChild.h
+@@ -34,6 +34,7 @@
+   DaemonAuthorityReply SignDaemonChallenge(std::span<const uint8_t> message, uint32_t timeout_ms);
+   DaemonAuthorityReply GetInstallationPublicKeys(uint32_t timeout_ms);
+   DaemonAuthorityReply GetBrowserStartupLease(uint32_t timeout_ms);
++  DaemonAuthorityReply ExchangeNativeHostFrame(std::span<const uint8_t> frame, uint32_t timeout_ms);
+   DaemonAuthorityReply ExchangeUiCaptureFrame(std::span<const uint8_t> frame, uint32_t timeout_ms);
+   DaemonAuthorityReply GetAgentInboxV2MasterKey(uint32_t timeout_ms);
+   DaemonAuthorityStatus AcceptAuthorityReply(const DaemonAuthorityReply& reply, uint32_t timeout_ms);
+--- a/chrome/browser/aux/AuxNativePeerTransport.cc
++++ b/chrome/browser/aux/AuxNativePeerTransport.cc
+@@ -1,9 +1,14 @@
+ #include "AuxNativePeerTransport.h"
+ #include "AuxBrowserPrivateRoots.h"
+ #include "AuxNativePeerWire.h"
++#if !defined(AUX_NATIVE_DAEMON_AUTHORITY_SERVER)
++extern "C" void AuxStopBrowserNativeHostLeaseV1(const uint8_t*);
++#endif
+ #include "AuxSelectedHomePolicyBridge.h"
+ #if defined(AUX_NATIVE_DAEMON_AUTHORITY_SERVER)
+ #include "AuxFreshColdBootstrapNativeBridge.h"
++extern "C" int32_t AuxBeginPreparedNativeHost(uint64_t,uint64_t,const uint8_t*,
++    const uint8_t*,uint32_t,uint8_t*,uint32_t,uint32_t*);
+ extern "C" int32_t AuxBeginPreparedUiCapture(uint64_t, uint64_t, const uint8_t*,
+     const uint8_t*, uint32_t, uint8_t*, uint32_t, uint32_t*);
+ #endif
+@@ -744,6 +749,7 @@
+   DestroyMessage destroy(header);
+   const bool authority_registration = header->msgh_id == kAuthorityRegister;
+   const bool selected_request = header->msgh_id == kSelectedHomeRequest;
++  const bool native_host_stop_request = header->msgh_id == kNativeHostStopRequest;
+   const bool browser_roots_request = header->msgh_id == kBrowserRootsRequest;
+   const bool browser_drain_request = header->msgh_id == kBrowserDrainRequest;
+   const bool browser_drain_ack = header->msgh_id == kBrowserDrainAck;
+@@ -777,8 +783,9 @@
+     if ((browser_roots_request && parsed.wire.version != kBrowserRootsVersion) ||
+         !ValidWire(checked, browser_roots_request ? kBrowserRootsRequest :
+             browser_drain_request ? kBrowserDrainRequest :
+-            browser_drain_ack ? kBrowserDrainAck : kRequest) ||
+-        ((browser_drain_request || browser_drain_ack) ? parsed.wire.generation == 0 :
++            browser_drain_ack ? kBrowserDrainAck :
++            native_host_stop_request ? kNativeHostStopRequest : kRequest) ||
++        ((browser_drain_request || browser_drain_ack || native_host_stop_request) ? parsed.wire.generation == 0 :
+                                                      parsed.wire.generation != 0))
+       return ExchangeStatus::refused;
+     audit = parsed.trailer.msgh_audit;
+@@ -945,6 +952,15 @@
+     state->snapshot.child_pid_version_observed = true;
+     ++state->snapshot.authenticated_exchanges;
+     return ExchangeStatus::authenticated;
++  }
++  if(native_host_stop_request) {
++    if(expected_browser_generation!=generation)return ExchangeStatus::refused;
++#if !defined(AUX_NATIVE_DAEMON_AUTHORITY_SERVER)
++    // Cancellation only: the authenticated ACK never claims pipe/reap drain.
++    AuxStopBrowserNativeHostLeaseV1(nonce.data());
++#else
++    return ExchangeStatus::refused;
++#endif
+   }
+   Wire reply{};
+   reply.header.msgh_bits = MACH_MSGH_BITS(MACH_MSG_TYPE_MOVE_SEND_ONCE, 0);
+@@ -1236,6 +1252,55 @@
+   const auto result = ExchangeBrowserDrain(DrainInteger(report, 8, 8),
+       DrainDigest(report), true, &reply, timeout_ms);
+   return result == 0 && reply == report ? 0 : result == 0 ? 3 : result;
++}
++int32_t AuthenticatedNativeParentConnection::RequestNativeHostStop(
++    std::span<const uint8_t,16> lease,uint32_t timeout_ms) {
++  auto state=state_;
++  if(getpid()!=state->process||!ValidTimeout(timeout_ms))return -1;
++  if(Revalidate(timeout_ms)!=ExchangeStatus::authenticated)return -1;
++  std::optional<NativeSendRight> endpoint;
++  {
++    std::lock_guard<std::mutex> lock(state->mutex);
++    if(state->snapshot.closed)return -2;
++    endpoint.emplace(state->endpoint.CopyOwnedRight());
++    if(!endpoint->is_valid())return -1;
++    ++state->snapshot.active_checks;
++  }
++  auto finish=+[](State* retained){std::lock_guard<std::mutex> lock(retained->mutex);--retained->snapshot.active_checks;};
++  std::unique_ptr<State,decltype(finish)> active(state.get(),finish);
++  ReceiveRight receiver;if(receiver.get()==MACH_PORT_NULL)return -1;
++  Wire request{};
++  request.header.msgh_bits=MACH_MSGH_BITS(MACH_MSG_TYPE_COPY_SEND,MACH_MSG_TYPE_MAKE_SEND_ONCE);
++  request.header.msgh_size=sizeof(request);request.header.msgh_remote_port=endpoint->BorrowNativeName();
++  request.header.msgh_local_port=receiver.get();request.header.msgh_id=kNativeHostStopRequest;
++  request.generation=state->transport_generation;
++  arc4random_buf(request.nonce.data(),request.nonce.size());
++  std::copy(lease.begin(),lease.end(),request.nonce.begin());
++  const auto nonce=request.nonce;
++  auto status=mach_msg(&request.header,MACH_SEND_MSG|MACH_SEND_TIMEOUT,sizeof(request),0,MACH_PORT_NULL,timeout_ms,MACH_PORT_NULL);
++  if(status!=KERN_SUCCESS) {
++    if(RecoverableSendError(status)) {
++      const auto local=MACH_MSGH_BITS_LOCAL(request.header.msgh_bits);
++      if(local==MACH_MSG_TYPE_MOVE_SEND||local==MACH_MSG_TYPE_MOVE_SEND_ONCE)
++        mach_port_deallocate(mach_task_self(),request.header.msgh_local_port);
++      return -1;
++    }
++    std::lock_guard<std::mutex> lock(state->mutex);
++    ++state->snapshot.unresolved_send_cleanup;state->snapshot.closed=true;return -2;
++  }
++  Received response{};
++  status=mach_msg(&response.wire.header,kReceiveOptions,0,sizeof(response),receiver.get(),timeout_ms,MACH_PORT_NULL);
++  if(status==MACH_RCV_TIMED_OUT)return 1;
++  if(status!=KERN_SUCCESS) {
++    std::lock_guard<std::mutex> lock(state->mutex);
++    ++state->snapshot.unresolved_receive_cleanup;state->snapshot.closed=true;return -2;
++  }
++  DestroyMessage cleanup(&response.wire.header);
++  const auto audit=response.trailer.msgh_audit;
++  if(!ValidWire(response,kReply)||response.wire.nonce!=nonce||response.wire.generation!=state->transport_generation||
++      audit_token_to_pid(audit)!=state->birth.pid||audit_token_to_pidversion(audit)!=state->snapshot.parent_pid_version||
++      getppid()!=state->birth.pid||!SameBirth(state->birth,0)||!NativeOperations::Validate(audit,*state->policy))return -1;
++  return 0; // Stop was requested, not physical settlement.
+ }
+ int32_t AuthenticatedNativeParentConnection::CopyBrowserPrivateRoot(uint32_t role,
+     uint64_t* output_generation, int32_t* output_descriptor, uint32_t timeout_ms) {
+@@ -1631,7 +1696,7 @@
+       MACH_MSGH_BITS_REMOTE(wire.header.msgh_bits) == MACH_MSG_TYPE_PORT_SEND_ONCE &&
+       wire.version == kAuthorityVersion && wire.reserved == 0 && wire.generation == generation &&
+       (wire.operation == kSign || wire.operation == kPublicKeys || wire.operation == kObserve ||
+-       wire.operation == kInboxKey || wire.operation == kBrowserStartup || wire.operation == kUiCapture || wire.operation == kAcknowledge) && wire.sequence != 0 &&
++       wire.operation == kInboxKey || wire.operation == kBrowserStartup || wire.operation == kUiCapture || wire.operation == kNativeHost || wire.operation == kAcknowledge) && wire.sequence != 0 &&
+       request.trailer.msgh_trailer_type == MACH_MSG_TRAILER_FORMAT_0 &&
+       request.trailer.msgh_trailer_size >= sizeof(request.trailer) &&
+       audit_token_to_pid(request.trailer.msgh_audit) == state->birth.pid &&
+@@ -1641,7 +1706,7 @@
+   valid = valid && wire.message_length <= wire.message.size();
+   if (valid) {
+     const bool valid_length = wire.operation == kSign ? wire.message_length == 51 :
+-        wire.operation == kUiCapture ? wire.message_length > 0 : wire.message_length == 0;
++        (wire.operation == kUiCapture || wire.operation == kNativeHost) ? wire.message_length > 0 : wire.message_length == 0;
+     valid = valid_length && std::all_of(wire.message.begin() + wire.message_length,
+         wire.message.end(), [](uint8_t b) { return b == 0; });
+   }
+@@ -1675,6 +1740,9 @@
+   else if (wire.operation == kBrowserStartup)
+     response.status = AuxBeginPreparedBrowserStartup(backend, wire.sequence, wire.nonce.data(),
+         response.payload.data(), response.payload.size(), &response.length);
++  else if (wire.operation == kNativeHost)
++    response.status = AuxBeginPreparedNativeHost(backend,wire.sequence,wire.nonce.data(),
++        wire.message.data(),wire.message_length,response.payload.data(),response.payload.size(),&response.length);
+   else if (wire.operation == kUiCapture)
+     response.status = AuxBeginPreparedUiCapture(backend, wire.sequence, wire.nonce.data(),
+         wire.message.data(), wire.message_length, response.payload.data(), response.payload.size(), &response.length);
+@@ -1783,6 +1851,11 @@
+ }
+ DaemonAuthorityReply AuthenticatedSelectedHomeTransfer::GetAgentInboxV2MasterKey(uint32_t timeout_ms) {
+   return RequestAuthority(kInboxKey, {}, timeout_ms);
++}
++DaemonAuthorityReply AuthenticatedSelectedHomeTransfer::ExchangeNativeHostFrame(
++    std::span<const uint8_t> frame, uint32_t timeout_ms) {
++  if (frame.empty() || frame.size() > 8192) return {};
++  return RequestAuthority(kNativeHost, frame, timeout_ms);
+ }
+ DaemonAuthorityReply AuthenticatedSelectedHomeTransfer::ExchangeUiCaptureFrame(
+     std::span<const uint8_t> frame, uint32_t timeout_ms) {
+--- a/chrome/browser/aux/AuxOwnedNativePeerChild.cc
++++ b/chrome/browser/aux/AuxOwnedNativePeerChild.cc
+@@ -365,6 +365,18 @@
+     return {DaemonAuthorityStatus::closed, {}};
+   return reply;
+ }
++DaemonAuthorityReply SelectedNativeHome::ExchangeNativeHostFrame(
++    std::span<const uint8_t> frame, uint32_t timeout_ms) {
++  auto before = InspectOwnedChild();
++  if (before.closed || before.wrong_process || before.exit_observed_and_reaped || before.exit_ownership_unknown)
++    return {DaemonAuthorityStatus::closed, {}};
++  auto reply = state_->transfer->ExchangeNativeHostFrame(frame, timeout_ms);
++  auto after = InspectOwnedChild();
++  if (after.closed || after.wrong_process || after.exit_observed_and_reaped ||
++      after.exit_ownership_unknown || after.child_pid != before.child_pid)
++    return {DaemonAuthorityStatus::closed, {}};
++  return reply;
++}
+ DaemonAuthorityReply SelectedNativeHome::ExchangeUiCaptureFrame(
+     std::span<const uint8_t> frame, uint32_t timeout_ms) {
+   auto before = InspectOwnedChild();
+--- a/chrome/browser/aux/AuxSelectedStateHome.h
++++ b/chrome/browser/aux/AuxSelectedStateHome.h
+@@ -55,6 +55,7 @@
+   std::optional<std::string> signature;
+ };
+ // Native-only capture data route, never migration/profile authority.
++DaemonAuthorityReply ExchangeNativeSelectedHostFrame(std::span<const uint8_t> frame);
+ DaemonAuthorityReply ExchangeNativeSelectedUiCaptureFrame(std::span<const uint8_t> frame);
+ NativeDaemonSignatureReply ObserveNativeSelectedDaemonChallenge(std::string_view encoded_message);
+ std::optional<std::string> SignNativeSelectedDaemonChallenge(std::string_view encoded_message);
+--- a/chrome/browser/aux/AuxSelectedStateHome.cc
++++ b/chrome/browser/aux/AuxSelectedStateHome.cc
+@@ -260,6 +260,43 @@
+       current->exports < pulse->exports || !Fresh(*current)) return {SelectedStateHomeRoute::unavailable, {}};
+   return {SelectedStateHomeRoute::current, *path, current->exports, child.child_pid};
+ }
++DaemonAuthorityReply ExchangeNativeSelectedHostFrame(std::span<const uint8_t> frame) {
++  auto& state = CurrentState();
++  if (getpid() != state.process) return {DaemonAuthorityStatus::wrongProcess, {}};
++  if (frame.empty() || frame.size() > 8192) return {};
++  std::shared_ptr<SelectedNativeHome> owner;
++  std::shared_ptr<const BrowserPrivateRoots> roots;
++  uint64_t generation = 0;
++  {
++    std::lock_guard<std::mutex> lock(state.mutex);
++    if (state.closed || state.browser_shutdown_phase || state.initializing ||
++        !state.selected || !state.admitted_browser_roots || !state.browser_generation) return {};
++    owner = state.selected; roots = state.admitted_browser_roots;
++    generation = state.browser_generation;
++    ++state.active_reads;
++  }
++  auto finish = +[](State* held) { std::lock_guard<std::mutex> lock(held->mutex); --held->active_reads; };
++  std::unique_ptr<State, decltype(finish)> active(&state, finish);
++  auto valid = [&] {
++    auto pulse = owner->InspectReadyPulse();
++    auto child = owner->InspectOwnedChild();
++    if (!pulse || !Fresh(*pulse) || pulse->generation != generation || !roots->Revalidate() ||
++        child.closed || child.wrong_process || child.exit_observed_and_reaped ||
++        child.exit_ownership_unknown || child.child_pid <= 1) return false;
++    std::lock_guard<std::mutex> lock(state.mutex);
++    return !state.closed && !state.browser_shutdown_phase && state.selected == owner &&
++        state.admitted_browser_roots == roots && state.browser_generation == generation;
++  };
++  if (!valid()) return {};
++  auto reply = owner->ExchangeNativeHostFrame(frame, 2'000);
++  if (reply.status != DaemonAuthorityStatus::ready) return reply;
++  // A lost holder fence/ACK is unknown, not proof that physical IO did not run.
++  if (!valid()) return {};
++  auto accepted = owner->AcceptAuthorityReply(reply, 2'000);
++  if (accepted != DaemonAuthorityStatus::ready) return {accepted, {}};
++  if (!valid()) return {};
++  return reply;
++}
+ DaemonAuthorityReply ExchangeNativeSelectedUiCaptureFrame(std::span<const uint8_t> frame) {
+ #if defined(AUX_BROWSER_ONLY_NATIVE_STARTUP)
+   // This bounded ordinary mode has no migration/privileged drain authority.
+--- a/chrome/browser/extensions/api/messaging/aux_native_host_lease.h
++++ b/chrome/browser/extensions/api/messaging/aux_native_host_lease.h
+@@ -0,0 +1,56 @@
++// Copyright 2026 The Aux Authors. BSD-style license: see //LICENSE.
++#ifndef CHROME_BROWSER_EXTENSIONS_API_MESSAGING_AUX_NATIVE_HOST_LEASE_H_
++#define CHROME_BROWSER_EXTENSIONS_API_MESSAGING_AUX_NATIVE_HOST_LEASE_H_
++#include <memory>
++#include <mutex>
++#include <optional>
++#include <string>
++#include <sys/types.h>
++#include "base/command_line.h"
++#include "base/files/scoped_file.h"
++#include "base/process/launch.h"
++#include "base/process/mac/aux_browser_descendant_client.h"
++#include "base/process/process.h"
++
++namespace extensions {
++class AuxNativeMessagingProfileOwner;
++// One fixed-image, no-fork native host. Never a generic exec or task factory.
++class AuxNativeHostLease final {
++ public:
++  static std::optional<std::string> CaptureProfileBinding(
++      const base::FilePath& profile_path,const std::string& profile_id,int account_id);
++  static std::shared_ptr<AuxNativeHostLease> Prepare(
++      std::shared_ptr<const AuxNativeMessagingProfileOwner> profile_owner, const std::string& extension_origin,
++      const std::string& host_name, const base::FilePath& image,
++      bool& durable_attempted);
++  ~AuxNativeHostLease();
++  base::Process Launch(const base::CommandLine& restricted_host,
++                       const base::LaunchOptions& options);
++  void ObservePipeClosed(uint32_t mask);
++  void Reap(base::Process process);
++  void Cancel();
++  bool MatchesLeaseBytes(std::span<const uint8_t,16> lease) const;
++  aux::browser_custody::Result Inspect() const;
++
++ private:
++  AuxNativeHostLease();
++  bool ImageCurrent() const;
++  bool Exchange(const std::string& phase, pid_t pid, int wait_status, int spawn_error);
++  void SettleIfPhysical();
++  const pid_t owner_;
++  mutable std::mutex mutex_;
++  std::shared_ptr<const AuxNativeMessagingProfileOwner> profile_owner_;
++  base::FilePath image_;
++  base::ScopedFD image_fd_;
++  uint64_t image_device_=0,image_inode_=0,image_size_=0;
++  int64_t image_mtime_seconds_=0,image_mtime_nanos_=0;
++  std::string image_sha256_,lease_id_,control_root_,task_root_;
++  pid_t child_=-1;
++  base::Time birth_;
++  int raw_wait_status_=0,spawn_error_=0;
++  uint32_t closed_pipes_=0;
++  bool cancelled_=false,spawn_attempted_=false,reaped_=false;
++  bool terminal_in_flight_=false,settled_=false,unknown_=false;
++};
++}
++#endif
+--- a/chrome/browser/extensions/api/messaging/aux_native_host_lease.cc
++++ b/chrome/browser/extensions/api/messaging/aux_native_host_lease.cc
+@@ -0,0 +1,270 @@
++// Copyright 2026 The Aux Authors. BSD-style license: see //LICENSE.
++#include "chrome/browser/extensions/api/messaging/aux_native_host_lease.h"
++#include <CommonCrypto/CommonDigest.h>
++#include <algorithm>
++#include <array>
++#include <cerrno>
++#include <csignal>
++#include <fcntl.h>
++#include <spawn.h>
++#include <sys/stat.h>
++#include <sys/wait.h>
++#include <unistd.h>
++#include "base/environment.h"
++#include "base/uuid.h"
++#include "chrome/browser/extensions/api/messaging/aux_native_messaging_lifetime.h"
++#include "base/files/file_util.h"
++#include "base/json/json_reader.h"
++#include "base/json/json_writer.h"
++#include "base/posix/eintr_wrapper.h"
++#include "base/strings/string_number_conversions.h"
++#include "base/threading/platform_thread.h"
++#include "chrome/browser/aux/AuxSelectedStateHome.h"
++
++// Same private platform SPI already used by base/process/launch_mac.cc.
++extern "C" int responsibility_spawnattrs_setdisclaim(posix_spawnattr_t,int);
++
++namespace extensions {
++namespace {
++std::optional<base::DictValue> Request(const base::DictValue& request) {
++  std::string bytes;
++  if (!base::JSONWriter::Write(request,&bytes) || bytes.empty() || bytes.size()>8192)
++    return std::nullopt;
++  aux::peer::DaemonAuthorityReply reply;
++  const auto deadline=base::TimeTicks::Now()+base::Seconds(4);
++  do {
++    reply=aux::peer::ExchangeNativeSelectedHostFrame(
++        std::span(reinterpret_cast<const uint8_t*>(bytes.data()),bytes.size()));
++    if(reply.status==aux::peer::DaemonAuthorityStatus::ready)break;
++    if(reply.status!=aux::peer::DaemonAuthorityStatus::busy&&
++        reply.status!=aux::peer::DaemonAuthorityStatus::pending&&
++        reply.status!=aux::peer::DaemonAuthorityStatus::timedOut)return std::nullopt;
++    // Re-observe this exact nonce/sequence/body. The authenticated backend
++    // caches completion; this does not repeat a physical journal operation.
++    base::PlatformThread::Sleep(base::Milliseconds(5));
++  }while(base::TimeTicks::Now()<deadline);
++  if(reply.status!=aux::peer::DaemonAuthorityStatus::ready || reply.payload.empty())
++    return std::nullopt;
++  auto object=base::JSONReader::ReadDict(std::string(reply.payload.begin(),reply.payload.end()),
++                                      base::JSON_PARSE_RFC);
++  return object;
++}
++bool LeaseId(const std::string& value) {
++  if(value.size()!=36)return false;
++  for(size_t index=0;index<value.size();++index) {
++    if(index==8||index==13||index==18||index==23) {if(value[index]!='-')return false;}
++    else if(!((value[index]>='0'&&value[index]<='9')||(value[index]>='a'&&value[index]<='f')))return false;
++  }
++  return true;
++}
++}
++AuxNativeHostLease::AuxNativeHostLease():owner_(getpid()) {}
++AuxNativeHostLease::~AuxNativeHostLease()=default;
++std::optional<std::string> AuxNativeHostLease::CaptureProfileBinding(
++    const base::FilePath& path,const std::string& profile_id,int account_id) {
++  base::DictValue request;request.Set("phase","capture");request.Set("profilePath",path.value());
++  request.Set("profileId",profile_id);request.Set("accountId",base::NumberToString(account_id));
++  request.Set("captureNonce",base::Uuid::GenerateRandomV4().AsLowercaseString());
++  auto reply=Request(request);if(!reply||reply->size()!=5)return std::nullopt;
++  return base::WriteJson(*reply);
++}
++std::shared_ptr<AuxNativeHostLease> AuxNativeHostLease::Prepare(
++    std::shared_ptr<const AuxNativeMessagingProfileOwner> profile_owner,const std::string& extension_origin,
++    const std::string& host_name,const base::FilePath& image,bool& durable_attempted) {
++  durable_attempted=false;
++  if(!profile_owner||!profile_owner->current()||!profile_owner->profile_path().IsAbsolute()||!image.IsAbsolute())return {};
++  base::FilePath canonical;
++  if(!base::NormalizeFilePath(image,&canonical)||canonical!=image)return {};
++  auto lease=std::shared_ptr<AuxNativeHostLease>(new AuxNativeHostLease);
++  lease->image_=image;lease->profile_owner_=std::move(profile_owner);
++  lease->image_fd_.reset(HANDLE_EINTR(open(image.value().c_str(),O_RDONLY|O_CLOEXEC|O_NOFOLLOW|O_NONBLOCK)));
++  struct stat before{};
++  if(!lease->image_fd_.is_valid()||fstat(lease->image_fd_.get(),&before)||!S_ISREG(before.st_mode)||
++      !(before.st_mode&0111)||(before.st_mode&0022)||before.st_size<4||before.st_size>128*1024*1024)
++    return {};
++  std::array<uint8_t,4> magic{};
++  if(pread(lease->image_fd_.get(),magic.data(),magic.size(),0)!=4)return {};
++  // Scripts/interpreter chains cannot satisfy this one-image no-exec contract.
++  const bool macho=(magic==std::array<uint8_t,4>{0xcf,0xfa,0xed,0xfe})||
++      (magic==std::array<uint8_t,4>{0xce,0xfa,0xed,0xfe})||
++      (magic==std::array<uint8_t,4>{0xca,0xfe,0xba,0xbe})||
++      (magic==std::array<uint8_t,4>{0xca,0xfe,0xba,0xbf});
++  if(!macho)return {};
++  CC_SHA256_CTX digest;CC_SHA256_Init(&digest);
++  std::array<uint8_t,16384> block{};off_t offset=0;
++  while(offset<before.st_size) {
++    const auto count=HANDLE_EINTR(pread(lease->image_fd_.get(),block.data(),
++        std::min<off_t>(block.size(),before.st_size-offset),offset));
++    if(count<=0)return {};
++    CC_SHA256_Update(&digest,block.data(),static_cast<CC_LONG>(count));offset+=count;
++  }
++  std::array<uint8_t,CC_SHA256_DIGEST_LENGTH> hash{};CC_SHA256_Final(hash.data(),&digest);
++  lease->image_sha256_=base::HexEncodeLower(hash);
++  lease->image_device_=before.st_dev;lease->image_inode_=before.st_ino;lease->image_size_=before.st_size;
++  lease->image_mtime_seconds_=before.st_mtimespec.tv_sec;lease->image_mtime_nanos_=before.st_mtimespec.tv_nsec;
++  if(!lease->ImageCurrent())return {};
++  base::DictValue request;
++  request.Set("phase","prepare");request.Set("profilePath",lease->profile_owner_->profile_path().value());
++  auto binding=base::JSONReader::ReadDict(lease->profile_owner_->binding(),base::JSON_PARSE_RFC);
++  if(!binding||!lease->profile_owner_->current())return {};
++  request.Set("binding",std::move(*binding));
++  request.Set("intentId",base::Uuid::GenerateRandomV4().AsLowercaseString());
++  request.Set("extensionOrigin",extension_origin);request.Set("hostName",host_name);
++  request.Set("imageSha256",lease->image_sha256_);
++  durable_attempted=true;
++  auto reply=Request(request);
++  if(!reply)return {};
++  if(reply->size()==1&&reply->FindBool("noIntent").value_or(false)){durable_attempted=false;return {};}
++  const auto* id=reply->FindString("leaseId");const auto* control=reply->FindString("controlRoot");
++  const auto* task=reply->FindString("taskRoot");
++  if(reply->size()!=3||!id||!LeaseId(*id)||!control||!task||*control==*task||
++      !base::FilePath(*control).IsAbsolute()||!base::FilePath(*task).IsAbsolute()||
++      *control=="/"||*task=="/")return {};
++  lease->lease_id_=*id;lease->control_root_=*control;lease->task_root_=*task;
++  return lease;
++}
++bool AuxNativeHostLease::ImageCurrent() const {
++  struct stat held{},named{};
++  return getpid()==owner_&&image_fd_.is_valid()&&fstat(image_fd_.get(),&held)==0&&
++      lstat(image_.value().c_str(),&named)==0&&S_ISREG(held.st_mode)&&
++      !(held.st_mode&0022)&&(held.st_mode&0111)&&
++      uint64_t(held.st_dev)==image_device_&&uint64_t(held.st_ino)==image_inode_&&
++      uint64_t(held.st_size)==image_size_&&held.st_mtimespec.tv_sec==image_mtime_seconds_&&
++      held.st_mtimespec.tv_nsec==image_mtime_nanos_&&named.st_dev==held.st_dev&&named.st_ino==held.st_ino;
++}
++bool AuxNativeHostLease::Exchange(const std::string& phase,pid_t pid,int status,int error) {
++  base::DictValue request;request.Set("phase",phase);request.Set("leaseId",lease_id_);
++  request.Set("pid",base::NumberToString(pid));
++  if(phase=="terminal") {
++    request.Set("waitStatus",base::NumberToString(status));
++    request.Set("spawnError",base::NumberToString(error));
++  }
++  auto reply=Request(request);const auto* id=reply?reply->FindString("leaseId"):nullptr;
++  return reply&&reply->size()==1&&id&&*id==lease_id_;
++}
++base::Process AuxNativeHostLease::Launch(const base::CommandLine& restricted,
++                                        const base::LaunchOptions& options) {
++  std::vector<std::string> arguments=restricted.argv();
++  auto policy=std::find(arguments.begin(),arguments.end(),"-p");
++  if(restricted.GetProgram()!=base::FilePath("/usr/bin/sandbox-exec")||
++      policy==arguments.end()||std::next(policy)==arguments.end()||!ImageCurrent()) {
++    {std::lock_guard<std::mutex> lock(mutex_);spawn_attempted_=true;spawn_error_=EINVAL;}
++    return base::Process();
++  }
++  auto& rules=*std::next(policy);
++  rules+="\n(deny process-fork)\n(deny process-exec (require-not (literal (param \"AUX_HOST_IMAGE\"))))\n"
++      "(deny file-read* file-write* file-link (subpath (param \"AUX_HOST_CONTROL\")) (subpath (param \"AUX_HOST_TASK\")))\n"
++      "(deny file-read* (subpath (param \"AUX_DATA_ROOT\")) (subpath (param \"AUX_CACHE_ROOT\")))\n";
++  std::vector<std::string> parameters{"-D","AUX_HOST_IMAGE="+image_.value(),
++      "-D","AUX_HOST_CONTROL="+control_root_,"-D","AUX_HOST_TASK="+task_root_};
++  size_t parent_index=0;
++  for(auto root:{base::FilePath(control_root_),base::FilePath(task_root_)}) {
++    for(auto parent=root.DirName();parent!=parent.DirName();parent=parent.DirName()) {
++      const auto key="AUX_HOST_PARENT_"+base::NumberToString(parent_index++);
++      parameters.emplace_back("-D");parameters.emplace_back(key+"="+parent.value());
++      rules+="(deny file-write-unlink (literal (param \""+key+"\")))\n";
++    }
++  }
++  const auto policy_index=std::distance(arguments.begin(),policy);
++  arguments.insert(arguments.begin()+policy_index,parameters.begin(),parameters.end());
++  auto environment=base::Environment::Create();
++  std::vector<std::string> values{"PATH=/usr/bin:/bin:/usr/sbin:/sbin"};
++  const std::array<base::cstring_view,4> names{"HOME","USER","LOGNAME","TMPDIR"};
++  for(auto key:names) {
++    auto value=environment->GetVar(key);
++    if(value)values.emplace_back(std::string(key.c_str())+"="+*value);
++  }
++  std::vector<char*> argv,envp;
++  for(auto& arg:arguments)argv.push_back(arg.data());argv.push_back(nullptr);
++  for(auto& value:values)envp.push_back(value.data());envp.push_back(nullptr);
++  posix_spawn_file_actions_t actions;posix_spawnattr_t attributes;
++  int error=posix_spawn_file_actions_init(&actions);
++  if(error) {std::lock_guard<std::mutex> lock(mutex_);spawn_attempted_=true;spawn_error_=error;return base::Process();}
++  error=posix_spawnattr_init(&attributes);
++  if(error) {posix_spawn_file_actions_destroy(&actions);std::lock_guard<std::mutex> lock(mutex_);spawn_attempted_=true;spawn_error_=error;return base::Process();}
++  uint32_t destinations=0;
++  for(const auto& [source,destination]:options.fds_to_remap) {
++    if(source<3||destination<0||destination>2||(destinations&(1u<<destination))) {error=EINVAL;break;}
++    destinations|=1u<<destination;
++    error=posix_spawn_file_actions_adddup2(&actions,source,destination);if(error)break;
++  }
++  if(!error&&destinations!=7)error=EINVAL;
++  if(!error)error=posix_spawn_file_actions_addchdir_np(&actions,options.current_directory.value().c_str());
++  if(!error)error=posix_spawnattr_setflags(&attributes,POSIX_SPAWN_CLOEXEC_DEFAULT|POSIX_SPAWN_START_SUSPENDED);
++  if(!error)error=responsibility_spawnattrs_setdisclaim(attributes,1);
++  pid_t pid=-1;
++  {
++    std::lock_guard<std::mutex> lock(mutex_);
++    if(spawn_attempted_||cancelled_||getpid()!=owner_||!ImageCurrent()||!profile_owner_->current())error=ECANCELED;
++    spawn_attempted_=true;
++    if(!error)error=posix_spawn(&pid,"/usr/bin/sandbox-exec",&actions,&attributes,argv.data(),envp.data());
++    spawn_error_=error;
++    if(!error)child_=pid;
++  }
++  posix_spawnattr_destroy(&attributes);posix_spawn_file_actions_destroy(&actions);
++  if(error)return base::Process();
++  base::Process process(pid);birth_=process.CreationTime();
++  if(!birth_.is_null()&&Exchange("publish",pid,0,0)&&ImageCurrent()) {
++    std::lock_guard<std::mutex> lock(mutex_);
++    if(!cancelled_&&profile_owner_->current()&&kill(pid,SIGCONT)==0)return process;
++  }
++  // A real original child exists even when publication/resume failed.
++  Reap(std::move(process));return base::Process();
++}
++void AuxNativeHostLease::ObservePipeClosed(uint32_t mask) {
++  {std::lock_guard<std::mutex> lock(mutex_);closed_pipes_|=mask&3;}
++  SettleIfPhysical();
++}
++void AuxNativeHostLease::Reap(base::Process process) {
++  const auto pid=process.Pid();
++  {
++    std::lock_guard<std::mutex> lock(mutex_);
++    if(getpid()!=owner_||pid!=child_||reaped_){unknown_=true;return;}
++    if(birth_.is_null())unknown_=true;
++    else if(process.CreationTime()!=birth_){unknown_=true;return;}
++  }
++  int status=0;pid_t waited=HANDLE_EINTR(waitpid(pid,&status,WNOHANG));
++  if(waited==0) {
++    // This is the sole original reaper. A still-waitable child cannot have a
++    // reused PID; no detached fallback reaper or process-group guess exists.
++    if(kill(pid,SIGTERM)==0) {
++      const auto deadline=base::TimeTicks::Now()+base::Seconds(2);
++      while(waited==0&&base::TimeTicks::Now()<deadline) {
++        base::PlatformThread::Sleep(base::Milliseconds(10));
++        waited=HANDLE_EINTR(waitpid(pid,&status,WNOHANG));
++      }
++    }
++    if(waited==0) {kill(pid,SIGKILL);waited=HANDLE_EINTR(waitpid(pid,&status,0));}
++  }
++  {
++    std::lock_guard<std::mutex> lock(mutex_);
++    if(waited!=pid||(!WIFEXITED(status)&&!WIFSIGNALED(status)))unknown_=true;
++    else{reaped_=true;raw_wait_status_=status;}
++  }
++  SettleIfPhysical();
++}
++void AuxNativeHostLease::SettleIfPhysical() {
++  pid_t pid=0;int status=0,error=0;
++  {
++    std::lock_guard<std::mutex> lock(mutex_);
++    if(getpid()!=owner_||unknown_||settled_||terminal_in_flight_||closed_pipes_!=3||!spawn_attempted_)return;
++    if(child_>1&&!reaped_)return;
++    if(child_>1){pid=child_;status=raw_wait_status_;}else error=spawn_error_;
++    if(pid==0&&error<=0){unknown_=true;return;}
++    terminal_in_flight_=true;
++  }
++  const bool accepted=Exchange("terminal",pid,status,error);
++  std::lock_guard<std::mutex> lock(mutex_);
++  terminal_in_flight_=false;settled_=accepted;unknown_|=!accepted;
++}
++bool AuxNativeHostLease::MatchesLeaseBytes(std::span<const uint8_t,16> lease) const {
++  const auto hex=base::HexEncodeLower(lease);
++  return lease_id_==hex.substr(0,8)+"-"+hex.substr(8,4)+"-"+hex.substr(12,4)+"-"+hex.substr(16,4)+"-"+hex.substr(20);
++}
++void AuxNativeHostLease::Cancel() {std::lock_guard<std::mutex> lock(mutex_);cancelled_=true;}
++aux::browser_custody::Result AuxNativeHostLease::Inspect() const {
++  std::lock_guard<std::mutex> lock(mutex_);
++  if(getpid()!=owner_||unknown_)return aux::browser_custody::Result::kUnknown;
++  return settled_?aux::browser_custody::Result::kSettled:aux::browser_custody::Result::kPending;
++}
++}
+--- a/net/base/file_stream.h
++++ b/net/base/file_stream.h
+@@ -92,6 +92,11 @@
+   // Returns true if Open succeeded and Close has not been called.
+   virtual bool IsOpen() const;
+ 
++  // One actual-close observation for an already open stream. Called on the
++  // file task runner after the underlying descriptor closes, including orphan
++  // cleanup; it must be safe independently of this object's lifetime.
++  void SetCloseObserver(base::OnceClosure observer);
++
+   // Adjust the position from the start of the file where data is read
+   // asynchronously. Upon success, ERR_IO_PENDING is returned and |callback|
+   // will be run on the thread where Seek() was called with the the stream
+--- a/net/base/file_stream.cc
++++ b/net/base/file_stream.cc
+@@ -70,6 +70,10 @@
+   return ERR_IO_PENDING;
+ }
+ 
++void FileStream::SetCloseObserver(base::OnceClosure observer) {
++  context_->SetCloseObserver(std::move(observer));
++}
++
+ bool FileStream::IsOpen() const {
+   return context_->IsOpen();
+ }
+--- a/net/base/file_stream_context.h
++++ b/net/base/file_stream_context.h
+@@ -83,6 +83,7 @@
+   int ConnectNamedPipe(CompletionOnceCallback callback);
+ #endif
+ 
++  void SetCloseObserver(base::OnceClosure observer);
+   bool async_in_progress() const { return async_in_progress_; }
+ 
+   ////////////////////////////////////////////////////////////////////////////
+@@ -228,6 +229,7 @@
+ #endif  // BUILDFLAG(IS_WIN)
+ 
+   base::File file_;
++  base::OnceClosure close_observer_;
+   bool async_in_progress_ = false;
+ 
+   bool orphaned_ = false;
+--- a/net/base/file_stream_context.cc
++++ b/net/base/file_stream_context.cc
+@@ -94,6 +94,13 @@
+   async_in_progress_ = true;
+ }
+ 
++void FileStream::Context::SetCloseObserver(base::OnceClosure observer) {
++  CHECK(file_.IsValid());
++  CHECK(!async_in_progress_);
++  CHECK(!close_observer_);
++  close_observer_=std::move(observer);
++}
++
+ void FileStream::Context::Close(CompletionOnceCallback callback) {
+   DCHECK(!async_in_progress_);
+ 
+@@ -200,6 +207,7 @@
+   }
+ #endif
+   file_.Close();
++  if(close_observer_)std::move(close_observer_).Run();
+   return IOResult(OK, 0);
+ }
+ 
+--- a/chrome/browser/extensions/api/messaging/aux_native_messaging_lifetime.h
++++ b/chrome/browser/extensions/api/messaging/aux_native_messaging_lifetime.h
+@@ -1,19 +1,52 @@
+ // Copyright 2026 Aux contributors. Chromium integration retains upstream notices.
+ #pragma once
+ #include "base/process/kill.h"
++#include "base/functional/callback.h"
++#include "chrome/browser/aux/ordinary_startup_build.h"
++#include "chrome/browser/extensions/api/messaging/aux_native_host_lease.h"
++#include "base/files/file_path.h"
++#include "base/task/sequenced_task_runner.h"
++#include "chrome/browser/profiles/keep_alive/scoped_profile_keep_alive.h"
+ #include "base/process/mac/aux_browser_descendant_client.h"
+ #include <algorithm>
++#include <atomic>
++#include "base/callback_list.h"
+ #include <cstdint>
+ #include <memory>
+ #include <mutex>
++#include <string>
+ #include <vector>
+ #include <utility>
+ #include <unistd.h>
+ 
++class Profile;
++
+ namespace extensions {
++// Captured on UI from the actual calling Profile, never from renderer input or
++// the optional native-initiated reconnect directory. No Profile is dereferenced
++// on IO/background/reaper threads; its keepalive is released on UI.
++class AuxNativeMessagingProfileOwner final {
++ public:
++  static std::shared_ptr<const AuxNativeMessagingProfileOwner> Capture(Profile* profile);
++  ~AuxNativeMessagingProfileOwner();
++  const base::FilePath& profile_path() const { return profile_path_; }
++  const std::string& binding() const { return binding_receipt_; }
++  bool current() const { return valid_.load(std::memory_order_acquire); }
++
++ private:
++  AuxNativeMessagingProfileOwner(Profile* profile,
++                                std::unique_ptr<ScopedProfileKeepAlive> keep_alive,std::string binding);
++  const base::FilePath profile_path_;
++  const std::string profile_id_,binding_epoch_,restore_epoch_,binding_receipt_;
++  std::atomic_bool valid_{true};
++  base::CallbackListSubscription binding_observation_;
++  const std::unique_ptr<ScopedProfileKeepAlive, base::OnTaskRunnerDeleter> keep_alive_;
++};
++
+ // Retained evidence for mac native messaging launches only. This is
+ // not a process-tree census, filesystem authority, or whole-writer certificate.
+ struct AuxNativeMessagingLifetime final {
++  ~AuxNativeMessagingLifetime();
+   struct Snapshot {
+     size_t unresolved = 0;
+     bool all_writer_coverage = false;  // This participant is never a census.
+@@ -25,23 +58,90 @@
+     uint64_t settled = 0;
+     uint64_t unobserved_descendant_cohorts = 0;
+   };
+-  static std::shared_ptr<AuxNativeMessagingLifetime> Reserve() {
+-    auto entry = std::shared_ptr<AuxNativeMessagingLifetime>(new AuxNativeMessagingLifetime);
+-    std::lock_guard<std::mutex> lock(RegistryMutex());
+-    if (getpid() != RegistryOwner() || Closed() || Registry().size() >= 4096) {
+-      if (getpid() != RegistryOwner() || Registry().size() >= 4096)
+-        AccountingUnknown() = true;
+-      return nullptr;
+-    }
+-    entry->cohort = aux::browser_custody::Reserve(aux::browser_custody::Family::kNativeMessaging);
+-    if (!entry->cohort) return nullptr;
+-    if (!aux::browser_custody::MaySpawn(entry->cohort)) {
+-      // Admission closed after reservation, before any native spawn occurred.
+-      aux::browser_custody::DidFailBeforeChild(entry->cohort);
+-      return nullptr;
+-    }
+-    Registry().push_back(entry);  // Reserve before the actual spawn.
++  static std::shared_ptr<AuxNativeMessagingLifetime> Reserve(
++      std::shared_ptr<const AuxNativeMessagingProfileOwner> profile_owner,
++      std::string extension_origin, std::string native_host_name,
++      const base::FilePath& image) {
++    if(!profile_owner||!profile_owner->current()||extension_origin.empty()||native_host_name.empty())return nullptr;
++    auto entry=std::shared_ptr<AuxNativeMessagingLifetime>(
++        new AuxNativeMessagingLifetime(std::move(profile_owner),
++            std::move(extension_origin),std::move(native_host_name)));
++    {
++      std::lock_guard<std::mutex> lock(RegistryMutex());
++      if(getpid()!=RegistryOwner()||Closed()||Registry().size()>=4096) {
++        if(getpid()!=RegistryOwner()||Registry().size()>=4096)AccountingUnknown()=true;
++        return nullptr;
++      }
++#if !defined(AUX_BROWSER_ONLY_NATIVE_STARTUP)
++      entry->cohort=aux::browser_custody::Reserve(aux::browser_custody::Family::kNativeMessaging);
++      if(!entry->cohort)return nullptr;
++      if(!aux::browser_custody::MaySpawn(entry->cohort)) {
++        aux::browser_custody::DidFailBeforeChild(entry->cohort);return nullptr;
++      }
++#endif
++      Registry().push_back(entry); // Retain before any durable preparation.
++    }
++#if defined(AUX_BROWSER_ONLY_NATIVE_STARTUP)
++    // No registry/entry lock crosses authenticated native callbacks.
++    bool durable_attempted=false;
++    auto lease=AuxNativeHostLease::Prepare(entry->profile_owner_,
++        entry->extension_origin_,entry->native_host_name_,image,durable_attempted);
++    {
++      std::lock_guard<std::mutex> lock(entry->mutex);
++      entry->ordinary_lease_=lease;
++      if(!lease){
++        if(durable_attempted)entry->uncertain=true;
++        else{entry->bound=true;entry->ReleaseLocked();}
++        return nullptr;
++      }
++      if(entry->cancel_requested_)lease->Cancel();
++    }
++#endif
+     return entry;
++  }
++  base::Process LaunchOrdinary(const base::CommandLine& command,
++                               const base::LaunchOptions& options) {
++    return ordinary_lease_?ordinary_lease_->Launch(command,options):base::Process();
++  }
++  void ObservePipeClosed(uint32_t mask) {
++    if(ordinary_lease_)ordinary_lease_->ObservePipeClosed(mask);
++  }
++  bool ReapOrdinary(base::Process& process) {
++    if(!ordinary_lease_)return false;
++    ordinary_lease_->Reap(std::move(process));return true;
++  }
++  void InstallCancellation(base::OnceClosure callback) {
++    base::OnceClosure dispatch;
++    {
++      std::lock_guard<std::mutex> lock(mutex);
++      if(cancel_requested_)dispatch=std::move(callback);
++      else cancellation_=std::move(callback);
++    }
++    if(dispatch)std::move(dispatch).Run();
++  }
++  bool IsOwnerCurrent() const { return profile_owner_->current(); }
++  static void CancelProfileOwner(const AuxNativeMessagingProfileOwner* owner) {
++    std::vector<std::shared_ptr<AuxNativeMessagingLifetime>> entries;
++    {std::lock_guard<std::mutex> lock(RegistryMutex());entries=Registry();}
++    for(const auto& entry:entries)if(entry->profile_owner_.get()==owner)entry->RequestStop();
++  }
++  static void StopLease(std::span<const uint8_t,16> lease) {
++    std::vector<std::shared_ptr<AuxNativeMessagingLifetime>> entries;
++    {std::lock_guard<std::mutex> lock(RegistryMutex());entries=Registry();}
++    for(const auto& entry:entries) {
++      bool matches=false;
++      {std::lock_guard<std::mutex> lock(entry->mutex);matches=entry->ordinary_lease_&&entry->ordinary_lease_->MatchesLeaseBytes(lease);}
++      if(matches)entry->RequestStop();
++    }
++  }
++  void RequestStop() {
++    base::OnceClosure dispatch;std::shared_ptr<AuxNativeHostLease> lease;
++    {
++      std::lock_guard<std::mutex> lock(mutex);
++      cancel_requested_=true;lease=ordinary_lease_;dispatch=std::move(cancellation_);
++    }
++    if(lease)lease->Cancel();
++    if(dispatch)std::move(dispatch).Run();
+   }
+   void BindLaunch(pid_t pid, base::Time creation) {
+     std::lock_guard<std::mutex> lock(mutex);
+@@ -49,6 +149,7 @@
+     bound = true;
+     child = pid;
+     birth = creation;
++    if(ordinary_lease_)return;
+     if (pid > 0) {
+       aux::browser_custody::DidCreate(cohort,pid);
+       if (birth.is_null()) uncertain = true;
+@@ -75,9 +176,14 @@
+       aux::browser_custody::DidObserveOriginalReap(cohort,false);
+   }
+   static void CloseAdmission() {
+-    std::lock_guard<std::mutex> lock(RegistryMutex());
+-    Closed() = true;
+-    if (getpid() != RegistryOwner()) AccountingUnknown() = true;
++    std::vector<std::shared_ptr<AuxNativeMessagingLifetime>> entries;
++    {
++      std::lock_guard<std::mutex> lock(RegistryMutex());
++      Closed()=true;
++      if(getpid()!=RegistryOwner())AccountingUnknown()=true;
++      entries=Registry();
++    }
++    for(const auto& entry:entries)entry->RequestStop();
+   }
+   static Snapshot Inspect() {
+     Snapshot result;
+@@ -95,7 +201,12 @@
+     // original reaper releases an entry in the opposite order.
+     for (const auto& entry : entries) {
+       std::lock_guard<std::mutex> lock(entry->mutex);
+-      const auto descendants = aux::browser_custody::Inspect(entry->cohort);
++      const auto descendants = entry->ordinary_lease_?entry->ordinary_lease_->Inspect():
++#if defined(AUX_BROWSER_ONLY_NATIVE_STARTUP)
++          aux::browser_custody::Result::kPending;
++#else
++          aux::browser_custody::Inspect(entry->cohort);
++#endif
+       if (descendants == aux::browser_custody::Result::kSettled) entry->ReleaseLocked();
+       else if (descendants == aux::browser_custody::Result::kUnknown ||
+                descendants == aux::browser_custody::Result::kRefused) entry->uncertain = true;
+@@ -117,7 +228,15 @@
+   }
+   std::mutex mutex;
+  private:
+-  AuxNativeMessagingLifetime();
++  AuxNativeMessagingLifetime(
++      std::shared_ptr<const AuxNativeMessagingProfileOwner> profile_owner,
++      std::string extension_origin, std::string native_host_name);
++  const std::shared_ptr<const AuxNativeMessagingProfileOwner> profile_owner_;
++  const std::string extension_origin_;
++  const std::string native_host_name_;
++  std::shared_ptr<AuxNativeHostLease> ordinary_lease_;
++  base::OnceClosure cancellation_;
++  bool cancel_requested_=false;
+   static pid_t RegistryOwner() { static const pid_t owner = getpid(); return owner; }
+   static bool& Closed() { static bool closed = false; return closed; }
+   static bool& AccountingUnknown() { static bool unknown = false; return unknown; }
+@@ -145,9 +264,13 @@
+   bool uncertain = false;
+   bool released = false;
+ };
++// UI-only finite ordinary shutdown observation, while the authenticated
++// journal owner remains alive. False remains an unresolved failure.
++bool CloseAuxNativeMessagingAndWaitForSettlement();
+ // Invoked by the existing blocking-pool termination task, not a new reaper.
+ inline void ReapAuxNativeMessagingProcess(
+     base::Process process, std::shared_ptr<AuxNativeMessagingLifetime> custody) {
++  if(custody&&custody->ReapOrdinary(process))return;
+   std::unique_lock<std::mutex> lock;
+   if (custody) {
+     lock = std::unique_lock<std::mutex>(custody->mutex);
+--- a/chrome/browser/extensions/api/messaging/launch_context_posix.cc
++++ b/chrome/browser/extensions/api/messaging/launch_context_posix.cc
+@@ -11,6 +11,7 @@
+ #include <utility>
+ 
+ #include "base/command_line.h"
++#include "base/functional/bind.h"
+ #include "base/files/file_util.h"
+ #include "base/files/scoped_file.h"
+ #include "base/logging.h"
+@@ -99,7 +100,12 @@
+ std::optional<LaunchContext::ProcessState> LaunchContext::LaunchNativeProcess(
+     const base::CommandLine& command_line,
+     // This is only relevant on Windows
+-    bool native_hosts_executables_launch_directly) {
++    bool native_hosts_executables_launch_directly
++#if BUILDFLAG(IS_MAC)
++    , std::shared_ptr<const AuxNativeMessagingProfileOwner> profile_owner,
++    const GURL& origin, const std::string& native_host_name
++#endif
++    ) {
+   base::LaunchOptions options;
+ 
+   int read_pipe_fds[2] = {};
+@@ -153,12 +159,17 @@
+     LOG(ERROR) << "Native messaging path restrictions unavailable";
+     return std::nullopt;
+   }
+-  auto custody = AuxNativeMessagingLifetime::Reserve();
++  auto custody = AuxNativeMessagingLifetime::Reserve(
++      std::move(profile_owner), origin.spec(), native_host_name, command_line.GetProgram());
+   if (!custody) {
+     LOG(ERROR) << "Native messaging launch admission is closed";
+     return std::nullopt;
+   }
++#if defined(AUX_BROWSER_ONLY_NATIVE_STARTUP)
++  base::Process local_process = custody->LaunchOrdinary(*sandboxed_host,options);
++#else
+   base::Process local_process = base::LaunchProcess(*sandboxed_host, options);
++#endif
+ #else
+   base::Process local_process = base::LaunchProcess(command_line, options);
+ #endif
+@@ -167,6 +178,11 @@
+                      local_process.IsValid() ? local_process.CreationTime() : base::Time());
+ #endif
+   if (!local_process.IsValid()) {
++#if BUILDFLAG(IS_MAC)
++    read_pipe_read_fd.reset();read_pipe_write_fd.reset();
++    write_pipe_read_fd.reset();write_pipe_write_fd.reset();
++    custody->ObservePipeClosed(3);
++#endif
+     LOG(ERROR) << "Error launching process";
+     return std::nullopt;
+   }
+@@ -189,11 +205,15 @@
+   CHECK(native_process_.IsValid());
+ 
+   base::PlatformFile read_file_unowned = read_file.get();
+-  OnSuccess(read_file_unowned,
+-            std::make_unique<net::FileStream>(base::File(std::move(read_file)),
+-                                              background_task_runner_),
+-            std::make_unique<net::FileStream>(base::File(std::move(write_file)),
+-                                              background_task_runner_));
++  auto read_stream=std::make_unique<net::FileStream>(base::File(std::move(read_file)),background_task_runner_);
++  auto write_stream=std::make_unique<net::FileStream>(base::File(std::move(write_file)),background_task_runner_);
++#if BUILDFLAG(IS_MAC)
++  read_stream->SetCloseObserver(base::BindOnce(
++      &AuxNativeMessagingLifetime::ObservePipeClosed,aux_child_lifetime_,1));
++  write_stream->SetCloseObserver(base::BindOnce(
++      &AuxNativeMessagingLifetime::ObservePipeClosed,aux_child_lifetime_,2));
++#endif
++  OnSuccess(read_file_unowned,std::move(read_stream),std::move(write_stream));
+ }
+ 
+ }  // namespace extensions
+--- a/chrome/browser/extensions/api/messaging/launch_context.cc
++++ b/chrome/browser/extensions/api/messaging/launch_context.cc
+@@ -47,7 +47,9 @@
+ 
+ void TerminateNativeProcess(base::Process native_process
+ #if BUILDFLAG(IS_MAC)
+-                            , std::shared_ptr<AuxNativeMessagingLifetime> custody
++                            , std::shared_ptr<AuxNativeMessagingLifetime> custody,
++                            base::ScopedPlatformFile read_file = {},
++                            base::ScopedPlatformFile write_file = {}
+ #endif
+ ) {
+ // Kill the host process if necessary to make sure we don't leave zombies.
+@@ -56,9 +58,22 @@
+ #if BUILDFLAG(IS_MAC)
+   base::ThreadPool::PostTask(FROM_HERE,
+                              {base::MayBlock(), base::TaskPriority::BEST_EFFORT,
+-                              base::TaskShutdownBehavior::CONTINUE_ON_SHUTDOWN},
+-                             base::BindOnce(&ReapAuxNativeMessagingProcess,
+-                                            std::move(native_process), std::move(custody)));
++                              base::TaskShutdownBehavior::BLOCK_SHUTDOWN},
++                             base::BindOnce(
++                                 [](base::Process process,
++                                    std::shared_ptr<AuxNativeMessagingLifetime> lifetime,
++                                    base::ScopedPlatformFile read_file,
++                                    base::ScopedPlatformFile write_file) {
++                                   // Closing framing pipes precedes the sole original
++                                   // reaper, including cancellation and dropped replies.
++                                   read_file.reset();
++                                   write_file.reset();
++                                   if(lifetime)lifetime->ObservePipeClosed(3);
++                                   ReapAuxNativeMessagingProcess(std::move(process),
++                                                                std::move(lifetime));
++                                 },
++                                 std::move(native_process), std::move(custody),
++                                 std::move(read_file), std::move(write_file)));
+ #else
+   base::EnsureProcessTerminated(std::move(native_process));
+ #endif
+@@ -78,7 +93,11 @@
+     GURL origin,
+     std::string native_host_name,
+     scoped_refptr<base::TaskRunner> background_task_runner,
+-    NativeProcessLauncher::LaunchedCallback callback) {
++    NativeProcessLauncher::LaunchedCallback callback
++#if BUILDFLAG(IS_MAC)
++    , std::shared_ptr<const AuxNativeMessagingProfileOwner> profile_owner
++#endif
++    ) {
+   // Must run on the IO thread.
+   CHECK(base::CurrentIOThread::IsSet());
+ 
+@@ -91,7 +110,11 @@
+                      native_hosts_executables_launch_directly, window_handle,
+                      std::move(profile_directory), std::move(connect_id),
+                      std::move(error_arg), std::move(origin),
+-                     std::move(native_host_name)),
++                     std::move(native_host_name)
++#if BUILDFLAG(IS_MAC)
++                     , std::move(profile_owner)
++#endif
++                     ),
+       base::BindOnce(&OnProcessLaunched, instance->GetWeakPtr()));
+   return instance;
+ }
+@@ -115,9 +138,31 @@
+       write_file(std::move(write_file)) {}
+ LaunchContext::ProcessState::ProcessState(ProcessState&& other) noexcept =
+     default;
++#if BUILDFLAG(IS_MAC)
++LaunchContext::ProcessState& LaunchContext::ProcessState::operator=(
++    ProcessState&& other) noexcept {
++  if (this == &other) return *this;
++  if (process.IsValid())
++    TerminateNativeProcess(std::move(process), std::move(aux_child_lifetime),
++                           std::move(read_file), std::move(write_file));
++  process = std::move(other.process);
++  aux_child_lifetime = std::move(other.aux_child_lifetime);
++  read_file = std::move(other.read_file);
++  write_file = std::move(other.write_file);
++  return *this;
++}
++LaunchContext::ProcessState::~ProcessState() {
++  // Background launch can finish after its reply receiver has gone away.
++  // A process handle destructor is not child termination or original reap.
++  if (process.IsValid())
++    TerminateNativeProcess(std::move(process), std::move(aux_child_lifetime),
++                           std::move(read_file), std::move(write_file));
++}
++#else
+ LaunchContext::ProcessState& LaunchContext::ProcessState::operator=(
+     ProcessState&& other) noexcept = default;
+ LaunchContext::ProcessState::~ProcessState() = default;
++#endif
+ 
+ LaunchContext::BackgroundLaunchResult::BackgroundLaunchResult(
+     NativeProcessLauncher::LaunchResult result)
+@@ -143,7 +188,11 @@
+     const std::string& connect_id,
+     const std::string& error_arg,
+     const GURL& origin,
+-    const std::string& native_host_name) {
++    const std::string& native_host_name
++#if BUILDFLAG(IS_MAC)
++    , std::shared_ptr<const AuxNativeMessagingProfileOwner> profile_owner
++#endif
++    ) {
+   if (!NativeMessagingHostManifest::IsValidName(native_host_name)) {
+     return BackgroundLaunchResult(NativeProcessLauncher::RESULT_INVALID_NAME);
+   }
+@@ -269,7 +318,11 @@
+   }
+ 
+   if (auto state = LaunchNativeProcess(
+-          command_line, native_hosts_executables_launch_directly)) {
++          command_line, native_hosts_executables_launch_directly
++#if BUILDFLAG(IS_MAC)
++          , std::move(profile_owner), origin, native_host_name
++#endif
++          )) {
+     return BackgroundLaunchResult(*std::move(state));
+   }
+   return BackgroundLaunchResult(NativeProcessLauncher::RESULT_FAILED_TO_START);
+@@ -280,6 +333,7 @@
+                                       BackgroundLaunchResult result) {
+   if (!weak_this) {
+     // The launch was cancelled. Terminate the host process and close the pipes.
++#if !BUILDFLAG(IS_MAC)
+     if (result.process_state.has_value()) {
+       auto& process_state = result.process_state.value();
+       TerminateNativeProcess(std::move(process_state.process)
+@@ -304,6 +358,7 @@
+               std::move(process_state.read_file),
+               std::move(process_state.write_file)));
+     }
++#endif  // On Mac ProcessState owns pipe closure and original reap.
+     return;
+   }
+   DCHECK_CALLED_ON_VALID_SEQUENCE(weak_this->sequence_checker_);
+--- a/chrome/browser/extensions/api/messaging/native_message_process_host.cc
++++ b/chrome/browser/extensions/api/messaging/native_message_process_host.cc
+@@ -20,12 +20,17 @@
+ #include "base/process/kill.h"
+ #include "base/task/single_thread_task_runner.h"
+ #include "base/task/thread_pool.h"
++#include "base/run_loop.h"
++#include "base/timer/timer.h"
+ #include "base/types/expected.h"
+ #include "build/build_config.h"
+ #include "chrome/browser/extensions/api/messaging/native_messaging_host_manifest.h"
+ #include "chrome/browser/extensions/api/messaging/native_messaging_launch_from_native.h"
+ #include "chrome/browser/extensions/api/messaging/native_process_launcher.h"
+ #include "chrome/browser/profiles/profile.h"
++#include "chrome/browser/aux/profile_identity.h"
++#include "components/prefs/pref_service.h"
++#include "chrome/browser/profiles/keep_alive/profile_keep_alive_types.h"
+ #include "content/public/browser/browser_context.h"
+ #include "content/public/browser/browser_task_traits.h"
+ #include "content/public/browser/browser_thread.h"
+@@ -69,7 +74,67 @@
+ namespace extensions {
+ 
+ #if BUILDFLAG(IS_MAC)
+-AuxNativeMessagingLifetime::AuxNativeMessagingLifetime() = default;
++std::shared_ptr<const AuxNativeMessagingProfileOwner>
++AuxNativeMessagingProfileOwner::Capture(Profile* profile) {
++  DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
++  if(!profile||!profile->IsRegularProfile()||aux::IsProfileCookieRestorePending(profile))return nullptr;
++  auto* prefs=profile->GetPrefs();
++  if(!prefs->FindPreference("aux.account_id")||prefs->GetInteger("aux.account_id")<0)return nullptr;
++  const auto id=aux::GetProfileId(profile),epoch=aux::GetProfileCookieBindingEpoch(profile),
++      restore=aux::GetProfileCookieRestoreEpoch(profile);
++  if(id.empty()||epoch.empty()||restore.empty())return nullptr;
++  auto keep_alive=ScopedProfileKeepAlive::TryAcquire(profile,ProfileKeepAliveOrigin::kBackgroundMode);
++  if(!keep_alive)return nullptr;
++  auto binding=AuxNativeHostLease::CaptureProfileBinding(profile->GetPath(),id,prefs->GetInteger("aux.account_id"));
++  if(!binding||aux::GetProfileId(profile)!=id||aux::GetProfileCookieBindingEpoch(profile)!=epoch||
++      aux::GetProfileCookieRestoreEpoch(profile)!=restore||aux::IsProfileCookieRestorePending(profile))return nullptr;
++  auto owner=std::shared_ptr<AuxNativeMessagingProfileOwner>(
++      new AuxNativeMessagingProfileOwner(profile,std::move(keep_alive),std::move(*binding)),
++      base::OnTaskRunnerDeleter(content::GetUIThreadTaskRunner({})));
++  std::weak_ptr<AuxNativeMessagingProfileOwner> weak=owner;
++  owner->binding_observation_=aux::ObserveProfileCookieBindingChanged(profile,base::BindRepeating(
++      [](std::weak_ptr<AuxNativeMessagingProfileOwner> weak) {
++        if(auto owner=weak.lock()) {
++          owner->valid_.store(false,std::memory_order_release);
++          AuxNativeMessagingLifetime::CancelProfileOwner(owner.get());
++        }
++      },std::move(weak)));
++  return owner;
++}
++AuxNativeMessagingProfileOwner::AuxNativeMessagingProfileOwner(
++    Profile* profile,std::unique_ptr<ScopedProfileKeepAlive> keep_alive,std::string binding)
++    :profile_path_(profile->GetPath()),profile_id_(aux::GetProfileId(profile)),
++     binding_epoch_(aux::GetProfileCookieBindingEpoch(profile)),
++     restore_epoch_(aux::GetProfileCookieRestoreEpoch(profile)),binding_receipt_(std::move(binding)),
++     keep_alive_(keep_alive.release(),base::OnTaskRunnerDeleter(content::GetUIThreadTaskRunner({}))) {}
++
++AuxNativeMessagingProfileOwner::~AuxNativeMessagingProfileOwner() = default;
++AuxNativeMessagingLifetime::~AuxNativeMessagingLifetime() = default;
++bool CloseAuxNativeMessagingAndWaitForSettlement() {
++  DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
++  AuxNativeMessagingLifetime::CloseAdmission();
++  bool settled=false;
++  base::RunLoop loop; base::RepeatingTimer poll;
++  const auto deadline=base::TimeTicks::Now()+base::Seconds(5);
++  auto inspect=base::BindRepeating(
++      [](bool* settled,base::RunLoop* loop,base::TimeTicks deadline) {
++        const auto status=AuxNativeMessagingLifetime::Inspect();
++        *settled=status.admission_closed&&!status.wrong_process&&!status.accounting_unknown&&
++            !status.unresolved&&!status.unbound&&!status.uncertain&&!status.unobserved_descendant_cohorts;
++        if(*settled||base::TimeTicks::Now()>=deadline)loop->Quit();
++      },base::Unretained(&settled),base::Unretained(&loop),deadline);
++  inspect.Run();
++  if(!settled){poll.Start(FROM_HERE,base::Milliseconds(10),inspect);loop.Run();}
++  return settled;
++}
++
++
++AuxNativeMessagingLifetime::AuxNativeMessagingLifetime(
++    std::shared_ptr<const AuxNativeMessagingProfileOwner> profile_owner,
++    std::string extension_origin, std::string native_host_name)
++    : profile_owner_(std::move(profile_owner)),
++      extension_origin_(std::move(extension_origin)),
++      native_host_name_(std::move(native_host_name)) {}
+ #endif
+ 
+ NativeMessageProcessHost::NativeMessageProcessHost(
+@@ -189,6 +254,14 @@
+   read_stream_ = std::move(read_stream);
+   write_stream_ = std::move(write_stream);
+ 
++#if BUILDFLAG(IS_MAC)
++  if(aux_child_lifetime_)aux_child_lifetime_->InstallCancellation(base::BindOnce(
++      [](scoped_refptr<base::SingleThreadTaskRunner> runner,
++         base::WeakPtr<NativeMessageProcessHost> host) {
++        runner->PostTask(FROM_HERE,base::BindOnce(
++            &NativeMessageProcessHost::Close,host,std::string("Native host stopped for browser shutdown")));
++      },task_runner_,weak_factory_.GetWeakPtr()));
++#endif
+   WaitRead();
+   DoWrite();
+ }
+@@ -199,6 +272,11 @@
+   if (closed_) {
+     return;
+   }
++#if BUILDFLAG(IS_MAC)
++  if(aux_child_lifetime_&&!aux_child_lifetime_->IsOwnerCurrent()) {
++    Close("Native host profile binding changed");return;
++  }
++#endif
+ 
+   // Set the max value to the 64MB message size limit.
+   constexpr size_t kMaxSizeToRecord = 1024 * 1024 * 64;
+@@ -348,6 +426,11 @@
+         "Extensions.NativeMessaging.MessageSize.NativeApp", message_size, 1,
+         kMaximumNativeMessageSize, 50);
+ 
++#if BUILDFLAG(IS_MAC)
++    if(aux_child_lifetime_&&!aux_child_lifetime_->IsOwnerCurrent()) {
++      Close("Native host profile binding changed");return;
++    }
++#endif
+     client_->PostMessageFromNativeHost(
+         incoming_data_.substr(kMessageHeaderSize, message_size));
+ 
+@@ -430,3 +513,10 @@
+ }
+ 
+ }  // namespace extensions
++
++#if BUILDFLAG(IS_MAC)
++// Called only from the existing authenticated browser parent-peer receiver.
++extern "C" void AuxStopBrowserNativeHostLeaseV1(const uint8_t* lease) {
++  if(lease)extensions::AuxNativeMessagingLifetime::StopLease(std::span<const uint8_t,16>(lease,16));
++}
++#endif
+--- a/chrome/browser/extensions/api/messaging/launch_context.h
++++ b/chrome/browser/extensions/api/messaging/launch_context.h
+@@ -38,6 +38,9 @@
+ }  // namespace net
+ 
+ namespace extensions {
++#if BUILDFLAG(IS_MAC)
++class AuxNativeMessagingProfileOwner;
++#endif
+ 
+ // The state for a single native messaging host process launch. Instances live
+ // and die on the IO thread. Asynchronous process launch is initiated via
+@@ -62,7 +65,11 @@
+       GURL origin,
+       std::string native_host_name,
+       scoped_refptr<base::TaskRunner> background_task_runner,
+-      NativeProcessLauncher::LaunchedCallback callback);
++      NativeProcessLauncher::LaunchedCallback callback
++#if BUILDFLAG(IS_MAC)
++      , std::shared_ptr<const AuxNativeMessagingProfileOwner> profile_owner = nullptr
++#endif
++      );
+ #if BUILDFLAG(IS_WIN)
+   ~LaunchContext() override;
+ #else
+@@ -119,7 +126,12 @@
+   // success, returns the launched process and the out/in pipes.
+   static std::optional<ProcessState> LaunchNativeProcess(
+       const base::CommandLine& command_line,
+-      bool native_hosts_executables_launch_directly);
++      bool native_hosts_executables_launch_directly
++#if BUILDFLAG(IS_MAC)
++      , std::shared_ptr<const AuxNativeMessagingProfileOwner> profile_owner,
++      const GURL& origin, const std::string& native_host_name
++#endif
++      );
+ 
+   // The result of a background process launch.
+   struct BackgroundLaunchResult {
+@@ -148,7 +160,11 @@
+       const std::string& connect_id,
+       const std::string& error_arg,
+       const GURL& origin,
+-      const std::string& native_host_name);
++      const std::string& native_host_name
++#if BUILDFLAG(IS_MAC)
++      , std::shared_ptr<const AuxNativeMessagingProfileOwner> profile_owner
++#endif
++      );
+ 
+   // Continues processing on the IO thread following `LaunchInBackground`. If
+   // the launch was cancelled (via deletion of the context), the host process
+--- a/chrome/browser/extensions/api/messaging/native_process_launcher.cc
++++ b/chrome/browser/extensions/api/messaging/native_process_launcher.cc
+@@ -15,6 +15,9 @@
+ #include "chrome/browser/extensions/api/messaging/launch_context.h"
+ #include "net/base/file_stream.h"
+ #include "url/gurl.h"
++#if BUILDFLAG(IS_MAC)
++#include "chrome/browser/extensions/api/messaging/aux_native_messaging_lifetime.h"
++#endif
+ 
+ #if BUILDFLAG(IS_WIN)
+ #include "chrome/browser/profiles/profile.h"
+@@ -37,7 +40,11 @@
+                             intptr_t window_handle,
+                             const base::FilePath& profile_directory,
+                             const std::string& connect_id,
+-                            const std::string& error_arg);
++                            const std::string& error_arg
++#if BUILDFLAG(IS_MAC)
++                            , std::shared_ptr<const AuxNativeMessagingProfileOwner> profile_owner
++#endif
++                            );
+ 
+   NativeProcessLauncherImpl(const NativeProcessLauncherImpl&) = delete;
+   NativeProcessLauncherImpl& operator=(const NativeProcessLauncherImpl&) =
+@@ -70,6 +77,7 @@
+   // An in-progress launch.
+   mutable std::unique_ptr<LaunchContext> context_;
+ #if BUILDFLAG(IS_MAC)
++  const std::shared_ptr<const AuxNativeMessagingProfileOwner> aux_profile_owner_;
+   mutable std::shared_ptr<AuxNativeMessagingLifetime> aux_child_lifetime_;
+ #endif
+ };
+@@ -81,7 +89,11 @@
+     intptr_t window_handle,
+     const base::FilePath& profile_directory,
+     const std::string& connect_id,
+-    const std::string& error_arg)
++    const std::string& error_arg
++#if BUILDFLAG(IS_MAC)
++    , std::shared_ptr<const AuxNativeMessagingProfileOwner> profile_owner
++#endif
++    )
+     : allow_user_level_hosts_(allow_user_level_hosts),
+       require_native_initiated_connections_(
+           require_native_initiated_connections),
+@@ -90,7 +102,11 @@
+       window_handle_(window_handle),
+       profile_directory_(profile_directory),
+       connect_id_(connect_id),
+-      error_arg_(error_arg) {}
++      error_arg_(error_arg)
++#if BUILDFLAG(IS_MAC)
++      , aux_profile_owner_(std::move(profile_owner))
++#endif
++      {}
+ 
+ #if BUILDFLAG(IS_MAC)
+ std::shared_ptr<AuxNativeMessagingLifetime>
+@@ -109,11 +125,21 @@
+       profile_directory_, connect_id_, error_arg_, origin, native_host_name,
+       base::ThreadPool::CreateTaskRunner(
+           {base::TaskPriority::USER_VISIBLE,
+-           base::TaskShutdownBehavior::CONTINUE_ON_SHUTDOWN, base::MayBlock()}),
++           
++#if BUILDFLAG(IS_MAC)
++           base::TaskShutdownBehavior::BLOCK_SHUTDOWN,
++#else
++           base::TaskShutdownBehavior::CONTINUE_ON_SHUTDOWN,
++#endif
++           base::MayBlock()}),
+       // `Unretained` is safe here, as `LaunchContext` guarantees that it will
+       // never run this callback after the context is destroyed.
+       base::BindOnce(&NativeProcessLauncherImpl::OnComplete,
+-                     base::Unretained(this), std::move(callback)));
++                     base::Unretained(this), std::move(callback))
++#if BUILDFLAG(IS_MAC)
++      , aux_profile_owner_
++#endif
++      );
+ }
+ 
+ void NativeProcessLauncherImpl::OnComplete(
+@@ -169,7 +195,11 @@
+   return std::make_unique<NativeProcessLauncherImpl>(
+       allow_user_level_hosts, require_native_initiated_connections,
+       native_hosts_executables_launch_directly, window_handle,
+-      profile_directory, connect_id, error_arg);
++      profile_directory, connect_id, error_arg
++#if BUILDFLAG(IS_MAC)
++      , AuxNativeMessagingProfileOwner::Capture(profile)
++#endif
++      );
+ }
+ 
+ }  // namespace extensions
+--- a/chrome/browser/extensions/api/messaging/BUILD.gn
++++ b/chrome/browser/extensions/api/messaging/BUILD.gn
+@@ -66,6 +66,9 @@
+   if (is_win) {
+     sources += [ "launch_context_win.cc" ]
+   }
++  if (is_mac) {
++    sources += [ "aux_native_host_lease.cc", "aux_native_host_lease.h" ]
++  }
+ 
+   public_deps = [
+     "//base",
+--- a/chrome/browser/chrome_browser_main.cc
++++ b/chrome/browser/chrome_browser_main.cc
+@@ -59,6 +59,7 @@
+ #include "chrome/browser/aux/feature_store/feature_write_participant.h"
+ #endif
+ #include "chrome/browser/ui/aux_browser_shutdown_drain.h"
++#include "chrome/browser/extensions/api/messaging/aux_native_messaging_lifetime.h"
+ #if defined(AUX_SEALED_NATIVE_COLD_ENTRY)
+ #include "chrome/browser/aux/AuxNativeParentColdLaunch.h"
+ #include "chrome/browser/aux/AuxBrowserPrivateRoots.h"
+@@ -2290,6 +2291,8 @@
+   // The existing authenticated daemon shutdown must finish while that browser
+   // peer and its published root FDs still validate protected SQLite closure.
+   aux::features::CloseNativeFeatureIoAdmission();
++  if(!extensions::CloseAuxNativeMessagingAndWaitForSettlement())
++    LOG(ERROR)<<"Aux native messaging remains unresolved before daemon shutdown";
+   extensions::ShutdownAuxMiniPopup();
+   aux::ShutdownProfileGates();
+   aux::BrowserPlatform::Get().Shutdown();
+--- a/chrome/browser/aux/profile_identity.h
++++ b/chrome/browser/aux/profile_identity.h
+@@ -28,6 +28,9 @@
+ // Changes whenever a native cookie restore begins, even if it finishes between
+ // two context reads. Used to reject capture interleaved with restoration.
+ std::string GetProfileCookieRestoreEpoch(Profile* profile);
++// Fires synchronously on UI for binding rotation, restore start and destruction.
++base::CallbackListSubscription ObserveProfileCookieBindingChanged(
++    Profile* profile, base::RepeatingClosure callback);
+ // Serializes native cloud-cookie writes with account-profile projection.
+ // A failed operation with unacknowledged writes deliberately remains pending
+ // until shutdown, rather than allowing profile rebinding against queued writes.
+--- a/chrome/browser/aux/profile_identity.cc
++++ b/chrome/browser/aux/profile_identity.cc
+@@ -43,6 +43,7 @@
+     if (value_.empty() || value_ != expected || restoring_) return false;
+     restoring_ = true;
+     restore_epoch_ = base::Uuid::GenerateRandomV4().AsLowercaseString();
++    changed_.Notify();
+     return true;
+   }
+   bool restoring() const { return restoring_; }
+@@ -55,17 +56,22 @@
+   base::CallbackListSubscription ObserveRestore(base::RepeatingClosure callback) {
+     return restored_.Add(std::move(callback));
+   }
++  base::CallbackListSubscription ObserveChanged(base::RepeatingClosure callback) {
++    return changed_.Add(std::move(callback));
++  }
+   void OnProfileWillBeDestroyed(Profile* profile) override {
+     registrar_.RemoveAll();
+     observation_.Reset();
+     value_.clear();
+     restore_epoch_.clear();
++    changed_.Notify();
+   }
+  private:
+-  void Rotate() { value_ = base::Uuid::GenerateRandomV4().AsLowercaseString(); }
++  void Rotate() { value_ = base::Uuid::GenerateRandomV4().AsLowercaseString(); changed_.Notify(); }
+   bool restoring_ = false;
+   std::string restore_epoch_ = base::Uuid::GenerateRandomV4().AsLowercaseString();
+   base::RepeatingClosureList restored_;
++  base::RepeatingClosureList changed_;
+   std::string value_;
+   PrefChangeRegistrar registrar_;
+   base::ScopedObservation<Profile, ProfileObserver> observation_{this};
+@@ -109,6 +115,12 @@
+   auto* epoch = static_cast<CookieBindingEpoch*>(profile->GetUserData(&kCookieBindingEpochKey));
+   return epoch && epoch->restoring();
+ }
++base::CallbackListSubscription ObserveProfileCookieBindingChanged(
++    Profile* profile,base::RepeatingClosure callback) {
++  DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
++  if(GetProfileCookieBindingEpoch(profile).empty())return {};
++  return static_cast<CookieBindingEpoch*>(profile->GetUserData(&kCookieBindingEpochKey))->ObserveChanged(std::move(callback));
++}
+ base::CallbackListSubscription ObserveProfileCookieRestoreFinished(
+     Profile* profile, base::RepeatingClosure callback) {
+   DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
+--- a/daemon/AuxNativeParentConnectionBridge.cc
++++ b/daemon/AuxNativeParentConnectionBridge.cc
+@@ -216,3 +216,14 @@
+   } catch (...) { return 2; }
+ }
+ #endif
++
++#if defined(AUX_NATIVE_DAEMON_AUTHORITY_SERVER)
++extern "C" int32_t AuxRequestAuthenticatedNativeHostStop(uint64_t handle,const uint8_t* lease) {
++  if(!lease)return -1;
++  try {
++    if(getpid()!=Connections().process)return -3;
++    auto actual=ActualAuthorityConnection(handle);
++    return actual?actual->RequestNativeHostStop(std::span<const uint8_t,16>(lease,16),2'000):-1;
++  }catch(...){return -1;}
++}
++#endif
+--- a/daemon/AuxFreshColdInstallerGuard.swift
++++ b/daemon/AuxFreshColdInstallerGuard.swift
+@@ -36,6 +36,7 @@
+ }
+ 
+ enum AuxFreshColdGuardError:Error {case peer(Int32),path,metadata,installerBusy,io(Int32),wrongProcess}
++@_silgen_name("AuxRequestAuthenticatedNativeHostStop") private func requestAuthenticatedNativeHostStop(_ handle:UInt64,_ lease:UnsafePointer<UInt8>)->Int32
+ final class AuxLiveNativeParentConnection {
+     private let process=getpid()
+     private let handle:UInt64
+@@ -46,6 +47,11 @@
+         let status=retainNativeParent(handle);guard status==0 else{throw AuxFreshColdGuardError.peer(status)}
+         let peer=AuxLiveNativeParentConnection(handle)
+         try peer.revalidate();return peer
++    }
++    func requestNativeHostStop(_ lease:UUID)throws {
++        try revalidate();var bytes=lease.uuid
++        let status=withUnsafeBytes(of:&bytes){requestAuthenticatedNativeHostStop(handle,$0.baseAddress!.assumingMemoryBound(to:UInt8.self))}
++        guard status==0 else{throw AuxFreshColdGuardError.peer(status)}
+     }
+     func revalidate()throws {
+         guard getpid()==process else{throw AuxFreshColdGuardError.wrongProcess}
+@@ -250,6 +256,7 @@
+         let root=try browserRoots.duplicate(role:role,peer:peer)
+         do{try revalidate();return root}catch{close(root.descriptor);throw error}
+     }
++    func requestNativeHostStop(_ lease:UUID)throws {try peer.requestNativeHostStop(lease)}
+     func verifyUiCaptureJournalAdmission()throws {
+         try revalidate()
+         try browserAdmission.verifyUiCaptureJournalAdmission()
+--- a/daemon/AuxNativeFreshStageCoordinator.swift
++++ b/daemon/AuxNativeFreshStageCoordinator.swift
+@@ -102,6 +102,7 @@
+               authenticatedPolicy.contents.accessGroup==journal.accessGroup,
+               authenticatedPolicy.contents.role.rawValue==journal.role else{throw NativeFreshBootstrapError.binding}
+     }
++    func requestNativeHostStop(_ lease:UUID)throws {try coldGuard.requestNativeHostStop(lease)}
+     func duplicateRetainedOrdinaryStorageRoots()throws->(generation:UInt64,control:Int32,task:Int32) {
+         let task=try taskLayout.duplicateRetainedTaskHome()
+         do {

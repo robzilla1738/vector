@@ -1,0 +1,740 @@
+--- a/daemon/AuxNativeHostJournal.swift
++++ b/daemon/AuxNativeHostJournal.swift
+@@ -0,0 +1,169 @@
++// One finite helper lease journal. No caller paths, roots or readiness flags.
++import Foundation
++import CryptoKit
++import Darwin
++@_silgen_name("AuxMemoryCopyCurrentLifetime") private func memoryCurrentLifetime(_ pid:UnsafeMutablePointer<Int32>,_ seconds:UnsafeMutablePointer<UInt64>,_ micros:UnsafeMutablePointer<UInt64>)->Int32
++@_silgen_name("AuxCopyOrdinaryBrowserParentLifetime") private func memoryBrowserLifetime(_ pid:UnsafeMutablePointer<Int32>,_ seconds:UnsafeMutablePointer<UInt64>,_ micros:UnsafeMutablePointer<UInt64>)->Int32
++@_silgen_name("AuxNativeHostCopyStoppedBrowserChildLifetime") private func nativeHostStoppedLifetime(_ pid:Int32,_ seconds:UnsafeMutablePointer<UInt64>,_ micros:UnsafeMutablePointer<UInt64>)->Int32
++
++enum AuxNativeHostJournalError:Error {case unavailable,unknown,conflict}
++final class AuxNativeHostJournal {
++    private let process=getpid()
++    private let root:Int32
++    private var directory:Int32 = -1
++    let leaseId=UUID().uuidString.lowercased()
++    private let base:[String:Any]
++    private var recorded:Data?
++    private var phase=""
++    private var child:[String:String]?
++    private var unknown=false
++    private var retired=false
++    private static let leaf=".aux-native-host-lifetimes.v1"
++    init(identity:AuxMemoryAccountIdentity,taskRoot:Int32,generation:UInt64,
++         context:NativeFreshRuntimeCapturedContext,extensionOrigin:String,
++         hostName:String,imageSha256:String)throws {
++        let journal=context.owner.journal
++        guard let transaction=UUID(uuidString:journal.reservationTransactionId),generation>0,
++              imageSha256.count==64,imageSha256.allSatisfy({"0123456789abcdef".contains($0)}),
++              [journal.scope,journal.reservationSha256,journal.policySha256].allSatisfy({$0.count==64&&$0.allSatisfy{"0123456789abcdef".contains($0)}})
++        else{throw AuxNativeHostJournalError.unavailable}
++        root=fcntl(taskRoot,F_DUPFD_CLOEXEC,0)
++        guard root>=0 else{throw AuxNativeHostJournalError.unavailable}
++        func lifetime(_ browser:Bool)throws->[String:String] {
++            var pid:Int32 = -1,seconds:UInt64=0,micros:UInt64=0
++            let status=browser ? memoryBrowserLifetime(&pid,&seconds,&micros):memoryCurrentLifetime(&pid,&seconds,&micros)
++            guard status==0,pid>1,seconds>0,micros<1_000_000 else{throw AuxNativeHostJournalError.unavailable}
++            return ["pid":String(pid),"seconds":String(seconds),"microseconds":String(micros)]
++        }
++        func hex(_ value:Data)->String{value.map{String(format:"%02x",$0)}.joined()}
++        do {
++            base=["format":"aux.native-host-lifetime.v1","leaseId":leaseId,
++                  "controlScope":journal.scope,"controlTransactionId":transaction.uuidString,
++                  "controlReservationSha256":journal.reservationSha256,"policySha256":journal.policySha256,
++                  "transportGeneration":String(generation),"accountId":String(identity.accountId),
++                  "accountIncarnation":identity.incarnation.uuidString,"profileId":identity.profileId.uuidString,
++                  "profilePathSha256":hex(identity.profilePathSha256),"recordSha256":hex(identity.recordSha256),
++                  "extensionOriginSha256":hex(Data(SHA256.hash(data:Data(extensionOrigin.utf8)))),
++                  "nativeHostNameSha256":hex(Data(SHA256.hash(data:Data(hostName.utf8)))),
++                  "hostImageSha256":imageSha256,
++                  "daemon":try lifetime(false),"browser":try lifetime(true)]
++        }catch{close(root);throw error}
++    }
++    deinit{if getpid()==process{if directory>=0{close(directory)};close(root)}}
++    private func safe(_ fd:Int32,directory:Bool)throws->stat {
++        var value=stat()
++        guard fstat(fd,&value)==0,(value.st_mode&S_IFMT)==(directory ? S_IFDIR:S_IFREG),value.st_uid==geteuid(),
++              value.st_mode&0o7777==(directory ? 0o700:0o600),directory || (value.st_nlink==1&&value.st_size>0&&value.st_size<=16_384)
++        else{throw AuxNativeHostJournalError.unavailable}
++        errno=0;let captured=acl_get_fd_np(fd,ACL_TYPE_EXTENDED)
++        if captured==nil&&errno==ENOENT{return value}
++        guard let acl=captured else{throw AuxNativeHostJournalError.unavailable};defer{acl_free(UnsafeMutableRawPointer(acl))}
++        var entry:acl_entry_t?;errno=0
++        guard acl_valid(acl)==0,acl_get_entry(acl,0,&entry)==(-1),errno==EINVAL,entry==nil else{throw AuxNativeHostJournalError.unavailable}
++        return value
++    }
++    private func directoryCurrent()throws {
++        guard getpid()==process,directory>=0 else{throw AuxNativeHostJournalError.unavailable}
++        _ = try safe(root,directory:true);let held=try safe(directory,directory:true);var named=stat()
++        guard fstatat(root,Self.leaf,&named,AT_SYMLINK_NOFOLLOW)==0,named.st_dev==held.st_dev,named.st_ino==held.st_ino else{throw AuxNativeHostJournalError.conflict}
++    }
++    private func read()throws->Data {
++        try directoryCurrent()
++        let fd=openat(directory,leaseId+".json",O_RDONLY|O_NOFOLLOW|O_NONBLOCK|O_CLOEXEC)
++        guard fd>=0 else{throw AuxNativeHostJournalError.unavailable};defer{close(fd)}
++        let before=try safe(fd,directory:false);var named=stat()
++        guard fstatat(directory,leaseId+".json",&named,AT_SYMLINK_NOFOLLOW)==0,named.st_dev==before.st_dev,named.st_ino==before.st_ino else{throw AuxNativeHostJournalError.conflict}
++        var bytes=Data(count:Int(before.st_size)),offset=0
++        while offset<bytes.count{let amount=bytes.withUnsafeMutableBytes{Darwin.read(fd,$0.baseAddress!.advanced(by:offset),$0.count-offset)};if amount<0&&errno==EINTR{continue};guard amount>0 else{throw AuxNativeHostJournalError.unavailable};offset += amount}
++        let after=try safe(fd,directory:false)
++        guard before.st_dev==after.st_dev,before.st_ino==after.st_ino,before.st_size==after.st_size,
++              before.st_mtimespec.tv_sec==after.st_mtimespec.tv_sec,before.st_mtimespec.tv_nsec==after.st_mtimespec.tv_nsec,
++              before.st_ctimespec.tv_sec==after.st_ctimespec.tv_sec,before.st_ctimespec.tv_nsec==after.st_ctimespec.tv_nsec else{throw AuxNativeHostJournalError.conflict}
++        _ = try strictEnvelopeObject(bytes);try directoryCurrent();return bytes
++    }
++    private func publish(_ next:[String:Any],phase nextPhase:String)throws {
++        guard !unknown else{throw AuxNativeHostJournalError.unknown}
++        try directoryCurrent()
++        if let recorded{guard try read()==recorded else{throw AuxNativeHostJournalError.conflict}}
++        else{var entry=stat();guard fstatat(directory,leaseId+".json",&entry,AT_SYMLINK_NOFOLLOW)<0,errno==ENOENT else{throw AuxNativeHostJournalError.conflict}}
++        let bytes=try JSONSerialization.data(withJSONObject:next,options:[.sortedKeys,.withoutEscapingSlashes])
++        guard bytes.count>0,bytes.count<=16_384 else{throw AuxNativeHostJournalError.unavailable}
++        let temporary="."+leaseId+"-"+UUID().uuidString.lowercased()+".next"
++        unknown=true // Retain any failed/lost filesystem mutation; no replay.
++        let fd=openat(directory,temporary,O_WRONLY|O_CREAT|O_EXCL|O_NOFOLLOW|O_CLOEXEC,0o600)
++        guard fd>=0 else{throw AuxNativeHostJournalError.unknown}
++        do {
++            var offset=0
++            while offset<bytes.count{let amount=bytes.withUnsafeBytes{Darwin.write(fd,$0.baseAddress!.advanced(by:offset),$0.count-offset)};if amount<0&&errno==EINTR{continue};guard amount>0 else{throw AuxNativeHostJournalError.unknown};offset += amount}
++            guard fsync(fd)==0 else{throw AuxNativeHostJournalError.unknown}
++            close(fd)
++        }catch{close(fd);throw error}
++        guard renameat(directory,temporary,directory,leaseId+".json")==0,fsync(directory)==0 else{throw AuxNativeHostJournalError.unknown}
++        guard try read()==bytes else{throw AuxNativeHostJournalError.unknown}
++        recorded=bytes;phase=nextPhase;unknown=false
++    }
++    func prepare()throws {
++        guard getpid()==process,!unknown else{throw AuxNativeHostJournalError.unknown}
++        if let recorded{guard phase=="prepared",try read()==recorded else{throw AuxNativeHostJournalError.conflict};return}
++        // Actual retained task root only. No account/profile directory scan.
++        if mkdirat(root,Self.leaf,0o700)<0&&errno != EEXIST{unknown=true;throw AuxNativeHostJournalError.unknown}
++        directory=openat(root,Self.leaf,O_RDONLY|O_DIRECTORY|O_NOFOLLOW|O_CLOEXEC)
++        guard directory>=0 else{unknown=true;throw AuxNativeHostJournalError.unknown}
++        try directoryCurrent()
++        let cursor=openat(directory,".",O_RDONLY|O_DIRECTORY|O_NOFOLLOW|O_CLOEXEC)
++        guard cursor>=0,let stream=fdopendir(cursor) else{if cursor>=0{close(cursor)};throw AuxNativeHostJournalError.unavailable};defer{closedir(stream)}
++        var count=0
++        errno=0
++        while let row=readdir(stream){let name=withUnsafePointer(to:&row.pointee.d_name){$0.withMemoryRebound(to:CChar.self,capacity:256){String(cString:$0)}};if name=="."||name==".."{continue};count += 1;guard count<256 else{throw AuxNativeHostJournalError.unavailable};errno=0}
++        guard errno==0 else{throw AuxNativeHostJournalError.unavailable}
++        var next=base;next["phase"]="prepared";try publish(next,phase:"prepared")
++        guard fsync(root)==0 else{unknown=true;throw AuxNativeHostJournalError.unknown}
++    }
++    func publishSuspended(_ pid:Int32)throws {
++        guard getpid()==process,!unknown,phase=="prepared",let recorded,try read()==recorded else{throw AuxNativeHostJournalError.conflict}
++        var seconds:UInt64=0,micros:UInt64=0
++        guard nativeHostStoppedLifetime(pid,&seconds,&micros)==0,pid>1,seconds>0,micros<1_000_000 else{throw AuxNativeHostJournalError.unavailable}
++        let facts=["pid":String(pid),"seconds":String(seconds),"microseconds":String(micros)]
++        child=facts
++        var next=base;next["phase"]="spawned";next["helper"]=facts;try publish(next,phase:"spawned")
++    }
++    // Invoked only by joined native process owner after exact original wait and
++    // closed stdio, or definite native no-child spawn failure. No JS endpoint.
++    func terminal(pid:Int32,waitStatus:Int32,spawnError:Int32)throws {
++        guard getpid()==process,!unknown else{throw AuxNativeHostJournalError.unknown}
++        if retired{return}
++        if phase=="reaped"||phase=="not-spawned"{guard let recorded,try read()==recorded else{throw AuxNativeHostJournalError.conflict};try retireTerminal();return}
++        if recorded==nil,phase.isEmpty,pid==0,spawnError>0,waitStatus==0 {
++            try directoryCurrent();var named=stat()
++            guard fstatat(directory,leaseId+".json",&named,AT_SYMLINK_NOFOLLOW)<0,errno==ENOENT else{throw AuxNativeHostJournalError.conflict}
++            retired=true;return // Definite original no-spawn; no journal mutation was issued.
++        }
++        var next=base
++        if pid>1 {
++            guard phase=="spawned",let child,child["pid"]==String(pid),waitStatus>=0,spawnError==0 else{throw AuxNativeHostJournalError.conflict}
++            next["phase"]="reaped";next["helper"]=child;next["waitStatus"]=String(waitStatus);try publish(next,phase:"reaped")
++        }else {
++            guard phase=="prepared",child==nil,spawnError>0,waitStatus==0 else{throw AuxNativeHostJournalError.conflict}
++            next["phase"]="not-spawned";next["spawnError"]=String(spawnError);try publish(next,phase:"not-spawned")
++        }
++        try retireTerminal()
++    }
++    private func retireTerminal()throws {
++        guard !unknown,!retired,phase=="reaped"||phase=="not-spawned",let recorded,try read()==recorded else{throw AuxNativeHostJournalError.conflict}
++        let fd=openat(directory,leaseId+".json",O_RDONLY|O_NOFOLLOW|O_NONBLOCK|O_CLOEXEC)
++        guard fd>=0 else{throw AuxNativeHostJournalError.unknown};defer{close(fd)}
++        let held=try safe(fd,directory:false);var named=stat()
++        guard fstatat(directory,leaseId+".json",&named,AT_SYMLINK_NOFOLLOW)==0,named.st_dev==held.st_dev,named.st_ino==held.st_ino,try read()==recorded else{throw AuxNativeHostJournalError.conflict}
++        unknown=true
++        guard unlinkat(directory,leaseId+".json",0)==0,fsync(directory)==0 else{throw AuxNativeHostJournalError.unknown}
++        try directoryCurrent()
++        guard fstatat(directory,leaseId+".json",&named,AT_SYMLINK_NOFOLLOW)<0,errno==ENOENT else{throw AuxNativeHostJournalError.unknown}
++        retired=true;unknown=false
++    }
++    func canRelease()throws->Bool {
++        guard getpid()==process,!unknown else{return false}
++        if !retired{try retireTerminal()}
++        try directoryCurrent();var named=stat()
++        return retired && fstatat(directory,leaseId+".json",&named,AT_SYMLINK_NOFOLLOW)<0 && errno==ENOENT
++    }
++}
+--- a/daemon/AuxAccountsCskCoordinator.swift
++++ b/daemon/AuxAccountsCskCoordinator.swift
+@@ -140,6 +140,13 @@
+     func registeredMemoryAccount(_ account:Int64)throws->AuxMemoryAccountIdentity {
+         try AuxMemoryAccountIdentity.decode(registeredMemoryRegistryBytes(),account:account)
+     }
++    func registeredNativeHostProfile(_ path:String)throws->AuxMemoryAccountIdentity {
++        let bytes=try registeredMemoryRegistryBytes(),registry=try strictEnvelopeObject(bytes)
++        guard let bindings=registry["profileAccountBindings"] as? [String:Any],bindings.count<=4096 else{throw AuxMemoryAccountError.unavailable}
++        let matches=bindings.values.compactMap{$0 as? [String:Any]}.filter{$0["profilePath"] as? String==path}
++        guard matches.count==1,let account=integer(matches[0]["accountId"]) else{throw AuxMemoryAccountError.unavailable}
++        return try AuxMemoryAccountIdentity.decode(bytes,account:account)
++    }
+     func memoryRegistryMatches(_ bytes:Data)throws->Bool {try registeredMemoryRegistryBytes()==bytes}
+     private let info=Data("aux.dk.csk.v2".utf8)
+     private func subkey(_ root:Data)->SymmetricKey {HKDF<SHA256>.deriveKey(inputKeyMaterial:SymmetricKey(data:root),salt:Data(),info:info,outputByteCount:32)}
+--- a/daemon/AuxSecureStore.swift
++++ b/daemon/AuxSecureStore.swift
+@@ -116,6 +116,10 @@
+         guard let accounts else{throw AuxMemoryAccountError.unavailable}
+         return try accounts.registeredMemoryAccount(account)
+     }
++    func registeredNativeHostProfile(_ path:String)throws->AuxMemoryAccountIdentity {
++        guard let accounts else{throw AuxMemoryAccountError.unavailable}
++        return try accounts.registeredNativeHostProfile(path)
++    }
+     func withAccountRegistryLock<T>(_ body:()throws->T)throws->T {
+         guard let accounts else{throw AuxAccountsCskError.unavailable};return try accounts.withAccountRegistryLock(body)
+     }
+--- a/daemon/AuxOwnedCommandDispatcher.swift
++++ b/daemon/AuxOwnedCommandDispatcher.swift
+@@ -21,6 +21,17 @@
+     // actual absent-state generation is refused by the unchanged core.
+     private static let readOnlyCommands:Set<String>=["install-status","keys-status","get-public-keys","public-keys","install-init","init-keys","cdp-sign","dk-unwrap","secure-read","inbox-key-v2"]
+     private static func requestDigest(_ input:String)->Data{Data(SHA256.hash(data:Data(input.utf8)))}
++    private final class NativeHostLease {
++        let profilePath:String
++        let identity:AuxMemoryAccountIdentity
++        let journal:AuxNativeHostJournal
++        let controlRoot:String
++        let taskRoot:String
++        init(profilePath:String,identity:AuxMemoryAccountIdentity,journal:AuxNativeHostJournal,controlRoot:String,taskRoot:String){
++            self.profilePath=profilePath;self.identity=identity;self.journal=journal
++            self.controlRoot=controlRoot;self.taskRoot=taskRoot
++        }
++    }
+     private final class Entry {
+ #if AUX_NATIVE_FRESH_RUNTIME_CONSUMER
+         var nativeFreshRuntime:NativeFreshRuntimeCapturedContext? = nil
+@@ -37,6 +48,7 @@
+         var reconcilingRead=false
+ #endif
+ #if AUX_BROWSER_ONLY_NATIVE_STARTUP
++        var nativeHostLeases=[String:NativeHostLease]()
+         var memoryAccounts=[UInt64:AuxRegisteredMemoryAccountOwner]()
+         var memoryJournals=[UInt64:AuxMemoryHelperJournal]()
+         var pendingMemoryRegistryTarget:Data?
+@@ -1112,7 +1124,7 @@
+     }
+     private func hasRetainedLifetime(_ entry:Entry)->Bool {
+ #if AUX_BROWSER_ONLY_NATIVE_STARTUP
+-        if !entry.memoryAccounts.isEmpty{return true}
++        if !entry.memoryAccounts.isEmpty || !entry.nativeHostLeases.isEmpty{return true}
+ #endif
+         return entry.browserGrantUnresolved || hasUntrackedFreshGuard(entry)
+     }
+@@ -1227,7 +1239,7 @@
+         guard let entry=entries[handle]else{return -1}
+         if entry.active>0{return 1}
+ #if AUX_BROWSER_ONLY_NATIVE_STARTUP
+-        if !entry.memoryAccounts.isEmpty{return 1}
++        if !entry.memoryAccounts.isEmpty || !entry.nativeHostLeases.isEmpty{return 1}
+ #endif
+ #if AUX_NATIVE_FRESH_RUNTIME_CONSUMER
+         if entry.reconcilingRead{return 1}
+@@ -1502,10 +1514,11 @@
+         _ = try strictEnvelopeObject(bytes)
+         condition.lock()
+         guard let entry=entries[handle],entry.phase == .open,entry.active>0 else{condition.unlock();throw AuxMemoryAccountError.unavailable}
+-        let owners=Array(entry.memoryAccounts.values),pending=entry.pendingMemoryRegistryTarget;condition.unlock()
++        let owners=Array(entry.memoryAccounts.values),hosts=Array(entry.nativeHostLeases.values),pending=entry.pendingMemoryRegistryTarget;condition.unlock()
+         try requireOrdinaryStorageGuard(entry,moment:.beforeAction)
+         if let pending, pending != bytes{throw AuxMemoryAccountError.changed}
+-        let changed=owners.contains{(try? AuxMemoryAccountIdentity.decode(bytes,account:$0.identity.accountId)) != $0.identity}
++        let changed=owners.contains{(try? AuxMemoryAccountIdentity.decode(bytes,account:$0.identity.accountId)) != $0.identity} ||
++            hosts.contains{(try? AuxMemoryAccountIdentity.decode(bytes,account:$0.identity.accountId)) != $0.identity}
+         if changed{condition.lock();entry.pendingMemoryRegistryTarget=bytes;condition.unlock();return false}
+         try requireOrdinaryStorageGuard(entry,moment:.afterAction)
+         return true
+@@ -1522,6 +1535,79 @@
+     }
+     // This C boundary is consumed only by the real embedding main Environment
+     // producer; it is not registered as a page, generic Worker or command API.
++    // Only the authenticated native browser transport calls this finite
++    // protocol. No daemon HTTP/JS/Worker method accepts a lease or terminal flag.
++    func exchangeNativeHostFrame(_ handle:UInt64,frame:Data)throws->Data {
++        guard frame.count>0,frame.count<=8192 else{throw AuxDispatcherLifetimeError.invalidInput}
++        let request=try strictEnvelopeObject(frame)
++        guard let phase=request["phase"] as? String else{throw AuxDispatcherLifetimeError.invalidInput}
++        func text(_ key:String)throws->String {
++            guard let value=request[key] as? String,!value.isEmpty,value.utf8.count<4096,!value.utf8.contains(0) else{throw AuxDispatcherLifetimeError.invalidInput};return value
++        }
++        func integer(_ key:String,_ minimum:Int64,_ maximum:Int64)throws->Int64 {
++            let value=try text(key)
++            guard let number=Int64(value),String(number)==value,number>=minimum,number<=maximum else{throw AuxDispatcherLifetimeError.invalidInput};return number
++        }
++        return try withEntry(handle,guardGenericAction:false){entry in
++            guard let secure=entry.secureStore,let context=entry.nativeFreshRuntime else{throw AuxMemoryAccountError.unavailable}
++            try requireOrdinaryStorageGuard(entry,moment:.beforeAction)
++            let lease:NativeHostLease
++            switch phase {
++            case "prepare":
++                do {
++                guard Set(request.keys)==["phase","profilePath","extensionOrigin","hostName","imageSha256"] else{throw AuxDispatcherLifetimeError.invalidInput}
++                let path=try text("profilePath"),origin=try text("extensionOrigin"),host=try text("hostName"),image=try text("imageSha256")
++                guard path.hasPrefix("/"),origin.hasPrefix("chrome-extension://"),origin.hasSuffix("/"),
++                      origin.dropFirst(19).dropLast().count==32,
++                      origin.dropFirst(19).dropLast().allSatisfy({("a"..."p").contains(String($0))}),
++                      host.utf8.count<=255,!host.hasPrefix("."),!host.hasSuffix("."),!host.contains(".."),
++                      host.allSatisfy({$0.isASCII && ($0.isLowercase || $0.isNumber || $0=="_" || $0==".")})
++                else{throw AuxDispatcherLifetimeError.invalidInput}
++                let identity=try secure.registeredNativeHostProfile(path)
++                let roots=try context.owner.duplicateRetainedOrdinaryStorageRoots()
++                defer{Darwin.close(roots.control);Darwin.close(roots.task)}
++                let journal=try AuxNativeHostJournal(identity:identity,taskRoot:roots.task,generation:roots.generation,
++                    context:context,extensionOrigin:origin,hostName:host,imageSha256:image)
++                func rootPath(_ fd:Int32)throws->String {
++                    var bytes=[CChar](repeating:0,count:Int(PATH_MAX))
++                    guard fcntl(fd,F_GETPATH,&bytes)==0 else{throw AuxMemoryAccountError.unsafeDirectory}
++                    return String(cString:bytes)
++                }
++                lease=try NativeHostLease(profilePath:path,identity:identity,journal:journal,
++                    controlRoot:rootPath(roots.control),taskRoot:rootPath(roots.task))
++                condition.lock()
++                guard entry.nativeHostLeases.count<256,entry.pendingMemoryRegistryTarget==nil else{condition.unlock();throw AuxMemoryAccountError.exhausted}
++                entry.nativeHostLeases[journal.leaseId]=lease
++                condition.unlock()
++                }catch{
++                    return try JSONSerialization.data(withJSONObject:["noIntent":true],options:[.sortedKeys])
++                }
++                try lease.journal.prepare() // Retained before any durable mutation.
++            case "publish", "terminal":
++                let id=try text("leaseId")
++                guard let uuid=UUID(uuidString:id),uuid.uuidString.lowercased()==id else{throw AuxDispatcherLifetimeError.invalidInput}
++                condition.lock();let existing=entry.nativeHostLeases[id];condition.unlock()
++                guard let existing else{throw AuxMemoryAccountError.unavailable};lease=existing
++                guard try secure.registeredNativeHostProfile(lease.profilePath)==lease.identity else{throw AuxMemoryAccountError.changed}
++                if phase=="publish" {
++                    guard Set(request.keys)==["phase","leaseId","pid"] else{throw AuxDispatcherLifetimeError.invalidInput}
++                    try lease.journal.publishSuspended(Int32(integer("pid",2,Int64(Int32.max))))
++                }else{
++                    guard Set(request.keys)==["phase","leaseId","pid","waitStatus","spawnError"] else{throw AuxDispatcherLifetimeError.invalidInput}
++                    try lease.journal.terminal(pid:Int32(integer("pid",0,Int64(Int32.max))),
++                        waitStatus:Int32(integer("waitStatus",0,Int64(Int32.max))),
++                        spawnError:Int32(integer("spawnError",0,Int64(Int32.max))))
++                    guard try lease.journal.canRelease() else{throw AuxMemoryAccountError.unavailable}
++                    condition.lock();entry.nativeHostLeases.removeValue(forKey:id);condition.broadcast();condition.unlock()
++                }
++            default:throw AuxDispatcherLifetimeError.invalidInput
++            }
++            try requireOrdinaryStorageGuard(entry,moment:.afterAction)
++            var response=["leaseId":lease.journal.leaseId]
++            if phase=="prepare"{response["controlRoot"]=lease.controlRoot;response["taskRoot"]=lease.taskRoot}
++            return try JSONSerialization.data(withJSONObject:response,options:[.sortedKeys,.withoutEscapingSlashes])
++        }
++    }
+     func captureMemoryAccount(_ handle:UInt64,account:Int64)throws->UInt64 {
+         try withEntry(handle,guardGenericAction:false){entry in
+             try requireOrdinaryStorageGuard(entry,moment:.beforeAction)
+@@ -1622,7 +1708,7 @@
+         // No public callback exists to relabel that grant as drained.
+         guard !entry.browserGrantUnresolved else{condition.unlock();throw AuxDispatcherLifetimeError.retiring}
+ #if AUX_BROWSER_ONLY_NATIVE_STARTUP
+-        guard entry.memoryAccounts.isEmpty else{condition.unlock();throw AuxDispatcherLifetimeError.retiring}
++        guard entry.memoryAccounts.isEmpty,entry.nativeHostLeases.isEmpty else{condition.unlock();throw AuxDispatcherLifetimeError.retiring}
+ #endif
+         while entry.active>0 {condition.wait()}
+         condition.unlock()
+--- a/daemon/AuxPreparedDaemonAuthority.swift
++++ b/daemon/AuxPreparedDaemonAuthority.swift
+@@ -7,7 +7,7 @@
+ private var daemonAuthorityNext:UInt64=1
+ private var daemonAuthorities=[UInt64:PreparedDaemonAuthority]()
+ private let daemonAuthPrefix=Data("Aux Daemon Auth v1\0".utf8) //19 exact bytes.
+-private enum DaemonAuthorityKind:Equatable{case signature,publicKeys,inboxKey,browserStartup,uiCapture}
++private enum DaemonAuthorityKind:Equatable{case signature,publicKeys,inboxKey,browserStartup,uiCapture,nativeHost}
+ // Exact backend-owned cache allocation; no Data COW alias can retain its old
+ // cache buffer after wipe. This does not promise zeroization of Foundation's
+ // transient JSON/base64 String copies or separately owned transport buffers.
+@@ -42,7 +42,7 @@
+         case .signature:command="cdp-sign"
+         case .publicKeys:command="get-public-keys"
+         case .inboxKey:command="inbox-key-v2"
+-        case .browserStartup,.uiCapture:command="" // Native-only routes, never generic command dispatch.
++        case .browserStartup,.uiCapture,.nativeHost:command="" // Native-only routes, never generic command dispatch.
+         }
+         input=kind == .signature ? "{\"challenge\":\""+message.base64EncodedString()+"\"}":"{}"
+     }
+@@ -101,6 +101,13 @@
+             return .completed(DaemonAuthorityPayload(&receipt))
+         }catch{return .failed}
+     }
++    if request.kind == .nativeHost {
++        do {
++            var reply=try AuxCommandDispatcherRegistry.shared.exchangeNativeHostFrame(entry.owner.handle,frame:request.message)
++            guard !reply.isEmpty,reply.count<=8192 else{return .failed}
++            return .completed(DaemonAuthorityPayload(&reply))
++        }catch{return .failed}
++    }
+     if request.kind == .uiCapture {
+         do {
+             var reply=try AuxCommandDispatcherRegistry.shared.exchangeUiStorageCaptureFrame(entry.owner.handle,frame:request.message)
+@@ -168,7 +175,7 @@
+     if kind == .signature {
+         guard let message else{return -1};bytes=Data(bytes:message,count:51)
+         guard validDaemonAuthMessage(bytes)else{return -1}
+-    }else if kind == .uiCapture {
++    }else if kind == .uiCapture || kind == .nativeHost {
+         guard let message,messageCount>0,messageCount<=8192 else{return -1}
+         bytes=Data(bytes:message,count:Int(messageCount))
+     }else{bytes=Data()}
+@@ -313,3 +320,8 @@
+ func AuxBeginPreparedBrowserStartup(_ id:UInt64,_ sequence:UInt64,_ nonce:UnsafePointer<UInt8>?,_ output:UnsafeMutablePointer<UInt8>?,_ capacity:UInt32,_ written:UnsafeMutablePointer<UInt32>?)->Int32 {
+     operatePreparedDaemonAuthority(id,sequence:sequence,nonce:nonce,kind:.browserStartup,message:nil,output:output,capacity:capacity,written:written)
+ }
++
++@_cdecl("AuxBeginPreparedNativeHost")
++func AuxBeginPreparedNativeHost(_ id:UInt64,_ sequence:UInt64,_ nonce:UnsafePointer<UInt8>?,_ message:UnsafePointer<UInt8>?,_ count:UInt32,_ output:UnsafeMutablePointer<UInt8>?,_ capacity:UInt32,_ written:UnsafeMutablePointer<UInt32>?)->Int32 {
++    operatePreparedDaemonAuthority(id,sequence:sequence,nonce:nonce,kind:.nativeHost,message:message,output:output,capacity:capacity,written:written,messageCount:count)
++}
+--- a/daemon/AuxNativeTaskLayout.swift
++++ b/daemon/AuxNativeTaskLayout.swift
+@@ -73,6 +73,11 @@
+                 throw AuxFreshColdBootstrapError.legacyOrUnknownExistingState
+             }
+         }
++        for process in try Self.nativeHostProcesses(home:home,expected:expected) {
++            guard memoryHelperPriorProcessExited(process.pid,process.seconds,process.microseconds)==1 else {
++                throw AuxFreshColdBootstrapError.legacyOrUnknownExistingState
++            }
++        }
+         try revalidate()
+     }
+     private struct MemoryHelperProcess {
+@@ -192,6 +197,125 @@
+         }
+         guard try memoryHelperRecordNames(directory)==names else{throw AuxFreshColdGuardError.path}
+         try metadata(directory,directory:true);try entry(home,memoryHelperDirectory,directory)
++        return processes
++    }
++    private struct NativeHostProcess {
++        let pid:Int32
++        let seconds:UInt64
++        let microseconds:UInt64
++    }
++    private static let nativeHostDirectory=".aux-native-host-lifetimes.v1"
++    // Decoder yields kernel queries, never a clean/ready flag. Persisted PID,
++    // account and generation fields are data; only the native process observer
++    // can establish that each original finite process has actually exited.
++    private static func decodeNativeHostProcesses(_ bytes:Data,filename:String,expected:Data)throws->[NativeHostProcess] {
++        let record=try strictEnvelopeObject(bytes),binding=try strictEnvelopeObject(expected)
++        func text(_ object:[String:Any],_ key:String)throws->String {
++            guard let value=object[key] as? String else{throw AuxFreshColdBootstrapError.legacyOrUnknownExistingState};return value
++        }
++        func unsigned(_ object:[String:Any],_ key:String,_ maximum:UInt64,_ minimum:UInt64=0)throws->UInt64 {
++            let raw=try text(object,key)
++            guard let value=UInt64(raw),String(value)==raw,value>=minimum,value<=maximum else{throw AuxFreshColdBootstrapError.legacyOrUnknownExistingState};return value
++        }
++        func canonicalUuid(_ object:[String:Any],_ key:String,lowercase:Bool=false)throws->String {
++            let raw=try text(object,key)
++            guard let value=UUID(uuidString:raw),(lowercase ? value.uuidString.lowercased():value.uuidString)==raw else{throw AuxFreshColdBootstrapError.legacyOrUnknownExistingState};return raw
++        }
++        func hash(_ key:String)throws {
++            let raw=try text(record,key)
++            guard raw.utf8.count==64,raw.utf8.allSatisfy({(48...57).contains($0)||(97...102).contains($0)}) else{throw AuxFreshColdBootstrapError.legacyOrUnknownExistingState}
++        }
++        func process(_ key:String)throws->NativeHostProcess {
++            guard let value=record[key] as? [String:Any],Set(value.keys)==["pid","seconds","microseconds"] else{throw AuxFreshColdBootstrapError.legacyOrUnknownExistingState}
++            return try .init(pid:Int32(unsigned(value,"pid",UInt64(Int32.max),2)),seconds:unsigned(value,"seconds",UInt64.max,1),microseconds:unsigned(value,"microseconds",999_999))
++        }
++        guard try text(record,"format")=="aux.native-host-lifetime.v1" else{throw AuxFreshColdBootstrapError.legacyOrUnknownExistingState}
++        let lease=try canonicalUuid(record,"leaseId",lowercase:true)
++        guard filename==lease+".json" else{throw AuxFreshColdBootstrapError.legacyOrUnknownExistingState}
++        for key in ["controlScope","controlReservationSha256","policySha256","profilePathSha256","recordSha256","extensionOriginSha256","nativeHostNameSha256","hostImageSha256"] {try hash(key)}
++        _=try canonicalUuid(record,"controlTransactionId")
++        _=try canonicalUuid(record,"accountIncarnation");_=try canonicalUuid(record,"profileId")
++        for key in ["controlScope","controlTransactionId","controlReservationSha256","policySha256"] {
++            guard try text(record,key)==text(binding,key) else{throw AuxFreshColdBootstrapError.legacyOrUnknownExistingState}
++        }
++        _=try unsigned(record,"transportGeneration",UInt64.max,1)
++        _=try unsigned(record,"accountId",9_007_199_254_740_991)
++        let phase=try text(record,"phase")
++        let base:Set<String>=["format","leaseId","controlScope","controlTransactionId","controlReservationSha256","policySha256","transportGeneration","accountId","accountIncarnation","profileId","profilePathSha256","recordSha256","daemon","browser","phase","extensionOriginSha256","nativeHostNameSha256","hostImageSha256"]
++        let extra:Set<String>
++        switch phase {
++        case "prepared":extra=[]
++        case "spawned":extra=["helper"]
++        case "reaped":extra=["helper","waitStatus"]
++        case "not-spawned":extra=["spawnError"]
++        default:throw AuxFreshColdBootstrapError.legacyOrUnknownExistingState
++        }
++        guard Set(record.keys)==base.union(extra) else{throw AuxFreshColdBootstrapError.legacyOrUnknownExistingState}
++        let daemon=try process("daemon"),browser=try process("browser")
++        guard daemon.pid != browser.pid else{throw AuxFreshColdBootstrapError.legacyOrUnknownExistingState}
++        // A missing PID publication can hide a successful suspended spawn.
++        // Parent absence alone cannot resolve that uncertainty.
++        guard phase != "prepared" else{throw AuxFreshColdBootstrapError.legacyOrUnknownExistingState}
++        if phase=="not-spawned" {
++            _=try unsigned(record,"spawnError",UInt64(Int32.max),1)
++            return [daemon,browser]
++        }
++        let helper=try process("helper")
++        guard helper.pid != daemon.pid,helper.pid != browser.pid else{throw AuxFreshColdBootstrapError.legacyOrUnknownExistingState}
++        if phase=="reaped" {
++            let raw=try text(record,"waitStatus")
++            guard let value=Int32(raw),String(value)==raw else{throw AuxFreshColdBootstrapError.legacyOrUnknownExistingState}
++        }
++        return [daemon,browser,helper]
++    }
++    private static func nativeHostRecordNames(_ directory:Int32)throws->Set<String> {
++        let copied=openat(directory,".",O_RDONLY|O_DIRECTORY|O_NOFOLLOW|O_CLOEXEC|O_NONBLOCK)
++        guard copied>=0 else{throw AuxFreshColdGuardError.io(errno)}
++        guard let stream=fdopendir(copied)else{let error=errno;close(copied);throw AuxFreshColdGuardError.io(error)};defer{closedir(stream)}
++        var names=Set<String>();errno=0
++        while let item=readdir(stream) {
++            let name=withUnsafePointer(to:&item.pointee.d_name){$0.withMemoryRebound(to:CChar.self,capacity:Int(item.pointee.d_namlen)+1){String(cString:$0)}}
++            if name != "." && name != ".." {
++                guard name.hasSuffix(".json"),let id=UUID(uuidString:String(name.dropLast(5))),id.uuidString.lowercased()+".json"==name,
++                      names.insert(name).inserted,names.count<=256 else{throw AuxFreshColdBootstrapError.legacyOrUnknownExistingState}
++            }
++            errno=0
++        }
++        guard errno==0 else{throw AuxFreshColdGuardError.io(errno)};return names
++    }
++    private static func nativeHostProcesses(home:Int32,expected:Data)throws->[NativeHostProcess] {
++        let directory=openat(home,nativeHostDirectory,O_RDONLY|O_DIRECTORY|O_NOFOLLOW|O_CLOEXEC|O_NONBLOCK)
++        if directory<0 {
++            guard errno==ENOENT else{throw AuxFreshColdGuardError.io(errno)}
++            var absent=stat();guard fstatat(home,nativeHostDirectory,&absent,AT_SYMLINK_NOFOLLOW) != 0,errno==ENOENT else{throw AuxFreshColdGuardError.path}
++            return []
++        }
++        defer{close(directory)}
++        try metadata(directory,directory:true);try entry(home,nativeHostDirectory,directory)
++        let names=try nativeHostRecordNames(directory);var processes=[NativeHostProcess]()
++        for name in names.sorted() {
++            let fd=openat(directory,name,O_RDONLY|O_NOFOLLOW|O_CLOEXEC|O_NONBLOCK)
++            guard fd>=0 else{throw AuxFreshColdGuardError.io(errno)}
++            defer{close(fd)}
++            try metadata(fd,directory:false);try entry(directory,name,fd)
++            var before=stat();guard fstat(fd,&before)==0,before.st_size>0,before.st_size<=16_384 else{throw AuxFreshColdGuardError.metadata}
++            var bytes=Data(count:Int(before.st_size))
++            try bytes.withUnsafeMutableBytes { raw in
++                var offset=0
++                while offset<raw.count {
++                    let count=pread(fd,raw.baseAddress!.advanced(by:offset),raw.count-offset,off_t(offset))
++                    if count<0 && errno==EINTR{continue}
++                    guard count>0 else{throw AuxFreshColdGuardError.io(errno)};offset += count
++                }
++            }
++            var after=stat();guard fstat(fd,&after)==0,before.st_dev==after.st_dev,before.st_ino==after.st_ino,
++                before.st_size==after.st_size,before.st_mtimespec.tv_sec==after.st_mtimespec.tv_sec,before.st_mtimespec.tv_nsec==after.st_mtimespec.tv_nsec,
++                before.st_ctimespec.tv_sec==after.st_ctimespec.tv_sec,before.st_ctimespec.tv_nsec==after.st_ctimespec.tv_nsec else{throw AuxFreshColdGuardError.metadata}
++            try metadata(fd,directory:false);try entry(directory,name,fd)
++            processes += try decodeNativeHostProcesses(bytes,filename:name,expected:expected)
++        }
++        guard try nativeHostRecordNames(directory)==names else{throw AuxFreshColdGuardError.path}
++        try metadata(directory,directory:true);try entry(home,nativeHostDirectory,directory)
+         return processes
+     }
+     private static func binding(policy:AuxAuthenticatedFreshBootstrapPolicy,scope:String,transaction:String,reservationHash:String)throws->(String,Data) {
+--- a/daemon/AuxNativeDaemonMain.cc
++++ b/daemon/AuxNativeDaemonMain.cc
+@@ -23,6 +23,7 @@
+ #include <string>
+ #include <thread>
+ #include <libproc.h>
++#include <sys/proc.h>
+ #include <signal.h>
+ #include <cerrno>
+ #include <vector>
+@@ -395,3 +396,28 @@
+   node::TearDownOncePerProcess();
+   return exit_code;
+ }
++
++// Actual stopped direct child of the authenticated browser parent only.
++extern "C" int32_t AuxNativeHostCopyStoppedBrowserChildLifetime(
++    int32_t pid,uint64_t* seconds,uint64_t* microseconds) {
++  if(!seconds||!microseconds)return -1;
++  *seconds=0;*microseconds=0;
++#if defined(AUX_BROWSER_ONLY_NATIVE_STARTUP) && AUX_BROWSER_ONLY_NATIVE_STARTUP
++  int32_t parent=-1;uint64_t parent_seconds=0,parent_micros=0;
++  if(AuxCopyOrdinaryBrowserParentLifetime(&parent,&parent_seconds,&parent_micros)!=0)return -1;
++  proc_bsdinfo first{},second{};
++  if(pid<=1||proc_pidinfo(pid,PROC_PIDTBSDINFO,0,&first,sizeof(first))!=sizeof(first)||
++      proc_pidinfo(pid,PROC_PIDTBSDINFO,0,&second,sizeof(second))!=sizeof(second)||
++      first.pbi_pid!=uint32_t(pid)||second.pbi_pid!=first.pbi_pid||
++      first.pbi_ppid!=uint32_t(parent)||second.pbi_ppid!=first.pbi_ppid||
++      first.pbi_status!=SSTOP||second.pbi_status!=SSTOP||!first.pbi_start_tvsec||
++      first.pbi_start_tvusec>=1'000'000||second.pbi_start_tvsec!=first.pbi_start_tvsec||
++      second.pbi_start_tvusec!=first.pbi_start_tvusec||getppid()!=parent)return -1;
++  int32_t checked=-1;uint64_t checked_seconds=0,checked_micros=0;
++  if(AuxCopyOrdinaryBrowserParentLifetime(&checked,&checked_seconds,&checked_micros)!=0||
++      checked!=parent||checked_seconds!=parent_seconds||checked_micros!=parent_micros)return -1;
++  *seconds=first.pbi_start_tvsec;*microseconds=first.pbi_start_tvusec;return 0;
++#else
++  return -1;
++#endif
++}
+--- a/chrome/browser/aux/AuxNativePeerWire.h
++++ b/chrome/browser/aux/AuxNativePeerWire.h
+@@ -116,7 +116,7 @@
+ constexpr mach_msg_id_t kAuthorityRequest = 0x4155584c; // AUXL
+ constexpr mach_msg_id_t kAuthorityReply = 0x4155584d; // AUXM
+ constexpr uint32_t kAuthorityVersion = 6;
+-constexpr uint32_t kSign = 1, kPublicKeys = 2, kInboxKey = 3, kObserve = 4, kAcknowledge = 5, kBrowserStartup = 6, kUiCapture = 7;
++constexpr uint32_t kSign = 1, kPublicKeys = 2, kInboxKey = 3, kObserve = 4, kAcknowledge = 5, kBrowserStartup = 6, kUiCapture = 7, kNativeHost = 8;
+ struct AuthorityWire {
+   mach_msg_header_t header{};
+   uint32_t version = kAuthorityVersion;
+--- a/chrome/browser/aux/AuxNativePeerTransport.h
++++ b/chrome/browser/aux/AuxNativePeerTransport.h
+@@ -117,6 +117,7 @@
+   DaemonAuthorityReply GetInstallationPublicKeys(uint32_t timeout_ms);
+   DaemonAuthorityReply GetBrowserStartupLease(uint32_t timeout_ms);
+   // Finite capture-data frames only; no profile/migration admission.
++  DaemonAuthorityReply ExchangeNativeHostFrame(std::span<const uint8_t> frame, uint32_t timeout_ms);
+   DaemonAuthorityReply ExchangeUiCaptureFrame(std::span<const uint8_t> frame, uint32_t timeout_ms);
+   DaemonAuthorityReply GetAgentInboxV2MasterKey(uint32_t timeout_ms);
+   // Caller invokes only after its actual owner/pulse publication fence.
+--- a/chrome/browser/aux/AuxOwnedNativePeerChild.h
++++ b/chrome/browser/aux/AuxOwnedNativePeerChild.h
+@@ -34,6 +34,7 @@
+   DaemonAuthorityReply SignDaemonChallenge(std::span<const uint8_t> message, uint32_t timeout_ms);
+   DaemonAuthorityReply GetInstallationPublicKeys(uint32_t timeout_ms);
+   DaemonAuthorityReply GetBrowserStartupLease(uint32_t timeout_ms);
++  DaemonAuthorityReply ExchangeNativeHostFrame(std::span<const uint8_t> frame, uint32_t timeout_ms);
+   DaemonAuthorityReply ExchangeUiCaptureFrame(std::span<const uint8_t> frame, uint32_t timeout_ms);
+   DaemonAuthorityReply GetAgentInboxV2MasterKey(uint32_t timeout_ms);
+   DaemonAuthorityStatus AcceptAuthorityReply(const DaemonAuthorityReply& reply, uint32_t timeout_ms);
+--- a/chrome/browser/aux/AuxNativePeerTransport.cc
++++ b/chrome/browser/aux/AuxNativePeerTransport.cc
+@@ -4,6 +4,8 @@
+ #include "AuxSelectedHomePolicyBridge.h"
+ #if defined(AUX_NATIVE_DAEMON_AUTHORITY_SERVER)
+ #include "AuxFreshColdBootstrapNativeBridge.h"
++extern "C" int32_t AuxBeginPreparedNativeHost(uint64_t,uint64_t,const uint8_t*,
++    const uint8_t*,uint32_t,uint8_t*,uint32_t,uint32_t*);
+ extern "C" int32_t AuxBeginPreparedUiCapture(uint64_t, uint64_t, const uint8_t*,
+     const uint8_t*, uint32_t, uint8_t*, uint32_t, uint32_t*);
+ #endif
+@@ -1631,7 +1633,7 @@
+       MACH_MSGH_BITS_REMOTE(wire.header.msgh_bits) == MACH_MSG_TYPE_PORT_SEND_ONCE &&
+       wire.version == kAuthorityVersion && wire.reserved == 0 && wire.generation == generation &&
+       (wire.operation == kSign || wire.operation == kPublicKeys || wire.operation == kObserve ||
+-       wire.operation == kInboxKey || wire.operation == kBrowserStartup || wire.operation == kUiCapture || wire.operation == kAcknowledge) && wire.sequence != 0 &&
++       wire.operation == kInboxKey || wire.operation == kBrowserStartup || wire.operation == kUiCapture || wire.operation == kNativeHost || wire.operation == kAcknowledge) && wire.sequence != 0 &&
+       request.trailer.msgh_trailer_type == MACH_MSG_TRAILER_FORMAT_0 &&
+       request.trailer.msgh_trailer_size >= sizeof(request.trailer) &&
+       audit_token_to_pid(request.trailer.msgh_audit) == state->birth.pid &&
+@@ -1641,7 +1643,7 @@
+   valid = valid && wire.message_length <= wire.message.size();
+   if (valid) {
+     const bool valid_length = wire.operation == kSign ? wire.message_length == 51 :
+-        wire.operation == kUiCapture ? wire.message_length > 0 : wire.message_length == 0;
++        (wire.operation == kUiCapture || wire.operation == kNativeHost) ? wire.message_length > 0 : wire.message_length == 0;
+     valid = valid_length && std::all_of(wire.message.begin() + wire.message_length,
+         wire.message.end(), [](uint8_t b) { return b == 0; });
+   }
+@@ -1675,6 +1677,9 @@
+   else if (wire.operation == kBrowserStartup)
+     response.status = AuxBeginPreparedBrowserStartup(backend, wire.sequence, wire.nonce.data(),
+         response.payload.data(), response.payload.size(), &response.length);
++  else if (wire.operation == kNativeHost)
++    response.status = AuxBeginPreparedNativeHost(backend,wire.sequence,wire.nonce.data(),
++        wire.message.data(),wire.message_length,response.payload.data(),response.payload.size(),&response.length);
+   else if (wire.operation == kUiCapture)
+     response.status = AuxBeginPreparedUiCapture(backend, wire.sequence, wire.nonce.data(),
+         wire.message.data(), wire.message_length, response.payload.data(), response.payload.size(), &response.length);
+@@ -1783,6 +1788,11 @@
+ }
+ DaemonAuthorityReply AuthenticatedSelectedHomeTransfer::GetAgentInboxV2MasterKey(uint32_t timeout_ms) {
+   return RequestAuthority(kInboxKey, {}, timeout_ms);
++}
++DaemonAuthorityReply AuthenticatedSelectedHomeTransfer::ExchangeNativeHostFrame(
++    std::span<const uint8_t> frame, uint32_t timeout_ms) {
++  if (frame.empty() || frame.size() > 8192) return {};
++  return RequestAuthority(kNativeHost, frame, timeout_ms);
+ }
+ DaemonAuthorityReply AuthenticatedSelectedHomeTransfer::ExchangeUiCaptureFrame(
+     std::span<const uint8_t> frame, uint32_t timeout_ms) {
+--- a/chrome/browser/aux/AuxOwnedNativePeerChild.cc
++++ b/chrome/browser/aux/AuxOwnedNativePeerChild.cc
+@@ -365,6 +365,18 @@
+     return {DaemonAuthorityStatus::closed, {}};
+   return reply;
+ }
++DaemonAuthorityReply SelectedNativeHome::ExchangeNativeHostFrame(
++    std::span<const uint8_t> frame, uint32_t timeout_ms) {
++  auto before = InspectOwnedChild();
++  if (before.closed || before.wrong_process || before.exit_observed_and_reaped || before.exit_ownership_unknown)
++    return {DaemonAuthorityStatus::closed, {}};
++  auto reply = state_->transfer->ExchangeNativeHostFrame(frame, timeout_ms);
++  auto after = InspectOwnedChild();
++  if (after.closed || after.wrong_process || after.exit_observed_and_reaped ||
++      after.exit_ownership_unknown || after.child_pid != before.child_pid)
++    return {DaemonAuthorityStatus::closed, {}};
++  return reply;
++}
+ DaemonAuthorityReply SelectedNativeHome::ExchangeUiCaptureFrame(
+     std::span<const uint8_t> frame, uint32_t timeout_ms) {
+   auto before = InspectOwnedChild();
+--- a/chrome/browser/aux/AuxSelectedStateHome.h
++++ b/chrome/browser/aux/AuxSelectedStateHome.h
+@@ -55,6 +55,7 @@
+   std::optional<std::string> signature;
+ };
+ // Native-only capture data route, never migration/profile authority.
++DaemonAuthorityReply ExchangeNativeSelectedHostFrame(std::span<const uint8_t> frame);
+ DaemonAuthorityReply ExchangeNativeSelectedUiCaptureFrame(std::span<const uint8_t> frame);
+ NativeDaemonSignatureReply ObserveNativeSelectedDaemonChallenge(std::string_view encoded_message);
+ std::optional<std::string> SignNativeSelectedDaemonChallenge(std::string_view encoded_message);
+--- a/chrome/browser/aux/AuxSelectedStateHome.cc
++++ b/chrome/browser/aux/AuxSelectedStateHome.cc
+@@ -260,6 +260,43 @@
+       current->exports < pulse->exports || !Fresh(*current)) return {SelectedStateHomeRoute::unavailable, {}};
+   return {SelectedStateHomeRoute::current, *path, current->exports, child.child_pid};
+ }
++DaemonAuthorityReply ExchangeNativeSelectedHostFrame(std::span<const uint8_t> frame) {
++  auto& state = CurrentState();
++  if (getpid() != state.process) return {DaemonAuthorityStatus::wrongProcess, {}};
++  if (frame.empty() || frame.size() > 8192) return {};
++  std::shared_ptr<SelectedNativeHome> owner;
++  std::shared_ptr<const BrowserPrivateRoots> roots;
++  uint64_t generation = 0;
++  {
++    std::lock_guard<std::mutex> lock(state.mutex);
++    if (state.closed || state.browser_shutdown_phase || state.initializing ||
++        !state.selected || !state.admitted_browser_roots || !state.browser_generation) return {};
++    owner = state.selected; roots = state.admitted_browser_roots;
++    generation = state.browser_generation;
++    ++state.active_reads;
++  }
++  auto finish = +[](State* held) { std::lock_guard<std::mutex> lock(held->mutex); --held->active_reads; };
++  std::unique_ptr<State, decltype(finish)> active(&state, finish);
++  auto valid = [&] {
++    auto pulse = owner->InspectReadyPulse();
++    auto child = owner->InspectOwnedChild();
++    if (!pulse || !Fresh(*pulse) || pulse->generation != generation || !roots->Revalidate() ||
++        child.closed || child.wrong_process || child.exit_observed_and_reaped ||
++        child.exit_ownership_unknown || child.child_pid <= 1) return false;
++    std::lock_guard<std::mutex> lock(state.mutex);
++    return !state.closed && !state.browser_shutdown_phase && state.selected == owner &&
++        state.admitted_browser_roots == roots && state.browser_generation == generation;
++  };
++  if (!valid()) return {};
++  auto reply = owner->ExchangeNativeHostFrame(frame, 2'000);
++  if (reply.status != DaemonAuthorityStatus::ready) return reply;
++  // A lost holder fence/ACK is unknown, not proof that physical IO did not run.
++  if (!valid()) return {};
++  auto accepted = owner->AcceptAuthorityReply(reply, 2'000);
++  if (accepted != DaemonAuthorityStatus::ready) return {accepted, {}};
++  if (!valid()) return {};
++  return reply;
++}
+ DaemonAuthorityReply ExchangeNativeSelectedUiCaptureFrame(std::span<const uint8_t> frame) {
+ #if defined(AUX_BROWSER_ONLY_NATIVE_STARTUP)
+   // This bounded ordinary mode has no migration/privileged drain authority.

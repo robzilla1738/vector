@@ -1,0 +1,478 @@
+{
+  "format": "aux.native-host-journal-backend.v1",
+  "files": [
+    {
+      "path": "daemon/AuxNativeHostJournal.swift",
+      "input": null,
+      "before": null,
+      "after": "a6a7bfc1ecaab09fd71cc9f2085f6cad4403bc6d98d08ca27a860a91cb64ee0e",
+      "anchors": [],
+      "bindingStage": "frozen owner + distinct native intent"
+    },
+    {
+      "path": "daemon/AuxAccountsCskCoordinator.swift",
+      "input": "/private/tmp/aux-browser-only-daemon-build-20261025-a72/source/AuxAccountsCskCoordinator.swift",
+      "before": "fc8a62ba11aff116f3d8ad6bbf2c4de8822a60943f9b6699d8e84b8642e3b7ef",
+      "after": "f81924032bed680777595554d5cbf4ad98f53a3154808606d295d58961c70bb9",
+      "anchors": [
+        {
+          "old": "    func memoryRegistryMatches(_ bytes:Data)throws->Bool {try registeredMemoryRegistryBytes()==bytes}",
+          "new": "    func registeredNativeHostProfile(_ path:String)throws->AuxMemoryAccountIdentity {\n        let bytes=try registeredMemoryRegistryBytes(),registry=try strictEnvelopeObject(bytes)\n        guard let bindings=registry[\"profileAccountBindings\"] as? [String:Any],bindings.count<=4096 else{throw AuxMemoryAccountError.unavailable}\n        let matches=bindings.values.compactMap{$0 as? [String:Any]}.filter{$0[\"profilePath\"] as? String==path}\n        guard matches.count==1,let account=integer(matches[0][\"accountId\"]) else{throw AuxMemoryAccountError.unavailable}\n        return try AuxMemoryAccountIdentity.decode(bytes,account:account)\n    }\n    func memoryRegistryMatches(_ bytes:Data)throws->Bool {try registeredMemoryRegistryBytes()==bytes}",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "daemon/AuxSecureStore.swift",
+      "input": "/private/tmp/aux-browser-only-daemon-build-20261025-a61/source/AuxSecureStore.swift",
+      "before": "2ca167ffd3bf3c36a29032ec43e31324ae5ada6c188bcc3b0a3c9c5e8eeb9dc7",
+      "after": "152d08839554c5dc6548bff62c55fefe32005ddef3c89d7f46339867111437f4",
+      "anchors": [
+        {
+          "old": "    func withAccountRegistryLock<T>(_ body:()throws->T)throws->T {",
+          "new": "    func registeredNativeHostProfile(_ path:String)throws->AuxMemoryAccountIdentity {\n        guard let accounts else{throw AuxMemoryAccountError.unavailable}\n        return try accounts.registeredNativeHostProfile(path)\n    }\n    func withAccountRegistryLock<T>(_ body:()throws->T)throws->T {",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "daemon/AuxOwnedCommandDispatcher.swift",
+      "input": "/private/tmp/aux-browser-only-daemon-build-20261025-a61/source/AuxOwnedCommandDispatcher.swift",
+      "before": "0cea620f860b6ae27f939dc97f42b129a57d29fa983dc7974735d81ccb8d265b",
+      "after": "398476bfb4cdd0d0316b7d198d24f0999906dab02c952ebcfd1f29ac414ea13b",
+      "anchors": [
+        {
+          "old": "    private final class Entry {",
+          "new": "    private final class NativeHostLease {\n        let profilePath:String\n        let identity:AuxMemoryAccountIdentity\n        let journal:AuxNativeHostJournal\n        let controlRoot:String\n        let taskRoot:String\n        init(profilePath:String,identity:AuxMemoryAccountIdentity,journal:AuxNativeHostJournal,controlRoot:String,taskRoot:String){\n            self.profilePath=profilePath;self.identity=identity;self.journal=journal\n            self.controlRoot=controlRoot;self.taskRoot=taskRoot\n        }\n    }\n    private final class Entry {",
+          "count": 1
+        },
+        {
+          "old": "        var memoryAccounts=[UInt64:AuxRegisteredMemoryAccountOwner]()",
+          "new": "        var nativeHostLeases=[String:NativeHostLease]()\n        var memoryAccounts=[UInt64:AuxRegisteredMemoryAccountOwner]()",
+          "count": 1
+        },
+        {
+          "old": "let owners=Array(entry.memoryAccounts.values),pending=entry.pendingMemoryRegistryTarget;",
+          "new": "let owners=Array(entry.memoryAccounts.values),hosts=Array(entry.nativeHostLeases.values),pending=entry.pendingMemoryRegistryTarget;",
+          "count": 1
+        },
+        {
+          "old": "let changed=owners.contains{(try? AuxMemoryAccountIdentity.decode(bytes,account:$0.identity.accountId)) != $0.identity}",
+          "new": "let changed=owners.contains{(try? AuxMemoryAccountIdentity.decode(bytes,account:$0.identity.accountId)) != $0.identity} ||\n            hosts.contains{(try? AuxMemoryAccountIdentity.decode(bytes,account:$0.identity.accountId)) != $0.identity}",
+          "count": 1
+        },
+        {
+          "old": "    func captureMemoryAccount(_ handle:UInt64,account:Int64)throws->UInt64 {",
+          "new": "    // Only the authenticated native browser transport calls this finite\n    // protocol. No daemon HTTP/JS/Worker method accepts a lease or terminal flag.\n    func exchangeNativeHostFrame(_ handle:UInt64,frame:Data)throws->Data {\n        guard frame.count>0,frame.count<=8192 else{throw AuxDispatcherLifetimeError.invalidInput}\n        let request=try strictEnvelopeObject(frame)\n        guard let phase=request[\"phase\"] as? String else{throw AuxDispatcherLifetimeError.invalidInput}\n        func text(_ key:String)throws->String {\n            guard let value=request[key] as? String,!value.isEmpty,value.utf8.count<4096,!value.utf8.contains(0) else{throw AuxDispatcherLifetimeError.invalidInput};return value\n        }\n        func integer(_ key:String,_ minimum:Int64,_ maximum:Int64)throws->Int64 {\n            let value=try text(key)\n            guard let number=Int64(value),String(number)==value,number>=minimum,number<=maximum else{throw AuxDispatcherLifetimeError.invalidInput};return number\n        }\n        return try withEntry(handle,guardGenericAction:false){entry in\n            guard let secure=entry.secureStore,let context=entry.nativeFreshRuntime else{throw AuxMemoryAccountError.unavailable}\n            try requireOrdinaryStorageGuard(entry,moment:.beforeAction)\n            let lease:NativeHostLease\n            switch phase {\n            case \"prepare\":\n                do {\n                guard Set(request.keys)==[\"phase\",\"profilePath\",\"extensionOrigin\",\"hostName\",\"imageSha256\"] else{throw AuxDispatcherLifetimeError.invalidInput}\n                let path=try text(\"profilePath\"),origin=try text(\"extensionOrigin\"),host=try text(\"hostName\"),image=try text(\"imageSha256\")\n                guard path.hasPrefix(\"/\"),origin.hasPrefix(\"chrome-extension://\"),origin.hasSuffix(\"/\"),\n                      origin.dropFirst(19).dropLast().count==32,\n                      origin.dropFirst(19).dropLast().allSatisfy({(\"a\"...\"p\").contains(String($0))}),\n                      host.utf8.count<=255,!host.hasPrefix(\".\"),!host.hasSuffix(\".\"),!host.contains(\"..\"),\n                      host.allSatisfy({$0.isASCII && ($0.isLowercase || $0.isNumber || $0==\"_\" || $0==\".\")})\n                else{throw AuxDispatcherLifetimeError.invalidInput}\n                let identity=try secure.registeredNativeHostProfile(path)\n                let roots=try context.owner.duplicateRetainedOrdinaryStorageRoots()\n                defer{Darwin.close(roots.control);Darwin.close(roots.task)}\n                let journal=try AuxNativeHostJournal(identity:identity,taskRoot:roots.task,generation:roots.generation,\n                    context:context,extensionOrigin:origin,hostName:host,imageSha256:image)\n                func rootPath(_ fd:Int32)throws->String {\n                    var bytes=[CChar](repeating:0,count:Int(PATH_MAX))\n                    guard fcntl(fd,F_GETPATH,&bytes)==0 else{throw AuxMemoryAccountError.unsafeDirectory}\n                    return String(cString:bytes)\n                }\n                lease=try NativeHostLease(profilePath:path,identity:identity,journal:journal,\n                    controlRoot:rootPath(roots.control),taskRoot:rootPath(roots.task))\n                condition.lock()\n                guard entry.nativeHostLeases.count<256,entry.pendingMemoryRegistryTarget==nil else{condition.unlock();throw AuxMemoryAccountError.exhausted}\n                entry.nativeHostLeases[journal.leaseId]=lease\n                condition.unlock()\n                }catch{\n                    return try JSONSerialization.data(withJSONObject:[\"noIntent\":true],options:[.sortedKeys])\n                }\n                try lease.journal.prepare() // Retained before any durable mutation.\n            case \"publish\", \"terminal\":\n                let id=try text(\"leaseId\")\n                guard let uuid=UUID(uuidString:id),uuid.uuidString.lowercased()==id else{throw AuxDispatcherLifetimeError.invalidInput}\n                condition.lock();let existing=entry.nativeHostLeases[id];condition.unlock()\n                guard let existing else{throw AuxMemoryAccountError.unavailable};lease=existing\n                guard try secure.registeredNativeHostProfile(lease.profilePath)==lease.identity else{throw AuxMemoryAccountError.changed}\n                if phase==\"publish\" {\n                    guard Set(request.keys)==[\"phase\",\"leaseId\",\"pid\"] else{throw AuxDispatcherLifetimeError.invalidInput}\n                    try lease.journal.publishSuspended(Int32(integer(\"pid\",2,Int64(Int32.max))))\n                }else{\n                    guard Set(request.keys)==[\"phase\",\"leaseId\",\"pid\",\"waitStatus\",\"spawnError\"] else{throw AuxDispatcherLifetimeError.invalidInput}\n                    try lease.journal.terminal(pid:Int32(integer(\"pid\",0,Int64(Int32.max))),\n                        waitStatus:Int32(integer(\"waitStatus\",0,Int64(Int32.max))),\n                        spawnError:Int32(integer(\"spawnError\",0,Int64(Int32.max))))\n                    guard try lease.journal.canRelease() else{throw AuxMemoryAccountError.unavailable}\n                    condition.lock();entry.nativeHostLeases.removeValue(forKey:id);condition.broadcast();condition.unlock()\n                }\n            default:throw AuxDispatcherLifetimeError.invalidInput\n            }\n            try requireOrdinaryStorageGuard(entry,moment:.afterAction)\n            var response=[\"leaseId\":lease.journal.leaseId]\n            if phase==\"prepare\"{response[\"controlRoot\"]=lease.controlRoot;response[\"taskRoot\"]=lease.taskRoot}\n            return try JSONSerialization.data(withJSONObject:response,options:[.sortedKeys,.withoutEscapingSlashes])\n        }\n    }\n    func captureMemoryAccount(_ handle:UInt64,account:Int64)throws->UInt64 {",
+          "count": 1
+        },
+        {
+          "old": "if !entry.memoryAccounts.isEmpty{return true}",
+          "new": "if !entry.memoryAccounts.isEmpty || !entry.nativeHostLeases.isEmpty{return true}",
+          "count": 1
+        },
+        {
+          "old": "if !entry.memoryAccounts.isEmpty{return 1}",
+          "new": "if !entry.memoryAccounts.isEmpty || !entry.nativeHostLeases.isEmpty{return 1}",
+          "count": 1
+        },
+        {
+          "old": "guard entry.memoryAccounts.isEmpty else{condition.unlock();throw AuxDispatcherLifetimeError.retiring}",
+          "new": "guard entry.memoryAccounts.isEmpty,entry.nativeHostLeases.isEmpty else{condition.unlock();throw AuxDispatcherLifetimeError.retiring}",
+          "count": 1
+        }
+      ],
+      "bindingStage": "frozen owner + distinct native intent",
+      "drainStage": "affected native host cancellation before account publication"
+    },
+    {
+      "path": "daemon/AuxPreparedDaemonAuthority.swift",
+      "input": "/Users/rcourson/Documents/Vibe/aux-completion-20261026/runtime/docs/integration/proposed/standard-profile-isolation/ui-native-capture-transport-a1/source/AuxPreparedDaemonAuthority.swift",
+      "before": "84492348111bfd2730c508c746e2062086daf93841c62770abef9eec4a04da7c",
+      "after": "65496dfc32541aed42efe7de62c58d7e2d44a1873049a625a63af7d8f8e56fd1",
+      "anchors": [
+        {
+          "old": "case signature,publicKeys,inboxKey,browserStartup,uiCapture}",
+          "new": "case signature,publicKeys,inboxKey,browserStartup,uiCapture,nativeHost}",
+          "count": 1
+        },
+        {
+          "old": "case .browserStartup,.uiCapture:command=",
+          "new": "case .browserStartup,.uiCapture,.nativeHost:command=",
+          "count": 1
+        },
+        {
+          "old": "    if request.kind == .uiCapture {",
+          "new": "    if request.kind == .nativeHost {\n        do {\n            var reply=try AuxCommandDispatcherRegistry.shared.exchangeNativeHostFrame(entry.owner.handle,frame:request.message)\n            guard !reply.isEmpty,reply.count<=8192 else{return .failed}\n            return .completed(DaemonAuthorityPayload(&reply))\n        }catch{return .failed}\n    }\n    if request.kind == .uiCapture {",
+          "count": 1
+        },
+        {
+          "old": "}else if kind == .uiCapture {",
+          "new": "}else if kind == .uiCapture || kind == .nativeHost {",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "daemon/AuxNativeTaskLayout.swift",
+      "input": "/Users/rcourson/Documents/Vibe/aux-completion-20261026/runtime/docs/integration/proposed/browser-feature-expansion/native-memory-lifetime-startup-a31/source/AuxNativeTaskLayout.swift",
+      "before": "49265737a56c5c149d9380bf0e1e45661d3a15fadecf3ff417167548abd182f8",
+      "after": "5b9a4808a7e4d3e80013ef8d4d68c64a188f4a8772aaf8b80f1cfdeaa5e64218",
+      "anchors": [
+        {
+          "kind": "paired native-host decoder/reader",
+          "count": 1
+        }
+      ],
+      "bindingStage": "frozen owner + distinct native intent"
+    },
+    {
+      "path": "daemon/AuxNativeDaemonMain.cc",
+      "input": "/Users/rcourson/Documents/Vibe/aux-completion-20261026/runtime/docs/integration/proposed/browser-feature-expansion/local-completion-package-a38/disposable-location-review-a4/daemon-build/peer-loss-layout-a7/source/AuxNativeDaemonMain.cc",
+      "before": "6f7a04618eeb56d066c0fa72dc09b17372a1b2c79f7503ea1b0091f3138350a8",
+      "after": "e8c48cf91a2411169c78b31f3c0ac18b9a4a8950ceb9dc628390a5b8927f824c",
+      "anchors": []
+    },
+    {
+      "path": "chrome/browser/aux/AuxNativePeerWire.h",
+      "input": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/aux/AuxNativePeerWire.h",
+      "before": "f15b5c11f1c79971b14b65e866acf7306763a421fe461d57cd1aed3523bcb3dd",
+      "after": "332ca99ad1c485b4e0856b03889e36ac163011ed322f001d2bf7a769fe49e8dd",
+      "anchors": [
+        {
+          "old": "kBrowserStartup = 6, kUiCapture = 7;",
+          "new": "kBrowserStartup = 6, kUiCapture = 7, kNativeHost = 8;",
+          "count": 1
+        }
+      ],
+      "drainStage": "affected native host cancellation before account publication"
+    },
+    {
+      "path": "chrome/browser/aux/AuxNativePeerTransport.h",
+      "input": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/aux/AuxNativePeerTransport.h",
+      "before": "200735d57b29147b258c46d81e610b9615b3fe38b2bf08a3c7f69c2776a19050",
+      "after": "52b28dc33a82ddd4fcf2c8c6aefec45d1d0fb4e1fbf592851d09e39e8a3f66fb",
+      "anchors": [
+        {
+          "old": "  DaemonAuthorityReply ExchangeUiCaptureFrame(",
+          "new": "  DaemonAuthorityReply ExchangeNativeHostFrame(std::span<const uint8_t> frame, uint32_t timeout_ms);\n  DaemonAuthorityReply ExchangeUiCaptureFrame(",
+          "count": 1
+        }
+      ],
+      "drainStage": "affected native host cancellation before account publication"
+    },
+    {
+      "path": "chrome/browser/aux/AuxOwnedNativePeerChild.h",
+      "input": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/aux/AuxOwnedNativePeerChild.h",
+      "before": "28ed85a70c129d7a55e70536c5e2e5c42f98893716546825660dfe397278cc81",
+      "after": "09bd4febf820c02ef32e8c83e67c6a6843452ba58d3e665c70200c06072dee20",
+      "anchors": [
+        {
+          "old": "  DaemonAuthorityReply ExchangeUiCaptureFrame(",
+          "new": "  DaemonAuthorityReply ExchangeNativeHostFrame(std::span<const uint8_t> frame, uint32_t timeout_ms);\n  DaemonAuthorityReply ExchangeUiCaptureFrame(",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/aux/AuxNativePeerTransport.cc",
+      "input": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/aux/AuxNativePeerTransport.cc",
+      "before": "186e088c403e38752a035833ee0cef8859a111ac055515ce83415e2a0cee683c",
+      "after": "e1599130b1e41eb78cddce19b2b7828fc6d11a21e28fd62b24bdd01a5a4a7384",
+      "anchors": [
+        {
+          "old": "extern \"C\" int32_t AuxBeginPreparedUiCapture(",
+          "new": "extern \"C\" int32_t AuxBeginPreparedNativeHost(uint64_t,uint64_t,const uint8_t*,\n    const uint8_t*,uint32_t,uint8_t*,uint32_t,uint32_t*);\nextern \"C\" int32_t AuxBeginPreparedUiCapture(",
+          "count": 1
+        },
+        {
+          "old": "wire.operation == kUiCapture || wire.operation == kAcknowledge)",
+          "new": "wire.operation == kUiCapture || wire.operation == kNativeHost || wire.operation == kAcknowledge)",
+          "count": 1
+        },
+        {
+          "old": "wire.operation == kUiCapture ? wire.message_length > 0",
+          "new": "(wire.operation == kUiCapture || wire.operation == kNativeHost) ? wire.message_length > 0",
+          "count": 1
+        },
+        {
+          "old": "  else if (wire.operation == kUiCapture)\n",
+          "new": "  else if (wire.operation == kNativeHost)\n    response.status = AuxBeginPreparedNativeHost(backend,wire.sequence,wire.nonce.data(),\n        wire.message.data(),wire.message_length,response.payload.data(),response.payload.size(),&response.length);\n  else if (wire.operation == kUiCapture)\n",
+          "count": 1
+        },
+        {
+          "old": "DaemonAuthorityReply AuthenticatedSelectedHomeTransfer::ExchangeUiCaptureFrame(",
+          "new": "DaemonAuthorityReply AuthenticatedSelectedHomeTransfer::ExchangeNativeHostFrame(\n    std::span<const uint8_t> frame, uint32_t timeout_ms) {\n  if (frame.empty() || frame.size() > 8192) return {};\n  return RequestAuthority(kNativeHost, frame, timeout_ms);\n}\nDaemonAuthorityReply AuthenticatedSelectedHomeTransfer::ExchangeUiCaptureFrame(",
+          "count": 1
+        }
+      ],
+      "drainStage": "affected native host cancellation before account publication"
+    },
+    {
+      "path": "chrome/browser/aux/AuxOwnedNativePeerChild.cc",
+      "input": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/aux/AuxOwnedNativePeerChild.cc",
+      "before": "079c3011091f6528b1de26400dcf9608f0b3eb17e0a6b56b2825061dd8416b79",
+      "after": "6d7834e5ff02e3f98d54919e10b9c43aca13b75be3453ab33699dee50ad5d9ef",
+      "anchors": [
+        {
+          "kind": "existing owner revalidation wrapper",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/aux/AuxSelectedStateHome.h",
+      "input": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/aux/AuxSelectedStateHome.h",
+      "before": "16a222690c017271b962b980c60cd0a94e4429b79c81826fb4e857f1ec9ed12d",
+      "after": "ed29109e3e981dc877b962771f7c3d3629ca3bae221563c7e3cd6d57e6164f66",
+      "anchors": [
+        {
+          "old": "DaemonAuthorityReply ExchangeNativeSelectedUiCaptureFrame(",
+          "new": "DaemonAuthorityReply ExchangeNativeSelectedHostFrame(std::span<const uint8_t> frame);\nDaemonAuthorityReply ExchangeNativeSelectedUiCaptureFrame(",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/aux/AuxSelectedStateHome.cc",
+      "input": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/aux/AuxSelectedStateHome.cc",
+      "before": "b4612ad86ddbd0092b2c4cd61627b38629b295d5d58a21a3fbf8ef94392fbb4b",
+      "after": "6a60fd98d0a5f244aceaf79fe4b3a211796236e828b949f83a06c8766ac5a534",
+      "anchors": [
+        {
+          "kind": "ordinary selected host finite route using original owner fences",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/extensions/api/messaging/aux_native_host_lease.h",
+      "input": null,
+      "before": null,
+      "after": "eafcf5f62361154c84c7d9676aab2ac4e4236938f5e54f89f18766b1280cef31",
+      "anchors": [],
+      "bindingStage": "frozen owner + distinct native intent",
+      "drainStage": "affected native host cancellation before account publication"
+    },
+    {
+      "path": "chrome/browser/extensions/api/messaging/aux_native_host_lease.cc",
+      "input": null,
+      "before": null,
+      "after": "8340ebbf8cc83c8db2f8901b84f1d71eb75a9020262dfe5e8f569c305b3125ca",
+      "anchors": [],
+      "bindingStage": "frozen owner + distinct native intent",
+      "drainStage": "affected native host cancellation before account publication"
+    },
+    {
+      "path": "net/base/file_stream.h",
+      "input": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/net/base/file_stream.h",
+      "before": "695b9c20247c9b06686143ccdf46a690a9eeebc61c972544be86737418001c5d",
+      "after": "fc43ac393241e1f52aad011e30ff7bce0ba0bf1ae0621cc2c798cd91c6351e3e",
+      "anchors": [
+        {
+          "old": "  virtual bool IsOpen() const;",
+          "new": "  virtual bool IsOpen() const;\n\n  // One actual-close observation for an already open stream. Called on the\n  // file task runner after the underlying descriptor closes, including orphan\n  // cleanup; it must be safe independently of this object's lifetime.\n  void SetCloseObserver(base::OnceClosure observer);",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "net/base/file_stream.cc",
+      "input": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/net/base/file_stream.cc",
+      "before": "cc31c303bc132fd1199f4e84247b1886f268cfe2f03d8a6b8e020a3b496df731",
+      "after": "885a7e1d277a4e39d5255f692b4a93a9f3011ebb076a4579eb73ef92250dbd15",
+      "anchors": [
+        {
+          "old": "bool FileStream::IsOpen() const {",
+          "new": "void FileStream::SetCloseObserver(base::OnceClosure observer) {\n  context_->SetCloseObserver(std::move(observer));\n}\n\nbool FileStream::IsOpen() const {",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "net/base/file_stream_context.h",
+      "input": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/net/base/file_stream_context.h",
+      "before": "638fbb982da2cda622fc555d28272e08ccbdbde9f9748b6ecbef05d08869e67b",
+      "after": "1f5976a0218319e423cc68034b70e4daaddc7295355adee79a56d48a994665b2",
+      "anchors": [
+        {
+          "old": "  bool async_in_progress() const { return async_in_progress_; }",
+          "new": "  void SetCloseObserver(base::OnceClosure observer);\n  bool async_in_progress() const { return async_in_progress_; }",
+          "count": 1
+        },
+        {
+          "old": "  base::File file_;",
+          "new": "  base::File file_;\n  base::OnceClosure close_observer_;",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "net/base/file_stream_context.cc",
+      "input": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/net/base/file_stream_context.cc",
+      "before": "eb1c646ea8c26c3363caa39b65ca7295c0d08aa01c4071ed8ca5e733e0161c30",
+      "after": "25d556499bee75c315b1be305803b1d2e4ba1ed1e2dd17112c80b00a37525abb",
+      "anchors": [
+        {
+          "old": "void FileStream::Context::Close(CompletionOnceCallback callback) {",
+          "new": "void FileStream::Context::SetCloseObserver(base::OnceClosure observer) {\n  CHECK(file_.IsValid());\n  CHECK(!async_in_progress_);\n  CHECK(!close_observer_);\n  close_observer_=std::move(observer);\n}\n\nvoid FileStream::Context::Close(CompletionOnceCallback callback) {",
+          "count": 1
+        },
+        {
+          "old": "  file_.Close();\n  return IOResult(OK, 0);",
+          "new": "  file_.Close();\n  if(close_observer_)std::move(close_observer_).Run();\n  return IOResult(OK, 0);",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/extensions/api/messaging/aux_native_messaging_lifetime.h",
+      "input": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/extensions/api/messaging/aux_native_messaging_lifetime.h",
+      "before": "25b3d277ea42891f183383383793d4a76d96564d3d571a1d2eac85a4987a9393",
+      "after": "d6f1b7bcd445ccbe82c3aa5604c75fd4de33855a2a652e96e7b9b72ff16e240b",
+      "anchors": [
+        {
+          "kind": "finite ordinary native-host producer composition",
+          "count": 1
+        }
+      ],
+      "composedParent": "/Users/rcourson/Documents/Vibe/aux-completion-20261026/runtime/docs/integration/proposed/completion-20261026/runtime/source/chrome/browser/extensions/api/messaging/aux_native_messaging_lifetime.h",
+      "composedParentSha256": "acb56a429e5cfadb6e3d3ad4930d6ef6fe8e1437d891e3a42468ac8f9140f811",
+      "bindingStage": "frozen owner + distinct native intent",
+      "drainStage": "affected native host cancellation before account publication"
+    },
+    {
+      "path": "chrome/browser/extensions/api/messaging/launch_context_posix.cc",
+      "input": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/extensions/api/messaging/launch_context_posix.cc",
+      "before": "bb960b43c26f23233cc1ef929bb0136270568b2a300e72427c74b03020a28589",
+      "after": "0747b38f7d1f6aa90496ba4dd3a0554a4f7637ecba3c41a308bd3f41b6624416",
+      "anchors": [
+        {
+          "kind": "finite suspended producer and actual stream observers",
+          "count": 1
+        }
+      ],
+      "composedParent": "/Users/rcourson/Documents/Vibe/aux-completion-20261026/runtime/docs/integration/proposed/completion-20261026/runtime/source/chrome/browser/extensions/api/messaging/launch_context_posix.cc",
+      "composedParentSha256": "986aed63be8b1541db43c09a0f3db6573a08cccf07c33f072aea4d9312ec9bea"
+    },
+    {
+      "path": "chrome/browser/extensions/api/messaging/launch_context.cc",
+      "input": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/extensions/api/messaging/launch_context.cc",
+      "before": "9bff0d744b9e435dcc71c0df738ba64aa46eb3643ab745e3be614ec3157c9d75",
+      "after": "83275986135e71a4f36d8f32cf646547dafb98fab46917e24972ca8ac7cbff42",
+      "anchors": [
+        {
+          "kind": "cancelled raw-pipe physical observation",
+          "count": 1
+        }
+      ],
+      "composedParent": "/Users/rcourson/Documents/Vibe/aux-completion-20261026/runtime/docs/integration/proposed/completion-20261026/runtime/source/chrome/browser/extensions/api/messaging/launch_context.cc",
+      "composedParentSha256": "65561b5e3b1ce252abc2c08bc3fb6f9c108564cb89731a0725416b238d999e0e"
+    },
+    {
+      "path": "chrome/browser/extensions/api/messaging/native_message_process_host.cc",
+      "input": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/extensions/api/messaging/native_message_process_host.cc",
+      "before": "f4bc07980dde7ef9b16c331080481871dd83d8e0b25b19f97b16b2defc40e5d0",
+      "after": "ddcb708494de3259b80b926a04e69055b11feade07607add1cca07c31a51bde2",
+      "anchors": [
+        {
+          "kind": "native shutdown cancellation and finite settlement pump",
+          "count": 1
+        }
+      ],
+      "composedParent": "/Users/rcourson/Documents/Vibe/aux-completion-20261026/runtime/docs/integration/proposed/completion-20261026/runtime/source/chrome/browser/extensions/api/messaging/native_message_process_host.cc",
+      "composedParentSha256": "93c7c2bb3617aa47a38bee3a6c4e6729dc3ee7bcbe93e1c35b471f15cd8c4741",
+      "bindingStage": "frozen owner + distinct native intent",
+      "drainStage": "affected native host cancellation before account publication"
+    },
+    {
+      "path": "chrome/browser/extensions/api/messaging/launch_context.h",
+      "input": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/extensions/api/messaging/launch_context.h",
+      "before": "99686b7bc4231aa94bb63bb3213a76df3bc7005e0b44ea7affb86bf53918c12e",
+      "after": "6c78ff84e63fd45b4b953050f4fa5e3c8fffea58cb9dfe7b83f9c9c07130a2a7",
+      "anchors": [],
+      "composedParent": "/Users/rcourson/Documents/Vibe/aux-completion-20261026/runtime/docs/integration/proposed/completion-20261026/runtime/source/chrome/browser/extensions/api/messaging/launch_context.h",
+      "composedParentSha256": "6c78ff84e63fd45b4b953050f4fa5e3c8fffea58cb9dfe7b83f9c9c07130a2a7"
+    },
+    {
+      "path": "chrome/browser/extensions/api/messaging/native_process_launcher.cc",
+      "input": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/extensions/api/messaging/native_process_launcher.cc",
+      "before": "c36c7333f6ec925884a125ab700b75cca75267cce2a8d681ec15b93e98737ad8",
+      "after": "06dc7ad35465b9d9e354033864e3be7cd4aadbe2b68642a992f0e75013b85aac",
+      "anchors": [],
+      "composedParent": "/Users/rcourson/Documents/Vibe/aux-completion-20261026/runtime/docs/integration/proposed/completion-20261026/runtime/source/chrome/browser/extensions/api/messaging/native_process_launcher.cc",
+      "composedParentSha256": "06dc7ad35465b9d9e354033864e3be7cd4aadbe2b68642a992f0e75013b85aac"
+    },
+    {
+      "path": "chrome/browser/extensions/api/messaging/BUILD.gn",
+      "input": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/extensions/api/messaging/BUILD.gn",
+      "before": "959c4edd614a6d759219754aac28d8418f5a3b24c50ab17adc022e61589043d5",
+      "after": "db279de0aacce9e5b10e5cdfa72eef053564695a927d109ef3da9ef895115e01",
+      "anchors": [
+        {
+          "old": "  if (is_win) {\n    sources += [ \"launch_context_win.cc\" ]\n  }",
+          "new": "  if (is_win) {\n    sources += [ \"launch_context_win.cc\" ]\n  }\n  if (is_mac) {\n    sources += [ \"aux_native_host_lease.cc\", \"aux_native_host_lease.h\" ]\n  }",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/chrome_browser_main.cc",
+      "input": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/chrome_browser_main.cc",
+      "before": "960250de4f967d8ba0a727b3a64a52c33a473c088b03d8d7c52e10892f26ea28",
+      "after": "afed4a21ac3887623b6e86aa8d39b2d2cd305012684638e2cfadfea9dda6be23",
+      "anchors": [
+        {
+          "old": "  aux::features::CloseNativeFeatureIoAdmission();\n  extensions::ShutdownAuxMiniPopup();",
+          "new": "  aux::features::CloseNativeFeatureIoAdmission();\n  if(!extensions::CloseAuxNativeMessagingAndWaitForSettlement())\n    LOG(ERROR)<<\"Aux native messaging remains unresolved before daemon shutdown\";\n  extensions::ShutdownAuxMiniPopup();",
+          "count": 1
+        },
+        {
+          "old": "#include \"chrome/browser/ui/aux_browser_shutdown_drain.h\"",
+          "new": "#include \"chrome/browser/ui/aux_browser_shutdown_drain.h\"\n#include \"chrome/browser/extensions/api/messaging/aux_native_messaging_lifetime.h\"",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/aux/profile_identity.h",
+      "input": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/aux/profile_identity.h",
+      "before": "ddd97b8a3a95050d5e5fb63c80e6ae34f4fce775b9a2ed96994921760328d163",
+      "anchors": [],
+      "after": "ed2e7c038e1ee337bf005668415270a55f391781ad78854bb77408faa4601baf",
+      "bindingStage": "frozen owner + distinct native intent"
+    },
+    {
+      "path": "chrome/browser/aux/profile_identity.cc",
+      "input": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/aux/profile_identity.cc",
+      "before": "cb320311061997b02e0554c56feaeb7e6030e5ed86bc6fdac8ebb88371b5ceb6",
+      "anchors": [],
+      "after": "fcd7814f1cd1554af673c857249a9bb98f812fabf4f2d2c9e9a7da020cbb801c",
+      "bindingStage": "frozen owner + distinct native intent"
+    },
+    {
+      "path": "daemon/AuxNativeParentConnectionBridge.cc",
+      "input": "/Users/rcourson/Documents/Vibe/aux-completion-20261026/runtime/docs/integration/proposed/browser-feature-expansion/fresh-startup-milestone-a42/ordinary-storage-native/AuxNativeParentConnectionBridge.cc",
+      "before": "2f4aa0ade027d86601d930ca4245c76ca7a5c4f9eb1e97d9a0787fafc60825fa",
+      "anchors": [],
+      "after": "edeac78ee75f651e73907c2de66064e9a2204be06aa5bab00bd285df16c61c85",
+      "drainStage": "affected native host cancellation before account publication"
+    },
+    {
+      "path": "daemon/AuxFreshColdInstallerGuard.swift",
+      "input": "/Users/rcourson/Documents/Vibe/aux-completion-20261026/runtime/docs/integration/proposed/browser-feature-expansion/native-memory-lifetime-startup-a31/source/AuxFreshColdInstallerGuard.swift",
+      "before": "8a73c9ec2af84f584ff288300cad2350d54b13805d39c97d72eb42354924839e",
+      "anchors": [],
+      "after": "fc8a1bd07f9863ee15ad0fd86a5f99121692b621fff266f801dd9f7caf8ee3c5",
+      "drainStage": "affected native host cancellation before account publication"
+    },
+    {
+      "path": "daemon/AuxNativeFreshStageCoordinator.swift",
+      "input": "/Users/rcourson/Documents/Vibe/aux-completion-20261026/runtime/docs/integration/proposed/browser-feature-expansion/fresh-startup-milestone-a42/ordinary-storage-source/AuxNativeFreshStageCoordinator.swift",
+      "before": "82be5426a939748902340d5c0cc1fcdc437badc06b5289cc84dd1c426b0826a8",
+      "anchors": [],
+      "after": "b7ce22a48652ea08e2227a0a5e8a2cdcfd08e4eb7a2d9b108098ce892d0f8db3",
+      "drainStage": "affected native host cancellation before account publication"
+    }
+  ]
+}

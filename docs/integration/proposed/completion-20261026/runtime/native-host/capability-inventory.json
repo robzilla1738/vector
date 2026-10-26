@@ -1,0 +1,78 @@
+{
+  "format": "aux.advertised-native-capability-inventory.v1",
+  "entryPath": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-local-completion-20261025-a38/Aux.app/Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/node-development/aux-native-entry.mjs",
+  "entrySha256": "f355833cb607963a65ca3108e7ae19ea7ca60192a9f3d8e2644a3c12ec49c808",
+  "guardOccurrences": [
+    {
+      "offset": 159,
+      "context": "nding('aux_owned_native');\n\n// The immutable native observation cannot grant task execution from JS.\nfunction auxRequireSupervisedTasks(){\n const native=process._linkedBinding('aux_owned_native');\n const d=Object.getOwnPropertyDescriptor(native,"
+    },
+    {
+      "offset": 2974459,
+      "context": "r){bindingLoadError=error instanceof Error?error.message:String(error);throw error}}function loadPdfBinding(){auxRequireSupervisedTasks();return require$2(path.join(__auxDaemonResources,`native/aux-pdf.cjs`))}var auxMacUtilityBinding,auxMacUtili"
+    },
+    {
+      "offset": 2974646,
+      "context": "native/aux-pdf.cjs`))}var auxMacUtilityBinding,auxMacUtilityBindingError;\nfunction loadAuxMacUtilityBinding(){auxRequireSupervisedTasks();if(auxMacUtilityBinding!==void 0)return auxMacUtilityBinding;try{return auxMacUtilityBinding=require$2(path"
+    },
+    {
+      "offset": 3050037,
+      "context": "penerId}:{}}))}return await this.#g(this.#h(`/json/list`),array(jsonTargetSchema),Cn)}async ensureConnected(){auxRequireSupervisedTasks();this.#auxLifetime?.assertOpen();if(this.#c=!0,this.isConnected)return;if(this.#o){await this.#o;return}let "
+    },
+    {
+      "offset": 3050338,
+      "context": "this.#b()):this.#b();this.#o=Cn;try{await Cn}finally{this.#o===Cn&&(this.#o=null)}}async send(Cn,ei,ti,ni={}){auxRequireSupervisedTasks();let ri=getCurrentReplAbortSignal();if(ri?.aborted)throw createAbortError$2();if(Cn.startsWith(`Aux.`)){let "
+    },
+    {
+      "offset": 3066868,
+      "context": "`[ExtensionBridge] /command failed:`,ti),Cn.json({error:ti},500)}}),Cn}async sendCommandToExtension(Cn,ei={}){auxRequireSupervisedTasks();if(Cn.method===`Aux.openProfileUrl`&&ei.browserMode!==`incognito`){let ti=ei.accountId===void 0||!ei.profil"
+    },
+    {
+      "offset": 3070328,
+      "context": "ionBridge,sendCommandToExtension:()=>sendCommandToExtension});async function sendCommandToExtension(Cn,ei={}){auxRequireSupervisedTasks();if(Cn.method===`Aux.createAgentTab`&&ei.accountId!==void 0&&ei.profileId&&ei.browserMode!==`incognito`&&ei."
+    },
+    {
+      "offset": 3089021,
+      "context": "rror?Cn.message:String(Cn)),isError:!0}}}async function executePreparedToolCall(Cn,ei,ti){let ni=[],ri=!0;try{auxRequireSupervisedTasks();let ii=await Cn.tool.execute(Cn.toolCall.id,Cn.args,ei,ei=>{ri&&ni.push(Promise.resolve(ti({type:`tool_exec"
+    },
+    {
+      "offset": 6965776,
+      "context": "ch(Cn){throw(attempted?retainedUnknownRuntimeUses.add(ri):ri()),Cn}}async function prepareSessionSpawn(Cn,ei){auxRequireSupervisedTasks();let ti=await acquireAgentRuntimeUse(ei.signal),ni=ti.state===`ready`;if(!ni&&Cn.session.permissionMode===`f"
+    },
+    {
+      "offset": 10614206,
+      "context": "send.`),this.name=`ImessageAutomationRequiredError`}}}));async function runComputerUseCommand(Cn,ei={},ti={}){auxRequireSupervisedTasks();if(process.platform!==`darwin`)throw Error(`Computer Use Helper is only available on macOS.`);let ni=typeof"
+    },
+    {
+      "offset": 11057125,
+      "context": "ntaxError(`Identifier '${ni}' has already been declared`),{stack:``}):ti}}}}));function createDesktopRepl(Cn){auxRequireSupervisedTasks();let ei=createReplScope(Cn);return Object.assign(ei.globals,createDesktopReplExtensions({...Cn,replFs:ei.glo"
+    }
+  ],
+  "staticAddons": [
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-local-completion-20261025-a38/Aux.app/Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/native/aux-pdf.node",
+      "sha256": "ed5b4faec15d3fc3c29a97f0dd304b388844cf0bf16fad5a69a62b357a52dcc0",
+      "bytes": 9474752,
+      "lifetimeExports": [
+        "_AuxPdfCloseAdmissionAndDrain",
+        "_AuxPdfPendingOperations"
+      ]
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-local-completion-20261025-a38/Aux.app/Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/native/aux-macos-utilities.node",
+      "sha256": "7aff7611505145a5629cf42496be506200e7c1026087b2e397057e646d220e5e",
+      "bytes": 393720,
+      "lifetimeExports": [
+        "_AuxMacUtilityCloseAdmissionAndDrain",
+        "_AuxMacUtilityPendingEnvironments"
+      ]
+    }
+  ],
+  "ownerProfilesRead": false,
+  "addonLoaded": false,
+  "helperLaunched": false,
+  "vendorSources": [
+    "https://support.1password.com/additional-browsers/",
+    "https://support.1password.com/1password-browser-connection-security/"
+  ]
+}

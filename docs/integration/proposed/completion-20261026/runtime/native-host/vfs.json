@@ -1,0 +1,121 @@
+{
+  "version": 0,
+  "case-sensitive": "true",
+  "roots": [
+    {
+      "type": "file",
+      "name": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/aux/AuxNativePeerWire.h",
+      "external-contents": "/Users/rcourson/Documents/Vibe/aux-completion-20261026/runtime/docs/integration/proposed/completion-20261026/runtime/native-host/source/chrome/browser/aux/AuxNativePeerWire.h"
+    },
+    {
+      "type": "file",
+      "name": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/aux/AuxNativePeerTransport.h",
+      "external-contents": "/Users/rcourson/Documents/Vibe/aux-completion-20261026/runtime/docs/integration/proposed/completion-20261026/runtime/native-host/source/chrome/browser/aux/AuxNativePeerTransport.h"
+    },
+    {
+      "type": "file",
+      "name": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/aux/AuxOwnedNativePeerChild.h",
+      "external-contents": "/Users/rcourson/Documents/Vibe/aux-completion-20261026/runtime/docs/integration/proposed/completion-20261026/runtime/native-host/source/chrome/browser/aux/AuxOwnedNativePeerChild.h"
+    },
+    {
+      "type": "file",
+      "name": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/aux/AuxNativePeerTransport.cc",
+      "external-contents": "/Users/rcourson/Documents/Vibe/aux-completion-20261026/runtime/docs/integration/proposed/completion-20261026/runtime/native-host/source/chrome/browser/aux/AuxNativePeerTransport.cc"
+    },
+    {
+      "type": "file",
+      "name": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/aux/AuxOwnedNativePeerChild.cc",
+      "external-contents": "/Users/rcourson/Documents/Vibe/aux-completion-20261026/runtime/docs/integration/proposed/completion-20261026/runtime/native-host/source/chrome/browser/aux/AuxOwnedNativePeerChild.cc"
+    },
+    {
+      "type": "file",
+      "name": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/aux/AuxSelectedStateHome.h",
+      "external-contents": "/Users/rcourson/Documents/Vibe/aux-completion-20261026/runtime/docs/integration/proposed/completion-20261026/runtime/native-host/source/chrome/browser/aux/AuxSelectedStateHome.h"
+    },
+    {
+      "type": "file",
+      "name": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/aux/AuxSelectedStateHome.cc",
+      "external-contents": "/Users/rcourson/Documents/Vibe/aux-completion-20261026/runtime/docs/integration/proposed/completion-20261026/runtime/native-host/source/chrome/browser/aux/AuxSelectedStateHome.cc"
+    },
+    {
+      "type": "file",
+      "name": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/extensions/api/messaging/aux_native_host_lease.h",
+      "external-contents": "/Users/rcourson/Documents/Vibe/aux-completion-20261026/runtime/docs/integration/proposed/completion-20261026/runtime/native-host/source/chrome/browser/extensions/api/messaging/aux_native_host_lease.h"
+    },
+    {
+      "type": "file",
+      "name": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/extensions/api/messaging/aux_native_host_lease.cc",
+      "external-contents": "/Users/rcourson/Documents/Vibe/aux-completion-20261026/runtime/docs/integration/proposed/completion-20261026/runtime/native-host/source/chrome/browser/extensions/api/messaging/aux_native_host_lease.cc"
+    },
+    {
+      "type": "file",
+      "name": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/net/base/file_stream.h",
+      "external-contents": "/Users/rcourson/Documents/Vibe/aux-completion-20261026/runtime/docs/integration/proposed/completion-20261026/runtime/native-host/source/net/base/file_stream.h"
+    },
+    {
+      "type": "file",
+      "name": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/net/base/file_stream.cc",
+      "external-contents": "/Users/rcourson/Documents/Vibe/aux-completion-20261026/runtime/docs/integration/proposed/completion-20261026/runtime/native-host/source/net/base/file_stream.cc"
+    },
+    {
+      "type": "file",
+      "name": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/net/base/file_stream_context.h",
+      "external-contents": "/Users/rcourson/Documents/Vibe/aux-completion-20261026/runtime/docs/integration/proposed/completion-20261026/runtime/native-host/source/net/base/file_stream_context.h"
+    },
+    {
+      "type": "file",
+      "name": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/net/base/file_stream_context.cc",
+      "external-contents": "/Users/rcourson/Documents/Vibe/aux-completion-20261026/runtime/docs/integration/proposed/completion-20261026/runtime/native-host/source/net/base/file_stream_context.cc"
+    },
+    {
+      "type": "file",
+      "name": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/extensions/api/messaging/aux_native_messaging_lifetime.h",
+      "external-contents": "/Users/rcourson/Documents/Vibe/aux-completion-20261026/runtime/docs/integration/proposed/completion-20261026/runtime/native-host/source/chrome/browser/extensions/api/messaging/aux_native_messaging_lifetime.h"
+    },
+    {
+      "type": "file",
+      "name": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/extensions/api/messaging/launch_context_posix.cc",
+      "external-contents": "/Users/rcourson/Documents/Vibe/aux-completion-20261026/runtime/docs/integration/proposed/completion-20261026/runtime/native-host/source/chrome/browser/extensions/api/messaging/launch_context_posix.cc"
+    },
+    {
+      "type": "file",
+      "name": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/extensions/api/messaging/launch_context.cc",
+      "external-contents": "/Users/rcourson/Documents/Vibe/aux-completion-20261026/runtime/docs/integration/proposed/completion-20261026/runtime/native-host/source/chrome/browser/extensions/api/messaging/launch_context.cc"
+    },
+    {
+      "type": "file",
+      "name": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/extensions/api/messaging/native_message_process_host.cc",
+      "external-contents": "/Users/rcourson/Documents/Vibe/aux-completion-20261026/runtime/docs/integration/proposed/completion-20261026/runtime/native-host/source/chrome/browser/extensions/api/messaging/native_message_process_host.cc"
+    },
+    {
+      "type": "file",
+      "name": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/extensions/api/messaging/launch_context.h",
+      "external-contents": "/Users/rcourson/Documents/Vibe/aux-completion-20261026/runtime/docs/integration/proposed/completion-20261026/runtime/native-host/source/chrome/browser/extensions/api/messaging/launch_context.h"
+    },
+    {
+      "type": "file",
+      "name": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/extensions/api/messaging/native_process_launcher.cc",
+      "external-contents": "/Users/rcourson/Documents/Vibe/aux-completion-20261026/runtime/docs/integration/proposed/completion-20261026/runtime/native-host/source/chrome/browser/extensions/api/messaging/native_process_launcher.cc"
+    },
+    {
+      "type": "file",
+      "name": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/extensions/api/messaging/BUILD.gn",
+      "external-contents": "/Users/rcourson/Documents/Vibe/aux-completion-20261026/runtime/docs/integration/proposed/completion-20261026/runtime/native-host/source/chrome/browser/extensions/api/messaging/BUILD.gn"
+    },
+    {
+      "type": "file",
+      "name": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/chrome_browser_main.cc",
+      "external-contents": "/Users/rcourson/Documents/Vibe/aux-completion-20261026/runtime/docs/integration/proposed/completion-20261026/runtime/native-host/source/chrome/browser/chrome_browser_main.cc"
+    },
+    {
+      "type": "file",
+      "name": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/aux/profile_identity.h",
+      "external-contents": "/Users/rcourson/Documents/Vibe/aux-completion-20261026/runtime/docs/integration/proposed/completion-20261026/runtime/native-host/source/chrome/browser/aux/profile_identity.h"
+    },
+    {
+      "type": "file",
+      "name": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/aux/profile_identity.cc",
+      "external-contents": "/Users/rcourson/Documents/Vibe/aux-completion-20261026/runtime/docs/integration/proposed/completion-20261026/runtime/native-host/source/chrome/browser/aux/profile_identity.cc"
+    }
+  ]
+}
