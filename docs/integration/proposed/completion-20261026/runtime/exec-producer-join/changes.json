@@ -1,0 +1,189 @@
+{
+  "format": "aux.selected-exec-producer-join.v1",
+  "records": [
+    {
+      "input": "/Users/rcourson/Documents/Vibe/aux-completion-20261026/runtime/docs/integration/proposed/completion-20261026/runtime/fixed-pty-retirement/source/AuxDevelopmentWorkerHost.cc",
+      "inputSha256": "aa440784355c84275de7e521e3b40ab1fca4b02dc4fba937cee20d713b924fc6",
+      "output": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/runtime/exec-producer-join/source/AuxDevelopmentWorkerHost.cc",
+      "outputSha256": "0f3a3c779dfe7fcc8fceaf6b98044fe02020670dac7f7407e827739a75de3be3",
+      "anchors": [
+        {
+          "before": "struct RuntimeScope;",
+          "after": "struct RuntimeScope;\nstruct SelectedBuiltinScope;",
+          "count": 1
+        },
+        {
+          "before": "  bool physical_registered=false,reaper_thread_joined=false,transport_closed=false;",
+          "after": "  bool physical_registered=false,reaper_thread_joined=false,transport_closed=false;\n  std::shared_ptr<SelectedBuiltinScope> selected_scope;",
+          "count": 1
+        },
+        {
+          "before": "  bool transport_settled=true,runtime_cohort_released=false;\n  // Registry.retained",
+          "after": "  bool transport_settled=true,runtime_cohort_released=false;\n  std::shared_ptr<SelectedBuiltinScope> selected_scope;\n  // Registry.retained",
+          "count": 1
+        },
+        {
+          "before": "#include \"AuxFixedPtyLinked.inc\"",
+          "after": "#include \"AuxFixedPtyLinked.inc\"\n#include \"AuxSelectedExecProducer.inc\"",
+          "count": 1
+        },
+        {
+          "before": "        std::shared_ptr<RuntimeScope> runtime;\n        bool closed",
+          "after": "        std::shared_ptr<RuntimeScope> runtime;\n        std::shared_ptr<SelectedBuiltinScope> selected;\n        bool closed",
+          "count": 1
+        },
+        {
+          "before": "if(item->transport_settled&&!item->runtime_cohort_released){item->runtime_cohort_released=true;runtime = item->runtime_scope;}",
+          "after": "if(item->transport_settled&&!item->runtime_cohort_released){item->runtime_cohort_released=true;runtime = item->runtime_scope;selected=std::move(item->selected_scope);}",
+          "count": 1
+        },
+        {
+          "before": "        if (runtime) RuntimeChildCohortSettled(runtime);",
+          "after": "        if (runtime) RuntimeChildCohortSettled(runtime);\n        if(selected)selected->Finish();",
+          "count": 1
+        },
+        {
+          "before": "extern \"C\" void* AuxNativeExecBeginCurrent(void) noexcept {",
+          "after": "extern \"C\" void AuxNativeExecOriginalHandleClosed(void* token) noexcept {ObserveExecOriginalHandleClosed(token); }\nextern \"C\" void* AuxNativeExecBeginCurrent(void) noexcept {",
+          "count": 1
+        },
+        {
+          "before": "    reservation = std::make_shared<PtyReservation>();",
+          "after": "    auto selected=selected_exec_spawn;\n    if(!selected||!selected->Current(selected->env)||selected->captured.worker!=worker)return nullptr;\n    reservation = std::make_shared<PtyReservation>();",
+          "count": 1
+        },
+        {
+          "before": "    // Genuine pending ownership spans all Security/Swift calls.",
+          "after": "    if(!selected->Begin(selected->env)){AuxNativePtySpawnFailed(reservation.get());return nullptr;}\n    reservation->selected_scope=selected;\n    // Genuine pending ownership spans all Security/Swift calls.",
+          "count": 1
+        },
+        {
+          "before": "    reservation = std::make_shared<ExecReservation>();",
+          "after": "    auto selected=selected_exec_spawn;\n    if(!selected||!selected->Current(selected->env)||selected->captured.worker!=worker)return nullptr;\n    reservation = std::make_shared<ExecReservation>();",
+          "count": 1
+        },
+        {
+          "before": "    auto pending = CapturePendingExec(reservation.get());",
+          "after": "    if(!selected->Begin(selected->env)){AuxNativeExecSpawnFailed(reservation.get());return nullptr;}\n    reservation->selected_scope=selected;reservation->transport_settled=false;\n    auto pending = CapturePendingExec(reservation.get());",
+          "count": 1
+        },
+        {
+          "before": "    if (!pending.owner || !pending.roots) return 0;",
+          "after": "    if (!pending.owner || !pending.roots || !pending.reservation->selected_scope ||\n        !pending.reservation->selected_scope->Current(pending.reservation->selected_scope->env)) return 0;",
+          "count": 1
+        },
+        {
+          "before": "  std::shared_ptr<PtyHelper> released_helper;\n  {\n    std::lock_guard<std::mutex> lock(worker->mutex);\n    // Native producer",
+          "after": "  std::shared_ptr<PtyHelper> released_helper;\n  std::shared_ptr<SelectedBuiltinScope> released_selected;\n  {\n    std::lock_guard<std::mutex> lock(worker->mutex);\n    // Native producer",
+          "count": 1
+        },
+        {
+          "before": "    released_helper = std::move(reservation->helper);\n    // Keep Worker",
+          "after": "    released_helper = std::move(reservation->helper);\n    released_selected=std::move(reservation->selected_scope);\n    // Keep Worker",
+          "count": 1
+        },
+        {
+          "before": "  // Close never releases ownership while the pending count is nonzero.",
+          "after": "  if(released_selected)released_selected->Finish();\n  // Close never releases ownership while the pending count is nonzero.",
+          "count": 1
+        },
+        {
+          "before": "  std::shared_ptr<ExecBrowserRoots> released_roots;\n  bool closed = false;",
+          "after": "  std::shared_ptr<ExecBrowserRoots> released_roots;\n  std::shared_ptr<SelectedBuiltinScope> released_selected;\n  bool closed = false;",
+          "count": 1
+        },
+        {
+          "before": "    released_roots = std::move(reservation->roots);\n    closed = worker->terminal;",
+          "after": "    released_roots = std::move(reservation->roots);\n    released_selected=std::move(reservation->selected_scope);\n    closed = worker->terminal;",
+          "count": 1
+        },
+        {
+          "before": "  reservation->runtime_scope.reset();\n  if (closed) worker->Close();",
+          "after": "  reservation->runtime_scope.reset();\n  if(released_selected)released_selected->Finish();\n  if (closed) worker->Close();",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "input": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/runtime/final-daemon/source/AuxSelectedBuiltinOwner.inc",
+      "inputSha256": "c8b9f314540e75dc4965ca05f74fa5dc135173f8a152f906dade701783c53c22",
+      "output": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/runtime/exec-producer-join/source/AuxSelectedBuiltinOwner.inc",
+      "outputSha256": "53f3aad20da1ad6edb7a054988e48fe81bbc9e8944d4b4b479ae8f3357a9f701",
+      "anchors": [
+        {
+          "before": "struct FixedOutputs;",
+          "after": "napi_value SelectedWithExecSpawn(napi_env,napi_callback_info);\nstruct FixedOutputs;",
+          "count": 1
+        },
+        {
+          "before": "{{\"readUploadFile\",SelectedReadUploadFile}",
+          "after": "{{\"withExecSpawn\",SelectedWithExecSpawn},{\"readUploadFile\",SelectedReadUploadFile}",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "input": "/Users/rcourson/Documents/Vibe/aux-completion-20261026/runtime/docs/integration/proposed/completion-20261026/runtime/fixed-pty-retirement/source/AuxPtyPhysicalRetirement.inc",
+      "inputSha256": "02756d83f79032709d68530383e28fcac237af8388eccb0fab59e94db95d335b",
+      "output": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/runtime/exec-producer-join/source/AuxPtyPhysicalRetirement.inc",
+      "outputSha256": "00bf942d294c884a708676504507509183ed09c494924bd9eaec61fe18952423",
+      "anchors": [
+        {
+          "before": "  std::shared_ptr<RuntimeScope> runtime;bool closed=false;",
+          "after": "  std::shared_ptr<RuntimeScope> runtime;std::shared_ptr<SelectedBuiltinScope> selected;bool closed=false;",
+          "count": 1
+        },
+        {
+          "before": "reservation->runtime_cohort_released=true;runtime=reservation->runtime_scope;",
+          "after": "reservation->runtime_cohort_released=true;runtime=reservation->runtime_scope;selected=std::move(reservation->selected_scope);",
+          "count": 1
+        },
+        {
+          "before": "  if(runtime)RuntimeChildCohortSettled(runtime);",
+          "after": "  if(runtime)RuntimeChildCohortSettled(runtime);\n  if(selected)selected->Finish();",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "input": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/profile-isolation-next/spawn-custody/source/process_wrap.cc",
+      "inputSha256": "ca7e729812c0e0d4d7805793d40db74641a53135a8e3dddc20b2fab461547559",
+      "output": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/runtime/exec-producer-join/source/process_wrap.cc",
+      "outputSha256": "6b3758be6f1faaaab18fd3ef10ebfda9f6cbbeb9eb1c38acb769639bd9a8b0ec",
+      "anchors": [
+        {
+          "before": "#include \"AuxNativeExecReservation.h\"",
+          "after": "#include \"AuxNativeExecReservation.h\"\nextern \"C\" void AuxNativeExecOriginalHandleClosed(void*) noexcept;",
+          "count": 1
+        },
+        {
+          "before": "  uv_process_t process_;",
+          "after": "  void OnClose() override {AuxNativeExecOriginalHandleClosed(aux_exec_reservation_);}\n  uv_process_t process_;",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "input": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/profile-isolation-next/spawn-custody/source/spawn_sync.cc",
+      "inputSha256": "1cab9bdcb31999885f2f94183c500ec732c6334fc8a4bec82e297b050581606d",
+      "output": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/runtime/exec-producer-join/source/spawn_sync.cc",
+      "outputSha256": "2957612117327766d0a354b2c694b71b2580c80bf1d224609be385518169db6b",
+      "anchors": [
+        {
+          "before": "#include \"AuxNativeExecReservation.h\"",
+          "after": "#include \"AuxNativeExecReservation.h\"\nextern \"C\" void AuxNativeExecOriginalHandleClosed(void*) noexcept;",
+          "count": 1
+        },
+        {
+          "before": "  lifecycle_ = kHandlesClosed;",
+          "after": "  lifecycle_ = kHandlesClosed;\n  AuxNativeExecOriginalHandleClosed(aux_exec_reservation_);",
+          "count": 1
+        }
+      ]
+    }
+  ],
+  "EntitlementRequired": true,
+  "compiled": false,
+  "activated": false,
+  "candidateChanged": false
+}

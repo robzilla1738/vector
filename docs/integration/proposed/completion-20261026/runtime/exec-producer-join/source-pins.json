@@ -1,0 +1,9 @@
+{
+  "source/selected-exec-resource.mjs": "33a8a99b7629d8865691d1407209189c61c753eb40d7e3704fb5e4653224d620",
+  "source/process_wrap.cc": "6b3758be6f1faaaab18fd3ef10ebfda9f6cbbeb9eb1c38acb769639bd9a8b0ec",
+  "source/AuxSelectedBuiltinOwner.inc": "53f3aad20da1ad6edb7a054988e48fe81bbc9e8944d4b4b479ae8f3357a9f701",
+  "source/spawn_sync.cc": "2957612117327766d0a354b2c694b71b2580c80bf1d224609be385518169db6b",
+  "source/AuxPtyPhysicalRetirement.inc": "00bf942d294c884a708676504507509183ed09c494924bd9eaec61fe18952423",
+  "source/AuxDevelopmentWorkerHost.cc": "0f3a3c779dfe7fcc8fceaf6b98044fe02020670dac7f7407e827739a75de3be3",
+  "source/AuxSelectedExecProducer.inc": "e22806ea4696a7a0df557df6bdfb8f8bd41f999f7b4b1d94e8dab465926266ff"
+}

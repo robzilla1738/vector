@@ -1,0 +1,34 @@
+{
+  "input": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-local-completion-20261025-a38/Aux.app/Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/node-development/aux-native-entry.mjs",
+  "inputSha256": "f355833cb607963a65ca3108e7ae19ea7ca60192a9f3d8e2644a3c12ec49c808",
+  "requires": "Existing selected-builtin-resource auxCaptureReadFileScope/guard; no scope fallback",
+  "anchors": [
+    {
+      "before": "async function prepareSessionSpawn(Cn,ei){",
+      "after": "// Private symbol survives the original options spreads; no root/FD/PID grant.\nconst auxSelectedExecScope=Symbol('aux.selected.exec.scope');\nconst auxSelectedExecUses=new Set;\nfunction auxPrepareSelectedExec(context,prepared){\n auxRequireSupervisedTasks();\n const held=auxCaptureReadFileScope(context);let settle;\n const originalClosed=new Promise(resolve=>{settle=resolve});\n const observed=held.scope.awaited(()=>originalClosed);\n observed.catch(()=>{}); // native observer retains original settlement independently.\n let released=false;\n const release=()=>{if(released)return;released=true;settle();prepared.release();const closing=held.close();auxSelectedExecUses.add(closing);closing.finally(()=>auxSelectedExecUses.delete(closing)).catch(()=>{})};\n Object.defineProperty(prepared.spawnOptions,auxSelectedExecScope,{value:held.scope,enumerable:true});\n return {spawnOptions:prepared.spawnOptions,release};\n}\nfunction auxInvokeSelectedExec(options,operation){\n auxRequireSupervisedTasks();const scope=options[auxSelectedExecScope];\n if(!scope)throw Error('Selected command owner is unavailable.');\n scope.assertCurrent();return scope.withExecSpawn(operation);\n}\n\nasync function prepareSessionSpawn(Cn,ei){",
+      "count": 1
+    },
+    {
+      "before": "),{spawnOptions:{cwd:ii,env:fi,sandboxEnabled:ti.sandbox.enabled",
+      "after": "),auxPrepareSelectedExec(Cn,{spawnOptions:{cwd:ii,env:fi,sandboxEnabled:ti.sandbox.enabled",
+      "count": 1
+    },
+    {
+      "before": "deniedPaths:ti.deniedPaths,detached:!0},release:ri}}catch(Cn){throw ri(),Cn}}",
+      "after": "deniedPaths:ti.deniedPaths,detached:!0},release:ri})}catch(Cn){throw ri(),Cn}}",
+      "count": 1
+    },
+    {
+      "before": "let ti=spawnCommand(ei.command,{cwd:ei.cwd,env:ei.env,stdio:[`ignore`,`pipe`,`pipe`],detached:Cn.detached??!1,windowsHide:!0});",
+      "after": "let ti=auxInvokeSelectedExec(Cn,()=>spawnCommand(ei.command,{cwd:ei.cwd,env:ei.env,stdio:[`ignore`,`pipe`,`pipe`],detached:Cn.detached??!1,windowsHide:!0}));",
+      "count": 1
+    },
+    {
+      "before": "ni=pty.spawn(ei,ti,{cwd:Cn.cwd,env:{...Cn.env,...PTY_ENV},name:`xterm-256color`,cols:Cn.cols??80,rows:Cn.rows??24,useConptyDll:process.platform===`win32`})",
+      "after": "ni=auxInvokeSelectedExec(Cn,()=>pty.spawn(ei,ti,{cwd:Cn.cwd,env:{...Cn.env,...PTY_ENV},name:`xterm-256color`,cols:Cn.cols??80,rows:Cn.rows??24,useConptyDll:process.platform===`win32`}))",
+      "count": 1
+    }
+  ],
+  "projectedSha256": "d86e3472a8177e71607011560cdf2771a6079a4cb90c5783e66665b83d130611",
+  "activated": false
+}

@@ -1,0 +1,236 @@
+--- /Users/rcourson/Documents/Vibe/aux-completion-20261026/runtime/docs/integration/proposed/completion-20261026/runtime/fixed-pty-retirement/source/AuxDevelopmentWorkerHost.cc
++++ AuxDevelopmentWorkerHost.cc
+@@ -85,6 +85,7 @@
+   ~Owner() { AuxReleaseSignedDevelopmentOwner(retained); }
+ };
+ struct RuntimeScope;
++struct SelectedBuiltinScope;
+ struct Worker;
+ void CloseChatGPTCredentialLocks(Worker*) noexcept;
+ AuxDevelopmentWorkerDrain AuxCloseSelectedBuiltinsForWorker(const void*) noexcept;
+@@ -269,6 +270,7 @@
+   bool descendant_completed = false;
+   bool transport_settled=true,runtime_cohort_released=false;
+   bool physical_registered=false,reaper_thread_joined=false,transport_closed=false;
++  std::shared_ptr<SelectedBuiltinScope> selected_scope;
+   std::shared_ptr<Worker> worker;
+   std::shared_ptr<Owner> owner;
+   std::shared_ptr<PtyHelper> helper; // released after native creation or proven failure
+@@ -292,6 +294,7 @@
+   bool descendant_counted = false;
+   bool descendant_completed = false;
+   bool transport_settled=true,runtime_cohort_released=false;
++  std::shared_ptr<SelectedBuiltinScope> selected_scope;
+   // Registry.retained owns every pending/successful/unknown Worker. A failed
+   // inert token must not retain drained Worker/PDF/utility state forever.
+   // Assigned only before registry publication; every read locks locally.
+@@ -401,6 +404,7 @@
+ #include "AuxSelectedBrowserFiles.inc"
+ #include "AuxSelectedFileReader.inc"
+ #include "AuxFixedPtyLinked.inc"
++#include "AuxSelectedExecProducer.inc"
+ #include "AuxRuntimeCacheInspection.inc"
+ #include "AuxRuntimeCachePins.inc"
+ #include "AuxRuntimeCacheAsync.inc"
+@@ -424,6 +428,7 @@
+         auto item = weak_reservation.lock();
+         if (!owner || !item || getpid() != kHostProcess) return;
+         std::shared_ptr<RuntimeScope> runtime;
++        std::shared_ptr<SelectedBuiltinScope> selected;
+         bool closed = false;
+         {
+           std::lock_guard<std::mutex> lock(owner->mutex);
+@@ -438,11 +443,12 @@
+               return;
+             }
+             --pending;
+-            if(item->transport_settled&&!item->runtime_cohort_released){item->runtime_cohort_released=true;runtime = item->runtime_scope;}
++            if(item->transport_settled&&!item->runtime_cohort_released){item->runtime_cohort_released=true;runtime = item->runtime_scope;selected=std::move(item->selected_scope);}
+           }
+           closed = owner->terminal;
+         }
+         if (runtime) RuntimeChildCohortSettled(runtime);
++        if(selected)selected->Finish();
+         if (closed) owner->Close();
+         DetachCompletedEnvironment(owner);
+       });
+@@ -574,6 +580,8 @@
+       worker = found->second;
+     }
+     // Allocate before counting admission, before external validation or JS.
++    auto selected=selected_exec_spawn;
++    if(!selected||!selected->Current(selected->env)||selected->captured.worker!=worker)return nullptr;
+     reservation = std::make_shared<PtyReservation>();
+     auto helper = std::make_shared<PtyHelper>();
+     {
+@@ -587,6 +595,8 @@
+       if (!Registry().pty.emplace(reservation.get(), reservation).second) return nullptr;
+       ++worker->pty_pending;
+     }
++    if(!selected->Begin(selected->env)){AuxNativePtySpawnFailed(reservation.get());return nullptr;}
++    reservation->selected_scope=selected;
+     // Genuine pending ownership spans all Security/Swift calls. Neither host
+     // lock crosses validation, and a concurrent Close cannot release Owner.
+     auto owner = reservation->owner;
+@@ -680,6 +690,7 @@
+   bool closed;
+   std::shared_ptr<Owner> released_owner;
+   std::shared_ptr<PtyHelper> released_helper;
++  std::shared_ptr<SelectedBuiltinScope> released_selected;
+   {
+     std::lock_guard<std::mutex> lock(worker->mutex);
+     // Native producer may report after reentrant Close, but only on its real
+@@ -691,12 +702,14 @@
+     closed = worker->terminal;
+     released_owner = std::move(reservation->owner);
+     released_helper = std::move(reservation->helper);
++    released_selected=std::move(reservation->selected_scope);
+     // Keep Worker pointer stable in the tombstone for racing API lookups;
+     // release only the duplicate Owner retain outside the worker lock.
+   }
+   aux::descendants::DidFailBeforeChild(reservation->descendant_cohort);
+   RuntimeChildFailed(reservation->runtime_scope);
+   reservation->runtime_scope.reset();
++  if(released_selected)released_selected->Finish();
+   // Close never releases ownership while the pending count is nonzero. Revisit
+   // its actual owner after the failed creation unwinds, without faking drain.
+   if (closed) worker->Close();
+@@ -834,6 +847,7 @@
+   return true;
+ }
+ } // namespace
++extern "C" void AuxNativeExecOriginalHandleClosed(void* token) noexcept {ObserveExecOriginalHandleClosed(token); }
+ extern "C" void* AuxNativeExecBeginCurrent(void) noexcept {
+   if (kBrowserOnlyNativeStartup) return nullptr; // Before any child/ticket admission.
+   if (getpid() != kHostProcess) return nullptr;
+@@ -849,6 +863,8 @@
+       if (found == Registry().active.end()) return nullptr;
+       worker = found->second;
+     }
++    auto selected=selected_exec_spawn;
++    if(!selected||!selected->Current(selected->env)||selected->captured.worker!=worker)return nullptr;
+     reservation = std::make_shared<ExecReservation>();
+     {
+       std::lock_guard<std::mutex> lock(worker->mutex);
+@@ -861,6 +877,8 @@
+       if (!Registry().exec.emplace(reservation.get(), reservation).second) return nullptr;
+       ++worker->exec_pending;
+     }
++    if(!selected->Begin(selected->env)){AuxNativeExecSpawnFailed(reservation.get());return nullptr;}
++    reservation->selected_scope=selected;reservation->transport_settled=false;
+     auto pending = CapturePendingExec(reservation.get());
+     if (!pending.owner || AuxNativeContextValidateCurrentAuthority(pending.owner->handle) != 0 ||
+         !StillPendingExec(pending)) { AuxNativeExecSpawnFailed(reservation.get()); return nullptr; }
+@@ -898,7 +916,8 @@
+   if (getpid() != kHostProcess) return 0;
+   try {
+     auto pending = CapturePendingExec(token);
+-    if (!pending.owner || !pending.roots) return 0;
++    if (!pending.owner || !pending.roots || !pending.reservation->selected_scope ||
++        !pending.reservation->selected_scope->Current(pending.reservation->selected_scope->env)) return 0;
+     auto current_roots = CaptureExecRoots(pending.owner);
+     return aux::descendants::MaySpawn(pending.reservation->descendant_cohort) &&
+         current_roots && SameExecRoots(*pending.roots, *current_roots) &&
+@@ -941,6 +960,7 @@
+   if (!worker) return;
+   std::shared_ptr<Owner> released_owner;
+   std::shared_ptr<ExecBrowserRoots> released_roots;
++  std::shared_ptr<SelectedBuiltinScope> released_selected;
+   bool closed = false;
+   {
+     std::lock_guard<std::mutex> lock(worker->mutex);
+@@ -949,11 +969,13 @@
+     reservation->phase = PtyPhase::failed;
+     released_owner = std::move(reservation->owner);
+     released_roots = std::move(reservation->roots);
++    released_selected=std::move(reservation->selected_scope);
+     closed = worker->terminal;
+   }
+   aux::descendants::DidFailBeforeChild(reservation->descendant_cohort);
+   RuntimeChildFailed(reservation->runtime_scope);
+   reservation->runtime_scope.reset();
++  if(released_selected)released_selected->Finish();
+   if (closed) worker->Close();
+   DetachCompletedEnvironment(worker);
+ }
+--- /Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/runtime/final-daemon/source/AuxSelectedBuiltinOwner.inc
++++ AuxSelectedBuiltinOwner.inc
+@@ -1,6 +1,7 @@
+ // Actual-main finite selected-session capabilities. No JS root/handle selector.
+ napi_value SelectedReadUploadFile(napi_env,napi_callback_info);
+ napi_value SelectedPublishBrowserDownload(napi_env,napi_callback_info);
++napi_value SelectedWithExecSpawn(napi_env,napi_callback_info);
+ struct FixedOutputs;
+ struct SelectedBuiltinScope;
+ struct SelectedUtilityWork;
+@@ -298,7 +299,7 @@
+     auto* cleanup=new std::shared_ptr<SelectedBuiltinScope>(scope);
+     if(napi_add_env_cleanup_hook(env,SelectedBuiltinCleanup,cleanup)!=napi_ok){delete cleanup;scope->RequestClose();return nullptr;}
+     if(napi_create_object(env,&object)!=napi_ok){scope->RequestClose();return nullptr;}
+-    for(const auto& item:std::vector<std::pair<const char*,napi_callback>>{{"readUploadFile",SelectedReadUploadFile},{"publishBrowserDownload",SelectedPublishBrowserDownload},{"assertCurrent",SelectedAssert},{"awaited",SelectedAwaited},{"close",SelectedClose},{"assertTaskSessionPath",SelectedAssertPath},{"assertControlSessionPath",SelectedAssertControlPath},{"openReadFile",SelectedOpenReadFile}})
++    for(const auto& item:std::vector<std::pair<const char*,napi_callback>>{{"withExecSpawn",SelectedWithExecSpawn},{"readUploadFile",SelectedReadUploadFile},{"publishBrowserDownload",SelectedPublishBrowserDownload},{"assertCurrent",SelectedAssert},{"awaited",SelectedAwaited},{"close",SelectedClose},{"assertTaskSessionPath",SelectedAssertPath},{"assertControlSessionPath",SelectedAssertControlPath},{"openReadFile",SelectedOpenReadFile}})
+       if(!DefineSelectedMethod(env,object,item.first,item.second,scope)){scope->RequestClose();return nullptr;}
+     auto* path_retain=new std::shared_ptr<SelectedBuiltinScope>(scope);
+     if(napi_add_finalizer(env,object,path_retain,FinalizeSelectedScopeFunction,nullptr,nullptr)!=napi_ok){delete path_retain;scope->RequestClose();return nullptr;}
+--- /Users/rcourson/Documents/Vibe/aux-completion-20261026/runtime/docs/integration/proposed/completion-20261026/runtime/fixed-pty-retirement/source/AuxPtyPhysicalRetirement.inc
++++ AuxPtyPhysicalRetirement.inc
+@@ -13,7 +13,7 @@
+   if(getpid()!=kHostProcess)return;
+   auto reservation=LookupPty(token);if(!reservation||reservation->process!=getpid())return;
+   auto worker=reservation->worker;if(!worker)return;
+-  std::shared_ptr<RuntimeScope> runtime;bool closed=false;
++  std::shared_ptr<RuntimeScope> runtime;std::shared_ptr<SelectedBuiltinScope> selected;bool closed=false;
+   {
+     std::lock_guard lock(worker->mutex);
+     if(!reservation->physical_registered)return;
+@@ -25,12 +25,13 @@
+     if(reservation->reaper_thread_joined&&reservation->transport_closed) {
+       reservation->transport_settled=true;
+       if(reservation->descendant_completed&&reservation->descendant_counted&&!reservation->runtime_cohort_released) {
+-        reservation->runtime_cohort_released=true;runtime=reservation->runtime_scope;
++        reservation->runtime_cohort_released=true;runtime=reservation->runtime_scope;selected=std::move(reservation->selected_scope);
+       }
+     }
+     closed=worker->terminal;
+   }
+   if(runtime)RuntimeChildCohortSettled(runtime);
++  if(selected)selected->Finish();
+   if(closed)worker->Close();
+   DetachCompletedEnvironment(worker);
+ }
+--- /Users/rcourson/Documents/Vibe/web/docs/integration/proposed/profile-isolation-next/spawn-custody/source/process_wrap.cc
++++ process_wrap.cc
+@@ -21,6 +21,7 @@
+ 
+ #include "env-inl.h"
+ #include "AuxNativeExecReservation.h"
++extern "C" void AuxNativeExecOriginalHandleClosed(void*) noexcept;
+ #include "AuxNativeExecDescriptorPolicy.h"
+ #include "AuxExecSpawnEnvelope.h"
+ #include "node_errors.h"
+@@ -416,6 +417,7 @@
+     wrap->MakeCallback(env->onexit_string(), arraysize(argv), argv);
+   }
+ 
++  void OnClose() override {AuxNativeExecOriginalHandleClosed(aux_exec_reservation_);}
+   uv_process_t process_;
+   void* aux_exec_reservation_ = nullptr;
+ };
+--- /Users/rcourson/Documents/Vibe/web/docs/integration/proposed/profile-isolation-next/spawn-custody/source/spawn_sync.cc
++++ spawn_sync.cc
+@@ -21,6 +21,7 @@
+ 
+ #include "spawn_sync.h"
+ #include "AuxNativeExecReservation.h"
++extern "C" void AuxNativeExecOriginalHandleClosed(void*) noexcept;
+ #include "AuxNativeExecDescriptorPolicy.h"
+ #include "AuxExecSpawnEnvelope.h"
+ #include "debug_utils-inl.h"
+@@ -613,6 +614,7 @@
+   }
+ 
+   lifecycle_ = kHandlesClosed;
++  AuxNativeExecOriginalHandleClosed(aux_exec_reservation_);
+ }
+ 
+ 
