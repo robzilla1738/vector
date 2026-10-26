@@ -143,7 +143,7 @@ def metadata(bundle, app, replacements, removed, baseline, provenance, p):
             row.pop('sha256', None)
             row.pop('bytes', None)
         active.append(row)
-    expected = {row['path'] for row in records}
+    expected = set(records)
     actual = {row['path'] for row in active}
     require(expected <= actual, 'Historical delivered leaf disappeared outside declared removals')
     bundle['files'] = active
