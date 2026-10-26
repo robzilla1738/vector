@@ -25,6 +25,10 @@ def pin(item):
     if 'bytes' in item:require(p.stat().st_size==item['bytes'],'Reviewed size changed: '+str(p))
     return p
 
+def pinned_bytes(item):
+    data=pin(item).read_bytes();require(hashlib.sha256(data).hexdigest()==item['sha256'],'Reviewed payload changed during read: '+item['path'])
+    return data
+
 def safe_relative(value):
     p=Path(value);require(not p.is_absolute() and '..' not in p.parts and str(p)==value,'Invalid reviewed path')
     require((APP/p).resolve().is_relative_to(APP),'Code object escapes reviewed app')
@@ -71,6 +75,18 @@ def main():
     result={'format':'aux.completion.actual-local-signing.v1','approvedReviewSha256':sha(review_path),'app':str(APP),'beforeInventorySha256':p.digest(before),'backup':str(backup),'steps':[],
       'passed':False,'appExecuted':False,'runtimeAccepted':False,'newOSPermissions':False,'identityQueryPerformed':False,'provisioning':False,'cloudChanges':False,'notarization':False,'distribution':False,'release':False}
     signed=[]
+    frozen={}
+    refs=[r[key] for key in ['applyScript','inventoryHelper','packageReceipt','identitySource','publicProfileActual','unsignedV10Policy']]
+    refs+=r['preservedExactLeaves']+[policy_spec['constructor'],policy_spec['rawSource']]
+    refs+=[row[key] for row in targets for key in ['infoPlist','entitlements'] if row.get(key)]
+    for item in refs:
+        require(item['path'] not in frozen or frozen[item['path']]==item,'Conflicting frozen reference')
+        frozen[item['path']]=item
+    result['frozenInputChecks']=[]
+    def check_frozen(phase):
+        require(sha(review_path)==args.owner_approved_review_sha256,'Approved review changed during signing')
+        for item in frozen.values():pin(item)
+        result['frozenInputChecks'].append(phase)
     def run(command,kind):
         done=subprocess.run(command,capture_output=True)
         result['steps'].append({'kind':kind,'command':command,'exitCode':done.returncode,'stdout':done.stdout.decode(errors='replace')[-5000:],'stderr':done.stderr.decode(errors='replace')[-5000:]})
@@ -78,14 +94,15 @@ def main():
         return done
     def verify(row):
         target=APP/row['codeObject']
+        wanted=plistlib.loads(pinned_bytes(row['entitlements'])) if row['entitlements'] else {}
         requirement='anchor apple generic and identifier "'+row['identifier']+'" and certificate leaf[subject.OU] = "'+r['team']+'"'
         run(['/usr/bin/codesign','--verify','--strict','-R',requirement,str(target)],'verify '+row['codeObject'])
         ent=run(['/usr/bin/codesign','--display','--entitlements',':-',str(target)],'entitlements '+row['codeObject']).stdout.strip()
         actual=plistlib.loads(ent) if ent else {}
-        wanted=plistlib.loads(Path(row['entitlements']['path']).read_bytes()) if row['entitlements'] else {}
         require(actual==wanted,'Unexpected actual entitlements: '+row['codeObject'])
     def make_cu_policy():
         # Pure pinned JS factory reads original and delivered bytes; no app/native module is loaded.
+        pin(policy_spec['constructor']);pin(policy_spec['rawSource'])
         program="import fs from 'node:fs';import{pathToFileURL}from'node:url';const[m,a,b]=process.argv.slice(1);const{computerUseLaunchPolicy}=await import(pathToFileURL(m).href);process.stdout.write(JSON.stringify(computerUseLaunchPolicy(fs.readFileSync(a),fs.readFileSync(b))));"
         done=run(['/usr/bin/env','node','--input-type=module','-e',program,str(constructor),str(raw),str(APP/CU_EXE)],'derive exact signed CU policy')
         policy=json.loads(done.stdout)
@@ -120,7 +137,7 @@ def main():
         delivered={row['path'] for row in active}
         require(all(name in delivered or allowed_change(str(RES/name)) for name in records),'Unreviewed package leaf removed')
         current=bundle['currentCompletionIntegration'];require(current['format']=='aux.completion.current-package.v1','Current completion metadata required')
-        current.update(CUlaunchPolicyPending=False,CUtestable=False,productSigned=True,appExecuted=False,runtimeAccepted=False,activeManifestSha256=p.digest(active),activeManifestLeaves=len(active),wholeAppInventoryReceipt=str(output))
+        current.update(CUlaunchPolicyPending=False,CUtestable=False,signed=True,productSigned=True,appExecuted=False,testable=False,runtimeAccepted=False,activeManifestSha256=p.digest(active),activeManifestLeaves=len(active),wholeAppInventoryReceipt=str(output))
         current['localDevelopmentSigning']={'reviewSha256':sha(review_path),'identitySha1':r['identitySha1'],'signedObjects':19,'memoryHelperPreserved':True,'computerUsePolicySha256':sha(APP/CU_POLICY),'runtimeAcceptance':False}
         bundle['files']=active;bundle.update(productionReady=False,runtimeAccepted=False)
         temporary=marker.with_name('.aux-local-signing-bundle.json.part');require(not temporary.exists(),'Unexpected metadata stage')
@@ -129,9 +146,11 @@ def main():
         try:os.fsync(parent)
         finally:os.close(parent)
     try:
+        check_frozen('before backup')
         backup.mkdir(mode=0o700)
         subprocess.run(['/bin/cp','-cRpP',str(APP),str(backup/'Aux.app')],check=True)
         require(p.inventory(backup/'Aux.app')==before,'Recoverable pre-sign backup differs')
+        check_frozen('after backup')
         for row in targets:
             if row['identifier']=='dev.aux.browser.daemon':make_cu_policy()
             if row['codeObject']=='.':refresh_metadata()
@@ -139,6 +158,7 @@ def main():
                 command=['/usr/bin/codesign','--force','--sign',r['identitySha1'],'--options','runtime','--timestamp=none','--identifier',row['identifier']]
                 if row['entitlements']:command+=['--entitlements',row['entitlements']['path']]
                 command.append(str(APP/row['codeObject']));require(command==row['command'],'Reviewed command differs')
+                if row['entitlements']:pin(row['entitlements'])
                 run(command,'sign '+row['codeObject']);signed.append(row['codeObject'])
             verify(row)
         after=p.inventory(APP);old={row['path']:row for row in before};new={row['path']:row for row in after}
@@ -152,6 +172,7 @@ def main():
             observed=actual[row['path']]
             require(row['mode']==observed['mode'] and (row.get('sha256')==observed.get('sha256') if observed['type']=='file' else row.get('linkTarget')==observed['target']),'Active manifest leaf differs')
         require(len(signed)==19,'Exactly nineteen signing actions required')
+        check_frozen('after signing and whole-inventory verification')
         result.update(passed=True,signedObjects=signed,preservedMemoryHelper=True,files=after,inventorySha256=p.digest(after),changedLeaves=changed,removedLeaves=removed,activeManifestSha256=p.digest(marker['files']),CUlaunchPolicyPending=False)
     except Exception as error:
         result['error']=str(error)

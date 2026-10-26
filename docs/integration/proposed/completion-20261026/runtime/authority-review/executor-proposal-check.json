@@ -1,11 +1,18 @@
 {
   "format": "aux.completion.signing-executor-proposal-check.v1",
   "pythonSyntax": "pass",
-  "applyScriptSha256": "670d58a037dc7ffb63c6ae563b9ebc99fe263dc89a9c2fb680cf6b15ed5551dd",
+  "applyScriptSha256": "1060b81bc754a3c1a43cf496c2252016ce8b6a9e104d3ee479c9c295ffafcf87",
   "scriptExecuted": false,
   "signingPerformed": false,
   "identityQueries": false,
   "appLaunched": false,
   "reviewInventoryFinalized": false,
-  "pending": "Root Q1/resource/Info metadata fixes and current whole candidate receipt"
+  "pending": "Root Q1/resource/Info metadata fixes and current whole candidate receipt",
+  "boundedReviewFindingsAddressed": [
+    "re-pin entitlements before each sign",
+    "hash actual approved entitlement bytes before verification comparison",
+    "recheck frozen nonmutating inputs around backup and full operation",
+    "re-pin CU constructor/raw input at actual use",
+    "current signed/productSigned flags consistent while testable/runtimeAccepted false"
+  ]
 }
