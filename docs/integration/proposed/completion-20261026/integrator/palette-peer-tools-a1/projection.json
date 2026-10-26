@@ -26,5 +26,52 @@
     "purposefulCancellation": true,
     "stage": "Ninja manifest loading; no compile actions logged",
     "reason": "Group demonstrated native palette reload/input lifecycle repair before compiling"
-  }
+  },
+  "paletteInvocation": {
+    "source": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/desktop/palette-invocation/source/chrome/browser/ui/views/frame/aux_tab_search_bubble.cc",
+    "target": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/ui/views/frame/aux_tab_search_bubble.cc",
+    "path": "chrome/browser/ui/views/frame/aux_tab_search_bubble.cc",
+    "beforeSha256": "a62dc8c0383f4fad2498e576096c2a9ba105a87704d14390ad0fd1bdf90f4867",
+    "afterSha256": "d87bc73ae4c9f1a67d630da9f4228b377376456dbae810787b6c84f46a93ec56",
+    "anchors": 6
+  },
+  "paletteInvocationCorrected": [
+    {
+      "source": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/desktop/palette-invocation/source/chrome/browser/ui/views/frame/aux_tab_search_bubble.cc",
+      "target": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/ui/views/frame/aux_tab_search_bubble.cc",
+      "actualBeforeSha256": "d87bc73ae4c9f1a67d630da9f4228b377376456dbae810787b6c84f46a93ec56",
+      "path": "chrome/browser/ui/views/frame/aux_tab_search_bubble.cc",
+      "beforeSha256": "a62dc8c0383f4fad2498e576096c2a9ba105a87704d14390ad0fd1bdf90f4867",
+      "afterSha256": "9add062c4f459750dc52945c2aa075560ab1c71d423bf0f0377176563e18fe4d",
+      "anchors": 8
+    },
+    {
+      "source": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/desktop/palette-invocation/source/chrome/common/extensions/api/aux_browser_preferences.json",
+      "target": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/common/extensions/api/aux_browser_preferences.json",
+      "actualBeforeSha256": "20ed9157cc2fc007f58c76e93da38208807c54dabda8702ed0799e566d4dd6ca",
+      "path": "chrome/common/extensions/api/aux_browser_preferences.json",
+      "beforeSha256": "20ed9157cc2fc007f58c76e93da38208807c54dabda8702ed0799e566d4dd6ca",
+      "afterSha256": "3c4bf3c4ff38b9fd726d615c5e347fe465c48f3e87222c74684f4be188b8921b",
+      "anchors": 1
+    },
+    {
+      "source": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/desktop/palette-invocation/source/extensions/browser/extension_event_histogram_value.h",
+      "target": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/extensions/browser/extension_event_histogram_value.h",
+      "actualBeforeSha256": "d18b782112708e35c53a0f04cbf454bdc1026b07ac797dd4dc88ec438acfd1d9",
+      "path": "extensions/browser/extension_event_histogram_value.h",
+      "beforeSha256": "d18b782112708e35c53a0f04cbf454bdc1026b07ac797dd4dc88ec438acfd1d9",
+      "afterSha256": "306fa70ef50b9c1a567f4448aeba76762993e1c5bb88455e86c897a7490da04c",
+      "anchors": 1
+    },
+    {
+      "source": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/desktop/palette-invocation/source/tools/metrics/histograms/metadata/extensions/enums.xml",
+      "target": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/tools/metrics/histograms/metadata/extensions/enums.xml",
+      "actualBeforeSha256": "12938a6974109eecbba876ba0dfd707d279637a6712cc9b14a6ffc296e4256f0",
+      "path": "tools/metrics/histograms/metadata/extensions/enums.xml",
+      "beforeSha256": "12938a6974109eecbba876ba0dfd707d279637a6712cc9b14a6ffc296e4256f0",
+      "afterSha256": "8183d534f9c5ec132546234489842cde96d1606c72f3be667885b3b058d63bcb",
+      "anchors": 1
+    }
+  ],
+  "unsafeScriptNotificationDraftNeverCompiledOrActivated": true
 }

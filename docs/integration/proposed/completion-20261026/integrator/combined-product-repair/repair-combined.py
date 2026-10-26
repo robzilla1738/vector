@@ -49,7 +49,9 @@ def require_stopped():
     running=[]
     for line in output.splitlines():
         parts=line.strip().split(None,1)
-        if len(parts)==2 and parts[1].startswith(str(APP)+'/'): running.append(int(parts[0]))
+        if len(parts)==2 and (parts[1].startswith(str(APP)+'/') or
+                             parts[1].startswith(str(APP.relative_to(ROOT))+'/')):
+            running.append(int(parts[0]))
     require(not running, 'Candidate still running; refusing repair (PIDs '+str(running)+')')
 require_stopped()
 for item in plan['sourceEvidence']: pin(item)
