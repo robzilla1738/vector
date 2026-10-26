@@ -1,0 +1,50 @@
+--- a/chrome/browser/ui/browser_actions.cc
++++ b/chrome/browser/ui/browser_actions.cc
+@@ -25,6 +25,7 @@
+ #if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
+ #include "chrome/browser/aux/component_bootstrap.h"
+ #include "chrome/browser/ui/views/frame/aux_chat_navigation.h"
++#include "chrome/browser/ui/views/frame/aux_tab_search_bubble.h"
+ #endif
+ #include "chrome/app/vector_icons/vector_icons.h"
+ #include "chrome/browser/browsing_data/browsing_data_important_sites_util.h"
+@@ -1289,6 +1290,15 @@
+           base::BindRepeating(
+               [](BrowserWindowInterface* bwi, actions::ActionItem* item,
+                  actions::ActionInvocationContext context) {
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++                if (bwi->GetType() == BrowserWindowInterface::TYPE_NORMAL) {
++                  // The modern ActionItem is the real Cmd+T dispatch owner.
++                  // A refused transient intent must not create a durable tab.
++                  if (!ShowAuxCommandBar(bwi, AuxCommandBarMode::kNewTab))
++                    LOG(ERROR) << "Aux new-tab action: palette unavailable; no tab created";
++                  return;
++                }
++#endif
+                 chrome::NewTab(bwi, NewTabTypes::kNewTabCommand);
+               },
+               bwi))
+@@ -3517,6 +3527,11 @@
+           base::BindRepeating(
+               [](BrowserWindowInterface* bwi, actions::ActionItem* item,
+                  actions::ActionInvocationContext context) {
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++                if (ShowAuxCommandBar(bwi, AuxCommandBarMode::kNavigate))
++                  return;
++                LOG(ERROR) << "Aux URL action: palette unavailable; trusted location fallback";
++#endif
+                 if (!BrowserWindow::FromBrowser(bwi)->IsLocationBarVisible()) {
+                   return;
+                 }
+@@ -3533,6 +3548,11 @@
+                  actions::ActionInvocationContext context) {
+                 base::RecordAction(
+                     base::UserMetricsAction("Accel_Focus_Search"));
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++                if (ShowAuxCommandBar(bwi, AuxCommandBarMode::kCommands))
++                  return;
++                LOG(ERROR) << "Aux search action: palette unavailable; trusted search fallback";
++#endif
+                 chrome::FocusSearch(bwi);
+               },
+               bwi))

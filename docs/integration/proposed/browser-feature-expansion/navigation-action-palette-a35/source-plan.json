@@ -1,0 +1,39 @@
+{
+  "format": "aux.native.counted-projection.v1",
+  "purpose": "Route the actual modern NewTab/Location/Search ActionItems to the existing centered palette",
+  "nativeRoot": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src",
+  "files": [
+    {
+      "path": "chrome/browser/ui/browser_actions.cc",
+      "inputSha256": "c98b6011a5f65906292dbfecd34be2fd2758d6d53724f022fa5da50badc7f38c",
+      "outputSha256": "9015e59c3c3bd7e5f984b4ef043b4a5ff4e59e0118ce5cc334283bcd1606516e",
+      "source": "/Users/rcourson/.codex/worktrees/aux-features-navigation/web/docs/integration/proposed/browser-feature-expansion/navigation-action-palette-a35/source/chrome/browser/ui/browser_actions.cc",
+      "anchors": [
+        {
+          "name": "palette header",
+          "before": "#include \"chrome/browser/ui/views/frame/aux_chat_navigation.h\"",
+          "after": "#include \"chrome/browser/ui/views/frame/aux_chat_navigation.h\"\n#include \"chrome/browser/ui/views/frame/aux_tab_search_bubble.h\"",
+          "expectedCount": 1
+        },
+        {
+          "name": "actual new-tab action uses transient palette",
+          "before": "                chrome::NewTab(bwi, NewTabTypes::kNewTabCommand);",
+          "after": "#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)\n                if (bwi->GetType() == BrowserWindowInterface::TYPE_NORMAL) {\n                  // The modern ActionItem is the real Cmd+T dispatch owner.\n                  // A refused transient intent must not create a durable tab.\n                  if (!ShowAuxCommandBar(bwi, AuxCommandBarMode::kNewTab))\n                    LOG(ERROR) << \"Aux new-tab action: palette unavailable; no tab created\";\n                  return;\n                }\n#endif\n                chrome::NewTab(bwi, NewTabTypes::kNewTabCommand);",
+          "expectedCount": 1
+        },
+        {
+          "name": "actual location action uses centered trusted URL context",
+          "before": "                if (!BrowserWindow::FromBrowser(bwi)->IsLocationBarVisible()) {\n                  return;\n                }\n                chrome::FocusLocationBar(bwi);",
+          "after": "#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)\n                if (ShowAuxCommandBar(bwi, AuxCommandBarMode::kNavigate))\n                  return;\n                LOG(ERROR) << \"Aux URL action: palette unavailable; trusted location fallback\";\n#endif\n                if (!BrowserWindow::FromBrowser(bwi)->IsLocationBarVisible()) {\n                  return;\n                }\n                chrome::FocusLocationBar(bwi);",
+          "expectedCount": 1
+        },
+        {
+          "name": "actual search action uses centered commands",
+          "before": "                chrome::FocusSearch(bwi);",
+          "after": "#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)\n                if (ShowAuxCommandBar(bwi, AuxCommandBarMode::kCommands))\n                  return;\n                LOG(ERROR) << \"Aux search action: palette unavailable; trusted search fallback\";\n#endif\n                chrome::FocusSearch(bwi);",
+          "expectedCount": 1
+        }
+      ]
+    }
+  ]
+}

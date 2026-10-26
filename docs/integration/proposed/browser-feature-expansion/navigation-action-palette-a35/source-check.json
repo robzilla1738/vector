@@ -1,0 +1,23 @@
+{
+  "format": "aux.native.action-palette.source-check.v1",
+  "files": [
+    {
+      "path": "chrome/browser/ui/browser_actions.cc",
+      "inputSha256": "c98b6011a5f65906292dbfecd34be2fd2758d6d53724f022fa5da50badc7f38c",
+      "outputSha256": "9015e59c3c3bd7e5f984b4ef043b4a5ff4e59e0118ce5cc334283bcd1606516e",
+      "anchors": 4,
+      "replayPassed": true
+    }
+  ],
+  "reviewInputs": {
+    "chrome/browser/ui/actions/command_action_updater.cc": "329d51eb36ba7f64cbfb7ce597a00ae3b5bbde4b3b9194b0b9a7323539dc8045",
+    "chrome/browser/ui/browser_command_controller.cc": "5f8e38fc07a30581e29e9cf3152360fd3984f12ef774b621a070a71f684ed468",
+    "chrome/browser/ui/actions/chrome_action_id.h": "6c347d53f51b72eed6534e118660596a5a21f94524534c6fbdec63f4bf6a9a26",
+    "chrome/browser/ui/ui_features.cc": "b1099adb1866610c63632817196f28499642836b901026acf161ab813eab42ba",
+    "out/AuxFast/gen/chrome/browser/buildflags.h": "bfa8b6adbd313907b909c92c6b086a9d77a81ee4259d2b4000004041145824a4"
+  },
+  "nativeTreeChanged": false,
+  "nativeCompiled": false,
+  "appTested": false,
+  "runtimeAccepted": false
+}
