@@ -1,0 +1,14 @@
+# Final palette/peer refresh dependency decision
+
+Preparation only. Wait for the integrator's final typed EventRouter palette implementation and completed native build before freezing operands. The rejected ExecuteJavaScript proposal is not a final input.
+
+One framework-only link is sufficient; no future-specific producer compilation is needed for the currently described delta:
+
+- Reuse the newly built current `obj/chrome/browser/aux/platform/AuxNativePeerTransport.o`. The existing future link already consumes this direct object without replacement. Transport source/header have no `AUX_FIXED_LINKED_PTY_POLICY` condition; their browser-only/native-daemon conditions remain identical for current and future browser builds. The narrow read-reply repair does not change an ABI or require a future ES variant. Do not reuse the pre-repair object frozen in b4.
+- Freeze the final current `obj/chrome/browser/ui/libui.a` **and all its thin members**, including `ui/aux_tab_search_bubble.o`. Reconstruct the private archive as before, replacing only `ui/aux_browser_shutdown_drain.o` with the existing future strict-drain object. Archive bytes alone do not identify changed thin-member contents.
+- Also freeze the final direct `obj/chrome/browser/extensions/api/aux_browser_preferences/aux_browser_preferences/aux_feature_expansion_api.o`. It is a separate framework operand, not a member of libui.a. Thus the UI archive alone is insufficient. The existing full-input freezer already covers this direct object.
+- Retain both existing composed startup objects from `/private/tmp/aux-future-startup-refresh-20261026-b1`, all other future producer overrides, the paired parent-policy object and existing primary. Use the existing linker `--startup-producers`, `--reuse-primary-receipt` and `--baseline-receipt` options. Freeze all final operands under the native-build lock, then perform one framework-only link.
+- Keep the existing future daemon and ES/PTY source/object cohort. The browser transport repair is on the parent responder; it introduces no required daemon-side implementation change.
+- Pair the final renderer tabsearch JS leaf and direct-tools future resource composition from `859ec1757` with the refreshed native receipt. JS packaging does not require a native recompile/link beyond the changed native operands above. Preserve its exact resource hashes rather than substituting the current browser-only daemon leaves.
+
+No source projection, compile, link, signing, app operation or additional tests performed for this decision. Final source/input hashes and product acceptance remain pending the integrator's settled native batch; no new source/build-complete claim is made for that not-yet-frozen selection. Apple/browser entitlement coverage, signed helper/namespace authority and actual execution acceptance remain explicit activation gates.
