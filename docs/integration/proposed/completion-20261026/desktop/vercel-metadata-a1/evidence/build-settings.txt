@@ -1,0 +1,247 @@
+# note: interactive (clickable / focusable) elements only.
+- title: "aux-cloud – Build and Deployment – Vercel" [url=https://vercel.com/robzilla1738s-projects/aux-cloud/settings/build-and-deployment]
+- main:
+  - banner:
+    - link [ref=e15]:
+      - img
+      - text: "robzilla1738's projects Pro"
+    - button [ref=e16]
+    - button "Find F" [ref=e17]
+  - navigation:
+    - button "Settings" [ref=e234]
+    - link "General" [ref=e235]
+    - link "Build and Deployment" [ref=e236]
+    - link "Environments" [ref=e237]
+    - link "Git" [ref=e238]
+    - link "Deployment Protection" [ref=e239]
+    - link "Passport" [ref=e240]
+    - link "Functions" [ref=e241]
+    - link "Sandboxes" [ref=e242]
+    - link "Cron Jobs" [ref=e243]
+    - link "Microfrontends" [ref=e244]
+    - link "Project Members" [ref=e245]
+    - link "Webhooks" [ref=e246]
+    - link "Drains" [ref=e247]
+    - link "Alerts" [ref=e248]
+    - link "Tracing" [ref=e249]
+    - link "Security" [ref=e250]
+    - link "Networking" [ref=e251]
+    - link "Activity" [ref=e252]
+    - link "Advanced" [ref=e253]
+  - region:
+    - button "Avatar for robzilla1738" [ref=e44] [focused]:
+      - img "Avatar for robzilla1738"
+      - text: "robzilla1738"
+    - button "142 unseen notifications" [ref=e45]
+  - link [ref=e46]:
+    - img
+    - text: "aux-cloud"
+  - button [ref=e47]
+  - navigation "Breadcrumb" [ref=e48]:
+    - link "Project Settings" [ref=e288]
+    - text: "Build and Deployment"
+  - button "Toggle side chat" [ref=e49]: "Agent"
+  - region:
+    - heading [level=4]:
+      - link "Framework Settings" [ref=e289]
+      - button "View Framework Settings override" [ref=e291]: "Overridden"
+    - text: "When using a framework for a new project, it will be automatically detected. As a result, several project settings are automatically configured to achieve the b…[+56 chars]"
+    - combobox [ref=e292]:
+      - searchbox "Framework Preset" [ref=e293]: "Next.js"
+      - button "Open menu" [ref=e294]
+    - heading "Build Command" [level=5]
+    - textbox "Build Command" [ref=e296] [disabled] [placeholder="`npm run build` or `next build`"]
+    - heading "Override" [level=5]
+    - checkbox "Override Build Command" [ref=e297]
+    - heading "Output Directory" [level=5]
+    - textbox "Output Directory" [ref=e300] [disabled] [placeholder="Next.js default"]
+    - heading "Override" [level=5]
+    - checkbox "Override Output Directory" [ref=e301]
+    - heading "Install Command" [level=5]
+    - textbox "Install Command" [ref=e304] [disabled] [placeholder="`yarn install`, `pnpm install`, `npm install`, or `bun install`"]
+    - heading "Override" [level=5]
+    - checkbox "Override Install Command" [ref=e305]
+    - heading "Development Command" [level=5]
+    - textbox "Development Command" [ref=e308] [disabled] [placeholder="next"]
+    - heading "Override" [level=5]
+    - checkbox "Override Development Command" [ref=e309]
+    - contentinfo:
+      - text: "Learn more about"
+      - link "Build and Development Settings" [ref=e311]
+      - button "Save" [ref=e312] [disabled]
+    - heading [level=4]:
+      - link "Root Directory" [ref=e313]
+    - text: "The directory within your project, where your code is located. Leave this field empty if your code is not located in a subdirectory."
+    - textbox "Root Directory" [ref=e314] [placeholder="./"]
+    - text: "Include files outside the root directory in the"
+    - link "Build Step" [ref=e315]
+    - text: ".Enabled"
+    - checkbox "Enabled" [ref=e316] [checked]
+    - link "Skip deployments" [ref=e318]
+    - text: "when there are no changes to the root directory or its dependencies."
+    - generic [ref=e319]:
+      - text: "Enabled"
+      - checkbox "Enabled" [ref=e320] [checked] [disabled]
+    - contentinfo:
+      - text: "Learn more about"
+      - link "Root Directory" [ref=e321]
+      - button "Save" [ref=e322] [disabled]
+    - heading [level=4]:
+      - link "Ignored Build Step" [ref=e323]
+    - text: "Vercel skips builds for commits with a previously deployed SHA. Override with a shell command that exits 1 (build) or 0 (skip).Behavior"
+    - combobox "Behavior Behavior" [ref=e324]:
+      - option "Automatic" (selected)
+      - option "Only build production"
+      - option "Only build pre-production"
+      - option "Only build if there are changes"
+      - option "Only build if there are changes in a folder"
+      - option "Don’t build anything"
+      - option "Run my Bash script"
+      - option "Run my Node script"
+      - option "Custom"
+    - contentinfo:
+      - text: "Learn more about"
+      - link "Ignored Build Step" [ref=e325]
+      - button "Save" [ref=e326] [disabled]
+    - heading [level=4]:
+      - link "Node.js Version" [ref=e327]
+    - text: "The Node.js version used during builds and for Serverless Functions. Redeploy to apply changes."
+    - combobox "24.x" [ref=e328]:
+      - option "24.x" (selected)
+      - option "22.x"
+    - contentinfo:
+      - text: "Learn more about"
+      - link "Node.js Version" [ref=e329]
+      - button "Save" [ref=e330] [disabled]
+    - heading [level=4]:
+      - link "Build Machine" [ref=e331]
+    - text: "Choose your build settings and resources."
+    - combobox [ref=e332]:
+      - searchbox "Build machine source" [ref=e333]: "team"
+      - button "Open menu" [ref=e334]
+    - radiogroup "Build machine type":
+      - listitem [ref=e335]:
+        - radio "ElasticRecommended4–30 vCPUs and 8–60 GB memory, auto-scaling hardware to balance speed and cost" [ref=e336]
+        - text: "Elastic Recommended 4–30 vCPUs and 8–60 GB memory, auto-scaling hardware to balance speed and cost"
+      - listitem [ref=e337]:
+        - radio "Basic2 vCPUs8 GB MemoryCost-effective builds for smaller projects" [ref=e338]
+        - text: "Basic 2 vCPUs 8 GB Memory Cost-effective builds for smaller projects"
+      - listitem [ref=e339]:
+        - radio "Standard4 vCPUs8 GB MemoryBalanced performance for general-purpose builds" [ref=e340] [checked]
+        - text: "Standard 4 vCPUs 8 GB Memory Balanced performance for general-purpose builds"
+      - listitem [ref=e341]:
+        - radio "Enhanced8 vCPUs16 GB MemoryMore compute for large applications" [ref=e342]
+        - text: "Enhanced 8 vCPUs 16 GB Memory More compute for large applications"
+      - listitem [ref=e343]:
+        - radio "Turbo30 vCPUs60 GB MemoryMaximum performance for demanding builds" [ref=e344]
+        - text: "Turbo 30 vCPUs 60 GB Memory Maximum performance for demanding builds"
+    - note: "Your next deployment will build with a  Standard  machine."
+    - contentinfo:
+      - text: "Learn more about"
+      - link "build machine types" [ref=e345]
+      - text: "and"
+      - link "pricing" [ref=e346]
+      - button "Save" [ref=e347] [disabled]
+    - heading [level=4]:
+      - link "On-Demand Concurrent Builds" [ref=e348]
+    - text: "Skip the build queue and build deployments immediately. Usage costs apply per build minute."
+    - radiogroup "On-Demand Concurrent Builds":
+      - listitem [ref=e349]:
+        - radio "Run all builds immediately Skip the queue for all builds" [ref=e350] [checked]
+        - text: "Run all builds immediately Skip the queue for all builds"
+      - listitem [ref=e351]:
+        - radio "Run up to one build per branch New deployments within a branch are queued" [ref=e352]
+        - text: "Run up to one build per branch New deployments within a branch are queued"
+      - listitem [ref=e353]:
+        - radio "Disable on-demand concurrent builds Builds are queued, maximum of one at a time" [ref=e354]
+        - text: "Disable on-demand concurrent builds Builds are queued, maximum of one at a time"
+    - contentinfo:
+      - text: "Learn more about"
+      - link "On-Demand Concurrent Builds" [ref=e355]
+      - button "Save" [ref=e356] [disabled]
+    - heading [level=4]:
+      - link "Deployment Checks" [ref=e357]
+    - text: "Define checks needed to promote a deployment to production."
+    - button "Add Checks" [ref=e358]
+    - button "All Checks" [ref=e359]
+    - region:
+      - text: "Lint Vercel"
+      - button "Preview deployment behavior" [ref=e360]: "Preview"
+      - button "Production deployment behavior" [ref=e361]: "Production"
+      - button "Menu" [ref=e362]
+    - region:
+      - text: "TypeCheck Vercel"
+      - button "Preview deployment behavior" [ref=e363]: "Preview"
+      - button "Production deployment behavior" [ref=e364]: "Production"
+      - button "Menu" [ref=e365]
+    - contentinfo:
+      - text: "Learn more about"
+      - link "Deployment Checks" [ref=e366]
+      - button "Save" [ref=e367] [disabled]
+    - heading [level=4]:
+      - link "Rolling Releases" [ref=e368]
+    - text: "Roll out changes gradually by defining a traffic percentage for each stage."
+    - label [ref=e369]:
+      - text: "Disabled"
+      - checkbox "Disabled" [ref=e370]
+    - contentinfo:
+      - text: "Learn more about"
+      - link "Rolling Releases" [ref=e371]
+      - button "Save" [ref=e372] [disabled]
+    - heading [level=4]:
+      - link "Prioritize Production Builds" [ref=e373]
+    - text: "Run Production builds before Pre-Production builds."
+    - label [ref=e374]:
+      - checkbox [ref=e375] [checked]
+      - text: "Enabled"
+    - contentinfo:
+      - text: "Learn more about"
+      - link "Prioritize Production Builds" [ref=e377]
+      - button "Save" [ref=e378] [disabled]
+    - heading [level=4]: "OIDC Policies"
+    - text: "Configure policies that exchange OIDC tokens from external identity providers for VCR access tokens. Turborepo CLI policies are configured at the team level."
+    - region:
+      - button "0 VCR Policies" [ref=e379]
+      - button "Add" [ref=e380]
+    - heading [level=4]:
+      - link "Deployment Retention Policy" [ref=e381]
+    - text: "Define a retention period for all Deployments for this Project. Deployments will be deleted after the defined time.Canceled Deployments"
+    - button "Select the deployment retention policy" [ref=e382]: "30 days"
+    - text: "Errored Deployments"
+    - button "Select the deployment retention policy" [ref=e383]: "30 days"
+    - text: "Pre-Production Deployments"
+    - button "Select the deployment retention policy" [ref=e384]: "30 days"
+    - text: "Production Deployments"
+    - button "Select the deployment retention policy" [ref=e385]: "30 days"
+    - contentinfo:
+      - text: "Learn more about"
+      - link "Deployment Retention" [ref=e386]
+      - button "Save" [ref=e387] [disabled]
+    - heading [level=4]:
+      - link "Git Sources" [ref=e388]
+      - text: "Beta"
+    - text: "Restrict which Git providers, organizations, and repositories can deploy to this project."
+    - radio "Inherit from Team" [ref=e389] [checked]
+    - generic "Inherit from Team" [ref=e390]
+    - radio "Override" [ref=e391]
+    - generic "Override" [ref=e392]
+    - text: "No restrictions"
+    - link "View team policy" [ref=e393]
+    - contentinfo:
+      - text: "Learn more about"
+      - link "Git Sources" [ref=e394]
+      - button "Save" [ref=e395] [disabled]
+    - heading [level=4]:
+      - link "Deployment Sources" [ref=e396]
+      - text: "Beta"
+    - text: "Restrict which deployment mechanisms can deploy to this project."
+    - radio "Inherit from Team" [ref=e397] [checked]
+    - generic "Inherit from Team" [ref=e398]
+    - radio "Override" [ref=e399]
+    - generic "Override" [ref=e400]
+    - text: "No restrictions"
+    - link "View team policy" [ref=e401]
+    - contentinfo:
+      - text: "Learn more about"
+      - link "Deployment Sources" [ref=e402]
+      - button "Save" [ref=e403] [disabled]

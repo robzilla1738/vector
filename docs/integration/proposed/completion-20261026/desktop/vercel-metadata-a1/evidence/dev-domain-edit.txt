@@ -1,0 +1,103 @@
+# note: interactive (clickable / focusable) elements only.
+- title: "aux-cloud - Overview – Vercel" [url=https://vercel.com/robzilla1738s-projects/aux-cloud/settings/domains]
+- main:
+  - banner:
+    - link [ref=e15]:
+      - img
+      - text: "robzilla1738's projects Pro"
+    - button [ref=e16]
+    - button "Find F" [ref=e17]
+  - navigation [ref=e18] [scrollable]:
+    - link [ref=e19]:
+      - img
+      - text: "Overview"
+    - link "Deployments" [ref=e20]
+    - link "Logs" [ref=e21]
+    - link "Analytics" [ref=e22]
+    - link "Speed Insights" [ref=e23]
+    - link "Observability" [ref=e24]
+    - link "Firewall" [ref=e25]
+    - link "CDN" [ref=e26]
+    - link "Environment Variables" [ref=e27]
+    - link "Domains" [ref=e28]
+    - link "Connect" [ref=e29]
+    - link "Integrations" [ref=e30]
+    - link "Storage" [ref=e31]
+    - link "Flags" [ref=e32]
+    - link "Agent" [ref=e33]
+    - link "AI Gateway" [ref=e34]
+    - link "Sandboxes" [ref=e35]
+    - link "Workflows" [ref=e36]
+    - link "Images" [ref=e37]
+    - link "Daemons" [ref=e38]
+    - link "Usage" [ref=e39]
+    - link "Support" [ref=e40]
+    - link "Settings" [ref=e41]
+  - region:
+    - button "Avatar for robzilla1738" [ref=e44]:
+      - img "Avatar for robzilla1738"
+      - text: "robzilla1738"
+    - button "142 unseen notifications" [ref=e45]
+  - link [ref=e46]:
+    - img
+    - text: "aux-cloud"
+  - button [ref=e47]
+  - navigation "Breadcrumb" [ref=e48]: "Domains"
+  - button "Toggle side chat" [ref=e49]: "Agent"
+  - region:
+    - button "Filter domains" [ref=e468]
+    - textbox "Search" [ref=e469] [placeholder="Search any domain"]
+    - button "Add Existing" [ref=e470]
+    - button "Buy" [ref=e471]
+    - button [ref=e472] [disabled]:
+      - link "dev-cloud.getaux.co" [ref=e473]
+      - text: "Valid Configuration Production"
+    - region "dev-cloud.getaux.coValid ConfigurationProduction" [ref=e490]:
+      - text: "Domain"
+      - textbox "Domain Domain" [ref=e491]: "dev-cloud.getaux.co"
+      - radiogroup:
+        - generic [ref=e492]:
+          - text: "​"
+          - radio "​Connect to an environment" [ref=e493] [checked]
+        - text: "Connect to an environment"
+        - combobox "Environments" [ref=e494]:
+          - option "No Environment"
+          - option "Production" (selected) value="production"
+          - option "Preview" value="preview"
+          - option "Your project has no custom environments"
+        - generic [ref=e495]:
+          - text: "​"
+          - radio "​Redirect to Another Domain" [ref=e496]
+        - text: "Redirect to Another Domain"
+        - combobox "307 Temporary Redirect" [ref=e497] [disabled]:
+          - option "307 Temporary Redirect" (selected) value="307"
+          - option "302 Found" value="302"
+          - option "308 Permanent Redirect" value="308"
+          - option "301 Moved Permanently" value="301"
+        - combobox [ref=e498]:
+          - searchbox "No Redirect" [ref=e499] [disabled] [placeholder="No Redirect"]
+          - button "Open menu" [ref=e500] [disabled]
+      - button "Remove" [ref=e501]
+      - button "Cancel" [ref=e502]
+      - button "Save" [ref=e503]
+      - link "View DNS Records & More for getaux.co →" [ref=e504]
+    - button [ref=e476] [disabled]:
+      - link "share.getaux.co" [ref=e505]
+      - text: "Valid Configuration Production"
+    - button "Refresh" [ref=e477]
+    - button "Edit" [ref=e478]
+    - button [ref=e479] [disabled]:
+      - link "api.getaux.co" [ref=e506]
+      - text: "Valid Configuration Production"
+    - button "Refresh" [ref=e480]
+    - button "Edit" [ref=e481]
+    - button [ref=e482] [disabled]:
+      - link "app.getaux.co" [ref=e483]
+      - text: "Valid Configuration Production"
+    - button "Refresh" [ref=e484]
+    - button "Edit" [ref=e485]
+    - button [ref=e486] [disabled]:
+      - link "aux-cloud.vercel.app" [ref=e487]
+      - text: "Valid Configuration Production"
+    - button "Refresh" [ref=e488]
+    - button "Edit" [ref=e489]

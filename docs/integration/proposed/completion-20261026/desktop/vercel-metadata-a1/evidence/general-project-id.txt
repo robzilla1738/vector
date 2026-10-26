@@ -1,0 +1,124 @@
+# note: interactive (clickable / focusable) elements only.
+- title: "aux-cloud - Overview – Vercel" [url=https://vercel.com/robzilla1738s-projects/aux-cloud/settings]
+- main:
+  - banner:
+    - link [ref=e15]:
+      - img
+      - text: "robzilla1738's projects Pro"
+    - button [ref=e16]
+    - button "Find F" [ref=e17]
+  - navigation:
+    - button "Settings" [ref=e234]
+    - link "General" [ref=e235]
+    - link "Build and Deployment" [ref=e236]
+    - link "Environments" [ref=e237]
+    - link "Git" [ref=e238]
+    - link "Deployment Protection" [ref=e239]
+    - link "Passport" [ref=e240]
+    - link "Functions" [ref=e241]
+    - link "Sandboxes" [ref=e242]
+    - link "Cron Jobs" [ref=e243]
+    - link "Microfrontends" [ref=e244]
+    - link "Project Members" [ref=e245]
+    - link "Webhooks" [ref=e246]
+    - link "Drains" [ref=e247]
+    - link "Alerts" [ref=e248]
+    - link "Tracing" [ref=e249]
+    - link "Security" [ref=e250]
+    - link "Networking" [ref=e251]
+    - link "Activity" [ref=e252]
+    - link "Advanced" [ref=e253]
+  - region:
+    - button "Avatar for robzilla1738" [ref=e44] [focused]:
+      - img "Avatar for robzilla1738"
+      - text: "robzilla1738"
+    - button "142 unseen notifications" [ref=e45]
+  - link [ref=e46]:
+    - img
+    - text: "aux-cloud"
+  - button [ref=e47]
+  - navigation "Breadcrumb" [ref=e48]: "Project Settings"
+  - button "Toggle side chat" [ref=e49]: "Agent"
+  - region:
+    - heading [level=4]:
+      - link "Project Name" [ref=e254]
+    - text: "Used to identify your Project on the Dashboard, Vercel CLI, and in the URL of your Deployments."
+    - textbox "Project Name" [ref=e255]: "aux-cloud"
+    - contentinfo:
+      - text: "Learn more about"
+      - link "Project Name" [ref=e256]
+      - button "Save" [ref=e257] [disabled]
+    - heading [level=4]:
+      - link "Avatar" [ref=e258]
+    - text: "This is your project's avatar. Click it or drop an image to upload."
+    - button "Change project avatar" [ref=e259]:
+      - img "aux-cloud"
+    - button "Upload project avatar" [ref=e260]
+    - contentinfo: "An avatar is optional but recommended."
+    - heading [level=4]:
+      - link "Project ID" [ref=e261]
+    - text: "Used when interacting with the Vercel API.prj_WLAGrKLQ42G5unZOI5FUkk5gBwxB"
+    - button "Copy to clipboard" [ref=e263]
+    - contentinfo:
+      - text: "Learn more about"
+      - link "Project ID" [ref=e264]
+    - heading [level=4]:
+      - link "Vercel Toolbar" [ref=e265]
+    - text: "Enable the Vercel Toolbar on your Deployments.Pre-Production Deployments"
+    - combobox "Pre-Production Deployments Pre-Production Deployments" [ref=e266]:
+      - option "Default (controlled at the team level)" (selected) value="default"
+      - option "On" value="on"
+      - option "Off" value="off"
+    - text: "Production Deployments"
+    - combobox "Production Deployments Production Deployments" [ref=e267]:
+      - option "Default (controlled at the team level)" (selected) value="default"
+      - option "On" value="on"
+      - option "Off" value="off"
+    - note:
+      - text: "To use the toolbar in production your team members need the"
+      - link "Chrome extension" [ref=e268]
+      - text: "or to enable the toolbar for that domain in the toolbar menu. Learn more about using the"
+      - link "toolbar in production" [ref=e269]
+      - text: "."
+    - contentinfo:
+      - text: "Learn more about the"
+      - link "Vercel Toolbar" [ref=e270]
+      - button "Save" [ref=e271]
+    - heading [level=4]:
+      - link "Preview Deployment Suffix" [ref=e272]
+    - text: "By default, the URL of every new Preview Deployment ends with .vercel.app. This setting allows you to choose your own custom domain in place of this suffix. This takes precedence over the"
+    - link "team-level preview deployment suffix" [ref=e273]
+    - text: "."
+    - textbox "Preview deployment suffix" [ref=e274] [disabled] [placeholder="vercel.app"]
+    - contentinfo:
+      - text: "This feature is available  for $100  per month."
+      - button "Enable and Pay" [ref=e275]
+    - heading [level=4]:
+      - link "Data Preferences" [ref=e276]
+    - text: "Vercel may train on and share code and chat data with AI model providers for training purposes only. If you turn this off, we will not share data going forward for this project."
+    - label [ref=e277]:
+      - checkbox [ref=e278] [disabled]
+      - text: "Improve models with this project’s data"
+    - contentinfo:
+      - text: "Disabled globally at Team level. To manage, open"
+      - link "Team settings" [ref=e279]
+    - heading [level=4]: "Transfer"
+    - text: "Transfer your project to another team without downtime or workflow interruptions."
+    - contentinfo:
+      - text: "Learn more about"
+      - link "Transferring Projects" [ref=e280]
+      - button "Transfer" [ref=e281]
+    - heading [level=4]:
+      - link "Pause Project" [ref=e282]
+    - text: "Temporarily stop serving your Production Deployment so the project stops using metered resources. You can resume it at any time."
+    - contentinfo:
+      - text: "Preview Deployments, settings, and data are unaffected."
+      - link "Learn more about pausing projects" [ref=e283]
+      - button "Pause Project" [ref=e284]
+    - heading [level=4]:
+      - link "Delete Project" [ref=e285]
+    - text: "Permanently delete this project and all deployments, domains, environment variables, serverless functions, and settings."
+    - link "Visit Deployment" [ref=e286]
+    - text: "aux-cloud Last updated  Oct 23"
+    - contentinfo:
+      - button "Delete Project" [ref=e287]

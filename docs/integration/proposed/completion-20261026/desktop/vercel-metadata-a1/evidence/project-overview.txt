@@ -1,0 +1,115 @@
+# note: interactive (clickable / focusable) elements only.
+- title: "aux-cloud - Overview – Vercel" [url=https://vercel.com/robzilla1738s-projects/aux-cloud]
+- main:
+  - banner:
+    - link [ref=e15]:
+      - img
+      - text: "robzilla1738's projects Pro"
+    - button [ref=e16]
+    - button "Find F" [ref=e17]
+  - navigation [ref=e18] [scrollable]:
+    - link [ref=e19]:
+      - img
+      - text: "Overview"
+    - link "Deployments" [ref=e20]
+    - link "Logs" [ref=e21]
+    - link "Analytics" [ref=e22]
+    - link "Speed Insights" [ref=e23]
+    - link "Observability" [ref=e24]
+    - link "Firewall" [ref=e25]
+    - link "CDN" [ref=e26]
+    - link "Environment Variables" [ref=e27]
+    - link "Domains" [ref=e28]
+    - link "Connect" [ref=e29]
+    - link "Integrations" [ref=e30]
+    - link "Storage" [ref=e31]
+    - link "Flags" [ref=e32]
+    - link "Agent" [ref=e33]
+    - link "AI Gateway" [ref=e34]
+    - link "Sandboxes" [ref=e35]
+    - link "Workflows" [ref=e36]
+    - link "Images" [ref=e37]
+    - link "Daemons" [ref=e38]
+    - link "Usage" [ref=e39]
+    - link "Support" [ref=e40]
+    - link "Settings" [ref=e41]
+  - region:
+    - text: "Add a Secondary Email"
+    - button "Dismiss" [ref=e423]
+    - text: "Sign in with another verified email."
+    - button "Add Email" [ref=e424]
+    - button "Avatar for robzilla1738" [ref=e44]:
+      - img "Avatar for robzilla1738"
+      - text: "robzilla1738"
+    - button "142 unseen notifications" [ref=e45]
+  - link [ref=e46]:
+    - img
+    - text: "aux-cloud"
+  - button [ref=e47]
+  - navigation "Breadcrumb" [ref=e48]: "Overview"
+  - button "Toggle side chat" [ref=e49]: "Agent"
+  - region:
+    - heading "Production Deployment" [level=3]
+    - link "Connect Git" [ref=e425]
+    - button "Instant Rollback" [ref=e426]
+    - link "Visit" [ref=e427]
+    - button "Visit with" [ref=e428]
+    - button "Project Menu" [ref=e429]
+    - link "Visit Deployment" [ref=e430]
+    - text: "Deployment"
+    - link "aux-cloud-9oc52fmgn-robzilla1738s-projects.vercel.app" [ref=e431]
+    - link [ref=e432]:
+      - generic [ref=e433]:
+        - progressbar
+    - text: "Domains"
+    - button "Add a domain" [ref=e434]
+    - link "api.getaux.co" [ref=e435]
+    - link "app.getaux.co" [ref=e436]
+    - generic "+3" [ref=e437]
+    - text: "Status"
+    - generic "Ready" [ref=e438]
+    - text: "Created"
+    - generic [ref=e439]:
+      - text: "Oct 23  by robzilla1738"
+      - img "robzilla1738 Avatar"
+    - text: "Source"
+    - link "Git Branch" [ref=e440]: "main"
+    - link "Implement Aux cloud services and compatible desktop integration adapters" [ref=e442]: "6fe912d Implement Aux cloud services and compatible desktop integration adapte…"
+    - button "Deployment Settings 1 Recommendation" [ref=e443]
+    - text: "To update your Production Deployment, drop your project anywhere on this page, connect to git, or run  vercel --prod  via the CLI."
+    - link "Deployments" [ref=e444]
+    - link "Learn more" [ref=e445]
+    - banner:
+      - text: "Production Checklist 3/6"
+      - button "Go to page" [ref=e446]
+      - button [ref=e447]
+    - generic [ref=e448] [scrollable]:
+      - button "Connect Git Repository" [ref=e449]
+      - button "Add Custom Domain" [ref=e450]
+      - button "Preview Deployment" [ref=e451]
+      - button "Enable Web Analytics" [ref=e452]
+      - button "Upgrade to Speed Insights Plus" [ref=e453]
+      - button "Enable Observability Plus" [ref=e454]
+    - banner:
+      - text: "Observability 6h"
+      - link "Go to page" [ref=e455]
+      - link [ref=e456]
+    - text: "CDN Requests 2 Function Invocations 0 Error Rate 0%"
+    - banner:
+      - text: "Analytics"
+      - link "Go to page" [ref=e457]
+      - link [ref=e458]
+    - region: "Track Visitors and Page Views See real-time traffic, top pages, and audience trends."
+    - link "Enable Analytics" [ref=e459]
+    - text: "Active Branches"
+    - textbox "Search" [ref=e460] [placeholder="Search"]
+    - button "Filter by deployment status. 6 of 7 statuses selected" [ref=e461]: "Status 6/7"
+    - link [ref=e462]
+    - text: "main"
+    - link "Preview" [ref=e463]
+    - link "4xeJYrXuU" [ref=e464]
+    - link "Source" [ref=e465]
+    - img "robzilla1738 Avatar"
+    - text: "robzilla1738"
+    - generic "Oct 23" [ref=e466]
+    - button "Menu" [ref=e467]

@@ -1,0 +1,115 @@
+# note: interactive (clickable / focusable) elements only.
+- title: "aux-cloud – Deployment Overview" [url=https://vercel.com/robzilla1738s-projects/aux-cloud/4xeJYrXuUtcmFWFTjwevrCF3huQZ]
+- main:
+  - banner:
+    - link [ref=e1]:
+      - img
+      - text: "robzilla1738's projects Pro"
+    - button [ref=e2]
+    - button "Find F" [ref=e3]
+  - navigation [ref=e4] [scrollable]:
+    - link [ref=e5]:
+      - img
+      - text: "Overview"
+    - link "Deployments" [ref=e6]
+    - link "Logs" [ref=e7]
+    - link "Analytics" [ref=e8]
+    - link "Speed Insights" [ref=e9]
+    - link "Observability" [ref=e10]
+    - link "Firewall" [ref=e11]
+    - link "CDN" [ref=e12]
+    - link "Environment Variables" [ref=e13]
+    - link "Domains" [ref=e14]
+    - link "Connect" [ref=e15]
+    - link "Integrations" [ref=e16]
+    - link "Storage" [ref=e17]
+    - link "Flags" [ref=e18]
+    - link "Agent" [ref=e19]
+    - link "AI Gateway" [ref=e20]
+    - link "Sandboxes" [ref=e21]
+    - link "Workflows" [ref=e22]
+    - link "Images" [ref=e23]
+    - link "Daemons" [ref=e24]
+    - link "Usage" [ref=e25]
+    - link "Support" [ref=e26]
+    - link "Settings" [ref=e27]
+  - region:
+    - text: "Add a Secondary Email"
+    - button "Dismiss" [ref=e199]
+    - text: "Sign in with another verified email."
+    - button "Add Email" [ref=e200]
+    - button "Avatar for robzilla1738" [ref=e28]:
+      - img "Avatar for robzilla1738"
+      - text: "robzilla1738"
+    - button "142 unseen notifications" [ref=e29]
+  - link [ref=e201]:
+    - img
+    - text: "aux-cloud"
+  - button [ref=e202]
+  - navigation "Breadcrumb" [ref=e203]:
+    - link "Deployments" [ref=e204]
+    - text: "4xeJYrXuU"
+    - button "Copy ID" [ref=e205]
+  - button "Toggle side chat" [ref=e206]: "Agent"
+  - region:
+    - link "Deployment" [ref=e207]
+    - link "Logs" [ref=e208]
+    - link "Resources" [ref=e209]
+    - link "Source" [ref=e210]
+    - link "Open Graph" [ref=e211]
+    - heading "Deployment Details" [level=3]
+    - button "Share" [ref=e212]
+    - link "Logs" [ref=e213]
+    - link "Visit" [ref=e214]
+    - button "Visit with" [ref=e215]
+    - button "Deployment Actions" [ref=e216]
+    - link "Visit Deployment" [ref=e217]
+    - text: "Created"
+    - generic [ref=e218]:
+      - img "robzilla1738 Avatar"
+    - text: "robzilla1738"
+    - generic "Oct 23" [ref=e219]
+    - text: "Status Ready"
+    - link "Latest" [ref=e220]
+    - text: "Duration"
+    - generic "22s" [ref=e221]
+    - generic "3d ago" [ref=e222]
+    - text: "Environment"
+    - link "Production" [ref=e223]
+    - text: "Current Domains"
+    - link "api.getaux.co" [ref=e224]
+    - generic "+5" [ref=e225]
+    - link "aux-cloud-9oc52fmgn-robzilla1738s-projects.vercel.app" [ref=e227]
+    - text: "Source"
+    - link "main" [ref=e228]
+    - link "Implement Aux cloud services and compatible desktop integration adapters" [ref=e230]: "6fe912d Implement Aux cloud services and compatible desktop integration adapters"
+    - button "Deployment Settings 1 Recommendation" [ref=e231]
+    - heading [level=2]:
+      - generic [ref=e232]:
+        - text: "Build Logs"
+        - button "2 build warnings" [ref=e234]: "2"
+        - text: "22s"
+    - heading [level=2]:
+      - generic [ref=e235]:
+        - text: "Deployment Summary"
+        - link "Resources" [ref=e236]
+    - heading [level=2]:
+      - generic [ref=e237]:
+        - text: "Deployment Checks"
+        - button "1" [ref=e239]
+        - button "0" [ref=e241]
+        - button "0" [ref=e243]
+        - button "0" [ref=e245]
+        - button "1" [ref=e247]
+    - heading [level=2]:
+      - generic "Assigning Custom Domains 1s" [ref=e248]
+    - link "Runtime Logs View and debug runtime logs & errors" [ref=e249]
+    - link "Observability Monitor app health & performance" [ref=e250]
+    - link "Speed Insights Not Enabled Performance metrics from real users" [ref=e251]
+    - link "Web Analytics Not Enabled Analyze visitors & traffic in real-time" [ref=e252]
+- text: "Assigned Domains"
+- link "app.getaux.co" [ref=e253]
+- link "share.getaux.co" [ref=e254]
+- link "dev-cloud.getaux.co" [ref=e255]
+- link "aux-cloud.vercel.app" [ref=e256]
+- link "aux-cloud-robzilla1738s-projects.vercel.app" [ref=e257]

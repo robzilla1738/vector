@@ -1,0 +1,73 @@
+# note: interactive (clickable / focusable) elements only.
+- title: "aux-cloud – Environments – Vercel" [url=https://vercel.com/robzilla1738s-projects/aux-cloud/settings/environments]
+- main:
+  - banner:
+    - link [ref=e15]:
+      - img
+      - text: "robzilla1738's projects Pro"
+    - button [ref=e16]
+    - button "Find F" [ref=e17]
+  - navigation:
+    - button "Settings" [ref=e509]
+    - link "General" [ref=e510]
+    - link "Build and Deployment" [ref=e511]
+    - link "Environments" [ref=e512]
+    - link "Git" [ref=e513]
+    - link "Deployment Protection" [ref=e514]
+    - link "Passport" [ref=e515]
+    - link "Functions" [ref=e516]
+    - link "Sandboxes" [ref=e517]
+    - link "Cron Jobs" [ref=e518]
+    - link "Microfrontends" [ref=e519]
+    - link "Project Members" [ref=e520]
+    - link "Webhooks" [ref=e521]
+    - link "Drains" [ref=e522]
+    - link "Alerts" [ref=e523]
+    - link "Tracing" [ref=e524]
+    - link "Security" [ref=e525]
+    - link "Networking" [ref=e526]
+    - link "Activity" [ref=e527]
+    - link "Advanced" [ref=e528]
+  - region:
+    - button "Avatar for robzilla1738" [ref=e44]:
+      - img "Avatar for robzilla1738"
+      - text: "robzilla1738"
+    - button "142 unseen notifications" [ref=e45]
+  - link [ref=e46]:
+    - img
+    - text: "aux-cloud"
+  - button [ref=e47]
+  - navigation "Breadcrumb" [ref=e48]:
+    - link "Project Settings" [ref=e531]
+    - text: "Environments"
+  - button "Toggle side chat" [ref=e49]: "Agent"
+  - region:
+    - region:
+      - heading [level=2]: "Environments"
+      - text: "Environments help manage the deployment lifecycle on the Vercel platform. ·"
+      - link "Separate Production Secret Values" [ref=e532]
+      - button "Create Environment" [ref=e533]
+      - text: "Name Branch Tracking Domains"
+      - row "Production environment":
+        - link "Production environment settings" [ref=e534]:
+          - cell: "Production"
+        - cell "Primary domain: dev-cloud.getaux.co" [ref=e535]:
+          - link "Primary domain: dev-cloud.getaux.co" [ref=e536]: "dev-cloud.getaux.co"
+          - generic "+5" [ref=e537]
+      - row "Preview environment":
+        - link "Preview environment settings" [ref=e538]:
+          - cell: "Preview"
+      - row "Development environment":
+        - link "Development environment settings" [ref=e539]:
+          - cell: "Development"
+    - heading [level=4]:
+      - link "Custom Environments" [ref=e540]
+    - text: "Get extra custom environments that can be added to your project.Default Custom Environment 1  Included Additional Custom Environments$50  for every  5 custom environments"
+    - button "Decrease custom environments" [ref=e541] [disabled]
+    - text: "0"
+    - button "Increase custom environments" [ref=e542]
+    - text: "1 Custom Environment 1  included, 0  additional Cost$0 (0 × $50 / month)"
+    - contentinfo:
+      - text: "Learn more about"
+      - link "Custom Environments" [ref=e543]
+      - button "Save" [ref=e544] [disabled]

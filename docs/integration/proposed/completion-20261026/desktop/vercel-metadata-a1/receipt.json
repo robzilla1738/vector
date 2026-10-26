@@ -1,0 +1,167 @@
+{
+  "format": "aux.vercel.actual-readonly-build-domain-review.v1",
+  "observedAtUTC": "2026-10-26T17:49:24.418148+00:00",
+  "authorization": "Existing user-authorized signed-in Aux service inspection; root delegated exact project metadata batch. No cloud activation authority.",
+  "skill": {
+    "entry": "/Users/rcourson/.agents/skills/aside-browser/SKILL.md",
+    "actualGuideRead": true,
+    "replGuideRead": true,
+    "builtInSkillsListed": true,
+    "matchingVercelBuiltInSkill": false,
+    "cliVersion": "1.26.1023.1115",
+    "skillVersion": 3
+  },
+  "browser": "Aside",
+  "method": "New interactive aside repl session, attached existing exact Aux Vercel tab; snapshot primary, existing inputValue/known dialog innerText only for requested nonsecret build fields. No raw HTTP or cookie/profile reads.",
+  "target": {
+    "teamSlug": "robzilla1738s-projects",
+    "priorVerifiedTeamId": "team_aFPyA9tVAkB2WegquB3aADsL",
+    "teamIdFreshlyReadFromUI": false,
+    "project": "aux-cloud",
+    "projectIdObservedInGeneralUI": "prj_WLAGrKLQ42G5unZOI5FUkk5gBwxB"
+  },
+  "build": {
+    "url": "https://vercel.com/robzilla1738s-projects/aux-cloud/settings/build-and-deployment",
+    "frameworkPreset": "Next.js",
+    "rootDirectoryInput": "",
+    "rootDirectoryPlaceholder": "./",
+    "includeOutsideRootChecked": true,
+    "nodeVersion": "24.x",
+    "dashboardBuildOverrideEnabled": false,
+    "dashboardInstallOverrideEnabled": false,
+    "dashboardBuildInput": "",
+    "dashboardInstallInput": "",
+    "displayedConfigOverride": {
+      "source": "vercel.json in Framework Settings Override dialog",
+      "framework": "nextjs",
+      "buildCommand": "pnpm build",
+      "installCommand": "pnpm install --frozen-lockfile"
+    },
+    "packageManagerCommandObserved": "pnpm",
+    "packageManagerVersionObserved": null,
+    "limitation": "Empty remote Root Directory is observed, not services/aux-cloud. Upload source root and matching build file bytes remain separate deployment input facts; do not infer from Git metadata."
+  },
+  "developmentAlias": {
+    "domain": "dev-cloud.getaux.co",
+    "domainListStatus": "Valid Configuration",
+    "selectedEnvironmentInReadOnlyEditForm": "production",
+    "connectionMode": "Connect to an environment",
+    "redirectSelected": false,
+    "dedicatedPreviewOrDevelopmentBranchAssignmentObserved": false,
+    "priorIntendedDevelopmentTargetNotEstablished": true,
+    "inference": "Domain follows current Production environment; it is not shown as an independent Development/Preview deployment."
+  },
+  "productionEnvironment": {
+    "url": "https://vercel.com/robzilla1738s-projects/aux-cloud/settings/environments/production",
+    "autoAssignCustomProductionDomainsChecked": true,
+    "environmentListPrimaryDomain": "dev-cloud.getaux.co",
+    "configuredGitBranchValueObserved": null,
+    "gitSettingsText": "This Project is not connected to a Git repository.",
+    "gitSettingsURL": "https://vercel.com/robzilla1738s-projects/aux-cloud/settings/git"
+  },
+  "currentDeployment": {
+    "url": "https://vercel.com/robzilla1738s-projects/aux-cloud/4xeJYrXuUtcmFWFTjwevrCF3huQZ",
+    "idFromObservedDetailURL": "dpl_4xeJYrXuUtcmFWFTjwevrCF3huQZ",
+    "host": "aux-cloud-9oc52fmgn-robzilla1738s-projects.vercel.app",
+    "status": "Ready",
+    "latestLabelObserved": true,
+    "environment": "Production",
+    "createdLabel": "Oct 23",
+    "reportedSourceBranch": "main",
+    "reportedSourceCommitShort": "6fe912d",
+    "reportedSourceTitle": "Implement Aux cloud services and compatible desktop integration adapters",
+    "assignedDomainsFromActualCurrentDomainsPopover": [
+      "api.getaux.co",
+      "app.getaux.co",
+      "share.getaux.co",
+      "dev-cloud.getaux.co",
+      "aux-cloud.vercel.app",
+      "aux-cloud-robzilla1738s-projects.vercel.app"
+    ],
+    "fullDeployedFileBytesVerified": false
+  },
+  "cron": {
+    "url": "https://vercel.com/robzilla1738s-projects/aux-cloud/settings/cron-jobs",
+    "featureCheckboxChecked": true,
+    "visibleState": "Enabled",
+    "pageBody": "Get Started with Cron Jobs on Vercel",
+    "listedJobsObserved": [],
+    "actualJobExecutionVerified": false,
+    "serverWideJobCountClaimed": false,
+    "limitation": "UI enabled-state and no listed rows, not schedule execution or a backend census. No Run/Disable control used."
+  },
+  "evidenceFiles": [
+    {
+      "path": "evidence/build-settings.txt",
+      "sha256": "f321f073698f8831c1e51af75f6c765d70956d6d510c526d4fa8aa79dc067435"
+    },
+    {
+      "path": "evidence/framework-override-safe.json",
+      "sha256": "a8c158bc9bb2cc19cb4a29d18dceec48a917eaf899ab07d21479ffa1cf5a0eef"
+    },
+    {
+      "path": "evidence/cron-settings.txt",
+      "sha256": "6205ed58979bbccac3f3571bcebbd1ad0cd82969713c4a1ad4d85d3eff029378"
+    },
+    {
+      "path": "evidence/domains.txt",
+      "sha256": "bc035abcc47493a3b813d7436c62c5bd6114616b96351149d3ea839e2f040825"
+    },
+    {
+      "path": "evidence/dev-domain-edit.txt",
+      "sha256": "ec2216dcdc07b2cf026de30c785742a06523650ef9da77063c3d368d525fc92d"
+    },
+    {
+      "path": "evidence/git-settings.txt",
+      "sha256": "b602cfb0395dc238b6a8496a5a73081dfb4a899cdb5bea996103a407e26493b8"
+    },
+    {
+      "path": "evidence/environments.txt",
+      "sha256": "254af7623600eb7622e4bf1f3d5a34832eacaf4c28afaecdfd6985ac1e56d62c"
+    },
+    {
+      "path": "evidence/current-deployment.txt",
+      "sha256": "fa14ba8f85af369a8e52255eba4ab642015d20fac5c73e2bb05d185a2e6edc47"
+    },
+    {
+      "path": "evidence/project-overview.txt",
+      "sha256": "f19e2c58893d1468efb1a5b60c18af401462ff2bab27d169f1ebd5832259bc67"
+    },
+    {
+      "path": "evidence/general-project-id.txt",
+      "sha256": "5e4e895bfdbbdfbe4194162deb55d75ebd3d2e03d8bf9c652df5f728e14598a8"
+    }
+  ],
+  "priorInputPins": [
+    {
+      "path": "docs/integration/proposed/completion-20261026/integrator/cloud-state.json",
+      "sha256": "1fc3a5cd5e4d69d1af5ce1c1c04882dc1121b3242f553a5ebb5b4e132ab0e0de"
+    },
+    {
+      "path": "docs/integration/proposed/completion-20261026/integrator/cloud-dashboard-review.json",
+      "sha256": "8698f2db02d03e058c42d1fcad7375af5fcea2e945ac018a29af6358c59852ca"
+    }
+  ],
+  "unresolved": [
+    "Explicit pnpm version/effective deployed package lock not shown in inspected settings.",
+    "No independent Development/Preview assignment for dev-cloud; recorded current assignment is Production.",
+    "No configured Git tracking branch value because Git is disconnected; reported deployment main is source metadata only.",
+    "No fresh deployed source-byte/schema/public endpoint behavior acceptance.",
+    "Cron job execution and provider-side job census not performed."
+  ],
+  "secretsOrEnvValuesRevealed": false,
+  "secretButtonsClicked": false,
+  "rawHttpRequests": false,
+  "browserCookiesOrOwnerProfileFilesRead": false,
+  "onlyNewSessionArtifactsCopied": true,
+  "settingsChanged": false,
+  "deploymentCreated": false,
+  "domainOrCronChanged": false,
+  "authenticationStepUpEncountered": false,
+  "authenticationEntered": false,
+  "backupActionsAfterDeferral": false,
+  "originalTabRestoredTo": "https://vercel.com/robzilla1738s-projects/aux-cloud/deployments",
+  "ownedDocumentationPopupClosed": true,
+  "replExited": true,
+  "productionAccepted": false
+}

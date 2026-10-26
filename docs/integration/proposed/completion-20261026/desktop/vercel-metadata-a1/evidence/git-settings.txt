@@ -1,0 +1,75 @@
+# note: interactive (clickable / focusable) elements only.
+- title: "aux-cloud – Git – Vercel" [url=https://vercel.com/robzilla1738s-projects/aux-cloud/settings/git]
+- main:
+  - banner:
+    - link [ref=e15]:
+      - img
+      - text: "robzilla1738's projects Pro"
+    - button [ref=e16]
+    - button "Find F" [ref=e17]
+  - navigation:
+    - button "Settings" [ref=e509]
+    - link "General" [ref=e510]
+    - link "Build and Deployment" [ref=e511]
+    - link "Environments" [ref=e512]
+    - link "Git" [ref=e513]
+    - link "Deployment Protection" [ref=e514]
+    - link "Passport" [ref=e515]
+    - link "Functions" [ref=e516]
+    - link "Sandboxes" [ref=e517]
+    - link "Cron Jobs" [ref=e518]
+    - link "Microfrontends" [ref=e519]
+    - link "Project Members" [ref=e520]
+    - link "Webhooks" [ref=e521]
+    - link "Drains" [ref=e522]
+    - link "Alerts" [ref=e523]
+    - link "Tracing" [ref=e524]
+    - link "Security" [ref=e525]
+    - link "Networking" [ref=e526]
+    - link "Activity" [ref=e527]
+    - link "Advanced" [ref=e528]
+  - region:
+    - button "Avatar for robzilla1738" [ref=e44]:
+      - img "Avatar for robzilla1738"
+      - text: "robzilla1738"
+    - button "142 unseen notifications" [ref=e45]
+  - link [ref=e46]:
+    - img
+    - text: "aux-cloud"
+  - button [ref=e47]
+  - navigation "Breadcrumb" [ref=e48]:
+    - link "Project Settings" [ref=e531]
+    - text: "Git"
+  - button "Toggle side chat" [ref=e49]: "Agent"
+  - region:
+    - heading [level=4]:
+      - link "Connected Git Repository" [ref=e662]
+    - text: "Seamlessly create Deployments for any commits pushed to your Git repository."
+    - button "Origin" [ref=e663]
+    - button "GitHub" [ref=e664]
+    - button "GitLab" [ref=e665]
+    - button "Bitbucket" [ref=e666]
+    - link "Manage Login Connections →" [ref=e667]
+    - text: "Toggle  Pull Request Comments Pull Request Comments"
+    - checkbox "Toggle Pull Request Comments" [ref=e669] [checked] [disabled]
+    - text: "Toggle  Commit Comments Commit Comments"
+    - checkbox "Toggle Commit Comments" [ref=e671] [disabled]
+    - contentinfo:
+      - text: "Learn more about"
+      - link "Vercel for Git" [ref=e672]
+    - heading [level=4]:
+      - link "Git Large File Storage (LFS)" [ref=e673]
+    - text: "Git LFS replaces large files such as audio samples, videos, datasets, and graphics with text pointers inside Git, while storing the file contents on a remote se…[+42 chars]"
+    - label [ref=e674]:
+      - text: "Disabled"
+      - checkbox "Disabled" [ref=e675]
+    - contentinfo:
+      - text: "Learn more about"
+      - link "Git LFS" [ref=e677]
+      - button "Save" [ref=e678] [disabled]
+    - heading [level=4]:
+      - link "Deploy Hooks" [ref=e679]
+    - text: "Deploy hooks are unique URLs that allow you to trigger a deployment of a given branch.This Project is not connected to a Git repository. To be able to set up a …[+97 chars]"
+    - contentinfo:
+      - text: "Learn more about"
+      - link "Deploy Hooks" [ref=e680]
