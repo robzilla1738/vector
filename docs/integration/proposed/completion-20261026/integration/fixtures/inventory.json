@@ -1,0 +1,21 @@
+{
+  "format": "aux.disposable-attachment-fixtures.v1",
+  "files": [
+    {
+      "path": "first/notes.txt",
+      "size": 90,
+      "sha256": "47834e45e4108f831e843710a34da1b5bb20e24b07360e30b8cba579023f4b40"
+    },
+    {
+      "path": "image.png",
+      "size": 84,
+      "sha256": "1f959e52eb046e213a44b3b201e0d605db7758b9e22444520d36bb1bb4fe96b0"
+    },
+    {
+      "path": "second/notes.txt",
+      "size": 102,
+      "sha256": "b93cbf45466b7f728011ad66355f788e8254e5927c867d5cbb8aa27d38b8ad6f"
+    }
+  ],
+  "personalData": false
+}

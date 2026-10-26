@@ -1,0 +1,21 @@
+{
+  "format": "aux.chosen-file-lifetime.v1",
+  "sourceRoot": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src",
+  "files": [
+    {
+      "path": "chrome/browser/ui/aux_chosen_files_service.cc",
+      "inputSha256": "91abab5a413023f4ed644bf088b0b3f39324d17f2a4458281def250fbf548abb",
+      "outputSha256": "46e654ca3b198b0099b82dd66fee214edb9ca7ed396fe15465c56812afd2b498",
+      "anchors": [
+        {
+          "find": "    if (!value) lifetime->End(outcome);",
+          "replace": "    if (!value) {\n      // Settlement observers may replace the next operation's lifetime.\n      auto retained = lifetime;\n      retained->End(outcome);\n    }",
+          "count": 1
+        }
+      ]
+    }
+  ],
+  "nativeTreeChanged": false,
+  "compiled": false,
+  "productExecuted": false
+}

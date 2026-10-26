@@ -1,0 +1,64 @@
+{
+  "format": "aux.a2-current-consumers.v1",
+  "candidate": "A38 / A78 / A72 / A51 / UI33",
+  "files": [
+    {
+      "path": "apps/daemon/Aux Daemon.app/Contents/Resources/node-development/index.mjs",
+      "sha256": "48af998738fb6d2fc30cb8d5b2e9de03cb04ab7d8563ebdaa5fe8100944fc514",
+      "functions": {
+        "auxRunDownloadNameRequest": 2,
+        "auxRunProductivityRequest": 2,
+        "auxValidateReferenceMessages": 5,
+        "auxDrainValidatedQueue": 5,
+        "auxReferenceCdpClient": 2
+      }
+    },
+    {
+      "path": "apps/daemon/Aux Daemon.app/Contents/Resources/node-development/aux-native-entry.mjs",
+      "sha256": "f355833cb607963a65ca3108e7ae19ea7ca60192a9f3d8e2644a3c12ec49c808",
+      "functions": {
+        "auxRunDownloadNameRequest": 2,
+        "auxRunProductivityRequest": 2,
+        "auxValidateReferenceMessages": 5,
+        "auxDrainValidatedQueue": 5,
+        "auxReferenceCdpClient": 2
+      }
+    },
+    {
+      "path": "apps/extension/dist/background.js",
+      "sha256": "02b2288a0c1691a1e55d4f16c1db1147385da5b7030740b62c37432a191591cc",
+      "functions": {
+        "prepareTidyProposal": 2,
+        "assertNativeTidyScope": 2,
+        "Aux.validateTabReferences": 2
+      }
+    },
+    {
+      "path": "apps/extension/dist/assets/tabsearch-3k_2hgil.js",
+      "sha256": "c9910b8c10b64f62db048a95d6f2ab003572fd9585b089ef8daa84ec1d446c25",
+      "functions": {
+        "createFileReviewGuard": 2,
+        "runFileAction": 2,
+        "filesSections": 2,
+        "commitProductivityAction": 2
+      }
+    },
+    {
+      "path": "apps/extension/dist/assets/provider-Cw0zhujt.js",
+      "sha256": "8aee4a9cc8229397e4067fb9a9a4772ef4bdfddc03d1db3f2c84836a1b6fe724",
+      "functions": {
+        "captureMentionSpace": 2,
+        "loadMentionSpaces": 2
+      }
+    },
+    {
+      "path": "apps/extension/dist/assets/permission-approval-D-GTf91U.js",
+      "sha256": "08afcf585bf6707377424fa07557c2d335d08898adae2576b4340bddf2a5d03f",
+      "functions": {
+        "validateTabAttachments": 3,
+        "auxDraftSaveFailed": 4
+      }
+    }
+  ],
+  "runtimeAcceptance": false
+}

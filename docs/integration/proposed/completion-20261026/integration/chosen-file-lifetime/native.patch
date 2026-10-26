@@ -1,0 +1,15 @@
+--- a/chrome/browser/ui/aux_chosen_files_service.cc
++++ b/chrome/browser/ui/aux_chosen_files_service.cc
+@@ -32,7 +32,11 @@
+     if (pending == value) return true;
+     if (value && !lifetime->Begin()) return false;
+     pending = value;
+-    if (!value) lifetime->End(outcome);
++    if (!value) {
++      // Settlement observers may replace the next operation's lifetime.
++      auto retained = lifetime;
++      retained->End(outcome);
++    }
+     return true;
+   }
+   uint64_t epoch = 0;
