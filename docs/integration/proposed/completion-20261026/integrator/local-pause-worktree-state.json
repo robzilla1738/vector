@@ -1,0 +1,22 @@
+{
+  "format": "aux.local-pause.worktree-state.v1",
+  "recordedAtUtc": "2026-10-26T18:59:42.662115+00:00",
+  "mainCompletionCommit": "ecddff5bf",
+  "trackedTaskChangesCommitted": true,
+  "desktopWorktreeClean": true,
+  "runtimeWorktreeClean": true,
+  "integrationWorktreeClean": true,
+  "preexistingUntrackedCachesPreserved": [
+    "docs/integration/proposed/browser-feature-expansion/package/__pycache__/",
+    "docs/integration/proposed/standard-profile-isolation/memory-runtime-identity-a1/source/__pycache__/",
+    "scripts/__pycache__/"
+  ],
+  "removedOnlyOwnNewCompileCache": "docs/integration/proposed/profile-isolation-delivery/package/__pycache__/assemble.cpython-315.pyc",
+  "nativeCheckoutOwnerChangesPreserved": true,
+  "nativeCheckoutNotBulkCommitted": true,
+  "independentAgentsStopped": true,
+  "ownAsideReplExited": true,
+  "allNativeBuildAndSigningHandlesTerminal": true,
+  "ownedFailedTestDaemonStoppedAndInterruptedStateRetained": true,
+  "goalPauseIsFinalAction": true
+}
