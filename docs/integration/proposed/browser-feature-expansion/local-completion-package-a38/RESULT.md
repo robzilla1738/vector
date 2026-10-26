@@ -1,81 +1,64 @@
-# Local candidate signed; disposable launch blocked before user-state access
+# Aux local completion candidate — focused acceptance in progress
 
 Candidate: `/Users/rcourson/Documents/Vibe/web/out/provided-candidate-local-completion-20261025-a38/Aux.app`.
+Launch through the adjacent `Launch Aux.command`.
 
-The owner approved the exact nineteen-object review and bounded repairs. All19
-objects now verify under the existing Robert Courson development identity and
-unchanged entitlements/profile. Signed inventory SHA256:
-`51eb69dc3d94f489854c08abefd3e38a3fef2aaccc1121a136ef6907e0bad45a`;
-11,201 leaves. Bundle metadata matches all10,772 supplied-resource records.
-UI33, styles, fonts, artwork and unrelated runtime seeds remain exact. The
-accepted app and previously testable A25 are unchanged. No release occurred.
+This is a regular-profile development candidate in the separately approved
+**Aux Browser A38 Disposable** namespace. The existing nonempty `Aux Browser`
+folder and accepted application remain untouched. All work is local; no release,
+provisioning, notarization, new OS grant or owner-profile access occurred.
 
-## Completed within approval
+## Actual packaged-app results
 
-- Browser/framework/helpers, fixed memory helper, native CLI, paired daemon and
-  containing app signed and verified; actual signed memory digest sealed in its
-  fixed launch policy. See `actual-local-signing-a3.json`.
-- Corrected the executor's requirement-argument syntax. The first valid signature
-  was retained; original failure and bytes remain preserved.
-- Strict CLI verification exposed an obsolete SEA executable carrying its old
-  bundle binding. The native CLI never uses that executable. Excluded only that
-  inactive file, retained its exact original bytes in `before-local-signing`,
-  updated its resource inventory, and re-signed the same approved objects. No
-  additional object/entitlement was signed. See `signing-repair-a3.json`.
-- Native CLI `open --help` actually exits0 and prints usage. An initial global
-  `--help` probe was unsupported; the corrected command passed without changing
-  product code. This is not actual URL/profile routing acceptance.
+| Check | Current result |
+| --- | --- |
+| Protected launcher, paired daemon and native fresh initialization | Pass; daemon HTTP ready, no incognito |
+| Loopback navigation, public HTTPS, back/forward | Pass |
+| Two ordinary profiles | Pass; independent cookies, localStorage and native account contexts |
+| Active local draft/attachment switching | Pass; Work draft+TXT stays separate from Personal draft |
+| Normal restart persistence | Pass for both profiles' cookie/note/draft and Work TXT |
+| Multiple windows | Pass; shared tab list, independent views and second-window recovery |
+| Native CLI URL/profile routing | Pass; actual Personal destination, not only a queued response |
+| Sidebar/chat/settings | Actual collapsed/expanded endpoints, both sidebars, initial General and Appearance settings observed |
+| Cmd+T/K/L | Pass after A73; centered modes, T cancel makes no tab, T commit adds a tab, L commit uses current tab |
+| Footer profile roster/name refresh | Pass after A73; existing window refreshes without sidebar toggle |
+| Memory indexing/search/helper close | Pending final corrected paired source and actual acceptance |
+| Manual ordinary tab close | Failed: passive visibility listener causes a retained Recovery tab; narrow correction in progress |
+| Daemon normal shutdown | Failed: macOS SIGABRT reveals wrong Node Environment inline layout; target-config correction in progress |
+| Exact UI preservation | All original UI33/style/font/art resources retained; actual app compared with prior Aux and saved supplied Aside references |
 
-## Blocked before launch
+A successful compile or signature verification is not counted as a runtime pass.
+The current signed inventory and finite observations are bound in
+`disposable-location-review-a4/actual-integration-signing-a8.json` and
+`focused-checks-progress-a8.json`. Historical failed bytes/receipts remain
+recoverable. The original nineteen objects verify with the existing identity,
+profile and entitlements; only the approved changed framework/daemon/outer app
+are re-signed during repairs.
 
-Update after explicit owner approval: the emptiness-only check returned
-**nonempty**. The directory was not moved, no files were opened and no entry
-names were reported. `actual-empty-container-preservation.json` records that
-result. The approved move-only-if-empty condition therefore does not permit a
-rename, cleanup or adoption of the existing container.
+## Explicit remaining work beyond this milestone
 
-A new narrowly prepared option is
-`disposable-location-review-a4/README.md`: use a separate fixed **Aux Browser A38
-Disposable** namespace. Both proposed support/cache roots are absent by
-metadata-only preflight. The exact patch changes15 directory literals across the
-existing four native startup consumers; no UI/architecture/entitlement change.
-It requires a new namespace exception and, after rebuild, only framework,
-daemon and outer-app re-signs under the same-object bounded repair rules. No
-projection, compile, new signing or initialization has occurred for this option.
-The current signed A38 and accepted app remain intact.
+**Implementation:** third-party native messaging still needs real per-Profile
+host ownership/lifetime integration before claiming 1Password desktop/autofill
+compatibility. General exec/PTY, Computer Use and arbitrary native helpers/addons
+remain disabled. Cloud production service acceptance and operational backup/key
+custody/alerts are not complete. No permissive native bridge was enabled.
 
-The following paragraph records the earlier metadata-only preflight:
+**Account-dependent testing:** BYOK and eligible ChatGPT consent, inference,
+refresh and revocation require a connected provider. No AI request, credential
+entry or inference spend was made in this milestone. Chrome Store, 1Password,
+autofill and native-host checks remain explicit follow-ups after integration.
 
-Metadata-only preflight found the support container already exists with mode0700,
-UID502, device16777232, inode32049119. User Data, Control, Tasks and cache paths
-are absent. No directory entries or file contents were read; nothing there was
-changed. The exact approved review requires stopping if any root exists without
-this milestone's first-creation receipt. Therefore this app was not opened,
-no installation/authentication entries were created, and A25 was not closed.
+**Focused manual/broader checks:** genuine pointer hover remains manual because
+the available desktop API has no hover action. Broad attachment/crash recovery
+and production cookie-key behavior remain unaccepted. This development browser
+uses mock Chromium Keychain storage; that does not prove custom helper Keychain
+or release-cookie behavior.
 
-The earlier prepared action was in `existing-container-review.json`: check only
-whether this exact existing container is empty. If empty, preserve it under the
-absent sibling `Aux Browser.empty-before-a38` and let unchanged native startup
-create its fresh namespace. If nonempty or metadata changes, stop unchanged.
-That narrow exception was approved and executed; the nonempty result means its rename condition was not satisfied.
-It does not need another architectural layer or native rebuild.
+**Deferred deliberately:** old profiles are refused; migration, advanced recovery,
+the larger task-capability architecture, mobile, payments and hosted speech do
+not block the bounded fresh local browser milestone. Existing old data is never
+silently reinterpreted, reset or deleted.
 
-## Actual-app checks still untested on this candidate
-
-Startup/navigation; two isolated disposable profiles; active-work profile
-switching; multiple windows; draft/TXT persistence; sidebar/chat/settings/popup
-appearance; CmdT/K/L palette commit/cancel; native CLI URL/profile dispatch;
-fixed sandboxed memory indexing/search/close; normal Quit/same-package restart.
-Earlier A25 observations do not establish that this new package passes them.
-Preserved resource bytes do not replace an actual visual check.
-
-Explicit follow-ups remain account-backed BYOK/eligible ChatGPT consent,
-inference/refresh/revocation; Chrome Store/autofill/1Password and native-host
-integration (a confirmed implementation gap); genuine manual hover; broader
-attachment/crash cases and production cookie-key handling; currently disabled
-general automation/exec/PTY/Computer Use/addons; cloud activation/operations.
-Legacy migration, advanced recovery and the larger task architecture are
-intentionally deferred. Signing for release, notarization, updates and
-installation/distribution are separate and were not started.
-
-This candidate is signed, not runtime-accepted or ready to hand off for testing.
+**Release is separate:** production signing, notarization, updater,
+installation/distribution and production operations acceptance remain. This is
+not a release-ready or full-parity declaration.

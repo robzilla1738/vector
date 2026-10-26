@@ -40,8 +40,49 @@
     ]
   },
   "finalA8": {
-    "runtimeChecks": "pending",
-    "signatures": "pending"
+    "signatures": {
+      "passed": true,
+      "verified": 19,
+      "resigned": 3,
+      "uiResourcesPreserved": true
+    },
+    "startup": true,
+    "httpReady": true,
+    "normalRestartState": [
+      "Work cookie/note/draft/TXT",
+      "Personal cookie/note/independent draft",
+      "three native windows; second Personal independent /window-two selection"
+    ],
+    "commandBar": [
+      "CmdT centered",
+      "T cancel retains three tabs",
+      "CmdK commands",
+      "CmdL current URL selected",
+      "L commit current tab",
+      "T commit new fourth tab"
+    ],
+    "profileFooter": [
+      "existing Work window sees Personal",
+      "rename Personal Check refreshes footer without toggle",
+      "restored original label"
+    ],
+    "demonstratedFailures": [
+      "memory owner unavailable before native helper preparation",
+      "CmdW /palette-t retains Recovery tab",
+      "prior normal Quit daemon SIGABRT exact PID54743"
+    ],
+    "uiObservation": {
+      "newTab": true,
+      "AppearanceSettings": true,
+      "bothSidebars": true,
+      "sourceResourcesUnchanged": true,
+      "comparedWith": [
+        "out/pass1-ui-completion/aside-owner-newtab-reference.png",
+        "out/local-completion-runtime-a4/prior-ui.png"
+      ],
+      "newScreenshot": "out/local-completion-runtime-a4/newtab-both-panels-a8.png",
+      "wholeWindowPixelIdentityClaimed": false
+    }
   },
   "explicitFollowups": {
     "implementation": [

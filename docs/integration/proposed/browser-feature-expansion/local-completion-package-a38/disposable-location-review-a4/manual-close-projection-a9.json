@@ -1,0 +1,17 @@
+{
+  "sourcePlanSha256": "7ae61a6d55e4347578006fc90727de09949a09b4bce8b8f5b82ac5e70cfb9e01",
+  "files": [
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/ui/views/frame/aux_organization_window_controller.h",
+      "before": "e06b4faa835945d21f0bdd0b9e284a5b38759b35e41f7470ff9d32ca73ebc37d",
+      "after": "dbd695bc18af8d3394e08fa2121f343365931dc83a243ea4b5a5f8c63f0516fd"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/ui/views/frame/aux_organization_window_controller.cc",
+      "before": "6fc8fcb12028b37a9ccd2a687be5ffd47b724dd0ced3cffbdd3af736caad4bdb",
+      "after": "ad6c3e55d1f06c28b7c5f5db9742ab0a8478547ee511aa3f5e4ebc9cdc935a1e"
+    }
+  ],
+  "sourceInputsVerified": 431,
+  "acceptedUIChanged": false
+}
