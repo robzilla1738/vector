@@ -1,0 +1,52 @@
+{
+  "format": "aux.restore-ordinary-storage.actual-result.v1",
+  "passed": true,
+  "results": [
+    {
+      "label": "worker",
+      "exitCode": 0
+    },
+    {
+      "label": "link",
+      "exitCode": 0
+    }
+  ],
+  "seconds": 29.598541292,
+  "planSha256": "b024b4da49ff03dfda6023ca9d3ff62a27af0ded68e5109fa7cef2397699c51f",
+  "sourcePlanSha256": "6e3491e97c76746b57707a0f522eaccf9e8d817e26206fb361c5e8d1736f14c3",
+  "swiftSourceCount": 50,
+  "unchangedSwiftSourceCount": 50,
+  "unchangedNativeObjectCount": 14,
+  "workerObjectRecompiledOnly": true,
+  "actualSelectedIncludes": [
+    {
+      "name": "AuxStorageRootsNapi.inc",
+      "selectedPath": "/private/tmp/aux-browser-only-daemon-build-20261025-a66/source/AuxStorageRootsNapi.inc",
+      "sha256": "afaf22470b1a46b6984078722ebcb3c988553deee3aa04de6c84cfb5c0c670bf",
+      "expectedSha256": "afaf22470b1a46b6984078722ebcb3c988553deee3aa04de6c84cfb5c0c670bf",
+      "priorPathNotSelected": true
+    },
+    {
+      "name": "AuxBrokerWritesNapi.inc",
+      "selectedPath": "/private/tmp/aux-browser-only-daemon-build-20261025-a66/source/AuxBrokerWritesNapi.inc",
+      "sha256": "4907fdf63d19ccf4f9f4ea7f8a067ec5c5ae3a233afe17838227f1528a732385",
+      "expectedSha256": "4907fdf63d19ccf4f9f4ea7f8a067ec5c5ae3a233afe17838227f1528a732385",
+      "priorPathNotSelected": true
+    }
+  ],
+  "productExecuted": false,
+  "productSigned": false,
+  "originalRootAccessed": false,
+  "unsignedLinkerFlagPreserved": true,
+  "binary": "/private/tmp/aux-browser-only-daemon-build-20261025-a66/Aux Daemon",
+  "binarySha256": "9604e41509998559a5bbfbb75a66ba91494d4b95e0f32c07f0ba2766a1776abf",
+  "binarySize": 147237328,
+  "workerObjectSha256": "c4b455e310f2b27f11ea80b5cf4170288af8b3910ced8bf088665a6c77205085",
+  "actualDependencyFileSha256": "ba5e421221a97419fece00bef03519df1cda800eea6415337747d0243a82144c",
+  "codeSignatureLoadCommandPresent": false,
+  "codesignDisplayExitCode": 1,
+  "codesignDisplayStderr": "/private/tmp/aux-browser-only-daemon-build-20261025-a66/Aux Daemon: code object is not signed at all",
+  "ordinaryValidatorReferencePresent": true,
+  "inputPinsUnchanged": true,
+  "priorBinaryUnchanged": true
+}

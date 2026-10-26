@@ -1,0 +1,22 @@
+{
+  "format": "aux.actual-ordinary-include-selection.v1",
+  "dependencyFileSha256": "ba5e421221a97419fece00bef03519df1cda800eea6415337747d0243a82144c",
+  "selectedIncludes": [
+    {
+      "name": "AuxStorageRootsNapi.inc",
+      "selectedPath": "/private/tmp/aux-browser-only-daemon-build-20261025-a66/source/AuxStorageRootsNapi.inc",
+      "sha256": "afaf22470b1a46b6984078722ebcb3c988553deee3aa04de6c84cfb5c0c670bf",
+      "expectedSha256": "afaf22470b1a46b6984078722ebcb3c988553deee3aa04de6c84cfb5c0c670bf",
+      "priorPathNotSelected": true
+    },
+    {
+      "name": "AuxBrokerWritesNapi.inc",
+      "selectedPath": "/private/tmp/aux-browser-only-daemon-build-20261025-a66/source/AuxBrokerWritesNapi.inc",
+      "sha256": "4907fdf63d19ccf4f9f4ea7f8a067ec5c5ae3a233afe17838227f1528a732385",
+      "expectedSha256": "4907fdf63d19ccf4f9f4ea7f8a067ec5c5ae3a233afe17838227f1528a732385",
+      "priorPathNotSelected": true
+    }
+  ],
+  "allOtherDependencyPathsUnchanged": true,
+  "actualDependencyCount": 106
+}

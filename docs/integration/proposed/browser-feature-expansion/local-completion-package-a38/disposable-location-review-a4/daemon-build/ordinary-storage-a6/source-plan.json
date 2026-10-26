@@ -1,0 +1,71 @@
+{
+  "format": "aux.restore-existing-ordinary-storage-includes.v1",
+  "files": [
+    {
+      "name": "AuxStorageRootsNapi.inc",
+      "priorSelectedPath": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/profile-isolation-continuation/broker-writes/source/AuxStorageRootsNapi.inc",
+      "inputSha256": "f9c1549670b1ebc0d7825402c57079814d4095f27b8ec3b76f8c0bb9aeb57ec6",
+      "existingOrdinaryPath": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/fresh-startup-milestone-a42/ordinary-storage-native/AuxStorageRootsNapi.inc",
+      "outputSha256": "afaf22470b1a46b6984078722ebcb3c988553deee3aa04de6c84cfb5c0c670bf",
+      "preimage": "docs/integration/proposed/browser-feature-expansion/local-completion-package-a38/disposable-location-review-a4/daemon-build/ordinary-storage-a6/preimages/AuxStorageRootsNapi.inc",
+      "source": "docs/integration/proposed/browser-feature-expansion/local-completion-package-a38/disposable-location-review-a4/daemon-build/ordinary-storage-a6/source/AuxStorageRootsNapi.inc",
+      "anchors": [
+        {
+          "find": "// Included inside the real host's anonymous namespace after Environment checks.\nbool ReadExecRoot(int fd, char* path, struct stat* identity) noexcept;\nnapi_value CaptureStorageRoots(napi_env env, napi_callback_info info) {\n",
+          "replace": "int32_t ValidateBrokerStorageAuthority(uint64_t handle);\n// Included inside the real host's anonymous namespace after Environment checks.\nbool ReadExecRoot(int fd, char* path, struct stat* identity) noexcept;\nnapi_value CaptureStorageRoots(napi_env env, napi_callback_info info) {\n",
+          "count": 1
+        },
+        {
+          "find": "    struct Pair{int32_t control=-1,task=-1;~Pair(){if(control>=0)close(control);if(task>=0&&task!=control)close(task);}}pair;\n    uint64_t generation=0;\n    std::array<char,AUX_EXEC_DENIED_PATH_CAPACITY> control{},task{};struct stat a{},b{};\n    if(AuxNativeContextValidateCurrentAuthority(owner->handle)!=0||\n       AuxNativeContextCopyStorageRoots(owner->handle,&generation,&pair.control,&pair.task)!=0||!generation||pair.control==pair.task||\n       !ReadExecRoot(pair.control,control.data(),&a)||!ReadExecRoot(pair.task,task.data(),&b)||\n       (a.st_dev==b.st_dev&&a.st_ino==b.st_ino)||AuxNativeContextValidateCurrentAuthority(owner->handle)!=0)return refuse();\n    auto nested=[](const char* child,const char* parent){const auto n=std::strlen(parent);return std::strncmp(child,parent,n)==0&&(child[n]=='/'||child[n]=='\\0');};\n    if(nested(control.data(),task.data())||nested(task.data(),control.data()))return refuse();\n    bool current=false;\n",
+          "replace": "    struct Pair{int32_t control=-1,task=-1;~Pair(){if(control>=0)close(control);if(task>=0&&task!=control)close(task);}}pair;\n    uint64_t generation=0;\n    std::array<char,AUX_EXEC_DENIED_PATH_CAPACITY> control{},task{};struct stat a{},b{};\n    if(ValidateBrokerStorageAuthority(owner->handle)!=0||\n       AuxNativeContextCopyStorageRoots(owner->handle,&generation,&pair.control,&pair.task)!=0||!generation||pair.control==pair.task||\n       !ReadExecRoot(pair.control,control.data(),&a)||!ReadExecRoot(pair.task,task.data(),&b)||\n       (a.st_dev==b.st_dev&&a.st_ino==b.st_ino)||ValidateBrokerStorageAuthority(owner->handle)!=0)return refuse();\n    auto nested=[](const char* child,const char* parent){const auto n=std::strlen(parent);return std::strncmp(child,parent,n)==0&&(child[n]=='/'||child[n]=='\\0');};\n    if(nested(control.data(),task.data())||nested(task.data(),control.data()))return refuse();\n    bool current=false;\n",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "name": "AuxBrokerWritesNapi.inc",
+      "priorSelectedPath": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/profile-isolation-continuation/broker-writes/source/AuxBrokerWritesNapi.inc",
+      "inputSha256": "fdac90ec6345980cbdcac929a507afcf67670bde03c18aba23ef07dcd2cc2033",
+      "existingOrdinaryPath": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/fresh-startup-milestone-a42/ordinary-storage-native/AuxBrokerWritesNapi.inc",
+      "outputSha256": "4907fdf63d19ccf4f9f4ea7f8a067ec5c5ae3a233afe17838227f1528a732385",
+      "preimage": "docs/integration/proposed/browser-feature-expansion/local-completion-package-a38/disposable-location-review-a4/daemon-build/ordinary-storage-a6/preimages/AuxBrokerWritesNapi.inc",
+      "source": "docs/integration/proposed/browser-feature-expansion/local-completion-package-a38/disposable-location-review-a4/daemon-build/ordinary-storage-a6/source/AuxBrokerWritesNapi.inc",
+      "anchors": [
+        {
+          "find": "// Finite synchronous writer guard. No native token/owner selector is exported.\nstruct BrokerOwner {\n  std::shared_ptr<Worker> worker;\n",
+          "replace": "#if defined(AUX_BROWSER_ONLY_NATIVE_STARTUP) && AUX_BROWSER_ONLY_NATIVE_STARTUP\nextern \"C\" int32_t AuxNativeContextValidateOrdinaryStorageAuthority(uint64_t);\n#endif\nint32_t ValidateBrokerStorageAuthority(uint64_t handle) {\n#if defined(AUX_BROWSER_ONLY_NATIVE_STARTUP) && AUX_BROWSER_ONLY_NATIVE_STARTUP\n  return AuxNativeContextValidateOrdinaryStorageAuthority(handle);\n#else\n  return AuxNativeContextValidateCurrentAuthority(handle);\n#endif\n}\n// Finite synchronous writer guard. No native token/owner selector is exported.\nstruct BrokerOwner {\n  std::shared_ptr<Worker> worker;\n",
+          "count": 1
+        },
+        {
+          "find": "  if(!worker||!SameRuntimeEnvironment(env,environment,isolate))return {};\n  std::shared_ptr<Owner> owner;\n  {std::lock_guard<std::mutex> lock(worker->mutex);if(CurrentWorker(*worker)&&!worker->terminal&&!worker->broker_closed&&!worker->initializing&&!worker->environment_detached)owner=worker->owner;}\n  if(!owner||AuxNativeContextValidateCurrentAuthority(owner->handle)!=0)return {};\n  {std::lock_guard<std::mutex> lock(worker->mutex);if(!CurrentWorker(*worker)||worker->terminal||worker->broker_closed||worker->initializing||worker->environment_detached||worker->owner!=owner)return {};}\n  return {worker,owner};\n}\n",
+          "replace": "  if(!worker||!SameRuntimeEnvironment(env,environment,isolate))return {};\n  std::shared_ptr<Owner> owner;\n  {std::lock_guard<std::mutex> lock(worker->mutex);if(CurrentWorker(*worker)&&!worker->terminal&&!worker->broker_closed&&!worker->initializing&&!worker->environment_detached)owner=worker->owner;}\n  if(!owner){fprintf(stderr,\"Aux broker refused: missing owner\\n\");return {};}\n  const auto authority=ValidateBrokerStorageAuthority(owner->handle);\n  if(authority!=0){fprintf(stderr,\"Aux broker refused: authority status %d\\n\",authority);return {};}\n  {std::lock_guard<std::mutex> lock(worker->mutex);if(!CurrentWorker(*worker)||worker->terminal||worker->broker_closed||worker->initializing||worker->environment_detached||worker->owner!=owner)return {};}\n  return {worker,owner};\n}\n",
+          "count": 1
+        },
+        {
+          "find": "    // can never release underlying deferred/background work through this API.\n    bool promise=false;\n    if(status==napi_ok&&napi_is_promise(env,result,&promise)!=napi_ok)return nullptr;\n    bool current=AuxNativeContextValidateCurrentAuthority(active.captured.owner->handle)==0;\n    {std::lock_guard<std::mutex> lock(active.captured.worker->mutex);current=current&&CurrentWorker(*active.captured.worker)&&!active.captured.worker->terminal&&!active.captured.worker->broker_closed&&active.captured.worker->owner==active.captured.owner;}\n    if(!active.Finish(current&&!promise&&(status==napi_ok||status==napi_pending_exception))){BrokerThrow(env,promise?\"AUX_BROKER_UNTRACKED_ASYNC\":\"AUX_BROKER_OUTCOME_UNKNOWN\",promise?\"Deferred broker work cannot settle synchronously\":\"Broker write authority changed; outcome requires reconciliation\");return nullptr;}\n    return status==napi_ok?result:nullptr; // Preserve the original synchronous throw.\n",
+          "replace": "    // can never release underlying deferred/background work through this API.\n    bool promise=false;\n    if(status==napi_ok&&napi_is_promise(env,result,&promise)!=napi_ok)return nullptr;\n    bool current=ValidateBrokerStorageAuthority(active.captured.owner->handle)==0;\n    {std::lock_guard<std::mutex> lock(active.captured.worker->mutex);current=current&&CurrentWorker(*active.captured.worker)&&!active.captured.worker->terminal&&!active.captured.worker->broker_closed&&active.captured.worker->owner==active.captured.owner;}\n    if(!active.Finish(current&&!promise&&(status==napi_ok||status==napi_pending_exception))){BrokerThrow(env,promise?\"AUX_BROKER_UNTRACKED_ASYNC\":\"AUX_BROKER_OUTCOME_UNKNOWN\",promise?\"Deferred broker work cannot settle synchronously\":\"Broker write authority changed; outcome requires reconciliation\");return nullptr;}\n    return status==napi_ok?result:nullptr; // Preserve the original synchronous throw.\n",
+          "count": 1
+        }
+      ]
+    }
+  ],
+  "currentFlatSourceDirectory": "/private/tmp/aux-browser-only-daemon-build-20261025-a63/source",
+  "unchangedFlatInputs": {
+    "/private/tmp/aux-browser-only-daemon-build-20261025-a63/source/AuxAccountMemoryHelper.h": "049ef6f0f67ed9aa91ddd72837d916a57a28df9b6f3ddadcd628d260e4a7ec9f",
+    "/private/tmp/aux-browser-only-daemon-build-20261025-a63/source/AuxAccountMemoryHelper.mm": "d3b38299dde1099d57fb52b0a30d31c567847fab3298dcfae18b267a769ff38d",
+    "/private/tmp/aux-browser-only-daemon-build-20261025-a63/source/AuxAccountsCskCoordinator.swift": "fc8a62ba11aff116f3d8ad6bbf2c4de8822a60943f9b6699d8e84b8642e3b7ef",
+    "/private/tmp/aux-browser-only-daemon-build-20261025-a63/source/AuxDevelopmentWorkerHost.cc": "9fe8fdd273794d704626286c1ae7026af33d89c5fd082e986a1da14429421caf",
+    "/private/tmp/aux-browser-only-daemon-build-20261025-a63/source/AuxMemoryHelperJournal.swift": "9efd7f2aed4c980a83889e93e38a4c449463da642185e0d8aaf67c8d8a247324",
+    "/private/tmp/aux-browser-only-daemon-build-20261025-a63/source/AuxMemoryMainOwner.inc": "97d451aa3a7a604e0d3fa2c11f0ce8bb7caf25ccde36d248d7b38d5dc561bf47",
+    "/private/tmp/aux-browser-only-daemon-build-20261025-a63/source/AuxMemoryModelPins.inc": "5687f40e74f190930e1ddee90957f9f7a39e107b1d6a84a0a5e0c7af829037bd",
+    "/private/tmp/aux-browser-only-daemon-build-20261025-a63/source/AuxOwnedCommandDispatcher.swift": "0cea620f860b6ae27f939dc97f42b129a57d29fa983dc7974735d81ccb8d265b",
+    "/private/tmp/aux-browser-only-daemon-build-20261025-a63/source/AuxRegisteredMemoryAccountOwner.h": "a38c60a80fa5b005cb166e1df54628358a9cc0cf0b9df84c8396b6dd59c74359",
+    "/private/tmp/aux-browser-only-daemon-build-20261025-a63/source/AuxRegisteredMemoryAccountOwner.swift": "897f3c44ab48d8fd50469e47f436845eeaae53ee6b4ee6125e271f3d0ac6bc52",
+    "/private/tmp/aux-browser-only-daemon-build-20261025-a63/source/AuxSecureStore.swift": "2ca167ffd3bf3c36a29032ec43e31324ae5ada6c188bcc3b0a3c9c5e8eeb9dc7"
+  },
+  "unchangedFlatFileCount": 11,
+  "patch": "source.patch",
+  "existingOrdinaryAbiOnly": true,
+  "newValidatorOrAuthority": false,
+  "uiChanges": false
+}
