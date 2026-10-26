@@ -1,0 +1,15 @@
+{
+  "evidence": "/Users/rcourson/Documents/Vibe/web/out/completion-resume-20261026/startup-2-symbols.txt",
+  "sha256": "8ea8dec139fd224b0e8a56c44c5fd0fdda2faca8a48969c414e91443e65b1c0f",
+  "reportedBrowserExit": 139,
+  "faultChain": [
+    "SplitTabMenuModel::GetSplitTabId",
+    "SplitTabMenuModel::SplitTabMenuModel",
+    "SplitTabsToolbarButton::SplitTabsToolbarButton",
+    "ToolbarView::Init",
+    "BrowserWindow::CreateBrowserWindow"
+  ],
+  "cause": "N-pane constructor pair query assumes active split before first tab exists",
+  "timeoutProposalApplied": false,
+  "runtimeVerified": false
+}

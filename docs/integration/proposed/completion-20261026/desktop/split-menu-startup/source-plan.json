@@ -1,0 +1,20 @@
+{
+  "scope": "actual startup null-tab crash and current pair/N-pane menu ownership",
+  "projected": false,
+  "compiled": false,
+  "files": [
+    {
+      "path": "chrome/browser/ui/tabs/split_tab_menu_model.cc",
+      "beforeSha256": "fca61c355907d1399a7cb88493c0ab7c28061d37cf682c454e34d8740a35f693",
+      "afterSha256": "1be240cb726c09a009d0fee3781ffb4ecbc67e23d2ddb43b311ac8a6bb571f94",
+      "anchors": 2
+    },
+    {
+      "path": "chrome/browser/ui/views/toolbar/split_tabs_button.cc",
+      "beforeSha256": "5ceaaf3ef451387d1a447db6de8d88479e2e14c1170456fd46495e7fc0dc5059",
+      "afterSha256": "e54f121304f7593cf99e54089fcfcc9ee09c3e095d92f8999b22e41b50b77805",
+      "anchors": 2
+    }
+  ],
+  "totalAnchors": 4
+}
