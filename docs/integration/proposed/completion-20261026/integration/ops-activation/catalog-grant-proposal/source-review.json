@@ -1,0 +1,52 @@
+{
+  "format": "aux.backup.capture-grant.proposal-source-review.v1",
+  "rootInputPins": [
+    {
+      "path": "docs/integration/proposed/completion-20261026/integrator/backup-catalog-observed-a1.json",
+      "sha256": "7de928db7f0b82f1c0c25490f62877c5cb829bdc836d7ef43e9e5b32495c3d91"
+    },
+    {
+      "path": "docs/integration/proposed/completion-20261026/integration/ops-activation/access-review.md",
+      "sha256": "cd93130c455cd5c9cb4926c7e6eda6efe48f84335c622d9d3ae65556c0754d8e"
+    },
+    {
+      "path": "docs/integration/proposed/completion-20261026/desktop/backup-readonly-preflight/catalog-preflight.sql",
+      "sha256": "c2c20a470b17c904cb6107e66f4bb3da2628e487e48e665333fc69f8c5374259"
+    },
+    {
+      "path": "services/aux-cloud/scripts/cloud-recovery-online.mjs",
+      "sha256": "5130b26220e4643a99b7453d3dd9ae9468c37ed303b16b833f04f8ceaec66720"
+    },
+    {
+      "path": "services/aux-cloud/scripts/online-recovery-objects.mjs",
+      "sha256": "3da056e7bad7385c1165671172a007e55ddfbfd35f92b6bcd1b409c26bc8dd9f"
+    }
+  ],
+  "proposalFiles": [
+    {
+      "path": "README.md",
+      "sha256": "39f09f742533dd9600e715c3148ea75a2ebfca94bc1d86a15b9b8645456b4259"
+    },
+    {
+      "path": "observed-catalog-source.json",
+      "sha256": "7de928db7f0b82f1c0c25490f62877c5cb829bdc836d7ef43e9e5b32495c3d91"
+    },
+    {
+      "path": "observed-facts.json",
+      "sha256": "12ab1c10105ca2b4f061a89d0fe17a155a813837ceacf4ed001911a94708f1ab"
+    },
+    {
+      "path": "proposed-capture-grants.sql",
+      "sha256": "7b230811a9543e9c9267ad85d5607158eee51f66719041beb5b985aa30322449"
+    }
+  ],
+  "inspection": "Source structure only; exact table list derived from recorded catalog, explicit grants examined, shared PUBLIC revoke excluded, NOLOGIN and final ROLLBACK retained. No SQL/database parser or tests run.",
+  "observedPublicTempConflictBlocksStrictProposal": true,
+  "roleAuthenticationConfigured": false,
+  "sqlExecuted": false,
+  "dbConnected": false,
+  "credentialRead": false,
+  "roleOrAclChanged": false,
+  "candidateChanged": false,
+  "captureAccepted": false
+}

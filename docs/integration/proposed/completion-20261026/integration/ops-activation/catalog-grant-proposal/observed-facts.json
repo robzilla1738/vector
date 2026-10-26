@@ -1,0 +1,107 @@
+{
+  "format": "aux.backup.capture-grant.observed-facts.v1",
+  "source": {
+    "absolutePath": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/integrator/backup-catalog-observed-a1.json",
+    "sha256": "7de928db7f0b82f1c0c25490f62877c5cb829bdc836d7ef43e9e5b32495c3d91",
+    "rootWorkingFileUncommittedAtRead": true,
+    "copiedMetadataOnly": true,
+    "observationBy": "root agent; child only read local recorded observations, no database access"
+  },
+  "target": {
+    "project": "ancient-river-76453764",
+    "branch": "br-red-hall-b857cl2i",
+    "directHost": "ep-red-snow-b8ctxcyx.c-14.us-east-1.aws.neon.tech",
+    "database": "neondb",
+    "schema": "public"
+  },
+  "databaseOwnerAndObserver": "neondb_owner",
+  "serverVersionNum": 180006,
+  "transactionReadOnly": "on",
+  "tableNames": [
+    "aux_attachment_bindings",
+    "aux_attachments",
+    "aux_auth_webhooks",
+    "aux_checkout_requests",
+    "aux_credit_grants",
+    "aux_credit_periods",
+    "aux_credit_refunds",
+    "aux_device_requests",
+    "aux_drive_cookies",
+    "aux_drive_files",
+    "aux_drive_heads",
+    "aux_email_challenges",
+    "aux_migrations",
+    "aux_rate_limits",
+    "aux_refresh_tokens",
+    "aux_retired_session_blobs",
+    "aux_session_snapshots",
+    "aux_sessions",
+    "aux_stripe_events",
+    "aux_subscriptions",
+    "aux_sync_recovery_challenges_v2",
+    "aux_sync_recovery_v2",
+    "aux_usage",
+    "aux_users",
+    "aux_wallets",
+    "shared_sessions",
+    "sync_entities",
+    "sync_heads",
+    "sync_keys",
+    "sync_objects"
+  ],
+  "tables": 30,
+  "allTableKinds": "ordinary persistent r/persistence p",
+  "allTableOwners": "neondb_owner",
+  "sequences": 0,
+  "rowSecurityTables": 0,
+  "forceRowSecurityTables": 0,
+  "rowPolicies": 0,
+  "largeObjects": 0,
+  "outsidePublicRelations": 0,
+  "crossSchemaPartitions": 0,
+  "extensionConfigurationRelations": 0,
+  "columnAcls": 0,
+  "objectAclRows": 251,
+  "publicDatabasePrivileges": [
+    "CONNECT",
+    "TEMPORARY"
+  ],
+  "publicSchemaPrivileges": [
+    "USAGE"
+  ],
+  "publicSchemaCreate": false,
+  "publicRoutineExecution": {
+    "aclRows": 80,
+    "distinctRoutines": 40,
+    "publicExecuteRoutines": 40,
+    "allSecurityInvoker": true,
+    "sourceBodiesNotObserved": true
+  },
+  "extensions": [
+    {
+      "name": "pgcrypto",
+      "version": "1.4",
+      "schema": "public",
+      "owner": "neondb_owner"
+    },
+    {
+      "name": "plpgsql",
+      "version": "1.0",
+      "schema": "pg_catalog",
+      "owner": "cloud_admin"
+    }
+  ],
+  "existingOwnerUnsuitableForRunner": {
+    "neondb_ownerBypassRLS": true,
+    "neondb_ownerMemberOf": "neon_superuser",
+    "neon_superuserIncludesReadAllDataAndWriteAllData": true
+  },
+  "observedRollbackSucceeded": true,
+  "proposalExecuted": false,
+  "dbOrResourceMutation": false,
+  "secretsRead": false,
+  "notes": [
+    "Catalog facts are one recorded snapshot, not a permanent guarantee or capture-role acceptance.",
+    "No PUBLIC function bodies, application rows, password hashes or credential material were read."
+  ]
+}
