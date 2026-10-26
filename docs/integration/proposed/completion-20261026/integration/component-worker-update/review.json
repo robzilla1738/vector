@@ -1,0 +1,30 @@
+{
+  "format": "aux.component-worker-update.v1",
+  "version": "1.26.1016.1886",
+  "previousVersion": "1.26.1016.1885",
+  "versionAdvanced": true,
+  "sourceVersionName": "1.26.1016.1852",
+  "payloadSha256": "7c32b2a506062c8b756ef6c2602947632bcbb8a9b74dd2dd0c013f56aa32fb82",
+  "manifest": {
+    "path": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-completion-20261026-a1/Aux.app/Contents/Resources/aux/apps/extension/dist/manifest.json",
+    "beforeSha256": "a77c4e9eea0f41977f09862f6b7e3d56c12aa5b1cb062483ef5911db8eeb27f5",
+    "afterSha256": "2b395128cb2d11bff5c804c24591fe7c7cd63816ad733283434d3364f59da158"
+  },
+  "appModified": false,
+  "signed": false,
+  "preparedManifest": "/private/tmp/aux-component-worker-update-20261026-a1/manifest.json",
+  "sourceEvidence": [
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/aux/component_bootstrap.cc",
+      "sha256": "c6fcf887271e079f7e9ca0d4313faf9d9e7e98237ceb19be0bd80dcd13ca68b7"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/extensions/component_loader.cc",
+      "sha256": "e7a77db5841d706f04380d26428cd894501bfdd9bf9c4be8d0fab617bd73d9d3"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/extensions/browser/service_worker/service_worker_task_queue.cc",
+      "sha256": "2196a54d2a9e715fae77785528f30063c8f3c410ef0af8adbd1307968a3e1d42"
+    }
+  ]
+}
