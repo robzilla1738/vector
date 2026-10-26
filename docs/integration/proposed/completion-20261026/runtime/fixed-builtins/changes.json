@@ -1,0 +1,66 @@
+[
+  {
+    "name": "AuxFreshBootstrapPolicy.swift",
+    "input": "/Users/rcourson/Documents/Vibe/aux-completion-20261026/runtime/docs/integration/proposed/browser-feature-expansion/local-completion-package-a38/disposable-location-review-a4/source/daemon/AuxFreshBootstrapPolicy.swift",
+    "inputSha256": "5e210c1fbec2224f3de0aada0d5215962a8de139ed596fa664d9ec3a8db2589f",
+    "outputSha256": "800dd58676ce44fa64d3b5dedb5aaa396046715d56f6e1aa7c43e500590e6c99",
+    "rootOutput": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/runtime/fixed-builtins/source/AuxFreshBootstrapPolicy.swift",
+    "pairedBrowserTarget": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/aux/native_peer_policy/AuxFreshBootstrapPolicy.swift"
+  },
+  {
+    "name": "AuxSignedFreshBootstrapPolicyLoader.swift",
+    "input": "/Users/rcourson/Documents/Vibe/aux-completion-20261026/runtime/docs/integration/proposed/browser-feature-expansion/local-completion-package-a38/disposable-location-review-a4/daemon-build/memory-control-parent-a8/source/AuxSignedFreshBootstrapPolicyLoader.swift",
+    "inputSha256": "0611610c7aa62411e53ed75c813cfee5c37b585e4bbfe90bb3e60feb7d3e5f1f",
+    "outputSha256": "b5d656a32d1eb995febd79f503f9bc0b33bceefb7674bf1d38079ad840ecd872",
+    "rootOutput": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/runtime/fixed-builtins/source/AuxSignedFreshBootstrapPolicyLoader.swift"
+  },
+  {
+    "name": "AuxLoadedPdfLifetime.h",
+    "input": "/Users/rcourson/Documents/Vibe/aux-completion-20261026/runtime/docs/integration/proposed/aux-native-pdf-host-consumer/source/AuxLoadedPdfLifetime.h",
+    "inputSha256": "90ce2cd5bdf13c5a4c6e6ac81af4ea3cc01d142a82c5ecf9eb79e2aa0e5cecb2",
+    "outputSha256": "8a02f4893640e4c0ff2edfc948c5c1ab8beed058a2cb9ca8812a509c3a5dc62c",
+    "rootOutput": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/runtime/fixed-builtins/source/AuxLoadedPdfLifetime.h"
+  },
+  {
+    "name": "AuxLoadedPdfLifetime.cc",
+    "input": "/Users/rcourson/Documents/Vibe/aux-completion-20261026/runtime/docs/integration/proposed/aux-native-pdf-host-consumer/source/AuxLoadedPdfLifetime.cc",
+    "inputSha256": "ea090c437a02f6a14f628e1640f26a96afeab8e45950d959fb5719fcde1a5b28",
+    "outputSha256": "00cada6c718a284fe384873aa5f071b165e7b5e79f5b687b30aa22466ab95383",
+    "rootOutput": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/runtime/fixed-builtins/source/AuxLoadedPdfLifetime.cc"
+  },
+  {
+    "name": "AuxLoadedUtilityLifetime.h",
+    "input": "/Users/rcourson/Documents/Vibe/aux-completion-20261026/runtime/docs/integration/proposed/aux-native-utility-host-consumer/source/AuxLoadedUtilityLifetime.h",
+    "inputSha256": "cfbd39036c202510e2775a7ce6fdfba9e322c1e9d2f43614fdf1c228f6d02e87",
+    "outputSha256": "15e686a79cb8aaca29da83ec45558d2d9e9b45e336661691c68d95d95d12e373",
+    "rootOutput": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/runtime/fixed-builtins/source/AuxLoadedUtilityLifetime.h"
+  },
+  {
+    "name": "AuxLoadedUtilityLifetime.cc",
+    "input": "/Users/rcourson/Documents/Vibe/aux-completion-20261026/runtime/docs/integration/proposed/aux-native-utility-host-consumer/source/AuxLoadedUtilityLifetime.cc",
+    "inputSha256": "806034f3d67e18eacf3a939c18085f762617ab31ab3051c88e18c2955d959f27",
+    "outputSha256": "9b9051a282befd868aa08de62c037b2d8a8da787a92a89d9feadb332e0539061",
+    "rootOutput": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/runtime/fixed-builtins/source/AuxLoadedUtilityLifetime.cc"
+  },
+  {
+    "name": "AuxDevelopmentWorkerHost.cc",
+    "input": "/private/tmp/aux-browser-only-daemon-build-20261025-a72/source/AuxDevelopmentWorkerHost.cc",
+    "inputSha256": "9fe8fdd273794d704626286c1ae7026af33d89c5fd082e986a1da14429421caf",
+    "outputSha256": "5d1b985f094602193c319a08f2e67a5f8dc42acc5f78501416cbbcc7437bf662",
+    "rootOutput": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/runtime/fixed-builtins/source/AuxDevelopmentWorkerHost.cc"
+  },
+  {
+    "name": "AuxAuthenticatedChildParentPolicyReader.swift",
+    "input": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/aux/native_peer_policy/AuxAuthenticatedChildParentPolicyReader.swift",
+    "inputSha256": "e9baf397745657fda0af399d24ad461fba770c7c9ffe1d394568cd9faaf44a4a",
+    "outputSha256": "50a3c16cca41c4e79c6a1925cec10486965c01a0983c14a7b9a6ee4927fa0b7e",
+    "rootOutput": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/runtime/fixed-builtins/source/AuxAuthenticatedChildParentPolicyReader.swift"
+  },
+  {
+    "name": "AuxNativeTaskLayout.swift",
+    "input": "/Users/rcourson/Documents/Vibe/aux-completion-20261026/runtime/docs/integration/proposed/completion-20261026/runtime/native-host/source/daemon/AuxNativeTaskLayout.swift",
+    "inputSha256": "5b9a4808a7e4d3e80013ef8d4d68c64a188f4a8772aaf8b80f1cfdeaa5e64218",
+    "outputSha256": "e03bd0889bb055758d1cbac8b70744f0938bc62f1ac058c647ec85efdf0097da",
+    "rootOutput": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/runtime/fixed-builtins/source/AuxNativeTaskLayout.swift"
+  }
+]

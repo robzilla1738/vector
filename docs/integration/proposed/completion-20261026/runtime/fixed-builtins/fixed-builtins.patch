@@ -1,0 +1,377 @@
+--- a/AuxFreshBootstrapPolicy.swift
++++ b/AuxFreshBootstrapPolicy.swift
+@@ -121,8 +121,9 @@
+     var includesRebuiltPtyModule:Bool=false
+     var includesContainedPtyModule:Bool=false
+ #if AUX_BROWSER_ONLY_NATIVE_STARTUP
+-    var includesPdf:Bool{false}
+-    var includesMacUtilities:Bool{false}
++    var includesFixedNativeBuiltins:Bool=false
++    var includesPdf:Bool{includesFixedNativeBuiltins}
++    var includesMacUtilities:Bool{includesFixedNativeBuiltins}
+ #else
+     var includesPdf:Bool{role == .daemon}
+     var includesMacUtilities:Bool{role == .daemon}
+@@ -145,19 +146,24 @@
+         let object=try strictEnvelopeObject(bytes)
+         guard let roleText=object["role"] as? String,let role=Role(rawValue:roleText) else{throw AuxFreshBootstrapPolicyError.policy}
+ #if AUX_BROWSER_ONLY_NATIVE_STARTUP
+-        if object["format"] as? String=="aux.fresh.bootstrap.policy.v9" {
++        let fixedBuiltins=object["format"] as? String=="aux.fresh.bootstrap.policy.v10"
++        if fixedBuiltins || object["format"] as? String=="aux.fresh.bootstrap.policy.v9" {
+             guard role == .daemon,
+-                  Set(object.keys)==["format","role","accessGroup","authoritySelection","nativeHostLayout","taskLayout","storageLocation"],
++                  Set(object.keys)==Set(["format","role","accessGroup","authoritySelection","nativeHostLayout","taskLayout","storageLocation"] + (fixedBuiltins ? ["pdfModule","macOSUtilitiesModule"]:[])),
+                   object["authoritySelection"] as? String==authoritySelection,
+                   object["nativeHostLayout"] as? String=="embedded-daemon",
+                   object["taskLayout"] as? String=="aux.native.task-control-split.v1",
+                   let group=object["accessGroup"] as? String,validAccessGroup(group),
+                   let location=object["storageLocation"] as? [String:Any],Set(location.keys)==["format"],
+                   location["format"] as? String==AuxNativeCurrentUserLocation.format else{throw AuxFreshBootstrapPolicyError.policy}
++            if fixedBuiltins {
++                try AuxFreshBootstrapPdfIdentity.validate(object["pdfModule"])
++                try AuxFreshBootstrapMacUtilitiesIdentity.validate(object["macOSUtilitiesModule"])
++            }
+             let native=try AuxNativeCurrentUserLocation.capture()
+             return .init(role:role,canonicalPrivateParent:native.controlRoot,accessGroup:group,
+                 canonicalTaskParent:native.taskRoot,browserStartupRoots:[native.dataRoot,native.cacheRoot],
+-                nativeUserLocation:native,browserPreparedRecovery:true,embeddedDaemon:true)
++                nativeUserLocation:native,browserPreparedRecovery:true,embeddedDaemon:true,includesFixedNativeBuiltins:fixedBuiltins)
+         }
+ #endif
+         var keys:Set<String>=["format","role","canonicalPrivateParent","accessGroup","authoritySelection"]
+@@ -338,7 +344,7 @@
+ func validateFreshBootstrapRebuiltDaemonRoute(_ policy:AuxFreshBootstrapPolicyContents)throws {
+ #if AUX_BROWSER_ONLY_NATIVE_STARTUP
+     guard policy.role == .daemon,policy.embeddedDaemon,policy.browserStartupRoots != nil,
+-          policy.browserPreparedRecovery,!policy.includesPdf,!policy.includesMacUtilities,
++          policy.browserPreparedRecovery,policy.includesPdf==policy.includesMacUtilities,
+           !policy.includesRebuiltPtyModule,!policy.includesContainedPtyModule,policy.ptyArtifacts == nil else{throw AuxFreshBootstrapPolicyError.policy}
+ #else
+     guard policy.role != .daemon || (policy.includesContainedPtyModule && policy.browserStartupRoots != nil && policy.browserPreparedRecovery) else {throw AuxFreshBootstrapPolicyError.policy}
+--- a/AuxSignedFreshBootstrapPolicyLoader.swift
++++ b/AuxSignedFreshBootstrapPolicyLoader.swift
+@@ -140,6 +140,7 @@
+     }
+     private static let ordinaryCodeLock=NSLock()
+     private static var ordinaryCode:OrdinaryCurrentCode?
++    private static var ordinaryFixedImages:[OrdinaryFileBinding]?
+     private static func currentOrdinaryCode()throws->OrdinaryCurrentCode {
+         // Refuse inherited processes before touching a possibly inherited lock.
+         guard getpid()==auxImagePreparationProcess else{throw AuxFreshBootstrapPolicyError.identity}
+@@ -153,11 +154,19 @@
+         guard getpid()==auxImagePreparationProcess else{throw AuxFreshBootstrapPolicyError.identity}
+         ordinaryCodeLock.lock()
+         guard let current=ordinaryCode else{ordinaryCodeLock.unlock();throw AuxFreshBootstrapPolicyError.identity}
++        let fixedImages=ordinaryFixedImages
+         ordinaryCodeLock.unlock()
+         guard policy.contents.role == .daemon,policy.contents.embeddedDaemon,
+-              !policy.contents.includesPdf,!policy.contents.includesMacUtilities,policy.contents.ptyArtifacts == nil,
++              policy.contents.includesPdf==policy.contents.includesMacUtilities,policy.contents.ptyArtifacts == nil,
+               current.executablePath==policy.bundlePath+"/Contents/MacOS/"+policy.contents.role.executable else{throw AuxFreshBootstrapPolicyError.identity}
+         try current.revalidate()
++        if policy.contents.includesPdf {
++            guard let fixedImages,fixedImages.count==2,
++                  fixedImages.map(\.path)==[policy.bundlePath+"/"+AuxFreshBootstrapPdfIdentity.relativePath,
++                                           policy.bundlePath+"/"+AuxFreshBootstrapMacUtilitiesIdentity.relativePath]
++            else{throw AuxFreshBootstrapPolicyError.identity}
++            for image in fixedImages{try image.revalidate()}
++        } else if fixedImages != nil {throw AuxFreshBootstrapPolicyError.identity}
+         try policy.contents.nativeUserLocation?.requireCurrent()
+     }
+ #endif
+@@ -327,8 +336,16 @@
+ #if AUX_BROWSER_ONLY_NATIVE_STARTUP
+         diagnosticStage = .imageCurrentCode
+             let current=try currentOrdinaryCode()
+-            guard path==current.executablePath else{throw AuxFreshBootstrapPolicyError.image}
+-            let code=current.code
++            let code:SecStaticCode
++            if path==current.executablePath {code=current.code}
++            else {
++                guard (policy.includesPdf && path==bundle+"/"+AuxFreshBootstrapPdfIdentity.relativePath) ||
++                      (policy.includesMacUtilities && path==bundle+"/"+AuxFreshBootstrapMacUtilitiesIdentity.relativePath) else{throw AuxFreshBootstrapPolicyError.image}
++                var captured:SecStaticCode?
++                let created=SecStaticCodeCreateWithPath(URL(fileURLWithPath:path) as CFURL,[],&captured)
++                guard created==errSecSuccess,let captured else{throw AuxFreshBootstrapPolicyError.signature(created)}
++                code=captured
++            }
+ #else
+             var code:SecStaticCode?;let created=SecStaticCodeCreateWithPath(URL(fileURLWithPath:path) as CFURL,[],&code);guard created==errSecSuccess,let code=code else{throw AuxFreshBootstrapPolicyError.signature(created)}
+ #endif
+@@ -550,20 +567,22 @@
+         guard policy.contents.embeddedDaemon,policy.contents.role == .daemon else{throw AuxFreshBootstrapPolicyError.policy}
+ #if AUX_BROWSER_ONLY_NATIVE_STARTUP
+         diagnosticStage = .imagePreparationMode
+-        guard geteuid() != 0,!policy.contents.includesPdf,!policy.contents.includesMacUtilities,
++        guard geteuid() != 0,policy.contents.includesPdf==policy.contents.includesMacUtilities,
+               policy.contents.ptyArtifacts == nil else{throw AuxFreshBootstrapPolicyError.policy}
+-        // Main-only exact image census is checked by authenticatedBase.
+-        // No addon constructor is run, and Node --no-addons prevents later loads.
+-        diagnosticStage = .imagePreparationReadback
+-        let final=try authenticatedBase(preparing:false)
+-        guard final.policySha256==policy.policySha256,final.bundlePath==policy.bundlePath,
+-              final.hostCdHash==policy.hostCdHash else{throw AuxFreshBootstrapPolicyError.identity}
+-#else
+-        // dlopen has no reviewed retained-FD loading API on macOS. Hold the
+-        // complete real path in a root-owned namespace instead. The app runs
+-        // as an unprivileged user; every mutable namespace component is owned
+-        // only by the trusted installer. A mere chown of formerly writable
+-        // files is not an accepted installation procedure.
++        if !policy.contents.includesPdf {
++            // v9 remains main-only. v10 explicitly opts into exactly two pinned
++            // builtins; Node --no-addons remains set in both modes.
++            let final=try authenticatedBase(preparing:false)
++            guard final.policySha256==policy.policySha256,final.bundlePath==policy.bundlePath,
++                  final.hostCdHash==policy.hostCdHash else{throw AuxFreshBootstrapPolicyError.identity}
++            return
++        }
++#endif
++        // Retain and recheck every canonical namespace entry and exact image
++        // around dlopen. Ordinary mode uses the selected standard-profile
++        // boundary: unrelated same-UID writers are outside its guarantee;
++        // Aux child writers deny this app and fixed output facades reject it.
++        // Historical nonordinary mode retains its stronger root-only custody.
+         guard geteuid() != 0 else{throw AuxFreshBootstrapPolicyError.path}
+         var custody=[Int32](),entries=[(Int32,String,Int32)]()
+         defer{for fd in custody.reversed(){close(fd)}}
+@@ -576,7 +595,10 @@
+             guard parent>=0 else{throw AuxFreshBootstrapPolicyError.path}
+             custody.append(parent)
+             let root=try metadata(parent,directory:true)
+-            guard root.st_uid==0,root.st_mode & 0o022==0 else{throw AuxFreshBootstrapPolicyError.path}
++#if !AUX_BROWSER_ONLY_NATIVE_STARTUP
++            guard root.st_uid==0 else{throw AuxFreshBootstrapPolicyError.path}
++#endif
++            guard root.st_mode & 0o022==0 else{throw AuxFreshBootstrapPolicyError.path}
+             let components=path.dropFirst().split(separator:"/",omittingEmptySubsequences:false).map(String.init)
+             for (index,name) in components.enumerated() {
+                 let directory=index != components.count-1
+@@ -584,14 +606,20 @@
+                 guard fd>=0 else{throw AuxFreshBootstrapPolicyError.path}
+                 custody.append(fd)
+                 let item=try metadata(fd,directory:directory,maximumSize:32*1024*1024)
+-                guard item.st_uid==0,item.st_mode & 0o022==0 else{throw AuxFreshBootstrapPolicyError.path}
++#if !AUX_BROWSER_ONLY_NATIVE_STARTUP
++                guard item.st_uid==0 else{throw AuxFreshBootstrapPolicyError.path}
++#endif
++                guard item.st_mode & 0o022==0 else{throw AuxFreshBootstrapPolicyError.path}
+                 try sameEntry(parent,name,fd);entries.append((parent,name,fd));parent=fd
+             }
+         }
+         func revalidateCustody()throws {
+             guard geteuid() != 0 else{throw AuxFreshBootstrapPolicyError.path}
+             for (parent,name,fd) in entries {
+-                var value=stat();guard fstat(fd,&value)==0,value.st_uid==0,value.st_mode & 0o022==0 else{throw AuxFreshBootstrapPolicyError.path}
++                var value=stat();guard fstat(fd,&value)==0,value.st_mode & 0o022==0 else{throw AuxFreshBootstrapPolicyError.path}
++#if !AUX_BROWSER_ONLY_NATIVE_STARTUP
++                guard value.st_uid==0 else{throw AuxFreshBootstrapPolicyError.path}
++#endif
+                 _ = try metadata(fd,directory:value.st_mode & mode_t(S_IFMT)==mode_t(S_IFDIR),maximumSize:32*1024*1024)
+                 try sameEntry(parent,name,fd)
+             }
+@@ -627,6 +655,7 @@
+             auxImagePreparationLock.lock();auxPreparedImageHandles.append(handle);auxImagePreparationLock.unlock()
+             guard try nativeModuleDigest(bundle:policy.bundlePath,expectedBytes:bytes,leaf:leaf)==digest else{throw AuxFreshBootstrapPolicyError.image}
+             _ = try authenticatedBase(preparing:true)
++            try revalidateCustody()
+         }
+         if let pty=policy.contents.ptyArtifacts {
+             // Frozen utils.loadNativeModule tries these before its prebuild.
+@@ -666,6 +695,12 @@
+         try revalidateCustody()
+         let final=try load()
+         guard final.policySha256==policy.policySha256,final.bundlePath==policy.bundlePath,final.hostCdHash==policy.hostCdHash else{throw AuxFreshBootstrapPolicyError.identity}
++#if AUX_BROWSER_ONLY_NATIVE_STARTUP
++        let retained=try [AuxFreshBootstrapPdfIdentity.relativePath,AuxFreshBootstrapMacUtilitiesIdentity.relativePath].map {
++            try OrdinaryFileBinding(policy.bundlePath+"/"+$0)
++        }
++        for image in retained{try image.revalidate()}
++        ordinaryCodeLock.lock();ordinaryFixedImages=retained;ordinaryCodeLock.unlock()
+ #endif
+             }catch {
+             auxFreshPolicyDiagnostic(diagnosticStage,error)
+--- a/AuxLoadedPdfLifetime.h
++++ b/AuxLoadedPdfLifetime.h
+@@ -16,6 +16,8 @@
+   static std::shared_ptr<AuxLoadedPdfLifetime> CaptureAfterAuthenticatedOwner();
+   ~AuxLoadedPdfLifetime();
+   AuxPdfHostDrain CloseAndDrain();
++  // Native-only exact current-image initializer; closed or changed images refuse.
++  void* CurrentInitializer();
+   static size_t RetainedUnresolvedImages();
+   AuxPdfHostCapture capture_status() const { return kind_; }
+   // Environment cleanup never initiates process-wide PDF closure. Once explicit
+--- a/AuxLoadedPdfLifetime.cc
++++ b/AuxLoadedPdfLifetime.cc
+@@ -90,6 +90,19 @@
+   if(pending_()==std::numeric_limits<uint64_t>::max())return;
+   kind_=AuxPdfHostCapture::current;
+ }
++void* AuxLoadedPdfLifetime::CurrentInitializer(){
++  if(getpid()!=process_)return nullptr;
++  {std::lock_guard lock(mutex_);if(closure_started_||kind_!=AuxPdfHostCapture::current)return nullptr;}
++  const auto images=Images();auto expected=ExpectedPath();
++  if(!images||!expected||Paths(*images)!=images_)return nullptr;
++  for(const auto& image:*images)if(image.path==*expected){
++    auto* init=dlsym(image_,"napi_register_module_v1");
++    auto* version=dlsym(image_,"node_api_module_get_api_version_v1");
++    if(!OwnSymbol(init,image)||!OwnSymbol(version,image)||reinterpret_cast<int32_t(*)()>(version)()!=8)return nullptr;
++    return init;
++  }
++  return nullptr;
++}
+ size_t AuxLoadedPdfLifetime::RetainedUnresolvedImages(){std::lock_guard lock(Retained().mutex);return Retained().images.size();}
+ AuxPdfHostDrain AuxLoadedPdfLifetime::CloseAndDrain(){
+   if(getpid()!=process_)return AuxPdfHostDrain::wrongProcess;
+--- a/AuxLoadedUtilityLifetime.h
++++ b/AuxLoadedUtilityLifetime.h
+@@ -16,6 +16,8 @@
+   static std::shared_ptr<AuxLoadedUtilityLifetime> CaptureAfterAuthenticatedOwner();
+   ~AuxLoadedUtilityLifetime();
+   AuxUtilityHostDrain CloseAndDrain();
++  // Native-only exact current-image initializer; closed or changed images refuse.
++  void* CurrentInitializer();
+   static size_t RetainedUnresolvedImages();
+   // Native observer for closed image custody surviving a destroyed host.
+   static AuxUtilityHostDrain InspectRetainedClosures();
+--- a/AuxLoadedUtilityLifetime.cc
++++ b/AuxLoadedUtilityLifetime.cc
+@@ -89,6 +89,19 @@
+   if(pending_()==std::numeric_limits<uint64_t>::max())return;
+   kind_=AuxUtilityHostCapture::current;
+ }
++void* AuxLoadedUtilityLifetime::CurrentInitializer(){
++  if(getpid()!=process_)return nullptr;
++  {std::lock_guard lock(mutex_);if(closure_started_||kind_!=AuxUtilityHostCapture::current)return nullptr;}
++  const auto images=Images();auto expected=ExpectedPath();
++  if(!images||!expected||Paths(*images)!=images_)return nullptr;
++  for(const auto& image:*images)if(image.path==*expected){
++    auto* init=dlsym(image_,"napi_register_module_v1");
++    auto* version=dlsym(image_,"node_api_module_get_api_version_v1");
++    if(!OwnSymbol(init,image)||!OwnSymbol(version,image)||reinterpret_cast<int32_t(*)()>(version)()!=8)return nullptr;
++    return init;
++  }
++  return nullptr;
++}
+ size_t AuxLoadedUtilityLifetime::RetainedUnresolvedImages(){if(getpid()!=kConsumerProcess)return std::numeric_limits<size_t>::max();std::lock_guard lock(Retained().mutex);return Retained().images.size();}
+ AuxUtilityHostDrain AuxLoadedUtilityLifetime::CloseAndDrain(){
+   if(getpid()!=process_)return AuxUtilityHostDrain::wrongProcess;
+--- a/AuxDevelopmentWorkerHost.cc
++++ b/AuxDevelopmentWorkerHost.cc
+@@ -19,6 +19,9 @@
+ #include "aux-owned-napi-adapter.h"
+ #include "aux-owned-command-dispatcher.h"
+ #include <node.h>
++#include <filesystem>
++#include <utility>
++#include <mach-o/dyld.h>
+ #include <uv.h>
+ #include <unistd.h>
+ #include <pthread.h>
+@@ -77,6 +80,7 @@
+ struct RuntimeScope;
+ struct Worker;
+ void CloseChatGPTCredentialLocks(Worker*) noexcept;
++bool CloseFixedOutputs(Worker*,bool,bool);
+ struct HostCleanObservation {
+   std::mutex mutex;
+   bool admission_closed = false;
+@@ -199,6 +203,9 @@
+         ? std::optional(captured_utility->CloseAndDrain())
+         : captured_utility->InspectIfClosureStarted();
+     if (utility_status) result = AuxMergeWorkerDrain(result, AuxWorkerDrainFromUtility(*utility_status));
++    if(!CloseFixedOutputs(this,pdf_status==AuxPdfHostDrain::drained||pdf_status==AuxPdfHostDrain::notPresent,
++        utility_status==AuxUtilityHostDrain::drained||utility_status==AuxUtilityHostDrain::notPresent))
++      result=AuxMergeWorkerDrain(result,AuxDevelopmentWorkerDrain::pending);
+     {
+       std::lock_guard<std::mutex> lock(mutex);
+       retiring = false;
+@@ -374,6 +381,7 @@
+ }
+ #include "AuxStorageRootsNapi.inc"
+ #include "AuxBrokerWritesNapi.inc"
++#include "AuxFixedBuiltins.inc"
+ #include "AuxChatGPTCredentialLock.inc"
+ #include "AuxBrokerAwaitedNapi.inc"
+ #include "AuxRuntimeCacheInspection.inc"
+@@ -1148,6 +1156,7 @@
+       {"noteUntrackedBrokerWork",nullptr,NoteUntrackedBrokerWork,nullptr,nullptr,nullptr,napi_default,nullptr}};
+     status = napi_define_properties(env,target,std::size(properties),properties);
+   }
++  if(status==napi_ok && worker->CanContinue()) RegisterFixedBuiltins(worker);
+   const bool closed = initialization.Complete(status == napi_ok);
+   return status == napi_ok && closed ? napi_closing : status;
+ 
+--- a/AuxAuthenticatedChildParentPolicyReader.swift
++++ b/AuxAuthenticatedChildParentPolicyReader.swift
+@@ -237,7 +237,9 @@
+             let format = try strictEnvelopeObject(bytes)["format"] as? String
+ #if AUX_BROWSER_ONLY_NATIVE_STARTUP
+             guard format == "aux.fresh.bootstrap.policy.v8" ||
+-                  (format == "aux.fresh.bootstrap.policy.v9" && policy.nativeUserLocation != nil) else { return -1 }
++                  ((format == "aux.fresh.bootstrap.policy.v9" ||
++                    (format == "aux.fresh.bootstrap.policy.v10" && policy.includesPdf && policy.includesMacUtilities)) &&
++                   policy.nativeUserLocation != nil) else { return -1 }
+             try validateFreshBootstrapRebuiltDaemonRoute(policy)
+ #else
+             guard policy.role == .daemon, policy.embeddedDaemon,
+@@ -252,6 +254,7 @@
+                   (try signingInfo(code))[kSecCodeInfoUnique as String] as? Data == hash
+             else { return -1 }
+ #if AUX_BROWSER_ONLY_NATIVE_STARTUP
++            // 9 is the native-current-user launch layout, shared explicitly by v9/v10.
+             return policy.nativeUserLocation == nil ? 8:9
+ #else
+             return format == "aux.fresh.bootstrap.policy.v3" ? 3:2
+--- a/AuxNativeTaskLayout.swift
++++ b/AuxNativeTaskLayout.swift
+@@ -78,7 +78,41 @@
+                 throw AuxFreshColdBootstrapError.legacyOrUnknownExistingState
+             }
+         }
++        try Self.requireNoInterruptedFixedAddonOutputs(home:home)
+         try revalidate()
++    }
++    // Finite fixed-image staging format. Startup is read-only: even a published
++    // prior invocation is preserved until its interrupted producer/publication
++    // has been reviewed. PID absence never manufactures callback settlement.
++    private static func requireNoInterruptedFixedAddonOutputs(home:Int32)throws {
++        do {
++            let name="fixed-addon-outputs"
++            let directory=openat(home,name,O_RDONLY|O_DIRECTORY|O_NOFOLLOW|O_CLOEXEC|O_NONBLOCK)
++            if directory<0 {
++                var missing=stat()
++                guard errno==ENOENT,fstatat(home,name,&missing,AT_SYMLINK_NOFOLLOW)<0,errno==ENOENT else{throw AuxFreshColdGuardError.path}
++                return
++            }
++            defer{close(directory)}
++            try metadata(directory,directory:true);try entry(home,name,directory)
++            let marker=openat(directory,"format",O_RDONLY|O_NOFOLLOW|O_CLOEXEC|O_NONBLOCK)
++            guard marker>=0 else{throw AuxFreshColdGuardError.path};defer{close(marker)}
++            try metadata(marker,directory:false);try entry(directory,"format",marker)
++            let expected=Data("aux.fixed-addon-output-staging.v1\n".utf8)
++            var before=stat();guard fstat(marker,&before)==0,before.st_size==expected.count else{throw AuxFreshColdGuardError.metadata}
++            var bytes=Data(count:expected.count)
++            let count=bytes.withUnsafeMutableBytes{pread(marker,$0.baseAddress,$0.count,0)}
++            var after=stat()
++            guard count==expected.count,bytes==expected,fstat(marker,&after)==0,
++                  before.st_dev==after.st_dev,before.st_ino==after.st_ino,before.st_size==after.st_size,
++                  before.st_mtimespec.tv_sec==after.st_mtimespec.tv_sec,before.st_mtimespec.tv_nsec==after.st_mtimespec.tv_nsec,
++                  before.st_ctimespec.tv_sec==after.st_ctimespec.tv_sec,before.st_ctimespec.tv_nsec==after.st_ctimespec.tv_nsec else{throw AuxFreshColdGuardError.metadata}
++            try inventory(directory,allowed:[".","..","format"])
++            try metadata(directory,directory:true);try entry(directory,"format",marker);try entry(home,name,directory)
++        }catch {
++            fputs("Aux fixed-addon output staging is interrupted or unknown; all bytes were preserved. Review the fixed-addon-outputs directory before retrying startup.\n",stderr)
++            throw AuxFixedAddonOutputRecoveryError.interruptedOutputPreserved
++        }
+     }
+     private struct MemoryHelperProcess {
+         let pid:Int32
+@@ -458,3 +492,6 @@
+     }
+     deinit{if getpid()==process{close(home);close(reservation);close(parent)}}
+ }
++
++// Actionable recovery identity; no automatic cleanup/replay or ready flag.
++enum AuxFixedAddonOutputRecoveryError:Error {case interruptedOutputPreserved}

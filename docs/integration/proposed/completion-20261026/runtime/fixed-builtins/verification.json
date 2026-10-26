@@ -1,0 +1,38 @@
+{
+  "format": "aux.fixed-builtins-source-handoff.v1",
+  "frozenSourceHashes": {
+    "docs/integration/proposed/completion-20261026/runtime/fixed-builtins/source/AuxLoadedUtilityLifetime.h": "15e686a79cb8aaca29da83ec45558d2d9e9b45e336661691c68d95d95d12e373",
+    "docs/integration/proposed/completion-20261026/runtime/fixed-builtins/source/AuxLoadedPdfLifetime.cc": "00cada6c718a284fe384873aa5f071b165e7b5e79f5b687b30aa22466ab95383",
+    "docs/integration/proposed/completion-20261026/runtime/fixed-builtins/source/AuxFixedBuiltins.inc": "22726d10d601cf2006ef66c04aef35e03815ae31992837b1fceea98099b3c863",
+    "docs/integration/proposed/completion-20261026/runtime/fixed-builtins/source/AuxSignedFreshBootstrapPolicyLoader.swift": "b5d656a32d1eb995febd79f503f9bc0b33bceefb7674bf1d38079ad840ecd872",
+    "docs/integration/proposed/completion-20261026/runtime/fixed-builtins/source/AuxFreshBootstrapPolicy.swift": "800dd58676ce44fa64d3b5dedb5aaa396046715d56f6e1aa7c43e500590e6c99",
+    "docs/integration/proposed/completion-20261026/runtime/fixed-builtins/source/AuxDevelopmentWorkerHost.cc": "5d1b985f094602193c319a08f2e67a5f8dc42acc5f78501416cbbcc7437bf662",
+    "docs/integration/proposed/completion-20261026/runtime/fixed-builtins/source/AuxAuthenticatedChildParentPolicyReader.swift": "50a3c16cca41c4e79c6a1925cec10486965c01a0983c14a7b9a6ee4927fa0b7e",
+    "docs/integration/proposed/completion-20261026/runtime/fixed-builtins/source/AuxNativeTaskLayout.swift": "e03bd0889bb055758d1cbac8b70744f0938bc62f1ac058c647ec85efdf0097da",
+    "docs/integration/proposed/completion-20261026/runtime/fixed-builtins/source/AuxLoadedPdfLifetime.h": "8a02f4893640e4c0ff2edfc948c5c1ab8beed058a2cb9ca8812a509c3a5dc62c",
+    "docs/integration/proposed/completion-20261026/runtime/fixed-builtins/source/AuxLoadedUtilityLifetime.cc": "9b9051a282befd868aa08de62c037b2d8a8da787a92a89d9feadb332e0539061"
+  },
+  "completeCountedReplayVerified": true,
+  "existingSources": 9,
+  "newIncludes": 1,
+  "unchangedAddonImages": {
+    "pdfSha256": "ed5b4faec15d3fc3c29a97f0dd304b388844cf0bf16fad5a69a62b357a52dcc0",
+    "utilitySha256": "7aff7611505145a5629cf42496be506200e7c1026087b2e397057e646d220e5e"
+  },
+  "priorFocusedChecks": {
+    "consumersSDK": "passed; these consumer source bytes unchanged since check",
+    "seedChromiumFlags": "passed; source identical to 1e3a59d8d",
+    "workerSDK": "passed before final narrow path/journal hardening",
+    "daemonSwift51": "passed before final retained-image/input refinements",
+    "browserPolicySwift3": "passed; current browser policy/reader bytes unchanged since check",
+    "entryNodeCheck": "passed; five entry edits unchanged since check"
+  },
+  "finalSourceCompileRequired": true,
+  "finalSourceCompileOwner": "integrator after shared browser build releases lock",
+  "sourceReview": "desktop bounded review accepted generated-output correction and found no additional lifetime/copy issue; alias correction retained canonical target",
+  "nativeProjection": false,
+  "objectBuild": false,
+  "appExecuted": false,
+  "signed": false,
+  "policyActivated": false
+}

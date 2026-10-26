@@ -1,0 +1,32 @@
+{
+  "input": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-local-completion-20261025-a38/Aux.app/Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/node-development/aux-native-entry.mjs",
+  "inputSha256": "f355833cb607963a65ca3108e7ae19ea7ca60192a9f3d8e2644a3c12ec49c808",
+  "outputSha256": "e501d34619a36f1b908c6aa770548a89ac02060637d08660e605a7fd13233319",
+  "anchors": [
+    {
+      "before": "function loadPdfBinding(){auxRequireSupervisedTasks();return require$2(path.join(__auxDaemonResources,`native/aux-pdf.cjs`))}",
+      "after": "function loadPdfBinding(){return process._linkedBinding('aux_pdf_builtin')}",
+      "count": 1
+    },
+    {
+      "before": "function loadAuxMacUtilityBinding(){auxRequireSupervisedTasks();if(auxMacUtilityBinding!==void 0)return auxMacUtilityBinding;try{return auxMacUtilityBinding=require$2(path.join(__auxDaemonResources,'native/aux-macos-utilities.cjs'))}",
+      "after": "function loadAuxMacUtilityBinding(){if(auxMacUtilityBinding!==void 0)return auxMacUtilityBinding;try{return auxMacUtilityBinding=process._linkedBinding('aux_macos_utilities_builtin')}",
+      "count": 1
+    },
+    {
+      "before": "function isAuxMacUtilityBindingAvailable(){return process.platform==='darwin'&&loadBinding()!=null}",
+      "after": "function isAuxMacUtilityBindingAvailable(){return process.platform==='darwin'&&loadAuxMacUtilityBinding()!=null}",
+      "count": 1
+    },
+    {
+      "before": "function auxNativeCommandRoute(command){return{binding:loadBinding(),bindingPath:loadedBindingPath,error:bindingLoadError}}",
+      "after": "function auxIsFixedUtilityCommand(command){return ['generate-thumbnail','list-open-apps','app-icons','copy-file','open-with'].includes(command)}\nfunction auxNativeCommandRoute(command){if(auxIsFixedUtilityCommand(command))return{binding:loadAuxMacUtilityBinding(),bindingPath:null,error:auxMacUtilityBindingError};return{binding:loadBinding(),bindingPath:loadedBindingPath,error:bindingLoadError}}",
+      "count": 1
+    },
+    {
+      "before": "function runNativeHelperCommandAsync(Cn,ei=``){let {binding:",
+      "after": "function runNativeHelperCommandAsync(Cn,ei=``){if(auxIsFixedUtilityCommand(Cn))return Promise.resolve().then(()=>runNativeHelperCommand(Cn,ei));let {binding:",
+      "count": 1
+    }
+  ]
+}
