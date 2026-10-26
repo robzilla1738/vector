@@ -7,11 +7,13 @@
   "fixtureExecuted": false,
   "productSigned": false,
   "productExecuted": false,
-  "recipeSha256": "7ad1474a98f7d18f404a73668a6a556b5df2e005632f662f02e523f617f26ede",
+  "recipeSha256": "6ff944f21d89fca40d37e3f27eefd3e97a20d7d59f65d12d3295769a68ac265c",
   "fixtureRecipeSha256": "03b61cb85bd76ab1fcad9ac0c2b2c994ba6864770ce3f085fb236b37cec765a8",
   "remaining": [
     "root actual CPP/Swift build",
     "root single SQLite/held-FD fixture",
     "root final disposable product journeys"
-  ]
+  ],
+  "nativeHelperSuccessor": "c03516567",
+  "nativeHelperSuccessorPinVerified": true
 }

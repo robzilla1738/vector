@@ -386,7 +386,7 @@
     "/private/tmp/aux-browser-only-daemon-build-20261025-a61/source/AuxRegisteredMemoryAccountOwner.swift": "897f3c44ab48d8fd50469e47f436845eeaae53ee6b4ee6125e271f3d0ac6bc52",
     "/private/tmp/aux-browser-only-daemon-build-20261025-a61/source/AuxMemoryHelperJournal.swift": "9efd7f2aed4c980a83889e93e38a4c449463da642185e0d8aaf67c8d8a247324",
     "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/runtime/final-daemon/source/AuxDevelopmentWorkerHost.combined.cc": "1020c93bc5d32c208186926aae3d766aa8beaa0165df9421373393de356880c9",
-    "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/runtime/final-daemon/source/AuxSelectedBrowserFiles.inc": "28e4d3caab6e94c90f69966c7618dfb28d16a6a314b09406d2e7833c38a1cf35",
+    "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/runtime/final-daemon/source/AuxSelectedBrowserFiles.inc": "57e0839cf3087d2f67028d7e31d00d7ef4a6a9795c0d1c02a5973c8d77f8506f",
     "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/runtime/final-daemon/source/AuxSelectedBuiltinOwner.inc": "c8b9f314540e75dc4965ca05f74fa5dc135173f8a152f906dade701783c53c22",
     "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/runtime/final-daemon/source/AuxRuntimePublication.inc": "892dbbef0aa14bf97db8fa60e990c7bc7a585acf847092ac0c1166307fb45062",
     "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/runtime/final-daemon/source/AuxSelectedFileReader.inc": "87c2c551aa663cd6b5a793691f95536cb0557fe83334adb56a98dd96da6b9b8b"
@@ -502,7 +502,7 @@
     "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/runtime/selected-builtin-owner/source/AuxSelectedAccountScope.h": "fd70f2257783747ec0690e5784c0ea27c7ca58ee12f665dc9aa7c4e252514f75",
     "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/integration/computer-use/source/AuxAccountComputerUseHelper.h": "cc4caf1fec1f3ce1616241246a5f0d7eed0603bfc8b49a9d9618580f95c247aa",
     "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/integration/computer-use/source/AuxComputerUseMainOwner.inc": "10025389663f332841c7549c11d88a5773de8b7ed31ceb63568f9c005937c8d5",
-    "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/runtime/final-daemon/source/AuxSelectedBrowserFiles.inc": "28e4d3caab6e94c90f69966c7618dfb28d16a6a314b09406d2e7833c38a1cf35",
+    "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/runtime/final-daemon/source/AuxSelectedBrowserFiles.inc": "57e0839cf3087d2f67028d7e31d00d7ef4a6a9795c0d1c02a5973c8d77f8506f",
     "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/runtime/final-daemon/source/AuxSelectedBuiltinOwner.inc": "c8b9f314540e75dc4965ca05f74fa5dc135173f8a152f906dade701783c53c22",
     "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/runtime/final-daemon/source/AuxRuntimePublication.inc": "892dbbef0aa14bf97db8fa60e990c7bc7a585acf847092ac0c1166307fb45062",
     "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/runtime/final-daemon/source/AuxSelectedFileReader.inc": "87c2c551aa663cd6b5a793691f95536cb0557fe83334adb56a98dd96da6b9b8b",
@@ -809,7 +809,7 @@
   "predecessorSelectedRecipeSha256": "91d11093528064705f9ba4a8ce896a9d9997762f34d8798bb3230d3a72c9183e",
   "freshSuccessorScopeCommit": "4e27bd457",
   "sourceClosures": {
-    "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/runtime/final-daemon/source/AuxSelectedBrowserFiles.inc": "28e4d3caab6e94c90f69966c7618dfb28d16a6a314b09406d2e7833c38a1cf35",
+    "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/runtime/final-daemon/source/AuxSelectedBrowserFiles.inc": "57e0839cf3087d2f67028d7e31d00d7ef4a6a9795c0d1c02a5973c8d77f8506f",
     "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/runtime/final-daemon/source/AuxSelectedBuiltinOwner.inc": "c8b9f314540e75dc4965ca05f74fa5dc135173f8a152f906dade701783c53c22",
     "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/runtime/final-daemon/source/AuxRuntimePublication.inc": "892dbbef0aa14bf97db8fa60e990c7bc7a585acf847092ac0c1166307fb45062",
     "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/runtime/final-daemon/source/emit-producer.mjs": "aacf14d1907ab7570f658850ba49678abda63fed96f2922ead7adf5fb65b3c6c",
@@ -818,7 +818,7 @@
     "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/runtime/final-daemon/source/fixture/main.swift": "a01b24b30f5b8e9a5355bee25c4904a176401ef0ddc1f804f0ac21018183c866"
   },
   "closureInputHashes": {
-    "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/runtime/final-daemon/composition.json": "25f7359a7f153472f31806c7c59b82128b87aae7f44694c552766d767c98c31c",
+    "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/runtime/final-daemon/composition.json": "30a7ecffd7cb6f5b62061a3e5bfcd7b1eab93463eaca60869b7f337f8ca0eb86",
     "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/runtime/final-daemon/run-build.py": "d3e2b085971c8ed8543ef31ec928817b51217a89e36e5bbbbd33c4b04e2b7e00",
     "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/integration/successor-assembly/source/AuxRuntimePublication.inc": "892dbbef0aa14bf97db8fa60e990c7bc7a585acf847092ac0c1166307fb45062",
     "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/integration/successor-assembly/runtime-relocation.json": "f8382006b02693f0f72fb69fcb0aa21b07b2febc3acc1e797875e8f559e77bf0",
@@ -826,7 +826,7 @@
     "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/runtime/fixed-builtins/root-compile-vfs.json": "5d850098c13a5f61faa6e21a7221492d1e89ed6707dda6e2d42f943e47099b30",
     "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/runtime/selected-builtin-owner/daemon-recipe.json": "91d11093528064705f9ba4a8ce896a9d9997762f34d8798bb3230d3a72c9183e",
     "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/integrator/daemon-sdk-repair-recipe.json": "b83a0664cfb5efe06c132ea43583a8e473cd6d9610b4e26be96a6291d008b1f4",
-    "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/desktop/browser-files/worker-source-plan.json": "f5c9fdad82dd7eaacc34290fbe9ac543ee40e12445d4fa0179af75a7d145a0ac",
+    "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/desktop/browser-files/worker-source-plan.json": "dbaad656864ed74f367e48862cbac36c45fdbc9034ff6db1c754de55aa4dcf09",
     "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/runtime/selected-file-reader/native.anchors.json": "567de0de41e0e27a8bfbc7961f8b475da9d7c9b02f36ffd489d60706d38d5cd0"
   }
 }
