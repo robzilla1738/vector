@@ -1,0 +1,219 @@
+{
+  "format": "aux.agent.active-identity.source.v2",
+  "baselineReceiptSha256": "44d6fc9e168cfc03b8528aaeb500175bfbc052cf2cb5e9a5d3d57114f9b27a3c",
+  "freshNamespaceOnly": true,
+  "previousNamespaceAdoption": false,
+  "payloadOrCredentialFormatChanged": false,
+  "cryptoLabelsChanged": false,
+  "files": [
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/-components-4o0FSqQ9.js",
+      "inputPath": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-local-completion-20261025-a38/Aux.app/Contents/Resources/aux/apps/extension/dist/assets/-components-4o0FSqQ9.js",
+      "inputSha256": "ed5962445f75abab89c2d983c289da0517f0f511202ff4d087cd240952f63a60",
+      "observedArtifactSha256": "ed5962445f75abab89c2d983c289da0517f0f511202ff4d087cd240952f63a60",
+      "anchors": [
+        {
+          "find": "aside.remix.pending.v1",
+          "replace": "aux.remix.pending.v2",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/-utils-B_lbplVm.js",
+      "inputPath": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-local-completion-20261025-a38/Aux.app/Contents/Resources/aux/apps/extension/dist/assets/-utils-B_lbplVm.js",
+      "inputSha256": "5527b6cb0638210d3f9b4c6b16fe27244fd80b64c986b39da73fe11a4bdbfdfc",
+      "observedArtifactSha256": "5527b6cb0638210d3f9b4c6b16fe27244fd80b64c986b39da73fe11a4bdbfdfc",
+      "anchors": [
+        {
+          "find": "aside.profileMetadataSync.v1",
+          "replace": "aux.profileMetadataSync.v2",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/mcps-DmPp5oo9.js",
+      "inputPath": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-local-completion-20261025-a38/Aux.app/Contents/Resources/aux/apps/extension/dist/assets/mcps-DmPp5oo9.js",
+      "inputSha256": "dee7ff83a91decfc61542ac55e197d5eaa4f461bb657eb7085eb0938648fd890",
+      "observedArtifactSha256": "0628abf121307a43567addaa792eb9f13c9b72e47c75f8d3cbe9f316a5ece79a",
+      "anchors": [
+        {
+          "find": "aside-mcp-oauth",
+          "replace": "aux-mcp-oauth-v2",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/personalization-C9HKLZT4.js",
+      "inputPath": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-local-completion-20261025-a38/Aux.app/Contents/Resources/aux/apps/extension/dist/assets/personalization-C9HKLZT4.js",
+      "inputSha256": "f24d1884b1169832b9d729ade410c4599fbdc624904e6ab18168476e1912cabf",
+      "observedArtifactSha256": "f24d1884b1169832b9d729ade410c4599fbdc624904e6ab18168476e1912cabf",
+      "anchors": [
+        {
+          "find": "aside.lasso-storage-bridge",
+          "replace": "aux.lasso-storage-bridge.v2",
+          "count": 2
+        },
+        {
+          "find": "aside.lasso.v1",
+          "replace": "aux.lasso.v2",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/provider-Cw0zhujt.js",
+      "inputPath": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-local-completion-20261025-a38/Aux.app/Contents/Resources/aux/apps/extension/dist/assets/provider-Cw0zhujt.js",
+      "inputSha256": "8aee4a9cc8229397e4067fb9a9a4772ef4bdfddc03d1db3f2c84836a1b6fe724",
+      "observedArtifactSha256": "c4862e5ac3e442c203039edf7253c5af9627be724e70d0e20f693243e40c210e",
+      "anchors": [
+        {
+          "find": "aside-code",
+          "replace": "aux-code",
+          "count": 6
+        }
+      ]
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/queries-ldd77hNk.js",
+      "inputPath": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-local-completion-20261025-a38/Aux.app/Contents/Resources/aux/apps/extension/dist/assets/queries-ldd77hNk.js",
+      "inputSha256": "fb8dafdc548e416acdd0f8c9988967b7d8d2d1d15c268ae0c6e63353a57c680e",
+      "observedArtifactSha256": "fb8dafdc548e416acdd0f8c9988967b7d8d2d1d15c268ae0c6e63353a57c680e",
+      "anchors": [
+        {
+          "find": "aside.daemonAuth",
+          "replace": "aux.daemonAuth.v2",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/session-composer-Dc0LRfZA.js",
+      "inputPath": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-local-completion-20261025-a38/Aux.app/Contents/Resources/aux/apps/extension/dist/assets/session-composer-Dc0LRfZA.js",
+      "inputSha256": "7d9fd830a06e4bc846a7d81f849486a16013a36411c8d33a309ddc6a6d7f229d",
+      "observedArtifactSha256": "3eaa9c8f0946ad2b20a63f0b80f0acb0ad79835061050eb09dff2fbd3c791144",
+      "anchors": [
+        {
+          "find": "aside-code",
+          "replace": "aux-code",
+          "count": 3
+        }
+      ]
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/background.js",
+      "inputPath": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-local-completion-20261025-a38/Aux.app/Contents/Resources/aux/apps/extension/dist/background.js",
+      "inputSha256": "02b2288a0c1691a1e55d4f16c1db1147385da5b7030740b62c37432a191591cc",
+      "observedArtifactSha256": "5eff26a667e650969311ca9341b66876e678960ac08dfd1419f00e33c529926f",
+      "anchors": [
+        {
+          "find": "aside.daemonAuth",
+          "replace": "aux.daemonAuth.v2",
+          "count": 1
+        },
+        {
+          "find": "aside-capture",
+          "replace": "aux.capture.v2",
+          "count": 2
+        },
+        {
+          "find": "aside.lasso-storage-bridge",
+          "replace": "aux.lasso-storage-bridge.v2",
+          "count": 2
+        },
+        {
+          "find": "aside.lasso.v1",
+          "replace": "aux.lasso.v2",
+          "count": 1
+        },
+        {
+          "find": "aside.profileMetadataSync.v1",
+          "replace": "aux.profileMetadataSync.v2",
+          "count": 1
+        },
+        {
+          "find": "aside-remix-gmail",
+          "replace": "aux-remix-gmail-v2",
+          "count": 1
+        },
+        {
+          "find": "aside-remix-slack",
+          "replace": "aux-remix-slack-v2",
+          "count": 1
+        },
+        {
+          "find": "aside.remix.v1",
+          "replace": "aux.remix.v2",
+          "count": 2
+        },
+        {
+          "find": "aside.remix.pending.v1",
+          "replace": "aux.remix.pending.v2",
+          "count": 1
+        },
+        {
+          "find": "aside-remix-user-",
+          "replace": "aux-remix-user-v2-",
+          "count": 1
+        },
+        {
+          "find": "const aside =",
+          "replace": "const aux =",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/content/content.js",
+      "inputPath": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-local-completion-20261025-a38/Aux.app/Contents/Resources/aux/apps/extension/dist/content/content.js",
+      "inputSha256": "57f04e1935e2a4730f28aff6906dd831ca3e1ef6a0007bb056b1b8010a4d7dad",
+      "observedArtifactSha256": "57f04e1935e2a4730f28aff6906dd831ca3e1ef6a0007bb056b1b8010a4d7dad",
+      "anchors": [
+        {
+          "find": "aside.daemonAuth",
+          "replace": "aux.daemonAuth.v2",
+          "count": 1
+        },
+        {
+          "find": "aside.lasso-storage-bridge",
+          "replace": "aux.lasso-storage-bridge.v2",
+          "count": 3
+        },
+        {
+          "find": "aside.lasso.v1",
+          "replace": "aux.lasso.v2",
+          "count": 2
+        }
+      ]
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/remix.js",
+      "inputPath": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-local-completion-20261025-a38/Aux.app/Contents/Resources/aux/apps/extension/dist/remix.js",
+      "inputSha256": "72712b1596fd02196cd61b05472a0e8b1913f317dd710eb514b366d63701a6a7",
+      "observedArtifactSha256": "72712b1596fd02196cd61b05472a0e8b1913f317dd710eb514b366d63701a6a7",
+      "anchors": [
+        {
+          "find": "aside.remix.v1",
+          "replace": "aux.remix.v2",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/manifest.json",
+      "inputPath": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-local-completion-20261025-a38/Aux.app/Contents/Resources/aux/apps/extension/dist/manifest.json",
+      "inputSha256": "d1d616d82f60e06309c0e8664144eb785d13451451eb63665f3b862fbb030828",
+      "observedArtifactSha256": "d1d616d82f60e06309c0e8664144eb785d13451451eb63665f3b862fbb030828",
+      "anchors": [
+        {
+          "find": "\"externally_connectable\": {\n    \"ids\": [\n      \"nbpghnminpifekjbgjefioajhiilbfla\"\n    ]\n  }",
+          "replace": "\"externally_connectable\": {\n    \"ids\": []\n  }",
+          "count": 1,
+          "scope": "Explicitly deny all external extension connections; excluded Vault ID remains protected by native/daemon deny checks"
+        }
+      ]
+    }
+  ]
+}
