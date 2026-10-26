@@ -81,7 +81,7 @@ function auxScopedBrowserCdpClient(original,accountId,session,getRoute){
    if(context){
     // Revocation is sent through the original exact connection. It cannot
     // reacquire a replacement profile or dispatch a new page command.
-    const route=getRoute(),matches=globalExtensionBridge.listConnectedProfiles(accountId).find(value=>value.profileId===route?.profileId&&value.connectionId===connectionId);
+    const route={accountId:context.accountId,profileId:context.profileId,windowId:context.windowId},matches=globalExtensionBridge.listConnectedProfiles(accountId).find(value=>value.profileId===route?.profileId&&value.connectionId===connectionId);
     if(!matches){if(rootSessions.size){auxBrokerBoundary().noteUntracked();throw auxBrowserActionFailure('Browser task closure lost its original connection.')}return}
     await globalExtensionBridge.auxCloseBoundBrowserTask(taskId,context,{accountId,profileId:route.profileId,browserMode:'default',windowId:route.windowId,connectionId});
    }
@@ -91,12 +91,12 @@ function auxScopedBrowserCdpClient(original,accountId,session,getRoute){
  auxOwnedBrowserClients.add(closeScoped);auxBrokerBoundary().registerProducerStop(auxStopOwnedBrowserClients);
  const targets=async()=>{const result=await call('Aux.listTabs',{accountId});return (result.items??[]).map(tab=>({id:tab.targetId,targetId:tab.targetId,type:'page',title:tab.title,url:tab.url}))};
  const send=async(method,params={},sessionId,options={})=>{
-  if(options.auxDocumentCapability)throw auxBrowserActionFailure('Selected existing-page document commands require the original native document transport.');
+  if(options.auxDocumentCapability!==undefined&&(typeof options.auxDocumentCapability!=='string'||!options.auxDocumentCapability||options.auxDocumentCapability.length>64))throw auxBrowserActionFailure('Select the original tab document again.');
   if(method.startsWith('Aux.'))return call(method,params,options);
   if(method==='Target.getTargets')return {targetInfos:await targets()};
   if(method==='Target.getTargetInfo'){const value=(await targets()).find(value=>value.id===params.targetId);if(!value)throw auxBrowserActionFailure('The task tab is unavailable.');return {targetInfo:value}}
   if(method==='Target.setDiscoverTargets')return {};
-  if(method==='Target.attachToTarget'){const result=await call('Aux.debuggerAttach',{targetId:params.targetId},options);rootSessions.add(result.sessionId);return result}
+  if(method==='Target.attachToTarget'){const result=await call('Aux.debuggerAttach',{targetId:params.targetId,...options.auxDocumentCapability?{reference:{targetId:params.targetId,url:options.auxDocumentUrl,documentCapability:options.auxDocumentCapability}}:{}},options);rootSessions.add(result.sessionId);return result}
   if(method==='Target.detachFromTarget'){const result=await call('Aux.debuggerDetach',{sessionId:params.sessionId},options);rootSessions.delete(params.sessionId);return result}
   if(method==='Browser.getVersion'){await targets();return {userAgent:context.userAgent}}
   if(!sessionId)throw auxBrowserActionFailure(`A task-owned page session is required: ${method}`);

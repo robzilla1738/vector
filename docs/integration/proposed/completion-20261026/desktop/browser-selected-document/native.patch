@@ -1,0 +1,63 @@
+--- a/content/public/browser/devtools_agent_host_client.h
++++ b/content/public/browser/devtools_agent_host_client.h
+@@ -55,6 +55,10 @@
+   // The default does not grant profile-window automation to other clients.
+   virtual bool IsAuthenticatedRemoteDebuggingSession();
+ 
++  // Opt-in only to the existing selected-document guard. This is not browser
++  // authentication, trust, target discovery or local-file authority.
++  virtual bool MayUseAuxDocumentCapabilities() { return false; }
++
+   // Returns true if the client is allowed to read local files over the
+   // protocol. Example would be exposing file content to the page under debug.
+   virtual bool MayReadLocalFiles();
+--- a/content/browser/devtools/devtools_session.cc
++++ b/content/browser/devtools/devtools_session.cc
+@@ -298,7 +298,8 @@
+   if (aux_document_calls_.contains(call_id)) return refuse();
+   if (capability) {
+     if (capability->empty() || capability->size() > 64 ||
+-        !client_->IsAuthenticatedRemoteDebuggingSession()) return refuse();
++        (!client_->IsAuthenticatedRemoteDebuggingSession() &&
++         !client_->MayUseAuxDocumentCapabilities())) return refuse();
+     auto* delegate = DevToolsManager::GetInstance()->delegate();
+     auto guard = delegate ? delegate->GetAuxDocumentCommandGuard(agent_host_, *capability)
+                           : base::RepeatingCallback<bool()>();
+--- a/chrome/browser/extensions/api/debugger/debugger_api.cc
++++ b/chrome/browser/extensions/api/debugger/debugger_api.cc
+@@ -29,6 +29,7 @@
+ #include "base/types/optional_util.h"
+ #include "base/values.h"
+ #include "chrome/browser/extensions/extension_service.h"
++#include "chrome/browser/aux/component_bootstrap.h"
+ #include "chrome/browser/extensions/extension_tab_util.h"
+ #include "chrome/browser/lifetime/termination_notification.h"
+ #include "chrome/browser/profiles/profile.h"
+@@ -512,6 +513,10 @@
+       content::RenderFrameHost* render_frame_host) override;
+   bool MayAttachToURL(const GURL& url, bool is_webui) override;
+   bool IsTrusted() override;
++  bool MayUseAuxDocumentCapabilities() override {
++    return extension_->id() == aux::kAgentExtensionId &&
++           profile_->IsRegularProfile() && !profile_->IsOffTheRecord();
++  }
+   bool MayReadLocalFiles() override;
+   bool MayWriteLocalFiles() override;
+   std::optional<url::Origin> GetNavigationInitiatorOrigin() override;
+@@ -715,8 +720,14 @@
+   protocol_request.Set("id", request_id);
+   protocol_request.Set("method", method);
+   if (command_params) {
+-    protocol_request.Set("params",
+-                         command_params->additional_properties.Clone());
++    auto params = command_params->additional_properties.Clone();
++    // Preserve even malformed markers: the original strict document guard
++    // must refuse them, never reinterpret their removal as an unguarded call.
++    if (const auto* capability = params.Find("__auxDocumentCapability")) {
++      protocol_request.Set("auxDocumentCapability", capability->Clone());
++      params.Remove("__auxDocumentCapability");
++    }
++    protocol_request.Set("params", std::move(params));
+   }
+   if (session_id.has_value()) {
+     protocol_request.Set("sessionId", session_id.value());

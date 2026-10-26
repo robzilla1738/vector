@@ -25,7 +25,8 @@ transform('entry',a.entry,'daemon-browser-actions.js',[
  ('let{data:oi}=ExtensionBridgeProtocol.pingMessageResponseSchema.safeParse(ri);',"if(ri?.method==='aux.browserActionEvent'&&typeof ri.taskId==='string'&&ri.context&&ri.event&&typeof ri.event.method==='string'){for(const handler of auxBrowserEventHandlers)try{handler({message:ri,connection:ai})}catch{}return}let{data:oi}=ExtensionBridgeProtocol.pingMessageResponseSchema.safeParse(ri);"),
  ('this.#e=auxReferenceCdpClient(Cn,()=>this.state.tabs,()=>this.#L())', 'this.#e=auxReferenceCdpClient(auxScopedBrowserCdpClient(Cn,ei,ti,()=>this.#L()),()=>this.state.tabs,()=>this.#L())'),
  ('this.#S=ri.tabs??createExtensionTabController(()=>this.#L())', 'this.#S=ri.tabs??createExtensionTabController(()=>this.#e.scopedBrowserRoute?.()??this.#L())'),
- ('await this.#t.dispose(),this.#g=[],this.#h=null', 'await this.#t.dispose();await this.#e.closeScoped?.();this.#g=[],this.#h=null')
+ ('await this.#t.dispose(),this.#g=[],this.#h=null', 'await this.#t.dispose();await this.#e.closeScoped?.();this.#g=[],this.#h=null'),
+ ('const attached=await object.send(method,params,sessionId,options);', 'const attached=await object.send(method,params,sessionId,binding.referenced?{...options,auxDocumentCapability:binding.capability,auxDocumentUrl:binding.url}:options);')
 ])
 transform('background',a.background,'extension-browser-actions.js',[
  ('  const oo = [\n    auxCookieSyncContext,', '''  const auxBrowserContextRequest=m({method:E("Aux.getBrowserActionContext"),params:m({})});

@@ -1,0 +1,52 @@
+{
+  "files": [
+    {
+      "path": "content/public/browser/devtools_agent_host_client.h",
+      "inputSha256": "c98430e63a39af47f7fa0d6844cd5c27fd66ac486b24c86248ecc326844aa72d",
+      "outputSha256": "a441580236941d737022a4191e17f5490b75d86b1154dbbbf94379d248163bcc",
+      "anchors": [
+        {
+          "before": "  virtual bool IsAuthenticatedRemoteDebuggingSession();",
+          "after": "  virtual bool IsAuthenticatedRemoteDebuggingSession();\n\n  // Opt-in only to the existing selected-document guard. This is not browser\n  // authentication, trust, target discovery or local-file authority.\n  virtual bool MayUseAuxDocumentCapabilities() { return false; }",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "content/browser/devtools/devtools_session.cc",
+      "inputSha256": "6133f8ca4d8e8dada1f57b4aabd926a9c2d899d0d358ded1efaa4dc0cb7a093a",
+      "outputSha256": "96f382c093d2f3f3259fa9232d0274dc434bb6575e5dea5556655b14590cc28a",
+      "anchors": [
+        {
+          "before": "!client_->IsAuthenticatedRemoteDebuggingSession()) return refuse();",
+          "after": "(!client_->IsAuthenticatedRemoteDebuggingSession() &&\n         !client_->MayUseAuxDocumentCapabilities())) return refuse();",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/extensions/api/debugger/debugger_api.cc",
+      "inputSha256": "39916a48fbbae41c605c9f200d713b4053184fd83e26cecf27eeac8c2d5eb9ef",
+      "outputSha256": "08d2d71585050d9959cc9d53692566bf19f5fac5ac9fbf298dbd45bd54f68ad8",
+      "anchors": [
+        {
+          "before": "#include \"chrome/browser/extensions/extension_service.h\"",
+          "after": "#include \"chrome/browser/extensions/extension_service.h\"\n#include \"chrome/browser/aux/component_bootstrap.h\"",
+          "count": 1
+        },
+        {
+          "before": "  bool IsTrusted() override;",
+          "after": "  bool IsTrusted() override;\n  bool MayUseAuxDocumentCapabilities() override {\n    return extension_->id() == aux::kAgentExtensionId &&\n           profile_->IsRegularProfile() && !profile_->IsOffTheRecord();\n  }",
+          "count": 1
+        },
+        {
+          "before": "  if (command_params) {\n    protocol_request.Set(\"params\",\n                         command_params->additional_properties.Clone());\n  }",
+          "after": "  if (command_params) {\n    auto params = command_params->additional_properties.Clone();\n    // Preserve even malformed markers: the original strict document guard\n    // must refuse them, never reinterpret their removal as an unguarded call.\n    if (const auto* capability = params.Find(\"__auxDocumentCapability\")) {\n      protocol_request.Set(\"auxDocumentCapability\", capability->Clone());\n      params.Remove(\"__auxDocumentCapability\");\n    }\n    protocol_request.Set(\"params\", std::move(params));\n  }",
+          "count": 1
+        }
+      ]
+    }
+  ],
+  "sourceProjected": false,
+  "nativeBuilt": false
+}
