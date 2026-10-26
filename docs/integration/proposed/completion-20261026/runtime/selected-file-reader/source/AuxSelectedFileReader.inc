@@ -66,6 +66,7 @@ napi_value SelectedFileReadChunk(napi_env env,napi_callback_info info) {
     if(count<0||!file->Stable())return SelectedScopeFail(env,"Original selected read did not settle");
     file->offset+=count;
   }
+  if(!file->scope->Current(env))return SelectedScopeFail(env,"Selected file owner closed during its read");
   napi_value result;
   if(napi_create_buffer_copy(env,static_cast<size_t>(count),bytes.data(),nullptr,&result)!=napi_ok)return nullptr;
   return result;
