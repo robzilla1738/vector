@@ -78,6 +78,21 @@
           "count": 1
         },
         {
+          "find": "Co=({projectId:e,className:t,initialPrompt:n,onChange:s})",
+          "replace": "Co=({projectId:e,className:t,initialPrompt:n,onChange:s,disabled:u=!1})",
+          "count": 1
+        },
+        {
+          "find": "st,{initialSnapshot:a,onChange:l=>s(l.plainText)",
+          "replace": "st,{disabled:u,initialSnapshot:a,onChange:l=>s(l.plainText)",
+          "count": 1
+        },
+        {
+          "find": "Co,{projectId:t.projectId,className:",
+          "replace": "Co,{projectId:t.projectId,disabled:!f,className:",
+          "count": 1
+        },
+        {
           "find": "var r=ds(),",
           "replace": "function auxDeviceRoutineEditable(routine,settings){const id=settings?.routineDeviceId;return typeof id===\"string\"&&id.trim().length>0&&(!routine||routine.environment===\"device\"&&routine.deviceId===id)}var r=ds(),",
           "count": 1
