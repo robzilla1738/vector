@@ -1,0 +1,223 @@
+--- a/AuxSignedFreshBootstrapPolicyLoader.swift
++++ b/AuxSignedFreshBootstrapPolicyLoader.swift
+@@ -37,6 +37,38 @@
+               current.contents.browserStartupRoots==contents.browserStartupRoots,
+               current.contents.nativeUserLocation==contents.nativeUserLocation else{throw AuxFreshBootstrapPolicyError.identity}
+     }
++}
++private enum AuxFreshPolicyDiagnosticStage:String {
++    case authenticatedBase, currentCode, dynamicValidity, staticValidity
++    case signingInformation, hostSignature, hostPlist, executableIdentity
++    case codePath, policyResource, policySeal, policyDecode, daemonRoute
++    case images, currentUserParents, privateParent, resourceReadback
++    case finalValidity, codeHash, currentCodeReadback
++    case imagePreparationPolicy, imagePreparationMode, imagePreparationReadback
++    case imageEnvironment, imageCount, imageName, imageLexicalPath
++    case imageExpectedPath, imageCurrentCode, imageValidity, imageSignature
++    case imageRoleRule, imageCensus, imageStableCount, boundarySymbols
++    case securitySymbol, securitySymbolOrigin, prepareEmbeddedImages
++}
++private func auxFreshPolicyDiagnostic(_ stage:AuxFreshPolicyDiagnosticStage,_ error:Error,unexpectedCodeImage:String?=nil) {
++    let kind:String
++    var status:OSStatus?
++    if let failure=error as? AuxFreshBootstrapPolicyError {
++        switch failure {
++        case .identity:kind="identity"
++        case .policy:kind="policy"
++        case .signature(let value):kind="signature";status=value
++        case .resource:kind="resource"
++        case .path:kind="path"
++        case .image:kind="image"
++        case .scope:kind="scope"
++        }
++    }else{kind="unclassified"}
++    var line="Aux native policy diagnostic stage="+stage.rawValue+" error="+kind
++    if let status{line += " osstatus="+String(status)}
++    if let unexpectedCodeImage{line += " unexpected_code_image="+String(reflecting:String(unexpectedCodeImage.prefix(4096)))}
++    line += "\n"
++    line.withCString{_ = fputs($0,stderr)}
+ }
+ enum AuxSignedFreshBootstrapPolicyLoader {
+     private static let flags=SecCSFlags(rawValue:kSecCSStrictValidate|kSecCSCheckAllArchitectures|kSecCSCheckNestedCode|kSecCSRestrictSymlinks|UInt32(1<<29))
+@@ -272,25 +304,39 @@
+         try nativeModuleDigest(bundle:bundle,expectedBytes:expectedBytes,leaf:"aux-pdf.node")
+     }
+     private static func images(bundle:String,policy:AuxFreshBootstrapPolicyContents,requirement:SecRequirement,preparing:Bool=false)throws {
++        var diagnosticStage:AuxFreshPolicyDiagnosticStage = .images
++        var unexpectedCodeImage:String?
++        do {
++        diagnosticStage = .imagePreparationPolicy
+         guard !preparing || policy.embeddedDaemon else{throw AuxFreshBootstrapPolicyError.policy}
+         let role=policy.role
++        diagnosticStage = .imageEnvironment
+         for name in ProcessInfo.processInfo.environment.keys {guard !name.hasPrefix("DYLD_"),name != "NODE_OPTIONS",!name.hasPrefix("AUX_ENABLE_PROVIDED_"),name != "AUX_PROVIDED_NATIVE_LOAD_ONLY" else{throw AuxFreshBootstrapPolicyError.image}}
+         let expected=freshBootstrapExpectedImageIdentifiers(bundle:bundle,policy:policy)
++        diagnosticStage = .imageCount
+         let count=_dyld_image_count();guard count>0,count<=4096 else{throw AuxFreshBootstrapPolicyError.image};var observed=Set<String>(),paths=[String]()
+         for index in 0..<count {
++        diagnosticStage = .imageName
+             guard let raw=_dyld_get_image_name(index)else{throw AuxFreshBootstrapPolicyError.image};let path=String(cString:raw);paths.append(path)
++            if !path.hasPrefix("/System/Library/"),!path.hasPrefix("/usr/lib/"),expected[path]==nil{unexpectedCodeImage=path}
++        diagnosticStage = .imageLexicalPath
+             guard freshBootstrapImagePathIsLexicallyCanonical(path) else{throw AuxFreshBootstrapPolicyError.image}
+             if path.hasPrefix("/System/Library/") || path.hasPrefix("/usr/lib/"){continue}
++        diagnosticStage = .imageExpectedPath
+             guard let identifier=expected[path],try canonical(path)==path else{throw AuxFreshBootstrapPolicyError.image}
+ #if AUX_BROWSER_ONLY_NATIVE_STARTUP
++        diagnosticStage = .imageCurrentCode
+             let current=try currentOrdinaryCode()
+             guard path==current.executablePath else{throw AuxFreshBootstrapPolicyError.image}
+             let code=current.code
+ #else
+             var code:SecStaticCode?;let created=SecStaticCodeCreateWithPath(URL(fileURLWithPath:path) as CFURL,[],&code);guard created==errSecSuccess,let code=code else{throw AuxFreshBootstrapPolicyError.signature(created)}
+ #endif
++        diagnosticStage = .imageValidity
+             let status=SecStaticCodeCheckValidity(code,flags,requirement);guard status==errSecSuccess else{throw AuxFreshBootstrapPolicyError.signature(status)}
++        diagnosticStage = .imageSignature
+             let captured=try signature(signingInfo(code));guard captured.identifier==identifier else{throw AuxFreshBootstrapPolicyError.identity}
++        diagnosticStage = .imageRoleRule
+             if identifier==AuxFreshBootstrapPdfIdentity.identifier {
+                 try validateCapturedFreshBootstrapPdfSignature(captured)
+                 try validateCapturedFreshBootstrapPdfBytes(sha256:pdfDigest(bundle:bundle,expectedBytes:policy.pdfBytes),bytes:policy.pdfBytes,policy:policy)
+@@ -303,6 +349,7 @@
+             } else {try validateCapturedFreshBootstrapSignature(captured,role:role,host:path.hasSuffix("/Contents/MacOS/"+role.executable),accessGroup:policy.accessGroup)}
+             observed.insert(path)
+         }
++        diagnosticStage = .imageCensus
+         if preparing {
+             // Only the two exact native modules may be absent during native
+             // preparation. The embedded host is always present and validated.
+@@ -310,52 +357,92 @@
+             if policy.ptyArtifacts != nil {optional.insert(bundle+"/"+AuxFreshBootstrapPtyArtifacts.modulePath)}
+             guard observed.isSubset(of:Set(expected.keys)),Set(expected.keys).subtracting(optional).isSubset(of:observed) else{throw AuxFreshBootstrapPolicyError.image}
+         }else{try validateCapturedFreshBootstrapImagePaths(paths,bundle:bundle,policy:policy);guard observed==Set(expected.keys)else{throw AuxFreshBootstrapPolicyError.image}}
++        diagnosticStage = .imageStableCount
+         guard count==_dyld_image_count() else{throw AuxFreshBootstrapPolicyError.image}
+         let global=UnsafeMutableRawPointer(bitPattern:-2)
++        diagnosticStage = .boundarySymbols
+         for symbol in ["AuxNativeBoundaryValidate","AuxNativeBoundaryConfigureScope","AuxNativeBoundaryDenyAll","AuxNativeBoundaryIsDenyAll","AuxNativeBoundaryRefusedCalls"]{guard dlsym(global,symbol)==nil else{throw AuxFreshBootstrapPolicyError.image}}
+-        for index:UInt32 in 0..<5 {guard let pointer=developmentImportedSecuritySymbol(index)else{throw AuxFreshBootstrapPolicyError.image};var info=Dl_info();guard dladdr(pointer,&info) != 0,let path=info.dli_fname,String(cString:path)=="/System/Library/Frameworks/Security.framework/Versions/A/Security" else{throw AuxFreshBootstrapPolicyError.image}}
++        for index:UInt32 in 0..<5 {
++            diagnosticStage = .securitySymbol
++            guard let pointer=developmentImportedSecuritySymbol(index)else{throw AuxFreshBootstrapPolicyError.image}
++            var info=Dl_info()
++            diagnosticStage = .securitySymbolOrigin
++            let located=dladdr(pointer,&info)
++            if let path=info.dli_fname,String(cString:path) != "/System/Library/Frameworks/Security.framework/Versions/A/Security"{unexpectedCodeImage=String(cString:path)}
++            guard located != 0,let path=info.dli_fname,String(cString:path)=="/System/Library/Frameworks/Security.framework/Versions/A/Security" else{throw AuxFreshBootstrapPolicyError.image}
++        }
++            }catch {
++            auxFreshPolicyDiagnostic(diagnosticStage,error,unexpectedCodeImage:unexpectedCodeImage)
++            throw error
++        }
+     }
+     // No policy/path/role parameter: read ONLY this authenticated running bundle's
+     // fixed sealed resource. Source-only until a real native owner admits it.
+     static func load()throws->AuxAuthenticatedFreshBootstrapPolicy {try authenticatedBase(preparing:false)}
+     private static func authenticatedBase(preparing:Bool)throws->AuxAuthenticatedFreshBootstrapPolicy {
++        var diagnosticStage:AuxFreshPolicyDiagnosticStage = .authenticatedBase
++        do {
+ #if AUX_BROWSER_ONLY_NATIVE_STARTUP
++        diagnosticStage = .currentCode
+         let current=try currentOrdinaryCode()
+         let dynamic=current.dynamic,staticCode=current.code,requirement=current.requirement
+         let dynamicFlags=SecCSFlags(rawValue:kSecCSStrictValidate|UInt32(1<<29))
++        diagnosticStage = .dynamicValidity
+         let checked=SecCodeCheckValidity(dynamic,dynamicFlags,requirement);guard checked==errSecSuccess else{throw AuxFreshBootstrapPolicyError.signature(checked)}
+ #else
+         var dynamic:SecCode?;let own=SecCodeCopySelf([],&dynamic);guard own==errSecSuccess,let dynamic=dynamic else{throw AuxFreshBootstrapPolicyError.signature(own)}
+         let requirement=try requirement(),dynamicFlags=SecCSFlags(rawValue:kSecCSStrictValidate|UInt32(1<<29))
++        diagnosticStage = .dynamicValidity
+         let checked=SecCodeCheckValidity(dynamic,dynamicFlags,requirement);guard checked==errSecSuccess else{throw AuxFreshBootstrapPolicyError.signature(checked)}
+         var staticCode:SecStaticCode?;let copied=SecCodeCopyStaticCode(dynamic,[],&staticCode);guard copied==errSecSuccess,let staticCode=staticCode else{throw AuxFreshBootstrapPolicyError.signature(copied)}
+ #endif
++        diagnosticStage = .staticValidity
+         let valid=SecStaticCodeCheckValidity(staticCode,flags,requirement);guard valid==errSecSuccess else{throw AuxFreshBootstrapPolicyError.signature(valid)}
++        diagnosticStage = .signingInformation
+         let info=try signingInfo(staticCode),captured=try signature(info)
+         guard let role=AuxFreshBootstrapPolicyContents.Role.all.first(where:{$0.identifier==captured.identifier})else{throw AuxFreshBootstrapPolicyError.identity}
+         guard captured.accessGroups.count==1 else{throw AuxFreshBootstrapPolicyError.identity}
++        diagnosticStage = .hostSignature
+         try validateCapturedFreshBootstrapSignature(captured,role:role,host:true,accessGroup:captured.accessGroups[0])
++        diagnosticStage = .hostPlist
+         guard let plist=info[kSecCodeInfoPList as String] as? [String:Any],plist["CFBundlePackageType"] as? String=="APPL",plist["CFBundleIdentifier"] as? String==role.identifier,plist["CFBundleExecutable"] as? String==role.executable else{throw AuxFreshBootstrapPolicyError.identity}
++        diagnosticStage = .executableIdentity
+         let executable=try Self.executable(),bundle=URL(fileURLWithPath:executable).deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent().path
+         guard executable==bundle+"/Contents/MacOS/"+role.executable,bundle.hasSuffix(".app"),let declared=info[kSecCodeInfoMainExecutable as String] as? URL,declared.path==executable else{throw AuxFreshBootstrapPolicyError.path}
++        diagnosticStage = .codePath
+         var copiedPath:CFURL?;let located=SecCodeCopyPath(staticCode,[],&copiedPath);guard located==errSecSuccess,let copiedPath=copiedPath,(copiedPath as URL).path==bundle else{throw AuxFreshBootstrapPolicyError.signature(located)}
++        diagnosticStage = .policyResource
+         let bytes=try resource(bundle)
++        diagnosticStage = .policySeal
+         let sealed=SecCodeValidateFileResource(staticCode,AuxFreshBootstrapIdentity.resourceRelative as CFString,bytes as CFData,[]);guard sealed==errSecSuccess else{throw AuxFreshBootstrapPolicyError.signature(sealed)}
++        diagnosticStage = .policyDecode
+         let policy=try AuxFreshBootstrapPolicyContents.decode(bytes);guard policy.role==role,policy.accessGroup==captured.accessGroups[0] else{throw AuxFreshBootstrapPolicyError.policy}
++        diagnosticStage = .daemonRoute
+         try validateFreshBootstrapRebuiltDaemonRoute(policy)
++        diagnosticStage = .images
+         try images(bundle:bundle,policy:policy,requirement:requirement,preparing:preparing)
+ #if AUX_BROWSER_ONLY_NATIVE_STARTUP
++        diagnosticStage = .currentUserParents
+         try prepareCurrentUserParents(policy)
+ #endif
++        diagnosticStage = .privateParent
+         try privateParent(policy.canonicalPrivateParent)
++        diagnosticStage = .resourceReadback
+         guard try resource(bundle)==bytes else{throw AuxFreshBootstrapPolicyError.resource}
++        diagnosticStage = .finalValidity
+         let final=SecStaticCodeCheckValidity(staticCode,flags,requirement),live=SecCodeCheckValidity(dynamic,dynamicFlags,requirement)
+         guard final==errSecSuccess,live==errSecSuccess else{throw AuxFreshBootstrapPolicyError.signature(final != 0 ? final:live)}
++        diagnosticStage = .codeHash
+         guard let cdHash=info[kSecCodeInfoUnique as String] as? Data else{throw AuxFreshBootstrapPolicyError.identity}
+ #if AUX_BROWSER_ONLY_NATIVE_STARTUP
++        diagnosticStage = .currentCodeReadback
+         try current.revalidate()
+ #endif
+         return .init(contents:policy,bytes:bytes,bundle:bundle,cdHash:cdHash.map{String(format:"%02x",$0)}.joined())
++            }catch {
++            auxFreshPolicyDiagnostic(diagnosticStage,error)
++            throw error
++        }
+     }
+ }
+ private extension AuxFreshBootstrapPolicyContents.Role {static let all:[Self]=[.daemon,.cli]}
+@@ -455,13 +542,19 @@
+ private var auxPreparedImageHandles=[UnsafeMutableRawPointer]()
+ extension AuxSignedFreshBootstrapPolicyLoader {
+     fileprivate static func prepareEmbeddedImages()throws {
++        var diagnosticStage:AuxFreshPolicyDiagnosticStage = .prepareEmbeddedImages
++        do {
++        diagnosticStage = .authenticatedBase
+         let policy=try authenticatedBase(preparing:true)
++        diagnosticStage = .imagePreparationPolicy
+         guard policy.contents.embeddedDaemon,policy.contents.role == .daemon else{throw AuxFreshBootstrapPolicyError.policy}
+ #if AUX_BROWSER_ONLY_NATIVE_STARTUP
++        diagnosticStage = .imagePreparationMode
+         guard geteuid() != 0,!policy.contents.includesPdf,!policy.contents.includesMacUtilities,
+               policy.contents.ptyArtifacts == nil else{throw AuxFreshBootstrapPolicyError.policy}
+         // Main-only exact image census is checked by authenticatedBase.
+         // No addon constructor is run, and Node --no-addons prevents later loads.
++        diagnosticStage = .imagePreparationReadback
+         let final=try authenticatedBase(preparing:false)
+         guard final.policySha256==policy.policySha256,final.bundlePath==policy.bundlePath,
+               final.hostCdHash==policy.hostCdHash else{throw AuxFreshBootstrapPolicyError.identity}
+@@ -574,6 +667,10 @@
+         let final=try load()
+         guard final.policySha256==policy.policySha256,final.bundlePath==policy.bundlePath,final.hostCdHash==policy.hostCdHash else{throw AuxFreshBootstrapPolicyError.identity}
+ #endif
++            }catch {
++            auxFreshPolicyDiagnostic(diagnosticStage,error)
++            throw error
++        }
+     }
+ }
+ @_cdecl("AuxPrepareSealedNativeDaemonImages")
+@@ -582,7 +679,7 @@
+     auxImagePreparationLock.lock()
+     if auxImagePreparationStarted {let status:Int32=auxImagePreparationComplete ? 0:-1;auxImagePreparationLock.unlock();return status}
+     auxImagePreparationStarted=true;auxImagePreparationLock.unlock()
+-    do{try AuxSignedFreshBootstrapPolicyLoader.prepareEmbeddedImages();auxImagePreparationLock.lock();auxImagePreparationComplete=true;auxImagePreparationLock.unlock();return 0}catch{return -1}
++    do{try AuxSignedFreshBootstrapPolicyLoader.prepareEmbeddedImages();auxImagePreparationLock.lock();auxImagePreparationComplete=true;auxImagePreparationLock.unlock();return 0}catch{auxFreshPolicyDiagnostic(.prepareEmbeddedImages,error);return -1}
+ }
+ 
+ // Exact finite resource reader shared by full image validation/preparation.
