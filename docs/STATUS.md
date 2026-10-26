@@ -1,3 +1,9 @@
+# Completion implementation resumed — 2026-10-26
+
+Owner approved the two-milestone completion plan: finish the combined local desktop product independently of Apple/vendor/production waits, then close full in-scope pre-release requirements. Initial platform is M-series/macOS27. Backups/setup, legacy migration and distribution remain excluded. Root is diagnosing the exact signed October26 startup failure; three separate worktrees cover runtime source closure, desktop gap correction and provider/hosted preparation. Existing exact repair approvals are retained; no new authority is inferred. Current acceptance remains A38 until the successor actually passes. The current checklist is `docs/ROADMAP-EXECUTION-GRAPH.md`.
+
+Earlier pause/status entries below remain historical.
+
 # Paused at owner request — 2026-10-26
 
 The approved two-addon derivative-signing step is complete: unchanged native-code proof, matching two lifetime objects/54-Swift daemon/browser-framework rebuilds, and daemon/framework/outer reseal all pass. Current signed inventory is `bee6f37ecb39f7d79adfa55bcdba855006c19fc3baad20903f0dc2a96de9f94b`. Actual startup smoke does **not** pass: browser exited before a window or ready service; its exact orphan daemon did not exit on SIGTERM, was stopped with SIGKILL and no children, and all interrupted state remains preserved. No clean drain or full acceptance is claimed. Both agents stopped and their work is committed locally, including the explicitly unjoined/uncompiled generic-fs draft. Backup activation/setup remains owner-deferred. See [pause handoff](integration/proposed/completion-20261026/PAUSE-HANDOFF.md) for current paths, source selection, receipts and resume priorities. Earlier entries below are historical where superseded.
