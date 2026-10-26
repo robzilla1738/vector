@@ -8,5 +8,6 @@
   "candidateChanged": false,
   "reviewChanged": false,
   "EntitlementRequired": true,
-  "compileRecipeSha256": "04bd04528a601db50423ec02be09de7f1d21b49faedc5586bb9ec8ceec969022"
+  "compileRecipeSha256": "04bd04528a601db50423ec02be09de7f1d21b49faedc5586bb9ec8ceec969022",
+  "ptySandboxWrapperCarriesSameSelectedScope": true
 }

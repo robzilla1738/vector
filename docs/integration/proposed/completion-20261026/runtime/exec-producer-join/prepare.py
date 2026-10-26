@@ -62,6 +62,7 @@ replace('async function prepareSessionSpawn(Cn,ei){',(HERE/'source/selected-exec
 replace('),{spawnOptions:{cwd:ii,env:fi,sandboxEnabled:ti.sandbox.enabled', '),auxPrepareSelectedExec(Cn,{spawnOptions:{cwd:ii,env:fi,sandboxEnabled:ti.sandbox.enabled')
 replace('deniedPaths:ti.deniedPaths,detached:!0},release:ri}}catch(Cn){throw ri(),Cn}}','deniedPaths:ti.deniedPaths,detached:!0},release:ri})}catch(Cn){throw ri(),Cn}}')
 replace('let ti=spawnCommand(ei.command,{cwd:ei.cwd,env:ei.env,stdio:[`ignore`,`pipe`,`pipe`],detached:Cn.detached??!1,windowsHide:!0});', 'let ti=auxInvokeSelectedExec(Cn,()=>spawnCommand(ei.command,{cwd:ei.cwd,env:ei.env,stdio:[`ignore`,`pipe`,`pipe`],detached:Cn.detached??!1,windowsHide:!0}));')
+replace('spawnPtyProcess(ei,onStart)', 'spawnPtyProcess({...ei,[auxSelectedExecScope]:Cn[auxSelectedExecScope]},onStart)')
 replace('ni=pty.spawn(ei,ti,{cwd:Cn.cwd,env:{...Cn.env,...PTY_ENV},name:`xterm-256color`,cols:Cn.cols??80,rows:Cn.rows??24,useConptyDll:process.platform===`win32`})','ni=auxInvokeSelectedExec(Cn,()=>pty.spawn(ei,ti,{cwd:Cn.cwd,env:{...Cn.env,...PTY_ENV},name:`xterm-256color`,cols:Cn.cols??80,rows:Cn.rows??24,useConptyDll:process.platform===`win32`}))')
 (HERE/'entry.anchors.json').write_text(json.dumps({'input':str(entry),'inputSha256':sha(entry.read_bytes()),'requires':'Existing selected-builtin-resource auxCaptureReadFileScope/guard; no scope fallback','anchors':anchors,'projectedSha256':sha(s.encode()),'activated':False},indent=2)+'\n')
 Path('/tmp/aux-selected-exec-entry-proposal.mjs').write_text(s)

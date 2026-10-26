@@ -24,11 +24,16 @@
       "count": 1
     },
     {
+      "before": "spawnPtyProcess(ei,onStart)",
+      "after": "spawnPtyProcess({...ei,[auxSelectedExecScope]:Cn[auxSelectedExecScope]},onStart)",
+      "count": 1
+    },
+    {
       "before": "ni=pty.spawn(ei,ti,{cwd:Cn.cwd,env:{...Cn.env,...PTY_ENV},name:`xterm-256color`,cols:Cn.cols??80,rows:Cn.rows??24,useConptyDll:process.platform===`win32`})",
       "after": "ni=auxInvokeSelectedExec(Cn,()=>pty.spawn(ei,ti,{cwd:Cn.cwd,env:{...Cn.env,...PTY_ENV},name:`xterm-256color`,cols:Cn.cols??80,rows:Cn.rows??24,useConptyDll:process.platform===`win32`}))",
       "count": 1
     }
   ],
-  "projectedSha256": "d86e3472a8177e71607011560cdf2771a6079a4cb90c5783e66665b83d130611",
+  "projectedSha256": "b76d77d5d636c056e525a5cfa4877d3b29c83c9a3c87b30bc492741dd93ec6de",
   "activated": false
 }
