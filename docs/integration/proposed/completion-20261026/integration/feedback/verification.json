@@ -1,0 +1,26 @@
+{
+  "format": "aux.private-feedback.source-check.v1",
+  "passed": true,
+  "files": [
+    {
+      "path": "/var/folders/98/j36zgdnd0h507whjl16gxl780000gp/T/aux-private-feedback-source-5BLZYw/index.mjs",
+      "sha256": "c75e43fd51209d137a976b85b0cf6f3a5116d5a0b71f1871e9fd34f60f4fbc4e"
+    },
+    {
+      "path": "/var/folders/98/j36zgdnd0h507whjl16gxl780000gp/T/aux-private-feedback-source-5BLZYw/aux-native-entry.mjs",
+      "sha256": "5b99cdb82f742e26027463ef96f823d51f4cc046239ea2aa2783e509100ae984"
+    }
+  ],
+  "checks": [
+    "actual account-bound upload helper authenticated intent/PUT/verified commit",
+    "nonready/upload failure refuses success",
+    "incarnation change prevents commit",
+    "session change/no cloud/size bound before upload",
+    "pending original promise settles before broker release",
+    "paired exact reverse and full syntax",
+    "truthful same-style UI copy syntax"
+  ],
+  "productExecuted": false,
+  "cloudWrite": false,
+  "credentialsRead": false
+}

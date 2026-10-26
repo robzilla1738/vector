@@ -1,0 +1,25 @@
+{
+  "format": "aux.session-feedback.private-custody.v1",
+  "originalPair": [
+    "48af998738fb6d2fc30cb8d5b2e9de03cb04ab7d8563ebdaa5fe8100944fc514",
+    "f355833cb607963a65ca3108e7ae19ea7ca60192a9f3d8e2644a3c12ec49c808"
+  ],
+  "uiOriginalSha256": "6d8dcffd3758ba3454084c5b561cbb01168c21972f875f59f3651ea388018d87",
+  "currentSourceReceipt": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/integrator/paired-source-a6.json",
+  "rules": [
+    {
+      "scope": "pair existing session feedback mutation to private attachment custody",
+      "sourceFind": "reportFeedback:sessionByIdProcedure.input(reportFeedbackInputSchema).mutation(async({input:Cn,ctx:ei})=>{let ti=await buildSessionFeedbackDump(ei.accountId,ei.session),ni=AccountRegistry.getAccount(ei.accountId),ri=ni?.userId?await uploadSessionFeedbackDump(ei.accountId,ei.session.id,ti).catch(Cn=>{logger.alert(`[Feedback] Session dump upload failed; inlining the dump`,{accountId:ei.accountId,error:Cn,sessionId:ei.session.id})}):void 0;return fetchAuxAPI(`/voc/session-feedback`,{body:{accountId:ei.accountId,analyticsId:AccountRegistry.resolveAnalyticsId(ei.accountId),asideComponentVersion:DAEMON_VERSION,comment:Cn.comment,model:ei.session.model,reporter:ni?{email:ni.email,name:ni.name,userId:ni.userId}:void 0,...ri?{sessionDumpKey:ri}:{sessionDump:ti},sessionId:ei.session.id,status:ei.session.status,title:ei.session.title||`Untitled session`},fallbackErrorMessage:`Failed to submit session feedback.`,method:`POST`,output:sessionFeedbackResponseSchema})})",
+      "find": "reportFeedback:sessionByIdProcedure.input(reportFeedbackInputSchema).mutation(async({input:Cn,ctx:ei})=>{let ti=await buildSessionFeedbackDump(ei.accountId,ei.session),ni=AccountRegistry.getAccount(ei.accountId),ri=ni?.userId?await uploadSessionFeedbackDump(ei.accountId,ei.session.id,ti).catch(Cn=>{logger.alert(`[Feedback] Session dump upload failed; inlining the dump`,{accountId:ei.accountId,error:Cn,sessionId:ei.session.id})}):void 0;return fetchAuxAPI(`/voc/session-feedback`,{body:{accountId:ei.accountId,analyticsId:AccountRegistry.resolveAnalyticsId(ei.accountId),auxComponentVersion:DAEMON_VERSION,comment:Cn.comment,model:ei.session.model,reporter:ni?{email:ni.email,name:ni.name,userId:ni.userId}:void 0,...ri?{sessionDumpKey:ri}:{sessionDump:ti},sessionId:ei.session.id,status:ei.session.status,title:ei.session.title||`Untitled session`},fallbackErrorMessage:`Failed to submit session feedback.`,method:`POST`,output:sessionFeedbackResponseSchema})})",
+      "replace": "reportFeedback:sessionByIdProcedure.input(reportFeedbackInputSchema).mutation(async({input:Cn,ctx:ei})=>auxSubmitSessionFeedback(ei.accountId,ei.session,Cn.comment))"
+    },
+    {
+      "scope": "remove unused incompatible upload receiver caller",
+      "find": "async function uploadSessionFeedbackDump(Cn,ei,ti){let{key:ni,url:ri}=await fetchAuxAPIAuthenticated(Cn,`/voc/session-feedback/upload`,{body:{sessionId:ei},method:`POST`,output:sessionDumpUploadSchema}),ii=await fetch(ri,{method:`PUT`,headers:{\"content-type\":`application/json`},body:JSON.stringify(ti)});if(!ii.ok)throw Error(`Session dump upload failed (${ii.status})`);return ni}",
+      "replace": ""
+    }
+  ],
+  "cloudSchemaMigrations": 12,
+  "serviceSourceChanged": false,
+  "newServiceOrRecipient": false
+}

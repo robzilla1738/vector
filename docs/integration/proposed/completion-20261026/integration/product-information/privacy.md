@@ -14,6 +14,10 @@ The proposed Aux cloud uses Clerk for identity/session services, Vercel for the 
 
 Private files are not intended to be public by default. Creating a share gives access through the chosen sharing capability; revocation and deletion require their actual service operations. Do not share material you lack permission to disclose. Email sign-in and other transactional messages necessarily pass their addressing/delivery information to the configured email or identity provider.
 
+## Feedback reports
+
+If you explicitly save session feedback, the source adapter submits your comment and the existing session-data export as a bounded JSON report through authenticated private attachment storage. Aux service operators with the existing private-store custody can read that report for review; it is not hidden from the operator by client-only encryption. The success message confirms verified private storage, not an email, response or human review. Actual storage and operator readback acceptance remain pending for this preview. Reports follow existing attachment quota, account access and deletion/purge handling and can be included in approved recovery captures. A distinct feedback review/retention policy and contact still require owner/legal approval; the upload token's expiry is not a ready report's deletion deadline.
+
 ## Recovery and diagnostics
 
 Recovery source can encrypt a database/private-file capture for storage in the configured Cloudflare R2 recovery bucket. Scheduled operation, alerts, independent recovery-key custody and isolated restore are not yet accepted for the production service. A configured retention target is not proof that a deletion or backup deadline has been met. Operational records may be needed to investigate failed requests and incomplete writes; credentials and private payloads must be excluded from diagnostic output.
