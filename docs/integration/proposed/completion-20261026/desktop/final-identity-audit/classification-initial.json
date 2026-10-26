@@ -1,0 +1,439 @@
+{
+  "format": "aux.final-artifact.identity-classification.v1",
+  "receipt": {
+    "path": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-completion-20261026-a1/receipt.json",
+    "sha256": "44d6fc9e168cfc03b8528aaeb500175bfbc052cf2cb5e9a5d3d57114f9b27a3c"
+  },
+  "inventorySha256": "720682cc99bc148cf9a684cd88bfbd5b8a690f81e190c91f93957f66a5d6bb8e",
+  "scope": "Initial unsigned assembly only, before root metadata/resource/logo successor",
+  "rows": [
+    {
+      "path": "Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/node-development/index.mjs",
+      "sha256": "c75e43fd51209d137a976b85b0cf6f3a5116d5a0b71f1871e9fd34f60f4fbc4e",
+      "token": "asideCode:boolean$1",
+      "count": 1,
+      "classification": "versioned-known-legacy-experimental-reader"
+    },
+    {
+      "path": "Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/node-development/index.mjs",
+      "sha256": "c75e43fd51209d137a976b85b0cf6f3a5116d5a0b71f1871e9fd34f60f4fbc4e",
+      "token": "asideCode",
+      "count": 3,
+      "classification": "versioned-known-legacy-experimental-reader"
+    },
+    {
+      "path": "Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/node-development/index.mjs",
+      "sha256": "c75e43fd51209d137a976b85b0cf6f3a5116d5a0b71f1871e9fd34f60f4fbc4e",
+      "token": "aside.base.basefont.blockquote.body.caption.center.col.colgroup.dd.details.dialog.dir.div.dl.dt.fieldset.figcaption.figure.footer.form.frame.frameset.h1.h2.h3.h4.h5.h6.head.header.hr.html.iframe.legend.li.link.main.menu.menuitem.nav.noframes.ol.optgroup.option.p.param.search.section.summary.table.tbody.td.tfoot.th.thead.title.tr.track.ul",
+      "count": 1,
+      "classification": "HTML-semantic-or-upstream-selector-reviewed-in-context"
+    },
+    {
+      "path": "Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/node-development/index.mjs",
+      "sha256": "c75e43fd51209d137a976b85b0cf6f3a5116d5a0b71f1871e9fd34f60f4fbc4e",
+      "token": "aside:",
+      "count": 2,
+      "classification": "HTML-semantic-or-upstream-selector-reviewed-in-context"
+    },
+    {
+      "path": "Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/node-development/index.mjs",
+      "sha256": "c75e43fd51209d137a976b85b0cf6f3a5116d5a0b71f1871e9fd34f60f4fbc4e",
+      "token": "aside",
+      "count": 52,
+      "classification": "HTML-semantic-or-upstream-selector-reviewed-in-context"
+    },
+    {
+      "path": "Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/node-development/index.mjs",
+      "sha256": "c75e43fd51209d137a976b85b0cf6f3a5116d5a0b71f1871e9fd34f60f4fbc4e",
+      "token": "aside-world.ts",
+      "count": 1,
+      "classification": "truthful-source-region-provenance"
+    },
+    {
+      "path": "Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/node-development/index.mjs",
+      "sha256": "c75e43fd51209d137a976b85b0cf6f3a5116d5a0b71f1871e9fd34f60f4fbc4e",
+      "token": "aside/routines/$",
+      "count": 1,
+      "classification": "active-cloud-routine-path-producer-fixed-by-paired-integration-source"
+    },
+    {
+      "path": "Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/node-development/index.mjs",
+      "sha256": "c75e43fd51209d137a976b85b0cf6f3a5116d5a0b71f1871e9fd34f60f4fbc4e",
+      "token": "aside.b.bdi.bdo.cite.content.code.dd.dfn.dt.em.figcaption.figure.footer.header.hgroup.i.kbd.main.mark.nav.noscript.rb.rp.rt.rtc.ruby.s.samp.section.small.strong.sub.summary.sup.u.var.wbr.acronym.basefont.big.center.nobr.noembed.noframes.plaintext.strike.tt",
+      "count": 1,
+      "classification": "HTML-semantic-or-upstream-selector-reviewed-in-context"
+    },
+    {
+      "path": "Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/node-development/index.mjs",
+      "sha256": "c75e43fd51209d137a976b85b0cf6f3a5116d5a0b71f1871e9fd34f60f4fbc4e",
+      "token": "aside-gmail-compose-",
+      "count": 1,
+      "classification": "active-Trusted-Types-producer-fixed-by-paired-integration-source"
+    },
+    {
+      "path": "Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/node-development/index.mjs",
+      "sha256": "c75e43fd51209d137a976b85b0cf6f3a5116d5a0b71f1871e9fd34f60f4fbc4e",
+      "token": "aside-gdocs-driver",
+      "count": 1,
+      "classification": "active-Trusted-Types-producer-fixed-by-paired-integration-source"
+    },
+    {
+      "path": "Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/node-development/index.mjs",
+      "sha256": "c75e43fd51209d137a976b85b0cf6f3a5116d5a0b71f1871e9fd34f60f4fbc4e",
+      "token": "aside-sheets-paste",
+      "count": 1,
+      "classification": "active-Trusted-Types-producer-fixed-by-paired-integration-source"
+    },
+    {
+      "path": "Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/node-development/index.mjs",
+      "sha256": "c75e43fd51209d137a976b85b0cf6f3a5116d5a0b71f1871e9fd34f60f4fbc4e",
+      "token": "asidecomputeruse",
+      "count": 2,
+      "classification": "defensive-upstream-application-exclusion"
+    },
+    {
+      "path": "Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/node-development/index.mjs",
+      "sha256": "c75e43fd51209d137a976b85b0cf6f3a5116d5a0b71f1871e9fd34f60f4fbc4e",
+      "token": "aside:not",
+      "count": 1,
+      "classification": "HTML-semantic-or-upstream-selector-reviewed-in-context"
+    },
+    {
+      "path": "Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/node-development/index.mjs",
+      "sha256": "c75e43fd51209d137a976b85b0cf6f3a5116d5a0b71f1871e9fd34f60f4fbc4e",
+      "token": "aside_pro_month",
+      "count": 1,
+      "classification": "disabled-external-billing-contract-not-renamed"
+    },
+    {
+      "path": "Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/node-development/index.mjs",
+      "sha256": "c75e43fd51209d137a976b85b0cf6f3a5116d5a0b71f1871e9fd34f60f4fbc4e",
+      "token": "aside_pro_year",
+      "count": 1,
+      "classification": "disabled-external-billing-contract-not-renamed"
+    },
+    {
+      "path": "Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/node-development/index.mjs",
+      "sha256": "c75e43fd51209d137a976b85b0cf6f3a5116d5a0b71f1871e9fd34f60f4fbc4e",
+      "token": "aside_max_month",
+      "count": 1,
+      "classification": "disabled-external-billing-contract-not-renamed"
+    },
+    {
+      "path": "Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/node-development/index.mjs",
+      "sha256": "c75e43fd51209d137a976b85b0cf6f3a5116d5a0b71f1871e9fd34f60f4fbc4e",
+      "token": "aside_max_year",
+      "count": 1,
+      "classification": "disabled-external-billing-contract-not-renamed"
+    },
+    {
+      "path": "Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/node-development/index.mjs",
+      "sha256": "c75e43fd51209d137a976b85b0cf6f3a5116d5a0b71f1871e9fd34f60f4fbc4e",
+      "token": "aside:password-manager-preference:start",
+      "count": 1,
+      "classification": "versioned-known-legacy-preference-reader"
+    },
+    {
+      "path": "Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/node-development/index.mjs",
+      "sha256": "c75e43fd51209d137a976b85b0cf6f3a5116d5a0b71f1871e9fd34f60f4fbc4e",
+      "token": "aside:password-manager-preference:end",
+      "count": 1,
+      "classification": "versioned-known-legacy-preference-reader"
+    },
+    {
+      "path": "Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/node-development/index.mjs",
+      "sha256": "c75e43fd51209d137a976b85b0cf6f3a5116d5a0b71f1871e9fd34f60f4fbc4e",
+      "token": "Aux Vault",
+      "count": 10,
+      "classification": "Vault-core-or-onboarding-or-protected-page-requires-reachability-classification"
+    },
+    {
+      "path": "Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/node-development/index.mjs",
+      "sha256": "c75e43fd51209d137a976b85b0cf6f3a5116d5a0b71f1871e9fd34f60f4fbc4e",
+      "token": "Aux vault",
+      "count": 3,
+      "classification": "Vault-core-or-onboarding-or-protected-page-requires-reachability-classification"
+    },
+    {
+      "path": "Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/node-development/aux-native-entry.mjs",
+      "sha256": "5b99cdb82f742e26027463ef96f823d51f4cc046239ea2aa2783e509100ae984",
+      "token": "asideCode:boolean$1",
+      "count": 1,
+      "classification": "versioned-known-legacy-experimental-reader"
+    },
+    {
+      "path": "Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/node-development/aux-native-entry.mjs",
+      "sha256": "5b99cdb82f742e26027463ef96f823d51f4cc046239ea2aa2783e509100ae984",
+      "token": "asideCode",
+      "count": 3,
+      "classification": "versioned-known-legacy-experimental-reader"
+    },
+    {
+      "path": "Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/node-development/aux-native-entry.mjs",
+      "sha256": "5b99cdb82f742e26027463ef96f823d51f4cc046239ea2aa2783e509100ae984",
+      "token": "aside.base.basefont.blockquote.body.caption.center.col.colgroup.dd.details.dialog.dir.div.dl.dt.fieldset.figcaption.figure.footer.form.frame.frameset.h1.h2.h3.h4.h5.h6.head.header.hr.html.iframe.legend.li.link.main.menu.menuitem.nav.noframes.ol.optgroup.option.p.param.search.section.summary.table.tbody.td.tfoot.th.thead.title.tr.track.ul",
+      "count": 1,
+      "classification": "HTML-semantic-or-upstream-selector-reviewed-in-context"
+    },
+    {
+      "path": "Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/node-development/aux-native-entry.mjs",
+      "sha256": "5b99cdb82f742e26027463ef96f823d51f4cc046239ea2aa2783e509100ae984",
+      "token": "aside:",
+      "count": 2,
+      "classification": "HTML-semantic-or-upstream-selector-reviewed-in-context"
+    },
+    {
+      "path": "Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/node-development/aux-native-entry.mjs",
+      "sha256": "5b99cdb82f742e26027463ef96f823d51f4cc046239ea2aa2783e509100ae984",
+      "token": "aside",
+      "count": 52,
+      "classification": "HTML-semantic-or-upstream-selector-reviewed-in-context"
+    },
+    {
+      "path": "Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/node-development/aux-native-entry.mjs",
+      "sha256": "5b99cdb82f742e26027463ef96f823d51f4cc046239ea2aa2783e509100ae984",
+      "token": "aside-world.ts",
+      "count": 1,
+      "classification": "truthful-source-region-provenance"
+    },
+    {
+      "path": "Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/node-development/aux-native-entry.mjs",
+      "sha256": "5b99cdb82f742e26027463ef96f823d51f4cc046239ea2aa2783e509100ae984",
+      "token": "aside/routines/$",
+      "count": 1,
+      "classification": "active-cloud-routine-path-producer-fixed-by-paired-integration-source"
+    },
+    {
+      "path": "Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/node-development/aux-native-entry.mjs",
+      "sha256": "5b99cdb82f742e26027463ef96f823d51f4cc046239ea2aa2783e509100ae984",
+      "token": "aside.b.bdi.bdo.cite.content.code.dd.dfn.dt.em.figcaption.figure.footer.header.hgroup.i.kbd.main.mark.nav.noscript.rb.rp.rt.rtc.ruby.s.samp.section.small.strong.sub.summary.sup.u.var.wbr.acronym.basefont.big.center.nobr.noembed.noframes.plaintext.strike.tt",
+      "count": 1,
+      "classification": "HTML-semantic-or-upstream-selector-reviewed-in-context"
+    },
+    {
+      "path": "Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/node-development/aux-native-entry.mjs",
+      "sha256": "5b99cdb82f742e26027463ef96f823d51f4cc046239ea2aa2783e509100ae984",
+      "token": "aside-gmail-compose-",
+      "count": 1,
+      "classification": "active-Trusted-Types-producer-fixed-by-paired-integration-source"
+    },
+    {
+      "path": "Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/node-development/aux-native-entry.mjs",
+      "sha256": "5b99cdb82f742e26027463ef96f823d51f4cc046239ea2aa2783e509100ae984",
+      "token": "aside-gdocs-driver",
+      "count": 1,
+      "classification": "active-Trusted-Types-producer-fixed-by-paired-integration-source"
+    },
+    {
+      "path": "Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/node-development/aux-native-entry.mjs",
+      "sha256": "5b99cdb82f742e26027463ef96f823d51f4cc046239ea2aa2783e509100ae984",
+      "token": "aside-sheets-paste",
+      "count": 1,
+      "classification": "active-Trusted-Types-producer-fixed-by-paired-integration-source"
+    },
+    {
+      "path": "Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/node-development/aux-native-entry.mjs",
+      "sha256": "5b99cdb82f742e26027463ef96f823d51f4cc046239ea2aa2783e509100ae984",
+      "token": "asidecomputeruse",
+      "count": 2,
+      "classification": "defensive-upstream-application-exclusion"
+    },
+    {
+      "path": "Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/node-development/aux-native-entry.mjs",
+      "sha256": "5b99cdb82f742e26027463ef96f823d51f4cc046239ea2aa2783e509100ae984",
+      "token": "aside:not",
+      "count": 1,
+      "classification": "HTML-semantic-or-upstream-selector-reviewed-in-context"
+    },
+    {
+      "path": "Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/node-development/aux-native-entry.mjs",
+      "sha256": "5b99cdb82f742e26027463ef96f823d51f4cc046239ea2aa2783e509100ae984",
+      "token": "aside_pro_month",
+      "count": 1,
+      "classification": "disabled-external-billing-contract-not-renamed"
+    },
+    {
+      "path": "Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/node-development/aux-native-entry.mjs",
+      "sha256": "5b99cdb82f742e26027463ef96f823d51f4cc046239ea2aa2783e509100ae984",
+      "token": "aside_pro_year",
+      "count": 1,
+      "classification": "disabled-external-billing-contract-not-renamed"
+    },
+    {
+      "path": "Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/node-development/aux-native-entry.mjs",
+      "sha256": "5b99cdb82f742e26027463ef96f823d51f4cc046239ea2aa2783e509100ae984",
+      "token": "aside_max_month",
+      "count": 1,
+      "classification": "disabled-external-billing-contract-not-renamed"
+    },
+    {
+      "path": "Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/node-development/aux-native-entry.mjs",
+      "sha256": "5b99cdb82f742e26027463ef96f823d51f4cc046239ea2aa2783e509100ae984",
+      "token": "aside_max_year",
+      "count": 1,
+      "classification": "disabled-external-billing-contract-not-renamed"
+    },
+    {
+      "path": "Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/node-development/aux-native-entry.mjs",
+      "sha256": "5b99cdb82f742e26027463ef96f823d51f4cc046239ea2aa2783e509100ae984",
+      "token": "aside:password-manager-preference:start",
+      "count": 1,
+      "classification": "versioned-known-legacy-preference-reader"
+    },
+    {
+      "path": "Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/node-development/aux-native-entry.mjs",
+      "sha256": "5b99cdb82f742e26027463ef96f823d51f4cc046239ea2aa2783e509100ae984",
+      "token": "aside:password-manager-preference:end",
+      "count": 1,
+      "classification": "versioned-known-legacy-preference-reader"
+    },
+    {
+      "path": "Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/node-development/aux-native-entry.mjs",
+      "sha256": "5b99cdb82f742e26027463ef96f823d51f4cc046239ea2aa2783e509100ae984",
+      "token": "Aux Vault",
+      "count": 10,
+      "classification": "Vault-core-or-onboarding-or-protected-page-requires-reachability-classification"
+    },
+    {
+      "path": "Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/node-development/aux-native-entry.mjs",
+      "sha256": "5b99cdb82f742e26027463ef96f823d51f4cc046239ea2aa2783e509100ae984",
+      "token": "Aux vault",
+      "count": 3,
+      "classification": "Vault-core-or-onboarding-or-protected-page-requires-reachability-classification"
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/background.js",
+      "sha256": "5eff26a667e650969311ca9341b66876e678960ac08dfd1419f00e33c529926f",
+      "token": "aside.daemonAuth",
+      "count": 1,
+      "classification": "active-Agent-contract-fixed-by-paired-v2-source"
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/background.js",
+      "sha256": "5eff26a667e650969311ca9341b66876e678960ac08dfd1419f00e33c529926f",
+      "token": "aside-capture",
+      "count": 2,
+      "classification": "active-Agent-contract-fixed-by-paired-v2-source"
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/background.js",
+      "sha256": "5eff26a667e650969311ca9341b66876e678960ac08dfd1419f00e33c529926f",
+      "token": "aside.lasso-storage-bridge",
+      "count": 2,
+      "classification": "active-Agent-contract-fixed-by-paired-v2-source"
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/background.js",
+      "sha256": "5eff26a667e650969311ca9341b66876e678960ac08dfd1419f00e33c529926f",
+      "token": "aside.lasso.v1",
+      "count": 1,
+      "classification": "active-Agent-contract-fixed-by-paired-v2-source"
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/background.js",
+      "sha256": "5eff26a667e650969311ca9341b66876e678960ac08dfd1419f00e33c529926f",
+      "token": "aside.profileMetadataSync.v1",
+      "count": 1,
+      "classification": "active-Agent-contract-fixed-by-paired-v2-source"
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/background.js",
+      "sha256": "5eff26a667e650969311ca9341b66876e678960ac08dfd1419f00e33c529926f",
+      "token": "aside-remix-gmail",
+      "count": 1,
+      "classification": "active-Agent-contract-fixed-by-paired-v2-source"
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/background.js",
+      "sha256": "5eff26a667e650969311ca9341b66876e678960ac08dfd1419f00e33c529926f",
+      "token": "aside-remix-slack",
+      "count": 1,
+      "classification": "active-Agent-contract-fixed-by-paired-v2-source"
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/background.js",
+      "sha256": "5eff26a667e650969311ca9341b66876e678960ac08dfd1419f00e33c529926f",
+      "token": "aside.remix.v1",
+      "count": 1,
+      "classification": "active-Agent-contract-fixed-by-paired-v2-source"
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/background.js",
+      "sha256": "5eff26a667e650969311ca9341b66876e678960ac08dfd1419f00e33c529926f",
+      "token": "aside.remix.pending.v1",
+      "count": 1,
+      "classification": "active-Agent-contract-fixed-by-paired-v2-source"
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/background.js",
+      "sha256": "5eff26a667e650969311ca9341b66876e678960ac08dfd1419f00e33c529926f",
+      "token": "aside-remix-user-",
+      "count": 1,
+      "classification": "active-Agent-contract-fixed-by-paired-v2-source"
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/background.js",
+      "sha256": "5eff26a667e650969311ca9341b66876e678960ac08dfd1419f00e33c529926f",
+      "token": "aside",
+      "count": 1,
+      "classification": "active-Agent-contract-fixed-by-paired-v2-source"
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/background.js",
+      "sha256": "5eff26a667e650969311ca9341b66876e678960ac08dfd1419f00e33c529926f",
+      "token": "aside.remix.v1:",
+      "count": 1,
+      "classification": "active-Agent-contract-fixed-by-paired-v2-source"
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/mcps-DmPp5oo9.js",
+      "sha256": "0628abf121307a43567addaa792eb9f13c9b72e47c75f8d3cbe9f316a5ece79a",
+      "token": "asideCode:m",
+      "count": 1,
+      "classification": "versioned-known-legacy-experimental-reader"
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/mcps-DmPp5oo9.js",
+      "sha256": "0628abf121307a43567addaa792eb9f13c9b72e47c75f8d3cbe9f316a5ece79a",
+      "token": "asideCode",
+      "count": 3,
+      "classification": "versioned-known-legacy-experimental-reader"
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/mcps-DmPp5oo9.js",
+      "sha256": "0628abf121307a43567addaa792eb9f13c9b72e47c75f8d3cbe9f316a5ece79a",
+      "token": "aside-mcp-oauth",
+      "count": 1,
+      "classification": "active-Agent-contract-fixed-by-paired-v2-source"
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/session-composer-Dc0LRfZA.js",
+      "sha256": "3eaa9c8f0946ad2b20a63f0b80f0acb0ad79835061050eb09dff2fbd3c791144",
+      "token": "aside-code",
+      "count": 3,
+      "classification": "active-Agent-contract-fixed-by-paired-v2-source"
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/provider-Cw0zhujt.js",
+      "sha256": "c4862e5ac3e442c203039edf7253c5af9627be724e70d0e20f693243e40c210e",
+      "token": "aside-code",
+      "count": 6,
+      "classification": "active-Agent-contract-fixed-by-paired-v2-source"
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/route-TQyeTEXE.js",
+      "sha256": "468e9e336a9127198dc0b45902990ca3a6b6bcdbbe0c8fab1871d23492ec59a8",
+      "token": "aside",
+      "count": 1,
+      "classification": "HTML-semantic-or-upstream-selector-reviewed-in-context"
+    }
+  ],
+  "sourceSuccessors": {
+    "Agent": "1c8dd928d",
+    "TrustedTypesVaultRoutine": "integration702374680",
+    "catalogRecipe": "b3622b777"
+  },
+  "sourcePreparedDoesNotProveArtifactFixed": true,
+  "wholeIdentityComplete": false,
+  "runtimeVerified": false
+}

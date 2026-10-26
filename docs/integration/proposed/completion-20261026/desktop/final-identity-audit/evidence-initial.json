@@ -1,0 +1,1480 @@
+{
+  "format": "aux.final-artifact.identity-evidence.v1",
+  "receipt": {
+    "path": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-completion-20261026-a1/receipt.json",
+    "sha256": "44d6fc9e168cfc03b8528aaeb500175bfbc052cf2cb5e9a5d3d57114f9b27a3c"
+  },
+  "app": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-completion-20261026-a1/Aux.app",
+  "inventorySha256": "720682cc99bc148cf9a684cd88bfbd5b8a690f81e190c91f93957f66a5d6bb8e",
+  "inventoryLeaves": 11189,
+  "selectedChangedTextFiles": [
+    "Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/node-development/index.mjs",
+    "Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/node-development/aux-native-entry.mjs",
+    "Contents/Resources/aux/apps/extension/dist/background.js",
+    "Contents/Resources/aux/apps/extension/dist/assets/developers-DTvaoVBC.js",
+    "Contents/Resources/aux/apps/extension/dist/assets/connect-dialog-CacgpFap.js",
+    "Contents/Resources/aux/apps/extension/dist/assets/newtab-CnOLQ0yu.js",
+    "Contents/Resources/aux/apps/extension/dist/assets/session-feedback-dialog-BjDg0W8m.js",
+    "Contents/Resources/aux/apps/extension/dist/assets/mcps-DmPp5oo9.js",
+    "Contents/Resources/aux/apps/extension/dist/assets/experimental-Xq3YsEPK.js",
+    "Contents/Resources/aux/apps/extension/dist/assets/session-composer-Dc0LRfZA.js",
+    "Contents/Resources/aux/apps/extension/dist/assets/provider-Cw0zhujt.js",
+    "Contents/Resources/aux/apps/extension/dist/assets/_skillId-CAwCRjA8.js",
+    "Contents/Resources/aux/apps/extension/dist/assets/tag-icon-DeMC7uIN.js",
+    "Contents/Resources/aux/apps/extension/dist/assets/splash-D666ivBP.js",
+    "Contents/Resources/aux/apps/extension/dist/assets/route-TQyeTEXE.js",
+    "Contents/Resources/aux/apps/extension/dist/assets/ai-CzEX5E7S.js",
+    "Contents/Resources/aux/apps/extension/dist/assets/add-on-credits-dialog-Dn5FxOyZ.js",
+    "Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/native/runtime-text-root.json",
+    "Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/native/runtime-bootstrap.cjs",
+    "Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/AuxFreshBootstrapPolicy.json"
+  ],
+  "reads": [
+    {
+      "path": "Contents/Resources/aux/bundle.json",
+      "sha256": "1b20aee804c3b3f300bf1f3e358d5ee381b448815bdcba53373b1bb73cc801c4",
+      "bytes": 4483814
+    },
+    {
+      "path": "Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/node-development/index.mjs",
+      "sha256": "c75e43fd51209d137a976b85b0cf6f3a5116d5a0b71f1871e9fd34f60f4fbc4e",
+      "bytes": 12371870
+    },
+    {
+      "path": "Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/node-development/aux-native-entry.mjs",
+      "sha256": "5b99cdb82f742e26027463ef96f823d51f4cc046239ea2aa2783e509100ae984",
+      "bytes": 12374979
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/background.js",
+      "sha256": "5eff26a667e650969311ca9341b66876e678960ac08dfd1419f00e33c529926f",
+      "bytes": 414896
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/developers-DTvaoVBC.js",
+      "sha256": "7c22f0e3970ecf39c0497cdab3dc0103cb794e73f3b93f1b20f82f94dc0f5958",
+      "bytes": 20273
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/connect-dialog-CacgpFap.js",
+      "sha256": "8f10c421607cc4ac4fc83fb04b0eef80c38721534926fac5d22efb810a1274c2",
+      "bytes": 40202
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/newtab-CnOLQ0yu.js",
+      "sha256": "eef65df02f862b13dcf9951f3f8cb81d1e6875a6dc6e7b782c954f23e7e69539",
+      "bytes": 41080
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/session-feedback-dialog-BjDg0W8m.js",
+      "sha256": "e6453c89839e89125fb9821d0c1f1dfbacf1fbf9d54b4e20bc6e6a5436723d83",
+      "bytes": 3361
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/mcps-DmPp5oo9.js",
+      "sha256": "0628abf121307a43567addaa792eb9f13c9b72e47c75f8d3cbe9f316a5ece79a",
+      "bytes": 48772
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/experimental-Xq3YsEPK.js",
+      "sha256": "7605e2eba17406c5317720229d2a52f58824ce1203a7829516ed5379e3654081",
+      "bytes": 11365
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/session-composer-Dc0LRfZA.js",
+      "sha256": "3eaa9c8f0946ad2b20a63f0b80f0acb0ad79835061050eb09dff2fbd3c791144",
+      "bytes": 349853
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/provider-Cw0zhujt.js",
+      "sha256": "c4862e5ac3e442c203039edf7253c5af9627be724e70d0e20f693243e40c210e",
+      "bytes": 128394
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/_skillId-CAwCRjA8.js",
+      "sha256": "1a39b9401e5144d365b363e01f77601d311b3f515bb83d802b492b664064052d",
+      "bytes": 16902
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/tag-icon-DeMC7uIN.js",
+      "sha256": "0d9e393739847e63f98b7006a83986ff2513da62a5c46351d4c83f717052cfff",
+      "bytes": 411273
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/splash-D666ivBP.js",
+      "sha256": "85486d9e4b8d1ce9965b41c26ba808df3501be3d638cc860c6ce45773d7a0921",
+      "bytes": 67901
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/route-TQyeTEXE.js",
+      "sha256": "468e9e336a9127198dc0b45902990ca3a6b6bcdbbe0c8fab1871d23492ec59a8",
+      "bytes": 68336
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/ai-CzEX5E7S.js",
+      "sha256": "d1c597e52b370e6759c4f4e0bb89021be768a615c3ba06e111f839c66e11df3b",
+      "bytes": 20762
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/add-on-credits-dialog-Dn5FxOyZ.js",
+      "sha256": "e0012bbed6365fd0c9c4b7e23fee41ca02a3b9ca7e004cd743c58b8fc19bb73c",
+      "bytes": 16300
+    },
+    {
+      "path": "Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/native/runtime-text-root.json",
+      "sha256": "a36d05c80e96470c1df1f32c61f39f0d517b074f3c21ed4335dd57638ebdd783",
+      "bytes": 189
+    },
+    {
+      "path": "Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/native/runtime-bootstrap.cjs",
+      "sha256": "06717ab918188a76f4101336fffe297f044792a183cde73efcab4a59af428fcf",
+      "bytes": 7664
+    },
+    {
+      "path": "Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/AuxFreshBootstrapPolicy.json",
+      "sha256": "0ea7e93e94de7f07006aa4389fa842acb61bc50a37d682941a8d2dcf8e837b65",
+      "bytes": 725
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/manifest.json",
+      "sha256": "d1d616d82f60e06309c0e8664144eb785d13451451eb63665f3b862fbb030828",
+      "bytes": 3282
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/main.html",
+      "sha256": "ac8ed7042bd6cf79ea674d888b46c6161d8a2372cd7d49d42b1482f1489a99d7",
+      "bytes": 6590
+    },
+    {
+      "path": "Contents/Info.plist",
+      "sha256": "ce4ef0823e6bbf21e3b31ca6b0cc8e6b0af56fcd2fe7471763760da0e9c8e49c",
+      "bytes": 18558
+    },
+    {
+      "path": "Contents/Resources/app.icns",
+      "sha256": "bc9826cef6295b7806693bdfc107e6901388ecfbd73236874c8fb19786b64f35",
+      "bytes": 111899
+    }
+  ],
+  "findings": [
+    {
+      "path": "Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/node-development/index.mjs",
+      "sha256": "c75e43fd51209d137a976b85b0cf6f3a5116d5a0b71f1871e9fd34f60f4fbc4e",
+      "findings": [
+        {
+          "kind": "oldNamedIdentity",
+          "token": "asideCode:boolean$1",
+          "count": 1,
+          "contexts": [
+            {
+              "byteOffset": 1826282,
+              "line": 1860,
+              "context": "efault(!1),kakaotalk:boolean$1().default(!1),onboarding:boolean$1().default(!1),format:string$3().optional(),auxCode:boolean$1().optional(),asideCode:boolean$1().optional(),compactionLimits:boolean$1().default(!1)}).transform(function migrateAuxExperimentalSettings(value) {\n  const format = 'aux.experimental.v2';\n  if"
+            }
+          ]
+        },
+        {
+          "kind": "oldNamedIdentity",
+          "token": "asideCode",
+          "count": 3,
+          "contexts": [
+            {
+              "byteOffset": 1826643,
+              "line": 1864,
+              "context": "at !== format)\n    throw Error('Unsupported Aux experimental settings version.');\n  if (value.format !== undefined && Object.hasOwn(value, 'asideCode') ||\n      value.format === undefined && Object.hasOwn(value, 'auxCode'))\n    throw Error('Ambiguous Aux experimental settings generation.');\n  const {asideCod"
+            },
+            {
+              "byteOffset": 1826804,
+              "line": 1867,
+              "context": "value.format === undefined && Object.hasOwn(value, 'auxCode'))\n    throw Error('Ambiguous Aux experimental settings generation.');\n  const {asideCode, auxCode, format: previousFormat, ...settings} = value;\n  return {...settings, format, auxCode: (previousFormat === format ? auxCode : asideCode) ?? false};\n})"
+            },
+            {
+              "byteOffset": 1826949,
+              "line": 1868,
+              "context": "Code, auxCode, format: previousFormat, ...settings} = value;\n  return {...settings, format, auxCode: (previousFormat === format ? auxCode : asideCode) ?? false};\n}),paymentCardSchema=object({id:string$3().min(1),brand:string$3().min(1),last4:string$3().regex(/^\\d{4}$/),label:string$3().max(80).default(``),ex"
+            }
+          ]
+        },
+        {
+          "kind": "oldNamedIdentity",
+          "token": "aside.base.basefont.blockquote.body.caption.center.col.colgroup.dd.details.dialog.dir.div.dl.dt.fieldset.figcaption.figure.footer.form.frame.frameset.h1.h2.h3.h4.h5.h6.head.header.hr.html.iframe.legend.li.link.main.menu.menuitem.nav.noframes.ol.optgroup.option.p.param.search.section.summary.table.tbody.td.tfoot.th.thead.title.tr.track.ul",
+          "count": 1,
+          "contexts": [
+            {
+              "byteOffset": 2900192,
+              "line": 2506,
+              "context": "HeadingAtx}})),htmlBlockNames,htmlRawNames,init_micromark_util_html_tag_name=__esmMin((()=>{htmlBlockNames=/* @__PURE__ */ `address.article.aside.base.basefont.blockquote.body.caption.center.col.colgroup.dd.details.dialog.dir.div.dl.dt.fieldset.figcaption.figure.footer.form.frame.frameset.h1.h2.h3.h4.h5.h6.head.header.hr.html.iframe.legend.li.link.main.menu.menuitem.nav.noframes.ol.optgroup.option.p.param.search.section.summary.table.tbody.td.tfoot.th.thead.title.tr.track.ul`.split(`.`),htmlRawNames=[`pre`,`script`,`style`,`textarea`]}));function resolveToHtmlFlow(Cn){let ei=Cn.length;for(;ei--&&(Cn[ei][0]!==`enter`||Cn[ei][1].type"
+            }
+          ]
+        },
+        {
+          "kind": "oldNamedIdentity",
+          "token": "aside:",
+          "count": 2,
+          "contexts": [
+            {
+              "byteOffset": 3326378,
+              "line": 2822,
+              "context": "mg: \"image\",\n\t\tnav: \"navigation\",\n\t\tmain: \"main\",\n\t\theader: \"banner\",\n\t\tfooter: \"contentinfo\",\n\t\tsection: \"region\",\n\t\tarticle: \"article\",\n\t\taside: \"complementary\",\n\t\tform: \"form\",\n\t\ttable: \"table\",\n\t\tul: \"list\",\n\t\tol: \"list\",\n\t\tli: \"listitem\",\n\t\tp: \"paragraph\",\n\t\tlabel: \"label\"\n\t};\n\tconst VALID_ARIA_ROLES"
+            },
+            {
+              "byteOffset": 7148333,
+              "line": 8453,
+              "context": "/|^-\\/\\/W3C\\/\\/DTD XHTML 1\\.0 Transitional\\/\\//i,yi=Object.create(null);yi[ii.HTML]={__proto__:null,address:!0,applet:!0,area:!0,article:!0,aside:!0,base:!0,basefont:!0,bgsound:!0,blockquote:!0,body:!0,br:!0,button:!0,caption:!0,center:!0,col:!0,colgroup:!0,dd:!0,details:!0,dir:!0,div:!0,dl:!0,dt:!0,embed"
+            }
+          ]
+        },
+        {
+          "kind": "oldNamedIdentity",
+          "token": "aside",
+          "count": 52,
+          "contexts": [
+            {
+              "byteOffset": 3331346,
+              "line": 3090,
+              "context": "PURE__ */ new Set([\n\t\t\"h1\",\n\t\t\"h2\",\n\t\t\"h3\",\n\t\t\"h4\",\n\t\t\"h5\",\n\t\t\"h6\",\n\t\t\"nav\",\n\t\t\"main\",\n\t\t\"header\",\n\t\t\"footer\",\n\t\t\"section\",\n\t\t\"article\",\n\t\t\"aside\"\n\t]);\n\tconst SKIP_TAGS = /* @__PURE__ */ new Set([\n\t\t\"script\",\n\t\t\"style\",\n\t\t\"meta\",\n\t\t\"link\",\n\t\t\"title\",\n\t\t\"noscript\"\n\t]);\n\tfunction getAriaBoolean(attr) {\n\t\ti"
+            },
+            {
+              "byteOffset": 3410012,
+              "line": 4514,
+              "context": "contenteditable=\"true\"]',\n    ].join(',');\n    const landmarkSelector = [\n      'main',\n      'nav',\n      'header',\n      'footer',\n      'aside',\n      'form',\n      '[role=\"main\"]',\n      '[role=\"navigation\"]',\n      '[role=\"banner\"]',\n      '[role=\"contentinfo\"]',\n      '[role=\"complementary\"]',\n    "
+            },
+            {
+              "byteOffset": 6883988,
+              "line": 7940,
+              "context": "_models(),init_store$1(),init_provider_session_id(),DEFAULT_SESSION_TITLE=`New Session`,LEGACY_CLI_SESSION_TITLES=/* @__PURE__ */ new Set([`aside cli`,`daemon cli`]),FALLBACK_TITLE_MAX_LENGTH=40,GENERATED_TITLE_MAX_LENGTH=80,TITLE_GENERATION_MAX_TOKENS=96,SESSION_TITLE_SYSTEM_PROMPT=`You are a title gene"
+            },
+            {
+              "byteOffset": 7244608,
+              "line": 8457,
+              "context": "de&&ri.parentNode.removeChild(ri);!(No.top instanceof oi.HTMLHtmlElement);)No.pop();Os(ei,ti),Ao=Fl;return;case`address`:case`article`:case`aside`:case`blockquote`:case`center`:case`details`:case`dialog`:case`dir`:case`div`:case`dl`:case`fieldset`:case`figcaption`:case`figure`:case`footer`:case`header`:c"
+            },
+            {
+              "byteOffset": 7248036,
+              "line": 8457,
+              "context": "!No.inScope(`body`))return;Ao=Pl;return;case`html`:if(!No.inScope(`body`))return;Ao=Pl,Ao(Cn,ei,ti);return;case`address`:case`article`:case`aside`:case`blockquote`:case`button`:case`center`:case`details`:case`dialog`:case`dir`:case`div`:case`dl`:case`fieldset`:case`figcaption`:case`figure`:case`footer`:c"
+            },
+            {
+              "byteOffset": 7336339,
+              "line": 8517,
+              "context": "([`option`])],[`optgroup`,/* @__PURE__ */ new Set([`optgroup`,`option`])],[`dd`,ddtTags],[`dt`,ddtTags],[`address`,pTag],[`article`,pTag],[`aside`,pTag],[`blockquote`,pTag],[`details`,pTag],[`div`,pTag],[`dl`,pTag],[`fieldset`,pTag],[`figcaption`,pTag],[`figure`,pTag],[`footer`,pTag],[`form`,pTag],[`head"
+            }
+          ]
+        },
+        {
+          "kind": "oldNamedIdentity",
+          "token": "aside-world.ts",
+          "count": 1,
+          "contexts": [
+            {
+              "byteOffset": 3370787,
+              "line": 4133,
+              "context": "ned = null;\n\t\t\t_visibilityCache = null;\n\t\t\t_capture = false;\n\t\t\tendAccNameCaches();\n\t\t}\n\t}\n\t//#endregion\n\t//#region src/browser-v3/injected/aside-world.ts\n\t(function setupAuxWorld() {\n\t\tconst elementRegistry = /* @__PURE__ */ new Map();\n\t\tconst captureElementRegistry = /* @__PURE__ */ new Map();\n\t\tlet _lastRefs ="
+            }
+          ]
+        },
+        {
+          "kind": "oldNamedIdentity",
+          "token": "aside/routines/$",
+          "count": 1,
+          "contexts": [
+            {
+              "byteOffset": 6510924,
+              "line": 7285,
+              "context": "on$1(Cn,{parentId:ai?.id,projectId:ii.projectId,routineId:ii.id,title:ii.name,...ii.sessionConfig,...ri===`cloud`?{harnessId:`worker`,cwd:`/aside/routines/${ii.id}`}:{},browserBinding:ai?.browserBinding&&{...ai.browserBinding,windowId:void 0},trigger:{type:`routine`,title:ii.name},triggerIdempotencyKey:`${ni}:${ti}"
+            }
+          ]
+        },
+        {
+          "kind": "oldNamedIdentity",
+          "token": "aside.b.bdi.bdo.cite.content.code.dd.dfn.dt.em.figcaption.figure.footer.header.hgroup.i.kbd.main.mark.nav.noscript.rb.rp.rt.rtc.ruby.s.samp.section.small.strong.sub.summary.sup.u.var.wbr.acronym.basefont.big.center.nobr.noembed.noframes.plaintext.strike.tt",
+          "count": 1,
+          "contexts": [
+            {
+              "byteOffset": 7129865,
+              "line": 8452,
+              "context": "ctoryElement`,ctor:function(Cn,ei,ti){mi.call(this,Cn,ei,ti)},attributes:{compact:Boolean}}),ci({tags:/* @__PURE__ */ `abbr.address.article.aside.b.bdi.bdo.cite.content.code.dd.dfn.dt.em.figcaption.figure.footer.header.hgroup.i.kbd.main.mark.nav.noscript.rb.rp.rt.rtc.ruby.s.samp.section.small.strong.sub.summary.sup.u.var.wbr.acronym.basefont.big.center.nobr.noembed.noframes.plaintext.strike.tt`.split(`.`)})})),require_svg=/* @__PURE__ */ __commonJSMin((Cn=>{var ei=require_Element(),ti=require_defineElement(),ni=require_utils$1(),ri=require_CSSStyleDe"
+            }
+          ]
+        },
+        {
+          "kind": "oldNamedIdentity",
+          "token": "aside-gmail-compose-",
+          "count": 1,
+          "contexts": [
+            {
+              "byteOffset": 7537503,
+              "line": 8613,
+              "context": "el = window.getSelection();\n      sel.removeAllRanges();\n      sel.addRange(range);\n      const policy = window.trustedTypes?.createPolicy('aside-gmail-compose-' + Date.now(), { createHTML: s => s });\n      document.execCommand('insertHTML', false, policy ? policy.createHTML(${JSON.stringify(ei)} + '<br>') : ${JSON.str"
+            }
+          ]
+        },
+        {
+          "kind": "oldNamedIdentity",
+          "token": "aside-gdocs-driver",
+          "count": 1,
+          "contexts": [
+            {
+              "byteOffset": 7541719,
+              "line": 8629,
+              "context": "ll;\n\tfunction getTrustedPolicy() {\n\t\tif (trustedPolicy) return trustedPolicy;\n\t\ttry {\n\t\t\ttrustedPolicy = window.trustedTypes?.createPolicy(\"aside-gdocs-driver\", { createHTML: (s) => s }) ?? null;\n\t\t} catch {}\n\t\treturn trustedPolicy;\n\t}\n\tfunction parseHtmlSafe(html) {\n\t\tconst policy = getTrustedPolicy();\n\t\tconst parse"
+            }
+          ]
+        },
+        {
+          "kind": "oldNamedIdentity",
+          "token": "aside-sheets-paste",
+          "count": 1,
+          "contexts": [
+            {
+              "byteOffset": 7610073,
+              "line": 9857,
+              "context": "ome CSP requirement)\n  let trustedPolicy = null;\n  try {\n    trustedPolicy = (window.trustedTypes\n      ? window.trustedTypes.createPolicy('aside-sheets-paste', { createHTML: (s) => s })\n      : null);\n  } catch {\n    // Policy already exists or Trusted Types unavailable \u2014 safe to ignore\n  }\n\n  // Convert HTML to pla"
+            }
+          ]
+        },
+        {
+          "kind": "oldNamedIdentity",
+          "token": "asidecomputeruse",
+          "count": 2,
+          "contexts": [
+            {
+              "byteOffset": 10597066,
+              "line": 11064,
+              "context": "lowed:!1,reason:`unresolvable-url`,domain:ti};let ri=ei.bundleId?.toLowerCase()??``;return process.platform===`win32`&&(/^aumid:atyourside\\.asidecomputeruse(?:\\.canary)?_[^!]+!computeruse$/.test(ri)||/^win32:.*[\\\\/]asidecomputeruse\\.exe$/.test(ri))||ni.rules.some(Cn=>Cn.scope===`app`&&Cn.bundleId===ei.bundleId&&Cn."
+            },
+            {
+              "byteOffset": 10597141,
+              "line": 11064,
+              "context": "se()??``;return process.platform===`win32`&&(/^aumid:atyourside\\.asidecomputeruse(?:\\.canary)?_[^!]+!computeruse$/.test(ri)||/^win32:.*[\\\\/]asidecomputeruse\\.exe$/.test(ri))||ni.rules.some(Cn=>Cn.scope===`app`&&Cn.bundleId===ei.bundleId&&Cn.behavior===`do_not_observe`)?{allowed:!1,reason:`blocked-app`,domain:ti}:ei"
+            }
+          ]
+        },
+        {
+          "kind": "oldNamedIdentity",
+          "token": "aside:not",
+          "count": 1,
+          "contexts": [
+            {
+              "byteOffset": 11223194,
+              "line": 13965,
+              "context": "e-content\"]`,`[href=\"#main-content\"]`,`[href^=\"#main\"]`,`[src*=\"author\"]`,`.toc`,`.Toc`,`#toc`,`[href*=\"#toc\"]`,`footer`,`ignore`,`.aside`,`aside:not([class*=\"callout\"])`,`button`,`canvas`,`date`,`dialog`,`fieldset`,`form`,`input:not([type=\"checkbox\"])`,`input[type=\"checkbox\"][class*=\"sidebar\" i]`,`input[typ"
+            }
+          ]
+        },
+        {
+          "kind": "oldNamedIdentity",
+          "token": "aside_pro_month",
+          "count": 1,
+          "contexts": [
+            {
+              "byteOffset": 11918626,
+              "line": 14573,
+              "context": "its(),init_procedure(),init_posthog(),init_api_client(),init_store$1(),init_trpc$1(),init_subscription(),stripePriceLookupKeySchema=_enum([`aside_pro_month`,`aside_pro_year`,`aside_max_month`,`aside_max_year`]),billingPortalResponseSchema=object({url:string$3().url()}),billingUsageResponseSchema=object({items:arra"
+            }
+          ]
+        },
+        {
+          "kind": "oldNamedIdentity",
+          "token": "aside_pro_year",
+          "count": 1,
+          "contexts": [
+            {
+              "byteOffset": 11918644,
+              "line": 14573,
+              "context": "re(),init_posthog(),init_api_client(),init_store$1(),init_trpc$1(),init_subscription(),stripePriceLookupKeySchema=_enum([`aside_pro_month`,`aside_pro_year`,`aside_max_month`,`aside_max_year`]),billingPortalResponseSchema=object({url:string$3().url()}),billingUsageResponseSchema=object({items:array(object({charged"
+            }
+          ]
+        },
+        {
+          "kind": "oldNamedIdentity",
+          "token": "aside_max_month",
+          "count": 1,
+          "contexts": [
+            {
+              "byteOffset": 11918661,
+              "line": 14573,
+              "context": "(),init_api_client(),init_store$1(),init_trpc$1(),init_subscription(),stripePriceLookupKeySchema=_enum([`aside_pro_month`,`aside_pro_year`,`aside_max_month`,`aside_max_year`]),billingPortalResponseSchema=object({url:string$3().url()}),billingUsageResponseSchema=object({items:array(object({charged_micros:string$3()"
+            }
+          ]
+        },
+        {
+          "kind": "oldNamedIdentity",
+          "token": "aside_max_year",
+          "count": 1,
+          "contexts": [
+            {
+              "byteOffset": 11918679,
+              "line": 14573,
+              "context": "(),init_store$1(),init_trpc$1(),init_subscription(),stripePriceLookupKeySchema=_enum([`aside_pro_month`,`aside_pro_year`,`aside_max_month`,`aside_max_year`]),billingPortalResponseSchema=object({url:string$3().url()}),billingUsageResponseSchema=object({items:array(object({charged_micros:string$3().regex(/^\\d+$/),c"
+            }
+          ]
+        },
+        {
+          "kind": "oldNamedIdentity",
+          "token": "aside:password-manager-preference:start",
+          "count": 1,
+          "contexts": [
+            {
+              "byteOffset": 12006733,
+              "line": 14673,
+              "context": " const formats = [\n    ['<!-- aux:password-manager-preference:v2:start -->', '<!-- aux:password-manager-preference:v2:end -->'],\n    ['<!-- aside:password-manager-preference:start -->', '<!-- aside:password-manager-preference:end -->'],\n  ];\n  let found;\n  for (const [start, end] of formats) {\n    const opening = text.indexOf(start), clo"
+            }
+          ]
+        },
+        {
+          "kind": "oldNamedIdentity",
+          "token": "aside:password-manager-preference:end",
+          "count": 1,
+          "contexts": [
+            {
+              "byteOffset": 12006785,
+              "line": 14673,
+              "context": "reference:v2:start -->', '<!-- aux:password-manager-preference:v2:end -->'],\n    ['<!-- aside:password-manager-preference:start -->', '<!-- aside:password-manager-preference:end -->'],\n  ];\n  let found;\n  for (const [start, end] of formats) {\n    const opening = text.indexOf(start), closing = text.indexOf(end);\n    if (opening === -1 &"
+            }
+          ]
+        },
+        {
+          "kind": "vaultProduct",
+          "token": "Aux Vault",
+          "count": 10,
+          "contexts": [
+            {
+              "byteOffset": 3498789,
+              "line": 5407,
+              "context": "p(([Cn,ei])=>({urlPrefix:`chrome-extension://${ei}/`,label:PROVIDER_LABELS[Cn]})),{urlPrefix:`${PASSWORD_MANAGER_EXTENSION_ORIGIN}/`,label:`Aux Vault`}],SNAPSHOT_RETRY_DELAY_MS=300,SNAPSHOT_MAX_RETRIES=3,snapshotQueues=/* @__PURE__ */ new WeakMap}));function defaultVideoSize(Cn){let ei=Math.min(1,DEFAULT_VID"
+            },
+            {
+              "byteOffset": 10860146,
+              "line": 13477,
+              "context": "ransaction(()=>{keysetRepo.set(Cn,ni.bundle.keyset,{logChange:!1}),writePwmSecurity(passwordDb(Cn).$client,ni.bundle.profile,null)}),Error(`Aux Vault was reset on another device. Unlock it with the new password.`);if(ni.bundle&&(!ti||ti.profile.keysetId!==ni.bundle.profile.keysetId))throw Error(`Unlock Passw"
+            },
+            {
+              "byteOffset": 10868157,
+              "line": 13477,
+              "context": "urpose:ti})}async function provePwmRecoveryAccess(Cn,ei){if(PwmAccountRegistry.get(Cn).owner.kind!==`aside`)throw new PasswordManagerError(`Aux Vault recovery requires an Aux account.`,`FORBIDDEN`);let ti=getLocalPwmSecurity(Cn);if(!ti)throw new PasswordManagerError(`Lock and unlock Aux Vault to finish its k"
+            },
+            {
+              "byteOffset": 10868301,
+              "line": 13477,
+              "context": "Vault recovery requires an Aux account.`,`FORBIDDEN`);let ti=getLocalPwmSecurity(Cn);if(!ti)throw new PasswordManagerError(`Lock and unlock Aux Vault to finish its key migration first.`,`FORBIDDEN`);let ni=(await getCloudPwmSecurity(Cn)).bundle;if(!ni)throw Error(`The server does not have this account\u2019s migr"
+            },
+            {
+              "byteOffset": 10928577,
+              "line": 13495,
+              "context": "e(Cn),ti=ei.slice(0,5),ni=ei.slice(5),ri=await fetch(`${HIBP_PWNED_PASSWORDS_RANGE_API}/${ti}`,{headers:{\"Add-Padding\":`true`,\"User-Agent\":`Aux Vault`},signal:AbortSignal.timeout(HIBP_REQUEST_TIMEOUT_MS)});if(!ri.ok)return null;let ii=parsePwnedPasswordRangeResponse(await ri.text(),ni);return{checkedAt:Date."
+            },
+            {
+              "byteOffset": 10976257,
+              "line": 13496,
+              "context": "unts(){let{accounts:Cn}=await listProfileAccounts(this.#i());if(!Cn.length||Cn.every(({authStatus:Cn})=>Cn&&!Cn.isInitialized))throw Error(`Aux Vault is not set up. Use another method to complete the task.`);return Cn.map(({id:Cn,name:ei,email:ti,owner:ni,authStatus:ri})=>({pwmAccountId:Cn,name:ei??ti??(ni.k"
+            }
+          ]
+        },
+        {
+          "kind": "vaultProduct",
+          "token": "Aux vault",
+          "count": 3,
+          "contexts": [
+            {
+              "byteOffset": 10956303,
+              "line": 13495,
+              "context": "kend} | ${ti.hasLoginForm?`yes`:`\u2014`} | ${Cn} |`)}}if(ei.push(``),ei.push(`## Password manager`),Cn.passwordManager.isInitialized?ei.push(`- Aux vault: set up${Cn.passwordManager.isLocked?` (currently locked)`:``}.`):ei.push(`- Aux vault: **not set up yet** \u2014 I can't sign into sites for you until this exists."
+            },
+            {
+              "byteOffset": 10956390,
+              "line": 13495,
+              "context": "anager`),Cn.passwordManager.isInitialized?ei.push(`- Aux vault: set up${Cn.passwordManager.isLocked?` (currently locked)`:``}.`):ei.push(`- Aux vault: **not set up yet** \u2014 I can't sign into sites for you until this exists.`),Cn.passwordManager.external.length>0){let ti=Cn.passwordManager.external.map(Cn=>`${"
+            },
+            {
+              "byteOffset": 12133333,
+              "line": 14743,
+              "context": " Set(ii.vaults.map(Cn=>Cn.id));if(ei.mappings.some(Cn=>!ai.has(Cn.targetVaultId)))throw new TRPCError({code:`BAD_REQUEST`,message:`A target Aux vault no longer exists.`});let oi=0,si=0,ci=0,li=ri.reduce((Cn,ei)=>Cn+ei.skippedInvalid,0),ui=0,di=(ei,ti)=>{li++,logger.warn(`[1password-import] skipped invalid it"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "path": "Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/node-development/aux-native-entry.mjs",
+      "sha256": "5b99cdb82f742e26027463ef96f823d51f4cc046239ea2aa2783e509100ae984",
+      "findings": [
+        {
+          "kind": "oldNamedIdentity",
+          "token": "asideCode:boolean$1",
+          "count": 1,
+          "contexts": [
+            {
+              "byteOffset": 1826159,
+              "line": 1859,
+              "context": "efault(!1),kakaotalk:boolean$1().default(!1),onboarding:boolean$1().default(!1),format:string$3().optional(),auxCode:boolean$1().optional(),asideCode:boolean$1().optional(),compactionLimits:boolean$1().default(!1)}).transform(function migrateAuxExperimentalSettings(value) {\n  const format = 'aux.experimental.v2';\n  if"
+            }
+          ]
+        },
+        {
+          "kind": "oldNamedIdentity",
+          "token": "asideCode",
+          "count": 3,
+          "contexts": [
+            {
+              "byteOffset": 1826520,
+              "line": 1863,
+              "context": "at !== format)\n    throw Error('Unsupported Aux experimental settings version.');\n  if (value.format !== undefined && Object.hasOwn(value, 'asideCode') ||\n      value.format === undefined && Object.hasOwn(value, 'auxCode'))\n    throw Error('Ambiguous Aux experimental settings generation.');\n  const {asideCod"
+            },
+            {
+              "byteOffset": 1826681,
+              "line": 1866,
+              "context": "value.format === undefined && Object.hasOwn(value, 'auxCode'))\n    throw Error('Ambiguous Aux experimental settings generation.');\n  const {asideCode, auxCode, format: previousFormat, ...settings} = value;\n  return {...settings, format, auxCode: (previousFormat === format ? auxCode : asideCode) ?? false};\n})"
+            },
+            {
+              "byteOffset": 1826826,
+              "line": 1867,
+              "context": "Code, auxCode, format: previousFormat, ...settings} = value;\n  return {...settings, format, auxCode: (previousFormat === format ? auxCode : asideCode) ?? false};\n}),paymentCardSchema=object({id:string$3().min(1),brand:string$3().min(1),last4:string$3().regex(/^\\d{4}$/),label:string$3().max(80).default(``),ex"
+            }
+          ]
+        },
+        {
+          "kind": "oldNamedIdentity",
+          "token": "aside.base.basefont.blockquote.body.caption.center.col.colgroup.dd.details.dialog.dir.div.dl.dt.fieldset.figcaption.figure.footer.form.frame.frameset.h1.h2.h3.h4.h5.h6.head.header.hr.html.iframe.legend.li.link.main.menu.menuitem.nav.noframes.ol.optgroup.option.p.param.search.section.summary.table.tbody.td.tfoot.th.thead.title.tr.track.ul",
+          "count": 1,
+          "contexts": [
+            {
+              "byteOffset": 2900069,
+              "line": 2505,
+              "context": "HeadingAtx}})),htmlBlockNames,htmlRawNames,init_micromark_util_html_tag_name=__esmMin((()=>{htmlBlockNames=/* @__PURE__ */ `address.article.aside.base.basefont.blockquote.body.caption.center.col.colgroup.dd.details.dialog.dir.div.dl.dt.fieldset.figcaption.figure.footer.form.frame.frameset.h1.h2.h3.h4.h5.h6.head.header.hr.html.iframe.legend.li.link.main.menu.menuitem.nav.noframes.ol.optgroup.option.p.param.search.section.summary.table.tbody.td.tfoot.th.thead.title.tr.track.ul`.split(`.`),htmlRawNames=[`pre`,`script`,`style`,`textarea`]}));function resolveToHtmlFlow(Cn){let ei=Cn.length;for(;ei--&&(Cn[ei][0]!==`enter`||Cn[ei][1].type"
+            }
+          ]
+        },
+        {
+          "kind": "oldNamedIdentity",
+          "token": "aside:",
+          "count": 2,
+          "contexts": [
+            {
+              "byteOffset": 3326262,
+              "line": 2821,
+              "context": "mg: \"image\",\n\t\tnav: \"navigation\",\n\t\tmain: \"main\",\n\t\theader: \"banner\",\n\t\tfooter: \"contentinfo\",\n\t\tsection: \"region\",\n\t\tarticle: \"article\",\n\t\taside: \"complementary\",\n\t\tform: \"form\",\n\t\ttable: \"table\",\n\t\tul: \"list\",\n\t\tol: \"list\",\n\t\tli: \"listitem\",\n\t\tp: \"paragraph\",\n\t\tlabel: \"label\"\n\t};\n\tconst VALID_ARIA_ROLES"
+            },
+            {
+              "byteOffset": 7151390,
+              "line": 8452,
+              "context": "/|^-\\/\\/W3C\\/\\/DTD XHTML 1\\.0 Transitional\\/\\//i,yi=Object.create(null);yi[ii.HTML]={__proto__:null,address:!0,applet:!0,area:!0,article:!0,aside:!0,base:!0,basefont:!0,bgsound:!0,blockquote:!0,body:!0,br:!0,button:!0,caption:!0,center:!0,col:!0,colgroup:!0,dd:!0,details:!0,dir:!0,div:!0,dl:!0,dt:!0,embed"
+            }
+          ]
+        },
+        {
+          "kind": "oldNamedIdentity",
+          "token": "aside",
+          "count": 52,
+          "contexts": [
+            {
+              "byteOffset": 3331230,
+              "line": 3089,
+              "context": "PURE__ */ new Set([\n\t\t\"h1\",\n\t\t\"h2\",\n\t\t\"h3\",\n\t\t\"h4\",\n\t\t\"h5\",\n\t\t\"h6\",\n\t\t\"nav\",\n\t\t\"main\",\n\t\t\"header\",\n\t\t\"footer\",\n\t\t\"section\",\n\t\t\"article\",\n\t\t\"aside\"\n\t]);\n\tconst SKIP_TAGS = /* @__PURE__ */ new Set([\n\t\t\"script\",\n\t\t\"style\",\n\t\t\"meta\",\n\t\t\"link\",\n\t\t\"title\",\n\t\t\"noscript\"\n\t]);\n\tfunction getAriaBoolean(attr) {\n\t\ti"
+            },
+            {
+              "byteOffset": 3409896,
+              "line": 4513,
+              "context": "contenteditable=\"true\"]',\n    ].join(',');\n    const landmarkSelector = [\n      'main',\n      'nav',\n      'header',\n      'footer',\n      'aside',\n      'form',\n      '[role=\"main\"]',\n      '[role=\"navigation\"]',\n      '[role=\"banner\"]',\n      '[role=\"contentinfo\"]',\n      '[role=\"complementary\"]',\n    "
+            },
+            {
+              "byteOffset": 6886580,
+              "line": 7939,
+              "context": "_models(),init_store$1(),init_provider_session_id(),DEFAULT_SESSION_TITLE=`New Session`,LEGACY_CLI_SESSION_TITLES=/* @__PURE__ */ new Set([`aside cli`,`daemon cli`]),FALLBACK_TITLE_MAX_LENGTH=40,GENERATED_TITLE_MAX_LENGTH=80,TITLE_GENERATION_MAX_TOKENS=96,SESSION_TITLE_SYSTEM_PROMPT=`You are a title gene"
+            },
+            {
+              "byteOffset": 7247665,
+              "line": 8456,
+              "context": "de&&ri.parentNode.removeChild(ri);!(No.top instanceof oi.HTMLHtmlElement);)No.pop();Os(ei,ti),Ao=Fl;return;case`address`:case`article`:case`aside`:case`blockquote`:case`center`:case`details`:case`dialog`:case`dir`:case`div`:case`dl`:case`fieldset`:case`figcaption`:case`figure`:case`footer`:case`header`:c"
+            },
+            {
+              "byteOffset": 7251093,
+              "line": 8456,
+              "context": "!No.inScope(`body`))return;Ao=Pl;return;case`html`:if(!No.inScope(`body`))return;Ao=Pl,Ao(Cn,ei,ti);return;case`address`:case`article`:case`aside`:case`blockquote`:case`button`:case`center`:case`details`:case`dialog`:case`dir`:case`div`:case`dl`:case`fieldset`:case`figcaption`:case`figure`:case`footer`:c"
+            },
+            {
+              "byteOffset": 7339396,
+              "line": 8516,
+              "context": "([`option`])],[`optgroup`,/* @__PURE__ */ new Set([`optgroup`,`option`])],[`dd`,ddtTags],[`dt`,ddtTags],[`address`,pTag],[`article`,pTag],[`aside`,pTag],[`blockquote`,pTag],[`details`,pTag],[`div`,pTag],[`dl`,pTag],[`fieldset`,pTag],[`figcaption`,pTag],[`figure`,pTag],[`footer`,pTag],[`form`,pTag],[`head"
+            }
+          ]
+        },
+        {
+          "kind": "oldNamedIdentity",
+          "token": "aside-world.ts",
+          "count": 1,
+          "contexts": [
+            {
+              "byteOffset": 3370671,
+              "line": 4132,
+              "context": "ned = null;\n\t\t\t_visibilityCache = null;\n\t\t\t_capture = false;\n\t\t\tendAccNameCaches();\n\t\t}\n\t}\n\t//#endregion\n\t//#region src/browser-v3/injected/aside-world.ts\n\t(function setupAuxWorld() {\n\t\tconst elementRegistry = /* @__PURE__ */ new Map();\n\t\tconst captureElementRegistry = /* @__PURE__ */ new Map();\n\t\tlet _lastRefs ="
+            }
+          ]
+        },
+        {
+          "kind": "oldNamedIdentity",
+          "token": "aside/routines/$",
+          "count": 1,
+          "contexts": [
+            {
+              "byteOffset": 6510808,
+              "line": 7284,
+              "context": "on$1(Cn,{parentId:ai?.id,projectId:ii.projectId,routineId:ii.id,title:ii.name,...ii.sessionConfig,...ri===`cloud`?{harnessId:`worker`,cwd:`/aside/routines/${ii.id}`}:{},browserBinding:ai?.browserBinding&&{...ai.browserBinding,windowId:void 0},trigger:{type:`routine`,title:ii.name},triggerIdempotencyKey:`${ni}:${ti}"
+            }
+          ]
+        },
+        {
+          "kind": "oldNamedIdentity",
+          "token": "aside.b.bdi.bdo.cite.content.code.dd.dfn.dt.em.figcaption.figure.footer.header.hgroup.i.kbd.main.mark.nav.noscript.rb.rp.rt.rtc.ruby.s.samp.section.small.strong.sub.summary.sup.u.var.wbr.acronym.basefont.big.center.nobr.noembed.noframes.plaintext.strike.tt",
+          "count": 1,
+          "contexts": [
+            {
+              "byteOffset": 7132922,
+              "line": 8451,
+              "context": "ctoryElement`,ctor:function(Cn,ei,ti){mi.call(this,Cn,ei,ti)},attributes:{compact:Boolean}}),ci({tags:/* @__PURE__ */ `abbr.address.article.aside.b.bdi.bdo.cite.content.code.dd.dfn.dt.em.figcaption.figure.footer.header.hgroup.i.kbd.main.mark.nav.noscript.rb.rp.rt.rtc.ruby.s.samp.section.small.strong.sub.summary.sup.u.var.wbr.acronym.basefont.big.center.nobr.noembed.noframes.plaintext.strike.tt`.split(`.`)})})),require_svg=/* @__PURE__ */ __commonJSMin((Cn=>{var ei=require_Element(),ti=require_defineElement(),ni=require_utils$1(),ri=require_CSSStyleDe"
+            }
+          ]
+        },
+        {
+          "kind": "oldNamedIdentity",
+          "token": "aside-gmail-compose-",
+          "count": 1,
+          "contexts": [
+            {
+              "byteOffset": 7540560,
+              "line": 8612,
+              "context": "el = window.getSelection();\n      sel.removeAllRanges();\n      sel.addRange(range);\n      const policy = window.trustedTypes?.createPolicy('aside-gmail-compose-' + Date.now(), { createHTML: s => s });\n      document.execCommand('insertHTML', false, policy ? policy.createHTML(${JSON.stringify(ei)} + '<br>') : ${JSON.str"
+            }
+          ]
+        },
+        {
+          "kind": "oldNamedIdentity",
+          "token": "aside-gdocs-driver",
+          "count": 1,
+          "contexts": [
+            {
+              "byteOffset": 7544776,
+              "line": 8628,
+              "context": "ll;\n\tfunction getTrustedPolicy() {\n\t\tif (trustedPolicy) return trustedPolicy;\n\t\ttry {\n\t\t\ttrustedPolicy = window.trustedTypes?.createPolicy(\"aside-gdocs-driver\", { createHTML: (s) => s }) ?? null;\n\t\t} catch {}\n\t\treturn trustedPolicy;\n\t}\n\tfunction parseHtmlSafe(html) {\n\t\tconst policy = getTrustedPolicy();\n\t\tconst parse"
+            }
+          ]
+        },
+        {
+          "kind": "oldNamedIdentity",
+          "token": "aside-sheets-paste",
+          "count": 1,
+          "contexts": [
+            {
+              "byteOffset": 7613130,
+              "line": 9856,
+              "context": "ome CSP requirement)\n  let trustedPolicy = null;\n  try {\n    trustedPolicy = (window.trustedTypes\n      ? window.trustedTypes.createPolicy('aside-sheets-paste', { createHTML: (s) => s })\n      : null);\n  } catch {\n    // Policy already exists or Trusted Types unavailable \u2014 safe to ignore\n  }\n\n  // Convert HTML to pla"
+            }
+          ]
+        },
+        {
+          "kind": "oldNamedIdentity",
+          "token": "asidecomputeruse",
+          "count": 2,
+          "contexts": [
+            {
+              "byteOffset": 10600123,
+              "line": 11063,
+              "context": "lowed:!1,reason:`unresolvable-url`,domain:ti};let ri=ei.bundleId?.toLowerCase()??``;return process.platform===`win32`&&(/^aumid:atyourside\\.asidecomputeruse(?:\\.canary)?_[^!]+!computeruse$/.test(ri)||/^win32:.*[\\\\/]asidecomputeruse\\.exe$/.test(ri))||ni.rules.some(Cn=>Cn.scope===`app`&&Cn.bundleId===ei.bundleId&&Cn."
+            },
+            {
+              "byteOffset": 10600198,
+              "line": 11063,
+              "context": "se()??``;return process.platform===`win32`&&(/^aumid:atyourside\\.asidecomputeruse(?:\\.canary)?_[^!]+!computeruse$/.test(ri)||/^win32:.*[\\\\/]asidecomputeruse\\.exe$/.test(ri))||ni.rules.some(Cn=>Cn.scope===`app`&&Cn.bundleId===ei.bundleId&&Cn.behavior===`do_not_observe`)?{allowed:!1,reason:`blocked-app`,domain:ti}:ei"
+            }
+          ]
+        },
+        {
+          "kind": "oldNamedIdentity",
+          "token": "aside:not",
+          "count": 1,
+          "contexts": [
+            {
+              "byteOffset": 11226251,
+              "line": 13964,
+              "context": "e-content\"]`,`[href=\"#main-content\"]`,`[href^=\"#main\"]`,`[src*=\"author\"]`,`.toc`,`.Toc`,`#toc`,`[href*=\"#toc\"]`,`footer`,`ignore`,`.aside`,`aside:not([class*=\"callout\"])`,`button`,`canvas`,`date`,`dialog`,`fieldset`,`form`,`input:not([type=\"checkbox\"])`,`input[type=\"checkbox\"][class*=\"sidebar\" i]`,`input[typ"
+            }
+          ]
+        },
+        {
+          "kind": "oldNamedIdentity",
+          "token": "aside_pro_month",
+          "count": 1,
+          "contexts": [
+            {
+              "byteOffset": 11921735,
+              "line": 14572,
+              "context": "its(),init_procedure(),init_posthog(),init_api_client(),init_store$1(),init_trpc$1(),init_subscription(),stripePriceLookupKeySchema=_enum([`aside_pro_month`,`aside_pro_year`,`aside_max_month`,`aside_max_year`]),billingPortalResponseSchema=object({url:string$3().url()}),billingUsageResponseSchema=object({items:arra"
+            }
+          ]
+        },
+        {
+          "kind": "oldNamedIdentity",
+          "token": "aside_pro_year",
+          "count": 1,
+          "contexts": [
+            {
+              "byteOffset": 11921753,
+              "line": 14572,
+              "context": "re(),init_posthog(),init_api_client(),init_store$1(),init_trpc$1(),init_subscription(),stripePriceLookupKeySchema=_enum([`aside_pro_month`,`aside_pro_year`,`aside_max_month`,`aside_max_year`]),billingPortalResponseSchema=object({url:string$3().url()}),billingUsageResponseSchema=object({items:array(object({charged"
+            }
+          ]
+        },
+        {
+          "kind": "oldNamedIdentity",
+          "token": "aside_max_month",
+          "count": 1,
+          "contexts": [
+            {
+              "byteOffset": 11921770,
+              "line": 14572,
+              "context": "(),init_api_client(),init_store$1(),init_trpc$1(),init_subscription(),stripePriceLookupKeySchema=_enum([`aside_pro_month`,`aside_pro_year`,`aside_max_month`,`aside_max_year`]),billingPortalResponseSchema=object({url:string$3().url()}),billingUsageResponseSchema=object({items:array(object({charged_micros:string$3()"
+            }
+          ]
+        },
+        {
+          "kind": "oldNamedIdentity",
+          "token": "aside_max_year",
+          "count": 1,
+          "contexts": [
+            {
+              "byteOffset": 11921788,
+              "line": 14572,
+              "context": "(),init_store$1(),init_trpc$1(),init_subscription(),stripePriceLookupKeySchema=_enum([`aside_pro_month`,`aside_pro_year`,`aside_max_month`,`aside_max_year`]),billingPortalResponseSchema=object({url:string$3().url()}),billingUsageResponseSchema=object({items:array(object({charged_micros:string$3().regex(/^\\d+$/),c"
+            }
+          ]
+        },
+        {
+          "kind": "oldNamedIdentity",
+          "token": "aside:password-manager-preference:start",
+          "count": 1,
+          "contexts": [
+            {
+              "byteOffset": 12009842,
+              "line": 14672,
+              "context": " const formats = [\n    ['<!-- aux:password-manager-preference:v2:start -->', '<!-- aux:password-manager-preference:v2:end -->'],\n    ['<!-- aside:password-manager-preference:start -->', '<!-- aside:password-manager-preference:end -->'],\n  ];\n  let found;\n  for (const [start, end] of formats) {\n    const opening = text.indexOf(start), clo"
+            }
+          ]
+        },
+        {
+          "kind": "oldNamedIdentity",
+          "token": "aside:password-manager-preference:end",
+          "count": 1,
+          "contexts": [
+            {
+              "byteOffset": 12009894,
+              "line": 14672,
+              "context": "reference:v2:start -->', '<!-- aux:password-manager-preference:v2:end -->'],\n    ['<!-- aside:password-manager-preference:start -->', '<!-- aside:password-manager-preference:end -->'],\n  ];\n  let found;\n  for (const [start, end] of formats) {\n    const opening = text.indexOf(start), closing = text.indexOf(end);\n    if (opening === -1 &"
+            }
+          ]
+        },
+        {
+          "kind": "vaultProduct",
+          "token": "Aux Vault",
+          "count": 10,
+          "contexts": [
+            {
+              "byteOffset": 3498673,
+              "line": 5406,
+              "context": "p(([Cn,ei])=>({urlPrefix:`chrome-extension://${ei}/`,label:PROVIDER_LABELS[Cn]})),{urlPrefix:`${PASSWORD_MANAGER_EXTENSION_ORIGIN}/`,label:`Aux Vault`}],SNAPSHOT_RETRY_DELAY_MS=300,SNAPSHOT_MAX_RETRIES=3,snapshotQueues=/* @__PURE__ */ new WeakMap}));function defaultVideoSize(Cn){let ei=Math.min(1,DEFAULT_VID"
+            },
+            {
+              "byteOffset": 10863203,
+              "line": 13476,
+              "context": "ransaction(()=>{keysetRepo.set(Cn,ni.bundle.keyset,{logChange:!1}),writePwmSecurity(passwordDb(Cn).$client,ni.bundle.profile,null)}),Error(`Aux Vault was reset on another device. Unlock it with the new password.`);if(ni.bundle&&(!ti||ti.profile.keysetId!==ni.bundle.profile.keysetId))throw Error(`Unlock Passw"
+            },
+            {
+              "byteOffset": 10871214,
+              "line": 13476,
+              "context": "urpose:ti})}async function provePwmRecoveryAccess(Cn,ei){if(PwmAccountRegistry.get(Cn).owner.kind!==`aside`)throw new PasswordManagerError(`Aux Vault recovery requires an Aux account.`,`FORBIDDEN`);let ti=getLocalPwmSecurity(Cn);if(!ti)throw new PasswordManagerError(`Lock and unlock Aux Vault to finish its k"
+            },
+            {
+              "byteOffset": 10871358,
+              "line": 13476,
+              "context": "Vault recovery requires an Aux account.`,`FORBIDDEN`);let ti=getLocalPwmSecurity(Cn);if(!ti)throw new PasswordManagerError(`Lock and unlock Aux Vault to finish its key migration first.`,`FORBIDDEN`);let ni=(await getCloudPwmSecurity(Cn)).bundle;if(!ni)throw Error(`The server does not have this account\u2019s migr"
+            },
+            {
+              "byteOffset": 10931634,
+              "line": 13494,
+              "context": "e(Cn),ti=ei.slice(0,5),ni=ei.slice(5),ri=await fetch(`${HIBP_PWNED_PASSWORDS_RANGE_API}/${ti}`,{headers:{\"Add-Padding\":`true`,\"User-Agent\":`Aux Vault`},signal:AbortSignal.timeout(HIBP_REQUEST_TIMEOUT_MS)});if(!ri.ok)return null;let ii=parsePwnedPasswordRangeResponse(await ri.text(),ni);return{checkedAt:Date."
+            },
+            {
+              "byteOffset": 10979314,
+              "line": 13495,
+              "context": "unts(){let{accounts:Cn}=await listProfileAccounts(this.#i());if(!Cn.length||Cn.every(({authStatus:Cn})=>Cn&&!Cn.isInitialized))throw Error(`Aux Vault is not set up. Use another method to complete the task.`);return Cn.map(({id:Cn,name:ei,email:ti,owner:ni,authStatus:ri})=>({pwmAccountId:Cn,name:ei??ti??(ni.k"
+            }
+          ]
+        },
+        {
+          "kind": "vaultProduct",
+          "token": "Aux vault",
+          "count": 3,
+          "contexts": [
+            {
+              "byteOffset": 10959360,
+              "line": 13494,
+              "context": "kend} | ${ti.hasLoginForm?`yes`:`\u2014`} | ${Cn} |`)}}if(ei.push(``),ei.push(`## Password manager`),Cn.passwordManager.isInitialized?ei.push(`- Aux vault: set up${Cn.passwordManager.isLocked?` (currently locked)`:``}.`):ei.push(`- Aux vault: **not set up yet** \u2014 I can't sign into sites for you until this exists."
+            },
+            {
+              "byteOffset": 10959447,
+              "line": 13494,
+              "context": "anager`),Cn.passwordManager.isInitialized?ei.push(`- Aux vault: set up${Cn.passwordManager.isLocked?` (currently locked)`:``}.`):ei.push(`- Aux vault: **not set up yet** \u2014 I can't sign into sites for you until this exists.`),Cn.passwordManager.external.length>0){let ti=Cn.passwordManager.external.map(Cn=>`${"
+            },
+            {
+              "byteOffset": 12136442,
+              "line": 14742,
+              "context": " Set(ii.vaults.map(Cn=>Cn.id));if(ei.mappings.some(Cn=>!ai.has(Cn.targetVaultId)))throw new TRPCError({code:`BAD_REQUEST`,message:`A target Aux vault no longer exists.`});let oi=0,si=0,ci=0,li=ri.reduce((Cn,ei)=>Cn+ei.skippedInvalid,0),ui=0,di=(ei,ti)=>{li++,logger.warn(`[1password-import] skipped invalid it"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/background.js",
+      "sha256": "5eff26a667e650969311ca9341b66876e678960ac08dfd1419f00e33c529926f",
+      "findings": [
+        {
+          "kind": "oldNamedIdentity",
+          "token": "aside.daemonAuth",
+          "count": 1,
+          "contexts": [
+            {
+              "byteOffset": 119028,
+              "line": 3386,
+              "context": "urn await Promise.race([e(), i]);\n  } finally {\n    o && r.removeEventListener(\"abort\", o);\n  }\n}\nvar ql = \"agent-manager-extension\", Zl = \"aside.daemonAuth\", Bl = 432e5, Gl = 5e3, Kl = \"daemon-auth:sign-challenge\";\nasync function Ts(e) {\n  const t = typeof chrome > \"u\" ? void 0 : chrome.auxAccount;\n  if (!t?.signD"
+            }
+          ]
+        },
+        {
+          "kind": "oldNamedIdentity",
+          "token": "aside-capture",
+          "count": 2,
+          "contexts": [
+            {
+              "byteOffset": 254569,
+              "line": 7898,
+              "context": ");\n});\nfunction Cg(e, t = {}) {\n  return /* @__PURE__ */ Gp(Rg, e, t);\n}\nfunction kg(e, t) {\n  return /* @__PURE__ */ Kp(e, t);\n}\nvar Ng = \"aside-capture\", Mg = Z([\n  \"viewport\",\n  \"full\",\n  \"area\"\n]), Dg = m({\n  x: T(),\n  y: T(),\n  width: T().positive(),\n  height: T().positive()\n}), xb = Me(\"ok\", [m({\n  ok: E(!"
+            },
+            {
+              "byteOffset": 255165,
+              "line": 7925,
+              "context": "\n}\nvar Ug = 300, ai = !1;\nfunction xg() {\n  ai || (ai = !0, chrome.contextMenus.onClicked.addListener((e, t) => {\n    if (e.menuItemId !== \"aside-capture\" || typeof t?.id != \"number\") return;\n    const r = t.id;\n    Cs().then((n) => {\n      n && chrome.tabs.sendMessage(r, { type: \"capture:open\" }).catch(() => {\n"
+            }
+          ]
+        },
+        {
+          "kind": "oldNamedIdentity",
+          "token": "aside.lasso-storage-bridge",
+          "count": 2,
+          "contexts": [
+            {
+              "byteOffset": 357069,
+              "line": 10991,
+              "context": "(r));\n}\nfunction Qr(e, t, r, n) {\n  jy(t, r) && e.addIssue({\n    code: \"custom\",\n    message: n.message,\n    path: n.path\n  });\n}\nvar Zy = \"aside.lasso-storage-bridge\";\nfunction By(e) {\n  return typeof e == \"object\" && e !== null && \"source\" in e && e.source === \"aside.lasso-storage-bridge\" && \"direction\" in e && e.direction"
+            },
+            {
+              "byteOffset": 357193,
+              "line": 10993,
+              "context": "});\n}\nvar Zy = \"aside.lasso-storage-bridge\";\nfunction By(e) {\n  return typeof e == \"object\" && e !== null && \"source\" in e && e.source === \"aside.lasso-storage-bridge\" && \"direction\" in e && e.direction === \"response\" && \"requestId\" in e && typeof e.requestId == \"string\" && \"ok\" in e && typeof e.ok == \"boolean\" && \"value\" in"
+            }
+          ]
+        },
+        {
+          "kind": "oldNamedIdentity",
+          "token": "aside.lasso.v1",
+          "count": 1,
+          "contexts": [
+            {
+              "byteOffset": 357395,
+              "line": 10995,
+              "context": " === \"response\" && \"requestId\" in e && typeof e.requestId == \"string\" && \"ok\" in e && typeof e.ok == \"boolean\" && \"value\" in e;\n}\nvar Gy = \"aside.lasso.v1\", Ky = /* @__PURE__ */ new Map();\nfunction Wy(e) {\n  return `${Gy}:${e}`;\n}\nfunction Vy(e) {\n  Ky.get(e)?.forEach((t) => t());\n}\nfunction Hy(e) {\n  return type"
+            }
+          ]
+        },
+        {
+          "kind": "oldNamedIdentity",
+          "token": "aside.profileMetadataSync.v1",
+          "count": 1,
+          "contexts": [
+            {
+              "byteOffset": 364269,
+              "line": 11219,
+              "context": "t) => {\n    (t.status === \"loading\" || typeof t.url == \"string\") && pt.clear(e);\n  }), Gi = !0);\n}\nvar Xr = \"profile-metadata:daily\", cr = \"aside.profileMetadataSync.v1\", lw = 6048e5, Ki = !1, mt;\nasync function Wi() {\n  const { accountId: e, browserProfile: t } = await Xa(), r = await D.accounts.get.query({ accountId: e });\n "
+            }
+          ]
+        },
+        {
+          "kind": "oldNamedIdentity",
+          "token": "aside-remix-gmail",
+          "count": 1,
+          "contexts": [
+            {
+              "byteOffset": 390847,
+              "line": 12013,
+              "context": "ed.addListener(() => eo());\nchrome.tabs.onUpdated.addListener((e, t) => {\n  t.status === \"complete\" && eo();\n});\nvar gc = \"remix.js\", vc = \"aside-remix-gmail\", yc = \"aside-remix-slack\", Pn = [vc, yc], wc = [\"https://mail.google.com/*\"], bc = [\"https://app.slack.com/*\"], tb = [{\n  id: vc,\n  matches: wc,\n  allFrames: "
+            }
+          ]
+        },
+        {
+          "kind": "oldNamedIdentity",
+          "token": "aside-remix-slack",
+          "count": 1,
+          "contexts": [
+            {
+              "byteOffset": 390873,
+              "line": 12013,
+              "context": ";\nchrome.tabs.onUpdated.addListener((e, t) => {\n  t.status === \"complete\" && eo();\n});\nvar gc = \"remix.js\", vc = \"aside-remix-gmail\", yc = \"aside-remix-slack\", Pn = [vc, yc], wc = [\"https://mail.google.com/*\"], bc = [\"https://app.slack.com/*\"], tb = [{\n  id: vc,\n  matches: wc,\n  allFrames: !0\n}, {\n  id: yc,\n  matche"
+            }
+          ]
+        },
+        {
+          "kind": "oldNamedIdentity",
+          "token": "aside.remix.v1",
+          "count": 1,
+          "contexts": [
+            {
+              "byteOffset": 393371,
+              "line": 12093,
+              "context": "ap((r) => typeof r.id == \"number\" ? [Ji(r.id, !0)] : []), ...t.flatMap((r) => typeof r.id == \"number\" ? [Ji(r.id, !1)] : [])]);\n}\nvar ib = \"aside.remix.v1\", sb = /* @__PURE__ */ new Map(), ab = (e) => `${ib}:${e}`;\nasync function to(e, t) {\n  const r = ab(e);\n  try {\n    typeof chrome < \"u\" && chrome.storage?.loc"
+            }
+          ]
+        },
+        {
+          "kind": "oldNamedIdentity",
+          "token": "aside.remix.pending.v1",
+          "count": 1,
+          "contexts": [
+            {
+              "byteOffset": 393675,
+              "line": 12102,
+              "context": "orage?.local && await auxWorkerStorageLocalSet({ [r]: { enabled: t } });\n  } finally {\n    sb.get(r)?.forEach((n) => n(t));\n  }\n}\nvar cb = \"aside.remix.pending.v1\", ub = (e, t) => `${cb}:${e}:${t}`;\nfunction lb(e) {\n  const t = e.trim().toLowerCase();\n  if (!t || t === \"<all_urls>\" || t.includes(\"*\")) return null;\n  try "
+            }
+          ]
+        },
+        {
+          "kind": "oldNamedIdentity",
+          "token": "aside-remix-user-",
+          "count": 1,
+          "contexts": [
+            {
+              "byteOffset": 394211,
+              "line": 12119,
+              "context": "ull;\n  }\n}\nfunction db() {\n  return { prompt: (e) => chrome.runtime.sendMessage({\n    type: \"remix:prompt\",\n    args: e\n  }) };\n}\nvar Ac = \"aside-remix-user-\", Qi = Promise.resolve(), Yi = !1;\nfunction fb(e) {\n  return auxWorkerPhysical(\"user-script-queue\",()=>auxWorkerOriginalUserScripts(e));\n}\nfunction auxWorkerOr"
+            }
+          ]
+        },
+        {
+          "kind": "oldNamedIdentity",
+          "token": "aside",
+          "count": 1,
+          "contexts": [
+            {
+              "byteOffset": 394597,
+              "line": 12135,
+              "context": "() => {\n  }), t;\n}\nfunction hb() {\n  return chrome.userScripts;\n}\nfunction pb(e) {\n  return `${Ac}${e}`;\n}\nfunction mb(e) {\n  return `const aside = (${db.toString()})();\n${e}`;\n}\nfunction Pc(e, t) {\n  return fb(async () => {\n    const r = hb();\n    if (r)\n      try {\n        const n = (await r.getScripts"
+            }
+          ]
+        },
+        {
+          "kind": "oldNamedIdentity",
+          "token": "aside.remix.v1:",
+          "count": 1,
+          "contexts": [
+            {
+              "byteOffset": 398801,
+              "line": 12230,
+              "context": "storage.onChanged.addListener((t, r) => {\n    if (r === \"local\")\n      for (const [n, o] of Object.entries(t)) {\n        if (!n.startsWith(\"aside.remix.v1:\")) continue;\n        const i = wb(o);\n        if (i !== null) {\n          Ec(i), i || Pc(!1, []);\n          return;\n        }\n      }\n  }), nb().then(() => bb("
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/developers-DTvaoVBC.js",
+      "sha256": "7c22f0e3970ecf39c0497cdab3dc0103cb794e73f3b93f1b20f82f94dc0f5958",
+      "findings": []
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/connect-dialog-CacgpFap.js",
+      "sha256": "8f10c421607cc4ac4fc83fb04b0eef80c38721534926fac5d22efb810a1274c2",
+      "findings": []
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/newtab-CnOLQ0yu.js",
+      "sha256": "eef65df02f862b13dcf9951f3f8cb81d1e6875a6dc6e7b782c954f23e7e69539",
+      "findings": []
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/session-feedback-dialog-BjDg0W8m.js",
+      "sha256": "e6453c89839e89125fb9821d0c1f1dfbacf1fbf9d54b4e20bc6e6a5436723d83",
+      "findings": []
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/mcps-DmPp5oo9.js",
+      "sha256": "0628abf121307a43567addaa792eb9f13c9b72e47c75f8d3cbe9f316a5ece79a",
+      "findings": [
+        {
+          "kind": "oldNamedIdentity",
+          "token": "asideCode:m",
+          "count": 1,
+          "contexts": [
+            {
+              "byteOffset": 22887,
+              "line": 1,
+              "context": ".default(!0)}),Gr=o({sync:m().default(!1),kakaotalk:m().default(!1),onboarding:m().default(!1),format:t().optional(),auxCode:m().optional(),asideCode:m().optional(),compactionLimits:m().default(!1)}).transform(function migrateAuxExperimentalSettings(value) {\n  const format = 'aux.experimental.v2';\n  if (value."
+            }
+          ]
+        },
+        {
+          "kind": "oldNamedIdentity",
+          "token": "asideCode",
+          "count": 3,
+          "contexts": [
+            {
+              "byteOffset": 23232,
+              "line": 5,
+              "context": "at !== format)\n    throw Error('Unsupported Aux experimental settings version.');\n  if (value.format !== undefined && Object.hasOwn(value, 'asideCode') ||\n      value.format === undefined && Object.hasOwn(value, 'auxCode'))\n    throw Error('Ambiguous Aux experimental settings generation.');\n  const {asideCod"
+            },
+            {
+              "byteOffset": 23393,
+              "line": 8,
+              "context": "value.format === undefined && Object.hasOwn(value, 'auxCode'))\n    throw Error('Ambiguous Aux experimental settings generation.');\n  const {asideCode, auxCode, format: previousFormat, ...settings} = value;\n  return {...settings, format, auxCode: (previousFormat === format ? auxCode : asideCode) ?? false};\n})"
+            },
+            {
+              "byteOffset": 23538,
+              "line": 9,
+              "context": "Code, auxCode, format: previousFormat, ...settings} = value;\n  return {...settings, format, auxCode: (previousFormat === format ? auxCode : asideCode) ?? false};\n}),Jr=o({id:t().min(1),brand:t().min(1),last4:t().regex(/^\\d{4}$/),label:t().max(80).default(\"\"),expires:t().max(7).default(\"\")}),Wr=o({enabled:m()"
+            }
+          ]
+        },
+        {
+          "kind": "oldNamedIdentity",
+          "token": "aside-mcp-oauth",
+          "count": 1,
+          "contexts": [
+            {
+              "byteOffset": 30943,
+              "line": 11,
+              "context": "===i.id&&(chrome.windows.onRemoved.removeListener(l),n())};chrome.windows.onRemoved.addListener(l)}).catch(n);return}const r=window.open(e,\"aside-mcp-oauth\",\"popup,width=720,height=800,noopener,noreferrer\");if(!r){n();return}const s=window.setInterval(()=>{r.closed&&(window.clearInterval(s),n())},500)}function Ee("
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/experimental-Xq3YsEPK.js",
+      "sha256": "7605e2eba17406c5317720229d2a52f58824ce1203a7829516ed5379e3654081",
+      "findings": []
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/session-composer-Dc0LRfZA.js",
+      "sha256": "3eaa9c8f0946ad2b20a63f0b80f0acb0ad79835061050eb09dff2fbd3c791144",
+      "findings": [
+        {
+          "kind": "oldNamedIdentity",
+          "token": "aside-code",
+          "count": 3,
+          "contexts": [
+            {
+              "byteOffset": 292939,
+              "line": 9,
+              "context": "-0\",filename:e.title}):e.kind===\"subagents\"?(0,a.jsx)(Rt,{className:\"text-muted-foreground mr-1.5 size-4 shrink-0\",color:\"mono\"}):e.kind===\"aside-code\"?(0,a.jsx)(oa,{className:\"text-muted-foreground mr-1.5 size-4\"}):(0,a.jsx)(hn,{className:\"text-muted-foreground mr-1.5 size-4 shrink-0\"}),(0,a.jsx)(\"span\",{cla"
+            },
+            {
+              "byteOffset": 293290,
+              "line": 9,
+              "context": "ask-image:linear-gradient(to_right,black_calc(100%-8px),transparent)] whitespace-nowrap\",children:e.title}),e.kind!==\"subagents\"&&e.kind!==\"aside-code\"&&(0,a.jsx)(J,{variant:\"ghost\",size:\"icon\",\"aria-label\":`Close ${e.title}`,className:\"pointer-events-none size-6 shrink-0 rounded-md opacity-0 transition-opaci"
+            },
+            {
+              "byteOffset": 295834,
+              "line": 9,
+              "context": "low-hidden bg-transparent\",\"data-chat-drop-zone\":p?.kind===\"side-chat\"?\"\":void 0,children:p?.kind===\"subagents\"?(0,a.jsx)(cp,{}):p?.kind===\"aside-code\"?(0,a.jsx)(Ad,{}):p?.kind===\"file-preview\"?(f||u)&&(0,a.jsx)(Rd,{path:p.path,preview:i.get(p.path)},p.path):p?.kind===\"side-chat\"?(0,a.jsx)(sp,{tab:p},p.id):(0"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/provider-Cw0zhujt.js",
+      "sha256": "c4862e5ac3e442c203039edf7253c5af9627be724e70d0e20f693243e40c210e",
+      "findings": [
+        {
+          "kind": "oldNamedIdentity",
+          "token": "aside-code",
+          "count": 6,
+          "contexts": [
+            {
+              "byteOffset": 42795,
+              "line": 2,
+              "context": ":\"side-chat\",sessionId:T.id,title:Ns(T.title)?\"Side chat\":T.title})),R=k?[{id:\"subagents\",kind:\"subagents\",title:\"Subagents\"}]:[],E=K?[{id:\"aside-code\",kind:\"aside-code\",title:\"Aux Code\"}]:[];return[...R,...E,...y,...A.filter(T=>!y.some(B=>B.id===T.id))]},[se,K,k,A]);(0,c.useEffect)(()=>{if(k){b(y=>y??\"subage"
+            },
+            {
+              "byteOffset": 42813,
+              "line": 2,
+              "context": "onId:T.id,title:Ns(T.title)?\"Side chat\":T.title})),R=k?[{id:\"subagents\",kind:\"subagents\",title:\"Subagents\"}]:[],E=K?[{id:\"aside-code\",kind:\"aside-code\",title:\"Aux Code\"}]:[];return[...R,...E,...y,...A.filter(T=>!y.some(B=>B.id===T.id))]},[se,K,k,A]);(0,c.useEffect)(()=>{if(k){b(y=>y??\"subagents\");return}D(nul"
+            },
+            {
+              "byteOffset": 43053,
+              "line": 2,
+              "context": "e,K,k,A]);(0,c.useEffect)(()=>{if(k){b(y=>y??\"subagents\");return}D(null),b(y=>y===\"subagents\"?null:y)},[k]),(0,c.useEffect)(()=>{b(y=>K?y??\"aside-code\":y===\"aside-code\"?null:y)},[K]);const me=(0,c.useCallback)(y=>{m.setQueryData(l.sessions.childSessions.queryKey(tt(n,a)),R=>R?.filter(E=>E.id!==y)),u.mutateAsy"
+            },
+            {
+              "byteOffset": 43070,
+              "line": 2,
+              "context": "eEffect)(()=>{if(k){b(y=>y??\"subagents\");return}D(null),b(y=>y===\"subagents\"?null:y)},[k]),(0,c.useEffect)(()=>{b(y=>K?y??\"aside-code\":y===\"aside-code\"?null:y)},[K]);const me=(0,c.useCallback)(y=>{m.setQueryData(l.sessions.childSessions.queryKey(tt(n,a)),R=>R?.filter(E=>E.id!==y)),u.mutateAsync({sessionId:y,a"
+            },
+            {
+              "byteOffset": 44419,
+              "line": 2,
+              "context": "tialAttachments};$(E=>[...E,R]),b(R.id),g(!1)},[]),F=(0,c.useCallback)(y=>{D(y??null),b(\"subagents\"),g(!1)},[]),z=(0,c.useCallback)(()=>{b(\"aside-code\"),g(!1)},[]),U=(0,c.useCallback)(()=>D(null),[]),_=(0,c.useCallback)((y,R)=>{if(!v.current.some(T=>T.id===y)){me(R);return}const E=et(R);$(T=>T.map(B=>B.id===y"
+            },
+            {
+              "byteOffset": 44995,
+              "line": 2,
+              "context": ":void 0}:E))},[]),ve=(0,c.useCallback)(y=>{const R=P.findIndex(B=>B.id===y);if(R<0)return;const E=P[R];if(E?.kind===\"subagents\"||E?.kind===\"aside-code\")return;E?.kind===\"side-chat\"&&E.sessionId&&me(E.sessionId);const T=P.filter(B=>B.id!==y);b(B=>B===y?(T[R]??T[R-1])?.id??null:B),$(B=>B.filter(oe=>oe.id!==y)),"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/_skillId-CAwCRjA8.js",
+      "sha256": "1a39b9401e5144d365b363e01f77601d311b3f515bb83d802b492b664064052d",
+      "findings": []
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/tag-icon-DeMC7uIN.js",
+      "sha256": "0d9e393739847e63f98b7006a83986ff2513da62a5c46351d4c83f717052cfff",
+      "findings": []
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/splash-D666ivBP.js",
+      "sha256": "85486d9e4b8d1ce9965b41c26ba808df3501be3d638cc860c6ce45773d7a0921",
+      "findings": []
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/route-TQyeTEXE.js",
+      "sha256": "468e9e336a9127198dc0b45902990ca3a6b6bcdbbe0c8fab1871d23492ec59a8",
+      "findings": [
+        {
+          "kind": "oldNamedIdentity",
+          "token": "aside",
+          "count": 1,
+          "contexts": [
+            {
+              "byteOffset": 59419,
+              "line": 1,
+              "context": "ey===\"ArrowDown\"?1:-1;d(z=>(z+f+C.length)%C.length);return}if(u.key===\"Enter\"){u.preventDefault();const f=C[r];f&&g(f)}}};return(0,t.jsxs)(\"aside\",{className:\"relative flex h-full w-[clamp(9rem,30vw,13rem)] shrink-0 flex-col py-1 pr-0 pl-1.5\",children:[(0,t.jsxs)(\"div\",{className:\"group/search relative z"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/ai-CzEX5E7S.js",
+      "sha256": "d1c597e52b370e6759c4f4e0bb89021be768a615c3ba06e111f839c66e11df3b",
+      "findings": []
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/add-on-credits-dialog-Dn5FxOyZ.js",
+      "sha256": "e0012bbed6365fd0c9c4b7e23fee41ca02a3b9ca7e004cd743c58b8fc19bb73c",
+      "findings": []
+    },
+    {
+      "path": "Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/native/runtime-text-root.json",
+      "sha256": "a36d05c80e96470c1df1f32c61f39f0d517b074f3c21ed4335dd57638ebdd783",
+      "findings": []
+    },
+    {
+      "path": "Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/native/runtime-bootstrap.cjs",
+      "sha256": "06717ab918188a76f4101336fffe297f044792a183cde73efcab4a59af428fcf",
+      "findings": []
+    },
+    {
+      "path": "Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/AuxFreshBootstrapPolicy.json",
+      "sha256": "0ea7e93e94de7f07006aa4389fa842acb61bc50a37d682941a8d2dcf8e837b65",
+      "findings": []
+    }
+  ],
+  "filenameHits": [],
+  "carriedManifestReview": [
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/manifest.json",
+      "oldEndpoints": [],
+      "vaultProduct": [],
+      "text": "{\n  \"manifest_version\": 3,\n  \"name\": \"Aux Browsing Agent\",\n  \"version\": \"1.26.1016.1885\",\n  \"version_name\": \"1.26.1016.1852\",\n  \"description\": \"Browsing agent for Aux browser\",\n  \"key\": \"MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAzMC8cpWmbybitC0CpBbGxSFeLgzUrsdv5xm6eIT87SSzJSs0rvGF5NLsyP0pfCcmUqkW/nGxMn1ykuillT19qe6dSi1QCKpkK2wuWoeM+5MWdRCLhM6E0LpWHXpIGn7RPjKvOJ8XWQtB/f0qW0T8M7T2t++4yei+gZUjUV4SUD0qYMK9IP+qnq2ZEOsRW4MfsOXVvPSWuQ4d5vvo6DrwL5wfhrVln9IxfhrMSLFoCgbGzOBThbgzZDIvqCOvJqrzp1hFzwQdiDLA/IR3RkIJW7OmyuM6/PizdGy5kSQcMnqX80f3or7G7kHn6iVdjFxsbt2JxYRZ3N/9wTxBGEMuAQIDAQAB\",\n  \"icons\": {\n    \"16\": \"icons/icon-16.png\",\n    \"48\": \"icons/icon-48.png\",\n    \"128\": \"icons/icon-128.png\"\n  },\n  \"action\": {\n    \"default_title\": \"Aux Browsing Agent\"\n  },\n  \"side_panel\": {\n    \"default_path\": \"sidepanel.html\"\n  },\n  \"chrome_url_overrides\": {\n    \"newtab\": \"newtab.html\"\n  },\n  \"permissions\": [\n    \"sidePanel\",\n    \"contextMenus\",\n    \"storage\",\n    \"activeTab\",\n    \"tabCapture\",\n    \"offscreen\",\n    \"debugger\",\n    \"downloads\",\n    \"favicon\",\n    \"history\",\n    \"bookmarks\",\n    \"topSites\",\n    \"browsingData\",\n    \"privacy\",\n    \"management\",\n    \"nativeMessaging\",\n    \"cookies\",\n    \"tabs\",\n    \"scripting\",\n    \"userScripts\",\n    \"webNavigation\",\n    \"sessions\",\n    \"tabGroups\",\n    \"alarms\",\n    \"notifications\",\n    \"dev.aux.blink.expose-wv\",\n    \"dev.aux.ext.private.account\",\n    \"dev.aux.ext.private.adblock\",\n    \"dev.aux.ext.private.browserImport\",\n    \"dev.aux.ext.private.notification\",\n    \"dev.aux.ext.private.omnibox\",\n    \"dev.aux.ext.private.browserPreferences\",\n    \"dev.aux.ext.private.miniPopup\",\n    \"dev.aux.ext.private.capture-tab-without-userinteraction\",\n    \"dev.aux.ext.private.launch-extension\"\n  ],\n  \"host_permissions\": [\n    \"<all_urls>\",\n    \"https://api.anthropic.com/*\"\n  ],\n  \"web_accessible_resources\": [\n    {\n      \"resources\": [\n        \"iframe.html\",\n        \"tab-preview-player.html\",\n        \"tabsearch.html\",\n        \"react-grab-bridge.js\",\n        \"assets/*\"\n      ],\n      \"matches\": [\n        \"<all_urls>\"\n      ]\n    },\n    {\n      \"resources\": [\n        \"main.html\"\n      ],\n      \"matches\": [\n        \"https://dev-cloud.getaux.co/*\"\n      ]\n    }\n  ],\n  \"commands\": {\n    \"_execute_action\": {\n      \"suggested_key\": {\n        \"default\": \"Alt+Shift+B\",\n        \"mac\": \"Alt+Shift+B\"\n      },\n      \"description\": \"Open Aux sidepanel\"\n    }\n  },\n  \"externally_connectable\": {\n    \"ids\": [\n      \"nbpghnminpifekjbgjefioajhiilbfla\"\n    ]\n  },\n  \"sandbox\": {\n    \"pages\": [\n      \"visual-frame.html\"\n    ]\n  },\n  \"content_security_policy\": {\n    \"sandbox\": \"sandbox allow-scripts allow-forms allow-popups allow-modals; script-src 'self' 'unsafe-inline' 'unsafe-eval' https:; child-src 'self';\",\n    \"extension_pages\": \"script-src 'self'; object-src 'self'\"\n  },\n  \"background\": {\n    \"service_worker\": \"background.js\",\n    \"type\": \"module\"\n  },\n  \"content_scripts\": [\n    {\n      \"matches\": [\n        \"<all_urls>\"\n      ],\n      \"js\": [\n        \"content/content.js\"\n      ],\n      \"run_at\": \"document_idle\"\n    },\n    {\n      \"matches\": [\n        \"https://docs.google.com/document/*\"\n      ],\n      \"js\": [\n        \"content/google-docs-selection-bridge.js\"\n      ],\n      \"run_at\": \"document_idle\",\n      \"world\": \"MAIN\"\n    }\n  ]\n}\n"
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/main.html",
+      "oldEndpoints": [],
+      "vaultProduct": [],
+      "text": null
+    }
+  ],
+  "logo": {
+    "canonical": {
+      "path": "assets/brand/arch-mark.svg",
+      "sha256": "45ba4f1d823cab3085cad8902fd17420ff5a9a5ac3139b180bfc0902875f515c",
+      "geometry": {
+        "viewBox": "0 0 1024 1024",
+        "paths": [
+          "m40.02 10.25c-17.45 0-31.34 15.33-31.34 33.27v21c0 2.47 2.51 3.44 4.6 2.1 7.21-5.48 11.98-15.6 11.98-25.54v-0.81c0-8.41 6.94-14.73 14.73-14.73 7.8 0 14.7 6.69 14.7 14.73v0.81c0 10.31 4.89 20.08 11.99 25.53 2.07 1.38 4.56 0.39 4.56-2l-0.15-20.46c0-19.06-13.61-33.9-31.07-33.9z",
+          "m50.38 52.49-7.44-12.09c-0.62-1.08-1.79-1.67-2.99-1.67s-2.37 0.71-3.01 1.77l-7.35 12.02c-0.7 1.2-0.35 2.87 0.84 3.79 1.14 0.8 2.74 0.5 3.78-0.38 1.87-1.62 3.73-2.8 5.71-2.8 2.11 0 4.07 1.24 5.88 2.8 1.09 0.88 2.57 1.18 3.78 0.43 1.24-0.81 1.5-2.56 0.8-3.87z"
+        ]
+      }
+    },
+    "brandInputs": [
+      {
+        "path": "assets/brand/arch-mark.svg",
+        "sha256": "45ba4f1d823cab3085cad8902fd17420ff5a9a5ac3139b180bfc0902875f515c"
+      },
+      {
+        "path": "assets/brand/aux-mark-white.svg",
+        "sha256": "45ba4f1d823cab3085cad8902fd17420ff5a9a5ac3139b180bfc0902875f515c"
+      },
+      {
+        "path": "assets/brand/Aux.icns",
+        "sha256": "bc9826cef6295b7806693bdfc107e6901388ecfbd73236874c8fb19786b64f35"
+      },
+      {
+        "path": "vendor/provided-ui/branding/icon48.png",
+        "sha256": "d4e63d20bbec0e3a283bc12f5b9e35c255cfff44538b4dfdee6f676213920abf"
+      },
+      {
+        "path": "assets/brand/Aux.iconset/icon_16x16.png",
+        "sha256": "54d1367084448320ee39412e34a74524d518babadb4e6582ef2bda27f1aa3cbc"
+      },
+      {
+        "path": "assets/brand/Aux.iconset/icon_32x32.png",
+        "sha256": "ce4779bef975467d4b931717f4eb31ad4db9801f285f660f1b878209fca9fffc"
+      },
+      {
+        "path": "assets/brand/Aux.iconset/icon_128x128.png",
+        "sha256": "42d9aa3c1c82c24a1db95e33a48f5d4112cf966dcccbeb1bbce07a2712a74208"
+      },
+      {
+        "path": "assets/brand/Aux.iconset/icon_512x512.png",
+        "sha256": "f668a42c298636741aac74e550cefc8f1af0de0da8d86f2310b70bfbe66ee90b"
+      },
+      {
+        "path": "vendor/provided-ui/branding/aux-browser-icon.webp",
+        "sha256": "3b396f2bcd779c7406023cce0d5e6917c404c19985504d0e45317426cce839ca"
+      }
+    ],
+    "vectors": [],
+    "appIcon": {
+      "path": "Contents/Resources/app.icns",
+      "sha256": "bc9826cef6295b7806693bdfc107e6901388ecfbd73236874c8fb19786b64f35",
+      "canonicalDerivedIconSha256": "bc9826cef6295b7806693bdfc107e6901388ecfbd73236874c8fb19786b64f35",
+      "canonicalDerivedBytesExact": true
+    }
+  },
+  "bundleIdentity": {
+    "excludedProducts": [
+      "vault",
+      "password-importer"
+    ],
+    "excludedFiles": [
+      {
+        "source": "apps/daemon/Aux Daemon.app/Contents/Applications/Aux Password Importer.app/Contents/Info.plist",
+        "sha256": "6076b1576b3c38dbf261908feb8d97215568802928ae460f68bd1795deb66e83",
+        "reason": "Excluded built-in password manager product"
+      },
+      {
+        "source": "apps/daemon/Aux Daemon.app/Contents/Applications/Aux Password Importer.app/Contents/PlugIns/AsidePasswordImporterProvider.appex/Contents/Info.plist",
+        "sha256": "10b04cfa5100c5a3ae64987b292ecdae35154fa7f3f80567bec1dfd875a9cacd",
+        "reason": "Excluded built-in password manager product"
+      },
+      {
+        "source": "apps/daemon/Aux Daemon.app/Contents/Applications/Aux Password Importer.app/Contents/Resources/AppIcon.icns",
+        "sha256": "bc9826cef6295b7806693bdfc107e6901388ecfbd73236874c8fb19786b64f35",
+        "reason": "Excluded built-in password manager product"
+      },
+      {
+        "source": "apps/daemon/Aux Daemon.app/Contents/Applications/Aux Password Importer.app/Contents/PlugIns/AsidePasswordImporterProvider.appex/Contents/MacOS/aux-password-importer-provider",
+        "sha256": "b7a248f3a52a8af7af731248fb29eba6152b4d40b5ea4abfda53603e0eb0e507",
+        "reason": "Excluded built-in password manager product"
+      },
+      {
+        "source": "apps/daemon/Aux Daemon.app/Contents/Applications/Aux Password Importer.app/Contents/MacOS/aux-password-importer",
+        "sha256": "ed676fdec6b173f9f07b2dc564d7ccaea60e2cf01da12fa04ca486fa78dcc369",
+        "reason": "Excluded built-in password manager product"
+      },
+      {
+        "source": "apps/daemon/Aux Daemon.app/Contents/Applications/Aux Password Importer.app/Contents/Resources/Aux.icns",
+        "sha256": "bc9826cef6295b7806693bdfc107e6901388ecfbd73236874c8fb19786b64f35",
+        "reason": "Excluded built-in password manager product"
+      },
+      {
+        "source": "apps/daemon/Aux Daemon.app/Contents/Resources/native/provided-native.node",
+        "sha256": "bfe946e05fbaf2ae68d0560258f50e63a6c3ff6da2937e0aa8f9f19016e1f7fb",
+        "reason": "Obsolete state-v2 daemon common addon; fixed linked Aux owner is required"
+      },
+      {
+        "source": "apps/daemon/Aux Daemon.app/Contents/Resources/native/memory-bootstrap.cjs",
+        "sha256": "aa21945643d6396f235ceee7b27bced9007dcba688b9fae1e4f2ba8aa4070f3f",
+        "reason": "Replaced by fixed native-owned memory-v2 source/seed integration"
+      },
+      {
+        "source": "apps/daemon/Aux Daemon.app/Contents/Resources/native/memory-seed.cjs",
+        "sha256": "26b01830cd0d2d5a40b73e3de3406f9bd5de666ef2fa850a50bd0a844588aebe",
+        "reason": "Replaced by fixed native-owned memory-v2 source/seed integration"
+      },
+      {
+        "source": "apps/daemon/Aux Daemon.app/Contents/Resources/native/memory-pins.json",
+        "sha256": "d73016f00854deed3b33fd65e95205b21a372e70faf480b261865283ff6a427d",
+        "reason": "Replaced by fixed native-owned memory-v2 source/seed integration"
+      }
+    ],
+    "passwordManager": "external-extensions"
+  },
+  "nativeInfo": {
+    "CFBundleDevelopmentRegion": "en",
+    "CFBundleDisplayName": "Aux",
+    "CFBundleDocumentTypes": [
+      {
+        "CFBundleTypeRole": "Viewer",
+        "LSItemContentTypes": [
+          "com.compuserve.gif"
+        ]
+      },
+      {
+        "CFBundleTypeRole": "Viewer",
+        "LSItemContentTypes": [
+          "public.html"
+        ]
+      },
+      {
+        "CFBundleTypeRole": "Viewer",
+        "LSItemContentTypes": [
+          "public.xhtml"
+        ]
+      },
+      {
+        "CFBundleTypeRole": "Viewer",
+        "LSItemContentTypes": [
+          "com.netscape.javascript-source"
+        ]
+      },
+      {
+        "CFBundleTypeRole": "Viewer",
+        "LSItemContentTypes": [
+          "public.jpeg"
+        ]
+      },
+      {
+        "CFBundleTypeRole": "Viewer",
+        "LSItemContentTypes": [
+          "org.ietf.mhtml"
+        ]
+      },
+      {
+        "CFBundleTypeRole": "Viewer",
+        "LSItemContentTypes": [
+          "org.xiph.ogg-audio"
+        ]
+      },
+      {
+        "CFBundleTypeRole": "Viewer",
+        "LSItemContentTypes": [
+          "org.xiph.ogv"
+        ]
+      },
+      {
+        "CFBundleTypeRole": "Viewer",
+        "LSItemContentTypes": [
+          "public.png"
+        ]
+      },
+      {
+        "CFBundleTypeRole": "Viewer",
+        "LSItemContentTypes": [
+          "public.svg-image"
+        ]
+      },
+      {
+        "CFBundleTypeRole": "Viewer",
+        "LSItemContentTypes": [
+          "public.text"
+        ]
+      },
+      {
+        "CFBundleTypeRole": "Viewer",
+        "LSItemContentTypes": [
+          "org.webmproject.webm"
+        ]
+      },
+      {
+        "CFBundleTypeRole": "Viewer",
+        "LSItemContentTypes": [
+          "org.webmproject.webp"
+        ]
+      },
+      {
+        "CFBundleTypeRole": "Viewer",
+        "LSItemContentTypes": [
+          "org.chromium.extension"
+        ]
+      },
+      {
+        "CFBundleTypeRole": "Viewer",
+        "LSItemContentTypes": [
+          "com.adobe.pdf"
+        ]
+      },
+      {
+        "CFBundleTypeRole": "Viewer",
+        "LSItemContentTypes": [
+          "org.chromium.shortcut"
+        ]
+      },
+      {
+        "CFBundleTypeRole": "Viewer",
+        "LSItemContentTypes": [
+          "public.avif"
+        ]
+      }
+    ],
+    "CFBundleExecutable": "Aux",
+    "CFBundleIconFile": "app.icns",
+    "CFBundleIconName": "AppIcon",
+    "CFBundleIdentifier": "dev.aux.browser",
+    "CFBundleInfoDictionaryVersion": "6.0",
+    "CFBundleName": "Aux",
+    "CFBundlePackageType": "APPL",
+    "CFBundleShortVersionString": "155.0.8059.85",
+    "CFBundleSignature": "AuxB",
+    "CFBundleURLTypes": [
+      {
+        "CFBundleURLName": "Aux open URL",
+        "CFBundleURLSchemes": [
+          "aux"
+        ]
+      },
+      {
+        "CFBundleURLName": "Web site URL",
+        "CFBundleURLSchemes": [
+          "http",
+          "https"
+        ]
+      },
+      {
+        "CFBundleURLName": "Local file URL",
+        "CFBundleURLSchemes": [
+          "file"
+        ]
+      }
+    ],
+    "CFBundleVersion": "8059.85"
+  },
+  "wholeIdentityComplete": false,
+  "runtimeVerified": false,
+  "thirdPartyTreesRescanned": false,
+  "productEdited": false,
+  "signed": false,
+  "executed": false
+}

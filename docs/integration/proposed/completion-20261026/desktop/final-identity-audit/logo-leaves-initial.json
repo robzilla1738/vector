@@ -1,0 +1,47 @@
+{
+  "receiptSha256": "44d6fc9e168cfc03b8528aaeb500175bfbc052cf2cb5e9a5d3d57114f9b27a3c",
+  "agentIcons": [
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/icons/icon-16.png",
+      "sha256": "54d1367084448320ee39412e34a74524d518babadb4e6582ef2bda27f1aa3cbc",
+      "source": "assets/brand/Aux.iconset/icon_16x16.png",
+      "sourceSha256": "54d1367084448320ee39412e34a74524d518babadb4e6582ef2bda27f1aa3cbc",
+      "bytesExact": true
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/icons/icon-48.png",
+      "sha256": "d4e63d20bbec0e3a283bc12f5b9e35c255cfff44538b4dfdee6f676213920abf",
+      "source": "vendor/provided-ui/branding/icon48.png",
+      "sourceSha256": "d4e63d20bbec0e3a283bc12f5b9e35c255cfff44538b4dfdee6f676213920abf",
+      "bytesExact": true
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/icons/icon-128.png",
+      "sha256": "42d9aa3c1c82c24a1db95e33a48f5d4112cf966dcccbeb1bbce07a2712a74208",
+      "source": "assets/brand/Aux.iconset/icon_128x128.png",
+      "sourceSha256": "42d9aa3c1c82c24a1db95e33a48f5d4112cf966dcccbeb1bbce07a2712a74208",
+      "bytesExact": true
+    }
+  ],
+  "assetCatalogs": [
+    {
+      "path": "Contents/Frameworks/Aux Framework.framework/Versions/155.0.8059.85/Helpers/Aux Helper (Alerts).app/Contents/Resources/Assets.car",
+      "type": "file",
+      "sha256": "961218f6eef627cad9b6ef7401f1774efd9c1cbcd3eebd299d7843415a1fcbb7",
+      "mode": 420
+    },
+    {
+      "path": "Contents/Frameworks/Aux Framework.framework/Versions/155.0.8059.85/Helpers/Aux Helper (Aperitif Alerts).app/Contents/Resources/Assets.car",
+      "type": "file",
+      "sha256": "961218f6eef627cad9b6ef7401f1774efd9c1cbcd3eebd299d7843415a1fcbb7",
+      "mode": 420
+    },
+    {
+      "path": "Contents/Resources/Assets.car",
+      "type": "file",
+      "sha256": "961218f6eef627cad9b6ef7401f1774efd9c1cbcd3eebd299d7843415a1fcbb7",
+      "mode": 420
+    }
+  ],
+  "brandImageLeaves": []
+}

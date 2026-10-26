@@ -1,0 +1,39 @@
+{
+  "publicReference": "https://chromium.googlesource.com/chromium/src/+/refs/heads/main/chrome/app/theme/chromium/mac/Assets.car?format=TEXT",
+  "referenceSha256": "961218f6eef627cad9b6ef7401f1774efd9c1cbcd3eebd299d7843415a1fcbb7",
+  "referenceBytes": 437192,
+  "artifactSha256": "961218f6eef627cad9b6ef7401f1774efd9c1cbcd3eebd299d7843415a1fcbb7",
+  "artifactBytes": 437192,
+  "bytesExact": true,
+  "publicCommit": "4e0c249681f8b5ad452f299fa9641ba274e8ddb5",
+  "immutableReference": "https://chromium.googlesource.com/chromium/src/+/4e0c249681f8b5ad452f299fa9641ba274e8ddb5/chrome/app/theme/chromium/mac/Assets.car?format=TEXT",
+  "documentation": [
+    "https://developer.apple.com/library/archive/documentation/General/Reference/InfoPlistKeyReference/Articles/CoreFoundationKeys.html",
+    "https://chromium.googlesource.com/chromium/src/+/refs/heads/main/docs/mac/icons.md"
+  ],
+  "receiptSha256": "44d6fc9e168cfc03b8528aaeb500175bfbc052cf2cb5e9a5d3d57114f9b27a3c",
+  "catalogs": [
+    {
+      "path": "Contents/Frameworks/Aux Framework.framework/Versions/155.0.8059.85/Helpers/Aux Helper (Alerts).app/Contents/Resources/Assets.car",
+      "sha256": "961218f6eef627cad9b6ef7401f1774efd9c1cbcd3eebd299d7843415a1fcbb7",
+      "CFBundleIconName": "AppIcon",
+      "CFBundleIconFile": "app.icns",
+      "fallbackSha256": "bc9826cef6295b7806693bdfc107e6901388ecfbd73236874c8fb19786b64f35"
+    },
+    {
+      "path": "Contents/Frameworks/Aux Framework.framework/Versions/155.0.8059.85/Helpers/Aux Helper (Aperitif Alerts).app/Contents/Resources/Assets.car",
+      "sha256": "961218f6eef627cad9b6ef7401f1774efd9c1cbcd3eebd299d7843415a1fcbb7",
+      "CFBundleIconName": "AppIcon",
+      "CFBundleIconFile": "app.icns",
+      "fallbackSha256": "bc9826cef6295b7806693bdfc107e6901388ecfbd73236874c8fb19786b64f35"
+    },
+    {
+      "path": "Contents/Resources/Assets.car",
+      "sha256": "961218f6eef627cad9b6ef7401f1774efd9c1cbcd3eebd299d7843415a1fcbb7",
+      "CFBundleIconName": "AppIcon",
+      "CFBundleIconFile": "app.icns",
+      "fallbackSha256": "bc9826cef6295b7806693bdfc107e6901388ecfbd73236874c8fb19786b64f35"
+    }
+  ],
+  "immutableReferenceVerified": true
+}

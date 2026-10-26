@@ -1,0 +1,93 @@
+{
+  "receiptSha256": "44d6fc9e168cfc03b8528aaeb500175bfbc052cf2cb5e9a5d3d57114f9b27a3c",
+  "scope": "Exact confirmed producer/receiver atom search in actual final Agent JS/HTML/JSON only; immutable Node/memory trees untouched",
+  "filesRead": 1076,
+  "bytesRead": 34062670,
+  "matchedContractLeaves": [
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/-components-4o0FSqQ9.js",
+      "sha256": "ed5962445f75abab89c2d983c289da0517f0f511202ff4d087cd240952f63a60",
+      "matches": {
+        "aside.remix.pending.v1": 1
+      }
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/-utils-B_lbplVm.js",
+      "sha256": "5527b6cb0638210d3f9b4c6b16fe27244fd80b64c986b39da73fe11a4bdbfdfc",
+      "matches": {
+        "aside.profileMetadataSync.v1": 1
+      }
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/mcps-DmPp5oo9.js",
+      "sha256": "0628abf121307a43567addaa792eb9f13c9b72e47c75f8d3cbe9f316a5ece79a",
+      "matches": {
+        "aside-mcp-oauth": 1
+      }
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/personalization-C9HKLZT4.js",
+      "sha256": "f24d1884b1169832b9d729ade410c4599fbdc624904e6ab18168476e1912cabf",
+      "matches": {
+        "aside.lasso-storage-bridge": 2,
+        "aside.lasso.v1": 1
+      }
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/provider-Cw0zhujt.js",
+      "sha256": "c4862e5ac3e442c203039edf7253c5af9627be724e70d0e20f693243e40c210e",
+      "matches": {
+        "aside-code": 6
+      }
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/queries-ldd77hNk.js",
+      "sha256": "fb8dafdc548e416acdd0f8c9988967b7d8d2d1d15c268ae0c6e63353a57c680e",
+      "matches": {
+        "aside.daemonAuth": 1
+      }
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/session-composer-Dc0LRfZA.js",
+      "sha256": "3eaa9c8f0946ad2b20a63f0b80f0acb0ad79835061050eb09dff2fbd3c791144",
+      "matches": {
+        "aside-code": 3
+      }
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/background.js",
+      "sha256": "5eff26a667e650969311ca9341b66876e678960ac08dfd1419f00e33c529926f",
+      "matches": {
+        "aside.daemonAuth": 1,
+        "aside-capture": 2,
+        "aside.lasso-storage-bridge": 2,
+        "aside.lasso.v1": 1,
+        "aside.profileMetadataSync.v1": 1,
+        "aside-remix-gmail": 1,
+        "aside-remix-slack": 1,
+        "aside.remix.v1": 2,
+        "aside.remix.pending.v1": 1,
+        "aside-remix-user-": 1,
+        "const aside =": 1
+      }
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/content/content.js",
+      "sha256": "57f04e1935e2a4730f28aff6906dd831ca3e1ef6a0007bb056b1b8010a4d7dad",
+      "matches": {
+        "aside.daemonAuth": 1,
+        "aside.lasso-storage-bridge": 3,
+        "aside.lasso.v1": 2
+      }
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/remix.js",
+      "sha256": "72712b1596fd02196cd61b05472a0e8b1913f317dd710eb514b366d63701a6a7",
+      "matches": {
+        "aside.remix.v1": 1
+      }
+    }
+  ],
+  "sourceOnlySuccessor": "1c8dd928d",
+  "appEdited": false
+}
