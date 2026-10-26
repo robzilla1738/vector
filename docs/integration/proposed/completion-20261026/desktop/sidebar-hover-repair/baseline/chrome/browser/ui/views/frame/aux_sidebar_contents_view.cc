@@ -1,0 +1,87 @@
+// Copyright 2026 Aux Authors. BSD-style license: see //LICENSE.
+#include "chrome/browser/ui/views/frame/aux_sidebar_contents_view.h"
+#include <memory>
+#include <utility>
+#include "base/check.h"
+#include "ui/base/metadata/metadata_impl_macros.h"
+#include "ui/views/controls/scroll_view.h"
+#include "ui/views/layout/flex_layout.h"
+#include "ui/views/layout/flex_layout_types.h"
+#include "ui/views/view_class_properties.h"
+namespace aux {
+SidebarContentsView::SidebarContentsView(RightClick right_click)
+    : right_click_(std::move(right_click)) {
+  // Original constructor always binds actual region462bffc. A caller cannot
+  // substitute an empty callback and claim successful native menu handling.
+  CHECK(right_click_);
+  AddObserver(this);
+  auto* layout = SetLayoutManager(std::make_unique<views::FlexLayout>());
+  layout->SetOrientation(views::LayoutOrientation::kVertical)
+      .SetCollapseMargins(true)
+      .SetCrossAxisAlignment(views::LayoutAlignment::kStretch)
+      .SetDefault(views::kFlexBehaviorKey,
+          views::FlexSpecification(views::LayoutOrientation::kVertical,
+              views::MinimumFlexSizeRule::kPreferred,
+              views::MaximumFlexSizeRule::kPreferred, false,
+              views::MinimumFlexSizeRule::kPreferred));
+}
+SidebarContentsView::~SidebarContentsView() {
+  RemoveObserver(this);
+}
+bool SidebarContentsView::OnMousePressed(const ui::MouseEvent& event) {
+  if (!event.IsOnlyRightMouseButton()) return false;
+  // The real callback may close this window. No owner access after dispatch.
+  auto callback = right_click_;
+  callback.Run(this, event);
+  return true;
+}
+gfx::Size SidebarContentsView::CalculatePreferredSize(
+    const views::SizeBounds& available) const {
+  std::optional<int> width_key;
+  if (available.width().is_bounded()) width_key = available.width().value();
+  else if (width() > 0) width_key = width();
+  if (auto found = preferred_sizes_.find(width_key); found != preferred_sizes_.end())
+    return found->second;
+  const views::SizeBounds query(width_key ? views::SizeBound(*width_key)
+                                         : views::SizeBound(),
+                                views::SizeBound());
+  const auto size = views::View::CalculatePreferredSize(query);
+  preferred_sizes_.emplace(width_key, size);
+  return size;
+}
+void SidebarContentsView::OnViewLayoutInvalidated(views::View* observed_view) {
+  // Nested Tabs contents and collection animations propagate InvalidateLayout
+  // through their parents, without a direct ChildPreferredSizeChanged call.
+  // Preserve the supplied width cache, but retire it with the real layout cache.
+  // Do not notify or invalidate here: View is already propagating that change.
+  preferred_sizes_.clear();
+}
+void SidebarContentsView::ClearSizeCache() {
+  preferred_sizes_.clear();
+  PreferredSizeChanged();
+}
+void SidebarContentsView::ChildPreferredSizeChanged(views::View*) {
+  ClearSizeCache();
+}
+void SidebarContentsView::ChildVisibilityChanged(views::View*) {
+  ClearSizeCache();
+}
+void SidebarContentsView::ViewHierarchyChanged(
+    const views::ViewHierarchyChangedDetails& details) {
+  if (details.parent == this) ClearSizeCache();
+}
+void ConfigureSidebarContentsScrollView(views::ScrollView& scroll) {
+  scroll.SetUseContentsPreferredSize(true);
+  scroll.ClipHeightTo(0, 0);
+  scroll.SetBackgroundColor(std::nullopt);
+  scroll.SetDrawOverflowIndicator(false);
+  scroll.SetOverflowGradientMask(views::ScrollView::GradientDirection::kVertical);
+  scroll.SetProperty(views::kFlexBehaviorKey,
+      views::FlexSpecification(views::LayoutOrientation::kVertical,
+          views::MinimumFlexSizeRule::kScaleToMinimum,
+          views::MaximumFlexSizeRule::kUnbounded, false,
+          views::MinimumFlexSizeRule::kPreferred).WithWeight(1));
+}
+BEGIN_METADATA(SidebarContentsView)
+END_METADATA
+}  // namespace aux

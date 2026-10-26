@@ -1,0 +1,11 @@
+# Sidebar collapse must retain a vertical-only scrolling surface
+
+The integrator observed browser exit 134 immediately after enabling hover expansion and collapsing the sidebar. The fatal is `ScrollView::UpdateGradientMask`: both horizontal and vertical scrollbars became visible while a vertical gradient was configured. Its stack reaches the actual `VerticalTabStripScrollView::Layout` and sidebar region.
+
+`ConfigureSidebarContentsScrollView` sets preferred-size contents and a vertical overflow gradient but leaves both scrollbar modes at ScrollView's default `kEnabled`. Collapsing reduces viewport width while supplied rows retain preferred width. If height also overflows, `ComputeScrollBarsVisibility` enables both axes and the legitimate gradient invariant fails.
+
+One configuration anchor disables horizontal scrolling before configuring the vertical gradient. The sidebar is already a vertical list: its elastic input scrolls y only, and horizontal gestures have separate Space/profile navigation ownership. Vertical scroll, gradient, preferred size, layout, supplied styling, pointer hover, collapse persistence and core invariant remain unchanged. No preference reset or interrupted-state mutation is needed. This fixes the existing owner rather than suppressing ScrollView's CHECK.
+
+The same grouped proposal removes the thirteen split-drag diagnostic anchors from the exact current two owners. Actual logs established retained press/release with zero admitted drag motion and no refresh cancellation or join refusal. They did not justify a behavioral split repair; the physical-owner drag acceptance remains open. The diagnostic removal restores those pre-diagnostic bytes exactly.
+
+Three source overlays: one functional anchor and thirteen diagnostic-removal anchors. `source-plan.json` pins the current native preimages; counted replay passed. No projection/build/signing or app/state operation occurred here. Integrator validation is the affected objects followed by one combined candidate: reopen the preserved collapsed profile, observe genuine hover reveal and collapse, confirm vertical overflow still scrolls, and run the bundled physical drag/shortcut session. Include the separately delivered Recent Files correction in that same build.
