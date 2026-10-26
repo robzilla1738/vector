@@ -1,0 +1,43 @@
+{
+  "format": "aux.icon-catalog.scope.v1",
+  "receiptSha256": "44d6fc9e168cfc03b8528aaeb500175bfbc052cf2cb5e9a5d3d57114f9b27a3c",
+  "catalogSha256": "961218f6eef627cad9b6ef7401f1774efd9c1cbcd3eebd299d7843415a1fcbb7",
+  "records": 50,
+  "logicalItems": [
+    "AppIcon",
+    "Icon"
+  ],
+  "names": [
+    "AppIcon",
+    "AppIcon/2",
+    "AppIcon/3",
+    "AppIcon/5",
+    "AppIcon/Color-1",
+    "AppIcon/Color-2",
+    "AppIcon/Color-3",
+    "AppIcon/Color-4",
+    "AppIcon/Color-5",
+    "AppIcon/Color-6",
+    "AppIcon/Color-7",
+    "AppIcon/Color-8",
+    "AppIcon/Gradient-1",
+    "AppIcon/Gradient-2",
+    "AppIcon/Gradient-3",
+    "AppIcon/Group",
+    "AppIcon/Group 2",
+    "AppIcon/Group 3",
+    "AppIcon/Group 4",
+    "AppIcon/blue",
+    "AppIcon/cr",
+    "AppIcon/donut",
+    "AppIcon/pill",
+    "AppIcon/ring",
+    "Icon",
+    "ZZZZPackedAsset-1.0.0-gamut0",
+    "ZZZZPackedAsset-2.0.0-gamut0"
+  ],
+  "unrelatedProductUiAssetsFound": false,
+  "IconReferencedBy": "Info.plist UTTypeIcons.UTTypeIconBadgeName",
+  "sourceKind": "actual shipped assetutil metadata plus immutable upstream byte comparison",
+  "appExecuted": false
+}

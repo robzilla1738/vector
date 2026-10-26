@@ -1,0 +1,24 @@
+{
+  "format": "aux.canonical-icon-catalog.inputs.v1",
+  "inputs": [
+    {
+      "path": "assets/brand/arch-mark.svg",
+      "sha256": "45ba4f1d823cab3085cad8902fd17420ff5a9a5ac3139b180bfc0902875f515c"
+    },
+    {
+      "path": "assets/brand/Aux.icns",
+      "sha256": "bc9826cef6295b7806693bdfc107e6901388ecfbd73236874c8fb19786b64f35"
+    },
+    {
+      "path": "assets/brand/inventory.json",
+      "sha256": "9762ba9e72f6a2c12f5f98bef038e96830d6001a18fe9ea44d165a303f7dc593"
+    }
+  ],
+  "originalCatalogSha256": "961218f6eef627cad9b6ef7401f1774efd9c1cbcd3eebd299d7843415a1fcbb7",
+  "fallbackIconSha256": "bc9826cef6295b7806693bdfc107e6901388ecfbd73236874c8fb19786b64f35",
+  "targets": [
+    "Contents/Frameworks/Aux Framework.framework/Versions/155.0.8059.85/Helpers/Aux Helper (Alerts).app/Contents/Resources/Assets.car",
+    "Contents/Frameworks/Aux Framework.framework/Versions/155.0.8059.85/Helpers/Aux Helper (Aperitif Alerts).app/Contents/Resources/Assets.car",
+    "Contents/Resources/Assets.car"
+  ]
+}
