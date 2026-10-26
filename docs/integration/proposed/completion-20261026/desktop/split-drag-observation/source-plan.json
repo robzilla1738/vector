@@ -1,0 +1,20 @@
+{
+  "scope": "diagnostics only; unresolved real drag admission failure",
+  "projected": false,
+  "compiled": false,
+  "files": [
+    {
+      "path": "chrome/browser/ui/views/frame/aux_organization_tree_view.cc",
+      "beforeSha256": "55adba32a3fcd550a3b64fd19ab05444e415b6fef9522c9ed24bd5db5c8980e6",
+      "afterSha256": "2b5de512a8de89810c94279e89b8a06058e5f978c43537a9e2364dd2fa9cfc2e",
+      "anchors": 8
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_organization_window_controller.cc",
+      "beforeSha256": "49c13d0805410d33ae6af7d31fd30daa78560c9f5ca77ef9b0fb5b3bad9a4047",
+      "afterSha256": "88d64c0c26b0a535afcbec9e2c5fcc4585183c19f7f5d7d6e3381e6006121473",
+      "anchors": 5
+    }
+  ],
+  "anchors": 13
+}

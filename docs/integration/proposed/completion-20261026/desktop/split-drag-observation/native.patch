@@ -1,0 +1,107 @@
+--- a/chrome/browser/ui/views/frame/aux_organization_tree_view.cc
++++ b/chrome/browser/ui/views/frame/aux_organization_tree_view.cc
+@@ -1,6 +1,7 @@
+ // Copyright 2026 Aux Authors. BSD-style license: see //LICENSE.
+ #include "chrome/browser/ui/views/frame/aux_organization_tree_view.h"
+ #include <algorithm>
++#include <cstdio>
+ #include <limits>
+ #include <utility>
+ #include "base/functional/bind.h"
+@@ -308,6 +309,7 @@
+   const bool next_ready = snapshot && window_->IsProjectionReady() && (scope_ == Scope::kPinnedFolders || snapshot->spaces.contains(window_->ActiveSpaceId()));
+   const bool changed = ready_ != next_ready;
+   ready_ = next_ready;
++  if (drag_) fprintf(stderr, "Aux split drag refresh-cancel moved=%d ready=%d\n", drag_->moved, ready_);
+   CancelDrag();
+   std::string focused, previous_active;
+   for (const auto& [id, row] : row_by_id_) {
+@@ -644,10 +646,13 @@
+ void AuxOrganizationTreeView::BeginDrag(const std::string& id, const gfx::Point& point) {
+   CancelDrag(); if (!browser_ || id.starts_with("recovery:")) return;
+   auto context = CaptureOrganizationContext(*browser_);
++  fprintf(stderr, "Aux split drag begin context=%d\n", context.has_value());
+   if (context) drag_ = Drag{id, {}, point, std::move(*context), false, false};
+ }
+ void AuxOrganizationTreeView::ContinueDrag(const gfx::Point& point) {
+   if (!drag_ || (!drag_->moved && (point - drag_->origin).LengthSquared() < 36)) return;
++  const bool first_motion = !drag_->moved;
++  const auto previous_edge = drag_->edge;
+   drag_->moved = true; drag_->target.clear(); drag_->edge = DropEdge::kNone;
+   const auto* snapshot = Snapshot();
+   for (const auto& [id, row] : row_by_id_) {
+@@ -671,6 +676,8 @@
+     }
+     row->MarkDrop(over, edge);
+   }
++  if (first_motion || previous_edge != drag_->edge)
++    fprintf(stderr, "Aux split drag motion target=%d edge=%d\n", !drag_->target.empty(), static_cast<int>(drag_->edge));
+ }
+ void AuxOrganizationTreeView::CancelDrag() {
+   drag_.reset(); for (const auto& [id, row] : row_by_id_) row->MarkDrop(false);
+@@ -678,16 +685,22 @@
+ void AuxOrganizationTreeView::FinishDrag() {
+   auto drag = std::move(drag_); CancelDrag();
+   const auto* snapshot = Snapshot();
++  fprintf(stderr, "Aux split drag release retained=%d moved=%d target=%d edge=%d\n",
++      drag.has_value(), drag && drag->moved, drag && snapshot && snapshot->entries.contains(drag->target),
++      drag ? static_cast<int>(drag->edge) : 0);
+   if (!drag || !drag->moved || !snapshot || !snapshot->entries.contains(drag->target)) return;
+   if (drag->edge != DropEdge::kNone) {
+     const auto current = CaptureOrganizationContext(*browser_);
+     if (!current || current->profile_id != drag->context.profile_id ||
+         current->owner_generation != drag->context.owner_generation ||
+-        snapshot->revision != drag->context.expected_revision) return;
++        snapshot->revision != drag->context.expected_revision) {
++      fprintf(stderr, "Aux split drag stale-context\n"); return;
++    }
+     const bool stacked = drag->edge == DropEdge::kTop || drag->edge == DropEdge::kBottom;
+     const bool leading = drag->edge == DropEdge::kTop || drag->edge == DropEdge::kLeft;
+     window_->SplitLogicalTabs(drag->id, drag->target, stacked, leading,
+-        base::BindOnce([](base::WeakPtr<AuxOrganizationTreeView> owner, bool) {
++        base::BindOnce([](base::WeakPtr<AuxOrganizationTreeView> owner, bool success) {
++          fprintf(stderr, "Aux split drag completed success=%d\n", success);
+           if (owner) owner->Refresh();
+         }, weak_.GetWeakPtr()));
+     return;
+--- a/chrome/browser/ui/views/frame/aux_organization_window_controller.cc
++++ b/chrome/browser/ui/views/frame/aux_organization_window_controller.cc
+@@ -1,6 +1,7 @@
+ // Copyright 2026 Aux Authors. BSD-style license: see //LICENSE.
+ #include "chrome/browser/ui/views/frame/aux_organization_window_controller.h"
+ #include <algorithm>
++#include <cstdio>
+ #include <limits>
+ #include <tuple>
+ #include <utility>
+@@ -883,14 +884,19 @@
+ void AuxOrganizationWindowController::SplitLogicalTabs(
+     const std::string& source, const std::string& target, bool stacked, bool leading,
+     base::OnceCallback<void(bool)> reply) {
+-  if (!IsProjectionReady() || source == target) { std::move(reply).Run(false); return; }
++  if (!IsProjectionReady() || source == target) {
++    fprintf(stderr, "Aux split join projection-or-same-target refusal\n");
++    std::move(reply).Run(false); return;
++  }
+   OpenLogicalTab(target, base::BindOnce(
+       [](base::WeakPtr<AuxOrganizationWindowController> owner, std::string source_id,
+          std::string target_id, bool vertical, bool before, base::OnceCallback<void(bool)> done, bool opened) {
++        fprintf(stderr, "Aux split join target-open owner=%d opened=%d\n", !!owner, opened);
+         if (!owner || !opened) { std::move(done).Run(false); return; }
+         owner->OpenLogicalTab(source_id, base::BindOnce(
+             [](base::WeakPtr<AuxOrganizationWindowController> current, std::string source_key,
+                std::string target_key, bool is_vertical, bool insert_before, base::OnceCallback<void(bool)> completed, bool source_opened) {
++              fprintf(stderr, "Aux split join source-open owner=%d opened=%d\n", !!current, source_opened);
+               if (!current || !current->Current() || !source_opened) {
+                 std::move(completed).Run(false); return;
+               }
+@@ -906,6 +912,9 @@
+               const bool joined = JoinNativeSplit(*current->browser_, target_tab, source_tab,
+                   is_vertical ? split_tabs::SplitPaneTree::Axis::kVertical
+                               : split_tabs::SplitPaneTree::Axis::kHorizontal, insert_before);
++              fprintf(stderr, "Aux split join native-result target=%d source=%d source-split=%d target-split=%d joined=%d\n",
++                  target_tab != nullptr, source_tab != nullptr, source_tab && source_tab->IsSplit(),
++                  target_tab && target_tab->IsSplit(), joined);
+               current->QueueReconcile();
+               std::move(completed).Run(joined);
+             }, owner, source_id, target_id, vertical, before, std::move(done)));
