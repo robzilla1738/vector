@@ -1,0 +1,11 @@
+# Supplied Bash background lifetime correction
+
+The actual A51 `runSessionBash` races output collection against `moveToBackground`. Its `finally` removed the command from `runningCommands` and closed the JS runtime-use admission even when the background response arrived first. Therefore the existing daemon shutdown `killRunningCommands` no longer included that still-running command. Native exec reservations separately retain their own runtime lease; the JS early release was never proof that native custody had ended.
+
+The two count-one source edits attach that existing cleanup to the original ChildProcess `close` event, before the function can background or abort, and remove cleanup from the return-path `finally`. The supplied output, background behavior, timeout and signal paths are preserved. An `error` event alone does not release the live command. This is direct-child close bookkeeping, not descendant settlement, native ownership or an execution grant.
+
+`aux-bash-close-lifetime.mjs` composes after the ordinary-chat startup successor, or against current A51 with its known pinned source supplied separately. `prepare.mjs` produces a fresh paired output outside the app and syntax-checks both complete leaves; `prepared-source.json` records the actual result. No app, native source, addon or runtime bytes were mutated.
+
+Focused verification runs the actual transformed `runSessionBash` consumer with a fake process and real background callback: a completed background response retains the runtime and shutdown kill callback, a late process error retains both, and physical close releases once. The second check verifies both actual source leaves, reverse replay and unchanged admission guard. Both focused checks passed. No provider call, process execution, app operation or native build occurred.
+
+Exec/PTY/Computer Use remain required completion outcomes. This correction does not make the ordinary build support them. The separate scope review records the exact native prerequisite and finite next joins.

@@ -1,0 +1,19 @@
+{
+  "format": "aux.bash-close-lifetime.source.v1",
+  "output": "/var/folders/98/j36zgdnd0h507whjl16gxl780000gp/T/aux-bash-close-lifetime-tUzLL3",
+  "files": [
+    {
+      "name": "index.mjs",
+      "inputSha256": "298a58fcf7b4daf0c8445316486460b9182aa87cfd4827b36ff9b75395ec8914",
+      "outputSha256": "9739f0b1acf2f83a5c3372e3ec1a20b14d0de15c193fb72eb374ab675b9c61bc",
+      "anchors": 2
+    },
+    {
+      "name": "aux-native-entry.mjs",
+      "inputSha256": "7463470fb36e46530ff982efd951e492231eb29729edc7931f97f5dab5785462",
+      "outputSha256": "a71307adb1343e8da5539cfbfba5c10b49ba55b6b70f59a22ef7f98fce8dac0d",
+      "anchors": 2
+    }
+  ],
+  "productExecution": false
+}
