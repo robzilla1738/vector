@@ -1,0 +1,89 @@
+{
+  "scope": "read-only source-owner review, not app acceptance",
+  "reviewedNativeRoot": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src",
+  "newProductDefectsDemonstrated": 0,
+  "appLaunched": false,
+  "nativeMutations": false,
+  "nativeBuilds": 0,
+  "sourceOwners": [
+    {
+      "path": "chrome/browser/aux/cli/AuxNativeCliFrontend.mm",
+      "sha256": "e31f601945cddbbb6255d726e0dc6a2eedc7dd84fca6a29f1bddc6cc7216dd71"
+    },
+    {
+      "path": "chrome/browser/aux/cli/AuxCliOpenCommand.mm",
+      "sha256": "6f18052e41f09885a8fc04881866f7f6276061172bee5e967c388466a183990e"
+    },
+    {
+      "path": "chrome/browser/aux/routing/routing_service.cc",
+      "sha256": "738c965351cca4ecde92638eb00f40cc0c061768348af9880e56c7453fa6ab27"
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_split_commands.cc",
+      "sha256": "945511b4577bd546c02f99759a07e5c81c80cb6be63338c5efe9bee8af55cdaf"
+    },
+    {
+      "path": "chrome/browser/ui/aux_preview/aux_preview_controller.cc",
+      "sha256": "6d51e78c4bfc05d6fef4217f965272b51eaa0398cd5231dae3f304bff819dcb2"
+    },
+    {
+      "path": "chrome/browser/ui/aux_preview/aux_preview_controls.cc",
+      "sha256": "10ac17a09a6bce4a7aceb4dbf84e0c1eb42ccc662ad58ea4d840e72881a23dc5"
+    },
+    {
+      "path": "chrome/browser/themes/aux_theme_editor.cc",
+      "sha256": "3ae36fdcae98959c808d289e6c77a4d0a468579a897c81442a460c14f0035bda"
+    },
+    {
+      "path": "chrome/browser/ui/aux_recent_files_service.cc",
+      "sha256": "46ec54e2041b87dfbd4332c5150ca32b69d72807d72145539945e51b81fabf6b"
+    },
+    {
+      "path": "chrome/browser/ui/aux_developer_commands.cc",
+      "sha256": "0f898dee3b59c4a1a23998f852749b3dc5d8a4274521244ccea4075cfb1fa36b"
+    },
+    {
+      "path": "chrome/browser/ui/aux_page_capture.cc",
+      "sha256": "ec03b667be6786449090bf6b67052ec69ef4227c527c74c1db1aa6c117be3af8"
+    },
+    {
+      "path": "chrome/browser/extensions/api/aux_browser_preferences/aux_developer_expansion_api.cc",
+      "sha256": "b7e263be5cef6588501b7ec182a2740ec52426a2756785198959f73ac1d77386"
+    }
+  ],
+  "historicalClaimsCorrected": [
+    "next-desktop: CLI list/resolve absence superseded by joined implementation",
+    "cli-readonly: projection/build pending superseded by root receipts"
+  ],
+  "requirementsCoveredByRecipe": [
+    "R01",
+    "R02",
+    "R03",
+    "R04",
+    "R05",
+    "R06",
+    "R07",
+    "R08",
+    "R09",
+    "R10",
+    "R11",
+    "R12",
+    "R13",
+    "R14",
+    "R15",
+    "R16",
+    "R17",
+    "R18",
+    "R19",
+    "R21",
+    "R22",
+    "R23",
+    "R24",
+    "R25",
+    "R26",
+    "R27",
+    "R28",
+    "R29",
+    "R30"
+  ]
+}

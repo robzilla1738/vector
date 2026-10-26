@@ -1,0 +1,49 @@
+{
+  "scope": "loopback fixture HTTP content only; no app or media playback acceptance",
+  "passed": true,
+  "appLaunched": false,
+  "providerCalls": 0,
+  "checks": [
+    {
+      "route": "/alpha?profile=work",
+      "expectedContent": true
+    },
+    {
+      "route": "/beta",
+      "expectedContent": true
+    },
+    {
+      "route": "/gamma",
+      "expectedContent": true
+    },
+    {
+      "route": "/delta",
+      "expectedContent": true
+    },
+    {
+      "route": "/protected",
+      "expectedContent": true
+    },
+    {
+      "route": "/capture",
+      "expectedContent": true
+    },
+    {
+      "route": "/media",
+      "expectedContent": true
+    },
+    {
+      "route": "/files/first/notes.txt",
+      "sha256": "47834e45e4108f831e843710a34da1b5bb20e24b07360e30b8cba579023f4b40"
+    },
+    {
+      "route": "/files/second/notes.txt",
+      "sha256": "b93cbf45466b7f728011ad66355f788e8254e5927c867d5cbb8aa27d38b8ad6f"
+    },
+    {
+      "route": "/files/image.png",
+      "sha256": "1f959e52eb046e213a44b3b201e0d605db7758b9e22444520d36bb1bb4fe96b0"
+    }
+  ],
+  "cleanServerExit": true
+}
