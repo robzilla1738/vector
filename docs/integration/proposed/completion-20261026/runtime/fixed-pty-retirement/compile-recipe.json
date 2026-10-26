@@ -38,7 +38,7 @@
       "-ivfsoverlay",
       "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/runtime/fixed-builtins/root-compile-vfs.json",
       "-I/private/tmp/aux-browser-only-daemon-build-20261025-a72/source",
-      "-DAUX_BROWSER_ONLY_NATIVE_STARTUP=1",
+      "-DAUX_BROWSER_ONLY_NATIVE_STARTUP=0",
       "-I/private/tmp/aux-browser-only-daemon-build-20261024-a42e/source",
       "-fblocks",
       "-I/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/native-credential-lock-a1/source",
@@ -255,5 +255,10 @@
   "activated": false,
   "EntitlementRequired": true,
   "candidateChanged": false,
-  "reviewChanged": false
+  "reviewChanged": false,
+  "workerProofVariant": {
+    "inheritedActualFlag": "-DAUX_BROWSER_ONLY_NATIVE_STARTUP=1",
+    "objectOnlyFlag": "-DAUX_BROWSER_ONLY_NATIVE_STARTUP=0",
+    "reason": "Type-check the genuine supervised linked/retirement paths; no link/projection/activation, frozen browser-only candidate untouched"
+  }
 }

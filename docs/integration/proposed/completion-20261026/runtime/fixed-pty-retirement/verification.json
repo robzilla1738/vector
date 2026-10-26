@@ -13,5 +13,6 @@
   "candidateChanged": false,
   "reviewChanged": false,
   "EntitlementRequired": true,
-  "sourceRecipeSha256": "4cf03cdb17180b808b0f230971a4c1859068cb0702bba4ecf63ff09ae9522adc"
+  "sourceRecipeSha256": "e7c0b055f1133be7dc929a04e1743ad533103a54386af3f45d67d4aded2609a3",
+  "objectProofFlagVariant": "AUX_BROWSER_ONLY_NATIVE_STARTUP=0; private object only, candidate unchanged"
 }
