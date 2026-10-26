@@ -25,7 +25,11 @@
   "proposalFiles": [
     {
       "path": "README.md",
-      "sha256": "39f09f742533dd9600e715c3148ea75a2ebfca94bc1d86a15b9b8645456b4259"
+      "sha256": "ef255e072fd8146ac15c5420c19ec04b26b5915e9bb9310b9863947af7ec897e"
+    },
+    {
+      "path": "combined-activation-review-text.md",
+      "sha256": "789c850e6647bd02811b1e0551f0a179b72c9931fc208fc2465597b9d82d2e3e"
     },
     {
       "path": "observed-catalog-source.json",
@@ -36,11 +40,15 @@
       "sha256": "12ab1c10105ca2b4f061a89d0fe17a155a813837ceacf4ed001911a94708f1ab"
     },
     {
+      "path": "proposed-capture-grants-strict-optional.sql",
+      "sha256": "9888f320db3b476340b93f7ccba1c444ec26830421b824300f24da95a44a9122"
+    },
+    {
       "path": "proposed-capture-grants.sql",
-      "sha256": "7b230811a9543e9c9267ad85d5607158eee51f66719041beb5b985aa30322449"
+      "sha256": "e851520a97ae0eb879a83f377e9112e349736ad28081dc0d533a97858694efc2"
     }
   ],
-  "inspection": "Source structure only; exact table list derived from recorded catalog, explicit grants examined, shared PUBLIC revoke excluded, NOLOGIN and final ROLLBACK retained. No SQL/database parser or tests run.",
+  "inspection": "Source structure only; default preserves/asserts observed PUBLIC CONNECT+TEMP, refuses CREATE/drift, exact persistent-data SELECT list and NOLOGIN/ROLLBACK retained. No SQL parser, tests or execution.",
   "observedPublicTempConflictBlocksStrictProposal": true,
   "roleAuthenticationConfigured": false,
   "sqlExecuted": false,
@@ -48,5 +56,8 @@
   "credentialRead": false,
   "roleOrAclChanged": false,
   "candidateChanged": false,
-  "captureAccepted": false
+  "captureAccepted": false,
+  "observedPublicTempBlocksDefaultProposal": false,
+  "defaultPreservesExistingPublicTempAndRoutineExecute": true,
+  "strictNoTempWasUserRequirement": false
 }

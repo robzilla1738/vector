@@ -1,0 +1,7 @@
+## Dedicated database capture authority
+
+Proposed recipient: new aux_backup_capture for the exact Production neondb/direct endpoint and reviewed backup runner. New explicit grants are CONNECT, public USAGE and SELECT on the30 observed public tables, with no persistent data mutation, ownership, admin membership, BYPASSRLS or schema/database CREATE. The current complete catalog has0 sequences/RLS/large objects/non-public application relations or extension configuration tables, so no dump-scope restriction is proposed.
+
+**Existing shared PUBLIC TEMPORARY and PUBLIC routine EXECUTE remain inherited.** The role can create temporary objects and call the40 observed security-invoker public routines; no function-body audit is claimed. This is SELECT-only **persistent application data access through the new grants**, not a promise of zero writable temporary state or zero callable routines. No broad PUBLIC revoke or change to existing application authority is included. The earlier optional no-temp variant is not required by the user's request or this default proposal.
+
+SQL is staged NOLOGIN, includes no password, and ends ROLLBACK. Persistence, protected authentication/custody/cutoff and the exact recipient belong to this combined activation approval. No credential or restore authority will be left on the capture runner by the preparation itself. Subsequent dedicated-role exported-snapshot capture and an empty isolated restore remain acceptance work; no database change or activation has yet occurred in this proposal.

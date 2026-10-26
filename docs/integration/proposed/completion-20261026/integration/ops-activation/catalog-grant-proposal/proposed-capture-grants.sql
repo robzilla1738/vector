@@ -1,6 +1,8 @@
 -- PASSWORD-FREE REVIEW PROPOSAL ONLY. NOT EXECUTED. DEFAULT END IS ROLLBACK.
 -- Exact source: observed-facts.json; neondb on the approved Production branch.
--- This intentionally REFUSES the presently observed PUBLIC TEMPORARY grant.
+-- Default proposal PRESERVES the observed PUBLIC CONNECT + TEMPORARY rights.
+-- Explicit new grants are SELECT-only persistent application data; inherited
+-- PUBLIC TEMP and routine EXECUTE remain real effective authority.
 -- No shared PUBLIC revoke, authentication setup, membership or activation here.
 BEGIN;
 SET LOCAL search_path = pg_catalog;
@@ -44,12 +46,17 @@ BEGIN
      OR current_setting('server_version_num')::integer/10000<>18 THEN
     RAISE EXCEPTION 'Wrong database, administrator or PostgreSQL major for this reviewed proposal.';
   END IF;
-  -- PostgreSQL cannot subtract PUBLIC TEMP by REVOKE from one new login.
-  IF EXISTS(SELECT 1 FROM pg_database d,
+  -- Preserve the existing database policy; never invent a per-role subtractive
+  -- REVOKE or silently broaden PUBLIC. Exact inherited rights are reviewed here.
+  SELECT array_agg(a.privilege_type ORDER BY a.privilege_type) INTO actual
+    FROM pg_database d,
       LATERAL aclexplode(coalesce(d.datacl,acldefault('d',d.datdba))) a
-      WHERE d.datname=current_database() AND a.grantee=0
-        AND a.privilege_type IN ('TEMPORARY','CREATE')) THEN
-    RAISE EXCEPTION 'Approval dependency: inherited PUBLIC TEMPORARY/CREATE conflicts with the no-temp capture contract. No shared revoke is included.';
+    WHERE d.datname=current_database() AND a.grantee=0;
+  IF actual IS DISTINCT FROM ARRAY['CONNECT','TEMPORARY']::text[] OR EXISTS(
+      SELECT 1 FROM pg_database d,
+        LATERAL aclexplode(coalesce(d.datacl,acldefault('d',d.datdba))) a
+      WHERE d.datname=current_database() AND a.grantee=0 AND a.is_grantable) THEN
+    RAISE EXCEPTION 'PUBLIC database authority differs from observed CONNECT/TEMPORARY; refresh the combined activation review.';
   END IF;
   IF EXISTS(SELECT 1 FROM pg_roles WHERE rolname='aux_backup_capture') THEN
     RAISE EXCEPTION 'Proposed role already exists; do not reuse or reinterpret it without a fresh privilege review.';
@@ -128,7 +135,8 @@ ALTER ROLE aux_backup_capture IN DATABASE neondb SET default_transaction_read_on
 
 DO $verify$
 BEGIN
-  IF has_database_privilege('aux_backup_capture','neondb','CREATE,TEMP')
+  IF has_database_privilege('aux_backup_capture','neondb','CREATE')
+     OR NOT has_database_privilege('aux_backup_capture','neondb','TEMPORARY')
      OR has_schema_privilege('aux_backup_capture','public','CREATE')
      OR EXISTS(SELECT 1 FROM pg_auth_members WHERE member='aux_backup_capture'::regrole)
      OR EXISTS(SELECT 1 FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace
