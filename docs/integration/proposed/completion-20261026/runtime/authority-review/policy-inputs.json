@@ -1,0 +1,61 @@
+{
+  "format": "aux.completion.authority-input-packet.v1",
+  "acceptedApp": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-local-completion-20261025-a38/Aux.app",
+  "proposedApp": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-completion-20261026-a1/Aux.app",
+  "inputs": {
+    "AuxFreshBootstrapPolicy.json": {
+      "path": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-local-completion-20261025-a38/Aux.app/Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/AuxFreshBootstrapPolicy.json",
+      "sha256": "ee33876818fe606ef2751427cf3db5361a8e7774cf592fb8d5ddbe15a3c53225",
+      "bytes": 350
+    },
+    "native/aux-pdf.node": {
+      "path": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-local-completion-20261025-a38/Aux.app/Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/native/aux-pdf.node",
+      "sha256": "ed5b4faec15d3fc3c29a97f0dd304b388844cf0bf16fad5a69a62b357a52dcc0",
+      "bytes": 9474752
+    },
+    "native/aux-macos-utilities.node": {
+      "path": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-local-completion-20261025-a38/Aux.app/Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/native/aux-macos-utilities.node",
+      "sha256": "7aff7611505145a5629cf42496be506200e7c1026087b2e397057e646d220e5e",
+      "bytes": 393720
+    },
+    "memory-helper/aux-memory": {
+      "path": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-local-completion-20261025-a38/Aux.app/Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/memory-helper/aux-memory",
+      "sha256": "1656d4b83706e75a02107eaecb7e92488430d52d3312cf6f1b7b8f984d7c5a90",
+      "bytes": 3436560
+    },
+    "AuxMemoryHelperLaunchPolicy.json": {
+      "path": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-local-completion-20261025-a38/Aux.app/Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/AuxMemoryHelperLaunchPolicy.json",
+      "sha256": "f3d333faa7406a25ae8576b7e63196e45f782758aeb42d94466470c9f5fb8edc",
+      "bytes": 399
+    },
+    "computerUseRawImage": {
+      "path": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-local-completion-20261025-a38/Aux.app/Contents/Resources/aux/apps/computer-use/Aux Computer Use.app/Contents/MacOS/aux-computer-use",
+      "sha256": "debc03deb3f94eb7e8b50fa88d25e617f970b75f1e515b757b131655ad3dde51",
+      "bytes": 2041536
+    }
+  },
+  "existingReview": {
+    "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/local-completion-package-a38/signing-review.json",
+    "sha256": "f43813c285d0a0d439129f193f97cac1712c93f815cfc75da5b4e201bc8025e0",
+    "bytes": 14180
+  },
+  "policyConstructor": {
+    "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/runtime/fixed-builtins/construct-policy.py",
+    "sha256": "fcc38e02c864bcbfaa1fc9a25cc98ef25e1100d19428d615de1bc0392eabd7b0",
+    "bytes": 1629
+  },
+  "computerUsePolicyConstructor": {
+    "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/integration/computer-use/launch-policy.mjs",
+    "sha256": "59e7746b29e40736be63461078a1ec06fef7fddbe305c16d053cf6bd06697ef3",
+    "bytes": 748
+  },
+  "unsignedV10Policy": {
+    "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/integrator/policies/AuxFreshBootstrapPolicy.json",
+    "sha256": "0ea7e93e94de7f07006aa4389fa842acb61bc50a37d682941a8d2dcf8e837b65",
+    "bytes": 725
+  },
+  "signedComputerUseDigest": null,
+  "CUlaunchPolicyPending": true,
+  "signed": false,
+  "executed": false
+}
