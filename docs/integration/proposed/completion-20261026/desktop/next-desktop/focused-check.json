@@ -1,0 +1,12 @@
+{
+  "format": "aux.cli-space.focused-source-check.v1",
+  "compileExit": 0,
+  "compileOutput": "",
+  "fixtureSha256": "389eb37d5c2156962723e15ad9795862e841b4195300c7ace22bbba3dbb395f2",
+  "serialized": true,
+  "nativeTreeChanged": false,
+  "appExecuted": false,
+  "fixtureExit": 0,
+  "fixtureOutput": "",
+  "elapsedSeconds": 7.501
+}

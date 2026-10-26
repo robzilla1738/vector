@@ -1,0 +1,143 @@
+{
+  "format": "aux.native.counted-projection.v1",
+  "nativeRoot": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src",
+  "files": [
+    {
+      "path": "chrome/browser/aux/cli/AuxCliOpenArguments.h",
+      "inputSha256": "4ea82b70f1de1461de31f0db31e0871331f00ab8df80c159e7e88f0a92f62e92",
+      "outputSha256": "4a70de59027c45c76cc5594ded8268cd27393c58ac3d761c77c01da8de5aa931",
+      "anchors": [
+        {
+          "name": "Space selector belongs to the same bounded data envelope",
+          "before": "std::string url, profile;",
+          "after": "std::string url, profile, space;",
+          "expectedCount": 1
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/aux/cli/AuxCliOpenArguments.cc",
+      "inputSha256": "795627ae62ce2228564c561cb3038a43cc319adc82985bf29aac63d9ac73a824",
+      "outputSha256": "afce2e99e25bbffbb221232ee9fa05be551f5ad23fbd9ad3d9a0b411a6fe64da",
+      "anchors": [
+        {
+          "name": "unsupported aggregate includes Space",
+          "before": "return {OpenParseStatus::unsupported,{},{}};",
+          "after": "return {OpenParseStatus::unsupported,{},{},{}};",
+          "expectedCount": 1
+        },
+        {
+          "name": "help aggregate includes Space",
+          "before": "return {OpenParseStatus::help,{},{}};",
+          "after": "return {OpenParseStatus::help,{},{},{}};",
+          "expectedCount": 1
+        },
+        {
+          "name": "reject repeated Space selectors",
+          "before": "bool literal=false, profile_seen=false;",
+          "after": "bool literal=false, profile_seen=false, space_seen=false;",
+          "expectedCount": 1
+        },
+        {
+          "name": "parse an explicit Space without shell interpolation",
+          "before": "    if ((!literal && item.front()=='-') || !parsed.url.empty() || item.size()>8192) return {};",
+          "after": "    if (!literal && (item==\"--space\" || item.starts_with(\"--space=\"))) {\n      if (space_seen) return {};\n      space_seen=true;\n      if (item==\"--space\") { if (++i==args.size()) return {}; parsed.space=args[i]; }\n      else parsed.space=item.substr(8);\n      if (parsed.space.empty() || parsed.space.size()>256) return {};\n      for (const unsigned char c : parsed.space) if (c < 0x20 || c == 0x7f) return {};\n      continue;\n    }\n    if ((!literal && item.front()=='-') || !parsed.url.empty() || item.size()>8192) return {};",
+          "expectedCount": 1
+        },
+        {
+          "name": "Space selectors require an explicit profile",
+          "before": "  if (parsed.url.empty()) return {};",
+          "after": "  if (parsed.url.empty() || (!parsed.space.empty() && parsed.profile.empty())) return {};",
+          "expectedCount": 1
+        },
+        {
+          "name": "Space display names are data, including slash and Unicode",
+          "before": "bool HttpText(std::string_view text) {",
+          "after": "bool SpaceText(std::string_view text) {\n  if (text.size() > 256) return false;\n  for (const unsigned char c : text) if (c < 0x20 || c == 0x7f) return false;\n  return true;\n}\nbool HttpText(std::string_view text) {",
+          "expectedCount": 1
+        },
+        {
+          "name": "encoding validates the complete destination",
+          "before": "      !ProfileText(args.profile)) return std::nullopt;",
+          "after": "      !ProfileText(args.profile) || !SpaceText(args.space) ||\n      (!args.space.empty() && args.profile.empty())) return std::nullopt;",
+          "expectedCount": 1
+        },
+        {
+          "name": "percent encode Space exactly once",
+          "before": "  if (!args.profile.empty()) result += \"&profile=\" + EncodeField(args.profile);",
+          "after": "  if (!args.profile.empty()) result += \"&profile=\" + EncodeField(args.profile);\n  if (!args.space.empty()) result += \"&space=\" + EncodeField(args.space);",
+          "expectedCount": 1
+        },
+        {
+          "name": "one use envelope Space field",
+          "before": "  bool url_seen = false, profile_seen = false;",
+          "after": "  bool url_seen = false, profile_seen = false, space_seen = false;",
+          "expectedCount": 1
+        },
+        {
+          "name": "decode and bound Space without alternate destinations",
+          "before": "      result.profile = std::move(*value); profile_seen = true;\n    } else return {};",
+          "after": "      result.profile = std::move(*value); profile_seen = true;\n    } else if (key == \"space\" && !space_seen) {\n      auto value = DecodeField(field.substr(equal + 1), 256);\n      if (!value || value->empty() || !SpaceText(*value)) return {};\n      result.space = std::move(*value); space_seen = true;\n    } else return {};",
+          "expectedCount": 1
+        },
+        {
+          "name": "receiver requires an explicit profile for Space",
+          "before": "  if (!url_seen) return {};",
+          "after": "  if (!url_seen || (space_seen && !profile_seen)) return {};",
+          "expectedCount": 1
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/aux/cli/AuxNativeCliFrontend.mm",
+      "inputSha256": "64b0b1771bed0434bc4608709dd7f07c0b424c5dfa4a29321850145bff2ccb04",
+      "outputSha256": "d50457cb805b3663292bc832cdfb2d86627c5eabffb4d32b6b19bde8244d4d72",
+      "anchors": [
+        {
+          "name": "actionable CLI dispatch failure",
+          "before": "Aux open requires one HTTP(S) URL and an optional exact profile name or ID\\n",
+          "after": "Aux open requires one HTTP(S) URL, optional --profile, and --space only with --profile\\n",
+          "expectedCount": 1
+        },
+        {
+          "name": "native help advertises exact supported Space syntax",
+          "before": "Usage: aux open <https://URL> [--profile <native profile ID or unique name>]\\n",
+          "after": "Usage: aux open <https://URL> [--profile <native profile ID or unique name> [--space <Space ID or unique name>]]\\n",
+          "expectedCount": 1
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/aux/cli/AuxCliOpenCommand.mm",
+      "inputSha256": "877d188359dea891638ca135144e464ac83e18017fc3b79bac445a92b2bf0a65",
+      "outputSha256": "a7a231d60f3e1ebce5e6296e75441efb476733ee7795730b5e699c128854995c",
+      "anchors": [
+        {
+          "name": "inactive retained peer must not silently drop Space",
+          "before": "       arguments.status!=OpenParseStatus::accepted || !url.is_valid() ||",
+          "after": "       arguments.status!=OpenParseStatus::accepted || !arguments.space.empty() || !url.is_valid() ||",
+          "expectedCount": 1
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/aux/routing/external_routing_ingress.cc",
+      "inputSha256": "1bc09c694285586c79a96e8e83b95b66e41c7b16419c33b7f8ae86d49738207a",
+      "outputSha256": "d0010b1eb268ed80b8a6fc787a89da478cf96a60387971d398ee92de1d75bcbc",
+      "anchors": [
+        {
+          "name": "validate complete native envelope destination UTF8",
+          "before": "          !base::IsStringUTF8(parsed.profile) || !inner.is_valid() ||",
+          "after": "          !base::IsStringUTF8(parsed.profile) || !base::IsStringUTF8(parsed.space) || !inner.is_valid() ||",
+          "expectedCount": 1
+        },
+        {
+          "name": "feed explicit destination through existing resolver",
+          "before": "      intent.profile = parsed.profile;",
+          "after": "      intent.profile = parsed.profile;\n      intent.space = parsed.space;",
+          "expectedCount": 1
+        }
+      ]
+    }
+  ]
+}
