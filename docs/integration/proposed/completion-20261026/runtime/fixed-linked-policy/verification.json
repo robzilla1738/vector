@@ -1,0 +1,25 @@
+{
+  "format": "aux.fixed-linked-v11-policy-source-preparation.v1",
+  "pythonSyntax": "pass",
+  "constructorFullSourceParse": "pass",
+  "frozenTypecheckPinsVerified": 70,
+  "nativeTypechecked": false,
+  "policyResourceConstructed": false,
+  "signedHelperHashInvented": false,
+  "activated": false,
+  "candidateChanged": false,
+  "reviewChanged": false,
+  "EntitlementRequired": true,
+  "typecheckRecipeSha256": "c74ac266133d7eeb16166b72cafd700b1b4f1c18c37b967f32e95f80a060b879",
+  "existingProofsPinned": {
+    "inactive-task-envelope-compile-a1.json": {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/integrator/inactive-task-envelope-compile-a1.json",
+      "sha256": "db5d920932f4404c593c4ff510d7b0285884732e3660b10fc1cee2eca41ae835"
+    },
+    "inactive-workspace-typecheck-a1.json": {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/integrator/inactive-workspace-typecheck-a1.json",
+      "sha256": "7baa4d9b575d74f970c9ce19b39c8a9d700e67e774c19dc2c5c0c796ba9573b5"
+    }
+  },
+  "usesPassedCurrentRole3WorkspaceOwner": true
+}

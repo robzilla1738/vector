@@ -1,0 +1,7 @@
+{
+  "source/AuxSignedFreshBootstrapPolicyLoader.swift": "2f2e878cf82a890c4b550ee945eec7cf21c8c36c11bee5c55cf55e5f4553a3ae",
+  "source/AuxFreshBootstrapPolicy.swift": "a7a0f8356057d834435172af5fc678fd163b04a22878433555f634ac5c4e0a50",
+  "source/linked-policy.swift.inc": "fe05448a78d04d952e17f20d975eef9ef48e1a20b22cf534cc7b3514743c0cee",
+  "source/AuxAuthenticatedChildParentPolicyReader.swift": "6761e9f4ecd6ab7c07e70285c3396969b2098975bced7973967a531aae6c718f",
+  "source/ParentAuxFreshBootstrapPolicy.swift": "3b44f108a54b29587439a48bde41a54a95e5d8c512055c902bcc2e9a8ac28875"
+}

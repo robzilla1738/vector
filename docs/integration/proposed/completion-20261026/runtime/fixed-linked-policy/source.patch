@@ -1,0 +1,489 @@
+--- /Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/integrator/fresh-successor-scope/source/daemon/AuxFreshBootstrapPolicy.swift
++++ AuxFreshBootstrapPolicy.swift
+@@ -100,6 +100,25 @@
+               let count=object["bytes"] as? NSNumber,CFGetTypeID(count) != CFBooleanGetTypeID(),count.doubleValue==Double(bytes) else{throw AuxFreshBootstrapPolicyError.policy}
+     }
+ }
++// Explicit source-only successor. This resource does not grant ES authority.
++enum AuxFreshBootstrapLinkedPtyIdentity {
++    static let format="aux.pty.fixed-linked-helper.v1"
++    static let binding="aux_pty_builtin"
++    static let rawHelperSha256="b9cf27a0832388cf154434f192d59739b2ce4c18463d7b4387b0c49e2857f79f"
++    static func decode(_ value:Any?)throws->AuxFreshBootstrapPtyArtifact {
++        guard let object=value as? [String:Any],Set(object.keys)==["format","binding","napi","spawnHelper"],
++              object["format"] as? String==format,object["binding"] as? String==binding,
++              let napi=object["napi"] as? NSNumber,CFGetTypeID(napi) != CFBooleanGetTypeID(),napi.intValue==8,napi.doubleValue==8,
++              let fields=object["spawnHelper"] as? [String:Any],Set(fields.keys)==["path","identifier","sourceSha256","sha256","bytes","architecture"],
++              fields["path"] as? String==AuxFreshBootstrapPtyArtifacts.helperPath,
++              fields["identifier"] as? String==AuxFreshBootstrapPtyArtifacts.helperIdentifier,
++              fields["sourceSha256"] as? String==rawHelperSha256,fields["architecture"] as? String=="arm64",
++              let digest=fields["sha256"] as? String,digest.count==64,digest.utf8.allSatisfy({(48...57).contains($0)||(97...102).contains($0)}),digest != rawHelperSha256,
++              let bytes=fields["bytes"] as? NSNumber,CFGetTypeID(bytes) != CFBooleanGetTypeID(),bytes.doubleValue==Double(bytes.intValue),bytes.intValue>=68_464,bytes.intValue<=32*1024*1024 else{throw AuxFreshBootstrapPolicyError.policy}
++        return .init(relativePath:AuxFreshBootstrapPtyArtifacts.helperPath,identifier:AuxFreshBootstrapPtyArtifacts.helperIdentifier,sha256:digest,bytes:bytes.intValue)
++    }
++}
++
+ // A pre-generation resource contract. Decoding content grants no authority.
+ struct AuxFreshBootstrapPolicyContents {
+     enum Role:String {case daemon,cli
+@@ -120,7 +139,9 @@
+     // A successor host must require this before its native PTY capability route.
+     var includesRebuiltPtyModule:Bool=false
+     var includesContainedPtyModule:Bool=false
+-#if AUX_BROWSER_ONLY_NATIVE_STARTUP
++    var includesFixedLinkedPty:Bool=false
++    var linkedPtyHelper:AuxFreshBootstrapPtyArtifact?=nil
++#if AUX_BROWSER_ONLY_NATIVE_STARTUP || AUX_FIXED_LINKED_PTY_POLICY
+     var includesFixedNativeBuiltins:Bool=false
+     var includesPdf:Bool{includesFixedNativeBuiltins}
+     var includesMacUtilities:Bool{includesFixedNativeBuiltins}
+@@ -145,11 +166,16 @@
+     static func decode(_ bytes:Data)throws->Self {
+         let object=try strictEnvelopeObject(bytes)
+         guard let roleText=object["role"] as? String,let role=Role(rawValue:roleText) else{throw AuxFreshBootstrapPolicyError.policy}
+-#if AUX_BROWSER_ONLY_NATIVE_STARTUP
+-        let fixedBuiltins=object["format"] as? String=="aux.fresh.bootstrap.policy.v10"
++#if AUX_BROWSER_ONLY_NATIVE_STARTUP || AUX_FIXED_LINKED_PTY_POLICY
++#if AUX_FIXED_LINKED_PTY_POLICY
++        let fixedLinked=object["format"] as? String=="aux.fresh.bootstrap.policy.v11"
++#else
++        let fixedLinked=false
++#endif
++        let fixedBuiltins=fixedLinked || object["format"] as? String=="aux.fresh.bootstrap.policy.v10"
+         if fixedBuiltins || object["format"] as? String=="aux.fresh.bootstrap.policy.v9" {
+             guard role == .daemon,
+-                  Set(object.keys)==Set(["format","role","accessGroup","authoritySelection","nativeHostLayout","taskLayout","storageLocation"] + (fixedBuiltins ? ["pdfModule","macOSUtilitiesModule"]:[])),
++                  Set(object.keys)==Set(["format","role","accessGroup","authoritySelection","nativeHostLayout","taskLayout","storageLocation"] + (fixedBuiltins ? ["pdfModule","macOSUtilitiesModule"]:[]) + (fixedLinked ? ["linkedPty"]:[])),
+                   object["authoritySelection"] as? String==authoritySelection,
+                   object["nativeHostLayout"] as? String=="embedded-daemon",
+                   object["taskLayout"] as? String=="aux.native.task-control-split.v1",
+@@ -160,10 +186,12 @@
+                 try AuxFreshBootstrapPdfIdentity.validate(object["pdfModule"])
+                 try AuxFreshBootstrapMacUtilitiesIdentity.validate(object["macOSUtilitiesModule"])
+             }
++            var linkedHelper:AuxFreshBootstrapPtyArtifact?
++            if fixedLinked{linkedHelper=try AuxFreshBootstrapLinkedPtyIdentity.decode(object["linkedPty"])}
+             let native=try AuxNativeCurrentUserLocation.capture()
+             return .init(role:role,canonicalPrivateParent:native.controlRoot,accessGroup:group,
+                 canonicalTaskParent:native.taskRoot,browserStartupRoots:[native.dataRoot,native.cacheRoot],
+-                nativeUserLocation:native,browserPreparedRecovery:true,embeddedDaemon:true,includesFixedNativeBuiltins:fixedBuiltins)
++                nativeUserLocation:native,browserPreparedRecovery:true,embeddedDaemon:true,includesFixedLinkedPty:fixedLinked,linkedPtyHelper:linkedHelper,includesFixedNativeBuiltins:fixedBuiltins)
+         }
+ #endif
+         var keys:Set<String>=["format","role","canonicalPrivateParent","accessGroup","authoritySelection"]
+@@ -237,11 +265,18 @@
+           captured.identifier==(host ? role.identifier:"dev.aux.browser.runtime"),captured.flags & 0x2==0 else{throw AuxFreshBootstrapPolicyError.identity}
+     if host {
+         guard captured.applicationIdentifier==AuxFreshBootstrapIdentity.team+"."+role.identifier,AuxFreshBootstrapPolicyContents.validAccessGroup(accessGroup),captured.accessGroups==[accessGroup],captured.flags & 0x10000 != 0 else{throw AuxFreshBootstrapPolicyError.identity}
+-        let allowed:Set<String>=["com.apple.application-identifier","com.apple.developer.team-identifier","keychain-access-groups","com.apple.security.cs.allow-jit","com.apple.security.cs.allow-dyld-environment-variables","com.apple.security.cs.allow-unsigned-executable-memory","com.apple.security.cs.disable-library-validation","com.apple.security.cs.disable-executable-page-protection","com.apple.security.get-task-allow","get-task-allow"]
++        var allowed:Set<String>=["com.apple.application-identifier","com.apple.developer.team-identifier","keychain-access-groups","com.apple.security.cs.allow-jit","com.apple.security.cs.allow-dyld-environment-variables","com.apple.security.cs.allow-unsigned-executable-memory","com.apple.security.cs.disable-library-validation","com.apple.security.cs.disable-executable-page-protection","com.apple.security.get-task-allow","get-task-allow"]
++#if AUX_FIXED_LINKED_PTY_POLICY
++        if role == .daemon {
++            let key="com.apple.developer.endpoint-security.client"
++            allowed.insert(key)
++            guard let value=captured.entitlements[key],CFGetTypeID(value as CFTypeRef)==CFBooleanGetTypeID(),let boolean=value as? NSNumber,boolean.boolValue else{throw AuxFreshBootstrapPolicyError.identity}
++        }
++#endif
+         guard Set(captured.entitlements.keys).isSubset(of:allowed)else{throw AuxFreshBootstrapPolicyError.identity}
+         if let team=captured.entitlements["com.apple.developer.team-identifier"] {guard team as? String==AuxFreshBootstrapIdentity.team else{throw AuxFreshBootstrapPolicyError.identity}}
+         for key in allowed.subtracting(["com.apple.application-identifier","com.apple.developer.team-identifier","keychain-access-groups"]) {
+-            if let value=captured.entitlements[key] {guard CFGetTypeID(value as CFTypeRef)==CFBooleanGetTypeID(),let boolean=value as? NSNumber,key=="com.apple.security.cs.allow-jit" || !boolean.boolValue else{throw AuxFreshBootstrapPolicyError.identity}}
++            if let value=captured.entitlements[key] {guard CFGetTypeID(value as CFTypeRef)==CFBooleanGetTypeID(),let boolean=value as? NSNumber,key=="com.apple.security.cs.allow-jit" || (key=="com.apple.developer.endpoint-security.client" && role == .daemon) || !boolean.boolValue else{throw AuxFreshBootstrapPolicyError.identity}}
+         }
+     } else {guard captured.entitlements.isEmpty else{throw AuxFreshBootstrapPolicyError.identity}}
+ }
+@@ -342,7 +377,11 @@
+ // This successor host has native PTY custody; historical daemon modules cannot
+ // enter its prepare/load route. Pure decoding remains backward compatible.
+ func validateFreshBootstrapRebuiltDaemonRoute(_ policy:AuxFreshBootstrapPolicyContents)throws {
+-#if AUX_BROWSER_ONLY_NATIVE_STARTUP
++#if AUX_FIXED_LINKED_PTY_POLICY
++    guard policy.role == .daemon,policy.embeddedDaemon,policy.browserStartupRoots != nil,policy.nativeUserLocation != nil,
++          policy.browserPreparedRecovery,policy.includesFixedNativeBuiltins,policy.includesFixedLinkedPty,policy.linkedPtyHelper != nil,
++          policy.ptyArtifacts == nil,!policy.includesRebuiltPtyModule,!policy.includesContainedPtyModule else{throw AuxFreshBootstrapPolicyError.policy}
++#elseif AUX_BROWSER_ONLY_NATIVE_STARTUP
+     guard policy.role == .daemon,policy.embeddedDaemon,policy.browserStartupRoots != nil,
+           policy.browserPreparedRecovery,policy.includesPdf==policy.includesMacUtilities,
+           !policy.includesRebuiltPtyModule,!policy.includesContainedPtyModule,policy.ptyArtifacts == nil else{throw AuxFreshBootstrapPolicyError.policy}
+--- /Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/integrator/fresh-successor-scope/source/chrome/browser/aux/native_peer_policy/AuxFreshBootstrapPolicy.swift
++++ ParentAuxFreshBootstrapPolicy.swift
+@@ -100,6 +100,25 @@
+               let count=object["bytes"] as? NSNumber,CFGetTypeID(count) != CFBooleanGetTypeID(),count.doubleValue==Double(bytes) else{throw AuxFreshBootstrapPolicyError.policy}
+     }
+ }
++// Explicit source-only successor. This resource does not grant ES authority.
++enum AuxFreshBootstrapLinkedPtyIdentity {
++    static let format="aux.pty.fixed-linked-helper.v1"
++    static let binding="aux_pty_builtin"
++    static let rawHelperSha256="b9cf27a0832388cf154434f192d59739b2ce4c18463d7b4387b0c49e2857f79f"
++    static func decode(_ value:Any?)throws->AuxFreshBootstrapPtyArtifact {
++        guard let object=value as? [String:Any],Set(object.keys)==["format","binding","napi","spawnHelper"],
++              object["format"] as? String==format,object["binding"] as? String==binding,
++              let napi=object["napi"] as? NSNumber,CFGetTypeID(napi) != CFBooleanGetTypeID(),napi.intValue==8,napi.doubleValue==8,
++              let fields=object["spawnHelper"] as? [String:Any],Set(fields.keys)==["path","identifier","sourceSha256","sha256","bytes","architecture"],
++              fields["path"] as? String==AuxFreshBootstrapPtyArtifacts.helperPath,
++              fields["identifier"] as? String==AuxFreshBootstrapPtyArtifacts.helperIdentifier,
++              fields["sourceSha256"] as? String==rawHelperSha256,fields["architecture"] as? String=="arm64",
++              let digest=fields["sha256"] as? String,digest.count==64,digest.utf8.allSatisfy({(48...57).contains($0)||(97...102).contains($0)}),digest != rawHelperSha256,
++              let bytes=fields["bytes"] as? NSNumber,CFGetTypeID(bytes) != CFBooleanGetTypeID(),bytes.doubleValue==Double(bytes.intValue),bytes.intValue>=68_464,bytes.intValue<=32*1024*1024 else{throw AuxFreshBootstrapPolicyError.policy}
++        return .init(relativePath:AuxFreshBootstrapPtyArtifacts.helperPath,identifier:AuxFreshBootstrapPtyArtifacts.helperIdentifier,sha256:digest,bytes:bytes.intValue)
++    }
++}
++
+ // A pre-generation resource contract. Decoding content grants no authority.
+ struct AuxFreshBootstrapPolicyContents {
+     enum Role:String {case daemon,cli
+@@ -120,7 +139,9 @@
+     // A successor host must require this before its native PTY capability route.
+     var includesRebuiltPtyModule:Bool=false
+     var includesContainedPtyModule:Bool=false
+-#if AUX_BROWSER_ONLY_NATIVE_STARTUP
++    var includesFixedLinkedPty:Bool=false
++    var linkedPtyHelper:AuxFreshBootstrapPtyArtifact?=nil
++#if AUX_BROWSER_ONLY_NATIVE_STARTUP || AUX_FIXED_LINKED_PTY_POLICY
+     var includesFixedNativeBuiltins:Bool=false
+     var includesPdf:Bool{includesFixedNativeBuiltins}
+     var includesMacUtilities:Bool{includesFixedNativeBuiltins}
+@@ -145,11 +166,16 @@
+     static func decode(_ bytes:Data)throws->Self {
+         let object=try strictEnvelopeObject(bytes)
+         guard let roleText=object["role"] as? String,let role=Role(rawValue:roleText) else{throw AuxFreshBootstrapPolicyError.policy}
+-#if AUX_BROWSER_ONLY_NATIVE_STARTUP
+-        let fixedBuiltins=object["format"] as? String=="aux.fresh.bootstrap.policy.v10"
++#if AUX_BROWSER_ONLY_NATIVE_STARTUP || AUX_FIXED_LINKED_PTY_POLICY
++#if AUX_FIXED_LINKED_PTY_POLICY
++        let fixedLinked=object["format"] as? String=="aux.fresh.bootstrap.policy.v11"
++#else
++        let fixedLinked=false
++#endif
++        let fixedBuiltins=fixedLinked || object["format"] as? String=="aux.fresh.bootstrap.policy.v10"
+         if fixedBuiltins || object["format"] as? String=="aux.fresh.bootstrap.policy.v9" {
+             guard role == .daemon,
+-                  Set(object.keys)==Set(["format","role","accessGroup","authoritySelection","nativeHostLayout","taskLayout","storageLocation"] + (fixedBuiltins ? ["pdfModule","macOSUtilitiesModule"]:[])),
++                  Set(object.keys)==Set(["format","role","accessGroup","authoritySelection","nativeHostLayout","taskLayout","storageLocation"] + (fixedBuiltins ? ["pdfModule","macOSUtilitiesModule"]:[]) + (fixedLinked ? ["linkedPty"]:[])),
+                   object["authoritySelection"] as? String==authoritySelection,
+                   object["nativeHostLayout"] as? String=="embedded-daemon",
+                   object["taskLayout"] as? String=="aux.native.task-control-split.v1",
+@@ -160,10 +186,12 @@
+                 try AuxFreshBootstrapPdfIdentity.validate(object["pdfModule"])
+                 try AuxFreshBootstrapMacUtilitiesIdentity.validate(object["macOSUtilitiesModule"])
+             }
++            var linkedHelper:AuxFreshBootstrapPtyArtifact?
++            if fixedLinked{linkedHelper=try AuxFreshBootstrapLinkedPtyIdentity.decode(object["linkedPty"])}
+             let native=try AuxNativeCurrentUserLocation.capture()
+             return .init(role:role,canonicalPrivateParent:native.controlRoot,accessGroup:group,
+                 canonicalTaskParent:native.taskRoot,browserStartupRoots:[native.dataRoot,native.cacheRoot],
+-                nativeUserLocation:native,browserPreparedRecovery:true,embeddedDaemon:true,includesFixedNativeBuiltins:fixedBuiltins)
++                nativeUserLocation:native,browserPreparedRecovery:true,embeddedDaemon:true,includesFixedLinkedPty:fixedLinked,linkedPtyHelper:linkedHelper,includesFixedNativeBuiltins:fixedBuiltins)
+         }
+ #endif
+         var keys:Set<String>=["format","role","canonicalPrivateParent","accessGroup","authoritySelection"]
+@@ -237,11 +265,18 @@
+           captured.identifier==(host ? role.identifier:"dev.aux.browser.runtime"),captured.flags & 0x2==0 else{throw AuxFreshBootstrapPolicyError.identity}
+     if host {
+         guard captured.applicationIdentifier==AuxFreshBootstrapIdentity.team+"."+role.identifier,AuxFreshBootstrapPolicyContents.validAccessGroup(accessGroup),captured.accessGroups==[accessGroup],captured.flags & 0x10000 != 0 else{throw AuxFreshBootstrapPolicyError.identity}
+-        let allowed:Set<String>=["com.apple.application-identifier","com.apple.developer.team-identifier","keychain-access-groups","com.apple.security.cs.allow-jit","com.apple.security.cs.allow-dyld-environment-variables","com.apple.security.cs.allow-unsigned-executable-memory","com.apple.security.cs.disable-library-validation","com.apple.security.cs.disable-executable-page-protection","com.apple.security.get-task-allow","get-task-allow"]
++        var allowed:Set<String>=["com.apple.application-identifier","com.apple.developer.team-identifier","keychain-access-groups","com.apple.security.cs.allow-jit","com.apple.security.cs.allow-dyld-environment-variables","com.apple.security.cs.allow-unsigned-executable-memory","com.apple.security.cs.disable-library-validation","com.apple.security.cs.disable-executable-page-protection","com.apple.security.get-task-allow","get-task-allow"]
++#if AUX_FIXED_LINKED_PTY_POLICY
++        if role == .daemon {
++            let key="com.apple.developer.endpoint-security.client"
++            allowed.insert(key)
++            guard let value=captured.entitlements[key],CFGetTypeID(value as CFTypeRef)==CFBooleanGetTypeID(),let boolean=value as? NSNumber,boolean.boolValue else{throw AuxFreshBootstrapPolicyError.identity}
++        }
++#endif
+         guard Set(captured.entitlements.keys).isSubset(of:allowed)else{throw AuxFreshBootstrapPolicyError.identity}
+         if let team=captured.entitlements["com.apple.developer.team-identifier"] {guard team as? String==AuxFreshBootstrapIdentity.team else{throw AuxFreshBootstrapPolicyError.identity}}
+         for key in allowed.subtracting(["com.apple.application-identifier","com.apple.developer.team-identifier","keychain-access-groups"]) {
+-            if let value=captured.entitlements[key] {guard CFGetTypeID(value as CFTypeRef)==CFBooleanGetTypeID(),let boolean=value as? NSNumber,key=="com.apple.security.cs.allow-jit" || !boolean.boolValue else{throw AuxFreshBootstrapPolicyError.identity}}
++            if let value=captured.entitlements[key] {guard CFGetTypeID(value as CFTypeRef)==CFBooleanGetTypeID(),let boolean=value as? NSNumber,key=="com.apple.security.cs.allow-jit" || (key=="com.apple.developer.endpoint-security.client" && role == .daemon) || !boolean.boolValue else{throw AuxFreshBootstrapPolicyError.identity}}
+         }
+     } else {guard captured.entitlements.isEmpty else{throw AuxFreshBootstrapPolicyError.identity}}
+ }
+@@ -331,7 +366,11 @@
+ // This successor host has native PTY custody; historical daemon modules cannot
+ // enter its prepare/load route. Pure decoding remains backward compatible.
+ func validateFreshBootstrapRebuiltDaemonRoute(_ policy:AuxFreshBootstrapPolicyContents)throws {
+-#if AUX_BROWSER_ONLY_NATIVE_STARTUP
++#if AUX_FIXED_LINKED_PTY_POLICY
++    guard policy.role == .daemon,policy.embeddedDaemon,policy.browserStartupRoots != nil,policy.nativeUserLocation != nil,
++          policy.browserPreparedRecovery,policy.includesFixedNativeBuiltins,policy.includesFixedLinkedPty,policy.linkedPtyHelper != nil,
++          policy.ptyArtifacts == nil,!policy.includesRebuiltPtyModule,!policy.includesContainedPtyModule else{throw AuxFreshBootstrapPolicyError.policy}
++#elseif AUX_BROWSER_ONLY_NATIVE_STARTUP
+     guard policy.role == .daemon,policy.embeddedDaemon,policy.browserStartupRoots != nil,
+           policy.browserPreparedRecovery,policy.includesPdf==policy.includesMacUtilities,
+           !policy.includesRebuiltPtyModule,!policy.includesContainedPtyModule,policy.ptyArtifacts == nil else{throw AuxFreshBootstrapPolicyError.policy}
+--- /Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/runtime/fixed-builtins/source/AuxAuthenticatedChildParentPolicyReader.swift
++++ AuxAuthenticatedChildParentPolicyReader.swift
+@@ -6,7 +6,7 @@
+ 
+ enum AuxAuthenticatedChildParentPolicyReader {
+     private static let flags=SecCSFlags(rawValue:kSecCSStrictValidate|kSecCSCheckAllArchitectures|kSecCSCheckNestedCode|kSecCSRestrictSymlinks|UInt32(1<<29))
+-#if AUX_BROWSER_ONLY_NATIVE_STARTUP
++#if AUX_BROWSER_ONLY_NATIVE_STARTUP || AUX_FIXED_LINKED_PTY_POLICY
+     private final class OrdinaryFileBinding {
+         let path:String
+         let descriptor:Int32
+@@ -123,7 +123,7 @@
+         code: SecStaticCode, requirement: SecRequirement, expectedCdHash: Data
+     ) throws -> (policy:AuxFreshBootstrapPolicyContents,bytes:Data,bundle:String) {
+         guard [20, 32].contains(expectedCdHash.count) else { throw AuxFreshBootstrapPolicyError.identity }
+-#if AUX_BROWSER_ONLY_NATIVE_STARTUP
++#if AUX_BROWSER_ONLY_NATIVE_STARTUP || AUX_FIXED_LINKED_PTY_POLICY
+         var finished=false
+         defer{if !finished{invalidateOrdinaryFiles(code,expectedCdHash)}}
+         let retained=try retainedOrdinaryFiles(code,expectedCdHash)
+@@ -159,7 +159,7 @@
+         guard try resource(bundle)==bytes,
+               SecStaticCodeCheckValidity(code,flags,requirement)==errSecSuccess,
+               (try signingInfo(code))[kSecCodeInfoUnique as String] as? Data==expectedCdHash else{throw AuxFreshBootstrapPolicyError.identity}
+-#if AUX_BROWSER_ONLY_NATIVE_STARTUP
++#if AUX_BROWSER_ONLY_NATIVE_STARTUP || AUX_FIXED_LINKED_PTY_POLICY
+         try retained.revalidate()
+         finished=true
+ #endif
+@@ -168,7 +168,7 @@
+     fileprivate static func authenticatedGuestParent(
+         code:SecStaticCode,requirement:SecRequirement,expectedCdHash:Data
+     ) throws -> Int32 {
+-#if AUX_BROWSER_ONLY_NATIVE_STARTUP
++#if AUX_BROWSER_ONLY_NATIVE_STARTUP || AUX_FIXED_LINKED_PTY_POLICY
+         var finished=false
+         defer{if !finished{invalidateOrdinaryFiles(code,expectedCdHash)}}
+         let retained=try retainedOrdinaryFiles(code,expectedCdHash)
+@@ -194,7 +194,7 @@
+               (try signingInfo(code))[kSecCodeInfoUnique as String] as? Data == expectedCdHash else {
+             throw AuxFreshBootstrapPolicyError.identity
+         }
+-#if AUX_BROWSER_ONLY_NATIVE_STARTUP
++#if AUX_BROWSER_ONLY_NATIVE_STARTUP || AUX_FIXED_LINKED_PTY_POLICY
+         try retained.revalidate()
+         finished=true
+ #endif
+@@ -235,8 +235,8 @@
+             let captured=try authenticatedGuestPolicy(code:code,requirement:requirement,expectedCdHash:hash)
+             let bytes=captured.bytes,policy=captured.policy
+             let format = try strictEnvelopeObject(bytes)["format"] as? String
+-#if AUX_BROWSER_ONLY_NATIVE_STARTUP
+-            guard format == "aux.fresh.bootstrap.policy.v8" ||
++#if AUX_BROWSER_ONLY_NATIVE_STARTUP || AUX_FIXED_LINKED_PTY_POLICY
++            guard (format == "aux.fresh.bootstrap.policy.v11" && policy.includesFixedLinkedPty && policy.linkedPtyHelper != nil) || format == "aux.fresh.bootstrap.policy.v8" ||
+                   ((format == "aux.fresh.bootstrap.policy.v9" ||
+                     (format == "aux.fresh.bootstrap.policy.v10" && policy.includesPdf && policy.includesMacUtilities)) &&
+                    policy.nativeUserLocation != nil) else { return -1 }
+@@ -253,7 +253,7 @@
+                   SecStaticCodeCheckValidity(code, flags, requirement) == errSecSuccess,
+                   (try signingInfo(code))[kSecCodeInfoUnique as String] as? Data == hash
+             else { return -1 }
+-#if AUX_BROWSER_ONLY_NATIVE_STARTUP
++#if AUX_BROWSER_ONLY_NATIVE_STARTUP || AUX_FIXED_LINKED_PTY_POLICY
+             // 9 is the native-current-user launch layout, shared explicitly by v9/v10.
+             return policy.nativeUserLocation == nil ? 8:9
+ #else
+--- /Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/runtime/fixed-builtins/source/AuxSignedFreshBootstrapPolicyLoader.swift
++++ AuxSignedFreshBootstrapPolicyLoader.swift
+@@ -22,7 +22,7 @@
+         try revalidateCurrentIdentity()
+         return try AuxFreshNativeHome.create(inCanonicalPrivateParent:contents.canonicalPrivateParent)
+     }
+-#if AUX_BROWSER_ONLY_NATIVE_STARTUP
++#if AUX_BROWSER_ONLY_NATIVE_STARTUP || AUX_FIXED_LINKED_PTY_POLICY
+     func revalidateRetainedOrdinaryIdentity()throws {
+         try AuxSignedFreshBootstrapPolicyLoader.revalidateRetainedOrdinaryPolicy(self)
+     }
+@@ -72,7 +72,7 @@
+ }
+ enum AuxSignedFreshBootstrapPolicyLoader {
+     private static let flags=SecCSFlags(rawValue:kSecCSStrictValidate|kSecCSCheckAllArchitectures|kSecCSCheckNestedCode|kSecCSRestrictSymlinks|UInt32(1<<29))
+-#if AUX_BROWSER_ONLY_NATIVE_STARTUP
++#if AUX_BROWSER_ONLY_NATIVE_STARTUP || AUX_FIXED_LINKED_PTY_POLICY
+     // Keep Apple's actual code objects alive so their successful validation is
+     // reusable. Every caller still runs the same native validity, live-image,
+     // sealed-policy and private-root checks. No admission result is cached.
+@@ -149,7 +149,7 @@
+         let current=try OrdinaryCurrentCode();ordinaryCode=current;return current
+     }
+ #endif
+-#if AUX_BROWSER_ONLY_NATIVE_STARTUP
++#if AUX_BROWSER_ONLY_NATIVE_STARTUP || AUX_FIXED_LINKED_PTY_POLICY
+     static func revalidateRetainedOrdinaryPolicy(_ policy:AuxAuthenticatedFreshBootstrapPolicy)throws {
+         guard getpid()==auxImagePreparationProcess else{throw AuxFreshBootstrapPolicyError.identity}
+         ordinaryCodeLock.lock()
+@@ -213,7 +213,7 @@
+         let fresh=open(bundle,O_RDONLY|O_DIRECTORY|O_NOFOLLOW|O_CLOEXEC);guard fresh>=0 else{throw AuxFreshBootstrapPolicyError.path};defer{close(fresh)}
+         let a=try metadata(root,directory:true),b=try metadata(fresh,directory:true);guard a.st_dev==b.st_dev,a.st_ino==b.st_ino else{throw AuxFreshBootstrapPolicyError.path};return Data(bytes)
+     }
+-#if AUX_BROWSER_ONLY_NATIVE_STARTUP
++#if AUX_BROWSER_ONLY_NATIVE_STARTUP || AUX_FIXED_LINKED_PTY_POLICY
+     private static func prepareCurrentUserParents(_ policy:AuxFreshBootstrapPolicyContents)throws {
+         guard let native=policy.nativeUserLocation else{return}
+         try native.requireCurrent()
+@@ -333,7 +333,7 @@
+             if path.hasPrefix("/System/Library/") || path.hasPrefix("/usr/lib/"){continue}
+         diagnosticStage = .imageExpectedPath
+             guard let identifier=expected[path],try canonical(path)==path else{throw AuxFreshBootstrapPolicyError.image}
+-#if AUX_BROWSER_ONLY_NATIVE_STARTUP
++#if AUX_BROWSER_ONLY_NATIVE_STARTUP || AUX_FIXED_LINKED_PTY_POLICY
+         diagnosticStage = .imageCurrentCode
+             let current=try currentOrdinaryCode()
+             let code:SecStaticCode
+@@ -399,7 +399,7 @@
+     private static func authenticatedBase(preparing:Bool)throws->AuxAuthenticatedFreshBootstrapPolicy {
+         var diagnosticStage:AuxFreshPolicyDiagnosticStage = .authenticatedBase
+         do {
+-#if AUX_BROWSER_ONLY_NATIVE_STARTUP
++#if AUX_BROWSER_ONLY_NATIVE_STARTUP || AUX_FIXED_LINKED_PTY_POLICY
+         diagnosticStage = .currentCode
+         let current=try currentOrdinaryCode()
+         let dynamic=current.dynamic,staticCode=current.code,requirement=current.requirement
+@@ -438,7 +438,7 @@
+         try validateFreshBootstrapRebuiltDaemonRoute(policy)
+         diagnosticStage = .images
+         try images(bundle:bundle,policy:policy,requirement:requirement,preparing:preparing)
+-#if AUX_BROWSER_ONLY_NATIVE_STARTUP
++#if AUX_BROWSER_ONLY_NATIVE_STARTUP || AUX_FIXED_LINKED_PTY_POLICY
+         diagnosticStage = .currentUserParents
+         try prepareCurrentUserParents(policy)
+ #endif
+@@ -451,7 +451,7 @@
+         guard final==errSecSuccess,live==errSecSuccess else{throw AuxFreshBootstrapPolicyError.signature(final != 0 ? final:live)}
+         diagnosticStage = .codeHash
+         guard let cdHash=info[kSecCodeInfoUnique as String] as? Data else{throw AuxFreshBootstrapPolicyError.identity}
+-#if AUX_BROWSER_ONLY_NATIVE_STARTUP
++#if AUX_BROWSER_ONLY_NATIVE_STARTUP || AUX_FIXED_LINKED_PTY_POLICY
+         diagnosticStage = .currentCodeReadback
+         try current.revalidate()
+ #endif
+@@ -565,7 +565,7 @@
+         let policy=try authenticatedBase(preparing:true)
+         diagnosticStage = .imagePreparationPolicy
+         guard policy.contents.embeddedDaemon,policy.contents.role == .daemon else{throw AuxFreshBootstrapPolicyError.policy}
+-#if AUX_BROWSER_ONLY_NATIVE_STARTUP
++#if AUX_BROWSER_ONLY_NATIVE_STARTUP || AUX_FIXED_LINKED_PTY_POLICY
+         diagnosticStage = .imagePreparationMode
+         guard geteuid() != 0,policy.contents.includesPdf==policy.contents.includesMacUtilities,
+               policy.contents.ptyArtifacts == nil else{throw AuxFreshBootstrapPolicyError.policy}
+@@ -595,7 +595,7 @@
+             guard parent>=0 else{throw AuxFreshBootstrapPolicyError.path}
+             custody.append(parent)
+             let root=try metadata(parent,directory:true)
+-#if !AUX_BROWSER_ONLY_NATIVE_STARTUP
++#if !AUX_BROWSER_ONLY_NATIVE_STARTUP && !AUX_FIXED_LINKED_PTY_POLICY
+             guard root.st_uid==0 else{throw AuxFreshBootstrapPolicyError.path}
+ #endif
+             guard root.st_mode & 0o022==0 else{throw AuxFreshBootstrapPolicyError.path}
+@@ -606,7 +606,7 @@
+                 guard fd>=0 else{throw AuxFreshBootstrapPolicyError.path}
+                 custody.append(fd)
+                 let item=try metadata(fd,directory:directory,maximumSize:32*1024*1024)
+-#if !AUX_BROWSER_ONLY_NATIVE_STARTUP
++#if !AUX_BROWSER_ONLY_NATIVE_STARTUP && !AUX_FIXED_LINKED_PTY_POLICY
+                 guard item.st_uid==0 else{throw AuxFreshBootstrapPolicyError.path}
+ #endif
+                 guard item.st_mode & 0o022==0 else{throw AuxFreshBootstrapPolicyError.path}
+@@ -617,7 +617,7 @@
+             guard geteuid() != 0 else{throw AuxFreshBootstrapPolicyError.path}
+             for (parent,name,fd) in entries {
+                 var value=stat();guard fstat(fd,&value)==0,value.st_mode & 0o022==0 else{throw AuxFreshBootstrapPolicyError.path}
+-#if !AUX_BROWSER_ONLY_NATIVE_STARTUP
++#if !AUX_BROWSER_ONLY_NATIVE_STARTUP && !AUX_FIXED_LINKED_PTY_POLICY
+                 guard value.st_uid==0 else{throw AuxFreshBootstrapPolicyError.path}
+ #endif
+                 _ = try metadata(fd,directory:value.st_mode & mode_t(S_IFMT)==mode_t(S_IFDIR),maximumSize:32*1024*1024)
+@@ -695,7 +695,7 @@
+         try revalidateCustody()
+         let final=try load()
+         guard final.policySha256==policy.policySha256,final.bundlePath==policy.bundlePath,final.hostCdHash==policy.hostCdHash else{throw AuxFreshBootstrapPolicyError.identity}
+-#if AUX_BROWSER_ONLY_NATIVE_STARTUP
++#if AUX_BROWSER_ONLY_NATIVE_STARTUP || AUX_FIXED_LINKED_PTY_POLICY
+         let retained=try [AuxFreshBootstrapPdfIdentity.relativePath,AuxFreshBootstrapMacUtilitiesIdentity.relativePath].map {
+             try OrdinaryFileBinding(policy.bundlePath+"/"+$0)
+         }
+@@ -773,8 +773,8 @@
+         let policy = try load()
+         guard geteuid() != 0, policy.contents.embeddedDaemon,
+               policy.contents.role == .daemon,
+-              let artifacts = policy.contents.ptyArtifacts else { throw AuxFreshBootstrapPolicyError.policy }
+-        let path = policy.bundlePath + "/" + artifacts.helper.relativePath
++              let artifact = policy.contents.linkedPtyHelper ?? policy.contents.ptyArtifacts?.helper else { throw AuxFreshBootstrapPolicyError.policy }
++        let path = policy.bundlePath + "/" + artifact.relativePath
+         guard try canonical(path) == path else { throw AuxFreshBootstrapPolicyError.path }
+         var descriptors = [Int32]()
+         var entries: [(Int32, String, Int32, stat)] = []
+@@ -792,8 +792,8 @@
+             let descriptor = openat(parent, name, O_RDONLY | O_NOFOLLOW | O_CLOEXEC | O_NONBLOCK | (directory ? O_DIRECTORY : 0))
+             guard descriptor >= 0 else { throw AuxFreshBootstrapPolicyError.path }
+             descriptors.append(descriptor)
+-            let captured = try metadata(descriptor, directory: directory, maximumSize: Int64(artifacts.helper.bytes))
+-            guard captured.st_uid == 0 else { throw AuxFreshBootstrapPolicyError.path }
++            let captured = try metadata(descriptor, directory: directory, maximumSize: Int64(artifact.bytes))
++            guard captured.st_uid == 0 || (policy.contents.includesFixedLinkedPty && captured.st_uid==geteuid()) else { throw AuxFreshBootstrapPolicyError.path }
+             try sameEntry(parent, name, descriptor)
+             entries.append((parent, name, descriptor, captured)); parent = descriptor
+         }
+@@ -811,8 +811,8 @@
+               current.policySha256 == helper.policy.policySha256,
+               current.hostCdHash == helper.policy.hostCdHash,
+               current.bundlePath == helper.policy.bundlePath,
+-              let artifacts = current.contents.ptyArtifacts,
+-              helper.path == current.bundlePath + "/" + artifacts.helper.relativePath else { throw AuxFreshBootstrapPolicyError.identity }
++              let artifact = current.contents.linkedPtyHelper ?? current.contents.ptyArtifacts?.helper,
++              helper.path == current.bundlePath + "/" + artifact.relativePath else { throw AuxFreshBootstrapPolicyError.identity }
+         func namespace() throws {
+             guard let root = helper.entries.first else { throw AuxFreshBootstrapPolicyError.path }
+             let actualRoot = open("/", O_RDONLY | O_DIRECTORY | O_NOFOLLOW | O_CLOEXEC)
+@@ -823,8 +823,8 @@
+                   actualRootMetadata.st_ino == root.3.st_ino else { throw AuxFreshBootstrapPolicyError.path }
+             for (parent, name, descriptor, original) in helper.entries {
+                 let directory = original.st_mode & mode_t(S_IFMT) == mode_t(S_IFDIR)
+-                let now = try metadata(descriptor, directory: directory, maximumSize: Int64(artifacts.helper.bytes))
+-                guard now.st_uid == 0, now.st_dev == original.st_dev, now.st_ino == original.st_ino,
++                let now = try metadata(descriptor, directory: directory, maximumSize: Int64(artifact.bytes))
++                guard (now.st_uid == 0 || (current.contents.includesFixedLinkedPty && now.st_uid==geteuid())), now.st_dev == original.st_dev, now.st_ino == original.st_ino,
+                       now.st_mode == original.st_mode, now.st_gid == original.st_gid else { throw AuxFreshBootstrapPolicyError.path }
+                 if parent >= 0 { try sameEntry(parent, name, descriptor) }
+                 if !directory {
+@@ -837,19 +837,19 @@
+             }
+         }
+         try namespace()
+-        let bytes = try ptyResource(bundle: current.bundlePath, artifact: artifacts.helper, executable: true)
++        let bytes = try ptyResource(bundle: current.bundlePath, artifact: artifact, executable: true)
+         var code: SecStaticCode?
+         let created = SecStaticCodeCreateWithPath(URL(fileURLWithPath: helper.path) as CFURL, [], &code)
+         guard created == errSecSuccess, let code else { throw AuxFreshBootstrapPolicyError.signature(created) }
+         let valid = SecStaticCodeCheckValidity(code, flags, try requirement())
+         guard valid == errSecSuccess else { throw AuxFreshBootstrapPolicyError.signature(valid) }
+-        try validateCapturedFreshBootstrapPtySignature(signature(signingInfo(code)), artifact: artifacts.helper)
++        try validateCapturedFreshBootstrapPtySignature(signature(signingInfo(code)), artifact: artifact)
+         var own: SecCode?, ownStatic: SecStaticCode?
+         let copied = SecCodeCopySelf([], &own)
+         guard copied == errSecSuccess, let own else { throw AuxFreshBootstrapPolicyError.signature(copied) }
+         let staticStatus = SecCodeCopyStaticCode(own, [], &ownStatic)
+         guard staticStatus == errSecSuccess, let ownStatic else { throw AuxFreshBootstrapPolicyError.signature(staticStatus) }
+-        let relative = String(artifacts.helper.relativePath.dropFirst("Contents/".count))
++        let relative = String(artifact.relativePath.dropFirst("Contents/".count))
+         let sealed = SecCodeValidateFileResource(ownStatic, relative as CFString, bytes as CFData, [])
+         guard sealed == errSecSuccess else { throw AuxFreshBootstrapPolicyError.signature(sealed) }
+         try namespace()
+@@ -919,10 +919,10 @@
+     fileprivate static func execPrivateParent() throws -> String {
+         let policy = try load()
+         guard policy.contents.role == .daemon, policy.contents.embeddedDaemon,
+-              policy.contents.includesRebuiltPtyModule else { throw AuxFreshBootstrapPolicyError.policy }
++              (policy.contents.includesRebuiltPtyModule || policy.contents.includesFixedLinkedPty) else { throw AuxFreshBootstrapPolicyError.policy }
+         return try authenticatedPrivateParent(policy)
+     }
+-#if AUX_BROWSER_ONLY_NATIVE_STARTUP
++#if AUX_BROWSER_ONLY_NATIVE_STARTUP || AUX_FIXED_LINKED_PTY_POLICY
+     fileprivate static func memoryControlParent() throws -> String {
+         let policy = try load()
+         guard policy.contents.role == .daemon, policy.contents.embeddedDaemon,
+@@ -965,7 +965,7 @@
+     count.pointee = 0
+     guard let output, capacity > 1, capacity <= 4096 else { return -1 }
+     output.pointee = 0
+-#if AUX_BROWSER_ONLY_NATIVE_STARTUP
++#if AUX_BROWSER_ONLY_NATIVE_STARTUP || AUX_FIXED_LINKED_PTY_POLICY
+     auxImagePreparationLock.lock(); let prepared = auxImagePreparationComplete; auxImagePreparationLock.unlock()
+     guard prepared else { return -1 }
+     do {
