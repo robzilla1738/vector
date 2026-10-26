@@ -15,7 +15,7 @@ r={'format':'aux.selected-exec-producer-object-check.v1','recipeSha256':sha(reci
 try:
  for i,command in enumerate(recipe['commands']):
   start=time.monotonic()
-  with (out/f'command-{i}.log').open('wb') as log:result=subprocess.run(command,stdout=log,stderr=subprocess.STDOUT,cwd='/Users/rcourson/Documents/Vibe/web')
+  with (out/f'command-{i}.log').open('wb') as log:result=subprocess.run(command,stdout=log,stderr=subprocess.STDOUT,cwd=recipe['commandWorkingDirectories'][i])
   r['commands'].append({'argv':command,'exitCode':result.returncode,'seconds':time.monotonic()-start})
   if result.returncode:raise RuntimeError('Object compile failed: '+str(i))
  verify();r['outputs']={str(f):sha(f) for f in out.iterdir() if f.suffix in ['.o','.d']};r['passed']=True

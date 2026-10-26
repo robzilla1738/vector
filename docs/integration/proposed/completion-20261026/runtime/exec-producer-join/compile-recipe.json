@@ -352,6 +352,11 @@
       "/private/tmp/aux-selected-exec-producer-compile-20261026-a1/worker-host.d"
     ]
   ],
+  "commandWorkingDirectories": [
+    "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/out",
+    "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/out",
+    "/Users/rcourson/Documents/Vibe/web"
+  ],
   "output": "/private/tmp/aux-selected-exec-producer-compile-20261026-a1",
   "inputHashes": {
     "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/runtime/final-daemon/daemon-recipe.json": "6ff944f21d89fca40d37e3f27eefd3e97a20d7d59f65d12d3295769a68ac265c",
@@ -496,7 +501,6 @@
     "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/runtime/fixed-pty-retirement/source/AuxDevelopmentWorkerHost.cc": "aa440784355c84275de7e521e3b40ab1fca4b02dc4fba937cee20d713b924fc6",
     "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/runtime/fixed-pty-linked/source/AuxFixedPtyLinked.inc": "6cae8957abd55826c10473d5a21e4165cb3792cc1b1fda27565fa947a5fdf340",
     "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang++": "5922f5f7843fee699497c45cc98134b6686e0a5e2fa8a5866ab74c5482fa87a5",
-    "/private/tmp/aux-spawn-custody-20261023/docs/integration/proposed/profile-isolation-next/spawn-custody/check.py": "e7a48c25b7a59444b6cc4d8d671c41c6bbe483a1bb5fd85b8f9beea93659cee5",
     "/private/tmp/aux-spawn-custody-20261023/docs/integration/proposed/profile-isolation-next/spawn-custody/source/AuxWorkerDrain.h": "712a4d3c125a27822dddba220c1325f4fcb3739fa12daa6f2794d9bf245f48db",
     "/private/tmp/aux-spawn-custody-20261023/docs/integration/proposed/profile-isolation-next/spawn-custody/source/process.c": "058b1fd3390c1b1f3777be0490283b497270742db0e960aa3aa85f5387597ea2",
     "/private/tmp/aux-spawn-custody-20261023/docs/integration/proposed/profile-isolation-next/spawn-custody/source/spawn_sync.h": "ebae4be8f3bd62b0601e65780d721649c506f8707f350eec5ba7cddc028ead1a",
@@ -670,6 +674,12 @@
     "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/deps/nbytes/include/nbytes.h": "52c5253e3a3675faf8319af36066326f27dfd7ee2a9d6b5a49348007cb6ff12e",
     "/private/tmp/aux-spawn-custody-20261023/docs/integration/proposed/aux-native-pdf-host-consumer/source/AuxLoadedPdfLifetime.h": "90ce2cd5bdf13c5a4c6e6ac81af4ea3cc01d142a82c5ecf9eb79e2aa0e5cecb2",
     "/private/tmp/aux-spawn-custody-20261023/docs/integration/proposed/aux-native-utility-host-consumer/source/AuxLoadedUtilityLifetime.h": "cfbd39036c202510e2775a7ce6fdfba9e322c1e9d2f43614fdf1c228f6d02e87",
+    "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/runtime/exec-producer-join/lineage/checker-classification.json": "e2cedd5ff51649bd6a8dd0b92b18c5bf7b01c5e33c3d0c4899e0e4b31c9b89c6",
+    "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/runtime/exec-producer-join/lineage/check-r4-git.py": "5da74a6ad121e684ea9fa0afc258bdd0d09645c6539e805aeee9d15a19544174",
+    "/private/tmp/aux-spawn-custody-native-20261023-r3/process-wrap.d": "80a5cc65d9ac489b197aaa64622908d7833c43524a2862771ee37305fa31302e",
+    "/private/tmp/aux-spawn-custody-native-20261023-r3/libuv-process.d": "890541347ca3b1e4937d081ff9274ec52ba811657fc7262650b3650c4d006fa2",
+    "/private/tmp/aux-spawn-custody-native-20261023-r3/spawn-sync.d": "b711d62e29afa5defdd6e872ab862790129dfae7e63a2fb9057107e40433f766",
+    "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/profile-isolation-next/spawn-custody/evidence/compile-final.json": "b5fd20d19aef7d53b75ca6d3a6e7525b22335ba7acbdc93dfa692dade1602b6a",
     "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/runtime/fixed-pty-retirement/compile-recipe.json": "e7c0b055f1133be7dc929a04e1743ad533103a54386af3f45d67d4aded2609a3",
     "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/profile-isolation-next/spawn-custody/evidence/compile-r3.json": "9a9aff2a18cca572bdf7b838126eda537ee659a0313628b46c5bb5d7720563ed",
     "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/runtime/exec-producer-join/source/process_wrap.cc": "6b3758be6f1faaaab18fd3ef10ebfda9f6cbbeb9eb1c38acb769639bd9a8b0ec",

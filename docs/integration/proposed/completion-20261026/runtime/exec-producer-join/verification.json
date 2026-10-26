@@ -8,6 +8,9 @@
   "candidateChanged": false,
   "reviewChanged": false,
   "EntitlementRequired": true,
-  "compileRecipeSha256": "04bd04528a601db50423ec02be09de7f1d21b49faedc5586bb9ec8ceec969022",
-  "ptySandboxWrapperCarriesSameSelectedScope": true
+  "compileRecipeSha256": "d6ddd7666dd6abbd73fddfc0a8ca514c608504075c3c8318b6f30f2dc03e2c7c",
+  "ptySandboxWrapperCarriesSameSelectedScope": true,
+  "correctedCompilePinsChecked": 330,
+  "historicalCheckerPin": "Separated immutable historical receipt/Git-r4-checker lineage; all actual emitted compiler dependencies remain strict",
+  "originalNodeCompileWorkingDirectoriesPreserved": true
 }
