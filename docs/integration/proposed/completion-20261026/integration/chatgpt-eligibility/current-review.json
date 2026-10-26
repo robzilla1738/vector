@@ -1,0 +1,33 @@
+{
+  "format": "aux.chatgpt.current-eligibility-review.v1",
+  "date": "2026-10-26",
+  "officialSources": [
+    {
+      "url": "https://developers.openai.com/siwc/quickstart",
+      "fetched": true,
+      "finding": "Commercial/private eligibility remains limited; availability of dynamic registration is not blanket approval for a private shipped app."
+    },
+    {
+      "url": "https://developers.openai.com/siwc/token-sharing-open-source/sign-in",
+      "fetched": true,
+      "finding": "Open-source first registration uses dynamic_agent_client, an application name hint and host ID; issued client ID is used afterward."
+    }
+  ],
+  "actualSource": {
+    "path": "/Users/rcourson/Documents/Vibe/web/vendor/aside/shims/aux-chatgpt.cjs",
+    "sha256": "d41902beb64c7cec87441d28152607efce89e1dc1bce9c909d6fbe7f48b467c3",
+    "initialClient": "dynamic_agent_client",
+    "initialAgentNameHint": "Aux",
+    "returningClient": "issued per-account registration",
+    "sharedOwnerLoginCacheCopied": false
+  },
+  "auxPublicDistributionEligibilityEstablished": false,
+  "auxOpenSourceDistributionDecisionEstablished": false,
+  "privateClientApprovalEvidenceRecorded": false,
+  "requestSubmitted": false,
+  "liveSignInExecuted": false,
+  "credentialsRead": false,
+  "inferenceExecuted": false,
+  "paymentFreeImpliesEligible": false,
+  "nextRequired": "Establish Aux eligible distribution category or actual private-client approval, then perform genuine account consent on the coherent signed disposable app. BYOK remains independent."
+}
