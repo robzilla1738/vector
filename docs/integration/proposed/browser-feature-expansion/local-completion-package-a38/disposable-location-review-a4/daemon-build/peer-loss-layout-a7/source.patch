@@ -1,0 +1,14 @@
+--- a/AuxNativeDaemonMain.cc
++++ b/AuxNativeDaemonMain.cc
+@@ -27,6 +27,11 @@
+ #include <cerrno>
+ #include <vector>
+ #if defined(AUX_BROWSER_ONLY_NATIVE_STARTUP) && AUX_BROWSER_ONLY_NATIVE_STARTUP
++// This private inline touches Environment's actual native immediate queue.
++// Match the linked node_base target, not libnode's snapshot-only target.
++#if !defined(HAVE_INSPECTOR) || HAVE_INSPECTOR != 1
++#error "Aux ordinary shutdown requires the linked node_base Environment layout"
++#endif
+ #include "env-inl.h"
+ #endif
+ 

@@ -1,0 +1,32 @@
+{
+  "format": "aux.actual-node-environment-layout-match.v1",
+  "actualLinkedEnvObjectSha256": "16fd40229f16e72b64f43cc1dc6d31a658e75e70fa78dea7236255a45294b233",
+  "compiledMainObjectSha256": "8eac251e3fff1815e5041adce959a665aa1b87be4c2e08323e064864609b1d72",
+  "linkedOffsets": {
+    "isolate_data_": 184,
+    "task_queues_async_": 832,
+    "is_stopping_": 968,
+    "can_call_into_js_": 969,
+    "native_immediates_": 2560,
+    "native_immediates_threadsafe_mutex_": 2584,
+    "native_immediates_threadsafe_": 2648,
+    "native_immediates_interrupts_": 2672,
+    "task_queues_async_initialized_": 2696,
+    "principal_realm_": 2848
+  },
+  "compiledOffsets": {
+    "isolate_data_": 184,
+    "task_queues_async_": 832,
+    "is_stopping_": 968,
+    "can_call_into_js_": 969,
+    "native_immediates_": 2560,
+    "native_immediates_threadsafe_mutex_": 2584,
+    "native_immediates_threadsafe_": 2648,
+    "native_immediates_interrupts_": 2672,
+    "task_queues_async_initialized_": 2696,
+    "principal_realm_": 2848
+  },
+  "allTenRelevantMembersMatch": true,
+  "failedMainMutexOffset": "0x968",
+  "correctMutexOffset": "0xa18"
+}

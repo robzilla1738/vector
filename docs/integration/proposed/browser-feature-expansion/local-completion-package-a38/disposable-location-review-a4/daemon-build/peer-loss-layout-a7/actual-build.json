@@ -1,0 +1,64 @@
+{
+  "format": "aux.peer-loss.node-layout-build-result.v1",
+  "passed": true,
+  "results": [
+    {
+      "label": "main",
+      "exitCode": 0
+    },
+    {
+      "label": "link",
+      "exitCode": 0
+    }
+  ],
+  "seconds": 40.905526917,
+  "planSha256": "1ef112ec3319e088f7279287ecd0b73a5e5dab1919052953c385f50193221202",
+  "sourcePlanSha256": "38a08b52c8f2f88bfeccb2d7800d6e61c9e913a124c35d9fcda4529e79b3a53f",
+  "layout": {
+    "format": "aux.actual-node-environment-layout-match.v1",
+    "actualLinkedEnvObjectSha256": "16fd40229f16e72b64f43cc1dc6d31a658e75e70fa78dea7236255a45294b233",
+    "compiledMainObjectSha256": "8eac251e3fff1815e5041adce959a665aa1b87be4c2e08323e064864609b1d72",
+    "linkedOffsets": {
+      "isolate_data_": 184,
+      "task_queues_async_": 832,
+      "is_stopping_": 968,
+      "can_call_into_js_": 969,
+      "native_immediates_": 2560,
+      "native_immediates_threadsafe_mutex_": 2584,
+      "native_immediates_threadsafe_": 2648,
+      "native_immediates_interrupts_": 2672,
+      "task_queues_async_initialized_": 2696,
+      "principal_realm_": 2848
+    },
+    "compiledOffsets": {
+      "isolate_data_": 184,
+      "task_queues_async_": 832,
+      "is_stopping_": 968,
+      "can_call_into_js_": 969,
+      "native_immediates_": 2560,
+      "native_immediates_threadsafe_mutex_": 2584,
+      "native_immediates_threadsafe_": 2648,
+      "native_immediates_interrupts_": 2672,
+      "task_queues_async_initialized_": 2696,
+      "principal_realm_": 2848
+    },
+    "allTenRelevantMembersMatch": true,
+    "failedMainMutexOffset": "0x968",
+    "correctMutexOffset": "0xa18"
+  },
+  "unchangedSwiftSourceCount": 50,
+  "unchangedOtherNativeObjectCount": 14,
+  "ordinaryIncludesAndWorkerObjectUnchanged": true,
+  "shutdownListenerAndJoinBodyUnchanged": true,
+  "productExecuted": false,
+  "productSigned": false,
+  "originalRootAccessed": false,
+  "binary": "/private/tmp/aux-browser-only-daemon-build-20261025-a67/Aux Daemon",
+  "binarySha256": "cb1797731449c4a87255b432ce715bf6fedf041dfed3dcb96420ecf5b1c86d29",
+  "binarySize": 147464024,
+  "codeSignatureLoadCommandPresent": false,
+  "codesignDisplayExitCode": 1,
+  "codesignDisplayStderr": "/private/tmp/aux-browser-only-daemon-build-20261025-a67/Aux Daemon: code object is not signed at all",
+  "inputPinsUnchanged": true,
+  "priorBinaryUnchanged": true
+}

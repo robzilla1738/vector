@@ -1,0 +1,71 @@
+/private/tmp/aux-browser-only-daemon-build-20261025-a67/main.o:	file format Mach-O arm64
+
+0x00000ae1: DW_TAG_member
+              DW_AT_name	("isolate_data_")
+              DW_AT_type	(0x0009fdb2 "node::IsolateData *const")
+              DW_AT_decl_file	("/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/src/env.h")
+              DW_AT_decl_line	(1094)
+              DW_AT_data_member_location	(DW_OP_plus_uconst 0xb8)
+
+0x00000b51: DW_TAG_member
+              DW_AT_name	("task_queues_async_")
+              DW_AT_type	(0x0009d719 "uv_async_t")
+              DW_AT_decl_file	("/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/src/env.h")
+              DW_AT_decl_line	(1102)
+              DW_AT_data_member_location	(DW_OP_plus_uconst 0x340)
+
+0x00000b71: DW_TAG_member
+              DW_AT_name	("is_stopping_")
+              DW_AT_type	(0x0003e6ca "std::__1::atomic_bool")
+              DW_AT_decl_file	("/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/src/env.h")
+              DW_AT_decl_line	(1106)
+              DW_AT_data_member_location	(DW_OP_plus_uconst 0x3c8)
+
+0x00000b81: DW_TAG_member
+              DW_AT_name	("can_call_into_js_")
+              DW_AT_type	(0x0003e6ca "std::__1::atomic_bool")
+              DW_AT_decl_file	("/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/src/env.h")
+              DW_AT_decl_line	(1107)
+              DW_AT_data_member_location	(DW_OP_plus_uconst 0x3c9)
+
+0x00001001: DW_TAG_member
+              DW_AT_name	("native_immediates_")
+              DW_AT_type	(0x00001011 "node::Environment::NativeImmediateQueue")
+              DW_AT_decl_file	("/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/src/env.h")
+              DW_AT_decl_line	(1228)
+              DW_AT_data_member_location	(DW_OP_plus_uconst 0xa00)
+
+0x0000101d: DW_TAG_member
+              DW_AT_name	("native_immediates_threadsafe_mutex_")
+              DW_AT_type	(0x00011e1c "node::Mutex")
+              DW_AT_decl_file	("/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/src/env.h")
+              DW_AT_decl_line	(1229)
+              DW_AT_data_member_location	(DW_OP_plus_uconst 0xa18)
+
+0x0000102d: DW_TAG_member
+              DW_AT_name	("native_immediates_threadsafe_")
+              DW_AT_type	(0x00001011 "node::Environment::NativeImmediateQueue")
+              DW_AT_decl_file	("/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/src/env.h")
+              DW_AT_decl_line	(1230)
+              DW_AT_data_member_location	(DW_OP_plus_uconst 0xa58)
+
+0x0000103d: DW_TAG_member
+              DW_AT_name	("native_immediates_interrupts_")
+              DW_AT_type	(0x00001011 "node::Environment::NativeImmediateQueue")
+              DW_AT_decl_file	("/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/src/env.h")
+              DW_AT_decl_line	(1231)
+              DW_AT_data_member_location	(DW_OP_plus_uconst 0xa70)
+
+0x0000104d: DW_TAG_member
+              DW_AT_name	("task_queues_async_initialized_")
+              DW_AT_type	(0x00076ba5 "bool")
+              DW_AT_decl_file	("/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/src/env.h")
+              DW_AT_decl_line	(1236)
+              DW_AT_data_member_location	(DW_OP_plus_uconst 0xa88)
+
+0x000010ad: DW_TAG_member
+              DW_AT_name	("principal_realm_")
+              DW_AT_type	(0x0005b4d7 "std::__1::unique_ptr<node::PrincipalRealm, std::__1::default_delete<node::PrincipalRealm> >")
+              DW_AT_decl_file	("/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/src/env.h")
+              DW_AT_decl_line	(1250)
+              DW_AT_data_member_location	(DW_OP_plus_uconst 0xb20)

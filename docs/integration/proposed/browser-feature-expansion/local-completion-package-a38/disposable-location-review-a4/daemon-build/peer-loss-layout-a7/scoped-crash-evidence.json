@@ -1,0 +1,55 @@
+{
+  "format": "aux.scoped-peer-loss-crash-evidence.v1",
+  "reportPath": "/Users/rcourson/Library/Logs/DiagnosticReports/aux-daemon-2026-10-25-211547.ips",
+  "reportSha256": "7f59a0ac6567e2dbc72956104516a6e36a3b5ed00cae7ad4733f8f0b497e2638",
+  "pid": 54743,
+  "parentPid": 54721,
+  "captureTime": "2026-10-25 21:15:46.1716 -0500",
+  "exception": {
+    "codes": "0x0000000000000000, 0x0000000000000000",
+    "rawCodes": [
+      0,
+      0
+    ],
+    "type": "EXC_CRASH",
+    "signal": "SIGABRT"
+  },
+  "termination": {
+    "flags": 0,
+    "code": 6,
+    "namespace": "SIGNAL",
+    "indicator": "Abort trap: 6",
+    "byProc": "aux-daemon",
+    "byPid": 54743
+  },
+  "faultingThread": 7,
+  "faultFrames": [
+    "__semwait_signal_nocancel",
+    "nanosleep$NOCANCEL",
+    "usleep$NOCANCEL",
+    "abort",
+    "uv_mutex_lock",
+    "node::LibuvMutexTraits::mutex_lock(_opaque_pthread_mutex_t*)",
+    "node::MutexBase<node::LibuvMutexTraits>::ScopedLock::ScopedLock(node::MutexBase<node::LibuvMutexTraits> const&)",
+    "node::MutexBase<node::LibuvMutexTraits>::ScopedLock::ScopedLock(node::MutexBase<node::LibuvMutexTraits> const&)",
+    "void node::Environment::SetImmediateThreadsafe<(anonymous namespace)::RequestPeerLossShutdown(node::Environment*)::$_0>((anonymous namespace)::RequestPeerLossShutdown(node::Environment*)::$_0&&, node::CallbackFlags::Flags)",
+    "(anonymous namespace)::RequestPeerLossShutdown(node::Environment*)",
+    "(anonymous namespace)::ReadyPulse::ReadyPulse((anonymous namespace)::NativeLifetime&, node::CommonEnvironmentSetup&)::'lambda'()::operator()() const",
+    "std::__1::__invoke_result_impl<void, (anonymous namespace)::ReadyPulse::ReadyPulse((anonymous namespace)::NativeLifetime&, node::CommonEnvironmentSetup&)::'lambda'()>::type std::__1::__invoke[abi:nqe220106]<(anonymous namespace)::ReadyPulse::ReadyPulse((anonymous namespace)::NativeLifetime&, node::CommonEnvironmentSetup&)::'lambda'()>((anonymous namespace)::ReadyPulse::ReadyPulse((anonymous namespace)::NativeLifetime&, node::CommonEnvironmentSetup&)::'lambda'()&&)"
+  ],
+  "mainFrames": [
+    "kevent",
+    "uv__io_poll",
+    "uv_run",
+    "node::SpinEventLoopInternal(node::Environment*)",
+    "node::SpinEventLoop(node::Environment*)",
+    "RunAuxNativeNodeEnvironment(node::CommonEnvironmentSetup&, node::ModuleData const&, AuxNativeEnvironmentPreload&)",
+    "main",
+    "start"
+  ],
+  "guardianExitOnlyWasNotDaemonCleanEvidence": true,
+  "failedMainObject": "/private/tmp/aux-browser-only-daemon-build-20261025-a59/main.o",
+  "failedMainObjectSha256": "353a02917b1da1a771e7272fccacc6385c21e2f91df9bd7576b89a0eac8e4c63",
+  "failedInlineMutexOffset": "0x968",
+  "actualLinkedNodeMutexOffset": "0xa18"
+}

@@ -1,0 +1,24 @@
+{
+  "format": "aux.peer-loss-linked-environment-layout.v1",
+  "files": [
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/fresh-startup-milestone-a42/ordinary-peer-shutdown-source/AuxNativeDaemonMain.cc",
+      "inputSha256": "714121b87cc3cdf87ed439892756aec3de7931fca2236b85fd96b1902b7ca50a",
+      "outputSha256": "6f7a04618eeb56d066c0fa72dc09b17372a1b2c79f7503ea1b0091f3138350a8",
+      "source": "docs/integration/proposed/browser-feature-expansion/local-completion-package-a38/disposable-location-review-a4/daemon-build/peer-loss-layout-a7/source/AuxNativeDaemonMain.cc",
+      "anchors": [
+        {
+          "find": "#if defined(AUX_BROWSER_ONLY_NATIVE_STARTUP) && AUX_BROWSER_ONLY_NATIVE_STARTUP\n#include \"env-inl.h\"\n#endif",
+          "replace": "#if defined(AUX_BROWSER_ONLY_NATIVE_STARTUP) && AUX_BROWSER_ONLY_NATIVE_STARTUP\n// This private inline touches Environment's actual native immediate queue.\n// Match the linked node_base target, not libnode's snapshot-only target.\n#if !defined(HAVE_INSPECTOR) || HAVE_INSPECTOR != 1\n#error \"Aux ordinary shutdown requires the linked node_base Environment layout\"\n#endif\n#include \"env-inl.h\"\n#endif",
+          "count": 1
+        }
+      ]
+    }
+  ],
+  "patch": "source.patch",
+  "nodeBaseProfileSha256": "ccc176b50ecd1197ea3c4df75884b10b7b559d7e270993f63609928e11918362",
+  "runtimeShutdownBodyChanged": false,
+  "listenerAndJoinOrderPreserved": true,
+  "productExecuted": false,
+  "productSigned": false
+}
