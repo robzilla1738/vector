@@ -1,0 +1,65 @@
+{
+  "format": "aux.final-daemon-owner-fixture-receipt.v1",
+  "inputPins": {
+    "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/runtime/final-daemon/source/emit-producer.mjs": "aacf14d1907ab7570f658850ba49678abda63fed96f2922ead7adf5fb65b3c6c",
+    "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-native-p256-envelope-port/source/EnvelopeRecords.swift": "e6b8b6bcae9f6b34cc5dfe757e5f0130297f1c4c3bae81636387a06e24dc34d6",
+    "/private/tmp/aux-browser-only-daemon-build-20261025-a61/source/AuxRegisteredMemoryAccountOwner.swift": "897f3c44ab48d8fd50469e47f436845eeaae53ee6b4ee6125e271f3d0ac6bc52",
+    "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/runtime/selected-builtin-owner/source/AuxSelectedAccountOwner.swift": "3b52e4683535821e5824263aec7f22de1ad14770f4ab826163169d497d10bb40",
+    "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/runtime/final-daemon/source/fixture/main.swift": "a01b24b30f5b8e9a5355bee25c4904a176401ef0ddc1f804f0ac21018183c866",
+    "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/runtime/final-daemon/run-fixture.py": "9a56b9e7ca29e525e30f9f892be20a5b08f25d3f5f3ee438f80d4b6038d0651c",
+    "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-local-completion-20261025-a38/Aux.app/Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/node-development/index.mjs": "48af998738fb6d2fc30cb8d5b2e9de03cb04ab7d8563ebdaa5fe8100944fc514"
+  },
+  "buildReceiptSha256": "adb9020e7c56d7ab26fecf0a6a3d10d1134d27b6810802862baf6d6a6bba56d0",
+  "commands": [
+    {
+      "argv": [
+        "/usr/bin/env",
+        "TZ=America/Chicago",
+        "node",
+        "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/runtime/final-daemon/source/emit-producer.mjs",
+        "/private/tmp/aux-completion-final-daemon-fixture-20261026-a1/producer.json"
+      ],
+      "exitCode": 0,
+      "elapsedSeconds": 0.15332745795603842
+    },
+    {
+      "argv": [
+        "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc",
+        "-sdk",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk",
+        "-target",
+        "arm64-apple-macos13.5",
+        "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-native-p256-envelope-port/source/EnvelopeRecords.swift",
+        "/private/tmp/aux-browser-only-daemon-build-20261025-a61/source/AuxRegisteredMemoryAccountOwner.swift",
+        "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/runtime/selected-builtin-owner/source/AuxSelectedAccountOwner.swift",
+        "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/runtime/final-daemon/source/fixture/main.swift",
+        "-o",
+        "/private/tmp/aux-completion-final-daemon-fixture-20261026-a1/owner-fixture"
+      ],
+      "exitCode": 0,
+      "elapsedSeconds": 2.1399501669220626
+    },
+    {
+      "argv": [
+        "/usr/bin/env",
+        "TZ=UTC",
+        "/private/tmp/aux-completion-final-daemon-fixture-20261026-a1/owner-fixture",
+        "/private/tmp/aux-completion-final-daemon-fixture-20261026-a1/producer.json",
+        "/private/tmp/aux-completion-final-daemon-fixture-20261026-a1"
+      ],
+      "exitCode": 0,
+      "elapsedSeconds": 0.14185983396600932
+    }
+  ],
+  "actualInstallationAdmission": false,
+  "appOrAddonExecution": false,
+  "credentialAccess": false,
+  "result": "pass",
+  "outputs": {
+    "/private/tmp/aux-completion-final-daemon-fixture-20261026-a1/command-2.log": "2703138df0f439a05ab8c444d9ce177154ca3e268f702eb58331aabe336b4515",
+    "/private/tmp/aux-completion-final-daemon-fixture-20261026-a1/command-0.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "/private/tmp/aux-completion-final-daemon-fixture-20261026-a1/command-1.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "/private/tmp/aux-completion-final-daemon-fixture-20261026-a1/owner-fixture": "b82e46db0a9d726dc497832f93f2d4594b79a8fabfae2be97c1c884992252a15",
+    "/private/tmp/aux-completion-final-daemon-fixture-20261026-a1/producer.json": "e1c41607faaf9367ff51ec32c16304516b2686160789893f4cdb3582fb0ae177"
+  }
+}
