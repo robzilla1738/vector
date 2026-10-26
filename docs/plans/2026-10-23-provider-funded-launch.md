@@ -38,3 +38,7 @@ No application-registration consent, owner sign-in, subscription-token migration
 - Accept ChatGPT plan usage only through its real integrated flow and actual account permission, with truthful provider errors/limits; do not substitute a mock successful connection.
 - Confirm paid prompts and hosted spend are disabled in the same built candidate and deployed cloud mode. Source tests alone do not update the existing accepted desktop or hosted Preview.
 - Keep sign-in/sync/sharing, password-manager extension compatibility, backup operations and native startup/lifetime acceptance on the remaining roadmap. Payments and Aux-hosted speech/inference are later opt-ins, not blockers for provider-funded launch.
+
+## Routine execution scope — owner decision October26
+
+Launch routines run on the selected Aux device only. The owner explicitly chose “Launch with device routines only” during completion. Remove cloud execution choices and new cloud-routine creation from the launch UI/producer path. Preserve existing unsupported cloud records without executing, deleting or retargeting them. This does not exclude general Bash/PTY requirements or authorize hosted infrastructure. Actual device-routine behavior remains a final-app/deployment acceptance gate.

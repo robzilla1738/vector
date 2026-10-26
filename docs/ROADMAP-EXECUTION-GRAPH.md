@@ -2,6 +2,8 @@
 
 ## Active full completion continuation — 2026-10-26
 
+Owner scope update: launch routines are device-only. Remove new cloud execution choices while preserving unsupported historical records; no local execution fallback or hosted-executor implementation is inferred. General Bash/PTY remain required.
+
 Current successor is assembled unsigned at `out/provided-candidate-completion-20261026-a1/Aux.app`, with full browser/CLI and coherent daemon builds, real SQLite/private-FD fixture, canonical macOS27 icon catalog, complete resource joins and actual classified Agent closure. [Current candidate and exact review](integration/proposed/completion-20261026/integrator/current-candidate-a3.json). Local signing/disposable execution approval is requested; no successor runtime acceptance or full completion is claimed.
 
 The owner explicitly resumed the Desktop final completion plan with three parallel workers. [Current baseline and reservations](integration/proposed/final-completion/baseline-20261026.md), [integrated batch/evidence](integration/proposed/completion-20261026/integrator/README.md), and [STATUS](STATUS.md) are the live continuation. The original A38 candidate and its acceptance stay intact. Source fixes do not transfer acceptance to new app bytes.
