@@ -20,7 +20,7 @@ for row in plan['files']:
         raise ValueError('Frozen browser source changed: ' + row['path'])
 if (OUT / 'build-result.json').exists():
     raise ValueError('Preserve previous build receipt')
-command = [str(SOURCE / 'third_party/ninja/ninja'), '-C', str(SOURCE / 'out/AuxFast'), '-k0', '-j4', 'chrome', 'native_cli_open']
+command = [str(SOURCE / 'third_party/ninja/ninja'), '-C', str(SOURCE / 'out/AuxFast'), '-k4', '-j4', 'chrome', 'native_cli_open']
 start = time.monotonic()
 with (OUT / 'build.stdout').open('xb') as stdout, (OUT / 'build.stderr').open('xb') as stderr:
     done = subprocess.run(command, cwd=SOURCE, stdout=stdout, stderr=stderr)

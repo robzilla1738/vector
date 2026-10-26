@@ -1,0 +1,30 @@
+{
+  "passed": true,
+  "seconds": 7.480602917028591,
+  "results": [
+    {
+      "command": [
+        "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang++",
+        "-isysroot",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk",
+        "-std=c++20",
+        "-I",
+        "/private/tmp/aux-completion-browser-build-20261026-a5/source",
+        "/private/tmp/aux-completion-browser-build-20261026-a5/source/components/split_tabs/split_pane_tree.cc",
+        "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/integration/split-accessibility/visual-order-fixture.cc",
+        "-o",
+        "/private/tmp/aux-completion-browser-build-20261026-a5/split-visual-order-fixture"
+      ],
+      "exitCode": 0
+    },
+    {
+      "command": [
+        "/private/tmp/aux-completion-browser-build-20261026-a5/split-visual-order-fixture"
+      ],
+      "exitCode": 0
+    }
+  ],
+  "fixtureSha256": "f5138f8489c1a87f6da2a5727a916dc292d76f582fae487cfb9a51f314469c55",
+  "productExecuted": false,
+  "sourceOnlyFixture": true
+}

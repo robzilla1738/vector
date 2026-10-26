@@ -1,0 +1,1309 @@
+{
+  "format": "aux.completion.browser-projection.v1",
+  "source": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src",
+  "output": "/private/tmp/aux-completion-browser-build-20261026-a5",
+  "parentProjectionSha256": "4d5faf7b27ee8c133ad20bc9ed52b4527a0be25529ac30c5bc58541e9b492348",
+  "files": [
+    {
+      "path": "chrome/browser/ui/views/frame/aux_organization_window_controller.h",
+      "inputSha256": "cc040e60a3b32bdad30675d41279d367d0d6b7a9e02761ed08f2352b43b39317",
+      "outputSha256": "cc040e60a3b32bdad30675d41279d367d0d6b7a9e02761ed08f2352b43b39317",
+      "mode": 420,
+      "origins": [
+        {
+          "parentProjection": "/private/tmp/aux-completion-browser-build-20261026-a1/projection.json",
+          "parentOutputSha256": "cc040e60a3b32bdad30675d41279d367d0d6b7a9e02761ed08f2352b43b39317"
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_organization_window_controller.cc",
+      "inputSha256": "49c13d0805410d33ae6af7d31fd30daa78560c9f5ca77ef9b0fb5b3bad9a4047",
+      "outputSha256": "49c13d0805410d33ae6af7d31fd30daa78560c9f5ca77ef9b0fb5b3bad9a4047",
+      "mode": 420,
+      "origins": [
+        {
+          "parentProjection": "/private/tmp/aux-completion-browser-build-20261026-a1/projection.json",
+          "parentOutputSha256": "49c13d0805410d33ae6af7d31fd30daa78560c9f5ca77ef9b0fb5b3bad9a4047"
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/ui/unload_controller.cc",
+      "inputSha256": "59e1a4bd8f54c9f9bde6cfd8cc273c8d7012d17f5f99d15851fee4b9a0203172",
+      "outputSha256": "59e1a4bd8f54c9f9bde6cfd8cc273c8d7012d17f5f99d15851fee4b9a0203172",
+      "mode": 420,
+      "origins": [
+        {
+          "parentProjection": "/private/tmp/aux-completion-browser-build-20261026-a1/projection.json",
+          "parentOutputSha256": "59e1a4bd8f54c9f9bde6cfd8cc273c8d7012d17f5f99d15851fee4b9a0203172"
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/ui/views/tabs/vertical/vertical_pinned_tab_entries_view.cc",
+      "inputSha256": "a48ceeb9ef5e21b40f1b401907e718f02e00822b7390e364f1c78f8473146977",
+      "outputSha256": "a48ceeb9ef5e21b40f1b401907e718f02e00822b7390e364f1c78f8473146977",
+      "mode": 420,
+      "origins": [
+        {
+          "parentProjection": "/private/tmp/aux-completion-browser-build-20261026-a1/projection.json",
+          "parentOutputSha256": "a48ceeb9ef5e21b40f1b401907e718f02e00822b7390e364f1c78f8473146977"
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/ui/aux_preview/aux_preview_controls.cc",
+      "inputSha256": "10ac17a09a6bce4a7aceb4dbf84e0c1eb42ccc662ad58ea4d840e72881a23dc5",
+      "outputSha256": "10ac17a09a6bce4a7aceb4dbf84e0c1eb42ccc662ad58ea4d840e72881a23dc5",
+      "mode": 420,
+      "origins": [
+        {
+          "parentProjection": "/private/tmp/aux-completion-browser-build-20261026-a1/projection.json",
+          "parentOutputSha256": "10ac17a09a6bce4a7aceb4dbf84e0c1eb42ccc662ad58ea4d840e72881a23dc5"
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/aux/cli/AuxCliOpenArguments.h",
+      "inputSha256": "8718b496c32d75cdc847b863c26324616e404ff1abb57558e9b403878f990089",
+      "outputSha256": "8718b496c32d75cdc847b863c26324616e404ff1abb57558e9b403878f990089",
+      "mode": 420,
+      "origins": [
+        {
+          "parentProjection": "/private/tmp/aux-completion-browser-build-20261026-a1/projection.json",
+          "parentOutputSha256": "8718b496c32d75cdc847b863c26324616e404ff1abb57558e9b403878f990089"
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/aux/cli/AuxCliOpenArguments.cc",
+      "inputSha256": "d30b2c8a0a43ba1233ccf47565e4674f95e08d284c31d921f090ccd460c302e8",
+      "outputSha256": "d30b2c8a0a43ba1233ccf47565e4674f95e08d284c31d921f090ccd460c302e8",
+      "mode": 420,
+      "origins": [
+        {
+          "parentProjection": "/private/tmp/aux-completion-browser-build-20261026-a1/projection.json",
+          "parentOutputSha256": "d30b2c8a0a43ba1233ccf47565e4674f95e08d284c31d921f090ccd460c302e8"
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/aux/cli/AuxNativeCliFrontend.mm",
+      "inputSha256": "e31f601945cddbbb6255d726e0dc6a2eedc7dd84fca6a29f1bddc6cc7216dd71",
+      "outputSha256": "e31f601945cddbbb6255d726e0dc6a2eedc7dd84fca6a29f1bddc6cc7216dd71",
+      "mode": 420,
+      "origins": [
+        {
+          "parentProjection": "/private/tmp/aux-completion-browser-build-20261026-a1/projection.json",
+          "parentOutputSha256": "e31f601945cddbbb6255d726e0dc6a2eedc7dd84fca6a29f1bddc6cc7216dd71"
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/aux/cli/AuxCliOpenCommand.mm",
+      "inputSha256": "6f18052e41f09885a8fc04881866f7f6276061172bee5e967c388466a183990e",
+      "outputSha256": "6f18052e41f09885a8fc04881866f7f6276061172bee5e967c388466a183990e",
+      "mode": 420,
+      "origins": [
+        {
+          "parentProjection": "/private/tmp/aux-completion-browser-build-20261026-a1/projection.json",
+          "parentOutputSha256": "6f18052e41f09885a8fc04881866f7f6276061172bee5e967c388466a183990e"
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/aux/routing/external_routing_ingress.cc",
+      "inputSha256": "d0010b1eb268ed80b8a6fc787a89da478cf96a60387971d398ee92de1d75bcbc",
+      "outputSha256": "d0010b1eb268ed80b8a6fc787a89da478cf96a60387971d398ee92de1d75bcbc",
+      "mode": 420,
+      "origins": [
+        {
+          "parentProjection": "/private/tmp/aux-completion-browser-build-20261026-a1/projection.json",
+          "parentOutputSha256": "d0010b1eb268ed80b8a6fc787a89da478cf96a60387971d398ee92de1d75bcbc"
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/aux/routing/routing_service.cc",
+      "inputSha256": "738c965351cca4ecde92638eb00f40cc0c061768348af9880e56c7453fa6ab27",
+      "outputSha256": "738c965351cca4ecde92638eb00f40cc0c061768348af9880e56c7453fa6ab27",
+      "mode": 420,
+      "origins": [
+        {
+          "parentProjection": "/private/tmp/aux-completion-browser-build-20261026-a1/projection.json",
+          "parentOutputSha256": "738c965351cca4ecde92638eb00f40cc0c061768348af9880e56c7453fa6ab27"
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/aux/cli/AuxCliWire.h",
+      "inputSha256": "28983f2a1b4f87c97e3b5fb130351bf72ac8156662e2c62c3ba1117ae8e7eb0c",
+      "outputSha256": "28983f2a1b4f87c97e3b5fb130351bf72ac8156662e2c62c3ba1117ae8e7eb0c",
+      "mode": 420,
+      "origins": [
+        {
+          "parentProjection": "/private/tmp/aux-completion-browser-build-20261026-a1/projection.json",
+          "parentOutputSha256": "28983f2a1b4f87c97e3b5fb130351bf72ac8156662e2c62c3ba1117ae8e7eb0c"
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/aux/cli/AuxCliWire.cc",
+      "inputSha256": "b43ebdd31512b69c9e5769b4593df2a67aba2eb3331507e9918bf1dc50bfc051",
+      "outputSha256": "b43ebdd31512b69c9e5769b4593df2a67aba2eb3331507e9918bf1dc50bfc051",
+      "mode": 420,
+      "origins": [
+        {
+          "parentProjection": "/private/tmp/aux-completion-browser-build-20261026-a1/projection.json",
+          "parentOutputSha256": "b43ebdd31512b69c9e5769b4593df2a67aba2eb3331507e9918bf1dc50bfc051"
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/aux/cli/AuxCliIngress.h",
+      "inputSha256": "43de8bd6a248b231177941147a47b2510a0c287171451ea8c236629872cf2a2f",
+      "outputSha256": "43de8bd6a248b231177941147a47b2510a0c287171451ea8c236629872cf2a2f",
+      "mode": 420,
+      "origins": [
+        {
+          "parentProjection": "/private/tmp/aux-completion-browser-build-20261026-a1/projection.json",
+          "parentOutputSha256": "43de8bd6a248b231177941147a47b2510a0c287171451ea8c236629872cf2a2f"
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/aux/cli/AuxCliIngress.cc",
+      "inputSha256": "49879402fe88fc9045a3b624cd38068e88183d989942b77615bd8c3fb973b369",
+      "outputSha256": "20b62c9551098db0cd996e0d5c30df4dcf27613a36dc8f30863150ef70997da1",
+      "mode": 420,
+      "origins": [
+        {
+          "parentProjection": "/private/tmp/aux-completion-browser-build-20261026-a1/projection.json",
+          "parentOutputSha256": "49879402fe88fc9045a3b624cd38068e88183d989942b77615bd8c3fb973b369"
+        },
+        {
+          "plan": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/desktop/cli-safe-output/source-plan.json",
+          "anchors": [
+            {
+              "before": "   const auto* done=reinterpret_cast<const ReadOnlyCompletion*>(result.Header());\n   if(!token||done->header.msgh_id!=kReadOnlyResult||(done->header.msgh_bits&MACH_MSGH_BITS_COMPLEX)||done->header.msgh_remote_port!=MACH_PORT_NULL||done->payload_bytes>kPayloadLimit||done->header.msgh_size!=ReadOnlyCompletionBytes(done->payload_bytes)||done->version!=kVersion||done->nonce!=hello.nonce||done->exit_code<0||done->exit_code>255||!images->SameBrowser(token->msgh_audit,browser))return 75;\n   const auto json=std::span(done->payload).first(done->payload_bytes);\n   if(json.empty()||fwrite(json.data(),1,json.size(),stdout)!=json.size()||fputc('\\n',stdout)==EOF||fflush(stdout)!=0)return 74;\n   return done->exit_code;\n  }\n  const auto* done=reinterpret_cast<const Completion*>(result.Header());\n",
+              "after": "   const auto* done=reinterpret_cast<const ReadOnlyCompletion*>(result.Header());\n   if(!token||done->header.msgh_id!=kReadOnlyResult||(done->header.msgh_bits&MACH_MSGH_BITS_COMPLEX)||done->header.msgh_remote_port!=MACH_PORT_NULL||done->payload_bytes>kPayloadLimit||done->header.msgh_size!=ReadOnlyCompletionBytes(done->payload_bytes)||done->version!=kVersion||done->nonce!=hello.nonce||done->exit_code<0||done->exit_code>255||!images->SameBrowser(token->msgh_audit,browser))return 75;\n   const auto json=std::span(done->payload).first(done->payload_bytes);\n   if(json.empty())return 74;\n   for(const auto byte:json)if(fputc(byte,stdout)==EOF)return 74;\n   if(fputc('\\n',stdout)==EOF||fflush(stdout)!=0)return 74;\n   return done->exit_code;\n  }\n  const auto* done=reinterpret_cast<const Completion*>(result.Header());\n",
+              "expectedCount": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/ui/aux_chosen_files_service.cc",
+      "inputSha256": "46e654ca3b198b0099b82dd66fee214edb9ca7ed396fe15465c56812afd2b498",
+      "outputSha256": "46e654ca3b198b0099b82dd66fee214edb9ca7ed396fe15465c56812afd2b498",
+      "mode": 420,
+      "origins": [
+        {
+          "parentProjection": "/private/tmp/aux-completion-browser-build-20261026-a1/projection.json",
+          "parentOutputSha256": "46e654ca3b198b0099b82dd66fee214edb9ca7ed396fe15465c56812afd2b498"
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/aux/AuxNativePeerWire.h",
+      "inputSha256": "332ca99ad1c485b4e0856b03889e36ac163011ed322f001d2bf7a769fe49e8dd",
+      "outputSha256": "332ca99ad1c485b4e0856b03889e36ac163011ed322f001d2bf7a769fe49e8dd",
+      "mode": 420,
+      "origins": [
+        {
+          "parentProjection": "/private/tmp/aux-completion-browser-build-20261026-a1/projection.json",
+          "parentOutputSha256": "332ca99ad1c485b4e0856b03889e36ac163011ed322f001d2bf7a769fe49e8dd"
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/aux/AuxNativePeerTransport.h",
+      "inputSha256": "52b28dc33a82ddd4fcf2c8c6aefec45d1d0fb4e1fbf592851d09e39e8a3f66fb",
+      "outputSha256": "52b28dc33a82ddd4fcf2c8c6aefec45d1d0fb4e1fbf592851d09e39e8a3f66fb",
+      "mode": 420,
+      "origins": [
+        {
+          "parentProjection": "/private/tmp/aux-completion-browser-build-20261026-a1/projection.json",
+          "parentOutputSha256": "52b28dc33a82ddd4fcf2c8c6aefec45d1d0fb4e1fbf592851d09e39e8a3f66fb"
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/aux/AuxOwnedNativePeerChild.h",
+      "inputSha256": "09bd4febf820c02ef32e8c83e67c6a6843452ba58d3e665c70200c06072dee20",
+      "outputSha256": "09bd4febf820c02ef32e8c83e67c6a6843452ba58d3e665c70200c06072dee20",
+      "mode": 420,
+      "origins": [
+        {
+          "parentProjection": "/private/tmp/aux-completion-browser-build-20261026-a1/projection.json",
+          "parentOutputSha256": "09bd4febf820c02ef32e8c83e67c6a6843452ba58d3e665c70200c06072dee20"
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/aux/AuxNativePeerTransport.cc",
+      "inputSha256": "e1599130b1e41eb78cddce19b2b7828fc6d11a21e28fd62b24bdd01a5a4a7384",
+      "outputSha256": "e1599130b1e41eb78cddce19b2b7828fc6d11a21e28fd62b24bdd01a5a4a7384",
+      "mode": 420,
+      "origins": [
+        {
+          "parentProjection": "/private/tmp/aux-completion-browser-build-20261026-a1/projection.json",
+          "parentOutputSha256": "e1599130b1e41eb78cddce19b2b7828fc6d11a21e28fd62b24bdd01a5a4a7384"
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/aux/AuxOwnedNativePeerChild.cc",
+      "inputSha256": "6d7834e5ff02e3f98d54919e10b9c43aca13b75be3453ab33699dee50ad5d9ef",
+      "outputSha256": "6d7834e5ff02e3f98d54919e10b9c43aca13b75be3453ab33699dee50ad5d9ef",
+      "mode": 420,
+      "origins": [
+        {
+          "parentProjection": "/private/tmp/aux-completion-browser-build-20261026-a1/projection.json",
+          "parentOutputSha256": "6d7834e5ff02e3f98d54919e10b9c43aca13b75be3453ab33699dee50ad5d9ef"
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/aux/AuxSelectedStateHome.h",
+      "inputSha256": "ed29109e3e981dc877b962771f7c3d3629ca3bae221563c7e3cd6d57e6164f66",
+      "outputSha256": "ed29109e3e981dc877b962771f7c3d3629ca3bae221563c7e3cd6d57e6164f66",
+      "mode": 420,
+      "origins": [
+        {
+          "parentProjection": "/private/tmp/aux-completion-browser-build-20261026-a1/projection.json",
+          "parentOutputSha256": "ed29109e3e981dc877b962771f7c3d3629ca3bae221563c7e3cd6d57e6164f66"
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/aux/AuxSelectedStateHome.cc",
+      "inputSha256": "6a60fd98d0a5f244aceaf79fe4b3a211796236e828b949f83a06c8766ac5a534",
+      "outputSha256": "6a60fd98d0a5f244aceaf79fe4b3a211796236e828b949f83a06c8766ac5a534",
+      "mode": 420,
+      "origins": [
+        {
+          "parentProjection": "/private/tmp/aux-completion-browser-build-20261026-a1/projection.json",
+          "parentOutputSha256": "6a60fd98d0a5f244aceaf79fe4b3a211796236e828b949f83a06c8766ac5a534"
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/extensions/api/messaging/aux_native_host_lease.h",
+      "inputSha256": "eafcf5f62361154c84c7d9676aab2ac4e4236938f5e54f89f18766b1280cef31",
+      "outputSha256": "eafcf5f62361154c84c7d9676aab2ac4e4236938f5e54f89f18766b1280cef31",
+      "mode": 420,
+      "origins": [
+        {
+          "parentProjection": "/private/tmp/aux-completion-browser-build-20261026-a1/projection.json",
+          "parentOutputSha256": "eafcf5f62361154c84c7d9676aab2ac4e4236938f5e54f89f18766b1280cef31"
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/extensions/api/messaging/aux_native_host_lease.cc",
+      "inputSha256": "8340ebbf8cc83c8db2f8901b84f1d71eb75a9020262dfe5e8f569c305b3125ca",
+      "outputSha256": "96793bc592ca5835232f89fe4e93a5eb37b409de934b56073e5f47a6475dc5a4",
+      "mode": 420,
+      "origins": [
+        {
+          "parentProjection": "/private/tmp/aux-completion-browser-build-20261026-a1/projection.json",
+          "parentOutputSha256": "8340ebbf8cc83c8db2f8901b84f1d71eb75a9020262dfe5e8f569c305b3125ca"
+        },
+        {
+          "source": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/runtime/native-host-seed-denial/aux_native_host_lease.cc",
+          "inputSha256": "8340ebbf8cc83c8db2f8901b84f1d71eb75a9020262dfe5e8f569c305b3125ca",
+          "outputSha256": "96793bc592ca5835232f89fe4e93a5eb37b409de934b56073e5f47a6475dc5a4",
+          "anchors": [
+            {
+              "before": "#include <sys/wait.h>\n#include <unistd.h>\n#include \"base/environment.h\"\n#include \"base/uuid.h\"\n#include \"chrome/browser/extensions/api/messaging/aux_native_messaging_lifetime.h\"\n#include \"base/files/file_util.h\"\n",
+              "after": "#include <sys/wait.h>\n#include <unistd.h>\n#include \"base/environment.h\"\n#include \"base/apple/bundle_locations.h\"\n#include \"base/uuid.h\"\n#include \"chrome/browser/extensions/api/messaging/aux_native_messaging_lifetime.h\"\n#include \"base/files/file_util.h\"\n",
+              "expectedCount": 1
+            },
+            {
+              "before": "    {std::lock_guard<std::mutex> lock(mutex_);spawn_attempted_=true;spawn_error_=EINVAL;}\n    return base::Process();\n  }\n  auto& rules=*std::next(policy);\n  rules+=\"\\n(deny process-fork)\\n(deny process-exec (require-not (literal (param \\\"AUX_HOST_IMAGE\\\"))))\\n\"\n      \"(deny file-read* file-write* file-link (subpath (param \\\"AUX_HOST_CONTROL\\\")) (subpath (param \\\"AUX_HOST_TASK\\\")))\\n\"\n      \"(deny file-read* (subpath (param \\\"AUX_DATA_ROOT\\\")) (subpath (param \\\"AUX_CACHE_ROOT\\\")))\\n\";\n  std::vector<std::string> parameters{\"-D\",\"AUX_HOST_IMAGE=\"+image_.value(),\n      \"-D\",\"AUX_HOST_CONTROL=\"+control_root_,\"-D\",\"AUX_HOST_TASK=\"+task_root_};\n  size_t parent_index=0;\n  for(auto root:{base::FilePath(control_root_),base::FilePath(task_root_)}) {\n    for(auto parent=root.DirName();parent!=parent.DirName();parent=parent.DirName()) {\n      const auto key=\"AUX_HOST_PARENT_\"+base::NumberToString(parent_index++);\n      parameters.emplace_back(\"-D\");parameters.emplace_back(key+\"=\"+parent.value());\n",
+              "after": "    {std::lock_guard<std::mutex> lock(mutex_);spawn_attempted_=true;spawn_error_=EINVAL;}\n    return base::Process();\n  }\n  base::FilePath application=base::apple::OuterBundlePath(),canonical_application;\n  if(!application.IsAbsolute()||application.Extension()!=\".app\"||\n     !base::NormalizeFilePath(application,&canonical_application)||canonical_application!=application) {\n    {std::lock_guard<std::mutex> lock(mutex_);spawn_attempted_=true;spawn_error_=EINVAL;}\n    return base::Process();\n  }\n  auto& rules=*std::next(policy);\n  rules+=\"\\n(deny process-fork)\\n(deny process-exec (require-not (literal (param \\\"AUX_HOST_IMAGE\\\"))))\\n\"\n      \"(deny file-read* file-write* file-link (subpath (param \\\"AUX_HOST_CONTROL\\\")) (subpath (param \\\"AUX_HOST_TASK\\\")))\\n\"\n      \"(deny file-read* (subpath (param \\\"AUX_DATA_ROOT\\\")) (subpath (param \\\"AUX_CACHE_ROOT\\\")))\\n\";\n  rules+=\"(deny file-write* file-link (subpath (param \\\"AUX_HOST_APPLICATION\\\")))\\n\";\n  std::vector<std::string> parameters{\"-D\",\"AUX_HOST_APPLICATION=\"+application.value(),\n      \"-D\",\"AUX_HOST_IMAGE=\"+image_.value(),\n      \"-D\",\"AUX_HOST_CONTROL=\"+control_root_,\"-D\",\"AUX_HOST_TASK=\"+task_root_};\n  size_t parent_index=0;\n  for(auto root:{base::FilePath(control_root_),base::FilePath(task_root_),application}) {\n    for(auto parent=root.DirName();parent!=parent.DirName();parent=parent.DirName()) {\n      const auto key=\"AUX_HOST_PARENT_\"+base::NumberToString(parent_index++);\n      parameters.emplace_back(\"-D\");parameters.emplace_back(key+\"=\"+parent.value());\n",
+              "expectedCount": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "path": "net/base/file_stream.h",
+      "inputSha256": "fc43ac393241e1f52aad011e30ff7bce0ba0bf1ae0621cc2c798cd91c6351e3e",
+      "outputSha256": "fc43ac393241e1f52aad011e30ff7bce0ba0bf1ae0621cc2c798cd91c6351e3e",
+      "mode": 420,
+      "origins": [
+        {
+          "parentProjection": "/private/tmp/aux-completion-browser-build-20261026-a1/projection.json",
+          "parentOutputSha256": "fc43ac393241e1f52aad011e30ff7bce0ba0bf1ae0621cc2c798cd91c6351e3e"
+        }
+      ]
+    },
+    {
+      "path": "net/base/file_stream.cc",
+      "inputSha256": "885a7e1d277a4e39d5255f692b4a93a9f3011ebb076a4579eb73ef92250dbd15",
+      "outputSha256": "885a7e1d277a4e39d5255f692b4a93a9f3011ebb076a4579eb73ef92250dbd15",
+      "mode": 420,
+      "origins": [
+        {
+          "parentProjection": "/private/tmp/aux-completion-browser-build-20261026-a1/projection.json",
+          "parentOutputSha256": "885a7e1d277a4e39d5255f692b4a93a9f3011ebb076a4579eb73ef92250dbd15"
+        }
+      ]
+    },
+    {
+      "path": "net/base/file_stream_context.h",
+      "inputSha256": "1f5976a0218319e423cc68034b70e4daaddc7295355adee79a56d48a994665b2",
+      "outputSha256": "1f5976a0218319e423cc68034b70e4daaddc7295355adee79a56d48a994665b2",
+      "mode": 420,
+      "origins": [
+        {
+          "parentProjection": "/private/tmp/aux-completion-browser-build-20261026-a1/projection.json",
+          "parentOutputSha256": "1f5976a0218319e423cc68034b70e4daaddc7295355adee79a56d48a994665b2"
+        }
+      ]
+    },
+    {
+      "path": "net/base/file_stream_context.cc",
+      "inputSha256": "25d556499bee75c315b1be305803b1d2e4ba1ed1e2dd17112c80b00a37525abb",
+      "outputSha256": "25d556499bee75c315b1be305803b1d2e4ba1ed1e2dd17112c80b00a37525abb",
+      "mode": 420,
+      "origins": [
+        {
+          "parentProjection": "/private/tmp/aux-completion-browser-build-20261026-a1/projection.json",
+          "parentOutputSha256": "25d556499bee75c315b1be305803b1d2e4ba1ed1e2dd17112c80b00a37525abb"
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/extensions/api/messaging/aux_native_messaging_lifetime.h",
+      "inputSha256": "d6f1b7bcd445ccbe82c3aa5604c75fd4de33855a2a652e96e7b9b72ff16e240b",
+      "outputSha256": "d6f1b7bcd445ccbe82c3aa5604c75fd4de33855a2a652e96e7b9b72ff16e240b",
+      "mode": 420,
+      "origins": [
+        {
+          "parentProjection": "/private/tmp/aux-completion-browser-build-20261026-a1/projection.json",
+          "parentOutputSha256": "d6f1b7bcd445ccbe82c3aa5604c75fd4de33855a2a652e96e7b9b72ff16e240b"
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/extensions/api/messaging/launch_context_posix.cc",
+      "inputSha256": "0747b38f7d1f6aa90496ba4dd3a0554a4f7637ecba3c41a308bd3f41b6624416",
+      "outputSha256": "0747b38f7d1f6aa90496ba4dd3a0554a4f7637ecba3c41a308bd3f41b6624416",
+      "mode": 420,
+      "origins": [
+        {
+          "parentProjection": "/private/tmp/aux-completion-browser-build-20261026-a1/projection.json",
+          "parentOutputSha256": "0747b38f7d1f6aa90496ba4dd3a0554a4f7637ecba3c41a308bd3f41b6624416"
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/extensions/api/messaging/launch_context.cc",
+      "inputSha256": "83275986135e71a4f36d8f32cf646547dafb98fab46917e24972ca8ac7cbff42",
+      "outputSha256": "83275986135e71a4f36d8f32cf646547dafb98fab46917e24972ca8ac7cbff42",
+      "mode": 420,
+      "origins": [
+        {
+          "parentProjection": "/private/tmp/aux-completion-browser-build-20261026-a1/projection.json",
+          "parentOutputSha256": "83275986135e71a4f36d8f32cf646547dafb98fab46917e24972ca8ac7cbff42"
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/extensions/api/messaging/native_message_process_host.cc",
+      "inputSha256": "ddcb708494de3259b80b926a04e69055b11feade07607add1cca07c31a51bde2",
+      "outputSha256": "ddcb708494de3259b80b926a04e69055b11feade07607add1cca07c31a51bde2",
+      "mode": 420,
+      "origins": [
+        {
+          "parentProjection": "/private/tmp/aux-completion-browser-build-20261026-a1/projection.json",
+          "parentOutputSha256": "ddcb708494de3259b80b926a04e69055b11feade07607add1cca07c31a51bde2"
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/extensions/api/messaging/launch_context.h",
+      "inputSha256": "6c78ff84e63fd45b4b953050f4fa5e3c8fffea58cb9dfe7b83f9c9c07130a2a7",
+      "outputSha256": "6c78ff84e63fd45b4b953050f4fa5e3c8fffea58cb9dfe7b83f9c9c07130a2a7",
+      "mode": 420,
+      "origins": [
+        {
+          "parentProjection": "/private/tmp/aux-completion-browser-build-20261026-a1/projection.json",
+          "parentOutputSha256": "6c78ff84e63fd45b4b953050f4fa5e3c8fffea58cb9dfe7b83f9c9c07130a2a7"
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/extensions/api/messaging/native_process_launcher.cc",
+      "inputSha256": "06dc7ad35465b9d9e354033864e3be7cd4aadbe2b68642a992f0e75013b85aac",
+      "outputSha256": "06dc7ad35465b9d9e354033864e3be7cd4aadbe2b68642a992f0e75013b85aac",
+      "mode": 420,
+      "origins": [
+        {
+          "parentProjection": "/private/tmp/aux-completion-browser-build-20261026-a1/projection.json",
+          "parentOutputSha256": "06dc7ad35465b9d9e354033864e3be7cd4aadbe2b68642a992f0e75013b85aac"
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/extensions/api/messaging/BUILD.gn",
+      "inputSha256": "db279de0aacce9e5b10e5cdfa72eef053564695a927d109ef3da9ef895115e01",
+      "outputSha256": "db279de0aacce9e5b10e5cdfa72eef053564695a927d109ef3da9ef895115e01",
+      "mode": 420,
+      "origins": [
+        {
+          "parentProjection": "/private/tmp/aux-completion-browser-build-20261026-a1/projection.json",
+          "parentOutputSha256": "db279de0aacce9e5b10e5cdfa72eef053564695a927d109ef3da9ef895115e01"
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/chrome_browser_main.cc",
+      "inputSha256": "0d7c6c77fde7499cf43732ffa581b30f7904e30ca37dab47ab08477a87357f89",
+      "outputSha256": "0d7c6c77fde7499cf43732ffa581b30f7904e30ca37dab47ab08477a87357f89",
+      "mode": 420,
+      "origins": [
+        {
+          "parentProjection": "/private/tmp/aux-completion-browser-build-20261026-a1/projection.json",
+          "parentOutputSha256": "0d7c6c77fde7499cf43732ffa581b30f7904e30ca37dab47ab08477a87357f89"
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/aux/profile_identity.h",
+      "inputSha256": "ed2e7c038e1ee337bf005668415270a55f391781ad78854bb77408faa4601baf",
+      "outputSha256": "ed2e7c038e1ee337bf005668415270a55f391781ad78854bb77408faa4601baf",
+      "mode": 420,
+      "origins": [
+        {
+          "parentProjection": "/private/tmp/aux-completion-browser-build-20261026-a1/projection.json",
+          "parentOutputSha256": "ed2e7c038e1ee337bf005668415270a55f391781ad78854bb77408faa4601baf"
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/aux/profile_identity.cc",
+      "inputSha256": "fcd7814f1cd1554af673c857249a9bb98f812fabf4f2d2c9e9a7da020cbb801c",
+      "outputSha256": "fcd7814f1cd1554af673c857249a9bb98f812fabf4f2d2c9e9a7da020cbb801c",
+      "mode": 420,
+      "origins": [
+        {
+          "parentProjection": "/private/tmp/aux-completion-browser-build-20261026-a1/projection.json",
+          "parentOutputSha256": "fcd7814f1cd1554af673c857249a9bb98f812fabf4f2d2c9e9a7da020cbb801c"
+        }
+      ]
+    },
+    {
+      "path": "chrome/app/chrome_main_delegate.cc",
+      "inputSha256": "8363d6b88baa9c3862f87e1ae00d8c8057c15194018b4f022ea710fdaf63c127",
+      "outputSha256": "aa2a9a9506099828581059bea542b9032b6b970ab79b5144327fd890cbd5c4a1",
+      "mode": 420,
+      "origins": [
+        {
+          "parentProjection": "/private/tmp/aux-completion-browser-build-20261026-a1/projection.json",
+          "parentOutputSha256": "8363d6b88baa9c3862f87e1ae00d8c8057c15194018b4f022ea710fdaf63c127"
+        },
+        {
+          "inputSha256": "8363d6b88baa9c3862f87e1ae00d8c8057c15194018b4f022ea710fdaf63c127",
+          "outputSha256": "a55a7883dae7a7598fd6b7eac2958f7b02632b145dbd394854455021df8dc94e",
+          "anchors": [
+            {
+              "before": "\n#if BUILDFLAG(IS_MAC)\n#include \"base/apple/foundation_util.h\"\n#include \"chrome/app/chrome_main_mac.h\"\n#include \"chrome/browser/mac/code_sign_clone_manager.h\"\n#include \"chrome/browser/mac/relauncher.h\"\n",
+              "after": "\n#if BUILDFLAG(IS_MAC)\n#include \"base/apple/foundation_util.h\"\n#include \"base/apple/bundle_locations.h\"\n#include \"base/files/aux_read_only_app.h\"\n#include \"chrome/app/chrome_main_mac.h\"\n#include \"chrome/browser/mac/code_sign_clone_manager.h\"\n#include \"chrome/browser/mac/relauncher.h\"\n",
+              "expectedCount": 1
+            },
+            {
+              "before": "      RAW_LOG(ERROR, \"Aux fresh startup refused: packaged identity\");\n      return 1;\n    }\n    if (!ValidateOrdinaryUserDataSelection(ordinary_command)) {\n      RAW_LOG(ERROR, \"Aux fresh startup refused: private path selection\");\n      return 1;\n",
+              "after": "      RAW_LOG(ERROR, \"Aux fresh startup refused: packaged identity\");\n      return 1;\n    }\n    if (!base::RegisterAuxReadOnlyApp(base::apple::OuterBundlePath())) {\n      RAW_LOG(ERROR, \"Aux fresh startup refused: read-only app registration\");\n      return 1;\n    }\n    if (!ValidateOrdinaryUserDataSelection(ordinary_command)) {\n      RAW_LOG(ERROR, \"Aux fresh startup refused: private path selection\");\n      return 1;\n",
+              "expectedCount": 1
+            }
+          ],
+          "rootOwned": true
+        },
+        {
+          "plan": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/integrator/fresh-successor-scope/source-plan.json",
+          "anchors": [
+            {
+              "before": "Aux Browser A38 Disposable",
+              "after": "Aux Browser Completion 20261026",
+              "count": 2
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "path": "base/files/file_posix.cc",
+      "inputSha256": "2bcc0efd5492bdbefd0d85acf98fff936ef8ae820c470595066aa93665921464",
+      "outputSha256": "3b70948793e44adbee80f349ad24d2a9c2e3936b8da39d31b2064d8ff54937b8",
+      "mode": 420,
+      "origins": [
+        {
+          "source": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/desktop/app-seed-write-guard/source/base/files/file_posix.cc",
+          "inputSha256": "2bcc0efd5492bdbefd0d85acf98fff936ef8ae820c470595066aa93665921464",
+          "outputSha256": "3b70948793e44adbee80f349ad24d2a9c2e3936b8da39d31b2064d8ff54937b8",
+          "anchors": [
+            {
+              "before": "\n#include <atomic>\n#include <optional>\n\n#include \"base/check_op.h\"\n#include \"base/compiler_specific.h\"\n",
+              "after": "\n#include <atomic>\n#include <optional>\n#include <limits.h>\n#include <mutex>\n#include <vector>\n#include <stdlib.h>\n#include \"base/files/aux_read_only_app.h\"\n#include \"base/no_destructor.h\"\n\n#include \"base/check_op.h\"\n#include \"base/compiler_specific.h\"\n",
+              "expectedCount": 1
+            },
+            {
+              "before": "#endif\n\nnamespace base {\n\n// Make sure our Whence mappings match the system headers.\nstatic_assert(File::FROM_BEGIN == SEEK_SET && File::FROM_CURRENT == SEEK_CUR &&\n",
+              "after": "#endif\n\nnamespace base {\n\n#if BUILDFLAG(IS_MAC)\nnamespace {\nstruct AuxReadOnlyApp {\n  std::mutex mutex;\n  FilePath path;\n  dev_t device = 0;\n  ino_t inode = 0;\n};\nAuxReadOnlyApp& ReadOnlyApp() {\n  static NoDestructor<AuxReadOnlyApp> state;\n  return *state;\n}\nFilePath PhysicalMutationPath(FilePath path) {\n  if (!path.IsAbsolute()) {\n    char cwd[PATH_MAX];\n    if (!getcwd(cwd, sizeof(cwd))) return {};\n    path = FilePath(cwd).Append(path);\n  }\n  std::vector<FilePath::StringType> suffix;\n  for (;;) {\n    char physical[PATH_MAX];\n    if (realpath(path.value().c_str(), physical)) {\n      FilePath result(physical);\n      for (auto it = suffix.rbegin(); it != suffix.rend(); ++it)\n        result = result.Append(*it);\n      return result;\n    }\n    struct stat value;\n    if (errno != ENOENT || lstat(path.value().c_str(), &value) == 0 ||\n        errno != ENOENT || path == path.DirName()) return {};\n    suffix.push_back(path.BaseName().value());\n    path = path.DirName();\n  }\n}\n}\nbool RegisterAuxReadOnlyApp(const FilePath& app) {\n  auto& state = ReadOnlyApp();\n  std::lock_guard<std::mutex> lock(state.mutex);\n  auto physical = PhysicalMutationPath(app);\n  struct stat value;\n  if (physical.empty() || physical.BaseName().value() != \"Aux.app\" ||\n      stat(physical.value().c_str(), &value) != 0 || !S_ISDIR(value.st_mode)) return false;\n  if (!state.path.empty())\n    return state.path == physical && state.device == value.st_dev && state.inode == value.st_ino;\n  state.path = physical;\n  state.device = value.st_dev;\n  state.inode = value.st_ino;\n  return true;\n}\nbool AuxAppAllowsMutation(const FilePath& path, bool destructive) {\n  auto& state = ReadOnlyApp();\n  std::lock_guard<std::mutex> lock(state.mutex);\n  if (state.path.empty()) return true;\n  struct stat value;\n  auto target = PhysicalMutationPath(path);\n  const bool allowed = stat(state.path.value().c_str(), &value) == 0 &&\n      value.st_dev == state.device && value.st_ino == state.inode &&\n      !target.empty() && target != state.path && !state.path.IsParent(target) &&\n      (!destructive || !target.IsParent(state.path));\n  if (!allowed) errno = EACCES;\n  return allowed;\n}\nbool AuxAppAllowsDescriptorMutation(int fd) {\n  auto& state = ReadOnlyApp();\n  { std::lock_guard<std::mutex> lock(state.mutex); if (state.path.empty()) return true; }\n  struct stat value;\n  if (fstat(fd, &value) != 0) return false;\n  if (!S_ISREG(value.st_mode) && !S_ISDIR(value.st_mode)) return true;\n  char path[PATH_MAX];\n  return fcntl(fd, F_GETPATH, path) == 0 && AuxAppAllowsMutation(FilePath(path));\n}\n#endif\n\n\n// Make sure our Whence mappings match the system headers.\nstatic_assert(File::FROM_BEGIN == SEEK_SET && File::FROM_CURRENT == SEEK_CUR &&\n",
+              "expectedCount": 1
+            },
+            {
+              "before": "}\n\nint File::Write(int64_t offset, const char* data, int size) {\n  ScopedBlockingCall scoped_blocking_call(FROM_HERE, BlockingType::MAY_BLOCK);\n\n  if (IsOpenAppend(file_.get())) {\n",
+              "after": "}\n\nint File::Write(int64_t offset, const char* data, int size) {\n#if BUILDFLAG(IS_MAC)\n  if (!AuxAppAllowsDescriptorMutation(file_.get())) return -1;\n#endif\n  ScopedBlockingCall scoped_blocking_call(FROM_HERE, BlockingType::MAY_BLOCK);\n\n  if (IsOpenAppend(file_.get())) {\n",
+              "expectedCount": 1
+            },
+            {
+              "before": "}\n\nint File::WriteAtCurrentPos(const char* data, int size) {\n  ScopedBlockingCall scoped_blocking_call(FROM_HERE, BlockingType::MAY_BLOCK);\n  DCHECK(IsValid());\n  if (size < 0) {\n",
+              "after": "}\n\nint File::WriteAtCurrentPos(const char* data, int size) {\n#if BUILDFLAG(IS_MAC)\n  if (!AuxAppAllowsDescriptorMutation(file_.get())) return -1;\n#endif\n  ScopedBlockingCall scoped_blocking_call(FROM_HERE, BlockingType::MAY_BLOCK);\n  DCHECK(IsValid());\n  if (size < 0) {\n",
+              "expectedCount": 1
+            },
+            {
+              "before": "\nstd::optional<size_t> File::WriteAtCurrentPosNoBestEffort(\n    base::span<const uint8_t> data) {\n  ScopedBlockingCall scoped_blocking_call(FROM_HERE, BlockingType::MAY_BLOCK);\n  DCHECK(IsValid());\n\n",
+              "after": "\nstd::optional<size_t> File::WriteAtCurrentPosNoBestEffort(\n    base::span<const uint8_t> data) {\n#if BUILDFLAG(IS_MAC)\n  if (!AuxAppAllowsDescriptorMutation(file_.get())) return std::nullopt;\n#endif\n  ScopedBlockingCall scoped_blocking_call(FROM_HERE, BlockingType::MAY_BLOCK);\n  DCHECK(IsValid());\n\n",
+              "expectedCount": 1
+            },
+            {
+              "before": "}\n\nbool File::SetLength(int64_t length) {\n  ScopedBlockingCall scoped_blocking_call(FROM_HERE, BlockingType::MAY_BLOCK);\n  DCHECK(IsValid());\n\n",
+              "after": "}\n\nbool File::SetLength(int64_t length) {\n#if BUILDFLAG(IS_MAC)\n  if (!AuxAppAllowsDescriptorMutation(file_.get())) return false;\n#endif\n  ScopedBlockingCall scoped_blocking_call(FROM_HERE, BlockingType::MAY_BLOCK);\n  DCHECK(IsValid());\n\n",
+              "expectedCount": 1
+            },
+            {
+              "before": "}\n\nbool File::SetTimes(Time last_access_time, Time last_modified_time) {\n  ScopedBlockingCall scoped_blocking_call(FROM_HERE, BlockingType::MAY_BLOCK);\n  DCHECK(IsValid());\n\n",
+              "after": "}\n\nbool File::SetTimes(Time last_access_time, Time last_modified_time) {\n#if BUILDFLAG(IS_MAC)\n  if (!AuxAppAllowsDescriptorMutation(file_.get())) return false;\n#endif\n  ScopedBlockingCall scoped_blocking_call(FROM_HERE, BlockingType::MAY_BLOCK);\n  DCHECK(IsValid());\n\n",
+              "expectedCount": 1
+            },
+            {
+              "before": "\n// TODO(erikkay): does it make sense to support FLAG_EXCLUSIVE_* here?\nvoid File::DoInitialize(const FilePath& path, uint32_t flags) {\n  ScopedBlockingCall scoped_blocking_call(FROM_HERE, BlockingType::MAY_BLOCK);\n  DCHECK(!IsValid());\n\n",
+              "after": "\n// TODO(erikkay): does it make sense to support FLAG_EXCLUSIVE_* here?\nvoid File::DoInitialize(const FilePath& path, uint32_t flags) {\n#if BUILDFLAG(IS_MAC)\n  if ((flags & (FLAG_WRITE | FLAG_APPEND | FLAG_WRITE_ATTRIBUTES | FLAG_CREATE |\n                FLAG_CREATE_ALWAYS | FLAG_OPEN_ALWAYS | FLAG_OPEN_TRUNCATED)) &&\n      !AuxAppAllowsMutation(path)) { error_details_ = FILE_ERROR_ACCESS_DENIED; return; }\n#endif\n  ScopedBlockingCall scoped_blocking_call(FROM_HERE, BlockingType::MAY_BLOCK);\n  DCHECK(!IsValid());\n\n",
+              "expectedCount": 1
+            },
+            {
+              "before": "}\n\nint File::Mkdir(const FilePath& path, mode_t mode) {\n#if BUILDFLAG(IS_ANDROID)\n  if (path.IsVirtualDocumentPath()) {\n    std::optional<files_internal::VirtualDocumentPath> vp =\n",
+              "after": "}\n\nint File::Mkdir(const FilePath& path, mode_t mode) {\n#if BUILDFLAG(IS_MAC)\n  if (!AuxAppAllowsMutation(path)) return -1;\n#endif\n#if BUILDFLAG(IS_ANDROID)\n  if (path.IsVirtualDocumentPath()) {\n    std::optional<files_internal::VirtualDocumentPath> vp =\n",
+              "expectedCount": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "path": "base/files/file_util_posix.cc",
+      "inputSha256": "8d416614ffd120590f7baf2a0ec3fb6953a2c2cdaf53eec4c0e5b974ad5660af",
+      "outputSha256": "2b5bbd2c6ba2171b3e75f6c386fce737770b47285961f35abac0696b1c7a477c",
+      "mode": 420,
+      "origins": [
+        {
+          "source": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/desktop/app-seed-write-guard/source/base/files/file_util_posix.cc",
+          "inputSha256": "8d416614ffd120590f7baf2a0ec3fb6953a2c2cdaf53eec4c0e5b974ad5660af",
+          "outputSha256": "2b5bbd2c6ba2171b3e75f6c386fce737770b47285961f35abac0696b1c7a477c",
+          "anchors": [
+            {
+              "before": "// found in the LICENSE file.\n\n#include \"base/files/file_util.h\"\n\n#include <dirent.h>\n#include <errno.h>\n",
+              "after": "// found in the LICENSE file.\n\n#include \"base/files/file_util.h\"\n#include \"base/files/aux_read_only_app.h\"\n\n#include <dirent.h>\n#include <errno.h>\n",
+              "expectedCount": 1
+            },
+            {
+              "before": "      return false;\n    }\n\n    if (S_ISDIR(from_stat.st_mode)) {\n      mode_t mode = (from_stat.st_mode & 01777) | S_IRUSR | S_IXUSR | S_IWUSR;\n      if (mkdir(target_path.value().c_str(), mode) == 0) {\n",
+              "after": "      return false;\n    }\n\n#if BUILDFLAG(IS_MAC)\n    if (!AuxAppAllowsMutation(target_path)) return false;\n#endif\n    if (S_ISDIR(from_stat.st_mode)) {\n      mode_t mode = (from_stat.st_mode & 01777) | S_IRUSR | S_IXUSR | S_IWUSR;\n      if (mkdir(target_path.value().c_str(), mode) == 0) {\n",
+              "expectedCount": 1
+            },
+            {
+              "before": "    mode_t mode = 0644;\n#else\n    mode_t mode = 0600;\n#endif\n    File outfile(open(target_path.value().c_str(), open_flags, mode));\n    if (!outfile.IsValid()) {\n",
+              "after": "    mode_t mode = 0644;\n#else\n    mode_t mode = 0600;\n#endif\n#if BUILDFLAG(IS_MAC)\n    if (!AuxAppAllowsMutation(target_path)) return false;\n#endif\n    File outfile(open(target_path.value().c_str(), open_flags, mode));\n    if (!outfile.IsValid()) {\n",
+              "expectedCount": 1
+            },
+            {
+              "before": "}\n\nbool DeleteFile(const FilePath& path) {\n  return DoDeleteFile(path, /*recursive=*/false);\n}\n\nbool DeletePathRecursively(const FilePath& path) {\n  return DoDeleteFile(path, /*recursive=*/true);\n}\n\nbool ReplaceFile(const FilePath& from_path,\n                 const FilePath& to_path,\n                 File::Error* error) {\n  ScopedBlockingCall scoped_blocking_call(FROM_HERE, BlockingType::MAY_BLOCK);\n  if (rename(from_path.value().c_str(), to_path.value().c_str()) == 0) {\n    return true;\n",
+              "after": "}\n\nbool DeleteFile(const FilePath& path) {\n#if BUILDFLAG(IS_MAC)\n  if (!(AuxAppAllowsMutation(path, true))) return false;\n#endif\n  return DoDeleteFile(path, /*recursive=*/false);\n}\n\nbool DeletePathRecursively(const FilePath& path) {\n#if BUILDFLAG(IS_MAC)\n  if (!(AuxAppAllowsMutation(path, true))) return false;\n#endif\n  return DoDeleteFile(path, /*recursive=*/true);\n}\n\nbool ReplaceFile(const FilePath& from_path,\n                 const FilePath& to_path,\n                 File::Error* error) {\n#if BUILDFLAG(IS_MAC)\n  if (!AuxAppAllowsMutation(from_path, true) || !AuxAppAllowsMutation(to_path, true)) {\n    if (error) *error = File::FILE_ERROR_ACCESS_DENIED;\n    return false;\n  }\n#endif\n  ScopedBlockingCall scoped_blocking_call(FROM_HERE, BlockingType::MAY_BLOCK);\n  if (rename(from_path.value().c_str(), to_path.value().c_str()) == 0) {\n    return true;\n",
+              "expectedCount": 1
+            },
+            {
+              "before": "    const FilePath& directory,\n    FilePath::StringViewType name_prefix,\n    FilePath* path) {\n  ScopedBlockingCall scoped_blocking_call(\n      FROM_HERE,\n      BlockingType::MAY_BLOCK);  // For call to mkstemp().\n",
+              "after": "    const FilePath& directory,\n    FilePath::StringViewType name_prefix,\n    FilePath* path) {\n#if BUILDFLAG(IS_MAC)\n  if (!AuxAppAllowsMutation(directory)) return ScopedFD();\n#endif\n  ScopedBlockingCall scoped_blocking_call(\n      FROM_HERE,\n      BlockingType::MAY_BLOCK);  // For call to mkstemp().\n",
+              "expectedCount": 1
+            },
+            {
+              "before": "#if !BUILDFLAG(IS_FUCHSIA)\nbool CreateSymbolicLink(const FilePath& target_path,\n                        const FilePath& symlink_path) {\n  DCHECK(!symlink_path.empty());\n  DCHECK(!target_path.empty());\n  return ::symlink(target_path.value().c_str(), symlink_path.value().c_str()) !=\n",
+              "after": "#if !BUILDFLAG(IS_FUCHSIA)\nbool CreateSymbolicLink(const FilePath& target_path,\n                        const FilePath& symlink_path) {\n#if BUILDFLAG(IS_MAC)\n  if (!AuxAppAllowsMutation(symlink_path)) return false;\n#endif\n  DCHECK(!symlink_path.empty());\n  DCHECK(!target_path.empty());\n  return ::symlink(target_path.value().c_str(), symlink_path.value().c_str()) !=\n",
+              "expectedCount": 1
+            },
+            {
+              "before": "}\n\nbool SetPosixFilePermissions(const FilePath& path, int mode) {\n  ScopedBlockingCall scoped_blocking_call(FROM_HERE, BlockingType::MAY_BLOCK);\n  DCHECK_EQ(mode & ~FILE_PERMISSION_MASK, 0);\n\n",
+              "after": "}\n\nbool SetPosixFilePermissions(const FilePath& path, int mode) {\n#if BUILDFLAG(IS_MAC)\n  if (!(AuxAppAllowsMutation(path))) return false;\n#endif\n  ScopedBlockingCall scoped_blocking_call(FROM_HERE, BlockingType::MAY_BLOCK);\n  DCHECK_EQ(mode & ~FILE_PERMISSION_MASK, 0);\n\n",
+              "expectedCount": 1
+            },
+            {
+              "before": "static bool CreateTemporaryDirInDirImpl(const FilePath& base_dir,\n                                        const FilePath& name_tmpl,\n                                        FilePath* new_dir) {\n  ScopedBlockingCall scoped_blocking_call(\n      FROM_HERE, BlockingType::MAY_BLOCK);  // For call to mkdtemp().\n  DCHECK(EndsWith(name_tmpl.value(), \"XXXXXX\"))\n",
+              "after": "static bool CreateTemporaryDirInDirImpl(const FilePath& base_dir,\n                                        const FilePath& name_tmpl,\n                                        FilePath* new_dir) {\n#if BUILDFLAG(IS_MAC)\n  if (!AuxAppAllowsMutation(base_dir)) return false;\n#endif\n  ScopedBlockingCall scoped_blocking_call(\n      FROM_HERE, BlockingType::MAY_BLOCK);  // For call to mkdtemp().\n  DCHECK(EndsWith(name_tmpl.value(), \"XXXXXX\"))\n",
+              "expectedCount": 1
+            },
+            {
+              "before": "}\n\nFILE* OpenFile(const FilePath& filename, base::cstring_view mode) {\n  // 'e' is unconditionally added below, so be sure there is not one already\n  // present before a comma in |mode|.\n  size_t e_pos = mode.find('e');\n",
+              "after": "}\n\nFILE* OpenFile(const FilePath& filename, base::cstring_view mode) {\n#if BUILDFLAG(IS_MAC)\n  if ((mode.find('w') != mode.npos || mode.find('a') != mode.npos || mode.find('+') != mode.npos) &&\n      !AuxAppAllowsMutation(filename)) return nullptr;\n#endif\n  // 'e' is unconditionally added below, so be sure there is not one already\n  // present before a comma in |mode|.\n  size_t e_pos = mode.find('e');\n",
+              "expectedCount": 1
+            },
+            {
+              "before": "}\n\nbool WriteFile(const FilePath& filename, span<const uint8_t> data) {\n  ScopedBlockingCall scoped_blocking_call(FROM_HERE, BlockingType::MAY_BLOCK);\n#if BUILDFLAG(IS_ANDROID)\n  if (filename.IsVirtualDocumentPath()) {\n",
+              "after": "}\n\nbool WriteFile(const FilePath& filename, span<const uint8_t> data) {\n#if BUILDFLAG(IS_MAC)\n  if (!AuxAppAllowsMutation(filename)) return false;\n#endif\n  ScopedBlockingCall scoped_blocking_call(FROM_HERE, BlockingType::MAY_BLOCK);\n#if BUILDFLAG(IS_ANDROID)\n  if (filename.IsVirtualDocumentPath()) {\n",
+              "expectedCount": 1
+            },
+            {
+              "before": "}\n\nbool WriteFileDescriptor(int fd, span<const uint8_t> data) {\n  while (!data.empty()) {\n    ssize_t bytes_written_partial =\n        HANDLE_EINTR(write(fd, data.data(), data.size()));\n",
+              "after": "}\n\nbool WriteFileDescriptor(int fd, span<const uint8_t> data) {\n#if BUILDFLAG(IS_MAC)\n  if (!(AuxAppAllowsDescriptorMutation(fd))) return false;\n#endif\n  while (!data.empty()) {\n    ssize_t bytes_written_partial =\n        HANDLE_EINTR(write(fd, data.data(), data.size()));\n",
+              "expectedCount": 1
+            },
+            {
+              "before": "}\n\nbool AppendToFile(const FilePath& filename, span<const uint8_t> data) {\n  ScopedBlockingCall scoped_blocking_call(FROM_HERE, BlockingType::MAY_BLOCK);\n  bool ret = true;\n  int fd = HANDLE_EINTR(open(filename.value().c_str(), O_WRONLY | O_APPEND));\n",
+              "after": "}\n\nbool AppendToFile(const FilePath& filename, span<const uint8_t> data) {\n#if BUILDFLAG(IS_MAC)\n  if (!(AuxAppAllowsMutation(filename))) return false;\n#endif\n  ScopedBlockingCall scoped_blocking_call(FROM_HERE, BlockingType::MAY_BLOCK);\n  bool ret = true;\n  int fd = HANDLE_EINTR(open(filename.value().c_str(), O_WRONLY | O_APPEND));\n",
+              "expectedCount": 1
+            },
+            {
+              "before": "namespace internal {\n\nbool MoveUnsafe(const FilePath& from_path, const FilePath& to_path) {\n  ScopedBlockingCall scoped_blocking_call(FROM_HERE, BlockingType::MAY_BLOCK);\n  // Windows compatibility: if |to_path| exists, |from_path| and |to_path|\n  // must be the same type, either both files, or both directories.\n",
+              "after": "namespace internal {\n\nbool MoveUnsafe(const FilePath& from_path, const FilePath& to_path) {\n#if BUILDFLAG(IS_MAC)\n  if (!(AuxAppAllowsMutation(from_path, true) && AuxAppAllowsMutation(to_path, true))) return false;\n#endif\n  ScopedBlockingCall scoped_blocking_call(FROM_HERE, BlockingType::MAY_BLOCK);\n  // Windows compatibility: if |to_path| exists, |from_path| and |to_path|\n  // must be the same type, either both files, or both directories.\n",
+              "expectedCount": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "path": "base/files/file_util_apple.mm",
+      "inputSha256": "35d9a98359b42574e1e43d54df8d067460dcc85470cbbfac4af4f6ce9379c995",
+      "outputSha256": "4b7ccdc2ca99956a6be6b3029e5a206b9cda426247b8fc93c499e3e8531396e2",
+      "mode": 420,
+      "origins": [
+        {
+          "source": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/desktop/app-seed-write-guard/source/base/files/file_util_apple.mm",
+          "inputSha256": "35d9a98359b42574e1e43d54df8d067460dcc85470cbbfac4af4f6ce9379c995",
+          "outputSha256": "4b7ccdc2ca99956a6be6b3029e5a206b9cda426247b8fc93c499e3e8531396e2",
+          "anchors": [
+            {
+              "before": "// found in the LICENSE file.\n\n#include \"base/files/file_util.h\"\n\n#import <Foundation/Foundation.h>\n#include <copyfile.h>\n",
+              "after": "// found in the LICENSE file.\n\n#include \"base/files/file_util.h\"\n#include \"base/files/aux_read_only_app.h\"\n\n#import <Foundation/Foundation.h>\n#include <copyfile.h>\n",
+              "expectedCount": 1
+            },
+            {
+              "before": "namespace base {\n\nbool CopyFile(const FilePath& from_path, const FilePath& to_path) {\n  ScopedBlockingCall scoped_blocking_call(FROM_HERE, BlockingType::MAY_BLOCK);\n  if (from_path.ReferencesParent() || to_path.ReferencesParent()) {\n    return false;\n",
+              "after": "namespace base {\n\nbool CopyFile(const FilePath& from_path, const FilePath& to_path) {\n#if BUILDFLAG(IS_MAC)\n  if (!AuxAppAllowsMutation(to_path)) return false;\n#endif\n  ScopedBlockingCall scoped_blocking_call(FROM_HERE, BlockingType::MAY_BLOCK);\n  if (from_path.ReferencesParent() || to_path.ReferencesParent()) {\n    return false;\n",
+              "expectedCount": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/shortcuts/chrome_webloc_file.mm",
+      "inputSha256": "6f936a46cc37e9c20c009d9b67e7b33c3726a1917fa4ba502ba1af6fe7ec3217",
+      "outputSha256": "90fc86e14fcb416cb08579c729b3f5a0278b9fe071f9074f6d76a9e31fabca58",
+      "mode": 420,
+      "origins": [
+        {
+          "source": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/desktop/app-seed-write-guard/source/chrome/browser/shortcuts/chrome_webloc_file.mm",
+          "inputSha256": "6f936a46cc37e9c20c009d9b67e7b33c3726a1917fa4ba502ba1af6fe7ec3217",
+          "outputSha256": "90fc86e14fcb416cb08579c729b3f5a0278b9fe071f9074f6d76a9e31fabca58",
+          "anchors": [
+            {
+              "before": "\n#include \"base/apple/foundation_util.h\"\n#include \"base/files/block_tests_writing_to_special_dirs.h\"\n#include \"base/logging.h\"\n#include \"base/strings/sys_string_conversions.h\"\n#include \"base/threading/scoped_blocking_call.h\"\n",
+              "after": "\n#include \"base/apple/foundation_util.h\"\n#include \"base/files/block_tests_writing_to_special_dirs.h\"\n#include \"base/files/aux_read_only_app.h\"\n#include \"base/logging.h\"\n#include \"base/strings/sys_string_conversions.h\"\n#include \"base/threading/scoped_blocking_call.h\"\n",
+              "expectedCount": 1
+            },
+            {
+              "before": "}\n\nbool ChromeWeblocFile::SaveToFile(const base::FilePath& file_path) {\n  if (!base::BlockTestsWritingToSpecialDirs::CanWriteToPath(file_path)) {\n    return false;\n  }\n",
+              "after": "}\n\nbool ChromeWeblocFile::SaveToFile(const base::FilePath& file_path) {\n  if (!base::AuxAppAllowsMutation(file_path)) return false;\n  if (!base::BlockTestsWritingToSpecialDirs::CanWriteToPath(file_path)) {\n    return false;\n  }\n",
+              "expectedCount": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "path": "base/files/aux_read_only_app.h",
+      "inputSha256": null,
+      "outputSha256": "573558aae37a032650e739046ccfb56beec5a8363f9c7285db1725662af78959",
+      "mode": 420,
+      "origins": [
+        {
+          "source": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/desktop/app-seed-write-guard/source/base/files/aux_read_only_app.h",
+          "inputSha256": null,
+          "outputSha256": "573558aae37a032650e739046ccfb56beec5a8363f9c7285db1725662af78959",
+          "anchors": []
+        }
+      ]
+    },
+    {
+      "path": "base/BUILD.gn",
+      "inputSha256": "09261d8c8d097ea1ef46e80f354268b0b7b9c106dc6d8998f030d3da332d377c",
+      "outputSha256": "b3c2014e9927113d33c956395d3f23a502001f5ad04cf19705db169ea564a67d",
+      "mode": 420,
+      "origins": [
+        {
+          "inputSha256": "09261d8c8d097ea1ef46e80f354268b0b7b9c106dc6d8998f030d3da332d377c",
+          "outputSha256": "b3c2014e9927113d33c956395d3f23a502001f5ad04cf19705db169ea564a67d",
+          "anchors": [
+            {
+              "before": "    \"files/block_tests_writing_to_special_dirs.h\",\n    \"files/dir_reader_fallback.h\",\n    \"files/file.cc\",\n    \"files/file.h\",\n    \"files/file_error_or.h\",\n    \"files/file_path.cc\",\n",
+              "after": "    \"files/block_tests_writing_to_special_dirs.h\",\n    \"files/dir_reader_fallback.h\",\n    \"files/file.cc\",\n    \"files/aux_read_only_app.h\",\n    \"files/file.h\",\n    \"files/file_error_or.h\",\n    \"files/file_path.cc\",\n",
+              "expectedCount": 1
+            }
+          ],
+          "rootOwned": true
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/aux/native_peer_policy/AuxFreshBootstrapPolicy.swift",
+      "inputSha256": "00edadd03d337ec42c908b2175967d0ab49210e0faa92c0ff32b3ba2ffe31fbc",
+      "outputSha256": "08a2753ef4e562489a6e74d03c5655dc1175a562de9d059e033fe4afa7326503",
+      "mode": 420,
+      "origins": [
+        {
+          "plan": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/runtime/fixed-builtins/source.anchors.json",
+          "anchors": [
+            {
+              "before": "    var includesRebuiltPtyModule:Bool=false\n    var includesContainedPtyModule:Bool=false\n#if AUX_BROWSER_ONLY_NATIVE_STARTUP\n    var includesPdf:Bool{false}\n    var includesMacUtilities:Bool{false}\n#else\n    var includesPdf:Bool{role == .daemon}\n    var includesMacUtilities:Bool{role == .daemon}\n",
+              "after": "    var includesRebuiltPtyModule:Bool=false\n    var includesContainedPtyModule:Bool=false\n#if AUX_BROWSER_ONLY_NATIVE_STARTUP\n    var includesFixedNativeBuiltins:Bool=false\n    var includesPdf:Bool{includesFixedNativeBuiltins}\n    var includesMacUtilities:Bool{includesFixedNativeBuiltins}\n#else\n    var includesPdf:Bool{role == .daemon}\n    var includesMacUtilities:Bool{role == .daemon}\n",
+              "count": 1
+            },
+            {
+              "before": "        let object=try strictEnvelopeObject(bytes)\n        guard let roleText=object[\"role\"] as? String,let role=Role(rawValue:roleText) else{throw AuxFreshBootstrapPolicyError.policy}\n#if AUX_BROWSER_ONLY_NATIVE_STARTUP\n        if object[\"format\"] as? String==\"aux.fresh.bootstrap.policy.v9\" {\n            guard role == .daemon,\n                  Set(object.keys)==[\"format\",\"role\",\"accessGroup\",\"authoritySelection\",\"nativeHostLayout\",\"taskLayout\",\"storageLocation\"],\n                  object[\"authoritySelection\"] as? String==authoritySelection,\n                  object[\"nativeHostLayout\"] as? String==\"embedded-daemon\",\n                  object[\"taskLayout\"] as? String==\"aux.native.task-control-split.v1\",\n                  let group=object[\"accessGroup\"] as? String,validAccessGroup(group),\n                  let location=object[\"storageLocation\"] as? [String:Any],Set(location.keys)==[\"format\"],\n                  location[\"format\"] as? String==AuxNativeCurrentUserLocation.format else{throw AuxFreshBootstrapPolicyError.policy}\n            let native=try AuxNativeCurrentUserLocation.capture()\n            return .init(role:role,canonicalPrivateParent:native.controlRoot,accessGroup:group,\n                canonicalTaskParent:native.taskRoot,browserStartupRoots:[native.dataRoot,native.cacheRoot],\n                nativeUserLocation:native,browserPreparedRecovery:true,embeddedDaemon:true)\n        }\n#endif\n        var keys:Set<String>=[\"format\",\"role\",\"canonicalPrivateParent\",\"accessGroup\",\"authoritySelection\"]\n",
+              "after": "        let object=try strictEnvelopeObject(bytes)\n        guard let roleText=object[\"role\"] as? String,let role=Role(rawValue:roleText) else{throw AuxFreshBootstrapPolicyError.policy}\n#if AUX_BROWSER_ONLY_NATIVE_STARTUP\n        let fixedBuiltins=object[\"format\"] as? String==\"aux.fresh.bootstrap.policy.v10\"\n        if fixedBuiltins || object[\"format\"] as? String==\"aux.fresh.bootstrap.policy.v9\" {\n            guard role == .daemon,\n                  Set(object.keys)==Set([\"format\",\"role\",\"accessGroup\",\"authoritySelection\",\"nativeHostLayout\",\"taskLayout\",\"storageLocation\"] + (fixedBuiltins ? [\"pdfModule\",\"macOSUtilitiesModule\"]:[])),\n                  object[\"authoritySelection\"] as? String==authoritySelection,\n                  object[\"nativeHostLayout\"] as? String==\"embedded-daemon\",\n                  object[\"taskLayout\"] as? String==\"aux.native.task-control-split.v1\",\n                  let group=object[\"accessGroup\"] as? String,validAccessGroup(group),\n                  let location=object[\"storageLocation\"] as? [String:Any],Set(location.keys)==[\"format\"],\n                  location[\"format\"] as? String==AuxNativeCurrentUserLocation.format else{throw AuxFreshBootstrapPolicyError.policy}\n            if fixedBuiltins {\n                try AuxFreshBootstrapPdfIdentity.validate(object[\"pdfModule\"])\n                try AuxFreshBootstrapMacUtilitiesIdentity.validate(object[\"macOSUtilitiesModule\"])\n            }\n            let native=try AuxNativeCurrentUserLocation.capture()\n            return .init(role:role,canonicalPrivateParent:native.controlRoot,accessGroup:group,\n                canonicalTaskParent:native.taskRoot,browserStartupRoots:[native.dataRoot,native.cacheRoot],\n                nativeUserLocation:native,browserPreparedRecovery:true,embeddedDaemon:true,includesFixedNativeBuiltins:fixedBuiltins)\n        }\n#endif\n        var keys:Set<String>=[\"format\",\"role\",\"canonicalPrivateParent\",\"accessGroup\",\"authoritySelection\"]\n",
+              "count": 1
+            },
+            {
+              "before": "func validateFreshBootstrapRebuiltDaemonRoute(_ policy:AuxFreshBootstrapPolicyContents)throws {\n#if AUX_BROWSER_ONLY_NATIVE_STARTUP\n    guard policy.role == .daemon,policy.embeddedDaemon,policy.browserStartupRoots != nil,\n          policy.browserPreparedRecovery,!policy.includesPdf,!policy.includesMacUtilities,\n          !policy.includesRebuiltPtyModule,!policy.includesContainedPtyModule,policy.ptyArtifacts == nil else{throw AuxFreshBootstrapPolicyError.policy}\n#else\n    guard policy.role != .daemon || (policy.includesContainedPtyModule && policy.browserStartupRoots != nil && policy.browserPreparedRecovery) else {throw AuxFreshBootstrapPolicyError.policy}\n",
+              "after": "func validateFreshBootstrapRebuiltDaemonRoute(_ policy:AuxFreshBootstrapPolicyContents)throws {\n#if AUX_BROWSER_ONLY_NATIVE_STARTUP\n    guard policy.role == .daemon,policy.embeddedDaemon,policy.browserStartupRoots != nil,\n          policy.browserPreparedRecovery,policy.includesPdf==policy.includesMacUtilities,\n          !policy.includesRebuiltPtyModule,!policy.includesContainedPtyModule,policy.ptyArtifacts == nil else{throw AuxFreshBootstrapPolicyError.policy}\n#else\n    guard policy.role != .daemon || (policy.includesContainedPtyModule && policy.browserStartupRoots != nil && policy.browserPreparedRecovery) else {throw AuxFreshBootstrapPolicyError.policy}\n",
+              "count": 1
+            }
+          ]
+        },
+        {
+          "plan": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/integrator/fresh-successor-scope/source-plan.json",
+          "anchors": [
+            {
+              "before": "Aux Browser A38 Disposable",
+              "after": "Aux Browser Completion 20261026",
+              "count": 2
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/aux/native_peer_policy/AuxAuthenticatedChildParentPolicyReader.swift",
+      "inputSha256": "e9baf397745657fda0af399d24ad461fba770c7c9ffe1d394568cd9faaf44a4a",
+      "outputSha256": "50a3c16cca41c4e79c6a1925cec10486965c01a0983c14a7b9a6ee4927fa0b7e",
+      "mode": 420,
+      "origins": [
+        {
+          "plan": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/runtime/fixed-builtins/source.anchors.json",
+          "anchors": [
+            {
+              "before": "            let format = try strictEnvelopeObject(bytes)[\"format\"] as? String\n#if AUX_BROWSER_ONLY_NATIVE_STARTUP\n            guard format == \"aux.fresh.bootstrap.policy.v8\" ||\n                  (format == \"aux.fresh.bootstrap.policy.v9\" && policy.nativeUserLocation != nil) else { return -1 }\n            try validateFreshBootstrapRebuiltDaemonRoute(policy)\n#else\n            guard policy.role == .daemon, policy.embeddedDaemon,\n",
+              "after": "            let format = try strictEnvelopeObject(bytes)[\"format\"] as? String\n#if AUX_BROWSER_ONLY_NATIVE_STARTUP\n            guard format == \"aux.fresh.bootstrap.policy.v8\" ||\n                  ((format == \"aux.fresh.bootstrap.policy.v9\" ||\n                    (format == \"aux.fresh.bootstrap.policy.v10\" && policy.includesPdf && policy.includesMacUtilities)) &&\n                   policy.nativeUserLocation != nil) else { return -1 }\n            try validateFreshBootstrapRebuiltDaemonRoute(policy)\n#else\n            guard policy.role == .daemon, policy.embeddedDaemon,\n",
+              "count": 1
+            },
+            {
+              "before": "                  (try signingInfo(code))[kSecCodeInfoUnique as String] as? Data == hash\n            else { return -1 }\n#if AUX_BROWSER_ONLY_NATIVE_STARTUP\n            return policy.nativeUserLocation == nil ? 8:9\n#else\n            return format == \"aux.fresh.bootstrap.policy.v3\" ? 3:2\n",
+              "after": "                  (try signingInfo(code))[kSecCodeInfoUnique as String] as? Data == hash\n            else { return -1 }\n#if AUX_BROWSER_ONLY_NATIVE_STARTUP\n            // 9 is the native-current-user launch layout, shared explicitly by v9/v10.\n            return policy.nativeUserLocation == nil ? 8:9\n#else\n            return format == \"aux.fresh.bootstrap.policy.v3\" ? 3:2\n",
+              "count": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "path": "content/public/browser/devtools_agent_host_client.h",
+      "inputSha256": "c98430e63a39af47f7fa0d6844cd5c27fd66ac486b24c86248ecc326844aa72d",
+      "mode": 420,
+      "origins": [
+        {
+          "plan": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/desktop/browser-selected-document/source-plan.json",
+          "anchors": [
+            {
+              "before": "  virtual bool IsAuthenticatedRemoteDebuggingSession();",
+              "after": "  virtual bool IsAuthenticatedRemoteDebuggingSession();\n\n  // Opt-in only to the existing selected-document guard. This is not browser\n  // authentication, trust, target discovery or local-file authority.\n  virtual bool MayUseAuxDocumentCapabilities() { return false; }",
+              "count": 1
+            }
+          ]
+        }
+      ],
+      "outputSha256": "a441580236941d737022a4191e17f5490b75d86b1154dbbbf94379d248163bcc"
+    },
+    {
+      "path": "content/browser/devtools/devtools_session.cc",
+      "inputSha256": "6133f8ca4d8e8dada1f57b4aabd926a9c2d899d0d358ded1efaa4dc0cb7a093a",
+      "mode": 420,
+      "origins": [
+        {
+          "plan": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/desktop/browser-selected-document/source-plan.json",
+          "anchors": [
+            {
+              "before": "!client_->IsAuthenticatedRemoteDebuggingSession()) return refuse();",
+              "after": "(!client_->IsAuthenticatedRemoteDebuggingSession() &&\n         !client_->MayUseAuxDocumentCapabilities())) return refuse();",
+              "count": 1
+            }
+          ]
+        }
+      ],
+      "outputSha256": "96f382c093d2f3f3259fa9232d0274dc434bb6575e5dea5556655b14590cc28a"
+    },
+    {
+      "path": "chrome/browser/extensions/api/debugger/debugger_api.cc",
+      "inputSha256": "39916a48fbbae41c605c9f200d713b4053184fd83e26cecf27eeac8c2d5eb9ef",
+      "mode": 420,
+      "origins": [
+        {
+          "plan": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/desktop/browser-selected-document/source-plan.json",
+          "anchors": [
+            {
+              "before": "#include \"chrome/browser/extensions/extension_service.h\"",
+              "after": "#include \"chrome/browser/extensions/extension_service.h\"\n#include \"chrome/browser/aux/component_bootstrap.h\"",
+              "count": 1
+            },
+            {
+              "before": "  bool IsTrusted() override;",
+              "after": "  bool IsTrusted() override;\n  bool MayUseAuxDocumentCapabilities() override {\n    return extension_->id() == aux::kAgentExtensionId &&\n           profile_->IsRegularProfile() && !profile_->IsOffTheRecord();\n  }",
+              "count": 1
+            },
+            {
+              "before": "  if (command_params) {\n    protocol_request.Set(\"params\",\n                         command_params->additional_properties.Clone());\n  }",
+              "after": "  if (command_params) {\n    auto params = command_params->additional_properties.Clone();\n    // Preserve even malformed markers: the original strict document guard\n    // must refuse them, never reinterpret their removal as an unguarded call.\n    if (const auto* capability = params.Find(\"__auxDocumentCapability\")) {\n      protocol_request.Set(\"auxDocumentCapability\", capability->Clone());\n      params.Remove(\"__auxDocumentCapability\");\n    }\n    protocol_request.Set(\"params\", std::move(params));\n  }",
+              "count": 1
+            }
+          ]
+        },
+        {
+          "plan": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/desktop/browser-selected-component/source-plan.json",
+          "anchors": [
+            {
+              "before": "  bool IsTrusted() override;\n  bool MayUseAuxDocumentCapabilities() override {\n    return extension_->id() == aux::kAgentExtensionId &&\n           profile_->IsRegularProfile() && !profile_->IsOffTheRecord();\n  }\n  bool MayReadLocalFiles() override;\n",
+              "after": "  bool IsTrusted() override;\n  bool MayUseAuxDocumentCapabilities() override {\n    return extension_->id() == aux::kAgentExtensionId &&\n           Manifest::IsComponentLocation(extension_->location()) &&\n           profile_->IsRegularProfile() && !profile_->IsOffTheRecord();\n  }\n  bool MayReadLocalFiles() override;\n",
+              "expectedCount": 1
+            }
+          ]
+        }
+      ],
+      "outputSha256": "a8bfe44a4c5511b076cc2cf8fd1b494433886f30e31ab2ed66c0432907f34314"
+    },
+    {
+      "path": "components/split_tabs/split_pane_tree.h",
+      "inputSha256": "51dd6ab9b1c51c3393e63dcea5b2e01806867a8ac0c468c557f38c770a689f35",
+      "mode": 420,
+      "origins": [
+        {
+          "plan": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/integration/split-accessibility/source-plan.json",
+          "anchors": [
+            {
+              "before": "  const Node* Find(uint32_t node) const;",
+              "after": "  // Slots in top-to-bottom, then left-to-right layout order. Collection\n  // order remains in pane_slots(); branch swaps never change slot identity.\n  std::vector<uint32_t> VisualPaneSlots() const;\n  const Node* Find(uint32_t node) const;",
+              "count": 1
+            }
+          ]
+        }
+      ],
+      "outputSha256": "92ea908cdb12473737fbe6de603f47b2e33b441ffa5d15202e949db7b0e50012"
+    },
+    {
+      "path": "components/split_tabs/split_pane_tree.cc",
+      "inputSha256": "1ffec49e783ceab649576fdf49f2ec2eb26dec4660c972b65c4880d55312e0a6",
+      "mode": 420,
+      "origins": [
+        {
+          "plan": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/integration/split-accessibility/source-plan.json",
+          "anchors": [
+            {
+              "before": "}  // namespace split_tabs",
+              "after": "std::vector<uint32_t> SplitPaneTree::VisualPaneSlots() const {\n  auto placements = Layout({0, 0, 1000000, 1000000}, 0, 0);\n  std::erase_if(placements, [](const Placement& pane) { return !pane.slot; });\n  std::stable_sort(placements.begin(), placements.end(),\n                   [](const Placement& a, const Placement& b) {\n    return a.bounds.y != b.bounds.y ? a.bounds.y < b.bounds.y\n                                    : a.bounds.x < b.bounds.x;\n  });\n  std::vector<uint32_t> slots;\n  for (const auto& pane : placements) slots.push_back(pane.slot);\n  return slots;\n}\n}  // namespace split_tabs",
+              "count": 1
+            }
+          ]
+        }
+      ],
+      "outputSha256": "308e99e4d8d8160b7256defb606b9449dc9a325952ea7c5f90cd64f171670787"
+    },
+    {
+      "path": "chrome/browser/ui/tabs/split_tab_util.h",
+      "inputSha256": "ba47aca0fc56b68d2d68acf38e6599f8c4f88098c298379a47a9aa4182f12473",
+      "mode": 420,
+      "origins": [
+        {
+          "plan": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/integration/split-accessibility/source-plan.json",
+          "anchors": [
+            {
+              "before": "class TabStripModel;",
+              "after": "#include <vector>\n\nclass TabStripModel;\nnamespace tabs {\nclass TabInterface;\n}",
+              "count": 1
+            },
+            {
+              "before": "class SplitTabId;",
+              "after": "class SplitTabId;\nclass SplitTabData;",
+              "count": 1
+            },
+            {
+              "before": "  kBottom,",
+              "after": "  kBottom,\n  // A tree with more than two panes has no single binary side.\n  kMultiple,",
+              "count": 1
+            },
+            {
+              "before": "// Returns the index of the last active tab in a split.",
+              "after": "// Binds genuine tabs to stable pane slots in the same layout as the view.\nstd::vector<tabs::TabInterface*> GetTabsInVisualOrder(const SplitTabData& data);\n\n// Returns the index of the last active tab in a split.",
+              "count": 1
+            }
+          ]
+        }
+      ],
+      "outputSha256": "25185379052ffe1d646ee30eab9f40dd4e85306e7929bbca66fa9d5dbff14e65"
+    },
+    {
+      "path": "chrome/browser/ui/tabs/split_tab_util.cc",
+      "inputSha256": "10e8ad5ac6f9fd04840f83f8869aa93b901d9fbc92d2f7ec621db349c90e4ca3",
+      "mode": 420,
+      "origins": [
+        {
+          "plan": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/integration/split-accessibility/source-plan.json",
+          "anchors": [
+            {
+              "before": "int GetIndexOfLastActiveTab(",
+              "after": "std::vector<tabs::TabInterface*> GetTabsInVisualOrder(const SplitTabData& data) {\n  const auto tabs = data.ListTabs();\n  const auto& tree = data.visual_data()->pane_tree();\n  if (!tree) return tabs;\n  CHECK_EQ(tree->pane_slots().size(), tabs.size());\n  std::vector<tabs::TabInterface*> ordered;\n  for (const uint32_t slot : tree->VisualPaneSlots()) {\n    const auto member = std::ranges::find(tree->pane_slots(), slot);\n    CHECK(member != tree->pane_slots().end());\n    ordered.push_back(tabs[std::distance(tree->pane_slots().begin(), member)]);\n  }\n  CHECK_EQ(ordered.size(), tabs.size());\n  return ordered;\n}\n\nint GetIndexOfLastActiveTab(",
+              "count": 1
+            },
+            {
+              "before": "  for (int index = tab_strip_model->GetIndexOfTab(split_tabs[0]);\n       tabs::TabInterface* tab : split_tabs) {\n    if (tab->IsActivated()) {\n      return index;\n    }\n    index++;\n  }",
+              "after": "  for (tabs::TabInterface* tab : split_tabs) {\n    if (tab->IsActivated()) {\n      return tab_strip_model->GetIndexOfTab(tab);\n    }\n  }",
+              "count": 1
+            },
+            {
+              "before": "std::vector<tabs::TabInterface*> tabs_in_split = split_tab_data->ListTabs();\n  CHECK_EQ(tabs_in_split.size(), 2U);",
+              "after": "std::vector<tabs::TabInterface*> tabs_in_split = GetTabsInVisualOrder(*split_tab_data);\n  if (tabs_in_split.size() > 2) return SplitTabActiveLocation::kMultiple;\n  CHECK_EQ(tabs_in_split.size(), 2U);",
+              "count": 1
+            },
+            {
+              "before": "  if (split_tab_data->visual_data()->split_layout() ==\n      SplitTabLayout::kSideBySide) {",
+              "after": "  const auto& visual = *split_tab_data->visual_data();\n  const bool horizontal = visual.pane_tree()\n      ? visual.pane_tree()->Find(visual.pane_tree()->root())->axis == SplitPaneTree::Axis::kHorizontal\n      : visual.split_layout() == SplitTabLayout::kSideBySide;\n  if (horizontal) {",
+              "count": 1
+            }
+          ]
+        }
+      ],
+      "outputSha256": "c3b32890a28f5d113dcc0b2c089ceca4d03e7fca326f46ef34fa3157d5f02df7"
+    },
+    {
+      "path": "chrome/browser/ui/views/tabs/tab/tab_accessibility.cc",
+      "inputSha256": "8b65359b82d0a8c7d8613ac075ba1e922d036a61e97605a01fbe705e285a208d",
+      "mode": 420,
+      "origins": [
+        {
+          "plan": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/integration/split-accessibility/source-plan.json",
+          "anchors": [
+            {
+              "before": "#include \"chrome/browser/ui/tabs/tab_data.h\"",
+              "after": "#include \"chrome/browser/ui/tabs/tab_data.h\"\n#include \"chrome/browser/ui/tabs/split_tab_util.h\"\n#include \"base/strings/string_number_conversions.h\"",
+              "count": 1
+            },
+            {
+              "before": "    const std::vector<tabs::TabInterface*> tabs_in_split =\n        split_data->ListTabs();\n\n    int tab_index_in_split = std::distance(\n        tabs_in_split.begin(),\n        std::find(tabs_in_split.begin(), tabs_in_split.end(), tab));\n    title = l10n_util::GetStringFUTF16(\n        GetAccessibleTabLabelFormatStringForSplit(\n            split_data->visual_data()->split_layout(), tab_index_in_split),\n        title);",
+              "after": "    const auto tabs_in_split = split_tabs::GetTabsInVisualOrder(*split_data);\n    const auto member = std::ranges::find(tabs_in_split, tab);\n    if (member != tabs_in_split.end()) {\n      const size_t position = std::distance(tabs_in_split.begin(), member);\n      if (tabs_in_split.size() > 2) {\n        title = l10n_util::GetStringFUTF16(\n            IDS_TAB_AX_LABEL_SPLIT_TAB_PANE_FORMAT, title,\n            base::NumberToString16(position + 1),\n            base::NumberToString16(tabs_in_split.size()));\n      } else {\n        const auto& visual = *split_data->visual_data();\n        const auto layout = visual.pane_tree()\n            ? (visual.pane_tree()->Find(visual.pane_tree()->root())->axis == split_tabs::SplitPaneTree::Axis::kHorizontal\n                   ? split_tabs::SplitTabLayout::kSideBySide : split_tabs::SplitTabLayout::kStacked)\n            : visual.split_layout();\n        title = l10n_util::GetStringFUTF16(\n            GetAccessibleTabLabelFormatStringForSplit(layout, static_cast<int>(position)), title);\n      }\n    }",
+              "count": 1
+            },
+            {
+              "before": "#include \"chrome/browser/ui/browser_window/public/browser_window_interface.h\"",
+              "after": "#include <algorithm>\n\n#include \"chrome/browser/ui/browser_window/public/browser_window_interface.h\"",
+              "count": 1
+            }
+          ]
+        }
+      ],
+      "outputSha256": "3d9491f1ecb3b27a90fbdcad477bdf97981768b9f09e2fb67b8069107510a3a9"
+    },
+    {
+      "path": "chrome/browser/ui/views/toolbar/split_tabs_button.cc",
+      "inputSha256": "cd8cf0d6ecbafdd6dd4b6eecbcfe6e21d9d0b50c4cceed9b3b00d8ca921bdb94",
+      "mode": 420,
+      "origins": [
+        {
+          "plan": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/integration/split-accessibility/source-plan.json",
+          "anchors": [
+            {
+              "before": "{split_tabs::SplitTabActiveLocation::kBottom, &kSplitSceneDownOldIcon},",
+              "after": "{split_tabs::SplitTabActiveLocation::kBottom, &kSplitSceneDownOldIcon},\n        {split_tabs::SplitTabActiveLocation::kMultiple, &kSplitSceneOldIcon},",
+              "count": 1
+            },
+            {
+              "before": "{split_tabs::SplitTabActiveLocation::kBottom, &kSplitSceneDownIcon},",
+              "after": "{split_tabs::SplitTabActiveLocation::kBottom, &kSplitSceneDownIcon},\n            {split_tabs::SplitTabActiveLocation::kMultiple, &kSplitSceneIcon},",
+              "count": 1
+            },
+            {
+              "before": "      case split_tabs::SplitTabActiveLocation::kBottom:\n        string_id = IDS_ACCNAME_SPLIT_TABS_TOOLBAR_BUTTON_ENABLED_BOTTOM_ACTIVE;\n        break;",
+              "after": "      case split_tabs::SplitTabActiveLocation::kBottom:\n        string_id = IDS_ACCNAME_SPLIT_TABS_TOOLBAR_BUTTON_ENABLED_BOTTOM_ACTIVE;\n        break;\n      case split_tabs::SplitTabActiveLocation::kMultiple:\n        string_id = IDS_ACCNAME_SPLIT_TABS_TOOLBAR_BUTTON_ENABLED_MULTIPLE;\n        break;",
+              "count": 1
+            }
+          ]
+        }
+      ],
+      "outputSha256": "5ceaaf3ef451387d1a447db6de8d88479e2e14c1170456fd46495e7fc0dc5059"
+    },
+    {
+      "path": "chrome/browser/ui/webui/webui_toolbar/utils/split_tabs_utils.cc",
+      "inputSha256": "73979fc49f7ed08235a8b4467f8951542e3af0698e8c76d94155a7f36aa887ef",
+      "mode": 420,
+      "origins": [
+        {
+          "plan": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/integration/split-accessibility/source-plan.json",
+          "anchors": [
+            {
+              "before": "            toolbar_ui_api::mojom::SplitTabActiveLocation::kBottom;\n        break;",
+              "after": "            toolbar_ui_api::mojom::SplitTabActiveLocation::kBottom;\n        break;\n      case split_tabs::SplitTabActiveLocation::kMultiple:\n        status.location = toolbar_ui_api::mojom::SplitTabActiveLocation::kMultiple;\n        break;",
+              "count": 1
+            },
+            {
+              "before": "      {\"splitTabsButtonAccNamePinned\",",
+              "after": "      {\"splitTabsButtonAccNameEnabledMultiple\",\n       IDS_ACCNAME_SPLIT_TABS_TOOLBAR_BUTTON_ENABLED_MULTIPLE},\n      {\"splitTabsButtonAccNamePinned\",",
+              "count": 1
+            }
+          ]
+        }
+      ],
+      "outputSha256": "fef614ca65813a680ef511ee7e5889c3dc44da188e9d1c1828952b091fe67ef7"
+    },
+    {
+      "path": "components/browser_apis/ui_controllers/toolbar/toolbar_ui_api_data_model.mojom",
+      "inputSha256": "aee744cb660c0b16b6290edcc38416bb98119e1f0a51c91c0691d3f519bb3131",
+      "mode": 420,
+      "origins": [
+        {
+          "plan": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/integration/split-accessibility/source-plan.json",
+          "anchors": [
+            {
+              "before": "  kBottom,\n};\n\nenum ToolbarButtonType",
+              "after": "  kBottom,\n  kMultiple,\n};\n\nenum ToolbarButtonType",
+              "count": 1
+            }
+          ]
+        }
+      ],
+      "outputSha256": "853a5cc4fdb94e9dfa5a4654517c68fb5e1cb5acab2a5fe440a8d030c86a4167"
+    },
+    {
+      "path": "chrome/browser/resources/webui_toolbar/split_tabs_button.ts",
+      "inputSha256": "f66675faa439ed62c844c476ebc2ce8aad147be9ce91b1892b070b3d24034927",
+      "mode": 420,
+      "origins": [
+        {
+          "plan": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/integration/split-accessibility/source-plan.json",
+          "anchors": [
+            {
+              "before": "        labelId = 'splitTabsButtonAccNameEnabledBottom';\n        break;",
+              "after": "        labelId = 'splitTabsButtonAccNameEnabledBottom';\n        break;\n      case SplitTabActiveLocation.kMultiple:\n        labelId = 'splitTabsButtonAccNameEnabledMultiple';\n        break;",
+              "count": 1
+            }
+          ]
+        }
+      ],
+      "outputSha256": "02ae04f6e9252af5ea0c401c5b08503ce01e5cfc919bc41ec795a5de64fe2ad7"
+    },
+    {
+      "path": "chrome/browser/ui/tabs/split_tab_menu_model.h",
+      "inputSha256": "c7034a80edff5592179c0d5a6b1554f06ce7833c8dc550c12051fa11436594ba",
+      "mode": 420,
+      "origins": [
+        {
+          "plan": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/integration/split-accessibility/source-plan.json",
+          "anchors": [
+            {
+              "before": "  bool IsItemForCommandIdDynamic(int command_id) const override;",
+              "after": "  bool IsCommandIdEnabled(int command_id) const override;\n  bool IsItemForCommandIdDynamic(int command_id) const override;",
+              "count": 1
+            }
+          ]
+        }
+      ],
+      "outputSha256": "c9e09522117f76fec8a4f1b4d60d20ab4ef00f12f366301f84997a0ae930372e"
+    },
+    {
+      "path": "chrome/browser/ui/tabs/split_tab_menu_model.cc",
+      "inputSha256": "e04ed514d18c097986e71b40e630b41b057747b1d129721eaf39309c857f437f",
+      "mode": 420,
+      "origins": [
+        {
+          "plan": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/integration/split-accessibility/source-plan.json",
+          "anchors": [
+            {
+              "before": "      split_tab_index_(split_tab_index) {\n  AddItemWithStringIdAndIcon(",
+              "after": "      split_tab_index_(split_tab_index) {\n  const bool is_pair = tab_strip_model_->GetSplitData(GetSplitTabId())->ListTabs().size() == 2;\n  AddItemWithStringIdAndIcon(",
+              "count": 1
+            },
+            {
+              "before": "  AddSeparator(ui::MenuSeparatorType::NORMAL_SEPARATOR);\n\n  if (menu_source == MenuSource::kMiniToolbar)",
+              "after": "  if (is_pair || menu_source == MenuSource::kMiniToolbar)\n    AddSeparator(ui::MenuSeparatorType::NORMAL_SEPARATOR);\n\n  if (menu_source == MenuSource::kMiniToolbar)",
+              "count": 1
+            },
+            {
+              "before": "  } else if (menu_source == MenuSource::kTabContextMenu ||\n             menu_source == MenuSource::kToolbarButton) {",
+              "after": "  } else if (is_pair && (menu_source == MenuSource::kTabContextMenu ||\n                         menu_source == MenuSource::kToolbarButton)) {",
+              "count": 1
+            },
+            {
+              "before": "  } else {\n    NOTREACHED() << \"Unknown close menu item option\";\n  }\n\n  if (base::FeatureList::IsEnabled(tabs::kSplitViewHorizontal)) {",
+              "after": "  }\n\n  if (is_pair && base::FeatureList::IsEnabled(tabs::kSplitViewHorizontal)) {",
+              "count": 1
+            },
+            {
+              "before": "  AddItem(GetCommandIdInt(CommandId::kReversePosition), std::u16string());\n\n  SetElementIdentifierAt(\n      GetIndexOfCommandId(GetCommandIdInt(CommandId::kReversePosition)).value(),\n      kReversePositionMenuItem);",
+              "after": "  if (is_pair) {\n    AddItem(GetCommandIdInt(CommandId::kReversePosition), std::u16string());\n    SetElementIdentifierAt(\n        GetIndexOfCommandId(GetCommandIdInt(CommandId::kReversePosition)).value(),\n        kReversePositionMenuItem);\n  }",
+              "count": 1
+            },
+            {
+              "before": "bool SplitTabMenuModel::IsItemForCommandIdDynamic(",
+              "after": "bool SplitTabMenuModel::IsCommandIdEnabled(int command_id) const {\n  const auto id = GetCommandIdEnum(command_id);\n  if (id == CommandId::kReversePosition || id == CommandId::kCloseStartTab ||\n      id == CommandId::kCloseEndTab || id == CommandId::kToggleOrientation) {\n    return tab_strip_model_->GetSplitData(GetSplitTabId())->ListTabs().size() == 2;\n  }\n  return true;\n}\n\nbool SplitTabMenuModel::IsItemForCommandIdDynamic(",
+              "count": 1
+            },
+            {
+              "before": "ui::ImageModel SplitTabMenuModel::GetIconForCommandId(int command_id) const {\n  const split_tabs::SplitTabActiveLocation active_split_tab_location =\n      split_tabs::GetLastActiveTabLocation(tab_strip_model_, GetSplitTabId());\n\n  const CommandId id",
+              "after": "ui::ImageModel SplitTabMenuModel::GetIconForCommandId(int command_id) const {\n  const CommandId id",
+              "count": 1
+            },
+            {
+              "before": "icon = &GetReversePositionIcon(active_split_tab_location);",
+              "after": "icon = &GetReversePositionIcon(split_tabs::GetLastActiveTabLocation(tab_strip_model_, GetSplitTabId()));",
+              "count": 1
+            },
+            {
+              "before": "  const split_tabs::SplitTabId split_id = GetSplitTabId();\n  split_tabs::SplitTabData* const split_tab_data",
+              "after": "  if (!IsCommandIdEnabled(command_id)) return;\n  const split_tabs::SplitTabId split_id = GetSplitTabId();\n  split_tabs::SplitTabData* const split_tab_data",
+              "count": 1
+            },
+            {
+              "before": "  std::vector<tabs::TabInterface*> tabs_in_split = split_tab_data->ListTabs();\n  CHECK_EQ(tabs_in_split.size(), 2U);",
+              "after": "  const auto tabs_in_split = split_tabs::GetTabsInVisualOrder(*split_tab_data);",
+              "count": 1
+            },
+            {
+              "before": "                                               : kSplitSceneUpOldIcon;\n  }\n}",
+              "after": "                                               : kSplitSceneUpOldIcon;\n    case split_tabs::SplitTabActiveLocation::kMultiple:\n      return features::IsRoundedIconsEnabled() ? kSplitSceneIcon : kSplitSceneOldIcon;\n  }\n}",
+              "count": 1
+            },
+            {
+              "before": "  return visual_data->split_layout();",
+              "after": "  if (const auto& tree = visual_data->pane_tree()) {\n    return tree->Find(tree->root())->axis == split_tabs::SplitPaneTree::Axis::kHorizontal\n        ? split_tabs::SplitTabLayout::kSideBySide : split_tabs::SplitTabLayout::kStacked;\n  }\n  return visual_data->split_layout();",
+              "count": 1
+            }
+          ]
+        }
+      ],
+      "outputSha256": "fca61c355907d1399a7cb88493c0ab7c28061d37cf682c454e34d8740a35f693"
+    },
+    {
+      "path": "chrome/browser/ui/tabs/tab_strip_model.cc",
+      "inputSha256": "d30702e35ceb70ff0ac6e858702513bdcff424063f56e77f68e1b51144933d7a",
+      "mode": 420,
+      "origins": [
+        {
+          "plan": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/integration/split-accessibility/source-plan.json",
+          "anchors": [
+            {
+              "before": "  if (split_data->visual_data()->split_layout() == tab_layout) {",
+              "after": "  const auto& pane_tree = split_data->visual_data()->pane_tree();\n  const auto requested_axis = tab_layout == split_tabs::SplitTabLayout::kSideBySide\n      ? split_tabs::SplitPaneTree::Axis::kHorizontal : split_tabs::SplitPaneTree::Axis::kVertical;\n  if (split_data->visual_data()->split_layout() == tab_layout &&\n      (!pane_tree || pane_tree->Find(pane_tree->root())->axis == requested_axis)) {",
+              "count": 1
+            }
+          ]
+        }
+      ],
+      "outputSha256": "386bf740d7a1d6a15efbc78fde6b23d1c6ffb83e11bb47069f6c94e5cdc354fe"
+    },
+    {
+      "path": "chrome/app/generated_resources.grd",
+      "inputSha256": "e7027a71d4d9fb7bda8266468d7096e34b15c9fe9f8b94d4827e5438f95c9d1c",
+      "mode": 420,
+      "origins": [
+        {
+          "plan": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/integration/split-accessibility/source-plan.json",
+          "anchors": [
+            {
+              "before": "      <message name=\"IDS_ACCNAME_FIND\"",
+              "after": "      <message name=\"IDS_ACCNAME_SPLIT_TABS_TOOLBAR_BUTTON_ENABLED_MULTIPLE\" desc=\"Accessible label for the split view toolbar button with more than two panes.\">\n        Split view options\n      </message>\n      <message name=\"IDS_ACCNAME_FIND\"",
+              "count": 1
+            },
+            {
+              "before": "      <message name=\"IDS_TAB_AX_LABEL_UNNAMED_GROUP_FORMAT\"",
+              "after": "      <message name=\"IDS_TAB_AX_LABEL_SPLIT_TAB_PANE_FORMAT\" is_accessibility_with_no_ui=\"true\" desc=\"Accessibility label for a tab in a split with multiple panes, in visual reading order.\">\n        <ph name=\"WINDOW_TITLE\">$1<ex>Google Search</ex></ph> - View <ph name=\"PANE_POSITION\">$2<ex>2</ex></ph> of <ph name=\"PANE_COUNT\">$3<ex>4</ex></ph>\n      </message>\n      <message name=\"IDS_TAB_AX_LABEL_UNNAMED_GROUP_FORMAT\"",
+              "count": 1
+            }
+          ]
+        }
+      ],
+      "outputSha256": "10cac2a6503aa585495550100cbd7c86c07be37f04d4cae9d20714ef03c6bfc3"
+    },
+    {
+      "path": "chrome/browser/aux/AuxNativeParentColdLaunch.cc",
+      "inputSha256": "b0ff3c4c21195f2b5c5c6973591a856adca04a76cdfefd8f94800d14567f2bce",
+      "mode": 420,
+      "origins": [
+        {
+          "plan": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/integrator/fresh-successor-scope/source-plan.json",
+          "anchors": [
+            {
+              "before": "Aux Browser A38 Disposable",
+              "after": "Aux Browser Completion 20261026",
+              "count": 9
+            }
+          ]
+        }
+      ],
+      "outputSha256": "5fd1c2824f27f9e017787ba9f2be0f2aa6d9b63d4aea7bdc88679c7a126fb574"
+    },
+    {
+      "path": "chrome/common/chrome_paths_mac.mm",
+      "inputSha256": "20de58060705aef58871fc144849080873b09ed1a89e300ceefcd02b2289bb43",
+      "mode": 420,
+      "origins": [
+        {
+          "plan": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/integrator/fresh-successor-scope/source-plan.json",
+          "anchors": [
+            {
+              "before": "Aux Browser A38 Disposable",
+              "after": "Aux Browser Completion 20261026",
+              "count": 2
+            }
+          ]
+        }
+      ],
+      "outputSha256": "36f92952fe64ea7019632dd9559e9c01262efa4fbc68bd87f33336f43cabb728"
+    },
+    {
+      "path": "chrome/browser/extensions/api/debugger/BUILD.gn",
+      "inputSha256": "7fe8318260b54e55a9883bc707dc2262877bff476c7f3813912aac101d23e971",
+      "mode": 420,
+      "origins": [
+        {
+          "plan": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/integrator/project-final-browser.py",
+          "anchors": [
+            {
+              "before": "  deps = [\n    \"//chrome/app:generated_resources\",",
+              "after": "  deps = [\n    \"//chrome/browser/aux:platform\",\n    \"//chrome/app:generated_resources\",",
+              "count": 1
+            }
+          ]
+        }
+      ],
+      "outputSha256": "3de37845ba1b80dc3fd3ced8298bfdfe75ff0843b960a3d474049102843bcb37"
+    }
+  ],
+  "unownedPathsChanged": false,
+  "productExecuted": false,
+  "signing": false,
+  "failedPredecessorReceipt": "/private/tmp/aux-completion-browser-build-20261026-a2/build-result.json",
+  "passedPredecessorReceipt": "/private/tmp/aux-completion-browser-build-20261026-a4/build-result.json"
+}
