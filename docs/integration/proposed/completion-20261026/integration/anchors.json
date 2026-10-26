@@ -19,8 +19,8 @@
   },
   {
     "kind": "cloud-attachment-adapter-4",
-    "find": "    // creates exclusively. No server path is passed as a filesystem destination.\n    const fs=await import('node:fs/promises'),paths=await import('node:path'),root=getSessionStorageDir(session,accountId);\n    const rootStat=await fs.lstat(root);if(rootStat.isSymbolicLink()||!rootStat.isDirectory())throw Error('Attachment recovery requires an existing real session directory.');\n",
-    "replace": "    // creates exclusively. No server path is passed as a filesystem destination.\n    const fs=await import('node:fs/promises'),paths=await import('node:path');\n    auxCloudCheckAttachmentIdentity(accountId,session,identity);\n    const root=getSessionStorageDir(session,accountId);\n    const rootStat=await fs.lstat(root);if(rootStat.isSymbolicLink()||!rootStat.isDirectory())throw Error('Attachment recovery requires an existing real session directory.');\n",
+    "find": "    // creates exclusively. No server path is passed as a filesystem destination.\n    const fs=await import('node:fs/promises'),paths=await import('node:path'),root=getSessionTaskDir(session,accountId);\n    const rootStat=await fs.lstat(root);if(rootStat.isSymbolicLink()||!rootStat.isDirectory())throw Error('Attachment recovery requires an existing real session directory.');\n",
+    "replace": "    // creates exclusively. No server path is passed as a filesystem destination.\n    const fs=await import('node:fs/promises'),paths=await import('node:path');\n    auxCloudCheckAttachmentIdentity(accountId,session,identity);\n    const root=getSessionTaskDir(session,accountId);\n    const rootStat=await fs.lstat(root);if(rootStat.isSymbolicLink()||!rootStat.isDirectory())throw Error('Attachment recovery requires an existing real session directory.');\n",
     "count": 1
   },
   {
