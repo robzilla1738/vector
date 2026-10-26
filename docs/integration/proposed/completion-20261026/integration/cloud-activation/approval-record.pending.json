@@ -45,7 +45,7 @@
   },
   "o1": {
     "proposedProvider": "DigitalOcean",
-    "actualAccountId": null,
+    "actualAccountId": "c517b39d-7865-4d54-9a0d-236dbf282267",
     "actualProjectId": null,
     "existingRunnerInventoryVerified": false,
     "proposedInstanceName": "aux-backup-prod-01",
@@ -60,7 +60,7 @@
     "proposedSpendNotificationUSD": 20,
     "providerSpendingCapGuaranteed": false,
     "administrator": null,
-    "sshPublicKeyFingerprint": null,
+    "sshPublicKeyFingerprint": "SHA256:YK/XGGhOAvVCgMY4r5pBFz1fJ7u24dRkvvsx2vNKs30",
     "sshAllowedSourceCidrs": [],
     "monitorProvider": "Healthchecks.io",
     "monitorAccountId": null,
@@ -80,7 +80,11 @@
       "credentialScope": "existing bucket-only Object Read & Write; no account/bucket admin",
       "historicalExpiryDate": "2026-11-22",
       "verifiedExactExpiresAt": null,
-      "renewalReviewBefore": "2026-11-15"
+      "renewalReviewBefore": "2026-11-15",
+      "dashboardVerifiedExpiryDate": "2026-11-22",
+      "publicDevelopmentUrl": "disabled",
+      "customDomains": [],
+      "objectListAtInspection": "empty"
     },
     "runtimeReviewProposal": {
       "format": "aux.backup.runner.review.v1",
@@ -97,7 +101,7 @@
       "credentialExpiresAt": null
     },
     "runtimeReviewReadyToInstall": false,
-    "note": "Null expiry is intentionally not a runnable review value; owner verifies actual provider timestamp first. No instance, key, IP or check is fabricated.",
+    "note": "Signed-in team and unregistered dedicated SSH proposal are recorded; precise credential expiry, admin CIDR, payment activation, alert recipient, source custody and restore destinations remain required. No runnable activation value or resource is invented.",
     "productionSourceCredentialTransferApproved": false,
     "fullProductionContentCaptureApproved": false,
     "independentOwnerKeyRetrievalVerified": false,
@@ -107,7 +111,14 @@
     "restoreTargetDatabase": null,
     "restoreTargetBlobStoreId": null,
     "restoreTargetUnservedVerified": false,
-    "restoreTargetExpiryAt": null
+    "restoreTargetExpiryAt": null,
+    "actualTeamName": "My Team",
+    "billingActivationRequired": true,
+    "sshKeyRegistered": false,
+    "actualDashboardEvidence": {
+      "path": "../../integrator/backup-dashboard-review.json",
+      "sha256": "5d252202002b0767b82f611a8fe83ddd6eb059a3f7402d9ce6f86d8c4518b810"
+    }
   },
   "excluded": [
     "new or rotated production wrapping/auth/recovery keys",
