@@ -1,0 +1,51 @@
+{
+  "format": "aux.startup-observation.cause-confirmation.v1",
+  "date": "2026-10-26",
+  "proposalCommit": "07a2974cb2ffd55a346d9e1ce3c49d4481c35d06",
+  "providedEvidence": [
+    "Aux browser startup lease status=5 bytes=0",
+    "Aux browser startup authorization refused at phase 6"
+  ],
+  "evidenceSource": "Root integrator payload-free startup6 numeric lines; whole log not read",
+  "enumMeaning": "DaemonAuthorityStatus::timedOut is5; ready0/pending1/busy2/refused3/closed4",
+  "conditionalTriggerConfirmed": true,
+  "initialReviewAllPreimagesMatched": true,
+  "subsequentObservation": "Root projected exact proposed outputs while this read-only review was underway; final hashes match all three proposal outputs. No native write by this agent.",
+  "files": [
+    {
+      "path": "chrome/browser/aux/AuxNativeParentColdLaunch.h",
+      "beforeSha256": "c2187e748e0676c1edc9c591ddc88e8c87b4bc2936bdbe90ae112a62b42fa9cc",
+      "afterSha256": "4ccef428e661568605464d0c202cf355e8357ac0343645071bcd553ee8a9181c",
+      "anchors": 2,
+      "currentSha256": "4ccef428e661568605464d0c202cf355e8357ac0343645071bcd553ee8a9181c"
+    },
+    {
+      "path": "chrome/browser/aux/AuxNativeParentColdLaunch.cc",
+      "beforeSha256": "5fd1c2824f27f9e017787ba9f2be0f2aa6d9b63d4aea7bdc88679c7a126fb574",
+      "afterSha256": "1c2996c7c3b8931330033688b7c6997749e4d3a7c2908b97dab6e9450ac1784b",
+      "anchors": 3,
+      "currentSha256": "1c2996c7c3b8931330033688b7c6997749e4d3a7c2908b97dab6e9450ac1784b"
+    },
+    {
+      "path": "chrome/browser/aux/AuxSelectedStateHome.cc",
+      "beforeSha256": "2e25c7f4b67380c73559d6cdb30e463518c95c1aa417a65dff39d37a3c834713",
+      "afterSha256": "1ccb3f17b2dd85a1c8a717b4ad80f62ea22567e57e8e48bf2f0adc8c8959b921",
+      "anchors": 3,
+      "currentSha256": "1ccb3f17b2dd85a1c8a717b4ad80f62ea22567e57e8e48bf2f0adc8c8959b921"
+    }
+  ],
+  "reviewFindings": [
+    "Reuses original90second LaunchOnce deadline, without extension.",
+    "RequestAuthority retains operation/sequence/nonce and uses kObserve after attempted send.",
+    "Only pending/timedOut repeat; original owner, fresh pulse/generation, live child, selected roots and deadline revalidate.",
+    "Original72byte receipt still requires original generation and both root digests plus successful validated ACK.",
+    "ACK retries retain exact publication; only valid status0 sets acknowledged and clears pending.",
+    "No timeout becomes admission or proves process settlement."
+  ],
+  "additionalDeltaNeeded": false,
+  "appChanged": false,
+  "compiled": false,
+  "signed": false,
+  "credentialsRead": false,
+  "processesSignaled": false
+}
