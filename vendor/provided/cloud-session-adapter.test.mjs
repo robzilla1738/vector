@@ -6,6 +6,7 @@ import * as syncFs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
 import { createHash, randomBytes } from 'node:crypto';
+import { cloudAttachmentHelpers } from './cloud-attachment-adapter.mjs';
 import { cloudSessionHelpers, applyCloudSessionAdapter } from './cloud-session-adapter.mjs';
 
 const source = await fs.readFile('/Users/rcourson/Downloads/aside-rea 2/extracted/daemon-app/index.mjs', 'utf8');
@@ -47,14 +48,14 @@ function fixture(root, key = randomBytes(32), implementation = source) {
     },
     AsideApiError: class extends Error { constructor(status) { super(); this.status = status; } },
   });
-  new vm.Script(`var isRunStartUserMessage,addUsage$1,createSessionTurnInsert,createOpenSessionTurnInsert;${reducerInit};${reducers}${writer}${cloudSessionHelpers}`, { importModuleDynamically: vm.constants.USE_MAIN_CONTEXT_DEFAULT_LOADER }).runInContext(context);
+  new vm.Script(`var isRunStartUserMessage,addUsage$1,createSessionTurnInsert,createOpenSessionTurnInsert;${reducerInit};${reducers}${writer}${cloudAttachmentHelpers}${cloudSessionHelpers}`, { importModuleDynamically: vm.constants.USE_MAIN_CONTEXT_DEFAULT_LOADER }).runInContext(context);
   return { context, sessions, messages, turns, events, key, account, projects, failCommit: () => { failTransaction=true; }, setGeneration: value => { generation = value; }, setRunning: value => { running = value; } };
 }
 
 test('session patch pins Store exports and both supplied discovery callers', () => {
   const result = applyCloudSessionAdapter(source);
   assert.equal(result.anchors.length, 4);
-  assert.throws(() => applyCloudSessionAdapter(result.text), /anchor changed/);
+  assert.throws(() => applyCloudSessionAdapter(result.text), /(?:anchor|export) changed/);
   assert.throws(() => applyCloudSessionAdapter(source.replace('Cn.appendMessage=Hi', 'Cn.appendMessage=changed')), /export changed/);
   new vm.Script('var ' + result.anchors[1].replace + '}));');
 });

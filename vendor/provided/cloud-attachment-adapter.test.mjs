@@ -89,3 +89,41 @@ test('large-share transfer uses scoped signed PUT without forwarding account aut
   assert.equal(intent.purpose, 'share');
   assert.equal(result.id, 'disposable-share-fixture');
 });
+
+test('upload stops at each account-replacement boundary before the next side effect', async () => {
+  for (const replacedAfter of ['intent', 'upload-url', 'upload', 'commit']) {
+    const { context, account } = fixture('/not-used');
+    const calls = [];
+    const bytes = Buffer.from('original account attachment');
+    const id = '00000000-0000-4000-8000-000000000001';
+    context.fetchAsideAPIAuthenticatedRequest = async (_account, route) => {
+      const step = route === '/attachments/intents' ? 'intent' : route.endsWith('/upload-url') ? 'upload-url' : 'commit';
+      calls.push(step);
+      if (step === replacedAfter) account.incarnationId = 'replacement-instance';
+      if (step === 'intent') return Response.json({ id });
+      if (step === 'upload-url') return Response.json({ url: 'https://blob.vercel-storage.com/private' });
+      return Response.json({ id, size: bytes.length, sha256: createHash('sha256').update(bytes).digest('hex') });
+    };
+    context.fetch = async () => { calls.push('upload'); if (replacedAfter === 'upload') account.incarnationId = 'replacement-instance'; return new Response(null, { status: 200 }); };
+    await assert.rejects(context.auxCloudUploadBytes(1, bytes, 'fixture.txt', 'text/plain', 'attachment'), /Account changed/);
+    assert.deepEqual(calls, ['intent', 'upload-url', 'upload', 'commit'].slice(0, ['intent', 'upload-url', 'upload', 'commit'].indexOf(replacedAfter) + 1));
+  }
+});
+
+test('attachment metadata from a replaced account never starts content recovery', async () => {
+  const { context, account, record } = fixture('/never-written');
+  const calls = [];
+  context.fetchAsideAPIAuthenticatedRequest = async (_account, route) => { calls.push(route); account.incarnationId = 'replacement-instance'; return Response.json(record); };
+  await assert.rejects(context.auxCloudRestoreAttachment(1, { id: 'session-one' }, 'attachments/file.txt'), /Account changed/);
+  assert.equal(calls.length, 1);
+});
+
+test('account replacement during session-root preparation leaves attachment data unwritten', async () => {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), 'aux-attachment-account-change-'));
+  try {
+    const { context, account } = fixture(root);
+    context.getSessionStorageDir = () => { account.incarnationId = 'replacement-instance'; return root; };
+    await assert.rejects(context.auxCloudRestoreAttachment(1, { id: 'session-one' }, 'attachments/file.txt'), /Account changed/);
+    assert.deepEqual(await fs.readdir(root), []);
+  } finally { await fs.rm(root, { recursive: true, force: true }); }
+});

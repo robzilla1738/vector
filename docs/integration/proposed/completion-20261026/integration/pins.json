@@ -1,0 +1,14 @@
+[
+  {
+    "file": "index.mjs",
+    "inputSha256": "48af998738fb6d2fc30cb8d5b2e9de03cb04ab7d8563ebdaa5fe8100944fc514",
+    "outputSha256": "8e501d1d1dcf1acdcf24a5f82b76abe65dc9fc11e2a5f69a8ea2e79b299e1515",
+    "anchors": 7
+  },
+  {
+    "file": "aux-native-entry.mjs",
+    "inputSha256": "f355833cb607963a65ca3108e7ae19ea7ca60192a9f3d8e2644a3c12ec49c808",
+    "outputSha256": "904116fa4c1f14cc20668737d37c4649e633de32fb164374a9b84a40c99f0b0b",
+    "anchors": 7
+  }
+]

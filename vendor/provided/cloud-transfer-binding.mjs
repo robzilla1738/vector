@@ -1,0 +1,9 @@
+// Bind refresh callbacks before they can send a body with replacement credentials.
+export function bindCloudRequestAccount(source) {
+  const find = 'async function fetchWithAccessTokenRefresh(Cn,ei,ti){let ni=await getValidAccessToken(Cn),ri=ei.split(`?`)[0];try{return await ti(ni)}catch(ei){if(!ni||!isAccessTokenRefreshError(ei))throw ei;logger.warn(`[AsideAPI] Access token rejected; forcing token refresh`,{accountId:Cn,path:ri,error:ei});let ii=await getValidAccessToken(Cn,{bypassRefreshCooldown:!0,forceRefresh:!0});if(!ii)throw logger.warn(`[AsideAPI] Forced token refresh did not return a token`,{accountId:Cn,path:ri}),ei;return ti(ii)}}';
+  const branding = source.includes(find) ? 'AsideAPI' : 'AuxAPI';
+  const before = find.replaceAll('AsideAPI', branding);
+  if (source.split(before).length !== 2) throw Error('Cloud request account binding: expected one supplied refresh function.');
+  const after = `async function fetchWithAccessTokenRefresh(Cn,ei,ti){const identity=auxCloudTransferIdentity(Cn),check=()=>{if(auxCloudTransferIdentity(Cn)!==identity)throw Error('Account changed during cloud request.');};let ni=await getValidAccessToken(Cn),ri=ei.split(\`?\`)[0];check();try{const result=await ti(ni);check();return result}catch(ei){check();if(!ni||!isAccessTokenRefreshError(ei))throw ei;logger.warn(\`[${branding}] Access token rejected; forcing token refresh\`,{accountId:Cn,path:ri,error:ei});let ii=await getValidAccessToken(Cn,{bypassRefreshCooldown:!0,forceRefresh:!0});check();if(!ii)throw logger.warn(\`[${branding}] Forced token refresh did not return a token\`,{accountId:Cn,path:ri}),ei;const result=await ti(ii);check();return result}}`;
+  return { text: source.replace(before, () => after), anchors: [{ find: before, replace: after, count: 1, kind: 'integration' }] };
+}

@@ -2,19 +2,26 @@
 export const cloudAttachmentHelpers = String.raw`
 var auxCloudAttachmentRestores;
 function auxCloudStoredAttachmentPath(value){if(typeof value!=='string')return null;const path=value.replace(/^\.\//,'');return/^attachments\/[^/\\\0]+$/.test(path)&&!['.','..'].includes(path.slice(12))?path:null;}
-function auxCloudAttachmentIdentity(accountId,session){const account=AccountRegistry.getAccount(accountId),auth=AccountRegistry.getSession(accountId);return isSyncEnabled(accountId)&&!session.incognito&&!session.ephemeral&&account?.userId&&auth?JSON.stringify([accountId,account.userId,account.createdAt,session.id]):null;}
+function auxCloudTransferIdentity(accountId){const account=AccountRegistry.getAccount(accountId),auth=AccountRegistry.getSession(accountId);return account?.userId&&auth?JSON.stringify([accountId,account.incarnationId,account.userId,account.createdAt]):null;}
+function auxCloudCheckTransferIdentity(accountId,identity){if(!identity||auxCloudTransferIdentity(accountId)!==identity)throw Error('Account changed during cloud transfer.');}
+function auxCloudAttachmentIdentity(accountId,session){const identity=auxCloudTransferIdentity(accountId);return isSyncEnabled(accountId)&&!session.incognito&&!session.ephemeral&&identity?JSON.stringify([identity,session.id]):null;}
 function auxCloudCheckAttachmentIdentity(accountId,session,identity){if(!identity||auxCloudAttachmentIdentity(accountId,session)!==identity)throw Error('Account changed during cloud attachment transfer.');}
 async function auxCloudAttachmentJSON(accountId,route,method,body){const response=await fetchAsideAPIAuthenticatedRequest(accountId,route,{method,headers:body===void 0?void 0:{'content-type':'application/json'},body:body===void 0?void 0:JSON.stringify(body),fallbackErrorMessage:'Aux cloud attachment operation failed'});return response.json();}
-async function auxCloudUploadBytes(accountId,bytes,name,mimeType,purpose){
+async function auxCloudUploadBytes(accountId,bytes,name,mimeType,purpose,identity=auxCloudTransferIdentity(accountId)){
+  auxCloudCheckTransferIdentity(accountId,identity);
   if(bytes.length>100*1024*1024)throw Error('Cloud attachment exceeds 100 MiB.');
   const intent=await auxCloudAttachmentJSON(accountId,'/attachments/intents','POST',{name,contentType:mimeType,size:bytes.length,sha256:sha256Hex(bytes),purpose});
+  auxCloudCheckTransferIdentity(accountId,identity);
   if(typeof intent.id!=='string'||!/^[a-f0-9-]{36}$/.test(intent.id))throw Error('Invalid cloud attachment intent.');
   const upload=await auxCloudAttachmentJSON(accountId,'/attachments/'+intent.id+'/upload-url','POST');
+  auxCloudCheckTransferIdentity(accountId,identity);
   const url=new URL(upload.url);
   if(url.protocol!=='https:'||url.username||url.password||!(url.hostname==='blob.vercel-storage.com'||url.hostname.endsWith('.blob.vercel-storage.com')))throw Error('Invalid private attachment upload origin.');
   const response=await fetch(url,{method:'PUT',headers:{'content-type':mimeType},body:bytes,redirect:'error',signal:AbortSignal.timeout(120000)});
   if(!response.ok)throw Error('Private attachment upload failed ('+response.status+').');
+  auxCloudCheckTransferIdentity(accountId,identity);
   const committed=await auxCloudAttachmentJSON(accountId,'/attachments/'+intent.id+'/commit','POST');
+  auxCloudCheckTransferIdentity(accountId,identity);
   if(committed.id!==intent.id||committed.sha256!==sha256Hex(bytes)||committed.size!==bytes.length)throw Error('Private attachment commit failed integrity verification.');
   return committed;
 }
@@ -36,17 +43,21 @@ async function auxCloudRestoreAttachment(accountId,session,requestedPath){
   const operation=(async()=>{
     let record;try{record=await auxCloudAttachmentJSON(accountId,'/attachment-sessions/'+encodeURIComponent(typeof auxCloudSessionBindingId==='function'?auxCloudSessionBindingId(accountId,session.id):session.id)+'/files?path='+encodeURIComponent(localPath),'GET');}catch(error){if(error instanceof AsideApiError&&error.status===404)return null;throw error;}
     if(record.localPath!==localPath||typeof record.id!=='string'||!/^[a-f0-9-]{36}$/.test(record.id)||typeof record.attachmentId!=='string'||!Number.isSafeInteger(record.size)||record.size<0||record.size>100*1024*1024||!/^[a-f0-9]{64}$/.test(record.sha256))throw Error('Invalid private attachment backup metadata.');
+    auxCloudCheckAttachmentIdentity(accountId,session,identity);
     const response=await fetchAsideAPIAuthenticatedRequest(accountId,'/attachments/'+record.id+'/content',{method:'GET',timeoutMs:120000,fallbackErrorMessage:'Failed to recover private attachment'}),reader=response.body?.getReader(),chunks=[];let size=0;if(!reader)throw Error('Private attachment body missing.');
     try{for(;;){const next=await reader.read();if(next.done)break;size+=next.value.byteLength;if(size>record.size){await reader.cancel();throw Error('Private attachment exceeds declared size.');}chunks.push(Buffer.from(next.value));}}finally{reader.releaseLock();}
     const bytes=Buffer.concat(chunks);if(size!==record.size||sha256Hex(bytes)!==record.sha256)throw Error('Private attachment recovery integrity check failed.');
     auxCloudCheckAttachmentIdentity(accountId,session,identity);
     // Reuse the supplied authorized attachment writer, which chooses a safe basename and
     // creates exclusively. No server path is passed as a filesystem destination.
-    const fs=await import('node:fs/promises'),paths=await import('node:path'),root=getSessionStorageDir(session,accountId);
+    const fs=await import('node:fs/promises'),paths=await import('node:path');
+    auxCloudCheckAttachmentIdentity(accountId,session,identity);
+    const root=getSessionStorageDir(session,accountId);
     const rootStat=await fs.lstat(root);if(rootStat.isSymbolicLink()||!rootStat.isDirectory())throw Error('Attachment recovery requires an existing real session directory.');
     const directory=paths.join(root,'attachments');let directoryStat;try{directoryStat=await fs.lstat(directory);}catch(error){if(error.code!=='ENOENT')throw error;}
     if(directoryStat&&(directoryStat.isSymbolicLink()||!directoryStat.isDirectory()))throw Error('Attachment recovery refuses redirected attachment directories.');
     if(directoryStat){const realRoot=await fs.realpath(root),realDirectory=await fs.realpath(directory);if(paths.dirname(realDirectory)!==realRoot)throw Error('Attachment recovery escapes the session directory.');}
+    auxCloudCheckAttachmentIdentity(accountId,session,identity);
     const restored=await prepareFileAttachment(root,{id:record.attachmentId,type:'file',name:localPath.slice(12),mimeType:record.mimeType||'application/octet-stream',data:bytes.toString('base64')});
     auxCloudCheckAttachmentIdentity(accountId,session,identity);
     return restored.path;
@@ -57,7 +68,9 @@ async function auxCloudForgetAttachment(accountId,session,requestedPath){const i
 async function auxCloudPublishLargeSession(accountId,session,messages){
   const body={sourceSessionId:session.id,title:session.title?.trim()||'Untitled session',messages:toSharedSessionMessages(messages)},bytes=Buffer.from(JSON.stringify(body));
   if(bytes.length>50000000)throw Error('Shared transcript exceeds 50 MB.');
-  const result=await auxCloudUploadBytes(accountId,bytes,'shared-session.json','application/json','share');
+  const identity=auxCloudTransferIdentity(accountId);
+  const result=await auxCloudUploadBytes(accountId,bytes,'shared-session.json','application/json','share',identity);
+  auxCloudCheckTransferIdentity(accountId,identity);
   const shared=sharedSessionLinkSchema.parse(result.share);return toSharedSessionLink(shared.id);
 }
 `;

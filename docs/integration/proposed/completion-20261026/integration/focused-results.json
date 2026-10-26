@@ -1,0 +1,14 @@
+{
+  "format": "aux.cloud-transfer-focused-results.v1",
+  "date": "2026-10-26",
+  "command": "node --test vendor/provided/cloud-attachment-adapter.test.mjs vendor/provided/cloud-session-adapter.test.mjs vendor/provided/cloud-transfer-binding.test.mjs vendor/provided/cloud-desktop-composition.test.mjs",
+  "tests": 20,
+  "passed": 20,
+  "failed": 0,
+  "providerRequests": false,
+  "productExecuted": false,
+  "cloudMutated": false,
+  "ownerStateAccessed": false,
+  "acceptedAppChanged": false,
+  "limit": "Focused source fixtures, not packaged runtime or real service acceptance."
+}

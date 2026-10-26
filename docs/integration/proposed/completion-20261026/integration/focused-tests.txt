@@ -1,0 +1,32 @@
+✔ attachment and large-share patch count-checks the actual supplied daemon (32.0945ms)
+(node:75408) ExperimentalWarning: vm.USE_MAIN_CONTEXT_DEFAULT_LOADER is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ cloud restore uses supplied attachment writer under an existing session root (32.011584ms)
+✔ restore rejects redirected directories and corrupt content before any file write (7.308042ms)
+✔ incognito and ephemeral sessions never trigger cloud restore (0.787334ms)
+✔ large-share transfer uses scoped signed PUT without forwarding account authorization (7.311375ms)
+✔ upload stops at each account-replacement boundary before the next side effect (4.118625ms)
+✔ attachment metadata from a replaced account never starts content recovery (0.616541ms)
+✔ account replacement during session-root preparation leaves attachment data unwritten (8.5115ms)
+✔ complete actual shipped daemon composition preserves supplied replacement tokens and parses (794.631708ms)
+✔ session patch pins Store exports and both supplied discovery callers (40.87475ms)
+(node:75410) ExperimentalWarning: vm.USE_MAIN_CONTEXT_DEFAULT_LOADER is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ two-device encrypted snapshot restores original JSONL/turn projections with local authority (77.205333ms)
+✔ active or locally changed work is never overwritten during discovery (7.179209ms)
+✔ restoration rejects orphan directories, symlinks and malformed message offsets (10.591167ms)
+✔ SQLite commit failure rolls the original JSONL file back without losing prior projections (53.121083ms)
+✔ late projects and parents attach only to unchanged inactive historical sessions (49.598208ms)
+✔ pending deletion first verifies a newer encrypted conflict copy and preserves another racing update (16.289209ms)
+✔ restart checkpoint rolls back a file-only replacement and refuses a later local edit (46.784458ms)
+✔ actual pinned1852 JSONL writer and turn reducer restore historical content with local authority (43.857417ms)
+✔ refresh callback stays bound through initial token lookup and forced refresh (2.20225ms)
+✔ same-account token rotation retains one retry and refuses duplicate transformation (1.501458ms)
+ℹ tests 20
+ℹ suites 0
+ℹ pass 20
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 946.54225
