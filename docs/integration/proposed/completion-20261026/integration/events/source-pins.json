@@ -1,0 +1,55 @@
+{
+  "format": "aux.events-poll-source.v1",
+  "inputSha256": [
+    "48af998738fb6d2fc30cb8d5b2e9de03cb04ab7d8563ebdaa5fe8100944fc514",
+    "f355833cb607963a65ca3108e7ae19ea7ca60192a9f3d8e2644a3c12ec49c808",
+    "62469726c5629983c379faae562d8317c53d79848fe3f09cd945e3ff95ea5d47",
+    "8406b82b2c2ae73312e0d81e18392f2d4c91bc1df497b73eefbdc8fba04189bb",
+    "4aa78d2606963d854849629dba91a2f418f6f347b09f45d3f9cc9dd3000409b7",
+    "f3a8c02127d31b5c09c2f83b54dbfc1f789c7cfb7125ec0993dad31b18f73737"
+  ],
+  "rules": [
+    {
+      "find": "EventsClient=class{options;#e=/* @__PURE__ */ new Set;#t;#n=!1;#r=0;#i=0;#a=-1/0;#o;#s;#c;#l;constructor(Cn){this.options=Cn}subscribe(Cn,ei){let ti={topics:Cn,listener:ei};return this.#e.add(ti),this.#f(),()=>{this.#e.delete(ti),this.#f()}}start(){this.#n||(this.#n=!0,this.#u(Math.random()*1e4))}stop(){this.#n=!1,this.#r++,clearTimeout(this.#o),this.#d(),this.#i=0,this.#a=-1/0}reconnect(){this.#n&&this.#t?.readyState!==1&&(this.#r++,this.#d(),this.#u(Math.random()*1e4))}#u(Cn){clearTimeout(this.#o),this.#o=setTimeout(()=>void this.#p(),Cn)}#d(){clearTimeout(this.#s),clearTimeout(this.#l),clearInterval(this.#c);let Cn=this.#t;this.#t=void 0,Cn&&(Cn.onopen=Cn.onmessage=Cn.onclose=Cn.onerror=null,Cn.close())}#f(){this.#t?.readyState===1&&this.#t.send(JSON.stringify({type:`subscribe`,topics:[...new Set([...this.#e].flatMap(Cn=>Cn.topics))]}))}async#p(){if(!this.#n)return;let Cn=++this.#r,ei=0,ti=Date.now(),ni=()=>this.#n&&this.#r===Cn,ri=Cn=>{if(!ni())return;this.#r++,this.#d(),ei&&Date.now()-ei>=3e4&&(this.#i=0);let ti=Math.min(6e4,1e3*2**Math.min(this.#i++,6));this.#u(ti/2+Math.random()*ti/2),Cn&&this.options.onError?.(Cn)};this.#s=setTimeout(()=>ri(/* @__PURE__ */ Error(`Events connection timed out`)),15e3);try{let Cn=this.#i>0&&Date.now()-this.#a>=6e4;Cn&&(this.#a=Date.now());let ii=await this.options.getAccessToken(Cn);if(!ni())return;let ai=new URL(`/events`,this.options.baseUrl);ai.protocol=ai.protocol===`https:`?`wss:`:`ws:`;let oi=new WebSocket(ai,[EVENTS_PROTOCOL,`bearer.${ii}`]);this.#t=oi,oi.onopen=()=>{if(ni())try{this.#f()}catch{ri()}},oi.onerror=()=>ri(/* @__PURE__ */ Error(`Events connection failed`)),oi.onclose=()=>ri(),oi.onmessage=({data:Cn})=>{if(!ni()||typeof Cn!=`string`)return;if(Cn===`{\"type\":\"pong\"}`){ti=Date.now();return}let ii;try{ii=eventsServerFrameSchema.safeParse(JSON.parse(Cn))}catch{return ri(/* @__PURE__ */ Error(`Invalid events frame`))}if(!ii.success)return ri(/* @__PURE__ */ Error(`Invalid events frame`));let ai=ii.data;if(ai.type===`ready`){if(ei)return;ei=Date.now(),ti=ei,clearTimeout(this.#s),this.#l=setTimeout(()=>ri(),Math.max(1e3,ai.expiresAt-Date.now()-5e3-Math.random()*15e3)),this.#c=setInterval(()=>{if(Date.now()-ti>6e4)return ri(/* @__PURE__ */ Error(`Events heartbeat timed out`));try{oi.send(EVENTS_PING)}catch{ri()}},25e3),this.options.onReady?.();return}for(let{topics:Cn,listener:ei}of this.#e)if(Cn.includes(eventTopic(ai.event)))try{ei(ai.event)}catch(Cn){this.options.onError?.(Cn instanceof Error?Cn:Error(String(Cn)))}}}catch(Cn){ri(Cn instanceof Error?Cn:Error(String(Cn)))}}}",
+      "replace": "EventsClient=auxCreateEventPollClientClass()",
+      "count": 1,
+      "scope": "replace unsupported WebSocket client with paired bounded polling"
+    },
+    {
+      "find": "EVENTS_PROTOCOL=`aside-events`",
+      "replace": "EVENTS_PROTOCOL=`aux-events.poll.v1`",
+      "count": 1,
+      "scope": "paired versioned Aux event transport"
+    },
+    {
+      "find": "new EventsClient({baseUrl:AUX_API_BASE_URL,getAccessToken:async ei=>{if(!ii())",
+      "replace": "new EventsClient({baseUrl:AUX_API_BASE_URL,isCurrent:ii,getAccessToken:async ei=>{if(!ii())",
+      "count": 1,
+      "scope": "retain exact originating account incarnation"
+    },
+    {
+      "find": "pi.subscribe([`account`,`billing`,`devices`,`user-settings`,`drive`,`routines`],fi)",
+      "replace": "pi.subscribe([`account`,`billing`,`devices`,`user-settings`,`drive`,`routines`,`sessions`],fi)",
+      "count": 1,
+      "scope": "subscribe actual session snapshot updates"
+    },
+    {
+      "find": "case`user-settings.updated`:di(`sync`)",
+      "replace": "case`user-settings.updated`:di(`sync`);break;case`routines.invalidated`:di(`routines`);break;case`sessions.changed`:di(`sessions`)",
+      "count": 1,
+      "scope": "route snapshot invalidations through supplied scheduler"
+    },
+    {
+      "find": "case`sync`:{let ei=await getRemoteUserSettings(Cn);",
+      "replace": "case`sessions`:{if(!isSyncEnabled(Cn))break;const state=await auxCloudSessionState(Cn);if(!ii())return;state.queue=state.queue.catch(()=>{}).then(()=>ii()?auxCloudDiscoverSessions(Cn):void 0);await state.queue;break}case`routines`:await syncRoutines(Cn,ii,!1);break;case`sync`:{let ei=await getRemoteUserSettings(Cn);",
+      "count": 1,
+      "scope": "serialize sessions and reconcile routines through existing account owners"
+    },
+    {
+      "find": "try{await ui(ei),ei.startsWith(`routine:`)",
+      "replace": "try{await auxRunEventRefresh(()=>ui(ei)),ei.startsWith(`routine:`)",
+      "count": 1,
+      "scope": "retain actual cache-refresh task until physical awaited settlement"
+    }
+  ]
+}

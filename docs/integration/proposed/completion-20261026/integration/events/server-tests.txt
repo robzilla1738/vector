@@ -1,0 +1,11 @@
+✔ actual current-schema invalidation snapshots isolate owners and detect edits, deletes, sessions and settings (1293.479833ms)
+✔ event receiver rejects unauthenticated, unknown, duplicate and malformed topics/cursors before storage (9.764083ms)
+✔ actual routine-v2 routes retain owner/device/revision boundaries and preserve legacy records (1355.041125ms)
+ℹ tests 3
+ℹ suites 0
+ℹ pass 3
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1976.729583

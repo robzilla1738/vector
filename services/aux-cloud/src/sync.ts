@@ -42,7 +42,6 @@ const sha = z.string().regex(/^[a-f0-9]{64}$/);
 const path = z.string().min(1).max(1024).refine(value => !value.startsWith('/') && !/[\\\0]/.test(value) && value.split('/').every(part => part !== '' && part !== '.' && part !== '..'), 'Invalid logical path');
 const manifest = z.object({ formatVersion: z.literal(1), files: z.array(z.object({ path, sha256: sha, size: z.number().int().min(0).max(MAX_PLAINTEXT), objectSha256: sha, objectSize: z.number().int().min(0).max(MAX_OBJECT), encryption: z.literal('aes-256-gcm'), generation: z.number().int().nonnegative() }).strict()).max(1000) }).strict().refine(value => new Set(value.files.map(file => file.path)).size === value.files.length, 'Duplicate logical path');
 const project = z.object({ id, name: z.string().min(1).max(500), icon: z.string().min(1).max(500), color: z.string().min(1).max(100), workspaceKind: z.enum(['managed', 'external']), archivedAt: iso.nullable(), createdAt: iso, updatedAt: iso }).strict();
-const routine = z.object({ id, projectId: id.nullable(), name: z.string().min(1).max(500), prompt: z.string().max(100_000), kind: z.enum(['cron', 'heartbeat']), triggerKind: z.enum(['schedule', 'event']), eventFilter: z.unknown().optional(), expiresAt: z.string().max(100).optional(), state: z.enum(['active', 'draft', 'dismissed']), source: z.enum(['manual', 'suggestion']), scheduleKind: z.enum(['once', 'recurring']), rrule: z.string().max(2000), runAt: z.string().max(100).optional(), timezone: z.string().min(1).max(100), model: z.unknown().optional(), permissionMode: z.string().max(100).optional(), runtimeConfig: z.unknown().optional(), pausedAt: iso.optional(), pausedBy: z.enum(['user', 'system']).optional(), pauseReason: z.string().max(2000).optional(), deletedAt: iso.nullable().optional(), suggestionReason: z.string().max(2000).optional(), dismissedAt: iso.optional(), createdAt: iso, updatedAt: iso }).strict();
 
 function fail(status: 400 | 403 | 404 | 409 | 412 | 413 | 428 | 503, code: string, message: string): never {
   throw new HTTPException(status, { res: Response.json({ error: { code, message } }, { status }) });
@@ -142,7 +141,7 @@ syncRoutes.get('/sync/agent-files/objects/:hash', async c => {
 syncRoutes.put('/sync/agent-files/cookies', c => c.json({ error: { code: 'ENCRYPTED_SYNC_REQUIRED', message: 'Cookie sync is disabled until the desktop supplies an authenticated encrypted envelope.' } }, 403));
 syncRoutes.delete('/sync/agent-files/cookies', c => c.json({ ok: true }));
 
-for (const [plural, kind, schema] of [['projects', 'project', project], ['routines', 'routine', routine]] as const) {
+for (const [plural, kind, schema] of [['projects', 'project', project]] as const) {
   syncRoutes.get(`/${plural}`, async c => {
     const rows = await sql`SELECT payload FROM sync_entities WHERE user_id = ${c.get('user').id} AND kind = ${kind} ORDER BY entity_id`;
     return c.json(rows.map(row => row.payload));
@@ -165,7 +164,7 @@ syncRoutes.put('/users/settings', async c => {
 });
 syncRoutes.get('/users/settings', async c => {
   const [row] = await sql`SELECT payload FROM sync_entities WHERE user_id = ${c.get('user').id} AND kind = 'settings' AND entity_id = 'settings'`;
-  return c.json(row?.payload ?? {});
+  return c.json(row?.payload ?? {sync:false});
 });
 
 function wrappingKey() {

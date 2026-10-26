@@ -1,0 +1,30 @@
+{
+  "format": "aux.events-poll-source-check.v1",
+  "output": "/var/folders/98/j36zgdnd0h507whjl16gxl780000gp/T/aux-event-poll-source-Q1V4Wa",
+  "files": [
+    {
+      "file": "index.mjs",
+      "inputSha256": "4aa78d2606963d854849629dba91a2f418f6f347b09f45d3f9cc9dd3000409b7",
+      "outputSha256": "c21f05233d29e48733a198f366ade71892dbc86da94226f90c02dc22485e3230",
+      "anchors": 8
+    },
+    {
+      "file": "aux-native-entry.mjs",
+      "inputSha256": "f3a8c02127d31b5c09c2f83b54dbfc1f789c7cfb7125ec0993dad31b18f73737",
+      "outputSha256": "422b10a3c6ffb4e7fa0af3112dc443f561e2e17bdb5c10cec500e929d823dd90",
+      "anchors": 8
+    }
+  ],
+  "sourceOrder": [
+    "A51",
+    "cloud-transfer-account-binding",
+    "final-runtime-identity",
+    "event-polling"
+  ],
+  "syntax": "Both complete leaves parsed by client-tests.txt",
+  "serviceTypecheck": true,
+  "cloudRequests": false,
+  "providerRequests": false,
+  "appChanged": false,
+  "signing": false
+}

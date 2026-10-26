@@ -17,7 +17,7 @@ class AuthIdentityError extends Error {}
 const ACCESS_SECONDS = 900;
 const REFRESH_DAYS = 30;
 const emailSchema = z.string().trim().email().max(254).transform(v => v.toLowerCase());
-const deviceSchema = z.object({
+export const deviceSchema = z.object({
   appVersion: z.string().max(80).optional(), deviceName: z.string().max(200).optional(),
   platform: z.enum(['macos','windows','ios','android','cli','web']),
   installationScheme: z.enum(['p256_v1','pq_v1']),

@@ -13,6 +13,8 @@ import { maintenanceRoutes } from './maintenance';
 import { sessionSyncRoutes } from './session-sync';
 import { drive1852Routes } from './drive-1852';
 import { readinessRoutes } from './readiness';
+import { eventsRoutes } from './events';
+import { routines1852Routes } from './routines-1852';
 
 export const app=new Hono<{Variables:AuthVariables}>().basePath('/api/v1');
 app.use('*',bodyLimit({maxSize:4*1024*1024,onError:c=>c.json({error:'Use a private upload for payloads larger than 4 MiB.'},413)}));
@@ -35,7 +37,9 @@ app.get('/ai/models/v2',c=>inferenceRoutes.fetch(new Request(new URL('/ai/models
 app.get('/ai/model-catalog/v1/providers/:providerId',c=>c.json({error:'No catalog override.'},404));
 app.use('*',requireUser);
 app.route('/profile',profileRoutes);
+app.route('/',eventsRoutes);
 app.route('/billing',billingRoutes);
+app.route('/',routines1852Routes);
 app.route('/',syncRoutes);
 app.route('/',syncRecoveryRoutes);
 app.route('/',sessionSyncRoutes);
