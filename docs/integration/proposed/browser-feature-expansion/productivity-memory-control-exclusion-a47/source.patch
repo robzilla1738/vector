@@ -1,0 +1,74 @@
+--- a/AuxSignedFreshBootstrapPolicyLoader.swift
++++ b/AuxSignedFreshBootstrapPolicyLoader.swift
+@@ -885,6 +885,20 @@
+         let policy = try load()
+         guard policy.contents.role == .daemon, policy.contents.embeddedDaemon,
+               policy.contents.includesRebuiltPtyModule else { throw AuxFreshBootstrapPolicyError.policy }
++        return try authenticatedPrivateParent(policy)
++    }
++#if AUX_BROWSER_ONLY_NATIVE_STARTUP
++    fileprivate static func memoryControlParent() throws -> String {
++        let policy = try load()
++        guard policy.contents.role == .daemon, policy.contents.embeddedDaemon,
++              let location = policy.contents.nativeUserLocation,
++              policy.contents.canonicalPrivateParent == location.controlRoot else {
++            throw AuxFreshBootstrapPolicyError.policy
++        }
++        return try authenticatedPrivateParent(policy)
++    }
++#endif
++    private static func authenticatedPrivateParent(_ policy: AuxAuthenticatedFreshBootstrapPolicy) throws -> String {
+         let path = policy.contents.canonicalPrivateParent
+         guard try canonical(path) == path else { throw AuxFreshBootstrapPolicyError.path }
+         let fd = open(path, O_RDONLY | O_DIRECTORY | O_NOFOLLOW | O_CLOEXEC | O_NONBLOCK)
+@@ -905,6 +919,30 @@
+         try sameParent()
+         return path
+     }
++}
++// Only the finite memory owner calls this metadata producer. It grants no exec,
++// PTY, account or path-selection capability; the actual owner brackets its use.
++@_cdecl("AuxCopyAuthenticatedMemoryControlParent")
++func AuxCopyAuthenticatedMemoryControlParent(_ output: UnsafeMutablePointer<CChar>?,
++                                            _ capacity: UInt32,
++                                            _ count: UnsafeMutablePointer<UInt32>?) -> Int32 {
++    guard getpid() == auxImagePreparationProcess, let count else { return -1 }
++    count.pointee = 0
++    guard let output, capacity > 1, capacity <= 4096 else { return -1 }
++    output.pointee = 0
++#if AUX_BROWSER_ONLY_NATIVE_STARTUP
++    auxImagePreparationLock.lock(); let prepared = auxImagePreparationComplete; auxImagePreparationLock.unlock()
++    guard prepared else { return -1 }
++    do {
++        let bytes = try AuxSignedFreshBootstrapPolicyLoader.memoryControlParent().utf8CString
++        guard bytes.count > 1, bytes.count <= Int(capacity), bytes.count <= 4096 else { return -1 }
++        for index in bytes.indices { output[index] = bytes[index] }
++        count.pointee = UInt32(bytes.count)
++        return 0
++    } catch { return -1 }
++#else
++    return -1
++#endif
+ }
+ @_cdecl("AuxCopyAuthenticatedExecPrivateParent")
+ func AuxCopyAuthenticatedExecPrivateParent(_ output: UnsafeMutablePointer<CChar>?,
+--- a/AuxMemoryMainOwner.inc
++++ b/AuxMemoryMainOwner.inc
+@@ -1,5 +1,8 @@
+ // Include at global scope after the real host's private Worker definitions.
+ #include "AuxRegisteredMemoryAccountOwner.h"
++// Native-only sealed control-root metadata; this is not a launch admission API.
++extern "C" int32_t AuxCopyAuthenticatedMemoryControlParent(
++    char* output, uint32_t capacity, uint32_t* count_including_nul);
+ struct AuxMemoryNativeOwner::State {
+   const pid_t process = getpid();
+   std::shared_ptr<Worker> worker;
+@@ -81,7 +84,7 @@
+       *descriptor >= 0 && *generation && Current();
+ }
+ bool AuxMemoryNativeOwner::CopyPrivateParent(char* output, uint32_t capacity, uint32_t* count) const {
+-  return Current() && AuxCopyAuthenticatedExecPrivateParent(output, capacity, count) == 0 && Current();
++  return Current() && AuxCopyAuthenticatedMemoryControlParent(output, capacity, count) == 0 && Current();
+ }
+ const void* AuxMemoryNativeOwner::WorkerKey() const { return state_->worker.get(); }
+ bool AuxMemoryNativeOwner::PrepareLaunch() {

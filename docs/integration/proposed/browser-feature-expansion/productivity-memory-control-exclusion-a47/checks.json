@@ -1,0 +1,8 @@
+{
+  "exactInputHashes": true,
+  "singleCountAnchors": 4,
+  "forwardReplay": true,
+  "reverseReplay": true,
+  "nativeCompilation": "parent-owned; not run",
+  "runtimeAcceptance": "pending actual fixed helper indexing/search/close"
+}
