@@ -6,15 +6,33 @@
     {
       "path": "chrome/browser/ui/views/frame/aux_tab_search_bubble.cc",
       "beforeSha256": "a62dc8c0383f4fad2498e576096c2a9ba105a87704d14390ad0fd1bdf90f4867",
-      "afterSha256": "d87bc73ae4c9f1a67d630da9f4228b377376456dbae810787b6c84f46a93ec56",
-      "anchors": 6
+      "afterSha256": "9add062c4f459750dc52945c2aa075560ab1c71d423bf0f0377176563e18fe4d",
+      "anchors": 8
     },
     {
       "path": "assets/tabsearch-3k_2hgil.js",
       "beforeSha256": "c9910b8c10b64f62db048a95d6f2ab003572fd9585b089ef8daa84ec1d446c25",
-      "afterSha256": "078c7e97f858cb1e6cac95592cc2f24d508062e8ba9df522377605d8811adfe9",
+      "afterSha256": "8e972848d18bb6862abdada0a3787ee38103b21c2126081f808c5c014d70ec4a",
       "anchors": 9
+    },
+    {
+      "path": "chrome/common/extensions/api/aux_browser_preferences.json",
+      "beforeSha256": "20ed9157cc2fc007f58c76e93da38208807c54dabda8702ed0799e566d4dd6ca",
+      "afterSha256": "3c4bf3c4ff38b9fd726d615c5e347fe465c48f3e87222c74684f4be188b8921b",
+      "anchors": 1
+    },
+    {
+      "path": "extensions/browser/extension_event_histogram_value.h",
+      "beforeSha256": "d18b782112708e35c53a0f04cbf454bdc1026b07ac797dd4dc88ec438acfd1d9",
+      "afterSha256": "306fa70ef50b9c1a567f4448aeba76762993e1c5bb88455e86c897a7490da04c",
+      "anchors": 1
+    },
+    {
+      "path": "tools/metrics/histograms/metadata/extensions/enums.xml",
+      "beforeSha256": "12938a6974109eecbba876ba0dfd707d279637a6712cc9b14a6ffc296e4256f0",
+      "afterSha256": "8183d534f9c5ec132546234489842cde96d1606c72f3be667885b3b058d63bcb",
+      "anchors": 1
     }
   ],
-  "anchors": 15
+  "anchors": 20
 }

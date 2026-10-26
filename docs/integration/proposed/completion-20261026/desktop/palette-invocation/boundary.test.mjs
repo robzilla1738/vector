@@ -5,3 +5,18 @@ const oldAction=state.capture(), oldSelection=state.capture(true); state.edit();
 const second=state.begin();assert(!first.current());assert(!oldAction());first.accept('a');assert(!state.allows('a'));second.accept('b');assert(state.allows('b'));assert(second.unedited());
 state.invalidate();assert(!second.current());assert(!state.allows('b'));
 console.log('PASS invocation readiness, early edits, stale completion/action and delayed selection fences');
+// Exercise the actual delivered effect, including same-process document filtering.
+const fs=await import('node:fs');
+const text=fs.readFileSync(new URL('./source/assets/tabsearch-3k_2hgil.js',import.meta.url),'utf8');
+const marker='(0,i.useLayoutEffect)(';const start=text.indexOf(marker)+marker.length;
+const callback=text.slice(start,text.indexOf(',[]);const[e,t]=',start));
+let listener,query='',calls=0,context;const pending=[];const invocation=make();
+const noop=()=>{};
+const scope={auxInvocation:{current:invocation},auxFileGuard:{current:{invalidate:noop}},auxNavBusy:{current:false},auxNavSetContext:v=>context=v,auxSetFileState:noop,auxSetProductivityReceipt:noop,auxNavSetError:noop,t:v=>query=v,a:noop,E:noop,T:{current:{get value(){return query},focus:noop,select:noop}},requestAnimationFrame:fn=>fn(),chrome:{auxBrowserPreferences:{getCommandContext:()=>{calls++;return new Promise(resolve=>pending.push(resolve))},onCommandInvocation:{addListener:fn=>listener=fn,removeListener:noop}}}};
+const cleanup=Function(...Object.keys(scope),'return ('+callback+')()')(...Object.values(scope));
+pending.shift()({success:true,paletteDocumentId:'doc-a',generation:'a',mode:'commands'});await Promise.resolve();
+query='retained';listener({documentId:'doc-b',shown:true});assert.equal(calls,1);assert.equal(query,'retained');
+listener({documentId:'doc-a',shown:true});assert.equal(calls,2);assert.equal(query,'');
+query='early input';invocation.edit();pending.shift()({success:true,paletteDocumentId:'doc-a',generation:'b',mode:'navigate',activeUrl:'https://fixture.invalid/'});await Promise.resolve();assert.equal(query,'early input');assert.equal(context.generation,'b');
+listener({documentId:'doc-b',shown:false});assert(invocation.allows('b'));listener({documentId:'doc-a',shown:false});assert(!invocation.allows('b'));cleanup();
+console.log('PASS actual effect document isolation, early navigate typing, and scoped hide');

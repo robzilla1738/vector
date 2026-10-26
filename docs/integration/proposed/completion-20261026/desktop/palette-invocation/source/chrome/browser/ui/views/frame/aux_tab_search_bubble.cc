@@ -13,6 +13,9 @@
 #include "chrome/browser/ui/aux_tab_reference_context.h"
 #include "content/public/browser/devtools_agent_host.h"
 #include "content/public/browser/render_frame_host.h"
+#include "content/public/browser/render_process_host.h"
+#include "extensions/browser/event_router.h"
+#include "extensions/browser/extension_api_frame_id_map.h"
 #include "content/public/browser/weak_document_ptr.h"
 
 #include "base/check.h"
@@ -366,10 +369,18 @@ class AuxTabSearchContentsView : public views::View {
     if (!binding || !binding->renderer_mounted()) return;
     auto* frame = contents->GetPrimaryMainFrame();
     if (!frame || !frame->IsRenderFrameLive() || contents->GetLastCommittedURL() != SearchURL()) return;
-    // Fixed internal event only: no user-derived source, authority or payload.
-    frame->ExecuteJavaScript(shown
-        ? u"window.dispatchEvent(new Event('aux-command-invocation'))"
-        : u"window.dispatchEvent(new Event('aux-command-hidden'))", {});
+    auto* router = extensions::EventRouter::Get(contents->GetBrowserContext());
+    if (!router) return;
+    base::ListValue args;
+    args.Append(base::DictValue()
+        .Set("documentId", extensions::ExtensionApiFrameIdMap::GetDocumentId(frame).ToString())
+        .Set("shown", shown));
+    auto event = std::make_unique<extensions::Event>(
+        extensions::events::AUXBROWSERPREFERENCES_ONCOMMANDINVOCATION,
+        "auxBrowserPreferences.onCommandInvocation", std::move(args), contents->GetBrowserContext());
+    event->restrict_to_dispatch_target = extensions::Event::DispatchTarget{
+        .render_process_id = frame->GetProcess()->GetID()};
+    router->DispatchEventToExtension(aux::kAgentExtensionId, std::move(event));
   }
   void BeginInvocation(AuxCommandBarMode mode,
                        std::optional<base::DictValue> proposal) {
@@ -869,10 +880,12 @@ base::DictValue GetAuxCommandContext(content::WebContents* sender) {
   auto* binding = sender ? aux::SearchBrowserBinding::FromWebContents(sender) : nullptr;
   if (!binding) return CommandFailure("Command context expired");
   binding->MarkRendererMounted();
-  if (!binding->current()) return CommandFailure("Command context expired");
+  const auto palette_document = extensions::ExtensionApiFrameIdMap::GetDocumentId(sender->GetPrimaryMainFrame()).ToString();
+  if (!binding->current()) return CommandFailure("Command context expired").Set("paletteDocumentId", palette_document);
   auto* browser = binding->browser();
   base::DictValue result;
   result.Set("success", true);
+  result.Set("paletteDocumentId", palette_document);
   result.Set("mode", CommandModeName(binding->mode()));
   result.Set("generation", binding->generation());
   result.Set("windowId", browser->GetSessionID().id());
