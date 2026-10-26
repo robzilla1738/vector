@@ -1,0 +1,49 @@
+{
+  "format": "aux.browser-startup.same-scope-repair.v1",
+  "app": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-completion-20261026-a1/Aux.app",
+  "approvedReviewSha256": "20572af30ef6613f1fc8bced01edada6d52f4b3f7c1f21dd97fb610ec2b257f2",
+  "executor": {
+    "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/integrator/startup-resume-a1/repair-framework.py",
+    "sha256": "24bf2a42ecf39df965747d119e0c1bdc78a92d39ffe2b06edd4dc85ec6307d68"
+  },
+  "signedReceipt": {
+    "path": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-completion-20261026-a1/browser-grouped-startup-split-cli-a1/receipt.json",
+    "sha256": "b404d46fa2d434a02e4b008babf560c087ba9ebc44c7d3382237406526af4512"
+  },
+  "newUnsignedFramework": {
+    "path": "/Users/rcourson/Documents/Vibe/web/out/completion-resume-20261026/Aux Framework-sidebar-files-url",
+    "sha256": "9e6d48be4e9f9a6943e0402097ad1015986f9a5e7b3dd447e70acc079bf6e9ac"
+  },
+  "replaceOnlyExecutable": "Contents/Frameworks/Aux Framework.framework/Versions/155.0.8059.85/Aux Framework",
+  "receiptDirectory": "browser-sidebar-files-url-a1",
+  "sourceEvidence": [
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/integrator/sidebar-files-repair-a1/build-receipt.json",
+      "sha256": "d9bec642fd0b8b30fd3f8c6cc0061e3b28a2b7b85baa34beab7d3150832cbce4"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/integrator/sidebar-files-repair-a1/projection.json",
+      "sha256": "b41629454c6b2e3e06538c8a9f4d51f18ba877423c5082e793f3cd3e7e5a9c88"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/desktop/recent-download-restore/source/chrome/browser/ui/aux_recent_files_service.cc",
+      "sha256": "0f6abb229821b9c8fff2f8a871a8f2ceb71ca42dd25e2f3a586cd2528d7f1e0f"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/desktop/sidebar-hover-repair/source/chrome/browser/ui/views/frame/aux_sidebar_contents_view.cc",
+      "sha256": "d6e24db4506041c2eff9e27b973952e86a37bade9b22a033d9b4c2a7b81ca449"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/desktop/sidebar-hover-repair/source/chrome/browser/ui/views/frame/aux_organization_tree_view.cc",
+      "sha256": "55adba32a3fcd550a3b64fd19ab05444e415b6fef9522c9ed24bd5db5c8980e6"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/desktop/sidebar-hover-repair/source/chrome/browser/ui/views/frame/aux_organization_window_controller.cc",
+      "sha256": "49c13d0805410d33ae6af7d31fd30daa78560c9f5ca77ef9b0fb5b3bad9a4047"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/desktop/resting-full-url/source/chrome/browser/ui/views/location_bar/location_bar_view.cc",
+      "sha256": "6aa4ae321848fdaad974f2b60a7dd6452045ea87dd242c6d9c06988b767eeec8"
+    }
+  ]
+}

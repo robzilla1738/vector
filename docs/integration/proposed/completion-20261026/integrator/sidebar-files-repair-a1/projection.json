@@ -28,7 +28,16 @@
       "afterSha256": "49c13d0805410d33ae6af7d31fd30daa78560c9f5ca77ef9b0fb5b3bad9a4047",
       "anchors": 5,
       "source": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/desktop/sidebar-hover-repair/source/chrome/browser/ui/views/frame/aux_organization_window_controller.cc"
+    },
+    {
+      "path": "chrome/browser/ui/views/location_bar/location_bar_view.cc",
+      "beforeSha256": "f4f555f87d08ae2c251cfea22782db6f6abc8d4f185b99831bde1c3b1ca2a49a",
+      "afterSha256": "6aa4ae321848fdaad974f2b60a7dd6452045ea87dd242c6d9c06988b767eeec8",
+      "anchors": 1,
+      "source": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/desktop/resting-full-url/source/chrome/browser/ui/views/location_bar/location_bar_view.cc"
     }
   ],
-  "appActivated": false
+  "appActivated": false,
+  "intermediateSidebarFilesBuildPassed": true,
+  "intermediateAppActivated": false
 }
