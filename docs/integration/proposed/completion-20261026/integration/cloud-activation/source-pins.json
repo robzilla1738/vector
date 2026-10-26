@@ -1,10 +1,10 @@
 {
   "format": "aux.cloud.activation-source-pins.v1",
-  "sourceRoot": "/Users/rcourson/Documents/Vibe/aux-completion-20261026/integration",
+  "sourceRoot": "/Users/rcourson/Documents/Vibe/web",
   "reviewedAt": "2026-10-26",
-  "sourceCommit": "e0afa3746eb2387c488fd23da5ddcc9ef997848c",
-  "serviceTree": "227fdf3b50b0722164c011bc5a34b83a6ed7d2b9",
-  "lastServiceCommit": "e0afa3746eb2387c488fd23da5ddcc9ef997848c",
+  "sourceCommit": "c58d54187499d82876b18d54d75d6dee414e0979",
+  "serviceTree": "a0251fd1925fa95a00b2bfe39d7afe4c557a9150",
+  "lastServiceCommit": "c58d54187499d82876b18d54d75d6dee414e0979",
   "serviceFiles": [
     {
       "path": "services/aux-cloud/.env.example",
@@ -43,8 +43,8 @@
     },
     {
       "path": "services/aux-cloud/app/community/page.tsx",
-      "bytes": 1568,
-      "sha256": "2301b4335dbb9219dcb53854c949627dc258815f53202facfece23a90bd9cb98"
+      "bytes": 1551,
+      "sha256": "dc8aa84ac421a14cf71a2177082bb10d75df0927bd3be646f8f3281385a967f3"
     },
     {
       "path": "services/aux-cloud/app/desktop/connect/page.tsx",
@@ -83,13 +83,13 @@
     },
     {
       "path": "services/aux-cloud/app/policy/privacy/page.tsx",
-      "bytes": 4685,
-      "sha256": "133adb57f8cee63568cdff2b771516a4251e1754ad6249bd3a5815cd9b0b0692"
+      "bytes": 4841,
+      "sha256": "7fdfb6973902eadd687d192c9763d05a435a5c51188dee6e7b8ea90138ba12f9"
     },
     {
       "path": "services/aux-cloud/app/policy/terms/page.tsx",
-      "bytes": 2829,
-      "sha256": "f307514a18e5347bdf2bb10460c75c048b99d2ee7c00b1b66588c9c26a11eaa0"
+      "bytes": 3004,
+      "sha256": "ba59a18986f44efc40cb70817dcbe834a7d144a9567bd1fa31a7b5c5bb8cfe20"
     },
     {
       "path": "services/aux-cloud/app/s/[id]/page.tsx",
