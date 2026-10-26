@@ -1,0 +1,18 @@
+{
+  "format": "aux.two-addon.local-signing-review-pins.v1",
+  "files": {
+    "README.md": "6db52b2bd329972625783cabb8f0ee1d434438b451413e4fb4d64dfcb91ec544",
+    "daemon-link-preimage.json": "1d11690faea880109ab0cf19905040154ae93afae07c0615f7c5f0f3a231a096",
+    "lifetime-build-preimage.json": "70659c56cd92ed4300b9d75018afed152111d85d1709dde7e311ecd2691268c6",
+    "policy-preimage.json": "0ea7e93e94de7f07006aa4389fa842acb61bc50a37d682941a8d2dcf8e837b65",
+    "prepare-signed-successor.py": "3a482a733017f5a74c7a7b0b4d7a2b3ffce4762b511d15bb55606a4211cb959c",
+    "review.json": "e7690ab8624742cbd504c58af42a6dc0c6d4be4f6aa5c6f5ad55d7325c27accf",
+    "source/browser-policy.swift": "08a2753ef4e562489a6e74d03c5655dc1175a562de9d059e033fe4afa7326503",
+    "source/daemon-policy.swift": "ebb3f695e41660c3d9d9a9083337845a23e8d777570cbed5088fa6e2128b2b53",
+    "source/pdf-lifetime.cc": "00cada6c718a284fe384873aa5f071b165e7b5e79f5b687b30aa22466ab95383",
+    "source/utility-lifetime.cc": "9b9051a282befd868aa08de62c037b2d8a8da787a92a89d9feadb332e0539061"
+  },
+  "signed": false,
+  "built": false,
+  "candidateChanged": false
+}

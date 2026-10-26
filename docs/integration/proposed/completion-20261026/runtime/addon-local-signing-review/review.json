@@ -1,0 +1,441 @@
+{
+  "format": "aux.two-addon.local-signing-review.v1",
+  "state": "prepared-unapproved",
+  "candidate": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-completion-20261026-a1/Aux.app",
+  "identitySha1": "47ACA5D1CFADD21CFEDC589B4DEED6E2B7A96D90",
+  "team": "9F2JXY8TCK",
+  "entitlements": null,
+  "newSignedObjects": 2,
+  "addons": [
+    {
+      "name": "aux-pdf.node",
+      "key": "pdfModule",
+      "identifier": "dev.aux.browser.pdf",
+      "input": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-completion-20261026-a1/Aux.app/Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/native/aux-pdf.node",
+      "acceptedA38Input": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-local-completion-20261025-a38/Aux.app/Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/native/aux-pdf.node",
+      "rawSha256": "ed5b4faec15d3fc3c29a97f0dd304b388844cf0bf16fad5a69a62b357a52dcc0",
+      "rawBytes": 9474752,
+      "rawPreservationTarget": "/private/tmp/aux-two-addon-local-signing-20261026-a1/raw/aux-pdf.node",
+      "derivativeTarget": "/private/tmp/aux-two-addon-local-signing-20261026-a1/signed/aux-pdf.node",
+      "copyPrecondition": "fresh review root only; create raw and signed copies from exact pinned input; never sign raw copy or original",
+      "observedCodeSignature": "Executable=/Users/rcourson/Documents/Vibe/web/out/provided-candidate-completion-20261026-a1/Aux.app/Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/native/aux-pdf.node\nIdentifier=aux_pdf_four.node\nFormat=Mach-O thin (arm64)\nCodeDirectory v=20400 size=73592 flags=0x20002(adhoc,linker-signed) hashes=2296+0 location=embedded\nVersionPlatform=1\nVersionMin=851968\nVersionSDK=1769472\nHash type=sha256 size=32\nCandidateCDHash sha256=bd8f1ec19ff07226fd132ea49ccae851a0fd0100\nCandidateCDHashFull sha256=bd8f1ec19ff07226fd132ea49ccae851a0fd0100959defa65ea00c1bc9b2b4e6\nHash choices=sha256\nCMSDigest=bd8f1ec19ff07226fd132ea49ccae851a0fd0100959defa65ea00c1bc9b2b4e6\nCMSDigestType=2\nExecutable Segment base=0\nExecutable Segment limit=7536640\nExecutable Segment flags=0x0\nPage size=4096\nCDHash=bd8f1ec19ff07226fd132ea49ccae851a0fd0100\nSignature=adhoc\nInfo.plist=not bound\nTeamIdentifier=not set\nSealed Resources=none\nInternal requirements=none\n",
+      "signCommand": [
+        "/usr/bin/codesign",
+        "--force",
+        "--sign",
+        "47ACA5D1CFADD21CFEDC589B4DEED6E2B7A96D90",
+        "--options",
+        "runtime",
+        "--timestamp=none",
+        "--identifier",
+        "dev.aux.browser.pdf",
+        "/private/tmp/aux-two-addon-local-signing-20261026-a1/signed/aux-pdf.node"
+      ],
+      "verifyCommand": [
+        "/usr/bin/codesign",
+        "--verify",
+        "--strict",
+        "-R",
+        "anchor apple generic and identifier = \"dev.aux.browser.pdf\" and certificate leaf[subject.OU] = \"9F2JXY8TCK\"",
+        "/private/tmp/aux-two-addon-local-signing-20261026-a1/signed/aux-pdf.node"
+      ],
+      "postSignSha256": null,
+      "postSignBytes": null,
+      "rawNativeCodeIdentity": {
+        "codeSignatureOffset": 9401136,
+        "maskedPrefixSha256": "599800831c72eb66a522c791db4970f26bdad0d69ffa891778c268dc881a8d58",
+        "sections": [
+          {
+            "name": "__text__TEXT",
+            "offset": 2432,
+            "bytes": 5117708,
+            "sha256": "472015faad27b5384d77d8ada1677fbbae952633e17cd5fd0dcf98295c76c7cf"
+          },
+          {
+            "name": "__stubs__TEXT",
+            "offset": 5120140,
+            "bytes": 2424,
+            "sha256": "fdd5d7f780de8925fa7084e2c13d979d930757c5388ec5b7f045af5810505c48"
+          },
+          {
+            "name": "__gcc_except_tab__TEXT",
+            "offset": 5122564,
+            "bytes": 8256,
+            "sha256": "6025e09e77363196153689fe63a67c6a914fbc53969c2770d9b346b95bb83cde"
+          },
+          {
+            "name": "__literals__TEXT",
+            "offset": 5130832,
+            "bytes": 9140,
+            "sha256": "a1b7420904eb54bf5f2b2c13830d17b9657149ef5866bdb54e038928242ede0b"
+          },
+          {
+            "name": "__cstring__TEXT",
+            "offset": 5139972,
+            "bytes": 76771,
+            "sha256": "5af45f0d695492fe7492f0e4166e7c2c20e23e7ba7412c7a72ae5f7384fc74e2"
+          },
+          {
+            "name": "__const__TEXT",
+            "offset": 5216752,
+            "bytes": 2294535,
+            "sha256": "4e2da3bf72c080247c4a2c7908e29b3c89320dfdd781161544b00516a0f589a6"
+          },
+          {
+            "name": "__ustring__TEXT",
+            "offset": 7511288,
+            "bytes": 1148,
+            "sha256": "eb0c1a7c32f5484ed4161615109d529149b124a8ff8b709ca9c814fe3e8c9e18"
+          },
+          {
+            "name": "__unwind_info__TEXT",
+            "offset": 7512436,
+            "bytes": 9856,
+            "sha256": "b7325a5ed8caf24e9d3bc6524d4e26e5c182132f2392a7793e4cebbaf4e03b46"
+          },
+          {
+            "name": "__eh_frame__TEXT",
+            "offset": 7522296,
+            "bytes": 540,
+            "sha256": "8a36a7b888cb0377352101e14a20cb7c8f18d6a239746ceb64644f37488b8d58"
+          },
+          {
+            "name": "__got__DATA_CONST",
+            "offset": 7536640,
+            "bytes": 1680,
+            "sha256": "33ec76f3730c98a11529968b899f2dcfc3d67da43796c52b75a20612b2f2566b"
+          },
+          {
+            "name": "__const__DATA_CONST",
+            "offset": 7538320,
+            "bytes": 232864,
+            "sha256": "95a0029aa5aab3a1415a22643a1037c3d2ed5943c7b9d58d2828498dd9b603cb"
+          },
+          {
+            "name": "__thread_vars__DATA",
+            "offset": 7782400,
+            "bytes": 312,
+            "sha256": "7b53a6e17e50bbc7eea9978819f36f10f3cf0280cdd8cb30f368d99e067b6919"
+          },
+          {
+            "name": "__data__DATA",
+            "offset": 7782720,
+            "bytes": 16040,
+            "sha256": "e80da1d915747ca10f878e5c5b3dfb5de1fc31d971c347e96aaf37f86c1b1cb9"
+          },
+          {
+            "name": "__thread_data__DATA",
+            "offset": 7798760,
+            "bytes": 64,
+            "sha256": "2d9949907b30d294032f69a67cd72e728d44efbad25c9d284ef567c0c9d69dd9"
+          }
+        ]
+      }
+    },
+    {
+      "name": "aux-macos-utilities.node",
+      "key": "macOSUtilitiesModule",
+      "identifier": "dev.aux.browser.macos-utilities",
+      "input": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-completion-20261026-a1/Aux.app/Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/native/aux-macos-utilities.node",
+      "acceptedA38Input": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-local-completion-20261025-a38/Aux.app/Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/native/aux-macos-utilities.node",
+      "rawSha256": "7aff7611505145a5629cf42496be506200e7c1026087b2e397057e646d220e5e",
+      "rawBytes": 393720,
+      "rawPreservationTarget": "/private/tmp/aux-two-addon-local-signing-20261026-a1/raw/aux-macos-utilities.node",
+      "derivativeTarget": "/private/tmp/aux-two-addon-local-signing-20261026-a1/signed/aux-macos-utilities.node",
+      "copyPrecondition": "fresh review root only; create raw and signed copies from exact pinned input; never sign raw copy or original",
+      "observedCodeSignature": "Executable=/Users/rcourson/Documents/Vibe/web/out/provided-candidate-completion-20261026-a1/Aux.app/Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/native/aux-macos-utilities.node\nIdentifier=aux-macos-utilities.node\nFormat=Mach-O thin (arm64)\nCodeDirectory v=20400 size=3185 flags=0x20002(adhoc,linker-signed) hashes=96+0 location=embedded\nVersionPlatform=1\nVersionMin=851968\nVersionSDK=1769472\nHash type=sha256 size=32\nCandidateCDHash sha256=c3f0916fa09b7c012764cffa77e3df67fd0ff593\nCandidateCDHashFull sha256=c3f0916fa09b7c012764cffa77e3df67fd0ff59350649c2cb8d2417855ca3cba\nHash choices=sha256\nCMSDigest=c3f0916fa09b7c012764cffa77e3df67fd0ff59350649c2cb8d2417855ca3cba\nCMSDigestType=2\nExecutable Segment base=0\nExecutable Segment limit=127208\nExecutable Segment flags=0x0\nPage size=4096\nCDHash=c3f0916fa09b7c012764cffa77e3df67fd0ff593\nSignature=adhoc\nInfo.plist=not bound\nTeamIdentifier=not set\nSealed Resources=none\nInternal requirements=none\n",
+      "signCommand": [
+        "/usr/bin/codesign",
+        "--force",
+        "--sign",
+        "47ACA5D1CFADD21CFEDC589B4DEED6E2B7A96D90",
+        "--options",
+        "runtime",
+        "--timestamp=none",
+        "--identifier",
+        "dev.aux.browser.macos-utilities",
+        "/private/tmp/aux-two-addon-local-signing-20261026-a1/signed/aux-macos-utilities.node"
+      ],
+      "verifyCommand": [
+        "/usr/bin/codesign",
+        "--verify",
+        "--strict",
+        "-R",
+        "anchor apple generic and identifier = \"dev.aux.browser.macos-utilities\" and certificate leaf[subject.OU] = \"9F2JXY8TCK\"",
+        "/private/tmp/aux-two-addon-local-signing-20261026-a1/signed/aux-macos-utilities.node"
+      ],
+      "postSignSha256": null,
+      "postSignBytes": null,
+      "rawNativeCodeIdentity": {
+        "codeSignatureOffset": 390512,
+        "maskedPrefixSha256": "a370c8b313c1ff8f31abe3fe589985c58520c501625adfa9adb9370e79f9c330",
+        "sections": [
+          {
+            "name": "__text__TEXT",
+            "offset": 5360,
+            "bytes": 127208,
+            "sha256": "a7f86411120efa898280210a4ed341b6701333da9e1e01fd7c4f709b323a9399"
+          },
+          {
+            "name": "__stubs__TEXT",
+            "offset": 132568,
+            "bytes": 2412,
+            "sha256": "bb1ad29f2463b93cb7961cd6324cb40e5b736af3bfd4febeb5daba73d5ea89f0"
+          },
+          {
+            "name": "__stub_helper__TEXT",
+            "offset": 134980,
+            "bytes": 2316,
+            "sha256": "1b5756d83c17e57129e1f84a5b06cb6daac04e20c46f7cbf13dd60f3f64d3865"
+          },
+          {
+            "name": "__objc_stubs__TEXT",
+            "offset": 137312,
+            "bytes": 1248,
+            "sha256": "ae7aee52dabdf3d949a5fa9ba2be3a17ac20763de4d2d5b0c842f82a3c4bcbc0"
+          },
+          {
+            "name": "__init_offsets__TEXT",
+            "offset": 138560,
+            "bytes": 4,
+            "sha256": "7c40e4c4ab143a00ce301ab0c0952745134f632011daa579381e039b69a2dcce"
+          },
+          {
+            "name": "__objc_methlist__TEXT",
+            "offset": 138568,
+            "bytes": 432,
+            "sha256": "6389d88441ad6f67c30597f9c5536beb5568f77505a96b1a7838eb59a3ac9e73"
+          },
+          {
+            "name": "__const__TEXT",
+            "offset": 139008,
+            "bytes": 2523,
+            "sha256": "8aa45a13d6f4bc362e4885b23d7ff70bc9686efd64e18a7eb53516e795bc597c"
+          },
+          {
+            "name": "__constg_swiftt__TEXT",
+            "offset": 141532,
+            "bytes": 880,
+            "sha256": "7f9e76e0c6a4f2c3f639842365695adb65d8cd24e90f4b077f422b2752fee06b"
+          },
+          {
+            "name": "__swift5_typeref__TEXT",
+            "offset": 142412,
+            "bytes": 746,
+            "sha256": "85609e7096675cf4a88e609975ecd67d91121ba4d597e4e6482fad59b2aa8d0b"
+          },
+          {
+            "name": "__swift5_reflstr__TEXT",
+            "offset": 143168,
+            "bytes": 429,
+            "sha256": "76ebe3e0037d64ebdf61d8c84ca877e6101b0fb8b12f777d40cacf3e149cbf61"
+          },
+          {
+            "name": "__swift5_fieldmd__TEXT",
+            "offset": 143600,
+            "bytes": 712,
+            "sha256": "f56581210c4e79b6e7b73d91aa30723602cc8136ad619cbdf7526c3b9f38952a"
+          },
+          {
+            "name": "__swift5_types__TEXT",
+            "offset": 144312,
+            "bytes": 64,
+            "sha256": "3017c4041935d784dab0cb3e161259c40038b8d4aafe152fb12bb49522048370"
+          },
+          {
+            "name": "__cstring__TEXT",
+            "offset": 144384,
+            "bytes": 1659,
+            "sha256": "f10c6c190d930800a47168e661d67a04b35276e5ea845634f3e82354c2d21aad"
+          },
+          {
+            "name": "__swift5_assocty__TEXT",
+            "offset": 146044,
+            "bytes": 288,
+            "sha256": "83cf89110b8d06051e469598f1334dfbc5d5a22c30ffd81b23171a1d49af8643"
+          },
+          {
+            "name": "__objc_classname__TEXT",
+            "offset": 146336,
+            "bytes": 287,
+            "sha256": "1a27dff29873152f4bc389af07539f123c3ca2f8d8c2907b88e5ffb79b90da7b"
+          },
+          {
+            "name": "__objc_methname__TEXT",
+            "offset": 146624,
+            "bytes": 1686,
+            "sha256": "a817c1e826af5fae64c4faa92c0f5511710d71ee67a32838c169dc4f525b7b29"
+          },
+          {
+            "name": "__swift5_proto__TEXT",
+            "offset": 148312,
+            "bytes": 88,
+            "sha256": "86d980b51e5b67c7cdaac445c5e06dfd2ecf9c3cc7f7496156456c2e1f33bb2b"
+          },
+          {
+            "name": "__swift5_capture__TEXT",
+            "offset": 148400,
+            "bytes": 164,
+            "sha256": "5aee540d462ac8b38d07eb1bc9974a0ea2ae76fa588df65ded5fc2079bc6d688"
+          },
+          {
+            "name": "__swift5_builtin__TEXT",
+            "offset": 148564,
+            "bytes": 80,
+            "sha256": "25c8b79d251011da6ce50220bd33f6425e14bef6fd00c533ae42bc8d28c1b11b"
+          },
+          {
+            "name": "__swift5_protos__TEXT",
+            "offset": 148644,
+            "bytes": 4,
+            "sha256": "b7bc9e69cfee70c82451231603db2fa7cf1d72c6f1acc7251cff423876fcf988"
+          },
+          {
+            "name": "__objc_methtype__TEXT",
+            "offset": 148656,
+            "bytes": 482,
+            "sha256": "ebbd823d55657f6f42ad4a333d3554ea792b7b108b72bf9c4a1bf77938e6883b"
+          },
+          {
+            "name": "__gcc_except_tab__TEXT",
+            "offset": 149140,
+            "bytes": 824,
+            "sha256": "a30622579257253aa7d1e3276c4587025187680bc9e9cbd0c0950e3b567631a8"
+          },
+          {
+            "name": "__unwind_info__TEXT",
+            "offset": 149964,
+            "bytes": 2808,
+            "sha256": "bb2d1b084f748c12713fafc45f1d5844ca155dd4d82b31907ead46b883fe9479"
+          },
+          {
+            "name": "__eh_frame__TEXT",
+            "offset": 152776,
+            "bytes": 912,
+            "sha256": "e9e746d882c2a524346de737c261424a75f36dacb977567deeb85f7d99e5e060"
+          },
+          {
+            "name": "__const__DATA_CONST",
+            "offset": 163840,
+            "bytes": 2400,
+            "sha256": "9ef6abb1bc13c6266a6229c91a0949436722b4d05f959680e0c7e95acc537439"
+          },
+          {
+            "name": "__objc_classlist__DATA_CONST",
+            "offset": 166240,
+            "bytes": 40,
+            "sha256": "ead5d9db3d3b2e76d7808725f55be1c0f133dc617dc315539ddbbfc1b159413f"
+          },
+          {
+            "name": "__objc_protolist__DATA_CONST",
+            "offset": 166280,
+            "bytes": 16,
+            "sha256": "bed4bbe1282b034433326202ffdda5694908ced6e3ae3b6819d8c61b7b28b955"
+          },
+          {
+            "name": "__objc_imageinfo__DATA_CONST",
+            "offset": 166296,
+            "bytes": 8,
+            "sha256": "7408fcdda372aaed9b8d62d262bd8e7ad4da66abeb61efb31e7c98020b1321ce"
+          },
+          {
+            "name": "__got__DATA_CONST",
+            "offset": 166304,
+            "bytes": 512,
+            "sha256": "22a70dd8c051e2c1c218f988b8f8025b54fa253af08c73070f833621699085fd"
+          },
+          {
+            "name": "__la_symbol_ptr__DATA",
+            "offset": 180224,
+            "bytes": 1528,
+            "sha256": "7ff0abe535ed9f1356e78e32ebce26fa1f9fa3447c800cecad034024d265d8d2"
+          },
+          {
+            "name": "__objc_const__DATA",
+            "offset": 181752,
+            "bytes": 1696,
+            "sha256": "82d8216f124d67d3e2883822ab30e8d9376d9fa80e6c7a1c2bf1cf8644dc99a4"
+          },
+          {
+            "name": "__objc_selrefs__DATA",
+            "offset": 183448,
+            "bytes": 496,
+            "sha256": "32c33a7e35daabf9802352a2b5ced21cf50cf4ad137fc2650e94adb57468477a"
+          },
+          {
+            "name": "__objc_protorefs__DATA",
+            "offset": 183944,
+            "bytes": 16,
+            "sha256": "bed4bbe1282b034433326202ffdda5694908ced6e3ae3b6819d8c61b7b28b955"
+          },
+          {
+            "name": "__objc_classrefs__DATA",
+            "offset": 183960,
+            "bytes": 104,
+            "sha256": "39f37f8d1931b3bdf767e7510dd69509fbf23af1f7654933d0a4d291cbdd4418"
+          },
+          {
+            "name": "__data__DATA",
+            "offset": 184064,
+            "bytes": 1304,
+            "sha256": "4790bd2ee002288022727a54078d8dd94349cfa51224920836a956149da31636"
+          }
+        ]
+      }
+    }
+  ],
+  "sourcePins": {
+    "daemon-policy": {
+      "originalPath": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/integrator/fresh-successor-scope/source/daemon/AuxFreshBootstrapPolicy.swift",
+      "snapshot": "source/daemon-policy.swift",
+      "sha256": "ebb3f695e41660c3d9d9a9083337845a23e8d777570cbed5088fa6e2128b2b53"
+    },
+    "browser-policy": {
+      "originalPath": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/aux/native_peer_policy/AuxFreshBootstrapPolicy.swift",
+      "snapshot": "source/browser-policy.swift",
+      "sha256": "08a2753ef4e562489a6e74d03c5655dc1175a562de9d059e033fe4afa7326503"
+    },
+    "pdf-lifetime": {
+      "originalPath": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/runtime/fixed-builtins/source/AuxLoadedPdfLifetime.cc",
+      "snapshot": "source/pdf-lifetime.cc",
+      "sha256": "00cada6c718a284fe384873aa5f071b165e7b5e79f5b687b30aa22466ab95383"
+    },
+    "utility-lifetime": {
+      "originalPath": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/runtime/fixed-builtins/source/AuxLoadedUtilityLifetime.cc",
+      "snapshot": "source/utility-lifetime.cc",
+      "sha256": "9b9051a282befd868aa08de62c037b2d8a8da787a92a89d9feadb332e0539061"
+    }
+  },
+  "descriptor": {
+    "path": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-completion-20261026-a1/Aux.app/Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/AuxFreshBootstrapPolicy.json",
+    "snapshot": "policy-preimage.json",
+    "sha256": "0ea7e93e94de7f07006aa4389fa842acb61bc50a37d682941a8d2dcf8e837b65",
+    "format": "aux.fresh.bootstrap.policy.v10"
+  },
+  "buildRecipes": {
+    "aclRepairedDaemon": {
+      "snapshot": "daemon-link-preimage.json",
+      "originalPath": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/runtime/ordinary-image-ancestor-acl-repair/daemon-link-recipe.json",
+      "sha256": "1d11690faea880109ab0cf19905040154ae93afae07c0615f7c5f0f3a231a096"
+    },
+    "lifetimeCompile": {
+      "snapshot": "lifetime-build-preimage.json",
+      "originalPath": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/runtime/fixed-builtins/daemon-recipe.json",
+      "sha256": "70659c56cd92ed4300b9d75018afed152111d85d1709dde7e311ecd2691268c6"
+    }
+  },
+  "alreadyApprovedParentRepairs": [
+    "Contents/Resources/aux/apps/daemon/Aux Daemon.app",
+    "Contents/Frameworks/Aux Framework.framework",
+    "Aux.app"
+  ],
+  "approvalScope": "Exception only for two derivative addon signatures and necessary coherent refresh/rebuild/reseal of three existing parent targets; no new entitlements, credentials, OS grants, release/notarization, profile adoption or loader relaxation.",
+  "postSignGenerator": "prepare-signed-successor.py",
+  "performed": {
+    "signing": false,
+    "nativeBuild": false,
+    "candidateMutation": false,
+    "stateInitialization": false,
+    "runtimeAcceptance": false
+  }
+}
