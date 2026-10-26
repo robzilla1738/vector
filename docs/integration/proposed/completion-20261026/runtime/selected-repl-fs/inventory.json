@@ -1,0 +1,25 @@
+{
+  "format": "aux.selected-repl-fs-method-inventory.v1",
+  "input": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-local-completion-20261025-a38/Aux.app/Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/node-development/aux-native-entry.mjs",
+  "inputSha256": "f355833cb607963a65ca3108e7ae19ea7ca60192a9f3d8e2644a3c12ec49c808",
+  "exactFunctionSha256": "fd2ff98e77bb350448a600d52c8f114337afbf5f61b09736d7b5af0ea58b44ad",
+  "methods": [
+    "readFile",
+    "writeFile",
+    "mkdir",
+    "readdir",
+    "stat",
+    "lstat",
+    "unlink",
+    "rm",
+    "rename",
+    "copyFile",
+    "access",
+    "resolvePath"
+  ],
+  "methodsWithNoOriginalNativeIO": [
+    "resolvePath"
+  ],
+  "operationOwner": "Existing selected account/session/workspace; original resolver+file.access hooks; retained per-operation descriptors attached to same selected scope, no global registry",
+  "writePublicationOwner": "Existing SelectedBrowserDownloadStage retained-parent native publication guard reused for writeFile/copyFile; no new writer/installer"
+}
