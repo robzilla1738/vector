@@ -1,0 +1,38 @@
+{
+  "format": "aux.memory.private-account-bootstrap.v1",
+  "helperInput": {
+    "path": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/browser-feature-expansion/productivity-memory-account-directories-a46/account-directories.js",
+    "sha256": "442414c92e3d5f6a882913f30824d722335f120a40802ca831585a55d1ae3b69"
+  },
+  "files": [
+    {
+      "input": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-local-completion-20261025-a38/Aux.app/Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/node-development/index.mjs",
+      "inputSha256": "e51c0d9f8df78f50b576421a9695b1572aee793d746a6c1e740432321e5c8e78",
+      "output": "/private/tmp/aux-memory-account-directories-a46-1yea2b5y/index.mjs",
+      "outputSha256": "a5f207fe3a36dd5fec2ee32a4b84eae0a49371364fa66c530d95f1af987509f6",
+      "anchors": [
+        {
+          "before": "function initAccountDirectory(Cn){mkdirSync(auxControlAccountRoot(Cn),{recursive:!0});",
+          "after": "// Actual account bootstrap only. Fixed native roots and existing account locator.\nfunction auxEnsurePrivateMemoryAccountDirectories(account) {\n if(process.platform!=='darwin')return;\n try {\n  const binding=process._linkedBinding('aux_owned_native');\n  const mode=Object.getOwnPropertyDescriptor(binding,'supervisedTasksEnabled');\n  const factory=Object.getOwnPropertyDescriptor(binding,'createAccountMemoryProcess');\n  if(!mode||mode.get||mode.set||mode.writable||mode.configurable||mode.value!==false||\n     !factory||factory.get||factory.set||factory.writable||factory.configurable||typeof factory.value!=='function')return;\n }catch{return}\n return auxBrokerBoundary().sync(()=>{\n  const roots=auxTaskRoots(),id=auxTaskAccountId(account,roots);\n  const fs=require$2('node:fs'),held=[];\n  const owner=process.geteuid();\n  function verify(entry,privateMode=true) {\n   const stat=fs.fstatSync(entry.fd),named=fs.lstatSync(entry.path),mode=stat.mode&0o7777;\n   if(!stat.isDirectory()||named.isSymbolicLink()||!named.isDirectory()||stat.uid!==owner||\n      stat.dev!==entry.dev||stat.ino!==entry.ino||named.dev!==stat.dev||named.ino!==stat.ino||\n      named.uid!==owner||named.mode!==stat.mode||fs.realpathSync(entry.path)!==entry.path||\n      (privateMode?mode!==0o700:mode!==0o700&&mode!==0o755))\n    throw Error('Aux account memory directory identity or permissions changed');\n   return stat;\n  }\n  function openDirectory(filename,parent) {\n   if(parent)verify(parent);\n   const fd=fs.openSync(filename,fs.constants.O_RDONLY|fs.constants.O_DIRECTORY|fs.constants.O_NOFOLLOW);\n   const entry={fd,path:filename};held.push(entry);\n   const stat=fs.fstatSync(fd);entry.dev=stat.dev;entry.ino=stat.ino;\n   verify(entry,!parent);\n   if(parent&&(stat.mode&0o7777)!==0o700) {\n    // Only the exact owned physical directory opened above is tightened.\n    // Unknown modes/owners/symlinks refuse before this descriptor operation.\n    fs.fchmodSync(fd,0o700);\n    fs.fsyncSync(fd);\n   }\n   verify(entry);\n   if(parent)verify(parent);\n   return entry;\n  }\n  function child(parent,name) {\n   verify(parent);\n   const filename=path.join(parent.path,name);\n   try{fs.mkdirSync(filename,{mode:0o700})}catch(error){if(error?.code!=='EEXIST')throw error}\n   return openDirectory(filename,parent);\n  }\n  try {\n   for(const root of [roots.controlHome,roots.taskHome]) {\n    const home=openDirectory(root),users=child(home,'u'),directory=child(users,String(id));\n    if(root===roots.taskHome)child(directory,'memory');\n   }\n   for(const entry of held)verify(entry);\n  }finally{\n   let closeError;\n   for(const entry of held.reverse())try{fs.closeSync(entry.fd)}catch(error){closeError??=error}\n   if(closeError)throw closeError;\n  }\n });\n}\n\nfunction initAccountDirectory(Cn){auxEnsurePrivateMemoryAccountDirectories(Cn);mkdirSync(auxControlAccountRoot(Cn),{recursive:!0});",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "input": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-local-completion-20261025-a38/Aux.app/Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/node-development/aux-native-entry.mjs",
+      "inputSha256": "e7e20d7690a886af1ac124c503a155aa4f74b999a47f743138a4fbfaf82f15a5",
+      "output": "/private/tmp/aux-memory-account-directories-a46-1yea2b5y/aux-native-entry.mjs",
+      "outputSha256": "89f61dded0775d30c4bb3f88d347219d5eda80ed1a8c1be1f69c3f44a7237317",
+      "anchors": [
+        {
+          "before": "function initAccountDirectory(Cn){mkdirSync(auxControlAccountRoot(Cn),{recursive:!0});",
+          "after": "// Actual account bootstrap only. Fixed native roots and existing account locator.\nfunction auxEnsurePrivateMemoryAccountDirectories(account) {\n if(process.platform!=='darwin')return;\n try {\n  const binding=process._linkedBinding('aux_owned_native');\n  const mode=Object.getOwnPropertyDescriptor(binding,'supervisedTasksEnabled');\n  const factory=Object.getOwnPropertyDescriptor(binding,'createAccountMemoryProcess');\n  if(!mode||mode.get||mode.set||mode.writable||mode.configurable||mode.value!==false||\n     !factory||factory.get||factory.set||factory.writable||factory.configurable||typeof factory.value!=='function')return;\n }catch{return}\n return auxBrokerBoundary().sync(()=>{\n  const roots=auxTaskRoots(),id=auxTaskAccountId(account,roots);\n  const fs=require$2('node:fs'),held=[];\n  const owner=process.geteuid();\n  function verify(entry,privateMode=true) {\n   const stat=fs.fstatSync(entry.fd),named=fs.lstatSync(entry.path),mode=stat.mode&0o7777;\n   if(!stat.isDirectory()||named.isSymbolicLink()||!named.isDirectory()||stat.uid!==owner||\n      stat.dev!==entry.dev||stat.ino!==entry.ino||named.dev!==stat.dev||named.ino!==stat.ino||\n      named.uid!==owner||named.mode!==stat.mode||fs.realpathSync(entry.path)!==entry.path||\n      (privateMode?mode!==0o700:mode!==0o700&&mode!==0o755))\n    throw Error('Aux account memory directory identity or permissions changed');\n   return stat;\n  }\n  function openDirectory(filename,parent) {\n   if(parent)verify(parent);\n   const fd=fs.openSync(filename,fs.constants.O_RDONLY|fs.constants.O_DIRECTORY|fs.constants.O_NOFOLLOW);\n   const entry={fd,path:filename};held.push(entry);\n   const stat=fs.fstatSync(fd);entry.dev=stat.dev;entry.ino=stat.ino;\n   verify(entry,!parent);\n   if(parent&&(stat.mode&0o7777)!==0o700) {\n    // Only the exact owned physical directory opened above is tightened.\n    // Unknown modes/owners/symlinks refuse before this descriptor operation.\n    fs.fchmodSync(fd,0o700);\n    fs.fsyncSync(fd);\n   }\n   verify(entry);\n   if(parent)verify(parent);\n   return entry;\n  }\n  function child(parent,name) {\n   verify(parent);\n   const filename=path.join(parent.path,name);\n   try{fs.mkdirSync(filename,{mode:0o700})}catch(error){if(error?.code!=='EEXIST')throw error}\n   return openDirectory(filename,parent);\n  }\n  try {\n   for(const root of [roots.controlHome,roots.taskHome]) {\n    const home=openDirectory(root),users=child(home,'u'),directory=child(users,String(id));\n    if(root===roots.taskHome)child(directory,'memory');\n   }\n   for(const entry of held)verify(entry);\n  }finally{\n   let closeError;\n   for(const entry of held.reverse())try{fs.closeSync(entry.fd)}catch(error){closeError??=error}\n   if(closeError)throw closeError;\n  }\n });\n}\n\nfunction initAccountDirectory(Cn){auxEnsurePrivateMemoryAccountDirectories(Cn);mkdirSync(auxControlAccountRoot(Cn),{recursive:!0});",
+          "count": 1
+        }
+      ]
+    }
+  ],
+  "nativeGuardChanged": false,
+  "ownerFilesRead": false,
+  "productExecuted": false
+}

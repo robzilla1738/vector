@@ -1,0 +1,37 @@
+{
+  "format": "aux.memory.account-directories.static-checks.v1",
+  "sourcePlanSha256": "001e3bd5ebfc3436bddd3af4067d7d898ea30d618f9331356e852d4d5d927d35",
+  "observedRootEvidence": "Parent supplied only modes/uid/physical-directory facts from the approved A38 disposable scope; no child-lane directory access.",
+  "exactReplay": {
+    "leaves": 2,
+    "anchors": 2,
+    "forwardPassed": true,
+    "reversePassed": true
+  },
+  "syntaxChecks": [
+    {
+      "path": "/private/tmp/aux-memory-account-directories-a46-1yea2b5y/index.mjs",
+      "sha256": "a5f207fe3a36dd5fec2ee32a4b84eae0a49371364fa66c530d95f1af987509f6",
+      "command": [
+        "node",
+        "--check",
+        "/private/tmp/aux-memory-account-directories-a46-1yea2b5y/index.mjs"
+      ],
+      "exitCode": 0
+    },
+    {
+      "path": "/private/tmp/aux-memory-account-directories-a46-1yea2b5y/aux-native-entry.mjs",
+      "sha256": "89f61dded0775d30c4bb3f88d347219d5eda80ed1a8c1be1f69c3f44a7237317",
+      "command": [
+        "node",
+        "--check",
+        "/private/tmp/aux-memory-account-directories-a46-1yea2b5y/aux-native-entry.mjs"
+      ],
+      "exitCode": 0
+    }
+  ],
+  "productSourceEvaluated": false,
+  "appExecuted": false,
+  "nativeGuardChanged": false,
+  "signed": false
+}
