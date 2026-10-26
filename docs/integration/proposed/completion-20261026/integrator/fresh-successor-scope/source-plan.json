@@ -1,0 +1,78 @@
+{
+  "format": "aux.completion.fresh-successor-scope.v1",
+  "files": [
+    {
+      "input": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/aux/AuxNativeParentColdLaunch.cc",
+      "path": "chrome/browser/aux/AuxNativeParentColdLaunch.cc",
+      "inputSha256": "b0ff3c4c21195f2b5c5c6973591a856adca04a76cdfefd8f94800d14567f2bce",
+      "outputSha256": "5fd1c2824f27f9e017787ba9f2be0f2aa6d9b63d4aea7bdc88679c7a126fb574",
+      "count": 9,
+      "mode": 420,
+      "oldNamespace": "Aux Browser A38 Disposable",
+      "newNamespace": "Aux Browser Completion 20261026",
+      "output": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/integrator/fresh-successor-scope/source/chrome/browser/aux/AuxNativeParentColdLaunch.cc"
+    },
+    {
+      "input": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/common/chrome_paths_mac.mm",
+      "path": "chrome/common/chrome_paths_mac.mm",
+      "inputSha256": "20de58060705aef58871fc144849080873b09ed1a89e300ceefcd02b2289bb43",
+      "outputSha256": "36f92952fe64ea7019632dd9559e9c01262efa4fbc68bd87f33336f43cabb728",
+      "count": 2,
+      "mode": 420,
+      "oldNamespace": "Aux Browser A38 Disposable",
+      "newNamespace": "Aux Browser Completion 20261026",
+      "output": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/integrator/fresh-successor-scope/source/chrome/common/chrome_paths_mac.mm"
+    },
+    {
+      "input": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/app/chrome_main_delegate.cc",
+      "path": "chrome/app/chrome_main_delegate.cc",
+      "inputSha256": "a55a7883dae7a7598fd6b7eac2958f7b02632b145dbd394854455021df8dc94e",
+      "outputSha256": "aa2a9a9506099828581059bea542b9032b6b970ab79b5144327fd890cbd5c4a1",
+      "count": 2,
+      "mode": 420,
+      "oldNamespace": "Aux Browser A38 Disposable",
+      "newNamespace": "Aux Browser Completion 20261026",
+      "output": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/integrator/fresh-successor-scope/source/chrome/app/chrome_main_delegate.cc"
+    },
+    {
+      "input": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/aux/native_peer_policy/AuxFreshBootstrapPolicy.swift",
+      "path": "chrome/browser/aux/native_peer_policy/AuxFreshBootstrapPolicy.swift",
+      "inputSha256": "d14641373135bea3584887fb68462c9b98d2819f850caff59386623d8429f430",
+      "outputSha256": "08a2753ef4e562489a6e74d03c5655dc1175a562de9d059e033fe4afa7326503",
+      "count": 2,
+      "mode": 420,
+      "oldNamespace": "Aux Browser A38 Disposable",
+      "newNamespace": "Aux Browser Completion 20261026",
+      "output": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/integrator/fresh-successor-scope/source/chrome/browser/aux/native_peer_policy/AuxFreshBootstrapPolicy.swift"
+    },
+    {
+      "input": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/runtime/fixed-builtins/source/AuxFreshBootstrapPolicy.swift",
+      "path": "daemon/AuxFreshBootstrapPolicy.swift",
+      "inputSha256": "800dd58676ce44fa64d3b5dedb5aaa396046715d56f6e1aa7c43e500590e6c99",
+      "outputSha256": "ebb3f695e41660c3d9d9a9083337845a23e8d777570cbed5088fa6e2128b2b53",
+      "count": 2,
+      "mode": 420,
+      "oldNamespace": "Aux Browser A38 Disposable",
+      "newNamespace": "Aux Browser Completion 20261026",
+      "output": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/integrator/fresh-successor-scope/source/daemon/AuxFreshBootstrapPolicy.swift"
+    }
+  ],
+  "scope": [
+    {
+      "path": "/Users/rcourson/Library/Application Support/Aux Browser Completion 20261026",
+      "exists": false
+    },
+    {
+      "path": "/Users/rcourson/Library/Caches/Aux Browser Completion 20261026",
+      "exists": false
+    }
+  ],
+  "metadataOnly": true,
+  "scopeCreated": false,
+  "sourceProjected": false,
+  "productExecuted": false,
+  "productSigned": false,
+  "existingStateRead": false,
+  "existingCredentialsMoved": false,
+  "legacyMigration": false
+}

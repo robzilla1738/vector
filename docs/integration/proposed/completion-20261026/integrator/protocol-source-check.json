@@ -1,0 +1,20 @@
+{
+  "passed": true,
+  "files": [
+    {
+      "name": "index.mjs",
+      "inputSha256": "3f31619b816fd36405d5f749762aadd11165c07e02d5c276a64a9eb35a582f0e",
+      "outputSha256": "7715c63f740fc8775015245e37cb408a230444e7ad9c48fd6037ce7043633751",
+      "countedChanges": 4
+    },
+    {
+      "name": "aux-native-entry.mjs",
+      "inputSha256": "a3d3389975aaa59bc240125f83506ab7387b486da48b89e7b2ea23e4796740ac",
+      "outputSha256": "1f41787cee0c72e5a82152bf3de558ad6169f9c36df44746e0e4e624862a2d0d",
+      "countedChanges": 4
+    }
+  ],
+  "sourceOnly": true,
+  "productExecuted": false,
+  "existingStateRead": false
+}

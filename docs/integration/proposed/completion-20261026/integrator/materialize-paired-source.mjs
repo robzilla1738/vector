@@ -9,11 +9,12 @@ import {transformAuxEventPolling} from '../../../../../vendor/provided/aux-event
 import {transformAuxOrdinaryChatStartup} from '../../../../../vendor/provided/aux-ordinary-chat-startup.mjs';
 import {transformAuxBashCloseLifetime} from '../../../../../vendor/provided/aux-bash-close-lifetime.mjs';
 import {transformAuxFixedBuiltinRouting} from '../../../../../vendor/provided/aux-fixed-builtin-routing.mjs';
+import {transformAuxEphemeralProtocolIdentity, transformAuxTagIconIdentity} from '../../../../../vendor/provided/aux-ephemeral-protocol-identity.mjs';
 
 const repository = process.cwd();
 const here = path.join(repository, 'docs/integration/proposed/completion-20261026/integrator');
 const original = path.join(repository, 'out/provided-candidate-local-completion-20261025-a38/Aux.app/Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/node-development');
-const generation = process.argv[2] ?? 'a3';
+const generation = process.argv[2] ?? 'a4';
 if (!/^a[1-9]\d*$/.test(generation)) throw Error('A finite fresh generation is required.');
 const output = path.join(repository, 'out/completion-20261026-paired-source-' + generation);
 const sha = text => createHash('sha256').update(text).digest('hex');
@@ -34,6 +35,7 @@ const generators = [
   'docs/integration/proposed/completion-20261026/integration/advertised-tools/source-pins.json',
   'vendor/provided/aux-fixed-builtin-routing.mjs',
   'docs/integration/proposed/completion-20261026/runtime/fixed-builtins/entry.anchors.json',
+  'vendor/provided/aux-ephemeral-protocol-identity.mjs',
   'docs/integration/proposed/completion-20261026/integrator/materialize-paired-source.mjs',
 ];
 const inputs = [];
@@ -57,11 +59,15 @@ for (const name of ['index.mjs', 'aux-native-entry.mjs']) {
   stages.push({name: 'background Bash physical-close retention', outputSha256: sha(bash.text), anchors: bash.anchors});
   const builtins = transformAuxFixedBuiltinRouting({path: name, text: bash.text, source});
   stages.push({name: 'authenticated fixed-image linked builtin routing', outputSha256: sha(builtins.text), anchors: builtins.anchors});
+  const protocols = transformAuxEphemeralProtocolIdentity({text: builtins.text, source});
+  stages.push({name: 'Aux transient protocol generation 2', outputSha256: sha(protocols.text), anchors: protocols.anchors});
+  const tags = transformAuxTagIconIdentity({text: protocols.text, source});
+  stages.push({name: 'fresh successor Aux tag icon schema', outputSha256: sha(tags.text), anchors: tags.anchors});
   const destination = path.join(output, name);
-  await writeFile(destination, builtins.text, {flag: 'wx'});
+  await writeFile(destination, tags.text, {flag: 'wx'});
   const syntax = spawnSync(process.execPath, ['--check', destination], {encoding: 'utf8'});
   if (syntax.status !== 0) throw Error('Combined paired source does not parse: ' + name + '\n' + syntax.stderr);
-  files.push({path: destination, input: path.join(original, name), inputSha256: sha(source), outputSha256: sha(builtins.text), stages});
+  files.push({path: destination, input: path.join(original, name), inputSha256: sha(source), outputSha256: sha(tags.text), stages});
 }
 for (const input of inputs)
   if (sha(await readFile(path.join(repository, input.path))) !== input.sha256) throw Error('Source generator changed during materialization');

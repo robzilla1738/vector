@@ -15,6 +15,7 @@ export const providedStageInputs = Object.freeze([
   'docs/integration/proposed/completion-20261026/integration/advertised-tools/source-pins.json',
   'vendor/provided/aux-fixed-builtin-routing.mjs',
   'docs/integration/proposed/completion-20261026/runtime/fixed-builtins/entry.anchors.json',
+  'vendor/provided/aux-ephemeral-protocol-identity.mjs',
   'vendor/provided/aux-navigation-command-bar.mjs',
   'vendor/provided/aux-palette-ask.mjs',
   'vendor/provided/aux-context-actions.mjs',

@@ -1,7 +1,7 @@
 import {createHash} from 'node:crypto';
 
-// These remaining names are transient popup/search identities and CLI help.
-// Persisted storage and cryptographic labels require their own versioned change.
+// These names cover popup/search identities, CLI help and supplied icon keys.
+// Tag keys are activated only by the fresh successor schema documented below.
 const files = new Map([
   ['assets/developers-DTvaoVBC.js', {
     sourceSha256: 'c5f9e7bb2a2c1439ac9d28fa5c56f22b97e78a148ae8a1b516287073d8ab807d',
@@ -26,6 +26,14 @@ const files = new Map([
       ['/^aside:', '/^aux:', 1],
       ['"aside://"', '"aux://"', 1],
     ],
+  }],
+  ['assets/tag-icon-DeMC7uIN.js', {
+    sourceSha256: '7b922e0f7be2491261127dc6292360a5906101caed5cc682c195dd7921989078',
+    rules: [['["aside",', '["aux",', 2]],
+  }],
+  ['assets/splash-D666ivBP.js', {
+    sourceSha256: 'd81b276872969f21480c904b2d189625056da34748e9dfe0a3a752c891ca6138',
+    rules: [['"aside"', '"aux"', 3]],
   }],
 ]);
 

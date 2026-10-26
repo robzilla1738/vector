@@ -1,0 +1,36 @@
+{
+  "recordedDate": "2026-10-26",
+  "ownerDecision": "Keep required; prepare entitlement path",
+  "sources": [
+    {
+      "name": "api",
+      "url": "https://developer.apple.com/documentation/endpointsecurity/es_new_descendants_client(_:_:).md",
+      "sha256": "1dbd596c4cf08a12fbed9f8d9629d09f13723b14b8a93641a3c0481bc8a416c1",
+      "snapshot": "/private/tmp/aux-endpoint-entitlement-review-20261026/api.md",
+      "bytes": 2391
+    },
+    {
+      "name": "entitlement",
+      "url": "https://developer.apple.com/documentation/bundleresources/entitlements/com.apple.developer.endpoint-security.client.md",
+      "sha256": "c4cce9209b486117833a7d75a8c3a728741ab5757735792d47db4830e91bf32c",
+      "snapshot": "/private/tmp/aux-endpoint-entitlement-review-20261026/entitlement.md",
+      "bytes": 1359
+    }
+  ],
+  "requestEntry": "https://developer.apple.com/contact/request/system-extension/",
+  "requestFormRequiresSignIn": true,
+  "requestFormInspected": false,
+  "existingSigningReview": {
+    "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/local-completion-package-a38/signing-review.json",
+    "sha256": "f43813c285d0a0d439129f193f97cac1712c93f815cfc75da5b4e201bc8025e0"
+  },
+  "team": "9F2JXY8TCK",
+  "daemonIdentifier": "dev.aux.browser.daemon",
+  "entitlement": "com.apple.developer.endpoint-security.client",
+  "submitted": false,
+  "appleApprovalVerified": false,
+  "provisioned": false,
+  "signed": false,
+  "activated": false,
+  "ownerAccountAccessed": false
+}

@@ -1,0 +1,46 @@
+{
+  "recordedDate": "2026-10-26",
+  "candidate": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-local-completion-20261025-a38/Aux.app",
+  "signedInventorySha256": "03542e0336ecd93ee2f0b790905219d454288292f6ceeb236dc211e2b7852bab",
+  "profile": "Aux A4 Personal",
+  "state": "approved disposable synthetic fixtures",
+  "observations": [
+    {
+      "action": "Tab menu Add Tab to New Split View",
+      "actual": "Two genuine page containers, independent fixture URLs, resize handle and close-view controls appeared.",
+      "outcome": "observed"
+    },
+    {
+      "action": "CmdK Split horizontally",
+      "actual": "Existing ordinary neighbor joined a two-pane native split. Toolbar URL followed focused palette-t page.",
+      "outcome": "observed"
+    },
+    {
+      "action": "Inspect joined split accessibility and visible contents",
+      "actual": "Window/selected-tab accessibility reported Left view for palette-t, while left native content container was window-two and right container palette-t.",
+      "outcome": "label mismatch observed; source repair assigned"
+    },
+    {
+      "action": "Drag third ordinary fixture onto content edge and split row",
+      "actual": "Source selection and hover controls changed; no third pane was established.",
+      "outcome": "inconclusive gesture; not a proven product failure"
+    }
+  ],
+  "sourceFindings": [
+    {
+      "path": "chrome/browser/ui/views/tabs/tab/tab_accessibility.cc",
+      "finding": "Label uses collection position rather than pane_tree visual slots and binary-only format helper."
+    },
+    {
+      "path": "chrome/browser/ui/tabs/split_tab_util.cc",
+      "finding": "GetLastActiveTabLocation requires exactly two members; native N-pane consumers need a bounded join.",
+      "runtimeFailureObserved": false
+    }
+  ],
+  "threeOrFourPaneAccepted": false,
+  "finalCandidateAccepted": false,
+  "persistenceChecked": false,
+  "credentialsRead": false,
+  "providerRequestSent": false,
+  "productBytesChanged": false
+}

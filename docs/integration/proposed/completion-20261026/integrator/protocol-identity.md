@@ -1,0 +1,9 @@
+# Aux transient protocol generation 2
+
+The paired daemon transform changes the channel suspension producer and receiver together to `aux_suspension_v2`, and uses the explicit `aux:worker:v2:` domain for generated upstream worker-session routing. These are outbound identifiers, not cryptographic derivation labels or stored task IDs. Existing task/parent IDs, credentials, ciphertext, installation records and saved conversations are untouched. All worker-session callers continue through the same existing routing function; no receiving service in this repository parses that opaque provider session ID.
+
+The channel receiver accepts only the generation-2 prefix plus separator. Previously posted generation-1 buttons remain remote historical messages and are refused; they are not silently reinterpreted as new approvals. New prompts produce matching generation-2 actions. This is a coordinated versioned protocol change, not a promise to migrate unsupported old remote actions. Original authorized source inventories remain unchanged.
+
+The transform is pinned to both exact A51 preimages with three count-one substitutions per leaf. It has no UI geometry, file-format, crypto or account-state changes. Final materialization will record replay and parse both composed leaves; source changes alone do not establish a live channel or provider result.
+
+The separate tag-icon transform joins the daemon enum and supplied UI enum/renderer from `aside` to `aux`. It is activated only in the fresh v10 successor namespace; the v9 installation is not adopted or rewritten. Unknown old icon values are refused by the new enum, with their original data preserved. This is a new-profile schema choice, not an implicit migration of saved tags. The Aux SVG renderer, icon positions and complete mark geometry remain unchanged. Three transient splash animation markers are also renamed together without changing timing or visuals.

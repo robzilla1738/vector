@@ -10,11 +10,14 @@ const repository = process.cwd();
 const here = path.join(repository, 'docs/integration/proposed/completion-20261026/integrator');
 const app = path.join(repository, 'out/provided-candidate-local-completion-20261025-a38/Aux.app');
 const supplied = path.join(repository, 'out/provided-source-snapshot-1.26.1016.1852/agent');
-const output = path.join(repository, 'out/completion-20261026-ui-a1');
+const generation = process.argv[2] ?? 'a2';
+if (!/^a[1-9]\d*$/.test(generation)) throw Error('A finite fresh UI generation is required.');
+const output = path.join(repository, 'out/completion-20261026-ui-' + generation);
 const sha = text => createHash('sha256').update(text).digest('hex');
 const names = ['developers-DTvaoVBC.js', 'connect-dialog-CacgpFap.js', 'newtab-CnOLQ0yu.js',
   'session-feedback-dialog-BjDg0W8m.js', 'mcps-DmPp5oo9.js', 'experimental-Xq3YsEPK.js',
-  'session-composer-Dc0LRfZA.js', 'provider-Cw0zhujt.js', '_skillId-CAwCRjA8.js'];
+  'session-composer-Dc0LRfZA.js', 'provider-Cw0zhujt.js', '_skillId-CAwCRjA8.js',
+  'tag-icon-DeMC7uIN.js', 'splash-D666ivBP.js'];
 const generators = ['vendor/provided/aux-final-ui-identity.mjs', 'vendor/provided/aux-final-runtime-identity.mjs',
   'docs/integration/proposed/completion-20261026/integration/identity/source-pins.json',
   'vendor/provided/aux-experimental-settings-v2.mjs'];
@@ -41,5 +44,5 @@ for (const input of inputs)
   if (sha(await readFile(path.join(repository, input.path))) !== input.sha256) throw Error('UI generator changed during materialization');
 const result = {format: 'aux.completion.ui-source.v1', passed: true, files, generators: inputs,
   geometryOrCssChanged: false, productExecuted: false, candidateChanged: false, productSigned: false};
-await writeFile(path.join(here, 'ui-source-a1.json'), JSON.stringify(result, null, 2) + '\n', {flag: 'wx'});
+await writeFile(path.join(here, 'ui-source-' + generation + '.json'), JSON.stringify(result, null, 2) + '\n', {flag: 'wx'});
 console.log(JSON.stringify({passed: true, files: files.length, output}));
