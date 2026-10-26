@@ -1,0 +1,35 @@
+--- a/chrome/browser/chrome_browser_main.cc
++++ b/chrome/browser/chrome_browser_main.cc
+@@ -55,6 +55,9 @@
+ #include "chrome/browser/net/system_network_context_manager.h"
+ #include "chrome/browser/aux/browser_platform.h"
+ #include "chrome/browser/aux/ordinary_startup_build.h"
++#if defined(AUX_BROWSER_ONLY_NATIVE_STARTUP) && AUX_BROWSER_ONLY_NATIVE_STARTUP
++#include "chrome/browser/aux/feature_store/feature_write_participant.h"
++#endif
+ #include "chrome/browser/ui/aux_browser_shutdown_drain.h"
+ #if defined(AUX_SEALED_NATIVE_COLD_ENTRY)
+ #include "chrome/browser/aux/AuxNativeParentColdLaunch.h"
+@@ -2282,12 +2285,21 @@
+ }
+ 
+ void ChromeBrowserMainParts::PostMainMessageLoopRun() {
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && defined(AUX_BROWSER_ONLY_NATIVE_STARTUP) && AUX_BROWSER_ONLY_NATIVE_STARTUP
++  // Stop new feature work without invalidating the native selected owner.
++  // The existing authenticated daemon shutdown must finish while that browser
++  // peer and its published root FDs still validate protected SQLite closure.
++  aux::features::CloseNativeFeatureIoAdmission();
++  extensions::ShutdownAuxMiniPopup();
++  aux::ShutdownProfileGates();
++  aux::BrowserPlatform::Get().Shutdown();
++#endif
+ #if BUILDFLAG(ENABLE_AUX_BROWSER) && defined(AUX_SEALED_NATIVE_COLD_ENTRY)
+   aux::peer::BeginNativeBrowserShutdown();
+   aux::PrepareNativeBrowserShutdownDrain();
+ #endif
+ 
+-#if BUILDFLAG(ENABLE_AUX_BROWSER)
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && (!defined(AUX_BROWSER_ONLY_NATIVE_STARTUP) || !AUX_BROWSER_ONLY_NATIVE_STARTUP)
+   // Keep networking and the UI task runner alive until owned daemon shutdown.
+   extensions::ShutdownAuxMiniPopup();
+   aux::ShutdownProfileGates();

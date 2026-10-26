@@ -1,0 +1,22 @@
+--- a/chrome/browser/aux/daemon_supervisor.cc
++++ b/chrome/browser/aux/daemon_supervisor.cc
+@@ -702,6 +702,19 @@
+   }
+ #endif
+   const auto browser_shutdown = peer::InspectNativeBrowserShutdown();
++#if defined(AUX_BROWSER_ONLY_NATIVE_STARTUP) && AUX_BROWSER_ONLY_NATIVE_STARTUP
++  if (browser_shutdown.phase < 6) {
++    // The original child was actually reaped above. Report only that daemon's
++    // exit; the global selected owner/root FDs stay retained for the existing
++    // late browser lifecycle cleanup. No browser/parent cohort drain is claimed.
++    std::optional<int> code;
++#if BUILDFLAG(IS_POSIX)
++    if (WIFEXITED(child->wait_status)) code = WEXITSTATUS(child->wait_status);
++#endif
++    DidFinishShutdown({true, code});
++    return;
++  }
++#endif
+   if (browser_shutdown.admission_closed && browser_shutdown.phase < 6) {
+     // Ordinary process shutdown must finish Profile/content/thread teardown
+     // before the native parent can attest its browser writer cohort. Retain

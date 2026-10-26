@@ -1,0 +1,55 @@
+{
+  "format": "aux.ordinary-prephase-daemon-quiesce.v1",
+  "nativeRoot": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src",
+  "files": [
+    {
+      "path": "chrome/browser/chrome_browser_main.cc",
+      "inputSha256": "b398db8a560746e2d4bb256c1eac67145bdf6572776891f43ae4eda7cf8553a1",
+      "source": "docs/integration/proposed/browser-feature-expansion/local-completion-package-a38/disposable-location-review-a4/browser-ordinary-shutdown-order-a15/source/chrome/browser/chrome_browser_main.cc",
+      "outputSha256": "960250de4f967d8ba0a727b3a64a52c33a473c088b03d8d7c52e10892f26ea28",
+      "anchors": [
+        {
+          "find": "#include \"chrome/browser/aux/ordinary_startup_build.h\"\n",
+          "replace": "#include \"chrome/browser/aux/ordinary_startup_build.h\"\n#if defined(AUX_BROWSER_ONLY_NATIVE_STARTUP) && AUX_BROWSER_ONLY_NATIVE_STARTUP\n#include \"chrome/browser/aux/feature_store/feature_write_participant.h\"\n#endif\n",
+          "count": 1
+        },
+        {
+          "find": "void ChromeBrowserMainParts::PostMainMessageLoopRun() {\n#if BUILDFLAG(ENABLE_AUX_BROWSER) && defined(AUX_SEALED_NATIVE_COLD_ENTRY)",
+          "replace": "void ChromeBrowserMainParts::PostMainMessageLoopRun() {\n#if BUILDFLAG(ENABLE_AUX_BROWSER) && defined(AUX_BROWSER_ONLY_NATIVE_STARTUP) && AUX_BROWSER_ONLY_NATIVE_STARTUP\n  // Stop new feature work without invalidating the native selected owner.\n  // The existing authenticated daemon shutdown must finish while that browser\n  // peer and its published root FDs still validate protected SQLite closure.\n  aux::features::CloseNativeFeatureIoAdmission();\n  extensions::ShutdownAuxMiniPopup();\n  aux::ShutdownProfileGates();\n  aux::BrowserPlatform::Get().Shutdown();\n#endif\n#if BUILDFLAG(ENABLE_AUX_BROWSER) && defined(AUX_SEALED_NATIVE_COLD_ENTRY)",
+          "count": 1
+        },
+        {
+          "find": "#if BUILDFLAG(ENABLE_AUX_BROWSER)\n  // Keep networking and the UI task runner alive until owned daemon shutdown.\n  extensions::ShutdownAuxMiniPopup();",
+          "replace": "#if BUILDFLAG(ENABLE_AUX_BROWSER) && (!defined(AUX_BROWSER_ONLY_NATIVE_STARTUP) || !AUX_BROWSER_ONLY_NATIVE_STARTUP)\n  // Keep networking and the UI task runner alive until owned daemon shutdown.\n  extensions::ShutdownAuxMiniPopup();",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/aux/daemon_supervisor.cc",
+      "inputSha256": "f8135e794b64300d480cabeeb8bd3b4969710dad76d82ea7abb704b71f012f39",
+      "source": "docs/integration/proposed/browser-feature-expansion/local-completion-package-a38/disposable-location-review-a4/browser-ordinary-shutdown-order-a15/source/chrome/browser/aux/daemon_supervisor.cc",
+      "outputSha256": "be60cd4b8b5430ba93b9af5395c58a649e1e55ef72af1c33c530584f3d4688a9",
+      "anchors": [
+        {
+          "find": "  const auto browser_shutdown = peer::InspectNativeBrowserShutdown();\n  if (browser_shutdown.admission_closed && browser_shutdown.phase < 6) {",
+          "replace": "  const auto browser_shutdown = peer::InspectNativeBrowserShutdown();\n#if defined(AUX_BROWSER_ONLY_NATIVE_STARTUP) && AUX_BROWSER_ONLY_NATIVE_STARTUP\n  if (browser_shutdown.phase < 6) {\n    // The original child was actually reaped above. Report only that daemon's\n    // exit; the global selected owner/root FDs stay retained for the existing\n    // late browser lifecycle cleanup. No browser/parent cohort drain is claimed.\n    std::optional<int> code;\n#if BUILDFLAG(IS_POSIX)\n    if (WIFEXITED(child->wait_status)) code = WEXITSTATUS(child->wait_status);\n#endif\n    DidFinishShutdown({true, code});\n    return;\n  }\n#endif\n  if (browser_shutdown.admission_closed && browser_shutdown.phase < 6) {",
+          "count": 1
+        }
+      ]
+    }
+  ],
+  "ordinaryModeOnly": true,
+  "existingAuthenticatedShutdownOnly": true,
+  "featureAdmissionClosedBeforeQuiesce": true,
+  "phaseOneOnlyAfterDaemonQuiesce": true,
+  "actualOriginalChildReapRequired": true,
+  "directDaemonExitNotBrowserCohortDrain": true,
+  "exactRawWaitStatusRetainedByNativeOwner": true,
+  "signalExitNeverConvertedToZero": true,
+  "lateParentRootCleanupPreserved": true,
+  "deadlineAndUnknownRemainFailed": true,
+  "fullModeOrderUnchanged": true,
+  "productExecuted": false,
+  "productSigned": false
+}

@@ -1,0 +1,29 @@
+{
+  "format": "aux.ordinary-prephase-order-source-check.v1",
+  "passed": true,
+  "files": [
+    {
+      "path": "chrome/browser/chrome_browser_main.cc",
+      "inputSha256": "b398db8a560746e2d4bb256c1eac67145bdf6572776891f43ae4eda7cf8553a1",
+      "outputSha256": "960250de4f967d8ba0a727b3a64a52c33a473c088b03d8d7c52e10892f26ea28",
+      "countedAnchors": 3,
+      "forwardReverseExact": true
+    },
+    {
+      "path": "chrome/browser/aux/daemon_supervisor.cc",
+      "inputSha256": "f8135e794b64300d480cabeeb8bd3b4969710dad76d82ea7abb704b71f012f39",
+      "outputSha256": "be60cd4b8b5430ba93b9af5395c58a649e1e55ef72af1c33c530584f3d4688a9",
+      "countedAnchors": 1,
+      "forwardReverseExact": true
+    }
+  ],
+  "ordinaryFeatureCloseThenDaemonThenPhaseThenBrowserPrepare": true,
+  "fullModeOriginalOrderPreserved": true,
+  "ordinaryShutdownNotDuplicated": true,
+  "directExitRequiresOriginalReap": true,
+  "realNormalExitCodeOnlyAndSignalNeverZero": true,
+  "globalParentLateCleanupUnchanged": true,
+  "unknownDeadlineFailureRetained": true,
+  "productExecuted": false,
+  "nativeTreeMutated": false
+}
