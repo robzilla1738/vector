@@ -1,0 +1,10 @@
+{
+  "productionObjectsPassed": true,
+  "probeObjectCompiled": true,
+  "probeLinkPassed": false,
+  "probeExecuted": false,
+  "reason": "Existing host linker output allowlist refuses account_profile_source_probe; no signing/allowlist expansion",
+  "session": 8022,
+  "log": "out/completion-resume-20261026/local-account-objects.log",
+  "next": "Existing-app acceptance; shortcut object and combined chrome dependency link31387"
+}

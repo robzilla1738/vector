@@ -1,0 +1,29 @@
+{
+  "source": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src",
+  "files": [
+    {
+      "path": "chrome/browser/aux/account_profile_source.cc",
+      "source": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/integration/local-native-account/source/chrome/browser/aux/account_profile_source.cc",
+      "outputSha256": "ee8af51869770943f4343fee8b8b85c7b8f7776e5b8c6d2da084497cc65bfcba",
+      "testOnly": false
+    },
+    {
+      "path": "chrome/browser/aux/account_profile_updater.cc",
+      "source": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/integration/local-native-account/source/chrome/browser/aux/account_profile_updater.cc",
+      "outputSha256": "7fd746e7f1cc12e6cc97dc61623bc97a743c836fc38a89361243e9b2bc9c9ccc",
+      "testOnly": false
+    },
+    {
+      "path": "chrome/browser/aux/account_profile_source_probe.cc",
+      "source": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/integration/local-native-account/source/chrome/browser/aux/account_profile_source_probe.cc",
+      "outputSha256": "4c9cc3ac42ad6958e7f1db08f136b121009f73abd0dfdbb3ffeb473f2c8f29c2",
+      "testOnly": true
+    },
+    {
+      "path": "chrome/browser/ui/aux_keyboard_shortcuts.mm",
+      "source": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/desktop/shortcut-existing-reservation/source/chrome/browser/ui/aux_keyboard_shortcuts.mm",
+      "outputSha256": "72885e0ee08726bcdf07e1a026a89684cb5c93868d353a2f4099b5355a075978",
+      "testOnly": false
+    }
+  ]
+}

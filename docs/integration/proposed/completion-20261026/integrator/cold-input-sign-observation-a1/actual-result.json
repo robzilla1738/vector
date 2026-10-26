@@ -1,0 +1,57 @@
+{
+  "candidateInventory": "80b212708d9093014f625f8d6397cffe4347ac870053b5a42dbdf758e720d343",
+  "startupLog": "out/completion-resume-20261026/startup-13.log",
+  "normalLaunch": true,
+  "workStatePreserved": true,
+  "coldInput": {
+    "firstCmdLImmediateTypingAndEnter": "full http://127.0.0.1:61862/capture navigated correctly",
+    "warmCmdKQuery": "screenshot retained"
+  },
+  "fullPageCapture": {
+    "fixedPathExecuted": true,
+    "stitchedPreview": "thumbnail includes cyan upper and magenta lower sections and page footer",
+    "scrollRestoredToTop": true,
+    "stickyHeaderRestored": true,
+    "downloadNotExercised": true
+  },
+  "agentContext": {
+    "session": "YdXhaOu0fRyR3Ncq",
+    "result": "preflight refusal",
+    "mask": "101111111",
+    "failedPredicate": "native bound account equality",
+    "queuedInputVisibleAfterFailure": true,
+    "remainingPredicatesPassed": true,
+    "noAdditionalModelCallsUntilRepair": true
+  },
+  "cleanQuit": {
+    "browserExitCode": 0,
+    "brokerSettled": true,
+    "allTrackedCountsZero": true,
+    "operationFailure": false,
+    "lifetimeFailure": false,
+    "forcedTermination": false
+  },
+  "localComplete": false,
+  "backgroundService": "Running normally in General settings",
+  "failedInputRecovery": "YdXhaOu0fRyR3Ncq reopened with queued prompt preserved; missing error status needs final callback fix",
+  "cleanup": {
+    "enabledSaved": true,
+    "days": 30,
+    "allSpaces": true,
+    "originalDisabledSettingRestoredAndSaved": true,
+    "clockPolicyEvidenceReused": true
+  },
+  "globalPin": {
+    "fixture": "Aux Delta",
+    "pinnedAcrossSpaces": true,
+    "nativeCloseUnloadedView": true,
+    "pinRetained": true,
+    "clickReloadedFixtureWithWorkCookieAndNote": true
+  },
+  "shortcut": {
+    "captureReceivesChord": true,
+    "changesRefused": "Unchanged default command34057 OS collision rejects unrelated changes",
+    "originalBindingPreserved": true,
+    "repairPrepared": true
+  }
+}
