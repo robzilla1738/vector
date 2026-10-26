@@ -1,0 +1,46 @@
+{
+  "format": "aux.completion.actual-addon-signature-failure.v1",
+  "date": "2026-10-26",
+  "signedCohortReceipt": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-completion-20261026-a1/ordinary-startup-repair-a3/receipt.json",
+  "ordinaryAncestorAclRepairLinkedAndSigned": true,
+  "actualStartupExitCode": 1,
+  "stderr": "Aux native policy diagnostic stage=imagePreparationMode error=signature osstatus=-67050\nAux native policy diagnostic stage=prepareEmbeddedImages error=signature osstatus=-67050\nAux native daemon refused at images (status -1).\nAux fresh startup refused: paired daemon receipt\n",
+  "stderrSha256": "93f9ba6b97db4dd27694033c6b7e11cbbd3feab2af219b9825e85e9687e784a3",
+  "installedErrorDescription": "-67050: code failed to satisfy specified code requirement(s)",
+  "addons": [
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-completion-20261026-a1/Aux.app/Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/native/aux-pdf.node",
+      "bytes": 9474752,
+      "sha256": "ed5b4faec15d3fc3c29a97f0dd304b388844cf0bf16fad5a69a62b357a52dcc0",
+      "signatureMetadata": [
+        "Identifier=aux_pdf_four.node",
+        "Format=Mach-O thin (arm64)",
+        "CodeDirectory v=20400 size=73592 flags=0x20002(adhoc,linker-signed) hashes=2296+0 location=embedded",
+        "CDHash=bd8f1ec19ff07226fd132ea49ccae851a0fd0100",
+        "Signature=adhoc",
+        "TeamIdentifier=not set"
+      ],
+      "signatureCheckExitCode": 0
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-completion-20261026-a1/Aux.app/Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/native/aux-macos-utilities.node",
+      "bytes": 393720,
+      "sha256": "7aff7611505145a5629cf42496be506200e7c1026087b2e397057e646d220e5e",
+      "signatureMetadata": [
+        "Identifier=aux-macos-utilities.node",
+        "Format=Mach-O thin (arm64)",
+        "CodeDirectory v=20400 size=3185 flags=0x20002(adhoc,linker-signed) hashes=96+0 location=embedded",
+        "CDHash=c3f0916fa09b7c012764cffa77e3df67fd0ff593",
+        "Signature=adhoc",
+        "TeamIdentifier=not set"
+      ],
+      "signatureCheckExitCode": 0
+    }
+  ],
+  "actualFinding": "Both preserved modules are linker-ad-hoc and have no TeamIdentifier. The v10 reader requires genuine Team9F2JXY8TCK /dev.aux.browser.pdf or dev.aux.browser.macos-utilities signatures. Earlier signed-original-addon wording was incorrect.",
+  "newTwoObjectAuthorityRequired": true,
+  "originalImagesChanged": false,
+  "trustChecksWeakened": false,
+  "runtimeAccepted": false,
+  "providerRequests": 0
+}

@@ -1,0 +1,36 @@
+{
+  "format": "aux.ordinary-startup.same-scope-repair.v1",
+  "app": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-completion-20261026-a1/Aux.app",
+  "approvedReviewSha256": "20572af30ef6613f1fc8bced01edada6d52f4b3f7c1f21dd97fb610ec2b257f2",
+  "executor": {
+    "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/runtime/authority-review/repair-ordinary-startup.py",
+    "sha256": "bcf05ec2e5e8d9690efae3ad8bec4bf9dcc721bbf48946984e649bd03b931b2c"
+  },
+  "signedReceipt": {
+    "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/runtime/authority-review/actual-local-signing-repair-a2.json",
+    "sha256": "03ddce0b29951ec2b069e3f2b95f1c10f29a92d21f64c007638cea88364e5e0e"
+  },
+  "newUnsignedDaemon": {
+    "path": "/private/tmp/aux-completion-final-daemon-20261026-a2/Aux Daemon",
+    "sha256": "5f1180c82990b9779274b492151f1a6bac0d90848d51eb603ae572c8f92685a5"
+  },
+  "replaceOnlyExecutable": "Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/MacOS/aux-daemon",
+  "receiptDirectory": "ordinary-startup-repair-a3",
+  "sourceEvidence": [
+    {
+      "path": "/private/tmp/aux-completion-final-daemon-20261026-a2/build-receipt.json",
+      "sha256": "25b0f2bbf219dc1973b8ee4aec1e846bfc2a43462c25baa522cd10b350079dcf"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/runtime/ordinary-image-ancestor-acl-repair/source-plan.json",
+      "sha256": "0aefed7489fe6a1e20d29a3e3e0af9b2aa24b893e2e66befb42c190a9fb8966b"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/runtime/ordinary-image-ancestor-acl-repair/daemon-link-recipe.json",
+      "sha256": "1d11690faea880109ab0cf19905040154ae93afae07c0615f7c5f0f3a231a096"
+    }
+  ],
+  "reason": "Actual ordinary startup rejected standard everyone deny delete ancestor ACLs; one copied loader now accepts valid deny-only directory ACLs only in ordinary image custody.",
+  "scope": "Same approved daemon and outer app targets/identity/entitlements, original addons/CU/memory unchanged; no owner ACL or OS grant changes",
+  "nativeCommandSeconds": 31.908927666023374
+}
