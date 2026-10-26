@@ -1,0 +1,8 @@
+import assert from 'node:assert/strict';
+import {readFileSync,writeFileSync,mkdtempSync}from'node:fs';
+import{createHash}from'node:crypto';import{tmpdir}from'node:os';import{join}from'node:path';import{spawnSync}from'node:child_process';
+import{transformAuxClosedRecoveryUi}from'../../../../../../vendor/provided/aux-closed-recovery-ui.mjs';
+const pins=JSON.parse(readFileSync(new URL('./source-pins.json',import.meta.url),'utf8')),source=readFileSync('/Users/rcourson/Documents/Vibe/web/out/provided-candidate-local-completion-20261025-a38/Aux.app/Contents/Resources/aux/apps/extension/dist/'+pins.path,'utf8'),result=transformAuxClosedRecoveryUi({path:pins.path,text:source,source});
+assert.ok(!result.text.includes('aside.recovery.auk.v1'));assert.ok(!result.text.includes('pendingAccountSecuritySetup'));assert.ok(result.text.includes('export{c as a,K as c,j as i,H as n,G as o,S as r,V as s,F as t}'));assert.equal(result.text.replace(pins.rule.replace,()=>pins.rule.find),source);assert.throws(()=>transformAuxClosedRecoveryUi({path:pins.path,text:result.text,source}),/drift/);
+const directory=mkdtempSync(join(tmpdir(),'aux-closed-recovery-ui-')),path=join(directory,'types.js');writeFileSync(path,result.text);assert.equal(spawnSync(process.execPath,['--check',path]).status,0);
+writeFileSync(new URL('./verification.json',import.meta.url),JSON.stringify({format:'aux.closed-recovery-ui.source-check.v1',passed:true,sourceSha256:pins.originalSha256,output:{path,sha256:createHash('sha256').update(result.text).digest('hex')},closedSchemaBindings:5,unchangedExports:8,reverseReplay:true,moduleParse:true,cryptoFormatRenamed:false,cryptoOperationRun:false,ownerStateRead:false},null,2)+'\n');console.log(JSON.stringify({passed:true,path,cryptoOperationRun:false}));

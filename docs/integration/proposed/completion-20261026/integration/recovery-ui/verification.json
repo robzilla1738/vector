@@ -1,0 +1,16 @@
+{
+  "format": "aux.closed-recovery-ui.source-check.v1",
+  "passed": true,
+  "sourceSha256": "b5870f3d72d03493ffea375c6af92881278a253dfef3168515afc5fccce249e9",
+  "output": {
+    "path": "/var/folders/98/j36zgdnd0h507whjl16gxl780000gp/T/aux-closed-recovery-ui-GkEXpB/types.js",
+    "sha256": "18e6fe64793f3e324f9493e4568957665aeaf947c6327ed6b0cbe9d6a26bd47f"
+  },
+  "closedSchemaBindings": 5,
+  "unchangedExports": 8,
+  "reverseReplay": true,
+  "moduleParse": true,
+  "cryptoFormatRenamed": false,
+  "cryptoOperationRun": false,
+  "ownerStateRead": false
+}

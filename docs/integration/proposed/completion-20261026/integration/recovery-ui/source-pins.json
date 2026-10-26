@@ -1,0 +1,70 @@
+{
+  "format": "aux.closed-legacy-recovery-ui.v1",
+  "path": "assets/-types-Wy38XkNB.js",
+  "originalSha256": "b5870f3d72d03493ffea375c6af92881278a253dfef3168515afc5fccce249e9",
+  "closedBindings": [
+    {
+      "name": "I",
+      "source": "I=a({purpose:l(\"recovery.auk\"),envelopeVersion:l(\"aside.recovery.auk.v1\"),nonceB64:e().min(1),ciphertextB64:e().min(1)})"
+    },
+    {
+      "name": "_",
+      "source": "_=a({memoryKiB:n().int().positive(),iterations:n().int().positive(),parallelism:n().int().positive()})"
+    },
+    {
+      "name": "B",
+      "source": "B=a({aukSaltB64:e().min(1),aukVerifierB64:e().min(1).optional(),aukKdf:l(\"argon2id\"),aukKdfParams:_,recoveryBackup:I})"
+    },
+    {
+      "name": "E",
+      "source": "E=i([\"pending_choice\",\"enabled\",\"disabled\"])"
+    },
+    {
+      "name": "Y",
+      "source": "Y=a({isComplete:r(),createdAt:n().int().nonnegative(),boundUserId:e().min(1).optional(),boundAt:n().int().nonnegative().optional(),hasEverBoundCloudUser:r().default(!1),vaultSyncMode:E.optional(),pendingAccountSecuritySetup:B.optional(),pendingUserId:e().min(1).optional()})"
+    }
+  ],
+  "externalIdentifierReferences": [],
+  "exports": [
+    {
+      "local": "c",
+      "exported": "a"
+    },
+    {
+      "local": "K",
+      "exported": "c"
+    },
+    {
+      "local": "j",
+      "exported": "i"
+    },
+    {
+      "local": "H",
+      "exported": "n"
+    },
+    {
+      "local": "G",
+      "exported": "o"
+    },
+    {
+      "local": "S",
+      "exported": "r"
+    },
+    {
+      "local": "V",
+      "exported": "s"
+    },
+    {
+      "local": "F",
+      "exported": "t"
+    }
+  ],
+  "rule": {
+    "scope": "remove unexported unused legacy AUK recovery/setup schema graph",
+    "find": "var I=a({purpose:l(\"recovery.auk\"),envelopeVersion:l(\"aside.recovery.auk.v1\"),nonceB64:e().min(1),ciphertextB64:e().min(1)}),A=i([\"google\",\"email\",\"anonymous\"]),b=i([\"local\",\"cloud\"]),y=i([\"active\",\"paused\"]),P=i([\"token_revoked\",\"device_mismatch\",\"duplicate_profile_account\"]),C=i([\"free\",\"pro\",\"max\"]),w=a({id:n().int().nonnegative(),name:e(),provider:A,mode:b,authStatus:y.default(\"active\"),authPausedReason:P.optional(),userId:e().optional(),analyticsId:e().optional(),email:e().optional(),subscriptionPlan:C.optional(),profileUrl:m().optional(),onboardingCompletedAt:e().nullable().optional(),createdAt:n().int().nonnegative(),incarnationId:v().optional(),browserSignInRequired:r().optional()}),k=a({accessToken:e(),refreshToken:e(),expiresAt:n().int().nonnegative()}),_=a({memoryKiB:n().int().positive(),iterations:n().int().positive(),parallelism:n().int().positive()}),B=a({aukSaltB64:e().min(1),aukVerifierB64:e().min(1).optional(),aukKdf:l(\"argon2id\"),aukKdfParams:_,recoveryBackup:I}),E=i([\"pending_choice\",\"enabled\",\"disabled\"]),Y=a({isComplete:r(),createdAt:n().int().nonnegative(),boundUserId:e().min(1).optional(),boundAt:n().int().nonnegative().optional(),hasEverBoundCloudUser:r().default(!1),vaultSyncMode:E.optional(),pendingAccountSecuritySetup:B.optional(),pendingUserId:e().min(1).optional()}),x=a({profileId:e().min(1),userId:e().min(1),accountId:n().int().nonnegative().optional(),profileIndex:n().int().nonnegative().optional(),profilePath:e().optional(),updatedAt:n().int().nonnegative()}),R=a({profileId:e().min(1),accountId:n().int().nonnegative(),profileIndex:n().int().nonnegative().optional(),profilePath:e().optional(),updatedAt:n().int().nonnegative()}),U=a({bindingVersion:n().int().positive().optional(),chromiumProfileId:e().min(1).optional(),syncProfileId:e().min(1).optional(),auxUserId:e().min(1).optional(),localOnly:r().optional(),profileId:e().min(1),profilePath:e().optional(),profileIndex:n().int().nonnegative().optional(),boundUserId:e().min(1).optional(),boundAccountId:n().int().nonnegative().optional()}),q=a({version:l(1),currentAccountId:n().int().nonnegative(),accounts:f(w),sessions:t(e(),k),localBootstraps:t(e(),g()).transform(o=>o).default({}),profileBindings:t(e(),x).default({}),profileAccountBindings:t(e(),R).default({})}),O=a({id:e(),email:s(),onboardingCompletedAt:e().nullable()}),z=a({user:O,accessToken:e(),refreshToken:e(),expiresIn:n().int().positive(),provider:i([\"email\",\"google\"]).default(\"email\")}),F=U.pick({profileId:!0,chromiumProfileId:!0,bindingVersion:!0,auxUserId:!0,boundUserId:!0,boundAccountId:!0,localOnly:!0}),T=[\"+\"],L=\"Email address contains invalid characters\",H=a({email:s(\"Please enter a valid email address\").refine(o=>T.every(d=>!o.includes(d)),L)});",
+    "replace": "var A=i([\"google\",\"email\",\"anonymous\"]),b=i([\"local\",\"cloud\"]),y=i([\"active\",\"paused\"]),P=i([\"token_revoked\",\"device_mismatch\",\"duplicate_profile_account\"]),C=i([\"free\",\"pro\",\"max\"]),w=a({id:n().int().nonnegative(),name:e(),provider:A,mode:b,authStatus:y.default(\"active\"),authPausedReason:P.optional(),userId:e().optional(),analyticsId:e().optional(),email:e().optional(),subscriptionPlan:C.optional(),profileUrl:m().optional(),onboardingCompletedAt:e().nullable().optional(),createdAt:n().int().nonnegative(),incarnationId:v().optional(),browserSignInRequired:r().optional()}),k=a({accessToken:e(),refreshToken:e(),expiresAt:n().int().nonnegative()}),x=a({profileId:e().min(1),userId:e().min(1),accountId:n().int().nonnegative().optional(),profileIndex:n().int().nonnegative().optional(),profilePath:e().optional(),updatedAt:n().int().nonnegative()}),R=a({profileId:e().min(1),accountId:n().int().nonnegative(),profileIndex:n().int().nonnegative().optional(),profilePath:e().optional(),updatedAt:n().int().nonnegative()}),U=a({bindingVersion:n().int().positive().optional(),chromiumProfileId:e().min(1).optional(),syncProfileId:e().min(1).optional(),auxUserId:e().min(1).optional(),localOnly:r().optional(),profileId:e().min(1),profilePath:e().optional(),profileIndex:n().int().nonnegative().optional(),boundUserId:e().min(1).optional(),boundAccountId:n().int().nonnegative().optional()}),q=a({version:l(1),currentAccountId:n().int().nonnegative(),accounts:f(w),sessions:t(e(),k),localBootstraps:t(e(),g()).transform(o=>o).default({}),profileBindings:t(e(),x).default({}),profileAccountBindings:t(e(),R).default({})}),O=a({id:e(),email:s(),onboardingCompletedAt:e().nullable()}),z=a({user:O,accessToken:e(),refreshToken:e(),expiresIn:n().int().positive(),provider:i([\"email\",\"google\"]).default(\"email\")}),F=U.pick({profileId:!0,chromiumProfileId:!0,bindingVersion:!0,auxUserId:!0,boundUserId:!0,boundAccountId:!0,localOnly:!0}),T=[\"+\"],L=\"Email address contains invalid characters\",H=a({email:s(\"Please enter a valid email address\").refine(o=>T.every(d=>!o.includes(d)),L)});",
+    "count": 1
+  },
+  "cryptoFormatRenamed": false,
+  "ciphertextReadOrReinterpreted": false
+}
