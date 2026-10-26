@@ -1,0 +1,25 @@
+{
+  "format": "aux.native.counted-projection.v1",
+  "nativeRoot": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src",
+  "files": [
+    {
+      "path": "chrome/browser/aux/routing/routing_service.cc",
+      "inputSha256": "54517576199648eaccde1216bda347fd9f9f304217508841dc6c28aadf33a9ca",
+      "outputSha256": "738c965351cca4ecde92638eb00f40cc0c061768348af9880e56c7453fa6ab27",
+      "anchors": [
+        {
+          "name": "retain actual browser before synchronous Space callbacks",
+          "before": "    const std::string requested_space = *resolved_.FindString(\"spaceId\");",
+          "after": "    const auto retained_browser = browser->GetWeakPtr();\n    const std::string requested_space = *resolved_.FindString(\"spaceId\");",
+          "expectedCount": 1
+        },
+        {
+          "name": "revalidate original native destination before issuing navigation",
+          "before": "    auto retained_browser = browser->GetWeakPtr();\n    NavigateParams params(browser, intent_.url, ui::PAGE_TRANSITION_LINK);",
+          "after": "    // Space selection persists state and notifies native observers. It can\n    // close/rebind this window before control returns; do not navigate through\n    // the previous raw owner or issue a request under a changed destination.\n    if (!Current() || !target_ || !Admitted(target_.get()) || !retained_browser ||\n        retained_browser->GetProfile() != target_.get() ||\n        retained_browser->GetType() != BrowserWindowInterface::TYPE_NORMAL ||\n        retained_browser->GetTabStripModel()->closing_all() ||\n        aux::GetProfileCookieBindingEpoch(target_.get()) != target_epoch_ ||\n        aux::GetProfileId(target_.get()) != *resolved_.FindString(\"profileId\") ||\n        !Entry(aux::GetProfileId(target_.get()))) {\n      Fail(\"routing-cancelled\"); return;\n    }\n    if (!requested_space.empty()) {\n      auto* current = aux::AuxOrganizationWindowController::FromBrowser(retained_browser.get());\n      if (!current || !current->IsProjectionReady() ||\n          current->ActiveSpaceId() != *resolved_.FindString(\"spaceId\")) {\n        Fail(\"space-unavailable-or-busy\"); return;\n      }\n    }\n    NavigateParams params(retained_browser.get(), intent_.url, ui::PAGE_TRANSITION_LINK);",
+          "expectedCount": 1
+        }
+      ]
+    }
+  ]
+}

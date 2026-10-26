@@ -1,0 +1,39 @@
+--- a/chrome/browser/aux/routing/routing_service.cc
++++ b/chrome/browser/aux/routing/routing_service.cc
+@@ -167,6 +167,7 @@
+         aux::GetProfileCookieBindingEpoch(target_.get()) != target_epoch_ ||
+         aux::GetProfileId(target_.get()) != *resolved_.FindString("profileId") ||
+         !Entry(aux::GetProfileId(target_.get()))) { Fail("routing-cancelled"); return; }
++    const auto retained_browser = browser->GetWeakPtr();
+     const std::string requested_space = *resolved_.FindString("spaceId");
+     if (!requested_space.empty()) {
+       const auto space = SpaceSelector(target_.get(), requested_space);
+@@ -175,8 +176,26 @@
+           !controller->SelectSpace(space)) { Fail("space-unavailable-or-busy"); return; }
+       resolved_.Set("spaceId", space);
+     }
+-    auto retained_browser = browser->GetWeakPtr();
+-    NavigateParams params(browser, intent_.url, ui::PAGE_TRANSITION_LINK);
++    // Space selection persists state and notifies native observers. It can
++    // close/rebind this window before control returns; do not navigate through
++    // the previous raw owner or issue a request under a changed destination.
++    if (!Current() || !target_ || !Admitted(target_.get()) || !retained_browser ||
++        retained_browser->GetProfile() != target_.get() ||
++        retained_browser->GetType() != BrowserWindowInterface::TYPE_NORMAL ||
++        retained_browser->GetTabStripModel()->closing_all() ||
++        aux::GetProfileCookieBindingEpoch(target_.get()) != target_epoch_ ||
++        aux::GetProfileId(target_.get()) != *resolved_.FindString("profileId") ||
++        !Entry(aux::GetProfileId(target_.get()))) {
++      Fail("routing-cancelled"); return;
++    }
++    if (!requested_space.empty()) {
++      auto* current = aux::AuxOrganizationWindowController::FromBrowser(retained_browser.get());
++      if (!current || !current->IsProjectionReady() ||
++          current->ActiveSpaceId() != *resolved_.FindString("spaceId")) {
++        Fail("space-unavailable-or-busy"); return;
++      }
++    }
++    NavigateParams params(retained_browser.get(), intent_.url, ui::PAGE_TRANSITION_LINK);
+     params.disposition = WindowOpenDisposition::NEW_FOREGROUND_TAB;
+     // External/CLI input is not a trusted browser-UI navigation or an opener.
+     params.initiator_origin = url::Origin();
