@@ -47,6 +47,29 @@
       "bothCompositionOrdersEqual": true,
       "futureBranchesPreserved": true,
       "compileTarget": "obj/chrome/browser/aux/platform/daemon_supervisor.o"
+    },
+    {
+      "path": "chrome/browser/aux/AuxOwnedNativePeerChild.cc",
+      "predecessor": {
+        "path": "/Users/rcourson/Documents/Vibe/aux-completion-20261026/runtime/docs/integration/proposed/completion-20261026/runtime/future-supervised-build/browser-source/chrome/browser/aux/AuxOwnedNativePeerChild.cc",
+        "sha256": "b8ed4f785b60b040c3698bd6c1ce26e42502def9ed0689e440d7d5b7f7822d52"
+      },
+      "currentSource": {
+        "path": "/Users/rcourson/Documents/Vibe/aux-completion-20261026/runtime/docs/integration/proposed/completion-20261026/runtime/extension-sign-observation/source/AuxOwnedNativePeerChild.cc",
+        "sha256": "d25edf02478e97766ae3e6cbec5866cb51ce3145422c85f054cb56436373de1b"
+      },
+      "output": {
+        "path": "/Users/rcourson/Documents/Vibe/aux-completion-20261026/runtime/docs/integration/proposed/completion-20261026/runtime/future-supervised-build/signature-observation-source/AuxOwnedNativePeerChild.cc",
+        "sha256": "21b9b800578c5d12b83d6be9a9dc42ebf27996a6cc86e5a124d72e3718f5ea2e"
+      },
+      "ruleCounts": [
+        1,
+        1
+      ],
+      "reverseReplayExact": true,
+      "bothCompositionOrdersEqual": true,
+      "futureBranchesPreserved": true,
+      "compileTarget": "obj/chrome/browser/aux/platform/AuxOwnedNativePeerChild.o"
     }
   ],
   "compiled": false,

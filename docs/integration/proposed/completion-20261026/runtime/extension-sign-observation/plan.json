@@ -54,6 +54,18 @@
       "beforeSha256": "fb9c4d9b26595bac83fbc4b77baee840608f2f2123b789ee48967f946beab5de",
       "successor": "installation_auth.h",
       "afterSha256": "0d8ce7494408859677079df1697c25c29132adbccd4e1d201b819572a6490c1a"
+    },
+    {
+      "source": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/aux/AuxOwnedNativePeerChild.h",
+      "beforeSha256": "09bd4febf820c02ef32e8c83e67c6a6843452ba58d3e665c70200c06072dee20",
+      "successor": "AuxOwnedNativePeerChild.h",
+      "afterSha256": "b749d065f411385ad0a4733274868b7973a68e567cb7d39ad2a3e6e4ff20a743"
+    },
+    {
+      "source": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/aux/AuxOwnedNativePeerChild.cc",
+      "beforeSha256": "6d7834e5ff02e3f98d54919e10b9c43aca13b75be3453ab33699dee50ad5d9ef",
+      "successor": "AuxOwnedNativePeerChild.cc",
+      "afterSha256": "d25edf02478e97766ae3e6cbec5866cb51ce3145422c85f054cb56436373de1b"
     }
   ],
   "deadlineSeconds": 5,
