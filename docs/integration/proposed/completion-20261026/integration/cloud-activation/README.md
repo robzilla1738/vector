@@ -1,4 +1,6 @@
-# C1/O1 activation review — prepared, not authorized
+# C1 service activation review — prepared, not authorized
+
+Current scope: local completion proceeds independently. Backups and all backup setup are owner-deferred. `OPERATIONS.md` and the retained `o1` fields are historical inactive preparation, not prerequisites or questions for this activation. Current non-backup operations are in `SERVICE-OPERATIONS.md`.
 
 This is the concrete owner/operator packet for the current cloud source and existing Aux recipients. It performs no provider/account lookup, secret retrieval, deployment, schema write, email, backup, SSH operation or activation. The recorded production deployment is READY; promised production behavior is still unaccepted. Existing local browsing and BYOK remain usable without optional cloud sign-in. Payments and Aux-funded hosted AI stay false. Stripe setup and Gateway terms/credit are not prerequisites for BYOK or this packet.
 
@@ -32,7 +34,7 @@ Preserve existing values and keys. Root verified the nonsecret values NEXT_PUBLI
 2. Resolve domain assignment before any promotion. The recorded Production deployment **also lists dev-cloud.getaux.co**. Do not let a blanket promotion silently move the development hostname onto Production resources. Record its actual existing Development/Preview deployment/environment before changing anything; its target ID is currently unknown. Preserve marketing and Hostinger DNS.
 3. Approve the bounded staged deployment, project-specific maintenance-cron hold/resume, conditional schema action and exact aliases described in `DEPLOYMENT.md`. That document also identifies why the old reported deployment is not a certified protocol-compatible rollback.
 4. Approve fresh disposable production sign-in recipient(s), provider/user creation and deletion, and fixture data for the single `J5.md` journey. No recipient has been approved by this packet. Do not delete or use a preexisting owner account.
-5. Separately approve the proposed runner/account/cost/SSH scope and the explicit Production-content/credential recipients in `OPERATIONS.md`. Provisioning a server alone does not approve production access. Alert recipient is proposed, not enrolled.
+5. Resolve the service-specific monitor recipient/operator and exact readiness/maintenance/rollback actions in `SERVICE-OPERATIONS.md`. Do not resume runner/account/SSH/backup setup or its questions.
 
 `approval-record.pending.json` contains the exact known scope and unresolved public fields for the final owner action. Null fields are unresolved facts, not installed placeholders. The approval text grants neither release/signing nor payment/hosted-inference activation.
 
@@ -40,6 +42,6 @@ Preserve existing values and keys. Root verified the nonsecret values NEXT_PUBLI
 
 Keep the existing source/fixture results in `final-completion/cloud/readiness.md`, `operations.md`, current event/routine integration evidence, the actual R2 four-object check and current12 hosted cross-store restore. This packet reran none of those tests or backup drills. The operational wrapper is now implemented; the old dedicated-runner review's “wrapper still required” and two-check description are superseded by current source and three timers, not evidence of an installed service.
 
-Cloud routines still have no server executor and return CLOUD_ROUTINE_UNAVAILABLE. A paused device-routine metadata/CAS check is possible without inference; it must not be reported as executed cloud scheduling. Any remaining advertised cloud-execution promise needs its own implementation or explicit disposition before a full hosted-completion claim.
+Cloud routines still have no server executor and return CLOUD_ROUTINE_UNAVAILABLE. A paused device-routine metadata/CAS check is possible without inference; it must not be reported as executed cloud scheduling. The owner selected device-only launch routines; existing cloud records remain preserved and unexecuted. Device execution acceptance remains separate from metadata synchronization.
 
 The four information pages now exist in the frozen source with owner/legal-review copy. Public GET acceptance remains open until separately approved deployment; changing app links in source does not fix the observed marketing-host404s by itself. Marketing and mail DNS remain untouched.

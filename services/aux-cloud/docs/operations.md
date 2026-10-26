@@ -1,26 +1,38 @@
-# Cloud operations
+# Cloud operations — current completion scope
 
-The active service is Development/Preview at `https://dev-cloud.getaux.co`. Separate production database/private Blob resources are provisioned and verified in `docs/cloud/production-resource-review/execution.json`; the production source profile now pins their reviewed database/origins; production is not activated. The accepted local desktop is unchanged; an unsigned cloud package is a separate candidate.
+The October 26 metadata review found all six aliases, including `dev-cloud.getaux.co`, assigned to the existing Production deployment. Do not treat that hostname as an isolated Preview. The current source has not been activated or accepted there. Existing Aux Production Neon/Blob resources and Clerk/Resend configuration are retained; do not provision duplicates or replace secrets based on older missing-variable reports.
+
+The current activation procedure is [DEPLOYMENT.md](../../../docs/integration/proposed/completion-20261026/integration/cloud-activation/DEPLOYMENT.md), with one [J5 journey](../../../docs/integration/proposed/completion-20261026/integration/cloud-activation/J5.md). Local desktop completion is independent. Backups and their setup are owner-deferred; historical recovery notes below are not a work order or completion gate for this task.
 
 ## Deployment checks
 
-`pnpm build` checks environment configuration before compiling. It pins the database hostname and app/API origins, checks provider test/live mode, rejects unrelated allowed web origins and validates auth/encryption/cron key formats. `config/deployment-resources.json` now pins the separate production database and recorded `app.getaux.co` / `api.getaux.co` origins. `VERCEL_ENV=production` or `VERCEL_TARGET_ENV=production` still requires every required variable, matching origins/database and live provider mode; the last metadata inventory had nine missing settings. Never copy the development resource or secrets. This is a configuration safeguard, not proof that provider credentials belong to the intended account or that backup/recovery is configured.
+`pnpm build` checks the target database hostname, app/API origins, provider modes, allowed web origins and auth/encryption/cron key formats. Both `AUX_PAYMENTS_ENABLED` and `AUX_HOSTED_AI_ENABLED` remain false; Stripe and Gateway setup are not launch prerequisites. Environment presence does not establish secret pairing, real delivery or live behavior.
 
-Applied migrations are immutable. The checked-in `src/schema-manifest.json` pins every current SQL migration. After adding and reviewing a new migration, regenerate the manifest from `migrationInventory()` in `scripts/check-environment.mjs`, apply the migration in the intended environment, and deploy. The build refuses a stale manifest; never edit an applied SQL file to repair a deployed migration.
+Source has twelve immutable migrations. Historical Production evidence records all twelve applied. Compare their exact hashes before activation; no DDL is expected. A genuine missing or mismatched migration needs a separate exact review, never a reset or a rerun of altered applied SQL.
 
-## Pre-activation configuration inventory
+Production-filtered dashboard evidence supersedes the older truncated inventory: all six previously omitted configuration names are present. Public app/API origins and false launch flags were observed; other public values and secret-recipient pairing remain unverified. `scripts/check-production-configuration.mjs` is a metadata aid, not proof of provider ownership or production readiness. Do not recreate fields from an incomplete API listing or reveal secret values into logs.
 
-Run `node scripts/check-production-configuration.mjs --record` from this service. It verifies the personal Vercel identity, reads only the pinned Aux project's Production metadata, validates readable public Aux settings, and checks the public `clerk.getaux.co` signing endpoint. Its required-variable list is shared with the build guard. It prints/records sanitized field names and public status only, never provider secret/encrypted values. It does not retrieve Production Secrets, send email, charge payments, create deployments or activate domains. Exit0 means that metadata/public checks passed, exit2 means known incomplete/unverified configuration, and exit1 means inspection failed. Even exit0 would not prove secret pairing or production readiness.
+The remote Root Directory is empty, Node is24.x, and Git is disconnected. Upload only the reviewed `services/aux-cloud` tree with its lockfile/config; a reported Git label does not prove the deployed bytes. Preserve marketing and Hostinger mail DNS. Correct dev-cloud's actual environment/alias assignment within the explicit activation review before promoting Production.
 
-Latest evidence: `../evidence/production-configuration.json`. Production webhook configuration and live Stripe credentials/prices/portal are absent. The refreshed inventory records `resourceProfileConfigured:true` and nine missing auth/billing fields; the earlier false-profile inventory is archived in the profile review. The focused [profile guard check](../../../docs/integration/proposed/aux-production-profile/README.md) uses only synthetic values and makes no provider call. `AUX_ALLOWED_ORIGINS` and `CLERK_AUTHORIZED_PARTIES` were newly added as Production Configs with `https://app.getaux.co`; no existing values were overwritten. Vercel returns these new Configs as encrypted metadata, so the audit records their values as unverified rather than misreporting a mismatch or pulling private production configuration. Add receipt: `../evidence/production-public-origins.json`. Verify their actual runtime values during the reviewed production build/activation procedure. Production Clerk/Resend backend-secret recipient pairing still requires separate acceptance. The one approved development sign-in email was delivered; its code was not read or used. Named Secret presence and public JWKS availability do not establish production pairing.
+## Read-only readiness acceptance
 
-## Monitoring
+`GET /api/v1/health` is liveness. Authenticated `GET /api/v1/internal/readiness` reads migration metadata only and reports the expected schema count/digest, actual schema compatibility and both launch flags. It makes no provider calls or writes. Compatible later additive migrations remain allowed; this does not certify an old deployment's protocol compatibility.
 
-- `GET /api/v1/health` is public liveness only; it does not test any dependency.
-- `GET /api/v1/internal/readiness` requires `Authorization: Bearer <CRON_SECRET>`. It reads only `aux_migrations`, compares every required name/hash, and returns200 when the database/schema match or503 on mismatch/unavailability. It changes no records and makes no paid provider calls. It accepts later additive migrations so an older compatible build can be rolled back.
-- `GET /api/v1/internal/maintenance` uses the same authentication and performs bounded cleanup. Existing Preview checks invoke it explicitly; platform cron runs only for Production. Keep the secret in the monitor's private header configuration, never in a URL or public client.
+The corrected `scripts/check-readiness.mts` requires an explicit target review and a new output path. It no longer guesses that dev-cloud is Development, loads `.env.local`, requires all provider secrets, or compares the obsolete response shape. A review records `format: aux.readiness-target.v1`, the existing project/team IDs, `environment: development|production`, exact HTTPS `origin`, actual `deploymentId`, and `assignmentVerifiedAt`. The operator must verify those facts against the intended deployment first. Only the matching API alias or the Aux project's unique deployment hostname is accepted; the target review is evidence, not authorization.
 
-Readiness does not prove Clerk/email delivery, Stripe reconciliation, Blob availability, Gateway access, retention, backup coverage or desktop behavior. Monitor provider delivery failures and Vercel function errors separately; do not log request bodies, tokens or raw provider/database errors. No external monitor or paid log drain is configured yet.
+Supply only the already authorized internal header through a private process environment, with `AUX_READINESS_SECRET_ENVIRONMENT` matching the reviewed environment. Never place its value in argv, a URL, Git or evidence. Then, from the service directory:
+
+```sh
+pnpm exec tsx scripts/check-readiness.mts --target-review /absolute/review.json --output /absolute/new-readiness-receipt.json
+```
+
+The probe performs exactly three GETs: public health, unauthenticated readiness denial, authenticated readiness. Redirects are refused, responses are bounded, errors omit provider text and credentials, and receipts never overwrite old evidence. Maintenance is never invoked. Deployment protection must already permit this exact approved request path; do not disable it to make the probe pass. Missing access remains a concrete prerequisite.
+
+## Service operations
+
+See [SERVICE-OPERATIONS.md](../../../docs/integration/proposed/completion-20261026/integration/cloud-activation/SERVICE-OPERATIONS.md) for the non-backup operational acceptance. The existing `/api/v1/internal/maintenance` endpoint performs bounded cleanup and must not be used as a health probe. The source five-minute cron and dashboard Enabled checkbox do not establish a scheduled job or successful execution.
+
+Readiness does not prove email delivery, private Blob access, account/provider pairing, current desktop sync/routine contracts, feedback readback or alert delivery. Those remain actual J5/operating acceptance. No current production, secret, monitor, billing, backup or deployment action was performed by this local source update.
 
 ## Recovery before real users
 

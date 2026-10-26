@@ -1,0 +1,35 @@
+{
+  "format": "aux.service-readiness.local-verification.v1",
+  "scope": "Local source and fake-transport checks only; production activation remains unapproved",
+  "changedSource": [
+    {
+      "path": "services/aux-cloud/scripts/check-readiness.mts",
+      "sha256": "ed486626789cd7df064db861c59d63cbe2c64f3972dceba3cd410ee1591cb612"
+    },
+    {
+      "path": "services/aux-cloud/scripts/check-readiness.test.ts",
+      "sha256": "147d661dd0ffb52a3d7ef7542a0a50b11fa88629890fd73fc0a85f98eaef45ee"
+    },
+    {
+      "path": "services/aux-cloud/src/readiness.ts",
+      "sha256": "66ddad2b597b59f22ba49c2e4c4900f4f09702e267847c7a1b2a0f296149ca64"
+    }
+  ],
+  "checks": {
+    "probeCases": 3,
+    "existingAffectedOperationsCases": 6,
+    "allPassed": true,
+    "serviceTypecheck": "passed: tsc --noEmit --incremental false"
+  },
+  "initialCorrections": [
+    "Test-only .mts import suffix rejected by TypeScript; corrected to emitted .mjs module specifier and repeated the three affected probe cases plus typecheck."
+  ],
+  "privateEnvironmentRead": false,
+  "networkRequests": 0,
+  "databaseWrites": false,
+  "migrationChanges": false,
+  "backupActions": false,
+  "currentDesktopChanged": false,
+  "deploymentPerformed": false,
+  "productionAcceptance": false
+}
