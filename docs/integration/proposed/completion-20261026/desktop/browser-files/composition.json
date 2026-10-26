@@ -1,14 +1,14 @@
 {
   "format": "aux.final-composed-resources.v2",
   "root": "/Users/rcourson/Documents/Vibe/web",
-  "out": "/private/tmp/aux-final-composed-resources-20261026-a2",
+  "out": "/private/tmp/aux-final-composed-resources-20261026-a3",
   "files": [
     {
       "name": "index.mjs",
       "input": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-local-completion-20261025-a38/Aux.app/Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/node-development/index.mjs",
       "inputSha256": "48af998738fb6d2fc30cb8d5b2e9de03cb04ab7d8563ebdaa5fe8100944fc514",
-      "outputPath": "/private/tmp/aux-final-composed-resources-20261026-a2/index.mjs",
-      "outputSha256": "b057f7cb0c09bf16ffbfa52f52be4871b9d22005a849b5354bcc5b6b88f41188",
+      "outputPath": "/private/tmp/aux-final-composed-resources-20261026-a3/index.mjs",
+      "outputSha256": "62226811478457d71f7b4ca7d8b256011d7789b25f5e1b7485f3b9a45a356031",
       "stages": [
         {
           "kind": "account-bound cloud transfers",
@@ -65,33 +65,39 @@
           "anchors": 1
         },
         {
-          "kind": "runtime/selected-builtin-owner/entry.anchors.json",
+          "kind": "Aux password manager preference markers",
           "inputSha256": "7715c63f740fc8775015245e37cb408a230444e7ad9c48fd6037ce7043633751",
-          "outputSha256": "5d3b909f4bc03d2753f9e34417aec8f4818c753a02ec8626879c3f5d645ac6f4",
+          "outputSha256": "19064c526f28673ba5121adae953f6df3dcd13adcbee9a289bc9333430789f55",
+          "anchors": 2
+        },
+        {
+          "kind": "runtime/selected-builtin-owner/entry.anchors.json",
+          "inputSha256": "19064c526f28673ba5121adae953f6df3dcd13adcbee9a289bc9333430789f55",
+          "outputSha256": "07ff5e67f6d2b89cd90f1084e4ae202258f60152443e96a3079e2b6a8f449e45",
           "anchors": 8
         },
         {
           "kind": "runtime/selected-file-reader/entry.anchors.json",
-          "inputSha256": "5d3b909f4bc03d2753f9e34417aec8f4818c753a02ec8626879c3f5d645ac6f4",
-          "outputSha256": "5616699d9b28b5aa6e02ce29459aed01688d6abcf8e571f7bd173760d96af1a0",
+          "inputSha256": "07ff5e67f6d2b89cd90f1084e4ae202258f60152443e96a3079e2b6a8f449e45",
+          "outputSha256": "2cff7d564b8f05d115047c641bd38318ba914b40017d3d175862ef1f93c0b3eb",
           "anchors": 6
         },
         {
           "kind": "corrected Computer Use",
-          "inputSha256": "5616699d9b28b5aa6e02ce29459aed01688d6abcf8e571f7bd173760d96af1a0",
-          "outputSha256": "cf487d3adb501a3524f2e5d1a4aea0b3da39619c69e3fdfc27db641eb174a34e",
+          "inputSha256": "2cff7d564b8f05d115047c641bd38318ba914b40017d3d175862ef1f93c0b3eb",
+          "outputSha256": "b36f741fa720125eb02a75bf68a18dc30fd6264e215ff95c0245f592d3015fc7",
           "anchors": 21
         },
         {
           "kind": "browser automation",
-          "inputSha256": "cf487d3adb501a3524f2e5d1a4aea0b3da39619c69e3fdfc27db641eb174a34e",
-          "outputSha256": "b34b94ea501378099208292b1577870f3a337ba25b66b13348b2e492c1559d2f",
+          "inputSha256": "b36f741fa720125eb02a75bf68a18dc30fd6264e215ff95c0245f592d3015fc7",
+          "outputSha256": "939b40006d2dbe84089b00c213f2a0e0f18b9006209ae01ca2feb22abc5982b4",
           "anchors": 26
         },
         {
           "kind": "browser files",
-          "inputSha256": "b34b94ea501378099208292b1577870f3a337ba25b66b13348b2e492c1559d2f",
-          "outputSha256": "b057f7cb0c09bf16ffbfa52f52be4871b9d22005a849b5354bcc5b6b88f41188",
+          "inputSha256": "939b40006d2dbe84089b00c213f2a0e0f18b9006209ae01ca2feb22abc5982b4",
+          "outputSha256": "62226811478457d71f7b4ca7d8b256011d7789b25f5e1b7485f3b9a45a356031",
           "anchors": 16
         }
       ]
@@ -100,8 +106,8 @@
       "name": "aux-native-entry.mjs",
       "input": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-local-completion-20261025-a38/Aux.app/Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/node-development/aux-native-entry.mjs",
       "inputSha256": "f355833cb607963a65ca3108e7ae19ea7ca60192a9f3d8e2644a3c12ec49c808",
-      "outputPath": "/private/tmp/aux-final-composed-resources-20261026-a2/aux-native-entry.mjs",
-      "outputSha256": "54b4a71ee1a14b392b2330f715e0232adf4b91854b72a6fc6ca97804e3164a01",
+      "outputPath": "/private/tmp/aux-final-composed-resources-20261026-a3/aux-native-entry.mjs",
+      "outputSha256": "2fd53b79c00aa92a10c5b84a2581ea9759215dcfadc354c72e12527680e52e16",
       "stages": [
         {
           "kind": "account-bound cloud transfers",
@@ -158,33 +164,39 @@
           "anchors": 1
         },
         {
-          "kind": "runtime/selected-builtin-owner/entry.anchors.json",
+          "kind": "Aux password manager preference markers",
           "inputSha256": "1f41787cee0c72e5a82152bf3de558ad6169f9c36df44746e0e4e624862a2d0d",
-          "outputSha256": "d73b2dba546a63962c3bea3332f1a2cef1ea3e2052380c2566abd4f154c0654f",
+          "outputSha256": "5460471be00bd91d399edfdb6858235c5a67dccfec5ad12a89234ab4d9912451",
+          "anchors": 2
+        },
+        {
+          "kind": "runtime/selected-builtin-owner/entry.anchors.json",
+          "inputSha256": "5460471be00bd91d399edfdb6858235c5a67dccfec5ad12a89234ab4d9912451",
+          "outputSha256": "128ca3881675588ef1f258e982614ec938e649a6ad8cd4840696fe7599cedf4d",
           "anchors": 8
         },
         {
           "kind": "runtime/selected-file-reader/entry.anchors.json",
-          "inputSha256": "d73b2dba546a63962c3bea3332f1a2cef1ea3e2052380c2566abd4f154c0654f",
-          "outputSha256": "610608f08e8efb75da7bb9e3cae6317b1015e0e9157a2d69d4d3f25f2e852e9b",
+          "inputSha256": "128ca3881675588ef1f258e982614ec938e649a6ad8cd4840696fe7599cedf4d",
+          "outputSha256": "a0acde94020ac3ae260bb955e731be55604f9e76126d2abc704a1ac66e7293c5",
           "anchors": 6
         },
         {
           "kind": "corrected Computer Use",
-          "inputSha256": "610608f08e8efb75da7bb9e3cae6317b1015e0e9157a2d69d4d3f25f2e852e9b",
-          "outputSha256": "f3e8bc26a961aebb23182d9950485fa95f598781118d0a3fcfabb5dfeaec96d4",
+          "inputSha256": "a0acde94020ac3ae260bb955e731be55604f9e76126d2abc704a1ac66e7293c5",
+          "outputSha256": "4f6fbc13b014318d468c7f11704d68c9c161deb29df6146c027d425f41b6fb12",
           "anchors": 21
         },
         {
           "kind": "browser automation",
-          "inputSha256": "f3e8bc26a961aebb23182d9950485fa95f598781118d0a3fcfabb5dfeaec96d4",
-          "outputSha256": "d76975377f0df43c5146d9a82fb19b42b74501d25ff08670b248d879badd0e5b",
+          "inputSha256": "4f6fbc13b014318d468c7f11704d68c9c161deb29df6146c027d425f41b6fb12",
+          "outputSha256": "5e7fbf64e55496cf260d83748f6e4b6ee9e358519ec4b574937303b10e1fa689",
           "anchors": 26
         },
         {
           "kind": "browser files",
-          "inputSha256": "d76975377f0df43c5146d9a82fb19b42b74501d25ff08670b248d879badd0e5b",
-          "outputSha256": "54b4a71ee1a14b392b2330f715e0232adf4b91854b72a6fc6ca97804e3164a01",
+          "inputSha256": "5e7fbf64e55496cf260d83748f6e4b6ee9e358519ec4b574937303b10e1fa689",
+          "outputSha256": "2fd53b79c00aa92a10c5b84a2581ea9759215dcfadc354c72e12527680e52e16",
           "anchors": 16
         }
       ]
@@ -193,7 +205,7 @@
       "name": "background.js",
       "input": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-local-completion-20261025-a38/Aux.app/Contents/Resources/aux/apps/extension/dist/background.js",
       "inputSha256": "02b2288a0c1691a1e55d4f16c1db1147385da5b7030740b62c37432a191591cc",
-      "outputPath": "/private/tmp/aux-final-composed-resources-20261026-a2/background.js",
+      "outputPath": "/private/tmp/aux-final-composed-resources-20261026-a3/background.js",
       "outputSha256": "5eff26a667e650969311ca9341b66876e678960ac08dfd1419f00e33c529926f",
       "stages": [
         {
@@ -234,7 +246,9 @@
     "vendor/provided/aux-bash-close-lifetime.mjs": "a533aad404915a3fdddeb4b55fd6d5a70f51997f422f1003334579abdb9a5fbc",
     "docs/integration/proposed/completion-20261026/integration/advertised-tools/source-pins.json": "d71ac38a5ca652807d5931e885b604677b0d74c3eff8917d4b3eec499aa5cf83",
     "vendor/provided/aux-fixed-builtin-routing.mjs": "090ff5b24298d497f4d14d6aaafc00e7e1102287a42d2bf6bfcae11b9fae7320",
-    "vendor/provided/aux-ephemeral-protocol-identity.mjs": "f81ae98aa1489acd9204c368732f94258608270def0a47cbfab7abf6d4a4f0b4"
+    "vendor/provided/aux-ephemeral-protocol-identity.mjs": "f81ae98aa1489acd9204c368732f94258608270def0a47cbfab7abf6d4a4f0b4",
+    "vendor/provided/aux-password-preference-markers.mjs": "cfde86a5bcca4a752a525a6326acfd3cf1fe997181b296e69c659b0045321e2b",
+    "docs/integration/proposed/completion-20261026/integration/preference-identity/source-pins.json": "897fe10e285691a8d23f1717b036d91fe083d01afd9797ad533b69f8f1850a3d"
   },
   "nativeProjected": false,
   "appExecuted": false

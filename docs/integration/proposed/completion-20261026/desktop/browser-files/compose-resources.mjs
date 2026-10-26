@@ -17,6 +17,7 @@ const {transformAuxEventPolling}=await load('vendor/provided/aux-event-poll-inte
 const {transformAuxOrdinaryChatStartup}=await load('vendor/provided/aux-ordinary-chat-startup.mjs');
 const {transformAuxBashCloseLifetime}=await load('vendor/provided/aux-bash-close-lifetime.mjs');
 const {transformAuxFixedBuiltinRouting}=await load('vendor/provided/aux-fixed-builtin-routing.mjs');
+const {transformAuxPreferenceIdentity}=await load('vendor/provided/aux-password-preference-markers.mjs');
 const {transformAuxEphemeralProtocolIdentity,transformAuxTagIconIdentity}=await load('vendor/provided/aux-ephemeral-protocol-identity.mjs');
 const base=join(root,'out/provided-candidate-local-completion-20261025-a38/Aux.app/Contents/Resources/aux/apps'),files=[];
 await mkdir(out,{recursive:true});
@@ -34,6 +35,7 @@ for(const name of ['index.mjs','aux-native-entry.mjs','background.js']){
   stage('fixed builtin routing',transformAuxFixedBuiltinRouting({path:name,text,source}));
   stage('Aux transient protocol generation 2',transformAuxEphemeralProtocolIdentity({text,source}));
   stage('Aux tag icon schema',transformAuxTagIconIdentity({text,source}));
+  stage('Aux password manager preference markers',transformAuxPreferenceIdentity({text,source}));
  }
  const result=await transformAuxSelectedBrowserResources({path:name,text,source,root});text=result.text;stages.push(...result.stages);
  const target=resolve(out,name);await writeFile(target,text,{mode:0o600});const check=spawnSync(process.execPath,['--check',target],{encoding:'utf8'});if(check.status!==0)throw Error(`${name} syntax: ${check.stderr}`);

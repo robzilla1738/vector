@@ -22,7 +22,9 @@
     "vendor/provided/aux-bash-close-lifetime.mjs": "a533aad404915a3fdddeb4b55fd6d5a70f51997f422f1003334579abdb9a5fbc",
     "docs/integration/proposed/completion-20261026/integration/advertised-tools/source-pins.json": "d71ac38a5ca652807d5931e885b604677b0d74c3eff8917d4b3eec499aa5cf83",
     "vendor/provided/aux-fixed-builtin-routing.mjs": "090ff5b24298d497f4d14d6aaafc00e7e1102287a42d2bf6bfcae11b9fae7320",
-    "vendor/provided/aux-ephemeral-protocol-identity.mjs": "f81ae98aa1489acd9204c368732f94258608270def0a47cbfab7abf6d4a4f0b4"
+    "vendor/provided/aux-ephemeral-protocol-identity.mjs": "f81ae98aa1489acd9204c368732f94258608270def0a47cbfab7abf6d4a4f0b4",
+    "vendor/provided/aux-password-preference-markers.mjs": "cfde86a5bcca4a752a525a6326acfd3cf1fe997181b296e69c659b0045321e2b",
+    "docs/integration/proposed/completion-20261026/integration/preference-identity/source-pins.json": "897fe10e285691a8d23f1717b036d91fe083d01afd9797ad533b69f8f1850a3d"
   },
   "entrySha256": "f355833cb607963a65ca3108e7ae19ea7ca60192a9f3d8e2644a3c12ec49c808",
   "backgroundSha256": "02b2288a0c1691a1e55d4f16c1db1147385da5b7030740b62c37432a191591cc",
