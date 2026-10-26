@@ -1,0 +1,54 @@
+{
+  "format": "aux.future-signature-refresh-input-selection.v1",
+  "nativeBuildPending": true,
+  "currentNativeReceiptPending": true,
+  "signatureSourcePlan": {
+    "path": "docs/integration/proposed/completion-20261026/runtime/future-supervised-build/signature-observation-plan.json",
+    "sha256": "357f4765201c3309a4f9a9ed602159c5f985b2af34bd03a114f452345e4fa215"
+  },
+  "compileRunner": {
+    "path": "docs/integration/proposed/completion-20261026/runtime/future-supervised-build/compile-signature-refresh.py",
+    "sha256": "11bcc09e46ec5a08e8a59a65528981818afc1a110464208e247679c2cd8c8169"
+  },
+  "linkRunner": {
+    "path": "docs/integration/proposed/completion-20261026/runtime/future-supervised-build/link-browser.py",
+    "sha256": "5963f0482c979704137410fff533857c5a58a6ac72d488485677351c6b685c69"
+  },
+  "producerCount": 3,
+  "startupProducers": "/private/tmp/aux-future-startup-refresh-20261026-b1",
+  "reusePrimaryReceipt": {
+    "path": "/private/tmp/aux-future-browser-link-20261026-b6/receipt.json",
+    "sha256": "837a565c2b66d18bf5d29ea8c75252cbfebe53cb286f097cab33f7e5e85b05a8"
+  },
+  "daemonResources": [
+    {
+      "path": "/private/tmp/aux-initial-prompt-preservation-20261026-a1-future/index.mjs",
+      "sha256": "8e50157c7ea6a20c2ba828f59c0a00e3db1848113855089e394cb39b2289269a"
+    },
+    {
+      "path": "/private/tmp/aux-initial-prompt-preservation-20261026-a1-future/aux-native-entry.mjs",
+      "sha256": "a0c8ac8010c728c2ee4ac2757b8e6aa5cc5bf0ec6899b14e6124ac6b9bcd7dd8"
+    }
+  ],
+  "daemonResourceReceipt": {
+    "path": "/private/tmp/aux-initial-prompt-preservation-20261026-a1-future/receipt.json",
+    "sha256": "e87299133780ce4fdb45344ce3879b10fec4811c4219bd53ea9aeb53b9b06bc8"
+  },
+  "extensionBackground": {
+    "path": "/private/tmp/aux-settled-context-rejection-20261026-a2/background.js",
+    "sha256": "5878bfc73f19bc07c31cea0e33da6ae5ef005ce434b891b9975b732285a28fe4"
+  },
+  "extensionRenderer": {
+    "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/desktop/palette-cold-input/source/assets/tabsearch-3k_2hgil.js",
+    "sha256": "2581dc9bce21c7f3a049f8c24fce5b8f346565dfd62e5e6d0550b4d06454c218"
+  },
+  "extensionManifest": {
+    "path": "/private/tmp/aux-component-worker-update-20261026-a1/manifest.json",
+    "sha256": "2b395128cb2d11bff5c804c24591fe7c7cd63816ad733283434d3364f59da158"
+  },
+  "manifestFinalBatchPairingRequiresIntegratorConfirmation": true,
+  "nativeBuildExecuted": false,
+  "signed": false,
+  "appModified": false,
+  "sourceComplete": false
+}
