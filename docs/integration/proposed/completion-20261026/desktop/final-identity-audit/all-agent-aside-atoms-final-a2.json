@@ -1,0 +1,1030 @@
+{
+  "receiptSha256": "6dcb81a02f279fe462950ed8552f7312c476447eeafed5ce30d98982a0074bc9",
+  "matches": [
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/-components-4o0FSqQ9.js",
+      "sha256": "98ee9af88fcdfc6136e7e20556de0752ff3b81be8fb5b110c4d0a3f1d585bd72",
+      "groups": [
+        {
+          "token": "aside:sidepanel-session",
+          "count": 1,
+          "contexts": [
+            "\"aux.remix.pending.v2\",O=(e,n)=>`${ue}:${e}:${n}`,me=(e,n)=>X(O(e,n)),P=\"sidepanel-target\",pe=\"aside:sidepanel-session\";function fe(e){return e.mode===\"new-session\"?!0:e.isInitialObservation&&!e.hasCurrentSession}function he(e,n){return window.sess"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/-context-CnivYB_B.js",
+      "sha256": "cf242d6dfbe341205f98741a3467c063c6cb48b4df2befee3606754b0e681aa6",
+      "groups": [
+        {
+          "token": "aside",
+          "count": 1,
+          "contexts": [
+            "var e=o(s(),1),u=i(),t=(0,e.createContext)(null),x=({children:r})=>{const[a,n]=(0,e.useState)(\"aside\");return(0,u.jsx)(t,{value:{passwordManagerChoice:a,setPasswordManagerChoice:n},children:r})},c=()=>{const r=(0,e.use)(t);if(!r)t"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/-types-Wy38XkNB.js",
+      "sha256": "b5870f3d72d03493ffea375c6af92881278a253dfef3168515afc5fccce249e9",
+      "groups": [
+        {
+          "token": "aside.recovery.auk.v1",
+          "count": 1,
+          "contexts": [
+            "ror(c.title,{description:c.description})}var I=a({purpose:l(\"recovery.auk\"),envelopeVersion:l(\"aside.recovery.auk.v1\"),nonceB64:e().min(1),ciphertextB64:e().min(1)}),A=i([\"google\",\"email\",\"anonymous\"]),b=i([\"local\",\"cloud\"]),y=i([\"active\",\"paused"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/applescript-Ccm0VsLV.js",
+      "sha256": "8bfb45ba3378006496680b4df095b3458c0ebc4319f62846a2a91ef1cc3883a1",
+      "groups": [
+        {
+          "token": "aside",
+          "count": 3,
+          "contexts": [
+            "n)\\\\\\\\s+(\\\\\\\\w+)(?:\\\\\\\\s+(of|in)\\\\\\\\s+(\\\\\\\\w+))?(?=\\\\\\\\s+(above|against|apart\\\\\\\\s+from|around|aside\\\\\\\\s+from|at|below|beneath|beside|between|by|for|from|instead\\\\\\\\s+of|into|on|onto|out\\\\\\\\s+of|over|thru|under)\\\\\\\\b)\",\"beginCapt",
+            "riable.parameter.handler.applescript\"}},\"match\":\"\\\\\\\\b(?i:above|against|apart\\\\\\\\s+from|around|aside\\\\\\\\s+from|at|below|beneath|beside|between|by|for|from|instead\\\\\\\\s+of|into|on|onto|out\\\\\\\\s+of|over|thru|under)\\\\\\\\s+(\\\\\\\\w+)\\\\\\\\",
+            ".loop.applescript\"},{\"match\":\"\\\\\\\\b(?i:about|above|after|against|and|apart\\\\\\\\s+from|around|as|aside\\\\\\\\s+from|at|back|before|beginning|behind|below|beneath|beside|between|but|by|considering|contains??|contains|copy|div|does|eight"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/applescript-x_PoxTp7.js",
+      "sha256": "8bfb45ba3378006496680b4df095b3458c0ebc4319f62846a2a91ef1cc3883a1",
+      "groups": [
+        {
+          "token": "aside",
+          "count": 3,
+          "contexts": [
+            "n)\\\\\\\\s+(\\\\\\\\w+)(?:\\\\\\\\s+(of|in)\\\\\\\\s+(\\\\\\\\w+))?(?=\\\\\\\\s+(above|against|apart\\\\\\\\s+from|around|aside\\\\\\\\s+from|at|below|beneath|beside|between|by|for|from|instead\\\\\\\\s+of|into|on|onto|out\\\\\\\\s+of|over|thru|under)\\\\\\\\b)\",\"beginCapt",
+            "riable.parameter.handler.applescript\"}},\"match\":\"\\\\\\\\b(?i:above|against|apart\\\\\\\\s+from|around|aside\\\\\\\\s+from|at|below|beneath|beside|between|by|for|from|instead\\\\\\\\s+of|into|on|onto|out\\\\\\\\s+of|over|thru|under)\\\\\\\\s+(\\\\\\\\w+)\\\\\\\\",
+            ".loop.applescript\"},{\"match\":\"\\\\\\\\b(?i:about|above|after|against|and|apart\\\\\\\\s+from|around|as|aside\\\\\\\\s+from|at|back|before|beginning|behind|below|beneath|beside|between|but|by|considering|contains??|contains|copy|div|does|eight"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/artifact-test-CdjpLuI1.js",
+      "sha256": "045785b32e4332918e6ce4913fe8ee6a6ea337a7090d9e31e9a1e3b68347aeb6",
+      "groups": [
+        {
+          "token": "asidebrowser",
+          "count": 1,
+          "contexts": [
+            "hoto-1500648767791-00dcc994a43e?auto=format&fit=crop&w=128&q=80\"}],d={authorName:\"Aux\",handle:\"asidebrowser\",avatarUrl:o},c={authorName:\"Jun Kim\",headline:\"Building Aux\",avatarUrl:o},a=(s,r,n)=>({label:s,artifact:{type:r,data:n}}),T=[{ti"
+          ]
+        },
+        {
+          "token": "aside.at",
+          "count": 3,
+          "contexts": [
+            "calendarName:\"Work\",color:\"#ff9500\",location:\"Sisterita\",attendees:[{name:\"Jun Kim\",email:\"jun@aside.at\",avatarUrl:o},{name:\"Sam Rivera\",email:\"sam@example.com\"}],description:`Sisterita\n669 Commercial St., San Francisco, CA 94111`,dr",
+            " 2 \u00b7 9:00am-11:00am\",calendarName:\"Work\",color:\"#0b57d0\",attendees:[{name:\"Jun Kim\",email:\"jun@aside.at\",avatarUrl:o}],description:\"Heads-down time for the launch checklist.\",draft:\"\"}),a(\"Several guests, few details\",\"calendar-event",
+            "e 5 \u00b7 3:00pm-3:30pm\",calendarName:\"Work\",color:\"#7c3aed\",attendees:[{name:\"Jun Kim\",email:\"jun@aside.at\",avatarUrl:o},{name:\"Mina Lee\",email:\"mina@example.com\"},{name:\"Theo Park\",email:\"theo@example.com\"},{name:\"Sam Rivera\",email:\"sa"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/browser-binding-CzDmxQNA.js",
+      "sha256": "c9d434f10aadd743b5a8f651c745c26db0cc810b7c659ecc9772b308c0c69358",
+      "groups": [
+        {
+          "token": "aside.miniPopup.contextRecovery",
+          "count": 1,
+          "contexts": [
+            "rom\"./strip-markdown-DRcmtuJc.js\";import{i as h}from\"./route-context-BT2HpiwG.js\";var g=440,c=\"aside.miniPopup.contextRecovery\",u=!1,p,U=()=>typeof window<\"u\"&&window.location.pathname.endsWith(\"/minipopup.html\"),s=t=>{if(!(t instanceof Error)||!t.message."
+          ]
+        }
+      ]
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/browser-icon-DvnonVC4.js",
+      "sha256": "c3fb45292979d9df78a24cdf1d518f999b64d773b93c7ddc5c3e3d3e5fc4a7e0",
+      "groups": [
+        {
+          "token": "aside",
+          "count": 1,
+          "contexts": [
+            "er-events-none rounded-none select-none\",t),children:(0,a.jsx)(d,{src:e})}):null},m=new Map([[\"aside\",B],[\"chrome\",l],[\"safari\",L],[\"edge\",v],[\"firefox\",P],[\"brave\",X],[\"arc\",u],[\"dia\",T],[\"chatgpt-atlas\",p],[\"comet\",o],[\"helium\","
+          ]
+        }
+      ]
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/channels-CJn5l9_T.js",
+      "sha256": "e22926be4dadc67a0f9491b07ec439b55d5bba8dfa6ea6b146434db9b73c8a3d",
+      "groups": [
+        {
+          "token": "create-with-aside",
+          "count": 4,
+          "contexts": [
+            "ription:r,method:o,isPending:c,onMethodChange:m,onNext:i})=>{const d=(0,S.useId)(),h=u=>{(u===\"create-with-aside\"||u===\"manual\")&&m(u)};return(0,e.jsxs)(e.Fragment,{children:[(0,e.jsxs)(Oe,{className:\"px-2\",children:[s,(0,e.jsx)(pe,{children:",
+            "up is not available for ${t}.`,disabled:!a,id:`${d}-aside`,title:\"Ask Aux to set it up\",value:\"create-with-aside\"}),(0,e.jsx)(Ee,{description:r,id:`${d}-manual`,title:\"I'll do it myself\",value:\"manual\"})]}),(0,e.jsx)(De,{className:\"mx-0 mt-4 ",
+            "Saved:r})=>{const[o,c]=(0,S.useState)(!0),[m,i]=(0,S.useState)(\"choice\"),[d,h]=(0,S.useState)(\"create-with-aside\"),u=(0,S.useRef)(!1),j=(f,C)=>{if(!f&&(C.reason===\"escape-key\"||u.current)){C.cancel();return}c(f)},y=f=>{r(f),c(!1)};return(0,e."
+          ]
+        },
+        {
+          "token": "-aside",
+          "count": 1,
+          "contexts": [
+            "[(0,e.jsx)(Ee,{description:a??`Automatic setup is not available for ${t}.`,disabled:!a,id:`${d}-aside`,title:\"Ask Aux to set it up\",value:\"create-with-aside\"}),(0,e.jsx)(Ee,{description:r,id:`${d}-manual`,title:\"I'll do it myself\","
+          ]
+        },
+        {
+          "token": "settings.channels.connect.create-with-aside",
+          "count": 1,
+          "contexts": [
+            "()=>{const o=await n(`Read this and create a ${E[s].label} bot for me:\n${cs(s)}`);return o&&t(\"settings.channels.connect.create-with-aside\",{platform:s}),o},isPending:a}},_e=\"channel-credentials-form\",ut=({accountId:s,connection:t,projects:n})=>{const a=$(),r=z(),o=le"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/chat-preview-card-J0uel3r2.js",
+      "sha256": "ea1019c59ec971148546a2bfc5a35f13680366ca1f0d9d29a3e8245148d45043",
+      "groups": [
+        {
+          "token": "credits-aside",
+          "count": 1,
+          "contexts": [
+            ":p}=R(l.billing.getSubscription.queryOptions({accountId:n,fresh:!0},{enabled:!!f&&S(f).kind===\"credits-aside\",staleTime:6e4})),v=f?S({...f,billing:{plan:p?p.subscription&&[\"active\",\"trialing\"].includes(p.subscription.status)?p.subscriptio"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/chunk-EBKONHZ7-Fx8H8XBz.js",
+      "sha256": "2d662679767a8e93586fc449af1b5552e812393db7441e36d35938bf14f649fc",
+      "groups": [
+        {
+          "token": "aside",
+          "count": 1,
+          "contexts": [
+            "pt=x(/^( {0,3}bull)([ \\t][^\\n]+?)?(?:\\n|$)/).replace(/bull/g,ne).getRegex(),j=\"address|article|aside|base|basefont|blockquote|body|caption|center|col|colgroup|dd|details|dialog|dir|div|dl|dt|fieldset|figcaption|figure|footer|form|"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/chunk-KMA2NSDO-BQuQnxRu.js",
+      "sha256": "1125ee3d01264f7e24007c00efdb4522f2a6179fe2beaea9a44f89ad61f5734e",
+      "groups": [
+        {
+          "token": "aside",
+          "count": 1,
+          "contexts": [
+            ",!0}catch{return!1}}a(me,\"isRegex\");var Rr=I([\"a\",\"abbr\",\"acronym\",\"address\",\"area\",\"article\",\"aside\",\"audio\",\"b\",\"bdi\",\"bdo\",\"big\",\"blink\",\"blockquote\",\"body\",\"br\",\"button\",\"canvas\",\"caption\",\"center\",\"cite\",\"code\",\"col\",\"colgrou"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/conversation-D9Q3VEsl.js",
+      "sha256": "ad6c51122bca3d4573204c7a829d52c7a394991b42635dad20b3d0a763418c88",
+      "groups": [
+        {
+          "token": "aside",
+          "count": 1,
+          "contexts": [
+            "t.queryOptions({accountId:e}),refetchInterval:5e3}),x=u.data?.accounts.find(R=>R.owner.kind===\"aside\"&&R.owner.userId===m?.userId),w=te({queryKey:[\"cloud-vault-request\",e,s],queryFn:()=>l.sessions.get.query({accountId:e,sessionId:"
+          ]
+        },
+        {
+          "token": "aside-chat-link-previews-v2",
+          "count": 1,
+          "contexts": [
+            "ctRatio:we().optional(),background:j().optional(),foreground:j().optional(),expires:we()}),qt=\"aside-chat-link-previews-v2\",ne=64,U=new Map,ie=new Map;async function Ft(){try{return await caches.open(qt)}catch{return}}async function Ht(e){const s=new U"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/css-BlgSmH3m.js",
+      "sha256": "dfba329f1a7d27c583d0e17efed4c5596f504e0e41353eec9f97035c631647d4",
+      "groups": [
+        {
+          "token": "aside",
+          "count": 1,
+          "contexts": [
+            "es\"}]}]},\"tag-names\":{\"match\":\"(?i)(?<![-:\\\\\\\\w])(?:a|abbr|acronym|address|applet|area|article|aside|audio|b|base|basefont|bdi|bdo|bgsound|big|blink|blockquote|body|br|button|canvas|caption|center|cite|code|col|colgroup|command|co"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/css-iw480ZVK.js",
+      "sha256": "3628a03605bf54c6fd9c4643d15510cefea9875a2368ddc631c7faae952c6eef",
+      "groups": [
+        {
+          "token": "aside",
+          "count": 1,
+          "contexts": [
+            "es\"}]}]},\"tag-names\":{\"match\":\"(?i)(?<![-:\\\\\\\\w])(?:a|abbr|acronym|address|applet|area|article|aside|audio|b|base|basefont|bdi|bdo|bgsound|big|blink|blockquote|body|br|button|canvas|caption|center|cite|code|col|colgroup|command|co"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/dist-CjVSa2hT.js",
+      "sha256": "5fbe70fd8f4517da3856f97f30f5590c396f366a105ba234ccffc411ed11a97c",
+      "groups": [
+        {
+          "token": "aside",
+          "count": 1,
+          "contexts": [
+            "(e,t){return typeof e!=\"string\"?\"json\":t}var Q=new Set([\"a\",\"abbr\",\"address\",\"area\",\"article\",\"aside\",\"audio\",\"b\",\"base\",\"bdi\",\"bdo\",\"blockquote\",\"body\",\"br\",\"button\",\"canvas\",\"caption\",\"cite\",\"code\",\"col\",\"colgroup\",\"data\",\"datal"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/dist-b967U3d_.js",
+      "sha256": "b12a3eb66c2a6421d86945bc9fe673010c0aa04436998b356224534c5e79b39d",
+      "groups": [
+        {
+          "token": "aside:",
+          "count": 1,
+          "contexts": [
+            "cached.domParser||(e.cached.domParser=new Li(e,Li.schemaRules(e)))}},la={address:!0,article:!0,aside:!0,blockquote:!0,body:!0,canvas:!0,dd:!0,div:!0,dl:!0,fieldset:!0,figcaption:!0,figure:!0,footer:!0,form:!0,h1:!0,h2:!0,h3:!0,h4:!"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/error-alert-Bu3EEewB.js",
+      "sha256": "a717279989c868e8d982c20bde72130911f147497acb1171ecfbab0859675294",
+      "groups": [
+        {
+          "token": "credits-aside",
+          "count": 3,
+          "contexts": [
+            "==\"aborted\"||e.kind===\"credits-other\"?\"default\":\"muted\",n=e.kind===\"aborted\"?\"abort\":e.kind===\"credits-aside\"?\"brand\":e.kind===\"credits-other\"?void 0:\"warning\";return(0,t.jsxs)(_,{actionsBelow:e.kind===\"credits-aside\",title:e.title,descri",
+            "\"?\"brand\":e.kind===\"credits-other\"?void 0:\"warning\";return(0,t.jsxs)(_,{actionsBelow:e.kind===\"credits-aside\",title:e.title,description:e.description,icon:n,tone:c,children:[e.kind===\"auth\"&&(0,t.jsx)(R,{}),e.kind===\"credits-aside\"&&e.act",
+            "e,description:e.description,icon:n,tone:c,children:[e.kind===\"auth\"&&(0,t.jsx)(R,{}),e.kind===\"credits-aside\"&&e.actions.map((i,a)=>i===\"addCredits\"?(0,t.jsx)(z,{primary:a===0},i):(0,t.jsx)(D,{primary:a===0},i)),[\"aborted\",\"auth\",\"generic"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/esm-Ck25kaxm.js",
+      "sha256": "67c11f4f383f8b4c61311af52aae28e37316b95923295ff354a31d0f3ec27282",
+      "groups": [
+        {
+          "token": "aside",
+          "count": 1,
+          "contexts": [
+            "(r,t);return n?n.type===\"element\"&&(n.tagName===\"address\"||n.tagName===\"article\"||n.tagName===\"aside\"||n.tagName===\"blockquote\"||n.tagName===\"details\"||n.tagName===\"div\"||n.tagName===\"dl\"||n.tagName===\"fieldset\"||n.tagName===\"figc"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/extension-main-Dz1-AsCT.js",
+      "sha256": "5ea7a70cfc2c962bac4290b4a6cfca04d8c30427210f5443f55b2f9099085e68",
+      "groups": [
+        {
+          "token": "aside.browser-import.completed.v1",
+          "count": 1,
+          "contexts": [
+            ",43,44,171,172])),hr=n(\"/_public/onboarding/glance/\")({component:a(gr,\"component\")}),M=null,j=\"aside.browser-import.completed.v1\",le=e=>e.sourceProfileId?`${e.sourceId}:${e.sourceProfileId}`:e.sourceId,ce=e=>!e.dataKinds,Rr=e=>Array.isArray(e)?e.filter(t=>ty"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/general-3dgRbrRk.js",
+      "sha256": "573f27cbb899d501bdf3c08041a2cc753aced582230764b235c8cabd83beb381",
+      "groups": [
+        {
+          "token": "aside.settings.backgroundServiceLag",
+          "count": 1,
+          "contexts": [
+            "oading language settings...\":\"Spell check settings are unavailable\",tg=[\"daemon\",\"health\"],uo=\"aside.settings.backgroundServiceLag\",Sl=e=>e?e===\"dev\"||e.startsWith(\"v\")?`Current version is ${e}`:`Current version is v${e}`:\"Current version unavailable\",ho=e=>e?"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/globals-B-8L9em-.css",
+      "sha256": "62cf600774a77482af4fcdcfbb6c5985b9297d97041a3f7fd6304dcf5cac3c2d",
+      "groups": [
+        {
+          "token": "aside",
+          "count": 1,
+          "contexts": [
+            ":none\\]{-ms-overflow-style:none}.\\[-webkit-app-region\\:initial\\]{-webkit-app-region:initial}.\\[aside\\:settings-search-index\\]{aside:settings-search-index}.\\[counter-increment\\:line_0\\]{counter-increment:line 0}.\\[counter-reset\\:li"
+          ]
+        },
+        {
+          "token": "aside:settings-search-index",
+          "count": 1,
+          "contexts": [
+            "}.\\[-webkit-app-region\\:initial\\]{-webkit-app-region:initial}.\\[aside\\:settings-search-index\\]{aside:settings-search-index}.\\[counter-increment\\:line_0\\]{counter-increment:line 0}.\\[counter-reset\\:line\\]{counter-reset:line}.\\[grid-area\\:1\\/1\\]{grid-are"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/google-sign-in-C6OIqXPh.js",
+      "sha256": "75cfa19f32f8016315ace9a3fb863457400fc002dac2baa263cfb554487e0b3a",
+      "groups": [
+        {
+          "token": "asideAuthCallback:O",
+          "count": 1,
+          "contexts": [
+            "A().int().nonnegative(),profileContext:q.optional()}),At=F({accountId:ht().int().nonnegative(),asideAuthCallback:O(\"google\"),oauthAttemptId:_().min(1),supabaseAccessToken:_().min(1)}),Ft=F({type:O(\"aside.googleOAuth.popupComplete\"),accountId:A("
+          ]
+        },
+        {
+          "token": "aside.googleOAuth.popupComplete",
+          "count": 2,
+          "contexts": [
+            "hCallback:O(\"google\"),oauthAttemptId:_().min(1),supabaseAccessToken:_().min(1)}),Ft=F({type:O(\"aside.googleOAuth.popupComplete\"),accountId:A().int().nonnegative(),authenticatedAccountId:A().int().nonnegative().optional(),oauthAttemptId:_().min(1)}),E=\"asid",
+            "{const h=await Tt(i);if(window.opener&&!window.opener.closed){window.opener.postMessage({type:\"aside.googleOAuth.popupComplete\",accountId:i.accountId,authenticatedAccountId:h,oauthAttemptId:i.oauthAttemptId},window.location.origin),x({title:\"Sign-in comple"
+          ]
+        },
+        {
+          "token": "aside.googleOAuthAttempt",
+          "count": 1,
+          "contexts": [
+            "ive(),authenticatedAccountId:A().int().nonnegative().optional(),oauthAttemptId:_().min(1)}),E=\"aside.googleOAuthAttempt\",It=15e3,V=6e5,St=\"aside-google-oauth\",Ot=\"popup,width=520,height=720\",v=class extends Error{stage;toastDescription=\"Check your n"
+          ]
+        },
+        {
+          "token": "aside-google-oauth",
+          "count": 1,
+          "contexts": [
+            "gative().optional(),oauthAttemptId:_().min(1)}),E=\"aside.googleOAuthAttempt\",It=15e3,V=6e5,St=\"aside-google-oauth\",Ot=\"popup,width=520,height=720\",v=class extends Error{stage;toastDescription=\"Check your network connection, then restart Aux an"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/handlebars-B1zXOs6F.js",
+      "sha256": "5b69392010e1d6dcadb9172bc7b25b595352bf4c8b5fbe2c2991337203dfcfd8",
+      "groups": [
+        {
+          "token": "aside",
+          "count": 1,
+          "contexts": [
+            "{\"include\":\"#tag-stuff\"}]},{\"begin\":\"(</?)((?i:address|blockquote|dd|div|header|section|footer|aside|nav|dl|dt|fieldset|form|frame|frameset|h1|h2|h3|h4|h5|h6|iframe|noframes|object|ol|p|ul|applet|center|dir|hr|menu|pre))\\\\\\\\b\",\"ca"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/handlebars-BJHd493p.js",
+      "sha256": "eadd40879bd424402304a6167fa36d7e3c6db185322299aa5abc46d993af5624",
+      "groups": [
+        {
+          "token": "aside",
+          "count": 1,
+          "contexts": [
+            "{\"include\":\"#tag-stuff\"}]},{\"begin\":\"(</?)((?i:address|blockquote|dd|div|header|section|footer|aside|nav|dl|dt|fieldset|form|frame|frameset|h1|h2|h3|h4|h5|h6|iframe|noframes|object|ol|p|ul|applet|center|dir|hr|menu|pre))\\\\\\\\b\",\"ca"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/html-D15E56SF.js",
+      "sha256": "759c8d971a4a32cdc79d0095436607fe9536975af477ddd42511a72499b731a3",
+      "groups": [
+        {
+          "token": "aside",
+          "count": 2,
+          "contexts": [
+            "ructure.$2.void.html\",\"patterns\":[{\"include\":\"#attribute\"}]},{\"begin\":\"(?i)(<)(address|article|aside|blockquote|body|button|caption|colgroup|datalist|dd|details|dialog|div|dl|dt|fieldset|figcaption|figure|footer|form|head|header|h",
+            "cture.$2.start.html\",\"patterns\":[{\"include\":\"#attribute\"}]},{\"begin\":\"(?i)(</)(address|article|aside|blockquote|body|button|caption|colgroup|datalist|dd|details|dialog|div|dl|dt|fieldset|figcaption|figure|footer|form|head|header|h"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/html-DVzjrsV3.js",
+      "sha256": "6629df18621c4b9766d7b77920cdc95942ba00d3cbd19814830894a8257b181b",
+      "groups": [
+        {
+          "token": "aside",
+          "count": 2,
+          "contexts": [
+            "ructure.$2.void.html\",\"patterns\":[{\"include\":\"#attribute\"}]},{\"begin\":\"(?i)(<)(address|article|aside|blockquote|body|button|caption|colgroup|datalist|dd|details|dialog|div|dl|dt|fieldset|figcaption|figure|footer|form|head|header|h",
+            "cture.$2.start.html\",\"patterns\":[{\"include\":\"#attribute\"}]},{\"begin\":\"(?i)(</)(address|article|aside|blockquote|body|button|caption|colgroup|datalist|dd|details|dialog|div|dl|dt|fieldset|figcaption|figure|footer|form|head|header|h"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/import-password-mvM-KsU6.js",
+      "sha256": "a1635852b4a685ce89bb21ce243ecdbbfb79f827f7418575d08841441e742e11",
+      "groups": [
+        {
+          "token": "aside",
+          "count": 2,
+          "contexts": [
+            "external-manager-DlstsZ6u.js\";import{n as De}from\"./-context-CnivYB_B.js\";var e=W(),y=[{value:\"aside\",id:\"builtin\",title:\"Import credentials to Aux Vault\",description:\"Seamless experience, E2E encrypted.\"},{value:\"external\",id:\"ex",
+            "(le,{className:\"font-display text-primary text-base font-medium\",children:s.title}),s.value===\"aside\"&&(0,e.jsxs)(I,{children:[(0,e.jsx)(E,{render:(0,e.jsx)(\"span\",{className:\"text-muted-foreground inline-flex shrink-0\"}),children"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/island-C0ouZ54e.js",
+      "sha256": "1185268231cec29a34a6620001451b781b700e4cb7cde67e846a61dda63340cf",
+      "groups": [
+        {
+          "token": "aside.newtab.invite-badge.dismissed.$",
+          "count": 1,
+          "contexts": [
+            "})]})]})]})},ge=({accountId:t,pending:s,onCopy:n})=>{const{isDismissed:a,dismissForever:r}=de(`aside.newtab.invite-badge.dismissed.${t}`,j.default.duration(1e3,\"years\"));return a?null:(0,e.jsxs)(\"div\",{className:\"text-brand-content bg-brand/10 dark:bg-brand/20 f"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/less-DHLEq27_.js",
+      "sha256": "b64a1bb1b6a82f10ee33017c3009b512ff332af0e3b792546dc0643e2acccc14",
+      "groups": [
+        {
+          "token": "aside",
+          "count": 1,
+          "contexts": [
+            "ame\":\"entity.name.tag.custom.less\"},{\"match\":\"\\\\\\\\b(a|abbr|acronym|address|applet|area|article|aside|audio|b|base|basefont|bdi|bdo|big|blockquote|body|br|button|canvas|caption|circle|cite|clipPath|code|col|colgroup|content|data|da"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/less-XYfPOg1G.js",
+      "sha256": "b64a1bb1b6a82f10ee33017c3009b512ff332af0e3b792546dc0643e2acccc14",
+      "groups": [
+        {
+          "token": "aside",
+          "count": 1,
+          "contexts": [
+            "ame\":\"entity.name.tag.custom.less\"},{\"match\":\"\\\\\\\\b(a|abbr|acronym|address|applet|area|article|aside|audio|b|base|basefont|bdi|bdo|big|blockquote|body|br|button|canvas|caption|circle|cite|clipPath|code|col|colgroup|content|data|da"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/lib-CwyXkVLI.js",
+      "sha256": "1136a57381b27ad1b75a0cb617d96833878560d64f2ad9c2c1409f85bd90a4c1",
+      "groups": [
+        {
+          "token": "aside",
+          "count": 1,
+          "contexts": [
+            "l||f===35||W(f)?(n.exit(\"atxHeadingText\"),o(f)):(n.consume(f),c)}}var ke=[\"address\",\"article\",\"aside\",\"base\",\"basefont\",\"blockquote\",\"body\",\"caption\",\"center\",\"col\",\"colgroup\",\"dd\",\"details\",\"dialog\",\"dir\",\"div\",\"dl\",\"dt\",\"fieldse"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/markdown-owZ4wwRZ.js",
+      "sha256": "0b030d1ebe2f7065c7eda67b29014c4a47e26db31ccd4128fb464bbc1a5baadb",
+      "groups": [
+        {
+          "token": "e.ASIDE",
+          "count": 2,
+          "contexts": [
+            "address\",e.ANNOTATION_XML=\"annotation-xml\",e.APPLET=\"applet\",e.AREA=\"area\",e.ARTICLE=\"article\",e.ASIDE=\"aside\",e.B=\"b\",e.BASE=\"base\",e.BASEFONT=\"basefont\",e.BGSOUND=\"bgsound\",e.BIG=\"big\",e.BLOCKQUOTE=\"blockquote\",e.BODY=\"body\",e.BR=",
+            "N_XML=3]=\"ANNOTATION_XML\",e[e.APPLET=4]=\"APPLET\",e[e.AREA=5]=\"AREA\",e[e.ARTICLE=6]=\"ARTICLE\",e[e.ASIDE=7]=\"ASIDE\",e[e.B=8]=\"B\",e[e.BASE=9]=\"BASE\",e[e.BASEFONT=10]=\"BASEFONT\",e[e.BGSOUND=11]=\"BGSOUND\",e[e.BIG=12]=\"BIG\",e[e.BLOCKQUOTE"
+          ]
+        },
+        {
+          "token": "aside",
+          "count": 2,
+          "contexts": [
+            "e.ANNOTATION_XML=\"annotation-xml\",e.APPLET=\"applet\",e.AREA=\"area\",e.ARTICLE=\"article\",e.ASIDE=\"aside\",e.B=\"b\",e.BASE=\"base\",e.BASEFONT=\"basefont\",e.BGSOUND=\"bgsound\",e.BIG=\"big\",e.BLOCKQUOTE=\"blockquote\",e.BODY=\"body\",e.BR=\"br\",e.",
+            "ex(),Sb=G(/^(bull)([ \\t][^\\n]+?)?(?:\\n|$)/).replace(/bull/g,Oa).getRegex(),pn=\"address|article|aside|base|basefont|blockquote|body|caption|center|col|colgroup|dd|details|dialog|dir|div|dl|dt|fieldset|figcaption|figure|footer|form|"
+          ]
+        },
+        {
+          "token": "ASIDE",
+          "count": 1,
+          "contexts": [
+            "NOTATION_XML\",e[e.APPLET=4]=\"APPLET\",e[e.AREA=5]=\"AREA\",e[e.ARTICLE=6]=\"ARTICLE\",e[e.ASIDE=7]=\"ASIDE\",e[e.B=8]=\"B\",e[e.BASE=9]=\"BASE\",e[e.BASEFONT=10]=\"BASEFONT\",e[e.BGSOUND=11]=\"BGSOUND\",e[e.BIG=12]=\"BIG\",e[e.BLOCKQUOTE=13]=\"BLOC"
+          ]
+        },
+        {
+          "token": "A.ASIDE",
+          "count": 1,
+          "contexts": [
+            "[A.ANNOTATION_XML,l.ANNOTATION_XML],[A.APPLET,l.APPLET],[A.AREA,l.AREA],[A.ARTICLE,l.ARTICLE],[A.ASIDE,l.ASIDE],[A.B,l.B],[A.BASE,l.BASE],[A.BASEFONT,l.BASEFONT],[A.BGSOUND,l.BGSOUND],[A.BIG,l.BIG],[A.BLOCKQUOTE,l.BLOCKQUOTE],[A.BOD"
+          ]
+        },
+        {
+          "token": "l.ASIDE",
+          "count": 1,
+          "contexts": [
+            "ATION_XML,l.ANNOTATION_XML],[A.APPLET,l.APPLET],[A.AREA,l.AREA],[A.ARTICLE,l.ARTICLE],[A.ASIDE,l.ASIDE],[A.B,l.B],[A.BASE,l.BASE],[A.BASEFONT,l.BASEFONT],[A.BGSOUND,l.BGSOUND],[A.BIG,l.BIG],[A.BLOCKQUOTE,l.BLOCKQUOTE],[A.BODY,l.BODY"
+          ]
+        },
+        {
+          "token": "v.ASIDE",
+          "count": 1,
+          "contexts": [
+            "null&&t!==void 0?t:l.UNKNOWN}var v=l,Mh={[S.HTML]:new Set([v.ADDRESS,v.APPLET,v.AREA,v.ARTICLE,v.ASIDE,v.BASE,v.BASEFONT,v.BGSOUND,v.BLOCKQUOTE,v.BODY,v.BR,v.BUTTON,v.CAPTION,v.CENTER,v.COL,v.COLGROUP,v.DD,v.DETAILS,v.DIR,v.DIV,v.DL"
+          ]
+        },
+        {
+          "token": "l.ASIDE:case",
+          "count": 2,
+          "contexts": [
+            ".P:case l.DL:case l.OL:case l.UL:case l.DIV:case l.DIR:case l.NAV:case l.MAIN:case l.MENU:case l.ASIDE:case l.CENTER:case l.FIGURE:case l.FOOTER:case l.HEADER:case l.HGROUP:case l.DIALOG:case l.DETAILS:case l.ADDRESS:case l.ARTICLE:case ",
+            "L:case l.UL:case l.OL:case l.DIR:case l.DIV:case l.NAV:case l.PRE:case l.MAIN:case l.MENU:case l.ASIDE:case l.BUTTON:case l.CENTER:case l.FIGURE:case l.FOOTER:case l.HEADER:case l.HGROUP:case l.DIALOG:case l.ADDRESS:case l.ARTICLE:case l"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/mcps-DmPp5oo9.js",
+      "sha256": "9677c647f3537abcf90dd5cf707229e5fb6f83cd185ae19c5f4fcb72060b0d03",
+      "groups": [
+        {
+          "token": "asideCode:m",
+          "count": 1,
+          "contexts": [
+            "aotalk:m().default(!1),onboarding:m().default(!1),format:t().optional(),auxCode:m().optional(),asideCode:m().optional(),compactionLimits:m().default(!1)}).transform(function migrateAuxExperimentalSettings(value) {\n  const format = 'aux."
+          ]
+        },
+        {
+          "token": "asideCode",
+          "count": 3,
+          "contexts": [
+            "ux experimental settings version.');\n  if (value.format !== undefined && Object.hasOwn(value, 'asideCode') ||\n      value.format === undefined && Object.hasOwn(value, 'auxCode'))\n    throw Error('Ambiguous Aux experimental settings ge",
+            "alue, 'auxCode'))\n    throw Error('Ambiguous Aux experimental settings generation.');\n  const {asideCode, auxCode, format: previousFormat, ...settings} = value;\n  return {...settings, format, auxCode: (previousFormat === format ? auxC",
+            "tings} = value;\n  return {...settings, format, auxCode: (previousFormat === format ? auxCode : asideCode) ?? false};\n}),Jr=o({id:t().min(1),brand:t().min(1),last4:t().regex(/^\\d{4}$/),label:t().max(80).default(\"\"),expires:t().max(7).d"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/message-Ca5u8_zM.js",
+      "sha256": "0f2ceae91ca98f23269b372937dc6367b9fa4f4940f0ecd08c529b4ede931561",
+      "groups": [
+        {
+          "token": "aside",
+          "count": 1,
+          "contexts": [
+            "rames\",\"noscript\",\"rp\",\"script\",\"style\",\"template\",\"title\",Vu,Uu]),os=or([\"address\",\"article\",\"aside\",\"blockquote\",\"body\",\"caption\",\"center\",\"dd\",\"dialog\",\"dir\",\"dl\",\"dt\",\"div\",\"figure\",\"figcaption\",\"footer\",\"form,\",\"h1\",\"h2\",\"h3\""
+          ]
+        },
+        {
+          "token": "aside-cta",
+          "count": 1,
+          "contexts": [
+            ":Mr().optional(),to:Mr().startsWith(\"/\"),search:E1(Mr(),M1([Mr(),I1(),z1()])).optional()}),Gm=\"aside-cta\",Um=({code:e})=>{const{accountId:t}=n1(),r=(0,_e.useMemo)(()=>{try{const i=Vm.safeParse((0,jm.parseJSON)(e));return i.success?i.d"
+          ]
+        },
+        {
+          "token": "aside-visual-document",
+          "count": 1,
+          "contexts": [
+            "i/notifications/host-context-changed\",Yo=\"ui/open-link\",Wo=\"ui/notifications/size-changed\",Xm=\"aside-visual-document\",Km=[\"--background\",\"--foreground\",\"--muted\",\"--muted-foreground\",\"--primary\",\"--primary-foreground\",\"--secondary\",\"--secondary-f"
+          ]
+        },
+        {
+          "token": "aside-visual-theme",
+          "count": 2,
+          "contexts": [
+            "ode,kbd,pre,samp{font-family:var(--font-mono)}\",i5=`(function(){var s=document.getElementById(\"aside-visual-theme\");var b=${JSON.stringify(Xo)};function a(t,v){if(!v||typeof v!==\"object\")return;var c=\":root{color-scheme:\"+(t===\"light\"?\"light\":",
+            ".test(r)?\"\":'<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">',`<style id=\"aside-visual-theme\">${l5(t)}${Xo}</style>`,`<script>${i5}<\\/script>`].join(\"\"),a=/<head(?:\\s[^>]*)?>/i.exec(r);if(a){const s=a.index+a[0].length;ret"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/password-LjdLcSRV.js",
+      "sha256": "17c872253796acd23ca743094508b6c8e7a389b31521618f3d60b56260eec32f",
+      "groups": [
+        {
+          "token": "aside-recovery-key",
+          "count": 1,
+          "contexts": [
+            "),l(\"\")}}},rn={title:\"Enter your recovery key\",description:\"Find a .txt file that starts with \u2018aside-recovery-key\u2019 or type the words you saved.\"},la={title:\"Set a new unlock password\",description:\"Aux uses it to encrypt your data before it\u2019s s"
+          ]
+        },
+        {
+          "token": "aside",
+          "count": 1,
+          "contexts": [
+            "Queries(a.passwordManager.accounts.list.queryFilter({accountId:s}))])};return d?.owner.kind!==\"aside\"?null:(0,e.jsxs)(R,{children:[(0,e.jsx)(E,{title:\"Cloud sync\",description:c}),(0,e.jsx)(B,{children:(0,e.jsxs)(j,{variant:\"outlin"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/postcss-DyASvkt8.js",
+      "sha256": "64190dbab69dacbb8a591b88cd442da05bc4c11ba108be1a291c8911811d108b",
+      "groups": [
+        {
+          "token": "aside",
+          "count": 1,
+          "contexts": [
+            "lude\":\"#function-content\"},{\"begin\":\"(?<![-(])\\\\\\\\b(a|abbr|acronym|address|applet|area|article|aside|audio|b|base|big|blockquote|body|br|button|canvas|caption|cite|code|col|colgroup|datalist|dd|del|details|dfn|dialog|div|dl|dt|em|"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/postcss-yWNY1a7c.js",
+      "sha256": "64190dbab69dacbb8a591b88cd442da05bc4c11ba108be1a291c8911811d108b",
+      "groups": [
+        {
+          "token": "aside",
+          "count": 1,
+          "contexts": [
+            "lude\":\"#function-content\"},{\"begin\":\"(?<![-(])\\\\\\\\b(a|abbr|acronym|address|applet|area|article|aside|audio|b|base|big|blockquote|body|br|button|canvas|caption|cite|code|col|colgroup|datalist|dd|del|details|dfn|dialog|div|dl|dt|em|"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/queries-ldd77hNk.js",
+      "sha256": "f7272be107a8a3809b8223439abf40dcaa1cd38f74737f8646b7670471368433",
+      "groups": [
+        {
+          "token": "/aside",
+          "count": 1,
+          "contexts": [
+            "nd try again.\",Pr=\"If this keeps happening, check whether another app is using port 21520.\",Ar=/aside couldn't connect from this network|could not reach aside servers|fetch failed|network error|unable to verify the first certificat"
+          ]
+        },
+        {
+          "token": "aside",
+          "count": 1,
+          "contexts": [
+            "another app is using port 21520.\",Ar=/aside couldn't connect from this network|could not reach aside servers|fetch failed|network error|unable to verify the first certificate|unable to get local issuer certificate|self[- ]signed c"
+          ]
+        },
+        {
+          "token": "ASIDE_API_TIMEOUT",
+          "count": 1,
+          "contexts": [
+            "(t instanceof M))return e<3;const r=t.data?.appCode;return t.data?.code===\"UNAUTHORIZED\"||r===\"ASIDE_API_TIMEOUT\"?!1:e<3}var _e=new Er({defaultOptions:{queries:{retry:pi,staleTime:1e4,refetchOnWindowFocus:!1,networkMode:\"always\"}}}),{TRPCProv"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/recovery-DY2UC0Rx.js",
+      "sha256": "0bb1680c6ce8bb09ebc82596fd13f9d2f143bad21753fc8aba022dc51847bb0e",
+      "groups": [
+        {
+          "token": "aside-recovery-key",
+          "count": 1,
+          "contexts": [
+            "ery key you saved when you signed up.\",(0,e.jsx)(\"br\",{}),\"Find a \u2060.txt file that starts with \u2018aside-recovery-key\u2019 or check your inbox.\"]})]}),(0,e.jsxs)(H,{...r,children:[(0,e.jsx)(ee,{children:(0,e.jsx)(ae,{onRecoveryKeyVerified:t})}),(0,e.j"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/recovery-key-CPOQuYx2.js",
+      "sha256": "985ff9c9a11486c50a3f74c6df80b5481238ef7847a055427f1953d11abd7a52",
+      "groups": [
+        {
+          "token": "ASIDE",
+          "count": 2,
+          "contexts": [
+            "\\r?\\n/).flatMap(n=>{const e=n.trim();return e?[e]:[]}),v=new Map(s.map((n,e)=>[n,e])),m=\"BEGIN ASIDE RECOVERY KEY\",h=\"END ASIDE RECOVERY KEY\",g=new Set([16,20,24,28,32]);if(s.length!==2048)throw new Error(`Invalid BIP39 English wo",
+            "=n.trim();return e?[e]:[]}),v=new Map(s.map((n,e)=>[n,e])),m=\"BEGIN ASIDE RECOVERY KEY\",h=\"END ASIDE RECOVERY KEY\",g=new Set([16,20,24,28,32]);if(s.length!==2048)throw new Error(`Invalid BIP39 English wordlist length: ${s.length}`"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/route-CSKkWqf5.js",
+      "sha256": "12b6c1dd939377b9a53456277f650ed7e585d16cf99978ba7cddc6b14d9a4742",
+      "groups": [
+        {
+          "token": "aside",
+          "count": 1,
+          "contexts": [
+            "):t,[s,t]);return(0,i.useEffect)(()=>{!s||t.has(s)||n(r=>new Set(r).add(s))},[s,t]),(0,e.jsx)(\"aside\",{id:\"right-panel\",className:\"h-screen shrink-0 overflow-hidden transition-[width] duration-200 ease-out motion-reduce:transition"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/route-TQyeTEXE.js",
+      "sha256": "468e9e336a9127198dc0b45902990ca3a6b6bcdbbe0c8fab1871d23492ec59a8",
+      "groups": [
+        {
+          "token": "aside",
+          "count": 1,
+          "contexts": [
+            "ength);return}if(u.key===\"Enter\"){u.preventDefault();const f=C[r];f&&g(f)}}};return(0,t.jsxs)(\"aside\",{className:\"relative flex h-full w-[clamp(9rem,30vw,13rem)] shrink-0 flex-col py-1 pr-0 pl-1.5\",children:[(0,t.jsxs)(\"div\",{clas"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/route-VV0zL3cm.js",
+      "sha256": "1b91006db3498f39a3b7ca027e5905ae32ab91107f437bd727c3dcca83326c3e",
+      "groups": [
+        {
+          "token": "aside-channel",
+          "count": 1,
+          "contexts": [
+            "eURIComponent(a)}/ws`);D.protocol=D.protocol===\"https:\"?\"wss:\":\"ws:\";const $=new WebSocket(D,[\"aside-channel\",`bearer.${T}`]);k.current=$,$.onmessage=F=>{if(s||k.current!==$)return;const p=JSON.parse(F.data);if(p.version!==2){$.close(1002"
+          ]
+        },
+        {
+          "token": "aside:channel-draft:$",
+          "count": 1,
+          "contexts": [
+            "ne\",children:[e.humanTypers.join(\", \"),\" typing\u2026\"]}),(0,r.jsx)(ue,{onActivate:e.warm,draftKey:`aside:channel-draft:${i}:${a}`,onTyping:e.setTyping,replyTo:b,onCancelReply:()=>x(void 0),onSubmit:async(o,v,R)=>{const C=await e.send(o,b?.id,v,R);ret"
+          ]
+        },
+        {
+          "token": "aside",
+          "count": 1,
+          "contexts": [
+            "async(o,v,R)=>{const C=await e.send(o,b?.id,v,R);return C&&x(void 0),C}})]})]}),u&&(0,r.jsxs)(\"aside\",{\"aria-label\":\"Channel tasks\",className:\"border-border bg-background flex w-72 shrink-0 flex-col overflow-y-auto border-l p-4 ma"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/routine-item-menu-DJrYR2RE.js",
+      "sha256": "11d43e99917fe9fbd4ab366ce1f12095f26224828fb963a1194f6e71e0c03b08",
+      "groups": [
+        {
+          "token": "aside",
+          "count": 1,
+          "contexts": [
+            "-border mx-4 mb-4 flex min-h-0 flex-1 overflow-hidden rounded-lg border\",children:[(0,e.jsxs)(\"aside\",{\"aria-label\":\"Routine runs\",className:\"border-border flex w-60 shrink-0 flex-col gap-1 overflow-y-auto border-r p-2 sm:w-64\",ch"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/sass-D9tbhmbL.js",
+      "sha256": "0296fc36f07a715229ecf7a6b96546d9090758d52e75c145b5d59fee04b56adc",
+      "groups": [
+        {
+          "token": "aside",
+          "count": 1,
+          "contexts": [
+            "control.at-rule.css.sass\"},{\"begin\":\"(?<![-(])\\\\\\\\b(a|abbr|acronym|address|applet|area|article|aside|audio|b|base|big|blockquote|body|br|button|canvas|caption|cite|code|col|colgroup|datalist|dd|del|details|dfn|dialog|div|dl|dt|em|"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/sass-Xtb7fcaE.js",
+      "sha256": "0296fc36f07a715229ecf7a6b96546d9090758d52e75c145b5d59fee04b56adc",
+      "groups": [
+        {
+          "token": "aside",
+          "count": 1,
+          "contexts": [
+            "control.at-rule.css.sass\"},{\"begin\":\"(?<![-(])\\\\\\\\b(a|abbr|acronym|address|applet|area|article|aside|audio|b|base|big|blockquote|body|br|button|canvas|caption|cite|code|col|colgroup|datalist|dd|del|details|dfn|dialog|div|dl|dt|em|"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/search-navigation-TWhZq3-H.js",
+      "sha256": "21ecceeb07d21f3e170814a253318f810c60077cfe5f2c8487e919dc5a43a09f",
+      "groups": [
+        {
+          "token": "aside:",
+          "count": 1,
+          "contexts": [
+            "eturn null}},h=t=>{if(!t)return null;try{const e=new URL(t);return[\"http:\",\"https:\",\"chrome:\",\"aside:\"].includes(e.protocol)?e.toString():null}catch{return null}},f=async t=>{const e=performance.now();if(typeof chrome<\"u\"&&chrome.t"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/sidebar-Cj9gldy1.js",
+      "sha256": "0bb5cc5a28b89a510c016ec235c99520f59b8c822dca5457fb5b138963af1eb9",
+      "groups": [
+        {
+          "token": "aside",
+          "count": 1,
+          "contexts": [
+            "!==\"Escape\"||(o.preventDefault(),r.cancel(),o.currentTarget.value=\"\",n(\"\"))};return(0,e.jsxs)(\"aside\",{className:\"border-r-hairline relative flex h-full w-full shrink-0 flex-col overflow-hidden\",children:[(0,e.jsxs)(ke,{children:["
+          ]
+        }
+      ]
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/sign-in-popup-CzjJFAuC.js",
+      "sha256": "01cebc9c4c914d0d3dc5ccf914aae2a8660cb42edcd7a68d01f149f8c175e6ce",
+      "groups": [
+        {
+          "token": "aside-sign-in-popup",
+          "count": 1,
+          "contexts": [
+            "rom\"./dist-LyKrHgST.js\";import{t as w}from\"./extension-page-url-BH3pfT7h.js\";var s=f(m(),1),a=\"aside-sign-in-popup\";function S(n){sessionStorage.setItem(a,n)}function I(n){const o=(0,s.useRef)(null),e=(0,s.useRef)(n);return e.current=n,(0,s.use"
+          ]
+        },
+        {
+          "token": "aside-sign-in",
+          "count": 1,
+          "contexts": [
+            "e({url:c,type:\"popup\",width:900,height:560,focused:!0}).catch(i);return}const u=window.open(c,\"aside-sign-in\",\"popup,width=900,height=560,toolbar=no,menubar=no,location=no\");u?u.focus():i()}}async function P(){const n=sessionStorage.getIt"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/strip-markdown-DRcmtuJc.js",
+      "sha256": "a359520c0977dc66b2a6bc986bc0416bda8f67c6c1a470ceb65165bfdd7fe07a",
+      "groups": [
+        {
+          "token": "chrome-aside/models/inventory-changed",
+          "count": 1,
+          "contexts": [
+            "age(l){const c=n.safeParse(l);c.success&&i({client:s,message:c.data})}}),[t,a,e,s,n])}var ci=\"@chrome-aside/models/inventory-changed\",di=\"@chrome-aside/billing/changed\",Rn=we({accountId:at().int().nonnegative()});async function tr(e){await Promise.all([he.invali"
+          ]
+        },
+        {
+          "token": "chrome-aside/billing/changed",
+          "count": 1,
+          "contexts": [
+            "client:s,message:c.data})}}),[t,a,e,s,n])}var ci=\"@chrome-aside/models/inventory-changed\",di=\"@chrome-aside/billing/changed\",Rn=we({accountId:at().int().nonnegative()});async function tr(e){await Promise.all([he.invalidateQueries(pe.models.listSettingsI"
+          ]
+        },
+        {
+          "token": "credits-aside",
+          "count": 1,
+          "contexts": [
+            " to connect ${a} server`:\"The AI provider is temporarily unavailable.\"}:jf(t)?n===\"aux\"?{kind:\"credits-aside\",title:\"You've hit your usage limit.\",...xp(o)}:{kind:\"credits-other\",title:n===\"xai-grok-oauth\"?\"Grok requires credits or a subs"
+          ]
+        },
+        {
+          "token": "/.aside/u/$",
+          "count": 2,
+          "contexts": [
+            "spacePath:o,workspacePathOverridden:s})=>{if(s||r){if(o)return o}else if(t)return t;return n?`~/.aside/u/${e}/projects/${n}`:`~/.aside/u/${e}/projects/\u2026`},Qh=(e,t)=>{const[n,r]=(0,f.useState)(e);return(0,f.useEffect)(()=>{const o=window",
+            "den:s})=>{if(s||r){if(o)return o}else if(t)return t;return n?`~/.aside/u/${e}/projects/${n}`:`~/.aside/u/${e}/projects/\u2026`},Qh=(e,t)=>{const[n,r]=(0,f.useState)(e);return(0,f.useEffect)(()=>{const o=window.setTimeout(()=>r(e),t);return()"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/stylus-B-ykdwy2.js",
+      "sha256": "08db3bca159828f90e78545271e31d9ea639736bc5c7f79a813bd1cd8abad038",
+      "groups": [
+        {
+          "token": "aside",
+          "count": 1,
+          "contexts": [
+            "},\"selector\":{\"patterns\":[{\"match\":\"(?=\\\\\\\\w)(?<![-\\\\\\\\w])(a|abbr|acronym|address|area|article|aside|audio|b|base|bdi|bdo|big|blockquote|body|br|button|canvas|caption|cite|code|col|colgroup|data|datalist|dd|del|details|dfn|dialog|"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/stylus-DfL682nA.js",
+      "sha256": "08db3bca159828f90e78545271e31d9ea639736bc5c7f79a813bd1cd8abad038",
+      "groups": [
+        {
+          "token": "aside",
+          "count": 1,
+          "contexts": [
+            "},\"selector\":{\"patterns\":[{\"match\":\"(?=\\\\\\\\w)(?<![-\\\\\\\\w])(a|abbr|acronym|address|area|article|aside|audio|b|base|bdi|bdo|big|blockquote|body|br|button|canvas|caption|cite|code|col|colgroup|data|datalist|dd|del|details|dfn|dialog|"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/tasks-CtF0WxoJ.js",
+      "sha256": "2e6e4957d71a0f32c25c7a9313abcc99212b5f3f326f804d968373b5164d4ff8",
+      "groups": [
+        {
+          "token": "aside.new-tab.session-previews.v2:$",
+          "count": 1,
+          "contexts": [
+            "ndow>\"u\"))try{window.localStorage.setItem(O(s),JSON.stringify(r.slice(0,8)))}catch{}}var O=s=>`aside.new-tab.session-previews.v2:${s}`,ge=({items:s,isLoading:r=!1})=>{const n=$(),c=j(),u=(0,h.useRef)(null),[o,l]=(0,h.useState)(\"chats\"),[d,f]=(0,h.useState)(!1)"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/templ-BORRt0pf.js",
+      "sha256": "f4ec2056742154ada690a555a5a88203de39eb66c1d005600040acd6a6eaba97",
+      "groups": [
+        {
+          "token": "aside",
+          "count": 1,
+          "contexts": [
+            "}],\"repository\":{\"block-element\":{\"begin\":\"(</?)((?i:address|blockquote|dd|div|section|article|aside|header|footer|nav|menu|dl|dt|fieldset|form|frame|frameset|h1|h2|h3|h4|h5|h6|iframe|noframes|object|ol|p|ul|applet|center|dir|hr|p"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/templ-BbYJXtcL.js",
+      "sha256": "a04c68f6cc76ac27007a02166675d3941eb334ee3254df562ed4465280df454b",
+      "groups": [
+        {
+          "token": "aside",
+          "count": 1,
+          "contexts": [
+            "}],\"repository\":{\"block-element\":{\"begin\":\"(</?)((?i:address|blockquote|dd|div|section|article|aside|header|footer|nav|menu|dl|dt|fieldset|form|frame|frameset|h1|h2|h3|h4|h5|h6|iframe|noframes|object|ol|p|ul|applet|center|dir|hr|p"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/update-banner-C_z-hMCt.js",
+      "sha256": "98b1ec307b3e98eb8bd0da873cf99283a3b806d46c5f0e9c6859c0f52a63c794",
+      "groups": [
+        {
+          "token": "aside.new-tab.update-banner.changelog.v1",
+          "count": 1,
+          "contexts": [
+            "ey=[{scope:\"global\",entity:\"changelog\"}];m.queryOptions={queryKey:m.queryKey,queryFn:m};var E=\"aside.new-tab.update-banner.changelog.v1\",H=108e5,K=6048e5,z=f({requestedAt:B(),dismissedVersion:s().nullable().optional().default(null),changelog:N.nullable()}),G=()=>{c"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/background.js",
+      "sha256": "688ab712bd2dfc6e03ce0e0a6350b65218a218bfeb83000f1a562104ced344e3",
+      "groups": [
+        {
+          "token": "ASIDE_API_TIMEOUT",
+          "count": 1,
+          "contexts": [
+            " return e < 3;\n  const r = t.data?.appCode;\n  return t.data?.code === \"UNAUTHORIZED\" || r === \"ASIDE_API_TIMEOUT\" ? !1 : e < 3;\n}\nvar Cn = new wu({ defaultOptions: { queries: {\n  retry: Yl,\n  staleTime: 1e4,\n  refetchOnWindowFocus: !1,\n  netw"
+          ]
+        },
+        {
+          "token": "__ASIDE_LASSO_ERROR__:",
+          "count": 1,
+          "contexts": [
+            "o: { transform: (e) => br(\"/lasso/transform\", e).toString() }\n}, tw = \"lasso:transform\", Bi = \"__ASIDE_LASSO_ERROR__:\";\nasync function rw(e) {\n  if (e.name !== tw) return;\n  let t = null;\n  const r = () => {\n    const active = t;\n    t = null;\n   "
+          ]
+        }
+      ]
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/content/content.js",
+      "sha256": "908bd3585b1a0090fc6f28e2d816c02434ce7db037ff5eb6566e861bc5dd6e61",
+      "groups": [
+        {
+          "token": "ASIDE_API_TIMEOUT",
+          "count": 1,
+          "contexts": [
+            "t instanceof Ie))return e<3;const n=t.data?.appCode;return t.data?.code===\"UNAUTHORIZED\"||n===\"ASIDE_API_TIMEOUT\"?!1:e<3}var Fv=new iy({defaultOptions:{queries:{retry:zv,staleTime:1e4,refetchOnWindowFocus:!1,networkMode:\"always\"}}}),{TRPCProv"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/react-grab-bridge.js",
+      "sha256": "2b43e73751bf279a439da43af29388497e07339b5937a1a90bd207f3c00ae317",
+      "groups": [
+        {
+          "token": "aside-lasso",
+          "count": 2,
+          "contexts": [
+            " \"https://www.react-grab.com\"]), z$ = 12e4, Pv = 24e3, _$ = 4e4, F$ = 120, B$ = 8, Lv = `\n<!-- aside-lasso truncated -->`, H$ = {\n  name: \"aside-lasso\",\n  theme: {\n    selectionBox: { enabled: !1 },\n    dragBox: { enabled: !1 },\n    gra",
+            "Pv = 24e3, _$ = 4e4, F$ = 120, B$ = 8, Lv = `\n<!-- aside-lasso truncated -->`, H$ = {\n  name: \"aside-lasso\",\n  theme: {\n    selectionBox: { enabled: !1 },\n    dragBox: { enabled: !1 },\n    grabbedBoxes: { enabled: !1 },\n    elementLabel"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/remix.js",
+      "sha256": "38d7d44337d843342de287e84de585e76425d8db828db78b78a879ac3cbe7fbb",
+      "groups": [
+        {
+          "token": "handle-with-aside",
+          "count": 1,
+          "contexts": [
+            "ncelAnimationFrame(t), i.disconnect();\n  };\n}\nvar d = \"data-aux-handle-with-aux\", Q = {\n  id: \"handle-with-aside\",\n  injection: [{\n    matches: I,\n    allFrames: !0\n  }, {\n    matches: T,\n    allFrames: !1\n  }],\n  run(e) {\n    let t = !1;\n   "
+          ]
+        }
+      ]
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/visual-frame.html",
+      "sha256": "2d2d2d31b379130a0c8028ceab58776a8deb9bf08752a093370f2c44d7fc5ba9",
+      "groups": [
+        {
+          "token": "aside-visual-document",
+          "count": 1,
+          "contexts": [
+            "  var data = event.data;\n        if (event.source !== window.parent || !data || data.type !== 'aside-visual-document') return;\n        if (typeof data.html !== 'string') return;\n        document.open();\n        document.write(data.html);\n        "
+          ]
+        }
+      ]
+    }
+  ]
+}

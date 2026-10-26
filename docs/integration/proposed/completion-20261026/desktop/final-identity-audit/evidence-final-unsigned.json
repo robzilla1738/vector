@@ -1,0 +1,1159 @@
+{
+  "format": "aux.final-artifact.identity-evidence.v1",
+  "receipt": {
+    "path": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-completion-20261026-a1/pre-sign-resource-delta-a2/receipt.json",
+    "sha256": "6dcb81a02f279fe462950ed8552f7312c476447eeafed5ce30d98982a0074bc9"
+  },
+  "app": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-completion-20261026-a1/Aux.app",
+  "inventorySha256": "617db71d628100f7be6aac8a5922908e8b3437bb3bdef258c4348caf94ef7890",
+  "inventoryLeaves": 11189,
+  "selectedChangedTextFiles": [
+    "Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/AuxFreshBootstrapPolicy.json",
+    "Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/native/runtime-bootstrap.cjs",
+    "Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/native/runtime-text-root.json",
+    "Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/node-development/aux-native-entry.mjs",
+    "Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/node-development/index.mjs",
+    "Contents/Resources/aux/apps/extension/dist/assets/-components-4o0FSqQ9.js",
+    "Contents/Resources/aux/apps/extension/dist/assets/-utils-B_lbplVm.js",
+    "Contents/Resources/aux/apps/extension/dist/assets/_skillId-CAwCRjA8.js",
+    "Contents/Resources/aux/apps/extension/dist/assets/add-on-credits-dialog-Dn5FxOyZ.js",
+    "Contents/Resources/aux/apps/extension/dist/assets/ai-CzEX5E7S.js",
+    "Contents/Resources/aux/apps/extension/dist/assets/connect-dialog-CacgpFap.js",
+    "Contents/Resources/aux/apps/extension/dist/assets/developers-DTvaoVBC.js",
+    "Contents/Resources/aux/apps/extension/dist/assets/experimental-Xq3YsEPK.js",
+    "Contents/Resources/aux/apps/extension/dist/assets/mcps-DmPp5oo9.js",
+    "Contents/Resources/aux/apps/extension/dist/assets/newtab-CnOLQ0yu.js",
+    "Contents/Resources/aux/apps/extension/dist/assets/personalization-C9HKLZT4.js",
+    "Contents/Resources/aux/apps/extension/dist/assets/provider-Cw0zhujt.js",
+    "Contents/Resources/aux/apps/extension/dist/assets/queries-ldd77hNk.js",
+    "Contents/Resources/aux/apps/extension/dist/assets/route-TQyeTEXE.js",
+    "Contents/Resources/aux/apps/extension/dist/assets/session-composer-Dc0LRfZA.js",
+    "Contents/Resources/aux/apps/extension/dist/assets/session-feedback-dialog-BjDg0W8m.js",
+    "Contents/Resources/aux/apps/extension/dist/assets/splash-D666ivBP.js",
+    "Contents/Resources/aux/apps/extension/dist/assets/tag-icon-DeMC7uIN.js",
+    "Contents/Resources/aux/apps/extension/dist/background.js",
+    "Contents/Resources/aux/apps/extension/dist/content/content.js",
+    "Contents/Resources/aux/apps/extension/dist/manifest.json",
+    "Contents/Resources/aux/apps/extension/dist/remix.js"
+  ],
+  "reads": [
+    {
+      "path": "Contents/Resources/aux/bundle.json",
+      "sha256": "a97285b8784209611278f24c29cf2c9762013b50978027097a7429c505e1a6ae",
+      "bytes": 4484192
+    },
+    {
+      "path": "Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/AuxFreshBootstrapPolicy.json",
+      "sha256": "0ea7e93e94de7f07006aa4389fa842acb61bc50a37d682941a8d2dcf8e837b65",
+      "bytes": 725
+    },
+    {
+      "path": "Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/native/runtime-bootstrap.cjs",
+      "sha256": "06717ab918188a76f4101336fffe297f044792a183cde73efcab4a59af428fcf",
+      "bytes": 7664
+    },
+    {
+      "path": "Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/native/runtime-text-root.json",
+      "sha256": "a36d05c80e96470c1df1f32c61f39f0d517b074f3c21ed4335dd57638ebdd783",
+      "bytes": 189
+    },
+    {
+      "path": "Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/node-development/aux-native-entry.mjs",
+      "sha256": "38d61018477a838a4bc9fcf33cf99c7c97ddfad9a7fbe5ff859f60a4cdb587d9",
+      "bytes": 12366495
+    },
+    {
+      "path": "Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/node-development/index.mjs",
+      "sha256": "5e2145161fbf913a76895c1c5b648363e843bc215db7ab5eb0dc5b4c7110cfc6",
+      "bytes": 12363386
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/-components-4o0FSqQ9.js",
+      "sha256": "98ee9af88fcdfc6136e7e20556de0752ff3b81be8fb5b110c4d0a3f1d585bd72",
+      "bytes": 7925
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/-utils-B_lbplVm.js",
+      "sha256": "b4e2e29b12a663c33ad7b4122273f20e5172ae76024fefa613c5aa5ef0d97e99",
+      "bytes": 2247
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/_skillId-CAwCRjA8.js",
+      "sha256": "1a39b9401e5144d365b363e01f77601d311b3f515bb83d802b492b664064052d",
+      "bytes": 16902
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/add-on-credits-dialog-Dn5FxOyZ.js",
+      "sha256": "e0012bbed6365fd0c9c4b7e23fee41ca02a3b9ca7e004cd743c58b8fc19bb73c",
+      "bytes": 16300
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/ai-CzEX5E7S.js",
+      "sha256": "d1c597e52b370e6759c4f4e0bb89021be768a615c3ba06e111f839c66e11df3b",
+      "bytes": 20762
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/connect-dialog-CacgpFap.js",
+      "sha256": "8f10c421607cc4ac4fc83fb04b0eef80c38721534926fac5d22efb810a1274c2",
+      "bytes": 40202
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/developers-DTvaoVBC.js",
+      "sha256": "7c22f0e3970ecf39c0497cdab3dc0103cb794e73f3b93f1b20f82f94dc0f5958",
+      "bytes": 20273
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/experimental-Xq3YsEPK.js",
+      "sha256": "7605e2eba17406c5317720229d2a52f58824ce1203a7829516ed5379e3654081",
+      "bytes": 11365
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/mcps-DmPp5oo9.js",
+      "sha256": "9677c647f3537abcf90dd5cf707229e5fb6f83cd185ae19c5f4fcb72060b0d03",
+      "bytes": 48773
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/newtab-CnOLQ0yu.js",
+      "sha256": "eef65df02f862b13dcf9951f3f8cb81d1e6875a6dc6e7b782c954f23e7e69539",
+      "bytes": 41080
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/personalization-C9HKLZT4.js",
+      "sha256": "aaba7029c2991857d829d1826efd23073b39cc56ac4c5646a8af18558117db06",
+      "bytes": 3457
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/provider-Cw0zhujt.js",
+      "sha256": "5f0762d4441bfc708a9f4f9d0d4dd56a2e44f0fc26947e464415c5a1aec07bd8",
+      "bytes": 128382
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/queries-ldd77hNk.js",
+      "sha256": "f7272be107a8a3809b8223439abf40dcaa1cd38f74737f8646b7670471368433",
+      "bytes": 73011
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/route-TQyeTEXE.js",
+      "sha256": "468e9e336a9127198dc0b45902990ca3a6b6bcdbbe0c8fab1871d23492ec59a8",
+      "bytes": 68336
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/session-composer-Dc0LRfZA.js",
+      "sha256": "9dcf4391cd70d41005cdd5d124bb4ee6e5c4bed44428d51c04dd7064711acbc4",
+      "bytes": 349847
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/session-feedback-dialog-BjDg0W8m.js",
+      "sha256": "e6453c89839e89125fb9821d0c1f1dfbacf1fbf9d54b4e20bc6e6a5436723d83",
+      "bytes": 3361
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/splash-D666ivBP.js",
+      "sha256": "85486d9e4b8d1ce9965b41c26ba808df3501be3d638cc860c6ce45773d7a0921",
+      "bytes": 67901
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/tag-icon-DeMC7uIN.js",
+      "sha256": "0d9e393739847e63f98b7006a83986ff2513da62a5c46351d4c83f717052cfff",
+      "bytes": 411273
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/background.js",
+      "sha256": "688ab712bd2dfc6e03ce0e0a6350b65218a218bfeb83000f1a562104ced344e3",
+      "bytes": 414892
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/content/content.js",
+      "sha256": "908bd3585b1a0090fc6f28e2d816c02434ce7db037ff5eb6566e861bc5dd6e61",
+      "bytes": 295555
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/manifest.json",
+      "sha256": "a77c4e9eea0f41977f09862f6b7e3d56c12aa5b1cb062483ef5911db8eeb27f5",
+      "bytes": 3236
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/remix.js",
+      "sha256": "38d7d44337d843342de287e84de585e76425d8db828db78b78a879ac3cbe7fbb",
+      "bytes": 12592
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/manifest.json",
+      "sha256": "a77c4e9eea0f41977f09862f6b7e3d56c12aa5b1cb062483ef5911db8eeb27f5",
+      "bytes": 3236
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/main.html",
+      "sha256": "ac8ed7042bd6cf79ea674d888b46c6161d8a2372cd7d49d42b1482f1489a99d7",
+      "bytes": 6590
+    },
+    {
+      "path": "Contents/Info.plist",
+      "sha256": "ec755eaba4314cfee2338452e92cf10d6a841b7c0aa1fc66606368db1db2863a",
+      "bytes": 18550
+    },
+    {
+      "path": "Contents/Resources/app.icns",
+      "sha256": "bc9826cef6295b7806693bdfc107e6901388ecfbd73236874c8fb19786b64f35",
+      "bytes": 111899
+    }
+  ],
+  "findings": [
+    {
+      "path": "Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/AuxFreshBootstrapPolicy.json",
+      "sha256": "0ea7e93e94de7f07006aa4389fa842acb61bc50a37d682941a8d2dcf8e837b65",
+      "findings": []
+    },
+    {
+      "path": "Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/native/runtime-bootstrap.cjs",
+      "sha256": "06717ab918188a76f4101336fffe297f044792a183cde73efcab4a59af428fcf",
+      "findings": []
+    },
+    {
+      "path": "Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/native/runtime-text-root.json",
+      "sha256": "a36d05c80e96470c1df1f32c61f39f0d517b074f3c21ed4335dd57638ebdd783",
+      "findings": []
+    },
+    {
+      "path": "Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/node-development/aux-native-entry.mjs",
+      "sha256": "38d61018477a838a4bc9fcf33cf99c7c97ddfad9a7fbe5ff859f60a4cdb587d9",
+      "findings": [
+        {
+          "kind": "oldNamedIdentity",
+          "token": "asideCode:boolean$1",
+          "count": 1,
+          "contexts": [
+            {
+              "byteOffset": 1826119,
+              "line": 1859,
+              "context": "efault(!1),kakaotalk:boolean$1().default(!1),onboarding:boolean$1().default(!1),format:string$3().optional(),auxCode:boolean$1().optional(),asideCode:boolean$1().optional(),compactionLimits:boolean$1().default(!1)}).transform(function migrateAuxExperimentalSettings(value) {\n  const format = 'aux.experimental.v2';\n  if"
+            }
+          ]
+        },
+        {
+          "kind": "oldNamedIdentity",
+          "token": "asideCode",
+          "count": 3,
+          "contexts": [
+            {
+              "byteOffset": 1826480,
+              "line": 1863,
+              "context": "at !== format)\n    throw Error('Unsupported Aux experimental settings version.');\n  if (value.format !== undefined && Object.hasOwn(value, 'asideCode') ||\n      value.format === undefined && Object.hasOwn(value, 'auxCode'))\n    throw Error('Ambiguous Aux experimental settings generation.');\n  const {asideCod"
+            },
+            {
+              "byteOffset": 1826641,
+              "line": 1866,
+              "context": "value.format === undefined && Object.hasOwn(value, 'auxCode'))\n    throw Error('Ambiguous Aux experimental settings generation.');\n  const {asideCode, auxCode, format: previousFormat, ...settings} = value;\n  return {...settings, format, auxCode: (previousFormat === format ? auxCode : asideCode) ?? false};\n})"
+            },
+            {
+              "byteOffset": 1826786,
+              "line": 1867,
+              "context": "Code, auxCode, format: previousFormat, ...settings} = value;\n  return {...settings, format, auxCode: (previousFormat === format ? auxCode : asideCode) ?? false};\n}),paymentCardSchema=object({id:string$3().min(1),brand:string$3().min(1),last4:string$3().regex(/^\\d{4}$/),label:string$3().max(80).default(``),ex"
+            }
+          ]
+        },
+        {
+          "kind": "oldNamedIdentity",
+          "token": "aside.base.basefont.blockquote.body.caption.center.col.colgroup.dd.details.dialog.dir.div.dl.dt.fieldset.figcaption.figure.footer.form.frame.frameset.h1.h2.h3.h4.h5.h6.head.header.hr.html.iframe.legend.li.link.main.menu.menuitem.nav.noframes.ol.optgroup.option.p.param.search.section.summary.table.tbody.td.tfoot.th.thead.title.tr.track.ul",
+          "count": 1,
+          "contexts": [
+            {
+              "byteOffset": 2900029,
+              "line": 2505,
+              "context": "HeadingAtx}})),htmlBlockNames,htmlRawNames,init_micromark_util_html_tag_name=__esmMin((()=>{htmlBlockNames=/* @__PURE__ */ `address.article.aside.base.basefont.blockquote.body.caption.center.col.colgroup.dd.details.dialog.dir.div.dl.dt.fieldset.figcaption.figure.footer.form.frame.frameset.h1.h2.h3.h4.h5.h6.head.header.hr.html.iframe.legend.li.link.main.menu.menuitem.nav.noframes.ol.optgroup.option.p.param.search.section.summary.table.tbody.td.tfoot.th.thead.title.tr.track.ul`.split(`.`),htmlRawNames=[`pre`,`script`,`style`,`textarea`]}));function resolveToHtmlFlow(Cn){let ei=Cn.length;for(;ei--&&(Cn[ei][0]!==`enter`||Cn[ei][1].type"
+            }
+          ]
+        },
+        {
+          "kind": "oldNamedIdentity",
+          "token": "aside:",
+          "count": 2,
+          "contexts": [
+            {
+              "byteOffset": 3326222,
+              "line": 2821,
+              "context": "mg: \"image\",\n\t\tnav: \"navigation\",\n\t\tmain: \"main\",\n\t\theader: \"banner\",\n\t\tfooter: \"contentinfo\",\n\t\tsection: \"region\",\n\t\tarticle: \"article\",\n\t\taside: \"complementary\",\n\t\tform: \"form\",\n\t\ttable: \"table\",\n\t\tul: \"list\",\n\t\tol: \"list\",\n\t\tli: \"listitem\",\n\t\tp: \"paragraph\",\n\t\tlabel: \"label\"\n\t};\n\tconst VALID_ARIA_ROLES"
+            },
+            {
+              "byteOffset": 7151373,
+              "line": 8452,
+              "context": "/|^-\\/\\/W3C\\/\\/DTD XHTML 1\\.0 Transitional\\/\\//i,yi=Object.create(null);yi[ii.HTML]={__proto__:null,address:!0,applet:!0,area:!0,article:!0,aside:!0,base:!0,basefont:!0,bgsound:!0,blockquote:!0,body:!0,br:!0,button:!0,caption:!0,center:!0,col:!0,colgroup:!0,dd:!0,details:!0,dir:!0,div:!0,dl:!0,dt:!0,embed"
+            }
+          ]
+        },
+        {
+          "kind": "oldNamedIdentity",
+          "token": "aside",
+          "count": 50,
+          "contexts": [
+            {
+              "byteOffset": 3331190,
+              "line": 3089,
+              "context": "PURE__ */ new Set([\n\t\t\"h1\",\n\t\t\"h2\",\n\t\t\"h3\",\n\t\t\"h4\",\n\t\t\"h5\",\n\t\t\"h6\",\n\t\t\"nav\",\n\t\t\"main\",\n\t\t\"header\",\n\t\t\"footer\",\n\t\t\"section\",\n\t\t\"article\",\n\t\t\"aside\"\n\t]);\n\tconst SKIP_TAGS = /* @__PURE__ */ new Set([\n\t\t\"script\",\n\t\t\"style\",\n\t\t\"meta\",\n\t\t\"link\",\n\t\t\"title\",\n\t\t\"noscript\"\n\t]);\n\tfunction getAriaBoolean(attr) {\n\t\ti"
+            },
+            {
+              "byteOffset": 3409856,
+              "line": 4513,
+              "context": "contenteditable=\"true\"]',\n    ].join(',');\n    const landmarkSelector = [\n      'main',\n      'nav',\n      'header',\n      'footer',\n      'aside',\n      'form',\n      '[role=\"main\"]',\n      '[role=\"navigation\"]',\n      '[role=\"banner\"]',\n      '[role=\"contentinfo\"]',\n      '[role=\"complementary\"]',\n    "
+            },
+            {
+              "byteOffset": 6886563,
+              "line": 7939,
+              "context": "_models(),init_store$1(),init_provider_session_id(),DEFAULT_SESSION_TITLE=`New Session`,LEGACY_CLI_SESSION_TITLES=/* @__PURE__ */ new Set([`aside cli`,`daemon cli`]),FALLBACK_TITLE_MAX_LENGTH=40,GENERATED_TITLE_MAX_LENGTH=80,TITLE_GENERATION_MAX_TOKENS=96,SESSION_TITLE_SYSTEM_PROMPT=`You are a title gene"
+            },
+            {
+              "byteOffset": 7247648,
+              "line": 8456,
+              "context": "de&&ri.parentNode.removeChild(ri);!(No.top instanceof oi.HTMLHtmlElement);)No.pop();Os(ei,ti),Ao=Fl;return;case`address`:case`article`:case`aside`:case`blockquote`:case`center`:case`details`:case`dialog`:case`dir`:case`div`:case`dl`:case`fieldset`:case`figcaption`:case`figure`:case`footer`:case`header`:c"
+            },
+            {
+              "byteOffset": 7251076,
+              "line": 8456,
+              "context": "!No.inScope(`body`))return;Ao=Pl;return;case`html`:if(!No.inScope(`body`))return;Ao=Pl,Ao(Cn,ei,ti);return;case`address`:case`article`:case`aside`:case`blockquote`:case`button`:case`center`:case`details`:case`dialog`:case`dir`:case`div`:case`dl`:case`fieldset`:case`figcaption`:case`figure`:case`footer`:c"
+            },
+            {
+              "byteOffset": 7339379,
+              "line": 8516,
+              "context": "([`option`])],[`optgroup`,/* @__PURE__ */ new Set([`optgroup`,`option`])],[`dd`,ddtTags],[`dt`,ddtTags],[`address`,pTag],[`article`,pTag],[`aside`,pTag],[`blockquote`,pTag],[`details`,pTag],[`div`,pTag],[`dl`,pTag],[`fieldset`,pTag],[`figcaption`,pTag],[`figure`,pTag],[`footer`,pTag],[`form`,pTag],[`head"
+            }
+          ]
+        },
+        {
+          "kind": "oldNamedIdentity",
+          "token": "aside-world.ts",
+          "count": 1,
+          "contexts": [
+            {
+              "byteOffset": 3370631,
+              "line": 4132,
+              "context": "ned = null;\n\t\t\t_visibilityCache = null;\n\t\t\t_capture = false;\n\t\t\tendAccNameCaches();\n\t\t}\n\t}\n\t//#endregion\n\t//#region src/browser-v3/injected/aside-world.ts\n\t(function setupAuxWorld() {\n\t\tconst elementRegistry = /* @__PURE__ */ new Map();\n\t\tconst captureElementRegistry = /* @__PURE__ */ new Map();\n\t\tlet _lastRefs ="
+            }
+          ]
+        },
+        {
+          "kind": "oldNamedIdentity",
+          "token": "aside.b.bdi.bdo.cite.content.code.dd.dfn.dt.em.figcaption.figure.footer.header.hgroup.i.kbd.main.mark.nav.noscript.rb.rp.rt.rtc.ruby.s.samp.section.small.strong.sub.summary.sup.u.var.wbr.acronym.basefont.big.center.nobr.noembed.noframes.plaintext.strike.tt",
+          "count": 1,
+          "contexts": [
+            {
+              "byteOffset": 7132905,
+              "line": 8451,
+              "context": "ctoryElement`,ctor:function(Cn,ei,ti){mi.call(this,Cn,ei,ti)},attributes:{compact:Boolean}}),ci({tags:/* @__PURE__ */ `abbr.address.article.aside.b.bdi.bdo.cite.content.code.dd.dfn.dt.em.figcaption.figure.footer.header.hgroup.i.kbd.main.mark.nav.noscript.rb.rp.rt.rtc.ruby.s.samp.section.small.strong.sub.summary.sup.u.var.wbr.acronym.basefont.big.center.nobr.noembed.noframes.plaintext.strike.tt`.split(`.`)})})),require_svg=/* @__PURE__ */ __commonJSMin((Cn=>{var ei=require_Element(),ti=require_defineElement(),ni=require_utils$1(),ri=require_CSSStyleDe"
+            }
+          ]
+        },
+        {
+          "kind": "oldNamedIdentity",
+          "token": "asidecomputeruse",
+          "count": 2,
+          "contexts": [
+            {
+              "byteOffset": 10600109,
+              "line": 11063,
+              "context": "lowed:!1,reason:`unresolvable-url`,domain:ti};let ri=ei.bundleId?.toLowerCase()??``;return process.platform===`win32`&&(/^aumid:atyourside\\.asidecomputeruse(?:\\.canary)?_[^!]+!computeruse$/.test(ri)||/^win32:.*[\\\\/]asidecomputeruse\\.exe$/.test(ri))||ni.rules.some(Cn=>Cn.scope===`app`&&Cn.bundleId===ei.bundleId&&Cn."
+            },
+            {
+              "byteOffset": 10600184,
+              "line": 11063,
+              "context": "se()??``;return process.platform===`win32`&&(/^aumid:atyourside\\.asidecomputeruse(?:\\.canary)?_[^!]+!computeruse$/.test(ri)||/^win32:.*[\\\\/]asidecomputeruse\\.exe$/.test(ri))||ni.rules.some(Cn=>Cn.scope===`app`&&Cn.bundleId===ei.bundleId&&Cn.behavior===`do_not_observe`)?{allowed:!1,reason:`blocked-app`,domain:ti}:ei"
+            }
+          ]
+        },
+        {
+          "kind": "oldNamedIdentity",
+          "token": "aside:not",
+          "count": 1,
+          "contexts": [
+            {
+              "byteOffset": 11221722,
+              "line": 13964,
+              "context": "e-content\"]`,`[href=\"#main-content\"]`,`[href^=\"#main\"]`,`[src*=\"author\"]`,`.toc`,`.Toc`,`#toc`,`[href*=\"#toc\"]`,`footer`,`ignore`,`.aside`,`aside:not([class*=\"callout\"])`,`button`,`canvas`,`date`,`dialog`,`fieldset`,`form`,`input:not([type=\"checkbox\"])`,`input[type=\"checkbox\"][class*=\"sidebar\" i]`,`input[typ"
+            }
+          ]
+        },
+        {
+          "kind": "oldNamedIdentity",
+          "token": "aside_pro_month",
+          "count": 1,
+          "contexts": [
+            {
+              "byteOffset": 11917206,
+              "line": 14572,
+              "context": "its(),init_procedure(),init_posthog(),init_api_client(),init_store$1(),init_trpc$1(),init_subscription(),stripePriceLookupKeySchema=_enum([`aside_pro_month`,`aside_pro_year`,`aside_max_month`,`aside_max_year`]),billingPortalResponseSchema=object({url:string$3().url()}),billingUsageResponseSchema=object({items:arra"
+            }
+          ]
+        },
+        {
+          "kind": "oldNamedIdentity",
+          "token": "aside_pro_year",
+          "count": 1,
+          "contexts": [
+            {
+              "byteOffset": 11917224,
+              "line": 14572,
+              "context": "re(),init_posthog(),init_api_client(),init_store$1(),init_trpc$1(),init_subscription(),stripePriceLookupKeySchema=_enum([`aside_pro_month`,`aside_pro_year`,`aside_max_month`,`aside_max_year`]),billingPortalResponseSchema=object({url:string$3().url()}),billingUsageResponseSchema=object({items:array(object({charged"
+            }
+          ]
+        },
+        {
+          "kind": "oldNamedIdentity",
+          "token": "aside_max_month",
+          "count": 1,
+          "contexts": [
+            {
+              "byteOffset": 11917241,
+              "line": 14572,
+              "context": "(),init_api_client(),init_store$1(),init_trpc$1(),init_subscription(),stripePriceLookupKeySchema=_enum([`aside_pro_month`,`aside_pro_year`,`aside_max_month`,`aside_max_year`]),billingPortalResponseSchema=object({url:string$3().url()}),billingUsageResponseSchema=object({items:array(object({charged_micros:string$3()"
+            }
+          ]
+        },
+        {
+          "kind": "oldNamedIdentity",
+          "token": "aside_max_year",
+          "count": 1,
+          "contexts": [
+            {
+              "byteOffset": 11917259,
+              "line": 14572,
+              "context": "(),init_store$1(),init_trpc$1(),init_subscription(),stripePriceLookupKeySchema=_enum([`aside_pro_month`,`aside_pro_year`,`aside_max_month`,`aside_max_year`]),billingPortalResponseSchema=object({url:string$3().url()}),billingUsageResponseSchema=object({items:array(object({charged_micros:string$3().regex(/^\\d+$/),c"
+            }
+          ]
+        },
+        {
+          "kind": "oldNamedIdentity",
+          "token": "aside:password-manager-preference:start",
+          "count": 1,
+          "contexts": [
+            {
+              "byteOffset": 12005313,
+              "line": 14672,
+              "context": " const formats = [\n    ['<!-- aux:password-manager-preference:v2:start -->', '<!-- aux:password-manager-preference:v2:end -->'],\n    ['<!-- aside:password-manager-preference:start -->', '<!-- aside:password-manager-preference:end -->'],\n  ];\n  let found;\n  for (const [start, end] of formats) {\n    const opening = text.indexOf(start), clo"
+            }
+          ]
+        },
+        {
+          "kind": "oldNamedIdentity",
+          "token": "aside:password-manager-preference:end",
+          "count": 1,
+          "contexts": [
+            {
+              "byteOffset": 12005365,
+              "line": 14672,
+              "context": "reference:v2:start -->', '<!-- aux:password-manager-preference:v2:end -->'],\n    ['<!-- aside:password-manager-preference:start -->', '<!-- aside:password-manager-preference:end -->'],\n  ];\n  let found;\n  for (const [start, end] of formats) {\n    const opening = text.indexOf(start), closing = text.indexOf(end);\n    if (opening === -1 &"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "path": "Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/node-development/index.mjs",
+      "sha256": "5e2145161fbf913a76895c1c5b648363e843bc215db7ab5eb0dc5b4c7110cfc6",
+      "findings": [
+        {
+          "kind": "oldNamedIdentity",
+          "token": "asideCode:boolean$1",
+          "count": 1,
+          "contexts": [
+            {
+              "byteOffset": 1826242,
+              "line": 1860,
+              "context": "efault(!1),kakaotalk:boolean$1().default(!1),onboarding:boolean$1().default(!1),format:string$3().optional(),auxCode:boolean$1().optional(),asideCode:boolean$1().optional(),compactionLimits:boolean$1().default(!1)}).transform(function migrateAuxExperimentalSettings(value) {\n  const format = 'aux.experimental.v2';\n  if"
+            }
+          ]
+        },
+        {
+          "kind": "oldNamedIdentity",
+          "token": "asideCode",
+          "count": 3,
+          "contexts": [
+            {
+              "byteOffset": 1826603,
+              "line": 1864,
+              "context": "at !== format)\n    throw Error('Unsupported Aux experimental settings version.');\n  if (value.format !== undefined && Object.hasOwn(value, 'asideCode') ||\n      value.format === undefined && Object.hasOwn(value, 'auxCode'))\n    throw Error('Ambiguous Aux experimental settings generation.');\n  const {asideCod"
+            },
+            {
+              "byteOffset": 1826764,
+              "line": 1867,
+              "context": "value.format === undefined && Object.hasOwn(value, 'auxCode'))\n    throw Error('Ambiguous Aux experimental settings generation.');\n  const {asideCode, auxCode, format: previousFormat, ...settings} = value;\n  return {...settings, format, auxCode: (previousFormat === format ? auxCode : asideCode) ?? false};\n})"
+            },
+            {
+              "byteOffset": 1826909,
+              "line": 1868,
+              "context": "Code, auxCode, format: previousFormat, ...settings} = value;\n  return {...settings, format, auxCode: (previousFormat === format ? auxCode : asideCode) ?? false};\n}),paymentCardSchema=object({id:string$3().min(1),brand:string$3().min(1),last4:string$3().regex(/^\\d{4}$/),label:string$3().max(80).default(``),ex"
+            }
+          ]
+        },
+        {
+          "kind": "oldNamedIdentity",
+          "token": "aside.base.basefont.blockquote.body.caption.center.col.colgroup.dd.details.dialog.dir.div.dl.dt.fieldset.figcaption.figure.footer.form.frame.frameset.h1.h2.h3.h4.h5.h6.head.header.hr.html.iframe.legend.li.link.main.menu.menuitem.nav.noframes.ol.optgroup.option.p.param.search.section.summary.table.tbody.td.tfoot.th.thead.title.tr.track.ul",
+          "count": 1,
+          "contexts": [
+            {
+              "byteOffset": 2900152,
+              "line": 2506,
+              "context": "HeadingAtx}})),htmlBlockNames,htmlRawNames,init_micromark_util_html_tag_name=__esmMin((()=>{htmlBlockNames=/* @__PURE__ */ `address.article.aside.base.basefont.blockquote.body.caption.center.col.colgroup.dd.details.dialog.dir.div.dl.dt.fieldset.figcaption.figure.footer.form.frame.frameset.h1.h2.h3.h4.h5.h6.head.header.hr.html.iframe.legend.li.link.main.menu.menuitem.nav.noframes.ol.optgroup.option.p.param.search.section.summary.table.tbody.td.tfoot.th.thead.title.tr.track.ul`.split(`.`),htmlRawNames=[`pre`,`script`,`style`,`textarea`]}));function resolveToHtmlFlow(Cn){let ei=Cn.length;for(;ei--&&(Cn[ei][0]!==`enter`||Cn[ei][1].type"
+            }
+          ]
+        },
+        {
+          "kind": "oldNamedIdentity",
+          "token": "aside:",
+          "count": 2,
+          "contexts": [
+            {
+              "byteOffset": 3326338,
+              "line": 2822,
+              "context": "mg: \"image\",\n\t\tnav: \"navigation\",\n\t\tmain: \"main\",\n\t\theader: \"banner\",\n\t\tfooter: \"contentinfo\",\n\t\tsection: \"region\",\n\t\tarticle: \"article\",\n\t\taside: \"complementary\",\n\t\tform: \"form\",\n\t\ttable: \"table\",\n\t\tul: \"list\",\n\t\tol: \"list\",\n\t\tli: \"listitem\",\n\t\tp: \"paragraph\",\n\t\tlabel: \"label\"\n\t};\n\tconst VALID_ARIA_ROLES"
+            },
+            {
+              "byteOffset": 7148316,
+              "line": 8453,
+              "context": "/|^-\\/\\/W3C\\/\\/DTD XHTML 1\\.0 Transitional\\/\\//i,yi=Object.create(null);yi[ii.HTML]={__proto__:null,address:!0,applet:!0,area:!0,article:!0,aside:!0,base:!0,basefont:!0,bgsound:!0,blockquote:!0,body:!0,br:!0,button:!0,caption:!0,center:!0,col:!0,colgroup:!0,dd:!0,details:!0,dir:!0,div:!0,dl:!0,dt:!0,embed"
+            }
+          ]
+        },
+        {
+          "kind": "oldNamedIdentity",
+          "token": "aside",
+          "count": 50,
+          "contexts": [
+            {
+              "byteOffset": 3331306,
+              "line": 3090,
+              "context": "PURE__ */ new Set([\n\t\t\"h1\",\n\t\t\"h2\",\n\t\t\"h3\",\n\t\t\"h4\",\n\t\t\"h5\",\n\t\t\"h6\",\n\t\t\"nav\",\n\t\t\"main\",\n\t\t\"header\",\n\t\t\"footer\",\n\t\t\"section\",\n\t\t\"article\",\n\t\t\"aside\"\n\t]);\n\tconst SKIP_TAGS = /* @__PURE__ */ new Set([\n\t\t\"script\",\n\t\t\"style\",\n\t\t\"meta\",\n\t\t\"link\",\n\t\t\"title\",\n\t\t\"noscript\"\n\t]);\n\tfunction getAriaBoolean(attr) {\n\t\ti"
+            },
+            {
+              "byteOffset": 3409972,
+              "line": 4514,
+              "context": "contenteditable=\"true\"]',\n    ].join(',');\n    const landmarkSelector = [\n      'main',\n      'nav',\n      'header',\n      'footer',\n      'aside',\n      'form',\n      '[role=\"main\"]',\n      '[role=\"navigation\"]',\n      '[role=\"banner\"]',\n      '[role=\"contentinfo\"]',\n      '[role=\"complementary\"]',\n    "
+            },
+            {
+              "byteOffset": 6883971,
+              "line": 7940,
+              "context": "_models(),init_store$1(),init_provider_session_id(),DEFAULT_SESSION_TITLE=`New Session`,LEGACY_CLI_SESSION_TITLES=/* @__PURE__ */ new Set([`aside cli`,`daemon cli`]),FALLBACK_TITLE_MAX_LENGTH=40,GENERATED_TITLE_MAX_LENGTH=80,TITLE_GENERATION_MAX_TOKENS=96,SESSION_TITLE_SYSTEM_PROMPT=`You are a title gene"
+            },
+            {
+              "byteOffset": 7244591,
+              "line": 8457,
+              "context": "de&&ri.parentNode.removeChild(ri);!(No.top instanceof oi.HTMLHtmlElement);)No.pop();Os(ei,ti),Ao=Fl;return;case`address`:case`article`:case`aside`:case`blockquote`:case`center`:case`details`:case`dialog`:case`dir`:case`div`:case`dl`:case`fieldset`:case`figcaption`:case`figure`:case`footer`:case`header`:c"
+            },
+            {
+              "byteOffset": 7248019,
+              "line": 8457,
+              "context": "!No.inScope(`body`))return;Ao=Pl;return;case`html`:if(!No.inScope(`body`))return;Ao=Pl,Ao(Cn,ei,ti);return;case`address`:case`article`:case`aside`:case`blockquote`:case`button`:case`center`:case`details`:case`dialog`:case`dir`:case`div`:case`dl`:case`fieldset`:case`figcaption`:case`figure`:case`footer`:c"
+            },
+            {
+              "byteOffset": 7336322,
+              "line": 8517,
+              "context": "([`option`])],[`optgroup`,/* @__PURE__ */ new Set([`optgroup`,`option`])],[`dd`,ddtTags],[`dt`,ddtTags],[`address`,pTag],[`article`,pTag],[`aside`,pTag],[`blockquote`,pTag],[`details`,pTag],[`div`,pTag],[`dl`,pTag],[`fieldset`,pTag],[`figcaption`,pTag],[`figure`,pTag],[`footer`,pTag],[`form`,pTag],[`head"
+            }
+          ]
+        },
+        {
+          "kind": "oldNamedIdentity",
+          "token": "aside-world.ts",
+          "count": 1,
+          "contexts": [
+            {
+              "byteOffset": 3370747,
+              "line": 4133,
+              "context": "ned = null;\n\t\t\t_visibilityCache = null;\n\t\t\t_capture = false;\n\t\t\tendAccNameCaches();\n\t\t}\n\t}\n\t//#endregion\n\t//#region src/browser-v3/injected/aside-world.ts\n\t(function setupAuxWorld() {\n\t\tconst elementRegistry = /* @__PURE__ */ new Map();\n\t\tconst captureElementRegistry = /* @__PURE__ */ new Map();\n\t\tlet _lastRefs ="
+            }
+          ]
+        },
+        {
+          "kind": "oldNamedIdentity",
+          "token": "aside.b.bdi.bdo.cite.content.code.dd.dfn.dt.em.figcaption.figure.footer.header.hgroup.i.kbd.main.mark.nav.noscript.rb.rp.rt.rtc.ruby.s.samp.section.small.strong.sub.summary.sup.u.var.wbr.acronym.basefont.big.center.nobr.noembed.noframes.plaintext.strike.tt",
+          "count": 1,
+          "contexts": [
+            {
+              "byteOffset": 7129848,
+              "line": 8452,
+              "context": "ctoryElement`,ctor:function(Cn,ei,ti){mi.call(this,Cn,ei,ti)},attributes:{compact:Boolean}}),ci({tags:/* @__PURE__ */ `abbr.address.article.aside.b.bdi.bdo.cite.content.code.dd.dfn.dt.em.figcaption.figure.footer.header.hgroup.i.kbd.main.mark.nav.noscript.rb.rp.rt.rtc.ruby.s.samp.section.small.strong.sub.summary.sup.u.var.wbr.acronym.basefont.big.center.nobr.noembed.noframes.plaintext.strike.tt`.split(`.`)})})),require_svg=/* @__PURE__ */ __commonJSMin((Cn=>{var ei=require_Element(),ti=require_defineElement(),ni=require_utils$1(),ri=require_CSSStyleDe"
+            }
+          ]
+        },
+        {
+          "kind": "oldNamedIdentity",
+          "token": "asidecomputeruse",
+          "count": 2,
+          "contexts": [
+            {
+              "byteOffset": 10597052,
+              "line": 11064,
+              "context": "lowed:!1,reason:`unresolvable-url`,domain:ti};let ri=ei.bundleId?.toLowerCase()??``;return process.platform===`win32`&&(/^aumid:atyourside\\.asidecomputeruse(?:\\.canary)?_[^!]+!computeruse$/.test(ri)||/^win32:.*[\\\\/]asidecomputeruse\\.exe$/.test(ri))||ni.rules.some(Cn=>Cn.scope===`app`&&Cn.bundleId===ei.bundleId&&Cn."
+            },
+            {
+              "byteOffset": 10597127,
+              "line": 11064,
+              "context": "se()??``;return process.platform===`win32`&&(/^aumid:atyourside\\.asidecomputeruse(?:\\.canary)?_[^!]+!computeruse$/.test(ri)||/^win32:.*[\\\\/]asidecomputeruse\\.exe$/.test(ri))||ni.rules.some(Cn=>Cn.scope===`app`&&Cn.bundleId===ei.bundleId&&Cn.behavior===`do_not_observe`)?{allowed:!1,reason:`blocked-app`,domain:ti}:ei"
+            }
+          ]
+        },
+        {
+          "kind": "oldNamedIdentity",
+          "token": "aside:not",
+          "count": 1,
+          "contexts": [
+            {
+              "byteOffset": 11218665,
+              "line": 13965,
+              "context": "e-content\"]`,`[href=\"#main-content\"]`,`[href^=\"#main\"]`,`[src*=\"author\"]`,`.toc`,`.Toc`,`#toc`,`[href*=\"#toc\"]`,`footer`,`ignore`,`.aside`,`aside:not([class*=\"callout\"])`,`button`,`canvas`,`date`,`dialog`,`fieldset`,`form`,`input:not([type=\"checkbox\"])`,`input[type=\"checkbox\"][class*=\"sidebar\" i]`,`input[typ"
+            }
+          ]
+        },
+        {
+          "kind": "oldNamedIdentity",
+          "token": "aside_pro_month",
+          "count": 1,
+          "contexts": [
+            {
+              "byteOffset": 11914097,
+              "line": 14573,
+              "context": "its(),init_procedure(),init_posthog(),init_api_client(),init_store$1(),init_trpc$1(),init_subscription(),stripePriceLookupKeySchema=_enum([`aside_pro_month`,`aside_pro_year`,`aside_max_month`,`aside_max_year`]),billingPortalResponseSchema=object({url:string$3().url()}),billingUsageResponseSchema=object({items:arra"
+            }
+          ]
+        },
+        {
+          "kind": "oldNamedIdentity",
+          "token": "aside_pro_year",
+          "count": 1,
+          "contexts": [
+            {
+              "byteOffset": 11914115,
+              "line": 14573,
+              "context": "re(),init_posthog(),init_api_client(),init_store$1(),init_trpc$1(),init_subscription(),stripePriceLookupKeySchema=_enum([`aside_pro_month`,`aside_pro_year`,`aside_max_month`,`aside_max_year`]),billingPortalResponseSchema=object({url:string$3().url()}),billingUsageResponseSchema=object({items:array(object({charged"
+            }
+          ]
+        },
+        {
+          "kind": "oldNamedIdentity",
+          "token": "aside_max_month",
+          "count": 1,
+          "contexts": [
+            {
+              "byteOffset": 11914132,
+              "line": 14573,
+              "context": "(),init_api_client(),init_store$1(),init_trpc$1(),init_subscription(),stripePriceLookupKeySchema=_enum([`aside_pro_month`,`aside_pro_year`,`aside_max_month`,`aside_max_year`]),billingPortalResponseSchema=object({url:string$3().url()}),billingUsageResponseSchema=object({items:array(object({charged_micros:string$3()"
+            }
+          ]
+        },
+        {
+          "kind": "oldNamedIdentity",
+          "token": "aside_max_year",
+          "count": 1,
+          "contexts": [
+            {
+              "byteOffset": 11914150,
+              "line": 14573,
+              "context": "(),init_store$1(),init_trpc$1(),init_subscription(),stripePriceLookupKeySchema=_enum([`aside_pro_month`,`aside_pro_year`,`aside_max_month`,`aside_max_year`]),billingPortalResponseSchema=object({url:string$3().url()}),billingUsageResponseSchema=object({items:array(object({charged_micros:string$3().regex(/^\\d+$/),c"
+            }
+          ]
+        },
+        {
+          "kind": "oldNamedIdentity",
+          "token": "aside:password-manager-preference:start",
+          "count": 1,
+          "contexts": [
+            {
+              "byteOffset": 12002204,
+              "line": 14673,
+              "context": " const formats = [\n    ['<!-- aux:password-manager-preference:v2:start -->', '<!-- aux:password-manager-preference:v2:end -->'],\n    ['<!-- aside:password-manager-preference:start -->', '<!-- aside:password-manager-preference:end -->'],\n  ];\n  let found;\n  for (const [start, end] of formats) {\n    const opening = text.indexOf(start), clo"
+            }
+          ]
+        },
+        {
+          "kind": "oldNamedIdentity",
+          "token": "aside:password-manager-preference:end",
+          "count": 1,
+          "contexts": [
+            {
+              "byteOffset": 12002256,
+              "line": 14673,
+              "context": "reference:v2:start -->', '<!-- aux:password-manager-preference:v2:end -->'],\n    ['<!-- aside:password-manager-preference:start -->', '<!-- aside:password-manager-preference:end -->'],\n  ];\n  let found;\n  for (const [start, end] of formats) {\n    const opening = text.indexOf(start), closing = text.indexOf(end);\n    if (opening === -1 &"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/-components-4o0FSqQ9.js",
+      "sha256": "98ee9af88fcdfc6136e7e20556de0752ff3b81be8fb5b110c4d0a3f1d585bd72",
+      "findings": [
+        {
+          "kind": "oldNamedIdentity",
+          "token": "aside:sidepanel-session",
+          "count": 1,
+          "contexts": [
+            {
+              "byteOffset": 1891,
+              "line": 1,
+              "context": "6V19Z\",fill:\"currentColor\"})}),a=$(A(),1),ue=\"aux.remix.pending.v2\",O=(e,n)=>`${ue}:${e}:${n}`,me=(e,n)=>X(O(e,n)),P=\"sidepanel-target\",pe=\"aside:sidepanel-session\";function fe(e){return e.mode===\"new-session\"?!0:e.isInitialObservation&&!e.hasCurrentSession}function he(e,n){return window.sessionStorage.getItem(y(e,n))}fun"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/-utils-B_lbplVm.js",
+      "sha256": "b4e2e29b12a663c33ad7b4122273f20e5172ae76024fefa613c5aa5ef0d97e99",
+      "findings": []
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/_skillId-CAwCRjA8.js",
+      "sha256": "1a39b9401e5144d365b363e01f77601d311b3f515bb83d802b492b664064052d",
+      "findings": []
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/add-on-credits-dialog-Dn5FxOyZ.js",
+      "sha256": "e0012bbed6365fd0c9c4b7e23fee41ca02a3b9ca7e004cd743c58b8fc19bb73c",
+      "findings": []
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/ai-CzEX5E7S.js",
+      "sha256": "d1c597e52b370e6759c4f4e0bb89021be768a615c3ba06e111f839c66e11df3b",
+      "findings": []
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/connect-dialog-CacgpFap.js",
+      "sha256": "8f10c421607cc4ac4fc83fb04b0eef80c38721534926fac5d22efb810a1274c2",
+      "findings": []
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/developers-DTvaoVBC.js",
+      "sha256": "7c22f0e3970ecf39c0497cdab3dc0103cb794e73f3b93f1b20f82f94dc0f5958",
+      "findings": []
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/experimental-Xq3YsEPK.js",
+      "sha256": "7605e2eba17406c5317720229d2a52f58824ce1203a7829516ed5379e3654081",
+      "findings": []
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/mcps-DmPp5oo9.js",
+      "sha256": "9677c647f3537abcf90dd5cf707229e5fb6f83cd185ae19c5f4fcb72060b0d03",
+      "findings": [
+        {
+          "kind": "oldNamedIdentity",
+          "token": "asideCode:m",
+          "count": 1,
+          "contexts": [
+            {
+              "byteOffset": 22887,
+              "line": 1,
+              "context": ".default(!0)}),Gr=o({sync:m().default(!1),kakaotalk:m().default(!1),onboarding:m().default(!1),format:t().optional(),auxCode:m().optional(),asideCode:m().optional(),compactionLimits:m().default(!1)}).transform(function migrateAuxExperimentalSettings(value) {\n  const format = 'aux.experimental.v2';\n  if (value."
+            }
+          ]
+        },
+        {
+          "kind": "oldNamedIdentity",
+          "token": "asideCode",
+          "count": 3,
+          "contexts": [
+            {
+              "byteOffset": 23232,
+              "line": 5,
+              "context": "at !== format)\n    throw Error('Unsupported Aux experimental settings version.');\n  if (value.format !== undefined && Object.hasOwn(value, 'asideCode') ||\n      value.format === undefined && Object.hasOwn(value, 'auxCode'))\n    throw Error('Ambiguous Aux experimental settings generation.');\n  const {asideCod"
+            },
+            {
+              "byteOffset": 23393,
+              "line": 8,
+              "context": "value.format === undefined && Object.hasOwn(value, 'auxCode'))\n    throw Error('Ambiguous Aux experimental settings generation.');\n  const {asideCode, auxCode, format: previousFormat, ...settings} = value;\n  return {...settings, format, auxCode: (previousFormat === format ? auxCode : asideCode) ?? false};\n})"
+            },
+            {
+              "byteOffset": 23538,
+              "line": 9,
+              "context": "Code, auxCode, format: previousFormat, ...settings} = value;\n  return {...settings, format, auxCode: (previousFormat === format ? auxCode : asideCode) ?? false};\n}),Jr=o({id:t().min(1),brand:t().min(1),last4:t().regex(/^\\d{4}$/),label:t().max(80).default(\"\"),expires:t().max(7).default(\"\")}),Wr=o({enabled:m()"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/newtab-CnOLQ0yu.js",
+      "sha256": "eef65df02f862b13dcf9951f3f8cb81d1e6875a6dc6e7b782c954f23e7e69539",
+      "findings": []
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/personalization-C9HKLZT4.js",
+      "sha256": "aaba7029c2991857d829d1826efd23073b39cc56ac4c5646a8af18558117db06",
+      "findings": []
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/provider-Cw0zhujt.js",
+      "sha256": "5f0762d4441bfc708a9f4f9d0d4dd56a2e44f0fc26947e464415c5a1aec07bd8",
+      "findings": []
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/queries-ldd77hNk.js",
+      "sha256": "f7272be107a8a3809b8223439abf40dcaa1cd38f74737f8646b7670471368433",
+      "findings": [
+        {
+          "kind": "oldNamedIdentity",
+          "token": "aside",
+          "count": 2,
+          "contexts": [
+            {
+              "byteOffset": 25775,
+              "line": 1,
+              "context": " connect to its local service. Restart Aux and try again.\",Pr=\"If this keeps happening, check whether another app is using port 21520.\",Ar=/aside couldn't connect from this network|could not reach aside servers|fetch failed|network error|unable to verify the first certificate|unable to get local issuer c"
+            },
+            {
+              "byteOffset": 25832,
+              "line": 1,
+              "context": "\",Pr=\"If this keeps happening, check whether another app is using port 21520.\",Ar=/aside couldn't connect from this network|could not reach aside servers|fetch failed|network error|unable to verify the first certificate|unable to get local issuer certificate|self[- ]signed certificate|certificate has exp"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/route-TQyeTEXE.js",
+      "sha256": "468e9e336a9127198dc0b45902990ca3a6b6bcdbbe0c8fab1871d23492ec59a8",
+      "findings": [
+        {
+          "kind": "oldNamedIdentity",
+          "token": "aside",
+          "count": 1,
+          "contexts": [
+            {
+              "byteOffset": 59419,
+              "line": 1,
+              "context": "ey===\"ArrowDown\"?1:-1;d(z=>(z+f+C.length)%C.length);return}if(u.key===\"Enter\"){u.preventDefault();const f=C[r];f&&g(f)}}};return(0,t.jsxs)(\"aside\",{className:\"relative flex h-full w-[clamp(9rem,30vw,13rem)] shrink-0 flex-col py-1 pr-0 pl-1.5\",children:[(0,t.jsxs)(\"div\",{className:\"group/search relative z"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/session-composer-Dc0LRfZA.js",
+      "sha256": "9dcf4391cd70d41005cdd5d124bb4ee6e5c4bed44428d51c04dd7064711acbc4",
+      "findings": []
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/session-feedback-dialog-BjDg0W8m.js",
+      "sha256": "e6453c89839e89125fb9821d0c1f1dfbacf1fbf9d54b4e20bc6e6a5436723d83",
+      "findings": []
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/splash-D666ivBP.js",
+      "sha256": "85486d9e4b8d1ce9965b41c26ba808df3501be3d638cc860c6ce45773d7a0921",
+      "findings": []
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/tag-icon-DeMC7uIN.js",
+      "sha256": "0d9e393739847e63f98b7006a83986ff2513da62a5c46351d4c83f717052cfff",
+      "findings": []
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/background.js",
+      "sha256": "688ab712bd2dfc6e03ce0e0a6350b65218a218bfeb83000f1a562104ced344e3",
+      "findings": []
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/content/content.js",
+      "sha256": "908bd3585b1a0090fc6f28e2d816c02434ce7db037ff5eb6566e861bc5dd6e61",
+      "findings": []
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/manifest.json",
+      "sha256": "a77c4e9eea0f41977f09862f6b7e3d56c12aa5b1cb062483ef5911db8eeb27f5",
+      "findings": []
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/remix.js",
+      "sha256": "38d7d44337d843342de287e84de585e76425d8db828db78b78a879ac3cbe7fbb",
+      "findings": [
+        {
+          "kind": "oldNamedIdentity",
+          "token": "aside",
+          "count": 1,
+          "contexts": [
+            {
+              "byteOffset": 11025,
+              "line": 244,
+              "context": "ree: !0\n  }), n(), () => {\n    cancelAnimationFrame(t), i.disconnect();\n  };\n}\nvar d = \"data-aux-handle-with-aux\", Q = {\n  id: \"handle-with-aside\",\n  injection: [{\n    matches: I,\n    allFrames: !0\n  }, {\n    matches: T,\n    allFrames: !1\n  }],\n  run(e) {\n    let t = !1;\n    const n = async (a, o) => {\n "
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "filenameHits": [],
+  "carriedManifestReview": [
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/manifest.json",
+      "oldEndpoints": [],
+      "vaultProduct": [],
+      "text": "{\n  \"manifest_version\": 3,\n  \"name\": \"Aux Browsing Agent\",\n  \"version\": \"1.26.1016.1885\",\n  \"version_name\": \"1.26.1016.1852\",\n  \"description\": \"Browsing agent for Aux browser\",\n  \"key\": \"MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAzMC8cpWmbybitC0CpBbGxSFeLgzUrsdv5xm6eIT87SSzJSs0rvGF5NLsyP0pfCcmUqkW/nGxMn1ykuillT19qe6dSi1QCKpkK2wuWoeM+5MWdRCLhM6E0LpWHXpIGn7RPjKvOJ8XWQtB/f0qW0T8M7T2t++4yei+gZUjUV4SUD0qYMK9IP+qnq2ZEOsRW4MfsOXVvPSWuQ4d5vvo6DrwL5wfhrVln9IxfhrMSLFoCgbGzOBThbgzZDIvqCOvJqrzp1hFzwQdiDLA/IR3RkIJW7OmyuM6/PizdGy5kSQcMnqX80f3or7G7kHn6iVdjFxsbt2JxYRZ3N/9wTxBGEMuAQIDAQAB\",\n  \"icons\": {\n    \"16\": \"icons/icon-16.png\",\n    \"48\": \"icons/icon-48.png\",\n    \"128\": \"icons/icon-128.png\"\n  },\n  \"action\": {\n    \"default_title\": \"Aux Browsing Agent\"\n  },\n  \"side_panel\": {\n    \"default_path\": \"sidepanel.html\"\n  },\n  \"chrome_url_overrides\": {\n    \"newtab\": \"newtab.html\"\n  },\n  \"permissions\": [\n    \"sidePanel\",\n    \"contextMenus\",\n    \"storage\",\n    \"activeTab\",\n    \"tabCapture\",\n    \"offscreen\",\n    \"debugger\",\n    \"downloads\",\n    \"favicon\",\n    \"history\",\n    \"bookmarks\",\n    \"topSites\",\n    \"browsingData\",\n    \"privacy\",\n    \"management\",\n    \"nativeMessaging\",\n    \"cookies\",\n    \"tabs\",\n    \"scripting\",\n    \"userScripts\",\n    \"webNavigation\",\n    \"sessions\",\n    \"tabGroups\",\n    \"alarms\",\n    \"notifications\",\n    \"dev.aux.blink.expose-wv\",\n    \"dev.aux.ext.private.account\",\n    \"dev.aux.ext.private.adblock\",\n    \"dev.aux.ext.private.browserImport\",\n    \"dev.aux.ext.private.notification\",\n    \"dev.aux.ext.private.omnibox\",\n    \"dev.aux.ext.private.browserPreferences\",\n    \"dev.aux.ext.private.miniPopup\",\n    \"dev.aux.ext.private.capture-tab-without-userinteraction\",\n    \"dev.aux.ext.private.launch-extension\"\n  ],\n  \"host_permissions\": [\n    \"<all_urls>\",\n    \"https://api.anthropic.com/*\"\n  ],\n  \"web_accessible_resources\": [\n    {\n      \"resources\": [\n        \"iframe.html\",\n        \"tab-preview-player.html\",\n        \"tabsearch.html\",\n        \"react-grab-bridge.js\",\n        \"assets/*\"\n      ],\n      \"matches\": [\n        \"<all_urls>\"\n      ]\n    },\n    {\n      \"resources\": [\n        \"main.html\"\n      ],\n      \"matches\": [\n        \"https://dev-cloud.getaux.co/*\"\n      ]\n    }\n  ],\n  \"commands\": {\n    \"_execute_action\": {\n      \"suggested_key\": {\n        \"default\": \"Alt+Shift+B\",\n        \"mac\": \"Alt+Shift+B\"\n      },\n      \"description\": \"Open Aux sidepanel\"\n    }\n  },\n  \"externally_connectable\": {\n    \"ids\": []\n  },\n  \"sandbox\": {\n    \"pages\": [\n      \"visual-frame.html\"\n    ]\n  },\n  \"content_security_policy\": {\n    \"sandbox\": \"sandbox allow-scripts allow-forms allow-popups allow-modals; script-src 'self' 'unsafe-inline' 'unsafe-eval' https:; child-src 'self';\",\n    \"extension_pages\": \"script-src 'self'; object-src 'self'\"\n  },\n  \"background\": {\n    \"service_worker\": \"background.js\",\n    \"type\": \"module\"\n  },\n  \"content_scripts\": [\n    {\n      \"matches\": [\n        \"<all_urls>\"\n      ],\n      \"js\": [\n        \"content/content.js\"\n      ],\n      \"run_at\": \"document_idle\"\n    },\n    {\n      \"matches\": [\n        \"https://docs.google.com/document/*\"\n      ],\n      \"js\": [\n        \"content/google-docs-selection-bridge.js\"\n      ],\n      \"run_at\": \"document_idle\",\n      \"world\": \"MAIN\"\n    }\n  ]\n}\n"
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/main.html",
+      "oldEndpoints": [],
+      "vaultProduct": [],
+      "text": null
+    }
+  ],
+  "logo": {
+    "canonical": {
+      "path": "assets/brand/arch-mark.svg",
+      "sha256": "45ba4f1d823cab3085cad8902fd17420ff5a9a5ac3139b180bfc0902875f515c",
+      "geometry": {
+        "viewBox": "0 0 1024 1024",
+        "paths": [
+          "m40.02 10.25c-17.45 0-31.34 15.33-31.34 33.27v21c0 2.47 2.51 3.44 4.6 2.1 7.21-5.48 11.98-15.6 11.98-25.54v-0.81c0-8.41 6.94-14.73 14.73-14.73 7.8 0 14.7 6.69 14.7 14.73v0.81c0 10.31 4.89 20.08 11.99 25.53 2.07 1.38 4.56 0.39 4.56-2l-0.15-20.46c0-19.06-13.61-33.9-31.07-33.9z",
+          "m50.38 52.49-7.44-12.09c-0.62-1.08-1.79-1.67-2.99-1.67s-2.37 0.71-3.01 1.77l-7.35 12.02c-0.7 1.2-0.35 2.87 0.84 3.79 1.14 0.8 2.74 0.5 3.78-0.38 1.87-1.62 3.73-2.8 5.71-2.8 2.11 0 4.07 1.24 5.88 2.8 1.09 0.88 2.57 1.18 3.78 0.43 1.24-0.81 1.5-2.56 0.8-3.87z"
+        ]
+      }
+    },
+    "brandInputs": [
+      {
+        "path": "assets/brand/arch-mark.svg",
+        "sha256": "45ba4f1d823cab3085cad8902fd17420ff5a9a5ac3139b180bfc0902875f515c"
+      },
+      {
+        "path": "assets/brand/aux-mark-white.svg",
+        "sha256": "45ba4f1d823cab3085cad8902fd17420ff5a9a5ac3139b180bfc0902875f515c"
+      },
+      {
+        "path": "assets/brand/Aux.icns",
+        "sha256": "bc9826cef6295b7806693bdfc107e6901388ecfbd73236874c8fb19786b64f35"
+      },
+      {
+        "path": "vendor/provided-ui/branding/icon48.png",
+        "sha256": "d4e63d20bbec0e3a283bc12f5b9e35c255cfff44538b4dfdee6f676213920abf"
+      },
+      {
+        "path": "assets/brand/Aux.iconset/icon_16x16.png",
+        "sha256": "54d1367084448320ee39412e34a74524d518babadb4e6582ef2bda27f1aa3cbc"
+      },
+      {
+        "path": "assets/brand/Aux.iconset/icon_32x32.png",
+        "sha256": "ce4779bef975467d4b931717f4eb31ad4db9801f285f660f1b878209fca9fffc"
+      },
+      {
+        "path": "assets/brand/Aux.iconset/icon_128x128.png",
+        "sha256": "42d9aa3c1c82c24a1db95e33a48f5d4112cf966dcccbeb1bbce07a2712a74208"
+      },
+      {
+        "path": "assets/brand/Aux.iconset/icon_512x512.png",
+        "sha256": "f668a42c298636741aac74e550cefc8f1af0de0da8d86f2310b70bfbe66ee90b"
+      },
+      {
+        "path": "vendor/provided-ui/branding/aux-browser-icon.webp",
+        "sha256": "3b396f2bcd779c7406023cce0d5e6917c404c19985504d0e45317426cce839ca"
+      }
+    ],
+    "vectors": [],
+    "appIcon": {
+      "path": "Contents/Resources/app.icns",
+      "sha256": "bc9826cef6295b7806693bdfc107e6901388ecfbd73236874c8fb19786b64f35",
+      "canonicalDerivedIconSha256": "bc9826cef6295b7806693bdfc107e6901388ecfbd73236874c8fb19786b64f35",
+      "canonicalDerivedBytesExact": true
+    }
+  },
+  "bundleIdentity": {
+    "excludedProducts": [
+      "vault",
+      "password-importer"
+    ],
+    "excludedFiles": [
+      {
+        "source": "apps/daemon/Aux Daemon.app/Contents/Applications/Aux Password Importer.app/Contents/Info.plist",
+        "sha256": "6076b1576b3c38dbf261908feb8d97215568802928ae460f68bd1795deb66e83",
+        "reason": "Excluded built-in password manager product"
+      },
+      {
+        "source": "apps/daemon/Aux Daemon.app/Contents/Applications/Aux Password Importer.app/Contents/PlugIns/AsidePasswordImporterProvider.appex/Contents/Info.plist",
+        "sha256": "10b04cfa5100c5a3ae64987b292ecdae35154fa7f3f80567bec1dfd875a9cacd",
+        "reason": "Excluded built-in password manager product"
+      },
+      {
+        "source": "apps/daemon/Aux Daemon.app/Contents/Applications/Aux Password Importer.app/Contents/Resources/AppIcon.icns",
+        "sha256": "bc9826cef6295b7806693bdfc107e6901388ecfbd73236874c8fb19786b64f35",
+        "reason": "Excluded built-in password manager product"
+      },
+      {
+        "source": "apps/daemon/Aux Daemon.app/Contents/Applications/Aux Password Importer.app/Contents/PlugIns/AsidePasswordImporterProvider.appex/Contents/MacOS/aux-password-importer-provider",
+        "sha256": "b7a248f3a52a8af7af731248fb29eba6152b4d40b5ea4abfda53603e0eb0e507",
+        "reason": "Excluded built-in password manager product"
+      },
+      {
+        "source": "apps/daemon/Aux Daemon.app/Contents/Applications/Aux Password Importer.app/Contents/MacOS/aux-password-importer",
+        "sha256": "ed676fdec6b173f9f07b2dc564d7ccaea60e2cf01da12fa04ca486fa78dcc369",
+        "reason": "Excluded built-in password manager product"
+      },
+      {
+        "source": "apps/daemon/Aux Daemon.app/Contents/Applications/Aux Password Importer.app/Contents/Resources/Aux.icns",
+        "sha256": "bc9826cef6295b7806693bdfc107e6901388ecfbd73236874c8fb19786b64f35",
+        "reason": "Excluded built-in password manager product"
+      },
+      {
+        "source": "apps/daemon/Aux Daemon.app/Contents/Resources/native/provided-native.node",
+        "sha256": "bfe946e05fbaf2ae68d0560258f50e63a6c3ff6da2937e0aa8f9f19016e1f7fb",
+        "reason": "Obsolete state-v2 daemon common addon; fixed linked Aux owner is required"
+      },
+      {
+        "source": "apps/daemon/Aux Daemon.app/Contents/Resources/native/memory-bootstrap.cjs",
+        "sha256": "aa21945643d6396f235ceee7b27bced9007dcba688b9fae1e4f2ba8aa4070f3f",
+        "reason": "Replaced by fixed native-owned memory-v2 source/seed integration"
+      },
+      {
+        "source": "apps/daemon/Aux Daemon.app/Contents/Resources/native/memory-seed.cjs",
+        "sha256": "26b01830cd0d2d5a40b73e3de3406f9bd5de666ef2fa850a50bd0a844588aebe",
+        "reason": "Replaced by fixed native-owned memory-v2 source/seed integration"
+      },
+      {
+        "source": "apps/daemon/Aux Daemon.app/Contents/Resources/native/memory-pins.json",
+        "sha256": "d73016f00854deed3b33fd65e95205b21a372e70faf480b261865283ff6a427d",
+        "reason": "Replaced by fixed native-owned memory-v2 source/seed integration"
+      }
+    ],
+    "passwordManager": "external-extensions"
+  },
+  "nativeInfo": {
+    "CFBundleDevelopmentRegion": "en",
+    "CFBundleDisplayName": "Aux",
+    "CFBundleDocumentTypes": [
+      {
+        "CFBundleTypeRole": "Viewer",
+        "LSItemContentTypes": [
+          "com.compuserve.gif"
+        ]
+      },
+      {
+        "CFBundleTypeRole": "Viewer",
+        "LSItemContentTypes": [
+          "public.html"
+        ]
+      },
+      {
+        "CFBundleTypeRole": "Viewer",
+        "LSItemContentTypes": [
+          "public.xhtml"
+        ]
+      },
+      {
+        "CFBundleTypeRole": "Viewer",
+        "LSItemContentTypes": [
+          "com.netscape.javascript-source"
+        ]
+      },
+      {
+        "CFBundleTypeRole": "Viewer",
+        "LSItemContentTypes": [
+          "public.jpeg"
+        ]
+      },
+      {
+        "CFBundleTypeRole": "Viewer",
+        "LSItemContentTypes": [
+          "org.ietf.mhtml"
+        ]
+      },
+      {
+        "CFBundleTypeRole": "Viewer",
+        "LSItemContentTypes": [
+          "org.xiph.ogg-audio"
+        ]
+      },
+      {
+        "CFBundleTypeRole": "Viewer",
+        "LSItemContentTypes": [
+          "org.xiph.ogv"
+        ]
+      },
+      {
+        "CFBundleTypeRole": "Viewer",
+        "LSItemContentTypes": [
+          "public.png"
+        ]
+      },
+      {
+        "CFBundleTypeRole": "Viewer",
+        "LSItemContentTypes": [
+          "public.svg-image"
+        ]
+      },
+      {
+        "CFBundleTypeRole": "Viewer",
+        "LSItemContentTypes": [
+          "public.text"
+        ]
+      },
+      {
+        "CFBundleTypeRole": "Viewer",
+        "LSItemContentTypes": [
+          "org.webmproject.webm"
+        ]
+      },
+      {
+        "CFBundleTypeRole": "Viewer",
+        "LSItemContentTypes": [
+          "org.webmproject.webp"
+        ]
+      },
+      {
+        "CFBundleTypeRole": "Viewer",
+        "LSItemContentTypes": [
+          "org.chromium.extension"
+        ]
+      },
+      {
+        "CFBundleTypeRole": "Viewer",
+        "LSItemContentTypes": [
+          "com.adobe.pdf"
+        ]
+      },
+      {
+        "CFBundleTypeRole": "Viewer",
+        "LSItemContentTypes": [
+          "org.chromium.shortcut"
+        ]
+      },
+      {
+        "CFBundleTypeRole": "Viewer",
+        "LSItemContentTypes": [
+          "public.avif"
+        ]
+      }
+    ],
+    "CFBundleExecutable": "Aux",
+    "CFBundleIconFile": "app.icns",
+    "CFBundleIconName": "AppIcon",
+    "CFBundleIdentifier": "dev.aux.browser",
+    "CFBundleInfoDictionaryVersion": "6.0",
+    "CFBundleName": "Aux",
+    "CFBundlePackageType": "APPL",
+    "CFBundleShortVersionString": "155.0.8059.85",
+    "CFBundleSignature": "AuxB",
+    "CFBundleURLTypes": [
+      {
+        "CFBundleURLName": "Aux open URL",
+        "CFBundleURLSchemes": [
+          "aux"
+        ]
+      },
+      {
+        "CFBundleURLName": "Web site URL",
+        "CFBundleURLSchemes": [
+          "http",
+          "https"
+        ]
+      },
+      {
+        "CFBundleURLName": "Local file URL",
+        "CFBundleURLSchemes": [
+          "file"
+        ]
+      }
+    ],
+    "CFBundleVersion": "8059.85"
+  },
+  "wholeIdentityComplete": false,
+  "runtimeVerified": false,
+  "thirdPartyTreesRescanned": false,
+  "productEdited": false,
+  "signed": false,
+  "executed": false
+}

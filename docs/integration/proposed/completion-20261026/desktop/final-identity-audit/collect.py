@@ -32,7 +32,7 @@ def read(relative):
  return data
 prefix='Contents/Resources/aux/'
 bundle=json.loads(read(prefix+'bundle.json'));current=bundle['currentCompletionIntegration']
-changed=[item['relative'] for item in current['replacements']]
+changed=sorted({item['relative'] for item in current['replacements']}|{item['relative'] for item in receipt.get('replacements',[])})
 selected=[path for path in changed if Path(path).suffix in {'.js','.mjs','.cjs','.json'}]
 patterns={
  'oldProductEndpoint':re.compile(r'(?i)(?:https?|wss?)://[^\s\"\x27`<>\\]*(?:asidehq\.com|aside\.com|aside\.dev)[^\s\"\x27`<>\\]*'),

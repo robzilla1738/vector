@@ -1,0 +1,26 @@
+# Complete scoped Agent owned-identity follow-up
+
+This batch follows the actual resource-delta receipt `6dcb81a02f279fe462950ed8552f7312c476447eeafed5ce30d98982a0074bc9`, whole inventory `617db71d628100f7be6aac8a5922908e8b3437bb3bdef258c4348caf94ef7890`. It closes the carried-forward producers that a changed-only review missed. The complete Agent JS/HTML/JSON/CSS graph was reviewed for case-insensitive tokens containing `aside` anywhere, including suffixes/camelcase and bare words. All62 matched leaves are classified in full-classification.json; immutable Node/memory/native trees were not scanned.
+
+`transformAuxAgentRemainingIdentity({path,text,source})` in vendor/provided/aux-agent-remaining-identity.mjs takes accumulated text and its separately pinned original A38 source. Exact count pins cover27 leaves /44 anchors. It returns text/anchors, supports full/dist-relative/unique basenames, and leaves unrelated files unchanged. This composes **after** the first Agent v2 module, and is disjoint from integration 3539a04f9's Vault UI/recovery armor and7ed's closed recovery schema removal. Do not globally replace leftover compatibility tokens.
+
+## Owned contracts
+
+- Fresh Aux v2 sidepanel session, mini-popup recovery, preview cache, browser-import checkpoint, settings lag, new-tab dismissal/session preview/changelog cache and channel draft keys.
+- Paired channel setup choice/action/DOM ID, internal Aux-credit error discriminant, sign-in popup/window targets, native Aux URI allowlist, visual document sender/iframe receiver, theme DOM IDs, CTA fence tag, React Grab plugin/comment name and Remix action ID. Controlled CSS metadata selector/declaration namespace changes together; all colors, dimensions and style behavior remain unchanged.
+- Agent-local `@chrome-aux/models/inventory-changed` /billing broadcast constants pair the same module's Xs.broadcast senders and Yr listeners. These are not daemon literals: the daemon separately emits models:inventory-changed on its event bus. No native architecture or binary change is required. The native `aux:` URI consumer is established by the actual delivered CFBundleURLSchemes, while standard chrome/http/https handling remains intact.
+- The cloud channel client uses the explicit fresh `aux-channel-v2` WebSocket subprotocol with unchanged bearer token and existing version2 message envelope. Actual hosted channel service/handshake acceptance remains the existing cloud activation gate; no synthetic server or successful handshake is claimed.
+- Google OAuth attempt/cache/window/completion messages become Aux v2. Callback query decoding accepts exactly one new auxAuthCallback or known legacy asideAuthCallback marker and rejects absent/mixed generations. The provider token/credential fields remain unchanged and the actual current-profile attempt/nonce guard remains required. This retains a legacy **reader**, not an old producer or adoption of old local cache state.
+- API timeout consumers accept current AUX_API_TIMEOUT plus the known old error code. Lasso's actual stream reader accepts current20-character Aux and legacy22-character error prefixes and slices by the matched length, fixing the existing hardcoded22 bug. Legacy error regex/readers remain intentionally supported.
+- Missing workspace-path display uses an honest “Aux workspace” placeholder instead of inventing a ~/.aux path; actual supplied local/overridden paths remain first choice. Recovery filename instructions become neutral; ciphertext, BIP39 checksum/words and armor versioning belong to integration's explicit adapter.
+- Three artifact-gallery email examples now use reserved example.com, and the old product social handle becomes generic example. No real Aux contact or forum is invented.
+
+These are fresh-generation changes with no v9/A38 profile or owner-state adoption. No cryptographic domain, credential representation, existing record or user script text is reinterpreted.
+
+## Complete classification and evidence
+
+`static-check.json`: all27 actual accumulated inputs replay, all25 JavaScript outputs parse, HTML/CSS change only declared identities, exact reverse replay reproduces every input. Eight cases execute the actual original stream-reader function alone with fake byte input, proving both marker generations preserve the exact error and emit no failure text as successful content.
+
+`composed-closure.json` applies the remaining module plus integration's external-only Vault UI, explicit recovery armor and closed schema pruning across all62 matched original leaves. All changed JavaScript parses. Remaining tokens are actual HTML/ARIA/language grammar enums, the external source-browser ID, explicit experimental/Google/error/armor legacy readers. Full-classification.json records every leaf and output hash. There are no unresolved **owned producers in that composed static scope**; this is not a declaration the live artifact has received the batch, a runtime test, or a whole-product identity pass.
+
+Root must add every source-pins.json destination to one coherent source/UI/supplemental/CSS resource cohort, retain its original input separately, and record the actual restaged inventory. No app was edited, signed or launched by this worker.

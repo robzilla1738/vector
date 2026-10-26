@@ -1,0 +1,201 @@
+{
+  "format": "aux.agent.remaining-identity.static-check.v2",
+  "files": [
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/-components-4o0FSqQ9.js",
+      "inputSha256": "98ee9af88fcdfc6136e7e20556de0752ff3b81be8fb5b110c4d0a3f1d585bd72",
+      "outputSha256": "89631862794d1da9614b5965b67f835bcfbde6fedc7e96c2b81461433217e349",
+      "anchors": 1,
+      "reverseExact": true
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/browser-binding-CzDmxQNA.js",
+      "inputSha256": "c9d434f10aadd743b5a8f651c745c26db0cc810b7c659ecc9772b308c0c69358",
+      "outputSha256": "393b9aa0bbf7c1ef9bd335c96c46360198f579e17e088ed0a4d36f29f2eef1ad",
+      "anchors": 1,
+      "reverseExact": true
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/channels-CJn5l9_T.js",
+      "inputSha256": "e22926be4dadc67a0f9491b07ec439b55d5bba8dfa6ea6b146434db9b73c8a3d",
+      "outputSha256": "dc68728935143aad1be9d07c455414cae054d93875c9b04bb60b5c3ec2e6e148",
+      "anchors": 2,
+      "reverseExact": true
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/chat-preview-card-J0uel3r2.js",
+      "inputSha256": "ea1019c59ec971148546a2bfc5a35f13680366ca1f0d9d29a3e8245148d45043",
+      "outputSha256": "4242035edc89cc57b0f26dcee288b2be3582a6bf3e6b9af26804caa34f56076e",
+      "anchors": 1,
+      "reverseExact": true
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/conversation-D9Q3VEsl.js",
+      "inputSha256": "ad6c51122bca3d4573204c7a829d52c7a394991b42635dad20b3d0a763418c88",
+      "outputSha256": "b1084488b5e69bf95d3bebf733b094b9324b99a96cb9e542edf6a402c19dccef",
+      "anchors": 1,
+      "reverseExact": true
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/error-alert-Bu3EEewB.js",
+      "inputSha256": "a717279989c868e8d982c20bde72130911f147497acb1171ecfbab0859675294",
+      "outputSha256": "6b7d32e876ac474969393d79d9037efa91d6badf5955d466f31431ba9d05d7c6",
+      "anchors": 1,
+      "reverseExact": true
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/extension-main-Dz1-AsCT.js",
+      "inputSha256": "5ea7a70cfc2c962bac4290b4a6cfca04d8c30427210f5443f55b2f9099085e68",
+      "outputSha256": "cb40adf3cb8d62513ccaee222977cbf3f87642ecc5cce52bf7e8edcade163427",
+      "anchors": 1,
+      "reverseExact": true
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/general-3dgRbrRk.js",
+      "inputSha256": "573f27cbb899d501bdf3c08041a2cc753aced582230764b235c8cabd83beb381",
+      "outputSha256": "231ffd603754999e7601393b18dc0b03d177bbbfc01650da795991b214dae9f4",
+      "anchors": 1,
+      "reverseExact": true
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/globals-B-8L9em-.css",
+      "inputSha256": "62cf600774a77482af4fcdcfbb6c5985b9297d97041a3f7fd6304dcf5cac3c2d",
+      "outputSha256": "16f1755cd5d04ec876834040f467981b8025dec92f21da6e539e49a70eb8b58c",
+      "anchors": 2,
+      "reverseExact": true
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/google-sign-in-C6OIqXPh.js",
+      "inputSha256": "75cfa19f32f8016315ace9a3fb863457400fc002dac2baa263cfb554487e0b3a",
+      "outputSha256": "4bcbf7de84a6e5f98f6208fbc8a876d69b6c6206956e4d3144973ff9e9ac7690",
+      "anchors": 4,
+      "reverseExact": true
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/island-C0ouZ54e.js",
+      "inputSha256": "1185268231cec29a34a6620001451b781b700e4cb7cde67e846a61dda63340cf",
+      "outputSha256": "b80a7d53e64b38ca3b9a9c0bd81dfc594ab16bd68d2f9b99a5a21848ee2f443b",
+      "anchors": 1,
+      "reverseExact": true
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/message-Ca5u8_zM.js",
+      "inputSha256": "0f2ceae91ca98f23269b372937dc6367b9fa4f4940f0ecd08c529b4ede931561",
+      "outputSha256": "a6ae36e9e2637f291e0e729ef88715c36b3ba9b2d2c5259feefb3e399fba93ea",
+      "anchors": 3,
+      "reverseExact": true
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/route-VV0zL3cm.js",
+      "inputSha256": "1b91006db3498f39a3b7ca027e5905ae32ab91107f437bd727c3dcca83326c3e",
+      "outputSha256": "df8eb32554d2c442553112bbab116c75023d40437b85cab5d5410c0b02fd3d04",
+      "anchors": 2,
+      "reverseExact": true
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/search-navigation-TWhZq3-H.js",
+      "inputSha256": "21ecceeb07d21f3e170814a253318f810c60077cfe5f2c8487e919dc5a43a09f",
+      "outputSha256": "2ebd5d3333fb8cd80b20a8850c54286be12de1159e05710461b8a33bf06d4810",
+      "anchors": 1,
+      "reverseExact": true
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/sign-in-popup-CzjJFAuC.js",
+      "inputSha256": "01cebc9c4c914d0d3dc5ccf914aae2a8660cb42edcd7a68d01f149f8c175e6ce",
+      "outputSha256": "f515fd488e577f75e2004ba27ec190012ca930e0bbad54fe893d448e104b3064",
+      "anchors": 2,
+      "reverseExact": true
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/strip-markdown-DRcmtuJc.js",
+      "inputSha256": "a359520c0977dc66b2a6bc986bc0416bda8f67c6c1a470ceb65165bfdd7fe07a",
+      "outputSha256": "5abfe7208e17f6178763787b53634aebdcfe546903477fc692a5bc692a1f72ed",
+      "anchors": 4,
+      "reverseExact": true
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/tasks-CtF0WxoJ.js",
+      "inputSha256": "2e6e4957d71a0f32c25c7a9313abcc99212b5f3f326f804d968373b5164d4ff8",
+      "outputSha256": "0cd44c479923accf2ed2d2e69a90861260a82454da44a37e9257439bd76db51d",
+      "anchors": 1,
+      "reverseExact": true
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/update-banner-C_z-hMCt.js",
+      "inputSha256": "98b1ec307b3e98eb8bd0da873cf99283a3b806d46c5f0e9c6859c0f52a63c794",
+      "outputSha256": "86c67964c4666c4dd46908cd16d99d8f59558d2ec8aa35f9a22178c67d6c3682",
+      "anchors": 1,
+      "reverseExact": true
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/queries-ldd77hNk.js",
+      "inputSha256": "f7272be107a8a3809b8223439abf40dcaa1cd38f74737f8646b7670471368433",
+      "outputSha256": "1d92d3847f80b83b38f124663f40b62a0ca97419d8f5358a69131b6283581063",
+      "anchors": 1,
+      "reverseExact": true
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/background.js",
+      "inputSha256": "688ab712bd2dfc6e03ce0e0a6350b65218a218bfeb83000f1a562104ced344e3",
+      "outputSha256": "f170233b0d7f8465bd54330a0f9e6b7fb614db93685458917823a3d56547ca92",
+      "anchors": 5,
+      "reverseExact": true
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/content/content.js",
+      "inputSha256": "908bd3585b1a0090fc6f28e2d816c02434ce7db037ff5eb6566e861bc5dd6e61",
+      "outputSha256": "ee45b3083e1b2fe712836b585b4d4fa5120cb797d052da1a22c89d9628d7e0de",
+      "anchors": 1,
+      "reverseExact": true
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/react-grab-bridge.js",
+      "inputSha256": "2b43e73751bf279a439da43af29388497e07339b5937a1a90bd207f3c00ae317",
+      "outputSha256": "fd4dbde8308b65036843bca3733ef08a26457041cf488757af670e426496c17e",
+      "anchors": 1,
+      "reverseExact": true
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/remix.js",
+      "inputSha256": "38d7d44337d843342de287e84de585e76425d8db828db78b78a879ac3cbe7fbb",
+      "outputSha256": "97963d94f33e67eb22d37a4ed019a92712265c85f3f476917c7c28427cbc4d7c",
+      "anchors": 1,
+      "reverseExact": true
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/visual-frame.html",
+      "inputSha256": "2d2d2d31b379130a0c8028ceab58776a8deb9bf08752a093370f2c44d7fc5ba9",
+      "outputSha256": "08e77a67d4b12a3b0576658f6cbd229a307c6b4f5277e7368c2b8f7560c0eda9",
+      "anchors": 1,
+      "reverseExact": true
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/password-LjdLcSRV.js",
+      "inputSha256": "17c872253796acd23ca743094508b6c8e7a389b31521618f3d60b56260eec32f",
+      "outputSha256": "6145d23ec9e277482dddcbce22597686d012a073c1a9b6ba76c4cff2e0367e8d",
+      "anchors": 1,
+      "reverseExact": true
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/recovery-DY2UC0Rx.js",
+      "inputSha256": "0bb1680c6ce8bb09ebc82596fd13f9d2f143bad21753fc8aba022dc51847bb0e",
+      "outputSha256": "f06e7bba58c1ba99d384304554ffef996aa2de29c32b2097085b837d45450736",
+      "anchors": 1,
+      "reverseExact": true
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/artifact-test-CdjpLuI1.js",
+      "inputSha256": "045785b32e4332918e6ce4913fe8ee6a6ea337a7090d9e31e9a1e3b68347aeb6",
+      "outputSha256": "68248b848ceeab9703a4c8cd215f7bc3f828085e1cd3bf769dc6c5d0149d614c",
+      "anchors": 2,
+      "reverseExact": true
+    }
+  ],
+  "compiledJavaScriptFiles": 25,
+  "htmlAndCssExactReplay": true,
+  "lassoActualOriginalFunctionCases": 8,
+  "lassoBothGenerationsPreserveExactErrorMessage": true,
+  "productExecuted": false,
+  "profileRead": false,
+  "appEdited": false
+}

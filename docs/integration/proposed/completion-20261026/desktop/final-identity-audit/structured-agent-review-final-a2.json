@@ -1,0 +1,147 @@
+{
+  "receiptSha256": "6dcb81a02f279fe462950ed8552f7312c476447eeafed5ce30d98982a0074bc9",
+  "scope": "Agent structured identity strings only, no Node/memory or binary tree scan",
+  "matches": [
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/-components-4o0FSqQ9.js",
+      "sha256": "98ee9af88fcdfc6136e7e20556de0752ff3b81be8fb5b110c4d0a3f1d585bd72",
+      "tokens": [
+        "aside:sidepanel-session"
+      ]
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/-types-Wy38XkNB.js",
+      "sha256": "b5870f3d72d03493ffea375c6af92881278a253dfef3168515afc5fccce249e9",
+      "tokens": [
+        "aside.recovery.auk.v1"
+      ]
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/artifact-test-CdjpLuI1.js",
+      "sha256": "045785b32e4332918e6ce4913fe8ee6a6ea337a7090d9e31e9a1e3b68347aeb6",
+      "tokens": [
+        "aside.at"
+      ]
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/browser-binding-CzDmxQNA.js",
+      "sha256": "c9d434f10aadd743b5a8f651c745c26db0cc810b7c659ecc9772b308c0c69358",
+      "tokens": [
+        "aside.miniPopup.contextRecovery"
+      ]
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/conversation-D9Q3VEsl.js",
+      "sha256": "ad6c51122bca3d4573204c7a829d52c7a394991b42635dad20b3d0a763418c88",
+      "tokens": [
+        "aside-chat-link-previews-v2"
+      ]
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/extension-main-Dz1-AsCT.js",
+      "sha256": "5ea7a70cfc2c962bac4290b4a6cfca04d8c30427210f5443f55b2f9099085e68",
+      "tokens": [
+        "aside.browser-import.completed.v1"
+      ]
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/general-3dgRbrRk.js",
+      "sha256": "573f27cbb899d501bdf3c08041a2cc753aced582230764b235c8cabd83beb381",
+      "tokens": [
+        "aside.settings.backgroundServiceLag"
+      ]
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/google-sign-in-C6OIqXPh.js",
+      "sha256": "75cfa19f32f8016315ace9a3fb863457400fc002dac2baa263cfb554487e0b3a",
+      "tokens": [
+        "aside-google-oauth",
+        "aside.googleOAuth.popupComplete",
+        "aside.googleOAuthAttempt"
+      ]
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/island-C0ouZ54e.js",
+      "sha256": "1185268231cec29a34a6620001451b781b700e4cb7cde67e846a61dda63340cf",
+      "tokens": [
+        "aside.newtab.invite-badge.dismissed.$"
+      ]
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/message-Ca5u8_zM.js",
+      "sha256": "0f2ceae91ca98f23269b372937dc6367b9fa4f4940f0ecd08c529b4ede931561",
+      "tokens": [
+        "aside-cta",
+        "aside-visual-document",
+        "aside-visual-theme"
+      ]
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/password-LjdLcSRV.js",
+      "sha256": "17c872253796acd23ca743094508b6c8e7a389b31521618f3d60b56260eec32f",
+      "tokens": [
+        "aside-recovery-key"
+      ]
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/recovery-DY2UC0Rx.js",
+      "sha256": "0bb1680c6ce8bb09ebc82596fd13f9d2f143bad21753fc8aba022dc51847bb0e",
+      "tokens": [
+        "aside-recovery-key"
+      ]
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/route-VV0zL3cm.js",
+      "sha256": "1b91006db3498f39a3b7ca027e5905ae32ab91107f437bd727c3dcca83326c3e",
+      "tokens": [
+        "aside-channel",
+        "aside:channel-draft:$"
+      ]
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/sign-in-popup-CzjJFAuC.js",
+      "sha256": "01cebc9c4c914d0d3dc5ccf914aae2a8660cb42edcd7a68d01f149f8c175e6ce",
+      "tokens": [
+        "aside-sign-in",
+        "aside-sign-in-popup"
+      ]
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/strip-markdown-DRcmtuJc.js",
+      "sha256": "a359520c0977dc66b2a6bc986bc0416bda8f67c6c1a470ceb65165bfdd7fe07a",
+      "tokens": [
+        "aside/u/$",
+        "chrome-aside/billing/changed",
+        "chrome-aside/models/inventory-changed"
+      ]
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/tasks-CtF0WxoJ.js",
+      "sha256": "2e6e4957d71a0f32c25c7a9313abcc99212b5f3f326f804d968373b5164d4ff8",
+      "tokens": [
+        "aside.new-tab.session-previews.v2:$"
+      ]
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/update-banner-C_z-hMCt.js",
+      "sha256": "98b1ec307b3e98eb8bd0da873cf99283a3b806d46c5f0e9c6859c0f52a63c794",
+      "tokens": [
+        "aside.new-tab.update-banner.changelog.v1"
+      ]
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/react-grab-bridge.js",
+      "sha256": "2b43e73751bf279a439da43af29388497e07339b5937a1a90bd207f3c00ae317",
+      "tokens": [
+        "aside-lasso"
+      ]
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/visual-frame.html",
+      "sha256": "2d2d2d31b379130a0c8028ceab58776a8deb9bf08752a093370f2c44d7fc5ba9",
+      "tokens": [
+        "aside-visual-document"
+      ]
+    }
+  ]
+}
