@@ -1,0 +1,50 @@
+{
+  "format": "aux.settled-browser-rejection.v1",
+  "rules": [
+    {
+      "find": "function auxBrokerBoundary(){",
+      "replace": "const auxSettledBrowserActionErrors=new WeakSet;\nfunction auxMarkSettledBrowserActionError(error){auxSettledBrowserActionErrors.add(error);error.auxBrowserActionSettled=true;return error}\nfunction auxBrokerBoundary(){",
+      "count": 1
+    },
+    {
+      "find": "const awaited=callback=>{admit();return track(funcs.withBrokerAwaited(callback))};",
+      "replace": "const awaited=callback=>{admit();let settledError;\n  // Only the matched authenticated browser response marks a settled rejection.\n  // Fulfill native custody after callback cleanup, then preserve caller error.\n  const physical=track(funcs.withBrokerAwaited(async()=>{try{return await callback()}catch(error){if(!auxSettledBrowserActionErrors.has(error))throw error;settledError={error}}}));\n  return physical.then(value=>{if(settledError)throw settledError.error;return value});\n };",
+      "count": 1
+    },
+    {
+      "find": "Object.assign(Error(si.error),ci.boundBrowserAction?{auxBrowserActionSettled:true}:{})",
+      "replace": "ci.boundBrowserAction?auxMarkSettledBrowserActionError(Error(si.error)):Error(si.error)",
+      "count": 1
+    }
+  ],
+  "resources": [
+    {
+      "kind": "current",
+      "path": "/private/tmp/aux-analytics-no-spawn-20261026-a1/index.mjs",
+      "name": "index.mjs",
+      "beforeSha256": "8f1414575eb8bd0a6e721fcc5a956f075490e3c2c2623cbf89f60947e1ab1309",
+      "afterSha256": "1c0973f8cdd41597d1234e397444990fc038c8a0dac7932dbfa24c3e705f6197"
+    },
+    {
+      "kind": "current",
+      "path": "/private/tmp/aux-analytics-no-spawn-20261026-a1/aux-native-entry.mjs",
+      "name": "aux-native-entry.mjs",
+      "beforeSha256": "ce630fb2059525bc3e88b7befba25f35c086bd7b98437b864493d26c1b011ebf",
+      "afterSha256": "6a61a1d864b6c69e0a7dd6ce44f451b737cace1e124e64576a13b8c5176a2529"
+    },
+    {
+      "kind": "future",
+      "path": "/private/tmp/aux-future-analytics-resources-20261026-b1/index.mjs",
+      "name": "index.mjs",
+      "beforeSha256": "3f3eecdb8db3a7278e6ec4f424e58d596cd33f1f5474fc80ee539a9a94ca2896",
+      "afterSha256": "0c58944c7623d8ef6fb6c2b59d038c3e9e49bdda592a639ef58e172e63f9b34b"
+    },
+    {
+      "kind": "future",
+      "path": "/private/tmp/aux-future-analytics-resources-20261026-b1/aux-native-entry.mjs",
+      "name": "aux-native-entry.mjs",
+      "beforeSha256": "f27cd69f53672079928e6ec7688a5da3ebddd7461e7cfc87810594a474a2d43f",
+      "afterSha256": "4603d500d5de3b34123f2cc12232ae3477fe79a2ed8aec937879d7f011753041"
+    }
+  ]
+}

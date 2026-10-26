@@ -1,0 +1,29 @@
+{
+  "receipt": "/private/tmp/aux-settled-browser-rejection-20261026-a1/receipt.json",
+  "receiptSha256": "b43b7204ab1fce7f804a26ed99afee2f23751908bc07bb9f21237b7d632bdbe4",
+  "resources": [
+    {
+      "kind": "current",
+      "path": "/private/tmp/aux-settled-browser-rejection-20261026-a1/current/index.mjs",
+      "sha256": "1c0973f8cdd41597d1234e397444990fc038c8a0dac7932dbfa24c3e705f6197"
+    },
+    {
+      "kind": "current",
+      "path": "/private/tmp/aux-settled-browser-rejection-20261026-a1/current/aux-native-entry.mjs",
+      "sha256": "6a61a1d864b6c69e0a7dd6ce44f451b737cace1e124e64576a13b8c5176a2529"
+    },
+    {
+      "kind": "future",
+      "path": "/private/tmp/aux-settled-browser-rejection-20261026-a1/future/index.mjs",
+      "sha256": "0c58944c7623d8ef6fb6c2b59d038c3e9e49bdda592a639ef58e172e63f9b34b"
+    },
+    {
+      "kind": "future",
+      "path": "/private/tmp/aux-settled-browser-rejection-20261026-a1/future/aux-native-entry.mjs",
+      "sha256": "4603d500d5de3b34123f2cc12232ae3477fe79a2ed8aec937879d7f011753041"
+    }
+  ],
+  "focusedExtractedBrokerChecksPassed": true,
+  "nativeBuild": false,
+  "runtimeAccepted": false
+}
