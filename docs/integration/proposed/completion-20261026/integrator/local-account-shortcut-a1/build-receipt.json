@@ -1,0 +1,20 @@
+{
+  "passed": true,
+  "exitCode": 0,
+  "session": 31387,
+  "framework": {
+    "path": "/Users/rcourson/Documents/Vibe/web/out/completion-resume-20261026/Aux Framework-local-account-shortcut",
+    "sha256": "8816cde06f27a29fe92c76caca0bf85b48637625c463fb3cc85edc6e80015e9a"
+  },
+  "projection": {
+    "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/integrator/local-account-shortcut-a1/projection.json",
+    "sha256": "66762ff5e73ad8440c116d5bf55c60dbed98d0bca62e2c2b4d9c07f5e7062983"
+  },
+  "log": {
+    "path": "/Users/rcourson/Documents/Vibe/web/out/completion-resume-20261026/local-account-shortcut-link.log",
+    "sha256": "aa6b71f4c4a506f9df26d5cd54413728de6bf3c533f2fbec5313e6e5b2b77ba8"
+  },
+  "nativeTarget": "chrome",
+  "parallelJobs": 8,
+  "appActivated": false
+}

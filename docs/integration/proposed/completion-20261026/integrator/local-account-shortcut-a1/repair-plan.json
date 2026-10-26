@@ -1,0 +1,58 @@
+{
+  "format": "aux.combined-product.same-scope-repair.v1",
+  "app": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-completion-20261026-a1/Aux.app",
+  "approvedReviewSha256": "20572af30ef6613f1fc8bced01edada6d52f4b3f7c1f21dd97fb610ec2b257f2",
+  "executor": {
+    "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/integrator/combined-product-repair/repair-combined.py",
+    "sha256": "1c8e99dd7250f18b6e55c2fd23f8a5be51ea9585e6485f6e0160d718f4744ff1"
+  },
+  "signedReceipt": {
+    "path": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-completion-20261026-a1/combined-cold-input-worker-update-a1/receipt.json",
+    "sha256": "53083968bc6b7f45606c0a29bee637f8efdf1aff8f0bda1886c1152347570fca"
+  },
+  "replacements": [
+    {
+      "target": "Contents/Frameworks/Aux Framework.framework/Versions/155.0.8059.85/Aux Framework",
+      "input": {
+        "path": "/Users/rcourson/Documents/Vibe/web/out/completion-resume-20261026/Aux Framework-local-account-shortcut",
+        "sha256": "8816cde06f27a29fe92c76caca0bf85b48637625c463fb3cc85edc6e80015e9a"
+      },
+      "beforeSha256": "1618640a6679766f6ccb80885e99bd6ac6e477fa1ad1f615f6ca66929f93c5ff"
+    },
+    {
+      "target": "Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/node-development/index.mjs",
+      "input": {
+        "path": "/private/tmp/aux-unstarted-run-error-20261026-a1-current/index.mjs",
+        "sha256": "e8f52bf28db90ef94d56e529676f9d7e7bbe1dac5a51d6285b20753c43be57fb"
+      },
+      "beforeSha256": "f8b4c20c2e10bbf70d5628874b04084e9cd46914de5ed928589ee8d175f362c2"
+    },
+    {
+      "target": "Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/node-development/aux-native-entry.mjs",
+      "input": {
+        "path": "/private/tmp/aux-unstarted-run-error-20261026-a1-current/aux-native-entry.mjs",
+        "sha256": "49057052ddb4b752f7513eea51482c79372139bd2d95e9ad86e09f56773ae740"
+      },
+      "beforeSha256": "5c4c87630cb25b8188d7ea47600f947d84a5f5845add2306c39aee8db47279aa"
+    }
+  ],
+  "sourceEvidence": [
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/integrator/local-account-shortcut-a1/build-receipt.json",
+      "sha256": "5399cfa28e67673a306a674f70ac5cae10cb0d0f0edea32e63c42e6bfd398fc6"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/integration/ordinary-chat/unstarted-run-error/proposal.json",
+      "sha256": "a2e7be7c0e24608914110a9d56d7266a05f9b0e4961612e3aabf819d8aaa2d6b"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/integration/local-native-account/projection.json",
+      "sha256": "511fff6875377d3f99cea337230f83cb0e5d7ae2a9db3548030fe636722334d2"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/desktop/shortcut-existing-reservation/source-plan.json",
+      "sha256": "aad1754a539f1490cbe99b07683ee0057c1c084283334e8ecdc9c6b104d571b7"
+    }
+  ],
+  "receiptDirectory": "combined-local-account-shortcut-a1"
+}
