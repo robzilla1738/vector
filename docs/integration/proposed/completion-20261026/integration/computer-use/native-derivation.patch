@@ -1,0 +1,1018 @@
+--- AuxAccountMemoryHelper.h
++++ AuxAccountComputerUseHelper.h
+@@ -7,20 +7,20 @@
+ #include <memory>
+ #include "AuxDevelopmentWorkerHost.h"
+ 
+-class AuxAccountMemoryProcess;
++class AuxAccountComputerUseProcess;
+ // Concrete retained main-service owner. Neither its constructor nor dispatcher,
+ // root descriptors or lifecycle methods are exposed as a JS capability factory.
+-class AuxMemoryNativeOwner final {
++class AuxComputerUseNativeOwner final {
+  public:
+-  ~AuxMemoryNativeOwner();
+-  AuxMemoryNativeOwner(const AuxMemoryNativeOwner&) = delete;
+-  AuxMemoryNativeOwner& operator=(const AuxMemoryNativeOwner&) = delete;
++  ~AuxComputerUseNativeOwner();
++  AuxComputerUseNativeOwner(const AuxComputerUseNativeOwner&) = delete;
++  AuxComputerUseNativeOwner& operator=(const AuxComputerUseNativeOwner&) = delete;
+  private:
+   struct State;
+-  explicit AuxMemoryNativeOwner(std::shared_ptr<State>);
+-  static std::shared_ptr<AuxMemoryNativeOwner> Capture(napi_env, int64_t);
++  explicit AuxComputerUseNativeOwner(std::shared_ptr<State>);
++  static std::shared_ptr<AuxComputerUseNativeOwner> Capture(napi_env, int64_t, const uint8_t*, uint32_t);
+   bool Current() const;
+-  int DuplicateMemoryDirectory() const;
++  int DuplicateTaskAccountDirectory() const;
+   bool CopyStorageRoots(int32_t*, int32_t*, uint64_t*) const;
+   bool CopyBrowserRoot(uint32_t, int32_t*, uint64_t*) const;
+   bool CopyPrivateParent(char*, uint32_t, uint32_t*) const;
+@@ -31,15 +31,13 @@
+   bool ResumeStoppedAfterPublished(pid_t) const;
+   bool SettlePhysical(pid_t=0,int=0,int=ECANCELED);
+   std::shared_ptr<State> state_;
+-  friend class AuxAccountMemoryProcess;
+-  friend napi_value AuxCreateAccountMemoryProcess(napi_env, napi_callback_info);
++  friend class AuxAccountComputerUseProcess;
++  friend napi_value AuxCreateAccountComputerUseProcess(napi_env, napi_callback_info);
+ };
+ // Fixed property callbacks on the existing linked binding only.
+-napi_value AuxCreateAccountMemoryProcess(napi_env, napi_callback_info);
+-napi_value AuxValidateMemoryRegistryTarget(napi_env, napi_callback_info);
++napi_value AuxCreateAccountComputerUseProcess(napi_env, napi_callback_info);
+ // Actual Worker teardown calls this before retiring the Swift owner. It closes
+ // admission/requests cancellation; only joined original child+stdio settles.
+-AuxDevelopmentWorkerDrain AuxCloseAccountMemoryProcessesForWorker(const void*) noexcept;
++AuxDevelopmentWorkerDrain AuxCloseAccountComputerUseProcessesForWorker(const void*) noexcept;
+ 
+-napi_value AuxFinishMemoryRegistryTarget(napi_env,napi_callback_info);
+-void AuxRequestAccountMemoryStopForWorker(const void*) noexcept;
++void AuxRequestAccountComputerUseStopForWorker(const void*) noexcept;
+--- AuxAccountMemoryHelper.mm
++++ AuxAccountComputerUseHelper.mm
+@@ -1,4 +1,4 @@
+-#include "AuxAccountMemoryHelper.h"
++#include "AuxAccountComputerUseHelper.h"
+ #import <Foundation/Foundation.h>
+ #include <Security/Security.h>
+ #include <CommonCrypto/CommonDigest.h>
+@@ -36,8 +36,7 @@
+ 
+ namespace {
+ constexpr size_t kMessageLimit=1<<20,kQueueBytes=4<<20,kQueueCount=64;
+-constexpr char kMemorySourceSha[]="b4c7d12efa87ed88515092527c7d1e7d9b43e605f39f03543e2b0e8e7005b3c0";
+-#include "AuxMemoryModelPins.inc"
++constexpr char kComputerUseSourceSha[]="debc03deb3f94eb7e8b50fa88d25e617f970b75f1e515b757b131655ad3dde51";
+ struct Fd {
+   int value=-1;
+   explicit Fd(int fd=-1):value(fd){}
+@@ -56,39 +55,38 @@
+ }
+ std::string Path(int fd) {
+   std::array<char,PATH_MAX> raw{},canonical{};
+-  if(fcntl(fd,F_GETPATH,raw.data())||!realpath(raw.data(),canonical.data()))throw std::runtime_error("Memory directory path is unavailable");
++  if(fcntl(fd,F_GETPATH,raw.data())||!realpath(raw.data(),canonical.data()))throw std::runtime_error("Computer Use directory path is unavailable");
+   const auto end=std::find(canonical.begin(),canonical.end(),'\0');return std::string(canonical.begin(),end);
+ }
+ Fd OpenRelative(int root,const std::string& relative,bool directory=false) {
+-  Fd current(fcntl(root,F_DUPFD_CLOEXEC,0));if(current.value<0)throw std::runtime_error("Memory root is unavailable");
++  Fd current(fcntl(root,F_DUPFD_CLOEXEC,0));if(current.value<0)throw std::runtime_error("Computer Use root is unavailable");
+   size_t start=0;
+   for(;;){auto end=relative.find('/',start);auto part=relative.substr(start,end-start);
+-    if(part.empty()||part=="."||part==".."||part.find('\0')!=std::string::npos)throw std::runtime_error("Invalid fixed memory path");
++    if(part.empty()||part=="."||part==".."||part.find('\0')!=std::string::npos)throw std::runtime_error("Invalid fixed computer-use path");
+     const bool last=end==std::string::npos;
+     Fd next(openat(current.value,part.c_str(),O_RDONLY|O_CLOEXEC|O_NOFOLLOW|O_NONBLOCK|((!last||directory)?O_DIRECTORY:0)));
+-    if(next.value<0||!Safe(next.value,!last||directory))throw std::runtime_error("Fixed memory artifact is unavailable");
+-    struct stat named{},held{};if(fstatat(current.value,part.c_str(),&named,AT_SYMLINK_NOFOLLOW)||fstat(next.value,&held)||named.st_dev!=held.st_dev||named.st_ino!=held.st_ino)throw std::runtime_error("Fixed memory artifact changed");
++    if(next.value<0||!Safe(next.value,!last||directory))throw std::runtime_error("Fixed computer-use artifact is unavailable");
++    struct stat named{},held{};if(fstatat(current.value,part.c_str(),&named,AT_SYMLINK_NOFOLLOW)||fstat(next.value,&held)||named.st_dev!=held.st_dev||named.st_ino!=held.st_ino)throw std::runtime_error("Fixed computer-use artifact changed");
+     current=std::move(next);if(last)return current;start=end+1;
+   }
+ }
+ std::string Read(int fd,uint64_t maximum) {
+-  struct stat before{},after{};if(fstat(fd,&before)||!S_ISREG(before.st_mode)||before.st_size<0||uint64_t(before.st_size)>maximum)throw std::runtime_error("Memory artifact exceeds bounds");
++  struct stat before{},after{};if(fstat(fd,&before)||!S_ISREG(before.st_mode)||before.st_size<0||uint64_t(before.st_size)>maximum)throw std::runtime_error("Computer Use artifact exceeds bounds");
+   std::string bytes;bytes.resize(size_t(before.st_size));size_t offset=0;
+-  while(offset<bytes.size()){auto target=std::span(bytes).subspan(offset);auto n=pread(fd,target.data(),target.size(),off_t(offset));if(n<0&&errno==EINTR)continue;if(n<=0)throw std::runtime_error("Memory artifact read failed");offset+=size_t(n);}
+-  if(fstat(fd,&after)||!Same(before,after))throw std::runtime_error("Memory artifact changed during read");return bytes;
++  while(offset<bytes.size()){auto target=std::span(bytes).subspan(offset);auto n=pread(fd,target.data(),target.size(),off_t(offset));if(n<0&&errno==EINTR)continue;if(n<=0)throw std::runtime_error("Computer Use artifact read failed");offset+=size_t(n);}
++  if(fstat(fd,&after)||!Same(before,after))throw std::runtime_error("Computer Use artifact changed during read");return bytes;
+ }
+ std::string Digest(int fd,uint64_t bytes) {
+-  struct stat before{},after{};if(fstat(fd,&before)||before.st_size<0||uint64_t(before.st_size)!=bytes)throw std::runtime_error("Memory artifact size changed");
++  struct stat before{},after{};if(fstat(fd,&before)||before.st_size<0||uint64_t(before.st_size)!=bytes)throw std::runtime_error("Computer Use artifact size changed");
+   CC_SHA256_CTX digest;CC_SHA256_Init(&digest);std::array<uint8_t,65536> buffer{};uint64_t offset=0;
+-  while(offset<bytes){const size_t limit=std::min<uint64_t>(buffer.size(),bytes-offset);auto n=pread(fd,buffer.data(),limit,off_t(offset));if(n<0&&errno==EINTR)continue;if(n<=0)throw std::runtime_error("Memory artifact digest failed");CC_SHA256_Update(&digest,buffer.data(),CC_LONG(n));offset+=uint64_t(n);}
+-  if(fstat(fd,&after)||!Same(before,after))throw std::runtime_error("Memory artifact changed during digest");
++  while(offset<bytes){const size_t limit=std::min<uint64_t>(buffer.size(),bytes-offset);auto n=pread(fd,buffer.data(),limit,off_t(offset));if(n<0&&errno==EINTR)continue;if(n<=0)throw std::runtime_error("Computer Use artifact digest failed");CC_SHA256_Update(&digest,buffer.data(),CC_LONG(n));offset+=uint64_t(n);}
++  if(fstat(fd,&after)||!Same(before,after))throw std::runtime_error("Computer Use artifact changed during digest");
+   std::array<uint8_t,32> result{};CC_SHA256_Final(result.data(),&digest);constexpr std::string_view hex="0123456789abcdef";std::string out;for(auto byte:result){out+=hex[byte>>4];out+=hex[byte&15];}return out;
+ }
+-bool Uuid(const std::string& value) {if(value.size()!=36)return false;for(size_t i=0;i<value.size();++i){if(i==8||i==13||i==18||i==23){if(value[i]!='-')return false;}else if(!((value[i]>='0'&&value[i]<='9')||(value[i]>='a'&&value[i]<='f')))return false;}return true;}
+-std::string CurrentBundle(){uint32_t size=PATH_MAX;std::array<char,PATH_MAX> path{},canonical{};if(_NSGetExecutablePath(path.data(),&size)||!realpath(path.data(),canonical.data()))throw std::runtime_error("Native memory host image is unavailable");auto end=std::find(canonical.begin(),canonical.end(),'\0');std::string full(canonical.begin(),end);constexpr std::string_view suffix="/Contents/MacOS/aux-daemon";if(!full.ends_with(suffix))throw std::runtime_error("Memory requires the exact native daemon image");return full.substr(0,full.size()-suffix.size());}
++std::string CurrentBundle(){uint32_t size=PATH_MAX;std::array<char,PATH_MAX> path{},canonical{};if(_NSGetExecutablePath(path.data(),&size)||!realpath(path.data(),canonical.data()))throw std::runtime_error("Native computer-use host image is unavailable");auto end=std::find(canonical.begin(),canonical.end(),'\0');std::string full(canonical.begin(),end);constexpr std::string_view suffix="/Contents/MacOS/aux-daemon";if(!full.ends_with(suffix))throw std::runtime_error("Computer Use requires the exact native daemon image");return full.substr(0,full.size()-suffix.size());}
+ struct Prepared {
+   std::vector<Fd> held;
+-  std::string executable,model,memory,control,task,data,cache;
++  std::string executable,account,temp,control,task,data,cache,app,policy;
+ };
+ // Reuse the existing native sandbox-exec path/parameter idiom. No shell or
+ // caller policy string. A fixed helper cannot fork/exec an unowned descendant.
+@@ -96,36 +94,48 @@
+ (allow default)
+ (deny network*)
+ (deny process-fork)
+-(deny process-exec (require-not (literal (param "AUX_MEMORY_IMAGE"))))
++(deny process-exec (require-not (literal (param "AUX_COMPUTER_USE_IMAGE"))))
++(deny mach-lookup
++ (global-name-regex #"^com\.apple\.(securityd|SecurityServer|secd)(\..*)?$"))
+ (deny file-read*
++ (require-not
++  (require-any
++   (subpath "/System") (subpath "/usr/lib") (subpath "/usr/share")
++   (subpath "/Library/Apple") (subpath "/Applications")
++   (literal "/dev/null") (literal "/dev/random") (literal "/dev/urandom")
++   (subpath (param "AUX_APP"))
++   (subpath (param "AUX_COMPUTER_USE")))))
++(deny file-write*
++ (require-not (subpath (param "AUX_COMPUTER_USE"))))
++(deny file-read* file-write*
+  (subpath (param "AUX_CONTROL"))
+  (subpath (param "AUX_BROWSER_DATA"))
+  (subpath (param "AUX_BROWSER_CACHE"))
+  (require-all
+   (subpath (param "AUX_TASK"))
+-  (require-not (subpath (param "AUX_MEMORY")))
+-  (require-not (subpath (param "AUX_MODEL")))))
+-(deny file-write*
+- (subpath (param "AUX_CONTROL"))
+- (subpath (param "AUX_BROWSER_DATA"))
+- (subpath (param "AUX_BROWSER_CACHE"))
+- (require-all
+-  (subpath (param "AUX_TASK"))
+-  (require-not (subpath (param "AUX_MEMORY")))))
+-(deny file-link
+- (subpath (param "AUX_CONTROL")) (subpath (param "AUX_TASK"))
+- (subpath (param "AUX_BROWSER_DATA")) (subpath (param "AUX_BROWSER_CACHE")))
+-)SB";
++  (require-not (subpath (param "AUX_COMPUTER_USE")))))
++(deny file-link)
++(deny file-write* (subpath (param "AUX_APP"))))SB";
++std::string ProtectAncestors(const std::string& path) {
++  std::string result,ancestor=path;
++  while(!ancestor.empty()&&ancestor!="/"){
++    std::string quoted;
++    for(unsigned char byte:ancestor){if(byte<32||byte==127)throw std::runtime_error("Computer Use native root has unsupported path bytes");if(byte=='\\'||byte=='"')quoted+='\\';quoted+=char(byte);}
++    result+="\n(deny file-write* file-link (literal \""+quoted+"\"))";
++    const auto slash=ancestor.rfind('/');if(slash==std::string::npos)throw std::runtime_error("Computer Use native root is not absolute");ancestor.resize(slash);
++  }
++  return result;
++}
+ struct Event {std::string type,bytes;uint64_t id=0;int code=0;};
+ struct Write {uint64_t id;std::string bytes;size_t offset=0;};
+-struct ProcessRegistry {std::mutex mutex;std::map<const void*,std::shared_ptr<AuxAccountMemoryProcess>> values;};
++struct ProcessRegistry {std::mutex mutex;std::map<const void*,std::shared_ptr<AuxAccountComputerUseProcess>> values;};
+ ProcessRegistry& Processes(){static auto* state=new ProcessRegistry;return *state;}
+ }
+ 
+-class AuxAccountMemoryProcess final:public std::enable_shared_from_this<AuxAccountMemoryProcess> {
++class AuxAccountComputerUseProcess final:public std::enable_shared_from_this<AuxAccountComputerUseProcess> {
+  public:
+-  explicit AuxAccountMemoryProcess(std::shared_ptr<AuxMemoryNativeOwner> owner):owner_(std::move(owner)) {
+-    Fd directory(owner_->DuplicateMemoryDirectory());if(directory.value<0)throw std::runtime_error("Memory account owner is unavailable");memory_=Path(directory.value);
++  explicit AuxAccountComputerUseProcess(std::shared_ptr<AuxComputerUseNativeOwner> owner):owner_(std::move(owner)) {
++    Fd directory(owner_->DuplicateTaskAccountDirectory());if(directory.value<0)throw std::runtime_error("Computer Use account owner is unavailable");account_=Path(directory.value);
+   }
+   const void* WorkerKey()const{return owner_->WorkerKey();}
+   napi_value Publish(napi_env env,napi_value callback);
+@@ -151,12 +161,12 @@
+     {std::lock_guard<std::mutex> lock(mutex_);settled_=true;}
+     std::lock_guard<std::mutex> lock(Processes().mutex);Processes().values.erase(this);
+   }
+-  ~AuxAccountMemoryProcess(){if(thread_.joinable())std::terminate();}
++  ~AuxAccountComputerUseProcess(){if(thread_.joinable())std::terminate();}
+  private:
+-  struct JsHold {std::shared_ptr<AuxAccountMemoryProcess> value;};
+-  std::shared_ptr<AuxMemoryNativeOwner> owner_;
++  struct JsHold {std::shared_ptr<AuxAccountComputerUseProcess> value;};
++  std::shared_ptr<AuxComputerUseNativeOwner> owner_;
+   const pid_t process_=getpid();
+-  std::string memory_;
++  std::string account_;
+   std::mutex mutex_,join_mutex_;
+   std::thread thread_;
+   napi_threadsafe_function events_=nullptr;
+@@ -191,7 +201,7 @@
+   static void CallEvent(napi_env env,napi_value callback,void* context,void* data);
+   static void FinalizeEvents(napi_env,void* data,void*){delete static_cast<JsHold*>(data);}
+   static void FinalizeObject(napi_env,void* data,void*) {auto* hold=static_cast<JsHold*>(data);hold->value->RequestStop(SIGTERM,true);delete hold;}
+-  static std::shared_ptr<AuxAccountMemoryProcess> Get(napi_env env,napi_callback_info info,size_t* argc,napi_value* args) {
++  static std::shared_ptr<AuxAccountComputerUseProcess> Get(napi_env env,napi_callback_info info,size_t* argc,napi_value* args) {
+     napi_value self;void* raw=nullptr;
+     if(napi_get_cb_info(env,info,argc,args,&self,nullptr)!=napi_ok||napi_unwrap(env,self,&raw)!=napi_ok||!raw)return {};
+     return static_cast<JsHold*>(raw)->value;
+@@ -202,92 +212,98 @@
+   static napi_value EndInput(napi_env env,napi_callback_info info);
+   static napi_value Close(napi_env,napi_callback_info);
+   static napi_value Kill(napi_env env,napi_callback_info info);
+-  friend napi_value AuxCreateAccountMemoryProcess(napi_env,napi_callback_info);
++  friend napi_value AuxCreateAccountComputerUseProcess(napi_env,napi_callback_info);
+ };
+ 
+-Prepared AuxAccountMemoryProcess::Prepare() {
++Prepared AuxAccountComputerUseProcess::Prepare() {
+   @autoreleasepool {
+-    if(!owner_->Current())throw std::runtime_error("Memory account binding changed");
+-    Prepared result;result.memory=memory_;
++    if(!owner_->Current())throw std::runtime_error("Computer Use account binding changed");
++    Prepared result;
++    Fd account(owner_->DuplicateTaskAccountDirectory());
++    if(account.value<0||Path(account.value)!=account_)throw std::runtime_error("Computer Use captured account directory changed");
++    auto private_child=[](int parent,const char* name){
++      if(mkdirat(parent,name,0700)!=0&&errno!=EEXIST)throw std::runtime_error("Computer Use private directory could not be created");
++      Fd directory(openat(parent,name,O_RDONLY|O_DIRECTORY|O_NOFOLLOW|O_CLOEXEC|O_NONBLOCK));
++      struct stat named{},held{};
++      if(directory.value<0||!Safe(directory.value,true,true)||fstatat(parent,name,&named,AT_SYMLINK_NOFOLLOW)||fstat(directory.value,&held)||named.st_dev!=held.st_dev||named.st_ino!=held.st_ino)throw std::runtime_error("Computer Use private directory is unsafe");
++      return directory;
++    };
++    auto home=private_child(account.value,"computer-use");result.account=Path(home.value);
++    auto temporary=private_child(home.value,"tmp");result.temp=Path(temporary.value);
++    result.held.emplace_back(std::move(account));result.held.emplace_back(std::move(home));result.held.emplace_back(std::move(temporary));
+     int32_t control=-1,task=-1;uint64_t generation=0;
+     const bool roots=owner_->CopyStorageRoots(&control,&task,&generation);
+     result.held.emplace_back(control);result.held.emplace_back(task);
+-    if(!roots)throw std::runtime_error("Memory native roots are unavailable");
++    if(!roots)throw std::runtime_error("Computer Use native roots are unavailable");
+     result.task=Path(task);
+     std::array<char,4096> parent{};uint32_t parent_bytes=0;
+-    if(!owner_->CopyPrivateParent(parent.data(),parent.size(),&parent_bytes)||parent_bytes<2||parent_bytes>parent.size()||parent[parent_bytes-1]!='\0')throw std::runtime_error("Memory control exclusion is unavailable");
++    if(!owner_->CopyPrivateParent(parent.data(),parent.size(),&parent_bytes)||parent_bytes<2||parent_bytes>parent.size()||parent[parent_bytes-1]!='\0')throw std::runtime_error("Computer Use control exclusion is unavailable");
+     result.control=std::string(parent.begin(),parent.begin()+parent_bytes-1);
+-    for(uint32_t role=1;role<=2;++role){int32_t fd=-1;uint64_t observed=0;const bool okay=owner_->CopyBrowserRoot(role,&fd,&observed);result.held.emplace_back(fd);if(!okay||observed!=generation)throw std::runtime_error("Memory browser root binding changed");(role==1?result.data:result.cache)=Path(fd);}
+-    const auto bundle=CurrentBundle();Fd bundle_fd(open(bundle.c_str(),O_RDONLY|O_DIRECTORY|O_NOFOLLOW|O_CLOEXEC));
+-    if(bundle_fd.value<0||!Safe(bundle_fd.value,true))throw std::runtime_error("Memory signed host is unavailable");
+-    auto policy_file=OpenRelative(bundle_fd.value,"Contents/Resources/AuxMemoryHelperLaunchPolicy.json");
++    for(uint32_t role=1;role<=2;++role){int32_t fd=-1;uint64_t observed=0;const bool okay=owner_->CopyBrowserRoot(role,&fd,&observed);result.held.emplace_back(fd);if(!okay||observed!=generation)throw std::runtime_error("Computer Use browser root binding changed");(role==1?result.data:result.cache)=Path(fd);}
++    const auto bundle=CurrentBundle();
++    constexpr std::string_view daemon="/Contents/Resources/aux/apps/daemon/Aux Daemon.app";
++    if(!bundle.ends_with(daemon))throw std::runtime_error("Computer Use requires its exact Aux app");
++    result.app=bundle.substr(0,bundle.size()-daemon.size());
++    Fd app(open(result.app.c_str(),O_RDONLY|O_DIRECTORY|O_NOFOLLOW|O_CLOEXEC));
++    Fd bundle_fd(open(bundle.c_str(),O_RDONLY|O_DIRECTORY|O_NOFOLLOW|O_CLOEXEC));
++    if(app.value<0||bundle_fd.value<0||!Safe(app.value,true)||!Safe(bundle_fd.value,true))throw std::runtime_error("Computer Use signed host is unavailable");
++    auto policy_file=OpenRelative(bundle_fd.value,"Contents/Resources/AuxComputerUseHelperLaunchPolicy.json");
+     const auto bytes=Read(policy_file.value,16384);NSData* raw=[NSData dataWithBytes:bytes.data() length:bytes.size()];
+     SecCodeRef dynamic=nullptr;SecStaticCodeRef code=nullptr;
+-    if(SecCodeCopySelf(kSecCSDefaultFlags,&dynamic)!=errSecSuccess||!dynamic)throw std::runtime_error("Memory host identity is unavailable");
++    if(SecCodeCopySelf(kSecCSDefaultFlags,&dynamic)!=errSecSuccess||!dynamic)throw std::runtime_error("Computer Use host identity is unavailable");
+     auto static_status=SecCodeCopyStaticCode(dynamic,kSecCSDefaultFlags,&code);CFRelease(dynamic);
+-    if(static_status!=errSecSuccess||!code)throw std::runtime_error("Memory host identity is unavailable");
++    if(static_status!=errSecSuccess||!code)throw std::runtime_error("Computer Use host identity is unavailable");
+     const SecCSFlags flags=kSecCSStrictValidate|kSecCSCheckAllArchitectures|kSecCSCheckNestedCode|kSecCSRestrictSymlinks|SecCSFlags(1u<<29);
+     const auto checked=SecStaticCodeCheckValidity(code,flags,nullptr);
+-    const auto resource=checked==errSecSuccess?SecCodeValidateFileResource(code,CFSTR("Resources/AuxMemoryHelperLaunchPolicy.json"),(__bridge CFDataRef)raw,kSecCSDefaultFlags):checked;
+-    CFRelease(code);if(resource!=errSecSuccess)throw std::runtime_error("Memory launch resource is not sealed");
++    const auto resource=checked==errSecSuccess?SecCodeValidateFileResource(code,CFSTR("Resources/AuxComputerUseHelperLaunchPolicy.json"),(__bridge CFDataRef)raw,kSecCSDefaultFlags):checked;
++    CFRelease(code);if(resource!=errSecSuccess)throw std::runtime_error("Computer Use launch resource is not sealed");
+     NSError* error=nil;id parsed=[NSJSONSerialization JSONObjectWithData:raw options:0 error:&error];
+-    if(error||![parsed isKindOfClass:[NSDictionary class]])throw std::runtime_error("Memory launch resource is invalid");
++    if(error||![parsed isKindOfClass:[NSDictionary class]])throw std::runtime_error("Computer Use launch resource is invalid");
+     NSDictionary* policy=parsed;
+-    NSSet* expected=[NSSet setWithArray:@[@"format",@"sourceSha256",@"sha256",@"bytes",@"identifier",@"team",@"modelDescriptorSha256"]];
+-    if(![[NSSet setWithArray:policy.allKeys] isEqualToSet:expected]||![policy[@"format"] isEqual:@"aux.memory.fixed-helper-launch.v1"]||
+-      ![policy[@"sourceSha256"] isEqual:[NSString stringWithUTF8String:kMemorySourceSha]]||![policy[@"identifier"] isEqual:@"dev.aux.browser.memory"]||
+-      ![policy[@"team"] isEqual:@"9F2JXY8TCK"]||![policy[@"modelDescriptorSha256"] isEqual:[NSString stringWithUTF8String:kMemoryModelKey]]||
+-      ![policy[@"sha256"] isKindOfClass:[NSString class]]||![policy[@"bytes"] isKindOfClass:[NSNumber class]])throw std::runtime_error("Memory launch resource has an unsupported identity");
++    NSSet* expected=[NSSet setWithArray:@[@"format",@"sourceSha256",@"sha256",@"bytes",@"identifier",@"team"]];
++    if(![[NSSet setWithArray:policy.allKeys] isEqualToSet:expected]||![policy[@"format"] isEqual:@"aux.computer-use.fixed-helper-launch.v1"]||
++      ![policy[@"sourceSha256"] isEqual:[NSString stringWithUTF8String:kComputerUseSourceSha]]||![policy[@"identifier"] isEqual:@"dev.aux.browser.computer-use"]||
++      ![policy[@"team"] isEqual:@"9F2JXY8TCK"]||![policy[@"sha256"] isKindOfClass:[NSString class]]||![policy[@"bytes"] isKindOfClass:[NSNumber class]])throw std::runtime_error("Computer Use launch resource has an unsupported identity");
+     NSString* hash=policy[@"sha256"];NSNumber* count=policy[@"bytes"];
+     if(hash.length!=64||[hash rangeOfCharacterFromSet:[[NSCharacterSet characterSetWithCharactersInString:@"0123456789abcdef"] invertedSet]].location!=NSNotFound||
+-      CFGetTypeID((__bridge CFTypeRef)count)==CFBooleanGetTypeID()||count.doubleValue<1||count.doubleValue>16*1024*1024||std::floor(count.doubleValue)!=count.doubleValue)throw std::runtime_error("Memory launch artifact bounds are invalid");
+-    auto image=OpenRelative(bundle_fd.value,"Contents/Resources/memory-helper/aux-memory");
+-    struct stat image_stat{};if(fstat(image.value,&image_stat)||(image_stat.st_mode&0111)==0||Digest(image.value,count.unsignedLongLongValue)!=hash.UTF8String)throw std::runtime_error("Memory signed artifact does not match its launch record");
++      CFGetTypeID((__bridge CFTypeRef)count)==CFBooleanGetTypeID()||count.doubleValue<1||count.doubleValue>64*1024*1024||std::floor(count.doubleValue)!=count.doubleValue)throw std::runtime_error("Computer Use launch artifact bounds are invalid");
++    auto image=OpenRelative(app.value,"Contents/Resources/aux/apps/computer-use/Aux Computer Use.app/Contents/MacOS/aux-computer-use");
++    struct stat image_stat{};if(fstat(image.value,&image_stat)||(image_stat.st_mode&0111)==0||Digest(image.value,count.unsignedLongLongValue)!=hash.UTF8String)throw std::runtime_error("Computer Use signed artifact does not match its launch record");
+     result.executable=Path(image.value);
+     CFURLRef url=CFURLCreateFromFileSystemRepresentation(kCFAllocatorDefault,reinterpret_cast<const UInt8*>(result.executable.data()),result.executable.size(),false);
+-    SecStaticCodeRef memory_code=nullptr;OSStatus status=url?SecStaticCodeCreateWithPath(url,kSecCSDefaultFlags,&memory_code):errSecParam;if(url)CFRelease(url);
++    SecStaticCodeRef helper_code=nullptr;OSStatus status=url?SecStaticCodeCreateWithPath(url,kSecCSDefaultFlags,&helper_code):errSecParam;if(url)CFRelease(url);
+     SecRequirementRef requirement=nullptr;
+-    const auto requirement_status=SecRequirementCreateWithString(CFSTR("anchor apple generic and identifier \"dev.aux.browser.memory\" and certificate leaf[subject.OU] = \"9F2JXY8TCK\""),kSecCSDefaultFlags,&requirement);
+-    if(status==errSecSuccess&&requirement_status==errSecSuccess&&memory_code&&requirement)status=SecStaticCodeCheckValidity(memory_code,flags,requirement);else status=errSecParam;
+-    if(memory_code)CFRelease(memory_code);if(requirement)CFRelease(requirement);
+-    if(status!=errSecSuccess)throw std::runtime_error("Memory helper signing identity is unavailable");
+-    result.held.emplace_back(std::move(image));result.held.emplace_back(std::move(policy_file));result.held.emplace_back(std::move(bundle_fd));
+-    const std::string prefix=std::string("models/")+kMemoryModelKey;
+-    auto current=OpenRelative(task,prefix+"/CURRENT");const auto selected=Read(current.value,36);
+-    if(!Uuid(selected))throw std::runtime_error("Memory model generation is invalid");
+-    auto model=OpenRelative(task,prefix+"/"+selected,true);result.model=Path(model.value);
+-    for(const auto& pin:kMemoryModelPins){
+-      {std::lock_guard<std::mutex> lock(mutex_);if(stop_)throw std::runtime_error("Memory preparation was cancelled");}
+-      auto file=OpenRelative(model.value,pin.path,pin.directory);struct stat metadata{};
+-      if(fstat(file.value,&metadata)||(metadata.st_mode&07777)!=pin.mode||(!pin.directory&&Digest(file.value,pin.bytes)!=pin.sha256))throw std::runtime_error("Memory model does not match the sealed supplied bytes");
+-      result.held.emplace_back(std::move(file));
+-    }
+-    result.held.emplace_back(std::move(current));result.held.emplace_back(std::move(model));
+-    if(!owner_->Current())throw std::runtime_error("Memory account binding changed during preparation");
++    const auto required=SecRequirementCreateWithString(CFSTR("anchor apple generic and identifier \"dev.aux.browser.computer-use\" and certificate leaf[subject.OU] = \"9F2JXY8TCK\""),kSecCSDefaultFlags,&requirement);
++    if(status==errSecSuccess&&required==errSecSuccess&&helper_code&&requirement)status=SecStaticCodeCheckValidity(helper_code,flags,requirement);else status=errSecParam;
++    if(helper_code)CFRelease(helper_code);if(requirement)CFRelease(requirement);
++    if(status!=errSecSuccess)throw std::runtime_error("Computer Use helper signing identity is unavailable");
++    result.held.emplace_back(std::move(image));result.held.emplace_back(std::move(policy_file));result.held.emplace_back(std::move(bundle_fd));result.held.emplace_back(std::move(app));
++    result.policy=std::string(kSeatbelt)+ProtectAncestors(result.app)+ProtectAncestors(result.control)+ProtectAncestors(result.task)+ProtectAncestors(result.data)+ProtectAncestors(result.cache);
++    if(!owner_->Current())throw std::runtime_error("Computer Use account binding changed during preparation");
+     return result;
+   }
+ }
+-void AuxAccountMemoryProcess::Spawn(Prepared& prepared) {
++void AuxAccountComputerUseProcess::Spawn(Prepared& prepared) {
+   std::array<int,2> in{-1,-1},out{-1,-1},err{-1,-1};
+-  auto pipe_owned=[](std::array<int,2>& pair){if(pipe(pair.data()))throw std::runtime_error("Memory pipe creation failed");for(int fd:pair)if(fcntl(fd,F_SETFD,FD_CLOEXEC))throw std::runtime_error("Memory pipe ownership failed");};
++  auto pipe_owned=[](std::array<int,2>& pair){if(pipe(pair.data()))throw std::runtime_error("Computer Use pipe creation failed");for(int fd:pair)if(fcntl(fd,F_SETFD,FD_CLOEXEC))throw std::runtime_error("Computer Use pipe ownership failed");};
+   try{pipe_owned(in);pipe_owned(out);pipe_owned(err);}catch(...){for(auto* pair:{&in,&out,&err})for(int fd:*pair)if(fd>=0)close(fd);throw;}
+   Fd child_in(in[0]),parent_in(in[1]),parent_out(out[0]),child_out(out[1]),parent_err(err[0]),child_err(err[1]);
+   posix_spawn_file_actions_t actions;posix_spawnattr_t attributes;
+-  if(posix_spawn_file_actions_init(&actions))throw std::runtime_error("Memory launch actions unavailable");
++  if(posix_spawn_file_actions_init(&actions))throw std::runtime_error("Computer Use launch actions unavailable");
+   const auto close_actions=[&]{posix_spawn_file_actions_destroy(&actions);};
+-  if(posix_spawnattr_init(&attributes)){close_actions();throw std::runtime_error("Memory launch attributes unavailable");}
++  if(posix_spawnattr_init(&attributes)){close_actions();throw std::runtime_error("Computer Use launch attributes unavailable");}
+   const auto clean=[&]{posix_spawnattr_destroy(&attributes);close_actions();};
+   bool valid=true;
+   for(const auto& pair:std::array<std::pair<int,int>,3>{{{child_in.value,STDIN_FILENO},{child_out.value,STDOUT_FILENO},{child_err.value,STDERR_FILENO}}})if(posix_spawn_file_actions_adddup2(&actions,pair.first,pair.second))valid=false;
+   if(posix_spawnattr_setflags(&attributes,POSIX_SPAWN_CLOEXEC_DEFAULT|POSIX_SPAWN_START_SUSPENDED))valid=false;
+   std::vector<std::string> argv{"/usr/bin/sandbox-exec"};
+   auto parameter=[&](std::string key,const std::string& value){argv.emplace_back("-D");argv.emplace_back(std::move(key)+"="+value);};
+-  parameter("AUX_MEMORY_IMAGE",prepared.executable);parameter("AUX_CONTROL",prepared.control);parameter("AUX_TASK",prepared.task);parameter("AUX_MEMORY",prepared.memory);parameter("AUX_MODEL",prepared.model);parameter("AUX_BROWSER_DATA",prepared.data);parameter("AUX_BROWSER_CACHE",prepared.cache);
+-  argv.emplace_back("-p");argv.emplace_back(kSeatbelt);argv.emplace_back(prepared.executable);argv.emplace_back(prepared.model);argv.emplace_back("");
++  parameter("AUX_COMPUTER_USE_IMAGE",prepared.executable);parameter("AUX_CONTROL",prepared.control);parameter("AUX_TASK",prepared.task);parameter("AUX_COMPUTER_USE",prepared.account);parameter("AUX_BROWSER_DATA",prepared.data);parameter("AUX_BROWSER_CACHE",prepared.cache);parameter("AUX_APP",prepared.app);
++  argv.emplace_back("-p");argv.emplace_back(prepared.policy);argv.emplace_back(prepared.executable);
+   std::vector<char*> pointers;for(auto& value:argv)pointers.push_back(value.data());pointers.push_back(nullptr);
+-  std::vector<std::string> env{"PATH=/usr/bin:/bin","ORT_DISABLE_TELEMETRY=1","HOME="+prepared.memory};std::vector<char*> environment;for(auto& value:env)environment.push_back(value.data());environment.push_back(nullptr);
+-  if(!valid){clean();throw std::runtime_error("Fixed memory spawn configuration is unavailable");}
+-  if(!owner_->PrepareLaunch()){clean();throw std::runtime_error("Memory lifetime reservation was not durably admitted");}
++  std::vector<std::string> env{"PATH=/usr/bin:/bin","HOME="+prepared.account,"TMPDIR="+prepared.temp};std::vector<char*> environment;for(auto& value:env)environment.push_back(value.data());environment.push_back(nullptr);
++  if(!valid){clean();throw std::runtime_error("Fixed computer-use spawn configuration is unavailable");}
++  if(!owner_->PrepareLaunch()){clean();throw std::runtime_error("Computer Use lifetime reservation was not durably admitted");}
+   int result=ECANCELED;
+   {
+     std::lock_guard<std::mutex> lock(mutex_);
+@@ -295,20 +311,21 @@
+     spawn_error_=result;
+     if(result==0){no_child_=false;input_=std::move(parent_in);output_=std::move(parent_out);error_=std::move(parent_err);}
+   }
+-  clean();if(result!=0)throw std::runtime_error("Fixed memory helper could not start");
++  clean();if(result!=0)throw std::runtime_error("Fixed computer-use helper could not start");
+   // The original child cannot run a single helper instruction before its exact
+   // kernel PID/birth is durably published under the actual retained owner.
+-  if(!owner_->PublishSuspended(pid_))throw std::runtime_error("Memory stopped-child publication is unknown");
+-  {std::lock_guard<std::mutex> lock(mutex_);if(stop_||!owner_->ResumeStoppedAfterPublished(pid_))throw std::runtime_error("Memory start was cancelled");}
++  if(!owner_->PublishSuspended(pid_))throw std::runtime_error("Computer Use stopped-child publication is unknown");
++  {std::lock_guard<std::mutex> lock(mutex_);if(stop_||!owner_->ResumeStoppedAfterPublished(pid_))throw std::runtime_error("Computer Use start was cancelled");}
+   for(int fd:{input_.value,output_.value,error_.value})fcntl(fd,F_SETFL,fcntl(fd,F_GETFL)|O_NONBLOCK);
+   Emit({"spawn",{},uint64_t(pid_)});
+ }
+-void AuxAccountMemoryProcess::Run() {
++void AuxAccountComputerUseProcess::Run() {
+   int code=1,signal=0;
+   try {
+     auto prepared=Prepare();Spawn(prepared);
+     std::optional<std::chrono::steady_clock::time_point> cancelling;
+     for(;;) {
++      if(!owner_->Current())RequestStop();
+       uint64_t input_closed=0;
+       {
+         std::lock_guard<std::mutex> lock(mutex_);
+@@ -320,7 +337,7 @@
+       if(input_closed)Emit({"inputClosed",{},input_closed});
+       std::array<pollfd,3> fds{};
+       {std::lock_guard<std::mutex> lock(mutex_);fds={pollfd{input_.value,short(!writes_.empty()?POLLOUT:0),0},pollfd{output_.value,POLLIN,0},pollfd{error_.value,POLLIN,0}};}
+-      const int polled=poll(fds.data(),fds.size(),100);if(polled<0&&errno!=EINTR)throw std::runtime_error("Memory I/O observation failed");
++      const int polled=poll(fds.data(),fds.size(),100);if(polled<0&&errno!=EINTR)throw std::runtime_error("Computer Use I/O observation failed");
+       if(fds[0].fd>=0&&(fds[0].revents&(POLLOUT|POLLERR|POLLHUP))) {
+         std::optional<uint64_t> written;
+         {std::lock_guard<std::mutex> lock(mutex_);if(!writes_.empty()){
+@@ -360,64 +377,67 @@
+   }
+   {std::lock_guard<std::mutex> lock(mutex_);input_=Fd();output_=Fd();error_=Fd();writes_.clear();queued_=0;}
+   bool unknown=false;{std::lock_guard<std::mutex> lock(mutex_);unknown=wait_unknown_;}
+-  if(unknown)Emit({"error","Memory child wait ownership is unknown"});
++  if(unknown)Emit({"error","Computer Use child wait ownership is unknown"});
+   {std::lock_guard<std::mutex> lock(mutex_);done_=true;}
+   if(!unknown)Emit({"close",signal?std::to_string(signal):"",0,code});
+   {std::lock_guard<std::mutex> lock(mutex_);channel_released_=true;}
+   napi_release_threadsafe_function(events_,napi_tsfn_release);
+ }
+ 
+-std::string AuxAccountMemoryProcess::Normalize(napi_env env,napi_value value) {
++std::string AuxAccountComputerUseProcess::Normalize(napi_env env,napi_value value) {
+   @autoreleasepool {
+     bool buffer=false;void* bytes=nullptr;size_t count=0;
+-    if(napi_is_buffer(env,value,&buffer)!=napi_ok||!buffer||napi_get_buffer_info(env,value,&bytes,&count)!=napi_ok||!bytes||!count||count>kMessageLimit)throw std::runtime_error("Memory input exceeds bounds");
++    if(napi_is_buffer(env,value,&buffer)!=napi_ok||!buffer||napi_get_buffer_info(env,value,&bytes,&count)!=napi_ok||!bytes||!count||count>kMessageLimit)throw std::runtime_error("Computer Use input exceeds bounds");
+     NSData* data=[NSData dataWithBytes:bytes length:count];NSError* error=nil;id decoded=[NSJSONSerialization JSONObjectWithData:data options:0 error:&error];
+-    if(error||![decoded isKindOfClass:[NSDictionary class]])throw std::runtime_error("Memory request is invalid JSON");
++    if(error||![decoded isKindOfClass:[NSDictionary class]])throw std::runtime_error("Computer Use request is invalid JSON");
+     NSDictionary* input=decoded;
+-    if(![[NSSet setWithArray:input.allKeys] isEqualToSet:[NSSet setWithArray:@[@"id",@"method",@"params"]]]||
+-       ![input[@"id"] isKindOfClass:[NSNumber class]]||![input[@"method"] isKindOfClass:[NSString class]]||![input[@"params"] isKindOfClass:[NSDictionary class]])throw std::runtime_error("Memory request shape is unsupported");
+-    NSNumber* id_value=input[@"id"];NSString* method=input[@"method"];NSDictionary* params=input[@"params"];
+-    if(CFGetTypeID((__bridge CFTypeRef)id_value)==CFBooleanGetTypeID()||id_value.doubleValue<1||id_value.doubleValue>9'007'199'254'740'991.0||std::floor(id_value.doubleValue)!=id_value.doubleValue)throw std::runtime_error("Memory request identity is invalid");
++    NSString* command=input[@"command"];
++    if(![command isKindOfClass:[NSString class]])throw std::runtime_error("Computer Use command is invalid");
+     NSSet* allowed=nil;
+-    if([method isEqual:@"shutdown"])allowed=[NSSet set];
+-    else if([method isEqual:@"status"]||[method isEqual:@"close"])allowed=[NSSet setWithObject:@"directory"];
+-    else if([method isEqual:@"sync"])allowed=[NSSet setWithArray:@[@"directory",@"rebuild"]];
+-    else if([method isEqual:@"search"])allowed=[NSSet setWithArray:@[@"directory",@"query",@"topK",@"alpha"]];
+-    if(!allowed||![[NSSet setWithArray:params.allKeys] isSubsetOfSet:allowed])throw std::runtime_error("Memory operation is not in the fixed protocol");
+-    if(params[@"rebuild"]&&CFGetTypeID((__bridge CFTypeRef)params[@"rebuild"])!=CFBooleanGetTypeID())throw std::runtime_error("Memory rebuild option is invalid");
+-    if([method isEqual:@"search"]){
+-      NSString* query=params[@"query"];NSNumber* top=params[@"topK"],*alpha=params[@"alpha"];
+-      if(![query isKindOfClass:[NSString class]]||[query lengthOfBytesUsingEncoding:NSUTF8StringEncoding]>65536||![top isKindOfClass:[NSNumber class]]||CFGetTypeID((__bridge CFTypeRef)top)==CFBooleanGetTypeID()||top.doubleValue<0||top.doubleValue>100||std::floor(top.doubleValue)!=top.doubleValue||
+-        (alpha&&(![alpha isKindOfClass:[NSNumber class]]||CFGetTypeID((__bridge CFTypeRef)alpha)==CFBooleanGetTypeID()||!std::isfinite(alpha.doubleValue))))throw std::runtime_error("Memory search exceeds bounds");
++    if([command isEqual:@"shutdown"]||[command isEqual:@"health"]||[command isEqual:@"pause"]||[command isEqual:@"resume"])allowed=[NSSet setWithObject:@"command"];
++    else if([command isEqual:@"permissions"])allowed=[NSSet setWithArray:@[@"command",@"kind"]];
++    else if([command isEqual:@"policy"])allowed=[NSSet setWithArray:@[@"command",@"excludedBundleIds",@"excludedDomains",@"captureTypedText",@"screenText"]];
++    else if([command isEqual:@"menu"])allowed=[NSSet setWithArray:@[@"command",@"recentApplications"]];
++    else if([command isEqual:@"invoke"])allowed=[NSSet setWithArray:@[@"command",@"id",@"name",@"payload"]];
++    if(!allowed||![[NSSet setWithArray:input.allKeys] isEqualToSet:allowed])throw std::runtime_error("Computer Use operation is not in the fixed actor protocol");
++    if([command isEqual:@"permissions"]&&![input[@"kind"] isEqual:@"observer"])throw std::runtime_error("Computer Use permission kind is invalid");
++    if([command isEqual:@"policy"]){
++      for(NSString* key in @[@"excludedBundleIds",@"excludedDomains"]){id list=input[key];if(![list isKindOfClass:[NSArray class]]||[list count]>1024)throw std::runtime_error("Computer Use policy exceeds bounds");for(id item in list)if(![item isKindOfClass:[NSString class]]||[item lengthOfBytesUsingEncoding:NSUTF8StringEncoding]>4096)throw std::runtime_error("Computer Use policy is invalid");}
++      for(NSString* key in @[@"captureTypedText",@"screenText"])if(!input[key]||CFGetTypeID((__bridge CFTypeRef)input[key])!=CFBooleanGetTypeID())throw std::runtime_error("Computer Use policy switch is invalid");
+     }
+-    NSMutableDictionary* fixed=[params mutableCopy];
+-    if(![method isEqual:@"shutdown"])fixed[@"directory"]=[NSString stringWithUTF8String:memory_.c_str()];
+-    NSData* output=[NSJSONSerialization dataWithJSONObject:@{@"id":id_value,@"method":method,@"params":fixed} options:0 error:&error];
+-    if(error||!output||output.length+1>kMessageLimit)throw std::runtime_error("Memory request encoding exceeds bounds");
++    if([command isEqual:@"menu"]&&(![input[@"recentApplications"] isKindOfClass:[NSArray class]]||[input[@"recentApplications"] count]>1024))throw std::runtime_error("Computer Use menu exceeds bounds");
++    if([command isEqual:@"invoke"]){
++      NSString* name=input[@"name"],*identifier=input[@"id"];NSDictionary* payload=input[@"payload"];
++      if(![name isKindOfClass:[NSString class]]||![identifier isKindOfClass:[NSString class]]||identifier.length>128||![identifier hasPrefix:@"inv-"]||![payload isKindOfClass:[NSDictionary class]]||payload.count!=0)throw std::runtime_error("Computer Use invocation is invalid");
++      NSSet* methods=[NSSet setWithArray:@[@"discard-context-awareness-buffer",@"applications.list"]];
++      if(![methods containsObject:name])throw std::runtime_error("Computer Use command is unavailable in the fixed no-fork role");
++    }
++    NSData* output=[NSJSONSerialization dataWithJSONObject:input options:0 error:&error];
++    if(error||!output||output.length+1>kMessageLimit)throw std::runtime_error("Computer Use request encoding exceeds bounds");
+     std::string result(static_cast<const char*>(output.bytes),output.length);result+='\n';return result;
+   }
+ }
+ 
+-napi_value AuxAccountMemoryProcess::WriteInput(napi_env env,napi_callback_info info) {
++napi_value AuxAccountComputerUseProcess::WriteInput(napi_env env,napi_callback_info info) {
+   try {
+     size_t argc=1;napi_value input;auto self=Get(env,info,&argc,&input);
+-    if(!self||argc!=1||getpid()!=self->process_||!self->owner_->Current())throw std::runtime_error("Memory account owner is unavailable");
++    if(!self||argc!=1||getpid()!=self->process_||!self->owner_->Current())throw std::runtime_error("Computer Use account owner is unavailable");
+     auto bytes=self->Normalize(env,input);uint64_t id;
+-    {std::lock_guard<std::mutex> lock(self->mutex_);if(self->stop_||self->done_||self->end_input_||self->writes_.size()>=1||bytes.size()>kQueueBytes-self->queued_||self->next_write_>9'007'199'254'740'991ULL)throw std::runtime_error("Memory input is closed or backpressured");id=self->next_write_++;self->queued_+=bytes.size();self->writes_.push_back({id,std::move(bytes)});}
++    {std::lock_guard<std::mutex> lock(self->mutex_);if(self->stop_||self->done_||self->end_input_||self->writes_.size()>=1||bytes.size()>kQueueBytes-self->queued_||self->next_write_>9'007'199'254'740'991ULL)throw std::runtime_error("Computer Use input is closed or backpressured");id=self->next_write_++;self->queued_+=bytes.size();self->writes_.push_back({id,std::move(bytes)});}
+     return self->Promise(env,id);
+-  }catch(const std::exception& error){napi_throw_error(env,"AUX_MEMORY_INPUT_REFUSED",error.what());return nullptr;}
+-}
+-napi_value AuxAccountMemoryProcess::EndInput(napi_env env,napi_callback_info info) {
+-  size_t argc=0;auto self=Get(env,info,&argc,nullptr);if(!self||argc||getpid()!=self->process_){napi_throw_error(env,"AUX_MEMORY_INPUT_REFUSED","Memory input owner is unavailable");return nullptr;}
++  }catch(const std::exception& error){napi_throw_error(env,"AUX_COMPUTER_USE_INPUT_REFUSED",error.what());return nullptr;}
++}
++napi_value AuxAccountComputerUseProcess::EndInput(napi_env env,napi_callback_info info) {
++  size_t argc=0;auto self=Get(env,info,&argc,nullptr);if(!self||argc||getpid()!=self->process_){napi_throw_error(env,"AUX_COMPUTER_USE_INPUT_REFUSED","Computer Use input owner is unavailable");return nullptr;}
+   uint64_t id;bool closed=false;
+-  {std::lock_guard<std::mutex> lock(self->mutex_);if(self->next_write_>9'007'199'254'740'991ULL||self->end_input_){napi_throw_error(env,"AUX_MEMORY_INPUT_REFUSED","Memory input is already closing");return nullptr;}id=self->next_write_++;self->end_input_=true;self->end_id_=id;closed=self->done_||(self->input_.value<0&&self->reaped_);}
++  {std::lock_guard<std::mutex> lock(self->mutex_);if(self->next_write_>9'007'199'254'740'991ULL||self->end_input_){napi_throw_error(env,"AUX_COMPUTER_USE_INPUT_REFUSED","Computer Use input is already closing");return nullptr;}id=self->next_write_++;self->end_input_=true;self->end_id_=id;closed=self->done_||(self->input_.value<0&&self->reaped_);}
+   auto promise=self->Promise(env,id);
+   if(closed){napi_value empty;napi_get_undefined(env,&empty);napi_resolve_deferred(env,self->promises_.at(id),empty);self->promises_.erase(id);}
+   return promise;
+ }
+-napi_value AuxAccountMemoryProcess::Close(napi_env env,napi_callback_info info) {
++napi_value AuxAccountComputerUseProcess::Close(napi_env env,napi_callback_info info) {
+   size_t argc=0;auto self=Get(env,info,&argc,nullptr);
+-  if(!self||argc||getpid()!=self->process_||self->close_promises_.size()>=8){napi_throw_error(env,"AUX_MEMORY_CLOSE_REFUSED","Memory close owner is unavailable");return nullptr;}
++  if(!self||argc||getpid()!=self->process_||self->close_promises_.size()>=8){napi_throw_error(env,"AUX_COMPUTER_USE_CLOSE_REFUSED","Computer Use close owner is unavailable");return nullptr;}
+   napi_deferred deferred;napi_value promise;
+   if(napi_create_promise(env,&deferred,&promise)!=napi_ok)return nullptr;
+   bool done;{std::lock_guard<std::mutex> lock(self->mutex_);done=self->done_;}
+@@ -425,40 +445,40 @@
+   if(done){self->Finish();bool settled;{std::lock_guard<std::mutex> lock(self->mutex_);settled=self->settled_;}
+     napi_value value;napi_get_undefined(env,&value);
+     if(settled)napi_resolve_deferred(env,deferred,value);
+-    else{napi_value message,error;napi_create_string_utf8(env,"Native memory cleanup remains unknown",NAPI_AUTO_LENGTH,&message);napi_create_error(env,nullptr,message,&error);napi_reject_deferred(env,deferred,error);}
++    else{napi_value message,error;napi_create_string_utf8(env,"Native computer-use cleanup remains unknown",NAPI_AUTO_LENGTH,&message);napi_create_error(env,nullptr,message,&error);napi_reject_deferred(env,deferred,error);}
+   }else self->close_promises_.push_back(deferred);
+   return promise;
+ }
+-napi_value AuxAccountMemoryProcess::Kill(napi_env env,napi_callback_info info) {
++napi_value AuxAccountComputerUseProcess::Kill(napi_env env,napi_callback_info info) {
+   size_t argc=1;napi_value value;auto self=Get(env,info,&argc,&value);std::array<char,16> signal{};size_t count=0;
+-  if(!self||getpid()!=self->process_||argc!=1||napi_get_value_string_utf8(env,value,signal.data(),signal.size(),&count)!=napi_ok){napi_throw_error(env,"AUX_MEMORY_STOP_REFUSED","Memory stop owner is unavailable");return nullptr;}
+-  std::string_view selected(signal.data(),count);if(selected!="SIGTERM"&&selected!="SIGKILL"){napi_throw_error(env,"AUX_MEMORY_STOP_REFUSED","Unsupported fixed memory stop signal");return nullptr;}
++  if(!self||getpid()!=self->process_||argc!=1||napi_get_value_string_utf8(env,value,signal.data(),signal.size(),&count)!=napi_ok){napi_throw_error(env,"AUX_COMPUTER_USE_STOP_REFUSED","Computer Use stop owner is unavailable");return nullptr;}
++  std::string_view selected(signal.data(),count);if(selected!="SIGTERM"&&selected!="SIGKILL"){napi_throw_error(env,"AUX_COMPUTER_USE_STOP_REFUSED","Unsupported fixed computer-use stop signal");return nullptr;}
+   self->RequestStop(selected=="SIGKILL"?SIGKILL:SIGTERM);napi_value okay;napi_get_boolean(env,true,&okay);return okay;
+ }
+-napi_value AuxAccountMemoryProcess::Publish(napi_env env,napi_value callback) {
+-  napi_value name,object;napi_create_string_utf8(env,"Aux account memory",NAPI_AUTO_LENGTH,&name);
++napi_value AuxAccountComputerUseProcess::Publish(napi_env env,napi_value callback) {
++  napi_value name,object;napi_create_string_utf8(env,"Aux account computer-use",NAPI_AUTO_LENGTH,&name);
+   auto* events_hold=new JsHold{shared_from_this()};
+-  if(napi_create_threadsafe_function(env,callback,nullptr,name,64,1,events_hold,FinalizeEvents,events_hold,CallEvent,&events_)!=napi_ok){delete events_hold;throw std::runtime_error("Memory event owner is unavailable");}
++  if(napi_create_threadsafe_function(env,callback,nullptr,name,64,1,events_hold,FinalizeEvents,events_hold,CallEvent,&events_)!=napi_ok){delete events_hold;throw std::runtime_error("Computer Use event owner is unavailable");}
+   auto abort_unstarted=[&]{ {std::lock_guard<std::mutex> lock(mutex_);channel_released_=true;}napi_release_threadsafe_function(events_,napi_tsfn_abort);};
+-  if(napi_create_object(env,&object)!=napi_ok){abort_unstarted();throw std::runtime_error("Memory process wrapper is unavailable");}
++  if(napi_create_object(env,&object)!=napi_ok){abort_unstarted();throw std::runtime_error("Computer Use process wrapper is unavailable");}
+   auto* hold=new JsHold{shared_from_this()};
+-  if(napi_wrap(env,object,hold,FinalizeObject,nullptr,nullptr)!=napi_ok){delete hold;abort_unstarted();throw std::runtime_error("Memory process wrapper is unavailable");}
++  if(napi_wrap(env,object,hold,FinalizeObject,nullptr,nullptr)!=napi_ok){delete hold;abort_unstarted();throw std::runtime_error("Computer Use process wrapper is unavailable");}
+   const napi_property_descriptor fields[]={
+     {"write",nullptr,WriteInput,nullptr,nullptr,nullptr,napi_default,nullptr},
+     {"endInput",nullptr,EndInput,nullptr,nullptr,nullptr,napi_default,nullptr},
+     {"kill",nullptr,Kill,nullptr,nullptr,nullptr,napi_default,nullptr},
+     {"close",nullptr,Close,nullptr,nullptr,nullptr,napi_default,nullptr}};
+-  if(napi_define_properties(env,object,std::size(fields),fields)!=napi_ok||napi_object_freeze(env,object)!=napi_ok){abort_unstarted();throw std::runtime_error("Memory process methods are unavailable");}
++  if(napi_define_properties(env,object,std::size(fields),fields)!=napi_ok||napi_object_freeze(env,object)!=napi_ok){abort_unstarted();throw std::runtime_error("Computer Use process methods are unavailable");}
+   {
+     std::lock_guard<std::mutex> lock(Processes().mutex);
+-    if(Processes().values.size()>=64) {abort_unstarted();throw std::runtime_error("Native memory process limit reached");}
++    if(Processes().values.size()>=64) {abort_unstarted();throw std::runtime_error("Native computer-use process limit reached");}
+     Processes().values.emplace(this,shared_from_this());
+   }
+   try{thread_=std::thread([self=shared_from_this()]{self->Run();});}
+   catch(...){std::lock_guard<std::mutex> lock(Processes().mutex);Processes().values.erase(this);abort_unstarted();throw;}
+   return object;
+ }
+-void AuxAccountMemoryProcess::CallEvent(napi_env env,napi_value callback,void* context,void* data) {
++void AuxAccountComputerUseProcess::CallEvent(napi_env env,napi_value callback,void* context,void* data) {
+   std::unique_ptr<Event> event(static_cast<Event*>(data));
+   auto self=static_cast<JsHold*>(context)->value;
+   if(event->type=="stdout"||event->type=="stderr")self->data_events_.fetch_sub(1);
+@@ -473,12 +493,13 @@
+     bool settled;{std::lock_guard<std::mutex> lock(self->mutex_);settled=self->settled_;}
+     for(auto deferred:self->close_promises_){
+       if(settled)napi_resolve_deferred(env,deferred,undefined);
+-      else{napi_value message,error;napi_create_string_utf8(env,"Native memory cleanup remains unknown",NAPI_AUTO_LENGTH,&message);napi_create_error(env,nullptr,message,&error);napi_reject_deferred(env,deferred,error);}
++      else{napi_value message,error;napi_create_string_utf8(env,"Native computer-use cleanup remains unknown",NAPI_AUTO_LENGTH,&message);napi_create_error(env,nullptr,message,&error);napi_reject_deferred(env,deferred,error);}
+     }
+     self->close_promises_.clear();
++    if(!settled){napi_value message;napi_create_string_utf8(env,"Computer Use physical settlement remains unknown",NAPI_AUTO_LENGTH,&message);napi_value args[2];napi_create_string_utf8(env,"error",NAPI_AUTO_LENGTH,&args[0]);args[1]=message;napi_call_function(env,undefined,callback,2,args,nullptr);return;}
+   }
+   if(event->type=="error"||event->type=="close") {
+-    napi_value message,error;napi_create_string_utf8(env,"Memory process closed before write completion",NAPI_AUTO_LENGTH,&message);napi_create_error(env,nullptr,message,&error);
++    napi_value message,error;napi_create_string_utf8(env,"Computer Use process closed before write completion",NAPI_AUTO_LENGTH,&message);napi_create_error(env,nullptr,message,&error);
+     for(const auto& pending:self->promises_)napi_reject_deferred(env,pending.second,error);self->promises_.clear();
+     if(event->type=="error"){for(auto deferred:self->close_promises_)napi_reject_deferred(env,deferred,error);self->close_promises_.clear();}
+   }
+@@ -493,26 +514,28 @@
+   if(napi_call_function(env,undefined,callback,2,args,nullptr)!=napi_ok)self->RequestStop(SIGTERM,true);
+ }
+ 
+-napi_value AuxCreateAccountMemoryProcess(napi_env env,napi_callback_info info) {
+-  std::shared_ptr<AuxMemoryNativeOwner> owner;
++napi_value AuxCreateAccountComputerUseProcess(napi_env env,napi_callback_info info) {
++  std::shared_ptr<AuxComputerUseNativeOwner> owner;
+   try {
+-    size_t argc=2;napi_value args[2];napi_valuetype type;double numeric=0;
+-    if(napi_get_cb_info(env,info,&argc,args,nullptr,nullptr)!=napi_ok||argc!=2||
++    size_t argc=3;napi_value args[3];napi_valuetype type;double numeric=0;
++    if(napi_get_cb_info(env,info,&argc,args,nullptr,nullptr)!=napi_ok||argc!=3||
+       napi_typeof(env,args[0],&type)!=napi_ok||type!=napi_number||napi_get_value_double(env,args[0],&numeric)!=napi_ok||
+       !std::isfinite(numeric)||numeric<0||numeric>9'007'199'254'740'991.0||std::floor(numeric)!=numeric||
+-      napi_typeof(env,args[1],&type)!=napi_ok||type!=napi_function)throw std::runtime_error("Memory process arguments are invalid");
+-    owner=AuxMemoryNativeOwner::Capture(env,int64_t(numeric));
+-    if(!owner)throw std::runtime_error("Native registered account memory owner is unavailable");
+-    auto process=std::make_shared<AuxAccountMemoryProcess>(owner);
+-    return process->Publish(env,args[1]);
++      napi_typeof(env,args[2],&type)!=napi_ok||type!=napi_function)throw std::runtime_error("Computer Use process arguments are invalid");
++    bool buffer=false;void* bytes=nullptr;size_t count=0;
++    if(napi_is_buffer(env,args[1],&buffer)!=napi_ok||!buffer||napi_get_buffer_info(env,args[1],&bytes,&count)!=napi_ok||!bytes||!count||count>16384)throw std::runtime_error("Computer Use ownership snapshot is invalid");
++    owner=AuxComputerUseNativeOwner::Capture(env,int64_t(numeric),static_cast<const uint8_t*>(bytes),uint32_t(count));
++    if(!owner)throw std::runtime_error("Native registered account computer-use owner is unavailable");
++    auto process=std::make_shared<AuxAccountComputerUseProcess>(owner);
++    return process->Publish(env,args[2]);
+   }catch(const std::exception& error){
+     if(owner)owner->SettlePhysical(); // Publish did not start a child thread.
+-    napi_throw_error(env,"AUX_MEMORY_HELPER_UNAVAILABLE",error.what());return nullptr;
+-  }
+-}
+-AuxDevelopmentWorkerDrain AuxCloseAccountMemoryProcessesForWorker(const void* key) noexcept {
++    napi_throw_error(env,"AUX_COMPUTER_USE_HELPER_UNAVAILABLE",error.what());return nullptr;
++  }
++}
++AuxDevelopmentWorkerDrain AuxCloseAccountComputerUseProcessesForWorker(const void* key) noexcept {
+   try {
+-    std::vector<std::shared_ptr<AuxAccountMemoryProcess>> children;
++    std::vector<std::shared_ptr<AuxAccountComputerUseProcess>> children;
+     {std::lock_guard<std::mutex> lock(Processes().mutex);for(const auto& pair:Processes().values)if(pair.second->WorkerKey()==key)children.push_back(pair.second);}
+     auto result=AuxDevelopmentWorkerDrain::drained;
+     for(const auto& child:children){auto current=child->CloseAndDrain();if(current==AuxDevelopmentWorkerDrain::untracked)return current;if(current!=AuxDevelopmentWorkerDrain::drained)result=current;}
+@@ -520,28 +543,9 @@
+   }catch(...){return AuxDevelopmentWorkerDrain::untracked;}
+ }
+ 
+-void AuxRequestAccountMemoryStopForWorker(const void* key) noexcept {
+-  try{std::vector<std::shared_ptr<AuxAccountMemoryProcess>> children;
++void AuxRequestAccountComputerUseStopForWorker(const void* key) noexcept {
++  try{std::vector<std::shared_ptr<AuxAccountComputerUseProcess>> children;
+     {std::lock_guard<std::mutex> lock(Processes().mutex);for(const auto& pair:Processes().values)if(pair.second->WorkerKey()==key)children.push_back(pair.second);}
+     for(const auto& child:children)child->RequestStop();
+   }catch(...){} // Registry fence remains held; failure can never admit publication.
+ }
+-extern "C" __attribute__((visibility("hidden"))) int32_t AuxMemoryCopyCurrentLifetime(int32_t* pid,uint64_t* seconds,uint64_t* micros) {
+-  if(!pid||!seconds||!micros)return -1;*pid=-1;*seconds=0;*micros=0;
+-  proc_bsdinfo first{},second{};const pid_t current=getpid();
+-  if(current<=1||proc_pidinfo(current,PROC_PIDTBSDINFO,0,&first,sizeof(first))!=sizeof(first)||
+-     proc_pidinfo(current,PROC_PIDTBSDINFO,0,&second,sizeof(second))!=sizeof(second)||
+-     first.pbi_pid!=uint32_t(current)||second.pbi_pid!=first.pbi_pid||!first.pbi_start_tvsec||
+-     second.pbi_start_tvsec!=first.pbi_start_tvsec||second.pbi_start_tvusec!=first.pbi_start_tvusec||first.pbi_start_tvusec>=1000000)return -1;
+-  *pid=current;*seconds=first.pbi_start_tvsec;*micros=first.pbi_start_tvusec;return 0;
+-}
+-extern "C" __attribute__((visibility("hidden"))) int32_t AuxMemoryCopyStoppedChildLifetime(int32_t pid,uint64_t* seconds,uint64_t* micros) {
+-  if(!seconds||!micros)return -1;*seconds=0;*micros=0;
+-  proc_bsdinfo first{},second{};const pid_t parent=getpid();
+-  if(pid<=1||proc_pidinfo(pid,PROC_PIDTBSDINFO,0,&first,sizeof(first))!=sizeof(first)||
+-     proc_pidinfo(pid,PROC_PIDTBSDINFO,0,&second,sizeof(second))!=sizeof(second)||first.pbi_pid!=uint32_t(pid)||
+-     first.pbi_ppid!=uint32_t(parent)||second.pbi_ppid!=first.pbi_ppid||second.pbi_pid!=first.pbi_pid||
+-     first.pbi_status!=SSTOP||second.pbi_status!=SSTOP||!first.pbi_start_tvsec||first.pbi_start_tvusec>=1000000||
+-     second.pbi_start_tvsec!=first.pbi_start_tvsec||second.pbi_start_tvusec!=first.pbi_start_tvusec)return -1;
+-  *seconds=first.pbi_start_tvsec;*micros=first.pbi_start_tvusec;return 0;
+-}
+--- AuxMemoryMainOwner.inc
++++ AuxComputerUseMainOwner.inc
+@@ -1,9 +1,9 @@
+ // Include at global scope after the real host's private Worker definitions.
+-#include "AuxRegisteredMemoryAccountOwner.h"
++#include "AuxSelectedAccountScope.h"
+ // Native-only sealed control-root metadata; this is not a launch admission API.
+ extern "C" int32_t AuxCopyAuthenticatedMemoryControlParent(
+     char* output, uint32_t capacity, uint32_t* count_including_nul);
+-struct AuxMemoryNativeOwner::State {
++struct AuxComputerUseNativeOwner::State {
+   const pid_t process = getpid();
+   std::shared_ptr<Worker> worker;
+   std::shared_ptr<Owner> owner;
+@@ -11,10 +11,10 @@
+   bool released = false;
+   std::mutex mutex;
+ };
+-AuxMemoryNativeOwner::AuxMemoryNativeOwner(std::shared_ptr<State> state)
++AuxComputerUseNativeOwner::AuxComputerUseNativeOwner(std::shared_ptr<State> state)
+     : state_(std::move(state)) {}
+-AuxMemoryNativeOwner::~AuxMemoryNativeOwner() = default;
+-std::shared_ptr<AuxMemoryNativeOwner> AuxMemoryNativeOwner::Capture(napi_env env, int64_t account) {
++AuxComputerUseNativeOwner::~AuxComputerUseNativeOwner() = default;
++std::shared_ptr<AuxComputerUseNativeOwner> AuxComputerUseNativeOwner::Capture(napi_env env, int64_t account, const uint8_t* expected, uint32_t count) {
+   if (!kBrowserOnlyNativeStartup || getpid() != kHostProcess || account < 0 ||
+       account > 9'007'199'254'740'991LL) return {};
+   auto* isolate = v8::Isolate::GetCurrent();
+@@ -37,14 +37,14 @@
+     state->worker = worker;
+     state->owner = worker->owner;
+   }
+-  if (AuxCaptureRegisteredMemoryAccount(state->owner->handle, account,
+-                                       &state->account_owner) != 0 || !state->account_owner)
++  if (AuxCaptureSelectedAccount(state->owner->handle, account, expected, count,
++                                  &state->account_owner) != 0 || !state->account_owner)
+     return {};
+-  auto result = std::shared_ptr<AuxMemoryNativeOwner>(new AuxMemoryNativeOwner(state));
++  auto result = std::shared_ptr<AuxComputerUseNativeOwner>(new AuxComputerUseNativeOwner(state));
+   if (!result->Current()) { result->SettlePhysical(); return {}; } // No child can exist yet.
+   return result;
+ }
+-bool AuxMemoryNativeOwner::Current() const {
++bool AuxComputerUseNativeOwner::Current() const {
+   if (getpid() != state_->process) return false;
+   {
+     std::lock_guard<std::mutex> lock(state_->mutex);
+@@ -56,46 +56,47 @@
+     if (!worker.ordinary_main_service || worker.terminal || worker.initializing ||
+         worker.environment_detached || worker.owner != state_->owner) return false;
+   }
+-  return AuxValidateRegisteredMemoryAccount(state_->owner->handle, state_->account_owner) == 0;
++  return AuxSelectedAccountStopRequested(state_->owner->handle, state_->account_owner) == 0 &&
++      AuxValidateSelectedAccount(state_->owner->handle, state_->account_owner) == 0;
+ }
+-int AuxMemoryNativeOwner::DuplicateMemoryDirectory() const {
++int AuxComputerUseNativeOwner::DuplicateTaskAccountDirectory() const {
+   if (!Current()) return -1;
+   int32_t descriptor = -1;
+-  if (AuxCopyRegisteredMemoryDirectory(state_->owner->handle, state_->account_owner,
+-                                     &descriptor) != 0) {
++  if (AuxCopySelectedAccountDirectory(state_->owner->handle, state_->account_owner, 2,
++                                      &descriptor) != 0) {
+     if (descriptor >= 0) close(descriptor);
+     return -1;
+   }
+   if (!Current()) { close(descriptor); return -1; }
+   return descriptor;
+ }
+-bool AuxMemoryNativeOwner::CopyStorageRoots(int32_t* control, int32_t* task, uint64_t* generation) const {
++bool AuxComputerUseNativeOwner::CopyStorageRoots(int32_t* control, int32_t* task, uint64_t* generation) const {
+   if (!control || !task || !generation) return false;
+   *control = -1; *task = -1; *generation = 0;
+   if (!Current() || AuxNativeContextCopyStorageRoots(state_->owner->handle, generation,
+                                                    control, task) != 0) return false;
+   return *control >= 0 && *task >= 0 && *control != *task && *generation && Current();
+ }
+-bool AuxMemoryNativeOwner::CopyBrowserRoot(uint32_t role, int32_t* descriptor, uint64_t* generation) const {
++bool AuxComputerUseNativeOwner::CopyBrowserRoot(uint32_t role, int32_t* descriptor, uint64_t* generation) const {
+   if (!descriptor || !generation) return false;
+   *descriptor = -1; *generation = 0;
+   return Current() && AuxNativeContextCopyBrowserRoot(state_->owner->handle, role,
+                                                     generation, descriptor) == 0 &&
+       *descriptor >= 0 && *generation && Current();
+ }
+-bool AuxMemoryNativeOwner::CopyPrivateParent(char* output, uint32_t capacity, uint32_t* count) const {
++bool AuxComputerUseNativeOwner::CopyPrivateParent(char* output, uint32_t capacity, uint32_t* count) const {
+   return Current() && AuxCopyAuthenticatedMemoryControlParent(output, capacity, count) == 0 && Current();
+ }
+-const void* AuxMemoryNativeOwner::WorkerKey() const { return state_->worker.get(); }
+-bool AuxMemoryNativeOwner::PrepareLaunch() {
+-  return Current() && AuxPrepareMemoryAccountLaunch(state_->owner->handle,state_->account_owner)==0;
++const void* AuxComputerUseNativeOwner::WorkerKey() const { return state_->worker.get(); }
++bool AuxComputerUseNativeOwner::PrepareLaunch() {
++  return Current() && AuxPrepareComputerUseAccountLaunch(state_->owner->handle,state_->account_owner)==0;
+ }
+-bool AuxMemoryNativeOwner::PublishSuspended(pid_t pid) {
+-  return Current() && AuxPublishSuspendedMemoryAccountLaunch(state_->owner->handle,state_->account_owner,pid)==0 && Current();
++bool AuxComputerUseNativeOwner::PublishSuspended(pid_t pid) {
++  return Current() && AuxPublishSuspendedComputerUseAccountLaunch(state_->owner->handle,state_->account_owner,pid)==0 && Current();
+ }
+ // Caller already holds this exact helper's durable prepared/spawned lease.
+ // No Swift/JS/provider callback crosses the native Worker admission lock.
+-int AuxMemoryNativeOwner::SpawnStoppedAfterPrepared(pid_t* pid,
++int AuxComputerUseNativeOwner::SpawnStoppedAfterPrepared(pid_t* pid,
+     const posix_spawn_file_actions_t* actions,const posix_spawnattr_t* attributes,
+     char* const argv[],char* const environment[]) const {
+   if(getpid()!=state_->process)return ECANCELED;
+@@ -105,14 +106,14 @@
+       worker.environment_detached||worker.owner!=state_->owner)return ECANCELED;
+   return posix_spawn(pid,"/usr/bin/sandbox-exec",actions,attributes,argv,environment);
+ }
+-bool AuxMemoryNativeOwner::ResumeStoppedAfterPublished(pid_t pid) const {
++bool AuxComputerUseNativeOwner::ResumeStoppedAfterPublished(pid_t pid) const {
+   if(getpid()!=state_->process||pid<=1)return false;
+   std::lock_guard<std::mutex> lock(state_->worker->mutex);
+   const auto& worker=*state_->worker;
+   return worker.ordinary_main_service&&!worker.terminal&&!worker.initializing&&
+       !worker.environment_detached&&worker.owner==state_->owner&&kill(pid,SIGCONT)==0;
+ }
+-bool AuxMemoryNativeOwner::SettlePhysical(pid_t pid,int wait_status,int spawn_error) {
++bool AuxComputerUseNativeOwner::SettlePhysical(pid_t pid,int wait_status,int spawn_error) {
+   if (getpid() != state_->process) return false;
+   uint64_t lease = 0;
+   {
+@@ -122,51 +123,9 @@
+   }
+   // Only fixed process owner invokes this after native no-child proof or the
+   // original reaper+stdio closure+thread join. A JS ACK never reaches it.
+-  if (AuxObserveMemoryAccountTerminal(state_->owner->handle,lease,pid,wait_status,spawn_error)!=0 ||
+-      AuxReleaseRegisteredMemoryAccount(state_->owner->handle, lease) != 0) return false;
++  if (AuxObserveComputerUseAccountTerminal(state_->owner->handle,lease,pid,wait_status,spawn_error)!=0 ||
++      AuxReleaseRegisteredComputerUseAccount(state_->owner->handle, lease) != 0) return false;
+   std::lock_guard<std::mutex> lock(state_->mutex);
+   state_->released = true;
+   return true;
+ }
+-static napi_value MemoryRegistryTarget(napi_env env,napi_callback_info info,bool finish) {
+-  auto refuse = [env]() -> napi_value {
+-    napi_throw_error(env, "AUX_MEMORY_ACCOUNT_PUBLICATION_BUSY",
+-        "Account memory is still closing or its native registry owner is unavailable");
+-    return nullptr;
+-  };
+-  if (!kBrowserOnlyNativeStartup || getpid() != kHostProcess) return refuse();
+-  size_t argc = 1; napi_value value;
+-  if (napi_get_cb_info(env, info, &argc, &value, nullptr, nullptr) != napi_ok || argc != 1)
+-    return refuse();
+-  bool buffer = false; void* data = nullptr; size_t count = 0;
+-  if (napi_is_buffer(env, value, &buffer) != napi_ok || !buffer ||
+-      napi_get_buffer_info(env, value, &data, &count) != napi_ok || !data ||
+-      !count || count > 4 * 1024 * 1024) return refuse();
+-  auto* isolate = v8::Isolate::GetCurrent();
+-  if (!isolate || isolate->GetCurrentContext().IsEmpty()) return refuse();
+-  auto* environment = node::GetCurrentEnvironment(isolate->GetCurrentContext());
+-  if (!environment || !SameRuntimeEnvironment(env, environment, isolate)) return refuse();
+-  std::shared_ptr<Worker> worker;
+-  {
+-    std::lock_guard<std::mutex> lock(Registry().mutex);
+-    const auto found = Registry().active.find(environment);
+-    if (found == Registry().active.end()) return refuse();
+-    worker = found->second;
+-  }
+-  std::shared_ptr<Owner> owner;
+-  {
+-    std::lock_guard<std::mutex> lock(worker->mutex);
+-    if (!worker->ordinary_main_service || !CurrentWorker(*worker) || worker->terminal ||
+-        worker->initializing || worker->environment_detached || !worker->owner) return refuse();
+-    owner = worker->owner;
+-  }
+-  const int32_t status=finish
+-      ? AuxFinishRegisteredMemoryRegistryTarget(owner->handle,static_cast<const uint8_t*>(data),static_cast<uint32_t>(count))
+-      : AuxValidateRegisteredMemoryRegistryTarget(owner->handle,static_cast<const uint8_t*>(data),static_cast<uint32_t>(count));
+-  if(status!=0){if(!finish&&status==1)AuxRequestAccountMemoryStopForWorker(worker.get());return refuse();}
+-  napi_value result;
+-  return napi_get_undefined(env, &result) == napi_ok ? result : nullptr;
+-}
+-
+-napi_value AuxValidateMemoryRegistryTarget(napi_env env,napi_callback_info info){return MemoryRegistryTarget(env,info,false);}
+-napi_value AuxFinishMemoryRegistryTarget(napi_env env,napi_callback_info info){return MemoryRegistryTarget(env,info,true);}
+--- AuxMemoryHelperJournal.swift
++++ AuxComputerUseHelperJournal.swift
+@@ -1,4 +1,4 @@
+-// One finite helper lease journal. No caller paths, roots or readiness flags.
++// One finite Computer Use helper lease journal. No caller paths, roots or readiness flags.
+ import Foundation
+ import CryptoKit
+ import Darwin
+@@ -6,8 +6,8 @@
+ @_silgen_name("AuxCopyOrdinaryBrowserParentLifetime") private func memoryBrowserLifetime(_ pid:UnsafeMutablePointer<Int32>,_ seconds:UnsafeMutablePointer<UInt64>,_ micros:UnsafeMutablePointer<UInt64>)->Int32
+ @_silgen_name("AuxMemoryCopyStoppedChildLifetime") private func memoryStoppedLifetime(_ pid:Int32,_ seconds:UnsafeMutablePointer<UInt64>,_ micros:UnsafeMutablePointer<UInt64>)->Int32
+ 
+-enum AuxMemoryJournalError:Error {case unavailable,unknown,conflict}
+-final class AuxMemoryHelperJournal {
++enum AuxComputerUseJournalError:Error {case unavailable,unknown,conflict}
++final class AuxComputerUseHelperJournal {
+     private let process=getpid()
+     private let root:Int32
+     private var directory:Int32 = -1
+@@ -18,22 +18,22 @@
+     private var child:[String:String]?
+     private var unknown=false
+     private var retired=false
+-    private static let leaf=".aux-memory-helper-lifetimes.v1"
+-    init(owner:AuxRegisteredMemoryAccountOwner,context:NativeFreshRuntimeCapturedContext)throws {
++    private static let leaf=".aux-computer-use-helper-lifetimes.v1"
++    init(owner:AuxSelectedAccountOwner,context:NativeFreshRuntimeCapturedContext)throws {
+         let journal=context.owner.journal
+         guard let transaction=UUID(uuidString:journal.reservationTransactionId),owner.transportGeneration>0,
+               [journal.scope,journal.reservationSha256,journal.policySha256].allSatisfy({$0.count==64&&$0.allSatisfy{"0123456789abcdef".contains($0)}})
+-        else{throw AuxMemoryJournalError.unavailable}
++        else{throw AuxComputerUseJournalError.unavailable}
+         root=try owner.duplicateTaskRootDirectory()
+         func lifetime(_ browser:Bool)throws->[String:String] {
+             var pid:Int32 = -1,seconds:UInt64=0,micros:UInt64=0
+             let status=browser ? memoryBrowserLifetime(&pid,&seconds,&micros):memoryCurrentLifetime(&pid,&seconds,&micros)
+-            guard status==0,pid>1,seconds>0,micros<1_000_000 else{throw AuxMemoryJournalError.unavailable}
++            guard status==0,pid>1,seconds>0,micros<1_000_000 else{throw AuxComputerUseJournalError.unavailable}
+             return ["pid":String(pid),"seconds":String(seconds),"microseconds":String(micros)]
+         }
+         func hex(_ value:Data)->String{value.map{String(format:"%02x",$0)}.joined()}
+         do {
+-            base=["format":"aux.memory.helper-lifetime.v1","leaseId":leaseId,
++            base=["format":"aux.computer-use.helper-lifetime.v1","leaseId":leaseId,
+                   "controlScope":journal.scope,"controlTransactionId":transaction.uuidString,
+                   "controlReservationSha256":journal.reservationSha256,"policySha256":journal.policySha256,
+                   "transportGeneration":String(owner.transportGeneration),"accountId":String(owner.identity.accountId),
+@@ -47,75 +47,75 @@
+         var value=stat()
+         guard fstat(fd,&value)==0,(value.st_mode&S_IFMT)==(directory ? S_IFDIR:S_IFREG),value.st_uid==geteuid(),
+               value.st_mode&0o7777==(directory ? 0o700:0o600),directory || (value.st_nlink==1&&value.st_size>0&&value.st_size<=16_384)
+-        else{throw AuxMemoryJournalError.unavailable}
++        else{throw AuxComputerUseJournalError.unavailable}
+         errno=0;let captured=acl_get_fd_np(fd,ACL_TYPE_EXTENDED)
+         if captured==nil&&errno==ENOENT{return value}
+-        guard let acl=captured else{throw AuxMemoryJournalError.unavailable};defer{acl_free(UnsafeMutableRawPointer(acl))}
++        guard let acl=captured else{throw AuxComputerUseJournalError.unavailable};defer{acl_free(UnsafeMutableRawPointer(acl))}
+         var entry:acl_entry_t?;errno=0
+-        guard acl_valid(acl)==0,acl_get_entry(acl,0,&entry)==(-1),errno==EINVAL,entry==nil else{throw AuxMemoryJournalError.unavailable}
++        guard acl_valid(acl)==0,acl_get_entry(acl,0,&entry)==(-1),errno==EINVAL,entry==nil else{throw AuxComputerUseJournalError.unavailable}
+         return value
+     }
+     private func directoryCurrent()throws {
+-        guard getpid()==process,directory>=0 else{throw AuxMemoryJournalError.unavailable}
++        guard getpid()==process,directory>=0 else{throw AuxComputerUseJournalError.unavailable}
+         _ = try safe(root,directory:true);let held=try safe(directory,directory:true);var named=stat()
+-        guard fstatat(root,Self.leaf,&named,AT_SYMLINK_NOFOLLOW)==0,named.st_dev==held.st_dev,named.st_ino==held.st_ino else{throw AuxMemoryJournalError.conflict}
++        guard fstatat(root,Self.leaf,&named,AT_SYMLINK_NOFOLLOW)==0,named.st_dev==held.st_dev,named.st_ino==held.st_ino else{throw AuxComputerUseJournalError.conflict}
+     }
+     private func read()throws->Data {
+         try directoryCurrent()
+         let fd=openat(directory,leaseId+".json",O_RDONLY|O_NOFOLLOW|O_NONBLOCK|O_CLOEXEC)
+-        guard fd>=0 else{throw AuxMemoryJournalError.unavailable};defer{close(fd)}
++        guard fd>=0 else{throw AuxComputerUseJournalError.unavailable};defer{close(fd)}
+         let before=try safe(fd,directory:false);var named=stat()
+-        guard fstatat(directory,leaseId+".json",&named,AT_SYMLINK_NOFOLLOW)==0,named.st_dev==before.st_dev,named.st_ino==before.st_ino else{throw AuxMemoryJournalError.conflict}
++        guard fstatat(directory,leaseId+".json",&named,AT_SYMLINK_NOFOLLOW)==0,named.st_dev==before.st_dev,named.st_ino==before.st_ino else{throw AuxComputerUseJournalError.conflict}
+         var bytes=Data(count:Int(before.st_size)),offset=0
+-        while offset<bytes.count{let amount=bytes.withUnsafeMutableBytes{Darwin.read(fd,$0.baseAddress!.advanced(by:offset),$0.count-offset)};if amount<0&&errno==EINTR{continue};guard amount>0 else{throw AuxMemoryJournalError.unavailable};offset += amount}
++        while offset<bytes.count{let amount=bytes.withUnsafeMutableBytes{Darwin.read(fd,$0.baseAddress!.advanced(by:offset),$0.count-offset)};if amount<0&&errno==EINTR{continue};guard amount>0 else{throw AuxComputerUseJournalError.unavailable};offset += amount}
+         let after=try safe(fd,directory:false)
+         guard before.st_dev==after.st_dev,before.st_ino==after.st_ino,before.st_size==after.st_size,
+               before.st_mtimespec.tv_sec==after.st_mtimespec.tv_sec,before.st_mtimespec.tv_nsec==after.st_mtimespec.tv_nsec,
+-              before.st_ctimespec.tv_sec==after.st_ctimespec.tv_sec,before.st_ctimespec.tv_nsec==after.st_ctimespec.tv_nsec else{throw AuxMemoryJournalError.conflict}
++              before.st_ctimespec.tv_sec==after.st_ctimespec.tv_sec,before.st_ctimespec.tv_nsec==after.st_ctimespec.tv_nsec else{throw AuxComputerUseJournalError.conflict}
+         _ = try strictEnvelopeObject(bytes);try directoryCurrent();return bytes
+     }
+     private func publish(_ next:[String:Any],phase nextPhase:String)throws {
+-        guard !unknown else{throw AuxMemoryJournalError.unknown}
++        guard !unknown else{throw AuxComputerUseJournalError.unknown}
+         try directoryCurrent()
+-        if let recorded{guard try read()==recorded else{throw AuxMemoryJournalError.conflict}}
+-        else{var entry=stat();guard fstatat(directory,leaseId+".json",&entry,AT_SYMLINK_NOFOLLOW)<0,errno==ENOENT else{throw AuxMemoryJournalError.conflict}}
++        if let recorded{guard try read()==recorded else{throw AuxComputerUseJournalError.conflict}}
++        else{var entry=stat();guard fstatat(directory,leaseId+".json",&entry,AT_SYMLINK_NOFOLLOW)<0,errno==ENOENT else{throw AuxComputerUseJournalError.conflict}}
+         let bytes=try JSONSerialization.data(withJSONObject:next,options:[.sortedKeys,.withoutEscapingSlashes])
+-        guard bytes.count>0,bytes.count<=16_384 else{throw AuxMemoryJournalError.unavailable}
++        guard bytes.count>0,bytes.count<=16_384 else{throw AuxComputerUseJournalError.unavailable}
+         let temporary="."+leaseId+"-"+UUID().uuidString.lowercased()+".next"
+         unknown=true // Retain any failed/lost filesystem mutation; no replay.
+         let fd=openat(directory,temporary,O_WRONLY|O_CREAT|O_EXCL|O_NOFOLLOW|O_CLOEXEC,0o600)
+-        guard fd>=0 else{throw AuxMemoryJournalError.unknown}
++        guard fd>=0 else{throw AuxComputerUseJournalError.unknown}
+         do {
+             var offset=0
+-            while offset<bytes.count{let amount=bytes.withUnsafeBytes{Darwin.write(fd,$0.baseAddress!.advanced(by:offset),$0.count-offset)};if amount<0&&errno==EINTR{continue};guard amount>0 else{throw AuxMemoryJournalError.unknown};offset += amount}
+-            guard fsync(fd)==0 else{throw AuxMemoryJournalError.unknown}
++            while offset<bytes.count{let amount=bytes.withUnsafeBytes{Darwin.write(fd,$0.baseAddress!.advanced(by:offset),$0.count-offset)};if amount<0&&errno==EINTR{continue};guard amount>0 else{throw AuxComputerUseJournalError.unknown};offset += amount}
++            guard fsync(fd)==0 else{throw AuxComputerUseJournalError.unknown}
+             close(fd)
+         }catch{close(fd);throw error}
+-        guard renameat(directory,temporary,directory,leaseId+".json")==0,fsync(directory)==0 else{throw AuxMemoryJournalError.unknown}
+-        guard try read()==bytes else{throw AuxMemoryJournalError.unknown}
++        guard renameat(directory,temporary,directory,leaseId+".json")==0,fsync(directory)==0 else{throw AuxComputerUseJournalError.unknown}
++        guard try read()==bytes else{throw AuxComputerUseJournalError.unknown}
+         recorded=bytes;phase=nextPhase;unknown=false
+     }
+     func prepare()throws {
+-        guard getpid()==process,!unknown else{throw AuxMemoryJournalError.unknown}
+-        if let recorded{guard phase=="prepared",try read()==recorded else{throw AuxMemoryJournalError.conflict};return}
++        guard getpid()==process,!unknown else{throw AuxComputerUseJournalError.unknown}
++        if let recorded{guard phase=="prepared",try read()==recorded else{throw AuxComputerUseJournalError.conflict};return}
+         // Actual retained task root only. No account/profile directory scan.
+-        if mkdirat(root,Self.leaf,0o700)<0&&errno != EEXIST{unknown=true;throw AuxMemoryJournalError.unknown}
++        if mkdirat(root,Self.leaf,0o700)<0&&errno != EEXIST{unknown=true;throw AuxComputerUseJournalError.unknown}
+         directory=openat(root,Self.leaf,O_RDONLY|O_DIRECTORY|O_NOFOLLOW|O_CLOEXEC)
+-        guard directory>=0 else{unknown=true;throw AuxMemoryJournalError.unknown}
++        guard directory>=0 else{unknown=true;throw AuxComputerUseJournalError.unknown}
+         try directoryCurrent()
+         let cursor=openat(directory,".",O_RDONLY|O_DIRECTORY|O_NOFOLLOW|O_CLOEXEC)
+-        guard cursor>=0,let stream=fdopendir(cursor) else{if cursor>=0{close(cursor)};throw AuxMemoryJournalError.unavailable};defer{closedir(stream)}
++        guard cursor>=0,let stream=fdopendir(cursor) else{if cursor>=0{close(cursor)};throw AuxComputerUseJournalError.unavailable};defer{closedir(stream)}
+         var count=0
+         errno=0
+-        while let row=readdir(stream){let name=withUnsafePointer(to:&row.pointee.d_name){$0.withMemoryRebound(to:CChar.self,capacity:256){String(cString:$0)}};if name=="."||name==".."{continue};count += 1;guard count<256 else{throw AuxMemoryJournalError.unavailable};errno=0}
+-        guard errno==0 else{throw AuxMemoryJournalError.unavailable}
++        while let row=readdir(stream){let name=withUnsafePointer(to:&row.pointee.d_name){$0.withMemoryRebound(to:CChar.self,capacity:256){String(cString:$0)}};if name=="."||name==".."{continue};count += 1;guard count<256 else{throw AuxComputerUseJournalError.unavailable};errno=0}
++        guard errno==0 else{throw AuxComputerUseJournalError.unavailable}
+         var next=base;next["phase"]="prepared";try publish(next,phase:"prepared")
+-        guard fsync(root)==0 else{unknown=true;throw AuxMemoryJournalError.unknown}
++        guard fsync(root)==0 else{unknown=true;throw AuxComputerUseJournalError.unknown}
+     }
+     func publishSuspended(_ pid:Int32)throws {
+-        guard getpid()==process,!unknown,phase=="prepared",let recorded,try read()==recorded else{throw AuxMemoryJournalError.conflict}
++        guard getpid()==process,!unknown,phase=="prepared",let recorded,try read()==recorded else{throw AuxComputerUseJournalError.conflict}
+         var seconds:UInt64=0,micros:UInt64=0
+-        guard memoryStoppedLifetime(pid,&seconds,&micros)==0,pid>1,seconds>0,micros<1_000_000 else{throw AuxMemoryJournalError.unavailable}
++        guard memoryStoppedLifetime(pid,&seconds,&micros)==0,pid>1,seconds>0,micros<1_000_000 else{throw AuxComputerUseJournalError.unavailable}
+         let facts=["pid":String(pid),"seconds":String(seconds),"microseconds":String(micros)]
+         child=facts
+         var next=base;next["phase"]="spawned";next["helper"]=facts;try publish(next,phase:"spawned")
+@@ -123,34 +123,34 @@
+     // Invoked only by joined native process owner after exact original wait and
+     // closed stdio, or definite native no-child spawn failure. No JS endpoint.
+     func terminal(pid:Int32,waitStatus:Int32,spawnError:Int32)throws {
+-        guard getpid()==process,!unknown else{throw AuxMemoryJournalError.unknown}
++        guard getpid()==process,!unknown else{throw AuxComputerUseJournalError.unknown}
+         if retired{return}
+-        if phase=="reaped"||phase=="not-spawned"{guard let recorded,try read()==recorded else{throw AuxMemoryJournalError.conflict};try retireTerminal();return}
++        if phase=="reaped"||phase=="not-spawned"{guard let recorded,try read()==recorded else{throw AuxComputerUseJournalError.conflict};try retireTerminal();return}
+         if recorded==nil,phase.isEmpty,pid==0,spawnError>0,waitStatus==0 {
+             try directoryCurrent();var named=stat()
+-            guard fstatat(directory,leaseId+".json",&named,AT_SYMLINK_NOFOLLOW)<0,errno==ENOENT else{throw AuxMemoryJournalError.conflict}
++            guard fstatat(directory,leaseId+".json",&named,AT_SYMLINK_NOFOLLOW)<0,errno==ENOENT else{throw AuxComputerUseJournalError.conflict}
+             retired=true;return // Definite original no-spawn; no journal mutation was issued.
+         }
+         var next=base
+         if pid>1 {
+-            guard phase=="spawned",let child,child["pid"]==String(pid),waitStatus>=0,spawnError==0 else{throw AuxMemoryJournalError.conflict}
++            guard phase=="spawned",let child,child["pid"]==String(pid),waitStatus>=0,spawnError==0 else{throw AuxComputerUseJournalError.conflict}
+             next["phase"]="reaped";next["helper"]=child;next["waitStatus"]=String(waitStatus);try publish(next,phase:"reaped")
+         }else {
+-            guard phase=="prepared",child==nil,spawnError>0,waitStatus==0 else{throw AuxMemoryJournalError.conflict}
++            guard phase=="prepared",child==nil,spawnError>0,waitStatus==0 else{throw AuxComputerUseJournalError.conflict}
+             next["phase"]="not-spawned";next["spawnError"]=String(spawnError);try publish(next,phase:"not-spawned")
+         }
+         try retireTerminal()
+     }
+     private func retireTerminal()throws {
+-        guard !unknown,!retired,phase=="reaped"||phase=="not-spawned",let recorded,try read()==recorded else{throw AuxMemoryJournalError.conflict}
++        guard !unknown,!retired,phase=="reaped"||phase=="not-spawned",let recorded,try read()==recorded else{throw AuxComputerUseJournalError.conflict}
+         let fd=openat(directory,leaseId+".json",O_RDONLY|O_NOFOLLOW|O_NONBLOCK|O_CLOEXEC)
+-        guard fd>=0 else{throw AuxMemoryJournalError.unknown};defer{close(fd)}
++        guard fd>=0 else{throw AuxComputerUseJournalError.unknown};defer{close(fd)}
+         let held=try safe(fd,directory:false);var named=stat()
+-        guard fstatat(directory,leaseId+".json",&named,AT_SYMLINK_NOFOLLOW)==0,named.st_dev==held.st_dev,named.st_ino==held.st_ino,try read()==recorded else{throw AuxMemoryJournalError.conflict}
++        guard fstatat(directory,leaseId+".json",&named,AT_SYMLINK_NOFOLLOW)==0,named.st_dev==held.st_dev,named.st_ino==held.st_ino,try read()==recorded else{throw AuxComputerUseJournalError.conflict}
+         unknown=true
+-        guard unlinkat(directory,leaseId+".json",0)==0,fsync(directory)==0 else{throw AuxMemoryJournalError.unknown}
++        guard unlinkat(directory,leaseId+".json",0)==0,fsync(directory)==0 else{throw AuxComputerUseJournalError.unknown}
+         try directoryCurrent()
+-        guard fstatat(directory,leaseId+".json",&named,AT_SYMLINK_NOFOLLOW)<0,errno==ENOENT else{throw AuxMemoryJournalError.unknown}
++        guard fstatat(directory,leaseId+".json",&named,AT_SYMLINK_NOFOLLOW)<0,errno==ENOENT else{throw AuxComputerUseJournalError.unknown}
+         retired=true;unknown=false
+     }
+     func canRelease()throws->Bool {

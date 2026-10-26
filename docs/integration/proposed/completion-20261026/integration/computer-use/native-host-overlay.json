@@ -1,0 +1,31 @@
+{
+  "format": "aux.fixed-computer-use.native-host-overlay.v1",
+  "source": "/private/tmp/aux-browser-only-daemon-build-20261025-a72/source/AuxDevelopmentWorkerHost.cc",
+  "sourceSha256": "9fe8fdd273794d704626286c1ae7026af33d89c5fd082e986a1da14429421caf",
+  "rules": [
+    {
+      "scope": "fixed Computer Use process declarations",
+      "find": "#include \"AuxAccountMemoryHelper.h\"",
+      "replace": "#include \"AuxAccountMemoryHelper.h\"\n#include \"AuxAccountComputerUseHelper.h\"",
+      "count": 1
+    },
+    {
+      "scope": "fixed Computer Use actual Environment owner implementation",
+      "find": "#include \"AuxMemoryMainOwner.inc\"",
+      "replace": "#include \"AuxMemoryMainOwner.inc\"\n#include \"AuxComputerUseMainOwner.inc\"",
+      "count": 1
+    },
+    {
+      "scope": "immutable fixed Computer Use NAPI factory",
+      "find": "{\"createAccountMemoryProcess\",nullptr,AuxCreateAccountMemoryProcess,nullptr,nullptr,nullptr,napi_default,nullptr},",
+      "replace": "{\"createAccountMemoryProcess\",nullptr,AuxCreateAccountMemoryProcess,nullptr,nullptr,nullptr,napi_default,nullptr},\n      {\"createAccountComputerUseProcess\",nullptr,AuxCreateAccountComputerUseProcess,nullptr,nullptr,nullptr,napi_default,nullptr},",
+      "count": 1
+    },
+    {
+      "scope": "actual Worker close retains Computer Use physical ownership",
+      "find": "const auto memory_drain=AuxCloseAccountMemoryProcessesForWorker(this);",
+      "replace": "const auto memory_drain=AuxMergeWorkerDrain(AuxCloseAccountMemoryProcessesForWorker(this),AuxCloseAccountComputerUseProcessesForWorker(this));",
+      "count": 1
+    }
+  ]
+}

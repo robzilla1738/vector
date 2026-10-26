@@ -1,0 +1,145 @@
+{
+  "format": "aux.computer-use.static-subprocess.v1",
+  "helper": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-local-completion-20261025-a38/Aux.app/Contents/Resources/aux/apps/computer-use/Aux Computer Use.app/Contents/MacOS/aux-computer-use",
+  "sha256": "debc03deb3f94eb7e8b50fa88d25e617f970b75f1e515b757b131655ad3dde51",
+  "provider": "ordinary-shell-otool-nm-swift-demangle",
+  "observedCalls": [
+    {
+      "function": "AuxilComputerUse.executeHelperCommand(Swift.String, [Swift.String : Any]) throws -> Any",
+      "instruction": "0000000100006ff8\tbl\t_$s16AuxilComputerUse19checkMacPermissionsAA0E16PermissionStatusVyF"
+    },
+    {
+      "function": "AuxilComputerUse.(listInstalledApplications in _E19A43D372CF07740DF68AD70C212A40)() -> [[Swift.String : Any]]",
+      "instruction": "0000000100008eac\tbl\t_objc_msgSend$homeDirectoryForCurrentUser"
+    },
+    {
+      "function": "one-time initialization function for (messagesChatDB in _167D31AF64964FE9467574ED5DB2E033)",
+      "instruction": "000000010000ea50\tbl\t_objc_msgSend$homeDirectoryForCurrentUser"
+    },
+    {
+      "function": "one-time initialization function for (messagesChatDB in _167D31AF64964FE9467574ED5DB2E033)",
+      "instruction": "000000010000ea80\tadd\tx8, x8, #0xcf0 ; literal pool for: \"Library/Messages/chat.db\""
+    },
+    {
+      "function": "AuxilComputerUse.MessagesPermissionController.(refreshPermissionRows in _105413AEFFA5D0A4CCB230C499371120)() -> ()",
+      "instruction": "000000010000f708\tbl\t_$s16AuxilComputerUse19checkMacPermissionsAA0E16PermissionStatusVyF"
+    },
+    {
+      "function": "AuxilComputerUse.reexecDisclaimedIfNeeded() -> ()",
+      "instruction": "0000000100011cd0\tbl\t0x100151f54 ; symbol stub for: _posix_spawnattr_init"
+    },
+    {
+      "function": "AuxilComputerUse.reexecDisclaimedIfNeeded() -> ()",
+      "instruction": "0000000100011cd8\tmov\tw1, #0x40"
+    },
+    {
+      "function": "AuxilComputerUse.reexecDisclaimedIfNeeded() -> ()",
+      "instruction": "0000000100011cdc\tbl\t0x100151f60 ; symbol stub for: _posix_spawnattr_setflags"
+    },
+    {
+      "function": "AuxilComputerUse.reexecDisclaimedIfNeeded() -> ()",
+      "instruction": "0000000100011cf4\tbl\t0x100151f48 ; symbol stub for: _posix_spawnattr_destroy"
+    },
+    {
+      "function": "AuxilComputerUse.reexecDisclaimedIfNeeded() -> ()",
+      "instruction": "0000000100011f6c\tbl\t0x100151f3c ; symbol stub for: _posix_spawn"
+    },
+    {
+      "function": "AuxilComputerUse.reexecDisclaimedIfNeeded() -> ()",
+      "instruction": "0000000100011fb4\tbl\t0x100151f48 ; symbol stub for: _posix_spawnattr_destroy"
+    },
+    {
+      "function": "partial apply forwarder for closure #3 (Swift.UnsafePointer<Swift.Int8>) -> Swift.Int32 in AuxilComputerUse.reexecDisclaimedIfNeeded() -> ()",
+      "instruction": "00000001000129bc\tbl\t0x100151f3c ; symbol stub for: _posix_spawn"
+    },
+    {
+      "function": "one-time initialization function for (defaultChatDB in _245570D6996474A51B8E2238200C471A)",
+      "instruction": "0000000100019f5c\tbl\t_objc_msgSend$homeDirectoryForCurrentUser"
+    },
+    {
+      "function": "one-time initialization function for (defaultChatDB in _245570D6996474A51B8E2238200C471A)",
+      "instruction": "0000000100019f8c\tadd\tx8, x8, #0xcf0 ; literal pool for: \"Library/Messages/chat.db\""
+    },
+    {
+      "function": "one-time initialization function for (messagesStagingDir in _489EDE22979D3DDC7BFCF7B0E6C77A65)",
+      "instruction": "0000000100025230\tbl\t_objc_msgSend$homeDirectoryForCurrentUser"
+    },
+    {
+      "function": "AuxilComputerUse.sendMessage(chatGuid: Swift.String?, to: Swift.String?, text: Swift.String?, attachmentPaths: [Swift.String], dbPath: Swift.String?) throws -> [Swift.String : Any]",
+      "instruction": "0000000100025764\tadd\tx8, x8, #0xd80 ; literal pool for: \"/usr/bin/osascript\""
+    },
+    {
+      "function": "AuxilComputerUse.sendMessage(chatGuid: Swift.String?, to: Swift.String?, text: Swift.String?, attachmentPaths: [Swift.String], dbPath: Swift.String?) throws -> [Swift.String : Any]",
+      "instruction": "0000000100025890\tbl\t\"_objc_msgSend$launchAndReturnError:\""
+    },
+    {
+      "function": "AuxilComputerUse.sendMessage(chatGuid: Swift.String?, to: Swift.String?, text: Swift.String?, attachmentPaths: [Swift.String], dbPath: Swift.String?) throws -> [Swift.String : Any]",
+      "instruction": "00000001000258a8\tbl\t_$sSo6NSTaskC16AuxilComputerUseE13waitUntilExit33_489EDE22979D3DDC7BFCF7B0E6C77A65LL7timeoutSbSd_tF"
+    },
+    {
+      "function": "(extension in AuxilComputerUse):__C.NSTask.(waitUntilExit in _489EDE22979D3DDC7BFCF7B0E6C77A65)(timeout: Swift.Double) -> Swift.Bool",
+      "instruction": "_$sSo6NSTaskC16AuxilComputerUseE13waitUntilExit33_489EDE22979D3DDC7BFCF7B0E6C77A65LL7timeoutSbSd_tF:"
+    },
+    {
+      "function": "(extension in AuxilComputerUse):__C.NSTask.(waitUntilExit in _489EDE22979D3DDC7BFCF7B0E6C77A65)(timeout: Swift.Double) -> Swift.Bool",
+      "instruction": "0000000100026ab8\tbl\t_objc_msgSend$waitUntilExit"
+    },
+    {
+      "function": "AuxilComputerUse.(loadCachedUserId in _433085BA4CEEE8D193E6A27BEB29DE12)(uuid: Swift.String) -> Swift.Int?",
+      "instruction": "000000010002a110\tbl\t_objc_msgSend$homeDirectoryForCurrentUser"
+    },
+    {
+      "function": "AuxilComputerUse.(loadKakaoPreferences in _433085BA4CEEE8D193E6A27BEB29DE12)() -> [Swift.String : Any]?",
+      "instruction": "000000010002b5b4\tbl\t_objc_msgSend$homeDirectoryForCurrentUser"
+    },
+    {
+      "function": "AuxilComputerUse.(saveCachedUserId in _433085BA4CEEE8D193E6A27BEB29DE12)(uuid: Swift.String, userId: Swift.Int) -> ()",
+      "instruction": "000000010002c06c\tbl\t_objc_msgSend$homeDirectoryForCurrentUser"
+    },
+    {
+      "function": "AuxilComputerUse.(findKakaoDatabasePaths in _DD8E70A0FB41C2FCA05B007E816FA628)() throws -> [Swift.String]",
+      "instruction": "000000010003425c\tbl\t_objc_msgSend$homeDirectoryForCurrentUser"
+    },
+    {
+      "function": "_unixDlOpen",
+      "instruction": "000000010003e9f8\tb\t0x100151d08 ; symbol stub for: _dlopen"
+    },
+    {
+      "function": "_unixDlSym",
+      "instruction": "000000010003ea90\tb\t0x100151d14 ; symbol stub for: _dlsym"
+    },
+    {
+      "function": "_sqlcipher_cc_random",
+      "instruction": "000000010005123c\tbl\t0x100151c18 ; symbol stub for: _SecRandomCopyBytes"
+    }
+  ],
+  "spawnFlags": {
+    "path": "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/sys/spawn.h",
+    "sha256": "988afa3a6d7a1ce18df118d234240c02eff0715b5712784ac28b44e7f66254dc",
+    "definitions": [
+      {
+        "line": 59,
+        "text": "#define POSIX_SPAWN_SETEXEC             0x0040"
+      }
+    ]
+  },
+  "inference": {
+    "startup": "reexecDisclaimedIfNeeded sets 0x40, the SDK POSIX_SPAWN_SETEXEC flag: replacement of the current image, not a new child.",
+    "imessage.send": "sendMessage calls NSTask launchAndReturnError and waitUntilExit; this subprocess path cannot complete under process-fork denial.",
+    "otherCommands": "No proof of complete no-fork behavior; actual bounded observer-role acceptance still required.",
+    "privateData": "Messages defaults use Foundation homeDirectoryForCurrentUser plus Library/Messages/chat.db. HOME is not treated as a confinement guarantee. The finite role refuses those exports and denies private filesystem paths with a read/write allowlist.",
+    "dynamicLoading": "Observed dlopen/dlsym calls are in SQLite unixDlOpen/unixDlSym, not observed Keychain calls; no exhaustive indirect-call claim."
+  },
+  "rea": {
+    "openBinarySucceeded": true,
+    "deepAnalysis": "provider_unavailable",
+    "reason": "Installed Ghidra 12.2 unsupported by REA; no compatible native decompiler/JDK. No provider installed or updated. Target closed."
+  },
+  "credentialImports": [
+    "_SecRandomCopyBytes",
+    "_dlopen",
+    "_dlsym",
+    "_kSecRandomDefault"
+  ],
+  "helperExecuted": false
+}

@@ -1,0 +1,19 @@
+{
+  "format": "aux.fixed-computer-use.source.v1",
+  "output": "/var/folders/98/j36zgdnd0h507whjl16gxl780000gp/T/aux-fixed-computer-use-nNaKtk",
+  "files": [
+    {
+      "name": "index.mjs",
+      "inputSha256": "6044c84cc270cb34e490d4b92de2ac6249bccfd8fdbc90e8b90f71901ca16382",
+      "outputSha256": "fb9e77efeddd1d6cd4a548b1fb7ca8d32b569eca854e4e5b81d0ded356b80f8a",
+      "anchors": 21
+    },
+    {
+      "name": "aux-native-entry.mjs",
+      "inputSha256": "fd12da9b8fbe5c18fedfb86e06c7ba9437550d6ae65c1477118f9bc354221663",
+      "outputSha256": "67687721371c0047ce07d497a7a22be03f5c8bfb99d1a6354eb87bef340ef8e7",
+      "anchors": 21
+    }
+  ],
+  "productExecution": false
+}

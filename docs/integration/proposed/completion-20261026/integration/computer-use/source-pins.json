@@ -1,0 +1,139 @@
+{
+  "format": "aux.fixed-computer-use.actor.v1",
+  "inputSha256": [
+    "48af998738fb6d2fc30cb8d5b2e9de03cb04ab7d8563ebdaa5fe8100944fc514",
+    "f355833cb607963a65ca3108e7ae19ea7ca60192a9f3d8e2644a3c12ec49c808",
+    "62469726c5629983c379faae562d8317c53d79848fe3f09cd945e3ff95ea5d47",
+    "8406b82b2c2ae73312e0d81e18392f2d4c91bc1df497b73eefbdc8fba04189bb",
+    "4aa78d2606963d854849629dba91a2f418f6f347b09f45d3f9cc9dd3000409b7",
+    "f3a8c02127d31b5c09c2f83b54dbfc1f789c7cfb7125ec0993dad31b18f73737",
+    "c21f05233d29e48733a198f366ade71892dbc86da94226f90c02dc22485e3230",
+    "422b10a3c6ffb4e7fa0af3112dc443f561e2e17bdb5c10cec500e929d823dd90",
+    "298a58fcf7b4daf0c8445316486460b9182aa87cfd4827b36ff9b75395ec8914",
+    "7463470fb36e46530ff982efd951e492231eb29729edc7931f97f5dab5785462",
+    "6044c84cc270cb34e490d4b92de2ac6249bccfd8fdbc90e8b90f71901ca16382",
+    "fd12da9b8fbe5c18fedfb86e06c7ba9437550d6ae65c1477118f9bc354221663"
+  ],
+  "rules": [
+    {
+      "scope": "ordinary capability remains disabled unless the immutable fixed native factory exists",
+      "find": "return !!mode&&!mode.get&&!mode.set&&!mode.writable&&!mode.configurable&&mode.value===false;",
+      "replace": "return !!mode&&!mode.get&&!mode.set&&!mode.writable&&!mode.configurable&&mode.value===false&&!auxFixedComputerUseFactory();",
+      "count": 1
+    },
+    {
+      "scope": "fixed sealed helper skips generic copy/quarantine subprocess preparation",
+      "find": "function prepareComputerUseHelperRuntime(){if(auxComputerUseRuntimeDisabled())",
+      "replace": "function prepareComputerUseHelperRuntime(){if(auxFixedComputerUseFactory())return Promise.resolve();if(auxComputerUseRuntimeDisabled())",
+      "count": 1
+    },
+    {
+      "scope": "fixed actor does not require task runtime helper path",
+      "find": "if(!existsSync(COMPUTER_USE_HELPER_BIN_PATH)){this.#i=`missing`;return}this.#D()",
+      "replace": "if(!auxFixedComputerUseFactory()&&!existsSync(COMPUTER_USE_HELPER_BIN_PATH)){this.#i=`missing`;return}this.#D()",
+      "count": 1
+    },
+    {
+      "scope": "actual actor creates a native account process without argv selectors",
+      "find": "ti=spawnCommand([COMPUTER_USE_HELPER_BIN_PATH,...ei],{stdio:[`pipe`,`pipe`,`pipe`],...Cn?{windowsHide:!0}:{}})",
+      "replace": "ti=auxFixedComputerUseFactory()?auxAccountComputerUseProcess(this.#auxFixedOwner):spawnCommand([COMPUTER_USE_HELPER_BIN_PATH,...ei],{stdio:[`pipe`,`pipe`,`pipe`],...Cn?{windowsHide:!0}:{}})",
+      "count": 1
+    },
+    {
+      "scope": "fixed actor stop awaits native physical close instead of two-second timeout",
+      "find": "let ei=new Promise(ei=>{let ti=setTimeout(ei,2e3),ni=setTimeout(()=>Cn.kill(),1e3);ti.unref(),ni.unref(),Cn.once(`close`,()=>{clearTimeout(ti),clearTimeout(ni),ei()})});this.#t=ei",
+      "replace": "let ei=Cn.auxClose?Cn.auxClose():new Promise(ei=>{let ti=setTimeout(ei,2e3),ni=setTimeout(()=>Cn.kill(),1e3);ti.unref(),ni.unref(),Cn.once(`close`,()=>{clearTimeout(ti),clearTimeout(ni),ei()})});this.#t=ei",
+      "count": 1
+    },
+    {
+      "scope": "ordinary account actor command join keeps generic task guard",
+      "find": "async function runComputerUseCommand(Cn,ei={},ti={}){auxRequireSupervisedTasks();",
+      "replace": "async function runComputerUseCommand(Cn,ei={},ti={}){if(!auxFixedComputerUseFactory())auxRequireSupervisedTasks();else throw Object.assign(Error(`This command requires external app data or subprocess access outside the fixed Computer Use observer role.`),{code:`AUX_COMPUTER_USE_EXTERNAL_DATA_UNAVAILABLE`});",
+      "count": 1
+    },
+    {
+      "scope": "direct database route remains supervised and fixed image actor check is exact",
+      "find": "if(await prepareComputerUseHelperRuntime(),!existsSync(COMPUTER_USE_HELPER_BIN_PATH))",
+      "replace": "if(await prepareComputerUseHelperRuntime(),!auxFixedComputerUseFactory()&&!existsSync(COMPUTER_USE_HELPER_BIN_PATH))",
+      "count": 1
+    },
+    {
+      "scope": "direct database command never inherits ordinary fixed actor capability",
+      "find": "if(ni)return runDirectExec(Cn,ri,ti,ii);",
+      "replace": "if(ni){auxRequireSupervisedTasks();return runDirectExec(Cn,ri,ti,ii)}",
+      "count": 1
+    },
+    {
+      "scope": "shutdown closes actual fixed processes and avoids generic lifecycle subprocess",
+      "find": "async function shutdownComputerUseHelper(){if(process.platform!==`darwin`",
+      "replace": "async function shutdownComputerUseHelper(){if(auxFixedComputerUseFactory()){shuttingDown$1=true;await auxCloseComputerUseProcesses();return}if(process.platform!==`darwin`",
+      "count": 1
+    },
+    {
+      "scope": "fixed actor retains explicit initiating owner across async start",
+      "find": "NativeContextAwarenessHelperManager=class{#e=null;",
+      "replace": "NativeContextAwarenessHelperManager=class{#auxFixedOwner=null;#e=null;",
+      "count": 1
+    },
+    {
+      "scope": "fixed actor startup binds explicit owner instead of current account fallback",
+      "find": "async#T(){if(process.platform!==`darwin`",
+      "replace": "async#T(auxOwner){if(auxFixedComputerUseFactory()){if(!auxOwner&&this.#n!==null){const row=AccountRegistry.getAccount(this.#n);auxOwner=row&&{id:row.id,createdAt:row.createdAt}}if(!auxOwner)throw Error(`Computer Use requires its explicit account owner`);const captured=auxComputerUseActorIdentity(auxOwner);if(this.#auxFixedOwner&&this.#auxFixedOwner.identity!==captured.identity){this.stop();await this.#t}this.#auxFixedOwner=captured;this.#e?.auxAssertOwner(captured)}if(process.platform!==`darwin`",
+      "count": 1
+    },
+    {
+      "scope": "permission actor captures supplied explicit account",
+      "find": "await this.#T(),await this.#G({command:`permissions`,kind:`observer`})",
+      "replace": "await this.#T({id:Cn,createdAt:AccountRegistry.getAccount(Cn)?.createdAt}),await this.#G({command:`permissions`,kind:`observer`})",
+      "count": 1
+    },
+    {
+      "scope": "messages permission actor captures original generation",
+      "find": "if(await this.#T(),!this.#e||AccountRegistry.getAccount(ei.id)?.createdAt!==ei.createdAt)",
+      "replace": "if(await this.#T(ei),!this.#e||AccountRegistry.getAccount(ei.id)?.createdAt!==ei.createdAt)",
+      "count": 1
+    },
+    {
+      "scope": "invocation checks original native actor owner before transport",
+      "find": "if(await this.#T(),!this.#e)throw Error(`native helper is ${this.#i}; cannot run ${Cn}`);",
+      "replace": "if(await this.#T(ni),!this.#e)throw Error(`native helper is ${this.#i}; cannot run ${Cn}`);this.#e.auxAssertOwner?.(ni);",
+      "count": 1
+    },
+    {
+      "scope": "logical stop clears captured initiating identity",
+      "find": "stop(){this.#x+=1,this.#a=!1,this.#n=null",
+      "replace": "stop(){this.#auxFixedOwner=null;this.#x+=1,this.#a=!1,this.#n=null",
+      "count": 1
+    },
+    {
+      "scope": "fixed actor status names actual packaged helper",
+      "find": "path:COMPUTER_USE_HELPER_BIN_PATH,built:existsSync(COMPUTER_USE_HELPER_BIN_PATH)",
+      "replace": "path:auxFixedComputerUseFactory()?COMPUTER_USE_HELPER_SOURCE_BIN_PATH:COMPUTER_USE_HELPER_BIN_PATH,built:existsSync(auxFixedComputerUseFactory()?COMPUTER_USE_HELPER_SOURCE_BIN_PATH:COMPUTER_USE_HELPER_BIN_PATH)",
+      "count": 1
+    },
+    {
+      "scope": "messages permission export cannot activate owner-data access in observer role",
+      "find": "async requestMessagesPermissions(Cn=9e5){let ei=currentAccountGeneration();",
+      "replace": "async requestMessagesPermissions(Cn=9e5){if(auxFixedComputerUseFactory())throw Object.assign(Error(`Messages access is unavailable in the fixed Computer Use observer role.`),{code:`AUX_COMPUTER_USE_EXTERNAL_DATA_UNAVAILABLE`});let ei=currentAccountGeneration();",
+      "count": 1
+    },
+    {
+      "scope": "fixed native cancellation does not enqueue shutdown after pipe closure",
+      "find": "this.#K(Cn,{command:`shutdown`}).catch(logDetachedError)",
+      "replace": "!Cn.auxClose&&this.#K(Cn,{command:`shutdown`}).catch(logDetachedError)",
+      "count": 1
+    },
+    {
+      "scope": "unknown physical close remains retained and visible to the existing actor",
+      "find": "this.#t=ei,ei.finally(()=>{this.#t===ei&&(this.#t=null)})",
+      "replace": "this.#t=ei,ei.then(()=>{this.#t===ei&&(this.#t=null)},error=>{this.#i=`stopped`;this.#l.message=`Computer Use physical shutdown could not be verified.`;logDetachedError(error)})",
+      "count": 1
+    },
+    {
+      "scope": "fixed native preparation errors remain visible in supplied actor health",
+      "find": "ti.once(`error`,ei=>{if(Cn){if(this.#e!==ti)return;this.#l.message=ei.message}",
+      "replace": "ti.once(`error`,ei=>{if(Cn||ti.auxClose){if(this.#e!==ti)return;this.#l.message=ei.message}",
+      "count": 1
+    }
+  ]
+}

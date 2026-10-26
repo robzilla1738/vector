@@ -1,0 +1,30 @@
+{
+  "format": "aux.fixed-computer-use.native-source-inventory.v1",
+  "derivedSources": [
+    {
+      "name": "AuxAccountComputerUseHelper.h",
+      "sha256": "cc4caf1fec1f3ce1616241246a5f0d7eed0603bfc8b49a9d9618580f95c247aa",
+      "derivedFrom": "/private/tmp/aux-browser-only-daemon-build-20261025-a72/source/AuxAccountMemoryHelper.h",
+      "sourceSha256": "049ef6f0f67ed9aa91ddd72837d916a57a28df9b6f3ddadcd628d260e4a7ec9f"
+    },
+    {
+      "name": "AuxAccountComputerUseHelper.mm",
+      "sha256": "562e99138d7be809eda5dc32974574a3d198b831a0ebcef563beeff2adfe4695",
+      "derivedFrom": "/private/tmp/aux-browser-only-daemon-build-20261025-a72/source/AuxAccountMemoryHelper.mm",
+      "sourceSha256": "d3b38299dde1099d57fb52b0a30d31c567847fab3298dcfae18b267a769ff38d"
+    },
+    {
+      "name": "AuxComputerUseMainOwner.inc",
+      "sha256": "10025389663f332841c7549c11d88a5773de8b7ed31ceb63568f9c005937c8d5",
+      "derivedFrom": "/private/tmp/aux-browser-only-daemon-build-20261025-a72/source/AuxMemoryMainOwner.inc",
+      "sourceSha256": "8e93a9315bc9fabbf8b0228025ca11846307536e1f547fa326bb7e5b5723eaca"
+    },
+    {
+      "name": "AuxComputerUseHelperJournal.swift",
+      "sha256": "550f97ab942bd0fed00afe7fa582603ed95f3d00bae028664c7246d4185e1839",
+      "derivedFrom": "/private/tmp/aux-browser-only-daemon-build-20261025-a72/source/AuxMemoryHelperJournal.swift",
+      "sourceSha256": "9efd7f2aed4c980a83889e93e38a4c449463da642185e0d8aaf67c8d8a247324"
+    }
+  ],
+  "originalRuntimeAndAddonBytesChanged": false
+}
