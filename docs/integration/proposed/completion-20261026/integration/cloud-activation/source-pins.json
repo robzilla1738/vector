@@ -2,9 +2,9 @@
   "format": "aux.cloud.activation-source-pins.v1",
   "sourceRoot": "/Users/rcourson/Documents/Vibe/web",
   "reviewedAt": "2026-10-26",
-  "sourceCommit": "4193cdef41c33e4a2bfcfc5b3cdebfc3e0f00d51",
-  "serviceTree": "0ffeb812450951f40fe3083adf814c13f27a7f45",
-  "lastServiceCommit": "cd96660754d6c1e06c48517d812eebe15d0930ed",
+  "sourceCommit": "f349a5dc9270d8eb50ce1b10be6e4076c1cd364c",
+  "serviceTree": "d6a79e2511e61e7b6391b73f3d4ea41c25a2b6cc",
+  "lastServiceCommit": "f349a5dc9270d8eb50ce1b10be6e4076c1cd364c",
   "serviceFiles": [
     {
       "path": "services/aux-cloud/.env.example",
@@ -1033,13 +1033,13 @@
     },
     {
       "path": "services/aux-cloud/src/routines-1852.test.ts",
-      "bytes": 6793,
-      "sha256": "9ac7c5b8631619757fd6e27fbccab6a9bfc9cc1c3490dc5a6c948de446648b3c"
+      "bytes": 8140,
+      "sha256": "081c19cec4d619bc0c7d88638af3ed3027e31efb6acb591258a90c06a34db94f"
     },
     {
       "path": "services/aux-cloud/src/routines-1852.ts",
-      "bytes": 11522,
-      "sha256": "0628ae99c87534fadb36bb33093a27b2df2900c5e5f68f198ca11b27c4f61102"
+      "bytes": 11724,
+      "sha256": "ea13c2e73173e1b8c4226bbf32e755eed7bf358b9ba005ac713b0ad87cb8db81"
     },
     {
       "path": "services/aux-cloud/src/schema-manifest.json",

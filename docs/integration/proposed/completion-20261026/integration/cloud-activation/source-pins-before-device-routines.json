@@ -1,0 +1,1458 @@
+{
+  "format": "aux.cloud.activation-source-pins.v1",
+  "sourceRoot": "/Users/rcourson/Documents/Vibe/web",
+  "reviewedAt": "2026-10-26",
+  "sourceCommit": "4193cdef41c33e4a2bfcfc5b3cdebfc3e0f00d51",
+  "serviceTree": "0ffeb812450951f40fe3083adf814c13f27a7f45",
+  "lastServiceCommit": "cd96660754d6c1e06c48517d812eebe15d0930ed",
+  "serviceFiles": [
+    {
+      "path": "services/aux-cloud/.env.example",
+      "bytes": 1207,
+      "sha256": "eca169683a58d5ddebe342a2f1c0ca57ee9745440b18a0631d8da762a7da9ec2"
+    },
+    {
+      "path": "services/aux-cloud/.gitignore",
+      "bytes": 131,
+      "sha256": "b40e11ad668260d3e9e37dea75f79fb1321ab2ebf1507d59bb8296a654b4c7ac"
+    },
+    {
+      "path": "services/aux-cloud/.vercelignore",
+      "bytes": 89,
+      "sha256": "98906c0f9f6946ce9ea7bf87af43961849b7a4c4af6d41f898a363bb9ea8f5b5"
+    },
+    {
+      "path": "services/aux-cloud/app/account/billing-panel.tsx",
+      "bytes": 5064,
+      "sha256": "a3b308034c54d9436b88e6a48c9f7fb3dad06cbd3341a9b768f426c62a4283e4"
+    },
+    {
+      "path": "services/aux-cloud/app/account/page.tsx",
+      "bytes": 486,
+      "sha256": "e1c9bcea8fa4756aae14872738a48cf69b01eaba07002e0b8cb5792d49423de2"
+    },
+    {
+      "path": "services/aux-cloud/app/account/panel.tsx",
+      "bytes": 529,
+      "sha256": "e4ccbda64d6abe353a15a9472c340c0a13dcfe90459b7c9f5f70453d1fb95f73"
+    },
+    {
+      "path": "services/aux-cloud/app/api/v1/[[...path]]/route.ts",
+      "bytes": 320,
+      "sha256": "a6affe36177c8b678a53ff85003c517849085961d592a3245a129b6aad52e0a5"
+    },
+    {
+      "path": "services/aux-cloud/app/community/page.tsx",
+      "bytes": 1568,
+      "sha256": "2301b4335dbb9219dcb53854c949627dc258815f53202facfece23a90bd9cb98"
+    },
+    {
+      "path": "services/aux-cloud/app/desktop/connect/page.tsx",
+      "bytes": 1208,
+      "sha256": "15ac9d51e21483ddfd2f1ea959e920a11fd4a69e083f78a8141b1946fdc691ba"
+    },
+    {
+      "path": "services/aux-cloud/app/device/device-panel.tsx",
+      "bytes": 6224,
+      "sha256": "a32a2a2f24e787528460aff83828a7f8ff9aaece8e34e45b7f6170b78b2737e0"
+    },
+    {
+      "path": "services/aux-cloud/app/device/page.tsx",
+      "bytes": 840,
+      "sha256": "45138b80c089dba60544431434d02169b57c5725fc8ad5e84cbc6138b34c249c"
+    },
+    {
+      "path": "services/aux-cloud/app/docs/page.tsx",
+      "bytes": 3100,
+      "sha256": "9df8551dcf1628deb0d9c1aac6787d4a09703fd475dd595509eb4ec2d6ef42fd"
+    },
+    {
+      "path": "services/aux-cloud/app/information-page.tsx",
+      "bytes": 542,
+      "sha256": "3af2e7f5f562c7ba14b9cc99fdc25f0fed329ac54a3011c3b3195528c9d50e33"
+    },
+    {
+      "path": "services/aux-cloud/app/layout.tsx",
+      "bytes": 416,
+      "sha256": "b668a9f70a46b533c1a1266536ad18da73a40d03ca5e6751c57aff8f2fd49646"
+    },
+    {
+      "path": "services/aux-cloud/app/page.tsx",
+      "bytes": 451,
+      "sha256": "4cb50a922d74a5a9658feaec2698918a1db8b1d234c7460af4375845befed1ff"
+    },
+    {
+      "path": "services/aux-cloud/app/policy/privacy/page.tsx",
+      "bytes": 4685,
+      "sha256": "133adb57f8cee63568cdff2b771516a4251e1754ad6249bd3a5815cd9b0b0692"
+    },
+    {
+      "path": "services/aux-cloud/app/policy/terms/page.tsx",
+      "bytes": 2829,
+      "sha256": "f307514a18e5347bdf2bb10460c75c048b99d2ee7c00b1b66588c9c26a11eaa0"
+    },
+    {
+      "path": "services/aux-cloud/app/s/[id]/page.tsx",
+      "bytes": 2272,
+      "sha256": "6fe13daf9f1cd43bd6219a3257e2b5df1e120a99585dfb902c05c87dc65c27fd"
+    },
+    {
+      "path": "services/aux-cloud/app/sign-in/[[...sign-in]]/page.tsx",
+      "bytes": 157,
+      "sha256": "67ff0cc8f3fd16c5ac2ebb5f6b18fad84c9fbbe3e6dea0a801c0bd3cd9b695cf"
+    },
+    {
+      "path": "services/aux-cloud/app/sign-up/[[...sign-up]]/page.tsx",
+      "bytes": 157,
+      "sha256": "521bdc7b501105fd91cc44b612c41cdd062e10025283ab6318bffc4b091befe4"
+    },
+    {
+      "path": "services/aux-cloud/app/style.css",
+      "bytes": 1903,
+      "sha256": "6da1ee8d5c30c67a7b3b972cf32ce1b6eef2a827bb1a66e6367647699d3f79cf"
+    },
+    {
+      "path": "services/aux-cloud/config/deployment-resources.json",
+      "bytes": 395,
+      "sha256": "6d5babd4e20b63ab0bf35566e0c97c403fc1b7cd8c6397fefeb5a7caccc5a8d5"
+    },
+    {
+      "path": "services/aux-cloud/docs/attachments.md",
+      "bytes": 5857,
+      "sha256": "15e2fded31e786a3cd8d97a5870fbfc5aa9dbf717815418f711aa1bd8250a83d"
+    },
+    {
+      "path": "services/aux-cloud/docs/auth-contract.md",
+      "bytes": 10851,
+      "sha256": "362222632bb672d39cab8a302728ee6af1a03b2396c8f5adcb6e2efac56cdb70"
+    },
+    {
+      "path": "services/aux-cloud/docs/billing.md",
+      "bytes": 8302,
+      "sha256": "876ac3dcddaff4330f985fec41cd0d7ae1182acfd66f121802a7db08b59649bb"
+    },
+    {
+      "path": "services/aux-cloud/docs/drive-1852.md",
+      "bytes": 7001,
+      "sha256": "7cd43bf2a0dfe124dbf4f1f3a1fe027130337d61d844a7f602e69f6e99c2f680"
+    },
+    {
+      "path": "services/aux-cloud/docs/events.md",
+      "bytes": 1175,
+      "sha256": "76da7d189c12f8e76bfad2933f6c3fb8470c39726ea597fe7b16482303ba33ed"
+    },
+    {
+      "path": "services/aux-cloud/docs/identity-transition.md",
+      "bytes": 3479,
+      "sha256": "52eb951c350516f76411425ea95f0c054e0cb251c1c8dbc2ca44ec3be28bb829"
+    },
+    {
+      "path": "services/aux-cloud/docs/inference-uploads.md",
+      "bytes": 4907,
+      "sha256": "6f9a75bb8e1f8bebfe74631780ef65d078be69738d801e8999d467138db10179"
+    },
+    {
+      "path": "services/aux-cloud/docs/inference.md",
+      "bytes": 5724,
+      "sha256": "8e2c2182d24322194f30bcc7338f77ea2dc462c08d4919a0f4e248a5a79383b9"
+    },
+    {
+      "path": "services/aux-cloud/docs/operations.md",
+      "bytes": 7917,
+      "sha256": "38af585a7719176391c27c45dc12103716201f4fb8a64fd546520f53e0f7b6ea"
+    },
+    {
+      "path": "services/aux-cloud/docs/recovery.md",
+      "bytes": 16421,
+      "sha256": "dc4041dd12e24887301a296df2c422288acaa4412058194674b8bcb680b9fa3b"
+    },
+    {
+      "path": "services/aux-cloud/docs/session-sync.md",
+      "bytes": 8793,
+      "sha256": "336aa0baa25ca21ee067562c37be811a6cdab3df4bf907601a59297a20ab066c"
+    },
+    {
+      "path": "services/aux-cloud/docs/sync.md",
+      "bytes": 6167,
+      "sha256": "d675a1cbcdca9127982225467319323d5a7cc3c8a5a29c45a4cd88bd2891d207"
+    },
+    {
+      "path": "services/aux-cloud/evidence/account-sandbox.json",
+      "bytes": 928,
+      "sha256": "f9b27eb36ef660f718bcea283acd7fb1fd36b22479979ced6abc55cb4efeedfd"
+    },
+    {
+      "path": "services/aux-cloud/evidence/backup-job-empty-production.json",
+      "bytes": 1154,
+      "sha256": "cfdd04cd565a6cdf0341104fdebffafb98945882080fdc1fcc62ddcff230ebd8"
+    },
+    {
+      "path": "services/aux-cloud/evidence/chunked-private-blob.json",
+      "bytes": 455,
+      "sha256": "8810b5d82ec910125d36c5db1ba3d00998cee064b31ac79c98f161c55dbf7b78"
+    },
+    {
+      "path": "services/aux-cloud/evidence/cookie-export.json",
+      "bytes": 719,
+      "sha256": "7f97a3d447cd65f6b414fe7cbeace9ce9cdc1923dfdd98c2d92c539afbb3e712"
+    },
+    {
+      "path": "services/aux-cloud/evidence/deployed-boundaries.json",
+      "bytes": 754,
+      "sha256": "645c0ecc2bd677cd3cd19a7b3d969730a7457912bfc1db42738524da50b2bd3f"
+    },
+    {
+      "path": "services/aux-cloud/evidence/deployed-readiness.json",
+      "bytes": 475,
+      "sha256": "1391b4d19573b824cb9402504466b37847b7e97853ab2985e7e1c4699787a433"
+    },
+    {
+      "path": "services/aux-cloud/evidence/development-boundaries.json",
+      "bytes": 482,
+      "sha256": "89f0c29127ef1f4e61f86828bdfd810c0d14b3bc915bf8c5cf4454901c5f4b75"
+    },
+    {
+      "path": "services/aux-cloud/evidence/development-recovery-migration.json",
+      "bytes": 615,
+      "sha256": "049a0043fefd8ef6c0bc6c3f7398c8cc44a8218f31449e1621a70b2749fb60f0"
+    },
+    {
+      "path": "services/aux-cloud/evidence/email-delivery.json",
+      "bytes": 738,
+      "sha256": "5c3092ac60ed719cdf3a8735fa4a1eb0afd7fc9fca98795c596a2cfcf1688d09"
+    },
+    {
+      "path": "services/aux-cloud/evidence/gateway-checkout-review.json",
+      "bytes": 776,
+      "sha256": "54d0952340826b676fbe3fdf22972d2e947a9e0d5201315f68718820615dc76f"
+    },
+    {
+      "path": "services/aux-cloud/evidence/gateway-text.json",
+      "bytes": 156,
+      "sha256": "74227c2e136804c3d2be33ab67d9b3e286a700f8aa4125ed191c00f85796d3a7"
+    },
+    {
+      "path": "services/aux-cloud/evidence/isolated-recovery-restore.json",
+      "bytes": 1283,
+      "sha256": "fc884b04d5dd4c105967d39326d8f8bcacab262f1105143db8ba1f8aa7aef6bd"
+    },
+    {
+      "path": "services/aux-cloud/evidence/production-configuration.json",
+      "bytes": 784,
+      "sha256": "1e4a2a326fc3099bf19fdd94253276e4adf2daf1668548a5bc23960c11297d29"
+    },
+    {
+      "path": "services/aux-cloud/evidence/production-public-origins.json",
+      "bytes": 571,
+      "sha256": "272dbea7974ca4aba3d27204bc6316955ff4c844a6530695e36d8e3a31311613"
+    },
+    {
+      "path": "services/aux-cloud/evidence/production-recovery-migration.json",
+      "bytes": 1371,
+      "sha256": "d2909bf95bfe3755a4377ef70dbe759b6db91861af2a6aafaf0df8fdea7c72ed"
+    },
+    {
+      "path": "services/aux-cloud/evidence/provider-auth.json",
+      "bytes": 616,
+      "sha256": "3aa03574d896164ea4f63f5b418a7c1702874bb40a989d978ef377a632ca87ef"
+    },
+    {
+      "path": "services/aux-cloud/evidence/provider-connections.json",
+      "bytes": 2174,
+      "sha256": "d0375fa0ee14b4827b7418d960606f3e1cca7e71ab2e6ef915cd5d851aa35408"
+    },
+    {
+      "path": "services/aux-cloud/evidence/recovery-capture.json",
+      "bytes": 1001,
+      "sha256": "c078c56916fb14a291d7580da55f6add658fa90421d343f31b0924b45912cac3"
+    },
+    {
+      "path": "services/aux-cloud/evidence/stripe-checkout.json",
+      "bytes": 771,
+      "sha256": "e6409e7f88557a165e246078767922f6367fde941b1efed0f590f118bc3b3853"
+    },
+    {
+      "path": "services/aux-cloud/evidence/stripe-lifecycle.json",
+      "bytes": 351,
+      "sha256": "924b72913a1261be5286bb4fd4d616bb5f2c7f92b5bf81a5e0d2e55f24eed187"
+    },
+    {
+      "path": "services/aux-cloud/evidence/stripe-payment-refund.json",
+      "bytes": 356,
+      "sha256": "ddb9101026adc66b712e6c7e6ba886903aa937c6fcacf11286167be7180ac69e"
+    },
+    {
+      "path": "services/aux-cloud/evidence/stripe-resources.json",
+      "bytes": 728,
+      "sha256": "d4aa114a4e1be265a101d82b3e1226b037098b71592e7aa8537fd3063d7d0bfa"
+    },
+    {
+      "path": "services/aux-cloud/evidence/sync-recovery-deployed.json",
+      "bytes": 1226,
+      "sha256": "ba93ccc46c455c1a9c993dc490b04272103d63b7a49e1cc3bd24c92f28e4327d"
+    },
+    {
+      "path": "services/aux-cloud/evidence/sync-recovery-status-deployed.json",
+      "bytes": 783,
+      "sha256": "ffde6dc17e9413eaf230ba202b6fe80574efdfc63d3bd17975d7a10edd2992fe"
+    },
+    {
+      "path": "services/aux-cloud/migrations/001-auth.sql",
+      "bytes": 2950,
+      "sha256": "b86d32b9ffa4a746dcf8373d72d5a26db8e66c6328e9b6940baca79d31689981"
+    },
+    {
+      "path": "services/aux-cloud/migrations/002-sync.sql",
+      "bytes": 1518,
+      "sha256": "41d503100fece24c2b7e0f4e84941ecaacc2d0932daceca2248ec452212257e5"
+    },
+    {
+      "path": "services/aux-cloud/migrations/003-billing.sql",
+      "bytes": 8041,
+      "sha256": "599685cfbf7f8d3b5c7718e9a929b8c9ddd31538b00356d77a17fc267fcb9c6f"
+    },
+    {
+      "path": "services/aux-cloud/migrations/004-attachments.sql",
+      "bytes": 747,
+      "sha256": "bdfdea9499a2ab28da30d0c7cfd967606fb58b23cc28b965f1ca39f617870ead"
+    },
+    {
+      "path": "services/aux-cloud/migrations/005-attachment-bindings.sql",
+      "bytes": 513,
+      "sha256": "619ecc3e36020c0fe58894b7b9568f08812c76f0ce1ede9a09d14bb709aa5500"
+    },
+    {
+      "path": "services/aux-cloud/migrations/006-auth-refresh.sql",
+      "bytes": 318,
+      "sha256": "6f16c5fe55d5777a239df50586ef7fd8f12b7fd55b15bce6ed376e1a71f41276"
+    },
+    {
+      "path": "services/aux-cloud/migrations/007-sync-gc.sql",
+      "bytes": 192,
+      "sha256": "7e87462ecaf46b6e04a1614acd0ebebb3c3b9028d49c00e361705cc4d9863a81"
+    },
+    {
+      "path": "services/aux-cloud/migrations/008-session-sync.sql",
+      "bytes": 833,
+      "sha256": "9a507d4fb9ae33c938f38b1876035e1d715a23e2363d525cab39031765840498"
+    },
+    {
+      "path": "services/aux-cloud/migrations/009-drive-1852.sql",
+      "bytes": 917,
+      "sha256": "f7a3ccb0a52932ca91df331035aa5187fc5ad4f20ae900e8b5902686e23efb41"
+    },
+    {
+      "path": "services/aux-cloud/migrations/010-drive-cookies.sql",
+      "bytes": 746,
+      "sha256": "5cb5eba8f29314b487b4106770180fe243367af09bd87d083366c3e126e43b11"
+    },
+    {
+      "path": "services/aux-cloud/migrations/011-inference-uploads.sql",
+      "bytes": 559,
+      "sha256": "98502eaa3231e388ed794e86f81dba4670506f5eb0d47859f84db4421e6f26a4"
+    },
+    {
+      "path": "services/aux-cloud/migrations/012-sync-recovery-v2.sql",
+      "bytes": 5430,
+      "sha256": "c7b963011657f8d6e28acdc0969eca1d0b6d7f118954142c918cf2bb52ba2e5e"
+    },
+    {
+      "path": "services/aux-cloud/next-env.d.ts",
+      "bytes": 288,
+      "sha256": "1862ac4bbbc5192d4bf562161df66ea547ed3e67173100656ab606ae9797db2b"
+    },
+    {
+      "path": "services/aux-cloud/next.config.ts",
+      "bytes": 1201,
+      "sha256": "04301cd5d2e82e49ad567641258d3b76a714fab6efba8c82646fc5669e3062f2"
+    },
+    {
+      "path": "services/aux-cloud/ops/backup-runner/README.md",
+      "bytes": 9117,
+      "sha256": "4e8a3cac6d30a2c5c0eacec3af67ce473fe64d1c68e9b9adcfdb3762585de016"
+    },
+    {
+      "path": "services/aux-cloud/ops/backup-runner/production.env.example",
+      "bytes": 671,
+      "sha256": "f98fe42596cdfc862560e739f1171b4b4b88db4a162f343a1c26d7f8b657ad37"
+    },
+    {
+      "path": "services/aux-cloud/ops/backup-runner/runner-review.example.json",
+      "bytes": 470,
+      "sha256": "dfb8a15584db71eae0d2fe39e7bd5236f43280a4d22af06712530aa11232f6f6"
+    },
+    {
+      "path": "services/aux-cloud/ops/backup-runner/systemd/aux-backup-capture.timer",
+      "bytes": 214,
+      "sha256": "dc9b905183632dc08ccdeebf9588a0e60dca39fa49d60a9e0b14c398eed6e5b3"
+    },
+    {
+      "path": "services/aux-cloud/ops/backup-runner/systemd/aux-backup-credential.timer",
+      "bytes": 206,
+      "sha256": "af3131d1bbc3a0a07823fbc5e55c2841659609bf277b5dc7831edcf1d6e88e34"
+    },
+    {
+      "path": "services/aux-cloud/ops/backup-runner/systemd/aux-backup-expiry.timer",
+      "bytes": 198,
+      "sha256": "cf6bcf6b52b8367f4575413dbae31a9db0ddf772dabdc7048eb03fb9ac38e54d"
+    },
+    {
+      "path": "services/aux-cloud/ops/backup-runner/systemd/aux-backup@.service",
+      "bytes": 1088,
+      "sha256": "7cb99a86fd7c918124a0d9f6e1a3e1c88153bf33ab80d6e4bb50b6ef2001c275"
+    },
+    {
+      "path": "services/aux-cloud/package.json",
+      "bytes": 1356,
+      "sha256": "e6a2a7563fe7b6eaae72b6994cb9aa5c5f68aa9cbd376d8c684582d7ef85ec7f"
+    },
+    {
+      "path": "services/aux-cloud/pnpm-lock.yaml",
+      "bytes": 99068,
+      "sha256": "9a5a0da373f488e3374fbb2936c718366e69f50afe52af30dfdb049ed314cc81"
+    },
+    {
+      "path": "services/aux-cloud/pnpm-workspace.yaml",
+      "bytes": 56,
+      "sha256": "fa0a9529e8b8691bba7c7c16f2ae7e893626d84b0b0d560f6073266eb9afea8e"
+    },
+    {
+      "path": "services/aux-cloud/proxy.ts",
+      "bytes": 382,
+      "sha256": "40281705661d57c60b9c4fd9848783e051949fe98f196b72be6fe3138f4bdd6b"
+    },
+    {
+      "path": "services/aux-cloud/public/arch-mark.svg",
+      "bytes": 955,
+      "sha256": "45ba4f1d823cab3085cad8902fd17420ff5a9a5ac3139b180bfc0902875f515c"
+    },
+    {
+      "path": "services/aux-cloud/public/builtin-skills/v1/1password.jpg",
+      "bytes": 15826,
+      "sha256": "cb7ccb542e0fcb63fc2b01157f800cf839041c9d1c355ab899a8399321b7bfca"
+    },
+    {
+      "path": "services/aux-cloud/public/builtin-skills/v1/airtable.svg",
+      "bytes": 1458,
+      "sha256": "339e529a2a5c590123632bec7c0543006e24051993225e4e172b21a2bacc4d6c"
+    },
+    {
+      "path": "services/aux-cloud/public/builtin-skills/v1/amazon.svg",
+      "bytes": 2848,
+      "sha256": "7ad1d1d888ac51fa6b0e2a643f461557ca59d5f68879b07b939f5f2d979a711d"
+    },
+    {
+      "path": "services/aux-cloud/public/builtin-skills/v1/apple-password.jpg",
+      "bytes": 20283,
+      "sha256": "e6f178b0856c4cdf5f7c9d22d4769050d1879589a4f53a7f7351ddcafd47b0c2"
+    },
+    {
+      "path": "services/aux-cloud/public/builtin-skills/v1/asana.svg",
+      "bytes": 1589,
+      "sha256": "415a67505c5520e047aacb98698acc0f0cec71398ff23fb4ddaa2c68e87a8bdf"
+    },
+    {
+      "path": "services/aux-cloud/public/builtin-skills/v1/aux.svg",
+      "bytes": 955,
+      "sha256": "45ba4f1d823cab3085cad8902fd17420ff5a9a5ac3139b180bfc0902875f515c"
+    },
+    {
+      "path": "services/aux-cloud/public/builtin-skills/v1/bitwarden.svg",
+      "bytes": 2722,
+      "sha256": "e2a4104904c5196ce018536e22e68653b82fd2e47d0f805a02da53036a56a3ab"
+    },
+    {
+      "path": "services/aux-cloud/public/builtin-skills/v1/captcha-resolver.jpg",
+      "bytes": 20689,
+      "sha256": "5e74426a4c8e17de402805b915defe6834dcc993eeb10b234552565bb065e46c"
+    },
+    {
+      "path": "services/aux-cloud/public/builtin-skills/v1/chrome.jpg",
+      "bytes": 19194,
+      "sha256": "51242c7c8a0b1e3b17f580d45b2c775f32f6be0aa300f5a5aefd079b3116f334"
+    },
+    {
+      "path": "services/aux-cloud/public/builtin-skills/v1/clickup.svg",
+      "bytes": 1974,
+      "sha256": "803202196e53fffa78d1a768108ffa3bd90dd0110f78ac2ef1e2e9ba245e4584"
+    },
+    {
+      "path": "services/aux-cloud/public/builtin-skills/v1/confluence.svg",
+      "bytes": 1972,
+      "sha256": "c85a12f38fff66d3fc80e17ede7fb5497759ad3179dc0b7b424f3de82ca02bad"
+    },
+    {
+      "path": "services/aux-cloud/public/builtin-skills/v1/dashlane.svg",
+      "bytes": 3148,
+      "sha256": "13e451af16a15228ce16af695cd36a4158de500df18610b1a1d1a610ebaeec4b"
+    },
+    {
+      "path": "services/aux-cloud/public/builtin-skills/v1/discord.svg",
+      "bytes": 1431,
+      "sha256": "1ddbf8c2b7253722021f846f4e99f6075322c52f3733f0ced56b8d100daeecb0"
+    },
+    {
+      "path": "services/aux-cloud/public/builtin-skills/v1/docx.jpg",
+      "bytes": 16626,
+      "sha256": "42d782452f6237a87a2a314ea3aa9f70f57ed5ca70b5004b746ce1fc608dce7c"
+    },
+    {
+      "path": "services/aux-cloud/public/builtin-skills/v1/draft-preview.jpg",
+      "bytes": 19536,
+      "sha256": "8319af3208324ea1802659e8ff5685c4e8737e4ace6a6e0e79c062a58bdb0d71"
+    },
+    {
+      "path": "services/aux-cloud/public/builtin-skills/v1/github.svg",
+      "bytes": 1470,
+      "sha256": "9038f3ebf6570d5784449ec765512f73080511407d77edb272b8b3e44d05da58"
+    },
+    {
+      "path": "services/aux-cloud/public/builtin-skills/v1/google-accounts.jpg",
+      "bytes": 14544,
+      "sha256": "95953cdce9b60404fa44181581b36d7f1924ce3ae472a2b97f3da791c0d5ab23"
+    },
+    {
+      "path": "services/aux-cloud/public/builtin-skills/v1/google-calendar.svg",
+      "bytes": 2334,
+      "sha256": "ffeac178d501398b3cf779cc63c3f7448e5661936ee582fecf28f412a799ae3c"
+    },
+    {
+      "path": "services/aux-cloud/public/builtin-skills/v1/google-docs.jpg",
+      "bytes": 8801,
+      "sha256": "2f88369dbb407952777817bf87f0a3d5be263e9ab54eaa9e5a2509f48688334d"
+    },
+    {
+      "path": "services/aux-cloud/public/builtin-skills/v1/google-drive.svg",
+      "bytes": 1448,
+      "sha256": "7cab7254d04c321abcaba8d242d7e2df34a3e1b7c5bb062dd37e74d2f6ed70e8"
+    },
+    {
+      "path": "services/aux-cloud/public/builtin-skills/v1/google-forms.svg",
+      "bytes": 4249,
+      "sha256": "a30e1b1874de92d46f4aead4210a2559d944401b8a711c99e210d24f313ac155"
+    },
+    {
+      "path": "services/aux-cloud/public/builtin-skills/v1/google-gmail.jpg",
+      "bytes": 14728,
+      "sha256": "514c07c8d28013a15d141884b1cc9260f3d3a22267eef2b83120c4da3e7f7db9"
+    },
+    {
+      "path": "services/aux-cloud/public/builtin-skills/v1/google-search.jpg",
+      "bytes": 14551,
+      "sha256": "fd0b9075809a7183be95a16ddc802b2c75c4cbd922a97f1dd882b9b7c828f288"
+    },
+    {
+      "path": "services/aux-cloud/public/builtin-skills/v1/google-sheets.jpg",
+      "bytes": 10607,
+      "sha256": "c3fdf2d6bd20b267055e7c01267b9761176ed34374aab399764b87e1109deac8"
+    },
+    {
+      "path": "services/aux-cloud/public/builtin-skills/v1/google-slides.svg",
+      "bytes": 4287,
+      "sha256": "bf5a8d9ceb497827015bf1429c796118a0f43dffd4131266ef6b2fd28765e836"
+    },
+    {
+      "path": "services/aux-cloud/public/builtin-skills/v1/image-generation.jpg",
+      "bytes": 24365,
+      "sha256": "569f07d41b84d416d0b5a4f6fb95cafedd0a075afa799ed76dbea3f14a4be2ea"
+    },
+    {
+      "path": "services/aux-cloud/public/builtin-skills/v1/image-search.jpg",
+      "bytes": 18474,
+      "sha256": "f042df314117821dbcff20825a42d9a29e7ae60074d71c065bc81db9e3ee4b4c"
+    },
+    {
+      "path": "services/aux-cloud/public/builtin-skills/v1/imessage.svg",
+      "bytes": 2311,
+      "sha256": "d9f645e66056a63697f904fcad95cb52b7ed41f1222c3e406cda50c3bba3c38a"
+    },
+    {
+      "path": "services/aux-cloud/public/builtin-skills/v1/jira.svg",
+      "bytes": 1686,
+      "sha256": "b10d5a91d37f4f4d40cb4b7e566d43750c25fa140d27f8ef4ee84947a212dd43"
+    },
+    {
+      "path": "services/aux-cloud/public/builtin-skills/v1/kakaotalk.svg",
+      "bytes": 1763,
+      "sha256": "d0dd63fc11500ada543779a73bc3d13290795da7f73b387b6ea5fe304f244d99"
+    },
+    {
+      "path": "services/aux-cloud/public/builtin-skills/v1/lastpass.svg",
+      "bytes": 2635,
+      "sha256": "5e4a922ba28af3579e32a4841cef80097891f038c51d751ae4397f1c48ff8413"
+    },
+    {
+      "path": "services/aux-cloud/public/builtin-skills/v1/linear.svg",
+      "bytes": 1692,
+      "sha256": "85ec2161eeaaef90c77b0df900b00f258a7ce6669b12e3bf5c2d21ee30c4155c"
+    },
+    {
+      "path": "services/aux-cloud/public/builtin-skills/v1/linkedin.svg",
+      "bytes": 1279,
+      "sha256": "3c969c817e25ce6fa82e20c4e7d9bd63c3b6caa1f0904809f7f08065634ccf65"
+    },
+    {
+      "path": "services/aux-cloud/public/builtin-skills/v1/notification-activation.jpg",
+      "bytes": 19468,
+      "sha256": "5b6e5927d736cdfd28097c413ba30c4c9b3663f94048331d7e1a4043b5e1bf76"
+    },
+    {
+      "path": "services/aux-cloud/public/builtin-skills/v1/notion.jpg",
+      "bytes": 11109,
+      "sha256": "92e124da6a9da715a903a6f4884e922316f81fd5e8a03b5397a170ef96768d59"
+    },
+    {
+      "path": "services/aux-cloud/public/builtin-skills/v1/notion.svg",
+      "bytes": 3584,
+      "sha256": "b45b07b4beb0f8ef54734758a882cf93abc119cf35880f3c61053defc9fb0c0a"
+    },
+    {
+      "path": "services/aux-cloud/public/builtin-skills/v1/pdf.jpg",
+      "bytes": 16231,
+      "sha256": "4aca9f82432d7fff87bcfda4b7862f31f9815d4a68e14aa632eca13cb04e1eac"
+    },
+    {
+      "path": "services/aux-cloud/public/builtin-skills/v1/pptx.jpg",
+      "bytes": 19452,
+      "sha256": "87a51f51cec1a0e0dc7424b6903a3467caaa1e3146213372f26cfcc230633139"
+    },
+    {
+      "path": "services/aux-cloud/public/builtin-skills/v1/skill-creator.jpg",
+      "bytes": 22397,
+      "sha256": "01290a56f64583d11cd9783182a93ca4e3529ca1f081b497722aad4265d09fe9"
+    },
+    {
+      "path": "services/aux-cloud/public/builtin-skills/v1/slack.jpg",
+      "bytes": 14977,
+      "sha256": "2fb7038efcf04aefd3f5d42805f51b328a4d561f6e37f8cd9741d9a8b7c5bf6b"
+    },
+    {
+      "path": "services/aux-cloud/public/builtin-skills/v1/trello.svg",
+      "bytes": 1131,
+      "sha256": "00a8b491cb968b80d2a48bc0d90021bcb2eb10ddef07516fdf916f40d7a37fe0"
+    },
+    {
+      "path": "services/aux-cloud/public/builtin-skills/v1/visual-browsing.jpg",
+      "bytes": 23133,
+      "sha256": "5899235e06057601b6049ea82828f5c6a1043eac1c9a632c45bd6acd7289d193"
+    },
+    {
+      "path": "services/aux-cloud/public/builtin-skills/v1/visualize.jpg",
+      "bytes": 55159,
+      "sha256": "0383b09875c84d2a3b3d0239725cd496351b4d14c241c99b5cc55e73323dff7f"
+    },
+    {
+      "path": "services/aux-cloud/public/builtin-skills/v1/x-twitter.svg",
+      "bytes": 857,
+      "sha256": "eab1386728d9cd5e16d7f05d8740d0212c2e68fe17ab5d488897d45157b7998d"
+    },
+    {
+      "path": "services/aux-cloud/public/builtin-skills/v1/xlsx.svg",
+      "bytes": 2928,
+      "sha256": "e873d803565f0023cb2513f30593eec3857422f5190247b194f56c611f68a5d5"
+    },
+    {
+      "path": "services/aux-cloud/public/builtin-skills/v1/youtube.jpg",
+      "bytes": 6324,
+      "sha256": "432dfcc60757b3f00d6b6ad95ada0445c108b595796c812d2d0cccd2911bf90b"
+    },
+    {
+      "path": "services/aux-cloud/scripts/backup-capture-process.mjs",
+      "bytes": 1799,
+      "sha256": "64d3ddd26b111a2c9ee3b28f8b967d1abdbeac684be585c20b4f490ebb6b643e"
+    },
+    {
+      "path": "services/aux-cloud/scripts/backup-job-core.mjs",
+      "bytes": 16418,
+      "sha256": "e25d57d83816e70c1b21df18727378188f239fc8528df63b9e78510b54f9f1f3"
+    },
+    {
+      "path": "services/aux-cloud/scripts/backup-r2-storage.mjs",
+      "bytes": 2253,
+      "sha256": "c280fafadaeeaded5d60f826ab5e28933a4061d41e13accc622b1cb02d9289fc"
+    },
+    {
+      "path": "services/aux-cloud/scripts/backup-remote-core.mjs",
+      "bytes": 15371,
+      "sha256": "0edffb2858247280fb6764c7e7b3a4759ac76990c90c08b388c291b5f7f7b362"
+    },
+    {
+      "path": "services/aux-cloud/scripts/backup-remote-core.test.mjs",
+      "bytes": 8678,
+      "sha256": "7f365781ab5d49ba800067940243026b6238e65c4bcd0b17233358f8a3947547"
+    },
+    {
+      "path": "services/aux-cloud/scripts/backup-runner-core.mjs",
+      "bytes": 10378,
+      "sha256": "79e66333c65c9d6234853e835895c69ace66f47858b21f798a8dc4866bf7c088"
+    },
+    {
+      "path": "services/aux-cloud/scripts/backup-runner-core.test.mjs",
+      "bytes": 5719,
+      "sha256": "6696015d415b399f9d45f31bae9184da9eca1a94d7460156bf9b23c34f72ddb3"
+    },
+    {
+      "path": "services/aux-cloud/scripts/check-auth-db.ts",
+      "bytes": 9552,
+      "sha256": "d580acd37fc99d27071685910de52be03e17db503e35270da5b773e09f4b99c2"
+    },
+    {
+      "path": "services/aux-cloud/scripts/check-chunked-blob.mts",
+      "bytes": 4883,
+      "sha256": "95a99d862f4b972b2a5bee198e1e1f936ad64b764e7037e065202bbc06a1b9b2"
+    },
+    {
+      "path": "services/aux-cloud/scripts/check-cookie-export.mts",
+      "bytes": 8579,
+      "sha256": "e96253295a1c1448d6bac07b107f6038a3ad5dbbca85eb1e327a57549875c552"
+    },
+    {
+      "path": "services/aux-cloud/scripts/check-development.mts",
+      "bytes": 9165,
+      "sha256": "fd9b1c28232144676011a221618e21692e4d4839ad5f97f1acf9aad80397c3ed"
+    },
+    {
+      "path": "services/aux-cloud/scripts/check-drive-1852-db.ts",
+      "bytes": 5513,
+      "sha256": "10283144e546e3cf33b2b594b0e812d656310c1c604a3a67e4cef86780ad16ed"
+    },
+    {
+      "path": "services/aux-cloud/scripts/check-drive-cookies-db.ts",
+      "bytes": 6982,
+      "sha256": "1eb38ccf9ad4da820fd720902b069c5c4c15c3b1a597387ba897d46cc5491b4d"
+    },
+    {
+      "path": "services/aux-cloud/scripts/check-environment.mjs",
+      "bytes": 4458,
+      "sha256": "0977ce30448ef236f255a3b4959d82ed46e4818037da04e6a29685335213ddca"
+    },
+    {
+      "path": "services/aux-cloud/scripts/check-production-bootstrap.mjs",
+      "bytes": 3301,
+      "sha256": "65e65a38d929b7dd706947b548dda7acecd74713337cd13a88c5e4554dd2f484"
+    },
+    {
+      "path": "services/aux-cloud/scripts/check-production-configuration.mjs",
+      "bytes": 6431,
+      "sha256": "94248a8cb0bb37ac356e6e96084eedb5bbd6108b6d520d571a460fcfab5b59c7"
+    },
+    {
+      "path": "services/aux-cloud/scripts/check-production-configuration.test.mjs",
+      "bytes": 2603,
+      "sha256": "570abfd387970f307c04ec0d1764bd1f2e3863fcce6520a31bfbbee0032674a4"
+    },
+    {
+      "path": "services/aux-cloud/scripts/check-provider-auth.mts",
+      "bytes": 9239,
+      "sha256": "ccecd922ef0784d8cd9fb2fc4febcc699ebfa6eddf8162f93388067f34075221"
+    },
+    {
+      "path": "services/aux-cloud/scripts/check-readiness.mts",
+      "bytes": 1766,
+      "sha256": "b10b277f81135c02fc30ea5ef38f1f11095939abeb5eb2f40b04808ed2b12d6b"
+    },
+    {
+      "path": "services/aux-cloud/scripts/check-recovery-capture.mjs",
+      "bytes": 5229,
+      "sha256": "99a00e99a2516d3703956f76c8a1a57ddebbfc40ceff7ae7a11248a80e769015"
+    },
+    {
+      "path": "services/aux-cloud/scripts/check-recovery-restore.mjs",
+      "bytes": 7363,
+      "sha256": "b32b35c1e948dd57c98ddcc06c16e75dcb9d908fe9174dd840b9bdd1ea5d4411"
+    },
+    {
+      "path": "services/aux-cloud/scripts/check-session-sync-db.ts",
+      "bytes": 5687,
+      "sha256": "83882312c927c025eeae7997549276f06e173401980572c1b67aa0d918186763"
+    },
+    {
+      "path": "services/aux-cloud/scripts/check-stripe-checkout.mts",
+      "bytes": 6763,
+      "sha256": "6cc2f0c778619436e5e9f903acca74a99bf8e7334c14d3997505e65e2ba63e94"
+    },
+    {
+      "path": "services/aux-cloud/scripts/check-stripe-sandbox.mts",
+      "bytes": 3521,
+      "sha256": "8fdf5bb9ee9057b9bc2c35dd11d8cd2d67529b2fbbcc37e600f59f560f44ea63"
+    },
+    {
+      "path": "services/aux-cloud/scripts/check-sync-recovery-deployed.mts",
+      "bytes": 11204,
+      "sha256": "2b6b1d62f53d24aae70f4a458b7a17a25787e92e1c41d921a3a092519e4f7a29"
+    },
+    {
+      "path": "services/aux-cloud/scripts/check-sync-recovery-status-deployed.mts",
+      "bytes": 5462,
+      "sha256": "62e887374c48001c37eb666eb00b79978a222f3fb3b2704e5b38c353cd72b16d"
+    },
+    {
+      "path": "services/aux-cloud/scripts/cloud-backup-fetch.mjs",
+      "bytes": 1879,
+      "sha256": "fdf23c2d39b635e377eca6e3620c0624e20215eee591c6afc38e46702b505d39"
+    },
+    {
+      "path": "services/aux-cloud/scripts/cloud-backup-job.mjs",
+      "bytes": 3305,
+      "sha256": "dc3aeb93bdbc258f915232d96c65a3c2f91cb1e285d7767604da5b51885c7a8d"
+    },
+    {
+      "path": "services/aux-cloud/scripts/cloud-backup-remote.mjs",
+      "bytes": 2946,
+      "sha256": "76ebc2769ef02b6f45c7f83328730c7b92a9ba28b692a61d7564ab0beb591224"
+    },
+    {
+      "path": "services/aux-cloud/scripts/cloud-backup-runner.mjs",
+      "bytes": 2623,
+      "sha256": "1ee4e81f8ec544daf2c3bb816bff88ec41a7b993eb41dd10015021e4d01546be"
+    },
+    {
+      "path": "services/aux-cloud/scripts/cloud-recovery-online.mjs",
+      "bytes": 7519,
+      "sha256": "5130b26220e4643a99b7453d3dd9ae9468c37ed303b16b833f04f8ceaec66720"
+    },
+    {
+      "path": "services/aux-cloud/scripts/cloud-recovery-restore.mjs",
+      "bytes": 8890,
+      "sha256": "33374ab3ba3d7a73b52cf0ca0f7b9fffec5c3e2c2fd85b19759a09cbdb6f463e"
+    },
+    {
+      "path": "services/aux-cloud/scripts/cloud-recovery.mjs",
+      "bytes": 8953,
+      "sha256": "7a34014ecddb27f7539a1ab8a27c6af432724feeb1cefc3ac7654d4ceb54928f"
+    },
+    {
+      "path": "services/aux-cloud/scripts/migrate-recovery-development.mjs",
+      "bytes": 2750,
+      "sha256": "947e3683d3c7fdbe85e5c5bdff553543d4f41027f8adda33d46e2d7d7bf8c328"
+    },
+    {
+      "path": "services/aux-cloud/scripts/migrate-recovery-production.mjs",
+      "bytes": 4276,
+      "sha256": "86996e81a31a231f01e4a19cc7a5c351c1f57bbfd8ce98f6fe83d141ef655fdd"
+    },
+    {
+      "path": "services/aux-cloud/scripts/migrate.mjs",
+      "bytes": 1511,
+      "sha256": "e3b3cb378ac591e73385098b9a1f60d523f4da5bb5caa543ccd2a437ee58ae55"
+    },
+    {
+      "path": "services/aux-cloud/scripts/online-recovery-objects.mjs",
+      "bytes": 5060,
+      "sha256": "3da056e7bad7385c1165671172a007e55ddfbfd35f92b6bcd1b409c26bc8dd9f"
+    },
+    {
+      "path": "services/aux-cloud/scripts/recovery-bundle.mjs",
+      "bytes": 7329,
+      "sha256": "689bd4efea79c4a7dad9a29d4ace11c7f86516bcc86f6766a2f644df449a488b"
+    },
+    {
+      "path": "services/aux-cloud/scripts/recovery-bundle.test.mjs",
+      "bytes": 3961,
+      "sha256": "7e9837f7692dde35d87550d26f6c3939fc7e155decf403b7e9ff321d593db007"
+    },
+    {
+      "path": "services/aux-cloud/scripts/recovery-restore-core.mjs",
+      "bytes": 11059,
+      "sha256": "622cbd029a27d18867f66125f458121811dcf4f6c54b83072f41431ba8694d9b"
+    },
+    {
+      "path": "services/aux-cloud/scripts/recovery-restore-process.mjs",
+      "bytes": 1637,
+      "sha256": "f84663aeabcdc9d88fc4acd6d763b5ee6c28f22a4b1d8c3985497370030a12d7"
+    },
+    {
+      "path": "services/aux-cloud/scripts/recovery-tool-process.mjs",
+      "bytes": 2561,
+      "sha256": "c7a65ad72805a03180de813005a5301e62a4e2beeb3f4d7d8d20db2b139354b4"
+    },
+    {
+      "path": "services/aux-cloud/src/app.ts",
+      "bytes": 3825,
+      "sha256": "ab32116897e3bb1ee2dd98d748e2382da8224bdcd9a5cde555289a9e2fd08a11"
+    },
+    {
+      "path": "services/aux-cloud/src/attachments.test.ts",
+      "bytes": 1630,
+      "sha256": "7c142adba8f60ae5f2c74d6fe6e14cabb8801228091449efef59c3082b4e5c57"
+    },
+    {
+      "path": "services/aux-cloud/src/attachments.ts",
+      "bytes": 22592,
+      "sha256": "45bff10715d1322c6d3bf055055bbe28fd4747b7c1145ce7a4fc17ce644ba5c0"
+    },
+    {
+      "path": "services/aux-cloud/src/audio-duration.ts",
+      "bytes": 5988,
+      "sha256": "ded402f13bd19b9fccf76b98fd63ec62226be3d64c33b2588cdfde1c347edeb6"
+    },
+    {
+      "path": "services/aux-cloud/src/auth.test.ts",
+      "bytes": 6721,
+      "sha256": "21a463dd82f56df6ff58e87725b1c5180537369c9410f47db889832b1e13fd5d"
+    },
+    {
+      "path": "services/aux-cloud/src/auth.ts",
+      "bytes": 39879,
+      "sha256": "8f303082a5421b4e27352761b60d62a54cf534c8f1b9167277c36f7b6397e297"
+    },
+    {
+      "path": "services/aux-cloud/src/billing-identity-transition.ts",
+      "bytes": 1233,
+      "sha256": "48fae5a3f820f95c31dbea97c292a2f483e553268ed8a8a1ef6c5010c84b4216"
+    },
+    {
+      "path": "services/aux-cloud/src/billing.test.ts",
+      "bytes": 13631,
+      "sha256": "2f4a489c7fbc3c4f8f651b67bc0392fb0f9036f2cbe60b55cca8c4bda4b45798"
+    },
+    {
+      "path": "services/aux-cloud/src/billing.ts",
+      "bytes": 31400,
+      "sha256": "afc8d76d6922edeab9e9e1917513342e4934754112f829d10c481e6e87e49529"
+    },
+    {
+      "path": "services/aux-cloud/src/blob-length.test.ts",
+      "bytes": 669,
+      "sha256": "09ca4ba2ed65e2386d1ef4f26883602fe3134d344fab2947da2abbeacb0c26fe"
+    },
+    {
+      "path": "services/aux-cloud/src/blob-length.ts",
+      "bytes": 504,
+      "sha256": "e773a4cfc5bb89f57571b9e2607781315bb3b2ec199b22fdeffe9771c2b99ff0"
+    },
+    {
+      "path": "services/aux-cloud/src/cloud-identity.test.ts",
+      "bytes": 4517,
+      "sha256": "bb5963934cdf75ae55322874188edc7f96d8f078cfdff6fac6a740970d0546bc"
+    },
+    {
+      "path": "services/aux-cloud/src/db.ts",
+      "bytes": 753,
+      "sha256": "440ffb15762508ef8fbc5fe33cb7a573c53d5b4240336ab78bfeed83dd497917"
+    },
+    {
+      "path": "services/aux-cloud/src/drive-1852.test.ts",
+      "bytes": 2072,
+      "sha256": "c493577ec3276dd44b16b37678bc1230d8708cac6898a47ecfb01aab4b254c8b"
+    },
+    {
+      "path": "services/aux-cloud/src/drive-1852.ts",
+      "bytes": 7219,
+      "sha256": "05d5e92224e544973d84c23a925c21e28c45d3bb6d8fc4e3b8b99673e5016736"
+    },
+    {
+      "path": "services/aux-cloud/src/drive-cookies.test.ts",
+      "bytes": 1779,
+      "sha256": "aafd1241cf95c77d72452346fc57a44ce0e28acce3e2f993072ed4b6cbcedef8"
+    },
+    {
+      "path": "services/aux-cloud/src/drive-cookies.ts",
+      "bytes": 7790,
+      "sha256": "1185c87700d24e3d6300fab3fcabdb362faad635315d1b2dec0de3976e50296d"
+    },
+    {
+      "path": "services/aux-cloud/src/events.test.ts",
+      "bytes": 4241,
+      "sha256": "8c19f01039fcab3e0c53fc8717fd01060fb6b4c0bb1d6821bf136f6c964cf338"
+    },
+    {
+      "path": "services/aux-cloud/src/events.ts",
+      "bytes": 3848,
+      "sha256": "f6b2ed2c8c0323bebb92e623643c5f61f38f13275565f84aa29d7761b6f9dc37"
+    },
+    {
+      "path": "services/aux-cloud/src/http.test.ts",
+      "bytes": 1916,
+      "sha256": "6036b9fa2e7ac1ead586ccb4e4b1c0626bcf398cb56c21502cd23d781b709783"
+    },
+    {
+      "path": "services/aux-cloud/src/http.ts",
+      "bytes": 1168,
+      "sha256": "b8330d67e6189469fceba82857749e95deeb417886206a95d6cca8943a5a249b"
+    },
+    {
+      "path": "services/aux-cloud/src/image-generation.test.ts",
+      "bytes": 1193,
+      "sha256": "7fca5ab69ff5e424901d23f730012e1d095f29972ae4e75fd39d5f89a3b73c96"
+    },
+    {
+      "path": "services/aux-cloud/src/image-generation.ts",
+      "bytes": 977,
+      "sha256": "ddc824aeceb98132a6cfab9a1a9a8f5e07c86775e75f344daf8b7fdd8095a31f"
+    },
+    {
+      "path": "services/aux-cloud/src/inference-uploads.test.ts",
+      "bytes": 6351,
+      "sha256": "d47f4aad1818a48dac94640a29a61704b1ac22c384051232a7d94e05a22ea7f8"
+    },
+    {
+      "path": "services/aux-cloud/src/inference-uploads.ts",
+      "bytes": 5437,
+      "sha256": "2f8266c1eddb139b12f785aa3e4551eb4f3b7341e8a078bf4b4ea8198aa0eba0"
+    },
+    {
+      "path": "services/aux-cloud/src/inference.test.ts",
+      "bytes": 4553,
+      "sha256": "3d3f7c86f8c302da4bfdf819d5b7cea131e23f6111943297809b78db88d97013"
+    },
+    {
+      "path": "services/aux-cloud/src/inference.ts",
+      "bytes": 25477,
+      "sha256": "f6d95e9ab1f40dd24682c07602bf8a87075ed6b539beb9a4694f45b5ea004163"
+    },
+    {
+      "path": "services/aux-cloud/src/internal-auth.ts",
+      "bytes": 386,
+      "sha256": "e5eec0ce813bc9f7af1f654c47246323291614418d3fc93e027bc419ce628469"
+    },
+    {
+      "path": "services/aux-cloud/src/launch-mode.test.ts",
+      "bytes": 3108,
+      "sha256": "5f9318e01ebda20cfde48f8b25fb0ef4d9a015f68599910b42e5a8f128f29095"
+    },
+    {
+      "path": "services/aux-cloud/src/launch-mode.ts",
+      "bytes": 365,
+      "sha256": "4f0ad1e830c0a5640c7bee82e154cc8c358ff3d31adfd9cc1bfa2d8cc860e4e6"
+    },
+    {
+      "path": "services/aux-cloud/src/maintenance.ts",
+      "bytes": 1275,
+      "sha256": "013c5d438f1077b6d099af63a3bdf3d6c28df47e6fb49117b474cb15bde611ca"
+    },
+    {
+      "path": "services/aux-cloud/src/operations.test.ts",
+      "bytes": 6299,
+      "sha256": "5db56d20790bb487a5e3c52536a86129183d73dd1dc8ae12cf458e73b512fa71"
+    },
+    {
+      "path": "services/aux-cloud/src/readiness.ts",
+      "bytes": 1252,
+      "sha256": "80203d783c28e720e26aefe3dd961029b107b877b541feae55183fa94cd11c37"
+    },
+    {
+      "path": "services/aux-cloud/src/routines-1852.test.ts",
+      "bytes": 6793,
+      "sha256": "9ac7c5b8631619757fd6e27fbccab6a9bfc9cc1c3490dc5a6c948de446648b3c"
+    },
+    {
+      "path": "services/aux-cloud/src/routines-1852.ts",
+      "bytes": 11522,
+      "sha256": "0628ae99c87534fadb36bb33093a27b2df2900c5e5f68f198ca11b27c4f61102"
+    },
+    {
+      "path": "services/aux-cloud/src/schema-manifest.json",
+      "bytes": 1119,
+      "sha256": "7d452e13d873f9c2b08efc5eab12c928d942e846f667be4938aa519740d89f10"
+    },
+    {
+      "path": "services/aux-cloud/src/session-sync.test.ts",
+      "bytes": 1458,
+      "sha256": "f8fc757ab18d68463a08679ff03637a0a2753bf97a20800b19078f57ca63d8fd"
+    },
+    {
+      "path": "services/aux-cloud/src/session-sync.ts",
+      "bytes": 10179,
+      "sha256": "d99a079fe8ab73e095aa13d15521575ff3de0602371f1904f5fc368d477c7dde"
+    },
+    {
+      "path": "services/aux-cloud/src/sync-recovery-crypto.ts",
+      "bytes": 6599,
+      "sha256": "4fe58769ee4df77595ff5060e63724d2d5289f4b50e667ab58f30da1aa90c0d7"
+    },
+    {
+      "path": "services/aux-cloud/src/sync-recovery-integration.test.ts",
+      "bytes": 11509,
+      "sha256": "996c1e77b9096fc0441e8b8dfeae42064365a8d429bc2b088f51de51759e026f"
+    },
+    {
+      "path": "services/aux-cloud/src/sync-recovery-server-key.ts",
+      "bytes": 1547,
+      "sha256": "38bf12eea12edb09b50e22b0f7af954d599767cc0b786bd3a0c073348262df7b"
+    },
+    {
+      "path": "services/aux-cloud/src/sync-recovery-store.ts",
+      "bytes": 3384,
+      "sha256": "4a89f357c1b60b51590891b78425e74545c855c83199239fc25cf47877d81c51"
+    },
+    {
+      "path": "services/aux-cloud/src/sync-recovery.ts",
+      "bytes": 6551,
+      "sha256": "837e423290214632eb76fb13ee9aa15b390d74386b60710174fa92a20fbe64d8"
+    },
+    {
+      "path": "services/aux-cloud/src/sync.test.ts",
+      "bytes": 3027,
+      "sha256": "56c407a9a96881dda500d3725b9f28fa2687010055a045895522488f5f6aa664"
+    },
+    {
+      "path": "services/aux-cloud/src/sync.ts",
+      "bytes": 23575,
+      "sha256": "1d411c26e4bb2cb4743ef393749058cb9dcd7ac94b017a13b81732e0bce2e679"
+    },
+    {
+      "path": "services/aux-cloud/src/usage.ts",
+      "bytes": 4088,
+      "sha256": "d16ab41fe5318d2f77120fc3a2f201408a7453b649ff8a5202b0932e6f0dbe64"
+    },
+    {
+      "path": "services/aux-cloud/test-fixtures/provided-pricing-table-shared.js",
+      "bytes": 1616,
+      "sha256": "5e5bb01e9e3d391b7522a8f00f62d17ded5c7705a1157a55026e09957607d642"
+    },
+    {
+      "path": "services/aux-cloud/tsconfig.json",
+      "bytes": 639,
+      "sha256": "45fd26769ac1a8f0b8741099674b71e00846b9f97ce1b7cb7afb98c7922ce7f0"
+    },
+    {
+      "path": "services/aux-cloud/vercel.json",
+      "bytes": 307,
+      "sha256": "59022a1315d692f82f70a9ab70fca44b5ddffe5af3987c91b4c0eb08aaa7d925"
+    }
+  ],
+  "serviceFileCount": 221,
+  "schemaManifest": {
+    "001-auth.sql": "b86d32b9ffa4a746dcf8373d72d5a26db8e66c6328e9b6940baca79d31689981",
+    "002-sync.sql": "41d503100fece24c2b7e0f4e84941ecaacc2d0932daceca2248ec452212257e5",
+    "003-billing.sql": "599685cfbf7f8d3b5c7718e9a929b8c9ddd31538b00356d77a17fc267fcb9c6f",
+    "004-attachments.sql": "bdfdea9499a2ab28da30d0c7cfd967606fb58b23cc28b965f1ca39f617870ead",
+    "005-attachment-bindings.sql": "619ecc3e36020c0fe58894b7b9568f08812c76f0ce1ede9a09d14bb709aa5500",
+    "006-auth-refresh.sql": "6f16c5fe55d5777a239df50586ef7fd8f12b7fd55b15bce6ed376e1a71f41276",
+    "007-sync-gc.sql": "7e87462ecaf46b6e04a1614acd0ebebb3c3b9028d49c00e361705cc4d9863a81",
+    "008-session-sync.sql": "9a507d4fb9ae33c938f38b1876035e1d715a23e2363d525cab39031765840498",
+    "009-drive-1852.sql": "f7a3ccb0a52932ca91df331035aa5187fc5ad4f20ae900e8b5902686e23efb41",
+    "010-drive-cookies.sql": "5cb5eba8f29314b487b4106770180fe243367af09bd87d083366c3e126e43b11",
+    "011-inference-uploads.sql": "98502eaa3231e388ed794e86f81dba4670506f5eb0d47859f84db4421e6f26a4",
+    "012-sync-recovery-v2.sql": "c7b963011657f8d6e28acdc0969eca1d0b6d7f118954142c918cf2bb52ba2e5e"
+  },
+  "canonicalManifestSha256": "75f926295a7e392e935b6892bda274fc74746bd4d31e6024ff6b9c6a4255c751",
+  "evidenceInputs": [
+    {
+      "path": "docs/integration/proposed/completion-20261026/integrator/cloud-production-configuration.json",
+      "bytes": 1184,
+      "sha256": "7e96d2c08a826009bf58b74610706fd606c5021633ca6b7caa96202d001e026b"
+    },
+    {
+      "path": "docs/integration/proposed/completion-20261026/integrator/cloud-env-metadata.json",
+      "bytes": 12945,
+      "sha256": "6f4578a5c37a1751b82a0fba0378bfea903efc79b35b8d2515170b5be3247d60"
+    },
+    {
+      "path": "docs/integration/proposed/completion-20261026/integrator/cloud-state.json",
+      "bytes": 1363,
+      "sha256": "1fc3a5cd5e4d69d1af5ce1c1c04882dc1121b3242f553a5ebb5b4e132ab0e0de"
+    },
+    {
+      "path": "docs/integration/proposed/completion-20261026/integrator/cloud-dashboard-review.json",
+      "bytes": 3930,
+      "sha256": "8698f2db02d03e058c42d1fcad7375af5fcea2e945ac018a29af6358c59852ca"
+    },
+    {
+      "path": "docs/integration/proposed/completion-20261026/integrator/cloud-typecheck.json",
+      "bytes": 389,
+      "sha256": "0cfea22b63c3086c880e989cbbac757465aa0badae97c1f9fb2f0379a2d9351a"
+    },
+    {
+      "path": "docs/integration/proposed/completion-20261026/integrator/product-link-audit.json",
+      "bytes": 935,
+      "sha256": "337bac453d23b9f20af38e635526b8c43a944728888cdce30ffc7e3665eebe69"
+    },
+    {
+      "path": "docs/integration/proposed/completion-20261026/integration/feedback/source-pins.json",
+      "bytes": 3337,
+      "sha256": "b2a4450c1e834d190a352b15efdbec6d287ba6f7ef89582f326f65cf0d22865e"
+    },
+    {
+      "path": "docs/integration/proposed/completion-20261026/integration/feedback/verification.json",
+      "bytes": 988,
+      "sha256": "84164b0c0ff771ce7304a9d7059ad68dc0cc03ba25d829156157c640dddaf1d1"
+    },
+    {
+      "path": "docs/integration/proposed/completion-20261026/integration/feedback/README.md",
+      "bytes": 5349,
+      "sha256": "6453395d2477d091cc68272371e838c15a7a1749465b649fb58b0739afe482bd"
+    },
+    {
+      "path": "docs/integration/proposed/completion-20261026/integration/product-information/community.md",
+      "bytes": 1271,
+      "sha256": "77c7a1d5077f59e39b03757cb6ef286d57e4299276bfb98ce386844daf742222"
+    },
+    {
+      "path": "docs/integration/proposed/completion-20261026/integration/product-information/privacy.md",
+      "bytes": 4207,
+      "sha256": "fe7a20f9c49332e71e47d047b16228c25d08184f82fb3ce41d1128c97b0c53aa"
+    },
+    {
+      "path": "docs/integration/proposed/completion-20261026/integrator/paired-source-a7.json",
+      "bytes": 205489,
+      "sha256": "d1d872318197104fa8e0a7c71732dae81b3486c3ba0f6d906c9a02484605f963"
+    },
+    {
+      "path": "docs/integration/proposed/completion-20261026/integrator/ui-source-a4.json",
+      "bytes": 15896,
+      "sha256": "8c4d3a9deb2175ae3a8696682ff2927b9e8c5786497c3f7cf19165e5616ec112"
+    },
+    {
+      "path": "docs/integration/proposed/final-completion/cloud/readiness.md",
+      "bytes": 4809,
+      "sha256": "6f013cbb7f6d7bc4cc0c823da4ef2554c66b230541bcc5180dd0eba38ec367be"
+    },
+    {
+      "path": "docs/integration/proposed/final-completion/cloud/operations.md",
+      "bytes": 3715,
+      "sha256": "a4add2010b0d60ab33205011071cd4fc90e09fabc65b26f4640370157c11ad85"
+    },
+    {
+      "path": "docs/cloud/production-resource-review/execution.json",
+      "bytes": 2730,
+      "sha256": "a116bc91dbb758add48ad7a435495d79dcdb868c2baff408d963b698bd6d832d"
+    },
+    {
+      "path": "docs/cloud/production-provider-review/prepared-clerk-webhook.json",
+      "bytes": 1280,
+      "sha256": "05b34ebd223807cb09e4efa784866d094a3348dee9f0d8b46c04d542313e5c65"
+    },
+    {
+      "path": "docs/cloud/setup-2026-10-21.md",
+      "bytes": 5956,
+      "sha256": "10afb3ea28681fd6e53a7ac2ca9b86fb6ac2bf7f6227a6ec6f46cb115426e582"
+    },
+    {
+      "path": "docs/cloud/account-setup-2026-10-23.md",
+      "bytes": 6676,
+      "sha256": "ed8a0c2e8fa63ca16694caf04f03eb30dcf240aa73517025e5988216c61178a1"
+    },
+    {
+      "path": "docs/cloud/dedicated-backup-runner-review/README.md",
+      "bytes": 8505,
+      "sha256": "f1911097367b359d96288987a691e5a1f54d4788387011acff8cd342127be3f2"
+    },
+    {
+      "path": "docs/integration/proposed/aux-backup-r2-live/README.md",
+      "bytes": 2357,
+      "sha256": "3f05bd23f0dbf5bdc75776762390b89045abd1469905ee0645084f09988088dc"
+    },
+    {
+      "path": "docs/integration/proposed/aux-cloud-hosted-restore-12/README.md",
+      "bytes": 4931,
+      "sha256": "601de626a83621ccb1c0693564af3a1f1dca52594b800c330547ddec1ca12f40"
+    }
+  ],
+  "reportedDeployment": {
+    "id": "dpl_4xeJYrXuUtcmFWFTjwevrCF3huQZ",
+    "url": "aux-cloud-9oc52fmgn-robzilla1738s-projects.vercel.app",
+    "state": "READY",
+    "target": "production",
+    "aliases": [
+      "api.getaux.co",
+      "app.getaux.co",
+      "share.getaux.co",
+      "dev-cloud.getaux.co",
+      "aux-cloud.vercel.app",
+      "aux-cloud-robzilla1738s-projects.vercel.app"
+    ],
+    "reportedGitCommit": "6fe912d4421f547e72e2833fb54238789167234b",
+    "source": "redeploy"
+  },
+  "sourcePathsChangedSinceReportedGit": [
+    "services/aux-cloud/.env.example",
+    "services/aux-cloud/.gitignore",
+    "services/aux-cloud/.vercelignore",
+    "services/aux-cloud/app/account/billing-panel.tsx",
+    "services/aux-cloud/app/account/panel.tsx",
+    "services/aux-cloud/app/api/v1/[[...path]]/route.ts",
+    "services/aux-cloud/app/community/page.tsx",
+    "services/aux-cloud/app/docs/page.tsx",
+    "services/aux-cloud/app/information-page.tsx",
+    "services/aux-cloud/app/layout.tsx",
+    "services/aux-cloud/app/policy/privacy/page.tsx",
+    "services/aux-cloud/app/policy/terms/page.tsx",
+    "services/aux-cloud/config/deployment-resources.json",
+    "services/aux-cloud/docs/auth-contract.md",
+    "services/aux-cloud/docs/drive-1852.md",
+    "services/aux-cloud/docs/events.md",
+    "services/aux-cloud/docs/identity-transition.md",
+    "services/aux-cloud/docs/inference-uploads.md",
+    "services/aux-cloud/docs/operations.md",
+    "services/aux-cloud/docs/recovery.md",
+    "services/aux-cloud/docs/session-sync.md",
+    "services/aux-cloud/docs/sync.md",
+    "services/aux-cloud/evidence/account-sandbox.json",
+    "services/aux-cloud/evidence/backup-job-empty-production.json",
+    "services/aux-cloud/evidence/chunked-private-blob.json",
+    "services/aux-cloud/evidence/cookie-export.json",
+    "services/aux-cloud/evidence/deployed-boundaries.json",
+    "services/aux-cloud/evidence/deployed-readiness.json",
+    "services/aux-cloud/evidence/development-recovery-migration.json",
+    "services/aux-cloud/evidence/email-delivery.json",
+    "services/aux-cloud/evidence/gateway-checkout-review.json",
+    "services/aux-cloud/evidence/isolated-recovery-restore.json",
+    "services/aux-cloud/evidence/production-configuration.json",
+    "services/aux-cloud/evidence/production-public-origins.json",
+    "services/aux-cloud/evidence/production-recovery-migration.json",
+    "services/aux-cloud/evidence/provider-auth.json",
+    "services/aux-cloud/evidence/provider-connections.json",
+    "services/aux-cloud/evidence/recovery-capture.json",
+    "services/aux-cloud/evidence/stripe-checkout.json",
+    "services/aux-cloud/evidence/stripe-lifecycle.json",
+    "services/aux-cloud/evidence/stripe-payment-refund.json",
+    "services/aux-cloud/evidence/sync-recovery-deployed.json",
+    "services/aux-cloud/evidence/sync-recovery-status-deployed.json",
+    "services/aux-cloud/migrations/008-session-sync.sql",
+    "services/aux-cloud/migrations/009-drive-1852.sql",
+    "services/aux-cloud/migrations/010-drive-cookies.sql",
+    "services/aux-cloud/migrations/011-inference-uploads.sql",
+    "services/aux-cloud/migrations/012-sync-recovery-v2.sql",
+    "services/aux-cloud/next.config.ts",
+    "services/aux-cloud/ops/backup-runner/README.md",
+    "services/aux-cloud/ops/backup-runner/production.env.example",
+    "services/aux-cloud/ops/backup-runner/runner-review.example.json",
+    "services/aux-cloud/ops/backup-runner/systemd/aux-backup-capture.timer",
+    "services/aux-cloud/ops/backup-runner/systemd/aux-backup-credential.timer",
+    "services/aux-cloud/ops/backup-runner/systemd/aux-backup-expiry.timer",
+    "services/aux-cloud/ops/backup-runner/systemd/aux-backup@.service",
+    "services/aux-cloud/package.json",
+    "services/aux-cloud/pnpm-lock.yaml",
+    "services/aux-cloud/public/builtin-skills/v1/1password.jpg",
+    "services/aux-cloud/public/builtin-skills/v1/airtable.svg",
+    "services/aux-cloud/public/builtin-skills/v1/amazon.svg",
+    "services/aux-cloud/public/builtin-skills/v1/apple-password.jpg",
+    "services/aux-cloud/public/builtin-skills/v1/asana.svg",
+    "services/aux-cloud/public/builtin-skills/v1/aux.svg",
+    "services/aux-cloud/public/builtin-skills/v1/bitwarden.svg",
+    "services/aux-cloud/public/builtin-skills/v1/captcha-resolver.jpg",
+    "services/aux-cloud/public/builtin-skills/v1/chrome.jpg",
+    "services/aux-cloud/public/builtin-skills/v1/clickup.svg",
+    "services/aux-cloud/public/builtin-skills/v1/confluence.svg",
+    "services/aux-cloud/public/builtin-skills/v1/dashlane.svg",
+    "services/aux-cloud/public/builtin-skills/v1/discord.svg",
+    "services/aux-cloud/public/builtin-skills/v1/docx.jpg",
+    "services/aux-cloud/public/builtin-skills/v1/draft-preview.jpg",
+    "services/aux-cloud/public/builtin-skills/v1/github.svg",
+    "services/aux-cloud/public/builtin-skills/v1/google-accounts.jpg",
+    "services/aux-cloud/public/builtin-skills/v1/google-calendar.svg",
+    "services/aux-cloud/public/builtin-skills/v1/google-docs.jpg",
+    "services/aux-cloud/public/builtin-skills/v1/google-drive.svg",
+    "services/aux-cloud/public/builtin-skills/v1/google-forms.svg",
+    "services/aux-cloud/public/builtin-skills/v1/google-gmail.jpg",
+    "services/aux-cloud/public/builtin-skills/v1/google-search.jpg",
+    "services/aux-cloud/public/builtin-skills/v1/google-sheets.jpg",
+    "services/aux-cloud/public/builtin-skills/v1/google-slides.svg",
+    "services/aux-cloud/public/builtin-skills/v1/image-generation.jpg",
+    "services/aux-cloud/public/builtin-skills/v1/image-search.jpg",
+    "services/aux-cloud/public/builtin-skills/v1/imessage.svg",
+    "services/aux-cloud/public/builtin-skills/v1/jira.svg",
+    "services/aux-cloud/public/builtin-skills/v1/kakaotalk.svg",
+    "services/aux-cloud/public/builtin-skills/v1/lastpass.svg",
+    "services/aux-cloud/public/builtin-skills/v1/linear.svg",
+    "services/aux-cloud/public/builtin-skills/v1/linkedin.svg",
+    "services/aux-cloud/public/builtin-skills/v1/notification-activation.jpg",
+    "services/aux-cloud/public/builtin-skills/v1/notion.jpg",
+    "services/aux-cloud/public/builtin-skills/v1/notion.svg",
+    "services/aux-cloud/public/builtin-skills/v1/pdf.jpg",
+    "services/aux-cloud/public/builtin-skills/v1/pptx.jpg",
+    "services/aux-cloud/public/builtin-skills/v1/skill-creator.jpg",
+    "services/aux-cloud/public/builtin-skills/v1/slack.jpg",
+    "services/aux-cloud/public/builtin-skills/v1/trello.svg",
+    "services/aux-cloud/public/builtin-skills/v1/visual-browsing.jpg",
+    "services/aux-cloud/public/builtin-skills/v1/visualize.jpg",
+    "services/aux-cloud/public/builtin-skills/v1/x-twitter.svg",
+    "services/aux-cloud/public/builtin-skills/v1/xlsx.svg",
+    "services/aux-cloud/public/builtin-skills/v1/youtube.jpg",
+    "services/aux-cloud/scripts/backup-capture-process.mjs",
+    "services/aux-cloud/scripts/backup-job-core.mjs",
+    "services/aux-cloud/scripts/backup-r2-storage.mjs",
+    "services/aux-cloud/scripts/backup-remote-core.mjs",
+    "services/aux-cloud/scripts/backup-remote-core.test.mjs",
+    "services/aux-cloud/scripts/backup-runner-core.mjs",
+    "services/aux-cloud/scripts/backup-runner-core.test.mjs",
+    "services/aux-cloud/scripts/check-auth-db.ts",
+    "services/aux-cloud/scripts/check-chunked-blob.mts",
+    "services/aux-cloud/scripts/check-cookie-export.mts",
+    "services/aux-cloud/scripts/check-development.mts",
+    "services/aux-cloud/scripts/check-drive-1852-db.ts",
+    "services/aux-cloud/scripts/check-drive-cookies-db.ts",
+    "services/aux-cloud/scripts/check-environment.mjs",
+    "services/aux-cloud/scripts/check-production-bootstrap.mjs",
+    "services/aux-cloud/scripts/check-production-configuration.mjs",
+    "services/aux-cloud/scripts/check-production-configuration.test.mjs",
+    "services/aux-cloud/scripts/check-provider-auth.mts",
+    "services/aux-cloud/scripts/check-readiness.mts",
+    "services/aux-cloud/scripts/check-recovery-capture.mjs",
+    "services/aux-cloud/scripts/check-recovery-restore.mjs",
+    "services/aux-cloud/scripts/check-session-sync-db.ts",
+    "services/aux-cloud/scripts/check-stripe-checkout.mts",
+    "services/aux-cloud/scripts/check-stripe-sandbox.mts",
+    "services/aux-cloud/scripts/check-sync-recovery-deployed.mts",
+    "services/aux-cloud/scripts/check-sync-recovery-status-deployed.mts",
+    "services/aux-cloud/scripts/cloud-backup-fetch.mjs",
+    "services/aux-cloud/scripts/cloud-backup-job.mjs",
+    "services/aux-cloud/scripts/cloud-backup-remote.mjs",
+    "services/aux-cloud/scripts/cloud-backup-runner.mjs",
+    "services/aux-cloud/scripts/cloud-recovery-online.mjs",
+    "services/aux-cloud/scripts/cloud-recovery-restore.mjs",
+    "services/aux-cloud/scripts/cloud-recovery.mjs",
+    "services/aux-cloud/scripts/migrate-recovery-development.mjs",
+    "services/aux-cloud/scripts/migrate-recovery-production.mjs",
+    "services/aux-cloud/scripts/online-recovery-objects.mjs",
+    "services/aux-cloud/scripts/recovery-bundle.mjs",
+    "services/aux-cloud/scripts/recovery-bundle.test.mjs",
+    "services/aux-cloud/scripts/recovery-restore-core.mjs",
+    "services/aux-cloud/scripts/recovery-restore-process.mjs",
+    "services/aux-cloud/scripts/recovery-tool-process.mjs",
+    "services/aux-cloud/src/app.ts",
+    "services/aux-cloud/src/attachments.ts",
+    "services/aux-cloud/src/audio-duration.ts",
+    "services/aux-cloud/src/auth.ts",
+    "services/aux-cloud/src/billing-identity-transition.ts",
+    "services/aux-cloud/src/billing.test.ts",
+    "services/aux-cloud/src/billing.ts",
+    "services/aux-cloud/src/blob-length.test.ts",
+    "services/aux-cloud/src/blob-length.ts",
+    "services/aux-cloud/src/cloud-identity.test.ts",
+    "services/aux-cloud/src/drive-1852.test.ts",
+    "services/aux-cloud/src/drive-1852.ts",
+    "services/aux-cloud/src/drive-cookies.test.ts",
+    "services/aux-cloud/src/drive-cookies.ts",
+    "services/aux-cloud/src/events.test.ts",
+    "services/aux-cloud/src/events.ts",
+    "services/aux-cloud/src/http.test.ts",
+    "services/aux-cloud/src/http.ts",
+    "services/aux-cloud/src/image-generation.test.ts",
+    "services/aux-cloud/src/image-generation.ts",
+    "services/aux-cloud/src/inference-uploads.test.ts",
+    "services/aux-cloud/src/inference-uploads.ts",
+    "services/aux-cloud/src/inference.test.ts",
+    "services/aux-cloud/src/inference.ts",
+    "services/aux-cloud/src/internal-auth.ts",
+    "services/aux-cloud/src/launch-mode.test.ts",
+    "services/aux-cloud/src/launch-mode.ts",
+    "services/aux-cloud/src/maintenance.ts",
+    "services/aux-cloud/src/operations.test.ts",
+    "services/aux-cloud/src/readiness.ts",
+    "services/aux-cloud/src/routines-1852.test.ts",
+    "services/aux-cloud/src/routines-1852.ts",
+    "services/aux-cloud/src/schema-manifest.json",
+    "services/aux-cloud/src/session-sync.test.ts",
+    "services/aux-cloud/src/session-sync.ts",
+    "services/aux-cloud/src/sync-recovery-crypto.ts",
+    "services/aux-cloud/src/sync-recovery-integration.test.ts",
+    "services/aux-cloud/src/sync-recovery-server-key.ts",
+    "services/aux-cloud/src/sync-recovery-store.ts",
+    "services/aux-cloud/src/sync-recovery.ts",
+    "services/aux-cloud/src/sync.ts",
+    "services/aux-cloud/src/usage.ts",
+    "services/aux-cloud/vercel.json"
+  ],
+  "checks": {
+    "serviceSourceClean": true,
+    "twelveSourceMigrationHashesMatch": true,
+    "testsRerun": false,
+    "backupRun": false,
+    "dashboardAccess": false,
+    "secretValuesRead": false,
+    "activationPerformed": false
+  }
+}
