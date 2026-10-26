@@ -1,0 +1,57 @@
+{
+  "format": "aux.browser-startup.same-scope-repair.v1",
+  "app": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-completion-20261026-a1/Aux.app",
+  "approvedReviewSha256": "20572af30ef6613f1fc8bced01edada6d52f4b3f7c1f21dd97fb610ec2b257f2",
+  "executor": {
+    "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/integrator/startup-resume-a1/repair-framework.py",
+    "sha256": "24bf2a42ecf39df965747d119e0c1bdc78a92d39ffe2b06edd4dc85ec6307d68"
+  },
+  "signedReceipt": {
+    "path": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-completion-20261026-a1/agent-start-grouped-repair-a1/receipt.json",
+    "sha256": "deaf196d3cdc55580cb7ebd1f18216631d0b57e892367b255db621569e18a977"
+  },
+  "newUnsignedFramework": {
+    "path": "/Users/rcourson/Documents/Vibe/web/out/completion-resume-20261026/Aux Framework-grouped-startup-split-cli",
+    "sha256": "a91bf50c65b92f7abb4e521fb2cd21d247414da860d173b4ea1fc7d4c7a8a099"
+  },
+  "replaceOnlyExecutable": "Contents/Frameworks/Aux Framework.framework/Versions/155.0.8059.85/Aux Framework",
+  "receiptDirectory": "browser-grouped-startup-split-cli-a1",
+  "sourceEvidence": [
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/integrator/split-drag-a1/build-receipt.json",
+      "sha256": "4e70cd92d2f801d2db052560599cef48a04c2b74df814c150675f1aa2776f029"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/integrator/split-drag-a1/projection.json",
+      "sha256": "51035a4089d819e0780c21ccdbbb53de08109622b49fb87c77aef4fc0538c55a"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/integrator/split-drag-a1/startup-projection.json",
+      "sha256": "6a66c92dde4be07dd09894ae1fa5d3afb9d945906e4574ddf02b9a8fd96a4e6a"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/desktop/startup-authority-observation/source/chrome/browser/aux/AuxNativeParentColdLaunch.h",
+      "sha256": "4ccef428e661568605464d0c202cf355e8357ac0343645071bcd553ee8a9181c"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/desktop/startup-authority-observation/source/chrome/browser/aux/AuxNativeParentColdLaunch.cc",
+      "sha256": "1c2996c7c3b8931330033688b7c6997749e4d3a7c2908b97dab6e9450ac1784b"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/desktop/startup-authority-observation/source/chrome/browser/aux/AuxSelectedStateHome.cc",
+      "sha256": "1ccb3f17b2dd85a1c8a717b4ad80f62ea22567e57e8e48bf2f0adc8c8959b921"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/desktop/split-drag-observation/source/chrome/browser/ui/views/frame/aux_organization_tree_view.cc",
+      "sha256": "2b5de512a8de89810c94279e89b8a06058e5f978c43537a9e2364dd2fa9cfc2e"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/desktop/split-drag-observation/source/chrome/browser/ui/views/frame/aux_organization_window_controller.cc",
+      "sha256": "88d64c0c26b0a535afcbec9e2c5fcc4585183c19f7f5d7d6e3381e6006121473"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/desktop/cli-background-query/source/chrome/browser/aux/cli/AuxCliOpenCommand.mm",
+      "sha256": "0cd55bc066b2678f4c29e6389dd3390a0a67731ff18e4a6c9e051e3aa7a2f562"
+    }
+  ]
+}

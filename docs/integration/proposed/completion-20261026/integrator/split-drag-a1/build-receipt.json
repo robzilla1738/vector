@@ -1,0 +1,39 @@
+{
+  "format": "aux.grouped-native-repair.build.v1",
+  "passed": true,
+  "exitCode": 0,
+  "framework": {
+    "path": "/Users/rcourson/Documents/Vibe/web/out/completion-resume-20261026/Aux Framework-grouped-startup-split-cli",
+    "sha256": "a91bf50c65b92f7abb4e521fb2cd21d247414da860d173b4ea1fc7d4c7a8a099"
+  },
+  "sources": [
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/desktop/startup-authority-observation/source/chrome/browser/aux/AuxNativeParentColdLaunch.h",
+      "sha256": "4ccef428e661568605464d0c202cf355e8357ac0343645071bcd553ee8a9181c"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/desktop/startup-authority-observation/source/chrome/browser/aux/AuxNativeParentColdLaunch.cc",
+      "sha256": "1c2996c7c3b8931330033688b7c6997749e4d3a7c2908b97dab6e9450ac1784b"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/desktop/startup-authority-observation/source/chrome/browser/aux/AuxSelectedStateHome.cc",
+      "sha256": "1ccb3f17b2dd85a1c8a717b4ad80f62ea22567e57e8e48bf2f0adc8c8959b921"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/desktop/split-drag-observation/source/chrome/browser/ui/views/frame/aux_organization_tree_view.cc",
+      "sha256": "2b5de512a8de89810c94279e89b8a06058e5f978c43537a9e2364dd2fa9cfc2e"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/desktop/split-drag-observation/source/chrome/browser/ui/views/frame/aux_organization_window_controller.cc",
+      "sha256": "88d64c0c26b0a535afcbec9e2c5fcc4585183c19f7f5d7d6e3381e6006121473"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/desktop/cli-background-query/source/chrome/browser/aux/cli/AuxCliOpenCommand.mm",
+      "sha256": "0cd55bc066b2678f4c29e6389dd3390a0a67731ff18e4a6c9e051e3aa7a2f562"
+    }
+  ],
+  "log": {
+    "path": "/Users/rcourson/Documents/Vibe/web/out/completion-resume-20261026/grouped-startup-split-cli-build.log",
+    "sha256": "24828fd84bcd0fb2dadeb2027964f201f91eabce13dfcb392e55aa9cba6d4d00"
+  }
+}
