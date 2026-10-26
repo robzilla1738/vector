@@ -1,0 +1,12 @@
+✔ actual core toolset construction needs no privileged REPL; its first execution retains the native refusal (33.536542ms)
+✔ unused and initialized lazy resources dispose without constructing or settling a different lifetime (0.108042ms)
+✔ early startup failure updates only its original idle account task and returns a payload-free UI error (0.699375ms)
+✔ both complete current successor leaves preserve execution guard and parse with the lazy startup/error join (1928.502ms)
+ℹ tests 4
+ℹ suites 0
+ℹ pass 4
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 2176.581416

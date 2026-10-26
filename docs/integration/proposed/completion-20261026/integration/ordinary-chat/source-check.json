@@ -1,0 +1,30 @@
+{
+  "format": "aux.ordinary-chat-startup.source-check.v1",
+  "output": "/var/folders/98/j36zgdnd0h507whjl16gxl780000gp/T/aux-ordinary-chat-startup-Dhlkio",
+  "files": [
+    {
+      "file": "index.mjs",
+      "inputSha256": "c21f05233d29e48733a198f366ade71892dbc86da94226f90c02dc22485e3230",
+      "outputSha256": "5fff53462f6b9711acc9167649d48e5f6163cf868636b5446880b8f9acff7f87",
+      "anchors": 3
+    },
+    {
+      "file": "aux-native-entry.mjs",
+      "inputSha256": "422b10a3c6ffb4e7fa0af3112dc443f561e2e17bdb5c10cec500e929d823dd90",
+      "outputSha256": "e0acf790614a4a5c302f1188fed24e8d76c00640824d2f056e658fdbd53c8b84",
+      "anchors": 3
+    }
+  ],
+  "sourceOrder": [
+    "A51",
+    "cloud-transfer",
+    "final-runtime-identity",
+    "event-polling",
+    "ordinary-chat-startup"
+  ],
+  "syntax": "Both complete leaves parsed by focused-tests.txt",
+  "executionGuardChanged": false,
+  "providerRequests": false,
+  "appChanged": false,
+  "signing": false
+}

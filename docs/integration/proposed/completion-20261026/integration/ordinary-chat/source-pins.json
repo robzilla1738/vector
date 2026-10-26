@@ -1,0 +1,27 @@
+{
+  "format": "aux.ordinary-chat-startup.v1",
+  "inputSha256": [
+    "48af998738fb6d2fc30cb8d5b2e9de03cb04ab7d8563ebdaa5fe8100944fc514",
+    "f355833cb607963a65ca3108e7ae19ea7ca60192a9f3d8e2644a3c12ec49c808",
+    "62469726c5629983c379faae562d8317c53d79848fe3f09cd945e3ff95ea5d47",
+    "8406b82b2c2ae73312e0d81e18392f2d4c91bc1df497b73eefbdc8fba04189bb",
+    "4aa78d2606963d854849629dba91a2f418f6f347b09f45d3f9cc9dd3000409b7",
+    "f3a8c02127d31b5c09c2f83b54dbfc1f789c7cfb7125ec0993dad31b18f73737",
+    "c21f05233d29e48733a198f366ade71892dbc86da94226f90c02dc22485e3230",
+    "422b10a3c6ffb4e7fa0af3112dc443f561e2e17bdb5c10cec500e929d823dd90"
+  ],
+  "rules": [
+    {
+      "find": "let ti=createDesktopRepl({accountId:Cn.accountId,agentSessionId:Cn.session.id,cwd:Cn.session.cwd,sessionStorageDir:Cn.sessionDir,accountRoot:Cn.accountRoot,browser:ei,hooks:Cn.hooks,isPathAllowed:(ei,ti)=>hasPermission(resolvePermission({accountRoot:Cn.accountRoot,permissionMode:Cn.session.permissionMode,accountPermission:Cn.settings.get(`permission`),sessionPermission:Cn.session.permission}),{type:`file`,path:ei,mode:ti})===`allow`,incognito:Cn.session.incognito,channelEnabled:Cn.session.trigger?.type===`channel`,imageGenerationModels:Cn.models,canSendMessages:!Cn.session.parentId||isForkSelfSubagent(Cn.session),settings:settings(Cn.accountId)})",
+      "replace": "let ti=auxCreateLazyDesktopRepl(()=>createDesktopRepl({accountId:Cn.accountId,agentSessionId:Cn.session.id,cwd:Cn.session.cwd,sessionStorageDir:Cn.sessionDir,accountRoot:Cn.accountRoot,browser:ei,hooks:Cn.hooks,isPathAllowed:(ei,ti)=>hasPermission(resolvePermission({accountRoot:Cn.accountRoot,permissionMode:Cn.session.permissionMode,accountPermission:Cn.settings.get(`permission`),sessionPermission:Cn.session.permission}),{type:`file`,path:ei,mode:ti})===`allow`,incognito:Cn.session.incognito,channelEnabled:Cn.session.trigger?.type===`channel`,imageGenerationModels:Cn.models,canSendMessages:!Cn.session.parentId||isForkSelfSubagent(Cn.session),settings:settings(Cn.accountId)}))",
+      "count": 1,
+      "scope": "lazy existing guarded desktop REPL construction"
+    },
+    {
+      "find": "async startRun(Cn,ei,ti,ni){let ri=await this.#h(Cn,ei);assertSessionCanStart(Cn,ei);",
+      "replace": "async startRun(Cn,ei,ti,ni){const auxStartOwner=AccountRegistry.getAccount(Cn);let ri;try{ri=await this.#h(Cn,ei)}catch(error){auxReportAgentStartFailure(Cn,ei,auxStartOwner,error)}assertSessionCanStart(Cn,ei);",
+      "count": 1,
+      "scope": "persist truthful early startup error and return supplied UI error"
+    }
+  ]
+}

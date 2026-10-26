@@ -1,0 +1,62 @@
+{
+  "format": "aux.provider-startup-safe-diagnosis.v1",
+  "sourceSha256": "48af998738fb6d2fc30cb8d5b2e9de03cb04ab7d8563ebdaa5fe8100944fc514",
+  "approvedLog": "/Users/rcourson/Documents/Vibe/web/out/local-completion-runtime-a4/launch-16.log",
+  "logReadScope": "Approved current A38 launch16 only; diagnostic/function/stage/status extraction; no raw bodies/headers/credentials or owner state printed.",
+  "knownDisabledDiagnosticPresent": true,
+  "matchedStack": [
+    {
+      "function": "auxRequireSupervisedTasks",
+      "line": 348
+    },
+    {
+      "function": "createDesktopRepl",
+      "line": 349
+    },
+    {
+      "function": "createCoreToolset",
+      "line": 350
+    },
+    {
+      "function": "createTools",
+      "line": 351
+    },
+    {
+      "function": "AgentSessionServer.startRun",
+      "line": 357
+    }
+  ],
+  "existingTrrpcStatus": "INTERNAL_SERVER_ERROR",
+  "sourceOrder": [
+    {
+      "stage": "sessions.createAndPrompt",
+      "action": "Creates session, then awaits startRun before returning a session for navigation."
+    },
+    {
+      "stage": "AgentSessionServer.startRun",
+      "byteOffset": 11770893,
+      "action": "Awaits #h before creating the actual run promise/entering callback execution."
+    },
+    {
+      "stage": "#h \u2192 AgentSession.create",
+      "action": "Resolves metadata/credential binding; creates an Agent with a streamFn closure. Defining the closure makes no inference call."
+    },
+    {
+      "stage": "AgentSession.create \u2192 new Cn",
+      "byteOffset": 11697250,
+      "action": "Constructor synchronously invokes harness.createTools \u2192 createCoreToolset \u2192 createDesktopRepl."
+    },
+    {
+      "stage": "auxRequireSupervisedTasks",
+      "action": "Throws the immutable disabled-capability refusal; stack matches the actual log."
+    },
+    {
+      "stage": "Never reached for this failed initialization",
+      "action": "The startRun callback \u2192 AgentSession.prompt \u2192 runAgentLoop \u2192 stored streamFn \u2192 modelRuntime.streamSimple."
+    }
+  ],
+  "inferenceConclusion": "This submitted turn failed before its model stream function could execute. The reviewed failure provides no completed inference or provider HTTP/usage receipt. No spend amount is inferred. Catalog/model-selection success is separate.",
+  "providerRequestsMadeByWorker": false,
+  "credentialAccessByWorker": false,
+  "appChanged": false
+}
