@@ -1,0 +1,22 @@
+--- a/chrome/browser/ui/views/frame/aux_tab_search_bubble.cc
++++ b/chrome/browser/ui/views/frame/aux_tab_search_bubble.cc
+@@ -388,6 +388,19 @@
+     if (auto* binding = SearchBrowserBinding::FromWebContents(webview_->GetWebContents())) {
+       binding->Begin(mode);
+       if (proposal) binding->SetProposal(std::move(*proposal));
++    }
++    auto* contents = webview_->GetWebContents();
++    auto* frame = contents ? contents->GetPrimaryMainFrame() : nullptr;
++    // Retain a healthy mounted document, including an unfinished initial load.
++    // WasShown does not reload a crashed WebView's renderer by itself.
++    if (contents && !contents->IsLoading() &&
++        !contents->GetController().GetPendingEntry() &&
++        (contents->IsCrashed() ||
++         (!contents->GetLastCommittedURL().is_empty() &&
++          (!frame || !frame->IsRenderFrameLive() || frame->IsErrorDocument() ||
++           contents->GetLastCommittedURL() != SearchURL())))) {
++      webview_->LoadInitialURL(SearchURL());
++      return;  // The replacement renderer mounts against the new binding.
+     }
+     NotifyInvocation(true);
+   }

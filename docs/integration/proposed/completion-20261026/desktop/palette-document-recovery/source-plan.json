@@ -1,0 +1,14 @@
+{
+  "scope": "conditional palette document recovery after crash or invalid navigation",
+  "projected": false,
+  "compiled": false,
+  "files": [
+    {
+      "path": "chrome/browser/ui/views/frame/aux_tab_search_bubble.cc",
+      "beforeSha256": "9add062c4f459750dc52945c2aa075560ab1c71d423bf0f0377176563e18fe4d",
+      "afterSha256": "715ca201fc7ffc441c41a0a382428498c88c3bfc17ff947fc34559a7b39ea429",
+      "anchors": 1
+    }
+  ],
+  "anchors": 1
+}
