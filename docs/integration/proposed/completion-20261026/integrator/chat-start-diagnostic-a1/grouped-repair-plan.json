@@ -1,0 +1,50 @@
+{
+  "format": "aux.agent-start.same-scope-repair.v1",
+  "app": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-completion-20261026-a1/Aux.app",
+  "approvedReviewSha256": "20572af30ef6613f1fc8bced01edada6d52f4b3f7c1f21dd97fb610ec2b257f2",
+  "executor": {
+    "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/integrator/chat-start-diagnostic-a1/repair-resources.py",
+    "sha256": "97224783d2550211d0f5a2dd48b654892b9e5ab3a69198357c5a33145323b001"
+  },
+  "signedReceipt": {
+    "path": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-completion-20261026-a1/agent-start-diagnostic-a1/receipt.json",
+    "sha256": "414204ab9d2531510e4831193a85f0a9f7580cf429cdd896d767dd1385ae3e67"
+  },
+  "receiptDirectory": "agent-start-grouped-repair-a1",
+  "sourceEvidence": [
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/integration/ordinary-chat/grouped-start-repair/README.md",
+      "sha256": "0db894154e014689c59879153bfb1a3ddb04ab31debc803a85c6c560894936ce"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/integration/ordinary-chat/grouped-start-repair/check.mjs",
+      "sha256": "94e14ac7b19991afc12eb5e661416ebb56da0df92865c4bd00860d9900ba91b8"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/integration/ordinary-chat/grouped-start-repair/prepare.py",
+      "sha256": "699fcc8850357197eb68d94fdd394409bd4bd28043b60b7bf871e9a07ecf2123"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/integration/ordinary-chat/grouped-start-repair/proposal.json",
+      "sha256": "afdf5de46e81ab1a2d3228f6ea137ad52d234c4ed3b769357a7ef195bccdf5aa"
+    }
+  ],
+  "replacements": [
+    {
+      "target": "Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/node-development/index.mjs",
+      "beforeSha256": "79319cd2f69b03e2140e810b27bed53b6d3dab9327747887c8905a6f6fbb8fc6",
+      "input": {
+        "path": "/private/tmp/aux-grouped-agent-start-repair-20261026-a2/index.mjs",
+        "sha256": "53b114cbd2380c9c1fa2101cc9a607c91e5ceb05fcd1955f123b6c54ca5598f9"
+      }
+    },
+    {
+      "target": "Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/node-development/aux-native-entry.mjs",
+      "beforeSha256": "87a68b97ca560fdea8972d2b2490962ec58a2dc715b99a1462edc13c5b523423",
+      "input": {
+        "path": "/private/tmp/aux-grouped-agent-start-repair-20261026-a2/aux-native-entry.mjs",
+        "sha256": "487fc201fc8b97675e4ed1f6224a4f7f2e71acb8f1cbba56a343e6ca3b1fa4a4"
+      }
+    }
+  ]
+}

@@ -1,0 +1,11 @@
+{
+  "candidateInventorySha256": "01816f5ebaacc403c1505af418ddf1ddc951004d0330522c4faefb3f6642ee8e",
+  "startupExitCode": 1,
+  "startupLeaseStatus": 5,
+  "startupLeaseBytes": 0,
+  "startupRefusalPhase": 6,
+  "chatSubmitted": false,
+  "browserAndDaemonAbsentAfterFailure": true,
+  "signalsSent": [],
+  "nextRepair": "Existing conditional startup lease retry/ACK handling proposal, now actual failure evidenced"
+}

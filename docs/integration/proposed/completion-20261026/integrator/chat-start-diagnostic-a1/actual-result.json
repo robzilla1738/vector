@@ -1,0 +1,75 @@
+{
+  "candidateInventorySha256": "d214faa18758a1b9f579ddf6859174192a187fcd3e819c5bea4846826ec77609",
+  "submissionCountThisCandidate": 1,
+  "prompt": "Reply exactly AUX_PROVIDER_OK. Do not use tools.",
+  "model": "vercel-ai-gateway/meta/muse-spark-1.3-contributor",
+  "completedResponse": false,
+  "diagnostics": [
+    {
+      "format": "aux.agent-start.diagnostic.v1",
+      "error": {
+        "name": "ReferenceError",
+        "code": "unclassified",
+        "frames": [
+          {
+            "function": "frame",
+            "source": "aux-native-entry.mjs",
+            "line": 13780,
+            "column": 2159
+          },
+          {
+            "function": "createCoreToolset",
+            "source": "aux-native-entry.mjs",
+            "line": 14052,
+            "column": 4458
+          },
+          {
+            "function": "frame",
+            "source": "aux-native-entry.mjs",
+            "line": 14052,
+            "column": 4929
+          },
+          {
+            "function": "frame",
+            "source": "aux-native-entry.mjs",
+            "line": 14509,
+            "column": 14418
+          },
+          {
+            "function": "frame",
+            "source": "aux-native-entry.mjs",
+            "line": 14509,
+            "column": 22629
+          },
+          {
+            "function": "frame",
+            "source": "aux-native-entry.mjs",
+            "line": 14512,
+            "column": 24732
+          },
+          {
+            "function": "frame",
+            "source": "aux-native-entry.mjs",
+            "line": 14512,
+            "column": 25619
+          }
+        ]
+      }
+    }
+  ],
+  "actualObservations": [
+    "profile picker preserves both approved disposable profiles",
+    "Work cookie and saved note restored",
+    "Cmd+L opened current-tab URL palette and navigated Alpha",
+    "Cmd+T opened new-tab palette and committed Beta",
+    "Tab menu split chooser loaded Alpha and Beta in two panes",
+    "Gamma edge drops on supplied sidebar and native split member did not create third pane; source integration investigation open",
+    "first synthetic notes.txt download reports 90 bytes Done; actual file content not yet accepted"
+  ],
+  "temporaryConnectionStillActive": true,
+  "normalQuit": {
+    "browserExitCode": 0,
+    "browserAndDaemonAbsent": true,
+    "signalsSent": []
+  }
+}

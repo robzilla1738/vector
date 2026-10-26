@@ -17,7 +17,7 @@
       "afterSha256": "ba59a18986f44efc40cb70817dcbe834a7d144a9567bd1fa31a7b5c5bb8cfe20"
     }
   ],
-  "applied": false,
+  "applied": true,
   "published": false,
   "policyApproved": false
 }

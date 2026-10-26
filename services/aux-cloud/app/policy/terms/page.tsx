@@ -4,7 +4,8 @@ export const metadata={title:"Terms \u2014 review draft" + ' | Aux'};
 
 export default function Page() {
   return <InformationPage title="Terms \u2014 review draft">
-    <p>These draft terms are incomplete and are not approved for public acceptance or production activation. They require the owner's legal review and the missing operator/contact/jurisdiction details below.</p>
+    <p>Aux is operated by Courson Digital LLC. Public support and privacy requests: hello@getaux.co. This policy remains a review draft; these confirmed facts do not establish public approval or hosted availability.</p>
+    <p>These draft terms are incomplete and are not approved for public acceptance or production activation. They require the owner's legal review and the remaining legal and jurisdiction decisions below.</p>
     <section><h2>Development preview</h2>
     <p>Aux is presently a development preview. Some browser, AI, extension, native and hosted capabilities remain under verification or depend on platform/vendor eligibility and explicit permissions. The published capability status must match the actual delivered app. Keep independent copies of important work; scheduled backup and recovery acceptance is still pending.</p>
     </section>
@@ -16,7 +17,7 @@ export default function Page() {
     <p>A feature requiring OS, account or provider permission remains unavailable until its real prerequisites are met. Merely installing Aux does not grant unrelated account or desktop access. The final public terms must state the supported release/OS scope and actual service availability without promising unfinished capabilities.</p>
     </section>
     <section><h2>Decisions required before public publication</h2>
-    <p>Supply the legal contracting entity and contact; eligibility/age requirements; content ownership and service-license terms; acceptable-use rules; suspension/termination and data-retrieval procedures; any paid-service terms if payments are enabled later; warranty/liability language; governing law and dispute process; policy-change notices; and consumer rights that apply. No governing jurisdiction, refund policy, support guarantee or waiver is invented by this technical draft. Privacy disclosures must be reviewed alongside these terms.</p>
+    <p>Supply eligibility/age requirements; content ownership and service-license terms; acceptable-use rules; suspension/termination and data-retrieval procedures; any paid-service terms if payments are enabled later; warranty/liability language; governing law and dispute process; policy-change notices; and consumer rights that apply. No governing jurisdiction, refund policy, support guarantee or waiver is invented by this technical draft. Privacy disclosures must be reviewed alongside these terms.</p>
     </section>
   </InformationPage>;
 }

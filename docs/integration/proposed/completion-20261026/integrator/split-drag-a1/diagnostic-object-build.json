@@ -1,0 +1,15 @@
+{
+  "passed": true,
+  "objects": [
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/out/AuxFast/obj/chrome/browser/ui/ui/aux_organization_tree_view.o",
+      "sha256": "2fc265c9fcd7ef047d552fa4e7dbf0649820388a6aea7d0cc11ccdd6cb0d30e9"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/out/AuxFast/obj/chrome/browser/ui/ui/aux_organization_window_controller.o",
+      "sha256": "2b5eec573d1dab7be2be0aa6af0d948dbef4d9d240ebfd267ec4618421d7f02a"
+    }
+  ],
+  "appActivated": false,
+  "behaviorChanged": false
+}
