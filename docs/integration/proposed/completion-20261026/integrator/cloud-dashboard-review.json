@@ -1,0 +1,48 @@
+{
+  "format": "aux.cloud.dashboard-review.v1",
+  "date": "2026-10-26",
+  "authorization": "Owner explicitly requested Aside browser for already-signed-in service dashboards",
+  "skill": "/Users/rcourson/.agents/skills/aside-browser/SKILL.md",
+  "readOnly": true,
+  "clerk": {
+    "application": "Aux",
+    "environment": "production",
+    "applicationId": "app_3L28GxWe25LYlR6tGYgVHLrebpi",
+    "instanceId": "ins_3L29Mzbc6B8iAxm7GYrD7e73HDc",
+    "primaryDomain": "getaux.co",
+    "domainStatus": "Verified",
+    "frontendApi": "clerk.getaux.co",
+    "frontendApiStatus": "Verified",
+    "accountPortal": "accounts.getaux.co",
+    "accountPortalStatus": "Verified",
+    "emailDnsStatus": "3/3 Verified",
+    "sslCertificates": "Issued",
+    "dashboardLastCheckedLabel": "4d ago",
+    "observedWebhookUrl": "https://api.getaux.co/api/v1/webhooks/clerk",
+    "webhookListReportedErrorRate": "0.0%",
+    "newWebhookDeliveryTested": false
+  },
+  "resend": {
+    "workspace": "Aux",
+    "domain": "notify.getaux.co",
+    "domainId": "44ea1472-8fc3-489a-8c58-022b794ab386",
+    "status": "verified",
+    "readinessNotice": "Your domain is ready to send emails",
+    "region": "us-east-1",
+    "provider": "Vercel",
+    "forge": "Enabled",
+    "trackingConfiguration": "Enable tracking metrics; Configure link visible",
+    "tlsMode": "Opportunistic",
+    "actualMailSent": false
+  },
+  "limitations": [
+    "Existing dashboard statuses do not prove current production server credential pairing or actual email delivery",
+    "No secret values opened, printed, transferred or stored",
+    "No email inbox/table contents inspected",
+    "No DNS, webhook, TLS, provider, billing or environment settings changed"
+  ],
+  "serviceCredentialsRead": false,
+  "ownerProfileFilesRead": false,
+  "asideDaemonStoppedOrReplaced": false,
+  "cloudActivationAccepted": false
+}

@@ -10,6 +10,8 @@ import {transformAuxOrdinaryChatStartup} from '../../../../../vendor/provided/au
 import {transformAuxBashCloseLifetime} from '../../../../../vendor/provided/aux-bash-close-lifetime.mjs';
 import {transformAuxFixedBuiltinRouting} from '../../../../../vendor/provided/aux-fixed-builtin-routing.mjs';
 import {transformAuxEphemeralProtocolIdentity, transformAuxTagIconIdentity} from '../../../../../vendor/provided/aux-ephemeral-protocol-identity.mjs';
+import {transformAuxSelectedBrowserResources} from '../desktop/browser-files/transform-resources.mjs';
+import {transformAuxPreferenceIdentity} from '../../../../../vendor/provided/aux-password-preference-markers.mjs';
 
 const repository = process.cwd();
 const here = path.join(repository, 'docs/integration/proposed/completion-20261026/integrator');
@@ -38,8 +40,12 @@ const generators = [
   'vendor/provided/aux-ephemeral-protocol-identity.mjs',
   'docs/integration/proposed/completion-20261026/integrator/materialize-paired-source.mjs',
 ];
+const resourcePins = JSON.parse(await readFile(path.join(here, '../desktop/browser-files/composition-inputs.json'), 'utf8'));
+generators.push('docs/integration/proposed/completion-20261026/desktop/browser-files/transform-resources.mjs',
+  'docs/integration/proposed/completion-20261026/desktop/browser-files/composition-inputs.json', ...Object.keys(resourcePins.inputs));
+const uniqueGenerators = [...new Set(generators)];
 const inputs = [];
-for (const name of generators) inputs.push({path: name, sha256: sha(await readFile(path.join(repository, name)))});
+for (const name of uniqueGenerators) inputs.push({path: name, sha256: sha(await readFile(path.join(repository, name)))});
 await mkdir(output);
 const files = [];
 for (const name of ['index.mjs', 'aux-native-entry.mjs']) {
@@ -63,12 +69,24 @@ for (const name of ['index.mjs', 'aux-native-entry.mjs']) {
   stages.push({name: 'Aux transient protocol generation 2', outputSha256: sha(protocols.text), anchors: protocols.anchors});
   const tags = transformAuxTagIconIdentity({text: protocols.text, source});
   stages.push({name: 'fresh successor Aux tag icon schema', outputSha256: sha(tags.text), anchors: tags.anchors});
+  const preference = transformAuxPreferenceIdentity({text: tags.text, source});
+  stages.push({name: 'Aux versioned external password-manager preference markers', outputSha256: sha(preference.text), anchors: preference.anchors});
+  const selected = await transformAuxSelectedBrowserResources({path: name, text: preference.text, source, root: repository});
+  stages.push(...selected.stages.map(stage => ({...stage, name: stage.kind})));
   const destination = path.join(output, name);
-  await writeFile(destination, tags.text, {flag: 'wx'});
+  await writeFile(destination, selected.text, {flag: 'wx'});
   const syntax = spawnSync(process.execPath, ['--check', destination], {encoding: 'utf8'});
   if (syntax.status !== 0) throw Error('Combined paired source does not parse: ' + name + '\n' + syntax.stderr);
-  files.push({path: destination, input: path.join(original, name), inputSha256: sha(source), outputSha256: sha(tags.text), stages});
+  files.push({path: destination, input: path.join(original, name), inputSha256: sha(source), outputSha256: sha(selected.text), stages});
 }
+const backgroundInput = path.join(repository, 'out/provided-candidate-local-completion-20261025-a38/Aux.app/Contents/Resources/aux/apps/extension/dist/background.js');
+const backgroundSource = await readFile(backgroundInput, 'utf8');
+const background = await transformAuxSelectedBrowserResources({path: 'background.js', text: backgroundSource, source: backgroundSource, root: repository});
+const backgroundOutput = path.join(output, 'background.js');
+await writeFile(backgroundOutput, background.text, {flag: 'wx'});
+const backgroundSyntax = spawnSync(process.execPath, ['--check', backgroundOutput], {encoding: 'utf8'});
+if (backgroundSyntax.status !== 0) throw Error('Combined Agent background does not parse: ' + backgroundSyntax.stderr);
+files.push({path: backgroundOutput, input: backgroundInput, inputSha256: sha(backgroundSource), outputSha256: sha(background.text), stages: background.stages});
 for (const input of inputs)
   if (sha(await readFile(path.join(repository, input.path))) !== input.sha256) throw Error('Source generator changed during materialization');
 const receipt = {format: 'aux.completion.paired-source.v1', passed: true, files, generators: inputs,
