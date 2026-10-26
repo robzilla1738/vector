@@ -1,7 +1,7 @@
 {
   "format": "aux.completion.current-source-selection.v1",
   "candidate": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-completion-20261026-a1/Aux.app",
-  "signedInventorySha256": "80b212708d9093014f625f8d6397cffe4347ac870053b5a42dbdf758e720d343",
+  "signedInventorySha256": "582c9aa8fd641c666ee16fdafb2aba9f10268d97e2b27d2cb20aacf8a6bc52c4",
   "sourceSnapshots": [
     {
       "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/runtime/addon-local-signing-review/actual-signed-source-a1/source/daemon-policy.swift",
@@ -168,6 +168,18 @@
     {
       "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/runtime/extension-sign-observation/source/AuxOwnedNativePeerChild.cc",
       "sha256": "d25edf02478e97766ae3e6cbec5866cb51ce3145422c85f054cb56436373de1b"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/integration/local-native-account/source/chrome/browser/aux/account_profile_source.cc",
+      "sha256": "ee8af51869770943f4343fee8b8b85c7b8f7776e5b8c6d2da084497cc65bfcba"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/integration/local-native-account/source/chrome/browser/aux/account_profile_updater.cc",
+      "sha256": "7fd746e7f1cc12e6cc97dc61623bc97a743c836fc38a89361243e9b2bc9c9ccc"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/desktop/shortcut-existing-reservation/source/chrome/browser/ui/aux_keyboard_shortcuts.mm",
+      "sha256": "72885e0ee08726bcdf07e1a026a89684cb5c93868d353a2f4099b5355a075978"
     }
   ],
   "olderNativeSnapshotsArePredecessorsWhereSuperseded": true,
@@ -191,5 +203,9 @@
   "currentComponentPayloadReceipt": {
     "path": "/private/tmp/aux-completion-grouped-version-20261026-a2/receipt.json",
     "sha256": "baa8292d80f36d89514b8f312236057624da2cd36d1e8f48908d9e733495b9a0"
+  },
+  "combinedLocalAccountShortcutRepair": {
+    "path": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-completion-20261026-a1/combined-local-account-shortcut-a1/receipt.json",
+    "sha256": "c2896b750db21d49a2655514e2fdb20c59fca221db718ce6ec8fddae5acbae95"
   }
 }
