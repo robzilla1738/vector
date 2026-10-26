@@ -1,0 +1,76 @@
+{
+  "format": "aux.profile-footer-observer.v1",
+  "files": [
+    {
+      "path": "chrome/browser/ui/views/frame/aux_profile_page_indicator.h",
+      "input": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/ui/views/frame/aux_profile_page_indicator.h",
+      "inputSha256": "d2c7273a81b8afae6543eea8fe971a579ba88986897bc7300ab54108f1950083",
+      "output": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/browser-feature-expansion/productivity-profile-footer-refresh-a43/source/chrome/browser/ui/views/frame/aux_profile_page_indicator.h",
+      "outputSha256": "6686c58c82b655cfcdd91c07761f2b857f92a2c7b06c8a9cb22364a9beb0396e",
+      "anchors": [
+        {
+          "before": "#include \"chrome/browser/aux/profile_account_metadata.h\"",
+          "after": "#include \"chrome/browser/aux/profile_account_metadata.h\"\n#include \"chrome/browser/profiles/profile_attributes_storage_observer.h\"",
+          "count": 1
+        },
+        {
+          "before": "class BrowserView;",
+          "after": "class BrowserView;\nclass ProfileAttributesStorage;",
+          "count": 1
+        },
+        {
+          "before": "public extensions::ExtensionRegistryObserver {",
+          "after": "public extensions::ExtensionRegistryObserver,\n                             public ProfileAttributesStorageObserver {",
+          "count": 1
+        },
+        {
+          "before": "  void BindRegistry();",
+          "after": "  void BindRegistry();\n  void BindProfileAttributes();\n  void ScheduleProfileRefresh();\n  void RunProfileRefresh();\n  void OnProfileAdded(const base::FilePath& path) override;\n  void OnProfileWasRemoved(const base::FilePath& path,\n                           const std::u16string& name) override;\n  void OnProfileNameChanged(const base::FilePath& path,\n                            const std::u16string& old_name) override;\n  void OnProfileAuthInfoChanged(const base::FilePath& path) override;\n  void OnProfileAvatarChanged(const base::FilePath& path) override;\n  void OnProfileHighResAvatarLoaded(const base::FilePath& path) override;\n  void OnProfileIsOmittedChanged(const base::FilePath& path) override;",
+          "count": 1
+        },
+        {
+          "before": "  bool presentation_collapsed_ = false;",
+          "after": "  base::ScopedObservation<ProfileAttributesStorage,\n                          ProfileAttributesStorageObserver>\n      attributes_observation_{this};\n  bool profile_refresh_pending_ = false;\n  bool presentation_collapsed_ = false;",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_profile_page_indicator.cc",
+      "input": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/ui/views/frame/aux_profile_page_indicator.cc",
+      "inputSha256": "56b1fb93ee768ac3b3bfa9fcccbf249b5a07297cf59425c9602796d414088848",
+      "output": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/browser-feature-expansion/productivity-profile-footer-refresh-a43/source/chrome/browser/ui/views/frame/aux_profile_page_indicator.cc",
+      "outputSha256": "98e12c07ecc7a3af0e7939d51b80856dd329a3a9f06ff59be9fcd5e1d7da1b09",
+      "anchors": [
+        {
+          "before": "#include \"base/task/thread_pool.h\"",
+          "after": "#include \"base/task/thread_pool.h\"\n#include \"base/task/single_thread_task_runner.h\"",
+          "count": 1
+        },
+        {
+          "before": "  layer()->SetFillsBoundsOpaquely(false);\n  RefreshAccountMetadata();",
+          "after": "  layer()->SetFillsBoundsOpaquely(false);\n  BindProfileAttributes();\n  RefreshAccountMetadata();",
+          "count": 1
+        },
+        {
+          "before": "void ProfilePageIndicator::Refresh() {\n  if (drag_.DeferUpdate()) {",
+          "after": "void ProfilePageIndicator::Refresh() {\n  BindProfileAttributes();\n  if (drag_.DeferUpdate()) {",
+          "count": 1
+        },
+        {
+          "before": "void ProfilePageIndicator::BindRegistry() {",
+          "after": "void ProfilePageIndicator::BindProfileAttributes() {\n  auto* manager =\n      g_browser_process ? g_browser_process->profile_manager() : nullptr;\n  auto* storage = manager ? &manager->GetProfileAttributesStorage() : nullptr;\n  if (attributes_observation_.IsObservingSource(storage))\n    return;\n  attributes_observation_.Reset();\n  if (storage)\n    attributes_observation_.Observe(storage);\n}\n\nvoid ProfilePageIndicator::ScheduleProfileRefresh() {\n  if (profile_refresh_pending_)\n    return;\n  profile_refresh_pending_ = true;\n  // Storage notifications can be emitted in a group while its entries change.\n  // Refresh only after that mutation returns, using this Browser's real roster.\n  base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(\n      FROM_HERE,\n      base::BindOnce(&ProfilePageIndicator::RunProfileRefresh,\n                     weak_factory_.GetWeakPtr()));\n}\n\nvoid ProfilePageIndicator::RunProfileRefresh() {\n  profile_refresh_pending_ = false;\n  if (attributes_observation_.IsObserving())\n    Refresh(); // Existing preview-roster and drag deferral remain authoritative.\n}\n\nvoid ProfilePageIndicator::OnProfileAdded(const base::FilePath&) {\n  ScheduleProfileRefresh();\n}\nvoid ProfilePageIndicator::OnProfileWasRemoved(const base::FilePath&,\n                                               const std::u16string&) {\n  ScheduleProfileRefresh();\n}\nvoid ProfilePageIndicator::OnProfileNameChanged(const base::FilePath&,\n                                                const std::u16string&) {\n  ScheduleProfileRefresh();\n}\nvoid ProfilePageIndicator::OnProfileAuthInfoChanged(const base::FilePath&) {\n  ScheduleProfileRefresh();\n}\nvoid ProfilePageIndicator::OnProfileAvatarChanged(const base::FilePath&) {\n  ScheduleProfileRefresh();\n}\nvoid ProfilePageIndicator::OnProfileHighResAvatarLoaded(const base::FilePath&) {\n  ScheduleProfileRefresh();\n}\nvoid ProfilePageIndicator::OnProfileIsOmittedChanged(const base::FilePath&) {\n  ScheduleProfileRefresh();\n}\n\nvoid ProfilePageIndicator::BindRegistry() {",
+          "count": 1
+        },
+        {
+          "before": "void ProfilePageIndicator::Retire() {\n  registry_observation_.Reset();",
+          "after": "void ProfilePageIndicator::Retire() {\n  attributes_observation_.Reset();\n  profile_refresh_pending_ = false;\n  registry_observation_.Reset();",
+          "count": 1
+        }
+      ]
+    }
+  ],
+  "actualNativeMutation": false,
+  "nativeCompiled": false,
+  "productExecuted": false
+}
