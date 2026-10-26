@@ -1,0 +1,11 @@
+--- a/AuxBrokerAwaitedNapi.inc
++++ b/AuxBrokerAwaitedNapi.inc
+@@ -36,7 +36,7 @@
+   if(napi_get_cb_info(env,info,&count,&value,nullptr,&data)!=napi_ok)return nullptr;
+   auto* observer=static_cast<AwaitedBrokerObserver*>(data);
+   auto& work=*observer->work;
+-  bool current=AuxNativeContextValidateCurrentAuthority(work.captured.owner->handle)==0;
++  bool current=ValidateBrokerStorageAuthority(work.captured.owner->handle)==0;
+   {std::lock_guard<std::mutex> lock(work.captured.worker->mutex);
+     current=current&&CurrentWorker(*work.captured.worker)&&!work.captured.worker->terminal&&
+       !work.captured.worker->environment_detached&&work.captured.worker->owner==work.captured.owner;

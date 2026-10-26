@@ -1,0 +1,26 @@
+{
+  "actualDependencyCount": 106,
+  "allOtherDependencyPathsUnchanged": true,
+  "selectedIncludes": [
+    {
+      "name": "AuxBrokerAwaitedNapi.inc",
+      "path": "/private/tmp/aux-browser-only-daemon-build-20261025-a72/source/AuxBrokerAwaitedNapi.inc",
+      "sha256": "36c9dc78c361527c4e9ca171bf3d2f162106b0d6c4f95d69c8f66d242da17d90"
+    },
+    {
+      "name": "AuxBrokerWritesNapi.inc",
+      "path": "/private/tmp/aux-browser-only-daemon-build-20261025-a72/source/AuxBrokerWritesNapi.inc",
+      "sha256": "dd5bc527e067306b4e3c9d85e865f1d56004d1accc597aa3df1a9218b80a1e4e"
+    },
+    {
+      "name": "AuxStorageRootsNapi.inc",
+      "path": "/private/tmp/aux-browser-only-daemon-build-20261025-a72/source/AuxStorageRootsNapi.inc",
+      "sha256": "afaf22470b1a46b6984078722ebcb3c988553deee3aa04de6c84cfb5c0c670bf"
+    },
+    {
+      "name": "AuxMemoryMainOwner.inc",
+      "path": "/private/tmp/aux-browser-only-daemon-build-20261025-a72/source/AuxMemoryMainOwner.inc",
+      "sha256": "8e93a9315bc9fabbf8b0228025ca11846307536e1f547fa326bb7e5b5723eaca"
+    }
+  ]
+}

@@ -1,0 +1,58 @@
+{
+  "format": "aux.awaited-storage-authority-build-result.v1",
+  "passed": true,
+  "results": [
+    {
+      "label": "worker",
+      "exitCode": 0
+    },
+    {
+      "label": "link",
+      "exitCode": 0
+    }
+  ],
+  "seconds": 29.4624365,
+  "planSha256": "329b3865e4eb5f4069afaa508a12ec942301f6d11291a4091bf266000c517b72",
+  "sourcePlanSha256": "e8119cd5d5e1e6f941608313ad9b22e7e941cedd4326f4a361f75389480c80aa",
+  "unchangedSwiftSourceCount": 50,
+  "unchangedNativeObjectCount": 14,
+  "a67MainAndActualNodeLayoutUnchanged": true,
+  "a47LoaderAndMemoryOwnerUnchanged": true,
+  "a71MetadataOnlyMemoryBoundaryUnchanged": true,
+  "sameActualStorageValidatorAtAdmissionAndCompletion": true,
+  "allOtherCompletionChecksUnchanged": true,
+  "actualSelectedIncludes": [
+    {
+      "name": "AuxBrokerAwaitedNapi.inc",
+      "path": "/private/tmp/aux-browser-only-daemon-build-20261025-a72/source/AuxBrokerAwaitedNapi.inc",
+      "sha256": "36c9dc78c361527c4e9ca171bf3d2f162106b0d6c4f95d69c8f66d242da17d90"
+    },
+    {
+      "name": "AuxBrokerWritesNapi.inc",
+      "path": "/private/tmp/aux-browser-only-daemon-build-20261025-a72/source/AuxBrokerWritesNapi.inc",
+      "sha256": "dd5bc527e067306b4e3c9d85e865f1d56004d1accc597aa3df1a9218b80a1e4e"
+    },
+    {
+      "name": "AuxStorageRootsNapi.inc",
+      "path": "/private/tmp/aux-browser-only-daemon-build-20261025-a72/source/AuxStorageRootsNapi.inc",
+      "sha256": "afaf22470b1a46b6984078722ebcb3c988553deee3aa04de6c84cfb5c0c670bf"
+    },
+    {
+      "name": "AuxMemoryMainOwner.inc",
+      "path": "/private/tmp/aux-browser-only-daemon-build-20261025-a72/source/AuxMemoryMainOwner.inc",
+      "sha256": "8e93a9315bc9fabbf8b0228025ca11846307536e1f547fa326bb7e5b5723eaca"
+    }
+  ],
+  "productExecuted": false,
+  "productSigned": false,
+  "originalRootAccessed": false,
+  "binary": "/private/tmp/aux-browser-only-daemon-build-20261025-a72/Aux Daemon",
+  "binarySha256": "954cdcc05e3edaa20f403ccb51829dd03b7d264076781f4d854b746a9abb3ea1",
+  "binarySize": 147466872,
+  "workerObjectSha256": "2c3230aded12cc418a62190f42ccf36001acf33439ec98ae2e784b475f1391fb",
+  "actualDependencyFileSha256": "a4d9606a30a781800051ba023fd098f53cdeccd3ddfadd67e37249b307d2a0c9",
+  "codeSignatureLoadCommandPresent": false,
+  "codesignDisplayExitCode": 1,
+  "inputPinsUnchanged": true,
+  "priorBinaryUnchanged": true
+}
