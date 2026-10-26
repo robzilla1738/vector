@@ -1,0 +1,25 @@
+{
+  "candidateInventorySha256": "fdb77a4ba9557a42cd79df61cacf60fb3415dd93890ffdc1864bb5350cbb07f7",
+  "firstList": {
+    "exitCode": 78,
+    "error": "query-owner-changed",
+    "cause": "source uses foreground-only GetActiveBrowser; initial error overwritten"
+  },
+  "secondList": {
+    "exitCode": 0,
+    "profileId": "a82b731d-e7aa-4e95-b789-73ded80c0ee3",
+    "profileName": "Your Aux",
+    "spaceId": "d26dc2e9-d1ad-4b41-8882-a6abc283f0c6",
+    "spaceName": "Main",
+    "spacesAreLoadedOnly": true
+  },
+  "resolveExplicit": {
+    "exitCode": 0,
+    "handled": true,
+    "spaceStatus": "ready",
+    "url": "http://127.0.0.1:61862/alpha"
+  },
+  "preparedCorrection": "../../desktop/cli-background-query",
+  "correctionActivated": false,
+  "openDestinationObserved": false
+}

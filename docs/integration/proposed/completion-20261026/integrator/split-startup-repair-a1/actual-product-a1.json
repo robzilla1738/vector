@@ -1,0 +1,66 @@
+{
+  "candidateInventorySha256": "fdb77a4ba9557a42cd79df61cacf60fb3415dd93890ffdc1864bb5350cbb07f7",
+  "recordedAtUtc": "2026-10-26T20:02:13.842925+00:00",
+  "profiles": {
+    "first": {
+      "name": "Your Aux",
+      "account": "u/0",
+      "gatewayConnected": true,
+      "onlyModel": "vercel-ai-gateway/meta/muse-spark-1.3-contributor",
+      "cookie": "aux_profile=work",
+      "note": "WORK_ONLY_20261026",
+      "tasksVisible": 2
+    },
+    "second": {
+      "name": "Aux Completion Personal",
+      "account": "u/1",
+      "gatewayConnected": false,
+      "defaultModel": "Select model",
+      "cookie": "aux_profile=personal",
+      "note": "PERSONAL_ONLY_20261026",
+      "tasksVisible": 0
+    }
+  },
+  "sameProfileWindows": {
+    "sharedTabListObserved": true,
+    "independentLoadedPages": [
+      "Personal fixture",
+      "New Tab"
+    ]
+  },
+  "peek": {
+    "loaded": "Alpha with Personal cookie/note",
+    "promoted": "full Alpha tab with sidebar entry",
+    "dismissed": "Beta preview returns to Alpha; no Beta logical tab"
+  },
+  "cliOpen": {
+    "explicitProfileAndSpace": "actual Work fixture reached",
+    "queuedOnlyNotAssumed": true
+  },
+  "chat": {
+    "ownerEnteredCredential": true,
+    "credentialReadByAgent": false,
+    "enabledOtherModels": false,
+    "allFiveTaskModels": "Muse Spark1.3Contributor",
+    "submissionCount": 2,
+    "firstPrompt": "Reply exactly AUX_PROVIDER_OK. Do not use tools.",
+    "firstOutcome": "visible initialization failure, draft preservation message, no streamed response",
+    "secondPrompt": "w",
+    "secondReason": "navigation shortcut did not open; subsequent Return submitted existing one-character draft",
+    "completedInferenceObserved": false,
+    "furtherSubmissionsPausedUntilDiagnostic": true,
+    "temporaryConnectionStillActive": true
+  },
+  "openObservations": [
+    "slow transient startup authorization recovery",
+    "CLI foreground-only query selection; repair compiled not activated",
+    "shortcut routing/input automation inconclusive; do not claim product defect yet",
+    "full persistence after final grouped repair pending"
+  ],
+  "normalQuitAfterChecks": {
+    "browserExitCode": 0,
+    "daemonExitStage": true,
+    "twoMemoryOwnersSettled": true,
+    "signalsSent": []
+  }
+}

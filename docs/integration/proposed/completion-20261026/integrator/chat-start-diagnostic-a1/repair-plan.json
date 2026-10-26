@@ -1,0 +1,50 @@
+{
+  "format": "aux.agent-start.same-scope-repair.v1",
+  "app": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-completion-20261026-a1/Aux.app",
+  "approvedReviewSha256": "20572af30ef6613f1fc8bced01edada6d52f4b3f7c1f21dd97fb610ec2b257f2",
+  "executor": {
+    "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/integrator/chat-start-diagnostic-a1/repair-resources.py",
+    "sha256": "97224783d2550211d0f5a2dd48b654892b9e5ab3a69198357c5a33145323b001"
+  },
+  "signedReceipt": {
+    "path": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-completion-20261026-a1/browser-split-startup-repair-a1/receipt.json",
+    "sha256": "b08d22febdf72ace9cf1211b8768d2f68f3a659bd0c7713833fa8f62cfd1e479"
+  },
+  "receiptDirectory": "agent-start-diagnostic-a1",
+  "sourceEvidence": [
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/integration/ordinary-chat/start-diagnostic/proposal.json",
+      "sha256": "d5e84e1c839ebde097f45342128ce3992ad0741b6fa98c07482bde0b8fc16ad3"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/integration/ordinary-chat/start-diagnostic/diagnostic.js",
+      "sha256": "c2ce4286090728b3924d127f70fdbe35f32706fe871585e1e21e28a9d2af5807"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/integration/ordinary-chat/start-diagnostic/prepare.py",
+      "sha256": "4e90aa15be88e1a40ba47ed9055d285dbe73a3ca10d6da49f600082b4744fd6d"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/integration/ordinary-chat/start-diagnostic/check.mjs",
+      "sha256": "3327b566d6a658d1c07e88ecd0c218efab57f535de68939c2854fcec3b3152f7"
+    }
+  ],
+  "replacements": [
+    {
+      "target": "Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/node-development/index.mjs",
+      "beforeSha256": "f5f21b5292ff469f7e06c66890b88936a70b5e270f6df6d974d49995ecdd52b0",
+      "input": {
+        "path": "/private/tmp/aux-agent-start-diagnostic-20261026-a2/index.mjs",
+        "sha256": "79319cd2f69b03e2140e810b27bed53b6d3dab9327747887c8905a6f6fbb8fc6"
+      }
+    },
+    {
+      "target": "Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/node-development/aux-native-entry.mjs",
+      "beforeSha256": "337088645a043f5a0870407839a8faabd166b328ed0b5f1c066bcc17bc76a990",
+      "input": {
+        "path": "/private/tmp/aux-agent-start-diagnostic-20261026-a2/aux-native-entry.mjs",
+        "sha256": "87a68b97ca560fdea8972d2b2490962ec58a2dc715b99a1462edc13c5b523423"
+      }
+    }
+  ]
+}
