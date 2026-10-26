@@ -1,0 +1,17 @@
+--- a/chrome/app/chrome_main_delegate.cc
++++ b/chrome/app/chrome_main_delegate.cc
+@@ -1318,6 +1318,14 @@
+   // mode as the development launcher, before any OS crypt initialization.
+   // Source-browser import still requires its own real OS credential grant.
+   base::CommandLine::ForCurrentProcess()->AppendSwitch("use-mock-keychain");
++#if defined(AUX_BROWSER_ONLY_NATIVE_STARTUP)
++  // Match the supported local launcher for direct/Finder opening. These are
++  // Chromium first-run/default-browser UI checks, not Aux account acceptance.
++  if (base::CommandLine::ForCurrentProcess()->GetSwitchValueASCII(switches::kProcessType).empty()) {
++    base::CommandLine::ForCurrentProcess()->AppendSwitch("no-first-run");
++    base::CommandLine::ForCurrentProcess()->AppendSwitch("no-default-browser-check");
++  }
++#endif
+ #endif
+ 
+ #if BUILDFLAG(IS_CHROMEOS)

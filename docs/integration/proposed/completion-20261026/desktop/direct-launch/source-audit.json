@@ -1,0 +1,82 @@
+{
+  "format": "aux.ordinary-direct-launch.source-audit.v1",
+  "candidate": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-local-completion-20261025-a38/Aux.app",
+  "sourcePins": [
+    {
+      "path": "scripts/aux.mjs",
+      "sha256": "37ab07bec2d8269ef834806082ff4e3f3335b961d8d02b73f35b94ee8ea43205",
+      "kind": "current-workspace-launcher"
+    },
+    {
+      "path": "scripts/lib/aux-user-launch.mjs",
+      "sha256": "7423a00f7b335d3ade4e70b3722fb5b8cb67eb5394ee5f08089cbe9d11ecf419",
+      "kind": "current-workspace-launcher"
+    },
+    {
+      "path": "scripts/lib/owned-process.mjs",
+      "sha256": "56924bc57f03393723f429d2f402a31e05751fc690571c52094c2ea01dbdcdec",
+      "kind": "current-workspace-launcher"
+    },
+    {
+      "path": "scripts/lib/aux-launch-identity.mjs",
+      "sha256": "48bfb7aa05323b968b2caa5ffc2d960c1aa93d0d152534bf168687f17ade6f67",
+      "kind": "current-workspace-launcher"
+    },
+    {
+      "path": "chrome/app/chrome_main_delegate.cc",
+      "sha256": "31ca8d561d44b6ea72fd1dada4c554e19011359a5c2d36fef700edff02e91ba6",
+      "kind": "actual-native-source"
+    },
+    {
+      "path": "chrome/app/aux_packaged_state_identity.h",
+      "sha256": "f75743cae16e319d8fa39b8468169b4e93d243096406a286a24757e5102b9e99",
+      "kind": "actual-native-source"
+    },
+    {
+      "path": "chrome/browser/aux/AuxNativeParentColdLaunch.cc",
+      "sha256": "b0ff3c4c21195f2b5c5c6973591a856adca04a76cdfefd8f94800d14567f2bce",
+      "kind": "actual-native-source"
+    },
+    {
+      "path": "chrome/browser/first_run/first_run.cc",
+      "sha256": "2638f98410aeeb0bcb3ce381a149b5763cc63dfd5365133387a78689234c7880",
+      "kind": "actual-native-source"
+    },
+    {
+      "path": "chrome/browser/ui/startup/infobar_utils.cc",
+      "sha256": "391ad17aa2d53245b5681daa3d7cacd5283e436080bfb7510457c0f7b2d33164",
+      "kind": "actual-native-source"
+    }
+  ],
+  "bundle": {
+    "version": 1,
+    "implementation": "supplied",
+    "identityProfile": "aux-v1",
+    "stateIdentityVersion": 2,
+    "nativeStartupMode": "ordinary-user-v1",
+    "daemonRuntime": "provided-sea",
+    "finalApp": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-local-completion-20261025-a38/Aux.app",
+    "productionReady": false
+  },
+  "sealedPolicy": {
+    "format": "aux.fresh.bootstrap.policy.v9",
+    "role": "daemon",
+    "storageLocation": {
+      "format": "aux.current-os-user-location.v1"
+    },
+    "nativeHostLayout": "embedded-daemon",
+    "taskLayout": "aux.native.task-control-split.v1"
+  },
+  "findings": [
+    "Native v9 startup derives/validates persistent OS-user paths and authenticates the signed paired daemon before browser state I/O.",
+    "Bundled native daemon launch clears environment, derives bundled resources/cwd and has no external Node/workspace-script dependency.",
+    "Local non-official native startup already appends use-mock-keychain.",
+    "Development script alone supplies Chromium no-first-run/no-default-browser-check; the proposed one-anchor join gives direct local opening the same UI policy.",
+    "Current approved persistent namespace is named Aux Browser A38 Disposable; changing/adopting another namespace or owner container is not part of this patch.",
+    "Historical unmanaged A12 receipt lacks diagnostics establishing a current final-A78 bootstrap defect; direct final-app acceptance remains unperformed."
+  ],
+  "appExecuted": false,
+  "nativeTreeChanged": false,
+  "stateAccessed": false,
+  "signing": false
+}
