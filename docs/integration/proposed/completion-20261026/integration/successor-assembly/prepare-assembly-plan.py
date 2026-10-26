@@ -23,8 +23,11 @@ for role in ['browser','daemon','resources','ui','relocation']:
  path=getattr(a,role+'_receipt').resolve(strict=True);raw=regular(path);receipts[role]=json.loads(raw);pins.append({'path':str(path),'sha256':sha(raw)})
 browser,daemon,resources,ui,relocation=[receipts[k] for k in ['browser','daemon','resources','ui','relocation']]
 if browser.get('format')!='aux.completion.browser-build.v1' or browser.get('passed') is not True:raise ValueError('Actual successful browser receipt required')
-if daemon.get('format')!='aux.completion.daemon-build.v1' or daemon.get('passed') is not True:raise ValueError('Actual successful coherent daemon receipt required')
-if resources.get('format')!='aux.final-composed-resources.v2':raise ValueError('Complete paired+background resource receipt v2 required; earlier incomplete composition is rejected')
+if daemon.get('format')!='aux.final-daemon-build-receipt.v1' or daemon.get('result')!='pass':raise ValueError('Actual final-daemon successful receipt required')
+daemon_binaries=[(path,digest) for path,digest in daemon['outputs'].items() if Path(path).name=='Aux Daemon']
+if len(daemon_binaries)!=1:raise ValueError('One exact frozen daemon output required')
+if resources.get('format')!='aux.completion.paired-source.v1' or resources.get('passed') is not True:raise ValueError('Authoritative successful root paired-resource receipt required')
+if not resources.get('generators'):raise ValueError('Root generator lineage required')
 if ui.get('format')!='aux.completion.ui-source.v1' or ui.get('passed') is not True:raise ValueError('Actual composed UI receipt required')
 if relocation.get('proposedApp')!=str(final) or relocation.get('format')!='aux.successor.runtime-relocation.v1':raise ValueError('Exact native/resource relocation successor required')
 actions=[{'operation':'clone-tree-preserving-links','source':browser['app'],'destination':str(final),'condition':'fresh destination; preserve all browser resource packs and nested framework layout'}, {'operation':'clone-tree-preserving-links','source':str(accepted/'Contents/Resources/aux'),'destination':str(final/'Contents/Resources/aux'),'condition':'copied static package only; no state, profile or credentials'}]
@@ -37,10 +40,12 @@ def replace(source,relative,expected,role):
 for row in browser['artifacts']:
  if sha(regular(row['path']))!=row['sha256']:raise ValueError('Frozen browser artifact changed')
 cli=browser['nativeCli'];replace(cli['path'],'Contents/Resources/aux/apps/cli/Aux CLI.app/Contents/MacOS/aux-cli',cli['sha256'],'native CLI')
-replace(daemon['binary'],'Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/MacOS/aux-daemon',daemon['binarySha256'],'coherent final daemon')
+replace(daemon_binaries[0][0],'Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/MacOS/aux-daemon',daemon_binaries[0][1],'coherent final daemon')
 resource_dest={'index.mjs':'Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/node-development/index.mjs','aux-native-entry.mjs':'Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/node-development/aux-native-entry.mjs','background.js':'Contents/Resources/aux/apps/extension/dist/background.js'}
-if {row['name'] for row in resources['files']}!=set(resource_dest):raise ValueError('Both daemon leaves and Agent background required')
-for row in resources['files']:replace(row['outputPath'],resource_dest[row['name']],row['outputSha256'],'final complete resources')
+if {Path(row['path']).name for row in resources['files']}!=set(resource_dest):raise ValueError('Both daemon leaves and Agent background required')
+for row in resources['files']:
+ if not row.get('stages'):raise ValueError('Named source stage lineage required')
+ replace(row['path'],resource_dest[Path(row['path']).name],row['outputSha256'],'final complete resources')
 for row in ui['files']:replace(row['output'],row['path'],row['outputSha256'],'paired supplied UI')
 for row in relocation['replacements']:
  original=Path(row['input'])
