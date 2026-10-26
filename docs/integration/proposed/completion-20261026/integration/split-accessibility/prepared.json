@@ -1,0 +1,90 @@
+{
+  "format": "aux.split-accessibility.prepared.v1",
+  "output": "/var/folders/98/j36zgdnd0h507whjl16gxl780000gp/T/aux-split-accessibility-j7nvbbnk",
+  "files": [
+    {
+      "path": "components/split_tabs/split_pane_tree.h",
+      "inputSha256": "51dd6ab9b1c51c3393e63dcea5b2e01806867a8ac0c468c557f38c770a689f35",
+      "outputSha256": "92ea908cdb12473737fbe6de603f47b2e33b441ffa5d15202e949db7b0e50012",
+      "anchors": 1
+    },
+    {
+      "path": "components/split_tabs/split_pane_tree.cc",
+      "inputSha256": "1ffec49e783ceab649576fdf49f2ec2eb26dec4660c972b65c4880d55312e0a6",
+      "outputSha256": "308e99e4d8d8160b7256defb606b9449dc9a325952ea7c5f90cd64f171670787",
+      "anchors": 1
+    },
+    {
+      "path": "chrome/browser/ui/tabs/split_tab_util.h",
+      "inputSha256": "ba47aca0fc56b68d2d68acf38e6599f8c4f88098c298379a47a9aa4182f12473",
+      "outputSha256": "25185379052ffe1d646ee30eab9f40dd4e85306e7929bbca66fa9d5dbff14e65",
+      "anchors": 4
+    },
+    {
+      "path": "chrome/browser/ui/tabs/split_tab_util.cc",
+      "inputSha256": "10e8ad5ac6f9fd04840f83f8869aa93b901d9fbc92d2f7ec621db349c90e4ca3",
+      "outputSha256": "c3b32890a28f5d113dcc0b2c089ceca4d03e7fca326f46ef34fa3157d5f02df7",
+      "anchors": 4
+    },
+    {
+      "path": "chrome/browser/ui/views/tabs/tab/tab_accessibility.cc",
+      "inputSha256": "8b65359b82d0a8c7d8613ac075ba1e922d036a61e97605a01fbe705e285a208d",
+      "outputSha256": "3d9491f1ecb3b27a90fbdcad477bdf97981768b9f09e2fb67b8069107510a3a9",
+      "anchors": 3
+    },
+    {
+      "path": "chrome/browser/ui/views/toolbar/split_tabs_button.cc",
+      "inputSha256": "cd8cf0d6ecbafdd6dd4b6eecbcfe6e21d9d0b50c4cceed9b3b00d8ca921bdb94",
+      "outputSha256": "5ceaaf3ef451387d1a447db6de8d88479e2e14c1170456fd46495e7fc0dc5059",
+      "anchors": 3
+    },
+    {
+      "path": "chrome/browser/ui/webui/webui_toolbar/utils/split_tabs_utils.cc",
+      "inputSha256": "73979fc49f7ed08235a8b4467f8951542e3af0698e8c76d94155a7f36aa887ef",
+      "outputSha256": "fef614ca65813a680ef511ee7e5889c3dc44da188e9d1c1828952b091fe67ef7",
+      "anchors": 2
+    },
+    {
+      "path": "components/browser_apis/ui_controllers/toolbar/toolbar_ui_api_data_model.mojom",
+      "inputSha256": "aee744cb660c0b16b6290edcc38416bb98119e1f0a51c91c0691d3f519bb3131",
+      "outputSha256": "853a5cc4fdb94e9dfa5a4654517c68fb5e1cb5acab2a5fe440a8d030c86a4167",
+      "anchors": 1
+    },
+    {
+      "path": "chrome/browser/resources/webui_toolbar/split_tabs_button.ts",
+      "inputSha256": "f66675faa439ed62c844c476ebc2ce8aad147be9ce91b1892b070b3d24034927",
+      "outputSha256": "02ae04f6e9252af5ea0c401c5b08503ce01e5cfc919bc41ec795a5de64fe2ad7",
+      "anchors": 1
+    },
+    {
+      "path": "chrome/browser/ui/tabs/split_tab_menu_model.h",
+      "inputSha256": "c7034a80edff5592179c0d5a6b1554f06ce7833c8dc550c12051fa11436594ba",
+      "outputSha256": "c9e09522117f76fec8a4f1b4d60d20ab4ef00f12f366301f84997a0ae930372e",
+      "anchors": 1
+    },
+    {
+      "path": "chrome/browser/ui/tabs/split_tab_menu_model.cc",
+      "inputSha256": "e04ed514d18c097986e71b40e630b41b057747b1d129721eaf39309c857f437f",
+      "outputSha256": "fca61c355907d1399a7cb88493c0ab7c28061d37cf682c454e34d8740a35f693",
+      "anchors": 12
+    },
+    {
+      "path": "chrome/browser/ui/tabs/tab_strip_model.cc",
+      "inputSha256": "d30702e35ceb70ff0ac6e858702513bdcff424063f56e77f68e1b51144933d7a",
+      "outputSha256": "386bf740d7a1d6a15efbc78fde6b23d1c6ffb83e11bb47069f6c94e5cdc354fe",
+      "anchors": 1
+    },
+    {
+      "path": "chrome/app/generated_resources.grd",
+      "inputSha256": "e7027a71d4d9fb7bda8266468d7096e34b15c9fe9f8b94d4827e5438f95c9d1c",
+      "outputSha256": "10cac2a6503aa585495550100cbd7c86c07be37f04d4cae9d20714ef03c6bfc3",
+      "anchors": 2
+    }
+  ],
+  "exactReverseReplay": true,
+  "protectedCloseOwnerPreserved": true,
+  "nativeCompiled": false,
+  "fixtureRun": false,
+  "projected": false,
+  "appOperated": false
+}

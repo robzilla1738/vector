@@ -1,0 +1,428 @@
+--- a/components/split_tabs/split_pane_tree.h
++++ b/components/split_tabs/split_pane_tree.h
+@@ -68,6 +68,9 @@
+   // offer an explicit focus presentation when these do not fit; no tree edits.
+   Rect MinimumBounds(int divider, int minimum) const;
+   std::vector<Placement> Layout(Rect bounds, int divider, int minimum) const;
++  // Slots in top-to-bottom, then left-to-right layout order. Collection
++  // order remains in pane_slots(); branch swaps never change slot identity.
++  std::vector<uint32_t> VisualPaneSlots() const;
+   const Node* Find(uint32_t node) const;
+   const std::vector<Node>& nodes() const { return nodes_; }
+   const std::vector<uint32_t>& pane_slots() const { return pane_slots_; }
+--- a/components/split_tabs/split_pane_tree.cc
++++ b/components/split_tabs/split_pane_tree.cc
+@@ -247,4 +247,16 @@
+   layout(root_, bounds);
+   return result;
+ }
++std::vector<uint32_t> SplitPaneTree::VisualPaneSlots() const {
++  auto placements = Layout({0, 0, 1000000, 1000000}, 0, 0);
++  std::erase_if(placements, [](const Placement& pane) { return !pane.slot; });
++  std::stable_sort(placements.begin(), placements.end(),
++                   [](const Placement& a, const Placement& b) {
++    return a.bounds.y != b.bounds.y ? a.bounds.y < b.bounds.y
++                                    : a.bounds.x < b.bounds.x;
++  });
++  std::vector<uint32_t> slots;
++  for (const auto& pane : placements) slots.push_back(pane.slot);
++  return slots;
++}
+ }  // namespace split_tabs
+--- a/chrome/browser/ui/tabs/split_tab_util.h
++++ b/chrome/browser/ui/tabs/split_tab_util.h
+@@ -5,11 +5,17 @@
+ #ifndef CHROME_BROWSER_UI_TABS_SPLIT_TAB_UTIL_H_
+ #define CHROME_BROWSER_UI_TABS_SPLIT_TAB_UTIL_H_
+ 
++#include <vector>
++
+ class TabStripModel;
++namespace tabs {
++class TabInterface;
++}
+ 
+ namespace split_tabs {
+ 
+ class SplitTabId;
++class SplitTabData;
+ 
+ enum class SplitTabActiveLocation {
+   // In LTR languages, the starting location will be on the left half
+@@ -20,7 +26,12 @@
+   kEnd,
+   kTop,
+   kBottom,
++  // A tree with more than two panes has no single binary side.
++  kMultiple,
+ };
++
++// Binds genuine tabs to stable pane slots in the same layout as the view.
++std::vector<tabs::TabInterface*> GetTabsInVisualOrder(const SplitTabData& data);
+ 
+ // Returns the index of the last active tab in a split.
+ int GetIndexOfLastActiveTab(TabStripModel* tab_strip_model, SplitTabId id);
+--- a/chrome/browser/ui/tabs/split_tab_util.cc
++++ b/chrome/browser/ui/tabs/split_tab_util.cc
+@@ -15,6 +15,21 @@
+ 
+ namespace split_tabs {
+ 
++std::vector<tabs::TabInterface*> GetTabsInVisualOrder(const SplitTabData& data) {
++  const auto tabs = data.ListTabs();
++  const auto& tree = data.visual_data()->pane_tree();
++  if (!tree) return tabs;
++  CHECK_EQ(tree->pane_slots().size(), tabs.size());
++  std::vector<tabs::TabInterface*> ordered;
++  for (const uint32_t slot : tree->VisualPaneSlots()) {
++    const auto member = std::ranges::find(tree->pane_slots(), slot);
++    CHECK(member != tree->pane_slots().end());
++    ordered.push_back(tabs[std::distance(tree->pane_slots().begin(), member)]);
++  }
++  CHECK_EQ(ordered.size(), tabs.size());
++  return ordered;
++}
++
+ int GetIndexOfLastActiveTab(TabStripModel* tab_strip_model,
+                             split_tabs::SplitTabId split_id) {
+   const std::vector<tabs::TabInterface*> split_tabs =
+@@ -22,12 +37,10 @@
+   // Check if a tab is activated first before comparing the WebContent's last
+   // focused time because the activation happens before focus time updates and
+   // wouldn't be accurate for tabs that just had its activation state changed.
+-  for (int index = tab_strip_model->GetIndexOfTab(split_tabs[0]);
+-       tabs::TabInterface* tab : split_tabs) {
++  for (tabs::TabInterface* tab : split_tabs) {
+     if (tab->IsActivated()) {
+-      return index;
++      return tab_strip_model->GetIndexOfTab(tab);
+     }
+-    index++;
+   }
+ 
+   tabs::TabInterface* const recently_active = *std::max_element(
+@@ -50,7 +63,8 @@
+     split_tabs::SplitTabId split_id) {
+   split_tabs::SplitTabData* const split_tab_data =
+       tab_strip_model->GetSplitData(split_id);
+-  std::vector<tabs::TabInterface*> tabs_in_split = split_tab_data->ListTabs();
++  std::vector<tabs::TabInterface*> tabs_in_split = GetTabsInVisualOrder(*split_tab_data);
++  if (tabs_in_split.size() > 2) return SplitTabActiveLocation::kMultiple;
+   CHECK_EQ(tabs_in_split.size(), 2U);
+ 
+   const int last_active_index =
+@@ -60,8 +74,11 @@
+   const int first_tab_index = tab_strip_model->GetIndexOfTab(tabs_in_split[0]);
+   const bool first_tab_activated = last_active_index == first_tab_index;
+ 
+-  if (split_tab_data->visual_data()->split_layout() ==
+-      SplitTabLayout::kSideBySide) {
++  const auto& visual = *split_tab_data->visual_data();
++  const bool horizontal = visual.pane_tree()
++      ? visual.pane_tree()->Find(visual.pane_tree()->root())->axis == SplitPaneTree::Axis::kHorizontal
++      : visual.split_layout() == SplitTabLayout::kSideBySide;
++  if (horizontal) {
+     return first_tab_activated ? SplitTabActiveLocation::kStart
+                                : SplitTabActiveLocation::kEnd;
+   } else {
+--- a/chrome/browser/ui/views/tabs/tab/tab_accessibility.cc
++++ b/chrome/browser/ui/views/tabs/tab/tab_accessibility.cc
+@@ -3,6 +3,8 @@
+ // found in the LICENSE file.
+ 
+ #include "chrome/browser/ui/views/tabs/tab/tab_accessibility.h"
++
++#include <algorithm>
+ 
+ #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
+ #include "chrome/browser/ui/location_bar/location_bar.h"
+@@ -10,6 +12,8 @@
+ #include "chrome/browser/ui/tabs/alert/tab_alert_controller.h"
+ #include "chrome/browser/ui/tabs/saved_tab_groups/collaboration_messaging_tab_data.h"
+ #include "chrome/browser/ui/tabs/tab_data.h"
++#include "chrome/browser/ui/tabs/split_tab_util.h"
++#include "base/strings/string_number_conversions.h"
+ #include "chrome/browser/ui/tabs/tab_group_model.h"
+ #include "chrome/browser/ui/tabs/tab_strip_model.h"
+ #include "chrome/browser/ui/views/frame/browser_view.h"
+@@ -109,16 +113,25 @@
+ 
+     const split_tabs::SplitTabData* split_data =
+         tab_strip_model->GetSplitData(split.value());
+-    const std::vector<tabs::TabInterface*> tabs_in_split =
+-        split_data->ListTabs();
+-
+-    int tab_index_in_split = std::distance(
+-        tabs_in_split.begin(),
+-        std::find(tabs_in_split.begin(), tabs_in_split.end(), tab));
+-    title = l10n_util::GetStringFUTF16(
+-        GetAccessibleTabLabelFormatStringForSplit(
+-            split_data->visual_data()->split_layout(), tab_index_in_split),
+-        title);
++    const auto tabs_in_split = split_tabs::GetTabsInVisualOrder(*split_data);
++    const auto member = std::ranges::find(tabs_in_split, tab);
++    if (member != tabs_in_split.end()) {
++      const size_t position = std::distance(tabs_in_split.begin(), member);
++      if (tabs_in_split.size() > 2) {
++        title = l10n_util::GetStringFUTF16(
++            IDS_TAB_AX_LABEL_SPLIT_TAB_PANE_FORMAT, title,
++            base::NumberToString16(position + 1),
++            base::NumberToString16(tabs_in_split.size()));
++      } else {
++        const auto& visual = *split_data->visual_data();
++        const auto layout = visual.pane_tree()
++            ? (visual.pane_tree()->Find(visual.pane_tree()->root())->axis == split_tabs::SplitPaneTree::Axis::kHorizontal
++                   ? split_tabs::SplitTabLayout::kSideBySide : split_tabs::SplitTabLayout::kStacked)
++            : visual.split_layout();
++        title = l10n_util::GetStringFUTF16(
++            GetAccessibleTabLabelFormatStringForSplit(layout, static_cast<int>(position)), title);
++      }
++    }
+   }
+ 
+   if (const std::optional<tab_groups::TabGroupId> group = tab->GetGroup()) {
+--- a/chrome/browser/ui/views/toolbar/split_tabs_button.cc
++++ b/chrome/browser/ui/views/toolbar/split_tabs_button.cc
+@@ -219,6 +219,7 @@
+         {split_tabs::SplitTabActiveLocation::kEnd, &kSplitSceneRightOldIcon},
+         {split_tabs::SplitTabActiveLocation::kTop, &kSplitSceneUpOldIcon},
+         {split_tabs::SplitTabActiveLocation::kBottom, &kSplitSceneDownOldIcon},
++        {split_tabs::SplitTabActiveLocation::kMultiple, &kSplitSceneOldIcon},
+     });
+     constexpr auto kRoundedIcons =
+         base::MakeFixedFlatMap<split_tabs::SplitTabActiveLocation,
+@@ -227,6 +228,7 @@
+             {split_tabs::SplitTabActiveLocation::kEnd, &kSplitSceneRightIcon},
+             {split_tabs::SplitTabActiveLocation::kTop, &kSplitSceneUpIcon},
+             {split_tabs::SplitTabActiveLocation::kBottom, &kSplitSceneDownIcon},
++            {split_tabs::SplitTabActiveLocation::kMultiple, &kSplitSceneIcon},
+         });
+     if (features::IsRoundedIconsEnabled()) {
+       SetVectorIcon(*kRoundedIcons.at(location));
+@@ -289,6 +291,9 @@
+       case split_tabs::SplitTabActiveLocation::kBottom:
+         string_id = IDS_ACCNAME_SPLIT_TABS_TOOLBAR_BUTTON_ENABLED_BOTTOM_ACTIVE;
+         break;
++      case split_tabs::SplitTabActiveLocation::kMultiple:
++        string_id = IDS_ACCNAME_SPLIT_TABS_TOOLBAR_BUTTON_ENABLED_MULTIPLE;
++        break;
+     }
+   }
+ 
+--- a/chrome/browser/ui/webui/webui_toolbar/utils/split_tabs_utils.cc
++++ b/chrome/browser/ui/webui/webui_toolbar/utils/split_tabs_utils.cc
+@@ -45,6 +45,9 @@
+         status.location =
+             toolbar_ui_api::mojom::SplitTabActiveLocation::kBottom;
+         break;
++      case split_tabs::SplitTabActiveLocation::kMultiple:
++        status.location = toolbar_ui_api::mojom::SplitTabActiveLocation::kMultiple;
++        break;
+     }
+   }
+ 
+@@ -64,6 +67,8 @@
+        IDS_ACCNAME_SPLIT_TABS_TOOLBAR_BUTTON_ENABLED_TOP_ACTIVE},
+       {"splitTabsButtonAccNameEnabledBottom",
+        IDS_ACCNAME_SPLIT_TABS_TOOLBAR_BUTTON_ENABLED_BOTTOM_ACTIVE},
++      {"splitTabsButtonAccNameEnabledMultiple",
++       IDS_ACCNAME_SPLIT_TABS_TOOLBAR_BUTTON_ENABLED_MULTIPLE},
+       {"splitTabsButtonAccNamePinned",
+        IDS_ACCNAME_SPLIT_TABS_TOOLBAR_BUTTON_PINNED},
+   };
+--- a/components/browser_apis/ui_controllers/toolbar/toolbar_ui_api_data_model.mojom
++++ b/components/browser_apis/ui_controllers/toolbar/toolbar_ui_api_data_model.mojom
+@@ -76,6 +76,7 @@
+   kEnd,
+   kTop,
+   kBottom,
++  kMultiple,
+ };
+ 
+ enum ToolbarButtonType {
+--- a/chrome/browser/resources/webui_toolbar/split_tabs_button.ts
++++ b/chrome/browser/resources/webui_toolbar/split_tabs_button.ts
+@@ -124,6 +124,9 @@
+       case SplitTabActiveLocation.kBottom:
+         labelId = 'splitTabsButtonAccNameEnabledBottom';
+         break;
++      case SplitTabActiveLocation.kMultiple:
++        labelId = 'splitTabsButtonAccNameEnabledMultiple';
++        break;
+       default:
+         labelId = 'splitTabsButtonAccNamePinned';
+         break;
+--- a/chrome/browser/ui/tabs/split_tab_menu_model.h
++++ b/chrome/browser/ui/tabs/split_tab_menu_model.h
+@@ -72,6 +72,7 @@
+   ~SplitTabMenuModel() override;
+ 
+   // ui::SimpleMenuModel::Delegate override
++  bool IsCommandIdEnabled(int command_id) const override;
+   bool IsItemForCommandIdDynamic(int command_id) const override;
+   std::u16string GetLabelForCommandId(int command_id) const override;
+   ui::ImageModel GetIconForCommandId(int command_id) const override;
+--- a/chrome/browser/ui/tabs/split_tab_menu_model.cc
++++ b/chrome/browser/ui/tabs/split_tab_menu_model.cc
+@@ -119,13 +119,15 @@
+       tab_strip_model_(tab_strip_model),
+       menu_source_(menu_source),
+       split_tab_index_(split_tab_index) {
++  const bool is_pair = tab_strip_model_->GetSplitData(GetSplitTabId())->ListTabs().size() == 2;
+   AddItemWithStringIdAndIcon(
+       GetCommandIdInt(CommandId::kExitSplit), IDS_SPLIT_TAB_SEPARATE_VIEWS,
+       ui::ImageModel::FromVectorIcon(
+           features::IsRoundedIconsEnabled() ? kOpenInFullIcon
+                                             : kOpenInFullOldIcon,
+           ui::kColorMenuIcon, ui::SimpleMenuModel::kDefaultIconSize));
+-  AddSeparator(ui::MenuSeparatorType::NORMAL_SEPARATOR);
++  if (is_pair || menu_source == MenuSource::kMiniToolbar)
++    AddSeparator(ui::MenuSeparatorType::NORMAL_SEPARATOR);
+ 
+   if (menu_source == MenuSource::kMiniToolbar) {
+     CHECK(split_tab_index.has_value());
+@@ -140,8 +142,8 @@
+         GetIndexOfCommandId(GetCommandIdInt(CommandId::kCloseSpecifiedTab))
+             .value(),
+         kCloseMenuItem);
+-  } else if (menu_source == MenuSource::kTabContextMenu ||
+-             menu_source == MenuSource::kToolbarButton) {
++  } else if (is_pair && (menu_source == MenuSource::kTabContextMenu ||
++                         menu_source == MenuSource::kToolbarButton)) {
+     AddItem(GetCommandIdInt(CommandId::kCloseStartTab), std::u16string());
+     AddItem(GetCommandIdInt(CommandId::kCloseEndTab), std::u16string());
+     AddSeparator(ui::MenuSeparatorType::NORMAL_SEPARATOR);
+@@ -152,11 +154,9 @@
+     SetElementIdentifierAt(
+         GetIndexOfCommandId(GetCommandIdInt(CommandId::kCloseEndTab)).value(),
+         kCloseEndTabMenuItem);
+-  } else {
+-    NOTREACHED() << "Unknown close menu item option";
+-  }
+-
+-  if (base::FeatureList::IsEnabled(tabs::kSplitViewHorizontal)) {
++  }
++
++  if (is_pair && base::FeatureList::IsEnabled(tabs::kSplitViewHorizontal)) {
+     AddItem(GetCommandIdInt(CommandId::kToggleOrientation), std::u16string());
+     SetElementIdentifierAt(
+         GetIndexOfCommandId(GetCommandIdInt(CommandId::kToggleOrientation))
+@@ -164,11 +164,12 @@
+         kToggleOrientationMenuItem);
+   }
+ 
+-  AddItem(GetCommandIdInt(CommandId::kReversePosition), std::u16string());
+-
+-  SetElementIdentifierAt(
+-      GetIndexOfCommandId(GetCommandIdInt(CommandId::kReversePosition)).value(),
+-      kReversePositionMenuItem);
++  if (is_pair) {
++    AddItem(GetCommandIdInt(CommandId::kReversePosition), std::u16string());
++    SetElementIdentifierAt(
++        GetIndexOfCommandId(GetCommandIdInt(CommandId::kReversePosition)).value(),
++        kReversePositionMenuItem);
++  }
+   SetElementIdentifierAt(
+       GetIndexOfCommandId(GetCommandIdInt(CommandId::kExitSplit)).value(),
+       kExitSplitMenuItem);
+@@ -187,6 +188,15 @@
+ 
+ SplitTabMenuModel::~SplitTabMenuModel() = default;
+ 
++bool SplitTabMenuModel::IsCommandIdEnabled(int command_id) const {
++  const auto id = GetCommandIdEnum(command_id);
++  if (id == CommandId::kReversePosition || id == CommandId::kCloseStartTab ||
++      id == CommandId::kCloseEndTab || id == CommandId::kToggleOrientation) {
++    return tab_strip_model_->GetSplitData(GetSplitTabId())->ListTabs().size() == 2;
++  }
++  return true;
++}
++
+ bool SplitTabMenuModel::IsItemForCommandIdDynamic(int command_id) const {
+   const CommandId id = GetCommandIdEnum(command_id);
+   return id == CommandId::kReversePosition || id == CommandId::kCloseStartTab ||
+@@ -220,13 +230,10 @@
+ }
+ 
+ ui::ImageModel SplitTabMenuModel::GetIconForCommandId(int command_id) const {
+-  const split_tabs::SplitTabActiveLocation active_split_tab_location =
+-      split_tabs::GetLastActiveTabLocation(tab_strip_model_, GetSplitTabId());
+-
+   const CommandId id = GetCommandIdEnum(command_id);
+   const gfx::VectorIcon* icon = nullptr;
+   if (id == CommandId::kReversePosition) {
+-    icon = &GetReversePositionIcon(active_split_tab_location);
++    icon = &GetReversePositionIcon(split_tabs::GetLastActiveTabLocation(tab_strip_model_, GetSplitTabId()));
+   } else if (id == CommandId::kCloseStartTab) {
+     icon =
+         GetSplitLayout() == split_tabs::SplitTabLayout::kSideBySide
+@@ -254,11 +261,11 @@
+ }
+ 
+ void SplitTabMenuModel::ExecuteCommand(int command_id, int event_flags) {
++  if (!IsCommandIdEnabled(command_id)) return;
+   const split_tabs::SplitTabId split_id = GetSplitTabId();
+   split_tabs::SplitTabData* const split_tab_data =
+       tab_strip_model_->GetSplitData(split_id);
+-  std::vector<tabs::TabInterface*> tabs_in_split = split_tab_data->ListTabs();
+-  CHECK_EQ(tabs_in_split.size(), 2U);
++  const auto tabs_in_split = split_tabs::GetTabsInVisualOrder(*split_tab_data);
+   CommandId split_command_id = GetCommandIdEnum(command_id);
+   switch (split_command_id) {
+     case CommandId::kReversePosition:
+@@ -341,12 +348,18 @@
+     case split_tabs::SplitTabActiveLocation::kBottom:
+       return features::IsRoundedIconsEnabled() ? kSplitSceneUpIcon
+                                                : kSplitSceneUpOldIcon;
++    case split_tabs::SplitTabActiveLocation::kMultiple:
++      return features::IsRoundedIconsEnabled() ? kSplitSceneIcon : kSplitSceneOldIcon;
+   }
+ }
+ 
+ split_tabs::SplitTabLayout SplitTabMenuModel::GetSplitLayout() const {
+   split_tabs::SplitTabVisualData* const visual_data =
+       tab_strip_model_->GetSplitData(GetSplitTabId())->visual_data();
++  if (const auto& tree = visual_data->pane_tree()) {
++    return tree->Find(tree->root())->axis == split_tabs::SplitPaneTree::Axis::kHorizontal
++        ? split_tabs::SplitTabLayout::kSideBySide : split_tabs::SplitTabLayout::kStacked;
++  }
+   return visual_data->split_layout();
+ }
+ 
+--- a/chrome/browser/ui/tabs/tab_strip_model.cc
++++ b/chrome/browser/ui/tabs/tab_strip_model.cc
+@@ -2126,7 +2126,11 @@
+ 
+   split_tabs::SplitTabData* split_data = GetSplitData(split_id);
+ 
+-  if (split_data->visual_data()->split_layout() == tab_layout) {
++  const auto& pane_tree = split_data->visual_data()->pane_tree();
++  const auto requested_axis = tab_layout == split_tabs::SplitTabLayout::kSideBySide
++      ? split_tabs::SplitPaneTree::Axis::kHorizontal : split_tabs::SplitPaneTree::Axis::kVertical;
++  if (split_data->visual_data()->split_layout() == tab_layout &&
++      (!pane_tree || pane_tree->Find(pane_tree->root())->axis == requested_axis)) {
+     return;
+   }
+ 
+--- a/chrome/app/generated_resources.grd
++++ b/chrome/app/generated_resources.grd
+@@ -11039,6 +11039,9 @@
+       <message name="IDS_ACCNAME_SPLIT_TABS_TOOLBAR_BUTTON_ENABLED_BOTTOM_ACTIVE" desc="The accessible name for the toolbar button for the split tabs feature, when it is enabled while the bottom view is active.">
+         Arrange split view - bottom view active
+       </message>
++      <message name="IDS_ACCNAME_SPLIT_TABS_TOOLBAR_BUTTON_ENABLED_MULTIPLE" desc="Accessible label for the split view toolbar button with more than two panes.">
++        Split view options
++      </message>
+       <message name="IDS_ACCNAME_FIND" desc="The accessible name for the find button.">
+         Find
+       </message>
+@@ -17071,6 +17074,9 @@
+       <message name="IDS_TAB_AX_LABEL_SPLIT_TAB_BOTTOM_VIEW_FORMAT" is_accessibility_with_no_ui="true" desc="Accessibility label text for a tab, when it is the bottom tab of a split view. Example: 'Google Search - Bottom view'">
+         <ph name="WINDOW_TITLE">$1<ex>Google Search</ex></ph> - Bottom view
+       </message>
++      <message name="IDS_TAB_AX_LABEL_SPLIT_TAB_PANE_FORMAT" is_accessibility_with_no_ui="true" desc="Accessibility label for a tab in a split with multiple panes, in visual reading order.">
++        <ph name="WINDOW_TITLE">$1<ex>Google Search</ex></ph> - View <ph name="PANE_POSITION">$2<ex>2</ex></ph> of <ph name="PANE_COUNT">$3<ex>4</ex></ph>
++      </message>
+       <message name="IDS_TAB_AX_LABEL_UNNAMED_GROUP_FORMAT" desc="Accessibility label text for a tab, when it is in a group that has not been named by the user. Example: 'Google Search - Part of unnamed group'">
+         <ph name="WINDOW_TITLE">$1<ex>Google Search</ex></ph> - Part of unnamed group
+       </message>

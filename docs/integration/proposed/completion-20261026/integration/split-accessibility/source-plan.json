@@ -1,0 +1,279 @@
+{
+  "format": "aux.split-accessibility.source.v1",
+  "root": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src",
+  "files": [
+    {
+      "path": "components/split_tabs/split_pane_tree.h",
+      "inputSha256": "51dd6ab9b1c51c3393e63dcea5b2e01806867a8ac0c468c557f38c770a689f35",
+      "outputSha256": "92ea908cdb12473737fbe6de603f47b2e33b441ffa5d15202e949db7b0e50012",
+      "rules": [
+        {
+          "find": "  const Node* Find(uint32_t node) const;",
+          "replace": "  // Slots in top-to-bottom, then left-to-right layout order. Collection\n  // order remains in pane_slots(); branch swaps never change slot identity.\n  std::vector<uint32_t> VisualPaneSlots() const;\n  const Node* Find(uint32_t node) const;",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "components/split_tabs/split_pane_tree.cc",
+      "inputSha256": "1ffec49e783ceab649576fdf49f2ec2eb26dec4660c972b65c4880d55312e0a6",
+      "outputSha256": "308e99e4d8d8160b7256defb606b9449dc9a325952ea7c5f90cd64f171670787",
+      "rules": [
+        {
+          "find": "}  // namespace split_tabs",
+          "replace": "std::vector<uint32_t> SplitPaneTree::VisualPaneSlots() const {\n  auto placements = Layout({0, 0, 1000000, 1000000}, 0, 0);\n  std::erase_if(placements, [](const Placement& pane) { return !pane.slot; });\n  std::stable_sort(placements.begin(), placements.end(),\n                   [](const Placement& a, const Placement& b) {\n    return a.bounds.y != b.bounds.y ? a.bounds.y < b.bounds.y\n                                    : a.bounds.x < b.bounds.x;\n  });\n  std::vector<uint32_t> slots;\n  for (const auto& pane : placements) slots.push_back(pane.slot);\n  return slots;\n}\n}  // namespace split_tabs",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/ui/tabs/split_tab_util.h",
+      "inputSha256": "ba47aca0fc56b68d2d68acf38e6599f8c4f88098c298379a47a9aa4182f12473",
+      "outputSha256": "25185379052ffe1d646ee30eab9f40dd4e85306e7929bbca66fa9d5dbff14e65",
+      "rules": [
+        {
+          "find": "class TabStripModel;",
+          "replace": "#include <vector>\n\nclass TabStripModel;\nnamespace tabs {\nclass TabInterface;\n}",
+          "count": 1
+        },
+        {
+          "find": "class SplitTabId;",
+          "replace": "class SplitTabId;\nclass SplitTabData;",
+          "count": 1
+        },
+        {
+          "find": "  kBottom,",
+          "replace": "  kBottom,\n  // A tree with more than two panes has no single binary side.\n  kMultiple,",
+          "count": 1
+        },
+        {
+          "find": "// Returns the index of the last active tab in a split.",
+          "replace": "// Binds genuine tabs to stable pane slots in the same layout as the view.\nstd::vector<tabs::TabInterface*> GetTabsInVisualOrder(const SplitTabData& data);\n\n// Returns the index of the last active tab in a split.",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/ui/tabs/split_tab_util.cc",
+      "inputSha256": "10e8ad5ac6f9fd04840f83f8869aa93b901d9fbc92d2f7ec621db349c90e4ca3",
+      "outputSha256": "c3b32890a28f5d113dcc0b2c089ceca4d03e7fca326f46ef34fa3157d5f02df7",
+      "rules": [
+        {
+          "find": "int GetIndexOfLastActiveTab(",
+          "replace": "std::vector<tabs::TabInterface*> GetTabsInVisualOrder(const SplitTabData& data) {\n  const auto tabs = data.ListTabs();\n  const auto& tree = data.visual_data()->pane_tree();\n  if (!tree) return tabs;\n  CHECK_EQ(tree->pane_slots().size(), tabs.size());\n  std::vector<tabs::TabInterface*> ordered;\n  for (const uint32_t slot : tree->VisualPaneSlots()) {\n    const auto member = std::ranges::find(tree->pane_slots(), slot);\n    CHECK(member != tree->pane_slots().end());\n    ordered.push_back(tabs[std::distance(tree->pane_slots().begin(), member)]);\n  }\n  CHECK_EQ(ordered.size(), tabs.size());\n  return ordered;\n}\n\nint GetIndexOfLastActiveTab(",
+          "count": 1
+        },
+        {
+          "find": "  for (int index = tab_strip_model->GetIndexOfTab(split_tabs[0]);\n       tabs::TabInterface* tab : split_tabs) {\n    if (tab->IsActivated()) {\n      return index;\n    }\n    index++;\n  }",
+          "replace": "  for (tabs::TabInterface* tab : split_tabs) {\n    if (tab->IsActivated()) {\n      return tab_strip_model->GetIndexOfTab(tab);\n    }\n  }",
+          "count": 1
+        },
+        {
+          "find": "std::vector<tabs::TabInterface*> tabs_in_split = split_tab_data->ListTabs();\n  CHECK_EQ(tabs_in_split.size(), 2U);",
+          "replace": "std::vector<tabs::TabInterface*> tabs_in_split = GetTabsInVisualOrder(*split_tab_data);\n  if (tabs_in_split.size() > 2) return SplitTabActiveLocation::kMultiple;\n  CHECK_EQ(tabs_in_split.size(), 2U);",
+          "count": 1
+        },
+        {
+          "find": "  if (split_tab_data->visual_data()->split_layout() ==\n      SplitTabLayout::kSideBySide) {",
+          "replace": "  const auto& visual = *split_tab_data->visual_data();\n  const bool horizontal = visual.pane_tree()\n      ? visual.pane_tree()->Find(visual.pane_tree()->root())->axis == SplitPaneTree::Axis::kHorizontal\n      : visual.split_layout() == SplitTabLayout::kSideBySide;\n  if (horizontal) {",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/ui/views/tabs/tab/tab_accessibility.cc",
+      "inputSha256": "8b65359b82d0a8c7d8613ac075ba1e922d036a61e97605a01fbe705e285a208d",
+      "outputSha256": "3d9491f1ecb3b27a90fbdcad477bdf97981768b9f09e2fb67b8069107510a3a9",
+      "rules": [
+        {
+          "find": "#include \"chrome/browser/ui/tabs/tab_data.h\"",
+          "replace": "#include \"chrome/browser/ui/tabs/tab_data.h\"\n#include \"chrome/browser/ui/tabs/split_tab_util.h\"\n#include \"base/strings/string_number_conversions.h\"",
+          "count": 1
+        },
+        {
+          "find": "    const std::vector<tabs::TabInterface*> tabs_in_split =\n        split_data->ListTabs();\n\n    int tab_index_in_split = std::distance(\n        tabs_in_split.begin(),\n        std::find(tabs_in_split.begin(), tabs_in_split.end(), tab));\n    title = l10n_util::GetStringFUTF16(\n        GetAccessibleTabLabelFormatStringForSplit(\n            split_data->visual_data()->split_layout(), tab_index_in_split),\n        title);",
+          "replace": "    const auto tabs_in_split = split_tabs::GetTabsInVisualOrder(*split_data);\n    const auto member = std::ranges::find(tabs_in_split, tab);\n    if (member != tabs_in_split.end()) {\n      const size_t position = std::distance(tabs_in_split.begin(), member);\n      if (tabs_in_split.size() > 2) {\n        title = l10n_util::GetStringFUTF16(\n            IDS_TAB_AX_LABEL_SPLIT_TAB_PANE_FORMAT, title,\n            base::NumberToString16(position + 1),\n            base::NumberToString16(tabs_in_split.size()));\n      } else {\n        const auto& visual = *split_data->visual_data();\n        const auto layout = visual.pane_tree()\n            ? (visual.pane_tree()->Find(visual.pane_tree()->root())->axis == split_tabs::SplitPaneTree::Axis::kHorizontal\n                   ? split_tabs::SplitTabLayout::kSideBySide : split_tabs::SplitTabLayout::kStacked)\n            : visual.split_layout();\n        title = l10n_util::GetStringFUTF16(\n            GetAccessibleTabLabelFormatStringForSplit(layout, static_cast<int>(position)), title);\n      }\n    }",
+          "count": 1
+        },
+        {
+          "find": "#include \"chrome/browser/ui/browser_window/public/browser_window_interface.h\"",
+          "replace": "#include <algorithm>\n\n#include \"chrome/browser/ui/browser_window/public/browser_window_interface.h\"",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/ui/views/toolbar/split_tabs_button.cc",
+      "inputSha256": "cd8cf0d6ecbafdd6dd4b6eecbcfe6e21d9d0b50c4cceed9b3b00d8ca921bdb94",
+      "outputSha256": "5ceaaf3ef451387d1a447db6de8d88479e2e14c1170456fd46495e7fc0dc5059",
+      "rules": [
+        {
+          "find": "{split_tabs::SplitTabActiveLocation::kBottom, &kSplitSceneDownOldIcon},",
+          "replace": "{split_tabs::SplitTabActiveLocation::kBottom, &kSplitSceneDownOldIcon},\n        {split_tabs::SplitTabActiveLocation::kMultiple, &kSplitSceneOldIcon},",
+          "count": 1
+        },
+        {
+          "find": "{split_tabs::SplitTabActiveLocation::kBottom, &kSplitSceneDownIcon},",
+          "replace": "{split_tabs::SplitTabActiveLocation::kBottom, &kSplitSceneDownIcon},\n            {split_tabs::SplitTabActiveLocation::kMultiple, &kSplitSceneIcon},",
+          "count": 1
+        },
+        {
+          "find": "      case split_tabs::SplitTabActiveLocation::kBottom:\n        string_id = IDS_ACCNAME_SPLIT_TABS_TOOLBAR_BUTTON_ENABLED_BOTTOM_ACTIVE;\n        break;",
+          "replace": "      case split_tabs::SplitTabActiveLocation::kBottom:\n        string_id = IDS_ACCNAME_SPLIT_TABS_TOOLBAR_BUTTON_ENABLED_BOTTOM_ACTIVE;\n        break;\n      case split_tabs::SplitTabActiveLocation::kMultiple:\n        string_id = IDS_ACCNAME_SPLIT_TABS_TOOLBAR_BUTTON_ENABLED_MULTIPLE;\n        break;",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/ui/webui/webui_toolbar/utils/split_tabs_utils.cc",
+      "inputSha256": "73979fc49f7ed08235a8b4467f8951542e3af0698e8c76d94155a7f36aa887ef",
+      "outputSha256": "fef614ca65813a680ef511ee7e5889c3dc44da188e9d1c1828952b091fe67ef7",
+      "rules": [
+        {
+          "find": "            toolbar_ui_api::mojom::SplitTabActiveLocation::kBottom;\n        break;",
+          "replace": "            toolbar_ui_api::mojom::SplitTabActiveLocation::kBottom;\n        break;\n      case split_tabs::SplitTabActiveLocation::kMultiple:\n        status.location = toolbar_ui_api::mojom::SplitTabActiveLocation::kMultiple;\n        break;",
+          "count": 1
+        },
+        {
+          "find": "      {\"splitTabsButtonAccNamePinned\",",
+          "replace": "      {\"splitTabsButtonAccNameEnabledMultiple\",\n       IDS_ACCNAME_SPLIT_TABS_TOOLBAR_BUTTON_ENABLED_MULTIPLE},\n      {\"splitTabsButtonAccNamePinned\",",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "components/browser_apis/ui_controllers/toolbar/toolbar_ui_api_data_model.mojom",
+      "inputSha256": "aee744cb660c0b16b6290edcc38416bb98119e1f0a51c91c0691d3f519bb3131",
+      "outputSha256": "853a5cc4fdb94e9dfa5a4654517c68fb5e1cb5acab2a5fe440a8d030c86a4167",
+      "rules": [
+        {
+          "find": "  kBottom,\n};\n\nenum ToolbarButtonType",
+          "replace": "  kBottom,\n  kMultiple,\n};\n\nenum ToolbarButtonType",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/resources/webui_toolbar/split_tabs_button.ts",
+      "inputSha256": "f66675faa439ed62c844c476ebc2ce8aad147be9ce91b1892b070b3d24034927",
+      "outputSha256": "02ae04f6e9252af5ea0c401c5b08503ce01e5cfc919bc41ec795a5de64fe2ad7",
+      "rules": [
+        {
+          "find": "        labelId = 'splitTabsButtonAccNameEnabledBottom';\n        break;",
+          "replace": "        labelId = 'splitTabsButtonAccNameEnabledBottom';\n        break;\n      case SplitTabActiveLocation.kMultiple:\n        labelId = 'splitTabsButtonAccNameEnabledMultiple';\n        break;",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/ui/tabs/split_tab_menu_model.h",
+      "inputSha256": "c7034a80edff5592179c0d5a6b1554f06ce7833c8dc550c12051fa11436594ba",
+      "outputSha256": "c9e09522117f76fec8a4f1b4d60d20ab4ef00f12f366301f84997a0ae930372e",
+      "rules": [
+        {
+          "find": "  bool IsItemForCommandIdDynamic(int command_id) const override;",
+          "replace": "  bool IsCommandIdEnabled(int command_id) const override;\n  bool IsItemForCommandIdDynamic(int command_id) const override;",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/ui/tabs/split_tab_menu_model.cc",
+      "inputSha256": "e04ed514d18c097986e71b40e630b41b057747b1d129721eaf39309c857f437f",
+      "outputSha256": "fca61c355907d1399a7cb88493c0ab7c28061d37cf682c454e34d8740a35f693",
+      "rules": [
+        {
+          "find": "      split_tab_index_(split_tab_index) {\n  AddItemWithStringIdAndIcon(",
+          "replace": "      split_tab_index_(split_tab_index) {\n  const bool is_pair = tab_strip_model_->GetSplitData(GetSplitTabId())->ListTabs().size() == 2;\n  AddItemWithStringIdAndIcon(",
+          "count": 1
+        },
+        {
+          "find": "  AddSeparator(ui::MenuSeparatorType::NORMAL_SEPARATOR);\n\n  if (menu_source == MenuSource::kMiniToolbar)",
+          "replace": "  if (is_pair || menu_source == MenuSource::kMiniToolbar)\n    AddSeparator(ui::MenuSeparatorType::NORMAL_SEPARATOR);\n\n  if (menu_source == MenuSource::kMiniToolbar)",
+          "count": 1
+        },
+        {
+          "find": "  } else if (menu_source == MenuSource::kTabContextMenu ||\n             menu_source == MenuSource::kToolbarButton) {",
+          "replace": "  } else if (is_pair && (menu_source == MenuSource::kTabContextMenu ||\n                         menu_source == MenuSource::kToolbarButton)) {",
+          "count": 1
+        },
+        {
+          "find": "  } else {\n    NOTREACHED() << \"Unknown close menu item option\";\n  }\n\n  if (base::FeatureList::IsEnabled(tabs::kSplitViewHorizontal)) {",
+          "replace": "  }\n\n  if (is_pair && base::FeatureList::IsEnabled(tabs::kSplitViewHorizontal)) {",
+          "count": 1
+        },
+        {
+          "find": "  AddItem(GetCommandIdInt(CommandId::kReversePosition), std::u16string());\n\n  SetElementIdentifierAt(\n      GetIndexOfCommandId(GetCommandIdInt(CommandId::kReversePosition)).value(),\n      kReversePositionMenuItem);",
+          "replace": "  if (is_pair) {\n    AddItem(GetCommandIdInt(CommandId::kReversePosition), std::u16string());\n    SetElementIdentifierAt(\n        GetIndexOfCommandId(GetCommandIdInt(CommandId::kReversePosition)).value(),\n        kReversePositionMenuItem);\n  }",
+          "count": 1
+        },
+        {
+          "find": "bool SplitTabMenuModel::IsItemForCommandIdDynamic(",
+          "replace": "bool SplitTabMenuModel::IsCommandIdEnabled(int command_id) const {\n  const auto id = GetCommandIdEnum(command_id);\n  if (id == CommandId::kReversePosition || id == CommandId::kCloseStartTab ||\n      id == CommandId::kCloseEndTab || id == CommandId::kToggleOrientation) {\n    return tab_strip_model_->GetSplitData(GetSplitTabId())->ListTabs().size() == 2;\n  }\n  return true;\n}\n\nbool SplitTabMenuModel::IsItemForCommandIdDynamic(",
+          "count": 1
+        },
+        {
+          "find": "ui::ImageModel SplitTabMenuModel::GetIconForCommandId(int command_id) const {\n  const split_tabs::SplitTabActiveLocation active_split_tab_location =\n      split_tabs::GetLastActiveTabLocation(tab_strip_model_, GetSplitTabId());\n\n  const CommandId id",
+          "replace": "ui::ImageModel SplitTabMenuModel::GetIconForCommandId(int command_id) const {\n  const CommandId id",
+          "count": 1
+        },
+        {
+          "find": "icon = &GetReversePositionIcon(active_split_tab_location);",
+          "replace": "icon = &GetReversePositionIcon(split_tabs::GetLastActiveTabLocation(tab_strip_model_, GetSplitTabId()));",
+          "count": 1
+        },
+        {
+          "find": "  const split_tabs::SplitTabId split_id = GetSplitTabId();\n  split_tabs::SplitTabData* const split_tab_data",
+          "replace": "  if (!IsCommandIdEnabled(command_id)) return;\n  const split_tabs::SplitTabId split_id = GetSplitTabId();\n  split_tabs::SplitTabData* const split_tab_data",
+          "count": 1
+        },
+        {
+          "find": "  std::vector<tabs::TabInterface*> tabs_in_split = split_tab_data->ListTabs();\n  CHECK_EQ(tabs_in_split.size(), 2U);",
+          "replace": "  const auto tabs_in_split = split_tabs::GetTabsInVisualOrder(*split_tab_data);",
+          "count": 1
+        },
+        {
+          "find": "                                               : kSplitSceneUpOldIcon;\n  }\n}",
+          "replace": "                                               : kSplitSceneUpOldIcon;\n    case split_tabs::SplitTabActiveLocation::kMultiple:\n      return features::IsRoundedIconsEnabled() ? kSplitSceneIcon : kSplitSceneOldIcon;\n  }\n}",
+          "count": 1
+        },
+        {
+          "find": "  return visual_data->split_layout();",
+          "replace": "  if (const auto& tree = visual_data->pane_tree()) {\n    return tree->Find(tree->root())->axis == split_tabs::SplitPaneTree::Axis::kHorizontal\n        ? split_tabs::SplitTabLayout::kSideBySide : split_tabs::SplitTabLayout::kStacked;\n  }\n  return visual_data->split_layout();",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/ui/tabs/tab_strip_model.cc",
+      "inputSha256": "d30702e35ceb70ff0ac6e858702513bdcff424063f56e77f68e1b51144933d7a",
+      "outputSha256": "386bf740d7a1d6a15efbc78fde6b23d1c6ffb83e11bb47069f6c94e5cdc354fe",
+      "rules": [
+        {
+          "find": "  if (split_data->visual_data()->split_layout() == tab_layout) {",
+          "replace": "  const auto& pane_tree = split_data->visual_data()->pane_tree();\n  const auto requested_axis = tab_layout == split_tabs::SplitTabLayout::kSideBySide\n      ? split_tabs::SplitPaneTree::Axis::kHorizontal : split_tabs::SplitPaneTree::Axis::kVertical;\n  if (split_data->visual_data()->split_layout() == tab_layout &&\n      (!pane_tree || pane_tree->Find(pane_tree->root())->axis == requested_axis)) {",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "chrome/app/generated_resources.grd",
+      "inputSha256": "e7027a71d4d9fb7bda8266468d7096e34b15c9fe9f8b94d4827e5438f95c9d1c",
+      "outputSha256": "10cac2a6503aa585495550100cbd7c86c07be37f04d4cae9d20714ef03c6bfc3",
+      "rules": [
+        {
+          "find": "      <message name=\"IDS_ACCNAME_FIND\"",
+          "replace": "      <message name=\"IDS_ACCNAME_SPLIT_TABS_TOOLBAR_BUTTON_ENABLED_MULTIPLE\" desc=\"Accessible label for the split view toolbar button with more than two panes.\">\n        Split view options\n      </message>\n      <message name=\"IDS_ACCNAME_FIND\"",
+          "count": 1
+        },
+        {
+          "find": "      <message name=\"IDS_TAB_AX_LABEL_UNNAMED_GROUP_FORMAT\"",
+          "replace": "      <message name=\"IDS_TAB_AX_LABEL_SPLIT_TAB_PANE_FORMAT\" is_accessibility_with_no_ui=\"true\" desc=\"Accessibility label for a tab in a split with multiple panes, in visual reading order.\">\n        <ph name=\"WINDOW_TITLE\">$1<ex>Google Search</ex></ph> - View <ph name=\"PANE_POSITION\">$2<ex>2</ex></ph> of <ph name=\"PANE_COUNT\">$3<ex>4</ex></ph>\n      </message>\n      <message name=\"IDS_TAB_AX_LABEL_UNNAMED_GROUP_FORMAT\"",
+          "count": 1
+        }
+      ]
+    }
+  ],
+  "projected": false,
+  "built": false
+}
