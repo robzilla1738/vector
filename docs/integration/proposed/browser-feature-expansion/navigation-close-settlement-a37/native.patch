@@ -1,0 +1,193 @@
+--- a/chrome/browser/ui/views/frame/aux_organization_window_controller.h
++++ b/chrome/browser/ui/views/frame/aux_organization_window_controller.h
+@@ -15,6 +15,7 @@
+ #include "chrome/browser/ui/tabs/tab_strip_model_observer.h"
+ #include "chrome/browser/ui/views/frame/aux_organization_window_delegate.h"
+ #include "components/tabs/public/tab_interface.h"
++#include "content/public/browser/weak_document_ptr.h"
+ class BrowserWindowInterface;
+ class Profile;
+ namespace content { class WebContents; }
+@@ -72,6 +73,13 @@
+   bool ready() const;
+  private:
+   class PageObserver;
++  struct ManualClose {
++    tabs::TabHandle target;
++    content::WeakDocumentPtr document;
++    base::WeakPtr<Profile> profile;
++    std::string logical, view_document, url, generation;
++  };
++  void ContinueManualClose(ManualClose);
+   struct AutomaticArchive;
+   void InvalidateAutomaticArchive(tabs::TabHandle, uint64_t activated_at = 0);
+   bool AutomaticArchiveStillEligible() const;
+@@ -118,6 +126,7 @@
+   // Unregistered ordinary views still observe their first native commit.
+   std::map<tabs::TabHandle, std::unique_ptr<PageObserver>> candidate_observers_;
+   std::set<tabs::TabHandle> explicit_unloads_;
++  std::map<tabs::TabHandle, ManualClose> deferred_manual_closes_;
+   std::set<tabs::TabHandle> dirty_navigation_;
+   std::set<tabs::TabHandle> dirty_titles_;
+   std::map<tabs::TabHandle, uint64_t> dirty_activation_;
+--- a/chrome/browser/ui/views/frame/aux_organization_window_controller.cc
++++ b/chrome/browser/ui/views/frame/aux_organization_window_controller.cc
+@@ -5,6 +5,7 @@
+ #include <tuple>
+ #include <utility>
+ #include "base/functional/bind.h"
++#include "base/logging.h"
+ #include "base/functional/callback_helpers.h"
+ #include "base/strings/utf_string_conversions.h"
+ #include "base/task/single_thread_task_runner.h"
+@@ -47,6 +48,7 @@
+ #include "content/public/browser/navigation_controller.h"
+ #include "content/public/browser/navigation_handle.h"
+ #include "content/public/browser/web_contents.h"
++#include "content/public/browser/render_frame_host.h"
+ #include "content/public/browser/web_contents_observer.h"
+ namespace aux {
+ namespace {
+@@ -138,6 +140,7 @@
+   TabStripModelObserver::StopObservingAll(this);
+   ready_subscription_ = {}; model_changes_ = {}; settled_ = {}; session_restored_ = {}; activation_ = {};
+   ordinary_eligible_.Reset(); views_.clear(); candidate_observers_.clear(); explicit_unloads_.clear(); dirty_navigation_.clear(); dirty_activation_.clear(); dirty_titles_.clear();
++  deferred_manual_closes_.clear();
+   automatic_archive_.reset();
+   cleanup_ids_.clear(); cleanup_running_ = false; cleanup_waiting_ = false;
+   profile_ = nullptr; model_ = nullptr; active_space_.clear(); restored_space_.clear();
+@@ -187,6 +190,7 @@
+   TabStripModelObserver::StopObservingAll(this);
+   weak_.InvalidateWeakPtrs(); ready_subscription_ = {}; model_changes_ = {}; settled_ = {}; session_restored_ = {}; activation_ = {};
+   views_.clear(); candidate_observers_.clear(); explicit_unloads_.clear(); dirty_navigation_.clear(); dirty_activation_.clear(); dirty_titles_.clear();
++  deferred_manual_closes_.clear();
+   automatic_archive_.reset();
+   cleanup_ids_.clear(); cleanup_running_ = false; cleanup_waiting_ = false; cleanup_cursor_ = 0;
+   reconcile_queued_ = false; registering_ = false; opening_ = false;
+@@ -302,6 +306,18 @@
+   }
+   auto* organization = Organization(browser_.get());
+   if (!organization || organization->blocked()) { Notify(); return; }
++  if (!deferred_manual_closes_.empty()) {
++    // The existing ObserveSettled callback wakes this path. Never poll or
++    // treat pending storage as success; prioritize the retained manual action.
++    if (organization->pending()) return;
++    auto first = deferred_manual_closes_.begin();
++    auto request = std::move(first->second);
++    deferred_manual_closes_.erase(first);
++    const auto alive = weak_.GetWeakPtr();
++    ContinueManualClose(std::move(request));
++    if (alive) alive->QueueReconcile();
++    return;
++  }
+   const auto alive = weak_.GetWeakPtr();
+   const auto& snapshot = organization->snapshot();
+   if (!restored_space_.empty() && snapshot.spaces.contains(restored_space_)) {
+@@ -1171,7 +1187,7 @@
+   auto* organization = Organization(browser_.get());
+   if (id.empty() || !organization || !organization->snapshot().entries.contains(id)) return false;
+   const auto& entry = organization->snapshot().entries.at(id);
+-  if (!organization->blocked() && !organization->pending() && !entry.archived &&
++  if (!organization->blocked() && !entry.archived &&
+       !tab->IsPinned() && !organization::HasRetention(organization->snapshot(), id) &&
+       tab->GetContents()->NeedToFireBeforeUnloadOrUnloadEvents() &&
+       !Protected(tab, false)) {
+@@ -1184,25 +1200,72 @@
+     // then the existing exact durable archive/close path runs below.
+     return false;
+   }
++  auto* coordinator = organization::OrganizationProfileServiceFactory::GetForProfileIfExists(profile_);
++  const auto view = views_.find(handle);
++  if (!coordinator || coordinator->model() != organization || view == views_.end() ||
++      view->second.document_id.empty()) {
++    LOG(ERROR) << "Aux manual close: continuation_refused=owner";
++    return true;
++  }
++  ManualClose request{handle, tab->GetContents()->GetPrimaryMainFrame()->GetWeakDocumentPtr(),
++      profile_->GetWeakPtr(), id, view->second.document_id,
++      tab->GetContents()->GetLastCommittedURL().spec(), coordinator->owner_generation()};
+   base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(FROM_HERE, base::BindOnce(
+-      [](base::WeakPtr<AuxOrganizationWindowController> owner, tabs::TabHandle target, std::string id) {
+-        auto* tab = target.Get();
+-        if (!owner || !owner->Current() || owner->model_->closing_all() || !tab || tab->IsSplit() ||
+-            owner->model_->GetIndexOfTab(tab) < 0 ||
+-            !tab->GetContents() || tab->GetContents()->GetBrowserContext() != owner->profile_ ||
+-            GetRememberedPinnedTabEntryId(*tab->GetContents()) != id) return;
+-        auto* current = Organization(owner->browser_.get());
+-        if (!current || current->blocked() || !current->snapshot().entries.contains(id)) return;
+-        // Retain the exact native tab and re-read retention after the posted
+-        // task. A pin/Keep change while queued must not become a shared close.
+-        if (current->snapshot().entries.at(id).archived) { owner->CloseViewNow(target); return; }
+-        auto done = base::BindOnce([](base::WeakPtr<AuxOrganizationWindowController> owner, bool) {
+-          if (owner) owner->Notify();
+-        }, owner);
+-        if (tab->IsPinned() || organization::HasRetention(current->snapshot(), id)) owner->EnsureSavedThenClose(target, std::move(done));
+-        else owner->ArchiveLogicalEntry(id, std::move(done));
+-      }, weak_.GetWeakPtr(), handle, id));
++      &AuxOrganizationWindowController::ContinueManualClose, weak_.GetWeakPtr(), std::move(request)));
+   return true;
++}
++void AuxOrganizationWindowController::ContinueManualClose(ManualClose request) {
++  auto* tab = request.target.Get();
++  auto* contents = tab ? tab->GetContents() : nullptr;
++  if (!Current() || model_->closing_all() || request.profile.get() != profile_ ||
++      !tab || tab->IsSplit() || model_->GetIndexOfTab(tab) < 0 || !contents ||
++      contents->GetBrowserContext() != profile_ ||
++      request.document.AsRenderFrameHostIfValid() != contents->GetPrimaryMainFrame() ||
++      contents->GetLastCommittedURL().spec() != request.url ||
++      GetRememberedPinnedTabEntryId(*contents) != request.logical) {
++    LOG(ERROR) << "Aux manual close: continuation_refused=identity";
++    return;
++  }
++  auto* coordinator = organization::OrganizationProfileServiceFactory::GetForProfileIfExists(profile_);
++  auto* current = coordinator ? coordinator->model() : nullptr;
++  const auto view = views_.find(request.target);
++  if (!current || current->blocked() || coordinator->owner_generation() != request.generation ||
++      !current->snapshot().entries.contains(request.logical) || view == views_.end() ||
++      view->second.logical_id != request.logical || view->second.document_id != request.view_document) {
++    LOG(ERROR) << "Aux manual close: continuation_refused=organization";
++    return;
++  }
++  // A new unload obligation is not an accepted ACK and may not be archived.
++  // The original native close handles beforeunload; this continuation only
++  // resumes the exact unchanged document after that path or no-unload close.
++  if (contents->NeedToFireBeforeUnloadOrUnloadEvents()) {
++    LOG(ERROR) << "Aux manual close: continuation_refused=unload_changed";
++    return;
++  }
++  if (current->pending()) {
++    if (!current->snapshot().entries.at(request.logical).archived && !tab->IsPinned() &&
++        !organization::HasRetention(current->snapshot(), request.logical) && !Protected(tab)) {
++      const auto target = request.target;
++      deferred_manual_closes_.insert_or_assign(target, std::move(request));
++      LOG(ERROR) << "Aux manual close: deferred_for_storage=1";
++    } else {
++      LOG(ERROR) << "Aux manual close: continuation_refused=pending_protected";
++    }
++    return;
++  }
++  LOG(ERROR) << "Aux manual close: continuation_storage_settled=1";
++  if (current->snapshot().entries.at(request.logical).archived) {
++    CloseViewNow(request.target);
++    return;
++  }
++  auto done = base::BindOnce([](base::WeakPtr<AuxOrganizationWindowController> owner, bool saved) {
++    LOG(ERROR) << "Aux manual close: membership_saved=" << saved;
++    if (owner) owner->Notify();
++  }, weak_.GetWeakPtr());
++  if (tab->IsPinned() || organization::HasRetention(current->snapshot(), request.logical))
++    EnsureSavedThenClose(request.target, std::move(done));
++  else
++    ArchiveLogicalEntry(request.logical, std::move(done));
+ }
+ organization::Entry AuxOrganizationWindowController::EntryForDisplay(const organization::Entry& entry) const {
+   organization::Entry shown = entry;
+@@ -1498,7 +1561,7 @@
+       (selection.reason & TabStripModelObserver::CHANGE_REASON_USER_GESTURE))
+     RecordActivation(selection.new_tab->GetHandle());
+   if (change.type() == TabStripModelChange::kRemoved) for (const auto& removed : change.GetRemove()->contents) {
+-    if (removed.tab) { views_.erase(removed.tab->GetHandle()); candidate_observers_.erase(removed.tab->GetHandle()); dirty_navigation_.erase(removed.tab->GetHandle()); dirty_activation_.erase(removed.tab->GetHandle()); }
++    if (removed.tab) { deferred_manual_closes_.erase(removed.tab->GetHandle()); views_.erase(removed.tab->GetHandle()); candidate_observers_.erase(removed.tab->GetHandle()); dirty_navigation_.erase(removed.tab->GetHandle()); dirty_activation_.erase(removed.tab->GetHandle()); }
+   }
+   QueueReconcile();
+ }

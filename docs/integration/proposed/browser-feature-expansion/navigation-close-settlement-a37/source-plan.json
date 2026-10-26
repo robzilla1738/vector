@@ -1,0 +1,83 @@
+{
+  "format": "aux.native.counted-projection.v1",
+  "nativeRoot": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src",
+  "purpose": "Retain exact accepted native close through real organization storage settlement",
+  "files": [
+    {
+      "path": "chrome/browser/ui/views/frame/aux_organization_window_controller.h",
+      "inputSha256": "dbd695bc18af8d3394e08fa2121f343365931dc83a243ea4b5a5f8c63f0516fd",
+      "outputSha256": "c32f0bfaf5fc7a1f215d8872f5370abc1a018ca6311755c3083c6fc4dc082d12",
+      "source": "/Users/rcourson/.codex/worktrees/aux-features-navigation/web/docs/integration/proposed/browser-feature-expansion/navigation-close-settlement-a37/source/chrome/browser/ui/views/frame/aux_organization_window_controller.h",
+      "anchors": [
+        {
+          "name": "actual document weak reference",
+          "before": "#include \"components/tabs/public/tab_interface.h\"",
+          "after": "#include \"components/tabs/public/tab_interface.h\"\n#include \"content/public/browser/weak_document_ptr.h\"",
+          "expectedCount": 1
+        },
+        {
+          "name": "retain exact existing close continuation",
+          "before": "  class PageObserver;",
+          "after": "  class PageObserver;\n  struct ManualClose {\n    tabs::TabHandle target;\n    content::WeakDocumentPtr document;\n    base::WeakPtr<Profile> profile;\n    std::string logical, view_document, url, generation;\n  };\n  void ContinueManualClose(ManualClose);",
+          "expectedCount": 1
+        },
+        {
+          "name": "existing settlement-owned request queue",
+          "before": "  std::set<tabs::TabHandle> explicit_unloads_;",
+          "after": "  std::set<tabs::TabHandle> explicit_unloads_;\n  std::map<tabs::TabHandle, ManualClose> deferred_manual_closes_;",
+          "expectedCount": 1
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_organization_window_controller.cc",
+      "inputSha256": "ad6c3e55d1f06c28b7c5f5db9742ab0a8478547ee511aa3f5e4ebc9cdc935a1e",
+      "outputSha256": "be300a8c4b4a6fe27cf55489749678824260e44cf4366845be7fa15ada0719d2",
+      "source": "/Users/rcourson/.codex/worktrees/aux-features-navigation/web/docs/integration/proposed/browser-feature-expansion/navigation-close-settlement-a37/source/chrome/browser/ui/views/frame/aux_organization_window_controller.cc",
+      "anchors": [
+        {
+          "name": "status-only diagnostics",
+          "before": "#include \"base/functional/bind.h\"",
+          "after": "#include \"base/functional/bind.h\"\n#include \"base/logging.h\"",
+          "expectedCount": 1
+        },
+        {
+          "name": "real frame document API",
+          "before": "#include \"content/public/browser/web_contents.h\"",
+          "after": "#include \"content/public/browser/web_contents.h\"\n#include \"content/public/browser/render_frame_host.h\"",
+          "expectedCount": 1
+        },
+        {
+          "name": "retire close intents with existing controller lifecycle",
+          "before": "  automatic_archive_.reset();",
+          "after": "  deferred_manual_closes_.clear();\n  automatic_archive_.reset();",
+          "expectedCount": 2
+        },
+        {
+          "name": "wake exact retained request before fresh maintenance writes",
+          "before": "  if (!organization || organization->blocked()) { Notify(); return; }\n  const auto alive = weak_.GetWeakPtr();",
+          "after": "  if (!organization || organization->blocked()) { Notify(); return; }\n  if (!deferred_manual_closes_.empty()) {\n    // The existing ObserveSettled callback wakes this path. Never poll or\n    // treat pending storage as success; prioritize the retained manual action.\n    if (organization->pending()) return;\n    auto first = deferred_manual_closes_.begin();\n    auto request = std::move(first->second);\n    deferred_manual_closes_.erase(first);\n    const auto alive = weak_.GetWeakPtr();\n    ContinueManualClose(std::move(request));\n    if (alive) alive->QueueReconcile();\n    return;\n  }\n  const auto alive = weak_.GetWeakPtr();",
+          "expectedCount": 1
+        },
+        {
+          "name": "native unload before any mutation even while storage pending",
+          "before": "  if (!organization->blocked() && !organization->pending() && !entry.archived &&",
+          "after": "  if (!organization->blocked() && !entry.archived &&",
+          "expectedCount": 1
+        },
+        {
+          "name": "resume posted manual close only for original native owner and document",
+          "before": "  base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(FROM_HERE, base::BindOnce(\n      [](base::WeakPtr<AuxOrganizationWindowController> owner, tabs::TabHandle target, std::string id) {\n        auto* tab = target.Get();\n        if (!owner || !owner->Current() || owner->model_->closing_all() || !tab || tab->IsSplit() ||\n            owner->model_->GetIndexOfTab(tab) < 0 ||\n            !tab->GetContents() || tab->GetContents()->GetBrowserContext() != owner->profile_ ||\n            GetRememberedPinnedTabEntryId(*tab->GetContents()) != id) return;\n        auto* current = Organization(owner->browser_.get());\n        if (!current || current->blocked() || !current->snapshot().entries.contains(id)) return;\n        // Retain the exact native tab and re-read retention after the posted\n        // task. A pin/Keep change while queued must not become a shared close.\n        if (current->snapshot().entries.at(id).archived) { owner->CloseViewNow(target); return; }\n        auto done = base::BindOnce([](base::WeakPtr<AuxOrganizationWindowController> owner, bool) {\n          if (owner) owner->Notify();\n        }, owner);\n        if (tab->IsPinned() || organization::HasRetention(current->snapshot(), id)) owner->EnsureSavedThenClose(target, std::move(done));\n        else owner->ArchiveLogicalEntry(id, std::move(done));\n      }, weak_.GetWeakPtr(), handle, id));\n  return true;\n}",
+          "after": "  auto* coordinator = organization::OrganizationProfileServiceFactory::GetForProfileIfExists(profile_);\n  const auto view = views_.find(handle);\n  if (!coordinator || coordinator->model() != organization || view == views_.end() ||\n      view->second.document_id.empty()) {\n    LOG(ERROR) << \"Aux manual close: continuation_refused=owner\";\n    return true;\n  }\n  ManualClose request{handle, tab->GetContents()->GetPrimaryMainFrame()->GetWeakDocumentPtr(),\n      profile_->GetWeakPtr(), id, view->second.document_id,\n      tab->GetContents()->GetLastCommittedURL().spec(), coordinator->owner_generation()};\n  base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(FROM_HERE, base::BindOnce(\n      &AuxOrganizationWindowController::ContinueManualClose, weak_.GetWeakPtr(), std::move(request)));\n  return true;\n}\nvoid AuxOrganizationWindowController::ContinueManualClose(ManualClose request) {\n  auto* tab = request.target.Get();\n  auto* contents = tab ? tab->GetContents() : nullptr;\n  if (!Current() || model_->closing_all() || request.profile.get() != profile_ ||\n      !tab || tab->IsSplit() || model_->GetIndexOfTab(tab) < 0 || !contents ||\n      contents->GetBrowserContext() != profile_ ||\n      request.document.AsRenderFrameHostIfValid() != contents->GetPrimaryMainFrame() ||\n      contents->GetLastCommittedURL().spec() != request.url ||\n      GetRememberedPinnedTabEntryId(*contents) != request.logical) {\n    LOG(ERROR) << \"Aux manual close: continuation_refused=identity\";\n    return;\n  }\n  auto* coordinator = organization::OrganizationProfileServiceFactory::GetForProfileIfExists(profile_);\n  auto* current = coordinator ? coordinator->model() : nullptr;\n  const auto view = views_.find(request.target);\n  if (!current || current->blocked() || coordinator->owner_generation() != request.generation ||\n      !current->snapshot().entries.contains(request.logical) || view == views_.end() ||\n      view->second.logical_id != request.logical || view->second.document_id != request.view_document) {\n    LOG(ERROR) << \"Aux manual close: continuation_refused=organization\";\n    return;\n  }\n  // A new unload obligation is not an accepted ACK and may not be archived.\n  // The original native close handles beforeunload; this continuation only\n  // resumes the exact unchanged document after that path or no-unload close.\n  if (contents->NeedToFireBeforeUnloadOrUnloadEvents()) {\n    LOG(ERROR) << \"Aux manual close: continuation_refused=unload_changed\";\n    return;\n  }\n  if (current->pending()) {\n    if (!current->snapshot().entries.at(request.logical).archived && !tab->IsPinned() &&\n        !organization::HasRetention(current->snapshot(), request.logical) && !Protected(tab)) {\n      const auto target = request.target;\n      deferred_manual_closes_.insert_or_assign(target, std::move(request));\n      LOG(ERROR) << \"Aux manual close: deferred_for_storage=1\";\n    } else {\n      LOG(ERROR) << \"Aux manual close: continuation_refused=pending_protected\";\n    }\n    return;\n  }\n  LOG(ERROR) << \"Aux manual close: continuation_storage_settled=1\";\n  if (current->snapshot().entries.at(request.logical).archived) {\n    CloseViewNow(request.target);\n    return;\n  }\n  auto done = base::BindOnce([](base::WeakPtr<AuxOrganizationWindowController> owner, bool saved) {\n    LOG(ERROR) << \"Aux manual close: membership_saved=\" << saved;\n    if (owner) owner->Notify();\n  }, weak_.GetWeakPtr());\n  if (tab->IsPinned() || organization::HasRetention(current->snapshot(), request.logical))\n    EnsureSavedThenClose(request.target, std::move(done));\n  else\n    ArchiveLogicalEntry(request.logical, std::move(done));\n}",
+          "expectedCount": 1
+        },
+        {
+          "name": "retire removed tab close intent",
+          "before": "if (removed.tab) { views_.erase(removed.tab->GetHandle());",
+          "after": "if (removed.tab) { deferred_manual_closes_.erase(removed.tab->GetHandle()); views_.erase(removed.tab->GetHandle());",
+          "expectedCount": 1
+        }
+      ]
+    }
+  ]
+}

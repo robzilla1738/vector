@@ -1,0 +1,30 @@
+{
+  "format": "aux.manual-close.settlement.source-check.v1",
+  "files": [
+    {
+      "path": "chrome/browser/ui/views/frame/aux_organization_window_controller.h",
+      "inputSha256": "dbd695bc18af8d3394e08fa2121f343365931dc83a243ea4b5a5f8c63f0516fd",
+      "outputSha256": "c32f0bfaf5fc7a1f215d8872f5370abc1a018ca6311755c3083c6fc4dc082d12",
+      "anchors": 3,
+      "replayPassed": true
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_organization_window_controller.cc",
+      "inputSha256": "ad6c3e55d1f06c28b7c5f5db9742ab0a8478547ee511aa3f5e4ebc9cdc935a1e",
+      "outputSha256": "be300a8c4b4a6fe27cf55489749678824260e44cf4366845be7fa15ada0719d2",
+      "anchors": 7,
+      "replayPassed": true
+    }
+  ],
+  "existingSettlementWakePreserved": true,
+  "pendingInitialNativeUnloadBeforeArchive": true,
+  "exactDocumentAndOwnerRequired": true,
+  "archiveAndCloseAndAutomaticBodiesUnchanged": true,
+  "reviewInputs": {
+    "chrome/browser/aux/organization/organization_service.cc": "b520ad1dfea94381ce2cef20149a2ccc0ecf7d15dca33b0a61543112ce8185fb",
+    "chrome/browser/ui/unload_controller.cc": "09220f0d6b2f9f93c3d3434cb05a0b2fd251592bda6485b8de49fd7454116dcf",
+    "content/browser/renderer_host/render_frame_host_manager.cc": "e883e975157617410f95c2415af1f6971d3ce043d809523bd791992195efd403"
+  },
+  "compiled": false,
+  "runtimeAccepted": false
+}
