@@ -1,0 +1,19 @@
+{
+  "format": "aux.completion.browser-build.v1",
+  "passed": false,
+  "exitCode": 1,
+  "seconds": 212.94808533403557,
+  "command": [
+    "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/third_party/ninja/ninja",
+    "-C",
+    "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/out/AuxFast",
+    "-j4",
+    "chrome",
+    "native_cli_open"
+  ],
+  "projection": "/private/tmp/aux-completion-browser-build-20261026-a2/projection.json",
+  "projectionSha256": "d18338d02a4a11a3d974a743f0d4bf5f5d6d1846673784f625dc2ab486356d21",
+  "productSigned": false,
+  "productExecuted": false,
+  "release": false
+}

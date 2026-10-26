@@ -1,0 +1,659 @@
+{
+  "format": "aux.completion.browser-projection.v1",
+  "source": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src",
+  "output": "/private/tmp/aux-completion-browser-build-20261026-a1",
+  "files": [
+    {
+      "path": "chrome/browser/ui/views/frame/aux_organization_window_controller.h",
+      "inputSha256": "c32f0bfaf5fc7a1f215d8872f5370abc1a018ca6311755c3083c6fc4dc082d12",
+      "outputSha256": "cc040e60a3b32bdad30675d41279d367d0d6b7a9e02761ed08f2352b43b39317",
+      "mode": 420,
+      "origins": [
+        {
+          "plan": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/desktop/source-plan.json",
+          "planSha256": "f6623a9d9c929ab629945b2c3cb07f00225e4e18d8c1d84a75ca7e320161bf0b",
+          "expectedInputSha256": "c32f0bfaf5fc7a1f215d8872f5370abc1a018ca6311755c3083c6fc4dc082d12",
+          "declaredOutputSha256": "b4fdf93e2d67b000e8cce5d04b3fc471e490fe5149487ea16bbd7183eeeeb99a",
+          "actualOutputSha256": "b4fdf93e2d67b000e8cce5d04b3fc471e490fe5149487ea16bbd7183eeeeb99a"
+        },
+        {
+          "plan": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/desktop/pin-title-restore/source-plan.json",
+          "planSha256": "b2c16fcd26ca3fdf296f1539400a03b4accc1f4e4f7a593700bdc1b8d1cdb5bd",
+          "expectedInputSha256": "b4fdf93e2d67b000e8cce5d04b3fc471e490fe5149487ea16bbd7183eeeeb99a",
+          "declaredOutputSha256": "cc040e60a3b32bdad30675d41279d367d0d6b7a9e02761ed08f2352b43b39317",
+          "actualOutputSha256": "cc040e60a3b32bdad30675d41279d367d0d6b7a9e02761ed08f2352b43b39317"
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_organization_window_controller.cc",
+      "inputSha256": "be300a8c4b4a6fe27cf55489749678824260e44cf4366845be7fa15ada0719d2",
+      "outputSha256": "49c13d0805410d33ae6af7d31fd30daa78560c9f5ca77ef9b0fb5b3bad9a4047",
+      "mode": 420,
+      "origins": [
+        {
+          "plan": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/desktop/source-plan.json",
+          "planSha256": "f6623a9d9c929ab629945b2c3cb07f00225e4e18d8c1d84a75ca7e320161bf0b",
+          "expectedInputSha256": "be300a8c4b4a6fe27cf55489749678824260e44cf4366845be7fa15ada0719d2",
+          "declaredOutputSha256": "20ee4db7beb08c9047bb72dcc2659c6bc625bb1a94a4fd366ec8ea9fb2cc7b79",
+          "actualOutputSha256": "20ee4db7beb08c9047bb72dcc2659c6bc625bb1a94a4fd366ec8ea9fb2cc7b79"
+        },
+        {
+          "plan": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/desktop/pin-title-restore/source-plan.json",
+          "planSha256": "b2c16fcd26ca3fdf296f1539400a03b4accc1f4e4f7a593700bdc1b8d1cdb5bd",
+          "expectedInputSha256": "20ee4db7beb08c9047bb72dcc2659c6bc625bb1a94a4fd366ec8ea9fb2cc7b79",
+          "declaredOutputSha256": "49c13d0805410d33ae6af7d31fd30daa78560c9f5ca77ef9b0fb5b3bad9a4047",
+          "actualOutputSha256": "49c13d0805410d33ae6af7d31fd30daa78560c9f5ca77ef9b0fb5b3bad9a4047"
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/ui/unload_controller.cc",
+      "inputSha256": "09220f0d6b2f9f93c3d3434cb05a0b2fd251592bda6485b8de49fd7454116dcf",
+      "outputSha256": "59e1a4bd8f54c9f9bde6cfd8cc273c8d7012d17f5f99d15851fee4b9a0203172",
+      "mode": 420,
+      "origins": [
+        {
+          "plan": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/desktop/source-plan.json",
+          "planSha256": "f6623a9d9c929ab629945b2c3cb07f00225e4e18d8c1d84a75ca7e320161bf0b",
+          "expectedInputSha256": "09220f0d6b2f9f93c3d3434cb05a0b2fd251592bda6485b8de49fd7454116dcf",
+          "declaredOutputSha256": "59e1a4bd8f54c9f9bde6cfd8cc273c8d7012d17f5f99d15851fee4b9a0203172",
+          "actualOutputSha256": "59e1a4bd8f54c9f9bde6cfd8cc273c8d7012d17f5f99d15851fee4b9a0203172"
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/ui/views/tabs/vertical/vertical_pinned_tab_entries_view.cc",
+      "inputSha256": "312c1397b07c244762bceea9402b5c6df96d0fdc65d6b1785df0b47f0ab72001",
+      "outputSha256": "a48ceeb9ef5e21b40f1b401907e718f02e00822b7390e364f1c78f8473146977",
+      "mode": 420,
+      "origins": [
+        {
+          "plan": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/desktop/pin-title-restore/source-plan.json",
+          "planSha256": "b2c16fcd26ca3fdf296f1539400a03b4accc1f4e4f7a593700bdc1b8d1cdb5bd",
+          "expectedInputSha256": "312c1397b07c244762bceea9402b5c6df96d0fdc65d6b1785df0b47f0ab72001",
+          "declaredOutputSha256": "a48ceeb9ef5e21b40f1b401907e718f02e00822b7390e364f1c78f8473146977",
+          "actualOutputSha256": "a48ceeb9ef5e21b40f1b401907e718f02e00822b7390e364f1c78f8473146977"
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/ui/aux_preview/aux_preview_controls.cc",
+      "inputSha256": "f4cd9468e7eb9f6122c3c3fdf0040a3493733c6c163de42f16085c667c1b89e3",
+      "outputSha256": "10ac17a09a6bce4a7aceb4dbf84e0c1eb42ccc662ad58ea4d840e72881a23dc5",
+      "mode": 420,
+      "origins": [
+        {
+          "plan": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/desktop/quick-window/source-plan.json",
+          "planSha256": "d28e96f5e173ce56a1aed286941ec8a8c5979efafff715f8d9383b7b50520878",
+          "expectedInputSha256": "f4cd9468e7eb9f6122c3c3fdf0040a3493733c6c163de42f16085c667c1b89e3",
+          "declaredOutputSha256": "10ac17a09a6bce4a7aceb4dbf84e0c1eb42ccc662ad58ea4d840e72881a23dc5",
+          "actualOutputSha256": "10ac17a09a6bce4a7aceb4dbf84e0c1eb42ccc662ad58ea4d840e72881a23dc5"
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/aux/cli/AuxCliOpenArguments.h",
+      "inputSha256": "4ea82b70f1de1461de31f0db31e0871331f00ab8df80c159e7e88f0a92f62e92",
+      "outputSha256": "8718b496c32d75cdc847b863c26324616e404ff1abb57558e9b403878f990089",
+      "mode": 420,
+      "origins": [
+        {
+          "plan": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/desktop/next-desktop/source-plan.json",
+          "planSha256": "089c84f69a5724203ec8019274ca3dead89a22e213b5f1a2005ab26fec4c4d45",
+          "expectedInputSha256": "4ea82b70f1de1461de31f0db31e0871331f00ab8df80c159e7e88f0a92f62e92",
+          "declaredOutputSha256": "4a70de59027c45c76cc5594ded8268cd27393c58ac3d761c77c01da8de5aa931",
+          "actualOutputSha256": "4a70de59027c45c76cc5594ded8268cd27393c58ac3d761c77c01da8de5aa931"
+        },
+        {
+          "plan": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/desktop/cli-readonly/source-plan.json",
+          "planSha256": "f791f03cdc155c008df60b360c6dad4d88e2b3c9359b8189af8c405d0fc7f6af",
+          "expectedInputSha256": "4a70de59027c45c76cc5594ded8268cd27393c58ac3d761c77c01da8de5aa931",
+          "declaredOutputSha256": "8718b496c32d75cdc847b863c26324616e404ff1abb57558e9b403878f990089",
+          "actualOutputSha256": "8718b496c32d75cdc847b863c26324616e404ff1abb57558e9b403878f990089"
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/aux/cli/AuxCliOpenArguments.cc",
+      "inputSha256": "795627ae62ce2228564c561cb3038a43cc319adc82985bf29aac63d9ac73a824",
+      "outputSha256": "d30b2c8a0a43ba1233ccf47565e4674f95e08d284c31d921f090ccd460c302e8",
+      "mode": 420,
+      "origins": [
+        {
+          "plan": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/desktop/next-desktop/source-plan.json",
+          "planSha256": "089c84f69a5724203ec8019274ca3dead89a22e213b5f1a2005ab26fec4c4d45",
+          "expectedInputSha256": "795627ae62ce2228564c561cb3038a43cc319adc82985bf29aac63d9ac73a824",
+          "declaredOutputSha256": "afce2e99e25bbffbb221232ee9fa05be551f5ad23fbd9ad3d9a0b411a6fe64da",
+          "actualOutputSha256": "afce2e99e25bbffbb221232ee9fa05be551f5ad23fbd9ad3d9a0b411a6fe64da"
+        },
+        {
+          "plan": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/desktop/cli-readonly/source-plan.json",
+          "planSha256": "f791f03cdc155c008df60b360c6dad4d88e2b3c9359b8189af8c405d0fc7f6af",
+          "expectedInputSha256": "afce2e99e25bbffbb221232ee9fa05be551f5ad23fbd9ad3d9a0b411a6fe64da",
+          "declaredOutputSha256": "d30b2c8a0a43ba1233ccf47565e4674f95e08d284c31d921f090ccd460c302e8",
+          "actualOutputSha256": "d30b2c8a0a43ba1233ccf47565e4674f95e08d284c31d921f090ccd460c302e8"
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/aux/cli/AuxNativeCliFrontend.mm",
+      "inputSha256": "64b0b1771bed0434bc4608709dd7f07c0b424c5dfa4a29321850145bff2ccb04",
+      "outputSha256": "e31f601945cddbbb6255d726e0dc6a2eedc7dd84fca6a29f1bddc6cc7216dd71",
+      "mode": 420,
+      "origins": [
+        {
+          "plan": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/desktop/next-desktop/source-plan.json",
+          "planSha256": "089c84f69a5724203ec8019274ca3dead89a22e213b5f1a2005ab26fec4c4d45",
+          "expectedInputSha256": "64b0b1771bed0434bc4608709dd7f07c0b424c5dfa4a29321850145bff2ccb04",
+          "declaredOutputSha256": "d50457cb805b3663292bc832cdfb2d86627c5eabffb4d32b6b19bde8244d4d72",
+          "actualOutputSha256": "d50457cb805b3663292bc832cdfb2d86627c5eabffb4d32b6b19bde8244d4d72"
+        },
+        {
+          "plan": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/desktop/cli-readonly/source-plan.json",
+          "planSha256": "f791f03cdc155c008df60b360c6dad4d88e2b3c9359b8189af8c405d0fc7f6af",
+          "expectedInputSha256": "d50457cb805b3663292bc832cdfb2d86627c5eabffb4d32b6b19bde8244d4d72",
+          "declaredOutputSha256": "e31f601945cddbbb6255d726e0dc6a2eedc7dd84fca6a29f1bddc6cc7216dd71",
+          "actualOutputSha256": "e31f601945cddbbb6255d726e0dc6a2eedc7dd84fca6a29f1bddc6cc7216dd71"
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/aux/cli/AuxCliOpenCommand.mm",
+      "inputSha256": "877d188359dea891638ca135144e464ac83e18017fc3b79bac445a92b2bf0a65",
+      "outputSha256": "6f18052e41f09885a8fc04881866f7f6276061172bee5e967c388466a183990e",
+      "mode": 420,
+      "origins": [
+        {
+          "plan": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/desktop/next-desktop/source-plan.json",
+          "planSha256": "089c84f69a5724203ec8019274ca3dead89a22e213b5f1a2005ab26fec4c4d45",
+          "expectedInputSha256": "877d188359dea891638ca135144e464ac83e18017fc3b79bac445a92b2bf0a65",
+          "declaredOutputSha256": "a7a231d60f3e1ebce5e6296e75441efb476733ee7795730b5e699c128854995c",
+          "actualOutputSha256": "a7a231d60f3e1ebce5e6296e75441efb476733ee7795730b5e699c128854995c"
+        },
+        {
+          "plan": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/desktop/cli-readonly/source-plan.json",
+          "planSha256": "f791f03cdc155c008df60b360c6dad4d88e2b3c9359b8189af8c405d0fc7f6af",
+          "expectedInputSha256": "a7a231d60f3e1ebce5e6296e75441efb476733ee7795730b5e699c128854995c",
+          "declaredOutputSha256": "6f18052e41f09885a8fc04881866f7f6276061172bee5e967c388466a183990e",
+          "actualOutputSha256": "6f18052e41f09885a8fc04881866f7f6276061172bee5e967c388466a183990e"
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/aux/routing/external_routing_ingress.cc",
+      "inputSha256": "1bc09c694285586c79a96e8e83b95b66e41c7b16419c33b7f8ae86d49738207a",
+      "outputSha256": "d0010b1eb268ed80b8a6fc787a89da478cf96a60387971d398ee92de1d75bcbc",
+      "mode": 420,
+      "origins": [
+        {
+          "plan": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/desktop/next-desktop/source-plan.json",
+          "planSha256": "089c84f69a5724203ec8019274ca3dead89a22e213b5f1a2005ab26fec4c4d45",
+          "expectedInputSha256": "1bc09c694285586c79a96e8e83b95b66e41c7b16419c33b7f8ae86d49738207a",
+          "declaredOutputSha256": "d0010b1eb268ed80b8a6fc787a89da478cf96a60387971d398ee92de1d75bcbc",
+          "actualOutputSha256": "d0010b1eb268ed80b8a6fc787a89da478cf96a60387971d398ee92de1d75bcbc"
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/aux/routing/routing_service.cc",
+      "inputSha256": "54517576199648eaccde1216bda347fd9f9f304217508841dc6c28aadf33a9ca",
+      "outputSha256": "738c965351cca4ecde92638eb00f40cc0c061768348af9880e56c7453fa6ab27",
+      "mode": 420,
+      "origins": [
+        {
+          "plan": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/desktop/next-desktop/routing-revalidation/source-plan.json",
+          "planSha256": "64a408b8b20e41fd0e64579da446ff35c42acf65512b83707414919d575c15d3",
+          "expectedInputSha256": "54517576199648eaccde1216bda347fd9f9f304217508841dc6c28aadf33a9ca",
+          "declaredOutputSha256": "738c965351cca4ecde92638eb00f40cc0c061768348af9880e56c7453fa6ab27",
+          "actualOutputSha256": "738c965351cca4ecde92638eb00f40cc0c061768348af9880e56c7453fa6ab27"
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/aux/cli/AuxCliWire.h",
+      "inputSha256": "e104b5b424c8441c1b6f24885039246891ede8cfad24c90e9287de39c8fea01d",
+      "outputSha256": "28983f2a1b4f87c97e3b5fb130351bf72ac8156662e2c62c3ba1117ae8e7eb0c",
+      "mode": 420,
+      "origins": [
+        {
+          "plan": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/desktop/cli-readonly/source-plan.json",
+          "planSha256": "f791f03cdc155c008df60b360c6dad4d88e2b3c9359b8189af8c405d0fc7f6af",
+          "expectedInputSha256": "e104b5b424c8441c1b6f24885039246891ede8cfad24c90e9287de39c8fea01d",
+          "declaredOutputSha256": "28983f2a1b4f87c97e3b5fb130351bf72ac8156662e2c62c3ba1117ae8e7eb0c",
+          "actualOutputSha256": "28983f2a1b4f87c97e3b5fb130351bf72ac8156662e2c62c3ba1117ae8e7eb0c"
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/aux/cli/AuxCliWire.cc",
+      "inputSha256": "457cd1fa9a78e3427cc45c1978e91a92e290656497d2faa52a838962bfbcbcd9",
+      "outputSha256": "b43ebdd31512b69c9e5769b4593df2a67aba2eb3331507e9918bf1dc50bfc051",
+      "mode": 420,
+      "origins": [
+        {
+          "plan": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/desktop/cli-readonly/source-plan.json",
+          "planSha256": "f791f03cdc155c008df60b360c6dad4d88e2b3c9359b8189af8c405d0fc7f6af",
+          "expectedInputSha256": "457cd1fa9a78e3427cc45c1978e91a92e290656497d2faa52a838962bfbcbcd9",
+          "declaredOutputSha256": "b43ebdd31512b69c9e5769b4593df2a67aba2eb3331507e9918bf1dc50bfc051",
+          "actualOutputSha256": "b43ebdd31512b69c9e5769b4593df2a67aba2eb3331507e9918bf1dc50bfc051"
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/aux/cli/AuxCliIngress.h",
+      "inputSha256": "4515848fafc4dad25e5180130640d28c28bf1a3333610f232b34816a7e64e8d6",
+      "outputSha256": "43de8bd6a248b231177941147a47b2510a0c287171451ea8c236629872cf2a2f",
+      "mode": 420,
+      "origins": [
+        {
+          "plan": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/desktop/cli-readonly/source-plan.json",
+          "planSha256": "f791f03cdc155c008df60b360c6dad4d88e2b3c9359b8189af8c405d0fc7f6af",
+          "expectedInputSha256": "4515848fafc4dad25e5180130640d28c28bf1a3333610f232b34816a7e64e8d6",
+          "declaredOutputSha256": "43de8bd6a248b231177941147a47b2510a0c287171451ea8c236629872cf2a2f",
+          "actualOutputSha256": "43de8bd6a248b231177941147a47b2510a0c287171451ea8c236629872cf2a2f"
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/aux/cli/AuxCliIngress.cc",
+      "inputSha256": "884e2d83edc447aa75b612eb828f87f95baf84b007639382e8a2faf823ac7fd2",
+      "outputSha256": "49879402fe88fc9045a3b624cd38068e88183d989942b77615bd8c3fb973b369",
+      "mode": 420,
+      "origins": [
+        {
+          "plan": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/desktop/cli-readonly/source-plan.json",
+          "planSha256": "f791f03cdc155c008df60b360c6dad4d88e2b3c9359b8189af8c405d0fc7f6af",
+          "expectedInputSha256": "884e2d83edc447aa75b612eb828f87f95baf84b007639382e8a2faf823ac7fd2",
+          "declaredOutputSha256": "49879402fe88fc9045a3b624cd38068e88183d989942b77615bd8c3fb973b369",
+          "actualOutputSha256": "49879402fe88fc9045a3b624cd38068e88183d989942b77615bd8c3fb973b369"
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/ui/aux_chosen_files_service.cc",
+      "inputSha256": "91abab5a413023f4ed644bf088b0b3f39324d17f2a4458281def250fbf548abb",
+      "outputSha256": "46e654ca3b198b0099b82dd66fee214edb9ca7ed396fe15465c56812afd2b498",
+      "mode": 420,
+      "origins": [
+        {
+          "plan": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/integration/chosen-file-lifetime/projection.json",
+          "planSha256": "ab4f38c9ac4a8e71ef78af55ac020529d496e19cfc26f925b591f95df96b9fce",
+          "expectedInputSha256": "91abab5a413023f4ed644bf088b0b3f39324d17f2a4458281def250fbf548abb",
+          "declaredOutputSha256": "46e654ca3b198b0099b82dd66fee214edb9ca7ed396fe15465c56812afd2b498",
+          "actualOutputSha256": "46e654ca3b198b0099b82dd66fee214edb9ca7ed396fe15465c56812afd2b498"
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/aux/AuxNativePeerWire.h",
+      "inputSha256": "f15b5c11f1c79971b14b65e866acf7306763a421fe461d57cd1aed3523bcb3dd",
+      "outputSha256": "332ca99ad1c485b4e0856b03889e36ac163011ed322f001d2bf7a769fe49e8dd",
+      "mode": 420,
+      "origins": [
+        {
+          "plan": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/integrator/native-host-counted.json",
+          "planSha256": "1524c41464ac887e976773931ad32b1fbb9d5fec2cea798b5989ce33bd114e08",
+          "expectedInputSha256": "f15b5c11f1c79971b14b65e866acf7306763a421fe461d57cd1aed3523bcb3dd",
+          "declaredOutputSha256": "332ca99ad1c485b4e0856b03889e36ac163011ed322f001d2bf7a769fe49e8dd",
+          "actualOutputSha256": "332ca99ad1c485b4e0856b03889e36ac163011ed322f001d2bf7a769fe49e8dd"
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/aux/AuxNativePeerTransport.h",
+      "inputSha256": "200735d57b29147b258c46d81e610b9615b3fe38b2bf08a3c7f69c2776a19050",
+      "outputSha256": "52b28dc33a82ddd4fcf2c8c6aefec45d1d0fb4e1fbf592851d09e39e8a3f66fb",
+      "mode": 420,
+      "origins": [
+        {
+          "plan": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/integrator/native-host-counted.json",
+          "planSha256": "1524c41464ac887e976773931ad32b1fbb9d5fec2cea798b5989ce33bd114e08",
+          "expectedInputSha256": "200735d57b29147b258c46d81e610b9615b3fe38b2bf08a3c7f69c2776a19050",
+          "declaredOutputSha256": "52b28dc33a82ddd4fcf2c8c6aefec45d1d0fb4e1fbf592851d09e39e8a3f66fb",
+          "actualOutputSha256": "52b28dc33a82ddd4fcf2c8c6aefec45d1d0fb4e1fbf592851d09e39e8a3f66fb"
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/aux/AuxOwnedNativePeerChild.h",
+      "inputSha256": "28ed85a70c129d7a55e70536c5e2e5c42f98893716546825660dfe397278cc81",
+      "outputSha256": "09bd4febf820c02ef32e8c83e67c6a6843452ba58d3e665c70200c06072dee20",
+      "mode": 420,
+      "origins": [
+        {
+          "plan": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/integrator/native-host-counted.json",
+          "planSha256": "1524c41464ac887e976773931ad32b1fbb9d5fec2cea798b5989ce33bd114e08",
+          "expectedInputSha256": "28ed85a70c129d7a55e70536c5e2e5c42f98893716546825660dfe397278cc81",
+          "declaredOutputSha256": "09bd4febf820c02ef32e8c83e67c6a6843452ba58d3e665c70200c06072dee20",
+          "actualOutputSha256": "09bd4febf820c02ef32e8c83e67c6a6843452ba58d3e665c70200c06072dee20"
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/aux/AuxNativePeerTransport.cc",
+      "inputSha256": "186e088c403e38752a035833ee0cef8859a111ac055515ce83415e2a0cee683c",
+      "outputSha256": "e1599130b1e41eb78cddce19b2b7828fc6d11a21e28fd62b24bdd01a5a4a7384",
+      "mode": 420,
+      "origins": [
+        {
+          "plan": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/integrator/native-host-counted.json",
+          "planSha256": "1524c41464ac887e976773931ad32b1fbb9d5fec2cea798b5989ce33bd114e08",
+          "expectedInputSha256": "186e088c403e38752a035833ee0cef8859a111ac055515ce83415e2a0cee683c",
+          "declaredOutputSha256": "e1599130b1e41eb78cddce19b2b7828fc6d11a21e28fd62b24bdd01a5a4a7384",
+          "actualOutputSha256": "e1599130b1e41eb78cddce19b2b7828fc6d11a21e28fd62b24bdd01a5a4a7384"
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/aux/AuxOwnedNativePeerChild.cc",
+      "inputSha256": "079c3011091f6528b1de26400dcf9608f0b3eb17e0a6b56b2825061dd8416b79",
+      "outputSha256": "6d7834e5ff02e3f98d54919e10b9c43aca13b75be3453ab33699dee50ad5d9ef",
+      "mode": 420,
+      "origins": [
+        {
+          "plan": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/integrator/native-host-counted.json",
+          "planSha256": "1524c41464ac887e976773931ad32b1fbb9d5fec2cea798b5989ce33bd114e08",
+          "expectedInputSha256": "079c3011091f6528b1de26400dcf9608f0b3eb17e0a6b56b2825061dd8416b79",
+          "declaredOutputSha256": "6d7834e5ff02e3f98d54919e10b9c43aca13b75be3453ab33699dee50ad5d9ef",
+          "actualOutputSha256": "6d7834e5ff02e3f98d54919e10b9c43aca13b75be3453ab33699dee50ad5d9ef"
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/aux/AuxSelectedStateHome.h",
+      "inputSha256": "16a222690c017271b962b980c60cd0a94e4429b79c81826fb4e857f1ec9ed12d",
+      "outputSha256": "ed29109e3e981dc877b962771f7c3d3629ca3bae221563c7e3cd6d57e6164f66",
+      "mode": 420,
+      "origins": [
+        {
+          "plan": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/integrator/native-host-counted.json",
+          "planSha256": "1524c41464ac887e976773931ad32b1fbb9d5fec2cea798b5989ce33bd114e08",
+          "expectedInputSha256": "16a222690c017271b962b980c60cd0a94e4429b79c81826fb4e857f1ec9ed12d",
+          "declaredOutputSha256": "ed29109e3e981dc877b962771f7c3d3629ca3bae221563c7e3cd6d57e6164f66",
+          "actualOutputSha256": "ed29109e3e981dc877b962771f7c3d3629ca3bae221563c7e3cd6d57e6164f66"
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/aux/AuxSelectedStateHome.cc",
+      "inputSha256": "b4612ad86ddbd0092b2c4cd61627b38629b295d5d58a21a3fbf8ef94392fbb4b",
+      "outputSha256": "6a60fd98d0a5f244aceaf79fe4b3a211796236e828b949f83a06c8766ac5a534",
+      "mode": 420,
+      "origins": [
+        {
+          "plan": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/integrator/native-host-counted.json",
+          "planSha256": "1524c41464ac887e976773931ad32b1fbb9d5fec2cea798b5989ce33bd114e08",
+          "expectedInputSha256": "b4612ad86ddbd0092b2c4cd61627b38629b295d5d58a21a3fbf8ef94392fbb4b",
+          "declaredOutputSha256": "6a60fd98d0a5f244aceaf79fe4b3a211796236e828b949f83a06c8766ac5a534",
+          "actualOutputSha256": "6a60fd98d0a5f244aceaf79fe4b3a211796236e828b949f83a06c8766ac5a534"
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/extensions/api/messaging/aux_native_host_lease.h",
+      "inputSha256": null,
+      "outputSha256": "eafcf5f62361154c84c7d9676aab2ac4e4236938f5e54f89f18766b1280cef31",
+      "mode": 420,
+      "origins": [
+        {
+          "plan": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/integrator/native-host-counted.json",
+          "planSha256": "1524c41464ac887e976773931ad32b1fbb9d5fec2cea798b5989ce33bd114e08",
+          "expectedInputSha256": null,
+          "declaredOutputSha256": "eafcf5f62361154c84c7d9676aab2ac4e4236938f5e54f89f18766b1280cef31",
+          "actualOutputSha256": "eafcf5f62361154c84c7d9676aab2ac4e4236938f5e54f89f18766b1280cef31"
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/extensions/api/messaging/aux_native_host_lease.cc",
+      "inputSha256": null,
+      "outputSha256": "8340ebbf8cc83c8db2f8901b84f1d71eb75a9020262dfe5e8f569c305b3125ca",
+      "mode": 420,
+      "origins": [
+        {
+          "plan": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/integrator/native-host-counted.json",
+          "planSha256": "1524c41464ac887e976773931ad32b1fbb9d5fec2cea798b5989ce33bd114e08",
+          "expectedInputSha256": null,
+          "declaredOutputSha256": "8340ebbf8cc83c8db2f8901b84f1d71eb75a9020262dfe5e8f569c305b3125ca",
+          "actualOutputSha256": "8340ebbf8cc83c8db2f8901b84f1d71eb75a9020262dfe5e8f569c305b3125ca"
+        }
+      ]
+    },
+    {
+      "path": "net/base/file_stream.h",
+      "inputSha256": "695b9c20247c9b06686143ccdf46a690a9eeebc61c972544be86737418001c5d",
+      "outputSha256": "fc43ac393241e1f52aad011e30ff7bce0ba0bf1ae0621cc2c798cd91c6351e3e",
+      "mode": 420,
+      "origins": [
+        {
+          "plan": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/integrator/native-host-counted.json",
+          "planSha256": "1524c41464ac887e976773931ad32b1fbb9d5fec2cea798b5989ce33bd114e08",
+          "expectedInputSha256": "695b9c20247c9b06686143ccdf46a690a9eeebc61c972544be86737418001c5d",
+          "declaredOutputSha256": "fc43ac393241e1f52aad011e30ff7bce0ba0bf1ae0621cc2c798cd91c6351e3e",
+          "actualOutputSha256": "fc43ac393241e1f52aad011e30ff7bce0ba0bf1ae0621cc2c798cd91c6351e3e"
+        }
+      ]
+    },
+    {
+      "path": "net/base/file_stream.cc",
+      "inputSha256": "cc31c303bc132fd1199f4e84247b1886f268cfe2f03d8a6b8e020a3b496df731",
+      "outputSha256": "885a7e1d277a4e39d5255f692b4a93a9f3011ebb076a4579eb73ef92250dbd15",
+      "mode": 420,
+      "origins": [
+        {
+          "plan": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/integrator/native-host-counted.json",
+          "planSha256": "1524c41464ac887e976773931ad32b1fbb9d5fec2cea798b5989ce33bd114e08",
+          "expectedInputSha256": "cc31c303bc132fd1199f4e84247b1886f268cfe2f03d8a6b8e020a3b496df731",
+          "declaredOutputSha256": "885a7e1d277a4e39d5255f692b4a93a9f3011ebb076a4579eb73ef92250dbd15",
+          "actualOutputSha256": "885a7e1d277a4e39d5255f692b4a93a9f3011ebb076a4579eb73ef92250dbd15"
+        }
+      ]
+    },
+    {
+      "path": "net/base/file_stream_context.h",
+      "inputSha256": "638fbb982da2cda622fc555d28272e08ccbdbde9f9748b6ecbef05d08869e67b",
+      "outputSha256": "1f5976a0218319e423cc68034b70e4daaddc7295355adee79a56d48a994665b2",
+      "mode": 420,
+      "origins": [
+        {
+          "plan": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/integrator/native-host-counted.json",
+          "planSha256": "1524c41464ac887e976773931ad32b1fbb9d5fec2cea798b5989ce33bd114e08",
+          "expectedInputSha256": "638fbb982da2cda622fc555d28272e08ccbdbde9f9748b6ecbef05d08869e67b",
+          "declaredOutputSha256": "1f5976a0218319e423cc68034b70e4daaddc7295355adee79a56d48a994665b2",
+          "actualOutputSha256": "1f5976a0218319e423cc68034b70e4daaddc7295355adee79a56d48a994665b2"
+        }
+      ]
+    },
+    {
+      "path": "net/base/file_stream_context.cc",
+      "inputSha256": "eb1c646ea8c26c3363caa39b65ca7295c0d08aa01c4071ed8ca5e733e0161c30",
+      "outputSha256": "25d556499bee75c315b1be305803b1d2e4ba1ed1e2dd17112c80b00a37525abb",
+      "mode": 420,
+      "origins": [
+        {
+          "plan": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/integrator/native-host-counted.json",
+          "planSha256": "1524c41464ac887e976773931ad32b1fbb9d5fec2cea798b5989ce33bd114e08",
+          "expectedInputSha256": "eb1c646ea8c26c3363caa39b65ca7295c0d08aa01c4071ed8ca5e733e0161c30",
+          "declaredOutputSha256": "25d556499bee75c315b1be305803b1d2e4ba1ed1e2dd17112c80b00a37525abb",
+          "actualOutputSha256": "25d556499bee75c315b1be305803b1d2e4ba1ed1e2dd17112c80b00a37525abb"
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/extensions/api/messaging/aux_native_messaging_lifetime.h",
+      "inputSha256": "25b3d277ea42891f183383383793d4a76d96564d3d571a1d2eac85a4987a9393",
+      "outputSha256": "d6f1b7bcd445ccbe82c3aa5604c75fd4de33855a2a652e96e7b9b72ff16e240b",
+      "mode": 420,
+      "origins": [
+        {
+          "plan": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/integrator/native-host-counted.json",
+          "planSha256": "1524c41464ac887e976773931ad32b1fbb9d5fec2cea798b5989ce33bd114e08",
+          "expectedInputSha256": "25b3d277ea42891f183383383793d4a76d96564d3d571a1d2eac85a4987a9393",
+          "declaredOutputSha256": "d6f1b7bcd445ccbe82c3aa5604c75fd4de33855a2a652e96e7b9b72ff16e240b",
+          "actualOutputSha256": "d6f1b7bcd445ccbe82c3aa5604c75fd4de33855a2a652e96e7b9b72ff16e240b"
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/extensions/api/messaging/launch_context_posix.cc",
+      "inputSha256": "bb960b43c26f23233cc1ef929bb0136270568b2a300e72427c74b03020a28589",
+      "outputSha256": "0747b38f7d1f6aa90496ba4dd3a0554a4f7637ecba3c41a308bd3f41b6624416",
+      "mode": 420,
+      "origins": [
+        {
+          "plan": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/integrator/native-host-counted.json",
+          "planSha256": "1524c41464ac887e976773931ad32b1fbb9d5fec2cea798b5989ce33bd114e08",
+          "expectedInputSha256": "bb960b43c26f23233cc1ef929bb0136270568b2a300e72427c74b03020a28589",
+          "declaredOutputSha256": "0747b38f7d1f6aa90496ba4dd3a0554a4f7637ecba3c41a308bd3f41b6624416",
+          "actualOutputSha256": "0747b38f7d1f6aa90496ba4dd3a0554a4f7637ecba3c41a308bd3f41b6624416"
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/extensions/api/messaging/launch_context.cc",
+      "inputSha256": "9bff0d744b9e435dcc71c0df738ba64aa46eb3643ab745e3be614ec3157c9d75",
+      "outputSha256": "83275986135e71a4f36d8f32cf646547dafb98fab46917e24972ca8ac7cbff42",
+      "mode": 420,
+      "origins": [
+        {
+          "plan": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/integrator/native-host-counted.json",
+          "planSha256": "1524c41464ac887e976773931ad32b1fbb9d5fec2cea798b5989ce33bd114e08",
+          "expectedInputSha256": "9bff0d744b9e435dcc71c0df738ba64aa46eb3643ab745e3be614ec3157c9d75",
+          "declaredOutputSha256": "83275986135e71a4f36d8f32cf646547dafb98fab46917e24972ca8ac7cbff42",
+          "actualOutputSha256": "83275986135e71a4f36d8f32cf646547dafb98fab46917e24972ca8ac7cbff42"
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/extensions/api/messaging/native_message_process_host.cc",
+      "inputSha256": "f4bc07980dde7ef9b16c331080481871dd83d8e0b25b19f97b16b2defc40e5d0",
+      "outputSha256": "ddcb708494de3259b80b926a04e69055b11feade07607add1cca07c31a51bde2",
+      "mode": 420,
+      "origins": [
+        {
+          "plan": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/integrator/native-host-counted.json",
+          "planSha256": "1524c41464ac887e976773931ad32b1fbb9d5fec2cea798b5989ce33bd114e08",
+          "expectedInputSha256": "f4bc07980dde7ef9b16c331080481871dd83d8e0b25b19f97b16b2defc40e5d0",
+          "declaredOutputSha256": "ddcb708494de3259b80b926a04e69055b11feade07607add1cca07c31a51bde2",
+          "actualOutputSha256": "ddcb708494de3259b80b926a04e69055b11feade07607add1cca07c31a51bde2"
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/extensions/api/messaging/launch_context.h",
+      "inputSha256": "99686b7bc4231aa94bb63bb3213a76df3bc7005e0b44ea7affb86bf53918c12e",
+      "outputSha256": "6c78ff84e63fd45b4b953050f4fa5e3c8fffea58cb9dfe7b83f9c9c07130a2a7",
+      "mode": 420,
+      "origins": [
+        {
+          "plan": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/integrator/native-host-counted.json",
+          "planSha256": "1524c41464ac887e976773931ad32b1fbb9d5fec2cea798b5989ce33bd114e08",
+          "expectedInputSha256": "99686b7bc4231aa94bb63bb3213a76df3bc7005e0b44ea7affb86bf53918c12e",
+          "declaredOutputSha256": "6c78ff84e63fd45b4b953050f4fa5e3c8fffea58cb9dfe7b83f9c9c07130a2a7",
+          "actualOutputSha256": "6c78ff84e63fd45b4b953050f4fa5e3c8fffea58cb9dfe7b83f9c9c07130a2a7"
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/extensions/api/messaging/native_process_launcher.cc",
+      "inputSha256": "c36c7333f6ec925884a125ab700b75cca75267cce2a8d681ec15b93e98737ad8",
+      "outputSha256": "06dc7ad35465b9d9e354033864e3be7cd4aadbe2b68642a992f0e75013b85aac",
+      "mode": 420,
+      "origins": [
+        {
+          "plan": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/integrator/native-host-counted.json",
+          "planSha256": "1524c41464ac887e976773931ad32b1fbb9d5fec2cea798b5989ce33bd114e08",
+          "expectedInputSha256": "c36c7333f6ec925884a125ab700b75cca75267cce2a8d681ec15b93e98737ad8",
+          "declaredOutputSha256": "06dc7ad35465b9d9e354033864e3be7cd4aadbe2b68642a992f0e75013b85aac",
+          "actualOutputSha256": "06dc7ad35465b9d9e354033864e3be7cd4aadbe2b68642a992f0e75013b85aac"
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/extensions/api/messaging/BUILD.gn",
+      "inputSha256": "959c4edd614a6d759219754aac28d8418f5a3b24c50ab17adc022e61589043d5",
+      "outputSha256": "db279de0aacce9e5b10e5cdfa72eef053564695a927d109ef3da9ef895115e01",
+      "mode": 420,
+      "origins": [
+        {
+          "plan": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/integrator/native-host-counted.json",
+          "planSha256": "1524c41464ac887e976773931ad32b1fbb9d5fec2cea798b5989ce33bd114e08",
+          "expectedInputSha256": "959c4edd614a6d759219754aac28d8418f5a3b24c50ab17adc022e61589043d5",
+          "declaredOutputSha256": "db279de0aacce9e5b10e5cdfa72eef053564695a927d109ef3da9ef895115e01",
+          "actualOutputSha256": "db279de0aacce9e5b10e5cdfa72eef053564695a927d109ef3da9ef895115e01"
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/chrome_browser_main.cc",
+      "inputSha256": "960250de4f967d8ba0a727b3a64a52c33a473c088b03d8d7c52e10892f26ea28",
+      "outputSha256": "0d7c6c77fde7499cf43732ffa581b30f7904e30ca37dab47ab08477a87357f89",
+      "mode": 420,
+      "origins": [
+        {
+          "plan": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/integrator/native-host-counted.json",
+          "planSha256": "1524c41464ac887e976773931ad32b1fbb9d5fec2cea798b5989ce33bd114e08",
+          "expectedInputSha256": "960250de4f967d8ba0a727b3a64a52c33a473c088b03d8d7c52e10892f26ea28",
+          "declaredOutputSha256": "afed4a21ac3887623b6e86aa8d39b2d2cd305012684638e2cfadfea9dda6be23",
+          "actualOutputSha256": "afed4a21ac3887623b6e86aa8d39b2d2cd305012684638e2cfadfea9dda6be23"
+        },
+        {
+          "plan": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/desktop/cli-readonly/root-integration.json",
+          "planSha256": "03ea8b26d55d91077201dfb6151cbb9789845d9b7b9bb47b244e7e103d89cd2d",
+          "expectedInputSha256": "960250de4f967d8ba0a727b3a64a52c33a473c088b03d8d7c52e10892f26ea28",
+          "declaredOutputSha256": "9dc976e68212c2a988532aa6fb248ef3689ded653244c1431aa272766b61c16a",
+          "actualOutputSha256": "0d7c6c77fde7499cf43732ffa581b30f7904e30ca37dab47ab08477a87357f89"
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/aux/profile_identity.h",
+      "inputSha256": "ddd97b8a3a95050d5e5fb63c80e6ae34f4fce775b9a2ed96994921760328d163",
+      "outputSha256": "ed2e7c038e1ee337bf005668415270a55f391781ad78854bb77408faa4601baf",
+      "mode": 420,
+      "origins": [
+        {
+          "plan": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/integrator/native-host-counted.json",
+          "planSha256": "1524c41464ac887e976773931ad32b1fbb9d5fec2cea798b5989ce33bd114e08",
+          "expectedInputSha256": "ddd97b8a3a95050d5e5fb63c80e6ae34f4fce775b9a2ed96994921760328d163",
+          "declaredOutputSha256": "ed2e7c038e1ee337bf005668415270a55f391781ad78854bb77408faa4601baf",
+          "actualOutputSha256": "ed2e7c038e1ee337bf005668415270a55f391781ad78854bb77408faa4601baf"
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/aux/profile_identity.cc",
+      "inputSha256": "cb320311061997b02e0554c56feaeb7e6030e5ed86bc6fdac8ebb88371b5ceb6",
+      "outputSha256": "fcd7814f1cd1554af673c857249a9bb98f812fabf4f2d2c9e9a7da020cbb801c",
+      "mode": 420,
+      "origins": [
+        {
+          "plan": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/integrator/native-host-counted.json",
+          "planSha256": "1524c41464ac887e976773931ad32b1fbb9d5fec2cea798b5989ce33bd114e08",
+          "expectedInputSha256": "cb320311061997b02e0554c56feaeb7e6030e5ed86bc6fdac8ebb88371b5ceb6",
+          "declaredOutputSha256": "fcd7814f1cd1554af673c857249a9bb98f812fabf4f2d2c9e9a7da020cbb801c",
+          "actualOutputSha256": "fcd7814f1cd1554af673c857249a9bb98f812fabf4f2d2c9e9a7da020cbb801c"
+        }
+      ]
+    },
+    {
+      "path": "chrome/app/chrome_main_delegate.cc",
+      "inputSha256": "31ca8d561d44b6ea72fd1dada4c554e19011359a5c2d36fef700edff02e91ba6",
+      "outputSha256": "8363d6b88baa9c3862f87e1ae00d8c8057c15194018b4f022ea710fdaf63c127",
+      "mode": 420,
+      "origins": [
+        {
+          "plan": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/desktop/direct-launch/root-integration.json",
+          "planSha256": "4e992bb3d1dc572922976e5ff4691113ef46bc4f2142251cdde7ba28d45e85cd",
+          "expectedInputSha256": "31ca8d561d44b6ea72fd1dada4c554e19011359a5c2d36fef700edff02e91ba6",
+          "declaredOutputSha256": "8363d6b88baa9c3862f87e1ae00d8c8057c15194018b4f022ea710fdaf63c127",
+          "actualOutputSha256": "8363d6b88baa9c3862f87e1ae00d8c8057c15194018b4f022ea710fdaf63c127"
+        }
+      ]
+    }
+  ],
+  "unownedPathsChanged": false,
+  "productExecuted": false,
+  "signing": false
+}

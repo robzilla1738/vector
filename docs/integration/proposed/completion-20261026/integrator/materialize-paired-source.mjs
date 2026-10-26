@@ -1,0 +1,59 @@
+import {readFile, writeFile, mkdir} from 'node:fs/promises';
+import {createHash} from 'node:crypto';
+import {spawnSync} from 'node:child_process';
+import path from 'node:path';
+import {upgradeCloudTransfers} from '../integration/transform.mjs';
+import {transformAuxFinalRuntimeIdentity} from '../../../../../vendor/provided/aux-final-runtime-identity.mjs';
+import {transformAuxExperimentalSettings} from '../../../../../vendor/provided/aux-experimental-settings-v2.mjs';
+import {transformAuxEventPolling} from '../../../../../vendor/provided/aux-event-poll-integration.mjs';
+import {transformAuxOrdinaryChatStartup} from '../../../../../vendor/provided/aux-ordinary-chat-startup.mjs';
+
+const repository = process.cwd();
+const here = path.join(repository, 'docs/integration/proposed/completion-20261026/integrator');
+const original = path.join(repository, 'out/provided-candidate-local-completion-20261025-a38/Aux.app/Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/node-development');
+const output = path.join(repository, 'out/completion-20261026-paired-source-a1');
+const sha = text => createHash('sha256').update(text).digest('hex');
+const generators = [
+  'docs/integration/proposed/completion-20261026/integration/transform.mjs',
+  'docs/integration/proposed/completion-20261026/integration/pins.json',
+  'docs/integration/proposed/completion-20261026/integration/anchors.json',
+  'vendor/provided/cloud-transfer-binding.mjs',
+  'vendor/provided/aux-final-runtime-identity.mjs',
+  'docs/integration/proposed/completion-20261026/integration/identity/source-pins.json',
+  'vendor/provided/aux-experimental-settings-v2.mjs',
+  'vendor/provided/aux-event-poll-client.mjs',
+  'vendor/provided/aux-event-poll-integration.mjs',
+  'docs/integration/proposed/completion-20261026/integration/events/source-pins.json',
+  'vendor/provided/aux-ordinary-chat-startup.mjs',
+  'docs/integration/proposed/completion-20261026/integration/ordinary-chat/source-pins.json',
+];
+const inputs = [];
+for (const name of generators) inputs.push({path: name, sha256: sha(await readFile(path.join(repository, name)))});
+await mkdir(output);
+const files = [];
+for (const name of ['index.mjs', 'aux-native-entry.mjs']) {
+  const source = await readFile(path.join(original, name), 'utf8');
+  const stages = [];
+  const cloud = upgradeCloudTransfers(source);
+  stages.push({name: 'account-bound cloud transfers', outputSha256: cloud.outputSha256, anchors: cloud.changes});
+  const identity = transformAuxFinalRuntimeIdentity({component: 'daemon', path: name, text: cloud.text});
+  stages.push({name: 'Aux runtime identity', outputSha256: sha(identity.text), anchors: identity.anchors});
+  const experimental = transformAuxExperimentalSettings({component: 'daemon', path: name, text: identity.text});
+  stages.push({name: 'experimental settings v2', outputSha256: sha(experimental.text), anchors: experimental.anchors});
+  const events = transformAuxEventPolling({text: experimental.text, source: identity.text});
+  stages.push({name: 'authenticated cloud invalidation and reconciliation', outputSha256: sha(events.text), anchors: events.anchors});
+  const chat = transformAuxOrdinaryChatStartup({text: events.text, source: identity.text});
+  stages.push({name: 'ordinary chat startup and original-attempt failure', outputSha256: sha(chat.text), anchors: chat.anchors});
+  const destination = path.join(output, name);
+  await writeFile(destination, chat.text, {flag: 'wx'});
+  const syntax = spawnSync(process.execPath, ['--check', destination], {encoding: 'utf8'});
+  if (syntax.status !== 0) throw Error('Combined paired source does not parse: ' + name + '\n' + syntax.stderr);
+  files.push({path: destination, input: path.join(original, name), inputSha256: sha(source), outputSha256: sha(chat.text), stages});
+}
+for (const input of inputs)
+  if (sha(await readFile(path.join(repository, input.path))) !== input.sha256) throw Error('Source generator changed during materialization');
+const receipt = {format: 'aux.completion.paired-source.v1', passed: true, files, generators: inputs,
+  originalAppChanged: false, suppliedUiRedesigned: false, credentialsAccessed: false,
+  productExecuted: false, runtimeAccepted: false, productSigned: false};
+await writeFile(path.join(here, 'paired-source-a1.json'), JSON.stringify(receipt, null, 2) + '\n', {flag: 'wx'});
+console.log(JSON.stringify({passed: true, output, files: files.map(({path, outputSha256}) => ({path, outputSha256}))}));

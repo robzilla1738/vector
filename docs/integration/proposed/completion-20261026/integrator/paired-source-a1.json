@@ -1,0 +1,816 @@
+{
+  "format": "aux.completion.paired-source.v1",
+  "passed": true,
+  "files": [
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/out/completion-20261026-paired-source-a1/index.mjs",
+      "input": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-local-completion-20261025-a38/Aux.app/Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/node-development/index.mjs",
+      "inputSha256": "48af998738fb6d2fc30cb8d5b2e9de03cb04ab7d8563ebdaa5fe8100944fc514",
+      "outputSha256": "d1bd9d7cede7587bc2a41ff3e123f90127bc881a31d6bc25e4af392ac07adf4f",
+      "stages": [
+        {
+          "name": "account-bound cloud transfers",
+          "outputSha256": "62469726c5629983c379faae562d8317c53d79848fe3f09cd945e3ff95ea5d47",
+          "anchors": [
+            {
+              "kind": "cloud-attachment-adapter-1",
+              "find": "function auxCloudStoredAttachmentPath(value){if(typeof value!=='string')return null;const path=value.replace(/^\\.\\//,'');return/^attachments\\/[^/\\\\\\0]+$/.test(path)&&!['.','..'].includes(path.slice(12))?path:null;}\nfunction auxCloudAttachmentIdentity(accountId,session){const account=AccountRegistry.getAccount(accountId),auth=AccountRegistry.getSession(accountId);return isSyncEnabled(accountId)&&!session.incognito&&!session.ephemeral&&account?.userId&&auth?JSON.stringify([accountId,account.userId,account.createdAt,session.id]):null;}\nfunction auxCloudCheckAttachmentIdentity(accountId,session,identity){if(!identity||auxCloudAttachmentIdentity(accountId,session)!==identity)throw Error('Account changed during cloud attachment transfer.');}\nasync function auxCloudAttachmentJSON(accountId,route,method,body){const response=await fetchAuxAPIAuthenticatedRequest(accountId,route,{method,headers:body===void 0?void 0:{'content-type':'application/json'},body:body===void 0?void 0:JSON.stringify(body),fallbackErrorMessage:'Aux cloud attachment operation failed'});return response.json();}\nasync function auxCloudUploadBytes(accountId,bytes,name,mimeType,purpose){\n  if(bytes.length>100*1024*1024)throw Error('Cloud attachment exceeds 100 MiB.');\n  const intent=await auxCloudAttachmentJSON(accountId,'/attachments/intents','POST',{name,contentType:mimeType,size:bytes.length,sha256:sha256Hex(bytes),purpose});\n  if(typeof intent.id!=='string'||!/^[a-f0-9-]{36}$/.test(intent.id))throw Error('Invalid cloud attachment intent.');\n  const upload=await auxCloudAttachmentJSON(accountId,'/attachments/'+intent.id+'/upload-url','POST');\n  const url=new URL(upload.url);\n",
+              "replace": "function auxCloudStoredAttachmentPath(value){if(typeof value!=='string')return null;const path=value.replace(/^\\.\\//,'');return/^attachments\\/[^/\\\\\\0]+$/.test(path)&&!['.','..'].includes(path.slice(12))?path:null;}\nfunction auxCloudTransferIdentity(accountId){const account=AccountRegistry.getAccount(accountId),auth=AccountRegistry.getSession(accountId);return account?.userId&&auth?JSON.stringify([accountId,account.incarnationId,account.userId,account.createdAt]):null;}\nfunction auxCloudCheckTransferIdentity(accountId,identity){if(!identity||auxCloudTransferIdentity(accountId)!==identity)throw Error('Account changed during cloud transfer.');}\nfunction auxCloudAttachmentIdentity(accountId,session){const identity=auxCloudTransferIdentity(accountId);return isSyncEnabled(accountId)&&!session.incognito&&!session.ephemeral&&identity?JSON.stringify([identity,session.id]):null;}\nfunction auxCloudCheckAttachmentIdentity(accountId,session,identity){if(!identity||auxCloudAttachmentIdentity(accountId,session)!==identity)throw Error('Account changed during cloud attachment transfer.');}\nasync function auxCloudAttachmentJSON(accountId,route,method,body){const response=await fetchAuxAPIAuthenticatedRequest(accountId,route,{method,headers:body===void 0?void 0:{'content-type':'application/json'},body:body===void 0?void 0:JSON.stringify(body),fallbackErrorMessage:'Aux cloud attachment operation failed'});return response.json();}\nasync function auxCloudUploadBytes(accountId,bytes,name,mimeType,purpose,identity=auxCloudTransferIdentity(accountId)){\n  auxCloudCheckTransferIdentity(accountId,identity);\n  if(bytes.length>100*1024*1024)throw Error('Cloud attachment exceeds 100 MiB.');\n  const intent=await auxCloudAttachmentJSON(accountId,'/attachments/intents','POST',{name,contentType:mimeType,size:bytes.length,sha256:sha256Hex(bytes),purpose});\n  auxCloudCheckTransferIdentity(accountId,identity);\n  if(typeof intent.id!=='string'||!/^[a-f0-9-]{36}$/.test(intent.id))throw Error('Invalid cloud attachment intent.');\n  const upload=await auxCloudAttachmentJSON(accountId,'/attachments/'+intent.id+'/upload-url','POST');\n  auxCloudCheckTransferIdentity(accountId,identity);\n  const url=new URL(upload.url);\n",
+              "count": 1
+            },
+            {
+              "kind": "cloud-attachment-adapter-2",
+              "find": "  if(!response.ok)throw Error('Private attachment upload failed ('+response.status+').');\n  const committed=await auxCloudAttachmentJSON(accountId,'/attachments/'+intent.id+'/commit','POST');\n  if(committed.id!==intent.id||committed.sha256!==sha256Hex(bytes)||committed.size!==bytes.length)throw Error('Private attachment commit failed integrity verification.');\n",
+              "replace": "  if(!response.ok)throw Error('Private attachment upload failed ('+response.status+').');\n  auxCloudCheckTransferIdentity(accountId,identity);\n  const committed=await auxCloudAttachmentJSON(accountId,'/attachments/'+intent.id+'/commit','POST');\n  auxCloudCheckTransferIdentity(accountId,identity);\n  if(committed.id!==intent.id||committed.sha256!==sha256Hex(bytes)||committed.size!==bytes.length)throw Error('Private attachment commit failed integrity verification.');\n",
+              "count": 1
+            },
+            {
+              "kind": "cloud-attachment-adapter-3",
+              "find": "    if(record.localPath!==localPath||typeof record.id!=='string'||!/^[a-f0-9-]{36}$/.test(record.id)||typeof record.attachmentId!=='string'||!Number.isSafeInteger(record.size)||record.size<0||record.size>100*1024*1024||!/^[a-f0-9]{64}$/.test(record.sha256))throw Error('Invalid private attachment backup metadata.');\n    const response=await fetchAuxAPIAuthenticatedRequest(accountId,'/attachments/'+record.id+'/content',{method:'GET',timeoutMs:120000,fallbackErrorMessage:'Failed to recover private attachment'}),reader=response.body?.getReader(),chunks=[];let size=0;if(!reader)throw Error('Private attachment body missing.');\n",
+              "replace": "    if(record.localPath!==localPath||typeof record.id!=='string'||!/^[a-f0-9-]{36}$/.test(record.id)||typeof record.attachmentId!=='string'||!Number.isSafeInteger(record.size)||record.size<0||record.size>100*1024*1024||!/^[a-f0-9]{64}$/.test(record.sha256))throw Error('Invalid private attachment backup metadata.');\n    auxCloudCheckAttachmentIdentity(accountId,session,identity);\n    const response=await fetchAuxAPIAuthenticatedRequest(accountId,'/attachments/'+record.id+'/content',{method:'GET',timeoutMs:120000,fallbackErrorMessage:'Failed to recover private attachment'}),reader=response.body?.getReader(),chunks=[];let size=0;if(!reader)throw Error('Private attachment body missing.');\n",
+              "count": 1
+            },
+            {
+              "kind": "cloud-attachment-adapter-4",
+              "find": "    // creates exclusively. No server path is passed as a filesystem destination.\n    const fs=await import('node:fs/promises'),paths=await import('node:path'),root=getSessionTaskDir(session,accountId);\n    const rootStat=await fs.lstat(root);if(rootStat.isSymbolicLink()||!rootStat.isDirectory())throw Error('Attachment recovery requires an existing real session directory.');\n",
+              "replace": "    // creates exclusively. No server path is passed as a filesystem destination.\n    const fs=await import('node:fs/promises'),paths=await import('node:path');\n    auxCloudCheckAttachmentIdentity(accountId,session,identity);\n    const root=getSessionTaskDir(session,accountId);\n    const rootStat=await fs.lstat(root);if(rootStat.isSymbolicLink()||!rootStat.isDirectory())throw Error('Attachment recovery requires an existing real session directory.');\n",
+              "count": 1
+            },
+            {
+              "kind": "cloud-attachment-adapter-5",
+              "find": "    if(directoryStat){const realRoot=await fs.realpath(root),realDirectory=await fs.realpath(directory);if(paths.dirname(realDirectory)!==realRoot)throw Error('Attachment recovery escapes the session directory.');}\n    const restored=await prepareFileAttachment(root,{id:record.attachmentId,type:'file',name:localPath.slice(12),mimeType:record.mimeType||'application/octet-stream',data:bytes.toString('base64')});\n",
+              "replace": "    if(directoryStat){const realRoot=await fs.realpath(root),realDirectory=await fs.realpath(directory);if(paths.dirname(realDirectory)!==realRoot)throw Error('Attachment recovery escapes the session directory.');}\n    auxCloudCheckAttachmentIdentity(accountId,session,identity);\n    const restored=await prepareFileAttachment(root,{id:record.attachmentId,type:'file',name:localPath.slice(12),mimeType:record.mimeType||'application/octet-stream',data:bytes.toString('base64')});\n",
+              "count": 1
+            },
+            {
+              "kind": "cloud-attachment-adapter-6",
+              "find": "  if(bytes.length>50000000)throw Error('Shared transcript exceeds 50 MB.');\n  const result=await auxCloudUploadBytes(accountId,bytes,'shared-session.json','application/json','share');\n  const shared=sharedSessionLinkSchema.parse(result.share);return toSharedSessionLink(shared.id);\n",
+              "replace": "  if(bytes.length>50000000)throw Error('Shared transcript exceeds 50 MB.');\n  const identity=auxCloudTransferIdentity(accountId);\n  const result=await auxCloudUploadBytes(accountId,bytes,'shared-session.json','application/json','share',identity);\n  auxCloudCheckTransferIdentity(accountId,identity);\n  const shared=sharedSessionLinkSchema.parse(result.share);return toSharedSessionLink(shared.id);\n",
+              "count": 1
+            },
+            {
+              "kind": "cloud-session-adapter-1",
+              "find": "  if(revision===null){try{const remote=await auxCloudSessionJSON(accountId,'/sync/sessions/'+cloudId,'GET');if(!remote.deletedAt){const copied=await auxCloudReadSessionSnapshot(accountId,remote);if(auxCloudSessionDigest(copied)===digest){state.sessions[id]={...entry,cloudId,revision:remote.revision,localDigest:digest};await auxCloudSaveSessionState(state);return;}}cloudId=id.slice(0,90)+'-conflict-'+(await import('node:crypto')).randomBytes(8).toString('hex');revision=null;}catch(error){if(!(error instanceof AuxApiError&&error.status===404))throw error;}}\n  const publish=async()=>{const copy=JSON.parse(JSON.stringify(snapshot));copy.session.id=cloudId;copy.session.parentId=state.sessions[snapshot.session.parentId]?.cloudId??snapshot.session.parentId;copy.originSessionId=entry.originSessionId||id;if(cloudId!==id)copy.session.title+=' (conflict copy)';const bytes=await auxCloudSessionCipher(accountId,cloudId,copy),blob=await auxCloudUploadBytes(accountId,bytes,'encrypted-session.json','application/json','attachment');if(auxCloudSessionIdentity(accountId)!==state.identity)throw Error('Account changed during session backup.');return auxCloudSessionJSON(accountId,'/sync/sessions/'+cloudId,'PUT',{blobId:blob.id,generation:state.generation},revision===null?{'X-Aux-If-None-Match':'*'}:{'X-Aux-If-Match':'\"'+revision+'\"'});};\n  let remote;try{remote=await publish();}catch(error){if(!(error instanceof AuxApiError&&error.status===412))throw error;cloudId=id.slice(0,90)+'-conflict-'+(await import('node:crypto')).randomBytes(8).toString('hex');revision=null;remote=await publish();}\n",
+              "replace": "  if(revision===null){try{const remote=await auxCloudSessionJSON(accountId,'/sync/sessions/'+cloudId,'GET');if(!remote.deletedAt){const copied=await auxCloudReadSessionSnapshot(accountId,remote);if(auxCloudSessionDigest(copied)===digest){state.sessions[id]={...entry,cloudId,revision:remote.revision,localDigest:digest};await auxCloudSaveSessionState(state);return;}}cloudId=id.slice(0,90)+'-conflict-'+(await import('node:crypto')).randomBytes(8).toString('hex');revision=null;}catch(error){if(!(error instanceof AuxApiError&&error.status===404))throw error;}}\n  const publish=async()=>{const copy=JSON.parse(JSON.stringify(snapshot));copy.session.id=cloudId;copy.session.parentId=state.sessions[snapshot.session.parentId]?.cloudId??snapshot.session.parentId;copy.originSessionId=entry.originSessionId||id;if(cloudId!==id)copy.session.title+=' (conflict copy)';const transferIdentity=auxCloudTransferIdentity(accountId),bytes=await auxCloudSessionCipher(accountId,cloudId,copy);auxCloudCheckTransferIdentity(accountId,transferIdentity);const blob=await auxCloudUploadBytes(accountId,bytes,'encrypted-session.json','application/json','attachment',transferIdentity);if(auxCloudSessionIdentity(accountId)!==state.identity)throw Error('Account changed during session backup.');return auxCloudSessionJSON(accountId,'/sync/sessions/'+cloudId,'PUT',{blobId:blob.id,generation:state.generation},revision===null?{'X-Aux-If-None-Match':'*'}:{'X-Aux-If-Match':'\"'+revision+'\"'});};\n  let remote;try{remote=await publish();}catch(error){if(!(error instanceof AuxApiError&&error.status===412))throw error;cloudId=id.slice(0,90)+'-conflict-'+(await import('node:crypto')).randomBytes(8).toString('hex');revision=null;remote=await publish();}\n",
+              "count": 1
+            },
+            {
+              "kind": "cloud-session-adapter-2",
+              "find": "    const copy=await auxCloudReadSessionSnapshot(accountId,remote);if(entry.deleteConflict?.revision!==remote.revision){entry.deleteConflict={revision:remote.revision,id:id.slice(0,90)+'-conflict-'+(await import('node:crypto')).randomBytes(8).toString('hex')};await auxCloudSaveSessionState(state);}const copyId=entry.deleteConflict.id;copy.session.id=copyId;copy.session.title+=' (conflict copy)';copy.originSessionId=copy.originSessionId||entry.originSessionId||id;\n    let copied;try{copied=await auxCloudSessionJSON(accountId,'/sync/sessions/'+copyId,'GET');}catch(error){if(!(error instanceof AuxApiError&&error.status===404))throw error;}if(!copied){const bytes=await auxCloudSessionCipher(accountId,copyId,copy),blob=await auxCloudUploadBytes(accountId,bytes,'encrypted-session.json','application/json','attachment');copied=await auxCloudSessionJSON(accountId,'/sync/sessions/'+copyId,'PUT',{blobId:blob.id,generation:state.generation},{'X-Aux-If-None-Match':'*'});}if(copied.deletedAt)throw Error('Deletion conflict copy was removed; newer remote history preserved.');const verified=await auxCloudReadSessionSnapshot(accountId,copied);if(auxCloudSessionDigest(verified)!==auxCloudSessionDigest(copy))throw Error('Deletion conflict copy verification failed.');\n  }\n",
+              "replace": "    const copy=await auxCloudReadSessionSnapshot(accountId,remote);if(entry.deleteConflict?.revision!==remote.revision){entry.deleteConflict={revision:remote.revision,id:id.slice(0,90)+'-conflict-'+(await import('node:crypto')).randomBytes(8).toString('hex')};await auxCloudSaveSessionState(state);}const copyId=entry.deleteConflict.id;copy.session.id=copyId;copy.session.title+=' (conflict copy)';copy.originSessionId=copy.originSessionId||entry.originSessionId||id;\n    let copied;try{copied=await auxCloudSessionJSON(accountId,'/sync/sessions/'+copyId,'GET');}catch(error){if(!(error instanceof AuxApiError&&error.status===404))throw error;}if(!copied){const transferIdentity=auxCloudTransferIdentity(accountId),bytes=await auxCloudSessionCipher(accountId,copyId,copy);auxCloudCheckTransferIdentity(accountId,transferIdentity);const blob=await auxCloudUploadBytes(accountId,bytes,'encrypted-session.json','application/json','attachment',transferIdentity);copied=await auxCloudSessionJSON(accountId,'/sync/sessions/'+copyId,'PUT',{blobId:blob.id,generation:state.generation},{'X-Aux-If-None-Match':'*'});}if(copied.deletedAt)throw Error('Deletion conflict copy was removed; newer remote history preserved.');const verified=await auxCloudReadSessionSnapshot(accountId,copied);if(auxCloudSessionDigest(verified)!==auxCloudSessionDigest(copy))throw Error('Deletion conflict copy verification failed.');\n  }\n",
+              "count": 1
+            },
+            {
+              "find": "async function fetchWithAccessTokenRefresh(Cn,ei,ti){let ni=await getValidAccessToken(Cn),ri=ei.split(`?`)[0];try{return await ti(ni)}catch(ei){if(!ni||!isAccessTokenRefreshError(ei))throw ei;logger.warn(`[AuxAPI] Access token rejected; forcing token refresh`,{accountId:Cn,path:ri,error:ei});let ii=await getValidAccessToken(Cn,{bypassRefreshCooldown:!0,forceRefresh:!0});if(!ii)throw logger.warn(`[AuxAPI] Forced token refresh did not return a token`,{accountId:Cn,path:ri}),ei;return ti(ii)}}",
+              "replace": "async function fetchWithAccessTokenRefresh(Cn,ei,ti){const identity=auxCloudTransferIdentity(Cn),check=()=>{if(auxCloudTransferIdentity(Cn)!==identity)throw Error('Account changed during cloud request.');};let ni=await getValidAccessToken(Cn),ri=ei.split(`?`)[0];check();try{const result=await ti(ni);check();return result}catch(ei){check();if(!ni||!isAccessTokenRefreshError(ei))throw ei;logger.warn(`[AuxAPI] Access token rejected; forcing token refresh`,{accountId:Cn,path:ri,error:ei});let ii=await getValidAccessToken(Cn,{bypassRefreshCooldown:!0,forceRefresh:!0});check();if(!ii)throw logger.warn(`[AuxAPI] Forced token refresh did not return a token`,{accountId:Cn,path:ri}),ei;const result=await ti(ii);check();return result}}",
+              "count": 1,
+              "kind": "integration"
+            }
+          ]
+        },
+        {
+          "name": "Aux runtime identity",
+          "outputSha256": "4aa78d2606963d854849629dba91a2f418f6f347b09f45d3f9cc9dd3000409b7",
+          "anchors": [
+            {
+              "find": "init_aside",
+              "replace": "init_aux",
+              "count": 15,
+              "scope": "private module binding",
+              "kind": "identity"
+            },
+            {
+              "find": "`aside packaged memory 한글-`",
+              "replace": "`aux packaged memory 한글-`",
+              "count": 1,
+              "scope": "disposable memory test prefix",
+              "kind": "identity"
+            },
+            {
+              "find": "aside couldn't connect from this network|could not reach aside servers",
+              "replace": "aux couldn't connect from this network|could not reach aux servers",
+              "count": 1,
+              "scope": "own network diagnostic matcher",
+              "kind": "identity"
+            },
+            {
+              "find": "Symbol(\"aside_ref\")",
+              "replace": "Symbol(\"aux_ref\")",
+              "count": 1,
+              "scope": "ephemeral injected DOM symbol description",
+              "kind": "identity"
+            },
+            {
+              "find": "file:///aside-image-worker.cjs",
+              "replace": "file:///aux-image-worker.cjs",
+              "count": 1,
+              "scope": "nominal worker module resolution URL",
+              "kind": "identity"
+            },
+            {
+              "find": "originator:`aside`",
+              "replace": "originator:`aux`",
+              "count": 1,
+              "scope": "OAuth product metadata; scopes and client unchanged",
+              "kind": "identity"
+            },
+            {
+              "find": "<aside_code>",
+              "replace": "<aux_code>",
+              "count": 1,
+              "scope": "paired generated system-prompt tag",
+              "kind": "identity"
+            },
+            {
+              "find": "</aside_code>",
+              "replace": "</aux_code>",
+              "count": 1,
+              "scope": "paired generated system-prompt tag",
+              "kind": "identity"
+            },
+            {
+              "find": "`aside-notion-export-`",
+              "replace": "`aux-notion-export-`",
+              "count": 1,
+              "scope": "disposable export prefix",
+              "kind": "identity"
+            },
+            {
+              "find": "aside-history-",
+              "replace": "aux-history-",
+              "count": 2,
+              "scope": "paired disposable history snapshot prefixes",
+              "kind": "identity"
+            },
+            {
+              "find": "aside_component_version:DAEMON_VERSION",
+              "replace": "aux_component_version:DAEMON_VERSION",
+              "count": 1,
+              "scope": "new telemetry field; no historical analytics rewrite",
+              "kind": "identity"
+            },
+            {
+              "find": "asideComponentVersion",
+              "replace": "auxComponentVersion",
+              "count": 2,
+              "scope": "paired local feedback schema and outgoing metadata",
+              "kind": "identity"
+            },
+            {
+              "find": "'aside host profiles'",
+              "replace": "'aux host profiles'",
+              "count": 2,
+              "scope": "CLI diagnostic command",
+              "kind": "identity"
+            },
+            {
+              "find": "Run 'aside skills list'",
+              "replace": "Run 'aux skills list'",
+              "count": 1,
+              "scope": "CLI diagnostic command",
+              "kind": "identity"
+            },
+            {
+              "find": "Aux Computer Use helper is not built. Run `pnpm --filter @aside/native-helper build:computer-use-helper-dev`.",
+              "replace": "Aux Computer Use helper is not included in this build.",
+              "count": 3,
+              "scope": "truthful disabled-helper diagnostic",
+              "kind": "identity"
+            },
+            {
+              "find": "`.local/bin/aside`",
+              "replace": "`.local/bin/aux`",
+              "count": 1,
+              "scope": "Aux CLI discovery; no old installation read or migration",
+              "kind": "identity"
+            },
+            {
+              "find": "`.aside/bin/aside`",
+              "replace": "`.aux/bin/aux`",
+              "count": 1,
+              "scope": "Aux CLI discovery; no old installation read or migration",
+              "kind": "identity"
+            },
+            {
+              "find": "`current/aside.exe`",
+              "replace": "`current/aux.exe`",
+              "count": 1,
+              "scope": "Aux Windows CLI discovery",
+              "kind": "identity"
+            },
+            {
+              "find": "`Aux/CLI/current/aside.exe`",
+              "replace": "`Aux/CLI/current/aux.exe`",
+              "count": 1,
+              "scope": "Aux Windows CLI discovery",
+              "kind": "identity"
+            },
+            {
+              "find": "`.local/bin/aside.exe`",
+              "replace": "`.local/bin/aux.exe`",
+              "count": 1,
+              "scope": "Aux Windows CLI discovery",
+              "kind": "identity"
+            },
+            {
+              "find": "`.aside/bin/aside.exe`",
+              "replace": "`.aux/bin/aux.exe`",
+              "count": 1,
+              "scope": "Aux Windows CLI discovery",
+              "kind": "identity"
+            },
+            {
+              "find": "whence -p aside",
+              "replace": "whence -p aux",
+              "count": 1,
+              "scope": "paired shell command discovery",
+              "kind": "identity"
+            },
+            {
+              "find": "command -v aside",
+              "replace": "command -v aux",
+              "count": 1,
+              "scope": "paired shell command discovery",
+              "kind": "identity"
+            },
+            {
+              "find": "`aside.exe`",
+              "replace": "`aux.exe`",
+              "count": 1,
+              "scope": "paired Windows command discovery",
+              "kind": "identity"
+            },
+            {
+              "find": "`aside-cli-install-`",
+              "replace": "`aux-cli-install-`",
+              "count": 1,
+              "scope": "disposable install prefix",
+              "kind": "identity"
+            },
+            {
+              "find": "'aside-install.ps1'",
+              "replace": "'aux-install.ps1'",
+              "count": 1,
+              "scope": "disposable installer basename",
+              "kind": "identity"
+            },
+            {
+              "find": "/aside[- ]?daemon/i",
+              "replace": "/aux[- ]?daemon/i",
+              "count": 1,
+              "scope": "Aux-only daemon takeover classification",
+              "kind": "identity"
+            },
+            {
+              "find": "`not_aside_daemon`",
+              "replace": "`not_aux_daemon`",
+              "count": 1,
+              "scope": "takeover telemetry reason",
+              "kind": "identity"
+            }
+          ]
+        },
+        {
+          "name": "experimental settings v2",
+          "outputSha256": "356b71893c73675ec333ca2da279532457a3ddda3f74a886e33a337377bc87b5",
+          "anchors": [
+            {
+              "kind": "identity",
+              "name": "Versioned Aux experimental settings",
+              "find": "object({sync:boolean$1().default(!1),kakaotalk:boolean$1().default(!1),onboarding:boolean$1().default(!1),asideCode:boolean$1().default(!1),compactionLimits:boolean$1().default(!1)})",
+              "replace": "object({sync:boolean$1().default(!1),kakaotalk:boolean$1().default(!1),onboarding:boolean$1().default(!1),format:string$3().optional(),auxCode:boolean$1().optional(),asideCode:boolean$1().optional(),compactionLimits:boolean$1().default(!1)}).transform(function migrateAuxExperimentalSettings(value) {\n  const format = 'aux.experimental.v2';\n  if (value.format !== undefined && value.format !== format)\n    throw Error('Unsupported Aux experimental settings version.');\n  if (value.format !== undefined && Object.hasOwn(value, 'asideCode') ||\n      value.format === undefined && Object.hasOwn(value, 'auxCode'))\n    throw Error('Ambiguous Aux experimental settings generation.');\n  const {asideCode, auxCode, format: previousFormat, ...settings} = value;\n  return {...settings, format, auxCode: (previousFormat === format ? auxCode : asideCode) ?? false};\n})",
+              "count": 1
+            },
+            {
+              "kind": "identity",
+              "name": "Versioned Aux experimental settings",
+              "find": ".asideCode",
+              "replace": ".auxCode",
+              "count": 1
+            }
+          ]
+        },
+        {
+          "name": "authenticated cloud invalidation and reconciliation",
+          "outputSha256": "5fda3fd8cf5c927c68a2a6b8b3a781880472538bef2d56284035b12f186c7554",
+          "anchors": [
+            {
+              "find": "EventsClient=class{options;#e=/* @__PURE__ */ new Set;#t;#n=!1;#r=0;#i=0;#a=-1/0;#o;#s;#c;#l;constructor(Cn){this.options=Cn}subscribe(Cn,ei){let ti={topics:Cn,listener:ei};return this.#e.add(ti),this.#f(),()=>{this.#e.delete(ti),this.#f()}}start(){this.#n||(this.#n=!0,this.#u(Math.random()*1e4))}stop(){this.#n=!1,this.#r++,clearTimeout(this.#o),this.#d(),this.#i=0,this.#a=-1/0}reconnect(){this.#n&&this.#t?.readyState!==1&&(this.#r++,this.#d(),this.#u(Math.random()*1e4))}#u(Cn){clearTimeout(this.#o),this.#o=setTimeout(()=>void this.#p(),Cn)}#d(){clearTimeout(this.#s),clearTimeout(this.#l),clearInterval(this.#c);let Cn=this.#t;this.#t=void 0,Cn&&(Cn.onopen=Cn.onmessage=Cn.onclose=Cn.onerror=null,Cn.close())}#f(){this.#t?.readyState===1&&this.#t.send(JSON.stringify({type:`subscribe`,topics:[...new Set([...this.#e].flatMap(Cn=>Cn.topics))]}))}async#p(){if(!this.#n)return;let Cn=++this.#r,ei=0,ti=Date.now(),ni=()=>this.#n&&this.#r===Cn,ri=Cn=>{if(!ni())return;this.#r++,this.#d(),ei&&Date.now()-ei>=3e4&&(this.#i=0);let ti=Math.min(6e4,1e3*2**Math.min(this.#i++,6));this.#u(ti/2+Math.random()*ti/2),Cn&&this.options.onError?.(Cn)};this.#s=setTimeout(()=>ri(/* @__PURE__ */ Error(`Events connection timed out`)),15e3);try{let Cn=this.#i>0&&Date.now()-this.#a>=6e4;Cn&&(this.#a=Date.now());let ii=await this.options.getAccessToken(Cn);if(!ni())return;let ai=new URL(`/events`,this.options.baseUrl);ai.protocol=ai.protocol===`https:`?`wss:`:`ws:`;let oi=new WebSocket(ai,[EVENTS_PROTOCOL,`bearer.${ii}`]);this.#t=oi,oi.onopen=()=>{if(ni())try{this.#f()}catch{ri()}},oi.onerror=()=>ri(/* @__PURE__ */ Error(`Events connection failed`)),oi.onclose=()=>ri(),oi.onmessage=({data:Cn})=>{if(!ni()||typeof Cn!=`string`)return;if(Cn===`{\"type\":\"pong\"}`){ti=Date.now();return}let ii;try{ii=eventsServerFrameSchema.safeParse(JSON.parse(Cn))}catch{return ri(/* @__PURE__ */ Error(`Invalid events frame`))}if(!ii.success)return ri(/* @__PURE__ */ Error(`Invalid events frame`));let ai=ii.data;if(ai.type===`ready`){if(ei)return;ei=Date.now(),ti=ei,clearTimeout(this.#s),this.#l=setTimeout(()=>ri(),Math.max(1e3,ai.expiresAt-Date.now()-5e3-Math.random()*15e3)),this.#c=setInterval(()=>{if(Date.now()-ti>6e4)return ri(/* @__PURE__ */ Error(`Events heartbeat timed out`));try{oi.send(EVENTS_PING)}catch{ri()}},25e3),this.options.onReady?.();return}for(let{topics:Cn,listener:ei}of this.#e)if(Cn.includes(eventTopic(ai.event)))try{ei(ai.event)}catch(Cn){this.options.onError?.(Cn instanceof Error?Cn:Error(String(Cn)))}}}catch(Cn){ri(Cn instanceof Error?Cn:Error(String(Cn)))}}}",
+              "replace": "EventsClient=auxCreateEventPollClientClass()",
+              "count": 1,
+              "scope": "replace unsupported WebSocket client with paired bounded polling",
+              "kind": "integration"
+            },
+            {
+              "find": "EVENTS_PROTOCOL=`aside-events`",
+              "replace": "EVENTS_PROTOCOL=`aux-events.poll.v1`",
+              "count": 1,
+              "scope": "paired versioned Aux event transport",
+              "kind": "integration"
+            },
+            {
+              "find": "new EventsClient({baseUrl:AUX_API_BASE_URL,getAccessToken:async ei=>{if(!ii())",
+              "replace": "new EventsClient({baseUrl:AUX_API_BASE_URL,isCurrent:ii,getAccessToken:async ei=>{if(!ii())",
+              "count": 1,
+              "scope": "retain exact originating account incarnation",
+              "kind": "integration"
+            },
+            {
+              "find": "pi.subscribe([`account`,`billing`,`devices`,`user-settings`,`drive`,`routines`],fi)",
+              "replace": "pi.subscribe([`account`,`billing`,`devices`,`user-settings`,`drive`,`routines`,`sessions`],fi)",
+              "count": 1,
+              "scope": "subscribe actual session snapshot updates",
+              "kind": "integration"
+            },
+            {
+              "find": "case`user-settings.updated`:di(`sync`)",
+              "replace": "case`user-settings.updated`:di(`sync`);break;case`routines.invalidated`:di(`routines`);break;case`sessions.changed`:di(`sessions`)",
+              "count": 1,
+              "scope": "route snapshot invalidations through supplied scheduler",
+              "kind": "integration"
+            },
+            {
+              "find": "case`sync`:{let ei=await getRemoteUserSettings(Cn);",
+              "replace": "case`sessions`:{if(!isSyncEnabled(Cn))break;const state=await auxCloudSessionState(Cn);if(!ii())return;state.queue=state.queue.catch(()=>{}).then(()=>ii()?auxCloudDiscoverSessions(Cn):void 0);await state.queue;break}case`routines`:await syncRoutines(Cn,ii,!1);break;case`sync`:{let ei=await getRemoteUserSettings(Cn);",
+              "count": 1,
+              "scope": "serialize sessions and reconcile routines through existing account owners",
+              "kind": "integration"
+            },
+            {
+              "find": "try{await ui(ei),ei.startsWith(`routine:`)",
+              "replace": "try{await auxRunEventRefresh(()=>ui(ei)),ei.startsWith(`routine:`)",
+              "count": 1,
+              "scope": "retain actual cache-refresh task until physical awaited settlement",
+              "kind": "integration"
+            },
+            {
+              "kind": "integration",
+              "scope": "finite Aux event polling helpers",
+              "append": "\nfunction auxEventPollState() {\n  return auxEventPollState.cached ??= { clients: new Set(), refreshes: new Set() };\n}\nasync function auxStopEventPolling() {\n  const state = auxEventPollState(), polling = [...state.clients];\n  // These are the supplied account owners: their stop clears refresh timers\n  // and invalidates the exact account incarnation before awaiting its work.\n  if (typeof clients !== 'undefined') { for (const owner of clients.values()) owner.stop(); clients.clear(); }\n  await Promise.all(polling.map(client => client.stop()));\n  await Promise.all([...state.refreshes]);\n}\nasync function auxRunEventRefresh(callback) {\n  const state = auxEventPollState(), boundary = auxBrokerBoundary();\n  const pending = boundary.awaited(callback);\n  state.refreshes.add(pending);\n  try { return await pending; }\n  finally { state.refreshes.delete(pending); }\n}\nfunction auxCreateEventPollClientClass() {\n  return class {\n    constructor(options) { this.options = options; this.listeners = new Set(); this.running = false; this.failures = 0; this.ready = false; }\n    subscribe(topics, listener) {\n      const entry = { topics, listener }; this.listeners.add(entry); this.cursor = undefined;\n      return () => { this.listeners.delete(entry); this.cursor = undefined; };\n    }\n    start() {\n      if (this.running) return;\n      if (typeof this.options.isCurrent !== 'function') throw Error('Events require an originating account owner.');\n      auxBrokerBoundary().registerProducerStop(auxStopEventPolling);\n      this.running = true; auxEventPollState().clients.add(this); this.schedule(Math.random() * 2000);\n    }\n    stop() {\n      this.running = false; clearTimeout(this.timer); this.controller?.abort(); auxEventPollState().clients.delete(this);\n      return this.pending ?? Promise.resolve();\n    }\n    reconnect() { if (this.running) { this.retryNow = true; if (this.pending) this.controller?.abort(); else this.schedule(0); } }\n    schedule(delay) { clearTimeout(this.timer); if (this.running) this.timer = setTimeout(() => this.tick(), delay); }\n    tick() {\n      if (!this.running || this.pending) return;\n      this.pending = this.poll().finally(() => {\n        this.pending = undefined;\n        const delay = this.retryNow ? 0 : Math.min(300_000, 60_000 * 2 ** Math.min(this.failures, 3)) + Math.random() * 5000;\n        this.retryNow = false; this.schedule(delay);\n      });\n    }\n    async poll() {\n      const controller = new AbortController(); this.controller = controller;\n      const current = () => this.running && !controller.signal.aborted && this.options.isCurrent();\n      try {\n        if (!current()) return void this.stop();\n        const allowed = ['account', 'billing', 'devices', 'user-settings', 'drive', 'routines', 'sessions'];\n        const topics = [...new Set([...this.listeners].flatMap(entry => entry.topics))].sort();\n        if (!topics.length || topics.some(topic => !allowed.includes(topic))) throw Error('Unsupported Aux event topics.');\n        const url = new URL('/events/poll', this.options.baseUrl);\n        if (url.protocol !== 'https:' || url.username || url.password) throw Error('Aux events require HTTPS.');\n        url.searchParams.set('topics', topics.join(',')); if (this.cursor) url.searchParams.set('cursor', this.cursor);\n        let reply;\n        for (let attempt = 0; attempt < 2; attempt++) {\n          const token = await this.options.getAccessToken(attempt === 1); if (!current()) return;\n          if (!token) throw Error('Events credentials unavailable.');\n          // Expected offline/cancel outcomes settle this read lease before the\n          // error is reported; cancellation alone never stands in for settlement.\n          const result = await auxBrokerBoundary().awaited(async () => {\n            try {\n              const response = await fetch(url, { headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' }, redirect: 'error', signal: AbortSignal.any([controller.signal, AbortSignal.timeout(15_000)]) });\n              if (!response.ok) { await response.body?.cancel(); return { status: response.status }; }\n              const reader = response.body?.getReader(), chunks = []; let size = 0;\n              if (!reader) throw Error('Aux event response is missing.');\n              try { for (;;) { const part = await reader.read(); if (part.done) break; size += part.value.byteLength; if (size > 8192) { await reader.cancel(); throw Error('Aux event response exceeds its bound.'); } chunks.push(Buffer.from(part.value)); } }\n              finally { reader.releaseLock(); }\n              return { body: JSON.parse(Buffer.concat(chunks).toString('utf8')) };\n            } catch (error) { return { error }; }\n          });\n          if (!current()) return;\n          if (result.error) throw result.error;\n          if (result.status === 401 && attempt === 0) continue;\n          if (result.status) throw Error(`Aux event request failed (${result.status}).`);\n          reply = result.body; break;\n        }\n        if (!reply || reply.protocol !== 'aux-events.poll.v1' || !/^aux-ev1\\.[a-f0-9]{64}$/.test(reply.cursor) || reply.retryAfterMs !== 60_000 || !Array.isArray(reply.changed) || reply.changed.length > topics.length || new Set(reply.changed).size !== reply.changed.length || reply.changed.some(topic => !topics.includes(topic))) throw Error('Invalid Aux event snapshot.');\n        if (!current()) return;\n        const types = { account: 'account.updated', billing: 'billing.subscription-updated', devices: 'devices.changed', 'user-settings': 'user-settings.updated', drive: 'drive.files-changed', routines: 'routines.invalidated', sessions: 'sessions.changed' };\n        for (const topic of reply.changed) for (const entry of this.listeners) if (entry.topics.includes(topic)) {\n          if (!current()) return;\n          entry.listener({ type: types[topic], ...topic === 'devices' ? { payload: { deviceId: '*' } } : {} });\n        }\n        this.cursor = reply.cursor; this.failures = 0;\n        if (!this.ready) { this.ready = true; this.options.onReady?.(); }\n      } catch {\n        if (current()) { this.failures++; this.ready = false; this.options.onError?.(Error('Aux events are offline or unavailable; synchronization will retry.')); }\n      } finally { if (this.controller === controller) this.controller = undefined; }\n    }\n  };\n}\n",
+              "count": 1
+            }
+          ]
+        },
+        {
+          "name": "ordinary chat startup and original-attempt failure",
+          "outputSha256": "d1bd9d7cede7587bc2a41ff3e123f90127bc881a31d6bc25e4af392ac07adf4f",
+          "anchors": [
+            {
+              "find": "let ti=createDesktopRepl({accountId:Cn.accountId,agentSessionId:Cn.session.id,cwd:Cn.session.cwd,sessionStorageDir:Cn.sessionDir,accountRoot:Cn.accountRoot,browser:ei,hooks:Cn.hooks,isPathAllowed:(ei,ti)=>hasPermission(resolvePermission({accountRoot:Cn.accountRoot,permissionMode:Cn.session.permissionMode,accountPermission:Cn.settings.get(`permission`),sessionPermission:Cn.session.permission}),{type:`file`,path:ei,mode:ti})===`allow`,incognito:Cn.session.incognito,channelEnabled:Cn.session.trigger?.type===`channel`,imageGenerationModels:Cn.models,canSendMessages:!Cn.session.parentId||isForkSelfSubagent(Cn.session),settings:settings(Cn.accountId)})",
+              "replace": "let ti=auxCreateLazyDesktopRepl(()=>createDesktopRepl({accountId:Cn.accountId,agentSessionId:Cn.session.id,cwd:Cn.session.cwd,sessionStorageDir:Cn.sessionDir,accountRoot:Cn.accountRoot,browser:ei,hooks:Cn.hooks,isPathAllowed:(ei,ti)=>hasPermission(resolvePermission({accountRoot:Cn.accountRoot,permissionMode:Cn.session.permissionMode,accountPermission:Cn.settings.get(`permission`),sessionPermission:Cn.session.permission}),{type:`file`,path:ei,mode:ti})===`allow`,incognito:Cn.session.incognito,channelEnabled:Cn.session.trigger?.type===`channel`,imageGenerationModels:Cn.models,canSendMessages:!Cn.session.parentId||isForkSelfSubagent(Cn.session),settings:settings(Cn.accountId)}))",
+              "count": 1,
+              "scope": "lazy existing guarded desktop REPL construction",
+              "kind": "integration"
+            },
+            {
+              "find": "async startRun(Cn,ei,ti,ni){let ri=await this.#h(Cn,ei);assertSessionCanStart(Cn,ei);",
+              "replace": "async startRun(Cn,ei,ti,ni){const auxStartOwner=AccountRegistry.getAccount(Cn);let ri,auxStartAttempt;try{auxStartAttempt=auxCaptureAgentStartAttempt(Cn,ei);ri=await this.#h(Cn,ei)}catch(error){auxReportAgentStartFailure(Cn,ei,auxStartOwner,auxStartAttempt,error)}assertSessionCanStart(Cn,ei);",
+              "count": 1,
+              "scope": "persist truthful early startup error and return supplied UI error",
+              "kind": "integration"
+            },
+            {
+              "kind": "integration",
+              "scope": "ordinary chat construction and startup error helpers",
+              "append": "\nfunction auxCreateLazyDesktopRepl(factory) {\n  let repl, disposal, disposed = false;\n  return {\n    run(...args) {\n      if (disposed) throw Error('The desktop tool session has closed.');\n      return (repl ??= factory()).run(...args);\n    },\n    dispose() { if (!disposed) { disposed = true; disposal = repl?.dispose(); } return disposal; },\n  };\n}\nfunction auxCaptureAgentStartAttempt(accountId, sessionId) {\n  const session = SessionStore.get(accountId, sessionId);\n  if (!session || session.status !== 'idle' || session.archivedAt) return undefined;\n  const overview = SessionStore.listTurnOverviews(accountId, sessionId, undefined, 1);\n  if (!Number.isSafeInteger(overview.transcriptRevision)) return undefined;\n  // System-prompt preparation belongs to this same initializer. Everything\n  // else, including model/context edits and new transcript work, must match.\n  const { systemPrompt: _, ...snapshot } = session;\n  const latest = overview.turns.at(-1);\n  return JSON.stringify({ session: snapshot, revision: overview.transcriptRevision,\n    latestTurnId: latest?.id ?? null, latestTurnStatus: latest?.status ?? null });\n}\nfunction auxReportAgentStartFailure(accountId, sessionId, owner, attempt, error) {\n  try {\n    const current = AccountRegistry.getAccount(accountId);\n    if (attempt && owner && current?.createdAt === owner.createdAt &&\n        current?.incarnationId === owner.incarnationId &&\n        auxCaptureAgentStartAttempt(accountId, sessionId) === attempt)\n      SessionStore.update(accountId, sessionId, { status: 'errored' });\n  } catch {\n    throw new TRPCError({ code: 'PRECONDITION_FAILED', message:\n      'This task could not initialize and its saved status could not be verified. Your draft is preserved; keep this window open and try again.' });\n  }\n  const disabled = error?.code === 'AUX_SUPERVISED_TASKS_DISABLED';\n  throw new TRPCError({ code: 'PRECONDITION_FAILED', message: disabled\n    ? 'This task could not start because a required tool needs supervised execution, which is disabled in this build. Your draft is preserved.'\n    : 'This task could not initialize. Your draft is preserved; check model and tool availability, then try again.' });\n}\n",
+              "count": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/out/completion-20261026-paired-source-a1/aux-native-entry.mjs",
+      "input": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-local-completion-20261025-a38/Aux.app/Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/node-development/aux-native-entry.mjs",
+      "inputSha256": "f355833cb607963a65ca3108e7ae19ea7ca60192a9f3d8e2644a3c12ec49c808",
+      "outputSha256": "abe96899835a43527efe4fb6073711c6927413d287471039d1eede66ab03bf55",
+      "stages": [
+        {
+          "name": "account-bound cloud transfers",
+          "outputSha256": "8406b82b2c2ae73312e0d81e18392f2d4c91bc1df497b73eefbdc8fba04189bb",
+          "anchors": [
+            {
+              "kind": "cloud-attachment-adapter-1",
+              "find": "function auxCloudStoredAttachmentPath(value){if(typeof value!=='string')return null;const path=value.replace(/^\\.\\//,'');return/^attachments\\/[^/\\\\\\0]+$/.test(path)&&!['.','..'].includes(path.slice(12))?path:null;}\nfunction auxCloudAttachmentIdentity(accountId,session){const account=AccountRegistry.getAccount(accountId),auth=AccountRegistry.getSession(accountId);return isSyncEnabled(accountId)&&!session.incognito&&!session.ephemeral&&account?.userId&&auth?JSON.stringify([accountId,account.userId,account.createdAt,session.id]):null;}\nfunction auxCloudCheckAttachmentIdentity(accountId,session,identity){if(!identity||auxCloudAttachmentIdentity(accountId,session)!==identity)throw Error('Account changed during cloud attachment transfer.');}\nasync function auxCloudAttachmentJSON(accountId,route,method,body){const response=await fetchAuxAPIAuthenticatedRequest(accountId,route,{method,headers:body===void 0?void 0:{'content-type':'application/json'},body:body===void 0?void 0:JSON.stringify(body),fallbackErrorMessage:'Aux cloud attachment operation failed'});return response.json();}\nasync function auxCloudUploadBytes(accountId,bytes,name,mimeType,purpose){\n  if(bytes.length>100*1024*1024)throw Error('Cloud attachment exceeds 100 MiB.');\n  const intent=await auxCloudAttachmentJSON(accountId,'/attachments/intents','POST',{name,contentType:mimeType,size:bytes.length,sha256:sha256Hex(bytes),purpose});\n  if(typeof intent.id!=='string'||!/^[a-f0-9-]{36}$/.test(intent.id))throw Error('Invalid cloud attachment intent.');\n  const upload=await auxCloudAttachmentJSON(accountId,'/attachments/'+intent.id+'/upload-url','POST');\n  const url=new URL(upload.url);\n",
+              "replace": "function auxCloudStoredAttachmentPath(value){if(typeof value!=='string')return null;const path=value.replace(/^\\.\\//,'');return/^attachments\\/[^/\\\\\\0]+$/.test(path)&&!['.','..'].includes(path.slice(12))?path:null;}\nfunction auxCloudTransferIdentity(accountId){const account=AccountRegistry.getAccount(accountId),auth=AccountRegistry.getSession(accountId);return account?.userId&&auth?JSON.stringify([accountId,account.incarnationId,account.userId,account.createdAt]):null;}\nfunction auxCloudCheckTransferIdentity(accountId,identity){if(!identity||auxCloudTransferIdentity(accountId)!==identity)throw Error('Account changed during cloud transfer.');}\nfunction auxCloudAttachmentIdentity(accountId,session){const identity=auxCloudTransferIdentity(accountId);return isSyncEnabled(accountId)&&!session.incognito&&!session.ephemeral&&identity?JSON.stringify([identity,session.id]):null;}\nfunction auxCloudCheckAttachmentIdentity(accountId,session,identity){if(!identity||auxCloudAttachmentIdentity(accountId,session)!==identity)throw Error('Account changed during cloud attachment transfer.');}\nasync function auxCloudAttachmentJSON(accountId,route,method,body){const response=await fetchAuxAPIAuthenticatedRequest(accountId,route,{method,headers:body===void 0?void 0:{'content-type':'application/json'},body:body===void 0?void 0:JSON.stringify(body),fallbackErrorMessage:'Aux cloud attachment operation failed'});return response.json();}\nasync function auxCloudUploadBytes(accountId,bytes,name,mimeType,purpose,identity=auxCloudTransferIdentity(accountId)){\n  auxCloudCheckTransferIdentity(accountId,identity);\n  if(bytes.length>100*1024*1024)throw Error('Cloud attachment exceeds 100 MiB.');\n  const intent=await auxCloudAttachmentJSON(accountId,'/attachments/intents','POST',{name,contentType:mimeType,size:bytes.length,sha256:sha256Hex(bytes),purpose});\n  auxCloudCheckTransferIdentity(accountId,identity);\n  if(typeof intent.id!=='string'||!/^[a-f0-9-]{36}$/.test(intent.id))throw Error('Invalid cloud attachment intent.');\n  const upload=await auxCloudAttachmentJSON(accountId,'/attachments/'+intent.id+'/upload-url','POST');\n  auxCloudCheckTransferIdentity(accountId,identity);\n  const url=new URL(upload.url);\n",
+              "count": 1
+            },
+            {
+              "kind": "cloud-attachment-adapter-2",
+              "find": "  if(!response.ok)throw Error('Private attachment upload failed ('+response.status+').');\n  const committed=await auxCloudAttachmentJSON(accountId,'/attachments/'+intent.id+'/commit','POST');\n  if(committed.id!==intent.id||committed.sha256!==sha256Hex(bytes)||committed.size!==bytes.length)throw Error('Private attachment commit failed integrity verification.');\n",
+              "replace": "  if(!response.ok)throw Error('Private attachment upload failed ('+response.status+').');\n  auxCloudCheckTransferIdentity(accountId,identity);\n  const committed=await auxCloudAttachmentJSON(accountId,'/attachments/'+intent.id+'/commit','POST');\n  auxCloudCheckTransferIdentity(accountId,identity);\n  if(committed.id!==intent.id||committed.sha256!==sha256Hex(bytes)||committed.size!==bytes.length)throw Error('Private attachment commit failed integrity verification.');\n",
+              "count": 1
+            },
+            {
+              "kind": "cloud-attachment-adapter-3",
+              "find": "    if(record.localPath!==localPath||typeof record.id!=='string'||!/^[a-f0-9-]{36}$/.test(record.id)||typeof record.attachmentId!=='string'||!Number.isSafeInteger(record.size)||record.size<0||record.size>100*1024*1024||!/^[a-f0-9]{64}$/.test(record.sha256))throw Error('Invalid private attachment backup metadata.');\n    const response=await fetchAuxAPIAuthenticatedRequest(accountId,'/attachments/'+record.id+'/content',{method:'GET',timeoutMs:120000,fallbackErrorMessage:'Failed to recover private attachment'}),reader=response.body?.getReader(),chunks=[];let size=0;if(!reader)throw Error('Private attachment body missing.');\n",
+              "replace": "    if(record.localPath!==localPath||typeof record.id!=='string'||!/^[a-f0-9-]{36}$/.test(record.id)||typeof record.attachmentId!=='string'||!Number.isSafeInteger(record.size)||record.size<0||record.size>100*1024*1024||!/^[a-f0-9]{64}$/.test(record.sha256))throw Error('Invalid private attachment backup metadata.');\n    auxCloudCheckAttachmentIdentity(accountId,session,identity);\n    const response=await fetchAuxAPIAuthenticatedRequest(accountId,'/attachments/'+record.id+'/content',{method:'GET',timeoutMs:120000,fallbackErrorMessage:'Failed to recover private attachment'}),reader=response.body?.getReader(),chunks=[];let size=0;if(!reader)throw Error('Private attachment body missing.');\n",
+              "count": 1
+            },
+            {
+              "kind": "cloud-attachment-adapter-4",
+              "find": "    // creates exclusively. No server path is passed as a filesystem destination.\n    const fs=await import('node:fs/promises'),paths=await import('node:path'),root=getSessionTaskDir(session,accountId);\n    const rootStat=await fs.lstat(root);if(rootStat.isSymbolicLink()||!rootStat.isDirectory())throw Error('Attachment recovery requires an existing real session directory.');\n",
+              "replace": "    // creates exclusively. No server path is passed as a filesystem destination.\n    const fs=await import('node:fs/promises'),paths=await import('node:path');\n    auxCloudCheckAttachmentIdentity(accountId,session,identity);\n    const root=getSessionTaskDir(session,accountId);\n    const rootStat=await fs.lstat(root);if(rootStat.isSymbolicLink()||!rootStat.isDirectory())throw Error('Attachment recovery requires an existing real session directory.');\n",
+              "count": 1
+            },
+            {
+              "kind": "cloud-attachment-adapter-5",
+              "find": "    if(directoryStat){const realRoot=await fs.realpath(root),realDirectory=await fs.realpath(directory);if(paths.dirname(realDirectory)!==realRoot)throw Error('Attachment recovery escapes the session directory.');}\n    const restored=await prepareFileAttachment(root,{id:record.attachmentId,type:'file',name:localPath.slice(12),mimeType:record.mimeType||'application/octet-stream',data:bytes.toString('base64')});\n",
+              "replace": "    if(directoryStat){const realRoot=await fs.realpath(root),realDirectory=await fs.realpath(directory);if(paths.dirname(realDirectory)!==realRoot)throw Error('Attachment recovery escapes the session directory.');}\n    auxCloudCheckAttachmentIdentity(accountId,session,identity);\n    const restored=await prepareFileAttachment(root,{id:record.attachmentId,type:'file',name:localPath.slice(12),mimeType:record.mimeType||'application/octet-stream',data:bytes.toString('base64')});\n",
+              "count": 1
+            },
+            {
+              "kind": "cloud-attachment-adapter-6",
+              "find": "  if(bytes.length>50000000)throw Error('Shared transcript exceeds 50 MB.');\n  const result=await auxCloudUploadBytes(accountId,bytes,'shared-session.json','application/json','share');\n  const shared=sharedSessionLinkSchema.parse(result.share);return toSharedSessionLink(shared.id);\n",
+              "replace": "  if(bytes.length>50000000)throw Error('Shared transcript exceeds 50 MB.');\n  const identity=auxCloudTransferIdentity(accountId);\n  const result=await auxCloudUploadBytes(accountId,bytes,'shared-session.json','application/json','share',identity);\n  auxCloudCheckTransferIdentity(accountId,identity);\n  const shared=sharedSessionLinkSchema.parse(result.share);return toSharedSessionLink(shared.id);\n",
+              "count": 1
+            },
+            {
+              "kind": "cloud-session-adapter-1",
+              "find": "  if(revision===null){try{const remote=await auxCloudSessionJSON(accountId,'/sync/sessions/'+cloudId,'GET');if(!remote.deletedAt){const copied=await auxCloudReadSessionSnapshot(accountId,remote);if(auxCloudSessionDigest(copied)===digest){state.sessions[id]={...entry,cloudId,revision:remote.revision,localDigest:digest};await auxCloudSaveSessionState(state);return;}}cloudId=id.slice(0,90)+'-conflict-'+(await import('node:crypto')).randomBytes(8).toString('hex');revision=null;}catch(error){if(!(error instanceof AuxApiError&&error.status===404))throw error;}}\n  const publish=async()=>{const copy=JSON.parse(JSON.stringify(snapshot));copy.session.id=cloudId;copy.session.parentId=state.sessions[snapshot.session.parentId]?.cloudId??snapshot.session.parentId;copy.originSessionId=entry.originSessionId||id;if(cloudId!==id)copy.session.title+=' (conflict copy)';const bytes=await auxCloudSessionCipher(accountId,cloudId,copy),blob=await auxCloudUploadBytes(accountId,bytes,'encrypted-session.json','application/json','attachment');if(auxCloudSessionIdentity(accountId)!==state.identity)throw Error('Account changed during session backup.');return auxCloudSessionJSON(accountId,'/sync/sessions/'+cloudId,'PUT',{blobId:blob.id,generation:state.generation},revision===null?{'X-Aux-If-None-Match':'*'}:{'X-Aux-If-Match':'\"'+revision+'\"'});};\n  let remote;try{remote=await publish();}catch(error){if(!(error instanceof AuxApiError&&error.status===412))throw error;cloudId=id.slice(0,90)+'-conflict-'+(await import('node:crypto')).randomBytes(8).toString('hex');revision=null;remote=await publish();}\n",
+              "replace": "  if(revision===null){try{const remote=await auxCloudSessionJSON(accountId,'/sync/sessions/'+cloudId,'GET');if(!remote.deletedAt){const copied=await auxCloudReadSessionSnapshot(accountId,remote);if(auxCloudSessionDigest(copied)===digest){state.sessions[id]={...entry,cloudId,revision:remote.revision,localDigest:digest};await auxCloudSaveSessionState(state);return;}}cloudId=id.slice(0,90)+'-conflict-'+(await import('node:crypto')).randomBytes(8).toString('hex');revision=null;}catch(error){if(!(error instanceof AuxApiError&&error.status===404))throw error;}}\n  const publish=async()=>{const copy=JSON.parse(JSON.stringify(snapshot));copy.session.id=cloudId;copy.session.parentId=state.sessions[snapshot.session.parentId]?.cloudId??snapshot.session.parentId;copy.originSessionId=entry.originSessionId||id;if(cloudId!==id)copy.session.title+=' (conflict copy)';const transferIdentity=auxCloudTransferIdentity(accountId),bytes=await auxCloudSessionCipher(accountId,cloudId,copy);auxCloudCheckTransferIdentity(accountId,transferIdentity);const blob=await auxCloudUploadBytes(accountId,bytes,'encrypted-session.json','application/json','attachment',transferIdentity);if(auxCloudSessionIdentity(accountId)!==state.identity)throw Error('Account changed during session backup.');return auxCloudSessionJSON(accountId,'/sync/sessions/'+cloudId,'PUT',{blobId:blob.id,generation:state.generation},revision===null?{'X-Aux-If-None-Match':'*'}:{'X-Aux-If-Match':'\"'+revision+'\"'});};\n  let remote;try{remote=await publish();}catch(error){if(!(error instanceof AuxApiError&&error.status===412))throw error;cloudId=id.slice(0,90)+'-conflict-'+(await import('node:crypto')).randomBytes(8).toString('hex');revision=null;remote=await publish();}\n",
+              "count": 1
+            },
+            {
+              "kind": "cloud-session-adapter-2",
+              "find": "    const copy=await auxCloudReadSessionSnapshot(accountId,remote);if(entry.deleteConflict?.revision!==remote.revision){entry.deleteConflict={revision:remote.revision,id:id.slice(0,90)+'-conflict-'+(await import('node:crypto')).randomBytes(8).toString('hex')};await auxCloudSaveSessionState(state);}const copyId=entry.deleteConflict.id;copy.session.id=copyId;copy.session.title+=' (conflict copy)';copy.originSessionId=copy.originSessionId||entry.originSessionId||id;\n    let copied;try{copied=await auxCloudSessionJSON(accountId,'/sync/sessions/'+copyId,'GET');}catch(error){if(!(error instanceof AuxApiError&&error.status===404))throw error;}if(!copied){const bytes=await auxCloudSessionCipher(accountId,copyId,copy),blob=await auxCloudUploadBytes(accountId,bytes,'encrypted-session.json','application/json','attachment');copied=await auxCloudSessionJSON(accountId,'/sync/sessions/'+copyId,'PUT',{blobId:blob.id,generation:state.generation},{'X-Aux-If-None-Match':'*'});}if(copied.deletedAt)throw Error('Deletion conflict copy was removed; newer remote history preserved.');const verified=await auxCloudReadSessionSnapshot(accountId,copied);if(auxCloudSessionDigest(verified)!==auxCloudSessionDigest(copy))throw Error('Deletion conflict copy verification failed.');\n  }\n",
+              "replace": "    const copy=await auxCloudReadSessionSnapshot(accountId,remote);if(entry.deleteConflict?.revision!==remote.revision){entry.deleteConflict={revision:remote.revision,id:id.slice(0,90)+'-conflict-'+(await import('node:crypto')).randomBytes(8).toString('hex')};await auxCloudSaveSessionState(state);}const copyId=entry.deleteConflict.id;copy.session.id=copyId;copy.session.title+=' (conflict copy)';copy.originSessionId=copy.originSessionId||entry.originSessionId||id;\n    let copied;try{copied=await auxCloudSessionJSON(accountId,'/sync/sessions/'+copyId,'GET');}catch(error){if(!(error instanceof AuxApiError&&error.status===404))throw error;}if(!copied){const transferIdentity=auxCloudTransferIdentity(accountId),bytes=await auxCloudSessionCipher(accountId,copyId,copy);auxCloudCheckTransferIdentity(accountId,transferIdentity);const blob=await auxCloudUploadBytes(accountId,bytes,'encrypted-session.json','application/json','attachment',transferIdentity);copied=await auxCloudSessionJSON(accountId,'/sync/sessions/'+copyId,'PUT',{blobId:blob.id,generation:state.generation},{'X-Aux-If-None-Match':'*'});}if(copied.deletedAt)throw Error('Deletion conflict copy was removed; newer remote history preserved.');const verified=await auxCloudReadSessionSnapshot(accountId,copied);if(auxCloudSessionDigest(verified)!==auxCloudSessionDigest(copy))throw Error('Deletion conflict copy verification failed.');\n  }\n",
+              "count": 1
+            },
+            {
+              "find": "async function fetchWithAccessTokenRefresh(Cn,ei,ti){let ni=await getValidAccessToken(Cn),ri=ei.split(`?`)[0];try{return await ti(ni)}catch(ei){if(!ni||!isAccessTokenRefreshError(ei))throw ei;logger.warn(`[AuxAPI] Access token rejected; forcing token refresh`,{accountId:Cn,path:ri,error:ei});let ii=await getValidAccessToken(Cn,{bypassRefreshCooldown:!0,forceRefresh:!0});if(!ii)throw logger.warn(`[AuxAPI] Forced token refresh did not return a token`,{accountId:Cn,path:ri}),ei;return ti(ii)}}",
+              "replace": "async function fetchWithAccessTokenRefresh(Cn,ei,ti){const identity=auxCloudTransferIdentity(Cn),check=()=>{if(auxCloudTransferIdentity(Cn)!==identity)throw Error('Account changed during cloud request.');};let ni=await getValidAccessToken(Cn),ri=ei.split(`?`)[0];check();try{const result=await ti(ni);check();return result}catch(ei){check();if(!ni||!isAccessTokenRefreshError(ei))throw ei;logger.warn(`[AuxAPI] Access token rejected; forcing token refresh`,{accountId:Cn,path:ri,error:ei});let ii=await getValidAccessToken(Cn,{bypassRefreshCooldown:!0,forceRefresh:!0});check();if(!ii)throw logger.warn(`[AuxAPI] Forced token refresh did not return a token`,{accountId:Cn,path:ri}),ei;const result=await ti(ii);check();return result}}",
+              "count": 1,
+              "kind": "integration"
+            }
+          ]
+        },
+        {
+          "name": "Aux runtime identity",
+          "outputSha256": "f3a8c02127d31b5c09c2f83b54dbfc1f789c7cfb7125ec0993dad31b18f73737",
+          "anchors": [
+            {
+              "find": "init_aside",
+              "replace": "init_aux",
+              "count": 15,
+              "scope": "private module binding",
+              "kind": "identity"
+            },
+            {
+              "find": "`aside packaged memory 한글-`",
+              "replace": "`aux packaged memory 한글-`",
+              "count": 1,
+              "scope": "disposable memory test prefix",
+              "kind": "identity"
+            },
+            {
+              "find": "aside couldn't connect from this network|could not reach aside servers",
+              "replace": "aux couldn't connect from this network|could not reach aux servers",
+              "count": 1,
+              "scope": "own network diagnostic matcher",
+              "kind": "identity"
+            },
+            {
+              "find": "Symbol(\"aside_ref\")",
+              "replace": "Symbol(\"aux_ref\")",
+              "count": 1,
+              "scope": "ephemeral injected DOM symbol description",
+              "kind": "identity"
+            },
+            {
+              "find": "file:///aside-image-worker.cjs",
+              "replace": "file:///aux-image-worker.cjs",
+              "count": 1,
+              "scope": "nominal worker module resolution URL",
+              "kind": "identity"
+            },
+            {
+              "find": "originator:`aside`",
+              "replace": "originator:`aux`",
+              "count": 1,
+              "scope": "OAuth product metadata; scopes and client unchanged",
+              "kind": "identity"
+            },
+            {
+              "find": "<aside_code>",
+              "replace": "<aux_code>",
+              "count": 1,
+              "scope": "paired generated system-prompt tag",
+              "kind": "identity"
+            },
+            {
+              "find": "</aside_code>",
+              "replace": "</aux_code>",
+              "count": 1,
+              "scope": "paired generated system-prompt tag",
+              "kind": "identity"
+            },
+            {
+              "find": "`aside-notion-export-`",
+              "replace": "`aux-notion-export-`",
+              "count": 1,
+              "scope": "disposable export prefix",
+              "kind": "identity"
+            },
+            {
+              "find": "aside-history-",
+              "replace": "aux-history-",
+              "count": 2,
+              "scope": "paired disposable history snapshot prefixes",
+              "kind": "identity"
+            },
+            {
+              "find": "aside_component_version:DAEMON_VERSION",
+              "replace": "aux_component_version:DAEMON_VERSION",
+              "count": 1,
+              "scope": "new telemetry field; no historical analytics rewrite",
+              "kind": "identity"
+            },
+            {
+              "find": "asideComponentVersion",
+              "replace": "auxComponentVersion",
+              "count": 2,
+              "scope": "paired local feedback schema and outgoing metadata",
+              "kind": "identity"
+            },
+            {
+              "find": "'aside host profiles'",
+              "replace": "'aux host profiles'",
+              "count": 2,
+              "scope": "CLI diagnostic command",
+              "kind": "identity"
+            },
+            {
+              "find": "Run 'aside skills list'",
+              "replace": "Run 'aux skills list'",
+              "count": 1,
+              "scope": "CLI diagnostic command",
+              "kind": "identity"
+            },
+            {
+              "find": "Aux Computer Use helper is not built. Run `pnpm --filter @aside/native-helper build:computer-use-helper-dev`.",
+              "replace": "Aux Computer Use helper is not included in this build.",
+              "count": 3,
+              "scope": "truthful disabled-helper diagnostic",
+              "kind": "identity"
+            },
+            {
+              "find": "`.local/bin/aside`",
+              "replace": "`.local/bin/aux`",
+              "count": 1,
+              "scope": "Aux CLI discovery; no old installation read or migration",
+              "kind": "identity"
+            },
+            {
+              "find": "`.aside/bin/aside`",
+              "replace": "`.aux/bin/aux`",
+              "count": 1,
+              "scope": "Aux CLI discovery; no old installation read or migration",
+              "kind": "identity"
+            },
+            {
+              "find": "`current/aside.exe`",
+              "replace": "`current/aux.exe`",
+              "count": 1,
+              "scope": "Aux Windows CLI discovery",
+              "kind": "identity"
+            },
+            {
+              "find": "`Aux/CLI/current/aside.exe`",
+              "replace": "`Aux/CLI/current/aux.exe`",
+              "count": 1,
+              "scope": "Aux Windows CLI discovery",
+              "kind": "identity"
+            },
+            {
+              "find": "`.local/bin/aside.exe`",
+              "replace": "`.local/bin/aux.exe`",
+              "count": 1,
+              "scope": "Aux Windows CLI discovery",
+              "kind": "identity"
+            },
+            {
+              "find": "`.aside/bin/aside.exe`",
+              "replace": "`.aux/bin/aux.exe`",
+              "count": 1,
+              "scope": "Aux Windows CLI discovery",
+              "kind": "identity"
+            },
+            {
+              "find": "whence -p aside",
+              "replace": "whence -p aux",
+              "count": 1,
+              "scope": "paired shell command discovery",
+              "kind": "identity"
+            },
+            {
+              "find": "command -v aside",
+              "replace": "command -v aux",
+              "count": 1,
+              "scope": "paired shell command discovery",
+              "kind": "identity"
+            },
+            {
+              "find": "`aside.exe`",
+              "replace": "`aux.exe`",
+              "count": 1,
+              "scope": "paired Windows command discovery",
+              "kind": "identity"
+            },
+            {
+              "find": "`aside-cli-install-`",
+              "replace": "`aux-cli-install-`",
+              "count": 1,
+              "scope": "disposable install prefix",
+              "kind": "identity"
+            },
+            {
+              "find": "'aside-install.ps1'",
+              "replace": "'aux-install.ps1'",
+              "count": 1,
+              "scope": "disposable installer basename",
+              "kind": "identity"
+            },
+            {
+              "find": "/aside[- ]?daemon/i",
+              "replace": "/aux[- ]?daemon/i",
+              "count": 1,
+              "scope": "Aux-only daemon takeover classification",
+              "kind": "identity"
+            },
+            {
+              "find": "`not_aside_daemon`",
+              "replace": "`not_aux_daemon`",
+              "count": 1,
+              "scope": "takeover telemetry reason",
+              "kind": "identity"
+            }
+          ]
+        },
+        {
+          "name": "experimental settings v2",
+          "outputSha256": "754f20b9882c86c6e044bb1e06e8b8f7492097e7ca935ee92da4b4d0f7b74a24",
+          "anchors": [
+            {
+              "kind": "identity",
+              "name": "Versioned Aux experimental settings",
+              "find": "object({sync:boolean$1().default(!1),kakaotalk:boolean$1().default(!1),onboarding:boolean$1().default(!1),asideCode:boolean$1().default(!1),compactionLimits:boolean$1().default(!1)})",
+              "replace": "object({sync:boolean$1().default(!1),kakaotalk:boolean$1().default(!1),onboarding:boolean$1().default(!1),format:string$3().optional(),auxCode:boolean$1().optional(),asideCode:boolean$1().optional(),compactionLimits:boolean$1().default(!1)}).transform(function migrateAuxExperimentalSettings(value) {\n  const format = 'aux.experimental.v2';\n  if (value.format !== undefined && value.format !== format)\n    throw Error('Unsupported Aux experimental settings version.');\n  if (value.format !== undefined && Object.hasOwn(value, 'asideCode') ||\n      value.format === undefined && Object.hasOwn(value, 'auxCode'))\n    throw Error('Ambiguous Aux experimental settings generation.');\n  const {asideCode, auxCode, format: previousFormat, ...settings} = value;\n  return {...settings, format, auxCode: (previousFormat === format ? auxCode : asideCode) ?? false};\n})",
+              "count": 1
+            },
+            {
+              "kind": "identity",
+              "name": "Versioned Aux experimental settings",
+              "find": ".asideCode",
+              "replace": ".auxCode",
+              "count": 1
+            }
+          ]
+        },
+        {
+          "name": "authenticated cloud invalidation and reconciliation",
+          "outputSha256": "9e8701e3e01b4cb2f7dcb2967ef6debb00e7d829a41c5eae4d9366adb39243f2",
+          "anchors": [
+            {
+              "find": "EventsClient=class{options;#e=/* @__PURE__ */ new Set;#t;#n=!1;#r=0;#i=0;#a=-1/0;#o;#s;#c;#l;constructor(Cn){this.options=Cn}subscribe(Cn,ei){let ti={topics:Cn,listener:ei};return this.#e.add(ti),this.#f(),()=>{this.#e.delete(ti),this.#f()}}start(){this.#n||(this.#n=!0,this.#u(Math.random()*1e4))}stop(){this.#n=!1,this.#r++,clearTimeout(this.#o),this.#d(),this.#i=0,this.#a=-1/0}reconnect(){this.#n&&this.#t?.readyState!==1&&(this.#r++,this.#d(),this.#u(Math.random()*1e4))}#u(Cn){clearTimeout(this.#o),this.#o=setTimeout(()=>void this.#p(),Cn)}#d(){clearTimeout(this.#s),clearTimeout(this.#l),clearInterval(this.#c);let Cn=this.#t;this.#t=void 0,Cn&&(Cn.onopen=Cn.onmessage=Cn.onclose=Cn.onerror=null,Cn.close())}#f(){this.#t?.readyState===1&&this.#t.send(JSON.stringify({type:`subscribe`,topics:[...new Set([...this.#e].flatMap(Cn=>Cn.topics))]}))}async#p(){if(!this.#n)return;let Cn=++this.#r,ei=0,ti=Date.now(),ni=()=>this.#n&&this.#r===Cn,ri=Cn=>{if(!ni())return;this.#r++,this.#d(),ei&&Date.now()-ei>=3e4&&(this.#i=0);let ti=Math.min(6e4,1e3*2**Math.min(this.#i++,6));this.#u(ti/2+Math.random()*ti/2),Cn&&this.options.onError?.(Cn)};this.#s=setTimeout(()=>ri(/* @__PURE__ */ Error(`Events connection timed out`)),15e3);try{let Cn=this.#i>0&&Date.now()-this.#a>=6e4;Cn&&(this.#a=Date.now());let ii=await this.options.getAccessToken(Cn);if(!ni())return;let ai=new URL(`/events`,this.options.baseUrl);ai.protocol=ai.protocol===`https:`?`wss:`:`ws:`;let oi=new WebSocket(ai,[EVENTS_PROTOCOL,`bearer.${ii}`]);this.#t=oi,oi.onopen=()=>{if(ni())try{this.#f()}catch{ri()}},oi.onerror=()=>ri(/* @__PURE__ */ Error(`Events connection failed`)),oi.onclose=()=>ri(),oi.onmessage=({data:Cn})=>{if(!ni()||typeof Cn!=`string`)return;if(Cn===`{\"type\":\"pong\"}`){ti=Date.now();return}let ii;try{ii=eventsServerFrameSchema.safeParse(JSON.parse(Cn))}catch{return ri(/* @__PURE__ */ Error(`Invalid events frame`))}if(!ii.success)return ri(/* @__PURE__ */ Error(`Invalid events frame`));let ai=ii.data;if(ai.type===`ready`){if(ei)return;ei=Date.now(),ti=ei,clearTimeout(this.#s),this.#l=setTimeout(()=>ri(),Math.max(1e3,ai.expiresAt-Date.now()-5e3-Math.random()*15e3)),this.#c=setInterval(()=>{if(Date.now()-ti>6e4)return ri(/* @__PURE__ */ Error(`Events heartbeat timed out`));try{oi.send(EVENTS_PING)}catch{ri()}},25e3),this.options.onReady?.();return}for(let{topics:Cn,listener:ei}of this.#e)if(Cn.includes(eventTopic(ai.event)))try{ei(ai.event)}catch(Cn){this.options.onError?.(Cn instanceof Error?Cn:Error(String(Cn)))}}}catch(Cn){ri(Cn instanceof Error?Cn:Error(String(Cn)))}}}",
+              "replace": "EventsClient=auxCreateEventPollClientClass()",
+              "count": 1,
+              "scope": "replace unsupported WebSocket client with paired bounded polling",
+              "kind": "integration"
+            },
+            {
+              "find": "EVENTS_PROTOCOL=`aside-events`",
+              "replace": "EVENTS_PROTOCOL=`aux-events.poll.v1`",
+              "count": 1,
+              "scope": "paired versioned Aux event transport",
+              "kind": "integration"
+            },
+            {
+              "find": "new EventsClient({baseUrl:AUX_API_BASE_URL,getAccessToken:async ei=>{if(!ii())",
+              "replace": "new EventsClient({baseUrl:AUX_API_BASE_URL,isCurrent:ii,getAccessToken:async ei=>{if(!ii())",
+              "count": 1,
+              "scope": "retain exact originating account incarnation",
+              "kind": "integration"
+            },
+            {
+              "find": "pi.subscribe([`account`,`billing`,`devices`,`user-settings`,`drive`,`routines`],fi)",
+              "replace": "pi.subscribe([`account`,`billing`,`devices`,`user-settings`,`drive`,`routines`,`sessions`],fi)",
+              "count": 1,
+              "scope": "subscribe actual session snapshot updates",
+              "kind": "integration"
+            },
+            {
+              "find": "case`user-settings.updated`:di(`sync`)",
+              "replace": "case`user-settings.updated`:di(`sync`);break;case`routines.invalidated`:di(`routines`);break;case`sessions.changed`:di(`sessions`)",
+              "count": 1,
+              "scope": "route snapshot invalidations through supplied scheduler",
+              "kind": "integration"
+            },
+            {
+              "find": "case`sync`:{let ei=await getRemoteUserSettings(Cn);",
+              "replace": "case`sessions`:{if(!isSyncEnabled(Cn))break;const state=await auxCloudSessionState(Cn);if(!ii())return;state.queue=state.queue.catch(()=>{}).then(()=>ii()?auxCloudDiscoverSessions(Cn):void 0);await state.queue;break}case`routines`:await syncRoutines(Cn,ii,!1);break;case`sync`:{let ei=await getRemoteUserSettings(Cn);",
+              "count": 1,
+              "scope": "serialize sessions and reconcile routines through existing account owners",
+              "kind": "integration"
+            },
+            {
+              "find": "try{await ui(ei),ei.startsWith(`routine:`)",
+              "replace": "try{await auxRunEventRefresh(()=>ui(ei)),ei.startsWith(`routine:`)",
+              "count": 1,
+              "scope": "retain actual cache-refresh task until physical awaited settlement",
+              "kind": "integration"
+            },
+            {
+              "kind": "integration",
+              "scope": "finite Aux event polling helpers",
+              "append": "\nfunction auxEventPollState() {\n  return auxEventPollState.cached ??= { clients: new Set(), refreshes: new Set() };\n}\nasync function auxStopEventPolling() {\n  const state = auxEventPollState(), polling = [...state.clients];\n  // These are the supplied account owners: their stop clears refresh timers\n  // and invalidates the exact account incarnation before awaiting its work.\n  if (typeof clients !== 'undefined') { for (const owner of clients.values()) owner.stop(); clients.clear(); }\n  await Promise.all(polling.map(client => client.stop()));\n  await Promise.all([...state.refreshes]);\n}\nasync function auxRunEventRefresh(callback) {\n  const state = auxEventPollState(), boundary = auxBrokerBoundary();\n  const pending = boundary.awaited(callback);\n  state.refreshes.add(pending);\n  try { return await pending; }\n  finally { state.refreshes.delete(pending); }\n}\nfunction auxCreateEventPollClientClass() {\n  return class {\n    constructor(options) { this.options = options; this.listeners = new Set(); this.running = false; this.failures = 0; this.ready = false; }\n    subscribe(topics, listener) {\n      const entry = { topics, listener }; this.listeners.add(entry); this.cursor = undefined;\n      return () => { this.listeners.delete(entry); this.cursor = undefined; };\n    }\n    start() {\n      if (this.running) return;\n      if (typeof this.options.isCurrent !== 'function') throw Error('Events require an originating account owner.');\n      auxBrokerBoundary().registerProducerStop(auxStopEventPolling);\n      this.running = true; auxEventPollState().clients.add(this); this.schedule(Math.random() * 2000);\n    }\n    stop() {\n      this.running = false; clearTimeout(this.timer); this.controller?.abort(); auxEventPollState().clients.delete(this);\n      return this.pending ?? Promise.resolve();\n    }\n    reconnect() { if (this.running) { this.retryNow = true; if (this.pending) this.controller?.abort(); else this.schedule(0); } }\n    schedule(delay) { clearTimeout(this.timer); if (this.running) this.timer = setTimeout(() => this.tick(), delay); }\n    tick() {\n      if (!this.running || this.pending) return;\n      this.pending = this.poll().finally(() => {\n        this.pending = undefined;\n        const delay = this.retryNow ? 0 : Math.min(300_000, 60_000 * 2 ** Math.min(this.failures, 3)) + Math.random() * 5000;\n        this.retryNow = false; this.schedule(delay);\n      });\n    }\n    async poll() {\n      const controller = new AbortController(); this.controller = controller;\n      const current = () => this.running && !controller.signal.aborted && this.options.isCurrent();\n      try {\n        if (!current()) return void this.stop();\n        const allowed = ['account', 'billing', 'devices', 'user-settings', 'drive', 'routines', 'sessions'];\n        const topics = [...new Set([...this.listeners].flatMap(entry => entry.topics))].sort();\n        if (!topics.length || topics.some(topic => !allowed.includes(topic))) throw Error('Unsupported Aux event topics.');\n        const url = new URL('/events/poll', this.options.baseUrl);\n        if (url.protocol !== 'https:' || url.username || url.password) throw Error('Aux events require HTTPS.');\n        url.searchParams.set('topics', topics.join(',')); if (this.cursor) url.searchParams.set('cursor', this.cursor);\n        let reply;\n        for (let attempt = 0; attempt < 2; attempt++) {\n          const token = await this.options.getAccessToken(attempt === 1); if (!current()) return;\n          if (!token) throw Error('Events credentials unavailable.');\n          // Expected offline/cancel outcomes settle this read lease before the\n          // error is reported; cancellation alone never stands in for settlement.\n          const result = await auxBrokerBoundary().awaited(async () => {\n            try {\n              const response = await fetch(url, { headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' }, redirect: 'error', signal: AbortSignal.any([controller.signal, AbortSignal.timeout(15_000)]) });\n              if (!response.ok) { await response.body?.cancel(); return { status: response.status }; }\n              const reader = response.body?.getReader(), chunks = []; let size = 0;\n              if (!reader) throw Error('Aux event response is missing.');\n              try { for (;;) { const part = await reader.read(); if (part.done) break; size += part.value.byteLength; if (size > 8192) { await reader.cancel(); throw Error('Aux event response exceeds its bound.'); } chunks.push(Buffer.from(part.value)); } }\n              finally { reader.releaseLock(); }\n              return { body: JSON.parse(Buffer.concat(chunks).toString('utf8')) };\n            } catch (error) { return { error }; }\n          });\n          if (!current()) return;\n          if (result.error) throw result.error;\n          if (result.status === 401 && attempt === 0) continue;\n          if (result.status) throw Error(`Aux event request failed (${result.status}).`);\n          reply = result.body; break;\n        }\n        if (!reply || reply.protocol !== 'aux-events.poll.v1' || !/^aux-ev1\\.[a-f0-9]{64}$/.test(reply.cursor) || reply.retryAfterMs !== 60_000 || !Array.isArray(reply.changed) || reply.changed.length > topics.length || new Set(reply.changed).size !== reply.changed.length || reply.changed.some(topic => !topics.includes(topic))) throw Error('Invalid Aux event snapshot.');\n        if (!current()) return;\n        const types = { account: 'account.updated', billing: 'billing.subscription-updated', devices: 'devices.changed', 'user-settings': 'user-settings.updated', drive: 'drive.files-changed', routines: 'routines.invalidated', sessions: 'sessions.changed' };\n        for (const topic of reply.changed) for (const entry of this.listeners) if (entry.topics.includes(topic)) {\n          if (!current()) return;\n          entry.listener({ type: types[topic], ...topic === 'devices' ? { payload: { deviceId: '*' } } : {} });\n        }\n        this.cursor = reply.cursor; this.failures = 0;\n        if (!this.ready) { this.ready = true; this.options.onReady?.(); }\n      } catch {\n        if (current()) { this.failures++; this.ready = false; this.options.onError?.(Error('Aux events are offline or unavailable; synchronization will retry.')); }\n      } finally { if (this.controller === controller) this.controller = undefined; }\n    }\n  };\n}\n",
+              "count": 1
+            }
+          ]
+        },
+        {
+          "name": "ordinary chat startup and original-attempt failure",
+          "outputSha256": "abe96899835a43527efe4fb6073711c6927413d287471039d1eede66ab03bf55",
+          "anchors": [
+            {
+              "find": "let ti=createDesktopRepl({accountId:Cn.accountId,agentSessionId:Cn.session.id,cwd:Cn.session.cwd,sessionStorageDir:Cn.sessionDir,accountRoot:Cn.accountRoot,browser:ei,hooks:Cn.hooks,isPathAllowed:(ei,ti)=>hasPermission(resolvePermission({accountRoot:Cn.accountRoot,permissionMode:Cn.session.permissionMode,accountPermission:Cn.settings.get(`permission`),sessionPermission:Cn.session.permission}),{type:`file`,path:ei,mode:ti})===`allow`,incognito:Cn.session.incognito,channelEnabled:Cn.session.trigger?.type===`channel`,imageGenerationModels:Cn.models,canSendMessages:!Cn.session.parentId||isForkSelfSubagent(Cn.session),settings:settings(Cn.accountId)})",
+              "replace": "let ti=auxCreateLazyDesktopRepl(()=>createDesktopRepl({accountId:Cn.accountId,agentSessionId:Cn.session.id,cwd:Cn.session.cwd,sessionStorageDir:Cn.sessionDir,accountRoot:Cn.accountRoot,browser:ei,hooks:Cn.hooks,isPathAllowed:(ei,ti)=>hasPermission(resolvePermission({accountRoot:Cn.accountRoot,permissionMode:Cn.session.permissionMode,accountPermission:Cn.settings.get(`permission`),sessionPermission:Cn.session.permission}),{type:`file`,path:ei,mode:ti})===`allow`,incognito:Cn.session.incognito,channelEnabled:Cn.session.trigger?.type===`channel`,imageGenerationModels:Cn.models,canSendMessages:!Cn.session.parentId||isForkSelfSubagent(Cn.session),settings:settings(Cn.accountId)}))",
+              "count": 1,
+              "scope": "lazy existing guarded desktop REPL construction",
+              "kind": "integration"
+            },
+            {
+              "find": "async startRun(Cn,ei,ti,ni){let ri=await this.#h(Cn,ei);assertSessionCanStart(Cn,ei);",
+              "replace": "async startRun(Cn,ei,ti,ni){const auxStartOwner=AccountRegistry.getAccount(Cn);let ri,auxStartAttempt;try{auxStartAttempt=auxCaptureAgentStartAttempt(Cn,ei);ri=await this.#h(Cn,ei)}catch(error){auxReportAgentStartFailure(Cn,ei,auxStartOwner,auxStartAttempt,error)}assertSessionCanStart(Cn,ei);",
+              "count": 1,
+              "scope": "persist truthful early startup error and return supplied UI error",
+              "kind": "integration"
+            },
+            {
+              "kind": "integration",
+              "scope": "ordinary chat construction and startup error helpers",
+              "append": "\nfunction auxCreateLazyDesktopRepl(factory) {\n  let repl, disposal, disposed = false;\n  return {\n    run(...args) {\n      if (disposed) throw Error('The desktop tool session has closed.');\n      return (repl ??= factory()).run(...args);\n    },\n    dispose() { if (!disposed) { disposed = true; disposal = repl?.dispose(); } return disposal; },\n  };\n}\nfunction auxCaptureAgentStartAttempt(accountId, sessionId) {\n  const session = SessionStore.get(accountId, sessionId);\n  if (!session || session.status !== 'idle' || session.archivedAt) return undefined;\n  const overview = SessionStore.listTurnOverviews(accountId, sessionId, undefined, 1);\n  if (!Number.isSafeInteger(overview.transcriptRevision)) return undefined;\n  // System-prompt preparation belongs to this same initializer. Everything\n  // else, including model/context edits and new transcript work, must match.\n  const { systemPrompt: _, ...snapshot } = session;\n  const latest = overview.turns.at(-1);\n  return JSON.stringify({ session: snapshot, revision: overview.transcriptRevision,\n    latestTurnId: latest?.id ?? null, latestTurnStatus: latest?.status ?? null });\n}\nfunction auxReportAgentStartFailure(accountId, sessionId, owner, attempt, error) {\n  try {\n    const current = AccountRegistry.getAccount(accountId);\n    if (attempt && owner && current?.createdAt === owner.createdAt &&\n        current?.incarnationId === owner.incarnationId &&\n        auxCaptureAgentStartAttempt(accountId, sessionId) === attempt)\n      SessionStore.update(accountId, sessionId, { status: 'errored' });\n  } catch {\n    throw new TRPCError({ code: 'PRECONDITION_FAILED', message:\n      'This task could not initialize and its saved status could not be verified. Your draft is preserved; keep this window open and try again.' });\n  }\n  const disabled = error?.code === 'AUX_SUPERVISED_TASKS_DISABLED';\n  throw new TRPCError({ code: 'PRECONDITION_FAILED', message: disabled\n    ? 'This task could not start because a required tool needs supervised execution, which is disabled in this build. Your draft is preserved.'\n    : 'This task could not initialize. Your draft is preserved; check model and tool availability, then try again.' });\n}\n",
+              "count": 1
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "generators": [
+    {
+      "path": "docs/integration/proposed/completion-20261026/integration/transform.mjs",
+      "sha256": "1ca9a216b68bbea58a91cfcd6d5c48945e7b96a141ca17a5dc364c208f2a28ed"
+    },
+    {
+      "path": "docs/integration/proposed/completion-20261026/integration/pins.json",
+      "sha256": "ec25dfd7a6e8f4faf77f385476724a0a71ce7b75a529fe1854fb1afcdb0feffe"
+    },
+    {
+      "path": "docs/integration/proposed/completion-20261026/integration/anchors.json",
+      "sha256": "e2c09669894a9b7a3e4e7e3ed7cfde7e5f4529d9358f9eacf49afa57156296f2"
+    },
+    {
+      "path": "vendor/provided/cloud-transfer-binding.mjs",
+      "sha256": "63646431b9c349d928b7182f06a9c3b14b2948cfedeed666882280ad04d6896e"
+    },
+    {
+      "path": "vendor/provided/aux-final-runtime-identity.mjs",
+      "sha256": "3af91a07f3c21ca104bb64d86bc8322b2f4fa15116b9860ffc7099a8567b0350"
+    },
+    {
+      "path": "docs/integration/proposed/completion-20261026/integration/identity/source-pins.json",
+      "sha256": "136b03b377f47acde3935a36e32020308c5e21a668b81f9045b10ad4db2699bb"
+    },
+    {
+      "path": "vendor/provided/aux-experimental-settings-v2.mjs",
+      "sha256": "c1ef323fe38ed1608cc2024739b28699b75a4292f4e9eeeffffc395dd98d28af"
+    },
+    {
+      "path": "vendor/provided/aux-event-poll-client.mjs",
+      "sha256": "7e8cd86474af2f207e24280800514923617141c0dadbc70c7ad437bf08bb3ec7"
+    },
+    {
+      "path": "vendor/provided/aux-event-poll-integration.mjs",
+      "sha256": "d94dd3f73ac905ce159495264704f1c5ddc332db4417a9d863d3264b29b0c742"
+    },
+    {
+      "path": "docs/integration/proposed/completion-20261026/integration/events/source-pins.json",
+      "sha256": "050903c9e0e11a80f80d681e7f664ca18c3d057e64f67b5ca55f5fc87f75cd57"
+    },
+    {
+      "path": "vendor/provided/aux-ordinary-chat-startup.mjs",
+      "sha256": "79e41a260fea5959a675f422f0b7a12180abe3ef5f092c5b24a31583b680ddb9"
+    },
+    {
+      "path": "docs/integration/proposed/completion-20261026/integration/ordinary-chat/source-pins.json",
+      "sha256": "d3a0065bdd599125d3925cd1247b45a848502e3e6e3c6f016b18f897d07a09c2"
+    }
+  ],
+  "originalAppChanged": false,
+  "suppliedUiRedesigned": false,
+  "credentialsAccessed": false,
+  "productExecuted": false,
+  "runtimeAccepted": false,
+  "productSigned": false
+}

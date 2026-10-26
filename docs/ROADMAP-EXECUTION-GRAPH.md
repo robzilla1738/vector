@@ -8,9 +8,9 @@ The owner explicitly resumed the Desktop final completion plan with three parall
 | --- | --- |
 | B0 | Complete dispatch snapshot at dd18033d4; separate worktrees/exclusive files; one integrator/native build/app operator |
 | R1 | A38 bounded profile/startup/shutdown evidence retained; final combined successor and broader active-work journey pending |
-| R2/X1 | Actual Profile native-host ownership/cancellation fixes compile; finite ordinary native-host producer/consumer and vendor acceptance still in progress; general advertised automation remains open |
-| D1/D2/D3 | Actual advanced organization passes in A38; reproduced pin-unload and read-only Quick URL defects fixed and compiled as source; CLI Space/routing joins in progress; successor behavior pending |
-| A1/A2 | Account-incarnation transfer fixes and chosen-file lifetime retention integrated as source; twenty focused cases pass; actual provider/attachment-consumption journeys pending secure account input |
+| R2/X1 | Finite native-host producer/consumer, account fences, app-seed protection and physical settlement integrated as source; combined build active. Fixed PDF/utilities and remaining advertised automation joins active; vendor/runtime acceptance pending |
+| D1/D2/D3 | Actual advanced organization passes in A38; pin-unload, restored title and read-only Quick URL repairs integrated; CLI Space/routing/list/resolve source joined; successor behavior pending |
+| A1/A2 | Account fences and chosen-file retention integrated; actual Gateway catalog, Contributor selection/persistence and separate Personal visibility pass. One request failed before streaming; paired lazy-REPL/error fix parses. Owner authorized $1 total/Muse Contributor only; completed inference and attachment consumption pending corrected candidate |
 | C1/O1 | Existing executable preparation retained; production activation, scheduled runner/alerts/key custody/recovery acceptance remain open and outside current local execution authority |
 | Q1 | Current raw package scan and 38 counted UI identity replacements prepared; remaining consumer classification and final successor identity audit pending |
 | P1/V1 | Combined package and focused affected actual-app acceptance follow coherent source joins; no completion/release claim |
