@@ -1,0 +1,35 @@
+{
+  "format": "aux.actual.focused-check.v1",
+  "signedInventorySha256": "28fabb71492c9f0df8022d7b63981806da1b5bdca79c95c6638aea5c430ac0f9",
+  "startupHttpReady": true,
+  "workStateRestored": {
+    "cookie": "aux_profile=work",
+    "localNote": "A4 Work durable note",
+    "draftBeforeQuit": "A17 Work unsent draft survives clean restart.",
+    "txtChip": true
+  },
+  "quit": {
+    "browserExitCode": 0,
+    "daemonExitCode": 0,
+    "memoryExitSignals": [
+      15,
+      15
+    ],
+    "groupStopped": true,
+    "forced": false,
+    "javascriptDrainAllStagesSettled": true,
+    "brokerFinalCountsAllZero": true,
+    "nativeDeadlinePassed": false,
+    "boundedAcceptance": false,
+    "remainingFailure": "HTTP server close stayed pending until browser teardown closed the active shutdown ACK connection; native child-exit deadline fired before eventual clean daemon exit."
+  },
+  "evidence": [
+    "out/local-completion-runtime-a4/launch-14.log",
+    "out/local-completion-runtime-a4/kernel-exit-a17.json",
+    "out/local-completion-runtime-a4/health-14.json",
+    "out/local-completion-runtime-a4/draft-before-quit-a17.ax.txt"
+  ],
+  "uiPreserved": true,
+  "release": false,
+  "originalFolderAccessed": false
+}

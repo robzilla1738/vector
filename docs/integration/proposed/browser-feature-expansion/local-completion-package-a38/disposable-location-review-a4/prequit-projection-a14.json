@@ -1,0 +1,25 @@
+{
+  "sourcePlanSha256": "80bb4ac69ef192079d9bdebbe2e309f334ef9e13c209f19d7905df2ea97e7d60",
+  "files": [
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/aux/AuxSelectedStateHome.h",
+      "before": "340e954939b4b9d08ef532b266ef37c403abf85a31b74599d5ed19ff3ebb0c52",
+      "after": "16a222690c017271b962b980c60cd0a94e4429b79c81826fb4e857f1ec9ed12d"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/aux/AuxSelectedStateHome.cc",
+      "before": "3e428cc87add669fff579ac0be8baaab3c278210047514cbe2e0ed5989c32271",
+      "after": "b4612ad86ddbd0092b2c4cd61627b38629b295d5d58a21a3fbf8ef94392fbb4b"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/aux/daemon_supervisor.cc",
+      "before": "ae01a9fddbdc5fb2ecbd78eaa72825adf752c859b6d3d00034bbfb209a362e29",
+      "after": "9c3aab2e4bd56e2986ce2d1abf00135ce7fa7a0b6f4bdf321259848eb2cefc01"
+    }
+  ],
+  "sourceInputsVerified": 431,
+  "ordinaryCompileDefinition": "-DAUX_BROWSER_ONLY_NATIVE_STARTUP=1",
+  "platformNinjaSha256": "4f4ffadcaf586284dbe60ec1089d1c5347c430f081998d2d78fba21e9c49eac2",
+  "ordinaryDefineVerified": true,
+  "acceptedUIChanged": false
+}

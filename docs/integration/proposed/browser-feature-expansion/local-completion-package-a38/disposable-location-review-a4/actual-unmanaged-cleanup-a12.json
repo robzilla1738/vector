@@ -1,0 +1,9 @@
+{
+  "pid": 75771,
+  "verifiedImage": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-local-completion-20261025-a38/Aux.app/Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/MacOS/aux-daemon",
+  "signal": "SIGTERM",
+  "gone": true,
+  "cleanShutdown": false,
+  "reason": "unmanaged desktop-tool reopen never reached readiness; failed disposable startup cleanup",
+  "seconds": 0.21
+}

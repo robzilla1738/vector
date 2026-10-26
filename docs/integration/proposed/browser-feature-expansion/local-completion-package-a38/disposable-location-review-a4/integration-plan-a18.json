@@ -1,0 +1,36 @@
+{
+  "format": "aux.fixed-location.integration.v1",
+  "previousInventorySha256": "28fabb71492c9f0df8022d7b63981806da1b5bdca79c95c6638aea5c430ac0f9",
+  "approvedReview": {
+    "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/local-completion-package-a38/disposable-location-review-a4/review.json",
+    "sha256": "39542f2dc150fd40f0d4cc354a54b74ccdf1b1210c68b8c3511e762addfc633a"
+  },
+  "executor": {
+    "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/local-completion-package-a38/disposable-location-review-a4/integrate-sign-a18.py",
+    "sha256": "ab76d88d38faf7a17ef91a8181a7e478e9cf9c52c489e60ea67b38409f22a90f"
+  },
+  "preserved": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-local-completion-20261025-a38/before-disposable-location-a18/Aux.app",
+  "replacements": [
+    {
+      "path": "/private/tmp/aux-shutdown-http-ack-a51-x1445igq/index.mjs",
+      "sha256": "48af998738fb6d2fc30cb8d5b2e9de03cb04ab7d8563ebdaa5fe8100944fc514",
+      "executable": "Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/node-development/index.mjs",
+      "unsigned": true
+    },
+    {
+      "path": "/private/tmp/aux-shutdown-http-ack-a51-x1445igq/aux-native-entry.mjs",
+      "sha256": "f355833cb607963a65ca3108e7ae19ea7ca60192a9f3d8e2644a3c12ec49c808",
+      "executable": "Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/node-development/aux-native-entry.mjs",
+      "unsigned": true
+    }
+  ],
+  "signingObjects": [
+    "Contents/Resources/aux/apps/daemon/Aux Daemon.app",
+    "."
+  ],
+  "sourceAdaptation": {
+    "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/productivity-shutdown-http-ack-a51/source-plan.json",
+    "sha256": "5f2e0df0d3ea5bc9080a08bb6a872013ec85fd88a809fa226612e861c2c4b7ec"
+  },
+  "release": false
+}

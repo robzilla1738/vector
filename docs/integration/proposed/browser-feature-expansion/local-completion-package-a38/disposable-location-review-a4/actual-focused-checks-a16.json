@@ -1,0 +1,37 @@
+{
+  "format": "aux.actual.focused-check.v1",
+  "signedInventorySha256": "eb8cbbceabaa0cc997931a8995037b5b0964b12fbc5fa8bf9eeca057d84e3d46",
+  "startupHttpReady": true,
+  "memoryUI": {
+    "runningNormal": true,
+    "indexPercent": 100,
+    "chunks": 10
+  },
+  "authenticationRetry": {
+    "repeated401Loop": false,
+    "transientInitialFailure": true
+  },
+  "normalQuit": {
+    "passed": false,
+    "groupStopped": false,
+    "forced": true,
+    "browserExitCode": 0,
+    "daemonExitSignal": 9,
+    "browserPid": 93688,
+    "daemonPid": 93712,
+    "memoryPids": [
+      93920,
+      93941
+    ],
+    "concreteOrderingFailure": "BeginNativeBrowserShutdown marks selected route closed before supervisor polling/authenticated shutdown. Poll clears authorization; request refuses original selected owner. Daemon starts JS teardown only after parent loss, so guarded database close fails."
+  },
+  "evidence": [
+    "out/local-completion-runtime-a4/launch-13.log",
+    "out/local-completion-runtime-a4/health-13.json",
+    "out/local-completion-runtime-a4/memory-a16.ax.txt",
+    "out/local-completion-runtime-a4/kernel-exit-a16.json"
+  ],
+  "uiPreserved": true,
+  "release": false,
+  "originalFolderAccessed": false
+}

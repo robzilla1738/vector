@@ -1,0 +1,49 @@
+{
+  "format": "aux.fixed-location.integration.v1",
+  "previousInventorySha256": "7d7160f5aa1922b8981edc12f4f87d0a0075a851c37bf37370d5da0c313961c3",
+  "approvedReview": {
+    "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/local-completion-package-a38/disposable-location-review-a4/review.json",
+    "sha256": "39542f2dc150fd40f0d4cc354a54b74ccdf1b1210c68b8c3511e762addfc633a"
+  },
+  "executor": {
+    "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/local-completion-package-a38/disposable-location-review-a4/integrate-sign-a16.py",
+    "sha256": "663d0be9ec1d6672be9eff78abf44644ddfb27929068043a812f237c28876ec2"
+  },
+  "preserved": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-local-completion-20261025-a38/before-disposable-location-a16/Aux.app",
+  "replacements": [
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/unsigned-disposable-location-build-20261025-a77/Contents/Frameworks/Aux Framework.framework/Versions/155.0.8059.85/Aux Framework",
+      "executable": "Contents/Frameworks/Aux Framework.framework/Versions/155.0.8059.85/Aux Framework",
+      "sha256": "29d89d7c10a337c434e62baa287c73586f3940d13a4ad15516ad8c754da9b4d3",
+      "unsigned": true
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/unsigned-disposable-location-build-20261025-a77/Contents/MacOS/Aux",
+      "executable": "Contents/MacOS/Aux",
+      "sha256": "b7ede79122912003d213385619c791fbf78e8c03d7b4250b7ae143a102f6159c",
+      "unsigned": true
+    },
+    {
+      "path": "/private/tmp/aux-shutdown-stages-a50-4l65aati/index.mjs",
+      "sha256": "d945364420cdec5fd7f6b256af9dc6bb1c26cca605106f19d5856aca3e4572f7",
+      "executable": "Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/node-development/index.mjs",
+      "unsigned": true
+    },
+    {
+      "path": "/private/tmp/aux-shutdown-stages-a50-4l65aati/aux-native-entry.mjs",
+      "sha256": "f9dddbe77bac7c637ae2fbe1cc37f1c18af9e44ce1f595ff643885df9d010238",
+      "executable": "Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/node-development/aux-native-entry.mjs",
+      "unsigned": true
+    }
+  ],
+  "signingObjects": [
+    "Contents/Frameworks/Aux Framework.framework",
+    "Contents/Resources/aux/apps/daemon/Aux Daemon.app",
+    "."
+  ],
+  "sourceAdaptation": {
+    "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/productivity-shutdown-stages-a50/source-plan.json",
+    "sha256": "50ac50935ff7e70756f768165237a717804da616c213b61b89e3c91518953b69"
+  },
+  "release": false
+}

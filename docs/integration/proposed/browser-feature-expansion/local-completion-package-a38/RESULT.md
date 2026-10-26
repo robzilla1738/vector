@@ -1,64 +1,61 @@
-# Aux local completion candidate — focused acceptance in progress
+# Aux disposable-profile candidate — ready for local testing
 
-Candidate: `/Users/rcourson/Documents/Vibe/web/out/provided-candidate-local-completion-20261025-a38/Aux.app`.
-Launch through the adjacent `Launch Aux.command`.
+The bounded fresh-profile milestone passes its listed actual-app checks. This is a local development candidate, not a full-product or release-ready declaration.
 
-This is a regular-profile development candidate in the separately approved
-**Aux Browser A38 Disposable** namespace. The existing nonempty `Aux Browser`
-folder and accepted application remain untouched. All work is local; no release,
-provisioning, notarization, new OS grant or owner-profile access occurred.
+**App:** `/Users/rcourson/Documents/Vibe/web/out/provided-candidate-local-completion-20261025-a38/Aux.app`
 
-## Actual packaged-app results
+**Launch:** the adjacent `Launch Aux.command` (requires this local workspace). Aux is left open on Work's New Tab page. Startup to daemon readiness took about 20 seconds on the final restart.
 
-| Check | Current result |
+The approved **Aux Browser A38 Disposable** support/cache namespace contains the synthetic Work and Personal profiles. The original nonempty `Aux Browser` folder was not moved, adopted or modified. The accepted app remains intact. No release, provisioning, notarization, new entitlement, new OS grant, owner-profile access or provider inference occurred.
+
+## Working — actual app observations
+
+| Check | Result |
 | --- | --- |
-| Protected launcher, paired daemon and native fresh initialization | Pass; daemon HTTP ready, no incognito |
-| Loopback navigation, public HTTPS, back/forward | Pass |
-| Two ordinary profiles | Pass; independent cookies, localStorage and native account contexts |
-| Active local draft/attachment switching | Pass; Work draft+TXT stays separate from Personal draft |
-| Normal restart persistence | Pass for both profiles' cookie/note/draft and Work TXT |
-| Multiple windows | Pass; shared tab list, independent views and second-window recovery |
-| Native CLI URL/profile routing | Pass; actual Personal destination, not only a queued response |
-| Sidebar/chat/settings | Actual collapsed/expanded endpoints, both sidebars, initial General and Appearance settings observed |
-| Cmd+T/K/L | Pass after A73; centered modes, T cancel makes no tab, T commit adds a tab, L commit uses current tab |
-| Footer profile roster/name refresh | Pass after A73; existing window refreshes without sidebar toggle |
-| Memory indexing/search/helper close | Pending final corrected paired source and actual acceptance |
-| Manual ordinary tab close | Failed: passive visibility listener causes a retained Recovery tab; narrow correction in progress |
-| Daemon normal shutdown | Failed: macOS SIGABRT reveals wrong Node Environment inline layout; target-config correction in progress |
-| Exact UI preservation | All original UI33/style/font/art resources retained; actual app compared with prior Aux and saved supplied Aside references |
+| Protected launcher, paired daemon and native initialization | Pass; normal profiles, no incognito |
+| Navigation | Local links, public HTTPS and back/forward passed during this milestone; final restored local page works |
+| Two isolated profiles | Pass; Work/Personal retain different cookies, localStorage notes and native `/u/0` versus `/u/1` contexts |
+| Active profile switching | Pass; each profile retains its own draft; Work TXT chip does not appear in Personal |
+| Draft and attachment persistence | Pass for a newly edited Work draft, separate Personal draft, TXT chip and Recent files metadata after clean restart; attachment content/provider consumption is not claimed |
+| Multiple windows | Work plus two Personal windows restore; Personal windows retain independent selected views and the shared normal tab list |
+| Normal Quit | Pass; kernel reports browser exit 0 and daemon exit 0, existing memory helpers terminate/reap; all JS shutdown stages settle, no native deadline, guardian `groupStopped=true`, `forced=false` |
+| Same-build restart | Pass; exact signed package reopens and restores the above state |
+| Sidebar/chat/settings | Final build opens chat, collapses/expands the left sidebar and shows General/Appearance/Memory correctly |
+| Local memory | Running normal, 100%, 10 chunks; search remains unverified |
+| Commands and tab close | Centered Cmd+T/K/L commit/cancel, live footer rename/roster refresh and real beforeunload Cancel/Leave passed on the retained unchanged implementation during this milestone |
+| Native CLI | Actual URL/profile destination passed earlier in the milestone; CLI code/signature retained |
 
-A successful compile or signature verification is not counted as a runtime pass.
-The current signed inventory and finite observations are bound in
-`disposable-location-review-a4/actual-integration-signing-a8.json` and
-`focused-checks-progress-a8.json`. Historical failed bytes/receipts remain
-recoverable. The original nineteen objects verify with the existing identity,
-profile and entitlements; only the approved changed framework/daemon/outer app
-are re-signed during repairs.
+The final assembled components are browser/framework **A78**, daemon **A72**, paired source **A51** and unchanged **UI33**. All 19 reviewed objects verify with the existing Robert Courson development identity/profile/entitlements. The final repair re-signed only the daemon and outer app, retaining 17 signatures. The external acceptance receipt binds signed inventory `03542e0336ecd93ee2f0b790905219d454288292f6ceeb236dc211e2b7852bab`:
 
-## Explicit remaining work beyond this milestone
+- `disposable-location-review-a4/actual-integration-signing-a18.json`
+- `disposable-location-review-a4/actual-focused-checks-a18.json`
+- `out/local-completion-runtime-a4/launch-15.log` and `kernel-exit-a18.json`: clean Quit
+- `out/local-completion-runtime-a4/launch-16.log`, `health-16.json`, Work/Personal AX captures and final screenshots: same-build restart
 
-**Implementation:** third-party native messaging still needs real per-Profile
-host ownership/lifetime integration before claiming 1Password desktop/autofill
-compatibility. General exec/PTY, Computer Use and arbitrary native helpers/addons
-remain disabled. Cloud production service acceptance and operational backup/key
-custody/alerts are not complete. No permissive native bridge was enabled.
+Successful compilation or signatures were not counted as runtime acceptance. Earlier failed snapshots, patches and receipts remain recoverable. The bundled pre-test acceptance marker is deliberately not rewritten after testing; the external receipt identifies the exact tested bytes.
 
-**Account-dependent testing:** BYOK and eligible ChatGPT consent, inference,
-refresh and revocation require a connected provider. No AI request, credential
-entry or inference spend was made in this milestone. Chrome Store, 1Password,
-autofill and native-host checks remain explicit follow-ups after integration.
+## UI comparison and known limitations
 
-**Focused manual/broader checks:** genuine pointer hover remains manual because
-the available desktop API has no hover action. Broad attachment/crash recovery
-and production cookie-key behavior remain unaccepted. This development browser
-uses mock Chromium Keychain storage; that does not prove custom helper Keychain
-or release-cookie behavior.
+Existing UI resources, styles, fonts, artwork and native layout values were preserved. The actual new-tab/chat/sidebar views were compared with the prior Aux capture and saved supplied Aside captures. The current system/backdrop produces light-gray glass, like the prior accepted Aux capture; the saved Aside references are darker. This is preservation of the accepted Aux UI, not certification of whole-window pixel parity across different backdrops or every state.
 
-**Deferred deliberately:** old profiles are refused; migration, advanced recovery,
-the larger task-capability architecture, mobile, payments and hosted speech do
-not block the bounded fresh local browser milestone. Existing old data is never
-silently reinterpreted, reset or deleted.
+A nonblocking `analytics.identify` request logs 500 because generic subprocess execution is disabled. One retained Recovery fixture from an earlier failed close remains in the second Personal test window; fresh ordinary close and genuine beforeunload handling were fixed and passed. Advanced recovery was deliberately not expanded to clean up that historical fixture.
 
-**Release is separate:** production signing, notarization, updater,
-installation/distribution and production operations acceptance remain. This is
-not a release-ready or full-parity declaration.
+Use **Launch Aux.command**. Direct Finder/unmanaged launch has not been accepted: an earlier desktop-tool relaunch bypassed the protected launcher and never established readiness. This package is not a portable installer.
+
+## Still needs implementation
+
+- Third-party native messaging needs per-Profile host ownership, physical settlement and sandbox integration. 1Password desktop/autofill compatibility is not accepted; a permissive generic native bridge was not enabled.
+- General exec/PTY, Computer Use and arbitrary native addons remain disabled. Full agent-tool parity needs a separate bounded implementation milestone.
+- Production cloud integration/operations and a final full-product feature/UI/identity inventory remain unfinished. Visible advanced-feature controls are not proof every feature is complete.
+
+## Still needs testing or setup
+
+- Account-backed BYOK/eligible ChatGPT connection: user consent, inference, refresh and revocation. This requires a real provider connection; no key or account was used here.
+- Chrome Store/third-party extension, native-host and autofill checks after native-messaging integration.
+- Genuine pointer hover (the desktop API has no hover action), broader attachment/content/crash cases and advanced-feature acceptance.
+- Memory search: the attempted own-client DevTools query was blocked by paste protection; the warning was respected and no query ran.
+- Production cookie-key behavior: this development browser uses mock Chromium Keychain storage. Production sign-in/sync/sharing/speech, backup/key custody, alerts and operational restore remain unaccepted.
+
+Legacy Aux profiles remain refused. Migration, advanced recovery, the larger task-capability architecture, mobile and payments are deferred. Their consequence is a fresh/disposable local build without those compatibility or service guarantees.
+
+Release signing, notarization, updater, installation/distribution and production acceptance are separate remaining release work. No next feature batch was started.

@@ -1,0 +1,31 @@
+{
+  "passed": true,
+  "command": [
+    "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/third_party/ninja/ninja",
+    "-C",
+    "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/out/AuxFast",
+    "-j4",
+    "chrome",
+    "native_cli_open"
+  ],
+  "exitCode": 0,
+  "seconds": 459.4891835829476,
+  "pinsSha256": "39e14901236702a2890447a83bd63dcb03c75920aa00bf2e297f09b156eddf64",
+  "appExecuted": false,
+  "signed": false,
+  "release": false,
+  "artifacts": [
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/unsigned-disposable-location-build-20261025-a76/Contents/Frameworks/Aux Framework.framework/Versions/155.0.8059.85/Aux Framework",
+      "executable": "Contents/Frameworks/Aux Framework.framework/Versions/155.0.8059.85/Aux Framework",
+      "sha256": "bc575aeeb40f69fe10cf4faa17dec29095449efcf2acebf537947d670d19e95b",
+      "unsigned": true
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/unsigned-disposable-location-build-20261025-a76/Contents/MacOS/Aux",
+      "executable": "Contents/MacOS/Aux",
+      "sha256": "b7ede79122912003d213385619c791fbf78e8c03d7b4250b7ae143a102f6159c",
+      "unsigned": true
+    }
+  ]
+}

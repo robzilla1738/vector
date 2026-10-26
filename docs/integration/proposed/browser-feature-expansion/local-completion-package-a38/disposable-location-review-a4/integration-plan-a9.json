@@ -1,0 +1,55 @@
+{
+  "format": "aux.fixed-location.integration.v1",
+  "previousInventorySha256": "4336176d0d8407c027f1bbfab734e2f0b5630ac639c94310c3b3b67c2fe1becc",
+  "approvedReview": {
+    "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/local-completion-package-a38/disposable-location-review-a4/review.json",
+    "sha256": "39542f2dc150fd40f0d4cc354a54b74ccdf1b1210c68b8c3511e762addfc633a"
+  },
+  "executor": {
+    "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/local-completion-package-a38/disposable-location-review-a4/integrate-sign-a9.py",
+    "sha256": "7e9753c55fdde3ffd8c2bc27a946b5ec18ccd6d8b2d43a6f59957760a1a10f1a"
+  },
+  "preserved": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-local-completion-20261025-a38/before-disposable-location-a9/Aux.app",
+  "replacements": [
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/unsigned-disposable-location-build-20261025-a74/Contents/Frameworks/Aux Framework.framework/Versions/155.0.8059.85/Aux Framework",
+      "executable": "Contents/Frameworks/Aux Framework.framework/Versions/155.0.8059.85/Aux Framework",
+      "sha256": "9e3c6a0c7963d02f930fd57b785ebd29814c96f52eb994cb31e385509013aa27",
+      "unsigned": true
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/unsigned-disposable-location-build-20261025-a74/Contents/MacOS/Aux",
+      "executable": "Contents/MacOS/Aux",
+      "sha256": "b7ede79122912003d213385619c791fbf78e8c03d7b4250b7ae143a102f6159c",
+      "unsigned": true
+    },
+    {
+      "path": "/private/tmp/aux-browser-only-daemon-build-20261025-a67/Aux Daemon",
+      "sha256": "cb1797731449c4a87255b432ce715bf6fedf041dfed3dcb96420ecf5b1c86d29",
+      "executable": "Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/MacOS/aux-daemon",
+      "unsigned": true
+    },
+    {
+      "path": "/private/tmp/aux-memory-account-directories-a46-1yea2b5y/index.mjs",
+      "sha256": "a5f207fe3a36dd5fec2ee32a4b84eae0a49371364fa66c530d95f1af987509f6",
+      "executable": "Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/node-development/index.mjs",
+      "unsigned": true
+    },
+    {
+      "path": "/private/tmp/aux-memory-account-directories-a46-1yea2b5y/aux-native-entry.mjs",
+      "sha256": "89f61dded0775d30c4bb3f88d347219d5eda80ed1a8c1be1f69c3f44a7237317",
+      "executable": "Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/node-development/aux-native-entry.mjs",
+      "unsigned": true
+    }
+  ],
+  "signingObjects": [
+    "Contents/Frameworks/Aux Framework.framework",
+    "Contents/Resources/aux/apps/daemon/Aux Daemon.app",
+    "."
+  ],
+  "sourceAdaptation": {
+    "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/productivity-memory-account-directories-a46/source-plan.json",
+    "sha256": "001e3bd5ebfc3436bddd3af4067d7d898ea30d618f9331356e852d4d5d927d35"
+  },
+  "release": false
+}

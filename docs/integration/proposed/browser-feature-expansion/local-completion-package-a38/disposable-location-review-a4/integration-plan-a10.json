@@ -1,0 +1,42 @@
+{
+  "format": "aux.fixed-location.integration.v1",
+  "previousInventorySha256": "8d3e760837261ebe5169a954b54cd574680aaf2cbc3c5f61bf0a16e5894d6bde",
+  "approvedReview": {
+    "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/local-completion-package-a38/disposable-location-review-a4/review.json",
+    "sha256": "39542f2dc150fd40f0d4cc354a54b74ccdf1b1210c68b8c3511e762addfc633a"
+  },
+  "executor": {
+    "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/local-completion-package-a38/disposable-location-review-a4/integrate-sign-a10.py",
+    "sha256": "a6309219e094ef2ec3e5a2f798306c0787f3abaf09e6a787a1cf231616ae629d"
+  },
+  "preserved": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-local-completion-20261025-a38/before-disposable-location-a10/Aux.app",
+  "replacements": [
+    {
+      "path": "/private/tmp/aux-browser-only-daemon-build-20261025-a68/Aux Daemon",
+      "sha256": "45b7701c5f93169d20451b43fdb04ef846fe3d8833dc81c97e8bc8c45e2e7efb",
+      "executable": "Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/MacOS/aux-daemon",
+      "unsigned": true
+    },
+    {
+      "path": "/private/tmp/aux-computer-use-lifecycle-a48-ki8dl7_h/index.mjs",
+      "sha256": "0d7c4f82f8f3dbb4e22999447a3ebeae2bd4ba48c82320c9b108ea687ef4931e",
+      "executable": "Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/node-development/index.mjs",
+      "unsigned": true
+    },
+    {
+      "path": "/private/tmp/aux-computer-use-lifecycle-a48-ki8dl7_h/aux-native-entry.mjs",
+      "sha256": "704f1918c1c46f517872a93f6c32230af92d7f887a8f82a794af7728549c47a1",
+      "executable": "Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/node-development/aux-native-entry.mjs",
+      "unsigned": true
+    }
+  ],
+  "signingObjects": [
+    "Contents/Resources/aux/apps/daemon/Aux Daemon.app",
+    "."
+  ],
+  "sourceAdaptation": {
+    "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/productivity-computer-use-lifecycle-a48/source-plan.json",
+    "sha256": "9bd90e90f281c855fceb12caa5aa094e7518ced23065abcdf9349e4f153685ce"
+  },
+  "release": false
+}

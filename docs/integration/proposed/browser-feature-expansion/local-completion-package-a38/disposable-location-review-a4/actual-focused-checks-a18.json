@@ -1,0 +1,81 @@
+{
+  "format": "aux.bounded-local-acceptance.v1",
+  "candidate": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-local-completion-20261025-a38/Aux.app",
+  "signedInventorySha256": "03542e0336ecd93ee2f0b790905219d454288292f6ceeb236dc211e2b7852bab",
+  "composition": {
+    "browserFramework": "A78",
+    "daemon": "A72",
+    "pairedSource": "A51",
+    "ui": "UI33",
+    "nativeCli": "retained reviewed signed native CLI"
+  },
+  "ordinaryDisposableNamespace": "Aux Browser A38 Disposable",
+  "listedMilestoneChecksPassed": true,
+  "fullProductComplete": false,
+  "release": false,
+  "uiResourcesPreserved": true,
+  "acceptedAppPreserved": true,
+  "originalNonemptyFolderPreserved": true,
+  "newEntitlements": false,
+  "newOsGrants": false,
+  "runtimeEvidence": {
+    "cleanQuitLog": "out/local-completion-runtime-a4/launch-15.log",
+    "kernelExit": "out/local-completion-runtime-a4/kernel-exit-a18.json",
+    "normalBrowserExit": 0,
+    "normalDaemonExit": 0,
+    "helperSignals": [
+      15,
+      15
+    ],
+    "groupStopped": true,
+    "forced": false,
+    "nativeDeadlineFired": false,
+    "javascriptBrokerSettled": true,
+    "samePackageRestartHealth": "out/local-completion-runtime-a4/health-16.json",
+    "workRestored": "out/local-completion-runtime-a4/work-restored-a18.ax.txt",
+    "personalRestored": "out/local-completion-runtime-a4/personal-restored-a18.ax.txt",
+    "secondPersonalWindow": "out/local-completion-runtime-a4/personal-second-window-a18.ax.txt",
+    "collapsed": "out/local-completion-runtime-a4/collapsed-a18.ax.txt",
+    "memory": "out/local-completion-runtime-a4/memory-final-a18.ax.txt",
+    "general": "out/local-completion-runtime-a4/general-a18.ax.txt",
+    "appearance": "out/local-completion-runtime-a4/appearance-a18.ax.txt",
+    "actualNewTabScreenshot": "out/local-completion-runtime-a4/final-newtab-a18.png"
+  },
+  "carriedForwardUnchangedBoundaryChecks": [
+    "public HTTPS, back/forward and local link navigation",
+    "centered Cmd+T/K/L commit/cancel",
+    "real beforeunload Cancel/Leave",
+    "live footer rename and roster refresh",
+    "native CLI actual URL/profile destination"
+  ],
+  "untested": [
+    "account-backed AI consent/inference/refresh/revocation",
+    "genuine pointer hover",
+    "attachment content consumption and broad edge cases",
+    "memory search (DevTools paste warning respected)",
+    "production cookie-key handling",
+    "advanced feature full acceptance"
+  ],
+  "implementationFollowUps": [
+    "per-Profile third-party native-messaging ownership/settlement/sandbox integration",
+    "general exec/PTY/Computer Use/arbitrary native addon support remains disabled",
+    "cloud production integration and operations",
+    "final full product/UI/branding inventory before release"
+  ],
+  "deferred": [
+    "legacy migration",
+    "advanced recovery",
+    "larger task capability architecture",
+    "mobile",
+    "payments",
+    "hosted speech"
+  ],
+  "knownNonblockingIssues": [
+    "analytics.identify attempts disabled generic exec and logs a local 500",
+    "one retained Recovery fixture from an earlier failed close remains in the second Personal window",
+    "system/backdrop glass differs from dark saved Aside reference; accepted Aux UI resources preserved"
+  ],
+  "supportedLaunch": "adjacent Launch Aux.command; local workspace required",
+  "directFinderLaunchAccepted": false,
+  "noFurtherBatchStarted": true
+}

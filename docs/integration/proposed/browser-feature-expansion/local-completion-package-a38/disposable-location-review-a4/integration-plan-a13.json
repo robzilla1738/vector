@@ -1,0 +1,36 @@
+{
+  "format": "aux.fixed-location.integration.v1",
+  "previousInventorySha256": "9815e8dbf92edf2f436303029028c34b0d6afa9b89685cafa89474f8cc1c0834",
+  "approvedReview": {
+    "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/local-completion-package-a38/disposable-location-review-a4/review.json",
+    "sha256": "39542f2dc150fd40f0d4cc354a54b74ccdf1b1210c68b8c3511e762addfc633a"
+  },
+  "executor": {
+    "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/local-completion-package-a38/disposable-location-review-a4/integrate-sign-a13.py",
+    "sha256": "7ccdd95185b3d814a614240cb408093cb9957c278b744779cc7ec729a767647f"
+  },
+  "preserved": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-local-completion-20261025-a38/before-disposable-location-a13/Aux.app",
+  "replacements": [
+    {
+      "path": "/private/tmp/aux-memory-terminal-close-a49-85heiubf/index.mjs",
+      "sha256": "ac4719f6faf1c495727cb21c284f06d5172b15b1af288d36fc9af1a56f3a8236",
+      "executable": "Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/node-development/index.mjs",
+      "unsigned": true
+    },
+    {
+      "path": "/private/tmp/aux-memory-terminal-close-a49-85heiubf/aux-native-entry.mjs",
+      "sha256": "6c8bafbefef34d5f8cd5c562ab1462befa411ae2f04c7b6c52e5a702358e0683",
+      "executable": "Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/node-development/aux-native-entry.mjs",
+      "unsigned": true
+    }
+  ],
+  "signingObjects": [
+    "Contents/Resources/aux/apps/daemon/Aux Daemon.app",
+    "."
+  ],
+  "sourceAdaptation": {
+    "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/productivity-memory-terminal-close-a49/source-plan.json",
+    "sha256": "600f645ef41874ad872080a9b8e392fe10c6adb6e9c69495d091d1efb66765aa"
+  },
+  "release": false
+}

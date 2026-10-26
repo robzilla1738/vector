@@ -1,0 +1,39 @@
+{
+  "format": "aux.actual.focused-check.v1",
+  "signedInventorySha256": "7d7160f5aa1922b8981edc12f4f87d0a0075a851c37bf37370d5da0c313961c3",
+  "candidate": "out/provided-candidate-local-completion-20261025-a38/Aux.app",
+  "startupHttpReady": true,
+  "memoryUI": {
+    "runningNormal": true,
+    "indexPercent": 100,
+    "chunks": 10
+  },
+  "normalQuit": {
+    "passed": false,
+    "guardian": {
+      "groupStopped": false,
+      "forced": true,
+      "browserExitCode": 0
+    },
+    "kernelEvents": "out/local-completion-runtime-a4/kernel-exit-a15.json",
+    "browserPid": 90635,
+    "daemonPid": 90703,
+    "memoryPids": [
+      90811,
+      90812
+    ],
+    "signals": {
+      "daemon": 9,
+      "memoryHelpers": 9
+    },
+    "failure": "Native original-child exit deadline; browser authorization replayed consumed challenge and lacked a shutdown token. After peer exit broker owner unavailable."
+  },
+  "evidence": [
+    "out/local-completion-runtime-a4/launch-12.log",
+    "out/local-completion-runtime-a4/health-12.json",
+    "out/local-completion-runtime-a4/memory-a15.ax.txt"
+  ],
+  "release": false,
+  "originalFolderAccessed": false,
+  "uiPreserved": true
+}

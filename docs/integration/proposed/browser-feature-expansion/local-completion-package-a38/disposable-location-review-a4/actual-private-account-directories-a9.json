@@ -1,0 +1,70 @@
+{
+  "sourceExecutedByProductBootstrap": true,
+  "rows": [
+    {
+      "kind": "Control",
+      "child": "u",
+      "mode": "0o700",
+      "uid": 502,
+      "directory": true,
+      "symlink": false
+    },
+    {
+      "kind": "Control",
+      "child": "u/0",
+      "mode": "0o700",
+      "uid": 502,
+      "directory": true,
+      "symlink": false
+    },
+    {
+      "kind": "Control",
+      "child": "u/1",
+      "mode": "0o700",
+      "uid": 502,
+      "directory": true,
+      "symlink": false
+    },
+    {
+      "kind": "Tasks",
+      "child": "u",
+      "mode": "0o700",
+      "uid": 502,
+      "directory": true,
+      "symlink": false
+    },
+    {
+      "kind": "Tasks",
+      "child": "u/0",
+      "mode": "0o700",
+      "uid": 502,
+      "directory": true,
+      "symlink": false
+    },
+    {
+      "kind": "Tasks",
+      "child": "u/1",
+      "mode": "0o700",
+      "uid": 502,
+      "directory": true,
+      "symlink": false
+    },
+    {
+      "kind": "Tasks",
+      "child": "u/0/memory",
+      "mode": "0o700",
+      "uid": 502,
+      "directory": true,
+      "symlink": false
+    },
+    {
+      "kind": "Tasks",
+      "child": "u/1/memory",
+      "mode": "0o700",
+      "uid": 502,
+      "directory": true,
+      "symlink": false
+    }
+  ],
+  "allPrivate": true
+}
