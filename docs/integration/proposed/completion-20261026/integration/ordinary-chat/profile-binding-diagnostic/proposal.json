@@ -1,0 +1,18 @@
+{
+  "format": "aux.profile-binding-diagnostic.v1",
+  "resources": [
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-completion-20261026-a1/Aux.app/Contents/Resources/aux/apps/extension/dist/background.js",
+      "name": "background.js",
+      "beforeSha256": "f170233b0d7f8465bd54330a0f9e6b7fb614db93685458917823a3d56547ca92",
+      "afterSha256": "3cb595b2b79e91cf93362a989cb8d740835d2c7113cf7ae7ce8b7870b54fa54d"
+    }
+  ],
+  "rules": [
+    {
+      "find": "if(native.profileId!==route.profileId||native.boundAccountId!==route.accountId||native.isRegularProfile!==true||native.isOffTheRecord!==false||native.accountAuthPaused===true||native.cookieRestorePending!==false||![native.browserContextId,native.cookieBindingEpoch,native.cookieRestoreEpoch].every(value=>typeof value==='string'&&value))throw Error('The native browser profile binding changed.');",
+      "replace": "const checks=[native.profileId===route.profileId,native.boundAccountId===route.accountId,native.isRegularProfile===true,native.isOffTheRecord===false,native.accountAuthPaused!==true,native.cookieRestorePending===false,...[native.browserContextId,native.cookieBindingEpoch,native.cookieRestoreEpoch].map(value=>typeof value==='string'&&value.length>0)];\n if(checks.some(value=>!value))throw Error('The native browser profile binding changed. [checks='+checks.map(value=>value?'1':'0').join('')+']');",
+      "count": 1
+    }
+  ]
+}
