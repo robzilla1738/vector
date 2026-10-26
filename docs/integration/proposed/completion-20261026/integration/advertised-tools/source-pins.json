@@ -16,13 +16,19 @@
     {
       "scope": "retain existing bash runtime and shutdown registration through physical child close",
       "find": "runningCommands.add(li);let ui=new AbortController",
-      "replace": "runningCommands.add(li);const auxBashClosed=()=>{runningCommands.delete(li),ci.release()};ci.proc.once(`close`,auxBashClosed);let ui=new AbortController",
+      "replace": "runningCommands.add(li);const auxBashClosed=()=>{runningCommands.delete(li),ci.release()};ci.proc.auxPhysicalClose.then(auxBashClosed);let ui=new AbortController",
       "count": 1
     },
     {
       "scope": "background return and abort cannot release live child runtime",
       "find": "clearTimeout(yi),bi?.(),ni?.removeEventListener(`abort`,di),runningCommands.delete(li),ci.release()",
       "replace": "clearTimeout(yi),bi?.(),ni?.removeEventListener(`abort`,di)",
+      "count": 1
+    },
+    {
+      "scope": "latch actual physical close synchronously at original native spawn producer",
+      "find": "return{process:withExitCodePromise(ti),sandboxed:ei.sandboxed}",
+      "replace": "Object.defineProperty(ti,`auxPhysicalClose`,{value:new Promise(Cn=>ti.once(`close`,Cn))});return{process:withExitCodePromise(ti),sandboxed:ei.sandboxed}",
       "count": 1
     }
   ]

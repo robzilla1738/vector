@@ -14,6 +14,7 @@ const body = transformed.text.slice(start, transformed.text.indexOf('async funct
 test('actual bash background consumer retains kill registration and runtime until child close', async () => {
   const proc = new EventEmitter();
   proc.on('error', () => {});
+  Object.defineProperty(proc, 'auxPhysicalClose', { value: new Promise(resolve => proc.once('close', resolve)) });
   let releaseCount = 0, terminateCount = 0, background, finishDrain;
   const commands = new Set();
   const drain = new Promise(resolve => { finishDrain = resolve; });
@@ -37,16 +38,38 @@ test('actual bash background consumer retains kill registration and runtime unti
   assert.equal(releaseCount, 0);
   proc.emit('close', 0, null);
   proc.emit('close', 0, null);
+  await Promise.resolve();
   assert.equal(releaseCount, 1);
   assert.equal(commands.size, 0);
   finishDrain({ exitCode: 0, stdout: '', stderr: '' });
+});
+
+test('actual sandbox producer latches close before either asynchronous consumer receives child', async () => {
+  const proc = new EventEmitter();
+  const producerStart = transformed.text.indexOf('async function spawnSandboxed(');
+  const producer = transformed.text.slice(producerStart, transformed.text.indexOf('async function wrapSandboxCommand(', producerStart));
+  const spawn = runInNewContext('(' + producer + ')', {
+    wrapSandboxCommand: async options => options,
+    spawnCommand: () => proc,
+    withExitCodePromise: child => child,
+  });
+  const published = await spawn({ command: ['fixture'] });
+  proc.emit('close', 0, null);
+  await published.process.auxPhysicalClose;
+  let cleaned = false;
+  published.process.auxPhysicalClose.then(() => { cleaned = true; });
+  await Promise.resolve();
+  assert.equal(cleaned, true);
+  const descriptor = Object.getOwnPropertyDescriptor(proc, 'auxPhysicalClose');
+  assert.equal(descriptor.writable, false);
+  assert.equal(descriptor.configurable, false);
 });
 
 test('both actual leaves retain admission guards and count-checked replay', () => {
   for (const name of ['index.mjs', 'aux-native-entry.mjs']) {
     const original = readFileSync(root + name, 'utf8');
     const result = transformAuxBashCloseLifetime({ text: original });
-    assert.equal(result.anchors.length, 2);
+    assert.equal(result.anchors.length, 3);
     assert.ok(result.text.includes('function prepareSessionSpawn(Cn,ei){auxRequireSupervisedTasks();'));
     let replay = result.text;
     for (const rule of [...result.anchors].reverse()) replay = replay.replace(rule.replace, () => rule.find);
