@@ -1,0 +1,43 @@
+{
+  "format": "aux.trusted-types.actual-static-consumers.v1",
+  "method": "Targeted rg --no-ignore --text -l over actual copied app apps subtree, JS/MJS/CJS/HTML/JSON extensions. Explicit text mode includes daemon files containing embedded NUL literals; default rg would skip them.",
+  "queries": [
+    "aside-gmail-compose-",
+    "aside-gdocs-driver",
+    "aside-sheets-paste"
+  ],
+  "matchingFiles": [
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-local-completion-20261025-a38/Aux.app/Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/node-development/index.mjs",
+      "sha256": "48af998738fb6d2fc30cb8d5b2e9de03cb04ab7d8563ebdaa5fe8100944fc514",
+      "policyCounts": [
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-local-completion-20261025-a38/Aux.app/Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/node-development/aux-native-entry.mjs",
+      "sha256": "f355833cb607963a65ca3108e7ae19ea7ca60192a9f3d8e2644a3c12ec49c808",
+      "policyCounts": [
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-local-completion-20261025-a38/Aux.app/Contents/Resources/aux/apps/extension/dist/content/content.js",
+      "sha256": "57f04e1935e2a4730f28aff6906dd831ca3e1ef6a0007bb056b1b8010a4d7dad",
+      "policyCounts": [
+        0,
+        1,
+        0
+      ]
+    }
+  ],
+  "matchingFileCount": 3,
+  "replacementAnchorCount": 7,
+  "originalAddonOrRuntimeBytesReadOrChanged": false,
+  "ownerStateRead": false,
+  "productExecuted": false
+}
