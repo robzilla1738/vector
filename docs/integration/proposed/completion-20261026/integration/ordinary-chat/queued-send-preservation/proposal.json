@@ -1,0 +1,34 @@
+{
+  "format": "aux.queued-send-preservation.v1",
+  "resources": [
+    {
+      "path": "/private/tmp/aux-unstarted-run-error-20261026-a1-current/index.mjs",
+      "name": "index.mjs",
+      "beforeSha256": "e8f52bf28db90ef94d56e529676f9d7e7bbe1dac5a51d6285b20753c43be57fb",
+      "afterSha256": "728b23c29c1fc3c828947c5342c9f07f1c8daac5d40f5b4c5116ac79caaa7b98"
+    },
+    {
+      "path": "/private/tmp/aux-unstarted-run-error-20261026-a1-current/aux-native-entry.mjs",
+      "name": "aux-native-entry.mjs",
+      "beforeSha256": "49057052ddb4b752f7513eea51482c79372139bd2d95e9ad86e09f56773ae740",
+      "afterSha256": "859226116f2a4f76a988750ba15deaae844f75776afb70d55ab8d646d16fce2a"
+    }
+  ],
+  "rules": [
+    {
+      "find": "takeQueuedMessages(Cn){",
+      "replace": "async takeQueuedMessagesForSend(Cn){\n const saved=structuredClone(this.#d),current=auxQueuedSendOwner(this,()=>this.#te());\n if(!current())throw Error('The original pending task changed.');\n const selected=this.#Ie(Cn,this.#d);if(!selected)return null;\n const before=JSON.stringify(this.#d);\n try{await auxValidateReferenceMessages(this.browser,this.#d.slice(selected.start,selected.end))}\n catch(error){if(current()&&JSON.stringify(this.#d)===before&&SessionStore.get(this.accountId,this.session.id)?.status==='idle')this.changeStatus('errored');throw error}\n if(!current()||JSON.stringify(this.#d)!==before||JSON.stringify(SessionStore.get(this.accountId,this.session.id)?.queuedMessages)!==before)throw Error('The pending message changed during validation.');\n const messages=this.takeQueuedMessages(Cn);if(!messages)return null;\n const after=JSON.stringify(this.#d);let restored=false;\n return {messages,restore:()=>{\n  if(restored||!current()||JSON.stringify(this.#d)!==after||JSON.stringify(SessionStore.get(this.accountId,this.session.id)?.queuedMessages)!==after)return false;\n  this.#Ve(saved);if(SessionStore.get(this.accountId,this.session.id)?.status==='idle')this.changeStatus('errored');restored=true;return true;\n }};\n}\ntakeQueuedMessages(Cn){",
+      "count": 1
+    },
+    {
+      "find": "async#_(Cn,ei,ti,ni){let ri=Cn.agent.takeQueuedMessages(ei);if(ri){if(ti&&Cn.agent.agent.state.isStreaming){await this.#v(Cn,ri,ni);return}if(Cn.agent.agent.state.isStreaming){await Cn.agent.steer(ri,ni);return}Cn.runningPromise&&await Cn.runningPromise,await this.startRun(Cn.accountId,Cn.sessionId,async Cn=>{if(ti){await Cn.interruptSteer(ri,ni);return}await Cn.steer(ri,ni)})}}",
+      "replace": "async#_(Cn,ei,ti,ni){\n if(Cn.runningPromise&&!Cn.agent.agent.state.isStreaming)await Cn.runningPromise;\n const transfer=await Cn.agent.takeQueuedMessagesForSend(ei);if(!transfer)return;\n const ri=transfer.messages;\n try{\n  if(ti&&Cn.agent.agent.state.isStreaming){await this.#v(Cn,ri,ni);return}\n  if(Cn.agent.agent.state.isStreaming){await Cn.agent.steer(ri,ni);return}\n  await this.startRun(Cn.accountId,Cn.sessionId,async Cn=>{\n   try{if(ti){await Cn.interruptSteer(ri,ni);return}await Cn.steer(ri,ni)}\n   catch(error){transfer.restore();throw error}\n  });\n }catch(error){transfer.restore();throw error}\n}",
+      "count": 1
+    },
+    {
+      "find": "function auxCaptureAgentStartAttempt(accountId, sessionId) {",
+      "replace": "function auxQueuedSendOwner(agent,isCurrent){\n const accountId=agent.accountId,sessionId=agent.session.id,initialStatus=SessionStore.get(agent.accountId,agent.session.id)?.status;\n const snapshot=()=>{\n  const account=AccountRegistry.getAccount(accountId),session=SessionStore.get(accountId,sessionId);\n  if(!account||!session||![initialStatus,'errored'].includes(session.status)||!isCurrent()||session.archivedAt||isExternalOwnerSuspended(accountId)||String(session.createdAt)!==String(agent.session.createdAt))return null;\n  const overview=SessionStore.listTurnOverviews(accountId,sessionId,undefined,1);\n  if(!Number.isSafeInteger(overview.transcriptRevision))return null;\n  return JSON.stringify({account:['id','createdAt','incarnationId','mode','provider','userId','authStatus'].map(key=>account[key]),epoch:externalOwnerEpoch(accountId),session:['id','createdAt','steeringMessages','browserBinding','model','projectId','permission','permissionMode','runtimeConfig','cwd'].map(key=>session[key]),revision:overview.transcriptRevision,turns:overview.turns});\n };\n const before=snapshot();\n return ()=>before!==null&&snapshot()===before;\n}\n\nfunction auxCaptureAgentStartAttempt(accountId, sessionId) {",
+      "count": 1
+    }
+  ]
+}

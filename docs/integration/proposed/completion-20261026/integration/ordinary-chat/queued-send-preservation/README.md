@@ -1,0 +1,11 @@
+# Preserve Send Now input when its original document expired
+
+Actual startup14 correctly refused a restarted tab capability, but Send Now had already called takeQueuedMessages, removing the durable queue before prompt preparation. The refusal produced neither transcript nor retained pending input.
+
+The repaired transfer captures the original owner and deep-copied queue, then validates the selected batch's browser references before dequeue. An expired original document therefore remains refused while the durable input stays intact. The guard checks account/incarnation/auth epoch, session creation identity, profile/model/permissions, original status, queue, steering transfer and transcript revision. Normal prompt preparation still performs its existing checks; the early read-only check does not authorize subsequent execution or change the selected reference.
+
+If a later preparation error occurs after dequeue but before transcript/steering transfer, the transfer restores the original queue once only when the owner, remaining memory/persisted queue and transcript are unchanged. Edits, new transcript work, successful steering transfer, aborted tasks, changed authentication/profile/model, or closed owners prevent stale restoration. Idle failures record errored under the same synchronous fence, retaining the existing reconnect error presentation. Normal successful delivery does not restore or append duplicate messages.
+
+The server catches inside its actual asynchronous run callback, as well as outer admission failure; merely catching startRun would miss callback errors consumed by the supplied server. Existing running work is awaited before capturing an idle transfer. No new state schema, fake transcript, stale capability replay or migration is introduced.
+
+Final prepared pairs are /private/tmp/aux-queued-send-preservation-20261026-a3-current and -future. a1/a2 were superseded before delivery. They start from unstarted-run-error a1 and retain all prior runtime differences. Focused checks cover rejection before dequeue, restoration once, edited/transferred/committed/cancelled/stale-owner refusal; both full pairs pass syntax. Actual app acceptance remains integrator-owned. No live state, model, native build or signing action performed.
