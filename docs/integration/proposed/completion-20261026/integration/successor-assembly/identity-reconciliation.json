@@ -1,0 +1,259 @@
+{
+  "format": "aux.final-identity.remaining-reconciliation.v2",
+  "authoritativeSourceReceipt": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/integrator/paired-source-a5.json",
+  "receiptSha256": "eb9cc997c1d9951128b8c297f814e2c9734ed5c37f59978be95188ac0d3227a9",
+  "files": [
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/out/completion-20261026-paired-source-a5/index.mjs",
+      "sha256": "62226811478457d71f7b4ca7d8b256011d7789b25f5e1b7485f3b9a45a356031"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/out/completion-20261026-paired-source-a5/aux-native-entry.mjs",
+      "sha256": "2fd53b79c00aa92a10c5b84a2581ea9759215dcfadc354c72e12527680e52e16"
+    }
+  ],
+  "historicalLedgerSuperseded": "integration/identity/remaining.json records pre-settings/events/protocol/tag/preference-marker successor; do not use its old counts as final defects.",
+  "rows": [
+    {
+      "token": "asideCode",
+      "count": 2,
+      "classification": "persisted-experimental-setting",
+      "reason": "Existing experimental settings reader/schema plus six UI producers; needs explicit schema version/compatible fresh-profile transition, not a one-sided rename.",
+      "currentCounts": {
+        "index.mjs": 4,
+        "aux-native-entry.mjs": 4
+      },
+      "currentDisposition": "closed active writer; exact knownlegacy reader retained by aux.experimental.v2 migration"
+    },
+    {
+      "token": "aside_suspension",
+      "count": 2,
+      "classification": "external-action-format",
+      "reason": "Generated channel action IDs and receiver; remote outstanding messages require a versioned action-format disposition.",
+      "currentCounts": {
+        "index.mjs": 0,
+        "aux-native-entry.mjs": 0
+      },
+      "currentDisposition": "closed by paired v2 protocol/tag/event successor; zero original product producer expected"
+    },
+    {
+      "token": "aside:worker:",
+      "count": 1,
+      "classification": "provider-session-identity",
+      "reason": "Sticky upstream conversation/session routing headers; change would split existing task identities.",
+      "currentCounts": {
+        "index.mjs": 0,
+        "aux-native-entry.mjs": 0
+      },
+      "currentDisposition": "closed by paired v2 protocol/tag/event successor; zero original product producer expected"
+    },
+    {
+      "token": "aside-events",
+      "count": 1,
+      "classification": "cloud-wire-protocol",
+      "reason": "Actual WebSocket subprotocol; matching Aux cloud event receiver is absent from local service source. No producer-only rename.",
+      "currentCounts": {
+        "index.mjs": 0,
+        "aux-native-entry.mjs": 0
+      },
+      "currentDisposition": "closed by paired v2 protocol/tag/event successor; zero original product producer expected"
+    },
+    {
+      "token": "aside-native.node",
+      "count": 1,
+      "classification": "inactive-original-asset-key",
+      "reason": "Windows SEA-only materializer. Current macOS non-SEA asset adapter has no native-addon asset, and active binding points to native/aux-native.cjs. Preserve original addon bytes; remove/repack unreachable branch only with matching artifact plan.",
+      "currentCounts": {
+        "index.mjs": 1,
+        "aux-native-entry.mjs": 1
+      },
+      "currentDisposition": "inactive Windows SEA-only asset branch; macOS uses fixed linked native images; strip excluded old materializer with exact consumer proof rather than rename original addon bytes"
+    },
+    {
+      "token": "aside_pro_month",
+      "count": 1,
+      "classification": "deferred-billing-contract",
+      "reason": "Original Stripe lookup keys in disabled billing schema; no payments at launch. Do not reinterpret existing external paid records.",
+      "currentCounts": {
+        "index.mjs": 1,
+        "aux-native-entry.mjs": 1
+      },
+      "currentDisposition": "disabled retained external billing schema; payments/hostedAI false, no lookup execution accepted; remove unused product billing schema rather than rename paid record identities"
+    },
+    {
+      "token": "aside_pro_year",
+      "count": 1,
+      "classification": "deferred-billing-contract",
+      "reason": "Same original disabled Stripe schema.",
+      "currentCounts": {
+        "index.mjs": 1,
+        "aux-native-entry.mjs": 1
+      },
+      "currentDisposition": "disabled retained external billing schema; payments/hostedAI false, no lookup execution accepted; remove unused product billing schema rather than rename paid record identities"
+    },
+    {
+      "token": "aside_max_month",
+      "count": 1,
+      "classification": "deferred-billing-contract",
+      "reason": "Same original disabled Stripe schema.",
+      "currentCounts": {
+        "index.mjs": 1,
+        "aux-native-entry.mjs": 1
+      },
+      "currentDisposition": "disabled retained external billing schema; payments/hostedAI false, no lookup execution accepted; remove unused product billing schema rather than rename paid record identities"
+    },
+    {
+      "token": "aside_max_year",
+      "count": 1,
+      "classification": "deferred-billing-contract",
+      "reason": "Same original disabled Stripe schema.",
+      "currentCounts": {
+        "index.mjs": 1,
+        "aux-native-entry.mjs": 1
+      },
+      "currentDisposition": "disabled retained external billing schema; payments/hostedAI false, no lookup execution accepted; remove unused product billing schema rather than rename paid record identities"
+    },
+    {
+      "token": "`aside cli`",
+      "count": 1,
+      "classification": "historical-reader",
+      "reason": "Legacy session title detection, not a generated product title.",
+      "currentCounts": {
+        "index.mjs": 1,
+        "aux-native-entry.mjs": 1
+      },
+      "currentDisposition": "compatibility reader only; no new product titles emitted"
+    },
+    {
+      "token": "asidecomputeruse",
+      "count": 2,
+      "classification": "external-application-exclusion",
+      "reason": "Original Windows owner-app capture exclusions; do not weaken an exclusion without matching host policy.",
+      "currentCounts": {
+        "index.mjs": 2,
+        "aux-native-entry.mjs": 2
+      },
+      "currentDisposition": "external owner application exclusion remains defensive and is not a generated Aux identity"
+    },
+    {
+      "token": "<!-- aside:password-manager-preference:",
+      "count": 2,
+      "classification": "excluded-vault-persisted-marker",
+      "reason": "Obsolete Vault preference markers; do not reinterpret historical files. Remove excluded product route/code only after shared security dependencies are separated.",
+      "currentCounts": {
+        "index.mjs": 2,
+        "aux-native-entry.mjs": 2
+      },
+      "currentDisposition": "closed active writer via Aux plaintext marker v2; exact legacyreader deliberately retained"
+    },
+    {
+      "token": "--aside-home",
+      "count": 1,
+      "classification": "excluded-helper-caller",
+      "reason": "Obsolete Apple credential-exchange helper caller; no corresponding helper shipped or authorized. Remove excluded path rather than inventing a new ABI.",
+      "currentCounts": {
+        "index.mjs": 1,
+        "aux-native-entry.mjs": 1
+      },
+      "currentDisposition": "excluded product module or shared legacy record; not an active Aux product grant. Remove helper-only dead launch/import paths as isolated source subgraph; preserve shared installation/provider authentication and external-manager legacy preference readers."
+    },
+    {
+      "token": "--aside-product-variant",
+      "count": 1,
+      "classification": "excluded-helper-caller",
+      "reason": "Same excluded credential-exchange path.",
+      "currentCounts": {
+        "index.mjs": 1,
+        "aux-native-entry.mjs": 1
+      },
+      "currentDisposition": "excluded product module or shared legacy record; not an active Aux product grant. Remove helper-only dead launch/import paths as isolated source subgraph; preserve shared installation/provider authentication and external-manager legacy preference readers."
+    },
+    {
+      "token": "aside-password-importer",
+      "count": 5,
+      "classification": "excluded-helper-path",
+      "reason": "Obsolete Vault importer binary names; no corresponding helper shipped.",
+      "currentCounts": {
+        "index.mjs": 5,
+        "aux-native-entry.mjs": 5
+      },
+      "currentDisposition": "excluded product module or shared legacy record; not an active Aux product grant. Remove helper-only dead launch/import paths as isolated source subgraph; preserve shared installation/provider authentication and external-manager legacy preference readers."
+    },
+    {
+      "token": "aside-credential-exchange",
+      "count": 2,
+      "classification": "excluded-helper-path",
+      "reason": "Same excluded Vault credential-exchange path.",
+      "currentCounts": {
+        "index.mjs": 2,
+        "aux-native-entry.mjs": 2
+      },
+      "currentDisposition": "excluded product module or shared legacy record; not an active Aux product grant. Remove helper-only dead launch/import paths as isolated source subgraph; preserve shared installation/provider authentication and external-manager legacy preference readers."
+    },
+    {
+      "token": "`.aside`",
+      "count": 2,
+      "classification": "excluded-helper-state-path",
+      "reason": "Original credential-exchange context subdirectory; no state inspection or migration performed.",
+      "currentCounts": {
+        "index.mjs": 2,
+        "aux-native-entry.mjs": 2
+      },
+      "currentDisposition": "excluded product module or shared legacy record; not an active Aux product grant. Remove helper-only dead launch/import paths as isolated source subgraph; preserve shared installation/provider authentication and external-manager legacy preference readers."
+    },
+    {
+      "token": "`aside.slime.",
+      "count": 1,
+      "classification": "persisted-icon-identifier",
+      "reason": "Persisted custom tag icon enum includes original product mark token; needs consumer/asset and stored icon transition.",
+      "currentCounts": {
+        "index.mjs": 0,
+        "aux-native-entry.mjs": 0
+      },
+      "currentDisposition": "closed by paired v2 protocol/tag/event successor; zero original product producer expected"
+    },
+    {
+      "token": "kind===`aside`",
+      "count": 18,
+      "classification": "excluded-vault-persisted-discriminator",
+      "reason": "Original PwmAccountRegistry owner discriminator, many related producer/schema forms; do not blindly rewrite stored records.",
+      "currentCounts": {
+        "index.mjs": 18,
+        "aux-native-entry.mjs": 18
+      },
+      "currentDisposition": "excluded product module or shared legacy record; not an active Aux product grant. Remove helper-only dead launch/import paths as isolated source subgraph; preserve shared installation/provider authentication and external-manager legacy preference readers."
+    },
+    {
+      "token": "kind:`aside`",
+      "count": 5,
+      "classification": "excluded-vault-persisted-discriminator",
+      "reason": "Same excluded original Vault record format.",
+      "currentCounts": {
+        "index.mjs": 5,
+        "aux-native-entry.mjs": 5
+      },
+      "currentDisposition": "excluded product module or shared legacy record; not an active Aux product grant. Remove helper-only dead launch/import paths as isolated source subgraph; preserve shared installation/provider authentication and external-manager legacy preference readers."
+    },
+    {
+      "token": "literal(`aside`)",
+      "count": 1,
+      "classification": "excluded-vault-persisted-discriminator",
+      "reason": "Same excluded original Vault schema.",
+      "currentCounts": {
+        "index.mjs": 1,
+        "aux-native-entry.mjs": 1
+      },
+      "currentDisposition": "excluded product module or shared legacy record; not an active Aux product grant. Remove helper-only dead launch/import paths as isolated source subgraph; preserve shared installation/provider authentication and external-manager legacy preference readers."
+    }
+  ],
+  "activeWriterDiscoveredAndFixed": "ExternalPasswordManagersRouter legitimate preference actions -> updateHint -> writer/clearer now Aux v2 with knownlegacy reader; earlier excludedVault classification was inaccurate.",
+  "excludedHelperRemovalScope": [
+    "Original Apple credential-exchange manual open/spawn argv (--aside-home/--aside-product-variant) and helper-only importer process/path catalogs remain shipped source after Vault route removal.",
+    "Do not re-enable or rename helper launches; no corresponding supplied active helper is packaged.",
+    "Before deleting a helper-only source subgraph, prove its references from actual route registries/initializers; do not erase shared PwmAccountRegistry authentication/legacy preference dependencies by token search.",
+    "Original Vault router registration and builtin skill discovery remain excluded by the existing source exclusion."
+  ],
+  "wholeIdentityComplete": false,
+  "ownerStateRead": false,
+  "productExecuted": false
+}

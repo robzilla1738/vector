@@ -36,7 +36,7 @@ def replace(source,relative,expected,role):
  if sha(raw)!=expected:raise ValueError('Artifact pin changed: '+str(source))
  target=Path(relative)
  if target.is_absolute() or '..' in target.parts:raise ValueError('Relative confined destination required')
- actions.append({'operation':'replace-regular-file','source':str(source),'destination':str(final/target),'relative':str(target),'sha256':expected,'bytes':len(raw),'role':role})
+ actions.append({'operation':'replace-regular-file','source':str(source),'destination':str(final/target),'relative':str(target),'sha256':expected,'bytes':len(raw),'mode':stat.S_IMODE(source.lstat().st_mode),'role':role})
 for row in browser['artifacts']:
  if sha(regular(row['path']))!=row['sha256']:raise ValueError('Frozen browser artifact changed')
 cli=browser['nativeCli'];replace(cli['path'],'Contents/Resources/aux/apps/cli/Aux CLI.app/Contents/MacOS/aux-cli',cli['sha256'],'native CLI')
