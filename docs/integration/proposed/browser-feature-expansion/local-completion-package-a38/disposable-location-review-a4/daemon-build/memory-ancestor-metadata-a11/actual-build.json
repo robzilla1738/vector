@@ -1,0 +1,37 @@
+{
+  "format": "aux.memory-fixed-ancestor-metadata-build-result.v1",
+  "passed": true,
+  "results": [
+    {
+      "label": "memory-helper",
+      "exitCode": 0
+    },
+    {
+      "label": "link",
+      "exitCode": 0
+    }
+  ],
+  "seconds": 22.011558833000002,
+  "planSha256": "d0086adf25d5e6a022f0184e3aae4993120c3c26e9bc8a8018cd9027ce459d74",
+  "sourcePlanSha256": "4270d474063672e640869f6b256b86f279f027cda450ac00227bd94e5b6ee488",
+  "unchangedSwiftSourceCount": 50,
+  "unchangedNativeObjectCount": 14,
+  "a67MainAndActualNodeLayoutUnchanged": true,
+  "a66OrdinaryRootsAndA70BrokerWorkerUnchanged": true,
+  "a47LoaderUnchanged": true,
+  "onlyExactNativeAncestorMetadataAdded": true,
+  "ancestorDataListingXattrsDenied": true,
+  "otherTaskAccountReadsDenied": true,
+  "productExecuted": false,
+  "productSigned": false,
+  "originalRootAccessed": false,
+  "binary": "/private/tmp/aux-browser-only-daemon-build-20261025-a71/Aux Daemon",
+  "binarySha256": "20416985782d2dbd2291de1842f6a74fe244feab5126e2eaf48ddec7bef26f3c",
+  "binarySize": 147466872,
+  "memoryHostObjectSha256": "19770822a217da093b750aa28e33e1983f8898a90d2c1927ae56a32267980705",
+  "actualDependencyFileSha256": "7bf5819863647769a6f1e914abfacd246e787606c3e2435d715eb7928684cd8f",
+  "codeSignatureLoadCommandPresent": false,
+  "codesignDisplayExitCode": 1,
+  "inputPinsUnchanged": true,
+  "priorBinaryUnchanged": true
+}

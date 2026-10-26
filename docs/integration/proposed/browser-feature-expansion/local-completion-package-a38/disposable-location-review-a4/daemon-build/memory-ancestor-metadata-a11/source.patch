@@ -1,0 +1,86 @@
+--- a/AuxAccountMemoryHelper.mm
++++ b/AuxAccountMemoryHelper.mm
+@@ -89,6 +89,7 @@
+ struct Prepared {
+   std::vector<Fd> held;
+   std::string executable,model,memory,control,task,data,cache;
++  std::string task_users,memory_account,models_root,model_family;
+ };
+ // Reuse the existing native sandbox-exec path/parameter idiom. No shell or
+ // caller policy string. A fixed helper cannot fork/exec an unowned descendant.
+@@ -104,7 +105,20 @@
+  (require-all
+   (subpath (param "AUX_TASK"))
+   (require-not (subpath (param "AUX_MEMORY")))
+-  (require-not (subpath (param "AUX_MODEL")))))
++  (require-not (subpath (param "AUX_MODEL")))
++  (require-not (literal (param "AUX_TASK")))
++  (require-not (literal (param "AUX_TASK_USERS")))
++  (require-not (literal (param "AUX_MEMORY_ACCOUNT")))
++  (require-not (literal (param "AUX_MODELS_ROOT")))
++  (require-not (literal (param "AUX_MODEL_FAMILY")))))
++; Only metadata on exact held native ancestors. Their listing/data/xattrs remain
++; denied, as do every other account and every non-selected model subtree.
++(deny file-read-data file-read-xattr (with errno EACCES)
++ (literal (param "AUX_TASK"))
++ (literal (param "AUX_TASK_USERS"))
++ (literal (param "AUX_MEMORY_ACCOUNT"))
++ (literal (param "AUX_MODELS_ROOT"))
++ (literal (param "AUX_MODEL_FAMILY")))
+ (deny file-write*
+  (subpath (param "AUX_CONTROL"))
+  (subpath (param "AUX_BROWSER_DATA"))
+@@ -214,6 +228,26 @@
+     result.held.emplace_back(control);result.held.emplace_back(task);
+     if(!roots)throw std::runtime_error("Memory native roots are unavailable");
+     result.task=Path(task);
++    // Derive only the already admitted account ancestry from its real memory
++    // FD. Never accept a renderer/JS path or account string as a policy root.
++    Fd memory(owner_->DuplicateMemoryDirectory());
++    if(memory.value<0||Path(memory.value)!=memory_)throw std::runtime_error("Memory account ancestry is unavailable");
++    const auto prefix=result.task+"/u/";
++    constexpr std::string_view suffix="/memory";
++    if(memory_.size()<=prefix.size()+suffix.size()||!memory_.starts_with(prefix)||!memory_.ends_with(suffix))throw std::runtime_error("Memory account ancestry is unavailable");
++    const auto account_name=memory_.substr(prefix.size(),memory_.size()-prefix.size()-suffix.size());
++    if(account_name.empty()||(account_name.size()>1&&account_name.front()=='0')||
++       !std::all_of(account_name.begin(),account_name.end(),[](char c){return c>='0'&&c<='9';}))throw std::runtime_error("Memory account ancestry is unavailable");
++    auto users=OpenRelative(task,"u",true);
++    auto account=OpenRelative(users.value,account_name,true);
++    auto child=OpenRelative(account.value,"memory",true);
++    struct stat held_memory{},named_memory{};
++    if(fstat(memory.value,&held_memory)||fstat(child.value,&named_memory)||
++       held_memory.st_dev!=named_memory.st_dev||held_memory.st_ino!=named_memory.st_ino)throw std::runtime_error("Memory account ancestry changed");
++    result.task_users=Path(users.value);result.memory_account=Path(account.value);
++    if(result.task_users!=result.task+"/u"||result.memory_account!=prefix+account_name)throw std::runtime_error("Memory account ancestry is unavailable");
++    result.held.emplace_back(std::move(memory));result.held.emplace_back(std::move(users));
++    result.held.emplace_back(std::move(account));result.held.emplace_back(std::move(child));
+     std::array<char,4096> parent{};uint32_t parent_bytes=0;
+     if(!owner_->CopyPrivateParent(parent.data(),parent.size(),&parent_bytes)||parent_bytes<2||parent_bytes>parent.size()||parent[parent_bytes-1]!='\0')throw std::runtime_error("Memory control exclusion is unavailable");
+     result.control=std::string(parent.begin(),parent.begin()+parent_bytes-1);
+@@ -252,10 +286,15 @@
+     if(memory_code)CFRelease(memory_code);if(requirement)CFRelease(requirement);
+     if(status!=errSecSuccess)throw std::runtime_error("Memory helper signing identity is unavailable");
+     result.held.emplace_back(std::move(image));result.held.emplace_back(std::move(policy_file));result.held.emplace_back(std::move(bundle_fd));
+-    const std::string prefix=std::string("models/")+kMemoryModelKey;
+-    auto current=OpenRelative(task,prefix+"/CURRENT");const auto selected=Read(current.value,36);
++    const std::string model_prefix=std::string("models/")+kMemoryModelKey;
++    auto models=OpenRelative(task,"models",true);
++    auto family=OpenRelative(models.value,kMemoryModelKey,true);
++    result.models_root=Path(models.value);result.model_family=Path(family.value);
++    if(result.models_root!=result.task+"/models"||result.model_family!=result.task+"/"+model_prefix)throw std::runtime_error("Memory model ancestry is unavailable");
++    result.held.emplace_back(std::move(models));result.held.emplace_back(std::move(family));
++    auto current=OpenRelative(task,model_prefix+"/CURRENT");const auto selected=Read(current.value,36);
+     if(!Uuid(selected))throw std::runtime_error("Memory model generation is invalid");
+-    auto model=OpenRelative(task,prefix+"/"+selected,true);result.model=Path(model.value);
++    auto model=OpenRelative(task,model_prefix+"/"+selected,true);result.model=Path(model.value);
+     for(const auto& pin:kMemoryModelPins){
+       {std::lock_guard<std::mutex> lock(mutex_);if(stop_)throw std::runtime_error("Memory preparation was cancelled");}
+       auto file=OpenRelative(model.value,pin.path,pin.directory);struct stat metadata{};
+@@ -283,6 +322,7 @@
+   std::vector<std::string> argv{"/usr/bin/sandbox-exec"};
+   auto parameter=[&](std::string key,const std::string& value){argv.emplace_back("-D");argv.emplace_back(std::move(key)+"="+value);};
+   parameter("AUX_MEMORY_IMAGE",prepared.executable);parameter("AUX_CONTROL",prepared.control);parameter("AUX_TASK",prepared.task);parameter("AUX_MEMORY",prepared.memory);parameter("AUX_MODEL",prepared.model);parameter("AUX_BROWSER_DATA",prepared.data);parameter("AUX_BROWSER_CACHE",prepared.cache);
++  parameter("AUX_TASK_USERS",prepared.task_users);parameter("AUX_MEMORY_ACCOUNT",prepared.memory_account);parameter("AUX_MODELS_ROOT",prepared.models_root);parameter("AUX_MODEL_FAMILY",prepared.model_family);
+   argv.emplace_back("-p");argv.emplace_back(kSeatbelt);argv.emplace_back(prepared.executable);argv.emplace_back(prepared.model);argv.emplace_back("");
+   std::vector<char*> pointers;for(auto& value:argv)pointers.push_back(value.data());pointers.push_back(nullptr);
+   std::vector<std::string> env{"PATH=/usr/bin:/bin","ORT_DISABLE_TELEMETRY=1","HOME="+prepared.memory};std::vector<char*> environment;for(auto& value:env)environment.push_back(value.data());environment.push_back(nullptr);

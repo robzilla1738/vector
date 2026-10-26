@@ -1,0 +1,10 @@
+{
+  "format": "aux.exact-memory-read-denial-sbpl.v1",
+  "profileSha256": "9831609329e3dfe6e2e25db0607e5ef60c1300c668d5364d0240eb454ec7d4d6",
+  "compiled": true,
+  "error": null,
+  "syntheticParametersOnly": true,
+  "sandboxApplied": false,
+  "helperExecuted": false,
+  "hostExecutableCreated": false
+}

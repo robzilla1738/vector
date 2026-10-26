@@ -1,0 +1,10 @@
+{
+  "format": "aux.exact-memory-read-denial-sbpl.v1",
+  "profileSha256": "f8b20520afcbe806b783aeed6ba23bc8d9a08267ca3a9499e1896baee7bc7ce1",
+  "compiled": false,
+  "error": "syntax error: illegal token\n",
+  "syntheticParametersOnly": true,
+  "sandboxApplied": false,
+  "helperExecuted": false,
+  "hostExecutableCreated": false
+}

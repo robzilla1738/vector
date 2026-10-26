@@ -1,0 +1,54 @@
+{
+  "format": "aux.memory-fixed-ancestor-metadata.v1",
+  "files": [
+    {
+      "path": "/Users/rcourson/.codex/worktrees/aux-features-organization/web/docs/integration/proposed/browser-feature-expansion/local-completion-package-a38/disposable-location-review-a4/daemon-build/memory-read-denial-a9/source/AuxAccountMemoryHelper.mm",
+      "inputSha256": "8d316697382eefd30b879aab955d9b98ce014e959f79326d5683259dcd1f7a44",
+      "source": "source/AuxAccountMemoryHelper.mm",
+      "outputSha256": "1708c787a5f19ed4b27e163f7cca0f7c02a38df3cad4cc2735ed28228ffae110",
+      "anchors": [
+        {
+          "find": "  std::string executable,model,memory,control,task,data,cache;",
+          "replace": "  std::string executable,model,memory,control,task,data,cache;\n  std::string task_users,memory_account,models_root,model_family;",
+          "count": 1
+        },
+        {
+          "find": "  (require-not (subpath (param \"AUX_MEMORY\")))\n  (require-not (subpath (param \"AUX_MODEL\")))))\n(deny file-write*",
+          "replace": "  (require-not (subpath (param \"AUX_MEMORY\")))\n  (require-not (subpath (param \"AUX_MODEL\")))\n  (require-not (literal (param \"AUX_TASK\")))\n  (require-not (literal (param \"AUX_TASK_USERS\")))\n  (require-not (literal (param \"AUX_MEMORY_ACCOUNT\")))\n  (require-not (literal (param \"AUX_MODELS_ROOT\")))\n  (require-not (literal (param \"AUX_MODEL_FAMILY\")))))\n; Only metadata on exact held native ancestors. Their listing/data/xattrs remain\n; denied, as do every other account and every non-selected model subtree.\n(deny file-read-data file-read-xattr (with errno EACCES)\n (literal (param \"AUX_TASK\"))\n (literal (param \"AUX_TASK_USERS\"))\n (literal (param \"AUX_MEMORY_ACCOUNT\"))\n (literal (param \"AUX_MODELS_ROOT\"))\n (literal (param \"AUX_MODEL_FAMILY\")))\n(deny file-write*",
+          "count": 1
+        },
+        {
+          "find": "    result.task=Path(task);\n    std::array<char,4096> parent{};",
+          "replace": "    result.task=Path(task);\n    // Derive only the already admitted account ancestry from its real memory\n    // FD. Never accept a renderer/JS path or account string as a policy root.\n    Fd memory(owner_->DuplicateMemoryDirectory());\n    if(memory.value<0||Path(memory.value)!=memory_)throw std::runtime_error(\"Memory account ancestry is unavailable\");\n    const auto prefix=result.task+\"/u/\";\n    constexpr std::string_view suffix=\"/memory\";\n    if(memory_.size()<=prefix.size()+suffix.size()||!memory_.starts_with(prefix)||!memory_.ends_with(suffix))throw std::runtime_error(\"Memory account ancestry is unavailable\");\n    const auto account_name=memory_.substr(prefix.size(),memory_.size()-prefix.size()-suffix.size());\n    if(account_name.empty()||(account_name.size()>1&&account_name.front()=='0')||\n       !std::all_of(account_name.begin(),account_name.end(),[](char c){return c>='0'&&c<='9';}))throw std::runtime_error(\"Memory account ancestry is unavailable\");\n    auto users=OpenRelative(task,\"u\",true);\n    auto account=OpenRelative(users.value,account_name,true);\n    auto child=OpenRelative(account.value,\"memory\",true);\n    struct stat held_memory{},named_memory{};\n    if(fstat(memory.value,&held_memory)||fstat(child.value,&named_memory)||\n       held_memory.st_dev!=named_memory.st_dev||held_memory.st_ino!=named_memory.st_ino)throw std::runtime_error(\"Memory account ancestry changed\");\n    result.task_users=Path(users.value);result.memory_account=Path(account.value);\n    if(result.task_users!=result.task+\"/u\"||result.memory_account!=prefix+account_name)throw std::runtime_error(\"Memory account ancestry is unavailable\");\n    result.held.emplace_back(std::move(memory));result.held.emplace_back(std::move(users));\n    result.held.emplace_back(std::move(account));result.held.emplace_back(std::move(child));\n    std::array<char,4096> parent{};",
+          "count": 1
+        },
+        {
+          "find": "    const std::string prefix=std::string(\"models/\")+kMemoryModelKey;\n    auto current=OpenRelative(task,prefix+\"/CURRENT\");",
+          "replace": "    const std::string model_prefix=std::string(\"models/\")+kMemoryModelKey;\n    auto models=OpenRelative(task,\"models\",true);\n    auto family=OpenRelative(models.value,kMemoryModelKey,true);\n    result.models_root=Path(models.value);result.model_family=Path(family.value);\n    if(result.models_root!=result.task+\"/models\"||result.model_family!=result.task+\"/\"+model_prefix)throw std::runtime_error(\"Memory model ancestry is unavailable\");\n    result.held.emplace_back(std::move(models));result.held.emplace_back(std::move(family));\n    auto current=OpenRelative(task,model_prefix+\"/CURRENT\");",
+          "count": 1
+        },
+        {
+          "find": "    auto model=OpenRelative(task,prefix+\"/\"+selected,true);result.model=Path(model.value);",
+          "replace": "    auto model=OpenRelative(task,model_prefix+\"/\"+selected,true);result.model=Path(model.value);",
+          "count": 1
+        },
+        {
+          "find": "  parameter(\"AUX_MEMORY_IMAGE\",prepared.executable);parameter(\"AUX_CONTROL\",prepared.control);parameter(\"AUX_TASK\",prepared.task);parameter(\"AUX_MEMORY\",prepared.memory);parameter(\"AUX_MODEL\",prepared.model);parameter(\"AUX_BROWSER_DATA\",prepared.data);parameter(\"AUX_BROWSER_CACHE\",prepared.cache);",
+          "replace": "  parameter(\"AUX_MEMORY_IMAGE\",prepared.executable);parameter(\"AUX_CONTROL\",prepared.control);parameter(\"AUX_TASK\",prepared.task);parameter(\"AUX_MEMORY\",prepared.memory);parameter(\"AUX_MODEL\",prepared.model);parameter(\"AUX_BROWSER_DATA\",prepared.data);parameter(\"AUX_BROWSER_CACHE\",prepared.cache);\n  parameter(\"AUX_TASK_USERS\",prepared.task_users);parameter(\"AUX_MEMORY_ACCOUNT\",prepared.memory_account);parameter(\"AUX_MODELS_ROOT\",prepared.models_root);parameter(\"AUX_MODEL_FAMILY\",prepared.model_family);",
+          "count": 1
+        }
+      ]
+    }
+  ],
+  "exactLiteralMetadataOnly": [
+    "native TaskHome",
+    "native TaskHome/u",
+    "native current account parent",
+    "native TaskHome/models",
+    "native fixed model-key parent"
+  ],
+  "allOtherTaskReadsDenied": true,
+  "ancestorDataListingXattrsDenied": true,
+  "writesLinksExecNetworkUnchanged": true,
+  "noCallerPolicyPaths": true
+}

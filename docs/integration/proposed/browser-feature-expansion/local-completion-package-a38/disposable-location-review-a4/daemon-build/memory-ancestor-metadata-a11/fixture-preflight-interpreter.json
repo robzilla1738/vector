@@ -1,0 +1,8 @@
+{
+  "phase": "synthetic fixture xattr setup",
+  "error": "system Python lacks os.setxattr",
+  "sandboxApplied": false,
+  "productExecuted": false,
+  "correction": "use existing /usr/bin/xattr on synthetic fixture only",
+  "priorFixturePreserved": true
+}

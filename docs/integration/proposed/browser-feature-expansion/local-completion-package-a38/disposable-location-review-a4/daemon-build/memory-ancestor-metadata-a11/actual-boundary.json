@@ -1,0 +1,269 @@
+{
+  "format": "aux.exact-memory-ancestor-system-boundary.v1",
+  "fixtureRoot": "/private/tmp/aux-memory-ancestor-boundary-a11-5gff3k9m",
+  "profileSha256": "9831609329e3dfe6e2e25db0607e5ef60c1300c668d5364d0240eb454ec7d4d6",
+  "existingAppleSystemUtilitiesOnly": true,
+  "productOrHelperExecuted": false,
+  "ownerStateAccessed": false,
+  "newExecutableBuilt": false,
+  "passed": true,
+  "caseCount": 32,
+  "results": [
+    {
+      "case": "stat exact ancestor 0",
+      "expectedAllowed": true,
+      "exitCode": 0,
+      "passed": true,
+      "stdout": "Directory\n",
+      "stderr": ""
+    },
+    {
+      "case": "deny listing exact ancestor 0",
+      "expectedAllowed": false,
+      "exitCode": 1,
+      "passed": true,
+      "stdout": "",
+      "stderr": "ls: /private/tmp/aux-memory-ancestor-boundary-a11-5gff3k9m/Tasks: Permission denied\n"
+    },
+    {
+      "case": "deny xattr exact ancestor 0",
+      "expectedAllowed": false,
+      "exitCode": 1,
+      "passed": true,
+      "stdout": "",
+      "stderr": "xattr: [Errno 13] Permission denied: '/private/tmp/aux-memory-ancestor-boundary-a11-5gff3k9m/Tasks'\n"
+    },
+    {
+      "case": "stat exact ancestor 1",
+      "expectedAllowed": true,
+      "exitCode": 0,
+      "passed": true,
+      "stdout": "Directory\n",
+      "stderr": ""
+    },
+    {
+      "case": "deny listing exact ancestor 1",
+      "expectedAllowed": false,
+      "exitCode": 1,
+      "passed": true,
+      "stdout": "",
+      "stderr": "ls: /private/tmp/aux-memory-ancestor-boundary-a11-5gff3k9m/Tasks/u: Permission denied\n"
+    },
+    {
+      "case": "deny xattr exact ancestor 1",
+      "expectedAllowed": false,
+      "exitCode": 1,
+      "passed": true,
+      "stdout": "",
+      "stderr": "xattr: [Errno 13] Permission denied: '/private/tmp/aux-memory-ancestor-boundary-a11-5gff3k9m/Tasks/u'\n"
+    },
+    {
+      "case": "stat exact ancestor 2",
+      "expectedAllowed": true,
+      "exitCode": 0,
+      "passed": true,
+      "stdout": "Directory\n",
+      "stderr": ""
+    },
+    {
+      "case": "deny listing exact ancestor 2",
+      "expectedAllowed": false,
+      "exitCode": 1,
+      "passed": true,
+      "stdout": "",
+      "stderr": "ls: /private/tmp/aux-memory-ancestor-boundary-a11-5gff3k9m/Tasks/u/7: Permission denied\n"
+    },
+    {
+      "case": "deny xattr exact ancestor 2",
+      "expectedAllowed": false,
+      "exitCode": 1,
+      "passed": true,
+      "stdout": "",
+      "stderr": "xattr: [Errno 13] Permission denied: '/private/tmp/aux-memory-ancestor-boundary-a11-5gff3k9m/Tasks/u/7'\n"
+    },
+    {
+      "case": "stat exact ancestor 3",
+      "expectedAllowed": true,
+      "exitCode": 0,
+      "passed": true,
+      "stdout": "Directory\n",
+      "stderr": ""
+    },
+    {
+      "case": "deny listing exact ancestor 3",
+      "expectedAllowed": false,
+      "exitCode": 1,
+      "passed": true,
+      "stdout": "",
+      "stderr": "ls: /private/tmp/aux-memory-ancestor-boundary-a11-5gff3k9m/Tasks/models: Permission denied\n"
+    },
+    {
+      "case": "deny xattr exact ancestor 3",
+      "expectedAllowed": false,
+      "exitCode": 1,
+      "passed": true,
+      "stdout": "",
+      "stderr": "xattr: [Errno 13] Permission denied: '/private/tmp/aux-memory-ancestor-boundary-a11-5gff3k9m/Tasks/models'\n"
+    },
+    {
+      "case": "stat exact ancestor 4",
+      "expectedAllowed": true,
+      "exitCode": 0,
+      "passed": true,
+      "stdout": "Directory\n",
+      "stderr": ""
+    },
+    {
+      "case": "deny listing exact ancestor 4",
+      "expectedAllowed": false,
+      "exitCode": 1,
+      "passed": true,
+      "stdout": "",
+      "stderr": "ls: /private/tmp/aux-memory-ancestor-boundary-a11-5gff3k9m/Tasks/models/fixed-model: Permission denied\n"
+    },
+    {
+      "case": "deny xattr exact ancestor 4",
+      "expectedAllowed": false,
+      "exitCode": 1,
+      "passed": true,
+      "stdout": "",
+      "stderr": "xattr: [Errno 13] Permission denied: '/private/tmp/aux-memory-ancestor-boundary-a11-5gff3k9m/Tasks/models/fixed-model'\n"
+    },
+    {
+      "case": "deny current account sibling contents",
+      "expectedAllowed": false,
+      "exitCode": 1,
+      "passed": true,
+      "stdout": "",
+      "stderr": "cat: /private/tmp/aux-memory-ancestor-boundary-a11-5gff3k9m/Tasks/u/7/private.txt: Permission denied\n"
+    },
+    {
+      "case": "deny other account metadata",
+      "expectedAllowed": false,
+      "exitCode": 1,
+      "passed": true,
+      "stdout": "",
+      "stderr": "stat: /private/tmp/aux-memory-ancestor-boundary-a11-5gff3k9m/Tasks/u/8: stat: Permission denied\n"
+    },
+    {
+      "case": "deny other account data",
+      "expectedAllowed": false,
+      "exitCode": 1,
+      "passed": true,
+      "stdout": "",
+      "stderr": "cat: /private/tmp/aux-memory-ancestor-boundary-a11-5gff3k9m/Tasks/u/8/private.txt: Permission denied\n"
+    },
+    {
+      "case": "allow own memory data",
+      "expectedAllowed": true,
+      "exitCode": 0,
+      "passed": true,
+      "stdout": "aux synthetic fixture\n",
+      "stderr": ""
+    },
+    {
+      "case": "allow selected model data",
+      "expectedAllowed": true,
+      "exitCode": 0,
+      "passed": true,
+      "stdout": "aux synthetic fixture\n",
+      "stderr": ""
+    },
+    {
+      "case": "allow own memory write",
+      "expectedAllowed": true,
+      "exitCode": 0,
+      "passed": true,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "case": "deny model write",
+      "expectedAllowed": false,
+      "exitCode": 1,
+      "passed": true,
+      "stdout": "",
+      "stderr": "touch: /private/tmp/aux-memory-ancestor-boundary-a11-5gff3k9m/Tasks/models/fixed-model/generation/created: Operation not permitted\n"
+    },
+    {
+      "case": "deny own memory hardlink",
+      "expectedAllowed": false,
+      "exitCode": 1,
+      "passed": true,
+      "stdout": "",
+      "stderr": "ln: /private/tmp/aux-memory-ancestor-boundary-a11-5gff3k9m/Tasks/u/7/memory/linked: Operation not permitted\n"
+    },
+    {
+      "case": "deny control metadata",
+      "expectedAllowed": false,
+      "exitCode": 1,
+      "passed": true,
+      "stdout": "",
+      "stderr": "stat: /private/tmp/aux-memory-ancestor-boundary-a11-5gff3k9m/Control: stat: Permission denied\n"
+    },
+    {
+      "case": "deny control data",
+      "expectedAllowed": false,
+      "exitCode": 1,
+      "passed": true,
+      "stdout": "",
+      "stderr": "cat: /private/tmp/aux-memory-ancestor-boundary-a11-5gff3k9m/Control/private.txt: Permission denied\n"
+    },
+    {
+      "case": "deny control write",
+      "expectedAllowed": false,
+      "exitCode": 1,
+      "passed": true,
+      "stdout": "",
+      "stderr": "touch: /private/tmp/aux-memory-ancestor-boundary-a11-5gff3k9m/Control/created: Operation not permitted\n"
+    },
+    {
+      "case": "deny browser data metadata",
+      "expectedAllowed": false,
+      "exitCode": 1,
+      "passed": true,
+      "stdout": "",
+      "stderr": "stat: /private/tmp/aux-memory-ancestor-boundary-a11-5gff3k9m/User Data: stat: Permission denied\n"
+    },
+    {
+      "case": "deny browser data data",
+      "expectedAllowed": false,
+      "exitCode": 1,
+      "passed": true,
+      "stdout": "",
+      "stderr": "cat: /private/tmp/aux-memory-ancestor-boundary-a11-5gff3k9m/User Data/private.txt: Permission denied\n"
+    },
+    {
+      "case": "deny browser data write",
+      "expectedAllowed": false,
+      "exitCode": 1,
+      "passed": true,
+      "stdout": "",
+      "stderr": "touch: /private/tmp/aux-memory-ancestor-boundary-a11-5gff3k9m/User Data/created: Operation not permitted\n"
+    },
+    {
+      "case": "deny browser cache metadata",
+      "expectedAllowed": false,
+      "exitCode": 1,
+      "passed": true,
+      "stdout": "",
+      "stderr": "stat: /private/tmp/aux-memory-ancestor-boundary-a11-5gff3k9m/Cache: stat: Permission denied\n"
+    },
+    {
+      "case": "deny browser cache data",
+      "expectedAllowed": false,
+      "exitCode": 1,
+      "passed": true,
+      "stdout": "",
+      "stderr": "cat: /private/tmp/aux-memory-ancestor-boundary-a11-5gff3k9m/Cache/private.txt: Permission denied\n"
+    },
+    {
+      "case": "deny browser cache write",
+      "expectedAllowed": false,
+      "exitCode": 1,
+      "passed": true,
+      "stdout": "",
+      "stderr": "touch: /private/tmp/aux-memory-ancestor-boundary-a11-5gff3k9m/Cache/created: Operation not permitted\n"
+    }
+  ]
+}
