@@ -1,0 +1,17 @@
+{
+  "format": "aux.fixed-pty-retirement-source-check.v1",
+  "pythonSyntax": "pass",
+  "javascriptFullSourceParse": "pass",
+  "focusedFixture": {
+    "name": "actual-original-write-and-socket-callback-order",
+    "passed": true,
+    "settlements": 1,
+    "missingCompletionRetained": true,
+    "nativeAdmissionProof": false
+  },
+  "nativeCompiled": false,
+  "candidateChanged": false,
+  "reviewChanged": false,
+  "EntitlementRequired": true,
+  "sourceRecipeSha256": "4cf03cdb17180b808b0f230971a4c1859068cb0702bba4ecf63ff09ae9522adc"
+}

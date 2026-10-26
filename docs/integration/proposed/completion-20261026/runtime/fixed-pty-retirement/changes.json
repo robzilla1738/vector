@@ -1,0 +1,149 @@
+{
+  "format": "aux.fixed-pty-physical-retirement-proposal.v1",
+  "predecessor": "53660ed22",
+  "records": [
+    {
+      "input": "/Users/rcourson/Documents/Vibe/aux-completion-20261026/runtime/docs/integration/proposed/completion-20261026/runtime/fixed-pty-linked/source/AuxDevelopmentWorkerHost.cc",
+      "inputSha256": "daa3e14cd92a5ab7db4479c3e4024cf978949d52576909c1dfedc4f24390406f",
+      "output": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/runtime/fixed-pty-retirement/source/AuxDevelopmentWorkerHost.cc",
+      "outputSha256": "aa440784355c84275de7e521e3b40ab1fca4b02dc4fba937cee20d713b924fc6",
+      "anchors": [
+        {
+          "before": "  bool descendant_completed = false;\n  std::shared_ptr<Worker> worker;",
+          "after": "  bool descendant_completed = false;\n  bool transport_settled=true,runtime_cohort_released=false;\n  bool physical_registered=false,reaper_thread_joined=false,transport_closed=false;\n  std::shared_ptr<Worker> worker;",
+          "count": 1
+        },
+        {
+          "before": "  bool descendant_completed = false;\n  // Registry.retained",
+          "after": "  bool descendant_completed = false;\n  bool transport_settled=true,runtime_cohort_released=false;\n  // Registry.retained",
+          "count": 1
+        },
+        {
+          "before": "            runtime = item->runtime_scope;",
+          "after": "            if(item->transport_settled&&!item->runtime_cohort_released){item->runtime_cohort_released=true;runtime = item->runtime_scope;}",
+          "count": 1
+        },
+        {
+          "before": "extern \"C\" void AuxNativePtySpawnFailed(void* token) noexcept {",
+          "after": "#include \"AuxPtyPhysicalRetirement.inc\"\nextern \"C\" void AuxNativePtySpawnFailed(void* token) noexcept {",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "input": "/Users/rcourson/Documents/Vibe/aux-completion-20261026/runtime/docs/integration/proposed/completion-20261026/runtime/fixed-pty-linked/source/pty-linked.cc",
+      "inputSha256": "406a423ffecf0508915fb935add40ef89cc72a8ee932ea671ea790f33c5d3653",
+      "output": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/runtime/fixed-pty-retirement/source/pty-linked.cc",
+      "outputSha256": "e984cf9d9a72b303f6272aaede1eb8c2c82beee74f7768bedc22998dcbb6a877",
+      "anchors": [
+        {
+          "before": "#include <AuxNativePtyReservation.h>",
+          "after": "#include <AuxNativePtyReservation.h>\nextern \"C\" int32_t AuxNativePtyRetainPhysical(void*) noexcept;\nextern \"C\" void AuxNativePtyReaperThreadJoined(void*) noexcept;\nextern \"C\" void AuxNativePtyTransportClosed(void*) noexcept;",
+          "count": 1
+        },
+        {
+          "before": "    state_->reservation = reservation;\n    auto state = state_;",
+          "after": "    state_->reservation = reservation;\n    if(!AuxNativePtyRetainPhysical(reservation))throw Napi::Error::New(env,\"PTY physical custody unavailable\");\n    auto state = state_;",
+          "count": 1
+        },
+        {
+          "before": "          if (state->thread.joinable()) state->thread.join();",
+          "after": "          if (state->thread.joinable()) state->thread.join();\n          AuxNativePtyReaperThreadJoined(state->reservation);",
+          "count": 1
+        },
+        {
+          "before": "  explicit ScopedPtyMaster(int& fd) : fd_(fd) {}\n  ~ScopedPtyMaster() { if (fd_ != -1) close(fd_); }",
+          "after": "  ScopedPtyMaster(int& fd,void* reservation) : fd_(fd),reservation_(reservation) {}\n  ~ScopedPtyMaster() {\n    if(fd_!=-1){if(close(fd_)==0)AuxNativePtyTransportClosed(reservation_);}\n    else if(!transferred_)AuxNativePtyTransportClosed(reservation_);\n  }",
+          "count": 1
+        },
+        {
+          "before": "  void Release() { fd_ = -1; }\n private:\n  int& fd_;",
+          "after": "  void Release() { transferred_=true;fd_ = -1; }\n private:\n  int& fd_;\n  void* reservation_;\n  bool transferred_=false;",
+          "count": 1
+        },
+        {
+          "before": "  PreparedExitCallback exit_callback(\n      napiEnv, info[10].As<Napi::Function>(), reservation.Handle());\n  pid_t pid;\n  int master = -1;\n  ScopedPtyMaster master_owner(master);",
+          "after": "  int master = -1;\n  ScopedPtyMaster master_owner(master,reservation.Handle());\n  PreparedExitCallback exit_callback(\n      napiEnv, info[10].As<Napi::Function>(), reservation.Handle());\n  pid_t pid;",
+          "count": 1
+        },
+        {
+          "before": "    auto tsfn = Napi::ThreadSafeFunction::New(",
+          "after": "    Napi::ThreadSafeFunction tsfn;\n    try { tsfn = Napi::ThreadSafeFunction::New(",
+          "count": 1
+        },
+        {
+          "before": "          AuxNativePtyReaperThreadJoined(state->reservation);\n        });",
+          "after": "          AuxNativePtyReaperThreadJoined(state->reservation);\n        }); } catch(...) {AuxNativePtyReaperThreadJoined(state->reservation);throw;}",
+          "count": 1
+        },
+        {
+          "before": "          if (status == napi_closing) return;",
+          "after": "          if (status == napi_closing) {tsfn.Release();return;}",
+          "count": 1
+        },
+        {
+          "before": "  obj.Set(\"pty\", Napi::String::New(napiEnv, ptsname(master)));",
+          "after": "  obj.Set(\"pty\", Napi::String::New(napiEnv, ptsname(master)));\n  // Immutable private callback, not a caller-selected reservation or PID.\n  napi_value closed;\n  auto callback=[](napi_env env,napi_callback_info info)->napi_value{void* token=nullptr;size_t count=0;if(napi_get_cb_info(env,info,&count,nullptr,nullptr,&token)!=napi_ok)return nullptr;AuxNativePtyTransportClosed(token);napi_value value;napi_get_undefined(env,&value);return value;};\n  if(napi_create_function(napiEnv,\"auxOriginalTransportClosed\",NAPI_AUTO_LENGTH,callback,reservation.Handle(),&closed)!=napi_ok)throw Napi::Error::New(napiEnv,\"PTY transport completion capture failed\");\n  const napi_property_descriptor property{\"auxOriginalTransportClosed\",nullptr,nullptr,nullptr,nullptr,closed,napi_default,nullptr};\n  if(napi_define_properties(napiEnv,obj,1,&property)!=napi_ok)throw Napi::Error::New(napiEnv,\"PTY transport completion binding failed\");",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "input": "/Users/rcourson/Documents/Vibe/aux-completion-20261026/runtime/docs/integration/proposed/completion-20261026/runtime/fixed-pty-linked/source/unixTerminal.js",
+      "inputSha256": "9839802fbc79cafc0c4b95752dd1b44d76a5d36aaffc530ebe3772d6fb7d10c9",
+      "output": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/runtime/fixed-pty-retirement/source/unixTerminal.js",
+      "outputSha256": "3fd510340adbec02e1d7cfba8e08ba9d18909a26d7edcbaaea00aa20bb93fecf",
+      "anchors": [
+        {
+          "before": "        _this._socket = new tty.ReadStream(term.fd);",
+          "after": "        // Capture the original physical close before any consumer can cancel.\n        var transportClosed = term.auxOriginalTransportClosed;\n        var socketClosed = false, writerDrained = false, transportReported = false;\n        var reportTransport = function () {\n            if (!transportReported && socketClosed && writerDrained) {\n                transportReported = true;\n                transportClosed();\n            }\n        };\n        try { _this._socket = new tty.ReadStream(term.fd); }\n        catch(error) { fs.close(term.fd, function(closeError) { if (!closeError) transportClosed(); }); throw error; }\n        _this._socket.once('close', function () {\n            socketClosed = true;\n            if (_this._writeStream) _this._writeStream.dispose();\n            reportTransport();\n        });",
+          "count": 1
+        },
+        {
+          "before": "        if (encoding !== null) {\n            _this._socket.setEncoding(encoding);\n        }\n        _this._writeStream = new CustomWriteStream(term.fd, (encoding || undefined));",
+          "after": "        try {\n        if (encoding !== null) _this._socket.setEncoding(encoding);\n        _this._writeStream = new CustomWriteStream(term.fd, (encoding || undefined), function () {\n            writerDrained = true;\n            reportTransport();\n        });\n        } catch(error) {\n            writerDrained = !_this._writeStream;\n            if (_this._writeStream) _this._writeStream.dispose();\n            _this._socket.destroy();\n            throw error;\n        }",
+          "count": 1
+        },
+        {
+          "before": "    function CustomWriteStream(_fd, _encoding) {",
+          "after": "    function CustomWriteStream(_fd, _encoding, onDrained) {",
+          "count": 1
+        },
+        {
+          "before": "        this._writeQueue = [];",
+          "after": "        this._writeQueue = [];\n        this._disposed = false;\n        this._inFlight = 0;\n        this._onDrained = onDrained;",
+          "count": 1
+        },
+        {
+          "before": "        this._writeImmediate = undefined;\n    };\n    CustomWriteStream.prototype.write",
+          "after": "        this._writeImmediate = undefined;\n        this._disposed = true;\n        this._writeQueue.length = 0;\n        this._reportDrained();\n    };\n    CustomWriteStream.prototype._reportDrained = function () {\n        if (this._disposed && this._inFlight === 0 && this._onDrained) {\n            var callback = this._onDrained;\n            this._onDrained = undefined;\n            callback();\n        }\n    };\n    CustomWriteStream.prototype.write",
+          "count": 1
+        },
+        {
+          "before": "        // Writes are put in a queue",
+          "after": "        if (this._disposed) return;\n        // Writes are put in a queue",
+          "count": 1
+        },
+        {
+          "before": "        if (this._writeQueue.length === 0) {",
+          "after": "        if (this._disposed || this._writeQueue.length === 0) {",
+          "count": 1
+        },
+        {
+          "before": "        fs.write(this._fd, task.buffer, task.offset, function (err, written) {",
+          "after": "        this._inFlight++;\n        try { fs.write(this._fd, task.buffer, task.offset, function (err, written) {\n            _this._inFlight--;\n            if (_this._disposed) { _this._reportDrained(); return; }",
+          "count": 1
+        },
+        {
+          "before": "        });\n    };\n    return CustomWriteStream;",
+          "after": "        }); } catch(error) {this._inFlight--;this._reportDrained();throw error;}\n    };\n    return CustomWriteStream;",
+          "count": 1
+        }
+      ]
+    }
+  ],
+  "EntitlementRequired": true,
+  "compiled": false,
+  "activated": false,
+  "candidateChanged": false
+}

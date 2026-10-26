@@ -1,0 +1,23 @@
+import fs from 'node:fs';
+import {EventEmitter} from 'node:events';
+import assert from 'node:assert/strict';
+const file=new URL('../source/unixTerminal.js',import.meta.url),source=fs.readFileSync(file,'utf8');
+const writer=source.slice(source.indexOf('var CustomWriteStream ='),source.indexOf('//# sourceMappingURL='));
+const capture=source.slice(source.indexOf('        // Capture the original physical close'),source.indexOf('        // setup',source.indexOf('        // Capture the original physical close')));
+const pending=[];let reports=0;
+class ReadStream extends EventEmitter{setEncoding(){}destroy(){this.emit('close')}}
+const fakeFs={write(fd,bytes,offset,callback){pending.push(callback)},close(){throw Error('unexpected constructor failure')}};
+const construct=Function('fs','tty','Buffer','setImmediate','clearImmediate',writer+';return function(term){var _this={};var encoding="utf8";'+capture+';return _this}')(fakeFs,{ReadStream},Buffer,setImmediate,clearImmediate);
+const terminal=construct({fd:42,auxOriginalTransportClosed(){reports++}});
+terminal._writeStream.write('original queued bytes');
+assert.equal(pending.length,1);
+terminal._socket.emit('close');
+assert.equal(reports,0,'socket close must not settle an original in-flight fs.write');
+pending.shift()(Object.assign(Error('backpressure'),{code:'EAGAIN'}),0);
+assert.equal(reports,1,'actual original write callback must settle after close');
+terminal._socket.emit('close');terminal._writeStream.dispose();terminal._writeStream.write('late');
+assert.equal(reports,1);assert.equal(pending.length,0,'disposal must not schedule a write or retry');
+const unclosed=construct({fd:43,auxOriginalTransportClosed(){reports++}});
+unclosed._writeStream.write('unsettled');unclosed._writeStream.dispose();
+assert.equal(reports,1,'missing original write/close callbacks must retain custody');
+console.log(JSON.stringify({fixture:'actual-original-write-and-socket-callback-order',passed:true,settlements:1,missingCompletionRetained:true,nativeAdmissionProof:false}));

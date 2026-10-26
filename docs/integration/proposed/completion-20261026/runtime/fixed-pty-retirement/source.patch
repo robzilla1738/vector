@@ -1,0 +1,225 @@
+--- /Users/rcourson/Documents/Vibe/aux-completion-20261026/runtime/docs/integration/proposed/completion-20261026/runtime/fixed-pty-linked/source/AuxDevelopmentWorkerHost.cc
++++ AuxDevelopmentWorkerHost.cc
+@@ -267,6 +267,8 @@
+   aux::descendants::Ticket descendant_cohort;
+   bool descendant_counted = false;
+   bool descendant_completed = false;
++  bool transport_settled=true,runtime_cohort_released=false;
++  bool physical_registered=false,reaper_thread_joined=false,transport_closed=false;
+   std::shared_ptr<Worker> worker;
+   std::shared_ptr<Owner> owner;
+   std::shared_ptr<PtyHelper> helper; // released after native creation or proven failure
+@@ -289,6 +291,7 @@
+   aux::descendants::Ticket descendant_cohort;
+   bool descendant_counted = false;
+   bool descendant_completed = false;
++  bool transport_settled=true,runtime_cohort_released=false;
+   // Registry.retained owns every pending/successful/unknown Worker. A failed
+   // inert token must not retain drained Worker/PDF/utility state forever.
+   // Assigned only before registry publication; every read locks locally.
+@@ -435,7 +438,7 @@
+               return;
+             }
+             --pending;
+-            runtime = item->runtime_scope;
++            if(item->transport_settled&&!item->runtime_cohort_released){item->runtime_cohort_released=true;runtime = item->runtime_scope;}
+           }
+           closed = owner->terminal;
+         }
+@@ -667,6 +670,7 @@
+   if (!valid) { output[0] = '\0'; *bytes_including_nul = 0; return -1; }
+   return 0;
+ }
++#include "AuxPtyPhysicalRetirement.inc"
+ extern "C" void AuxNativePtySpawnFailed(void* token) noexcept {
+   if (getpid() != kHostProcess) return;
+   auto reservation = LookupPty(token);
+--- /Users/rcourson/Documents/Vibe/aux-completion-20261026/runtime/docs/integration/proposed/completion-20261026/runtime/fixed-pty-linked/source/pty-linked.cc
++++ pty-linked.cc
+@@ -32,6 +32,9 @@
+ #include <mutex>
+ #include "direct-child-wait.h"
+ #include <AuxNativePtyReservation.h>
++extern "C" int32_t AuxNativePtyRetainPhysical(void*) noexcept;
++extern "C" void AuxNativePtyReaperThreadJoined(void*) noexcept;
++extern "C" void AuxNativePtyTransportClosed(void*) noexcept;
+ 
+ #include <sys/types.h>
+ #include <sys/stat.h>
+@@ -149,12 +152,15 @@
+   PreparedExitCallback(Napi::Env env, Napi::Function cb, void* reservation)
+       : state_(std::make_shared<State>()) {
+     state_->reservation = reservation;
++    if(!AuxNativePtyRetainPhysical(reservation))throw Napi::Error::New(env,"PTY physical custody unavailable");
+     auto state = state_;
+-    auto tsfn = Napi::ThreadSafeFunction::New(
++    Napi::ThreadSafeFunction tsfn;
++    try { tsfn = Napi::ThreadSafeFunction::New(
+         env, cb, "SetupExitCallback_resource", 0, 1,
+         [state](Napi::Env) {
+           if (state->thread.joinable()) state->thread.join();
+-        });
++          AuxNativePtyReaperThreadJoined(state->reservation);
++        }); } catch(...) {AuxNativePtyReaperThreadJoined(state->reservation);throw;}
+     try {
+       state->thread = std::thread([state, tsfn]() mutable {
+         pid_t pid;
+@@ -192,7 +198,7 @@
+                      Napi::Number::New(env, event->signal_code)});
+           };
+           const auto status = tsfn.BlockingCall(&state->event, callback);
+-          if (status == napi_closing) return;
++          if (status == napi_closing) {tsfn.Release();return;}
+           if (status != napi_ok)
+             Napi::Error::Fatal("SetupExitCallback", "Exit delivery failed");
+         }
+@@ -234,11 +240,16 @@
+ 
+ class ScopedPtyMaster {
+  public:
+-  explicit ScopedPtyMaster(int& fd) : fd_(fd) {}
+-  ~ScopedPtyMaster() { if (fd_ != -1) close(fd_); }
+-  void Release() { fd_ = -1; }
++  ScopedPtyMaster(int& fd,void* reservation) : fd_(fd),reservation_(reservation) {}
++  ~ScopedPtyMaster() {
++    if(fd_!=-1){if(close(fd_)==0)AuxNativePtyTransportClosed(reservation_);}
++    else if(!transferred_)AuxNativePtyTransportClosed(reservation_);
++  }
++  void Release() { transferred_=true;fd_ = -1; }
+  private:
+   int& fd_;
++  void* reservation_;
++  bool transferred_=false;
+ };
+ 
+ /**
+@@ -397,11 +408,11 @@
+     throw Napi::Error::New(napiEnv, "Authenticated native PTY helper unavailable");
+   }
+ 
++  int master = -1;
++  ScopedPtyMaster master_owner(master,reservation.Handle());
+   PreparedExitCallback exit_callback(
+       napiEnv, info[10].As<Napi::Function>(), reservation.Handle());
+   pid_t pid;
+-  int master = -1;
+-  ScopedPtyMaster master_owner(master);
+ #if defined(__APPLE__)
+   int argc = argv_.Length();
+   int argl = argc + 4;
+@@ -508,6 +519,12 @@
+   obj.Set("fd", Napi::Number::New(napiEnv, master));
+   obj.Set("pid", Napi::Number::New(napiEnv, pid));
+   obj.Set("pty", Napi::String::New(napiEnv, ptsname(master)));
++  // Immutable private callback, not a caller-selected reservation or PID.
++  napi_value closed;
++  auto callback=[](napi_env env,napi_callback_info info)->napi_value{void* token=nullptr;size_t count=0;if(napi_get_cb_info(env,info,&count,nullptr,nullptr,&token)!=napi_ok)return nullptr;AuxNativePtyTransportClosed(token);napi_value value;napi_get_undefined(env,&value);return value;};
++  if(napi_create_function(napiEnv,"auxOriginalTransportClosed",NAPI_AUTO_LENGTH,callback,reservation.Handle(),&closed)!=napi_ok)throw Napi::Error::New(napiEnv,"PTY transport completion capture failed");
++  const napi_property_descriptor property{"auxOriginalTransportClosed",nullptr,nullptr,nullptr,nullptr,closed,napi_default,nullptr};
++  if(napi_define_properties(napiEnv,obj,1,&property)!=napi_ok)throw Napi::Error::New(napiEnv,"PTY transport completion binding failed");
+ 
+   master_owner.Release();
+   return obj;
+--- /Users/rcourson/Documents/Vibe/aux-completion-20261026/runtime/docs/integration/proposed/completion-20261026/runtime/fixed-pty-linked/source/unixTerminal.js
++++ unixTerminal.js
+@@ -91,11 +91,34 @@
+         };
+         // fork
+         var term = pty.fork(file, args, parsedEnv, cwd, _this._cols, _this._rows, uid, gid, (encoding === 'utf8'), helperPath, onexit);
+-        _this._socket = new tty.ReadStream(term.fd);
+-        if (encoding !== null) {
+-            _this._socket.setEncoding(encoding);
+-        }
+-        _this._writeStream = new CustomWriteStream(term.fd, (encoding || undefined));
++        // Capture the original physical close before any consumer can cancel.
++        var transportClosed = term.auxOriginalTransportClosed;
++        var socketClosed = false, writerDrained = false, transportReported = false;
++        var reportTransport = function () {
++            if (!transportReported && socketClosed && writerDrained) {
++                transportReported = true;
++                transportClosed();
++            }
++        };
++        try { _this._socket = new tty.ReadStream(term.fd); }
++        catch(error) { fs.close(term.fd, function(closeError) { if (!closeError) transportClosed(); }); throw error; }
++        _this._socket.once('close', function () {
++            socketClosed = true;
++            if (_this._writeStream) _this._writeStream.dispose();
++            reportTransport();
++        });
++        try {
++        if (encoding !== null) _this._socket.setEncoding(encoding);
++        _this._writeStream = new CustomWriteStream(term.fd, (encoding || undefined), function () {
++            writerDrained = true;
++            reportTransport();
++        });
++        } catch(error) {
++            writerDrained = !_this._writeStream;
++            if (_this._writeStream) _this._writeStream.dispose();
++            _this._socket.destroy();
++            throw error;
++        }
+         // setup
+         _this._socket.on('error', function (err) {
+             // NOTE: fs.ReadStream gets EAGAIN twice at first:
+@@ -280,16 +303,30 @@
+  * issues that can occur when using the standard APIs in Node.
+  */
+ var CustomWriteStream = /** @class */ (function () {
+-    function CustomWriteStream(_fd, _encoding) {
++    function CustomWriteStream(_fd, _encoding, onDrained) {
+         this._fd = _fd;
+         this._encoding = _encoding;
+         this._writeQueue = [];
++        this._disposed = false;
++        this._inFlight = 0;
++        this._onDrained = onDrained;
+     }
+     CustomWriteStream.prototype.dispose = function () {
+         clearImmediate(this._writeImmediate);
+         this._writeImmediate = undefined;
++        this._disposed = true;
++        this._writeQueue.length = 0;
++        this._reportDrained();
++    };
++    CustomWriteStream.prototype._reportDrained = function () {
++        if (this._disposed && this._inFlight === 0 && this._onDrained) {
++            var callback = this._onDrained;
++            this._onDrained = undefined;
++            callback();
++        }
+     };
+     CustomWriteStream.prototype.write = function (data) {
++        if (this._disposed) return;
+         // Writes are put in a queue and processed asynchronously in order to handle
+         // backpressure from the kernel buffer.
+         var buffer = typeof data === 'string'
+@@ -305,14 +342,17 @@
+     CustomWriteStream.prototype._processWriteQueue = function () {
+         var _this = this;
+         this._writeImmediate = undefined;
+-        if (this._writeQueue.length === 0) {
++        if (this._disposed || this._writeQueue.length === 0) {
+             return;
+         }
+         var task = this._writeQueue[0];
+         // Write to the underlying file descriptor and handle it directly, rather
+         // than using the `net.Socket`/`tty.WriteStream` wrappers which swallow and
+         // mask errors like EAGAIN and can cause the thread to block indefinitely.
+-        fs.write(this._fd, task.buffer, task.offset, function (err, written) {
++        this._inFlight++;
++        try { fs.write(this._fd, task.buffer, task.offset, function (err, written) {
++            _this._inFlight--;
++            if (_this._disposed) { _this._reportDrained(); return; }
+             if (err) {
+                 if ('code' in err && err.code === 'EAGAIN') {
+                     // `setImmediate` is used to yield to the event loop and re-attempt
+@@ -340,7 +380,7 @@
+             // fast as possible.
+             // Context: https://github.com/microsoft/node-pty/issues/833
+             _this._processWriteQueue();
+-        });
++        }); } catch(error) {this._inFlight--;this._reportDrained();throw error;}
+     };
+     return CustomWriteStream;
+ }());
