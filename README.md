@@ -14,6 +14,8 @@ The earlier A45/A25 candidate and accepted preview remain intact. Their receipts
 
 ## Completion plan
 
+A coherent successor is assembled but **unsigned and unlaunched** at `out/provided-candidate-completion-20261026-a1/Aux.app`. Its [current inventory and review](docs/integration/proposed/completion-20261026/integrator/current-candidate-a3.json) bind the completed native builds and final resource composition. The [exact local-development signing/execution review](docs/integration/proposed/completion-20261026/runtime/authority-review/signing-execution-review.json) awaits explicit owner approval. A38 remains the tested candidate; the successor has no runtime-readiness claim.
+
 The [final completion execution plan](docs/ROADMAP-EXECUTION-GRAPH.md) defines the remaining implementation, three parallel worker lanes, shared ownership, focused acceptance journeys, and separate development-signing/production/distribution gates. It is a plan, not a readiness claim or authorization to release.
 
 The [desktop feature expansion plan](docs/plans/2026-10-23-browser-feature-expansion.md) covers the owner's new organization, navigation, window and productivity requirements while preserving the accepted UI. Desktop windows share a tab list with independent viewing; mobile is explicitly deferred. The current A38 candidate passes the bounded local journeys described above. The [execution ledger](docs/integration/proposed/browser-feature-expansion/execution.md) distinguishes that current acceptance from historical implementation/build checkpoints; advanced organization, split, Peek, media and provider-dependent features are not all runtime-accepted. The existing pre-release gates still apply.
