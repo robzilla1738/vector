@@ -1,0 +1,102 @@
+{
+  "format": "aux.future-direct-fixed-dispatch.v1",
+  "basis": "final future resource pair b1; exact same accepted direct-dispatch rules",
+  "rules": [
+    {
+      "find": " if(typeof auxIsSelectedReadFileTool==='function'&&auxIsSelectedReadFileTool(prepared.tool))return operation();",
+      "replace": " if(typeof auxIsSelectedReadFileTool==='function'&&auxIsSelectedReadFileTool(prepared.tool))return operation();\n if(auxIsDirectFixedTool(prepared.tool))return operation();",
+      "count": 1
+    },
+    {
+      "find": "createWebFetchTool(Cn)",
+      "replace": "auxRegisterDirectFixedTool(Cn,createWebFetchTool(Cn))",
+      "count": 1
+    },
+    {
+      "find": "createWebSearchTool(Cn)",
+      "replace": "auxRegisterDirectFixedTool(Cn,createWebSearchTool(Cn))",
+      "count": 1
+    },
+    {
+      "find": "createMemoryReadTool(Cn)",
+      "replace": "auxRegisterDirectFixedTool(Cn,createMemoryReadTool(Cn))",
+      "count": 1
+    },
+    {
+      "find": "createHistorySearchTool({accountId:Cn.accountId,contextAwareness:ci,extensionBridgeRoute:()=>ei.extensionBridgeRoute})",
+      "replace": "auxRegisterDirectFixedTool(Cn,createHistorySearchTool({accountId:Cn.accountId,contextAwareness:ci,extensionBridgeRoute:()=>ei.extensionBridgeRoute}))",
+      "count": 1
+    },
+    {
+      "find": "createHistoryReadTool({accountId:Cn.accountId})",
+      "replace": "auxRegisterDirectFixedTool(Cn,createHistoryReadTool({accountId:Cn.accountId}))",
+      "count": 1
+    },
+    {
+      "find": "createAskUserQuestionTool(Cn)",
+      "replace": "auxRegisterDirectFixedTool(Cn,createAskUserQuestionTool(Cn))",
+      "count": 1
+    },
+    {
+      "find": "createActionConfirmationTool(Cn)",
+      "replace": "auxRegisterDirectFixedTool(Cn,createActionConfirmationTool(Cn))",
+      "count": 1
+    },
+    {
+      "find": ",createGetTimeTool()];return",
+      "replace": ",auxRegisterDirectFixedTool(Cn,createGetTimeTool())];return",
+      "count": 1
+    },
+    {
+      "find": "return ti.push(createTodosTool(Cn)),",
+      "replace": "return ti.push(auxRegisterDirectFixedTool(Cn,createTodosTool(Cn))),",
+      "count": 1
+    },
+    {
+      "find": "var auxLazyDesktopReplResolvers;",
+      "replace": "var auxDirectFixedTools;\nfunction auxRegisterDirectFixedTool(context, tool) {\n  const execute = tool.execute, originalDispose = tool.dispose;\n  const owner = AccountRegistry.getAccount(context.accountId);\n  const createdAt = owner?.createdAt, incarnation = owner?.incarnationId;\n  const sessionCreatedAt = String(context.session.createdAt);\n  const identity = value => JSON.stringify([value?.id, value?.mode, value?.userId, value?.authStatus, value?.provider]);\n  const originalIdentity = identity(owner), epoch = externalOwnerEpoch(context.accountId);\n  const pending = new Set(), controllers = new Set();\n  let disposed = false, disposal;\n  const assertOrigin = () => {\n    const current = AccountRegistry.getAccount(context.accountId), session = SessionStore.get(context.accountId, context.session.id);\n    if (disposed || !owner || !current || current.createdAt !== createdAt || current.incarnationId !== incarnation ||\n        identity(current) !== originalIdentity || externalOwnerEpoch(context.accountId) !== epoch ||\n        isExternalOwnerSuspended(context.accountId) || !session || String(session.createdAt) !== sessionCreatedAt)\n      throw Error('The originating fixed tool account or session changed.');\n  };\n  const registered = function(...args) {\n    const controller = new AbortController();\n    const parent = args[2];\n    const signal = parent ? AbortSignal.any([parent, controller.signal]) : controller.signal;\n    controllers.add(controller);\n    const operation = (async () => {\n      assertOrigin(); signal.throwIfAborted();\n      const held = auxCaptureReadFileScope(context);\n      const stop = () => { void held.close().catch(() => {}); };\n      const unsubscribe = onAccountAuthChange(changed => {\n        if (changed !== context.accountId) return;\n        try { assertOrigin(); held.guard.assertCurrent(); } catch (error) { controller.abort(error); }\n      });\n      signal.addEventListener('abort', stop, { once: true });\n      const onUpdate = args[3];\n      if (typeof onUpdate === 'function') args[3] = (...values) => {\n        assertOrigin(); held.guard.assertCurrent(); signal.throwIfAborted(); return onUpdate(...values);\n      };\n      args[2] = signal;\n      try {\n        return await held.scope.awaited(async () => {\n          assertOrigin(); held.guard.assertCurrent(); signal.throwIfAborted();\n          // Keep the original promise alive even for direct APIs without abort support.\n          const result = await execute.apply(tool, args);\n          assertOrigin(); held.guard.assertCurrent(); signal.throwIfAborted();\n          return result;\n        });\n      } finally {\n        unsubscribe(); signal.removeEventListener('abort', stop); await held.close();\n      }\n    })();\n    pending.add(operation);\n    const finish = () => { pending.delete(operation); controllers.delete(controller); };\n    operation.then(finish, finish);\n    return operation;\n  };\n  tool.execute = registered;\n  tool.dispose = () => {\n    if (!disposed) {\n      disposed = true;\n      for (const controller of controllers) controller.abort(Error('The fixed tool session closed.'));\n      disposal = Promise.allSettled([...pending]).then(() => originalDispose?.call(tool));\n    }\n    return disposal;\n  };\n  (auxDirectFixedTools ??= new WeakMap()).set(tool, registered);\n  return tool;\n}\nfunction auxIsDirectFixedTool(tool) {\n  const registered = tool && auxDirectFixedTools?.get(tool);\n  return typeof registered === 'function' && registered === tool.execute;\n}\n\nvar auxLazyDesktopReplResolvers;",
+      "count": 1
+    }
+  ],
+  "resources": [
+    {
+      "path": "/private/tmp/aux-future-final-resources-20261026-b1/index.mjs",
+      "name": "index.mjs",
+      "beforeSha256": "d244835e0f463a451e350eb2f075cdb6900d1d9e640587edcc372c45ef27b058",
+      "afterSha256": "35224aa4bb1633f71bd4963a7d02fa63d6d5aafc6490b3e55afeedc1b507843a",
+      "preservedAdapters": {
+        "selected-repl-fs-resource.mjs": "de8c25462318a399e971b6be59d735c4b064aa1a86a0ce94a4d0d7637a04ccfd",
+        "selected-repl-resource.mjs": "b97a6ac7031f1d9dd4c9b8e1105908c7c8deb63f648c70adae40c9ece5b4b0dd"
+      }
+    },
+    {
+      "path": "/private/tmp/aux-future-final-resources-20261026-b1/aux-native-entry.mjs",
+      "name": "aux-native-entry.mjs",
+      "beforeSha256": "b9f39718475bda37c21ebbf241792b83d534c0c3849548e53b4fe655ceb88f71",
+      "afterSha256": "882031706a125573c03a246f28f6c01f73f80b779345a10a0bb59ecd658ec2fc",
+      "preservedAdapters": {
+        "selected-repl-fs-resource.mjs": "de8c25462318a399e971b6be59d735c4b064aa1a86a0ce94a4d0d7637a04ccfd",
+        "selected-repl-resource.mjs": "b97a6ac7031f1d9dd4c9b8e1105908c7c8deb63f648c70adae40c9ece5b4b0dd"
+      }
+    }
+  ],
+  "appModified": false,
+  "signed": false,
+  "modelCalls": 0,
+  "registeredTools": [
+    "memory_search",
+    "get_time",
+    "write_todos",
+    "history_search",
+    "history_read",
+    "webfetch",
+    "websearch",
+    "ask_user_question",
+    "request_action_confirmation"
+  ],
+  "predecessorReceipt": {
+    "path": "/private/tmp/aux-future-final-resources-20261026-b1/receipt.json",
+    "sha256": "71f221028b11b88d31a922df45552b5b8b7dd1c8716a1763c5086493773823ff"
+  },
+  "reverseReplayExact": true
+}
