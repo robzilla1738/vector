@@ -1,0 +1,29 @@
+{
+  "format": "aux.completion.first-launch-namespace-observation.v1",
+  "recordedAtUtc": "2026-10-26T17:54:13.998592+00:00",
+  "approvedReviewSha256": "20572af30ef6613f1fc8bced01edada6d52f4b3f7c1f21dd97fb610ec2b257f2",
+  "firstApprovedLaunchIssued": true,
+  "processRemainsRunning": false,
+  "portsListening": false,
+  "createdDirectories": [
+    {
+      "path": "/Users/rcourson/Library/Application Support/Aux Browser Completion 20261026",
+      "device": 16777232,
+      "inode": 73116320,
+      "uid": 502,
+      "mode": "0o700",
+      "createdAfterApprovedAbsentPreflight": true
+    },
+    {
+      "path": "/Users/rcourson/Library/Caches/Aux Browser Completion 20261026",
+      "device": 16777232,
+      "inode": 73116322,
+      "uid": 502,
+      "mode": "0o700",
+      "createdAfterApprovedAbsentPreflight": true
+    }
+  ],
+  "filesObserved": 0,
+  "keychainValuesRead": false,
+  "legacyOrOwnerStateAdopted": false
+}

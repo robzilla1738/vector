@@ -1,0 +1,40 @@
+{
+  "format": "aux.completion.actual-startup-failure.v1",
+  "recordedAtUtc": "2026-10-26T17:58:21.145606+00:00",
+  "signedReceipt": {
+    "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/runtime/authority-review/actual-local-signing-repair-a2.json",
+    "sha256": "03ddce0b29951ec2b069e3f2b95f1c10f29a92d21f64c007638cea88364e5e0e"
+  },
+  "signedInventorySha256": "18285cfb993326a5ebc1a88ab0d9e406d596dcec1807f9201a5dd6cff677830a",
+  "exactApprovedReviewSha256": "20572af30ef6613f1fc8bced01edada6d52f4b3f7c1f21dd97fb610ec2b257f2",
+  "launchCommands": [
+    {
+      "command": [
+        "/usr/bin/open",
+        "-n",
+        "-a",
+        "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-completion-20261026-a1/Aux.app",
+        "--args",
+        "--use-mock-keychain"
+      ],
+      "returned": 0,
+      "windowObserved": false
+    },
+    {
+      "command": [
+        "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-completion-20261026-a1/Aux.app/Contents/MacOS/Aux",
+        "--use-mock-keychain"
+      ],
+      "exitCode": 1,
+      "stderrPath": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-completion-20261026-a1/diagnostic-launch-a1.stderr",
+      "stderrSha256": "36e06ba17104357ff6b1334aaf7265f8fbbda9494646db30344298f6bf07d416",
+      "stderr": "Aux native policy diagnostic stage=imagePreparationMode error=path\nAux native policy diagnostic stage=prepareEmbeddedImages error=path\nAux native daemon refused at images (status -1).\nAux fresh startup refused: paired daemon receipt\n"
+    }
+  ],
+  "actualOutcome": "No window/services; newly created namespace directories remain preserved.",
+  "sourceCause": "Image-custody ancestor metadata rejects any extended ACL. Actual home/Documents have normal everyone deny delete entries, with expected owner, nonwritable modes and canonical paths.",
+  "repair": "Narrow ordinary ancestor-directory deny-only ACL acceptance; preserve all owner ACLs and file/private/default strict checks. Source proposal in progress; no bypass.",
+  "runtimeAccepted": false,
+  "providerRequests": 0,
+  "newOSGrants": false
+}

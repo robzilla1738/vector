@@ -1,0 +1,24 @@
+{
+  "format": "aux.completion.approved-fresh-namespace-preflight.v1",
+  "recordedAtUtc": "2026-10-26T17:52:49.060285+00:00",
+  "approvedReviewSha256": "20572af30ef6613f1fc8bced01edada6d52f4b3f7c1f21dd97fb610ec2b257f2",
+  "signedReceipt": {
+    "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/runtime/authority-review/actual-local-signing-repair-a2.json",
+    "sha256": "03ddce0b29951ec2b069e3f2b95f1c10f29a92d21f64c007638cea88364e5e0e"
+  },
+  "paths": [
+    {
+      "path": "/Users/rcourson/Library/Application Support/Aux Browser Completion 20261026",
+      "exists": false
+    },
+    {
+      "path": "/Users/rcourson/Library/Caches/Aux Browser Completion 20261026",
+      "exists": false
+    }
+  ],
+  "allAbsent": true,
+  "contentsRead": false,
+  "keychainAccessedByPreflight": false,
+  "firstLaunchAuthorized": true,
+  "oldA38NormalQuitAndPortsClear": true
+}

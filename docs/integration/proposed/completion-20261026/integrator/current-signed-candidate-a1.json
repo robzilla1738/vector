@@ -1,0 +1,20 @@
+{
+  "format": "aux.completion.current-signed-candidate.v1",
+  "app": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-completion-20261026-a1/Aux.app",
+  "signed": true,
+  "signedObjects": 19,
+  "signedReceipt": {
+    "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/runtime/authority-review/actual-local-signing-repair-a2.json",
+    "sha256": "03ddce0b29951ec2b069e3f2b95f1c10f29a92d21f64c007638cea88364e5e0e"
+  },
+  "inventorySha256": "18285cfb993326a5ebc1a88ab0d9e406d596dcec1807f9201a5dd6cff677830a",
+  "appExecuted": true,
+  "runtimeAccepted": false,
+  "startupFailure": {
+    "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/integrator/actual-startup-failure-a1.json",
+    "sha256": "facf538709c32af92bff44e5746f59bf30342cd985c02d9d85f94e56a1f7431c"
+  },
+  "freshNamespacePreserved": true,
+  "acceptedA38Preserved": true,
+  "repairInProgress": true
+}
