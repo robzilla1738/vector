@@ -1,0 +1,240 @@
+{
+  "format": "aux.native.counted-projection.v1",
+  "nativeRoot": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src",
+  "predecessor": "46c5310c3 CLI Space source",
+  "files": [
+    {
+      "path": "chrome/browser/aux/cli/AuxCliOpenArguments.h",
+      "inputSource": "/Users/rcourson/Documents/Vibe/aux-completion-20261026/desktop/docs/integration/proposed/completion-20261026/desktop/next-desktop/source/chrome/browser/aux/cli/AuxCliOpenArguments.h",
+      "inputSha256": "4a70de59027c45c76cc5594ded8268cd27393c58ac3d761c77c01da8de5aa931",
+      "outputSha256": "8718b496c32d75cdc847b863c26324616e404ff1abb57558e9b403878f990089",
+      "anchors": [
+        {
+          "name": "finite read-only query parser types",
+          "before": "// Data parsing only.",
+          "after": "enum class ReadOnlyQueryKind { list, resolve };\nstruct ReadOnlyQuery { ReadOnlyQueryKind kind; OpenArguments destination; };\nstd::optional<ReadOnlyQuery> ParseNativeReadOnlyQuery(std::span<const std::string>);\n// Data parsing only.",
+          "expectedCount": 1
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/aux/cli/AuxCliOpenArguments.cc",
+      "inputSource": "/Users/rcourson/Documents/Vibe/aux-completion-20261026/desktop/docs/integration/proposed/completion-20261026/desktop/next-desktop/source/chrome/browser/aux/cli/AuxCliOpenArguments.cc",
+      "inputSha256": "afce2e99e25bbffbb221232ee9fa05be551f5ad23fbd9ad3d9a0b411a6fe64da",
+      "outputSha256": "d30b2c8a0a43ba1233ccf47565e4674f95e08d284c31d921f090ccd460c302e8",
+      "anchors": [
+        {
+          "name": "owned argument list for resolve parser reuse",
+          "before": "#include <utility>",
+          "after": "#include <utility>\n#include <vector>",
+          "expectedCount": 1
+        },
+        {
+          "name": "parse only finite list and resolve commands",
+          "before": "std::optional<std::string> EncodeNativeOpenEnvelope(",
+          "after": "std::optional<ReadOnlyQuery> ParseNativeReadOnlyQuery(std::span<const std::string> args) {\n  if (args.empty()) return std::nullopt;\n  if (args.front() == \"resolve\") {\n    std::vector<std::string> open(args.begin(), args.end());\n    open.front() = \"open\";\n    auto destination = ParseNativeOpenArguments(open);\n    if (destination.status != OpenParseStatus::accepted || !HttpText(destination.url) ||\n        !ProfileText(destination.profile) || !SpaceText(destination.space)) return std::nullopt;\n    return ReadOnlyQuery{ReadOnlyQueryKind::resolve, std::move(destination)};\n  }\n  if (args.front() != \"list\") return std::nullopt;\n  OpenArguments destination;\n  if (args.size() == 3 && args[1] == \"--profile\") destination.profile = args[2];\n  else if (args.size() == 2 && args[1].starts_with(\"--profile=\")) destination.profile = args[1].substr(10);\n  else if (args.size() != 1) return std::nullopt;\n  if ((args.size() != 1 && destination.profile.empty()) || !ProfileText(destination.profile)) return std::nullopt;\n  destination.status = OpenParseStatus::accepted;\n  return ReadOnlyQuery{ReadOnlyQueryKind::list, std::move(destination)};\n}\nstd::optional<std::string> EncodeNativeOpenEnvelope(",
+          "expectedCount": 1
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/aux/cli/AuxCliWire.h",
+      "inputSource": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/aux/cli/AuxCliWire.h",
+      "inputSha256": "e104b5b424c8441c1b6f24885039246891ede8cfad24c90e9287de39c8fea01d",
+      "outputSha256": "28983f2a1b4f87c97e3b5fb130351bf72ac8156662e2c62c3ba1117ae8e7eb0c",
+      "anchors": [
+        {
+          "name": "distinct finite query message kinds",
+          "before": "inline constexpr uint32_t kVersion = 1;",
+          "after": "inline constexpr mach_msg_id_t kReadOnlyQuery = 0x41584354; // AXCT\ninline constexpr mach_msg_id_t kReadOnlyResult = 0x41584355; // AXCU\ninline constexpr uint32_t kVersion = 1;",
+          "expectedCount": 1
+        },
+        {
+          "name": "query carries no file or environment capabilities",
+          "before": "struct Arguments {",
+          "after": "// Authenticated metadata only. No fileports, provider tokens or process role.\nstruct ReadOnlyRequest {\n  mach_msg_header_t header{};\n  uint32_t version = kVersion;\n  uint32_t payload_bytes = 0;\n  Nonce nonce{};\n  std::array<uint8_t, kPayloadLimit> payload{};\n};\nstruct ReadOnlyCompletion {\n  mach_msg_header_t header{};\n  uint32_t version = kVersion;\n  int32_t exit_code = 78;\n  Nonce nonce{};\n  uint32_t payload_bytes = 0;\n  std::array<uint8_t, kPayloadLimit> payload{};\n};\nsize_t ReadOnlyRequestBytes(uint32_t);\nsize_t ReadOnlyCompletionBytes(uint32_t);\nstruct Arguments {",
+          "expectedCount": 1
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/aux/cli/AuxCliWire.cc",
+      "inputSource": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/aux/cli/AuxCliWire.cc",
+      "inputSha256": "457cd1fa9a78e3427cc45c1978e91a92e290656497d2faa52a838962bfbcbcd9",
+      "outputSha256": "b43ebdd31512b69c9e5769b4593df2a67aba2eb3331507e9918bf1dc50bfc051",
+      "anchors": [
+        {
+          "name": "bounded typed query frame sizes",
+          "before": "size_t RequestBytes(uint32_t payload_bytes) {",
+          "after": "size_t ReadOnlyRequestBytes(uint32_t size) {\n  return size <= kPayloadLimit ? (offsetof(ReadOnlyRequest, payload) + size + 3) & ~size_t{3} : 0;\n}\nsize_t ReadOnlyCompletionBytes(uint32_t size) {\n  return size <= kPayloadLimit ? (offsetof(ReadOnlyCompletion, payload) + size + 3) & ~size_t{3} : 0;\n}\nsize_t RequestBytes(uint32_t payload_bytes) {",
+          "expectedCount": 1
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/aux/cli/AuxCliIngress.h",
+      "inputSource": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/aux/cli/AuxCliIngress.h",
+      "inputSha256": "4515848fafc4dad25e5180130640d28c28bf1a3333610f232b34816a7e64e8d6",
+      "outputSha256": "43de8bd6a248b231177941147a47b2510a0c287171451ea8c236629872cf2a2f",
+      "anchors": [
+        {
+          "name": "read-only terminal API reuses the sealed handshake",
+          "before": "int ForwardTerminalInvocation(int argc,char* argv[]);",
+          "after": "int ForwardTerminalInvocation(int argc,char* argv[]);\nint ForwardTerminalReadOnlyQuery(int argc,char* argv[]);",
+          "expectedCount": 1
+        },
+        {
+          "name": "receiver distinguishes metadata from native execution",
+          "before": "  bool Current()const;",
+          "after": "  bool Current()const;\n  bool IsReadOnlyQuery()const;",
+          "expectedCount": 1
+        },
+        {
+          "name": "only existing native receiver completes metadata",
+          "before": "  bool CompleteAfterNativeOpenResult(int exit_code);",
+          "after": "  bool CompleteAfterNativeOpenResult(int exit_code);\n  bool CompleteReadOnlyQuery(std::string_view json, int exit_code);",
+          "expectedCount": 1
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/aux/cli/AuxCliIngress.cc",
+      "inputSource": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/aux/cli/AuxCliIngress.cc",
+      "inputSha256": "884e2d83edc447aa75b612eb828f87f95baf84b007639382e8a2faf823ac7fd2",
+      "outputSha256": "49879402fe88fc9045a3b624cd38068e88183d989942b77615bd8c3fb973b369",
+      "anchors": [
+        {
+          "name": "explicit bounded terminal output",
+          "before": "#include <limits>",
+          "after": "#include <limits>\n#include <cstdio>",
+          "expectedCount": 1
+        },
+        {
+          "name": "typed query frames fit the existing owned receive storage",
+          "before": "struct Message {",
+          "after": "static_assert(sizeof(ReadOnlyRequest)<=sizeof(Request));\nstatic_assert(sizeof(ReadOnlyCompletion)<=sizeof(Request));\nstruct Message {",
+          "expectedCount": 1
+        },
+        {
+          "name": "retain query kind in actual invocation",
+          "before": "Arguments arguments;bool completed=false;",
+          "after": "Arguments arguments;bool completed=false,read_only_query=false;",
+          "expectedCount": 1
+        },
+        {
+          "name": "actual transport kind query",
+          "before": "const Arguments& Invocation::arguments()const",
+          "after": "bool Invocation::IsReadOnlyQuery()const{return state_->read_only_query;}\nconst Arguments& Invocation::arguments()const",
+          "expectedCount": 1
+        },
+        {
+          "name": "authenticated typed JSON completion",
+          "before": "struct Ingress::State{",
+          "after": "bool Invocation::CompleteReadOnlyQuery(std::string_view json,int code){\n if(!Current()||!state_->read_only_query||json.empty()||json.size()>kPayloadLimit||code<0||code>255)return false;\n ReadOnlyCompletion response;response.header.msgh_size=ReadOnlyCompletionBytes(json.size());response.header.msgh_id=kReadOnlyResult;response.nonce=state_->nonce;response.exit_code=code;response.payload_bytes=json.size();\n std::copy(json.begin(),json.end(),response.payload.begin());state_->completed=true;\n return SendOnce(state_->reply.value,response,kHandshake);\n}\nstruct Ingress::State{",
+          "expectedCount": 1
+        },
+        {
+          "name": "private query receive branch accepts no capabilities",
+          "before": " Message request;if(!Receive(invocation->receiver.value,kInvokeWait,request))return{};const auto* request_audit=request.Audit();auto* message=reinterpret_cast<Request*>(request.Header());",
+          "after": " Message request;if(!Receive(invocation->receiver.value,kInvokeWait,request))return{};const auto* request_audit=request.Audit();\n if(request.Header()->msgh_id==kReadOnlyQuery){\n  const auto* query=reinterpret_cast<const ReadOnlyRequest*>(request.Header());\n  if(!request_audit||(query->header.msgh_bits&MACH_MSGH_BITS_COMPLEX)||query->version!=kVersion||query->nonce!=invocation->nonce||query->payload_bytes>kPayloadLimit||query->header.msgh_size!=ReadOnlyRequestBytes(query->payload_bytes)||MACH_MSGH_BITS_REMOTE(query->header.msgh_bits)!=MACH_MSG_TYPE_PORT_SEND_ONCE||!invocation->images->SameCli(request_audit->msgh_audit,invocation->birth))return{};\n  if(!Decode(std::span(query->payload).first(query->payload_bytes),&invocation->arguments)||!invocation->arguments.environment.empty()||state->closing.load())return{};\n  invocation->read_only_query=true;invocation->reply.value=request.Header()->msgh_remote_port;request.Header()->msgh_remote_port=MACH_PORT_NULL;\n  return std::unique_ptr<Invocation>(new Invocation(std::move(invocation)));\n }\n auto* message=reinterpret_cast<Request*>(request.Header());",
+          "expectedCount": 1
+        },
+        {
+          "name": "one sealed client implementation with explicit finite kind",
+          "before": "int ForwardTerminalInvocation(int argc,char* argv[]){",
+          "after": "namespace {\nenum class TerminalKind { native_open, read_only_query };\nint ForwardTerminal(int argc,char* argv[],TerminalKind kind){",
+          "expectedCount": 1
+        },
+        {
+          "name": "query grants no cwd or standard stream fileports",
+          "before": " std::array<Right,4> files;File directory;directory.value=open(\".\",O_RDONLY|O_DIRECTORY|O_CLOEXEC);if(directory.value<0)return 78;\n for(size_t i=0;i<4;++i){const int source=i==0?directory.value:static_cast<int>(i-1);if(!FileShape(source,i)||fileport_makeport(source,&files[i].value)!=0)return 78;request.files[i].name=files[i].value;request.files[i].disposition=MACH_MSG_TYPE_COPY_SEND;request.files[i].type=MACH_MSG_PORT_DESCRIPTOR;}",
+          "after": " std::array<Right,4> files;File directory;\n if(kind==TerminalKind::native_open){\n  directory.value=open(\".\",O_RDONLY|O_DIRECTORY|O_CLOEXEC);if(directory.value<0)return 78;\n  for(size_t i=0;i<4;++i){const int source=i==0?directory.value:static_cast<int>(i-1);if(!FileShape(source,i)||fileport_makeport(source,&files[i].value)!=0)return 78;request.files[i].name=files[i].value;request.files[i].disposition=MACH_MSG_TYPE_COPY_SEND;request.files[i].type=MACH_MSG_PORT_DESCRIPTOR;}\n }",
+          "expectedCount": 1
+        },
+        {
+          "name": "send query payload through actual private capability",
+          "before": " if(!Send(request,kHandshake))return 75;\n // Clear transient",
+          "after": " if(kind==TerminalKind::read_only_query){\n  ReadOnlyRequest query;query.nonce=hello.nonce;query.payload_bytes=payload.size();std::copy(payload.begin(),payload.end(),query.payload.begin());\n  query.header.msgh_bits=MACH_MSGH_BITS(MACH_MSG_TYPE_COPY_SEND,MACH_MSG_TYPE_MAKE_SEND_ONCE);query.header.msgh_size=ReadOnlyRequestBytes(query.payload_bytes);query.header.msgh_id=kReadOnlyQuery;query.header.msgh_remote_port=endpoint.value;query.header.msgh_local_port=completion.value;\n  if(!Send(query,kHandshake))return 75;\n }else if(!Send(request,kHandshake))return 75;\n // Clear transient",
+          "expectedCount": 1
+        },
+        {
+          "name": "authenticate bounded JSON reply before printing",
+          "before": "  const auto* token=result.Audit();const auto* done=reinterpret_cast<const Completion*>(result.Header());",
+          "after": "  const auto* token=result.Audit();\n  if(kind==TerminalKind::read_only_query){\n   const auto* done=reinterpret_cast<const ReadOnlyCompletion*>(result.Header());\n   if(!token||done->header.msgh_id!=kReadOnlyResult||(done->header.msgh_bits&MACH_MSGH_BITS_COMPLEX)||done->header.msgh_remote_port!=MACH_PORT_NULL||done->payload_bytes>kPayloadLimit||done->header.msgh_size!=ReadOnlyCompletionBytes(done->payload_bytes)||done->version!=kVersion||done->nonce!=hello.nonce||done->exit_code<0||done->exit_code>255||!images->SameBrowser(token->msgh_audit,browser))return 75;\n   const auto json=std::span(done->payload).first(done->payload_bytes);\n   if(json.empty()||fwrite(json.data(),1,json.size(),stdout)!=json.size()||fputc('\\n',stdout)==EOF||fflush(stdout)!=0)return 74;\n   return done->exit_code;\n  }\n  const auto* done=reinterpret_cast<const Completion*>(result.Header());",
+          "expectedCount": 1
+        },
+        {
+          "name": "terminal query cancellation never requests execution",
+          "before": " for(const auto [bit,number]:std::array<std::pair<int,int>,4>",
+          "after": " if(kind==TerminalKind::read_only_query&&(pending&7))return 130;\n for(const auto [bit,number]:std::array<std::pair<int,int>,4>",
+          "expectedCount": 1
+        },
+        {
+          "name": "finite public wrappers preserve original native forwarding",
+          "before": " }\n}\n}\n",
+          "after": " }\n}\n}  // namespace\nint ForwardTerminalInvocation(int argc,char* argv[]){return ForwardTerminal(argc,argv,TerminalKind::native_open);}\nint ForwardTerminalReadOnlyQuery(int argc,char* argv[]){return ForwardTerminal(argc,argv,TerminalKind::read_only_query);}\n}\n",
+          "expectedCount": 1,
+          "atEnd": true
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/aux/cli/AuxNativeCliFrontend.mm",
+      "inputSource": "/Users/rcourson/Documents/Vibe/aux-completion-20261026/desktop/docs/integration/proposed/completion-20261026/desktop/next-desktop/source/chrome/browser/aux/cli/AuxNativeCliFrontend.mm",
+      "inputSha256": "d50457cb805b3663292bc832cdfb2d86627c5eabffb4d32b6b19bde8244d4d72",
+      "outputSha256": "e31f601945cddbbb6255d726e0dc6a2eedc7dd84fca6a29f1bddc6cc7216dd71",
+      "anchors": [
+        {
+          "name": "metadata commands use the authenticated response transport",
+          "before": " const auto parsed=aux::cli::ParseNativeOpenArguments(arguments);",
+          "after": " if(!arguments.empty()&&(arguments.front()==\"list\"||arguments.front()==\"resolve\")){\n  if(arguments.size()==2&&arguments[1]==\"--help\"){\n   std::cout << \"Usage: aux list [--profile <ID or unique name>]\\n\"\n                \"       aux resolve <https://URL> [--profile <ID or unique name> [--space <ID or unique name>]]\\n\";return 0;\n  }\n  if(!aux::cli::ParseNativeReadOnlyQuery(arguments)){\n   std::cerr << \"Invalid Aux list/resolve arguments; use --help.\\n\";return 64;\n  }\n  const int status=aux::cli::ForwardTerminalReadOnlyQuery(argc,argv);\n  if(status)std::cerr << \"Aux metadata query failed (exit \" << status << \"). If no JSON result was returned, open the matching Aux app through its supported launcher and retry.\\n\";\n  return status;\n }\n const auto parsed=aux::cli::ParseNativeOpenArguments(arguments);",
+          "expectedCount": 1
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/aux/cli/AuxCliOpenCommand.mm",
+      "inputSource": "/Users/rcourson/Documents/Vibe/aux-completion-20261026/desktop/docs/integration/proposed/completion-20261026/desktop/next-desktop/source/chrome/browser/aux/cli/AuxCliOpenCommand.mm",
+      "inputSha256": "a7a231d60f3e1ebce5e6296e75441efb476733ee7795730b5e699c128854995c",
+      "outputSha256": "6f18052e41f09885a8fc04881866f7f6276061172bee5e967c388466a183990e",
+      "anchors": [
+        {
+          "name": "ordinary receiver selection is compile-time and explicit",
+          "before": "#include \"AuxCliOpenArguments.h\"",
+          "after": "#include \"AuxCliOpenArguments.h\"\n#include \"chrome/browser/aux/ordinary_startup_build.h\"\n#include \"chrome/browser/aux/routing/routing_service.h\"\n#include \"base/json/json_writer.h\"",
+          "expectedCount": 1
+        },
+        {
+          "name": "metadata queries cannot enter the retained native operation",
+          "before": "          }else NativeOpenOperation::Begin(std::move(*actual));",
+          "after": "          }else if(*actual&&(*actual)->IsReadOnlyQuery())service->ReadOnlyQuery(std::move(*actual));\n#if defined(AUX_BROWSER_ONLY_NATIVE_STARTUP) && AUX_BROWSER_ONLY_NATIVE_STARTUP\n          else if(*actual)(*actual)->CompleteAfterNativeOpenResult(64);\n#else\n          else NativeOpenOperation::Begin(std::move(*actual));\n#endif",
+          "expectedCount": 1
+        },
+        {
+          "name": "terminal typed refusal when queue or admission closes",
+          "before": "if(closing_.load() || queued_.load()>=kPendingLimit)invocation->CompleteAfterNativeOpenResult(78);",
+          "after": "if(closing_.load() || queued_.load()>=kPendingLimit)Refuse(invocation.get(),78);",
+          "expectedCount": 1
+        },
+        {
+          "name": "terminal typed refusal for a queued request after shutdown",
+          "before": "if(*actual)(*actual)->CompleteAfterNativeOpenResult(78);",
+          "after": "if(*actual)Refuse(actual->get(),78);",
+          "expectedCount": 1
+        },
+        {
+          "name": "terminal typed refusal for failed UI post",
+          "before": "if(*delivery)(*delivery)->CompleteAfterNativeOpenResult(78);",
+          "after": "if(*delivery)Refuse(delivery->get(),78);",
+          "expectedCount": 1
+        },
+        {
+          "name": "finite UI receiver uses actual admitted profile and existing resolver",
+          "before": "  void ReceiveNext(){",
+          "after": "  static void Refuse(Invocation* invocation,int code){\n    if(invocation->IsReadOnlyQuery())invocation->CompleteReadOnlyQuery(R\"({\"ok\":false,\"error\":\"query-unavailable\"})\",code);\n    else invocation->CompleteAfterNativeOpenResult(code);\n  }\n  void ReadOnlyQuery(std::unique_ptr<Invocation> invocation){\n    DCHECK_CURRENTLY_ON(content::BrowserThread::UI);\n    const auto parsed=ParseNativeReadOnlyQuery(invocation->arguments().argv);\n    base::DictValue result;\n    int code=0;\n    auto window=SelectActualWindow({});\n    auto profile=window?window->GetProfile()->GetWeakPtr():base::WeakPtr<Profile>();\n    const auto epoch=profile?aux::GetProfileCookieBindingEpoch(profile.get()):std::string();\n    const auto generation=aux::peer::InspectNativeBrowserShutdown().admitted_generation;\n    const auto current=[&](){\n      return !closing_.load()&&!admission_closed&&ActualNativeReady()&&invocation->Current()&&\n          window&&profile&&UsableWindow(window.get())&&window->GetProfile()==profile.get()&&\n          !epoch.empty()&&aux::GetProfileCookieBindingEpoch(profile.get())==epoch&&\n          !aux::IsProfileCookieRestorePending(profile.get())&&\n          aux::peer::InspectNativeBrowserShutdown().admitted_generation==generation;\n    };\n    if(!parsed||!current()){\n      result=base::DictValue().Set(\"ok\",false).Set(\"error\",parsed?\"routing-authority-unavailable\":\"invalid-query\");code=parsed?78:64;\n    }else if(parsed->kind==ReadOnlyQueryKind::resolve){\n      const auto& destination=parsed->destination;\n      result=aux::routing::Resolve(profile.get(),{.url=GURL(destination.url),.profile=destination.profile,.space=destination.space,.authority=aux::routing::Authority::kExternal});\n      if(!result.FindBool(\"ok\").value_or(false))code=69;\n    }else{\n      auto state=aux::routing::GetState(profile.get());\n      if(!state.FindBool(\"ok\").value_or(false)){result=std::move(state);code=69;}\n      else{\n        auto* profiles=state.FindList(\"profiles\");\n        if(!parsed->destination.profile.empty()){\n          const auto& selector=parsed->destination.profile;\n          std::string selected;size_t matches=0;\n          for(const auto& value:*profiles){\n            const auto* id=value.GetDict().FindString(\"id\");\n            if(id&&*id==selector){selected=*id;matches=1;break;}\n          }\n          if(selected.empty())for(const auto& value:*profiles){\n            const auto* id=value.GetDict().FindString(\"id\");\n            const auto* name=value.GetDict().FindString(\"name\");\n            if(id&&name&&*name==selector){selected=*id;++matches;}\n          }\n          if(matches!=1){result=base::DictValue().Set(\"ok\",false).Set(\"error\",\"profile-missing-or-ambiguous\");code=69;}\n          else profiles->EraseIf([&](const base::Value& value){const auto* id=value.GetDict().FindString(\"id\");return !id||*id!=selected;});\n        }\n        if(!code)result=base::DictValue().Set(\"ok\",true).Set(\"profiles\",std::move(*profiles)).Set(\"spacesAreLoadedOnly\",true);\n      }\n    }\n    if(parsed&&!current()){result=base::DictValue().Set(\"ok\",false).Set(\"error\",\"query-owner-changed\");code=78;}\n    auto json=base::WriteJson(result);\n    if(!json||json->size()>kPayloadLimit){json=R\"({\"ok\":false,\"error\":\"query-result-too-large\"})\";code=75;}\n    invocation->CompleteReadOnlyQuery(*json,code);\n  }\n  void ReceiveNext(){",
+          "expectedCount": 1
+        }
+      ]
+    }
+  ]
+}

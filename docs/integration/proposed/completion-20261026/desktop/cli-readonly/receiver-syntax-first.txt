@@ -1,0 +1,3 @@
+[0;1;31merror: [0m[1mObjective-C was disabled in precompiled file 'obj/build/modules/system/module.pcm' but is currently enabled[0m
+[0;1;31merror: [0m[1mprecompiled file 'obj/build/modules/system/module.pcm' cannot be loaded due to a configuration mismatch with the current compilation [-Wmodule-file-config-mismatch][0m
+2 errors generated.

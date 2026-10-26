@@ -1,0 +1,22 @@
+[1m/Users/rcourson/Documents/Vibe/aux-completion-20261026/desktop/docs/integration/proposed/completion-20261026/desktop/cli-readonly/source/chrome/browser/aux/cli/AuxCliOpenCommand.mm:263:29: [0m[0;1;31merror: [0m[1mmember reference type 'Value *' is a pointer; did you mean to use '->'?[0m
+  263 |       result.Set([0;32m"ok"[0m,[0;32mfalse[0m).Set([0;32m"error"[0m,parsed?[0;32m"routing-authority-unavailable"[0m:[0;32m"invalid-query"[0m);code=parsed?[0;32m78[0m:[0;32m64[0m;[0m
+      | [0;1;32m      ~~~~~~~~~~~~~~~~~~~~~~^
+[0m      | [0;32m                            ->
+[0m[1m/Users/rcourson/Documents/Vibe/aux-completion-20261026/desktop/docs/integration/proposed/completion-20261026/desktop/cli-readonly/source/chrome/browser/aux/cli/AuxCliOpenCommand.mm:263:30: [0m[0;1;31merror: [0m[1mno member named 'Set' in 'base::Value'[0m
+  263 |       result.Set([0;32m"ok"[0m,[0;32mfalse[0m).Set([0;32m"error"[0m,parsed?[0;32m"routing-authority-unavailable"[0m:[0;32m"invalid-query"[0m);code=parsed?[0;32m78[0m:[0;32m64[0m;[0m
+      | [0;1;32m      ~~~~~~~~~~~~~~~~~~~~~~ ^
+[0m[1m/Users/rcourson/Documents/Vibe/aux-completion-20261026/desktop/docs/integration/proposed/completion-20261026/desktop/cli-readonly/source/chrome/browser/aux/cli/AuxCliOpenCommand.mm:285:48: [0m[0;1;31merror: [0m[1mmember reference type 'Value *' is a pointer; did you mean to use '->'?[0m
+  285 |           [0;34mif[0m(matches!=[0;32m1[0m){result.Set([0;32m"ok"[0m,[0;32mfalse[0m).Set([0;32m"error"[0m,[0;32m"profile-missing-or-ambiguous"[0m);code=[0;32m69[0m;}[0m
+      | [0;1;32m                         ~~~~~~~~~~~~~~~~~~~~~~^
+[0m      | [0;32m                                               ->
+[0m[1m/Users/rcourson/Documents/Vibe/aux-completion-20261026/desktop/docs/integration/proposed/completion-20261026/desktop/cli-readonly/source/chrome/browser/aux/cli/AuxCliOpenCommand.mm:285:49: [0m[0;1;31merror: [0m[1mno member named 'Set' in 'base::Value'[0m
+  285 |           [0;34mif[0m(matches!=[0;32m1[0m){result.Set([0;32m"ok"[0m,[0;32mfalse[0m).Set([0;32m"error"[0m,[0;32m"profile-missing-or-ambiguous"[0m);code=[0;32m69[0m;}[0m
+      | [0;1;32m                         ~~~~~~~~~~~~~~~~~~~~~~ ^
+[0m[1m/Users/rcourson/Documents/Vibe/aux-completion-20261026/desktop/docs/integration/proposed/completion-20261026/desktop/cli-readonly/source/chrome/browser/aux/cli/AuxCliOpenCommand.mm:288:39: [0m[0;1;31merror: [0m[1mmember reference type 'Value *' is a pointer; did you mean to use '->'?[0m
+  288 |         [0;34mif[0m(!code)result.Set([0;32m"ok"[0m,[0;32mtrue[0m).Set([0;32m"profiles"[0m,std::move(*profiles)).Set([0;32m"spacesAreLoadedOnly"[0m,[0;32mtrue[0m);[0m
+      | [0;1;32m                 ~~~~~~~~~~~~~~~~~~~~~^
+[0m      | [0;32m                                      ->
+[0m[1m/Users/rcourson/Documents/Vibe/aux-completion-20261026/desktop/docs/integration/proposed/completion-20261026/desktop/cli-readonly/source/chrome/browser/aux/cli/AuxCliOpenCommand.mm:288:40: [0m[0;1;31merror: [0m[1mno member named 'Set' in 'base::Value'[0m
+  288 |         [0;34mif[0m(!code)result.Set([0;32m"ok"[0m,[0;32mtrue[0m).Set([0;32m"profiles"[0m,std::move(*profiles)).Set([0;32m"spacesAreLoadedOnly"[0m,[0;32mtrue[0m);[0m
+      | [0;1;32m                 ~~~~~~~~~~~~~~~~~~~~~ ^
+[0m6 errors generated.

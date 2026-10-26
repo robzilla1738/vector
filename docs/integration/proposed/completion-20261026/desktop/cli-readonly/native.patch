@@ -1,0 +1,362 @@
+--- a/chrome/browser/aux/cli/AuxCliOpenArguments.h
++++ b/chrome/browser/aux/cli/AuxCliOpenArguments.h
+@@ -6,6 +6,9 @@
+ namespace aux::cli {
+ enum class OpenParseStatus { accepted, help, unsupported, invalid };
+ struct OpenArguments { OpenParseStatus status=OpenParseStatus::invalid; std::string url, profile, space; };
++enum class ReadOnlyQueryKind { list, resolve };
++struct ReadOnlyQuery { ReadOnlyQueryKind kind; OpenArguments destination; };
++std::optional<ReadOnlyQuery> ParseNativeReadOnlyQuery(std::span<const std::string>);
+ // Data parsing only. A profile string never creates or loads a native Profile.
+ OpenArguments ParseNativeOpenArguments(std::span<const std::string>);
+ // Bounded data-only ordinary URL envelope. The receiving native OS receipt,
+--- a/chrome/browser/aux/cli/AuxCliOpenArguments.cc
++++ b/chrome/browser/aux/cli/AuxCliOpenArguments.cc
+@@ -1,5 +1,6 @@
+ #include "AuxCliOpenArguments.h"
+ #include <utility>
++#include <vector>
+ namespace aux::cli {
+ OpenArguments ParseNativeOpenArguments(std::span<const std::string> args) {
+   if (args.empty() || args.front() != "open") return {OpenParseStatus::unsupported,{},{},{}};
+@@ -97,6 +98,25 @@
+   return output;
+ }
+ }  // namespace
++std::optional<ReadOnlyQuery> ParseNativeReadOnlyQuery(std::span<const std::string> args) {
++  if (args.empty()) return std::nullopt;
++  if (args.front() == "resolve") {
++    std::vector<std::string> open(args.begin(), args.end());
++    open.front() = "open";
++    auto destination = ParseNativeOpenArguments(open);
++    if (destination.status != OpenParseStatus::accepted || !HttpText(destination.url) ||
++        !ProfileText(destination.profile) || !SpaceText(destination.space)) return std::nullopt;
++    return ReadOnlyQuery{ReadOnlyQueryKind::resolve, std::move(destination)};
++  }
++  if (args.front() != "list") return std::nullopt;
++  OpenArguments destination;
++  if (args.size() == 3 && args[1] == "--profile") destination.profile = args[2];
++  else if (args.size() == 2 && args[1].starts_with("--profile=")) destination.profile = args[1].substr(10);
++  else if (args.size() != 1) return std::nullopt;
++  if ((args.size() != 1 && destination.profile.empty()) || !ProfileText(destination.profile)) return std::nullopt;
++  destination.status = OpenParseStatus::accepted;
++  return ReadOnlyQuery{ReadOnlyQueryKind::list, std::move(destination)};
++}
+ std::optional<std::string> EncodeNativeOpenEnvelope(const OpenArguments& args) {
+   if (args.status != OpenParseStatus::accepted || !HttpText(args.url) ||
+       !ProfileText(args.profile) || !SpaceText(args.space) ||
+--- a/chrome/browser/aux/cli/AuxCliWire.h
++++ b/chrome/browser/aux/cli/AuxCliWire.h
+@@ -13,6 +13,8 @@
+ namespace aux::cli {
+ inline constexpr mach_msg_id_t kInvoke = 0x41584351; // AXCQ
+ inline constexpr mach_msg_id_t kCompleted = 0x41584352; // AXCR
++inline constexpr mach_msg_id_t kReadOnlyQuery = 0x41584354; // AXCT
++inline constexpr mach_msg_id_t kReadOnlyResult = 0x41584355; // AXCU
+ inline constexpr uint32_t kVersion = 1;
+ inline constexpr size_t kArgumentLimit = 256;
+ inline constexpr size_t kArgumentBytes = 8192;
+@@ -65,6 +67,24 @@
+   int32_t exit_code = 78;
+   Nonce nonce{};
+ };
++// Authenticated metadata only. No fileports, provider tokens or process role.
++struct ReadOnlyRequest {
++  mach_msg_header_t header{};
++  uint32_t version = kVersion;
++  uint32_t payload_bytes = 0;
++  Nonce nonce{};
++  std::array<uint8_t, kPayloadLimit> payload{};
++};
++struct ReadOnlyCompletion {
++  mach_msg_header_t header{};
++  uint32_t version = kVersion;
++  int32_t exit_code = 78;
++  Nonce nonce{};
++  uint32_t payload_bytes = 0;
++  std::array<uint8_t, kPayloadLimit> payload{};
++};
++size_t ReadOnlyRequestBytes(uint32_t);
++size_t ReadOnlyCompletionBytes(uint32_t);
+ struct Arguments {
+   std::vector<std::string> argv;
+   std::vector<std::pair<std::string, std::string>> environment;
+--- a/chrome/browser/aux/cli/AuxCliWire.cc
++++ b/chrome/browser/aux/cli/AuxCliWire.cc
+@@ -58,6 +58,12 @@
+   for(uint32_t i=0;i<envc;++i){std::string name,value;if(!reader.Text(name)||!reader.Text(value)||!IsCliEnvironmentName(name)||!seen.insert(name).second)return false;args.environment.emplace_back(std::move(name),std::move(value));}
+   if(!reader.Done())return false;*result=std::move(args);return true;
+ }
++size_t ReadOnlyRequestBytes(uint32_t size) {
++  return size <= kPayloadLimit ? (offsetof(ReadOnlyRequest, payload) + size + 3) & ~size_t{3} : 0;
++}
++size_t ReadOnlyCompletionBytes(uint32_t size) {
++  return size <= kPayloadLimit ? (offsetof(ReadOnlyCompletion, payload) + size + 3) & ~size_t{3} : 0;
++}
+ size_t RequestBytes(uint32_t payload_bytes) {
+   return payload_bytes<=kPayloadLimit?(offsetof(Request,payload)+payload_bytes+3)&~size_t{3}:0;
+ }
+--- a/chrome/browser/aux/cli/AuxCliIngress.h
++++ b/chrome/browser/aux/cli/AuxCliIngress.h
+@@ -7,11 +7,13 @@
+ // Native terminal frontend. Performs a credential-free audited Hello before
+ // sending argv/environment or any actual stdio/directory capabilities.
+ int ForwardTerminalInvocation(int argc,char* argv[]);
++int ForwardTerminalReadOnlyQuery(int argc,char* argv[]);
+ class Invocation final {
+  public:
+   ~Invocation();
+   Invocation(const Invocation&)=delete;Invocation& operator=(const Invocation&)=delete;
+   bool Current()const;
++  bool IsReadOnlyQuery()const;
+   const Arguments& arguments()const;
+   int directory()const;
+   int input()const;int output()const;int error()const;
+@@ -29,6 +31,7 @@
+   audit_token_t KernelPeerForNativeAdmission() const;
+   bool CompleteAfterObservedExit(int exit_code);
+   bool CompleteAfterNativeOpenResult(int exit_code);
++  bool CompleteReadOnlyQuery(std::string_view json, int exit_code);
+ };
+ class Ingress final {
+  public:
+--- a/chrome/browser/aux/cli/AuxCliIngress.cc
++++ b/chrome/browser/aux/cli/AuxCliIngress.cc
+@@ -15,6 +15,7 @@
+ #include <vector>
+ #include <atomic>
+ #include <limits>
++#include <cstdio>
+ namespace aux::cli {
+ namespace {
+ const pid_t kIngressProcess=getpid();
+@@ -36,6 +37,8 @@
+  int value=-1;File()=default;~File(){if(value>=0)close(value);}File(const File&)=delete;File&operator=(const File&)=delete;
+  File(File&& other)noexcept:value(other.value){other.value=-1;}File&operator=(File&& other)noexcept{if(this!=&other){if(value>=0)close(value);value=other.value;other.value=-1;}return *this;}
+ };
++static_assert(sizeof(ReadOnlyRequest)<=sizeof(Request));
++static_assert(sizeof(ReadOnlyCompletion)<=sizeof(Request));
+ struct Message {
+  struct KernelStorage {
+   Request request{};
+@@ -125,12 +128,13 @@
+ }
+ struct Invocation::State{
+  const pid_t process=getpid();std::shared_ptr<const SealedImages> images;PeerBirth birth;audit_token_t token{};Nonce nonce{};
+- Right receiver{true},reply;std::array<File,4> files;Arguments arguments;bool completed=false;
++ Right receiver{true},reply;std::array<File,4> files;Arguments arguments;bool completed=false,read_only_query=false;
+ };
+ Invocation::Invocation(std::unique_ptr<State> state):state_(std::move(state)){}
+ Invocation::~Invocation()=default;
+ audit_token_t Invocation::KernelPeerForNativeAdmission()const{return state_->token;}
+ bool Invocation::Current()const{return getpid()==state_->process&&!state_->completed&&state_->images->SameCli(state_->token,state_->birth);}
++bool Invocation::IsReadOnlyQuery()const{return state_->read_only_query;}
+ const Arguments& Invocation::arguments()const{return state_->arguments;}
+ int Invocation::directory()const{return state_->files[0].value;}int Invocation::input()const{return state_->files[1].value;}int Invocation::output()const{return state_->files[2].value;}int Invocation::error()const{return state_->files[3].value;}
+ int Invocation::PollSignal(uint32_t timeout){
+@@ -147,6 +151,12 @@
+ // Only NativeOpenOperation/Service may publish this narrow native action result.
+ // Exit zero means a genuine native tab/navigation start, never page-load success.
+ bool Invocation::CompleteAfterNativeOpenResult(int code){return CompleteAfterObservedExit(code);}
++bool Invocation::CompleteReadOnlyQuery(std::string_view json,int code){
++ if(!Current()||!state_->read_only_query||json.empty()||json.size()>kPayloadLimit||code<0||code>255)return false;
++ ReadOnlyCompletion response;response.header.msgh_size=ReadOnlyCompletionBytes(json.size());response.header.msgh_id=kReadOnlyResult;response.nonce=state_->nonce;response.exit_code=code;response.payload_bytes=json.size();
++ std::copy(json.begin(),json.end(),response.payload.begin());state_->completed=true;
++ return SendOnce(state_->reply.value,response,kHandshake);
++}
+ struct Ingress::State{const pid_t process=getpid();std::atomic_bool closing{false};std::shared_ptr<const SealedImages> images;Right service{true};};
+ Ingress::Ingress(std::shared_ptr<State> state):state_(std::move(state)){}
+ Ingress::~Ingress(){CloseAdmission();}
+@@ -180,7 +190,15 @@
+  response.invocation.name=invocation->receiver.value;response.invocation.disposition=MACH_MSG_TYPE_MAKE_SEND;response.invocation.type=MACH_MSG_PORT_DESCRIPTOR;response.nonce=invocation->nonce;
+  auto reply=received.Header()->msgh_remote_port;received.Header()->msgh_remote_port=MACH_PORT_NULL;
+  if(!SendOnce(reply,response,kHandshake))return{};
+- Message request;if(!Receive(invocation->receiver.value,kInvokeWait,request))return{};const auto* request_audit=request.Audit();auto* message=reinterpret_cast<Request*>(request.Header());
++ Message request;if(!Receive(invocation->receiver.value,kInvokeWait,request))return{};const auto* request_audit=request.Audit();
++ if(request.Header()->msgh_id==kReadOnlyQuery){
++  const auto* query=reinterpret_cast<const ReadOnlyRequest*>(request.Header());
++  if(!request_audit||(query->header.msgh_bits&MACH_MSGH_BITS_COMPLEX)||query->version!=kVersion||query->nonce!=invocation->nonce||query->payload_bytes>kPayloadLimit||query->header.msgh_size!=ReadOnlyRequestBytes(query->payload_bytes)||MACH_MSGH_BITS_REMOTE(query->header.msgh_bits)!=MACH_MSG_TYPE_PORT_SEND_ONCE||!invocation->images->SameCli(request_audit->msgh_audit,invocation->birth))return{};
++  if(!Decode(std::span(query->payload).first(query->payload_bytes),&invocation->arguments)||!invocation->arguments.environment.empty()||state->closing.load())return{};
++  invocation->read_only_query=true;invocation->reply.value=request.Header()->msgh_remote_port;request.Header()->msgh_remote_port=MACH_PORT_NULL;
++  return std::unique_ptr<Invocation>(new Invocation(std::move(invocation)));
++ }
++ auto* message=reinterpret_cast<Request*>(request.Header());
+  if(!request_audit||message->header.msgh_id!=kInvoke||!(message->header.msgh_bits&MACH_MSGH_BITS_COMPLEX)||message->body.msgh_descriptor_count!=4||message->version!=kVersion||message->nonce!=invocation->nonce||message->payload_bytes>kPayloadLimit||message->header.msgh_size!=RequestBytes(message->payload_bytes)||MACH_MSGH_BITS_REMOTE(message->header.msgh_bits)!=MACH_MSG_TYPE_PORT_SEND_ONCE||!invocation->images->SameCli(request_audit->msgh_audit,invocation->birth))return{};
+  if(!Decode(std::span(message->payload.data(),message->payload_bytes),&invocation->arguments))return{};
+  for(size_t i=0;i<4;++i){const auto& port=message->files[i];if(port.type!=MACH_MSG_PORT_DESCRIPTOR||port.disposition!=MACH_MSG_TYPE_PORT_SEND||port.name==MACH_PORT_NULL)return{};
+@@ -191,7 +209,9 @@
+  return std::unique_ptr<Invocation>(new Invocation(std::move(invocation)));
+ }
+ size_t Ingress::UnresolvedSendRights(){if(getpid()!=kIngressProcess)return std::numeric_limits<size_t>::max();std::lock_guard<std::mutex> lock(SendMutex());return Sends().size();}
+-int ForwardTerminalInvocation(int argc,char* argv[]){
++namespace {
++enum class TerminalKind { native_open, read_only_query };
++int ForwardTerminal(int argc,char* argv[],TerminalKind kind){
+  if(argc<1||argc>static_cast<int>(kArgumentLimit+1)||!argv)return 64;
+  auto images=SealedImages::ForCurrentCli();if(!images)return 78;Right public_endpoint;
+  if(bootstrap_look_up(bootstrap_port,images->service().c_str(),&public_endpoint.value)!=KERN_SUCCESS)return 69;
+@@ -207,21 +227,40 @@
+  // Native open needs no caller environment or provider/authentication tokens.
+  std::vector<uint8_t> payload;if(!Encode(arguments,&payload))return 64;
+  Request request;request.nonce=hello.nonce;request.payload_bytes=payload.size();std::copy(payload.begin(),payload.end(),request.payload.begin());
+- std::array<Right,4> files;File directory;directory.value=open(".",O_RDONLY|O_DIRECTORY|O_CLOEXEC);if(directory.value<0)return 78;
+- for(size_t i=0;i<4;++i){const int source=i==0?directory.value:static_cast<int>(i-1);if(!FileShape(source,i)||fileport_makeport(source,&files[i].value)!=0)return 78;request.files[i].name=files[i].value;request.files[i].disposition=MACH_MSG_TYPE_COPY_SEND;request.files[i].type=MACH_MSG_PORT_DESCRIPTOR;}
++ std::array<Right,4> files;File directory;
++ if(kind==TerminalKind::native_open){
++  directory.value=open(".",O_RDONLY|O_DIRECTORY|O_CLOEXEC);if(directory.value<0)return 78;
++  for(size_t i=0;i<4;++i){const int source=i==0?directory.value:static_cast<int>(i-1);if(!FileShape(source,i)||fileport_makeport(source,&files[i].value)!=0)return 78;request.files[i].name=files[i].value;request.files[i].disposition=MACH_MSG_TYPE_COPY_SEND;request.files[i].type=MACH_MSG_PORT_DESCRIPTOR;}
++ }
+  Right completion{true};if(!completion.Create()||!images->SameBrowser(browser_token,browser))return 78;SignalScope signal_scope;if(!signal_scope.valid)return 78;
+  request.header.msgh_bits=MACH_MSGH_BITS(MACH_MSG_TYPE_COPY_SEND,MACH_MSG_TYPE_MAKE_SEND_ONCE)|MACH_MSGH_BITS_COMPLEX;request.header.msgh_size=RequestBytes(request.payload_bytes);request.header.msgh_id=kInvoke;request.header.msgh_remote_port=endpoint.value;request.header.msgh_local_port=completion.value;request.body.msgh_descriptor_count=4;
+- if(!Send(request,kHandshake))return 75;
++ if(kind==TerminalKind::read_only_query){
++  ReadOnlyRequest query;query.nonce=hello.nonce;query.payload_bytes=payload.size();std::copy(payload.begin(),payload.end(),query.payload.begin());
++  query.header.msgh_bits=MACH_MSGH_BITS(MACH_MSG_TYPE_COPY_SEND,MACH_MSG_TYPE_MAKE_SEND_ONCE);query.header.msgh_size=ReadOnlyRequestBytes(query.payload_bytes);query.header.msgh_id=kReadOnlyQuery;query.header.msgh_remote_port=endpoint.value;query.header.msgh_local_port=completion.value;
++  if(!Send(query,kHandshake))return 75;
++ }else if(!Send(request,kHandshake))return 75;
+  // Clear transient option bytes, which can include an explicit CLI API token.
+  std::fill(payload.begin(),payload.end(),0);std::fill(request.payload.begin(),request.payload.end(),0);
+  for(;;){Message result;if(Receive(completion.value,250,result)){
+-  const auto* token=result.Audit();const auto* done=reinterpret_cast<const Completion*>(result.Header());
++  const auto* token=result.Audit();
++  if(kind==TerminalKind::read_only_query){
++   const auto* done=reinterpret_cast<const ReadOnlyCompletion*>(result.Header());
++   if(!token||done->header.msgh_id!=kReadOnlyResult||(done->header.msgh_bits&MACH_MSGH_BITS_COMPLEX)||done->header.msgh_remote_port!=MACH_PORT_NULL||done->payload_bytes>kPayloadLimit||done->header.msgh_size!=ReadOnlyCompletionBytes(done->payload_bytes)||done->version!=kVersion||done->nonce!=hello.nonce||done->exit_code<0||done->exit_code>255||!images->SameBrowser(token->msgh_audit,browser))return 75;
++   const auto json=std::span(done->payload).first(done->payload_bytes);
++   if(json.empty()||fwrite(json.data(),1,json.size(),stdout)!=json.size()||fputc('\n',stdout)==EOF||fflush(stdout)!=0)return 74;
++   return done->exit_code;
++  }
++  const auto* done=reinterpret_cast<const Completion*>(result.Header());
+   if(!token||done->header.msgh_id!=kCompleted||done->header.msgh_size!=sizeof(*done)||(done->header.msgh_bits&MACH_MSGH_BITS_COMPLEX)||done->version!=kVersion||done->nonce!=hello.nonce||done->exit_code<0||done->exit_code>255||!images->SameBrowser(token->msgh_audit,browser))return 75;
+   return done->exit_code;
+  }
+  if(!images->SameBrowser(browser_token,browser))return 75;
+  sigset_t all,previous;sigfillset(&all);sigprocmask(SIG_BLOCK,&all,&previous);const auto pending=signals;signals=0;sigprocmask(SIG_SETMASK,&previous,nullptr);
++ if(kind==TerminalKind::read_only_query&&(pending&7))return 130;
+  for(const auto [bit,number]:std::array<std::pair<int,int>,4>{{{1,SIGINT},{2,SIGTERM},{4,SIGHUP},{8,SIGWINCH}}})if(pending&bit){Signal control;control.header.msgh_bits=MACH_MSGH_BITS(MACH_MSG_TYPE_COPY_SEND,0);control.header.msgh_remote_port=endpoint.value;control.header.msgh_id=kSignal;control.header.msgh_size=sizeof(control);control.signal=number;control.nonce=hello.nonce;if(!Send(control,kHandshake))return 75;}
+  }
+ }
+-}
++}  // namespace
++int ForwardTerminalInvocation(int argc,char* argv[]){return ForwardTerminal(argc,argv,TerminalKind::native_open);}
++int ForwardTerminalReadOnlyQuery(int argc,char* argv[]){return ForwardTerminal(argc,argv,TerminalKind::read_only_query);}
++}
+--- a/chrome/browser/aux/cli/AuxNativeCliFrontend.mm
++++ b/chrome/browser/aux/cli/AuxNativeCliFrontend.mm
+@@ -80,6 +80,18 @@
+  }
+  std::vector<std::string> arguments;
+  if(!aux::cli::CopyNativeMainArguments(argc,argv,&arguments))return 64;
++ if(!arguments.empty()&&(arguments.front()=="list"||arguments.front()=="resolve")){
++  if(arguments.size()==2&&arguments[1]=="--help"){
++   std::cout << "Usage: aux list [--profile <ID or unique name>]\n"
++                "       aux resolve <https://URL> [--profile <ID or unique name> [--space <ID or unique name>]]\n";return 0;
++  }
++  if(!aux::cli::ParseNativeReadOnlyQuery(arguments)){
++   std::cerr << "Invalid Aux list/resolve arguments; use --help.\n";return 64;
++  }
++  const int status=aux::cli::ForwardTerminalReadOnlyQuery(argc,argv);
++  if(status)std::cerr << "Aux metadata query failed (exit " << status << "). If no JSON result was returned, open the matching Aux app through its supported launcher and retry.\n";
++  return status;
++ }
+  const auto parsed=aux::cli::ParseNativeOpenArguments(arguments);
+  if(parsed.status==aux::cli::OpenParseStatus::help){
+   std::cout << std::string_view("Usage: aux open <https://URL> [--profile <native profile ID or unique name> [--space <Space ID or unique name>]]\n");return 0;
+--- a/chrome/browser/aux/cli/AuxCliOpenCommand.mm
++++ b/chrome/browser/aux/cli/AuxCliOpenCommand.mm
+@@ -1,6 +1,9 @@
+ #import <AppKit/AppKit.h>
+ #include "AuxCliOpenCommand.h"
+ #include "AuxCliOpenArguments.h"
++#include "chrome/browser/aux/ordinary_startup_build.h"
++#include "chrome/browser/aux/routing/routing_service.h"
++#include "base/json/json_writer.h"
+ #include "AuxCliManualProfileApproval.h"
+ #include "chrome/browser/aux/cli/AuxCliIngress.h"
+ #include "chrome/browser/aux/AuxSelectedStateHome.h"
+@@ -236,11 +239,65 @@
+     ingress_->CloseAdmission();receiver_.Stop();running_.store(false);Counters().receiver_running.store(false);
+   }
+  private:
++  static void Refuse(Invocation* invocation,int code){
++    if(invocation->IsReadOnlyQuery())invocation->CompleteReadOnlyQuery(R"({"ok":false,"error":"query-unavailable"})",code);
++    else invocation->CompleteAfterNativeOpenResult(code);
++  }
++  void ReadOnlyQuery(std::unique_ptr<Invocation> invocation){
++    DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
++    const auto parsed=ParseNativeReadOnlyQuery(invocation->arguments().argv);
++    base::DictValue result;
++    int code=0;
++    auto window=SelectActualWindow({});
++    auto profile=window?window->GetProfile()->GetWeakPtr():base::WeakPtr<Profile>();
++    const auto epoch=profile?aux::GetProfileCookieBindingEpoch(profile.get()):std::string();
++    const auto generation=aux::peer::InspectNativeBrowserShutdown().admitted_generation;
++    const auto current=[&](){
++      return !closing_.load()&&!admission_closed&&ActualNativeReady()&&invocation->Current()&&
++          window&&profile&&UsableWindow(window.get())&&window->GetProfile()==profile.get()&&
++          !epoch.empty()&&aux::GetProfileCookieBindingEpoch(profile.get())==epoch&&
++          !aux::IsProfileCookieRestorePending(profile.get())&&
++          aux::peer::InspectNativeBrowserShutdown().admitted_generation==generation;
++    };
++    if(!parsed||!current()){
++      result=base::DictValue().Set("ok",false).Set("error",parsed?"routing-authority-unavailable":"invalid-query");code=parsed?78:64;
++    }else if(parsed->kind==ReadOnlyQueryKind::resolve){
++      const auto& destination=parsed->destination;
++      result=aux::routing::Resolve(profile.get(),{.url=GURL(destination.url),.profile=destination.profile,.space=destination.space,.authority=aux::routing::Authority::kExternal});
++      if(!result.FindBool("ok").value_or(false))code=69;
++    }else{
++      auto state=aux::routing::GetState(profile.get());
++      if(!state.FindBool("ok").value_or(false)){result=std::move(state);code=69;}
++      else{
++        auto* profiles=state.FindList("profiles");
++        if(!parsed->destination.profile.empty()){
++          const auto& selector=parsed->destination.profile;
++          std::string selected;size_t matches=0;
++          for(const auto& value:*profiles){
++            const auto* id=value.GetDict().FindString("id");
++            if(id&&*id==selector){selected=*id;matches=1;break;}
++          }
++          if(selected.empty())for(const auto& value:*profiles){
++            const auto* id=value.GetDict().FindString("id");
++            const auto* name=value.GetDict().FindString("name");
++            if(id&&name&&*name==selector){selected=*id;++matches;}
++          }
++          if(matches!=1){result=base::DictValue().Set("ok",false).Set("error","profile-missing-or-ambiguous");code=69;}
++          else profiles->EraseIf([&](const base::Value& value){const auto* id=value.GetDict().FindString("id");return !id||*id!=selected;});
++        }
++        if(!code)result=base::DictValue().Set("ok",true).Set("profiles",std::move(*profiles)).Set("spacesAreLoadedOnly",true);
++      }
++    }
++    if(parsed&&!current()){result=base::DictValue().Set("ok",false).Set("error","query-owner-changed");code=78;}
++    auto json=base::WriteJson(result);
++    if(!json||json->size()>kPayloadLimit){json=R"({"ok":false,"error":"query-result-too-large"})";code=75;}
++    invocation->CompleteReadOnlyQuery(*json,code);
++  }
+   void ReceiveNext(){
+     if(closing_.load())return;
+     auto invocation=ingress_->ReceiveOne(250);
+     if(invocation){
+-      if(closing_.load() || queued_.load()>=kPendingLimit)invocation->CompleteAfterNativeOpenResult(78);
++      if(closing_.load() || queued_.load()>=kPendingLimit)Refuse(invocation.get(),78);
+       else{
+         queued_.fetch_add(1);Counters().queued.fetch_add(1);auto self=shared_from_this();
+         // A shared native receiver state survives a shutdown until every
+@@ -250,10 +307,15 @@
+             std::shared_ptr<std::unique_ptr<Invocation>> actual){
+           service->queued_.fetch_sub(1);Counters().queued.fetch_sub(1);
+           if(service->closing_.load()){
+-            if(*actual)(*actual)->CompleteAfterNativeOpenResult(78);
+-          }else NativeOpenOperation::Begin(std::move(*actual));
++            if(*actual)Refuse(actual->get(),78);
++          }else if(*actual&&(*actual)->IsReadOnlyQuery())service->ReadOnlyQuery(std::move(*actual));
++#if defined(AUX_BROWSER_ONLY_NATIVE_STARTUP) && AUX_BROWSER_ONLY_NATIVE_STARTUP
++          else if(*actual)(*actual)->CompleteAfterNativeOpenResult(64);
++#else
++          else NativeOpenOperation::Begin(std::move(*actual));
++#endif
+         },self,delivery))){
+-          queued_.fetch_sub(1);Counters().queued.fetch_sub(1);if(*delivery)(*delivery)->CompleteAfterNativeOpenResult(78);
++          queued_.fetch_sub(1);Counters().queued.fetch_sub(1);if(*delivery)Refuse(delivery->get(),78);
+         }
+       }
+     }

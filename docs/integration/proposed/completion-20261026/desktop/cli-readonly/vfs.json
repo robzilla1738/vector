@@ -1,0 +1,46 @@
+{
+  "version": 0,
+  "case-sensitive": "true",
+  "roots": [
+    {
+      "type": "file",
+      "name": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/aux/cli/AuxCliOpenArguments.h",
+      "external-contents": "/Users/rcourson/Documents/Vibe/aux-completion-20261026/desktop/docs/integration/proposed/completion-20261026/desktop/cli-readonly/source/chrome/browser/aux/cli/AuxCliOpenArguments.h"
+    },
+    {
+      "type": "file",
+      "name": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/aux/cli/AuxCliOpenArguments.cc",
+      "external-contents": "/Users/rcourson/Documents/Vibe/aux-completion-20261026/desktop/docs/integration/proposed/completion-20261026/desktop/cli-readonly/source/chrome/browser/aux/cli/AuxCliOpenArguments.cc"
+    },
+    {
+      "type": "file",
+      "name": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/aux/cli/AuxCliWire.h",
+      "external-contents": "/Users/rcourson/Documents/Vibe/aux-completion-20261026/desktop/docs/integration/proposed/completion-20261026/desktop/cli-readonly/source/chrome/browser/aux/cli/AuxCliWire.h"
+    },
+    {
+      "type": "file",
+      "name": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/aux/cli/AuxCliWire.cc",
+      "external-contents": "/Users/rcourson/Documents/Vibe/aux-completion-20261026/desktop/docs/integration/proposed/completion-20261026/desktop/cli-readonly/source/chrome/browser/aux/cli/AuxCliWire.cc"
+    },
+    {
+      "type": "file",
+      "name": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/aux/cli/AuxCliIngress.h",
+      "external-contents": "/Users/rcourson/Documents/Vibe/aux-completion-20261026/desktop/docs/integration/proposed/completion-20261026/desktop/cli-readonly/source/chrome/browser/aux/cli/AuxCliIngress.h"
+    },
+    {
+      "type": "file",
+      "name": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/aux/cli/AuxCliIngress.cc",
+      "external-contents": "/Users/rcourson/Documents/Vibe/aux-completion-20261026/desktop/docs/integration/proposed/completion-20261026/desktop/cli-readonly/source/chrome/browser/aux/cli/AuxCliIngress.cc"
+    },
+    {
+      "type": "file",
+      "name": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/aux/cli/AuxNativeCliFrontend.mm",
+      "external-contents": "/Users/rcourson/Documents/Vibe/aux-completion-20261026/desktop/docs/integration/proposed/completion-20261026/desktop/cli-readonly/source/chrome/browser/aux/cli/AuxNativeCliFrontend.mm"
+    },
+    {
+      "type": "file",
+      "name": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/aux/cli/AuxCliOpenCommand.mm",
+      "external-contents": "/Users/rcourson/Documents/Vibe/aux-completion-20261026/desktop/docs/integration/proposed/completion-20261026/desktop/cli-readonly/source/chrome/browser/aux/cli/AuxCliOpenCommand.mm"
+    }
+  ]
+}

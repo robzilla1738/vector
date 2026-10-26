@@ -1,0 +1,26 @@
+{
+  "format": "aux.native.counted-projection.v1",
+  "nativeRoot": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src",
+  "rootOwned": true,
+  "files": [
+    {
+      "path": "chrome/browser/chrome_browser_main.cc",
+      "inputSha256": "960250de4f967d8ba0a727b3a64a52c33a473c088b03d8d7c52e10892f26ea28",
+      "outputSha256": "9dc976e68212c2a988532aa6fb248ef3689ded653244c1431aa272766b61c16a",
+      "anchors": [
+        {
+          "name": "ordinary startup enables only the finite metadata receiver",
+          "before": "#if BUILDFLAG(ENABLE_AUX_BROWSER) && defined(AUX_SEALED_NATIVE_COLD_ENTRY) && BUILDFLAG(IS_MAC) && !defined(AUX_BROWSER_ONLY_NATIVE_STARTUP)\n  aux::cli::StartNativeOpenServiceAtActualBrowserStartup();",
+          "after": "#if BUILDFLAG(ENABLE_AUX_BROWSER) && defined(AUX_SEALED_NATIVE_COLD_ENTRY) && BUILDFLAG(IS_MAC)\n  aux::cli::StartNativeOpenServiceAtActualBrowserStartup();",
+          "expectedCount": 1
+        },
+        {
+          "name": "close authenticated metadata admission before ordinary profile teardown",
+          "before": "  aux::features::CloseNativeFeatureIoAdmission();",
+          "after": "  aux::cli::CloseNativeOpenServiceAdmission();\n  aux::features::CloseNativeFeatureIoAdmission();",
+          "expectedCount": 1
+        }
+      ]
+    }
+  ]
+}

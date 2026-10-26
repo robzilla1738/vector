@@ -1,0 +1,19 @@
+--- a/chrome/browser/chrome_browser_main.cc
++++ b/chrome/browser/chrome_browser_main.cc
+@@ -1757,7 +1757,7 @@
+ 
+ void ChromeBrowserMainParts::PostBrowserStart() {
+   TRACE_EVENT0("startup", "ChromeBrowserMainParts::PostBrowserStart");
+-#if BUILDFLAG(ENABLE_AUX_BROWSER) && defined(AUX_SEALED_NATIVE_COLD_ENTRY) && BUILDFLAG(IS_MAC) && !defined(AUX_BROWSER_ONLY_NATIVE_STARTUP)
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && defined(AUX_SEALED_NATIVE_COLD_ENTRY) && BUILDFLAG(IS_MAC)
+   aux::cli::StartNativeOpenServiceAtActualBrowserStartup();
+ #endif
+   for (auto& chrome_extra_part : chrome_extra_parts_) {
+@@ -2289,6 +2289,7 @@
+   // Stop new feature work without invalidating the native selected owner.
+   // The existing authenticated daemon shutdown must finish while that browser
+   // peer and its published root FDs still validate protected SQLite closure.
++  aux::cli::CloseNativeOpenServiceAdmission();
+   aux::features::CloseNativeFeatureIoAdmission();
+   extensions::ShutdownAuxMiniPopup();
+   aux::ShutdownProfileGates();
