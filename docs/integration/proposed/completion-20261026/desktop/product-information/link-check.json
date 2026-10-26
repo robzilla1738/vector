@@ -1,0 +1,31 @@
+{
+  "format": "aux.product-information.links-check.v1",
+  "files": [
+    {
+      "name": "route-TQyeTEXE.js",
+      "inputSha256": "103c0414f46b9c84ae6231ec58c3129e0d80703e733be4a8ff0af1b319f318c4",
+      "outputSha256": "468e9e336a9127198dc0b45902990ca3a6b6bcdbbe0c8fab1871d23492ec59a8",
+      "anchors": 2,
+      "reverseExact": true
+    },
+    {
+      "name": "ai-CzEX5E7S.js",
+      "inputSha256": "c81d8aecab56899557ddbd9bde9f1080c352421c4b4b52e2d22a5267b9718633",
+      "outputSha256": "d1c597e52b370e6759c4f4e0bb89021be768a615c3ba06e111f839c66e11df3b",
+      "anchors": 2,
+      "reverseExact": true
+    },
+    {
+      "name": "add-on-credits-dialog-Dn5FxOyZ.js",
+      "inputSha256": "d7b09e13cafec21b35118bd32e5069f73edcb98deb9c5290497e8c276ad31e46",
+      "outputSha256": "e0012bbed6365fd0c9c4b7e23fee41ca02a3b9ca7e004cd743c58b8fc19bb73c",
+      "anchors": 2,
+      "reverseExact": true
+    }
+  ],
+  "uniqueUrls": 4,
+  "totalAnchors": 6,
+  "syntax": true,
+  "productExecuted": false,
+  "deployed": false
+}

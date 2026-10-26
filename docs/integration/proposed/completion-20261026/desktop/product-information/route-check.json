@@ -1,0 +1,14 @@
+{
+  "format": "aux.product-information.routes-check.v1",
+  "files": [
+    "information-page.tsx",
+    "docs/page.tsx",
+    "community/page.tsx",
+    "policy/privacy/page.tsx",
+    "policy/terms/page.tsx"
+  ],
+  "focusedTypecheck": true,
+  "existingStylesUnchanged": true,
+  "productExecuted": false,
+  "cloudDeployed": false
+}

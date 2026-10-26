@@ -1,0 +1,56 @@
+{
+  "format": "aux.product-information.links.v1",
+  "files": [
+    {
+      "name": "route-TQyeTEXE.js",
+      "inputPath": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-local-completion-20261025-a38/Aux.app/Contents/Resources/aux/apps/extension/dist/assets/route-TQyeTEXE.js",
+      "inputSha256": "103c0414f46b9c84ae6231ec58c3129e0d80703e733be4a8ff0af1b319f318c4",
+      "anchors": [
+        {
+          "before": "https://getaux.co/docs",
+          "after": "https://app.getaux.co/docs",
+          "count": 1
+        },
+        {
+          "before": "https://getaux.co/community",
+          "after": "https://app.getaux.co/community",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "name": "ai-CzEX5E7S.js",
+      "inputPath": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-local-completion-20261025-a38/Aux.app/Contents/Resources/aux/apps/extension/dist/assets/ai-CzEX5E7S.js",
+      "inputSha256": "c81d8aecab56899557ddbd9bde9f1080c352421c4b4b52e2d22a5267b9718633",
+      "anchors": [
+        {
+          "before": "https://getaux.co/policy/privacy",
+          "after": "https://app.getaux.co/policy/privacy",
+          "count": 1
+        },
+        {
+          "before": "https://getaux.co/policy/terms",
+          "after": "https://app.getaux.co/policy/terms",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "name": "add-on-credits-dialog-Dn5FxOyZ.js",
+      "inputPath": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-local-completion-20261025-a38/Aux.app/Contents/Resources/aux/apps/extension/dist/assets/add-on-credits-dialog-Dn5FxOyZ.js",
+      "inputSha256": "d7b09e13cafec21b35118bd32e5069f73edcb98deb9c5290497e8c276ad31e46",
+      "anchors": [
+        {
+          "before": "https://getaux.co/policy/privacy",
+          "after": "https://app.getaux.co/policy/privacy",
+          "count": 1
+        },
+        {
+          "before": "https://getaux.co/policy/terms",
+          "after": "https://app.getaux.co/policy/terms",
+          "count": 1
+        }
+      ]
+    }
+  ]
+}
