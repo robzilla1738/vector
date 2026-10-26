@@ -1,0 +1,93 @@
+--- a/chrome/browser/aux/account_profile_source.cc
++++ b/chrome/browser/aux/account_profile_source.cc
+@@ -86,6 +86,27 @@
+   result.global_onboarding_complete = EvaluateAccountBootstrapState(
+       value, input.profile_id, input.profile_path, input.stored_user_id).value_or(false);
+   const auto* binding = CloudBinding(*state, input);
++  // Current-format local bindings have no cloud user ID. Never infer their
++  // owner from currentAccountId, display order, or another profile's path.
++  const auto* local_rows = state->FindDict("profileAccountBindings");
++  const auto* local_binding = local_rows && !input.profile_id.empty()
++      ? local_rows->FindDict(input.profile_id) : nullptr;
++  if (!binding && local_binding && !input.profile_path.empty() &&
++      Text(local_binding, "profileId") == input.profile_id &&
++      Text(local_binding, "profilePath") == input.profile_path.value()) {
++    const auto id = local_binding->FindInt("accountId");
++    const auto* local = id && *id >= 0 ? FindAccount(*state, id) : nullptr;
++    if (local && Text(local, "mode") == "local" &&
++        Text(local, "userId").empty() && !HasSession(*state, *id) &&
++        Text(local, "authStatus") != "paused") {
++      AccountProfileRecord record;
++      record.id = *id;  // Zero is a real local account, not an absent value.
++      result.account = std::move(record);
++      result.clear_binding = false;
++      result.bootstrap_complete = result.global_onboarding_complete;
++      return result;
++    }
++  }
+   auto user = binding ? Text(binding, "userId") : input.stored_user_id;
+   if (user.empty() && input.stored_account_id && *input.stored_account_id >= 0)
+     user = Text(FindAccount(*state, input.stored_account_id), "userId");
+--- a/chrome/browser/aux/account_profile_updater.cc
++++ b/chrome/browser/aux/account_profile_updater.cc
+@@ -338,8 +338,21 @@
+   bool ApplyAccountPreferences(const AccountProfileRecord& account, bool present) {
+     auto weak = weak_.GetWeakPtr();
+     auto* prefs = profile_->GetPrefs();
+-    SetAccountProfileBinding(prefs, account.user_id,
+-        account.id >= 0 ? std::optional<int>(account.id) : std::nullopt);
++    if (account.user_id.empty() && account.id >= 0) {
++      // The pure projection admits this only from an exact current-format
++      // local profile/account binding. Keep the cloud-only setter's contract.
++      if (!prefs->GetString(kUser).empty()) {
++        ClearAccountProfileBinding(prefs);
++        if (!weak) return false;
++      }
++      // Do not clear/re-set an unchanged local ID: that would rotate its
++      // binding epoch on each registry refresh and invalidate live tasks.
++      if (prefs->GetInteger(kAccount) != account.id)
++        prefs->SetInteger(kAccount, account.id);
++    } else {
++      SetAccountProfileBinding(prefs, account.user_id,
++          account.id >= 0 ? std::optional<int>(account.id) : std::nullopt);
++    }
+     if (!weak) return false;
+     if (present && account.auth_paused) SetAccountProfileAuthPaused(prefs, true);
+     if (!weak) return false;
+--- a/chrome/browser/aux/account_profile_source_probe.cc
++++ b/chrome/browser/aux/account_profile_source_probe.cc
+@@ -51,5 +51,34 @@
+   CHECK(disconnected_bound->account &&
+         !disconnected_bound->account->has_persisted_session &&
+         !disconnected_bound->account->auth_paused);
++  auto local = base::JSONReader::Read(R"({
++    "currentAccountId":7,
++    "accounts":[{"id":0,"mode":"local","onboardingCompletedAt":"2026-10-26"},
++                {"id":7,"mode":"local"}],
++    "profileBindings":{}, "sessions":{},
++    "profileAccountBindings":{"fixture-profile":{"profileId":"fixture-profile",
++      "profilePath":"/disposable/Profile","accountId":0}}
++  })", base::JSON_PARSE_RFC);
++  CHECK(local);
++  input.stored_user_id.clear(); input.stored_account_id.reset();
++  input.allow_binding = false; input.is_last_used_loaded_profile = false;
++  auto zero = aux::ProjectAccountProfileSource(*local, input);
++  CHECK(zero && !zero->clear_binding && zero->account->id == 0);
++  CHECK(zero->account->user_id.empty() && !zero->account->has_persisted_session);
++  CHECK(zero->bootstrap_complete && !zero->auto_bound && !zero->binding_to_persist);
++  input.profile_path = base::FilePath("/disposable/Other");
++  CHECK(aux::ProjectAccountProfileSource(*local,input)->clear_binding);
++  input.profile_path = base::FilePath("/disposable/Profile");
++  input.profile_id = "other-profile";
++  CHECK(aux::ProjectAccountProfileSource(*local,input)->clear_binding);
++  input.profile_id = "fixture-profile";
++  auto* local_row=local->GetDict().FindList("accounts")->front().GetIfDict();
++  local_row->Set("mode","cloud");
++  CHECK(aux::ProjectAccountProfileSource(*local,input)->clear_binding);
++  local_row->Set("mode","local");local_row->Set("userId","not-local");
++  CHECK(aux::ProjectAccountProfileSource(*local,input)->clear_binding);
++  local_row->Remove("userId");
++  local->GetDict().FindDict("profileAccountBindings")->FindDict("fixture-profile")->Set("accountId",99);
++  CHECK(aux::ProjectAccountProfileSource(*local,input)->clear_binding);
+   CHECK(!aux::ProjectAccountProfileSource(base::Value(), input));
+ }
