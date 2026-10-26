@@ -1,0 +1,107 @@
+{
+  "format": "aux.current-identity-reconciliation.v1",
+  "receipt": {
+    "path": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-completion-20261026-a1/combined-palette-peer-tools-a1/receipt.json",
+    "sha256": "5cf59fcd25c782e2a97793e35eb0dcdaa428e1fd04b3dea2f9664f3c9ade69e1",
+    "inventorySha256": "6ea71ddc179d3c12f2b7023746d4e54cf9b10de4c8f0bb6f5e14a6852b8862c4"
+  },
+  "priorClassifiedLeaves": 62,
+  "priorScopeLeaves": 1081,
+  "carriedExactOutputOrUnchangedLeaves": 1077,
+  "changedSincePriorScope": [
+    "Contents/Resources/aux/apps/extension/dist/assets/provider-Cw0zhujt.js",
+    "Contents/Resources/aux/apps/extension/dist/assets/routine-item-menu-DJrYR2RE.js",
+    "Contents/Resources/aux/apps/extension/dist/assets/routines-BNdQOEUt.js",
+    "Contents/Resources/aux/apps/extension/dist/assets/tabsearch-3k_2hgil.js"
+  ],
+  "currentSelectedReads": [
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/provider-Cw0zhujt.js",
+      "sha256": "cf021118fbf494ff354b714f9164b06534f26691de554db5dc6f62ab6fda5cd3",
+      "bytes": 128900,
+      "matchesSignedReceipt": true,
+      "boundedIdentityMatches": []
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/routine-item-menu-DJrYR2RE.js",
+      "sha256": "4a6a3cb84d9f87d86ebc28857b7ed57af1131155d84c6018bf6c9eb9c85218cd",
+      "bytes": 7680,
+      "matchesSignedReceipt": true,
+      "boundedIdentityMatches": [
+        {
+          "token": "aside",
+          "context": " flex-1 overflow-hidden rounded-lg border\",children:[(0,e.jsxs)(\"aside\",{\"aria-label\":\"Routine runs\",className:\"border-border flex w-60 shrink-0 flex-col gap-1 overflow-y"
+        }
+      ]
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/routines-BNdQOEUt.js",
+      "sha256": "600fcdfc28713f43adc181ea964cffdaa209d520ea13d6f2294c237c4e578bb5",
+      "bytes": 4992,
+      "matchesSignedReceipt": true,
+      "boundedIdentityMatches": []
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/tabsearch-3k_2hgil.js",
+      "sha256": "8e972848d18bb6862abdada0a3787ee38103b21c2126081f808c5c014d70ec4a",
+      "bytes": 38574,
+      "matchesSignedReceipt": true,
+      "boundedIdentityMatches": []
+    },
+    {
+      "path": "Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/node-development/aux-native-entry.mjs",
+      "sha256": "30b38b312dfe43b3c0642bbcc512a06e0c64188c649d6529dc3019d198165c03",
+      "bytes": 12374873,
+      "matchesSignedReceipt": true
+    },
+    {
+      "path": "Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/node-development/index.mjs",
+      "sha256": "198ad50c850b7dc0825aa2cc37e754c0a0f07d07df5430faba2c68c21e0742ef",
+      "bytes": 12371764,
+      "matchesSignedReceipt": true
+    },
+    {
+      "path": "Contents/Resources/aux/bundle.json",
+      "sha256": "1e0a0c78192ab25c7dee4526412b3f68101adf55a821349b345c1b5e27f6b493",
+      "bytes": 4487351,
+      "matchesSignedReceipt": true
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/manifest.json",
+      "sha256": "a77c4e9eea0f41977f09862f6b7e3d56c12aa5b1cb062483ef5911db8eeb27f5",
+      "bytes": 3236,
+      "matchesSignedReceipt": true,
+      "boundedIdentityMatches": []
+    }
+  ],
+  "focusedDaemonAnchors": {
+    "passwordManager:passwordManagerRouter": 0,
+    "/builtin/password-manager/SKILL.md": 1,
+    "auxRouter=router": 1,
+    "AsideDaemonSessionToken": 0,
+    "AuxDaemonSessionToken": 6,
+    "aside.daemon.auth.": 0,
+    "aux.daemon.auth.": 2
+  },
+  "exclusions": {
+    "excludedProducts": [
+      "vault",
+      "password-importer"
+    ],
+    "passwordManager": "external-extensions",
+    "agentName": "Aux Browsing Agent",
+    "externalExtensionIds": []
+  },
+  "classifications": {
+    "newChangedAgentMatch": "routine-item-menu retains actual standard HTML aside element; no product identity",
+    "requiredLegalAttribution": "At Your Side, Inc. remains required supplied attribution; no removal requested",
+    "priorCompatibilityTokens": "Reuse explicit experimental/Google/error/armor legacy-reader classifications; no new state adoption",
+    "daemonDormantVault": "Retained dormant source is not an active product route; exact root router export remains absent",
+    "bundleFullIdentityComplete": false
+  },
+  "newDemonstratedProductIdentityGaps": [],
+  "wholeProductIdentityComplete": false,
+  "runtimeVaultAbsenceProven": false,
+  "immutableNativeAndThirdPartyTreesRescanned": false,
+  "appOrStateChanged": false
+}
