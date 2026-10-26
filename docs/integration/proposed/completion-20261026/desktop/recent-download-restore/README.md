@@ -1,0 +1,9 @@
+# Completed download becomes unavailable after restart
+
+The integrator observed a synthetic 90-byte `notes.txt` download complete and appear enabled in Recent Files, then appear unavailable after normal Quit/reopen. A concrete eligibility mismatch explains this without inspecting owner downloads or profile data: `Eligible()` accepted only `DownloadItem::SAFE`, while Chromium's history-import constructor (`download_item_impl.cc:356–449`) does not restore insecure-download status and the member defaults to `UNKNOWN` (`download_item_impl.h:915`). Thus even a completed, non-dangerous, still-present historical item fails this gate.
+
+One counted replacement uses the existing native `!DownloadItem::IsInsecure()` predicate. Chromium defines that predicate as false for UNKNOWN, SAFE and explicitly user-VALIDATED, and true for WARN, BLOCK and SILENT_BLOCK (`download_item_impl.cc:1164`). COMPLETE, non-dangerous, not externally removed, not a save-package and nonempty native target-path requirements remain. Rename still uses the native GUID, physical fingerprint, exclusive move and durable receipt; drag/reveal keep their native APIs. No guessing/reopening another file path, new persistence format or mutation of history is needed.
+
+This establishes a source defect; it does not independently prove the particular file remains on disk. Missing/removed files must still be unavailable. The source-plan pins the actual native declarations/constructor/predicate evidence. No owner state, downloads directory or actual file was read.
+
+Counted replay passed. No projection, compilation, signing or app operation occurred in this lane. Root integrates the one affected object into a grouped successor and checks the already downloaded synthetic entry after reopen. A known missing/removed synthetic item must remain refused; no broad file or browser audit is necessary.

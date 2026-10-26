@@ -1,0 +1,27 @@
+{
+  "projected": false,
+  "compiled": false,
+  "ownerStateRead": false,
+  "files": [
+    {
+      "path": "chrome/browser/ui/aux_recent_files_service.cc",
+      "beforeSha256": "46ec54e2041b87dfbd4332c5150ca32b69d72807d72145539945e51b81fabf6b",
+      "afterSha256": "0f6abb229821b9c8fff2f8a871a8f2ceb71ca42dd25e2f3a586cd2528d7f1e0f",
+      "anchors": 1
+    }
+  ],
+  "nativeContractEvidence": [
+    {
+      "path": "components/download/internal/common/download_item_impl.cc",
+      "sha256": "52f77bef73dbe488b878e72488d06a5e15255a86c657b59af0ac2b57847d87f7"
+    },
+    {
+      "path": "components/download/public/common/download_item_impl.h",
+      "sha256": "d2e0f8f539ced7964d06b967163aa3b3e37ee5292f449bd614b3e35bfbf0d0eb"
+    },
+    {
+      "path": "components/download/public/common/download_item.h",
+      "sha256": "4804864132d1a221e4e2ba5cab361a8d1be6fa50039b4f684c835f272e4a77fc"
+    }
+  ]
+}
