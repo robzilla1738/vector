@@ -1,0 +1,80 @@
+{
+  "format": "aux.external-password-manager.acceptance-prep.v1",
+  "reviewedDate": "2026-10-26",
+  "sourceRoot": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src",
+  "sourceFiles": {
+    "chrome/browser/extensions/api/messaging/launch_context_posix.cc": {
+      "lines": "37-97",
+      "facts": [
+        "Aux local/system first; active Aux-browser Chrome user/system fallback; respects user-level permission"
+      ],
+      "sha256": "0747b38f7d1f6aa90496ba4dd3a0554a4f7637ecba3c41a308bd3f41b6624416"
+    },
+    "chrome/browser/extensions/api/messaging/launch_context.cc": {
+      "lines": "195-263",
+      "facts": [
+        "validate name/manifest/name match/exact allowed origin/absolute executable/existence"
+      ],
+      "sha256": "83275986135e71a4f36d8f32cf646547dafb98fab46917e24972ca8ac7cbff42"
+    },
+    "chrome/browser/extensions/api/messaging/native_message_process_host.cc": {
+      "lines": "77-106",
+      "facts": [
+        "actual regular Profile/account and binding/restore epoch capture; invalidation observer"
+      ],
+      "sha256": "ddcb708494de3259b80b926a04e69055b11feade07607add1cca07c31a51bde2"
+    },
+    "chrome/browser/extensions/api/messaging/aux_native_host_lease.cc": {
+      "lines": "128-177",
+      "facts": [
+        "held exact-image check; nofork; exact exec; protected Aux roots/app and ancestor writes"
+      ],
+      "sha256": "96793bc592ca5835232f89fe4e93a5eb37b409de934b56073e5f47a6475dc5a4"
+    },
+    "chrome/common/chrome_paths.cc": {
+      "lines": "453-484",
+      "facts": [
+        "system Chromium and actual User Data NativeMessagingHosts roots"
+      ],
+      "sha256": "fc7e97434d4c9e592fe859b69ba9a83945d836e0a1c3f2b0e52701850952c0df"
+    },
+    "extensions/common/extension_urls.cc": {
+      "lines": "41-48",
+      "facts": [
+        "real Chrome Web Store/update/API endpoints retained"
+      ],
+      "sha256": "23267c51724e35d4e665ede0dc0e4ed3df87bba075dfd1994263c2785fd65137"
+    },
+    "extensions/browser/api/webstore_private/webstore_private_api.cc": {
+      "lines": "534+",
+      "facts": [
+        "actual begin-install/complete-install APIs retained; no runtime store acceptance claim"
+      ],
+      "sha256": "80d9e2667db465594a3a26ca3c099ee09402f0138a34f4abe7dd0ff0690c1bc6"
+    }
+  },
+  "officialExtension": {
+    "id": "aeblfdkhhhdcdjpifhhbdiojplfjncoa",
+    "publisher": "AgileBits Inc",
+    "versionObserved": "8.12.42.36",
+    "listingUpdated": "2026-10-20",
+    "storeURL": "https://chromewebstore.google.com/detail/1password-password-manager/aeblfdkhhhdcdjpifhhbdiojplfjncoa",
+    "packageDownloaded": false,
+    "installed": false
+  },
+  "vendorSources": [
+    "https://1password.com/downloads/browser-extension",
+    "https://support.1password.com/additional-browsers/",
+    "https://support.1password.com/1password-browser-connection-security/",
+    "https://support.1password.com/connect-1password-browser-app/",
+    "https://support.1password.com/browser-permissions/",
+    "https://support.1password.com/getting-started-browser/"
+  ],
+  "candidateChanged": false,
+  "ownerStateRead": false,
+  "vendorHostManifestRead": false,
+  "extensionInstalled": false,
+  "trustChanged": false,
+  "OSGrantChanged": false,
+  "runtimeAccepted": false
+}
