@@ -1,0 +1,61 @@
+{
+  "format": "aux.future-signature-observation-source.v1",
+  "files": [
+    {
+      "path": "chrome/browser/aux/AuxSelectedStateHome.cc",
+      "predecessor": {
+        "path": "/Users/rcourson/Documents/Vibe/aux-completion-20261026/runtime/docs/integration/proposed/completion-20261026/runtime/future-supervised-build/startup-observation-source/chrome/browser/aux/AuxSelectedStateHome.cc",
+        "sha256": "646c13f6bc86ba90608e9f5124d3bebf9dfaeadcc4174087ad27fbc72c098bfa"
+      },
+      "currentSource": {
+        "path": "/Users/rcourson/Documents/Vibe/aux-completion-20261026/runtime/docs/integration/proposed/completion-20261026/runtime/extension-sign-observation/source/AuxSelectedStateHome.cc",
+        "sha256": "d5ef5387e492c80836e31553b8e1af7e2e48ee962e61d60212c7866637841399"
+      },
+      "output": {
+        "path": "/Users/rcourson/Documents/Vibe/aux-completion-20261026/runtime/docs/integration/proposed/completion-20261026/runtime/future-supervised-build/signature-observation-source/AuxSelectedStateHome.cc",
+        "sha256": "96888a6b4174f8655b907ae3fe329268adbd5487783b5ea45cfd01ac40aea525"
+      },
+      "ruleCounts": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "reverseReplayExact": true,
+      "bothCompositionOrdersEqual": true,
+      "futureBranchesPreserved": true,
+      "compileTarget": "obj/chrome/browser/aux/platform/AuxSelectedStateHome.o"
+    },
+    {
+      "path": "chrome/browser/aux/daemon_supervisor.cc",
+      "predecessor": {
+        "path": "/Users/rcourson/Documents/Vibe/aux-completion-20261026/runtime/docs/integration/proposed/completion-20261026/runtime/future-supervised-build/browser-source/chrome/browser/aux/daemon_supervisor.cc",
+        "sha256": "1bd046736d33003ce0bca9900fda3c6981122d22c749caf800a4b055a42b0c43"
+      },
+      "currentSource": {
+        "path": "/Users/rcourson/Documents/Vibe/aux-completion-20261026/runtime/docs/integration/proposed/completion-20261026/runtime/extension-sign-observation/source/daemon_supervisor.cc",
+        "sha256": "c7b2f5b173929970f2b9221833005390bd88c93bd5fa365e600a0d406db2eb8f"
+      },
+      "output": {
+        "path": "/Users/rcourson/Documents/Vibe/aux-completion-20261026/runtime/docs/integration/proposed/completion-20261026/runtime/future-supervised-build/signature-observation-source/daemon_supervisor.cc",
+        "sha256": "6bb02c45e19b991df4408e23e2addf944e4ae7746cfbf6a6210d53d5e33e2264"
+      },
+      "ruleCounts": [
+        1
+      ],
+      "reverseReplayExact": true,
+      "bothCompositionOrdersEqual": true,
+      "futureBranchesPreserved": true,
+      "compileTarget": "obj/chrome/browser/aux/platform/daemon_supervisor.o"
+    }
+  ],
+  "compiled": false,
+  "linked": false,
+  "sharedSourceModified": false,
+  "otherCurrentObjectsToReuse": [
+    "AuxNativePeerTransport.o",
+    "installation_auth.o",
+    "aux_account_api.o"
+  ],
+  "existingFutureColdLaunchObjectReusable": true
+}
