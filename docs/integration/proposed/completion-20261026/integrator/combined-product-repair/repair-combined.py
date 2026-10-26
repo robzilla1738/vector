@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Apply one frozen combined repair to three existing approved code objects."""
+"""Apply a frozen repair to only the affected existing approved code objects."""
 import argparse, hashlib, importlib.util, json, os, plistlib, shutil, subprocess, sys
 from pathlib import Path
 sys.dont_write_bytecode = True
@@ -39,12 +39,12 @@ replacements=plan['replacements']
 DAEMON = 'Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/node-development/'
 FRAMEWORK = 'Contents/Frameworks/Aux Framework.framework/Versions/155.0.8059.85/Aux Framework'
 TABSEARCH = 'Contents/Resources/aux/apps/extension/dist/assets/tabsearch-3k_2hgil.js'
-required = {FRAMEWORK, DAEMON+'index.mjs', DAEMON+'aux-native-entry.mjs'}
+required = {DAEMON+'index.mjs', DAEMON+'aux-native-entry.mjs'}
 BACKGROUND = 'Contents/Resources/aux/apps/extension/dist/background.js'
 EXTENSION_MANIFEST = 'Contents/Resources/aux/apps/extension/dist/manifest.json'
 SHORTCUT_CAPTURE = 'Contents/Resources/aux/apps/extension/dist/assets/use-shortcut-capture-DGr8Ws5Z.js'
 actual_targets = {item['target'] for item in replacements}
-require(len(actual_targets)==len(replacements) and required <= actual_targets <= required|{TABSEARCH, BACKGROUND, EXTENSION_MANIFEST, SHORTCUT_CAPTURE}, 'Only enumerated existing leaves may change')
+require(len(actual_targets)==len(replacements) and required <= actual_targets <= required|{FRAMEWORK, TABSEARCH, BACKGROUND, EXTENSION_MANIFEST, SHORTCUT_CAPTURE}, 'Only enumerated existing leaves may change')
 for item in replacements:
     pin(item['input'])
     if item['target'] == EXTENSION_MANIFEST:
@@ -72,6 +72,8 @@ rows={row['path']:row for row in before}
 targets=[row for row in review['targetsInSigningOrder'] if row['codeObject'].endswith('.framework') or row['codeObject'].endswith('/Aux Daemon.app') or row['codeObject']=='.']
 require(len(targets)==3 and targets[0]['executable']==FRAMEWORK and targets[1]['codeObject'].endswith('/Aux Daemon.app') and targets[2]['codeObject']=='.', 'Only original framework, daemon, outer targets in original order')
 framework,daemon,outer=targets
+if FRAMEWORK not in actual_targets:
+    targets=[daemon,outer]
 for item in replacements:
     require(rows[item['target']]['sha256']==item['beforeSha256'], 'Changed diagnostic preimage')
 for row in targets:
@@ -117,7 +119,7 @@ try:
         shutil.copyfile(source,temporary);temporary.chmod(rows[item['target']]['mode'])
         require(sha(temporary)==item['input']['sha256'], 'Diagnostic resource copy differs')
         os.replace(temporary,target)
-    sign_verify(framework)
+    if FRAMEWORK in actual_targets: sign_verify(framework)
     sign_verify(daemon)
     marker=APP/MARKER;bundle=read(marker);records={row['path']:row for row in bundle['files']}
     actual=p.inventory(APP/RES)
@@ -135,7 +137,9 @@ try:
     sign_verify(outer)
     after=p.inventory(APP);old={row['path']:row for row in before};new={row['path']:row for row in after}
     allowed={*(row['executable'] for row in targets),str(MARKER),*(x['target'] for x in replacements)}
-    prefixes=['Contents/_CodeSignature/',str(Path(framework['executable']).parent/'_CodeSignature')+'/',str(Path(daemon['codeObject'])/'Contents/_CodeSignature')+'/']
+    prefixes=['Contents/_CodeSignature/',str(Path(daemon['codeObject'])/'Contents/_CodeSignature')+'/']
+    if FRAMEWORK in actual_targets:
+        prefixes.append(str(Path(framework['executable']).parent/'_CodeSignature')+'/')
     valid=lambda name:name in allowed or any(name.startswith(prefix) for prefix in prefixes)
     changed=[row for row in after if old.get(row['path'])!=row];removed=sorted(set(old)-set(new))
     require(all(valid(row['path']) for row in changed) and all(valid(name) for name in removed),'Unrelated signed-package bytes changed')
@@ -152,4 +156,4 @@ except Exception as error:
     raise
 finally:
     write_new(work/'receipt.json',result)
-print(json.dumps({'passed':True,'receipt':str(work/'receipt.json'),'inventorySha256':result['inventorySha256'],'signedObjects':3}))
+print(json.dumps({'passed':True,'receipt':str(work/'receipt.json'),'inventorySha256':result['inventorySha256'],'signedObjects':len(targets)}))

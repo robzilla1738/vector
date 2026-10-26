@@ -1,0 +1,22 @@
+{
+  "candidateInventory": "582c9aa8fd641c666ee16fdafb2aba9f10268d97e2b27d2cb20aacf8a6bc52c4",
+  "startupLog": "out/completion-resume-20261026/startup-14.log",
+  "shellSession": 48677,
+  "normalLaunch": "Actual normally launched candidate opened profile picker and restored Work; startup was slow during concurrent native link. Final unloaded-host reopen remains pending.",
+  "localAccountContext": "Fresh page/file prompt passed native local-account guard and reached Muse/browser REPL. Earlier saved tab reference correctly refused as expired. Queue Send Now loss reproduced; a3 repair pending.",
+  "shortcutRemap": {
+    "assign": "Cmd+Shift+Y saved",
+    "invoke": "Cmd+Shift+Y opened Search tabs",
+    "conflict": "Cmd+T rejected as already in use; retained Y",
+    "reset": "Reset restored Cmd+Shift+A",
+    "hintDefect": "Popup hint remained default A during Y remap"
+  },
+  "cleanQuit": "pending",
+  "localComplete": false,
+  "combinedTools": {
+    "session": "Jb0fA50iUv9mlqhs",
+    "result": "Incomplete: Muse generated recursively shadowing snapshot function and browser tool stalled. No PDF/HEIC/memory/time result accepted.",
+    "cancellation": "Stop clicked at 2m29s. Subsequent UI showed Worked for 2m29s and debugger infobar removed; physical worker settlement requires log/source confirmation.",
+    "bridge": "Log records heartbeat timeout and disconnect1011."
+  }
+}

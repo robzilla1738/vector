@@ -8,12 +8,14 @@ BASE='Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/node-
 def pin(path):
  p=Path(path).resolve();assert p.is_file();return {'path':str(p),'sha256':hashlib.sha256(p.read_bytes()).hexdigest()}
 p=argparse.ArgumentParser()
-for name in ['framework','index','entry','signed-receipt','receipt-directory','out']:p.add_argument('--'+name,required=True)
+for name in ['index','entry','signed-receipt','receipt-directory','out']:p.add_argument('--'+name,required=True)
+p.add_argument('--framework')
 p.add_argument('--shortcut-capture');p.add_argument('--extension-manifest');p.add_argument('--background');p.add_argument('--tabsearch');p.add_argument('--source-evidence',action='append',required=True)
 a=p.parse_args();assert Path(a.receipt_directory).name==a.receipt_directory
 receipt_pin=pin(a.signed_receipt);receipt=json.loads(Path(a.signed_receipt).read_text());assert receipt['passed']
 rows={r['path']:r for r in receipt['files']}
-inputs=[('Contents/Frameworks/Aux Framework.framework/Versions/155.0.8059.85/Aux Framework',a.framework),(BASE+'index.mjs',a.index),(BASE+'aux-native-entry.mjs',a.entry)]
+inputs=[(BASE+'index.mjs',a.index),(BASE+'aux-native-entry.mjs',a.entry)]
+if a.framework:inputs.insert(0,('Contents/Frameworks/Aux Framework.framework/Versions/155.0.8059.85/Aux Framework',a.framework))
 if a.tabsearch:inputs.append(('Contents/Resources/aux/apps/extension/dist/assets/tabsearch-3k_2hgil.js',a.tabsearch))
 if a.background:inputs.append(('Contents/Resources/aux/apps/extension/dist/background.js',a.background))
 if a.extension_manifest:inputs.append(('Contents/Resources/aux/apps/extension/dist/manifest.json',a.extension_manifest))
