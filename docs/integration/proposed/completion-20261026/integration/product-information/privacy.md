@@ -2,6 +2,8 @@
 
 This draft describes the implemented architecture and proposed service configuration. It has not been approved as Aux's public privacy policy. Public hosted activation remains pending. The owner must complete the decisions below before publication.
 
+Aux is operated by **Courson Digital LLC**. Contact **[hello@getaux.co](mailto:hello@getaux.co)** for public support and privacy requests. These facts were confirmed by the owner on October 26, 2026; they do not establish policy approval or hosted availability.
+
 ## Local browser and AI activity
 
 Aux profiles hold browser data and account-scoped app state on your Mac. Provider credentials use the application's account-scoped secure credential path; they should not be included in diagnostics, screenshots or shared content. When you choose to use an AI provider, your request and the context you select are sent through the configured provider integration. Your provider's own processing and retention policies apply. Aux-hosted AI is disabled in the current launch configuration.
@@ -16,7 +18,7 @@ Private files are not intended to be public by default. Creating a share gives a
 
 ## Feedback reports
 
-If you explicitly save session feedback, the source adapter submits your comment and the existing session-data export as a bounded JSON report through authenticated private attachment storage. Aux service operators with the existing private-store custody can read that report for review; it is not hidden from the operator by client-only encryption. The success message confirms verified private storage, not an email, response or human review. Actual storage and operator readback acceptance remain pending for this preview. Reports follow existing attachment quota, account access and deletion/purge handling and can be included in approved recovery captures. A distinct feedback review/retention policy and contact still require owner/legal approval; the upload token's expiry is not a ready report's deletion deadline.
+If you explicitly save session feedback, the source adapter submits your comment and the existing session-data export as a bounded JSON report through authenticated private attachment storage. Aux service operators with the existing private-store custody can read that report for review; it is not hidden from the operator by client-only encryption. The success message confirms verified private storage, not an email, response or human review. Actual storage and operator readback acceptance remain pending for this preview. Reports follow existing attachment quota, account access and deletion/purge handling and can be included in approved recovery captures. A distinct feedback review/retention policy still requires owner/legal approval; the upload token's expiry is not a ready report's deletion deadline.
 
 ## Recovery and diagnostics
 
@@ -24,4 +26,4 @@ Recovery source can encrypt a database/private-file capture for storage in the c
 
 ## Decisions required before public publication
 
-Confirm the legal operator and contact for privacy requests; the exact purposes and legal bases for each data category; actual provider agreements and processing locations; log and content retention periods; deletion/export and backup-expiry handling; request-verification procedures; international transfer safeguards; age rules; and how policy changes are communicated. Confirm any analytics/crash reporting and browser network services present in the final delivered package rather than claiming they are absent from this source review.
+Confirm the exact purposes and legal bases for each data category; actual provider agreements and processing locations; log and content retention periods; deletion/export and backup-expiry handling; request-verification procedures; international transfer safeguards; age rules; and how policy changes are communicated. Confirm any analytics/crash reporting and browser network services present in the final delivered package rather than claiming they are absent from this source review.

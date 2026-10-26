@@ -6,4 +6,4 @@ The feedback dialog is intended to save a private report, including session data
 
 Describe what you expected, what happened and which app version you used. Include only material you intend to submit. Remove provider credentials, sign-in codes, private page content and personal files from the session or any report or screenshot before saving. Review the dialog before proceeding. If cloud feedback is unavailable, the operation must show an error rather than claim the report was saved.
 
-If you need help getting started, read [Getting started](/docs). Development-preview capabilities that remain under verification are listed there. The owner still needs to choose and approve any public contact address, moderation policy and support commitments before they are published here.
+If you need help getting started, read [Getting started](/docs). Development-preview capabilities that remain under verification are listed there. For public support or privacy requests, contact [hello@getaux.co](mailto:hello@getaux.co). Aux is operated by Courson Digital LLC. Moderation policy and support commitments remain subject to approval; no response-time guarantee is made.

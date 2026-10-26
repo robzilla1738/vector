@@ -1,9 +1,9 @@
 {
   "format": "aux.chatgpt.eligibility-request.pending.v1",
-  "status": "prepared-owner-facts-unconfirmed",
+  "status": "prepared-remaining-owner-facts-unconfirmed",
   "applicationName": "Aux",
   "agentNameHint": "Aux",
-  "legalOperator": null,
+  "legalOperator": "Courson Digital LLC",
   "authorizedReplyContact": null,
   "publicDistributionStatus": "UNCONFIRMED",
   "commercialStatus": "UNCONFIRMED",
@@ -65,5 +65,8 @@
   "tokenExchanged": false,
   "modelRequestExecuted": false,
   "candidateChanged": false,
-  "A1Accepted": false
+  "A1Accepted": false,
+  "publicSupportContact": "hello@getaux.co",
+  "publicPrivacyContact": "hello@getaux.co",
+  "ownerFactsConfirmedOn": "2026-10-26"
 }

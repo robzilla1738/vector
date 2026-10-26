@@ -1,6 +1,8 @@
 # Terms — review draft
 
-These draft terms are incomplete and are not approved for public acceptance or production activation. They require the owner's legal review and the missing operator/contact/jurisdiction details below.
+These draft terms are incomplete and are not approved for public acceptance or production activation. They require the owner's legal review and the remaining legal and jurisdiction decisions below.
+
+Aux is operated by **Courson Digital LLC**. Contact **[hello@getaux.co](mailto:hello@getaux.co)** for public support and privacy requests. These facts were confirmed by the owner on October 26, 2026; they do not establish policy approval or hosted availability.
 
 ## Development preview
 
@@ -18,4 +20,4 @@ A feature requiring OS, account or provider permission remains unavailable until
 
 ## Decisions required before public publication
 
-Supply the legal contracting entity and contact; eligibility/age requirements; content ownership and service-license terms; acceptable-use rules; suspension/termination and data-retrieval procedures; any paid-service terms if payments are enabled later; warranty/liability language; governing law and dispute process; policy-change notices; and consumer rights that apply. No governing jurisdiction, refund policy, support guarantee or waiver is invented by this technical draft. Privacy disclosures must be reviewed alongside these terms.
+Supply eligibility/age requirements; content ownership and service-license terms; acceptable-use rules; suspension/termination and data-retrieval procedures; any paid-service terms if payments are enabled later; warranty/liability language; governing law and dispute process; policy-change notices; and consumer rights that apply. No governing jurisdiction, refund policy, support guarantee or waiver is invented by this technical draft. Privacy disclosures must be reviewed alongside these terms.
