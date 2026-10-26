@@ -1,0 +1,29 @@
+{
+  "files": [
+    {
+      "path": "base/files/file_posix.cc",
+      "inputSha256": "2bcc0efd5492bdbefd0d85acf98fff936ef8ae820c470595066aa93665921464",
+      "outputSha256": "3b70948793e44adbee80f349ad24d2a9c2e3936b8da39d31b2064d8ff54937b8"
+    },
+    {
+      "path": "base/files/file_util_posix.cc",
+      "inputSha256": "8d416614ffd120590f7baf2a0ec3fb6953a2c2cdaf53eec4c0e5b974ad5660af",
+      "outputSha256": "2b5bbd2c6ba2171b3e75f6c386fce737770b47285961f35abac0696b1c7a477c"
+    },
+    {
+      "path": "base/files/file_util_apple.mm",
+      "inputSha256": "35d9a98359b42574e1e43d54df8d067460dcc85470cbbfac4af4f6ce9379c995",
+      "outputSha256": "4b7ccdc2ca99956a6be6b3029e5a206b9cda426247b8fc93c499e3e8531396e2"
+    },
+    {
+      "path": "chrome/browser/shortcuts/chrome_webloc_file.mm",
+      "inputSha256": "6f936a46cc37e9c20c009d9b67e7b33c3726a1917fa4ba502ba1af6fe7ec3217",
+      "outputSha256": "90fc86e14fcb416cb08579c729b3f5a0278b9fe071f9074f6d76a9e31fabca58"
+    },
+    {
+      "path": "base/files/aux_read_only_app.h",
+      "inputSha256": null,
+      "outputSha256": "573558aae37a032650e739046ccfb56beec5a8363f9c7285db1725662af78959"
+    }
+  ]
+}

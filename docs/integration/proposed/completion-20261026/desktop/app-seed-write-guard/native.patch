@@ -1,0 +1,372 @@
+--- a/base/files/file_posix.cc
++++ b/base/files/file_posix.cc
+@@ -20,6 +20,12 @@
+ 
+ #include <atomic>
+ #include <optional>
++#include <limits.h>
++#include <mutex>
++#include <vector>
++#include <stdlib.h>
++#include "base/files/aux_read_only_app.h"
++#include "base/no_destructor.h"
+ 
+ #include "base/check_op.h"
+ #include "base/compiler_specific.h"
+@@ -47,6 +53,80 @@
+ #endif
+ 
+ namespace base {
++
++#if BUILDFLAG(IS_MAC)
++namespace {
++struct AuxReadOnlyApp {
++  std::mutex mutex;
++  FilePath path;
++  dev_t device = 0;
++  ino_t inode = 0;
++};
++AuxReadOnlyApp& ReadOnlyApp() {
++  static NoDestructor<AuxReadOnlyApp> state;
++  return *state;
++}
++FilePath PhysicalMutationPath(FilePath path) {
++  if (!path.IsAbsolute()) {
++    char cwd[PATH_MAX];
++    if (!getcwd(cwd, sizeof(cwd))) return {};
++    path = FilePath(cwd).Append(path);
++  }
++  std::vector<FilePath::StringType> suffix;
++  for (;;) {
++    char physical[PATH_MAX];
++    if (realpath(path.value().c_str(), physical)) {
++      FilePath result(physical);
++      for (auto it = suffix.rbegin(); it != suffix.rend(); ++it)
++        result = result.Append(*it);
++      return result;
++    }
++    struct stat value;
++    if (errno != ENOENT || lstat(path.value().c_str(), &value) == 0 ||
++        errno != ENOENT || path == path.DirName()) return {};
++    suffix.push_back(path.BaseName().value());
++    path = path.DirName();
++  }
++}
++}
++bool RegisterAuxReadOnlyApp(const FilePath& app) {
++  auto& state = ReadOnlyApp();
++  std::lock_guard<std::mutex> lock(state.mutex);
++  auto physical = PhysicalMutationPath(app);
++  struct stat value;
++  if (physical.empty() || physical.BaseName().value() != "Aux.app" ||
++      stat(physical.value().c_str(), &value) != 0 || !S_ISDIR(value.st_mode)) return false;
++  if (!state.path.empty())
++    return state.path == physical && state.device == value.st_dev && state.inode == value.st_ino;
++  state.path = physical;
++  state.device = value.st_dev;
++  state.inode = value.st_ino;
++  return true;
++}
++bool AuxAppAllowsMutation(const FilePath& path, bool destructive) {
++  auto& state = ReadOnlyApp();
++  std::lock_guard<std::mutex> lock(state.mutex);
++  if (state.path.empty()) return true;
++  struct stat value;
++  auto target = PhysicalMutationPath(path);
++  const bool allowed = stat(state.path.value().c_str(), &value) == 0 &&
++      value.st_dev == state.device && value.st_ino == state.inode &&
++      !target.empty() && target != state.path && !state.path.IsParent(target) &&
++      (!destructive || !target.IsParent(state.path));
++  if (!allowed) errno = EACCES;
++  return allowed;
++}
++bool AuxAppAllowsDescriptorMutation(int fd) {
++  auto& state = ReadOnlyApp();
++  { std::lock_guard<std::mutex> lock(state.mutex); if (state.path.empty()) return true; }
++  struct stat value;
++  if (fstat(fd, &value) != 0) return false;
++  if (!S_ISREG(value.st_mode) && !S_ISDIR(value.st_mode)) return true;
++  char path[PATH_MAX];
++  return fcntl(fd, F_GETPATH, path) == 0 && AuxAppAllowsMutation(FilePath(path));
++}
++#endif
++
+ 
+ // Make sure our Whence mappings match the system headers.
+ static_assert(File::FROM_BEGIN == SEEK_SET && File::FROM_CURRENT == SEEK_CUR &&
+@@ -364,6 +444,9 @@
+ }
+ 
+ int File::Write(int64_t offset, const char* data, int size) {
++#if BUILDFLAG(IS_MAC)
++  if (!AuxAppAllowsDescriptorMutation(file_.get())) return -1;
++#endif
+   ScopedBlockingCall scoped_blocking_call(FROM_HERE, BlockingType::MAY_BLOCK);
+ 
+   if (IsOpenAppend(file_.get())) {
+@@ -395,6 +478,9 @@
+ }
+ 
+ int File::WriteAtCurrentPos(const char* data, int size) {
++#if BUILDFLAG(IS_MAC)
++  if (!AuxAppAllowsDescriptorMutation(file_.get())) return -1;
++#endif
+   ScopedBlockingCall scoped_blocking_call(FROM_HERE, BlockingType::MAY_BLOCK);
+   DCHECK(IsValid());
+   if (size < 0) {
+@@ -420,6 +506,9 @@
+ 
+ std::optional<size_t> File::WriteAtCurrentPosNoBestEffort(
+     base::span<const uint8_t> data) {
++#if BUILDFLAG(IS_MAC)
++  if (!AuxAppAllowsDescriptorMutation(file_.get())) return std::nullopt;
++#endif
+   ScopedBlockingCall scoped_blocking_call(FROM_HERE, BlockingType::MAY_BLOCK);
+   DCHECK(IsValid());
+ 
+@@ -447,6 +536,9 @@
+ }
+ 
+ bool File::SetLength(int64_t length) {
++#if BUILDFLAG(IS_MAC)
++  if (!AuxAppAllowsDescriptorMutation(file_.get())) return false;
++#endif
+   ScopedBlockingCall scoped_blocking_call(FROM_HERE, BlockingType::MAY_BLOCK);
+   DCHECK(IsValid());
+ 
+@@ -455,6 +547,9 @@
+ }
+ 
+ bool File::SetTimes(Time last_access_time, Time last_modified_time) {
++#if BUILDFLAG(IS_MAC)
++  if (!AuxAppAllowsDescriptorMutation(file_.get())) return false;
++#endif
+   ScopedBlockingCall scoped_blocking_call(FROM_HERE, BlockingType::MAY_BLOCK);
+   DCHECK(IsValid());
+ 
+@@ -562,6 +657,11 @@
+ 
+ // TODO(erikkay): does it make sense to support FLAG_EXCLUSIVE_* here?
+ void File::DoInitialize(const FilePath& path, uint32_t flags) {
++#if BUILDFLAG(IS_MAC)
++  if ((flags & (FLAG_WRITE | FLAG_APPEND | FLAG_WRITE_ATTRIBUTES | FLAG_CREATE |
++                FLAG_CREATE_ALWAYS | FLAG_OPEN_ALWAYS | FLAG_OPEN_TRUNCATED)) &&
++      !AuxAppAllowsMutation(path)) { error_details_ = FILE_ERROR_ACCESS_DENIED; return; }
++#endif
+   ScopedBlockingCall scoped_blocking_call(FROM_HERE, BlockingType::MAY_BLOCK);
+   DCHECK(!IsValid());
+ 
+@@ -763,6 +863,9 @@
+ }
+ 
+ int File::Mkdir(const FilePath& path, mode_t mode) {
++#if BUILDFLAG(IS_MAC)
++  if (!AuxAppAllowsMutation(path)) return -1;
++#endif
+ #if BUILDFLAG(IS_ANDROID)
+   if (path.IsVirtualDocumentPath()) {
+     std::optional<files_internal::VirtualDocumentPath> vp =
+--- a/base/files/file_util_posix.cc
++++ b/base/files/file_util_posix.cc
+@@ -3,6 +3,7 @@
+ // found in the LICENSE file.
+ 
+ #include "base/files/file_util.h"
++#include "base/files/aux_read_only_app.h"
+ 
+ #include <dirent.h>
+ #include <errno.h>
+@@ -213,6 +214,9 @@
+       return false;
+     }
+ 
++#if BUILDFLAG(IS_MAC)
++    if (!AuxAppAllowsMutation(target_path)) return false;
++#endif
+     if (S_ISDIR(from_stat.st_mode)) {
+       mode_t mode = (from_stat.st_mode & 01777) | S_IRUSR | S_IXUSR | S_IWUSR;
+       if (mkdir(target_path.value().c_str(), mode) == 0) {
+@@ -274,6 +278,9 @@
+     mode_t mode = 0644;
+ #else
+     mode_t mode = 0600;
++#endif
++#if BUILDFLAG(IS_MAC)
++    if (!AuxAppAllowsMutation(target_path)) return false;
+ #endif
+     File outfile(open(target_path.value().c_str(), open_flags, mode));
+     if (!outfile.IsValid()) {
+@@ -519,16 +526,28 @@
+ }
+ 
+ bool DeleteFile(const FilePath& path) {
++#if BUILDFLAG(IS_MAC)
++  if (!(AuxAppAllowsMutation(path, true))) return false;
++#endif
+   return DoDeleteFile(path, /*recursive=*/false);
+ }
+ 
+ bool DeletePathRecursively(const FilePath& path) {
++#if BUILDFLAG(IS_MAC)
++  if (!(AuxAppAllowsMutation(path, true))) return false;
++#endif
+   return DoDeleteFile(path, /*recursive=*/true);
+ }
+ 
+ bool ReplaceFile(const FilePath& from_path,
+                  const FilePath& to_path,
+                  File::Error* error) {
++#if BUILDFLAG(IS_MAC)
++  if (!AuxAppAllowsMutation(from_path, true) || !AuxAppAllowsMutation(to_path, true)) {
++    if (error) *error = File::FILE_ERROR_ACCESS_DENIED;
++    return false;
++  }
++#endif
+   ScopedBlockingCall scoped_blocking_call(FROM_HERE, BlockingType::MAY_BLOCK);
+   if (rename(from_path.value().c_str(), to_path.value().c_str()) == 0) {
+     return true;
+@@ -679,6 +698,9 @@
+     const FilePath& directory,
+     FilePath::StringViewType name_prefix,
+     FilePath* path) {
++#if BUILDFLAG(IS_MAC)
++  if (!AuxAppAllowsMutation(directory)) return ScopedFD();
++#endif
+   ScopedBlockingCall scoped_blocking_call(
+       FROM_HERE,
+       BlockingType::MAY_BLOCK);  // For call to mkstemp().
+@@ -693,6 +715,9 @@
+ #if !BUILDFLAG(IS_FUCHSIA)
+ bool CreateSymbolicLink(const FilePath& target_path,
+                         const FilePath& symlink_path) {
++#if BUILDFLAG(IS_MAC)
++  if (!AuxAppAllowsMutation(symlink_path)) return false;
++#endif
+   DCHECK(!symlink_path.empty());
+   DCHECK(!target_path.empty());
+   return ::symlink(target_path.value().c_str(), symlink_path.value().c_str()) !=
+@@ -765,6 +790,9 @@
+ }
+ 
+ bool SetPosixFilePermissions(const FilePath& path, int mode) {
++#if BUILDFLAG(IS_MAC)
++  if (!(AuxAppAllowsMutation(path))) return false;
++#endif
+   ScopedBlockingCall scoped_blocking_call(FROM_HERE, BlockingType::MAY_BLOCK);
+   DCHECK_EQ(mode & ~FILE_PERMISSION_MASK, 0);
+ 
+@@ -944,6 +972,9 @@
+ static bool CreateTemporaryDirInDirImpl(const FilePath& base_dir,
+                                         const FilePath& name_tmpl,
+                                         FilePath* new_dir) {
++#if BUILDFLAG(IS_MAC)
++  if (!AuxAppAllowsMutation(base_dir)) return false;
++#endif
+   ScopedBlockingCall scoped_blocking_call(
+       FROM_HERE, BlockingType::MAY_BLOCK);  // For call to mkdtemp().
+   DCHECK(EndsWith(name_tmpl.value(), "XXXXXX"))
+@@ -1098,6 +1129,10 @@
+ }
+ 
+ FILE* OpenFile(const FilePath& filename, base::cstring_view mode) {
++#if BUILDFLAG(IS_MAC)
++  if ((mode.find('w') != mode.npos || mode.find('a') != mode.npos || mode.find('+') != mode.npos) &&
++      !AuxAppAllowsMutation(filename)) return nullptr;
++#endif
+   // 'e' is unconditionally added below, so be sure there is not one already
+   // present before a comma in |mode|.
+   size_t e_pos = mode.find('e');
+@@ -1189,6 +1224,9 @@
+ }
+ 
+ bool WriteFile(const FilePath& filename, span<const uint8_t> data) {
++#if BUILDFLAG(IS_MAC)
++  if (!AuxAppAllowsMutation(filename)) return false;
++#endif
+   ScopedBlockingCall scoped_blocking_call(FROM_HERE, BlockingType::MAY_BLOCK);
+ #if BUILDFLAG(IS_ANDROID)
+   if (filename.IsVirtualDocumentPath()) {
+@@ -1215,6 +1253,9 @@
+ }
+ 
+ bool WriteFileDescriptor(int fd, span<const uint8_t> data) {
++#if BUILDFLAG(IS_MAC)
++  if (!(AuxAppAllowsDescriptorMutation(fd))) return false;
++#endif
+   while (!data.empty()) {
+     ssize_t bytes_written_partial =
+         HANDLE_EINTR(write(fd, data.data(), data.size()));
+@@ -1314,6 +1355,9 @@
+ }
+ 
+ bool AppendToFile(const FilePath& filename, span<const uint8_t> data) {
++#if BUILDFLAG(IS_MAC)
++  if (!(AuxAppAllowsMutation(filename))) return false;
++#endif
+   ScopedBlockingCall scoped_blocking_call(FROM_HERE, BlockingType::MAY_BLOCK);
+   bool ret = true;
+   int fd = HANDLE_EINTR(open(filename.value().c_str(), O_WRONLY | O_APPEND));
+@@ -1527,6 +1571,9 @@
+ namespace internal {
+ 
+ bool MoveUnsafe(const FilePath& from_path, const FilePath& to_path) {
++#if BUILDFLAG(IS_MAC)
++  if (!(AuxAppAllowsMutation(from_path, true) && AuxAppAllowsMutation(to_path, true))) return false;
++#endif
+   ScopedBlockingCall scoped_blocking_call(FROM_HERE, BlockingType::MAY_BLOCK);
+   // Windows compatibility: if |to_path| exists, |from_path| and |to_path|
+   // must be the same type, either both files, or both directories.
+--- a/base/files/file_util_apple.mm
++++ b/base/files/file_util_apple.mm
+@@ -3,6 +3,7 @@
+ // found in the LICENSE file.
+ 
+ #include "base/files/file_util.h"
++#include "base/files/aux_read_only_app.h"
+ 
+ #import <Foundation/Foundation.h>
+ #include <copyfile.h>
+@@ -18,6 +19,9 @@
+ namespace base {
+ 
+ bool CopyFile(const FilePath& from_path, const FilePath& to_path) {
++#if BUILDFLAG(IS_MAC)
++  if (!AuxAppAllowsMutation(to_path)) return false;
++#endif
+   ScopedBlockingCall scoped_blocking_call(FROM_HERE, BlockingType::MAY_BLOCK);
+   if (from_path.ReferencesParent() || to_path.ReferencesParent()) {
+     return false;
+--- a/chrome/browser/shortcuts/chrome_webloc_file.mm
++++ b/chrome/browser/shortcuts/chrome_webloc_file.mm
+@@ -10,6 +10,7 @@
+ 
+ #include "base/apple/foundation_util.h"
+ #include "base/files/block_tests_writing_to_special_dirs.h"
++#include "base/files/aux_read_only_app.h"
+ #include "base/logging.h"
+ #include "base/strings/sys_string_conversions.h"
+ #include "base/threading/scoped_blocking_call.h"
+@@ -61,6 +62,7 @@
+ }
+ 
+ bool ChromeWeblocFile::SaveToFile(const base::FilePath& file_path) {
++  if (!base::AuxAppAllowsMutation(file_path)) return false;
+   if (!base::BlockTestsWritingToSpecialDirs::CanWriteToPath(file_path)) {
+     return false;
+   }
+--- /dev/null
++++ b/base/files/aux_read_only_app.h
+@@ -0,0 +1,13 @@
++// Copyright 2026 The Aux Authors.
++#ifndef BASE_FILES_AUX_READ_ONLY_APP_H_
++#define BASE_FILES_AUX_READ_ONLY_APP_H_
++#include "base/base_export.h"
++#include "base/files/file_path.h"
++namespace base {
++// Native authenticated startup registers its exact containing bundle once.
++BASE_EXPORT bool RegisterAuxReadOnlyApp(const FilePath& app);
++// Ancestors are protected only for destructive directory operations.
++BASE_EXPORT bool AuxAppAllowsMutation(const FilePath& path, bool destructive = false);
++BASE_EXPORT bool AuxAppAllowsDescriptorMutation(int fd);
++}
++#endif
