@@ -1,0 +1,36 @@
+{
+  "format": "aux.provider.actual-attempt.v1",
+  "date": "2026-10-26",
+  "candidate": "A38 / browser A78 / daemon A72 / source A51 / UI33",
+  "namespace": "Aux Browser A38 Disposable",
+  "profile": "Aux A4 Work",
+  "ownerAuthorization": {
+    "secureKeyEntryConfirmed": true,
+    "totalBudgetUsd": 1,
+    "onlyModel": "vercel-ai-gateway/meta/muse-spark-1.3-contributor",
+    "removeDisposableConnectionAfterChecks": true
+  },
+  "working": [
+    "Owner submitted test key directly in supplied form; agent did not read or enter it",
+    "Connected Gateway provider visible in actual Settings",
+    "Set models submenu loads real catalog",
+    "Only Muse Spark 1.3 Contributor enabled; adjacent non-Contributor variant remains disabled",
+    "Default, Fast, Standard, Deep and Visual controls select Contributor",
+    "Actual New Chat accepts one submitted synthetic prompt and creates a session"
+  ],
+  "initialEmptyPickerExplained": "The provider had no selected models. The catalog was available through Set models; this was not counted as a catalog failure.",
+  "submittedPrompt": "Reply exactly AUX_PROVIDER_OK. Do not use tools.",
+  "submissionCount": 1,
+  "sessionId": "HPJFBbDlI88ufB36",
+  "actualFailure": "User bubble appears; no assistant answer or error. New Session opens a blank task body.",
+  "diagnosis": "../integration/ordinary-chat/safe-diagnosis.json",
+  "sourceCause": "createCoreToolset unconditionally constructs createDesktopRepl, whose unchanged supervised-execution guard rejects ordinary session startup before the model-stream callback.",
+  "sourceCorrection": "../integration/ordinary-chat/README.md",
+  "modelCompletionObserved": false,
+  "providerHttpUsageReceiptAvailable": false,
+  "spendAmount": null,
+  "furtherRequests": "Stopped pending corrected runnable candidate; no other model authorized",
+  "disposableConnectionRemoved": false,
+  "connectionRemovalPending": "After bounded successor/provider checks; retain no credential value in evidence",
+  "actualInferenceAccepted": false
+}

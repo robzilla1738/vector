@@ -16,4 +16,6 @@ Remaining raw daemon references must be classified at their current consumers be
 
 ## Next integration
 
+The owner subsequently entered the Gateway test key directly in Aux and authorized up to $1 total using only `vercel-ai-gateway/meta/muse-spark-1.3-contributor`. Actual provider/catalog selection works; a single minimal chat failed during unconditional privileged-REPL construction before the model-stream callback. `provider-attempt-a1.json` and the ordinary-chat lane's safe diagnosis record the failure and source correction; no inference completion or spend amount is claimed. No additional requests are sent until corrected-candidate acceptance. The disposable connection must be removed after the bounded checks.
+
 Finish CLI Space routing and finite native-host source joins, freeze counted native inputs, compile/package one coherent successor in a new directory, then repeat only affected actual journeys. Retain current accepted A38 and its original launch path. Local source work grants no new signing, production activation, owner credentials, native trust or OS permissions. Account-backed Muse/ChatGPT, official extension/autofill/companion, genuine hover and hosted/operational journeys remain open.
