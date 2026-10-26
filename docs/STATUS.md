@@ -1,3 +1,7 @@
+# Paused at owner request — 2026-10-26
+
+The approved two-addon derivative-signing step is complete: unchanged native-code proof, matching two lifetime objects/54-Swift daemon/browser-framework rebuilds, and daemon/framework/outer reseal all pass. Current signed inventory is `bee6f37ecb39f7d79adfa55bcdba855006c19fc3baad20903f0dc2a96de9f94b`. Actual startup smoke does **not** pass: browser exited before a window or ready service; its exact orphan daemon did not exit on SIGTERM, was stopped with SIGKILL and no children, and all interrupted state remains preserved. No clean drain or full acceptance is claimed. Both agents stopped and their work is committed locally, including the explicitly unjoined/uncompiled generic-fs draft. Backup activation/setup remains owner-deferred. See [pause handoff](integration/proposed/completion-20261026/PAUSE-HANDOFF.md) for current paths, source selection, receipts and resume priorities. Earlier entries below are historical where superseded.
+
 # Coherent unsigned successor assembled — 2026-10-26
 
 The new candidate is `out/provided-candidate-completion-20261026-a1/Aux.app`. The complete browser/CLI a7 and 54-Swift daemon native builds pass; the focused actual SQLite/private-FD session-membership fixture passes. Static assembly verified the frozen browser, copied supplied resources, finite replacements, active package records and preservation of unrelated Aux leaves. It has not been signed or launched; current runtime acceptance remains A38 only.

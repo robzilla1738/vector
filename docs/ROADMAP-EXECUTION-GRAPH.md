@@ -1,3 +1,5 @@
+> **Owner pause — 2026-10-26:** stop after the two-addon matching package step. Build/signature/inventory checks pass; startup smoke fails and interrupted state is preserved. No full acceptance or completion claim. Backup work/setup is deferred. [Current pause handoff](integration/proposed/completion-20261026/PAUSE-HANDOFF.md) supersedes older dispatch/status notes below. Do not dispatch work while paused.
+
 # Aux final completion execution plan
 
 ## Active full completion continuation — 2026-10-26

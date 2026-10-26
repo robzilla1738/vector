@@ -1,0 +1,24 @@
+{
+  "format": "aux.completion.current-signed-candidate.v1",
+  "app": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-completion-20261026-a1/Aux.app",
+  "signed": true,
+  "signedReceipt": {
+    "path": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-completion-20261026-a1/two-addon-repair-a4/receipt.json",
+    "sha256": "7f5e87ff66702f2e42d959565b30b2c19f94ded14c570f08c6d20d2189f7ca10"
+  },
+  "inventorySha256": "bee6f37ecb39f7d79adfa55bcdba855006c19fc3baad20903f0dc2a96de9f94b",
+  "newAddonSignatureAuthority": "5138937e149f3ff805f70ed92e552b7cc444e2d8e697d0d5c82582f20695b037",
+  "nativeAddonCodeUnchanged": true,
+  "newlySignedAddonCopies": 2,
+  "matchingParentObjectsResealed": 3,
+  "appExecuted": true,
+  "runtimeAccepted": false,
+  "startupSmoke": {
+    "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/integrator/final-startup-smoke-a1.json",
+    "sha256": "0f00b9ef92b463dc57590c8082da1cbc7302e20d57faa7d1802fe4696a8a259d"
+  },
+  "acceptedA38AppPreserved": true,
+  "ownerRequestedPauseAfterThisStep": true,
+  "rawAndBuildArtifactsRetainedAt": "/Users/rcourson/Documents/Vibe/web/out/completion-20261026-addon-proof-a1",
+  "allOwnedTestProcessesStopped": true
+}

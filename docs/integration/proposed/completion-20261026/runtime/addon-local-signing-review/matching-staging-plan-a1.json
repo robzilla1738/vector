@@ -1,0 +1,70 @@
+{
+  "format": "aux.two-addon.matching-cohort-staging.v1",
+  "approvedReviewSha256": "5138937e149f3ff805f70ed92e552b7cc444e2d8e697d0d5c82582f20695b037",
+  "app": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-completion-20261026-a1/Aux.app",
+  "executor": {
+    "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/runtime/addon-local-signing-review/stage-signed-successor.py",
+    "sha256": "739293c41286e1f03976b256633848090c54ec8b61711999f560e9ae0cca1c35"
+  },
+  "beforeReceipt": {
+    "path": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-completion-20261026-a1/ordinary-startup-repair-a3/receipt.json",
+    "sha256": "746e8e7f6885f5111c42d60564382dd957f00de09ae4bba852db09565cc502ec"
+  },
+  "staging": [
+    {
+      "relative": "Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/native/aux-pdf.node",
+      "source": {
+        "path": "/private/tmp/aux-two-addon-local-signing-20261026-a1/signed/aux-pdf.node",
+        "sha256": "8145277feda966e4d2c8912baa6b72e06ae9ae0a1fd925a0376043c25f808881"
+      }
+    },
+    {
+      "relative": "Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/native/aux-macos-utilities.node",
+      "source": {
+        "path": "/private/tmp/aux-two-addon-local-signing-20261026-a1/signed/aux-macos-utilities.node",
+        "sha256": "e7204915d9d656c2212153c0b9d3d734447278e4744fe6f407b1af767baa272e"
+      }
+    },
+    {
+      "relative": "Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/MacOS/aux-daemon",
+      "source": {
+        "path": "/private/tmp/aux-two-addon-local-signing-20261026-a1/successor/build-a2/Aux Daemon",
+        "sha256": "0153626b5052197f71f59bc73d9230a941e46dfce30d6ce8df361364eda22b45"
+      }
+    },
+    {
+      "relative": "Contents/Frameworks/Aux Framework.framework/Versions/155.0.8059.85/Aux Framework",
+      "source": {
+        "path": "/private/tmp/aux-two-addon-local-signing-20261026-a1/successor/build-a2/Aux Framework",
+        "sha256": "004d4acf490505c811afca135d563892d0c434e6d067d5050b7a0fe248aab792"
+      }
+    },
+    {
+      "relative": "Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/AuxFreshBootstrapPolicy.json",
+      "source": {
+        "path": "/private/tmp/aux-two-addon-local-signing-20261026-a1/successor/AuxFreshBootstrapPolicy.json",
+        "sha256": "d29979e1a2b9d6d6ebfa3eb213e030188fa45e1d52649da0b2e1c0f318652ee2"
+      }
+    }
+  ],
+  "receiptDirectory": "two-addon-repair-a4",
+  "sourceEvidence": [
+    {
+      "path": "/private/tmp/aux-two-addon-local-signing-20261026-a1/successor/build-a2/build-receipt.json",
+      "sha256": "af474a8ae456b03f92fee7b0a677d977e5dc2441e438c56ef7f2a1f2fe2e7c9a"
+    },
+    {
+      "path": "/private/tmp/aux-two-addon-local-signing-20261026-a1/successor/source-and-build-plan.json",
+      "sha256": "77a6b1ab8d3ac1c764582dc2691e260a599e0648e421caf3a9fb4b4a0b44b46c"
+    },
+    {
+      "path": "/private/tmp/aux-two-addon-local-signing-20261026-a1/signing-receipt.json",
+      "sha256": "ff0882e5311da2a66944caaf2703014e78d3201591fd37d33c3085a404f1c5ce"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/runtime/addon-local-signing-review/literal-verification-note.json",
+      "sha256": "0f46050167cefe297a49faff8540f05d8fee08fc6b3a48af1685d72f6b454eea"
+    }
+  ],
+  "ownerRequestedStopAfterStep": true
+}

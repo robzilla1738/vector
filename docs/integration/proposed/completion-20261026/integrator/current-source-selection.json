@@ -1,0 +1,35 @@
+{
+  "format": "aux.completion.current-source-selection.v1",
+  "candidate": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-completion-20261026-a1/Aux.app",
+  "signedInventorySha256": "bee6f37ecb39f7d79adfa55bcdba855006c19fc3baad20903f0dc2a96de9f94b",
+  "sourceSnapshots": [
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/runtime/addon-local-signing-review/actual-signed-source-a1/source/daemon-policy.swift",
+      "sha256": "f01fd950bd53ea2ec48a89d2833909cdb545fa846260ff1c32193b2920419ce5"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/runtime/addon-local-signing-review/actual-signed-source-a1/source/browser-policy.swift",
+      "sha256": "93dca4241b8fb397feed796fec73c8ae3c28dcbeb66779345a321a9923e48c2b"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/runtime/addon-local-signing-review/actual-signed-source-a1/source/pdf-lifetime.cc",
+      "sha256": "dd09495967252592068643f921800dd7d6953550e66bda577a809b1f83c3ec1d"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/runtime/addon-local-signing-review/actual-signed-source-a1/source/utility-lifetime.cc",
+      "sha256": "58c3cfd194e2cdf933de4218d9605721a42711438f8881fa1b548402dd3cf708"
+    }
+  ],
+  "descriptor": {
+    "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/runtime/addon-local-signing-review/actual-signed-source-a1/AuxFreshBootstrapPolicy.json",
+    "sha256": "d29979e1a2b9d6d6ebfa3eb213e030188fa45e1d52649da0b2e1c0f318652ee2"
+  },
+  "actualMatchingBuild": {
+    "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/runtime/addon-local-signing-review/actual-signed-source-a1/build-receipt.json",
+    "sha256": "af474a8ae456b03f92fee7b0a677d977e5dc2441e438c56ef7f2a1f2fe2e7c9a"
+  },
+  "ordinaryAclRepairSource": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/runtime/ordinary-image-ancestor-acl-repair/source/AuxSignedFreshBootstrapPolicyLoader.swift",
+  "currentNativeBrowserProjection": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/aux/native_peer_policy/AuxFreshBootstrapPolicy.swift",
+  "olderFrozenRecipesArePredecessors": true,
+  "runtimeAccepted": false
+}

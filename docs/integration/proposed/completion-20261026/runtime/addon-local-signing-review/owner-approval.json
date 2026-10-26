@@ -1,0 +1,7 @@
+{
+  "format": "aux.two-addon.owner-approval.v1",
+  "reviewSha256": "5138937e149f3ff805f70ed92e552b7cc444e2d8e697d0d5c82582f20695b037",
+  "ownerAnswer": "Approve this exact two-addon review",
+  "recordedAtUtc": "2026-10-26T18:22:00.796871+00:00",
+  "subsequentInstruction": "Finish this step, update local work/docs, then stop and pause goal."
+}

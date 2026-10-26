@@ -1,0 +1,37 @@
+{
+  "format": "aux.completion.final-startup-smoke.v1",
+  "candidate": "out/provided-candidate-completion-20261026-a1/Aux.app",
+  "matchingSignedReceipt": "out/provided-candidate-completion-20261026-a1/two-addon-repair-a4/receipt.json",
+  "normalLauncher": "out/provided-candidate-completion-20261026-a1/Launch Aux.command",
+  "normalOpenExitCode": 0,
+  "diagnosticOpenWithStdioExitCode": 1,
+  "diagnosticOpenWithStdioError": "LaunchServices -10810; plain approved launcher subsequently returned0",
+  "browserPid": 26478,
+  "daemonPid": 26503,
+  "browserAndDaemonInitiallyRunning": true,
+  "browserWindowObserved": false,
+  "browserExitedBeforeWindow": true,
+  "daemonPortsReadyObserved": false,
+  "nativeStatusPorts": [
+    21520,
+    21522,
+    45203
+  ],
+  "freshNamespaceRegularFilesObserved": 21,
+  "namespacePreserved": true,
+  "actualStartupAccepted": false,
+  "providerRequests": 0,
+  "newOSGrants": false,
+  "furtherRepairStarted": false,
+  "ownerRequestedPauseAfterThisStep": true,
+  "teardown": {
+    "ownedOrphanIdentityChecked": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-completion-20261026-a1/Aux.app/Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/MacOS/aux-daemon",
+    "signal": "SIGTERM",
+    "SIGKILL": true,
+    "cleanQuitNotClaimed": true,
+    "gracefulSIGTERMCompleted": false,
+    "reason": "Owned orphan did not exit after SIGTERM; owner requested stopping work. Only exact disposable daemon PID/path was killed, with no children observed. Namespace/journals retained as interrupted; no clean drain claimed.",
+    "ownedDaemonAbsentAfterStop": true,
+    "processStatusExitCode": 1
+  }
+}

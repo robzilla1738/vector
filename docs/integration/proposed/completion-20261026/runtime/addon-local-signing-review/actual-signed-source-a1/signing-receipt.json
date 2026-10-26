@@ -1,0 +1,85 @@
+{
+  "format": "aux.two-addon.actual-local-signing.v1",
+  "approvedReviewSha256": "5138937e149f3ff805f70ed92e552b7cc444e2d8e697d0d5c82582f20695b037",
+  "steps": [
+    {
+      "command": [
+        "/usr/bin/codesign",
+        "--force",
+        "--sign",
+        "47ACA5D1CFADD21CFEDC589B4DEED6E2B7A96D90",
+        "--options",
+        "runtime",
+        "--timestamp=none",
+        "--identifier",
+        "dev.aux.browser.pdf",
+        "/private/tmp/aux-two-addon-local-signing-20261026-a1/signed/aux-pdf.node"
+      ],
+      "exitCode": 0,
+      "stdout": "",
+      "stderr": "/private/tmp/aux-two-addon-local-signing-20261026-a1/signed/aux-pdf.node: replacing existing signature\n"
+    },
+    {
+      "command": [
+        "/usr/bin/codesign",
+        "--verify",
+        "--strict",
+        "-R",
+        "=anchor apple generic and identifier = \"dev.aux.browser.pdf\" and certificate leaf[subject.OU] = \"9F2JXY8TCK\"",
+        "/private/tmp/aux-two-addon-local-signing-20261026-a1/signed/aux-pdf.node"
+      ],
+      "exitCode": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "/usr/bin/codesign",
+        "--force",
+        "--sign",
+        "47ACA5D1CFADD21CFEDC589B4DEED6E2B7A96D90",
+        "--options",
+        "runtime",
+        "--timestamp=none",
+        "--identifier",
+        "dev.aux.browser.macos-utilities",
+        "/private/tmp/aux-two-addon-local-signing-20261026-a1/signed/aux-macos-utilities.node"
+      ],
+      "exitCode": 0,
+      "stdout": "",
+      "stderr": "/private/tmp/aux-two-addon-local-signing-20261026-a1/signed/aux-macos-utilities.node: replacing existing signature\n"
+    },
+    {
+      "command": [
+        "/usr/bin/codesign",
+        "--verify",
+        "--strict",
+        "-R",
+        "=anchor apple generic and identifier = \"dev.aux.browser.macos-utilities\" and certificate leaf[subject.OU] = \"9F2JXY8TCK\"",
+        "/private/tmp/aux-two-addon-local-signing-20261026-a1/signed/aux-macos-utilities.node"
+      ],
+      "exitCode": 0,
+      "stdout": "",
+      "stderr": ""
+    }
+  ],
+  "passed": true,
+  "originalsPreserved": true,
+  "candidateChanged": false,
+  "newEntitlements": false,
+  "newOSGrants": false,
+  "signedAddons": [
+    {
+      "name": "aux-pdf.node",
+      "path": "/private/tmp/aux-two-addon-local-signing-20261026-a1/signed/aux-pdf.node",
+      "sha256": "8145277feda966e4d2c8912baa6b72e06ae9ae0a1fd925a0376043c25f808881",
+      "bytes": 9437920
+    },
+    {
+      "name": "aux-macos-utilities.node",
+      "path": "/private/tmp/aux-two-addon-local-signing-20261026-a1/signed/aux-macos-utilities.node",
+      "sha256": "e7204915d9d656c2212153c0b9d3d734447278e4744fe6f407b1af767baa272e",
+      "bytes": 409728
+    }
+  ]
+}
