@@ -30,7 +30,16 @@
   "providerHttpUsageReceiptAvailable": false,
   "spendAmount": null,
   "furtherRequests": "Stopped pending corrected runnable candidate; no other model authorized",
-  "disposableConnectionRemoved": false,
-  "connectionRemovalPending": "After bounded successor/provider checks; retain no credential value in evidence",
-  "actualInferenceAccepted": false
+  "disposableConnectionRemoved": true,
+  "actualInferenceAccepted": false,
+  "connectionRemoval": {
+    "recordedAtUtc": "2026-10-26 14:39:02 UTC",
+    "route": "Actual A38 Work Settings > Models > Vercel AI Gateway > Disconnect > Disconnect",
+    "observed": "Provider row absent, Connect shown, Default Select model and remaining task models Automatic",
+    "credentialRead": false,
+    "remoteKeyRevoked": false,
+    "scope": "Only the user-authorized disposable Aux A4 Work connection",
+    "successor": "Fresh successor requires direct user key entry; no credential copied",
+    "furtherRequestsSinceFirstAttempt": 0
+  }
 }
