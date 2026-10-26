@@ -7,24 +7,24 @@
   "runtimeAccepted": false,
   "platform": "M-series arm64; browser executable and Framework LC_BUILD_VERSION minos27.0",
   "browser": {
-    "receipt": "/private/tmp/aux-future-browser-link-20261026-b7/receipt.json",
-    "receiptSha256": "6fa02a64d3276660282ae7b70420bdabd3a5c3ebade6276f6ec415be360f9742",
-    "recipe": "/private/tmp/aux-future-browser-link-20261026-b7/recipe.json",
-    "recipeSha256": "c25b2c3b3784b591e076beac3dde17a40e854f2131050ed0cf52c5ea1d389d94",
+    "receipt": "/private/tmp/aux-future-browser-link-20261026-b8/receipt.json",
+    "receiptSha256": "2353dbcad547f491c3fc7441ea79324ff2d983392f4f6f955a1f914a1b260ebb",
+    "recipe": "/private/tmp/aux-future-browser-link-20261026-b8/recipe.json",
+    "recipeSha256": "7f5b3e018cb52db9df44e474dbb99a2270a49a59f3219623bdca36ba3f625732",
     "outputs": {
-      "/private/tmp/aux-future-browser-link-20261026-b7/Aux": "f1d74243a7cffcf1877bf31c721e8aedfceb93a7e7f6c1b357ee59f0e5c27d85",
-      "/private/tmp/aux-future-browser-link-20261026-b7/Aux Framework": "e3470e6861df7988553505ba7e1f929e8a90ee97bf49971d096bdf6aac89af59",
-      "/private/tmp/aux-future-browser-link-20261026-b7/libui.a": "9a20e9ac4e2e8e8b6203d12be84314db8ea28d5a60e64e0ed65da7aa12b4f658"
+      "/private/tmp/aux-future-browser-link-20261026-b8/Aux": "f1d74243a7cffcf1877bf31c721e8aedfceb93a7e7f6c1b357ee59f0e5c27d85",
+      "/private/tmp/aux-future-browser-link-20261026-b8/Aux Framework": "11a75fef8effbd6032a706fb91fdfdd66a30c91265a12ef2391f39a03f4e4553",
+      "/private/tmp/aux-future-browser-link-20261026-b8/libui.a": "9a20e9ac4e2e8e8b6203d12be84314db8ea28d5a60e64e0ed65da7aa12b4f658"
     },
     "unchangedUiMembersPreserved": 174,
     "reusedPrimary": {
-      "source": "/private/tmp/aux-future-browser-link-20261026-b6/Aux",
+      "source": "/private/tmp/aux-future-browser-link-20261026-b7/Aux",
       "sha256": "f1d74243a7cffcf1877bf31c721e8aedfceb93a7e7f6c1b357ee59f0e5c27d85",
-      "receipt": "/private/tmp/aux-future-browser-link-20261026-b6/receipt.json",
-      "receiptSha256": "837a565c2b66d18bf5d29ea8c75252cbfebe53cb286f097cab33f7e5e85b05a8"
+      "receipt": "/private/tmp/aux-future-browser-link-20261026-b7/receipt.json",
+      "receiptSha256": "6fa02a64d3276660282ae7b70420bdabd3a5c3ebade6276f6ec415be360f9742"
     },
     "onlyFrameworkRelinked": true,
-    "sourceProducerCompiles": 3,
+    "sourceProducerCompiles": 0,
     "startupProducerReceipt": "/private/tmp/aux-future-startup-refresh-20261026-b1/receipt.json",
     "startupProducerReceiptSha256": "24c74b61867094e219dc183e8c6432ba4ec5d54faa841f9346117cb637f23f5a",
     "startupProducerOutputs": {
@@ -60,20 +60,20 @@
   "resourceDependency": {
     "required": false,
     "completed": true,
-    "receipt": "/private/tmp/aux-initial-prompt-preservation-20261026-a1-future/receipt.json",
-    "receiptSha256": "e87299133780ce4fdb45344ce3879b10fec4811c4219bd53ea9aeb53b9b06bc8",
+    "receipt": "/private/tmp/aux-unstarted-run-error-20261026-a1-future/receipt.json",
+    "receiptSha256": "0454bcb55a1554ac41c2220a6e0805712c7c68543530b4792c55cf8aa0209d5e",
     "resources": [
       {
-        "path": "/private/tmp/aux-initial-prompt-preservation-20261026-a1-future/index.mjs",
-        "sha256": "8e50157c7ea6a20c2ba828f59c0a00e3db1848113855089e394cb39b2289269a",
+        "path": "/private/tmp/aux-unstarted-run-error-20261026-a1-future/index.mjs",
+        "sha256": "b72d1c77e166b902742741b38b3a74634e97478fa5cfafeb581417cefac353fb",
         "preservedAdapters": {
           "selected-repl-fs-resource.mjs": "de8c25462318a399e971b6be59d735c4b064aa1a86a0ce94a4d0d7637a04ccfd",
           "selected-repl-resource.mjs": "b97a6ac7031f1d9dd4c9b8e1105908c7c8deb63f648c70adae40c9ece5b4b0dd"
         }
       },
       {
-        "path": "/private/tmp/aux-initial-prompt-preservation-20261026-a1-future/aux-native-entry.mjs",
-        "sha256": "a0c8ac8010c728c2ee4ac2757b8e6aa5cc5bf0ec6899b14e6124ac6b9bcd7dd8",
+        "path": "/private/tmp/aux-unstarted-run-error-20261026-a1-future/aux-native-entry.mjs",
+        "sha256": "9df4a96e9482d3ea58b3cf460005cf488fc43cd9e66769a8fb02c93cfd1cf2a5",
         "preservedAdapters": {
           "selected-repl-fs-resource.mjs": "de8c25462318a399e971b6be59d735c4b064aa1a86a0ce94a4d0d7637a04ccfd",
           "selected-repl-resource.mjs": "b97a6ac7031f1d9dd4c9b8e1105908c7c8deb63f648c70adae40c9ece5b4b0dd"
@@ -86,17 +86,18 @@
     "modelCalls": 0,
     "nativeInterfaceUnchanged": true,
     "previousResourceReceipt": {
-      "path": "/private/tmp/aux-settled-browser-rejection-20261026-a1/receipt.json",
-      "sha256": "b43b7204ab1fce7f804a26ed99afee2f23751908bc07bb9f21237b7d632bdbe4"
+      "path": "/private/tmp/aux-initial-prompt-preservation-20261026-a1-future/receipt.json",
+      "sha256": "e87299133780ce4fdb45344ce3879b10fec4811c4219bd53ea9aeb53b9b06bc8"
     },
     "includedCorrections": [
       "direct fixed dispatch",
       "no-spawn optional analytics",
       "settled browser rejection native custody separation",
       "reconnect run-error preservation",
-      "initial prompt preservation"
+      "initial prompt preservation",
+      "unstarted run callback error preservation"
     ],
-    "verificationScope": "Exact final prepared output hashes match initial-prompt preparation receipt; earlier boundary evidence retained; no new runtime acceptance."
+    "verificationScope": "Final prepared bytes match unstarted-run-error receipt; existing focused boundary evidence retained; no new runtime acceptance."
   },
   "changesToExistingLink": [
     "substitute seven passed private producer objects, one through a private thin UI archive",
@@ -122,9 +123,9 @@
   ],
   "resourceCompositionComplete": true,
   "acceptedLocalRepairDependency": {
-    "status": "Current build20500 native changes and final grouped resource selection included; actual acceptance remains separate.",
-    "baselineReceipt": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/integrator/cold-input-sign-observation-a1/build-receipt.json",
-    "baselineReceiptSha256": "0fc9be28559baac5117353666ca9156ceb3bd5787bc8f3ffc6856dd84c6c0276",
+    "status": "Current build31387 local-account/shortcut fixes included; actual acceptance remains separate.",
+    "baselineReceipt": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/integrator/local-account-shortcut-a1/build-receipt.json",
+    "baselineReceiptSha256": "5399cfa28e67673a306a674f70ac5cae10cb0d0f0edea32e63c42e6bfd398fc6",
     "currentLocalSourceDeltaPending": false,
     "uiRuntimeAcceptanceClaimed": false
   },
@@ -141,8 +142,8 @@
     "linked": true,
     "producerReceipt": "/private/tmp/aux-future-startup-refresh-20261026-b1/receipt.json",
     "producerReceiptSha256": "24c74b61867094e219dc183e8c6432ba4ec5d54faa841f9346117cb637f23f5a",
-    "frameworkLinkReceipt": "/private/tmp/aux-future-browser-link-20261026-b7/receipt.json",
-    "frameworkLinkReceiptSha256": "6fa02a64d3276660282ae7b70420bdabd3a5c3ebade6276f6ec415be360f9742",
+    "frameworkLinkReceipt": "/private/tmp/aux-future-browser-link-20261026-b8/receipt.json",
+    "frameworkLinkReceiptSha256": "2353dbcad547f491c3fc7441ea79324ff2d983392f4f6f955a1f914a1b260ebb",
     "existingFutureBranchPreserved": true,
     "bothCompositionOrdersEqual": true
   },
@@ -155,7 +156,7 @@
     "packaged": false
   },
   "frozenSelectionSourceAndNativeBuildComplete": true,
-  "sourceCompletenessScope": "Exact build20500/b7 plus final grouped JS/extension selection compiled and linked. Actual binding/signature/capture and complete product journeys require acceptance; no product completeness claimed.",
+  "sourceCompletenessScope": "Exact build31387/b8 plus unstarted-run-error future pair and unchanged final grouped extension payload compiled/linked; actual product acceptance remains separate.",
   "backgroundResource": {
     "path": "/private/tmp/aux-completion-grouped-extension-20261026-a1/background.js",
     "sha256": "5878bfc73f19bc07c31cea0e33da6ae5ef005ce434b891b9975b732285a28fe4",
