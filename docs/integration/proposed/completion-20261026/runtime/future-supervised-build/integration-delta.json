@@ -1,6 +1,6 @@
 {
   "format": "aux.future-supervised-integration.v2",
-  "sourceGatesClosed": false,
+  "sourceGatesClosed": true,
   "unsignedLinkPassed": true,
   "runtimeAccepted": false,
   "activated": false,
@@ -15,25 +15,65 @@
     "sha256": "bf42ec929b0fdb1cbd11d6d4d56687cdf46828fca88850a43b53bfea7a9728c3"
   },
   "resources": {
-    "directory": "/private/tmp/aux-supervised-resource-composition-20261026-b2",
+    "directory": "/private/tmp/aux-future-final-resources-20261026-b1",
     "leaves": [
       "index.mjs",
       "aux-native-entry.mjs"
     ],
-    "receiptSha256": "183d4508d72e31943ee87e4c427d94e35158b1589eb4a3fd72a45e70bc9a27e0",
+    "receiptSha256": "71f221028b11b88d31a922df45552b5b8b7dd1c8716a1763c5086493773823ff",
     "changes": [
       "bring index to existing entry process lifetime contract",
       "fixed linked PTY loader and original producer join",
       "selected native session HOME/TMP/cache/prefix and read/use lease",
       "account cancellation plus original CLI/QuickJS awaited disposal",
-      "12-method generic filesystem preserving original resolver/hooks"
+      "12-method generic filesystem preserving original resolver/hooks",
+      "accepted immutable read-file mode predicate and scoped lazy browser registration from a2c814d3c"
     ],
-    "finalCorrectionRequired": {
-      "required": true,
-      "integratedCorrectionCommit": "a2c814d3c",
+    "finalCorrection": {
+      "required": false,
+      "completed": true,
+      "integratedCorrectionCommit": "a2c814d3c18a7e8b134964e267b34efaa21a1078",
       "sourceCommit": "037a6fffb",
-      "reason": "Recompose both future resource leaves with final immutable supervised-mode predicate and lazy browser registration; include any subsequently accepted sidebar/recursive-split source selection. Current b2 resource copies are predecessor proof, not activation resources.",
-      "rebuildRequested": false
+      "receipt": "/private/tmp/aux-future-final-resources-20261026-b1/receipt.json",
+      "receiptSha256": "71f221028b11b88d31a922df45552b5b8b7dd1c8716a1763c5086493773823ff",
+      "plan": "final-resource-plan.json",
+      "resources": [
+        {
+          "path": "/private/tmp/aux-future-final-resources-20261026-b1/index.mjs",
+          "sha256": "d244835e0f463a451e350eb2f075cdb6900d1d9e640587edcc372c45ef27b058",
+          "preservedAdapters": {
+            "selected-repl-fs-resource.mjs": "de8c25462318a399e971b6be59d735c4b064aa1a86a0ce94a4d0d7637a04ccfd",
+            "selected-repl-resource.mjs": "b97a6ac7031f1d9dd4c9b8e1105908c7c8deb63f648c70adae40c9ece5b4b0dd"
+          }
+        },
+        {
+          "path": "/private/tmp/aux-future-final-resources-20261026-b1/aux-native-entry.mjs",
+          "sha256": "b9f39718475bda37c21ebbf241792b83d534c0c3849548e53b4fe655ceb88f71",
+          "preservedAdapters": {
+            "selected-repl-fs-resource.mjs": "de8c25462318a399e971b6be59d735c4b064aa1a86a0ce94a4d0d7637a04ccfd",
+            "selected-repl-resource.mjs": "b97a6ac7031f1d9dd4c9b8e1105908c7c8deb63f648c70adae40c9ece5b4b0dd"
+          }
+        }
+      ],
+      "ruleCounts": [
+        [
+          1,
+          1,
+          1,
+          2
+        ],
+        [
+          1,
+          1,
+          1,
+          2
+        ]
+      ],
+      "focusedChecksPassed": true,
+      "nativeRebuild": false,
+      "signed": false,
+      "appModified": false,
+      "modelCalls": 0
     }
   },
   "producers": {
@@ -95,15 +135,18 @@
     "Browser primary executable dev.aux.browser also calls the existing es_new_descendants_client and needs legitimate EndpointSecurity entitlement/profile authority. Recorded Apple request 2H4D7KNGUP names daemon only; browser coverage is unverified, not implied or requested here."
   ],
   "remainingIntegration": [
-    "Recompose both future leaves from final accepted source selection including a2c814d3c /037a6fffb mode predicate and lazy browser registration; no source rebuild performed for this outstanding resource correction.",
-    "incorporate any final startup repair found by Batch 1 into this future Main/daemon cohort before activation",
     "generate exact paired v11 resources using actual signed helper and composed leaf hashes before containing seals",
     "perform real Bash/yielded/PTY/CLI/fs cancellation and escaped-descendant shutdown acceptance under granted authority"
   ],
-  "sourceGateScope": "Native producers and coherent unsigned browser+daemon links complete. Final resource composition is pending a2c814d3c and final accepted local selection.",
+  "sourceGateScope": "Known execution source joins, corrected paired resource copies and coherent unsigned native links complete for the frozen selection. Activation/package/runtime acceptance remain separate.",
   "browserProducerObjectsCompiled": true,
   "coherentFutureBrowserLinked": true,
   "nativeSourceGatesClosed": true,
   "nativeCohortReceipt": "native-cohort-receipt.json",
-  "activationPackageComplete": false
+  "activationPackageComplete": false,
+  "acceptedLocalRepairDependency": {
+    "status": "No accepted concrete split repair supplied at this checkpoint.",
+    "scope": "Root current local native diagnostic and CLI build are not automatically substituted into this frozen cohort.",
+    "nextAction": "If the local split diagnosis produces an accepted concrete source repair, carry that exact repair into the future resource/native selection and rebuild only affected producers/links before activation. Diagnostic-only changes do not invalidate the recorded cohort."
+  }
 }

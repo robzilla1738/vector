@@ -1,6 +1,6 @@
 {
   "format": "aux.future-supervised-source-gates.v2",
-  "finiteSourceGatesClosed": false,
+  "finiteSourceGatesClosed": true,
   "sourceEvidence": "../selected-repl-fs/completion-evidence.json",
   "inactiveLinkReceipt": "/private/tmp/aux-future-supervised-native-20261026-b1/receipt.json",
   "runtimeAccepted": false,
@@ -8,14 +8,58 @@
   "browserOverlay": "browser-source-plan.json",
   "browserProducersCompiled": true,
   "coherentFutureBrowserLinked": true,
-  "sourceGateScope": "Native link gate closed; final corrected resource composition remains required.",
+  "sourceGateScope": "Known execution-native and corrected resource joins closed for frozen cohort; activation/package/runtime gates remain.",
   "nativeSourceGatesClosed": true,
   "nativeCohortReceipt": "native-cohort-receipt.json",
   "resourceDependency": {
-    "required": true,
-    "integratedCorrectionCommit": "a2c814d3c",
+    "required": false,
+    "completed": true,
+    "integratedCorrectionCommit": "a2c814d3c18a7e8b134964e267b34efaa21a1078",
     "sourceCommit": "037a6fffb",
-    "reason": "Recompose both future resource leaves with final immutable supervised-mode predicate and lazy browser registration; include any subsequently accepted sidebar/recursive-split source selection. Current b2 resource copies are predecessor proof, not activation resources.",
-    "rebuildRequested": false
+    "receipt": "/private/tmp/aux-future-final-resources-20261026-b1/receipt.json",
+    "receiptSha256": "71f221028b11b88d31a922df45552b5b8b7dd1c8716a1763c5086493773823ff",
+    "plan": "final-resource-plan.json",
+    "resources": [
+      {
+        "path": "/private/tmp/aux-future-final-resources-20261026-b1/index.mjs",
+        "sha256": "d244835e0f463a451e350eb2f075cdb6900d1d9e640587edcc372c45ef27b058",
+        "preservedAdapters": {
+          "selected-repl-fs-resource.mjs": "de8c25462318a399e971b6be59d735c4b064aa1a86a0ce94a4d0d7637a04ccfd",
+          "selected-repl-resource.mjs": "b97a6ac7031f1d9dd4c9b8e1105908c7c8deb63f648c70adae40c9ece5b4b0dd"
+        }
+      },
+      {
+        "path": "/private/tmp/aux-future-final-resources-20261026-b1/aux-native-entry.mjs",
+        "sha256": "b9f39718475bda37c21ebbf241792b83d534c0c3849548e53b4fe655ceb88f71",
+        "preservedAdapters": {
+          "selected-repl-fs-resource.mjs": "de8c25462318a399e971b6be59d735c4b064aa1a86a0ce94a4d0d7637a04ccfd",
+          "selected-repl-resource.mjs": "b97a6ac7031f1d9dd4c9b8e1105908c7c8deb63f648c70adae40c9ece5b4b0dd"
+        }
+      }
+    ],
+    "ruleCounts": [
+      [
+        1,
+        1,
+        1,
+        2
+      ],
+      [
+        1,
+        1,
+        1,
+        2
+      ]
+    ],
+    "focusedChecksPassed": true,
+    "nativeRebuild": false,
+    "signed": false,
+    "appModified": false,
+    "modelCalls": 0
+  },
+  "acceptedLocalRepairDependency": {
+    "status": "No accepted concrete split repair supplied at this checkpoint.",
+    "scope": "Root current local native diagnostic and CLI build are not automatically substituted into this frozen cohort.",
+    "nextAction": "If the local split diagnosis produces an accepted concrete source repair, carry that exact repair into the future resource/native selection and rebuild only affected producers/links before activation. Diagnostic-only changes do not invalidate the recorded cohort."
   }
 }

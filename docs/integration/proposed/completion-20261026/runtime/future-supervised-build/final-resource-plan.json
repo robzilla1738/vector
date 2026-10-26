@@ -1,0 +1,75 @@
+{
+  "format": "aux.future-final-resource-composition-plan.v1",
+  "correctionCommit": "a2c814d3c18a7e8b134964e267b34efaa21a1078",
+  "correctionProposal": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/integration/ordinary-chat/grouped-start-repair/proposal.json",
+  "correctionProposalSha256": "afdf5de46e81ab1a2d3228f6ea137ad52d234c4ed3b769357a7ef195bccdf5aa",
+  "sourceNativeCohortCommit": "6fd582a83",
+  "rules": [
+    {
+      "find": "function auxCreateLazyDesktopRepl(factory) {\n  let repl, disposal, disposed = false;\n  return {\n    run(...args) {\n      if (disposed) throw Error('The desktop tool session has closed.');\n      return (repl ??= factory()).run(...args);\n    },\n    dispose() { if (!disposed) { disposed = true; disposal = repl?.dispose(); } return disposal; },\n  };\n}\n",
+      "replace": "var auxLazyDesktopReplResolvers;\nfunction auxCreateLazyDesktopRepl(factory, accountId, sessionId, sessionCreatedAt) {\n  let repl, disposal, disposed = false;\n  const owner = AccountRegistry.getAccount(accountId);\n  const createdAt = owner?.createdAt, incarnationId = owner?.incarnationId;\n  const resolve = () => {\n    if (disposed) throw Error('The desktop tool session has closed.');\n    const current = AccountRegistry.getAccount(accountId), session = SessionStore.get(accountId, sessionId);\n    if (!owner || !current || current.createdAt !== createdAt || current.incarnationId !== incarnationId ||\n        !session || String(session.createdAt) !== String(sessionCreatedAt))\n      throw Error('The originating desktop tool account or session changed.');\n    return repl ??= factory();\n  };\n  const lazy = {\n    run(...args) { return resolve().run(...args); },\n    dispose() { if (!disposed) { disposed = true; disposal = repl?.dispose(); } return disposal; },\n  };\n  (auxLazyDesktopReplResolvers ??= new WeakMap()).set(lazy, resolve);\n  return lazy;\n}\n",
+      "count": 1
+    },
+    {
+      "find": " const state=auxBrowserRepls.get(repl);if(!state)return tool;",
+      "replace": " const resolve=auxLazyDesktopReplResolvers?.get(repl);\n const state=auxBrowserRepls.get(repl)||(resolve?{awaited(operation){\n  const actual=resolve(),owned=auxBrowserRepls.get(actual);\n  if(!owned){auxRequireSupervisedTasks();throw Error('The fixed browser tool has no scoped owner.');}\n  return owned.awaited(operation);\n }}:undefined);if(!state)return tool;",
+      "count": 1
+    },
+    {
+      "find": "settings:settings(Cn.accountId)})),ni=[auxRegisterBrowserReplTool",
+      "replace": "settings:settings(Cn.accountId)}),Cn.accountId,Cn.session.id,Cn.session.createdAt),ni=[auxRegisterBrowserReplTool",
+      "count": 1
+    },
+    {
+      "find": "auxSupervisedTasksAvailable()",
+      "replace": "!auxUsesBoundBrowserActions()",
+      "count": 2
+    }
+  ],
+  "resources": [
+    {
+      "name": "index.mjs",
+      "input": "/private/tmp/aux-supervised-resource-composition-20261026-b2/index.mjs",
+      "inputSha256": "2c1a1dc87ade799328a954c09f0d857b3d60cbfe5ce4f1bb5e4d08f34d6e1451",
+      "outputSha256": "d244835e0f463a451e350eb2f075cdb6900d1d9e640587edcc372c45ef27b058",
+      "preservedAdapters": {
+        "selected-repl-fs-resource.mjs": "de8c25462318a399e971b6be59d735c4b064aa1a86a0ce94a4d0d7637a04ccfd",
+        "selected-repl-resource.mjs": "b97a6ac7031f1d9dd4c9b8e1105908c7c8deb63f648c70adae40c9ece5b4b0dd"
+      }
+    },
+    {
+      "name": "aux-native-entry.mjs",
+      "input": "/private/tmp/aux-supervised-resource-composition-20261026-b2/aux-native-entry.mjs",
+      "inputSha256": "bf74f7ddc75feca261b7b07038489ec741758d75d8baf9b63064df53523db4fc",
+      "outputSha256": "b9f39718475bda37c21ebbf241792b83d534c0c3849548e53b4fe655ceb88f71",
+      "preservedAdapters": {
+        "selected-repl-fs-resource.mjs": "de8c25462318a399e971b6be59d735c4b064aa1a86a0ce94a4d0d7637a04ccfd",
+        "selected-repl-resource.mjs": "b97a6ac7031f1d9dd4c9b8e1105908c7c8deb63f648c70adae40c9ece5b4b0dd"
+      }
+    }
+  ],
+  "checks": [
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/integration/ordinary-chat/grouped-start-repair/check.mjs",
+      "sha256": "94e14ac7b19991afc12eb5e661416ebb56da0df92865c4bd00860d9900ba91b8"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/integration/ordinary-chat/lazy-registration/check.mjs",
+      "sha256": "75530acdc63b2778756bf820f9891959efb1966fa91040b12756d1f5e2fccd00"
+    }
+  ],
+  "nativeReceipts": [
+    {
+      "path": "/private/tmp/aux-future-browser-link-20261026-b3/receipt.json",
+      "sha256": "a2274aa9bc38815c273870a6a11d459b2ad12d3d9de00a4b76dddfbd0d27e89b"
+    },
+    {
+      "path": "/private/tmp/aux-future-supervised-native-20261026-b1/receipt.json",
+      "sha256": "758bf30ede822cadf5c197080e3d26ee9d00c4f377ddeaeb2be1cff401bdbc45"
+    }
+  ],
+  "signed": false,
+  "appModified": false,
+  "modelCalls": 0,
+  "nativeRebuild": false
+}
