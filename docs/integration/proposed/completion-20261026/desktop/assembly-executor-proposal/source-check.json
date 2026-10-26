@@ -6,5 +6,9 @@
   "assemblyPerformed": false,
   "appLaunched": false,
   "productSigned": false,
-  "testsAdded": false
+  "testsAdded": false,
+  "rootHotfixApplied": "metadata expected=set(records)",
+  "staticFixtureRerun": false,
+  "actualFirstAssemblyFailed": true,
+  "workerExecutorExecuted": false
 }

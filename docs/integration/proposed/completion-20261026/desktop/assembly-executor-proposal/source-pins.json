@@ -1,5 +1,5 @@
 {
-  "executorSha256": "5db05e6a93b326af34b621bc08821657f084904609a4420cfd9042561006ac8b",
+  "executorSha256": "2b78fadafa66a47152d04d919cab6e80772914a7e7219b78da936447b4c6924a",
   "inputs": [
     {
       "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/runtime-package-a1/runtime_package.py",
@@ -21,5 +21,10 @@
       "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/integrator/browser-inventory-a7.json",
       "sha256": "a18dcb7a5828f437675da5dae84b376d2865a64cb49eeea1ec62881fab1ec2f9"
     }
-  ]
+  ],
+  "rootHotfix": {
+    "change": "Iterate metadata record keys directly with set(records)",
+    "failedAttempt": "/Users/rcourson/Documents/Vibe/web/out/.aux-completion-assembly-g7dy2fbz/failure.json",
+    "workerExecutorRerun": false
+  }
 }
