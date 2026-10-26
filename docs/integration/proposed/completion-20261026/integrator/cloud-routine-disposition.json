@@ -1,0 +1,19 @@
+{
+  "format": "aux.completion.cloud-routine-disposition-review.v1",
+  "date": "2026-10-26",
+  "actualServer": {
+    "path": "/Users/rcourson/Documents/Vibe/web/services/aux-cloud/src/routines-1852.ts",
+    "sha256": "0628ae99c87534fadb36bb33093a27b2df2900c5e5f68f198ca11b27c4f61102",
+    "supportedEnvironment": "device",
+    "cloudFailureCode": "CLOUD_ROUTINE_UNAVAILABLE",
+    "cloudExecutorPresent": false
+  },
+  "existingDeviceProtocol": "Versioned routine create/update CAS and authenticated device-sync are source implemented; actual final deployment/app acceptance remains pending",
+  "planRequirement": "If cloud routines remain advertised, require a real executor or an approved explicit scope decision.",
+  "ownerQuestionPending": true,
+  "scopeDisposition": null,
+  "noExclusionInferred": true,
+  "implementationNotChanged": true,
+  "hostedResourcesCreated": false,
+  "runtimeAccepted": false
+}
