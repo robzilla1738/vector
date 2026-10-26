@@ -22,6 +22,8 @@ export const providedStageInputs = Object.freeze([
   'vendor/provided/aux-session-feedback.mjs',
   'vendor/provided/aux-agent-active-identity.mjs',
   'vendor/provided/aux-agent-remaining-identity.mjs',
+  'vendor/provided/aux-device-routines-launch.mjs',
+  'docs/integration/proposed/completion-20261026/desktop/device-routines-launch/source-pins.json',
   'docs/integration/proposed/completion-20261026/desktop/agent-remaining-identity/source-pins.json',
   'vendor/provided/aux-closed-recovery-ui.mjs',
   'docs/integration/proposed/completion-20261026/integration/recovery-ui/source-pins.json',

@@ -11,6 +11,7 @@ import {transformAuxAgentActiveIdentity} from '../../../../../vendor/provided/au
 import {transformAuxAgentRemainingIdentity} from '../../../../../vendor/provided/aux-agent-remaining-identity.mjs';
 import {transformAuxClosedRecoveryUi} from '../../../../../vendor/provided/aux-closed-recovery-ui.mjs';
 import {transformAuxVaultUi, transformAuxRecoveryTextV2} from '../../../../../vendor/provided/aux-final-vault-ui.mjs';
+import {transformAuxDeviceRoutines} from '../../../../../vendor/provided/aux-device-routines-launch.mjs';
 
 const repository = process.cwd();
 const here = path.join(repository, 'docs/integration/proposed/completion-20261026/integrator');
@@ -30,8 +31,10 @@ const identityPins = JSON.parse(await readFile(path.join(repository, 'docs/integ
 const recoveryPins = JSON.parse(await readFile(path.join(repository, 'docs/integration/proposed/completion-20261026/integration/recovery-ui/source-pins.json'), 'utf8'));
 const vaultPins = JSON.parse(await readFile(path.join(repository, 'docs/integration/proposed/completion-20261026/integration/vault-ui/source-pins.json'), 'utf8'));
 const armorPins = JSON.parse(await readFile(path.join(repository, 'docs/integration/proposed/completion-20261026/integration/vault-ui/recovery-pins.json'), 'utf8'));
+const routinePins = JSON.parse(await readFile(path.join(repository, 'docs/integration/proposed/completion-20261026/desktop/device-routines-launch/source-pins.json'), 'utf8'));
+const routineAssets = routinePins.files.filter(file => file.path.includes('/extension/dist/assets/')).map(file => file.path.split('/assets/')[1]);
 const extraAssets = identityPins.files.filter(file => file.path.includes('/extension/dist/assets/')).map(file => file.path.split('/assets/')[1]);
-const names = [...new Set([...originalNames, ...extraAssets, recoveryPins.path.slice('assets/'.length),
+const names = [...new Set([...originalNames, ...extraAssets, ...routineAssets, recoveryPins.path.slice('assets/'.length),
   ...vaultPins.files.map(file => file.path.slice('assets/'.length)), armorPins.path.slice('assets/'.length)])];
 const generators = ['vendor/provided/aux-final-ui-identity.mjs', 'vendor/provided/aux-final-runtime-identity.mjs',
   'docs/integration/proposed/completion-20261026/integration/identity/source-pins.json',
@@ -39,6 +42,8 @@ const generators = ['vendor/provided/aux-final-ui-identity.mjs', 'vendor/provide
   'vendor/provided/aux-session-feedback.mjs',
   'vendor/provided/aux-agent-active-identity.mjs',
   'vendor/provided/aux-agent-remaining-identity.mjs',
+  'vendor/provided/aux-device-routines-launch.mjs',
+  'docs/integration/proposed/completion-20261026/desktop/device-routines-launch/source-pins.json',
   'docs/integration/proposed/completion-20261026/desktop/agent-remaining-identity/source-pins.json',
   'vendor/provided/aux-closed-recovery-ui.mjs',
   'docs/integration/proposed/completion-20261026/integration/recovery-ui/source-pins.json',
@@ -68,14 +73,15 @@ for (const name of names) {
   const armor = transformAuxRecoveryTextV2({path: 'assets/' + name, text: vault.text, source: text});
   const active = transformAuxAgentActiveIdentity({path: relative, text: armor.text, source: text});
   const remaining = transformAuxAgentRemainingIdentity({path: relative, text: active.text, source: text});
+  const routines = transformAuxDeviceRoutines({path: relative, text: remaining.text, source: text});
   const destination = path.join(output, name);
-  await writeFile(destination, remaining.text, {flag: 'wx'});
+  await writeFile(destination, routines.text, {flag: 'wx'});
   if (name.endsWith('.js')) {
     const syntax = spawnSync(process.execPath, ['--check', destination], {encoding: 'utf8'});
     if (syntax.status !== 0) throw Error('Composed UI script does not parse: ' + name + '\n' + syntax.stderr);
   }
-  files.push({path: relative, inputSha256: sha(text), output: destination, outputSha256: sha(remaining.text),
-    suppliedSourceSha256: sha(original), anchors: [...identity.anchors, ...feedback.anchors, ...settings.anchors, ...links.anchors, ...copy.anchors, ...closed.anchors, ...vault.anchors, ...armor.anchors, ...active.anchors, ...remaining.anchors]});
+  files.push({path: relative, inputSha256: sha(text), output: destination, outputSha256: sha(routines.text),
+    suppliedSourceSha256: sha(original), anchors: [...identity.anchors, ...feedback.anchors, ...settings.anchors, ...links.anchors, ...copy.anchors, ...closed.anchors, ...vault.anchors, ...armor.anchors, ...active.anchors, ...remaining.anchors, ...routines.anchors]});
 }
 for (const input of inputs)
   if (sha(await readFile(path.join(repository, input.path))) !== input.sha256) throw Error('UI generator changed during materialization');

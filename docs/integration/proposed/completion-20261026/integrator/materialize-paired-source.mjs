@@ -17,6 +17,7 @@ import {transformAuxSessionFeedback} from '../../../../../vendor/provided/aux-se
 import {transformAuxAgentActiveIdentity} from '../../../../../vendor/provided/aux-agent-active-identity.mjs';
 import {transformAuxAgentRemainingIdentity} from '../../../../../vendor/provided/aux-agent-remaining-identity.mjs';
 import {transformAuxTrustedTypes, transformAuxFinalVaultExclusion} from '../../../../../vendor/provided/aux-final-identity-v2.mjs';
+import {transformAuxDeviceRoutines} from '../../../../../vendor/provided/aux-device-routines-launch.mjs';
 
 const repository = process.cwd();
 const here = path.join(repository, 'docs/integration/proposed/completion-20261026/integrator');
@@ -47,6 +48,8 @@ const generators = [
   'vendor/provided/aux-session-feedback.mjs',
   'vendor/provided/aux-agent-active-identity.mjs',
   'vendor/provided/aux-agent-remaining-identity.mjs',
+  'vendor/provided/aux-device-routines-launch.mjs',
+  'docs/integration/proposed/completion-20261026/desktop/device-routines-launch/source-pins.json',
   'docs/integration/proposed/completion-20261026/desktop/agent-remaining-identity/source-pins.json',
   'docs/integration/proposed/completion-20261026/desktop/agent-active-identity/source-pins.json',
   'vendor/provided/aux-final-identity-v2.mjs',
@@ -96,11 +99,13 @@ for (const name of ['index.mjs', 'aux-native-entry.mjs']) {
   stages.push({name: 'Aux v2 content-driver policies', outputSha256: sha(trusted.text), anchors: trusted.anchors});
   const vault = transformAuxFinalVaultExclusion({text: trusted.text, source});
   stages.push({name: 'Complete excluded Vault dependency and fresh routine identity removal', outputSha256: sha(vault.text), anchors: vault.anchors});
+  const routines = transformAuxDeviceRoutines({path: name, text: vault.text, source});
+  stages.push({name: 'Device-only routine launch and current-device execution', outputSha256: sha(routines.text), anchors: routines.anchors});
   const destination = path.join(output, name);
-  await writeFile(destination, vault.text, {flag: 'wx'});
+  await writeFile(destination, routines.text, {flag: 'wx'});
   const syntax = spawnSync(process.execPath, ['--check', destination], {encoding: 'utf8'});
   if (syntax.status !== 0) throw Error('Combined paired source does not parse: ' + name + '\n' + syntax.stderr);
-  files.push({path: destination, input: path.join(original, name), inputSha256: sha(source), outputSha256: sha(vault.text), stages});
+  files.push({path: destination, input: path.join(original, name), inputSha256: sha(source), outputSha256: sha(routines.text), stages});
 }
 const backgroundInput = path.join(repository, 'out/provided-candidate-local-completion-20261025-a38/Aux.app/Contents/Resources/aux/apps/extension/dist/background.js');
 const backgroundSource = await readFile(backgroundInput, 'utf8');
