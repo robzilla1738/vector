@@ -1,0 +1,47 @@
+{
+  "candidateInventorySha256": "109d439a0cd4fd3382cf6085bb29ea1c21f8dab6f75f2f822d041196817f2643",
+  "startup11": {
+    "normalPickerAndWindow": true,
+    "restored": "Work cookie/note, Alpha/Beta split, Aux Alpha bookmark",
+    "automationLimitation": "getApp duringcoldstartup timedout; second browser/daemon observed then selfexited. Do notinfer singlelaunchfailure fromthisrun.",
+    "coldPalette": "First CmdL immediate typing lost URL prefix; warm field-observed input works",
+    "fullPageCapture": "Blocked before fixedcapture by daemon-auth challenge error; no imageaccepted",
+    "settings": "Aux navigation unavailable: couldnotresolveprofilewithlocalservice",
+    "quit": {
+      "browserExitCode": 0,
+      "allCandidateProcessesSettledUnforced": true,
+      "clean": false,
+      "operationFailure": false,
+      "lifetimeFailure": true,
+      "databases": 2,
+      "errorCode": "AUX_BROKER_OWNER_UNAVAILABLE"
+    }
+  },
+  "next": "normal samecandidate reopen startup12 without premature CUAgetApp",
+  "gatewayCleanupPending": true,
+  "memoryFixtureCleanupPending": true,
+  "localMilestoneComplete": false,
+  "startup12": {
+    "launch": "normal direct app executable, single process launch",
+    "service": "General Running normally; no state/key reset",
+    "failedTask": "NeLLOHvF6lStWzkz",
+    "error": "The native browser profile binding changed.",
+    "diagnosticMaskPresent": false,
+    "workerVersionFinding": "Chromium same-version component registration retains cached worker; version advance prepared",
+    "priorFailedTaskRestoration": "5u3EI478e3KvB3bU restored empty; initial queued input fix prepared",
+    "shortcutRemap": "Preparing remained; Escape restored default; no remap accepted",
+    "quit": {
+      "normalMenuQuit": true,
+      "browserExitCode": 0,
+      "brokerSettled": true,
+      "operations": 0,
+      "databases": 0,
+      "streams": 0,
+      "lifetimes": 0,
+      "operationFailure": false,
+      "lifetimeFailure": false,
+      "forcedTermination": false
+    },
+    "log": "out/completion-resume-20261026/startup-12.log"
+  }
+}

@@ -41,9 +41,15 @@ FRAMEWORK = 'Contents/Frameworks/Aux Framework.framework/Versions/155.0.8059.85/
 TABSEARCH = 'Contents/Resources/aux/apps/extension/dist/assets/tabsearch-3k_2hgil.js'
 required = {FRAMEWORK, DAEMON+'index.mjs', DAEMON+'aux-native-entry.mjs'}
 BACKGROUND = 'Contents/Resources/aux/apps/extension/dist/background.js'
+EXTENSION_MANIFEST = 'Contents/Resources/aux/apps/extension/dist/manifest.json'
 actual_targets = {item['target'] for item in replacements}
-require(len(actual_targets)==len(replacements) and required <= actual_targets <= required|{TABSEARCH, BACKGROUND}, 'Only enumerated existing leaves may change')
-for item in replacements: pin(item['input'])
+require(len(actual_targets)==len(replacements) and required <= actual_targets <= required|{TABSEARCH, BACKGROUND, EXTENSION_MANIFEST}, 'Only enumerated existing leaves may change')
+for item in replacements:
+    pin(item['input'])
+    if item['target'] == EXTENSION_MANIFEST:
+        old_manifest=read(APP/EXTENSION_MANIFEST);new_manifest=read(pin(item['input']))
+        old_version=old_manifest.pop('version');new_version=new_manifest.pop('version')
+        require(old_manifest==new_manifest and tuple(map(int,new_version.split('.'))) > tuple(map(int,old_version.split('.'))), 'Only a strictly newer bundled extension version is allowed')
 def require_stopped():
     # Process metadata only, never profile contents or arguments in receipts.
     output=subprocess.check_output(['/bin/ps','-axo','pid=,comm='],text=True)
