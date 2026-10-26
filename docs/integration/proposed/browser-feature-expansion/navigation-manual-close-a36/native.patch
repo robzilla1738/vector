@@ -1,0 +1,50 @@
+--- a/chrome/browser/ui/views/frame/aux_organization_window_controller.h
++++ b/chrome/browser/ui/views/frame/aux_organization_window_controller.h
+@@ -102,7 +102,7 @@
+   void PersistSpace();
+   void Notify();
+   bool Current() const;
+-  bool Protected(tabs::TabInterface*) const;
++  bool Protected(tabs::TabInterface*, bool include_unload_events = true) const;
+   bool CloseViewNow(tabs::TabHandle);
+   bool UnloadViewNow(tabs::TabHandle);
+   void ArchiveEntry(const std::string&, bool allow_pinned_folder, base::OnceCallback<void(bool)>, bool automated = false);
+--- a/chrome/browser/ui/views/frame/aux_organization_window_controller.cc
++++ b/chrome/browser/ui/views/frame/aux_organization_window_controller.cc
+@@ -822,12 +822,13 @@
+           &AuxOrganizationWindowController::FinishAutomaticArchive,
+           weak_.GetWeakPtr(), operation_id, false))));
+ }
+-bool AuxOrganizationWindowController::Protected(tabs::TabInterface* tab) const {
++bool AuxOrganizationWindowController::Protected(tabs::TabInterface* tab, bool include_unload_events) const {
+   if (!Current() || !tab || model_->GetIndexOfTab(tab) < 0 || tab->IsSplit()) return true;
+   auto* contents = tab->GetContents();
+   if (!contents || contents->GetBrowserContext() != profile_ || contents->IsLoading() ||
+       contents->IsCurrentlyAudible() || contents->IsBeingCaptured() ||
+-      contents->NeedToFireBeforeUnloadOrUnloadEvents() || IsBookmarkTabExcluded(tab, model_)) return true;
++      (include_unload_events && contents->NeedToFireBeforeUnloadOrUnloadEvents()) ||
++      IsBookmarkTabExcluded(tab, model_)) return true;
+   // Use actual selected-product activity owners. The older independent
+   // EgressController/creator service is not in this build and is not authority.
+   const auto* identity = PageIdentity::FromWebContents(contents);
+@@ -1169,6 +1170,20 @@
+   const auto id = GetRememberedPinnedTabEntryId(*tab->GetContents()).value_or("");
+   auto* organization = Organization(browser_.get());
+   if (id.empty() || !organization || !organization->snapshot().entries.contains(id)) return false;
++  const auto& entry = organization->snapshot().entries.at(id);
++  if (!organization->blocked() && !organization->pending() && !entry.archived &&
++      !tab->IsPinned() && !organization::HasRetention(organization->snapshot(), id) &&
++      tab->GetContents()->NeedToFireBeforeUnloadOrUnloadEvents() &&
++      !Protected(tab, false)) {
++    // The supplied content script installs a visibilitychange listener on
++    // ordinary pages. That listener requires native unload dispatch, but is
++    // not evidence that the page must remain as an archived recovery view.
++    // Continue the ORIGINAL close through TabStripModel/UnloadController.
++    // A real beforeunload cancellation leaves the shared record untouched;
++    // accepted native CloseContents re-enters with the unload bit cleared,
++    // then the existing exact durable archive/close path runs below.
++    return false;
++  }
+   base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(FROM_HERE, base::BindOnce(
+       [](base::WeakPtr<AuxOrganizationWindowController> owner, tabs::TabHandle target, std::string id) {
+         auto* tab = target.Get();

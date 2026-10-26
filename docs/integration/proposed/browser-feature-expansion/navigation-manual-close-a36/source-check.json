@@ -1,0 +1,47 @@
+{
+  "format": "aux.manual-close.source-check.v1",
+  "files": [
+    {
+      "path": "chrome/browser/ui/views/frame/aux_organization_window_controller.h",
+      "inputSha256": "e06b4faa835945d21f0bdd0b9e284a5b38759b35e41f7470ff9d32ca73ebc37d",
+      "outputSha256": "dbd695bc18af8d3394e08fa2121f343365931dc83a243ea4b5a5f8c63f0516fd",
+      "anchors": 1,
+      "replayPassed": true
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_organization_window_controller.cc",
+      "inputSha256": "6fc8fcb12028b37a9ccd2a687be5ffd47b724dd0ced3cffbdd3af736caad4bdb",
+      "outputSha256": "ad6c3e55d1f06c28b7c5f5db9742ab0a8478547ee511aa3f5e4ebc9cdc935a1e",
+      "anchors": 3,
+      "replayPassed": true
+    }
+  ],
+  "passiveListenerProof": "all-URLs document_idle -> unconditional top-window Yf -> Jf -> visibilitychange -> native NeedToFire includes visible lifecycle handler",
+  "reviewInputs": [
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-local-completion-20261025-a38/Aux.app/Contents/Resources/aux/apps/extension/dist/manifest.json",
+      "sha256": "d1d616d82f60e06309c0e8664144eb785d13451451eb63665f3b862fbb030828"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-local-completion-20261025-a38/Aux.app/Contents/Resources/aux/apps/extension/dist/content/content.js",
+      "sha256": "57f04e1935e2a4730f28aff6906dd831ca3e1ef6a0007bb056b1b8010a4d7dad"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/fresh-startup-milestone-a42/browser-fixture.py",
+      "sha256": "f879ae45fc3458abf363fdd9fda32b8e25cc8d908f11f447ffa854ecf314fc23"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/content/browser/web_contents/web_contents_impl.cc",
+      "sha256": "803c16354347cddf34b789c9ee686e397fe9d70ceb4f61d18415bfe2c08c1ca8"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/ui/unload_controller.cc",
+      "sha256": "09220f0d6b2f9f93c3d3434cb05a0b2fd251592bda6485b8de49fd7454116dcf"
+    }
+  ],
+  "automatedAndCloseViewBodiesUnchanged": true,
+  "archivedRecoveryUntouched": true,
+  "nativeCompiled": false,
+  "appTested": false,
+  "runtimeAccepted": false
+}

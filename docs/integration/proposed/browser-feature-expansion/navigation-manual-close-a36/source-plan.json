@@ -1,0 +1,47 @@
+{
+  "format": "aux.native.counted-projection.v1",
+  "purpose": "Delegate ordinary manual native beforeunload before archiving so cancellation preserves live shared entry",
+  "nativeRoot": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src",
+  "files": [
+    {
+      "path": "chrome/browser/ui/views/frame/aux_organization_window_controller.h",
+      "inputSha256": "e06b4faa835945d21f0bdd0b9e284a5b38759b35e41f7470ff9d32ca73ebc37d",
+      "outputSha256": "dbd695bc18af8d3394e08fa2121f343365931dc83a243ea4b5a5f8c63f0516fd",
+      "source": "/Users/rcourson/.codex/worktrees/aux-features-navigation/web/docs/integration/proposed/browser-feature-expansion/navigation-manual-close-a36/source/chrome/browser/ui/views/frame/aux_organization_window_controller.h",
+      "anchors": [
+        {
+          "name": "default protection remains strict",
+          "before": "  bool Protected(tabs::TabInterface*) const;",
+          "after": "  bool Protected(tabs::TabInterface*, bool include_unload_events = true) const;",
+          "expectedCount": 1
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_organization_window_controller.cc",
+      "inputSha256": "6fc8fcb12028b37a9ccd2a687be5ffd47b724dd0ced3cffbdd3af736caad4bdb",
+      "outputSha256": "ad6c3e55d1f06c28b7c5f5db9742ab0a8478547ee511aa3f5e4ebc9cdc935a1e",
+      "source": "/Users/rcourson/.codex/worktrees/aux-features-navigation/web/docs/integration/proposed/browser-feature-expansion/navigation-manual-close-a36/source/chrome/browser/ui/views/frame/aux_organization_window_controller.cc",
+      "anchors": [
+        {
+          "name": "protection can classify original native unload delegation",
+          "before": "bool AuxOrganizationWindowController::Protected(tabs::TabInterface* tab) const {",
+          "after": "bool AuxOrganizationWindowController::Protected(tabs::TabInterface* tab, bool include_unload_events) const {",
+          "expectedCount": 1
+        },
+        {
+          "name": "all other protection predicates remain unchanged",
+          "before": "      contents->NeedToFireBeforeUnloadOrUnloadEvents() || IsBookmarkTabExcluded(tab, model_)) return true;",
+          "after": "      (include_unload_events && contents->NeedToFireBeforeUnloadOrUnloadEvents()) ||\n      IsBookmarkTabExcluded(tab, model_)) return true;",
+          "expectedCount": 1
+        },
+        {
+          "name": "manual ordinary close dispatches native unload before durable archive",
+          "before": "  if (id.empty() || !organization || !organization->snapshot().entries.contains(id)) return false;\n  base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask",
+          "after": "  if (id.empty() || !organization || !organization->snapshot().entries.contains(id)) return false;\n  const auto& entry = organization->snapshot().entries.at(id);\n  if (!organization->blocked() && !organization->pending() && !entry.archived &&\n      !tab->IsPinned() && !organization::HasRetention(organization->snapshot(), id) &&\n      tab->GetContents()->NeedToFireBeforeUnloadOrUnloadEvents() &&\n      !Protected(tab, false)) {\n    // The supplied content script installs a visibilitychange listener on\n    // ordinary pages. That listener requires native unload dispatch, but is\n    // not evidence that the page must remain as an archived recovery view.\n    // Continue the ORIGINAL close through TabStripModel/UnloadController.\n    // A real beforeunload cancellation leaves the shared record untouched;\n    // accepted native CloseContents re-enters with the unload bit cleared,\n    // then the existing exact durable archive/close path runs below.\n    return false;\n  }\n  base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask",
+          "expectedCount": 1
+        }
+      ]
+    }
+  ]
+}
