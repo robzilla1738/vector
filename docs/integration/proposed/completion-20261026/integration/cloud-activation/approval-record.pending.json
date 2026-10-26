@@ -4,15 +4,16 @@
   "activationAuthorized": false,
   "executed": false,
   "source": {
-    "snapshotCommit": "4193cdef41c33e4a2bfcfc5b3cdebfc3e0f00d51",
-    "serviceTree": "0ffeb812450951f40fe3083adf814c13f27a7f45",
-    "lastServiceCommit": "cd96660754d6c1e06c48517d812eebe15d0930ed",
+    "snapshotCommit": "f349a5dc9270d8eb50ce1b10be6e4076c1cd364c",
+    "serviceTree": "d6a79e2511e61e7b6391b73f3d4ea41c25a2b6cc",
+    "lastServiceCommit": "f349a5dc9270d8eb50ce1b10be6e4076c1cd364c",
     "manifestFileSha256": "7d452e13d873f9c2b08efc5eab12c928d942e846f667be4938aa519740d89f10",
     "migrations": 12,
     "historicalReviewSnapshot": false,
     "refreshRequiredAfterIntegratedInformationRoutes": false,
     "serviceFiles": 221,
-    "sourcePinScope": "Final service freeze after exact community/privacy feedback disclosure copies; actual paired-a7/UI-a4 and feedback adapter/draft evidence included. Twelve migration hashes unchanged; no new tests/API/backup."
+    "sourcePinScope": "Current221-file service after owner-authorized device-only routines server fence; all12 SQL hashes unchanged. Prior pair/UI references are historical; current unsigned candidate uses paired-a10/UI-a7. No deploy/database grant/email/backup performed.",
+    "sourcePinFileSha256": "2bc4a74e7dd90ef686a22e4b231b798856a93f0ce6c6d8eadbb78e011442764d"
   },
   "c1": {
     "recipientConfiguration": "configuration.json",
@@ -41,7 +42,8 @@
     "allowPaidInference": false,
     "allowPayments": false,
     "webhook": "existing ep_3L5p7Z0hZJXXnNLt5eflPCCJ1uy only; fixture events only",
-    "configurationCorrection": "All six names present; no restoration proposed. Public app/API origins and both false launch flags verified; origin lists/other public pairing values and actual behavior remain unverified."
+    "configurationCorrection": "All six names present; no restoration proposed. Public app/API origins and both false launch flags verified; origin lists/other public pairing values and actual behavior remain unverified.",
+    "routineLaunchScope": "Device-only, explicitly chosen by owner on2026-10-26. Preserve existing cloud records; no cloud executor at launch."
   },
   "o1": {
     "proposedProvider": "DigitalOcean",
@@ -118,7 +120,11 @@
     "actualDashboardEvidence": {
       "path": "../../integrator/backup-dashboard-review.json",
       "sha256": "5d252202002b0767b82f611a8fe83ddd6eb059a3f7402d9ce6f86d8c4518b810"
-    }
+    },
+    "catalogReview": "../../integrator/backup-catalog-review-a1.json",
+    "captureRoleProposal": "../ops-activation/catalog-grant-proposal/proposed-capture-grants.sql",
+    "captureRoleAuthority": "Exact observed30-table SELECT + inherited PUBLIC CONNECT/TEMPORARY and security-invoker routine EXECUTE, no owner/admin role or broad PUBLIC revoke. NOLOGIN staging and ROLLBACK proposal only; actual protected login/custody and execution await exact combined approval.",
+    "alertAndCidrRequested": true
   },
   "excluded": [
     "new or rotated production wrapping/auth/recovery keys",
