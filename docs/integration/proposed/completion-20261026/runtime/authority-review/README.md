@@ -1,0 +1,19 @@
+Preparation only. This folder is a proposal for one exact local development signing and focused execution review. It grants no signing, private-key access, Keychain operations, profile adoption, OS grants, app launch or provider access. The root agent must obtain separate explicit owner approval of the finalized review hash before executing anything protected.
+
+`policy-inputs.json` records the exact A38 public v9 policy, original signed PDF/utility addons, unchanged signed memory helper/policy, original CU derivative and v10/CU constructors. It does not invent a signed CU digest. Existing identity/profile facts come from the historical A38 review and copied public profile, without identity enumeration or profile queries.
+
+`prepare.py` reads only the completed atomic candidate and an explicitly selected current whole-inventory receipt under its parent. It does not inspect an in-progress assembly directory. The final candidate is still undergoing root-owned resource/minimum-OS corrections, so no final review hash is declared in this preparation slice. Once the root confirms the final cohort, prepare the review with its current receipt. This will name20 exact code objects, measure every actual executable and bundle plist, verify preserved addon/memory leaves and the existing public profile, and pin the exact proposed executor and inventory helper.
+
+The20-object scope has19 signing actions. The existing signed memory helper is the twentieth verify-only object, preserving its existing policy. Original PDF and utility addon images are also preserved, never re-signed. CU receives no entitlement. The daemon and browser helpers retain only the existing reviewed local entitlements. There is no EndpointSecurity entitlement, provisioning, notarization, upload, release or OS permission request in this phase.
+
+`sign-reviewed.py` is executable proposal code; it has **not** run. After separate owner approval, the root could invoke it from the canonical root checkout using:
+
+```sh
+python3 docs/integration/proposed/completion-20261026/runtime/authority-review/sign-reviewed.py --owner-approved-review-sha256 <exact-final-owner-approved-review-sha256>
+```
+
+The executor requires the exact review/script/helper/input pins and whole-app inventory. It preserves and verifies a recoverable candidate copy before signing. It uses only the existing identity SHA directly, without querying identities, profiles or grants. CU is signed and verified before its exact delivered-image policy is generated through the pinned current factory. The daemon is sealed after that resource exists. The active `currentCompletionIntegration` manifest is refreshed after nested seals; the outer app is sealed last. Actual signature entitlements, preserved leaves and permitted whole-inventory deltas are checked. Failure preserves the backup and failed candidate bytes with a receipt; it does not launch or automatically restore a partially signed app.
+
+Protected startup and J1–J4 remain separate actual root actions after the approved signatures and namespace preflight. Only the new `Aux Browser Completion 20261026` disposable namespace is proposed. Unknown existing roots stop unchanged before contents/Keychain access. No v9 adoption, old provider/key copy, real owner/Aside profile access or old-state deletion is included. Old A38 may quit normally solely for Aux port handoff and otherwise remains preserved.
+
+The execution proposal includes only the exact Muse model, at most$1 aggregate provider spend, temporary credentials entered and removed through the actual credential API, and no Aux-hosted spend. Genuine vendor/account and OS/Apple limitations remain open where unexercisable. No clean-runtime or full-completion claim follows from static assembly, signatures or a prepared review.

@@ -1,0 +1,11 @@
+{
+  "format": "aux.completion.signing-executor-proposal-check.v1",
+  "pythonSyntax": "pass",
+  "applyScriptSha256": "670d58a037dc7ffb63c6ae563b9ebc99fe263dc89a9c2fb680cf6b15ed5551dd",
+  "scriptExecuted": false,
+  "signingPerformed": false,
+  "identityQueries": false,
+  "appLaunched": false,
+  "reviewInventoryFinalized": false,
+  "pending": "Root Q1/resource/Info metadata fixes and current whole candidate receipt"
+}

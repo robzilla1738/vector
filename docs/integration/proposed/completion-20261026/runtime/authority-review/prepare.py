@@ -34,7 +34,7 @@ for order,row in enumerate(targets,1):
     assert rows[row['executable']]['sha256']==row['sha256']
     row['action']='preserve-and-verify' if row['identifier']=='dev.aux.browser.memory' else 'local-development-sign-and-verify'
     if row['entitlements']:assert sha(Path(row['entitlements']['path']))==row['entitlements']['sha256']
-    if row['codeObject'].endswith('.app'):
+    if row['codeObject'].endswith('.app') or row['codeObject']=='.':
         info=APP/row['codeObject']/'Contents/Info.plist';row['infoPlist']=ref(info)
         assert plistlib.loads(info.read_bytes())['CFBundleIdentifier']==row['identifier']
     row['command']=None if row['action']=='preserve-and-verify' else ['/usr/bin/codesign','--force','--sign',prior['identitySha1'],'--options','runtime','--timestamp=none','--identifier',row['identifier']]+([] if not row['entitlements'] else ['--entitlements',row['entitlements']['path']])+[str(APP/row['codeObject'])]
@@ -45,15 +45,19 @@ for name in ['native/aux-pdf.node','native/aux-macos-utilities.node','memory-hel
     file=APP/RES/name;assert sha(file)==inputs[name]['sha256'];preserve.append(dict(relative=str(RES/name),**ref(file)))
 raw=APP/cu/'Contents/MacOS/aux-computer-use';assert sha(raw)==inputs['computerUseRawImage']['sha256']
 launch_policy=RES/'AuxComputerUseHelperLaunchPolicy.json';assert not (APP/launch_policy).exists()
+assert sha(APP/RES/'AuxFreshBootstrapPolicy.json')==packet['unsignedV10Policy']['sha256']
 review={
+ 'applyScript':ref(ROOT/'docs/integration/proposed/completion-20261026/runtime/authority-review/sign-reviewed.py'),
+ 'inventoryHelper':ref(ROOT/'docs/integration/proposed/profile-isolation-delivery/package/assemble.py'),
  'format':'aux.completion.local-development-authority-review.v1','approvalReady':True,'approvalObtained':False,'runtimeReady':False,
  'app':str(APP),'packageReceipt':ref(receipt_path),'candidateInventorySha256':receipt['inventorySha256'],'candidateLeaves':len(receipt['files']),
+ 'outerMinimumOS':plistlib.loads((APP/'Contents/Info.plist').read_bytes()).get('LSMinimumSystemVersion'),
  'preparationVerification':'Twenty actual executable hashes match completed atomic whole-inventory receipt; preserved leaves and public profile hash checked. Executor must recheck entire inventory before mutation.',
  'identity':prior['identity'],'identitySha1':prior['identitySha1'],'team':prior['team'],'identitySource':ref(OLD_REVIEW),'identityQueried':False,
  'existingPublicProfile':prior['existingPublicProfile'],'publicProfileActual':ref(APP/prior['existingPublicProfile']['target']),
  'targetCount':20,'signingActionCount':19,'preserveOnlyCodeObjectCount':1,'targetsInSigningOrder':targets,'preservedExactLeaves':preserve,
  'CUlaunchPolicyPending':True,'computerUsePolicy':{'relative':str(launch_policy),'constructor':packet['computerUsePolicyConstructor'],'rawSource':inputs['computerUseRawImage'],'format':'aux.computer-use.fixed-helper-launch.v1','signedSha256':None,'generatedOnlyAfterExactSignedImageVerification':True},
- 'unsignedV10Policy':ref(APP/RES/'AuxFreshBootstrapPolicy.json'),'candidateBundleMetadata':ref(APP/'Contents/Resources/aux/bundle.json'),
+ 'unsignedV10Policy':ref(APP/RES/'AuxFreshBootstrapPolicy.json'),'candidateBundleMetadata':ref(APP/'Contents/Resources/aux/bundle.json'),'activeMetadataSection':'currentCompletionIntegration',
  'orderedExecutionConditions':[
   'Separate explicit owner approval of this exact review hash is required before any signing, Keychain use, launch or provider request; this preparation does none.',
   'Verify whole candidate inventory, every executable/plist/entitlement/preserved leaf/profile and constructor preimage. Preserve a recoverable whole-candidate copy and failed bytes before mutation; refuse changed inputs.',
@@ -67,6 +71,8 @@ review={
  'protectedStartupJustification':'Actual normal-window startup uses the retained installation-authentication and provider credential boundary. Unsigned/static builds passed but cannot establish authenticated helper/profile behavior. The proposal permits only scoped fresh installation authentication and focused disposable product journeys after separately approved local signatures.',
  'runtimeScope':{key:str(Path('/Users/rcourson/Library')/suffix/'Aux Browser Completion 20261026'/tail) for key,suffix,tail in [('support','Application Support',''),('data','Application Support','User Data'),('control','Application Support','Control'),('tasks','Application Support','Tasks'),('cache','Caches','')]},
  'runtimeScopeCondition':'Inspect namespace metadata only first. If any proposed root exists without this milestone first-creation receipt, stop unchanged before contents or Keychain access. No v9 adoption, migration, key/credential/provider copy or old-state deletion. Create only fresh disposable profiles in this exact namespace.',
+ 'proposedLaunchCommand':['/usr/bin/open','-n','-a',str(APP),'--args','--use-mock-keychain'],
+ 'localEndpoints':{'daemon':21520,'extensionBridge':21522,'secureBrowserCDP':45203,'condition':'Only this new Aux namespace; do not connect to, stop or replace Aside. Old A38 may quit normally for Aux port handoff.'},
  'keychainScope':{'accessGroup':prior['keychainAccessGroup'],'purpose':'Only installation/authentication and explicit temporary provider credential operations for this new installation/profile; no enumeration or read of old/Aside/owner credentials. Retain actual location/installation/account binding checks.','ownerOrAsideStateExcluded':True},
  'focusedChecks':{
   'J1':'Fresh startup; HTTPS/back/forward/full URL; CmdT/K/L commit/cancel; pins/folders/Spaces/Undo; Peek/quick promotion;3+splits; native CLI exact profile/URL routing.',
