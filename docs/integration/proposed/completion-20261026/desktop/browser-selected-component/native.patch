@@ -1,0 +1,10 @@
+--- a/chrome/browser/extensions/api/debugger/debugger_api.cc
++++ b/chrome/browser/extensions/api/debugger/debugger_api.cc
+@@ -515,6 +515,7 @@
+   bool IsTrusted() override;
+   bool MayUseAuxDocumentCapabilities() override {
+     return extension_->id() == aux::kAgentExtensionId &&
++           Manifest::IsComponentLocation(extension_->location()) &&
+            profile_->IsRegularProfile() && !profile_->IsOffTheRecord();
+   }
+   bool MayReadLocalFiles() override;

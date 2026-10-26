@@ -1,0 +1,7 @@
+{
+  "path": "chrome/browser/extensions/api/debugger/debugger_api.cc",
+  "predecessor": "e725d17df browser-selected-document",
+  "inputSha256": "08d2d71585050d9959cc9d53692566bf19f5fac5ac9fbf298dbd45bd54f68ad8",
+  "outputSha256": "a8bfe44a4c5511b076cc2cf8fd1b494433886f30e31ab2ed66c0432907f34314",
+  "replacementCount": 1
+}
