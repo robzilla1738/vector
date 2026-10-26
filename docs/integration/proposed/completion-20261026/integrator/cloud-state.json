@@ -1,0 +1,38 @@
+{
+  "format": "aux.cloud.readonly-checkpoint.v1",
+  "date": "2026-10-26",
+  "identityVerified": {
+    "username": "robzilla1738",
+    "teamSlug": "robzilla1738s-projects",
+    "teamId": "team_aFPyA9tVAkB2WegquB3aADsL"
+  },
+  "project": {
+    "id": "prj_WLAGrKLQ42G5unZOI5FUkk5gBwxB",
+    "name": "aux-cloud"
+  },
+  "deployment": {
+    "id": "dpl_4xeJYrXuUtcmFWFTjwevrCF3huQZ",
+    "url": "aux-cloud-9oc52fmgn-robzilla1738s-projects.vercel.app",
+    "state": "READY",
+    "target": "production",
+    "aliases": [
+      "api.getaux.co",
+      "app.getaux.co",
+      "share.getaux.co",
+      "dev-cloud.getaux.co",
+      "aux-cloud.vercel.app",
+      "aux-cloud-robzilla1738s-projects.vercel.app"
+    ],
+    "reportedGitCommit": "6fe912d4421f547e72e2833fb54238789167234b",
+    "source": "redeploy"
+  },
+  "localServiceChangedSinceReportedGitCommit": true,
+  "configurationEvidence": "cloud-production-configuration.json",
+  "configurationRowsEvidence": "cloud-env-metadata.json",
+  "limitations": [
+    "Reported Git metadata is not a proof of deployed file bytes, schema or real service behavior.",
+    "MCP response reports truncated strings; missing/unknown configuration is not inferred working.",
+    "No environment decryption, credential values, deployment, migration, provisioning, email, account or provider operation."
+  ],
+  "productionAccepted": false
+}

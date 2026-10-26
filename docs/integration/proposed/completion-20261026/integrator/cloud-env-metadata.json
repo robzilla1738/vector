@@ -1,0 +1,718 @@
+{
+  "recordedDate": "2026-10-26",
+  "decrypted": false,
+  "rows": [
+    {
+      "key": "AUX_PAYMENTS_ENABLED",
+      "type": "plain",
+      "target": [
+        "production",
+        "preview",
+        "development"
+      ],
+      "value": "false"
+    },
+    {
+      "key": "AUX_HOSTED_AI_ENABLED",
+      "type": "plain",
+      "target": [
+        "production",
+        "preview",
+        "development"
+      ],
+      "value": "false"
+    },
+    {
+      "key": "CLERK_WEBHOOK_SIGNING_SECRET",
+      "type": "sensitive",
+      "target": [
+        "production"
+      ]
+    },
+    {
+      "key": "CLERK_AUTHORIZED_PARTIES",
+      "type": "encrypted",
+      "target": [
+        "production"
+      ]
+    },
+    {
+      "key": "AUX_ALLOWED_ORIGINS",
+      "type": "encrypted",
+      "target": [
+        "production"
+      ]
+    },
+    {
+      "key": "CRON_SECRET",
+      "type": "sensitive",
+      "target": [
+        "production"
+      ]
+    },
+    {
+      "key": "AUX_DATA_ENCRYPTION_KEY",
+      "type": "sensitive",
+      "target": [
+        "production"
+      ]
+    },
+    {
+      "key": "AUX_AUTH_SECRET",
+      "type": "sensitive",
+      "target": [
+        "production"
+      ]
+    },
+    {
+      "key": "POSTGRES_HOST",
+      "type": "encrypted",
+      "target": [
+        "production"
+      ]
+    },
+    {
+      "key": "PGPASSWORD",
+      "type": "encrypted",
+      "target": [
+        "production"
+      ]
+    },
+    {
+      "key": "PGUSER",
+      "type": "encrypted",
+      "target": [
+        "production"
+      ]
+    },
+    {
+      "key": "POSTGRES_PASSWORD",
+      "type": "encrypted",
+      "target": [
+        "production"
+      ]
+    },
+    {
+      "key": "POSTGRES_DATABASE",
+      "type": "encrypted",
+      "target": [
+        "production"
+      ]
+    },
+    {
+      "key": "POSTGRES_URL",
+      "type": "encrypted",
+      "target": [
+        "production"
+      ]
+    },
+    {
+      "key": "POSTGRES_URL_NON_POOLING",
+      "type": "encrypted",
+      "target": [
+        "production"
+      ]
+    },
+    {
+      "key": "POSTGRES_URL_NO_SSL",
+      "type": "encrypted",
+      "target": [
+        "production"
+      ]
+    },
+    {
+      "key": "POSTGRES_PRISMA_URL",
+      "type": "encrypted",
+      "target": [
+        "production"
+      ]
+    },
+    {
+      "key": "PGHOST",
+      "type": "encrypted",
+      "target": [
+        "production"
+      ]
+    },
+    {
+      "key": "PGDATABASE",
+      "type": "encrypted",
+      "target": [
+        "production"
+      ]
+    },
+    {
+      "key": "DATABASE_URL_UNPOOLED",
+      "type": "encrypted",
+      "target": [
+        "production"
+      ]
+    },
+    {
+      "key": "PGHOST_UNPOOLED",
+      "type": "encrypted",
+      "target": [
+        "production"
+      ]
+    },
+    {
+      "key": "POSTGRES_USER",
+      "type": "encrypted",
+      "target": [
+        "production"
+      ]
+    },
+    {
+      "key": "DATABASE_URL",
+      "type": "encrypted",
+      "target": [
+        "production"
+      ]
+    },
+    {
+      "key": "NEON_PROJECT_ID",
+      "type": "encrypted",
+      "target": [
+        "production"
+      ]
+    },
+    {
+      "key": "BLOB_READ_WRITE_TOKEN",
+      "type": "encrypted",
+      "target": [
+        "production"
+      ]
+    },
+    {
+      "key": "CLERK_WEBHOOK_SIGNING_SECRET",
+      "type": "sensitive",
+      "target": [
+        "preview"
+      ]
+    },
+    {
+      "key": "CLERK_WEBHOOK_SIGNING_SECRET",
+      "type": "encrypted",
+      "target": [
+        "development"
+      ]
+    },
+    {
+      "key": "STRIPE_WEBHOOK_SECRET",
+      "type": "sensitive",
+      "target": [
+        "preview"
+      ]
+    },
+    {
+      "key": "STRIPE_WEBHOOK_SECRET",
+      "type": "encrypted",
+      "target": [
+        "development"
+      ]
+    },
+    {
+      "key": "CRON_SECRET",
+      "type": "sensitive",
+      "target": [
+        "preview"
+      ]
+    },
+    {
+      "key": "CRON_SECRET",
+      "type": "encrypted",
+      "target": [
+        "development"
+      ]
+    },
+    {
+      "key": "AUX_AI_FAST_MODEL",
+      "type": "encrypted",
+      "target": [
+        "preview"
+      ]
+    },
+    {
+      "key": "AUX_AI_FAST_MODEL",
+      "type": "encrypted",
+      "target": [
+        "development"
+      ]
+    },
+    {
+      "key": "AUX_AI_MODEL",
+      "type": "encrypted",
+      "target": [
+        "preview"
+      ]
+    },
+    {
+      "key": "AUX_AI_MODEL",
+      "type": "encrypted",
+      "target": [
+        "development"
+      ]
+    },
+    {
+      "key": "AUX_ALLOWED_ORIGINS",
+      "type": "encrypted",
+      "target": [
+        "preview"
+      ]
+    },
+    {
+      "key": "AUX_ALLOWED_ORIGINS",
+      "type": "encrypted",
+      "target": [
+        "development"
+      ]
+    },
+    {
+      "key": "AUX_API_ORIGIN",
+      "type": "encrypted",
+      "target": [
+        "preview"
+      ]
+    },
+    {
+      "key": "AUX_API_ORIGIN",
+      "type": "encrypted",
+      "target": [
+        "development"
+      ]
+    },
+    {
+      "key": "NEXT_PUBLIC_APP_URL",
+      "type": "encrypted",
+      "target": [
+        "preview"
+      ]
+    },
+    {
+      "key": "NEXT_PUBLIC_APP_URL",
+      "type": "encrypted",
+      "target": [
+        "development"
+      ]
+    },
+    {
+      "key": "STRIPE_PORTAL_CONFIGURATION_ID",
+      "type": "encrypted",
+      "target": [
+        "preview"
+      ]
+    },
+    {
+      "key": "STRIPE_PORTAL_CONFIGURATION_ID",
+      "type": "encrypted",
+      "target": [
+        "development"
+      ]
+    },
+    {
+      "key": "STRIPE_PRICE_MAX_YEAR",
+      "type": "encrypted",
+      "target": [
+        "preview"
+      ]
+    },
+    {
+      "key": "STRIPE_PRICE_MAX_YEAR",
+      "type": "encrypted",
+      "target": [
+        "development"
+      ]
+    },
+    {
+      "key": "STRIPE_PRICE_MAX_MONTH",
+      "type": "encrypted",
+      "target": [
+        "preview"
+      ]
+    },
+    {
+      "key": "...[truncated]",
+      "type": "encrypted",
+      "target": [
+        "...[truncated]"
+      ]
+    },
+    {
+      "key": "...[truncated]",
+      "type": "...[truncated]",
+      "target": [
+        "...[truncated]"
+      ]
+    },
+    {
+      "key": "...[truncated]",
+      "type": "...[truncated]",
+      "target": [
+        "...[truncated]"
+      ]
+    },
+    {
+      "key": "...[truncated]",
+      "type": "...[truncated]",
+      "target": [
+        "...[truncated]"
+      ]
+    },
+    {
+      "key": "...[truncated]",
+      "type": "...[truncated]",
+      "target": [
+        "...[truncated]"
+      ]
+    },
+    {
+      "key": "...[truncated]",
+      "type": "...[truncated]",
+      "target": [
+        "...[truncated]"
+      ]
+    },
+    {
+      "key": "...[truncated]",
+      "type": "...[truncated]",
+      "target": [
+        "...[truncated]"
+      ]
+    },
+    {
+      "key": "...[truncated]",
+      "type": "...[truncated]",
+      "target": [
+        "...[truncated]"
+      ]
+    },
+    {
+      "key": "...[truncated]",
+      "type": "...[truncated]",
+      "target": [
+        "...[truncated]"
+      ]
+    },
+    {
+      "key": "...[truncated]",
+      "type": "...[truncated]",
+      "target": [
+        "...[truncated]",
+        "...[truncated]"
+      ]
+    },
+    {
+      "key": "...[truncated]",
+      "type": "...[truncated]",
+      "target": [
+        "...[truncated]",
+        "...[truncated]"
+      ]
+    },
+    {
+      "key": "...[truncated]",
+      "type": "...[truncated]",
+      "target": [
+        "...[truncated]",
+        "...[truncated]"
+      ]
+    },
+    {
+      "key": "...[truncated]",
+      "type": "...[truncated]",
+      "target": [
+        "...[truncated]"
+      ]
+    },
+    {
+      "key": "...[truncated]",
+      "type": "...[truncated]",
+      "target": [
+        "...[truncated]"
+      ]
+    },
+    {
+      "key": "...[truncated]",
+      "type": "...[truncated]",
+      "target": [
+        "...[truncated]"
+      ]
+    },
+    {
+      "key": "...[truncated]",
+      "type": "...[truncated]",
+      "target": [
+        "...[truncated]"
+      ]
+    },
+    {
+      "key": "...[truncated]",
+      "type": "...[truncated]",
+      "target": [
+        "...[truncated]"
+      ]
+    },
+    {
+      "key": "...[truncated]",
+      "type": "...[truncated]",
+      "target": [
+        "...[truncated]"
+      ]
+    },
+    {
+      "key": "...[truncated]",
+      "type": "...[truncated]",
+      "target": [
+        "...[truncated]"
+      ]
+    },
+    {
+      "key": "...[truncated]",
+      "type": "...[truncated]",
+      "target": [
+        "...[truncated]"
+      ]
+    },
+    {
+      "key": "...[truncated]",
+      "type": "...[truncated]",
+      "target": [
+        "...[truncated]"
+      ]
+    },
+    {
+      "key": "...[truncated]",
+      "type": "...[truncated]",
+      "target": [
+        "...[truncated]"
+      ]
+    },
+    {
+      "key": "...[truncated]",
+      "type": "...[truncated]",
+      "target": [
+        "...[truncated]"
+      ]
+    },
+    {
+      "key": "...[truncated]",
+      "type": "...[truncated]",
+      "target": [
+        "...[truncated]"
+      ]
+    },
+    {
+      "key": "...[truncated]",
+      "type": "...[truncated]",
+      "target": [
+        "...[truncated]"
+      ]
+    },
+    {
+      "key": "...[truncated]",
+      "type": "...[truncated]",
+      "target": [
+        "...[truncated]",
+        "...[truncated]"
+      ]
+    },
+    {
+      "key": "...[truncated]",
+      "type": "...[truncated]",
+      "target": [
+        "...[truncated]"
+      ]
+    },
+    {
+      "key": "...[truncated]",
+      "type": "...[truncated]",
+      "target": [
+        "...[truncated]"
+      ]
+    },
+    {
+      "key": "...[truncated]",
+      "type": "...[truncated]",
+      "target": [
+        "...[truncated]"
+      ]
+    },
+    {
+      "key": "...[truncated]",
+      "type": "...[truncated]",
+      "target": [
+        "...[truncated]",
+        "...[truncated]"
+      ]
+    },
+    {
+      "key": "...[truncated]",
+      "type": "...[truncated]",
+      "target": [
+        "...[truncated]",
+        "...[truncated]"
+      ]
+    },
+    {
+      "key": "...[truncated]",
+      "type": "...[truncated]",
+      "target": [
+        "...[truncated]",
+        "...[truncated]"
+      ]
+    },
+    {
+      "key": "...[truncated]",
+      "type": "...[truncated]",
+      "target": [
+        "...[truncated]",
+        "...[truncated]"
+      ]
+    },
+    {
+      "key": "...[truncated]",
+      "type": "...[truncated]",
+      "target": [
+        "...[truncated]",
+        "...[truncated]"
+      ]
+    },
+    {
+      "key": "...[truncated]",
+      "type": "...[truncated]",
+      "target": [
+        "...[truncated]",
+        "...[truncated]"
+      ]
+    },
+    {
+      "key": "...[truncated]",
+      "type": "...[truncated]",
+      "target": [
+        "...[truncated]",
+        "...[truncated]"
+      ]
+    },
+    {
+      "key": "...[truncated]",
+      "type": "...[truncated]",
+      "target": [
+        "...[truncated]",
+        "...[truncated]"
+      ]
+    },
+    {
+      "key": "...[truncated]",
+      "type": "...[truncated]",
+      "target": [
+        "...[truncated]",
+        "...[truncated]"
+      ]
+    },
+    {
+      "key": "...[truncated]",
+      "type": "...[truncated]",
+      "target": [
+        "...[truncated]",
+        "...[truncated]"
+      ]
+    },
+    {
+      "key": "...[truncated]",
+      "type": "...[truncated]",
+      "target": [
+        "...[truncated]",
+        "...[truncated]"
+      ]
+    },
+    {
+      "key": "...[truncated]",
+      "type": "...[truncated]",
+      "target": [
+        "...[truncated]",
+        "...[truncated]"
+      ]
+    },
+    {
+      "key": "...[truncated]",
+      "type": "...[truncated]",
+      "target": [
+        "...[truncated]",
+        "...[truncated]"
+      ]
+    },
+    {
+      "key": "...[truncated]",
+      "type": "...[truncated]",
+      "target": [
+        "...[truncated]",
+        "...[truncated]"
+      ]
+    },
+    {
+      "key": "...[truncated]",
+      "type": "...[truncated]",
+      "target": [
+        "...[truncated]",
+        "...[truncated]"
+      ]
+    },
+    {
+      "key": "...[truncated]",
+      "type": "...[truncated]",
+      "target": [
+        "...[truncated]",
+        "...[truncated]"
+      ]
+    },
+    {
+      "key": "...[truncated]",
+      "type": "...[truncated]",
+      "target": [
+        "...[truncated]"
+      ]
+    },
+    {
+      "key": "...[truncated]",
+      "type": "...[truncated]",
+      "target": [
+        "...[truncated]"
+      ]
+    },
+    {
+      "key": "...[truncated]",
+      "type": "...[truncated]",
+      "target": [
+        "...[truncated]"
+      ]
+    },
+    {
+      "key": "...[truncated]",
+      "type": "...[truncated]",
+      "target": [
+        "...[truncated]",
+        "...[truncated]",
+        "...[truncated]"
+      ]
+    },
+    {
+      "key": "...[truncated]",
+      "type": "...[truncated]",
+      "target": [
+        "...[truncated]"
+      ]
+    }
+  ],
+  "hiddenProductionEnvCount": 0,
+  "truncated": true,
+  "truncation": {
+    "arrays": 0,
+    "omittedArrayItems": 0,
+    "objects": 0,
+    "omittedObjectKeys": 0,
+    "strings": 642,
+    "omittedStringChars": 50616,
+    "depth": 0,
+    "budget": 0
+  }
+}

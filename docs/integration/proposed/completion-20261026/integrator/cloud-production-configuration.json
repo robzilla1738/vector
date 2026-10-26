@@ -1,0 +1,44 @@
+{
+  "recordedDate": "2026-10-26",
+  "source": "Vercel MCP decrypt=false, allowlisted plain public values only",
+  "projectId": "prj_WLAGrKLQ42G5unZOI5FUkk5gBwxB",
+  "teamId": "team_aFPyA9tVAkB2WegquB3aADsL",
+  "environment": "production",
+  "paymentsEnabled": false,
+  "hostedAiEnabled": false,
+  "launchModeUnverified": [],
+  "requiredVariables": 14,
+  "missing": [
+    "CLERK_SECRET_KEY",
+    "NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY",
+    "NEXT_PUBLIC_APP_URL",
+    "AUX_API_ORIGIN",
+    "RESEND_API_KEY",
+    "RESEND_FROM"
+  ],
+  "scopeMismatches": [],
+  "typeMismatches": [],
+  "publicValueMismatches": [],
+  "publicValuesUnverified": [
+    "AUX_ALLOWED_ORIGINS",
+    "CLERK_AUTHORIZED_PARTIES"
+  ],
+  "clerkHost": null,
+  "resourceProfileConfigured": true,
+  "configurationComplete": false,
+  "secretValuesInspected": false,
+  "providerSecretPairingVerified": false,
+  "productionReadinessVerified": false,
+  "activationPerformed": false,
+  "metadataResponseTruncated": true,
+  "metadataTruncation": {
+    "arrays": 0,
+    "omittedArrayItems": 0,
+    "objects": 0,
+    "omittedObjectKeys": 0,
+    "strings": 642,
+    "omittedStringChars": 50616,
+    "depth": 0,
+    "budget": 0
+  }
+}
