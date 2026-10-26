@@ -1,0 +1,16 @@
+{
+  "format": "aux.addon-review.literal-verification-implementation-note.v1",
+  "reviewSha256": "5138937e149f3ff805f70ed92e552b7cc444e2d8e697d0d5c82582f20695b037",
+  "reviewUnchanged": true,
+  "originalGenerator": {
+    "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/runtime/addon-local-signing-review/prepare-signed-successor.py",
+    "sha256": "c14b6789b40e68ae9823d8af1cb84df5f94121c301768b5816ac5f785f593ac2"
+  },
+  "literalGenerator": {
+    "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/runtime/addon-local-signing-review/prepare-signed-successor-literal.py",
+    "sha256": "2ef6568dd10fb3e87910d3f5700475c57871c4968922ff07b03dbe90492741dc"
+  },
+  "change": "Prefix the unchanged -R requirement source with =, as required by installed codesign SPECIFYING REQUIREMENTS. The review signing commands, targets, requirements themselves, source transformations and native-byte proof remain unchanged.",
+  "scopeOrAuthorityExpanded": false,
+  "signingPerformed": false
+}
