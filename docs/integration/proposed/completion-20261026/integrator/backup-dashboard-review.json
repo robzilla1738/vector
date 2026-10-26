@@ -1,0 +1,56 @@
+{
+  "format": "aux.backup.dashboard-readonly-review.v1",
+  "date": "2026-10-26",
+  "authorization": "Owner requested Aside signed-in dashboard use and confirmed signing into both services",
+  "digitalOcean": {
+    "team": "My Team",
+    "teamId": "c517b39d-7865-4d54-9a0d-236dbf282267",
+    "accountSetup": "Payment method required before resource creation",
+    "registeredSshKeys": 0,
+    "resourceCreated": false,
+    "billingChanged": false
+  },
+  "cloudflare": {
+    "accountId": "5a5f6f8a4d1c1d35cfe82c4a74c966b9",
+    "bucket": "aux-recovery-prod",
+    "location": "ENAM",
+    "storageClass": "Standard",
+    "publicDevelopmentUrl": "disabled",
+    "customDomains": [],
+    "corsPolicies": [],
+    "objectList": "empty at inspection",
+    "lifecycle": [
+      {
+        "name": "Default Multipart Abort Rule",
+        "action": "Abort uploads after 7 days",
+        "enabled": true
+      }
+    ],
+    "bucketLockRules": [],
+    "operatorToken": {
+      "name": "Aux Recovery Operator",
+      "scope": "aux-recovery-prod only",
+      "permission": "Object Read & Write",
+      "issued": "2026-10-23",
+      "activeUntil": "2026-11-22",
+      "secretRead": false
+    }
+  },
+  "dedicatedSshProposal": {
+    "path": "/Users/rcourson/Documents/Vibe/web/out/private-aux-backup-runner-review-20261026/preparation.json",
+    "publicFingerprint": "SHA256:YK/XGGhOAvVCgMY4r5pBFz1fJ7u24dRkvvsx2vNKs30",
+    "privateKeyPrinted": false,
+    "providerRegistration": false,
+    "serverAccessGranted": false
+  },
+  "remaining": [
+    "Exact paid runner and bounded credential access approval",
+    "Payment activation directly by owner if selecting DigitalOcean",
+    "Approved SSH registration and independent custody",
+    "Least-privilege source credentials, recipient and isolated recovery target",
+    "Scheduled backup, real alert and restore acceptance"
+  ],
+  "settingsChanged": false,
+  "backupExecuted": false,
+  "recoveryAccepted": false
+}

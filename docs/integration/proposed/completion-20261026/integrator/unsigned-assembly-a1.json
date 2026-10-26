@@ -1,0 +1,15 @@
+{
+  "format": "aux.completion.assembly-result-reference.v1",
+  "passed": true,
+  "receipt": {
+    "path": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-completion-20261026-a1/receipt.json",
+    "sha256": "44d6fc9e168cfc03b8528aaeb500175bfbc052cf2cb5e9a5d3d57114f9b27a3c"
+  },
+  "inventorySha256": "720682cc99bc148cf9a684cd88bfbd5b8a690f81e190c91f93957f66a5d6bb8e",
+  "leafCount": 11189,
+  "app": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-completion-20261026-a1/Aux.app",
+  "CUlaunchPolicyPending": true,
+  "signed": false,
+  "executed": false,
+  "runtimeAccepted": false
+}

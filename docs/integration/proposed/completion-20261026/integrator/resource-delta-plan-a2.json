@@ -1,0 +1,505 @@
+{
+  "format": "aux.completion.resource-delta-plan.v1",
+  "app": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-completion-20261026-a1/Aux.app",
+  "parentReceipt": {
+    "path": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-completion-20261026-a1/receipt.json",
+    "sha256": "44d6fc9e168cfc03b8528aaeb500175bfbc052cf2cb5e9a5d3d57114f9b27a3c"
+  },
+  "receiptDirectory": "pre-sign-resource-delta-a2",
+  "replacements": [
+    {
+      "relative": "Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/node-development/index.mjs",
+      "source": "/Users/rcourson/Documents/Vibe/web/out/completion-20261026-paired-source-a8/index.mjs",
+      "sha256": "5e2145161fbf913a76895c1c5b648363e843bc215db7ab5eb0dc5b4c7110cfc6",
+      "previousSha256": "c75e43fd51209d137a976b85b0cf6f3a5116d5a0b71f1871e9fd34f60f4fbc4e",
+      "mode": 420
+    },
+    {
+      "relative": "Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/node-development/aux-native-entry.mjs",
+      "source": "/Users/rcourson/Documents/Vibe/web/out/completion-20261026-paired-source-a8/aux-native-entry.mjs",
+      "sha256": "38d61018477a838a4bc9fcf33cf99c7c97ddfad9a7fbe5ff859f60a4cdb587d9",
+      "previousSha256": "5b99cdb82f742e26027463ef96f823d51f4cc046239ea2aa2783e509100ae984",
+      "mode": 420
+    },
+    {
+      "relative": "Contents/Resources/aux/apps/extension/dist/background.js",
+      "source": "/Users/rcourson/Documents/Vibe/web/out/completion-20261026-paired-source-a8/background.js",
+      "sha256": "688ab712bd2dfc6e03ce0e0a6350b65218a218bfeb83000f1a562104ced344e3",
+      "previousSha256": "5eff26a667e650969311ca9341b66876e678960ac08dfd1419f00e33c529926f",
+      "mode": 420
+    },
+    {
+      "relative": "Contents/Resources/aux/apps/extension/dist/assets/mcps-DmPp5oo9.js",
+      "source": "/Users/rcourson/Documents/Vibe/web/out/completion-20261026-ui-a5/mcps-DmPp5oo9.js",
+      "sha256": "9677c647f3537abcf90dd5cf707229e5fb6f83cd185ae19c5f4fcb72060b0d03",
+      "previousSha256": "0628abf121307a43567addaa792eb9f13c9b72e47c75f8d3cbe9f316a5ece79a",
+      "mode": 420
+    },
+    {
+      "relative": "Contents/Resources/aux/apps/extension/dist/assets/session-composer-Dc0LRfZA.js",
+      "source": "/Users/rcourson/Documents/Vibe/web/out/completion-20261026-ui-a5/session-composer-Dc0LRfZA.js",
+      "sha256": "9dcf4391cd70d41005cdd5d124bb4ee6e5c4bed44428d51c04dd7064711acbc4",
+      "previousSha256": "3eaa9c8f0946ad2b20a63f0b80f0acb0ad79835061050eb09dff2fbd3c791144",
+      "mode": 420
+    },
+    {
+      "relative": "Contents/Resources/aux/apps/extension/dist/assets/provider-Cw0zhujt.js",
+      "source": "/Users/rcourson/Documents/Vibe/web/out/completion-20261026-ui-a5/provider-Cw0zhujt.js",
+      "sha256": "5f0762d4441bfc708a9f4f9d0d4dd56a2e44f0fc26947e464415c5a1aec07bd8",
+      "previousSha256": "c4862e5ac3e442c203039edf7253c5af9627be724e70d0e20f693243e40c210e",
+      "mode": 420
+    },
+    {
+      "relative": "Contents/Resources/aux/apps/extension/dist/assets/-components-4o0FSqQ9.js",
+      "source": "/Users/rcourson/Documents/Vibe/web/out/completion-20261026-ui-a5/-components-4o0FSqQ9.js",
+      "sha256": "98ee9af88fcdfc6136e7e20556de0752ff3b81be8fb5b110c4d0a3f1d585bd72",
+      "previousSha256": "ed5962445f75abab89c2d983c289da0517f0f511202ff4d087cd240952f63a60",
+      "mode": 420
+    },
+    {
+      "relative": "Contents/Resources/aux/apps/extension/dist/assets/-utils-B_lbplVm.js",
+      "source": "/Users/rcourson/Documents/Vibe/web/out/completion-20261026-ui-a5/-utils-B_lbplVm.js",
+      "sha256": "b4e2e29b12a663c33ad7b4122273f20e5172ae76024fefa613c5aa5ef0d97e99",
+      "previousSha256": "5527b6cb0638210d3f9b4c6b16fe27244fd80b64c986b39da73fe11a4bdbfdfc",
+      "mode": 420
+    },
+    {
+      "relative": "Contents/Resources/aux/apps/extension/dist/assets/personalization-C9HKLZT4.js",
+      "source": "/Users/rcourson/Documents/Vibe/web/out/completion-20261026-ui-a5/personalization-C9HKLZT4.js",
+      "sha256": "aaba7029c2991857d829d1826efd23073b39cc56ac4c5646a8af18558117db06",
+      "previousSha256": "f24d1884b1169832b9d729ade410c4599fbdc624904e6ab18168476e1912cabf",
+      "mode": 420
+    },
+    {
+      "relative": "Contents/Resources/aux/apps/extension/dist/assets/queries-ldd77hNk.js",
+      "source": "/Users/rcourson/Documents/Vibe/web/out/completion-20261026-ui-a5/queries-ldd77hNk.js",
+      "sha256": "f7272be107a8a3809b8223439abf40dcaa1cd38f74737f8646b7670471368433",
+      "previousSha256": "fb8dafdc548e416acdd0f8c9988967b7d8d2d1d15c268ae0c6e63353a57c680e",
+      "mode": 420
+    },
+    {
+      "relative": "Contents/Resources/aux/apps/extension/dist/content/content.js",
+      "source": "/Users/rcourson/Documents/Vibe/web/out/completion-20261026-extension-a1/content/content.js",
+      "sha256": "908bd3585b1a0090fc6f28e2d816c02434ce7db037ff5eb6566e861bc5dd6e61",
+      "previousSha256": "57f04e1935e2a4730f28aff6906dd831ca3e1ef6a0007bb056b1b8010a4d7dad",
+      "mode": 420
+    },
+    {
+      "relative": "Contents/Resources/aux/apps/extension/dist/remix.js",
+      "source": "/Users/rcourson/Documents/Vibe/web/out/completion-20261026-extension-a1/remix.js",
+      "sha256": "38d7d44337d843342de287e84de585e76425d8db828db78b78a879ac3cbe7fbb",
+      "previousSha256": "72712b1596fd02196cd61b05472a0e8b1913f317dd710eb514b366d63701a6a7",
+      "mode": 420
+    },
+    {
+      "relative": "Contents/Resources/aux/apps/extension/dist/manifest.json",
+      "source": "/Users/rcourson/Documents/Vibe/web/out/completion-20261026-extension-a1/manifest.json",
+      "sha256": "a77c4e9eea0f41977f09862f6b7e3d56c12aa5b1cb062483ef5911db8eeb27f5",
+      "previousSha256": "d1d616d82f60e06309c0e8664144eb785d13451451eb63665f3b862fbb030828",
+      "mode": 420
+    },
+    {
+      "relative": "Contents/Frameworks/Aux Framework.framework/Versions/155.0.8059.85/Helpers/Aux Helper (Alerts).app/Contents/Resources/Assets.car",
+      "source": "/private/tmp/aux-canonical-icon-catalog-20261026-a1/compiled/Assets.car",
+      "sha256": "f973bbd02d869e7cd22033e358eb439ebb81ba022800ca5b01ec4419d118c276",
+      "previousSha256": "961218f6eef627cad9b6ef7401f1774efd9c1cbcd3eebd299d7843415a1fcbb7",
+      "mode": 420
+    },
+    {
+      "relative": "Contents/Frameworks/Aux Framework.framework/Versions/155.0.8059.85/Helpers/Aux Helper (Aperitif Alerts).app/Contents/Resources/Assets.car",
+      "source": "/private/tmp/aux-canonical-icon-catalog-20261026-a1/compiled/Assets.car",
+      "sha256": "f973bbd02d869e7cd22033e358eb439ebb81ba022800ca5b01ec4419d118c276",
+      "previousSha256": "961218f6eef627cad9b6ef7401f1774efd9c1cbcd3eebd299d7843415a1fcbb7",
+      "mode": 420
+    },
+    {
+      "relative": "Contents/Resources/Assets.car",
+      "source": "/private/tmp/aux-canonical-icon-catalog-20261026-a1/compiled/Assets.car",
+      "sha256": "f973bbd02d869e7cd22033e358eb439ebb81ba022800ca5b01ec4419d118c276",
+      "previousSha256": "961218f6eef627cad9b6ef7401f1774efd9c1cbcd3eebd299d7843415a1fcbb7",
+      "mode": 420
+    },
+    {
+      "relative": "Contents/Info.plist",
+      "source": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/integrator/compatibility-and-branding-declaration-a2/Info.plist",
+      "sha256": "ec755eaba4314cfee2338452e92cf10d6a841b7c0aa1fc66606368db1db2863a",
+      "previousSha256": "ce4ef0823e6bbf21e3b31ca6b0cc8e6b0af56fcd2fe7471763760da0e9c8e49c",
+      "mode": 420
+    }
+  ],
+  "inputPins": [
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-completion-20261026-a1/receipt.json",
+      "sha256": "44d6fc9e168cfc03b8528aaeb500175bfbc052cf2cb5e9a5d3d57114f9b27a3c"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/integrator/paired-source-a8.json",
+      "sha256": "a6eb9ca70aa5b2c597bf7bd0c3b48edc28cbaf664b847ce4541cdaf39d453d9e"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/integrator/ui-source-a5.json",
+      "sha256": "25ceb8608f6c0c69a93b8d4962895aed8848a60b1f41926910fcbb7e64ee7807"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/integrator/extension-source-a1.json",
+      "sha256": "6fe9094e03402c4b9373eefec85dc16c9831867f8c13aa960a94aff443f388ba"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/integration/transform.mjs",
+      "sha256": "1ca9a216b68bbea58a91cfcd6d5c48945e7b96a141ca17a5dc364c208f2a28ed"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/integration/pins.json",
+      "sha256": "ec25dfd7a6e8f4faf77f385476724a0a71ce7b75a529fe1854fb1afcdb0feffe"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/integration/anchors.json",
+      "sha256": "e2c09669894a9b7a3e4e7e3ed7cfde7e5f4529d9358f9eacf49afa57156296f2"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/vendor/provided/cloud-transfer-binding.mjs",
+      "sha256": "63646431b9c349d928b7182f06a9c3b14b2948cfedeed666882280ad04d6896e"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/vendor/provided/aux-final-runtime-identity.mjs",
+      "sha256": "3af91a07f3c21ca104bb64d86bc8322b2f4fa15116b9860ffc7099a8567b0350"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/integration/identity/source-pins.json",
+      "sha256": "136b03b377f47acde3935a36e32020308c5e21a668b81f9045b10ad4db2699bb"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/vendor/provided/aux-experimental-settings-v2.mjs",
+      "sha256": "c1ef323fe38ed1608cc2024739b28699b75a4292f4e9eeeffffc395dd98d28af"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/vendor/provided/aux-event-poll-client.mjs",
+      "sha256": "7e8cd86474af2f207e24280800514923617141c0dadbc70c7ad437bf08bb3ec7"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/vendor/provided/aux-event-poll-integration.mjs",
+      "sha256": "d94dd3f73ac905ce159495264704f1c5ddc332db4417a9d863d3264b29b0c742"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/integration/events/source-pins.json",
+      "sha256": "050903c9e0e11a80f80d681e7f664ca18c3d057e64f67b5ca55f5fc87f75cd57"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/vendor/provided/aux-ordinary-chat-startup.mjs",
+      "sha256": "79e41a260fea5959a675f422f0b7a12180abe3ef5f092c5b24a31583b680ddb9"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/integration/ordinary-chat/source-pins.json",
+      "sha256": "d3a0065bdd599125d3925cd1247b45a848502e3e6e3c6f016b18f897d07a09c2"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/vendor/provided/aux-bash-close-lifetime.mjs",
+      "sha256": "a533aad404915a3fdddeb4b55fd6d5a70f51997f422f1003334579abdb9a5fbc"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/integration/advertised-tools/source-pins.json",
+      "sha256": "d71ac38a5ca652807d5931e885b604677b0d74c3eff8917d4b3eec499aa5cf83"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/vendor/provided/aux-fixed-builtin-routing.mjs",
+      "sha256": "090ff5b24298d497f4d14d6aaafc00e7e1102287a42d2bf6bfcae11b9fae7320"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/runtime/fixed-builtins/entry.anchors.json",
+      "sha256": "873689d552203c4f7ccf9fd23cb6494844daa199fd5ad2be7ffdcb0079ba57ed"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/vendor/provided/aux-ephemeral-protocol-identity.mjs",
+      "sha256": "f81ae98aa1489acd9204c368732f94258608270def0a47cbfab7abf6d4a4f0b4"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/vendor/provided/aux-excluded-product-pruning.mjs",
+      "sha256": "7b82f0fd2452bbf0e19267f82bf7877842776a8ef8d39511bc61fab05477d436"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/vendor/provided/aux-session-feedback.mjs",
+      "sha256": "2a7a1b4aaba67f543df79f9113280b1947b4ea140f244b69790dd83e60b07416"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/vendor/provided/aux-agent-active-identity.mjs",
+      "sha256": "a01fd8367e488dd168ce2c4beb883031903bab48e118ffa8db4a51f7efe1987c"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/desktop/agent-active-identity/source-pins.json",
+      "sha256": "e6a423ccc5ae8ec99364ba2f8eb37b3a85c9c5da3984678ce6dbc508938dabf9"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/vendor/provided/aux-final-identity-v2.mjs",
+      "sha256": "c877959fb4708c46271436bfc7f098aa7342d4e87a301768eb28947c6ad1e20c"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/integration/final-identity/source-pins.json",
+      "sha256": "e830fcafc68afe53d4db2ab9e0862c3ad5b40fa919f52f55c75b878001a4bbb8"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/integration/feedback/source-pins.json",
+      "sha256": "b2a4450c1e834d190a352b15efdbec6d287ba6f7ef89582f326f65cf0d22865e"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/integration/excluded-products/source-pins.json",
+      "sha256": "8a201eaea404d5421700ecffdd5af5c3d28040731c468b5c16acc2608be4cc12"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/integrator/materialize-paired-source.mjs",
+      "sha256": "abeab58074d4fe134578f5cb087e56c49b3334007a2c25be7426efae556d01ce"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/desktop/browser-files/transform-resources.mjs",
+      "sha256": "1f28b409ff88aecc6d24edd20d6324c9b24d3b2a4e07b81229f2b46b872a9ef6"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/desktop/browser-files/composition-inputs.json",
+      "sha256": "7ed147b1e458444e22dee5ba459df4cd1cb71cbb31fa23b8b628efc4b26ab051"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/runtime/selected-builtin-owner/entry.anchors.json",
+      "sha256": "1f5a1fd57e3f2f34ee7c162a5f4638bbd2f2ecde5f2164339803def2299138db"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/runtime/selected-file-reader/entry.anchors.json",
+      "sha256": "e1ecc07b99fcd9c0aac2bfd8d9af3ee9e11b40d04feafe1831a2964d1c5cc05a"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/desktop/browser-automation/resource-anchors.json",
+      "sha256": "fafafe77051e36060afba23543526eb3cdf34abc72eb08171377aac60b145c55"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/desktop/browser-files/resource-anchors.json",
+      "sha256": "c8dbe8fec2d1d2a84fb382c180dfcbab9677aa58bf00e341c97751902bb131f1"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/integration/computer-use/source-pins.json",
+      "sha256": "3b4e9fa7e3ac00c4335a93a501be75e77306efaf4e799c2fa0768344a58d928f"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/vendor/provided/aux-fixed-computer-use.mjs",
+      "sha256": "01cbee26a5ff85c42d1ee553cca7029b9112cff43d08b91ffb952216be12a81a"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/vendor/provided/aux-password-preference-markers.mjs",
+      "sha256": "cfde86a5bcca4a752a525a6326acfd3cf1fe997181b296e69c659b0045321e2b"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/integration/preference-identity/source-pins.json",
+      "sha256": "897fe10e285691a8d23f1717b036d91fe083d01afd9797ad533b69f8f1850a3d"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/vendor/provided/aux-final-ui-identity.mjs",
+      "sha256": "942e3129fe3c8e80fe90e7f39a88c32f8ae82309cd9fa9640407167da87518f8"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/vendor/provided/aux-product-information-links.mjs",
+      "sha256": "324da40d98bfbf2ac2f417306c0f171cce6db0f6dc033ada2138ef68a2c75e35"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/desktop/product-information/source-pins.json",
+      "sha256": "93c5399d57599634489ea1210fab8b359ba5fd446fec35ee723baa3d912d297a"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/integrator/materialize-extension.mjs",
+      "sha256": "6bc1262485db81afdcde3d0e35e63d71cd0064addee5f6db31399283c94a0700"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/out/completion-20261026-paired-source-a8/index.mjs",
+      "sha256": "5e2145161fbf913a76895c1c5b648363e843bc215db7ab5eb0dc5b4c7110cfc6"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/out/completion-20261026-paired-source-a8/aux-native-entry.mjs",
+      "sha256": "38d61018477a838a4bc9fcf33cf99c7c97ddfad9a7fbe5ff859f60a4cdb587d9"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/out/completion-20261026-paired-source-a8/background.js",
+      "sha256": "688ab712bd2dfc6e03ce0e0a6350b65218a218bfeb83000f1a562104ced344e3"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/out/completion-20261026-ui-a5/developers-DTvaoVBC.js",
+      "sha256": "7c22f0e3970ecf39c0497cdab3dc0103cb794e73f3b93f1b20f82f94dc0f5958"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/out/completion-20261026-ui-a5/connect-dialog-CacgpFap.js",
+      "sha256": "8f10c421607cc4ac4fc83fb04b0eef80c38721534926fac5d22efb810a1274c2"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/out/completion-20261026-ui-a5/newtab-CnOLQ0yu.js",
+      "sha256": "eef65df02f862b13dcf9951f3f8cb81d1e6875a6dc6e7b782c954f23e7e69539"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/out/completion-20261026-ui-a5/session-feedback-dialog-BjDg0W8m.js",
+      "sha256": "e6453c89839e89125fb9821d0c1f1dfbacf1fbf9d54b4e20bc6e6a5436723d83"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/out/completion-20261026-ui-a5/mcps-DmPp5oo9.js",
+      "sha256": "9677c647f3537abcf90dd5cf707229e5fb6f83cd185ae19c5f4fcb72060b0d03"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/out/completion-20261026-ui-a5/experimental-Xq3YsEPK.js",
+      "sha256": "7605e2eba17406c5317720229d2a52f58824ce1203a7829516ed5379e3654081"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/out/completion-20261026-ui-a5/session-composer-Dc0LRfZA.js",
+      "sha256": "9dcf4391cd70d41005cdd5d124bb4ee6e5c4bed44428d51c04dd7064711acbc4"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/out/completion-20261026-ui-a5/provider-Cw0zhujt.js",
+      "sha256": "5f0762d4441bfc708a9f4f9d0d4dd56a2e44f0fc26947e464415c5a1aec07bd8"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/out/completion-20261026-ui-a5/_skillId-CAwCRjA8.js",
+      "sha256": "1a39b9401e5144d365b363e01f77601d311b3f515bb83d802b492b664064052d"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/out/completion-20261026-ui-a5/tag-icon-DeMC7uIN.js",
+      "sha256": "0d9e393739847e63f98b7006a83986ff2513da62a5c46351d4c83f717052cfff"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/out/completion-20261026-ui-a5/splash-D666ivBP.js",
+      "sha256": "85486d9e4b8d1ce9965b41c26ba808df3501be3d638cc860c6ce45773d7a0921"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/out/completion-20261026-ui-a5/route-TQyeTEXE.js",
+      "sha256": "468e9e336a9127198dc0b45902990ca3a6b6bcdbbe0c8fab1871d23492ec59a8"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/out/completion-20261026-ui-a5/ai-CzEX5E7S.js",
+      "sha256": "d1c597e52b370e6759c4f4e0bb89021be768a615c3ba06e111f839c66e11df3b"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/out/completion-20261026-ui-a5/add-on-credits-dialog-Dn5FxOyZ.js",
+      "sha256": "e0012bbed6365fd0c9c4b7e23fee41ca02a3b9ca7e004cd743c58b8fc19bb73c"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/out/completion-20261026-ui-a5/-components-4o0FSqQ9.js",
+      "sha256": "98ee9af88fcdfc6136e7e20556de0752ff3b81be8fb5b110c4d0a3f1d585bd72"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/out/completion-20261026-ui-a5/-utils-B_lbplVm.js",
+      "sha256": "b4e2e29b12a663c33ad7b4122273f20e5172ae76024fefa613c5aa5ef0d97e99"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/out/completion-20261026-ui-a5/personalization-C9HKLZT4.js",
+      "sha256": "aaba7029c2991857d829d1826efd23073b39cc56ac4c5646a8af18558117db06"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/out/completion-20261026-ui-a5/queries-ldd77hNk.js",
+      "sha256": "f7272be107a8a3809b8223439abf40dcaa1cd38f74737f8646b7670471368433"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/out/completion-20261026-extension-a1/content/content.js",
+      "sha256": "908bd3585b1a0090fc6f28e2d816c02434ce7db037ff5eb6566e861bc5dd6e61"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/out/completion-20261026-extension-a1/remix.js",
+      "sha256": "38d7d44337d843342de287e84de585e76425d8db828db78b78a879ac3cbe7fbb"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/out/completion-20261026-extension-a1/manifest.json",
+      "sha256": "a77c4e9eea0f41977f09862f6b7e3d56c12aa5b1cb062483ef5911db8eeb27f5"
+    },
+    {
+      "path": "/private/tmp/aux-canonical-icon-catalog-20261026-a1/receipt.json",
+      "sha256": "2efc94a55d50915fbd45574e2a2e95673411f88688356de36354fb7215588f05"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/assets/brand/arch-mark.svg",
+      "sha256": "45ba4f1d823cab3085cad8902fd17420ff5a9a5ac3139b180bfc0902875f515c"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/assets/brand/Aux.icns",
+      "sha256": "bc9826cef6295b7806693bdfc107e6901388ecfbd73236874c8fb19786b64f35"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/assets/brand/inventory.json",
+      "sha256": "9762ba9e72f6a2c12f5f98bef038e96830d6001a18fe9ea44d165a303f7dc593"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/desktop/canonical-icon-catalog/source-pins.json",
+      "sha256": "10c5a81ced3c2eb19294c7737e66936fface7f87379e23689897f8eb3cdd6b0b"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/desktop/canonical-icon-catalog/catalog-scope.json",
+      "sha256": "3d04afbd05c78de326e8dd07716275a14b8fa799f0e1def0c5f4e0504a0162db"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/desktop/canonical-icon-catalog/source-catalog.json",
+      "sha256": "d61ed2b28b3e3fd401f66c877377fef39f949060f3037e852b6fa0669b65b715"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/desktop/canonical-icon-catalog/build.py",
+      "sha256": "20b143c3db72c70bb811cc026f3b9fe18113c07a0386e2f5385f6e7bb2e8f87e"
+    },
+    {
+      "path": "/private/tmp/aux-canonical-icon-catalog-20261026-a1/Aux.iconset/icon_16x16.png",
+      "sha256": "25028c051459a653283df96c2cd06fa85dc37bd2dc78bd6c4e5dde591c406762"
+    },
+    {
+      "path": "/private/tmp/aux-canonical-icon-catalog-20261026-a1/Aux.iconset/icon_16x16@2x.png",
+      "sha256": "ce4779bef975467d4b931717f4eb31ad4db9801f285f660f1b878209fca9fffc"
+    },
+    {
+      "path": "/private/tmp/aux-canonical-icon-catalog-20261026-a1/Aux.iconset/icon_32x32.png",
+      "sha256": "e3ee10a21908c6492b23eb57e8d7436c19c27f73522bdb8c41f901f722b39cf0"
+    },
+    {
+      "path": "/private/tmp/aux-canonical-icon-catalog-20261026-a1/Aux.iconset/icon_32x32@2x.png",
+      "sha256": "c46f2de70d32a97808a84a25873863005cb4e88648fcec6859cfd9b8c3b8c45d"
+    },
+    {
+      "path": "/private/tmp/aux-canonical-icon-catalog-20261026-a1/Aux.iconset/icon_128x128.png",
+      "sha256": "42d9aa3c1c82c24a1db95e33a48f5d4112cf966dcccbeb1bbce07a2712a74208"
+    },
+    {
+      "path": "/private/tmp/aux-canonical-icon-catalog-20261026-a1/Aux.iconset/icon_128x128@2x.png",
+      "sha256": "9fda07905a44bf0c056e3793c87c822157269f3b3601a29f4357b7d91b59ef17"
+    },
+    {
+      "path": "/private/tmp/aux-canonical-icon-catalog-20261026-a1/Aux.iconset/icon_256x256.png",
+      "sha256": "9fda07905a44bf0c056e3793c87c822157269f3b3601a29f4357b7d91b59ef17"
+    },
+    {
+      "path": "/private/tmp/aux-canonical-icon-catalog-20261026-a1/Aux.iconset/icon_256x256@2x.png",
+      "sha256": "f668a42c298636741aac74e550cefc8f1af0de0da8d86f2310b70bfbe66ee90b"
+    },
+    {
+      "path": "/private/tmp/aux-canonical-icon-catalog-20261026-a1/Aux.iconset/icon_512x512.png",
+      "sha256": "f668a42c298636741aac74e550cefc8f1af0de0da8d86f2310b70bfbe66ee90b"
+    },
+    {
+      "path": "/private/tmp/aux-canonical-icon-catalog-20261026-a1/Aux.iconset/icon_512x512@2x.png",
+      "sha256": "6c292514f14069337e25d9cfbf44bfcd047e91254865e0c5967f984a638f4964"
+    },
+    {
+      "path": "/private/tmp/aux-canonical-icon-catalog-20261026-a1/compiled/Assets.car",
+      "sha256": "f973bbd02d869e7cd22033e358eb439ebb81ba022800ca5b01ec4419d118c276"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/integrator/compatibility-and-branding-declaration-a2/proposal.json",
+      "sha256": "19325d396b76b696511487316a44635580142b9be9330ae11326faca05e24b2d"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/integrator/candidate-compatibility-a1.json",
+      "sha256": "4075974d057a2c144075d99d980797f81f023dd70fc556076a0240ba5a1a329f"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/integrator/compatibility-and-branding-declaration-a2/Info.plist",
+      "sha256": "ec755eaba4314cfee2338452e92cf10d6a841b7c0aa1fc66606368db1db2863a"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/integrator/prepare-resource-delta.py",
+      "sha256": "e479e2b410e713ad5190af0be5893e45293a5eec9e8296b5d3174bfb93023cb8"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/integrator/restage-resources.py",
+      "sha256": "1129df379140b512c48b9136fd6e06908e04780e08f68496f138b520c34403a7"
+    }
+  ],
+  "nativeExecutableChanges": false,
+  "profileOrCredentialMigration": false,
+  "signed": false,
+  "executed": false,
+  "runtimeAccepted": false
+}

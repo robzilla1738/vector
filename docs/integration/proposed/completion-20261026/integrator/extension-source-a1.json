@@ -1,0 +1,102 @@
+{
+  "format": "aux.completion.extension-source.v1",
+  "passed": true,
+  "files": [
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/content/content.js",
+      "input": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-local-completion-20261025-a38/Aux.app/Contents/Resources/aux/apps/extension/dist/content/content.js",
+      "inputSha256": "57f04e1935e2a4730f28aff6906dd831ca3e1ef6a0007bb056b1b8010a4d7dad",
+      "output": "/Users/rcourson/Documents/Vibe/web/out/completion-20261026-extension-a1/content/content.js",
+      "outputSha256": "908bd3585b1a0090fc6f28e2d816c02434ce7db037ff5eb6566e861bc5dd6e61",
+      "anchors": [
+        {
+          "kind": "integration",
+          "scope": "Fresh Aux v2 Agent producer/receiver identity",
+          "find": "aside.daemonAuth",
+          "replace": "aux.daemonAuth.v2",
+          "count": 1
+        },
+        {
+          "kind": "integration",
+          "scope": "Fresh Aux v2 Agent producer/receiver identity",
+          "find": "aside.lasso-storage-bridge",
+          "replace": "aux.lasso-storage-bridge.v2",
+          "count": 3
+        },
+        {
+          "kind": "integration",
+          "scope": "Fresh Aux v2 Agent producer/receiver identity",
+          "find": "aside.lasso.v1",
+          "replace": "aux.lasso.v2",
+          "count": 2
+        },
+        {
+          "kind": "integration",
+          "scope": "paired Aux v2 Trusted Types policy aside-gdocs-driver",
+          "find": "aside-gdocs-driver",
+          "replace": "aux-gdocs-driver-v2",
+          "count": 1,
+          "offsetAtApplication": 133589
+        }
+      ]
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/remix.js",
+      "input": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-local-completion-20261025-a38/Aux.app/Contents/Resources/aux/apps/extension/dist/remix.js",
+      "inputSha256": "72712b1596fd02196cd61b05472a0e8b1913f317dd710eb514b366d63701a6a7",
+      "output": "/Users/rcourson/Documents/Vibe/web/out/completion-20261026-extension-a1/remix.js",
+      "outputSha256": "38d7d44337d843342de287e84de585e76425d8db828db78b78a879ac3cbe7fbb",
+      "anchors": [
+        {
+          "kind": "integration",
+          "scope": "Fresh Aux v2 Agent producer/receiver identity",
+          "find": "aside.remix.v1",
+          "replace": "aux.remix.v2",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/manifest.json",
+      "input": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-local-completion-20261025-a38/Aux.app/Contents/Resources/aux/apps/extension/dist/manifest.json",
+      "inputSha256": "d1d616d82f60e06309c0e8664144eb785d13451451eb63665f3b862fbb030828",
+      "output": "/Users/rcourson/Documents/Vibe/web/out/completion-20261026-extension-a1/manifest.json",
+      "outputSha256": "a77c4e9eea0f41977f09862f6b7e3d56c12aa5b1cb062483ef5911db8eeb27f5",
+      "anchors": [
+        {
+          "kind": "integration",
+          "scope": "Explicitly deny all external extension connections; excluded Vault ID remains protected by native/daemon deny checks",
+          "find": "\"externally_connectable\": {\n    \"ids\": [\n      \"nbpghnminpifekjbgjefioajhiilbfla\"\n    ]\n  }",
+          "replace": "\"externally_connectable\": {\n    \"ids\": []\n  }",
+          "count": 1
+        }
+      ]
+    }
+  ],
+  "generators": [
+    {
+      "path": "vendor/provided/aux-agent-active-identity.mjs",
+      "sha256": "a01fd8367e488dd168ce2c4beb883031903bab48e118ffa8db4a51f7efe1987c"
+    },
+    {
+      "path": "docs/integration/proposed/completion-20261026/desktop/agent-active-identity/source-pins.json",
+      "sha256": "e6a423ccc5ae8ec99364ba2f8eb37b3a85c9c5da3984678ce6dbc508938dabf9"
+    },
+    {
+      "path": "vendor/provided/aux-final-identity-v2.mjs",
+      "sha256": "c877959fb4708c46271436bfc7f098aa7342d4e87a301768eb28947c6ad1e20c"
+    },
+    {
+      "path": "docs/integration/proposed/completion-20261026/integration/final-identity/source-pins.json",
+      "sha256": "e830fcafc68afe53d4db2ab9e0862c3ad5b40fa919f52f55c75b878001a4bbb8"
+    },
+    {
+      "path": "docs/integration/proposed/completion-20261026/integrator/materialize-extension.mjs",
+      "sha256": "6bc1262485db81afdcde3d0e35e63d71cd0064addee5f6db31399283c94a0700"
+    }
+  ],
+  "geometryOrCssChanged": false,
+  "productExecuted": false,
+  "candidateChanged": false,
+  "productSigned": false
+}

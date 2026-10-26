@@ -1,0 +1,17 @@
+{
+  "format": "aux.completion.minimum-os-declaration-proposal.v1",
+  "input": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-completion-20261026-a1/Aux.app/Contents/Info.plist",
+  "inputSha256": "ce4ef0823e6bbf21e3b31ca6b0cc8e6b0af56fcd2fe7471763760da0e9c8e49c",
+  "output": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/integrator/compatibility-declaration-a1/Info.plist",
+  "outputSha256": "9146fb3854344602e24265bbb5e3571c898a1fc224ca77fbd8729e5c7f8fb612",
+  "previousMinimum": "13.0",
+  "proposedMinimum": "27.0.0",
+  "actualMachOAudit": {
+    "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/integrator/candidate-compatibility-a1.json",
+    "sha256": "4075974d057a2c144075d99d980797f81f023dd70fc556076a0240ba5a1a329f"
+  },
+  "otherPlistValuesPreserved": true,
+  "applied": false,
+  "nativeCodeChanged": false,
+  "executed": false
+}

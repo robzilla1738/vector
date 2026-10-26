@@ -1,0 +1,363 @@
+{
+  "format": "aux.completion.successor-assembly-plan.v1",
+  "acceptedApp": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-local-completion-20261025-a38/Aux.app",
+  "proposedApp": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-completion-20261026-a1/Aux.app",
+  "freshNamespace": "Aux Browser Completion 20261026",
+  "receiptPins": [
+    {
+      "path": "/private/tmp/aux-completion-browser-build-20261026-a7/build-result.json",
+      "sha256": "b19ace279eab3ee9d1704b62416d0e8769910bdc51e61fa8a9ccd350e87b0930"
+    },
+    {
+      "path": "/private/tmp/aux-completion-final-daemon-20261026-a1/build-receipt.json",
+      "sha256": "adb9020e7c56d7ab26fecf0a6a3d10d1134d27b6810802862baf6d6a6bba56d0"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/integrator/paired-source-a7.json",
+      "sha256": "d1d872318197104fa8e0a7c71732dae81b3486c3ba0f6d906c9a02484605f963"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/integrator/ui-source-a4.json",
+      "sha256": "8c4d3a9deb2175ae3a8696682ff2927b9e8c5786497c3f7cf19165e5616ec112"
+    },
+    {
+      "path": "/private/tmp/aux-completion-runtime-relocation-20261026-a1/relocation.json",
+      "sha256": "1eef47ca5f56dc6a37c1b8403d9e302948a3c67ceff2f6bc3dd01416f2c4428f"
+    }
+  ],
+  "CUlaunchPolicyPending": true,
+  "CUtestable": false,
+  "computerUsePolicyGate": "After separately authorized helper signing, generate exact delivered-image policy before daemon/outer sealing. No invented signed digest or native guard bypass.",
+  "memoryPolicyGate": "Retain existing memory policy only if memory-helper image bytes are unchanged.",
+  "orderedActions": [
+    {
+      "operation": "clone-tree-preserving-links",
+      "source": "/private/tmp/aux-completion-browser-build-20261026-a7/Aux.app",
+      "destination": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-completion-20261026-a1/Aux.app",
+      "condition": "fresh destination; preserve all browser resource packs and nested framework layout"
+    },
+    {
+      "operation": "clone-tree-preserving-links",
+      "source": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-local-completion-20261025-a38/Aux.app/Contents/Resources/aux",
+      "destination": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-completion-20261026-a1/Aux.app/Contents/Resources/aux",
+      "condition": "copied static package only; no state, profile or credentials"
+    },
+    {
+      "operation": "replace-regular-file",
+      "source": "/private/tmp/aux-completion-browser-build-20261026-a7/native_cli_open",
+      "destination": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-completion-20261026-a1/Aux.app/Contents/Resources/aux/apps/cli/Aux CLI.app/Contents/MacOS/aux-cli",
+      "relative": "Contents/Resources/aux/apps/cli/Aux CLI.app/Contents/MacOS/aux-cli",
+      "sha256": "b96ae42b7c0992fe2d410c2c51ae0a0ea4037457f4ed9aa58c2ac4fae5ab2262",
+      "bytes": 365528,
+      "mode": 493,
+      "role": "native CLI"
+    },
+    {
+      "operation": "replace-regular-file",
+      "source": "/private/tmp/aux-completion-final-daemon-20261026-a1/Aux Daemon",
+      "destination": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-completion-20261026-a1/Aux.app/Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/MacOS/aux-daemon",
+      "relative": "Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/MacOS/aux-daemon",
+      "sha256": "5d74d9ba46961c474349ddf6db58ee3dd9d7b95ca39b12782af1634b736d44b3",
+      "bytes": 148537144,
+      "mode": 493,
+      "role": "coherent final daemon"
+    },
+    {
+      "operation": "replace-regular-file",
+      "source": "/Users/rcourson/Documents/Vibe/web/out/completion-20261026-paired-source-a7/index.mjs",
+      "destination": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-completion-20261026-a1/Aux.app/Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/node-development/index.mjs",
+      "relative": "Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/node-development/index.mjs",
+      "sha256": "c75e43fd51209d137a976b85b0cf6f3a5116d5a0b71f1871e9fd34f60f4fbc4e",
+      "bytes": 12371870,
+      "mode": 420,
+      "role": "final complete resources"
+    },
+    {
+      "operation": "replace-regular-file",
+      "source": "/Users/rcourson/Documents/Vibe/web/out/completion-20261026-paired-source-a7/aux-native-entry.mjs",
+      "destination": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-completion-20261026-a1/Aux.app/Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/node-development/aux-native-entry.mjs",
+      "relative": "Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/node-development/aux-native-entry.mjs",
+      "sha256": "5b99cdb82f742e26027463ef96f823d51f4cc046239ea2aa2783e509100ae984",
+      "bytes": 12374979,
+      "mode": 420,
+      "role": "final complete resources"
+    },
+    {
+      "operation": "replace-regular-file",
+      "source": "/Users/rcourson/Documents/Vibe/web/out/completion-20261026-paired-source-a7/background.js",
+      "destination": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-completion-20261026-a1/Aux.app/Contents/Resources/aux/apps/extension/dist/background.js",
+      "relative": "Contents/Resources/aux/apps/extension/dist/background.js",
+      "sha256": "5eff26a667e650969311ca9341b66876e678960ac08dfd1419f00e33c529926f",
+      "bytes": 414896,
+      "mode": 420,
+      "role": "final complete resources"
+    },
+    {
+      "operation": "replace-regular-file",
+      "source": "/Users/rcourson/Documents/Vibe/web/out/completion-20261026-ui-a4/developers-DTvaoVBC.js",
+      "destination": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-completion-20261026-a1/Aux.app/Contents/Resources/aux/apps/extension/dist/assets/developers-DTvaoVBC.js",
+      "relative": "Contents/Resources/aux/apps/extension/dist/assets/developers-DTvaoVBC.js",
+      "sha256": "7c22f0e3970ecf39c0497cdab3dc0103cb794e73f3b93f1b20f82f94dc0f5958",
+      "bytes": 20273,
+      "mode": 420,
+      "role": "paired supplied UI"
+    },
+    {
+      "operation": "replace-regular-file",
+      "source": "/Users/rcourson/Documents/Vibe/web/out/completion-20261026-ui-a4/connect-dialog-CacgpFap.js",
+      "destination": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-completion-20261026-a1/Aux.app/Contents/Resources/aux/apps/extension/dist/assets/connect-dialog-CacgpFap.js",
+      "relative": "Contents/Resources/aux/apps/extension/dist/assets/connect-dialog-CacgpFap.js",
+      "sha256": "8f10c421607cc4ac4fc83fb04b0eef80c38721534926fac5d22efb810a1274c2",
+      "bytes": 40202,
+      "mode": 420,
+      "role": "paired supplied UI"
+    },
+    {
+      "operation": "replace-regular-file",
+      "source": "/Users/rcourson/Documents/Vibe/web/out/completion-20261026-ui-a4/newtab-CnOLQ0yu.js",
+      "destination": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-completion-20261026-a1/Aux.app/Contents/Resources/aux/apps/extension/dist/assets/newtab-CnOLQ0yu.js",
+      "relative": "Contents/Resources/aux/apps/extension/dist/assets/newtab-CnOLQ0yu.js",
+      "sha256": "eef65df02f862b13dcf9951f3f8cb81d1e6875a6dc6e7b782c954f23e7e69539",
+      "bytes": 41080,
+      "mode": 420,
+      "role": "paired supplied UI"
+    },
+    {
+      "operation": "replace-regular-file",
+      "source": "/Users/rcourson/Documents/Vibe/web/out/completion-20261026-ui-a4/session-feedback-dialog-BjDg0W8m.js",
+      "destination": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-completion-20261026-a1/Aux.app/Contents/Resources/aux/apps/extension/dist/assets/session-feedback-dialog-BjDg0W8m.js",
+      "relative": "Contents/Resources/aux/apps/extension/dist/assets/session-feedback-dialog-BjDg0W8m.js",
+      "sha256": "e6453c89839e89125fb9821d0c1f1dfbacf1fbf9d54b4e20bc6e6a5436723d83",
+      "bytes": 3361,
+      "mode": 420,
+      "role": "paired supplied UI"
+    },
+    {
+      "operation": "replace-regular-file",
+      "source": "/Users/rcourson/Documents/Vibe/web/out/completion-20261026-ui-a4/mcps-DmPp5oo9.js",
+      "destination": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-completion-20261026-a1/Aux.app/Contents/Resources/aux/apps/extension/dist/assets/mcps-DmPp5oo9.js",
+      "relative": "Contents/Resources/aux/apps/extension/dist/assets/mcps-DmPp5oo9.js",
+      "sha256": "0628abf121307a43567addaa792eb9f13c9b72e47c75f8d3cbe9f316a5ece79a",
+      "bytes": 48772,
+      "mode": 420,
+      "role": "paired supplied UI"
+    },
+    {
+      "operation": "replace-regular-file",
+      "source": "/Users/rcourson/Documents/Vibe/web/out/completion-20261026-ui-a4/experimental-Xq3YsEPK.js",
+      "destination": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-completion-20261026-a1/Aux.app/Contents/Resources/aux/apps/extension/dist/assets/experimental-Xq3YsEPK.js",
+      "relative": "Contents/Resources/aux/apps/extension/dist/assets/experimental-Xq3YsEPK.js",
+      "sha256": "7605e2eba17406c5317720229d2a52f58824ce1203a7829516ed5379e3654081",
+      "bytes": 11365,
+      "mode": 420,
+      "role": "paired supplied UI"
+    },
+    {
+      "operation": "replace-regular-file",
+      "source": "/Users/rcourson/Documents/Vibe/web/out/completion-20261026-ui-a4/session-composer-Dc0LRfZA.js",
+      "destination": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-completion-20261026-a1/Aux.app/Contents/Resources/aux/apps/extension/dist/assets/session-composer-Dc0LRfZA.js",
+      "relative": "Contents/Resources/aux/apps/extension/dist/assets/session-composer-Dc0LRfZA.js",
+      "sha256": "3eaa9c8f0946ad2b20a63f0b80f0acb0ad79835061050eb09dff2fbd3c791144",
+      "bytes": 349853,
+      "mode": 420,
+      "role": "paired supplied UI"
+    },
+    {
+      "operation": "replace-regular-file",
+      "source": "/Users/rcourson/Documents/Vibe/web/out/completion-20261026-ui-a4/provider-Cw0zhujt.js",
+      "destination": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-completion-20261026-a1/Aux.app/Contents/Resources/aux/apps/extension/dist/assets/provider-Cw0zhujt.js",
+      "relative": "Contents/Resources/aux/apps/extension/dist/assets/provider-Cw0zhujt.js",
+      "sha256": "c4862e5ac3e442c203039edf7253c5af9627be724e70d0e20f693243e40c210e",
+      "bytes": 128394,
+      "mode": 420,
+      "role": "paired supplied UI"
+    },
+    {
+      "operation": "replace-regular-file",
+      "source": "/Users/rcourson/Documents/Vibe/web/out/completion-20261026-ui-a4/_skillId-CAwCRjA8.js",
+      "destination": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-completion-20261026-a1/Aux.app/Contents/Resources/aux/apps/extension/dist/assets/_skillId-CAwCRjA8.js",
+      "relative": "Contents/Resources/aux/apps/extension/dist/assets/_skillId-CAwCRjA8.js",
+      "sha256": "1a39b9401e5144d365b363e01f77601d311b3f515bb83d802b492b664064052d",
+      "bytes": 16902,
+      "mode": 420,
+      "role": "paired supplied UI"
+    },
+    {
+      "operation": "replace-regular-file",
+      "source": "/Users/rcourson/Documents/Vibe/web/out/completion-20261026-ui-a4/tag-icon-DeMC7uIN.js",
+      "destination": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-completion-20261026-a1/Aux.app/Contents/Resources/aux/apps/extension/dist/assets/tag-icon-DeMC7uIN.js",
+      "relative": "Contents/Resources/aux/apps/extension/dist/assets/tag-icon-DeMC7uIN.js",
+      "sha256": "0d9e393739847e63f98b7006a83986ff2513da62a5c46351d4c83f717052cfff",
+      "bytes": 411273,
+      "mode": 420,
+      "role": "paired supplied UI"
+    },
+    {
+      "operation": "replace-regular-file",
+      "source": "/Users/rcourson/Documents/Vibe/web/out/completion-20261026-ui-a4/splash-D666ivBP.js",
+      "destination": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-completion-20261026-a1/Aux.app/Contents/Resources/aux/apps/extension/dist/assets/splash-D666ivBP.js",
+      "relative": "Contents/Resources/aux/apps/extension/dist/assets/splash-D666ivBP.js",
+      "sha256": "85486d9e4b8d1ce9965b41c26ba808df3501be3d638cc860c6ce45773d7a0921",
+      "bytes": 67901,
+      "mode": 420,
+      "role": "paired supplied UI"
+    },
+    {
+      "operation": "replace-regular-file",
+      "source": "/Users/rcourson/Documents/Vibe/web/out/completion-20261026-ui-a4/route-TQyeTEXE.js",
+      "destination": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-completion-20261026-a1/Aux.app/Contents/Resources/aux/apps/extension/dist/assets/route-TQyeTEXE.js",
+      "relative": "Contents/Resources/aux/apps/extension/dist/assets/route-TQyeTEXE.js",
+      "sha256": "468e9e336a9127198dc0b45902990ca3a6b6bcdbbe0c8fab1871d23492ec59a8",
+      "bytes": 68336,
+      "mode": 420,
+      "role": "paired supplied UI"
+    },
+    {
+      "operation": "replace-regular-file",
+      "source": "/Users/rcourson/Documents/Vibe/web/out/completion-20261026-ui-a4/ai-CzEX5E7S.js",
+      "destination": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-completion-20261026-a1/Aux.app/Contents/Resources/aux/apps/extension/dist/assets/ai-CzEX5E7S.js",
+      "relative": "Contents/Resources/aux/apps/extension/dist/assets/ai-CzEX5E7S.js",
+      "sha256": "d1c597e52b370e6759c4f4e0bb89021be768a615c3ba06e111f839c66e11df3b",
+      "bytes": 20762,
+      "mode": 420,
+      "role": "paired supplied UI"
+    },
+    {
+      "operation": "replace-regular-file",
+      "source": "/Users/rcourson/Documents/Vibe/web/out/completion-20261026-ui-a4/add-on-credits-dialog-Dn5FxOyZ.js",
+      "destination": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-completion-20261026-a1/Aux.app/Contents/Resources/aux/apps/extension/dist/assets/add-on-credits-dialog-Dn5FxOyZ.js",
+      "relative": "Contents/Resources/aux/apps/extension/dist/assets/add-on-credits-dialog-Dn5FxOyZ.js",
+      "sha256": "e0012bbed6365fd0c9c4b7e23fee41ca02a3b9ca7e004cd743c58b8fc19bb73c",
+      "bytes": 16300,
+      "mode": 420,
+      "role": "paired supplied UI"
+    },
+    {
+      "operation": "replace-regular-file",
+      "source": "/private/tmp/aux-completion-runtime-relocation-20261026-a1/resources/agent-runtime/python/venv/bin/activate",
+      "destination": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-completion-20261026-a1/Aux.app/Contents/Resources/aux/agent-runtime/python/venv/bin/activate",
+      "relative": "Contents/Resources/aux/agent-runtime/python/venv/bin/activate",
+      "sha256": "bdf294e5ed101edc87df3c37b30c9cb52b9a1d9ec8e53d38c4a38c5694a8f027",
+      "bytes": 2384,
+      "mode": 384,
+      "role": "paired runtime relocation"
+    },
+    {
+      "operation": "replace-regular-file",
+      "source": "/private/tmp/aux-completion-runtime-relocation-20261026-a1/resources/agent-runtime/python/venv/bin/activate.csh",
+      "destination": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-completion-20261026-a1/Aux.app/Contents/Resources/aux/agent-runtime/python/venv/bin/activate.csh",
+      "relative": "Contents/Resources/aux/agent-runtime/python/venv/bin/activate.csh",
+      "sha256": "e21cbca246d595acdaf9f8800f978e6d1f7c4b30f15bc39e969c05287802c5ce",
+      "bytes": 1026,
+      "mode": 384,
+      "role": "paired runtime relocation"
+    },
+    {
+      "operation": "replace-regular-file",
+      "source": "/private/tmp/aux-completion-runtime-relocation-20261026-a1/resources/agent-runtime/python/venv/bin/activate.fish",
+      "destination": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-completion-20261026-a1/Aux.app/Contents/Resources/aux/agent-runtime/python/venv/bin/activate.fish",
+      "relative": "Contents/Resources/aux/agent-runtime/python/venv/bin/activate.fish",
+      "sha256": "41b2e024b9b381917599a924104c22fd076f60a88bc87f96ff9c2f997dd0ba42",
+      "bytes": 2297,
+      "mode": 384,
+      "role": "paired runtime relocation"
+    },
+    {
+      "operation": "replace-regular-file",
+      "source": "/private/tmp/aux-completion-runtime-relocation-20261026-a1/resources/agent-runtime/python/venv/bin/pip",
+      "destination": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-completion-20261026-a1/Aux.app/Contents/Resources/aux/agent-runtime/python/venv/bin/pip",
+      "relative": "Contents/Resources/aux/agent-runtime/python/venv/bin/pip",
+      "sha256": "6dfc086cd980ab18098df740c6eb71f85eaeb6d95dae3f3d543ae183fa76ab37",
+      "bytes": 301,
+      "mode": 384,
+      "role": "paired runtime relocation"
+    },
+    {
+      "operation": "replace-regular-file",
+      "source": "/private/tmp/aux-completion-runtime-relocation-20261026-a1/resources/agent-runtime/python/venv/bin/pip3",
+      "destination": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-completion-20261026-a1/Aux.app/Contents/Resources/aux/agent-runtime/python/venv/bin/pip3",
+      "relative": "Contents/Resources/aux/agent-runtime/python/venv/bin/pip3",
+      "sha256": "6dfc086cd980ab18098df740c6eb71f85eaeb6d95dae3f3d543ae183fa76ab37",
+      "bytes": 301,
+      "mode": 384,
+      "role": "paired runtime relocation"
+    },
+    {
+      "operation": "replace-regular-file",
+      "source": "/private/tmp/aux-completion-runtime-relocation-20261026-a1/resources/agent-runtime/python/venv/bin/pip3.13",
+      "destination": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-completion-20261026-a1/Aux.app/Contents/Resources/aux/agent-runtime/python/venv/bin/pip3.13",
+      "relative": "Contents/Resources/aux/agent-runtime/python/venv/bin/pip3.13",
+      "sha256": "6dfc086cd980ab18098df740c6eb71f85eaeb6d95dae3f3d543ae183fa76ab37",
+      "bytes": 301,
+      "mode": 384,
+      "role": "paired runtime relocation"
+    },
+    {
+      "operation": "replace-regular-file",
+      "source": "/private/tmp/aux-completion-runtime-relocation-20261026-a1/resources/agent-runtime/python/venv/bin/vba_extract.py",
+      "destination": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-completion-20261026-a1/Aux.app/Contents/Resources/aux/agent-runtime/python/venv/bin/vba_extract.py",
+      "relative": "Contents/Resources/aux/agent-runtime/python/venv/bin/vba_extract.py",
+      "sha256": "91b6343c756165ce5839b554f5e88c8ed4f8e369eb0daf4a0f7198fe6cb1c66f",
+      "bytes": 2451,
+      "mode": 384,
+      "role": "paired runtime relocation"
+    },
+    {
+      "operation": "replace-regular-file",
+      "source": "/private/tmp/aux-completion-runtime-relocation-20261026-a1/resources/agent-runtime/python/venv/pyvenv.cfg",
+      "destination": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-completion-20261026-a1/Aux.app/Contents/Resources/aux/agent-runtime/python/venv/pyvenv.cfg",
+      "relative": "Contents/Resources/aux/agent-runtime/python/venv/pyvenv.cfg",
+      "sha256": "a125d57d300bc2d26e4a6c541bb570572bc345c12976baf2714b28e6057236d8",
+      "bytes": 708,
+      "mode": 384,
+      "role": "paired runtime relocation"
+    },
+    {
+      "operation": "replace-regular-file",
+      "source": "/private/tmp/aux-completion-runtime-relocation-20261026-a1/resources/native/runtime-text-root.json",
+      "destination": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-completion-20261026-a1/Aux.app/Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/native/runtime-text-root.json",
+      "relative": "Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/native/runtime-text-root.json",
+      "sha256": "a36d05c80e96470c1df1f32c61f39f0d517b074f3c21ed4335dd57638ebdd783",
+      "bytes": 189,
+      "mode": 384,
+      "role": "paired runtime relocation"
+    },
+    {
+      "operation": "replace-regular-file",
+      "source": "/private/tmp/aux-completion-runtime-relocation-20261026-a1/resources/native/runtime-bootstrap.cjs",
+      "destination": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-completion-20261026-a1/Aux.app/Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/native/runtime-bootstrap.cjs",
+      "relative": "Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/native/runtime-bootstrap.cjs",
+      "sha256": "06717ab918188a76f4101336fffe297f044792a183cde73efcab4a59af428fcf",
+      "bytes": 7664,
+      "mode": 384,
+      "role": "paired runtime relocation"
+    },
+    {
+      "operation": "replace-regular-file",
+      "source": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/integrator/policies/AuxFreshBootstrapPolicy.json",
+      "destination": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-completion-20261026-a1/Aux.app/Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/AuxFreshBootstrapPolicy.json",
+      "relative": "Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/AuxFreshBootstrapPolicy.json",
+      "sha256": "0ea7e93e94de7f07006aa4389fa842acb61bc50a37d682941a8d2dcf8e837b65",
+      "bytes": 725,
+      "mode": 420,
+      "role": "fixed role launch resource; not signing/activation proof"
+    }
+  ],
+  "metadataUpdates": [
+    "bundle.json finalApp and only active delivered file rows/hash/size; preserve historical source manifests and lineage",
+    "append final source/native/UI/runtime receipt hashes and policies; fullIdentityComplete/runtimeAccepted/productionReady false",
+    "fresh successor complete package inventory/provenance after all declared replacements; do not reuse A38 signatures or historical digest as current verification"
+  ],
+  "explicitPostAssemblyGates": [
+    "one changed-file and native/resource cohort verification against this plan",
+    "current nested executable/library signature requirements and entitlements are separately reviewed, not inherited from A38",
+    "no signing, OS grants or launch authorized by this plan",
+    "never copy A38 support/cache/profile/key/provider state; fresh namespace only",
+    "verify current startup/browser policy and daemon both use matching v10 policy and fixed addon bytes",
+    "actual J1-J4 remain pending until successor observed"
+  ],
+  "assembled": false,
+  "signed": false,
+  "executed": false,
+  "runtimeAccepted": false
+}

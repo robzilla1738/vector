@@ -13,6 +13,10 @@ import {transformAuxEphemeralProtocolIdentity, transformAuxTagIconIdentity} from
 import {transformAuxSelectedBrowserResources} from '../desktop/browser-files/transform-resources.mjs';
 import {transformAuxPreferenceIdentity} from '../../../../../vendor/provided/aux-password-preference-markers.mjs';
 import {transformAuxExcludedProducts} from '../../../../../vendor/provided/aux-excluded-product-pruning.mjs';
+import {transformAuxSessionFeedback} from '../../../../../vendor/provided/aux-session-feedback.mjs';
+import {transformAuxAgentActiveIdentity} from '../../../../../vendor/provided/aux-agent-active-identity.mjs';
+import {transformAuxAgentRemainingIdentity} from '../../../../../vendor/provided/aux-agent-remaining-identity.mjs';
+import {transformAuxTrustedTypes, transformAuxFinalVaultExclusion} from '../../../../../vendor/provided/aux-final-identity-v2.mjs';
 
 const repository = process.cwd();
 const here = path.join(repository, 'docs/integration/proposed/completion-20261026/integrator');
@@ -40,6 +44,14 @@ const generators = [
   'docs/integration/proposed/completion-20261026/runtime/fixed-builtins/entry.anchors.json',
   'vendor/provided/aux-ephemeral-protocol-identity.mjs',
   'vendor/provided/aux-excluded-product-pruning.mjs',
+  'vendor/provided/aux-session-feedback.mjs',
+  'vendor/provided/aux-agent-active-identity.mjs',
+  'vendor/provided/aux-agent-remaining-identity.mjs',
+  'docs/integration/proposed/completion-20261026/desktop/agent-remaining-identity/source-pins.json',
+  'docs/integration/proposed/completion-20261026/desktop/agent-active-identity/source-pins.json',
+  'vendor/provided/aux-final-identity-v2.mjs',
+  'docs/integration/proposed/completion-20261026/integration/final-identity/source-pins.json',
+  'docs/integration/proposed/completion-20261026/integration/feedback/source-pins.json',
   'docs/integration/proposed/completion-20261026/integration/excluded-products/source-pins.json',
   'docs/integration/proposed/completion-20261026/integrator/materialize-paired-source.mjs',
 ];
@@ -78,20 +90,28 @@ for (const name of ['index.mjs', 'aux-native-entry.mjs']) {
   stages.push(...selected.stages.map(stage => ({...stage, name: stage.kind})));
   const pruned = transformAuxExcludedProducts({text: selected.text, source});
   stages.push({name: 'Remove closed excluded product and unused SEA modules', outputSha256: sha(pruned.text), anchors: pruned.anchors});
+  const feedback = transformAuxSessionFeedback({text: pruned.text, source});
+  stages.push({name: 'Authenticated private session feedback custody', outputSha256: sha(feedback.text), anchors: feedback.anchors});
+  const trusted = transformAuxTrustedTypes({path: name, text: feedback.text, source});
+  stages.push({name: 'Aux v2 content-driver policies', outputSha256: sha(trusted.text), anchors: trusted.anchors});
+  const vault = transformAuxFinalVaultExclusion({text: trusted.text, source});
+  stages.push({name: 'Complete excluded Vault dependency and fresh routine identity removal', outputSha256: sha(vault.text), anchors: vault.anchors});
   const destination = path.join(output, name);
-  await writeFile(destination, pruned.text, {flag: 'wx'});
+  await writeFile(destination, vault.text, {flag: 'wx'});
   const syntax = spawnSync(process.execPath, ['--check', destination], {encoding: 'utf8'});
   if (syntax.status !== 0) throw Error('Combined paired source does not parse: ' + name + '\n' + syntax.stderr);
-  files.push({path: destination, input: path.join(original, name), inputSha256: sha(source), outputSha256: sha(pruned.text), stages});
+  files.push({path: destination, input: path.join(original, name), inputSha256: sha(source), outputSha256: sha(vault.text), stages});
 }
 const backgroundInput = path.join(repository, 'out/provided-candidate-local-completion-20261025-a38/Aux.app/Contents/Resources/aux/apps/extension/dist/background.js');
 const backgroundSource = await readFile(backgroundInput, 'utf8');
 const background = await transformAuxSelectedBrowserResources({path: 'background.js', text: backgroundSource, source: backgroundSource, root: repository});
+const activeBackground = transformAuxAgentActiveIdentity({path: 'background.js', text: background.text, source: backgroundSource});
+const finalBackground = transformAuxAgentRemainingIdentity({path: 'background.js', text: activeBackground.text, source: backgroundSource});
 const backgroundOutput = path.join(output, 'background.js');
-await writeFile(backgroundOutput, background.text, {flag: 'wx'});
+await writeFile(backgroundOutput, finalBackground.text, {flag: 'wx'});
 const backgroundSyntax = spawnSync(process.execPath, ['--check', backgroundOutput], {encoding: 'utf8'});
 if (backgroundSyntax.status !== 0) throw Error('Combined Agent background does not parse: ' + backgroundSyntax.stderr);
-files.push({path: backgroundOutput, input: backgroundInput, inputSha256: sha(backgroundSource), outputSha256: sha(background.text), stages: background.stages});
+files.push({path: backgroundOutput, input: backgroundInput, inputSha256: sha(backgroundSource), outputSha256: sha(finalBackground.text), stages: [...background.stages, {name: 'Aux v2 active Agent identities', anchors: activeBackground.anchors, outputSha256: sha(activeBackground.text)}, {name: 'Complete owned Aux v2 Agent contracts', anchors: finalBackground.anchors, outputSha256: sha(finalBackground.text)}]});
 for (const input of inputs)
   if (sha(await readFile(path.join(repository, input.path))) !== input.sha256) throw Error('Source generator changed during materialization');
 const receipt = {format: 'aux.completion.paired-source.v1', passed: true, files, generators: inputs,

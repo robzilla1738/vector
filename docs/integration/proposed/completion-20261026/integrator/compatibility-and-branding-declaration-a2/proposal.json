@@ -1,0 +1,30 @@
+{
+  "format": "aux.completion.os-brand-declaration-proposal.v1",
+  "input": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-completion-20261026-a1/Aux.app/Contents/Info.plist",
+  "inputSha256": "ce4ef0823e6bbf21e3b31ca6b0cc8e6b0af56fcd2fe7471763760da0e9c8e49c",
+  "output": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/integrator/compatibility-and-branding-declaration-a2/Info.plist",
+  "outputSha256": "ec755eaba4314cfee2338452e92cf10d6a841b7c0aa1fc66606368db1db2863a",
+  "previousMinimum": "13.0",
+  "minimum": "27.0.0",
+  "typeDescriptions": [
+    {
+      "typeIdentifier": "org.chromium.extension",
+      "previousDescription": "Chromium Extension",
+      "description": "Aux Extension"
+    },
+    {
+      "typeIdentifier": "org.chromium.shortcut",
+      "previousDescription": "Chromium Shortcut",
+      "description": "Aux Shortcut"
+    }
+  ],
+  "interopTypeIdentifiersPreserved": true,
+  "otherPlistValuesPreserved": true,
+  "actualMachOAudit": {
+    "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/integrator/candidate-compatibility-a1.json",
+    "sha256": "4075974d057a2c144075d99d980797f81f023dd70fc556076a0240ba5a1a329f"
+  },
+  "applied": false,
+  "nativeCodeChanged": false,
+  "executed": false
+}

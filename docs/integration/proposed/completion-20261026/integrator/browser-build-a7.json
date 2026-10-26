@@ -1,0 +1,39 @@
+{
+  "format": "aux.completion.browser-build.v1",
+  "passed": true,
+  "exitCode": 0,
+  "seconds": 545.2428686670028,
+  "command": [
+    "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/third_party/ninja/ninja",
+    "-C",
+    "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/out/AuxFast",
+    "-k4",
+    "-j4",
+    "chrome",
+    "native_cli_open"
+  ],
+  "projection": "/private/tmp/aux-completion-browser-build-20261026-a7/projection.json",
+  "projectionSha256": "7740450b399db32aabec412f71740b0c69362d110ecb7807ffdc083bcd497c9d",
+  "productSigned": false,
+  "productExecuted": false,
+  "release": false,
+  "app": "/private/tmp/aux-completion-browser-build-20261026-a7/Aux.app",
+  "artifacts": [
+    {
+      "path": "/private/tmp/aux-completion-browser-build-20261026-a7/Aux.app/Contents/MacOS/Aux",
+      "relative": "Contents/MacOS/Aux",
+      "sha256": "b7ede79122912003d213385619c791fbf78e8c03d7b4250b7ae143a102f6159c",
+      "unsigned": true
+    },
+    {
+      "path": "/private/tmp/aux-completion-browser-build-20261026-a7/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/155.0.8059.85/Aux Framework",
+      "relative": "Contents/Frameworks/Aux Framework.framework/Versions/155.0.8059.85/Aux Framework",
+      "sha256": "09d254048d3035731e0b69ab6c84f5cae4052be4f2eea3a52228c81868378c77",
+      "unsigned": true
+    }
+  ],
+  "nativeCli": {
+    "path": "/private/tmp/aux-completion-browser-build-20261026-a7/native_cli_open",
+    "sha256": "b96ae42b7c0992fe2d410c2c51ae0a0ea4037457f4ed9aa58c2ac4fae5ab2262"
+  }
+}

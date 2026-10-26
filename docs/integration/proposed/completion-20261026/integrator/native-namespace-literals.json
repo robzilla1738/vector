@@ -1,0 +1,28 @@
+{
+  "format": "aux.completion.native-namespace-literals.v1",
+  "files": [
+    {
+      "path": "/private/tmp/aux-completion-browser-build-20261026-a7/Aux.app/Contents/MacOS/Aux",
+      "oldNamespaceLiteralCount": 0,
+      "newNamespaceLiteralCount": 0
+    },
+    {
+      "path": "/private/tmp/aux-completion-browser-build-20261026-a7/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/155.0.8059.85/Aux Framework",
+      "oldNamespaceLiteralCount": 0,
+      "newNamespaceLiteralCount": 7
+    },
+    {
+      "path": "/private/tmp/aux-completion-browser-build-20261026-a7/native_cli_open",
+      "oldNamespaceLiteralCount": 0,
+      "newNamespaceLiteralCount": 0
+    },
+    {
+      "path": "/private/tmp/aux-completion-final-daemon-20261026-a1/Aux Daemon",
+      "oldNamespaceLiteralCount": 0,
+      "newNamespaceLiteralCount": 2
+    }
+  ],
+  "scope": "Exact ASCII directory literals in frozen Mach-O bytes; not execution or a general branding audit",
+  "passed": true,
+  "executed": false
+}

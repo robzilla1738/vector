@@ -6,6 +6,11 @@ import {applyAuxFinalUiIdentity} from '../../../../../vendor/provided/aux-final-
 import {transformAuxFinalRuntimeIdentity} from '../../../../../vendor/provided/aux-final-runtime-identity.mjs';
 import {transformAuxExperimentalSettings} from '../../../../../vendor/provided/aux-experimental-settings-v2.mjs';
 import {transformAuxProductInformationLinks} from '../../../../../vendor/provided/aux-product-information-links.mjs';
+import {transformAuxFeedbackCopy} from '../../../../../vendor/provided/aux-session-feedback.mjs';
+import {transformAuxAgentActiveIdentity} from '../../../../../vendor/provided/aux-agent-active-identity.mjs';
+import {transformAuxAgentRemainingIdentity} from '../../../../../vendor/provided/aux-agent-remaining-identity.mjs';
+import {transformAuxClosedRecoveryUi} from '../../../../../vendor/provided/aux-closed-recovery-ui.mjs';
+import {transformAuxVaultUi, transformAuxRecoveryTextV2} from '../../../../../vendor/provided/aux-final-vault-ui.mjs';
 
 const repository = process.cwd();
 const here = path.join(repository, 'docs/integration/proposed/completion-20261026/integrator');
@@ -15,14 +20,34 @@ const generation = process.argv[2] ?? 'a2';
 if (!/^a[1-9]\d*$/.test(generation)) throw Error('A finite fresh UI generation is required.');
 const output = path.join(repository, 'out/completion-20261026-ui-' + generation);
 const sha = text => createHash('sha256').update(text).digest('hex');
-const names = ['developers-DTvaoVBC.js', 'connect-dialog-CacgpFap.js', 'newtab-CnOLQ0yu.js',
+const originalNames = ['developers-DTvaoVBC.js', 'connect-dialog-CacgpFap.js', 'newtab-CnOLQ0yu.js',
   'session-feedback-dialog-BjDg0W8m.js', 'mcps-DmPp5oo9.js', 'experimental-Xq3YsEPK.js',
   'session-composer-Dc0LRfZA.js', 'provider-Cw0zhujt.js', '_skillId-CAwCRjA8.js',
   'tag-icon-DeMC7uIN.js', 'splash-D666ivBP.js', 'route-TQyeTEXE.js', 'ai-CzEX5E7S.js',
-  'add-on-credits-dialog-Dn5FxOyZ.js'];
+  'add-on-credits-dialog-Dn5FxOyZ.js', '-components-4o0FSqQ9.js', '-utils-B_lbplVm.js',
+  'personalization-C9HKLZT4.js', 'queries-ldd77hNk.js'];
+const identityPins = JSON.parse(await readFile(path.join(repository, 'docs/integration/proposed/completion-20261026/desktop/agent-remaining-identity/source-pins.json'), 'utf8'));
+const recoveryPins = JSON.parse(await readFile(path.join(repository, 'docs/integration/proposed/completion-20261026/integration/recovery-ui/source-pins.json'), 'utf8'));
+const vaultPins = JSON.parse(await readFile(path.join(repository, 'docs/integration/proposed/completion-20261026/integration/vault-ui/source-pins.json'), 'utf8'));
+const armorPins = JSON.parse(await readFile(path.join(repository, 'docs/integration/proposed/completion-20261026/integration/vault-ui/recovery-pins.json'), 'utf8'));
+const extraAssets = identityPins.files.filter(file => file.path.includes('/extension/dist/assets/')).map(file => file.path.split('/assets/')[1]);
+const names = [...new Set([...originalNames, ...extraAssets, recoveryPins.path.slice('assets/'.length),
+  ...vaultPins.files.map(file => file.path.slice('assets/'.length)), armorPins.path.slice('assets/'.length)])];
 const generators = ['vendor/provided/aux-final-ui-identity.mjs', 'vendor/provided/aux-final-runtime-identity.mjs',
   'docs/integration/proposed/completion-20261026/integration/identity/source-pins.json',
   'vendor/provided/aux-experimental-settings-v2.mjs', 'vendor/provided/aux-product-information-links.mjs',
+  'vendor/provided/aux-session-feedback.mjs',
+  'vendor/provided/aux-agent-active-identity.mjs',
+  'vendor/provided/aux-agent-remaining-identity.mjs',
+  'docs/integration/proposed/completion-20261026/desktop/agent-remaining-identity/source-pins.json',
+  'vendor/provided/aux-closed-recovery-ui.mjs',
+  'docs/integration/proposed/completion-20261026/integration/recovery-ui/source-pins.json',
+  'vendor/provided/aux-final-vault-ui.mjs',
+  'docs/integration/proposed/completion-20261026/integration/vault-ui/source-pins.json',
+  'docs/integration/proposed/completion-20261026/integration/vault-ui/recovery-pins.json',
+  'docs/integration/proposed/completion-20261026/integrator/materialize-ui.mjs',
+  'docs/integration/proposed/completion-20261026/desktop/agent-active-identity/source-pins.json',
+  'docs/integration/proposed/completion-20261026/integration/feedback/source-pins.json',
   'docs/integration/proposed/completion-20261026/desktop/product-information/source-pins.json'];
 const inputs = await Promise.all(generators.map(async name => ({path: name, sha256: sha(await readFile(path.join(repository, name)))})));
 await mkdir(output);
@@ -37,16 +62,24 @@ for (const name of names) {
     ? transformAuxFinalRuntimeIdentity({...input, text: identity.text}) : {text: identity.text, anchors: []};
   const settings = transformAuxExperimentalSettings({...input, text: feedback.text});
   const links = transformAuxProductInformationLinks({path: name, text: settings.text, source: text});
+  const copy = transformAuxFeedbackCopy({path: 'assets/' + name, text: links.text, source: text});
+  const closed = transformAuxClosedRecoveryUi({path: 'assets/' + name, text: copy.text, source: text});
+  const vault = transformAuxVaultUi({path: 'assets/' + name, text: closed.text, source: text});
+  const armor = transformAuxRecoveryTextV2({path: 'assets/' + name, text: vault.text, source: text});
+  const active = transformAuxAgentActiveIdentity({path: relative, text: armor.text, source: text});
+  const remaining = transformAuxAgentRemainingIdentity({path: relative, text: active.text, source: text});
   const destination = path.join(output, name);
-  await writeFile(destination, links.text, {flag: 'wx'});
-  const syntax = spawnSync(process.execPath, ['--check', destination], {encoding: 'utf8'});
-  if (syntax.status !== 0) throw Error('Composed UI script does not parse: ' + name + '\n' + syntax.stderr);
-  files.push({path: relative, inputSha256: sha(text), output: destination, outputSha256: sha(links.text),
-    suppliedSourceSha256: sha(original), anchors: [...identity.anchors, ...feedback.anchors, ...settings.anchors, ...links.anchors]});
+  await writeFile(destination, remaining.text, {flag: 'wx'});
+  if (name.endsWith('.js')) {
+    const syntax = spawnSync(process.execPath, ['--check', destination], {encoding: 'utf8'});
+    if (syntax.status !== 0) throw Error('Composed UI script does not parse: ' + name + '\n' + syntax.stderr);
+  }
+  files.push({path: relative, inputSha256: sha(text), output: destination, outputSha256: sha(remaining.text),
+    suppliedSourceSha256: sha(original), anchors: [...identity.anchors, ...feedback.anchors, ...settings.anchors, ...links.anchors, ...copy.anchors, ...closed.anchors, ...vault.anchors, ...armor.anchors, ...active.anchors, ...remaining.anchors]});
 }
 for (const input of inputs)
   if (sha(await readFile(path.join(repository, input.path))) !== input.sha256) throw Error('UI generator changed during materialization');
 const result = {format: 'aux.completion.ui-source.v1', passed: true, files, generators: inputs,
-  geometryOrCssChanged: false, productExecuted: false, candidateChanged: false, productSigned: false};
+  geometryOrCssDeclarationValuesChanged: false, selectorBrandingChanged: true, productExecuted: false, candidateChanged: false, productSigned: false};
 await writeFile(path.join(here, 'ui-source-' + generation + '.json'), JSON.stringify(result, null, 2) + '\n', {flag: 'wx'});
 console.log(JSON.stringify({passed: true, files: files.length, output}));
