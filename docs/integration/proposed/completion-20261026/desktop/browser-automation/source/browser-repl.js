@@ -47,7 +47,7 @@ function auxCreateBrowserOnlyRepl(options){
     while(pending.size)await Promise.allSettled([...pending]);
     raw.dispose();if(bridgeDisposal)await bridgeDisposal;
     for(const fn of mappedFunctions)FUNCTION_SOURCE_ARGUMENTS.delete(fn);
-    native?.close();auxBrowserReplStates.delete(state);if(auxBrowserJsOwners.get(options.browser)===state)auxBrowserJsOwners.delete(options.browser);
+    await native?.close();auxBrowserReplStates.delete(state);if(auxBrowserJsOwners.get(options.browser)===state)auxBrowserJsOwners.delete(options.browser);
    })().catch(error=>{auxBrokerBoundary().noteUntracked();throw error});
    return closePromise;
   }

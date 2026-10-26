@@ -2,14 +2,14 @@ import fs from 'node:fs';import vm from 'node:vm';import assert from 'node:asser
 const root=new URL('./source/',import.meta.url),projected=fs.readFileSync('/private/tmp/aux-browser-automation-resource-check-20261026/aux-native-entry.mjs','utf8');
 const start=projected.indexOf('Repl=class{#e;#t;#n;#r=null;'),end=projected.indexOf('}));function createDesktopRepl',start);
 assert.ok(start>0&&end>start);
-let captures=0,nativeClosed=0,bridgeDisposed=0,leak=0,hostResolve,rawScope,bridge;
+let captures=0,nativeClosed=0,bridgeDisposed=0,leak=0,hostResolve,rawScope,bridge,nativeCloseResolve;
 const route={accountId:7,profileId:'profile',windowId:12,browserMode:'default'},account={id:7,createdAt:1,incarnationId:'account-1'},session={id:'session',createdAt:2,browserBinding:route};
 class CdpClient{}class AuxBrowser{}
 class Page{url(){return 'https://example.test'}evaluate(){return Promise.resolve({value:1})}}
 const page=new Page;page.cdp=new CdpClient;
 class AuxPDFRepl{constructor(resolve,backend){this.resolve=resolve;this.backend=backend}}
 const functions=new Map([[Page.prototype.evaluate,0]]),globals={};
-const native={assertTaskSessionPath(path){assert.equal(path,'/task/session')},assertCurrent(){assert.equal(nativeClosed,0)},awaited(operation){this.assertCurrent();return operation()},close(){nativeClosed++}};
+const native={assertTaskSessionPath(path){assert.equal(path,'/task/session')},assertCurrent(){assert.equal(nativeClosed,0)},awaited(operation){this.assertCurrent();return operation()},close(){nativeClosed++;return new Promise(resolve=>nativeCloseResolve=resolve)}};
 const sandbox=vm.createContext({console,Promise,WeakMap,Set,Map,Proxy,Reflect,Object,Buffer,URL,Date,ArrayBuffer,AbortController,AbortSignal,Error,AuxPDFRepl,FUNCTION_SOURCE_ARGUMENTS:functions,HOST_DENYLIST:new Set([Function]),CdpClient,AuxBrowser,
  AccountRegistry:{getAccount:()=>account},SessionStore:{get:()=>session},auxUsesBoundBrowserActions:()=>true,auxRequireSupervisedTasks:()=>{throw Error('unregistered task guard')},auxSelectedAccountIdentity:()=>({incarnation:'account-1'}),
  auxBrokerBoundary:()=>({registerProducerStop(){},assertOwner(){},captureSelectedBuiltinSession(){captures++;return native},noteUntracked(){throw Error('Unexpected unknown custody')}}),
@@ -36,6 +36,6 @@ const wrapped=rawScope.globals.page.evaluate;assert.equal(functions.get(wrapped)
 assert.equal(bridge.options.isMarshalable(rawScope.globals.page.cdp),false,'task transport cannot leak into guest globals');
 let closed=false;const close=repl.dispose().then(()=>closed=true);
 await new Promise(resolve=>setTimeout(resolve,5));assert.equal(closed,false);assert.equal(nativeClosed,0);assert.equal(bridgeDisposed,0);
-hostResolve(page);await close;
+hostResolve(page);while(!nativeCloseResolve)await Promise.resolve();assert.equal(bridgeDisposed,1);assert.equal(closed,false,'native TSFN/selected root closure must settle too');nativeCloseResolve();await close;
 assert.equal(nativeClosed,1);assert.equal(bridgeDisposed,1);assert.equal(functions.has(wrapped),false);
 console.log(JSON.stringify({passed:true,checks:['actual supplied Repl class uses held original evalAsync','lazy selected native owner and exact tool object admission','unawaited original browser promise held through real bridge disposal','unsafe/plugin globals removed and sync method/function-source semantics preserved','scoped CdpClient remains unmarshalable'],nativeExecuted:false,quickJsExecuted:false,appExecuted:false}));
