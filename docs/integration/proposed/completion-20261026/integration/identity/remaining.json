@@ -1,0 +1,145 @@
+{
+  "format": "aux.final-runtime-identity.remaining.v1",
+  "source": "cloud-transfer successor plus final-runtime transform",
+  "observedFile": "/var/folders/98/j36zgdnd0h507whjl16gxl780000gp/T/aux-final-runtime-identity-9KtZNs/index.mjs",
+  "namedRemaining": [
+    {
+      "token": "asideCode",
+      "count": 2,
+      "classification": "persisted-experimental-setting",
+      "reason": "Existing experimental settings reader/schema plus six UI producers; needs explicit schema version/compatible fresh-profile transition, not a one-sided rename."
+    },
+    {
+      "token": "aside_suspension",
+      "count": 2,
+      "classification": "external-action-format",
+      "reason": "Generated channel action IDs and receiver; remote outstanding messages require a versioned action-format disposition."
+    },
+    {
+      "token": "aside:worker:",
+      "count": 1,
+      "classification": "provider-session-identity",
+      "reason": "Sticky upstream conversation/session routing headers; change would split existing task identities."
+    },
+    {
+      "token": "aside-events",
+      "count": 1,
+      "classification": "cloud-wire-protocol",
+      "reason": "Actual WebSocket subprotocol; matching Aux cloud event receiver is absent from local service source. No producer-only rename."
+    },
+    {
+      "token": "aside-native.node",
+      "count": 1,
+      "classification": "inactive-original-asset-key",
+      "reason": "Windows SEA-only materializer. Current macOS non-SEA asset adapter has no native-addon asset, and active binding points to native/aux-native.cjs. Preserve original addon bytes; remove/repack unreachable branch only with matching artifact plan."
+    },
+    {
+      "token": "aside_pro_month",
+      "count": 1,
+      "classification": "deferred-billing-contract",
+      "reason": "Original Stripe lookup keys in disabled billing schema; no payments at launch. Do not reinterpret existing external paid records."
+    },
+    {
+      "token": "aside_pro_year",
+      "count": 1,
+      "classification": "deferred-billing-contract",
+      "reason": "Same original disabled Stripe schema."
+    },
+    {
+      "token": "aside_max_month",
+      "count": 1,
+      "classification": "deferred-billing-contract",
+      "reason": "Same original disabled Stripe schema."
+    },
+    {
+      "token": "aside_max_year",
+      "count": 1,
+      "classification": "deferred-billing-contract",
+      "reason": "Same original disabled Stripe schema."
+    },
+    {
+      "token": "`aside cli`",
+      "count": 1,
+      "classification": "historical-reader",
+      "reason": "Legacy session title detection, not a generated product title."
+    },
+    {
+      "token": "asidecomputeruse",
+      "count": 2,
+      "classification": "external-application-exclusion",
+      "reason": "Original Windows owner-app capture exclusions; do not weaken an exclusion without matching host policy."
+    },
+    {
+      "token": "<!-- aside:password-manager-preference:",
+      "count": 2,
+      "classification": "excluded-vault-persisted-marker",
+      "reason": "Obsolete Vault preference markers; do not reinterpret historical files. Remove excluded product route/code only after shared security dependencies are separated."
+    },
+    {
+      "token": "--aside-home",
+      "count": 1,
+      "classification": "excluded-helper-caller",
+      "reason": "Obsolete Apple credential-exchange helper caller; no corresponding helper shipped or authorized. Remove excluded path rather than inventing a new ABI."
+    },
+    {
+      "token": "--aside-product-variant",
+      "count": 1,
+      "classification": "excluded-helper-caller",
+      "reason": "Same excluded credential-exchange path."
+    },
+    {
+      "token": "aside-password-importer",
+      "count": 5,
+      "classification": "excluded-helper-path",
+      "reason": "Obsolete Vault importer binary names; no corresponding helper shipped."
+    },
+    {
+      "token": "aside-credential-exchange",
+      "count": 2,
+      "classification": "excluded-helper-path",
+      "reason": "Same excluded Vault credential-exchange path."
+    },
+    {
+      "token": "`.aside`",
+      "count": 2,
+      "classification": "excluded-helper-state-path",
+      "reason": "Original credential-exchange context subdirectory; no state inspection or migration performed."
+    },
+    {
+      "token": "`aside.slime.",
+      "count": 1,
+      "classification": "persisted-icon-identifier",
+      "reason": "Persisted custom tag icon enum includes original product mark token; needs consumer/asset and stored icon transition."
+    },
+    {
+      "token": "kind===`aside`",
+      "count": 18,
+      "classification": "excluded-vault-persisted-discriminator",
+      "reason": "Original PwmAccountRegistry owner discriminator, many related producer/schema forms; do not blindly rewrite stored records."
+    },
+    {
+      "token": "kind:`aside`",
+      "count": 5,
+      "classification": "excluded-vault-persisted-discriminator",
+      "reason": "Same excluded original Vault record format."
+    },
+    {
+      "token": "literal(`aside`)",
+      "count": 1,
+      "classification": "excluded-vault-persisted-discriminator",
+      "reason": "Same excluded original Vault schema."
+    }
+  ],
+  "validSemantics": [
+    {
+      "classification": "html-semantics",
+      "reason": "HTML aside/ASIDE element names, selectors, parsing tables and third-party article extraction; keep valid markup semantics."
+    },
+    {
+      "classification": "sql-language",
+      "reason": "generatedAlwaysAsIdentity/generatedByDefaultAsIdentity contain the letters Aside across an unrelated method-name boundary; retain upstream SQL builder APIs."
+    }
+  ],
+  "fullIdentityComplete": false,
+  "ownerStateAccessed": false
+}

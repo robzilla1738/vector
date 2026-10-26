@@ -1,0 +1,10 @@
+✔ both current daemon leaves compose after cloud binding and preserve persisted/native/HTML contracts (2653.208417ms)
+✔ feedback UI producer pairs with both daemon fields without changing classes or semantic aside tags (119.9185ms)
+ℹ tests 2
+ℹ suites 0
+ℹ pass 2
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 3056.147792

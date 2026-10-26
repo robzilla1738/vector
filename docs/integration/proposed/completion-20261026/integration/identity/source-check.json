@@ -1,0 +1,38 @@
+{
+  "format": "aux.final-runtime-identity.source-check.v1",
+  "output": "/var/folders/98/j36zgdnd0h507whjl16gxl780000gp/T/aux-final-runtime-identity-9KtZNs",
+  "files": [
+    {
+      "component": "daemon",
+      "path": "index.mjs",
+      "baseA51Sha256": "48af998738fb6d2fc30cb8d5b2e9de03cb04ab7d8563ebdaa5fe8100944fc514",
+      "inputSha256": "62469726c5629983c379faae562d8317c53d79848fe3f09cd945e3ff95ea5d47",
+      "outputSha256": "4aa78d2606963d854849629dba91a2f418f6f347b09f45d3f9cc9dd3000409b7",
+      "anchors": 28,
+      "occurrences": 47
+    },
+    {
+      "component": "daemon",
+      "path": "aux-native-entry.mjs",
+      "baseA51Sha256": "f355833cb607963a65ca3108e7ae19ea7ca60192a9f3d8e2644a3c12ec49c808",
+      "inputSha256": "8406b82b2c2ae73312e0d81e18392f2d4c91bc1df497b73eefbdc8fba04189bb",
+      "outputSha256": "f3a8c02127d31b5c09c2f83b54dbfc1f789c7cfb7125ec0993dad31b18f73737",
+      "anchors": 28,
+      "occurrences": 47
+    },
+    {
+      "component": "agent",
+      "path": "assets/session-feedback-dialog-BjDg0W8m.js",
+      "inputSha256": "6d8dcffd3758ba3454084c5b561cbb01168c21972f875f59f3651ea388018d87",
+      "outputSha256": "1567b5bc434e6143645b92068a88fd0a4cefea55b38a9f29bfb490146d69e8c5",
+      "anchors": 1,
+      "occurrences": 1
+    }
+  ],
+  "syntax": "Both full daemon successors and feedback UI parsed by focused-tests.txt",
+  "cloudTransferPairing": true,
+  "ownerStateAccessed": false,
+  "appChanged": false,
+  "productExecuted": false,
+  "signing": false
+}

@@ -1,0 +1,195 @@
+{
+  "format": "aux.final-runtime-identity.v1",
+  "daemon": {
+    "inputSha256": [
+      "48af998738fb6d2fc30cb8d5b2e9de03cb04ab7d8563ebdaa5fe8100944fc514",
+      "f355833cb607963a65ca3108e7ae19ea7ca60192a9f3d8e2644a3c12ec49c808",
+      "62469726c5629983c379faae562d8317c53d79848fe3f09cd945e3ff95ea5d47",
+      "8406b82b2c2ae73312e0d81e18392f2d4c91bc1df497b73eefbdc8fba04189bb"
+    ],
+    "rules": [
+      {
+        "find": "init_aside",
+        "replace": "init_aux",
+        "count": 15,
+        "scope": "private module binding"
+      },
+      {
+        "find": "`aside packaged memory \ud55c\uae00-`",
+        "replace": "`aux packaged memory \ud55c\uae00-`",
+        "count": 1,
+        "scope": "disposable memory test prefix"
+      },
+      {
+        "find": "aside couldn't connect from this network|could not reach aside servers",
+        "replace": "aux couldn't connect from this network|could not reach aux servers",
+        "count": 1,
+        "scope": "own network diagnostic matcher"
+      },
+      {
+        "find": "Symbol(\"aside_ref\")",
+        "replace": "Symbol(\"aux_ref\")",
+        "count": 1,
+        "scope": "ephemeral injected DOM symbol description"
+      },
+      {
+        "find": "file:///aside-image-worker.cjs",
+        "replace": "file:///aux-image-worker.cjs",
+        "count": 1,
+        "scope": "nominal worker module resolution URL"
+      },
+      {
+        "find": "originator:`aside`",
+        "replace": "originator:`aux`",
+        "count": 1,
+        "scope": "OAuth product metadata; scopes and client unchanged"
+      },
+      {
+        "find": "<aside_code>",
+        "replace": "<aux_code>",
+        "count": 1,
+        "scope": "paired generated system-prompt tag"
+      },
+      {
+        "find": "</aside_code>",
+        "replace": "</aux_code>",
+        "count": 1,
+        "scope": "paired generated system-prompt tag"
+      },
+      {
+        "find": "`aside-notion-export-`",
+        "replace": "`aux-notion-export-`",
+        "count": 1,
+        "scope": "disposable export prefix"
+      },
+      {
+        "find": "aside-history-",
+        "replace": "aux-history-",
+        "count": 2,
+        "scope": "paired disposable history snapshot prefixes"
+      },
+      {
+        "find": "aside_component_version:DAEMON_VERSION",
+        "replace": "aux_component_version:DAEMON_VERSION",
+        "count": 1,
+        "scope": "new telemetry field; no historical analytics rewrite"
+      },
+      {
+        "find": "asideComponentVersion",
+        "replace": "auxComponentVersion",
+        "count": 2,
+        "scope": "paired local feedback schema and outgoing metadata"
+      },
+      {
+        "find": "'aside host profiles'",
+        "replace": "'aux host profiles'",
+        "count": 2,
+        "scope": "CLI diagnostic command"
+      },
+      {
+        "find": "Run 'aside skills list'",
+        "replace": "Run 'aux skills list'",
+        "count": 1,
+        "scope": "CLI diagnostic command"
+      },
+      {
+        "find": "Aux Computer Use helper is not built. Run `pnpm --filter @aside/native-helper build:computer-use-helper-dev`.",
+        "replace": "Aux Computer Use helper is not included in this build.",
+        "count": 3,
+        "scope": "truthful disabled-helper diagnostic"
+      },
+      {
+        "find": "`.local/bin/aside`",
+        "replace": "`.local/bin/aux`",
+        "count": 1,
+        "scope": "Aux CLI discovery; no old installation read or migration"
+      },
+      {
+        "find": "`.aside/bin/aside`",
+        "replace": "`.aux/bin/aux`",
+        "count": 1,
+        "scope": "Aux CLI discovery; no old installation read or migration"
+      },
+      {
+        "find": "`current/aside.exe`",
+        "replace": "`current/aux.exe`",
+        "count": 1,
+        "scope": "Aux Windows CLI discovery"
+      },
+      {
+        "find": "`Aux/CLI/current/aside.exe`",
+        "replace": "`Aux/CLI/current/aux.exe`",
+        "count": 1,
+        "scope": "Aux Windows CLI discovery"
+      },
+      {
+        "find": "`.local/bin/aside.exe`",
+        "replace": "`.local/bin/aux.exe`",
+        "count": 1,
+        "scope": "Aux Windows CLI discovery"
+      },
+      {
+        "find": "`.aside/bin/aside.exe`",
+        "replace": "`.aux/bin/aux.exe`",
+        "count": 1,
+        "scope": "Aux Windows CLI discovery"
+      },
+      {
+        "find": "whence -p aside",
+        "replace": "whence -p aux",
+        "count": 1,
+        "scope": "paired shell command discovery"
+      },
+      {
+        "find": "command -v aside",
+        "replace": "command -v aux",
+        "count": 1,
+        "scope": "paired shell command discovery"
+      },
+      {
+        "find": "`aside.exe`",
+        "replace": "`aux.exe`",
+        "count": 1,
+        "scope": "paired Windows command discovery"
+      },
+      {
+        "find": "`aside-cli-install-`",
+        "replace": "`aux-cli-install-`",
+        "count": 1,
+        "scope": "disposable install prefix"
+      },
+      {
+        "find": "'aside-install.ps1'",
+        "replace": "'aux-install.ps1'",
+        "count": 1,
+        "scope": "disposable installer basename"
+      },
+      {
+        "find": "/aside[- ]?daemon/i",
+        "replace": "/aux[- ]?daemon/i",
+        "count": 1,
+        "scope": "Aux-only daemon takeover classification"
+      },
+      {
+        "find": "`not_aside_daemon`",
+        "replace": "`not_aux_daemon`",
+        "count": 1,
+        "scope": "takeover telemetry reason"
+      }
+    ]
+  },
+  "agent": {
+    "path": "assets/session-feedback-dialog-BjDg0W8m.js",
+    "inputSha256": [
+      "6d8dcffd3758ba3454084c5b561cbb01168c21972f875f59f3651ea388018d87"
+    ],
+    "rules": [
+      {
+        "find": "asideComponentVersion",
+        "replace": "auxComponentVersion",
+        "count": 1,
+        "scope": "paired local feedback request producer"
+      }
+    ]
+  }
+}
