@@ -1,6 +1,6 @@
 # Assembled local candidate — local signatures verified; launch preflight blocked
 
-Current execution result: [RESULT.md](RESULT.md). The owner approved the exact review; all19 signatures verify. Disposable launch stopped at the existing-container condition before reading contents or initializing state. The original preparation/review below is retained for scope context.
+Current execution result: [RESULT.md](RESULT.md). The owner approved the exact review; all19 signatures verify. Disposable launch stopped at the existing-container condition. The subsequent approved emptiness-only check returned nonempty; no files were read, entry names reported, directory moved or state initialized. A separate fixed test namespace is prepared for review. The original preparation/review below is retained for scope context.
 
 App: `/Users/rcourson/Documents/Vibe/web/out/provided-candidate-local-completion-20261025-a38/Aux.app`.
 

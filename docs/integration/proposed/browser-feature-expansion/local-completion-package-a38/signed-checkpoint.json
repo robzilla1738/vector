@@ -8,9 +8,12 @@
   "nativeCliOpenHelpPassed": true,
   "appOpened": false,
   "runtimeAccepted": false,
-  "blockedAt": "Existing support container requires narrow emptiness-check exception to approved metadata-only condition.",
+  "blockedAt": "Approved emptiness-only check found original support container nonempty; preserve it unchanged. A new fixed disposable namespace needs the narrow prepared scope exception.",
   "scopeContentsRead": false,
   "acceptedAppReplaced": false,
   "release": false,
-  "receiptSha256": "36f48f6277a9d2271b11f130e4409596d69083cb5bcde2273555faa929fc09f5"
+  "receiptSha256": "36f48f6277a9d2271b11f130e4409596d69083cb5bcde2273555faa929fc09f5",
+  "emptinessChecked": true,
+  "existingContainerEmpty": false,
+  "existingContainerMoved": false
 }

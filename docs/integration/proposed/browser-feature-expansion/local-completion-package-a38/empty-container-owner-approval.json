@@ -1,0 +1,7 @@
+{
+  "format": "aux.empty-container.owner-approval.v1",
+  "ownerReply": "Approve checking if that folder is empty and moving it aside only if empty. Then continue the disposable-profile checks, fix failures within scope, and get the build ready for me to test. Preserve the UI. No release.",
+  "reviewSha256": "5ecc69d142953a861353d21d9817d959807be171b7800d1983e0495aa7248d4a",
+  "approvedAtLocal": "2026-10-25T19:40:48.760445-05:00",
+  "release": false
+}

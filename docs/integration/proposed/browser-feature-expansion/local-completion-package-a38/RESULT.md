@@ -28,6 +28,24 @@ accepted app and previously testable A25 are unchanged. No release occurred.
 
 ## Blocked before launch
 
+Update after explicit owner approval: the emptiness-only check returned
+**nonempty**. The directory was not moved, no files were opened and no entry
+names were reported. `actual-empty-container-preservation.json` records that
+result. The approved move-only-if-empty condition therefore does not permit a
+rename, cleanup or adoption of the existing container.
+
+A new narrowly prepared option is
+`disposable-location-review-a4/README.md`: use a separate fixed **Aux Browser A38
+Disposable** namespace. Both proposed support/cache roots are absent by
+metadata-only preflight. The exact patch changes15 directory literals across the
+existing four native startup consumers; no UI/architecture/entitlement change.
+It requires a new namespace exception and, after rebuild, only framework,
+daemon and outer-app re-signs under the same-object bounded repair rules. No
+projection, compile, new signing or initialization has occurred for this option.
+The current signed A38 and accepted app remain intact.
+
+The following paragraph records the earlier metadata-only preflight:
+
 Metadata-only preflight found the support container already exists with mode0700,
 UID502, device16777232, inode32049119. User Data, Control, Tasks and cache paths
 are absent. No directory entries or file contents were read; nothing there was
@@ -35,11 +53,11 @@ changed. The exact approved review requires stopping if any root exists without
 this milestone's first-creation receipt. Therefore this app was not opened,
 no installation/authentication entries were created, and A25 was not closed.
 
-The smallest prepared action is in `existing-container-review.json`: check only
+The earlier prepared action was in `existing-container-review.json`: check only
 whether this exact existing container is empty. If empty, preserve it under the
 absent sibling `Aux Browser.empty-before-a38` and let unchanged native startup
 create its fresh namespace. If nonempty or metadata changes, stop unchanged.
-This needs a narrow owner exception to the review's stop-before-contents rule.
+That narrow exception was approved and executed; the nonempty result means its rename condition was not satisfied.
 It does not need another architectural layer or native rebuild.
 
 ## Actual-app checks still untested on this candidate

@@ -1,0 +1,102 @@
+--- a/chrome/browser/aux/AuxNativeParentColdLaunch.cc
++++ b/chrome/browser/aux/AuxNativeParentColdLaunch.cc
+@@ -271,9 +271,9 @@
+   const base::FilePath home(canonical.data());
+   if (home.empty() || !home.IsAbsolute() || home.ReferencesParent() || home.value() == "/")
+     return std::nullopt;
+-  const auto support = home.AppendASCII("Library/Application Support/Aux Browser");
++  const auto support = home.AppendASCII("Library/Application Support/Aux Browser A38 Disposable");
+   return NativeUserStartupPaths{home, support.AppendASCII("User Data"),
+-                                home.AppendASCII("Library/Caches/Aux Browser")};
++                                home.AppendASCII("Library/Caches/Aux Browser A38 Disposable")};
+ }
+ bool SameUserPaths(const NativeUserStartupPaths& a, const NativeUserStartupPaths& b) {
+   return a.home == b.home && a.data == b.data && a.cache == b.cache;
+@@ -303,8 +303,8 @@
+     return false;
+   }
+   bool support_exists = false, cache_exists = false;
+-  if (!InspectPrivateChild(state->held.at(2).fd.get(), "Aux Browser", &support_exists) ||
+-      !InspectPrivateChild(state->held.at(3).fd.get(), "Aux Browser", &cache_exists) ||
++  if (!InspectPrivateChild(state->held.at(2).fd.get(), "Aux Browser A38 Disposable", &support_exists) ||
++      !InspectPrivateChild(state->held.at(3).fd.get(), "Aux Browser A38 Disposable", &cache_exists) ||
+       support_exists != cache_exists) {
+     RAW_LOG(ERROR, "Aux OS-user startup refused: partial or invalid Aux namespace roots");
+     return false;
+@@ -312,22 +312,22 @@
+   // Complete preflight precedes the first mkdir. Never add User Data/cache to
+   // an arbitrary pre-existing namespace or reset a partial failed install.
+   if (support_exists) {
+-    if (!HoldUserDirectory(*state, paths.data.DirName(), size_t{2}, "Aux Browser", true) ||
++    if (!HoldUserDirectory(*state, paths.data.DirName(), size_t{2}, "Aux Browser A38 Disposable", true) ||
+         !SupportInventory(state->held.at(4).fd.get())) {
+       RAW_LOG(ERROR, "Aux OS-user startup refused: unknown or partial Aux support namespace");
+       return false;
+     }
+   } else {
+-    if (mkdirat(state->held.at(2).fd.get(), "Aux Browser", 0700) != 0 ||
+-        !HoldUserDirectory(*state, paths.data.DirName(), size_t{2}, "Aux Browser", true) ||
++    if (mkdirat(state->held.at(2).fd.get(), "Aux Browser A38 Disposable", 0700) != 0 ||
++        !HoldUserDirectory(*state, paths.data.DirName(), size_t{2}, "Aux Browser A38 Disposable", true) ||
+         mkdirat(state->held.at(4).fd.get(), "User Data", 0700) != 0 ||
+-        mkdirat(state->held.at(3).fd.get(), "Aux Browser", 0700) != 0) {
++        mkdirat(state->held.at(3).fd.get(), "Aux Browser A38 Disposable", 0700) != 0) {
+       RAW_LOG(ERROR, "Aux OS-user startup refused: fresh directory creation incomplete");
+       return false;
+     }
+   }
+   if (!HoldUserDirectory(*state, paths.data, size_t{4}, "User Data", true) ||
+-      !HoldUserDirectory(*state, paths.cache, size_t{3}, "Aux Browser", true) ||
++      !HoldUserDirectory(*state, paths.cache, size_t{3}, "Aux Browser A38 Disposable", true) ||
+       !RevalidatePreparedDirectories(*state)) {
+     RAW_LOG(ERROR, "Aux OS-user startup refused: native directory revalidation failed");
+     return false;
+--- a/chrome/common/chrome_paths_mac.mm
++++ b/chrome/common/chrome_paths_mac.mm
+@@ -113,10 +113,10 @@
+     return;
+ #if defined(AUX_BROWSER_ONLY_NATIVE_STARTUP)
+   base::FilePath selected;
+-  const auto native_user_root = app_data_dir.AppendASCII("Aux Browser/User Data");
++  const auto native_user_root = app_data_dir.AppendASCII("Aux Browser A38 Disposable/User Data");
+   if (base::PathService::Get(chrome::DIR_USER_DATA, &selected) && selected == native_user_root &&
+       (profile_dir == selected || selected.IsParent(profile_dir))) {
+-    auto native_cache = cache_dir.AppendASCII("Aux Browser");
++    auto native_cache = cache_dir.AppendASCII("Aux Browser A38 Disposable");
+     if (profile_dir == selected || selected.AppendRelativePath(profile_dir, &native_cache)) {
+       *result = native_cache;
+       return;
+--- a/chrome/app/chrome_main_delegate.cc
++++ b/chrome/app/chrome_main_delegate.cc
+@@ -691,7 +691,7 @@
+   if (!command_line->GetSwitchValueASCII(switches::kProcessType).empty()) {
+     // Native helpers already have seatbelt. Their parent supplies the explicit
+     // fixed path; no user DB, policy/root reopen, mkdir or sandbox widening here.
+-    constexpr std::string_view suffix = "/Library/Application Support/Aux Browser/User Data";
++    constexpr std::string_view suffix = "/Library/Application Support/Aux Browser A38 Disposable/User Data";
+     const std::string_view named = requested.value();
+     if (!named.ends_with(suffix)) {
+       return aux::state_identity::PackagedIdentityAllowsStartup(8) &&
+@@ -703,7 +703,7 @@
+         !aux::state_identity::PackagedIdentityAllowsStartup(9)) return false;
+     const base::FilePath home_path(home);
+     return InstallOrdinaryUserPathServices({home_path, requested,
+-        home_path.AppendASCII("Library/Caches/Aux Browser")});
++        home_path.AppendASCII("Library/Caches/Aux Browser A38 Disposable")});
+   }
+   // This validates the actual current signed browser+child pair and exact
+   // sealed policy BEFORE deriving or creating any OS-user directory.
+--- a/daemon/AuxFreshBootstrapPolicy.swift
++++ b/daemon/AuxFreshBootstrapPolicy.swift
+@@ -24,9 +24,9 @@
+     // synthetic paths without consulting or touching a real user's home.
+     fileprivate static func deriveFixedRoots(canonicalHome:String,uid:uid_t)throws->Self {
+         guard uid != 0,AuxFreshBootstrapPolicyContents.validCanonicalParentSyntax(canonicalHome) else{throw AuxFreshBootstrapPolicyError.path}
+-        let support=canonicalHome+"/Library/Application Support/Aux Browser"
++        let support=canonicalHome+"/Library/Application Support/Aux Browser A38 Disposable"
+         let data=support+"/User Data",control=support+"/Control",tasks=support+"/Tasks"
+-        let cache=canonicalHome+"/Library/Caches/Aux Browser"
++        let cache=canonicalHome+"/Library/Caches/Aux Browser A38 Disposable"
+         for path in [support,data,control,tasks,cache] {
+             guard AuxFreshBootstrapPolicyContents.validCanonicalParentSyntax(path) else{throw AuxFreshBootstrapPolicyError.path}
+         }

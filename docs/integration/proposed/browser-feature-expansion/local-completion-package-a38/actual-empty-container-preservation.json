@@ -1,0 +1,15 @@
+{
+  "format": "aux.empty-container.execution.v1",
+  "approvedReviewSha256": "5ecc69d142953a861353d21d9817d959807be171b7800d1983e0495aa7248d4a",
+  "empty": false,
+  "moved": false,
+  "fileContentsRead": false,
+  "entryNamesReported": false,
+  "release": false,
+  "before": {
+    "uid": 502,
+    "mode": 448,
+    "device": 16777232,
+    "inode": 32049119
+  }
+}

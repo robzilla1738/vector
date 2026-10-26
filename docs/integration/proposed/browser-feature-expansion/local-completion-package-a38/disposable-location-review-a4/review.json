@@ -1,0 +1,80 @@
+{
+  "format": "aux.fixed-disposable-location.review.v1",
+  "reason": "The explicitly approved emptiness-only check found the original support container nonempty; it was neither moved nor inspected further.",
+  "originalReviewSha256": "f43813c285d0a0d439129f193f97cac1712c93f815cfc75da5b4e201bc8025e0",
+  "originalRootUnchanged": true,
+  "proposedNamespace": "Aux Browser A38 Disposable",
+  "proposedRoots": {
+    "support": "/Users/rcourson/Library/Application Support/Aux Browser A38 Disposable",
+    "cache": "/Users/rcourson/Library/Caches/Aux Browser A38 Disposable"
+  },
+  "metadataOnlyPreflight": [
+    {
+      "kind": "support",
+      "path": "/Users/rcourson/Library/Application Support/Aux Browser A38 Disposable",
+      "exists": false
+    },
+    {
+      "kind": "cache",
+      "path": "/Users/rcourson/Library/Caches/Aux Browser A38 Disposable",
+      "exists": false
+    }
+  ],
+  "sourceChanges": [
+    {
+      "input": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/aux/AuxNativeParentColdLaunch.cc",
+      "inputSha256": "4f8543172d07398fbf3e8cec5c0d29f2362647f4b776e6b8def689118a1e58fe",
+      "proposed": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/local-completion-package-a38/disposable-location-review-a4/source/chrome/browser/aux/AuxNativeParentColdLaunch.cc",
+      "proposedSha256": "b0ff3c4c21195f2b5c5c6973591a856adca04a76cdfefd8f94800d14567f2bce",
+      "count": 9,
+      "oldNamespace": "Aux Browser",
+      "newNamespace": "Aux Browser A38 Disposable"
+    },
+    {
+      "input": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/common/chrome_paths_mac.mm",
+      "inputSha256": "fd82076aa5228f6a10c2e4827adde4674f2b38b187d62bd09f5aac4e227de80e",
+      "proposed": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/local-completion-package-a38/disposable-location-review-a4/source/chrome/common/chrome_paths_mac.mm",
+      "proposedSha256": "20de58060705aef58871fc144849080873b09ed1a89e300ceefcd02b2289bb43",
+      "count": 2,
+      "oldNamespace": "Aux Browser",
+      "newNamespace": "Aux Browser A38 Disposable"
+    },
+    {
+      "input": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/app/chrome_main_delegate.cc",
+      "inputSha256": "cc0df8f57e52e32907242dc0a6ec91eda4f63e3f29692f68e0afc571d1ab8225",
+      "proposed": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/local-completion-package-a38/disposable-location-review-a4/source/chrome/app/chrome_main_delegate.cc",
+      "proposedSha256": "31ca8d561d44b6ea72fd1dada4c554e19011359a5c2d36fef700edff02e91ba6",
+      "count": 2,
+      "oldNamespace": "Aux Browser",
+      "newNamespace": "Aux Browser A38 Disposable"
+    },
+    {
+      "input": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/native-current-user-location-a29/source/AuxFreshBootstrapPolicy.swift",
+      "inputSha256": "e4017f47e0d4b4a8c5ba879b5c776ee4003fe6ed0ff843ad3ef9dca044edb9ef",
+      "proposed": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/local-completion-package-a38/disposable-location-review-a4/source/daemon/AuxFreshBootstrapPolicy.swift",
+      "proposedSha256": "5e210c1fbec2224f3de0aada0d5215962a8de139ed596fa664d9ec3a8db2589f",
+      "count": 2,
+      "oldNamespace": "Aux Browser",
+      "newNamespace": "Aux Browser A38 Disposable"
+    }
+  ],
+  "patchSha256": "1de7f83a245c6856f7a962e6609041e099dd4f53ba18e31ec0d3eb2a46fbe4be",
+  "proposedWork": "Update only the fifteen fixed native directory literals in these existing four startup consumers, rebuild their existing browser/daemon targets, preserve current signed bytes, replace the affected artifacts in the same A38 candidate, then re-sign only the framework, daemon and containing app under the prior same-object bounded-repair rules. The other sixteen signatures remain unchanged. Resume the original focused checks only in the new private disposable namespace and its installation/authentication entries.",
+  "signingObjects": [
+    "Contents/Frameworks/Aux Framework.framework",
+    "Contents/Resources/aux/apps/daemon/Aux Daemon.app",
+    "."
+  ],
+  "identity": "Apple Development: Robert Courson (68DV3N28DS)",
+  "identitySha1": "47ACA5D1CFADD21CFEDC589B4DEED6E2B7A96D90",
+  "newEntitlements": false,
+  "newObjects": false,
+  "newOSGrants": false,
+  "ownerStateAccess": false,
+  "uiChanges": false,
+  "newArchitecture": false,
+  "legacyMigration": false,
+  "provisioning": false,
+  "release": false,
+  "executed": false
+}
