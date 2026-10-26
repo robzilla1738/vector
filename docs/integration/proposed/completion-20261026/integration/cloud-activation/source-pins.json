@@ -2,9 +2,9 @@
   "format": "aux.cloud.activation-source-pins.v1",
   "sourceRoot": "/Users/rcourson/Documents/Vibe/web",
   "reviewedAt": "2026-10-26",
-  "sourceCommit": "5dd30822466d96a2e21c76a559dfa6ac138852e0",
-  "serviceTree": "fe0de2ed85d7d2e97477c25d41fa89571b8b4ccc",
-  "lastServiceCommit": "d7778e6468b589fd664c9d0e188faf6663a8af6e",
+  "sourceCommit": "4193cdef41c33e4a2bfcfc5b3cdebfc3e0f00d51",
+  "serviceTree": "0ffeb812450951f40fe3083adf814c13f27a7f45",
+  "lastServiceCommit": "cd96660754d6c1e06c48517d812eebe15d0930ed",
   "serviceFiles": [
     {
       "path": "services/aux-cloud/.env.example",
@@ -43,8 +43,8 @@
     },
     {
       "path": "services/aux-cloud/app/community/page.tsx",
-      "bytes": 1132,
-      "sha256": "9c10a6836d751685588d7688ea7b2e90bd6b2a3cb071026ae3b17618f1962de7"
+      "bytes": 1568,
+      "sha256": "2301b4335dbb9219dcb53854c949627dc258815f53202facfece23a90bd9cb98"
     },
     {
       "path": "services/aux-cloud/app/desktop/connect/page.tsx",
@@ -83,8 +83,8 @@
     },
     {
       "path": "services/aux-cloud/app/policy/privacy/page.tsx",
-      "bytes": 3797,
-      "sha256": "41a1f77cb3a4f7142e33a429fd47c7abfaff54ea2a44a16b43c1c4749e709a10"
+      "bytes": 4685,
+      "sha256": "133adb57f8cee63568cdff2b771516a4251e1754ad6249bd3a5815cd9b0b0692"
     },
     {
       "path": "services/aux-cloud/app/policy/terms/page.tsx",
@@ -1158,6 +1158,41 @@
       "path": "docs/integration/proposed/completion-20261026/integrator/product-link-audit.json",
       "bytes": 935,
       "sha256": "337bac453d23b9f20af38e635526b8c43a944728888cdce30ffc7e3665eebe69"
+    },
+    {
+      "path": "docs/integration/proposed/completion-20261026/integration/feedback/source-pins.json",
+      "bytes": 3337,
+      "sha256": "b2a4450c1e834d190a352b15efdbec6d287ba6f7ef89582f326f65cf0d22865e"
+    },
+    {
+      "path": "docs/integration/proposed/completion-20261026/integration/feedback/verification.json",
+      "bytes": 988,
+      "sha256": "84164b0c0ff771ce7304a9d7059ad68dc0cc03ba25d829156157c640dddaf1d1"
+    },
+    {
+      "path": "docs/integration/proposed/completion-20261026/integration/feedback/README.md",
+      "bytes": 5349,
+      "sha256": "6453395d2477d091cc68272371e838c15a7a1749465b649fb58b0739afe482bd"
+    },
+    {
+      "path": "docs/integration/proposed/completion-20261026/integration/product-information/community.md",
+      "bytes": 1271,
+      "sha256": "77c7a1d5077f59e39b03757cb6ef286d57e4299276bfb98ce386844daf742222"
+    },
+    {
+      "path": "docs/integration/proposed/completion-20261026/integration/product-information/privacy.md",
+      "bytes": 4207,
+      "sha256": "fe7a20f9c49332e71e47d047b16228c25d08184f82fb3ce41d1128c97b0c53aa"
+    },
+    {
+      "path": "docs/integration/proposed/completion-20261026/integrator/paired-source-a7.json",
+      "bytes": 205489,
+      "sha256": "d1d872318197104fa8e0a7c71732dae81b3486c3ba0f6d906c9a02484605f963"
+    },
+    {
+      "path": "docs/integration/proposed/completion-20261026/integrator/ui-source-a4.json",
+      "bytes": 15896,
+      "sha256": "8c4d3a9deb2175ae3a8696682ff2927b9e8c5786497c3f7cf19165e5616ec112"
     },
     {
       "path": "docs/integration/proposed/final-completion/cloud/readiness.md",

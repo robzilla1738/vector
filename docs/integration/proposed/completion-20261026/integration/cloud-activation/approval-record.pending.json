@@ -4,15 +4,15 @@
   "activationAuthorized": false,
   "executed": false,
   "source": {
-    "snapshotCommit": "5dd30822466d96a2e21c76a559dfa6ac138852e0",
-    "serviceTree": "fe0de2ed85d7d2e97477c25d41fa89571b8b4ccc",
-    "lastServiceCommit": "d7778e6468b589fd664c9d0e188faf6663a8af6e",
+    "snapshotCommit": "4193cdef41c33e4a2bfcfc5b3cdebfc3e0f00d51",
+    "serviceTree": "0ffeb812450951f40fe3083adf814c13f27a7f45",
+    "lastServiceCommit": "cd96660754d6c1e06c48517d812eebe15d0930ed",
     "manifestFileSha256": "7d452e13d873f9c2b08efc5eab12c928d942e846f667be4938aa519740d89f10",
     "migrations": 12,
     "historicalReviewSnapshot": false,
     "refreshRequiredAfterIntegratedInformationRoutes": false,
     "serviceFiles": 221,
-    "sourcePinScope": "Final service source freeze includes actual four information routes and corrected layout metadata; no tests rerun."
+    "sourcePinScope": "Final service freeze after exact community/privacy feedback disclosure copies; actual paired-a7/UI-a4 and feedback adapter/draft evidence included. Twelve migration hashes unchanged; no new tests/API/backup."
   },
   "c1": {
     "recipientConfiguration": "configuration.json",
