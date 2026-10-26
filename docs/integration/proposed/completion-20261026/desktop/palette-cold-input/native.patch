@@ -1,0 +1,257 @@
+--- a/chrome/browser/ui/views/frame/aux_tab_search_bubble.cc
++++ b/chrome/browser/ui/views/frame/aux_tab_search_bubble.cc
+@@ -78,6 +78,11 @@
+ #include "third_party/skia/include/core/SkColor.h"
+ #include "ui/views/event_monitor.h"
+ #include "ui/views/layout/fill_layout.h"
++#include "ui/views/controls/textfield/textfield.h"
++#include "ui/views/controls/textfield/textfield_controller.h"
++#include "ui/views/view_class_properties.h"
++#include "ui/views/border.h"
++#include "ui/views/accessibility/view_accessibility.h"
+ #include "ui/views/view_tracker.h"
+ #include "ui/views/view_utils.h"
+ #include "ui/views/widget/widget.h"
+@@ -159,6 +164,11 @@
+     auto* entry = contents ? contents->GetController().GetLastCommittedEntry() : nullptr;
+     navigation_id_ = entry ? entry->GetUniqueID() : 0;
+   }
++  using InputHandler = base::RepeatingCallback<base::DictValue(const base::DictValue*)>;
++  void SetInputHandler(InputHandler handler) { input_handler_ = std::move(handler); }
++  base::DictValue InputState(const base::DictValue* ack) {
++    return input_handler_ ? input_handler_.Run(ack) : base::DictValue();
++  }
+   void MarkRendererMounted() { renderer_mounted_ = true; }
+   bool renderer_mounted() const { return renderer_mounted_; }
+   void Invalidate() { generation_.clear(); target_.reset(); proposal_.reset(); context_action_.reset(); context_selected_.clear(); context_authorized_ = false; }
+@@ -275,6 +285,7 @@
+   base::WeakPtr<content::WebContents> target_;
+   bool target_present_ = false;
+   bool renderer_mounted_ = false;
++  InputHandler input_handler_;
+   std::string ask_profile_epoch_;
+   ContextPage context_active_;
+   std::vector<ContextPage> context_selected_;
+@@ -323,7 +334,7 @@
+ BEGIN_METADATA(AuxTabSearchWebView)
+ END_METADATA
+ 
+-class AuxTabSearchContentsView : public views::View {
++class AuxTabSearchContentsView : public views::View, public views::TextfieldController {
+   METADATA_HEADER(AuxTabSearchContentsView, views::View)
+  public:
+   AuxTabSearchContentsView(Profile* profile, base::RepeatingClosure close)
+@@ -332,11 +343,65 @@
+     SetPreferredSize(kSearchSize);
+     webview_ = AddChildView(
+         std::make_unique<AuxTabSearchWebView>(profile, close_));
++    initial_input_ = AddChildView(std::make_unique<views::Textfield>());
++    initial_input_->SetProperty(views::kViewIgnoredByLayoutKey, true);
++    initial_input_->SetController(this);
++    initial_input_->SetBorder(views::CreateEmptyBorder());
++    const gfx::FontList font;
++    initial_input_->SetFontList(font.Derive(16 - font.GetFontSize(), gfx::Font::NORMAL, gfx::Font::Weight::NORMAL));
++    initial_input_->GetViewAccessibility().SetName(u"Command input");
++    initial_input_->SetVisible(false);
+     AddAccelerator(ui::Accelerator(ui::VKEY_ESCAPE, ui::EF_NONE));
+     RefreshToggleAccelerator();
+     views::WebContentsSetBackgroundColor::CreateForWebContentsWithColor(
+         webview_->GetWebContents(), SK_ColorTRANSPARENT);
+     webview_->LoadInitialURL(SearchURL());
++  }
++  ~AuxTabSearchContentsView() override {
++    if (auto* binding = SearchBrowserBinding::FromWebContents(webview_->GetWebContents()))
++      binding->SetInputHandler({});
++  }
++  void Layout(PassKey key) override {
++    views::View::Layout(key);
++    initial_input_->SetBounds(40, 0, std::max(0, width() - 80), 44);
++  }
++  void OnAfterUserAction(views::Textfield* sender) override {
++    if (sender == initial_input_ && initial_input_->GetVisible()) {
++      initial_submit_ = false;
++      NotifyInvocation(true);
++    }
++  }
++  bool HandleKeyEvent(views::Textfield* sender, const ui::KeyEvent& event) override {
++    if (sender != initial_input_ || !initial_input_->GetVisible() ||
++        event.type() != ui::EventType::kKeyPressed ||
++        event.key_code() != ui::VKEY_RETURN || initial_input_->IsIMEComposing()) return false;
++    initial_submit_ = true;
++    ++initial_revision_;
++    NotifyInvocation(true);
++    return true;
++  }
++  base::DictValue InputState(const base::DictValue* ack) {
++    if (!initial_input_->GetVisible()) return base::DictValue().Set("active", false);
++    const auto text = initial_input_->GetText();
++    const auto selection = initial_input_->GetSelectedRange();
++    const bool composing = initial_input_->IsIMEComposing();
++    if (text != initial_text_ || selection != initial_selection_ || composing != initial_composing_) {
++      initial_text_ = text; initial_selection_ = selection; initial_composing_ = composing;
++      ++initial_revision_;
++    }
++    const auto revision = base::NumberToString(initial_revision_);
++    auto* binding = SearchBrowserBinding::FromWebContents(webview_->GetWebContents());
++    if (ack && binding && ack->FindString("generation") &&
++        *ack->FindString("generation") == binding->generation() &&
++        ack->FindString("inputRevision") && *ack->FindString("inputRevision") == revision && !composing) {
++      const bool submit = initial_submit_;
++      initial_input_->SetVisible(false);
++      FocusWebContents();
++      return base::DictValue().Set("active", false).Set("accepted", true).Set("submit", submit);
++    }
++    return base::DictValue().Set("active", true).Set("revision", revision)
++        .Set("text", base::UTF16ToUTF8(text)).Set("selectionStart", static_cast<int>(selection.start()))
++        .Set("selectionEnd", static_cast<int>(selection.end())).Set("composing", composing);
+   }
+   bool AcceleratorPressed(const ui::Accelerator& accelerator) override {
+     ui::Accelerator toggle;
+@@ -349,6 +414,7 @@
+     return false;
+   }
+   void FocusWebContents() {
++    if (initial_input_->GetVisible()) { initial_input_->RequestFocus(); return; }
+     if (auto* contents = webview_->GetWebContents()) {
+       contents->Focus();
+       webview_->RequestFocus();
+@@ -374,7 +440,7 @@
+     base::ListValue args;
+     args.Append(base::DictValue()
+         .Set("documentId", extensions::ExtensionApiFrameIdMap::GetDocumentId(frame).ToString())
+-        .Set("shown", shown));
++        .Set("shown", shown).Set("inputPending", initial_input_->GetVisible()));
+     auto event = std::make_unique<extensions::Event>(
+         extensions::events::AUXBROWSERPREFERENCES_ONCOMMANDINVOCATION,
+         "auxBrowserPreferences.onCommandInvocation", std::move(args), contents->GetBrowserContext());
+@@ -386,7 +452,23 @@
+                        std::optional<base::DictValue> proposal) {
+     RefreshToggleAccelerator();
+     if (auto* binding = SearchBrowserBinding::FromWebContents(webview_->GetWebContents())) {
++      const bool cold = !binding->renderer_mounted() || initial_input_->GetVisible() ||
++          webview_->GetWebContents()->IsCrashed() ||
++          (webview_->GetWebContents()->GetPrimaryMainFrame() &&
++           webview_->GetWebContents()->GetPrimaryMainFrame()->IsErrorDocument());
+       binding->Begin(mode);
++      if (cold) {
++        const auto* target = binding->target();
++        initial_input_->SetText(mode == AuxCommandBarMode::kNavigate && target
++            ? base::UTF8ToUTF16(target->GetVisibleURL().spec()) : std::u16string());
++        initial_input_->SelectAll(false);
++        initial_input_->SetReadOnly(mode == AuxCommandBarMode::kTidy);
++        initial_input_->SetPlaceholderText(mode == AuxCommandBarMode::kCommands
++            ? u"Search commands, tabs or enter a URL" : u"Search or type a URL");
++        initial_input_->SetVisible(true);
++        initial_submit_ = false;
++        ++initial_revision_;
++      }
+       if (proposal) binding->SetProposal(std::move(*proposal));
+     }
+     auto* contents = webview_->GetWebContents();
+@@ -407,11 +489,16 @@
+   void InvalidateInvocation() {
+     if (auto* binding = SearchBrowserBinding::FromWebContents(webview_->GetWebContents()))
+       binding->Invalidate();
++    initial_input_->SetVisible(false);
++    initial_submit_ = false;
+     NotifyInvocation(false);
+   }
+   void BindBrowser(BrowserWindowInterface& browser) {
+     if (auto* contents = webview_->GetWebContents())
+       SearchBrowserBinding::CreateForWebContents(contents, browser);
++    if (auto* binding = SearchBrowserBinding::FromWebContents(webview_->GetWebContents()))
++      binding->SetInputHandler(base::BindRepeating(&AuxTabSearchContentsView::InputState,
++                                                  base::Unretained(this)));
+   }
+  private:
+   void RefreshToggleAccelerator() {
+@@ -424,6 +511,12 @@
+       AddAccelerator(toggle);
+     }
+   }
++  raw_ptr<views::Textfield> initial_input_ = nullptr;
++  std::u16string initial_text_;
++  gfx::Range initial_selection_;
++  bool initial_composing_ = false;
++  bool initial_submit_ = false;
++  uint64_t initial_revision_ = 0;
+   const base::RepeatingClosure close_;
+   base::WeakPtr<Profile> profile_;
+   std::optional<ui::Accelerator> toggle_accelerator_;
+@@ -889,7 +982,7 @@
+   auto* owner = SearchOwner(browser, true);
+   return owner && owner->Show({}, mode);
+ }
+-base::DictValue GetAuxCommandContext(content::WebContents* sender) {
++base::DictValue GetAuxCommandContext(content::WebContents* sender, const base::DictValue* input_ack) {
+   auto* binding = sender ? aux::SearchBrowserBinding::FromWebContents(sender) : nullptr;
+   if (!binding) return CommandFailure("Command context expired");
+   binding->MarkRendererMounted();
+@@ -901,6 +994,7 @@
+   result.Set("paletteDocumentId", palette_document);
+   result.Set("mode", CommandModeName(binding->mode()));
+   result.Set("generation", binding->generation());
++  result.Set("nativeInput", binding->InputState(input_ack));
+   result.Set("windowId", browser->GetSessionID().id());
+   result.Set("nativeProfileId", browser->GetProfile()->GetPath().BaseName().AsUTF8Unsafe());
+   result.Set("incognito", browser->GetProfile()->IsOffTheRecord());
+--- a/chrome/browser/ui/views/frame/aux_tab_search_bubble.h
++++ b/chrome/browser/ui/views/frame/aux_tab_search_bubble.h
+@@ -25,7 +25,8 @@
+ bool ShowAuxCommandBar(BrowserWindowInterface* browser, AuxCommandBarMode mode);
+ // Only the actual current search WebContents may use these methods. Context
+ // tokens expire on hide, navigation, active-view/profile change or replacement.
+-base::DictValue GetAuxCommandContext(content::WebContents* sender);
++base::DictValue GetAuxCommandContext(content::WebContents* sender,
++                                     const base::DictValue* input_ack = nullptr);
+ void CommitAuxCommandAsync(content::WebContents* sender, const base::DictValue& request,
+                            base::OnceCallback<void(base::DictValue)> reply);
+ // Caller validates current native organization owner/revision/account before show.
+--- a/chrome/browser/extensions/api/aux_browser_preferences/aux_browser_preferences_api.cc
++++ b/chrome/browser/extensions/api/aux_browser_preferences/aux_browser_preferences_api.cc
+@@ -106,8 +106,12 @@
+   }
+   auto* prefs = profile()->GetPrefs();
+   if (method == "getCommandContext") {
+-    if (!args().empty()) return RespondNow(Error("This method takes no arguments"));
+-    return RespondNow(WithArguments(GetAuxCommandContext(GetSenderWebContents())));
++    if (args().size() > 1 || (args().size() == 1 && !args()[0].is_dict()))
++      return RespondNow(Error("Invalid command input acknowledgment"));
++    const auto* ack = args().empty() ? nullptr : &args()[0].GetDict();
++    if (ack && (ack->size() != 2 || !ack->FindString("generation") || !ack->FindString("inputRevision")))
++      return RespondNow(Error("Invalid command input acknowledgment"));
++    return RespondNow(WithArguments(GetAuxCommandContext(GetSenderWebContents(), ack)));
+   }
+   if (method == "commitCommand") {
+     if (args().size() != 1 || !args()[0].is_dict())
+--- a/chrome/common/extensions/api/aux_browser_preferences.json
++++ b/chrome/common/extensions/api/aux_browser_preferences.json
+@@ -43,7 +43,7 @@
+       {
+         "name": "getCommandContext",
+         "type": "function",
+-        "parameters": [],
++        "parameters": [{"name":"inputAck","type":"object","optional":true,"properties":{"generation":{"type":"string"},"inputRevision":{"type":"string"}}}],
+         "returns_async": {
+           "name": "callback",
+           "parameters": [
+@@ -1718,7 +1718,7 @@
+       }
+     ],
+     "events": [
+-      {"name":"onCommandInvocation","type":"function","parameters":[{"name":"invocation","type":"object","properties":{"documentId":{"type":"string"},"shown":{"type":"boolean"}}}]},
++      {"name":"onCommandInvocation","type":"function","parameters":[{"name":"invocation","type":"object","properties":{"documentId":{"type":"string"},"shown":{"type":"boolean"},"inputPending":{"type":"boolean","optional":true}}}]},
+       {
+         "name": "onUiMigrationWorkerControl",
+         "type": "function",
+--- a/assets/tabsearch-3k_2hgil.js
++++ b/assets/tabsearch-3k_2hgil.js
+@@ -183,7 +183,7 @@
+  throw Error('Unsupported page action.');
+ }
+ function createAuxPaletteInvocation(){let epoch=0,edits=0,generation=null;return{begin(){generation=null;const token=++epoch,start=edits;return{current:()=>epoch===token,unedited:()=>epoch===token&&edits===start,accept(value){if(epoch===token)generation=value}}},invalidate(){++epoch;generation=null},edit(){++edits},allows(value){return generation!==null&&generation===value},capture(unedited=false){const token=epoch,start=edits;return()=>epoch===token&&(!unedited||edits===start)}}}
+-function Qe(){const auxInvocation=(0,i.useRef)(null);if(!auxInvocation.current)auxInvocation.current=createAuxPaletteInvocation();const[auxFileState,auxSetFileState]=(0,i.useState)(null),auxFileGuard=(0,i.useRef)(null);if(!auxFileGuard.current)auxFileGuard.current=createFileReviewGuard(request=>auxFilesClient.models.downloadNameCancel.mutate(request));(0,i.useEffect)(()=>()=>auxFileGuard.current?.invalidate(),[]);const[auxProductivityReceipt,auxSetProductivityReceipt]=(0,i.useState)(null);const[auxNavContext,auxNavSetContext]=(0,i.useState)(null),[auxNavError,auxNavSetError]=(0,i.useState)(""),auxNavBusy=(0,i.useRef)(false);(0,i.useLayoutEffect)(()=>{let documentId=null,pending=null;const invalidate=()=>{auxInvocation.current.invalidate();auxFileGuard.current.invalidate();auxNavBusy.current=false;auxNavSetContext(null)};const refresh=(reset=true)=>{const attempt=auxInvocation.current.begin();auxFileGuard.current.invalidate();auxNavBusy.current=false;auxNavSetContext(null);auxSetFileState(null);auxSetProductivityReceipt(null);auxNavSetError("");if(reset){t("");a("");E(0)}chrome.auxBrowserPreferences.getCommandContext().then(value=>{if(!attempt.current())return;documentId=value.paletteDocumentId??null;const queued=pending;pending=null;if(queued&&queued.documentId===documentId){if(queued.shown)refresh(false);else invalidate();return}if(!value.success)throw Error(value.error);attempt.accept(value.generation);auxNavSetContext(value);if(value.mode==="navigate"&&(reset||!T.current?.value)&&attempt.unedited()){t(value.activeUrl??"");a(value.activeUrl??"");requestAnimationFrame(()=>{if(attempt.unedited()){T.current?.focus();T.current?.select()}})}}).catch(error=>{if(attempt.current())auxNavSetError(error.message)})};const notify=event=>{if(documentId===null){pending=event;return}if(event.documentId!==documentId)return;if(event.shown)refresh();else invalidate()};chrome.auxBrowserPreferences.onCommandInvocation.addListener(notify);refresh();return()=>{chrome.auxBrowserPreferences.onCommandInvocation.removeListener(notify);invalidate()}},[]);const[e,t]=(0,i.useState)(""),[r,a]=(0,i.useState)(""),[l,d]=(0,i.useState)(0),[c,y]=(0,i.useState)(null),[x,E]=(0,i.useState)(0),[$,b]=(0,i.useState)({bookmarks:[],chatSearch:[],extensions:[],history:[],openTabs:[],recentChats:[],recentlyClosed:[]}),L=(0,i.useRef)(null),g=(0,i.useRef)(0),q=(0,i.useRef)(Promise.resolve()),k=(0,i.useRef)(0),T=(0,i.useRef)(null),D=(0,i.useRef)(null),I=(0,i.useMemo)(()=>productivitySections(auxNavContext,auxProductivityReceipt)??filesSections(auxNavContext,auxFileState,r,developerSections(auxNavContext,r,mediaSections(auxNavContext,r,navigationSections(auxNavContext,r,Pe($,r))))),[r,$,auxNavContext,auxProductivityReceipt,auxFileState]),h=(0,i.useMemo)(()=>Ve(I),[I]),M=(0,i.useCallback)(()=>{const current=auxInvocation.current.capture(true);requestAnimationFrame(()=>{if(current()){T.current?.focus();T.current?.select()}})},[]),B=(0,i.useCallback)(()=>{const n=++g.current;L.current?.abort();const o=new AbortController;L.current=o;const m=_e().then(p=>{g.current===n&&b(u=>({...u,openTabs:p}))}).catch(()=>{}),f=ze().then(p=>{g.current===n&&b(u=>({...u,recentlyClosed:p}))}).catch(()=>{}),v=$e(o.signal).then(p=>{g.current===n&&b(u=>({...u,recentChats:p}))}).catch(()=>{}),N=Be().then(p=>{g.current===n&&b(u=>({...u,extensions:p}))}).catch(()=>{});q.current=Promise.all([m,f,v,N])},[]),A=(0,i.useCallback)(async n=>{if(auxNavBusy.current||!auxInvocation.current.allows(auxNavContext?.generation))return;const auxActionCurrent=auxInvocation.current.capture();auxNavBusy.current=true;auxNavSetError("");let auxNavSuccess=false;try{if(n.kind==="aux-context-action"){await commitContextAction(chrome.auxBrowserPreferences,auxFilesClient,auxFilesAccount,auxNavContext,n);auxNavSuccess=true;return}if(n.kind==="aux-ask-query"){await commitPaletteAsk(chrome.auxBrowserPreferences,auxNavContext,n);auxNavSuccess=true;return}if(n.kind?.startsWith("aux-developer-")){await runDeveloperCommand(chrome.auxBrowserPreferences,chrome.tabs,auxNavContext,n);auxNavSuccess=true;return}if(n.kind==="aux-pip"){const result=await chrome.auxBrowserPreferences.togglePictureInPicture({generation:auxNavContext.generation});if(!result.success)throw Error(result.error);auxNavSuccess=true;return}if(n.kind?.startsWith("aux-file")){const action=auxFileGuard.current.begin();try{const result=await runFileAction(chrome.auxBrowserPreferences,auxFilesClient,auxFilesAccount,auxNavContext,auxFileState,r,n,action.setRequest);if(!action.isCurrent())return;auxSetFileState(result.state);if(result.text!==undefined){t(result.text);a(result.text);requestAnimationFrame(()=>{if(action.isCurrent()){T.current?.focus();T.current?.select()}})}}catch(error){if(action.isCurrent())throw error}return}if(n.kind?.startsWith("aux-tidy-")){const result=await commitProductivityAction(chrome.auxBrowserPreferences,auxNavContext,auxProductivityReceipt,n);if(!auxActionCurrent())return;if(result.receipt)auxSetProductivityReceipt(result.receipt);auxNavSuccess=!!result.close;return}if(n.kind==="aux-logical-tab"||n.kind==="aux-space"||n.kind==="aux-navigate"||n.kind==="aux-command"||n.kind==="aux-new-blank-tab"||n.kind==="open-tab"||n.url&&n.kind!=="extension"&&n.kind!=="recently-closed"){await commitNavigation(chrome.auxBrowserPreferences,auxNavContext,n);auxNavSuccess=true;return}const auxLive=await chrome.auxBrowserPreferences.getCommandContext();if(!auxActionCurrent())return;if(!auxLive.success||auxLive.generation!==auxNavContext?.generation)throw Error("Command context expired; reopen the command bar");const o=n.kind==="chat"?n.url:void 0,m=o?(await chrome.tabs.query({})).find(f=>[f.url,f.pendingUrl].some(v=>v?.startsWith(o)&&/^([/?]|$)/.test(v.slice(o.length))))?.id:n.tabId;if(!auxActionCurrent())return;if(m!==void 0){const f=await chrome.tabs.get(m);if(!auxActionCurrent())return;typeof f.windowId=="number"&&await Promise.all([chrome.tabs.update(m,{active:!0}),chrome.windows.update(f.windowId,{focused:!0})]);return}if(n.kind==="recently-closed"){n.restoreSessionId&&chrome.sessions?.restore&&await chrome.sessions.restore(n.restoreSessionId);auxNavSuccess=true;return}if(n.kind==="extension"&&n.extensionId){if(n.isApp&&chrome.management?.launchApp){await chrome.management.launchApp(n.extensionId);auxNavSuccess=true;return}if(chrome.management?.launchExtension){await chrome.management.launchExtension(n.extensionId);auxNavSuccess=true;return}await chrome.tabs.create({url:`chrome-extension://${n.extensionId}/popup.html`});auxNavSuccess=true;return}n.url&&await chrome.tabs.create({url:n.url});auxNavSuccess=true}catch(error){if(auxActionCurrent())auxNavSetError(error instanceof Error?error.message:String(error))}finally{if(auxActionCurrent()){auxNavBusy.current=false;if(auxNavSuccess)O()}}},[auxNavContext,auxProductivityReceipt,auxFileState,r]);(0,i.useEffect)(()=>{const n=()=>{document.visibilityState!=="hidden"&&(M(),B(),ne({disableTransitionOnChange:!0}).catch(()=>{}),d(m=>m+1))},o=()=>{document.visibilityState==="visible"&&n()};return n(),window.addEventListener("focus",n),window.addEventListener("pageshow",n),document.addEventListener("visibilitychange",o),()=>{window.removeEventListener("focus",n),window.removeEventListener("pageshow",n),document.removeEventListener("visibilitychange",o),g.current+=1,L.current?.abort()}},[M,B]),(0,i.useEffect)(()=>{const n=o=>{Oe(o)&&(o.preventDefault(),o.stopPropagation(),O())};return window.addEventListener("keydown",n,{capture:!0}),()=>{window.removeEventListener("keydown",n,{capture:!0})}},[]),(0,i.useEffect)(()=>{const n=r.trim(),o=++k.current,m=new AbortController;if(y(null),!n)return()=>m.abort();const f=setTimeout(()=>{const v=qe(n,m.signal).then(u=>{k.current===o&&b(C=>({...C,chatSearch:u}))}).catch(()=>{}),N=De(n).then(u=>{k.current===o&&b(C=>({...C,history:u}))}).catch(()=>{}),p=Me(n).then(u=>{k.current===o&&b(C=>({...C,bookmarks:u}))}).catch(()=>{});Promise.all([v,N,p,q.current]).then(()=>{k.current===o&&y({query:r,revision:l})})},80);return()=>{clearTimeout(f),m.abort()}},[l,r]),(0,i.useEffect)(()=>{E(n=>h.length===0?-1:n<0?0:Math.min(n,h.length-1))},[h.length]),(0,i.useEffect)(()=>{x<0||D.current?.querySelector('[data-selected="true"]')?.scrollIntoView({block:"nearest"})},[x]);const Z=(0,i.useCallback)(n=>{if(!n.nativeEvent.isComposing){if(n.key==="ArrowDown"||n.key==="ArrowUp"){if(n.preventDefault(),h.length===0)return;E(o=>(o+(n.key==="ArrowDown"?1:-1)+h.length)%h.length);return}if(n.key==="Enter"){n.preventDefault();const o=h[x];o&&A(o)}}},[A,h,x]),P=n=>{a(n),E(0)},G=n=>{auxInvocation.current.edit();const o=n.currentTarget.value;t(o),(!(n.nativeEvent instanceof InputEvent)||!n.nativeEvent.isComposing)&&P(o)},J=c?.query===r&&c.revision===l;return(0,s.jsxs)("main",{className:"text-surface-primary-foreground flex h-85 w-full flex-col overflow-hidden",children:[(0,s.jsxs)("div",{className:"flex h-11 min-h-11 items-center gap-2.5 px-3",children:[(0,s.jsx)(ce,{className:"text-muted-foreground size-4.5 shrink-0"}),(0,s.jsx)("input",{ref:T,value:e,className:"placeholder:text-muted-foreground h-full min-w-0 grow bg-transparent text-base tracking-tight outline-none",readOnly:auxNavContext?.mode==="tidy",placeholder:auxFileState?.view==="rename"?"Filename without extension":auxFileState?.view==="list"?"Search recent files":auxNavContext?.mode==="tidy"?"Review tab organization":auxNavContext?.mode==="commands"?"Search commands, tabs or enter a URL":auxNavContext?.mode==="new-tab"||auxNavContext?.mode==="navigate"?"Search or type a URL":"Search tabs, chats, history, bookmarks or extensions",onChange:G,onCompositionEnd:n=>P(n.currentTarget.value),onKeyDown:Z}),(0,s.jsx)(ye,{children:xe(auxNavContext?.mode==="new-tab"?"Meta+T":auxNavContext?.mode==="navigate"?"Meta+L":auxNavContext?.mode==="commands"?"Meta+K":"Meta+Shift+A")})]}),(0,s.jsxs)(de,{ref:D,className:"min-h-0 grow overflow-hidden px-2 py-1",children:[I.length>0?I.map(n=>(0,s.jsx)(He,{items:n.items,selectedIndex:x,section:n,onActivate:A,onSelect:E,startIndex:h.findIndex(o=>o.id===n.items[0]?.id)},n.id)):null,auxNavError?(0,s.jsx)(we,{children:(0,s.jsx)(be,{role:"alert",children:auxNavError})}):I.length===0&&J?(0,s.jsx)(we,{children:(0,s.jsx)(be,{children:"No results"})}):null]})]})}var He=({items:e,onActivate:t,onSelect:r,section:a,selectedIndex:l,startIndex:d})=>(0,s.jsxs)("section",{className:"pt-2 first:pt-1",children:[(0,s.jsx)("h2",{className:"text-muted-foreground px-2 py-1.5 text-xs font-semibold",children:a.title}),(0,s.jsx)("ul",{className:"space-y-0.5",children:e.map((c,y)=>{const x=d+y;return(0,s.jsx)(Ke,{item:c,selected:l===x,onClick:()=>{t(c)},onPointerEnter:()=>r(x),onDragStart:()=>t({...c,kind:"aux-file-drag",downloadId:c.file.id})},c.id)})})]}),Ke=({item:e,onClick:t,onPointerEnter:r,selected:a,onDragStart:d})=>(0,s.jsxs)("li",{className:X("flex h-8 cursor-default items-center gap-2 rounded-lg px-2 text-sm leading-5 font-medium select-none",a&&"bg-secondary"),"data-selected":a,onClick:t,onPointerEnter:r,draggable:e.kind==="aux-file-select"&&e.file.available,onDragStart:event=>{event.preventDefault();d?.()},children:[(0,s.jsx)(We,{item:e}),(0,s.jsxs)("div",{className:"flex min-w-0 flex-1 items-baseline gap-2",children:[(0,s.jsx)("span",{className:"truncate",children:e.title}),e.subtitle?(0,s.jsx)("span",{className:"text-muted-foreground min-w-0 truncate text-xs",children:e.subtitle}):null]}),e.actionLabel?(0,s.jsxs)("div",{className:"text-muted-foreground flex shrink-0 items-center gap-2 text-xs font-medium",children:[(0,s.jsx)("span",{children:e.actionLabel}),(0,s.jsx)(K,{className:"size-3.5"})]}):e.timeLabel?(0,s.jsx)("span",{className:"text-muted-foreground shrink-0 text-xs",children:e.timeLabel}):null]});function We({item:e}){return e.kind==="chat"?(0,s.jsx)("div",{className:"pointer-events-none flex size-4.5 shrink-0 items-center justify-center select-none",draggable:!1,children:(0,s.jsx)(ae,{className:"text-muted-foreground size-4"})}):e.kind==="extension"&&!e.faviconUrl?(0,s.jsx)("div",{className:"pointer-events-none flex size-4.5 shrink-0 items-center justify-center select-none",draggable:!1,children:(0,s.jsx)(V,{className:"text-muted-foreground size-4"})}):(0,s.jsxs)(pe,{className:"text-muted-foreground pointer-events-none size-4.5 shrink-0 rounded-sm bg-transparent select-none",draggable:!1,children:[e.faviconUrl?(0,s.jsx)(fe,{draggable:!1,src:e.faviconUrl}):null,(0,s.jsx)(he,{className:"bg-transparent",children:e.kind==="open-tab"?(0,s.jsx)(le,{className:"size-4"}):e.kind==="history"?(0,s.jsx)(ie,{className:"size-4"}):e.kind==="bookmark"?(0,s.jsx)(ge,{className:"size-4"}):e.kind==="extension"?(0,s.jsx)(V,{className:"size-4"}):(0,s.jsx)(K,{className:"size-4"})})]})}te();var Q=document.getElementById("root");if(Q){const e=window;e.tabSearchRoot??=(0,ve.createRoot)(Q),e.tabSearchRoot.render((0,s.jsx)(Qe,{}))}
++function Qe(){const auxInputTransfer=(0,i.useRef)(false);const[auxNativeInput,auxSetNativeInput]=(0,i.useState)(null),[auxNativeSubmit,auxSetNativeSubmit]=(0,i.useState)(false);const auxInvocation=(0,i.useRef)(null);if(!auxInvocation.current)auxInvocation.current=createAuxPaletteInvocation();const[auxFileState,auxSetFileState]=(0,i.useState)(null),auxFileGuard=(0,i.useRef)(null);if(!auxFileGuard.current)auxFileGuard.current=createFileReviewGuard(request=>auxFilesClient.models.downloadNameCancel.mutate(request));(0,i.useEffect)(()=>()=>auxFileGuard.current?.invalidate(),[]);const[auxProductivityReceipt,auxSetProductivityReceipt]=(0,i.useState)(null);const[auxNavContext,auxNavSetContext]=(0,i.useState)(null),[auxNavError,auxNavSetError]=(0,i.useState)(""),auxNavBusy=(0,i.useRef)(false);(0,i.useLayoutEffect)(()=>{let documentId=null,pending=null;const invalidate=()=>{auxInvocation.current.invalidate();auxFileGuard.current.invalidate();auxNavBusy.current=false;auxNavSetContext(null);auxInputTransfer.current=false;auxSetNativeInput(null);auxSetNativeSubmit(false)};const refresh=(reset=true)=>{const attempt=auxInvocation.current.begin();auxFileGuard.current.invalidate();auxNavBusy.current=false;auxNavSetContext(null);auxSetFileState(null);auxSetProductivityReceipt(null);auxNavSetError("");if(reset){t("");a("");E(0);auxSetNativeSubmit(false)}chrome.auxBrowserPreferences.getCommandContext().then(value=>{if(!attempt.current())return;documentId=value.paletteDocumentId??null;const queued=pending;pending=null;if(queued&&queued.documentId===documentId){if(queued.shown)refresh(false);else invalidate();return}if(!value.success)throw Error(value.error);auxNavSetContext(value);if(value.nativeInput?.active){auxInputTransfer.current=true;auxSetNativeInput(value.nativeInput);t(value.nativeInput.text);a(value.nativeInput.text);return}attempt.accept(value.generation);auxSetNativeInput(null);if(value.mode==="navigate"&&(reset||!T.current?.value)&&attempt.unedited()){t(value.activeUrl??"");a(value.activeUrl??"");requestAnimationFrame(()=>{if(attempt.unedited()){T.current?.focus();T.current?.select()}})}}).catch(error=>{if(attempt.current())auxNavSetError(error.message)})};const notify=event=>{if(documentId===null){pending=event;return}if(event.documentId!==documentId)return;if(event.shown)refresh(!event.inputPending);else invalidate()};chrome.auxBrowserPreferences.onCommandInvocation.addListener(notify);refresh();return()=>{chrome.auxBrowserPreferences.onCommandInvocation.removeListener(notify);invalidate()}},[]);const[e,t]=(0,i.useState)(""),[r,a]=(0,i.useState)(""),[l,d]=(0,i.useState)(0),[c,y]=(0,i.useState)(null),[x,E]=(0,i.useState)(0),[$,b]=(0,i.useState)({bookmarks:[],chatSearch:[],extensions:[],history:[],openTabs:[],recentChats:[],recentlyClosed:[]}),L=(0,i.useRef)(null),g=(0,i.useRef)(0),q=(0,i.useRef)(Promise.resolve()),k=(0,i.useRef)(0),T=(0,i.useRef)(null),D=(0,i.useRef)(null),I=(0,i.useMemo)(()=>productivitySections(auxNavContext,auxProductivityReceipt)??filesSections(auxNavContext,auxFileState,r,developerSections(auxNavContext,r,mediaSections(auxNavContext,r,navigationSections(auxNavContext,r,Pe($,r))))),[r,$,auxNavContext,auxProductivityReceipt,auxFileState]),h=(0,i.useMemo)(()=>Ve(I),[I]),M=(0,i.useCallback)(()=>{if(auxInputTransfer.current)return;const current=auxInvocation.current.capture(true);requestAnimationFrame(()=>{if(current()){T.current?.focus();T.current?.select()}})},[]),B=(0,i.useCallback)(()=>{const n=++g.current;L.current?.abort();const o=new AbortController;L.current=o;const m=_e().then(p=>{g.current===n&&b(u=>({...u,openTabs:p}))}).catch(()=>{}),f=ze().then(p=>{g.current===n&&b(u=>({...u,recentlyClosed:p}))}).catch(()=>{}),v=$e(o.signal).then(p=>{g.current===n&&b(u=>({...u,recentChats:p}))}).catch(()=>{}),N=Be().then(p=>{g.current===n&&b(u=>({...u,extensions:p}))}).catch(()=>{});q.current=Promise.all([m,f,v,N])},[]),A=(0,i.useCallback)(async n=>{if(auxNavBusy.current||!auxInvocation.current.allows(auxNavContext?.generation))return;const auxActionCurrent=auxInvocation.current.capture();auxNavBusy.current=true;auxNavSetError("");let auxNavSuccess=false;try{if(n.kind==="aux-context-action"){await commitContextAction(chrome.auxBrowserPreferences,auxFilesClient,auxFilesAccount,auxNavContext,n);auxNavSuccess=true;return}if(n.kind==="aux-ask-query"){await commitPaletteAsk(chrome.auxBrowserPreferences,auxNavContext,n);auxNavSuccess=true;return}if(n.kind?.startsWith("aux-developer-")){await runDeveloperCommand(chrome.auxBrowserPreferences,chrome.tabs,auxNavContext,n);auxNavSuccess=true;return}if(n.kind==="aux-pip"){const result=await chrome.auxBrowserPreferences.togglePictureInPicture({generation:auxNavContext.generation});if(!result.success)throw Error(result.error);auxNavSuccess=true;return}if(n.kind?.startsWith("aux-file")){const action=auxFileGuard.current.begin();try{const result=await runFileAction(chrome.auxBrowserPreferences,auxFilesClient,auxFilesAccount,auxNavContext,auxFileState,r,n,action.setRequest);if(!action.isCurrent())return;auxSetFileState(result.state);if(result.text!==undefined){t(result.text);a(result.text);requestAnimationFrame(()=>{if(action.isCurrent()){T.current?.focus();T.current?.select()}})}}catch(error){if(action.isCurrent())throw error}return}if(n.kind?.startsWith("aux-tidy-")){const result=await commitProductivityAction(chrome.auxBrowserPreferences,auxNavContext,auxProductivityReceipt,n);if(!auxActionCurrent())return;if(result.receipt)auxSetProductivityReceipt(result.receipt);auxNavSuccess=!!result.close;return}if(n.kind==="aux-logical-tab"||n.kind==="aux-space"||n.kind==="aux-navigate"||n.kind==="aux-command"||n.kind==="aux-new-blank-tab"||n.kind==="open-tab"||n.url&&n.kind!=="extension"&&n.kind!=="recently-closed"){await commitNavigation(chrome.auxBrowserPreferences,auxNavContext,n);auxNavSuccess=true;return}const auxLive=await chrome.auxBrowserPreferences.getCommandContext();if(!auxActionCurrent())return;if(!auxLive.success||auxLive.generation!==auxNavContext?.generation)throw Error("Command context expired; reopen the command bar");const o=n.kind==="chat"?n.url:void 0,m=o?(await chrome.tabs.query({})).find(f=>[f.url,f.pendingUrl].some(v=>v?.startsWith(o)&&/^([/?]|$)/.test(v.slice(o.length))))?.id:n.tabId;if(!auxActionCurrent())return;if(m!==void 0){const f=await chrome.tabs.get(m);if(!auxActionCurrent())return;typeof f.windowId=="number"&&await Promise.all([chrome.tabs.update(m,{active:!0}),chrome.windows.update(f.windowId,{focused:!0})]);return}if(n.kind==="recently-closed"){n.restoreSessionId&&chrome.sessions?.restore&&await chrome.sessions.restore(n.restoreSessionId);auxNavSuccess=true;return}if(n.kind==="extension"&&n.extensionId){if(n.isApp&&chrome.management?.launchApp){await chrome.management.launchApp(n.extensionId);auxNavSuccess=true;return}if(chrome.management?.launchExtension){await chrome.management.launchExtension(n.extensionId);auxNavSuccess=true;return}await chrome.tabs.create({url:`chrome-extension://${n.extensionId}/popup.html`});auxNavSuccess=true;return}n.url&&await chrome.tabs.create({url:n.url});auxNavSuccess=true}catch(error){if(auxActionCurrent())auxNavSetError(error instanceof Error?error.message:String(error))}finally{if(auxActionCurrent()){auxNavBusy.current=false;if(auxNavSuccess)O()}}},[auxNavContext,auxProductivityReceipt,auxFileState,r]);(0,i.useEffect)(()=>{const n=()=>{document.visibilityState!=="hidden"&&(M(),B(),ne({disableTransitionOnChange:!0}).catch(()=>{}),d(m=>m+1))},o=()=>{document.visibilityState==="visible"&&n()};return n(),window.addEventListener("focus",n),window.addEventListener("pageshow",n),document.addEventListener("visibilitychange",o),()=>{window.removeEventListener("focus",n),window.removeEventListener("pageshow",n),document.removeEventListener("visibilitychange",o),g.current+=1,L.current?.abort()}},[M,B]),(0,i.useEffect)(()=>{const n=o=>{Oe(o)&&(o.preventDefault(),o.stopPropagation(),O())};return window.addEventListener("keydown",n,{capture:!0}),()=>{window.removeEventListener("keydown",n,{capture:!0})}},[]),(0,i.useEffect)(()=>{const n=r.trim(),o=++k.current,m=new AbortController;if(y(null),!n)return()=>m.abort();const f=setTimeout(()=>{const v=qe(n,m.signal).then(u=>{k.current===o&&b(C=>({...C,chatSearch:u}))}).catch(()=>{}),N=De(n).then(u=>{k.current===o&&b(C=>({...C,history:u}))}).catch(()=>{}),p=Me(n).then(u=>{k.current===o&&b(C=>({...C,bookmarks:u}))}).catch(()=>{});Promise.all([v,N,p,q.current]).then(()=>{k.current===o&&y({query:r,revision:l})})},80);return()=>{clearTimeout(f),m.abort()}},[l,r]),(0,i.useEffect)(()=>{E(n=>h.length===0?-1:n<0?0:Math.min(n,h.length-1))},[h.length]),(0,i.useEffect)(()=>{x<0||D.current?.querySelector('[data-selected="true"]')?.scrollIntoView({block:"nearest"})},[x]);const Z=(0,i.useCallback)(n=>{if(!n.nativeEvent.isComposing){if(n.key==="ArrowDown"||n.key==="ArrowUp"){if(n.preventDefault(),h.length===0)return;E(o=>(o+(n.key==="ArrowDown"?1:-1)+h.length)%h.length);return}if(n.key==="Enter"){n.preventDefault();const o=h[x];o&&A(o)}}},[A,h,x]),P=n=>{a(n),E(0)},G=n=>{auxInvocation.current.edit();const o=n.currentTarget.value;t(o),(!(n.nativeEvent instanceof InputEvent)||!n.nativeEvent.isComposing)&&P(o)},J=c?.query===r&&c.revision===l;(0,i.useLayoutEffect)(()=>{if(!auxNativeInput||!auxNavContext?.success)return;const current=auxInvocation.current.capture();const input=T.current;if(!input||auxNativeInput.composing)return;input.focus();input.setSelectionRange(Math.min(auxNativeInput.selectionStart,auxNativeInput.selectionEnd),Math.max(auxNativeInput.selectionStart,auxNativeInput.selectionEnd),auxNativeInput.selectionStart>auxNativeInput.selectionEnd?"backward":"forward");chrome.auxBrowserPreferences.getCommandContext({generation:auxNavContext.generation,inputRevision:auxNativeInput.revision}).then(value=>{if(!current())return;if(!value.success||value.generation!==auxNavContext.generation)throw Error("Command input changed; reopen the command bar");if(value.nativeInput?.active){auxInputTransfer.current=true;auxSetNativeInput(value.nativeInput);t(value.nativeInput.text);a(value.nativeInput.text);return}if(!value.nativeInput?.accepted)return;auxInputTransfer.current=false;const attempt=auxInvocation.current.begin();attempt.accept(value.generation);auxSetNativeInput(null);auxSetNativeSubmit(!!value.nativeInput.submit);auxNavSetContext(value)}).catch(error=>{if(current())auxNavSetError(error.message)})},[auxNativeInput,auxNavContext]);(0,i.useEffect)(()=>{if(auxNativeSubmit&&auxInvocation.current.allows(auxNavContext?.generation)&&h.length){auxSetNativeSubmit(false);A(h[x]??h[0])}},[auxNativeSubmit,auxNavContext,A,h,x]);return(0,s.jsxs)("main",{className:"text-surface-primary-foreground flex h-85 w-full flex-col overflow-hidden",children:[(0,s.jsxs)("div",{className:"flex h-11 min-h-11 items-center gap-2.5 px-3",children:[(0,s.jsx)(ce,{className:"text-muted-foreground size-4.5 shrink-0"}),(0,s.jsx)("input",{ref:T,value:e,className:"placeholder:text-muted-foreground h-full min-w-0 grow bg-transparent text-base tracking-tight outline-none",readOnly:auxNavContext?.mode==="tidy",placeholder:auxFileState?.view==="rename"?"Filename without extension":auxFileState?.view==="list"?"Search recent files":auxNavContext?.mode==="tidy"?"Review tab organization":auxNavContext?.mode==="commands"?"Search commands, tabs or enter a URL":auxNavContext?.mode==="new-tab"||auxNavContext?.mode==="navigate"?"Search or type a URL":"Search tabs, chats, history, bookmarks or extensions",onChange:G,onCompositionEnd:n=>P(n.currentTarget.value),onKeyDown:Z}),(0,s.jsx)(ye,{children:xe(auxNavContext?.mode==="new-tab"?"Meta+T":auxNavContext?.mode==="navigate"?"Meta+L":auxNavContext?.mode==="commands"?"Meta+K":"Meta+Shift+A")})]}),(0,s.jsxs)(de,{ref:D,className:"min-h-0 grow overflow-hidden px-2 py-1",children:[I.length>0?I.map(n=>(0,s.jsx)(He,{items:n.items,selectedIndex:x,section:n,onActivate:A,onSelect:E,startIndex:h.findIndex(o=>o.id===n.items[0]?.id)},n.id)):null,auxNavError?(0,s.jsx)(we,{children:(0,s.jsx)(be,{role:"alert",children:auxNavError})}):I.length===0&&J?(0,s.jsx)(we,{children:(0,s.jsx)(be,{children:"No results"})}):null]})]})}var He=({items:e,onActivate:t,onSelect:r,section:a,selectedIndex:l,startIndex:d})=>(0,s.jsxs)("section",{className:"pt-2 first:pt-1",children:[(0,s.jsx)("h2",{className:"text-muted-foreground px-2 py-1.5 text-xs font-semibold",children:a.title}),(0,s.jsx)("ul",{className:"space-y-0.5",children:e.map((c,y)=>{const x=d+y;return(0,s.jsx)(Ke,{item:c,selected:l===x,onClick:()=>{t(c)},onPointerEnter:()=>r(x),onDragStart:()=>t({...c,kind:"aux-file-drag",downloadId:c.file.id})},c.id)})})]}),Ke=({item:e,onClick:t,onPointerEnter:r,selected:a,onDragStart:d})=>(0,s.jsxs)("li",{className:X("flex h-8 cursor-default items-center gap-2 rounded-lg px-2 text-sm leading-5 font-medium select-none",a&&"bg-secondary"),"data-selected":a,onClick:t,onPointerEnter:r,draggable:e.kind==="aux-file-select"&&e.file.available,onDragStart:event=>{event.preventDefault();d?.()},children:[(0,s.jsx)(We,{item:e}),(0,s.jsxs)("div",{className:"flex min-w-0 flex-1 items-baseline gap-2",children:[(0,s.jsx)("span",{className:"truncate",children:e.title}),e.subtitle?(0,s.jsx)("span",{className:"text-muted-foreground min-w-0 truncate text-xs",children:e.subtitle}):null]}),e.actionLabel?(0,s.jsxs)("div",{className:"text-muted-foreground flex shrink-0 items-center gap-2 text-xs font-medium",children:[(0,s.jsx)("span",{children:e.actionLabel}),(0,s.jsx)(K,{className:"size-3.5"})]}):e.timeLabel?(0,s.jsx)("span",{className:"text-muted-foreground shrink-0 text-xs",children:e.timeLabel}):null]});function We({item:e}){return e.kind==="chat"?(0,s.jsx)("div",{className:"pointer-events-none flex size-4.5 shrink-0 items-center justify-center select-none",draggable:!1,children:(0,s.jsx)(ae,{className:"text-muted-foreground size-4"})}):e.kind==="extension"&&!e.faviconUrl?(0,s.jsx)("div",{className:"pointer-events-none flex size-4.5 shrink-0 items-center justify-center select-none",draggable:!1,children:(0,s.jsx)(V,{className:"text-muted-foreground size-4"})}):(0,s.jsxs)(pe,{className:"text-muted-foreground pointer-events-none size-4.5 shrink-0 rounded-sm bg-transparent select-none",draggable:!1,children:[e.faviconUrl?(0,s.jsx)(fe,{draggable:!1,src:e.faviconUrl}):null,(0,s.jsx)(he,{className:"bg-transparent",children:e.kind==="open-tab"?(0,s.jsx)(le,{className:"size-4"}):e.kind==="history"?(0,s.jsx)(ie,{className:"size-4"}):e.kind==="bookmark"?(0,s.jsx)(ge,{className:"size-4"}):e.kind==="extension"?(0,s.jsx)(V,{className:"size-4"}):(0,s.jsx)(K,{className:"size-4"})})]})}te();var Q=document.getElementById("root");if(Q){const e=window;e.tabSearchRoot??=(0,ve.createRoot)(Q),e.tabSearchRoot.render((0,s.jsx)(Qe,{}))}
+ 
+ //# chunkId=4ec9f952-5790-5976-9a6b-e41ea5323bb5
+ function askPaletteSections(context,query,sections) {

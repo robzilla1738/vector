@@ -1,0 +1,38 @@
+{
+  "scope": "native IME-aware first-mount command input handoff",
+  "projected": false,
+  "compiled": false,
+  "files": [
+    {
+      "path": "chrome/browser/ui/views/frame/aux_tab_search_bubble.cc",
+      "beforeSha256": "715ca201fc7ffc441c41a0a382428498c88c3bfc17ff947fc34559a7b39ea429",
+      "afterSha256": "535f18bb5b43d615e4b13c2aa54a909ededf371d47467366ae169c2a805a7a0a",
+      "anchors": 14
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_tab_search_bubble.h",
+      "beforeSha256": "3ed95b3465ed2f8ea3401a4f5574bc802e4d35fa81c6e6e484294d4cd6cec6f9",
+      "afterSha256": "582393d901aa90339e9fbb6bafd3cbefee41579b996b49bfcd20dff4ed0b4508",
+      "anchors": 1
+    },
+    {
+      "path": "chrome/browser/extensions/api/aux_browser_preferences/aux_browser_preferences_api.cc",
+      "beforeSha256": "c000a7099603e3d10e62c7049a5885f567746d8a834fd6fa95a4700f9211cd8e",
+      "afterSha256": "be6c791a3892aab9eea4c977d61f4d464caa24cd936414a13db2df18c802b65b",
+      "anchors": 1
+    },
+    {
+      "path": "chrome/common/extensions/api/aux_browser_preferences.json",
+      "beforeSha256": "3c4bf3c4ff38b9fd726d615c5e347fe465c48f3e87222c74684f4be188b8921b",
+      "afterSha256": "76e67487819bf2bbf3a3e849cdeb7e13d678560713e1e9ecd0adc349f40e4a28",
+      "anchors": 2
+    },
+    {
+      "path": "assets/tabsearch-3k_2hgil.js",
+      "beforeSha256": "8e972848d18bb6862abdada0a3787ee38103b21c2126081f808c5c014d70ec4a",
+      "afterSha256": "2581dc9bce21c7f3a049f8c24fce5b8f346565dfd62e5e6d0550b4d06454c218",
+      "anchors": 7
+    }
+  ],
+  "anchors": 25
+}
