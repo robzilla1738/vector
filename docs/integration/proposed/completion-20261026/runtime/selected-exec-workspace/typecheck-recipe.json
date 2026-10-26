@@ -1,0 +1,26 @@
+{
+  "format": "aux.selected-workspace-owner-typecheck.v1",
+  "commands": [
+    [
+      "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc",
+      "-sdk",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk",
+      "-target",
+      "arm64-apple-macos13.5",
+      "-typecheck",
+      "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-native-p256-envelope-port/source/EnvelopeRecords.swift",
+      "/private/tmp/aux-browser-only-daemon-build-20261025-a61/source/AuxRegisteredMemoryAccountOwner.swift",
+      "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/runtime/selected-exec-workspace/source/AuxSelectedAccountOwner.swift"
+    ]
+  ],
+  "inputHashes": {
+    "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-native-p256-envelope-port/source/EnvelopeRecords.swift": "e6b8b6bcae9f6b34cc5dfe757e5f0130297f1c4c3bae81636387a06e24dc34d6",
+    "/private/tmp/aux-browser-only-daemon-build-20261025-a61/source/AuxRegisteredMemoryAccountOwner.swift": "897f3c44ab48d8fd50469e47f436845eeaae53ee6b4ee6125e271f3d0ac6bc52",
+    "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/runtime/selected-exec-workspace/source/AuxSelectedAccountOwner.swift": "cc6a6e9aca7e7f842ff4118e5e14b935e735fb2db46027d16187e7647e66d729",
+    "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc": "84b410d8143298f90ab0b721d488dab90e2fdbf23577ae6186162832a1155cb7"
+  },
+  "output": "/private/tmp/aux-selected-exec-workspace-typecheck-20261026-a1",
+  "activated": false,
+  "candidateChanged": false,
+  "EntitlementRequired": true
+}

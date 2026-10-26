@@ -1,0 +1,14 @@
+{
+  "input": "docs/integration/proposed/completion-20261026/runtime/exec-producer-join/source/AuxSelectedExecProducer.inc",
+  "inputSha256": "01b1c36c669bb4a4b7080a7adbdad33a1ff40235e5b535365fd9f282a859b67e",
+  "outputSha256": "72b34d13ae8b79659010bcdf9a94cf36128178e53ce0f0bfb88d37bbc39ea6a7",
+  "anchors": [
+    {
+      "before": "  selected_exec_spawn=scope;",
+      "after": "  auto workspace=scope->Root(3);\n  int32_t account_fd=-1;\n  if(!workspace||AuxCopySelectedAccountDirectory(scope->captured.owner->handle,scope->account,2,&account_fd)!=0)\n    return SelectedScopeFail(env,\"Stored selected workspace is unavailable\");\n  std::array<char,AUX_EXEC_DENIED_PATH_CAPACITY> account_path{};struct stat identity{};\n  bool current=ReadExecRoot(account_fd,account_path.data(),&identity);\n  if(close(account_fd)!=0){scope->MarkUnknown();return SelectedScopeFail(env,\"Workspace validation descriptor closure is unknown\");}\n  const std::string account_root(account_path.data());\n  if(!current||(!FixedPathAllowed(*workspace,scope->captured.owner->handle,false)&&\n      *workspace!=account_root&&!workspace->starts_with(account_root+\"/\"))||!scope->Current(env))\n    return SelectedScopeFail(env,\"Stored workspace crosses a protected owner boundary\");\n  selected_exec_spawn=scope;",
+      "count": 1
+    }
+  ],
+  "requiresNativeRole": 3,
+  "activated": false
+}

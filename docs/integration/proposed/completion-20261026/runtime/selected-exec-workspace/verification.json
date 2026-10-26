@@ -1,0 +1,10 @@
+{
+  "format": "aux.selected-exec-workspace-source-preparation.v1",
+  "pythonSyntax": "pass",
+  "actualA51SchemaSourcePinned": true,
+  "nativeTypechecked": false,
+  "candidateChanged": false,
+  "reviewChanged": false,
+  "EntitlementRequired": true,
+  "typecheckRecipeSha256": "3df0092f0962143c9fae8bdaf9633810ed0f493e35c27f7aa40e7746dee5e22a"
+}

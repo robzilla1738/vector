@@ -1,0 +1,31 @@
+{
+  "format": "aux.selected-project-stored-membership-proof.v1",
+  "actualSource": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-local-completion-20261025-a38/Aux.app/Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/node-development/index.mjs",
+  "sourceSha256": "48af998738fb6d2fc30cb8d5b2e9de03cb04ab7d8563ebdaa5fe8100944fc514",
+  "parts": {
+    "projectSchema": {
+      "offset": 2583387,
+      "source": "ProjectTable=sqliteTable(`projects`,{id:text$9(`id`).primaryKey(),name:text$9(`name`).notNull(),icon:text$9(`icon`).notNull().default(`folder`),color:text$9(`color`).notNull().default(`mono`),workspacePath:text$9(`workspace_path`).notNull(),lastActiveAt:integer(`last_active_at`,{mode:`timestamp`}),archivedAt:integer(`archived_at`,{mode:`timestamp`}),createdAt:integer(`created_at`,{mode:`timestamp`}).notNull().default(sql`(unixepoch())`),updatedAt:integer(`updated_at`,{mode:`timestamp`}).notNull().default(sql`(unixepoch())`)})",
+      "sha256": "cbefd2df05f3e187a24e404fc588630f09130780ecb7fc40aa542df3de8edbc3"
+    },
+    "sessionProjectForeignKey": {
+      "offset": 2583919,
+      "source": "SessionTable=sqliteTable(`sessions`,{transcriptRevision:integer(`transcript_revision`).notNull().default(0),id:text$9(`id`).primaryKey(),projectId:text$9(`project_id`).references(()=>ProjectTable.id,{onDelete:`set null`})",
+      "sha256": "fd00de3b28a078e5295dfaa2694a77989b3412da8cff3dd756e506b64f5dec72"
+    },
+    "projectCreate": {
+      "offset": 2738517,
+      "source": "function ii(Cn,ei){if(ti(Cn,ei.id))throw Error(`Project already exists: ${ei.id}`);let ri=provisionWorkspace(ei.workspacePath);stateDb(Cn).insert(ProjectTable).values({id:ei.id,name:ei.name,icon:ei.icon??`folder`,color:ei.color??`mono`,workspacePath:ri}).run();let ii=ni(Cn,ei.id);return notifyAgentFileChange(Cn),ii}",
+      "sha256": "3cc3c2fdede8b0d44cbbabfae28266f4f6a70141c3d95b0c4da9ee96b7b9acc5"
+    },
+    "actualAgentContext": {
+      "offset": 11687196,
+      "source": "getAccountTaskRoot(this.accountId),ei=this.session.projectId?ProjectStore.require(this.accountId,this.session.projectId).workspacePath:void 0,ti=ei??Cn;return{accountId:this.accountId,agent:this.agent,session:this.session,getModelSelection:()=>({...this.#y.selection}),accountRoot:Cn,projectWorkspace:ei,sessionDir:getSessionTaskDir(this.session,this.accountId)",
+      "sha256": "f715840bb33983333226533f0f9f9807b1d02fb0b0b852a28d498729103f9236"
+    }
+  },
+  "storedSessionMembership": "main.sessions.id +created_at, optional project_id",
+  "storedProjectIdentity": "main.projects.id+created_at+workspace_path; fields SQLTEXT/TEXT/INTEGER Unixseconds",
+  "defaultWorkspace": "actual retained Task/u/account, never caller cwd",
+  "loadedOrExecuted": false
+}

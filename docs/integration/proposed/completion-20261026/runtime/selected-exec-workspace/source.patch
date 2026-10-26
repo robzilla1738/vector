@@ -1,0 +1,129 @@
+--- /Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/runtime/selected-builtin-owner/source/AuxSelectedAccountOwner.swift
++++ AuxSelectedAccountOwner.swift
+@@ -48,7 +48,7 @@
+     fileprivate var directories=[Directory]()
+     private let controlAccountIndex:Int
+     private let taskAccountIndex:Int
+-    private let taskRootIndex:Int
++    fileprivate let taskRootIndex:Int
+     init(identity:AuxMemoryAccountIdentity,expectedIdentity:Data,controlRoot:Int32,taskRoot:Int32,transportGeneration:UInt64)throws {
+         guard transportGeneration>0 else{throw AuxMemoryAccountError.unavailable}
+         self.identity=identity;self.expectedIdentity=expectedIdentity;self.transportGeneration=transportGeneration
+@@ -87,10 +87,63 @@
+     deinit{if getpid()==process{for directory in directories.reversed(){close(directory.descriptor)}}}
+ }
+ 
++// Native membership source: actual selected account's stored session/project row.
++private struct AuxSelectedWorkspaceRecord:Equatable {
++    let sessionId:String
++    let sessionCreated:Int64
++    let projectId:String?
++    let projectCreated:Int64?
++    let path:String
++}
++private final class AuxSelectedWorkspaceOwner {
++    let record:AuxSelectedWorkspaceRecord
++    let directory:AuxSelectedAccountOwner.Directory
++    let parent:Int32
++    let name:String
++    let process=getpid()
++    init(record:AuxSelectedWorkspaceRecord,account:AuxSelectedAccountOwner)throws {
++        self.record=record
++        guard record.path.hasPrefix("/"),record.path.utf8.count<Int(PATH_MAX),!record.path.utf8.contains(0),
++              let raw=realpath(record.path,nil) else{throw AuxMemoryAccountError.unsafeDirectory}
++        let canonical=String(cString:raw);free(raw)
++        guard canonical==record.path else{throw AuxMemoryAccountError.changed}
++        func within(_ path:String,_ root:String)->Bool{path==root||path.hasPrefix(root+"/")}
++        let taskRoot=account.directories[account.taskRootIndex].path
++        let controlRoot=account.directories[0].path
++        guard !within(canonical,controlRoot),!within(controlRoot,canonical),
++              !within(canonical,taskRoot)||within(canonical,account.taskAccount.path) else{throw AuxMemoryAccountError.unsafeDirectory}
++        var cursor=open("/",O_RDONLY|O_DIRECTORY|O_NOFOLLOW|O_CLOEXEC)
++        guard cursor>=0 else{throw AuxMemoryAccountError.unsafeDirectory}
++        do {
++            let parts=canonical.dropFirst().split(separator:"/",omittingEmptySubsequences:false).map(String.init)
++            guard let leaf=parts.last,!leaf.isEmpty else{throw AuxMemoryAccountError.unsafeDirectory}
++            for part in parts.dropLast() {
++                guard !part.isEmpty,part != ".",part != ".." else{throw AuxMemoryAccountError.unsafeDirectory}
++                let next=openat(cursor,part,O_RDONLY|O_DIRECTORY|O_NOFOLLOW|O_CLOEXEC|O_NONBLOCK)
++                guard next>=0 else{throw AuxMemoryAccountError.unsafeDirectory};close(cursor);cursor=next
++            }
++            let fd=openat(cursor,leaf,O_RDONLY|O_DIRECTORY|O_NOFOLLOW|O_CLOEXEC|O_NONBLOCK)
++            guard fd>=0 else{throw AuxMemoryAccountError.unsafeDirectory}
++            do {
++                let held=try AuxSelectedAccountOwner.Directory(taking:fd,privateMode:false)
++                var named=stat();guard fstatat(cursor,leaf,&named,AT_SYMLINK_NOFOLLOW)==0,named.st_dev==held.captured.st_dev,named.st_ino==held.captured.st_ino else{throw AuxMemoryAccountError.changed}
++                directory=held;parent=cursor;name=leaf;cursor = -1
++            }catch{close(fd);throw error}
++        }catch{if cursor>=0{close(cursor)};throw error}
++    }
++    func revalidate(_ current:AuxSelectedWorkspaceRecord)throws {
++        guard getpid()==process,current==record else{throw AuxMemoryAccountError.changed}
++        try directory.revalidate();var named=stat()
++        guard fstatat(parent,name,&named,AT_SYMLINK_NOFOLLOW)==0,named.st_dev==directory.captured.st_dev,named.st_ino==directory.captured.st_ino else{throw AuxMemoryAccountError.changed}
++    }
++    deinit{if getpid()==process{close(directory.descriptor);close(parent)}}
++}
++
+ final class AuxSelectedSessionOwner {
+     let account:AuxSelectedAccountOwner
+     let accountLease:UInt64
+     let sessionId:String
++    private var workspace:AuxSelectedWorkspaceOwner?
+     private let createdAt:Int64
+     private let database:Int32
+     private let databaseIdentity:stat
+@@ -177,11 +230,52 @@
+         guard getpid()==account.process else{throw AuxMemoryAccountError.changed}
+         for directory in account.directories{try directory.revalidate()}
+         try control.revalidate();try task.revalidate()
++        if let workspace{try workspace.revalidate(storedWorkspace())}
+         guard try Self.storedCreation(account:account,session:sessionId,database:database,identity:databaseIdentity)==createdAt else{throw AuxMemoryAccountError.changed}
++    }
++    private func storedWorkspace()throws->AuxSelectedWorkspaceRecord {
++        guard try Self.storedCreation(account:account,session:sessionId,database:database,identity:databaseIdentity)==createdAt else{throw AuxMemoryAccountError.changed}
++        var connection:OpaquePointer?
++        guard sqlite3_open_v2(account.controlAccount.path+"/state.db",&connection,SQLITE_OPEN_READONLY|SQLITE_OPEN_NOFOLLOW,nil)==SQLITE_OK,let connection else{if let connection{sqlite3_close(connection)};throw AuxMemoryAccountError.unavailable}
++        defer{sqlite3_close(connection)};sqlite3_busy_timeout(connection,50)
++        guard sqlite3_exec(connection,"PRAGMA query_only=ON; PRAGMA trusted_schema=OFF;",nil,nil,nil)==SQLITE_OK else{throw AuxMemoryAccountError.unavailable}
++        var query:OpaquePointer?
++        let sql="SELECT s.id,s.created_at,s.project_id,p.id,p.created_at,p.workspace_path FROM main.sessions AS s LEFT JOIN main.projects AS p ON p.id=s.project_id WHERE s.id=?1 LIMIT 2"
++        guard sqlite3_prepare_v2(connection,sql,-1,&query,nil)==SQLITE_OK,let query else{throw AuxMemoryAccountError.unavailable}
++        defer{sqlite3_finalize(query)}
++        guard sqlite3_bind_text(query,1,sessionId,-1,unsafeBitCast(-1,to:sqlite3_destructor_type.self))==SQLITE_OK,sqlite3_step(query)==SQLITE_ROW,
++              sqlite3_column_type(query,0)==SQLITE_TEXT,let id=sqlite3_column_text(query,0),String(cString:id)==sessionId,
++              sqlite3_column_type(query,1)==SQLITE_INTEGER,sqlite3_column_int64(query,1)==createdAt else{throw AuxMemoryAccountError.changed}
++        let record:AuxSelectedWorkspaceRecord
++        if sqlite3_column_type(query,2)==SQLITE_NULL {
++            guard (3...5).allSatisfy({sqlite3_column_type(query,Int32($0))==SQLITE_NULL}) else{throw AuxMemoryAccountError.changed}
++            record = .init(sessionId:sessionId,sessionCreated:createdAt,projectId:nil,projectCreated:nil,path:account.taskAccount.path)
++        }else {
++            guard sqlite3_column_type(query,2)==SQLITE_TEXT,let project=sqlite3_column_text(query,2),
++                  sqlite3_column_type(query,3)==SQLITE_TEXT,let selected=sqlite3_column_text(query,3),
++                  String(cString:project)==String(cString:selected),sqlite3_column_bytes(query,2)>0,sqlite3_column_bytes(query,2)<=512,
++                  sqlite3_column_type(query,4)==SQLITE_INTEGER,sqlite3_column_int64(query,4)>0,
++                  sqlite3_column_type(query,5)==SQLITE_TEXT,let path=sqlite3_column_text(query,5),sqlite3_column_bytes(query,5)>0,sqlite3_column_bytes(query,5)<Int32(PATH_MAX) else{throw AuxMemoryAccountError.unavailable}
++            let projectName=String(cString:project),workspacePath=String(cString:path)
++            guard projectName.utf8.count==Int(sqlite3_column_bytes(query,2)),workspacePath.utf8.count==Int(sqlite3_column_bytes(query,5)) else{throw AuxMemoryAccountError.unavailable}
++            record = .init(sessionId:sessionId,sessionCreated:createdAt,projectId:projectName,projectCreated:sqlite3_column_int64(query,4),path:workspacePath)
++        }
++        guard sqlite3_step(query)==SQLITE_DONE,try Self.storedCreation(account:account,session:sessionId,database:database,identity:databaseIdentity)==createdAt else{throw AuxMemoryAccountError.changed}
++        return record
+     }
+     func duplicateDirectory(role:UInt32)throws->Int32 {
+         try revalidate()
+-        switch role{case 1:return try control.duplicate();case 2:return try task.duplicate();default:throw AuxMemoryAccountError.unavailable}
++        switch role {
++        case 1:return try control.duplicate()
++        case 2:return try task.duplicate()
++        case 3:
++            let current=try storedWorkspace()
++            if let workspace{try workspace.revalidate(current);return try workspace.directory.duplicate()}
++            let captured=try AuxSelectedWorkspaceOwner(record:current,account:account)
++            try captured.revalidate(storedWorkspace());workspace=captured
++            return try captured.directory.duplicate()
++        default:throw AuxMemoryAccountError.unavailable
++        }
+     }
+     deinit{if getpid()==account.process{close(database);close(control.descriptor);close(task.descriptor)}}
+ }
