@@ -1,0 +1,30 @@
+{
+  "format": "aux.backup.catalog-readonly-preflight.source.v1",
+  "target": {
+    "neonProject": "ancient-river-76453764",
+    "branch": "br-red-hall-b857cl2i",
+    "directHost": "ep-red-snow-b8ctxcyx.c-14.us-east-1.aws.neon.tech",
+    "schema": "public",
+    "databaseName": "operator must bind exact approved Production database; not hardcoded by existing capture"
+  },
+  "sourcePins": {
+    "services/aux-cloud/scripts/cloud-recovery-online.mjs": "5130b26220e4643a99b7453d3dd9ae9468c37ed303b16b833f04f8ceaec66720",
+    "services/aux-cloud/scripts/online-recovery-objects.mjs": "3da056e7bad7385c1165671172a007e55ddfbfd35f92b6bcd1b409c26bc8dd9f",
+    "services/aux-cloud/config/deployment-resources.json": "6d5babd4e20b63ab0bf35566e0c97c403fc1b7cd8c6397fefeb5a7caccc5a8d5",
+    "services/aux-cloud/src/schema-manifest.json": "7d452e13d873f9c2b08efc5eab12c928d942e846f667be4938aa519740d89f10",
+    "docs/integration/proposed/completion-20261026/integration/ops-activation/access-review.md": "cd93130c455cd5c9cb4926c7e6eda6efe48f84335c622d9d3ae65556c0754d8e"
+  },
+  "sqlSha256": "c2c20a470b17c904cb6107e66f4bb3da2628e487e48e665333fc69f8c5374259",
+  "sourceStructureReview": {
+    "statements": 19,
+    "onlyTransactionLocalSetAndCatalogSelectStatementStarts": true,
+    "databaseParserUsed": false,
+    "databaseSyntaxOrCoverageAccepted": false
+  },
+  "executed": false,
+  "networkAccess": false,
+  "credentialRead": false,
+  "productionMutation": false,
+  "grantsProposed": false,
+  "captureAccepted": false
+}
