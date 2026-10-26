@@ -1,14 +1,16 @@
 {
-  "format": "aux.browser-actions.counted-resources.v1",
-  "nativeProjected": false,
-  "appExecuted": false,
-  "syntax": {
-    "entry": true,
-    "background": true,
-    "nodeCheckOnly": true
-  },
+  "format": "aux.browser-actions.source-evidence.v2",
+  "resourceOutputs": 2,
+  "anchors": 32,
+  "fullResourceSyntaxPassed": true,
   "permissionInput": {
     "path": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-local-completion-20261025-a38/Aux.app/Contents/Resources/aux/apps/extension/dist/manifest.json",
-    "debuggerAlreadyPresent": true
-  }
+    "sha256": "d1d616d82f60e06309c0e8664144eb785d13451451eb63665f3b862fbb030828",
+    "debuggerAlreadyPresent": true,
+    "addedPermissions": []
+  },
+  "nativeBuilt": false,
+  "nativeExecuted": false,
+  "quickJsExecuted": false,
+  "appExecuted": false
 }

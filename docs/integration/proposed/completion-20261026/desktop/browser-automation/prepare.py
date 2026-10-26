@@ -8,6 +8,7 @@ plans=[]
 def transform(name,path,helper,rules):
  text=path.read_text();before=text;anchors=[]
  insertion=(HERE/'source'/helper).read_text()
+ if name=='entry':insertion+='\n'+(HERE/'source/browser-repl.js').read_text()
  if name=='entry':rules=[("/* aux-owned-native-entry-v1 */\nprocess._linkedBinding('aux_owned_native');","/* aux-owned-native-entry-v1 */\nprocess._linkedBinding('aux_owned_native');\n"+insertion)]+rules
  else:rules=[(text[:text.index('\n')],insertion+'\n'+text[:text.index('\n')])]+rules
  for old,new in rules:
@@ -23,10 +24,24 @@ transform('entry',a.entry,'daemon-browser-actions.js',[
  ('try{ei.auxManagedWrite?.();ni.send(JSON.stringify(ri))}', 'try{ei.auxManagedWrite?.();ni.send(JSON.stringify(ri));auxCommandSent=true}'),
  ('si.error?ci.reject(Error(si.error)):ci.resolve(si.result)', 'si.error?ci.reject(Object.assign(Error(si.error),ci.boundBrowserAction?{auxBrowserActionSettled:true}:{})):ci.resolve(si.result)'),
  ('let{data:oi}=ExtensionBridgeProtocol.pingMessageResponseSchema.safeParse(ri);',"if(ri?.method==='aux.browserActionEvent'&&typeof ri.taskId==='string'&&ri.context&&ri.event&&typeof ri.event.method==='string'){for(const handler of auxBrowserEventHandlers)try{handler({message:ri,connection:ai})}catch{}return}let{data:oi}=ExtensionBridgeProtocol.pingMessageResponseSchema.safeParse(ri);"),
- ('this.#e=auxReferenceCdpClient(Cn,()=>this.state.tabs,()=>this.#L())', 'this.#e=auxReferenceCdpClient(auxScopedBrowserCdpClient(Cn,ei,ti,()=>this.#L()),()=>this.state.tabs,()=>this.#L())'),
+ ('this.#e=auxReferenceCdpClient(Cn,()=>this.state.tabs,()=>this.#L())', 'this.#e=auxReferenceCdpClient(auxScopedBrowserCdpClient(Cn,ei,ti,()=>this.#L(),()=>this.state.tabs,target=>this.#H(target)),()=>this.state.tabs,()=>this.#L())'),
  ('this.#S=ri.tabs??createExtensionTabController(()=>this.#L())', 'this.#S=ri.tabs??createExtensionTabController(()=>this.#e.scopedBrowserRoute?.()??this.#L())'),
  ('await this.#t.dispose(),this.#g=[],this.#h=null', 'await this.#t.dispose();await this.#e.closeScoped?.();this.#g=[],this.#h=null'),
- ('const attached=await object.send(method,params,sessionId,options);', 'const attached=await object.send(method,params,sessionId,binding.referenced?{...options,auxDocumentCapability:binding.capability,auxDocumentUrl:binding.url}:options);')
+ ('const attached=await object.send(method,params,sessionId,options);', 'const attached=await object.send(method,params,sessionId,binding.referenced?{...options,auxDocumentCapability:binding.capability,auxDocumentUrl:binding.url}:options);'),
+ ('function createDesktopRepl(Cn){auxRequireSupervisedTasks();', 'function createDesktopRepl(Cn){if(auxUsesBoundBrowserActions())return auxCreateBrowserOnlyRepl(Cn);auxRequireSupervisedTasks();'),
+ ('Object.assign(createReplTool(ti),{dispose:()=>ti.dispose()})', 'auxRegisterBrowserReplTool(Object.assign(createReplTool(ti),{dispose:()=>ti.dispose()}),ti)'),
+ ('try{auxRequireSupervisedTasks();let ii=await Cn.tool.execute(Cn.toolCall.id,Cn.args,ei,ei=>{ri&&ni.push(Promise.resolve(ti({type:`tool_execution_update`,toolCallId:Cn.toolCall.id,toolName:Cn.toolCall.name,args:Cn.toolCall.arguments,partialResult:ei})))});', 'try{let ii=await auxExecuteRegisteredBrowserTool(Cn,()=>Cn.tool.execute(Cn.toolCall.id,Cn.args,ei,ei=>{ri&&ni.push(Promise.resolve(ti({type:`tool_execution_update`,toolCallId:Cn.toolCall.id,toolName:Cn.toolCall.name,args:Cn.toolCall.arguments,partialResult:ei})))}));'),
+ ('dispose(){this.#e.setRunActive(!1),this.#r?.then(Cn=>Cn.dispose()),this.#r=null}', 'dispose(){this.#e.setRunActive(!1);if(this.#n.auxBrowserState)this.#n.auxBrowserState.disposeBridge(this.#r);else this.#r?.then(Cn=>Cn.dispose());this.#r=null}'),
+ ('return this.#t&&Object.assign(this.#e.globals,await this.#t.trigger(`repl.context`,void 0,{})),this.#o(Cn),Cn', 'return this.#t&&Object.assign(this.#e.globals,await this.#t.trigger(`repl.context`,void 0,{})),this.#n.auxBrowserState?.restoreGlobals(),this.#n.auxBrowserState&&auxBrowserJsBridges.set(Cn,this.#n.auxBrowserState),this.#o(Cn),Cn'),
+ ('try{await Cn.evalAsync(ei)}catch(ti)', 'try{await auxRunBrowserJsBridge(Cn,()=>Cn.evalAsync(ei))}catch(ti)'),
+ ('await Cn.evalAsync(`(async () => {\\n${ei}\\n})()`);', 'await auxRunBrowserJsBridge(Cn,()=>Cn.evalAsync(`(async () => {\\n${ei}\\n})()`));'),
+ ('get extensionBridgeRoute(){return this.#L()}', 'get extensionBridgeRoute(){return this.#L()}browserActionRoute(){return this.#e.scopedBrowserRoute?.()??this.#L()}bindSelectedBrowserOwner(owner){this.#e.bindSelectedBrowserOwner?.(owner)}'),
+ ('ei.repl.dispose(),await ei.browser.dispose().catch(()=>{})', 'await ei.repl.dispose(),await ei.browser.dispose().catch(()=>{})'),
+ ('async syncVmContext(Cn,ei={}){for(let Cn of this.#m.splice(0))', 'async syncVmContext(Cn,ei={}){await this.#e.waitScopedPageRetirements?.();for(let Cn of this.#m.splice(0))'),
+ ('this.#r.runtimeConfig.takeScreenshotOnEverySnapshot&&withoutReplContext(async()=>{', 'this.#r.runtimeConfig.takeScreenshotOnEverySnapshot&&auxRunBrowserJsBackground(this,()=>withoutReplContext(async()=>{'),
+ ('await this.updateTabState(Cn,{latestScreenshotPath:ei})}).catch(Cn=>{console.warn(`[browser] snapshot screenshot failed`', 'await this.updateTabState(Cn,{latestScreenshotPath:ei})})).catch(Cn=>{console.warn(`[browser] snapshot screenshot failed`'),
+ ('createDesktopRepl({accountId:Cn.accountId,agentSessionId:Cn.session.id,cwd:', 'createDesktopRepl({accountId:Cn.accountId,agentSessionId:Cn.session.id,sessionCreatedAt:Cn.session.createdAt,cwd:'),
+ ('createDesktopRepl({accountId:ei,agentSessionId:ui.id,cwd:', 'createDesktopRepl({accountId:ei,agentSessionId:ui.id,sessionCreatedAt:ui.createdAt,cwd:')
 ])
 transform('background',a.background,'extension-browser-actions.js',[
  ('  const oo = [\n    auxCookieSyncContext,', '''  const auxBrowserContextRequest=m({method:E("Aux.getBrowserActionContext"),params:m({})});

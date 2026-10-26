@@ -20,18 +20,27 @@ async function auxBrowserNativeContext(route,signal){
  }
  return {accountId:route.accountId,profileId:route.profileId,browserContextId:native.browserContextId,cookieBindingEpoch:native.cookieBindingEpoch,cookieRestoreEpoch:native.cookieRestoreEpoch,hasAccountSession:native.hasAccountSession===true,windowId,userAgent:navigator.userAgent};
 }
-async function auxCloseBrowserTask(task){
+async function auxCloseBrowserTask(task,retire=true){
+ task.retire ||= retire;
  if(task.close)return task.close;
  task.closed=true;
- task.close=(async()=>{
-  while(task.pending.size)await Promise.allSettled([...task.pending]);
-  for(const root of [...task.roots.values()]){
-   try{await auxWorkerPhysical('browser-debugger-detach',()=>chrome.debugger.detach({tabId:root.tabId}));task.roots.delete(root.id);auxBoundTabOwners.delete(root.tabId)}
-   catch(error){if(task.roots.has(root.id)){auxWorkerNoteUnknown('browser-debugger-detach');throw error}}
-  }
-  auxBoundBrowserTasks.delete(task.id);
- })();
- return task.close;
+ const closing=Promise.resolve().then(async()=>{
+  // Detach first: the native debugger client responds Detached to original
+  // commands (including an unresolved Runtime awaitPromise). A cancellation
+  // request alone never removes their pending physical promises.
+  do{
+   for(const root of [...task.roots.values()]){
+    try{await auxWorkerPhysical('browser-debugger-detach',()=>chrome.debugger.detach({tabId:root.tabId}));task.roots.delete(root.id);auxBoundTabOwners.delete(root.tabId)}
+    catch(error){if(task.roots.has(root.id)){auxWorkerNoteUnknown('browser-debugger-detach');throw error}}
+   }
+   if(task.pending.size)await Promise.allSettled([...task.pending]);
+   // An already-admitted attach can publish its original root while closing.
+  }while(task.roots.size||task.pending.size);
+  if(task.retire)auxBoundBrowserTasks.delete(task.id);
+  else{task.closed=false;task.close=null}
+ });
+ task.close=closing;
+ return closing;
 }
 function auxCloseBrowserTasks(){return Promise.allSettled([...auxBoundBrowserTasks.values()].map(auxCloseBrowserTask))}
 async function auxBrowserTaskCurrent(task,signal){
@@ -57,7 +66,7 @@ async function auxBrowserTaskTarget(task,targetId,signal,owned=false){
  return {tabId,tab};
 }
 function auxBrowserTaskEmit(task,method,params,sessionId){
- if(task.closed)return;
+ if(task.closed&&method!=='Target.detachedFromTarget'&&method!=='Target.targetDestroyed')return;
  task.events({method:'aux.browserActionEvent',taskId:task.id,context:task.context,event:{method,params,sessionId}});
 }
 async function auxBrowserSelectedReference(task,reference,signal){
@@ -72,6 +81,7 @@ async function auxBrowserTaskCommand(task,command,signal){
   const reference=command.params.reference;
   if(reference){if(reference.targetId!==command.params.targetId)throw Error('The selected document target changed.');await auxBrowserSelectedReference(task,reference,signal)}
   const {tabId}=await auxBrowserTaskTarget(task,command.params.targetId,signal,!reference);
+  if(task.roots.size>=128)throw Error('The task debugger attachment bound was reached.');
   if(auxBoundTabOwners.has(tabId))throw Error('The task tab already has a debugger owner.');
   const root={id:crypto.randomUUID(),targetId:command.params.targetId,tabId,children:new Set,reference:reference?Object.freeze({...reference}):null};
   // Reserve before the original attach promise; cancellation cannot drop it.
@@ -102,7 +112,7 @@ async function auxBrowserTaskCommand(task,command,signal){
   const sessionId=command.params.sessionId,root=[...task.roots.values()].find(root=>root.id===sessionId||root.children.has(sessionId));
   if(!root)return {};
   if(root.id===sessionId){await auxWorkerPhysical('browser-debugger-detach',()=>chrome.debugger.detach({tabId:root.tabId}));task.roots.delete(root.id);auxBoundTabOwners.delete(root.tabId)}
-  else{await auxWorkerPhysical('browser-debugger-detach-child',()=>chrome.debugger.sendCommand({tabId:root.tabId},'Target.detachFromTarget',{sessionId}));root.children.delete(sessionId)}
+  else{await auxWorkerPhysical('browser-debugger-detach-child',()=>chrome.debugger.sendCommand({tabId:root.tabId},'Target.detachFromTarget',{sessionId,...root.reference?{__auxDocumentCapability:root.reference.documentCapability}:{}}));root.children.delete(sessionId)}
   return {};
  }
  if(!auxBoundBrowserMethods.has(command.method))throw Error(`Browser action is unavailable: ${command.method}`);
@@ -116,6 +126,7 @@ async function auxBrowserTaskCommand(task,command,signal){
  const target=command.params?.targetId??command.params?.anchorTargetId;
  if(target)await auxBrowserTaskTarget(task,target,signal,['Aux.controlTab','Aux.ensureTabInAiTabsGroup'].includes(command.method));
  if(command.method==='Aux.openProfileUrl'||command.method==='Aux.createAgentTab'){
+  if(task.created.size>=256)throw Error('The task-created tab bound was reached.');
   const url=new URL(command.params.url);if(!['http:','https:'].includes(url.protocol)&&url.href!=='about:blank')throw Error('The task can open only web pages or about:blank.');
   await auxBrowserTaskCurrent(task,signal);
   const tab=await auxWorkerPhysical('browser-task-create-tab',()=>chrome.tabs.create({active:command.method==='Aux.openProfileUrl',url:url.href,windowId:task.route.windowId}));
@@ -128,7 +139,7 @@ async function auxBrowserTaskCommand(task,command,signal){
   auxBrowserTaskEmit(task,'Target.targetCreated',{targetInfo:{targetId,type:'page',url:url.href,title:tab.title??''}});
   return command.method==='Aux.openProfileUrl'?{success:true}:{tabId:tab.id,targetId,windowId:task.route.windowId};
  }
- if(command.method==='Aux.ownsTarget')return {owned:task.created.get(command.params.targetId)===(await auxBrowserTaskTarget(task,command.params.targetId,signal)).tabId};
+ if(command.method==='Aux.ownsTarget'){if(command.params.reference){if(command.params.reference.targetId!==command.params.targetId)throw Error('The selected target changed.');await auxBrowserSelectedReference(task,command.params.reference,signal);return {owned:true}}return {owned:task.created.get(command.params.targetId)===(await auxBrowserTaskTarget(task,command.params.targetId,signal)).tabId}}
  if(command.method==='Aux.listTabs'&&command.params.accountId!==undefined&&command.params.accountId!==task.route.accountId)throw Error('The requested account changed.');
  const result=await vy(command,signal,task.route);
  await auxBrowserTaskCurrent(task,signal);
@@ -149,15 +160,17 @@ async function auxRunBoundBrowserAction(input,route,signal,events){
   auxBoundBrowserTasks.set(task.id,task);
  }
  if(task.key!==key)throw Error('A browser task cannot change its profile or window.');
+ const cancel=()=>auxCloseBrowserTask(task,false).catch(()=>{});
+ signal?.addEventListener('abort',cancel,{once:true});if(signal?.aborted)cancel();
  try{return await auxBrowserTaskWork(task,()=>auxBrowserTaskCommand(task,command,signal))}
- finally{if(input.persistent!==true)await auxCloseBrowserTask(task)}
+ finally{signal?.removeEventListener('abort',cancel);if(input.persistent!==true)await auxCloseBrowserTask(task)}
 }
 chrome.auxAccount?.onProfileContextChanged?.addListener(()=>{auxCloseBrowserTasks().catch(()=>{})});
 chrome.debugger.onEvent.addListener((source,method,params)=>{
  const task=auxBoundTabOwners.get(source.tabId);if(!task||task.closed)return;
  const root=[...task.roots.values()].find(root=>root.tabId===source.tabId);if(!root)return;
  if(source.sessionId&&!root.children.has(source.sessionId))return;
- if(method==='Target.attachedToTarget'&&typeof params?.sessionId==='string'){if(params.targetInfo?.type!=='iframe'){auxWorkerPhysical('browser-debugger-unrelated-child-detach',()=>chrome.debugger.sendCommand({tabId:root.tabId},'Target.detachFromTarget',{sessionId:params.sessionId})).catch(()=>{});return}root.children.add(params.sessionId)}
+ if(method==='Target.attachedToTarget'&&typeof params?.sessionId==='string'){if(params.targetInfo?.type!=='iframe'){auxWorkerPhysical('browser-debugger-unrelated-child-detach',()=>chrome.debugger.sendCommand({tabId:root.tabId},'Target.detachFromTarget',{sessionId:params.sessionId,...root.reference?{__auxDocumentCapability:root.reference.documentCapability}:{}})).catch(()=>{});return}if(root.children.size>=1024){auxCloseBrowserTask(task).catch(()=>{});return}root.children.add(params.sessionId)}
  if(method==='Target.detachedFromTarget')root.children.delete(params?.sessionId);
  if(!/^(Accessibility|DOM|Emulation|Input|Inspector|Network|Page|Runtime|Target)\./.test(method))return;
  if(root.reference){auxWorkerPhysical('browser-selected-document-event',async()=>{await auxBrowserSelectedReference(task,root.reference);auxBrowserTaskEmit(task,method,params,source.sessionId??root.id)},false).catch(()=>auxCloseBrowserTask(task).catch(()=>{}));return}
@@ -167,4 +180,25 @@ chrome.debugger.onDetach.addListener(source=>{
  const task=auxBoundTabOwners.get(source.tabId);if(!task)return;
  for(const [id,root]of task.roots)if(root.tabId===source.tabId){task.roots.delete(id);auxBrowserTaskEmit(task,'Target.detachedFromTarget',{sessionId:id,targetId:root.targetId})}
  auxBoundTabOwners.delete(source.tabId);
+});
+// Only an actual currently attached opener can confer popup provenance. A URL
+// match, tab title, task DB row or an unrelated same-profile tab cannot do so.
+chrome.tabs.onCreated.addListener(tab=>{
+ const task=auxBoundTabOwners.get(tab.openerTabId);
+ if(!task||task.closed||tab.incognito||tab.windowId!==task.route.windowId||!Number.isInteger(tab.id))return;
+ auxBrowserTaskWork(task,async()=>{
+  await auxBrowserTaskCurrent(task);
+  const opener=[...task.roots.values()].find(root=>root.tabId===tab.openerTabId);if(!opener)return;
+  if(opener.reference)await auxBrowserSelectedReference(task,opener.reference);
+  if(task.created.size>=256)throw Error('The task-created tab bound was reached.');
+  const targetId=await Mi([tab.id]),current=await chrome.tabs.get(tab.id);
+  await auxBrowserTaskCurrent(task);
+  if(current.windowId!==task.route.windowId||current.incognito)return;
+  auxBrowserTaskUrl(current.url??current.pendingUrl??'about:blank');
+  task.created.set(targetId,tab.id);
+  auxBrowserTaskEmit(task,'Target.targetCreated',{targetInfo:{targetId,type:'page',title:current.title??'',url:current.url??current.pendingUrl??'about:blank',openerId:opener.targetId,browserContextId:task.context.browserContextId}});
+ }).catch(error=>{if(!task.closed)console.warn('[Aux browser task] Popup ownership unavailable',error)});
+});
+chrome.tabs.onRemoved.addListener(tabId=>{
+ for(const task of auxBoundBrowserTasks.values())for(const [targetId,owned]of task.created)if(owned===tabId){task.created.delete(targetId);auxBrowserTaskEmit(task,'Target.targetDestroyed',{targetId})}
 });

@@ -29,9 +29,9 @@ async function auxRunOwnedBrowserAction(bridge,command,options,sendOriginal){
   if(current.length!==1||current[0].connectionId!==connectionId)throw auxBrowserActionFailure('The original browser profile connection changed.');
   options.auxBrowserAssertCurrent?.();
  };
- const snapshot=structuredClone(command);let dispatched=false,settled=false;
+ const snapshot=structuredClone(command);if(snapshot.method==='Aux.ownsTarget'){const reference=options.auxBrowserReferenceForTarget?.(snapshot.params.targetId);if(reference)snapshot.params.reference=reference}let dispatched=false,settled=false;
  const taskId=options.auxBrowserTaskId??globalThis.crypto.randomUUID();
- try{return await boundary.awaited(async()=>{
+ try{const operation=()=>boundary.awaited(async()=>{
   assertCurrent();
   const context=options.auxBrowserContext??await sendOriginal({method:'Aux.getBrowserActionContext',params:{}},{...route,signal:controller.signal,timeoutMs:options.timeoutMs,auxBoundBrowserAction:true,auxCancelBoundBrowserAction:error=>controller.abort(error)});
   assertCurrent();
@@ -41,13 +41,13 @@ async function auxRunOwnedBrowserAction(bridge,command,options,sendOriginal){
    const result=await sendOriginal({method:'Aux.runBoundBrowserAction',params:{taskId,context,command:snapshot,persistent:!!options.auxBrowserTaskId}},{...route,signal:controller.signal,timeoutMs:options.timeoutMs,auxBoundBrowserAction:true,auxCancelBoundBrowserAction:error=>controller.abort(error),auxManagedWrite:()=>{assertCurrent();options.auxManagedWrite?.();dispatched=true}});
    settled=true;assertCurrent();return result;
   }catch(error){if(error?.auxBrowserActionSettled)settled=true;throw error}
- })}catch(error){if(dispatched&&!settled)boundary.noteUntracked();throw error}
+ });const revocation=command.method==='Aux.debuggerDetach'||command.method==='Aux.debuggerCloseTask'||command.method==='Aux.controlTab'&&command.params?.action==='close';return await(options.auxSelectedBrowserScope&&!revocation?options.auxSelectedBrowserScope.awaited(operation):operation())}catch(error){if(dispatched&&!settled)boundary.noteUntracked();throw error}
  finally{auxOwnedBrowserRequests.delete(controller);guard.dispose();options.signal?.removeEventListener('abort',cancel)}
 }
-function auxScopedBrowserCdpClient(original,accountId,session,getRoute){
+function auxScopedBrowserCdpClient(original,accountId,session,getRoute,getTabs,onDetached){
  if(!auxUsesBoundBrowserActions())return original;
- const taskId=globalThis.crypto.randomUUID(),listeners=new Map,transport=new Emittery,dialogs=new Set,rootSessions=new Set;
- let context,connectionId,closed=false,closing=false,closePromise;
+ const taskId=globalThis.crypto.randomUUID(),listeners=new Map,transport=new Emittery,dialogs=new Set,rootSessions=new Set,retirements=new Set;
+ let context,connectionId,closed=false,closing=false,closePromise,selectedOwner;
  const account=AccountRegistry.getAccount(accountId),createdAt=account?.createdAt,incarnation=account?.incarnationId;
  const originalBinding=JSON.stringify([session.browserBinding?.profileId,session.browserBinding?.windowId,session.browserBinding?.browserMode]);
  const originalProfileBinding=JSON.stringify(AccountRegistry.getAll().profileAccountBindings[session.browserBinding?.profileId]);
@@ -57,7 +57,7 @@ function auxScopedBrowserCdpClient(original,accountId,session,getRoute){
   if(current?.createdAt!==createdAt||current?.incarnationId!==incarnation||route?.accountId!==accountId)throw auxBrowserActionFailure('The original browser task account changed.');
   const stored=SessionStore.get(accountId,session.id);
   if(!stored||String(stored.createdAt)!==String(session.createdAt)||JSON.stringify([stored.browserBinding?.profileId,stored.browserBinding?.windowId,stored.browserBinding?.browserMode])!==originalBinding||JSON.stringify(AccountRegistry.getAll().profileAccountBindings[route.profileId])!==originalProfileBinding||stored.browserBinding?.profileId!==route.profileId||stored.browserBinding?.windowId!==route.windowId||stored.browserBinding?.browserMode!=='default')throw auxBrowserActionFailure('The original browser task session or window changed.');
-  return {...route,auxBrowserTaskId:taskId,auxBrowserContext:context,auxBrowserAssertCurrent:()=>{const now=getRoute();if(now?.accountId!==route.accountId||now?.profileId!==route.profileId||now?.windowId!==route.windowId||now?.browserMode!==route.browserMode)throw auxBrowserActionFailure('The original browser task route changed.')},auxBrowserCaptureContext:(native,connection)=>{if(context&&auxBrowserContextIdentity(native)!==auxBrowserContextIdentity(context)||connectionId&&connectionId!==connection)throw auxBrowserActionFailure('The original browser task native context changed.');context??=native;connectionId??=connection}};
+  return {...route,auxSelectedBrowserScope:selectedOwner,auxBrowserReferenceForTarget:targetId=>{const tab=getTabs().find(tab=>tab.targetId===targetId);return tab?.documentCapability&&tab.documentUrl?{targetId,url:tab.documentUrl,documentCapability:tab.documentCapability}:undefined},auxBrowserTaskId:taskId,auxBrowserContext:context,auxBrowserAssertCurrent:()=>{const now=getRoute();if(now?.accountId!==route.accountId||now?.profileId!==route.profileId||now?.windowId!==route.windowId||now?.browserMode!==route.browserMode)throw auxBrowserActionFailure('The original browser task route changed.')},auxBrowserCaptureContext:(native,connection)=>{if(context&&auxBrowserContextIdentity(native)!==auxBrowserContextIdentity(context)||connectionId&&connectionId!==connection)throw auxBrowserActionFailure('The original browser task native context changed.');context??=native;connectionId??=connection}};
  };
  const call=(method,params={},options={})=>{
   const route=binding(),supplied=options.extensionBridge;
@@ -69,7 +69,7 @@ function auxScopedBrowserCdpClient(original,accountId,session,getRoute){
   if(closed||!context||!message.context||message.taskId!==taskId||connection.connectionId!==connectionId||auxBrowserContextIdentity(message.context)!==auxBrowserContextIdentity(context))return;
   try{binding()}catch{closeScoped().catch(()=>{});return}
   const value=message.event;if(!value||typeof value.method!=='string')return;
-  if(value.method==='Target.detachedFromTarget')rootSessions.delete(value.params?.sessionId);
+  if(value.method==='Target.detachedFromTarget'&&rootSessions.delete(value.params?.sessionId)){const retiring=Promise.resolve().then(()=>onDetached(value.params?.targetId));retirements.add(retiring);retiring.then(()=>retirements.delete(retiring),()=>retirements.delete(retiring))}
   if(value.method==='Page.javascriptDialogOpening'&&dialogs.has(value.sessionId))send('Page.handleJavaScriptDialog',{accept:true},value.sessionId).catch(()=>{});
   emit(value.method,value.params,value.sessionId);
  };
@@ -89,7 +89,7 @@ function auxScopedBrowserCdpClient(original,accountId,session,getRoute){
   return closePromise;
  };
  auxOwnedBrowserClients.add(closeScoped);auxBrokerBoundary().registerProducerStop(auxStopOwnedBrowserClients);
- const targets=async()=>{const result=await call('Aux.listTabs',{accountId});return (result.items??[]).map(tab=>({id:tab.targetId,targetId:tab.targetId,type:'page',title:tab.title,url:tab.url}))};
+ const targets=async()=>{const result=await call('Aux.listTabs',{accountId});return (result.items??[]).map(tab=>({id:tab.targetId,targetId:tab.targetId,type:'page',title:tab.title,url:tab.url,browserContextId:context.browserContextId}))};
  const send=async(method,params={},sessionId,options={})=>{
   if(options.auxDocumentCapability!==undefined&&(typeof options.auxDocumentCapability!=='string'||!options.auxDocumentCapability||options.auxDocumentCapability.length>64))throw auxBrowserActionFailure('Select the original tab document again.');
   if(method.startsWith('Aux.'))return call(method,params,options);
@@ -102,5 +102,5 @@ function auxScopedBrowserCdpClient(original,accountId,session,getRoute){
   if(!sessionId)throw auxBrowserActionFailure(`A task-owned page session is required: ${method}`);
   return call('Aux.debuggerDispatch',{method,params,sessionId},options);
  };
- return {scopedTaskId:taskId,scopedBrowserRoute:binding,send,transportEvents:transport,on(method,callback){let callbacks=listeners.get(method);if(!callbacks)listeners.set(method,callbacks=new Set);callbacks.add(callback);return()=>callbacks.delete(callback)},discoverTargets:targets,discoverVersion:async()=>{await targets();return {'User-Agent':context.userAgent}},setDialogAutoAccept(id,enabled){if(enabled)dialogs.add(id);else dialogs.delete(id)},closeScoped};
+ return Object.assign(new CdpClient({logId:'scoped-browser-task'}),{scopedTaskId:taskId,waitScopedPageRetirements:()=>Promise.allSettled([...retirements]),scopedBrowserRoute:binding,bindSelectedBrowserOwner(owner){selectedOwner=owner},send,transportEvents:transport,on(method,callback){let callbacks=listeners.get(method);if(!callbacks)listeners.set(method,callbacks=new Set);callbacks.add(callback);return()=>callbacks.delete(callback)},discoverTargets:targets,discoverVersion:async()=>{await targets();return {'User-Agent':context.userAgent}},setDialogAutoAccept(id,enabled){if(enabled)dialogs.add(id);else dialogs.delete(id)},closeScoped});
 }
