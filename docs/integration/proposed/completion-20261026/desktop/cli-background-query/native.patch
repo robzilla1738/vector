@@ -1,0 +1,38 @@
+--- a/chrome/browser/aux/cli/AuxCliOpenCommand.mm
++++ b/chrome/browser/aux/cli/AuxCliOpenCommand.mm
+@@ -248,7 +248,15 @@
+     const auto parsed=ParseNativeReadOnlyQuery(invocation->arguments().argv);
+     base::DictValue result;
+     int code=0;
+-    auto window=SelectActualWindow({});
++    // A terminal query does not activate Aux. Retain a visible normal window
++    // in activation order; GetActiveBrowser() is null while Terminal is active.
++    base::WeakPtr<BrowserWindowInterface> window;
++    if(auto* collection=GlobalBrowserCollection::GetInstance()){
++      collection->ForEach([&](BrowserWindowInterface* candidate){
++        if(!UsableWindow(candidate))return true;
++        window=candidate->GetWeakPtr();return false;
++      },BrowserCollection::Order::kActivation);
++    }
+     auto profile=window?window->GetProfile()->GetWeakPtr():base::WeakPtr<Profile>();
+     const auto epoch=profile?aux::GetProfileCookieBindingEpoch(profile.get()):std::string();
+     const auto generation=aux::peer::InspectNativeBrowserShutdown().admitted_generation;
+@@ -259,7 +267,8 @@
+           !aux::IsProfileCookieRestorePending(profile.get())&&
+           aux::peer::InspectNativeBrowserShutdown().admitted_generation==generation;
+     };
+-    if(!parsed||!current()){
++    const bool admitted=parsed&&current();
++    if(!admitted){
+       result=base::DictValue().Set("ok",false).Set("error",parsed?"routing-authority-unavailable":"invalid-query");code=parsed?78:64;
+     }else if(parsed->kind==ReadOnlyQueryKind::resolve){
+       const auto& destination=parsed->destination;
+@@ -288,7 +297,7 @@
+         if(!code)result=base::DictValue().Set("ok",true).Set("profiles",std::move(*profiles)).Set("spacesAreLoadedOnly",true);
+       }
+     }
+-    if(parsed&&!current()){result=base::DictValue().Set("ok",false).Set("error","query-owner-changed");code=78;}
++    if(admitted&&!current()){result=base::DictValue().Set("ok",false).Set("error","query-owner-changed");code=78;}
+     auto json=base::WriteJson(result);
+     if(!json||json->size()>kPayloadLimit){json=R"({"ok":false,"error":"query-result-too-large"})";code=75;}
+     invocation->CompleteReadOnlyQuery(*json,code);

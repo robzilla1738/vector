@@ -1,0 +1,12 @@
+{
+  "projected": false,
+  "compiled": false,
+  "files": [
+    {
+      "path": "chrome/browser/aux/cli/AuxCliOpenCommand.mm",
+      "beforeSha256": "6f18052e41f09885a8fc04881866f7f6276061172bee5e967c388466a183990e",
+      "afterSha256": "0cd55bc066b2678f4c29e6389dd3390a0a67731ff18e4a6c9e051e3aa7a2f562",
+      "anchors": 3
+    }
+  ]
+}
