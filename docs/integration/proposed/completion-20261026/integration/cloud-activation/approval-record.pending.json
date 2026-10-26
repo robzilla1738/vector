@@ -4,16 +4,16 @@
   "activationAuthorized": false,
   "executed": false,
   "source": {
-    "snapshotCommit": "f349a5dc9270d8eb50ce1b10be6e4076c1cd364c",
-    "serviceTree": "d6a79e2511e61e7b6391b73f3d4ea41c25a2b6cc",
-    "lastServiceCommit": "f349a5dc9270d8eb50ce1b10be6e4076c1cd364c",
+    "snapshotCommit": "e0afa3746eb2387c488fd23da5ddcc9ef997848c",
+    "serviceTree": "227fdf3b50b0722164c011bc5a34b83a6ed7d2b9",
+    "lastServiceCommit": "e0afa3746eb2387c488fd23da5ddcc9ef997848c",
     "manifestFileSha256": "7d452e13d873f9c2b08efc5eab12c928d942e846f667be4938aa519740d89f10",
     "migrations": 12,
     "historicalReviewSnapshot": false,
     "refreshRequiredAfterIntegratedInformationRoutes": false,
-    "serviceFiles": 221,
-    "sourcePinScope": "Current221-file service after owner-authorized device-only routines server fence; all12 SQL hashes unchanged. Prior pair/UI references are historical; current unsigned candidate uses paired-a10/UI-a7. No deploy/database grant/email/backup performed.",
-    "sourcePinFileSha256": "2bc4a74e7dd90ef686a22e4b231b798856a93f0ce6c6d8eadbb78e011442764d"
+    "serviceFiles": 222,
+    "sourcePinScope": "Current service-only scoped-readiness successor; twelve migration hashes unchanged. Desktop candidate untouched. No deploy, credential, provider, production or backup action.",
+    "sourcePinFileSha256": "70c6f834ea07e5292d9b9765b6c128cf5452ed0cdf095bdca0a330d0b710e3ad"
   },
   "c1": {
     "recipientConfiguration": "configuration.json",
@@ -136,5 +136,25 @@
     "automatic duplicate provisioning",
     "primary restore/cutover and destructive cleanup"
   ],
-  "approvalRule": "Resolve required public recipient/target fields, show exact resulting scope to owner, and record fresh explicit approval before that action. This file grants none."
+  "approvalRule": "Resolve only active C1/service-operation recipient/target facts, show the exact scope, and reuse any actually applicable approval before new authority is requested. O1 and all backup setup are owner-deferred; do not request those fields. This file grants no execution authority.",
+  "activeRequiredSections": [
+    "c1",
+    "serviceOperations"
+  ],
+  "ownerDeferredSections": [
+    "o1"
+  ],
+  "serviceOperations": {
+    "procedure": "SERVICE-OPERATIONS.md",
+    "readinessProcedure": "services/aux-cloud/docs/operations.md",
+    "monitorProviderAccount": null,
+    "serviceOperator": null,
+    "confirmedNotificationRecipient": null,
+    "deploymentProtectionAccessVerified": false,
+    "maintenanceScheduleAndInvocationVerified": false,
+    "alertDeliveryVerified": false,
+    "rollbackVerified": false,
+    "activationApproved": false,
+    "backupWorkExcluded": true
+  }
 }

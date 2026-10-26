@@ -1,10 +1,10 @@
 {
   "format": "aux.cloud.activation-source-pins.v1",
-  "sourceRoot": "/Users/rcourson/Documents/Vibe/web",
+  "sourceRoot": "/Users/rcourson/Documents/Vibe/aux-completion-20261026/integration",
   "reviewedAt": "2026-10-26",
-  "sourceCommit": "f349a5dc9270d8eb50ce1b10be6e4076c1cd364c",
-  "serviceTree": "d6a79e2511e61e7b6391b73f3d4ea41c25a2b6cc",
-  "lastServiceCommit": "f349a5dc9270d8eb50ce1b10be6e4076c1cd364c",
+  "sourceCommit": "e0afa3746eb2387c488fd23da5ddcc9ef997848c",
+  "serviceTree": "227fdf3b50b0722164c011bc5a34b83a6ed7d2b9",
+  "lastServiceCommit": "e0afa3746eb2387c488fd23da5ddcc9ef997848c",
   "serviceFiles": [
     {
       "path": "services/aux-cloud/.env.example",
@@ -158,8 +158,8 @@
     },
     {
       "path": "services/aux-cloud/docs/operations.md",
-      "bytes": 7917,
-      "sha256": "38af585a7719176391c27c45dc12103716201f4fb8a64fd546520f53e0f7b6ea"
+      "bytes": 8247,
+      "sha256": "81779ee2fee6e333cf33065b16c597ac6528886b8a2ad651c5e5451483beecb7"
     },
     {
       "path": "services/aux-cloud/docs/recovery.md",
@@ -748,8 +748,13 @@
     },
     {
       "path": "services/aux-cloud/scripts/check-readiness.mts",
-      "bytes": 1766,
-      "sha256": "b10b277f81135c02fc30ea5ef38f1f11095939abeb5eb2f40b04808ed2b12d6b"
+      "bytes": 5154,
+      "sha256": "ed486626789cd7df064db861c59d63cbe2c64f3972dceba3cd410ee1591cb612"
+    },
+    {
+      "path": "services/aux-cloud/scripts/check-readiness.test.ts",
+      "bytes": 4541,
+      "sha256": "147d661dd0ffb52a3d7ef7542a0a50b11fa88629890fd73fc0a85f98eaef45ee"
     },
     {
       "path": "services/aux-cloud/scripts/check-recovery-capture.mjs",
@@ -1028,8 +1033,8 @@
     },
     {
       "path": "services/aux-cloud/src/readiness.ts",
-      "bytes": 1252,
-      "sha256": "80203d783c28e720e26aefe3dd961029b107b877b541feae55183fa94cd11c37"
+      "bytes": 1491,
+      "sha256": "66ddad2b597b59f22ba49c2e4c4900f4f09702e267847c7a1b2a0f296149ca64"
     },
     {
       "path": "services/aux-cloud/src/routines-1852.test.ts",
@@ -1112,7 +1117,7 @@
       "sha256": "59022a1315d692f82f70a9ab70fca44b5ddffe5af3987c91b4c0eb08aaa7d925"
     }
   ],
-  "serviceFileCount": 221,
+  "serviceFileCount": 222,
   "schemaManifest": {
     "001-auth.sql": "b86d32b9ffa4a746dcf8373d72d5a26db8e66c6328e9b6940baca79d31689981",
     "002-sync.sql": "41d503100fece24c2b7e0f4e84941ecaacc2d0932daceca2248ec452212257e5",
@@ -1380,6 +1385,7 @@
     "services/aux-cloud/scripts/check-production-configuration.test.mjs",
     "services/aux-cloud/scripts/check-provider-auth.mts",
     "services/aux-cloud/scripts/check-readiness.mts",
+    "services/aux-cloud/scripts/check-readiness.test.ts",
     "services/aux-cloud/scripts/check-recovery-capture.mjs",
     "services/aux-cloud/scripts/check-recovery-restore.mjs",
     "services/aux-cloud/scripts/check-session-sync-db.ts",

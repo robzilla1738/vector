@@ -24,12 +24,12 @@
   "initialCorrections": [
     "Test-only .mts import suffix rejected by TypeScript; corrected to emitted .mjs module specifier and repeated the three affected probe cases plus typecheck."
   ],
-  "privateEnvironmentRead": false,
   "networkRequests": 0,
   "databaseWrites": false,
   "migrationChanges": false,
   "backupActions": false,
   "currentDesktopChanged": false,
   "deploymentPerformed": false,
-  "productionAcceptance": false
+  "productionAcceptance": false,
+  "privateEnvironmentFileRead": false
 }
