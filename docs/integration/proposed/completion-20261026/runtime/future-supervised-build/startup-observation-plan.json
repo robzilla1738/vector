@@ -1,0 +1,110 @@
+{
+  "format": "aux.future-startup-observation-composition.v1",
+  "sourceProposalCommit": "07a2974cb2ffd55a346d9e1ce3c49d4481c35d06",
+  "triggerConfirmationCommit": "05953cf383c90eb5db4ba4d39be03691cf3736df",
+  "inputHashes": {
+    "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/desktop/startup-authority-observation/source-plan.json": "5bc27f7469ab54aeda3b06bf4af09b1ffe9e9413c32f2dab1e619ccf9ffadaba",
+    "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/desktop/startup-authority-observation/prepare.py": "0733250c10afc41f3a736fd3bc2eda75aca4ca6b9e1af66022c2f6e87851cfab",
+    "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/integration/ordinary-chat/startup-observation-confirmed.json": "718dbe7cc41a6cfbb2a4902efe20d3d3906109feac633f3038eab9e9710e0978",
+    "/Users/rcourson/Documents/Vibe/aux-completion-20261026/runtime/docs/integration/proposed/completion-20261026/runtime/future-supervised-build/browser-source-plan.json": "6b30964dde282e1f9c70df01870e6687a2e92cfa4658e9fc5dee109abb2823d9",
+    "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/desktop/startup-authority-observation/baseline/chrome/browser/aux/AuxNativeParentColdLaunch.h": "c2187e748e0676c1edc9c591ddc88e8c87b4bc2936bdbe90ae112a62b42fa9cc",
+    "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/desktop/startup-authority-observation/source/chrome/browser/aux/AuxNativeParentColdLaunch.h": "4ccef428e661568605464d0c202cf355e8357ac0343645071bcd553ee8a9181c",
+    "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/desktop/startup-authority-observation/baseline/chrome/browser/aux/AuxNativeParentColdLaunch.cc": "5fd1c2824f27f9e017787ba9f2be0f2aa6d9b63d4aea7bdc88679c7a126fb574",
+    "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/desktop/startup-authority-observation/source/chrome/browser/aux/AuxNativeParentColdLaunch.cc": "1c2996c7c3b8931330033688b7c6997749e4d3a7c2908b97dab6e9450ac1784b",
+    "/Users/rcourson/Documents/Vibe/aux-completion-20261026/runtime/docs/integration/proposed/completion-20261026/runtime/future-supervised-build/browser-source/chrome/browser/aux/AuxSelectedStateHome.cc": "4bd49d5763b0dd673c8a777c9bf684b056aaeda2eda2e7070954976f2484e00d",
+    "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/desktop/startup-authority-observation/baseline/chrome/browser/aux/AuxSelectedStateHome.cc": "2e25c7f4b67380c73559d6cdb30e463518c95c1aa417a65dff39d37a3c834713",
+    "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/desktop/startup-authority-observation/source/chrome/browser/aux/AuxSelectedStateHome.cc": "1ccb3f17b2dd85a1c8a717b4ad80f62ea22567e57e8e48bf2f0adc8c8959b921"
+  },
+  "files": [
+    {
+      "path": "chrome/browser/aux/AuxNativeParentColdLaunch.h",
+      "preimage": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/desktop/startup-authority-observation/baseline/chrome/browser/aux/AuxNativeParentColdLaunch.h",
+      "preimageSha256": "c2187e748e0676c1edc9c591ddc88e8c87b4bc2936bdbe90ae112a62b42fa9cc",
+      "correctionSource": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/desktop/startup-authority-observation/source/chrome/browser/aux/AuxNativeParentColdLaunch.h",
+      "correctionSourceSha256": "4ccef428e661568605464d0c202cf355e8357ac0343645071bcd553ee8a9181c",
+      "output": "/Users/rcourson/Documents/Vibe/aux-completion-20261026/runtime/docs/integration/proposed/completion-20261026/runtime/future-supervised-build/startup-observation-source/chrome/browser/aux/AuxNativeParentColdLaunch.h",
+      "outputSha256": "4ccef428e661568605464d0c202cf355e8357ac0343645071bcd553ee8a9181c",
+      "startupAnchors": [
+        {
+          "before": "#include \"base/files/file_path.h\"",
+          "after": "#include \"base/files/file_path.h\"\n#include \"base/time/time.h\"",
+          "count": 1
+        },
+        {
+          "before": "SelectedStateHomeResolution StartSealedNativeDaemonBeforeProfiles();",
+          "after": "SelectedStateHomeResolution StartSealedNativeDaemonBeforeProfiles();\n// Observation of the existing one-shot startup budget, never a new allowance.\nbase::TimeTicks NativeBrowserStartupDeadline();",
+          "count": 1
+        }
+      ],
+      "futureBranchPreserved": false,
+      "twoOrderReplayEqual": false
+    },
+    {
+      "path": "chrome/browser/aux/AuxNativeParentColdLaunch.cc",
+      "preimage": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/desktop/startup-authority-observation/baseline/chrome/browser/aux/AuxNativeParentColdLaunch.cc",
+      "preimageSha256": "5fd1c2824f27f9e017787ba9f2be0f2aa6d9b63d4aea7bdc88679c7a126fb574",
+      "correctionSource": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/desktop/startup-authority-observation/source/chrome/browser/aux/AuxNativeParentColdLaunch.cc",
+      "correctionSourceSha256": "1c2996c7c3b8931330033688b7c6997749e4d3a7c2908b97dab6e9450ac1784b",
+      "output": "/Users/rcourson/Documents/Vibe/aux-completion-20261026/runtime/docs/integration/proposed/completion-20261026/runtime/future-supervised-build/startup-observation-source/chrome/browser/aux/AuxNativeParentColdLaunch.cc",
+      "outputSha256": "1c2996c7c3b8931330033688b7c6997749e4d3a7c2908b97dab6e9450ac1784b",
+      "startupAnchors": [
+        {
+          "before": "  bool attempted = false;\n  std::optional<LocationPreflight> location;",
+          "after": "  bool attempted = false;\n  base::TimeTicks deadline;\n  std::optional<LocationPreflight> location;",
+          "count": 1
+        },
+        {
+          "before": "SelectedStateHomeResolution StartSealedNativeDaemonBeforeProfiles() {",
+          "after": "base::TimeTicks NativeBrowserStartupDeadline() {\n  auto& attempt = CurrentAttempt();\n  if (getpid() != attempt.process) return {};\n  std::lock_guard<std::mutex> lock(attempt.mutex);\n  return attempt.deadline;\n}\nSelectedStateHomeResolution StartSealedNativeDaemonBeforeProfiles() {",
+          "count": 1
+        },
+        {
+          "before": "  const auto deadline = base::TimeTicks::Now() + kStartupLimit;\n  while (base::TimeTicks::Now() < deadline) {",
+          "after": "  const auto deadline = base::TimeTicks::Now() + kStartupLimit;\n  {\n    std::lock_guard<std::mutex> lock(attempt.mutex);\n    attempt.deadline = deadline;\n  }\n  while (base::TimeTicks::Now() < deadline) {",
+          "count": 1
+        }
+      ],
+      "futureBranchPreserved": false,
+      "twoOrderReplayEqual": false
+    },
+    {
+      "path": "chrome/browser/aux/AuxSelectedStateHome.cc",
+      "preimage": "/Users/rcourson/Documents/Vibe/aux-completion-20261026/runtime/docs/integration/proposed/completion-20261026/runtime/future-supervised-build/browser-source/chrome/browser/aux/AuxSelectedStateHome.cc",
+      "preimageSha256": "4bd49d5763b0dd673c8a777c9bf684b056aaeda2eda2e7070954976f2484e00d",
+      "correctionSource": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/desktop/startup-authority-observation/source/chrome/browser/aux/AuxSelectedStateHome.cc",
+      "correctionSourceSha256": "1ccb3f17b2dd85a1c8a717b4ad80f62ea22567e57e8e48bf2f0adc8c8959b921",
+      "output": "/Users/rcourson/Documents/Vibe/aux-completion-20261026/runtime/docs/integration/proposed/completion-20261026/runtime/future-supervised-build/startup-observation-source/chrome/browser/aux/AuxSelectedStateHome.cc",
+      "outputSha256": "646c13f6bc86ba90608e9f5124d3bebf9dfaeadcc4174087ad27fbc72c098bfa",
+      "startupAnchors": [
+        {
+          "before": "#include \"AuxSelectedStateHome.h\"",
+          "after": "#include \"AuxSelectedStateHome.h\"\n#include \"AuxNativeParentColdLaunch.h\"",
+          "count": 1
+        },
+        {
+          "before": "  if (!admitted_generation) {\n    auto reply = owner->GetBrowserStartupLease(2'000);",
+          "after": "  if (!admitted_generation) {\n    const auto deadline = NativeBrowserStartupDeadline();\n    auto current_startup = [&] {\n      if (deadline.is_null() || base::TimeTicks::Now() >= deadline) return false;\n      const auto current = owner->InspectReadyPulse();\n      const auto child = owner->InspectOwnedChild();\n      if (!current || !Fresh(*current) || current->generation != pulse->generation ||\n          current->exports < pulse->exports || !roots->Revalidate() ||\n          child.closed || child.wrong_process || child.exit_observed_and_reaped ||\n          child.exit_ownership_unknown || child.child_pid <= 1) return false;\n      std::lock_guard<std::mutex> lock(state.mutex);\n      return !state.closed && !state.browser_shutdown_phase && !state.initializing &&\n          state.selected == owner && !state.browser_generation &&\n          base::TimeTicks::Now() < deadline;\n    };\n    auto next_slice = [&]() -> uint32_t {\n      // RequestAuthority may send/receive twice when retiring a failed reply.\n      // Bound all four transport waits by the remaining original budget.\n      const int64_t remaining = (deadline - base::TimeTicks::Now()).InMilliseconds();\n      return remaining < 4 ? 0 : static_cast<uint32_t>(std::min<int64_t>(2'000, remaining / 4));\n    };\n    auto transient = [](DaemonAuthorityStatus status) {\n      return status == DaemonAuthorityStatus::timedOut || status == DaemonAuthorityStatus::pending;\n    };\n    auto pause_observation = [&] {\n      const auto remaining = deadline - base::TimeTicks::Now();\n      if (remaining.is_positive())\n        base::PlatformThread::Sleep(std::min(base::Milliseconds(25), remaining));\n    };\n    DaemonAuthorityReply reply;\n    for (;;) {\n      if (!current_startup()) return refused(6);\n      const auto slice = next_slice();\n      if (!slice) return refused(6);\n      // Same operation/body retains the original native nonce. After any send\n      // attempt this observes that request; it never repeats the root grant.\n      reply = owner->GetBrowserStartupLease(slice);\n      if (!current_startup()) return refused(6);\n      if (!transient(reply.status)) break;\n      pause_observation();\n    }",
+          "count": 1
+        },
+        {
+          "before": "    if (owner->AcceptAuthorityReply(reply, 2'000) != DaemonAuthorityStatus::ready) return refused(11);",
+          "after": "    for (;;) {\n      if (!current_startup()) return refused(11);\n      const auto slice = next_slice();\n      if (!slice) return refused(11);\n      // Retain this exact ready publication across ACK uncertainty. Repeating\n      // its nonce-bound ACK is idempotent; a timeout is never acceptance.\n      const auto accepted = owner->AcceptAuthorityReply(reply, slice);\n      if (!current_startup()) return refused(11);\n      if (accepted == DaemonAuthorityStatus::ready) break;\n      if (!transient(accepted)) return refused(11);\n      pause_observation();\n    }",
+          "count": 1
+        }
+      ],
+      "futureBranchPreserved": true,
+      "twoOrderReplayEqual": true
+    }
+  ],
+  "startupAnchorCount": 8,
+  "futureBranchAnchorCount": 1,
+  "commutativeCompositionPassed": true,
+  "previousFutureSourceUnchanged": true,
+  "sharedNativeChanged": false,
+  "compiled": false,
+  "linked": false,
+  "signed": false,
+  "executed": false,
+  "activationAllowed": false,
+  "nextGate": "Wait for root actual local acceptance, then compile only affected future ColdLaunch and SelectedStateHome producers and relink affected framework using this exact source selection."
+}

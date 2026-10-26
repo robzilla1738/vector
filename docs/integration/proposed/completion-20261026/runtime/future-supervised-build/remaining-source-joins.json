@@ -1,6 +1,6 @@
 {
   "format": "aux.future-supervised-source-gates.v2",
-  "finiteSourceGatesClosed": true,
+  "finiteSourceGatesClosed": false,
   "sourceEvidence": "../selected-repl-fs/completion-evidence.json",
   "inactiveLinkReceipt": "/private/tmp/aux-future-supervised-native-20261026-b1/receipt.json",
   "runtimeAccepted": false,
@@ -8,7 +8,7 @@
   "browserOverlay": "browser-source-plan.json",
   "browserProducersCompiled": true,
   "coherentFutureBrowserLinked": true,
-  "sourceGateScope": "Known execution-native and corrected resource joins closed for frozen cohort; activation/package/runtime gates remain.",
+  "sourceGateScope": "Prepared startup-observation successor awaits actual local acceptance and affected future native build; previous coherent cohort is unchanged.",
   "nativeSourceGatesClosed": true,
   "nativeCohortReceipt": "native-cohort-receipt.json",
   "resourceDependency": {
@@ -61,5 +61,20 @@
     "status": "No accepted concrete split repair supplied at this checkpoint.",
     "scope": "Root current local native diagnostic and CLI build are not automatically substituted into this frozen cohort.",
     "nextAction": "If the local split diagnosis produces an accepted concrete source repair, carry that exact repair into the future resource/native selection and rebuild only affected producers/links before activation. Diagnostic-only changes do not invalidate the recorded cohort."
+  },
+  "pendingStartupObservation": {
+    "sourcePrepared": true,
+    "sourceProposalCommit": "07a2974cb2ffd55a346d9e1ce3c49d4481c35d06",
+    "observedTriggerCommit": "05953cf383c90eb5db4ba4d39be03691cf3736df",
+    "plan": "startup-observation-plan.json",
+    "planSha256": "b86b93a57ad512cf3a4aa06e87c0cdfa1f1f770160cfc2435ea52d51831d6c3a",
+    "files": 3,
+    "startupAnchorCount": 8,
+    "existingFutureBranchPreserved": true,
+    "bothCompositionOrdersEqual": true,
+    "compiled": false,
+    "linked": false,
+    "localAcceptanceConfirmed": false,
+    "nextAction": "Only after root accepts the actual local startup repair: compile future AuxNativeParentColdLaunch.cc and AuxSelectedStateHome.cc with the composed header, then relink the affected framework. Keep previous linked artifacts and final resource pair intact until that successor passes."
   }
 }

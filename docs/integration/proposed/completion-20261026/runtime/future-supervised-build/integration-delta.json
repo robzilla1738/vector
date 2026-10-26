@@ -1,6 +1,6 @@
 {
   "format": "aux.future-supervised-integration.v2",
-  "sourceGatesClosed": true,
+  "sourceGatesClosed": false,
   "unsignedLinkPassed": true,
   "runtimeAccepted": false,
   "activated": false,
@@ -138,7 +138,7 @@
     "generate exact paired v11 resources using actual signed helper and composed leaf hashes before containing seals",
     "perform real Bash/yielded/PTY/CLI/fs cancellation and escaped-descendant shutdown acceptance under granted authority"
   ],
-  "sourceGateScope": "Known execution source joins, corrected paired resource copies and coherent unsigned native links complete for the frozen selection. Activation/package/runtime acceptance remain separate.",
+  "sourceGateScope": "Execution and corrected resource joins are closed for recorded predecessor; confirmed startup-timeout successor is prepared but awaits local acceptance and two affected producer compiles/framework relink.",
   "browserProducerObjectsCompiled": true,
   "coherentFutureBrowserLinked": true,
   "nativeSourceGatesClosed": true,
@@ -148,5 +148,20 @@
     "status": "No accepted concrete split repair supplied at this checkpoint.",
     "scope": "Root current local native diagnostic and CLI build are not automatically substituted into this frozen cohort.",
     "nextAction": "If the local split diagnosis produces an accepted concrete source repair, carry that exact repair into the future resource/native selection and rebuild only affected producers/links before activation. Diagnostic-only changes do not invalidate the recorded cohort."
+  },
+  "pendingStartupObservation": {
+    "sourcePrepared": true,
+    "sourceProposalCommit": "07a2974cb2ffd55a346d9e1ce3c49d4481c35d06",
+    "observedTriggerCommit": "05953cf383c90eb5db4ba4d39be03691cf3736df",
+    "plan": "startup-observation-plan.json",
+    "planSha256": "b86b93a57ad512cf3a4aa06e87c0cdfa1f1f770160cfc2435ea52d51831d6c3a",
+    "files": 3,
+    "startupAnchorCount": 8,
+    "existingFutureBranchPreserved": true,
+    "bothCompositionOrdersEqual": true,
+    "compiled": false,
+    "linked": false,
+    "localAcceptanceConfirmed": false,
+    "nextAction": "Only after root accepts the actual local startup repair: compile future AuxNativeParentColdLaunch.cc and AuxSelectedStateHome.cc with the composed header, then relink the affected framework. Keep previous linked artifacts and final resource pair intact until that successor passes."
   }
 }
