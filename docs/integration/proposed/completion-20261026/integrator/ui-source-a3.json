@@ -1,0 +1,351 @@
+{
+  "format": "aux.completion.ui-source.v1",
+  "passed": true,
+  "files": [
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/developers-DTvaoVBC.js",
+      "inputSha256": "92762f7e7059d632a57cacbc089b11523ee3d72da16638cbe488026699ec431b",
+      "output": "/Users/rcourson/Documents/Vibe/web/out/completion-20261026-ui-a3/developers-DTvaoVBC.js",
+      "outputSha256": "7c22f0e3970ecf39c0497cdab3dc0103cb794e73f3b93f1b20f82f94dc0f5958",
+      "suppliedSourceSha256": "c5f9e7bb2a2c1439ac9d28fa5c56f22b97e78a148ae8a1b516287073d8ab807d",
+      "anchors": [
+        {
+          "kind": "identity",
+          "name": "Aux transient identity and CLI help",
+          "find": "aside",
+          "replace": "aux",
+          "count": 25
+        }
+      ]
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/connect-dialog-CacgpFap.js",
+      "inputSha256": "c80933017aa02d328118dfa22370f954cb21eaa91029fe584cedfccfc811b188",
+      "output": "/Users/rcourson/Documents/Vibe/web/out/completion-20261026-ui-a3/connect-dialog-CacgpFap.js",
+      "outputSha256": "8f10c421607cc4ac4fc83fb04b0eef80c38721534926fac5d22efb810a1274c2",
+      "suppliedSourceSha256": "276c770d80c67db2d1af08fac1ba44c9fb9c76e5595b63e098ebe0010ad739c2",
+      "anchors": [
+        {
+          "kind": "identity",
+          "name": "Aux transient identity and CLI help",
+          "find": "aside-openai-codex-oauth",
+          "replace": "aux-openai-codex-oauth",
+          "count": 1
+        },
+        {
+          "kind": "identity",
+          "name": "Aux transient identity and CLI help",
+          "find": "aside-github-copilot-oauth",
+          "replace": "aux-github-copilot-oauth",
+          "count": 1
+        },
+        {
+          "kind": "identity",
+          "name": "Aux transient identity and CLI help",
+          "find": "aside-meta-muse-oauth",
+          "replace": "aux-meta-muse-oauth",
+          "count": 1
+        },
+        {
+          "kind": "identity",
+          "name": "Aux transient identity and CLI help",
+          "find": "aside-xai-grok-oauth",
+          "replace": "aux-xai-grok-oauth",
+          "count": 1
+        },
+        {
+          "kind": "identity",
+          "name": "Aux transient identity and CLI help",
+          "find": "aside-kimi-code",
+          "replace": "aux-kimi-code",
+          "count": 1
+        },
+        {
+          "kind": "identity",
+          "name": "Aux transient identity and CLI help",
+          "find": "aside-claude-oauth",
+          "replace": "aux-claude-oauth",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/newtab-CnOLQ0yu.js",
+      "inputSha256": "0ef06493685bbfe1475a216f933e504c9ef0a7a0d2facc457c9c9fac853d8011",
+      "output": "/Users/rcourson/Documents/Vibe/web/out/completion-20261026-ui-a3/newtab-CnOLQ0yu.js",
+      "outputSha256": "eef65df02f862b13dcf9951f3f8cb81d1e6875a6dc6e7b782c954f23e7e69539",
+      "suppliedSourceSha256": "e300bb70a84a0630c94f20469822517ca0ca02be902d9bb150492994f719cb19",
+      "anchors": [
+        {
+          "kind": "identity",
+          "name": "Aux transient identity and CLI help",
+          "find": "aside-optimistic-search",
+          "replace": "aux-optimistic-search",
+          "count": 1
+        },
+        {
+          "kind": "identity",
+          "name": "Aux transient identity and CLI help",
+          "find": "aside|chrome",
+          "replace": "aux|chrome",
+          "count": 4
+        },
+        {
+          "kind": "identity",
+          "name": "Aux transient identity and CLI help",
+          "find": "/^aside:",
+          "replace": "/^aux:",
+          "count": 1
+        },
+        {
+          "kind": "identity",
+          "name": "Aux transient identity and CLI help",
+          "find": "\"aside://\"",
+          "replace": "\"aux://\"",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/session-feedback-dialog-BjDg0W8m.js",
+      "inputSha256": "6d8dcffd3758ba3454084c5b561cbb01168c21972f875f59f3651ea388018d87",
+      "output": "/Users/rcourson/Documents/Vibe/web/out/completion-20261026-ui-a3/session-feedback-dialog-BjDg0W8m.js",
+      "outputSha256": "1567b5bc434e6143645b92068a88fd0a4cefea55b38a9f29bfb490146d69e8c5",
+      "suppliedSourceSha256": "0b500e4835d4fef608f3bb484438c021812808185541b3b4e5c7ace96bb7f28d",
+      "anchors": [
+        {
+          "find": "asideComponentVersion",
+          "replace": "auxComponentVersion",
+          "count": 1,
+          "scope": "paired local feedback request producer",
+          "kind": "identity"
+        }
+      ]
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/mcps-DmPp5oo9.js",
+      "inputSha256": "dee7ff83a91decfc61542ac55e197d5eaa4f461bb657eb7085eb0938648fd890",
+      "output": "/Users/rcourson/Documents/Vibe/web/out/completion-20261026-ui-a3/mcps-DmPp5oo9.js",
+      "outputSha256": "0628abf121307a43567addaa792eb9f13c9b72e47c75f8d3cbe9f316a5ece79a",
+      "suppliedSourceSha256": "e081e3d15242ef69bc043ec4685b07bc9fba247d20a68dc7df34e936d94862b1",
+      "anchors": [
+        {
+          "kind": "identity",
+          "name": "Versioned Aux experimental settings",
+          "find": "o({sync:m().default(!1),kakaotalk:m().default(!1),onboarding:m().default(!1),asideCode:m().default(!1),compactionLimits:m().default(!1)})",
+          "replace": "o({sync:m().default(!1),kakaotalk:m().default(!1),onboarding:m().default(!1),format:t().optional(),auxCode:m().optional(),asideCode:m().optional(),compactionLimits:m().default(!1)}).transform(function migrateAuxExperimentalSettings(value) {\n  const format = 'aux.experimental.v2';\n  if (value.format !== undefined && value.format !== format)\n    throw Error('Unsupported Aux experimental settings version.');\n  if (value.format !== undefined && Object.hasOwn(value, 'asideCode') ||\n      value.format === undefined && Object.hasOwn(value, 'auxCode'))\n    throw Error('Ambiguous Aux experimental settings generation.');\n  const {asideCode, auxCode, format: previousFormat, ...settings} = value;\n  return {...settings, format, auxCode: (previousFormat === format ? auxCode : asideCode) ?? false};\n})",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/experimental-Xq3YsEPK.js",
+      "inputSha256": "7d237f0a3af555498ad42ca70988ea9f9cd11473ed1afe4e68b16089e0d5c534",
+      "output": "/Users/rcourson/Documents/Vibe/web/out/completion-20261026-ui-a3/experimental-Xq3YsEPK.js",
+      "outputSha256": "7605e2eba17406c5317720229d2a52f58824ce1203a7829516ed5379e3654081",
+      "suppliedSourceSha256": "f1c137c2a143eb9fa7d33740608cb03450a7de7049cf1141001763dbec78aaff",
+      "anchors": [
+        {
+          "kind": "identity",
+          "name": "Versioned Aux experimental settings",
+          "find": "asideCode:!1",
+          "replace": "format:\"aux.experimental.v2\",auxCode:!1",
+          "count": 1
+        },
+        {
+          "kind": "identity",
+          "name": "Versioned Aux experimental settings",
+          "find": "t.asideCode",
+          "replace": "t.auxCode",
+          "count": 1
+        },
+        {
+          "kind": "identity",
+          "name": "Versioned Aux experimental settings",
+          "find": "asideCode:a",
+          "replace": "auxCode:a",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/session-composer-Dc0LRfZA.js",
+      "inputSha256": "7d9fd830a06e4bc846a7d81f849486a16013a36411c8d33a309ddc6a6d7f229d",
+      "output": "/Users/rcourson/Documents/Vibe/web/out/completion-20261026-ui-a3/session-composer-Dc0LRfZA.js",
+      "outputSha256": "3eaa9c8f0946ad2b20a63f0b80f0acb0ad79835061050eb09dff2fbd3c791144",
+      "suppliedSourceSha256": "71e187af0ca2887e13b840cd1e1b4aa2f46693821fb96daa8eafa9f4480bf645",
+      "anchors": [
+        {
+          "kind": "identity",
+          "name": "Versioned Aux experimental settings",
+          "find": "asideCodeAgents",
+          "replace": "auxCodeAgents",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/provider-Cw0zhujt.js",
+      "inputSha256": "8aee4a9cc8229397e4067fb9a9a4772ef4bdfddc03d1db3f2c84836a1b6fe724",
+      "output": "/Users/rcourson/Documents/Vibe/web/out/completion-20261026-ui-a3/provider-Cw0zhujt.js",
+      "outputSha256": "c4862e5ac3e442c203039edf7253c5af9627be724e70d0e20f693243e40c210e",
+      "suppliedSourceSha256": "6c3aa90661897411efea336eff14b6e0d50e8fbb7f09b178b44305be1ee95c97",
+      "anchors": [
+        {
+          "kind": "identity",
+          "name": "Versioned Aux experimental settings",
+          "find": "asideCodeAgents",
+          "replace": "auxCodeAgents",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/_skillId-CAwCRjA8.js",
+      "inputSha256": "b6fe66a9473643a8b720bcdc7f618d189685b96416c5a06df0f2dcaa27b25b60",
+      "output": "/Users/rcourson/Documents/Vibe/web/out/completion-20261026-ui-a3/_skillId-CAwCRjA8.js",
+      "outputSha256": "1a39b9401e5144d365b363e01f77601d311b3f515bb83d802b492b664064052d",
+      "suppliedSourceSha256": "c1ed5ec1684bcf8b7bd2c758ef949eff885fa583c892fa58a9ecfa87bb50151e",
+      "anchors": [
+        {
+          "kind": "identity",
+          "name": "Versioned Aux experimental settings",
+          "find": ".asideCode",
+          "replace": ".auxCode",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/tag-icon-DeMC7uIN.js",
+      "inputSha256": "81afcebde6fdb39a61d6b41534f79196e40f8e9fe6d1114bc1e44bbf4ebbec6a",
+      "output": "/Users/rcourson/Documents/Vibe/web/out/completion-20261026-ui-a3/tag-icon-DeMC7uIN.js",
+      "outputSha256": "0d9e393739847e63f98b7006a83986ff2513da62a5c46351d4c83f717052cfff",
+      "suppliedSourceSha256": "7b922e0f7be2491261127dc6292360a5906101caed5cc682c195dd7921989078",
+      "anchors": [
+        {
+          "kind": "identity",
+          "name": "Aux transient identity and CLI help",
+          "find": "[\"aside\",",
+          "replace": "[\"aux\",",
+          "count": 2
+        }
+      ]
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/splash-D666ivBP.js",
+      "inputSha256": "fd0b1c1bc534c8bf846793120aa7b868cc436a35dd12c7239477884738682c99",
+      "output": "/Users/rcourson/Documents/Vibe/web/out/completion-20261026-ui-a3/splash-D666ivBP.js",
+      "outputSha256": "85486d9e4b8d1ce9965b41c26ba808df3501be3d638cc860c6ce45773d7a0921",
+      "suppliedSourceSha256": "d81b276872969f21480c904b2d189625056da34748e9dfe0a3a752c891ca6138",
+      "anchors": [
+        {
+          "kind": "identity",
+          "name": "Aux transient identity and CLI help",
+          "find": "\"aside\"",
+          "replace": "\"aux\"",
+          "count": 3
+        }
+      ]
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/route-TQyeTEXE.js",
+      "inputSha256": "103c0414f46b9c84ae6231ec58c3129e0d80703e733be4a8ff0af1b319f318c4",
+      "output": "/Users/rcourson/Documents/Vibe/web/out/completion-20261026-ui-a3/route-TQyeTEXE.js",
+      "outputSha256": "468e9e336a9127198dc0b45902990ca3a6b6bcdbbe0c8fab1871d23492ec59a8",
+      "suppliedSourceSha256": "13d75bb6564433b90de5bb3881c3515c72fe0219054691cb405f37016b463c75",
+      "anchors": [
+        {
+          "kind": "integration",
+          "scope": "public product information route",
+          "find": "https://getaux.co/docs",
+          "replace": "https://app.getaux.co/docs",
+          "count": 1
+        },
+        {
+          "kind": "integration",
+          "scope": "public product information route",
+          "find": "https://getaux.co/community",
+          "replace": "https://app.getaux.co/community",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/ai-CzEX5E7S.js",
+      "inputSha256": "c81d8aecab56899557ddbd9bde9f1080c352421c4b4b52e2d22a5267b9718633",
+      "output": "/Users/rcourson/Documents/Vibe/web/out/completion-20261026-ui-a3/ai-CzEX5E7S.js",
+      "outputSha256": "d1c597e52b370e6759c4f4e0bb89021be768a615c3ba06e111f839c66e11df3b",
+      "suppliedSourceSha256": "50fbaa2bb2bf939e22fd8eeb4a6d9d3e5ee390f06cb1f6b95b1e7eff783d6828",
+      "anchors": [
+        {
+          "kind": "integration",
+          "scope": "public product information route",
+          "find": "https://getaux.co/policy/privacy",
+          "replace": "https://app.getaux.co/policy/privacy",
+          "count": 1
+        },
+        {
+          "kind": "integration",
+          "scope": "public product information route",
+          "find": "https://getaux.co/policy/terms",
+          "replace": "https://app.getaux.co/policy/terms",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/add-on-credits-dialog-Dn5FxOyZ.js",
+      "inputSha256": "d7b09e13cafec21b35118bd32e5069f73edcb98deb9c5290497e8c276ad31e46",
+      "output": "/Users/rcourson/Documents/Vibe/web/out/completion-20261026-ui-a3/add-on-credits-dialog-Dn5FxOyZ.js",
+      "outputSha256": "e0012bbed6365fd0c9c4b7e23fee41ca02a3b9ca7e004cd743c58b8fc19bb73c",
+      "suppliedSourceSha256": "c303b278cb4536eedee05f941eb557c002dc287e357a3a8f8f96f60f50bed889",
+      "anchors": [
+        {
+          "kind": "integration",
+          "scope": "public product information route",
+          "find": "https://getaux.co/policy/privacy",
+          "replace": "https://app.getaux.co/policy/privacy",
+          "count": 1
+        },
+        {
+          "kind": "integration",
+          "scope": "public product information route",
+          "find": "https://getaux.co/policy/terms",
+          "replace": "https://app.getaux.co/policy/terms",
+          "count": 1
+        }
+      ]
+    }
+  ],
+  "generators": [
+    {
+      "path": "vendor/provided/aux-final-ui-identity.mjs",
+      "sha256": "942e3129fe3c8e80fe90e7f39a88c32f8ae82309cd9fa9640407167da87518f8"
+    },
+    {
+      "path": "vendor/provided/aux-final-runtime-identity.mjs",
+      "sha256": "3af91a07f3c21ca104bb64d86bc8322b2f4fa15116b9860ffc7099a8567b0350"
+    },
+    {
+      "path": "docs/integration/proposed/completion-20261026/integration/identity/source-pins.json",
+      "sha256": "136b03b377f47acde3935a36e32020308c5e21a668b81f9045b10ad4db2699bb"
+    },
+    {
+      "path": "vendor/provided/aux-experimental-settings-v2.mjs",
+      "sha256": "c1ef323fe38ed1608cc2024739b28699b75a4292f4e9eeeffffc395dd98d28af"
+    },
+    {
+      "path": "vendor/provided/aux-product-information-links.mjs",
+      "sha256": "324da40d98bfbf2ac2f417306c0f171cce6db0f6dc033ada2138ef68a2c75e35"
+    },
+    {
+      "path": "docs/integration/proposed/completion-20261026/desktop/product-information/source-pins.json",
+      "sha256": "93c5399d57599634489ea1210fab8b359ba5fd446fec35ee723baa3d912d297a"
+    }
+  ],
+  "geometryOrCssChanged": false,
+  "productExecuted": false,
+  "candidateChanged": false,
+  "productSigned": false
+}

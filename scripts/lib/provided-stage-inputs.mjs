@@ -2,6 +2,8 @@
 // silently passing after its branding/platform adaptation code has changed.
 export const providedStageInputs = Object.freeze([
   'vendor/provided/aux-final-ui-identity.mjs',
+  'vendor/provided/aux-product-information-links.mjs',
+  'docs/integration/proposed/completion-20261026/desktop/product-information/source-pins.json',
   'vendor/provided/aux-experimental-settings-v2.mjs',
   'vendor/provided/aux-final-runtime-identity.mjs',
   'docs/integration/proposed/completion-20261026/integration/identity/source-pins.json',
@@ -16,6 +18,8 @@ export const providedStageInputs = Object.freeze([
   'vendor/provided/aux-fixed-builtin-routing.mjs',
   'docs/integration/proposed/completion-20261026/runtime/fixed-builtins/entry.anchors.json',
   'vendor/provided/aux-ephemeral-protocol-identity.mjs',
+  'vendor/provided/aux-excluded-product-pruning.mjs',
+  'docs/integration/proposed/completion-20261026/integration/excluded-products/source-pins.json',
   'vendor/provided/aux-password-preference-markers.mjs',
   'docs/integration/proposed/completion-20261026/integration/preference-identity/source-pins.json',
   'docs/integration/proposed/completion-20261026/desktop/browser-files/transform-resources.mjs',

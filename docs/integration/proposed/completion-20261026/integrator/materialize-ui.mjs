@@ -5,6 +5,7 @@ import path from 'node:path';
 import {applyAuxFinalUiIdentity} from '../../../../../vendor/provided/aux-final-ui-identity.mjs';
 import {transformAuxFinalRuntimeIdentity} from '../../../../../vendor/provided/aux-final-runtime-identity.mjs';
 import {transformAuxExperimentalSettings} from '../../../../../vendor/provided/aux-experimental-settings-v2.mjs';
+import {transformAuxProductInformationLinks} from '../../../../../vendor/provided/aux-product-information-links.mjs';
 
 const repository = process.cwd();
 const here = path.join(repository, 'docs/integration/proposed/completion-20261026/integrator');
@@ -17,10 +18,12 @@ const sha = text => createHash('sha256').update(text).digest('hex');
 const names = ['developers-DTvaoVBC.js', 'connect-dialog-CacgpFap.js', 'newtab-CnOLQ0yu.js',
   'session-feedback-dialog-BjDg0W8m.js', 'mcps-DmPp5oo9.js', 'experimental-Xq3YsEPK.js',
   'session-composer-Dc0LRfZA.js', 'provider-Cw0zhujt.js', '_skillId-CAwCRjA8.js',
-  'tag-icon-DeMC7uIN.js', 'splash-D666ivBP.js'];
+  'tag-icon-DeMC7uIN.js', 'splash-D666ivBP.js', 'route-TQyeTEXE.js', 'ai-CzEX5E7S.js',
+  'add-on-credits-dialog-Dn5FxOyZ.js'];
 const generators = ['vendor/provided/aux-final-ui-identity.mjs', 'vendor/provided/aux-final-runtime-identity.mjs',
   'docs/integration/proposed/completion-20261026/integration/identity/source-pins.json',
-  'vendor/provided/aux-experimental-settings-v2.mjs'];
+  'vendor/provided/aux-experimental-settings-v2.mjs', 'vendor/provided/aux-product-information-links.mjs',
+  'docs/integration/proposed/completion-20261026/desktop/product-information/source-pins.json'];
 const inputs = await Promise.all(generators.map(async name => ({path: name, sha256: sha(await readFile(path.join(repository, name)))})));
 await mkdir(output);
 const files = [];
@@ -33,12 +36,13 @@ for (const name of names) {
   const feedback = name.startsWith('session-feedback-dialog-')
     ? transformAuxFinalRuntimeIdentity({...input, text: identity.text}) : {text: identity.text, anchors: []};
   const settings = transformAuxExperimentalSettings({...input, text: feedback.text});
+  const links = transformAuxProductInformationLinks({path: name, text: settings.text, source: text});
   const destination = path.join(output, name);
-  await writeFile(destination, settings.text, {flag: 'wx'});
+  await writeFile(destination, links.text, {flag: 'wx'});
   const syntax = spawnSync(process.execPath, ['--check', destination], {encoding: 'utf8'});
   if (syntax.status !== 0) throw Error('Composed UI script does not parse: ' + name + '\n' + syntax.stderr);
-  files.push({path: relative, inputSha256: sha(text), output: destination, outputSha256: sha(settings.text),
-    suppliedSourceSha256: sha(original), anchors: [...identity.anchors, ...feedback.anchors, ...settings.anchors]});
+  files.push({path: relative, inputSha256: sha(text), output: destination, outputSha256: sha(links.text),
+    suppliedSourceSha256: sha(original), anchors: [...identity.anchors, ...feedback.anchors, ...settings.anchors, ...links.anchors]});
 }
 for (const input of inputs)
   if (sha(await readFile(path.join(repository, input.path))) !== input.sha256) throw Error('UI generator changed during materialization');

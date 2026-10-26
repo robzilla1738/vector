@@ -12,6 +12,7 @@ import {transformAuxFixedBuiltinRouting} from '../../../../../vendor/provided/au
 import {transformAuxEphemeralProtocolIdentity, transformAuxTagIconIdentity} from '../../../../../vendor/provided/aux-ephemeral-protocol-identity.mjs';
 import {transformAuxSelectedBrowserResources} from '../desktop/browser-files/transform-resources.mjs';
 import {transformAuxPreferenceIdentity} from '../../../../../vendor/provided/aux-password-preference-markers.mjs';
+import {transformAuxExcludedProducts} from '../../../../../vendor/provided/aux-excluded-product-pruning.mjs';
 
 const repository = process.cwd();
 const here = path.join(repository, 'docs/integration/proposed/completion-20261026/integrator');
@@ -38,6 +39,8 @@ const generators = [
   'vendor/provided/aux-fixed-builtin-routing.mjs',
   'docs/integration/proposed/completion-20261026/runtime/fixed-builtins/entry.anchors.json',
   'vendor/provided/aux-ephemeral-protocol-identity.mjs',
+  'vendor/provided/aux-excluded-product-pruning.mjs',
+  'docs/integration/proposed/completion-20261026/integration/excluded-products/source-pins.json',
   'docs/integration/proposed/completion-20261026/integrator/materialize-paired-source.mjs',
 ];
 const resourcePins = JSON.parse(await readFile(path.join(here, '../desktop/browser-files/composition-inputs.json'), 'utf8'));
@@ -73,11 +76,13 @@ for (const name of ['index.mjs', 'aux-native-entry.mjs']) {
   stages.push({name: 'Aux versioned external password-manager preference markers', outputSha256: sha(preference.text), anchors: preference.anchors});
   const selected = await transformAuxSelectedBrowserResources({path: name, text: preference.text, source, root: repository});
   stages.push(...selected.stages.map(stage => ({...stage, name: stage.kind})));
+  const pruned = transformAuxExcludedProducts({text: selected.text, source});
+  stages.push({name: 'Remove closed excluded product and unused SEA modules', outputSha256: sha(pruned.text), anchors: pruned.anchors});
   const destination = path.join(output, name);
-  await writeFile(destination, selected.text, {flag: 'wx'});
+  await writeFile(destination, pruned.text, {flag: 'wx'});
   const syntax = spawnSync(process.execPath, ['--check', destination], {encoding: 'utf8'});
   if (syntax.status !== 0) throw Error('Combined paired source does not parse: ' + name + '\n' + syntax.stderr);
-  files.push({path: destination, input: path.join(original, name), inputSha256: sha(source), outputSha256: sha(selected.text), stages});
+  files.push({path: destination, input: path.join(original, name), inputSha256: sha(source), outputSha256: sha(pruned.text), stages});
 }
 const backgroundInput = path.join(repository, 'out/provided-candidate-local-completion-20261025-a38/Aux.app/Contents/Resources/aux/apps/extension/dist/background.js');
 const backgroundSource = await readFile(backgroundInput, 'utf8');
