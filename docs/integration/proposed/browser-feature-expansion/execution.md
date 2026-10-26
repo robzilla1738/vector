@@ -1,10 +1,18 @@
 # Desktop feature expansion execution
 
-## Current worker/cache and CLI batch — 2026-10-24
+## Current tested checkpoint — 2026-10-26
+
+A38 is the latest tested local candidate: browser/framework A78, daemon A72, paired source A51 and unchanged UI33. Use the adjacent `Launch Aux.command` with the approved disposable Work/Personal profiles. Actual startup, local navigation/profile isolation, drafts/TXT metadata, multiple-window restoration, sidebar/chat/settings and clean Quit/same-build restart pass. All 19 reviewed local signatures verify; browser/daemon exit 0, guardian groupStopped=true/forced=false, no native shutdown deadline. Existing UI and original nonempty folder are preserved. No build or next implementation batch is active; no release occurred.
+
+[Current actual results and explicit limitations](local-completion-package-a38/RESULT.md), [exact acceptance receipt](local-completion-package-a38/disposable-location-review-a4/actual-focused-checks-a18.json) and [remaining roadmap](../../../ROADMAP-EXECUTION-GRAPH.md) are authoritative for current status. Account-backed AI, native-messaging implementation and extension/autofill acceptance, genuine hover, memory search, broader attachment/recovery and advanced-feature journeys remain open. General automation remains disabled; production cookie-key/cloud/operations and release are not accepted.
+
+All dated checkpoints below are historical. Their references to active workers, pending builds, unrun basic journeys or required approvals describe those earlier bytes/times. They do not override the bounded A38 acceptance or authorize another batch. The historical feature table is not a claim that every advanced feature has since passed.
+
+## Historical worker/cache and CLI batch — 2026-10-24
 
 UI revision31 exact staging passed; renderer cleanup and background control are paired. Root projected18 actual native worker/API/Blink/cache-interface/type-fix files with113 changed/383 selected inputs; generation and6 affected-owner compilations are running. Organization continues native cache-cohort/COW consumption; navigation delivers the real worker/frontend controller successor; productivity implements the narrow native URL/profile command without installation-wide authority. The complete A3 inactive app remains the latest packaged app. COLD admission, legacy target transaction/recovery, wider CLI authority and actual app/UI journeys remain open. No runtime readiness or lifecycle/signing/release action is claimed.
 
-## Current substantial parallel batch — 2026-10-24
+## Historical substantial parallel batch — 2026-10-24
 
 The reviewed63-file source set is now actually projected into the isolated native build tree after preserving/verifying the previous native app and original inputs. Full unsigned build session49461 is live with359 frozen input pins; `completion-batch-a1/native-in-flight-a1.json` locates the live handle/receipt/logs. The three same worktrees, cleanly advanced to `12fa305ef`, now carry a second substantial parallel slice: navigation/frame/theme; profile/window switching; and native files/AI/tools. They may not mutate the frozen native tree or launch competing native builds. Their proposals integrate only after the current build becomes terminal. Full app/UI acceptance remains open.
 

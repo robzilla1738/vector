@@ -1,6 +1,26 @@
 # Aux final completion execution plan
 
-## Active continuation — 2026-10-25
+## Current checkpoint — 2026-10-26
+
+The bounded fresh/disposable-profile milestone is complete and testable locally: A38 contains browser/framework A78, daemon A72, paired source A51, retained native CLI and unchanged UI33. All 19 reviewed local signatures verify. Actual normal Quit produced browser/daemon exit 0, no forced cleanup or native deadline; the same package restarted and restored isolated Work/Personal data, drafts/TXT metadata and multiple windows. The accepted app and original nonempty folder are preserved. No build is pending and no next feature batch is active.
+
+Use `out/provided-candidate-local-completion-20261025-a38/Launch Aux.command`. [Actual results and explicit gaps](integration/proposed/browser-feature-expansion/local-completion-package-a38/RESULT.md), [exact acceptance receipt](integration/proposed/browser-feature-expansion/local-completion-package-a38/disposable-location-review-a4/actual-focused-checks-a18.json) and [STATUS](STATUS.md) supersede older current-state claims below. Source changes, compile success and signatures alone are not acceptance.
+
+| Outcome | Current evidence / remaining work |
+| --- | --- |
+| COLD / PACKAGE / basic JOURNEY | Bounded fresh startup, protected launch, actual clean Quit/restart and listed basic local flows pass. Direct Finder/unmanaged launch and production cookie-key behavior remain unaccepted. |
+| FX-PROFILE / FX-WINDOWS | Separate ordinary profiles, active local drafts/TXT metadata, shared normal tab list and independent window restoration pass. Wider attachment/crash/advanced recovery acceptance remains open. |
+| FX-NAV / FX-FRAME | Centered CmdT/K/L, ordinary close and real beforeunload Cancel/Leave pass during this milestone. Current sidebar/chat/settings and accepted UI preservation observed. Genuine hover and wider theme/Peek/shortcut states still need focused acceptance. |
+| FX-ORG / FX-CLEAN / FX-SPLIT / FX-FILES / FX-TOOLS | Implemented source and visible controls do not establish complete feature acceptance. Advanced Spaces/pins/folders/cleanup/splits/files/media/capture still need a finite feature inventory and actual journeys. Local memory indexing passes; search remains unverified. |
+| FX-COMPAT / automation | Native messaging still requires per-Profile host ownership/settlement/sandbox integration before 1Password/autofill acceptance. General exec/PTY/Computer Use/arbitrary addons remain disabled. |
+| AI | Real BYOK/eligible ChatGPT consent, inference, refresh and revocation require a provider/account connection and remain unverified. No inference or credential entry occurred in the bounded milestone. |
+| CLOUD / PROD / OPS | Current-source production integration, auth/sync/sharing and operational backup/key custody/alerts/restore remain incomplete or unaccepted. No new deployment/resource action is authorized by the local milestone. |
+| LEGACY / deferred | Legacy profiles stay refused and preserved. Migration, advanced recovery and larger task-capability architecture remain deferred; mobile/payments/hosted speech are outside the current local milestone. |
+| RELEASE | Production signing/notarization, updater, portable installation/distribution and production acceptance remain separate. No release authorized or performed. |
+
+This checkpoint does not declare full Aux completion or exact whole-window Aside pixel parity. The current accepted UI/resources are preserved. Historical reviews/receipts and the dated planning records below remain evidence for their own states, not a new instruction to resume their batches or signing workflows.
+
+## Historical continuation — 2026-10-25 before A38 runtime acceptance
 
 Current checkpoint: A38 is one assembled, unsigned candidate containing A69
 browser/CLI, A63 memory-enabled daemon, UI33 and the paired memory/provider
