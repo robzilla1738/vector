@@ -1,0 +1,95 @@
+{
+  "format": "aux.ordinary-computer-use-lifecycle.v1",
+  "files": [
+    {
+      "input": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-local-completion-20261025-a38/Aux.app/Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/node-development/index.mjs",
+      "inputSha256": "a5f207fe3a36dd5fec2ee32a4b84eae0a49371364fa66c530d95f1af987509f6",
+      "output": "/private/tmp/aux-computer-use-lifecycle-a48-ki8dl7_h/index.mjs",
+      "outputSha256": "0d7c4f82f8f3dbb4e22999447a3ebeae2bd4ba48c82320c9b108ea687ef4931e",
+      "anchors": [
+        {
+          "before": "function prepareComputerUseHelperRuntime(){return process.platform!==`darwin`&&process.platform!==`win32`?Promise.resolve():shuttingDown$1?Promise.reject(/* @__PURE__ */ Error(`Computer Use Helper is shutting down.`)):(preparePromise??=(process.platform===`win32`?refreshWindowsRuntime():refreshRuntimeApp()).catch(Cn=>{throw preparePromise=void 0,Cn}),preparePromise)}",
+          "after": "function auxComputerUseRuntimeDisabled(){\n if(process.platform!=='darwin')return false;\n try{\n  const binding=process._linkedBinding('aux_owned_native');\n  const mode=Object.getOwnPropertyDescriptor(binding,'supervisedTasksEnabled');\n  return !!mode&&!mode.get&&!mode.set&&!mode.writable&&!mode.configurable&&mode.value===false;\n }catch{return false}\n}\nfunction prepareComputerUseHelperRuntime(){if(auxComputerUseRuntimeDisabled())return Promise.reject(Object.assign(new Error(`Computer Use is disabled in this browser build`),{code:`AUX_SUPERVISED_TASKS_DISABLED`}));return process.platform!==`darwin`&&process.platform!==`win32`?Promise.resolve():shuttingDown$1?Promise.reject(/* @__PURE__ */ Error(`Computer Use Helper is shutting down.`)):(preparePromise??=(auxComputerUseRuntimeAttempted=true,(process.platform===`win32`?refreshWindowsRuntime():refreshRuntimeApp())).catch(Cn=>{throw preparePromise=void 0,Cn}),preparePromise)}",
+          "count": 1
+        },
+        {
+          "before": "async function shutdownComputerUseHelper(){if(process.platform!==`darwin`&&process.platform!==`win32`)return;shuttingDown$1=true;const errors=[];",
+          "after": "async function shutdownComputerUseHelper(){if(process.platform!==`darwin`&&process.platform!==`win32`)return;shuttingDown$1=true;if(auxComputerUseRuntimeDisabled()&&!auxComputerUseRuntimeAttempted&&preparePromise==null)return;const errors=[];",
+          "count": 1
+        },
+        {
+          "before": "var execFileAsync$2,RUNTIME_DIR,STAGING_APP_PATH,PREVIOUS_APP_PATH,preparePromise,shuttingDown$1,WINDOWS_IDENTITY_SCRIPT,",
+          "after": "var execFileAsync$2,RUNTIME_DIR,STAGING_APP_PATH,PREVIOUS_APP_PATH,preparePromise,auxComputerUseRuntimeAttempted,shuttingDown$1,WINDOWS_IDENTITY_SCRIPT,",
+          "count": 1
+        },
+        {
+          "before": "shuttingDown$1=!1,WINDOWS_IDENTITY_SCRIPT=String.raw`",
+          "after": "auxComputerUseRuntimeAttempted=false,shuttingDown$1=!1,WINDOWS_IDENTITY_SCRIPT=String.raw`",
+          "count": 1
+        },
+        {
+          "before": "async#T(){if(process.platform!==`darwin`&&process.platform!==`win32`){this.#i=`unsupported`;return}",
+          "after": "async#T(){if(process.platform!==`darwin`&&process.platform!==`win32`||auxComputerUseRuntimeDisabled()){this.#i=`unsupported`;return}",
+          "count": 1
+        },
+        {
+          "before": "#D(){this.#i=`starting`;let Cn=globalThis.process.platform===`win32`;",
+          "after": "#D(){if(auxComputerUseRuntimeDisabled()){this.#i=`unsupported`;return}auxComputerUseRuntimeAttempted=true;this.#i=`starting`;let Cn=globalThis.process.platform===`win32`;",
+          "count": 1
+        },
+        {
+          "before": "process.platform===`darwin`&&prepareComputerUseHelperRuntime().catch(Cn=>{logger.warn(`[Main] Computer Use runtime app could not be refreshed`,{error:Cn})})",
+          "after": "process.platform===`darwin`&&!auxComputerUseRuntimeDisabled()&&prepareComputerUseHelperRuntime().catch(Cn=>{logger.warn(`[Main] Computer Use runtime app could not be refreshed`,{error:Cn})})",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "input": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-local-completion-20261025-a38/Aux.app/Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/node-development/aux-native-entry.mjs",
+      "inputSha256": "89f61dded0775d30c4bb3f88d347219d5eda80ed1a8c1be1f69c3f44a7237317",
+      "output": "/private/tmp/aux-computer-use-lifecycle-a48-ki8dl7_h/aux-native-entry.mjs",
+      "outputSha256": "704f1918c1c46f517872a93f6c32230af92d7f887a8f82a794af7728549c47a1",
+      "anchors": [
+        {
+          "before": "function prepareComputerUseHelperRuntime(){return process.platform!==`darwin`&&process.platform!==`win32`?Promise.resolve():shuttingDown$1?Promise.reject(/* @__PURE__ */ Error(`Computer Use Helper is shutting down.`)):(preparePromise??=(process.platform===`win32`?refreshWindowsRuntime():refreshRuntimeApp()).catch(Cn=>{throw preparePromise=void 0,Cn}),preparePromise)}",
+          "after": "function auxComputerUseRuntimeDisabled(){\n if(process.platform!=='darwin')return false;\n try{\n  const binding=process._linkedBinding('aux_owned_native');\n  const mode=Object.getOwnPropertyDescriptor(binding,'supervisedTasksEnabled');\n  return !!mode&&!mode.get&&!mode.set&&!mode.writable&&!mode.configurable&&mode.value===false;\n }catch{return false}\n}\nfunction prepareComputerUseHelperRuntime(){if(auxComputerUseRuntimeDisabled())return Promise.reject(Object.assign(new Error(`Computer Use is disabled in this browser build`),{code:`AUX_SUPERVISED_TASKS_DISABLED`}));return process.platform!==`darwin`&&process.platform!==`win32`?Promise.resolve():shuttingDown$1?Promise.reject(/* @__PURE__ */ Error(`Computer Use Helper is shutting down.`)):(preparePromise??=(auxComputerUseRuntimeAttempted=true,(process.platform===`win32`?refreshWindowsRuntime():refreshRuntimeApp())).catch(Cn=>{throw preparePromise=void 0,Cn}),preparePromise)}",
+          "count": 1
+        },
+        {
+          "before": "async function shutdownComputerUseHelper(){if(process.platform!==`darwin`&&process.platform!==`win32`)return;shuttingDown$1=true;const errors=[];",
+          "after": "async function shutdownComputerUseHelper(){if(process.platform!==`darwin`&&process.platform!==`win32`)return;shuttingDown$1=true;if(auxComputerUseRuntimeDisabled()&&!auxComputerUseRuntimeAttempted&&preparePromise==null)return;const errors=[];",
+          "count": 1
+        },
+        {
+          "before": "var execFileAsync$2,RUNTIME_DIR,STAGING_APP_PATH,PREVIOUS_APP_PATH,preparePromise,shuttingDown$1,WINDOWS_IDENTITY_SCRIPT,",
+          "after": "var execFileAsync$2,RUNTIME_DIR,STAGING_APP_PATH,PREVIOUS_APP_PATH,preparePromise,auxComputerUseRuntimeAttempted,shuttingDown$1,WINDOWS_IDENTITY_SCRIPT,",
+          "count": 1
+        },
+        {
+          "before": "shuttingDown$1=!1,WINDOWS_IDENTITY_SCRIPT=String.raw`",
+          "after": "auxComputerUseRuntimeAttempted=false,shuttingDown$1=!1,WINDOWS_IDENTITY_SCRIPT=String.raw`",
+          "count": 1
+        },
+        {
+          "before": "async#T(){if(process.platform!==`darwin`&&process.platform!==`win32`){this.#i=`unsupported`;return}",
+          "after": "async#T(){if(process.platform!==`darwin`&&process.platform!==`win32`||auxComputerUseRuntimeDisabled()){this.#i=`unsupported`;return}",
+          "count": 1
+        },
+        {
+          "before": "#D(){this.#i=`starting`;let Cn=globalThis.process.platform===`win32`;",
+          "after": "#D(){if(auxComputerUseRuntimeDisabled()){this.#i=`unsupported`;return}auxComputerUseRuntimeAttempted=true;this.#i=`starting`;let Cn=globalThis.process.platform===`win32`;",
+          "count": 1
+        },
+        {
+          "before": "process.platform===`darwin`&&prepareComputerUseHelperRuntime().catch(Cn=>{logger.warn(`[Main] Computer Use runtime app could not be refreshed`,{error:Cn})})",
+          "after": "process.platform===`darwin`&&!auxComputerUseRuntimeDisabled()&&prepareComputerUseHelperRuntime().catch(Cn=>{logger.warn(`[Main] Computer Use runtime app could not be refreshed`,{error:Cn})})",
+          "count": 1
+        }
+      ]
+    }
+  ],
+  "fullModeOriginalLifecycle": true,
+  "generalExecChanged": false,
+  "nativeGuardsChanged": false,
+  "productExecuted": false
+}
