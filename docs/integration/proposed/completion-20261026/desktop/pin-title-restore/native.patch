@@ -1,0 +1,120 @@
+--- a/chrome/browser/ui/views/frame/aux_organization_window_controller.h
++++ b/chrome/browser/ui/views/frame/aux_organization_window_controller.h
+@@ -51,6 +51,9 @@
+   // Presentation follows this window's retained live page; shared topology
+   // and manually chosen titles stay authoritative in the logical record.
+   organization::Entry EntryForDisplay(const organization::Entry&) const;
++  // Restore/discard placeholders cannot replace the last committed title with
++  // Chromium's display-URL fallback before an actual document has loaded.
++  std::optional<std::u16string> ReadAutomaticTitle(tabs::TabInterface*) const;
+   bool IsLogicalEntryProtected(const std::string&) const;
+   bool IsLogicalTabSelected(const std::string&) const;
+   // Native row input only: select existing current-window ordinary views. The
+--- a/chrome/browser/ui/views/frame/aux_organization_window_controller.cc
++++ b/chrome/browser/ui/views/frame/aux_organization_window_controller.cc
+@@ -46,6 +46,7 @@
+ #include "content/public/browser/download_manager.h"
+ #include "content/public/browser/devtools_agent_host.h"
+ #include "content/public/browser/navigation_controller.h"
++#include "content/public/browser/navigation_entry.h"
+ #include "content/public/browser/navigation_handle.h"
+ #include "content/public/browser/web_contents.h"
+ #include "content/public/browser/render_frame_host.h"
+@@ -90,6 +91,7 @@
+     if (owner_ && navigation->HasCommitted() && navigation->IsInPrimaryMainFrame()) owner_->NavigationCommitted(handle_);
+   }
+   void PrimaryPageChanged(content::Page&) override { if (owner_) owner_->DocumentChanged(handle_); }
++  void DidStopLoading() override { if (owner_) owner_->TitleChanged(handle_); }
+   void TitleWasSet(content::NavigationEntry*) override { if (owner_) owner_->TitleChanged(handle_); }
+   void AboutToBeDiscarded(content::WebContents* replacement) override {
+     if (!owner_ || !owner_->Current() || !web_contents() || !replacement ||
+@@ -486,6 +488,18 @@
+   InvalidateAutomaticArchive(handle);
+   dirty_titles_.insert(handle); QueueReconcile();
+ }
++std::optional<std::u16string> AuxOrganizationWindowController::ReadAutomaticTitle(
++    tabs::TabInterface* tab) const {
++  if (!Current() || !tab || model_->GetIndexOfTab(tab) < 0) return std::nullopt;
++  auto* contents = tab->GetContents();
++  if (!contents || contents->GetBrowserContext() != profile_) return std::nullopt;
++  const auto* committed = contents->GetController().GetLastCommittedEntry();
++  if (!committed) return std::nullopt;
++  if (committed->GetTitle().empty() &&
++      (contents->GetController().NeedsReload() || contents->IsLoading() ||
++       !contents->GetPrimaryMainFrame()->IsRenderFrameLive())) return std::nullopt;
++  return contents->GetTitle();
++}
+ void AuxOrganizationWindowController::PublishTitle(tabs::TabHandle handle) {
+   auto* service = Current() ? Organization(browser_.get()) : nullptr;
+   auto* tab = handle.Get();
+@@ -503,7 +517,9 @@
+       found->second.title_mode != organization::TitleMode::kAutomatic ||
+       GetRememberedPinnedTabEntryId(*tab->GetContents()) != found->first) return;
+   const auto url = LogicalTabUrl(*tab->GetContents());
+-  const auto title = base::UTF16ToUTF8(tab->GetContents()->GetTitle());
++  const auto observed_title = ReadAutomaticTitle(tab);
++  if (!observed_title) return;
++  const auto title = base::UTF16ToUTF8(*observed_title);
+   if (!url.is_valid() || url.spec() != found->second.current_url ||
+       url.spec() != view->second.loaded_url || title.empty() || title.size() > 4096 ||
+       title == found->second.title) return;
+@@ -529,6 +545,7 @@
+         if (!current_tab || owner->model_->GetIndexOfTab(current_tab) < 0 || !current_tab->GetContents() ||
+             live == owner->views_.end() || live->second.logical_id != logical ||
+             GetRememberedPinnedTabEntryId(*current_tab->GetContents()) != logical) return;
++        const auto current_title = owner->ReadAutomaticTitle(current_tab);
+         // A newer document/title can arrive during storage. Never replay the
+         // captured string: queue a fresh native read guarded by the new shared
+         // URL/revision. A different logical/profile owner is never touched.
+@@ -536,7 +553,7 @@
+             (result.error == organization::Error::kNone &&
+              (live->second.document_id != captured_document ||
+               LogicalTabUrl(*current_tab->GetContents()).spec() != captured_url ||
+-              base::UTF16ToUTF8(current_tab->GetContents()->GetTitle()) != captured_title)))
++              !current_title || base::UTF16ToUTF8(*current_title) != captured_title)))
+           owner->dirty_titles_.insert(target);
+         owner->QueueReconcile();
+       }, weak_.GetWeakPtr(), handle, id, document, url.spec(), title, generation));
+@@ -1324,7 +1341,7 @@
+   const auto url = LogicalTabUrl(*contents);
+   if (url.is_valid()) shown.current_url = url.spec();
+   if (entry.title_mode == organization::TitleMode::kAutomatic)
+-    shown.title = base::UTF16ToUTF8(contents->GetTitle());
++    if (const auto title = ReadAutomaticTitle(tab)) shown.title = base::UTF16ToUTF8(*title);
+   return shown;
+ }
+ bool AuxOrganizationWindowController::HasPendingSharedUpdate(const std::string& id) const {
+--- a/chrome/browser/ui/views/tabs/vertical/vertical_pinned_tab_entries_view.cc
++++ b/chrome/browser/ui/views/tabs/vertical/vertical_pinned_tab_entries_view.cc
+@@ -8,6 +8,7 @@
+ #include <limits>
+ #include <cstdlib>
+ #include <memory>
++#include <optional>
+ #include <utility>
+ 
+ #include "base/check.h"
+@@ -609,7 +610,6 @@
+         if (auto cached = icon_cache_.find(entry.display_url.spec()); cached != icon_cache_.end()) entry.image = cached->second;
+       }
+       if (auto* helper = TabUIHelper::From(tab)) {
+-        const auto title = helper->GetTitle();
+         bool automatic_title = !projected;
+         if (auto* owner = aux::organization::OrganizationProfileServiceFactory::GetForProfileIfExists(browser_->GetProfile());
+             owner && owner->model()) {
+@@ -617,8 +617,13 @@
+           automatic_title = found != owner->model()->snapshot().entries.end() &&
+               found->second.title_mode == aux::organization::TitleMode::kAutomatic;
+         }
+-        if (automatic_title && !title.empty())
+-          entry.title = title;
++        if (automatic_title) {
++          auto* controller = aux::AuxOrganizationWindowController::FromBrowser(browser_);
++          const auto title = projected
++              ? (controller ? controller->ReadAutomaticTitle(tab) : std::nullopt)
++              : std::make_optional(helper->GetTitle());
++          if (title && !title->empty()) entry.title = *title;
++        }
+         const auto icon = helper->GetFavicon();
+         if (!icon.IsEmpty()) {
+           entry.image = icon;

@@ -1,0 +1,97 @@
+{
+  "format": "aux.native.counted-projection.v1",
+  "nativeRoot": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src",
+  "predecessor": "root integrated repaired pin/row unload controller overlay",
+  "files": [
+    {
+      "path": "chrome/browser/ui/views/frame/aux_organization_window_controller.h",
+      "inputSource": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/desktop/source/chrome/browser/ui/views/frame/aux_organization_window_controller.h",
+      "inputSha256": "b4fdf93e2d67b000e8cce5d04b3fc471e490fe5149487ea16bbd7183eeeeb99a",
+      "outputSha256": "cc040e60a3b32bdad30675d41279d367d0d6b7a9e02761ed08f2352b43b39317",
+      "anchors": [
+        {
+          "name": "one current native title query shared by publication and pin UI",
+          "before": "  organization::Entry EntryForDisplay(const organization::Entry&) const;",
+          "after": "  organization::Entry EntryForDisplay(const organization::Entry&) const;\n  // Restore/discard placeholders cannot replace the last committed title with\n  // Chromium's display-URL fallback before an actual document has loaded.\n  std::optional<std::u16string> ReadAutomaticTitle(tabs::TabInterface*) const;",
+          "expectedCount": 1
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_organization_window_controller.cc",
+      "inputSource": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/desktop/source/chrome/browser/ui/views/frame/aux_organization_window_controller.cc",
+      "inputSha256": "20ee4db7beb08c9047bb72dcc2659c6bc625bb1a94a4fd366ec8ea9fb2cc7b79",
+      "outputSha256": "49c13d0805410d33ae6af7d31fd30daa78560c9f5ca77ef9b0fb5b3bad9a4047",
+      "anchors": [
+        {
+          "name": "read raw committed title to distinguish display fallback",
+          "before": "#include \"content/public/browser/navigation_controller.h\"",
+          "after": "#include \"content/public/browser/navigation_controller.h\"\n#include \"content/public/browser/navigation_entry.h\"",
+          "expectedCount": 1
+        },
+        {
+          "name": "retry a genuinely untitled page only after load settles",
+          "before": "  void TitleWasSet(content::NavigationEntry*) override",
+          "after": "  void DidStopLoading() override { if (owner_) owner_->TitleChanged(handle_); }\n  void TitleWasSet(content::NavigationEntry*) override",
+          "expectedCount": 1
+        },
+        {
+          "name": "actual document readiness controls URL fallback",
+          "before": "void AuxOrganizationWindowController::PublishTitle(tabs::TabHandle handle) {",
+          "after": "std::optional<std::u16string> AuxOrganizationWindowController::ReadAutomaticTitle(\n    tabs::TabInterface* tab) const {\n  if (!Current() || !tab || model_->GetIndexOfTab(tab) < 0) return std::nullopt;\n  auto* contents = tab->GetContents();\n  if (!contents || contents->GetBrowserContext() != profile_) return std::nullopt;\n  const auto* committed = contents->GetController().GetLastCommittedEntry();\n  if (!committed) return std::nullopt;\n  if (committed->GetTitle().empty() &&\n      (contents->GetController().NeedsReload() || contents->IsLoading() ||\n       !contents->GetPrimaryMainFrame()->IsRenderFrameLive())) return std::nullopt;\n  return contents->GetTitle();\n}\nvoid AuxOrganizationWindowController::PublishTitle(tabs::TabHandle handle) {",
+          "expectedCount": 1
+        },
+        {
+          "name": "never publish placeholder display URL as observed document title",
+          "before": "  const auto title = base::UTF16ToUTF8(tab->GetContents()->GetTitle());\n  if (!url.is_valid()",
+          "after": "  const auto observed_title = ReadAutomaticTitle(tab);\n  if (!observed_title) return;\n  const auto title = base::UTF16ToUTF8(*observed_title);\n  if (!url.is_valid()",
+          "expectedCount": 1
+        },
+        {
+          "name": "post-save comparison reads the same native title boundary",
+          "before": "        // A newer document/title can arrive during storage. Never replay the",
+          "after": "        const auto current_title = owner->ReadAutomaticTitle(current_tab);\n        // A newer document/title can arrive during storage. Never replay the",
+          "expectedCount": 1
+        },
+        {
+          "name": "placeholder changes request a fresh read rather than replay",
+          "before": "              base::UTF16ToUTF8(current_tab->GetContents()->GetTitle()) != captured_title)))",
+          "after": "              !current_title || base::UTF16ToUTF8(*current_title) != captured_title)))",
+          "expectedCount": 1
+        },
+        {
+          "name": "ordinary logical rows retain committed title during restore",
+          "before": "  if (entry.title_mode == organization::TitleMode::kAutomatic)\n    shown.title = base::UTF16ToUTF8(contents->GetTitle());",
+          "after": "  if (entry.title_mode == organization::TitleMode::kAutomatic)\n    if (const auto title = ReadAutomaticTitle(tab)) shown.title = base::UTF16ToUTF8(*title);",
+          "expectedCount": 1
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/ui/views/tabs/vertical/vertical_pinned_tab_entries_view.cc",
+      "inputSource": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/ui/views/tabs/vertical/vertical_pinned_tab_entries_view.cc",
+      "inputSha256": "312c1397b07c244762bceea9402b5c6df96d0fdc65d6b1785df0b47f0ab72001",
+      "outputSha256": "a48ceeb9ef5e21b40f1b401907e718f02e00822b7390e364f1c78f8473146977",
+      "anchors": [
+        {
+          "name": "include owned optional title value",
+          "before": "#include <memory>",
+          "after": "#include <memory>\n#include <optional>",
+          "expectedCount": 1
+        },
+        {
+          "name": "current pin grid follows the same restore-aware boundary",
+          "before": "        const auto title = helper->GetTitle();\n        bool automatic_title = !projected;",
+          "after": "        bool automatic_title = !projected;",
+          "expectedCount": 1
+        },
+        {
+          "name": "retain last saved pin title until a real title is available",
+          "before": "        if (automatic_title && !title.empty())\n          entry.title = title;",
+          "after": "        if (automatic_title) {\n          auto* controller = aux::AuxOrganizationWindowController::FromBrowser(browser_);\n          const auto title = projected\n              ? (controller ? controller->ReadAutomaticTitle(tab) : std::nullopt)\n              : std::make_optional(helper->GetTitle());\n          if (title && !title->empty()) entry.title = *title;\n        }",
+          "expectedCount": 1
+        }
+      ]
+    }
+  ]
+}
