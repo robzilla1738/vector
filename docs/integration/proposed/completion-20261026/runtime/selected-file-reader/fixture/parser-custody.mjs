@@ -1,0 +1,16 @@
+import {readFileSync} from 'node:fs';
+import {Readable} from 'node:stream';
+import {AsyncLocalStorage} from 'node:async_hooks';
+import assert from 'node:assert/strict';
+const source=readFileSync(process.argv[2]??'/tmp/aux-selected-reader-entry.mjs','utf8');
+const a=source.indexOf('function readRangeFast('),b=source.indexOf('async function readFileInRange(',a);
+const helpers=readFileSync(new URL('../source/selected-file-reader-resource.mjs',import.meta.url),'utf8');
+const context=new AsyncLocalStorage;
+const bytes=Buffer.from(('first\r\nαβγ\n').repeat(900000)+'tail');
+let closed=0;
+const scope={openReadFile(){let offset=0,done=false;return {size:bytes.length,read(){assert.equal(done,false);const chunk=bytes.subarray(offset,offset+524288);offset+=chunk.length;return chunk},close(){if(!done){done=true;closed++}}}}};
+const range=Function('Readable','auxSelectedReadScopeContext','FAST_PATH_MAX_SIZE',`${source.slice(a,b)}\n${helpers}\nreturn auxSelectedReadFileRange`)(Readable,context,10485760);
+const result=await context.run(scope,()=>range('/synthetic/selected.txt',1,2));
+assert.deepEqual(result,{content:'αβγ\nfirst',lineCount:2,totalLines:1800001});
+assert.equal(closed,1,'native reader must close before tool settlement');
+console.log(JSON.stringify({fixture:'actual-parser-selected-stream',bytes:bytes.length,closed,resultLines:result.lineCount,proof:'parser/stream closure only; native admission not simulated as proof'}));

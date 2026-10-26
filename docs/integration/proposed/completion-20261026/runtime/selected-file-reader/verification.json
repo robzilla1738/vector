@@ -1,0 +1,22 @@
+{
+  "checks": [
+    {
+      "command": "node --check /tmp/aux-selected-reader-entry.mjs",
+      "result": "pass"
+    },
+    {
+      "command": "node fixture/parser-custody.mjs /tmp/aux-selected-reader-entry.mjs",
+      "result": "pass",
+      "fixture": "actual-parser-selected-stream",
+      "bytes": 12600004,
+      "originalHandleCloseCount": 1,
+      "resultLines": 2
+    }
+  ],
+  "limits": [
+    "CPP not compiled by worker",
+    "native admission not exercised by parser fixture",
+    "no runtime execution or OS grants"
+  ],
+  "entrySha256": "bdef61007421e1e2bc97ae2f56d18ddf6613bc3fe621ab0c63d98532dd36cfa0"
+}

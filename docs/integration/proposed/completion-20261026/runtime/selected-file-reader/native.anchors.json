@@ -1,0 +1,39 @@
+{
+  "predecessor": "288c34fa7",
+  "changes": [
+    {
+      "file": "AuxSelectedBuiltinOwner.inc",
+      "inputSha256": "1ad23c1a18d7ae432672b33db01aeabc58e58175ea9a6ef40d351ca168b87fd9",
+      "outputSha256": "7f5e9967c090351323b85fb9b90aa4c49ddbb782754ecca2c8b9d05a18f2505b",
+      "anchors": [
+        {
+          "before": "struct SelectedUtilityWork;",
+          "after": "struct SelectedUtilityWork;\nvoid StopSelectedFileReaders(SelectedBuiltinScope*);\nnapi_value SelectedOpenReadFile(napi_env,napi_callback_info);",
+          "count": 1
+        },
+        {
+          "before": "  for(auto& job:jobs)job->RequestClose();\n  MaybeRelease();",
+          "after": "  for(auto& job:jobs)job->RequestClose();\n  StopSelectedFileReaders(this);\n  MaybeRelease();",
+          "count": 1
+        },
+        {
+          "before": "{\"assertControlSessionPath\",SelectedAssertControlPath}}",
+          "after": "{\"assertControlSessionPath\",SelectedAssertControlPath},{\"openReadFile\",SelectedOpenReadFile}}",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "file": "AuxDevelopmentWorkerHost.combined.cc",
+      "inputSha256": "dfb8ecc21098f1401929170c43d25d92ecaf3aeffa8fc8e9c5d93e0b485f0457",
+      "outputSha256": "6c84877886bdbcfca58b7cb91433dc5732c72260f0427b4b84faab4d31334ff3",
+      "anchors": [
+        {
+          "before": "#include \"AuxFixedBuiltins.inc\"",
+          "after": "#include \"AuxFixedBuiltins.inc\"\n#include \"AuxSelectedFileReader.inc\"",
+          "count": 1
+        }
+      ]
+    }
+  ]
+}

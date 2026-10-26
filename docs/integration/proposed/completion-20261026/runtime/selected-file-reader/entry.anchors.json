@@ -1,0 +1,37 @@
+{
+  "predecessor": "288c34fa7 entry.anchors.json output",
+  "inputSha256": "dd04f54d8d3e8fc3934927ed4ca034cc6d560c6f3815f91e000613dea68cf87a",
+  "outputSha256": "bdef61007421e1e2bc97ae2f56d18ddf6613bc3fe621ab0c63d98532dd36cfa0",
+  "anchors": [
+    {
+      "before": "function auxSelectedAccountIdentity(account,profileId){",
+      "after": "// Called only while the exact registered read_file tool holds its native scope.\nfunction auxSelectedReadFileStat(file){\n const scope=auxSelectedReadScopeContext.getStore();\n if(!scope)return fs$1.stat(file);\n const reader=scope.openReadFile(file);\n try{return {size:reader.size,isFile:()=>true}}finally{reader.close()}\n}\nasync function auxSelectedReadFileBytes(file,maximum=64*1024*1024){\n const scope=auxSelectedReadScopeContext.getStore();\n if(!scope)return fs$1.readFile(file);\n const reader=scope.openReadFile(file);\n try{\n  if(reader.size>maximum)throw Error('Image exceeds the 64 MiB native file limit.');\n  const chunks=[];let size=0;\n  for(;;){const chunk=reader.read();if(!chunk.length)break;size+=chunk.length;if(size>maximum)throw Error('Selected image changed size.');chunks.push(chunk)}\n  return Buffer.concat(chunks,size);\n }finally{reader.close()}\n}\nasync function auxSelectedReadFileMime(file){\n const scope=auxSelectedReadScopeContext.getStore();\n if(!scope)return detectSupportedImageMimeTypeFromFile(file);\n const reader=scope.openReadFile(file);\n try{return await detectSupportedImageMimeTypeFromBuffer(reader.read().subarray(0,4100))}\n finally{reader.close()}\n}\nasync function auxSelectedReadFileRange(file,offset,limit){\n const scope=auxSelectedReadScopeContext.getStore();\n if(!scope)return null;\n const reader=scope.openReadFile(file);\n if(reader.size<FAST_PATH_MAX_SIZE){\n  try{const chunks=[];let size=0;for(;;){const chunk=reader.read();if(!chunk.length)break;size+=chunk.length;chunks.push(chunk)}return readRangeFast(Buffer.concat(chunks,size).toString('utf8'),offset,limit)}\n  finally{reader.close()}\n }\n // Readable owns the original admitted FD; destroy waits for generator finally\n // and its real close event before the selected session lease can be released.\n let input;\n try{input=Readable.from((async function*(){try{for(;;){const chunk=reader.read();if(!chunk.length)return;yield chunk;await new Promise(resolve=>setImmediate(resolve))}}finally{reader.close()}})(),{encoding:'utf8',objectMode:false,emitClose:true,autoDestroy:true})}\n catch(error){reader.close();throw error}\n return readRangeStreaming(file,offset,limit,input);\n}\n\nfunction auxSelectedAccountIdentity(account,profileId){",
+      "count": 1
+    },
+    {
+      "before": "  const input=args[1],filename=typeof input?.path==='string'?input.path:'';\n  if(!['.pdf','.heic','.heif'].includes(path.extname(filename).toLowerCase()))auxRequireSupervisedTasks();\n",
+      "after": "",
+      "count": 1
+    },
+    {
+      "before": "function readRangeStreaming(Cn,ei,ti){return new Promise((ni,ri)=>{let ii=ti===void 0?1/0:ei+ti,ai=[],oi=0,si=``,ci=!0,li=createReadStream(Cn,{encoding:`utf8`,highWaterMark:524288});li.on(`data`,Cn=>{let ti=typeof Cn==`string`?Cn:Cn.toString(`utf8`);ci&&(ci=!1,ti.charCodeAt(0)===65279&&(ti=ti.slice(1)));let ni=si.length>0?si+ti:ti;si=``;let ri=0,li;for(;(li=ni.indexOf(`\n`,ri))!==-1;){if(oi>=ei&&oi<ii){let Cn=ni.slice(ri,li);Cn.endsWith(`\\r`)&&(Cn=Cn.slice(0,-1)),ai.push(Cn)}oi++,ri=li+1}ri<ni.length&&oi>=ei&&oi<ii&&(si=ni.slice(ri))}),li.on(`end`,()=>{if(si.length>0&&oi>=ei&&oi<ii){let Cn=si;Cn.endsWith(`\\r`)&&(Cn=Cn.slice(0,-1)),ai.push(Cn)}oi++,ni({content:ai.join(`\n`),lineCount:ai.length,totalLines:oi})}),li.once(`error`,ri)})}",
+      "after": "function readRangeStreaming(Cn,ei,ti,input){let stream=input??createReadStream(Cn,{encoding:`utf8`,highWaterMark:524288,emitClose:true,autoClose:true}),closed=new Promise(resolve=>stream.once(`close`,resolve));return new Promise((ni,ri)=>{let ii=ti===void 0?1/0:ei+ti,ai=[],oi=0,si=``,ci=!0,li=stream;li.on(`data`,Cn=>{let ti=typeof Cn==`string`?Cn:Cn.toString(`utf8`);ci&&(ci=!1,ti.charCodeAt(0)===65279&&(ti=ti.slice(1)));let ni=si.length>0?si+ti:ti;si=``;let ri=0,li;for(;(li=ni.indexOf(`\n`,ri))!==-1;){if(oi>=ei&&oi<ii){let Cn=ni.slice(ri,li);Cn.endsWith(`\\r`)&&(Cn=Cn.slice(0,-1)),ai.push(Cn)}oi++,ri=li+1}ri<ni.length&&oi>=ei&&oi<ii&&(si=ni.slice(ri))}),li.on(`end`,()=>{if(si.length>0&&oi>=ei&&oi<ii){let Cn=si;Cn.endsWith(`\\r`)&&(Cn=Cn.slice(0,-1)),ai.push(Cn)}oi++,ni({content:ai.join(`\n`),lineCount:ai.length,totalLines:oi})}),li.once(`error`,ri)}).finally(async()=>{stream.destroy();await closed})}",
+      "count": 1
+    },
+    {
+      "before": "async function readFileInRange(Cn,ei,ti){let ni=await stat$1(Cn);",
+      "after": "async function readFileInRange(Cn,ei,ti){if(auxSelectedReadScopeContext.getStore())return auxSelectedReadFileRange(Cn,ei,ti);let ni=await stat$1(Cn);",
+      "count": 1
+    },
+    {
+      "before": "let ai=resolveFileToolPath(Cn,ni),oi=await fs$1.stat(ai).catch(()=>null);if(!oi)return{content:",
+      "after": "let ai=resolveFileToolPath(Cn,ni),oi=await auxSelectedReadFileStat(ai).catch(()=>null);if(!oi)return{content:",
+      "count": 1
+    },
+    {
+      "before": "let di=ui??ai,fi=await detectSupportedImageMimeTypeFromFile(di);if(fi){let Cn=await fs$1.readFile(di);",
+      "after": "let di=ui??ai,fi=await auxSelectedReadFileMime(di);if(fi){let Cn=await auxSelectedReadFileBytes(di);",
+      "count": 1
+    }
+  ]
+}
