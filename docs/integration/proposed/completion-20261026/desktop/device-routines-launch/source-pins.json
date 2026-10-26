@@ -93,6 +93,11 @@
           "count": 1
         },
         {
+          "find": "children:e?\"Edit routine\":\"Create routine\"",
+          "replace": "children:s?.environment===\"cloud\"?\"Cloud routine unavailable\":e?\"Edit routine\":\"Create routine\"",
+          "count": 1
+        },
+        {
           "find": "var r=ds(),",
           "replace": "function auxDeviceRoutineEditable(routine,settings){const id=settings?.routineDeviceId;return typeof id===\"string\"&&id.trim().length>0&&(!routine||routine.environment===\"device\"&&routine.deviceId===id)}var r=ds(),",
           "count": 1
