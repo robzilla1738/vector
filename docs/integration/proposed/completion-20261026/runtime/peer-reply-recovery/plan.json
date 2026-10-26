@@ -1,0 +1,11 @@
+{
+  "baseline": "e1599130b1e41eb78cddce19b2b7828fc6d11a21e28fd62b24bdd01a5a4a7384",
+  "successor": "8ced5b9206e062f63e67444f71d1d4624a0b93dbaa3f3cfe584f53d7ea763b1d",
+  "counted_rules": [
+    1,
+    1,
+    1
+  ],
+  "scope": "Authenticated heartbeat and root read reply cancellation only; no trust refusal relaxation; inactive",
+  "actual_trigger": "Unconfirmed. Real dead-send-once reply returned KERN_SUCCESS; timeout alone did not reproduce terminal refusal."
+}

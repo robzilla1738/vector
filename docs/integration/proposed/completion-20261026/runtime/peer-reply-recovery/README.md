@@ -1,0 +1,9 @@
+# Bounded native peer diagnosis and read-reply recovery
+
+Startup8's protected native calls failed with peer status1: a 2-second live parent revalidation timeout. This does not establish credential loss or lease expiry. Its16:10:41 sample shows the browser monitor receiving and processing requests. Quit later retained native ownership after the5-second child-exit deadline and broker lifetime failure. Parent observed eventual unforced process exit and startup9 recovered CLI routing on the identical candidate. Neither startup8 clean shutdown nor root cause is claimed.
+
+The inactive source closes a separate proven lifecycle defect: recoverable send errors on authenticated heartbeat/root read replies returned refused, causing the monitor to permanently close admission. They now return timedOut after existing RAII cleanup, requiring a fresh authenticated request. Trust refusal, uncertain-right cleanup, registration/home-transfer/drain/stop failures remain terminal. No credentials, roots, grants or signature requirements change. Finite message/status diagnostics distinguish read-reply failure and identity refusal; no payload/path/secret logging.
+
+`check.py` extracts the actual new status helper and existing cleanup classification. Its real Mach dead-send-once fixture returns KERN_SUCCESS on this system: cancellation alone did not reproduce startup8. Explicit finite error cases verify recoverable versus uncertain classification; the trust-refusal branch remains unchanged except diagnostics. This is focused boundary evidence, not a complete browser producer build or runtime acceptance.
+
+Projection/build belongs to integrator. Source baseline/successor hashes are in plan.json. This source is inactive and has not been projected, signed or launched. The future private framework must incorporate any activated transport delta before claiming the latest source cohort.
