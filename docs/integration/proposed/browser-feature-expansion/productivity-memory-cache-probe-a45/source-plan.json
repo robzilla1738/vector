@@ -1,0 +1,40 @@
+{
+  "format": "aux.memory.unused-cache-probe-adaptation.v1",
+  "files": [
+    {
+      "input": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-local-completion-20261025-a38/Aux.app/Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/node-development/index.mjs",
+      "inputSha256": "6585ab560a1f987940141c870105e2db2b160b7e465d55490be2c6c12c0b4f9f",
+      "output": "/private/tmp/aux-memory-cache-probe-a45-riv1ejxh/index.mjs",
+      "outputSha256": "e51c0d9f8df78f50b576421a9695b1572aee793d746a6c1e740432321e5c8e78",
+      "anchors": [
+        {
+          "before": "if(this.options.kind===`runtime`&&process.platform===`darwin`){let ti=path.join(ei,`aux-memory`),ni=!0;",
+          "after": "if(this.options.kind===`runtime`&&process.platform===`darwin`&&!(function usesFixedAccountMemoryFactory(loadBinding) {\n try {\n  const binding=loadBinding();\n  const mode=Object.getOwnPropertyDescriptor(binding,'supervisedTasksEnabled');\n  if(!mode||mode.get||mode.set||mode.writable||mode.configurable||mode.value!==false)return false;\n  const factory=Object.getOwnPropertyDescriptor(binding,'createAccountMemoryProcess');\n  return !!factory&&!factory.get&&!factory.set&&!factory.writable&&!factory.configurable&&typeof factory.value==='function';\n } catch {\n  return false;\n }\n})(()=>process._linkedBinding('aux_owned_native'))){let ti=path.join(ei,`aux-memory`),ni=!0;",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "input": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-local-completion-20261025-a38/Aux.app/Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/node-development/aux-native-entry.mjs",
+      "inputSha256": "9827a7833c9f42905363aa0207da5f11c9a621347dadd13c0fcceb3d424d8cee",
+      "output": "/private/tmp/aux-memory-cache-probe-a45-riv1ejxh/aux-native-entry.mjs",
+      "outputSha256": "e7e20d7690a886af1ac124c503a155aa4f74b999a47f743138a4fbfaf82f15a5",
+      "anchors": [
+        {
+          "before": "if(this.options.kind===`runtime`&&process.platform===`darwin`){let ti=path.join(ei,`aux-memory`),ni=!0;",
+          "after": "if(this.options.kind===`runtime`&&process.platform===`darwin`&&!(function usesFixedAccountMemoryFactory(loadBinding) {\n try {\n  const binding=loadBinding();\n  const mode=Object.getOwnPropertyDescriptor(binding,'supervisedTasksEnabled');\n  if(!mode||mode.get||mode.set||mode.writable||mode.configurable||mode.value!==false)return false;\n  const factory=Object.getOwnPropertyDescriptor(binding,'createAccountMemoryProcess');\n  return !!factory&&!factory.get&&!factory.set&&!factory.writable&&!factory.configurable&&typeof factory.value==='function';\n } catch {\n  return false;\n }\n})(()=>process._linkedBinding('aux_owned_native'))){let ti=path.join(ei,`aux-memory`),ni=!0;",
+          "count": 1
+        }
+      ]
+    }
+  ],
+  "ordinaryFixedHelperOnly": true,
+  "absentBindingUsesOriginalProbe": true,
+  "nativeValidationChanged": false,
+  "generalExecEnabled": false,
+  "productExecuted": false,
+  "predicateInput": {
+    "path": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/browser-feature-expansion/productivity-memory-cache-probe-a45/predicate.mjs",
+    "sha256": "0fa76d704f71d38e9dbcbbbf25cfe594920be23978fe28e4d87f6e170b602b66"
+  }
+}

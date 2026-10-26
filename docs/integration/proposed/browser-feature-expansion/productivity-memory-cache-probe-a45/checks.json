@@ -1,0 +1,43 @@
+{
+  "format": "aux.memory.cache-probe.static-checks.v2",
+  "sourcePlanSha256": "e58b808673a0c20b74bfe1c23cf1249d29c7a54c47aa0a7daa8480607168cabc",
+  "exactReplay": {
+    "leaves": 2,
+    "anchors": 2,
+    "forwardPassed": true,
+    "reversePassed": true
+  },
+  "isolatedPredicate": {
+    "file": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/browser-feature-expansion/productivity-memory-cache-probe-a45/predicate.test.mjs",
+    "cases": 4,
+    "passed": 4,
+    "failed": 0,
+    "factoryInvoked": false
+  },
+  "syntaxChecks": [
+    {
+      "path": "/private/tmp/aux-memory-cache-probe-a45-riv1ejxh/index.mjs",
+      "sha256": "e51c0d9f8df78f50b576421a9695b1572aee793d746a6c1e740432321e5c8e78",
+      "command": [
+        "node",
+        "--check",
+        "/private/tmp/aux-memory-cache-probe-a45-riv1ejxh/index.mjs"
+      ],
+      "exitCode": 0
+    },
+    {
+      "path": "/private/tmp/aux-memory-cache-probe-a45-riv1ejxh/aux-native-entry.mjs",
+      "sha256": "e7e20d7690a886af1ac124c503a155aa4f74b999a47f743138a4fbfaf82f15a5",
+      "command": [
+        "node",
+        "--check",
+        "/private/tmp/aux-memory-cache-probe-a45-riv1ejxh/aux-native-entry.mjs"
+      ],
+      "exitCode": 0
+    }
+  ],
+  "productSourceEvaluated": false,
+  "nativeCompiled": false,
+  "appExecuted": false,
+  "signed": false
+}
