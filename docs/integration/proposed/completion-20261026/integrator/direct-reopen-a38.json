@@ -1,0 +1,54 @@
+{
+  "format": "aux.direct-open.actual.v1",
+  "date": "2026-10-26",
+  "candidate": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-local-completion-20261025-a38/Aux.app",
+  "signedInventorySha256": "03542e0336ecd93ee2f0b790905219d454288292f6ceeb236dc211e2b7852bab",
+  "namespace": "Aux Browser A38 Disposable",
+  "normalQuit": {
+    "action": "Aux menu → Quit Aux; initial CmdQ respected existing Warn Before Quitting behavior",
+    "originalBrowserPid": 98304,
+    "originalDaemonPid": 98322,
+    "originalLauncherPid": 98300,
+    "originalGroupParentPid": 98303,
+    "allFourExited": true,
+    "launcherLog": "out/local-completion-runtime-a4/launch-16.log",
+    "groupStopped": true,
+    "forced": false,
+    "launcherExitCode": 0,
+    "newKernelDaemonExitStatusReceipt": false
+  },
+  "directReopen": {
+    "mechanism": "Native CUA getApp with exact app path after confirming original processes exited; no scripts/aux.mjs or external Node launcher",
+    "browserPid": 90053,
+    "browserParentPid": 1,
+    "daemonPid": 90145,
+    "daemonParentPid": 90053,
+    "profilePicker": "Existing Aux A4 Work and Aux A4 Personal offered; selected Work",
+    "actualReadiness": "General Settings reports Background service Running normally",
+    "sourceMockKeychainNote": "Native development startup appends the mock switch internally; process argv does not expose that in-process CommandLine mutation. Source audit is separate from a production cookie-key test."
+  },
+  "restored": [
+    "Completion Review Space, Review Folder, Nested Review and global pin membership",
+    "Work Gateway provider registration and Default/Fast/Standard/Deep/Visual Contributor selections",
+    "Work cookie and durable note through actual local fixture",
+    "Personal different cookie and durable note",
+    "Personal Models settled with Connect only, no Work Gateway registration and no selected model"
+  ],
+  "secondOpen": {
+    "command": "packaged aux-cli open http://127.0.0.1:50420/direct-second-open --profile Aux A4 Work",
+    "cliExitCode": 0,
+    "cliAck": "Queued for browser destination validation",
+    "actualUi": "Same Work browser navigated to the exact local URL and showed Work cookie/note",
+    "newDaemonInitializationObserved": false
+  },
+  "limitations": [
+    "Direct opening was through native app selection/launch, not a manually observed Finder double-click",
+    "Only the exact A38 bytes and approved persistent disposable namespace are covered",
+    "A pin's automatic title displayed URL after restart; source boundary repair is unaccepted in successor",
+    "Plain chat initialization still fails in A38; no second inference request sent",
+    "Production namespace/keychain, new successor bytes and whole product remain unaccepted"
+  ],
+  "appChanged": false,
+  "providerInferenceSentDuringRestartCheck": false,
+  "ownerStateAccessed": false
+}
