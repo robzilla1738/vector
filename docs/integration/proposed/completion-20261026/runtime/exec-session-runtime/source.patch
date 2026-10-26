@@ -1,0 +1,217 @@
+--- docs/integration/proposed/completion-20261026/runtime/future-supervised-build/source/AuxDevelopmentWorkerHost.cc
++++ docs/integration/proposed/completion-20261026/runtime/exec-session-runtime/source/AuxDevelopmentWorkerHost.cc
+@@ -11,6 +11,7 @@
+ #include "AuxExecPrivateParent.h"
+ #include "AuxNativeExecReservation.h"
+ #include "AuxNativeExecTaskBoundary.h"
++#include "AuxNativeExecRuntimeBoundary.h"
+ #include <fcntl.h>
+ #include <sys/stat.h>
+ #include <sys/acl.h>
+@@ -93,6 +94,8 @@
+ struct RuntimeScope;
+ struct SelectedBuiltinScope;
+ struct ExecTaskBoundary;
++struct ExecRuntimeBoundary;
++bool ReadExecRoot(int,char*,struct stat*) noexcept;
+ struct Worker;
+ void CloseChatGPTCredentialLocks(Worker*) noexcept;
+ AuxDevelopmentWorkerDrain AuxCloseSelectedBuiltinsForWorker(const void*) noexcept;
+@@ -309,6 +312,7 @@
+   std::shared_ptr<Owner> owner;
+   std::shared_ptr<ExecBrowserRoots> roots;
+   std::shared_ptr<ExecTaskBoundary> task_boundary;
++  std::shared_ptr<ExecRuntimeBoundary> runtime_boundary;
+   const pid_t process = getpid();
+   PtyPhase phase = PtyPhase::pending;
+   pid_t child = -1;
+@@ -413,6 +417,7 @@
+ #include "AuxSelectedFileReader.inc"
+ #include "AuxFixedPtyLinked.inc"
+ #include "AuxSelectedExecProducer.inc"
++#include "AuxSelectedExecScratch.inc"
+ #include "AuxRuntimeCacheInspection.inc"
+ #include "AuxRuntimeCachePins.inc"
+ #include "AuxRuntimeCacheAsync.inc"
+@@ -855,7 +860,9 @@
+   return true;
+ }
+ #include "AuxExecTaskBoundary.inc"
++#include "AuxExecRuntimeBoundary.inc"
+ } // namespace
++extern "C" int32_t AuxNativeExecCopyRuntimeBoundary(void* token,AuxExecNativeRuntimeBoundary* result) noexcept {return CopyExecRuntimeBoundary(token,result);}
+ extern "C" int32_t AuxNativeExecCopyTaskBoundary(void* token,AuxExecNativeTaskBoundary* result) noexcept {return CopyExecTaskBoundary(token,result);}
+ extern "C" void AuxNativeExecOriginalHandleClosed(void* token) noexcept {ObserveExecOriginalHandleClosed(token); }
+ extern "C" void* AuxNativeExecBeginCurrent(void) noexcept {
+@@ -930,9 +937,11 @@
+         !pending.reservation->selected_scope->Current(pending.reservation->selected_scope->env)) return 0;
+     auto current_roots = CaptureExecRoots(pending.owner);
+     auto current_task=CaptureExecTaskBoundary(pending.reservation->selected_scope);
++    auto current_runtime=CaptureExecRuntimeBoundary(pending.reservation->runtime_scope);
+     return aux::descendants::MaySpawn(pending.reservation->descendant_cohort) &&
+         current_roots && SameExecRoots(*pending.roots, *current_roots) &&
+         pending.reservation->task_boundary&&current_task&&SameExecTaskBoundary(*pending.reservation->task_boundary,*current_task)&&
++        pending.reservation->runtime_boundary&&current_runtime&&SameExecRuntimeBoundary(*pending.reservation->runtime_boundary,*current_runtime)&&
+         AuxNativeContextValidateCurrentAuthority(pending.owner->handle) == 0 && StillPendingExec(pending);
+   } catch (...) { return 0; }
+ }
+@@ -973,6 +982,7 @@
+   std::shared_ptr<Owner> released_owner;
+   std::shared_ptr<ExecBrowserRoots> released_roots;
+   std::shared_ptr<ExecTaskBoundary> released_task;
++  std::shared_ptr<ExecRuntimeBoundary> released_runtime;
+   std::shared_ptr<SelectedBuiltinScope> released_selected;
+   bool closed = false;
+   {
+@@ -983,6 +993,7 @@
+     released_owner = std::move(reservation->owner);
+     released_roots = std::move(reservation->roots);
+     released_task=std::move(reservation->task_boundary);
++    released_runtime=std::move(reservation->runtime_boundary);
+     released_selected=std::move(reservation->selected_scope);
+     closed = worker->terminal;
+   }
+@@ -1001,6 +1012,7 @@
+   if (!worker) return;
+   std::shared_ptr<ExecBrowserRoots> released_roots;
+   std::shared_ptr<ExecTaskBoundary> released_task;
++  std::shared_ptr<ExecRuntimeBoundary> released_runtime;
+   {
+     std::lock_guard<std::mutex> lock(worker->mutex);
+     if (!pthread_equal(pthread_self(), worker->thread) || reservation->phase != PtyPhase::pending) return;
+@@ -1011,6 +1023,7 @@
+     RuntimeChildCreatedLocked(reservation->runtime_scope);
+     released_roots = std::move(reservation->roots);
+     released_task=std::move(reservation->task_boundary);
++    released_runtime=std::move(reservation->runtime_boundary);
+     if (child <= 0 || child > std::numeric_limits<pid_t>::max()) {
+       reservation->phase = PtyPhase::unknown;
+       ++worker->exec_unknown;
+--- docs/integration/proposed/completion-20261026/runtime/exec-task-envelope/source/AuxSelectedBuiltinOwner.inc
++++ docs/integration/proposed/completion-20261026/runtime/exec-session-runtime/source/AuxSelectedBuiltinOwner.inc
+@@ -1,4 +1,5 @@
+ // Actual-main finite selected-session capabilities. No JS root/handle selector.
++napi_value PrepareSelectedExecScratch(napi_env,napi_callback_info);
+ napi_value SelectedReadUploadFile(napi_env,napi_callback_info);
+ napi_value SelectedPublishBrowserDownload(napi_env,napi_callback_info);
+ napi_value SelectedWithExecSpawn(napi_env,napi_callback_info);
+@@ -299,7 +300,7 @@
+     auto* cleanup=new std::shared_ptr<SelectedBuiltinScope>(scope);
+     if(napi_add_env_cleanup_hook(env,SelectedBuiltinCleanup,cleanup)!=napi_ok){delete cleanup;scope->RequestClose();return nullptr;}
+     if(napi_create_object(env,&object)!=napi_ok){scope->RequestClose();return nullptr;}
+-    for(const auto& item:std::vector<std::pair<const char*,napi_callback>>{{"withExecSpawn",SelectedWithExecSpawn},{"readUploadFile",SelectedReadUploadFile},{"publishBrowserDownload",SelectedPublishBrowserDownload},{"assertCurrent",SelectedAssert},{"awaited",SelectedAwaited},{"close",SelectedClose},{"assertTaskSessionPath",SelectedAssertPath},{"assertControlSessionPath",SelectedAssertControlPath},{"openReadFile",SelectedOpenReadFile}})
++    for(const auto& item:std::vector<std::pair<const char*,napi_callback>>{{"prepareExecScratch",PrepareSelectedExecScratch},{"withExecSpawn",SelectedWithExecSpawn},{"readUploadFile",SelectedReadUploadFile},{"publishBrowserDownload",SelectedPublishBrowserDownload},{"assertCurrent",SelectedAssert},{"awaited",SelectedAwaited},{"close",SelectedClose},{"assertTaskSessionPath",SelectedAssertPath},{"assertControlSessionPath",SelectedAssertControlPath},{"openReadFile",SelectedOpenReadFile}})
+       if(!DefineSelectedMethod(env,object,item.first,item.second,scope)){scope->RequestClose();return nullptr;}
+     auto* path_retain=new std::shared_ptr<SelectedBuiltinScope>(scope);
+     if(napi_add_finalizer(env,object,path_retain,FinalizeSelectedScopeFunction,nullptr,nullptr)!=napi_ok){delete path_retain;scope->RequestClose();return nullptr;}
+--- docs/integration/proposed/completion-20261026/runtime/exec-task-envelope/source/process_wrap.cc
++++ docs/integration/proposed/completion-20261026/runtime/exec-session-runtime/source/process_wrap.cc
+@@ -341,13 +341,15 @@
+     }
+ 
+     AuxExecNativeTaskBoundary task_boundary{};
++  AuxExecNativeRuntimeBoundary runtime_boundary{};
+     AuxExecNativeDeniedRoots denied_roots{};
+     AuxExecSpawnEnvelope envelope;
+     if (err == 0 && !AuxExecDescriptorOptionsAllowed(options)) err = UV_EPERM;
+     if (err == 0 && AuxNativeExecCopyDeniedRoots(pending.token, &denied_roots) != 0)
+       err = UV_EPERM;
+     if (err == 0 && AuxNativeExecCopyTaskBoundary(pending.token,&task_boundary)!=0 ||
+-        !envelope.Prepare(options, denied_roots,task_boundary)) err = UV_EPERM;
++      AuxNativeExecCopyRuntimeBoundary(pending.token,&runtime_boundary)!=0 ||
++        !envelope.Prepare(options, denied_roots,task_boundary,runtime_boundary)) err = UV_EPERM;
+     if (err == 0) {
+       options.file = envelope.File();
+       options.args = envelope.Args();
+--- docs/integration/proposed/completion-20261026/runtime/exec-task-envelope/source/spawn_sync.cc
++++ docs/integration/proposed/completion-20261026/runtime/exec-session-runtime/source/spawn_sync.cc
+@@ -530,12 +530,14 @@
+   }
+ 
+   AuxExecNativeTaskBoundary task_boundary{};
++  AuxExecNativeRuntimeBoundary runtime_boundary{};
+   AuxExecNativeDeniedRoots denied_roots{};
+   AuxExecSpawnEnvelope envelope;
+   if (!AuxExecDescriptorOptionsAllowed(uv_process_options_) ||
+       AuxNativeExecCopyDeniedRoots(aux_exec_pending_, &denied_roots) != 0 ||
+       AuxNativeExecCopyTaskBoundary(aux_exec_pending_,&task_boundary)!=0 ||
+-      !envelope.Prepare(uv_process_options_, denied_roots,task_boundary)) {
++      AuxNativeExecCopyRuntimeBoundary(aux_exec_pending_,&runtime_boundary)!=0 ||
++      !envelope.Prepare(uv_process_options_, denied_roots,task_boundary,runtime_boundary)) {
+     SetError(UV_EPERM);
+     return JustVoid();
+   }
+--- docs/integration/proposed/completion-20261026/runtime/exec-task-envelope/source/pty-linked.cc
++++ docs/integration/proposed/completion-20261026/runtime/exec-session-runtime/source/pty-linked.cc
+@@ -805,6 +805,7 @@
+   char slave_pty_name[128];
+   AuxExecNativeDeniedRoots denied_roots{};
+   AuxExecNativeTaskBoundary task_boundary{};
++  AuxExecNativeRuntimeBoundary runtime_boundary{};
+   AuxExecSpawnEnvelope envelope;
+   uv_process_options_t command{};
+   const int flags = POSIX_SPAWN_CLOEXEC_DEFAULT |
+@@ -823,7 +824,8 @@
+   if ((argv[1][0] && argv[1][0] != '/') ||
+       AuxNativeExecCopyDeniedRoots(exec_reservation.Handle(), &denied_roots) != 0 ||
+       AuxNativeExecCopyTaskBoundary(exec_reservation.Handle(),&task_boundary)!=0 ||
+-      !envelope.Prepare(command, denied_roots,task_boundary)) {
++      AuxNativeExecCopyRuntimeBoundary(exec_reservation.Handle(),&runtime_boundary)!=0 ||
++      !envelope.Prepare(command, denied_roots,task_boundary,runtime_boundary)) {
+     *err = EPERM;
+     goto done;
+   }
+--- docs/integration/proposed/completion-20261026/runtime/exec-task-envelope/source/AuxExecSpawnEnvelope.h
++++ docs/integration/proposed/completion-20261026/runtime/exec-session-runtime/source/AuxExecSpawnEnvelope.h
+@@ -11,6 +11,7 @@
+ #include <vector>
+ #include "AuxNativeExecReservation.h"
+ #include "AuxNativeExecTaskBoundary.h"
++#include "AuxNativeExecRuntimeBoundary.h"
+ #include <utility>
+ 
+ // Native-only command formatting. This class grants no authority: its roots MUST
+@@ -25,7 +26,7 @@
+   AuxExecSpawnEnvelope(AuxExecSpawnEnvelope&&) = delete;
+   AuxExecSpawnEnvelope& operator=(AuxExecSpawnEnvelope&&) = delete;
+   bool Prepare(const uv_process_options_t& options,
+-               const AuxExecNativeDeniedRoots& roots,const AuxExecNativeTaskBoundary& task) noexcept {
++               const AuxExecNativeDeniedRoots& roots,const AuxExecNativeTaskBoundary& task,const AuxExecNativeRuntimeBoundary& runtime) noexcept {
+     ready_ = false;
+     arguments_.clear(); environment_.clear(); argv_.clear(); envp_.clear();
+     cwd_.clear();
+@@ -54,7 +55,10 @@
+       for (const auto& prior : denied) if (prior == root) duplicate = true;
+       if (!duplicate) denied.emplace_back(root);
+     }
+-    if(task.version!=1)return false;
++    if(task.version!=1||runtime.version!=1||runtime.present>1||runtime.exclusiveMutation>1)return false;
++    if(runtime.present){const size_t n=strnlen(runtime.path,sizeof(runtime.path));
++      if(n<=1||n==sizeof(runtime.path)||strchr(runtime.path,'\n')||strchr(runtime.path,'\r')||!realpath(runtime.path,canonical)||strcmp(runtime.path,canonical)!=0||std::string(runtime.path)!=std::string(task.taskRoot)+"/runtime")return false;
++    }else if(runtime.path[0]||runtime.exclusiveMutation)return false;
+     const char* task_paths[]={task.taskRoot,task.accountTaskRoot,task.workspace,task.application};
+     for(const char* root:task_paths){const size_t length=strnlen(root,4096);if(length<=1||length>=4096||root[0]!='/'||strchr(root,'\n')||strchr(root,'\r')||!realpath(root,canonical)||strcmp(root,canonical)!=0)return false;}
+     const std::string account_prefix=std::string(task.taskRoot)+"/u/";
+@@ -62,7 +66,13 @@
+     // Workspace membership comes from the held stored session/project owner.
+     // It is not a broad filesystem allow or replacement for original permissions.
+     std::string policy = "(version 1)\n(allow default)\n";
+-    policy += "(deny file-read* file-write* file-map-executable file-link (require-all (subpath (param \"AUX_NATIVE_TASK_ROOT\")) (require-not (subpath (param \"AUX_NATIVE_TASK_ACCOUNT\")))))\n";
++    policy += "(deny file-read* file-write* file-map-executable file-link (require-all (subpath (param \"AUX_NATIVE_TASK_ROOT\")) (require-not (subpath (param \"AUX_NATIVE_TASK_ACCOUNT\")))";
++    if(runtime.present)policy += " (require-not (subpath (param \"AUX_NATIVE_RUNTIME\")))";
++    policy += "))\n";
++    if(runtime.present){
++      if(!runtime.exclusiveMutation)policy += "(deny file-write* file-link (subpath (param \"AUX_NATIVE_RUNTIME\")))\n";
++      policy += "(deny file-write-unlink (literal (param \"AUX_NATIVE_RUNTIME\")) (path-ancestors (param \"AUX_NATIVE_RUNTIME\")))\n";
++    }
+     policy += "(deny file-write-unlink (literal (param \"AUX_NATIVE_TASK_ACCOUNT\")) (path-ancestors (param \"AUX_NATIVE_TASK_ACCOUNT\")))\n";
+     policy += "(deny file-write* file-link (subpath (param \"AUX_NATIVE_APPLICATION\")))\n";
+     policy += "(deny file-write-unlink (literal (param \"AUX_NATIVE_APPLICATION\")) (path-ancestors (param \"AUX_NATIVE_APPLICATION\")))\n";
+@@ -78,6 +88,7 @@
+       arguments_.push_back("AUX_NATIVE_DENIED_ROOT_" + std::to_string(i) + "=" + denied[i]);
+     }
+     for(const auto& item:std::vector<std::pair<const char*,const char*>>{{"AUX_NATIVE_TASK_ROOT",task.taskRoot},{"AUX_NATIVE_TASK_ACCOUNT",task.accountTaskRoot},{"AUX_NATIVE_APPLICATION",task.application}}){arguments_.emplace_back("-D");arguments_.push_back(std::string(item.first)+"="+item.second);}
++    if(runtime.present){arguments_.emplace_back("-D");arguments_.push_back(std::string("AUX_NATIVE_RUNTIME=")+runtime.path);}
+     arguments_.emplace_back("--");
+     size_t bytes = 0;
+     for (const auto& argument : arguments_) bytes += argument.size() + 1;

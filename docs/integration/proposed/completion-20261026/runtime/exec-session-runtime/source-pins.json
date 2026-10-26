@@ -1,0 +1,12 @@
+{
+  "source/selected-exec-resource.mjs": "dc3ed255734e1b6b9ee793948cace34244e99659ff40d6485a4ea6af2d6e04fc",
+  "source/pty-linked.cc": "7732a438494f2b12b11462dbb1bfaabd5974adc7bbfd1e186680a016e3a27f5d",
+  "source/process_wrap.cc": "1e0d8e984846f3f89abfe7020bd320be27e85f90b7a1f5b74eefc543707efe6c",
+  "source/AuxSelectedBuiltinOwner.inc": "05da2649eaf5a8bebfa0e4fdf438e7ec3355a0b25fd5e8f42c30f96565ef89b4",
+  "source/AuxExecSpawnEnvelope.h": "0b33fc60ab5f4ec0a398024b264c024ea18a1709e9a35de39b2f0638645134f7",
+  "source/AuxNativeExecRuntimeBoundary.h": "fdfab51d0f3e466ff8b648f61c1f2e1b7273bb6728b7ec66c96ee93dc484351c",
+  "source/spawn_sync.cc": "541025ef370da24981bb45a662fece8fdbc2d6467f82ee5cf6f8b8e47058aebd",
+  "source/AuxDevelopmentWorkerHost.cc": "31ff861aeeb9957034c96c45beb360ee18e2e085c5df46eeb0c03a1a115c3d5f",
+  "source/AuxSelectedExecScratch.inc": "899f4ecc84495b75643266af29fcf677356639de10f7afed5012b049055e7390",
+  "source/AuxExecRuntimeBoundary.inc": "734310763a6674ddc02acb0677893c58d6f8ba2c9d062616bbb30e48b6524151"
+}

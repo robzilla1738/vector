@@ -1,0 +1,13 @@
+{
+  "input": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-local-completion-20261025-a38/Aux.app/Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/node-development/aux-native-entry.mjs",
+  "inputSha256": "f355833cb607963a65ca3108e7ae19ea7ca60192a9f3d8e2644a3c12ec49c808",
+  "anchors": [
+    {
+      "before": "repl:createDesktopRepl({accountId:ei,agentSessionId:ui.id,cwd:si,sessionStorageDir:si",
+      "after": "repl:createDesktopRepl({accountId:ei,agentSessionId:ui.id,session:ui,sessionDir:si,cwd:si,sessionStorageDir:si",
+      "count": 1
+    }
+  ],
+  "activated": false,
+  "disposalGateClosed": false
+}

@@ -1,0 +1,49 @@
+{
+  "inputSha256": "b76d77d5d636c056e525a5cfa4877d3b29c83c9a3c87b30bc492741dd93ec6de",
+  "inputLineage": "docs/integration/proposed/completion-20261026/runtime/exec-producer-join/entry.anchors.json",
+  "anchors": [
+    {
+      "before": "// Private symbol survives the original options spreads; no root/FD/PID grant.\nconst auxSelectedExecScope=Symbol('aux.selected.exec.scope');\nconst auxSelectedExecUses=new Set;\nfunction auxPrepareSelectedExec(context,prepared){\n auxRequireSupervisedTasks();\n const held=auxCaptureReadFileScope(context);let settle;\n const originalClosed=new Promise(resolve=>{settle=resolve});\n const observed=held.scope.awaited(()=>originalClosed);\n observed.catch(()=>{}); // native observer retains original settlement independently.\n let released=false;\n const release=()=>{if(released)return;released=true;settle();prepared.release();const closing=held.close();auxSelectedExecUses.add(closing);closing.finally(()=>auxSelectedExecUses.delete(closing)).catch(()=>{})};\n Object.defineProperty(prepared.spawnOptions,auxSelectedExecScope,{value:held.scope,enumerable:true});\n return {spawnOptions:prepared.spawnOptions,release};\n}\nfunction auxInvokeSelectedExec(options,operation){\n auxRequireSupervisedTasks();const scope=options[auxSelectedExecScope];\n if(!scope)throw Error('Selected command owner is unavailable.');\n scope.assertCurrent();return scope.withExecSpawn(operation);\n}\n",
+      "after": "// Private symbol survives the original options spreads; no root/FD/PID grant.\nconst auxSelectedExecScope=Symbol('aux.selected.exec.scope');\nconst auxSelectedExecUses=new Set;\nfunction auxPrepareSelectedExec(context,prepared){\n auxRequireSupervisedTasks();\n const held=auxCaptureReadFileScope(context);let scratch;\n try{scratch=held.scope.prepareExecScratch()}catch(error){held.close().catch(()=>{});throw error}\n const env={...prepared.spawnOptions.env};\n // Preserve explicitly selected full-access HOME; all implicit private scratch\n // and ordinary package output uses this exact stored native session owner.\n if(context.session.permissionMode!=='full-access')env.HOME=scratch.home;\n env.TMPDIR=scratch.tmp;\n env.NPM_CONFIG_CACHE=scratch.cache+'/npm';env.PIP_CACHE_DIR=scratch.cache+'/pip';\n env.NPM_CONFIG_PREFIX=scratch.prefix;\n prepared.spawnOptions={...prepared.spawnOptions,env};\n let settle;\n const originalClosed=new Promise(resolve=>{settle=resolve});\n const observed=held.scope.awaited(()=>originalClosed);\n observed.catch(()=>{}); // native observer retains original settlement independently.\n let released=false;\n const release=()=>{if(released)return;released=true;settle();prepared.release();const closing=held.close();auxSelectedExecUses.add(closing);closing.finally(()=>auxSelectedExecUses.delete(closing)).catch(()=>{})};\n Object.defineProperty(prepared.spawnOptions,auxSelectedExecScope,{value:held.scope,enumerable:true});\n return {spawnOptions:prepared.spawnOptions,release};\n}\nfunction auxInvokeSelectedExec(options,operation){\n auxRequireSupervisedTasks();const scope=options[auxSelectedExecScope];\n if(!scope)throw Error('Selected command owner is unavailable.');\n scope.assertCurrent();return scope.withExecSpawn(operation);\n}\n",
+      "count": 1
+    },
+    {
+      "before": "ni&&(mkdirSync(oi,{recursive:!0}),mkdirSync(si,{recursive:!0}));",
+      "after": "",
+      "count": 1
+    },
+    {
+      "before": "// Private symbol survives the original options spreads; no root/FD/PID grant.\nconst auxSelectedExecScope=Symbol('aux.selected.exec.scope');\nconst auxSelectedExecUses=new Set;\nfunction auxPrepareSelectedExec(context,prepared){\n auxRequireSupervisedTasks();\n const held=auxCaptureReadFileScope(context);let scratch;\n try{scratch=held.scope.prepareExecScratch()}catch(error){held.close().catch(()=>{});throw error}\n const env={...prepared.spawnOptions.env};\n // Preserve explicitly selected full-access HOME; all implicit private scratch\n // and ordinary package output uses this exact stored native session owner.\n if(context.session.permissionMode!=='full-access')env.HOME=scratch.home;\n env.TMPDIR=scratch.tmp;\n env.NPM_CONFIG_CACHE=scratch.cache+'/npm';env.PIP_CACHE_DIR=scratch.cache+'/pip';\n env.NPM_CONFIG_PREFIX=scratch.prefix;\n prepared.spawnOptions={...prepared.spawnOptions,env};\n let settle;\n const originalClosed=new Promise(resolve=>{settle=resolve});\n const observed=held.scope.awaited(()=>originalClosed);\n observed.catch(()=>{}); // native observer retains original settlement independently.\n let released=false;\n const release=()=>{if(released)return;released=true;settle();prepared.release();const closing=held.close();auxSelectedExecUses.add(closing);closing.finally(()=>auxSelectedExecUses.delete(closing)).catch(()=>{})};\n Object.defineProperty(prepared.spawnOptions,auxSelectedExecScope,{value:held.scope,enumerable:true});\n return {spawnOptions:prepared.spawnOptions,release};\n}\nfunction auxInvokeSelectedExec(options,operation){\n auxRequireSupervisedTasks();const scope=options[auxSelectedExecScope];\n if(!scope)throw Error('Selected command owner is unavailable.');\n scope.assertCurrent();return scope.withExecSpawn(operation);\n}\n",
+      "after": "// Private symbol survives the original options spreads; no root/FD/PID grant.\nconst auxSelectedExecScope=Symbol('aux.selected.exec.scope');\nconst auxSelectedExecAccountSignal=Symbol('aux.selected.exec.account-signal');\nconst auxSelectedExecUses=new Set;\nfunction auxPrepareSelectedExec(context,prepared){\n auxRequireSupervisedTasks();\n const held=auxCaptureReadFileScope(context);let scratch;\n try{scratch=held.scope.prepareExecScratch()}catch(error){held.close().catch(()=>{});throw error}\n const env={...prepared.spawnOptions.env};\n // Preserve explicitly selected full-access HOME; all implicit private scratch\n // and ordinary package output uses this exact stored native session owner.\n if(context.session.permissionMode!=='full-access')env.HOME=scratch.home;\n env.TMPDIR=scratch.tmp;\n env.NPM_CONFIG_CACHE=scratch.cache+'/npm';env.PIP_CACHE_DIR=scratch.cache+'/pip';\n env.NPM_CONFIG_PREFIX=scratch.prefix;\n prepared.spawnOptions={...prepared.spawnOptions,env};\n let settle;\n const originalClosed=new Promise(resolve=>{settle=resolve});\n const observed=held.scope.awaited(()=>originalClosed);\n observed.catch(()=>{}); // native observer retains original settlement independently.\n let released=false;\n const release=()=>{if(released)return;released=true;settle();prepared.release();const closing=held.close();auxSelectedExecUses.add(closing);closing.finally(()=>auxSelectedExecUses.delete(closing)).catch(()=>{})};\n Object.defineProperty(prepared.spawnOptions,auxSelectedExecScope,{value:held.scope,enumerable:true});\n Object.defineProperty(prepared.spawnOptions,auxSelectedExecAccountSignal,{value:held.signal,enumerable:true});\n return {spawnOptions:prepared.spawnOptions,release};\n}\nfunction auxInvokeSelectedExec(options,operation){\n auxRequireSupervisedTasks();const scope=options[auxSelectedExecScope];\n if(!scope)throw Error('Selected command owner is unavailable.');\n scope.assertCurrent();return scope.withExecSpawn(operation);\n}\n\nfunction auxSelectedCommandSignal(options,signal){\n const account=options[auxSelectedExecAccountSignal];\n if(!account)throw Error('Selected command account cancellation is unavailable.');\n return signal?AbortSignal.any([account,signal]):account;\n}\nfunction auxBindSelectedCommandSession(options,session,closed){\n const signal=auxSelectedCommandSignal(options),stop=()=>session.dispose();\n signal.addEventListener('abort',stop,{once:true});\n // Original closed was latched at native producer creation; a user-visible\n // cancellation Promise must never retire this subscription/owner early.\n Promise.resolve(closed).then(()=>signal.removeEventListener('abort',stop),()=>{});\n if(signal.aborted)stop();\n}\n",
+      "count": 1
+    },
+    {
+      "before": "spawnTicket.bindSession(ti);try{Cn.signal?.throwIfAborted();",
+      "after": "spawnTicket.bindSession(ti);auxBindSelectedCommandSession(Cn.spawnOptions,ti,ei.closed??ei.exited);try{Cn.signal?.throwIfAborted();",
+      "count": 1
+    },
+    {
+      "before": "let{spawnOptions:ni,release:ri}=await prepareSessionSpawn(Cn,ti);let attempted=!1;",
+      "after": "let{spawnOptions:ni,release:ri}=await prepareSessionSpawn(Cn,ti);ti={...ti,signal:auxSelectedCommandSignal(ni,ti.signal)};let attempted=!1;",
+      "count": 1
+    },
+    {
+      "before": "return{proc:Cn,cwd:ni.cwd,signalProcessGroup:",
+      "after": "return{proc:Cn,cwd:ni.cwd,accountSignal:ti.signal,signalProcessGroup:",
+      "count": 1
+    },
+    {
+      "before": "runningCommands.add(li);let ui=new AbortController,di=()=>ui.abort(ni?.reason);",
+      "after": "runningCommands.add(li);ni=ci.accountSignal;let ui=new AbortController,di=()=>ui.abort(ni?.reason);",
+      "count": 1
+    }
+  ],
+  "projectedSha256": "5bab2c93b973d01d54d66326ec8b8696759afb767a0fc05fdb11779c3b5aaad7",
+  "activated": false,
+  "selectedGuardAnchor": {
+    "before": "return {scope,guard,close(){",
+    "after": "return {scope,guard,signal:controller.signal,close(){",
+    "count": 1,
+    "source": "docs/integration/proposed/completion-20261026/runtime/selected-builtin-owner/source/selected-builtin-resource.mjs"
+  }
+}
