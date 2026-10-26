@@ -15,11 +15,11 @@
   "runtimeReady": false,
   "app": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-completion-20261026-a1/Aux.app",
   "packageReceipt": {
-    "path": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-completion-20261026-a1/pre-sign-resource-delta-a3/receipt.json",
-    "sha256": "e6bee1fa10aa45be1f36420cb6734a3c3fca844aa5010d097b416db7a755c948",
-    "bytes": 2916822
+    "path": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-completion-20261026-a1/pre-sign-resource-delta-a4/receipt.json",
+    "sha256": "210f1c6584cc20d22ab9c00952173629094005e675d41902936f4008dec1bacc",
+    "bytes": 2895372
   },
-  "candidateInventorySha256": "1b6e3ac8039c04160ca3aa01ef1c9147fef3aeec48c276239c3cb1a08a4ef6bf",
+  "candidateInventorySha256": "0d1202ee61d0e3842218a7af3760329e9e02c91cb1ffcbf952b64b1643daab92",
   "candidateLeaves": 11189,
   "outerMinimumOS": "27.0.0",
   "preparationVerification": "Twenty actual executable hashes match completed atomic whole-inventory receipt; preserved leaves and public profile hash checked. Executor must recheck entire inventory before mutation.",
@@ -796,7 +796,7 @@
   },
   "candidateBundleMetadata": {
     "path": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-completion-20261026-a1/Aux.app/Contents/Resources/aux/bundle.json",
-    "sha256": "1a1962aa2dd08cecfc0b51ce6be8d34484a1a06a362770153d73dd157d9534d7",
+    "sha256": "947d1f71b799bb864b659fc44a4c1348e87fd1a6a16ee2e34c1658646b5a7f21",
     "bytes": 4484192
   },
   "activeMetadataSection": "currentCompletionIntegration",

@@ -1,0 +1,465 @@
+{
+  "format": "aux.completion.actual-agent-closure.v2",
+  "passed": true,
+  "candidateReceipt": {
+    "path": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-completion-20261026-a1/pre-sign-resource-delta-a4/receipt.json",
+    "sha256": "210f1c6584cc20d22ab9c00952173629094005e675d41902936f4008dec1bacc"
+  },
+  "priorClassifiedClosure": {
+    "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/integrator/actual-agent-closure-a3.json",
+    "sha256": "8b6aaa3ac431b380af20b9f791fcab9d61018d1b1e3bc1ad72394bbf7371fc2b"
+  },
+  "sourceDeltaPlan": {
+    "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/integrator/resource-delta-plan-a4.json",
+    "sha256": "70c4124893464e20020714dcd8c04ad67236923bc5a0894b583bf248bd34552d"
+  },
+  "files": [
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/-components-4o0FSqQ9.js",
+      "expectedSha256": "89631862794d1da9614b5965b67f835bcfbde6fedc7e96c2b81461433217e349",
+      "actualSha256": "89631862794d1da9614b5965b67f835bcfbde6fedc7e96c2b81461433217e349",
+      "passed": true,
+      "deviceRoutineDelta": false
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/-context-CnivYB_B.js",
+      "expectedSha256": "b7e12594f95a6e0c7cd6e30fd28413d8a4b2c2ac279eb1fe91b5fca1f1fc3ff8",
+      "actualSha256": "b7e12594f95a6e0c7cd6e30fd28413d8a4b2c2ac279eb1fe91b5fca1f1fc3ff8",
+      "passed": true,
+      "deviceRoutineDelta": false
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/-types-Wy38XkNB.js",
+      "expectedSha256": "18e6fe64793f3e324f9493e4568957665aeaf947c6327ed6b0cbe9d6a26bd47f",
+      "actualSha256": "18e6fe64793f3e324f9493e4568957665aeaf947c6327ed6b0cbe9d6a26bd47f",
+      "passed": true,
+      "deviceRoutineDelta": false
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/applescript-Ccm0VsLV.js",
+      "expectedSha256": "8bfb45ba3378006496680b4df095b3458c0ebc4319f62846a2a91ef1cc3883a1",
+      "actualSha256": "8bfb45ba3378006496680b4df095b3458c0ebc4319f62846a2a91ef1cc3883a1",
+      "passed": true,
+      "deviceRoutineDelta": false
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/applescript-x_PoxTp7.js",
+      "expectedSha256": "8bfb45ba3378006496680b4df095b3458c0ebc4319f62846a2a91ef1cc3883a1",
+      "actualSha256": "8bfb45ba3378006496680b4df095b3458c0ebc4319f62846a2a91ef1cc3883a1",
+      "passed": true,
+      "deviceRoutineDelta": false
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/artifact-test-CdjpLuI1.js",
+      "expectedSha256": "68248b848ceeab9703a4c8cd215f7bc3f828085e1cd3bf769dc6c5d0149d614c",
+      "actualSha256": "68248b848ceeab9703a4c8cd215f7bc3f828085e1cd3bf769dc6c5d0149d614c",
+      "passed": true,
+      "deviceRoutineDelta": false
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/browser-binding-CzDmxQNA.js",
+      "expectedSha256": "393b9aa0bbf7c1ef9bd335c96c46360198f579e17e088ed0a4d36f29f2eef1ad",
+      "actualSha256": "393b9aa0bbf7c1ef9bd335c96c46360198f579e17e088ed0a4d36f29f2eef1ad",
+      "passed": true,
+      "deviceRoutineDelta": false
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/browser-icon-DvnonVC4.js",
+      "expectedSha256": "c3fb45292979d9df78a24cdf1d518f999b64d773b93c7ddc5c3e3d3e5fc4a7e0",
+      "actualSha256": "c3fb45292979d9df78a24cdf1d518f999b64d773b93c7ddc5c3e3d3e5fc4a7e0",
+      "passed": true,
+      "deviceRoutineDelta": false
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/channels-CJn5l9_T.js",
+      "expectedSha256": "dc68728935143aad1be9d07c455414cae054d93875c9b04bb60b5c3ec2e6e148",
+      "actualSha256": "dc68728935143aad1be9d07c455414cae054d93875c9b04bb60b5c3ec2e6e148",
+      "passed": true,
+      "deviceRoutineDelta": false
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/chat-preview-card-J0uel3r2.js",
+      "expectedSha256": "4242035edc89cc57b0f26dcee288b2be3582a6bf3e6b9af26804caa34f56076e",
+      "actualSha256": "4242035edc89cc57b0f26dcee288b2be3582a6bf3e6b9af26804caa34f56076e",
+      "passed": true,
+      "deviceRoutineDelta": false
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/chunk-EBKONHZ7-Fx8H8XBz.js",
+      "expectedSha256": "2d662679767a8e93586fc449af1b5552e812393db7441e36d35938bf14f649fc",
+      "actualSha256": "2d662679767a8e93586fc449af1b5552e812393db7441e36d35938bf14f649fc",
+      "passed": true,
+      "deviceRoutineDelta": false
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/chunk-KMA2NSDO-BQuQnxRu.js",
+      "expectedSha256": "1125ee3d01264f7e24007c00efdb4522f2a6179fe2beaea9a44f89ad61f5734e",
+      "actualSha256": "1125ee3d01264f7e24007c00efdb4522f2a6179fe2beaea9a44f89ad61f5734e",
+      "passed": true,
+      "deviceRoutineDelta": false
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/conversation-D9Q3VEsl.js",
+      "expectedSha256": "b359d76cfbf319a5cfd8519ee2a918426e5622ce945a48cec09052b23450323b",
+      "actualSha256": "b359d76cfbf319a5cfd8519ee2a918426e5622ce945a48cec09052b23450323b",
+      "passed": true,
+      "deviceRoutineDelta": false
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/css-BlgSmH3m.js",
+      "expectedSha256": "dfba329f1a7d27c583d0e17efed4c5596f504e0e41353eec9f97035c631647d4",
+      "actualSha256": "dfba329f1a7d27c583d0e17efed4c5596f504e0e41353eec9f97035c631647d4",
+      "passed": true,
+      "deviceRoutineDelta": false
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/css-iw480ZVK.js",
+      "expectedSha256": "3628a03605bf54c6fd9c4643d15510cefea9875a2368ddc631c7faae952c6eef",
+      "actualSha256": "3628a03605bf54c6fd9c4643d15510cefea9875a2368ddc631c7faae952c6eef",
+      "passed": true,
+      "deviceRoutineDelta": false
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/dist-CjVSa2hT.js",
+      "expectedSha256": "5fbe70fd8f4517da3856f97f30f5590c396f366a105ba234ccffc411ed11a97c",
+      "actualSha256": "5fbe70fd8f4517da3856f97f30f5590c396f366a105ba234ccffc411ed11a97c",
+      "passed": true,
+      "deviceRoutineDelta": false
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/dist-b967U3d_.js",
+      "expectedSha256": "b12a3eb66c2a6421d86945bc9fe673010c0aa04436998b356224534c5e79b39d",
+      "actualSha256": "b12a3eb66c2a6421d86945bc9fe673010c0aa04436998b356224534c5e79b39d",
+      "passed": true,
+      "deviceRoutineDelta": false
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/error-alert-Bu3EEewB.js",
+      "expectedSha256": "6b7d32e876ac474969393d79d9037efa91d6badf5955d466f31431ba9d05d7c6",
+      "actualSha256": "6b7d32e876ac474969393d79d9037efa91d6badf5955d466f31431ba9d05d7c6",
+      "passed": true,
+      "deviceRoutineDelta": false
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/esm-Ck25kaxm.js",
+      "expectedSha256": "67c11f4f383f8b4c61311af52aae28e37316b95923295ff354a31d0f3ec27282",
+      "actualSha256": "67c11f4f383f8b4c61311af52aae28e37316b95923295ff354a31d0f3ec27282",
+      "passed": true,
+      "deviceRoutineDelta": false
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/extension-main-Dz1-AsCT.js",
+      "expectedSha256": "cb40adf3cb8d62513ccaee222977cbf3f87642ecc5cce52bf7e8edcade163427",
+      "actualSha256": "cb40adf3cb8d62513ccaee222977cbf3f87642ecc5cce52bf7e8edcade163427",
+      "passed": true,
+      "deviceRoutineDelta": false
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/general-3dgRbrRk.js",
+      "expectedSha256": "231ffd603754999e7601393b18dc0b03d177bbbfc01650da795991b214dae9f4",
+      "actualSha256": "231ffd603754999e7601393b18dc0b03d177bbbfc01650da795991b214dae9f4",
+      "passed": true,
+      "deviceRoutineDelta": false
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/globals-B-8L9em-.css",
+      "expectedSha256": "16f1755cd5d04ec876834040f467981b8025dec92f21da6e539e49a70eb8b58c",
+      "actualSha256": "16f1755cd5d04ec876834040f467981b8025dec92f21da6e539e49a70eb8b58c",
+      "passed": true,
+      "deviceRoutineDelta": false
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/google-sign-in-C6OIqXPh.js",
+      "expectedSha256": "4bcbf7de84a6e5f98f6208fbc8a876d69b6c6206956e4d3144973ff9e9ac7690",
+      "actualSha256": "4bcbf7de84a6e5f98f6208fbc8a876d69b6c6206956e4d3144973ff9e9ac7690",
+      "passed": true,
+      "deviceRoutineDelta": false
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/handlebars-B1zXOs6F.js",
+      "expectedSha256": "5b69392010e1d6dcadb9172bc7b25b595352bf4c8b5fbe2c2991337203dfcfd8",
+      "actualSha256": "5b69392010e1d6dcadb9172bc7b25b595352bf4c8b5fbe2c2991337203dfcfd8",
+      "passed": true,
+      "deviceRoutineDelta": false
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/handlebars-BJHd493p.js",
+      "expectedSha256": "eadd40879bd424402304a6167fa36d7e3c6db185322299aa5abc46d993af5624",
+      "actualSha256": "eadd40879bd424402304a6167fa36d7e3c6db185322299aa5abc46d993af5624",
+      "passed": true,
+      "deviceRoutineDelta": false
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/html-D15E56SF.js",
+      "expectedSha256": "759c8d971a4a32cdc79d0095436607fe9536975af477ddd42511a72499b731a3",
+      "actualSha256": "759c8d971a4a32cdc79d0095436607fe9536975af477ddd42511a72499b731a3",
+      "passed": true,
+      "deviceRoutineDelta": false
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/html-DVzjrsV3.js",
+      "expectedSha256": "6629df18621c4b9766d7b77920cdc95942ba00d3cbd19814830894a8257b181b",
+      "actualSha256": "6629df18621c4b9766d7b77920cdc95942ba00d3cbd19814830894a8257b181b",
+      "passed": true,
+      "deviceRoutineDelta": false
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/import-password-mvM-KsU6.js",
+      "expectedSha256": "fcbddbf6edcc1a5903a6a7ee7b8e3f68cdad343b21b2351fa3a4ea4f8450997d",
+      "actualSha256": "fcbddbf6edcc1a5903a6a7ee7b8e3f68cdad343b21b2351fa3a4ea4f8450997d",
+      "passed": true,
+      "deviceRoutineDelta": false
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/island-C0ouZ54e.js",
+      "expectedSha256": "b80a7d53e64b38ca3b9a9c0bd81dfc594ab16bd68d2f9b99a5a21848ee2f443b",
+      "actualSha256": "b80a7d53e64b38ca3b9a9c0bd81dfc594ab16bd68d2f9b99a5a21848ee2f443b",
+      "passed": true,
+      "deviceRoutineDelta": false
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/less-DHLEq27_.js",
+      "expectedSha256": "b64a1bb1b6a82f10ee33017c3009b512ff332af0e3b792546dc0643e2acccc14",
+      "actualSha256": "b64a1bb1b6a82f10ee33017c3009b512ff332af0e3b792546dc0643e2acccc14",
+      "passed": true,
+      "deviceRoutineDelta": false
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/less-XYfPOg1G.js",
+      "expectedSha256": "b64a1bb1b6a82f10ee33017c3009b512ff332af0e3b792546dc0643e2acccc14",
+      "actualSha256": "b64a1bb1b6a82f10ee33017c3009b512ff332af0e3b792546dc0643e2acccc14",
+      "passed": true,
+      "deviceRoutineDelta": false
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/lib-CwyXkVLI.js",
+      "expectedSha256": "1136a57381b27ad1b75a0cb617d96833878560d64f2ad9c2c1409f85bd90a4c1",
+      "actualSha256": "1136a57381b27ad1b75a0cb617d96833878560d64f2ad9c2c1409f85bd90a4c1",
+      "passed": true,
+      "deviceRoutineDelta": false
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/markdown-owZ4wwRZ.js",
+      "expectedSha256": "0b030d1ebe2f7065c7eda67b29014c4a47e26db31ccd4128fb464bbc1a5baadb",
+      "actualSha256": "0b030d1ebe2f7065c7eda67b29014c4a47e26db31ccd4128fb464bbc1a5baadb",
+      "passed": true,
+      "deviceRoutineDelta": false
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/mcps-DmPp5oo9.js",
+      "expectedSha256": "9677c647f3537abcf90dd5cf707229e5fb6f83cd185ae19c5f4fcb72060b0d03",
+      "actualSha256": "9677c647f3537abcf90dd5cf707229e5fb6f83cd185ae19c5f4fcb72060b0d03",
+      "passed": true,
+      "deviceRoutineDelta": false
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/message-Ca5u8_zM.js",
+      "expectedSha256": "a6ae36e9e2637f291e0e729ef88715c36b3ba9b2d2c5259feefb3e399fba93ea",
+      "actualSha256": "a6ae36e9e2637f291e0e729ef88715c36b3ba9b2d2c5259feefb3e399fba93ea",
+      "passed": true,
+      "deviceRoutineDelta": false
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/password-LjdLcSRV.js",
+      "expectedSha256": "585025e66ae4f36f08fd86148f99a1131905f35791840bcbde3d79d753d29d9d",
+      "actualSha256": "585025e66ae4f36f08fd86148f99a1131905f35791840bcbde3d79d753d29d9d",
+      "passed": true,
+      "deviceRoutineDelta": false
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/postcss-DyASvkt8.js",
+      "expectedSha256": "64190dbab69dacbb8a591b88cd442da05bc4c11ba108be1a291c8911811d108b",
+      "actualSha256": "64190dbab69dacbb8a591b88cd442da05bc4c11ba108be1a291c8911811d108b",
+      "passed": true,
+      "deviceRoutineDelta": false
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/postcss-yWNY1a7c.js",
+      "expectedSha256": "64190dbab69dacbb8a591b88cd442da05bc4c11ba108be1a291c8911811d108b",
+      "actualSha256": "64190dbab69dacbb8a591b88cd442da05bc4c11ba108be1a291c8911811d108b",
+      "passed": true,
+      "deviceRoutineDelta": false
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/queries-ldd77hNk.js",
+      "expectedSha256": "1d92d3847f80b83b38f124663f40b62a0ca97419d8f5358a69131b6283581063",
+      "actualSha256": "1d92d3847f80b83b38f124663f40b62a0ca97419d8f5358a69131b6283581063",
+      "passed": true,
+      "deviceRoutineDelta": false
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/recovery-DY2UC0Rx.js",
+      "expectedSha256": "f06e7bba58c1ba99d384304554ffef996aa2de29c32b2097085b837d45450736",
+      "actualSha256": "f06e7bba58c1ba99d384304554ffef996aa2de29c32b2097085b837d45450736",
+      "passed": true,
+      "deviceRoutineDelta": false
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/recovery-key-CPOQuYx2.js",
+      "expectedSha256": "b6e6ef4ed1b7dd26b4b5dbea31ed7ad20b2824b5ad62bdcf5ff88274328c377c",
+      "actualSha256": "b6e6ef4ed1b7dd26b4b5dbea31ed7ad20b2824b5ad62bdcf5ff88274328c377c",
+      "passed": true,
+      "deviceRoutineDelta": false
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/route-CSKkWqf5.js",
+      "expectedSha256": "12b6c1dd939377b9a53456277f650ed7e585d16cf99978ba7cddc6b14d9a4742",
+      "actualSha256": "12b6c1dd939377b9a53456277f650ed7e585d16cf99978ba7cddc6b14d9a4742",
+      "passed": true,
+      "deviceRoutineDelta": false
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/route-TQyeTEXE.js",
+      "expectedSha256": "468e9e336a9127198dc0b45902990ca3a6b6bcdbbe0c8fab1871d23492ec59a8",
+      "actualSha256": "468e9e336a9127198dc0b45902990ca3a6b6bcdbbe0c8fab1871d23492ec59a8",
+      "passed": true,
+      "deviceRoutineDelta": false
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/route-VV0zL3cm.js",
+      "expectedSha256": "df8eb32554d2c442553112bbab116c75023d40437b85cab5d5410c0b02fd3d04",
+      "actualSha256": "df8eb32554d2c442553112bbab116c75023d40437b85cab5d5410c0b02fd3d04",
+      "passed": true,
+      "deviceRoutineDelta": false
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/routine-item-menu-DJrYR2RE.js",
+      "expectedSha256": "4a6a3cb84d9f87d86ebc28857b7ed57af1131155d84c6018bf6c9eb9c85218cd",
+      "actualSha256": "4a6a3cb84d9f87d86ebc28857b7ed57af1131155d84c6018bf6c9eb9c85218cd",
+      "passed": true,
+      "deviceRoutineDelta": true
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/sass-D9tbhmbL.js",
+      "expectedSha256": "0296fc36f07a715229ecf7a6b96546d9090758d52e75c145b5d59fee04b56adc",
+      "actualSha256": "0296fc36f07a715229ecf7a6b96546d9090758d52e75c145b5d59fee04b56adc",
+      "passed": true,
+      "deviceRoutineDelta": false
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/sass-Xtb7fcaE.js",
+      "expectedSha256": "0296fc36f07a715229ecf7a6b96546d9090758d52e75c145b5d59fee04b56adc",
+      "actualSha256": "0296fc36f07a715229ecf7a6b96546d9090758d52e75c145b5d59fee04b56adc",
+      "passed": true,
+      "deviceRoutineDelta": false
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/search-navigation-TWhZq3-H.js",
+      "expectedSha256": "2ebd5d3333fb8cd80b20a8850c54286be12de1159e05710461b8a33bf06d4810",
+      "actualSha256": "2ebd5d3333fb8cd80b20a8850c54286be12de1159e05710461b8a33bf06d4810",
+      "passed": true,
+      "deviceRoutineDelta": false
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/sidebar-Cj9gldy1.js",
+      "expectedSha256": "0bb5cc5a28b89a510c016ec235c99520f59b8c822dca5457fb5b138963af1eb9",
+      "actualSha256": "0bb5cc5a28b89a510c016ec235c99520f59b8c822dca5457fb5b138963af1eb9",
+      "passed": true,
+      "deviceRoutineDelta": false
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/sign-in-popup-CzjJFAuC.js",
+      "expectedSha256": "f515fd488e577f75e2004ba27ec190012ca930e0bbad54fe893d448e104b3064",
+      "actualSha256": "f515fd488e577f75e2004ba27ec190012ca930e0bbad54fe893d448e104b3064",
+      "passed": true,
+      "deviceRoutineDelta": false
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/strip-markdown-DRcmtuJc.js",
+      "expectedSha256": "5abfe7208e17f6178763787b53634aebdcfe546903477fc692a5bc692a1f72ed",
+      "actualSha256": "5abfe7208e17f6178763787b53634aebdcfe546903477fc692a5bc692a1f72ed",
+      "passed": true,
+      "deviceRoutineDelta": false
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/stylus-B-ykdwy2.js",
+      "expectedSha256": "08db3bca159828f90e78545271e31d9ea639736bc5c7f79a813bd1cd8abad038",
+      "actualSha256": "08db3bca159828f90e78545271e31d9ea639736bc5c7f79a813bd1cd8abad038",
+      "passed": true,
+      "deviceRoutineDelta": false
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/stylus-DfL682nA.js",
+      "expectedSha256": "08db3bca159828f90e78545271e31d9ea639736bc5c7f79a813bd1cd8abad038",
+      "actualSha256": "08db3bca159828f90e78545271e31d9ea639736bc5c7f79a813bd1cd8abad038",
+      "passed": true,
+      "deviceRoutineDelta": false
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/tasks-CtF0WxoJ.js",
+      "expectedSha256": "0cd44c479923accf2ed2d2e69a90861260a82454da44a37e9257439bd76db51d",
+      "actualSha256": "0cd44c479923accf2ed2d2e69a90861260a82454da44a37e9257439bd76db51d",
+      "passed": true,
+      "deviceRoutineDelta": false
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/templ-BORRt0pf.js",
+      "expectedSha256": "f4ec2056742154ada690a555a5a88203de39eb66c1d005600040acd6a6eaba97",
+      "actualSha256": "f4ec2056742154ada690a555a5a88203de39eb66c1d005600040acd6a6eaba97",
+      "passed": true,
+      "deviceRoutineDelta": false
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/templ-BbYJXtcL.js",
+      "expectedSha256": "a04c68f6cc76ac27007a02166675d3941eb334ee3254df562ed4465280df454b",
+      "actualSha256": "a04c68f6cc76ac27007a02166675d3941eb334ee3254df562ed4465280df454b",
+      "passed": true,
+      "deviceRoutineDelta": false
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/update-banner-C_z-hMCt.js",
+      "expectedSha256": "86c67964c4666c4dd46908cd16d99d8f59558d2ec8aa35f9a22178c67d6c3682",
+      "actualSha256": "86c67964c4666c4dd46908cd16d99d8f59558d2ec8aa35f9a22178c67d6c3682",
+      "passed": true,
+      "deviceRoutineDelta": false
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/background.js",
+      "expectedSha256": "f170233b0d7f8465bd54330a0f9e6b7fb614db93685458917823a3d56547ca92",
+      "actualSha256": "f170233b0d7f8465bd54330a0f9e6b7fb614db93685458917823a3d56547ca92",
+      "passed": true,
+      "deviceRoutineDelta": false
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/content/content.js",
+      "expectedSha256": "ee45b3083e1b2fe712836b585b4d4fa5120cb797d052da1a22c89d9628d7e0de",
+      "actualSha256": "ee45b3083e1b2fe712836b585b4d4fa5120cb797d052da1a22c89d9628d7e0de",
+      "passed": true,
+      "deviceRoutineDelta": false
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/react-grab-bridge.js",
+      "expectedSha256": "fd4dbde8308b65036843bca3733ef08a26457041cf488757af670e426496c17e",
+      "actualSha256": "fd4dbde8308b65036843bca3733ef08a26457041cf488757af670e426496c17e",
+      "passed": true,
+      "deviceRoutineDelta": false
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/remix.js",
+      "expectedSha256": "97963d94f33e67eb22d37a4ed019a92712265c85f3f476917c7c28427cbc4d7c",
+      "actualSha256": "97963d94f33e67eb22d37a4ed019a92712265c85f3f476917c7c28427cbc4d7c",
+      "passed": true,
+      "deviceRoutineDelta": false
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/visual-frame.html",
+      "expectedSha256": "08e77a67d4b12a3b0576658f6cbd229a307c6b4f5277e7368c2b8f7560c0eda9",
+      "actualSha256": "08e77a67d4b12a3b0576658f6cbd229a307c6b4f5277e7368c2b8f7560c0eda9",
+      "passed": true,
+      "deviceRoutineDelta": false
+    }
+  ],
+  "changedResources": [
+    "Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/node-development/index.mjs",
+    "Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/node-development/aux-native-entry.mjs",
+    "Contents/Resources/aux/apps/extension/dist/assets/provider-Cw0zhujt.js",
+    "Contents/Resources/aux/apps/extension/dist/assets/routines-BNdQOEUt.js",
+    "Contents/Resources/aux/apps/extension/dist/assets/routine-item-menu-DJrYR2RE.js"
+  ],
+  "unchangedClassifiedFiles": 61,
+  "deviceSourceChecks": {
+    "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/desktop/device-routines-launch/static-check.json",
+    "sha256": "8c225979b027cae79689cb5baac304efbfa61a0b83df374b7afa773582ba5f9b"
+  },
+  "runtimeAccepted": false
+}

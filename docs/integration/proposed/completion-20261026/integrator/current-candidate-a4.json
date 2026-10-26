@@ -1,0 +1,30 @@
+{
+  "format": "aux.completion.current-unsigned-candidate.v1",
+  "passed": true,
+  "app": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-completion-20261026-a1/Aux.app",
+  "currentReceipt": {
+    "path": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-completion-20261026-a1/pre-sign-resource-delta-a4/receipt.json",
+    "sha256": "210f1c6584cc20d22ab9c00952173629094005e675d41902936f4008dec1bacc"
+  },
+  "inventorySha256": "0d1202ee61d0e3842218a7af3760329e9e02c91cb1ffcbf952b64b1643daab92",
+  "leaves": 11189,
+  "completeAgentClosure": {
+    "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/integrator/actual-agent-closure-a4.json",
+    "sha256": "af8752fb47b6612806c4eb80730f3cb7cd00df9caefb1d348f09da5806ce8702"
+  },
+  "signingReview": {
+    "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/runtime/authority-review/signing-execution-review.json",
+    "sha256": "20572af30ef6613f1fc8bced01edada6d52f4b3f7c1f21dd97fb610ec2b257f2"
+  },
+  "ownerApprovalRequested": true,
+  "ownerApprovalObtained": false,
+  "signed": false,
+  "appExecuted": false,
+  "runtimeAccepted": false,
+  "acceptedA38Preserved": true,
+  "launchRoutines": "device only; existing cloud records retained readonly",
+  "priorReviewSuperseded": {
+    "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/runtime/authority-review/signing-execution-review-before-device-routines.json",
+    "sha256": "f8d9a35a59ca2a5e895c475c59b7e3d97d1cd5c1f2e8bc67823522888f627c06"
+  }
+}

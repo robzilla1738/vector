@@ -1,0 +1,1360 @@
+{
+  "format": "aux.completion.ui-source.v1",
+  "passed": true,
+  "files": [
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/developers-DTvaoVBC.js",
+      "inputSha256": "92762f7e7059d632a57cacbc089b11523ee3d72da16638cbe488026699ec431b",
+      "output": "/Users/rcourson/Documents/Vibe/web/out/completion-20261026-ui-a7/developers-DTvaoVBC.js",
+      "outputSha256": "7c22f0e3970ecf39c0497cdab3dc0103cb794e73f3b93f1b20f82f94dc0f5958",
+      "suppliedSourceSha256": "c5f9e7bb2a2c1439ac9d28fa5c56f22b97e78a148ae8a1b516287073d8ab807d",
+      "anchors": [
+        {
+          "kind": "identity",
+          "name": "Aux transient identity and CLI help",
+          "find": "aside",
+          "replace": "aux",
+          "count": 25
+        }
+      ]
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/connect-dialog-CacgpFap.js",
+      "inputSha256": "c80933017aa02d328118dfa22370f954cb21eaa91029fe584cedfccfc811b188",
+      "output": "/Users/rcourson/Documents/Vibe/web/out/completion-20261026-ui-a7/connect-dialog-CacgpFap.js",
+      "outputSha256": "8f10c421607cc4ac4fc83fb04b0eef80c38721534926fac5d22efb810a1274c2",
+      "suppliedSourceSha256": "276c770d80c67db2d1af08fac1ba44c9fb9c76e5595b63e098ebe0010ad739c2",
+      "anchors": [
+        {
+          "kind": "identity",
+          "name": "Aux transient identity and CLI help",
+          "find": "aside-openai-codex-oauth",
+          "replace": "aux-openai-codex-oauth",
+          "count": 1
+        },
+        {
+          "kind": "identity",
+          "name": "Aux transient identity and CLI help",
+          "find": "aside-github-copilot-oauth",
+          "replace": "aux-github-copilot-oauth",
+          "count": 1
+        },
+        {
+          "kind": "identity",
+          "name": "Aux transient identity and CLI help",
+          "find": "aside-meta-muse-oauth",
+          "replace": "aux-meta-muse-oauth",
+          "count": 1
+        },
+        {
+          "kind": "identity",
+          "name": "Aux transient identity and CLI help",
+          "find": "aside-xai-grok-oauth",
+          "replace": "aux-xai-grok-oauth",
+          "count": 1
+        },
+        {
+          "kind": "identity",
+          "name": "Aux transient identity and CLI help",
+          "find": "aside-kimi-code",
+          "replace": "aux-kimi-code",
+          "count": 1
+        },
+        {
+          "kind": "identity",
+          "name": "Aux transient identity and CLI help",
+          "find": "aside-claude-oauth",
+          "replace": "aux-claude-oauth",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/newtab-CnOLQ0yu.js",
+      "inputSha256": "0ef06493685bbfe1475a216f933e504c9ef0a7a0d2facc457c9c9fac853d8011",
+      "output": "/Users/rcourson/Documents/Vibe/web/out/completion-20261026-ui-a7/newtab-CnOLQ0yu.js",
+      "outputSha256": "eef65df02f862b13dcf9951f3f8cb81d1e6875a6dc6e7b782c954f23e7e69539",
+      "suppliedSourceSha256": "e300bb70a84a0630c94f20469822517ca0ca02be902d9bb150492994f719cb19",
+      "anchors": [
+        {
+          "kind": "identity",
+          "name": "Aux transient identity and CLI help",
+          "find": "aside-optimistic-search",
+          "replace": "aux-optimistic-search",
+          "count": 1
+        },
+        {
+          "kind": "identity",
+          "name": "Aux transient identity and CLI help",
+          "find": "aside|chrome",
+          "replace": "aux|chrome",
+          "count": 4
+        },
+        {
+          "kind": "identity",
+          "name": "Aux transient identity and CLI help",
+          "find": "/^aside:",
+          "replace": "/^aux:",
+          "count": 1
+        },
+        {
+          "kind": "identity",
+          "name": "Aux transient identity and CLI help",
+          "find": "\"aside://\"",
+          "replace": "\"aux://\"",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/session-feedback-dialog-BjDg0W8m.js",
+      "inputSha256": "6d8dcffd3758ba3454084c5b561cbb01168c21972f875f59f3651ea388018d87",
+      "output": "/Users/rcourson/Documents/Vibe/web/out/completion-20261026-ui-a7/session-feedback-dialog-BjDg0W8m.js",
+      "outputSha256": "e6453c89839e89125fb9821d0c1f1dfbacf1fbf9d54b4e20bc6e6a5436723d83",
+      "suppliedSourceSha256": "0b500e4835d4fef608f3bb484438c021812808185541b3b4e5c7ace96bb7f28d",
+      "anchors": [
+        {
+          "find": "asideComponentVersion",
+          "replace": "auxComponentVersion",
+          "count": 1,
+          "scope": "paired local feedback request producer",
+          "kind": "identity"
+        },
+        {
+          "kind": "integration",
+          "find": "Feedback submitted.",
+          "replace": "Saved privately for review.",
+          "count": 1
+        },
+        {
+          "kind": "integration",
+          "find": "Your feedback and session data will only be used to review and improve Aux.",
+          "replace": "This saves your feedback and session data privately for Aux review.",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/mcps-DmPp5oo9.js",
+      "inputSha256": "dee7ff83a91decfc61542ac55e197d5eaa4f461bb657eb7085eb0938648fd890",
+      "output": "/Users/rcourson/Documents/Vibe/web/out/completion-20261026-ui-a7/mcps-DmPp5oo9.js",
+      "outputSha256": "9677c647f3537abcf90dd5cf707229e5fb6f83cd185ae19c5f4fcb72060b0d03",
+      "suppliedSourceSha256": "e081e3d15242ef69bc043ec4685b07bc9fba247d20a68dc7df34e936d94862b1",
+      "anchors": [
+        {
+          "kind": "identity",
+          "name": "Versioned Aux experimental settings",
+          "find": "o({sync:m().default(!1),kakaotalk:m().default(!1),onboarding:m().default(!1),asideCode:m().default(!1),compactionLimits:m().default(!1)})",
+          "replace": "o({sync:m().default(!1),kakaotalk:m().default(!1),onboarding:m().default(!1),format:t().optional(),auxCode:m().optional(),asideCode:m().optional(),compactionLimits:m().default(!1)}).transform(function migrateAuxExperimentalSettings(value) {\n  const format = 'aux.experimental.v2';\n  if (value.format !== undefined && value.format !== format)\n    throw Error('Unsupported Aux experimental settings version.');\n  if (value.format !== undefined && Object.hasOwn(value, 'asideCode') ||\n      value.format === undefined && Object.hasOwn(value, 'auxCode'))\n    throw Error('Ambiguous Aux experimental settings generation.');\n  const {asideCode, auxCode, format: previousFormat, ...settings} = value;\n  return {...settings, format, auxCode: (previousFormat === format ? auxCode : asideCode) ?? false};\n})",
+          "count": 1
+        },
+        {
+          "kind": "integration",
+          "scope": "Fresh Aux v2 Agent producer/receiver identity",
+          "find": "aside-mcp-oauth",
+          "replace": "aux-mcp-oauth-v2",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/experimental-Xq3YsEPK.js",
+      "inputSha256": "7d237f0a3af555498ad42ca70988ea9f9cd11473ed1afe4e68b16089e0d5c534",
+      "output": "/Users/rcourson/Documents/Vibe/web/out/completion-20261026-ui-a7/experimental-Xq3YsEPK.js",
+      "outputSha256": "7605e2eba17406c5317720229d2a52f58824ce1203a7829516ed5379e3654081",
+      "suppliedSourceSha256": "f1c137c2a143eb9fa7d33740608cb03450a7de7049cf1141001763dbec78aaff",
+      "anchors": [
+        {
+          "kind": "identity",
+          "name": "Versioned Aux experimental settings",
+          "find": "asideCode:!1",
+          "replace": "format:\"aux.experimental.v2\",auxCode:!1",
+          "count": 1
+        },
+        {
+          "kind": "identity",
+          "name": "Versioned Aux experimental settings",
+          "find": "t.asideCode",
+          "replace": "t.auxCode",
+          "count": 1
+        },
+        {
+          "kind": "identity",
+          "name": "Versioned Aux experimental settings",
+          "find": "asideCode:a",
+          "replace": "auxCode:a",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/session-composer-Dc0LRfZA.js",
+      "inputSha256": "7d9fd830a06e4bc846a7d81f849486a16013a36411c8d33a309ddc6a6d7f229d",
+      "output": "/Users/rcourson/Documents/Vibe/web/out/completion-20261026-ui-a7/session-composer-Dc0LRfZA.js",
+      "outputSha256": "9dcf4391cd70d41005cdd5d124bb4ee6e5c4bed44428d51c04dd7064711acbc4",
+      "suppliedSourceSha256": "71e187af0ca2887e13b840cd1e1b4aa2f46693821fb96daa8eafa9f4480bf645",
+      "anchors": [
+        {
+          "kind": "identity",
+          "name": "Versioned Aux experimental settings",
+          "find": "asideCodeAgents",
+          "replace": "auxCodeAgents",
+          "count": 1
+        },
+        {
+          "kind": "integration",
+          "scope": "Fresh Aux v2 Agent producer/receiver identity",
+          "find": "aside-code",
+          "replace": "aux-code",
+          "count": 3
+        }
+      ]
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/provider-Cw0zhujt.js",
+      "inputSha256": "8aee4a9cc8229397e4067fb9a9a4772ef4bdfddc03d1db3f2c84836a1b6fe724",
+      "output": "/Users/rcourson/Documents/Vibe/web/out/completion-20261026-ui-a7/provider-Cw0zhujt.js",
+      "outputSha256": "cf021118fbf494ff354b714f9164b06534f26691de554db5dc6f62ab6fda5cd3",
+      "suppliedSourceSha256": "6c3aa90661897411efea336eff14b6e0d50e8fbb7f09b178b44305be1ee95c97",
+      "anchors": [
+        {
+          "kind": "identity",
+          "name": "Versioned Aux experimental settings",
+          "find": "asideCodeAgents",
+          "replace": "auxCodeAgents",
+          "count": 1
+        },
+        {
+          "kind": "integration",
+          "scope": "Fresh Aux v2 Agent producer/receiver identity",
+          "find": "aside-code",
+          "replace": "aux-code",
+          "count": 6
+        },
+        {
+          "kind": "launch-scope",
+          "scope": "Device routines only; cloud records preserved and never reinterpreted",
+          "find": "children:e===\"cloud\"?\"Cloud\":n?\"This computer\"",
+          "replace": "children:e===\"cloud\"?\"Cloud unavailable · Preserved\":n?\"This computer\"",
+          "count": 1
+        },
+        {
+          "kind": "launch-scope",
+          "scope": "Device routines only; cloud records preserved and never reinterpreted",
+          "find": "Kn=\"Ask the agent to change where this routine runs. You cannot change it manually here.\"",
+          "replace": "Kn=\"Routines run on this computer. Existing cloud routines are preserved and unavailable.\"",
+          "count": 1
+        },
+        {
+          "kind": "launch-scope",
+          "scope": "Device routines only; cloud records preserved and never reinterpreted",
+          "find": "const{accountId:s}=q(),a=Q(),{data:i=!1}=te(a.analytics.isExperimentalEligible.queryOptions({accountId:s})),l=Le(),m=l.watch(\"attachment\")",
+          "replace": "const l=Le(),m=l.watch(\"attachment\")",
+          "count": 1
+        },
+        {
+          "kind": "launch-scope",
+          "scope": "Device routines only; cloud records preserved and never reinterpreted",
+          "find": "Ke,{value:u,disabled:e,onValueChange:h=>{h!==\"device\"&&h!==\"cloud\"||(l.setValue(\"environment\",h,{shouldDirty:!0}),h===\"cloud\"&&l.setValue(\"attachment\",{type:\"standalone\"},{shouldDirty:!0,shouldValidate:!0}))}",
+          "replace": "Ke,{value:u,disabled:e||!n,onValueChange:h=>{h===\"device\"&&l.setValue(\"environment\",\"device\",{shouldDirty:!0,shouldValidate:!0})}",
+          "count": 1
+        },
+        {
+          "kind": "launch-scope",
+          "scope": "Device routines only; cloud records preserved and never reinterpreted",
+          "find": "children:[(0,r.jsx)(we,{value:\"device\",children:\"This computer\"}),i&&(0,r.jsx)(we,{value:\"cloud\",children:\"Cloud\"})]",
+          "replace": "children:[(0,r.jsx)(we,{value:\"device\",children:\"This computer\"})]",
+          "count": 1
+        },
+        {
+          "kind": "launch-scope",
+          "scope": "Device routines only; cloud records preserved and never reinterpreted",
+          "find": "Wo=M({environment:Z([\"device\",\"cloud\"])",
+          "replace": "Wo=M({environment:N(\"device\")",
+          "count": 1
+        },
+        {
+          "kind": "launch-scope",
+          "scope": "Device routines only; cloud records preserved and never reinterpreted",
+          "find": "f=!s||s.environment===\"cloud\"||s.deviceId===d.routineDeviceId",
+          "replace": "f=auxDeviceRoutineEditable(s,d)",
+          "count": 1
+        },
+        {
+          "kind": "launch-scope",
+          "scope": "Device routines only; cloud records preserved and never reinterpreted",
+          "find": "O=async k=>{try{if(e)",
+          "replace": "O=async k=>{try{if(k.environment!==\"device\"||!auxDeviceRoutineEditable(s,d))throw Error(\"Only routines on this computer can be changed. Cloud routines are preserved and unavailable.\");if(e)",
+          "count": 1
+        },
+        {
+          "kind": "launch-scope",
+          "scope": "Device routines only; cloud records preserved and never reinterpreted",
+          "find": "environment:k.environment,browserBinding:await dt()",
+          "replace": "environment:\"device\",browserBinding:await dt()",
+          "count": 1
+        },
+        {
+          "kind": "launch-scope",
+          "scope": "Device routines only; cloud records preserved and never reinterpreted",
+          "find": "if(!(!e||n!==\"active\"&&n!==\"paused\"))try{await C.mutateAsync",
+          "replace": "if(!(!e||n!==\"active\"&&n!==\"paused\"))try{if(!auxDeviceRoutineEditable(s,d))throw Error(\"This routine is unavailable on this computer.\");await C.mutateAsync",
+          "count": 1
+        },
+        {
+          "kind": "launch-scope",
+          "scope": "Device routines only; cloud records preserved and never reinterpreted",
+          "find": "(0,r.jsx)(\"div\",{className:\"-mx-1 min-h-0 overflow-y-auto px-1\",children:(0,r.jsxs)(Mn,{className:\"gap-4 py-1\"",
+          "replace": "(0,r.jsx)(\"fieldset\",{disabled:!f,className:\"-mx-1 min-h-0 min-w-0 overflow-y-auto px-1\",children:(0,r.jsxs)(Mn,{className:\"gap-4 py-1\"",
+          "count": 1
+        },
+        {
+          "kind": "launch-scope",
+          "scope": "Device routines only; cloud records preserved and never reinterpreted",
+          "find": "disabled:Y||!!e&&n!==\"active\"&&n!==\"paused\",onClick:e?b:i",
+          "replace": "disabled:Y||!!e&&(!f||n!==\"active\"&&n!==\"paused\"),onClick:e?b:i",
+          "count": 1
+        },
+        {
+          "kind": "launch-scope",
+          "scope": "Device routines only; cloud records preserved and never reinterpreted",
+          "find": "disabled:Y||!g.formState.isValid,children:e?\"Update\":\"Create\"",
+          "replace": "disabled:Y||!f||!g.formState.isValid,children:e?\"Update\":\"Create\"",
+          "count": 1
+        },
+        {
+          "kind": "launch-scope",
+          "scope": "Device routines only; cloud records preserved and never reinterpreted",
+          "find": "children:\"Set the routine name, schedule, and prompt.\"",
+          "replace": "children:s?.environment===\"cloud\"?\"Cloud routine preserved. Cloud execution and changes are unavailable.\":!f?\"This routine belongs to another device or this computer is not initialized.\":\"Set the routine name, schedule, and prompt.\"",
+          "count": 1
+        },
+        {
+          "kind": "launch-scope",
+          "scope": "Device routines only; cloud records preserved and never reinterpreted",
+          "find": "Co=({projectId:e,className:t,initialPrompt:n,onChange:s})",
+          "replace": "Co=({projectId:e,className:t,initialPrompt:n,onChange:s,disabled:u=!1})",
+          "count": 1
+        },
+        {
+          "kind": "launch-scope",
+          "scope": "Device routines only; cloud records preserved and never reinterpreted",
+          "find": "st,{initialSnapshot:a,onChange:l=>s(l.plainText)",
+          "replace": "st,{disabled:u,initialSnapshot:a,onChange:l=>s(l.plainText)",
+          "count": 1
+        },
+        {
+          "kind": "launch-scope",
+          "scope": "Device routines only; cloud records preserved and never reinterpreted",
+          "find": "Co,{projectId:t.projectId,className:",
+          "replace": "Co,{projectId:t.projectId,disabled:!f,className:",
+          "count": 1
+        },
+        {
+          "kind": "launch-scope",
+          "scope": "Device routines only; cloud records preserved and never reinterpreted",
+          "find": "children:e?\"Edit routine\":\"Create routine\"",
+          "replace": "children:s?.environment===\"cloud\"?\"Cloud routine unavailable\":e?\"Edit routine\":\"Create routine\"",
+          "count": 1
+        },
+        {
+          "kind": "launch-scope",
+          "scope": "Device routines only; cloud records preserved and never reinterpreted",
+          "find": "var r=ds(),",
+          "replace": "function auxDeviceRoutineEditable(routine,settings){const id=settings?.routineDeviceId;return typeof id===\"string\"&&id.trim().length>0&&(!routine||routine.environment===\"device\"&&routine.deviceId===id)}var r=ds(),",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/_skillId-CAwCRjA8.js",
+      "inputSha256": "b6fe66a9473643a8b720bcdc7f618d189685b96416c5a06df0f2dcaa27b25b60",
+      "output": "/Users/rcourson/Documents/Vibe/web/out/completion-20261026-ui-a7/_skillId-CAwCRjA8.js",
+      "outputSha256": "1a39b9401e5144d365b363e01f77601d311b3f515bb83d802b492b664064052d",
+      "suppliedSourceSha256": "c1ed5ec1684bcf8b7bd2c758ef949eff885fa583c892fa58a9ecfa87bb50151e",
+      "anchors": [
+        {
+          "kind": "identity",
+          "name": "Versioned Aux experimental settings",
+          "find": ".asideCode",
+          "replace": ".auxCode",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/tag-icon-DeMC7uIN.js",
+      "inputSha256": "81afcebde6fdb39a61d6b41534f79196e40f8e9fe6d1114bc1e44bbf4ebbec6a",
+      "output": "/Users/rcourson/Documents/Vibe/web/out/completion-20261026-ui-a7/tag-icon-DeMC7uIN.js",
+      "outputSha256": "0d9e393739847e63f98b7006a83986ff2513da62a5c46351d4c83f717052cfff",
+      "suppliedSourceSha256": "7b922e0f7be2491261127dc6292360a5906101caed5cc682c195dd7921989078",
+      "anchors": [
+        {
+          "kind": "identity",
+          "name": "Aux transient identity and CLI help",
+          "find": "[\"aside\",",
+          "replace": "[\"aux\",",
+          "count": 2
+        }
+      ]
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/splash-D666ivBP.js",
+      "inputSha256": "fd0b1c1bc534c8bf846793120aa7b868cc436a35dd12c7239477884738682c99",
+      "output": "/Users/rcourson/Documents/Vibe/web/out/completion-20261026-ui-a7/splash-D666ivBP.js",
+      "outputSha256": "85486d9e4b8d1ce9965b41c26ba808df3501be3d638cc860c6ce45773d7a0921",
+      "suppliedSourceSha256": "d81b276872969f21480c904b2d189625056da34748e9dfe0a3a752c891ca6138",
+      "anchors": [
+        {
+          "kind": "identity",
+          "name": "Aux transient identity and CLI help",
+          "find": "\"aside\"",
+          "replace": "\"aux\"",
+          "count": 3
+        }
+      ]
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/route-TQyeTEXE.js",
+      "inputSha256": "103c0414f46b9c84ae6231ec58c3129e0d80703e733be4a8ff0af1b319f318c4",
+      "output": "/Users/rcourson/Documents/Vibe/web/out/completion-20261026-ui-a7/route-TQyeTEXE.js",
+      "outputSha256": "468e9e336a9127198dc0b45902990ca3a6b6bcdbbe0c8fab1871d23492ec59a8",
+      "suppliedSourceSha256": "13d75bb6564433b90de5bb3881c3515c72fe0219054691cb405f37016b463c75",
+      "anchors": [
+        {
+          "kind": "integration",
+          "scope": "public product information route",
+          "find": "https://getaux.co/docs",
+          "replace": "https://app.getaux.co/docs",
+          "count": 1
+        },
+        {
+          "kind": "integration",
+          "scope": "public product information route",
+          "find": "https://getaux.co/community",
+          "replace": "https://app.getaux.co/community",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/ai-CzEX5E7S.js",
+      "inputSha256": "c81d8aecab56899557ddbd9bde9f1080c352421c4b4b52e2d22a5267b9718633",
+      "output": "/Users/rcourson/Documents/Vibe/web/out/completion-20261026-ui-a7/ai-CzEX5E7S.js",
+      "outputSha256": "d1c597e52b370e6759c4f4e0bb89021be768a615c3ba06e111f839c66e11df3b",
+      "suppliedSourceSha256": "50fbaa2bb2bf939e22fd8eeb4a6d9d3e5ee390f06cb1f6b95b1e7eff783d6828",
+      "anchors": [
+        {
+          "kind": "integration",
+          "scope": "public product information route",
+          "find": "https://getaux.co/policy/privacy",
+          "replace": "https://app.getaux.co/policy/privacy",
+          "count": 1
+        },
+        {
+          "kind": "integration",
+          "scope": "public product information route",
+          "find": "https://getaux.co/policy/terms",
+          "replace": "https://app.getaux.co/policy/terms",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/add-on-credits-dialog-Dn5FxOyZ.js",
+      "inputSha256": "d7b09e13cafec21b35118bd32e5069f73edcb98deb9c5290497e8c276ad31e46",
+      "output": "/Users/rcourson/Documents/Vibe/web/out/completion-20261026-ui-a7/add-on-credits-dialog-Dn5FxOyZ.js",
+      "outputSha256": "e0012bbed6365fd0c9c4b7e23fee41ca02a3b9ca7e004cd743c58b8fc19bb73c",
+      "suppliedSourceSha256": "c303b278cb4536eedee05f941eb557c002dc287e357a3a8f8f96f60f50bed889",
+      "anchors": [
+        {
+          "kind": "integration",
+          "scope": "public product information route",
+          "find": "https://getaux.co/policy/privacy",
+          "replace": "https://app.getaux.co/policy/privacy",
+          "count": 1
+        },
+        {
+          "kind": "integration",
+          "scope": "public product information route",
+          "find": "https://getaux.co/policy/terms",
+          "replace": "https://app.getaux.co/policy/terms",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/-components-4o0FSqQ9.js",
+      "inputSha256": "ed5962445f75abab89c2d983c289da0517f0f511202ff4d087cd240952f63a60",
+      "output": "/Users/rcourson/Documents/Vibe/web/out/completion-20261026-ui-a7/-components-4o0FSqQ9.js",
+      "outputSha256": "89631862794d1da9614b5965b67f835bcfbde6fedc7e96c2b81461433217e349",
+      "suppliedSourceSha256": "6310b674f032bc890715b6b0f35bd1e4983cd25886d697941b7120bc3510abfb",
+      "anchors": [
+        {
+          "kind": "integration",
+          "scope": "Fresh Aux v2 Agent producer/receiver identity",
+          "find": "aside.remix.pending.v1",
+          "replace": "aux.remix.pending.v2",
+          "count": 1
+        },
+        {
+          "kind": "identity",
+          "scope": "Fresh Aux v2 owned Agent producer/receiver; known legacy error reader retained",
+          "find": "aside:sidepanel-session",
+          "replace": "aux:sidepanel-session:v2",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/-utils-B_lbplVm.js",
+      "inputSha256": "5527b6cb0638210d3f9b4c6b16fe27244fd80b64c986b39da73fe11a4bdbfdfc",
+      "output": "/Users/rcourson/Documents/Vibe/web/out/completion-20261026-ui-a7/-utils-B_lbplVm.js",
+      "outputSha256": "b4e2e29b12a663c33ad7b4122273f20e5172ae76024fefa613c5aa5ef0d97e99",
+      "suppliedSourceSha256": "263934efb4d0bbfb53ae7c1a8f121ff42f91cb693653265778fd438dc0d99d9e",
+      "anchors": [
+        {
+          "kind": "integration",
+          "scope": "Fresh Aux v2 Agent producer/receiver identity",
+          "find": "aside.profileMetadataSync.v1",
+          "replace": "aux.profileMetadataSync.v2",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/personalization-C9HKLZT4.js",
+      "inputSha256": "f24d1884b1169832b9d729ade410c4599fbdc624904e6ab18168476e1912cabf",
+      "output": "/Users/rcourson/Documents/Vibe/web/out/completion-20261026-ui-a7/personalization-C9HKLZT4.js",
+      "outputSha256": "aaba7029c2991857d829d1826efd23073b39cc56ac4c5646a8af18558117db06",
+      "suppliedSourceSha256": "f24d1884b1169832b9d729ade410c4599fbdc624904e6ab18168476e1912cabf",
+      "anchors": [
+        {
+          "kind": "integration",
+          "scope": "Fresh Aux v2 Agent producer/receiver identity",
+          "find": "aside.lasso-storage-bridge",
+          "replace": "aux.lasso-storage-bridge.v2",
+          "count": 2
+        },
+        {
+          "kind": "integration",
+          "scope": "Fresh Aux v2 Agent producer/receiver identity",
+          "find": "aside.lasso.v1",
+          "replace": "aux.lasso.v2",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/queries-ldd77hNk.js",
+      "inputSha256": "fb8dafdc548e416acdd0f8c9988967b7d8d2d1d15c268ae0c6e63353a57c680e",
+      "output": "/Users/rcourson/Documents/Vibe/web/out/completion-20261026-ui-a7/queries-ldd77hNk.js",
+      "outputSha256": "1d92d3847f80b83b38f124663f40b62a0ca97419d8f5358a69131b6283581063",
+      "suppliedSourceSha256": "9764119d271913b72da78acc72aa8596a3cb7b642c6cddbe0a8ac93bee3d280d",
+      "anchors": [
+        {
+          "kind": "integration",
+          "scope": "Fresh Aux v2 Agent producer/receiver identity",
+          "find": "aside.daemonAuth",
+          "replace": "aux.daemonAuth.v2",
+          "count": 1
+        },
+        {
+          "kind": "identity",
+          "scope": "Fresh Aux v2 owned Agent producer/receiver; known legacy error reader retained",
+          "find": "r===\"ASIDE_API_TIMEOUT\"",
+          "replace": "[\"AUX_API_TIMEOUT\",\"ASIDE_API_TIMEOUT\"].includes(r)",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/browser-binding-CzDmxQNA.js",
+      "inputSha256": "c9d434f10aadd743b5a8f651c745c26db0cc810b7c659ecc9772b308c0c69358",
+      "output": "/Users/rcourson/Documents/Vibe/web/out/completion-20261026-ui-a7/browser-binding-CzDmxQNA.js",
+      "outputSha256": "393b9aa0bbf7c1ef9bd335c96c46360198f579e17e088ed0a4d36f29f2eef1ad",
+      "suppliedSourceSha256": "d75d03f293184c7b725beb40461012f3ce07acb9da7d77e7207b71d33165b32b",
+      "anchors": [
+        {
+          "kind": "identity",
+          "scope": "Fresh Aux v2 owned Agent producer/receiver; known legacy error reader retained",
+          "find": "aside.miniPopup.contextRecovery",
+          "replace": "aux.miniPopup.contextRecovery.v2",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/channels-CJn5l9_T.js",
+      "inputSha256": "e22926be4dadc67a0f9491b07ec439b55d5bba8dfa6ea6b146434db9b73c8a3d",
+      "output": "/Users/rcourson/Documents/Vibe/web/out/completion-20261026-ui-a7/channels-CJn5l9_T.js",
+      "outputSha256": "dc68728935143aad1be9d07c455414cae054d93875c9b04bb60b5c3ec2e6e148",
+      "suppliedSourceSha256": "7f177cce26d5f305aad4bc3de0d67f513a8d5751fa5401aa243d0186816681e9",
+      "anchors": [
+        {
+          "kind": "identity",
+          "scope": "Fresh Aux v2 owned Agent producer/receiver; known legacy error reader retained",
+          "find": "create-with-aside",
+          "replace": "create-with-aux-v2",
+          "count": 5
+        },
+        {
+          "kind": "identity",
+          "scope": "Fresh Aux v2 owned Agent producer/receiver; known legacy error reader retained",
+          "find": "${d}-aside",
+          "replace": "${d}-aux-v2",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/chat-preview-card-J0uel3r2.js",
+      "inputSha256": "ea1019c59ec971148546a2bfc5a35f13680366ca1f0d9d29a3e8245148d45043",
+      "output": "/Users/rcourson/Documents/Vibe/web/out/completion-20261026-ui-a7/chat-preview-card-J0uel3r2.js",
+      "outputSha256": "4242035edc89cc57b0f26dcee288b2be3582a6bf3e6b9af26804caa34f56076e",
+      "suppliedSourceSha256": "58439061d481f6fe975a3c1f9f5efab56cb0d2c6ccf001ae4f69e1e0409c5188",
+      "anchors": [
+        {
+          "kind": "identity",
+          "scope": "Fresh Aux v2 owned Agent producer/receiver; known legacy error reader retained",
+          "find": "credits-aside",
+          "replace": "credits-aux-v2",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/conversation-D9Q3VEsl.js",
+      "inputSha256": "ad6c51122bca3d4573204c7a829d52c7a394991b42635dad20b3d0a763418c88",
+      "output": "/Users/rcourson/Documents/Vibe/web/out/completion-20261026-ui-a7/conversation-D9Q3VEsl.js",
+      "outputSha256": "b359d76cfbf319a5cfd8519ee2a918426e5622ce945a48cec09052b23450323b",
+      "suppliedSourceSha256": "d41aea06eb2f7a06e83a284fa82b160357b329cb7418895df4996e23e8bc7811",
+      "anchors": [
+        {
+          "kind": "integration",
+          "scope": "cloud chat wrapper no longer starts excluded Vault polling/automatic seed",
+          "find": "function As({accountId:e,sessionId:s,client:a,children:l}){const c=De({accountId:e,sessionId:s,client:a,suspended:!0});return(0,t.jsx)(he,{value:c,children:l})}",
+          "replace": "function As({children:l}){return(0,t.jsx)(t.Fragment,{children:l})}",
+          "count": 1,
+          "offsetAtApplication": 31530
+        },
+        {
+          "kind": "integration",
+          "scope": "remove excluded cloud Vault lock control",
+          "find": "function _s(){const e=(0,p.useContext)(he);return e?(0,t.jsxs)(\"div\",{className:\"flex items-center gap-2\",children:[e.lock.error&&(0,t.jsx)(\"span\",{role:\"alert\",className:\"text-destructive text-xs\",children:e.lock.error.message}),(0,t.jsx)(A,{variant:\"ghost\",size:\"sm\",disabled:e.lock.isPending||e.transfer.isPending,onClick:()=>e.lock.mutate(),children:e.lock.isPending?\"Locking…\":e.lock.isSuccess?\"Vault locked\":\"Lock vault\"})]}):null}",
+          "replace": "function _s(){return null}",
+          "count": 1,
+          "offsetAtApplication": 31597
+        },
+        {
+          "kind": "integration",
+          "scope": "known legacy unlock requests fail visibly without collecting or transferring a password",
+          "find": "function Pt({toolCallId:e,prompt:s}){const a=(0,p.useContext)(he);return a?a.finished===e?(0,t.jsx)(\"p\",{className:\"text-muted-foreground text-sm\",children:\"Request completed\"}):a.request?.toolCallId!==e?(0,t.jsx)(\"p\",{className:\"text-muted-foreground text-sm\",children:a.session.isFetching?\"Checking vault request…\":\"This unlock request is no longer pending.\"}):(0,t.jsx)(Oe,{state:a}):(0,t.jsxs)(\"p\",{children:[s,\" Only the channel owner can unlock Aux Vault.\"]})}",
+          "replace": "function Pt({prompt:s}){return(0,t.jsxs)(\"p\",{className:\"text-muted-foreground text-sm\",children:[s,\" The built-in password manager is excluded from Aux. Use your existing browser extension.\"]})}",
+          "count": 1,
+          "offsetAtApplication": 31623
+        },
+        {
+          "kind": "integration",
+          "scope": "retain generic cloud-request review without a Vault probe",
+          "find": "function Es(e){const s=De(e);return s.request?(0,t.jsx)(Oe,{state:s}):e.suspended?(0,t.jsx)(ce,{to:\"/u/$userId/tasks/$sessionId\",params:{userId:String(e.accountId),sessionId:e.sessionId},search:{host:`cloud:${e.sessionId}`},children:\"Review pending request in cloud chat\"}):null}",
+          "replace": "function Es(e){return e.suspended?(0,t.jsx)(ce,{to:\"/u/$userId/tasks/$sessionId\",params:{userId:String(e.accountId),sessionId:e.sessionId},search:{host:`cloud:${e.sessionId}`},children:\"Review pending request in cloud chat\"}):null}",
+          "count": 1,
+          "offsetAtApplication": 31818
+        },
+        {
+          "kind": "integration",
+          "scope": "remove now-closed Vault polling/unlock/seed/lock implementation",
+          "find": "function De({accountId:e,sessionId:s,suspended:a,client:l}){const[c,h]=(0,p.useState)(\"\"),[o,i]=(0,p.useState)(),d=(0,p.useRef)(new Set),{data:m}=te(xe.accounts.get.queryOptions({accountId:e})),u=te({...xe.passwordManager.accounts.list.queryOptions({accountId:e}),refetchInterval:5e3}),x=u.data?.accounts.find(R=>R.owner.kind===\"aside\"&&R.owner.userId===m?.userId),w=te({queryKey:[\"cloud-vault-request\",e,s],queryFn:()=>l.sessions.get.query({accountId:e,sessionId:s}),enabled:a,refetchInterval:a?2e3:!1}),r=w.data?.suspension,f=a&&bt(r)&&r.kind===\"ask-user-question\"&&r.request.questions[0]?.header===\"vault-unlock\"?r:void 0,g=f?.toolCallId??s,b=ee({mutationFn:async()=>{f&&(await l.sessions.resolveSuspension.mutate({accountId:e,sessionId:s,toolCallId:f.toolCallId,response:{answers:[{header:\"vault-unlock\",answer:\"cancelled\"}]}}),i(f.toolCallId),await w.refetch())}}),y=ee({mutationFn:async R=>{if(!x)throw new Error(\"Connect this Aux account in Aux Vault first.\");const E={accountId:e,pwmAccountId:x.id};R&&(await se.passwordManager.auth.unlock.mutate({...E,password:R}),h(\"\")),await se.passwordManager.auth.seedCloud.mutate({...E,sessionId:s}),f&&await l.sessions.resolveSuspension.mutate({accountId:e,sessionId:s,toolCallId:f.toolCallId,response:{answers:[{header:\"vault-unlock\",answer:\"unlocked\"}]}}),d.current.add(g),M.reset(),f&&i(f.toolCallId),await u.refetch(),f&&await w.refetch()}}),M=ee({mutationFn:async()=>{if(x&&await se.passwordManager.auth.lock.mutate({accountId:e,pwmAccountId:x.id}),await u.refetch(),!(await fetch(`${Z}/cloud-agent/sessions/${encodeURIComponent(s)}/vault-key`,{method:\"DELETE\",headers:{authorization:`Bearer ${await de(e)}`}})).ok)throw new Error(\"Could not lock the cloud vault. Try again.\");d.current.clear(),y.reset()}});return(0,p.useEffect)(()=>{!x?.authStatus||x.authStatus.isLocked||!x.authStatus.isInitialized||d.current.has(g)||y.isPending||y.isError||!b.isIdle||M.isPending||y.mutate(void 0)},[x?.authStatus,g,y,b.isIdle,M.isPending]),{password:c,setPassword:h,vault:x,accounts:u,session:w,request:f,decline:b,transfer:y,lock:M,finished:o}}",
+          "replace": "",
+          "count": 1,
+          "offsetAtApplication": 29409
+        },
+        {
+          "kind": "integration",
+          "scope": "remove now-closed Vault unlock form",
+          "find": "function Oe({state:e}){const{password:s,setPassword:a,vault:l,accounts:c,request:h,decline:o,transfer:i}=e;return h?(0,t.jsxs)(\"section\",{className:\"max-w-sm min-w-56 space-y-3 py-1\",\"aria-label\":\"Unlock Aux Vault\",children:[(0,t.jsx)(\"p\",{className:\"text-sm font-medium\",children:\"Unlock Aux Vault\"}),(0,t.jsx)(\"p\",{className:\"text-muted-foreground text-sm\",children:h.request.questions[0].question}),l?.authStatus?.isInitialized?(0,t.jsxs)(\"form\",{className:\"flex flex-wrap items-center gap-2\",onSubmit:d=>{d.preventDefault(),i.mutate(l.authStatus?.isLocked?s:void 0)},children:[l.authStatus.isLocked&&(0,t.jsx)(ht,{\"aria-label\":\"Aux Vault password\",autoComplete:\"current-password\",value:s,onChange:d=>a(d.target.value),disabled:i.isPending}),(0,t.jsx)(A,{type:\"submit\",disabled:i.isPending||o.isPending||l.authStatus.isLocked&&!s,children:i.isPending?\"Unlocking…\":\"Unlock and continue\"})]}):(0,t.jsx)(\"p\",{className:\"text-muted-foreground text-sm\",children:\"Connect and unlock this Aux account in Password Manager, then return here.\"}),(0,t.jsx)(A,{variant:\"ghost\",disabled:i.isPending||o.isPending,onClick:()=>o.mutate(),children:\"Continue without Password Manager\"}),(i.error||o.error||c.error||l?.statusError)&&(0,t.jsx)(\"p\",{role:\"alert\",className:\"text-destructive text-sm\",children:i.error?.message??o.error?.message??c.error?.message??l?.statusError})]}):null}",
+          "replace": "",
+          "count": 1,
+          "offsetAtApplication": 29961
+        },
+        {
+          "kind": "integration",
+          "scope": "remove unused Vault context declaration",
+          "find": "var he=(0,p.createContext)(null);",
+          "replace": "",
+          "count": 1,
+          "offsetAtApplication": 29409
+        },
+        {
+          "kind": "identity",
+          "scope": "Fresh Aux v2 owned Agent producer/receiver; known legacy error reader retained",
+          "find": "aside-chat-link-previews-v2",
+          "replace": "aux-chat-link-previews-v2",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/error-alert-Bu3EEewB.js",
+      "inputSha256": "a717279989c868e8d982c20bde72130911f147497acb1171ecfbab0859675294",
+      "output": "/Users/rcourson/Documents/Vibe/web/out/completion-20261026-ui-a7/error-alert-Bu3EEewB.js",
+      "outputSha256": "6b7d32e876ac474969393d79d9037efa91d6badf5955d466f31431ba9d05d7c6",
+      "suppliedSourceSha256": "a717279989c868e8d982c20bde72130911f147497acb1171ecfbab0859675294",
+      "anchors": [
+        {
+          "kind": "identity",
+          "scope": "Fresh Aux v2 owned Agent producer/receiver; known legacy error reader retained",
+          "find": "credits-aside",
+          "replace": "credits-aux-v2",
+          "count": 3
+        }
+      ]
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/extension-main-Dz1-AsCT.js",
+      "inputSha256": "5ea7a70cfc2c962bac4290b4a6cfca04d8c30427210f5443f55b2f9099085e68",
+      "output": "/Users/rcourson/Documents/Vibe/web/out/completion-20261026-ui-a7/extension-main-Dz1-AsCT.js",
+      "outputSha256": "cb40adf3cb8d62513ccaee222977cbf3f87642ecc5cce52bf7e8edcade163427",
+      "suppliedSourceSha256": "e9fbe3298f440ce06a21984a98fdf49f9964976be0c1edb37295bba8574be3a0",
+      "anchors": [
+        {
+          "kind": "identity",
+          "scope": "Fresh Aux v2 owned Agent producer/receiver; known legacy error reader retained",
+          "find": "aside.browser-import.completed.v1",
+          "replace": "aux.browser-import.completed.v2",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/general-3dgRbrRk.js",
+      "inputSha256": "573f27cbb899d501bdf3c08041a2cc753aced582230764b235c8cabd83beb381",
+      "output": "/Users/rcourson/Documents/Vibe/web/out/completion-20261026-ui-a7/general-3dgRbrRk.js",
+      "outputSha256": "231ffd603754999e7601393b18dc0b03d177bbbfc01650da795991b214dae9f4",
+      "suppliedSourceSha256": "e57dcde064f8872f2d8250123778924174deb2256d161b175cca751ef57f5ea4",
+      "anchors": [
+        {
+          "kind": "identity",
+          "scope": "Fresh Aux v2 owned Agent producer/receiver; known legacy error reader retained",
+          "find": "aside.settings.backgroundServiceLag",
+          "replace": "aux.settings.backgroundServiceLag.v2",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/globals-B-8L9em-.css",
+      "inputSha256": "62cf600774a77482af4fcdcfbb6c5985b9297d97041a3f7fd6304dcf5cac3c2d",
+      "output": "/Users/rcourson/Documents/Vibe/web/out/completion-20261026-ui-a7/globals-B-8L9em-.css",
+      "outputSha256": "16f1755cd5d04ec876834040f467981b8025dec92f21da6e539e49a70eb8b58c",
+      "suppliedSourceSha256": "b8ed758b2ee5ea4171ea440d42ed0920699479c53ab5f56d72ba7cf62ac1d629",
+      "anchors": [
+        {
+          "kind": "identity",
+          "scope": "Fresh Aux v2 owned Agent producer/receiver; known legacy error reader retained",
+          "find": "aside\\:settings-search-index",
+          "replace": "aux\\:settings-search-index",
+          "count": 1
+        },
+        {
+          "kind": "identity",
+          "scope": "Fresh Aux v2 owned Agent producer/receiver; known legacy error reader retained",
+          "find": "aside:settings-search-index",
+          "replace": "aux:settings-search-index",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/google-sign-in-C6OIqXPh.js",
+      "inputSha256": "75cfa19f32f8016315ace9a3fb863457400fc002dac2baa263cfb554487e0b3a",
+      "output": "/Users/rcourson/Documents/Vibe/web/out/completion-20261026-ui-a7/google-sign-in-C6OIqXPh.js",
+      "outputSha256": "4bcbf7de84a6e5f98f6208fbc8a876d69b6c6206956e4d3144973ff9e9ac7690",
+      "suppliedSourceSha256": "b14d09c149272889b24b2515f018ee70293984fb43b52efafa4d0d9eaee7d9fb",
+      "anchors": [
+        {
+          "kind": "identity",
+          "scope": "Fresh Aux v2 owned Agent producer/receiver; known legacy error reader retained",
+          "find": "aside.googleOAuth.popupComplete",
+          "replace": "aux.googleOAuth.popupComplete.v2",
+          "count": 2
+        },
+        {
+          "kind": "identity",
+          "scope": "Fresh Aux v2 owned Agent producer/receiver; known legacy error reader retained",
+          "find": "aside.googleOAuthAttempt",
+          "replace": "aux.googleOAuthAttempt.v2",
+          "count": 1
+        },
+        {
+          "kind": "identity",
+          "scope": "Fresh Aux v2 owned Agent producer/receiver; known legacy error reader retained",
+          "find": "aside-google-oauth",
+          "replace": "aux-google-oauth-v2",
+          "count": 1
+        },
+        {
+          "kind": "identity",
+          "scope": "Fresh Aux v2 owned Agent producer/receiver; known legacy error reader retained",
+          "find": "At=F({accountId:ht().int().nonnegative(),asideAuthCallback:O(\"google\"),oauthAttemptId:_().min(1),supabaseAccessToken:_().min(1)})",
+          "replace": "At=F({accountId:ht().int().nonnegative(),auxAuthCallback:O(\"google\").optional(),asideAuthCallback:O(\"google\").optional(),oauthAttemptId:_().min(1),supabaseAccessToken:_().min(1)}).refine(value=>(value.auxAuthCallback===\"google\")!==(value.asideAuthCallback===\"google\"),\"Ambiguous Aux Google OAuth callback marker\")",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/island-C0ouZ54e.js",
+      "inputSha256": "1185268231cec29a34a6620001451b781b700e4cb7cde67e846a61dda63340cf",
+      "output": "/Users/rcourson/Documents/Vibe/web/out/completion-20261026-ui-a7/island-C0ouZ54e.js",
+      "outputSha256": "b80a7d53e64b38ca3b9a9c0bd81dfc594ab16bd68d2f9b99a5a21848ee2f443b",
+      "suppliedSourceSha256": "6fa03ce1c54b5a5c3a6ed0439e63d08560c5715be8ff568afc8a07eee4a078e2",
+      "anchors": [
+        {
+          "kind": "identity",
+          "scope": "Fresh Aux v2 owned Agent producer/receiver; known legacy error reader retained",
+          "find": "aside.newtab.invite-badge.dismissed.",
+          "replace": "aux.newtab.invite-badge.dismissed.v2.",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/message-Ca5u8_zM.js",
+      "inputSha256": "0f2ceae91ca98f23269b372937dc6367b9fa4f4940f0ecd08c529b4ede931561",
+      "output": "/Users/rcourson/Documents/Vibe/web/out/completion-20261026-ui-a7/message-Ca5u8_zM.js",
+      "outputSha256": "a6ae36e9e2637f291e0e729ef88715c36b3ba9b2d2c5259feefb3e399fba93ea",
+      "suppliedSourceSha256": "0f2ceae91ca98f23269b372937dc6367b9fa4f4940f0ecd08c529b4ede931561",
+      "anchors": [
+        {
+          "kind": "identity",
+          "scope": "Fresh Aux v2 owned Agent producer/receiver; known legacy error reader retained",
+          "find": "aside-cta",
+          "replace": "aux-cta-v2",
+          "count": 1
+        },
+        {
+          "kind": "identity",
+          "scope": "Fresh Aux v2 owned Agent producer/receiver; known legacy error reader retained",
+          "find": "aside-visual-document",
+          "replace": "aux-visual-document-v2",
+          "count": 1
+        },
+        {
+          "kind": "identity",
+          "scope": "Fresh Aux v2 owned Agent producer/receiver; known legacy error reader retained",
+          "find": "aside-visual-theme",
+          "replace": "aux-visual-theme-v2",
+          "count": 2
+        }
+      ]
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/route-VV0zL3cm.js",
+      "inputSha256": "1b91006db3498f39a3b7ca027e5905ae32ab91107f437bd727c3dcca83326c3e",
+      "output": "/Users/rcourson/Documents/Vibe/web/out/completion-20261026-ui-a7/route-VV0zL3cm.js",
+      "outputSha256": "df8eb32554d2c442553112bbab116c75023d40437b85cab5d5410c0b02fd3d04",
+      "suppliedSourceSha256": "c76b8657afa5f2633ae31346554e86c8ec2161bcb43397ccfe5312069b092aee",
+      "anchors": [
+        {
+          "kind": "identity",
+          "scope": "Fresh Aux v2 owned Agent producer/receiver; known legacy error reader retained",
+          "find": "aside-channel",
+          "replace": "aux-channel-v2",
+          "count": 1
+        },
+        {
+          "kind": "identity",
+          "scope": "Fresh Aux v2 owned Agent producer/receiver; known legacy error reader retained",
+          "find": "aside:channel-draft:",
+          "replace": "aux:channel-draft:v2:",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/search-navigation-TWhZq3-H.js",
+      "inputSha256": "21ecceeb07d21f3e170814a253318f810c60077cfe5f2c8487e919dc5a43a09f",
+      "output": "/Users/rcourson/Documents/Vibe/web/out/completion-20261026-ui-a7/search-navigation-TWhZq3-H.js",
+      "outputSha256": "2ebd5d3333fb8cd80b20a8850c54286be12de1159e05710461b8a33bf06d4810",
+      "suppliedSourceSha256": "1bdf37a8cc1ff709ab1a1f54b40af0b4c3b89b5d96e7278e18ecfb17e813d145",
+      "anchors": [
+        {
+          "kind": "identity",
+          "scope": "Fresh Aux v2 owned Agent producer/receiver; known legacy error reader retained",
+          "find": "\"http:\",\"https:\",\"chrome:\",\"aside:\"",
+          "replace": "\"http:\",\"https:\",\"chrome:\",\"aux:\"",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/sign-in-popup-CzjJFAuC.js",
+      "inputSha256": "01cebc9c4c914d0d3dc5ccf914aae2a8660cb42edcd7a68d01f149f8c175e6ce",
+      "output": "/Users/rcourson/Documents/Vibe/web/out/completion-20261026-ui-a7/sign-in-popup-CzjJFAuC.js",
+      "outputSha256": "f515fd488e577f75e2004ba27ec190012ca930e0bbad54fe893d448e104b3064",
+      "suppliedSourceSha256": "01cebc9c4c914d0d3dc5ccf914aae2a8660cb42edcd7a68d01f149f8c175e6ce",
+      "anchors": [
+        {
+          "kind": "identity",
+          "scope": "Fresh Aux v2 owned Agent producer/receiver; known legacy error reader retained",
+          "find": "\"aside-sign-in-popup\"",
+          "replace": "\"aux-sign-in-popup-v2\"",
+          "count": 1
+        },
+        {
+          "kind": "identity",
+          "scope": "Fresh Aux v2 owned Agent producer/receiver; known legacy error reader retained",
+          "find": "\"aside-sign-in\"",
+          "replace": "\"aux-sign-in-v2\"",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/strip-markdown-DRcmtuJc.js",
+      "inputSha256": "a359520c0977dc66b2a6bc986bc0416bda8f67c6c1a470ceb65165bfdd7fe07a",
+      "output": "/Users/rcourson/Documents/Vibe/web/out/completion-20261026-ui-a7/strip-markdown-DRcmtuJc.js",
+      "outputSha256": "5abfe7208e17f6178763787b53634aebdcfe546903477fc692a5bc692a1f72ed",
+      "suppliedSourceSha256": "ab010d9654ccdde011360ff6398885cfc5412b1447d0a97259a5aa07caf922cb",
+      "anchors": [
+        {
+          "kind": "identity",
+          "scope": "Fresh Aux v2 owned Agent producer/receiver; known legacy error reader retained",
+          "find": "@chrome-aside/models/inventory-changed",
+          "replace": "@chrome-aux/models/inventory-changed",
+          "count": 1
+        },
+        {
+          "kind": "identity",
+          "scope": "Fresh Aux v2 owned Agent producer/receiver; known legacy error reader retained",
+          "find": "@chrome-aside/billing/changed",
+          "replace": "@chrome-aux/billing/changed",
+          "count": 1
+        },
+        {
+          "kind": "identity",
+          "scope": "Fresh Aux v2 owned Agent producer/receiver; known legacy error reader retained",
+          "find": "credits-aside",
+          "replace": "credits-aux-v2",
+          "count": 1
+        },
+        {
+          "kind": "identity",
+          "scope": "Fresh Aux v2 owned Agent producer/receiver; known legacy error reader retained",
+          "find": "return n?`~/.aside/u/${e}/projects/${n}`:`~/.aside/u/${e}/projects/…`",
+          "replace": "return \"Aux workspace\"",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/tasks-CtF0WxoJ.js",
+      "inputSha256": "2e6e4957d71a0f32c25c7a9313abcc99212b5f3f326f804d968373b5164d4ff8",
+      "output": "/Users/rcourson/Documents/Vibe/web/out/completion-20261026-ui-a7/tasks-CtF0WxoJ.js",
+      "outputSha256": "0cd44c479923accf2ed2d2e69a90861260a82454da44a37e9257439bd76db51d",
+      "suppliedSourceSha256": "7ffe5d1c4c246528bb286d710e2d9eb573d03d1bad8fc1fbc8d2bde6fac79b2d",
+      "anchors": [
+        {
+          "kind": "identity",
+          "scope": "Fresh Aux v2 owned Agent producer/receiver; known legacy error reader retained",
+          "find": "aside.new-tab.session-previews.v2:",
+          "replace": "aux.new-tab.session-previews.v2:",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/update-banner-C_z-hMCt.js",
+      "inputSha256": "98b1ec307b3e98eb8bd0da873cf99283a3b806d46c5f0e9c6859c0f52a63c794",
+      "output": "/Users/rcourson/Documents/Vibe/web/out/completion-20261026-ui-a7/update-banner-C_z-hMCt.js",
+      "outputSha256": "86c67964c4666c4dd46908cd16d99d8f59558d2ec8aa35f9a22178c67d6c3682",
+      "suppliedSourceSha256": "3fc13ddf82defd8bd6d1c0f6c6d2f4df770d624bf9a7aec0b1494c8a093fc1b9",
+      "anchors": [
+        {
+          "kind": "identity",
+          "scope": "Fresh Aux v2 owned Agent producer/receiver; known legacy error reader retained",
+          "find": "aside.new-tab.update-banner.changelog.v1",
+          "replace": "aux.new-tab.update-banner.changelog.v2",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/password-LjdLcSRV.js",
+      "inputSha256": "17c872253796acd23ca743094508b6c8e7a389b31521618f3d60b56260eec32f",
+      "output": "/Users/rcourson/Documents/Vibe/web/out/completion-20261026-ui-a7/password-LjdLcSRV.js",
+      "outputSha256": "585025e66ae4f36f08fd86148f99a1131905f35791840bcbde3d79d753d29d9d",
+      "suppliedSourceSha256": "e00998141c347fa2ff29dfe5b62b6e6b797fc50aff0112ddc77cfc86b7bbb7ed",
+      "anchors": [
+        {
+          "kind": "integration",
+          "scope": "remove excluded settings provider RPC from active page",
+          "find": "(0,e.jsx)(Ut,{children:(0,e.jsx)(mr,{connectOpen:s,onConnectOpenChange:a})})",
+          "replace": "(0,e.jsx)(mr,{connectOpen:s,onConnectOpenChange:a})",
+          "count": 1,
+          "offsetAtApplication": 90693
+        },
+        {
+          "kind": "integration",
+          "scope": "render only existing external-manager section, not Vault setup/toggle/security panels",
+          "find": "({connectOpen:s,onConnectOpenChange:a})=>{const{settings:t}=I(),n=()=>a(!0);return(0,e.jsxs)(\"div\",{className:\"space-y-8\",children:[(0,e.jsxs)(re,{title:(0,e.jsxs)(e.Fragment,{children:[(0,e.jsx)(\"span\",{children:\"Password managers\"}),(0,e.jsxs)(as,{children:[(0,e.jsx)(es,{children:(0,e.jsx)($a,{className:\"text-muted-foreground/60 size-4\"})}),(0,e.jsx)(ss,{children:(0,e.jsx)(\"p\",{children:\"Let agents sign in with the password managers you already use.\"})})]})]}),label:\"Password managers\",children:[(0,e.jsx)(cr,{onConnectPasswordManager:n}),(0,e.jsx)(Rt,{connectOpen:s,onConnectOpenChange:a})]}),t.useBuiltinPasswordManager&&(0,e.jsxs)(Rn,{children:[(0,e.jsx)(Tn,{}),(0,e.jsx)(qn,{}),(0,e.jsx)(Zn,{}),(0,e.jsx)(sr,{})]})]})}",
+          "replace": "({connectOpen:s,onConnectOpenChange:a})=>{return(0,e.jsxs)(\"div\",{className:\"space-y-8\",children:[(0,e.jsxs)(re,{title:(0,e.jsxs)(e.Fragment,{children:[(0,e.jsx)(\"span\",{children:\"Password managers\"}),(0,e.jsxs)(as,{children:[(0,e.jsx)(es,{children:(0,e.jsx)($a,{className:\"text-muted-foreground/60 size-4\"})}),(0,e.jsx)(ss,{children:(0,e.jsx)(\"p\",{children:\"Let agents sign in with the password managers you already use.\"})})]})]}),label:\"Password managers\",children:[(0,e.jsx)(Rt,{connectOpen:s,onConnectOpenChange:a})]})]})}",
+          "count": 1,
+          "offsetAtApplication": 90757
+        },
+        {
+          "kind": "integration",
+          "scope": "neutral legacy saved-password import notice",
+          "find": "even when Aux Vault is locked or disabled. The original vault item will be kept for your other devices.",
+          "replace": "without enabling a built-in password manager. Existing source items are preserved.",
+          "count": 1,
+          "offsetAtApplication": 22720
+        },
+        {
+          "kind": "integration",
+          "scope": "keep original external connections without automatic Vault credential migration/probe",
+          "find": "({connectOpen:s,onConnectOpenChange:a})=>{const{accountId:t,browserProfile:n}=te(),r=U(),o=ve(),i=J(),d=(0,p.useRef)(!1),{mutate:u,...l}=N(r.externalPasswordManagers.importPreferences.mutationOptions({onSuccess:()=>i.invalidateQueries(r.externalPasswordManagers.list.queryFilter({accountId:t}))})),c=_(r.externalPasswordManagers.list.queryOptions({accountId:t})),h=_(r.onboarding.detectPasswordManagers.queryOptions({currentProfilePath:n?.profilePath})),m=bt(sa(h.data??[])),x=()=>{c.refetch()},v=()=>a(!0),y=()=>a(!1),C=async(w,{unlockPreference:f,unlockPassword:P})=>{await o.externalPasswordManagers.connect.mutate({accountId:t,provider:w,...f===\"remember-unlock-password\"&&{password:P}}),await i.invalidateQueries(r.externalPasswordManagers.list.queryFilter({accountId:t}))},b=()=>u({accountId:t});return(0,p.useEffect)(()=>{d.current||(d.current=!0,u({accountId:t}))},[t,u]),(0,e.jsxs)(e.Fragment,{children:[(0,e.jsxs)(W,{children:[c.error&&(0,e.jsxs)(R,{children:[(0,e.jsx)(E,{title:\"Connections are unavailable\"}),(0,e.jsx)(j,{variant:\"ghost\",onClick:x,children:\"Retry\"})]}),l.isError&&(0,e.jsxs)(R,{children:[(0,e.jsx)(E,{title:\"Previous connections could not be imported\"}),(0,e.jsx)(j,{variant:\"ghost\",onClick:b,children:\"Retry\"})]}),c.data?.map(w=>(0,e.jsx)(Tt,{connection:w,hasLegacyPassword:l.data?.some(f=>f.providers.includes(w.provider))??!1,needsExtension:m.find(f=>f.provider===w.provider)?.agentUsable===!1},`${t}:${w.connectionId}`)),(0,e.jsxs)(ze,{variant:\"action\",className:\"w-full gap-1\",render:(0,e.jsx)(\"button\",{type:\"button\"}),onClick:v,children:[(0,e.jsx)(Ns,{className:\"mx-1 size-4 shrink-0\"}),(0,e.jsx)(E,{title:\"Connect external password manager\"})]})]}),(0,e.jsx)(nt,{open:s,connectedProviders:c.data?.map(w=>w.provider)??[],options:m,onCancel:y,onFinish:y,onConnect:C})]})}",
+          "replace": "({connectOpen:s,onConnectOpenChange:a})=>{const {accountId:t,browserProfile:n}=te(),r=U(),o=ve(),i=J(),c=_(r.externalPasswordManagers.list.queryOptions({accountId:t})),h=_(r.onboarding.detectPasswordManagers.queryOptions({currentProfilePath:n?.profilePath})),m=bt(sa(h.data??[])),x=()=>{c.refetch()},v=()=>a(!0),y=()=>a(!1),C=async(w,{unlockPreference:f,unlockPassword:P})=>{await o.externalPasswordManagers.connect.mutate({accountId:t,provider:w,...f===\"remember-unlock-password\"&&{password:P}}),await i.invalidateQueries(r.externalPasswordManagers.list.queryFilter({accountId:t}))};return (0,e.jsxs)(e.Fragment,{children:[(0,e.jsxs)(W,{children:[c.error&&(0,e.jsxs)(R,{children:[(0,e.jsx)(E,{title:\"Connections are unavailable\"}),(0,e.jsx)(j,{variant:\"ghost\",onClick:x,children:\"Retry\"})]}),null,c.data?.map(w=>(0,e.jsx)(Tt,{connection:w,needsExtension:m.find(f=>f.provider===w.provider)?.agentUsable===!1},`${t}:${w.connectionId}`)),(0,e.jsxs)(ze,{variant:\"action\",className:\"w-full gap-1\",render:(0,e.jsx)(\"button\",{type:\"button\"}),onClick:v,children:[(0,e.jsx)(Ns,{className:\"mx-1 size-4 shrink-0\"}),(0,e.jsx)(E,{title:\"Connect external password manager\"})]})]}),(0,e.jsx)(nt,{open:s,connectedProviders:c.data?.map(w=>w.provider)??[],options:m,onCancel:y,onFinish:y,onConnect:C})]})}",
+          "count": 1,
+          "offsetAtApplication": 19869
+        },
+        {
+          "kind": "identity",
+          "scope": "Fresh Aux v2 owned Agent producer/receiver; known legacy error reader retained",
+          "find": "Find a .txt file that starts with ‘aside-recovery-key’ or type the words you saved.",
+          "replace": "Find the recovery-key .txt file you saved, or type your saved words.",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/recovery-DY2UC0Rx.js",
+      "inputSha256": "0bb1680c6ce8bb09ebc82596fd13f9d2f143bad21753fc8aba022dc51847bb0e",
+      "output": "/Users/rcourson/Documents/Vibe/web/out/completion-20261026-ui-a7/recovery-DY2UC0Rx.js",
+      "outputSha256": "f06e7bba58c1ba99d384304554ffef996aa2de29c32b2097085b837d45450736",
+      "suppliedSourceSha256": "0bb1680c6ce8bb09ebc82596fd13f9d2f143bad21753fc8aba022dc51847bb0e",
+      "anchors": [
+        {
+          "kind": "identity",
+          "scope": "Fresh Aux v2 owned Agent producer/receiver; known legacy error reader retained",
+          "find": "Find a ⁠.txt file that starts with ‘aside-recovery-key’ or check your inbox.",
+          "replace": "Find the recovery-key .txt file you saved, or check your inbox.",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/artifact-test-CdjpLuI1.js",
+      "inputSha256": "045785b32e4332918e6ce4913fe8ee6a6ea337a7090d9e31e9a1e3b68347aeb6",
+      "output": "/Users/rcourson/Documents/Vibe/web/out/completion-20261026-ui-a7/artifact-test-CdjpLuI1.js",
+      "outputSha256": "68248b848ceeab9703a4c8cd215f7bc3f828085e1cd3bf769dc6c5d0149d614c",
+      "suppliedSourceSha256": "a8ae44f0cf25f06d16aba21ccb9ae9d4ec11c6228e3d9a027f6b7bd0a0da9f14",
+      "anchors": [
+        {
+          "kind": "identity",
+          "scope": "Fresh Aux v2 owned Agent producer/receiver; known legacy error reader retained",
+          "find": "jun@aside.at",
+          "replace": "jun@example.com",
+          "count": 3
+        },
+        {
+          "kind": "identity",
+          "scope": "Fresh Aux v2 owned Agent producer/receiver; known legacy error reader retained",
+          "find": "handle:\"asidebrowser\"",
+          "replace": "handle:\"example\"",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/routines-BNdQOEUt.js",
+      "inputSha256": "7e859ebe734b72ef90e751b38ce6cd8be5c663cef714c8e8e4b60e4d8c65cb72",
+      "output": "/Users/rcourson/Documents/Vibe/web/out/completion-20261026-ui-a7/routines-BNdQOEUt.js",
+      "outputSha256": "600fcdfc28713f43adc181ea964cffdaa209d520ea13d6f2294c237c4e578bb5",
+      "suppliedSourceSha256": "254d21732416350c8ceb58404d01cbf6cf65211b46b0e1004f802f59c97811ac",
+      "anchors": [
+        {
+          "kind": "launch-scope",
+          "scope": "Device routines only; cloud records preserved and never reinterpreted",
+          "find": "Y=a({environment:o([\"device\",\"cloud\"]).optional()",
+          "replace": "Y=a({environment:c(\"device\").default(\"device\")",
+          "count": 1
+        },
+        {
+          "kind": "launch-scope",
+          "scope": "Device routines only; cloud records preserved and never reinterpreted",
+          "find": "children:R(s)",
+          "replace": "children:s.environment===\"cloud\"?\"Cloud routine unavailable · Preserved\":R(s)",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/routine-item-menu-DJrYR2RE.js",
+      "inputSha256": "11d43e99917fe9fbd4ab366ce1f12095f26224828fb963a1194f6e71e0c03b08",
+      "output": "/Users/rcourson/Documents/Vibe/web/out/completion-20261026-ui-a7/routine-item-menu-DJrYR2RE.js",
+      "outputSha256": "4a6a3cb84d9f87d86ebc28857b7ed57af1131155d84c6018bf6c9eb9c85218cd",
+      "suppliedSourceSha256": "11d43e99917fe9fbd4ab366ce1f12095f26224828fb963a1194f6e71e0c03b08",
+      "anchors": [
+        {
+          "kind": "launch-scope",
+          "scope": "Device routines only; cloud records preserved and never reinterpreted",
+          "find": "a=async()=>{try{await t.mutateAsync",
+          "replace": "a=async()=>{try{if(s.environment!==\"device\")throw Error(\"Cloud routines are preserved and unavailable.\");await t.mutateAsync",
+          "count": 1
+        },
+        {
+          "kind": "launch-scope",
+          "scope": "Device routines only; cloud records preserved and never reinterpreted",
+          "find": "f=async()=>{if(await m(",
+          "replace": "f=async()=>{if(s.environment!==\"device\")return; if(await m(",
+          "count": 1
+        },
+        {
+          "kind": "launch-scope",
+          "scope": "Device routines only; cloud records preserved and never reinterpreted",
+          "find": "D=()=>i(\"edit\")",
+          "replace": "D=()=>{if(s.environment===\"device\")i(\"edit\")}",
+          "count": 1
+        },
+        {
+          "kind": "launch-scope",
+          "scope": "Device routines only; cloud records preserved and never reinterpreted",
+          "find": "onRunNow:()=>{h.mutateAsync",
+          "replace": "onRunNow:()=>{if(s.environment!==\"device\")return;h.mutateAsync",
+          "count": 1
+        },
+        {
+          "kind": "launch-scope",
+          "scope": "Device routines only; cloud records preserved and never reinterpreted",
+          "find": "disabled:p||s.status===\"completed\"",
+          "replace": "disabled:p||s.environment!==\"device\"||s.status===\"completed\"",
+          "count": 1
+        },
+        {
+          "kind": "launch-scope",
+          "scope": "Device routines only; cloud records preserved and never reinterpreted",
+          "find": "disabled:l||s.status===\"completed\"",
+          "replace": "disabled:l||s.environment!==\"device\"||s.status===\"completed\"",
+          "count": 1
+        },
+        {
+          "kind": "launch-scope",
+          "scope": "Device routines only; cloud records preserved and never reinterpreted",
+          "find": "disabled:l||s.status===\"paused\"",
+          "replace": "disabled:l||s.environment!==\"device\"||s.status===\"paused\"",
+          "count": 1
+        },
+        {
+          "kind": "launch-scope",
+          "scope": "Device routines only; cloud records preserved and never reinterpreted",
+          "find": "(t,{onClick:m,children:",
+          "replace": "(t,{onClick:m,disabled:s.environment!==\"device\",children:",
+          "count": 1
+        },
+        {
+          "kind": "launch-scope",
+          "scope": "Device routines only; cloud records preserved and never reinterpreted",
+          "find": "variant:\"destructive\",disabled:l,onClick:n",
+          "replace": "variant:\"destructive\",disabled:l||s.environment!==\"device\",onClick:n",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/-types-Wy38XkNB.js",
+      "inputSha256": "b5870f3d72d03493ffea375c6af92881278a253dfef3168515afc5fccce249e9",
+      "output": "/Users/rcourson/Documents/Vibe/web/out/completion-20261026-ui-a7/-types-Wy38XkNB.js",
+      "outputSha256": "18e6fe64793f3e324f9493e4568957665aeaf947c6327ed6b0cbe9d6a26bd47f",
+      "suppliedSourceSha256": "22df7f0ce3efd4eacb8df317b81c139c8b86c52aab1563e9dc335205f39d8e32",
+      "anchors": [
+        {
+          "kind": "integration",
+          "scope": "remove unexported unused legacy AUK recovery/setup schema graph",
+          "find": "var I=a({purpose:l(\"recovery.auk\"),envelopeVersion:l(\"aside.recovery.auk.v1\"),nonceB64:e().min(1),ciphertextB64:e().min(1)}),A=i([\"google\",\"email\",\"anonymous\"]),b=i([\"local\",\"cloud\"]),y=i([\"active\",\"paused\"]),P=i([\"token_revoked\",\"device_mismatch\",\"duplicate_profile_account\"]),C=i([\"free\",\"pro\",\"max\"]),w=a({id:n().int().nonnegative(),name:e(),provider:A,mode:b,authStatus:y.default(\"active\"),authPausedReason:P.optional(),userId:e().optional(),analyticsId:e().optional(),email:e().optional(),subscriptionPlan:C.optional(),profileUrl:m().optional(),onboardingCompletedAt:e().nullable().optional(),createdAt:n().int().nonnegative(),incarnationId:v().optional(),browserSignInRequired:r().optional()}),k=a({accessToken:e(),refreshToken:e(),expiresAt:n().int().nonnegative()}),_=a({memoryKiB:n().int().positive(),iterations:n().int().positive(),parallelism:n().int().positive()}),B=a({aukSaltB64:e().min(1),aukVerifierB64:e().min(1).optional(),aukKdf:l(\"argon2id\"),aukKdfParams:_,recoveryBackup:I}),E=i([\"pending_choice\",\"enabled\",\"disabled\"]),Y=a({isComplete:r(),createdAt:n().int().nonnegative(),boundUserId:e().min(1).optional(),boundAt:n().int().nonnegative().optional(),hasEverBoundCloudUser:r().default(!1),vaultSyncMode:E.optional(),pendingAccountSecuritySetup:B.optional(),pendingUserId:e().min(1).optional()}),x=a({profileId:e().min(1),userId:e().min(1),accountId:n().int().nonnegative().optional(),profileIndex:n().int().nonnegative().optional(),profilePath:e().optional(),updatedAt:n().int().nonnegative()}),R=a({profileId:e().min(1),accountId:n().int().nonnegative(),profileIndex:n().int().nonnegative().optional(),profilePath:e().optional(),updatedAt:n().int().nonnegative()}),U=a({bindingVersion:n().int().positive().optional(),chromiumProfileId:e().min(1).optional(),syncProfileId:e().min(1).optional(),auxUserId:e().min(1).optional(),localOnly:r().optional(),profileId:e().min(1),profilePath:e().optional(),profileIndex:n().int().nonnegative().optional(),boundUserId:e().min(1).optional(),boundAccountId:n().int().nonnegative().optional()}),q=a({version:l(1),currentAccountId:n().int().nonnegative(),accounts:f(w),sessions:t(e(),k),localBootstraps:t(e(),g()).transform(o=>o).default({}),profileBindings:t(e(),x).default({}),profileAccountBindings:t(e(),R).default({})}),O=a({id:e(),email:s(),onboardingCompletedAt:e().nullable()}),z=a({user:O,accessToken:e(),refreshToken:e(),expiresIn:n().int().positive(),provider:i([\"email\",\"google\"]).default(\"email\")}),F=U.pick({profileId:!0,chromiumProfileId:!0,bindingVersion:!0,auxUserId:!0,boundUserId:!0,boundAccountId:!0,localOnly:!0}),T=[\"+\"],L=\"Email address contains invalid characters\",H=a({email:s(\"Please enter a valid email address\").refine(o=>T.every(d=>!o.includes(d)),L)});",
+          "replace": "var A=i([\"google\",\"email\",\"anonymous\"]),b=i([\"local\",\"cloud\"]),y=i([\"active\",\"paused\"]),P=i([\"token_revoked\",\"device_mismatch\",\"duplicate_profile_account\"]),C=i([\"free\",\"pro\",\"max\"]),w=a({id:n().int().nonnegative(),name:e(),provider:A,mode:b,authStatus:y.default(\"active\"),authPausedReason:P.optional(),userId:e().optional(),analyticsId:e().optional(),email:e().optional(),subscriptionPlan:C.optional(),profileUrl:m().optional(),onboardingCompletedAt:e().nullable().optional(),createdAt:n().int().nonnegative(),incarnationId:v().optional(),browserSignInRequired:r().optional()}),k=a({accessToken:e(),refreshToken:e(),expiresAt:n().int().nonnegative()}),x=a({profileId:e().min(1),userId:e().min(1),accountId:n().int().nonnegative().optional(),profileIndex:n().int().nonnegative().optional(),profilePath:e().optional(),updatedAt:n().int().nonnegative()}),R=a({profileId:e().min(1),accountId:n().int().nonnegative(),profileIndex:n().int().nonnegative().optional(),profilePath:e().optional(),updatedAt:n().int().nonnegative()}),U=a({bindingVersion:n().int().positive().optional(),chromiumProfileId:e().min(1).optional(),syncProfileId:e().min(1).optional(),auxUserId:e().min(1).optional(),localOnly:r().optional(),profileId:e().min(1),profilePath:e().optional(),profileIndex:n().int().nonnegative().optional(),boundUserId:e().min(1).optional(),boundAccountId:n().int().nonnegative().optional()}),q=a({version:l(1),currentAccountId:n().int().nonnegative(),accounts:f(w),sessions:t(e(),k),localBootstraps:t(e(),g()).transform(o=>o).default({}),profileBindings:t(e(),x).default({}),profileAccountBindings:t(e(),R).default({})}),O=a({id:e(),email:s(),onboardingCompletedAt:e().nullable()}),z=a({user:O,accessToken:e(),refreshToken:e(),expiresIn:n().int().positive(),provider:i([\"email\",\"google\"]).default(\"email\")}),F=U.pick({profileId:!0,chromiumProfileId:!0,bindingVersion:!0,auxUserId:!0,boundUserId:!0,boundAccountId:!0,localOnly:!0}),T=[\"+\"],L=\"Email address contains invalid characters\",H=a({email:s(\"Please enter a valid email address\").refine(o=>T.every(d=>!o.includes(d)),L)});",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/-context-CnivYB_B.js",
+      "inputSha256": "cf242d6dfbe341205f98741a3467c063c6cb48b4df2befee3606754b0e681aa6",
+      "output": "/Users/rcourson/Documents/Vibe/web/out/completion-20261026-ui-a7/-context-CnivYB_B.js",
+      "outputSha256": "b7e12594f95a6e0c7cd6e30fd28413d8a4b2c2ac279eb1fe91b5fca1f1fc3ff8",
+      "suppliedSourceSha256": "cf242d6dfbe341205f98741a3467c063c6cb48b4df2befee3606754b0e681aa6",
+      "anchors": [
+        {
+          "kind": "integration",
+          "scope": "default only to external password-manager choice",
+          "find": "(0,e.useState)(\"aside\")",
+          "replace": "(0,e.useState)(\"external\")",
+          "count": 1,
+          "offsetAtApplication": 541
+        }
+      ]
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/import-password-mvM-KsU6.js",
+      "inputSha256": "a1635852b4a685ce89bb21ce243ecdbbfb79f827f7418575d08841441e742e11",
+      "output": "/Users/rcourson/Documents/Vibe/web/out/completion-20261026-ui-a7/import-password-mvM-KsU6.js",
+      "outputSha256": "fcbddbf6edcc1a5903a6a7ee7b8e3f68cdad343b21b2351fa3a4ea4f8450997d",
+      "suppliedSourceSha256": "81ae7124c32251db7108a530cd461d82f9f9b769270b275fc5ea5c2a56aa6193",
+      "anchors": [
+        {
+          "kind": "integration",
+          "scope": "remove excluded built-in option, preserve original external option",
+          "find": "[{value:\"aside\",id:\"builtin\",title:\"Import credentials to Aux Vault\",description:\"Seamless experience, E2E encrypted.\"},{value:\"external\",id:\"external\",title:\"Connect my password manager\",description:\"Some sign-ins may block your workflow.\"}]",
+          "replace": "[{value:\"external\",id:\"external\",title:\"Connect my password manager\",description:\"Some sign-ins may block your workflow.\"}]",
+          "count": 1,
+          "offsetAtApplication": 1453
+        },
+        {
+          "kind": "integration",
+          "scope": "remove closed built-in option tooltip",
+          "find": "s.value===\"aside\"&&(0,e.jsxs)(I,{children:[(0,e.jsx)(E,{render:(0,e.jsx)(\"span\",{className:\"text-muted-foreground inline-flex shrink-0\"}),children:(0,e.jsx)(ue,{className:\"size-4\"})}),(0,e.jsxs)(F,{children:[\"Aux Vault is a built-in private password manager.\",(0,e.jsx)(\"br\",{}),\"Credentials are filled directly into websites, never shown to the agent.\"]})]})",
+          "replace": "null",
+          "count": 1,
+          "offsetAtApplication": 2668
+        },
+        {
+          "kind": "integration",
+          "scope": "preserve external connection/skip flow without excluded Vault RPC or setup/import wizards",
+          "find": "({accountId:s,choice:o,currentProfilePath:u})=>{const{track:t}=D(),i=de(),g=pe(),a=ie(),l=J(),{confirm:c}=ee(),[d,p]=(0,x.useState)(null),[h,N]=(0,x.useState)(!1),_=P({...i.externalPasswordManagers.list.queryOptions({accountId:s??-1}),enabled:s!==void 0}),k=P(i.onboarding.detectPasswordManagers.queryOptions({currentProfilePath:u})),w=ae(i.passwordManager.accounts.connectCurrent.mutationOptions()),m=(0,x.useMemo)(()=>Oe(k.data??[]),[k.data]),q=(0,x.useMemo)(()=>xe(m),[m]),S=(0,x.useMemo)(()=>Me(m),[m]),M=_.data?.map(n=>n.provider)??[],f=()=>{l({to:\"/onboarding/ai\",replace:!0})},A=()=>{t(\"onboarding.import-password.not-now\"),f()},L=n=>{t(\"onboarding.import-password.complete\",{value:n,suggested:he(n,m)})},T=n=>{t(\"onboarding.import-password.external-provider.select\",{value:n,suggested:m.has(n)})},K=async(n,{unlockPreference:r,unlockPassword:b})=>{if(s===void 0)throw new Error(\"Could not save your password manager preference.\");await g.externalPasswordManagers.connect.mutate({accountId:s,provider:n,...r===\"remember-unlock-password\"&&{password:b}}),await a.invalidateQueries(i.externalPasswordManagers.list.queryFilter({accountId:s})),t(\"onboarding.import-password.external-provider.save\",{provider:n,unlockPreference:r,suggested:m.has(n)});const O=Ae(n);S.find(Y=>Y.provider===n)?.agentUsable||n===\"apple-passwords\"?C.success(`${O.label} is connected.`):C.success(`${O.label} is connected. Add its Chrome extension so Aux can use it.`)},R=async()=>{if(M.length>0){f();return}const n=await c({title:\"Continue without a password manager?\",description:\"Aux will not use an external password manager during tasks. You can set one up later in Settings > Password.\",ui:{action:\"Continue\",cancel:\"Go back\"}});t(\"onboarding.import-password.external-provider.skip-confirm\",{agreed:n}),n&&f()},z=async(n=o)=>{if(!(w.isPending||d)){if(s===void 0){C.error(\"Could not continue right now.\");return}if(n===\"external\"){t(\"onboarding.import-password.external-provider.open\"),N(!0);return}try{const{pwmAccountId:r,next:b}=await w.mutateAsync({accountId:s});switch(await a.invalidateQueries({queryKey:i.passwordManager.accounts.list.queryKey({accountId:s})}),b){case\"setup\":p({step:\"setup\",pwmAccountId:r}),t(\"onboarding.step.reach\",{value:\"setup-password-manager\"});break;case\"unlock\":case\"ready\":p({step:\"import\"})}}catch(r){C.error(r instanceof Error?r.message:\"Could not open Aux Vault.\")}}},G=n=>p(n?{step:\"import\"}:null),V=()=>p(null),B=()=>N(!1),H=({importedCount:n,onNext:r})=>(0,e.jsxs)(e.Fragment,{children:[n===0&&(0,e.jsx)(j,{variant:\"secondary\",size:\"lg\",onClick:A,children:\"Not now\"}),(0,e.jsxs)(j,{size:\"lg\",\"data-dialog-enter-action\":\"true\",disabled:!r&&n===0,onClick:r??f,children:[(0,e.jsx)(\"span\",{children:r||n===0?\"Next\":\"Finish\"}),(0,e.jsx)(me,{className:\"size-4 opacity-50\"})]})]}),Q=s!==void 0&&(0,e.jsxs)(e.Fragment,{children:[(0,e.jsx)(ge,{open:d?.step===\"setup\",accountId:s,pwmAccountId:d?.step===\"setup\"?d.pwmAccountId:\"\",onCancel:V,onComplete:()=>p({step:\"import\"})}),(0,e.jsx)(we,{accountId:s,open:d?.step===\"import\",homeFooter:H,sources:q,onImportComplete:L,onOpenChange:G}),(0,e.jsx)(fe,{open:h,options:S,connectedProviders:M,cancelLabel:\"Not now\",onCancel:B,onFinish:R,onConnect:K,onProviderSelect:T})]});return{handleContinue:z,handleSkip:A,isContinueDisabled:w.isPending||s===void 0,isContinuePending:w.isPending,setupDialogs:Q}}",
+          "replace": "({accountId:s,currentProfilePath:u})=>{const {track:t}=D(),i=de(),g=pe(),a=ie(),l=J(),{confirm:c}=ee(),[h,N]=(0,x.useState)(!1),_=P({...i.externalPasswordManagers.list.queryOptions({accountId:s??-1}),enabled:s!==void 0}),k=P(i.onboarding.detectPasswordManagers.queryOptions({currentProfilePath:u})),m=(0,x.useMemo)(()=>Oe(k.data??[]),[k.data]),S=(0,x.useMemo)(()=>Me(m),[m]),M=_.data?.map(n=>n.provider)??[],f=()=>{l({to:\"/onboarding/ai\",replace:!0})},A=()=>{t(\"onboarding.import-password.not-now\"),f()},T=n=>{t(\"onboarding.import-password.external-provider.select\",{value:n,suggested:m.has(n)})},K=async(n,{unlockPreference:r,unlockPassword:b})=>{if(s===void 0)throw new Error(\"Could not save your password manager preference.\");await g.externalPasswordManagers.connect.mutate({accountId:s,provider:n,...r===\"remember-unlock-password\"&&{password:b}}),await a.invalidateQueries(i.externalPasswordManagers.list.queryFilter({accountId:s})),t(\"onboarding.import-password.external-provider.save\",{provider:n,unlockPreference:r,suggested:m.has(n)});const O=Ae(n);S.find(Y=>Y.provider===n)?.agentUsable||n===\"apple-passwords\"?C.success(`${O.label} is connected.`):C.success(`${O.label} is connected. Add its Chrome extension so Aux can use it.`)},R=async()=>{if(M.length>0){f();return}const n=await c({title:\"Continue without a password manager?\",description:\"Aux will not use an external password manager during tasks. You can set one up later in Settings > Password.\",ui:{action:\"Continue\",cancel:\"Go back\"}});t(\"onboarding.import-password.external-provider.skip-confirm\",{agreed:n}),n&&f()},B=()=>N(!1),z=()=>{if(s===void 0){C.error(\"Could not continue right now.\");return}t(\"onboarding.import-password.external-provider.open\"),N(!0)},Q=s!==void 0&&(0,e.jsx)(fe,{open:h,options:S,connectedProviders:M,cancelLabel:\"Not now\",onCancel:B,onFinish:R,onConnect:K,onProviderSelect:T});return{handleContinue:z,handleSkip:A,isContinueDisabled:s===void 0,isContinuePending:!1,setupDialogs:Q}}",
+          "count": 1,
+          "offsetAtApplication": 2869
+        },
+        {
+          "kind": "integration",
+          "scope": "onboarding external extension disclosure",
+          "find": "Aux fills credentials directly into websites, ",
+          "replace": "Use your existing password manager through its browser extension. ",
+          "count": 1,
+          "offsetAtApplication": 5703
+        },
+        {
+          "kind": "integration",
+          "scope": "remove unsupported built-in secrecy guarantee",
+          "find": "keeping them local and hidden from AI.",
+          "replace": "Review the extension’s permissions before connecting.",
+          "count": 1,
+          "offsetAtApplication": 5791
+        }
+      ]
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/recovery-key-CPOQuYx2.js",
+      "inputSha256": "985ff9c9a11486c50a3f74c6df80b5481238ef7847a055427f1953d11abd7a52",
+      "output": "/Users/rcourson/Documents/Vibe/web/out/completion-20261026-ui-a7/recovery-key-CPOQuYx2.js",
+      "outputSha256": "b6e6ef4ed1b7dd26b4b5dbea31ed7ad20b2824b5ad62bdcf5ff88274328c377c",
+      "suppliedSourceSha256": "1c77009c5bd4c06e4f1bdca84126d25be4eed0eb403268acb141eb47736027a0",
+      "anchors": [
+        {
+          "kind": "integration",
+          "scope": "write explicit Aux v2 plaintext armor headers",
+          "find": "m=\"BEGIN ASIDE RECOVERY KEY\",h=\"END ASIDE RECOVERY KEY\"",
+          "replace": "m=\"BEGIN AUX RECOVERY KEY V2\",h=\"END AUX RECOVERY KEY V2\"",
+          "count": 1,
+          "offsetAtApplication": 13615
+        },
+        {
+          "kind": "integration",
+          "scope": "pair new armor reader with explicit known legacy plaintext reader",
+          "find": "function E(n){const e=n.match(new RegExp(`${m}([\\\\s\\\\S]*?)${h}`,\"i\"));return e?.[1]&&c(e[1])||null}",
+          "replace": "function auxReadArmoredRecoveryKey(text,normalize){\n const formats=[['BEGIN AUX RECOVERY KEY V2','END AUX RECOVERY KEY V2'],['BEGIN ASIDE RECOVERY KEY','END ASIDE RECOVERY KEY']];\n const lines=text.split(/\\r?\\n/),headers=[];\n for(let index=0;index<lines.length;index++){\n  const line=lines[index].trim().replace(/^-+\\s*/,'').replace(/\\s*-+$/,'').trim().toUpperCase();\n  let known=false;\n  for(let format=0;format<formats.length;format++)for(let kind=0;kind<2;kind++)if(line===formats[format][kind]){headers.push({index,format,kind});known=true}\n  if(!known&&/^(?:BEGIN|END)\\s+(?:AUX|ASIDE)\\s+RECOVERY\\s+KEY/.test(line))throw Error('Unsupported recovery key file version. Use a supported block or its recovery phrase.');\n }\n if(!headers.length)return null;\n if(headers.length!==2||headers[0].kind!==0||headers[1].kind!==1||headers[0].format!==headers[1].format||headers[0].index>=headers[1].index)\n  throw Error('Paste exactly one complete recovery key block or its recovery phrase.');\n const body=lines.slice(headers[0].index+1,headers[1].index).join('\\n');\n if(!body.trim())throw Error('Recovery key block is incomplete. Paste the complete block or its recovery phrase.');\n return normalize(body);\n}\nfunction E(n){return auxReadArmoredRecoveryKey(n,c)}",
+          "count": 1,
+          "offsetAtApplication": 14179
+        }
+      ]
+    }
+  ],
+  "generators": [
+    {
+      "path": "vendor/provided/aux-final-ui-identity.mjs",
+      "sha256": "942e3129fe3c8e80fe90e7f39a88c32f8ae82309cd9fa9640407167da87518f8"
+    },
+    {
+      "path": "vendor/provided/aux-final-runtime-identity.mjs",
+      "sha256": "3af91a07f3c21ca104bb64d86bc8322b2f4fa15116b9860ffc7099a8567b0350"
+    },
+    {
+      "path": "docs/integration/proposed/completion-20261026/integration/identity/source-pins.json",
+      "sha256": "136b03b377f47acde3935a36e32020308c5e21a668b81f9045b10ad4db2699bb"
+    },
+    {
+      "path": "vendor/provided/aux-experimental-settings-v2.mjs",
+      "sha256": "c1ef323fe38ed1608cc2024739b28699b75a4292f4e9eeeffffc395dd98d28af"
+    },
+    {
+      "path": "vendor/provided/aux-product-information-links.mjs",
+      "sha256": "324da40d98bfbf2ac2f417306c0f171cce6db0f6dc033ada2138ef68a2c75e35"
+    },
+    {
+      "path": "vendor/provided/aux-session-feedback.mjs",
+      "sha256": "2a7a1b4aaba67f543df79f9113280b1947b4ea140f244b69790dd83e60b07416"
+    },
+    {
+      "path": "vendor/provided/aux-agent-active-identity.mjs",
+      "sha256": "a01fd8367e488dd168ce2c4beb883031903bab48e118ffa8db4a51f7efe1987c"
+    },
+    {
+      "path": "vendor/provided/aux-agent-remaining-identity.mjs",
+      "sha256": "37dee4be6116c843dc5328a2a150b372fcfd26f898024916be3f857deedd9c52"
+    },
+    {
+      "path": "vendor/provided/aux-device-routines-launch.mjs",
+      "sha256": "7103687fff2704b41c513f6e4bc834a9807f21455929ad895d5c9861f137e7fd"
+    },
+    {
+      "path": "docs/integration/proposed/completion-20261026/desktop/device-routines-launch/source-pins.json",
+      "sha256": "589224d67b1df007edc5a501817153a27adc461cd99e60049a32ac703bc7ceeb"
+    },
+    {
+      "path": "docs/integration/proposed/completion-20261026/desktop/agent-remaining-identity/source-pins.json",
+      "sha256": "7c35c1fc2cdf14ac4cb9ee6b2a7be1ae9e9b1f0040c4285e9761c6e8e11f4d44"
+    },
+    {
+      "path": "vendor/provided/aux-closed-recovery-ui.mjs",
+      "sha256": "498331a2518e93416d0713d11431e5d2f2facfe256844923a629aa474237dc75"
+    },
+    {
+      "path": "docs/integration/proposed/completion-20261026/integration/recovery-ui/source-pins.json",
+      "sha256": "baccc48c6999d12a426cabb4f91274a0567a718ed1e61c6664b40f074a1061b4"
+    },
+    {
+      "path": "vendor/provided/aux-final-vault-ui.mjs",
+      "sha256": "1ea946972cc6c278207ef62e3068ed71d822e64f79386ee637ac3bcd611f2f5f"
+    },
+    {
+      "path": "docs/integration/proposed/completion-20261026/integration/vault-ui/source-pins.json",
+      "sha256": "841cf8b7dd790f32f56bd3bd214796f6e7d5a985b1b4e0bdc3739ba716d56db5"
+    },
+    {
+      "path": "docs/integration/proposed/completion-20261026/integration/vault-ui/recovery-pins.json",
+      "sha256": "967fb471986aa6343c4eea36fc8ef43a60f2c8ec428d838826d4515cccce2294"
+    },
+    {
+      "path": "docs/integration/proposed/completion-20261026/integrator/materialize-ui.mjs",
+      "sha256": "ffa8869fd66197151e920e6269849546aa794d6fc4f648836ada4fd623bdc541"
+    },
+    {
+      "path": "docs/integration/proposed/completion-20261026/desktop/agent-active-identity/source-pins.json",
+      "sha256": "e6a423ccc5ae8ec99364ba2f8eb37b3a85c9c5da3984678ce6dbc508938dabf9"
+    },
+    {
+      "path": "docs/integration/proposed/completion-20261026/integration/feedback/source-pins.json",
+      "sha256": "b2a4450c1e834d190a352b15efdbec6d287ba6f7ef89582f326f65cf0d22865e"
+    },
+    {
+      "path": "docs/integration/proposed/completion-20261026/desktop/product-information/source-pins.json",
+      "sha256": "93c5399d57599634489ea1210fab8b359ba5fd446fec35ee723baa3d912d297a"
+    }
+  ],
+  "geometryOrCssDeclarationValuesChanged": false,
+  "selectorBrandingChanged": true,
+  "productExecuted": false,
+  "candidateChanged": false,
+  "productSigned": false
+}
