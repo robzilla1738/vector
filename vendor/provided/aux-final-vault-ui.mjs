@@ -12,10 +12,10 @@ export function auxReadArmoredRecoveryKey(text,normalize){
  const formats=[['BEGIN AUX RECOVERY KEY V2','END AUX RECOVERY KEY V2'],['BEGIN ASIDE RECOVERY KEY','END ASIDE RECOVERY KEY']];
  const lines=text.split(/\r?\n/),headers=[];
  for(let index=0;index<lines.length;index++){
-  const trimmed=lines[index].trim(),wrapper=trimmed.match(/^-+\s*(.*?)\s*-+$/),line=(wrapper?wrapper[1]:trimmed).trim().toUpperCase();
+  const line=lines[index].trim().replace(/^-+\s*/,'').replace(/\s*-+$/,'').trim().toUpperCase();
   let known=false;
   for(let format=0;format<formats.length;format++)for(let kind=0;kind<2;kind++)if(line===formats[format][kind]){headers.push({index,format,kind});known=true}
-  if(!known&&/^(?:BEGIN|END)\s+(?:AUX|ASIDE)\s+RECOVERY\s+KEY\b/.test(line))throw Error('Unsupported recovery key file version. Use a supported block or its recovery phrase.');
+  if(!known&&/^(?:BEGIN|END)\s+(?:AUX|ASIDE)\s+RECOVERY\s+KEY/.test(line))throw Error('Unsupported recovery key file version. Use a supported block or its recovery phrase.');
  }
  if(!headers.length)return null;
  if(headers.length!==2||headers[0].kind!==0||headers[1].kind!==1||headers[0].format!==headers[1].format||headers[0].index>=headers[1].index)
