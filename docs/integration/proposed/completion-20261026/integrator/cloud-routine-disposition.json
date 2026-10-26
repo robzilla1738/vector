@@ -10,10 +10,12 @@
   },
   "existingDeviceProtocol": "Versioned routine create/update CAS and authenticated device-sync are source implemented; actual final deployment/app acceptance remains pending",
   "planRequirement": "If cloud routines remain advertised, require a real executor or an approved explicit scope decision.",
-  "ownerQuestionPending": true,
-  "scopeDisposition": null,
+  "ownerQuestionPending": false,
+  "scopeDisposition": "Launch with device routines only",
   "noExclusionInferred": true,
   "implementationNotChanged": true,
   "hostedResourcesCreated": false,
-  "runtimeAccepted": false
+  "runtimeAccepted": false,
+  "ownerAuthorization": "Launch with device routines only",
+  "requiredImplementation": "Remove cloud execution option from launch UI and producers; preserve existing cloud records without retargeting, execution or deletion; retain server refusal."
 }

@@ -21,5 +21,7 @@
   "signed": false,
   "appExecuted": false,
   "runtimeAccepted": false,
-  "acceptedA38Preserved": true
+  "acceptedA38Preserved": true,
+  "reviewSupersededBeforeApproval": true,
+  "supersedingReason": "Owner authorized device-only routines; the UI/source update must be staged and a new exact review prepared before signing."
 }
