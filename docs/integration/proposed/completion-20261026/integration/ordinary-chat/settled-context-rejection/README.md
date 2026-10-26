@@ -1,0 +1,9 @@
+# Classify the original settled read-only context refusal
+
+The worker bridge catch previously marked every rejection as unknown physical work, including Aux.getBrowserActionContext. That command only awaits native profile-context and optional window lookup, checks fixed identity predicates and returns metadata. Its awaited refusal has no unresolved tab/debugger side effect. Leaving it unknown blocks physical shutdown qualification after an ordinary pre-dispatch refusal.
+
+A private WeakSet records only the original error identity after that specific read-only context call has actually rejected. The bridge catch consumes that marker once and preserves the original error response. Every unrelated command, debugger attach/detach/write failure and unrecognized error still marks unknown exactly as before. No property/message-based classifier or generic rejection bypass is introduced. Existing pending promise tracking still awaits the original worker callback.
+
+Input is fullpage-fixed a2 including renderer cleanup and predicate diagnostics. Final output is /private/tmp/aux-settled-context-rejection-20261026-a2/background.js; a1 was superseded before delivery by consume-once marker handling. This requires recalculating the component payload fingerprint/version receipt in the final staged package. No app operation or signing performed.
+
+Current compiled account API has no deterministic schema mismatch against the nine worker guard predicates: profileId and BrowserContext::UniqueId are strings; account ID is a native integer when bound; regular/off-the-record/paused/restoring flags are booleans; both epoch strings initialize as UUIDs. Account omission or actual identity change must still refuse, not be reinterpreted as safe. The native profile updater writes the projected account ID. Observing the new worker's mask remains necessary to diagnose actual runtime state.

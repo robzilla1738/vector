@@ -1,0 +1,28 @@
+{
+  "format": "aux.settled-context-rejection.v1",
+  "resources": [
+    {
+      "name": "background.js",
+      "path": "/private/tmp/aux-fullpage-fixed-20261026-a2/background.js",
+      "beforeSha256": "c752348154b2dc9754ce3190f01e1b6451913df9711ba51929a86c5dc032c414",
+      "afterSha256": "5878bfc73f19bc07c31cea0e33da6ae5ef005ce434b891b9975b732285a28fe4"
+    }
+  ],
+  "rules": [
+    {
+      "find": "async function auxBrowserNativeContext(route,signal){",
+      "replace": "const auxSettledContextRejections=new WeakSet;\nasync function auxGetBrowserActionContext(route,signal){\n try{return await auxBrowserNativeContext(route,signal)}catch(error){\n  // Only this awaited, read-only native/profile/window lookup is classified.\n  // Physical debugger/tab work and unrelated command failures remain unknown.\n  if(error&&(typeof error==='object'||typeof error==='function'))auxSettledContextRejections.add(error);\n  throw error;\n }\n}\n\nasync function auxBrowserNativeContext(route,signal){",
+      "count": 1
+    },
+    {
+      "find": "case \"Aux.getBrowserActionContext\": return await auxBrowserNativeContext(r,t);",
+      "replace": "case \"Aux.getBrowserActionContext\": return await auxGetBrowserActionContext(r,t);",
+      "count": 1
+    },
+    {
+      "find": "      auxWorkerNoteUnknown(\"bridge-command\");\n      o({",
+      "replace": "      if(!auxSettledContextRejections.delete(d))auxWorkerNoteUnknown(\"bridge-command\");\n      o({",
+      "count": 1
+    }
+  ]
+}
