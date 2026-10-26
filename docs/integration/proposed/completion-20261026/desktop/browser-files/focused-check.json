@@ -4,8 +4,11 @@
     "closed popup retains original lease and uses original task parent connection",
     "changed chunk snapshot refuses before publication",
     "unrelated target has no receipt",
-    "revocation prevents native dispatch"
+    "revocation prevents native dispatch",
+    "file permission receipt requires exact read/write mode",
+    "file permission receipt is single use",
+    "file permission receipt cannot cross tool call"
   ],
-  "passed": 5,
+  "passed": 8,
   "limits": "Finite helper/fake native transport only; no app, native file IO, Chromium syntax or native addon execution."
 }

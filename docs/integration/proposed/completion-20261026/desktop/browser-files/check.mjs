@@ -10,5 +10,14 @@ const result=await run({targetId:'closed-popup',guid:'original-guid',startedAfte
 changed=true;await assert.rejects(run({targetId:'closed-popup',guid:'original-guid'}),/snapshot changed/);changed=false;
 await assert.rejects(run({targetId:'unrelated'}),/original attached/);
 calls=[];invalid=true;await assert.rejects(run({targetId:'closed-popup',guid:'original-guid'}),/revoked/);assert.equal(calls.length,0);invalid=false;
-const receipt={checks:['actual native GUID receipt wins over timestamp heuristic','closed popup retains original lease and uses original task parent connection','changed chunk snapshot refuses before publication','unrelated target has no receipt','revocation prevents native dispatch'],passed:5,limits:'Finite helper/fake native transport only; no app, native file IO, Chromium syntax or native addon execution.'};
+const projected=await readFile('/private/tmp/aux-browser-files-resource-check-20261026/aux-native-entry.mjs','utf8');
+let tool='original-tool';const permissionContext=vm.createContext({WeakMap,Map,Error,getCurrentReplToolCallId:()=>tool});
+vm.runInContext(projected.slice(projected.indexOf('const auxBrowserFilePermissions='),projected.indexOf('\nconst auxBrowserRepls=')),permissionContext);
+const browser={};permissionContext.auxRecordBrowserFilePermission(browser,'/approved/input','read',tool);
+assert.throws(()=>permissionContext.auxConsumeBrowserFilePermission(browser,'/approved/input','write'),/permission receipt/);
+permissionContext.auxConsumeBrowserFilePermission(browser,'/approved/input','read');
+assert.throws(()=>permissionContext.auxConsumeBrowserFilePermission(browser,'/approved/input','read'),/permission receipt/);
+permissionContext.auxRecordBrowserFilePermission(browser,'/approved/output','write',tool);tool='different-tool';
+assert.throws(()=>permissionContext.auxConsumeBrowserFilePermission(browser,'/approved/output','write'),/permission receipt/);
+const receipt={checks:['actual native GUID receipt wins over timestamp heuristic','closed popup retains original lease and uses original task parent connection','changed chunk snapshot refuses before publication','unrelated target has no receipt','revocation prevents native dispatch','file permission receipt requires exact read/write mode','file permission receipt is single use','file permission receipt cannot cross tool call'],passed:8,limits:'Finite helper/fake native transport only; no app, native file IO, Chromium syntax or native addon execution.'};
 await writeFile(new URL('./focused-check.json',import.meta.url),JSON.stringify(receipt,null,2)+'\n');console.log(JSON.stringify(receipt));

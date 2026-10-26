@@ -3,12 +3,12 @@
     {
       "inputPath": "/private/tmp/aux-browser-automation-resource-check-20261026/aux-native-entry.mjs",
       "inputSha256": "a1dffa454409b6c9ce129b645dc1b6aa6f6ca873a276eea5af6b05ac215e2ffb",
-      "outputSha256": "f996d2523ad95f651ccfe6e2642d73386288f6841533cd960a14ffa0a04ea203",
+      "outputSha256": "a9161bc6fb53c422bbfc61c14ecbadc70f58be675d62e16a476249e2a9baf673",
       "outputPath": "/private/tmp/aux-browser-files-resource-check-20261026/aux-native-entry.mjs",
       "anchors": [
         {
           "before": "const auxBrowserRepls=new WeakMap",
-          "after": "async function auxSnapshotBrowserUpload(browser,files){const owner=auxBrowserJsOwners.get(browser);if(!owner)throw Error('The original selected browser session is required for upload');return owner.upload(files)}\nconst auxBrowserRepls=new WeakMap",
+          "after": "const auxBrowserFilePermissions=new WeakMap;function auxRecordBrowserFilePermission(browser,path,mode,tool){let value=auxBrowserFilePermissions.get(browser);if(!value||value.tool!==tool)auxBrowserFilePermissions.set(browser,value={tool,paths:new Map});const key=mode+':'+path;value.paths.set(key,(value.paths.get(key)??0)+1)}function auxConsumeBrowserFilePermission(browser,path,mode){const value=auxBrowserFilePermissions.get(browser),tool=getCurrentReplToolCallId(),key=mode+':'+path,count=value?.paths.get(key)??0;if(!tool||value?.tool!==tool||!count)throw Error('The original file.access permission receipt is required');value.paths.set(key,count-1)}async function auxSnapshotBrowserUpload(browser,files){const owner=auxBrowserJsOwners.get(browser);if(!owner)throw Error('The original selected browser session is required for upload');for(const path of files)auxConsumeBrowserFilePermission(browser,path,'read');return owner.upload(files)}\nconst auxBrowserRepls=new WeakMap",
           "count": 1
         },
         {
@@ -43,7 +43,7 @@
         },
         {
           "before": "assertCurrent:capture,upload(files)",
-          "after": "assertCurrent:capture,publishDownload(result){return this.awaited(()=>{const chunks=result.chunks.map(value=>Buffer.from(value,'base64')),bytes=Buffer.concat(chunks);if(bytes.length!==result.size||bytes.length>64*1024*1024)throw Error('Native download snapshot is incomplete');return {downloadId:result.downloadId,absolutePath:capture().publishBrowserDownload(bytes,result.filename)}})},saveDownload(source,destination){return this.awaited(()=>{if(!options.browser.isReadableDownloadPath(source))throw Error('Original native download is required');const owner=capture();owner.assertTaskSessionPath(source);const value=owner.readUploadFile(source);return owner.publishBrowserDownload(value.buffer,value.name,destination)})},readDownload(source){return this.awaited(()=>{if(!options.browser.isReadableDownloadPath(source))throw Error('Original native download is required');const owner=capture();owner.assertTaskSessionPath(source);return owner.readUploadFile(source).buffer})},upload(files)",
+          "after": "assertCurrent:capture,publishDownload(result){return this.awaited(()=>{const chunks=result.chunks.map(value=>Buffer.from(value,'base64')),bytes=Buffer.concat(chunks);if(bytes.length!==result.size||bytes.length>64*1024*1024)throw Error('Native download snapshot is incomplete');return {downloadId:result.downloadId,absolutePath:capture().publishBrowserDownload(bytes,result.filename)}})},saveDownload(source,destination){auxConsumeBrowserFilePermission(options.browser,destination,'write');return this.awaited(()=>{if(!options.browser.isReadableDownloadPath(source))throw Error('Original native download is required');const owner=capture();owner.assertTaskSessionPath(source);const value=owner.readUploadFile(source);return owner.publishBrowserDownload(value.buffer,value.name,destination)})},readDownload(source){return this.awaited(()=>{if(!options.browser.isReadableDownloadPath(source))throw Error('Original native download is required');const owner=capture();owner.assertTaskSessionPath(source);return owner.readUploadFile(source).buffer})},upload(files)",
           "count": 1
         },
         {
@@ -79,6 +79,11 @@
         {
           "before": "await this.cdp.send(`Browser.setDownloadBehavior`,{behavior:`default`,eventsEnabled:!0}).catch(()=>{});",
           "after": "if(!this.cdp.scopedTaskId)await this.cdp.send(`Browser.setDownloadBehavior`,{behavior:`default`,eventsEnabled:!0}).catch(()=>{});",
+          "count": 1
+        },
+        {
+          "before": "if(!this.#i||!ri)return ni;let ii={toolCallId:ri,path:ni,mode:ei,source:ti};return await this.#i.trigger(`file.access`,ii,ii),ni",
+          "after": "if(!this.#i||!ri){if(auxUsesBoundBrowserActions())throw Error('An active original file.access permission hook is required');return ni}let ii={toolCallId:ri,path:ni,mode:ei,source:ti};await this.#i.trigger(`file.access`,ii,ii);if(auxUsesBoundBrowserActions())auxRecordBrowserFilePermission(this,ni,ei,ri);return ni",
           "count": 1
         }
       ]
