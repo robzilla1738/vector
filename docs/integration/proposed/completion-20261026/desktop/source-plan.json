@@ -30,7 +30,7 @@
     {
       "path": "chrome/browser/ui/views/frame/aux_organization_window_controller.cc",
       "inputSha256": "be300a8c4b4a6fe27cf55489749678824260e44cf4366845be7fa15ada0719d2",
-      "outputSha256": "58ae069395719e7d8836a1172a1bb0c93738273d107b89477e82f4d88f529fe5",
+      "outputSha256": "20ee4db7beb08c9047bb72dcc2659c6bc625bb1a94a4fd366ec8ea9fb2cc7b79",
       "anchors": [
         {
           "name": "cancel terminal row requests on retirement",
@@ -65,13 +65,13 @@
         {
           "name": "queued storage continuation retains its terminal callback",
           "before": "      deferred_manual_closes_.insert_or_assign(target, std::move(request));",
-          "after": "      deferred_manual_closes_.insert_or_assign(target, std::move(request));\n      failed_unload.Release();",
+          "after": "      deferred_manual_closes_.insert_or_assign(target, std::move(request));\n      failed_unload.Release().Reset();",
           "expectedCount": 1
         },
         {
           "name": "row unload retains membership after native consent",
           "before": "  if (tab->IsPinned() || organization::HasRetention(current->snapshot(), request.logical))\n    EnsureSavedThenClose(request.target, std::move(done));",
-          "after": "  if (manual_unloads_.contains(request.target)) {\n    const auto pending = manual_unloads_.find(request.target);\n    if (pending->second.document.AsRenderFrameHostIfValid() != contents->GetPrimaryMainFrame()) {\n      FinishManualUnload(request.target, false);\n      return;\n    }\n    auto pending_request = manual_unloads_.extract(request.target);\n    failed_unload.Release();\n    EnsureSavedThenClose(request.target, base::BindOnce(\n        [](std::map<tabs::TabHandle, ManualUnload>::node_type pending, bool unloaded) {\n          auto reply = std::move(pending.mapped().reply);\n          if (reply) std::move(reply).Run(unloaded);\n        }, std::move(pending_request)));\n  } else if (tab->IsPinned() || organization::HasRetention(current->snapshot(), request.logical))\n    EnsureSavedThenClose(request.target, std::move(done));",
+          "after": "  if (manual_unloads_.contains(request.target)) {\n    const auto pending = manual_unloads_.find(request.target);\n    if (pending->second.document.AsRenderFrameHostIfValid() != contents->GetPrimaryMainFrame()) {\n      FinishManualUnload(request.target, false);\n      return;\n    }\n    auto pending_request = manual_unloads_.extract(request.target);\n    failed_unload.Release().Reset();\n    EnsureSavedThenClose(request.target, base::BindOnce(\n        [](std::map<tabs::TabHandle, ManualUnload>::node_type pending, bool unloaded) {\n          auto reply = std::move(pending.mapped().reply);\n          if (reply) std::move(reply).Run(unloaded);\n        }, std::move(pending_request)));\n  } else if (tab->IsPinned() || organization::HasRetention(current->snapshot(), request.logical))\n    EnsureSavedThenClose(request.target, std::move(done));",
           "expectedCount": 1
         },
         {

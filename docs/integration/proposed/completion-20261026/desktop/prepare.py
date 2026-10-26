@@ -39,7 +39,7 @@ for path in [CONTROLLER + '.h', CONTROLLER + '.cc', 'chrome/browser/ui/unload_co
         edit('refused exact continuation settles the pending row request', 'void AuxOrganizationWindowController::ContinueManualClose(ManualClose request) {', '''void AuxOrganizationWindowController::ContinueManualClose(ManualClose request) {
   base::ScopedClosureRunner failed_unload(base::BindOnce(
       &AuxOrganizationWindowController::FinishManualUnload, weak_.GetWeakPtr(), request.target, false));''')
-        edit('queued storage continuation retains its terminal callback', '      deferred_manual_closes_.insert_or_assign(target, std::move(request));', '      deferred_manual_closes_.insert_or_assign(target, std::move(request));\n      failed_unload.Release();')
+        edit('queued storage continuation retains its terminal callback', '      deferred_manual_closes_.insert_or_assign(target, std::move(request));', '      deferred_manual_closes_.insert_or_assign(target, std::move(request));\n      failed_unload.Release().Reset();')
         edit('row unload retains membership after native consent', '''  if (tab->IsPinned() || organization::HasRetention(current->snapshot(), request.logical))
     EnsureSavedThenClose(request.target, std::move(done));''', '''  if (manual_unloads_.contains(request.target)) {
     const auto pending = manual_unloads_.find(request.target);
@@ -48,7 +48,7 @@ for path in [CONTROLLER + '.h', CONTROLLER + '.cc', 'chrome/browser/ui/unload_co
       return;
     }
     auto pending_request = manual_unloads_.extract(request.target);
-    failed_unload.Release();
+    failed_unload.Release().Reset();
     EnsureSavedThenClose(request.target, base::BindOnce(
         [](std::map<tabs::TabHandle, ManualUnload>::node_type pending, bool unloaded) {
           auto reply = std::move(pending.mapped().reply);

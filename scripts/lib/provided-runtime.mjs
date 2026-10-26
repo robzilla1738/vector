@@ -386,6 +386,9 @@ export async function stageProvidedRuntime({
             anchor.replacement === 'runtimeRoot' ? runtimeRoot : anchor.replace,
           count: anchor.count,
         }));
+        if (name === 'runtime' && entry.path === 'prepare-python.py')
+          anchors.push({kind: 'identity', find: 'Aside: could not clear quarantine',
+            replace: 'Aux: could not clear quarantine', count: 1});
         if (anchors.length) {
           let text = input.toString('utf8');
           for (const anchor of anchors) {

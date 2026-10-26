@@ -118,7 +118,7 @@
 +    if (!current->snapshot().entries.at(request.logical).archived && !Protected(tab)) {
        const auto target = request.target;
        deferred_manual_closes_.insert_or_assign(target, std::move(request));
-+      failed_unload.Release();
++      failed_unload.Release().Reset();
        LOG(ERROR) << "Aux manual close: deferred_for_storage=1";
      } else {
        LOG(ERROR) << "Aux manual close: continuation_refused=pending_protected";
@@ -134,7 +134,7 @@
 +      return;
 +    }
 +    auto pending_request = manual_unloads_.extract(request.target);
-+    failed_unload.Release();
++    failed_unload.Release().Reset();
 +    EnsureSavedThenClose(request.target, base::BindOnce(
 +        [](std::map<tabs::TabHandle, ManualUnload>::node_type pending, bool unloaded) {
 +          auto reply = std::move(pending.mapped().reply);

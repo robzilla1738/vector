@@ -2,6 +2,7 @@ import { applyAuxChannelBotAssets } from '../../vendor/provided/aux-channel-bot-
 import { applyAuxProductLinks, applyAuxEditorGlobalIdentity } from '../../vendor/provided/aux-product-links.mjs';
 import { applyAuxUiPeerIdentity } from '../../vendor/provided/aux-ui-peer-identity.mjs';
 import { applyAuxUiTransientIdentity } from '../../vendor/provided/aux-ui-transient-identity.mjs';
+import { applyAuxFinalUiIdentity } from '../../vendor/provided/aux-final-ui-identity.mjs';
 import { applyAuxUiStorageIdentity } from '../../vendor/provided/aux-ui-storage-identity.mjs';
 import { applyAuxUiDraftIdentity } from '../../vendor/provided/aux-ui-draft-identity.mjs';
 import { applyAuxUiDraftCapture } from '../../vendor/provided/aux-ui-draft-capture.mjs';
@@ -339,6 +340,8 @@ export async function stageProvidedUi({
           text = draftCapture.text; anchors.push(...draftCapture.anchors);
           const channelAssets = applyAuxChannelBotAssets({component, path: file.path, text, stateIdentityVersion});
           text = channelAssets.text; anchors.push(...channelAssets.anchors);
+          const finalIdentity = applyAuxFinalUiIdentity({component, path: file.path, text, original: source.toString('utf8'), stateIdentityVersion});
+          text = finalIdentity.text; anchors.push(...finalIdentity.anchors);
           const marks = file.inlineMarkCount
             ? [...text.matchAll(inlineMark)]
             : [];

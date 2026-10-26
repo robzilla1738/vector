@@ -1,0 +1,45 @@
+{
+  "format": "aux.completion.actual-observations.v1",
+  "date": "2026-10-26",
+  "candidate": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-local-completion-20261025-a38/Aux.app",
+  "signedInventorySha256": "03542e0336ecd93ee2f0b790905219d454288292f6ceeb236dc211e2b7852bab",
+  "namespace": "Aux Browser A38 Disposable",
+  "profile": "Aux A4 Work",
+  "operator": "integrator using native CUA accessibility and actual pointer/keyboard actions",
+  "working": [
+    "Create and select Completion Review Space",
+    "Create Review Folder and its Nested Review child through actual context-menu pointer actions",
+    "Move a real tab into Nested Review",
+    "Focused Left hides the nested tab; Right restores it",
+    "Pin the review tab into the global pin grid",
+    "Command registry opens a profile-labelled Quick Window; Dismiss returns to original page",
+    "Open theme editor, select Dark, Cancel; Appearance reports original System setting",
+    "Models Connect menu offers Vercel AI Gateway; actual protected API-key form opens"
+  ],
+  "failed": [
+    {
+      "feature": "Pinned manual unload",
+      "expected": "CmdW unloads local view after any genuine beforeunload consent while retaining the pin",
+      "actual": "Settled pinned page remained active after CmdW, including repeat with explicit page focus; no prompt",
+      "sourceFix": "../desktop/source-plan.json",
+      "successorRuntimeAccepted": false
+    },
+    {
+      "feature": "Quick Window URL editing",
+      "expected": "Actual address editor accepts and navigates a local fixture URL",
+      "actual": "Address stayed selected about:blank after indexed click and coordinate focus, typing and paste; Dismiss worked",
+      "sourceFix": "../desktop/quick-window/source-plan.json",
+      "successorRuntimeAccepted": false
+    }
+  ],
+  "toolLimitation": "Native menu AX click selected an item without executing it; actual coordinate pointer click opened the folder sheet. This was not counted as a product failure.",
+  "provider": "No key entered or provider request sent by the agent. Secure key entry and bounded Muse request authorization requested from owner; form left open for owner input.",
+  "limits": [
+    "No clean restart performed for new organization fixtures yet",
+    "Theme control cancellation observed; full theme preview/apply/presets not accepted",
+    "Quick Window navigation and promotion not accepted",
+    "New source fixes are not applied to the accepted app",
+    "No production, signing, OS grant or owner-state operation"
+  ],
+  "fullProductComplete": false
+}

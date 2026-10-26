@@ -1,0 +1,114 @@
+{
+  "format": "aux.final-ui-identity.source.v1",
+  "passed": true,
+  "files": [
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/developers-DTvaoVBC.js",
+      "inputSha256": "92762f7e7059d632a57cacbc089b11523ee3d72da16638cbe488026699ec431b",
+      "outputSha256": "7c22f0e3970ecf39c0497cdab3dc0103cb794e73f3b93f1b20f82f94dc0f5958",
+      "output": "/Users/rcourson/Documents/Vibe/web/out/completion-20261026-ui-identity/developers-DTvaoVBC.js",
+      "anchors": [
+        {
+          "kind": "identity",
+          "name": "Aux transient identity and CLI help",
+          "find": "aside",
+          "replace": "aux",
+          "count": 25
+        }
+      ]
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/connect-dialog-CacgpFap.js",
+      "inputSha256": "c80933017aa02d328118dfa22370f954cb21eaa91029fe584cedfccfc811b188",
+      "outputSha256": "8f10c421607cc4ac4fc83fb04b0eef80c38721534926fac5d22efb810a1274c2",
+      "output": "/Users/rcourson/Documents/Vibe/web/out/completion-20261026-ui-identity/connect-dialog-CacgpFap.js",
+      "anchors": [
+        {
+          "kind": "identity",
+          "name": "Aux transient identity and CLI help",
+          "find": "aside-openai-codex-oauth",
+          "replace": "aux-openai-codex-oauth",
+          "count": 1
+        },
+        {
+          "kind": "identity",
+          "name": "Aux transient identity and CLI help",
+          "find": "aside-github-copilot-oauth",
+          "replace": "aux-github-copilot-oauth",
+          "count": 1
+        },
+        {
+          "kind": "identity",
+          "name": "Aux transient identity and CLI help",
+          "find": "aside-meta-muse-oauth",
+          "replace": "aux-meta-muse-oauth",
+          "count": 1
+        },
+        {
+          "kind": "identity",
+          "name": "Aux transient identity and CLI help",
+          "find": "aside-xai-grok-oauth",
+          "replace": "aux-xai-grok-oauth",
+          "count": 1
+        },
+        {
+          "kind": "identity",
+          "name": "Aux transient identity and CLI help",
+          "find": "aside-kimi-code",
+          "replace": "aux-kimi-code",
+          "count": 1
+        },
+        {
+          "kind": "identity",
+          "name": "Aux transient identity and CLI help",
+          "find": "aside-claude-oauth",
+          "replace": "aux-claude-oauth",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/newtab-CnOLQ0yu.js",
+      "inputSha256": "0ef06493685bbfe1475a216f933e504c9ef0a7a0d2facc457c9c9fac853d8011",
+      "outputSha256": "eef65df02f862b13dcf9951f3f8cb81d1e6875a6dc6e7b782c954f23e7e69539",
+      "output": "/Users/rcourson/Documents/Vibe/web/out/completion-20261026-ui-identity/newtab-CnOLQ0yu.js",
+      "anchors": [
+        {
+          "kind": "identity",
+          "name": "Aux transient identity and CLI help",
+          "find": "aside-optimistic-search",
+          "replace": "aux-optimistic-search",
+          "count": 1
+        },
+        {
+          "kind": "identity",
+          "name": "Aux transient identity and CLI help",
+          "find": "aside|chrome",
+          "replace": "aux|chrome",
+          "count": 4
+        },
+        {
+          "kind": "identity",
+          "name": "Aux transient identity and CLI help",
+          "find": "/^aside:",
+          "replace": "/^aux:",
+          "count": 1
+        },
+        {
+          "kind": "identity",
+          "name": "Aux transient identity and CLI help",
+          "find": "\"aside://\"",
+          "replace": "\"aux://\"",
+          "count": 1
+        }
+      ]
+    }
+  ],
+  "compatibilityUnchanged": true,
+  "repeatedApplicationRefused": true,
+  "scriptsParse": true,
+  "geometryOrCssChanged": false,
+  "persistedStorageChanged": false,
+  "productExecuted": false,
+  "candidateChanged": false
+}

@@ -1,0 +1,26 @@
+{
+  "version": 0,
+  "case-sensitive": "true",
+  "roots": [
+    {
+      "type": "file",
+      "name": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/ui/views/frame/aux_organization_window_controller.h",
+      "external-contents": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/desktop/source/chrome/browser/ui/views/frame/aux_organization_window_controller.h"
+    },
+    {
+      "type": "file",
+      "name": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/ui/views/frame/aux_organization_window_controller.cc",
+      "external-contents": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/desktop/source/chrome/browser/ui/views/frame/aux_organization_window_controller.cc"
+    },
+    {
+      "type": "file",
+      "name": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/ui/unload_controller.cc",
+      "external-contents": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/desktop/source/chrome/browser/ui/unload_controller.cc"
+    },
+    {
+      "type": "file",
+      "name": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/ui/aux_preview/aux_preview_controls.cc",
+      "external-contents": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/desktop/quick-window/source/chrome/browser/ui/aux_preview/aux_preview_controls.cc"
+    }
+  ]
+}
