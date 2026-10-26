@@ -1,0 +1,116 @@
+{
+  "format": "aux.cloud.production-configuration-proposal.v1",
+  "activationAuthorized": false,
+  "destination": {
+    "team": "robzilla1738s-projects",
+    "teamId": "team_aFPyA9tVAkB2WegquB3aADsL",
+    "project": "aux-cloud",
+    "projectId": "prj_WLAGrKLQ42G5unZOI5FUkk5gBwxB",
+    "environment": "production"
+  },
+  "latestRecordedMetadata": {
+    "date": "2026-10-26",
+    "missingRequiredNames": [
+      "CLERK_SECRET_KEY",
+      "NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY",
+      "NEXT_PUBLIC_APP_URL",
+      "AUX_API_ORIGIN",
+      "RESEND_API_KEY",
+      "RESEND_FROM"
+    ],
+    "publicValuesUnverified": [
+      "AUX_ALLOWED_ORIGINS",
+      "CLERK_AUTHORIZED_PARTIES"
+    ],
+    "metadataResponseTruncated": true,
+    "providerSecretPairingVerified": false
+  },
+  "proposedPublicValues": {
+    "NEXT_PUBLIC_APP_URL": "https://app.getaux.co",
+    "AUX_API_ORIGIN": "https://api.getaux.co",
+    "AUX_ALLOWED_ORIGINS": "https://app.getaux.co",
+    "CLERK_AUTHORIZED_PARTIES": "https://app.getaux.co",
+    "AUX_SHARE_ORIGIN": "https://share.getaux.co",
+    "RESEND_FROM": "Aux <hello@notify.getaux.co>",
+    "AUX_PAYMENTS_ENABLED": "false",
+    "AUX_HOSTED_AI_ENABLED": "false"
+  },
+  "publishableKey": {
+    "name": "NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY",
+    "actualValue": null,
+    "sourceInstance": "ins_3L29Mzbc6B8iAxm7GYrD7e73HDc",
+    "requiredPrefix": "pk_live_",
+    "expectedFrontendHost": "clerk.getaux.co",
+    "destinationType": "plain",
+    "status": "missing; owner copies actual matching public key directly in Vercel form"
+  },
+  "secretFields": [
+    {
+      "name": "CLERK_SECRET_KEY",
+      "destinationType": "sensitive",
+      "productionOnly": true,
+      "valueIncluded": false,
+      "action": "Owner transfers existing matching Aux Production backend key from exact instance; do not substitute a development key."
+    },
+    {
+      "name": "CLERK_WEBHOOK_SIGNING_SECRET",
+      "destinationType": "sensitive",
+      "productionOnly": true,
+      "valueIncluded": false,
+      "action": "Preserve existing exact endpoint ep_3L5p7Z0hZJXXnNLt5eflPCCJ1uy secret; verify pairing without displaying."
+    },
+    {
+      "name": "RESEND_API_KEY",
+      "destinationType": "sensitive",
+      "productionOnly": true,
+      "valueIncluded": false,
+      "action": "Restore existing production sending-only credential restricted to notify.getaux.co; no mailbox-read/domain-admin grant."
+    },
+    {
+      "name": "DATABASE_URL",
+      "destinationType": "sensitive",
+      "productionOnly": true,
+      "valueIncluded": false,
+      "action": "Preserve exact production pooled Neon recipient; provider integration encrypted/sensitive metadata is acceptable."
+    },
+    {
+      "name": "BLOB_READ_WRITE_TOKEN",
+      "destinationType": "sensitive",
+      "productionOnly": true,
+      "valueIncluded": false,
+      "action": "Preserve exact private production store binding; provider integration encrypted/sensitive metadata is acceptable."
+    },
+    {
+      "name": "AUX_AUTH_SECRET",
+      "destinationType": "sensitive",
+      "productionOnly": true,
+      "valueIncluded": false,
+      "action": "Preserve retained production value; do not generate a replacement to make a build pass."
+    },
+    {
+      "name": "AUX_DATA_ENCRYPTION_KEY",
+      "destinationType": "sensitive",
+      "productionOnly": true,
+      "valueIncluded": false,
+      "action": "Preserve original production 32-byte base64 wrapping key; do not rotate/reset ciphertext."
+    },
+    {
+      "name": "CRON_SECRET",
+      "destinationType": "sensitive",
+      "productionOnly": true,
+      "valueIncluded": false,
+      "action": "Preserve production maintenance/readiness secret; never place in request argv or logs."
+    }
+  ],
+  "notRequiredForThisLaunch": [
+    "STRIPE_*",
+    "AUX_LIVE_BILLING=true",
+    "Gateway key or Gateway terms/purchase",
+    "Aux-hosted inference/speech enablement"
+  ],
+  "secureCustodyReferences": {
+    "productionEnvironment": "tgl4lxfw5ang6pgluyjrop3ncu",
+    "recoveryEnvironment": "tiqx3r27nvdpnhpldrrbugximu",
+    "generalVaultTokenToRunner": false
+  }
+}

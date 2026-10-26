@@ -1,0 +1,38 @@
+{
+  "format": "aux.cloud.activation-public-prices.v1",
+  "checkedDate": "2026-10-26",
+  "dashboardOrAccountAccess": false,
+  "sources": [
+    {
+      "url": "https://www.digitalocean.com/pricing/droplets",
+      "claim": "Basic Regular bundled 2GiB/1vCPU/50GiB row lists USD12/month; actual region/account selection still unverified"
+    },
+    {
+      "url": "https://docs.digitalocean.com/products/droplets/details/pricing/",
+      "claim": "Bundled CPU cap differs from v5; powered-off bundled resources remain billable until destroyed"
+    },
+    {
+      "url": "https://healthchecks.io/pricing/",
+      "claim": "Hobbyist lists USD0/month and20 monitored jobs; account eligibility/available slots unverified"
+    },
+    {
+      "url": "https://developers.cloudflare.com/r2/pricing/",
+      "claim": "Standard USD0.015/GB-month,4.50/million ClassA,0.36/million ClassB; shared account free tier, usage/rounding applies"
+    },
+    {
+      "url": "https://vercel.com/docs/cli/deploy",
+      "claim": "--prod --skip-domain stages Production without automatic domain promotion"
+    },
+    {
+      "url": "https://vercel.com/docs/cron-jobs/manage-cron-jobs",
+      "claim": "New deployment does not interrupt running cron work; Instant Rollback does not update active schedules"
+    }
+  ],
+  "notVerified": [
+    "provider account eligibility/current inventory",
+    "actual region availability and quoted bill",
+    "current R2 credential exact expiry",
+    "new server/monitor recipient identity"
+  ],
+  "notAGuaranteedTotalBillOrCap": true
+}

@@ -1,0 +1,43 @@
+# C1/O1 activation review — prepared, not authorized
+
+This is the concrete owner/operator packet for the current cloud source and existing Aux recipients. It performs no provider/account lookup, secret retrieval, deployment, schema write, email, backup, SSH operation or activation. The recorded production deployment is READY; promised production behavior is still unaccepted. Existing local browsing and BYOK remain usable without optional cloud sign-in. Payments and Aux-funded hosted AI stay false. Stripe setup and Gateway terms/credit are not prerequisites for BYOK or this packet.
+
+## Exactly which source and evidence
+
+`source-pins.json` binds all 216 tracked service files, the service tree, dependency lock, twelve SQL hashes and the reviewed evidence. Snapshot commit is `e04bbd53fd69b138f2e3732f2bdc8e3c8a0f6783`; service tree is `57dc5bd7721815d695d94a5b8ab70d6b3fa929da`, last changed by `5283f9ea072ec4983ff67de5253c3c2d5872bb26`. Later documentation/native commits need not change that service tree. Before execution, repin any actual service change and use the integrated desktop's matching provider/cloud adapters.
+
+The schema file SHA256 is `7d452e13d873f9c2b08efc5eab12c928d942e846f667be4938aa519740d89f10`; its compact-JSON digest is separately recorded. Production migration12 was actually applied on October23 with all twelve hashes matching, per `services/aux-cloud/evidence/production-recovery-migration.json`. This is historical evidence, not a current production query. Therefore **no schema change is expected**: compare current applied hashes first. Do not rerun migrations or bootstrap resources merely because an older setup document says eleven/null production profile.
+
+The October26 read-only checkpoint records `dpl_4xeJYrXuUtcmFWFTjwevrCF3huQZ`, unique host `aux-cloud-9oc52fmgn-robzilla1738s-projects.vercel.app`, reported Git metadata `6fe912d4421f547e72e2833fb54238789167234b`. Reported Git metadata is not proof of deployed bytes, schema or current contracts. The new event/routine client/server pairing is in current source and needs a current-source deployment. Health200 is not that proof.
+
+## Exact existing recipients
+
+| Recipient | Recorded intended identity | Owner/operator confirmation before transfer or activation |
+| --- | --- | --- |
+| Vercel | Personal `robzilla1738s-projects`, team `team_aFPyA9tVAkB2WegquB3aADsL`; `aux-cloud`, project `prj_WLAGrKLQ42G5unZOI5FUkk5gBwxB`; Production only | Match team/project/environment. Local project metadata matches those IDs; account identity must be rechecked at the action. Never select marketing `aux-web`. |
+| Neon | `aux-cloud-prod`, project `ancient-river-76453764`, branch `br-red-hall-b857cl2i`, Vercel store `store_mK6YWm9VwmXhdUDF` | Runtime pooler `ep-red-snow-b8ctxcyx-pooler.c-14.us-east-1.aws.neon.tech`; backup direct host `ep-red-snow-b8ctxcyx.c-14.us-east-1.aws.neon.tech`. Preserve database and keys. Historical fixed0.25CU/300s autosuspend/seven-day history are not fresh console verification. |
+| Private Blob | `aux-private-prod`, `store_UUr9bRkRQm4lu0Z2`, iad1; private host `uur9brkrqm4lu0z2.private.blob.vercel-storage.com` | Keep private and Production-only; never substitute development `store_6KOQaUOaHm1IvxeQ`. No new store is proposed for service activation. |
+| Clerk | Aux application `app_3L28GxWe25LYlR6tGYgVHLrebpi`; Production instance `ins_3L29Mzbc6B8iAxm7GYrD7e73HDc`; frontend `clerk.getaux.co`, hosted accounts `accounts.getaux.co` | Actual matching `sk_live_` and `pk_live_`; public key must encode `clerk.getaux.co$`. Do not copy development keys. |
+| Clerk webhook | Existing endpoint `ep_3L5p7Z0hZJXXnNLt5eflPCCJ1uy` → `https://api.getaux.co/api/v1/webhooks/clerk` | Five existing events: user.updated, user.deleted, session.ended, session.removed, session.revoked. Verify existing signing-secret pairing; do not create a duplicate endpoint. Delivery has not been accepted. |
+| Resend | Workspace named Aux; sending domain `notify.getaux.co`, domain ID `44ea1472-8fc3-489a-8c58-022b794ab386`; proposed retained sender `Aux <hello@notify.getaux.co>` | Historical sending-only Production key restricted to that domain. Workspace ID is not recorded: owner confirms the actual Aux workspace/domain; no invented account ID. Sender value is public, key is not. |
+| Secret custody | Existing 1Password Aux Production Environment `tgl4lxfw5ang6pgluyjrop3ncu`; Aux Recovery `tiqx3r27nvdpnhpldrrbugximu` | Owner transfers only the named approved field directly into its exact provider/server destination. This packet accesses neither Environment nor key. |
+
+`configuration.json` supplies exact public values and private field destinations. Current metadata reports six required names missing: CLERK_SECRET_KEY, NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY, NEXT_PUBLIC_APP_URL, AUX_API_ORIGIN, RESEND_API_KEY, RESEND_FROM. AUX_ALLOWED_ORIGINS and CLERK_AUTHORIZED_PARTIES are present but their encrypted public values remain unverified. Metadata strings were truncated. Existing key names do not prove correct pairing or valid values.
+
+The owner should restore existing matching Production credentials through the provider/1Password secure controls and Vercel's **Production value form**, never chat, argv, clipboard logs or a committed env file. Preserve existing AUX_AUTH_SECRET, AUX_DATA_ENCRYPTION_KEY, CRON_SECRET and webhook secret. Missing public fields are not a reason to generate new keys or reset stored ciphertext. Provider-linked DATABASE_URL/Blob tokens may be encrypted/sensitive; manually transferred service secrets should be Production-only sensitive values. The public Clerk key is intentionally publishable, but its actual value is not present in this packet.
+
+## Review gates to resolve
+
+1. Owner confirms the exact intended Clerk/Resend pairings and securely restores the six missing fields; verifies the two origin lists against `configuration.json`. Keep both launch flags explicitly false. Source `check-environment.mjs` then validates the actual Production build environment without printing values.
+2. Resolve domain assignment before any promotion. The recorded Production deployment **also lists dev-cloud.getaux.co**. Do not let a blanket promotion silently move the development hostname onto Production resources. Record its actual existing Development/Preview deployment/environment before changing anything; its target ID is currently unknown. Preserve marketing and Hostinger DNS.
+3. Approve the bounded staged deployment, project-specific maintenance-cron hold/resume, conditional schema action and exact aliases described in `DEPLOYMENT.md`. That document also identifies why the old reported deployment is not a certified protocol-compatible rollback.
+4. Approve fresh disposable production sign-in recipient(s), provider/user creation and deletion, and fixture data for the single `J5.md` journey. No recipient has been approved by this packet. Do not delete or use a preexisting owner account.
+5. Separately approve the proposed runner/account/cost/SSH scope and the explicit Production-content/credential recipients in `OPERATIONS.md`. Provisioning a server alone does not approve production access. Alert recipient is proposed, not enrolled.
+
+`approval-record.pending.json` contains the exact known scope and unresolved public fields for the final owner action. Null fields are unresolved facts, not installed placeholders. The approval text grants neither release/signing nor payment/hosted-inference activation.
+
+## Evidence that should be reused
+
+Keep the existing source/fixture results in `final-completion/cloud/readiness.md`, `operations.md`, current event/routine integration evidence, the actual R2 four-object check and current12 hosted cross-store restore. This packet reran none of those tests or backup drills. The operational wrapper is now implemented; the old dedicated-runner review's “wrapper still required” and two-check description are superseded by current source and three timers, not evidence of an installed service.
+
+Cloud routines still have no server executor and return CLOUD_ROUTINE_UNAVAILABLE. A paused device-routine metadata/CAS check is possible without inference; it must not be reported as executed cloud scheduling. Any remaining advertised cloud-execution promise needs its own implementation or explicit disposition before a full hosted-completion claim.
