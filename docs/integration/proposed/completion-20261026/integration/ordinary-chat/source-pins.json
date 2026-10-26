@@ -19,7 +19,7 @@
     },
     {
       "find": "async startRun(Cn,ei,ti,ni){let ri=await this.#h(Cn,ei);assertSessionCanStart(Cn,ei);",
-      "replace": "async startRun(Cn,ei,ti,ni){const auxStartOwner=AccountRegistry.getAccount(Cn);let ri;try{ri=await this.#h(Cn,ei)}catch(error){auxReportAgentStartFailure(Cn,ei,auxStartOwner,error)}assertSessionCanStart(Cn,ei);",
+      "replace": "async startRun(Cn,ei,ti,ni){const auxStartOwner=AccountRegistry.getAccount(Cn);let ri,auxStartAttempt;try{auxStartAttempt=auxCaptureAgentStartAttempt(Cn,ei);ri=await this.#h(Cn,ei)}catch(error){auxReportAgentStartFailure(Cn,ei,auxStartOwner,auxStartAttempt,error)}assertSessionCanStart(Cn,ei);",
       "count": 1,
       "scope": "persist truthful early startup error and return supplied UI error"
     }

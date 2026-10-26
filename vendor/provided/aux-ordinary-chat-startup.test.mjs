@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import vm from 'node:vm';
 import { execFileSync } from 'node:child_process';
-import { auxCreateLazyDesktopRepl, auxReportAgentStartFailure, transformAuxOrdinaryChatStartup } from './aux-ordinary-chat-startup.mjs';
+import { auxCreateLazyDesktopRepl, auxCaptureAgentStartAttempt, auxReportAgentStartFailure, transformAuxOrdinaryChatStartup } from './aux-ordinary-chat-startup.mjs';
 import { transformAuxEventPolling } from './aux-event-poll-integration.mjs';
 import { transformAuxFinalRuntimeIdentity } from './aux-final-runtime-identity.mjs';
 import { upgradeCloudTransfers } from '../../docs/integration/proposed/completion-20261026/integration/transform.mjs';
@@ -34,13 +34,23 @@ test('unused and initialized lazy resources dispose without constructing or sett
   assert.equal(repl.dispose(),pending);assert.equal(repl.dispose(),pending);assert.equal(disposed,1);finish();await pending;
 });
 
-test('early startup failure updates only its original idle account task and returns a payload-free UI error',()=>{
+test('early startup failure changes only its exact idle unarchived attempt, including late same-timestamp completion',()=>{
   const owner={id:0,createdAt:123,incarnationId:'original'},writes=[];let current={...owner};
-  const context=vm.createContext({AccountRegistry:{getAccount:()=>current},SessionStore:{get:()=>({id:'fixture',status:'idle'}),update:(...args)=>writes.push(args)},TRPCError:class extends Error{constructor(input){super(input.message);this.code=input.code;}}});
-  new vm.Script(auxReportAgentStartFailure.toString()).runInContext(context);
-  assert.throws(()=>context.auxReportAgentStartFailure(0,'fixture',owner,{code:'AUX_SUPERVISED_TASKS_DISABLED',message:'must-not-relay-secret-payload'}),error=>error.code==='PRECONDITION_FAILED'&&!error.message.includes('must-not-relay'));
+  let session={id:'fixture',status:'idle',createdAt:1000,updatedAt:2000,archivedAt:null,systemPrompt:'before'},revision=0,turns=[];
+  const context=vm.createContext({AccountRegistry:{getAccount:()=>current},SessionStore:{get:()=>({...session}),listTurnOverviews:()=>({transcriptRevision:revision,turns}),update:(...args)=>writes.push(args)},TRPCError:class extends Error{constructor(input){super(input.message);this.code=input.code;}}});
+  new vm.Script(auxCaptureAgentStartAttempt.toString()+'\n'+auxReportAgentStartFailure.toString()).runInContext(context);
+  const attempt=context.auxCaptureAgentStartAttempt(0,'fixture');session.systemPrompt='prepared by this initializer';
+  assert.throws(()=>context.auxReportAgentStartFailure(0,'fixture',owner,attempt,{code:'AUX_SUPERVISED_TASKS_DISABLED',message:'must-not-relay-secret-payload'}),error=>error.code==='PRECONDITION_FAILED'&&!error.message.includes('must-not-relay'));
   assert.equal(writes.length,1);assert.equal(writes[0][2].status,'errored');
-  current={...owner,incarnationId:'replacement'};assert.throws(()=>context.auxReportAgentStartFailure(0,'fixture',owner,Error('private error body')));assert.equal(writes.length,1);
+  // A newer run can complete back to idle within the same SQLite second.
+  // Its transcript revision/turn, not the unchanged timestamp, protects it.
+  revision=2;turns=[{id:'newer-turn',status:'completed'}];
+  assert.throws(()=>context.auxReportAgentStartFailure(0,'fixture',owner,attempt,Error('late initializer failure')),/could not initialize/);
+  assert.equal(writes.length,1);
+  revision=0;turns=[];session.archivedAt=3000;
+  assert.throws(()=>context.auxReportAgentStartFailure(0,'fixture',owner,attempt,Error('archived meanwhile')));assert.equal(writes.length,1);
+  session.archivedAt=null;current={...owner,incarnationId:'replacement'};
+  assert.throws(()=>context.auxReportAgentStartFailure(0,'fixture',owner,attempt,Error('private error body')));assert.equal(writes.length,1);
 });
 
 test('both complete current successor leaves preserve execution guard and parse with the lazy startup/error join',()=>{
