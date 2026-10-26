@@ -1,0 +1,20 @@
+{
+  "scope": "cold input native compile corrections and omitted optional acknowledgment",
+  "projected": false,
+  "compiled": false,
+  "files": [
+    {
+      "path": "chrome/browser/ui/views/frame/aux_tab_search_bubble.cc",
+      "beforeSha256": "535f18bb5b43d615e4b13c2aa54a909ededf371d47467366ae169c2a805a7a0a",
+      "afterSha256": "43a2a4370b8185ccf8c8df197cd879a388269a1e1b0181303cfb0b5b58869081",
+      "anchors": 3
+    },
+    {
+      "path": "chrome/browser/extensions/api/aux_browser_preferences/aux_browser_preferences_api.cc",
+      "beforeSha256": "be6c791a3892aab9eea4c977d61f4d464caa24cd936414a13db2df18c802b65b",
+      "afterSha256": "7705fb6dcc216f4fdb6fd3c895c76a00781fe52871c0e17e8b9818b76d7a44d9",
+      "anchors": 1
+    }
+  ],
+  "anchors": 4
+}

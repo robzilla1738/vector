@@ -1,0 +1,47 @@
+--- a/chrome/browser/ui/views/frame/aux_tab_search_bubble.cc
++++ b/chrome/browser/ui/views/frame/aux_tab_search_bubble.cc
+@@ -346,7 +346,7 @@
+     initial_input_ = AddChildView(std::make_unique<views::Textfield>());
+     initial_input_->SetProperty(views::kViewIgnoredByLayoutKey, true);
+     initial_input_->SetController(this);
+-    initial_input_->SetBorder(views::CreateEmptyBorder());
++    initial_input_->SetBorder(views::CreateEmptyBorder(gfx::Insets()));
+     const gfx::FontList font;
+     initial_input_->SetFontList(font.Derive(16 - font.GetFontSize(), gfx::Font::NORMAL, gfx::Font::Weight::NORMAL));
+     initial_input_->GetViewAccessibility().SetName(u"Command input");
+@@ -361,8 +361,8 @@
+     if (auto* binding = SearchBrowserBinding::FromWebContents(webview_->GetWebContents()))
+       binding->SetInputHandler({});
+   }
+-  void Layout(PassKey key) override {
+-    views::View::Layout(key);
++  void Layout(PassKey) override {
++    LayoutSuperclass<views::View>(this);
+     initial_input_->SetBounds(40, 0, std::max(0, width() - 80), 44);
+   }
+   void OnAfterUserAction(views::Textfield* sender) override {
+@@ -458,7 +458,7 @@
+            webview_->GetWebContents()->GetPrimaryMainFrame()->IsErrorDocument());
+       binding->Begin(mode);
+       if (cold) {
+-        const auto* target = binding->target();
++        auto* target = binding->target();
+         initial_input_->SetText(mode == AuxCommandBarMode::kNavigate && target
+             ? base::UTF8ToUTF16(target->GetVisibleURL().spec()) : std::u16string());
+         initial_input_->SelectAll(false);
+--- a/chrome/browser/extensions/api/aux_browser_preferences/aux_browser_preferences_api.cc
++++ b/chrome/browser/extensions/api/aux_browser_preferences/aux_browser_preferences_api.cc
+@@ -106,9 +106,11 @@
+   }
+   auto* prefs = profile()->GetPrefs();
+   if (method == "getCommandContext") {
+-    if (args().size() > 1 || (args().size() == 1 && !args()[0].is_dict()))
++    // Generated bindings may normalize an omitted optional argument to null.
++    const bool has_ack = !args().empty() && !args()[0].is_none();
++    if (args().size() > 1 || (has_ack && !args()[0].is_dict()))
+       return RespondNow(Error("Invalid command input acknowledgment"));
+-    const auto* ack = args().empty() ? nullptr : &args()[0].GetDict();
++    const auto* ack = has_ack ? &args()[0].GetDict() : nullptr;
+     if (ack && (ack->size() != 2 || !ack->FindString("generation") || !ack->FindString("inputRevision")))
+       return RespondNow(Error("Invalid command input acknowledgment"));
+     return RespondNow(WithArguments(GetAuxCommandContext(GetSenderWebContents(), ack)));
