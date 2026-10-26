@@ -1,0 +1,19 @@
+{
+  "inputs": [
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/integrator/chat-start-diagnostic-a1/repair-resources.py",
+      "sha256": "97224783d2550211d0f5a2dd48b654892b9e5ab3a69198357c5a33145323b001"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/integrator/startup-resume-a1/repair-framework.py",
+      "sha256": "24bf2a42ecf39df965747d119e0c1bdc78a92d39ffe2b06edd4dc85ec6307d68"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/runtime/authority-review/owner-approval-a4.json",
+      "sha256": "cd326f18ba11509c7cfdd920a5054ad9d1c91df9a74424b4298c5692e743474f"
+    }
+  ],
+  "executed": false,
+  "planFrozen": false,
+  "reason": "Final replacement artifacts and latest current receipt selected by integrator after build."
+}
