@@ -1,0 +1,23 @@
+{
+  "format": "aux.completion.fresh-namespace-metadata-preflight.v1",
+  "date": "2026-10-26",
+  "reviewSha256": "f8d9a35a59ca2a5e895c475c59b7e3d97d1cd5c1f2e8bc67823522888f627c06",
+  "paths": [
+    {
+      "role": "support",
+      "path": "/Users/rcourson/Library/Application Support/Aux Browser Completion 20261026",
+      "exists": false
+    },
+    {
+      "role": "cache",
+      "path": "/Users/rcourson/Library/Caches/Aux Browser Completion 20261026",
+      "exists": false
+    }
+  ],
+  "allAbsent": true,
+  "created": false,
+  "contentsRead": false,
+  "keychainAccessed": false,
+  "runtimeAuthorityGranted": false,
+  "mustRecheckImmediatelyBeforeApprovedFirstLaunch": true
+}
