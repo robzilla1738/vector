@@ -1,0 +1,24 @@
+{
+  "format": "aux.analytics-no-spawn.v1",
+  "rules": [
+    {
+      "find": "if(process.platform===`darwin`){let[Cn,ei]=await Promise.all([$(`sw_vers -productVersion`),$(`sysctl -n hw.model`)]);return{os_version:Cn,device_model:ei}}",
+      "replace": "if(process.platform===`darwin`)return{};",
+      "count": 1
+    }
+  ],
+  "resources": [
+    {
+      "path": "/private/tmp/aux-direct-fixed-dispatch-20261026-a2/index.mjs",
+      "name": "index.mjs",
+      "beforeSha256": "198ad50c850b7dc0825aa2cc37e754c0a0f07d07df5430faba2c68c21e0742ef",
+      "afterSha256": "8f1414575eb8bd0a6e721fcc5a956f075490e3c2c2623cbf89f60947e1ab1309"
+    },
+    {
+      "path": "/private/tmp/aux-direct-fixed-dispatch-20261026-a2/aux-native-entry.mjs",
+      "name": "aux-native-entry.mjs",
+      "beforeSha256": "30b38b312dfe43b3c0642bbcc512a06e0c64188c649d6529dc3019d198165c03",
+      "afterSha256": "ce630fb2059525bc3e88b7befba25f35c086bd7b98437b864493d26c1b011ebf"
+    }
+  ]
+}
