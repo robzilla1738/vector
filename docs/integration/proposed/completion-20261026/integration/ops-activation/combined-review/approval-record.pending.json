@@ -1,0 +1,136 @@
+{
+  "format": "aux.ops.combined-activation-review.v1",
+  "status": "prepared-pending-public-inputs",
+  "activationAuthorized": false,
+  "executed": false,
+  "readyForFinalApproval": false,
+  "noStandaloneNoTempApprovalGate": true,
+  "cloudDeploymentReview": "Separate cloud-activation review owns exact deployment source/alias/auth scope; no deployment approval duplicated. Post-deployment catalog repin required.",
+  "digitalOcean": {
+    "teamName": "My Team",
+    "teamId": "c517b39d-7865-4d54-9a0d-236dbf282267",
+    "paymentMethodNeeded": true,
+    "registeredSshKeysObserved": 0,
+    "intendedProjectId": null,
+    "existingRunnerInventoryVerified": false,
+    "instance": {
+      "name": "aux-backup-prod-01",
+      "plan": "Basic Regular bundled 1vCPU/2GiB/50GiB",
+      "region": "nyc3",
+      "image": "Ubuntu 24.04 LTS x86_64",
+      "actualQuoteVerified": false,
+      "actualId": null,
+      "actualIp": null
+    },
+    "monthlyComputeUSD": 12,
+    "r2UsageTargetUSD": 5,
+    "combinedMonthlyTargetUSD": 17,
+    "spendNotificationTargetUSD": 20,
+    "guaranteedSpendingCap": false
+  },
+  "administration": {
+    "administrator": null,
+    "incidentAdministrator": null,
+    "allowedSourceCidrs": [],
+    "cidrReplyPending": true,
+    "sshFingerprint": "SHA256:YK/XGGhOAvVCgMY4r5pBFz1fJ7u24dRkvvsx2vNKs30",
+    "publicKeySha256": "9ddf06677f7188479e778c8a7a4736b915a362b687f93725deddff31cf2e5a2f",
+    "providerKeyRegistered": false,
+    "independentPrivateKeyCustodyVerified": false
+  },
+  "source": {
+    "project": "ancient-river-76453764",
+    "branch": "br-red-hall-b857cl2i",
+    "database": "neondb",
+    "directHost": "ep-red-snow-b8ctxcyx.c-14.us-east-1.aws.neon.tech",
+    "currentSchema12SourceDeployed": false,
+    "postDeploymentCatalogRepinRequired": true,
+    "captureRole": "aux_backup_capture",
+    "captureRoleCreated": false,
+    "newExplicitPersistentDataPrivileges": [
+      "CONNECT neondb",
+      "USAGE public",
+      "SELECT exact reviewed 30 tables"
+    ],
+    "inheritedPublicDatabasePrivileges": [
+      "CONNECT",
+      "TEMPORARY"
+    ],
+    "inheritedPublicRoutineExecuteCount": 40,
+    "routineBodiesObserved": false,
+    "privateBlobStore": "store_UUr9bRkRQm4lu0Z2",
+    "privateBlobCredentialBreadth": "BLOB_READ_WRITE_TOKEN: store read/write; GET-only code does not narrow token",
+    "productionContentCaptureApproved": false,
+    "sourceCredentialTransferApproved": false,
+    "protectedLoginReady": false,
+    "sourceCredentialCutoffAt": null
+  },
+  "r2": {
+    "accountId": "5a5f6f8a4d1c1d35cfe82c4a74c966b9",
+    "bucket": "aux-recovery-prod",
+    "access": "private",
+    "prefix": "daily/",
+    "credential": "existing Aux Recovery Operator bucket-only Object Read & Write",
+    "prefixIsProviderEnforced": false,
+    "displayedExpiryDate": "2026-11-22",
+    "exactExpiresAt": null,
+    "proposedRenewalReviewBefore": "2026-11-15",
+    "multipartAbortDays": 7,
+    "multipartAbortIsBackupRetention": false,
+    "newTokenRead": false
+  },
+  "monitoring": {
+    "provider": "Healthchecks.io",
+    "accountId": null,
+    "projectId": null,
+    "captureCheckId": null,
+    "expiryCheckId": null,
+    "credentialCheckId": null,
+    "confirmedAlertRecipient": null,
+    "replyPending": true,
+    "existingProposedRecipient": "robertcourson1738@gmail.com",
+    "captureGrace": "2 hours proposed",
+    "expiryGrace": "30 minutes proposed",
+    "credentialGrace": "2 hours proposed",
+    "privatePingURLsInReview": false,
+    "controlledFailureAlertAccepted": false,
+    "missedHeartbeatAlertAccepted": false
+  },
+  "custody": {
+    "independentOwnerRecoveryKeyRetrievalVerified": false,
+    "emergencyCopyVerified": false,
+    "productionWrappingKeyRotationProposed": false,
+    "restoreCredentialOnCaptureRunner": false
+  },
+  "restore": {
+    "neonBranchId": null,
+    "database": null,
+    "blobStoreId": null,
+    "emptyAndUnservedVerified": false,
+    "expiresAt": null,
+    "separateCredentialCustodyReady": false
+  },
+  "schedule": {
+    "capture": "02:00 UTC daily proposed",
+    "expiry": "hourly proposed",
+    "credential": "01:30 UTC daily proposed",
+    "maxCiphertextBytesPerCapture": 1073741824,
+    "maximumJobMetadataRecords": 366,
+    "firstScheduledCaptureAt": null,
+    "unitFilesPinned": false,
+    "enabled": false,
+    "runtimeReviewReady": false
+  },
+  "actualCatalogSummary": {
+    "tables": 30,
+    "sequences": 0,
+    "rlsTables": 0,
+    "largeObjects": 0,
+    "outsidePublicRelations": 0,
+    "scope": "whole current database pg_dump; repin after deployed source"
+  },
+  "resourceOrPrivilegeMutation": false,
+  "credentialsReadOrCopied": false,
+  "testsRun": false,
+  "backupOrRestoreExecuted": false
+}

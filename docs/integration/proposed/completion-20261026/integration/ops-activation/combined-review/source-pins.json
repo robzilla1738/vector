@@ -1,0 +1,74 @@
+{
+  "format": "aux.ops.combined-review.source-pins.v1",
+  "rootInputPins": [
+    {
+      "path": "docs/integration/proposed/completion-20261026/integrator/backup-dashboard-review.json",
+      "sha256": "5d252202002b0767b82f611a8fe83ddd6eb059a3f7402d9ce6f86d8c4518b810"
+    },
+    {
+      "path": "docs/integration/proposed/completion-20261026/integrator/backup-catalog-review-a1.json",
+      "sha256": "e43546966d0e301f1459f2cba9f76a65aae171f0cdf9259799b60c4c962f07dc"
+    },
+    {
+      "path": "docs/integration/proposed/completion-20261026/integrator/backup-catalog-observed-a1.json",
+      "sha256": "7de928db7f0b82f1c0c25490f62877c5cb829bdc836d7ef43e9e5b32495c3d91"
+    },
+    {
+      "path": "docs/integration/proposed/completion-20261026/integration/cloud-activation/approval-record.pending.json",
+      "sha256": "5ec026211a77a8f22117e3d5272565a1d437a58aa44c84f75d4c50316eb55d02"
+    },
+    {
+      "path": "docs/integration/proposed/completion-20261026/integration/ops-activation/access-review.md",
+      "sha256": "cd93130c455cd5c9cb4926c7e6eda6efe48f84335c622d9d3ae65556c0754d8e"
+    },
+    {
+      "path": "docs/cloud/dedicated-backup-runner-review/README.md",
+      "sha256": "f1911097367b359d96288987a691e5a1f54d4788387011acff8cd342127be3f2"
+    },
+    {
+      "path": "services/aux-cloud/scripts/cloud-backup-runner.mjs",
+      "sha256": "1ee4e81f8ec544daf2c3bb816bff88ec41a7b993eb41dd10015021e4d01546be"
+    },
+    {
+      "path": "services/aux-cloud/scripts/backup-runner-core.mjs",
+      "sha256": "79e66333c65c9d6234853e835895c69ace66f47858b21f798a8dc4866bf7c088"
+    },
+    {
+      "path": "services/aux-cloud/scripts/cloud-recovery-online.mjs",
+      "sha256": "5130b26220e4643a99b7453d3dd9ae9468c37ed303b16b833f04f8ceaec66720"
+    },
+    {
+      "path": "out/private-aux-backup-runner-review-20261026/preparation.json",
+      "sha256": "b35bbae01bf588fab197c91e8a728bd4b5846c4cd745d03e6f7bb39ee32195f5"
+    }
+  ],
+  "desktopProposalPins": [
+    {
+      "path": "docs/integration/proposed/completion-20261026/integration/ops-activation/catalog-grant-proposal/observed-facts.json",
+      "sha256": "12ab1c10105ca2b4f061a89d0fe17a155a813837ceacf4ed001911a94708f1ab"
+    },
+    {
+      "path": "docs/integration/proposed/completion-20261026/integration/ops-activation/catalog-grant-proposal/proposed-capture-grants.sql",
+      "sha256": "e851520a97ae0eb879a83f377e9112e349736ad28081dc0d533a97858694efc2"
+    },
+    {
+      "path": "docs/integration/proposed/completion-20261026/integration/ops-activation/catalog-grant-proposal/combined-activation-review-text.md",
+      "sha256": "789c850e6647bd02811b1e0551f0a179b72c9931fc208fc2465597b9d82d2e3e"
+    }
+  ],
+  "reviewOutputs": [
+    {
+      "path": "README.md",
+      "sha256": "bf62f3ae32dafea340ce040698943820169a53d121be4dbf858dbfb8177ce1a7"
+    },
+    {
+      "path": "approval-record.pending.json",
+      "sha256": "d9b7b92a49f9bc60a6bc16c55109e959fd3555ba2c24ae408a2f250d6aad3bcd"
+    }
+  ],
+  "readOnlyPreparation": true,
+  "noNetworkOrProviderActions": true,
+  "noSecretValuesRead": true,
+  "testsRun": false,
+  "postDeploymentRepinRequired": true
+}
