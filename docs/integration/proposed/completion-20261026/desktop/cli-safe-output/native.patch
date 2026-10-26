@@ -1,0 +1,13 @@
+--- a/chrome/browser/aux/cli/AuxCliIngress.cc
++++ b/chrome/browser/aux/cli/AuxCliIngress.cc
+@@ -247,7 +247,9 @@
+    const auto* done=reinterpret_cast<const ReadOnlyCompletion*>(result.Header());
+    if(!token||done->header.msgh_id!=kReadOnlyResult||(done->header.msgh_bits&MACH_MSGH_BITS_COMPLEX)||done->header.msgh_remote_port!=MACH_PORT_NULL||done->payload_bytes>kPayloadLimit||done->header.msgh_size!=ReadOnlyCompletionBytes(done->payload_bytes)||done->version!=kVersion||done->nonce!=hello.nonce||done->exit_code<0||done->exit_code>255||!images->SameBrowser(token->msgh_audit,browser))return 75;
+    const auto json=std::span(done->payload).first(done->payload_bytes);
+-   if(json.empty()||fwrite(json.data(),1,json.size(),stdout)!=json.size()||fputc('\n',stdout)==EOF||fflush(stdout)!=0)return 74;
++   if(json.empty())return 74;
++   for(const auto byte:json)if(fputc(byte,stdout)==EOF)return 74;
++   if(fputc('\n',stdout)==EOF||fflush(stdout)!=0)return 74;
+    return done->exit_code;
+   }
+   const auto* done=reinterpret_cast<const Completion*>(result.Header());

@@ -1,0 +1,1 @@
+clang++: [0;1;31merror: [0m[1margument unused during compilation: '-c' [-Werror,-Wunused-command-line-argument][0m

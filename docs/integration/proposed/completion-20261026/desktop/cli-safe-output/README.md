@@ -1,0 +1,5 @@
+# Native CLI authenticated JSON output
+
+One counted successor to projected AuxCliIngress.cc. The actual GN unsafe-buffer plugin rejects fwrite(raw pointer,size) and also fputs(c_str). Emit the bounded authenticated byte span with fputc iteration, followed by the same newline and fflush. This preserves exact payload bytes, empty/error exit 74, same-browser authentication, nonce/frame checks, server exit status and output ordering without warning suppression.
+
+Actual native_cli_ingress GN command recovered from root failed combined-build receipt; syntax-only compilation uses the same compiler/plugins/macOS SDK/module/flags under scripts/native-build.py. VFS use-external-names=false preserves original native source name so the unsafe-buffer plugin runs against the actual target policy. Final compile.json/syntax.txt pass (exit 0, no diagnostics). Earlier driver -c and fputs failures retained; first external-name VFS pass was not accepted as plugin proof and its receipt remains. No native tree mutation or full build/launch.

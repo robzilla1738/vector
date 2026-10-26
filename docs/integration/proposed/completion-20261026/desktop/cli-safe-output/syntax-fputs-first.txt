@@ -1,0 +1,5 @@
+[1m../../chrome/browser/aux/cli/AuxCliIngress.cc:251:61: [0m[0;1;31merror: [0m[1mfunction 'fputs' is unsafe [-Werror,-Wunsafe-buffer-usage-in-libc-call][0m
+  251 |    if(output.empty()||output.find('\0')!=std::string::npos||fputs(output.c_str(),stdout)==EOF||fputc('\n',stdout)==EOF||fflush(stdout)!=0)return 74;[0m
+      | [0;1;32m                                                            ^~~~~~~~~~~~~~~~~~~~~~~~~~~~
+[0m[1m../../chrome/browser/aux/cli/AuxCliIngress.cc:251:61: [0m[0;1;36mnote: [0mSee //docs/unsafe_buffers.md for help.[0m
+1 error generated.
