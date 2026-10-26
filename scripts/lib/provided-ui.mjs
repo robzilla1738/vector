@@ -3,6 +3,7 @@ import { applyAuxProductLinks, applyAuxEditorGlobalIdentity } from '../../vendor
 import { applyAuxUiPeerIdentity } from '../../vendor/provided/aux-ui-peer-identity.mjs';
 import { applyAuxUiTransientIdentity } from '../../vendor/provided/aux-ui-transient-identity.mjs';
 import { applyAuxFinalUiIdentity } from '../../vendor/provided/aux-final-ui-identity.mjs';
+import { transformAuxFinalRuntimeIdentity } from '../../vendor/provided/aux-final-runtime-identity.mjs';
 import { applyAuxUiStorageIdentity } from '../../vendor/provided/aux-ui-storage-identity.mjs';
 import { applyAuxUiDraftIdentity } from '../../vendor/provided/aux-ui-draft-identity.mjs';
 import { applyAuxUiDraftCapture } from '../../vendor/provided/aux-ui-draft-capture.mjs';
@@ -342,6 +343,10 @@ export async function stageProvidedUi({
           text = channelAssets.text; anchors.push(...channelAssets.anchors);
           const finalIdentity = applyAuxFinalUiIdentity({component, path: file.path, text, original: source.toString('utf8'), stateIdentityVersion});
           text = finalIdentity.text; anchors.push(...finalIdentity.anchors);
+          if (component === 'agent' && stateIdentityVersion === 2 && file.path === 'assets/session-feedback-dialog-BjDg0W8m.js') {
+            const feedbackIdentity = transformAuxFinalRuntimeIdentity({component, path: file.path, text});
+            text = feedbackIdentity.text; anchors.push(...feedbackIdentity.anchors);
+          }
           const marks = file.inlineMarkCount
             ? [...text.matchAll(inlineMark)]
             : [];
