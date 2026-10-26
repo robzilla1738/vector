@@ -1,0 +1,20 @@
+{
+  "format": "aux.fixed-pty-linked-source-check.v1",
+  "checks": [
+    {
+      "command": "node --check /tmp/aux-fixed-pty-linked-entry-proposal.mjs",
+      "result": "pass",
+      "outputSha256": "40be9e2f5f72695a75a2df327b15dedf6bdcc3d11a4b6b4c77e6e996550d3955"
+    },
+    {
+      "command": "node --check source/unixTerminal.js",
+      "result": "pass"
+    }
+  ],
+  "EntitlementRequired": true,
+  "nativeCompiled": false,
+  "projected": false,
+  "candidateChanged": false,
+  "reviewChanged": false,
+  "executed": false
+}

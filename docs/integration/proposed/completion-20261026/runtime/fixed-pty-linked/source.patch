@@ -1,0 +1,51 @@
+--- /Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-node-pty-direct-child/source/pty.cc
++++ pty-linked.cc
+@@ -874,4 +874,10 @@
+   return exports;
+ }
+ 
+-NODE_API_MODULE(NODE_GYP_MODULE_NAME, init)
++// Linked initializer only: the actual host registers it in the original main
++// Environment after genuine supervised/ES admission. No dynamic module export.
++extern "C" napi_value AuxInitializeFixedPty(napi_env env,napi_value exports) {
++  try { return init(Napi::Env(env),Napi::Object(env,exports)); }
++  catch(const Napi::Error& error) {error.ThrowAsJavaScriptException();return nullptr;}
++  catch(...) {napi_throw_error(env,"AUX_PTY_INITIALIZER_FAILED","Fixed PTY initializer interrupted");return nullptr;}
++}
+--- /Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/runtime/final-daemon/source/AuxDevelopmentWorkerHost.combined.cc
++++ AuxDevelopmentWorkerHost.cc
+@@ -1,5 +1,6 @@
+ #include "AuxDevelopmentWorkerHost.h"
+ #include "AuxAccountMemoryHelper.h"
++extern "C" napi_value AuxInitializeFixedPty(napi_env,napi_value);
+ #include "AuxAccountComputerUseHelper.h"
+ #include "AuxSelectedAccountScope.h"
+ #include <thread>
+@@ -396,6 +397,7 @@
+ #include "AuxFixedBuiltins.inc"
+ #include "AuxSelectedBrowserFiles.inc"
+ #include "AuxSelectedFileReader.inc"
++#include "AuxFixedPtyLinked.inc"
+ #include "AuxRuntimeCacheInspection.inc"
+ #include "AuxRuntimeCachePins.inc"
+ #include "AuxRuntimeCacheAsync.inc"
+@@ -1172,6 +1174,7 @@
+     status = napi_define_properties(env,target,std::size(properties),properties);
+   }
+   if(status==napi_ok && worker->CanContinue()) RegisterFixedBuiltins(worker);
++  if(status==napi_ok && worker->CanContinue()) RegisterFixedPtyLinked(worker);
+   const bool closed = initialization.Complete(status == napi_ok);
+   return status == napi_ok && closed ? napi_closing : status;
+ 
+--- /Users/rcourson/Documents/Vibe/web/out/provided-candidate-local-completion-20261025-a38/Aux.app/Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/native/node-pty/lib/unixTerminal.js
++++ unixTerminal.js
+@@ -24,7 +24,8 @@
+ var tty = require("tty");
+ var terminal_1 = require("./terminal");
+ var utils_1 = require("./utils");
+-var native = utils_1.loadNativeModule('pty');
++// Native policy selects the real helper; this string preserves fork ABI only.
++var native = { module: process._linkedBinding('aux_pty_builtin'), dir: '.' };
+ var pty = native.module;
+ var helperPath = native.dir + '/spawn-helper';
+ helperPath = path.resolve(__dirname, helperPath);

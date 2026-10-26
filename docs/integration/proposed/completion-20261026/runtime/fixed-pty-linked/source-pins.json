@@ -1,0 +1,26 @@
+{
+  "source/pty-linked.cc": {
+    "sha256": "406a423ffecf0508915fb935add40ef89cc72a8ee932ea671ea790f33c5d3653",
+    "bytes": 24633
+  },
+  "source/unixTerminal.js": {
+    "sha256": "9839802fbc79cafc0c4b95752dd1b44d76a5d36aaffc530ebe3772d6fb7d10c9",
+    "bytes": 13483
+  },
+  "source/AuxDevelopmentWorkerHost.cc": {
+    "sha256": "daa3e14cd92a5ab7db4479c3e4024cf978949d52576909c1dfedc4f24390406f",
+    "bytes": 62586
+  },
+  "source/AuxFixedPtyLinked.inc": {
+    "sha256": "6cae8957abd55826c10473d5a21e4165cb3792cc1b1fda27565fa947a5fdf340",
+    "bytes": 870
+  },
+  "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-node-pty-direct-child/source/direct-child-wait.h": {
+    "sha256": "f26cd17e37bcd8de75579366aa5bd8c7549ae0b8195553d05e26c34574bd2df7",
+    "bytes": 828
+  },
+  "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-native-pty-helper-host/source/AuxNativePtyReservation.h": {
+    "sha256": "0ff6976a612f6e11dc99fad6e6a2f8fb10148f4e6cca4304fd71a3044b174982",
+    "bytes": 1996
+  }
+}

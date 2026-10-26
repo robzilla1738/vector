@@ -1,0 +1,58 @@
+{
+  "format": "aux.fixed-pty-linked-proposal.v1",
+  "records": [
+    {
+      "input": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-node-pty-direct-child/source/pty.cc",
+      "inputSha256": "85025b57d05232f03daf4627d891e593f0938859af446848fd87e48cb5326807",
+      "output": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/runtime/fixed-pty-linked/source/pty-linked.cc",
+      "outputSha256": "406a423ffecf0508915fb935add40ef89cc72a8ee932ea671ea790f33c5d3653",
+      "anchors": [
+        {
+          "before": "NODE_API_MODULE(NODE_GYP_MODULE_NAME, init)",
+          "after": "// Linked initializer only: the actual host registers it in the original main\n// Environment after genuine supervised/ES admission. No dynamic module export.\nextern \"C\" napi_value AuxInitializeFixedPty(napi_env env,napi_value exports) {\n  try { return init(Napi::Env(env),Napi::Object(env,exports)); }\n  catch(const Napi::Error& error) {error.ThrowAsJavaScriptException();return nullptr;}\n  catch(...) {napi_throw_error(env,\"AUX_PTY_INITIALIZER_FAILED\",\"Fixed PTY initializer interrupted\");return nullptr;}\n}",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "input": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/runtime/final-daemon/source/AuxDevelopmentWorkerHost.combined.cc",
+      "inputSha256": "1020c93bc5d32c208186926aae3d766aa8beaa0165df9421373393de356880c9",
+      "output": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/runtime/fixed-pty-linked/source/AuxDevelopmentWorkerHost.cc",
+      "outputSha256": "daa3e14cd92a5ab7db4479c3e4024cf978949d52576909c1dfedc4f24390406f",
+      "anchors": [
+        {
+          "before": "#include \"AuxAccountMemoryHelper.h\"",
+          "after": "#include \"AuxAccountMemoryHelper.h\"\nextern \"C\" napi_value AuxInitializeFixedPty(napi_env,napi_value);",
+          "count": 1
+        },
+        {
+          "before": "#include \"AuxSelectedFileReader.inc\"",
+          "after": "#include \"AuxSelectedFileReader.inc\"\n#include \"AuxFixedPtyLinked.inc\"",
+          "count": 1
+        },
+        {
+          "before": "  if(status==napi_ok && worker->CanContinue()) RegisterFixedBuiltins(worker);",
+          "after": "  if(status==napi_ok && worker->CanContinue()) RegisterFixedBuiltins(worker);\n  if(status==napi_ok && worker->CanContinue()) RegisterFixedPtyLinked(worker);",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "input": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-local-completion-20261025-a38/Aux.app/Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/native/node-pty/lib/unixTerminal.js",
+      "inputSha256": "a62e3a60c3bc1b0e7261f58284856df748dcee6761a2bc7a5a5ba98b22660473",
+      "output": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/runtime/fixed-pty-linked/source/unixTerminal.js",
+      "outputSha256": "9839802fbc79cafc0c4b95752dd1b44d76a5d36aaffc530ebe3772d6fb7d10c9",
+      "anchors": [
+        {
+          "before": "var native = utils_1.loadNativeModule('pty');",
+          "after": "// Native policy selects the real helper; this string preserves fork ABI only.\nvar native = { module: process._linkedBinding('aux_pty_builtin'), dir: '.' };",
+          "count": 1
+        }
+      ]
+    }
+  ],
+  "entitlementRequired": true,
+  "activated": false,
+  "compiled": false,
+  "executed": false
+}

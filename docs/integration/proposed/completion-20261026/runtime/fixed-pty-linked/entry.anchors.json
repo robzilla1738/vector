@@ -1,0 +1,12 @@
+{
+  "input": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-local-completion-20261025-a38/Aux.app/Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/node-development/aux-native-entry.mjs",
+  "inputSha256": "f355833cb607963a65ca3108e7ae19ea7ca60192a9f3d8e2644a3c12ec49c808",
+  "anchors": [
+    {
+      "before": "function loadNodePty(){if(loadedNodePty)return loadedNodePty;if(process.platform!==`darwin`||process.arch!==`arm64`)throw Error(`PTY_UNAVAILABLE: unsupported native embedded target.`);let Cn=path.resolve(path.dirname(process.execPath),`../Resources/native/node-pty/package.json`);try{ensureSpawnHelperExecutable(Cn);let ei=createRequire(Cn);return loadedNodePty=ei(path.dirname(Cn)),loadedNodePty}catch(Cn){throw Error(`PTY_UNAVAILABLE: node-pty could not be loaded (${Cn instanceof Error?Cn.message:String(Cn)}).`)}}function ensureSpawnHelperExecutable(Cn){let ei=path.join(path.dirname(Cn),`prebuilds`,`darwin-arm64`,`spawn-helper`);if(!(statSync(ei).mode&73))throw Error(`PTY_UNAVAILABLE: sealed spawn-helper is not executable.`)}",
+      "after": "function loadNodePty(){if(loadedNodePty)return loadedNodePty;auxRequireSupervisedTasks();if(process.platform!==`darwin`||process.arch!==`arm64`)throw Error(`PTY_UNAVAILABLE: unsupported fixed target.`);let Cn=path.resolve(path.dirname(process.execPath),`../Resources/native/node-pty/package.json`);let ei=createRequire(Cn);return loadedNodePty=ei(path.dirname(Cn)),loadedNodePty}",
+      "count": 1
+    }
+  ],
+  "activation": "EntitlementRequired; no guard/compile flag changed"
+}
