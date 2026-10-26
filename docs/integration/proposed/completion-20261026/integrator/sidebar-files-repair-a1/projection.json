@@ -1,0 +1,34 @@
+{
+  "projected": true,
+  "files": [
+    {
+      "path": "chrome/browser/ui/aux_recent_files_service.cc",
+      "beforeSha256": "46ec54e2041b87dfbd4332c5150ca32b69d72807d72145539945e51b81fabf6b",
+      "afterSha256": "0f6abb229821b9c8fff2f8a871a8f2ceb71ca42dd25e2f3a586cd2528d7f1e0f",
+      "anchors": 1,
+      "source": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/desktop/recent-download-restore/source/chrome/browser/ui/aux_recent_files_service.cc"
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_sidebar_contents_view.cc",
+      "beforeSha256": "ac4d937fa8585f970f1ccdd3b74d390af33a3441ff6bb6727a1277596c3d917e",
+      "afterSha256": "d6e24db4506041c2eff9e27b973952e86a37bade9b22a033d9b4c2a7b81ca449",
+      "anchors": 1,
+      "source": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/desktop/sidebar-hover-repair/source/chrome/browser/ui/views/frame/aux_sidebar_contents_view.cc"
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_organization_tree_view.cc",
+      "beforeSha256": "2b5de512a8de89810c94279e89b8a06058e5f978c43537a9e2364dd2fa9cfc2e",
+      "afterSha256": "55adba32a3fcd550a3b64fd19ab05444e415b6fef9522c9ed24bd5db5c8980e6",
+      "anchors": 8,
+      "source": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/desktop/sidebar-hover-repair/source/chrome/browser/ui/views/frame/aux_organization_tree_view.cc"
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_organization_window_controller.cc",
+      "beforeSha256": "88d64c0c26b0a535afcbec9e2c5fcc4585183c19f7f5d7d6e3381e6006121473",
+      "afterSha256": "49c13d0805410d33ae6af7d31fd30daa78560c9f5ca77ef9b0fb5b3bad9a4047",
+      "anchors": 5,
+      "source": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/desktop/sidebar-hover-repair/source/chrome/browser/ui/views/frame/aux_organization_window_controller.cc"
+    }
+  ],
+  "appActivated": false
+}

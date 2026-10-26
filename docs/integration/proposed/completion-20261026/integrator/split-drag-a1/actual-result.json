@@ -1,0 +1,54 @@
+{
+  "candidateInventorySha256": "e4efa859230491a9ed98a73e49f594896a1c8e91de4c2e3e3c2ebd799b8f2c08",
+  "startup": "profile picker and normal Work window reached; no startup refusal",
+  "restored": [
+    "two-pane Alpha/Beta layout",
+    "work cookie",
+    "WORK_ONLY_20261026 note"
+  ],
+  "chat": {
+    "model": "vercel-ai-gateway/meta/muse-spark-1.3-contributor",
+    "session": "VeQBtnj7Snxgmrr4",
+    "prompt": "Reply exactly AUX_PROVIDER_OK. Do not use tools.",
+    "response": "AUX_PROVIDER_OK",
+    "visibleWorkedSeconds": 11,
+    "submittedThisCandidate": 1,
+    "initializationDiagnosticCount": 0,
+    "temporaryConnectionActive": true
+  },
+  "splitDrag": {
+    "diagnostics": [
+      "Aux split drag begin context=1",
+      "Aux split drag release retained=1 moved=0 target=0 edge=0",
+      "Aux split drag begin context=1",
+      "Aux split drag release retained=1 moved=0 target=0 edge=0"
+    ],
+    "interpretation": "retained press, no >=6px motion; no native split refusal demonstrated",
+    "physicalInputAcceptancePending": true
+  },
+  "recentFiles": "synthetic notes.txt unavailable after restart; exact SAFE gate rejects history UNKNOWN, narrow source repair prepared",
+  "quickWindow": {
+    "opened": true,
+    "navigated": "http://127.0.0.1:61862/delta",
+    "profileCookie": "aux_profile=work",
+    "note": "WORK_ONLY_20261026",
+    "promotedToNormalTab": true,
+    "existingSplitPreserved": true,
+    "transientLogicalActivationRefusal": true,
+    "subsequentAlphaActivationRecovered": true
+  },
+  "navigation": {
+    "cmdKCommandPalette": true,
+    "alwaysShowFullURLSettingEnabled": true,
+    "quickDeltaFullSchemeObserved": true
+  },
+  "hover": {
+    "enabledViaExistingContextMenu": true,
+    "collapseTriggeredCrash": true,
+    "browserExitCode": 134,
+    "signal": 6,
+    "assertion": "ui/views/controls/scroll_view.cc:622 !(horiz_sb_->GetVisible() && vert_sb_->GetVisible())",
+    "statePreserved": true,
+    "physicalHoverNotAccepted": true
+  }
+}

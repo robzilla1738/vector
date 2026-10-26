@@ -1,0 +1,69 @@
+[75059:55627893:1026/154453.234825:FATAL:ui/views/controls/scroll_view.cc:622] Check failed: !(horiz_sb_->GetVisible() && vert_sb_->GetVisible()). 
+0   Aux Framework                       0x00000001296c2be8 base::debug::CollectStackTrace(base::span<void const*, 18446744073709551615ul, void const**>) + 24
+1   Aux Framework                       0x00000001296b3c10 base::debug::StackTrace::StackTrace() + 80
+2   Aux Framework                       0x00000001296004f0 logging::LogMessage::Flush() + 176
+3   Aux Framework                       0x00000001296003a4 logging::LogMessage::~LogMessage() + 36
+4   Aux Framework                       0x00000001295eb934 logging::(anonymous namespace)::CheckLogMessage::~CheckLogMessage() + 76
+5   Aux Framework                       0x000000013086f63c logging::CheckNoreturnError::~CheckNoreturnError() + 16
+6   Aux Framework                       0x000000013086f64c base::debug::AsanHeapOverflow() + 0
+7   Aux Framework                       0x000000012c8ae248 _ZZN5views10ScrollView18UpdateGradientMaskEvENK3$_0clEv + 0
+8   Aux Framework                       0x000000012c8af1fc views::ScrollView::Layout(base::NonCopyablePassKey<views::View>) + 2364
+9   Aux Framework                       0x0000000128ec6ae0 VerticalTabStripScrollView::Layout(base::NonCopyablePassKey<views::View>) + 96
+10  Aux Framework                       0x000000012c910490 views::View::LayoutImmediately() + 180
+11  Aux Framework                       0x000000012c910218 views::View::SetBoundsRect(gfx::Rect const&) + 1444
+12  Aux Framework                       0x000000012c9015f0 views::LayoutManagerBase::ApplyLayout(views::ProposedLayout const&) + 408
+13  Aux Framework                       0x000000012c901440 views::LayoutManagerBase::LayoutImpl() + 48
+14  Aux Framework                       0x000000012c900e54 views::LayoutManagerBase::Layout(views::View*) + 140
+15  Aux Framework                       0x000000012c913208 views::View::Layout(base::NonCopyablePassKey<views::View>) + 152
+16  Aux Framework                       0x000000012fef6fb8 VerticalTabStripRegionView::Layout(base::NonCopyablePassKey<views::View>) + 128
+17  Aux Framework                       0x000000012c910490 views::View::LayoutImmediately() + 180
+18  Aux Framework                       0x000000012c910218 views::View::SetBoundsRect(gfx::Rect const&) + 1444
+19  Aux Framework                       0x000000012fe4c524 BrowserViewLayoutImpl::ProposedLayout::ApplyLayout(views::View*, base::FunctionRef<void (views::View*, bool)>) && + 184
+20  Aux Framework                       0x000000012fe4cdb8 BrowserViewLayoutImpl::Layout(views::View*) + 816
+21  Aux Framework                       0x000000012c913208 views::View::Layout(base::NonCopyablePassKey<views::View>) + 152
+22  Aux Framework                       0x000000012fe35054 BrowserView::Layout(base::NonCopyablePassKey<views::View>) + 232
+23  Aux Framework                       0x000000012c910490 views::View::LayoutImmediately() + 180
+24  Aux Framework                       0x000000012c90fd88 views::View::SetBoundsRect(gfx::Rect const&) + 276
+25  Aux Framework                       0x000000012c93fee8 views::FrameView::Layout(base::NonCopyablePassKey<views::View>) + 120
+26  Aux Framework                       0x000000012fe23e4c BrowserFrameView::Layout(base::NonCopyablePassKey<views::View>) + 40
+27  Aux Framework                       0x000000012fe26aa8 BrowserFrameViewMac::Layout(base::NonCopyablePassKey<views::View>) + 160
+28  Aux Framework                       0x000000012c910490 views::View::LayoutImmediately() + 180
+29  Aux Framework                       0x000000012c90fd88 views::View::SetBoundsRect(gfx::Rect const&) + 276
+30  Aux Framework                       0x000000012c9408e8 views::NonClientView::Layout(base::NonCopyablePassKey<views::View>) + 44
+31  Aux Framework                       0x000000012c910490 views::View::LayoutImmediately() + 180
+32  Aux Framework                       0x000000012c9014e0 views::LayoutManagerBase::ApplyLayout(views::ProposedLayout const&) + 136
+33  Aux Framework                       0x000000012c901440 views::LayoutManagerBase::LayoutImpl() + 48
+34  Aux Framework                       0x000000012c900e54 views::LayoutManagerBase::Layout(views::View*) + 140
+35  Aux Framework                       0x000000012c913208 views::View::Layout(base::NonCopyablePassKey<views::View>) + 152
+36  Aux Framework                       0x000000012c910490 views::View::LayoutImmediately() + 180
+37  Aux Framework                       0x000000012c9317c4 views::Widget::LayoutRootViewIfNecessary() + 132
+38  Aux Framework                       0x000000012c14a8e0 ui::Layer::SendDamagedRects() + 48
+39  Aux Framework                       0x000000012c141174 ui::Compositor::SendDamagedRectsRecursive(ui::Layer*) + 20
+40  Aux Framework                       0x000000012b0fb9c0 cc::LayerTreeHost::RequestMainFrameUpdate(bool) + 36
+41  Aux Framework                       0x000000012b1a6aec cc::SingleThreadProxy::DoBeginMainFrame(viz::BeginFrameArgs const&) + 172
+42  Aux Framework                       0x000000012b1a7334 cc::SingleThreadProxy::BeginMainFrame(viz::BeginFrameArgs const&) + 248
+43  Aux Framework                       0x000000012b77f1f0 ui::(anonymous namespace)::WrappedTask::Run() + 80
+44  Aux Framework                       0x000000012965b788 base::TaskAnnotator::RunTaskImpl(base::PendingTask&) + 388
+45  Aux Framework                       0x0000000129675b40 base::sequence_manager::internal::ThreadControllerWithMessagePumpImpl::DoWorkImpl(base::LazyNow*) + 924
+46  Aux Framework                       0x000000012967567c base::sequence_manager::internal::ThreadControllerWithMessagePumpImpl::DoWork() + 96
+47  Aux Framework                       0x00000001296cfaa0 base::MessagePumpCFRunLoopBase::RunWork() + 128
+48  Aux Framework                       0x00000001296cab90 base::apple::CallWithEHFrame(void () block_pointer) + 16
+49  Aux Framework                       0x00000001296cf44c base::MessagePumpCFRunLoopBase::RunWorkSource(void*) + 60
+62  Aux Framework                       0x000000012b80e660 __64-[CrApplication nextEventMatchingMask:untilDate:inMode:dequeue:]_block_invoke + 64
+63  Aux Framework                       0x00000001296cab90 base::apple::CallWithEHFrame(void () block_pointer) + 16
+64  Aux Framework                       0x000000012b80e5a8 -[CrApplication nextEventMatchingMask:untilDate:inMode:dequeue:] + 176
+66  Aux Framework                       0x00000001296d00ac base::MessagePumpNSApplication::DoRun(base::MessagePump::Delegate*) + 288
+67  Aux Framework                       0x00000001296ced70 base::MessagePumpCFRunLoopBase::Run(base::MessagePump::Delegate*) + 212
+68  Aux Framework                       0x0000000129676190 base::sequence_manager::internal::ThreadControllerWithMessagePumpImpl::Run(bool, base::TimeDelta) + 308
+69  Aux Framework                       0x0000000129639218 base::RunLoop::Run(base::Location const&) + 400
+70  Aux Framework                       0x0000000125eb3234 content::BrowserMainLoop::RunMainMessageLoop() + 272
+71  Aux Framework                       0x0000000125eb4de0 content::BrowserMainRunnerImpl::Run() + 148
+72  Aux Framework                       0x0000000125eb046c content::BrowserMain(content::MainFunctionParams) + 132
+73  Aux Framework                       0x000000012876e4c0 content::RunBrowserProcessMain(content::MainFunctionParams, content::ContentMainDelegate*) + 140
+74  Aux Framework                       0x000000012876faa0 content::ContentMainRunnerImpl::RunBrowser(content::MainFunctionParams, bool) + 1324
+75  Aux Framework                       0x000000012876f4f0 content::ContentMainRunnerImpl::Run() + 668
+76  Aux Framework                       0x000000012876dba4 content::RunContentProcess(content::ContentMainParams, content::ContentMainRunner*) + 1060
+77  Aux Framework                       0x000000012876dd64 content::ContentMain(content::ContentMainParams) + 112
+78  Aux Framework                       0x0000000122d50db8 ChromeMain + 440
+0   Aux Framework                       0x000000012b1a7140 cc::SingleThreadProxy::ScheduledActionSendBeginMainFrame(viz::BeginFrameArgs const&) + 112
+1   Aux Framework                       0x00000001298fd6fc mojo::SimpleWatcher::Context::Notify(unsigned int, MojoHandleSignalsState, unsigned int) + 200
