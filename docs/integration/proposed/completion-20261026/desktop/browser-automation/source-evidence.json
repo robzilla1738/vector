@@ -1,0 +1,14 @@
+{
+  "format": "aux.browser-actions.counted-resources.v1",
+  "nativeProjected": false,
+  "appExecuted": false,
+  "syntax": {
+    "entry": true,
+    "background": true,
+    "nodeCheckOnly": true
+  },
+  "permissionInput": {
+    "path": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-local-completion-20261025-a38/Aux.app/Contents/Resources/aux/apps/extension/dist/manifest.json",
+    "debuggerAlreadyPresent": true
+  }
+}

@@ -1,0 +1,1 @@
+{"passed":true,"checks":["native profile/window and owned-tab provenance","forged session/global method refusal","original debugger promise retained through cancellation and close","actual supplied bridge class retains bounded response through cancellation"],"nativeExecuted":false,"appExecuted":false}
