@@ -10,18 +10,21 @@ export function transformAuxVaultUi({path,text,source}){
 }
 export function auxReadArmoredRecoveryKey(text,normalize){
  const formats=[['BEGIN AUX RECOVERY KEY V2','END AUX RECOVERY KEY V2'],['BEGIN ASIDE RECOVERY KEY','END ASIDE RECOVERY KEY']];
- let found=null;
- for(const[start,end]of formats){
-  const starts=(text.match(new RegExp(start,'gi'))??[]).length,ends=(text.match(new RegExp(end,'gi'))??[]).length;
-  if(!starts&&!ends)continue;
-  if(found!==null||starts!==1||ends!==1)throw Error('Paste exactly one complete recovery key block or its recovery phrase.');
-  const match=text.match(new RegExp(start+'([\\s\\S]*?)'+end,'i'));
-  if(!match?.[1]?.trim())throw Error('Recovery key block is incomplete. Paste the complete block or its recovery phrase.');
-  found=normalize(match[1]);
+ const lines=text.split(/\r?\n/),headers=[];
+ for(let index=0;index<lines.length;index++){
+  const trimmed=lines[index].trim(),wrapper=trimmed.match(/^-+\s*(.*?)\s*-+$/),line=(wrapper?wrapper[1]:trimmed).trim().toUpperCase();
+  let known=false;
+  for(let format=0;format<formats.length;format++)for(let kind=0;kind<2;kind++)if(line===formats[format][kind]){headers.push({index,format,kind});known=true}
+  if(!known&&/^(?:BEGIN|END)\s+(?:AUX|ASIDE)\s+RECOVERY\s+KEY\b/.test(line))throw Error('Unsupported recovery key file version. Use a supported block or its recovery phrase.');
  }
- if(found===null&&/BEGIN (?:AUX|ASIDE) RECOVERY KEY V\d+/i.test(text))throw Error('Unsupported recovery key file version. Use a supported block or its recovery phrase.');
- return found;
+ if(!headers.length)return null;
+ if(headers.length!==2||headers[0].kind!==0||headers[1].kind!==1||headers[0].format!==headers[1].format||headers[0].index>=headers[1].index)
+  throw Error('Paste exactly one complete recovery key block or its recovery phrase.');
+ const body=lines.slice(headers[0].index+1,headers[1].index).join('\n');
+ if(!body.trim())throw Error('Recovery key block is incomplete. Paste the complete block or its recovery phrase.');
+ return normalize(body);
 }
+
 const recovery=JSON.parse(readFileSync(new URL('../../docs/integration/proposed/completion-20261026/integration/vault-ui/recovery-pins.json',import.meta.url),'utf8'));
 export function transformAuxRecoveryTextV2({path,text,source}){
  if(path!==recovery.path)return{text,anchors:[]};

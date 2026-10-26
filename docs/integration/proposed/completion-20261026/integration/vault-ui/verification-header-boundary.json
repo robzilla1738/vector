@@ -1,0 +1,22 @@
+{
+  "format": "aux.external-password-ui.source-check.v1",
+  "passed": true,
+  "files": [
+    {
+      "path": "assets/recovery-key-CPOQuYx2.js",
+      "output": "/var/folders/98/j36zgdnd0h507whjl16gxl780000gp/T/aux-external-password-ui-VUb3sI/recovery-key-CPOQuYx2.js",
+      "sha256": "d5761e0fe4af61df477e8f55790bb7e3feff98b6faec3c86681e9d19db9a894d",
+      "anchors": 2,
+      "parse": true,
+      "reverse": true
+    }
+  ],
+  "plaintextNewAndLegacyArmor": true,
+  "exactWholeHeaderLines": true,
+  "unknownV20AndLegacyV2Refused": true,
+  "ambiguousArmorRefused": true,
+  "noCryptographicFunctionCalled": true,
+  "noCredentialProfileOrCiphertextRead": true,
+  "appExecuted": false,
+  "nativeBuilt": false
+}
