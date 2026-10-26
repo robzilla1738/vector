@@ -1,0 +1,13 @@
+{
+  "scope": "idempotent supplied shortcut capture focus",
+  "files": [
+    {
+      "path": "assets/use-shortcut-capture-DGr8Ws5Z.js",
+      "beforeSha256": "4948b274e6038eac50a7c0b0ea959d7b8fdc7356b8c1a30460e84b0b2d732249",
+      "afterSha256": "6b605b4751f98e99e750f6e139f1af1dd7083960fb16d7ad1f0d5d7f33821019",
+      "anchors": 1
+    }
+  ],
+  "projected": false,
+  "appChanged": false
+}

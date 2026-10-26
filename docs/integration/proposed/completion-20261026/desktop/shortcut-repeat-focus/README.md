@@ -1,0 +1,5 @@
+# Idempotent shortcut-capture focus
+
+One counted anchor in the existing supplied use-shortcut-capture-DGr8Ws5Z.js renderer leaf. Current capture transitions idle → preparing → ready; its setup effect depends on the boolean capturing state. A repeated focus previously changed ready → preparing while that boolean remained true, so setup did not rerun and capture could remain stuck. Focus now transitions only idle → preparing. Native suspension/resumption, blur/Escape cleanup, chord validation and UI remain unchanged.
+
+Source-only; root owns final resource projection/package. The exact actual signed-leaf preimage/output hashes are in source-plan.json. renderer-transform.mjs composes after existing shortcut transforms. boundary.test.mjs executes the actual transformed focus handler through initial, repeated pending, repeated ready and blur/restart states and verifies exact transformation. JS syntax passed. No app, native build, signing or owner-state operation performed. Actual remap/conflict acceptance remains separate.
