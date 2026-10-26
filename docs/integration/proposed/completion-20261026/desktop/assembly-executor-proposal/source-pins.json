@@ -1,0 +1,25 @@
+{
+  "executorSha256": "5db05e6a93b326af34b621bc08821657f084904609a4420cfd9042561006ac8b",
+  "inputs": [
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/runtime-package-a1/runtime_package.py",
+      "sha256": "15bdfb4066eded784be22a6f29f7bf9e6a41d67e9a917dc889ec5cc822507887"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/profile-isolation-delivery/package/assemble.py",
+      "sha256": "e6ac0a786e9a443efa00beac35fe7eb4dc029c24a4dd7c752cf8dcc664e240f2"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/integration/successor-assembly/prepare-assembly-plan.py",
+      "sha256": "6362219b2633c65666e429bd899348db9ad9d1f92792c6dbfe94959738e56579"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/local-completion-package-a38/disposable-location-review-a4/actual-integration-signing-a18.json",
+      "sha256": "9d8514ca917fcf8f0b4a0c54bb2089894385fd13862686679f1d8ebf05837ba5"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/integrator/browser-inventory-a7.json",
+      "sha256": "a18dcb7a5828f437675da5dae84b376d2865a64cb49eeea1ec62881fab1ec2f9"
+    }
+  ]
+}

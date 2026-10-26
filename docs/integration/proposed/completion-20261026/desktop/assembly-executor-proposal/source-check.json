@@ -1,0 +1,10 @@
+{
+  "format": "aux.assembly-executor.source-check.v1",
+  "pythonCompilation": true,
+  "sourceStructureVerified": true,
+  "executorExecuted": false,
+  "assemblyPerformed": false,
+  "appLaunched": false,
+  "productSigned": false,
+  "testsAdded": false
+}
