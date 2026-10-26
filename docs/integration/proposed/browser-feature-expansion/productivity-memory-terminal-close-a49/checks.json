@@ -1,0 +1,9 @@
+{
+  "exactInputHashes": true,
+  "singleCountAnchorsPerLeaf": 4,
+  "forwardReplay": true,
+  "reverseReplay": true,
+  "syntax": "both paired outputs passed node --check (exit 0; no evaluation)",
+  "runtimeAcceptance": "parent-owned actual normal Quit remains pending",
+  "nativeTerminalContract": "independently source-reviewed by organization lane; actual process/journal settlement required"
+}

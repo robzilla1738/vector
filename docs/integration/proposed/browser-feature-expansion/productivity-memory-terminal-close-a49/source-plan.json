@@ -1,0 +1,65 @@
+{
+  "format": "aux.memory.native-terminal-close.v1",
+  "files": [
+    {
+      "input": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-local-completion-20261025-a38/Aux.app/Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/node-development/index.mjs",
+      "inputSha256": "0d7c4f82f8f3dbb4e22999447a3ebeae2bd4ba48c82320c9b108ea687ef4931e",
+      "output": "/private/tmp/aux-memory-terminal-close-a49-85heiubf/index.mjs",
+      "outputSha256": "ac4719f6faf1c495727cb21c284f06d5172b15b1af288d36fc9af1a56f3a8236",
+      "anchors": [
+        {
+          "before": "MemoryProcess=class{#e;#t;#n;#r;#i=/* @__PURE__ */ new Map;#a=0;#o=[];#s=0;#c=[];#l;constructor(Cn){this.#e=Cn}get pid(){return this.#t?.pid}",
+          "after": "MemoryProcess=class{#e;#t;#n;#r;#i=/* @__PURE__ */ new Map;#a=0;#o=[];#s=0;#c=[];#l;#auxNativeClose;constructor(Cn){this.#e=Cn}get pid(){return this.#t?.pid}get hasNativeClose(){return typeof this.#auxNativeClose===`function`}",
+          "count": 1
+        },
+        {
+          "before": "close(){if(this.#n)return this.#n;let Cn=this.#t;if(!Cn)return Promise.resolve();this.#r&&clearTimeout(this.#r),this.#r=void 0;if(typeof Cn.auxClose==='function')return this.#n=Cn.auxClose().finally(()=>{this.#n=void 0});",
+          "after": "close(){if(this.#n)return this.#n;let Cn=this.#t;if(!Cn&&!this.#auxNativeClose)return Promise.resolve();this.#r&&clearTimeout(this.#r),this.#r=void 0;if(this.#auxNativeClose)return this.#n=this.#auxNativeClose().finally(()=>{this.#n=void 0});",
+          "count": 1
+        },
+        {
+          "before": "#f(){let Cn=this.#e,ei=auxSpawnMemoryProcess(Cn);return this.#t=ei,this.#o=[],this.#s=0,",
+          "after": "#f(){let Cn=this.#e,ei=auxSpawnMemoryProcess(Cn);return this.#auxNativeClose=typeof ei.auxClose===`function`?ei.auxClose:void 0,this.#t=ei,this.#o=[],this.#s=0,",
+          "count": 1
+        },
+        {
+          "before": "let ei=Promise.allSettled([...this.#o,...this.#c?[this.#c]:[],...this.#a?[this.#a]:[]]);try{this.#g.pid&&await this.#g.request(`close`,{directory:this.#h})}finally{await ei,await this.#g.close()}",
+          "after": "let ei=Promise.allSettled([...this.#o,...this.#c?[this.#c]:[],...this.#a?[this.#a]:[]]),auxNativeClose=this.#g.hasNativeClose;try{this.#g.pid&&await this.#g.request(`close`,{directory:this.#h})}catch(error){if(!auxNativeClose||error?.code!==`AUX_MEMORY_INPUT_REFUSED`||error?.message!==`Memory account owner is unavailable`)throw error;this.#u=!0}finally{if(auxNativeClose){try{await this.#g.close()}finally{await ei}}else{await ei,await this.#g.close()}}",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "input": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-local-completion-20261025-a38/Aux.app/Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/node-development/aux-native-entry.mjs",
+      "inputSha256": "704f1918c1c46f517872a93f6c32230af92d7f887a8f82a794af7728549c47a1",
+      "output": "/private/tmp/aux-memory-terminal-close-a49-85heiubf/aux-native-entry.mjs",
+      "outputSha256": "6c8bafbefef34d5f8cd5c562ab1462befa411ae2f04c7b6c52e5a702358e0683",
+      "anchors": [
+        {
+          "before": "MemoryProcess=class{#e;#t;#n;#r;#i=/* @__PURE__ */ new Map;#a=0;#o=[];#s=0;#c=[];#l;constructor(Cn){this.#e=Cn}get pid(){return this.#t?.pid}",
+          "after": "MemoryProcess=class{#e;#t;#n;#r;#i=/* @__PURE__ */ new Map;#a=0;#o=[];#s=0;#c=[];#l;#auxNativeClose;constructor(Cn){this.#e=Cn}get pid(){return this.#t?.pid}get hasNativeClose(){return typeof this.#auxNativeClose===`function`}",
+          "count": 1
+        },
+        {
+          "before": "close(){if(this.#n)return this.#n;let Cn=this.#t;if(!Cn)return Promise.resolve();this.#r&&clearTimeout(this.#r),this.#r=void 0;if(typeof Cn.auxClose==='function')return this.#n=Cn.auxClose().finally(()=>{this.#n=void 0});",
+          "after": "close(){if(this.#n)return this.#n;let Cn=this.#t;if(!Cn&&!this.#auxNativeClose)return Promise.resolve();this.#r&&clearTimeout(this.#r),this.#r=void 0;if(this.#auxNativeClose)return this.#n=this.#auxNativeClose().finally(()=>{this.#n=void 0});",
+          "count": 1
+        },
+        {
+          "before": "#f(){let Cn=this.#e,ei=auxSpawnMemoryProcess(Cn);return this.#t=ei,this.#o=[],this.#s=0,",
+          "after": "#f(){let Cn=this.#e,ei=auxSpawnMemoryProcess(Cn);return this.#auxNativeClose=typeof ei.auxClose===`function`?ei.auxClose:void 0,this.#t=ei,this.#o=[],this.#s=0,",
+          "count": 1
+        },
+        {
+          "before": "let ei=Promise.allSettled([...this.#o,...this.#c?[this.#c]:[],...this.#a?[this.#a]:[]]);try{this.#g.pid&&await this.#g.request(`close`,{directory:this.#h})}finally{await ei,await this.#g.close()}",
+          "after": "let ei=Promise.allSettled([...this.#o,...this.#c?[this.#c]:[],...this.#a?[this.#a]:[]]),auxNativeClose=this.#g.hasNativeClose;try{this.#g.pid&&await this.#g.request(`close`,{directory:this.#h})}catch(error){if(!auxNativeClose||error?.code!==`AUX_MEMORY_INPUT_REFUSED`||error?.message!==`Memory account owner is unavailable`)throw error;this.#u=!0}finally{if(auxNativeClose){try{await this.#g.close()}finally{await ei}}else{await ei,await this.#g.close()}}",
+          "count": 1
+        }
+      ]
+    }
+  ],
+  "ordinaryRequestGuardChanged": false,
+  "nativeSettlementChanged": false,
+  "fullModeOriginalClose": true,
+  "productExecuted": false
+}
