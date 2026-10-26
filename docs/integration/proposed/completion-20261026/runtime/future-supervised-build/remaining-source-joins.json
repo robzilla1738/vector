@@ -4,5 +4,9 @@
   "sourceEvidence": "../selected-repl-fs/completion-evidence.json",
   "inactiveLinkReceipt": "/private/tmp/aux-future-supervised-native-20261026-b1/receipt.json",
   "runtimeAccepted": false,
-  "remaining": "integration-delta.json"
+  "remaining": "integration-delta.json",
+  "browserOverlay": "browser-source-plan.json",
+  "browserProducersCompiled": true,
+  "coherentFutureBrowserLinked": false,
+  "sourceGateScope": "daemon/resources and inactive browser overlay only"
 }

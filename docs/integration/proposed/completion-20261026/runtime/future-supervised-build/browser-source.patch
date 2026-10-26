@@ -1,0 +1,186 @@
+--- /private/tmp/aux-chromium-recovery-snapshot-20261023/src/base/process/mac/aux_browser_descendant_bridge.cc
++++ /Users/rcourson/Documents/Vibe/aux-completion-20261026/runtime/docs/integration/proposed/completion-20261026/runtime/future-supervised-build/browser-source/base/process/mac/aux_browser_descendant_bridge.cc
+@@ -4,7 +4,7 @@
+ #include <map>
+ #include <mutex>
+ #include <unistd.h>
+-#if !defined(AUX_BROWSER_ONLY_NATIVE_STARTUP)
++#if !defined(AUX_BROWSER_ONLY_NATIVE_STARTUP) || (defined(AUX_FIXED_LINKED_PTY_POLICY) && AUX_FIXED_LINKED_PTY_POLICY)
+ namespace {
+ const pid_t kBrowserImageProcess=getpid();
+ struct Registry {std::mutex mutex;uint64_t next=1;std::map<uint64_t,aux::browser_descendants::Ticket> tickets;};
+@@ -38,7 +38,7 @@
+ #endif
+ extern "C" __attribute__((visibility("default")))
+ const AuxBrowserDescendantBridgeV1* AuxGetBrowserDescendantBridgeV1() noexcept {
+-#if defined(AUX_BROWSER_ONLY_NATIVE_STARTUP)
++#if defined(AUX_BROWSER_ONLY_NATIVE_STARTUP) && (!defined(AUX_FIXED_LINKED_PTY_POLICY) || !AUX_FIXED_LINKED_PTY_POLICY)
+   // ES is unavailable in this explicit ordinary build. Optional child custody
+   // must remain unavailable, never report a fake settled stream.
+   return nullptr;
+--- /private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/app/chrome_exe_main_mac.cc
++++ /Users/rcourson/Documents/Vibe/aux-completion-20261026/runtime/docs/integration/proposed/completion-20261026/runtime/future-supervised-build/browser-source/chrome/app/chrome_exe_main_mac.cc
+@@ -7,7 +7,7 @@
+ // bundle (browser) and helper app (renderer, plugin, and friends).
+ 
+ #include <dlfcn.h>
+-#if defined(AUX_BROWSER_DESCENDANT_CUSTODY) && !defined(HELPER_EXECUTABLE) && !defined(AUX_BROWSER_ONLY_NATIVE_STARTUP)
++#if defined(AUX_BROWSER_DESCENDANT_CUSTODY) && !defined(HELPER_EXECUTABLE) && (!defined(AUX_BROWSER_ONLY_NATIVE_STARTUP) || (defined(AUX_FIXED_LINKED_PTY_POLICY) && AUX_FIXED_LINKED_PTY_POLICY))
+ #include "base/process/mac/aux_browser_descendant_engine.h"
+ #endif
+ #include <errno.h>
+@@ -147,7 +147,7 @@
+ 
+ __attribute__((visibility("default"))) int main(int argc, char* argv[]) {
+   partition_alloc::EarlyMallocZoneRegistration();
+-#if defined(AUX_BROWSER_DESCENDANT_CUSTODY) && !defined(HELPER_EXECUTABLE) && !defined(AUX_BROWSER_ONLY_NATIVE_STARTUP)
++#if defined(AUX_BROWSER_DESCENDANT_CUSTODY) && !defined(HELPER_EXECUTABLE) && (!defined(AUX_BROWSER_ONLY_NATIVE_STARTUP) || (defined(AUX_FIXED_LINKED_PTY_POLICY) && AUX_FIXED_LINKED_PTY_POLICY))
+   // First native browser entry, before framework dlopen or any child launch.
+   // Allocator registration above creates no browser child or task authority.
+   if (aux::browser_descendants::InitializeAtFreshBrowserEntry() != 0)
+--- /private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/aux/AuxOwnedNativePeerChild.cc
++++ /Users/rcourson/Documents/Vibe/aux-completion-20261026/runtime/docs/integration/proposed/completion-20261026/runtime/future-supervised-build/browser-source/chrome/browser/aux/AuxOwnedNativePeerChild.cc
+@@ -128,7 +128,7 @@
+   if (getpid() != state->process) return false;
+   std::lock_guard<std::mutex> lock(state->mutex);
+   if (state->observation.closed || state->observation.launch_attempted) return false;
+-#if !defined(AUX_BROWSER_ONLY_NATIVE_STARTUP)
++#if !defined(AUX_BROWSER_ONLY_NATIVE_STARTUP) || (defined(AUX_FIXED_LINKED_PTY_POLICY) && AUX_FIXED_LINKED_PTY_POLICY)
+   state->descendant_ticket = aux::browser_custody::Reserve(aux::browser_custody::Family::kDaemon);
+   if (!state->descendant_ticket) return false;
+   if (!aux::browser_custody::MaySpawn(state->descendant_ticket)) {
+--- /private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/aux/AuxSelectedStateHome.cc
++++ /Users/rcourson/Documents/Vibe/aux-completion-20261026/runtime/docs/integration/proposed/completion-20261026/runtime/future-supervised-build/browser-source/chrome/browser/aux/AuxSelectedStateHome.cc
+@@ -438,7 +438,7 @@
+       if ((state.closed || state.browser_shutdown_phase != 0) || state.selected != owner) return refused(10);
+     }
+     if (owner->AcceptAuthorityReply(reply, 2'000) != DaemonAuthorityStatus::ready) return refused(11);
+-#if !defined(AUX_BROWSER_ONLY_NATIVE_STARTUP)
++#if !defined(AUX_BROWSER_ONLY_NATIVE_STARTUP) || (defined(AUX_FIXED_LINKED_PTY_POLICY) && AUX_FIXED_LINKED_PTY_POLICY)
+     if (!owner->BindBrowserDescendantScope(generation)) return refused(12);
+ #endif
+     admitted_generation = generation;
+--- /private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/aux/daemon_supervisor.cc
++++ /Users/rcourson/Documents/Vibe/aux-completion-20261026/runtime/docs/integration/proposed/completion-20261026/runtime/future-supervised-build/browser-source/chrome/browser/aux/daemon_supervisor.cc
+@@ -678,7 +678,7 @@
+ }
+ void DaemonSupervisor::FinishNativeShutdown() {
+   loader_.reset();
+-#if defined(AUX_BROWSER_ONLY_NATIVE_STARTUP) && AUX_BROWSER_ONLY_NATIVE_STARTUP
++#if defined(AUX_BROWSER_ONLY_NATIVE_STARTUP) && AUX_BROWSER_ONLY_NATIVE_STARTUP && (!defined(AUX_FIXED_LINKED_PTY_POLICY) || !AUX_FIXED_LINKED_PTY_POLICY)
+   // POST /shutdown acknowledges starting the existing asynchronous JS drain.
+   // SQLite/producer close still needs this exact live browser peer and roots.
+   // Keep servicing that authority until the original child actually exits;
+@@ -702,7 +702,7 @@
+   }
+ #endif
+   const auto browser_shutdown = peer::InspectNativeBrowserShutdown();
+-#if defined(AUX_BROWSER_ONLY_NATIVE_STARTUP) && AUX_BROWSER_ONLY_NATIVE_STARTUP
++#if defined(AUX_BROWSER_ONLY_NATIVE_STARTUP) && AUX_BROWSER_ONLY_NATIVE_STARTUP && (!defined(AUX_FIXED_LINKED_PTY_POLICY) || !AUX_FIXED_LINKED_PTY_POLICY)
+   if (browser_shutdown.phase < 6) {
+     // The original child was actually reaped above. Report only that daemon's
+     // exit; the global selected owner/root FDs stay retained for the existing
+--- /private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/ui/aux_browser_shutdown_drain.cc
++++ /Users/rcourson/Documents/Vibe/aux-completion-20261026/runtime/docs/integration/proposed/completion-20261026/runtime/future-supervised-build/browser-source/chrome/browser/ui/aux_browser_shutdown_drain.cc
+@@ -133,7 +133,7 @@
+     std::lock_guard<std::mutex> lock(state.mutex);
+     if (getpid() != state.process || state.started) return;
+     state.started = true;
+-#if defined(AUX_BROWSER_ONLY_NATIVE_STARTUP)
++#if defined(AUX_BROWSER_ONLY_NATIVE_STARTUP) && (!defined(AUX_FIXED_LINKED_PTY_POLICY) || !AUX_FIXED_LINKED_PTY_POLICY)
+     // Keep the real content teardown callback, without privileged ES reporting.
+     state.provider_failed = !content::aux_migration::RegisterBrowserShutdownCompletion(&FinishNativeBrowserShutdownDrain);
+ #else
+@@ -176,7 +176,7 @@
+     if (getpid() != state.process || !state.started || state.main_loop_destroyed) return;
+     state.main_loop_destroyed = true;
+   }
+-#if defined(AUX_BROWSER_ONLY_NATIVE_STARTUP)
++#if defined(AUX_BROWSER_ONLY_NATIVE_STARTUP) && (!defined(AUX_FIXED_LINKED_PTY_POLICY) || !AUX_FIXED_LINKED_PTY_POLICY)
+   // Called only after actual normal Profile/content/thread/session teardown.
+   // Peer close ends this owned ordinary daemon session; it is not ES-CLEAN.
+   const auto ordinary_deadline = base::TimeTicks::Now() + base::Seconds(5);
+--- /private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/chrome_browser_main.cc
++++ /Users/rcourson/Documents/Vibe/aux-completion-20261026/runtime/docs/integration/proposed/completion-20261026/runtime/future-supervised-build/browser-source/chrome/browser/chrome_browser_main.cc
+@@ -2286,7 +2286,7 @@
+ }
+ 
+ void ChromeBrowserMainParts::PostMainMessageLoopRun() {
+-#if BUILDFLAG(ENABLE_AUX_BROWSER) && defined(AUX_BROWSER_ONLY_NATIVE_STARTUP) && AUX_BROWSER_ONLY_NATIVE_STARTUP
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && defined(AUX_BROWSER_ONLY_NATIVE_STARTUP) && AUX_BROWSER_ONLY_NATIVE_STARTUP && (!defined(AUX_FIXED_LINKED_PTY_POLICY) || !AUX_FIXED_LINKED_PTY_POLICY)
+   // Stop new feature work without invalidating the native selected owner.
+   // The existing authenticated daemon shutdown must finish while that browser
+   // peer and its published root FDs still validate protected SQLite closure.
+@@ -2303,7 +2303,7 @@
+   aux::PrepareNativeBrowserShutdownDrain();
+ #endif
+ 
+-#if BUILDFLAG(ENABLE_AUX_BROWSER) && (!defined(AUX_BROWSER_ONLY_NATIVE_STARTUP) || !AUX_BROWSER_ONLY_NATIVE_STARTUP)
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && (!defined(AUX_BROWSER_ONLY_NATIVE_STARTUP) || !AUX_BROWSER_ONLY_NATIVE_STARTUP || (defined(AUX_FIXED_LINKED_PTY_POLICY) && AUX_FIXED_LINKED_PTY_POLICY))
+   // Keep networking and the UI task runner alive until owned daemon shutdown.
+   extensions::ShutdownAuxMiniPopup();
+   aux::ShutdownProfileGates();
+--- /private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/aux/ordinary_startup_build.h
++++ /Users/rcourson/Documents/Vibe/aux-completion-20261026/runtime/docs/integration/proposed/completion-20261026/runtime/future-supervised-build/browser-source/chrome/browser/aux/ordinary_startup_build.h
+@@ -7,6 +7,8 @@
+ // Actual signed policy, native parent/child and root-generation checks still run.
+ #if BUILDFLAG(IS_MAC) && BUILDFLAG(ENABLE_AUX_BROWSER)
+ #define AUX_BROWSER_ONLY_NATIVE_STARTUP 1
++// This copied header belongs only to the explicit inactive supervised cohort.
++#define AUX_FIXED_LINKED_PTY_POLICY 1
+ #define AUX_SEALED_NATIVE_COLD_ENTRY 1
+ #endif
+ #endif
+--- /private/tmp/aux-chromium-recovery-snapshot-20261023/src/base/BUILD.gn
++++ /Users/rcourson/Documents/Vibe/aux-completion-20261026/runtime/docs/integration/proposed/completion-20261026/runtime/future-supervised-build/browser-source/base/BUILD.gn
+@@ -257,7 +257,7 @@
+   # Only the primary browser image owns the ES stream and ticket registry.
+   # mac_app_bundle forwards deps to both its bundle and executable target.
+   source_set("aux_browser_descendant_engine") {
+-    defines = [ "AUX_BROWSER_ONLY_NATIVE_STARTUP=1" ]
++    defines = [ "AUX_BROWSER_ONLY_NATIVE_STARTUP=1", "AUX_FIXED_LINKED_PTY_POLICY=1" ]
+     visibility = [
+       "//chrome:chrome_app",
+       "//chrome:chrome_app_executable",
+--- /private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/aux/BUILD.gn
++++ /Users/rcourson/Documents/Vibe/aux-completion-20261026/runtime/docs/integration/proposed/completion-20261026/runtime/future-supervised-build/browser-source/chrome/browser/aux/BUILD.gn
+@@ -22,7 +22,7 @@
+   ]
+   deps = [ "//base", "//crypto", "//net", "//services/network/public/cpp", "//components/crx_file" ]
+   if (is_mac) {
+-    defines = [ "AUX_BROWSER_ONLY_NATIVE_STARTUP=1" ]
++    defines = [ "AUX_BROWSER_ONLY_NATIVE_STARTUP=1", "AUX_FIXED_LINKED_PTY_POLICY=1" ]
+     deps += [ "//chrome/browser:buildflags" ]
+     sources += [
+       "AuxNativeParentColdLaunch.cc",
+@@ -286,7 +286,7 @@
+       "cli/packaged-identity-admission.h",
+     ]
+     deps = [ ":native_cli_ingress" ]
+-    defines = [ "AUX_BROWSER_ONLY_NATIVE_STARTUP=1" ]
++    defines = [ "AUX_BROWSER_ONLY_NATIVE_STARTUP=1", "AUX_FIXED_LINKED_PTY_POLICY=1" ]
+     frameworks = [ "Foundation.framework", "AppKit.framework" ]
+     libs = [ "bsm" ]
+     # The reviewed global unsigned product config supplies the one link flag.
+--- /private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/BUILD.gn
++++ /Users/rcourson/Documents/Vibe/aux-completion-20261026/runtime/docs/integration/proposed/completion-20261026/runtime/future-supervised-build/browser-source/chrome/BUILD.gn
+@@ -631,7 +631,7 @@
+ 
+     ldflags = []
+     if (enable_aux_browser) {
+-      defines = [ "AUX_BROWSER_DESCENDANT_CUSTODY", "AUX_BROWSER_ONLY_NATIVE_STARTUP=1" ]
++      defines = [ "AUX_BROWSER_DESCENDANT_CUSTODY", "AUX_BROWSER_ONLY_NATIVE_STARTUP=1", "AUX_FIXED_LINKED_PTY_POLICY=1" ]
+       deps += [ "//base:aux_browser_descendant_engine" ]
+       # The Framework resolves only this main-image symbol via RTLD_MAIN_ONLY.
+       ldflags += [ "-Wl,-u,_AuxGetBrowserDescendantBridgeV1",
+--- /private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/aux/native_peer_policy/BUILD.gn
++++ /Users/rcourson/Documents/Vibe/aux-completion-20261026/runtime/docs/integration/proposed/completion-20261026/runtime/future-supervised-build/browser-source/chrome/browser/aux/native_peer_policy/BUILD.gn
+@@ -29,7 +29,7 @@
+   ]
+   all_dependent_configs = [ ":aux_parent_swift_runtime_link" ]
+   module_name = "AuxParentSealedPolicy"
+-  swiftflags = [ "-D", "AUX_BROWSER_ONLY_NATIVE_STARTUP" ]
++  swiftflags = [ "-D", "AUX_BROWSER_ONLY_NATIVE_STARTUP", "-D", "AUX_FIXED_LINKED_PTY_POLICY" ]
+   frameworks = [ "Foundation.framework", "Security.framework", "CryptoKit.framework" ]
+ }
+ # The actual browser target containing AuxNativePeerTransport.cc must depend on

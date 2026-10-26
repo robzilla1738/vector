@@ -38,7 +38,7 @@
   "browser": {
     "gnInput": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/aux/native_peer_policy/BUILD.gn",
     "gnInputSha256": "69f2f6be74bfcf3a214323854ef34e209d4e4c139122a4f20b71fb89026679cf",
-    "gnDelta": "browser-gn.patch",
+    "gnDelta": "browser-source-plan.json (all four GN owners; browser-gn.patch is the parent-only subset)",
     "sourceReplacements": {
       "AuxFreshBootstrapPolicy.swift": "/Users/rcourson/Documents/Vibe/aux-completion-20261026/runtime/docs/integration/proposed/completion-20261026/runtime/future-supervised-build/source/ParentAuxFreshBootstrapPolicy.swift",
       "AuxAuthenticatedChildParentPolicyReader.swift": "/Users/rcourson/Documents/Vibe/aux-completion-20261026/runtime/docs/integration/proposed/completion-20261026/runtime/future-supervised-build/source/AuxAuthenticatedChildParentPolicyReader.swift"
@@ -46,7 +46,19 @@
     "unchangedSource": "AuxStrictEnvelopeObject.swift",
     "proofObject": "/private/tmp/aux-future-supervised-native-20261026-b1/parent-policy.o",
     "proofObjectSha256": "6c8cadaadbe8f9eb0c2e0385ac259bcfe5926a9c4d73984990b383eb59656a74",
-    "rule": "Compile/project as the existing aux_parent_sealed_policy target replacement; never add a duplicate parent C ABI object or link it into the daemon."
+    "rule": "Compile/project as the existing aux_parent_sealed_policy target replacement; never add a duplicate parent C ABI object or link it into the daemon.",
+    "overlay": {
+      "sourcePlan": "/Users/rcourson/Documents/Vibe/aux-completion-20261026/runtime/docs/integration/proposed/completion-20261026/runtime/future-supervised-build/browser-source-plan.json",
+      "sourcePlanSha256": "6b30964dde282e1f9c70df01870e6687a2e92cfa4658e9fc5dee109abb2823d9",
+      "patch": "browser-source.patch",
+      "privateCompileRecipe": "/private/tmp/aux-future-browser-producers-20261026-b1/recipe.json",
+      "privateCompileReceipt": "/private/tmp/aux-future-browser-producers-20261026-b1/receipt.json",
+      "privateCompileReceiptSha256": "f9878302fefb99369bb83deeddfdc4b11eef7bd998cea89ea28d3610f5895024",
+      "sources": 7,
+      "sharedProjectionChanged": false,
+      "fullBrowserLinked": false,
+      "selection": "Existing early main-image observer/bridge, original daemon ticket reservation and binding, original strict browser ordering/Crashpad registration/ES-ACK shutdown; existing native-current-user startup and legacy migration refusal retained."
+    }
   },
   "policies": {
     "pairedFormat": "aux.fresh.bootstrap.policy.v11",
@@ -59,12 +71,16 @@
   "remainingAuthority": [
     "Apple approval for submitted request 2H4D7KNGUP; submission is not approval",
     "separately reviewed exact ES daemon entitlement/provisioning and necessary signed helper/containing-object delta",
-    "exact fresh supported v11 disposable namespace or explicitly authorized supported recovery; no policy/ciphertext reinterpretation"
+    "exact fresh supported v11 disposable namespace or explicitly authorized supported recovery; no policy/ciphertext reinterpretation",
+    "Browser primary executable dev.aux.browser also calls the existing es_new_descendants_client and needs legitimate EndpointSecurity entitlement/profile authority. Recorded Apple request 2H4D7KNGUP names daemon only; browser coverage is unverified, not implied or requested here."
   ],
   "remainingIntegration": [
     "incorporate any final startup repair found by Batch 1 into this future Main/daemon cohort before activation",
-    "integrator projects paired browser sources/GN and links one coherent browser",
+    "integrator projects pinned browser-source-plan plus paired Swift sources/GN and links one coherent browser; seven isolated producer compiles do not close this app-link gate",
     "generate exact paired v11 resources using actual signed helper and composed leaf hashes before containing seals",
     "perform real Bash/yielded/PTY/CLI/fs cancellation and escaped-descendant shutdown acceptance under granted authority"
-  ]
+  ],
+  "sourceGateScope": "Connected daemon/resource source plus the inactive browser overlay; not a linked or accepted future app.",
+  "browserProducerObjectsCompiled": true,
+  "coherentFutureBrowserLinked": false
 }
