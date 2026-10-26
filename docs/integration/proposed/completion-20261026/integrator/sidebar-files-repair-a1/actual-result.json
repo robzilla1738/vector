@@ -1,0 +1,34 @@
+{
+  "candidateInventorySha256": "b25fffff738f10eafeb97161cf372c9616a03feb056f9ac4ebe3bc6f5c3866a7",
+  "launch": "exact packaged binary --use-mock-keychain; startup-8.log",
+  "normalWindow": true,
+  "supportedInterruptedRecovery": {
+    "action": "Restore pages button after previous crash",
+    "observed": "Alpha/Beta two-pane layout restored with Work cookie and note"
+  },
+  "fullUrl": {
+    "observed": "http://127.0.0.1:61862/alpha visible in resting address pill"
+  },
+  "hoverCrashRepair": {
+    "collapseAndExpandSurvived": true,
+    "genuineHover": "owner physical check pending"
+  },
+  "recentFiles": {
+    "restoredNotesEnabled": true,
+    "contentOpenAccepted": false,
+    "observation": "AX click and right-click did not navigate or show menu; verifying intended interaction contract"
+  },
+  "physicalInput": "One bundled owner hover/three-four-pane/shortcut request pending",
+  "localMilestoneComplete": false,
+  "daemonReady": false,
+  "startupAuthorizationDefect": {
+    "browser": "Daemon installation authorization failed",
+    "daemon": "Fresh native guard unavailable before command boundary",
+    "endpoint": "POST /auth/daemon/session HTTP500",
+    "cli": {
+      "exitCode": 78,
+      "error": "routing-authority-unavailable"
+    },
+    "investigation": "existing guard/installation owner; no reset or bypass"
+  }
+}

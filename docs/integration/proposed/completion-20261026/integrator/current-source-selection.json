@@ -1,7 +1,7 @@
 {
   "format": "aux.completion.current-source-selection.v1",
   "candidate": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-completion-20261026-a1/Aux.app",
-  "signedInventorySha256": "e4efa859230491a9ed98a73e49f594896a1c8e91de4c2e3e3c2ebd799b8f2c08",
+  "signedInventorySha256": "b25fffff738f10eafeb97161cf372c9616a03feb056f9ac4ebe3bc6f5c3866a7",
   "sourceSnapshots": [
     {
       "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/runtime/addon-local-signing-review/actual-signed-source-a1/source/daemon-policy.swift",
@@ -78,17 +78,33 @@
       "sha256": "1ccb3f17b2dd85a1c8a717b4ad80f62ea22567e57e8e48bf2f0adc8c8959b921"
     },
     {
-      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/desktop/split-drag-observation/source/chrome/browser/ui/views/frame/aux_organization_tree_view.cc",
-      "sha256": "2b5de512a8de89810c94279e89b8a06058e5f978c43537a9e2364dd2fa9cfc2e"
-    },
-    {
-      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/desktop/split-drag-observation/source/chrome/browser/ui/views/frame/aux_organization_window_controller.cc",
-      "sha256": "88d64c0c26b0a535afcbec9e2c5fcc4585183c19f7f5d7d6e3381e6006121473"
-    },
-    {
       "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/desktop/cli-background-query/source/chrome/browser/aux/cli/AuxCliOpenCommand.mm",
       "sha256": "0cd55bc066b2678f4c29e6389dd3390a0a67731ff18e4a6c9e051e3aa7a2f562"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/desktop/recent-download-restore/source/chrome/browser/ui/aux_recent_files_service.cc",
+      "sha256": "0f6abb229821b9c8fff2f8a871a8f2ceb71ca42dd25e2f3a586cd2528d7f1e0f"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/desktop/sidebar-hover-repair/source/chrome/browser/ui/views/frame/aux_sidebar_contents_view.cc",
+      "sha256": "d6e24db4506041c2eff9e27b973952e86a37bade9b22a033d9b4c2a7b81ca449"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/desktop/sidebar-hover-repair/source/chrome/browser/ui/views/frame/aux_organization_tree_view.cc",
+      "sha256": "55adba32a3fcd550a3b64fd19ab05444e415b6fef9522c9ed24bd5db5c8980e6"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/desktop/sidebar-hover-repair/source/chrome/browser/ui/views/frame/aux_organization_window_controller.cc",
+      "sha256": "49c13d0805410d33ae6af7d31fd30daa78560c9f5ca77ef9b0fb5b3bad9a4047"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/desktop/resting-full-url/source/chrome/browser/ui/views/location_bar/location_bar_view.cc",
+      "sha256": "6aa4ae321848fdaad974f2b60a7dd6452045ea87dd242c6d9c06988b767eeec8"
     }
   ],
-  "olderNativeSnapshotsArePredecessorsWhereSuperseded": true
+  "olderNativeSnapshotsArePredecessorsWhereSuperseded": true,
+  "browserSidebarFilesUrlRepair": {
+    "path": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-completion-20261026-a1/browser-sidebar-files-url-a1/receipt.json",
+    "sha256": "b4742ce9110e18f61a3988a7bad9b7942de4edb32388de0cf08944038e4c2f36"
+  }
 }
