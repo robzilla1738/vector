@@ -1,6 +1,6 @@
 {
   "format": "aux.future-supervised-integration.v2",
-  "sourceGatesClosed": true,
+  "sourceGatesClosed": false,
   "unsignedLinkPassed": true,
   "runtimeAccepted": false,
   "activated": false,
@@ -27,7 +27,14 @@
       "selected native session HOME/TMP/cache/prefix and read/use lease",
       "account cancellation plus original CLI/QuickJS awaited disposal",
       "12-method generic filesystem preserving original resolver/hooks"
-    ]
+    ],
+    "finalCorrectionRequired": {
+      "required": true,
+      "integratedCorrectionCommit": "a2c814d3c",
+      "sourceCommit": "037a6fffb",
+      "reason": "Recompose both future resource leaves with final immutable supervised-mode predicate and lazy browser registration; include any subsequently accepted sidebar/recursive-split source selection. Current b2 resource copies are predecessor proof, not activation resources.",
+      "rebuildRequested": false
+    }
   },
   "producers": {
     "/private/tmp/aux-selected-repl-fs-compile-20261026-b1/spawn_sync.cc.o": "c1d1c8c3286e790337b583bdc99c6c466ab9888876df5e92f58ec4076b554e00",
@@ -56,8 +63,21 @@
       "privateCompileReceiptSha256": "f9878302fefb99369bb83deeddfdc4b11eef7bd998cea89ea28d3610f5895024",
       "sources": 7,
       "sharedProjectionChanged": false,
-      "fullBrowserLinked": false,
+      "fullBrowserLinked": true,
       "selection": "Existing early main-image observer/bridge, original daemon ticket reservation and binding, original strict browser ordering/Crashpad registration/ES-ACK shutdown; existing native-current-user startup and legacy migration refusal retained."
+    },
+    "privateLink": {
+      "receipt": "/private/tmp/aux-future-browser-link-20261026-b3/receipt.json",
+      "receiptSha256": "a2274aa9bc38815c273870a6a11d459b2ad12d3d9de00a4b76dddfbd0d27e89b",
+      "recipe": "/private/tmp/aux-future-browser-link-20261026-b3/recipe.json",
+      "recipeSha256": "d386cb3c03e94a0c6b90fb6e9ee0ab0b0730da474f8860c505f60b942556fdfe",
+      "outputs": {
+        "/private/tmp/aux-future-browser-link-20261026-b3/Aux": "f1d74243a7cffcf1877bf31c721e8aedfceb93a7e7f6c1b357ee59f0e5c27d85",
+        "/private/tmp/aux-future-browser-link-20261026-b3/Aux Framework": "49f3840806f700a21065d7bff1d2d44cb4f9a1638655dbd0e414adaaf7b88df6",
+        "/private/tmp/aux-future-browser-link-20261026-b3/libui.a": "af07522764455b90267f8e54b14bdbbbbceac3deb23fac52f8055821bdc184ca"
+      },
+      "unchangedUiMembersPreserved": 174,
+      "sourceRecompiled": false
     }
   },
   "policies": {
@@ -75,12 +95,15 @@
     "Browser primary executable dev.aux.browser also calls the existing es_new_descendants_client and needs legitimate EndpointSecurity entitlement/profile authority. Recorded Apple request 2H4D7KNGUP names daemon only; browser coverage is unverified, not implied or requested here."
   ],
   "remainingIntegration": [
+    "Recompose both future leaves from final accepted source selection including a2c814d3c /037a6fffb mode predicate and lazy browser registration; no source rebuild performed for this outstanding resource correction.",
     "incorporate any final startup repair found by Batch 1 into this future Main/daemon cohort before activation",
-    "integrator projects pinned browser-source-plan plus paired Swift sources/GN and links one coherent browser; seven isolated producer compiles do not close this app-link gate",
     "generate exact paired v11 resources using actual signed helper and composed leaf hashes before containing seals",
     "perform real Bash/yielded/PTY/CLI/fs cancellation and escaped-descendant shutdown acceptance under granted authority"
   ],
-  "sourceGateScope": "Connected daemon/resource source plus the inactive browser overlay; not a linked or accepted future app.",
+  "sourceGateScope": "Native producers and coherent unsigned browser+daemon links complete. Final resource composition is pending a2c814d3c and final accepted local selection.",
   "browserProducerObjectsCompiled": true,
-  "coherentFutureBrowserLinked": false
+  "coherentFutureBrowserLinked": true,
+  "nativeSourceGatesClosed": true,
+  "nativeCohortReceipt": "native-cohort-receipt.json",
+  "activationPackageComplete": false
 }

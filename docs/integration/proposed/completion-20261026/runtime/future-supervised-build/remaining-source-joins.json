@@ -1,12 +1,21 @@
 {
   "format": "aux.future-supervised-source-gates.v2",
-  "finiteSourceGatesClosed": true,
+  "finiteSourceGatesClosed": false,
   "sourceEvidence": "../selected-repl-fs/completion-evidence.json",
   "inactiveLinkReceipt": "/private/tmp/aux-future-supervised-native-20261026-b1/receipt.json",
   "runtimeAccepted": false,
   "remaining": "integration-delta.json",
   "browserOverlay": "browser-source-plan.json",
   "browserProducersCompiled": true,
-  "coherentFutureBrowserLinked": false,
-  "sourceGateScope": "daemon/resources and inactive browser overlay only"
+  "coherentFutureBrowserLinked": true,
+  "sourceGateScope": "Native link gate closed; final corrected resource composition remains required.",
+  "nativeSourceGatesClosed": true,
+  "nativeCohortReceipt": "native-cohort-receipt.json",
+  "resourceDependency": {
+    "required": true,
+    "integratedCorrectionCommit": "a2c814d3c",
+    "sourceCommit": "037a6fffb",
+    "reason": "Recompose both future resource leaves with final immutable supervised-mode predicate and lazy browser registration; include any subsequently accepted sidebar/recursive-split source selection. Current b2 resource copies are predecessor proof, not activation resources.",
+    "rebuildRequested": false
+  }
 }

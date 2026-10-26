@@ -1,0 +1,58 @@
+{
+  "format": "aux.future-unsigned-native-cohort.v1",
+  "nativeLinksComplete": true,
+  "activationPackageComplete": false,
+  "signed": false,
+  "executed": false,
+  "runtimeAccepted": false,
+  "platform": "M-series arm64; browser executable and Framework LC_BUILD_VERSION minos27.0",
+  "browser": {
+    "receipt": "/private/tmp/aux-future-browser-link-20261026-b3/receipt.json",
+    "receiptSha256": "a2274aa9bc38815c273870a6a11d459b2ad12d3d9de00a4b76dddfbd0d27e89b",
+    "recipe": "/private/tmp/aux-future-browser-link-20261026-b3/recipe.json",
+    "recipeSha256": "d386cb3c03e94a0c6b90fb6e9ee0ab0b0730da474f8860c505f60b942556fdfe",
+    "outputs": {
+      "/private/tmp/aux-future-browser-link-20261026-b3/Aux": "f1d74243a7cffcf1877bf31c721e8aedfceb93a7e7f6c1b357ee59f0e5c27d85",
+      "/private/tmp/aux-future-browser-link-20261026-b3/Aux Framework": "49f3840806f700a21065d7bff1d2d44cb4f9a1638655dbd0e414adaaf7b88df6",
+      "/private/tmp/aux-future-browser-link-20261026-b3/libui.a": "af07522764455b90267f8e54b14bdbbbbceac3deb23fac52f8055821bdc184ca"
+    },
+    "unchangedUiMembersPreserved": 174,
+    "sourceRecompiled": false
+  },
+  "daemon": {
+    "receipt": "/private/tmp/aux-future-supervised-native-20261026-b1/receipt.json",
+    "receiptSha256": "758bf30ede822cadf5c197080e3d26ee9d00c4f377ddeaeb2be1cff401bdbc45",
+    "path": "/private/tmp/aux-future-supervised-native-20261026-b1/Aux Daemon",
+    "sha256": "bf42ec929b0fdb1cbd11d6d4d56687cdf46828fca88850a43b53bfea7a9728c3"
+  },
+  "resourceDependency": {
+    "required": true,
+    "integratedCorrectionCommit": "a2c814d3c",
+    "sourceCommit": "037a6fffb",
+    "reason": "Recompose both future resource leaves with final immutable supervised-mode predicate and lazy browser registration; include any subsequently accepted sidebar/recursive-split source selection. Current b2 resource copies are predecessor proof, not activation resources.",
+    "rebuildRequested": false
+  },
+  "changesToExistingLink": [
+    "substitute seven passed private producer objects, one through a private thin UI archive",
+    "replace exactly three predecessor Swift objects with the passed paired WMO object",
+    "omit predecessor Swift debug AST metadata; no executable symbol input omitted",
+    "set both private link deployment minima to agreed macOS27 scope",
+    "use unchanged LinkerDriver class through exact two-output unsigned-only private adapter; shared filter/allowlists untouched"
+  ],
+  "attempts": [
+    {
+      "path": "/private/tmp/aux-future-browser-link-20261026-b1/receipt.json",
+      "result": "Shared-output filter refused private output before compiler invocation; narrowed private adapter added."
+    },
+    {
+      "path": "/private/tmp/aux-future-browser-link-20261026-b2/receipt.json",
+      "result": "Framework inherited13.0 deployment target conflicted with13.5 Swift object; paired private target corrected to requested27.0."
+    }
+  ],
+  "remaining": [
+    "final corrected paired resource composition and source selection",
+    "actual signed spawn-helper v11 descriptor and containing image policies",
+    "legitimate daemon and browser ES entitlement coverage plus separately authorized exact signing/provisioning delta",
+    "supported fresh namespace and actual execution/descendant/cancellation/shutdown acceptance"
+  ]
+}
