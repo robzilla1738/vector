@@ -1,0 +1,249 @@
+{
+  "format": "aux.successor.runtime-relocation.v1",
+  "acceptedApp": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-local-completion-20261025-a38/Aux.app",
+  "proposedApp": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-completion-20261026-a1/Aux.app",
+  "oldRuntimeTextRoot": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-final-local-completion-20261023/Aux.app/Contents/Resources/aux/agent-runtime",
+  "newRuntimeTextRoot": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-completion-20261026-a1/Aux.app/Contents/Resources/aux/agent-runtime",
+  "inputs": [
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-local-completion-20261025-a38/Aux.app/Contents/Resources/aux/agent-runtime/python/venv/bin/activate",
+      "sha256": "23eb1d45df2a2489d4729d6adb65ba15122e80eaf59f5a31d7215cc588598016",
+      "bytes": 2402
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-local-completion-20261025-a38/Aux.app/Contents/Resources/aux/agent-runtime/python/venv/bin/activate.csh",
+      "sha256": "61a0941331874d1577d50d95805a77eed3fcb5224c1e88835f85c93188eda775",
+      "bytes": 1035
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-local-completion-20261025-a38/Aux.app/Contents/Resources/aux/agent-runtime/python/venv/bin/activate.fish",
+      "sha256": "3732c45e7c7ffe32307b6ce1acefce4ba987df0a59ab4d8c9610f80dfa3767cd",
+      "bytes": 2306
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-local-completion-20261025-a38/Aux.app/Contents/Resources/aux/agent-runtime/python/venv/bin/pip",
+      "sha256": "f248aadcec65b8054beffef6f3426715361475d0de29b279f56a60f4daf8b5fc",
+      "bytes": 310
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-local-completion-20261025-a38/Aux.app/Contents/Resources/aux/agent-runtime/python/venv/bin/pip3",
+      "sha256": "f248aadcec65b8054beffef6f3426715361475d0de29b279f56a60f4daf8b5fc",
+      "bytes": 310
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-local-completion-20261025-a38/Aux.app/Contents/Resources/aux/agent-runtime/python/venv/bin/pip3.13",
+      "sha256": "f248aadcec65b8054beffef6f3426715361475d0de29b279f56a60f4daf8b5fc",
+      "bytes": 310
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-local-completion-20261025-a38/Aux.app/Contents/Resources/aux/agent-runtime/python/venv/bin/vba_extract.py",
+      "sha256": "702f03a489798dca946e486fe6e125ad8eb8701c6d34bab79e4a5e0c667f2370",
+      "bytes": 2460
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-local-completion-20261025-a38/Aux.app/Contents/Resources/aux/agent-runtime/python/venv/pyvenv.cfg",
+      "sha256": "882aa20f37fb1d1f9a8baa7d8e79565616c3c8a3cd0c6d765c467772bd8294cc",
+      "bytes": 744
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-local-completion-20261025-a38/Aux.app/Contents/Resources/aux/agent-runtime/env.sh",
+      "sha256": "4622cdda36d2b597727c1d603e735a88828640eff3b3f4c5dd72b1e71054e0ff",
+      "bytes": 670
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-local-completion-20261025-a38/Aux.app/Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/native/runtime-text-root.json",
+      "sha256": "225e0eb0faad6e021a6ed181d6b07a262e6ec43a053a6103c804b3aae2d27be6",
+      "bytes": 198
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-local-completion-20261025-a38/Aux.app/Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/native/runtime-bootstrap.cjs",
+      "sha256": "da30c2b0445af81b3d3ff53fc82f7c93f589e34c3a7756e9f92ef38fab34c5e4",
+      "bytes": 7664
+    },
+    {
+      "path": "/private/tmp/aux-standard-native-source-20261023-a4/AuxRuntimePublication.inc",
+      "sha256": "4e0dfe94fec7763adbb454bf7d4dd01c50e3095ab242108d784b0f7bbf5f8fa9",
+      "bytes": 16813
+    }
+  ],
+  "replacements": [
+    {
+      "input": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-local-completion-20261025-a38/Aux.app/Contents/Resources/aux/agent-runtime/python/venv/bin/activate",
+      "inputSha256": "23eb1d45df2a2489d4729d6adb65ba15122e80eaf59f5a31d7215cc588598016",
+      "output": "/private/tmp/aux-completion-runtime-relocation-20261026-a1/resources/agent-runtime/python/venv/bin/activate",
+      "outputSha256": "bdf294e5ed101edc87df3c37b30c9cb52b9a1d9ec8e53d38c4a38c5694a8f027",
+      "bytes": 2384,
+      "anchors": [
+        {
+          "before": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-final-local-completion-20261023/Aux.app/Contents/Resources/aux/agent-runtime",
+          "after": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-completion-20261026-a1/Aux.app/Contents/Resources/aux/agent-runtime",
+          "count": 2,
+          "sourceFind": "/Users/runner/work/bro-components/bro-components/packages/aside-runtime/dist/aside-runtime-1.26.1019.335-darwin-arm64"
+        }
+      ]
+    },
+    {
+      "input": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-local-completion-20261025-a38/Aux.app/Contents/Resources/aux/agent-runtime/python/venv/bin/activate.csh",
+      "inputSha256": "61a0941331874d1577d50d95805a77eed3fcb5224c1e88835f85c93188eda775",
+      "output": "/private/tmp/aux-completion-runtime-relocation-20261026-a1/resources/agent-runtime/python/venv/bin/activate.csh",
+      "outputSha256": "e21cbca246d595acdaf9f8800f978e6d1f7c4b30f15bc39e969c05287802c5ce",
+      "bytes": 1026,
+      "anchors": [
+        {
+          "before": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-final-local-completion-20261023/Aux.app/Contents/Resources/aux/agent-runtime",
+          "after": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-completion-20261026-a1/Aux.app/Contents/Resources/aux/agent-runtime",
+          "count": 1,
+          "sourceFind": "/Users/runner/work/bro-components/bro-components/packages/aside-runtime/dist/aside-runtime-1.26.1019.335-darwin-arm64"
+        }
+      ]
+    },
+    {
+      "input": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-local-completion-20261025-a38/Aux.app/Contents/Resources/aux/agent-runtime/python/venv/bin/activate.fish",
+      "inputSha256": "3732c45e7c7ffe32307b6ce1acefce4ba987df0a59ab4d8c9610f80dfa3767cd",
+      "output": "/private/tmp/aux-completion-runtime-relocation-20261026-a1/resources/agent-runtime/python/venv/bin/activate.fish",
+      "outputSha256": "41b2e024b9b381917599a924104c22fd076f60a88bc87f96ff9c2f997dd0ba42",
+      "bytes": 2297,
+      "anchors": [
+        {
+          "before": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-final-local-completion-20261023/Aux.app/Contents/Resources/aux/agent-runtime",
+          "after": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-completion-20261026-a1/Aux.app/Contents/Resources/aux/agent-runtime",
+          "count": 1,
+          "sourceFind": "/Users/runner/work/bro-components/bro-components/packages/aside-runtime/dist/aside-runtime-1.26.1019.335-darwin-arm64"
+        }
+      ]
+    },
+    {
+      "input": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-local-completion-20261025-a38/Aux.app/Contents/Resources/aux/agent-runtime/python/venv/bin/pip",
+      "inputSha256": "f248aadcec65b8054beffef6f3426715361475d0de29b279f56a60f4daf8b5fc",
+      "output": "/private/tmp/aux-completion-runtime-relocation-20261026-a1/resources/agent-runtime/python/venv/bin/pip",
+      "outputSha256": "6dfc086cd980ab18098df740c6eb71f85eaeb6d95dae3f3d543ae183fa76ab37",
+      "bytes": 301,
+      "anchors": [
+        {
+          "before": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-final-local-completion-20261023/Aux.app/Contents/Resources/aux/agent-runtime",
+          "after": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-completion-20261026-a1/Aux.app/Contents/Resources/aux/agent-runtime",
+          "count": 1,
+          "sourceFind": "/Users/runner/work/bro-components/bro-components/packages/aside-runtime/dist/aside-runtime-1.26.1019.335-darwin-arm64"
+        }
+      ]
+    },
+    {
+      "input": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-local-completion-20261025-a38/Aux.app/Contents/Resources/aux/agent-runtime/python/venv/bin/pip3",
+      "inputSha256": "f248aadcec65b8054beffef6f3426715361475d0de29b279f56a60f4daf8b5fc",
+      "output": "/private/tmp/aux-completion-runtime-relocation-20261026-a1/resources/agent-runtime/python/venv/bin/pip3",
+      "outputSha256": "6dfc086cd980ab18098df740c6eb71f85eaeb6d95dae3f3d543ae183fa76ab37",
+      "bytes": 301,
+      "anchors": [
+        {
+          "before": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-final-local-completion-20261023/Aux.app/Contents/Resources/aux/agent-runtime",
+          "after": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-completion-20261026-a1/Aux.app/Contents/Resources/aux/agent-runtime",
+          "count": 1,
+          "sourceFind": "/Users/runner/work/bro-components/bro-components/packages/aside-runtime/dist/aside-runtime-1.26.1019.335-darwin-arm64"
+        }
+      ]
+    },
+    {
+      "input": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-local-completion-20261025-a38/Aux.app/Contents/Resources/aux/agent-runtime/python/venv/bin/pip3.13",
+      "inputSha256": "f248aadcec65b8054beffef6f3426715361475d0de29b279f56a60f4daf8b5fc",
+      "output": "/private/tmp/aux-completion-runtime-relocation-20261026-a1/resources/agent-runtime/python/venv/bin/pip3.13",
+      "outputSha256": "6dfc086cd980ab18098df740c6eb71f85eaeb6d95dae3f3d543ae183fa76ab37",
+      "bytes": 301,
+      "anchors": [
+        {
+          "before": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-final-local-completion-20261023/Aux.app/Contents/Resources/aux/agent-runtime",
+          "after": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-completion-20261026-a1/Aux.app/Contents/Resources/aux/agent-runtime",
+          "count": 1,
+          "sourceFind": "/Users/runner/work/bro-components/bro-components/packages/aside-runtime/dist/aside-runtime-1.26.1019.335-darwin-arm64"
+        }
+      ]
+    },
+    {
+      "input": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-local-completion-20261025-a38/Aux.app/Contents/Resources/aux/agent-runtime/python/venv/bin/vba_extract.py",
+      "inputSha256": "702f03a489798dca946e486fe6e125ad8eb8701c6d34bab79e4a5e0c667f2370",
+      "output": "/private/tmp/aux-completion-runtime-relocation-20261026-a1/resources/agent-runtime/python/venv/bin/vba_extract.py",
+      "outputSha256": "91b6343c756165ce5839b554f5e88c8ed4f8e369eb0daf4a0f7198fe6cb1c66f",
+      "bytes": 2451,
+      "anchors": [
+        {
+          "before": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-final-local-completion-20261023/Aux.app/Contents/Resources/aux/agent-runtime",
+          "after": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-completion-20261026-a1/Aux.app/Contents/Resources/aux/agent-runtime",
+          "count": 1,
+          "sourceFind": "/Users/runner/work/bro-components/bro-components/packages/aside-runtime/dist/aside-runtime-1.26.1019.335-darwin-arm64"
+        }
+      ]
+    },
+    {
+      "input": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-local-completion-20261025-a38/Aux.app/Contents/Resources/aux/agent-runtime/python/venv/pyvenv.cfg",
+      "inputSha256": "882aa20f37fb1d1f9a8baa7d8e79565616c3c8a3cd0c6d765c467772bd8294cc",
+      "output": "/private/tmp/aux-completion-runtime-relocation-20261026-a1/resources/agent-runtime/python/venv/pyvenv.cfg",
+      "outputSha256": "a125d57d300bc2d26e4a6c541bb570572bc345c12976baf2714b28e6057236d8",
+      "bytes": 708,
+      "anchors": [
+        {
+          "before": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-final-local-completion-20261023/Aux.app/Contents/Resources/aux/agent-runtime",
+          "after": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-completion-20261026-a1/Aux.app/Contents/Resources/aux/agent-runtime",
+          "count": 4,
+          "sourceFind": "/Users/runner/work/bro-components/bro-components/packages/aside-runtime/dist/aside-runtime-1.26.1019.335-darwin-arm64"
+        }
+      ]
+    },
+    {
+      "input": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-local-completion-20261025-a38/Aux.app/Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/native/runtime-text-root.json",
+      "inputSha256": "225e0eb0faad6e021a6ed181d6b07a262e6ec43a053a6103c804b3aae2d27be6",
+      "output": "/private/tmp/aux-completion-runtime-relocation-20261026-a1/resources/native/runtime-text-root.json",
+      "outputSha256": "a36d05c80e96470c1df1f32c61f39f0d517b074f3c21ed4335dd57638ebdd783",
+      "bytes": 189,
+      "anchors": [
+        {
+          "before": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-final-local-completion-20261023/Aux.app/Contents/Resources/aux/agent-runtime",
+          "after": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-completion-20261026-a1/Aux.app/Contents/Resources/aux/agent-runtime",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "input": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-local-completion-20261025-a38/Aux.app/Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/native/runtime-bootstrap.cjs",
+      "inputSha256": "da30c2b0445af81b3d3ff53fc82f7c93f589e34c3a7756e9f92ef38fab34c5e4",
+      "output": "/private/tmp/aux-completion-runtime-relocation-20261026-a1/resources/native/runtime-bootstrap.cjs",
+      "outputSha256": "06717ab918188a76f4101336fffe297f044792a183cde73efcab4a59af428fcf",
+      "bytes": 7664,
+      "anchors": [
+        {
+          "before": "225e0eb0faad6e021a6ed181d6b07a262e6ec43a053a6103c804b3aae2d27be6",
+          "after": "a36d05c80e96470c1df1f32c61f39f0d517b074f3c21ed4335dd57638ebdd783",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "input": "/private/tmp/aux-standard-native-source-20261023-a4/AuxRuntimePublication.inc",
+      "inputSha256": "4e0dfe94fec7763adbb454bf7d4dd01c50e3095ab242108d784b0f7bbf5f8fa9",
+      "output": "/private/tmp/aux-completion-runtime-relocation-20261026-a1/source/AuxRuntimePublication.inc",
+      "outputSha256": "892dbbef0aa14bf97db8fa60e990c7bc7a585acf847092ac0c1166307fb45062",
+      "bytes": 16804,
+      "anchors": [
+        {
+          "before": "constexpr char kBundledTextRoot[] = \"/Users/rcourson/Documents/Vibe/web/out/provided-candidate-final-local-completion-20261023/Aux.app/Contents/Resources/aux/agent-runtime\";",
+          "after": "constexpr char kBundledTextRoot[] = \"/Users/rcourson/Documents/Vibe/web/out/provided-candidate-completion-20261026-a1/Aux.app/Contents/Resources/aux/agent-runtime\";",
+          "count": 1
+        }
+      ]
+    }
+  ],
+  "runtimeInventorySha256": "7fa5c41acab7c3e9c052bf44b9daa4c0892e717f70718ca9f6a65b030e13bba8",
+  "nativeRecipeInput": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/runtime/selected-builtin-owner/daemon-recipe.json",
+  "recipeJoin": {
+    "oldInclude": "/private/tmp/aux-standard-native-source-20261023-a4/AuxRuntimePublication.inc",
+    "newInclude": "/private/tmp/aux-completion-runtime-relocation-20261026-a1/source/AuxRuntimePublication.inc",
+    "sha256": "892dbbef0aa14bf97db8fa60e990c7bc7a585acf847092ac0c1166307fb45062",
+    "removeOldIncludePin": "4e0dfe94fec7763adbb454bf7d4dd01c50e3095ab242108d784b0f7bbf5f8fa9",
+    "required": "Select successor include directory before old include directory, replace headerAndIncludePins entry, and freeze this new source before compile."
+  },
+  "appChanged": false,
+  "assembled": false,
+  "compiled": false,
+  "signed": false,
+  "executed": false,
+  "ownerStateRead": false,
+  "originalRuntimeInventoryChanged": false
+}
