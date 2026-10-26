@@ -7,21 +7,21 @@
   "runtimeAccepted": false,
   "platform": "M-series arm64; browser executable and Framework LC_BUILD_VERSION minos27.0",
   "browser": {
-    "receipt": "/private/tmp/aux-future-browser-link-20261026-b5/receipt.json",
-    "receiptSha256": "32a6bfd3225529152572bf2d1599ca884a3f0735bc869dd8004b02867661f2bf",
-    "recipe": "/private/tmp/aux-future-browser-link-20261026-b5/recipe.json",
-    "recipeSha256": "fac990cb06b635a66417e5bbd4446fe8ffa9612e75a1d79d0059a68f2a556ab4",
+    "receipt": "/private/tmp/aux-future-browser-link-20261026-b6/receipt.json",
+    "receiptSha256": "837a565c2b66d18bf5d29ea8c75252cbfebe53cb286f097cab33f7e5e85b05a8",
+    "recipe": "/private/tmp/aux-future-browser-link-20261026-b6/recipe.json",
+    "recipeSha256": "e2392e163a0d3462f86c4d5939249a233c8177c0cd9344ce78d9c5ba64d8c75f",
     "outputs": {
-      "/private/tmp/aux-future-browser-link-20261026-b5/Aux": "f1d74243a7cffcf1877bf31c721e8aedfceb93a7e7f6c1b357ee59f0e5c27d85",
-      "/private/tmp/aux-future-browser-link-20261026-b5/Aux Framework": "e652bc03f220658ee86ad8179acb07f3922174ae9650144eddb668dce4a85320",
-      "/private/tmp/aux-future-browser-link-20261026-b5/libui.a": "66f1fbe4df4b7d2a0e13c1c7d8933686c700b6b02b7ba4caf9b4fd25348c3737"
+      "/private/tmp/aux-future-browser-link-20261026-b6/Aux": "f1d74243a7cffcf1877bf31c721e8aedfceb93a7e7f6c1b357ee59f0e5c27d85",
+      "/private/tmp/aux-future-browser-link-20261026-b6/Aux Framework": "2742289983a902fc554c5ae6be9460944a041b5724f30c90aefebeeba03ffc08",
+      "/private/tmp/aux-future-browser-link-20261026-b6/libui.a": "dcb3a4dd1cf8f843b1ec7c8b7ee0a8a457e1d0c5c1bc09c60005a1de9766b07d"
     },
     "unchangedUiMembersPreserved": 174,
     "reusedPrimary": {
-      "source": "/private/tmp/aux-future-browser-link-20261026-b4/Aux",
+      "source": "/private/tmp/aux-future-browser-link-20261026-b5/Aux",
       "sha256": "f1d74243a7cffcf1877bf31c721e8aedfceb93a7e7f6c1b357ee59f0e5c27d85",
-      "receipt": "/private/tmp/aux-future-browser-link-20261026-b4/receipt.json",
-      "receiptSha256": "d713870371a48150949c40e8bb5db9107fe173dea1e45f3b7da2bbdb2f14e4f1"
+      "receipt": "/private/tmp/aux-future-browser-link-20261026-b5/receipt.json",
+      "receiptSha256": "32a6bfd3225529152572bf2d1599ca884a3f0735bc869dd8004b02867661f2bf"
     },
     "onlyFrameworkRelinked": true,
     "sourceProducerCompiles": 0,
@@ -59,70 +59,43 @@
   "resourceDependency": {
     "required": false,
     "completed": true,
-    "integratedCorrectionCommit": "253db9854",
-    "sourceCommit": "0f4537c24",
-    "receipt": "/private/tmp/aux-future-direct-fixed-dispatch-20261026-b1/receipt.json",
-    "receiptSha256": "be56bd50133a7c5707d57f4a4289cb05cafcf68ff1622bfe4e23d858b7ca3db4",
-    "plan": "../../integration/ordinary-chat/direct-fixed-dispatch/future-proposal.json",
+    "receipt": "/private/tmp/aux-settled-browser-rejection-20261026-a1/receipt.json",
+    "receiptSha256": "b43b7204ab1fce7f804a26ed99afee2f23751908bc07bb9f21237b7d632bdbe4",
+    "plan": "../settled-browser-rejection/plan.json",
     "resources": [
       {
-        "path": "/private/tmp/aux-future-direct-fixed-dispatch-20261026-b1/index.mjs",
-        "sha256": "35224aa4bb1633f71bd4963a7d02fa63d6d5aafc6490b3e55afeedc1b507843a",
+        "path": "/private/tmp/aux-settled-browser-rejection-20261026-a1/future/index.mjs",
+        "sha256": "0c58944c7623d8ef6fb6c2b59d038c3e9e49bdda592a639ef58e172e63f9b34b",
         "preservedAdapters": {
           "selected-repl-fs-resource.mjs": "de8c25462318a399e971b6be59d735c4b064aa1a86a0ce94a4d0d7637a04ccfd",
           "selected-repl-resource.mjs": "b97a6ac7031f1d9dd4c9b8e1105908c7c8deb63f648c70adae40c9ece5b4b0dd"
         }
       },
       {
-        "path": "/private/tmp/aux-future-direct-fixed-dispatch-20261026-b1/aux-native-entry.mjs",
-        "sha256": "882031706a125573c03a246f28f6c01f73f80b779345a10a0bb59ecd658ec2fc",
+        "path": "/private/tmp/aux-settled-browser-rejection-20261026-a1/future/aux-native-entry.mjs",
+        "sha256": "4603d500d5de3b34123f2cc12232ae3477fe79a2ed8aec937879d7f011753041",
         "preservedAdapters": {
           "selected-repl-fs-resource.mjs": "de8c25462318a399e971b6be59d735c4b064aa1a86a0ce94a4d0d7637a04ccfd",
           "selected-repl-resource.mjs": "b97a6ac7031f1d9dd4c9b8e1105908c7c8deb63f648c70adae40c9ece5b4b0dd"
         }
       }
     ],
-    "ruleCounts": [
-      [
-        1,
-        1,
-        1,
-        1,
-        1,
-        1,
-        1,
-        1,
-        1,
-        1,
-        1
-      ],
-      [
-        1,
-        1,
-        1,
-        1,
-        1,
-        1,
-        1,
-        1,
-        1,
-        1,
-        1
-      ]
-    ],
     "focusedChecksPassed": true,
     "nativeRebuild": false,
     "signed": false,
     "appModified": false,
     "modelCalls": 0,
-    "reusedWithoutRecomposition": false,
     "nativeInterfaceUnchanged": true,
     "exactReverseReplay": true,
-    "futureVerificationScope": "Two syntax checks plus exact substitution counts/reverse replay; focused direct-boundary checks reused from0f4537c24. No native rebuild or runtime acceptance.",
     "previousResourceReceipt": {
-      "path": "/private/tmp/aux-future-final-resources-20261026-b1/receipt.json",
-      "sha256": "71f221028b11b88d31a922df45552b5b8b7dd1c8716a1763c5086493773823ff"
-    }
+      "path": "/private/tmp/aux-future-direct-fixed-dispatch-20261026-b1/receipt.json",
+      "sha256": "be56bd50133a7c5707d57f4a4289cb05cafcf68ff1622bfe4e23d858b7ca3db4"
+    },
+    "includedCorrections": [
+      "direct fixed dispatch",
+      "no-spawn optional analytics",
+      "settled browser rejection native custody separation"
+    ]
   },
   "changesToExistingLink": [
     "substitute seven passed private producer objects, one through a private thin UI archive",
@@ -148,11 +121,11 @@
   ],
   "resourceCompositionComplete": true,
   "acceptedLocalRepairDependency": {
-    "status": "Build24797 native delta included. Prepared retained-palette correction4482cd7e5 remains pending and excluded.",
-    "baselineReceipt": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/integrator/palette-peer-tools-a1/build-receipt.json",
-    "baselineReceiptSha256": "ddb4d7f0ef3b12b923a93062638c491e38373e88e62eaf08ca6beec6d188331d",
+    "status": "Build94864 retained-palette recovery included; actual browser binding failure remains diagnostic pending.",
+    "baselineReceipt": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/integrator/palette-capture-settlement-a1/build-receipt.json",
+    "baselineReceiptSha256": "944fbe40f48fc8e01d922e67b390843bf3ad532e91e07398c4b5b8f1e88a016e",
     "currentLocalSourceDeltaPending": true,
-    "pendingCorrectionCommit": "4482cd7e5",
+    "pendingDefect": "Actual browser profile binding failure requires diagnosis and acceptance.",
     "uiRuntimeAcceptanceClaimed": false
   },
   "currentReceiptStillNamesPreviousLinkedBytes": false,
@@ -168,8 +141,8 @@
     "linked": true,
     "producerReceipt": "/private/tmp/aux-future-startup-refresh-20261026-b1/receipt.json",
     "producerReceiptSha256": "24c74b61867094e219dc183e8c6432ba4ec5d54faa841f9346117cb637f23f5a",
-    "frameworkLinkReceipt": "/private/tmp/aux-future-browser-link-20261026-b5/receipt.json",
-    "frameworkLinkReceiptSha256": "32a6bfd3225529152572bf2d1599ca884a3f0735bc869dd8004b02867661f2bf",
+    "frameworkLinkReceipt": "/private/tmp/aux-future-browser-link-20261026-b6/receipt.json",
+    "frameworkLinkReceiptSha256": "837a565c2b66d18bf5d29ea8c75252cbfebe53cb286f097cab33f7e5e85b05a8",
     "existingFutureBranchPreserved": true,
     "bothCompositionOrdersEqual": true
   },
@@ -182,5 +155,13 @@
     "packaged": false
   },
   "frozenSelectionSourceAndNativeBuildComplete": true,
-  "sourceCompletenessScope": "Exact build24797/b5 cohort complete; newer prepared4482cd7e5 retained-palette recovery not integrated."
+  "sourceCompletenessScope": "Exact build94864/b6 cohort complete. Actual browser binding defect remains unresolved; no product/runtime completeness claimed.",
+  "backgroundResource": {
+    "path": "/private/tmp/aux-fullpage-fixed-20261026-a2/background.js",
+    "sha256": "c752348154b2dc9754ce3190f01e1b6451913df9711ba51929a86c5dc032c414",
+    "target": "Contents/Resources/aux/apps/extension/dist/background.js",
+    "receipt": "/private/tmp/aux-fullpage-fixed-20261026-a2/receipt.json",
+    "receiptSha256": "989c960173bfa5ed0611d119b3729d24fe8550e9f7246adb50af6bf6cd42d8a8",
+    "packaged": false
+  }
 }
