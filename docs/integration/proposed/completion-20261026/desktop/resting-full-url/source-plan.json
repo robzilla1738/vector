@@ -1,0 +1,12 @@
+{
+  "projected": false,
+  "compiled": false,
+  "files": [
+    {
+      "path": "chrome/browser/ui/views/location_bar/location_bar_view.cc",
+      "beforeSha256": "f4f555f87d08ae2c251cfea22782db6f6abc8d4f185b99831bde1c3b1ca2a49a",
+      "afterSha256": "6aa4ae321848fdaad974f2b60a7dd6452045ea87dd242c6d9c06988b767eeec8",
+      "anchors": 1
+    }
+  ]
+}

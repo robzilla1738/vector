@@ -1,0 +1,7 @@
+# Always-show-full-URL also applies to the supplied resting pill
+
+The normal-window resting origin/title view used `FormatUrlForSecurityDisplay(...OMIT_HTTP_AND_HTTPS)` unconditionally. It then activates the supplied resting presentation in place of the editable omnibox. Quick Window uses the ordinary omnibox, whose preference observer and location-bar model already honor `kPreventUrlElisionsInOmnibox`. Therefore the source has a concrete missing preference join even though the reported normal-window AX/screenshot distinction remains unconfirmed.
+
+One anchor retains the existing origin/title controls, typography, layout and internal Aux label. When the native location-bar model requires no elision, use its `GetURLForDisplay()` (which honors the same profile preference and native URL presentation policy). Otherwise preserve the supplied security-origin formatting. No second preference, reconstructed URL parser or visual redesign. The model also owns security-error elision decisions.
+
+Counted replay only; no projection/build/app operation. Root can group this one location-bar object with a meaningful candidate. Acceptance needs an unfocused normal-window resting pill screenshot with the setting on and off, then one focused omnibox/Quick comparison. A screenshot is needed because the earlier observation was AX-only. Existing omnibox preference updates and normal location-bar layout remain the update owner.

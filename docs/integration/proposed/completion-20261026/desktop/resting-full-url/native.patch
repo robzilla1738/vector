@@ -1,0 +1,17 @@
+--- a/chrome/browser/ui/views/location_bar/location_bar_view.cc
++++ b/chrome/browser/ui/views/location_bar/location_bar_view.cc
+@@ -839,9 +839,11 @@
+       show_page_title
+           ? (aux_internal_main_page
+                  ? std::u16string(u"Aux")
+-                 : url_formatter::FormatUrlForSecurityDisplay(
+-                       contents->GetLastCommittedURL(),
+-                       url_formatter::SchemeDisplay::OMIT_HTTP_AND_HTTPS))
++                 : GetLocationBarModel()->ShouldPreventElision()
++                       ? GetLocationBarModel()->GetURLForDisplay()
++                       : url_formatter::FormatUrlForSecurityDisplay(
++                             contents->GetLastCommittedURL(),
++                             url_formatter::SchemeDisplay::OMIT_HTTP_AND_HTTPS))
+           : std::u16string());
+   aux_resting_origin_view_->SetImageModel(
+       views::Button::STATE_NORMAL,
