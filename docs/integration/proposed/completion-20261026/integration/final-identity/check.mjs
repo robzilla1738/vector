@@ -1,0 +1,32 @@
+import assert from 'node:assert/strict';
+import { readFileSync, writeFileSync, mkdtempSync } from 'node:fs';
+import { createHash } from 'node:crypto';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { spawnSync } from 'node:child_process';
+import { runInNewContext } from 'node:vm';
+import { transformAuxTrustedTypes, transformAuxFinalVaultExclusion } from '../../../../../../vendor/provided/aux-final-identity-v2.mjs';
+const root='/Users/rcourson/Documents/Vibe/web',base=root+'/out/provided-candidate-local-completion-20261025-a38/Aux.app/Contents/Resources/aux/apps/',output=mkdtempSync(join(tmpdir(),'aux-final-identity-v2-')),files=[];
+const reverse=(text,anchors)=>{for(const a of [...anchors].reverse())text=text.slice(0,a.offsetAtApplication)+a.find+text.slice(a.offsetAtApplication+a.replace.length);return text};
+for(const name of ['index.mjs','aux-native-entry.mjs']){
+ const source=readFileSync(base+'daemon/Aux Daemon.app/Contents/Resources/node-development/'+name,'utf8'),current=readFileSync(root+'/out/completion-20261026-paired-source-a7/'+name,'utf8');
+ const policies=transformAuxTrustedTypes({path:name,text:current,source}),vault=transformAuxFinalVaultExclusion({text:policies.text,source});
+ assert.equal(reverse(reverse(vault.text,vault.anchors),policies.anchors),current);
+ assert.equal((vault.text.match(/Aux [Vv]ault/g)??[]).length,0);
+ assert.ok(vault.text.includes('cwd:`/aux/routines/v2/${ii.id}`'));assert.ok(!vault.text.includes('/aside/routines/'));
+ assert.ok(vault.text.includes('PASSWORD_MANAGER_EXTENSION_ID=`nbpghnminpifekjbgjefioajhiilbfla`'));
+ assert.ok(vault.text.includes('{urlPrefix:`${PASSWORD_MANAGER_EXTENSION_ORIGIN}/`,label:`Protected password-manager page`}'));
+ assert.ok(!vault.text.includes('new Set([AGENT_MANAGER_EXTENSION_ORIGIN,PASSWORD_MANAGER_EXTENSION_ORIGIN])'));
+ assert.ok(vault.text.includes('function assertPwmSyncReady('));assert.ok(vault.text.includes('function checkPasswordExposure('));
+ const p=vault.text.indexOf('function renderSnapshotMarkdown('),q=vault.text.indexOf('var SNAPSHOT_TOOL_LIMIT',p),render=vault.text.slice(p,q);
+ const oldInit=JSON.parse(readFileSync(new URL('./source-pins.json',import.meta.url),'utf8')).rules.find(r=>r.scope.includes('snapshot')).replace;
+ const initializer=oldInit.slice(oldInit.indexOf('=')+1);
+ const noop=()=>{},context={process:{platform:'darwin'},__esmMin:fn=>fn,init_queries$4:noop,init_analyze_user_apps:noop,init_detect_ai_subscription:noop,init_detect_browsers:noop,init_detect_password_managers:noop,init_account_registry:noop,init_service$5:noop,init_settings$1:noop,analyzeUserApps:async()=>({apps:[],window:{days:7},scannedVisits:0}),detectPasswordManagers:async()=>[{id:'external',metadata:{detectionSources:[{type:'extension'}]}}],detectAISubscription:async()=>[],detectBrowsers:()=>[],settings:()=>({get:()=>({enabled:false})}),listConnections:()=>[],listRoutines:()=>[]};
+ const snapshot=await runInNewContext(render+'\nvar SNAPSHOT_TOOL_LIMIT,OnboardingRepl,toOnboardingTool;const init_onboarding='+initializer+';init_onboarding();new OnboardingRepl(7).snapshot()',context);
+ assert.ok(snapshot.includes('External password managers detected: external (extension)'));assert.ok(!snapshot.includes('not set up'));assert.ok(!snapshot.includes('undefined'));
+ const target=join(output,name);writeFileSync(target,vault.text,{mode:0o600});assert.equal(spawnSync(process.execPath,['--check',target]).status,0);
+ files.push({name,path:target,sha256:createHash('sha256').update(vault.text).digest('hex'),trustedTypesAnchors:policies.anchors.length,vaultAnchors:vault.anchors.length,fullParse:true,reverse:true});
+}
+const path='content/content.js',source=readFileSync(base+'extension/dist/'+path,'utf8'),result=transformAuxTrustedTypes({path,text:source,source});assert.equal(result.anchors.length,1);assert.equal(reverse(result.text,result.anchors),source);const target=join(output,'content.js');writeFileSync(target,result.text);assert.equal(spawnSync(process.execPath,['--check',target]).status,0);files.push({name:path,path:target,sha256:createHash('sha256').update(result.text).digest('hex'),trustedTypesAnchors:1,fullParse:true,reverse:true});
+writeFileSync(new URL('./verification.json',import.meta.url),JSON.stringify({format:'aux.final-identity-v2.source-check.v1',passed:true,files,actualVaultStringCountBefore:13,actualVaultStringCountAfter:0,blockedVaultIdRetained:true,snapshotNoLongerReadsVaultAuth:true,productExecuted:false,nativeCompiled:false,credentialsRead:false,originalAddonOrRuntimeBytesChanged:false},null,2)+'\n');
+console.log(JSON.stringify({passed:true,output,files:files.length,trustedTypesTotalAnchors:7,vaultAndRoutineAnchorsPerLeaf:14}));

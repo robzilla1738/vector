@@ -1,0 +1,40 @@
+{
+  "format": "aux.final-identity-v2.source-check.v1",
+  "passed": true,
+  "files": [
+    {
+      "name": "index.mjs",
+      "path": "/var/folders/98/j36zgdnd0h507whjl16gxl780000gp/T/aux-final-identity-v2-t0JYlp/index.mjs",
+      "sha256": "5e2145161fbf913a76895c1c5b648363e843bc215db7ab5eb0dc5b4c7110cfc6",
+      "trustedTypesAnchors": 3,
+      "vaultAnchors": 14,
+      "fullParse": true,
+      "reverse": true
+    },
+    {
+      "name": "aux-native-entry.mjs",
+      "path": "/var/folders/98/j36zgdnd0h507whjl16gxl780000gp/T/aux-final-identity-v2-t0JYlp/aux-native-entry.mjs",
+      "sha256": "38d61018477a838a4bc9fcf33cf99c7c97ddfad9a7fbe5ff859f60a4cdb587d9",
+      "trustedTypesAnchors": 3,
+      "vaultAnchors": 14,
+      "fullParse": true,
+      "reverse": true
+    },
+    {
+      "name": "content/content.js",
+      "path": "/var/folders/98/j36zgdnd0h507whjl16gxl780000gp/T/aux-final-identity-v2-t0JYlp/content.js",
+      "sha256": "1227b17dbfa5b852ad305379987b71a463eadbbf92dd54b17e40739ccb72d16c",
+      "trustedTypesAnchors": 1,
+      "fullParse": true,
+      "reverse": true
+    }
+  ],
+  "actualVaultStringCountBefore": 13,
+  "actualVaultStringCountAfter": 0,
+  "blockedVaultIdRetained": true,
+  "snapshotNoLongerReadsVaultAuth": true,
+  "productExecuted": false,
+  "nativeCompiled": false,
+  "credentialsRead": false,
+  "originalAddonOrRuntimeBytesChanged": false
+}

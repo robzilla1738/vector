@@ -1,0 +1,152 @@
+{
+  "format": "aux.final-identity-v2.source-pins.v1",
+  "originals": [
+    {
+      "name": "index.mjs",
+      "sha256": "48af998738fb6d2fc30cb8d5b2e9de03cb04ab7d8563ebdaa5fe8100944fc514"
+    },
+    {
+      "name": "aux-native-entry.mjs",
+      "sha256": "f355833cb607963a65ca3108e7ae19ea7ca60192a9f3d8e2644a3c12ec49c808"
+    }
+  ],
+  "currentPairReceipt": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/integrator/paired-source-a7.json",
+  "contentOriginal": {
+    "path": "content/content.js",
+    "sha256": "57f04e1935e2a4730f28aff6906dd831ca3e1ef6a0007bb056b1b8010a4d7dad"
+  },
+  "trustedTypesPolicies": [
+    [
+      "aside-gmail-compose-",
+      "aux-gmail-compose-v2-"
+    ],
+    [
+      "aside-gdocs-driver",
+      "aux-gdocs-driver-v2"
+    ],
+    [
+      "aside-sheets-paste",
+      "aux-sheets-paste-v2"
+    ]
+  ],
+  "contentPolicyCounts": [
+    0,
+    1,
+    0
+  ],
+  "deadDeclarations": [
+    {
+      "name": "provePwmRecoveryAccess",
+      "expectedIdentifierOccurrences": 1
+    },
+    {
+      "name": "resetPwmAccount",
+      "expectedIdentifierOccurrences": 1
+    },
+    {
+      "name": "commitOnePasswordImport",
+      "expectedIdentifierOccurrences": 1
+    },
+    {
+      "name": "PasswordManagerRepl",
+      "expectedIdentifierOccurrences": 2
+    },
+    {
+      "name": "init_password_manager",
+      "expectedIdentifierOccurrences": 2
+    }
+  ],
+  "rules": [
+    {
+      "scope": "remove consumer-free excluded product function provePwmRecoveryAccess",
+      "find": "async function provePwmRecoveryAccess(Cn,ei){if(PwmAccountRegistry.get(Cn).owner.kind!==`aside`)throw new PasswordManagerError(`Aux Vault recovery requires an Aux account.`,`FORBIDDEN`);let ti=getLocalPwmSecurity(Cn);if(!ti)throw new PasswordManagerError(`Lock and unlock Aux Vault to finish its key migration first.`,`FORBIDDEN`);let ni=(await getCloudPwmSecurity(Cn)).bundle;if(!ni)throw Error(`The server does not have this account’s migrated keyset.`);let ri=await openPwmRoot(Cn,ni,ti.deviceKeyEnvelope,ei);try{(await decryptData(ni.keyset.encPrivKey,ri)).fill(0)}catch(Cn){throw ri.fill(0),Cn}recoveryProofs.get(Cn)?.root.fill(0),recoveryProofs.set(Cn,{root:ri,expiresAt:Date.now()+RECOVERY_PROOF_TTL_MS})}",
+      "replace": "",
+      "count": 1
+    },
+    {
+      "scope": "remove consumer-free excluded product function resetPwmAccount",
+      "find": "async function resetPwmAccount(Cn,ei,ti){let{owner:ni}=PwmAccountRegistry.get(Cn);if(ni.kind!==`aside`)throw new PasswordManagerError(`Aux Vault reset requires an Aux account.`,`FORBIDDEN`);let ri=takePwmStepUp(Cn,`pwm.reset`);if(!ri)throw new PasswordManagerError(`Verify your email to reset Aux Vault.`,`FORBIDDEN`);let{bundle:ii,root:ai}=await createPwmSecurity(ei,ti,ni.userId);try{await fetchPwmAPI(Cn,`/pwm/v1/security/reset`,{method:`POST`,body:{bundle:ii,stepUpToken:ri}}),stopBackgroundSync(Cn),await discardLocalPwmStore(Cn),passwordDb(Cn).transaction(()=>{keysetRepo.set(Cn,ii.keyset,{logChange:!1}),writePwmSecurity(passwordDb(Cn).$client,ii.profile,null)}),await setPasswordSession(ai.slice(),sessionExpiresAt((await getPasswordManagerSettings(Cn)).autoLockTimeout),Cn,getPasswordSessionGeneration(Cn))}finally{ai.fill(0)}}",
+      "replace": "",
+      "count": 1
+    },
+    {
+      "scope": "remove consumer-free excluded product function commitOnePasswordImport",
+      "find": "async function commitOnePasswordImport(Cn,ei){let ti;try{ti=consume1PasswordImportSession(Cn,ei.sessionId)}catch(Cn){throw new TRPCError({code:`BAD_REQUEST`,message:getErrorMessage$1(Cn)})}let ni=new Map(ei.mappings.map(Cn=>[Cn.sourceVaultId,Cn.targetVaultId])),ri=ti.vaults.filter(Cn=>ni.has(Cn.id));if(ri.length!==ei.mappings.length)throw new TRPCError({code:`BAD_REQUEST`,message:`The selected 1Password vault mapping is invalid.`});let ii=await trpcWrap(()=>passwordManager.getSnapshot(Cn)),ai=new Set(ii.vaults.map(Cn=>Cn.id));if(ei.mappings.some(Cn=>!ai.has(Cn.targetVaultId)))throw new TRPCError({code:`BAD_REQUEST`,message:`A target Aux vault no longer exists.`});let oi=0,si=0,ci=0,li=ri.reduce((Cn,ei)=>Cn+ei.skippedInvalid,0),ui=0,di=(ei,ti)=>{li++,logger.warn(`[1password-import] skipped invalid item`,{accountId:Cn,title:ei,issues:ti.issues.map(Cn=>`${Cn.path.join(`.`)}: ${Cn.code}`)})},fi=0,pi=ri.reduce((Cn,ei)=>Cn+(ei.attachmentFailures??0),0);for(let ti of ri){let ai=ni.get(ti.id),mi=ti.items.map(Cn=>({...Cn,vaultId:ai,agentAccessPolicy:ei.agentAccessPolicy})),hi=ii.items.filter(Cn=>Cn.vaultId===ai),gi=deduplicateImportItems(mi,hi),_i=[],vi=[];for(let Cn of gi.toCreate){let ei=vaultItemCreateInputSchema.safeParse(Cn);if(!ei.success){di(Cn.title,ei.error);continue}try{_i.push(await normalizeVaultItemPasskeys(ei.data)),vi.push(Cn.id)}catch{li++}}let yi=_i.length>0?await trpcWrap(()=>passwordManager.createItems(Cn,_i,void 0,`1password`)):{ids:[]},bi=[];for(let{existingId:Cn,incoming:ei}of gi.toUpdate){let ti=vaultItemUpdateInputSchema.safeParse(toImportUpdateInput(ei));if(!ti.success){di(ei.title,ti.error);continue}try{bi.push({itemId:Cn,updates:await normalizeVaultItemUpdatePasskeys(ti.data)})}catch{li++}}bi.length>0&&await trpcWrap(()=>passwordManager.updateItems(Cn,bi));let xi=new Map(vi.map((Cn,ei)=>[Cn,yi.ids[ei]])),Si=new Map(gi.toUpdate.map(({existingId:Cn,incoming:ei})=>[ei.id,Cn])),Ci=new Map(hi.flatMap(Cn=>{let ei=getItemDeduplicationKey(Cn);return ei?[[ei,Cn]]:[]}));for(let Cn of mi){if(xi.has(Cn.id)||Si.has(Cn.id))continue;let ei=getItemDeduplicationKey(Cn),ti=ei?Ci.get(ei):void 0;ti&&Si.set(Cn.id,ti.id)}for(let ei of ti.pendingAttachments){let ti=xi.get(ei.itemUuid)??Si.get(ei.itemUuid);if(ti)try{let ni=await readFile(resolve1PasswordAttachmentPath(ei.accountUuid,ei.documentId)),ri=decryptAesGcm(b64urlDecode(ei.encryptionKey.k),b64urlDecode(ei.nonce),ni);(await importOnePasswordAttachment(Cn,ti,ei.fileName,ri)).stored&&fi++}catch(ei){pi++,logger.warn(`[1password-import] attachment import failed`,{accountId:Cn,error:getErrorMessage$1(ei)})}}oi+=_i.length,si+=bi.length,ci+=gi.skipped,ui+=[..._i,...bi.map(Cn=>Cn.updates)].reduce((Cn,ei)=>Cn+(ei.passkeys?.length??0),0),ri.length>1&&(ii=await trpcWrap(()=>passwordManager.getSnapshot(Cn)))}return{created:oi,updated:si,skipped:ci,skippedInvalid:li,passkeys:ui,vaults:ri.length,attachments:{stored:fi,failed:pi},sourceDecryptionFailures:ti.stats.decryptionFailures,sourceVaultFailures:ti.stats.vaultDecryptionFailures??0,referencesFailed:await resolveOnePasswordReferences(Cn)}}",
+      "replace": "",
+      "count": 1
+    },
+    {
+      "scope": "remove excluded Repl initializer from full Repl initialization",
+      "find": "init_onboarding(),init_password_manager(),init_extensions_cloud()",
+      "replace": "init_onboarding(),init_extensions_cloud()",
+      "count": 1
+    },
+    {
+      "scope": "remove unreferenced PasswordManagerRepl declaration and module",
+      "find": ",PasswordManagerRepl,init_password_manager=__esmMin((()=>{init_accounts(),init_context$3(),init_extension_bridge(),init_password_manager$1(),init_account_lifecycle(),init_account_registry(),init_agent_access(),init_profile_auth(),init_settings(),PasswordManagerRepl=class{#e;#t;#n;#r;constructor(Cn,ei,ti){this.#e=Cn,this.#t=ti,this.#n=()=>({accountId:Cn,...ei()})}async listAccounts(){let{accounts:Cn}=await listProfileAccounts(this.#i());if(!Cn.length||Cn.every(({authStatus:Cn})=>Cn&&!Cn.isInitialized))throw Error(`Aux Vault is not set up. Use another method to complete the task.`);return Cn.map(({id:Cn,name:ei,email:ti,owner:ni,authStatus:ri})=>({pwmAccountId:Cn,name:ei??ti??(ni.kind===`local`?`Local account`:`Password Manager account`),email:ti,isInitialized:ri?.isInitialized??null,isLocked:ri?.isLocked??null,available:ri!==null}))}async listVaults(Cn){return this.#o(Cn,Cn=>Cn.listVaults())}async listItems(Cn,ei={}){return this.#o(Cn,Cn=>Cn.listItems(ei))}async autofillItem(Cn,ei,ti){let ni=this.#a(ei);await this.#o(ni,()=>this.#s(Cn,ni,ti))}async createItem(Cn,ei){return this.#o(Cn,Cn=>Cn.createItem(ei))}async updateItem(Cn,ei,ti){await this.#o(Cn,Cn=>Cn.updateItem(ei,ti))}async generatePassword(Cn,ei={}){return this.#o(Cn,async()=>({type:`generated-password-ref`,refId:(await sendCommandToExtension({method:`Aux.createPasswordManagerGeneratedPasswordRef`,params:{options:ei}},this.#n())).refId}))}async fillPassword(Cn,ei,ti,ni){await this.#o(ei,async()=>{await Cn.locator(ti).click(),await sendCommandToExtension({method:`Aux.fillPasswordManagerGeneratedPasswordRef`,params:{targetId:Cn.targetId,refId:ni.refId}},Cn.browser.extensionBridgeRoute)})}#i(){let Cn=this.#n().profileId,ei=Cn?AccountRegistry.getAccountIdForProfile(Cn):void 0;if(ei!==void 0&&ei!==this.#e)throw Error(`The browser profile belongs to another Aux account.`);return`app-account:${this.#e}`}#a(Cn){if(Cn!==void 0)return Cn;if(this.#r===void 0){this.#r=getProfilePwmAccountId(this.#e);let{email:Cn,name:ei}=PwmAccountRegistry.get(this.#r);replPrint(`Using Password Manager account ${Cn??ei??this.#r} (pwmAccountId: ${this.#r}). Pass a pwmAccountId from listAccounts() to target another account.`)}return this.#r}async#o(Cn,ei){let ti=this.#i(),ni=this.#a(Cn);try{PwmAccountRegistry.resolve(ti,ni)}catch{throw Error(`Unknown pwmAccountId \"${ni}\". Call listAccounts() and pass its pwmAccountId.`)}return runPwmAccountOperation(ni,async()=>{if(!(await passwordManager.getAuthStatus(ni)).isInitialized)throw Error(`Aux Vault is not set up for this account. Use another method to complete the task.`);if((await getPasswordManagerSettings(ni)).useBuiltinPasswordManager===!1)throw Error(`Aux Vault is disabled for this account. Use another method to complete the task.`);return PwmAccountRegistry.resolve(this.#i(),ni),ei(new AgentPasswordManagerAccess(passwordManager,ni,this.#e,this.#t,this.#n))})}async#s(Cn,ei,ti){let ni=Cn.url();if(!/^https?:/i.test(ni))throw Error(`Autofill is not available on \"${ni.split(`:`,1)[0]}:\" pages — it only works on regular http(s) pages. Open the real page (or serve a test page over http) and retry.`);await sendCommandToExtension({method:`Aux.performPasswordManagerAutofill`,params:{pwmAccountId:ei,targetId:Cn.targetId,itemId:ti,agentSessionId:this.#t}},Cn.browser.extensionBridgeRoute),replPrint(`✔︎ Password-manager autofill triggered.`),replPrint(`If the site does not advance, inspect the page state with snapshot(...) and continue from there.`)}}}))",
+      "replace": "",
+      "count": 1
+    },
+    {
+      "scope": "remove excluded Vault setup/auth dependency from onboarding snapshot",
+      "find": "init_onboarding=__esmMin((()=>{init_queries$4(),init_analyze_user_apps(),init_detect_ai_subscription(),init_detect_browsers(),init_detect_password_managers(),init_password_manager$1(),init_account_registry(),init_service$5(),init_settings$1(),SNAPSHOT_TOOL_LIMIT=25,OnboardingRepl=class{#e;constructor(Cn){this.#e=Cn}async snapshot(){let[Cn,ei,ti,ni]=await Promise.all([analyzeUserApps({limit:SNAPSHOT_TOOL_LIMIT}),passwordManager.getAuthStatus(getProfilePwmAccountId(this.#e)),detectPasswordManagers(),detectAISubscription()]),ri=settings(this.#e).get(`memory`).enabled,ii=listConnections(this.#e).length,ai=listRoutines(this.#e).length;return renderSnapshotMarkdown({platform:process.platform,tools:Cn.apps.map(toOnboardingTool),windowDays:Cn.window.days,scannedVisits:Cn.scannedVisits,passwordManager:{isInitialized:ei.isInitialized,isLocked:ei.isLocked,external:ti},browsers:detectBrowsers(),aiSubscriptions:ni,features:{memoryEnabled:ri,channelConnections:ii,routines:ai}})}async detectTools(Cn={}){return(await analyzeUserApps(Cn)).apps.map(toOnboardingTool)}detectPasswordManagers(){return detectPasswordManagers()}detectBrowsers(){return detectBrowsers()}detectAISubscriptions(){return detectAISubscription()}},toOnboardingTool=Cn=>({host:Cn.host,score:Cn.score,visits:Cn.visits,activeDays:Cn.activeDays,weekdayVsWeekend:Cn.weekdayVsWeekend,hasLoginForm:Cn.hasLoginForm,topPaths:Cn.topPaths})}))",
+      "replace": "init_onboarding=__esmMin((()=>{init_queries$4(),init_analyze_user_apps(),init_detect_ai_subscription(),init_detect_browsers(),init_detect_password_managers(),init_account_registry(),init_service$5(),init_settings$1(),SNAPSHOT_TOOL_LIMIT=25,OnboardingRepl=class{#e;constructor(Cn){this.#e=Cn}async snapshot(){let[Cn,ti,ni]=await Promise.all([analyzeUserApps({limit:SNAPSHOT_TOOL_LIMIT}),detectPasswordManagers(),detectAISubscription()]),ri=settings(this.#e).get(`memory`).enabled,ii=listConnections(this.#e).length,ai=listRoutines(this.#e).length;return renderSnapshotMarkdown({platform:process.platform,tools:Cn.apps.map(toOnboardingTool),windowDays:Cn.window.days,scannedVisits:Cn.scannedVisits,passwordManager:{external:ti},browsers:detectBrowsers(),aiSubscriptions:ni,features:{memoryEnabled:ri,channelConnections:ii,routines:ai}})}async detectTools(Cn={}){return(await analyzeUserApps(Cn)).apps.map(toOnboardingTool)}detectPasswordManagers(){return detectPasswordManagers()}detectBrowsers(){return detectBrowsers()}detectAISubscriptions(){return detectAISubscription()}},toOnboardingTool=Cn=>({host:Cn.host,score:Cn.score,visits:Cn.visits,activeDays:Cn.activeDays,weekdayVsWeekend:Cn.weekdayVsWeekend,hasLoginForm:Cn.hasLoginForm,topPaths:Cn.topPaths})}))",
+      "count": 1
+    },
+    {
+      "scope": "remove built-in Vault setup prompt/gate",
+      "find": "Cn.passwordManager.isInitialized?ei.push(`- Aux vault: set up${Cn.passwordManager.isLocked?` (currently locked)`:``}.`):ei.push(`- Aux vault: **not set up yet** — I can't sign into sites for you until this exists.`),",
+      "replace": "",
+      "count": 1
+    },
+    {
+      "scope": "external password-manager snapshot does not promise Vault import",
+      "find": "- Also found on this machine: ${ti} — importable.",
+      "replace": "- External password managers detected: ${ti}. Use their browser extensions; compatibility must be verified.",
+      "count": 1
+    },
+    {
+      "scope": "remove excluded Vault origin from local UI CORS allow",
+      "find": "if(Cn===AGENT_MANAGER_EXTENSION_ORIGIN||Cn===PASSWORD_MANAGER_EXTENSION_ORIGIN)return!0",
+      "replace": "if(Cn===AGENT_MANAGER_EXTENSION_ORIGIN)return!0",
+      "count": 1
+    },
+    {
+      "scope": "remove excluded Vault origin from extension-only procedure allow",
+      "find": "new Set([AGENT_MANAGER_EXTENSION_ORIGIN,PASSWORD_MANAGER_EXTENSION_ORIGIN])",
+      "replace": "new Set([AGENT_MANAGER_EXTENSION_ORIGIN])",
+      "count": 1
+    },
+    {
+      "scope": "retain sensitive password-manager page exclusion with neutral privacy label",
+      "find": "label:`Aux Vault`",
+      "replace": "label:`Protected password-manager page`",
+      "count": 1
+    },
+    {
+      "scope": "neutral shared legacy synchronization diagnostic",
+      "find": "Aux Vault was reset on another device. Unlock it with the new password.",
+      "replace": "Existing password-manager state was reset on another device. Unlock it with the new password.",
+      "count": 1
+    },
+    {
+      "scope": "generic Aux agent for retained legacy breach check",
+      "find": "\"User-Agent\":`Aux Vault`",
+      "replace": "\"User-Agent\":`Aux`",
+      "count": 1
+    },
+    {
+      "scope": "new cloud-routine worker session directory identity v2",
+      "find": "cwd:`/aside/routines/${ii.id}`",
+      "replace": "cwd:`/aux/routines/v2/${ii.id}`",
+      "count": 1
+    }
+  ],
+  "forbiddenVaultExtensionId": "nbpghnminpifekjbgjefioajhiilbfla",
+  "originalVaultStrings": 13,
+  "protectedSharedLegacyFunctions": [
+    "assertPwmSyncReady",
+    "checkPasswordExposure"
+  ],
+  "originalRuntimeOrAddonBytesChanged": false
+}
