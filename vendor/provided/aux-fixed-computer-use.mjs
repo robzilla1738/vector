@@ -19,7 +19,7 @@ export function auxComputerUseActorIdentity(owner) {
     throw Error('The originating Computer Use account changed.');
   const bindings = Object.values(AccountRegistry.getAll().profileAccountBindings).filter(binding => binding.accountId === account.id);
   if (bindings.length !== 1) throw Error('Computer Use requires one explicit account profile binding.');
-  const profileId = bindings[0].profileId, expected = Buffer.from(JSON.stringify(auxSelectedAccountIdentity(account.id, profileId)));
+  const profileId = bindings[0].profileId, expected = Buffer.from(JSON.stringify(auxSelectedAccountIdentity(account, profileId)));
   return { id: account.id, createdAt: account.createdAt, profileId, expected,
     identity: JSON.stringify([expected.toString('utf8'), externalOwnerEpoch(account.id)]) };
 }

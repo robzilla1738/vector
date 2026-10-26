@@ -9,6 +9,10 @@ const source = readFileSync('/Users/rcourson/Documents/Vibe/web/out/provided-can
 const guardStart = source.indexOf('function auxCreateProductivityAccountGuard(');
 const guard = source.slice(guardStart, source.indexOf('async function auxRunProductivityRequest(', guardStart));
 
+const selectedResource = readFileSync(process.env.AUX_SELECTED_RESOURCE_SOURCE ?? '/Users/rcourson/Documents/Vibe/aux-completion-20261026/runtime/docs/integration/proposed/completion-20261026/runtime/selected-builtin-owner/source/selected-builtin-resource.mjs', 'utf8');
+const selectedIdentity = selectedResource.slice(selectedResource.indexOf('function auxSelectedAccountIdentity('), selectedResource.indexOf('const auxSelectedReadFileTools='));
+assert.ok(selectedIdentity.startsWith('function auxSelectedAccountIdentity('));
+
 test('fixed actor keeps real account guard, bounded pipe protocol and native close lifetime', async () => {
   let account = { id: 7, mode: 'local', provider: 'anonymous', authStatus: 'active', createdAt: 11, incarnationId: 'original' }, epoch = 0;
   const profile = { profileId: 'profile-original', accountId: 7, profileIndex: 0, profilePath: '/disposable/Profile 0', updatedAt: 11 };
@@ -27,7 +31,6 @@ test('fixed actor keeps real account guard, bounded pipe protocol and native clo
   const context = { Buffer, AbortController, Error, require$2: createRequire(import.meta.url),
     process: { platform: 'darwin', _linkedBinding: () => binding },
     AccountRegistry: { getAccount: () => ({ ...account }), getAll: () => ({ profileAccountBindings: { [profile.profileId]: { ...profile } } }) },
-    auxSelectedAccountIdentity: () => ({ account, profileBinding: profile }),
     auxBrokerBoundary: () => ({ assertOwner() {} }),
     init_accounts() {}, init_notify() {}, init_lifecycle() {},
     externalOwnerEpoch: () => epoch, isExternalOwnerSuspended: () => false,
@@ -35,7 +38,7 @@ test('fixed actor keeps real account guard, bounded pipe protocol and native clo
     onAccountAuthChange(fn) { changes.add(fn); return () => changes.delete(fn); },
   };
   const helpers = [auxFixedComputerUseFactory, auxComputerUseProcessState, auxComputerUseActorIdentity, auxAccountComputerUseProcess, auxCloseComputerUseProcesses].map(fn => fn.toString()).join('\n');
-  const api = runInNewContext(guard + '\n' + helpers + '\n({capture:auxComputerUseActorIdentity,spawn:auxAccountComputerUseProcess,close:auxCloseComputerUseProcesses,state:auxComputerUseProcessState})', context);
+  const api = runInNewContext(guard + '\n' + selectedIdentity + '\n' + helpers + '\n({capture:auxComputerUseActorIdentity,spawn:auxAccountComputerUseProcess,close:auxCloseComputerUseProcesses,state:auxComputerUseProcessState})', context);
   const child = api.spawn(api.capture({ id: 7, createdAt: 11 }));
   child.on('error', () => {});
   child.stdin.on('error', () => {});

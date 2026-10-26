@@ -1,0 +1,114 @@
+{
+  "format": "aux.selected-computer-use.static-review.v1",
+  "sourceBaseline": "d93bde359",
+  "reviewedFrozenSelectedSource": "/Users/rcourson/Documents/Vibe/aux-completion-20261026/runtime/docs/integration/proposed/completion-20261026/runtime/selected-builtin-owner/source",
+  "files": [
+    {
+      "path": "/Users/rcourson/Documents/Vibe/aux-completion-20261026/runtime/docs/integration/proposed/completion-20261026/runtime/selected-builtin-owner/source/AuxSelectedAccountOwner.swift",
+      "sha256": "3b52e4683535821e5824263aec7f22de1ad14770f4ab826163169d497d10bb40",
+      "bytes": 13374
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/aux-completion-20261026/runtime/docs/integration/proposed/completion-20261026/runtime/selected-builtin-owner/source/AuxOwnedCommandDispatcher.swift",
+      "sha256": "f6bcf0dafc7babbd1aacee255ca690dbd995bd254224e9a9c94192e068897300",
+      "bytes": 141856
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/aux-completion-20261026/runtime/docs/integration/proposed/completion-20261026/runtime/selected-builtin-owner/source/AuxAccountsCskCoordinator.swift",
+      "sha256": "88cdfe673dfad37273c81d963c121b29911911f114d27e7074d36847a96380a2",
+      "bytes": 17196
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/aux-completion-20261026/runtime/docs/integration/proposed/completion-20261026/runtime/selected-builtin-owner/source/AuxSecureStore.swift",
+      "sha256": "79424628dd1dd80e373ec7a3076f347de6dcae421ecd88ff85720dd3cf08d797",
+      "bytes": 11525
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/aux-completion-20261026/runtime/docs/integration/proposed/completion-20261026/runtime/selected-builtin-owner/source/AuxSelectedAccountScope.h",
+      "sha256": "fd70f2257783747ec0690e5784c0ea27c7ca58ee12f665dc9aa7c4e252514f75",
+      "bytes": 2588
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/aux-completion-20261026/runtime/docs/integration/proposed/completion-20261026/runtime/selected-builtin-owner/source/AuxSelectedBuiltinOwner.inc",
+      "sha256": "1ad23c1a18d7ae432672b33db01aeabc58e58175ea9a6ef40d351ca168b87fd9",
+      "bytes": 24324
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/aux-completion-20261026/runtime/docs/integration/proposed/completion-20261026/runtime/selected-builtin-owner/source/AuxFixedBuiltins.inc",
+      "sha256": "b05a2d6bc9ab0052b713ed9f67c03128bcb9200e58ed73b1adbcbc66d4c02900",
+      "bytes": 35549
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/aux-completion-20261026/runtime/docs/integration/proposed/completion-20261026/runtime/selected-builtin-owner/source/AuxSelectedUtilityInvocation.swift",
+      "sha256": "e7f76af1273e542ad3cbc1de0787c04b40172e6b4543a3f053dd5f43e3bbe610",
+      "bytes": 1303
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/aux-completion-20261026/runtime/docs/integration/proposed/completion-20261026/runtime/selected-builtin-owner/source/AuxMemoryMainOwner.inc",
+      "sha256": "6d41b19d885c36e0f220dff4be01dfd572c839bd7d9d14072794fbb1b8e9a019",
+      "bytes": 9113
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/aux-completion-20261026/runtime/docs/integration/proposed/completion-20261026/runtime/selected-builtin-owner/source/AuxDevelopmentWorkerHost.cc",
+      "sha256": "4652ca4ff02537dc8761c18fbb4d37b2ab22b57e9a8e8091d893eaff99875b9d",
+      "bytes": 62028
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/aux-completion-20261026/runtime/docs/integration/proposed/completion-20261026/runtime/selected-builtin-owner/source/AuxNativeTaskLayout.swift",
+      "sha256": "a921d6345263dfb22e2b4286609f7a7a345869afe2d7d7d17a945c5584c46260",
+      "bytes": 36090
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/aux-completion-20261026/runtime/docs/integration/proposed/completion-20261026/runtime/selected-builtin-owner/source/selected-builtin-resource.mjs",
+      "sha256": "8be81eef5af35004ac9f4e8092187ededdf3b43c2f7f63897b021bcb7b5fd7f3",
+      "bytes": 4388
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/aux-completion-20261026/integration/docs/integration/proposed/completion-20261026/integration/computer-use/source/AuxComputerUseHelperJournal.swift",
+      "sha256": "550f97ab942bd0fed00afe7fa582603ed95f3d00bae028664c7246d4185e1839",
+      "bytes": 12309
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/aux-completion-20261026/integration/docs/integration/proposed/completion-20261026/integration/computer-use/source/AuxAccountComputerUseHelper.h",
+      "sha256": "cc4caf1fec1f3ce1616241246a5f0d7eed0603bfc8b49a9d9618580f95c247aa",
+      "bytes": 2007
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/aux-completion-20261026/integration/docs/integration/proposed/completion-20261026/integration/computer-use/source/AuxComputerUseMainOwner.inc",
+      "sha256": "10025389663f332841c7549c11d88a5773de8b7ed31ceb63568f9c005937c8d5",
+      "bytes": 6826
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/aux-completion-20261026/integration/docs/integration/proposed/completion-20261026/integration/computer-use/source/AuxAccountComputerUseHelper.mm",
+      "sha256": "562e99138d7be809eda5dc32974574a3d198b831a0ebcef563beeff2adfe4695",
+      "bytes": 42674
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/aux-completion-20261026/integration/vendor/provided/aux-fixed-computer-use.mjs",
+      "sha256": "01cbee26a5ff85c42d1ee553cca7029b9112cff43d08b91ffb952216be12a81a",
+      "bytes": 5952
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/aux-completion-20261026/integration/docs/integration/proposed/completion-20261026/integration/computer-use/actor.test.mjs",
+      "sha256": "d5a19f8894a258eb231cc3ec610fc1489f74caa5bc2bc3fea93ffb579199dddb",
+      "bytes": 4905
+    }
+  ],
+  "finding": {
+    "id": "CU-IDENTITY-ARGUMENT",
+    "effect": "Every ordinary Computer Use actor refused before native capture because the actual helper requires an account object.",
+    "fix": "Pass the current captured account object instead of account.id.",
+    "verification": "One actor test using the actual frozen identity helper, not a stub; passed."
+  },
+  "nativeCompilationPerformed": false,
+  "productExecuted": false,
+  "osGrantsChanged": false,
+  "ownerStateRead": false,
+  "remainingAcceptance": [
+    "Compose four CU WorkerHost joins with selected overlays, compile coherent daemon and native Swift closure.",
+    "Exact sealed helper signing/launch policy must validate; currently unsigned supplied helper is not launch ready.",
+    "Explicit owner consent before helper launch, desktop observation, or any Accessibility/Screen Recording/Input Monitoring action.",
+    "Disposable actual actor startup, policy write, observed application listing, cancellation, pipe closure and original-child reap require later consented verification.",
+    "No broad certification of OS sandbox behavior or unobserved indirect helper calls from static source review."
+  ]
+}
