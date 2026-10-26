@@ -59,23 +59,23 @@
   "resourceDependency": {
     "required": false,
     "completed": true,
-    "integratedCorrectionCommit": "a2c814d3c18a7e8b134964e267b34efaa21a1078",
-    "sourceCommit": "037a6fffb",
-    "receipt": "/private/tmp/aux-future-final-resources-20261026-b1/receipt.json",
-    "receiptSha256": "71f221028b11b88d31a922df45552b5b8b7dd1c8716a1763c5086493773823ff",
-    "plan": "final-resource-plan.json",
+    "integratedCorrectionCommit": "253db9854",
+    "sourceCommit": "0f4537c24",
+    "receipt": "/private/tmp/aux-future-direct-fixed-dispatch-20261026-b1/receipt.json",
+    "receiptSha256": "be56bd50133a7c5707d57f4a4289cb05cafcf68ff1622bfe4e23d858b7ca3db4",
+    "plan": "../../integration/ordinary-chat/direct-fixed-dispatch/future-proposal.json",
     "resources": [
       {
-        "path": "/private/tmp/aux-future-final-resources-20261026-b1/index.mjs",
-        "sha256": "d244835e0f463a451e350eb2f075cdb6900d1d9e640587edcc372c45ef27b058",
+        "path": "/private/tmp/aux-future-direct-fixed-dispatch-20261026-b1/index.mjs",
+        "sha256": "35224aa4bb1633f71bd4963a7d02fa63d6d5aafc6490b3e55afeedc1b507843a",
         "preservedAdapters": {
           "selected-repl-fs-resource.mjs": "de8c25462318a399e971b6be59d735c4b064aa1a86a0ce94a4d0d7637a04ccfd",
           "selected-repl-resource.mjs": "b97a6ac7031f1d9dd4c9b8e1105908c7c8deb63f648c70adae40c9ece5b4b0dd"
         }
       },
       {
-        "path": "/private/tmp/aux-future-final-resources-20261026-b1/aux-native-entry.mjs",
-        "sha256": "b9f39718475bda37c21ebbf241792b83d534c0c3849548e53b4fe655ceb88f71",
+        "path": "/private/tmp/aux-future-direct-fixed-dispatch-20261026-b1/aux-native-entry.mjs",
+        "sha256": "882031706a125573c03a246f28f6c01f73f80b779345a10a0bb59ecd658ec2fc",
         "preservedAdapters": {
           "selected-repl-fs-resource.mjs": "de8c25462318a399e971b6be59d735c4b064aa1a86a0ce94a4d0d7637a04ccfd",
           "selected-repl-resource.mjs": "b97a6ac7031f1d9dd4c9b8e1105908c7c8deb63f648c70adae40c9ece5b4b0dd"
@@ -87,13 +87,27 @@
         1,
         1,
         1,
-        2
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
       ],
       [
         1,
         1,
         1,
-        2
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
       ]
     ],
     "focusedChecksPassed": true,
@@ -101,8 +115,14 @@
     "signed": false,
     "appModified": false,
     "modelCalls": 0,
-    "reusedWithoutRecomposition": true,
-    "nativeInterfaceUnchanged": true
+    "reusedWithoutRecomposition": false,
+    "nativeInterfaceUnchanged": true,
+    "exactReverseReplay": true,
+    "futureVerificationScope": "Two syntax checks plus exact substitution counts/reverse replay; focused direct-boundary checks reused from0f4537c24. No native rebuild or runtime acceptance.",
+    "previousResourceReceipt": {
+      "path": "/private/tmp/aux-future-final-resources-20261026-b1/receipt.json",
+      "sha256": "71f221028b11b88d31a922df45552b5b8b7dd1c8716a1763c5086493773823ff"
+    }
   },
   "changesToExistingLink": [
     "substitute seven passed private producer objects, one through a private thin UI archive",

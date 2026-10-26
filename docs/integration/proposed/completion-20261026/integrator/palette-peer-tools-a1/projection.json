@@ -1,0 +1,30 @@
+{
+  "files": [
+    {
+      "source": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/desktop/palette-observation/source/chrome/browser/ui/views/frame/aux_tab_search_bubble.cc",
+      "target": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/ui/views/frame/aux_tab_search_bubble.cc",
+      "beforeSha256": "05f17605fc56dc534ab614773f3f1ed67d3806acbc63a533002ccd1889681181",
+      "afterSha256": "a62dc8c0383f4fad2498e576096c2a9ba105a87704d14390ad0fd1bdf90f4867"
+    },
+    {
+      "source": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/desktop/palette-observation/source/chrome/browser/extensions/api/aux_browser_preferences/aux_feature_expansion_api.cc",
+      "target": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/extensions/api/aux_browser_preferences/aux_feature_expansion_api.cc",
+      "beforeSha256": "5cf6d62064c111ff0f3155cf90b733f2f742258feae819453badce7e52666222",
+      "afterSha256": "e090ace177c520e3cbd3a3e58738242669398725998c5b7f9b10067d323fe9a1"
+    },
+    {
+      "source": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/runtime/peer-reply-recovery/source/AuxNativePeerTransport.cc",
+      "target": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/aux/AuxNativePeerTransport.cc",
+      "beforeSha256": "e1599130b1e41eb78cddce19b2b7828fc6d11a21e28fd62b24bdd01a5a4a7384",
+      "afterSha256": "8ced5b9206e062f63e67444f71d1d4624a0b93dbaa3f3cfe584f53d7ea763b1d"
+    }
+  ],
+  "projected": true,
+  "firstBuild": {
+    "session": 89768,
+    "exitCode": 254,
+    "purposefulCancellation": true,
+    "stage": "Ninja manifest loading; no compile actions logged",
+    "reason": "Group demonstrated native palette reload/input lifecycle repair before compiling"
+  }
+}

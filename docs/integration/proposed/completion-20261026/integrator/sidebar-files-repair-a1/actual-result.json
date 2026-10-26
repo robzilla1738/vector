@@ -11,14 +11,29 @@
   },
   "hoverCrashRepair": {
     "collapseAndExpandSurvived": true,
-    "genuineHover": "owner physical check pending"
+    "genuineHover": "owner reports looks good"
   },
   "recentFiles": {
     "restoredNotesEnabled": true,
     "contentOpenAccepted": false,
-    "observation": "AX click and right-click did not navigate or show menu; verifying intended interaction contract"
+    "observation": "AX click and right-click did not navigate or show menu; verifying intended interaction contract",
+    "contract": "click shows in Finder; drag attaches; rename via command palette; no right-click menu",
+    "paletteDefect": "Files Recent files selected via click/Enter closes palette without file list; route/lifetime investigation pending",
+    "renameUndoAccepted": true,
+    "renamed": "completion-notes.txt",
+    "undoResult": "Name restored",
+    "paletteFailureNarrowed": "Files works after fully mounted palette; immediate typing during per-show reload can be lost"
   },
-  "physicalInput": "One bundled owner hover/three-four-pane/shortcut request pending",
+  "physicalInput": {
+    "requested": [
+      "genuine sidebar hover",
+      "Gamma/Delta split drag",
+      "Cmd+T then Escape"
+    ],
+    "ownerResponse": "looks good",
+    "ownerObservedPass": true,
+    "independentFinalLayout": "AX still shows two-pane Alpha/Beta; three/four-pane persistence not independently captured"
+  },
   "localMilestoneComplete": false,
   "daemonReady": false,
   "startupAuthorizationDefect": {
@@ -30,5 +45,57 @@
       "error": "routing-authority-unavailable"
     },
     "investigation": "existing guard/installation owner; no reset or bypass"
+  },
+  "startup8Quit": {
+    "browserExit": 0,
+    "forcedSignals": false,
+    "allOwnedProcessesSettled": true,
+    "cleanAccepted": false,
+    "reason": "native shutdown deadline exceeded before later actual process settlement"
+  },
+  "startup9": {
+    "sameCandidate": true,
+    "normalReopen": true,
+    "interruptionPrompt": false,
+    "cliScopedList": {
+      "exitCode": 0,
+      "profile": "a82b731d-e7aa-4e95-b789-73ded80c0ee3",
+      "space": "d26dc2e9-d1ad-4b41-8882-a6abc283f0c6"
+    },
+    "chatListRestored": true,
+    "initialBrowserAuthorizationFailedLog": true,
+    "nativeGuardErrorsObserved": false,
+    "quit": {
+      "browserExit": 0,
+      "daemonStagesSettled": true,
+      "brokerLifetimes": 0,
+      "lifetimeFailure": false,
+      "daemonExit": true,
+      "forcedSignals": false
+    }
+  },
+  "organization": {
+    "createdSpace": "Completion Lab",
+    "createdGlobalPinnedFolder": "Lab Folder",
+    "createdNestedFolder": "Nested Lab",
+    "collapseObserved": true,
+    "persistenceAfterNextRestart": "pending",
+    "requestedIcon": "\u25c7",
+    "observedIcon": "\u25c9; custom icon not accepted",
+    "manualArchiveRestore": "Folder and nested child restored in archive Space per existing contract",
+    "pinUndo": "Pin to all Spaces moved folder to Pins; Undo organization change restored Completion Lab placement",
+    "finalCollapse": false
+  },
+  "filesDownloaded": [
+    "document.pdf",
+    "image.heic",
+    "image (1).png",
+    "notes (1).txt"
+  ],
+  "downloadCollision": "Original notes.txt retained alongside distinct notes (1).txt; actual contents/attachment restoration still pending",
+  "fullscreen": {
+    "entered": true,
+    "nativeSidebarAndToolbarPresent": true,
+    "exitHeldEscape": true
   }
 }
