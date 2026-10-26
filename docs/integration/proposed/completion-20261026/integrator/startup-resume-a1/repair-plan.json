@@ -1,0 +1,37 @@
+{
+  "format": "aux.browser-startup.same-scope-repair.v1",
+  "app": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-completion-20261026-a1/Aux.app",
+  "approvedReviewSha256": "20572af30ef6613f1fc8bced01edada6d52f4b3f7c1f21dd97fb610ec2b257f2",
+  "executor": {
+    "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/integrator/startup-resume-a1/repair-framework.py",
+    "sha256": "24bf2a42ecf39df965747d119e0c1bdc78a92d39ffe2b06edd4dc85ec6307d68"
+  },
+  "signedReceipt": {
+    "path": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-completion-20261026-a1/two-addon-repair-a4/receipt.json",
+    "sha256": "7f5e87ff66702f2e42d959565b30b2c19f94ded14c570f08c6d20d2189f7ca10"
+  },
+  "newUnsignedFramework": {
+    "path": "/Users/rcourson/Documents/Vibe/web/out/completion-resume-20261026/Aux Framework-startup-diagnostic",
+    "sha256": "cd464c15cd06934922ca0a47384a5f2003561312ee35517bed9f738f7c429700"
+  },
+  "replaceOnlyExecutable": "Contents/Frameworks/Aux Framework.framework/Versions/155.0.8059.85/Aux Framework",
+  "receiptDirectory": "browser-startup-diagnostic-a1",
+  "sourceEvidence": [
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/integrator/startup-resume-a1/build-receipt.json",
+      "sha256": "8c4b1e7b48cc4b4fa1f08c9caed37d9d5a3245b262f227a6e46c37a0825f2ef5"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/integrator/startup-resume-a1/source-plan.json",
+      "sha256": "93d5c6230bd151d98d0c0ddc65e43a4e3275e7f7902924cc6700512be1d519f4"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/integrator/startup-resume-a1/source.patch",
+      "sha256": "b00cb1de2685e6de9dcb70b4e5915dc93710ba8aac58f18fa109bda7b027ba24"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/integrator/startup-resume-a1/AuxSelectedStateHome.cc",
+      "sha256": "2e25c7f4b67380c73559d6cdb30e463518c95c1aa417a65dff39d37a3c834713"
+    }
+  ]
+}

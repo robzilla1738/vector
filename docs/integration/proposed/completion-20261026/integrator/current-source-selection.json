@@ -1,7 +1,7 @@
 {
   "format": "aux.completion.current-source-selection.v1",
   "candidate": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-completion-20261026-a1/Aux.app",
-  "signedInventorySha256": "bee6f37ecb39f7d79adfa55bcdba855006c19fc3baad20903f0dc2a96de9f94b",
+  "signedInventorySha256": "f5c299a9be15512353133a86df4409ac94ddb8b069ce596a421f6cb386d7177f",
   "sourceSnapshots": [
     {
       "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/runtime/addon-local-signing-review/actual-signed-source-a1/source/daemon-policy.swift",
@@ -18,6 +18,10 @@
     {
       "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/runtime/addon-local-signing-review/actual-signed-source-a1/source/utility-lifetime.cc",
       "sha256": "58c3cfd194e2cdf933de4218d9605721a42711438f8881fa1b548402dd3cf708"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/integrator/startup-resume-a1/AuxSelectedStateHome.cc",
+      "sha256": "2e25c7f4b67380c73559d6cdb30e463518c95c1aa417a65dff39d37a3c834713"
     }
   ],
   "descriptor": {
@@ -31,5 +35,9 @@
   "ordinaryAclRepairSource": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/runtime/ordinary-image-ancestor-acl-repair/source/AuxSignedFreshBootstrapPolicyLoader.swift",
   "currentNativeBrowserProjection": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/aux/native_peer_policy/AuxFreshBootstrapPolicy.swift",
   "olderFrozenRecipesArePredecessors": true,
-  "runtimeAccepted": false
+  "runtimeAccepted": false,
+  "browserStartupRepair": {
+    "path": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-completion-20261026-a1/browser-startup-diagnostic-a1/receipt.json",
+    "sha256": "095217041b87f313b5ac97c0e271c20bdf76c5ed3888fa39b1ff00fa16e320c9"
+  }
 }

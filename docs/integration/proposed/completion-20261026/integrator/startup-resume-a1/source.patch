@@ -1,0 +1,95 @@
+--- a/AuxSelectedStateHome.cc
++++ b/AuxSelectedStateHome.cc
+@@ -12,6 +12,7 @@
+ #include <fcntl.h>
+ #include <limits.h>
+ #include <chrono>
++#include <cstdio>
+ #include <algorithm>
+ #include <cstdlib>
+ #include <array>
+@@ -392,19 +393,23 @@
+ 
+ // No caller path, token, FD, generation or readiness flag can mint admission.
+ bool AuthorizeNativeBrowserStartupBeforeLocalState() {
+-  auto& state = CurrentState();
+-  if (getpid() != state.process) return false;
++  auto refused = [](int stage) {
++    fprintf(stderr, "Aux browser startup authorization refused at phase %d\n", stage);
++    return false;
++  };
++  auto& state = CurrentState();
++  if (getpid() != state.process) return refused(1);
+   auto roots = CaptureActualChromiumBrowserRoots();
+-  if (!roots) return false;
++  if (!roots) return refused(2);
+   std::shared_ptr<SelectedNativeHome> owner;
+   uint64_t admitted_generation = 0;
+   {
+     std::lock_guard<std::mutex> lock(state.mutex);
+-    if ((state.closed || state.browser_shutdown_phase != 0) || state.initializing || !state.selected) return false;
++    if ((state.closed || state.browser_shutdown_phase != 0) || state.initializing || !state.selected) return refused(3);
+     owner = state.selected;
+     admitted_generation = state.browser_generation;
+     if (!admitted_generation) {
+-      if (state.browser_attempted) return false;
++      if (state.browser_attempted) return refused(4);
+       state.browser_attempted = true;
+     }
+     ++state.active_reads;
+@@ -412,40 +417,44 @@
+   auto finish = +[](State* held) {std::lock_guard<std::mutex> lock(held->mutex);--held->active_reads;};
+   std::unique_ptr<State, decltype(finish)> active(&state, finish);
+   auto pulse = owner->InspectReadyPulse();
+-  if (!pulse || !Fresh(*pulse) || !roots->Revalidate()) return false;
++  if (!pulse || !Fresh(*pulse) || !roots->Revalidate()) return refused(5);
+   if (!admitted_generation) {
+     auto reply = owner->GetBrowserStartupLease(2'000);
+-    if (reply.status != DaemonAuthorityStatus::ready || reply.payload.size() != 72) return false;
++    if (reply.status != DaemonAuthorityStatus::ready)
++      fprintf(stderr, "Aux browser startup lease status=%d bytes=%zu\n",
++              static_cast<int>(reply.status), reply.payload.size());
++    if (reply.status != DaemonAuthorityStatus::ready || reply.payload.size() != 72) return refused(6);
+     uint64_t generation = 0;
+     for (size_t i = 0; i < 8; ++i) generation |= static_cast<uint64_t>(reply.payload[i]) << (8*i);
+-    if (!generation || generation != pulse->generation) return false;
++    if (!generation || generation != pulse->generation) return refused(7);
+     for (uint32_t role = 1; role <= 2; ++role) {
+       auto digest = roots->PathDigest(role);
+-      if (!std::equal(digest.begin(), digest.end(), reply.payload.begin()+8+32*(role-1))) return false;
++      if (!std::equal(digest.begin(), digest.end(), reply.payload.begin()+8+32*(role-1))) return refused(8);
+     }
+     auto current = owner->InspectReadyPulse();
+-    if (!current || !Fresh(*current) || current->generation != generation || !roots->Revalidate()) return false;
++    if (!current || !Fresh(*current) || current->generation != generation || !roots->Revalidate()) return refused(9);
+     {
+       std::lock_guard<std::mutex> lock(state.mutex);
+-      if ((state.closed || state.browser_shutdown_phase != 0) || state.selected != owner) return false;
+-    }
+-    if (owner->AcceptAuthorityReply(reply, 2'000) != DaemonAuthorityStatus::ready) return false;
++      if ((state.closed || state.browser_shutdown_phase != 0) || state.selected != owner) return refused(10);
++    }
++    if (owner->AcceptAuthorityReply(reply, 2'000) != DaemonAuthorityStatus::ready) return refused(11);
+ #if !defined(AUX_BROWSER_ONLY_NATIVE_STARTUP)
+-    if (!owner->BindBrowserDescendantScope(generation)) return false;
++    if (!owner->BindBrowserDescendantScope(generation)) return refused(12);
+ #endif
+     admitted_generation = generation;
+   }
+   auto child = owner->InspectOwnedChild();
+   auto after = owner->InspectReadyPulse();
+   if (child.closed || child.wrong_process || child.exit_observed_and_reaped || child.exit_ownership_unknown ||
+-      !after || !Fresh(*after) || after->generation != admitted_generation || !roots->Revalidate()) return false;
++      !after || !Fresh(*after) || after->generation != admitted_generation || !roots->Revalidate()) return refused(13);
+   std::lock_guard<std::mutex> lock(state.mutex);
+   if ((state.closed || state.browser_shutdown_phase != 0) || state.selected != owner ||
+-      (state.admitted_browser_roots && state.admitted_browser_roots != roots)) return false;
++      (state.admitted_browser_roots && state.admitted_browser_roots != roots)) return refused(14);
+   state.admitted_browser_roots = std::move(roots);
+   state.browser_generation = admitted_generation;
+   return true;
+ }
++
+ std::optional<base::CommandLine> PrepareNativeHostPathWriteRestrictions(
+     const base::CommandLine& host) {
+   auto& state = CurrentState();

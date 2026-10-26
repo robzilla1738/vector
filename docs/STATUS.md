@@ -2,6 +2,8 @@
 
 Owner approved the two-milestone completion plan: finish the combined local desktop product independently of Apple/vendor/production waits, then close full in-scope pre-release requirements. Initial platform is M-series/macOS27. Backups/setup, legacy migration and distribution remain excluded. Root is diagnosing the exact signed October26 startup failure; three separate worktrees cover runtime source closure, desktop gap correction and provider/hosted preparation. Existing exact repair approvals are retained; no new authority is inferred. Current acceptance remains A38 until the successor actually passes. The current checklist is `docs/ROADMAP-EXECUTION-GRAPH.md`.
 
+The resume diagnostic successor is signed within the original framework/outer repair scope; all unrelated package leaves and signed addons are preserved. Its actual launch passed authorization, then crashed in `SplitTabMenuModel::GetSplitTabId` while constructing the toolbar before tabs exist (browser exit139). Both browser and daemon subsequently exited without signals; this is not clean Quit acceptance. The conditional startup-timeout proposal remains inactive. Required execution source now has twelve filesystem methods, four compiled producers, a paired parent-policy object and a coherent unsigned daemon link; activation remains gated. Hosted readiness changes pass focused checks, and prepared legal/contact drafts now use the owner-confirmed Courson Digital LLC and hello@getaux.co.
+
 Earlier pause/status entries below remain historical.
 
 # Paused at owner request — 2026-10-26

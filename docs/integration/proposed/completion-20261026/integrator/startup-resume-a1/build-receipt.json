@@ -1,0 +1,22 @@
+{
+  "format": "aux.startup.diagnostic-build.v1",
+  "passed": true,
+  "exitCode": 0,
+  "source": {
+    "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/integrator/startup-resume-a1/AuxSelectedStateHome.cc",
+    "sha256": "2e25c7f4b67380c73559d6cdb30e463518c95c1aa417a65dff39d37a3c834713"
+  },
+  "sourcePlan": {
+    "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/integrator/startup-resume-a1/source-plan.json",
+    "sha256": "93d5c6230bd151d98d0c0ddc65e43a4e3275e7f7902924cc6700512be1d519f4"
+  },
+  "log": {
+    "path": "/Users/rcourson/Documents/Vibe/web/out/completion-resume-20261026/browser-diagnostic-build-2.log",
+    "sha256": "4661c3b895ba413b89e7e17ad910aa5da3e1d60b5e67f7712749304cd13a3c5f"
+  },
+  "framework": {
+    "path": "/Users/rcourson/Documents/Vibe/web/out/completion-resume-20261026/Aux Framework-startup-diagnostic",
+    "sha256": "cd464c15cd06934922ca0a47384a5f2003561312ee35517bed9f738f7c429700"
+  },
+  "nativeSourceMatches": true
+}

@@ -1,0 +1,39 @@
+{
+  "format": "aux.completion.startup-resume-observation.v1",
+  "recordedAtUtc": "2026-10-26T19:22:36.764496+00:00",
+  "candidateInventorySha256": "bee6f37ecb39f7d79adfa55bcdba855006c19fc3baad20903f0dc2a96de9f94b",
+  "scopeReceipt": "../first-launch-observation-a1.json",
+  "scopeRootIdentityMatched": {
+    "support": [
+      16777232,
+      73116320
+    ],
+    "cache": [
+      16777232,
+      73116322
+    ]
+  },
+  "browserPid": 36489,
+  "daemonPid": 36804,
+  "browserExitCode": 1,
+  "windowObserved": false,
+  "failure": "startup authorization",
+  "addonImagesLoaded": true,
+  "daemonSample": "Main in actual preload/worker/PDF/utility CloseAndDrain after parent failure; no model request",
+  "daemonAbsentAfterObservation": true,
+  "signalsSent": [],
+  "cleanQuitNotClaimed": true,
+  "appChangedForThisObservation": false,
+  "credentialsRead": false,
+  "newOSGrants": false,
+  "evidence": [
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/out/completion-resume-20261026/startup-1.log",
+      "sha256": "ba52ee42956e1d8a9e3508b2dd890cf6e36b86e4748ed9d8e3d8937f8d827139"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/out/completion-resume-20261026/daemon-sample-1.txt",
+      "sha256": "c3a0de8ce65e1121ac101137c50e0c749a214defb3ad14b88790641cfc2d4ac5"
+    }
+  ]
+}

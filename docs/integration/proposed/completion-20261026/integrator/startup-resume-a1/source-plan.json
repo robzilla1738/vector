@@ -1,0 +1,71 @@
+{
+  "format": "aux.startup.diagnostic.v1",
+  "nativePath": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/aux/AuxSelectedStateHome.cc",
+  "beforeSha256": "6a60fd98d0a5f244aceaf79fe4b3a211796236e828b949f83a06c8766ac5a534",
+  "afterSha256": "2e25c7f4b67380c73559d6cdb30e463518c95c1aa417a65dff39d37a3c834713",
+  "returnCount": 14,
+  "stages": [
+    {
+      "stage": 1,
+      "condition": "if (getpid() != state.process) return false;"
+    },
+    {
+      "stage": 2,
+      "condition": "if (!roots) return false;"
+    },
+    {
+      "stage": 3,
+      "condition": "if ((state.closed || state.browser_shutdown_phase != 0) || state.initializing || !state.selected) return false;"
+    },
+    {
+      "stage": 4,
+      "condition": "if (state.browser_attempted) return false;"
+    },
+    {
+      "stage": 5,
+      "condition": "if (!pulse || !Fresh(*pulse) || !roots->Revalidate()) return false;"
+    },
+    {
+      "stage": 6,
+      "condition": "if (reply.status != DaemonAuthorityStatus::ready || reply.payload.size() != 72) return false;"
+    },
+    {
+      "stage": 7,
+      "condition": "if (!generation || generation != pulse->generation) return false;"
+    },
+    {
+      "stage": 8,
+      "condition": "if (!std::equal(digest.begin(), digest.end(), reply.payload.begin()+8+32*(role-1))) return false;"
+    },
+    {
+      "stage": 9,
+      "condition": "if (!current || !Fresh(*current) || current->generation != generation || !roots->Revalidate()) return false;"
+    },
+    {
+      "stage": 10,
+      "condition": "if ((state.closed || state.browser_shutdown_phase != 0) || state.selected != owner) return false;"
+    },
+    {
+      "stage": 11,
+      "condition": "if (owner->AcceptAuthorityReply(reply, 2'000) != DaemonAuthorityStatus::ready) return false;"
+    },
+    {
+      "stage": 12,
+      "condition": "if (!owner->BindBrowserDescendantScope(generation)) return false;"
+    },
+    {
+      "stage": 13,
+      "condition": "!after || !Fresh(*after) || after->generation != admitted_generation || !roots->Revalidate()) return false;"
+    },
+    {
+      "stage": 14,
+      "condition": "(state.admitted_browser_roots && state.admitted_browser_roots != roots)) return false;"
+    }
+  ],
+  "reason": "Actual current cohort refuses startup authorization; source-literal phase diagnostics only, no admission changes.",
+  "firstDiagnosticCompileFailure": {
+    "sha256": "8e0502f8bf3547e63408f27e9bac61700eb3fd8cad2bd94f3061c691177f5417",
+    "reason": "Chromium unsafe-buffer checker rejects char-pointer fprintf; use numeric literal phase with no string argument",
+    "log": "out/completion-resume-20261026/browser-diagnostic-build.log"
+  }
+}
