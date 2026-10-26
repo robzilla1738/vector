@@ -1,0 +1,95 @@
+{
+  "format": "aux.shutdown-stage-diagnostics.v1",
+  "files": [
+    {
+      "input": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-local-completion-20261025-a38/Aux.app/Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/node-development/index.mjs",
+      "inputSha256": "ac4719f6faf1c495727cb21c284f06d5172b15b1af288d36fc9af1a56f3a8236",
+      "output": "/private/tmp/aux-shutdown-stages-a50-4l65aati/index.mjs",
+      "outputSha256": "d945364420cdec5fd7f6b256af9dc6bb1c26cca605106f19d5856aca3e4572f7",
+      "anchors": [
+        {
+          "before": "function auxCreateDaemonShutdown(deps) {\n",
+          "after": "function auxShutdownDiagnostic(label, counts) {\n  // Do not use the file logger while diagnosing its own brokered close.\n  try { console.error('[Aux shutdown stage]', label, counts ?? ''); } catch {}\n}\nfunction auxCreateDaemonShutdown(deps) {\n",
+          "count": 1
+        },
+        {
+          "before": "  const call = callback => {try{return Promise.resolve(callback())}catch(error){return Promise.reject(error)}};\n",
+          "after": "  const call = callback => {try{return Promise.resolve(callback())}catch(error){return Promise.reject(error)}};\n  const observed = (label, callback) => {\n    auxShutdownDiagnostic(label + '.start');\n    const pending = call(callback);\n    pending.then(() => auxShutdownDiagnostic(label + '.settled'),\n      () => auxShutdownDiagnostic(label + '.failed'));\n    return pending;\n  };\n",
+          "count": 1
+        },
+        {
+          "before": "    const closeTransports=()=>[closeWebSockets(deps.websockets()),closeHttp(deps.http())];",
+          "after": "    const closeTransports=()=>[observed('websockets',()=>closeWebSockets(deps.websockets())),observed('http',()=>closeHttp(deps.http()))];",
+          "count": 1
+        },
+        {
+          "before": "    const stops=[call(deps.stopIntervals),call(deps.stopRefresh),call(deps.stopProductivity),\n      call(deps.stopChannels),call(deps.stopOutbox),call(deps.stopBackground),call(deps.stopComputerUse),\n      call(deps.stopCoder),call(deps.terminateExec),call(deps.killCommands)];\n",
+          "after": "    auxShutdownDiagnostic('daemon.start');\n    const stops=[observed('intervals',deps.stopIntervals),observed('refresh',deps.stopRefresh),observed('productivity',deps.stopProductivity),\n      observed('channels',deps.stopChannels),observed('outbox',deps.stopOutbox),observed('background',deps.stopBackground),observed('computer-use',deps.stopComputerUse),\n      observed('coder',deps.stopCoder),observed('exec',deps.terminateExec),observed('commands',deps.killCommands)];\n",
+          "count": 1
+        },
+        {
+          "before": "      await settled([...stops,call(deps.bootstrap)],'Aux producers did not settle');\n      while(fetches.size)await settled([...fetches],'Aux HTTP work did not settle');\n      await settled(closeTransports(),'Aux transport did not close');\n      // Telemetry is a producer too; close it while admitted cleanup can write.\n      await deps.stopTelemetry();\n      await deps.closeBroker();\n      deps.releaseHold(hold);hold=undefined;\n      // Only now can NativeRun return to the retained host's real settlement loop.\n      deps.exit();\n",
+          "after": "      await settled([...stops,observed('bootstrap',deps.bootstrap)],'Aux producers did not settle');\n      auxShutdownDiagnostic('producers.settled');\n      auxShutdownDiagnostic('fetches.start',{pending:fetches.size});\n      while(fetches.size)await settled([...fetches],'Aux HTTP work did not settle');\n      auxShutdownDiagnostic('fetches.settled');\n      await settled(closeTransports(),'Aux transport did not close');\n      auxShutdownDiagnostic('transports.settled');\n      // Telemetry is a producer too; close it while admitted cleanup can write.\n      await observed('telemetry',deps.stopTelemetry);\n      await observed('broker',deps.closeBroker);\n      deps.releaseHold(hold);hold=undefined;\n      // Only now can NativeRun return to the retained host's real settlement loop.\n      auxShutdownDiagnostic('daemon.exit');\n      deps.exit();\n",
+          "count": 1
+        },
+        {
+          "before": " function beginShutdown(){\n  if(shutdown)return shutdown;\n  closing=true;\n  shutdown=(async()=>{\n   // Refuse new producer entries first. No timeout/AbortSignal is treated as\n   // completion. The outer existing process timeout is NOT a drain receipt.\n   // Stop future triggers before awaiting work. Calling these pinned stops\n   // does not itself establish native drain; their original closure is awaited.\n   const stopResults=await Promise.allSettled([...producerStops].map(stop=>{try{return stop()}catch(error){return Promise.reject(error)}}));\n   const watcherResults=await Promise.allSettled([...watchers].map(watcher=>watcher.close()));\n   const outcomes=await Promise.allSettled([...operations]);\n   let failure=[...stopResults,...watcherResults,...outcomes].find(result=>result.status==='rejected')?.reason??operationFailure;\n   if(failure)funcs.noteUntrackedBrokerWork();\n   for(const database of [...databases])try{database.close()}catch(error){failure??=error}\n   await Promise.all([...streams].map(stream=>new Promise(resolve=>{stream.once('close',resolve);try{if(!producerStreams.has(stream))stream.end()}catch(error){failure??=error;funcs.noteUntrackedBrokerWork();resolve()}})));\n   const resourceOutcomes=await Promise.allSettled([...lifetimes]);\n   failure??=resourceOutcomes.find(result=>result.status==='rejected')?.reason??lifetimeFailure;\n   funcs.closeBrokerWriteAdmission();\n   if(failure)throw failure;\n  })();\n  shutdown.catch(()=>{});return shutdown;\n }\n",
+          "after": " function beginShutdown(){\n  if(shutdown)return shutdown;\n  closing=true;\n  const report=label=>auxShutdownDiagnostic(label,{producers:producerStops.size,watchers:watchers.size,\n   operations:operations.size,databases:databases.size,streams:streams.size,lifetimes:lifetimes.size,\n   operationFailure:!!operationFailure,lifetimeFailure:!!lifetimeFailure});\n  shutdown=(async()=>{\n   report('broker.producers.start');\n   // Refuse new producer entries first. No timeout/AbortSignal is treated as\n   // completion. The outer existing process timeout is NOT a drain receipt.\n   // Stop future triggers before awaiting work. Calling these pinned stops\n   // does not itself establish native drain; their original closure is awaited.\n   const stopResults=await Promise.allSettled([...producerStops].map(stop=>{try{return stop()}catch(error){return Promise.reject(error)}}));\n   report('broker.producers.settled');\n   report('broker.watchers.start');\n   const watcherResults=await Promise.allSettled([...watchers].map(watcher=>watcher.close()));\n   report('broker.watchers.settled');\n   report('broker.operations.start');\n   const outcomes=await Promise.allSettled([...operations]);\n   report('broker.operations.settled');\n   let failure=[...stopResults,...watcherResults,...outcomes].find(result=>result.status==='rejected')?.reason??operationFailure;\n   if(failure)funcs.noteUntrackedBrokerWork();\n   report('broker.databases.start');\n   for(const database of [...databases])try{database.close()}catch(error){failure??=error}\n   report('broker.databases.settled');\n   report('broker.streams.start');\n   await Promise.all([...streams].map(stream=>new Promise(resolve=>{stream.once('close',resolve);try{if(!producerStreams.has(stream))stream.end()}catch(error){failure??=error;funcs.noteUntrackedBrokerWork();resolve()}})));\n   report('broker.streams.settled');\n   report('broker.lifetimes.start');\n   const resourceOutcomes=await Promise.allSettled([...lifetimes]);\n   report('broker.lifetimes.settled');\n   failure??=resourceOutcomes.find(result=>result.status==='rejected')?.reason??lifetimeFailure;\n   report('broker.admission.start');\n   funcs.closeBrokerWriteAdmission();\n   report('broker.admission.settled');\n   if(failure)throw failure;\n  })();\n  shutdown.catch(()=>{});return shutdown;\n }\n",
+          "count": 1
+        },
+        {
+          "before": "if(this.#auxNativeClose)return this.#n=this.#auxNativeClose().finally(()=>{this.#n=void 0});",
+          "after": "if(this.#auxNativeClose){auxDaemonClosing&&auxShutdownDiagnostic('memory.native-close.start');return this.#n=this.#auxNativeClose().then(value=>{auxDaemonClosing&&auxShutdownDiagnostic('memory.native-close.settled');return value},error=>{auxDaemonClosing&&auxShutdownDiagnostic('memory.native-close.failed');throw error}).finally(()=>{this.#n=void 0})}",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "input": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-local-completion-20261025-a38/Aux.app/Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/node-development/aux-native-entry.mjs",
+      "inputSha256": "6c8bafbefef34d5f8cd5c562ab1462befa411ae2f04c7b6c52e5a702358e0683",
+      "output": "/private/tmp/aux-shutdown-stages-a50-4l65aati/aux-native-entry.mjs",
+      "outputSha256": "f9dddbe77bac7c637ae2fbe1cc37f1c18af9e44ce1f595ff643885df9d010238",
+      "anchors": [
+        {
+          "before": "function auxCreateDaemonShutdown(deps) {\n",
+          "after": "function auxShutdownDiagnostic(label, counts) {\n  // Do not use the file logger while diagnosing its own brokered close.\n  try { console.error('[Aux shutdown stage]', label, counts ?? ''); } catch {}\n}\nfunction auxCreateDaemonShutdown(deps) {\n",
+          "count": 1
+        },
+        {
+          "before": "  const call = callback => {try{return Promise.resolve(callback())}catch(error){return Promise.reject(error)}};\n",
+          "after": "  const call = callback => {try{return Promise.resolve(callback())}catch(error){return Promise.reject(error)}};\n  const observed = (label, callback) => {\n    auxShutdownDiagnostic(label + '.start');\n    const pending = call(callback);\n    pending.then(() => auxShutdownDiagnostic(label + '.settled'),\n      () => auxShutdownDiagnostic(label + '.failed'));\n    return pending;\n  };\n",
+          "count": 1
+        },
+        {
+          "before": "    const closeTransports=()=>[closeWebSockets(deps.websockets()),closeHttp(deps.http())];",
+          "after": "    const closeTransports=()=>[observed('websockets',()=>closeWebSockets(deps.websockets())),observed('http',()=>closeHttp(deps.http()))];",
+          "count": 1
+        },
+        {
+          "before": "    const stops=[call(deps.stopIntervals),call(deps.stopRefresh),call(deps.stopProductivity),\n      call(deps.stopChannels),call(deps.stopOutbox),call(deps.stopBackground),call(deps.stopComputerUse),\n      call(deps.stopCoder),call(deps.terminateExec),call(deps.killCommands)];\n",
+          "after": "    auxShutdownDiagnostic('daemon.start');\n    const stops=[observed('intervals',deps.stopIntervals),observed('refresh',deps.stopRefresh),observed('productivity',deps.stopProductivity),\n      observed('channels',deps.stopChannels),observed('outbox',deps.stopOutbox),observed('background',deps.stopBackground),observed('computer-use',deps.stopComputerUse),\n      observed('coder',deps.stopCoder),observed('exec',deps.terminateExec),observed('commands',deps.killCommands)];\n",
+          "count": 1
+        },
+        {
+          "before": "      await settled([...stops,call(deps.bootstrap)],'Aux producers did not settle');\n      while(fetches.size)await settled([...fetches],'Aux HTTP work did not settle');\n      await settled(closeTransports(),'Aux transport did not close');\n      // Telemetry is a producer too; close it while admitted cleanup can write.\n      await deps.stopTelemetry();\n      await deps.closeBroker();\n      deps.releaseHold(hold);hold=undefined;\n      // Only now can NativeRun return to the retained host's real settlement loop.\n      deps.exit();\n",
+          "after": "      await settled([...stops,observed('bootstrap',deps.bootstrap)],'Aux producers did not settle');\n      auxShutdownDiagnostic('producers.settled');\n      auxShutdownDiagnostic('fetches.start',{pending:fetches.size});\n      while(fetches.size)await settled([...fetches],'Aux HTTP work did not settle');\n      auxShutdownDiagnostic('fetches.settled');\n      await settled(closeTransports(),'Aux transport did not close');\n      auxShutdownDiagnostic('transports.settled');\n      // Telemetry is a producer too; close it while admitted cleanup can write.\n      await observed('telemetry',deps.stopTelemetry);\n      await observed('broker',deps.closeBroker);\n      deps.releaseHold(hold);hold=undefined;\n      // Only now can NativeRun return to the retained host's real settlement loop.\n      auxShutdownDiagnostic('daemon.exit');\n      deps.exit();\n",
+          "count": 1
+        },
+        {
+          "before": " function beginShutdown(){\n  if(shutdown)return shutdown;\n  closing=true;\n  shutdown=(async()=>{\n   // Refuse new producer entries first. No timeout/AbortSignal is treated as\n   // completion. The outer existing process timeout is NOT a drain receipt.\n   // Stop future triggers before awaiting work. Calling these pinned stops\n   // does not itself establish native drain; their original closure is awaited.\n   const stopResults=await Promise.allSettled([...producerStops].map(stop=>{try{return stop()}catch(error){return Promise.reject(error)}}));\n   const watcherResults=await Promise.allSettled([...watchers].map(watcher=>watcher.close()));\n   const outcomes=await Promise.allSettled([...operations]);\n   let failure=[...stopResults,...watcherResults,...outcomes].find(result=>result.status==='rejected')?.reason??operationFailure;\n   if(failure)funcs.noteUntrackedBrokerWork();\n   for(const database of [...databases])try{database.close()}catch(error){failure??=error}\n   await Promise.all([...streams].map(stream=>new Promise(resolve=>{stream.once('close',resolve);try{if(!producerStreams.has(stream))stream.end()}catch(error){failure??=error;funcs.noteUntrackedBrokerWork();resolve()}})));\n   const resourceOutcomes=await Promise.allSettled([...lifetimes]);\n   failure??=resourceOutcomes.find(result=>result.status==='rejected')?.reason??lifetimeFailure;\n   funcs.closeBrokerWriteAdmission();\n   if(failure)throw failure;\n  })();\n  shutdown.catch(()=>{});return shutdown;\n }\n",
+          "after": " function beginShutdown(){\n  if(shutdown)return shutdown;\n  closing=true;\n  const report=label=>auxShutdownDiagnostic(label,{producers:producerStops.size,watchers:watchers.size,\n   operations:operations.size,databases:databases.size,streams:streams.size,lifetimes:lifetimes.size,\n   operationFailure:!!operationFailure,lifetimeFailure:!!lifetimeFailure});\n  shutdown=(async()=>{\n   report('broker.producers.start');\n   // Refuse new producer entries first. No timeout/AbortSignal is treated as\n   // completion. The outer existing process timeout is NOT a drain receipt.\n   // Stop future triggers before awaiting work. Calling these pinned stops\n   // does not itself establish native drain; their original closure is awaited.\n   const stopResults=await Promise.allSettled([...producerStops].map(stop=>{try{return stop()}catch(error){return Promise.reject(error)}}));\n   report('broker.producers.settled');\n   report('broker.watchers.start');\n   const watcherResults=await Promise.allSettled([...watchers].map(watcher=>watcher.close()));\n   report('broker.watchers.settled');\n   report('broker.operations.start');\n   const outcomes=await Promise.allSettled([...operations]);\n   report('broker.operations.settled');\n   let failure=[...stopResults,...watcherResults,...outcomes].find(result=>result.status==='rejected')?.reason??operationFailure;\n   if(failure)funcs.noteUntrackedBrokerWork();\n   report('broker.databases.start');\n   for(const database of [...databases])try{database.close()}catch(error){failure??=error}\n   report('broker.databases.settled');\n   report('broker.streams.start');\n   await Promise.all([...streams].map(stream=>new Promise(resolve=>{stream.once('close',resolve);try{if(!producerStreams.has(stream))stream.end()}catch(error){failure??=error;funcs.noteUntrackedBrokerWork();resolve()}})));\n   report('broker.streams.settled');\n   report('broker.lifetimes.start');\n   const resourceOutcomes=await Promise.allSettled([...lifetimes]);\n   report('broker.lifetimes.settled');\n   failure??=resourceOutcomes.find(result=>result.status==='rejected')?.reason??lifetimeFailure;\n   report('broker.admission.start');\n   funcs.closeBrokerWriteAdmission();\n   report('broker.admission.settled');\n   if(failure)throw failure;\n  })();\n  shutdown.catch(()=>{});return shutdown;\n }\n",
+          "count": 1
+        },
+        {
+          "before": "if(this.#auxNativeClose)return this.#n=this.#auxNativeClose().finally(()=>{this.#n=void 0});",
+          "after": "if(this.#auxNativeClose){auxDaemonClosing&&auxShutdownDiagnostic('memory.native-close.start');return this.#n=this.#auxNativeClose().then(value=>{auxDaemonClosing&&auxShutdownDiagnostic('memory.native-close.settled');return value},error=>{auxDaemonClosing&&auxShutdownDiagnostic('memory.native-close.failed');throw error}).finally(()=>{this.#n=void 0})}",
+          "count": 1
+        }
+      ]
+    }
+  ],
+  "diagnosticsOnly": true,
+  "timeoutsAdded": false,
+  "guardsChanged": false,
+  "productExecuted": false
+}
