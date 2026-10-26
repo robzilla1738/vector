@@ -1,0 +1,20 @@
+{
+  "scope": "retained palette invocation lifecycle and stale action fencing",
+  "projected": false,
+  "compiled": false,
+  "files": [
+    {
+      "path": "chrome/browser/ui/views/frame/aux_tab_search_bubble.cc",
+      "beforeSha256": "a62dc8c0383f4fad2498e576096c2a9ba105a87704d14390ad0fd1bdf90f4867",
+      "afterSha256": "d87bc73ae4c9f1a67d630da9f4228b377376456dbae810787b6c84f46a93ec56",
+      "anchors": 6
+    },
+    {
+      "path": "assets/tabsearch-3k_2hgil.js",
+      "beforeSha256": "c9910b8c10b64f62db048a95d6f2ab003572fd9585b089ef8daa84ec1d446c25",
+      "afterSha256": "078c7e97f858cb1e6cac95592cc2f24d508062e8ba9df522377605d8811adfe9",
+      "anchors": 9
+    }
+  ],
+  "anchors": 15
+}

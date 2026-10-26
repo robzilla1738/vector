@@ -1,0 +1,11 @@
+# Retain the supplied command palette between invocations
+
+Demonstrated defect: every Show loaded tabsearch.html again and immediately exposed the previous document. Input delivered there vanished on replacement; old DOM could temporarily retain previous command rows. Fully mounted Files was accepted, so no Files-route change is made.
+
+Proposal: 15 counted anchors, one existing native owner and one renderer resource. Native keeps the mounted document, rotates its existing invocation binding, and dispatches a fixed internal event with no payload or dynamic script. The renderer synchronously resets view state and invalidates pending review/action continuations, then obtains the current context through the existing private API. Actions wait for that context. The same input DOM survives, and navigate-prefill/delayed select cannot overwrite newly typed edits. Hide invalidates async continuations and cancels the existing file review. Profile/browser retirement still destroys the existing owner. Initial document mount reads the current binding; no event is sent before that renderer has ever requested context.
+
+No new public API, profile state, authority, CSS or UI structure. Native ExecuteJavaScript uses only two compile-time event expressions, restricted to the exact trusted SearchURL and a live main frame. Invocation authority remains the native generation, not the DOM event. Existing native source baseline includes the grouped palette diagnostic projection.
+
+Renderer leaf `assets/tabsearch-3k_2hgil.js`: input c9910b8c10b64f62db048a95d6f2ab003572fd9585b089ef8daa84ec1d446c25 (36572 bytes); output 078c7e97f858cb1e6cac95592cc2f24d508062e8ba9df522377605d8811adfe9 (38266 bytes). This is the only changed packaged JS leaf. `renderer-transform.mjs` is a count-checked final transform after existing supplied transformations. `prepare.py` freezes/replays both exact baselines; no shared projection.
+
+Verification: `node boundary.test.mjs` covers unavailable-before-context, retained early edit, stale context completion, stale action closure, hide invalidation, and delayed-select fencing. `node --check source/assets/tabsearch-3k_2hgil.js` passed. Native compilation and real rapid Cmd+K/type, reopen, Cmd+L/edit, Files rename/Undo acceptance are integrator-owned and pending. No app operation or signing performed.
