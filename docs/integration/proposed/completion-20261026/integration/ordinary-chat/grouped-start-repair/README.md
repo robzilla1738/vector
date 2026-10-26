@@ -1,0 +1,11 @@
+# Grouped agent construction and lazy-tool repair
+
+Actual sanitized diagnostic `ReferenceError` at `aux-native-entry.mjs:13780:2159` maps to the default argument of `createReadFileTool`, invoked by `createCoreToolset`. The identifier `auxSupervisedTasksAvailable` occurs exactly twice as calls and has no declaration in the signed diagnostic-a2 resources. The second call is in selected read-file execution. No active log, credential, account state or provider request was read to establish this; source coordinates suffice. JavaScript line coordinates here require splitting on literal newline, not Python splitlines (which also counts unrelated embedded Unicode separators).
+
+Replace those two missing calls with `!auxUsesBoundBrowserActions()`. This existing predicate accepts only the immutable native false mode as fixed browser scope and otherwise invokes the real supervised guard. True supervised mode retains the original generic path; absent, malformed, writable or accessor flags fail closed. This repairs both no-tool construction and later selected read-file routing without granting execution permission.
+
+The same proposal includes the three already-reviewed lazy registration substitutions, preserving lazy ordinary chat, original account/session incarnation checks, and delegation to the existing scoped native owner/QuickJS/PDF/utility path. Diagnostic output remains included. No other product behavior or UI changes.
+
+`proposal.json` pins diagnostic-a2 inputs and final outputs, with four substitution counts `[1,1,1,2]` per resource. `prepare.py NEW_DIRECTORY` refuses changed bytes/counts and emits both derivatives plus a receipt. Final prepared output is `/private/tmp/aux-grouped-agent-start-repair-20261026-a2/`; root owns packaging, manifests and same-scope signing. This supersedes staging lazy-registration alone.
+
+Validation: actual read-file constructor and registered execution functions pass fixed-scope/awaited closure and supervised routing; missing/malformed/mutable/accessor native flags fail closed. Prior actual lazy-wrapper/registration/router ownership and disposal checks pass on the combined output. Both complete modules pass Node syntax checks; final a2 files are pinned byte-identical to those checked. No model call or actual user-visible success is claimed.

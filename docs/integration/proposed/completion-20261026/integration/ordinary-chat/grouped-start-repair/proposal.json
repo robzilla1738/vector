@@ -1,0 +1,49 @@
+{
+  "format": "aux.grouped-agent-start-repair.v1",
+  "basis": "actual diagnostic derivatives a2",
+  "rules": [
+    {
+      "find": "function auxCreateLazyDesktopRepl(factory) {\n  let repl, disposal, disposed = false;\n  return {\n    run(...args) {\n      if (disposed) throw Error('The desktop tool session has closed.');\n      return (repl ??= factory()).run(...args);\n    },\n    dispose() { if (!disposed) { disposed = true; disposal = repl?.dispose(); } return disposal; },\n  };\n}\n",
+      "replace": "var auxLazyDesktopReplResolvers;\nfunction auxCreateLazyDesktopRepl(factory, accountId, sessionId, sessionCreatedAt) {\n  let repl, disposal, disposed = false;\n  const owner = AccountRegistry.getAccount(accountId);\n  const createdAt = owner?.createdAt, incarnationId = owner?.incarnationId;\n  const resolve = () => {\n    if (disposed) throw Error('The desktop tool session has closed.');\n    const current = AccountRegistry.getAccount(accountId), session = SessionStore.get(accountId, sessionId);\n    if (!owner || !current || current.createdAt !== createdAt || current.incarnationId !== incarnationId ||\n        !session || String(session.createdAt) !== String(sessionCreatedAt))\n      throw Error('The originating desktop tool account or session changed.');\n    return repl ??= factory();\n  };\n  const lazy = {\n    run(...args) { return resolve().run(...args); },\n    dispose() { if (!disposed) { disposed = true; disposal = repl?.dispose(); } return disposal; },\n  };\n  (auxLazyDesktopReplResolvers ??= new WeakMap()).set(lazy, resolve);\n  return lazy;\n}\n",
+      "count": 1
+    },
+    {
+      "find": " const state=auxBrowserRepls.get(repl);if(!state)return tool;",
+      "replace": " const resolve=auxLazyDesktopReplResolvers?.get(repl);\n const state=auxBrowserRepls.get(repl)||(resolve?{awaited(operation){\n  const actual=resolve(),owned=auxBrowserRepls.get(actual);\n  if(!owned){auxRequireSupervisedTasks();throw Error('The fixed browser tool has no scoped owner.');}\n  return owned.awaited(operation);\n }}:undefined);if(!state)return tool;",
+      "count": 1
+    },
+    {
+      "find": "settings:settings(Cn.accountId)})),ni=[auxRegisterBrowserReplTool",
+      "replace": "settings:settings(Cn.accountId)}),Cn.accountId,Cn.session.id,Cn.session.createdAt),ni=[auxRegisterBrowserReplTool",
+      "count": 1
+    },
+    {
+      "find": "auxSupervisedTasksAvailable()",
+      "replace": "!auxUsesBoundBrowserActions()",
+      "count": 2
+    }
+  ],
+  "resources": [
+    {
+      "path": "/private/tmp/aux-agent-start-diagnostic-20261026-a2/index.mjs",
+      "name": "index.mjs",
+      "beforeSha256": "79319cd2f69b03e2140e810b27bed53b6d3dab9327747887c8905a6f6fbb8fc6",
+      "afterSha256": "53b114cbd2380c9c1fa2101cc9a607c91e5ceb05fcd1955f123b6c54ca5598f9"
+    },
+    {
+      "path": "/private/tmp/aux-agent-start-diagnostic-20261026-a2/aux-native-entry.mjs",
+      "name": "aux-native-entry.mjs",
+      "beforeSha256": "87a68b97ca560fdea8972d2b2490962ec58a2dc715b99a1462edc13c5b523423",
+      "afterSha256": "487fc201fc8b97675e4ed1f6224a4f7f2e71acb8f1cbba56a343e6ca3b1fa4a4"
+    }
+  ],
+  "appModified": false,
+  "signed": false,
+  "modelCalls": 0,
+  "diagnosis": {
+    "type": "ReferenceError",
+    "coordinate": "aux-native-entry.mjs:13780:2159",
+    "cause": "Missing auxSupervisedTasksAvailable identifier in createReadFileTool default; exactly two calls, no declaration.",
+    "repair": "Reuse existing immutable-native-mode predicate; both initialization default and scoped read execution guard."
+  }
+}
