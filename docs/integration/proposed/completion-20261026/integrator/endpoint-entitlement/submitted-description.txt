@@ -1,0 +1,7 @@
+Aux is a macOS browser with user-directed AI tasks. We request com.apple.developer.endpoint-security.client for the existing embedded Aux Daemon, identifier dev.aux.browser.daemon, under developer Team 9F2JXY8TCK. Product: https://getaux.co.
+
+We intend to use es_new_descendants_client on macOS 27 or later. Explicitly requested tasks can require a shell command or interactive terminal. The daemon needs recursive ownership of its task processes to enforce account/session file-access boundaries and settle cancellation, account changes and application shutdown, including children that fork or detach.
+
+The app-owned daemon will initialize the descendant-scoped client at its fresh native entry before admitting Node workers or task children. Its existing native owners retain original process identities, pipes and durable recovery records. Failed initialization, an incomplete event fence or loss of the observation stream prevents further task admission and preserves unresolved state for review.
+
+The client scope is limited to the daemon and its own descendant subtree. This integration runs in the normal user application session using the descendant-only API. The entitlement supports containment and reliable lifecycle settlement of user-requested automation in Aux.

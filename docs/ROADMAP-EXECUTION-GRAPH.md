@@ -165,7 +165,7 @@ Track each outcome as **source implemented → integrated → built/deployed →
 
 - Enumerate all profile writers: browser/profile services, renderer/storage work, daemon Environments/Workers, CLI, PTY children/descendants, PDF/utilities, helpers and late/foreign participants.
 - Map each to real admission ownership, observation and terminal conditions. Account for detached descendants, PID reuse, missed events, crashes and late joiners.
-- Select a supported custody mechanism. kqueue does not provide NOTE_TRACK descendant tracking. The macOS 27 descendant API requires entitlement plus initial-population/event-completion guarantees; a compiled observer or empty map does not prove drain.
+- Select a supported custody mechanism. kqueue does not provide NOTE_TRACK descendant tracking. The macOS 27 descendant API requires entitlement plus initial-population/event-completion guarantees; a compiled observer or empty map does not prove drain. Owner retained this requirement and explicitly authorized the Apple request; submission confirmed **2H4D7KNGUP** on October26. [Receipt and activation path](integration/proposed/completion-20261026/integrator/endpoint-entitlement/README.md). Approval, provisioning, signing and actual exec/PTY acceptance remain pending.
 - Determine whether macOS 27 is essential or an avoidable packaging dependency; send findings to COMPAT.
 - If full custody is unavailable, retain safe refusal/quarantine and report the exact blocker. Do not call restricted switching full parity.
 

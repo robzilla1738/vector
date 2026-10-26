@@ -19,7 +19,7 @@
   ],
   "requestEntry": "https://developer.apple.com/contact/request/system-extension/",
   "requestFormRequiresSignIn": true,
-  "requestFormInspected": false,
+  "requestFormInspected": true,
   "existingSigningReview": {
     "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/local-completion-package-a38/signing-review.json",
     "sha256": "f43813c285d0a0d439129f193f97cac1712c93f815cfc75da5b4e201bc8025e0"
@@ -27,10 +27,13 @@
   "team": "9F2JXY8TCK",
   "daemonIdentifier": "dev.aux.browser.daemon",
   "entitlement": "com.apple.developer.endpoint-security.client",
-  "submitted": false,
+  "submitted": true,
   "appleApprovalVerified": false,
   "provisioned": false,
   "signed": false,
   "activated": false,
-  "ownerAccountAccessed": false
+  "ownerAccountAccessed": true,
+  "formPrepared": true,
+  "requestId": "2H4D7KNGUP",
+  "credentialsRead": false
 }
