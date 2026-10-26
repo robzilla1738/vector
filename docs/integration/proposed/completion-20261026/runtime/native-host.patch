@@ -1,0 +1,433 @@
+--- a/chrome/browser/extensions/api/messaging/aux_native_messaging_lifetime.h
++++ b/chrome/browser/extensions/api/messaging/aux_native_messaging_lifetime.h
+@@ -1,19 +1,42 @@
+ // Copyright 2026 Aux contributors. Chromium integration retains upstream notices.
+ #pragma once
+ #include "base/process/kill.h"
++#include "base/files/file_path.h"
++#include "base/task/sequenced_task_runner.h"
++#include "chrome/browser/profiles/keep_alive/scoped_profile_keep_alive.h"
+ #include "base/process/mac/aux_browser_descendant_client.h"
+ #include <algorithm>
+ #include <cstdint>
+ #include <memory>
+ #include <mutex>
++#include <string>
+ #include <vector>
+ #include <utility>
+ #include <unistd.h>
+ 
++class Profile;
++
+ namespace extensions {
++// Captured on UI from the actual calling Profile, never from renderer input or
++// the optional native-initiated reconnect directory. No Profile is dereferenced
++// on IO/background/reaper threads; its keepalive is released on UI.
++class AuxNativeMessagingProfileOwner final {
++ public:
++  static std::shared_ptr<const AuxNativeMessagingProfileOwner> Capture(Profile* profile);
++  ~AuxNativeMessagingProfileOwner();
++  const base::FilePath& profile_path() const { return profile_path_; }
++
++ private:
++  AuxNativeMessagingProfileOwner(Profile* profile,
++                                std::unique_ptr<ScopedProfileKeepAlive> keep_alive);
++  const base::FilePath profile_path_;
++  const std::unique_ptr<ScopedProfileKeepAlive, base::OnTaskRunnerDeleter> keep_alive_;
++};
++
+ // Retained evidence for mac native messaging launches only. This is
+ // not a process-tree census, filesystem authority, or whole-writer certificate.
+ struct AuxNativeMessagingLifetime final {
++  ~AuxNativeMessagingLifetime();
+   struct Snapshot {
+     size_t unresolved = 0;
+     bool all_writer_coverage = false;  // This participant is never a census.
+@@ -25,8 +48,15 @@
+     uint64_t settled = 0;
+     uint64_t unobserved_descendant_cohorts = 0;
+   };
+-  static std::shared_ptr<AuxNativeMessagingLifetime> Reserve() {
+-    auto entry = std::shared_ptr<AuxNativeMessagingLifetime>(new AuxNativeMessagingLifetime);
++  static std::shared_ptr<AuxNativeMessagingLifetime> Reserve(
++      std::shared_ptr<const AuxNativeMessagingProfileOwner> profile_owner,
++      std::string extension_origin, std::string native_host_name) {
++    if (!profile_owner || extension_origin.empty() || native_host_name.empty())
++      return nullptr;
++    auto entry = std::shared_ptr<AuxNativeMessagingLifetime>(
++        new AuxNativeMessagingLifetime(std::move(profile_owner),
++                                      std::move(extension_origin),
++                                      std::move(native_host_name)));
+     std::lock_guard<std::mutex> lock(RegistryMutex());
+     if (getpid() != RegistryOwner() || Closed() || Registry().size() >= 4096) {
+       if (getpid() != RegistryOwner() || Registry().size() >= 4096)
+@@ -117,7 +147,12 @@
+   }
+   std::mutex mutex;
+  private:
+-  AuxNativeMessagingLifetime();
++  AuxNativeMessagingLifetime(
++      std::shared_ptr<const AuxNativeMessagingProfileOwner> profile_owner,
++      std::string extension_origin, std::string native_host_name);
++  const std::shared_ptr<const AuxNativeMessagingProfileOwner> profile_owner_;
++  const std::string extension_origin_;
++  const std::string native_host_name_;
+   static pid_t RegistryOwner() { static const pid_t owner = getpid(); return owner; }
+   static bool& Closed() { static bool closed = false; return closed; }
+   static bool& AccountingUnknown() { static bool unknown = false; return unknown; }
+--- a/chrome/browser/extensions/api/messaging/native_message_process_host.cc
++++ b/chrome/browser/extensions/api/messaging/native_message_process_host.cc
+@@ -26,6 +26,7 @@
+ #include "chrome/browser/extensions/api/messaging/native_messaging_launch_from_native.h"
+ #include "chrome/browser/extensions/api/messaging/native_process_launcher.h"
+ #include "chrome/browser/profiles/profile.h"
++#include "chrome/browser/profiles/keep_alive/profile_keep_alive_types.h"
+ #include "content/public/browser/browser_context.h"
+ #include "content/public/browser/browser_task_traits.h"
+ #include "content/public/browser/browser_thread.h"
+@@ -69,7 +70,32 @@
+ namespace extensions {
+ 
+ #if BUILDFLAG(IS_MAC)
+-AuxNativeMessagingLifetime::AuxNativeMessagingLifetime() = default;
++std::shared_ptr<const AuxNativeMessagingProfileOwner>
++AuxNativeMessagingProfileOwner::Capture(Profile* profile) {
++  DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
++  if (!profile || !profile->IsRegularProfile()) return nullptr;
++  auto keep_alive = ScopedProfileKeepAlive::TryAcquire(
++      profile, ProfileKeepAliveOrigin::kBackgroundMode);
++  if (!keep_alive) return nullptr;
++  return std::shared_ptr<const AuxNativeMessagingProfileOwner>(
++      new AuxNativeMessagingProfileOwner(profile, std::move(keep_alive)));
++}
++
++AuxNativeMessagingProfileOwner::AuxNativeMessagingProfileOwner(
++    Profile* profile, std::unique_ptr<ScopedProfileKeepAlive> keep_alive)
++    : profile_path_(profile->GetPath()),
++      keep_alive_(keep_alive.release(),
++                  base::OnTaskRunnerDeleter(content::GetUIThreadTaskRunner({}))) {}
++
++AuxNativeMessagingProfileOwner::~AuxNativeMessagingProfileOwner() = default;
++AuxNativeMessagingLifetime::~AuxNativeMessagingLifetime() = default;
++
++AuxNativeMessagingLifetime::AuxNativeMessagingLifetime(
++    std::shared_ptr<const AuxNativeMessagingProfileOwner> profile_owner,
++    std::string extension_origin, std::string native_host_name)
++    : profile_owner_(std::move(profile_owner)),
++      extension_origin_(std::move(extension_origin)),
++      native_host_name_(std::move(native_host_name)) {}
+ #endif
+ 
+ NativeMessageProcessHost::NativeMessageProcessHost(
+--- a/chrome/browser/extensions/api/messaging/native_process_launcher.cc
++++ b/chrome/browser/extensions/api/messaging/native_process_launcher.cc
+@@ -15,6 +15,9 @@
+ #include "chrome/browser/extensions/api/messaging/launch_context.h"
+ #include "net/base/file_stream.h"
+ #include "url/gurl.h"
++#if BUILDFLAG(IS_MAC)
++#include "chrome/browser/extensions/api/messaging/aux_native_messaging_lifetime.h"
++#endif
+ 
+ #if BUILDFLAG(IS_WIN)
+ #include "chrome/browser/profiles/profile.h"
+@@ -37,7 +40,11 @@
+                             intptr_t window_handle,
+                             const base::FilePath& profile_directory,
+                             const std::string& connect_id,
+-                            const std::string& error_arg);
++                            const std::string& error_arg
++#if BUILDFLAG(IS_MAC)
++                            , std::shared_ptr<const AuxNativeMessagingProfileOwner> profile_owner
++#endif
++                            );
+ 
+   NativeProcessLauncherImpl(const NativeProcessLauncherImpl&) = delete;
+   NativeProcessLauncherImpl& operator=(const NativeProcessLauncherImpl&) =
+@@ -70,6 +77,7 @@
+   // An in-progress launch.
+   mutable std::unique_ptr<LaunchContext> context_;
+ #if BUILDFLAG(IS_MAC)
++  const std::shared_ptr<const AuxNativeMessagingProfileOwner> aux_profile_owner_;
+   mutable std::shared_ptr<AuxNativeMessagingLifetime> aux_child_lifetime_;
+ #endif
+ };
+@@ -81,7 +89,11 @@
+     intptr_t window_handle,
+     const base::FilePath& profile_directory,
+     const std::string& connect_id,
+-    const std::string& error_arg)
++    const std::string& error_arg
++#if BUILDFLAG(IS_MAC)
++    , std::shared_ptr<const AuxNativeMessagingProfileOwner> profile_owner
++#endif
++    )
+     : allow_user_level_hosts_(allow_user_level_hosts),
+       require_native_initiated_connections_(
+           require_native_initiated_connections),
+@@ -90,7 +102,11 @@
+       window_handle_(window_handle),
+       profile_directory_(profile_directory),
+       connect_id_(connect_id),
+-      error_arg_(error_arg) {}
++      error_arg_(error_arg)
++#if BUILDFLAG(IS_MAC)
++      , aux_profile_owner_(std::move(profile_owner))
++#endif
++      {}
+ 
+ #if BUILDFLAG(IS_MAC)
+ std::shared_ptr<AuxNativeMessagingLifetime>
+@@ -109,11 +125,21 @@
+       profile_directory_, connect_id_, error_arg_, origin, native_host_name,
+       base::ThreadPool::CreateTaskRunner(
+           {base::TaskPriority::USER_VISIBLE,
+-           base::TaskShutdownBehavior::CONTINUE_ON_SHUTDOWN, base::MayBlock()}),
++           
++#if BUILDFLAG(IS_MAC)
++           base::TaskShutdownBehavior::BLOCK_SHUTDOWN,
++#else
++           base::TaskShutdownBehavior::CONTINUE_ON_SHUTDOWN,
++#endif
++           base::MayBlock()}),
+       // `Unretained` is safe here, as `LaunchContext` guarantees that it will
+       // never run this callback after the context is destroyed.
+       base::BindOnce(&NativeProcessLauncherImpl::OnComplete,
+-                     base::Unretained(this), std::move(callback)));
++                     base::Unretained(this), std::move(callback))
++#if BUILDFLAG(IS_MAC)
++      , aux_profile_owner_
++#endif
++      );
+ }
+ 
+ void NativeProcessLauncherImpl::OnComplete(
+@@ -169,7 +195,11 @@
+   return std::make_unique<NativeProcessLauncherImpl>(
+       allow_user_level_hosts, require_native_initiated_connections,
+       native_hosts_executables_launch_directly, window_handle,
+-      profile_directory, connect_id, error_arg);
++      profile_directory, connect_id, error_arg
++#if BUILDFLAG(IS_MAC)
++      , AuxNativeMessagingProfileOwner::Capture(profile)
++#endif
++      );
+ }
+ 
+ }  // namespace extensions
+--- a/chrome/browser/extensions/api/messaging/launch_context.h
++++ b/chrome/browser/extensions/api/messaging/launch_context.h
+@@ -38,6 +38,9 @@
+ }  // namespace net
+ 
+ namespace extensions {
++#if BUILDFLAG(IS_MAC)
++class AuxNativeMessagingProfileOwner;
++#endif
+ 
+ // The state for a single native messaging host process launch. Instances live
+ // and die on the IO thread. Asynchronous process launch is initiated via
+@@ -62,7 +65,11 @@
+       GURL origin,
+       std::string native_host_name,
+       scoped_refptr<base::TaskRunner> background_task_runner,
+-      NativeProcessLauncher::LaunchedCallback callback);
++      NativeProcessLauncher::LaunchedCallback callback
++#if BUILDFLAG(IS_MAC)
++      , std::shared_ptr<const AuxNativeMessagingProfileOwner> profile_owner = nullptr
++#endif
++      );
+ #if BUILDFLAG(IS_WIN)
+   ~LaunchContext() override;
+ #else
+@@ -119,7 +126,12 @@
+   // success, returns the launched process and the out/in pipes.
+   static std::optional<ProcessState> LaunchNativeProcess(
+       const base::CommandLine& command_line,
+-      bool native_hosts_executables_launch_directly);
++      bool native_hosts_executables_launch_directly
++#if BUILDFLAG(IS_MAC)
++      , std::shared_ptr<const AuxNativeMessagingProfileOwner> profile_owner,
++      const GURL& origin, const std::string& native_host_name
++#endif
++      );
+ 
+   // The result of a background process launch.
+   struct BackgroundLaunchResult {
+@@ -148,7 +160,11 @@
+       const std::string& connect_id,
+       const std::string& error_arg,
+       const GURL& origin,
+-      const std::string& native_host_name);
++      const std::string& native_host_name
++#if BUILDFLAG(IS_MAC)
++      , std::shared_ptr<const AuxNativeMessagingProfileOwner> profile_owner
++#endif
++      );
+ 
+   // Continues processing on the IO thread following `LaunchInBackground`. If
+   // the launch was cancelled (via deletion of the context), the host process
+--- a/chrome/browser/extensions/api/messaging/launch_context.cc
++++ b/chrome/browser/extensions/api/messaging/launch_context.cc
+@@ -47,7 +47,9 @@
+ 
+ void TerminateNativeProcess(base::Process native_process
+ #if BUILDFLAG(IS_MAC)
+-                            , std::shared_ptr<AuxNativeMessagingLifetime> custody
++                            , std::shared_ptr<AuxNativeMessagingLifetime> custody,
++                            base::ScopedPlatformFile read_file = {},
++                            base::ScopedPlatformFile write_file = {}
+ #endif
+ ) {
+ // Kill the host process if necessary to make sure we don't leave zombies.
+@@ -56,9 +58,21 @@
+ #if BUILDFLAG(IS_MAC)
+   base::ThreadPool::PostTask(FROM_HERE,
+                              {base::MayBlock(), base::TaskPriority::BEST_EFFORT,
+-                              base::TaskShutdownBehavior::CONTINUE_ON_SHUTDOWN},
+-                             base::BindOnce(&ReapAuxNativeMessagingProcess,
+-                                            std::move(native_process), std::move(custody)));
++                              base::TaskShutdownBehavior::BLOCK_SHUTDOWN},
++                             base::BindOnce(
++                                 [](base::Process process,
++                                    std::shared_ptr<AuxNativeMessagingLifetime> lifetime,
++                                    base::ScopedPlatformFile read_file,
++                                    base::ScopedPlatformFile write_file) {
++                                   // Closing framing pipes precedes the sole original
++                                   // reaper, including cancellation and dropped replies.
++                                   read_file.reset();
++                                   write_file.reset();
++                                   ReapAuxNativeMessagingProcess(std::move(process),
++                                                                std::move(lifetime));
++                                 },
++                                 std::move(native_process), std::move(custody),
++                                 std::move(read_file), std::move(write_file)));
+ #else
+   base::EnsureProcessTerminated(std::move(native_process));
+ #endif
+@@ -78,7 +92,11 @@
+     GURL origin,
+     std::string native_host_name,
+     scoped_refptr<base::TaskRunner> background_task_runner,
+-    NativeProcessLauncher::LaunchedCallback callback) {
++    NativeProcessLauncher::LaunchedCallback callback
++#if BUILDFLAG(IS_MAC)
++    , std::shared_ptr<const AuxNativeMessagingProfileOwner> profile_owner
++#endif
++    ) {
+   // Must run on the IO thread.
+   CHECK(base::CurrentIOThread::IsSet());
+ 
+@@ -91,7 +109,11 @@
+                      native_hosts_executables_launch_directly, window_handle,
+                      std::move(profile_directory), std::move(connect_id),
+                      std::move(error_arg), std::move(origin),
+-                     std::move(native_host_name)),
++                     std::move(native_host_name)
++#if BUILDFLAG(IS_MAC)
++                     , std::move(profile_owner)
++#endif
++                     ),
+       base::BindOnce(&OnProcessLaunched, instance->GetWeakPtr()));
+   return instance;
+ }
+@@ -115,9 +137,31 @@
+       write_file(std::move(write_file)) {}
+ LaunchContext::ProcessState::ProcessState(ProcessState&& other) noexcept =
+     default;
++#if BUILDFLAG(IS_MAC)
++LaunchContext::ProcessState& LaunchContext::ProcessState::operator=(
++    ProcessState&& other) noexcept {
++  if (this == &other) return *this;
++  if (process.IsValid())
++    TerminateNativeProcess(std::move(process), std::move(aux_child_lifetime),
++                           std::move(read_file), std::move(write_file));
++  process = std::move(other.process);
++  aux_child_lifetime = std::move(other.aux_child_lifetime);
++  read_file = std::move(other.read_file);
++  write_file = std::move(other.write_file);
++  return *this;
++}
++LaunchContext::ProcessState::~ProcessState() {
++  // Background launch can finish after its reply receiver has gone away.
++  // A process handle destructor is not child termination or original reap.
++  if (process.IsValid())
++    TerminateNativeProcess(std::move(process), std::move(aux_child_lifetime),
++                           std::move(read_file), std::move(write_file));
++}
++#else
+ LaunchContext::ProcessState& LaunchContext::ProcessState::operator=(
+     ProcessState&& other) noexcept = default;
+ LaunchContext::ProcessState::~ProcessState() = default;
++#endif
+ 
+ LaunchContext::BackgroundLaunchResult::BackgroundLaunchResult(
+     NativeProcessLauncher::LaunchResult result)
+@@ -143,7 +187,11 @@
+     const std::string& connect_id,
+     const std::string& error_arg,
+     const GURL& origin,
+-    const std::string& native_host_name) {
++    const std::string& native_host_name
++#if BUILDFLAG(IS_MAC)
++    , std::shared_ptr<const AuxNativeMessagingProfileOwner> profile_owner
++#endif
++    ) {
+   if (!NativeMessagingHostManifest::IsValidName(native_host_name)) {
+     return BackgroundLaunchResult(NativeProcessLauncher::RESULT_INVALID_NAME);
+   }
+@@ -269,7 +317,11 @@
+   }
+ 
+   if (auto state = LaunchNativeProcess(
+-          command_line, native_hosts_executables_launch_directly)) {
++          command_line, native_hosts_executables_launch_directly
++#if BUILDFLAG(IS_MAC)
++          , std::move(profile_owner), origin, native_host_name
++#endif
++          )) {
+     return BackgroundLaunchResult(*std::move(state));
+   }
+   return BackgroundLaunchResult(NativeProcessLauncher::RESULT_FAILED_TO_START);
+@@ -280,6 +332,7 @@
+                                       BackgroundLaunchResult result) {
+   if (!weak_this) {
+     // The launch was cancelled. Terminate the host process and close the pipes.
++#if !BUILDFLAG(IS_MAC)
+     if (result.process_state.has_value()) {
+       auto& process_state = result.process_state.value();
+       TerminateNativeProcess(std::move(process_state.process)
+@@ -304,6 +357,7 @@
+               std::move(process_state.read_file),
+               std::move(process_state.write_file)));
+     }
++#endif  // On Mac ProcessState owns pipe closure and original reap.
+     return;
+   }
+   DCHECK_CALLED_ON_VALID_SEQUENCE(weak_this->sequence_checker_);
+--- a/chrome/browser/extensions/api/messaging/launch_context_posix.cc
++++ b/chrome/browser/extensions/api/messaging/launch_context_posix.cc
+@@ -99,7 +99,12 @@
+ std::optional<LaunchContext::ProcessState> LaunchContext::LaunchNativeProcess(
+     const base::CommandLine& command_line,
+     // This is only relevant on Windows
+-    bool native_hosts_executables_launch_directly) {
++    bool native_hosts_executables_launch_directly
++#if BUILDFLAG(IS_MAC)
++    , std::shared_ptr<const AuxNativeMessagingProfileOwner> profile_owner,
++    const GURL& origin, const std::string& native_host_name
++#endif
++    ) {
+   base::LaunchOptions options;
+ 
+   int read_pipe_fds[2] = {};
+@@ -153,7 +158,8 @@
+     LOG(ERROR) << "Native messaging path restrictions unavailable";
+     return std::nullopt;
+   }
+-  auto custody = AuxNativeMessagingLifetime::Reserve();
++  auto custody = AuxNativeMessagingLifetime::Reserve(
++      std::move(profile_owner), origin.spec(), native_host_name);
+   if (!custody) {
+     LOG(ERROR) << "Native messaging launch admission is closed";
+     return std::nullopt;

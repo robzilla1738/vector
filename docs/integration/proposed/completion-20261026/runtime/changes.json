@@ -1,0 +1,203 @@
+{
+  "format": "aux.native-host-ownership-cleanup.v1",
+  "sourceRoot": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src",
+  "files": [
+    {
+      "path": "chrome/browser/extensions/api/messaging/aux_native_messaging_lifetime.h",
+      "before": "25b3d277ea42891f183383383793d4a76d96564d3d571a1d2eac85a4987a9393",
+      "after": "acb56a429e5cfadb6e3d3ad4930d6ef6fe8e1437d891e3a42468ac8f9140f811",
+      "anchors": [
+        {
+          "old": "#include \"base/process/kill.h\"",
+          "new": "#include \"base/process/kill.h\"\n#include \"base/files/file_path.h\"\n#include \"base/task/sequenced_task_runner.h\"\n#include \"chrome/browser/profiles/keep_alive/scoped_profile_keep_alive.h\"",
+          "count": 1
+        },
+        {
+          "old": "namespace extensions {\n",
+          "new": "class Profile;\n\nnamespace extensions {\n// Captured on UI from the actual calling Profile, never from renderer input or\n// the optional native-initiated reconnect directory. No Profile is dereferenced\n// on IO/background/reaper threads; its keepalive is released on UI.\nclass AuxNativeMessagingProfileOwner final {\n public:\n  static std::shared_ptr<const AuxNativeMessagingProfileOwner> Capture(Profile* profile);\n  ~AuxNativeMessagingProfileOwner();\n  const base::FilePath& profile_path() const { return profile_path_; }\n\n private:\n  AuxNativeMessagingProfileOwner(Profile* profile,\n                                std::unique_ptr<ScopedProfileKeepAlive> keep_alive);\n  const base::FilePath profile_path_;\n  const std::unique_ptr<ScopedProfileKeepAlive, base::OnTaskRunnerDeleter> keep_alive_;\n};\n\n",
+          "count": 1
+        },
+        {
+          "old": "  static std::shared_ptr<AuxNativeMessagingLifetime> Reserve() {\n    auto entry = std::shared_ptr<AuxNativeMessagingLifetime>(new AuxNativeMessagingLifetime);",
+          "new": "  static std::shared_ptr<AuxNativeMessagingLifetime> Reserve(\n      std::shared_ptr<const AuxNativeMessagingProfileOwner> profile_owner,\n      std::string extension_origin, std::string native_host_name) {\n    if (!profile_owner || extension_origin.empty() || native_host_name.empty())\n      return nullptr;\n    auto entry = std::shared_ptr<AuxNativeMessagingLifetime>(\n        new AuxNativeMessagingLifetime(std::move(profile_owner),\n                                      std::move(extension_origin),\n                                      std::move(native_host_name)));",
+          "count": 1
+        },
+        {
+          "old": "struct AuxNativeMessagingLifetime final {",
+          "new": "struct AuxNativeMessagingLifetime final {\n  ~AuxNativeMessagingLifetime();",
+          "count": 1
+        },
+        {
+          "old": "  AuxNativeMessagingLifetime();",
+          "new": "  AuxNativeMessagingLifetime(\n      std::shared_ptr<const AuxNativeMessagingProfileOwner> profile_owner,\n      std::string extension_origin, std::string native_host_name);\n  const std::shared_ptr<const AuxNativeMessagingProfileOwner> profile_owner_;\n  const std::string extension_origin_;\n  const std::string native_host_name_;",
+          "count": 1
+        },
+        {
+          "old": "#include <mutex>",
+          "new": "#include <mutex>\n#include <string>",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/extensions/api/messaging/native_message_process_host.cc",
+      "before": "f4bc07980dde7ef9b16c331080481871dd83d8e0b25b19f97b16b2defc40e5d0",
+      "after": "93c7c2bb3617aa47a38bee3a6c4e6729dc3ee7bcbe93e1c35b471f15cd8c4741",
+      "anchors": [
+        {
+          "old": "#include \"chrome/browser/profiles/profile.h\"",
+          "new": "#include \"chrome/browser/profiles/profile.h\"\n#include \"chrome/browser/profiles/keep_alive/profile_keep_alive_types.h\"",
+          "count": 1
+        },
+        {
+          "old": "AuxNativeMessagingLifetime::AuxNativeMessagingLifetime() = default;",
+          "new": "std::shared_ptr<const AuxNativeMessagingProfileOwner>\nAuxNativeMessagingProfileOwner::Capture(Profile* profile) {\n  DCHECK_CURRENTLY_ON(content::BrowserThread::UI);\n  if (!profile || !profile->IsRegularProfile()) return nullptr;\n  auto keep_alive = ScopedProfileKeepAlive::TryAcquire(\n      profile, ProfileKeepAliveOrigin::kBackgroundMode);\n  if (!keep_alive) return nullptr;\n  return std::shared_ptr<const AuxNativeMessagingProfileOwner>(\n      new AuxNativeMessagingProfileOwner(profile, std::move(keep_alive)));\n}\n\nAuxNativeMessagingProfileOwner::AuxNativeMessagingProfileOwner(\n    Profile* profile, std::unique_ptr<ScopedProfileKeepAlive> keep_alive)\n    : profile_path_(profile->GetPath()),\n      keep_alive_(keep_alive.release(),\n                  base::OnTaskRunnerDeleter(content::GetUIThreadTaskRunner({}))) {}\n\nAuxNativeMessagingProfileOwner::~AuxNativeMessagingProfileOwner() = default;\nAuxNativeMessagingLifetime::~AuxNativeMessagingLifetime() = default;\n\nAuxNativeMessagingLifetime::AuxNativeMessagingLifetime(\n    std::shared_ptr<const AuxNativeMessagingProfileOwner> profile_owner,\n    std::string extension_origin, std::string native_host_name)\n    : profile_owner_(std::move(profile_owner)),\n      extension_origin_(std::move(extension_origin)),\n      native_host_name_(std::move(native_host_name)) {}",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/extensions/api/messaging/native_process_launcher.cc",
+      "before": "c36c7333f6ec925884a125ab700b75cca75267cce2a8d681ec15b93e98737ad8",
+      "after": "06dc7ad35465b9d9e354033864e3be7cd4aadbe2b68642a992f0e75013b85aac",
+      "anchors": [
+        {
+          "old": "#include \"url/gurl.h\"",
+          "new": "#include \"url/gurl.h\"\n#if BUILDFLAG(IS_MAC)\n#include \"chrome/browser/extensions/api/messaging/aux_native_messaging_lifetime.h\"\n#endif",
+          "count": 1
+        },
+        {
+          "old": "                            const std::string& error_arg);",
+          "new": "                            const std::string& error_arg\n#if BUILDFLAG(IS_MAC)\n                            , std::shared_ptr<const AuxNativeMessagingProfileOwner> profile_owner\n#endif\n                            );",
+          "count": 1
+        },
+        {
+          "old": "  mutable std::shared_ptr<AuxNativeMessagingLifetime> aux_child_lifetime_;",
+          "new": "  const std::shared_ptr<const AuxNativeMessagingProfileOwner> aux_profile_owner_;\n  mutable std::shared_ptr<AuxNativeMessagingLifetime> aux_child_lifetime_;",
+          "count": 1
+        },
+        {
+          "old": "    const std::string& error_arg)\n    : allow_user_level_hosts_",
+          "new": "    const std::string& error_arg\n#if BUILDFLAG(IS_MAC)\n    , std::shared_ptr<const AuxNativeMessagingProfileOwner> profile_owner\n#endif\n    )\n    : allow_user_level_hosts_",
+          "count": 1
+        },
+        {
+          "old": "      error_arg_(error_arg) {}",
+          "new": "      error_arg_(error_arg)\n#if BUILDFLAG(IS_MAC)\n      , aux_profile_owner_(std::move(profile_owner))\n#endif\n      {}",
+          "count": 1
+        },
+        {
+          "old": "                     base::Unretained(this), std::move(callback)));",
+          "new": "                     base::Unretained(this), std::move(callback))\n#if BUILDFLAG(IS_MAC)\n      , aux_profile_owner_\n#endif\n      );",
+          "count": 1
+        },
+        {
+          "old": "base::TaskShutdownBehavior::CONTINUE_ON_SHUTDOWN, base::MayBlock()",
+          "new": "\n#if BUILDFLAG(IS_MAC)\n           base::TaskShutdownBehavior::BLOCK_SHUTDOWN,\n#else\n           base::TaskShutdownBehavior::CONTINUE_ON_SHUTDOWN,\n#endif\n           base::MayBlock()",
+          "count": 1
+        },
+        {
+          "old": "      profile_directory, connect_id, error_arg);",
+          "new": "      profile_directory, connect_id, error_arg\n#if BUILDFLAG(IS_MAC)\n      , AuxNativeMessagingProfileOwner::Capture(profile)\n#endif\n      );",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/extensions/api/messaging/launch_context.h",
+      "before": "99686b7bc4231aa94bb63bb3213a76df3bc7005e0b44ea7affb86bf53918c12e",
+      "after": "6c78ff84e63fd45b4b953050f4fa5e3c8fffea58cb9dfe7b83f9c9c07130a2a7",
+      "anchors": [
+        {
+          "old": "namespace extensions {\n",
+          "new": "namespace extensions {\n#if BUILDFLAG(IS_MAC)\nclass AuxNativeMessagingProfileOwner;\n#endif\n",
+          "count": 1
+        },
+        {
+          "old": "      scoped_refptr<base::TaskRunner> background_task_runner,\n      NativeProcessLauncher::LaunchedCallback callback);",
+          "new": "      scoped_refptr<base::TaskRunner> background_task_runner,\n      NativeProcessLauncher::LaunchedCallback callback\n#if BUILDFLAG(IS_MAC)\n      , std::shared_ptr<const AuxNativeMessagingProfileOwner> profile_owner = nullptr\n#endif\n      );",
+          "count": 1
+        },
+        {
+          "old": "      bool native_hosts_executables_launch_directly);",
+          "new": "      bool native_hosts_executables_launch_directly\n#if BUILDFLAG(IS_MAC)\n      , std::shared_ptr<const AuxNativeMessagingProfileOwner> profile_owner,\n      const GURL& origin, const std::string& native_host_name\n#endif\n      );",
+          "count": 1
+        },
+        {
+          "old": "      const std::string& native_host_name);",
+          "new": "      const std::string& native_host_name\n#if BUILDFLAG(IS_MAC)\n      , std::shared_ptr<const AuxNativeMessagingProfileOwner> profile_owner\n#endif\n      );",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/extensions/api/messaging/launch_context.cc",
+      "before": "9bff0d744b9e435dcc71c0df738ba64aa46eb3643ab745e3be614ec3157c9d75",
+      "after": "65561b5e3b1ce252abc2c08bc3fb6f9c108564cb89731a0725416b238d999e0e",
+      "anchors": [
+        {
+          "old": "                            , std::shared_ptr<AuxNativeMessagingLifetime> custody",
+          "new": "                            , std::shared_ptr<AuxNativeMessagingLifetime> custody,\n                            base::ScopedPlatformFile read_file = {},\n                            base::ScopedPlatformFile write_file = {}",
+          "count": 1
+        },
+        {
+          "old": "base::TaskShutdownBehavior::CONTINUE_ON_SHUTDOWN},\n                             base::BindOnce(&ReapAuxNativeMessagingProcess,\n                                            std::move(native_process), std::move(custody)));",
+          "new": "base::TaskShutdownBehavior::BLOCK_SHUTDOWN},\n                             base::BindOnce(\n                                 [](base::Process process,\n                                    std::shared_ptr<AuxNativeMessagingLifetime> lifetime,\n                                    base::ScopedPlatformFile read_file,\n                                    base::ScopedPlatformFile write_file) {\n                                   // Closing framing pipes precedes the sole original\n                                   // reaper, including cancellation and dropped replies.\n                                   read_file.reset();\n                                   write_file.reset();\n                                   ReapAuxNativeMessagingProcess(std::move(process),\n                                                                std::move(lifetime));\n                                 },\n                                 std::move(native_process), std::move(custody),\n                                 std::move(read_file), std::move(write_file)));",
+          "count": 1
+        },
+        {
+          "old": "    NativeProcessLauncher::LaunchedCallback callback) {",
+          "new": "    NativeProcessLauncher::LaunchedCallback callback\n#if BUILDFLAG(IS_MAC)\n    , std::shared_ptr<const AuxNativeMessagingProfileOwner> profile_owner\n#endif\n    ) {",
+          "count": 1
+        },
+        {
+          "old": "                     std::move(native_host_name)),",
+          "new": "                     std::move(native_host_name)\n#if BUILDFLAG(IS_MAC)\n                     , std::move(profile_owner)\n#endif\n                     ),",
+          "count": 1
+        },
+        {
+          "old": "LaunchContext::ProcessState& LaunchContext::ProcessState::operator=(\n    ProcessState&& other) noexcept = default;\nLaunchContext::ProcessState::~ProcessState() = default;",
+          "new": "#if BUILDFLAG(IS_MAC)\nLaunchContext::ProcessState& LaunchContext::ProcessState::operator=(\n    ProcessState&& other) noexcept {\n  if (this == &other) return *this;\n  if (process.IsValid())\n    TerminateNativeProcess(std::move(process), std::move(aux_child_lifetime),\n                           std::move(read_file), std::move(write_file));\n  process = std::move(other.process);\n  aux_child_lifetime = std::move(other.aux_child_lifetime);\n  read_file = std::move(other.read_file);\n  write_file = std::move(other.write_file);\n  return *this;\n}\nLaunchContext::ProcessState::~ProcessState() {\n  // Background launch can finish after its reply receiver has gone away.\n  // A process handle destructor is not child termination or original reap.\n  if (process.IsValid())\n    TerminateNativeProcess(std::move(process), std::move(aux_child_lifetime),\n                           std::move(read_file), std::move(write_file));\n}\n#else\nLaunchContext::ProcessState& LaunchContext::ProcessState::operator=(\n    ProcessState&& other) noexcept = default;\nLaunchContext::ProcessState::~ProcessState() = default;\n#endif",
+          "count": 1
+        },
+        {
+          "old": "    const std::string& native_host_name) {",
+          "new": "    const std::string& native_host_name\n#if BUILDFLAG(IS_MAC)\n    , std::shared_ptr<const AuxNativeMessagingProfileOwner> profile_owner\n#endif\n    ) {",
+          "count": 1
+        },
+        {
+          "old": "          command_line, native_hosts_executables_launch_directly)) {",
+          "new": "          command_line, native_hosts_executables_launch_directly\n#if BUILDFLAG(IS_MAC)\n          , std::move(profile_owner), origin, native_host_name\n#endif\n          )) {",
+          "count": 1
+        },
+        {
+          "old": "    if (result.process_state.has_value()) {\n      auto& process_state",
+          "new": "#if !BUILDFLAG(IS_MAC)\n    if (result.process_state.has_value()) {\n      auto& process_state",
+          "count": 1
+        },
+        {
+          "old": "    }\n    return;\n  }\n  DCHECK_CALLED_ON_VALID_SEQUENCE(weak_this->sequence_checker_);",
+          "new": "    }\n#endif  // On Mac ProcessState owns pipe closure and original reap.\n    return;\n  }\n  DCHECK_CALLED_ON_VALID_SEQUENCE(weak_this->sequence_checker_);",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/extensions/api/messaging/launch_context_posix.cc",
+      "before": "bb960b43c26f23233cc1ef929bb0136270568b2a300e72427c74b03020a28589",
+      "after": "986aed63be8b1541db43c09a0f3db6573a08cccf07c33f072aea4d9312ec9bea",
+      "anchors": [
+        {
+          "old": "    bool native_hosts_executables_launch_directly) {",
+          "new": "    bool native_hosts_executables_launch_directly\n#if BUILDFLAG(IS_MAC)\n    , std::shared_ptr<const AuxNativeMessagingProfileOwner> profile_owner,\n    const GURL& origin, const std::string& native_host_name\n#endif\n    ) {",
+          "count": 1
+        },
+        {
+          "old": "  auto custody = AuxNativeMessagingLifetime::Reserve();",
+          "new": "  auto custody = AuxNativeMessagingLifetime::Reserve(\n      std::move(profile_owner), origin.spec(), native_host_name);",
+          "count": 1
+        }
+      ]
+    }
+  ]
+}

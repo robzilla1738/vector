@@ -1,0 +1,36 @@
+{
+  "version": 0,
+  "case-sensitive": "true",
+  "roots": [
+    {
+      "type": "file",
+      "name": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/extensions/api/messaging/aux_native_messaging_lifetime.h",
+      "external-contents": "/Users/rcourson/Documents/Vibe/aux-completion-20261026/runtime/docs/integration/proposed/completion-20261026/runtime/source/chrome/browser/extensions/api/messaging/aux_native_messaging_lifetime.h"
+    },
+    {
+      "type": "file",
+      "name": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/extensions/api/messaging/native_message_process_host.cc",
+      "external-contents": "/Users/rcourson/Documents/Vibe/aux-completion-20261026/runtime/docs/integration/proposed/completion-20261026/runtime/source/chrome/browser/extensions/api/messaging/native_message_process_host.cc"
+    },
+    {
+      "type": "file",
+      "name": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/extensions/api/messaging/native_process_launcher.cc",
+      "external-contents": "/Users/rcourson/Documents/Vibe/aux-completion-20261026/runtime/docs/integration/proposed/completion-20261026/runtime/source/chrome/browser/extensions/api/messaging/native_process_launcher.cc"
+    },
+    {
+      "type": "file",
+      "name": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/extensions/api/messaging/launch_context.h",
+      "external-contents": "/Users/rcourson/Documents/Vibe/aux-completion-20261026/runtime/docs/integration/proposed/completion-20261026/runtime/source/chrome/browser/extensions/api/messaging/launch_context.h"
+    },
+    {
+      "type": "file",
+      "name": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/extensions/api/messaging/launch_context.cc",
+      "external-contents": "/Users/rcourson/Documents/Vibe/aux-completion-20261026/runtime/docs/integration/proposed/completion-20261026/runtime/source/chrome/browser/extensions/api/messaging/launch_context.cc"
+    },
+    {
+      "type": "file",
+      "name": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/extensions/api/messaging/launch_context_posix.cc",
+      "external-contents": "/Users/rcourson/Documents/Vibe/aux-completion-20261026/runtime/docs/integration/proposed/completion-20261026/runtime/source/chrome/browser/extensions/api/messaging/launch_context_posix.cc"
+    }
+  ]
+}
