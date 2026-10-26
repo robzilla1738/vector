@@ -1,0 +1,14 @@
+import {readFile,writeFile} from 'node:fs/promises';
+import vm from 'node:vm';
+import assert from 'node:assert/strict';
+const source=await readFile(new URL('./source/extension-downloads.js',import.meta.url),'utf8');
+let calls=[],invalid=false,changed=false;
+const task={downloads:new Map([['closed-popup',{lease:'native-origin',tabId:22,reference:null}]]),roots:new Map([['parent',{tabId:11,targetId:'original-parent',reference:null}]])};
+const context=vm.createContext({Date,Error,Number,Promise,setTimeout,auxBrowserTaskCurrent:async()=>{if(invalid)throw Error('revoked')},auxBrowserTaskTarget:async(_,target)=>assert.equal(target,'original-parent'),auxBrowserSelectedReference:async()=>{},auxWorkerPhysical:async(_,op)=>op(),chrome:{debugger:{async sendCommand(target,method,params){calls.push({target,method,params});assert.equal(target.tabId,11);assert.equal(params.lease,'native-origin');if(method==='Aux.listOwnedDownloads')return {items:[{guid:'original-guid',downloadId:5,startedAt:2,filename:'result.txt',state:'complete'}]};return {data:'YQ==',offset:params.offset,nextOffset:params.offset+1,size:2,eof:params.offset===1,snapshot:changed&&params.offset?'replacement':'original-snapshot'}}}}});
+vm.runInContext(source,context);const run=(params,signal)=>context.auxReadBoundDownload(task,params,signal);
+const result=await run({targetId:'closed-popup',guid:'original-guid',startedAfterMs:99});assert.equal(result.size,2);assert.equal(result.chunks.length,2);assert.equal(calls.length,3);
+changed=true;await assert.rejects(run({targetId:'closed-popup',guid:'original-guid'}),/snapshot changed/);changed=false;
+await assert.rejects(run({targetId:'unrelated'}),/original attached/);
+calls=[];invalid=true;await assert.rejects(run({targetId:'closed-popup',guid:'original-guid'}),/revoked/);assert.equal(calls.length,0);invalid=false;
+const receipt={checks:['actual native GUID receipt wins over timestamp heuristic','closed popup retains original lease and uses original task parent connection','changed chunk snapshot refuses before publication','unrelated target has no receipt','revocation prevents native dispatch'],passed:5,limits:'Finite helper/fake native transport only; no app, native file IO, Chromium syntax or native addon execution.'};
+await writeFile(new URL('./focused-check.json',import.meta.url),JSON.stringify(receipt,null,2)+'\n');console.log(JSON.stringify(receipt));

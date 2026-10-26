@@ -1,0 +1,39 @@
+#!/usr/bin/env python3
+from pathlib import Path
+import argparse,hashlib,json
+HERE=Path(__file__).resolve().parent
+p=argparse.ArgumentParser();p.add_argument('--entry',type=Path,required=True);p.add_argument('--background',type=Path,required=True);p.add_argument('--out',type=Path,required=True);a=p.parse_args();a.out.mkdir(parents=True,exist_ok=True)
+s=a.entry.read_text();before=s;anchors=[]
+def replace(old,new):
+ global s
+ assert s.count(old)==1,(old[:100],s.count(old))
+ s=s.replace(old,new);anchors.append({'before':old,'after':new,'count':1})
+replace('const auxBrowserRepls=new WeakMap',"async function auxSnapshotBrowserUpload(browser,files){const owner=auxBrowserJsOwners.get(browser);if(!owner)throw Error('The original selected browser session is required for upload');return owner.upload(files)}\nconst auxBrowserRepls=new WeakMap")
+replace('const state={signal:controller.signal,assertCurrent:capture,awaited(operation)',"const state={signal:controller.signal,assertCurrent:capture,upload(files){return this.awaited(()=>files.map(path=>{const value=capture().readUploadFile(path);return {name:value.name,mimeType:'',base64:value.buffer.toString('base64')}}))},awaited(operation)")
+replace("['setInputFiles','uploadFile','saveAs','createReadStream'].includes(String(key))","['uploadFile','saveAs','createReadStream'].includes(String(key))")
+replace('try{if(ti.length===0||typeof ti[0]==`string`){let ei=await resolveActionSessionId(Cn,ni);await Cn.cdp.send(`DOM.setFileInputFiles`,{objectId:ni.objectId,files:ti},ei);return}await callOnElementSync(Cn,ni,', 'try{if(auxUsesBoundBrowserActions()){if(ti.length===0||typeof ti[0]==`string`)ti=await auxSnapshotBrowserUpload(Cn.browser,ti)}else if(ti.length===0||typeof ti[0]==`string`){let ei=await resolveActionSessionId(Cn,ni);await Cn.cdp.send(`DOM.setFileInputFiles`,{objectId:ni.objectId,files:ti},ei);return}await callOnElementSync(Cn,ni,')
+replace('External modules, fs, shell, arbitrary chrome APIs and background callback timers are unavailable in this browser scope.', 'File input uses the original file.access permission hook and a stable native selected-session snapshot; supplied byte payloads and clearing remain available. External modules, fs, shell, arbitrary chrome APIs and background callback timers are unavailable in this browser scope.')
+replace("const auxOwnedBrowserMethods=new Set([", "const auxOwnedBrowserMethods=new Set(['Aux.waitBoundDownload',")
+replace("if(method.startsWith('Aux.'))return call(method,params,options);", "if(method==='Aux.waitForDownload'){if(!selectedOwner)throw auxBrowserActionFailure('Original selected download session is required');const result=await call('Aux.waitBoundDownload',params,options);return selectedOwner.publishDownload(result)}if(method.startsWith('Aux.'))return call(method,params,options);")
+replace("assertCurrent:capture,upload(files)", "assertCurrent:capture,publishDownload(result){return this.awaited(()=>{const chunks=result.chunks.map(value=>Buffer.from(value,'base64')),bytes=Buffer.concat(chunks);if(bytes.length!==result.size||bytes.length>64*1024*1024)throw Error('Native download snapshot is incomplete');return {downloadId:result.downloadId,absolutePath:capture().publishBrowserDownload(bytes,result.filename)}})},saveDownload(source,destination){return this.awaited(()=>{if(!options.browser.isReadableDownloadPath(source))throw Error('Original native download is required');const owner=capture();owner.assertTaskSessionPath(source);const value=owner.readUploadFile(source);return owner.publishBrowserDownload(value.buffer,value.name,destination)})},readDownload(source){return this.awaited(()=>{if(!options.browser.isReadableDownloadPath(source))throw Error('Original native download is required');const owner=capture();owner.assertTaskSessionPath(source);return owner.readUploadFile(source).buffer})},upload(files)")
+replace("['uploadFile','saveAs','createReadStream'].includes(String(key))", "['uploadFile'].includes(String(key))")
+replace("async function auxSnapshotBrowserUpload(browser,files)", "function auxBrowserDownloadOwner(browser){const owner=auxBrowserJsOwners.get(browser);if(!owner)throw Error('Original selected browser download session is required');return owner}\nasync function auxSnapshotBrowserUpload(browser,files)")
+replace("{startedAfterMs:this.#n,expectedFilename:this.#r,referrerUrl:this.#e.url()}", "{startedAfterMs:this.#n,expectedFilename:this.#r,referrerUrl:this.#e.url(),targetId:this.#e.targetId,guid:this.#t}")
+replace("{startedAfterMs:ni,timeoutMs:ti},void 0,{extensionBridge:this.browser.extensionBridgeRoute}", "{startedAfterMs:ni,timeoutMs:ti,targetId:this.targetId},void 0,{extensionBridge:this.browser.extensionBridgeRoute}")
+replace("path.resolve(ei)!==path.resolve(ni)&&(await ensureDirForFile$1(ni),await promises.copyFile(ei,ni))", "path.resolve(ei)!==path.resolve(ni)&&(auxUsesBoundBrowserActions()?await auxBrowserDownloadOwner(this.#e.browser).saveDownload(ei,ni):(await ensureDirForFile$1(ni),await promises.copyFile(ei,ni)))")
+replace("return createReadStream(Cn)}async failure()", "return auxUsesBoundBrowserActions()?Readable.from([await auxBrowserDownloadOwner(this.#e.browser).readDownload(Cn)]):createReadStream(Cn)}async failure()")
+replace("await this.cdp.send(`Browser.setDownloadBehavior`,{behavior:`default`,eventsEnabled:!0}).catch(()=>{});", "if(!this.cdp.scopedTaskId)await this.cdp.send(`Browser.setDownloadBehavior`,{behavior:`default`,eventsEnabled:!0}).catch(()=>{});")
+out=a.out/'aux-native-entry.mjs';out.write_text(s)
+(a.out/'resource-anchors.json').write_text(json.dumps({'inputPath':str(a.entry),'inputSha256':hashlib.sha256(before.encode()).hexdigest(),'outputSha256':hashlib.sha256(s.encode()).hexdigest(),'outputPath':str(out),'anchors':anchors},indent=2)+'\n')
+
+entry_plan=json.loads((a.out/'resource-anchors.json').read_text())
+s=a.background.read_text();before=s;anchors=[]
+replace('const auxBoundBrowserMethods=new Set([',"const auxBoundBrowserMethods=new Set(['Aux.waitBoundDownload',")
+replace('const auxBoundBrowserTasks=new Map',(HERE/'source/extension-downloads.js').read_text()+'\nconst auxBoundBrowserTasks=new Map')
+replace('roots:new Map,created:new Map,closed:false','roots:new Map,created:new Map,downloads:new Map,closed:false')
+replace("if(command.method==='Aux.debuggerAttach'){", "if(command.method==='Aux.waitBoundDownload')return auxReadBoundDownload(task,command.params,signal);\n if(command.method==='Aux.debuggerAttach'){")
+replace("task.roots.set(root.id,root)}", "task.roots.set(root.id,root);const previous=task.downloads.get(root.targetId);if(!previous||previous.reference?.documentCapability!==root.reference?.documentCapability){if(previous)await auxWorkerPhysical('browser-download-release',()=>chrome.debugger.sendCommand({tabId},'Aux.releaseDownloads',{lease:previous.lease}),false);const captured=await auxWorkerPhysical('browser-download-owner',()=>chrome.debugger.sendCommand({tabId},'Aux.beginDownloads',{...root.reference?{__auxDocumentCapability:root.reference.documentCapability}:{}}),false);task.downloads.set(root.targetId,{lease:captured.lease,tabId,reference:root.reference})}}")
+replace('for(const root of [...task.roots.values()]){', "if(task.retire&&task.roots.size){const carrier=task.roots.values().next().value;for(const owner of task.downloads.values())try{await auxWorkerPhysical('browser-download-release',()=>chrome.debugger.sendCommand({tabId:carrier.tabId},'Aux.releaseDownloads',{lease:owner.lease}),false)}catch{}task.downloads.clear()}\n   for(const root of [...task.roots.values()]){")
+output=a.out/'background.js';output.write_text(s)
+background_plan={'inputPath':str(a.background),'inputSha256':hashlib.sha256(before.encode()).hexdigest(),'outputSha256':hashlib.sha256(s.encode()).hexdigest(),'outputPath':str(output),'anchors':anchors}
+(a.out/'resource-anchors.json').write_text(json.dumps({'files':[entry_plan,background_plan]},indent=2)+'\n')

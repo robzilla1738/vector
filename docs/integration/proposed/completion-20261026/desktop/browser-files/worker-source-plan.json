@@ -1,0 +1,43 @@
+{
+  "files": [
+    {
+      "path": "AuxSelectedBuiltinOwner.inc",
+      "inputPath": "/Users/rcourson/Documents/Vibe/aux-completion-20261026/runtime/docs/integration/proposed/completion-20261026/runtime/selected-builtin-owner/source/AuxSelectedBuiltinOwner.inc",
+      "inputSha256": "1ad23c1a18d7ae432672b33db01aeabc58e58175ea9a6ef40d351ca168b87fd9",
+      "outputSha256": "8c3c4455e5b75fd47cf4edf7629c15cb3da5d38bd3235fea7bb9319071f10178",
+      "outputPath": "/private/tmp/aux-browser-files-worker-check-20261026/AuxSelectedBuiltinOwner.inc",
+      "anchors": [
+        {
+          "before": "struct FixedOutputs;",
+          "after": "napi_value SelectedReadUploadFile(napi_env,napi_callback_info);\nnapi_value SelectedPublishBrowserDownload(napi_env,napi_callback_info);\nstruct FixedOutputs;",
+          "count": 1
+        },
+        {
+          "before": "{{\"assertCurrent\",SelectedAssert}",
+          "after": "{{\"readUploadFile\",SelectedReadUploadFile},{\"publishBrowserDownload\",SelectedPublishBrowserDownload},{\"assertCurrent\",SelectedAssert}",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "AuxDevelopmentWorkerHost.cc",
+      "inputPath": "/Users/rcourson/Documents/Vibe/aux-completion-20261026/runtime/docs/integration/proposed/completion-20261026/runtime/selected-builtin-owner/source/AuxDevelopmentWorkerHost.cc",
+      "inputSha256": "4652ca4ff02537dc8761c18fbb4d37b2ab22b57e9a8e8091d893eaff99875b9d",
+      "outputSha256": "c17b84258e603d935fe2f450dfcefa2deb9b76cdc00c5c4622c8d9589f84f52a",
+      "outputPath": "/private/tmp/aux-browser-files-worker-check-20261026/AuxDevelopmentWorkerHost.cc",
+      "anchors": [
+        {
+          "before": "#include \"AuxFixedBuiltins.inc\"",
+          "after": "#include \"AuxFixedBuiltins.inc\"\n#include \"AuxSelectedBrowserFiles.inc\"",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "AuxSelectedBrowserFiles.inc",
+      "new": true,
+      "outputPath": "/private/tmp/aux-browser-files-worker-check-20261026/AuxSelectedBrowserFiles.inc",
+      "outputSha256": "0468125aab1f34470f032d67eea2b8c83fa07610f043e9dcc33a58d392cc98e6"
+    }
+  ]
+}

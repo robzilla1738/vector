@@ -1,0 +1,304 @@
+--- a/chrome/browser/extensions/api/debugger/debugger_api.cc
++++ b/chrome/browser/extensions/api/debugger/debugger_api.cc
+@@ -7,6 +7,26 @@
+ #include "chrome/browser/extensions/api/debugger/debugger_api.h"
+ 
+ #include <algorithm>
++#include <cmath>
++#include <fcntl.h>
++#include <sys/stat.h>
++#include "base/base64.h"
++#include "base/files/file.h"
++#include "base/files/file_util.h"
++#include "base/files/scoped_file.h"
++#include "base/memory/weak_ptr.h"
++#include "base/supports_user_data.h"
++#include "base/task/thread_pool.h"
++#include "base/time/time.h"
++#include "base/timer/timer.h"
++#include "chrome/browser/aux/profile_identity.h"
++#include "components/download/public/common/download_item.h"
++#include "content/public/browser/devtools_manager_delegate.h"
++#include "content/public/browser/download_item_utils.h"
++#include "content/public/browser/download_manager.h"
++#include "content/public/browser/render_frame_host.h"
++#include "content/public/browser/weak_document_ptr.h"
++
+ #include <map>
+ #include <memory>
+ #include <optional>
+@@ -464,6 +484,210 @@
+   return *attached_client_hosts;
+ }
+ 
++// Included in the existing debugger API TU. No new transport or download policy.
++class AuxDebuggerDownloads final : public base::SupportsUserData::Data,
++                                   public content::DownloadManager::Observer {
++ public:
++  static AuxDebuggerDownloads* For(Profile* profile);
++  explicit AuxDebuggerDownloads(Profile* profile);
++  ~AuxDebuggerDownloads() override;
++  std::string Capture(content::DevToolsAgentHost* host, base::RepeatingCallback<bool()> guard);
++  base::DictValue List(const std::string& lease);
++  void Read(const base::DictValue& params,
++            base::OnceCallback<void(base::DictValue)> reply);
++  void Release(const std::string& lease);
++  void OnDownloadCreated(content::DownloadManager* manager,
++                         download::DownloadItem* item) override;
++  void ManagerGoingDown(content::DownloadManager* manager) override;
++ private:
++  struct Item {
++    uintptr_t identity;
++    uint32_t id;
++    double started;
++    std::string url,filename;
++    content::WeakDocumentPtr origin;
++    std::string snapshot,identity_text;
++    int64_t offset=0;
++    bool reading=false;
++  };
++  struct Owner {
++    scoped_refptr<content::DevToolsAgentHost> host;
++    std::string binding,restore;
++    base::RepeatingCallback<bool()> document_guard;
++    base::TimeTicks last_use;
++    int window_id;
++    std::map<std::string,Item> items;
++  };
++  bool Current(const Owner& owner);
++  download::DownloadItem* CurrentItem(const Owner& owner,
++                                      const std::string& guid);
++  void ReadComplete(std::string lease,std::string guid,std::string snapshot,
++                    base::OnceCallback<void(base::DictValue)> reply,
++                    base::DictValue result);
++  void Expire();
++  base::RepeatingTimer expiration_;
++  raw_ptr<Profile> profile_;
++  std::map<std::string,Owner> owners_;
++  base::ScopedObservation<content::DownloadManager,
++                          content::DownloadManager::Observer> observation_{this};
++  base::WeakPtrFactory<AuxDebuggerDownloads> weak_factory_{this};
++};
++namespace {
++const char kAuxDebuggerDownloadsKey[]="aux.component-debugger-downloads";
++base::DictValue AuxDownloadFault() {
++  return base::DictValue().Set("error",base::DictValue().Set("code",-32000)
++      .Set("message","Original native tab download is unavailable"));
++}
++std::string AuxDownloadFileIdentity(const struct stat& st) {
++  if(!S_ISREG(st.st_mode)||st.st_nlink!=1||st.st_size<0)return {};
++  return base::NumberToString(st.st_dev)+":"+base::NumberToString(st.st_ino)+":"+
++      base::NumberToString(st.st_size)+":"+base::NumberToString(st.st_mtimespec.tv_sec)+":"+
++      base::NumberToString(st.st_mtimespec.tv_nsec)+":"+base::NumberToString(st.st_ctimespec.tv_sec)+":"+
++      base::NumberToString(st.st_ctimespec.tv_nsec);
++}
++base::DictValue AuxReadDownloadChunk(base::FilePath path,int64_t size,
++                                    int64_t offset,std::string expected) {
++  if(size<0||size>64*1024*1024||offset<0||offset>size)return AuxDownloadFault();
++  base::ScopedFD parent(open("/",O_RDONLY|O_DIRECTORY|O_NOFOLLOW|O_CLOEXEC));
++  const auto canonical=base::MakeAbsoluteFilePath(path);
++  if(!parent.is_valid()||canonical.empty())return AuxDownloadFault();
++  const auto components=canonical.DirName().GetComponents();
++  for(const auto& part:components) {
++    if(part=="/")continue;
++    if(part.empty()||part=="."||part=="..")return AuxDownloadFault();
++    base::ScopedFD next(openat(parent.get(),part.c_str(),O_RDONLY|O_DIRECTORY|O_NOFOLLOW|O_CLOEXEC));
++    if(!next.is_valid())return AuxDownloadFault();
++    parent=std::move(next);
++  }
++  const auto leaf=canonical.BaseName().value();
++  base::ScopedFD fd(openat(parent.get(),leaf.c_str(),O_RDONLY|O_NOFOLLOW|O_NONBLOCK|O_CLOEXEC));
++  struct stat before{},after{},named{};
++  if(!fd.is_valid()||fstat(fd.get(),&before)!=0||before.st_size!=size)return AuxDownloadFault();
++  const auto identity=AuxDownloadFileIdentity(before);
++  if(identity.empty()||(!expected.empty()&&identity!=expected))return AuxDownloadFault();
++  base::File file(fd.release());
++  std::vector<uint8_t> bytes(static_cast<size_t>(std::min<int64_t>(256*1024,size-offset)));
++  auto read=file.Read(offset,bytes);
++  if(!read||*read!=bytes.size()||fstat(file.GetPlatformFile(),&after)!=0||
++      fstatat(parent.get(),leaf.c_str(),&named,AT_SYMLINK_NOFOLLOW)!=0||
++      AuxDownloadFileIdentity(after)!=identity||AuxDownloadFileIdentity(named)!=identity)
++    return AuxDownloadFault();
++  return base::DictValue().Set("result",base::DictValue()
++      .Set("identity",identity).Set("data",base::Base64Encode(bytes))
++      .Set("offset",static_cast<double>(offset)).Set("nextOffset",static_cast<double>(offset+bytes.size()))
++      .Set("size",static_cast<double>(size)).Set("eof",offset+bytes.size()==static_cast<uint64_t>(size)));
++}
++}  // namespace
++AuxDebuggerDownloads* AuxDebuggerDownloads::For(Profile* profile) {
++  auto* existing=static_cast<AuxDebuggerDownloads*>(profile->GetUserData(&kAuxDebuggerDownloadsKey));
++  if(existing)return existing;
++  auto owned=std::make_unique<AuxDebuggerDownloads>(profile);auto* result=owned.get();
++  profile->SetUserData(&kAuxDebuggerDownloadsKey,std::move(owned));return result;
++}
++AuxDebuggerDownloads::AuxDebuggerDownloads(Profile* profile):profile_(profile) {
++  observation_.Observe(profile->GetDownloadManager());
++  expiration_.Start(FROM_HERE,base::Minutes(1),this,&AuxDebuggerDownloads::Expire);
++}
++AuxDebuggerDownloads::~AuxDebuggerDownloads()=default;
++bool AuxDebuggerDownloads::Current(const Owner& owner) {
++  auto* contents=owner.host->GetWebContents();
++  if(contents&&ExtensionTabUtil::GetWindowIdOfTab(contents)!=owner.window_id)return false;
++  return (!owner.document_guard || owner.document_guard.Run())&& observation_.IsObserving()&&profile_->IsRegularProfile()&&!profile_->IsOffTheRecord()&&
++      !aux::IsProfileCookieRestorePending(profile_)&&
++      owner.binding==aux::GetProfileCookieBindingEpoch(profile_)&&
++      owner.restore==aux::GetProfileCookieRestoreEpoch(profile_);
++}
++std::string AuxDebuggerDownloads::Capture(content::DevToolsAgentHost* host, base::RepeatingCallback<bool()> guard) {
++  Expire();
++  if(owners_.size()>=256||!host||host->GetBrowserContext()!=profile_||!host->GetWebContents())return {};
++  Owner owner{host,aux::GetProfileCookieBindingEpoch(profile_),aux::GetProfileCookieRestoreEpoch(profile_),std::move(guard),base::TimeTicks::Now(),ExtensionTabUtil::GetWindowIdOfTab(host->GetWebContents()),{}};
++  if(owner.binding.empty()||owner.restore.empty()||!Current(owner))return {};
++  auto id=base::Uuid::GenerateRandomV4().AsLowercaseString();owners_.emplace(id,std::move(owner));return id;
++}
++void AuxDebuggerDownloads::OnDownloadCreated(content::DownloadManager* manager,download::DownloadItem* item) {
++  if(manager!=observation_.GetSource()||!item||item->GetGuid().empty()||
++      content::DownloadItemUtils::GetBrowserContext(item)!=profile_)return;
++  auto* contents=content::DownloadItemUtils::GetWebContents(item);
++  auto* frame=content::DownloadItemUtils::GetRenderFrameHost(item);
++  if(!contents||!frame||content::WebContents::FromRenderFrameHost(frame)!=contents)return;
++  for(auto& [id,owner]:owners_) {
++    if(!Current(owner)||owner.items.size()>=256)continue;
++    auto* original=owner.host->GetWebContents();
++    if(!original)continue;
++    const auto source_window=ExtensionTabUtil::GetWindowIdOfTab(contents);
++    const bool direct=original==contents;
++    const bool popup=contents->GetFirstWebContentsInLiveOriginalOpenerChain()==original&&
++        (source_window==owner.window_id||source_window<0);
++    if(!direct&&!popup)continue;
++    owner.last_use=base::TimeTicks::Now();
++    // Retain factual native creation provenance. A completed popup may close
++    // before its file is requested; never replace it with the active page.
++    owner.items.emplace(item->GetGuid(),Item{reinterpret_cast<uintptr_t>(item),item->GetId(),
++        base::Time::Now().InMillisecondsFSinceUnixEpoch(),item->GetURL().spec(),
++        item->GetFileNameToReportUser().AsUTF8Unsafe(),frame->GetWeakDocumentPtr(),{},{},0,false});
++  }
++}
++void AuxDebuggerDownloads::ManagerGoingDown(content::DownloadManager*) {observation_.Reset();owners_.clear();}
++download::DownloadItem* AuxDebuggerDownloads::CurrentItem(const Owner& owner,const std::string& guid) {
++  auto found=owner.items.find(guid);
++  if(!Current(owner)||found==owner.items.end())return nullptr;
++  auto* item=observation_.GetSource()->GetDownloadByGuid(guid);
++  return item&&reinterpret_cast<uintptr_t>(item)==found->second.identity&&
++      content::DownloadItemUtils::GetBrowserContext(item)==profile_&&!item->IsDangerous()&&
++      !item->GetFileExternallyRemoved()?item:nullptr;
++}
++base::DictValue AuxDebuggerDownloads::List(const std::string& lease) {
++  auto found=owners_.find(lease);if(found==owners_.end()||!Current(found->second))return AuxDownloadFault();
++  found->second.last_use=base::TimeTicks::Now();
++  base::ListValue items;
++  for(const auto& [guid,original]:found->second.items) {
++    auto* item=CurrentItem(found->second,guid);if(!item)continue;
++    items.Append(base::DictValue().Set("guid",guid).Set("downloadId",static_cast<double>(original.id))
++        .Set("startedAt",original.started).Set("url",original.url)
++        .Set("filename",item->GetFileNameToReportUser().AsUTF8Unsafe())
++        .Set("state",item->GetState()==download::DownloadItem::COMPLETE?"complete":
++                     item->GetState()==download::DownloadItem::IN_PROGRESS?"progress":"failed"));
++  }
++  return base::DictValue().Set("result",base::DictValue().Set("items",std::move(items)));
++}
++void AuxDebuggerDownloads::Release(const std::string& lease){owners_.erase(lease);}
++void AuxDebuggerDownloads::Read(const base::DictValue& params,base::OnceCallback<void(base::DictValue)> reply) {
++  const auto* lease=params.FindString("lease");const auto* guid=params.FindString("guid");
++  auto found=lease?owners_.find(*lease):owners_.end();
++  auto* item=found!=owners_.end()&&guid?CurrentItem(found->second,*guid):nullptr;
++  auto offset=params.FindDouble("offset");const auto* snapshot=params.FindString("snapshot");
++  if(!item||item->GetState()!=download::DownloadItem::COMPLETE||item->GetTargetFilePath().empty()||
++      !offset||*offset<0||*offset>64*1024*1024||*offset!=std::floor(*offset)){
++    std::move(reply).Run(AuxDownloadFault());return;
++  }
++  found->second.last_use=base::TimeTicks::Now();
++  auto& original=found->second.items.at(*guid);
++  if(original.reading||*offset!=original.offset||
++      (original.offset&&(!snapshot||*snapshot!=original.snapshot))){std::move(reply).Run(AuxDownloadFault());return;}
++  if(original.snapshot.empty())original.snapshot=base::Uuid::GenerateRandomV4().AsLowercaseString();
++  original.reading=true;
++  base::ThreadPool::PostTaskAndReplyWithResult(FROM_HERE,{base::MayBlock(),base::TaskShutdownBehavior::BLOCK_SHUTDOWN},
++      base::BindOnce(AuxReadDownloadChunk,item->GetTargetFilePath(),item->GetReceivedBytes(),original.offset,original.identity_text),
++      base::BindOnce(&AuxDebuggerDownloads::ReadComplete,weak_factory_.GetWeakPtr(),*lease,*guid,original.snapshot,std::move(reply)));
++}
++void AuxDebuggerDownloads::ReadComplete(std::string lease,std::string guid,std::string snapshot,
++    base::OnceCallback<void(base::DictValue)> reply,base::DictValue result) {
++  auto owner=owners_.find(lease);auto* item=owner==owners_.end()?nullptr:CurrentItem(owner->second,guid);
++  auto* body=result.FindDict("result");
++  if(!item||item->GetState()!=download::DownloadItem::COMPLETE||!body){std::move(reply).Run(AuxDownloadFault());return;}
++  auto& original=owner->second.items.at(guid);original.reading=false;
++  const auto* identity=body->FindString("identity");auto next=body->FindDouble("nextOffset");
++  if(original.snapshot!=snapshot||!identity||!next||(!original.identity_text.empty()&&original.identity_text!=*identity)){
++    std::move(reply).Run(AuxDownloadFault());return;
++  }
++  original.identity_text=*identity;original.offset=static_cast<int64_t>(*next);body->Remove("identity");
++  body->Set("snapshot",snapshot);std::move(reply).Run(std::move(result));
++}
++
++void AuxDebuggerDownloads::Expire() {
++  std::erase_if(owners_,[&](const auto& entry){return !Current(entry.second)||base::TimeTicks::Now()-entry.second.last_use>base::Minutes(15);});
++}
++
+ class ExtensionDevToolsClientHost : public content::DevToolsAgentHostClient,
+                                     public ExtensionRegistryObserver,
+                                     public ProfileObserver {
+@@ -563,6 +787,8 @@
+   base::ScopedObservation<ExtensionRegistry, ExtensionRegistryObserver>
+       extension_registry_observation_{this};
+   base::ScopedObservation<Profile, ProfileObserver> profile_observation_{this};
++  base::RepeatingCallback<bool()> aux_download_document_guard_;
++  base::WeakPtrFactory<ExtensionDevToolsClientHost> aux_download_weak_{this};
+ };
+ 
+ ExtensionDevToolsClientHost::ExtensionDevToolsClientHost(
+@@ -713,6 +939,54 @@
+     std::optional<std::string> session_id) {
+   base::DictValue protocol_request;
+   int request_id = ++last_request_id_;
++  if (method == "Aux.beginDownloads" || method == "Aux.listOwnedDownloads" ||
++      method == "Aux.readOwnedDownload" || method == "Aux.releaseDownloads") {
++    auto refuse = [&]() {
++      auto result = AuxDownloadFault(); result.Set("id", request_id);
++      function->SendResponseBody(base::Value(std::move(result)));
++    };
++    if (!MayUseAuxDocumentCapabilities() || session_id.has_value() || !command_params) {
++      refuse(); return;
++    }
++    const auto& params = command_params->additional_properties;
++    if (const auto* marker = params.Find("__auxDocumentCapability")) {
++      const auto* token = marker->GetIfString();
++      auto* delegate = static_cast<content::DevToolsManagerDelegate*>(ChromeDevToolsManagerDelegate::GetInstance());
++      if (!token || token->empty() || token->size() > 64 || !delegate) { refuse(); return; }
++      auto guard = delegate->GetAuxDocumentCommandGuard(agent_host_.get(), *token);
++      if (!guard || !guard.Run()) { refuse(); return; }
++      aux_download_document_guard_ = std::move(guard);
++    }
++    if (method != "Aux.releaseDownloads" && aux_download_document_guard_ && !aux_download_document_guard_.Run()) { refuse(); return; }
++    auto* downloads = AuxDebuggerDownloads::For(profile_);
++    base::DictValue result;
++    const auto* lease = params.FindString("lease");
++    if (method == "Aux.beginDownloads") {
++      auto captured = downloads->Capture(agent_host_.get(), aux_download_document_guard_);
++      if (captured.empty()) { refuse(); return; }
++      result.Set("result", base::DictValue().Set("lease", captured));
++    } else if (!lease || lease->empty()) { refuse(); return;
++    } else if (method == "Aux.listOwnedDownloads") {
++      result = downloads->List(*lease);
++    } else if (method == "Aux.releaseDownloads") {
++      downloads->Release(*lease); result.Set("result", base::DictValue());
++    } else {
++      downloads->Read(params, base::BindOnce(
++          [](base::WeakPtr<ExtensionDevToolsClientHost> host,
++             scoped_refptr<DebuggerSendCommandFunction> retained, int id,
++             base::RepeatingCallback<bool()> guard, base::DictValue body) {
++            // Detach requests cancellation; the original promise settles only
++            // after the actual file read has closed its descriptors.
++            if (!host) { retained->SendDetachedError(); return; }
++            if (guard && !guard.Run()) body = AuxDownloadFault();
++            body.Set("id", id);
++            retained->SendResponseBody(base::Value(std::move(body)));
++          }, aux_download_weak_.GetWeakPtr(), base::WrapRefCounted(function),
++          request_id, aux_download_document_guard_));
++      return;
++    }
++    result.Set("id", request_id); function->SendResponseBody(base::Value(std::move(result))); return;
++  }
+   pending_requests_[request_id] = function;
+   protocol_request.Set("id", request_id);
+   protocol_request.Set("method", method);

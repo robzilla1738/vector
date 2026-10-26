@@ -1,0 +1,11 @@
+{
+  "checks": [
+    "actual native GUID receipt wins over timestamp heuristic",
+    "closed popup retains original lease and uses original task parent connection",
+    "changed chunk snapshot refuses before publication",
+    "unrelated target has no receipt",
+    "revocation prevents native dispatch"
+  ],
+  "passed": 5,
+  "limits": "Finite helper/fake native transport only; no app, native file IO, Chromium syntax or native addon execution."
+}

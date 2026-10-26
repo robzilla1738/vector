@@ -1,0 +1,125 @@
+{
+  "files": [
+    {
+      "inputPath": "/private/tmp/aux-browser-automation-resource-check-20261026/aux-native-entry.mjs",
+      "inputSha256": "a1dffa454409b6c9ce129b645dc1b6aa6f6ca873a276eea5af6b05ac215e2ffb",
+      "outputSha256": "f996d2523ad95f651ccfe6e2642d73386288f6841533cd960a14ffa0a04ea203",
+      "outputPath": "/private/tmp/aux-browser-files-resource-check-20261026/aux-native-entry.mjs",
+      "anchors": [
+        {
+          "before": "const auxBrowserRepls=new WeakMap",
+          "after": "async function auxSnapshotBrowserUpload(browser,files){const owner=auxBrowserJsOwners.get(browser);if(!owner)throw Error('The original selected browser session is required for upload');return owner.upload(files)}\nconst auxBrowserRepls=new WeakMap",
+          "count": 1
+        },
+        {
+          "before": "const state={signal:controller.signal,assertCurrent:capture,awaited(operation)",
+          "after": "const state={signal:controller.signal,assertCurrent:capture,upload(files){return this.awaited(()=>files.map(path=>{const value=capture().readUploadFile(path);return {name:value.name,mimeType:'',base64:value.buffer.toString('base64')}}))},awaited(operation)",
+          "count": 1
+        },
+        {
+          "before": "['setInputFiles','uploadFile','saveAs','createReadStream'].includes(String(key))",
+          "after": "['uploadFile','saveAs','createReadStream'].includes(String(key))",
+          "count": 1
+        },
+        {
+          "before": "try{if(ti.length===0||typeof ti[0]==`string`){let ei=await resolveActionSessionId(Cn,ni);await Cn.cdp.send(`DOM.setFileInputFiles`,{objectId:ni.objectId,files:ti},ei);return}await callOnElementSync(Cn,ni,",
+          "after": "try{if(auxUsesBoundBrowserActions()){if(ti.length===0||typeof ti[0]==`string`)ti=await auxSnapshotBrowserUpload(Cn.browser,ti)}else if(ti.length===0||typeof ti[0]==`string`){let ei=await resolveActionSessionId(Cn,ni);await Cn.cdp.send(`DOM.setFileInputFiles`,{objectId:ni.objectId,files:ti},ei);return}await callOnElementSync(Cn,ni,",
+          "count": 1
+        },
+        {
+          "before": "External modules, fs, shell, arbitrary chrome APIs and background callback timers are unavailable in this browser scope.",
+          "after": "File input uses the original file.access permission hook and a stable native selected-session snapshot; supplied byte payloads and clearing remain available. External modules, fs, shell, arbitrary chrome APIs and background callback timers are unavailable in this browser scope.",
+          "count": 1
+        },
+        {
+          "before": "const auxOwnedBrowserMethods=new Set([",
+          "after": "const auxOwnedBrowserMethods=new Set(['Aux.waitBoundDownload',",
+          "count": 1
+        },
+        {
+          "before": "if(method.startsWith('Aux.'))return call(method,params,options);",
+          "after": "if(method==='Aux.waitForDownload'){if(!selectedOwner)throw auxBrowserActionFailure('Original selected download session is required');const result=await call('Aux.waitBoundDownload',params,options);return selectedOwner.publishDownload(result)}if(method.startsWith('Aux.'))return call(method,params,options);",
+          "count": 1
+        },
+        {
+          "before": "assertCurrent:capture,upload(files)",
+          "after": "assertCurrent:capture,publishDownload(result){return this.awaited(()=>{const chunks=result.chunks.map(value=>Buffer.from(value,'base64')),bytes=Buffer.concat(chunks);if(bytes.length!==result.size||bytes.length>64*1024*1024)throw Error('Native download snapshot is incomplete');return {downloadId:result.downloadId,absolutePath:capture().publishBrowserDownload(bytes,result.filename)}})},saveDownload(source,destination){return this.awaited(()=>{if(!options.browser.isReadableDownloadPath(source))throw Error('Original native download is required');const owner=capture();owner.assertTaskSessionPath(source);const value=owner.readUploadFile(source);return owner.publishBrowserDownload(value.buffer,value.name,destination)})},readDownload(source){return this.awaited(()=>{if(!options.browser.isReadableDownloadPath(source))throw Error('Original native download is required');const owner=capture();owner.assertTaskSessionPath(source);return owner.readUploadFile(source).buffer})},upload(files)",
+          "count": 1
+        },
+        {
+          "before": "['uploadFile','saveAs','createReadStream'].includes(String(key))",
+          "after": "['uploadFile'].includes(String(key))",
+          "count": 1
+        },
+        {
+          "before": "async function auxSnapshotBrowserUpload(browser,files)",
+          "after": "function auxBrowserDownloadOwner(browser){const owner=auxBrowserJsOwners.get(browser);if(!owner)throw Error('Original selected browser download session is required');return owner}\nasync function auxSnapshotBrowserUpload(browser,files)",
+          "count": 1
+        },
+        {
+          "before": "{startedAfterMs:this.#n,expectedFilename:this.#r,referrerUrl:this.#e.url()}",
+          "after": "{startedAfterMs:this.#n,expectedFilename:this.#r,referrerUrl:this.#e.url(),targetId:this.#e.targetId,guid:this.#t}",
+          "count": 1
+        },
+        {
+          "before": "{startedAfterMs:ni,timeoutMs:ti},void 0,{extensionBridge:this.browser.extensionBridgeRoute}",
+          "after": "{startedAfterMs:ni,timeoutMs:ti,targetId:this.targetId},void 0,{extensionBridge:this.browser.extensionBridgeRoute}",
+          "count": 1
+        },
+        {
+          "before": "path.resolve(ei)!==path.resolve(ni)&&(await ensureDirForFile$1(ni),await promises.copyFile(ei,ni))",
+          "after": "path.resolve(ei)!==path.resolve(ni)&&(auxUsesBoundBrowserActions()?await auxBrowserDownloadOwner(this.#e.browser).saveDownload(ei,ni):(await ensureDirForFile$1(ni),await promises.copyFile(ei,ni)))",
+          "count": 1
+        },
+        {
+          "before": "return createReadStream(Cn)}async failure()",
+          "after": "return auxUsesBoundBrowserActions()?Readable.from([await auxBrowserDownloadOwner(this.#e.browser).readDownload(Cn)]):createReadStream(Cn)}async failure()",
+          "count": 1
+        },
+        {
+          "before": "await this.cdp.send(`Browser.setDownloadBehavior`,{behavior:`default`,eventsEnabled:!0}).catch(()=>{});",
+          "after": "if(!this.cdp.scopedTaskId)await this.cdp.send(`Browser.setDownloadBehavior`,{behavior:`default`,eventsEnabled:!0}).catch(()=>{});",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "inputPath": "/private/tmp/aux-browser-automation-resource-check-20261026/background.js",
+      "inputSha256": "5d1e705c5322e2c45a6f054af6e10345f4ce4493dfb82a279f42653ee5033f2e",
+      "outputSha256": "5eff26a667e650969311ca9341b66876e678960ac08dfd1419f00e33c529926f",
+      "outputPath": "/private/tmp/aux-browser-files-resource-check-20261026/background.js",
+      "anchors": [
+        {
+          "before": "const auxBoundBrowserMethods=new Set([",
+          "after": "const auxBoundBrowserMethods=new Set(['Aux.waitBoundDownload',",
+          "count": 1
+        },
+        {
+          "before": "const auxBoundBrowserTasks=new Map",
+          "after": "async function auxReadBoundDownload(task,params,signal){\n const original=task.downloads.get(params.targetId);if(!original)throw Error('The original attached download tab is unavailable.');\n const current=async()=>{await auxBrowserTaskCurrent(task,signal);if(original.reference)await auxBrowserSelectedReference(task,original.reference,signal)};\n const native=async(method,params)=>{\n  await current();\n  const carrier=[...task.roots.values()].find(root=>root.tabId===original.tabId)??task.roots.values().next().value;\n  if(!carrier)throw Error('The original browser task has no retained debugger connection.');\n  await auxBrowserTaskTarget(task,carrier.targetId,signal,!carrier.reference);\n  if(carrier.reference)await auxBrowserSelectedReference(task,carrier.reference,signal);\n  const result=await auxWorkerPhysical('browser-native-download',()=>chrome.debugger.sendCommand({tabId:carrier.tabId},method,{...params,...carrier.reference?{__auxDocumentCapability:carrier.reference.documentCapability}:{}}),false);\n  await current();return result;\n };\n const timeout=params.timeoutMs??30000;if(!Number.isFinite(timeout)||timeout<=0||timeout>600000)throw Error('Download timeout must be at most ten minutes.');\n const deadline=Date.now()+timeout;let item;\n while(!item){\n  const result=await native('Aux.listOwnedDownloads',{lease:original.lease});\n  item=result.items.find(item=>(params.guid?item.guid===params.guid:item.startedAt>=params.startedAfterMs)&&(!params.expectedFilename||item.filename===params.expectedFilename));\n  if(item?.state==='failed')throw Error('The original native download did not complete.');\n  if(item?.state!=='complete')item=undefined;\n  if(!item){if(Date.now()>=deadline)throw Error('Timed out waiting for the original tab download.');await new Promise(resolve=>setTimeout(resolve,100))}\n }\n const chunks=[];let offset=0,snapshot,size;\n for(;;){\n  const result=await native('Aux.readOwnedDownload',{lease:original.lease,guid:item.guid,offset,...snapshot?{snapshot}:{}});\n  if(result.offset!==offset||!Number.isSafeInteger(result.nextOffset)||result.nextOffset<offset||result.nextOffset-offset>256*1024||typeof result.data!=='string'||typeof result.snapshot!=='string'||snapshot&&result.snapshot!==snapshot||size!==undefined&&result.size!==size)throw Error('Original native download snapshot changed.');\n  snapshot??=result.snapshot;size??=result.size;\n  if(!Number.isSafeInteger(size)||size<0||size>64*1024*1024)throw Error('Native download snapshot is too large.');\n  chunks.push(result.data);offset=result.nextOffset;\n  if(result.eof){if(offset!==size)throw Error('Native download snapshot is incomplete.');break}\n  if(offset>=size)throw Error('Native download snapshot did not settle.');\n }\n await current();return {downloadId:item.downloadId,guid:item.guid,filename:item.filename,size,chunks};\n}\n\nconst auxBoundBrowserTasks=new Map",
+          "count": 1
+        },
+        {
+          "before": "roots:new Map,created:new Map,closed:false",
+          "after": "roots:new Map,created:new Map,downloads:new Map,closed:false",
+          "count": 1
+        },
+        {
+          "before": "if(command.method==='Aux.debuggerAttach'){",
+          "after": "if(command.method==='Aux.waitBoundDownload')return auxReadBoundDownload(task,command.params,signal);\n if(command.method==='Aux.debuggerAttach'){",
+          "count": 1
+        },
+        {
+          "before": "task.roots.set(root.id,root)}",
+          "after": "task.roots.set(root.id,root);const previous=task.downloads.get(root.targetId);if(!previous||previous.reference?.documentCapability!==root.reference?.documentCapability){if(previous)await auxWorkerPhysical('browser-download-release',()=>chrome.debugger.sendCommand({tabId},'Aux.releaseDownloads',{lease:previous.lease}),false);const captured=await auxWorkerPhysical('browser-download-owner',()=>chrome.debugger.sendCommand({tabId},'Aux.beginDownloads',{...root.reference?{__auxDocumentCapability:root.reference.documentCapability}:{}}),false);task.downloads.set(root.targetId,{lease:captured.lease,tabId,reference:root.reference})}}",
+          "count": 1
+        },
+        {
+          "before": "for(const root of [...task.roots.values()]){",
+          "after": "if(task.retire&&task.roots.size){const carrier=task.roots.values().next().value;for(const owner of task.downloads.values())try{await auxWorkerPhysical('browser-download-release',()=>chrome.debugger.sendCommand({tabId:carrier.tabId},'Aux.releaseDownloads',{lease:owner.lease}),false)}catch{}task.downloads.clear()}\n   for(const root of [...task.roots.values()]){",
+          "count": 1
+        }
+      ]
+    }
+  ]
+}
