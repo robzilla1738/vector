@@ -1,0 +1,10 @@
+{
+  "format": "aux.preference-marker-identity.verification.v1",
+  "focusedPairedFunctionFixturePassed": true,
+  "checks": ["actual original A51 pair pins", "current composed a3 pair pins", "one known legacy block to v2", "v2 upsert and legacy/v2 clear", "unrelated memory preserved", "mixed/duplicate/incomplete marker refusal", "reverse replay", "repeated transformation refusal"],
+  "productExecuted": false,
+  "nativeCompiled": false,
+  "existingMemoryReadOrChanged": false,
+  "credentialsRead": false,
+  "wholeIdentityComplete": false
+}

@@ -1,0 +1,30 @@
+{
+  "format": "aux.preference-marker-identity.v2",
+  "originalPair": [
+    "48af998738fb6d2fc30cb8d5b2e9de03cb04ab7d8563ebdaa5fe8100944fc514",
+    "f355833cb607963a65ca3108e7ae19ea7ca60192a9f3d8e2644a3c12ec49c808"
+  ],
+  "currentCompletePair": [
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/out/completion-20261026-paired-source-a3/index.mjs",
+      "sha256": "3f31619b816fd36405d5f749762aadd11165c07e02d5c276a64a9eb35a582f0e",
+      "scope": "current composed predecessor before selected/CU/browser final stages"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/out/completion-20261026-paired-source-a3/aux-native-entry.mjs",
+      "sha256": "a3d3389975aaa59bc240125f83506ab7387b486da48b89e7b2ea23e4796740ac",
+      "scope": "current composed predecessor before selected/CU/browser final stages"
+    }
+  ],
+  "rules": [
+    {
+      "find": "PASSWORD_MANAGER_MEMORY_START=`<!-- aside:password-manager-preference:start -->`,PASSWORD_MANAGER_MEMORY_END=`<!-- aside:password-manager-preference:end -->`",
+      "replace": "PASSWORD_MANAGER_MEMORY_START=`<!-- aux:password-manager-preference:v2:start -->`,PASSWORD_MANAGER_MEMORY_END=`<!-- aux:password-manager-preference:v2:end -->`"
+    },
+    {
+      "find": "function upsertPasswordManagerMemoryBlock(Cn,ei){let ti=Cn.indexOf(PASSWORD_MANAGER_MEMORY_START),ni=ti===-1?-1:Cn.indexOf(PASSWORD_MANAGER_MEMORY_END,ti);return ti!==-1&&ni!==-1?[Cn.slice(0,ti).trimEnd(),ei,Cn.slice(ni+46).trimStart()].filter(Boolean).join(`\n\n`).concat(`\n`):`${Cn.trimEnd()}\\n\\n${ei}\\n`}function removePasswordManagerMemoryBlock(Cn){let ei=Cn.indexOf(PASSWORD_MANAGER_MEMORY_START),ti=ei===-1?-1:Cn.indexOf(PASSWORD_MANAGER_MEMORY_END,ei);if(ei===-1||ti===-1)return Cn;let ni=[Cn.slice(0,ei).trimEnd(),Cn.slice(ti+46).trimStart()].filter(Boolean).join(`\n\n`);return ni?`${ni}\\n`:``}",
+      "functionBlock": true
+    }
+  ],
+  "persistedNormalization": "Only original explicit external password-manager preference write/clear operations; no startup scan or file mutation."
+}

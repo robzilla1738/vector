@@ -1,0 +1,11 @@
+# External password-manager preference markers v2
+
+`remaining.json` classified these markers as excluded Vault state. Actual source shows the retained `externalPasswordManagersRouter` connect/delete/importPreferences operations call `updateHint`, which invokes the existing preference writer/clearer. These are live plaintext memory-block writers, even though the built-in Vault product router is absent.
+
+`vendor/provided/aux-password-preference-markers.mjs` provides `transformAuxPreferenceIdentity({text,source})` for both leaves. `source` must be the exact original A51 index or native-entry; `text` carries all already composed changes. Two counted joins replace the renderer constants with `aux:password-manager-preference:v2` and pair the existing upsert/remove functions with a strict known-legacy/v2 block reader. The original unrelated formatting behavior is retained. Both hardcoded `46` end offsets become the actual recognized marker length.
+
+Nothing scans or rewrites memory at startup. The existing legitimate update normalizes one known legacy block to v2; the existing clear removes that known block. Unrelated memory is preserved. Mixed, duplicate, incomplete or reversed recognized blocks refuse the operation before the original file writer runs. No keys, ciphertext, credentials, old profile or memory files were accessed. This is an explicit versioned plaintext format transition, not a change to cryptographic labels.
+
+One focused fixture against both actual composed a3 source leaves passed legacy/v2 update/clear, unrelated text, ambiguous/incomplete refusal, exact reverse replay and repeated-transform refusal. It evaluates the actual transformed functions; no app execution occurred. Root should apply this transform after its accumulated source transforms and before final paired-source syntax checks; it does not overlap selected/CU/browser/file anchors.
+
+The original Vault credential-exchange/importer modules and persisted `kind:aside` schemas are a separate exclusion issue. Do not rename their argv, convert stored records or treat this preference-marker change as removal of those dead product modules. HTML/SQL/third-party provenance remain valid unchanged language/source semantics.
