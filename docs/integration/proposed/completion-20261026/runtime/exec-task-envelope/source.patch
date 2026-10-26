@@ -1,0 +1,301 @@
+--- /Users/rcourson/Documents/Vibe/web/docs/integration/proposed/profile-isolation-next/containment/source/AuxExecSpawnEnvelope.h
++++ AuxExecSpawnEnvelope.h
+@@ -10,6 +10,8 @@
+ #include <string>
+ #include <vector>
+ #include "AuxNativeExecReservation.h"
++#include "AuxNativeExecTaskBoundary.h"
++#include <utility>
+ 
+ // Native-only command formatting. This class grants no authority: its roots MUST
+ // come from AuxNativeExecCopyDeniedRoots on the same retained spawn reservation.
+@@ -23,7 +25,7 @@
+   AuxExecSpawnEnvelope(AuxExecSpawnEnvelope&&) = delete;
+   AuxExecSpawnEnvelope& operator=(AuxExecSpawnEnvelope&&) = delete;
+   bool Prepare(const uv_process_options_t& options,
+-               const AuxExecNativeDeniedRoots& roots) noexcept {
++               const AuxExecNativeDeniedRoots& roots,const AuxExecNativeTaskBoundary& task) noexcept {
+     ready_ = false;
+     arguments_.clear(); environment_.clear(); argv_.clear(); envp_.clear();
+     cwd_.clear();
+@@ -52,7 +54,18 @@
+       for (const auto& prior : denied) if (prior == root) duplicate = true;
+       if (!duplicate) denied.emplace_back(root);
+     }
++    if(task.version!=1)return false;
++    const char* task_paths[]={task.taskRoot,task.accountTaskRoot,task.workspace,task.application};
++    for(const char* root:task_paths){const size_t length=strnlen(root,4096);if(length<=1||length>=4096||root[0]!='/'||strchr(root,'\n')||strchr(root,'\r')||!realpath(root,canonical)||strcmp(root,canonical)!=0)return false;}
++    const std::string account_prefix=std::string(task.taskRoot)+"/u/";
++    if(std::strncmp(task.accountTaskRoot,account_prefix.c_str(),account_prefix.size())!=0||!task.accountTaskRoot[account_prefix.size()]||strchr(task.accountTaskRoot+account_prefix.size(),'/'))return false;
++    // Workspace membership comes from the held stored session/project owner.
++    // It is not a broad filesystem allow or replacement for original permissions.
+     std::string policy = "(version 1)\n(allow default)\n";
++    policy += "(deny file-read* file-write* file-map-executable file-link (require-all (subpath (param \"AUX_NATIVE_TASK_ROOT\")) (require-not (subpath (param \"AUX_NATIVE_TASK_ACCOUNT\")))))\n";
++    policy += "(deny file-write-unlink (literal (param \"AUX_NATIVE_TASK_ACCOUNT\")) (path-ancestors (param \"AUX_NATIVE_TASK_ACCOUNT\")))\n";
++    policy += "(deny file-write* file-link (subpath (param \"AUX_NATIVE_APPLICATION\")))\n";
++    policy += "(deny file-write-unlink (literal (param \"AUX_NATIVE_APPLICATION\")) (path-ancestors (param \"AUX_NATIVE_APPLICATION\")))\n";
+     for (size_t i = 0; i < denied.size(); ++i) {
+       const std::string parameter = "AUX_NATIVE_DENIED_ROOT_" + std::to_string(i);
+       policy += "(deny file-read* file-write* file-map-executable (literal (param \"" +
+@@ -64,6 +77,7 @@
+       arguments_.emplace_back("-D");
+       arguments_.push_back("AUX_NATIVE_DENIED_ROOT_" + std::to_string(i) + "=" + denied[i]);
+     }
++    for(const auto& item:std::vector<std::pair<const char*,const char*>>{{"AUX_NATIVE_TASK_ROOT",task.taskRoot},{"AUX_NATIVE_TASK_ACCOUNT",task.accountTaskRoot},{"AUX_NATIVE_APPLICATION",task.application}}){arguments_.emplace_back("-D");arguments_.push_back(std::string(item.first)+"="+item.second);}
+     arguments_.emplace_back("--");
+     size_t bytes = 0;
+     for (const auto& argument : arguments_) bytes += argument.size() + 1;
+--- /Users/rcourson/Documents/Vibe/aux-completion-20261026/runtime/docs/integration/proposed/completion-20261026/runtime/exec-producer-join/source/AuxDevelopmentWorkerHost.cc
++++ AuxDevelopmentWorkerHost.cc
+@@ -10,6 +10,7 @@
+ #include "AuxWorkerDrain.h"
+ #include "AuxExecPrivateParent.h"
+ #include "AuxNativeExecReservation.h"
++#include "AuxNativeExecTaskBoundary.h"
+ #include <fcntl.h>
+ #include <sys/stat.h>
+ #include <sys/acl.h>
+@@ -86,6 +87,7 @@
+ };
+ struct RuntimeScope;
+ struct SelectedBuiltinScope;
++struct ExecTaskBoundary;
+ struct Worker;
+ void CloseChatGPTCredentialLocks(Worker*) noexcept;
+ AuxDevelopmentWorkerDrain AuxCloseSelectedBuiltinsForWorker(const void*) noexcept;
+@@ -301,6 +303,7 @@
+   std::weak_ptr<Worker> worker;
+   std::shared_ptr<Owner> owner;
+   std::shared_ptr<ExecBrowserRoots> roots;
++  std::shared_ptr<ExecTaskBoundary> task_boundary;
+   const pid_t process = getpid();
+   PtyPhase phase = PtyPhase::pending;
+   pid_t child = -1;
+@@ -846,7 +849,9 @@
+         left.identities[index].st_ino != right.identities[index].st_ino) return false;
+   return true;
+ }
++#include "AuxExecTaskBoundary.inc"
+ } // namespace
++extern "C" int32_t AuxNativeExecCopyTaskBoundary(void* token,AuxExecNativeTaskBoundary* result) noexcept {return CopyExecTaskBoundary(token,result);}
+ extern "C" void AuxNativeExecOriginalHandleClosed(void* token) noexcept {ObserveExecOriginalHandleClosed(token); }
+ extern "C" void* AuxNativeExecBeginCurrent(void) noexcept {
+   if (kBrowserOnlyNativeStartup) return nullptr; // Before any child/ticket admission.
+@@ -919,8 +924,10 @@
+     if (!pending.owner || !pending.roots || !pending.reservation->selected_scope ||
+         !pending.reservation->selected_scope->Current(pending.reservation->selected_scope->env)) return 0;
+     auto current_roots = CaptureExecRoots(pending.owner);
++    auto current_task=CaptureExecTaskBoundary(pending.reservation->selected_scope);
+     return aux::descendants::MaySpawn(pending.reservation->descendant_cohort) &&
+         current_roots && SameExecRoots(*pending.roots, *current_roots) &&
++        pending.reservation->task_boundary&&current_task&&SameExecTaskBoundary(*pending.reservation->task_boundary,*current_task)&&
+         AuxNativeContextValidateCurrentAuthority(pending.owner->handle) == 0 && StillPendingExec(pending);
+   } catch (...) { return 0; }
+ }
+@@ -960,6 +967,7 @@
+   if (!worker) return;
+   std::shared_ptr<Owner> released_owner;
+   std::shared_ptr<ExecBrowserRoots> released_roots;
++  std::shared_ptr<ExecTaskBoundary> released_task;
+   std::shared_ptr<SelectedBuiltinScope> released_selected;
+   bool closed = false;
+   {
+@@ -969,6 +977,7 @@
+     reservation->phase = PtyPhase::failed;
+     released_owner = std::move(reservation->owner);
+     released_roots = std::move(reservation->roots);
++    released_task=std::move(reservation->task_boundary);
+     released_selected=std::move(reservation->selected_scope);
+     closed = worker->terminal;
+   }
+@@ -986,6 +995,7 @@
+   auto worker = reservation->worker.lock();
+   if (!worker) return;
+   std::shared_ptr<ExecBrowserRoots> released_roots;
++  std::shared_ptr<ExecTaskBoundary> released_task;
+   {
+     std::lock_guard<std::mutex> lock(worker->mutex);
+     if (!pthread_equal(pthread_self(), worker->thread) || reservation->phase != PtyPhase::pending) return;
+@@ -995,6 +1005,7 @@
+     aux::descendants::DidCreate(reservation->descendant_cohort, child);
+     RuntimeChildCreatedLocked(reservation->runtime_scope);
+     released_roots = std::move(reservation->roots);
++    released_task=std::move(reservation->task_boundary);
+     if (child <= 0 || child > std::numeric_limits<pid_t>::max()) {
+       reservation->phase = PtyPhase::unknown;
+       ++worker->exec_unknown;
+--- /Users/rcourson/Documents/Vibe/aux-completion-20261026/runtime/docs/integration/proposed/completion-20261026/runtime/exec-producer-join/source/process_wrap.cc
++++ process_wrap.cc
+@@ -21,6 +21,7 @@
+ 
+ #include "env-inl.h"
+ #include "AuxNativeExecReservation.h"
++#include "AuxNativeExecTaskBoundary.h"
+ extern "C" void AuxNativeExecOriginalHandleClosed(void*) noexcept;
+ #include "AuxNativeExecDescriptorPolicy.h"
+ #include "AuxExecSpawnEnvelope.h"
+@@ -339,12 +340,14 @@
+       options.flags |= UV_PROCESS_DETACHED;
+     }
+ 
++    AuxExecNativeTaskBoundary task_boundary{};
+     AuxExecNativeDeniedRoots denied_roots{};
+     AuxExecSpawnEnvelope envelope;
+     if (err == 0 && !AuxExecDescriptorOptionsAllowed(options)) err = UV_EPERM;
+     if (err == 0 && AuxNativeExecCopyDeniedRoots(pending.token, &denied_roots) != 0)
+       err = UV_EPERM;
+-    if (err == 0 && !envelope.Prepare(options, denied_roots)) err = UV_EPERM;
++    if (err == 0 && AuxNativeExecCopyTaskBoundary(pending.token,&task_boundary)!=0 ||
++        !envelope.Prepare(options, denied_roots,task_boundary)) err = UV_EPERM;
+     if (err == 0) {
+       options.file = envelope.File();
+       options.args = envelope.Args();
+--- /Users/rcourson/Documents/Vibe/aux-completion-20261026/runtime/docs/integration/proposed/completion-20261026/runtime/exec-producer-join/source/spawn_sync.cc
++++ spawn_sync.cc
+@@ -21,6 +21,7 @@
+ 
+ #include "spawn_sync.h"
+ #include "AuxNativeExecReservation.h"
++#include "AuxNativeExecTaskBoundary.h"
+ extern "C" void AuxNativeExecOriginalHandleClosed(void*) noexcept;
+ #include "AuxNativeExecDescriptorPolicy.h"
+ #include "AuxExecSpawnEnvelope.h"
+@@ -528,11 +529,13 @@
+     }
+   }
+ 
++  AuxExecNativeTaskBoundary task_boundary{};
+   AuxExecNativeDeniedRoots denied_roots{};
+   AuxExecSpawnEnvelope envelope;
+   if (!AuxExecDescriptorOptionsAllowed(uv_process_options_) ||
+       AuxNativeExecCopyDeniedRoots(aux_exec_pending_, &denied_roots) != 0 ||
+-      !envelope.Prepare(uv_process_options_, denied_roots)) {
++      AuxNativeExecCopyTaskBoundary(aux_exec_pending_,&task_boundary)!=0 ||
++      !envelope.Prepare(uv_process_options_, denied_roots,task_boundary)) {
+     SetError(UV_EPERM);
+     return JustVoid();
+   }
+--- /Users/rcourson/Documents/Vibe/web/docs/integration/proposed/profile-isolation-next/spawn-custody/source/pty.cc
++++ pty-linked.cc
+@@ -32,7 +32,12 @@
+ #include <mutex>
+ #include "direct-child-wait.h"
+ #include <AuxNativePtyReservation.h>
++extern "C" int32_t AuxNativePtyRetainPhysical(void*) noexcept;
++extern "C" void AuxNativePtyReaperThreadJoined(void*) noexcept;
++extern "C" void AuxNativePtyTransportClosed(void*) noexcept;
+ #include "AuxNativeExecReservation.h"
++#include "AuxNativeExecTaskBoundary.h"
++extern "C" void AuxNativeExecOriginalHandleClosed(void*) noexcept;
+ #include "AuxExecSpawnEnvelope.h"
+ 
+ #include <sys/types.h>
+@@ -167,12 +172,15 @@
+       : state_(std::make_shared<State>()) {
+     state_->reservation = reservation;
+     state_->exec_reservation = exec_reservation;
++    if(!AuxNativePtyRetainPhysical(reservation))throw Napi::Error::New(env,"PTY physical custody unavailable");
+     auto state = state_;
+-    auto tsfn = Napi::ThreadSafeFunction::New(
++    Napi::ThreadSafeFunction tsfn;
++    try { tsfn = Napi::ThreadSafeFunction::New(
+         env, cb, "SetupExitCallback_resource", 0, 1,
+         [state](Napi::Env) {
+           if (state->thread.joinable()) state->thread.join();
+-        });
++          AuxNativePtyReaperThreadJoined(state->reservation);
++        }); } catch(...) {AuxNativePtyReaperThreadJoined(state->reservation);throw;}
+     try {
+       state->thread = std::thread([state, tsfn]() mutable {
+         pid_t pid;
+@@ -212,7 +220,7 @@
+                      Napi::Number::New(env, event->signal_code)});
+           };
+           const auto status = tsfn.BlockingCall(&state->event, callback);
+-          if (status == napi_closing) return;
++          if (status == napi_closing) {tsfn.Release();return;}
+           if (status != napi_ok)
+             Napi::Error::Fatal("SetupExitCallback", "Exit delivery failed");
+         }
+@@ -255,11 +263,17 @@
+ 
+ class ScopedPtyMaster {
+  public:
+-  explicit ScopedPtyMaster(int& fd) : fd_(fd) {}
+-  ~ScopedPtyMaster() { if (fd_ != -1) close(fd_); }
+-  void Release() { fd_ = -1; }
++  ScopedPtyMaster(int& fd,void* reservation,void* exec) : fd_(fd),reservation_(reservation),exec_reservation_(exec) {}
++  ~ScopedPtyMaster() {
++    if(fd_!=-1){if(close(fd_)==0){AuxNativePtyTransportClosed(reservation_);AuxNativeExecOriginalHandleClosed(exec_reservation_);}}
++    else if(!transferred_){AuxNativePtyTransportClosed(reservation_);AuxNativeExecOriginalHandleClosed(exec_reservation_);}
++  }
++  void Release() { transferred_=true;fd_ = -1; }
+  private:
+   int& fd_;
++  void* reservation_;
++  void* exec_reservation_;
++  bool transferred_=false;
+ };
+ 
+ /**
+@@ -422,11 +436,11 @@
+     throw Napi::Error::New(napiEnv, "Authenticated native PTY helper unavailable");
+   }
+ 
++  int master = -1;
++  ScopedPtyMaster master_owner(master,reservation.Handle(), exec_reservation.Handle());
+   PreparedExitCallback exit_callback(
+       napiEnv, info[10].As<Napi::Function>(), reservation.Handle(), exec_reservation.Handle());
+   pid_t pid;
+-  int master = -1;
+-  ScopedPtyMaster master_owner(master);
+ #if defined(__APPLE__)
+   int argc = argv_.Length();
+   int argl = argc + 4;
+@@ -533,6 +547,16 @@
+   obj.Set("fd", Napi::Number::New(napiEnv, master));
+   obj.Set("pid", Napi::Number::New(napiEnv, pid));
+   obj.Set("pty", Napi::String::New(napiEnv, ptsname(master)));
++  // Immutable private callback, not a caller-selected reservation or PID.
++  struct TransportTokens{void* pty;void* exec;};
++  auto tokens=std::make_unique<TransportTokens>(TransportTokens{reservation.Handle(),exec_reservation.Handle()});
++  napi_value closed;
++  auto callback=[](napi_env env,napi_callback_info info)->napi_value{void* data=nullptr;size_t count=0;if(napi_get_cb_info(env,info,&count,nullptr,nullptr,&data)!=napi_ok)return nullptr;auto* tokens=static_cast<TransportTokens*>(data);AuxNativePtyTransportClosed(tokens->pty);AuxNativeExecOriginalHandleClosed(tokens->exec);napi_value value;napi_get_undefined(env,&value);return value;};
++  if(napi_create_function(napiEnv,"auxOriginalTransportClosed",NAPI_AUTO_LENGTH,callback,tokens.get(),&closed)!=napi_ok)throw Napi::Error::New(napiEnv,"PTY transport completion capture failed");
++  if(napi_add_finalizer(napiEnv,closed,tokens.get(),[](napi_env,void* data,void*){delete static_cast<TransportTokens*>(data);},nullptr,nullptr)!=napi_ok)throw Napi::Error::New(napiEnv,"PTY transport finalizer capture failed");
++  tokens.release();
++  const napi_property_descriptor property{"auxOriginalTransportClosed",nullptr,nullptr,nullptr,nullptr,closed,napi_default,nullptr};
++  if(napi_define_properties(napiEnv,obj,1,&property)!=napi_ok)throw Napi::Error::New(napiEnv,"PTY transport completion binding failed");
+ 
+   master_owner.Release();
+   return obj;
+@@ -780,6 +804,7 @@
+   sigset_t signal_set;
+   char slave_pty_name[128];
+   AuxExecNativeDeniedRoots denied_roots{};
++  AuxExecNativeTaskBoundary task_boundary{};
+   AuxExecSpawnEnvelope envelope;
+   uv_process_options_t command{};
+   const int flags = POSIX_SPAWN_CLOEXEC_DEFAULT |
+@@ -797,7 +822,8 @@
+   // depend on a mutable parent directory, so protected routing refuses it.
+   if ((argv[1][0] && argv[1][0] != '/') ||
+       AuxNativeExecCopyDeniedRoots(exec_reservation.Handle(), &denied_roots) != 0 ||
+-      !envelope.Prepare(command, denied_roots)) {
++      AuxNativeExecCopyTaskBoundary(exec_reservation.Handle(),&task_boundary)!=0 ||
++      !envelope.Prepare(command, denied_roots,task_boundary)) {
+     *err = EPERM;
+     goto done;
+   }
+@@ -916,4 +942,10 @@
+   return exports;
+ }
+ 
+-NODE_API_MODULE(NODE_GYP_MODULE_NAME, init)
++// Linked initializer only: the actual host registers it in the original main
++// Environment after genuine supervised/ES admission. No dynamic module export.
++extern "C" napi_value AuxInitializeFixedPty(napi_env env,napi_value exports) {
++  try { return init(Napi::Env(env),Napi::Object(env,exports)); }
++  catch(const Napi::Error& error) {error.ThrowAsJavaScriptException();return nullptr;}
++  catch(...) {napi_throw_error(env,"AUX_PTY_INITIALIZER_FAILED","Fixed PTY initializer interrupted");return nullptr;}
++}

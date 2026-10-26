@@ -1,0 +1,238 @@
+{
+  "format": "aux.selected-exec-native-task-envelope.v1",
+  "records": [
+    {
+      "input": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/profile-isolation-next/containment/source/AuxExecSpawnEnvelope.h",
+      "inputSha256": "87be38a59da8c21d97062c4a54ff1049d9db73efafc1dedf0fd9f41ed725dff2",
+      "outputSha256": "bc815e44259d6de52eafd5950fae0c45c26fb6d5da4289814dbe007e9b8c7266",
+      "output": "AuxExecSpawnEnvelope.h",
+      "anchors": [
+        {
+          "before": "#include \"AuxNativeExecReservation.h\"",
+          "after": "#include \"AuxNativeExecReservation.h\"\n#include \"AuxNativeExecTaskBoundary.h\"\n#include <utility>",
+          "count": 1
+        },
+        {
+          "before": "const AuxExecNativeDeniedRoots& roots) noexcept {",
+          "after": "const AuxExecNativeDeniedRoots& roots,const AuxExecNativeTaskBoundary& task) noexcept {",
+          "count": 1
+        },
+        {
+          "before": "    std::string policy = \"(version 1)\\n(allow default)\\n\";",
+          "after": "    if(task.version!=1)return false;\n    const char* task_paths[]={task.taskRoot,task.accountTaskRoot,task.workspace,task.application};\n    for(const char* root:task_paths){const size_t length=strnlen(root,4096);if(length<=1||length>=4096||root[0]!='/'||strchr(root,'\\n')||strchr(root,'\\r')||!realpath(root,canonical)||strcmp(root,canonical)!=0)return false;}\n    const std::string account_prefix=std::string(task.taskRoot)+\"/u/\";\n    if(std::strncmp(task.accountTaskRoot,account_prefix.c_str(),account_prefix.size())!=0||!task.accountTaskRoot[account_prefix.size()]||strchr(task.accountTaskRoot+account_prefix.size(),'/'))return false;\n    // Workspace membership comes from the held stored session/project owner.\n    // It is not a broad filesystem allow or replacement for original permissions.\n    std::string policy = \"(version 1)\\n(allow default)\\n\";\n    policy += \"(deny file-read* file-write* file-map-executable file-link (require-all (subpath (param \\\"AUX_NATIVE_TASK_ROOT\\\")) (require-not (subpath (param \\\"AUX_NATIVE_TASK_ACCOUNT\\\")))))\\n\";\n    policy += \"(deny file-write-unlink (literal (param \\\"AUX_NATIVE_TASK_ACCOUNT\\\")) (path-ancestors (param \\\"AUX_NATIVE_TASK_ACCOUNT\\\")))\\n\";\n    policy += \"(deny file-write* file-link (subpath (param \\\"AUX_NATIVE_APPLICATION\\\")))\\n\";\n    policy += \"(deny file-write-unlink (literal (param \\\"AUX_NATIVE_APPLICATION\\\")) (path-ancestors (param \\\"AUX_NATIVE_APPLICATION\\\")))\\n\";",
+          "count": 1
+        },
+        {
+          "before": "    arguments_.emplace_back(\"--\");",
+          "after": "    for(const auto& item:std::vector<std::pair<const char*,const char*>>{{\"AUX_NATIVE_TASK_ROOT\",task.taskRoot},{\"AUX_NATIVE_TASK_ACCOUNT\",task.accountTaskRoot},{\"AUX_NATIVE_APPLICATION\",task.application}}){arguments_.emplace_back(\"-D\");arguments_.push_back(std::string(item.first)+\"=\"+item.second);}\n    arguments_.emplace_back(\"--\");",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "input": "/Users/rcourson/Documents/Vibe/aux-completion-20261026/runtime/docs/integration/proposed/completion-20261026/runtime/exec-producer-join/source/AuxDevelopmentWorkerHost.cc",
+      "inputSha256": "0f3a3c779dfe7fcc8fceaf6b98044fe02020670dac7f7407e827739a75de3be3",
+      "outputSha256": "5150db488a3ac56506d95a1b0c6670c480f6a56d3a8d5adec29fa32e542ae3cf",
+      "output": "AuxDevelopmentWorkerHost.cc",
+      "anchors": [
+        {
+          "before": "#include \"AuxNativeExecReservation.h\"",
+          "after": "#include \"AuxNativeExecReservation.h\"\n#include \"AuxNativeExecTaskBoundary.h\"",
+          "count": 1
+        },
+        {
+          "before": "struct SelectedBuiltinScope;",
+          "after": "struct SelectedBuiltinScope;\nstruct ExecTaskBoundary;",
+          "count": 1
+        },
+        {
+          "before": "  std::shared_ptr<ExecBrowserRoots> roots;\n  const pid_t process",
+          "after": "  std::shared_ptr<ExecBrowserRoots> roots;\n  std::shared_ptr<ExecTaskBoundary> task_boundary;\n  const pid_t process",
+          "count": 1
+        },
+        {
+          "before": "} // namespace\nextern \"C\" void AuxNativeExecOriginalHandleClosed",
+          "after": "#include \"AuxExecTaskBoundary.inc\"\n} // namespace\nextern \"C\" int32_t AuxNativeExecCopyTaskBoundary(void* token,AuxExecNativeTaskBoundary* result) noexcept {return CopyExecTaskBoundary(token,result);}\nextern \"C\" void AuxNativeExecOriginalHandleClosed",
+          "count": 1
+        },
+        {
+          "before": "    auto current_roots = CaptureExecRoots(pending.owner);",
+          "after": "    auto current_roots = CaptureExecRoots(pending.owner);\n    auto current_task=CaptureExecTaskBoundary(pending.reservation->selected_scope);",
+          "count": 1
+        },
+        {
+          "before": "        current_roots && SameExecRoots(*pending.roots, *current_roots) &&",
+          "after": "        current_roots && SameExecRoots(*pending.roots, *current_roots) &&\n        pending.reservation->task_boundary&&current_task&&SameExecTaskBoundary(*pending.reservation->task_boundary,*current_task)&&",
+          "count": 1
+        },
+        {
+          "before": "  std::shared_ptr<ExecBrowserRoots> released_roots;\n  std::shared_ptr<SelectedBuiltinScope> released_selected;",
+          "after": "  std::shared_ptr<ExecBrowserRoots> released_roots;\n  std::shared_ptr<ExecTaskBoundary> released_task;\n  std::shared_ptr<SelectedBuiltinScope> released_selected;",
+          "count": 1
+        },
+        {
+          "before": "  std::shared_ptr<ExecBrowserRoots> released_roots;\n  {",
+          "after": "  std::shared_ptr<ExecBrowserRoots> released_roots;\n  std::shared_ptr<ExecTaskBoundary> released_task;\n  {",
+          "count": 1
+        },
+        {
+          "before": "    released_roots = std::move(reservation->roots);\n    if (child",
+          "after": "    released_roots = std::move(reservation->roots);\n    released_task=std::move(reservation->task_boundary);\n    if (child",
+          "count": 1
+        },
+        {
+          "before": "    released_roots = std::move(reservation->roots);\n    released_selected=std::move(reservation->selected_scope);",
+          "after": "    released_roots = std::move(reservation->roots);\n    released_task=std::move(reservation->task_boundary);\n    released_selected=std::move(reservation->selected_scope);",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "input": "/Users/rcourson/Documents/Vibe/aux-completion-20261026/runtime/docs/integration/proposed/completion-20261026/runtime/exec-producer-join/source/process_wrap.cc",
+      "inputSha256": "6b3758be6f1faaaab18fd3ef10ebfda9f6cbbeb9eb1c38acb769639bd9a8b0ec",
+      "outputSha256": "ea938ee5e6a688b004c25a4091d6ab565094a2bde5fada0c623c00b94facec90",
+      "output": "process_wrap.cc",
+      "anchors": [
+        {
+          "before": "#include \"AuxNativeExecReservation.h\"",
+          "after": "#include \"AuxNativeExecReservation.h\"\n#include \"AuxNativeExecTaskBoundary.h\"",
+          "count": 1
+        },
+        {
+          "before": "    AuxExecNativeDeniedRoots denied_roots{};",
+          "after": "    AuxExecNativeTaskBoundary task_boundary{};\n    AuxExecNativeDeniedRoots denied_roots{};",
+          "count": 1
+        },
+        {
+          "before": "!envelope.Prepare(options, denied_roots)",
+          "after": "AuxNativeExecCopyTaskBoundary(pending.token,&task_boundary)!=0 ||\n        !envelope.Prepare(options, denied_roots,task_boundary)",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "input": "/Users/rcourson/Documents/Vibe/aux-completion-20261026/runtime/docs/integration/proposed/completion-20261026/runtime/exec-producer-join/source/spawn_sync.cc",
+      "inputSha256": "2957612117327766d0a354b2c694b71b2580c80bf1d224609be385518169db6b",
+      "outputSha256": "123d0225457b5c7e37521158f9269f5539ae4211f96cc65edc7a5f57d0cca2fe",
+      "output": "spawn_sync.cc",
+      "anchors": [
+        {
+          "before": "#include \"AuxNativeExecReservation.h\"",
+          "after": "#include \"AuxNativeExecReservation.h\"\n#include \"AuxNativeExecTaskBoundary.h\"",
+          "count": 1
+        },
+        {
+          "before": "  AuxExecNativeDeniedRoots denied_roots{};",
+          "after": "  AuxExecNativeTaskBoundary task_boundary{};\n  AuxExecNativeDeniedRoots denied_roots{};",
+          "count": 1
+        },
+        {
+          "before": "!envelope.Prepare(uv_process_options_, denied_roots)",
+          "after": "AuxNativeExecCopyTaskBoundary(aux_exec_pending_,&task_boundary)!=0 ||\n      !envelope.Prepare(uv_process_options_, denied_roots,task_boundary)",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "input": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/profile-isolation-next/spawn-custody/source/pty.cc",
+      "inputSha256": "c9cb4e15c7dc9c52ae12a88d3c540c4780aba24380255d672bae8e1d5b516bcf",
+      "outputSha256": "4dc3049429a383573d3f6482109316f190c87560c35949b73fc76a82895be07d",
+      "output": "pty-linked.cc",
+      "anchors": [
+        {
+          "before": "NODE_API_MODULE(NODE_GYP_MODULE_NAME, init)",
+          "after": "// Linked initializer only: the actual host registers it in the original main\n// Environment after genuine supervised/ES admission. No dynamic module export.\nextern \"C\" napi_value AuxInitializeFixedPty(napi_env env,napi_value exports) {\n  try { return init(Napi::Env(env),Napi::Object(env,exports)); }\n  catch(const Napi::Error& error) {error.ThrowAsJavaScriptException();return nullptr;}\n  catch(...) {napi_throw_error(env,\"AUX_PTY_INITIALIZER_FAILED\",\"Fixed PTY initializer interrupted\");return nullptr;}\n}",
+          "count": 1
+        },
+        {
+          "before": "#include <AuxNativePtyReservation.h>",
+          "after": "#include <AuxNativePtyReservation.h>\nextern \"C\" int32_t AuxNativePtyRetainPhysical(void*) noexcept;\nextern \"C\" void AuxNativePtyReaperThreadJoined(void*) noexcept;\nextern \"C\" void AuxNativePtyTransportClosed(void*) noexcept;",
+          "count": 1
+        },
+        {
+          "before": "    state_->reservation = reservation;\n    state_->exec_reservation = exec_reservation;\n    auto state = state_;",
+          "after": "    state_->reservation = reservation;\n    state_->exec_reservation = exec_reservation;\n    if(!AuxNativePtyRetainPhysical(reservation))throw Napi::Error::New(env,\"PTY physical custody unavailable\");\n    auto state = state_;",
+          "count": 1
+        },
+        {
+          "before": "          if (state->thread.joinable()) state->thread.join();",
+          "after": "          if (state->thread.joinable()) state->thread.join();\n          AuxNativePtyReaperThreadJoined(state->reservation);",
+          "count": 1
+        },
+        {
+          "before": "  explicit ScopedPtyMaster(int& fd) : fd_(fd) {}\n  ~ScopedPtyMaster() { if (fd_ != -1) close(fd_); }",
+          "after": "  ScopedPtyMaster(int& fd,void* reservation) : fd_(fd),reservation_(reservation) {}\n  ~ScopedPtyMaster() {\n    if(fd_!=-1){if(close(fd_)==0)AuxNativePtyTransportClosed(reservation_);}\n    else if(!transferred_)AuxNativePtyTransportClosed(reservation_);\n  }",
+          "count": 1
+        },
+        {
+          "before": "  void Release() { fd_ = -1; }\n private:\n  int& fd_;",
+          "after": "  void Release() { transferred_=true;fd_ = -1; }\n private:\n  int& fd_;\n  void* reservation_;\n  bool transferred_=false;",
+          "count": 1
+        },
+        {
+          "before": "  PreparedExitCallback exit_callback(\n      napiEnv, info[10].As<Napi::Function>(), reservation.Handle(), exec_reservation.Handle());\n  pid_t pid;\n  int master = -1;\n  ScopedPtyMaster master_owner(master);",
+          "after": "  int master = -1;\n  ScopedPtyMaster master_owner(master,reservation.Handle(), exec_reservation.Handle());\n  PreparedExitCallback exit_callback(\n      napiEnv, info[10].As<Napi::Function>(), reservation.Handle(), exec_reservation.Handle());\n  pid_t pid;",
+          "count": 1
+        },
+        {
+          "before": "    auto tsfn = Napi::ThreadSafeFunction::New(",
+          "after": "    Napi::ThreadSafeFunction tsfn;\n    try { tsfn = Napi::ThreadSafeFunction::New(",
+          "count": 1
+        },
+        {
+          "before": "          AuxNativePtyReaperThreadJoined(state->reservation);\n        });",
+          "after": "          AuxNativePtyReaperThreadJoined(state->reservation);\n        }); } catch(...) {AuxNativePtyReaperThreadJoined(state->reservation);throw;}",
+          "count": 1
+        },
+        {
+          "before": "          if (status == napi_closing) return;",
+          "after": "          if (status == napi_closing) {tsfn.Release();return;}",
+          "count": 1
+        },
+        {
+          "before": "  obj.Set(\"pty\", Napi::String::New(napiEnv, ptsname(master)));",
+          "after": "  obj.Set(\"pty\", Napi::String::New(napiEnv, ptsname(master)));\n  // Immutable private callback, not a caller-selected reservation or PID.\n  struct TransportTokens{void* pty;void* exec;};\n  auto tokens=std::make_unique<TransportTokens>(TransportTokens{reservation.Handle(),exec_reservation.Handle()});\n  napi_value closed;\n  auto callback=[](napi_env env,napi_callback_info info)->napi_value{void* data=nullptr;size_t count=0;if(napi_get_cb_info(env,info,&count,nullptr,nullptr,&data)!=napi_ok)return nullptr;auto* tokens=static_cast<TransportTokens*>(data);AuxNativePtyTransportClosed(tokens->pty);AuxNativeExecOriginalHandleClosed(tokens->exec);napi_value value;napi_get_undefined(env,&value);return value;};\n  if(napi_create_function(napiEnv,\"auxOriginalTransportClosed\",NAPI_AUTO_LENGTH,callback,tokens.get(),&closed)!=napi_ok)throw Napi::Error::New(napiEnv,\"PTY transport completion capture failed\");\n  if(napi_add_finalizer(napiEnv,closed,tokens.get(),[](napi_env,void* data,void*){delete static_cast<TransportTokens*>(data);},nullptr,nullptr)!=napi_ok)throw Napi::Error::New(napiEnv,\"PTY transport finalizer capture failed\");\n  tokens.release();\n  const napi_property_descriptor property{\"auxOriginalTransportClosed\",nullptr,nullptr,nullptr,nullptr,closed,napi_default,nullptr};\n  if(napi_define_properties(napiEnv,obj,1,&property)!=napi_ok)throw Napi::Error::New(napiEnv,\"PTY transport completion binding failed\");",
+          "count": 1
+        },
+        {
+          "before": "ScopedPtyMaster(int& fd,void* reservation) : fd_(fd),reservation_(reservation) {}",
+          "after": "ScopedPtyMaster(int& fd,void* reservation,void* exec) : fd_(fd),reservation_(reservation),exec_reservation_(exec) {}",
+          "count": 1
+        },
+        {
+          "before": "if(close(fd_)==0)AuxNativePtyTransportClosed(reservation_);",
+          "after": "if(close(fd_)==0){AuxNativePtyTransportClosed(reservation_);AuxNativeExecOriginalHandleClosed(exec_reservation_);}",
+          "count": 1
+        },
+        {
+          "before": "else if(!transferred_)AuxNativePtyTransportClosed(reservation_);",
+          "after": "else if(!transferred_){AuxNativePtyTransportClosed(reservation_);AuxNativeExecOriginalHandleClosed(exec_reservation_);}",
+          "count": 1
+        },
+        {
+          "before": "  void* reservation_;",
+          "after": "  void* reservation_;\n  void* exec_reservation_;",
+          "count": 1
+        },
+        {
+          "before": "#include \"AuxNativeExecReservation.h\"",
+          "after": "#include \"AuxNativeExecReservation.h\"\n#include \"AuxNativeExecTaskBoundary.h\"\nextern \"C\" void AuxNativeExecOriginalHandleClosed(void*) noexcept;",
+          "count": 1
+        },
+        {
+          "before": "  AuxExecNativeDeniedRoots denied_roots{};",
+          "after": "  AuxExecNativeDeniedRoots denied_roots{};\n  AuxExecNativeTaskBoundary task_boundary{};",
+          "count": 1
+        },
+        {
+          "before": "!envelope.Prepare(command, denied_roots)",
+          "after": "AuxNativeExecCopyTaskBoundary(exec_reservation.Handle(),&task_boundary)!=0 ||\n      !envelope.Prepare(command, denied_roots,task_boundary)",
+          "count": 1
+        }
+      ]
+    }
+  ],
+  "EntitlementRequired": true,
+  "activated": false,
+  "candidateChanged": false
+}

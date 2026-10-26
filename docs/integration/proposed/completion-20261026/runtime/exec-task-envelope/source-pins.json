@@ -1,0 +1,12 @@
+{
+  "source/AuxExecTaskBoundary.inc": "cbcfba28ae108dfff387fe20970dad95bb1de5cd736ee84495a1589efad618fa",
+  "source/pty-linked.cc": "4dc3049429a383573d3f6482109316f190c87560c35949b73fc76a82895be07d",
+  "source/process_wrap.cc": "ea938ee5e6a688b004c25a4091d6ab565094a2bde5fada0c623c00b94facec90",
+  "source/AuxSelectedBuiltinOwner.inc": "53f3aad20da1ad6edb7a054988e48fe81bbc9e8944d4b4b479ae8f3357a9f701",
+  "source/AuxExecSpawnEnvelope.h": "bc815e44259d6de52eafd5950fae0c45c26fb6d5da4289814dbe007e9b8c7266",
+  "source/spawn_sync.cc": "123d0225457b5c7e37521158f9269f5539ae4211f96cc65edc7a5f57d0cca2fe",
+  "source/AuxPtyPhysicalRetirement.inc": "00bf942d294c884a708676504507509183ed09c494924bd9eaec61fe18952423",
+  "source/AuxNativeExecTaskBoundary.h": "0cdea1bc3ac42667ee962cf5d86be22b50fe7dd7f7839066fb3d83500a3594ee",
+  "source/AuxDevelopmentWorkerHost.cc": "5150db488a3ac56506d95a1b0c6670c480f6a56d3a8d5adec29fa32e542ae3cf",
+  "source/AuxSelectedExecProducer.inc": "72b34d13ae8b79659010bcdf9a94cf36128178e53ce0f0bfb88d37bbc39ea6a7"
+}

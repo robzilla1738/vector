@@ -1,0 +1,12 @@
+{
+  "format": "aux.exec-task-envelope-source-preparation.v1",
+  "pythonSyntax": "pass",
+  "frozenCompilePinsChecked": 348,
+  "nativeCompiled": false,
+  "candidateChanged": false,
+  "reviewChanged": false,
+  "linkedPolicyImplemented": false,
+  "EntitlementRequired": true,
+  "compileRecipeSha256": "85d9fc0c14504fc97e6dbcc1108dec5e78e646d8923aaa27b612d613f125c551",
+  "actualContainedPtySource": "profile-isolation-next/spawn-custody/source/pty.cc; r4 producer"
+}
