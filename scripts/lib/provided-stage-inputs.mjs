@@ -2,6 +2,7 @@
 // silently passing after its branding/platform adaptation code has changed.
 export const providedStageInputs = Object.freeze([
   'vendor/provided/aux-final-ui-identity.mjs',
+  'vendor/provided/aux-experimental-settings-v2.mjs',
   'vendor/provided/aux-final-runtime-identity.mjs',
   'docs/integration/proposed/completion-20261026/integration/identity/source-pins.json',
   'vendor/provided/cloud-transfer-binding.mjs',

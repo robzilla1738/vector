@@ -1,0 +1,157 @@
+{
+  "format": "aux.experimental-settings-v2.source.v1",
+  "passed": true,
+  "files": [
+    {
+      "path": "apps/daemon/Aux Daemon.app/Contents/Resources/node-development/index.mjs",
+      "inputSha256": "48af998738fb6d2fc30cb8d5b2e9de03cb04ab7d8563ebdaa5fe8100944fc514",
+      "composedInputSha256": "4aa78d2606963d854849629dba91a2f418f6f347b09f45d3f9cc9dd3000409b7",
+      "outputSha256": "356b71893c73675ec333ca2da279532457a3ddda3f74a886e33a337377bc87b5",
+      "output": "/Users/rcourson/Documents/Vibe/web/out/completion-20261026-experimental-v2/index.mjs",
+      "anchors": [
+        {
+          "kind": "identity",
+          "name": "Versioned Aux experimental settings",
+          "find": "object({sync:boolean$1().default(!1),kakaotalk:boolean$1().default(!1),onboarding:boolean$1().default(!1),asideCode:boolean$1().default(!1),compactionLimits:boolean$1().default(!1)})",
+          "replace": "object({sync:boolean$1().default(!1),kakaotalk:boolean$1().default(!1),onboarding:boolean$1().default(!1),format:string$3().optional(),auxCode:boolean$1().optional(),asideCode:boolean$1().optional(),compactionLimits:boolean$1().default(!1)}).transform(function migrateAuxExperimentalSettings(value) {\n  const format = 'aux.experimental.v2';\n  if (value.format !== undefined && value.format !== format)\n    throw Error('Unsupported Aux experimental settings version.');\n  if (value.format !== undefined && Object.hasOwn(value, 'asideCode') ||\n      value.format === undefined && Object.hasOwn(value, 'auxCode'))\n    throw Error('Ambiguous Aux experimental settings generation.');\n  const {asideCode, auxCode, format: previousFormat, ...settings} = value;\n  return {...settings, format, auxCode: (previousFormat === format ? auxCode : asideCode) ?? false};\n})",
+          "count": 1
+        },
+        {
+          "kind": "identity",
+          "name": "Versioned Aux experimental settings",
+          "find": ".asideCode",
+          "replace": ".auxCode",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "apps/daemon/Aux Daemon.app/Contents/Resources/node-development/aux-native-entry.mjs",
+      "inputSha256": "f355833cb607963a65ca3108e7ae19ea7ca60192a9f3d8e2644a3c12ec49c808",
+      "composedInputSha256": "f3a8c02127d31b5c09c2f83b54dbfc1f789c7cfb7125ec0993dad31b18f73737",
+      "outputSha256": "754f20b9882c86c6e044bb1e06e8b8f7492097e7ca935ee92da4b4d0f7b74a24",
+      "output": "/Users/rcourson/Documents/Vibe/web/out/completion-20261026-experimental-v2/aux-native-entry.mjs",
+      "anchors": [
+        {
+          "kind": "identity",
+          "name": "Versioned Aux experimental settings",
+          "find": "object({sync:boolean$1().default(!1),kakaotalk:boolean$1().default(!1),onboarding:boolean$1().default(!1),asideCode:boolean$1().default(!1),compactionLimits:boolean$1().default(!1)})",
+          "replace": "object({sync:boolean$1().default(!1),kakaotalk:boolean$1().default(!1),onboarding:boolean$1().default(!1),format:string$3().optional(),auxCode:boolean$1().optional(),asideCode:boolean$1().optional(),compactionLimits:boolean$1().default(!1)}).transform(function migrateAuxExperimentalSettings(value) {\n  const format = 'aux.experimental.v2';\n  if (value.format !== undefined && value.format !== format)\n    throw Error('Unsupported Aux experimental settings version.');\n  if (value.format !== undefined && Object.hasOwn(value, 'asideCode') ||\n      value.format === undefined && Object.hasOwn(value, 'auxCode'))\n    throw Error('Ambiguous Aux experimental settings generation.');\n  const {asideCode, auxCode, format: previousFormat, ...settings} = value;\n  return {...settings, format, auxCode: (previousFormat === format ? auxCode : asideCode) ?? false};\n})",
+          "count": 1
+        },
+        {
+          "kind": "identity",
+          "name": "Versioned Aux experimental settings",
+          "find": ".asideCode",
+          "replace": ".auxCode",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "apps/extension/dist/assets/mcps-DmPp5oo9.js",
+      "inputSha256": "dee7ff83a91decfc61542ac55e197d5eaa4f461bb657eb7085eb0938648fd890",
+      "composedInputSha256": "dee7ff83a91decfc61542ac55e197d5eaa4f461bb657eb7085eb0938648fd890",
+      "outputSha256": "0628abf121307a43567addaa792eb9f13c9b72e47c75f8d3cbe9f316a5ece79a",
+      "output": "/Users/rcourson/Documents/Vibe/web/out/completion-20261026-experimental-v2/mcps-DmPp5oo9.js",
+      "anchors": [
+        {
+          "kind": "identity",
+          "name": "Versioned Aux experimental settings",
+          "find": "o({sync:m().default(!1),kakaotalk:m().default(!1),onboarding:m().default(!1),asideCode:m().default(!1),compactionLimits:m().default(!1)})",
+          "replace": "o({sync:m().default(!1),kakaotalk:m().default(!1),onboarding:m().default(!1),format:t().optional(),auxCode:m().optional(),asideCode:m().optional(),compactionLimits:m().default(!1)}).transform(function migrateAuxExperimentalSettings(value) {\n  const format = 'aux.experimental.v2';\n  if (value.format !== undefined && value.format !== format)\n    throw Error('Unsupported Aux experimental settings version.');\n  if (value.format !== undefined && Object.hasOwn(value, 'asideCode') ||\n      value.format === undefined && Object.hasOwn(value, 'auxCode'))\n    throw Error('Ambiguous Aux experimental settings generation.');\n  const {asideCode, auxCode, format: previousFormat, ...settings} = value;\n  return {...settings, format, auxCode: (previousFormat === format ? auxCode : asideCode) ?? false};\n})",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "apps/extension/dist/assets/experimental-Xq3YsEPK.js",
+      "inputSha256": "7d237f0a3af555498ad42ca70988ea9f9cd11473ed1afe4e68b16089e0d5c534",
+      "composedInputSha256": "7d237f0a3af555498ad42ca70988ea9f9cd11473ed1afe4e68b16089e0d5c534",
+      "outputSha256": "7605e2eba17406c5317720229d2a52f58824ce1203a7829516ed5379e3654081",
+      "output": "/Users/rcourson/Documents/Vibe/web/out/completion-20261026-experimental-v2/experimental-Xq3YsEPK.js",
+      "anchors": [
+        {
+          "kind": "identity",
+          "name": "Versioned Aux experimental settings",
+          "find": "asideCode:!1",
+          "replace": "format:\"aux.experimental.v2\",auxCode:!1",
+          "count": 1
+        },
+        {
+          "kind": "identity",
+          "name": "Versioned Aux experimental settings",
+          "find": "t.asideCode",
+          "replace": "t.auxCode",
+          "count": 1
+        },
+        {
+          "kind": "identity",
+          "name": "Versioned Aux experimental settings",
+          "find": "asideCode:a",
+          "replace": "auxCode:a",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "apps/extension/dist/assets/session-composer-Dc0LRfZA.js",
+      "inputSha256": "7d9fd830a06e4bc846a7d81f849486a16013a36411c8d33a309ddc6a6d7f229d",
+      "composedInputSha256": "7d9fd830a06e4bc846a7d81f849486a16013a36411c8d33a309ddc6a6d7f229d",
+      "outputSha256": "3eaa9c8f0946ad2b20a63f0b80f0acb0ad79835061050eb09dff2fbd3c791144",
+      "output": "/Users/rcourson/Documents/Vibe/web/out/completion-20261026-experimental-v2/session-composer-Dc0LRfZA.js",
+      "anchors": [
+        {
+          "kind": "identity",
+          "name": "Versioned Aux experimental settings",
+          "find": "asideCodeAgents",
+          "replace": "auxCodeAgents",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "apps/extension/dist/assets/provider-Cw0zhujt.js",
+      "inputSha256": "8aee4a9cc8229397e4067fb9a9a4772ef4bdfddc03d1db3f2c84836a1b6fe724",
+      "composedInputSha256": "8aee4a9cc8229397e4067fb9a9a4772ef4bdfddc03d1db3f2c84836a1b6fe724",
+      "outputSha256": "c4862e5ac3e442c203039edf7253c5af9627be724e70d0e20f693243e40c210e",
+      "output": "/Users/rcourson/Documents/Vibe/web/out/completion-20261026-experimental-v2/provider-Cw0zhujt.js",
+      "anchors": [
+        {
+          "kind": "identity",
+          "name": "Versioned Aux experimental settings",
+          "find": "asideCodeAgents",
+          "replace": "auxCodeAgents",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "apps/extension/dist/assets/_skillId-CAwCRjA8.js",
+      "inputSha256": "b6fe66a9473643a8b720bcdc7f618d189685b96416c5a06df0f2dcaa27b25b60",
+      "composedInputSha256": "b6fe66a9473643a8b720bcdc7f618d189685b96416c5a06df0f2dcaa27b25b60",
+      "outputSha256": "1a39b9401e5144d365b363e01f77601d311b3f515bb83d802b492b664064052d",
+      "output": "/Users/rcourson/Documents/Vibe/web/out/completion-20261026-experimental-v2/_skillId-CAwCRjA8.js",
+      "anchors": [
+        {
+          "kind": "identity",
+          "name": "Versioned Aux experimental settings",
+          "find": ".asideCode",
+          "replace": ".auxCode",
+          "count": 1
+        }
+      ]
+    }
+  ],
+  "emittedDaemonAndUiSchemasEvaluated": true,
+  "legacyBooleansPreserved": true,
+  "otherFlagsPreserved": true,
+  "inputNotMutated": true,
+  "jsonRoundTripPreserved": true,
+  "ambiguousAndUnknownVersionsRefused": true,
+  "pairedContextKey": "auxCodeAgents",
+  "installedStateAccessed": false,
+  "credentialsOrCryptoChanged": false,
+  "appChanged": false,
+  "runtimeAccepted": false
+}
