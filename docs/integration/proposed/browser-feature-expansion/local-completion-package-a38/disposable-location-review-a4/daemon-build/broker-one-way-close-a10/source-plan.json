@@ -1,0 +1,35 @@
+{
+  "format": "aux.broker-one-way-revocation-source.v1",
+  "files": [
+    {
+      "path": "/private/tmp/aux-browser-only-daemon-build-20261025-a68/source/AuxBrokerWritesNapi.inc",
+      "inputSha256": "4907fdf63d19ccf4f9f4ea7f8a067ec5c5ae3a233afe17838227f1528a732385",
+      "source": "source/AuxBrokerWritesNapi.inc",
+      "outputSha256": "dd5bc527e067306b4e3c9d85e865f1d56004d1accc597aa3df1a9218b80a1e4e",
+      "anchors": [
+        {
+          "find": "void BrokerThrow(napi_env env,const char* code,const char* text) {",
+          "replace": "// Revocation and uncertainty can only narrow this actual Environment's state.\n// They must remain possible after its browser peer exits. This capture grants\n// no writer admission and makes no physical-drain or authority assertion.\nstd::shared_ptr<Worker> CaptureBrokerForOneWayRevocation(napi_env env) {\n  if(getpid()!=kHostProcess)return {};\n  auto* isolate=v8::Isolate::GetCurrent();\n  if(!isolate||isolate->GetCurrentContext().IsEmpty())return {};\n  auto* environment=node::GetCurrentEnvironment(isolate->GetCurrentContext());\n  std::shared_ptr<Worker> worker;\n  {std::lock_guard<std::mutex> lock(Registry().mutex);auto found=Registry().active.find(environment);if(found!=Registry().active.end())worker=found->second;}\n  if(!worker||!SameRuntimeEnvironment(env,environment,isolate))return {};\n  {std::lock_guard<std::mutex> lock(worker->mutex);\n    if(!CurrentWorker(*worker)||worker->initializing||worker->environment_detached)return {};\n  }\n  return worker;\n}\nvoid BrokerThrow(napi_env env,const char* code,const char* text) {",
+          "count": 1
+        },
+        {
+          "find": "    auto captured=CaptureBrokerOwner(env);\n    if(!BrokerZeroArgs(env,info)||!captured.owner){BrokerThrow(env,\"AUX_BROKER_OWNER_UNAVAILABLE\",\"Current native broker owner is unavailable\");return nullptr;}\n    {std::lock_guard<std::mutex> lock(captured.worker->mutex);captured.worker->broker_closed=true;}",
+          "replace": "    if(!BrokerZeroArgs(env,info)){BrokerThrow(env,\"AUX_BROKER_OWNER_UNAVAILABLE\",\"Current native broker owner is unavailable\");return nullptr;}\n    auto worker=CaptureBrokerForOneWayRevocation(env);\n    if(!worker){BrokerThrow(env,\"AUX_BROKER_OWNER_UNAVAILABLE\",\"Current native broker owner is unavailable\");return nullptr;}\n    bool revoked=false;\n    {std::lock_guard<std::mutex> lock(worker->mutex);\n      if(CurrentWorker(*worker)&&!worker->initializing&&!worker->environment_detached){worker->broker_closed=true;revoked=true;}\n    }\n    if(!revoked){BrokerThrow(env,\"AUX_BROKER_OWNER_UNAVAILABLE\",\"Current native broker owner is unavailable\");return nullptr;}",
+          "count": 1
+        },
+        {
+          "find": "    auto captured=CaptureBrokerOwner(env);\n    if(!BrokerZeroArgs(env,info)||!captured.owner){BrokerThrow(env,\"AUX_BROKER_OWNER_UNAVAILABLE\",\"Current native broker owner is unavailable\");return nullptr;}\n    {std::lock_guard<std::mutex> lock(captured.worker->mutex);captured.worker->broker_untracked=true;}",
+          "replace": "    if(!BrokerZeroArgs(env,info)){BrokerThrow(env,\"AUX_BROKER_OWNER_UNAVAILABLE\",\"Current native broker owner is unavailable\");return nullptr;}\n    auto worker=CaptureBrokerForOneWayRevocation(env);\n    if(!worker){BrokerThrow(env,\"AUX_BROKER_OWNER_UNAVAILABLE\",\"Current native broker owner is unavailable\");return nullptr;}\n    bool revoked=false;\n    {std::lock_guard<std::mutex> lock(worker->mutex);\n      if(CurrentWorker(*worker)&&!worker->initializing&&!worker->environment_detached){worker->broker_untracked=true;revoked=true;}\n    }\n    if(!revoked){BrokerThrow(env,\"AUX_BROKER_OWNER_UNAVAILABLE\",\"Current native broker owner is unavailable\");return nullptr;}",
+          "count": 1
+        }
+      ]
+    }
+  ],
+  "liveWriterAuthorityCaptureUnchanged": true,
+  "oneWayFlagsOnly": [
+    "broker_closed=true",
+    "broker_untracked=true"
+  ],
+  "noDrainClaim": true,
+  "noUnknownClear": true
+}

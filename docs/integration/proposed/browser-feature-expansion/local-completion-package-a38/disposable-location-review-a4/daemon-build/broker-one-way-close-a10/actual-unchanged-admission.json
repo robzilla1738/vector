@@ -1,0 +1,17 @@
+{
+  "format": "aux.broker-one-way-counted-boundary-check.v1",
+  "passed": true,
+  "unchangedOriginalFunctionBodies": [
+    "AssertBrokerOwner",
+    "WithBrokerSync",
+    "CaptureBrokerOwner",
+    "ValidateBrokerStorageAuthority"
+  ],
+  "exactSameEnvironmentRegistryThreadRechecked": true,
+  "changedFunctions": [
+    "CloseBrokerWriteAdmission",
+    "NoteUntrackedBrokerWork"
+  ],
+  "oneWayTrueOnly": true,
+  "nativeOrProductExecuted": false
+}

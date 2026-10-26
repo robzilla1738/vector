@@ -1,0 +1,53 @@
+{
+  "format": "aux.broker-one-way-revocation-build-result.v1",
+  "passed": true,
+  "results": [
+    {
+      "label": "worker",
+      "exitCode": 0
+    },
+    {
+      "label": "link",
+      "exitCode": 0
+    }
+  ],
+  "seconds": 22.417143874999997,
+  "planSha256": "e4eae9dfaef87f0a1e3761730cd93b20fed78a21d7f6acd44d4326db0e32ec72",
+  "sourcePlanSha256": "b6ec44f3f7c61514672bf504aeeb50b695cd23ebed3698b9b010bb8389203723",
+  "unchangedSwiftSourceCount": 50,
+  "unchangedNativeObjectCount": 14,
+  "a67MainAndActualNodeLayoutUnchanged": true,
+  "a47LoaderAndMemoryOwnerUnchanged": true,
+  "a69DenyOnlyDiagnosticUnchanged": true,
+  "liveWriterAdmissionUnchanged": true,
+  "oneWayCloseAndUntrackedOnly": true,
+  "actualSelectedIncludes": [
+    {
+      "name": "AuxBrokerWritesNapi.inc",
+      "path": "/private/tmp/aux-browser-only-daemon-build-20261025-a70/source/AuxBrokerWritesNapi.inc",
+      "sha256": "dd5bc527e067306b4e3c9d85e865f1d56004d1accc597aa3df1a9218b80a1e4e"
+    },
+    {
+      "name": "AuxStorageRootsNapi.inc",
+      "path": "/private/tmp/aux-browser-only-daemon-build-20261025-a70/source/AuxStorageRootsNapi.inc",
+      "sha256": "afaf22470b1a46b6984078722ebcb3c988553deee3aa04de6c84cfb5c0c670bf"
+    },
+    {
+      "name": "AuxMemoryMainOwner.inc",
+      "path": "/private/tmp/aux-browser-only-daemon-build-20261025-a70/source/AuxMemoryMainOwner.inc",
+      "sha256": "8e93a9315bc9fabbf8b0228025ca11846307536e1f547fa326bb7e5b5723eaca"
+    }
+  ],
+  "productExecuted": false,
+  "productSigned": false,
+  "originalRootAccessed": false,
+  "binary": "/private/tmp/aux-browser-only-daemon-build-20261025-a70/Aux Daemon",
+  "binarySha256": "22887b784c6a8990e5b6c91368134cfe06fdfd26483c4a42f0f42f1c8d3270cc",
+  "binarySize": 147464736,
+  "workerObjectSha256": "343160591a2e7e051af0684cbf839cd2451f241bcfbabd1eeda3d349db2303ea",
+  "actualDependencyFileSha256": "d7d6e26065f80d1845a4d9132e187dffeddc8308a480e0d43a96a54126e81e4a",
+  "codeSignatureLoadCommandPresent": false,
+  "codesignDisplayExitCode": 1,
+  "inputPinsUnchanged": true,
+  "priorBinaryUnchanged": true
+}

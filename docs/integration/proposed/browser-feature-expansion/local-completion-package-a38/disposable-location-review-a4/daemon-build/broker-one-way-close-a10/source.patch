@@ -1,0 +1,61 @@
+--- a/AuxBrokerWritesNapi.inc
++++ b/AuxBrokerWritesNapi.inc
+@@ -29,6 +29,22 @@
+   {std::lock_guard<std::mutex> lock(worker->mutex);if(!CurrentWorker(*worker)||worker->terminal||worker->broker_closed||worker->initializing||worker->environment_detached||worker->owner!=owner)return {};}
+   return {worker,owner};
+ }
++// Revocation and uncertainty can only narrow this actual Environment's state.
++// They must remain possible after its browser peer exits. This capture grants
++// no writer admission and makes no physical-drain or authority assertion.
++std::shared_ptr<Worker> CaptureBrokerForOneWayRevocation(napi_env env) {
++  if(getpid()!=kHostProcess)return {};
++  auto* isolate=v8::Isolate::GetCurrent();
++  if(!isolate||isolate->GetCurrentContext().IsEmpty())return {};
++  auto* environment=node::GetCurrentEnvironment(isolate->GetCurrentContext());
++  std::shared_ptr<Worker> worker;
++  {std::lock_guard<std::mutex> lock(Registry().mutex);auto found=Registry().active.find(environment);if(found!=Registry().active.end())worker=found->second;}
++  if(!worker||!SameRuntimeEnvironment(env,environment,isolate))return {};
++  {std::lock_guard<std::mutex> lock(worker->mutex);
++    if(!CurrentWorker(*worker)||worker->initializing||worker->environment_detached)return {};
++  }
++  return worker;
++}
+ void BrokerThrow(napi_env env,const char* code,const char* text) {
+   bool pending=false;
+   if(napi_is_exception_pending(env,&pending)==napi_ok&&pending){napi_value ignored;napi_get_and_clear_last_exception(env,&ignored);}
+@@ -48,9 +64,14 @@
+ napi_value CloseBrokerWriteAdmission(napi_env env,napi_callback_info info) {
+   if(getpid()!=kHostProcess)return nullptr;
+   try{
+-    auto captured=CaptureBrokerOwner(env);
+-    if(!BrokerZeroArgs(env,info)||!captured.owner){BrokerThrow(env,"AUX_BROKER_OWNER_UNAVAILABLE","Current native broker owner is unavailable");return nullptr;}
+-    {std::lock_guard<std::mutex> lock(captured.worker->mutex);captured.worker->broker_closed=true;}
++    if(!BrokerZeroArgs(env,info)){BrokerThrow(env,"AUX_BROKER_OWNER_UNAVAILABLE","Current native broker owner is unavailable");return nullptr;}
++    auto worker=CaptureBrokerForOneWayRevocation(env);
++    if(!worker){BrokerThrow(env,"AUX_BROKER_OWNER_UNAVAILABLE","Current native broker owner is unavailable");return nullptr;}
++    bool revoked=false;
++    {std::lock_guard<std::mutex> lock(worker->mutex);
++      if(CurrentWorker(*worker)&&!worker->initializing&&!worker->environment_detached){worker->broker_closed=true;revoked=true;}
++    }
++    if(!revoked){BrokerThrow(env,"AUX_BROKER_OWNER_UNAVAILABLE","Current native broker owner is unavailable");return nullptr;}
+     // This closes only guarded writer admission. It is NOT a drained result.
+     napi_value result;napi_get_undefined(env,&result);return result;
+   }catch(...){BrokerThrow(env,"AUX_BROKER_OWNER_UNAVAILABLE","Current native broker owner is unavailable");return nullptr;}
+@@ -58,9 +79,14 @@
+ napi_value NoteUntrackedBrokerWork(napi_env env,napi_callback_info info) {
+   if(getpid()!=kHostProcess)return nullptr;
+   try{
+-    auto captured=CaptureBrokerOwner(env);
+-    if(!BrokerZeroArgs(env,info)||!captured.owner){BrokerThrow(env,"AUX_BROKER_OWNER_UNAVAILABLE","Current native broker owner is unavailable");return nullptr;}
+-    {std::lock_guard<std::mutex> lock(captured.worker->mutex);captured.worker->broker_untracked=true;}
++    if(!BrokerZeroArgs(env,info)){BrokerThrow(env,"AUX_BROKER_OWNER_UNAVAILABLE","Current native broker owner is unavailable");return nullptr;}
++    auto worker=CaptureBrokerForOneWayRevocation(env);
++    if(!worker){BrokerThrow(env,"AUX_BROKER_OWNER_UNAVAILABLE","Current native broker owner is unavailable");return nullptr;}
++    bool revoked=false;
++    {std::lock_guard<std::mutex> lock(worker->mutex);
++      if(CurrentWorker(*worker)&&!worker->initializing&&!worker->environment_detached){worker->broker_untracked=true;revoked=true;}
++    }
++    if(!revoked){BrokerThrow(env,"AUX_BROKER_OWNER_UNAVAILABLE","Current native broker owner is unavailable");return nullptr;}
+     // One-way strongest uncertainty, never a JS-provided completed-work flag.
+     napi_value result;napi_get_undefined(env,&result);return result;
+   }catch(...){BrokerThrow(env,"AUX_BROKER_OWNER_UNAVAILABLE","Current native broker owner is unavailable");return nullptr;}
