@@ -1,0 +1,32 @@
+{
+  "format": "aux.product-links.public-http.v1",
+  "date": "2026-10-26",
+  "candidate": "A38",
+  "sourceLeaves": [
+    "route-TQyeTEXE.js",
+    "ai-CzEX5E7S.js",
+    "add-on-credits-dialog-Dn5FxOyZ.js"
+  ],
+  "observations": [
+    {
+      "url": "https://getaux.co/docs",
+      "httpStatus": 404
+    },
+    {
+      "url": "https://getaux.co/community",
+      "httpStatus": 404
+    },
+    {
+      "url": "https://getaux.co/policy/privacy",
+      "httpStatus": 404
+    },
+    {
+      "url": "https://getaux.co/policy/terms",
+      "httpStatus": 404
+    }
+  ],
+  "method": "Unauthenticated public HTTPS GET; no cookies, credentials or account state",
+  "webReader": "All four inaccessible; direct public HTTPS status confirms 404",
+  "fixed": false,
+  "requiredFollowup": "Prepare factual product/help/privacy/terms content; pair app links to actual approved hosted routes and verify after deployment; preserve marketing and mail DNS"
+}
