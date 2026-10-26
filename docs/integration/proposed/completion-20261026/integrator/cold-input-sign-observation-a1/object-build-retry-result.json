@@ -1,0 +1,14 @@
+{
+  "passed": true,
+  "session": 58320,
+  "exitCode": 0,
+  "log": "out/completion-resume-20261026/cold-input-sign-objects-retry.log",
+  "sha256": "c1b37f64cc65d2f3853f72f3b3d29cbdb6b51b900f7be00aeea5993b3f8ffa1c",
+  "producers": [
+    "AuxOwnedNativePeerChild",
+    "AuxSelectedStateHome",
+    "aux_browser_preferences_api",
+    "aux_tab_search_bubble"
+  ],
+  "unchangedPassingProducersReused": true
+}

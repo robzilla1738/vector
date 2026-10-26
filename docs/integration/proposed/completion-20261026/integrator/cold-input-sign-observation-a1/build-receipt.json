@@ -1,0 +1,20 @@
+{
+  "passed": true,
+  "exitCode": 0,
+  "session": 20500,
+  "framework": {
+    "path": "/Users/rcourson/Documents/Vibe/web/out/completion-resume-20261026/Aux Framework-cold-input-sign-observation",
+    "sha256": "bb7a3c7f5fb96f4b5e5dd98a3dd25dfc2972b060bb2275964a51977490ca3ca4"
+  },
+  "projection": {
+    "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/integrator/cold-input-sign-observation-a1/projection.json",
+    "sha256": "624cffb79a1e85e815183e9d46671407bf48753b72d790895fa8efabcca77fa0"
+  },
+  "log": {
+    "path": "/Users/rcourson/Documents/Vibe/web/out/completion-resume-20261026/cold-input-sign-link.log",
+    "sha256": "f7d41aa49efad0a92daad424a3c00e4d4a0eb24e22bbf18204d075f0ef89a8da"
+  },
+  "nativeTarget": "chrome",
+  "parallelJobs": 8,
+  "appActivated": false
+}

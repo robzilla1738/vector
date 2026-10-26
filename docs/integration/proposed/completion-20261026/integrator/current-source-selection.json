@@ -1,7 +1,7 @@
 {
   "format": "aux.completion.current-source-selection.v1",
   "candidate": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-completion-20261026-a1/Aux.app",
-  "signedInventorySha256": "109d439a0cd4fd3382cf6085bb29ea1c21f8dab6f75f2f822d041196817f2643",
+  "signedInventorySha256": "80b212708d9093014f625f8d6397cffe4347ac870053b5a42dbdf758e720d343",
   "sourceSnapshots": [
     {
       "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/runtime/addon-local-signing-review/actual-signed-source-a1/source/daemon-policy.swift",
@@ -74,8 +74,8 @@
       "sha256": "1c2996c7c3b8931330033688b7c6997749e4d3a7c2908b97dab6e9450ac1784b"
     },
     {
-      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/desktop/startup-authority-observation/source/chrome/browser/aux/AuxSelectedStateHome.cc",
-      "sha256": "1ccb3f17b2dd85a1c8a717b4ad80f62ea22567e57e8e48bf2f0adc8c8959b921"
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/runtime/extension-sign-observation/source/AuxSelectedStateHome.cc",
+      "sha256": "d5ef5387e492c80836e31553b8e1af7e2e48ee962e61d60212c7866637841399"
     },
     {
       "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/desktop/cli-background-query/source/chrome/browser/aux/cli/AuxCliOpenCommand.mm",
@@ -102,20 +102,20 @@
       "sha256": "6aa4ae321848fdaad974f2b60a7dd6452045ea87dd242c6d9c06988b767eeec8"
     },
     {
-      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/desktop/palette-document-recovery/source/chrome/browser/ui/views/frame/aux_tab_search_bubble.cc",
-      "sha256": "715ca201fc7ffc441c41a0a382428498c88c3bfc17ff947fc34559a7b39ea429"
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/desktop/palette-cold-input-compile/source/chrome/browser/ui/views/frame/aux_tab_search_bubble.cc",
+      "sha256": "43a2a4370b8185ccf8c8df197cd879a388269a1e1b0181303cfb0b5b58869081"
     },
     {
       "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/desktop/palette-observation/source/chrome/browser/extensions/api/aux_browser_preferences/aux_feature_expansion_api.cc",
       "sha256": "e090ace177c520e3cbd3a3e58738242669398725998c5b7f9b10067d323fe9a1"
     },
     {
-      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/runtime/peer-reply-recovery/source/AuxNativePeerTransport.cc",
-      "sha256": "8ced5b9206e062f63e67444f71d1d4624a0b93dbaa3f3cfe584f53d7ea763b1d"
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/runtime/extension-sign-observation/source/AuxNativePeerTransport.cc",
+      "sha256": "2e37de722dd6ee22a3a81c83e86032d5a64d51738000cdc82a46b26f80ae81a8"
     },
     {
-      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/desktop/palette-invocation/source/chrome/common/extensions/api/aux_browser_preferences.json",
-      "sha256": "3c4bf3c4ff38b9fd726d615c5e347fe465c48f3e87222c74684f4be188b8921b"
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/desktop/palette-cold-input/source/chrome/common/extensions/api/aux_browser_preferences.json",
+      "sha256": "76e67487819bf2bbf3a3e849cdeb7e13d678560713e1e9ecd0adc349f40e4a28"
     },
     {
       "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/desktop/palette-invocation/source/extensions/browser/extension_event_histogram_value.h",
@@ -124,6 +124,50 @@
     {
       "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/desktop/palette-invocation/source/tools/metrics/histograms/metadata/extensions/enums.xml",
       "sha256": "8183d534f9c5ec132546234489842cde96d1606c72f3be667885b3b058d63bcb"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/runtime/extension-sign-observation/source/AuxNativePeerTransport.h",
+      "sha256": "d8e87471aa6a24634f3466edd198b58389e1f91e76d7d48c245dd75743eb1f9f"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/runtime/extension-sign-observation/source/AuxSelectedStateHome.h",
+      "sha256": "8e3cd3b57ce7097a13b982ae4450e97b3cbc136e0cd45cffa5f3d749311050f1"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/runtime/extension-sign-observation/source/aux_account_api.cc",
+      "sha256": "b6b048319171055ba697d9ff3df9a63d23f7823f41237f63a2bf83107e051886"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/runtime/extension-sign-observation/source/aux_account_api.h",
+      "sha256": "0145a76803e99466b9d77c250638f7626064ec440c551c8d1722e00d6e8d0578"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/runtime/extension-sign-observation/source/daemon_supervisor.cc",
+      "sha256": "c7b2f5b173929970f2b9221833005390bd88c93bd5fa365e600a0d406db2eb8f"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/runtime/extension-sign-observation/source/installation_auth.cc",
+      "sha256": "57d2ca83e22972fb0f626f59787709bdc9a6a57e5342ffd67b9a07c28d8645cf"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/runtime/extension-sign-observation/source/installation_auth.h",
+      "sha256": "0d8ce7494408859677079df1697c25c29132adbccd4e1d201b819572a6490c1a"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/desktop/palette-cold-input/source/chrome/browser/ui/views/frame/aux_tab_search_bubble.h",
+      "sha256": "582393d901aa90339e9fbb6bafd3cbefee41579b996b49bfcd20dff4ed0b4508"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/desktop/palette-cold-input-compile/source/chrome/browser/extensions/api/aux_browser_preferences/aux_browser_preferences_api.cc",
+      "sha256": "7705fb6dcc216f4fdb6fd3c895c76a00781fe52871c0e17e8b9818b76d7a44d9"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/runtime/extension-sign-observation/source/AuxOwnedNativePeerChild.h",
+      "sha256": "b749d065f411385ad0a4733274868b7973a68e567cb7d39ad2a3e6e4ff20a743"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/runtime/extension-sign-observation/source/AuxOwnedNativePeerChild.cc",
+      "sha256": "d25edf02478e97766ae3e6cbec5866cb51ce3145422c85f054cb56436373de1b"
     }
   ],
   "olderNativeSnapshotsArePredecessorsWhereSuperseded": true,
@@ -139,5 +183,13 @@
     "path": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-completion-20261026-a1/combined-palette-capture-settlement-a1/receipt.json",
     "sha256": "0cbb848287897518aab38649aefef8e8ed6f45258597e07ec74dfecdd4a0cd47"
   },
-  "pendingResourceSource": "integration/ordinary-chat/reconnect-run-error: safe failed-task reconnect message; prepared, not activated"
+  "combinedColdInputWorkerUpdateRepair": {
+    "path": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-completion-20261026-a1/combined-cold-input-worker-update-a1/receipt.json",
+    "sha256": "53083968bc6b7f45606c0a29bee637f8efdf1aff8f0bda1886c1152347570fca"
+  },
+  "currentComponentVersion": "1.26.1016.1886",
+  "currentComponentPayloadReceipt": {
+    "path": "/private/tmp/aux-completion-grouped-version-20261026-a2/receipt.json",
+    "sha256": "baa8292d80f36d89514b8f312236057624da2cd36d1e8f48908d9e733495b9a0"
+  }
 }
