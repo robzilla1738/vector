@@ -1,0 +1,73 @@
+{
+  "format": "aux.chatgpt.eligibility-request.source-review.v1",
+  "date": "2026-10-26",
+  "rootSourcePins": [
+    {
+      "path": "vendor/aside/shims/aux-chatgpt.cjs",
+      "sha256": "d41902beb64c7cec87441d28152607efce89e1dc1bce9c909d6fbe7f48b467c3"
+    },
+    {
+      "path": "docs/integration/proposed/completion-20261026/integration/chatgpt-eligibility/current-review.json",
+      "sha256": "683c4e14e84543eae675e1e9d44d0f9a4ce722b90fec96d62428d065f3406c9b"
+    },
+    {
+      "path": "docs/integration/proposed/completion-20261026/integration/chatgpt-eligibility/README.md",
+      "sha256": "95974692e779a438667cf07b68252f97ed2fbbed22d2507506fb35b350893502"
+    },
+    {
+      "path": "services/aux-cloud/app/policy/privacy/page.tsx",
+      "sha256": "133adb57f8cee63568cdff2b771516a4251e1754ad6249bd3a5815cd9b0b0692"
+    },
+    {
+      "path": "services/aux-cloud/app/policy/terms/page.tsx",
+      "sha256": "f307514a18e5347bdf2bb10460c75c048b99d2ee7c00b1b66588c9c26a11eaa0"
+    }
+  ],
+  "officialSources": [
+    {
+      "url": "https://developers.openai.com/siwc/request-client-id",
+      "fetched": true,
+      "documentedFormDestination": "https://openai.com/form/sign-in-with-chatgpt-interest/",
+      "destinationExtractedFrom": "official same-page .md after web tool rejected text/markdown; public GET only",
+      "formDestinationFetched": false,
+      "finding": "Commercial interest/waitlist request route; no guarantee of private plan approval."
+    },
+    {
+      "url": "https://developers.openai.com/siwc/quickstart",
+      "fetched": true,
+      "finding": "Selected commercial partners limited trial; plan usage open-source partners and selected private clients; identity and plan scopes distinct."
+    },
+    {
+      "url": "https://developers.openai.com/siwc/token-sharing-open-source/sign-in",
+      "fetched": true,
+      "finding": "Actual app-name hint, dynamic first registration, issued returning client ID, native loopback PKCE and plan-scope public-client contract; not proof Aux qualifies."
+    }
+  ],
+  "sourceCodeAnchors": {
+    "scopeConstants": "aux-chatgpt.cjs6-10",
+    "hostAndPerAccountStorage": "214-247",
+    "authorizationAndCallback": "274-286,324-345",
+    "identityGrantedScopeValidation": "299-321",
+    "publicResponsesEndpoint": "440-443",
+    "providerRevocation": "394-406"
+  },
+  "outputs": [
+    {
+      "path": "README.md",
+      "sha256": "b9685274961f30d2f4d74a2a9f2e02c092179bb0d4e7bffb02d7a2cea417c6e4"
+    },
+    {
+      "path": "request-draft.md",
+      "sha256": "c8ed6c842f9b9c03d01a497ec9db22f9cd8ba87a3fcdd740ee83bcfc0922c2e6"
+    },
+    {
+      "path": "request.pending.json",
+      "sha256": "e8684ddc78a7b4ae6e2e2ba54602f459cb2bf9d54192cea86d9f5462dd91da20"
+    }
+  ],
+  "researchStoppedAfterDocumentedRequestRouteEstablished": true,
+  "externalSubmission": false,
+  "credentialsOrOwnerStateRead": false,
+  "appOrSourceCodeChanged": false,
+  "signInOrInferenceExecuted": false
+}

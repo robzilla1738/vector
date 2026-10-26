@@ -1,0 +1,69 @@
+{
+  "format": "aux.chatgpt.eligibility-request.pending.v1",
+  "status": "prepared-owner-facts-unconfirmed",
+  "applicationName": "Aux",
+  "agentNameHint": "Aux",
+  "legalOperator": null,
+  "authorizedReplyContact": null,
+  "publicDistributionStatus": "UNCONFIRMED",
+  "commercialStatus": "UNCONFIRMED",
+  "openSourceLicenseAndPublicationRights": "UNCONFIRMED",
+  "intendedDistributionChannel": null,
+  "intendedAudienceAndRollout": null,
+  "existingOpenAIRepresentative": null,
+  "requestedCapability": "Evaluate selected-private eligibility for user-authorized ChatGPT plan usage, distinct from identity-only sign-in",
+  "officialRequestRoute": {
+    "documentation": "https://developers.openai.com/siwc/request-client-id",
+    "linkedForm": "https://openai.com/form/sign-in-with-chatgpt-interest/",
+    "formOpened": false,
+    "fieldSchemaObserved": false,
+    "submitted": false
+  },
+  "intendedDomains": [
+    "getaux.co",
+    "app.getaux.co"
+  ],
+  "privacyURL": "https://app.getaux.co/policy/privacy",
+  "termsURL": "https://app.getaux.co/policy/terms",
+  "publicPolicyApproved": false,
+  "policyHostedActivationAccepted": false,
+  "ownerApprovedSupportingMaterial": null,
+  "currentClientFlow": {
+    "category": "prepared documented open-source native public client; private eligibility unconfirmed",
+    "initialClient": "dynamic_agent_client",
+    "returningClient": "actual issued per-account client ID",
+    "agent_name_hint": "Aux",
+    "redirectPattern": "http://127.0.0.1:<selected-port>/auth/callback",
+    "pkce": "S256",
+    "stateAndNonce": "fresh per attempt",
+    "hostIdentifier": "stable per local host; no real identifier read",
+    "scopes": [
+      "openid",
+      "profile",
+      "email",
+      "offline_access",
+      "resource.invoke",
+      "chatgpt.tokens.use.direct"
+    ],
+    "resource": "https://api.openai.com/v1",
+    "clientSecret": "none in prepared public flow; no private-client contract assumed"
+  },
+  "currentIndependentProviderPath": "BYOK",
+  "separateFundedVerificationBoundary": {
+    "onlyModel": "vercel-ai-gateway/meta/muse-spark-1.3-contributor",
+    "maximumAggregateUSD": 1,
+    "remainingAllowanceAsserted": false,
+    "newCallAuthorized": false
+  },
+  "submissionAuthorized": false,
+  "requestSubmitted": false,
+  "clientRegistered": false,
+  "vendorApprovalRecorded": false,
+  "sourcePublished": false,
+  "credentialsRead": false,
+  "signInExecuted": false,
+  "tokenExchanged": false,
+  "modelRequestExecuted": false,
+  "candidateChanged": false,
+  "A1Accepted": false
+}
