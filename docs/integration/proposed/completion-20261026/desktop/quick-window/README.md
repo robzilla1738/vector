@@ -1,0 +1,7 @@
+# Quick window: edit the actual URL
+
+The integrator opened Cmd+K → Quick window in A38. Its real native field displayed `about:blank`, but accessibility input, actual pointer focus and ordinary keyboard text entry could not replace it. This is a product failure: Chromium constructs popup omniboxes with `popup_window_mode=true`, which marks the field read-only in both `OmniboxViewViews` construction and initialization. Aux's registered Quick window decorator had never changed that default.
+
+This one-file counted overlay makes only the registered Quick window's actual `OmniboxViewViews` editable, with corresponding accessibility state. The decorator still requires the native location bar and a registered preview owned by the actual browser. It retains Chromium's original URL/security formatter, autocomplete and navigation controller. It does not substitute an address input, navigate on the user's behalf or alter ordinary popup/Peek behavior, CSS or layout.
+
+`source-plan.json` pins the actual source and both replacement counts; `native.patch` applies cleanly to the pinned native tree. Root owns compilation/projection. Actual acceptance: create Quick window, type/commit a local or HTTPS URL in its genuine native field, navigate Back, then promote to the same-profile main window. Failed promotion must leave the Quick window usable. This source correction does not claim that journey has passed.

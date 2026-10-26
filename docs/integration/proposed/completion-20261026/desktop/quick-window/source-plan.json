@@ -1,0 +1,25 @@
+{
+  "format": "aux.native.counted-projection.v1",
+  "nativeRoot": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src",
+  "files": [
+    {
+      "path": "chrome/browser/ui/aux_preview/aux_preview_controls.cc",
+      "inputSha256": "f4cd9468e7eb9f6122c3c3fdf0040a3493733c6c163de42f16085c667c1b89e3",
+      "outputSha256": "10ac17a09a6bce4a7aceb4dbf84e0c1eb42ccc662ad58ea4d840e72881a23dc5",
+      "anchors": [
+        {
+          "name": "real native omnibox definition",
+          "before": "#include \"chrome/browser/ui/views/toolbar/toolbar_view.h\"",
+          "after": "#include \"chrome/browser/ui/views/toolbar/toolbar_view.h\"\n#include \"chrome/browser/ui/views/omnibox/omnibox_view_views.h\"",
+          "expectedCount": 1
+        },
+        {
+          "name": "only registered Quick windows have an editable native location field",
+          "before": "  if (!toolbar || !toolbar->location_bar()) return false;\n  // TYPE_POPUP uses",
+          "after": "  auto* location = toolbar ? toolbar->location_bar_view() : nullptr;\n  if (!location || !location->omnibox_view()) return false;\n  if (GetKind(browser) == Kind::kQuick) {\n    // Chromium popup location bars are read-only by default. A registered\n    // Quick window is a small browser and keeps the actual omnibox editor.\n    auto* omnibox = location->omnibox_view();\n    omnibox->SetReadOnly(false);\n    omnibox->GetViewAccessibility().SetReadOnly(false);\n    omnibox->GetViewAccessibility().SetIsEditable(true);\n  }\n  // TYPE_POPUP uses",
+          "expectedCount": 1
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,28 @@
+--- a/chrome/browser/ui/aux_preview/aux_preview_controls.cc
++++ b/chrome/browser/ui/aux_preview/aux_preview_controls.cc
+@@ -13,6 +13,7 @@
+ #include "chrome/browser/ui/views/frame/browser_view.h"
+ #include "chrome/browser/ui/views/toolbar/toolbar_button.h"
+ #include "chrome/browser/ui/views/toolbar/toolbar_view.h"
++#include "chrome/browser/ui/views/omnibox/omnibox_view_views.h"
+ #include "components/vector_icons/vector_icons.h"
+ #include "content/public/browser/web_contents.h"
+ #include "content/public/browser/web_contents_observer.h"
+@@ -118,7 +119,16 @@
+     return false;
+   auto* view = BrowserView::GetBrowserViewForBrowser(browser);
+   auto* toolbar = view ? view->toolbar() : nullptr;
+-  if (!toolbar || !toolbar->location_bar()) return false;
++  auto* location = toolbar ? toolbar->location_bar_view() : nullptr;
++  if (!location || !location->omnibox_view()) return false;
++  if (GetKind(browser) == Kind::kQuick) {
++    // Chromium popup location bars are read-only by default. A registered
++    // Quick window is a small browser and keeps the actual omnibox editor.
++    auto* omnibox = location->omnibox_view();
++    omnibox->SetReadOnly(false);
++    omnibox->GetViewAccessibility().SetReadOnly(false);
++    omnibox->GetViewAccessibility().SetIsEditable(true);
++  }
+   // TYPE_POPUP uses the existing location-bar FlexLayout. The real location
+   // input/security model remains in place; only native siblings are added.
+   auto* controls = toolbar->AddChildViewAt(std::make_unique<Controls>(browser), 0);
