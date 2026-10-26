@@ -437,5 +437,27 @@
     "candidateMutation": false,
     "stateInitialization": false,
     "runtimeAcceptance": false
-  }
+  },
+  "compileHeaders": {
+    "pdf-lifetime": {
+      "snapshot": "source/AuxLoadedPdfLifetime.h",
+      "sha256": "8a02f4893640e4c0ff2edfc948c5c1ab8beed058a2cb9ca8812a509c3a5dc62c"
+    },
+    "utility-lifetime": {
+      "snapshot": "source/AuxLoadedUtilityLifetime.h",
+      "sha256": "15e686a79cb8aaca29da83ec45558d2d9e9b45e336661691c68d95d95d12e373"
+    }
+  },
+  "nativeDependencyEvidence": {
+    "chrome/browser/aux/BUILD.gn": {
+      "sha256": "3481a445ba09d9ed7c135786b9e0bce9be1f5cbff2ad7a7556ae63069096b339",
+      "actualPath": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/aux/BUILD.gn"
+    },
+    "chrome/browser/aux/native_peer_policy/BUILD.gn": {
+      "sha256": "69f2f6be74bfcf3a214323854ef34e209d4e4c139122a4f20b71fb89026679cf",
+      "actualPath": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/aux/native_peer_policy/BUILD.gn"
+    }
+  },
+  "cliRelinkRequired": false,
+  "cliDependencyFinding": "native_cli_open -> native_cli_ingress only; SDK-only ingress has no platform or aux_parent_sealed_policy dependency. platform -> native_peer_policy:aux_parent_sealed_policy."
 }

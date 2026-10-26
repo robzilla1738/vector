@@ -1,12 +1,14 @@
 {
   "format": "aux.two-addon.local-signing-review-pins.v1",
   "files": {
-    "README.md": "6db52b2bd329972625783cabb8f0ee1d434438b451413e4fb4d64dfcb91ec544",
+    "README.md": "1f935c064d983f1995459b1aa9e2e9e1ba7c7284ad58fd2dcf3414e925661c8e",
     "daemon-link-preimage.json": "1d11690faea880109ab0cf19905040154ae93afae07c0615f7c5f0f3a231a096",
     "lifetime-build-preimage.json": "70659c56cd92ed4300b9d75018afed152111d85d1709dde7e311ecd2691268c6",
     "policy-preimage.json": "0ea7e93e94de7f07006aa4389fa842acb61bc50a37d682941a8d2dcf8e837b65",
-    "prepare-signed-successor.py": "3a482a733017f5a74c7a7b0b4d7a2b3ffce4762b511d15bb55606a4211cb959c",
-    "review.json": "e7690ab8624742cbd504c58af42a6dc0c6d4be4f6aa5c6f5ad55d7325c27accf",
+    "prepare-signed-successor.py": "c14b6789b40e68ae9823d8af1cb84df5f94121c301768b5816ac5f785f593ac2",
+    "review.json": "5138937e149f3ff805f70ed92e552b7cc444e2d8e697d0d5c82582f20695b037",
+    "source/AuxLoadedPdfLifetime.h": "8a02f4893640e4c0ff2edfc948c5c1ab8beed058a2cb9ca8812a509c3a5dc62c",
+    "source/AuxLoadedUtilityLifetime.h": "15e686a79cb8aaca29da83ec45558d2d9e9b45e336661691c68d95d95d12e373",
     "source/browser-policy.swift": "08a2753ef4e562489a6e74d03c5655dc1175a562de9d059e033fe4afa7326503",
     "source/daemon-policy.swift": "ebb3f695e41660c3d9d9a9083337845a23e8d777570cbed5088fa6e2128b2b53",
     "source/pdf-lifetime.cc": "00cada6c718a284fe384873aa5f071b165e7b5e79f5b687b30aa22466ab95383",

@@ -137,6 +137,11 @@ def main():
         if digest(raw) != pin['sha256']:
             raise ValueError('Build recipe preimage changed')
         recipes[role] = json.loads(raw)
+    for pin in review['compileHeaders'].values():
+        header = (here / pin['snapshot']).read_bytes()
+        if digest(header) != pin['sha256']:
+            raise ValueError('Lifetime header preimage changed')
+        (source_output / Path(pin['snapshot']).name).write_bytes(header)
     build_dir = args.output / 'build'
     commands = []
     objects = {}
