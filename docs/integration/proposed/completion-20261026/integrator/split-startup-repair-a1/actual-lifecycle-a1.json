@@ -1,0 +1,50 @@
+{
+  "format": "aux.completion.actual-lifecycle.v1",
+  "recordedAtUtc": "2026-10-26T19:48:54.888212+00:00",
+  "candidateInventorySha256": "fdb77a4ba9557a42cd79df61cacf60fb3415dd93890ffdc1864bb5350cbb07f7",
+  "browserPid": 46773,
+  "daemonPid": 46845,
+  "launch": "direct app executable --use-mock-keychain; no workspace launcher",
+  "windowObserved": true,
+  "recovery": "Restore pages prompt accepted; restored window observed",
+  "ui": {
+    "General": "Current version v1.26.1016.1852. Running normally.",
+    "Memory": "Running normal;100%;10chunks"
+  },
+  "initialTransientLogs": [
+    "local service connection error",
+    "memory owner unavailable; later actual normal status"
+  ],
+  "quit": "Aux menu > Quit Aux",
+  "browserExitCode": 0,
+  "daemonShutdownLog": "all broker stages settled, operationFailure=false, lifetimeFailure=false, daemon.exit",
+  "browserAndDaemonAbsent": true,
+  "crashpadHandlers": {
+    "pids": [
+      46929,
+      46931
+    ],
+    "delayedExitObserved": true,
+    "signalsSent": []
+  },
+  "externalExtensionPrompt": "PrinterLogic installation prompt dismissed with Escape; not enabled",
+  "modelCalls": 0,
+  "cookieKeyEvidence": "mock only; production-style external acceptance remains open",
+  "reopen": {
+    "browserPid": 47853,
+    "daemonPid": 48116,
+    "sameCandidate": true,
+    "windowObserved": true,
+    "restoredSettingsTab": true,
+    "recoveryPromptAbsent": true,
+    "General": "Current version v1.26.1016.1852. Running normally.",
+    "Memory": "Running normal;100%;10chunks",
+    "transientAuthorizationError": true,
+    "eventuallyRecoveredWithoutRestart": true,
+    "slowReadinessUsabilityFollowup": true
+  },
+  "log": {
+    "path": "/Users/rcourson/Documents/Vibe/web/out/completion-resume-20261026/startup-3.log",
+    "sha256": "a73150884f904ff59a680d382c66c3038891cf667f327c8bc70786518005d886"
+  }
+}

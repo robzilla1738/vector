@@ -15,7 +15,7 @@ Main resumed from `ffea39476`. A38 remains the broader accepted predecessor. Sig
 
 | Outcome | State / evidence | Remaining action | Owner |
 |---|---|---|---|
-| Combined startup and shutdown | Actual diagnostic identified pre-tab split-menu crash; two-file lazy/current-menu repair compiles and full browser link passes; exact log/stack in integrator/startup-resume-a1 | Repair demonstrated empty-tab construction defect; normal window/ready daemon/clean Quit/reopen | Integrator |
+| Combined startup and shutdown | Two-file split-menu repair accepted: actual window, ready service/Memory100%, normal Quit browser0/settled daemon and unforced helper exit, same-candidate reopen ready | Batch1 checkpoint passed; slow transient startup authorization recovery retained as usability follow-up | Integrator |
 | Desktop scope and fidelity | Joined-source audit found no demonstrated missing desktop connection; finite six-group fixture/recipe committed; successor unaccepted | Reconcile actual joined R01–R19/R21–R30, fix concrete gaps, run grouped journeys | Desktop worker / integrator |
 | BYOK/context/files/memory/tools | Lazy chat and scoped transfers joined; inference not accepted | Real content/tool/context/cancel/restart; memory search; new owner-authorized Muse-only run under agent-imposed additional $1 ceiling | Integration worker / integrator |
 | General execution | All twelve FS methods and scratch/CLI lifetime composition complete; four producer objects, paired parent policy and unsigned daemon link pass (`runtime/future-supervised-build/integration-delta.json`) | Carry final startup correction forward; paired browser integration and activation remain gated | Runtime worker |

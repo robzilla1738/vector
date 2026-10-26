@@ -4,6 +4,8 @@ Owner approved the two-milestone completion plan: finish the combined local desk
 
 The resume diagnostic successor is signed within the original framework/outer repair scope; all unrelated package leaves and signed addons are preserved. Its actual launch passed authorization, then crashed in `SplitTabMenuModel::GetSplitTabId` while constructing the toolbar before tabs exist (browser exit139). Both browser and daemon subsequently exited without signals; this is not clean Quit acceptance. The conditional startup-timeout proposal remains inactive. Required execution source now has twelve filesystem methods, four compiled producers, a paired parent-policy object and a coherent unsigned daemon link; activation remains gated. Hosted readiness changes pass focused checks, and prepared legal/contact drafts now use the owner-confirmed Courson Digital LLC and hello@getaux.co.
 
+The split-menu crash is repaired in the existing two native consumers. Current signed inventory `fdb77a4ba9557a42cd79df61cacf60fb3415dd93890ffdc1864bb5350cbb07f7` opens a real window; supplied General and Memory show ready/normal,100%,10chunks. Native menu Quit completes all broker stages with browser exit0 and eventual unforced crashpad exit. Reopen restores the tab list and settings and reaches the same normal state; transient slow installation authorization recovery remains a usability follow-up. Batch1 is accepted within the approved mock-cookie/disposable scope; full local feature acceptance remains open. The owner separately authorized continued Muse-only Gateway checks; an additional $1 agent ceiling is recorded without credentials.
+
 Earlier pause/status entries below remain historical.
 
 # Paused at owner request — 2026-10-26
