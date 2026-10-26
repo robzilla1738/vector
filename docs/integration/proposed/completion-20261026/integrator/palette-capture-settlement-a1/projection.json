@@ -1,0 +1,19 @@
+{
+  "format": "aux.palette-capture-settlement.projection.v1",
+  "source": {
+    "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/desktop/palette-document-recovery/source/chrome/browser/ui/views/frame/aux_tab_search_bubble.cc",
+    "sha256": "715ca201fc7ffc441c41a0a382428498c88c3bfc17ff947fc34559a7b39ea429"
+  },
+  "nativePath": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/ui/views/frame/aux_tab_search_bubble.cc",
+  "objectBuild": {
+    "session": 92406,
+    "exitCode": 0,
+    "log": {
+      "path": "/Users/rcourson/Documents/Vibe/web/out/completion-resume-20261026/palette-recovery-object.log",
+      "sha256": "93ba8abaacc05d729dd1de90e7c153644e13441c208c7a90563b8ec4ffed3441"
+    }
+  },
+  "combinedBuildSession": 94864,
+  "combinedBuildPending": true,
+  "appModified": false
+}

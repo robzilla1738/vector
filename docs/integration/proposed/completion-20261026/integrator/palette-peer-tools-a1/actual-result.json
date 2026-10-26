@@ -78,6 +78,17 @@
   "selectedPaneTools": {
     "devtools": "Alpha right pane selected; CmdOptI docks inspector in right pane; stylesheet source alpha:2, Beta remains separate",
     "capture": "Take screenshot opened supplied toolbar in selectedAlpha; Fullpage Capture refused with Supervised task execution is disabled in this browser build",
-    "captureAccepted": false
+    "captureAccepted": false,
+    "viewportCapture": "actual preview showed selected narrow Alpha pane alone, without Beta or browser/sidebar chrome"
+  },
+  "bookmarks": "CmdD Alpha, Done; Aux Alpha link appeared in sidebar",
+  "quit": {
+    "browserExitCode": 0,
+    "allCandidateProcessesSettledUnforced": true,
+    "clean": false,
+    "reason": "settled browser action rejection latched operationFailure; missed native shutdown deadline",
+    "operations": 0,
+    "lifetimes": 0,
+    "lifetimeFailure": false
   }
 }
