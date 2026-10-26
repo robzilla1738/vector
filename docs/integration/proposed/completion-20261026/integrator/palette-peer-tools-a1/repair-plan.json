@@ -1,0 +1,78 @@
+{
+  "format": "aux.combined-product.same-scope-repair.v1",
+  "app": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-completion-20261026-a1/Aux.app",
+  "approvedReviewSha256": "20572af30ef6613f1fc8bced01edada6d52f4b3f7c1f21dd97fb610ec2b257f2",
+  "executor": {
+    "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/integrator/combined-product-repair/repair-combined.py",
+    "sha256": "9feee9135eca163138f7931366ceca25f775738b3cd4d4b7ba32fd732874fe27"
+  },
+  "signedReceipt": {
+    "path": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-completion-20261026-a1/browser-sidebar-files-url-a1/receipt.json",
+    "sha256": "b4742ce9110e18f61a3988a7bad9b7942de4edb32388de0cf08944038e4c2f36"
+  },
+  "replacements": [
+    {
+      "target": "Contents/Frameworks/Aux Framework.framework/Versions/155.0.8059.85/Aux Framework",
+      "input": {
+        "path": "/Users/rcourson/Documents/Vibe/web/out/completion-resume-20261026/Aux Framework-palette-peer-tools",
+        "sha256": "66f949ce0031717e2bc4c9cafaf6aa5e49ec1a51e7e410391beb2a7983664fb4"
+      },
+      "beforeSha256": "9f10916d113813df93c7b7f3712fcda7fc58425653343128e8ace9aca0a1156f"
+    },
+    {
+      "target": "Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/node-development/index.mjs",
+      "input": {
+        "path": "/private/tmp/aux-direct-fixed-dispatch-20261026-a2/index.mjs",
+        "sha256": "198ad50c850b7dc0825aa2cc37e754c0a0f07d07df5430faba2c68c21e0742ef"
+      },
+      "beforeSha256": "53b114cbd2380c9c1fa2101cc9a607c91e5ceb05fcd1955f123b6c54ca5598f9"
+    },
+    {
+      "target": "Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/node-development/aux-native-entry.mjs",
+      "input": {
+        "path": "/private/tmp/aux-direct-fixed-dispatch-20261026-a2/aux-native-entry.mjs",
+        "sha256": "30b38b312dfe43b3c0642bbcc512a06e0c64188c649d6529dc3019d198165c03"
+      },
+      "beforeSha256": "487fc201fc8b97675e4ed1f6224a4f7f2e71acb8f1cbba56a343e6ca3b1fa4a4"
+    },
+    {
+      "target": "Contents/Resources/aux/apps/extension/dist/assets/tabsearch-3k_2hgil.js",
+      "input": {
+        "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/desktop/palette-invocation/source/assets/tabsearch-3k_2hgil.js",
+        "sha256": "8e972848d18bb6862abdada0a3787ee38103b21c2126081f808c5c014d70ec4a"
+      },
+      "beforeSha256": "c9910b8c10b64f62db048a95d6f2ab003572fd9585b089ef8daa84ec1d446c25"
+    }
+  ],
+  "sourceEvidence": [
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/integrator/palette-peer-tools-a1/build-receipt.json",
+      "sha256": "ddb4d7f0ef3b12b923a93062638c491e38373e88e62eaf08ca6beec6d188331d"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/integrator/palette-peer-tools-a1/projection.json",
+      "sha256": "bd730f73218ce04b1d1f8bf990ecdab87bb370c90da9195bb356cc9e0950f136"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/desktop/palette-invocation/source-plan.json",
+      "sha256": "9b46bc21f9823e3cede8f94ec199a6303485d84669ddab078c8c61ef0971e0db"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/desktop/palette-invocation/renderer-transform.mjs",
+      "sha256": "9ac2beee45470430573e96bd06fe9c560068aa1bebbd28314f9255e4f00b19b6"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/integration/ordinary-chat/direct-fixed-dispatch/proposal.json",
+      "sha256": "1112a363e0442b9daf6e9bc346339471af90ecd34b0a18cd869c64b1802f1b9b"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/integration/ordinary-chat/direct-fixed-dispatch/direct.js",
+      "sha256": "f36b500c569ffc558353ce41e61dda84feb3141fa0b3c1cb2cfd33de33a980b9"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/runtime/peer-reply-recovery/plan.json",
+      "sha256": "6be61bc27593d3223581409f2a91971e405a32cbb532cdfa41246b6d20c40047"
+    }
+  ],
+  "receiptDirectory": "combined-palette-peer-tools-a1"
+}

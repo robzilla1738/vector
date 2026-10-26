@@ -1,7 +1,7 @@
 {
   "format": "aux.completion.current-source-selection.v1",
   "candidate": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-completion-20261026-a1/Aux.app",
-  "signedInventorySha256": "b25fffff738f10eafeb97161cf372c9616a03feb056f9ac4ebe3bc6f5c3866a7",
+  "signedInventorySha256": "6ea71ddc179d3c12f2b7023746d4e54cf9b10de4c8f0bb6f5e14a6852b8862c4",
   "sourceSnapshots": [
     {
       "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/runtime/addon-local-signing-review/actual-signed-source-a1/source/daemon-policy.swift",
@@ -100,11 +100,40 @@
     {
       "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/desktop/resting-full-url/source/chrome/browser/ui/views/location_bar/location_bar_view.cc",
       "sha256": "6aa4ae321848fdaad974f2b60a7dd6452045ea87dd242c6d9c06988b767eeec8"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/desktop/palette-invocation/source/chrome/browser/ui/views/frame/aux_tab_search_bubble.cc",
+      "sha256": "9add062c4f459750dc52945c2aa075560ab1c71d423bf0f0377176563e18fe4d"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/desktop/palette-observation/source/chrome/browser/extensions/api/aux_browser_preferences/aux_feature_expansion_api.cc",
+      "sha256": "e090ace177c520e3cbd3a3e58738242669398725998c5b7f9b10067d323fe9a1"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/runtime/peer-reply-recovery/source/AuxNativePeerTransport.cc",
+      "sha256": "8ced5b9206e062f63e67444f71d1d4624a0b93dbaa3f3cfe584f53d7ea763b1d"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/desktop/palette-invocation/source/chrome/common/extensions/api/aux_browser_preferences.json",
+      "sha256": "3c4bf3c4ff38b9fd726d615c5e347fe465c48f3e87222c74684f4be188b8921b"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/desktop/palette-invocation/source/extensions/browser/extension_event_histogram_value.h",
+      "sha256": "306fa70ef50b9c1a567f4448aeba76762993e1c5bb88455e86c897a7490da04c"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/desktop/palette-invocation/source/tools/metrics/histograms/metadata/extensions/enums.xml",
+      "sha256": "8183d534f9c5ec132546234489842cde96d1606c72f3be667885b3b058d63bcb"
     }
   ],
   "olderNativeSnapshotsArePredecessorsWhereSuperseded": true,
   "browserSidebarFilesUrlRepair": {
     "path": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-completion-20261026-a1/browser-sidebar-files-url-a1/receipt.json",
     "sha256": "b4742ce9110e18f61a3988a7bad9b7942de4edb32388de0cf08944038e4c2f36"
-  }
+  },
+  "combinedPalettePeerToolsRepair": {
+    "path": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-completion-20261026-a1/combined-palette-peer-tools-a1/receipt.json",
+    "sha256": "5cf59fcd25c782e2a97793e35eb0dcdaa428e1fd04b3dea2f9664f3c9ade69e1"
+  },
+  "pendingNativeSource": "desktop/palette-document-recovery: conditional failed-document reload; not compiled or activated"
 }
