@@ -1,0 +1,25 @@
+{
+  "format": "aux.native-auth-terminal-session-retry.v1",
+  "nativeRoot": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src",
+  "files": [
+    {
+      "path": "chrome/browser/aux/daemon_supervisor.cc",
+      "inputSha256": "9c3aab2e4bd56e2986ce2d1abf00135ce7fa7a0b6f4bdf321259848eb2cefc01",
+      "source": "docs/integration/proposed/browser-feature-expansion/local-completion-package-a38/disposable-location-review-a4/browser-auth-session-retry-a14/source/chrome/browser/aux/daemon_supervisor.cc",
+      "outputSha256": "f8135e794b64300d480cabeeb8bd3b4969710dad76d82ea7abb704b71f012f39",
+      "anchors": [
+        {
+          "find": "    authorization_.clear();\n    SetState(State::kFailed, \"Daemon installation authorization failed\");\n    return;\n",
+          "replace": "    authorization_.clear();\n    if (adopted_native_child_ && !native_sign_inflight_ &&\n        native_completed_signature_) {\n      // This callback is the terminal HTTP session exchange after native\n      // signing completed. The server consumes its challenge before issuing a\n      // token, so a lost/rejected response cannot replay that completed proof.\n      // Pending native signing retries keep their exact nonce/body unchanged.\n      native_challenge_id_.reset();\n      native_challenge_.reset();\n      native_completed_signature_.reset();\n    }\n    SetState(State::kFailed, \"Daemon installation authorization failed\");\n    return;\n",
+          "count": 1
+        }
+      ]
+    }
+  ],
+  "terminalSessionFailureOnly": true,
+  "completedNativeSignatureRequired": true,
+  "pendingNativeSigningUnchanged": true,
+  "signatureVerificationTtlAuthorizationUnchanged": true,
+  "productExecuted": false,
+  "productSigned": false
+}

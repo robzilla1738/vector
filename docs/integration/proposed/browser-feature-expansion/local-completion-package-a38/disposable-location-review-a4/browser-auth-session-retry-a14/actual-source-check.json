@@ -1,0 +1,18 @@
+{
+  "format": "aux.native-auth-terminal-session-source-check.v1",
+  "passed": true,
+  "singleCountForwardReverseExact": true,
+  "unchangedMethods": [
+    "Authenticate",
+    "DidReadChallenge",
+    "ObserveNativeSignature",
+    "DidObserveNativeSignature",
+    "DidSignChallenge",
+    "RequestAuthorization"
+  ],
+  "successfulSessionParsingAndAuthorizationUnchanged": true,
+  "noPendingNativeOperationReplacement": true,
+  "terminalCompletedSessionFailureOnly": true,
+  "productExecuted": false,
+  "nativeTreeMutated": false
+}

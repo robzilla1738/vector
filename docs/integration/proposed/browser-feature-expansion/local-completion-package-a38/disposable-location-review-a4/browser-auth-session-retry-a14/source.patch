@@ -1,0 +1,19 @@
+--- a/chrome/browser/aux/daemon_supervisor.cc
++++ b/chrome/browser/aux/daemon_supervisor.cc
+@@ -586,6 +586,16 @@
+   if (!type || *type != "AuxDaemonSessionToken" || !token || token->empty() ||
+       !seconds || *seconds <= 0) {
+     authorization_.clear();
++    if (adopted_native_child_ && !native_sign_inflight_ &&
++        native_completed_signature_) {
++      // This callback is the terminal HTTP session exchange after native
++      // signing completed. The server consumes its challenge before issuing a
++      // token, so a lost/rejected response cannot replay that completed proof.
++      // Pending native signing retries keep their exact nonce/body unchanged.
++      native_challenge_id_.reset();
++      native_challenge_.reset();
++      native_completed_signature_.reset();
++    }
+     SetState(State::kFailed, "Daemon installation authorization failed");
+     return;
+   }
