@@ -1,33 +1,40 @@
 {
-  "contentCommit": "1bb06e36e",
   "files": [
     {
       "source": "/Users/rcourson/Documents/Vibe/aux-completion-20261026/integration/docs/integration/proposed/completion-20261026/integration/product-information/docs.md",
       "sourceSha256": "457ae1486848581db59902b46931129cae55d6a869194ad7adba22ad4359e76d",
       "route": "/docs",
       "path": "services/aux-cloud/app/docs/page.tsx",
-      "outputSha256": "9df8551dcf1628deb0d9c1aac6787d4a09703fd475dd595509eb4ec2d6ef42fd"
+      "outputSha256": "9df8551dcf1628deb0d9c1aac6787d4a09703fd475dd595509eb4ec2d6ef42fd",
+      "contentCommit": "1bb06e36e"
     },
     {
       "source": "/Users/rcourson/Documents/Vibe/aux-completion-20261026/integration/docs/integration/proposed/completion-20261026/integration/product-information/community.md",
-      "sourceSha256": "52836bda44e364ff6a546551ad1d80ca2f50bdf7a2d9a791a00615a52849ab87",
+      "sourceSha256": "77c7a1d5077f59e39b03757cb6ef286d57e4299276bfb98ce386844daf742222",
       "route": "/community",
       "path": "services/aux-cloud/app/community/page.tsx",
-      "outputSha256": "9c10a6836d751685588d7688ea7b2e90bd6b2a3cb071026ae3b17618f1962de7"
+      "outputSha256": "2301b4335dbb9219dcb53854c949627dc258815f53202facfece23a90bd9cb98",
+      "contentCommit": "65758a921"
     },
     {
       "source": "/Users/rcourson/Documents/Vibe/aux-completion-20261026/integration/docs/integration/proposed/completion-20261026/integration/product-information/privacy.md",
-      "sourceSha256": "766b7a3509461c2c8604dfd31601042e4064846a248ac9d0d34572cfe1aa8b37",
+      "sourceSha256": "fe7a20f9c49332e71e47d047b16228c25d08184f82fb3ce41d1128c97b0c53aa",
       "route": "/policy/privacy",
       "path": "services/aux-cloud/app/policy/privacy/page.tsx",
-      "outputSha256": "41a1f77cb3a4f7142e33a429fd47c7abfaff54ea2a44a16b43c1c4749e709a10"
+      "outputSha256": "133adb57f8cee63568cdff2b771516a4251e1754ad6249bd3a5815cd9b0b0692",
+      "contentCommit": "65758a921"
     },
     {
       "source": "/Users/rcourson/Documents/Vibe/aux-completion-20261026/integration/docs/integration/proposed/completion-20261026/integration/product-information/terms.md",
       "sourceSha256": "7f1648f60659da3cc098a066227d8d0483bad829ff57c5592d0bc43b586b67ec",
       "route": "/policy/terms",
       "path": "services/aux-cloud/app/policy/terms/page.tsx",
-      "outputSha256": "f307514a18e5347bdf2bb10460c75c048b99d2ee7c00b1b66588c9c26a11eaa0"
+      "outputSha256": "f307514a18e5347bdf2bb10460c75c048b99d2ee7c00b1b66588c9c26a11eaa0",
+      "contentCommit": "1bb06e36e"
     }
+  ],
+  "contentCommits": [
+    "1bb06e36e",
+    "65758a921"
   ]
 }
