@@ -8,7 +8,9 @@
     "serviceTree": "57dc5bd7721815d695d94a5b8ab70d6b3fa929da",
     "lastServiceCommit": "5283f9ea072ec4983ff67de5253c3c2d5872bb26",
     "manifestFileSha256": "7d452e13d873f9c2b08efc5eab12c928d942e846f667be4938aa519740d89f10",
-    "migrations": 12
+    "migrations": 12,
+    "historicalReviewSnapshot": true,
+    "refreshRequiredAfterIntegratedInformationRoutes": true
   },
   "c1": {
     "recipientConfiguration": "configuration.json",
@@ -36,7 +38,8 @@
     "maximumGeneratedObjectBytes": 10485760,
     "allowPaidInference": false,
     "allowPayments": false,
-    "webhook": "existing ep_3L5p7Z0hZJXXnNLt5eflPCCJ1uy only; fixture events only"
+    "webhook": "existing ep_3L5p7Z0hZJXXnNLt5eflPCCJ1uy only; fixture events only",
+    "configurationCorrection": "All six previously omitted required names confirmed present in Production-filtered dashboard. No credential restoration proposed; public values/pairing/behavior unverified."
   },
   "o1": {
     "proposedProvider": "DigitalOcean",

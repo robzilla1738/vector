@@ -10,7 +10,17 @@
   },
   "latestRecordedMetadata": {
     "date": "2026-10-26",
-    "missingRequiredNames": [
+    "publicValuesUnverified": [
+      "AUX_ALLOWED_ORIGINS",
+      "CLERK_AUTHORIZED_PARTIES",
+      "NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY",
+      "NEXT_PUBLIC_APP_URL",
+      "AUX_API_ORIGIN",
+      "RESEND_FROM"
+    ],
+    "metadataResponseTruncated": true,
+    "providerSecretPairingVerified": false,
+    "historicalIncompleteResponseOmittedNames": [
       "CLERK_SECRET_KEY",
       "NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY",
       "NEXT_PUBLIC_APP_URL",
@@ -18,12 +28,17 @@
       "RESEND_API_KEY",
       "RESEND_FROM"
     ],
-    "publicValuesUnverified": [
-      "AUX_ALLOWED_ORIGINS",
-      "CLERK_AUTHORIZED_PARTIES"
+    "missingNamesConclusionSuperseded": true,
+    "supersededBy": "October26 root Production-filtered Vercel dashboard inventory: all six names present; no values revealed or changed.",
+    "requiredNamesConfirmedPresent": [
+      "CLERK_SECRET_KEY",
+      "NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY",
+      "NEXT_PUBLIC_APP_URL",
+      "AUX_API_ORIGIN",
+      "RESEND_API_KEY",
+      "RESEND_FROM"
     ],
-    "metadataResponseTruncated": true,
-    "providerSecretPairingVerified": false
+    "credentialRestorationNeeded": false
   },
   "proposedPublicValues": {
     "NEXT_PUBLIC_APP_URL": "https://app.getaux.co",
@@ -42,7 +57,7 @@
     "requiredPrefix": "pk_live_",
     "expectedFrontendHost": "clerk.getaux.co",
     "destinationType": "plain",
-    "status": "missing; owner copies actual matching public key directly in Vercel form"
+    "status": "present in Production; actual value and instance pairing unverified, no replacement proposed"
   },
   "secretFields": [
     {
@@ -50,7 +65,7 @@
       "destinationType": "sensitive",
       "productionOnly": true,
       "valueIncluded": false,
-      "action": "Owner transfers existing matching Aux Production backend key from exact instance; do not substitute a development key."
+      "action": "Preserve existing Production secret; verify actual exact-instance pairing without revealing, replacing or transferring the key merely because the old API response omitted its name."
     },
     {
       "name": "CLERK_WEBHOOK_SIGNING_SECRET",
@@ -64,7 +79,7 @@
       "destinationType": "sensitive",
       "productionOnly": true,
       "valueIncluded": false,
-      "action": "Restore existing production sending-only credential restricted to notify.getaux.co; no mailbox-read/domain-admin grant."
+      "action": "Preserve existing Production key; verify sending-only notify.getaux.co pairing through approved behavior, without revealing or restoring a key merely because old metadata omitted it."
     },
     {
       "name": "DATABASE_URL",
@@ -112,5 +127,6 @@
     "productionEnvironment": "tgl4lxfw5ang6pgluyjrop3ncu",
     "recoveryEnvironment": "tiqx3r27nvdpnhpldrrbugximu",
     "generalVaultTokenToRunner": false
-  }
+  },
+  "configurationStatus": "All six earlier omitted names present; nonsecret public values, credential pairing and actual behavior remain unverified."
 }
