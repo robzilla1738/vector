@@ -20,6 +20,8 @@ ATTACHMENTS = {
     '/files/first/notes.txt': ('text/plain', FILES / 'first/notes.txt'),
     '/files/second/notes.txt': ('text/plain', FILES / 'second/notes.txt'),
     '/files/image.png': ('image/png', FILES / 'image.png'),
+    '/files/document.pdf': ('application/pdf', FILES / 'document.pdf'),
+    '/files/image.heic': ('image/heic', FILES / 'image.heic'),
 }
 NAV = b'''<nav><a href="/alpha">Alpha</a> | <a href="/beta">Beta</a> |
 <a href="/gamma">Gamma</a> | <a href="/delta">Delta</a> |
@@ -27,7 +29,9 @@ NAV = b'''<nav><a href="/alpha">Alpha</a> | <a href="/beta">Beta</a> |
 <a href="/media">Synthetic video</a></nav>
 <p><a href="/files/first/notes.txt" download>First notes.txt</a> |
 <a href="/files/second/notes.txt" download>Different notes.txt</a> |
-<a href="/files/image.png" download>Image fixture</a></p>'''
+<a href="/files/image.png" download>PNG fixture</a> |
+<a href="/files/document.pdf" download>PDF text fixture</a> |
+<a href="/files/image.heic" download>HEIC fixture</a></p>'''
 PROTECTED = b'''<h2>Protected work</h2><label>Unsaved text <input id="unsaved"></label>
 <button id="commit">Mark saved</button><p id="dirty" role="status">Saved</p>
 <script>

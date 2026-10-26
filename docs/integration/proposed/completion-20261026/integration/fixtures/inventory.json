@@ -15,6 +15,16 @@
       "path": "second/notes.txt",
       "size": 102,
       "sha256": "b93cbf45466b7f728011ad66355f788e8254e5927c867d5cbb8aa27d38b8ad6f"
+    },
+    {
+      "path": "document.pdf",
+      "size": 660,
+      "sha256": "9f8103f95cdf6771537022cfdc6c401eed9e9d486f6989d420ac0f7eeab14a8a"
+    },
+    {
+      "path": "image.heic",
+      "size": 520,
+      "sha256": "4891c715255d57effd1d4b4cc092ace96a2a36599c2ecb792e35b572c9f15cf7"
     }
   ],
   "personalData": false

@@ -1,0 +1,37 @@
+{
+  "format": "aux.synthetic-format-fixtures.v1",
+  "generatorSha256": "d75ed6c3cfabc0115a672dda100974723ccc2ac8a271dfa38dc206032fd71a5c",
+  "pdf": {
+    "version": "1.4",
+    "pages": 1,
+    "text": [
+      "AUX_PDF_TEXT_CEDAR_742",
+      "Second marker: VIOLET_RIVER_319"
+    ]
+  },
+  "heic": {
+    "format": "heic",
+    "width": 96,
+    "height": 64,
+    "appearance": "Green left half, violet right half, white square near top-left",
+    "sourcePngSha256": "affbcd0ae56c13bd2f963e99d3c66c613f1a3fe6758123294f2064e860bdd000",
+    "encoder": "macOS /usr/bin/sips -s format heic",
+    "encoderVersion": "sips-316",
+    "reproduction": "Deterministic generated source pixels and PDF; HEIC byte encoding may depend on macOS codec version."
+  },
+  "files": [
+    {
+      "path": "document.pdf",
+      "size": 660,
+      "sha256": "9f8103f95cdf6771537022cfdc6c401eed9e9d486f6989d420ac0f7eeab14a8a"
+    },
+    {
+      "path": "image.heic",
+      "size": 520,
+      "sha256": "4891c715255d57effd1d4b4cc092ace96a2a36599c2ecb792e35b572c9f15cf7"
+    }
+  ],
+  "appParserAccepted": false,
+  "providerCalls": false,
+  "ownerFilesRead": false
+}
