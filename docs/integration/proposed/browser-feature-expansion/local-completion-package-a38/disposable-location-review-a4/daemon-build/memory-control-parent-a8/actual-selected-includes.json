@@ -1,0 +1,23 @@
+{
+  "actualDependencyCount": 106,
+  "allOtherDependencyPathsUnchanged": true,
+  "selectedIncludes": [
+    {
+      "name": "AuxMemoryMainOwner.inc",
+      "path": "/private/tmp/aux-browser-only-daemon-build-20261025-a68/source/AuxMemoryMainOwner.inc",
+      "sha256": "8e93a9315bc9fabbf8b0228025ca11846307536e1f547fa326bb7e5b5723eaca"
+    },
+    {
+      "name": "AuxStorageRootsNapi.inc",
+      "path": "/private/tmp/aux-browser-only-daemon-build-20261025-a68/source/AuxStorageRootsNapi.inc",
+      "sha256": "afaf22470b1a46b6984078722ebcb3c988553deee3aa04de6c84cfb5c0c670bf"
+    },
+    {
+      "name": "AuxBrokerWritesNapi.inc",
+      "path": "/private/tmp/aux-browser-only-daemon-build-20261025-a68/source/AuxBrokerWritesNapi.inc",
+      "sha256": "4907fdf63d19ccf4f9f4ea7f8a067ec5c5ae3a233afe17838227f1528a732385"
+    }
+  ],
+  "memoryMetadataSymbolReferenced": true,
+  "ordinaryStorageValidatorReferenced": true
+}

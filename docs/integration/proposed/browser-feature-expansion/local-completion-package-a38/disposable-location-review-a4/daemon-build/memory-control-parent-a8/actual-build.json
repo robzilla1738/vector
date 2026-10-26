@@ -1,0 +1,50 @@
+{
+  "format": "aux.finite-memory-control-parent-build-result.v1",
+  "passed": true,
+  "results": [
+    {
+      "label": "worker",
+      "exitCode": 0
+    },
+    {
+      "label": "link",
+      "exitCode": 0
+    }
+  ],
+  "seconds": 23.025426208,
+  "planSha256": "8e463a76638af7d92284b999be6614b09ce60313718524ee3c34ec90fc45b8f9",
+  "sourcePlanSha256": "f29c27ffff5d6015ba9e72371a782d6b1486af0c0b0371884199ddb443313389",
+  "unchangedSwiftSourceCount": 49,
+  "unchangedNativeObjectCount": 14,
+  "a67MainAndActualNodeLayoutUnchanged": true,
+  "a66OrdinaryIncludesUnchanged": true,
+  "actualSelectedIncludes": [
+    {
+      "name": "AuxMemoryMainOwner.inc",
+      "path": "/private/tmp/aux-browser-only-daemon-build-20261025-a68/source/AuxMemoryMainOwner.inc",
+      "sha256": "8e93a9315bc9fabbf8b0228025ca11846307536e1f547fa326bb7e5b5723eaca"
+    },
+    {
+      "name": "AuxStorageRootsNapi.inc",
+      "path": "/private/tmp/aux-browser-only-daemon-build-20261025-a68/source/AuxStorageRootsNapi.inc",
+      "sha256": "afaf22470b1a46b6984078722ebcb3c988553deee3aa04de6c84cfb5c0c670bf"
+    },
+    {
+      "name": "AuxBrokerWritesNapi.inc",
+      "path": "/private/tmp/aux-browser-only-daemon-build-20261025-a68/source/AuxBrokerWritesNapi.inc",
+      "sha256": "4907fdf63d19ccf4f9f4ea7f8a067ec5c5ae3a233afe17838227f1528a732385"
+    }
+  ],
+  "productExecuted": false,
+  "productSigned": false,
+  "originalRootAccessed": false,
+  "binary": "/private/tmp/aux-browser-only-daemon-build-20261025-a68/Aux Daemon",
+  "binarySha256": "45b7701c5f93169d20451b43fdb04ef846fe3d8833dc81c97e8bc8c45e2e7efb",
+  "binarySize": 147464608,
+  "workerObjectSha256": "5353b1b71ce3d74ef9ac994a23eec7b75a82bb7edb55914d54e7c6d1e4efb15f",
+  "actualDependencyFileSha256": "6c723563889030d955205f304aa90b936072e713fa64e0a90be87fc549a74f13",
+  "codeSignatureLoadCommandPresent": false,
+  "codesignDisplayExitCode": 1,
+  "inputPinsUnchanged": true,
+  "priorBinaryUnchanged": true
+}

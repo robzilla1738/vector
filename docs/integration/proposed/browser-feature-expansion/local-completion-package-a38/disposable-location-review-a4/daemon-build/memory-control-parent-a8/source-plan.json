@@ -1,0 +1,47 @@
+{
+  "format": "aux.finite-memory-control-parent-source.v1",
+  "upstreamProjection": "/Users/rcourson/.codex/worktrees/aux-features-frame/web/docs/integration/proposed/browser-feature-expansion/productivity-memory-control-exclusion-a47/projection.json",
+  "upstreamProjectionSha256": "be50318dca93d7fb902aff600511821a18f0989aa1267b274b5732628964ff5d",
+  "files": [
+    {
+      "name": "AuxSignedFreshBootstrapPolicyLoader.swift",
+      "input": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/local-completion-package-a38/disposable-location-review-a4/daemon-build/diagnostics-a5/source/AuxSignedFreshBootstrapPolicyLoader.swift",
+      "inputSha256": "99b0273b17ff1567b4fcf0e0fd6e82c1be0578dfddc84558c306d544c3810007",
+      "source": "source/AuxSignedFreshBootstrapPolicyLoader.swift",
+      "outputSha256": "0611610c7aa62411e53ed75c813cfee5c37b585e4bbfe90bb3e60feb7d3e5f1f",
+      "anchors": [
+        {
+          "find": "        guard policy.contents.role == .daemon, policy.contents.embeddedDaemon,\n              policy.contents.includesRebuiltPtyModule else { throw AuxFreshBootstrapPolicyError.policy }\n        let path = policy.contents.canonicalPrivateParent\n",
+          "replace": "        guard policy.contents.role == .daemon, policy.contents.embeddedDaemon,\n              policy.contents.includesRebuiltPtyModule else { throw AuxFreshBootstrapPolicyError.policy }\n        return try authenticatedPrivateParent(policy)\n    }\n#if AUX_BROWSER_ONLY_NATIVE_STARTUP\n    fileprivate static func memoryControlParent() throws -> String {\n        let policy = try load()\n        guard policy.contents.role == .daemon, policy.contents.embeddedDaemon,\n              let location = policy.contents.nativeUserLocation,\n              policy.contents.canonicalPrivateParent == location.controlRoot else {\n            throw AuxFreshBootstrapPolicyError.policy\n        }\n        return try authenticatedPrivateParent(policy)\n    }\n#endif\n    private static func authenticatedPrivateParent(_ policy: AuxAuthenticatedFreshBootstrapPolicy) throws -> String {\n        let path = policy.contents.canonicalPrivateParent\n",
+          "count": 1
+        },
+        {
+          "find": "@_cdecl(\"AuxCopyAuthenticatedExecPrivateParent\")\n",
+          "replace": "// Only the finite memory owner calls this metadata producer. It grants no exec,\n// PTY, account or path-selection capability; the actual owner brackets its use.\n@_cdecl(\"AuxCopyAuthenticatedMemoryControlParent\")\nfunc AuxCopyAuthenticatedMemoryControlParent(_ output: UnsafeMutablePointer<CChar>?,\n                                            _ capacity: UInt32,\n                                            _ count: UnsafeMutablePointer<UInt32>?) -> Int32 {\n    guard getpid() == auxImagePreparationProcess, let count else { return -1 }\n    count.pointee = 0\n    guard let output, capacity > 1, capacity <= 4096 else { return -1 }\n    output.pointee = 0\n#if AUX_BROWSER_ONLY_NATIVE_STARTUP\n    auxImagePreparationLock.lock(); let prepared = auxImagePreparationComplete; auxImagePreparationLock.unlock()\n    guard prepared else { return -1 }\n    do {\n        let bytes = try AuxSignedFreshBootstrapPolicyLoader.memoryControlParent().utf8CString\n        guard bytes.count > 1, bytes.count <= Int(capacity), bytes.count <= 4096 else { return -1 }\n        for index in bytes.indices { output[index] = bytes[index] }\n        count.pointee = UInt32(bytes.count)\n        return 0\n    } catch { return -1 }\n#else\n    return -1\n#endif\n}\n@_cdecl(\"AuxCopyAuthenticatedExecPrivateParent\")\n",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "name": "AuxMemoryMainOwner.inc",
+      "input": "/private/tmp/aux-browser-only-daemon-build-20261025-a66/source/AuxMemoryMainOwner.inc",
+      "inputSha256": "97d451aa3a7a604e0d3fa2c11f0ce8bb7caf25ccde36d248d7b38d5dc561bf47",
+      "source": "source/AuxMemoryMainOwner.inc",
+      "outputSha256": "8e93a9315bc9fabbf8b0228025ca11846307536e1f547fa326bb7e5b5723eaca",
+      "anchors": [
+        {
+          "find": "#include \"AuxRegisteredMemoryAccountOwner.h\"\n",
+          "replace": "#include \"AuxRegisteredMemoryAccountOwner.h\"\n// Native-only sealed control-root metadata; this is not a launch admission API.\nextern \"C\" int32_t AuxCopyAuthenticatedMemoryControlParent(\n    char* output, uint32_t capacity, uint32_t* count_including_nul);\n",
+          "count": 1
+        },
+        {
+          "find": "  return Current() && AuxCopyAuthenticatedExecPrivateParent(output, capacity, count) == 0 && Current();\n",
+          "replace": "  return Current() && AuxCopyAuthenticatedMemoryControlParent(output, capacity, count) == 0 && Current();\n",
+          "count": 1
+        }
+      ]
+    }
+  ],
+  "existingExecPtyAdmissionUnchanged": true,
+  "nativeOnlyMemoryMetadata": true
+}

@@ -1,0 +1,11 @@
+# Finite memory control parent pairing
+
+This unsigned successor recompiles only the actual worker host with the finite memory-specific authenticated control-parent include and relinks the corresponding Swift loader. Existing execution/PTY admission remains unchanged. The A67 main object and independently matched actual Node Environment layout remain exact; A66 ordinary storage includes remain exact.
+
+All source substitutions, original flat sources and actual compiler dependency paths are hash pinned. The native-build lock serializes compile/link. The link retains `-no_adhoc_codesign`; no app/helper execution, signing, root/Keychain access or UI change occurs here. Runtime memory behavior and normal Quit remain the parent’s separate actual-app checks.
+
+The exact A47 producer adds `AuxCopyAuthenticatedMemoryControlParent` only for ordinary compiled mode. It derives the path from the actual loaded sealed policy, requires the daemon embedded role and native user-location control-root equality, then uses the same authenticated private-parent metadata/identity checks. The finite retained memory owner brackets the call with its actual `Current()` check. Existing `AuxCopyAuthenticatedExecPrivateParent` still requires `includesRebuiltPtyModule`; its guard and exported behavior remain unchanged. No JS/NAPI registration or new native object is added.
+
+The worker compilation and full paired link passed. The actual dependency file proves the new owner include and both unchanged ordinary storage includes; every other dependency path remains exact. The worker references the new memory metadata symbol and existing ordinary storage validator. The output is unsigned arm64 Mach-O with no `LC_CODE_SIGNATURE`; all49 other Swift sources and14 other native objects, including A67 main, remain unchanged. `actual-build.json` contains the output path/hash and the input verification result.
+
+An initial precompiler path-resolution refusal is preserved in `precompile-path-resolution.json` and its untouched temporary source directory. No compiler ran on that attempt. The final build selects the unique existing link loader argument by filename and exact input hash, accommodating the byte-identical child-worktree path used by A67 without changing source selection.

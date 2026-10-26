@@ -1,0 +1,8 @@
+{
+  "format": "aux.build-precompile-path-resolution.v1",
+  "compilerInvoked": false,
+  "failure": "Proven predecessor loader argument is in child worktree; projection input names equivalent root path",
+  "correction": "Select existing exact loader argument by unique basename and verify input SHA before replacement",
+  "sourcePlanUnchanged": true,
+  "preservedOutputDirectory": "/private/tmp/aux-browser-only-daemon-build-20261025-a68-precompile-1"
+}
