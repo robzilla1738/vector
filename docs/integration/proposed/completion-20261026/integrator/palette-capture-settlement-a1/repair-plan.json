@@ -1,0 +1,66 @@
+{
+  "format": "aux.combined-product.same-scope-repair.v1",
+  "app": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-completion-20261026-a1/Aux.app",
+  "approvedReviewSha256": "20572af30ef6613f1fc8bced01edada6d52f4b3f7c1f21dd97fb610ec2b257f2",
+  "executor": {
+    "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/integrator/combined-product-repair/repair-combined.py",
+    "sha256": "117cc9d333ed08accc40a4ffeb214081fc176b41e8f7019120fa3cab09d6a245"
+  },
+  "signedReceipt": {
+    "path": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-completion-20261026-a1/combined-palette-peer-tools-a1/receipt.json",
+    "sha256": "5cf59fcd25c782e2a97793e35eb0dcdaa428e1fd04b3dea2f9664f3c9ade69e1"
+  },
+  "replacements": [
+    {
+      "target": "Contents/Frameworks/Aux Framework.framework/Versions/155.0.8059.85/Aux Framework",
+      "input": {
+        "path": "/Users/rcourson/Documents/Vibe/web/out/completion-resume-20261026/Aux Framework-palette-capture-settlement",
+        "sha256": "74e7d3ac09b4bd68653b668f68e0aa9a311f619ab018c7c5deeb8423838a8b76"
+      },
+      "beforeSha256": "bec9b1288b816fe58059a5cb26b920c11fedb41e2576c017c86fc32bb50a5a8d"
+    },
+    {
+      "target": "Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/node-development/index.mjs",
+      "input": {
+        "path": "/private/tmp/aux-settled-browser-rejection-20261026-a1/current/index.mjs",
+        "sha256": "1c0973f8cdd41597d1234e397444990fc038c8a0dac7932dbfa24c3e705f6197"
+      },
+      "beforeSha256": "198ad50c850b7dc0825aa2cc37e754c0a0f07d07df5430faba2c68c21e0742ef"
+    },
+    {
+      "target": "Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/node-development/aux-native-entry.mjs",
+      "input": {
+        "path": "/private/tmp/aux-settled-browser-rejection-20261026-a1/current/aux-native-entry.mjs",
+        "sha256": "6a61a1d864b6c69e0a7dd6ce44f451b737cace1e124e64576a13b8c5176a2529"
+      },
+      "beforeSha256": "30b38b312dfe43b3c0642bbcc512a06e0c64188c649d6529dc3019d198165c03"
+    },
+    {
+      "target": "Contents/Resources/aux/apps/extension/dist/background.js",
+      "input": {
+        "path": "/private/tmp/aux-fullpage-fixed-20261026-a2/background.js",
+        "sha256": "c752348154b2dc9754ce3190f01e1b6451913df9711ba51929a86c5dc032c414"
+      },
+      "beforeSha256": "f170233b0d7f8465bd54330a0f9e6b7fb614db93685458917823a3d56547ca92"
+    }
+  ],
+  "sourceEvidence": [
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/integrator/palette-capture-settlement-a1/build-receipt.json",
+      "sha256": "944fbe40f48fc8e01d922e67b390843bf3ad532e91e07398c4b5b8f1e88a016e"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/runtime/settled-browser-rejection/plan.json",
+      "sha256": "844d11f9479a0c63989c391522ab546e6c7898d546f7aef2143e60bd8f7911a6"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/integration/ordinary-chat/fullpage-fixed/proposal.json",
+      "sha256": "3ca98ab8cee00e2a3da6c9fdc631c5a3e10dc473b2c02bc4ef7e90d7d6d97f85"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/integration/ordinary-chat/profile-binding-diagnostic/proposal.json",
+      "sha256": "6a6a83e7a275df49eb81da0e2765911f1fec8bf7b1288df2a42ac15db84070a6"
+    }
+  ],
+  "receiptDirectory": "combined-palette-capture-settlement-a1"
+}

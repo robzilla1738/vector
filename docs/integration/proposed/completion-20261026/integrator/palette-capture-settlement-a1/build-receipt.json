@@ -1,0 +1,21 @@
+{
+  "format": "aux.palette-capture-settlement.build.v1",
+  "passed": true,
+  "exitCode": 0,
+  "session": 94864,
+  "framework": {
+    "path": "/Users/rcourson/Documents/Vibe/web/out/completion-resume-20261026/Aux Framework-palette-capture-settlement",
+    "sha256": "74e7d3ac09b4bd68653b668f68e0aa9a311f619ab018c7c5deeb8423838a8b76"
+  },
+  "projection": {
+    "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/integrator/palette-capture-settlement-a1/projection.json",
+    "sha256": "6a86c03ee547e45ea5ca0d3dadd29934438d781c5ef65084fd4ded83a4a9baf0"
+  },
+  "log": {
+    "path": "/Users/rcourson/Documents/Vibe/web/out/completion-resume-20261026/palette-recovery-link.log",
+    "sha256": "5dc985d4faa8dc4c90e99654e62963ab99d7a4e6b9cd63bc3f10da7673a1cb81"
+  },
+  "nativeTarget": "chrome",
+  "parallelJobs": 8,
+  "appActivated": false
+}
