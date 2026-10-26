@@ -1,0 +1,2057 @@
+{
+  "format": "aux.future-supervised-inactive-build-recipe.v1",
+  "output": "/private/tmp/aux-future-supervised-native-20261026-a1",
+  "commands": [
+    [
+      "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang++",
+      "-DAUX_FIXED_LINKED_PTY_POLICY=1",
+      "-I/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/runtime/native-host/source/chrome/browser/aux",
+      "-DAUX_BROWSER_ONLY_NATIVE_STARTUP=1",
+      "-I/private/tmp/aux-browser-only-daemon-build-20261024-a42e/source",
+      "-I/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/daemon-crash-registration-close-a1/source",
+      "-isysroot",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk",
+      "-fblocks",
+      "-I/private/tmp/aux-standard-native-source-20261023-a4",
+      "-I/private/tmp/aux-standard-browser-source-20261023-a2/chrome/browser/aux",
+      "-I/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/profile-isolation-local-finish/runtime-cache-async-relink-a3/source",
+      "-I",
+      "/private/tmp/aux-worker-close-successor/docs/integration/proposed/aux-native-worker-close-successor/source",
+      "-I",
+      "/private/tmp/aux-worker-close-successor/docs/integration/proposed/aux-native-authenticated-pty-helper/source",
+      "-MMD",
+      "-MF",
+      "/private/tmp/aux-future-supervised-native-20261026-a1/main.d",
+      "-std=c++20",
+      "-arch",
+      "arm64",
+      "-mmacosx-version-min=13.5",
+      "-DNAPI_VERSION=8",
+      "-fPIC",
+      "-DAUX_ATOMIC_CSK_DISPATCH=1",
+      "-DAUX_NATIVE_DAEMON_AUTHORITY_SERVER=1",
+      "-I",
+      "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-native-daemon-main/source",
+      "-I",
+      "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/src",
+      "-I",
+      "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/deps/v8/include",
+      "-I",
+      "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/deps/uv/include",
+      "-I",
+      "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-native-environment-preload/source",
+      "-I",
+      "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-native-node-runner/source",
+      "-I",
+      "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-native-sealed-parent-entry/source",
+      "-I",
+      "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-native-fresh-cold-bootstrap/source",
+      "-I",
+      "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-native-daemon-authority-transport/source",
+      "-I",
+      "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-owned-napi-adapter/source",
+      "-I",
+      "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-native-prepared-daemon-authority/source",
+      "-I",
+      "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-native-fresh-read-result-reconciliation/source",
+      "-c",
+      "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/runtime/future-supervised-build/source/AuxNativeDaemonMain.cc",
+      "-o",
+      "/private/tmp/aux-future-supervised-native-20261026-a1/main.o",
+      "-D_GLIBCXX_USE_CXX11_ABI=1",
+      "-D_FILE_OFFSET_BITS=64",
+      "-DNODE_OPENSSL_CONF_NAME=nodejs_conf",
+      "-DICU_NO_USER_DATA_OVERRIDE",
+      "-D_DARWIN_USE_64_BIT_INODE=1",
+      "-DOPENSSL_NO_PINSHARED",
+      "-DOPENSSL_THREADS",
+      "-DNODE_ARCH=\"arm64\"",
+      "-DNODE_WANT_INTERNALS=1",
+      "-D__POSIX__",
+      "-DNODE_USE_V8_PLATFORM=1",
+      "-DNODE_HAVE_I18N_SUPPORT=1",
+      "-DNODE_BUNDLED_ZLIB",
+      "-DNODE_BUNDLED_ZSTD",
+      "-DNODE_PLATFORM=\"darwin\"",
+      "-DHAVE_OPENSSL=1",
+      "-DOPENSSL_API_COMPAT=0x10100000L",
+      "-DHAVE_AMARO=1",
+      "-DHAVE_SQLITE=1",
+      "-DHAVE_FFI=1",
+      "-DNODE_SHARED_FFI=0",
+      "-DHAVE_QUIC=0",
+      "-DXXH_NAMESPACE=ZSTD_",
+      "-DZSTD_MULTITHREAD",
+      "-DZSTD_DISABLE_ASM",
+      "-DHWY_BROKEN_TARGETS=HWY_ALL_SVE",
+      "-DUCONFIG_NO_SERVICE=1",
+      "-DU_ENABLE_DYLOAD=0",
+      "-DU_STATIC_IMPLEMENTATION=1",
+      "-DU_HAVE_STD_STRING=1",
+      "-DUCONFIG_NO_BREAK_ITERATION=0",
+      "-D_LARGEFILE_SOURCE",
+      "-DNGHTTP2_STATICLIB",
+      "-DFFI_STATIC_BUILD",
+      "-DNDEBUG",
+      "-DL_ENDIAN",
+      "-DOPENSSL_BUILDING_OPENSSL",
+      "-DBSAES_ASM",
+      "-DECP_NISTZ256_ASM",
+      "-DECP_SM2P256_ASM",
+      "-DKECCAK1600_ASM",
+      "-DMD5_ASM",
+      "-DOPENSSL_BN_ASM_MONT",
+      "-DOPENSSL_CPUID_OBJ",
+      "-DOPENSSL_SM3_ASM",
+      "-DPOLY1305_ASM",
+      "-DSHA1_ASM",
+      "-DSHA256_ASM",
+      "-DSHA512_ASM",
+      "-DSM4_ASM",
+      "-DVPAES_ASM",
+      "-DVPSM4_ASM",
+      "-DOPENSSL_PIC",
+      "-I/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/src",
+      "-I/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/deps/v8/include",
+      "-I/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/deps/uv/include",
+      "-I/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/deps/v8/third_party/fp16/src/include",
+      "-I/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/deps/v8/third_party/highway/src",
+      "-I/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/deps/icu-small/source/i18n",
+      "-I/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/deps/icu-small/source/common",
+      "-I/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/deps/zlib",
+      "-I/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/deps/llhttp/include",
+      "-I/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/deps/cares/include",
+      "-I/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/deps/uvwasi/include",
+      "-I/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/deps/nghttp2/lib/includes",
+      "-I/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/deps/ada",
+      "-I/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/deps/merve",
+      "-I/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/deps/simdjson",
+      "-I/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/deps/v8/third_party/simdutf",
+      "-I/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/deps/brotli/c/include",
+      "-I/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/deps/sqlite",
+      "-I/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/deps/libffi/include",
+      "-I/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/out/Release/obj/gen/libffi",
+      "-I/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/deps/zstd/lib",
+      "-I/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/deps/openssl/openssl/include",
+      "-I/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/deps/openssl/openssl/crypto/include",
+      "-I/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/deps/openssl/config/archs/darwin64-arm64-cc/asm_avx2/include",
+      "-I/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/deps/openssl/config/archs/darwin64-arm64-cc/asm_avx2",
+      "-DNAPI_EXPERIMENTAL=1",
+      "-DNODE_API_EXPERIMENTAL_NO_WARNING=1",
+      "-DV8_DEPRECATION_WARNINGS=1",
+      "-DNODE_OPENSSL_SYSTEM_CERT_PATH=\"\"",
+      "-DSQLITE_ENABLE_SESSION",
+      "-DHAVE_INSPECTOR=1",
+      "-DHAVE_LIEF=1",
+      "-DNCRYPTO_BSSL_LIBDECREPIT_MISSING=1",
+      "-I/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/deps/postject",
+      "-I/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/out/Release/obj/gen",
+      "-I/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/out/Release/obj/gen/include",
+      "-I/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/out/Release/obj/gen/src",
+      "-I/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/deps/v8/third_party/abseil-cpp",
+      "-I/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/deps/googletest/include",
+      "-I/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/deps/histogram/src",
+      "-I/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/deps/histogram/include",
+      "-I/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/deps/nbytes/include",
+      "-I/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/deps/inspector_protocol",
+      "-I/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/out/Release/obj/gen/inspector-generated-output-root/include",
+      "-I/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/deps/ncrypto",
+      "-I/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/deps/LIEF/include",
+      "-gdwarf-2"
+    ],
+    [
+      "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang++",
+      "-DAUX_FIXED_LINKED_PTY_POLICY=1",
+      "-I/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/runtime/future-supervised-build/source",
+      "-I/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/runtime/exec-task-envelope/source",
+      "-I/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/runtime/exec-producer-join/source",
+      "-I/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/runtime/fixed-pty-linked/source",
+      "-I/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/runtime/fixed-pty-retirement/source",
+      "-I/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/runtime/final-daemon/source",
+      "-I/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/runtime/selected-builtin-owner/source",
+      "-I/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/integration/computer-use/source",
+      "-I/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/runtime/fixed-builtins/source",
+      "-ivfsoverlay",
+      "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/runtime/fixed-builtins/root-compile-vfs.json",
+      "-I/private/tmp/aux-browser-only-daemon-build-20261025-a72/source",
+      "-DAUX_BROWSER_ONLY_NATIVE_STARTUP=1",
+      "-I/private/tmp/aux-browser-only-daemon-build-20261024-a42e/source",
+      "-fblocks",
+      "-I/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/native-credential-lock-a1/source",
+      "-I/private/tmp/aux-standard-native-source-20261023-a4",
+      "-I/private/tmp/aux-standard-browser-source-20261023-a2/chrome/browser/aux",
+      "-I/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/profile-isolation-local-finish/runtime-cache-async-relink-a3/source",
+      "-I/private/tmp/aux-standard-native-source-20261023-a4",
+      "-I/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/profile-isolation-local-finish/runtime-cache-async-relink-a3/source",
+      "-I/private/tmp/aux-async-writes-final/docs/integration/proposed/profile-isolation-next/spawn-custody/source",
+      "-I/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/deps/googletest/include",
+      "-I/private/tmp/aux-async-writes-final/docs/integration/proposed/profile-isolation-final/writes/source",
+      "-I/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/src",
+      "-I/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/profile-isolation-continuation/broker-writes/source",
+      "-I/private/tmp/aux-broker-writes-20261023/docs/integration/proposed/profile-isolation-continuation/broker-writes/source",
+      "-I/private/tmp/aux-broker-writes-20261023/docs/integration/proposed/profile-isolation-next/spawn-custody/source",
+      "-I/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/profile-isolation-next/browser-roots/source",
+      "-I/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/profile-isolation-next/containment/source",
+      "-isysroot",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk",
+      "-I",
+      "/private/tmp/aux-worker-close-successor/docs/integration/proposed/final-completion/native/exec-parent/source",
+      "-I",
+      "/private/tmp/aux-worker-close-successor/docs/integration/proposed/aux-native-authenticated-pty-helper/source",
+      "-std=c++20",
+      "-arch",
+      "arm64",
+      "-mmacosx-version-min=13.5",
+      "-DNAPI_VERSION=8",
+      "-fPIC",
+      "-DAUX_ATOMIC_CSK_DISPATCH=1",
+      "-DAUX_NATIVE_DAEMON_AUTHORITY_SERVER=1",
+      "-I",
+      "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-native-daemon-main/source",
+      "-I",
+      "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/src",
+      "-I",
+      "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/deps/v8/include",
+      "-I",
+      "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/deps/uv/include",
+      "-I",
+      "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-native-environment-preload/source",
+      "-I",
+      "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-native-node-runner/source",
+      "-I",
+      "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-native-sealed-parent-entry/source",
+      "-I",
+      "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-native-fresh-cold-bootstrap/source",
+      "-I",
+      "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-native-daemon-authority-transport/source",
+      "-I",
+      "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-owned-napi-adapter/source",
+      "-I",
+      "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-native-prepared-daemon-authority/source",
+      "-I",
+      "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-native-fresh-read-result-reconciliation/source",
+      "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/runtime/future-supervised-build/source/AuxDevelopmentWorkerHost.cc",
+      "-c",
+      "-o",
+      "/private/tmp/aux-future-supervised-native-20261026-a1/worker-host.o",
+      "-MMD",
+      "-MF",
+      "/private/tmp/aux-future-supervised-native-20261026-a1/worker-host.d"
+    ],
+    [
+      "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc",
+      "-D",
+      "AUX_BROWSER_ONLY_NATIVE_STARTUP",
+      "-sdk",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk",
+      "-parse-as-library",
+      "-target",
+      "arm64-apple-macos13.5",
+      "-module-cache-path",
+      "/private/tmp/aux-future-supervised-native-20261026-a1/swift-cache",
+      "-module-name",
+      "AuxParentSealedPolicy",
+      "-D",
+      "AUX_NATIVE_FRESH_RUNTIME_CONSUMER",
+      "-D",
+      "AUX_MINIMAL_RUNTIME_DISPATCH",
+      "-D",
+      "AUX_SCOPED_SECURE_STORE_DISPATCH",
+      "-D",
+      "AUX_ATOMIC_CSK_DISPATCH",
+      "-D",
+      "AUX_MACOS_UTILITY_DISPATCH",
+      "-D",
+      "AUX_FIXED_LINKED_PTY_POLICY",
+      "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/runtime/fixed-linked-policy/source/ParentAuxFreshBootstrapPolicy.swift",
+      "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/runtime/fixed-linked-policy/source/AuxAuthenticatedChildParentPolicyReader.swift",
+      "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/aux/native_peer_policy/AuxStrictEnvelopeObject.swift",
+      "-whole-module-optimization",
+      "-emit-object",
+      "-o",
+      "/private/tmp/aux-future-supervised-native-20261026-a1/parent-policy.o"
+    ],
+    [
+      "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc",
+      "/private/tmp/aux-exec-task-envelope-compile-20261026-a1/pty-linked.o",
+      "/private/tmp/aux-completion-final-daemon-20261026-a1/computer-use.o",
+      "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/integration/computer-use/source/AuxComputerUseHelperJournal.swift",
+      "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/runtime/selected-builtin-owner/source/AuxSelectedUtilityInvocation.swift",
+      "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/runtime/selected-exec-workspace/source/AuxSelectedAccountOwner.swift",
+      "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/runtime/native-host/source/daemon/AuxNativeHostJournal.swift",
+      "-D",
+      "AUX_BROWSER_ONLY_NATIVE_STARTUP",
+      "-sdk",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk",
+      "-parse-as-library",
+      "-target",
+      "arm64-apple-macos13.5",
+      "-module-cache-path",
+      "/private/tmp/aux-future-supervised-native-20261026-a1/swift-cache",
+      "-module-name",
+      "AuxNativeDaemonExecutable",
+      "-D",
+      "AUX_NATIVE_FRESH_RUNTIME_CONSUMER",
+      "-D",
+      "AUX_MINIMAL_RUNTIME_DISPATCH",
+      "-D",
+      "AUX_SCOPED_SECURE_STORE_DISPATCH",
+      "-D",
+      "AUX_ATOMIC_CSK_DISPATCH",
+      "-D",
+      "AUX_MACOS_UTILITY_DISPATCH",
+      "-framework",
+      "Foundation",
+      "-framework",
+      "CoreFoundation",
+      "-framework",
+      "Security",
+      "-framework",
+      "AppKit",
+      "-framework",
+      "QuickLookThumbnailing",
+      "-framework",
+      "ImageIO",
+      "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-native-p256-envelope-port/source/EnvelopeRecords.swift",
+      "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-native-p256-envelope-port/source/RecoveredP256Authority.swift",
+      "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-native-p256-envelope-port/source/AuxNativeEnvelopeV2.swift",
+      "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-native-pq-continuation/source/PqEnvelopeRecords.swift",
+      "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-native-pq-continuation/source/RecoveredPqAuthority.swift",
+      "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-native-signing-port/source/RecoveredP256SigningAuthority.swift",
+      "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-native-signing-port/source/RecoveredPqSigningAuthority.swift",
+      "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-native-inbox-v2/source/AuxInstallationCommandCore.swift",
+      "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-fresh-installation-factory/source/AuxFreshInstallationFactory.swift",
+      "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-fresh-four-row-preparation/source/AuxFreshFourRowPreparation.swift",
+      "/private/tmp/aux-final-native-link/docs/integration/proposed/final-completion/fresh-owner/source/AuxNativeFreshReservationLeaseRegistry.swift",
+      "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/runtime/fixed-linked-policy/source/AuxFreshBootstrapPolicy.swift",
+      "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/runtime/fixed-linked-policy/source/AuxSignedFreshBootstrapPolicyLoader.swift",
+      "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-fresh-native-secure-capture/source/AuxFreshNativeSecureCapture.swift",
+      "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-native-fresh-stage-reconciliation/source/NativeFreshBootstrapJournal.swift",
+      "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/fresh-startup-milestone-a42/ordinary-storage-locks-source/PrivateNativeFreshBootstrapJournalStore.swift",
+      "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-native-fresh-target-cohort-lease/source/NativeFreshTargetJournal.swift",
+      "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/fresh-startup-milestone-a42/ordinary-storage-locks-source/PrivateNativeFreshTargetJournalStore.swift",
+      "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-native-fresh-runtime-consumer/source/AuxNativeFreshTargetCoordinator.swift",
+      "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-native-fresh-target-boundary/source/AuxNativeFreshTargetBoundary.swift",
+      "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-runtime-target-capture/source/AuxRuntimeTargetCapture.swift",
+      "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/runtime/selected-builtin-owner/source/AuxSecureStore.swift",
+      "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-native-fresh-runtime-readiness/source/ScopedAuxCommandContext.swift",
+      "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/runtime/selected-builtin-owner/source/AuxOwnedCommandDispatcher.swift",
+      "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/fresh-startup-milestone-a42/ordinary-storage-source/NativeFreshRuntimeCapturedContext.swift",
+      "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-owned-dispatch-lifetime/source/AuxOSDrainResult.swift",
+      "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/runtime/selected-builtin-owner/source/AuxAccountsCskCoordinator.swift",
+      "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-native-macos-utilities/source/AuxOSJobCustody.swift",
+      "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-native-macos-utilities/source/AuxMacOSUtilityCommandCore.swift",
+      "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-native-macos-utilities/source/AuxUtilityCompletion.swift",
+      "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-native-macos-utilities/source/AuxAppKitUtilityBoundary.swift",
+      "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/fresh-startup-milestone-a42/ordinary-storage-source/AuxPreparedFreshRuntimeProvider.swift",
+      "/private/tmp/aux-final-native-link/docs/integration/proposed/final-completion/fresh-owner/source/AuxFreshNativeHome.swift",
+      "/private/tmp/aux-final-native-link/docs/integration/proposed/final-completion/fresh-owner/source/AuxResumedFreshNativeHome.swift",
+      "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/runtime/native-host/source/daemon/AuxNativeFreshStageCoordinator.swift",
+      "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-native-fresh-cold-bootstrap/source/AuxNativeFreshBootstrapFactory.swift",
+      "/private/tmp/aux-profile-startup-next/docs/integration/proposed/profile-isolation-next/startup/v5-source/AuxAuthenticatedFreshColdBootstrap.swift",
+      "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/runtime/native-host/source/daemon/AuxFreshColdInstallerGuard.swift",
+      "/private/tmp/aux-profile-startup-next/docs/integration/proposed/profile-isolation-next/startup/v5-source/AuxFreshColdBootstrapNativeBridge.swift",
+      "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-native-fresh-runtime-readiness/source/AuxNativeFreshGuardFailure.swift",
+      "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-native-sealed-parent-entry/source/AuxSealedOuterBrowserParent.swift",
+      "/private/tmp/aux-native-current-entry-package/docs/integration/proposed/aux-native-current-entry-package/source/AuxSealedNativeDaemonEntry.swift",
+      "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/daemon-crash-registration-close-a1/source/AuxDevelopmentOwnerDrain.swift",
+      "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-native-daemon-main/source/AuxFreshRuntimeOwnerRelease.swift",
+      "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/runtime/native-host/source/daemon/AuxPreparedDaemonAuthority.swift",
+      "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-native-inbox-v2/source/AuxInboxV2Key.swift",
+      "/private/tmp/aux-future-supervised-native-20261026-a1/main.o",
+      "/private/tmp/aux-native-worker-close-main-20261023/1.o",
+      "/private/tmp/aux-future-supervised-native-20261026-a1/worker-host.o",
+      "/private/tmp/aux-browser-only-daemon-build-20261024-a42e/preload.o",
+      "/private/tmp/aux-browser-only-daemon-build-20261025-a46/node-runner.o",
+      "/private/tmp/aux-native-worker-close-main-20261023/5.o",
+      "/private/tmp/aux-completion-daemon-fixed-builtins-20261026-a2/pdf-lifetime.o",
+      "/private/tmp/aux-completion-daemon-fixed-builtins-20261026-a2/utility-lifetime.o",
+      "/private/tmp/aux-native-worker-close-main-20261023/8.o",
+      "/private/tmp/aux-completion-daemon-fixed-builtins-20261026-a1/peer-transport.o",
+      "/private/tmp/aux-completion-daemon-fixed-builtins-20261026-a1/parent-bridge.o",
+      "-Xlinker",
+      "-force_load",
+      "-Xlinker",
+      "/private/tmp/aux-future-supervised-native-20261026-a1/libnode_base.a",
+      "-Xlinker",
+      "-force_load",
+      "-Xlinker",
+      "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/out/Release/libv8_base_without_compiler.a",
+      "-Xlinker",
+      "-force_load",
+      "-Xlinker",
+      "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/out/Release/libzlib.a",
+      "-Xlinker",
+      "-force_load",
+      "-Xlinker",
+      "/private/tmp/aux-isolated-node-archives-20261023/libuv.a",
+      "-Xlinker",
+      "-force_load",
+      "-Xlinker",
+      "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/out/Release/libv8_snapshot.a",
+      "-Xlinker",
+      "-force_load",
+      "-Xlinker",
+      "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/out/Release/libopenssl.a",
+      "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/out/Release/libnode.a",
+      "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/out/Release/libhistogram.a",
+      "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/out/Release/libv8_snapshot.a",
+      "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/out/Release/libv8_libplatform.a",
+      "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/out/Release/libicui18n.a",
+      "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/out/Release/libzlib.a",
+      "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/out/Release/libllhttp.a",
+      "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/out/Release/libcares.a",
+      "/private/tmp/aux-isolated-node-archives-20261023/libuv.a",
+      "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/out/Release/libuvwasi.a",
+      "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/out/Release/libnghttp2.a",
+      "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/out/Release/libada.a",
+      "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/out/Release/libmerve.a",
+      "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/out/Release/libsimdjson.a",
+      "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/out/Release/libsimdutf.a",
+      "/private/tmp/aux-brotli-1.2.1-20261023/build/libbrotli.a",
+      "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/out/Release/libsqlite.a",
+      "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/out/Release/libffi.a",
+      "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/out/Release/libzstd.a",
+      "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/out/Release/libopenssl.a",
+      "/private/tmp/aux-future-supervised-native-20261026-a1/libnode_base.a",
+      "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/out/Release/libabseil.a",
+      "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/out/Release/libnbytes.a",
+      "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/out/Release/libcrdtp.a",
+      "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/out/Release/libncrypto.a",
+      "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/out/Release/libzlib_data_chunk_simd.a",
+      "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/out/Release/libzlib_adler32_simd.a",
+      "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/out/Release/libzlib_arm_crc32.a",
+      "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/out/Release/liblief.a",
+      "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/out/Release/libicuucx.a",
+      "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/out/Release/libicudata.a",
+      "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/out/Release/libv8_base_without_compiler.a",
+      "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/out/Release/libv8_libbase.a",
+      "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/out/Release/libhighway.a",
+      "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/out/Release/libv8_zlib.a",
+      "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/out/Release/libv8_compiler.a",
+      "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/out/Release/libv8_initializers.a",
+      "-Xlinker",
+      "-search_paths_first",
+      "-Xlinker",
+      "-export_dynamic",
+      "-Xlinker",
+      "-lc++",
+      "-Xlinker",
+      "-lbsm",
+      "/private/tmp/aux-daemon-crash-registration-close-check/inherited-crash-registration.o",
+      "-o",
+      "/private/tmp/aux-future-supervised-native-20261026-a1/Aux Daemon",
+      "-Xlinker",
+      "-no_adhoc_codesign",
+      "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/runtime/selected-builtin-owner/source/AuxNativeTaskLayout.swift",
+      "/private/tmp/aux-browser-roots-objects-20261023/daemon-AuxBrowserPrivateRoots.o",
+      "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/fresh-startup-milestone-a42/ordinary-storage-source/AuxBrowserFreshRootAdmission.swift",
+      "/private/tmp/aux-daemon-observer-reverse-a1/observer.o",
+      "-lEndpointSecurity",
+      "/private/tmp/aux-browser-only-daemon-build-20261025-a61/source/AuxRegisteredMemoryAccountOwner.swift",
+      "/private/tmp/aux-browser-only-daemon-build-20261025-a61/source/AuxMemoryHelperJournal.swift",
+      "/private/tmp/aux-browser-only-daemon-build-20261025-a71/memory-helper.o",
+      "-D",
+      "AUX_FIXED_LINKED_PTY_POLICY"
+    ]
+  ],
+  "commandWorkingDirectories": [
+    "/Users/rcourson/Documents/Vibe/web",
+    "/Users/rcourson/Documents/Vibe/web",
+    "/Users/rcourson/Documents/Vibe/web",
+    "/Users/rcourson/Documents/Vibe/web"
+  ],
+  "inputHashes": {
+    "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/runtime/final-daemon/daemon-recipe.json": "6ff944f21d89fca40d37e3f27eefd3e97a20d7d59f65d12d3295769a68ac265c",
+    "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/runtime/fixed-builtins/daemon-recipe.json": "70659c56cd92ed4300b9d75018afed152111d85d1709dde7e311ecd2691268c6",
+    "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/runtime/exec-task-envelope/compile-recipe.json": "85d9fc0c14504fc97e6dbcc1108dec5e78e646d8923aaa27b612d613f125c551",
+    "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/runtime/fixed-linked-policy/typecheck-recipe.json": "c74ac266133d7eeb16166b72cafd700b1b4f1c18c37b967f32e95f80a060b879",
+    "/private/tmp/aux-exec-task-envelope-compile-20261026-a1/receipt.json": "bd344e6e6ce8e05a6d7512c737064da4c715a52e6e2486ed578457eaffbac332",
+    "/private/tmp/aux-fixed-linked-v11-typecheck-20261026-a1/receipt.json": "2d6b60da8ec8d1feb07bbfc8f5dc09e6fcff5022927081590a2920c5c565fda6",
+    "/private/tmp/aux-browser-only-daemon-build-20261024-a42e/source/AuxDevelopmentWorkerHost.h": "48652684cacf62bf8f30ca043e0c144dcf3c61daf1ae863afb7f0effe347827d",
+    "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/src/node_api.h": "2d4560831e525b47b060ec8a0864ab73993df9e20215ce9f0fe7b24cd31af32a",
+    "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/src/js_native_api.h": "8808ef8899a1691411928ef5dd7dae0537aedc93d3a34e223b2d89692e79c788",
+    "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/src/js_native_api_types.h": "c12406a8c0036aefdb66b98065fc88e2e7a053c1f274deef33af6c26c099b933",
+    "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/src/node_api_types.h": "a25356630d3058f0a0c8937d9f297e9471e037fda58c2696d8a505c2bd99cb00",
+    "/private/tmp/aux-browser-only-daemon-build-20261025-a72/source/AuxAccountMemoryHelper.h": "049ef6f0f67ed9aa91ddd72837d916a57a28df9b6f3ddadcd628d260e4a7ec9f",
+    "/private/tmp/aux-standard-native-source-20261023-a4/AuxTaskDescendantObserver.h": "60a1a872cad6f791f61061aa7a15d2d8ac3bb7fb8144b5f25c5fabcb3fd44969",
+    "/private/tmp/aux-browser-only-daemon-build-20261024-a42e/source/AuxWorkerDrain.h": "712a4d3c125a27822dddba220c1325f4fcb3739fa12daa6f2794d9bf245f48db",
+    "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/native-credential-lock-a1/source/../../../aux-native-pdf-host-consumer/source/AuxLoadedPdfLifetime.h": "90ce2cd5bdf13c5a4c6e6ac81af4ea3cc01d142a82c5ecf9eb79e2aa0e5cecb2",
+    "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/native-credential-lock-a1/source/../../../aux-native-utility-host-consumer/source/AuxLoadedUtilityLifetime.h": "cfbd39036c202510e2775a7ce6fdfba9e322c1e9d2f43614fdf1c228f6d02e87",
+    "/private/tmp/aux-async-writes-final/docs/integration/proposed/profile-isolation-next/spawn-custody/source/AuxExecPrivateParent.h": "f679e20db7581cb27ec21b254803c7908beaedc70614b031b3915ceccbf70a92",
+    "/private/tmp/aux-async-writes-final/docs/integration/proposed/profile-isolation-next/spawn-custody/source/AuxNativeExecReservation.h": "3ba0f010dbd8a2e19ba79ee82ae362149c9d34e988f7e3ad71c4253472715542",
+    "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/profile-isolation-next/browser-roots/source/AuxBrowserRootBridge.h": "dd6c31c3a3a72670426c09c86758d23ba14ea654c4345fc3d627dce6f5ea013d",
+    "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/profile-isolation-continuation/broker-writes/source/AuxStorageRootsBridge.h": "4e14e4c3ea1977fc8c23f362de37c16ad20047be0461056c06d7b163ecf0bd60",
+    "/private/tmp/aux-async-writes-final/docs/integration/proposed/profile-isolation-next/spawn-custody/source/AuxNativePtyReservation.h": "0ff6976a612f6e11dc99fad6e6a2f8fb10148f4e6cca4304fd71a3044b174982",
+    "/private/tmp/aux-worker-close-successor/docs/integration/proposed/aux-native-authenticated-pty-helper/source/AuxAuthenticatedPtyHelper.h": "0b1810de91c6c2d29b536a3ff405b56cea62748f783e8e21907b1722012ec944",
+    "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-native-pdf-host-consumer/source/AuxLoadedPdfLifetime.h": "90ce2cd5bdf13c5a4c6e6ac81af4ea3cc01d142a82c5ecf9eb79e2aa0e5cecb2",
+    "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-native-utility-host-consumer/source/AuxLoadedUtilityLifetime.h": "cfbd39036c202510e2775a7ce6fdfba9e322c1e9d2f43614fdf1c228f6d02e87",
+    "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-owned-napi-adapter/source/aux-owned-napi-adapter.h": "40b011a17a2e58fa5335acc755ef45909a1b891714c0c4aaf43e456bd0be251f",
+    "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-native-prepared-daemon-authority/source/aux-owned-command-dispatcher.h": "ef6afc8471569816128421d15ffb19170cc48e1f113a78001db26fbf4fd3660f",
+    "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/src/node.h": "e111abb2864e18368a446ee662f446743fd79d3c4ca4d4f84601c03b7491eddf",
+    "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/deps/v8/include/v8.h": "e27a005daa45f342845ffb9b33409686c380b1d5a97f46f3ab4749517a213d25",
+    "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/deps/v8/include/cppgc/common.h": "3c64e8f6eb258720401ec5079869c2148213f72f6d4d4df6df89d546b07a2c1a",
+    "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/deps/v8/include/v8config.h": "8c5863fa045d38345f0702b11b8307423b942044198dd9bad5989476775c3d38",
+    "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/deps/v8/include/v8-array-buffer.h": "f4ac87ceb25d30a2da70d73d4656a447ffa59f09259b67702745968f33172dcb",
+    "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/deps/v8/include/v8-local-handle.h": "8c4d900245fe55f6c78630032d2e4f90a2656418d7ae3ffc0025e1452cbb92a7",
+    "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/deps/v8/include/v8-handle-base.h": "a39ce35b295ac1225e6842ab5f3a422384a5c5dbe13b5c5f384a245252670b14",
+    "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/deps/v8/include/v8-internal.h": "73db93bad8c49dd348aa3aa1f3778e4110be5a00474e992be5cb2154a51ca909",
+    "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/deps/v8/include/v8-memory-span.h": "341439dc5f96d40f8064df3c745733145eef198e9400c1d3fd9d8a05c3332618",
+    "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/deps/v8/include/v8-object.h": "d0fba4db8ee994b3d431ba3a432dfcb3d6cea832fe0013e79d2dd4a51ad515a0",
+    "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/deps/v8/include/cppgc/garbage-collected.h": "d8f031f6fc0b0fea3a32c5f9cfe2e423246898f5985316856c25d5c37b6f3b82",
+    "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/deps/v8/include/cppgc/internal/api-constants.h": "89e1a1f72924384af58eec1d3a7937aaec17773490f47b135d54f2daaa8a8260",
+    "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/deps/v8/include/cppgc/platform.h": "8ae503ba7bd7ea8e73c80fc8b92af71b6d8a272db349351f8e814300a33d581f",
+    "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/deps/v8/include/cppgc/source-location.h": "aadb7df97fbe5320787b16ae01d0de46f95054846908406b3ec72914b48942fa",
+    "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/deps/v8/include/v8-source-location.h": "0bab350f3e007565d2812444982b56a35f3ac06a6755816be85c87a5cd26bf00",
+    "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/deps/v8/include/v8-platform.h": "933c956a15b5c6afb4f7c6298a6da6a529eb5340385e209397e7c5a629854a55",
+    "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/deps/v8/include/cppgc/trace-trait.h": "ed7b74bcb3e5a706f511d27aae21d37c31605e42223339ae66596c910f547f9a",
+    "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/deps/v8/include/cppgc/type-traits.h": "493513a2ef75e6e7c80ae3f425f7b88966b020e9a7068c464179b49cd730c48f",
+    "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/deps/v8/include/cppgc/name-provider.h": "6eb0507058fa913e5f7d16e9057cf7cbc1749af9c1b83ad3a8d878628c2640d4",
+    "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/deps/v8/include/v8-maybe.h": "1b7bc542c626b7da0354ae36ec4d223290c429b93485b64c0f1ba0d9ccd24e15",
+    "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/deps/v8/include/cppgc/internal/conditional-stack-allocated.h": "bdf7c12a28ab8042f1144cc2012f7427e6c425361132f2daad7d9aa3b46bc746",
+    "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/deps/v8/include/cppgc/macros.h": "c9b0848f9493424ddea9c1ebf968c9ffefe0ebe0998c0acbf1d22488cb70007b",
+    "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/deps/v8/include/cppgc/internal/compiler-specific.h": "b2d551452c8ac212b56712341d3c5c4238a56c2aed77e646e9a8580fcc2ce809",
+    "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/deps/v8/include/v8-persistent-handle.h": "d19d6beeab7f6a0ea583589708da017dbd03ead53f5bde29a19983ec9a0db486",
+    "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/deps/v8/include/v8-weak-callback-info.h": "ffe109dcb5b0364c7d0653470c845f01c10573e6a5ab369f4dc7a0ccedc689d8",
+    "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/deps/v8/include/v8-primitive.h": "2bb059cc74a8da39494ea841aa6c11ea81f46fc42db79e8e67c9ee0ba73838d2",
+    "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/deps/v8/include/v8-data.h": "76ebd7d3820d867df031e8a2c9c8301da4036d2e558b4eba3543db6ce87463fc",
+    "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/deps/v8/include/v8-value.h": "4bdb297358d309e003ea09279f2cf0e94024dbdafdd34a106513344b70d1685c",
+    "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/deps/v8/include/v8-sandbox.h": "227a0798de95325b2ec8c19d0292872b050b6ef085bff7e6a9d95e33c1bbe7fa",
+    "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/deps/v8/include/v8-traced-handle.h": "f46f46662b656f0073ac6ad6f5128df8439bcd373faa5077b3ad81c9b6cb93ee",
+    "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/deps/v8/include/v8-container.h": "30c8fce13776a8b02e0268f55ba604a0cc359f28b91bcda84c07e7d87343e1e6",
+    "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/deps/v8/include/v8-context.h": "3d1c6dc951e53ddf2a54a2d8f14628325654c2448fdbfa26396791214c2cd08b",
+    "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/deps/v8/include/v8-snapshot.h": "4228f27fc7794598efdc0d465268d70707212155b12a7c347d5fd8a0c137c779",
+    "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/deps/v8/include/v8-isolate.h": "6b25c2c7e642c599833912bac078bb9945a7694aff0721247990bac311b61c2c",
+    "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/deps/v8/include/v8-callbacks.h": "7a2f65e19cbf4ff06f2f79e15d4055372d1237371f984094bce290233aacfff5",
+    "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/deps/v8/include/v8-promise.h": "62530d3097c43202f8d1d45ba3dce9bf29e8bb2de961d90ccade3adbad9d4cff",
+    "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/deps/v8/include/v8-debug.h": "29434eafa8400eb4497531862746419e4229b72b335058e581469855e51bbf59",
+    "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/deps/v8/include/v8-script.h": "c554c8b02849b3852c7d42f602f9823769af60b52f88a6158b59fa888bfdb276",
+    "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/deps/v8/include/v8-message.h": "6609bb62f62e9c8874cc901482e35f596c7035964c76fab9556ee2a68bc6845c",
+    "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/deps/v8/include/v8-embedder-heap.h": "94317e3b040d721f21867d5a5333fa5aa2850d0228df4c2301ac93070fa1aa61",
+    "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/deps/v8/include/v8-exception.h": "79437751a7eae34557bcbb7f0f9a1f6f4f3498811d8d97243fa84908294ce208",
+    "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/deps/v8/include/v8-function-callback.h": "bded059ecaec1d5b5dd1c72fd93b461130baf3a3f36e84428ec0c4a5837dfd0d",
+    "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/deps/v8/include/v8-microtask.h": "e055cf06808240053f30672c424716db7d87cd15029a1dbd1cf2a2f9a3b3dc3b",
+    "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/deps/v8/include/v8-statistics.h": "1c3fffc15ca553e462b393131defff8314b86ea4d93b874e5793bbe0e95b2141",
+    "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/deps/v8/include/v8-unwinder.h": "eabdc3e4f5953e2d81a54fa2059f2a545a672bcd36d9d6d2e0a34848323e1d29",
+    "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/deps/v8/include/v8-embedder-state-scope.h": "8ac9da5d0502946981ecadec567a9e6658bb97591da5e585a3247cc7ccf924c3",
+    "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/deps/v8/include/v8-date.h": "bcb25002ce911e826fe66fc8f788d3c70b17d77713cce8a43851c3fcf1390130",
+    "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/deps/v8/include/v8-extension.h": "f4544e1de79a8bc29f09271f6de3d5d7be415c23bae8205f23a5858e7bd9c9f4",
+    "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/deps/v8/include/v8-external.h": "2d55e22f7ea23be3b9fff16ac23c844d6a8509b675527b2a94258868c8891e68",
+    "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/deps/v8/include/v8-function.h": "9989f4e0e94400326afe09da4d253a9646ed1c2cf80a98ef705dea4d0cd41783",
+    "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/deps/v8/include/v8-template.h": "943a11abb83a84c3f31452f4b41e609910bff28ee45ca05146238ef18b34736c",
+    "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/deps/v8/include/v8-initialization.h": "7c88a037f0b4396f8e285ff3e62fc4c1b34ea4d8e7d5c7f149d8d1f1316df533",
+    "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/deps/v8/include/v8-json.h": "be6f2e7b3edd001801cbc75cc87653005024c8030c13852c1694d71b20276b5b",
+    "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/deps/v8/include/v8-locker.h": "a3f67133e57b85f46482e312ec1400ba00cf831fe4fe4556872d270b000a72e9",
+    "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/deps/v8/include/v8-microtask-queue.h": "4616dbb7376a61a1c0643e8006c14642b7c78c78e314fdf6651ddd51c961d285",
+    "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/deps/v8/include/v8-primitive-object.h": "d9c187b42f7ee96ec20ad4d9ac91a9a1eed3efc227a831736bba362f9c2b22ba",
+    "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/deps/v8/include/v8-proxy.h": "0883885e2477071a1176151443b38754edde22b04a0a05d05fe3764ae44622b5",
+    "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/deps/v8/include/v8-regexp.h": "8bdbcbb83463c77495973fe30294273d00a5c5cff90e8428415f5d2f034d0a8a",
+    "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/deps/v8/include/v8-typed-array.h": "4af778470c542677ea099ca334a042c448ce3b9f4d3b96a7fa6d599492651c64",
+    "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/deps/v8/include/v8-value-serializer.h": "bc1d30d03ee47dd548b3ce30609a66fc47d252b3454603dffa28a3a9c1dd1cb6",
+    "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/deps/v8/include/v8-version.h": "ce7ce832371e2ffd6e56bd51f3b3f819262a01366074c660f6ea8e0d8e3b5ba3",
+    "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/deps/v8/include/v8-wasm.h": "65710b8da97f436b660c42b899695859575f688594163e498c291a0a1d09dab9",
+    "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/src/node_version.h": "349a45e96faa20bf711e830edc617e9716cf8db930274ae00c70b577f5a6b2a6",
+    "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/deps/uv/include/uv.h": "bb9ed99b80cd22c58361bffdfbb2aa7029ce0391cde616745c0072a6f3c03219",
+    "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/deps/uv/include/uv/errno.h": "4242edf790e4569ef349026ab4c6e31093334ee5fc02b16ed7a0d9fbacdffd16",
+    "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/deps/uv/include/uv/version.h": "a859f2c21f7887d45b0372109ebc91759a6f8c408c7cbf2a12f9bbe579be403b",
+    "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/deps/uv/include/uv/unix.h": "06ccd9e0f3f312b610a7e7a8ff16596988e02796e7a0c81a62e29d5f6abe4613",
+    "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/deps/uv/include/uv/threadpool.h": "09ae41099af710289155be012df45c2fce04da6a02e813278b4558935e645938",
+    "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/deps/uv/include/uv/darwin.h": "222b6dd3ce67cfbb735b14b1662f065fc23570d6969acf463b39d946b7590d8c",
+    "/private/tmp/aux-standard-native-source-20261023-a4/AuxRuntimePublicationBridge.h": "ae3c0b18a5695962ece952f0301ee7f6601b2de638b1d47edf6ca04043e43113",
+    "/private/tmp/aux-browser-only-daemon-build-20261025-a72/source/AuxStorageRootsNapi.inc": "afaf22470b1a46b6984078722ebcb3c988553deee3aa04de6c84cfb5c0c670bf",
+    "/private/tmp/aux-browser-only-daemon-build-20261025-a72/source/AuxBrokerWritesNapi.inc": "dd5bc527e067306b4e3c9d85e865f1d56004d1accc597aa3df1a9218b80a1e4e",
+    "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/native-credential-lock-a1/source/AuxChatGPTCredentialLock.inc": "5fd433655ec805a4399599f16ed6b5e468af02c1a08b18bd6ded5f3e83186115",
+    "/private/tmp/aux-browser-only-daemon-build-20261025-a72/source/AuxBrokerAwaitedNapi.inc": "36c9dc78c361527c4e9ca171bf3d2f162106b0d6c4f95d69c8f66d242da17d90",
+    "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/profile-isolation-local-finish/runtime-cache-async-relink-a3/source/AuxRuntimeCacheInspection.inc": "d67c7ad5acb41a731ecf24aaf8575a5f3433ae854026b0f78fcb94c542d3915c",
+    "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/profile-isolation-local-finish/runtime-cache-async-relink-a3/source/AuxRuntimeMutablePins.inc": "0a53aee75c07770f8f39793ec5c490aef7a9e1f26b0e7bc80c49db046c61d1df",
+    "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/profile-isolation-local-finish/runtime-cache-async-relink-a3/source/AuxRuntimeCachePins.inc": "0cdad8ab9b147222b80dcd89847f48f6ba97f4f874d20c86d1b2a2ebc139fd5a",
+    "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/profile-isolation-local-finish/runtime-cache-async-relink-a3/source/AuxRuntimeCacheAsync.inc": "660c0a2cfbc1f073d78528899510c9f335c6e7501ab01b70cd5b848083f91df9",
+    "/private/tmp/aux-standard-native-source-20261023-a4/AuxRuntimePublicationNapi.inc": "824b83c6da46f394d78fab110aa405f2492c0f2689d828d97d382047b5f61335",
+    "/private/tmp/aux-standard-native-source-20261023-a4/AuxStandardCleanSettlement.inc": "57e895d7bf8306ec625956b53a151405ef33d8bda9407c51a0c8ee94d21a4f25",
+    "/private/tmp/aux-standard-native-source-20261023-a4/AuxRuntimeCoordination.inc": "342a44fab0360268ef4773c68406b30a0cc4fb2e2000493ec6f7c7a03fa497b9",
+    "/private/tmp/aux-browser-only-daemon-build-20261025-a72/source/AuxMemoryMainOwner.inc": "8e93a9315bc9fabbf8b0228025ca11846307536e1f547fa326bb7e5b5723eaca",
+    "/private/tmp/aux-browser-only-daemon-build-20261025-a72/source/AuxRegisteredMemoryAccountOwner.h": "a38c60a80fa5b005cb166e1df54628358a9cc0cf0b9df84c8396b6dd59c74359",
+    "/private/tmp/aux-browser-only-daemon-build-20261025-a61/source/AuxAccountMemoryHelper.h": "049ef6f0f67ed9aa91ddd72837d916a57a28df9b6f3ddadcd628d260e4a7ec9f",
+    "/private/tmp/aux-browser-only-daemon-build-20261025-a61/source/AuxMemoryModelPins.inc": "5687f40e74f190930e1ddee90957f9f7a39e107b1d6a84a0a5e0c7af829037bd",
+    "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/runtime/selected-builtin-owner/source/AuxFixedBuiltins.inc": "b05a2d6bc9ab0052b713ed9f67c03128bcb9200e58ed73b1adbcbc66d4c02900",
+    "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/runtime/selected-builtin-owner/source/AuxMemoryMainOwner.inc": "6d41b19d885c36e0f220dff4be01dfd572c839bd7d9d14072794fbb1b8e9a019",
+    "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/runtime/selected-builtin-owner/source/AuxSelectedAccountScope.h": "fd70f2257783747ec0690e5784c0ea27c7ca58ee12f665dc9aa7c4e252514f75",
+    "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/integration/computer-use/source/AuxAccountComputerUseHelper.h": "cc4caf1fec1f3ce1616241246a5f0d7eed0603bfc8b49a9d9618580f95c247aa",
+    "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/integration/computer-use/source/AuxComputerUseMainOwner.inc": "10025389663f332841c7549c11d88a5773de8b7ed31ceb63568f9c005937c8d5",
+    "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/runtime/final-daemon/source/AuxSelectedBrowserFiles.inc": "57e0839cf3087d2f67028d7e31d00d7ef4a6a9795c0d1c02a5973c8d77f8506f",
+    "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/runtime/final-daemon/source/AuxSelectedBuiltinOwner.inc": "c8b9f314540e75dc4965ca05f74fa5dc135173f8a152f906dade701783c53c22",
+    "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/runtime/final-daemon/source/AuxRuntimePublication.inc": "892dbbef0aa14bf97db8fa60e990c7bc7a585acf847092ac0c1166307fb45062",
+    "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/runtime/final-daemon/source/AuxSelectedFileReader.inc": "87c2c551aa663cd6b5a793691f95536cb0557fe83334adb56a98dd96da6b9b8b",
+    "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/runtime/fixed-builtins/source/AuxLoadedPdfLifetime.h": "8a02f4893640e4c0ff2edfc948c5c1ab8beed058a2cb9ca8812a509c3a5dc62c",
+    "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/runtime/fixed-builtins/source/AuxLoadedUtilityLifetime.h": "15e686a79cb8aaca29da83ec45558d2d9e9b45e336661691c68d95d95d12e373",
+    "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/runtime/final-daemon/composition.json": "30a7ecffd7cb6f5b62061a3e5bfcd7b1eab93463eaca60869b7f337f8ca0eb86",
+    "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/runtime/final-daemon/run-build.py": "d3e2b085971c8ed8543ef31ec928817b51217a89e36e5bbbbd33c4b04e2b7e00",
+    "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/integration/successor-assembly/source/AuxRuntimePublication.inc": "892dbbef0aa14bf97db8fa60e990c7bc7a585acf847092ac0c1166307fb45062",
+    "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/integration/successor-assembly/runtime-relocation.json": "f8382006b02693f0f72fb69fcb0aa21b07b2febc3acc1e797875e8f559e77bf0",
+    "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/integrator/fresh-successor-scope/source-plan.json": "2d823cdfe6281d81c5e1a4b1f7ebb301c036b4e5e8bd9b76a6b64ad9907eeb0e",
+    "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/runtime/fixed-builtins/root-compile-vfs.json": "5d850098c13a5f61faa6e21a7221492d1e89ed6707dda6e2d42f943e47099b30",
+    "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/runtime/selected-builtin-owner/daemon-recipe.json": "91d11093528064705f9ba4a8ce896a9d9997762f34d8798bb3230d3a72c9183e",
+    "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/integrator/daemon-sdk-repair-recipe.json": "b83a0664cfb5efe06c132ea43583a8e473cd6d9610b4e26be96a6291d008b1f4",
+    "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/desktop/browser-files/worker-source-plan.json": "dbaad656864ed74f367e48862cbac36c45fdbc9034ff6db1c754de55aa4dcf09",
+    "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/runtime/selected-file-reader/native.anchors.json": "567de0de41e0e27a8bfbc7961f8b475da9d7c9b02f36ffd489d60706d38d5cd0",
+    "/private/tmp/aux-completion-daemon-fixed-builtins-20261026-a1/main.o": "5ad28cd64d996cf697630579eeb7bb46c0644d1beb03dc11d4c7f944b07f20ed",
+    "/private/tmp/aux-native-worker-close-main-20261023/1.o": "a1d40ad89db6fe26bb7bf1a3d221985f1a8f7abd0893d23a1f08afd1c6621856",
+    "/private/tmp/aux-browser-only-daemon-build-20261024-a42e/preload.o": "b5064039aec32333d5de1323674e548d319ba563899f828f21cbc15d9addbd49",
+    "/private/tmp/aux-browser-only-daemon-build-20261025-a46/node-runner.o": "2dd4074f9fe78cde6bf30aed1e90418362de888b534cffd36ec77c7fb039d3a3",
+    "/private/tmp/aux-native-worker-close-main-20261023/5.o": "73da7f6e5476951b2bc60cc5cbce8d8b8921ee0e0def2614799b1d26cb2e9491",
+    "/private/tmp/aux-completion-daemon-fixed-builtins-20261026-a2/pdf-lifetime.o": "6e047ed686d497821d120621f5d25c2c52c9f10c84cce64dedf95974dbcc0bf2",
+    "/private/tmp/aux-completion-daemon-fixed-builtins-20261026-a2/utility-lifetime.o": "3d27966d0063acb452d91472b68740da81a6fdd184d57b9ff77a70c4ce964b99",
+    "/private/tmp/aux-native-worker-close-main-20261023/8.o": "65add741603c0d6a539dc60699661fb40fc119172651db5b8c0dead388d11b4f",
+    "/private/tmp/aux-completion-daemon-fixed-builtins-20261026-a1/peer-transport.o": "3f9df5da677d58e2e5ce8507da4a592d2cdd428b5ab3677aad5485a7cc757e85",
+    "/private/tmp/aux-completion-daemon-fixed-builtins-20261026-a1/parent-bridge.o": "5f15be44c0dc225723da4a1c43fd21486251d6d1f46a9b482b4fe9c0501ffa05",
+    "/private/tmp/aux-isolated-node-archives-20261023/libnode_base.a": "dcf36590301ffe2555e87f1ebc4afb460944f43ba7c61179e08e2b4cbb2fcbef",
+    "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/out/Release/libv8_base_without_compiler.a": "02f67100e3cb97b747ee89fb325defc916f7c7a32a618ded550e35964e1fa3a3",
+    "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/out/Release/libzlib.a": "befa6273533cf8ff37a3cfc2ae7788f296864e4600b95342b9ad3da1fd6d5b3f",
+    "/private/tmp/aux-isolated-node-archives-20261023/libuv.a": "f82b3182c095a5ab1064dd167d92a0f68174daccfb2dd04fe62c65496df0e263",
+    "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/out/Release/libv8_snapshot.a": "f85e6bee6d53510961bf16eecda347714ae4a8f7c3b0153707337817863888f7",
+    "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/out/Release/libopenssl.a": "a8777c83a2a2d812dc7d5bbff68e160ae450c91c558556d31daa0e77262f72cf",
+    "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/out/Release/libnode.a": "c9f95b35695ccc923085e659f03aaf2b65490d7ed9253187b3f28443569c6e90",
+    "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/out/Release/libhistogram.a": "36b7cb1b93a21391bebeab6ecfac847ccdccbacb67b49624fba12b020236a104",
+    "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/out/Release/libv8_libplatform.a": "7fda850165b7d947960af6deaceaf5877b58f37654a098b3af3ba88d0dae34db",
+    "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/out/Release/libicui18n.a": "cff4b1d68d4b6ed9ddd9f2ab1ca8f40bb95e457f680bd1551bd04627fd918eda",
+    "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/out/Release/libllhttp.a": "c056185f14a5a83c4e6a3a000e2d853d7535a9dd5fa78105639be8d63c9db983",
+    "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/out/Release/libcares.a": "707419a539c0f29f868e228beea1adb137581ff69d41322541004538314b9c1a",
+    "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/out/Release/libuvwasi.a": "407b9c5a0d35ebebd387c0d4acf6232c8fa9376df97b95a6aa0f1885884cdcca",
+    "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/out/Release/libnghttp2.a": "79c3cc52bb13f2078557c1f86683330a098ed79fc226c73e0bc2759b5444687c",
+    "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/out/Release/libada.a": "2974bf6d8f2b3f386a38752617f497327c101e0d3f46262756f150a658de80b7",
+    "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/out/Release/libmerve.a": "34c7cf066a084675ce3ffb2478175ea2004c3bf7a0f08fca324c592c1008afc4",
+    "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/out/Release/libsimdjson.a": "73c130f9f656b0efa5e3e23bb1f15a87f752ecea7cf8f6bbcb64d10806e18b29",
+    "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/out/Release/libsimdutf.a": "6440db863c168eb3624abd1573c7e997ac79034f92efd1157d354c28724f8ea6",
+    "/private/tmp/aux-brotli-1.2.1-20261023/build/libbrotli.a": "8242699baf1367dab8677cfba29efec1086a184db84b950f90fc494b05fd2f0d",
+    "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/out/Release/libsqlite.a": "a9429f4a2ea3801ff391681cf4068bb54f3b5440aaa3e6a4c80ebb4c299df17f",
+    "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/out/Release/libffi.a": "00416597fa71b1966243aa1ad764f973a286663bf8eb53448216d5cf7f1233ff",
+    "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/out/Release/libzstd.a": "66c2aea4791921078b3f3ea23787a31a450dca1b84c78ebfa98b7862dcbe1e0e",
+    "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/out/Release/libabseil.a": "825b3178a6035e55873b72f56c0af7cfd4a25a190ff3f8e72dd7572835b66477",
+    "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/out/Release/libnbytes.a": "bf0b469f1aacebd6a5029f1290497f87dbdbd58ae32963c90ab6bf41d9138ec5",
+    "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/out/Release/libcrdtp.a": "9f0e4d3a4dc1df50266a472e2000b69d604b829470b0d68a1afaeb2c404d0538",
+    "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/out/Release/libncrypto.a": "0a64573586bc9f63465309910ec1cd044cf6bdf3792f2a5f24e90fd152eee122",
+    "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/out/Release/libzlib_data_chunk_simd.a": "f6af4f1ef508085fc36f8cbd9425edb89e140774d26bac5787fe4099df44ad9d",
+    "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/out/Release/libzlib_adler32_simd.a": "951464be6f429168a9b90e5b32ff6034b594e8f181b2b523053f848023f8b310",
+    "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/out/Release/libzlib_arm_crc32.a": "76c96b0eca2ad90f07d5e9dc46e7c041bcead6e25944b06f7217b42502297810",
+    "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/out/Release/liblief.a": "d5d0a882b5ed2b01aa06672622e65f371478166b86fbad68e5a81cea36423cfc",
+    "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/out/Release/libicuucx.a": "d8eac961580afd724a11ccc0469a1c4c5c571f1e730e253b0285174c82ffa69e",
+    "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/out/Release/libicudata.a": "51f8552e6f0c2c1ca8d546c10ec15ccfd5bd3f1923fb19fb57477546d985d774",
+    "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/out/Release/libv8_libbase.a": "fe8cc1f5c13fc089c9e3806d730298ec901dafdbcaeb1b39c74d896a7305fff8",
+    "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/out/Release/libhighway.a": "deab6d9137a92390862224b74e5b8f559d92754d26ad3552e100adb1ad0702d2",
+    "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/out/Release/libv8_zlib.a": "e7768ed215313684380ab4ca9a80999283b33d5254dda211a059608c02a99122",
+    "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/out/Release/libv8_compiler.a": "9282311b71f4717c10ec996c206ffdcb18d57b6c325a2b5df1d2c0e7883e9c2f",
+    "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/out/Release/libv8_initializers.a": "d87a0a81a6c69498235fcf749454d5afd8b0eca3ae4eb602d892963513fc5559",
+    "/private/tmp/aux-daemon-crash-registration-close-check/inherited-crash-registration.o": "50395c152dfba8b64a1f24eb9be1e3d41f5999307e76ba7fc096bbf98f886d74",
+    "/private/tmp/aux-browser-roots-objects-20261023/daemon-AuxBrowserPrivateRoots.o": "337c36fff933bcd5b04cd01ce2130b81f5b25e31b886d387cdf119c4e91e7a32",
+    "/private/tmp/aux-daemon-observer-reverse-a1/observer.o": "0416617c43b0551d766ac493294502465a4df903b909a1475b91bf3f578cb40a",
+    "/private/tmp/aux-browser-only-daemon-build-20261025-a71/memory-helper.o": "19770822a217da093b750aa28e33e1983f8898a90d2c1927ae56a32267980705",
+    "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-pty-module-artifact/evidence/artifact-receipt.json": "6a5633dbb369166759b76938872abf7be54bbfc38c45c1f3513dc86db69768bf",
+    "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-node-pty-direct-child/source/pty.cc": "85025b57d05232f03daf4627d891e593f0938859af446848fd87e48cb5326807",
+    "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-node-pty-direct-child/source/direct-child-wait.h": "f26cd17e37bcd8de75579366aa5bd8c7549ae0b8195553d05e26c34574bd2df7",
+    "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-node-pty-direct-child/source-pins.json": "8af76914feed5122c5bdcfa8987c4a103149b4e1547277117b4a41f73d60a348",
+    "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-native-pty-helper-host/source/AuxNativePtyReservation.h": "0ff6976a612f6e11dc99fad6e6a2f8fb10148f4e6cca4304fd71a3044b174982",
+    "/private/tmp/aux-node-pty-build-deps-20261023/node_modules/node-addon-api/package.json": "57f9f30ad57e1ba3f7a87e23f32b0a6b136795bc49eac10a1d3a3b0e79ae877d",
+    "/private/tmp/aux-node-pty-build-deps-20261023/node_modules/node-addon-api/napi.h": "2f2f5d1e4ca96f315c51ad96c292c18294dbb999b98f8b2f33b80816a3189fb0",
+    "/private/tmp/aux-node-pty-build-deps-20261023/node_modules/node-addon-api/napi-inl.h": "4b053c184dfed740fbd802fdcf97e85fb8c7b0eb1d83322000d932d31662eda7",
+    "/private/tmp/aux-node-pty-build-deps-20261023/node_modules/node-addon-api/napi-inl.deprecated.h": "b66ed1e565e735bbfabcc2f72d466ab7c5414d3ef8851d1af440b81be7f2375c",
+    "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/runtime/fixed-pty-retirement/source/pty-linked.cc": "e984cf9d9a72b303f6272aaede1eb8c2c82beee74f7768bedc22998dcbb6a877",
+    "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/runtime/fixed-pty-retirement/source/unixTerminal.js": "3fd510340adbec02e1d7cfba8e08ba9d18909a26d7edcbaaea00aa20bb93fecf",
+    "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/runtime/fixed-pty-retirement/source/AuxPtyPhysicalRetirement.inc": "02756d83f79032709d68530383e28fcac237af8388eccb0fab59e94db95d335b",
+    "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/runtime/fixed-pty-retirement/source/AuxDevelopmentWorkerHost.cc": "aa440784355c84275de7e521e3b40ab1fca4b02dc4fba937cee20d713b924fc6",
+    "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/runtime/fixed-pty-linked/source/AuxFixedPtyLinked.inc": "6cae8957abd55826c10473d5a21e4165cb3792cc1b1fda27565fa947a5fdf340",
+    "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang++": "5922f5f7843fee699497c45cc98134b6686e0a5e2fa8a5866ab74c5482fa87a5",
+    "/private/tmp/aux-spawn-custody-20261023/docs/integration/proposed/profile-isolation-next/spawn-custody/source/AuxWorkerDrain.h": "712a4d3c125a27822dddba220c1325f4fcb3739fa12daa6f2794d9bf245f48db",
+    "/private/tmp/aux-spawn-custody-20261023/docs/integration/proposed/profile-isolation-next/spawn-custody/source/process.c": "058b1fd3390c1b1f3777be0490283b497270742db0e960aa3aa85f5387597ea2",
+    "/private/tmp/aux-spawn-custody-20261023/docs/integration/proposed/profile-isolation-next/spawn-custody/source/spawn_sync.h": "ebae4be8f3bd62b0601e65780d721649c506f8707f350eec5ba7cddc028ead1a",
+    "/private/tmp/aux-spawn-custody-20261023/docs/integration/proposed/profile-isolation-next/spawn-custody/source/direct-child-wait.h": "f26cd17e37bcd8de75579366aa5bd8c7549ae0b8195553d05e26c34574bd2df7",
+    "/private/tmp/aux-spawn-custody-20261023/docs/integration/proposed/profile-isolation-next/spawn-custody/source/process_wrap.cc": "ca7e729812c0e0d4d7805793d40db74641a53135a8e3dddc20b2fab461547559",
+    "/private/tmp/aux-spawn-custody-20261023/docs/integration/proposed/profile-isolation-next/spawn-custody/source/pty.cc": "c9cb4e15c7dc9c52ae12a88d3c540c4780aba24380255d672bae8e1d5b516bcf",
+    "/private/tmp/aux-spawn-custody-20261023/docs/integration/proposed/profile-isolation-next/spawn-custody/source/spawn_sync.cc": "1cab9bdcb31999885f2f94183c500ec732c6334fc8a4bec82e297b050581606d",
+    "/private/tmp/aux-spawn-custody-20261023/docs/integration/proposed/profile-isolation-next/spawn-custody/source/AuxNativeExecDescriptorPolicy.h": "d72c0fe16823cba6ff2636ccd7e5240520b2d3f82d2954459dec231ec64075db",
+    "/private/tmp/aux-spawn-custody-20261023/docs/integration/proposed/profile-isolation-next/spawn-custody/source/AuxNativeExecReservation.h": "3ba0f010dbd8a2e19ba79ee82ae362149c9d34e988f7e3ad71c4253472715542",
+    "/private/tmp/aux-spawn-custody-20261023/docs/integration/proposed/profile-isolation-next/spawn-custody/source/AuxDevelopmentWorkerHost.cc": "cb155a41136f00f43399e3b3fd945886ea47bd86ed66966346af3d4d0f8aaf56",
+    "/private/tmp/aux-spawn-custody-20261023/docs/integration/proposed/profile-isolation-next/spawn-custody/source/AuxDevelopmentWorkerHost.h": "6f53de035eee66ec52239906e5655d3298ab4ba534650980a7b23de3ad8bbaa4",
+    "/private/tmp/aux-spawn-custody-20261023/docs/integration/proposed/profile-isolation-next/spawn-custody/source/AuxNativePtyReservation.h": "0ff6976a612f6e11dc99fad6e6a2f8fb10148f4e6cca4304fd71a3044b174982",
+    "/private/tmp/aux-spawn-custody-20261023/docs/integration/proposed/profile-isolation-next/spawn-custody/source/AuxExecPrivateParent.h": "f679e20db7581cb27ec21b254803c7908beaedc70614b031b3915ceccbf70a92",
+    "/private/tmp/aux-spawn-custody-20261023/docs/integration/proposed/profile-isolation-next/spawn-custody/source/descriptor-fixture.cc": "05e2aa1a0a3cbe8a9a80958f4aed898e4fed0884a0fa579e963e5a86168b6f30",
+    "/private/tmp/aux-spawn-custody-20261023/docs/integration/proposed/profile-isolation-next/spawn-custody/baseline/process.c": "e79f9bd90787011d59d9395f46658caca2ca01d1daad84c36e3b86eba50a4a52",
+    "/private/tmp/aux-spawn-custody-20261023/docs/integration/proposed/profile-isolation-next/spawn-custody/baseline/spawn_sync.h": "9655e8371d0dfd3d246967297286bc8b929bfe34950b0c01146c72a19f2d4e6b",
+    "/private/tmp/aux-spawn-custody-20261023/docs/integration/proposed/profile-isolation-next/spawn-custody/baseline/process_wrap.cc": "f4db549965708ad031d372b7b1a2a7d821527316ef9c9d8de4ca3a85b3e9b45f",
+    "/private/tmp/aux-spawn-custody-20261023/docs/integration/proposed/profile-isolation-next/spawn-custody/baseline/pty.cc": "85025b57d05232f03daf4627d891e593f0938859af446848fd87e48cb5326807",
+    "/private/tmp/aux-spawn-custody-20261023/docs/integration/proposed/profile-isolation-next/spawn-custody/baseline/spawn_sync.cc": "57ce2e62104b374d868360e79d12efcfc43df6f448533cf13f2ac34712efcb38",
+    "/private/tmp/aux-spawn-custody-20261023/docs/integration/proposed/profile-isolation-next/spawn-custody/baseline/AuxDevelopmentWorkerHost.cc": "45f5ac44685822b5561b57c225d210a8d7b879bee3a5de7b7afa8b6567512b0d",
+    "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/profile-isolation-next/containment/source/AuxExecSpawnEnvelope.h": "87be38a59da8c21d97062c4a54ff1049d9db73efafc1dedf0fd9f41ed725dff2",
+    "/private/tmp/aux-browser-root-provenance/docs/integration/proposed/profile-isolation-next/browser-roots/source/AuxBrowserRootBridge.h": "dd6c31c3a3a72670426c09c86758d23ba14ea654c4345fc3d627dce6f5ea013d",
+    "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/SDKSettings.json": "7b93ad7e534cc4b31c6a4e39d19b5e0288acf2168c2649479a796d1cb51939fb",
+    "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/src/env-inl.h": "0decb70ea6ad7fe4c46db71da57240800b314dc791e901dbf3d645009ee32044",
+    "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/src/aliased_buffer-inl.h": "7f503c60ab4ae93c492e1926c888c4e1fe89ae5bab80510eced151108556bd4c",
+    "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/src/aliased_buffer.h": "f5aec5e5b138e4ef31f0ce223eb10a0fbd0a39ea57615c8ca6bd137bf4a9157e",
+    "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/src/memory_tracker.h": "cfa0fb619bd032ad3a81de2bcff32e26e17d504083fc1c39845d7fce29b8ac92",
+    "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/deps/v8/include/v8-profiler.h": "2894702c63bd4af00e359c4ffdc8d6c56518a7d2f206ed8eb63e56df3196c819",
+    "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/src/memory_tracker-inl.h": "33acaae348c998bd0f7d1745132ce453bda64c314cc65a4e759bb63eac7fbd00",
+    "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/src/cppgc_helpers.h": "c6fdbc8db1819b9e2d0e0d441ca19b7809fd8592ebeb8ea479465fa597f450d2",
+    "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/deps/v8/include/cppgc/persistent.h": "ea638e558367dc9102b2c7311d907fa4cf0bb01a2ad06cf297cee7074fb5af34",
+    "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/deps/v8/include/cppgc/internal/persistent-node.h": "295ca9840be82bdfe276b452ae97ea86e085ef7541dea3bbf2228f983d4d4f54",
+    "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/deps/v8/include/cppgc/internal/logging.h": "3255ec56f149e5380f6e4757103c78c20e3bfb44ceda26f4bdba19f5ace4463d",
+    "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/deps/v8/include/cppgc/internal/pointer-policies.h": "af8521e1b21ac5bae17596a2d5757283e823f2103a2c3bb779d8e7b535f3f959",
+    "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/deps/v8/include/cppgc/internal/member-storage.h": "060bdec6d59781942ff8757763807692b3433d8f7c92695594c93dc3590d1d36",
+    "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/deps/v8/include/cppgc/internal/caged-heap.h": "2416fb184f0e202c79937ec646f5327a790adf7e88f9a0cfd4a8c5bb7692d8cc",
+    "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/deps/v8/include/cppgc/internal/base-page-handle.h": "fe5fee5093005e6a1f2eaf408a324d558c58c1a382f5fa3512c7ec6a1fc8f3bc",
+    "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/deps/v8/include/cppgc/heap-handle.h": "29e12945e9bc2b6382e97d1527b19d858e54c75149a09107c29bffa53f3c8ad9",
+    "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/deps/v8/include/cppgc/sentinel-pointer.h": "13f78abbe810a9959bb2126a5ca4de7795fe0c7b21c18a261cd278bfa4035fd7",
+    "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/deps/v8/include/cppgc/internal/write-barrier.h": "25444565b9c2f4dae373cc25b69e72ca411cffe87e7a4a985c4f8e5b310144dd",
+    "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/deps/v8/include/cppgc/heap-state.h": "9e4ac38fc7e351a3138c3c99e5ea6a09e61e6ddd8b02b4fc2e48100199e9dadc",
+    "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/deps/v8/include/cppgc/internal/atomic-entry-flag.h": "270e86353643206f2a15023f7c8b9d0d6f16393f8407b48b006fba1e45068ff9",
+    "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/deps/v8/include/cppgc/visitor.h": "3e7c1e187e39e59627e3eaaa05a990fa02d28a8cce941f4c34b803ae03fda616",
+    "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/deps/v8/include/cppgc/custom-space.h": "e07586be071fa0bc194efd585b0c9e483bb332049ee12693de27801879b9c868",
+    "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/deps/v8/include/cppgc/liveness-broker.h": "4390c573e7a792598e1f7d4d000ba345d0d3d627cf98c6f9f4094ef106084ccb",
+    "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/deps/v8/include/cppgc/heap.h": "2afd83536f15879b859f9f12ca341aff9c462aa541769d0744025daefd92f5a9",
+    "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/deps/v8/include/cppgc/member.h": "51cf046fc73fce7a5ded42bf305d84c27bfcec57131b697deaec2c634a943c28",
+    "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/src/util.h": "7afcef63f33667f9da5d5bab28e5c86379178397774c728b55989ffb70a3439a",
+    "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/deps/v8/include/v8-inspector.h": "3be1e3af353b349f5e2941c70b91fe450865bae109c219f8efd58bd71b4552c7",
+    "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/src/node_exit_code.h": "19ea19ccde8e0a558410eca7589e6eacc7c031753ac91687cf6ef855d5490379",
+    "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/deps/v8/include/v8-cppgc.h": "112b01dbcd87a407e1e4efe467641a1da2cce2d233b2c1fe9582998205a9ba19",
+    "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/deps/v8/include/cppgc/heap-statistics.h": "cca7a1c2d5aec04b3029055444a77701590592cafcd3efb9ebdab0f8395d531c",
+    "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/src/util-inl.h": "eee12c1655011b792f5b1575a57c213101608d0406ce93bc93152da3666930c6",
+    "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/src/node_revert.h": "281e00e8265720a12ce69e88267dfabf33c57c16a91795c49ee4d5cf7c63cbcb",
+    "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/src/callback_queue-inl.h": "82561f32d5c5950751ab99c0fbafa66d7ef6f95d17b243849a471aa50d010bbc",
+    "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/src/callback_queue.h": "040c0242b120ac97f393442fcc83cdd4215906163d52f02fab88a264a73b4a2d",
+    "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/src/env.h": "173bedf67252bb165d9af6c9778d28c706c98abd55fac2d0a22c8438b1229966",
+    "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/src/inspector_agent.h": "09bfe73411c64b7a32305ebee1829921570285ae6270eeb3e4595582eba75de3",
+    "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/src/inspector/network_resource_manager.h": "8e1c6c1add5ee6a13a00fabd18e7c74947a8c4464bcc1c6db533ef6854e9231e",
+    "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/src/node_mutex.h": "79fc7058f5380da98638682684e77f72d4b413753c0becd621b0d0e2f69600e5",
+    "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/src/node_options.h": "33175fa0a199405b85ae82175fb58fc18c54957ca18a7a7f47e78dc65619f1a1",
+    "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/src/node_constants.h": "2d6ad6acdba0376bf8286eb3ebd03fd3706bd7fd78f799527fa4ecaca216cec8",
+    "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/deps/openssl/openssl/include/openssl/opensslv.h": "1e9854a7788d8b2b6720b883143ebc679499aeef36741bbf3d5cd5a05e20c82c",
+    "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/deps/openssl/config/opensslv.h": "c4eced5eb8a876f47c89dbb07310148d4d7ea4818fa55ec9dc5ca31d33a719f0",
+    "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/deps/openssl/config/opensslv_asm.h": "13017f513c1a583a2a0e53192bcbefc485d487a45ba18984c67d7cd3022f954b",
+    "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/deps/openssl/config/archs/darwin64-arm64-cc/asm/include/openssl/opensslv.h": "256985d6271826835673eb59dec8369dbbead0b5055864b8b7e69effac426e52",
+    "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/deps/openssl/openssl/include/openssl/macros.h": "dc27bc9e94abbb9e49bbcb604da5c061a65145586ac388c3fb4fc311daaccf96",
+    "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/deps/openssl/openssl/include/openssl/opensslconf.h": "7f4b522c049d0bd0d651e6f6ebe71d6df0c37231a94e32524da3f4642ebda3be",
+    "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/deps/openssl/openssl/include/openssl/configuration.h": "012835d93d25872edc1346507ca06fb0b0a8eceddfbaeffae62b73f137b25faf",
+    "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/deps/openssl/config/configuration.h": "3a47330f5acb3ad3a05ed81058514cdb4eb9f4b16216e955da041b1e93318b64",
+    "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/deps/openssl/config/configuration_asm.h": "4c4009d3630b2f44edb3d996712e08d89d105b2abbc36d8fea558677684ddb6a",
+    "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/deps/openssl/config/archs/darwin64-arm64-cc/asm/include/openssl/configuration.h": "004abd53a80d433127a752e3c6dee10b05a03abf357f2a33ee21ddf8036174c2",
+    "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/src/quic/guard.h": "678ed1d8a58647c6ba17aedaf6a9ff51cffb4d949981f40f699661c712962693",
+    "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/src/inspector_profiler.h": "b6de5b58314b158c679e165d6955f084c5cba6b2dc101530643a1dcfbc844874",
+    "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/deps/simdjson/simdjson.h": "fec0cb4559e25456789efb153b7e5eaa27b50ce2bc2c9d3b531ea2000928380a",
+    "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/src/cleanup_queue-inl.h": "a5f2e94244461040185a11b658426b3244cca6b31677f2483cec041f6c25de4c",
+    "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/src/cleanup_queue.h": "a5eaea393dd49a7ca46002f92f90d91f5df60b50706dea653a2b055c5b133715",
+    "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/src/compile_cache.h": "f213dc4ac5ad73f64a8d98f6ff1634f021b508cfc8e2b1cfd7e6b1860d69bfc6",
+    "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/src/debug_utils.h": "3af25d62b8f97fa850960187eddb896f589772793202abe1a909b0b69af1b74c",
+    "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/src/async_wrap.h": "b541add062a8cc48004f91e6c5140737272ca02de2b54f064d2fcbee9458e602",
+    "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/src/base_object.h": "cb4dbc336992f12f915adc0064c29fa116d39f00f0f9a8e1789eead796ed2655",
+    "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/src/base_object_types.h": "f67dd00b454a1eda772b5f2e0cb1196fc83b367f4b5df1372df06567d1115237",
+    "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/src/node_v8_embedder.h": "9535b4b755c3d38c29c8825ac9d3f23ba90ac4f8edb6362d612a5e3de7391abb",
+    "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/src/env_properties.h": "71e0890633385cbd07d41ddde3f5042729ab4144726aace1002065a63cfb6ee9",
+    "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/src/handle_wrap.h": "9f3a9838da4e752d277582e4c750bed44f9a8a1aa765a7f0d9bae6ab7c969dd9",
+    "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/src/node_binding.h": "3c065cbe42e4df1272487149703ab2b8528fcc24fb39d54ce1e8c143993f356b",
+    "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/src/node_builtins.h": "45394a167f992e5b3e36e5af1531603d53b1b23425a0fd36721041257f23e0c5",
+    "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/src/builtin_info.h": "f81573ce5068e4d2d36a7b46b3ff58c0c86d2832814424b3216ef8ef89cdedc5",
+    "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/src/node_external_reference.h": "95e13fa3c9c4a64ee262de89a8d0a7b9fa92ea51f1dd5f3784c8df60d9f055e8",
+    "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/deps/v8/include/v8-fast-api-calls.h": "507a4e27c3e20e02f21f9155dfa0c808c5af1dc08fcf83039735b05b4e34a1a5",
+    "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/src/node_threadsafe_cow.h": "2f753b4443397563bf83c61cb79ab6e99b003e4aa28c8be2b81fadd7e01c08aa",
+    "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/src/node_union_bytes.h": "3131c977c70f925931ba9df71d994adcaa7905e3b5fdf69969e9d0df90235ba4",
+    "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/src/node_main_instance.h": "744acb24b5ce6002c99b18a516c203d10c068a015ec5ff34da70fb6620b209d8",
+    "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/src/node_perf_common.h": "ecdfc0699773a77eb46954285e68871496cf5197a47c2605eb735cea1218891f",
+    "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/src/node_profiling.h": "ca51a7e4c4eee1cfe4ce7a2a317a8a12f4fa84768cdf0672a415ea171cc2d42c",
+    "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/src/node_realm.h": "977fcbfa034f9e6e2924cba05def22c5a5f1cb5dbad799f68ab34e1492352709",
+    "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/src/node_snapshotable.h": "0931f7706b9d73e926c5f6e5d8b10d8419bee0bddaac5be335fe6828e086c2be",
+    "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/src/permission/permission.h": "12419b0381241f00cdc68afffb86649046d0739e719669205f6309f34ac52206",
+    "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/src/node_diagnostics_channel.h": "6cab084b881eca55ce8fa1db19d2f6aa91701c61aab51af0f7258493f056740c",
+    "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/src/permission/addon_permission.h": "3ccf19df647a16197f7da7bc67f86435b75c9d70fd1d0a166bc6086e8867e24d",
+    "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/src/permission/permission_base.h": "6e403981001144c0bf9c0cfddf50b9c1c9e6613ba2c6d340b162cca040b7de10",
+    "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/src/permission/child_process_permission.h": "a7fdfd91c62aa115dc58d3c781a44692fa8c6de9e2cd6c4cf3fc5ad6fdda8299",
+    "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/src/permission/ffi_permission.h": "45ad1b46a10398da3be848a2dff65167bc8d14c33170e8a80ef6afcb0a7ca647",
+    "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/src/permission/fs_permission.h": "911c6e4f958f6fb1382506943a682d80e9814fefa6665cbbb4556cdcad20bb21",
+    "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/src/permission/inspector_permission.h": "afeff26086b25ba199c00fe2641e059e01a5c4fd9608d2c66749dea6c609b986",
+    "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/src/permission/net_permission.h": "8a2aafaaae3122c5a434d19347cb75053a0a80273686bea88afa270dc14149e8",
+    "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/src/permission/wasi_permission.h": "c178361ba14ab205de0617caa4b8406cfee84b7efbbf29bd5670fd11cd7f7534",
+    "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/src/permission/worker_permission.h": "4bba39217306a33494609bbc07ff88b0ed8c4eb4f1b3e39926b630e6ea843562",
+    "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/src/req_wrap.h": "571212e6b7000aad7256fc3ad81398d3e75cb69c036bf87f4a6965b226bac5de",
+    "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/deps/v8/include/v8-external-memory-accounter.h": "077b67c9a6e566ec82cf373788b517f8ad11eacb3b138e952082e9010b26d439",
+    "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/deps/openssl/openssl/include/openssl/evp.h": "41b42c68adfd98b9d8a80fb2d78bbdaf1094f43dd02be045c7d8605edf36a706",
+    "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/deps/openssl/openssl/include/openssl/types.h": "de5422d2e621df11c17ab18473ea4f2368ecc64b1e45311c4890cc62b31f81c5",
+    "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/deps/openssl/openssl/include/openssl/e_os2.h": "d7300e16ec04f764e8fd45ae5288c37ab5af09dd1ea204d17c54c0155c69921c",
+    "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/deps/openssl/openssl/include/openssl/safestack.h": "a42cff14f8c45f6989604c2024060edd44c9b677ee12e0637c57aa8b5014fb5b",
+    "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/deps/openssl/config/safestack.h": "34ed015c34eea8eb092e1277f15635bfb8ddf0b09bba802f4ce1577ade906506",
+    "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/deps/openssl/config/safestack_asm.h": "b3ee5824184e7adace1d9bcc76a3fd2632326c2cf65c4e66a696ca8c31c19f26",
+    "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/deps/openssl/config/archs/darwin64-arm64-cc/asm/include/openssl/safestack.h": "99c92060bf4abf2a18f7963eafff3692b0823f9132e23fa034eb9a4c199f028f",
+    "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/deps/openssl/openssl/include/openssl/stack.h": "c81fbb17b5476dca609b96eb11372d1d246a49096838c2cf7e81ad6b25f69316",
+    "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/deps/openssl/openssl/include/openssl/core.h": "4d4e63e2e01d06530515adbbe3c93601c5f0f5e1a96754d34d3470bccfcbdbc3",
+    "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/deps/openssl/openssl/include/openssl/core_dispatch.h": "877d786bd366e80baa763d2c6c0b94e1d91c92cb0b6fa26d4004e6b0c3e6dd81",
+    "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/deps/openssl/openssl/include/openssl/indicator.h": "4be987d4fe4a4b39feac27c2ee85000e1b6ca7188d8ca9f75689a8205c2b4563",
+    "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/deps/openssl/openssl/include/openssl/params.h": "b76d73449d8d44d14a7da9918caf3d1feee85b384e2d62ace73a8a1126152702",
+    "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/deps/openssl/openssl/include/openssl/bn.h": "da179e5d98e8351e3e29f148bd88b42cba84fe60c7927a584f213bf2d09c38ed",
+    "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/deps/openssl/openssl/include/openssl/crypto.h": "8e2a2635f1a55c482aa8d6aa6ca695f9990ba2b48b6bd75a6e63a519f098f970",
+    "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/deps/openssl/config/crypto.h": "708a9e0e2643ddd75befda38fe253298250ddeaf6b2ec3ee716b0fc344878cbb",
+    "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/deps/openssl/config/crypto_asm.h": "241f109ca06e51dbe5998a9323730ed52a8a1e42b465c800582d85ef40585cff",
+    "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/deps/openssl/config/archs/darwin64-arm64-cc/asm/include/openssl/crypto.h": "e38926e360184b25b245e694563129c9b7e6aaa9f152e270ab9f3cf4ff1314a3",
+    "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/deps/openssl/openssl/include/openssl/cryptoerr.h": "c457c0591449551657a69ff9727784a79cc1afd899ac733c682c1a41fefdaa19",
+    "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/deps/openssl/openssl/include/openssl/symhacks.h": "2b54552189bfbf4204c28c6a421b21702a3cd3dba37570dbcdadb7ee648f155b",
+    "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/deps/openssl/openssl/include/openssl/cryptoerr_legacy.h": "985664cb71a62441b2822028340bb4ad5e3f98d6c74ba4c1bc7c997e188b97d3",
+    "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/deps/openssl/openssl/include/openssl/bnerr.h": "beeb78746fbcc2c09e1f833f4c2ea72e845e757390aad7dc8699f7787b580204",
+    "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/deps/openssl/openssl/include/openssl/bio.h": "41be5294d8769bd850d61f9f3a287b0003d675ef9dc495669fa10c12490deae0",
+    "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/deps/openssl/config/bio.h": "d18e16de84faf340cdf25ffdae148751609509aee3b06341f38e060365fa1803",
+    "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/deps/openssl/config/bio_asm.h": "0f34aaa5c005d44104784f34e0409ff03f6f808b00714bbf90a7dfc1fdd4d2b9",
+    "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/deps/openssl/config/archs/darwin64-arm64-cc/asm/include/openssl/bio.h": "4802c60e0dd656a2caed92e8df4867532d5f2cb835bab29b4f0695d2a8509965",
+    "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/deps/openssl/openssl/include/openssl/bioerr.h": "fe1bf57251e4eaab30d2a6aa2048ee93deb1f0f15ef6634f61093b4d405586c6",
+    "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/deps/openssl/openssl/include/openssl/evperr.h": "ee0a462f1985667434a2b8a91d5df67ce2ee74e4ad9246f660dece5fafcf4474",
+    "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/deps/openssl/openssl/include/openssl/objects.h": "b6227db488aa39ed20a29e67d48fe8fefb2f649a1afcc3149cba22ac26510057",
+    "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/deps/openssl/openssl/include/openssl/obj_mac.h": "d51cb3f619888a0485ba46ad886f76ac605ce78a3cfbc080460947ab2dbb3a02",
+    "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/deps/openssl/openssl/include/openssl/asn1.h": "d8e683df58b903c679cd5ddf10b5abaf38324384e69fc9f08a815dd500265b2d",
+    "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/deps/openssl/config/asn1.h": "a04fa8f7dd443ed191eecaca0276ea1d04cd82a20520f351ebc3a67622c10071",
+    "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/deps/openssl/config/asn1_asm.h": "4eb2520ea0b12f13c2974873f78cbc4b9665410d21e84894a7e1bc1a7a01fdcd",
+    "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/deps/openssl/config/archs/darwin64-arm64-cc/asm/include/openssl/asn1.h": "51a457023c28d9a53ae39cadadaab83f23445b69376a212d3d92223373629ff8",
+    "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/deps/openssl/openssl/include/openssl/asn1err.h": "9d60638b3d0c52170d390fe566c0b96a6381590590cc3dd71339eb85140fe1d6",
+    "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/deps/openssl/openssl/include/openssl/objectserr.h": "fc14e6c9e71fb550363394f912cb72e6078dd11e300bdddfdd17ec118c88dc4b",
+    "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/src/node_context_data.h": "50115fd0a719880adfd15bebc4a446135a5204038a34c23c939bfb480f1e3271",
+    "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/src/node_internals.h": "d9f094a65b224bde88d82c5b0b6f9f8fe52eaf210f59abbe38228fcfb6b23b11",
+    "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/src/node_file_utils.h": "68d948f74f4befb7700a901cf7c2bded5cefb60789d2615b68e8a4e0d82e78ac",
+    "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/src/tracing/trace_event.h": "2374368ebb9ba7b5e108aa12d8e5a001f5d4671b9caf29892cdd07365530a501",
+    "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/src/tracing/agent_legacy.h": "9f6e5f62a2db714eae573c3a5b9786550c1df8a8ea754267ebd85393c2abfbe6",
+    "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/deps/v8/include/libplatform/v8-tracing.h": "c49cabb408699379e58f7da92ab1b4638ca3ce3d657612c0f13f0dc964ee1077",
+    "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/deps/v8/include/libplatform/libplatform-export.h": "3c488969cd90904d8b201c0a2492e9a354f0acf251e3b1e78a5447b47c4cf39a",
+    "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/src/tracing/agent.h": "450db2d4de5c10d5bc2c06c6f639393ffff1322c4987bec6d23a426b131a2934",
+    "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/src/tracing/trace_event_common.h": "f3be0a8224d4f0653011e48b6941ed185872bfba86a1c576408d079d78110383",
+    "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/src/node_realm-inl.h": "85ccfecd3ac6d79c4e3cbbcb6695219f9e183421fc64135ba955252b29a26138",
+    "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/src/base_object-inl.h": "cf890bf4723cb7b9ecbeb2662e98344ae81af0937abd4b214413885f6450d6d2",
+    "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/src/node_errors.h": "058a3b21f0bbee14d30d456b2900143abe3456ee9bcb12e86dcded552769e29e",
+    "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/src/debug_utils-inl.h": "c77d955487302b1eb6312d17e14397659cfc46136cc92f5210dc5222fe44c34a",
+    "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/src/node_buffer.h": "48077ade87e863a88e75a74c61fd948cb9ae16d7546cc5d61e1207fc95a7ac48",
+    "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/src/stream_base-inl.h": "d481968025e3d1f530904490d30b796335a7361ae25b6efefb59f3cfe00b09b5",
+    "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/src/async_wrap-inl.h": "ef01e968d801f04679043e57eb8be51c6fbc8c4748f05e74ed5d5e36711473ed",
+    "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/src/stream_base.h": "99c649b6d788b18aa2253786457fb50b6049b0bb5dfd20630a9b7a38205a874a",
+    "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/src/stream_wrap.h": "ef31d6f3ff4a2df3cad961e6f2f3490a624eb4317336cef1a99c3756c0629202",
+    "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/deps/uv/src/unix/internal.h": "959e3ce94dd0a1c12f090f40aac1f0cc9287b199eff4ed6dd9e2e944963a06ff",
+    "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/deps/uv/src/uv-common.h": "6ddce7ca203fe0dd293d1eec658745ca6a2d24386b3a02edaf2a15cf94732ee6",
+    "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/deps/uv/include/uv/tree.h": "34393c74082c71ddd5bd9ec4afe30ef03df7fa7bb64be5a50ae070cdfebb5c43",
+    "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/deps/uv/src/queue.h": "abdeddeefb025fcdeff7737d4d465d89081ab2c3cc08a423c042ee2093b8695a",
+    "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/deps/uv/src/strscpy.h": "e3e5f81613b169ccd76eee4972d37e7cd5d875ac20d578467b2e42ee5c7f4051",
+    "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/deps/uv/src/unix/darwin-syscalls.h": "9edc5b8872c8c718cffd43b02ff9730276f7f55d7585f9c080e0065c08aaa872",
+    "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/src/string_bytes.h": "5e0b0f184d2e7b0556b5afb67bfaa28b3aa92c960a2dccff40006e1a1c1b86f2",
+    "/Users/rcourson/Documents/Vibe/web/out/aux-node-static-26.5.0/node-v26.5.0/deps/nbytes/include/nbytes.h": "52c5253e3a3675faf8319af36066326f27dfd7ee2a9d6b5a49348007cb6ff12e",
+    "/private/tmp/aux-spawn-custody-20261023/docs/integration/proposed/aux-native-pdf-host-consumer/source/AuxLoadedPdfLifetime.h": "90ce2cd5bdf13c5a4c6e6ac81af4ea3cc01d142a82c5ecf9eb79e2aa0e5cecb2",
+    "/private/tmp/aux-spawn-custody-20261023/docs/integration/proposed/aux-native-utility-host-consumer/source/AuxLoadedUtilityLifetime.h": "cfbd39036c202510e2775a7ce6fdfba9e322c1e9d2f43614fdf1c228f6d02e87",
+    "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/runtime/exec-producer-join/lineage/checker-classification.json": "e2cedd5ff51649bd6a8dd0b92b18c5bf7b01c5e33c3d0c4899e0e4b31c9b89c6",
+    "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/runtime/exec-producer-join/lineage/check-r4-git.py": "5da74a6ad121e684ea9fa0afc258bdd0d09645c6539e805aeee9d15a19544174",
+    "/private/tmp/aux-spawn-custody-native-20261023-r3/process-wrap.d": "80a5cc65d9ac489b197aaa64622908d7833c43524a2862771ee37305fa31302e",
+    "/private/tmp/aux-spawn-custody-native-20261023-r3/libuv-process.d": "890541347ca3b1e4937d081ff9274ec52ba811657fc7262650b3650c4d006fa2",
+    "/private/tmp/aux-spawn-custody-native-20261023-r3/spawn-sync.d": "b711d62e29afa5defdd6e872ab862790129dfae7e63a2fb9057107e40433f766",
+    "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/profile-isolation-next/spawn-custody/evidence/compile-final.json": "b5fd20d19aef7d53b75ca6d3a6e7525b22335ba7acbdc93dfa692dade1602b6a",
+    "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/runtime/fixed-pty-retirement/compile-recipe.json": "e7c0b055f1133be7dc929a04e1743ad533103a54386af3f45d67d4aded2609a3",
+    "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/profile-isolation-next/spawn-custody/evidence/compile-r3.json": "9a9aff2a18cca572bdf7b838126eda537ee659a0313628b46c5bb5d7720563ed",
+    "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/runtime/exec-producer-join/source/process_wrap.cc": "6b3758be6f1faaaab18fd3ef10ebfda9f6cbbeb9eb1c38acb769639bd9a8b0ec",
+    "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/runtime/exec-producer-join/source/AuxSelectedBuiltinOwner.inc": "53f3aad20da1ad6edb7a054988e48fe81bbc9e8944d4b4b479ae8f3357a9f701",
+    "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/runtime/exec-producer-join/source/spawn_sync.cc": "2957612117327766d0a354b2c694b71b2580c80bf1d224609be385518169db6b",
+    "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/runtime/exec-producer-join/source/AuxPtyPhysicalRetirement.inc": "00bf942d294c884a708676504507509183ed09c494924bd9eaec61fe18952423",
+    "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/runtime/exec-producer-join/source/AuxDevelopmentWorkerHost.cc": "0f3a3c779dfe7fcc8fceaf6b98044fe02020670dac7f7407e827739a75de3be3",
+    "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/runtime/exec-producer-join/source/AuxSelectedExecProducer.inc": "01b1c36c669bb4a4b7080a7adbdad33a1ff40235e5b535365fd9f282a859b67e",
+    "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/runtime/exec-producer-join/archive-proof.json": "36793574864b8a26d521eb22fcae0f96c7014339e0fabc073bb37d2d16b2e426",
+    "/private/tmp/aux-selected-exec-producer-compile-20261026-a1/process-wrap.o": "2b0563f845c29abf8b5c30e02f966c050fdaf4183c96a5acfdad6cbf19025491",
+    "/private/tmp/aux-selected-exec-producer-compile-20261026-a1/process-wrap.d": "209082ae6854127efd4a5ef93ab868c50d7403d58346c657f6d67ebefcaf2b22",
+    "/private/tmp/aux-selected-exec-producer-compile-20261026-a1/spawn-sync.o": "5e9cb8a9f94a569a61ec72b84164669fc14ebb493a8c9f01fd1186bd8e7b7eab",
+    "/private/tmp/aux-selected-exec-producer-compile-20261026-a1/spawn-sync.d": "effa6698633e539495798b7d2e275ebd2ae50fff284a2a5d1d53536385c9bcd9",
+    "/private/tmp/aux-selected-exec-producer-compile-20261026-a1/receipt.json": "c3a11b7fb03e0793bca11f7de22a2adb4aa2e560e12d3eddb08b6d4f568b4f09",
+    "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/runtime/exec-producer-join/compile-recipe.json": "d6ddd7666dd6abbd73fddfc0a8ca514c608504075c3c8318b6f30f2dc03e2c7c",
+    "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/runtime/exec-task-envelope/source/AuxExecTaskBoundary.inc": "cbcfba28ae108dfff387fe20970dad95bb1de5cd736ee84495a1589efad618fa",
+    "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/runtime/exec-task-envelope/source/pty-linked.cc": "4dc3049429a383573d3f6482109316f190c87560c35949b73fc76a82895be07d",
+    "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/runtime/exec-task-envelope/source/process_wrap.cc": "ea938ee5e6a688b004c25a4091d6ab565094a2bde5fada0c623c00b94facec90",
+    "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/runtime/exec-task-envelope/source/AuxSelectedBuiltinOwner.inc": "53f3aad20da1ad6edb7a054988e48fe81bbc9e8944d4b4b479ae8f3357a9f701",
+    "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/runtime/exec-task-envelope/source/AuxExecSpawnEnvelope.h": "bc815e44259d6de52eafd5950fae0c45c26fb6d5da4289814dbe007e9b8c7266",
+    "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/runtime/exec-task-envelope/source/spawn_sync.cc": "123d0225457b5c7e37521158f9269f5539ae4211f96cc65edc7a5f57d0cca2fe",
+    "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/runtime/exec-task-envelope/source/AuxPtyPhysicalRetirement.inc": "00bf942d294c884a708676504507509183ed09c494924bd9eaec61fe18952423",
+    "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/runtime/exec-task-envelope/source/AuxNativeExecTaskBoundary.h": "0cdea1bc3ac42667ee962cf5d86be22b50fe7dd7f7839066fb3d83500a3594ee",
+    "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/runtime/exec-task-envelope/source/AuxDevelopmentWorkerHost.cc": "5150db488a3ac56506d95a1b0c6670c480f6a56d3a8d5adec29fa32e542ae3cf",
+    "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/runtime/exec-task-envelope/source/AuxSelectedExecProducer.inc": "72b34d13ae8b79659010bcdf9a94cf36128178e53ce0f0bfb88d37bbc39ea6a7",
+    "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/runtime/exec-producer-join/worker-repair-recipe.json": "cc74476e1e88e13c8a1c94873f65e8f3908bfaf4d436a1c935c5b2c55edd8a8e",
+    "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/runtime/selected-exec-workspace/exec-consumer.anchors.json": "ff1cc40d010467ff34d8ea0535f512168cd981c85f4e9d0972062a0804e7f27c",
+    "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/runtime/selected-builtin-owner/swift-typecheck-command.json": "4433ca463e9d8aa0bf2a31629da1eb906e431892246b7c6911ab238f20aae36c",
+    "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/runtime/native-host/source/daemon/AuxNativeHostJournal.swift": "a6a7bfc1ecaab09fd71cc9f2085f6cad4403bc6d98d08ca27a860a91cb64ee0e",
+    "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-native-p256-envelope-port/source/EnvelopeRecords.swift": "e6b8b6bcae9f6b34cc5dfe757e5f0130297f1c4c3bae81636387a06e24dc34d6",
+    "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-native-p256-envelope-port/source/RecoveredP256Authority.swift": "0713e381797ca552d1740e41729445c014347f476c01d1c7290663a606bdfcff",
+    "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-native-p256-envelope-port/source/AuxNativeEnvelopeV2.swift": "7041372ba6bdaf73a6a81422950d306c66e2ac06c78158efce20836f5a1a296f",
+    "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-native-pq-continuation/source/PqEnvelopeRecords.swift": "ab0caa18e08af604c94b2d1f70f5ae04e4e56bf9678578861214593a51a075fc",
+    "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-native-pq-continuation/source/RecoveredPqAuthority.swift": "01a893c2939606692da02249b0abc264ca5a80d2a4fd10bcacf9888688b65e42",
+    "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-native-signing-port/source/RecoveredP256SigningAuthority.swift": "d678c329635f69fe1bbfaad0d82cd8a3bf2d422c7133adaa42d5050dada26ac4",
+    "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-native-signing-port/source/RecoveredPqSigningAuthority.swift": "44a2ab0825edb95066db8fb1d1a4ef8f18393f372467a256848693d90651916f",
+    "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-native-inbox-v2/source/AuxInstallationCommandCore.swift": "9009863cb5858f798eea3cb089964113c85ce706d7d02ee9bbcd5c08274ff947",
+    "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-fresh-installation-factory/source/AuxFreshInstallationFactory.swift": "25e041d9ccc738b9cde9110b3790a6cd205dcd6ca2d4ea2965d25be9fe291086",
+    "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-fresh-four-row-preparation/source/AuxFreshFourRowPreparation.swift": "bd7212b3061e6bcecd3a8c52490b8ebb29a3abb28123d67e75f9379c9ac342cb",
+    "/private/tmp/aux-final-native-link/docs/integration/proposed/final-completion/fresh-owner/source/AuxNativeFreshReservationLeaseRegistry.swift": "9d52ce0da42fe7e1b5ba1aad0cb4b9c0849592dc894c7c725f11dd64229cb39d",
+    "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/runtime/fixed-linked-policy/source/AuxFreshBootstrapPolicy.swift": "a7a0f8356057d834435172af5fc678fd163b04a22878433555f634ac5c4e0a50",
+    "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/runtime/fixed-linked-policy/source/AuxSignedFreshBootstrapPolicyLoader.swift": "2f2e878cf82a890c4b550ee945eec7cf21c8c36c11bee5c55cf55e5f4553a3ae",
+    "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-fresh-native-secure-capture/source/AuxFreshNativeSecureCapture.swift": "b3230449886e1d1705345bbdf724952d90a4fefbd17c04cc594db6b8268c6e81",
+    "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-native-fresh-stage-reconciliation/source/NativeFreshBootstrapJournal.swift": "471a3418d616342f87d03e538235fbae25bd26c9618c9cb61b1457a6015092b0",
+    "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/fresh-startup-milestone-a42/ordinary-storage-locks-source/PrivateNativeFreshBootstrapJournalStore.swift": "576185d27988950549594c7f27573419a214d112d5f7a1014cbfc606a96374f5",
+    "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-native-fresh-target-cohort-lease/source/NativeFreshTargetJournal.swift": "28ee6d0e4a9705ab4c67e160fdb00686cdc64b89be7a6c7f9884e7ddbaef4172",
+    "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/fresh-startup-milestone-a42/ordinary-storage-locks-source/PrivateNativeFreshTargetJournalStore.swift": "7a83c4a23da22a32ec085e2cfc7fd47c3770a890ac2272c896d3337b7f5b43f1",
+    "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-native-fresh-runtime-consumer/source/AuxNativeFreshTargetCoordinator.swift": "6f9a1449828ed324a18375ead6a24faafbc0f6b461a39354f5c298feea35e50f",
+    "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-native-fresh-target-boundary/source/AuxNativeFreshTargetBoundary.swift": "93ed889ac25ce89c0835e26656b32e824fa552b76a3c12456f07846d90785c2a",
+    "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-runtime-target-capture/source/AuxRuntimeTargetCapture.swift": "a20562a0776d0e5a0992f2c5568243f522fd37909183a952027219338d3430f0",
+    "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/runtime/selected-builtin-owner/source/AuxSecureStore.swift": "79424628dd1dd80e373ec7a3076f347de6dcae421ecd88ff85720dd3cf08d797",
+    "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-native-fresh-runtime-readiness/source/ScopedAuxCommandContext.swift": "c11bed197cc847a3743dbd8ce8940b56890d3d1d47da9f16bb39f81004c6b7e1",
+    "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/runtime/selected-builtin-owner/source/AuxOwnedCommandDispatcher.swift": "f6bcf0dafc7babbd1aacee255ca690dbd995bd254224e9a9c94192e068897300",
+    "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/fresh-startup-milestone-a42/ordinary-storage-source/NativeFreshRuntimeCapturedContext.swift": "3d776ff33877045c184aeefb09fad8121404c7dfef351b0853eeac08d2510df5",
+    "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-owned-dispatch-lifetime/source/AuxOSDrainResult.swift": "9a5886c30591940594906fb6ffd57ce4648933269414bd96ce136e3c4448579f",
+    "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/runtime/selected-builtin-owner/source/AuxAccountsCskCoordinator.swift": "88cdfe673dfad37273c81d963c121b29911911f114d27e7074d36847a96380a2",
+    "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-native-macos-utilities/source/AuxOSJobCustody.swift": "ef8f44ebc2da8633bbff8e527dced516c49d3d77949b63aac72f2b8cc9f043c4",
+    "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-native-macos-utilities/source/AuxMacOSUtilityCommandCore.swift": "625388093933d923c14e66766f825bf5f49638b4d71299b535e918df87864dc8",
+    "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-native-macos-utilities/source/AuxUtilityCompletion.swift": "fdf573db59912ed7288984e8eee958adf9c5455a88707cb0f78ff29d0d5d20f1",
+    "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-native-macos-utilities/source/AuxAppKitUtilityBoundary.swift": "04ee53525717955c107661f49de5be311ef08543fe07ad47d1da7e94537d743d",
+    "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/fresh-startup-milestone-a42/ordinary-storage-source/AuxPreparedFreshRuntimeProvider.swift": "cf5fa5b1ba06ffec48e85c5e96ff4c917f7e953b7695839b43a884c2cc56f07e",
+    "/private/tmp/aux-final-native-link/docs/integration/proposed/final-completion/fresh-owner/source/AuxFreshNativeHome.swift": "d7542cc9a3ec48de3af729fc8d5bdf90bf89daf8262b21b263995aeb012da12b",
+    "/private/tmp/aux-final-native-link/docs/integration/proposed/final-completion/fresh-owner/source/AuxResumedFreshNativeHome.swift": "81f659ea4f10b27f559628f9eebba2baacc4c8f3bd280eb5c6bbb8c10153485f",
+    "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/runtime/native-host/source/daemon/AuxNativeFreshStageCoordinator.swift": "b7ce22a48652ea08e2227a0a5e8a2cdcfd08e4eb7a2d9b108098ce892d0f8db3",
+    "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-native-fresh-cold-bootstrap/source/AuxNativeFreshBootstrapFactory.swift": "b5299aac3a874d193cfbcab06dbc5a28380eede6db1f19c8fd8bc39a280783cd",
+    "/private/tmp/aux-profile-startup-next/docs/integration/proposed/profile-isolation-next/startup/v5-source/AuxAuthenticatedFreshColdBootstrap.swift": "2f49786b05871c1a4473716f4f28a2febc898dbd31625aeb6cc115341459bd4b",
+    "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/runtime/native-host/source/daemon/AuxFreshColdInstallerGuard.swift": "fc8a1bd07f9863ee15ad0fd86a5f99121692b621fff266f801dd9f7caf8ee3c5",
+    "/private/tmp/aux-profile-startup-next/docs/integration/proposed/profile-isolation-next/startup/v5-source/AuxFreshColdBootstrapNativeBridge.swift": "dde9f4e2fbeac6d421c29296a7f1fb911966db74f1bee9837dda1cbd7ff1c6c4",
+    "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-native-fresh-runtime-readiness/source/AuxNativeFreshGuardFailure.swift": "3467707af5da2b0337f6b105ec82425885b4531a4e0ce5811003a7364f002f63",
+    "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-native-sealed-parent-entry/source/AuxSealedOuterBrowserParent.swift": "391b11b7c853fe06b52f501c919898fec890490a7ee6d2f9eed9ed173e7b2475",
+    "/private/tmp/aux-native-current-entry-package/docs/integration/proposed/aux-native-current-entry-package/source/AuxSealedNativeDaemonEntry.swift": "1076fd852428f0db4d0ba4f2a2898b05f88656d9bec36d272418a1fe2bdac2b8",
+    "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/standard-profile-isolation/daemon-crash-registration-close-a1/source/AuxDevelopmentOwnerDrain.swift": "990a816ff7ba364144e532bd6959699bdbf3a0efc8bebf1507c55da72bdecaa2",
+    "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-native-daemon-main/source/AuxFreshRuntimeOwnerRelease.swift": "6924508e172a583e041575b496a02ec99de5cfeb412a1f6dc40d8c871d155048",
+    "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/runtime/native-host/source/daemon/AuxPreparedDaemonAuthority.swift": "65496dfc32541aed42efe7de62c58d7e2d44a1873049a625a63af7d8f8e56fd1",
+    "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-native-inbox-v2/source/AuxInboxV2Key.swift": "3286feaa01b4c4c108883cd2dc0dcceef082de5dea5a88248a87445abb4b2a4a",
+    "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/runtime/selected-builtin-owner/source/AuxNativeTaskLayout.swift": "a921d6345263dfb22e2b4286609f7a7a345869afe2d7d7d17a945c5584c46260",
+    "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/fresh-startup-milestone-a42/ordinary-storage-source/AuxBrowserFreshRootAdmission.swift": "244c9d61dd1cf36610bc616cfd772d03c5fc313063613b6950c2b6a8f9fdde5f",
+    "/private/tmp/aux-browser-only-daemon-build-20261025-a61/source/AuxRegisteredMemoryAccountOwner.swift": "897f3c44ab48d8fd50469e47f436845eeaae53ee6b4ee6125e271f3d0ac6bc52",
+    "/private/tmp/aux-browser-only-daemon-build-20261025-a61/source/AuxMemoryHelperJournal.swift": "9efd7f2aed4c980a83889e93e38a4c449463da642185e0d8aaf67c8d8a247324",
+    "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/runtime/selected-exec-workspace/source/AuxSelectedAccountOwner.swift": "cc6a6e9aca7e7f842ff4118e5e14b935e735fb2db46027d16187e7647e66d729",
+    "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/runtime/selected-builtin-owner/source/AuxSelectedUtilityInvocation.swift": "e7f76af1273e542ad3cbc1de0787c04b40172e6b4543a3f053dd5f43e3bbe610",
+    "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/integration/computer-use/source/AuxComputerUseHelperJournal.swift": "550f97ab942bd0fed00afe7fa582603ed95f3d00bae028664c7246d4185e1839",
+    "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc": "84b410d8143298f90ab0b721d488dab90e2fdbf23577ae6186162832a1155cb7",
+    "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/runtime/fixed-linked-policy/source/ParentAuxFreshBootstrapPolicy.swift": "3b44f108a54b29587439a48bde41a54a95e5d8c512055c902bcc2e9a8ac28875",
+    "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/runtime/fixed-linked-policy/source/AuxAuthenticatedChildParentPolicyReader.swift": "6761e9f4ecd6ab7c07e70285c3396969b2098975bced7973967a531aae6c718f",
+    "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/aux/native_peer_policy/AuxStrictEnvelopeObject.swift": "94c48fa7c3964fb20bb79112fa4b18217cd7ce96e40fcfdf1daf299defc9a27d",
+    "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/integrator/inactive-task-envelope-compile-a1.json": "db5d920932f4404c593c4ff510d7b0285884732e3660b10fc1cee2eca41ae835",
+    "/private/tmp/aux-exec-task-envelope-compile-20261026-a1/spawn_sync.cc.o": "82098ea0e5c5a989055697748c17cfb7d0a5abbe31d5e5a1c245a0e48af0062b",
+    "/private/tmp/aux-exec-task-envelope-compile-20261026-a1/process_wrap.cc.o": "246e293268369b0ad5cf2400fa8c0d7bd992b0c3f21d0a38b1b173199d6c7411",
+    "/private/tmp/aux-exec-task-envelope-compile-20261026-a1/pty-linked.o": "8c1193647c70b7c344a92bfa9b5e317407d7fa427d9df687ad2f425bbb2cceb0",
+    "/private/tmp/aux-exec-task-envelope-compile-20261026-a1/worker-host.d": "0d6a52675878ffa47f99a70579ea1865fbc379e8affe5c0bfb455f32e0f99763",
+    "/private/tmp/aux-exec-task-envelope-compile-20261026-a1/process_wrap.cc.d": "4c4937c6446972d83ae4e12b8e5bef64830c0e95b783b34e3932d1685369debb",
+    "/private/tmp/aux-exec-task-envelope-compile-20261026-a1/spawn_sync.cc.d": "4fabbef7a29fece850e744643b2ff402e477544b8ad634d96c09771431cdb810",
+    "/private/tmp/aux-exec-task-envelope-compile-20261026-a1/worker-host.o": "d308b951a4878474395dd9cf895254306a2c7049b984089705c7e8759b3676c2",
+    "/private/tmp/aux-exec-task-envelope-compile-20261026-a1/pty-linked.d": "17877fa9868712617aeeb8ecb25ee2226441722c86b85b2ac3cec234b1dcb828",
+    "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/integrator/inactive-workspace-typecheck-a1.json": "7baa4d9b575d74f970c9ce19b39c8a9d700e67e774c19dc2c5c0c796ba9573b5",
+    "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/runtime/future-supervised-build/source/AuxNativeDaemonMain.cc": "2ad0922cf55e1be8f0c1131eacf58c0c901b9880ca6b3b9c61c230822bf84ce6",
+    "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/runtime/future-supervised-build/source/AuxComputerUseMainOwner.inc": "b14f5f54ec633e2888f1e56d6acabfb1042394a39d6e784f36a1e2ece8d41d54",
+    "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/runtime/future-supervised-build/source/AuxDevelopmentWorkerHost.cc": "5df8b1d17c4a060e3ad32495394318073f29b14050390b3daa0d084da8f3619c",
+    "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/runtime/future-supervised-build/source/AuxMemoryMainOwner.inc": "22b61c6080ed3fd777b592d3067818e01a23f5f0ac3d715070b3c6e4918ec17a",
+    "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/runtime/future-supervised-build/archive-members.json": "1d47ff0f9842f4329f3cc54f959af69dcd97ea658fff1aba3d28df060e8f8626",
+    "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/runtime/future-supervised-build/archive-format.py": "db3ef27a4f8d419ef1752f42e7b15c49618391bc66b7b2fca5ab944c2b1e6881",
+    "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/runtime/future-supervised-build/source-plan.json": "f5dc3625ed0154916e988dcc6224bea6b18659974e97c8c739e526315093ad8b",
+    "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/runtime/future-supervised-build/build.py": "b1aa2ed027c6860448e001db8bfbc8b0cadfa5927d5701c702abf313c1bf1da2",
+    "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/runtime/future-supervised-build/remaining-source-joins.json": "f43c341614d1a972a0d6e8e486fb6c6510f9899d9b3fb2d0ffa4e5f4534dc54f",
+    "/usr/bin/ar": "34129c71a01a74f7f3b2443521519b2e5447553fa187f5fcafaaf8c42cc192e2",
+    "/usr/bin/otool": "34129c71a01a74f7f3b2443521519b2e5447553fa187f5fcafaaf8c42cc192e2",
+    "/usr/bin/nm": "34129c71a01a74f7f3b2443521519b2e5447553fa187f5fcafaaf8c42cc192e2"
+  },
+  "archive": {
+    "source": "/private/tmp/aux-isolated-node-archives-20261023/libnode_base.a",
+    "sourceSha256": "dcf36590301ffe2555e87f1ebc4afb460944f43ba7c61179e08e2b4cbb2fcbef",
+    "output": "/private/tmp/aux-future-supervised-native-20261026-a1/libnode_base.a",
+    "originalMembers": [
+      {
+        "name": "async_resource.o",
+        "bytes": 3388056,
+        "sha256": "c3a944920e0bb01ca973b0e580ebab653eb52598497ec367f4c56db440a1ebc5"
+      },
+      {
+        "name": "callback.o",
+        "bytes": 3630384,
+        "sha256": "bcdbe5d9a16f0d895279e5e5313a84f43b60b5762073cb176d31ad617cef7084"
+      },
+      {
+        "name": "embed_helpers.o",
+        "bytes": 3587384,
+        "sha256": "f8a074da02b14b098d45bf3bd13c137d9489b912c0d1bead343155a7e79fcf12"
+      },
+      {
+        "name": "encoding.o",
+        "bytes": 1610216,
+        "sha256": "1539b8a24a815c24ca7f445df0bbdd16ac69a55781f3137e1301a97ae867bb46"
+      },
+      {
+        "name": "environment.o",
+        "bytes": 4260536,
+        "sha256": "5b5e36fc3f62cad0d6083b7ceacfe627bbdc72bde1afb05398cfeb20b1734068"
+      },
+      {
+        "name": "exceptions.o",
+        "bytes": 3366256,
+        "sha256": "2774dba31b3808b036d5e61f1663e33eccaba52fbbb24fc6ff8748ef4a165074"
+      },
+      {
+        "name": "hooks.o",
+        "bytes": 3593008,
+        "sha256": "a73ceb656df41c1a34b812f92993e0fd9aa82f17cd0492b789c29ec9c005eef9"
+      },
+      {
+        "name": "utils.o",
+        "bytes": 28520,
+        "sha256": "1f5d6455abbbd6589d54e324c330c4c9a767436f8501b3dad2adfb1d8d79e7c9"
+      },
+      {
+        "name": "async_context_frame.o",
+        "bytes": 3354728,
+        "sha256": "2ea0f1001a8942f3c2968cffb0bd97be34013e09e460df82e844936b7df8dc66"
+      },
+      {
+        "name": "async_wrap.o",
+        "bytes": 4107832,
+        "sha256": "a753e6bfc59db6214c6e2e331aa57d22b30906855339a083302ecb46d7a5df90"
+      },
+      {
+        "name": "base_object.o",
+        "bytes": 3535320,
+        "sha256": "6d1d6a8f3c0fe18e53d8bba60b78b26ae408c5e3849e1f8a54e15bac163f65fe"
+      },
+      {
+        "name": "builtin_info.o",
+        "bytes": 333744,
+        "sha256": "b9d472a7021b57e678501c6cd3c33891554a756e0af79a3d3f38fa02cc61ee91"
+      },
+      {
+        "name": "cares_wrap.o",
+        "bytes": 6115968,
+        "sha256": "b960ddc1c9121ab0a879ab9f9604d9563c0b4c283a9e860952d2ed764e1f19cd"
+      },
+      {
+        "name": "cleanup_queue.o",
+        "bytes": 556448,
+        "sha256": "ad332ec60a61c3bf5c28f36059ddf8e2bc365306d76e84ace5d054dd29fcfcc0"
+      },
+      {
+        "name": "compile_cache.o",
+        "bytes": 4258600,
+        "sha256": "a868d2b4c8c3b520da2a43e08d959c61645a7298edc51c51d7c3f5cb045be5d8"
+      },
+      {
+        "name": "connect_wrap.o",
+        "bytes": 3348824,
+        "sha256": "d8231546de0aec8355ea9751a85a61c6d0fe1e409d8c0c06295ee8006f860705"
+      },
+      {
+        "name": "connection_wrap.o",
+        "bytes": 3467480,
+        "sha256": "3f0fb34ea9fb4dbd710884b9f3538ddabfe7d5010e600abf2c2ff636ad3f404a"
+      },
+      {
+        "name": "queue.o",
+        "bytes": 4757680,
+        "sha256": "e03c93e583ddcf9c2683c2a40ba25815e76cb54e1883b13a589db4c820c8422f"
+      },
+      {
+        "name": "debug_utils.o",
+        "bytes": 3728584,
+        "sha256": "3295d1365ce576ed7bb896ba8bc84dc115707281ec957469e8a329aa5cbbdab9"
+      },
+      {
+        "name": "embedded_data.o",
+        "bytes": 108760,
+        "sha256": "4cf6b541fc39d195e45f176d7f0a493bdac3d4d66dffe53167af1ea7b137a9ff"
+      },
+      {
+        "name": "encoding_binding.o",
+        "bytes": 3841656,
+        "sha256": "22bedb8380ac208440a7b565a5e8e95ac3300719b0e402136ef5cdbe13a0f452"
+      },
+      {
+        "name": "env.o",
+        "bytes": 8352696,
+        "sha256": "16fd40229f16e72b64f43cc1dc6d31a658e75e70fa78dea7236255a45294b233"
+      },
+      {
+        "name": "fs_event_wrap.o",
+        "bytes": 3583232,
+        "sha256": "c2fad4187ee440c0829fc46a071ef85bbc94d3de294d602fac7d14d94c30b04c"
+      },
+      {
+        "name": "handle_wrap.o",
+        "bytes": 3406640,
+        "sha256": "c1075fccedad770f70be1b684c4988bb262066c4475391f0b0ddd5f377b0e0ed"
+      },
+      {
+        "name": "heap_utils.o",
+        "bytes": 4187712,
+        "sha256": "d39bbc9f0fa5b992b678349a5879a2282bfaca7fa9e5e10efdc6355f287b899e"
+      },
+      {
+        "name": "histogram.o",
+        "bytes": 3927272,
+        "sha256": "9d75b10a4021ae254acecf20064bfa8bc5eda0da47cae893a43c22842deec7c5"
+      },
+      {
+        "name": "internal_only_v8.o",
+        "bytes": 430264,
+        "sha256": "6c7793156afe513c905e96eef4523763df42a2c4c7110cd4f60c4f9281f14284"
+      },
+      {
+        "name": "js_native_api_v8.o",
+        "bytes": 4100464,
+        "sha256": "884deaf6af349e940a1132bbbd3c65d2846ca476332f69e68ca09ffe3e643e8e"
+      },
+      {
+        "name": "js_stream.o",
+        "bytes": 3627560,
+        "sha256": "e6d40d9ae281f1d122325423a876eb4caf0f0eb9e8243f025222dea36a93859f"
+      },
+      {
+        "name": "json_utils.o",
+        "bytes": 117752,
+        "sha256": "e73b59d03cdbdf3e1ce1f52d1e3893bd6fb1b0388221dc131b7787c6c3f4dada"
+      },
+      {
+        "name": "js_udp_wrap.o",
+        "bytes": 3755712,
+        "sha256": "2ce4cbc7e0186559aa8a62c995058237675cadfac91b255e27c1553464853ae3"
+      },
+      {
+        "name": "module_wrap.o",
+        "bytes": 5002536,
+        "sha256": "9d7dc90c35b21740102d984e9a05528a1506288ea23cc935228e5403a7ad99ea"
+      },
+      {
+        "name": "node.o",
+        "bytes": 4949544,
+        "sha256": "6016c414e070bfa92b570d4c1e2a25990c93328271cc663a0c6a21603ea8ac20"
+      },
+      {
+        "name": "node_api.o",
+        "bytes": 4184736,
+        "sha256": "34f1628140dbd4044f570c22af4147c3d54d3f6b0f675379fc8bad5dd764db2f"
+      },
+      {
+        "name": "node_binding.o",
+        "bytes": 4006480,
+        "sha256": "77fef1a86ccb61070483ddd16e69bdc4dedb4e2d7787a583a5cfedfa122f5cce"
+      },
+      {
+        "name": "node_blob.o",
+        "bytes": 4589808,
+        "sha256": "642e9fbf5983d06538ba9b71e56f3fecf31a9f64d7fbfa8c47843ce3e46c7cf7"
+      },
+      {
+        "name": "node_buffer.o",
+        "bytes": 4523344,
+        "sha256": "389893ca778399aa7d4e42f2ee1dbf7620d53c7c87b866f41471b49a947e043b"
+      },
+      {
+        "name": "node_builtins.o",
+        "bytes": 4975920,
+        "sha256": "c1b87c787f1adf3c677efce4620d201ada6d72802297c8478c59901c86c5adca"
+      },
+      {
+        "name": "node_config.o",
+        "bytes": 3368984,
+        "sha256": "eccd2d735bcd11d6a0b48e10d3188596a6763918b97afc098b6c7e200bb923d4"
+      },
+      {
+        "name": "node_config_file.o",
+        "bytes": 2328008,
+        "sha256": "48f4bae18da5a3f3c2330ad6662a9157a577724cac0adc38aaeba355886bf18e"
+      },
+      {
+        "name": "node_constants.o",
+        "bytes": 3634224,
+        "sha256": "5f5830fc88dea6040a017cadfe13b3a51cf0c7f9237bd24243cf968fecf3f1e8"
+      },
+      {
+        "name": "node_cjs_lexer.o",
+        "bytes": 1732728,
+        "sha256": "56d7defff538a5eb514f6cb70015088de051e251bed4c6468ae8f82b27d780f8"
+      },
+      {
+        "name": "node_contextify.o",
+        "bytes": 4728680,
+        "sha256": "6ae3851f107059d186d23e783ccb82c767912c351218cdcda23a8a45696d6052"
+      },
+      {
+        "name": "node_credentials.o",
+        "bytes": 3680952,
+        "sha256": "511e2dc8ef45eedc1ee78dcd21ea9190c18ee08ca23b8f97b9cfb5097c3c2a42"
+      },
+      {
+        "name": "node_debug.o",
+        "bytes": 808,
+        "sha256": "1dc5651fc7385015aaedad5bbbc86ac78d4a28626af7ccff0b872f14dfb6ee2b"
+      },
+      {
+        "name": "node_dir.o",
+        "bytes": 4146440,
+        "sha256": "8ea2dd5b3a518dae6f6846fe0958ada78add3f85eb84d7d49e4f0558299aa758"
+      },
+      {
+        "name": "node_dotenv.o",
+        "bytes": 3957248,
+        "sha256": "619ae0ff3fea5f36af7502baa80db2ef84a912a6dc7eae035ca75c3f4fe7e1c8"
+      },
+      {
+        "name": "node_env_var.o",
+        "bytes": 3966744,
+        "sha256": "559ebdd365c4ad2bcd80cfaed786833f10972de56b9c331e461ed83f891a0d04"
+      },
+      {
+        "name": "node_errors.o",
+        "bytes": 4171728,
+        "sha256": "2c02aaeca8aa2e4f024e67d7f415826b39c975177ea3014a5c2e62babbaaf9f6"
+      },
+      {
+        "name": "node_external_reference.o",
+        "bytes": 1435440,
+        "sha256": "8c9641601e153240105b61c4de9e0eb3016fb65c4d3b1ab92ecaa28112e5fd4d"
+      },
+      {
+        "name": "node_file.o",
+        "bytes": 6211496,
+        "sha256": "2a7991d756da5ecec7f641b4a5152ba4bfc3f767c1698de3cd4d35fdd09762a5"
+      },
+      {
+        "name": "node_file_utils.o",
+        "bytes": 568208,
+        "sha256": "6ec1d35320ffec97fb73ebcaaf6b0fb2a0ddc76a3aeb983ee5fb2a61dd688f53"
+      },
+      {
+        "name": "node_http_parser.o",
+        "bytes": 4091224,
+        "sha256": "bc5dde4fc1663d73463923084d05b60e41c4c9455007c22e568ab4ee1c8f21c5"
+      },
+      {
+        "name": "node_http2.o",
+        "bytes": 6575016,
+        "sha256": "ea07820090937ed684822b087361b68f0aefa966ee60b5049c5b3a59d5e1014c"
+      },
+      {
+        "name": "node_i18n.o",
+        "bytes": 3790264,
+        "sha256": "a04a75fd291267fcc3ae0d5388b5878251e292dc062e1433eb9835fd1bf341a3"
+      },
+      {
+        "name": "node_ipc_serdes.o",
+        "bytes": 3453480,
+        "sha256": "9bdb21d3453a66f9ab8c701865648012972c54228862029a8edb69bfdff9910d"
+      },
+      {
+        "name": "node_locks.o",
+        "bytes": 4872776,
+        "sha256": "e4d1fc24cc517a3cc879ee6d08d2108b43b3280fe211b4c8f9e62c8ee1e81f45"
+      },
+      {
+        "name": "node_main_instance.o",
+        "bytes": 3557896,
+        "sha256": "bfe584eabf602f42c8282f07679a9a16063f9e23db7136e948b18748c924881c"
+      },
+      {
+        "name": "node_messaging.o",
+        "bytes": 5312976,
+        "sha256": "65d9430850fc5e7e0e41049bb685984a581c2025bcdb7ce517f47a6850979b19"
+      },
+      {
+        "name": "node_metadata.o",
+        "bytes": 1129368,
+        "sha256": "df57be1e2189c37ae7edef5f57c6c9984799e0a831479ae29ab1df2326eff85c"
+      },
+      {
+        "name": "node_diagnostics_channel.o",
+        "bytes": 3991752,
+        "sha256": "b77b2f6ded2fece23b158155ad9eb53474545cd8e7003b40551e15451ba1cb02"
+      },
+      {
+        "name": "node_modules.o",
+        "bytes": 4522800,
+        "sha256": "12c02510223f8b39181152da855d4187d84effec13bf9b59b5e8b6944064e77d"
+      },
+      {
+        "name": "node_options.o",
+        "bytes": 7812808,
+        "sha256": "62c4522b5b9d4f7a879c7a6304354c824af774b5e5bc05351e8b1f82a2e289b7"
+      },
+      {
+        "name": "node_os.o",
+        "bytes": 3538832,
+        "sha256": "2d9b2813b9700a69e534ff4a598bb70eb451a0e09d810da50eb16a612c46af22"
+      },
+      {
+        "name": "node_perf.o",
+        "bytes": 3883088,
+        "sha256": "2184a224a66fc5182c8b5c30957d791aabe9d503305ca3112c073b8bb34bc450"
+      },
+      {
+        "name": "node_platform.o",
+        "bytes": 4359360,
+        "sha256": "762d09b491e57d4b64266c428c25ba101a8e653c63e1de58743a64916a549fb4"
+      },
+      {
+        "name": "node_profiling.o",
+        "bytes": 608944,
+        "sha256": "7ff5344835a14794f6d27cf583c933d864747ae42037b6e232a13e0d397898a2"
+      },
+      {
+        "name": "node_postmortem_metadata.o",
+        "bytes": 3329320,
+        "sha256": "f8fbae8188722a8008f0823839fa6ca30053626753cd5874f8fbcc20b2efb0d5"
+      },
+      {
+        "name": "node_process_events.o",
+        "bytes": 3372624,
+        "sha256": "e2a069920fdc73f363045b518e8af7d2217450bbd0663c46910115135cb32d07"
+      },
+      {
+        "name": "node_process_methods.o",
+        "bytes": 4171768,
+        "sha256": "4f3b62ea468f43a3ec9eaac83ccc98e81b5f9b834310e193d90d9cb37e0f1e1f"
+      },
+      {
+        "name": "node_process_object.o",
+        "bytes": 3709328,
+        "sha256": "49fd512869bd711efcfe001de48566311a9e715316614b15d04cac626bf7d1db"
+      },
+      {
+        "name": "node_realm.o",
+        "bytes": 4219568,
+        "sha256": "10f6ad7e90787ced54a035b6404389a1da002975d4abc9827a331275cfb8febb"
+      },
+      {
+        "name": "node_report.o",
+        "bytes": 4318112,
+        "sha256": "f46c6e04ff9a887ed4f8d49776591ff12c2bbb3d45f1cf53adedc203464599db"
+      },
+      {
+        "name": "node_report_module.o",
+        "bytes": 3661256,
+        "sha256": "1c42306be2e773bf64bcd94c9a2474a611be07f7682adfae057fd74a5ebd5c14"
+      },
+      {
+        "name": "node_report_utils.o",
+        "bytes": 1407344,
+        "sha256": "a84fc38abd463a995290a8c88a5d4085f7959414f62c01268368293db31cb179"
+      },
+      {
+        "name": "node_sea.o",
+        "bytes": 5155312,
+        "sha256": "9abe7e27d9236741a682d84166aa8f36ed5e9ac9e8ff3c176cea4a57ebf24cfb"
+      },
+      {
+        "name": "node_sea_bin.o",
+        "bytes": 7549688,
+        "sha256": "9c5dbd8c9eafb03b8c94a20872db51f13ee2c235b1912c3fd53b04c3fb6ab938"
+      },
+      {
+        "name": "node_serdes.o",
+        "bytes": 3569712,
+        "sha256": "361bd7ece6b00c4be75a627a638b05266ff167c3b631f71a1b17ff7e8ca984b0"
+      },
+      {
+        "name": "node_shadow_realm.o",
+        "bytes": 3790400,
+        "sha256": "a6fb3f5fb8c318169aec8f38ed2c9573ed27578745a0498d797230218e0f5fb2"
+      },
+      {
+        "name": "node_snapshotable.o",
+        "bytes": 6683448,
+        "sha256": "2a973dbb24a1a4e7b6a7feb84a8a43d79be96521ff9cdace7b5d238ca876d28c"
+      },
+      {
+        "name": "node_sockaddr.o",
+        "bytes": 4406384,
+        "sha256": "e8c5f040a1a2e270b8440f205efefda4f2cd2a57092d7bc1e90afbdea45fad11"
+      },
+      {
+        "name": "node_stat_watcher.o",
+        "bytes": 3650208,
+        "sha256": "b0f27eeb90ed9e6950dd4018b6604211558d8d0b29d1ecd63ea3c2be9735f4d7"
+      },
+      {
+        "name": "node_symbols.o",
+        "bytes": 3349968,
+        "sha256": "ec2cc6e42749d513040a53823dcd2792ee332893fa420befe5cc469dd5feadd3"
+      },
+      {
+        "name": "node_task_queue.o",
+        "bytes": 3424248,
+        "sha256": "fe474b41285aea8d529a46d2e5cc78b4741490636bdbed9986d344a1e582c6bf"
+      },
+      {
+        "name": "node_task_runner.o",
+        "bytes": 3037480,
+        "sha256": "74affe0285bc5165c3f46e59c50f0dc9e0a9ebfe77c59c0ac884e54fccdb36ef"
+      },
+      {
+        "name": "node_trace_events.o",
+        "bytes": 3667544,
+        "sha256": "fe0eadfe26c4ae08ce233d0582eddacee7a3a14e3eb76f07ba3b84987c9121b3"
+      },
+      {
+        "name": "node_types.o",
+        "bytes": 1663336,
+        "sha256": "ca5557d0960ccc9b3c8773de05dd797ca9ad7a5585fb0227fdc281fe1fc505a5"
+      },
+      {
+        "name": "node_url.o",
+        "bytes": 4160816,
+        "sha256": "183c7ca0bba1020192f6baf48826cd07b807628e9c569890c890f8daa5647242"
+      },
+      {
+        "name": "node_url_pattern.o",
+        "bytes": 5563752,
+        "sha256": "5f7563b11b619958b6d05dc33e36dbb7bdb6094501a922060016f89f278b653c"
+      },
+      {
+        "name": "node_util.o",
+        "bytes": 3834840,
+        "sha256": "c3220a29164f3216b4883e591fa2107f750d8e80a46648f39838cdedba593008"
+      },
+      {
+        "name": "node_v8.o",
+        "bytes": 4194232,
+        "sha256": "bbf69fbc1ee17032c04a51e4202685fedfbdb6e84ac67c11286bcdd9bba2fb49"
+      },
+      {
+        "name": "node_wasi.o",
+        "bytes": 5592208,
+        "sha256": "ef421be80a041a22641a57efec6a5c972938ad13d9ba3abcc9c622103373d51f"
+      },
+      {
+        "name": "node_wasm_web_api.o",
+        "bytes": 3616552,
+        "sha256": "57ec5cc013a837b0d17095314d91e7337ad95a3e2a59688bdef8ce2f5fc5a51b"
+      },
+      {
+        "name": "node_watchdog.o",
+        "bytes": 3511280,
+        "sha256": "431519dd6840aefdb168bdacc0b62a05b94eeb40a56b1377e851e12183563320"
+      },
+      {
+        "name": "node_worker.o",
+        "bytes": 5156256,
+        "sha256": "1172ba88eca363e948b44d571146c2d8ec7d648429241d16c38627a77758e9fc"
+      },
+      {
+        "name": "node_zlib.o",
+        "bytes": 4873464,
+        "sha256": "f359a4aefba824a82ebc3203e42879caac0bbf65c3674b3c0b136cf7d539a23d"
+      },
+      {
+        "name": "path.o",
+        "bytes": 3625480,
+        "sha256": "390a31836b2a0c0636c9c379e3d9416bd1414347a7ca62d71d5db88326e87278"
+      },
+      {
+        "name": "child_process_permission.o",
+        "bytes": 39088,
+        "sha256": "083fab5560e433caac6b78aca9bc4caa0487fd2b05d4c0a1fe42f285a7d1e3c6"
+      },
+      {
+        "name": "ffi_permission.o",
+        "bytes": 39048,
+        "sha256": "aefddfd65fb5de7bc43af67dd763f25307ceaf5503de6477653671b326e01529"
+      },
+      {
+        "name": "fs_permission.o",
+        "bytes": 3739472,
+        "sha256": "ab0598921508616ce22823357605a64ba86501ebded20f4dc90ec3cc37450f63"
+      },
+      {
+        "name": "inspector_permission.o",
+        "bytes": 39040,
+        "sha256": "6e47b52e54f1970a4c425a58edb4543160f5270909c3a908f67ddbcdca771a3d"
+      },
+      {
+        "name": "permission.o",
+        "bytes": 4202232,
+        "sha256": "e6f767497fd84140b3343b564afb0bad5e1f42accfaa68aa5149e2e008eaadf5"
+      },
+      {
+        "name": "wasi_permission.o",
+        "bytes": 38984,
+        "sha256": "65b657172661b00ab341776a7b4f023d74335cd9f549045b80334a8b211e9029"
+      },
+      {
+        "name": "worker_permission.o",
+        "bytes": 39016,
+        "sha256": "47b311f44bb0cc31a2d2dabac93e8167421a2066cc4cb64797ade433878fc68a"
+      },
+      {
+        "name": "net_permission.o",
+        "bytes": 38944,
+        "sha256": "631af6b5c30b91b12bcbf03e1a47f2184b05ea018c1f113986de30f82620ac20"
+      },
+      {
+        "name": "addon_permission.o",
+        "bytes": 38992,
+        "sha256": "dc6dfed45b215b384093066f53d64324eefd76cb6fdc07d0d7c153a78fe275e1"
+      },
+      {
+        "name": "pipe_wrap.o",
+        "bytes": 3680448,
+        "sha256": "d1fa8063b9cc7edf28acb510fa2aa8b693df183b4452bb9225fcb6fbd632f8a7"
+      },
+      {
+        "name": "process_wrap.o",
+        "bytes": 3930440,
+        "sha256": "70b329cb47d59c831ff09aacd933bc376987531448bb28aad888df51ffc11cd7"
+      },
+      {
+        "name": "signal_wrap.o",
+        "bytes": 3505328,
+        "sha256": "fca4b7aceafb55e6c6209ea8f232d9343807aa76daf295463e4035978d7f0dd5"
+      },
+      {
+        "name": "spawn_sync.o",
+        "bytes": 4064064,
+        "sha256": "dd1cd359346593edb47096957ebbe3d73ccfd01c4d6444051e84a52794422a85"
+      },
+      {
+        "name": "stream_base.o",
+        "bytes": 3892904,
+        "sha256": "d722a43c709618721904973e03d406080d71b4223b44558dccaff8602dcfed06"
+      },
+      {
+        "name": "stream_pipe.o",
+        "bytes": 3484488,
+        "sha256": "75fbba99b82547000e4d65b28ee5b63d63d50a3e7a5fca751697b29cfc6bf22b"
+      },
+      {
+        "name": "stream_wrap.o",
+        "bytes": 3742072,
+        "sha256": "ab77661d5fb7b36d93cca684ee013ef527833a7a859c660e89a4ef5485c054ca"
+      },
+      {
+        "name": "string_bytes.o",
+        "bytes": 1719184,
+        "sha256": "6541c2fe4fdbf995fb66dfb23f788b10b1029f6d25b1c92520bc5817eacea9a6"
+      },
+      {
+        "name": "string_decoder.o",
+        "bytes": 3415936,
+        "sha256": "a2516f3fddacbcdaed63e1e319120b49bdef60d3726ffd8d145a02ee01cfbed6"
+      },
+      {
+        "name": "tcp_wrap.o",
+        "bytes": 3779488,
+        "sha256": "3dc4c91ac6fcb0e163afba70f3f8e6d926ec91299e95b42e1504355828bca69e"
+      },
+      {
+        "name": "timers.o",
+        "bytes": 3467072,
+        "sha256": "9566879cb66cba4c026db82cfe32c7cdd64e4dec22af8e17e2c6f53faf92cfb9"
+      },
+      {
+        "name": "timer_wrap.o",
+        "bytes": 3496512,
+        "sha256": "dda91efa538ba061e41a8f4bf2b242cfa48546415becdac8bfe32d4be66db5a5"
+      },
+      {
+        "name": "agent.o",
+        "bytes": 397264,
+        "sha256": "0bbf69e6553055aa179f7b53942db335955a96d8c16c9ec148b46959ca0cb2c2"
+      },
+      {
+        "name": "agent_legacy.o",
+        "bytes": 1880936,
+        "sha256": "8f5433d78006e8e62392461591fafff9da48ea12abdf128950474527c5454657"
+      },
+      {
+        "name": "node_trace_buffer.o",
+        "bytes": 504344,
+        "sha256": "f758c3a00329e4bfe08261a314427081e40e11c28c43bd09b46303da64a2eaff"
+      },
+      {
+        "name": "node_trace_writer.o",
+        "bytes": 323232,
+        "sha256": "179752f778b27d633215f1326ab83b4bf2bd7c7966b4984c1951e51683372afa"
+      },
+      {
+        "name": "trace_event.o",
+        "bytes": 99584,
+        "sha256": "6eaeca70c7e40aa8c8c1a1c5f94a232a7308a830384830641339a64f0953d6c0"
+      },
+      {
+        "name": "traced_value.o",
+        "bytes": 236392,
+        "sha256": "8f1d75e15083a10f8dc2db5315a50e5e9e42cc0f05d2d107b67e90cd53467fcf"
+      },
+      {
+        "name": "tty_wrap.o",
+        "bytes": 3440296,
+        "sha256": "c2b6f61c0b268d03a91816b70bff3b8fc154e9856c9ff06ffd0be7cc6a293fff"
+      },
+      {
+        "name": "udp_wrap.o",
+        "bytes": 4023168,
+        "sha256": "7658565510ec6d6c43872d08498d5cce82ea01f0b4bab837cb0a99285471fe80"
+      },
+      {
+        "name": "util.o",
+        "bytes": 4100488,
+        "sha256": "7d3b445a3008c25a6a3953586d3809a7ddb703d5c144a4273ff55a64ef864606"
+      },
+      {
+        "name": "uv.o",
+        "bytes": 3401624,
+        "sha256": "db9f001e2b8f58d754c461d72e6add7489f9b76d77e77ddbde7a5ceba24f0e98"
+      },
+      {
+        "name": "cppgc_helpers.o",
+        "bytes": 3466752,
+        "sha256": "d95b4ae74b55a34f890264430df0fcf3bfa6baa945ae522acd2e1b327ba69304"
+      },
+      {
+        "name": "node_large_page.o",
+        "bytes": 3872,
+        "sha256": "4323a13a2aae80327d76a01281e4734a72d29b310ef364bb3f20e2dfd7b3fb82"
+      },
+      {
+        "name": "node_sqlite.o",
+        "bytes": 5787056,
+        "sha256": "a2b9f52e7f91ebe9b920610a9a0a96a675db0719e2a026efabaa66a4a9f11e3a"
+      },
+      {
+        "name": "node_webstorage.o",
+        "bytes": 3948632,
+        "sha256": "10071abc028c20a018f1ab38371f6a358b8d1782d33f9a2818113c5f0b201d56"
+      },
+      {
+        "name": "node_ffi.o",
+        "bytes": 4724368,
+        "sha256": "923068a93a4eda2b18209e4b0610295e75250636053e82ea3fce82857d8edc2f"
+      },
+      {
+        "name": "arm64.o",
+        "bytes": 40736,
+        "sha256": "2206aa22d55cef3edb4e24b6244dcf8132d45642ca0ed2519a89f5cf4cd35baa"
+      },
+      {
+        "name": "loong64.o",
+        "bytes": 24784,
+        "sha256": "b43aab6a6de42705aff6955c5baeb80912434ada961745e7d8889cbd6eb01519"
+      },
+      {
+        "name": "ppc64.o",
+        "bytes": 24784,
+        "sha256": "fca6e5617d35e1e78a8b0b853b28d3c1cfc606df7f66cdf767d807a0974e94f1"
+      },
+      {
+        "name": "riscv64.o",
+        "bytes": 24784,
+        "sha256": "f872fee3cb7d809ccac626dfa503f8c112e0272a3d3c3f3a6d78f00d75b07d5b"
+      },
+      {
+        "name": "s390x.o",
+        "bytes": 24784,
+        "sha256": "587f64e490f8eb0372bab5b3cc40f6de85e138ad71846e24bd66c6b2f3d8ad8e"
+      },
+      {
+        "name": "x64.o",
+        "bytes": 24784,
+        "sha256": "f3fb5e90f2897345eaa9d89156473242e10f0a0da7255927e837373ca189ce77"
+      },
+      {
+        "name": "data.o",
+        "bytes": 3681480,
+        "sha256": "d40c8254291cb94315f323818728c505531403429d1a263062413ec5b7cb3335"
+      },
+      {
+        "name": "fast.o",
+        "bytes": 1651776,
+        "sha256": "c168f2078ee784965fcb7299a0f897c589c2fb9153c56d16009df0526032ac3d"
+      },
+      {
+        "name": "jit_memory.o",
+        "bytes": 35840,
+        "sha256": "34dbcccc93b1b1363a1e2dc042a8dd05df10bd3cec2b4bfdbeff84f72da2e2bf"
+      },
+      {
+        "name": "types.o",
+        "bytes": 3784856,
+        "sha256": "d1b1117a1d0f9f9d7a86c6638c0d1aa47ce3d0a5c139651bdb0d3b0fb070bd80"
+      },
+      {
+        "name": "inspector_agent.o",
+        "bytes": 5687992,
+        "sha256": "77a6e6633e520678ee2d11d7dcc73393bb3e06264ed1322eab5d6f5be838573c"
+      },
+      {
+        "name": "inspector_io.o",
+        "bytes": 4280608,
+        "sha256": "9d2721291a7f1b143ffa82147cc3240017fd73e92d00ef5d718726052fdfceb9"
+      },
+      {
+        "name": "inspector_profiler.o",
+        "bytes": 4394168,
+        "sha256": "a120dedf9264d9b789ee04a7a4813e75790e54962cb0b59766c1522bafc9e6ed"
+      },
+      {
+        "name": "inspector_js_api.o",
+        "bytes": 3808088,
+        "sha256": "b43861acba9e876dc44f595f83abcee2d4e960ab9a735e3d360fc51e6bdc3a89"
+      },
+      {
+        "name": "inspector_socket.o",
+        "bytes": 527872,
+        "sha256": "83facaeb7d4522cf8a984767e9d536ab6c713e07a9c96ffd6d699a43424c7a94"
+      },
+      {
+        "name": "inspector_socket_server.o",
+        "bytes": 803480,
+        "sha256": "75a49cf2d319bbe76d8f5838b97e1a48963f89a300cfd5529066ffba10f4e7ed"
+      },
+      {
+        "name": "main_thread_interface.o",
+        "bytes": 4037792,
+        "sha256": "07eceec83e39c6085281819134c4ee94add62c9e505aadf8706f9a1101adc685"
+      },
+      {
+        "name": "node_json.o",
+        "bytes": 423048,
+        "sha256": "1d2dcd8bb0bd8b6e57bc805cbe06be39eb8482ad74ec00aed0b19fe43daa502f"
+      },
+      {
+        "name": "node_string.o",
+        "bytes": 659864,
+        "sha256": "d91578d25617c5a12ac42febce1eff93a6022ebf4532ad0d05156e627f339a2b"
+      },
+      {
+        "name": "runtime_agent.o",
+        "bytes": 1256584,
+        "sha256": "5b59ee729ca4a9e32d28c9fc936267b25fdb9993cd0e5dec85ce4d7abbfe90dc"
+      },
+      {
+        "name": "tracing_agent.o",
+        "bytes": 4206520,
+        "sha256": "ca867f066dffe3408bc74cb2b99551408d818a67b915f2e87444f656a891f1b6"
+      },
+      {
+        "name": "worker_agent.o",
+        "bytes": 1193360,
+        "sha256": "bd1e337084d0ee9d166c6343f57d2b627e5fa4fef96d2208752112431cad27e7"
+      },
+      {
+        "name": "network_inspector.o",
+        "bytes": 3858184,
+        "sha256": "91d97f6f9bbb9b07c3fd00d6beebe7cdce1318488c1682d3043ca02ee411b9b8"
+      },
+      {
+        "name": "network_agent.o",
+        "bytes": 4640240,
+        "sha256": "d2793c13cbf6b6599a3ebb45e5614e0bcb6504dd4bb2e07e8848fe7388a6faf3"
+      },
+      {
+        "name": "target_manager.o",
+        "bytes": 745448,
+        "sha256": "319f7a3de66d777bfb9dbf1e4c0281a84e3c4e9b429a628263812da7bd682dad"
+      },
+      {
+        "name": "target_agent.o",
+        "bytes": 1041280,
+        "sha256": "37a9c1bf9d1999c6e5266085e6a6a4b195b1c4df2ca57debde14ae9e479b55b4"
+      },
+      {
+        "name": "worker_inspector.o",
+        "bytes": 949496,
+        "sha256": "2d2e8c1b75042baac4772c4018f7324f2c1952911dc3ed3ca056f326785f86b8"
+      },
+      {
+        "name": "io_agent.o",
+        "bytes": 486032,
+        "sha256": "f92fe508b84d342ff0753f9846e9922456e2d87736fc437939a6ec40c3cd12c5"
+      },
+      {
+        "name": "network_resource_manager.o",
+        "bytes": 258792,
+        "sha256": "cc022fcebef41359f994b4791b4732055faf6ea8265ac39f96cd696b5f34466f"
+      },
+      {
+        "name": "dom_storage_agent.o",
+        "bytes": 4249192,
+        "sha256": "b4478985756addccbb96ecf450209e29b2e6bfb2437fa9d1830d687d50a71161"
+      },
+      {
+        "name": "inspector_object_utils.o",
+        "bytes": 512144,
+        "sha256": "5866e632766ccf5116067fa6d49a9218451a59b5aa1f106c9acc6ba135a652b8"
+      },
+      {
+        "name": "storage_agent.o",
+        "bytes": 3672856,
+        "sha256": "4d494e87a4997d639b47e011165a6cfa974715963a50bbf367c1faf7b065ad25"
+      },
+      {
+        "name": "notification_emitter.o",
+        "bytes": 406424,
+        "sha256": "fd24be06d95a20bf4949c5ab876910395d92b053241679375117237e5117b88a"
+      },
+      {
+        "name": "crypto_aes.o",
+        "bytes": 4038424,
+        "sha256": "ecf78b0a4281c60e8c065c961988d0acaf127014735a93054dfe8075dccf964a"
+      },
+      {
+        "name": "crypto_argon2.o",
+        "bytes": 4007496,
+        "sha256": "0678afe50ba58eaa6fdded907bbee7cea9d16cd5da43cda291c1935d76c2e07a"
+      },
+      {
+        "name": "crypto_bio.o",
+        "bytes": 3542056,
+        "sha256": "e28864f6d439bd9cf29005515a0b6cb74d69aa78f85a1a6984b0e9cd71448eba"
+      },
+      {
+        "name": "crypto_chacha20_poly1305.o",
+        "bytes": 3980880,
+        "sha256": "5f42078a977f5da5ff5d28342e08ac69720cf9cafb96d2257b1c6533670fb565"
+      },
+      {
+        "name": "crypto_common.o",
+        "bytes": 3709568,
+        "sha256": "814954cacd9db0be4673f232bcb6ab4e05faf6aa60141d15293978d215cafaba"
+      },
+      {
+        "name": "crypto_dsa.o",
+        "bytes": 3987072,
+        "sha256": "4fc55519a60031c5dc205847d5f59bbfad764284b4dae85f54ea9451098ca61d"
+      },
+      {
+        "name": "crypto_hkdf.o",
+        "bytes": 4013368,
+        "sha256": "cf88d5edc27d6bf4dc9c2cde5cb0110a6680dc3ed242b7f03b5c37e33f8ecc63"
+      },
+      {
+        "name": "crypto_pbkdf2.o",
+        "bytes": 4029688,
+        "sha256": "09654b08513f6c4d2a249e61d94b210fe6f404d689729103f1ae6b90cfd71db2"
+      },
+      {
+        "name": "crypto_sig.o",
+        "bytes": 4438976,
+        "sha256": "23d7b5d63be6094a9e9ef11b8defc0f0018d5ccccd5f5743a8bf2e3b0bec3485"
+      },
+      {
+        "name": "crypto_timing.o",
+        "bytes": 3430728,
+        "sha256": "f6e0e5c15b26d050cdd5a3dd106e17b87eb7882f445f6382f68de3ccd2619834"
+      },
+      {
+        "name": "crypto_cipher.o",
+        "bytes": 4342328,
+        "sha256": "2e194410dbdec0ace8ddfc7e3408c51a2f7c9c1c91266445e49e44515962d9d6"
+      },
+      {
+        "name": "crypto_context.o",
+        "bytes": 5098992,
+        "sha256": "7402adf0068b43889952808aeca31506458299946bb12a71d2afb8869e890cd1"
+      },
+      {
+        "name": "crypto_ec.o",
+        "bytes": 4504704,
+        "sha256": "19af0784c7f751729803c93e8e46b062662a879496ed84f7480ba5cf81dd9ece"
+      },
+      {
+        "name": "crypto_pqc.o",
+        "bytes": 3790120,
+        "sha256": "74cbc8da143b9e382f086f85f385d884f48bc5a71f05642edf16b859659fd7ca"
+      },
+      {
+        "name": "crypto_kem.o",
+        "bytes": 4103024,
+        "sha256": "6874292743df329d1edcfa23f4a12daaf796ef1ae0707d8a036638b5da878cf0"
+      },
+      {
+        "name": "crypto_hmac.o",
+        "bytes": 4292576,
+        "sha256": "18d29fa41e3ead6799ef123832c98e1f1424b9b11cbb4fd75a0e21bd26a92071"
+      },
+      {
+        "name": "crypto_kmac.o",
+        "bytes": 4182336,
+        "sha256": "7a682fe2b3eb7c79291f3d57f1d5ac9b15ebe6eecc11bb1df7ee9ef72524ec3b"
+      },
+      {
+        "name": "crypto_turboshake.o",
+        "bytes": 4165368,
+        "sha256": "b9c4e01c6ab4a294b87780fee14e8532173bd387c6d2ae09f124ec735ab14302"
+      },
+      {
+        "name": "crypto_random.o",
+        "bytes": 4021448,
+        "sha256": "cd33ceed0fe3376aa1a3fafd3bb675bc6791a2e2743c879130072beb6569e879"
+      },
+      {
+        "name": "crypto_rsa.o",
+        "bytes": 4437664,
+        "sha256": "df8f93b1fefa26190d2cadb572940f9ef2ef8babf97f89559de000ef9aebc208"
+      },
+      {
+        "name": "crypto_spkac.o",
+        "bytes": 3552816,
+        "sha256": "8ec90137ae99f7237ca1bb51987ee12cc68603054978e468945c106ce636f531"
+      },
+      {
+        "name": "crypto_util.o",
+        "bytes": 4167480,
+        "sha256": "5595e8fe19bc7b050d2f16606b20f4570e64d188a8f5b9818302175dbf5fa94f"
+      },
+      {
+        "name": "crypto_clienthello.o",
+        "bytes": 35296,
+        "sha256": "2a0a98b9119da2f40a3b86d81d3a79cc76dd0ce525cfae9ee7d51e670f8f3019"
+      },
+      {
+        "name": "crypto_dh.o",
+        "bytes": 4530688,
+        "sha256": "c24e8ac5c24e7f63fad8e15a9d0bdcb03ab398d802e46a9a3e531ec00424d9f3"
+      },
+      {
+        "name": "crypto_hash.o",
+        "bytes": 4738272,
+        "sha256": "67248b5f5702bb25989c5f93ca00363200eaf663b22e8e393b21adc4520ca941"
+      },
+      {
+        "name": "crypto_keys.o",
+        "bytes": 4819784,
+        "sha256": "675f058fb683f38d8b4d157df084e5baf6cc2ba5214c8ab08c8e0a236a193a5c"
+      },
+      {
+        "name": "crypto_keygen.o",
+        "bytes": 4101672,
+        "sha256": "8f1fe390fe6cfe829d3bf24a8710e8d35f94bb292843aa1432cf48cb70dc2028"
+      },
+      {
+        "name": "crypto_scrypt.o",
+        "bytes": 3515056,
+        "sha256": "9ad47d5e562657c28500e031954dac09b74ea85131ed1889b22de3e7fd91001f"
+      },
+      {
+        "name": "crypto_tls.o",
+        "bytes": 5032616,
+        "sha256": "2e1715e4310de54096d66fd5925e26020467ad653304a58930e4973c765fd0f2"
+      },
+      {
+        "name": "crypto_x509.o",
+        "bytes": 4425976,
+        "sha256": "fe5eeb7f7d96d15d1cfb11699c08458441ab8d13a591a252c0c312f7cbff46dd"
+      },
+      {
+        "name": "node_crypto.o",
+        "bytes": 4122112,
+        "sha256": "261decc88f68881c7ef53471185c1a7235b3243fd948faa3093a4aa641def630"
+      },
+      {
+        "name": "node_javascript.o",
+        "bytes": 15824712,
+        "sha256": "85e3b42cfaa4608575701aae3c41f49d8fe001b5cbba8e73ea4f6b83be76ce21"
+      },
+      {
+        "name": "Protocol.o",
+        "bytes": 750624,
+        "sha256": "59ec040bb6c85cf22c17aa43d577e8e7993e67b01d400e436a4c33b60ce22bac"
+      },
+      {
+        "name": "NodeWorker.o",
+        "bytes": 397496,
+        "sha256": "47002d3d527a2a0e5c1c4fd5b6c0b6485b7350c7605eb3bf0babd4534c6c7b40"
+      },
+      {
+        "name": "NodeTracing.o",
+        "bytes": 628336,
+        "sha256": "1030a06af745096b0b6d0adc429f264b9a977853c1348c7cde8798ff47abc939"
+      },
+      {
+        "name": "NodeRuntime.o",
+        "bytes": 347208,
+        "sha256": "0f0f685b1ffa4e3e43b9ae2372381eacc07a26996077d0a1857f05d77e0e54c0"
+      },
+      {
+        "name": "Network.o",
+        "bytes": 792336,
+        "sha256": "cc6c89adfc6273972218ca08ba6c64f79e5508be9065a9f4a3b43b3a0ebfbecf"
+      },
+      {
+        "name": "Target.o",
+        "bytes": 415856,
+        "sha256": "0a9bb229387a249d7ce041071c2b8f1332b4dd62b6e0bca8a19158980d8f7b6e"
+      },
+      {
+        "name": "IO.o",
+        "bytes": 367464,
+        "sha256": "3f4d6591198a6e3d761ea721226cb9178a1db77bb684b81504bbd2547b0f2b21"
+      },
+      {
+        "name": "DOMStorage.o",
+        "bytes": 545112,
+        "sha256": "05c15b7d0b7085a40ca82ab064fd8f16751096d3a8457720203ecd216487d735"
+      },
+      {
+        "name": "Storage.o",
+        "bytes": 368000,
+        "sha256": "6df3199e2c9f91574cb0d49f1518fbb44a210d7a79b0d01d0420ca2ce57cfed3"
+      }
+    ],
+    "replacements": {
+      "process_wrap.o": {
+        "path": "/private/tmp/aux-exec-task-envelope-compile-20261026-a1/process_wrap.cc.o",
+        "sha256": "246e293268369b0ad5cf2400fa8c0d7bd992b0c3f21d0a38b1b173199d6c7411"
+      },
+      "spawn_sync.o": {
+        "path": "/private/tmp/aux-exec-task-envelope-compile-20261026-a1/spawn_sync.cc.o",
+        "sha256": "82098ea0e5c5a989055697748c17cfb7d0a5abbe31d5e5a1c245a0e48af0062b"
+      }
+    },
+    "preserveOtherMemberBytesAndOrder": true,
+    "originalArchivesMutated": false
+  },
+  "reuseObjects": {
+    "/private/tmp/aux-exec-task-envelope-compile-20261026-a1/pty-linked.o": "8c1193647c70b7c344a92bfa9b5e317407d7fa427d9df687ad2f425bbb2cceb0",
+    "/private/tmp/aux-exec-task-envelope-compile-20261026-a1/process_wrap.cc.o": "246e293268369b0ad5cf2400fa8c0d7bd992b0c3f21d0a38b1b173199d6c7411",
+    "/private/tmp/aux-exec-task-envelope-compile-20261026-a1/spawn_sync.cc.o": "82098ea0e5c5a989055697748c17cfb7d0a5abbe31d5e5a1c245a0e48af0062b"
+  },
+  "olderWorkerProofLineageOnly": {
+    "path": "/private/tmp/aux-exec-task-envelope-compile-20261026-a1/worker-host.o",
+    "sha256": "d308b951a4878474395dd9cf895254306a2c7049b984089705c7e8759b3676c2",
+    "notLinked": true
+  },
+  "existingESObserverObject": "/private/tmp/aux-daemon-observer-reverse-a1/observer.o",
+  "sourceReplacements": {
+    "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/integrator/fresh-successor-scope/source/daemon/AuxFreshBootstrapPolicy.swift": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/runtime/fixed-linked-policy/source/AuxFreshBootstrapPolicy.swift",
+    "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/runtime/fixed-builtins/source/AuxSignedFreshBootstrapPolicyLoader.swift": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/runtime/fixed-linked-policy/source/AuxSignedFreshBootstrapPolicyLoader.swift",
+    "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/runtime/selected-builtin-owner/source/AuxSelectedAccountOwner.swift": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/runtime/selected-exec-workspace/source/AuxSelectedAccountOwner.swift",
+    "/private/tmp/aux-completion-daemon-fixed-builtins-20261026-a1/main.o": "/private/tmp/aux-future-supervised-native-20261026-a1/main.o",
+    "/private/tmp/aux-completion-final-daemon-20261026-a1/worker-host.o": "/private/tmp/aux-future-supervised-native-20261026-a1/worker-host.o",
+    "/private/tmp/aux-isolated-node-archives-20261023/libnode_base.a": "/private/tmp/aux-future-supervised-native-20261026-a1/libnode_base.a"
+  },
+  "nativeCoherentRoles": {
+    "main": "current-user/no-addons/parent-birth + real early ES initialize/drain under fixed-linked flag",
+    "worker": "native-current-user identity true; browser-only execution restriction false only fixed-linked variant",
+    "swift": "existing54-source native-current-user graph + v11 strict ES policy + actualrole3owner",
+    "parent": "separate3-source authenticated browser guest reader, existinglayout9; parent object not in childlink"
+  },
+  "proofReceipts": [
+    {
+      "path": "/private/tmp/aux-exec-task-envelope-compile-20261026-a1/receipt.json",
+      "sha256": "bd344e6e6ce8e05a6d7512c737064da4c715a52e6e2486ed578457eaffbac332"
+    },
+    {
+      "path": "/private/tmp/aux-fixed-linked-v11-typecheck-20261026-a1/receipt.json",
+      "sha256": "2d6b60da8ec8d1feb07bbfc8f5dc09e6fcff5022927081590a2920c5c565fda6"
+    }
+  ],
+  "sourceGatesClosed": false,
+  "sourceGateEvidence": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/runtime/future-supervised-build/remaining-source-joins.json",
+  "EntitlementRequired": true,
+  "AppleRequest": "2H4D7KNGUP",
+  "productSigned": false,
+  "productExecuted": false,
+  "activated": false,
+  "candidateChanged": false,
+  "reviewChanged": false,
+  "requiresBeforeRuntime": [
+    "Apple actual daemon ES entitlement/profile approval + independently reviewed signatures",
+    "exact signed spawn-helper v11 descriptor/resource before containing seals",
+    "future browser GN parent Swift reader variant replacing its existing object, not duplicate C symbols",
+    "fixed linked loader/selectedexec resource anchors applied through root source composer",
+    "fresh reviewed state namespace; no v9/v10 policy adoption",
+    "account-change physical cancellation and general CLI REPL selected adapter acceptance"
+  ]
+}

@@ -1,0 +1,104 @@
+--- /Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/runtime/native-host/source/daemon/AuxNativeDaemonMain.cc
++++ AuxNativeDaemonMain.cc
+@@ -174,7 +174,7 @@
+     // Close native admission before waiting; no timeout is successful drain.
+     auto status = AuxClosePreparedDaemonAuthorityServer(lifetime_.parent);
+     if (worker_.joinable()) worker_.join();
+-#if !defined(AUX_BROWSER_ONLY_NATIVE_STARTUP) || !AUX_BROWSER_ONLY_NATIVE_STARTUP
++#if defined(AUX_FIXED_LINKED_PTY_POLICY) || !defined(AUX_BROWSER_ONLY_NATIVE_STARTUP) || !AUX_BROWSER_ONLY_NATIVE_STARTUP
+     while (status != 0) {
+       std::this_thread::sleep_for(std::chrono::milliseconds(250));
+       status = AuxClosePreparedDaemonAuthorityServer(lifetime_.parent);
+@@ -292,12 +292,14 @@
+   const int crash_registration = AuxCaptureInheritedCrashRegistration();
+   if (crash_registration != 0)
+     return Refuse("inherited-crash-registration", crash_registration, 78);
+-#if !defined(AUX_BROWSER_ONLY_NATIVE_STARTUP) || !AUX_BROWSER_ONLY_NATIVE_STARTUP
++#if defined(AUX_FIXED_LINKED_PTY_POLICY) || !defined(AUX_BROWSER_ONLY_NATIVE_STARTUP) || !AUX_BROWSER_ONLY_NATIVE_STARTUP
+   // Supervised mode still requires actual descendant admission before user code.
+   const int descendants = aux::descendants::InitializeAtFreshDaemonEntry();
+   if (descendants != 0) return Refuse("task-supervision", descendants, 78);
+ #endif
+-  // Browser-only mode never initializes ES and cannot launch supervised work.
++  // The ordinary candidate never initializes ES. The separate future fixed-linked
++  // variant requires the same real early observer before any user code.
++  // Both retain --no-addons and current native parent-lifetime interfaces.
+   // Parent, sealed image, fresh installation and selected-home checks below
+   // remain mandatory. No environment or argv value can enable task rights.
+   NativeLifetime lifetime;
+--- /Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/runtime/exec-task-envelope/source/AuxDevelopmentWorkerHost.cc
++++ AuxDevelopmentWorkerHost.cc
+@@ -69,9 +69,14 @@
+ // Inspect before any host mutex or V8 API; inherited locks may be held forever.
+ const pid_t kHostProcess = getpid();
+ #if defined(AUX_BROWSER_ONLY_NATIVE_STARTUP) && AUX_BROWSER_ONLY_NATIVE_STARTUP
+-constexpr bool kBrowserOnlyNativeStartup = true;
++constexpr bool kNativeCurrentUserStartup = true;
+ #else
++constexpr bool kNativeCurrentUserStartup = false;
++#endif
++#if defined(AUX_FIXED_LINKED_PTY_POLICY) && AUX_FIXED_LINKED_PTY_POLICY
+ constexpr bool kBrowserOnlyNativeStartup = false;
++#else
++constexpr bool kBrowserOnlyNativeStartup = kNativeCurrentUserStartup;
+ #endif
+ napi_value RefuseSupervisedTaskBinding(napi_env env, napi_callback_info) {
+   napi_throw_error(env, "AUX_SUPERVISED_TASKS_DISABLED",
+@@ -1063,7 +1068,7 @@
+     Registry().hosts.push_back(clean);
+   }
+   State(uint64_t provider, node::Environment* environment) : State(environment) {
+-    if ((kBrowserOnlyNativeStartup && !environment) || closed || !provider ||
++    if ((kNativeCurrentUserStartup && !environment) || closed || !provider ||
+         AuxRetainPreparedFreshRuntimeProvider(provider)) closed = true;
+     else prepared_fresh_provider = provider;
+   }
+@@ -1093,7 +1098,7 @@
+     return napi_generic_failure;
+   std::unique_lock<std::mutex> host_lock(state_->mutex);
+   if (state_->closed) return napi_closing;
+-  if (kBrowserOnlyNativeStartup &&
++  if (kNativeCurrentUserStartup &&
+       (environment != state_->browser_service_environment || !state_->workers.empty()))
+     return napi_generic_failure; // Only the actual embedding main Environment.
+   std::shared_ptr<Worker> worker;
+@@ -1102,7 +1107,7 @@
+     uint64_t generation = NextGeneration();
+     if (!generation) return napi_generic_failure;
+     worker = std::make_shared<Worker>(generation, environment, isolate, loop);
+-    worker->ordinary_main_service = kBrowserOnlyNativeStartup && environment == state_->browser_service_environment;
++    worker->ordinary_main_service = kNativeCurrentUserStartup && environment == state_->browser_service_environment;
+     cleanup_retain = new std::shared_ptr<Worker>(worker);
+     {
+       std::lock_guard<std::mutex> lock(Registry().mutex);
+--- /Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/runtime/selected-builtin-owner/source/AuxMemoryMainOwner.inc
++++ AuxMemoryMainOwner.inc
+@@ -15,7 +15,7 @@
+     : state_(std::move(state)) {}
+ AuxMemoryNativeOwner::~AuxMemoryNativeOwner() = default;
+ std::shared_ptr<AuxMemoryNativeOwner> AuxMemoryNativeOwner::Capture(napi_env env, int64_t account) {
+-  if (!kBrowserOnlyNativeStartup || getpid() != kHostProcess || account < 0 ||
++  if (!kNativeCurrentUserStartup || getpid() != kHostProcess || account < 0 ||
+       account > 9'007'199'254'740'991LL) return {};
+   auto* isolate = v8::Isolate::GetCurrent();
+   if (!isolate || isolate->GetCurrentContext().IsEmpty()) return {};
+@@ -134,7 +134,7 @@
+         "Account memory is still closing or its native registry owner is unavailable");
+     return nullptr;
+   };
+-  if (!kBrowserOnlyNativeStartup || getpid() != kHostProcess) return refuse();
++  if (!kNativeCurrentUserStartup || getpid() != kHostProcess) return refuse();
+   size_t argc = 1; napi_value value;
+   if (napi_get_cb_info(env, info, &argc, &value, nullptr, nullptr) != napi_ok || argc != 1)
+     return refuse();
+--- /Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/integration/computer-use/source/AuxComputerUseMainOwner.inc
++++ AuxComputerUseMainOwner.inc
+@@ -15,7 +15,7 @@
+     : state_(std::move(state)) {}
+ AuxComputerUseNativeOwner::~AuxComputerUseNativeOwner() = default;
+ std::shared_ptr<AuxComputerUseNativeOwner> AuxComputerUseNativeOwner::Capture(napi_env env, int64_t account, const uint8_t* expected, uint32_t count) {
+-  if (!kBrowserOnlyNativeStartup || getpid() != kHostProcess || account < 0 ||
++  if (!kNativeCurrentUserStartup || getpid() != kHostProcess || account < 0 ||
+       account > 9'007'199'254'740'991LL) return {};
+   auto* isolate = v8::Isolate::GetCurrent();
+   if (!isolate || isolate->GetCurrentContext().IsEmpty()) return {};

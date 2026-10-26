@@ -1,0 +1,60 @@
+{
+  "format": "aux.future-supervised-remaining-source-joins.v1",
+  "actualSource": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-local-completion-20261025-a38/Aux.app/Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/node-development/index.mjs",
+  "sourceSha256": "48af998738fb6d2fc30cb8d5b2e9de03cb04ab7d8563ebdaa5fe8100944fc514",
+  "records": [
+    {
+      "name": "cli-session-context",
+      "offset": 11924767,
+      "excerpt": "async function createCliReplSession(Cn,ei,ti,ni){let ri=await(ni?resolveCliBrowserBinding(ei,ni):resolveCliBrowserBinding(ei)),ii=nanoid(),ai=/* @__PURE__ */ new Date,oi=getAccountTaskRoot(ei),si=getSessionTaskDir({id:ii,createdAt:ai},ei),ci=createDefaultToolState(si),li=await buildSystemPrompt({scanContexts:{accountId:ei,accountRoot:oi,workingDir:si,sessionStorageDir:si}});assertAccountInstance(AccountRegistry.getAccount(ei),ti);let ui=SessionStore.insert(ei,{id:ii,createdAt:ai,projectId:null,systemPrompt:li,title:`Aux CLI REPL`,trigger:{type:`user`,source:`cli`},cwd:si,permission:{files:{readableRoots:[oi,si],writableRoots:[oi,si]}},toolState:ci,model:settings(ei).get(`defaultModel`),browserBinding:ri,incognito:!0}),di=new AuxBrowser(globalCdpClient,ei,ui);return{accountId:ei,accountCreatedAt:ti,browser:di,cleanupTimer:scheduleIdleCleanup(Cn),sessionId:ii,sessionDir:si,mutex:new Mutex,closing:new AbortController,runs:/* @__PURE__ */ new Map,repl:createDesktopRepl({accountId:ei,agentSessionId:ui.id,cwd:si,sessionStorageDir:si,accountRoot:oi,browser:di,incognito:ui.incognito,imageGenerationModels:models(ei)}),toolState:ci}}",
+      "sha256": "680ec1dfd90f402862d847aceeb384b2de190ed365c1fde460e4cdade3092075",
+      "fullExcerptRecorded": true
+    },
+    {
+      "name": "cli-physical-disposal",
+      "offset": 11925908,
+      "excerpt": "async function closeCliReplSession(Cn){let ei=replSessions.get(Cn);if(!ei)return;replSessions.delete(Cn),clearTimeout(ei.cleanupTimer),ei.closing.abort();using ti=await ei.mutex.acquire();ei.repl.dispose(),await ei.browser.dispose().catch(()=>{}),SessionStore.remove(ei.accountId,ei.sessionId)}",
+      "sha256": "d2651004e10d0bf8be2ad8523752883498794a118cbe0d116efd9377c47803d3",
+      "fullExcerptRecorded": true
+    },
+    {
+      "name": "original-repl-fs",
+      "offset": 7854163,
+      "excerpt": "function createReplFs({cwd:Cn,sessionStorageDir:ei,accountRoot:ti,browser:ni,hooks:ri,isPathAllowed:ii}){let ai=(ri,ai=`read`)=>{let oi=ri.replaceAll(`\\\\`,`/`).replace(/^\\.\\//,``).split(`/`)[0],si=!path.isAbsolute(ri)&&oi&&SESSION_OWNED_DIRS.has(oi)?ei:Cn,ci=path.resolve(si,ri);if([Cn,ti,ei].some(Cn=>ci===Cn||ci.startsWith(Cn+path.sep))||ai===`read`&&ni.isReadableDownloadPath(ci)||ii?.(ci,ai))return ci;throw Error(`Path escapes Project and session roots: ${ri}`)},oi=async(Cn,ei)=>{let ti=ai(Cn,ei),ni=getCurrentReplToolCallId();if(ri&&ni){let Cn={toolCallId:ni,path:ti,mode:ei,source:`repl.fs`};await ri.trigger(`file.access`,Cn,Cn)}return ti};return{readFile:async(Cn,ei)=>{let ti=typeof ei==`string`?ei:ei?.encoding,ni=await oi(Cn,`read`);return ti==null?fs$1.readFile(ni):fs$1.readFile(ni,ti)},writeFile:async(Cn,ei)=>{let ti=await oi(Cn,`write`);return auxBrokerBoundary().awaited(()=>fs$1.writeFile(ti,ei))},mkdir:async(Cn,ei)=>{let ti=await oi(Cn,`write`);return auxBrokerBoundary().awaited(()=>fs$1.mkdir(ti,ei))},readdir:async(Cn,ei)=>{let ti=await oi(Cn,`read`);return ei?.withFileTypes?fs$1.readdir(ti,{withFileTypes:!0}):fs$1.readdir(ti)},stat:async Cn=>fs$1.stat(await oi(Cn,`read`)),lstat:async Cn=>fs$1.lstat(await oi(Cn,`read`)),unlink:async Cn=>{let ei=await oi(Cn,`write`);return auxBrokerBoundary().awaited(()=>fs$1.unlink(ei))},rm:async(Cn,ei)=>{let ti=await oi(Cn,`write`);return auxBrokerBoundary().awaited(()=>fs$1.rm(ti,ei))},rename:async(Cn,ei)=>{let ti=await oi(Cn,`write`),ni=await oi(ei,`write`);return auxBrokerBoundary().awaited(()=>fs$1.rename(ti,ni))},copyFile:async(Cn,ei)=>{let ti=await oi(Cn,`read`),ni=await oi(ei,`write`);return auxBrokerBoundary().awaited(()=>fs$1.copyFile(ti,ni))},access:async Cn=>fs$1.access(await oi(Cn,`read`)),resolvePath:ai}}",
+      "sha256": "fd2ff98e77bb350448a600d52c8f114337afbf5f61b09736d7b5af0ea58b44ad",
+      "fullExcerptRecorded": true
+    },
+    {
+      "name": "shared-runtime-home-tmp",
+      "offset": 6962967,
+      "excerpt": "async function prepareSessionSpawn(Cn,ei){auxRequireSupervisedTasks();let ti=await acquireAgentRuntimeUse(ei.signal),ni=ti.state===`ready`;if(!ni&&Cn.session.permissionMode===`full-access`)throw Error(`Aux Runtime preparation failed: ${ti.error}`);let ri=ni?ti.release:()=>void 0;try{let ti=resolvePermission({accountRoot:Cn.accountRoot,permissionMode:Cn.session.permissionMode,accountPermission:Cn.settings.get(`permission`),sessionPermission:Cn.session.permission}),ii=ei.cwd??Cn.toolState.bash.cwd,ai=AUX_RUNTIME_DIR,oi=path.join(ai,`home`),si=path.join(ai,`tmp`),ci=Cn.session.permissionMode===`full-access`,li=ci?os.homedir():ni?oi:ii,ui=ni?si:ci?os.tmpdir():ii;ni&&(mkdirSync(oi,{recursive:!0}),mkdirSync(si,{recursive:!0}));let di=path.join(ai,`bin`),fi={HOME:li,PATH:(process.env.PATH??``).split(path.delimiter).filter(Cn=>Cn&&path.resolve(Cn)!==path.resolve(di)).join(path.delimiter),TMPDIR:ui};return ni&&Object.assign(fi,{AUX_SKILL_RUNTIME:ai,NODE_PATH:path.join(ai,`node`,`lib`,`node_modules`),NPM_CONFIG_CACHE:path.join(si,`npm-cache`),NPM_CONFIG_PREFIX:path.join(ai,`node`),NPM_CONFIG_USERCONFIG:path.join(ai,`.npmrc`),OPENSSL_CONF:path.join(ai,`openssl.cnf`),PATH:[path.join(ai,`bin`),process.env.PATH??``].filter(Boolean).join(path.delimiter),PIP_CACHE_DIR:path.join(si,`pip-cache`),PIP_REQUIRE_VIRTUALENV:`true`,PYTHONNOUSERSITE:`1`,VIRTUAL_ENV:path.join(ai,`python`,`venv`)}),{spawnOptions:{cwd:ii,env:fi,sandboxEnabled:ti.sandbox.enabled,readableRoots:ti.files.readableRoots.filter(Cn=>ni||path.resolve(Cn)!==path.resolve(ai)),writableRoots:ti.files.writableRoots.filter(Cn=>ni||path.resolve(Cn)!==path.resolve(ai)),deniedPaths:ti.deniedPaths,detached:!0},release:ri}}catch(Cn){throw ri(),Cn}}",
+      "sha256": "5518d4e5556c1d9074a7ec123cb15057d9a944da7766a1e220ef488a06787d2b",
+      "fullExcerptRecorded": true
+    }
+  ],
+  "pinnedExistingConsumers": {
+    "docs/integration/proposed/completion-20261026/runtime/selected-builtin-owner/source/selected-builtin-resource.mjs": "8be81eef5af35004ac9f4e8092187ededdf3b43c2f7f63897b021bcb7b5fd7f3",
+    "docs/integration/proposed/completion-20261026/runtime/exec-producer-join/source/selected-exec-resource.mjs": "33a8a99b7629d8865691d1407209189c61c753eb40d7e3704fb5e4653224d620",
+    "docs/integration/proposed/standard-profile-isolation/descendant-custody/source/AuxTaskDescendantObserver.h": "60a1a872cad6f791f61061aa7a15d2d8ac3bb7fb8144b5f25c5fabcb3fd44969"
+  },
+  "requiredUnaccepted": [
+    {
+      "name": "account-change cancellation",
+      "evidence": "Existing auxCaptureReadFileScope AbortController closes held scope but exposes no AbortSignal to the original command drain; selected-exec-resource preserves real close but does not wire account guard cancellation into exact original process/session signal. Existing observer Ticket API exposes admission/birth/reap/Inspect only, no native Stop or arbitrary PID authority.",
+      "finiteNextJoin": "Retain the original source-known ChildProcess/PTY session termination handles and pass actual captured account cancellation to their existing signal/drain path; keep scope retained until original pipes/handle/ES closure. Never infer descendant closure from signaling/processgroup."
+    },
+    {
+      "name": "general CLI REPL physical scope",
+      "evidence": "Actual createCliReplSession stores ui but passes only accountId/agentSessionId/cwd/sessionStorageDir to createDesktopRepl; current native selected helper expects actual session record. Actual closeCliReplSession calls repl.dispose without awaiting physical QuickJS/host effect drain, then removes SessionStore record.",
+      "finiteNextJoin": "Reuse actual ui or exact SessionStore lookup and held selected session; apply existing browser Repl original eval/host-promise/bridge-disposal join to full supported general Repl host operations, await before stored session removal. Preserve original API and no currentaccount fallback."
+    },
+    {
+      "name": "shared runtime finite exception",
+      "evidence": "Task envelope denies paths outside the selected account, including shared Task/runtime; actual prepareSessionSpawn uses runtime/home,tmp plus shared NPM/PIP cache/prefix paths. Current RuntimeScope retains a real shared/exclusive native runtime use lease, but no separate readonly runtime exception/per-session scratch writer is joined to the new envelope.",
+      "finiteNextJoin": "Use existing retained RuntimeScope publication/use owner for exact readonly runtime image access; derive finite home/tmp/cache output under held selected session directory, preserving explicit full-access semantics. Shared runtime writes only under existing exclusive native mutation scope, never blanket Task access."
+    }
+  ],
+  "nativeBuildOrRuntimeExecuted": false,
+  "candidateChanged": false,
+  "reviewChanged": false
+}

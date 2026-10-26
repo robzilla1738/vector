@@ -1,0 +1,21 @@
+{
+  "format": "aux.future-supervised-source-preparation.v1",
+  "pythonSyntax": "pass",
+  "archiveActualMemberCount": 207,
+  "reusedPassedObjects": {
+    "/private/tmp/aux-exec-task-envelope-compile-20261026-a1/pty-linked.o": "8c1193647c70b7c344a92bfa9b5e317407d7fa427d9df687ad2f425bbb2cceb0",
+    "/private/tmp/aux-exec-task-envelope-compile-20261026-a1/process_wrap.cc.o": "246e293268369b0ad5cf2400fa8c0d7bd992b0c3f21d0a38b1b173199d6c7411",
+    "/private/tmp/aux-exec-task-envelope-compile-20261026-a1/spawn_sync.cc.o": "82098ea0e5c5a989055697748c17cfb7d0a5abbe31d5e5a1c245a0e48af0062b"
+  },
+  "olderWorkerLineageOnly": true,
+  "v11ActualPairedTypecheckPassed": true,
+  "wholeLinkBlockedByFiniteSourceGates": true,
+  "nativeCompiledByWorker": false,
+  "linked": false,
+  "activated": false,
+  "candidateChanged": false,
+  "reviewChanged": false,
+  "EntitlementRequired": true,
+  "recipeSha256": "8969f0a06a01f2eb1595cab60a2855b1d3c0fd95fb5b6a6ce446aed5cde3794e",
+  "startupObjectRecipeSha256": "9b172463aed471c2ac5a6b7fda85f37e017784058018581ba97a3c29aaf85986"
+}

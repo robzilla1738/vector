@@ -1,0 +1,6 @@
+{
+  "source/AuxNativeDaemonMain.cc": "2ad0922cf55e1be8f0c1131eacf58c0c901b9880ca6b3b9c61c230822bf84ce6",
+  "source/AuxComputerUseMainOwner.inc": "b14f5f54ec633e2888f1e56d6acabfb1042394a39d6e784f36a1e2ece8d41d54",
+  "source/AuxDevelopmentWorkerHost.cc": "5df8b1d17c4a060e3ad32495394318073f29b14050390b3daa0d084da8f3619c",
+  "source/AuxMemoryMainOwner.inc": "22b61c6080ed3fd777b592d3067818e01a23f5f0ac3d715070b3c6e4918ec17a"
+}
