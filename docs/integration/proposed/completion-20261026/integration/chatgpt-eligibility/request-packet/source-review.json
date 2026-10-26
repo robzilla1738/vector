@@ -54,20 +54,21 @@
   "outputs": [
     {
       "path": "README.md",
-      "sha256": "b9685274961f30d2f4d74a2a9f2e02c092179bb0d4e7bffb02d7a2cea417c6e4"
+      "sha256": "9c2a0786bf50b1e8db12c1342b4c0e9610639d630a56c34ad6fef0bf5173f8a0"
     },
     {
       "path": "request-draft.md",
-      "sha256": "c8ed6c842f9b9c03d01a497ec9db22f9cd8ba87a3fcdd740ee83bcfc0922c2e6"
+      "sha256": "3fdc3fd58646132b1da9d1e270faebb6e741ad00a8d1c28dfaef92ea49557d36"
     },
     {
       "path": "request.pending.json",
-      "sha256": "e8684ddc78a7b4ae6e2e2ba54602f459cb2bf9d54192cea86d9f5462dd91da20"
+      "sha256": "3851b54d51bdfaa14a159cb8ff69bbf0eeb58921e0252b495426d8a7011d47cf"
     }
   ],
   "researchStoppedAfterDocumentedRequestRouteEstablished": true,
   "externalSubmission": false,
   "credentialsOrOwnerStateRead": false,
   "appOrSourceCodeChanged": false,
-  "signInOrInferenceExecuted": false
+  "signInOrInferenceExecuted": false,
+  "ownerFactsUpdate": "2026-10-26: Aux / Courson Digital LLC / hello@getaux.co; public contact does not authorize submission or designate vendor representative."
 }

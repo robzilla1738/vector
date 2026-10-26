@@ -1,0 +1,23 @@
+{
+  "format": "aux.public-facts.route-delta.v1",
+  "files": [
+    {
+      "path": "services/aux-cloud/app/community/page.tsx",
+      "beforeSha256": "2301b4335dbb9219dcb53854c949627dc258815f53202facfece23a90bd9cb98",
+      "afterSha256": "dc8aa84ac421a14cf71a2177082bb10d75df0927bd3be646f8f3281385a967f3"
+    },
+    {
+      "path": "services/aux-cloud/app/policy/privacy/page.tsx",
+      "beforeSha256": "133adb57f8cee63568cdff2b771516a4251e1754ad6249bd3a5815cd9b0b0692",
+      "afterSha256": "7fdfb6973902eadd687d192c9763d05a435a5c51188dee6e7b8ea90138ba12f9"
+    },
+    {
+      "path": "services/aux-cloud/app/policy/terms/page.tsx",
+      "beforeSha256": "f307514a18e5347bdf2bb10460c75c048b99d2ee7c00b1b66588c9c26a11eaa0",
+      "afterSha256": "ba59a18986f44efc40cb70817dcbe834a7d144a9567bd1fa31a7b5c5bb8cfe20"
+    }
+  ],
+  "applied": false,
+  "published": false,
+  "policyApproved": false
+}

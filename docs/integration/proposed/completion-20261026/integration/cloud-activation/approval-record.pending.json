@@ -10,9 +10,9 @@
     "manifestFileSha256": "7d452e13d873f9c2b08efc5eab12c928d942e846f667be4938aa519740d89f10",
     "migrations": 12,
     "historicalReviewSnapshot": false,
-    "refreshRequiredAfterIntegratedInformationRoutes": false,
+    "refreshRequiredAfterIntegratedInformationRoutes": true,
     "serviceFiles": 222,
-    "sourcePinScope": "Current service-only scoped-readiness successor; twelve migration hashes unchanged. Desktop candidate untouched. No deploy, credential, provider, production or backup action.",
+    "sourcePinScope": "Current service-only scoped-readiness successor; twelve migration hashes unchanged. Desktop candidate untouched. No deploy, credential, provider, production or backup action. Prepared legal-copy route delta is separate and must be integrated and source pins refreshed once before deployment review.",
     "sourcePinFileSha256": "70c6f834ea07e5292d9b9765b6c128cf5452ed0cdf095bdca0a330d0b710e3ad"
   },
   "c1": {
@@ -23,12 +23,12 @@
       "share.getaux.co"
     ],
     "preserve": [
-      "dev-cloud.getaux.co on verified Development/Preview target",
+      "dev-cloud.getaux.co on its current recorded Production deployment; never use as isolated Development",
       "getaux.co/www marketing",
       "Hostinger mail DNS",
       "existing primary database and all retained auth/wrapping/recovery keys"
     ],
-    "schemaAction": "Current applied twelve hashes first. No DDL expected. Missing/mismatched migration needs exact review; no reset/down-migration.",
+    "schemaAction": "Read current twelve names/hashes only. No DDL in this action; missing/mismatched migration stops for separate exact review.",
     "stagedDeploy": "Production target with domain auto-promotion skipped; exact pinned source; project-specific cron hold/resume separately included in consent.",
     "developmentDeploymentId": null,
     "stagedProductionDeploymentId": null,
@@ -43,7 +43,10 @@
     "allowPayments": false,
     "webhook": "existing ep_3L5p7Z0hZJXXnNLt5eflPCCJ1uy only; fixture events only",
     "configurationCorrection": "All six names present; no restoration proposed. Public app/API origins and both false launch flags verified; origin lists/other public pairing values and actual behavior remain unverified.",
-    "routineLaunchScope": "Device-only, explicitly chosen by owner on2026-10-26. Preserve existing cloud records; no cloud executor at launch."
+    "routineLaunchScope": "Device-only, explicitly chosen by owner on2026-10-26. Preserve existing cloud records; no cloud executor at launch.",
+    "aliasAction": "Only explicit app/api/share alias changes after skip-domain deployment. No broad promotion, automatic domain-assignment change, generated-alias change or dev-cloud reassignment.",
+    "developmentDeploymentIdRequiredForThisAction": false,
+    "fixtureApprovalRequiredBeforeFirstSend": true
   },
   "o1": {
     "proposedProvider": "DigitalOcean",
@@ -156,5 +159,27 @@
     "rollbackVerified": false,
     "activationApproved": false,
     "backupWorkExcluded": true
-  }
+  },
+  "publicFacts": {
+    "application": "Aux",
+    "legalOperator": "Courson Digital LLC",
+    "publicSupportEmail": "hello@getaux.co",
+    "publicPrivacyEmail": "hello@getaux.co",
+    "operationalRecipientImplied": false
+  },
+  "approvalInputs": [
+    "Existing Production configuration/provider-pairing validation method and protected-deployment access; preserve keys and no secret-value disclosure",
+    "Exact app/api/share alias-change scope and current before mappings; preserve every other alias",
+    "Compatible rollback deployment or explicit fail-closed disposition",
+    "Two fresh owner-controlled test recipients, fixture creation/delivery/deletion scope and existing J5 limits",
+    "Existing service monitor account, responsible operating person and confirmed alert recipient; project maintenance hold/resume and one bounded scheduled result",
+    "Public policy approval and remaining retention/jurisdiction decisions before public activation"
+  ],
+  "executionOutputsNotAdvanceApprovalInputs": [
+    "new staged deployment ID/unique host",
+    "accepted readiness/schema/source receipt",
+    "new fixture identity/object IDs in private ledger",
+    "actual provider delivery and webhook results",
+    "actual maintenance/alert/rollback receipts"
+  ]
 }

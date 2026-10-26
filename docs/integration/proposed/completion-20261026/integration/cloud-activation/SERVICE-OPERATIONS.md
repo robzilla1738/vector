@@ -14,7 +14,7 @@ Owner-confirmed public facts (October 26, 2026): **Aux**, operated by **Courson 
 
 ## Remaining concrete inputs
 
-- Exact staged deployment and source-compatible rollback ID (or explicit unavailable-service rollback disposition), plus dev-cloud's independently verified intended target.
+- Source-compatible rollback ID (or explicit unavailable-service rollback disposition). The new staged deployment ID is an execution output; preserve dev-cloud's existing Production binding rather than wait for an unknown Preview target.
 - Approved synthetic sign-in recipients/accounts and cleanup from J5.
 - Existing service monitoring provider/account, service operator and confirmed notification recipient; actual protected-deployment access method.
 - Distribution rights, privacy/retention decisions and terms approval for public copy and the prepared ChatGPT eligibility request.

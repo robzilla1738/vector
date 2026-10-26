@@ -1,0 +1,61 @@
+--- a/services/aux-cloud/app/community/page.tsx
++++ b/services/aux-cloud/app/community/page.tsx
+@@ -5,9 +5,9 @@
+ 
+ export default function Page() {
+   return <InformationPage title="Community and feedback">
+-    <p>Aux does not currently have a verified public community forum or a published support service-level commitment. This page must not imply that a forum, support mailbox or response-time guarantee exists.</p>
++    <p>Aux does not currently have a verified public community forum or a published support service-level commitment. No public forum or response-time guarantee is claimed.</p>
+     <p>The feedback dialog is intended to save a private report, including session data, through your connected Aux cloud account. This preview has not yet completed end-to-end private report storage and operator readback acceptance. A confirmed save means private storage for review; it does not promise inbox delivery, a response or human review.</p>
+     <p>Describe what you expected, what happened and which app version you used. Include only material you intend to submit. Remove provider credentials, sign-in codes, private page content and personal files from the session or any report or screenshot before saving. Review the dialog before proceeding. If cloud feedback is unavailable, the operation must show an error rather than claim the report was saved.</p>
+-    <p>If you need help getting started, read <Link href="/docs">Getting started</Link>. Development-preview capabilities that remain under verification are listed there. The owner still needs to choose and approve any public contact address, moderation policy and support commitments before they are published here.</p>
++    <p>If you need help getting started, read <Link href="/docs">Getting started</Link>. Development-preview capabilities that remain under verification are listed there. Aux is operated by Courson Digital LLC. Public support and privacy requests: hello@getaux.co. Moderation policy and support commitments remain subject to approval.</p>
+   </InformationPage>;
+ }
+--- a/services/aux-cloud/app/policy/privacy/page.tsx
++++ b/services/aux-cloud/app/policy/privacy/page.tsx
+@@ -4,6 +4,7 @@
+ 
+ export default function Page() {
+   return <InformationPage title="Privacy information \u2014 review draft">
++    <p>Aux is operated by Courson Digital LLC. Public support and privacy requests: hello@getaux.co. This policy remains a review draft; these confirmed facts do not establish public approval or hosted availability.</p>
+     <p>This draft describes the implemented architecture and proposed service configuration. It has not been approved as Aux's public privacy policy. Public hosted activation remains pending. The owner must complete the decisions below before publication.</p>
+     <section><h2>Local browser and AI activity</h2>
+     <p>Aux profiles hold browser data and account-scoped app state on your Mac. Provider credentials use the application's account-scoped secure credential path; they should not be included in diagnostics, screenshots or shared content. When you choose to use an AI provider, your request and the context you select are sent through the configured provider integration. Your provider's own processing and retention policies apply. Aux-hosted AI is disabled in the current launch configuration.</p>
+@@ -14,13 +15,13 @@
+     <p>Private files are not intended to be public by default. Creating a share gives access through the chosen sharing capability; revocation and deletion require their actual service operations. Do not share material you lack permission to disclose. Email sign-in and other transactional messages necessarily pass their addressing/delivery information to the configured email or identity provider.</p>
+     </section>
+     <section><h2>Feedback reports</h2>
+-    <p>If you explicitly save session feedback, the source adapter submits your comment and the existing session-data export as a bounded JSON report through authenticated private attachment storage. Aux service operators with the existing private-store custody can read that report for review; it is not hidden from the operator by client-only encryption. The success message confirms verified private storage, not an email, response or human review. Actual storage and operator readback acceptance remain pending for this preview. Reports follow existing attachment quota, account access and deletion/purge handling and can be included in approved recovery captures. A distinct feedback review/retention policy and contact still require owner/legal approval; the upload token's expiry is not a ready report's deletion deadline.</p>
++    <p>If you explicitly save session feedback, the source adapter submits your comment and the existing session-data export as a bounded JSON report through authenticated private attachment storage. Aux service operators with the existing private-store custody can read that report for review; it is not hidden from the operator by client-only encryption. The success message confirms verified private storage, not an email, response or human review. Actual storage and operator readback acceptance remain pending for this preview. Reports follow existing attachment quota, account access and deletion/purge handling and can be included in approved recovery captures. A distinct feedback review/retention policy still requires owner/legal approval; the upload token's expiry is not a ready report's deletion deadline.</p>
+     </section>
+     <section><h2>Recovery and diagnostics</h2>
+     <p>Recovery source can encrypt a database/private-file capture for storage in the configured Cloudflare R2 recovery bucket. Scheduled operation, alerts, independent recovery-key custody and isolated restore are not yet accepted for the production service. A configured retention target is not proof that a deletion or backup deadline has been met. Operational records may be needed to investigate failed requests and incomplete writes; credentials and private payloads must be excluded from diagnostic output.</p>
+     </section>
+     <section><h2>Decisions required before public publication</h2>
+-    <p>Confirm the legal operator and contact for privacy requests; the exact purposes and legal bases for each data category; actual provider agreements and processing locations; log and content retention periods; deletion/export and backup-expiry handling; request-verification procedures; international transfer safeguards; age rules; and how policy changes are communicated. Confirm any analytics/crash reporting and browser network services present in the final delivered package rather than claiming they are absent from this source review.</p>
++    <p>Confirm the exact purposes and legal bases for each data category; actual provider agreements and processing locations; log and content retention periods; deletion/export and backup-expiry handling; request-verification procedures; international transfer safeguards; age rules; and how policy changes are communicated. Confirm any analytics/crash reporting and browser network services present in the final delivered package rather than claiming they are absent from this source review.</p>
+     </section>
+   </InformationPage>;
+ }
+--- a/services/aux-cloud/app/policy/terms/page.tsx
++++ b/services/aux-cloud/app/policy/terms/page.tsx
+@@ -4,7 +4,8 @@
+ 
+ export default function Page() {
+   return <InformationPage title="Terms \u2014 review draft">
+-    <p>These draft terms are incomplete and are not approved for public acceptance or production activation. They require the owner's legal review and the missing operator/contact/jurisdiction details below.</p>
++    <p>Aux is operated by Courson Digital LLC. Public support and privacy requests: hello@getaux.co. This policy remains a review draft; these confirmed facts do not establish public approval or hosted availability.</p>
++    <p>These draft terms are incomplete and are not approved for public acceptance or production activation. They require the owner's legal review and the remaining legal and jurisdiction decisions below.</p>
+     <section><h2>Development preview</h2>
+     <p>Aux is presently a development preview. Some browser, AI, extension, native and hosted capabilities remain under verification or depend on platform/vendor eligibility and explicit permissions. The published capability status must match the actual delivered app. Keep independent copies of important work; scheduled backup and recovery acceptance is still pending.</p>
+     </section>
+@@ -16,7 +17,7 @@
+     <p>A feature requiring OS, account or provider permission remains unavailable until its real prerequisites are met. Merely installing Aux does not grant unrelated account or desktop access. The final public terms must state the supported release/OS scope and actual service availability without promising unfinished capabilities.</p>
+     </section>
+     <section><h2>Decisions required before public publication</h2>
+-    <p>Supply the legal contracting entity and contact; eligibility/age requirements; content ownership and service-license terms; acceptable-use rules; suspension/termination and data-retrieval procedures; any paid-service terms if payments are enabled later; warranty/liability language; governing law and dispute process; policy-change notices; and consumer rights that apply. No governing jurisdiction, refund policy, support guarantee or waiver is invented by this technical draft. Privacy disclosures must be reviewed alongside these terms.</p>
++    <p>Supply eligibility/age requirements; content ownership and service-license terms; acceptable-use rules; suspension/termination and data-retrieval procedures; any paid-service terms if payments are enabled later; warranty/liability language; governing law and dispute process; policy-change notices; and consumer rights that apply. No governing jurisdiction, refund policy, support guarantee or waiver is invented by this technical draft. Privacy disclosures must be reviewed alongside these terms.</p>
+     </section>
+   </InformationPage>;
+ }
