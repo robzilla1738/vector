@@ -1,0 +1,83 @@
+{
+  "candidateInventorySha256": "6ea71ddc179d3c12f2b7023746d4e54cf9b10de4c8f0bb6f5e14a6852b8862c4",
+  "launch": "startup-10.log / session67265",
+  "normalWindow": true,
+  "serviceUi": "Running normally",
+  "cliScopedList": {
+    "exitCode": 0,
+    "spaces": [
+      "Completion Lab",
+      "Main"
+    ],
+    "completionLabId": "d0720389-b64e-41e1-bc8c-15a6b1a31c70"
+  },
+  "palette": {
+    "rapidReopenQueryRetained": "Recent files",
+    "filesListOpenedAfterRapidInput": true,
+    "rapidNavigateInputRetained": "http://127.0.0.1:61862/capture",
+    "navigateCommitted": true
+  },
+  "organizationRestored": {
+    "space": "Completion Lab",
+    "collapsedFolder": "Lab Folder",
+    "fiveRecentDownloadsEnabled": true
+  },
+  "renameCollision": {
+    "requested": "notes (1).txt",
+    "actualUniqueName": "notes (1) (2).txt",
+    "undo": "Name restored"
+  },
+  "memoryFixture": {
+    "file": "USER.md",
+    "originalContent": "User Briefing heading only",
+    "addedSentence": "Synthetic Aux acceptance: amber-cedar-742 means the test orchard is silver.",
+    "saved": true,
+    "indexUi": "Running normal; 100%;11 chunks",
+    "cleanupPending": true
+  },
+  "gatewayCleanupPending": true,
+  "localMilestoneComplete": false,
+  "attachments": {
+    "selectedPage": "http://127.0.0.1:61862/capture",
+    "pdfChip": "document.pdf PDF",
+    "heicSelection": "image.heic HEIC attached through exact synthetic path",
+    "contentAcceptance": false
+  },
+  "combinedTools": {
+    "sessionId": "5u3EI478e3KvB3bU",
+    "model": "vercel-ai-gateway/meta/muse-spark-1.3-contributor",
+    "result": "failed before answer",
+    "error": "The native browser profile binding changed.",
+    "log": "startup-10.log 16:53:53",
+    "retryPendingRepair": true
+  },
+  "appearance": {
+    "themePreview": "Dark preview; Cancel restored System",
+    "themeApply": "Light applied; settings showed Light; restored System",
+    "sidebarNavigation": "toolbar moved to sidebar",
+    "minimal": "enabled, collapsed sidebar; CmdL retained navigation; expanded; both modes restored off"
+  },
+  "routing": {
+    "loopback": "intentional bypass; no defect",
+    "savedRule": "example.invalid /routed -> Aux Completion Personal",
+    "uiResolution": "Opens in Aux Completion Personal \u00b7 example.invalid/routed",
+    "backgroundCliList": "exit0 Work profile and both Spaces",
+    "backgroundCliResolve": {
+      "handled": true,
+      "ok": true,
+      "profileId": "14df3467-047d-43b3-8512-1ad88c8e8fca"
+    },
+    "actualOpenPending": true
+  },
+  "pictureInPicture": {
+    "fixture": "media-session-fixture.py zero-gain audio-bearing local WebM",
+    "nativeMenu": "Picture in Picture opened separate actual window with seek/pause/unmute/Back to tab",
+    "palette": "after unmuting synthetic silent audio, Media and Commands PiP actions exposed; action produced playing-in-PiP tab state",
+    "noDeviceOrScreenCapture": true
+  },
+  "selectedPaneTools": {
+    "devtools": "Alpha right pane selected; CmdOptI docks inspector in right pane; stylesheet source alpha:2, Beta remains separate",
+    "capture": "Take screenshot opened supplied toolbar in selectedAlpha; Fullpage Capture refused with Supervised task execution is disabled in this browser build",
+    "captureAccepted": false
+  }
+}

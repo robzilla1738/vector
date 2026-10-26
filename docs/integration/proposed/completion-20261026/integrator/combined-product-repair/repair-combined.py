@@ -40,8 +40,9 @@ DAEMON = 'Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/n
 FRAMEWORK = 'Contents/Frameworks/Aux Framework.framework/Versions/155.0.8059.85/Aux Framework'
 TABSEARCH = 'Contents/Resources/aux/apps/extension/dist/assets/tabsearch-3k_2hgil.js'
 required = {FRAMEWORK, DAEMON+'index.mjs', DAEMON+'aux-native-entry.mjs'}
+BACKGROUND = 'Contents/Resources/aux/apps/extension/dist/background.js'
 actual_targets = {item['target'] for item in replacements}
-require(len(actual_targets)==len(replacements) and actual_targets in (required, required|{TABSEARCH}), 'Only enumerated existing leaves may change')
+require(len(actual_targets)==len(replacements) and required <= actual_targets <= required|{TABSEARCH, BACKGROUND}, 'Only enumerated existing leaves may change')
 for item in replacements: pin(item['input'])
 def require_stopped():
     # Process metadata only, never profile contents or arguments in receipts.
