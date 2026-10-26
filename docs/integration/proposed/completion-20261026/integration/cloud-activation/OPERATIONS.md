@@ -1,17 +1,17 @@
 # O1 runner, access, custody and incident review
 
-Current executable source is `services/aux-cloud/scripts/{cloud-backup-runner,backup-runner-core}.mjs` plus `ops/backup-runner/` and the existing authenticated capture/delivery/fetch/restore tools. The disabled example and three systemd timers are prepared. No server, SSH key, firewall, monitor account, credential transfer or schedule is recorded as installed by this packet.
+Current executable source is `services/aux-cloud/scripts/{cloud-backup-runner,backup-runner-core}.mjs` plus `ops/backup-runner/` and the existing authenticated capture/delivery/fetch/restore tools. The disabled example and three systemd timers are prepared. No server, firewall, monitor account, credential transfer or schedule is installed. Root subsequently prepared one unused dedicated SSH key in an ignored private directory; it is not registered and grants no access. Current read-only dashboard observations are in ../../integrator/backup-dashboard-review.json.
 
 ## Exact proposed resource / account action
 
 | Field | Proposed selection or actual unresolved field |
 | --- | --- |
-| Provider/account | Owner's intended Aux DigitalOcean account. Actual account/project ID is **unrecorded**; owner confirms it and checks for an existing matching runner before creation. |
+| Provider/account | Signed-in team **My Team**, ID `c517b39d-7865-4d54-9a0d-236dbf282267`, inspected read-only. Account requires payment activation; no matching runner creation is claimed. Exact Aux project still needs approval. |
 | Runner name | Proposed `aux-backup-prod-01`, new Aux-only project; not a claim that this instance exists. |
 | Region/image/size | NYC3 if actually available; Ubuntu24.04LTS x86_64; Basic **Regular bundled**, 1vCPU/2GiB/50GiB. No Premium/v5 unbundled plan, paid snapshots, backup add-on, extra disk or load balancer. |
 | Price/target | The official [Droplet table](https://www.digitalocean.com/pricing/droplets) checked October26 lists this bundled size at $12/month. Keep the prior $5/month R2 usage target, giving a proposed $17/month operating target before taxes/source reads; $20 spend notification target. These are targets, not a total-provider cap. |
 | Billing behavior | Bundled CPU plans have a monthly cap; powered-off machines still accrue charges until destroyed. V5 is different. See [official billing](https://docs.digitalocean.com/products/droplets/details/pricing/). Destroying a runner is not an automatic rollback action. |
-| Admin/SSH | Administrator identity, SSH public-key fingerprint and allowed source IP/CIDR are **unrecorded**. Owner supplies them through secure provider controls. Do not create a firewall open to the world. Verify the intended admin path, then disable password SSH and remote root login. No web listener, inbound5432 or new DNS record is required. |
+| Admin/SSH | The signed-in owner is the intended administrator. A proposed unused dedicated public-key fingerprint is `SHA256:YK/XGGhOAvVCgMY4r5pBFz1fJ7u24dRkvvsx2vNKs30`; its private key remains in an ignored local0700 directory with mode0600. No provider registration exists. Allowed admin source IP/CIDR and independent key custody remain unrecorded. Do not create a firewall open to the world. Verify the intended admin path, then disable password SSH and remote root login. No web listener, inbound5432 or new DNS record is required. |
 | Monitor | Owner-controlled Aux Healthchecks account/project and three actual check IDs are **unrecorded**. The [official Hobbyist plan](https://healthchecks.io/pricing/) checked October26 supports20 jobs at $0; actual account eligibility/remaining slots must be confirmed. No paid plan or SMS/WhatsApp enrollment is proposed. |
 | Notification recipient | Prior review proposed `robertcourson1738@gmail.com`; **confirmation and actual delivery remain pending**. This is not permission to send email. Provider billing/spend recipients also require owner confirmation. |
 
@@ -29,7 +29,7 @@ Existing Vercel/Neon/Blob costs are outside that new runner/R2 target. No new da
 | Three monitor ping URLs | Only runner private env → exact hc-ping.com HTTPS checks | Ping URLs are secret capabilities; the runner needs no monitoring account API/admin credential. Success follows verified operation, failure sends no payload, independent missing-success check detects offline runner. |
 | Encrypted output | Same exact Cloudflare bucket/prefix and owner-approved private runner roots | Captures all approved source rows/objects; only ciphertext leaves the host. A server provisioning approval is not consent to transfer real Production content. Review that scope explicitly. |
 
-The prior R2 authorization expires on **November22, 2026**. The exact provider timestamp is not recorded; the example's midnight timestamp is not current fact. Verify actual expiry before producing runnable review JSON, and arrange renewal before November15. Never assume extension or silently create a broader key. Renew only a specifically approved bucket-scoped credential; preserve source/recovery keys and pending jobs.
+The prior R2 authorization expires on **November22, 2026**. The exact provider timestamp is not recorded; the example's midnight timestamp is not current fact. The actual signed-in token list on October26 confirms active until November22 (date only, no exact time shown). Arrange renewal before November15 and verify the precise cutoff before producing runnable activation JSON. Never assume extension or silently create a broader key. Renew only a specifically approved bucket-scoped credential; preserve source/recovery keys and pending jobs.
 
 ## Installation proposal — stay disabled until approved
 
