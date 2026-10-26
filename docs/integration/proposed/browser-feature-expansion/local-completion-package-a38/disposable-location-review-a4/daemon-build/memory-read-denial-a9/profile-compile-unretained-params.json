@@ -1,0 +1,10 @@
+{
+  "format": "aux.exact-memory-read-denial-sbpl.v1",
+  "profileSha256": "7b42dc8dc64331f15a3601e9c71e4c0b06979dc46a641ee7c6224f05388c93fe",
+  "compiled": false,
+  "error": "invalid data type of path filter; expected pattern, got boolean",
+  "syntheticParametersOnly": true,
+  "sandboxApplied": false,
+  "helperExecuted": false,
+  "hostExecutableCreated": false
+}

@@ -1,0 +1,11 @@
+--- a/AuxAccountMemoryHelper.mm
++++ b/AuxAccountMemoryHelper.mm
+@@ -97,7 +97,7 @@
+ (deny network*)
+ (deny process-fork)
+ (deny process-exec (require-not (literal (param "AUX_MEMORY_IMAGE"))))
+-(deny file-read*
++(deny file-read* (with errno EACCES)
+  (subpath (param "AUX_CONTROL"))
+  (subpath (param "AUX_BROWSER_DATA"))
+  (subpath (param "AUX_BROWSER_CACHE"))

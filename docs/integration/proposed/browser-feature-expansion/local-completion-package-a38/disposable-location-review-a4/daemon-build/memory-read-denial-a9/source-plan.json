@@ -1,0 +1,24 @@
+{
+  "format": "aux.memory-read-denial-diagnostic.v1",
+  "files": [
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/local-daemon-memory-integration-a36/source/AuxAccountMemoryHelper.mm",
+      "inputSha256": "d3b38299dde1099d57fb52b0a30d31c567847fab3298dcfae18b267a769ff38d",
+      "source": "source/AuxAccountMemoryHelper.mm",
+      "outputSha256": "8d316697382eefd30b879aab955d9b98ce014e959f79326d5683259dcd1f7a44",
+      "anchors": [
+        {
+          "find": "(deny file-read*\n",
+          "replace": "(deny file-read* (with errno EACCES)\n",
+          "count": 1
+        }
+      ]
+    }
+  ],
+  "diagnosticOnly": true,
+  "deniedOperationsAndFiltersUnchanged": true,
+  "existingDeniedReadErrno": "EPERM",
+  "diagnosticDeniedReadErrno": "EACCES",
+  "allAllowRulesUnchanged": true,
+  "fileLinkRuleUnchanged": true
+}
