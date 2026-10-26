@@ -1,0 +1,187 @@
+--- a/chrome/browser/ui/views/frame/aux_organization_window_controller.h
++++ b/chrome/browser/ui/views/frame/aux_organization_window_controller.h
+@@ -69,6 +69,7 @@
+   // Root close gate: handled/refused means stop the original close. A browser
+   // closing all tabs is separate and leaves its shared logical records intact.
+   bool HandleClose(tabs::TabHandle);
++  void CancelManualUnload(content::WebContents*);
+   bool IsExplicitUnload(tabs::TabHandle) const;
+   bool ready() const;
+  private:
+@@ -80,6 +81,13 @@
+     std::string logical, view_document, url, generation;
+   };
+   void ContinueManualClose(ManualClose);
++  struct ManualUnload {
++    ~ManualUnload();
++    content::WeakDocumentPtr document;
++    base::OnceCallback<void(bool)> reply;
++  };
++  void FinishManualUnload(tabs::TabHandle, bool);
++  std::map<tabs::TabHandle, ManualUnload> manual_unloads_;
+   struct AutomaticArchive;
+   void InvalidateAutomaticArchive(tabs::TabHandle, uint64_t activated_at = 0);
+   bool AutomaticArchiveStillEligible() const;
+@@ -118,6 +126,7 @@
+   void OnTabStripModelChanged(TabStripModel*, const TabStripModelChange&,
+                               const TabStripSelectionChange&) override;
+   void OnTabStripModelDestroyed(TabStripModel*) override;
++  void OnTabCloseCancelled(const tabs::TabInterface*) override;
+   base::WeakPtr<BrowserWindowInterface> browser_;
+   raw_ptr<Profile> profile_ = nullptr;
+   raw_ptr<TabStripModel> model_ = nullptr;
+--- a/chrome/browser/ui/views/frame/aux_organization_window_controller.cc
++++ b/chrome/browser/ui/views/frame/aux_organization_window_controller.cc
+@@ -141,6 +141,7 @@
+   ready_subscription_ = {}; model_changes_ = {}; settled_ = {}; session_restored_ = {}; activation_ = {};
+   ordinary_eligible_.Reset(); views_.clear(); candidate_observers_.clear(); explicit_unloads_.clear(); dirty_navigation_.clear(); dirty_activation_.clear(); dirty_titles_.clear();
+   deferred_manual_closes_.clear();
++  manual_unloads_.clear();
+   automatic_archive_.reset();
+   cleanup_ids_.clear(); cleanup_running_ = false; cleanup_waiting_ = false;
+   profile_ = nullptr; model_ = nullptr; active_space_.clear(); restored_space_.clear();
+@@ -191,6 +192,7 @@
+   weak_.InvalidateWeakPtrs(); ready_subscription_ = {}; model_changes_ = {}; settled_ = {}; session_restored_ = {}; activation_ = {};
+   views_.clear(); candidate_observers_.clear(); explicit_unloads_.clear(); dirty_navigation_.clear(); dirty_activation_.clear(); dirty_titles_.clear();
+   deferred_manual_closes_.clear();
++  manual_unloads_.clear();
+   automatic_archive_.reset();
+   cleanup_ids_.clear(); cleanup_running_ = false; cleanup_waiting_ = false; cleanup_cursor_ = 0;
+   reconcile_queued_ = false; registering_ = false; opening_ = false;
+@@ -430,6 +432,7 @@
+   if (alive) Notify();
+ }
+ void AuxOrganizationWindowController::DocumentChanged(tabs::TabHandle handle) {
++  FinishManualUnload(handle, false);
+   auto it = views_.find(handle);
+   if (it != views_.end()) it->second.document_id = base::Uuid::GenerateRandomV4().AsLowercaseString();
+   NavigationCommitted(handle);
+@@ -1050,10 +1053,34 @@
+         std::move(reply).Run(closed);
+       }, weak_.GetWeakPtr(), handle, id, document, generation, url, std::move(reply)));
+ }
++AuxOrganizationWindowController::ManualUnload::~ManualUnload() {
++  if (reply) std::move(reply).Run(false);
++}
++void AuxOrganizationWindowController::FinishManualUnload(tabs::TabHandle handle, bool unloaded) {
++  auto request = manual_unloads_.extract(handle);
++  if (request.empty()) return;
++  auto reply = std::move(request.mapped().reply);
++  if (reply) std::move(reply).Run(unloaded);
++}
++void AuxOrganizationWindowController::CancelManualUnload(content::WebContents* contents) {
++  if (!Current() || !contents || contents->GetBrowserContext() != profile_) return;
++  const int index = model_->GetIndexOfWebContents(contents);
++  if (index >= 0) FinishManualUnload(model_->GetTabAtIndex(index)->GetHandle(), false);
++}
+ void AuxOrganizationWindowController::UnloadLogicalTab(const std::string& id, base::OnceCallback<void(bool)> reply) {
+   if (!Current()) { std::move(reply).Run(false); return; }
+   for (auto* tab : *model_) if (tab->GetContents() && GetRememberedPinnedTabEntryId(*tab->GetContents()) == id) {
+-    EnsureSavedThenClose(tab->GetHandle(), std::move(reply)); return;
++    if (Protected(tab, false) || manual_unloads_.contains(tab->GetHandle())) {
++      std::move(reply).Run(false); return;
++    }
++    const auto handle = tab->GetHandle();
++    auto& request = manual_unloads_[handle];
++    request.document = tab->GetContents()->GetPrimaryMainFrame()->GetWeakDocumentPtr();
++    request.reply = std::move(reply);
++    // The original native close dispatches beforeunload. Its accepted close
++    // re-enters HandleClose; that exact document is then saved and discarded.
++    model_->CloseWebContentsAt(model_->GetIndexOfTab(tab), CLOSE_USER_GESTURE);
++    return;
+   }
+   // Already-unloaded logical entries are successful only if they still exist.
+   auto* organization = Organization(browser_.get());
+@@ -1188,7 +1215,6 @@
+   if (id.empty() || !organization || !organization->snapshot().entries.contains(id)) return false;
+   const auto& entry = organization->snapshot().entries.at(id);
+   if (!organization->blocked() && !entry.archived &&
+-      !tab->IsPinned() && !organization::HasRetention(organization->snapshot(), id) &&
+       tab->GetContents()->NeedToFireBeforeUnloadOrUnloadEvents() &&
+       !Protected(tab, false)) {
+     // The supplied content script installs a visibilitychange listener on
+@@ -1215,6 +1241,8 @@
+   return true;
+ }
+ void AuxOrganizationWindowController::ContinueManualClose(ManualClose request) {
++  base::ScopedClosureRunner failed_unload(base::BindOnce(
++      &AuxOrganizationWindowController::FinishManualUnload, weak_.GetWeakPtr(), request.target, false));
+   auto* tab = request.target.Get();
+   auto* contents = tab ? tab->GetContents() : nullptr;
+   if (!Current() || model_->closing_all() || request.profile.get() != profile_ ||
+@@ -1243,10 +1271,10 @@
+     return;
+   }
+   if (current->pending()) {
+-    if (!current->snapshot().entries.at(request.logical).archived && !tab->IsPinned() &&
+-        !organization::HasRetention(current->snapshot(), request.logical) && !Protected(tab)) {
++    if (!current->snapshot().entries.at(request.logical).archived && !Protected(tab)) {
+       const auto target = request.target;
+       deferred_manual_closes_.insert_or_assign(target, std::move(request));
++      failed_unload.Release();
+       LOG(ERROR) << "Aux manual close: deferred_for_storage=1";
+     } else {
+       LOG(ERROR) << "Aux manual close: continuation_refused=pending_protected";
+@@ -1262,7 +1290,20 @@
+     LOG(ERROR) << "Aux manual close: membership_saved=" << saved;
+     if (owner) owner->Notify();
+   }, weak_.GetWeakPtr());
+-  if (tab->IsPinned() || organization::HasRetention(current->snapshot(), request.logical))
++  if (manual_unloads_.contains(request.target)) {
++    const auto pending = manual_unloads_.find(request.target);
++    if (pending->second.document.AsRenderFrameHostIfValid() != contents->GetPrimaryMainFrame()) {
++      FinishManualUnload(request.target, false);
++      return;
++    }
++    auto pending_request = manual_unloads_.extract(request.target);
++    failed_unload.Release();
++    EnsureSavedThenClose(request.target, base::BindOnce(
++        [](std::map<tabs::TabHandle, ManualUnload>::node_type pending, bool unloaded) {
++          auto reply = std::move(pending.mapped().reply);
++          if (reply) std::move(reply).Run(unloaded);
++        }, std::move(pending_request)));
++  } else if (tab->IsPinned() || organization::HasRetention(current->snapshot(), request.logical))
+     EnsureSavedThenClose(request.target, std::move(done));
+   else
+     ArchiveLogicalEntry(request.logical, std::move(done));
+@@ -1561,12 +1602,16 @@
+       (selection.reason & TabStripModelObserver::CHANGE_REASON_USER_GESTURE))
+     RecordActivation(selection.new_tab->GetHandle());
+   if (change.type() == TabStripModelChange::kRemoved) for (const auto& removed : change.GetRemove()->contents) {
+-    if (removed.tab) { deferred_manual_closes_.erase(removed.tab->GetHandle()); views_.erase(removed.tab->GetHandle()); candidate_observers_.erase(removed.tab->GetHandle()); dirty_navigation_.erase(removed.tab->GetHandle()); dirty_activation_.erase(removed.tab->GetHandle()); }
++    if (removed.tab) { FinishManualUnload(removed.tab->GetHandle(), false); deferred_manual_closes_.erase(removed.tab->GetHandle()); views_.erase(removed.tab->GetHandle()); candidate_observers_.erase(removed.tab->GetHandle()); dirty_navigation_.erase(removed.tab->GetHandle()); dirty_activation_.erase(removed.tab->GetHandle()); }
+   }
+   QueueReconcile();
++}
++void AuxOrganizationWindowController::OnTabCloseCancelled(const tabs::TabInterface* tab) {
++  if (tab) FinishManualUnload(tab->GetHandle(), false);
+ }
+ void AuxOrganizationWindowController::OnTabStripModelDestroyed(TabStripModel* model) {
+   if (model_ != model) return;
+   model_ = nullptr; views_.clear(); candidate_observers_.clear(); dirty_navigation_.clear(); dirty_activation_.clear();
++  manual_unloads_.clear();
+ }
+ }  // namespace aux
+--- a/chrome/browser/ui/unload_controller.cc
++++ b/chrome/browser/ui/unload_controller.cc
+@@ -7,6 +7,7 @@
+ #include "chrome/browser/buildflags.h"
+ #if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
+ #include "chrome/browser/ui/aux_preview/aux_preview_ingress.h"
++#include "chrome/browser/ui/views/frame/aux_organization_window_controller.h"
+ #endif
+ 
+ #include <algorithm>
+@@ -431,6 +432,12 @@
+ 
+ bool UnloadController::BeforeUnloadFired(content::WebContents* contents,
+                                          bool proceed) {
++#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)
++  if (!proceed) {
++    if (auto* owner = aux::AuxOrganizationWindowController::FromBrowser(browser_))
++      owner->CancelManualUnload(contents);
++  }
++#endif
+   if (!proceed) {
+     DevToolsWindow::OnPageCloseCanceled(contents);
+ 

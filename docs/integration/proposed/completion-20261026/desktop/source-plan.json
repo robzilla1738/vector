@@ -1,0 +1,129 @@
+{
+  "format": "aux.native.counted-projection.v1",
+  "nativeRoot": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src",
+  "files": [
+    {
+      "path": "chrome/browser/ui/views/frame/aux_organization_window_controller.h",
+      "inputSha256": "c32f0bfaf5fc7a1f215d8872f5370abc1a018ca6311755c3083c6fc4dc082d12",
+      "outputSha256": "b4fdf93e2d67b000e8cce5d04b3fc471e490fe5149487ea16bbd7183eeeeb99a",
+      "anchors": [
+        {
+          "name": "native cancellation reports the original row action",
+          "before": "  bool HandleClose(tabs::TabHandle);",
+          "after": "  bool HandleClose(tabs::TabHandle);\n  void CancelManualUnload(content::WebContents*);",
+          "expectedCount": 1
+        },
+        {
+          "name": "native policy refusal settles row unload",
+          "before": "  void OnTabStripModelDestroyed(TabStripModel*) override;",
+          "after": "  void OnTabStripModelDestroyed(TabStripModel*) override;\n  void OnTabCloseCancelled(const tabs::TabInterface*) override;",
+          "expectedCount": 1
+        },
+        {
+          "name": "exact document and terminal callback for unload only",
+          "before": "  void ContinueManualClose(ManualClose);",
+          "after": "  void ContinueManualClose(ManualClose);\n  struct ManualUnload {\n    ~ManualUnload();\n    content::WeakDocumentPtr document;\n    base::OnceCallback<void(bool)> reply;\n  };\n  void FinishManualUnload(tabs::TabHandle, bool);\n  std::map<tabs::TabHandle, ManualUnload> manual_unloads_;",
+          "expectedCount": 1
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/aux_organization_window_controller.cc",
+      "inputSha256": "be300a8c4b4a6fe27cf55489749678824260e44cf4366845be7fa15ada0719d2",
+      "outputSha256": "58ae069395719e7d8836a1172a1bb0c93738273d107b89477e82f4d88f529fe5",
+      "anchors": [
+        {
+          "name": "cancel terminal row requests on retirement",
+          "before": "  deferred_manual_closes_.clear();",
+          "after": "  deferred_manual_closes_.clear();\n  manual_unloads_.clear();",
+          "expectedCount": 2
+        },
+        {
+          "name": "document replacement cannot inherit an unload intent",
+          "before": "void AuxOrganizationWindowController::DocumentChanged(tabs::TabHandle handle) {",
+          "after": "void AuxOrganizationWindowController::DocumentChanged(tabs::TabHandle handle) {\n  FinishManualUnload(handle, false);",
+          "expectedCount": 1
+        },
+        {
+          "name": "native unload dispatch also covers pinned retained views",
+          "before": "      !tab->IsPinned() && !organization::HasRetention(organization->snapshot(), id) &&\n      tab->GetContents()->NeedToFireBeforeUnloadOrUnloadEvents() &&",
+          "after": "      tab->GetContents()->NeedToFireBeforeUnloadOrUnloadEvents() &&",
+          "expectedCount": 1
+        },
+        {
+          "name": "retained continuation waits for genuine storage settlement",
+          "before": "    if (!current->snapshot().entries.at(request.logical).archived && !tab->IsPinned() &&\n        !organization::HasRetention(current->snapshot(), request.logical) && !Protected(tab)) {",
+          "after": "    if (!current->snapshot().entries.at(request.logical).archived && !Protected(tab)) {",
+          "expectedCount": 1
+        },
+        {
+          "name": "refused exact continuation settles the pending row request",
+          "before": "void AuxOrganizationWindowController::ContinueManualClose(ManualClose request) {",
+          "after": "void AuxOrganizationWindowController::ContinueManualClose(ManualClose request) {\n  base::ScopedClosureRunner failed_unload(base::BindOnce(\n      &AuxOrganizationWindowController::FinishManualUnload, weak_.GetWeakPtr(), request.target, false));",
+          "expectedCount": 1
+        },
+        {
+          "name": "queued storage continuation retains its terminal callback",
+          "before": "      deferred_manual_closes_.insert_or_assign(target, std::move(request));",
+          "after": "      deferred_manual_closes_.insert_or_assign(target, std::move(request));\n      failed_unload.Release();",
+          "expectedCount": 1
+        },
+        {
+          "name": "row unload retains membership after native consent",
+          "before": "  if (tab->IsPinned() || organization::HasRetention(current->snapshot(), request.logical))\n    EnsureSavedThenClose(request.target, std::move(done));",
+          "after": "  if (manual_unloads_.contains(request.target)) {\n    const auto pending = manual_unloads_.find(request.target);\n    if (pending->second.document.AsRenderFrameHostIfValid() != contents->GetPrimaryMainFrame()) {\n      FinishManualUnload(request.target, false);\n      return;\n    }\n    auto pending_request = manual_unloads_.extract(request.target);\n    failed_unload.Release();\n    EnsureSavedThenClose(request.target, base::BindOnce(\n        [](std::map<tabs::TabHandle, ManualUnload>::node_type pending, bool unloaded) {\n          auto reply = std::move(pending.mapped().reply);\n          if (reply) std::move(reply).Run(unloaded);\n        }, std::move(pending_request)));\n  } else if (tab->IsPinned() || organization::HasRetention(current->snapshot(), request.logical))\n    EnsureSavedThenClose(request.target, std::move(done));",
+          "expectedCount": 1
+        },
+        {
+          "name": "row unload uses real native beforeunload and accepted continuation",
+          "before": "    EnsureSavedThenClose(tab->GetHandle(), std::move(reply)); return;\n  }\n  // Already-unloaded logical entries",
+          "after": "    if (Protected(tab, false) || manual_unloads_.contains(tab->GetHandle())) {\n      std::move(reply).Run(false); return;\n    }\n    const auto handle = tab->GetHandle();\n    auto& request = manual_unloads_[handle];\n    request.document = tab->GetContents()->GetPrimaryMainFrame()->GetWeakDocumentPtr();\n    request.reply = std::move(reply);\n    // The original native close dispatches beforeunload. Its accepted close\n    // re-enters HandleClose; that exact document is then saved and discarded.\n    model_->CloseWebContentsAt(model_->GetIndexOfTab(tab), CLOSE_USER_GESTURE);\n    return;\n  }\n  // Already-unloaded logical entries",
+          "expectedCount": 1
+        },
+        {
+          "name": "settle callbacks without retaining an erased map element",
+          "before": "void AuxOrganizationWindowController::UnloadLogicalTab(",
+          "after": "AuxOrganizationWindowController::ManualUnload::~ManualUnload() {\n  if (reply) std::move(reply).Run(false);\n}\nvoid AuxOrganizationWindowController::FinishManualUnload(tabs::TabHandle handle, bool unloaded) {\n  auto request = manual_unloads_.extract(handle);\n  if (request.empty()) return;\n  auto reply = std::move(request.mapped().reply);\n  if (reply) std::move(reply).Run(unloaded);\n}\nvoid AuxOrganizationWindowController::CancelManualUnload(content::WebContents* contents) {\n  if (!Current() || !contents || contents->GetBrowserContext() != profile_) return;\n  const int index = model_->GetIndexOfWebContents(contents);\n  if (index >= 0) FinishManualUnload(model_->GetTabAtIndex(index)->GetHandle(), false);\n}\nvoid AuxOrganizationWindowController::UnloadLogicalTab(",
+          "expectedCount": 1
+        },
+        {
+          "name": "native policy rejection retires the row request",
+          "before": "void AuxOrganizationWindowController::OnTabStripModelDestroyed(TabStripModel* model) {",
+          "after": "void AuxOrganizationWindowController::OnTabCloseCancelled(const tabs::TabInterface* tab) {\n  if (tab) FinishManualUnload(tab->GetHandle(), false);\n}\nvoid AuxOrganizationWindowController::OnTabStripModelDestroyed(TabStripModel* model) {",
+          "expectedCount": 1
+        },
+        {
+          "name": "model destruction refuses outstanding unloads",
+          "before": "  model_ = nullptr; views_.clear(); candidate_observers_.clear(); dirty_navigation_.clear(); dirty_activation_.clear();",
+          "after": "  model_ = nullptr; views_.clear(); candidate_observers_.clear(); dirty_navigation_.clear(); dirty_activation_.clear();\n  manual_unloads_.clear();",
+          "expectedCount": 1
+        },
+        {
+          "name": "physical removal retires outstanding row action",
+          "before": "if (removed.tab) { deferred_manual_closes_.erase(removed.tab->GetHandle());",
+          "after": "if (removed.tab) { FinishManualUnload(removed.tab->GetHandle(), false); deferred_manual_closes_.erase(removed.tab->GetHandle());",
+          "expectedCount": 1
+        }
+      ]
+    },
+    {
+      "path": "chrome/browser/ui/unload_controller.cc",
+      "inputSha256": "09220f0d6b2f9f93c3d3434cb05a0b2fd251592bda6485b8de49fd7454116dcf",
+      "outputSha256": "59e1a4bd8f54c9f9bde6cfd8cc273c8d7012d17f5f99d15851fee4b9a0203172",
+      "anchors": [
+        {
+          "name": "existing close owner include",
+          "before": "#include \"chrome/browser/ui/aux_preview/aux_preview_ingress.h\"",
+          "after": "#include \"chrome/browser/ui/aux_preview/aux_preview_ingress.h\"\n#include \"chrome/browser/ui/views/frame/aux_organization_window_controller.h\"",
+          "expectedCount": 1
+        },
+        {
+          "name": "real beforeunload cancellation settles row action",
+          "before": "bool UnloadController::BeforeUnloadFired(content::WebContents* contents,\n                                         bool proceed) {\n  if (!proceed) {",
+          "after": "bool UnloadController::BeforeUnloadFired(content::WebContents* contents,\n                                         bool proceed) {\n#if BUILDFLAG(ENABLE_AUX_BROWSER) && BUILDFLAG(IS_MAC)\n  if (!proceed) {\n    if (auto* owner = aux::AuxOrganizationWindowController::FromBrowser(browser_))\n      owner->CancelManualUnload(contents);\n  }\n#endif\n  if (!proceed) {",
+          "expectedCount": 1
+        }
+      ]
+    }
+  ]
+}
