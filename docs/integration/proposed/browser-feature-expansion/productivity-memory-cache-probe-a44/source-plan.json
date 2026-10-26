@@ -1,0 +1,35 @@
+{
+  "format": "aux.memory.unused-cache-probe-adaptation.v1",
+  "files": [
+    {
+      "input": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-local-completion-20261025-a38/Aux.app/Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/node-development/index.mjs",
+      "inputSha256": "6585ab560a1f987940141c870105e2db2b160b7e465d55490be2c6c12c0b4f9f",
+      "output": "/private/tmp/aux-memory-cache-probe-a44-rdxlf4dg/index.mjs",
+      "outputSha256": "9fe30007d39a59179c2d1f73cdba84f7ac2160113ebc90e8014971046c3984e5",
+      "anchors": [
+        {
+          "before": "if(this.options.kind===`runtime`&&process.platform===`darwin`){let ti=path.join(ei,`aux-memory`),ni=!0;",
+          "after": "if(this.options.kind===`runtime`&&process.platform===`darwin`&&!(()=>{\n const binding=process._linkedBinding('aux_owned_native');\n const mode=Object.getOwnPropertyDescriptor(binding,'supervisedTasksEnabled');\n if(!mode||mode.get||mode.set||mode.writable||mode.configurable||mode.value!==false)return false;\n const factory=Object.getOwnPropertyDescriptor(binding,'createAccountMemoryProcess');\n return !!factory&&!factory.get&&!factory.set&&!factory.writable&&!factory.configurable&&typeof factory.value==='function';\n})()){let ti=path.join(ei,`aux-memory`),ni=!0;",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "input": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-local-completion-20261025-a38/Aux.app/Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/node-development/aux-native-entry.mjs",
+      "inputSha256": "9827a7833c9f42905363aa0207da5f11c9a621347dadd13c0fcceb3d424d8cee",
+      "output": "/private/tmp/aux-memory-cache-probe-a44-rdxlf4dg/aux-native-entry.mjs",
+      "outputSha256": "c579b169e910c977293c43e64ff1a9bf799a2211ba2ce07d4541a007843cceb3",
+      "anchors": [
+        {
+          "before": "if(this.options.kind===`runtime`&&process.platform===`darwin`){let ti=path.join(ei,`aux-memory`),ni=!0;",
+          "after": "if(this.options.kind===`runtime`&&process.platform===`darwin`&&!(()=>{\n const binding=process._linkedBinding('aux_owned_native');\n const mode=Object.getOwnPropertyDescriptor(binding,'supervisedTasksEnabled');\n if(!mode||mode.get||mode.set||mode.writable||mode.configurable||mode.value!==false)return false;\n const factory=Object.getOwnPropertyDescriptor(binding,'createAccountMemoryProcess');\n return !!factory&&!factory.get&&!factory.set&&!factory.writable&&!factory.configurable&&typeof factory.value==='function';\n})()){let ti=path.join(ei,`aux-memory`),ni=!0;",
+          "count": 1
+        }
+      ]
+    }
+  ],
+  "ordinaryFixedHelperOnly": true,
+  "nativeValidationChanged": false,
+  "generalExecEnabled": false,
+  "productExecuted": false
+}

@@ -1,0 +1,36 @@
+{
+  "format": "aux.memory.cache-probe.static-checks.v1",
+  "sourcePlanSha256": "758c0133a9ba1b9c3b1875ddeb4733c8b971ade2060d3f9c0f08ee8c6fe18cf3",
+  "exactReplay": {
+    "leaves": 2,
+    "anchors": 2,
+    "forwardPassed": true,
+    "reversePassed": true
+  },
+  "syntaxChecks": [
+    {
+      "path": "/private/tmp/aux-memory-cache-probe-a44-rdxlf4dg/index.mjs",
+      "sha256": "9fe30007d39a59179c2d1f73cdba84f7ac2160113ebc90e8014971046c3984e5",
+      "command": [
+        "node",
+        "--check",
+        "/private/tmp/aux-memory-cache-probe-a44-rdxlf4dg/index.mjs"
+      ],
+      "exitCode": 0
+    },
+    {
+      "path": "/private/tmp/aux-memory-cache-probe-a44-rdxlf4dg/aux-native-entry.mjs",
+      "sha256": "c579b169e910c977293c43e64ff1a9bf799a2211ba2ce07d4541a007843cceb3",
+      "command": [
+        "node",
+        "--check",
+        "/private/tmp/aux-memory-cache-probe-a44-rdxlf4dg/aux-native-entry.mjs"
+      ],
+      "exitCode": 0
+    }
+  ],
+  "sourceEvaluated": false,
+  "nativeCompiled": false,
+  "appExecuted": false,
+  "signed": false
+}
