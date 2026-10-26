@@ -1,7 +1,7 @@
 {
   "format": "aux.future-signature-refresh-input-selection.v1",
-  "nativeBuildPending": true,
-  "currentNativeReceiptPending": true,
+  "nativeBuildPending": false,
+  "currentNativeReceiptPending": false,
   "signatureSourcePlan": {
     "path": "docs/integration/proposed/completion-20261026/runtime/future-supervised-build/signature-observation-plan.json",
     "sha256": "357f4765201c3309a4f9a9ed602159c5f985b2af34bd03a114f452345e4fa215"
@@ -35,20 +35,42 @@
     "sha256": "e87299133780ce4fdb45344ce3879b10fec4811c4219bd53ea9aeb53b9b06bc8"
   },
   "extensionBackground": {
-    "path": "/private/tmp/aux-settled-context-rejection-20261026-a2/background.js",
+    "path": "/private/tmp/aux-completion-grouped-extension-20261026-a1/background.js",
     "sha256": "5878bfc73f19bc07c31cea0e33da6ae5ef005ce434b891b9975b732285a28fe4"
   },
   "extensionRenderer": {
-    "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/desktop/palette-cold-input/source/assets/tabsearch-3k_2hgil.js",
+    "path": "/private/tmp/aux-completion-grouped-extension-20261026-a1/assets/tabsearch-3k_2hgil.js",
     "sha256": "2581dc9bce21c7f3a049f8c24fce5b8f346565dfd62e5e6d0550b4d06454c218"
   },
   "extensionManifest": {
-    "path": "/private/tmp/aux-component-worker-update-20261026-a1/manifest.json",
+    "path": "/private/tmp/aux-completion-grouped-version-20261026-a2/manifest.json",
     "sha256": "2b395128cb2d11bff5c804c24591fe7c7cd63816ad733283434d3364f59da158"
   },
-  "manifestFinalBatchPairingRequiresIntegratorConfirmation": true,
+  "manifestFinalBatchPairingRequiresIntegratorConfirmation": false,
   "nativeBuildExecuted": false,
   "signed": false,
   "appModified": false,
-  "sourceComplete": false
+  "sourceComplete": false,
+  "extensionPayloadReceipt": {
+    "path": "/private/tmp/aux-completion-grouped-version-20261026-a2/receipt.json",
+    "sha256": "baa8292d80f36d89514b8f312236057624da2cd36d1e8f48908d9e733495b9a0"
+  },
+  "extensionPayloadSha256": "c04132b3b0783bf3d78d33c1ee2734f91ec58eb06f4363a2c4744c6de47a6df8",
+  "extensionShortcut": {
+    "path": "/private/tmp/aux-completion-grouped-extension-20261026-a1/assets/use-shortcut-capture-DGr8Ws5Z.js",
+    "sha256": "6b605b4751f98e99e750f6e139f1af1dd7083960fb16d7ad1f0d5d7f33821019"
+  },
+  "signatureProducerReceipt": {
+    "path": "/private/tmp/aux-future-signature-refresh-20261026-b1/receipt.json",
+    "sha256": "802555f27d84e6d33d4014a2d40a0cb628e75c2ea2c9f60cd68b84daddac3b5d"
+  },
+  "signatureProducerCompilePassed": true,
+  "currentNativeReceipt": {
+    "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/integrator/cold-input-sign-observation-a1/build-receipt.json",
+    "sha256": "0fc9be28559baac5117353666ca9156ceb3bd5787bc8f3ffc6856dd84c6c0276"
+  },
+  "futureLinkReceipt": {
+    "path": "/private/tmp/aux-future-browser-link-20261026-b7/receipt.json",
+    "sha256": "6fa02a64d3276660282ae7b70420bdabd3a5c3ebade6276f6ec415be360f9742"
+  }
 }
