@@ -1,0 +1,59 @@
+/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-fresh-native-secure-capture/source/AuxFreshNativeSecureCapture.swift:126:48: warning: 'kSecUseAuthenticationUIFail' was deprecated in macOS 11.0: Instead of kSecUseAuthenticationUI, use kSecUseAuthenticationContext and set LAContext.interactionNotAllowed property [#DeprecatedDeclaration]
+124 |             kSecAttrAccessGroup as String: selector.accessGroup,
+125 |             kSecUseDataProtectionKeychain as String: true,
+126 |             kSecUseAuthenticationUI as String: kSecUseAuthenticationUIFail,
+    |                                                `- warning: 'kSecUseAuthenticationUIFail' was deprecated in macOS 11.0: Instead of kSecUseAuthenticationUI, use kSecUseAuthenticationContext and set LAContext.interactionNotAllowed property [#DeprecatedDeclaration]
+127 |             kSecReturnData as String: true,
+128 |             kSecMatchLimit as String: kSecMatchLimitOne,
+
+[#DeprecatedDeclaration]: <https://docs.swift.org/compiler/documentation/diagnostics/deprecated-declaration>
+/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-native-fresh-target-boundary/source/AuxNativeFreshTargetBoundary.swift:206:45: warning: 'kSecUseAuthenticationUIFail' was deprecated in macOS 11.0: Instead of kSecUseAuthenticationUI, use kSecUseAuthenticationContext and set LAContext.interactionNotAllowed property [#DeprecatedDeclaration]
+204 |          kSecAttrService as String: selector.service, kSecAttrAccount as String: selector.account,
+205 |          kSecAttrAccessGroup as String: selector.accessGroup, kSecUseDataProtectionKeychain as String: true,
+206 |          kSecUseAuthenticationUI as String: kSecUseAuthenticationUIFail,
+    |                                             `- warning: 'kSecUseAuthenticationUIFail' was deprecated in macOS 11.0: Instead of kSecUseAuthenticationUI, use kSecUseAuthenticationContext and set LAContext.interactionNotAllowed property [#DeprecatedDeclaration]
+207 |          kSecReturnData as String: true, kSecMatchLimit as String: kSecMatchLimitOne]
+208 |     }
+
+/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-native-fresh-target-boundary/source/AuxNativeFreshTargetBoundary.swift:213:45: warning: 'kSecUseAuthenticationUIFail' was deprecated in macOS 11.0: Instead of kSecUseAuthenticationUI, use kSecUseAuthenticationContext and set LAContext.interactionNotAllowed property [#DeprecatedDeclaration]
+211 |          kSecAttrService as String: selector.service, kSecAttrAccount as String: selector.account,
+212 |          kSecAttrAccessGroup as String: selector.accessGroup, kSecUseDataProtectionKeychain as String: true,
+213 |          kSecUseAuthenticationUI as String: kSecUseAuthenticationUIFail,
+    |                                             `- warning: 'kSecUseAuthenticationUIFail' was deprecated in macOS 11.0: Instead of kSecUseAuthenticationUI, use kSecUseAuthenticationContext and set LAContext.interactionNotAllowed property [#DeprecatedDeclaration]
+214 |          kSecAttrAccessible as String: kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly,
+215 |          kSecValueData as String: payload]
+
+[#DeprecatedDeclaration]: <https://docs.swift.org/compiler/documentation/diagnostics/deprecated-declaration>
+/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/aux-runtime-target-capture/source/AuxRuntimeTargetCapture.swift:80:87: warning: 'kSecUseAuthenticationUIFail' was deprecated in macOS 11.0: Instead of kSecUseAuthenticationUI, use kSecUseAuthenticationContext and set LAContext.interactionNotAllowed property [#DeprecatedDeclaration]
+ 78 |          kSecAttrAccount as String:selected.account,kSecAttrAccessGroup as String:selected.accessGroup,
+ 79 |          kSecUseDataProtectionKeychain as String:true,kSecReturnData as String:true,
+ 80 |          kSecMatchLimit as String:kSecMatchLimitOne,kSecUseAuthenticationUI as String:kSecUseAuthenticationUIFail]
+    |                                                                                       `- warning: 'kSecUseAuthenticationUIFail' was deprecated in macOS 11.0: Instead of kSecUseAuthenticationUI, use kSecUseAuthenticationContext and set LAContext.interactionNotAllowed property [#DeprecatedDeclaration]
+ 81 |     }
+ 82 |     static func result(status:OSStatus,value:CFTypeRef?)->AuxRuntimeTargetRead {
+
+[#DeprecatedDeclaration]: <https://docs.swift.org/compiler/documentation/diagnostics/deprecated-declaration>
+/Users/rcourson/Documents/Vibe/aux-completion-20261026/runtime/docs/integration/proposed/completion-20261026/runtime/native-host/source/daemon/AuxSecureStore.swift:71:44: warning: 'kSecUseAuthenticationUIFail' was deprecated in macOS 11.0: Instead of kSecUseAuthenticationUI, use kSecUseAuthenticationContext and set LAContext.interactionNotAllowed property [#DeprecatedDeclaration]
+ 69 |          kSecAttrAccount as String:s.account,kSecAttrAccessGroup as String:s.accessGroup,
+ 70 |          kSecUseDataProtectionKeychain as String:true,
+ 71 |          kSecUseAuthenticationUI as String:kSecUseAuthenticationUIFail]
+    |                                            `- warning: 'kSecUseAuthenticationUIFail' was deprecated in macOS 11.0: Instead of kSecUseAuthenticationUI, use kSecUseAuthenticationContext and set LAContext.interactionNotAllowed property [#DeprecatedDeclaration]
+ 72 |     }
+ 73 |     static func read(_ s:AuxSecureStoreSelector)->[String:Any] {
+
+[#DeprecatedDeclaration]: <https://docs.swift.org/compiler/documentation/diagnostics/deprecated-declaration>
+/Users/rcourson/Documents/Vibe/aux-completion-20261026/runtime/docs/integration/proposed/completion-20261026/runtime/selected-builtin-owner/source/AuxOwnedCommandDispatcher.swift:1665:41: error: value of type 'AuxSecureStoreCommandCore' has no member 'registeredSelectedAccount'
+1663 |             guard let context=entry.nativeFreshRuntime,let secure=entry.secureStore else{throw AuxMemoryAccountError.unavailable}
+1664 |             return try secure.withAccountRegistryLock {
+1665 |                 let identity=try secure.registeredSelectedAccount(account,expected:expected)
+     |                                         `- error: value of type 'AuxSecureStoreCommandCore' has no member 'registeredSelectedAccount'
+1666 |                 let roots=try context.owner.duplicateRetainedOrdinaryStorageRoots()
+1667 |                 defer{Darwin.close(roots.control);Darwin.close(roots.task)}
+
+/Users/rcourson/Documents/Vibe/aux-completion-20261026/runtime/docs/integration/proposed/completion-20261026/runtime/selected-builtin-owner/source/AuxOwnedCommandDispatcher.swift:1679:37: error: value of type 'AuxSecureStoreCommandCore' has no member 'registeredSelectedAccount'
+1677 |         condition.lock();let owner=entry.selectedAccounts[id];let stopped=entry.selectedStopRequests.contains(id);condition.unlock()
+1678 |         guard let owner,!stopped,let secure=entry.secureStore else{throw AuxMemoryAccountError.changed}
+1679 |         try owner.revalidate(secure.registeredSelectedAccount(owner.identity.accountId,expected:owner.expectedIdentity));return owner
+     |                                     `- error: value of type 'AuxSecureStoreCommandCore' has no member 'registeredSelectedAccount'
+1680 |     }
+1681 |     func validateSelectedAccount(_ handle:UInt64,owner id:UInt64)throws {

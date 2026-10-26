@@ -1,0 +1,47 @@
+{
+  "input": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-local-completion-20261025-a38/Aux.app/Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/node-development/aux-native-entry.mjs",
+  "inputSha256": "f355833cb607963a65ca3108e7ae19ea7ca60192a9f3d8e2644a3c12ec49c808",
+  "outputSha256": "dd04f54d8d3e8fc3934927ed4ca034cc6d560c6f3815f91e000613dea68cf87a",
+  "anchors": [
+    {
+      "before": "function auxBrokerBoundary(){",
+      "after": "// Existing authenticated account/profile source, frozen before native lookup.\nfunction auxSelectedAccountIdentity(account,profileId){\n init_accounts();init_lifecycle();\n if(!account||!Number.isSafeInteger(account.id)||account.id<0||!Number.isSafeInteger(account.createdAt)||\n    typeof account.incarnationId!=='string'||typeof profileId!=='string'||!profileId||isExternalOwnerSuspended(account.id))\n  throw Error('The selected account/profile is unavailable.');\n const current=AccountRegistry.getAccount(account.id);\n const keys=['id','mode','provider','userId','authStatus','createdAt','incarnationId'];\n if(!current||keys.some(key=>current[key]!==account[key]))throw Error('The selected account changed.');\n const row=AccountRegistry.getAll().profileAccountBindings[profileId];\n if(!row||row.profileId!==profileId||row.accountId!==account.id)throw Error('The selected profile binding changed.');\n const copy=(value,fields)=>Object.freeze(Object.fromEntries(fields.filter(key=>Object.hasOwn(value,key)&&value[key]!==undefined).map(key=>[key,value[key]])));\n return Object.freeze({account:copy(current,keys),profileBinding:copy(row,['profileId','accountId','profileIndex','profilePath','updatedAt'])});\n}\nconst auxSelectedReadFileTools=new WeakSet;\nconst auxSelectedReadScopeContext=new AsyncLocalStorage;\nconst auxSelectedReadScopes=new Set;\nlet auxSelectedReadStopRegistered=false;\nfunction auxIsSelectedReadFileTool(tool){return auxSelectedReadFileTools.has(tool)}\nfunction auxStopSelectedReadScopes(){return Promise.all([...auxSelectedReadScopes].map(scope=>scope.close()))}\nfunction auxCaptureReadFileScope(context){\n init_accounts();init_lifecycle();\n const account=AccountRegistry.getAccount(context.accountId);\n if(!account||account.id!==context.accountId||typeof context.session?.id!=='string')throw Error('The selected file session is unavailable.');\n const bindings=AccountRegistry.getAll().profileAccountBindings;\n const explicit=context.session.browserBinding?.profileId;\n const rows=Object.values(bindings).filter(row=>row.accountId===context.accountId);\n // Account is explicit from the actual agent context, never current selection.\n // Multiple or missing registered profile bindings are not resolved arbitrarily.\n if(rows.length!==1||explicit&&rows[0].profileId!==explicit)throw Error('The selected file profile binding is unavailable.');\n const profileId=explicit??rows[0].profileId,controller=new AbortController,boundary=auxBrokerBoundary();\n const guard=auxCreateProductivityAccountGuard(context.accountId,account,profileId,controller,boundary);\n let scope;\n try{scope=boundary.captureSelectedBuiltinSession(context.accountId,context.session.id,Buffer.from(JSON.stringify(auxSelectedAccountIdentity(account,profileId))));scope.assertTaskSessionPath(context.sessionDir)}\n catch(error){guard.dispose();throw error}\n const stop=()=>scope.close();controller.signal.addEventListener('abort',stop,{once:true});\n auxSelectedReadScopes.add(scope);\n if(!auxSelectedReadStopRegistered){boundary.registerProducerStop(auxStopSelectedReadScopes);auxSelectedReadStopRegistered=true}\n let closing;\n return {scope,guard,close(){if(!closing)closing=Promise.resolve(scope.close()).finally(()=>{guard.dispose();controller.signal.removeEventListener('abort',stop);auxSelectedReadScopes.delete(scope)});return closing}};\n}\nfunction auxRegisterSelectedReadFileTool(context,tool){\n const execute=tool.execute;\n tool.execute=async(...args)=>{\n  if(auxSupervisedTasksAvailable())return execute.apply(tool,args);\n  const input=args[1],filename=typeof input?.path==='string'?input.path:'';\n  if(!['.pdf','.heic','.heif'].includes(path.extname(filename).toLowerCase()))auxRequireSupervisedTasks();\n  const held=auxCaptureReadFileScope(context);\n  try{return await held.scope.awaited(()=>auxSelectedReadScopeContext.run(held.scope,()=>execute.apply(tool,args)))}\n  finally{await held.close()}\n };\n auxSelectedReadFileTools.add(tool);return tool;\n}\nfunction auxReadFilePdfBinding(){const scope=auxSelectedReadScopeContext.getStore();return scope?scope.pdf:nativePdf}\nasync function auxReadFileUtility(command,input){\n const scope=auxSelectedReadScopeContext.getStore();\n if(!scope)return runNativeHelperCommandAsync(command,input);\n scope.assertCurrent();\n try{return JSON.parse(scope.utility.run(command,input))}catch(error){return {error:error instanceof Error?error.message:String(error)}}\n}\n\nfunction auxBrokerBoundary(){",
+      "count": 1
+    },
+    {
+      "before": "const names=['assertBrokerOwner','withBrokerSync','withBrokerAwaited','closeBrokerWriteAdmission','noteUntrackedBrokerWork'];",
+      "after": "const names=['assertBrokerOwner','withBrokerSync','withBrokerAwaited','closeBrokerWriteAdmission','noteUntrackedBrokerWork','captureSelectedBuiltinSession'];",
+      "count": 1
+    },
+    {
+      "before": "Object.freeze({assertOwner:admit,sync,awaited,beginShutdown,close:",
+      "after": "Object.freeze({assertOwner:admit,captureSelectedBuiltinSession:(...args)=>{admit();return funcs.captureSelectedBuiltinSession(...args)},sync,awaited,beginShutdown,close:",
+      "count": 1
+    },
+    {
+      "before": "createReadFileTool=({context:Cn,autoResizeImages:ei=!0})=>({name:`read_file`",
+      "after": "createReadFileTool=({context:Cn,autoResizeImages:ei=auxSupervisedTasksAvailable()})=>auxRegisterSelectedReadFileTool(Cn,{name:`read_file`",
+      "count": 1
+    },
+    {
+      "before": "let li=si===`.pdf`?nativePdf.extractText({filePath:ai})",
+      "after": "let li=si===`.pdf`?auxReadFilePdfBinding().extractText({filePath:ai})",
+      "count": 1
+    },
+    {
+      "before": "ni=await runNativeHelperCommandAsync(`generate-thumbnail`,JSON.stringify({filePath:ai,iconOutputPath:ti,thumbnailOutputPath:ui}))",
+      "after": "ni=await auxReadFileUtility(`generate-thumbnail`,JSON.stringify({filePath:ai,iconOutputPath:ti,thumbnailOutputPath:ui}))",
+      "count": 1
+    },
+    {
+      "before": "AuxPDFRepl=class{#e;constructor(Cn){this.#e=Cn}",
+      "after": "AuxPDFRepl=class{#e;#backend;constructor(Cn,backend=()=>nativePdf){this.#e=Cn;this.#backend=backend}",
+      "count": 1
+    },
+    {
+      "before": "AuxPDFRepl=class{#e;#backend;constructor(Cn,backend=()=>nativePdf){this.#e=Cn;this.#backend=backend}renderPages(Cn){return nativePdf.renderPages({...Cn,filePath:this.#e(Cn.filePath),outputDir:this.#e(Cn.outputDir,`write`)})}extractText(Cn){return nativePdf.extractText({...Cn,filePath:this.#e(Cn.filePath)})}getFormFields(Cn){return nativePdf.getFormFields({filePath:this.#e(Cn.filePath)})}fillFormFields(Cn){return nativePdf.fillFormFields({filePath:this.#e(Cn.filePath),outputPath:this.#e(Cn.outputPath,`write`),fields:Cn.fields})}merge(Cn){return nativePdf.merge({files:Cn.files.map(Cn=>({...Cn,filePath:this.#e(Cn.filePath)})),outputPath:this.#e(Cn.outputPath,`write`)})}split(Cn){return nativePdf.split({...Cn,filePath:this.#e(Cn.filePath),outputDir:this.#e(Cn.outputDir,`write`)})}rotate(Cn){return nativePdf.rotate({...Cn,filePath:this.#e(Cn.filePath),outputPath:this.#e(Cn.outputPath,`write`)})}}",
+      "after": "AuxPDFRepl=class{#e;#backend;constructor(Cn,backend=()=>nativePdf){this.#e=Cn;this.#backend=backend}renderPages(Cn){return this.#backend().renderPages({...Cn,filePath:this.#e(Cn.filePath),outputDir:this.#e(Cn.outputDir,`write`)})}extractText(Cn){return this.#backend().extractText({...Cn,filePath:this.#e(Cn.filePath)})}getFormFields(Cn){return this.#backend().getFormFields({filePath:this.#e(Cn.filePath)})}fillFormFields(Cn){return this.#backend().fillFormFields({filePath:this.#e(Cn.filePath),outputPath:this.#e(Cn.outputPath,`write`),fields:Cn.fields})}merge(Cn){return this.#backend().merge({files:Cn.files.map(Cn=>({...Cn,filePath:this.#e(Cn.filePath)})),outputPath:this.#e(Cn.outputPath,`write`)})}split(Cn){return this.#backend().split({...Cn,filePath:this.#e(Cn.filePath),outputDir:this.#e(Cn.outputDir,`write`)})}rotate(Cn){return this.#backend().rotate({...Cn,filePath:this.#e(Cn.filePath),outputPath:this.#e(Cn.outputPath,`write`)})}}",
+      "count": 1
+    }
+  ]
+}

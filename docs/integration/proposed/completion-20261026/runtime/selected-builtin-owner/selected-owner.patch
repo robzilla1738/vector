@@ -1,0 +1,718 @@
+--- a/AuxAccountsCskCoordinator.swift
++++ b/AuxAccountsCskCoordinator.swift
+@@ -137,6 +137,39 @@
+             return bytes
+         }
+     }
++    // Exact nonsecret snapshot from the existing authenticated source. The
++    // actual registry/OS lock and native owner remain authority; IDs are lookup.
++    func registeredSelectedAccount(_ account:Int64,expected:Data)throws->AuxMemoryAccountIdentity {
++        guard expected.count>0,expected.count<=16_384 else{throw AuxMemoryAccountError.unavailable}
++        let registryBytes=try registeredMemoryRegistryBytes()
++        let identity=try AuxMemoryAccountIdentity.decode(registryBytes,account:account)
++        let registry=try strictEnvelopeObject(registryBytes),snapshot=try strictEnvelopeObject(expected)
++        guard Set(snapshot.keys)==["account","profileBinding"],
++              let proposed=snapshot["account"] as? [String:Any],
++              let proposedBinding=snapshot["profileBinding"] as? [String:Any],
++              let accounts=registry["accounts"] as? [[String:Any]],
++              let bindings=registry["profileAccountBindings"] as? [String:Any]
++        else{throw AuxMemoryAccountError.unavailable}
++        let accountKeys:Set<String>=["id","mode","provider","userId","authStatus","createdAt","incarnationId"]
++        let bindingKeys:Set<String>=["profileId","accountId","profileIndex","profilePath","updatedAt"]
++        guard Set(proposed.keys).isSubset(of:accountKeys),
++              Set(proposedBinding.keys).isSubset(of:bindingKeys),
++              integer(proposed["id"])==account,integer(proposed["createdAt"]) != nil,
++              integer(proposedBinding["accountId"])==account,
++              integer(proposedBinding["updatedAt"]) != nil,
++              proposedBinding["profileIndex"]==nil || integer(proposedBinding["profileIndex"]) != nil,
++              let rawProfile=proposedBinding["profileId"] as? String,
++              UUID(uuidString:rawProfile)==identity.profileId,
++              let actual=accounts.first(where:{integer($0["id"])==account}),
++              let actualBinding=bindings[rawProfile] as? [String:Any]
++        else{throw AuxMemoryAccountError.changed}
++        let captured=actual.filter{accountKeys.contains($0.key)}
++        let bound=actualBinding.filter{bindingKeys.contains($0.key)}
++        guard NSDictionary(dictionary:captured).isEqual(to:proposed),
++              NSDictionary(dictionary:bound).isEqual(to:proposedBinding)
++        else{throw AuxMemoryAccountError.changed}
++        return identity
++    }
+     func registeredMemoryAccount(_ account:Int64)throws->AuxMemoryAccountIdentity {
+         try AuxMemoryAccountIdentity.decode(registeredMemoryRegistryBytes(),account:account)
+     }
+--- a/AuxSecureStore.swift
++++ b/AuxSecureStore.swift
+@@ -112,6 +112,10 @@
+         accounts=try AuxAccountsCskCoordinator(home:accountHome,review:review,installation:installation,boundary:boundary,retainedHomeDescriptor:retainedAccountHomeDescriptor)
+     }
+     func memoryRegistryMatches(_ bytes:Data)throws->Bool {guard let accounts else{throw AuxMemoryAccountError.unavailable};return try accounts.memoryRegistryMatches(bytes)}
++    func registeredSelectedAccount(_ account:Int64,expected:Data)throws->AuxMemoryAccountIdentity {
++        guard let accounts else{throw AuxMemoryAccountError.unavailable}
++        return try accounts.registeredSelectedAccount(account,expected:expected)
++    }
+     func registeredMemoryAccount(_ account:Int64)throws->AuxMemoryAccountIdentity {
+         guard let accounts else{throw AuxMemoryAccountError.unavailable}
+         return try accounts.registeredMemoryAccount(account)
+--- a/AuxOwnedCommandDispatcher.swift
++++ b/AuxOwnedCommandDispatcher.swift
+@@ -51,6 +51,11 @@
+ #if AUX_BROWSER_ONLY_NATIVE_STARTUP
+         var nativeHostLeases=[String:NativeHostLease]()
+         var memoryAccounts=[UInt64:AuxRegisteredMemoryAccountOwner]()
++        var selectedAccounts=[UInt64:AuxSelectedAccountOwner]()
++        var selectedSessions=[UInt64:AuxSelectedSessionOwner]()
++        var selectedUtilities=[UInt64:AuxSelectedUtilityInvocation]()
++        var selectedStopRequests=Set<UInt64>()
++        var computerUseJournals=[UInt64:AuxComputerUseHelperJournal]()
+         var memoryJournals=[UInt64:AuxMemoryHelperJournal]()
+         var pendingMemoryRegistryTarget:Data?
+ #endif
+@@ -131,6 +136,7 @@
+     private var next:UInt64=1
+ #if AUX_BROWSER_ONLY_NATIVE_STARTUP
+     private var nextMemoryAccount:UInt64=1
++    private var nextSelectedOwner:UInt64=1
+ #endif
+     private let threadKey="aux.native.dispatcher.active-handles.v1"
+     private init(){}
+@@ -1125,7 +1131,7 @@
+     }
+     private func hasRetainedLifetime(_ entry:Entry)->Bool {
+ #if AUX_BROWSER_ONLY_NATIVE_STARTUP
+-        if !entry.memoryAccounts.isEmpty || !entry.nativeHostLeases.isEmpty{return true}
++        if !entry.memoryAccounts.isEmpty || !entry.nativeHostLeases.isEmpty || !entry.selectedAccounts.isEmpty || !entry.selectedSessions.isEmpty || !entry.selectedUtilities.isEmpty{return true}
+ #endif
+         return entry.browserGrantUnresolved || hasUntrackedFreshGuard(entry)
+     }
+@@ -1240,7 +1246,7 @@
+         guard let entry=entries[handle]else{return -1}
+         if entry.active>0{return 1}
+ #if AUX_BROWSER_ONLY_NATIVE_STARTUP
+-        if !entry.memoryAccounts.isEmpty || !entry.nativeHostLeases.isEmpty{return 1}
++        if !entry.memoryAccounts.isEmpty || !entry.nativeHostLeases.isEmpty || !entry.selectedAccounts.isEmpty || !entry.selectedSessions.isEmpty || !entry.selectedUtilities.isEmpty{return 1}
+ #endif
+ #if AUX_NATIVE_FRESH_RUNTIME_CONSUMER
+         if entry.reconcilingRead{return 1}
+@@ -1515,11 +1521,12 @@
+         _ = try strictEnvelopeObject(bytes)
+         condition.lock()
+         guard let entry=entries[handle],entry.phase == .open,entry.active>0 else{condition.unlock();throw AuxMemoryAccountError.unavailable}
+-        let owners=Array(entry.memoryAccounts.values),hosts=Array(entry.nativeHostLeases.values),pending=entry.pendingMemoryRegistryTarget;condition.unlock()
++        let owners=Array(entry.memoryAccounts.values),hosts=Array(entry.nativeHostLeases.values),selected=Array(entry.selectedAccounts.values),pending=entry.pendingMemoryRegistryTarget;condition.unlock()
+         try requireOrdinaryStorageGuard(entry,moment:.beforeAction)
+         if let pending,pending != bytes {
+             let stillBlocked=owners.contains{(try? AuxMemoryAccountIdentity.decode(pending,account:$0.identity.accountId)) != $0.identity} ||
+-                hosts.contains{(try? AuxMemoryAccountIdentity.decode(pending,account:$0.identity.accountId)) != $0.identity}
++                hosts.contains{(try? AuxMemoryAccountIdentity.decode(pending,account:$0.identity.accountId)) != $0.identity} ||
++                selected.contains{(try? AuxMemoryAccountIdentity.decode(pending,account:$0.identity.accountId)) != $0.identity}
+             guard !stillBlocked else{throw AuxMemoryAccountError.changed}
+             // The previous callback refused before atomicWriteFileSyncBody.
+             // Only after its affected actual owners settle may a new target
+@@ -1527,9 +1534,12 @@
+             condition.lock();entry.pendingMemoryRegistryTarget=nil;condition.unlock()
+         }
+         let changed=owners.contains{(try? AuxMemoryAccountIdentity.decode(bytes,account:$0.identity.accountId)) != $0.identity} ||
+-            hosts.contains{(try? AuxMemoryAccountIdentity.decode(bytes,account:$0.identity.accountId)) != $0.identity}
++            hosts.contains{(try? AuxMemoryAccountIdentity.decode(bytes,account:$0.identity.accountId)) != $0.identity} ||
++            selected.contains{(try? AuxMemoryAccountIdentity.decode(bytes,account:$0.identity.accountId)) != $0.identity}
+         if changed {
+-            condition.lock();entry.pendingMemoryRegistryTarget=bytes;condition.unlock()
++            condition.lock();entry.pendingMemoryRegistryTarget=bytes
++            for (id,owner) in entry.selectedAccounts where (try? AuxMemoryAccountIdentity.decode(bytes,account:owner.identity.accountId)) != owner.identity {entry.selectedStopRequests.insert(id)}
++            condition.unlock()
+             guard let context=entry.nativeFreshRuntime else{throw AuxMemoryAccountError.unavailable}
+             for host in hosts where (try? AuxMemoryAccountIdentity.decode(bytes,account:host.identity.accountId)) != host.identity {
+                 host.stopRequested=true
+@@ -1647,6 +1657,178 @@
+             return try JSONSerialization.data(withJSONObject:response,options:[.sortedKeys,.withoutEscapingSlashes])
+         }
+     }
++    // Reuse only the exact Entry already owned by this synchronous native
++    // thread. BrokerSync/account callbacks retain its execution lock and active
++    // lifetime; no JS token or cached admission can manufacture that fact.
++    private func withSelectedEntry<T>(_ handle:UInt64,_ body:(Entry)throws->T)throws->T {
++        guard getpid()==process else{throw AuxMemoryAccountError.changed}
++        let held=Thread.current.threadDictionary[threadKey] as? [UInt64:Int] ?? [:]
++        if held[handle,default:0]>0 {
++            condition.lock()
++            guard let entry=entries[handle],entry.phase == .open,entry.active>0 else{condition.unlock();throw AuxMemoryAccountError.unavailable}
++            condition.unlock();return try body(entry)
++        }
++        return try withEntry(handle,guardGenericAction:false,body)
++    }
++    func captureSelectedAccount(_ handle:UInt64,account:Int64,expected:Data)throws->UInt64 {
++        try withSelectedEntry(handle){entry in
++            try requireOrdinaryStorageGuard(entry,moment:.beforeAction)
++            guard let context=entry.nativeFreshRuntime,let secure=entry.secureStore else{throw AuxMemoryAccountError.unavailable}
++            return try secure.withAccountRegistryLock {
++                let identity=try secure.registeredSelectedAccount(account,expected:expected)
++                let roots=try context.owner.duplicateRetainedOrdinaryStorageRoots()
++                defer{Darwin.close(roots.control);Darwin.close(roots.task)}
++                let owner=try AuxSelectedAccountOwner(identity:identity,expectedIdentity:expected,controlRoot:roots.control,taskRoot:roots.task,transportGeneration:roots.generation)
++                try owner.revalidate(secure.registeredSelectedAccount(account,expected:expected))
++                condition.lock();defer{condition.unlock()}
++                guard entry.phase == .open,entry.pendingMemoryRegistryTarget==nil,entry.selectedAccounts.count<256,nextSelectedOwner<UInt64.max else{throw AuxMemoryAccountError.exhausted}
++                let id=nextSelectedOwner;nextSelectedOwner += 1;entry.selectedAccounts[id]=owner;return id
++            }
++        }
++    }
++    private func selectedAccount(_ entry:Entry,_ id:UInt64)throws->AuxSelectedAccountOwner {
++        condition.lock();let owner=entry.selectedAccounts[id];let stopped=entry.selectedStopRequests.contains(id);condition.unlock()
++        guard let owner,!stopped,let secure=entry.secureStore else{throw AuxMemoryAccountError.changed}
++        try owner.revalidate(secure.registeredSelectedAccount(owner.identity.accountId,expected:owner.expectedIdentity));return owner
++    }
++    func validateSelectedAccount(_ handle:UInt64,owner id:UInt64)throws {
++        try withSelectedEntry(handle){entry in
++            try requireOrdinaryStorageGuard(entry,moment:.beforeAction)
++            _ = try selectedAccount(entry,id)
++            try requireOrdinaryStorageGuard(entry,moment:.afterAction)
++        }
++    }
++    func selectedStopRequested(_ handle:UInt64,owner id:UInt64)->Int32 {
++        guard getpid()==process else{return 1}
++        condition.lock();defer{condition.unlock()}
++        guard let entry=entries[handle],entry.selectedAccounts[id] != nil else{return 1}
++        return entry.phase != .open || entry.selectedStopRequests.contains(id) ? 1:0
++    }
++    func copySelectedAccount(_ handle:UInt64,owner id:UInt64,role:UInt32)throws->Int32 {
++        try withSelectedEntry(handle){entry in
++            try requireOrdinaryStorageGuard(entry,moment:.beforeAction)
++            let owner=try selectedAccount(entry,id)
++            let fd:Int32
++            switch role {
++            case 1:fd=try owner.duplicateControlAccountDirectory()
++            case 2:fd=try owner.duplicateTaskAccountDirectory()
++            case 3:fd=try owner.duplicateTaskRootDirectory()
++            default:throw AuxMemoryAccountError.unavailable
++            }
++            do{_ = try selectedAccount(entry,id);try requireOrdinaryStorageGuard(entry,moment:.afterAction);return fd}catch{Darwin.close(fd);throw error}
++        }
++    }
++    func captureSelectedSession(_ handle:UInt64,owner id:UInt64,session:String)throws->UInt64 {
++        try withSelectedEntry(handle){entry in
++            try requireOrdinaryStorageGuard(entry,moment:.beforeAction)
++            guard let secure=entry.secureStore else{throw AuxMemoryAccountError.unavailable}
++            return try secure.withAccountRegistryLock {
++                let owner=try selectedAccount(entry,id)
++                let captured=try AuxSelectedSessionOwner(account:owner,accountLease:id,sessionId:session)
++                _ = try selectedAccount(entry,id)
++                condition.lock();defer{condition.unlock()}
++                guard entry.phase == .open,entry.pendingMemoryRegistryTarget==nil,entry.selectedSessions.count<512,nextSelectedOwner<UInt64.max else{throw AuxMemoryAccountError.exhausted}
++                let token=nextSelectedOwner;nextSelectedOwner += 1;entry.selectedSessions[token]=captured;return token
++            }
++        }
++    }
++    private func selectedSession(_ entry:Entry,_ id:UInt64)throws->AuxSelectedSessionOwner {
++        condition.lock();let session=entry.selectedSessions[id];condition.unlock()
++        guard let session else{throw AuxMemoryAccountError.unavailable}
++        guard try selectedAccount(entry,session.accountLease) === session.account else{throw AuxMemoryAccountError.changed}
++        try session.revalidate();return session
++    }
++    func validateSelectedSession(_ handle:UInt64,session id:UInt64)throws {
++        try withSelectedEntry(handle){entry in
++            try requireOrdinaryStorageGuard(entry,moment:.beforeAction)
++            _ = try selectedSession(entry,id)
++            try requireOrdinaryStorageGuard(entry,moment:.afterAction)
++        }
++    }
++    func copySelectedSession(_ handle:UInt64,session id:UInt64,role:UInt32)throws->Int32 {
++        try withSelectedEntry(handle){entry in
++            try requireOrdinaryStorageGuard(entry,moment:.beforeAction)
++            let session=try selectedSession(entry,id),fd=try session.duplicateDirectory(role:role)
++            do{_ = try selectedSession(entry,id);try requireOrdinaryStorageGuard(entry,moment:.afterAction);return fd}catch{Darwin.close(fd);throw error}
++        }
++    }
++    func releaseSelectedSession(_ handle:UInt64,session id:UInt64)->Int32 {
++        guard getpid()==process else{return -2}
++        condition.lock();defer{condition.unlock()}
++        guard let entry=entries[handle],entry.selectedSessions[id] != nil,
++              !entry.selectedUtilities.values.contains(where:{$0.sessionLease==id}) else{return -1}
++        entry.selectedSessions.removeValue(forKey:id);condition.broadcast();return 0
++    }
++    func releaseSelectedAccount(_ handle:UInt64,owner id:UInt64)->Int32 {
++        guard getpid()==process else{return -2}
++        condition.lock();guard let entry=entries[handle],let owner=entry.selectedAccounts[id],
++              !entry.selectedSessions.values.contains(where:{$0.accountLease==id}) else{condition.unlock();return -1}
++        let journal=entry.computerUseJournals[id];condition.unlock()
++        if let journal{guard (try? journal.canRelease())==true else{return -1}}
++        condition.lock();defer{condition.unlock()}
++        guard entry.selectedAccounts[id] === owner,
++              !entry.selectedSessions.values.contains(where:{$0.accountLease==id}) else{return -1}
++        entry.selectedAccounts.removeValue(forKey:id);entry.computerUseJournals.removeValue(forKey:id);entry.selectedStopRequests.remove(id)
++        if entry.active==0&&entry.phase == .retiring && !hasRetainedLifetime(entry){entry.phase = .closed;entries.removeValue(forKey:handle)}
++        condition.broadcast();return 0
++    }
++    func prepareComputerUseLaunch(_ handle:UInt64,owner id:UInt64)throws {
++        try withSelectedEntry(handle){entry in
++            try requireOrdinaryStorageGuard(entry,moment:.beforeAction)
++            let owner=try selectedAccount(entry,id)
++            condition.lock();let existing=entry.computerUseJournals[id];condition.unlock()
++            guard let context=entry.nativeFreshRuntime else{throw AuxMemoryAccountError.unavailable}
++            let journal:AuxComputerUseHelperJournal
++            if let existing{journal=existing}else {
++                journal=try AuxComputerUseHelperJournal(owner:owner,context:context)
++                condition.lock();entry.computerUseJournals[id]=journal;condition.unlock()
++            }
++            try journal.prepare();try requireOrdinaryStorageGuard(entry,moment:.afterAction)
++        }
++    }
++    func publishComputerUseSuspended(_ handle:UInt64,owner id:UInt64,pid:Int32)throws {
++        try withSelectedEntry(handle){entry in
++            try requireOrdinaryStorageGuard(entry,moment:.beforeAction)
++            _ = try selectedAccount(entry,id)
++            condition.lock();let journal=entry.computerUseJournals[id];condition.unlock()
++            guard let journal else{throw AuxMemoryAccountError.unavailable}
++            try journal.publishSuspended(pid);try requireOrdinaryStorageGuard(entry,moment:.afterAction)
++        }
++    }
++    func observeComputerUseTerminal(_ handle:UInt64,owner id:UInt64,pid:Int32,status:Int32,error:Int32)throws {
++        guard getpid()==process else{throw AuxMemoryAccountError.changed}
++        condition.lock();guard let entry=entries[handle],entry.selectedAccounts[id] != nil else{condition.unlock();throw AuxMemoryAccountError.unavailable}
++        let journal=entry.computerUseJournals[id];condition.unlock()
++        entry.execution.lock();defer{entry.execution.unlock()}
++        if let journal{try journal.terminal(pid:pid,waitStatus:status,spawnError:error)}
++        else{guard pid==0,error>0 else{throw AuxMemoryAccountError.unavailable}}
++    }
++    func beginSelectedUtility(_ handle:UInt64,session id:UInt64)throws->UInt64 {
++        try withSelectedEntry(handle){entry in
++            try requireOrdinaryStorageGuard(entry,moment:.beforeAction)
++            let session=try selectedSession(entry,id)
++            let invocation=AuxSelectedUtilityInvocation(sessionLease:id,session:session)
++            condition.lock();defer{condition.unlock()}
++            guard entry.selectedUtilities.count<512,nextSelectedOwner<UInt64.max else{throw AuxMemoryAccountError.exhausted}
++            let token=nextSelectedOwner;nextSelectedOwner += 1;entry.selectedUtilities[token]=invocation;return token
++        }
++    }
++    func runSelectedUtility(_ handle:UInt64,job id:UInt64,command:String,input:String)throws->String {
++        try withSelectedEntry(handle){entry in
++            try requireOrdinaryStorageGuard(entry,moment:.beforeAction)
++            condition.lock();let invocation=entry.selectedUtilities[id];condition.unlock()
++            guard let invocation,try selectedSession(entry,invocation.sessionLease) === invocation.session else{throw AuxMemoryAccountError.changed}
++            return try invocation.run(command:command,input:input)
++        }
++    }
++    func closeSelectedUtility(_ handle:UInt64,job id:UInt64)->Int32 {
++        guard getpid()==process else{return -2}
++        condition.lock();guard let entry=entries[handle],let job=entry.selectedUtilities[id] else{condition.unlock();return -1};condition.unlock()
++        guard job.closeAndDrain() else{return 1}
++        condition.lock();defer{condition.unlock()}
++        guard entry.selectedUtilities[id] === job else{return -1}
++        entry.selectedUtilities.removeValue(forKey:id);condition.broadcast();return 0
++    }
+     func captureMemoryAccount(_ handle:UInt64,account:Int64)throws->UInt64 {
+         try withEntry(handle,guardGenericAction:false){entry in
+             try requireOrdinaryStorageGuard(entry,moment:.beforeAction)
+@@ -1747,7 +1929,7 @@
+         // No public callback exists to relabel that grant as drained.
+         guard !entry.browserGrantUnresolved else{condition.unlock();throw AuxDispatcherLifetimeError.retiring}
+ #if AUX_BROWSER_ONLY_NATIVE_STARTUP
+-        guard entry.memoryAccounts.isEmpty,entry.nativeHostLeases.isEmpty else{condition.unlock();throw AuxDispatcherLifetimeError.retiring}
++        guard entry.memoryAccounts.isEmpty,entry.nativeHostLeases.isEmpty,entry.selectedAccounts.isEmpty,entry.selectedSessions.isEmpty,entry.selectedUtilities.isEmpty else{condition.unlock();throw AuxDispatcherLifetimeError.retiring}
+ #endif
+         while entry.active>0 {condition.wait()}
+         condition.unlock()
+@@ -1764,7 +1946,7 @@
+ #endif
+         guard !entry.browserGrantUnresolved else{throw AuxDispatcherLifetimeError.retiring}
+ #if AUX_BROWSER_ONLY_NATIVE_STARTUP
+-        guard entry.memoryAccounts.isEmpty else{throw AuxDispatcherLifetimeError.retiring}
++        guard entry.memoryAccounts.isEmpty,entry.selectedAccounts.isEmpty,entry.selectedSessions.isEmpty,entry.selectedUtilities.isEmpty else{throw AuxDispatcherLifetimeError.retiring}
+ #endif
+         entry.phase = .closed
+         entries.removeValue(forKey:handle);condition.broadcast()
+@@ -2049,3 +2231,143 @@
+         return 0
+     } catch {return invoked ? 2:-1}
+ }
++
++// Selected finite roles: only actual main-service native wrappers call these.
++@_cdecl("AuxCaptureSelectedAccount")
++func auxCaptureSelectedAccount(_ handle:UInt64,_ account:Int64,_ expected:UnsafePointer<UInt8>?,_ count:UInt32,_ result:UnsafeMutablePointer<UInt64>?)->Int32 {
++#if AUX_BROWSER_ONLY_NATIVE_STARTUP
++    guard let result else{return -1};result.pointee=0
++    guard let expected,count>0,count<=16_384 else{return -1}
++    do{result.pointee=try AuxCommandDispatcherRegistry.shared.captureSelectedAccount(handle,account:account,expected:Data(bytes:expected,count:Int(count)));return 0}catch{return -1}
++#else
++    return -1
++#endif
++}
++@_cdecl("AuxValidateSelectedAccount")
++func auxValidateSelectedAccount(_ handle:UInt64,_ owner:UInt64)->Int32 {
++#if AUX_BROWSER_ONLY_NATIVE_STARTUP
++    do{try AuxCommandDispatcherRegistry.shared.validateSelectedAccount(handle,owner:owner);return 0}catch{return -1}
++#else
++    return -1
++#endif
++}
++@_cdecl("AuxSelectedAccountStopRequested")
++func auxSelectedAccountStopRequested(_ handle:UInt64,_ owner:UInt64)->Int32 {
++#if AUX_BROWSER_ONLY_NATIVE_STARTUP
++    return AuxCommandDispatcherRegistry.shared.selectedStopRequested(handle,owner:owner)
++#else
++    return -1
++#endif
++}
++@_cdecl("AuxCopySelectedAccountDirectory")
++func auxCopySelectedAccountDirectory(_ handle:UInt64,_ owner:UInt64,_ role:UInt32,_ result:UnsafeMutablePointer<Int32>?)->Int32 {
++#if AUX_BROWSER_ONLY_NATIVE_STARTUP
++    guard let result else{return -1};result.pointee = -1
++    do{result.pointee=try AuxCommandDispatcherRegistry.shared.copySelectedAccount(handle,owner:owner,role:role);return 0}catch{return -1}
++#else
++    return -1
++#endif
++}
++@_cdecl("AuxReleaseSelectedAccount")
++func auxReleaseSelectedAccount(_ handle:UInt64,_ owner:UInt64)->Int32 {
++#if AUX_BROWSER_ONLY_NATIVE_STARTUP
++    return AuxCommandDispatcherRegistry.shared.releaseSelectedAccount(handle,owner:owner)
++#else
++    return -1
++#endif
++}
++@_cdecl("AuxCaptureSelectedSession")
++func auxCaptureSelectedSession(_ handle:UInt64,_ owner:UInt64,_ session:UnsafePointer<CChar>?,_ result:UnsafeMutablePointer<UInt64>?)->Int32 {
++#if AUX_BROWSER_ONLY_NATIVE_STARTUP
++    guard let result else{return -1};result.pointee=0
++    guard let session,strnlen(session,129)<=128,let name=String(validatingCString:session) else{return -1}
++    do{result.pointee=try AuxCommandDispatcherRegistry.shared.captureSelectedSession(handle,owner:owner,session:name);return 0}catch{return -1}
++#else
++    return -1
++#endif
++}
++@_cdecl("AuxValidateSelectedSession")
++func auxValidateSelectedSession(_ handle:UInt64,_ session:UInt64)->Int32 {
++#if AUX_BROWSER_ONLY_NATIVE_STARTUP
++    do{try AuxCommandDispatcherRegistry.shared.validateSelectedSession(handle,session:session);return 0}catch{return -1}
++#else
++    return -1
++#endif
++}
++@_cdecl("AuxCopySelectedSessionDirectory")
++func auxCopySelectedSessionDirectory(_ handle:UInt64,_ session:UInt64,_ role:UInt32,_ result:UnsafeMutablePointer<Int32>?)->Int32 {
++#if AUX_BROWSER_ONLY_NATIVE_STARTUP
++    guard let result else{return -1};result.pointee = -1
++    do{result.pointee=try AuxCommandDispatcherRegistry.shared.copySelectedSession(handle,session:session,role:role);return 0}catch{return -1}
++#else
++    return -1
++#endif
++}
++@_cdecl("AuxReleaseSelectedSession")
++func auxReleaseSelectedSession(_ handle:UInt64,_ session:UInt64)->Int32 {
++#if AUX_BROWSER_ONLY_NATIVE_STARTUP
++    return AuxCommandDispatcherRegistry.shared.releaseSelectedSession(handle,session:session)
++#else
++    return -1
++#endif
++}
++@_cdecl("AuxPrepareComputerUseAccountLaunch")
++func auxPrepareComputerUseAccountLaunch(_ handle:UInt64,_ owner:UInt64)->Int32 {
++#if AUX_BROWSER_ONLY_NATIVE_STARTUP
++    do{try AuxCommandDispatcherRegistry.shared.prepareComputerUseLaunch(handle,owner:owner);return 0}catch{return -1}
++#else
++    return -1
++#endif
++}
++@_cdecl("AuxPublishSuspendedComputerUseAccountLaunch")
++func auxPublishSuspendedComputerUseAccountLaunch(_ handle:UInt64,_ owner:UInt64,_ pid:Int32)->Int32 {
++#if AUX_BROWSER_ONLY_NATIVE_STARTUP
++    do{try AuxCommandDispatcherRegistry.shared.publishComputerUseSuspended(handle,owner:owner,pid:pid);return 0}catch{return -1}
++#else
++    return -1
++#endif
++}
++@_cdecl("AuxObserveComputerUseAccountTerminal")
++func auxObserveComputerUseAccountTerminal(_ handle:UInt64,_ owner:UInt64,_ pid:Int32,_ status:Int32,_ error:Int32)->Int32 {
++#if AUX_BROWSER_ONLY_NATIVE_STARTUP
++    do{try AuxCommandDispatcherRegistry.shared.observeComputerUseTerminal(handle,owner:owner,pid:pid,status:status,error:error);return 0}catch{return -1}
++#else
++    return -1
++#endif
++}
++@_cdecl("AuxReleaseRegisteredComputerUseAccount")
++func auxReleaseRegisteredComputerUseAccount(_ handle:UInt64,_ owner:UInt64)->Int32 {
++#if AUX_BROWSER_ONLY_NATIVE_STARTUP
++    return AuxCommandDispatcherRegistry.shared.releaseSelectedAccount(handle,owner:owner)
++#else
++    return -1
++#endif
++}
++@_cdecl("AuxBeginSelectedSessionUtility")
++func auxBeginSelectedSessionUtility(_ handle:UInt64,_ session:UInt64,_ result:UnsafeMutablePointer<UInt64>?)->Int32 {
++#if AUX_BROWSER_ONLY_NATIVE_STARTUP
++    guard let result else{return -1};result.pointee=0
++    do{result.pointee=try AuxCommandDispatcherRegistry.shared.beginSelectedUtility(handle,session:session);return 0}catch{return -1}
++#else
++    return -1
++#endif
++}
++@_cdecl("AuxRunSelectedSessionUtility")
++func auxRunSelectedSessionUtility(_ handle:UInt64,_ job:UInt64,_ command:UnsafePointer<CChar>?,_ input:UnsafePointer<UInt8>?,_ count:UInt32,_ result:UnsafeMutablePointer<UnsafeMutablePointer<CChar>?>?)->Int32 {
++#if AUX_BROWSER_ONLY_NATIVE_STARTUP
++    guard let result else{return -1};result.pointee=nil
++    guard let command,strnlen(command,64)<64,let name=String(validatingCString:command),let input,count>0,count<=16*1024*1024,
++          let text=String(data:Data(bytes:input,count:Int(count)),encoding:.utf8) else{return -1}
++    do{let output=try AuxCommandDispatcherRegistry.shared.runSelectedUtility(handle,job:job,command:name,input:text);result.pointee=strdup(output);return result.pointee==nil ? -1:0}catch{return -1}
++#else
++    return -1
++#endif
++}
++@_cdecl("AuxCloseSelectedSessionUtility")
++func auxCloseSelectedSessionUtility(_ handle:UInt64,_ job:UInt64)->Int32 {
++#if AUX_BROWSER_ONLY_NATIVE_STARTUP
++    return AuxCommandDispatcherRegistry.shared.closeSelectedUtility(handle,job:job)
++#else
++    return -1
++#endif
++}
+--- a/AuxNativeTaskLayout.swift
++++ b/AuxNativeTaskLayout.swift
+@@ -78,6 +78,11 @@
+                 throw AuxFreshColdBootstrapError.legacyOrUnknownExistingState
+             }
+         }
++        for process in try Self.memoryHelperProcesses(home:home,expected:expected,family:.computerUse) {
++            guard memoryHelperPriorProcessExited(process.pid,process.seconds,process.microseconds)==1 else {
++                throw AuxFreshColdBootstrapError.legacyOrUnknownExistingState
++            }
++        }
+         try Self.requireNoInterruptedFixedAddonOutputs(home:home)
+         try revalidate()
+     }
+@@ -119,11 +124,15 @@
+         let seconds:UInt64
+         let microseconds:UInt64
+     }
+-    private static let memoryHelperDirectory=".aux-memory-helper-lifetimes.v1"
++    private enum FiniteHelperFamily {
++        case memory,computerUse
++        var directory:String {self == .memory ? ".aux-memory-helper-lifetimes.v1":".aux-computer-use-helper-lifetimes.v1"}
++        var format:String {self == .memory ? "aux.memory.helper-lifetime.v1":"aux.computer-use.helper-lifetime.v1"}
++    }
+     // Decoder yields kernel queries, never a clean/ready flag. Persisted PID,
+     // account and generation fields are data; only the native process observer
+     // can establish that each original finite process has actually exited.
+-    private static func decodeMemoryHelperProcesses(_ bytes:Data,filename:String,expected:Data)throws->[MemoryHelperProcess] {
++    private static func decodeMemoryHelperProcesses(_ bytes:Data,filename:String,expected:Data,family:FiniteHelperFamily = .memory)throws->[MemoryHelperProcess] {
+         let record=try strictEnvelopeObject(bytes),binding=try strictEnvelopeObject(expected)
+         func text(_ object:[String:Any],_ key:String)throws->String {
+             guard let value=object[key] as? String else{throw AuxFreshColdBootstrapError.legacyOrUnknownExistingState};return value
+@@ -144,7 +153,7 @@
+             guard let value=record[key] as? [String:Any],Set(value.keys)==["pid","seconds","microseconds"] else{throw AuxFreshColdBootstrapError.legacyOrUnknownExistingState}
+             return try .init(pid:Int32(unsigned(value,"pid",UInt64(Int32.max),2)),seconds:unsigned(value,"seconds",UInt64.max,1),microseconds:unsigned(value,"microseconds",999_999))
+         }
+-        guard try text(record,"format")=="aux.memory.helper-lifetime.v1" else{throw AuxFreshColdBootstrapError.legacyOrUnknownExistingState}
++        guard try text(record,"format")==family.format else{throw AuxFreshColdBootstrapError.legacyOrUnknownExistingState}
+         let lease=try canonicalUuid(record,"leaseId",lowercase:true)
+         guard filename==lease+".json" else{throw AuxFreshColdBootstrapError.legacyOrUnknownExistingState}
+         for key in ["controlScope","controlReservationSha256","policySha256","profilePathSha256","recordSha256"] {try hash(key)}
+@@ -198,7 +207,8 @@
+         }
+         guard errno==0 else{throw AuxFreshColdGuardError.io(errno)};return names
+     }
+-    private static func memoryHelperProcesses(home:Int32,expected:Data)throws->[MemoryHelperProcess] {
++    private static func memoryHelperProcesses(home:Int32,expected:Data,family:FiniteHelperFamily = .memory)throws->[MemoryHelperProcess] {
++        let memoryHelperDirectory=family.directory
+         let directory=openat(home,memoryHelperDirectory,O_RDONLY|O_DIRECTORY|O_NOFOLLOW|O_CLOEXEC|O_NONBLOCK)
+         if directory<0 {
+             guard errno==ENOENT else{throw AuxFreshColdGuardError.io(errno)}
+@@ -227,7 +237,7 @@
+                 before.st_size==after.st_size,before.st_mtimespec.tv_sec==after.st_mtimespec.tv_sec,before.st_mtimespec.tv_nsec==after.st_mtimespec.tv_nsec,
+                 before.st_ctimespec.tv_sec==after.st_ctimespec.tv_sec,before.st_ctimespec.tv_nsec==after.st_ctimespec.tv_nsec else{throw AuxFreshColdGuardError.metadata}
+             try metadata(fd,directory:false);try entry(directory,name,fd)
+-            processes += try decodeMemoryHelperProcesses(bytes,filename:name,expected:expected)
++            processes += try decodeMemoryHelperProcesses(bytes,filename:name,expected:expected,family:family)
+         }
+         guard try memoryHelperRecordNames(directory)==names else{throw AuxFreshColdGuardError.path}
+         try metadata(directory,directory:true);try entry(home,memoryHelperDirectory,directory)
+--- a/AuxDevelopmentWorkerHost.cc
++++ b/AuxDevelopmentWorkerHost.cc
+@@ -1,5 +1,9 @@
+ #include "AuxDevelopmentWorkerHost.h"
+ #include "AuxAccountMemoryHelper.h"
++#include "AuxSelectedAccountScope.h"
++#include <thread>
++#include <chrono>
++void AuxRequestAccountComputerUseStopForWorker(const void*) noexcept;
+ #include "AuxTaskDescendantObserver.h"
+ #include "AuxWorkerDrain.h"
+ #include "AuxExecPrivateParent.h"
+@@ -80,6 +84,7 @@
+ struct RuntimeScope;
+ struct Worker;
+ void CloseChatGPTCredentialLocks(Worker*) noexcept;
++AuxDevelopmentWorkerDrain AuxCloseSelectedBuiltinsForWorker(const void*) noexcept;
+ bool CloseFixedOutputs(Worker*,bool,bool);
+ struct HostCleanObservation {
+   std::mutex mutex;
+@@ -179,10 +184,12 @@
+     }
+     CloseChatGPTCredentialLocks(this);
+     const auto memory_drain=AuxCloseAccountMemoryProcessesForWorker(this);
++    const auto selected_drain=AuxCloseSelectedBuiltinsForWorker(this);
+     // No host/worker lock crosses native retirement, OS drain or owner release.
+     // A concurrent/reentrant close observes pending instead of deadlocking.
+     int32_t status = captured ? AuxNativeContextRetire(captured->handle) : 0;
+     result = memory_drain;
++    result = AuxMergeWorkerDrain(result,selected_drain);
+     if (status == -2) result = AuxMergeWorkerDrain(result,AuxDevelopmentWorkerDrain::reentrant);
+     else if (status == -3) result = AuxMergeWorkerDrain(result,AuxDevelopmentWorkerDrain::untracked);
+     else if (status == -4) result = AuxMergeWorkerDrain(result,AuxDevelopmentWorkerDrain::wrongProcess);
+@@ -381,9 +388,10 @@
+ }
+ #include "AuxStorageRootsNapi.inc"
+ #include "AuxBrokerWritesNapi.inc"
+-#include "AuxFixedBuiltins.inc"
+ #include "AuxChatGPTCredentialLock.inc"
+ #include "AuxBrokerAwaitedNapi.inc"
++#include "AuxSelectedBuiltinOwner.inc"
++#include "AuxFixedBuiltins.inc"
+ #include "AuxRuntimeCacheInspection.inc"
+ #include "AuxRuntimeCachePins.inc"
+ #include "AuxRuntimeCacheAsync.inc"
+@@ -1150,6 +1158,7 @@
+       {"withChatGPTCredentialLockSync",nullptr,WithChatGPTCredentialLockSync,nullptr,nullptr,nullptr,napi_default,nullptr},
+       {"closeChatGPTCredentialLock",nullptr,CloseChatGPTCredentialLock,nullptr,nullptr,nullptr,napi_default,nullptr},
+       {"assertBrokerOwner",nullptr,AssertBrokerOwner,nullptr,nullptr,nullptr,napi_default,nullptr},
++      {"captureSelectedBuiltinSession",nullptr,CaptureSelectedBuiltinSession,nullptr,nullptr,nullptr,napi_default,nullptr},
+       {"withBrokerSync",nullptr,WithBrokerSync,nullptr,nullptr,nullptr,napi_default,nullptr},
+       {"withBrokerAwaited",nullptr,WithBrokerAwaited,nullptr,nullptr,nullptr,napi_default,nullptr},
+       {"closeBrokerWriteAdmission",nullptr,CloseBrokerWriteAdmission,nullptr,nullptr,nullptr,napi_default,nullptr},
+--- a/AuxFixedBuiltins.inc
++++ b/AuxFixedBuiltins.inc
+@@ -122,6 +122,8 @@
+   const bool utility;
+   std::mutex mutex;
+   bool active=true;
++  std::atomic<bool> selected_utility{false};
++  Worker* worker=nullptr;
+   std::atomic<bool> unknown{false};
+   uint64_t generation=0;
+   std::string leaf,path;
+@@ -175,7 +177,7 @@
+   bool unknown=false;
+   for(const auto& output:captured) {
+     {std::lock_guard lock(output->mutex);unknown=unknown||output->unknown;}
+-    if((output->utility?utility_drained:pdf_drained)&&output->Remove())removed.push_back(output);
++    if(!output->selected_utility&&(output->utility?utility_drained:pdf_drained)&&output->Remove())removed.push_back(output);
+   }
+   if(unknown){std::lock_guard lock(worker->mutex);worker->broker_untracked=true;}
+   std::lock_guard lock(FixedOutputOwners().mutex);
+@@ -228,6 +230,7 @@
+      read(marker_read.value,marker_bytes.data(),marker_bytes.size())!=sizeof(marker)-1||memcmp(marker_bytes.data(),marker,sizeof(marker)-1))return {};
+   auto outputs=std::make_shared<FixedOutputs>(utility);
+   outputs->generation=generation;
++  outputs->worker=owner.worker.get();
+   outputs->parent=FixedDescriptor(fcntl(parent.value,F_DUPFD_CLOEXEC,0));
+   if(outputs->parent.value<0)return {};
+   // Kernel randomness, no supplied filename or authority token.
+@@ -242,8 +245,9 @@
+   if(!outputs->Record("prepared"))return {};
+   return outputs;
+ }
+-bool FixedPreparePublication(FixedOutputs& outputs,const std::string& field,const std::string& requested,bool directory,uint64_t handle) {
+-  if(!FixedPathAllowed(requested,handle,outputs.utility))return false;
++bool FixedPreparePublication(FixedOutputs& outputs,const std::string& field,const std::string& requested,bool directory,uint64_t handle,
++    const std::shared_ptr<SelectedBuiltinScope>& selected,napi_env env) {
++  if(!FixedPathAllowed(requested,handle,outputs.utility)&&!SelectedBuiltinPathAllowed(selected,env,requested,true))return false;
+   std::error_code error;
+   auto path=std::filesystem::absolute(requested,error).lexically_normal();if(error)return false;
+   // Resolve aliases once, then retain the canonical destination rather than
+@@ -369,6 +373,19 @@
+   }
+   return true;
+ }
++bool RetireSelectedUtilityOutput(const std::shared_ptr<FixedOutputs>& outputs) {
++  if(!outputs)return true;
++  if(!outputs->Remove())return false;
++  std::lock_guard lock(FixedOutputOwners().mutex);
++  auto found=FixedOutputOwners().retained.find(outputs->worker);
++  if(found==FixedOutputOwners().retained.end())return false;
++  std::erase(found->second,outputs);
++  if(found->second.empty())FixedOutputOwners().retained.erase(found);
++  return true;
++}
++void MarkSelectedUtilityOutput(const std::shared_ptr<FixedOutputs>& outputs) {
++  if(outputs){std::lock_guard lock(outputs->mutex);outputs->selected_utility=true;}
++}
+ napi_value FixedFail(napi_env env,const char* message) {
+   napi_throw_error(env,"AUX_FIXED_BUILTIN_REFUSED",message);return nullptr;
+ }
+@@ -396,6 +413,8 @@
+   if(napi_get_cb_info(env,info,&argc,args,nullptr,&data)!=napi_ok||!data)return nullptr;
+   auto call=*static_cast<std::shared_ptr<FixedCall>*>(data);
+   auto worker=call->worker.lock();
++  auto selected=CurrentSelectedBuiltinScope();
++  if(!CurrentSelectedBuiltin(selected,env))return FixedFail(env,"Selected builtin owner closed");
+   if(call->closed||env!=call->env||!worker||!FixedCurrent(env,worker,call->utility))
+     return FixedFail(env,"Fixed builtin owner closed");
+   auto* isolate=v8::Isolate::GetCurrent();auto context=isolate->GetCurrentContext();
+@@ -432,7 +451,7 @@
+     v8::Local<v8::Value> value;
+     if(present.IsNothing()||!present.FromJust()||!object.As<v8::Object>()->Get(context,key).ToLocal(&value))return false;
+     std::string path;
+-    return FixedString(env,FixedNapiValue(value),path)&&FixedPathAllowed(path,path_owner.owner->handle,call->utility);
++    return FixedString(env,FixedNapiValue(value),path)&&(FixedPathAllowed(path,path_owner.owner->handle,call->utility)||SelectedBuiltinPathAllowed(selected,env,path,false));
+   };
+   if(!call->utility&&call->method=="merge") {
+     v8::Local<v8::Value> files;
+@@ -470,7 +489,7 @@
+     if(!FixedString(env,FixedNapiValue(value),path))return FixedFail(env,"Invalid fixed output path");
+     if(!invocation.outputs)invocation.outputs=BeginFixedOutputs(path_owner,call->utility);
+     if(!invocation.outputs||!FixedPreparePublication(*invocation.outputs,field,path,
+-        !strcmp(field,"outputDir")||!strcmp(field,"iconDirectory"),path_owner.owner->handle))
++        !strcmp(field,"outputDir")||!strcmp(field,"iconDirectory"),path_owner.owner->handle,selected,env))
+       return FixedFail(env,"Fixed builtin output authority unavailable");
+     const auto& staged=invocation.outputs->publications.back().staged;
+     v8::Local<v8::String> replacement;
+@@ -483,15 +502,21 @@
+     args[1]=FixedNapiValue(encoded);
+   }
+   // Getters may synchronously close the actual owner during snapshotting.
+-  if(call->closed||!FixedCurrent(env,worker,call->utility))return FixedFail(env,"Fixed builtin owner closed");
++  if(call->closed||!FixedCurrent(env,worker,call->utility)||!CurrentSelectedBuiltin(selected,env))return FixedFail(env,"Fixed builtin owner closed");
+   if(invocation.outputs&&!invocation.outputs->Record("running"))
+     return FixedFail(env,"Fixed output journal interrupted; staging preserved");
+   napi_value original,receiver,result;
+-  if(napi_get_reference_value(env,call->original,&original)!=napi_ok||
++  if(call->utility&&selected) {
++    std::string command,json;
++    if(!FixedString(env,args[0],command)||!FixedString(env,args[1],json))return FixedFail(env,"Invalid selected utility input");
++    auto response=RunSelectedUtility(selected,env,command,json,invocation.outputs);
++    if(!response)return FixedFail(env,"Selected utility invocation failed; native custody retained");
++    if(napi_create_string_utf8(env,response->data(),response->size(),&result)!=napi_ok)return nullptr;
++  } else if(napi_get_reference_value(env,call->original,&original)!=napi_ok||
+      napi_get_undefined(env,&receiver)!=napi_ok||
+      napi_call_function(env,receiver,original,argc,args,&result)!=napi_ok)return nullptr;
+   if(!invocation.outputs)return result;
+-  if(!FixedCurrent(env,worker,call->utility))return FixedFail(env,"Fixed owner closed before publication");
++  if(!FixedCurrent(env,worker,call->utility)||!CurrentSelectedBuiltin(selected,env))return FixedFail(env,"Fixed owner closed before publication");
+   v8::Local<v8::Value> returned;
+   if(call->utility) {
+     const auto raw=FixedV8Value(result);
+@@ -503,7 +528,7 @@
+   if(!v8::JSON::Stringify(context,returned).ToLocal(&encoded)||
+      !v8::JSON::Parse(context,encoded).ToLocal(&returned)||
+      !FixedRewriteResult(context,returned,*invocation.outputs))return nullptr;
+-  if(!FixedCurrent(env,worker,call->utility))return FixedFail(env,"Fixed owner closed before publication");
++  if(!FixedCurrent(env,worker,call->utility)||!CurrentSelectedBuiltin(selected,env))return FixedFail(env,"Fixed owner closed before publication");
+   if(!FixedPublish(*invocation.outputs)) {
+     invocation.outputs->unknown=true;
+     return FixedFail(env,"Fixed output publication interrupted; private staging preserved for review");
+--- a/AuxMemoryMainOwner.inc
++++ b/AuxMemoryMainOwner.inc
+@@ -163,7 +163,14 @@
+   const int32_t status=finish
+       ? AuxFinishRegisteredMemoryRegistryTarget(owner->handle,static_cast<const uint8_t*>(data),static_cast<uint32_t>(count))
+       : AuxValidateRegisteredMemoryRegistryTarget(owner->handle,static_cast<const uint8_t*>(data),static_cast<uint32_t>(count));
+-  if(status!=0){if(!finish&&status==1)AuxRequestAccountMemoryStopForWorker(worker.get());return refuse();}
++  if(status!=0){
++    if(!finish&&status==1){
++      AuxRequestAccountMemoryStopForWorker(worker.get());
++      AuxRequestSelectedBuiltinStopForWorker(worker.get());
++      AuxRequestAccountComputerUseStopForWorker(worker.get());
++    }
++    return refuse();
++  }
+   napi_value result;
+   return napi_get_undefined(env, &result) == napi_ok ? result : nullptr;
+ }
