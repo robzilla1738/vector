@@ -1,0 +1,14 @@
+{
+  "scope": "do not reject unrelated shortcut edits for unchanged existing OS collision",
+  "projected": false,
+  "compiled": false,
+  "files": [
+    {
+      "path": "chrome/browser/ui/aux_keyboard_shortcuts.mm",
+      "beforeSha256": "d57dbf41e14df60ed4cfa81025e766891a07fe54f252687ca7c2c193b49d41d2",
+      "afterSha256": "72885e0ee08726bcdf07e1a026a89684cb5c93868d353a2f4099b5355a075978",
+      "anchors": 1
+    }
+  ],
+  "anchors": 1
+}

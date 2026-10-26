@@ -1,0 +1,15 @@
+--- a/chrome/browser/ui/aux_keyboard_shortcuts.mm
++++ b/chrome/browser/ui/aux_keyboard_shortcuts.mm
+@@ -375,7 +375,11 @@
+                " and " + base::NumberToString(binding.command);
+     table.emplace_back(binding.command, *parsed);
+     if (binding.command == kPopup) continue;
+-    if (std::ranges::find(reserved, *parsed) != reserved.end())
++    // An inherited/current chord may already collide with the user's OS
++    // settings. Do not let that unrelated unchanged row veto this edit.
++    // Every newly assigned chord, including imports and resets, is checked.
++    if (parsed != ParseKeyboardShortcut(Effective(profile, binding)) &&
++        std::ranges::find(reserved, *parsed) != reserved.end())
+       return "Command " + base::NumberToString(binding.command) + " conflicts with a macOS shortcut";
+     // Preserve the supplied command's own intentional default displacement,
+     // while comparing all other menu commands against the prospective table.
