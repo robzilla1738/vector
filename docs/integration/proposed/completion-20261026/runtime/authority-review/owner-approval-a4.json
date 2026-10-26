@@ -1,0 +1,9 @@
+{
+  "format": "aux.completion.exact-local-review-approval.v1",
+  "recordedAtUtc": "2026-10-26T17:43:37.880446+00:00",
+  "reviewSha256": "20572af30ef6613f1fc8bced01edada6d52f4b3f7c1f21dd97fb610ec2b257f2",
+  "ownerAnswer": "Approve this exact local review",
+  "scope": "Exact19local-development signing actions and focused fresh disposable Aux checks under the approved review; no provisioning/release/new OS grants/owner-profile access",
+  "cloudOrBackupActivationApproved": false,
+  "executed": false
+}

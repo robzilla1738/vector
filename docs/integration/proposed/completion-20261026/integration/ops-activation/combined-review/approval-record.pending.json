@@ -132,5 +132,12 @@
   "resourceOrPrivilegeMutation": false,
   "credentialsReadOrCopied": false,
   "testsRun": false,
-  "backupOrRestoreExecuted": false
+  "backupOrRestoreExecuted": false,
+  "ownerDeferral": {
+    "recordedAtUtc": "2026-10-26T17:44:12.258094+00:00",
+    "ownerAnswer": "idk, dont do this rn",
+    "scope": "Backup activation and missing alert/CIDR setup are deferred at owner request; no billing/server/credential/monitor/backup actions or further setup questions now. Original whole-product goal and approved local signing/checks continue.",
+    "proposedAlertAddressRaw": "hellogetaux.co",
+    "confirmedAlertRecipient": null
+  }
 }

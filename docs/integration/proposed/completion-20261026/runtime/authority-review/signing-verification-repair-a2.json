@@ -1,0 +1,28 @@
+{
+  "format": "aux.local-signing.bounded-verification-repair.v1",
+  "approvedReviewSha256": "20572af30ef6613f1fc8bced01edada6d52f4b3f7c1f21dd97fb610ec2b257f2",
+  "originalExecutor": {
+    "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/runtime/authority-review/sign-reviewed.py",
+    "sha256": "1060b81bc754a3c1a43cf496c2252016ce8b6a9e104d3ee479c9c295ffafcf87",
+    "bytes": 15232
+  },
+  "executor": {
+    "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/runtime/authority-review/sign-reviewed-repair-a2.py",
+    "sha256": "56e632066a57a43a5d2401cd4a163bec29054a6ef9dd8da021ccf472d0ef8f7f"
+  },
+  "firstFailure": {
+    "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/runtime/authority-review/actual-local-signing.json",
+    "sha256": "ebd2c2b4a468b88f1c1293d30f741bb251048aba67d25020d341387cfd3fd24b"
+  },
+  "reason": "Installed codesign manpage requires leading equal sign for literal -R requirement source. First sign succeeded; requirement was interpreted as a filename.",
+  "changes": [
+    "Prefix the identical verification requirement expression with =",
+    "Pin preserved original executor and this repair executor separately",
+    "Use new recoverable backup and receipt paths, preserving first failure",
+    "Attach explicit repair evidence to new receipt"
+  ],
+  "targetIdentityEntitlementOrAuthorityExpansion": false,
+  "originalReviewChanged": false,
+  "authority": "Existing exact owner approval and its same-scope repair provision; identical19 signing commands/20 verified objects",
+  "restorationPrecondition": "Preserve failed bytes; validate whole failure inventory differs only by first approved dylib, then restore only that leaf from verified pre-sign backup before fresh executor preflight."
+}

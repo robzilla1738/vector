@@ -1,0 +1,17 @@
+{
+  "format": "aux.accepted-app.normal-handoff.v1",
+  "recordedAtUtc": "2026-10-26T17:46:12.178654+00:00",
+  "app": "out/provided-candidate-local-completion-20261025-a38/Aux.app",
+  "normalQuit": "Actual Aux application menu > Quit Aux",
+  "processBefore": 90053,
+  "processAbsentAfter": true,
+  "daemonAndCDPPortsClearAfter": [
+    21520,
+    21522,
+    45203
+  ],
+  "forcedTermination": false,
+  "appBytesChanged": false,
+  "oldStateDeletedOrRead": false,
+  "newCandidateLaunched": false
+}
