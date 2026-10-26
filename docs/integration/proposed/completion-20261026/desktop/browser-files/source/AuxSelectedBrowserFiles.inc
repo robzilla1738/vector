@@ -55,6 +55,29 @@ napi_value SelectedReadUploadFile(napi_env env,napi_callback_info info) {
       napi_set_named_property(env,result,"name",name)!=napi_ok)return nullptr;
   return result;
 }
+bool SelectedBrowserEmptyAcl(int fd) {
+  errno=0;auto acl=acl_get_fd_np(fd,ACL_TYPE_EXTENDED);
+  if(!acl)return errno==ENOENT;
+  acl_entry_t entry=nullptr;errno=0;
+  const bool empty=acl_valid(acl)==0&&acl_get_entry(acl,ACL_FIRST_ENTRY,&entry)==-1&&errno==EINVAL&&entry==nullptr;
+  acl_free(acl);return empty;
+}
+struct SelectedBrowserDownloadStage {
+  std::shared_ptr<SelectedBuiltinScope> scope;
+  FixedDescriptor& output;
+  const FixedDescriptor& parent;
+  const std::string& temporary;
+  bool published=false,complete=false;
+  ~SelectedBrowserDownloadStage() {
+    if(complete)return;
+    bool closed=true;
+    if(output.value>=0){closed=close(output.value)==0;output.value=-1;}
+    // A known rollback requires actual descriptor closure and durable removal.
+    // Once rename has happened, failure cannot be relabeled a clean stage.
+    if(!published&&closed&&unlinkat(parent.value,temporary.c_str(),0)==0&&fsync(parent.value)==0)return;
+    scope->MarkUnknown();
+  }
+};
 napi_value SelectedPublishBrowserDownload(napi_env env,napi_callback_info info) {
   size_t count=3;napi_value args[3];auto scope=SelectedScopeInfo(env,info,count,args);
   void* data=nullptr;size_t size=0;std::string name,destination;
@@ -74,7 +97,7 @@ napi_value SelectedPublishBrowserDownload(napi_env env,napi_callback_info info) 
     FixedDescriptor artifacts(openat(parent.value,"artifacts",O_RDONLY|O_DIRECTORY|O_NOFOLLOW|O_CLOEXEC));
     struct stat artifact_identity{};
     if(artifacts.value<0||fstat(artifacts.value,&artifact_identity)!=0||!S_ISDIR(artifact_identity.st_mode)||
-        artifact_identity.st_uid!=geteuid()||(artifact_identity.st_mode&0022))
+        artifact_identity.st_uid!=geteuid()||(artifact_identity.st_mode&07022)||!SelectedBrowserEmptyAcl(artifacts.value))
       return SelectedScopeFail(env,"Task artifact directory changed");
     parent=std::move(artifacts);
     for(auto& c:name)if(!((c>='a'&&c<='z')||(c>='A'&&c<='Z')||(c>='0'&&c<='9')||c=='.'||c=='-'||c=='_'))c='_';
@@ -94,6 +117,7 @@ napi_value SelectedPublishBrowserDownload(napi_env env,napi_callback_info info) 
   const auto temporary=".aux-browser-download-"+nonce+".part";
   FixedDescriptor output(openat(parent.value,temporary.c_str(),O_WRONLY|O_CREAT|O_EXCL|O_NOFOLLOW|O_CLOEXEC,0600));
   if(output.value<0)return SelectedScopeFail(env,"Download stage is unavailable");
+  SelectedBrowserDownloadStage stage{scope,output,parent,temporary};
   size_t offset=0;
   while(offset<size) {
     auto n=write(output.value,static_cast<unsigned char*>(data)+offset,size-offset);
@@ -109,8 +133,12 @@ napi_value SelectedPublishBrowserDownload(napi_env env,napi_callback_info info) 
   if(!FixedPathAllowed(published,scope->captured.owner->handle,false)&&!scope->Allows(env,published,true))
     return SelectedScopeFail(env,"Original download destination changed");
   if(close(output.value)!=0){output.value=-1;scope->MarkUnknown();return SelectedScopeFail(env,"Download stage close is unknown");}output.value=-1;
-  if(renameat(parent.value,temporary.c_str(),parent.value,leaf.c_str())!=0||fsync(parent.value)!=0||!scope->Current(env))
+  if(renameat(parent.value,temporary.c_str(),parent.value,leaf.c_str())!=0)
     return SelectedScopeFail(env,"Download publication did not settle");
+  stage.published=true;
+  if(fsync(parent.value)!=0||!scope->Current(env))
+    return SelectedScopeFail(env,"Download publication did not settle");
+  stage.complete=true;
   close(parent.value);parent.value=-1;
   napi_value result;if(napi_create_string_utf8(env,published.data(),published.size(),&result)!=napi_ok)return nullptr;
   return result;

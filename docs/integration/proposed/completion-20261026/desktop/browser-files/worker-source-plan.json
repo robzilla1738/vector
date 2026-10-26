@@ -23,9 +23,14 @@
       "path": "AuxDevelopmentWorkerHost.cc",
       "inputPath": "/Users/rcourson/Documents/Vibe/aux-completion-20261026/runtime/docs/integration/proposed/completion-20261026/runtime/selected-builtin-owner/source/AuxDevelopmentWorkerHost.cc",
       "inputSha256": "4652ca4ff02537dc8761c18fbb4d37b2ab22b57e9a8e8091d893eaff99875b9d",
-      "outputSha256": "c17b84258e603d935fe2f450dfcefa2deb9b76cdc00c5c4622c8d9589f84f52a",
+      "outputSha256": "c9e8da93cd4da87a8ff64c9f37f5f45ab059795d65699578687b0b6018474905",
       "outputPath": "/private/tmp/aux-browser-files-worker-check-20261026/AuxDevelopmentWorkerHost.cc",
       "anchors": [
+        {
+          "before": "#include <sys/stat.h>",
+          "after": "#include <sys/stat.h>\n#include <sys/acl.h>",
+          "count": 1
+        },
         {
           "before": "#include \"AuxFixedBuiltins.inc\"",
           "after": "#include \"AuxFixedBuiltins.inc\"\n#include \"AuxSelectedBrowserFiles.inc\"",
@@ -37,7 +42,7 @@
       "path": "AuxSelectedBrowserFiles.inc",
       "new": true,
       "outputPath": "/private/tmp/aux-browser-files-worker-check-20261026/AuxSelectedBrowserFiles.inc",
-      "outputSha256": "0468125aab1f34470f032d67eea2b8c83fa07610f043e9dcc33a58d392cc98e6"
+      "outputSha256": "28e4d3caab6e94c90f69966c7618dfb28d16a6a314b09406d2e7833c38a1cf35"
     }
   ]
 }

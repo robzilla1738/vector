@@ -1,0 +1,30 @@
+{
+  "inputs": {
+    "docs/integration/proposed/completion-20261026/runtime/fixed-builtins/entry.anchors.json": "873689d552203c4f7ccf9fd23cb6494844daa199fd5ad2be7ffdcb0079ba57ed",
+    "docs/integration/proposed/completion-20261026/runtime/selected-builtin-owner/entry.anchors.json": "1f5a1fd57e3f2f34ee7c162a5f4638bbd2f2ecde5f2164339803def2299138db",
+    "docs/integration/proposed/completion-20261026/runtime/selected-file-reader/entry.anchors.json": "e1ecc07b99fcd9c0aac2bfd8d9af3ee9e11b40d04feafe1831a2964d1c5cc05a",
+    "docs/integration/proposed/completion-20261026/desktop/browser-automation/resource-anchors.json": "fafafe77051e36060afba23543526eb3cdf34abc72eb08171377aac60b145c55",
+    "docs/integration/proposed/completion-20261026/desktop/browser-files/resource-anchors.json": "c8dbe8fec2d1d2a84fb382c180dfcbab9677aa58bf00e341c97751902bb131f1",
+    "docs/integration/proposed/completion-20261026/integration/computer-use/source-pins.json": "3b4e9fa7e3ac00c4335a93a501be75e77306efaf4e799c2fa0768344a58d928f",
+    "vendor/provided/aux-fixed-computer-use.mjs": "01cbee26a5ff85c42d1ee553cca7029b9112cff43d08b91ffb952216be12a81a",
+    "docs/integration/proposed/completion-20261026/integration/transform.mjs": "1ca9a216b68bbea58a91cfcd6d5c48945e7b96a141ca17a5dc364c208f2a28ed",
+    "docs/integration/proposed/completion-20261026/integration/pins.json": "ec25dfd7a6e8f4faf77f385476724a0a71ce7b75a529fe1854fb1afcdb0feffe",
+    "docs/integration/proposed/completion-20261026/integration/anchors.json": "e2c09669894a9b7a3e4e7e3ed7cfde7e5f4529d9358f9eacf49afa57156296f2",
+    "vendor/provided/cloud-transfer-binding.mjs": "63646431b9c349d928b7182f06a9c3b14b2948cfedeed666882280ad04d6896e",
+    "vendor/provided/aux-final-runtime-identity.mjs": "3af91a07f3c21ca104bb64d86bc8322b2f4fa15116b9860ffc7099a8567b0350",
+    "docs/integration/proposed/completion-20261026/integration/identity/source-pins.json": "136b03b377f47acde3935a36e32020308c5e21a668b81f9045b10ad4db2699bb",
+    "vendor/provided/aux-experimental-settings-v2.mjs": "c1ef323fe38ed1608cc2024739b28699b75a4292f4e9eeeffffc395dd98d28af",
+    "vendor/provided/aux-event-poll-client.mjs": "7e8cd86474af2f207e24280800514923617141c0dadbc70c7ad437bf08bb3ec7",
+    "vendor/provided/aux-event-poll-integration.mjs": "d94dd3f73ac905ce159495264704f1c5ddc332db4417a9d863d3264b29b0c742",
+    "docs/integration/proposed/completion-20261026/integration/events/source-pins.json": "050903c9e0e11a80f80d681e7f664ca18c3d057e64f67b5ca55f5fc87f75cd57",
+    "vendor/provided/aux-ordinary-chat-startup.mjs": "79e41a260fea5959a675f422f0b7a12180abe3ef5f092c5b24a31583b680ddb9",
+    "docs/integration/proposed/completion-20261026/integration/ordinary-chat/source-pins.json": "d3a0065bdd599125d3925cd1247b45a848502e3e6e3c6f016b18f897d07a09c2",
+    "vendor/provided/aux-bash-close-lifetime.mjs": "a533aad404915a3fdddeb4b55fd6d5a70f51997f422f1003334579abdb9a5fbc",
+    "docs/integration/proposed/completion-20261026/integration/advertised-tools/source-pins.json": "d71ac38a5ca652807d5931e885b604677b0d74c3eff8917d4b3eec499aa5cf83",
+    "vendor/provided/aux-fixed-builtin-routing.mjs": "090ff5b24298d497f4d14d6aaafc00e7e1102287a42d2bf6bfcae11b9fae7320",
+    "vendor/provided/aux-ephemeral-protocol-identity.mjs": "f81ae98aa1489acd9204c368732f94258608270def0a47cbfab7abf6d4a4f0b4"
+  },
+  "entrySha256": "f355833cb607963a65ca3108e7ae19ea7ca60192a9f3d8e2644a3c12ec49c808",
+  "backgroundSha256": "02b2288a0c1691a1e55d4f16c1db1147385da5b7030740b62c37432a191591cc",
+  "indexSha256": "48af998738fb6d2fc30cb8d5b2e9de03cb04ab7d8563ebdaa5fe8100944fc514"
+}

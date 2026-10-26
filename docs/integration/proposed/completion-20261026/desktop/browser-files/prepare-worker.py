@@ -7,7 +7,7 @@ p=argparse.ArgumentParser();p.add_argument('--source',type=Path,default=DEFAULT)
 for name,rules in [('AuxSelectedBuiltinOwner.inc',[
  ('struct FixedOutputs;','napi_value SelectedReadUploadFile(napi_env,napi_callback_info);\nnapi_value SelectedPublishBrowserDownload(napi_env,napi_callback_info);\nstruct FixedOutputs;'),
  ('{{"assertCurrent",SelectedAssert}', '{{"readUploadFile",SelectedReadUploadFile},{"publishBrowserDownload",SelectedPublishBrowserDownload},{"assertCurrent",SelectedAssert}')]),
- ('AuxDevelopmentWorkerHost.cc', [('#include "AuxFixedBuiltins.inc"','#include "AuxFixedBuiltins.inc"\n#include "AuxSelectedBrowserFiles.inc"')])]:
+ ('AuxDevelopmentWorkerHost.cc', [('#include <sys/stat.h>','#include <sys/stat.h>\n#include <sys/acl.h>'),('#include "AuxFixedBuiltins.inc"','#include "AuxFixedBuiltins.inc"\n#include "AuxSelectedBrowserFiles.inc"')])]:
  source=a.source/name;s=source.read_text();before=s;anchors=[]
  for old,new in rules:
   assert s.count(old)==1,(name,old,s.count(old));s=s.replace(old,new);anchors.append({'before':old,'after':new,'count':1})

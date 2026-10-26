@@ -302,3 +302,13 @@
    pending_requests_[request_id] = function;
    protocol_request.Set("id", request_id);
    protocol_request.Set("method", method);
+--- a/chrome/browser/extensions/api/debugger/BUILD.gn
++++ b/chrome/browser/extensions/api/debugger/BUILD.gn
+@@ -47,6 +47,7 @@
+     "//chrome/browser/profiles:profile",
+     "//chrome/common:constants",
+     "//chrome/common:non_code_constants",
++    "//components/download/public/common:public",
+     "//components/pdf/common:util",
+     "//components/security_interstitials/content:security_interstitial_page",
+     "//content/public/common",

@@ -1,0 +1,14 @@
+{
+  "path": "chrome/browser/extensions/api/debugger/BUILD.gn",
+  "inputPath": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/extensions/api/debugger/BUILD.gn",
+  "inputSha256": "3de37845ba1b80dc3fd3ced8298bfdfe75ff0843b960a3d474049102843bcb37",
+  "outputSha256": "9bd494ee8d94146e84b2e4edb849e2037d6d307fa40c6705e517e76e454b8269",
+  "outputPath": "/private/tmp/aux-browser-files-native-check-20261026/chrome/browser/extensions/api/debugger/BUILD.gn",
+  "anchors": [
+    {
+      "before": "    \"//components/pdf/common:util\",",
+      "after": "    \"//components/download/public/common:public\",\n    \"//components/pdf/common:util\",",
+      "count": 1
+    }
+  ]
+}

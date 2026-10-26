@@ -1,0 +1,241 @@
+{
+  "format": "aux.final-composed-resources.v2",
+  "root": "/Users/rcourson/Documents/Vibe/web",
+  "out": "/private/tmp/aux-final-composed-resources-20261026-a2",
+  "files": [
+    {
+      "name": "index.mjs",
+      "input": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-local-completion-20261025-a38/Aux.app/Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/node-development/index.mjs",
+      "inputSha256": "48af998738fb6d2fc30cb8d5b2e9de03cb04ab7d8563ebdaa5fe8100944fc514",
+      "outputPath": "/private/tmp/aux-final-composed-resources-20261026-a2/index.mjs",
+      "outputSha256": "b057f7cb0c09bf16ffbfa52f52be4871b9d22005a849b5354bcc5b6b88f41188",
+      "stages": [
+        {
+          "kind": "account-bound cloud transfers",
+          "inputSha256": "48af998738fb6d2fc30cb8d5b2e9de03cb04ab7d8563ebdaa5fe8100944fc514",
+          "outputSha256": "62469726c5629983c379faae562d8317c53d79848fe3f09cd945e3ff95ea5d47",
+          "anchors": 9
+        },
+        {
+          "kind": "Aux runtime identity",
+          "inputSha256": "62469726c5629983c379faae562d8317c53d79848fe3f09cd945e3ff95ea5d47",
+          "outputSha256": "4aa78d2606963d854849629dba91a2f418f6f347b09f45d3f9cc9dd3000409b7",
+          "anchors": 28
+        },
+        {
+          "kind": "experimental settings v2",
+          "inputSha256": "4aa78d2606963d854849629dba91a2f418f6f347b09f45d3f9cc9dd3000409b7",
+          "outputSha256": "356b71893c73675ec333ca2da279532457a3ddda3f74a886e33a337377bc87b5",
+          "anchors": 2
+        },
+        {
+          "kind": "authenticated cloud invalidation and reconciliation",
+          "inputSha256": "356b71893c73675ec333ca2da279532457a3ddda3f74a886e33a337377bc87b5",
+          "outputSha256": "5fda3fd8cf5c927c68a2a6b8b3a781880472538bef2d56284035b12f186c7554",
+          "anchors": 8
+        },
+        {
+          "kind": "ordinary chat startup",
+          "inputSha256": "5fda3fd8cf5c927c68a2a6b8b3a781880472538bef2d56284035b12f186c7554",
+          "outputSha256": "d1bd9d7cede7587bc2a41ff3e123f90127bc881a31d6bc25e4af392ac07adf4f",
+          "anchors": 3
+        },
+        {
+          "kind": "background Bash physical close",
+          "inputSha256": "d1bd9d7cede7587bc2a41ff3e123f90127bc881a31d6bc25e4af392ac07adf4f",
+          "outputSha256": "ed324987ab1e9d70cba7a8ec0829c92ab4e3cebd2d3126b21b24a7ede33a9974",
+          "anchors": 3
+        },
+        {
+          "kind": "fixed builtin routing",
+          "inputSha256": "ed324987ab1e9d70cba7a8ec0829c92ab4e3cebd2d3126b21b24a7ede33a9974",
+          "outputSha256": "3f31619b816fd36405d5f749762aadd11165c07e02d5c276a64a9eb35a582f0e",
+          "anchors": 4
+        },
+        {
+          "kind": "Aux transient protocol generation 2",
+          "inputSha256": "3f31619b816fd36405d5f749762aadd11165c07e02d5c276a64a9eb35a582f0e",
+          "outputSha256": "4a9d48d16465f880ddbf5673e413b03bdcfd4ac547ff0ec17e8ff6db7f10ee69",
+          "anchors": 3
+        },
+        {
+          "kind": "Aux tag icon schema",
+          "inputSha256": "4a9d48d16465f880ddbf5673e413b03bdcfd4ac547ff0ec17e8ff6db7f10ee69",
+          "outputSha256": "7715c63f740fc8775015245e37cb408a230444e7ad9c48fd6037ce7043633751",
+          "anchors": 1
+        },
+        {
+          "kind": "runtime/selected-builtin-owner/entry.anchors.json",
+          "inputSha256": "7715c63f740fc8775015245e37cb408a230444e7ad9c48fd6037ce7043633751",
+          "outputSha256": "5d3b909f4bc03d2753f9e34417aec8f4818c753a02ec8626879c3f5d645ac6f4",
+          "anchors": 8
+        },
+        {
+          "kind": "runtime/selected-file-reader/entry.anchors.json",
+          "inputSha256": "5d3b909f4bc03d2753f9e34417aec8f4818c753a02ec8626879c3f5d645ac6f4",
+          "outputSha256": "5616699d9b28b5aa6e02ce29459aed01688d6abcf8e571f7bd173760d96af1a0",
+          "anchors": 6
+        },
+        {
+          "kind": "corrected Computer Use",
+          "inputSha256": "5616699d9b28b5aa6e02ce29459aed01688d6abcf8e571f7bd173760d96af1a0",
+          "outputSha256": "cf487d3adb501a3524f2e5d1a4aea0b3da39619c69e3fdfc27db641eb174a34e",
+          "anchors": 21
+        },
+        {
+          "kind": "browser automation",
+          "inputSha256": "cf487d3adb501a3524f2e5d1a4aea0b3da39619c69e3fdfc27db641eb174a34e",
+          "outputSha256": "b34b94ea501378099208292b1577870f3a337ba25b66b13348b2e492c1559d2f",
+          "anchors": 26
+        },
+        {
+          "kind": "browser files",
+          "inputSha256": "b34b94ea501378099208292b1577870f3a337ba25b66b13348b2e492c1559d2f",
+          "outputSha256": "b057f7cb0c09bf16ffbfa52f52be4871b9d22005a849b5354bcc5b6b88f41188",
+          "anchors": 16
+        }
+      ]
+    },
+    {
+      "name": "aux-native-entry.mjs",
+      "input": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-local-completion-20261025-a38/Aux.app/Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/node-development/aux-native-entry.mjs",
+      "inputSha256": "f355833cb607963a65ca3108e7ae19ea7ca60192a9f3d8e2644a3c12ec49c808",
+      "outputPath": "/private/tmp/aux-final-composed-resources-20261026-a2/aux-native-entry.mjs",
+      "outputSha256": "54b4a71ee1a14b392b2330f715e0232adf4b91854b72a6fc6ca97804e3164a01",
+      "stages": [
+        {
+          "kind": "account-bound cloud transfers",
+          "inputSha256": "f355833cb607963a65ca3108e7ae19ea7ca60192a9f3d8e2644a3c12ec49c808",
+          "outputSha256": "8406b82b2c2ae73312e0d81e18392f2d4c91bc1df497b73eefbdc8fba04189bb",
+          "anchors": 9
+        },
+        {
+          "kind": "Aux runtime identity",
+          "inputSha256": "8406b82b2c2ae73312e0d81e18392f2d4c91bc1df497b73eefbdc8fba04189bb",
+          "outputSha256": "f3a8c02127d31b5c09c2f83b54dbfc1f789c7cfb7125ec0993dad31b18f73737",
+          "anchors": 28
+        },
+        {
+          "kind": "experimental settings v2",
+          "inputSha256": "f3a8c02127d31b5c09c2f83b54dbfc1f789c7cfb7125ec0993dad31b18f73737",
+          "outputSha256": "754f20b9882c86c6e044bb1e06e8b8f7492097e7ca935ee92da4b4d0f7b74a24",
+          "anchors": 2
+        },
+        {
+          "kind": "authenticated cloud invalidation and reconciliation",
+          "inputSha256": "754f20b9882c86c6e044bb1e06e8b8f7492097e7ca935ee92da4b4d0f7b74a24",
+          "outputSha256": "9e8701e3e01b4cb2f7dcb2967ef6debb00e7d829a41c5eae4d9366adb39243f2",
+          "anchors": 8
+        },
+        {
+          "kind": "ordinary chat startup",
+          "inputSha256": "9e8701e3e01b4cb2f7dcb2967ef6debb00e7d829a41c5eae4d9366adb39243f2",
+          "outputSha256": "abe96899835a43527efe4fb6073711c6927413d287471039d1eede66ab03bf55",
+          "anchors": 3
+        },
+        {
+          "kind": "background Bash physical close",
+          "inputSha256": "abe96899835a43527efe4fb6073711c6927413d287471039d1eede66ab03bf55",
+          "outputSha256": "dd17b380be9f831760c00480bbe6fcb2c3a998169edbfb2d7fd67149e9d350f2",
+          "anchors": 3
+        },
+        {
+          "kind": "fixed builtin routing",
+          "inputSha256": "dd17b380be9f831760c00480bbe6fcb2c3a998169edbfb2d7fd67149e9d350f2",
+          "outputSha256": "a3d3389975aaa59bc240125f83506ab7387b486da48b89e7b2ea23e4796740ac",
+          "anchors": 5
+        },
+        {
+          "kind": "Aux transient protocol generation 2",
+          "inputSha256": "a3d3389975aaa59bc240125f83506ab7387b486da48b89e7b2ea23e4796740ac",
+          "outputSha256": "9d8d511f22c729dcf2e3e2fedb08923a975c192822f9ec00a5de7873ea5a0eca",
+          "anchors": 3
+        },
+        {
+          "kind": "Aux tag icon schema",
+          "inputSha256": "9d8d511f22c729dcf2e3e2fedb08923a975c192822f9ec00a5de7873ea5a0eca",
+          "outputSha256": "1f41787cee0c72e5a82152bf3de558ad6169f9c36df44746e0e4e624862a2d0d",
+          "anchors": 1
+        },
+        {
+          "kind": "runtime/selected-builtin-owner/entry.anchors.json",
+          "inputSha256": "1f41787cee0c72e5a82152bf3de558ad6169f9c36df44746e0e4e624862a2d0d",
+          "outputSha256": "d73b2dba546a63962c3bea3332f1a2cef1ea3e2052380c2566abd4f154c0654f",
+          "anchors": 8
+        },
+        {
+          "kind": "runtime/selected-file-reader/entry.anchors.json",
+          "inputSha256": "d73b2dba546a63962c3bea3332f1a2cef1ea3e2052380c2566abd4f154c0654f",
+          "outputSha256": "610608f08e8efb75da7bb9e3cae6317b1015e0e9157a2d69d4d3f25f2e852e9b",
+          "anchors": 6
+        },
+        {
+          "kind": "corrected Computer Use",
+          "inputSha256": "610608f08e8efb75da7bb9e3cae6317b1015e0e9157a2d69d4d3f25f2e852e9b",
+          "outputSha256": "f3e8bc26a961aebb23182d9950485fa95f598781118d0a3fcfabb5dfeaec96d4",
+          "anchors": 21
+        },
+        {
+          "kind": "browser automation",
+          "inputSha256": "f3e8bc26a961aebb23182d9950485fa95f598781118d0a3fcfabb5dfeaec96d4",
+          "outputSha256": "d76975377f0df43c5146d9a82fb19b42b74501d25ff08670b248d879badd0e5b",
+          "anchors": 26
+        },
+        {
+          "kind": "browser files",
+          "inputSha256": "d76975377f0df43c5146d9a82fb19b42b74501d25ff08670b248d879badd0e5b",
+          "outputSha256": "54b4a71ee1a14b392b2330f715e0232adf4b91854b72a6fc6ca97804e3164a01",
+          "anchors": 16
+        }
+      ]
+    },
+    {
+      "name": "background.js",
+      "input": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-local-completion-20261025-a38/Aux.app/Contents/Resources/aux/apps/extension/dist/background.js",
+      "inputSha256": "02b2288a0c1691a1e55d4f16c1db1147385da5b7030740b62c37432a191591cc",
+      "outputPath": "/private/tmp/aux-final-composed-resources-20261026-a2/background.js",
+      "outputSha256": "5eff26a667e650969311ca9341b66876e678960ac08dfd1419f00e33c529926f",
+      "stages": [
+        {
+          "kind": "browser automation",
+          "inputSha256": "02b2288a0c1691a1e55d4f16c1db1147385da5b7030740b62c37432a191591cc",
+          "outputSha256": "5d1e705c5322e2c45a6f054af6e10345f4ce4493dfb82a279f42653ee5033f2e",
+          "anchors": 6
+        },
+        {
+          "kind": "browser files",
+          "inputSha256": "5d1e705c5322e2c45a6f054af6e10345f4ce4493dfb82a279f42653ee5033f2e",
+          "outputSha256": "5eff26a667e650969311ca9341b66876e678960ac08dfd1419f00e33c529926f",
+          "anchors": 6
+        }
+      ]
+    }
+  ],
+  "inputs": {
+    "docs/integration/proposed/completion-20261026/runtime/fixed-builtins/entry.anchors.json": "873689d552203c4f7ccf9fd23cb6494844daa199fd5ad2be7ffdcb0079ba57ed",
+    "docs/integration/proposed/completion-20261026/runtime/selected-builtin-owner/entry.anchors.json": "1f5a1fd57e3f2f34ee7c162a5f4638bbd2f2ecde5f2164339803def2299138db",
+    "docs/integration/proposed/completion-20261026/runtime/selected-file-reader/entry.anchors.json": "e1ecc07b99fcd9c0aac2bfd8d9af3ee9e11b40d04feafe1831a2964d1c5cc05a",
+    "docs/integration/proposed/completion-20261026/desktop/browser-automation/resource-anchors.json": "fafafe77051e36060afba23543526eb3cdf34abc72eb08171377aac60b145c55",
+    "docs/integration/proposed/completion-20261026/desktop/browser-files/resource-anchors.json": "c8dbe8fec2d1d2a84fb382c180dfcbab9677aa58bf00e341c97751902bb131f1",
+    "docs/integration/proposed/completion-20261026/integration/computer-use/source-pins.json": "3b4e9fa7e3ac00c4335a93a501be75e77306efaf4e799c2fa0768344a58d928f",
+    "vendor/provided/aux-fixed-computer-use.mjs": "01cbee26a5ff85c42d1ee553cca7029b9112cff43d08b91ffb952216be12a81a",
+    "docs/integration/proposed/completion-20261026/integration/transform.mjs": "1ca9a216b68bbea58a91cfcd6d5c48945e7b96a141ca17a5dc364c208f2a28ed",
+    "docs/integration/proposed/completion-20261026/integration/pins.json": "ec25dfd7a6e8f4faf77f385476724a0a71ce7b75a529fe1854fb1afcdb0feffe",
+    "docs/integration/proposed/completion-20261026/integration/anchors.json": "e2c09669894a9b7a3e4e7e3ed7cfde7e5f4529d9358f9eacf49afa57156296f2",
+    "vendor/provided/cloud-transfer-binding.mjs": "63646431b9c349d928b7182f06a9c3b14b2948cfedeed666882280ad04d6896e",
+    "vendor/provided/aux-final-runtime-identity.mjs": "3af91a07f3c21ca104bb64d86bc8322b2f4fa15116b9860ffc7099a8567b0350",
+    "docs/integration/proposed/completion-20261026/integration/identity/source-pins.json": "136b03b377f47acde3935a36e32020308c5e21a668b81f9045b10ad4db2699bb",
+    "vendor/provided/aux-experimental-settings-v2.mjs": "c1ef323fe38ed1608cc2024739b28699b75a4292f4e9eeeffffc395dd98d28af",
+    "vendor/provided/aux-event-poll-client.mjs": "7e8cd86474af2f207e24280800514923617141c0dadbc70c7ad437bf08bb3ec7",
+    "vendor/provided/aux-event-poll-integration.mjs": "d94dd3f73ac905ce159495264704f1c5ddc332db4417a9d863d3264b29b0c742",
+    "docs/integration/proposed/completion-20261026/integration/events/source-pins.json": "050903c9e0e11a80f80d681e7f664ca18c3d057e64f67b5ca55f5fc87f75cd57",
+    "vendor/provided/aux-ordinary-chat-startup.mjs": "79e41a260fea5959a675f422f0b7a12180abe3ef5f092c5b24a31583b680ddb9",
+    "docs/integration/proposed/completion-20261026/integration/ordinary-chat/source-pins.json": "d3a0065bdd599125d3925cd1247b45a848502e3e6e3c6f016b18f897d07a09c2",
+    "vendor/provided/aux-bash-close-lifetime.mjs": "a533aad404915a3fdddeb4b55fd6d5a70f51997f422f1003334579abdb9a5fbc",
+    "docs/integration/proposed/completion-20261026/integration/advertised-tools/source-pins.json": "d71ac38a5ca652807d5931e885b604677b0d74c3eff8917d4b3eec499aa5cf83",
+    "vendor/provided/aux-fixed-builtin-routing.mjs": "090ff5b24298d497f4d14d6aaafc00e7e1102287a42d2bf6bfcae11b9fae7320",
+    "vendor/provided/aux-ephemeral-protocol-identity.mjs": "f81ae98aa1489acd9204c368732f94258608270def0a47cbfab7abf6d4a4f0b4"
+  },
+  "nativeProjected": false,
+  "appExecuted": false
+}
