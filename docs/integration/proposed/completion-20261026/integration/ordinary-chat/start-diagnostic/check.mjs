@@ -1,0 +1,25 @@
+import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
+import vm from 'node:vm';
+const output=[];
+const context=vm.createContext({console:{error:value=>output.push(value)}});
+vm.runInContext(readFileSync(new URL('./diagnostic.js',import.meta.url),'utf8'),context);
+vm.runInContext(`{
+ const error = new TypeError('SECRET_MESSAGE');
+ error.code='SECRET_CODE';
+ error.stack='TypeError: SECRET_MESSAGE\\n    at createCoreToolset (file:///private/SECRET_PATH/aux-native-entry.mjs:123:456)\\n    at SECRET_FUNCTION (file:///private/SECRET_PATH/index.mjs:12:34)\\n    at SECRET_FUNCTION (https://SECRET_HOST/a.js:1:2)';
+ error.cause = new Error('SECRET_CAUSE');
+ Object.defineProperty(error.cause,'stack',{get(){throw Error('getter must not run')}});
+ auxAgentStartDiagnostic(error);
+ const aggregate = new AggregateError([new ReferenceError('SECRET_CHILD')],'SECRET_AGGREGATE');
+ aggregate.code='EPERM';auxAgentStartDiagnostic(aggregate);
+ const unsafe={};Object.defineProperty(unsafe,'stack',{get(){throw Error('getter must not run')}});auxAgentStartDiagnostic(unsafe);
+}`,context);
+assert.equal(output.length,3);
+assert(!output.join('').includes('SECRET'));
+const first=JSON.parse(output[0].split('] ')[1]);
+assert.equal(first.error.name,'TypeError');assert.equal(first.error.code,'unclassified');
+assert.deepEqual(first.error.frames,[{function:'createCoreToolset',source:'aux-native-entry.mjs',line:123,column:456},{function:'frame',source:'index.mjs',line:12,column:34}]);
+assert.equal(JSON.parse(output[1].split('] ')[1]).aggregate[0].name,'ReferenceError');
+assert.equal(JSON.parse(output[2].split('] ')[1]).error.frames.length,0);
+console.log('PASS: bounded source markers, fixed categories, no payload/getter leakage, aggregate cause, unknown input');

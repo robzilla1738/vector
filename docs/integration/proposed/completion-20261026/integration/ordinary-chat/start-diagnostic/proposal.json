@@ -1,0 +1,26 @@
+{
+  "format": "aux.agent-start.diagnostic-proposal.v1",
+  "reason": "Actual corrected candidate returned generic initialization PRECONDITION_FAILED before model stream; underlying cause currently discarded.",
+  "diagnosticSha256": "c2ce4286090728b3924d127f70fdbe35f32706fe871585e1e21e28a9d2af5807",
+  "find": "function auxReportAgentStartFailure(accountId, sessionId, owner, attempt, error) {\n",
+  "replace": "function auxReportAgentStartFailure(accountId, sessionId, owner, attempt, error) {\n  auxAgentStartDiagnostic(error);\n",
+  "countPerResource": 1,
+  "resources": [
+    {
+      "name": "index.mjs",
+      "path": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-completion-20261026-a1/Aux.app/Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/node-development/index.mjs",
+      "beforeSha256": "f5f21b5292ff469f7e06c66890b88936a70b5e270f6df6d974d49995ecdd52b0",
+      "afterSha256": "79319cd2f69b03e2140e810b27bed53b6d3dab9327747887c8905a6f6fbb8fc6"
+    },
+    {
+      "name": "aux-native-entry.mjs",
+      "path": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-completion-20261026-a1/Aux.app/Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/node-development/aux-native-entry.mjs",
+      "beforeSha256": "337088645a043f5a0870407839a8faabd166b328ed0b5f1c066bcc17bc76a990",
+      "afterSha256": "87a68b97ca560fdea8972d2b2490962ec58a2dc715b99a1462edc13c5b523423"
+    }
+  ],
+  "messageOrPayloadLogged": false,
+  "appModified": false,
+  "signingPerformed": false,
+  "behaviorCorrectionProposed": false
+}
