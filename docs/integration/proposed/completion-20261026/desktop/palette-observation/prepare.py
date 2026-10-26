@@ -1,0 +1,23 @@
+"""Temporary payload-free palette lifetime/API observations; no behavior change."""
+from pathlib import Path
+import difflib,hashlib,json,runpy
+HERE=Path(__file__).resolve().parent
+ROOT=Path('/private/tmp/aux-chromium-recovery-snapshot-20261023/src')
+CHANGES={'chrome/browser/ui/views/frame/aux_tab_search_bubble.cc': [('if (source == GetWebContents())\n      close_.Run();', 'if (source == GetWebContents()) {\n      LOG(ERROR) << "Aux palette event=1";\n      close_.Run();\n    }'), ('  void Hide() {\n    if (!visible_)', '  void Hide() {\n    LOG(ERROR) << "Aux palette event=6 visible=" << visible_;\n    if (!visible_)'), ('  void CloseAndReload() {\n    reload_after_hide_', '  void CloseAndReload() {\n    LOG(ERROR) << "Aux palette event=7";\n    reload_after_hide_'), ('if (widget == widget_.get() && !active && visible_)\n      Hide();', 'if (widget == widget_.get() && !active && visible_) {\n      LOG(ERROR) << "Aux palette event=2";\n      Hide();\n    }'), ('change.type() == TabStripModelChange::kInserted)) {\n      Hide();', 'change.type() == TabStripModelChange::kInserted)) {\n      LOG(ERROR) << "Aux palette event=3 active=" << selection.active_tab_changed()\n                 << " inserted=" << (change.type() == TabStripModelChange::kInserted);\n      Hide();'), ('if (ToggleKey(key, profile_.get()))\n      CloseAndReload();\n    else if (key.key_code() == ui::VKEY_ESCAPE)\n      Hide();', 'if (ToggleKey(key, profile_.get())) {\n      LOG(ERROR) << "Aux palette event=5";\n      CloseAndReload();\n    } else if (key.key_code() == ui::VKEY_ESCAPE) {\n      LOG(ERROR) << "Aux palette event=4";\n      Hide();\n    }'), ('  if (*kind == "command") {\n    const auto command = request.FindInt("commandId");', '  if (*kind == "command") {\n    const auto command = request.FindInt("commandId");\n    LOG(ERROR) << "Aux palette event=8 command=" << command.value_or(-1);')], 'chrome/browser/extensions/api/aux_browser_preferences/aux_feature_expansion_api.cc': [('#include "base/json/json_writer.h"', '#include "base/json/json_writer.h"\n#include "base/logging.h"'), ('ExtensionFunction::ResponseAction AuxFeatureExpansionFunction::RunAux() {\n  if (extension_id()', 'ExtensionFunction::ResponseAction AuxFeatureExpansionFunction::RunAux() {\n  const std::string_view trace_method = std::string_view(name()).substr(22);\n  const int trace_action = trace_method == "listRecentFiles" ? 1 :\n      trace_method == "prepareDownloadRename" ? 2 : trace_method == "applyDownloadRename" ? 3 :\n      trace_method == "undoDownloadRename" ? 4 : trace_method == "dragRecentFile" ? 5 :\n      trace_method == "revealRecentFile" ? 6 : trace_method == "togglePictureInPicture" ? 7 : 0;\n  if (trace_action) LOG(ERROR) << "Aux palette action=" << trace_action << " stage=0";\n  if (extension_id()'), ('      return RespondNow(WithArguments(Failure("The current command context has expired.")));\n    if (method == "listRecentFiles") {', '      return RespondNow(WithArguments(Failure("The current command context has expired.")));\n    LOG(ERROR) << "Aux palette action=" << trace_action << " stage=1";\n    if (method == "listRecentFiles") {'), ('      return RespondNow(WithArguments(aux::files::ListRecentFiles(profile())));', '      auto result = aux::files::ListRecentFiles(profile());\n      LOG(ERROR) << "Aux palette action=1 stage=2 success="\n                 << result.FindBool("success").value_or(false);\n      return RespondNow(WithArguments(std::move(result)));')]}
+def main():
+ rows=[];patch=[]
+ for name,anchors in CHANGES.items():
+  baseline=HERE/'baseline'/name;source=HERE/'source'/name
+  if not baseline.exists():
+   baseline.parent.mkdir(parents=True,exist_ok=True);baseline.write_bytes((ROOT/name).read_bytes())
+  before=baseline.read_text();after=before
+  for old,new in anchors:
+   if after.count(old)!=1:raise ValueError('Expected one anchor: '+name+': '+old[:70])
+   after=after.replace(old,new)
+  source.parent.mkdir(parents=True,exist_ok=True);source.write_text(after)
+  rows.append({'path':name,'beforeSha256':hashlib.sha256(before.encode()).hexdigest(),'afterSha256':hashlib.sha256(after.encode()).hexdigest(),'anchors':len(anchors)})
+  patch.extend(difflib.unified_diff(before.splitlines(True),after.splitlines(True),fromfile='a/'+name,tofile='b/'+name))
+ (HERE/'native.patch').write_text(''.join(patch))
+ (HERE/'source-plan.json').write_text(json.dumps({'scope':'temporary palette lifetime and Files API diagnostics','projected':False,'compiled':False,'files':rows,'anchors':sum(x['anchors'] for x in rows)},indent=2)+'\n')
+ print('Counted repair replay: '+str(sum(x['anchors'] for x in rows))+' anchors in '+str(len(rows))+' files; no projection.')
+if __name__=='__main__':main()

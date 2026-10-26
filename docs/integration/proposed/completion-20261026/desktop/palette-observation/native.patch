@@ -1,0 +1,108 @@
+--- a/chrome/browser/ui/views/frame/aux_tab_search_bubble.cc
++++ b/chrome/browser/ui/views/frame/aux_tab_search_bubble.cc
+@@ -290,8 +290,10 @@
+     SetPreferredSize(kSearchSize);
+   }
+   void CloseContents(content::WebContents* source) override {
+-    if (source == GetWebContents())
++    if (source == GetWebContents()) {
++      LOG(ERROR) << "Aux palette event=1";
+       close_.Run();
++    }
+   }
+   content::KeyboardEventProcessingResult PreHandleKeyboardEvent(
+       content::WebContents* source,
+@@ -522,6 +524,7 @@
+     return true;
+   }
+   void Hide() {
++    LOG(ERROR) << "Aux palette event=6 visible=" << visible_;
+     if (!visible_)
+       return;
+     visible_ = false;
+@@ -547,6 +550,7 @@
+     }
+   }
+   void CloseAndReload() {
++    LOG(ERROR) << "Aux palette event=7";
+     reload_after_hide_ = true;
+     auto alive = weak_factory_.GetWeakPtr();
+     Hide();
+@@ -583,14 +587,19 @@
+     if (!visible_ || event.type() != ui::EventType::kKeyPressed)
+       return;
+     const auto& key = *event.AsKeyEvent();
+-    if (ToggleKey(key, profile_.get()))
++    if (ToggleKey(key, profile_.get())) {
++      LOG(ERROR) << "Aux palette event=5";
+       CloseAndReload();
+-    else if (key.key_code() == ui::VKEY_ESCAPE)
++    } else if (key.key_code() == ui::VKEY_ESCAPE) {
++      LOG(ERROR) << "Aux palette event=4";
+       Hide();
++    }
+   }
+   void OnWidgetActivationChanged(views::Widget* widget, bool active) override {
+-    if (widget == widget_.get() && !active && visible_)
++    if (widget == widget_.get() && !active && visible_) {
++      LOG(ERROR) << "Aux palette event=2";
+       Hide();
++    }
+   }
+   void OnWidgetDestroying(views::Widget* widget) override {
+     if (widget == parent_.get()) {
+@@ -615,6 +624,8 @@
+     if (visible_ && observed_model_ == model &&
+         (selection.active_tab_changed() ||
+          change.type() == TabStripModelChange::kInserted)) {
++      LOG(ERROR) << "Aux palette event=3 active=" << selection.active_tab_changed()
++                 << " inserted=" << (change.type() == TabStripModelChange::kInserted);
+       Hide();
+     }
+   }
+@@ -1067,6 +1078,7 @@
+   }
+   if (*kind == "command") {
+     const auto command = request.FindInt("commandId");
++    LOG(ERROR) << "Aux palette event=8 command=" << command.value_or(-1);
+     if (!command || !aux::IsNavigationCommand(*command) ||
+         !chrome::IsCommandEnabled(browser, *command))
+       return CommandFailure("Command is unavailable in this window");
+--- a/chrome/browser/extensions/api/aux_browser_preferences/aux_feature_expansion_api.cc
++++ b/chrome/browser/extensions/api/aux_browser_preferences/aux_feature_expansion_api.cc
+@@ -5,6 +5,7 @@
+ #include <vector>
+ #include "base/functional/bind.h"
+ #include "base/json/json_writer.h"
++#include "base/logging.h"
+ #include "base/memory/raw_ptr.h"
+ #include "base/no_destructor.h"
+ #include "base/scoped_observation.h"
+@@ -284,6 +285,12 @@
+ AuxFeatureExpansionFunction::AuxFeatureExpansionFunction() = default;
+ AuxFeatureExpansionFunction::~AuxFeatureExpansionFunction() = default;
+ ExtensionFunction::ResponseAction AuxFeatureExpansionFunction::RunAux() {
++  const std::string_view trace_method = std::string_view(name()).substr(22);
++  const int trace_action = trace_method == "listRecentFiles" ? 1 :
++      trace_method == "prepareDownloadRename" ? 2 : trace_method == "applyDownloadRename" ? 3 :
++      trace_method == "undoDownloadRename" ? 4 : trace_method == "dragRecentFile" ? 5 :
++      trace_method == "revealRecentFile" ? 6 : trace_method == "togglePictureInPicture" ? 7 : 0;
++  if (trace_action) LOG(ERROR) << "Aux palette action=" << trace_action << " stage=0";
+   if (extension_id() != aux::kAgentExtensionId || shutting_down_ || !Admitted(profile()))
+     return RespondNow(Error("Aux profile authority unavailable"));
+   const std::string_view method = std::string_view(name()).substr(22);
+@@ -427,9 +434,13 @@
+     if (!sender || !browser || browser->GetProfile() != profile() || !generation || !current ||
+         *generation != *current || !context.FindBool("success").value_or(false))
+       return RespondNow(WithArguments(Failure("The current command context has expired.")));
++    LOG(ERROR) << "Aux palette action=" << trace_action << " stage=1";
+     if (method == "listRecentFiles") {
+       InitializeAuxLocalFeatureOwners(profile());
+-      return RespondNow(WithArguments(aux::files::ListRecentFiles(profile())));
++      auto result = aux::files::ListRecentFiles(profile());
++      LOG(ERROR) << "Aux palette action=1 stage=2 success="
++                 << result.FindBool("success").value_or(false);
++      return RespondNow(WithArguments(std::move(result)));
+     }
+     if (method == "togglePictureInPicture") {
+       if (!user_gesture()) return RespondNow(Error("A user gesture is required"));
