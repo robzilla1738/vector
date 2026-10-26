@@ -7,7 +7,7 @@ for role in ['browser','daemon','resources','ui']:
  p.add_argument('--'+role+'-receipt',type=Path,required=True)
 p.add_argument('--relocation-receipt',type=Path,required=True)
 p.add_argument('--bootstrap-policy',type=Path,required=True)
-p.add_argument('--computer-use-policy',type=Path,required=True)
+p.add_argument('--computer-use-policy',type=Path)
 p.add_argument('--output',type=Path,required=True)
 a=p.parse_args();repo=a.repository.resolve(strict=True)
 accepted=repo/'out/provided-candidate-local-completion-20261025-a38/Aux.app'
@@ -56,9 +56,11 @@ for row in relocation['replacements']:
  replace(row['output'],target,row['outputSha256'],'paired runtime relocation')
 policy=json.loads(regular(a.bootstrap_policy))
 if policy.get('format')!='aux.fresh.bootstrap.policy.v10':raise ValueError('Explicit fixed-image v10 policy required; no v9 migration')
-for source,name in [(a.bootstrap_policy,'AuxFreshBootstrapPolicy.json'),(a.computer_use_policy,'AuxComputerUseHelperLaunchPolicy.json')]:
+policy_resources=[(a.bootstrap_policy,'AuxFreshBootstrapPolicy.json')]
+if a.computer_use_policy:policy_resources.append((a.computer_use_policy,'AuxComputerUseHelperLaunchPolicy.json'))
+for source,name in policy_resources:
  replace(source,'Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/'+name,sha(regular(source)),'fixed role launch resource; not signing/activation proof')
-if json.loads(regular(a.computer_use_policy)).get('format')!='aux.computer-use.fixed-helper-launch.v1':raise ValueError('Exact fixed CU policy required')
-result={'format':'aux.completion.successor-assembly-plan.v1','acceptedApp':str(accepted),'proposedApp':str(final),'freshNamespace':'Aux Browser Completion 20261026','receiptPins':pins,'orderedActions':actions,'metadataUpdates':['bundle.json finalApp and only active delivered file rows/hash/size; preserve historical source manifests and lineage','append final source/native/UI/runtime receipt hashes and policies; fullIdentityComplete/runtimeAccepted/productionReady false','fresh successor complete package inventory/provenance after all declared replacements; do not reuse A38 signatures or historical digest as current verification'],'explicitPostAssemblyGates':['one changed-file and native/resource cohort verification against this plan','current nested executable/library signature requirements and entitlements are separately reviewed, not inherited from A38','no signing, OS grants or launch authorized by this plan','never copy A38 support/cache/profile/key/provider state; fresh namespace only','verify current startup/browser policy and daemon both use matching v10 policy and fixed addon bytes','actual J1-J4 remain pending until successor observed'],'assembled':False,'signed':False,'executed':False,'runtimeAccepted':False}
+if a.computer_use_policy and json.loads(regular(a.computer_use_policy)).get('format')!='aux.computer-use.fixed-helper-launch.v1':raise ValueError('Exact fixed CU policy required')
+result={'format':'aux.completion.successor-assembly-plan.v1','acceptedApp':str(accepted),'proposedApp':str(final),'freshNamespace':'Aux Browser Completion 20261026','receiptPins':pins,'CUlaunchPolicyPending':not bool(a.computer_use_policy),'CUtestable':False,'computerUsePolicyGate':'After separately authorized helper signing, generate exact delivered-image policy before daemon/outer sealing. No invented signed digest or native guard bypass.','memoryPolicyGate':'Retain existing memory policy only if memory-helper image bytes are unchanged.','orderedActions':actions,'metadataUpdates':['bundle.json finalApp and only active delivered file rows/hash/size; preserve historical source manifests and lineage','append final source/native/UI/runtime receipt hashes and policies; fullIdentityComplete/runtimeAccepted/productionReady false','fresh successor complete package inventory/provenance after all declared replacements; do not reuse A38 signatures or historical digest as current verification'],'explicitPostAssemblyGates':['one changed-file and native/resource cohort verification against this plan','current nested executable/library signature requirements and entitlements are separately reviewed, not inherited from A38','no signing, OS grants or launch authorized by this plan','never copy A38 support/cache/profile/key/provider state; fresh namespace only','verify current startup/browser policy and daemon both use matching v10 policy and fixed addon bytes','actual J1-J4 remain pending until successor observed'],'assembled':False,'signed':False,'executed':False,'runtimeAccepted':False}
 with a.output.open('x') as stream:json.dump(result,stream,indent=2);stream.write('\n')
 print(json.dumps({'plan':str(a.output.resolve()),'actions':len(actions),'assembled':False}))

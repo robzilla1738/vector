@@ -1,0 +1,27 @@
+{
+  "format": "aux.excluded-products.source-check.v1",
+  "output": "/var/folders/98/j36zgdnd0h507whjl16gxl780000gp/T/aux-excluded-product-source-ZtI06l",
+  "files": [
+    {
+      "path": "/var/folders/98/j36zgdnd0h507whjl16gxl780000gp/T/aux-excluded-product-source-ZtI06l/index.mjs",
+      "inputSha256": "62226811478457d71f7b4ca7d8b256011d7789b25f5e1b7485f3b9a45a356031",
+      "outputSha256": "659c7cd718a1fd233d15d55c7d55b431a2fd250c6a099e33e6cc7e45b2a5f787",
+      "anchors": 7,
+      "syntaxPassed": true,
+      "exactReversePassed": true
+    },
+    {
+      "path": "/var/folders/98/j36zgdnd0h507whjl16gxl780000gp/T/aux-excluded-product-source-ZtI06l/aux-native-entry.mjs",
+      "inputSha256": "2fd53b79c00aa92a10c5b84a2581ea9759215dcfadc354c72e12527680e52e16",
+      "outputSha256": "e12e694ba803aa6c7e7ec90696e263752d5d1638ccddbe589293c54bf6cc72e9",
+      "anchors": 7,
+      "syntaxPassed": true,
+      "exactReversePassed": true
+    }
+  ],
+  "helperSymbolsRemoved": 73,
+  "appExecuted": false,
+  "nativeCompiled": false,
+  "originalAddonBytesChanged": false,
+  "ownerStateRead": false
+}
