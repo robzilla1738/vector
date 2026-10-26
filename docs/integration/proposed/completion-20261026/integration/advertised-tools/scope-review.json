@@ -91,6 +91,30 @@
       ]
     }
   },
+  "fixedProcessOwner": {
+    "path": "/private/tmp/aux-browser-only-daemon-build-20261025-a72/source/AuxAccountMemoryHelper.mm",
+    "sha256": "d3b38299dde1099d57fb52b0a30d31c567847fab3298dcfae18b267a769ff38d",
+    "lines": {
+      "(deny process-fork)": [
+        98
+      ],
+      "POSIX_SPAWN_CLOEXEC_DEFAULT|POSIX_SPAWN_START_SUSPENDED": [
+        282
+      ],
+      "owner_->PrepareLaunch()": [
+        290
+      ],
+      "owner_->SpawnStoppedAfterPrepared(": [
+        294
+      ],
+      "owner_->PublishSuspended(pid_)": [
+        301
+      ],
+      "owner_->ResumeStoppedAfterPublished(pid_)": [
+        302
+      ]
+    }
+  },
   "computerUseHelper": {
     "path": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-local-completion-20261025-a38/Aux.app/Contents/Resources/aux/apps/computer-use/Aux Computer Use.app/Contents/MacOS/aux-computer-use",
     "sha256": "debc03deb3f94eb7e8b50fa88d25e617f970b75f1e515b757b131655ad3dde51",
