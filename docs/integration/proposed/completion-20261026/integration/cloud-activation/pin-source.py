@@ -27,6 +27,9 @@ inputs=[
  'docs/integration/proposed/completion-20261026/integrator/cloud-production-configuration.json',
  'docs/integration/proposed/completion-20261026/integrator/cloud-env-metadata.json',
  'docs/integration/proposed/completion-20261026/integrator/cloud-state.json',
+ 'docs/integration/proposed/completion-20261026/integrator/cloud-dashboard-review.json',
+ 'docs/integration/proposed/completion-20261026/integrator/cloud-typecheck.json',
+ 'docs/integration/proposed/completion-20261026/integrator/product-link-audit.json',
  'docs/integration/proposed/final-completion/cloud/readiness.md',
  'docs/integration/proposed/final-completion/cloud/operations.md',
  'docs/cloud/production-resource-review/execution.json',
@@ -37,7 +40,7 @@ inputs=[
  'docs/integration/proposed/aux-backup-r2-live/README.md',
  'docs/integration/proposed/aux-cloud-hosted-restore-12/README.md',
 ]
-state=json.loads((root/inputs[2]).read_text())
+state=json.loads((root/'docs/integration/proposed/completion-20261026/integrator/cloud-state.json').read_text())
 reported=state['deployment']['reportedGitCommit']
 print(json.dumps({'format':'aux.cloud.activation-source-pins.v1','sourceRoot':str(root),
  'reviewedAt':'2026-10-26','sourceCommit':git('rev-parse','HEAD'),

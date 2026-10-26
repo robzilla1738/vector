@@ -2,9 +2,9 @@
   "format": "aux.cloud.activation-source-pins.v1",
   "sourceRoot": "/Users/rcourson/Documents/Vibe/web",
   "reviewedAt": "2026-10-26",
-  "sourceCommit": "e04bbd53fd69b138f2e3732f2bdc8e3c8a0f6783",
-  "serviceTree": "57dc5bd7721815d695d94a5b8ab70d6b3fa929da",
-  "lastServiceCommit": "5283f9ea072ec4983ff67de5253c3c2d5872bb26",
+  "sourceCommit": "5dd30822466d96a2e21c76a559dfa6ac138852e0",
+  "serviceTree": "fe0de2ed85d7d2e97477c25d41fa89571b8b4ccc",
+  "lastServiceCommit": "d7778e6468b589fd664c9d0e188faf6663a8af6e",
   "serviceFiles": [
     {
       "path": "services/aux-cloud/.env.example",
@@ -42,6 +42,11 @@
       "sha256": "a6affe36177c8b678a53ff85003c517849085961d592a3245a129b6aad52e0a5"
     },
     {
+      "path": "services/aux-cloud/app/community/page.tsx",
+      "bytes": 1132,
+      "sha256": "9c10a6836d751685588d7688ea7b2e90bd6b2a3cb071026ae3b17618f1962de7"
+    },
+    {
       "path": "services/aux-cloud/app/desktop/connect/page.tsx",
       "bytes": 1208,
       "sha256": "15ac9d51e21483ddfd2f1ea959e920a11fd4a69e083f78a8141b1946fdc691ba"
@@ -57,14 +62,34 @@
       "sha256": "45138b80c089dba60544431434d02169b57c5725fc8ad5e84cbc6138b34c249c"
     },
     {
+      "path": "services/aux-cloud/app/docs/page.tsx",
+      "bytes": 3100,
+      "sha256": "9df8551dcf1628deb0d9c1aac6787d4a09703fd475dd595509eb4ec2d6ef42fd"
+    },
+    {
+      "path": "services/aux-cloud/app/information-page.tsx",
+      "bytes": 542,
+      "sha256": "3af2e7f5f562c7ba14b9cc99fdc25f0fed329ac54a3011c3b3195528c9d50e33"
+    },
+    {
       "path": "services/aux-cloud/app/layout.tsx",
-      "bytes": 430,
-      "sha256": "0093422d466e8f9d04f89e3c3ca70408d70c8db026d74d8f057910cc162b6ec2"
+      "bytes": 416,
+      "sha256": "b668a9f70a46b533c1a1266536ad18da73a40d03ca5e6751c57aff8f2fd49646"
     },
     {
       "path": "services/aux-cloud/app/page.tsx",
       "bytes": 451,
       "sha256": "4cb50a922d74a5a9658feaec2698918a1db8b1d234c7460af4375845befed1ff"
+    },
+    {
+      "path": "services/aux-cloud/app/policy/privacy/page.tsx",
+      "bytes": 3797,
+      "sha256": "41a1f77cb3a4f7142e33a429fd47c7abfaff54ea2a44a16b43c1c4749e709a10"
+    },
+    {
+      "path": "services/aux-cloud/app/policy/terms/page.tsx",
+      "bytes": 2829,
+      "sha256": "f307514a18e5347bdf2bb10460c75c048b99d2ee7c00b1b66588c9c26a11eaa0"
     },
     {
       "path": "services/aux-cloud/app/s/[id]/page.tsx",
@@ -1087,7 +1112,7 @@
       "sha256": "59022a1315d692f82f70a9ab70fca44b5ddffe5af3987c91b4c0eb08aaa7d925"
     }
   ],
-  "serviceFileCount": 216,
+  "serviceFileCount": 221,
   "schemaManifest": {
     "001-auth.sql": "b86d32b9ffa4a746dcf8373d72d5a26db8e66c6328e9b6940baca79d31689981",
     "002-sync.sql": "41d503100fece24c2b7e0f4e84941ecaacc2d0932daceca2248ec452212257e5",
@@ -1118,6 +1143,21 @@
       "path": "docs/integration/proposed/completion-20261026/integrator/cloud-state.json",
       "bytes": 1363,
       "sha256": "1fc3a5cd5e4d69d1af5ce1c1c04882dc1121b3242f553a5ebb5b4e132ab0e0de"
+    },
+    {
+      "path": "docs/integration/proposed/completion-20261026/integrator/cloud-dashboard-review.json",
+      "bytes": 3930,
+      "sha256": "8698f2db02d03e058c42d1fcad7375af5fcea2e945ac018a29af6358c59852ca"
+    },
+    {
+      "path": "docs/integration/proposed/completion-20261026/integrator/cloud-typecheck.json",
+      "bytes": 389,
+      "sha256": "0cfea22b63c3086c880e989cbbac757465aa0badae97c1f9fb2f0379a2d9351a"
+    },
+    {
+      "path": "docs/integration/proposed/completion-20261026/integrator/product-link-audit.json",
+      "bytes": 935,
+      "sha256": "337bac453d23b9f20af38e635526b8c43a944728888cdce30ffc7e3665eebe69"
     },
     {
       "path": "docs/integration/proposed/final-completion/cloud/readiness.md",
@@ -1188,6 +1228,12 @@
     "services/aux-cloud/app/account/billing-panel.tsx",
     "services/aux-cloud/app/account/panel.tsx",
     "services/aux-cloud/app/api/v1/[[...path]]/route.ts",
+    "services/aux-cloud/app/community/page.tsx",
+    "services/aux-cloud/app/docs/page.tsx",
+    "services/aux-cloud/app/information-page.tsx",
+    "services/aux-cloud/app/layout.tsx",
+    "services/aux-cloud/app/policy/privacy/page.tsx",
+    "services/aux-cloud/app/policy/terms/page.tsx",
     "services/aux-cloud/config/deployment-resources.json",
     "services/aux-cloud/docs/auth-contract.md",
     "services/aux-cloud/docs/drive-1852.md",

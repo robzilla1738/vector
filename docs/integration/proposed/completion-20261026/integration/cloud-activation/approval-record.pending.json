@@ -4,13 +4,15 @@
   "activationAuthorized": false,
   "executed": false,
   "source": {
-    "snapshotCommit": "e04bbd53fd69b138f2e3732f2bdc8e3c8a0f6783",
-    "serviceTree": "57dc5bd7721815d695d94a5b8ab70d6b3fa929da",
-    "lastServiceCommit": "5283f9ea072ec4983ff67de5253c3c2d5872bb26",
+    "snapshotCommit": "5dd30822466d96a2e21c76a559dfa6ac138852e0",
+    "serviceTree": "fe0de2ed85d7d2e97477c25d41fa89571b8b4ccc",
+    "lastServiceCommit": "d7778e6468b589fd664c9d0e188faf6663a8af6e",
     "manifestFileSha256": "7d452e13d873f9c2b08efc5eab12c928d942e846f667be4938aa519740d89f10",
     "migrations": 12,
-    "historicalReviewSnapshot": true,
-    "refreshRequiredAfterIntegratedInformationRoutes": true
+    "historicalReviewSnapshot": false,
+    "refreshRequiredAfterIntegratedInformationRoutes": false,
+    "serviceFiles": 221,
+    "sourcePinScope": "Final service source freeze includes actual four information routes and corrected layout metadata; no tests rerun."
   },
   "c1": {
     "recipientConfiguration": "configuration.json",
@@ -39,7 +41,7 @@
     "allowPaidInference": false,
     "allowPayments": false,
     "webhook": "existing ep_3L5p7Z0hZJXXnNLt5eflPCCJ1uy only; fixture events only",
-    "configurationCorrection": "All six previously omitted required names confirmed present in Production-filtered dashboard. No credential restoration proposed; public values/pairing/behavior unverified."
+    "configurationCorrection": "All six names present; no restoration proposed. Public app/API origins and both false launch flags verified; origin lists/other public pairing values and actual behavior remain unverified."
   },
   "o1": {
     "proposedProvider": "DigitalOcean",

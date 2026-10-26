@@ -14,9 +14,8 @@
       "AUX_ALLOWED_ORIGINS",
       "CLERK_AUTHORIZED_PARTIES",
       "NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY",
-      "NEXT_PUBLIC_APP_URL",
-      "AUX_API_ORIGIN",
-      "RESEND_FROM"
+      "RESEND_FROM",
+      "AUX_SHARE_ORIGIN"
     ],
     "metadataResponseTruncated": true,
     "providerSecretPairingVerified": false,
@@ -38,7 +37,16 @@
       "RESEND_API_KEY",
       "RESEND_FROM"
     ],
-    "credentialRestorationNeeded": false
+    "credentialRestorationNeeded": false,
+    "confirmedPublicValues": {
+      "NEXT_PUBLIC_APP_URL": "https://app.getaux.co",
+      "AUX_API_ORIGIN": "https://api.getaux.co",
+      "AUX_PAYMENTS_ENABLED": "false",
+      "AUX_HOSTED_AI_ENABLED": "false"
+    },
+    "publicValueEvidence": "Root cloud-dashboard-review.json public-only Production configuration inspection; secret values never revealed.",
+    "originListStepUpNotCompleted": true,
+    "originListStatus": "AUX_ALLOWED_ORIGINS inspection required authenticator/passkey step-up; root navigated away. No OTP, recovery or secret value read."
   },
   "proposedPublicValues": {
     "NEXT_PUBLIC_APP_URL": "https://app.getaux.co",
@@ -128,5 +136,5 @@
     "recoveryEnvironment": "tiqx3r27nvdpnhpldrrbugximu",
     "generalVaultTokenToRunner": false
   },
-  "configurationStatus": "All six earlier omitted names present; nonsecret public values, credential pairing and actual behavior remain unverified."
+  "configurationStatus": "All six earlier omitted names present. App/API public origins and both false launch flags verified. Origin lists, share origin, sender/publishable-key values, credential pairing and actual hosted behavior remain unverified."
 }
