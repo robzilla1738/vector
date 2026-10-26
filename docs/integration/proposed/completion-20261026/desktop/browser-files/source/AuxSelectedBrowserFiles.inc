@@ -48,7 +48,9 @@ napi_value SelectedReadUploadFile(napi_env env,napi_callback_info info) {
   if(fstat(input.value,&after)!=0||fstatat(parent.value,leaf.c_str(),&named,AT_SYMLINK_NOFOLLOW)!=0||
       !SelectedBrowserSameFile(before,after)||!SelectedBrowserSameFile(before,named)||!scope->Current(env))
     return SelectedScopeFail(env,"Original upload identity changed");
-  close(input.value);input.value=-1;close(parent.value);parent.value=-1;
+  const bool input_closed=close(input.value)==0;input.value=-1;
+  const bool parent_closed=close(parent.value)==0;parent.value=-1;
+  if(!input_closed||!parent_closed){scope->MarkUnknown();return SelectedScopeFail(env,"Upload descriptor closure is unknown");}
   napi_value result,buffer,name;
   if(napi_create_object(env,&result)!=napi_ok||napi_create_buffer_copy(env,bytes.size(),bytes.data(),nullptr,&buffer)!=napi_ok||
       napi_create_string_utf8(env,leaf.data(),leaf.size(),&name)!=napi_ok||napi_set_named_property(env,result,"buffer",buffer)!=napi_ok||
@@ -138,8 +140,9 @@ napi_value SelectedPublishBrowserDownload(napi_env env,napi_callback_info info) 
   stage.published=true;
   if(fsync(parent.value)!=0||!scope->Current(env))
     return SelectedScopeFail(env,"Download publication did not settle");
+  const bool parent_closed=close(parent.value)==0;parent.value=-1;
+  if(!parent_closed){scope->MarkUnknown();return SelectedScopeFail(env,"Download parent closure is unknown");}
   stage.complete=true;
-  close(parent.value);parent.value=-1;
   napi_value result;if(napi_create_string_utf8(env,published.data(),published.size(),&result)!=napi_ok)return nullptr;
   return result;
 }
