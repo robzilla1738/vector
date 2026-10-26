@@ -1,0 +1,11 @@
+--- /private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/aux/native_peer_policy/BUILD.gn
++++ /private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/aux/native_peer_policy/BUILD.gn
+@@ -29,7 +29,7 @@
+   ]
+   all_dependent_configs = [ ":aux_parent_swift_runtime_link" ]
+   module_name = "AuxParentSealedPolicy"
+-  swiftflags = [ "-D", "AUX_BROWSER_ONLY_NATIVE_STARTUP" ]
++  swiftflags = [ "-D", "AUX_BROWSER_ONLY_NATIVE_STARTUP", "-D", "AUX_FIXED_LINKED_PTY_POLICY" ]
+   frameworks = [ "Foundation.framework", "Security.framework", "CryptoKit.framework" ]
+ }
+ # The actual browser target containing AuxNativePeerTransport.cc must depend on

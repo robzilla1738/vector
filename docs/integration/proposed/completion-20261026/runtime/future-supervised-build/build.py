@@ -46,7 +46,7 @@ def main():
    require(new['sha256']==(replacement['sha256'] if replacement else old['sha256']),'Unreviewed archive member changed: '+old['name'])
    if not replacement:require(new==old,'Unchanged archive member metadata differs')
   receipt['privateArchive']={'source':str(source),'sourceSha256':a['sourceSha256'],'path':str(output),'sha256':sha(output),'members':after,'allOtherMembersPreserved':True,'originalUnchanged':sha(source)==a['sourceSha256']}
-  for index,command in enumerate(r['commands']):run(command,r['commandWorkingDirectories'][index],['compile current-user ES main','compile current-user fixed-linked Worker','compile paired parent reader object','link unsigned future daemon'][index])
+  for index,command in enumerate(r['commands']):run(command,r['commandWorkingDirectories'][index],r['commandKinds'][index])
   binary=out/'Aux Daemon'
   run(['/usr/bin/otool','-l',str(binary)],out,'inspect unsigned load commands')
   loads=(out/f'command-{len(receipt["commands"])-1}.log').read_text();require('LC_CODE_SIGNATURE' not in loads,'Unsigned artifact unexpectedly signed')

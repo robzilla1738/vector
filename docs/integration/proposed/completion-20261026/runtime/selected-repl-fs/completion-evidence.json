@@ -1,0 +1,50 @@
+{
+  "format": "aux.selected-repl-fs-source-completion.v1",
+  "sourceIntegrated": true,
+  "producerObjectsCompiled": true,
+  "resourceCopiesParsed": true,
+  "activated": false,
+  "candidateChanged": false,
+  "runtimeAccepted": false,
+  "fixture": {
+    "passed": true,
+    "methods": 12,
+    "scope": "Original resolver and private native facade contract; native syscall/runtime acceptance is separate",
+    "cases": [
+      "all method shapes",
+      "string and Buffer/typed/iterable data",
+      "Stats/Dirent predicates and dates",
+      "mkdir mode/recursive result",
+      "copy hook read/write distinction",
+      "bounded rm retry",
+      "canonical escape before execute",
+      "cancel during hook closes without execute",
+      "all prepared operations physically-close request"
+    ]
+  },
+  "receipts": [
+    {
+      "path": "/private/tmp/aux-selected-repl-fs-compile-20261026-b1/receipt.json",
+      "sha256": "705d89e2cdd9097f56410d6f310034c3884a719a5543cb99fbe5ffb406f40f4c"
+    },
+    {
+      "path": "/private/tmp/aux-supervised-resource-composition-20261026-b2/receipt.json",
+      "sha256": "183d4508d72e31943ee87e4c427d94e35158b1589eb4a3fd72a45e70bc9a27e0"
+    }
+  ],
+  "sourcePins": {
+    "source/AuxSelectedBuiltinOwner.inc": "d613b599a7594ded0208fcb4a1434f8f5e9c5faf66f7fd68d1138330facf92d8",
+    "source/selected-repl-fs-resource.mjs": "bbe7caef406a2c8c1b15fe05b5bf803c8ae91abed98f1b17029252fb8ff05c1f",
+    "source/selected-repl-resource.mjs": "31ead9a2d0e1f1bb2988c521d392dc9c7eed3dea12e4af8ab65608a9a8ce586b",
+    "source/AuxDevelopmentWorkerHost.cc": "cc275dad840d8ca708b13cf609a69ace38fd2020c0c986585ffb159936672ab9",
+    "source/AuxSelectedReplFs.inc": "4f4cd1bcec89b0d19a3de5ba30836e83f6ab6314b028a2c45dde17fb9a7fb51b",
+    "compose.py": "d2a0070ff60e3736c2ae632f76522649543ce90a4eb29e561f87ed1519af3f78",
+    "compile.py": "c99aa0748957d37523959f15b0d56c6af316e9797ae60999055178aaa7cfa7c5",
+    "check.mjs": "70ba01f4275b782be925b326675776ef857554b1992299db97c2dfc5aaf91348"
+  },
+  "remaining": [
+    "Apple ES approval and authorized execution signing delta",
+    "coherent browser parent variant and v11 resources",
+    "actual native filesystem and execution lifecycle acceptance"
+  ]
+}

@@ -1,0 +1,70 @@
+{
+  "format": "aux.future-supervised-integration.v2",
+  "sourceGatesClosed": true,
+  "unsignedLinkPassed": true,
+  "runtimeAccepted": false,
+  "activated": false,
+  "candidateChanged": false,
+  "recipeSha256": "4c9f4e90d25e57d4d7c256907d37f729da9530a088cbf04876d13ea3e7565a4f",
+  "receipt": {
+    "path": "/private/tmp/aux-future-supervised-native-20261026-b1/receipt.json",
+    "sha256": "758bf30ede822cadf5c197080e3d26ee9d00c4f377ddeaeb2be1cff401bdbc45"
+  },
+  "daemon": {
+    "path": "/private/tmp/aux-future-supervised-native-20261026-b1/Aux Daemon",
+    "sha256": "bf42ec929b0fdb1cbd11d6d4d56687cdf46828fca88850a43b53bfea7a9728c3"
+  },
+  "resources": {
+    "directory": "/private/tmp/aux-supervised-resource-composition-20261026-b2",
+    "leaves": [
+      "index.mjs",
+      "aux-native-entry.mjs"
+    ],
+    "receiptSha256": "183d4508d72e31943ee87e4c427d94e35158b1589eb4a3fd72a45e70bc9a27e0",
+    "changes": [
+      "bring index to existing entry process lifetime contract",
+      "fixed linked PTY loader and original producer join",
+      "selected native session HOME/TMP/cache/prefix and read/use lease",
+      "account cancellation plus original CLI/QuickJS awaited disposal",
+      "12-method generic filesystem preserving original resolver/hooks"
+    ]
+  },
+  "producers": {
+    "/private/tmp/aux-selected-repl-fs-compile-20261026-b1/spawn_sync.cc.o": "c1d1c8c3286e790337b583bdc99c6c466ab9888876df5e92f58ec4076b554e00",
+    "/private/tmp/aux-selected-repl-fs-compile-20261026-b1/process_wrap.cc.o": "62579def84d39c36b53dbda0f09c3184536d073b5c7ec86b4baa17dadf511e9f",
+    "/private/tmp/aux-selected-repl-fs-compile-20261026-b1/pty-linked.cc.o": "2e5c38b8fc685f5496b729cf1f0d22a8668731b8470378c7270a87972b086374",
+    "/private/tmp/aux-selected-repl-fs-compile-20261026-b1/AuxDevelopmentWorkerHost.cc.o": "f5e0abb058b042d88d78a9e6bbe9b24d06c4d043c2207f98145449fc6d7cd813"
+  },
+  "browser": {
+    "gnInput": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/aux/native_peer_policy/BUILD.gn",
+    "gnInputSha256": "69f2f6be74bfcf3a214323854ef34e209d4e4c139122a4f20b71fb89026679cf",
+    "gnDelta": "browser-gn.patch",
+    "sourceReplacements": {
+      "AuxFreshBootstrapPolicy.swift": "/Users/rcourson/Documents/Vibe/aux-completion-20261026/runtime/docs/integration/proposed/completion-20261026/runtime/future-supervised-build/source/ParentAuxFreshBootstrapPolicy.swift",
+      "AuxAuthenticatedChildParentPolicyReader.swift": "/Users/rcourson/Documents/Vibe/aux-completion-20261026/runtime/docs/integration/proposed/completion-20261026/runtime/future-supervised-build/source/AuxAuthenticatedChildParentPolicyReader.swift"
+    },
+    "unchangedSource": "AuxStrictEnvelopeObject.swift",
+    "proofObject": "/private/tmp/aux-future-supervised-native-20261026-b1/parent-policy.o",
+    "proofObjectSha256": "6c8cadaadbe8f9eb0c2e0385ac259bcfe5926a9c4d73984990b383eb59656a74",
+    "rule": "Compile/project as the existing aux_parent_sealed_policy target replacement; never add a duplicate parent C ABI object or link it into the daemon."
+  },
+  "policies": {
+    "pairedFormat": "aux.fresh.bootstrap.policy.v11",
+    "retainedCurrentUserLayout": 9,
+    "sources": "rebased-policy-changes.json",
+    "signedAddonsPreserved": true,
+    "ordinaryImageAncestorAclRepairPreserved": true,
+    "helperDescriptor": "Must encode actual subsequently authorized signed spawn-helper; no digest invented."
+  },
+  "remainingAuthority": [
+    "Apple approval for submitted request 2H4D7KNGUP; submission is not approval",
+    "separately reviewed exact ES daemon entitlement/provisioning and necessary signed helper/containing-object delta",
+    "exact fresh supported v11 disposable namespace or explicitly authorized supported recovery; no policy/ciphertext reinterpretation"
+  ],
+  "remainingIntegration": [
+    "incorporate any final startup repair found by Batch 1 into this future Main/daemon cohort before activation",
+    "integrator projects paired browser sources/GN and links one coherent browser",
+    "generate exact paired v11 resources using actual signed helper and composed leaf hashes before containing seals",
+    "perform real Bash/yielded/PTY/CLI/fs cancellation and escaped-descendant shutdown acceptance under granted authority"
+  ]
+}

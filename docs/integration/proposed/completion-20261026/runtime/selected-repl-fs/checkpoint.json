@@ -1,16 +1,11 @@
 {
-  "format": "aux.selected-repl-fs-owner-stop-checkpoint.v1",
-  "ownerRequestedStop": true,
-  "integrated": false,
-  "compiled": false,
-  "parsed": false,
+  "format": "aux.selected-repl-fs-current-checkpoint.v2",
+  "priorPauseSupersededByOwnerImplementationRequest": true,
+  "integrated": true,
+  "compiled": true,
+  "parsed": true,
   "activated": false,
   "candidateChanged": false,
-  "readyForCompile": false,
-  "sourcePins": {
-    "README.md": "ac7d8f6adeabbe79f0e03639da54f8afab870c64f1e56c028467dbde8089fde3",
-    "original-create-repl-fs.mjs": "3630bb2afe4dbe892f6937cd567f1a26ed074ff08c27bd931985dd5ac3eef1ae",
-    "inventory.json": "7d12934052fd364db8ae6997c69044fc4cd7d58670a4eb03cd3b56c5342b6850",
-    "source/AuxSelectedReplFs.inc": "487ce9e89f24a5dac4689d84197e8760b2ae13999a90e9bd1436d7afd87c7ca2"
-  }
+  "runtimeAccepted": false,
+  "evidence": "completion-evidence.json"
 }
