@@ -1,0 +1,359 @@
+{
+  "format": "aux.device-routines.launch.source-pins.v1",
+  "files": [
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/provider-Cw0zhujt.js",
+      "inputPath": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-local-completion-20261025-a38/Aux.app/Contents/Resources/aux/apps/extension/dist/assets/provider-Cw0zhujt.js",
+      "inputSha256": "8aee4a9cc8229397e4067fb9a9a4772ef4bdfddc03d1db3f2c84836a1b6fe724",
+      "observedArtifactSha256": "5f0762d4441bfc708a9f4f9d0d4dd56a2e44f0fc26947e464415c5a1aec07bd8",
+      "anchors": [
+        {
+          "find": "children:e===\"cloud\"?\"Cloud\":n?\"This computer\"",
+          "replace": "children:e===\"cloud\"?\"Cloud unavailable \u00b7 Preserved\":n?\"This computer\"",
+          "count": 1
+        },
+        {
+          "find": "Kn=\"Ask the agent to change where this routine runs. You cannot change it manually here.\"",
+          "replace": "Kn=\"Routines run on this computer. Existing cloud routines are preserved and unavailable.\"",
+          "count": 1
+        },
+        {
+          "find": "const{accountId:s}=q(),a=Q(),{data:i=!1}=te(a.analytics.isExperimentalEligible.queryOptions({accountId:s})),l=Le(),m=l.watch(\"attachment\")",
+          "replace": "const l=Le(),m=l.watch(\"attachment\")",
+          "count": 1
+        },
+        {
+          "find": "Ke,{value:u,disabled:e,onValueChange:h=>{h!==\"device\"&&h!==\"cloud\"||(l.setValue(\"environment\",h,{shouldDirty:!0}),h===\"cloud\"&&l.setValue(\"attachment\",{type:\"standalone\"},{shouldDirty:!0,shouldValidate:!0}))}",
+          "replace": "Ke,{value:u,disabled:e||!n,onValueChange:h=>{h===\"device\"&&l.setValue(\"environment\",\"device\",{shouldDirty:!0,shouldValidate:!0})}",
+          "count": 1
+        },
+        {
+          "find": "children:[(0,r.jsx)(we,{value:\"device\",children:\"This computer\"}),i&&(0,r.jsx)(we,{value:\"cloud\",children:\"Cloud\"})]",
+          "replace": "children:[(0,r.jsx)(we,{value:\"device\",children:\"This computer\"})]",
+          "count": 1
+        },
+        {
+          "find": "Wo=M({environment:Z([\"device\",\"cloud\"])",
+          "replace": "Wo=M({environment:N(\"device\")",
+          "count": 1
+        },
+        {
+          "find": "f=!s||s.environment===\"cloud\"||s.deviceId===d.routineDeviceId",
+          "replace": "f=auxDeviceRoutineEditable(s,d)",
+          "count": 1
+        },
+        {
+          "find": "O=async k=>{try{if(e)",
+          "replace": "O=async k=>{try{if(k.environment!==\"device\"||!auxDeviceRoutineEditable(s,d))throw Error(\"Only routines on this computer can be changed. Cloud routines are preserved and unavailable.\");if(e)",
+          "count": 1
+        },
+        {
+          "find": "environment:k.environment,browserBinding:await dt()",
+          "replace": "environment:\"device\",browserBinding:await dt()",
+          "count": 1
+        },
+        {
+          "find": "if(!(!e||n!==\"active\"&&n!==\"paused\"))try{await C.mutateAsync",
+          "replace": "if(!(!e||n!==\"active\"&&n!==\"paused\"))try{if(!auxDeviceRoutineEditable(s,d))throw Error(\"This routine is unavailable on this computer.\");await C.mutateAsync",
+          "count": 1
+        },
+        {
+          "find": "(0,r.jsx)(\"div\",{className:\"-mx-1 min-h-0 overflow-y-auto px-1\",children:(0,r.jsxs)(Mn,{className:\"gap-4 py-1\"",
+          "replace": "(0,r.jsx)(\"fieldset\",{disabled:!f,className:\"-mx-1 min-h-0 min-w-0 overflow-y-auto px-1\",children:(0,r.jsxs)(Mn,{className:\"gap-4 py-1\"",
+          "count": 1
+        },
+        {
+          "find": "disabled:Y||!!e&&n!==\"active\"&&n!==\"paused\",onClick:e?b:i",
+          "replace": "disabled:Y||!!e&&(!f||n!==\"active\"&&n!==\"paused\"),onClick:e?b:i",
+          "count": 1
+        },
+        {
+          "find": "disabled:Y||!g.formState.isValid,children:e?\"Update\":\"Create\"",
+          "replace": "disabled:Y||!f||!g.formState.isValid,children:e?\"Update\":\"Create\"",
+          "count": 1
+        },
+        {
+          "find": "children:\"Set the routine name, schedule, and prompt.\"",
+          "replace": "children:s?.environment===\"cloud\"?\"Cloud routine preserved. Cloud execution and changes are unavailable.\":!f?\"This routine belongs to another device or this computer is not initialized.\":\"Set the routine name, schedule, and prompt.\"",
+          "count": 1
+        },
+        {
+          "find": "var r=ds(),",
+          "replace": "function auxDeviceRoutineEditable(routine,settings){const id=settings?.routineDeviceId;return typeof id===\"string\"&&id.trim().length>0&&(!routine||routine.environment===\"device\"&&routine.deviceId===id)}var r=ds(),",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/routines-BNdQOEUt.js",
+      "inputPath": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-local-completion-20261025-a38/Aux.app/Contents/Resources/aux/apps/extension/dist/assets/routines-BNdQOEUt.js",
+      "inputSha256": "7e859ebe734b72ef90e751b38ce6cd8be5c663cef714c8e8e4b60e4d8c65cb72",
+      "observedArtifactSha256": "7e859ebe734b72ef90e751b38ce6cd8be5c663cef714c8e8e4b60e4d8c65cb72",
+      "anchors": [
+        {
+          "find": "Y=a({environment:o([\"device\",\"cloud\"]).optional()",
+          "replace": "Y=a({environment:c(\"device\").default(\"device\")",
+          "count": 1
+        },
+        {
+          "find": "children:R(s)",
+          "replace": "children:s.environment===\"cloud\"?\"Cloud routine unavailable \u00b7 Preserved\":R(s)",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/routine-item-menu-DJrYR2RE.js",
+      "inputPath": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-local-completion-20261025-a38/Aux.app/Contents/Resources/aux/apps/extension/dist/assets/routine-item-menu-DJrYR2RE.js",
+      "inputSha256": "11d43e99917fe9fbd4ab366ce1f12095f26224828fb963a1194f6e71e0c03b08",
+      "observedArtifactSha256": "11d43e99917fe9fbd4ab366ce1f12095f26224828fb963a1194f6e71e0c03b08",
+      "anchors": [
+        {
+          "find": "a=async()=>{try{await t.mutateAsync",
+          "replace": "a=async()=>{try{if(s.environment!==\"device\")throw Error(\"Cloud routines are preserved and unavailable.\");await t.mutateAsync",
+          "count": 1
+        },
+        {
+          "find": "f=async()=>{if(await m(",
+          "replace": "f=async()=>{if(s.environment!==\"device\")return; if(await m(",
+          "count": 1
+        },
+        {
+          "find": "D=()=>i(\"edit\")",
+          "replace": "D=()=>{if(s.environment===\"device\")i(\"edit\")}",
+          "count": 1
+        },
+        {
+          "find": "onRunNow:()=>{h.mutateAsync",
+          "replace": "onRunNow:()=>{if(s.environment!==\"device\")return;h.mutateAsync",
+          "count": 1
+        },
+        {
+          "find": "disabled:p||s.status===\"completed\"",
+          "replace": "disabled:p||s.environment!==\"device\"||s.status===\"completed\"",
+          "count": 1
+        },
+        {
+          "find": "disabled:l||s.status===\"completed\"",
+          "replace": "disabled:l||s.environment!==\"device\"||s.status===\"completed\"",
+          "count": 1
+        },
+        {
+          "find": "disabled:l||s.status===\"paused\"",
+          "replace": "disabled:l||s.environment!==\"device\"||s.status===\"paused\"",
+          "count": 1
+        },
+        {
+          "find": "(t,{onClick:m,children:",
+          "replace": "(t,{onClick:m,disabled:s.environment!==\"device\",children:",
+          "count": 1
+        },
+        {
+          "find": "variant:\"destructive\",disabled:l,onClick:n",
+          "replace": "variant:\"destructive\",disabled:l||s.environment!==\"device\",onClick:n",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/node-development/index.mjs",
+      "inputPath": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-local-completion-20261025-a38/Aux.app/Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/node-development/index.mjs",
+      "inputSha256": "48af998738fb6d2fc30cb8d5b2e9de03cb04ab7d8563ebdaa5fe8100944fc514",
+      "observedArtifactSha256": "5e2145161fbf913a76895c1c5b648363e843bc215db7ab5eb0dc5b4c7110cfc6",
+      "anchors": [
+        {
+          "find": "async function createRoutine(Cn,ei){if(ei.environment===`cloud`)throw Error(`Cloud routines must be created through the server`);",
+          "replace": "function auxRequireCurrentDeviceRoutine(accountId,routine){const id=settings(accountId).get(`routineDeviceId`);if(typeof id!==`string`||!id.trim())throw Error(`Local scheduling device is not initialized.`);if(routine&&(routine.environment!==`device`||routine.deviceId!==id))throw Error(`Only routines on this computer are available. Cloud routines are preserved and unavailable.`);return id}async function createRoutine(Cn,ei){if(ei.environment!==void 0&&ei.environment!==`device`)throw Error(`Only device routines are available. Cloud routines are preserved.`);",
+          "count": 1
+        },
+        {
+          "find": "let ti=settings(Cn).get(`routineDeviceId`);if(!ti)throw Error(`Local scheduling device is not initialized.`);let ni=",
+          "replace": "let ti=auxRequireCurrentDeviceRoutine(Cn);let ni=",
+          "count": 1
+        },
+        {
+          "find": "routineCreateSchema=object({environment:_enum([`device`,`cloud`]).optional()",
+          "replace": "routineCreateSchema=object({environment:literal(`device`).default(`device`)",
+          "count": 1
+        },
+        {
+          "find": "if(ni.revision)return updateServerRoutine(Cn,ei,ti.revision??ni.revision,ti);",
+          "replace": "auxRequireCurrentDeviceRoutine(Cn,ni);if(ni.revision)return updateServerRoutine(Cn,ei,ti.revision??ni.revision,ti);",
+          "count": 1
+        },
+        {
+          "find": "async function deleteRoutine(Cn,ei){let ti=getRoutine(Cn,ei);if(ti?.revision)",
+          "replace": "async function deleteRoutine(Cn,ei){let ti=getRoutine(Cn,ei);if(!ti)throw Error(`Routine not found.`);auxRequireCurrentDeviceRoutine(Cn,ti);if(ti?.revision)",
+          "count": 1
+        },
+        {
+          "find": "async function runDueRoutine(Cn,ei,ti){if(getRoutine(Cn,ei.id)?.status!==`active`)return;",
+          "replace": "async function runDueRoutine(Cn,ei,ti){let current=getRoutine(Cn,ei.id);if(current?.status!==`active`||current.environment!==`device`||!current.deviceId||current.deviceId!==settings(Cn).get(`routineDeviceId`))return;",
+          "count": 1
+        },
+        {
+          "find": "if(ii.environment!==ri||ri===`device`&&ii.deviceId!==settings(Cn).get(`routineDeviceId`))throw Error(`Other-device execution is TO BE IMPLEMENTED via Remote Control.`);",
+          "replace": "if(ri!==`device`)throw Error(`Cloud routine execution is unavailable.`);auxRequireCurrentDeviceRoutine(Cn,ii);",
+          "count": 1
+        },
+        {
+          "find": "if(ti.status!==`active`||!/^DTSTART:",
+          "replace": "if(ti.environment!==`device`||!ti.deviceId||ti.deviceId!==settings(Cn).get(`routineDeviceId`)||ti.status!==`active`||!/^DTSTART:",
+          "count": 1
+        },
+        {
+          "find": ".set({deviceId:ei}).where(eq(RoutineTable.deviceId,ti))",
+          "replace": ".set({deviceId:ei}).where(and(eq(RoutineTable.environment,`device`),eq(RoutineTable.deviceId,ti)))",
+          "count": 1
+        },
+        {
+          "find": "where(eq(RoutineTable.deviceId,ri.id))",
+          "replace": "where(and(eq(RoutineTable.environment,`device`),eq(RoutineTable.deviceId,ri.id)))",
+          "count": 2
+        },
+        {
+          "find": "async function updateServerRoutine(Cn,ei,ti,ni){let ri=",
+          "replace": "async function updateServerRoutine(Cn,ei,ti,ni){let current=getRoutine(Cn,ei);if(!current)throw Error(`Routine not found on this computer.`);auxRequireCurrentDeviceRoutine(Cn,current);let ri=",
+          "count": 1
+        },
+        {
+          "find": ")),stateDb(Cn).insert(RoutineTable).values({id:ci,name:ei.name",
+          "replace": ")),auxRequireCurrentDeviceRoutine(Cn,{environment:`device`,deviceId:ti}),stateDb(Cn).insert(RoutineTable).values({id:ci,name:ei.name",
+          "count": 1
+        },
+        {
+          "find": "if(!ti||ti.status===`paused`||ti.status===`deleted`)return;let ni=ai?",
+          "replace": "if(!ti||ti.status===`paused`||ti.status===`deleted`)return;auxRequireCurrentDeviceRoutine(Cn,ti);let ni=ai?",
+          "count": 1
+        },
+        {
+          "find": "async function createCloudRoutine(Cn,ei){let ti=(/* @__PURE__ */ new Date()).toISOString(),ni=await fetchAuxAPIAuthenticated(Cn,`/routines`,{method:`POST`,output:routineV2Schema,body:{id:crypto.randomUUID(),type:ei.type??`standalone`,environment:`cloud`,deviceId:null,parentSessionId:ei.parentSessionId??null,channelId:null,projectId:null,name:ei.name,prompt:ei.prompt,rrule:ei.rrule,status:ei.status??`active`,nextRunAt:null,pausedAt:ei.status===`paused`?ti:null,deletedAt:null,createdAt:ti,metadata:ei.metadata??{origin:{type:`user`}},sessionConfig:{...ei.sessionConfig,harnessId:`worker`}}});return localRoutine(ni)}",
+          "replace": "",
+          "count": 1
+        },
+        {
+          "find": "if(ei.environment===`cloud`&&!await isAccountExperimentalEligible(Cn.accountId))throw new TRPCError({code:`FORBIDDEN`,message:`Cloud routines are only available to experimental users.`});return ei.environment===`cloud`?createCloudRoutine(Cn.accountId,ei):createRoutine(Cn.accountId,ei)",
+          "replace": "return createRoutine(Cn.accountId,ei)",
+          "count": 1
+        },
+        {
+          "find": "let{accountId:ti,routineId:ni,...ri}=ei;return ei.revision?updateServerRoutine(Cn.accountId,ni,ei.revision,ri):updateRoutine(Cn.accountId,ni,ri)",
+          "replace": "let{accountId:ti,routineId:ni,...ri}=ei;return updateRoutine(Cn.accountId,ni,ri)",
+          "count": 1
+        },
+        {
+          "find": "delete:byId.mutation(async({ctx:Cn,input:ei})=>(ei.revision?await updateServerRoutine(Cn.accountId,ei.routineId,ei.revision,{status:`deleted`}):await deleteRoutine(Cn.accountId,ei.routineId),{deleted:!0}))",
+          "replace": "delete:byId.mutation(async({ctx:Cn,input:ei})=>{let current=getRoutine(Cn.accountId,ei.routineId);if(!current)throw Error(`Routine not found.`);auxRequireCurrentDeviceRoutine(Cn.accountId,current);ei.revision?await updateServerRoutine(Cn.accountId,ei.routineId,ei.revision,{status:`deleted`}):await deleteRoutine(Cn.accountId,ei.routineId);return{deleted:!0}})",
+          "count": 1
+        },
+        {
+          "find": "return ti.environment===`cloud`?(await fetchAuxAPIAuthenticated(Cn.accountId,`/routines/${encodeURIComponent(ti.id)}/run`,{method:`POST`,body:{}})).accepted:runRoutine(Cn.accountId,ti)",
+          "replace": "auxRequireCurrentDeviceRoutine(Cn.accountId,ti);return runRoutine(Cn.accountId,ti)",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/node-development/aux-native-entry.mjs",
+      "inputPath": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-local-completion-20261025-a38/Aux.app/Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/node-development/aux-native-entry.mjs",
+      "inputSha256": "f355833cb607963a65ca3108e7ae19ea7ca60192a9f3d8e2644a3c12ec49c808",
+      "observedArtifactSha256": "38d61018477a838a4bc9fcf33cf99c7c97ddfad9a7fbe5ff859f60a4cdb587d9",
+      "anchors": [
+        {
+          "find": "async function createRoutine(Cn,ei){if(ei.environment===`cloud`)throw Error(`Cloud routines must be created through the server`);",
+          "replace": "function auxRequireCurrentDeviceRoutine(accountId,routine){const id=settings(accountId).get(`routineDeviceId`);if(typeof id!==`string`||!id.trim())throw Error(`Local scheduling device is not initialized.`);if(routine&&(routine.environment!==`device`||routine.deviceId!==id))throw Error(`Only routines on this computer are available. Cloud routines are preserved and unavailable.`);return id}async function createRoutine(Cn,ei){if(ei.environment!==void 0&&ei.environment!==`device`)throw Error(`Only device routines are available. Cloud routines are preserved.`);",
+          "count": 1
+        },
+        {
+          "find": "let ti=settings(Cn).get(`routineDeviceId`);if(!ti)throw Error(`Local scheduling device is not initialized.`);let ni=",
+          "replace": "let ti=auxRequireCurrentDeviceRoutine(Cn);let ni=",
+          "count": 1
+        },
+        {
+          "find": "routineCreateSchema=object({environment:_enum([`device`,`cloud`]).optional()",
+          "replace": "routineCreateSchema=object({environment:literal(`device`).default(`device`)",
+          "count": 1
+        },
+        {
+          "find": "if(ni.revision)return updateServerRoutine(Cn,ei,ti.revision??ni.revision,ti);",
+          "replace": "auxRequireCurrentDeviceRoutine(Cn,ni);if(ni.revision)return updateServerRoutine(Cn,ei,ti.revision??ni.revision,ti);",
+          "count": 1
+        },
+        {
+          "find": "async function deleteRoutine(Cn,ei){let ti=getRoutine(Cn,ei);if(ti?.revision)",
+          "replace": "async function deleteRoutine(Cn,ei){let ti=getRoutine(Cn,ei);if(!ti)throw Error(`Routine not found.`);auxRequireCurrentDeviceRoutine(Cn,ti);if(ti?.revision)",
+          "count": 1
+        },
+        {
+          "find": "async function runDueRoutine(Cn,ei,ti){if(getRoutine(Cn,ei.id)?.status!==`active`)return;",
+          "replace": "async function runDueRoutine(Cn,ei,ti){let current=getRoutine(Cn,ei.id);if(current?.status!==`active`||current.environment!==`device`||!current.deviceId||current.deviceId!==settings(Cn).get(`routineDeviceId`))return;",
+          "count": 1
+        },
+        {
+          "find": "if(ii.environment!==ri||ri===`device`&&ii.deviceId!==settings(Cn).get(`routineDeviceId`))throw Error(`Other-device execution is TO BE IMPLEMENTED via Remote Control.`);",
+          "replace": "if(ri!==`device`)throw Error(`Cloud routine execution is unavailable.`);auxRequireCurrentDeviceRoutine(Cn,ii);",
+          "count": 1
+        },
+        {
+          "find": "if(ti.status!==`active`||!/^DTSTART:",
+          "replace": "if(ti.environment!==`device`||!ti.deviceId||ti.deviceId!==settings(Cn).get(`routineDeviceId`)||ti.status!==`active`||!/^DTSTART:",
+          "count": 1
+        },
+        {
+          "find": ".set({deviceId:ei}).where(eq(RoutineTable.deviceId,ti))",
+          "replace": ".set({deviceId:ei}).where(and(eq(RoutineTable.environment,`device`),eq(RoutineTable.deviceId,ti)))",
+          "count": 1
+        },
+        {
+          "find": "where(eq(RoutineTable.deviceId,ri.id))",
+          "replace": "where(and(eq(RoutineTable.environment,`device`),eq(RoutineTable.deviceId,ri.id)))",
+          "count": 2
+        },
+        {
+          "find": "async function updateServerRoutine(Cn,ei,ti,ni){let ri=",
+          "replace": "async function updateServerRoutine(Cn,ei,ti,ni){let current=getRoutine(Cn,ei);if(!current)throw Error(`Routine not found on this computer.`);auxRequireCurrentDeviceRoutine(Cn,current);let ri=",
+          "count": 1
+        },
+        {
+          "find": ")),stateDb(Cn).insert(RoutineTable).values({id:ci,name:ei.name",
+          "replace": ")),auxRequireCurrentDeviceRoutine(Cn,{environment:`device`,deviceId:ti}),stateDb(Cn).insert(RoutineTable).values({id:ci,name:ei.name",
+          "count": 1
+        },
+        {
+          "find": "if(!ti||ti.status===`paused`||ti.status===`deleted`)return;let ni=ai?",
+          "replace": "if(!ti||ti.status===`paused`||ti.status===`deleted`)return;auxRequireCurrentDeviceRoutine(Cn,ti);let ni=ai?",
+          "count": 1
+        },
+        {
+          "find": "async function createCloudRoutine(Cn,ei){let ti=(/* @__PURE__ */ new Date()).toISOString(),ni=await fetchAuxAPIAuthenticated(Cn,`/routines`,{method:`POST`,output:routineV2Schema,body:{id:crypto.randomUUID(),type:ei.type??`standalone`,environment:`cloud`,deviceId:null,parentSessionId:ei.parentSessionId??null,channelId:null,projectId:null,name:ei.name,prompt:ei.prompt,rrule:ei.rrule,status:ei.status??`active`,nextRunAt:null,pausedAt:ei.status===`paused`?ti:null,deletedAt:null,createdAt:ti,metadata:ei.metadata??{origin:{type:`user`}},sessionConfig:{...ei.sessionConfig,harnessId:`worker`}}});return localRoutine(ni)}",
+          "replace": "",
+          "count": 1
+        },
+        {
+          "find": "if(ei.environment===`cloud`&&!await isAccountExperimentalEligible(Cn.accountId))throw new TRPCError({code:`FORBIDDEN`,message:`Cloud routines are only available to experimental users.`});return ei.environment===`cloud`?createCloudRoutine(Cn.accountId,ei):createRoutine(Cn.accountId,ei)",
+          "replace": "return createRoutine(Cn.accountId,ei)",
+          "count": 1
+        },
+        {
+          "find": "let{accountId:ti,routineId:ni,...ri}=ei;return ei.revision?updateServerRoutine(Cn.accountId,ni,ei.revision,ri):updateRoutine(Cn.accountId,ni,ri)",
+          "replace": "let{accountId:ti,routineId:ni,...ri}=ei;return updateRoutine(Cn.accountId,ni,ri)",
+          "count": 1
+        },
+        {
+          "find": "delete:byId.mutation(async({ctx:Cn,input:ei})=>(ei.revision?await updateServerRoutine(Cn.accountId,ei.routineId,ei.revision,{status:`deleted`}):await deleteRoutine(Cn.accountId,ei.routineId),{deleted:!0}))",
+          "replace": "delete:byId.mutation(async({ctx:Cn,input:ei})=>{let current=getRoutine(Cn.accountId,ei.routineId);if(!current)throw Error(`Routine not found.`);auxRequireCurrentDeviceRoutine(Cn.accountId,current);ei.revision?await updateServerRoutine(Cn.accountId,ei.routineId,ei.revision,{status:`deleted`}):await deleteRoutine(Cn.accountId,ei.routineId);return{deleted:!0}})",
+          "count": 1
+        },
+        {
+          "find": "return ti.environment===`cloud`?(await fetchAuxAPIAuthenticated(Cn.accountId,`/routines/${encodeURIComponent(ti.id)}/run`,{method:`POST`,body:{}})).accepted:runRoutine(Cn.accountId,ti)",
+          "replace": "auxRequireCurrentDeviceRoutine(Cn.accountId,ti);return runRoutine(Cn.accountId,ti)",
+          "count": 1
+        }
+      ]
+    }
+  ],
+  "observedCandidateReceipt": {
+    "path": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-completion-20261026-a1/pre-sign-resource-delta-a3/receipt.json",
+    "sha256": "e6bee1fa10aa45be1f36420cb6734a3c3fca844aa5010d097b416db7a755c948"
+  }
+}

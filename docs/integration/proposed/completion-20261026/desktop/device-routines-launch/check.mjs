@@ -1,0 +1,46 @@
+import {readFileSync,writeFileSync,mkdtempSync} from 'node:fs';
+import {join} from 'node:path';
+import {tmpdir} from 'node:os';
+import {createHash} from 'node:crypto';
+import {spawnSync} from 'node:child_process';
+import assert from 'node:assert/strict';
+import vm from 'node:vm';
+import {transformAuxDeviceRoutines} from '../../../../../../vendor/provided/aux-device-routines-launch.mjs';
+const here=new URL('.',import.meta.url),pins=JSON.parse(readFileSync(new URL('./source-pins.json',here),'utf8'));
+const app='/Users/rcourson/Documents/Vibe/web/out/provided-candidate-completion-20261026-a1/Aux.app',out=mkdtempSync(join(tmpdir(),'aux-device-routines-')),files=[];let provider,daemon;
+for(const pin of pins.files){
+ const source=readFileSync(pin.inputPath,'utf8'),before=readFileSync(join(app,pin.path),'utf8');assert.equal(createHash('sha256').update(before).digest('hex'),pin.observedArtifactSha256);
+ const result=transformAuxDeviceRoutines({path:pin.path,text:before,source}),target=join(out,pin.path.split('/').at(-1)+'.mjs');writeFileSync(target,result.text);
+ const check=spawnSync(process.execPath,['--check',target],{encoding:'utf8'});assert.equal(check.status,0,check.stderr);
+ if(pin.path.endsWith('provider-Cw0zhujt.js'))provider=result.text;
+ if(pin.path.endsWith('/index.mjs'))daemon=result.text;
+ files.push({path:pin.path,inputSha256:pin.observedArtifactSha256,outputSha256:createHash('sha256').update(result.text).digest('hex'),anchors:result.anchors.length,fullSourceParse:true});
+}
+const helper=provider.slice(provider.indexOf('function auxDeviceRoutineEditable('),provider.indexOf('var r=ds(),'));
+const selector=provider.slice(provider.indexOf('Hi=({editing:'),provider.indexOf(',qi=({disabled:'));
+const values={environment:'device',attachment:{type:'standalone'},permissionMode:'guard'},sets=[];
+const jsx=(tag,props)=>({tag,...props}),context=vm.createContext({r:{jsx,jsxs:jsx},Le:()=>({watch:key=>values[key],setValue:(...args)=>sets.push(args)}),zi:{standalone:'Standalone',child:'Runs in task'},Kn:'fixture',Ke:'select',je:'tooltip',ue:'trigger',Ue:'select-trigger',ce:'chevron',Ie:()=>'',ut:'value',de:'description',Ve:'options',we:'option',qi:'parent',Bi:'permission',he:'button',Dr:'accordion',Or:'item',Tr:'heading',Nr:'panel',Ki:'environment-label'});
+vm.runInContext(helper+';var '+selector+';',context);
+const tree=context.Hi({editing:false,canEditSettings:true}),nodes=[];function walk(v){if(!v||typeof v!=='object')return;if(Array.isArray(v)){v.forEach(walk);return}nodes.push(v);walk(v.children)}walk(tree);
+const options=nodes.filter(x=>x.tag==='option');assert.deepEqual(options.map(x=>x.value),['standalone','child','device']);const env=nodes.find(x=>x.tag==='select'&&x.value==='device');env.onValueChange('cloud');assert.equal(sets.length,0);env.onValueChange('device');assert.equal(sets[0][1],'device');
+const start=provider.indexOf('O=async k=>{try{if(k.environment'),end=provider.indexOf(',D=k=>g.setValue("prompt"',start),submit=provider.slice(start+2,end);
+const mutations=[],errors=[],ui=vm.createContext({s:undefined,d:{routineDeviceId:'local:fixture'},e:undefined,m:7,j:{mutateAsync:async payload=>{mutations.push(payload);return{environment:'device',parentSessionId:null}}},dt:async()=>({profileId:'fixture'}),mn:k=>k.trigger.rrule,a:()=>{},u:async()=>{},Ce:{error:x=>errors.push(x)},g:{formState:{dirtyFields:{}}}});
+vm.runInContext(helper,ui);const save=vm.runInContext('('+submit+')',ui),form={environment:'device',name:'Fixture',prompt:'Fixture only',projectId:null,attachment:{type:'standalone'},trigger:{rrule:'FREQ=DAILY'},model:{provider:'fixture',modelId:'fixture'},permissionMode:'guard',notificationsEnabled:true};
+await save(form);assert.equal(mutations.length,1);assert.equal(mutations[0].environment,'device');assert.ok(!('deviceId'in mutations[0]),'daemon derives actual ID, never caller supplied');
+await save({...form,environment:'cloud'});ui.d={};await save(form);ui.d={routineDeviceId:'local:fixture'};ui.s={environment:'cloud',deviceId:'local:fixture'};await save(form);assert.equal(mutations.length,1);assert.equal(errors.length,3);
+const dHelper=daemon.slice(daemon.indexOf('function auxRequireCurrentDeviceRoutine('),daemon.indexOf('async function createRoutine(')),due=daemon.slice(daemon.indexOf('async function runDueRoutine('),daemon.indexOf('async function notifyRoutineParent(')),hydrate=daemon.slice(daemon.indexOf('async function applyServerRoutine('),daemon.indexOf('async function refreshServerRoutine('));
+const cloud={id:'preserved',environment:'cloud',deviceId:'local:fixture',status:'active',nextRunAt:new Date('2026-10-27')},preserved=JSON.stringify(cloud);let touched=0;
+const dctx=vm.createContext({settings:()=>({get:()=> 'local:fixture'}),getRoutine:()=>cloud,stateDb:()=>{touched++;throw Error('unexpected cloud write')},SessionStore:{get:()=>null},getNextRunAt:()=>{touched++;throw Error('unexpected cloud schedule')},runRoutine:()=>{touched++;throw Error('unexpected cloud run')}});
+vm.runInContext(dHelper+due+hydrate,dctx);assert.throws(()=>dctx.auxRequireCurrentDeviceRoutine(7,cloud),/preserved/);await dctx.runDueRoutine(7,cloud,new Date);await dctx.applyServerRoutine(7,cloud);assert.equal(touched,0);assert.equal(JSON.stringify(cloud),preserved);
+assert.ok(daemon.includes('eq(RoutineTable.environment,`device`),eq(RoutineTable.deviceId,ti)'));
+assert.ok(daemon.includes('eq(RoutineTable.environment,`device`),eq(RoutineTable.deviceId,ri.id)'));
+assert.ok(!daemon.includes('async function createCloudRoutine('));
+const create=daemon.slice(daemon.indexOf('async function createRoutine('),daemon.indexOf('function getRoutine('));let stored,insertions=0;
+const creation=vm.createContext({settings:()=>({get:()=> 'local:fixture'}),isSyncEnabled:()=>false,normalizeRRule:r=>r,routineTimezone:()=> 'UTC',getNextRunAt:()=>new Date('2026-10-27'),assertCapacity:()=>{},nanoid:()=> 'created-'+insertions,createSession$1:async()=>({id:'fixture-session',projectId:null,model:{},harnessId:'v1',permissionMode:'guard'}),SessionStore:{startLatestTurn:async()=>{},appendMessage:()=>{},finalizeLatestTurn:()=>{}},RoutineTable:{},stateDb:()=>({insert:()=>({values:value=>({run:()=>{stored=value;insertions++}})})}),getRoutine:()=>stored,EventBus:{emit:()=>{}},ensureRoutineMemory:async()=>{},notifyAgentFileChange:()=>{}});
+vm.runInContext(dHelper+create,creation);
+await creation.createRoutine(7,{environment:'device',name:'Fixture',prompt:'Fixture',rrule:'FREQ=DAILY',status:'paused'});assert.equal(stored.environment,'device');assert.equal(stored.deviceId,'local:fixture');assert.equal(stored.status,'paused');assert.equal(stored.nextRunAt,null);
+await creation.createRoutine(7,{name:'Fixture',prompt:'Fixture',rrule:'FREQ=DAILY'});assert.equal(stored.environment,'device');assert.equal(stored.deviceId,'local:fixture');assert.equal(stored.status,'active');
+await assert.rejects(creation.createRoutine(7,{environment:'cloud',name:'Fixture',prompt:'Fixture',rrule:'FREQ=DAILY'}),/Only device/);assert.equal(insertions,2);
+
+writeFileSync(new URL('./static-check.json',here),JSON.stringify({format:'aux.device-routines.launch.static-check.v1',files,actualSelectorDeviceOnly:true,actualCreateDerivesDeviceIdAndPreservesPausedActive:true,actualSubmitDevicePayload:true,cloudMissingOrOtherDeviceSubmitRefused:true,actualCloudHydrationAndDueFunctionsNoWritesOrQueue:true,cloudRecordBytesPreserved:true,fullAffectedSourceParse:true,serverRegressionExecuted:false,appExecuted:false,candidateChanged:false},null,2)+'\n');
+console.log(JSON.stringify({files:files.length,anchors:files.reduce((n,x)=>n+x.anchors,0),actualSelectorAndSubmitFixture:true,actualCloudHydrationDueNoMutation:true,passed:true}));

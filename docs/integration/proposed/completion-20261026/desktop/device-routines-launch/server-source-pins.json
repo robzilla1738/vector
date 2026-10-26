@@ -1,0 +1,43 @@
+{
+  "format": "aux.device-routines.server-overlay.v1",
+  "files": [
+    {
+      "path": "services/aux-cloud/src/routines-1852.ts",
+      "inputSha256": "0628ae99c87534fadb36bb33093a27b2df2900c5e5f68f198ca11b27c4f61102",
+      "outputSha256": "ea13c2e73173e1b8c4226bbf32e755eed7bf358b9ba005ac713b0ad87cb8db81",
+      "anchors": [
+        {
+          "find": "if(current.revision!==revision)failure(412,",
+          "replace": "if(current.environment!=='device')failure(409,'CLOUD_ROUTINE_UNAVAILABLE','Cloud routines are preserved and unavailable.');\n  if(current.revision!==revision)failure(412,",
+          "count": 1
+        },
+        {
+          "find": "AND e.payload->>'format'=${format} AND e.payload->>'deviceId'=${device}",
+          "replace": "AND e.payload->>'format'=${format} AND e.payload->>'environment'='device' AND e.payload->>'deviceId'=${device}",
+          "count": 1
+        },
+        {
+          "find": "AND payload->>'format'=${format} AND (payload->>'revision')::bigint=${revision}",
+          "replace": "AND payload->>'format'=${format} AND payload->>'environment'='device' AND (payload->>'revision')::bigint=${revision}",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "services/aux-cloud/src/routines-1852.test.ts",
+      "inputSha256": "9ac7c5b8631619757fd6e27fbccab6a9bfc9cc1c3490dc5a6c948de446648b3c",
+      "outputSha256": "081c19cec4d619bc0c7d88638af3ed3027e31efb6acb591258a90c06a34db94f",
+      "anchors": [
+        {
+          "find": "    const legacy={id:'old-routine'",
+          "replace": "    const cloud={format:'aux.routine.v2',...definition,id:'preserved-cloud',environment:'cloud',deviceId:session,status:'active',pausedAt:null,revision:1,appliedRevision:null,updatedAt:'2026-10-26T00:00:00Z'};\n    await pg.query(\"INSERT INTO sync_entities(user_id,kind,entity_id,payload) VALUES($1,'routine',$2,$3::jsonb)\",[owner,cloud.id,JSON.stringify(cloud)]);\n    const cloudBytes=async()=>(await pg.query<{payload:string}>(\"SELECT payload::text AS payload FROM sync_entities WHERE user_id=$1 AND entity_id=$2\",[owner,cloud.id])).rows[0].payload;\n    const preserved=await cloudBytes();\n    response=await request('/routines/preserved-cloud','PATCH',{revision:1,status:'paused'});assert.equal(response.status,409);assert.equal((await response.json() as {error:{code:string}}).error.code,'CLOUD_ROUTINE_UNAVAILABLE');\n    assert.equal((await request('/routines/preserved-cloud','PATCH',{revision:1,status:'deleted'})).status,409);\n    assert.equal((await request('/routines/device-sync','POST',{device,routines:[{id:cloud.id,revision:1,status:'completed',nextRunAt:null}]})).status,200);\n    assert.equal(await cloudBytes(),preserved,'Cloud record with matching stale device ID is never changed by device-sync or PATCH');\n    assert.equal((await(await request('/routines/preserved-cloud')).json() as {environment:string}).environment,'cloud');\n    const legacy={id:'old-routine'",
+          "count": 1
+        }
+      ]
+    }
+  ],
+  "executed": false,
+  "proposedFocusedCommand": "./node_modules/.bin/tsx --test src/routines-1852.test.ts",
+  "workingDirectory": "services/aux-cloud",
+  "transport": "Existing test replaces neonConfig.fetchFunction with actual local PGlite migration-backed adapter and sets synthetic offline.invalid DATABASE_URL; no env file or production credentials."
+}

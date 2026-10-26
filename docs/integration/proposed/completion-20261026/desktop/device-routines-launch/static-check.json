@@ -1,0 +1,50 @@
+{
+  "format": "aux.device-routines.launch.static-check.v1",
+  "files": [
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/provider-Cw0zhujt.js",
+      "inputSha256": "5f0762d4441bfc708a9f4f9d0d4dd56a2e44f0fc26947e464415c5a1aec07bd8",
+      "outputSha256": "ce56404bbdb516caacdcb23ef778505a366813d05196e29457ab4c79010ff35e",
+      "anchors": 15,
+      "fullSourceParse": true
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/routines-BNdQOEUt.js",
+      "inputSha256": "7e859ebe734b72ef90e751b38ce6cd8be5c663cef714c8e8e4b60e4d8c65cb72",
+      "outputSha256": "600fcdfc28713f43adc181ea964cffdaa209d520ea13d6f2294c237c4e578bb5",
+      "anchors": 2,
+      "fullSourceParse": true
+    },
+    {
+      "path": "Contents/Resources/aux/apps/extension/dist/assets/routine-item-menu-DJrYR2RE.js",
+      "inputSha256": "11d43e99917fe9fbd4ab366ce1f12095f26224828fb963a1194f6e71e0c03b08",
+      "outputSha256": "4a6a3cb84d9f87d86ebc28857b7ed57af1131155d84c6018bf6c9eb9c85218cd",
+      "anchors": 9,
+      "fullSourceParse": true
+    },
+    {
+      "path": "Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/node-development/index.mjs",
+      "inputSha256": "5e2145161fbf913a76895c1c5b648363e843bc215db7ab5eb0dc5b4c7110cfc6",
+      "outputSha256": "f5f21b5292ff469f7e06c66890b88936a70b5e270f6df6d974d49995ecdd52b0",
+      "anchors": 18,
+      "fullSourceParse": true
+    },
+    {
+      "path": "Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/node-development/aux-native-entry.mjs",
+      "inputSha256": "38d61018477a838a4bc9fcf33cf99c7c97ddfad9a7fbe5ff859f60a4cdb587d9",
+      "outputSha256": "337088645a043f5a0870407839a8faabd166b328ed0b5f1c066bcc17bc76a990",
+      "anchors": 18,
+      "fullSourceParse": true
+    }
+  ],
+  "actualSelectorDeviceOnly": true,
+  "actualCreateDerivesDeviceIdAndPreservesPausedActive": true,
+  "actualSubmitDevicePayload": true,
+  "cloudMissingOrOtherDeviceSubmitRefused": true,
+  "actualCloudHydrationAndDueFunctionsNoWritesOrQueue": true,
+  "cloudRecordBytesPreserved": true,
+  "fullAffectedSourceParse": true,
+  "serverRegressionExecuted": false,
+  "appExecuted": false,
+  "candidateChanged": false
+}
