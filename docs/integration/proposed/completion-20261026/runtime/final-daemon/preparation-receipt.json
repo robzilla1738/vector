@@ -1,0 +1,17 @@
+{
+  "format": "aux.final-daemon-preparation.v1",
+  "sourceHeaderVfsAndLineagePinsChecked": 182,
+  "fixtureInputPinsChecked": 7,
+  "pythonSyntax": "pass",
+  "nativeBuildPerformed": false,
+  "fixtureExecuted": false,
+  "productSigned": false,
+  "productExecuted": false,
+  "recipeSha256": "7ad1474a98f7d18f404a73668a6a556b5df2e005632f662f02e523f617f26ede",
+  "fixtureRecipeSha256": "03b61cb85bd76ab1fcad9ac0c2b2c994ba6864770ce3f085fb236b37cec765a8",
+  "remaining": [
+    "root actual CPP/Swift build",
+    "root single SQLite/held-FD fixture",
+    "root final disposable product journeys"
+  ]
+}
