@@ -1,7 +1,7 @@
 {
   "format": "aux.completion.current-source-selection.v1",
   "candidate": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-completion-20261026-a1/Aux.app",
-  "signedInventorySha256": "6ea71ddc179d3c12f2b7023746d4e54cf9b10de4c8f0bb6f5e14a6852b8862c4",
+  "signedInventorySha256": "109d439a0cd4fd3382cf6085bb29ea1c21f8dab6f75f2f822d041196817f2643",
   "sourceSnapshots": [
     {
       "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/runtime/addon-local-signing-review/actual-signed-source-a1/source/daemon-policy.swift",
@@ -102,8 +102,8 @@
       "sha256": "6aa4ae321848fdaad974f2b60a7dd6452045ea87dd242c6d9c06988b767eeec8"
     },
     {
-      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/desktop/palette-invocation/source/chrome/browser/ui/views/frame/aux_tab_search_bubble.cc",
-      "sha256": "9add062c4f459750dc52945c2aa075560ab1c71d423bf0f0377176563e18fe4d"
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/desktop/palette-document-recovery/source/chrome/browser/ui/views/frame/aux_tab_search_bubble.cc",
+      "sha256": "715ca201fc7ffc441c41a0a382428498c88c3bfc17ff947fc34559a7b39ea429"
     },
     {
       "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/desktop/palette-observation/source/chrome/browser/extensions/api/aux_browser_preferences/aux_feature_expansion_api.cc",
@@ -135,5 +135,9 @@
     "path": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-completion-20261026-a1/combined-palette-peer-tools-a1/receipt.json",
     "sha256": "5cf59fcd25c782e2a97793e35eb0dcdaa428e1fd04b3dea2f9664f3c9ade69e1"
   },
-  "pendingNativeSource": "desktop/palette-document-recovery: conditional failed-document reload; not compiled or activated"
+  "combinedPaletteCaptureSettlementRepair": {
+    "path": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-completion-20261026-a1/combined-palette-capture-settlement-a1/receipt.json",
+    "sha256": "0cbb848287897518aab38649aefef8e8ed6f45258597e07ec74dfecdd4a0cd47"
+  },
+  "pendingResourceSource": "integration/ordinary-chat/reconnect-run-error: safe failed-task reconnect message; prepared, not activated"
 }
