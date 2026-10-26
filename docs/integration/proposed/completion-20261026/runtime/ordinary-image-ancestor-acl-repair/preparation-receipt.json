@@ -1,0 +1,29 @@
+{
+  "format": "aux.ordinary-image-ancestor-acl.preparation.v1",
+  "sourceAnchors": 5,
+  "replayExact": true,
+  "swiftSources": 54,
+  "singleCommandDifferences": [
+    {
+      "index": 51,
+      "before": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/runtime/fixed-builtins/source/AuxSignedFreshBootstrapPolicyLoader.swift",
+      "after": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/runtime/ordinary-image-ancestor-acl-repair/source/AuxSignedFreshBootstrapPolicyLoader.swift"
+    },
+    {
+      "index": 167,
+      "before": "/private/tmp/aux-completion-final-daemon-20261026-a1/Aux Daemon",
+      "after": "/private/tmp/aux-completion-final-daemon-20261026-a2/Aux Daemon"
+    }
+  ],
+  "reusedNativeObjects": 16,
+  "nativeObjectsNotRecompiled": true,
+  "inputPins": 242,
+  "sdkHeaderSymbolsPinned": true,
+  "pythonRunnerASTParsed": true,
+  "nativeCompiled": false,
+  "nativeLinked": false,
+  "testsRun": false,
+  "signed": false,
+  "candidateChanged": false,
+  "ownerACLChanged": false
+}

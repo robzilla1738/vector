@@ -1,0 +1,116 @@
+{
+  "format": "aux.ordinary-image-ancestor-acl.source-plan.v1",
+  "inputPath": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/runtime/fixed-builtins/source/AuxSignedFreshBootstrapPolicyLoader.swift",
+  "inputSha256": "b5d656a32d1eb995febd79f503f9bc0b33bceefb7674bf1d38079ad840ecd872",
+  "outputPath": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/runtime/ordinary-image-ancestor-acl-repair/source/AuxSignedFreshBootstrapPolicyLoader.swift",
+  "outputSha256": "15fe1ed1a334f2aec91556c73b05ca0df5320372c24644e842a8a58148d66154",
+  "anchors": [
+    {
+      "before": "privateDirectory:Bool=false,maximumSize:Int64=16_384)throws->stat {",
+      "after": "privateDirectory:Bool=false,maximumSize:Int64=16_384,ordinaryImageAncestor:Bool=false)throws->stat {",
+      "count": 1
+    },
+    {
+      "before": "        guard acl_valid(acl)==0,acl_get_entry(acl,0,&entry)==(-1),errno==EINVAL,entry==nil else{throw AuxFreshBootstrapPolicyError.path};return value\n    }\n    private static func sameEntry",
+      "after": "        guard acl_valid(acl)==0 else{throw AuxFreshBootstrapPolicyError.path}\n#if AUX_BROWSER_ONLY_NATIVE_STARTUP\n        if ordinaryImageAncestor {\n            guard directory,!privateDirectory else{throw AuxFreshBootstrapPolicyError.path}\n            var cursor=Int32(ACL_FIRST_ENTRY.rawValue)\n            while true {\n                entry=nil;errno=0\n                let result=acl_get_entry(acl,cursor,&entry)\n                if result == -1 {\n                    guard errno==EINVAL,entry==nil else{throw AuxFreshBootstrapPolicyError.path}\n                    return value\n                }\n                guard result==0,let current=entry else{throw AuxFreshBootstrapPolicyError.path}\n                var tag=ACL_UNDEFINED_TAG\n                guard acl_get_tag_type(current,&tag)==0,tag==ACL_EXTENDED_DENY else{throw AuxFreshBootstrapPolicyError.path}\n                cursor=Int32(ACL_NEXT_ENTRY.rawValue)\n            }\n        }\n#else\n        guard !ordinaryImageAncestor else{throw AuxFreshBootstrapPolicyError.path}\n#endif\n        guard acl_get_entry(acl,0,&entry)==(-1),errno==EINVAL,entry==nil else{throw AuxFreshBootstrapPolicyError.path};return value\n    }\n    // Only the fixed-image custody walk opts into ordinary ancestor DENY ACLs.\n    // Files and private roots retain metadata's strict empty-ACL default.\n    private static func imageCustodyMetadata(_ fd:Int32,directory:Bool,maximumSize:Int64=16_384)throws->stat {\n#if AUX_BROWSER_ONLY_NATIVE_STARTUP\n        return try metadata(fd,directory:directory,maximumSize:maximumSize,ordinaryImageAncestor:directory)\n#else\n        return try metadata(fd,directory:directory,maximumSize:maximumSize)\n#endif\n    }\n    private static func sameEntry",
+      "count": 1
+    },
+    {
+      "before": "     custody.append(parent)\n            let root=try metadata(parent,directory:true)\n#if !AUX_BROWSER_ONLY_NATIVE_STARTUP\n  ",
+      "after": "     custody.append(parent)\n            let root=try imageCustodyMetadata(parent,directory:true)\n#if !AUX_BROWSER_ONLY_NATIVE_STARTUP\n  ",
+      "count": 1
+    },
+    {
+      "before": "     custody.append(fd)\n                let item=try metadata(fd,directory:directory,maximumSize:32*1024*1024)\n#if !AUX_BROWSER_ONLY_NATIVE_STARTUP\n  ",
+      "after": "     custody.append(fd)\n                let item=try imageCustodyMetadata(fd,directory:directory,maximumSize:32*1024*1024)\n#if !AUX_BROWSER_ONLY_NATIVE_STARTUP\n  ",
+      "count": 1
+    },
+    {
+      "before": "olicyError.path}\n#endif\n                _ = try metadata(fd,directory:value.st_mode & mode_t(S_IFMT)==mode_t(S_IFDIR),maximumSize:32*1024*1024)\n                try sameEntry(parent,na",
+      "after": "olicyError.path}\n#endif\n                _ = try imageCustodyMetadata(fd,directory:value.st_mode & mode_t(S_IFMT)==mode_t(S_IFDIR),maximumSize:32*1024*1024)\n                try sameEntry(parent,na",
+      "count": 1
+    }
+  ],
+  "installedSDK": {
+    "path": "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/usr/include/sys/acl.h",
+    "sha256": "9511f84f0abe1e108e10979900d4fea8567534aef78f0984f7050c49f6c29ff7",
+    "symbols": {
+      "ACL_EXTENDED_DENY": [
+        {
+          "line": 53,
+          "declaration": "#define __DARWIN_ACL_EXTENDED_DENY\t\t2"
+        },
+        {
+          "line": 97,
+          "declaration": "ACL_EXTENDED_DENY\t= __DARWIN_ACL_EXTENDED_DENY"
+        }
+      ],
+      "ACL_UNDEFINED_TAG": [
+        {
+          "line": 95,
+          "declaration": "ACL_UNDEFINED_TAG\t= 0,"
+        }
+      ],
+      "ACL_FIRST_ENTRY": [
+        {
+          "line": 119,
+          "declaration": "ACL_FIRST_ENTRY\t\t= 0,"
+        }
+      ],
+      "ACL_NEXT_ENTRY": [
+        {
+          "line": 120,
+          "declaration": "ACL_NEXT_ENTRY\t\t= -1,"
+        }
+      ],
+      "acl_get_tag_type": [
+        {
+          "line": 190,
+          "declaration": "extern int\tacl_get_tag_type(acl_entry_t entry_d, acl_tag_t *tag_type_p);"
+        }
+      ],
+      "acl_get_entry": [
+        {
+          "line": 160,
+          "declaration": "extern int\tacl_get_entry(acl_t acl, int entry_id, acl_entry_t *entry_p);"
+        }
+      ],
+      "acl_valid": [
+        {
+          "line": 161,
+          "declaration": "extern int\tacl_valid(acl_t acl);"
+        },
+        {
+          "line": 162,
+          "declaration": "extern int\tacl_valid_fd_np(int fd, acl_type_t type, acl_t acl);"
+        },
+        {
+          "line": 163,
+          "declaration": "extern int\tacl_valid_file_np(const char *path, acl_type_t type, acl_t acl);"
+        },
+        {
+          "line": 164,
+          "declaration": "extern int\tacl_valid_link_np(const char *path, acl_type_t type, acl_t acl);"
+        }
+      ],
+      "acl_get_fd_np": [
+        {
+          "line": 197,
+          "declaration": "extern acl_t\tacl_get_fd_np(int fd, acl_type_t type);"
+        }
+      ],
+      "acl_free": [
+        {
+          "line": 152,
+          "declaration": "extern int\tacl_free(void *obj_p);"
+        }
+      ]
+    },
+    "actualRecipeSDKHeader": "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/sys/acl.h",
+    "actualRecipeSDKHeaderSha256": "9511f84f0abe1e108e10979900d4fea8567534aef78f0984f7050c49f6c29ff7"
+  },
+  "sourceOnly": true,
+  "nativeCompiled": false,
+  "ownerACLChanged": false,
+  "candidateChanged": false
+}
