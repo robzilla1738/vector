@@ -1,0 +1,133 @@
+{
+  "format": "aux.excluded-vault-ui.entry-closure.v1",
+  "files": [
+    {
+      "path": "assets/-context-CnivYB_B.js",
+      "sha256": "cf242d6dfbe341205f98741a3467c063c6cb48b4df2befee3606754b0e681aa6",
+      "rules": [
+        {
+          "scope": "default only to external password-manager choice",
+          "find": "(0,e.useState)(\"aside\")",
+          "replace": "(0,e.useState)(\"external\")",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "assets/import-password-mvM-KsU6.js",
+      "sha256": "a1635852b4a685ce89bb21ce243ecdbbfb79f827f7418575d08841441e742e11",
+      "rules": [
+        {
+          "scope": "remove excluded built-in option, preserve original external option",
+          "find": "[{value:\"aside\",id:\"builtin\",title:\"Import credentials to Aux Vault\",description:\"Seamless experience, E2E encrypted.\"},{value:\"external\",id:\"external\",title:\"Connect my password manager\",description:\"Some sign-ins may block your workflow.\"}]",
+          "replace": "[{value:\"external\",id:\"external\",title:\"Connect my password manager\",description:\"Some sign-ins may block your workflow.\"}]",
+          "count": 1
+        },
+        {
+          "scope": "remove closed built-in option tooltip",
+          "find": "s.value===\"aside\"&&(0,e.jsxs)(I,{children:[(0,e.jsx)(E,{render:(0,e.jsx)(\"span\",{className:\"text-muted-foreground inline-flex shrink-0\"}),children:(0,e.jsx)(ue,{className:\"size-4\"})}),(0,e.jsxs)(F,{children:[\"Aux Vault is a built-in private password manager.\",(0,e.jsx)(\"br\",{}),\"Credentials are filled directly into websites, never shown to the agent.\"]})]})",
+          "replace": "null",
+          "count": 1
+        },
+        {
+          "scope": "preserve external connection/skip flow without excluded Vault RPC or setup/import wizards",
+          "find": "({accountId:s,choice:o,currentProfilePath:u})=>{const{track:t}=D(),i=de(),g=pe(),a=ie(),l=J(),{confirm:c}=ee(),[d,p]=(0,x.useState)(null),[h,N]=(0,x.useState)(!1),_=P({...i.externalPasswordManagers.list.queryOptions({accountId:s??-1}),enabled:s!==void 0}),k=P(i.onboarding.detectPasswordManagers.queryOptions({currentProfilePath:u})),w=ae(i.passwordManager.accounts.connectCurrent.mutationOptions()),m=(0,x.useMemo)(()=>Oe(k.data??[]),[k.data]),q=(0,x.useMemo)(()=>xe(m),[m]),S=(0,x.useMemo)(()=>Me(m),[m]),M=_.data?.map(n=>n.provider)??[],f=()=>{l({to:\"/onboarding/ai\",replace:!0})},A=()=>{t(\"onboarding.import-password.not-now\"),f()},L=n=>{t(\"onboarding.import-password.complete\",{value:n,suggested:he(n,m)})},T=n=>{t(\"onboarding.import-password.external-provider.select\",{value:n,suggested:m.has(n)})},K=async(n,{unlockPreference:r,unlockPassword:b})=>{if(s===void 0)throw new Error(\"Could not save your password manager preference.\");await g.externalPasswordManagers.connect.mutate({accountId:s,provider:n,...r===\"remember-unlock-password\"&&{password:b}}),await a.invalidateQueries(i.externalPasswordManagers.list.queryFilter({accountId:s})),t(\"onboarding.import-password.external-provider.save\",{provider:n,unlockPreference:r,suggested:m.has(n)});const O=Ae(n);S.find(Y=>Y.provider===n)?.agentUsable||n===\"apple-passwords\"?C.success(`${O.label} is connected.`):C.success(`${O.label} is connected. Add its Chrome extension so Aux can use it.`)},R=async()=>{if(M.length>0){f();return}const n=await c({title:\"Continue without a password manager?\",description:\"Aux will not use an external password manager during tasks. You can set one up later in Settings > Password.\",ui:{action:\"Continue\",cancel:\"Go back\"}});t(\"onboarding.import-password.external-provider.skip-confirm\",{agreed:n}),n&&f()},z=async(n=o)=>{if(!(w.isPending||d)){if(s===void 0){C.error(\"Could not continue right now.\");return}if(n===\"external\"){t(\"onboarding.import-password.external-provider.open\"),N(!0);return}try{const{pwmAccountId:r,next:b}=await w.mutateAsync({accountId:s});switch(await a.invalidateQueries({queryKey:i.passwordManager.accounts.list.queryKey({accountId:s})}),b){case\"setup\":p({step:\"setup\",pwmAccountId:r}),t(\"onboarding.step.reach\",{value:\"setup-password-manager\"});break;case\"unlock\":case\"ready\":p({step:\"import\"})}}catch(r){C.error(r instanceof Error?r.message:\"Could not open Aux Vault.\")}}},G=n=>p(n?{step:\"import\"}:null),V=()=>p(null),B=()=>N(!1),H=({importedCount:n,onNext:r})=>(0,e.jsxs)(e.Fragment,{children:[n===0&&(0,e.jsx)(j,{variant:\"secondary\",size:\"lg\",onClick:A,children:\"Not now\"}),(0,e.jsxs)(j,{size:\"lg\",\"data-dialog-enter-action\":\"true\",disabled:!r&&n===0,onClick:r??f,children:[(0,e.jsx)(\"span\",{children:r||n===0?\"Next\":\"Finish\"}),(0,e.jsx)(me,{className:\"size-4 opacity-50\"})]})]}),Q=s!==void 0&&(0,e.jsxs)(e.Fragment,{children:[(0,e.jsx)(ge,{open:d?.step===\"setup\",accountId:s,pwmAccountId:d?.step===\"setup\"?d.pwmAccountId:\"\",onCancel:V,onComplete:()=>p({step:\"import\"})}),(0,e.jsx)(we,{accountId:s,open:d?.step===\"import\",homeFooter:H,sources:q,onImportComplete:L,onOpenChange:G}),(0,e.jsx)(fe,{open:h,options:S,connectedProviders:M,cancelLabel:\"Not now\",onCancel:B,onFinish:R,onConnect:K,onProviderSelect:T})]});return{handleContinue:z,handleSkip:A,isContinueDisabled:w.isPending||s===void 0,isContinuePending:w.isPending,setupDialogs:Q}}",
+          "replace": "({accountId:s,currentProfilePath:u})=>{const {track:t}=D(),i=de(),g=pe(),a=ie(),l=J(),{confirm:c}=ee(),[h,N]=(0,x.useState)(!1),_=P({...i.externalPasswordManagers.list.queryOptions({accountId:s??-1}),enabled:s!==void 0}),k=P(i.onboarding.detectPasswordManagers.queryOptions({currentProfilePath:u})),m=(0,x.useMemo)(()=>Oe(k.data??[]),[k.data]),S=(0,x.useMemo)(()=>Me(m),[m]),M=_.data?.map(n=>n.provider)??[],f=()=>{l({to:\"/onboarding/ai\",replace:!0})},A=()=>{t(\"onboarding.import-password.not-now\"),f()},T=n=>{t(\"onboarding.import-password.external-provider.select\",{value:n,suggested:m.has(n)})},K=async(n,{unlockPreference:r,unlockPassword:b})=>{if(s===void 0)throw new Error(\"Could not save your password manager preference.\");await g.externalPasswordManagers.connect.mutate({accountId:s,provider:n,...r===\"remember-unlock-password\"&&{password:b}}),await a.invalidateQueries(i.externalPasswordManagers.list.queryFilter({accountId:s})),t(\"onboarding.import-password.external-provider.save\",{provider:n,unlockPreference:r,suggested:m.has(n)});const O=Ae(n);S.find(Y=>Y.provider===n)?.agentUsable||n===\"apple-passwords\"?C.success(`${O.label} is connected.`):C.success(`${O.label} is connected. Add its Chrome extension so Aux can use it.`)},R=async()=>{if(M.length>0){f();return}const n=await c({title:\"Continue without a password manager?\",description:\"Aux will not use an external password manager during tasks. You can set one up later in Settings > Password.\",ui:{action:\"Continue\",cancel:\"Go back\"}});t(\"onboarding.import-password.external-provider.skip-confirm\",{agreed:n}),n&&f()},B=()=>N(!1),z=()=>{if(s===void 0){C.error(\"Could not continue right now.\");return}t(\"onboarding.import-password.external-provider.open\"),N(!0)},Q=s!==void 0&&(0,e.jsx)(fe,{open:h,options:S,connectedProviders:M,cancelLabel:\"Not now\",onCancel:B,onFinish:R,onConnect:K,onProviderSelect:T});return{handleContinue:z,handleSkip:A,isContinueDisabled:s===void 0,isContinuePending:!1,setupDialogs:Q}}",
+          "count": 1
+        },
+        {
+          "scope": "onboarding external extension disclosure",
+          "find": "Aux fills credentials directly into websites, ",
+          "replace": "Use your existing password manager through its browser extension. ",
+          "count": 1
+        },
+        {
+          "scope": "remove unsupported built-in secrecy guarantee",
+          "find": "keeping them local and hidden from AI.",
+          "replace": "Review the extension’s permissions before connecting.",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "assets/password-LjdLcSRV.js",
+      "sha256": "17c872253796acd23ca743094508b6c8e7a389b31521618f3d60b56260eec32f",
+      "rules": [
+        {
+          "scope": "remove excluded settings provider RPC from active page",
+          "find": "(0,e.jsx)(Ut,{children:(0,e.jsx)(mr,{connectOpen:s,onConnectOpenChange:a})})",
+          "replace": "(0,e.jsx)(mr,{connectOpen:s,onConnectOpenChange:a})",
+          "count": 1
+        },
+        {
+          "scope": "render only existing external-manager section, not Vault setup/toggle/security panels",
+          "find": "({connectOpen:s,onConnectOpenChange:a})=>{const{settings:t}=I(),n=()=>a(!0);return(0,e.jsxs)(\"div\",{className:\"space-y-8\",children:[(0,e.jsxs)(re,{title:(0,e.jsxs)(e.Fragment,{children:[(0,e.jsx)(\"span\",{children:\"Password managers\"}),(0,e.jsxs)(as,{children:[(0,e.jsx)(es,{children:(0,e.jsx)($a,{className:\"text-muted-foreground/60 size-4\"})}),(0,e.jsx)(ss,{children:(0,e.jsx)(\"p\",{children:\"Let agents sign in with the password managers you already use.\"})})]})]}),label:\"Password managers\",children:[(0,e.jsx)(cr,{onConnectPasswordManager:n}),(0,e.jsx)(Rt,{connectOpen:s,onConnectOpenChange:a})]}),t.useBuiltinPasswordManager&&(0,e.jsxs)(Rn,{children:[(0,e.jsx)(Tn,{}),(0,e.jsx)(qn,{}),(0,e.jsx)(Zn,{}),(0,e.jsx)(sr,{})]})]})}",
+          "replace": "({connectOpen:s,onConnectOpenChange:a})=>{return(0,e.jsxs)(\"div\",{className:\"space-y-8\",children:[(0,e.jsxs)(re,{title:(0,e.jsxs)(e.Fragment,{children:[(0,e.jsx)(\"span\",{children:\"Password managers\"}),(0,e.jsxs)(as,{children:[(0,e.jsx)(es,{children:(0,e.jsx)($a,{className:\"text-muted-foreground/60 size-4\"})}),(0,e.jsx)(ss,{children:(0,e.jsx)(\"p\",{children:\"Let agents sign in with the password managers you already use.\"})})]})]}),label:\"Password managers\",children:[(0,e.jsx)(Rt,{connectOpen:s,onConnectOpenChange:a})]})]})}",
+          "count": 1
+        },
+        {
+          "scope": "neutral legacy saved-password import notice",
+          "find": "even when Aux Vault is locked or disabled. The original vault item will be kept for your other devices.",
+          "replace": "without enabling a built-in password manager. Existing source items are preserved.",
+          "count": 1
+        },
+        {
+          "scope": "keep original external connections without automatic Vault credential migration/probe",
+          "find": "({connectOpen:s,onConnectOpenChange:a})=>{const{accountId:t,browserProfile:n}=te(),r=U(),o=ve(),i=J(),d=(0,p.useRef)(!1),{mutate:u,...l}=N(r.externalPasswordManagers.importPreferences.mutationOptions({onSuccess:()=>i.invalidateQueries(r.externalPasswordManagers.list.queryFilter({accountId:t}))})),c=_(r.externalPasswordManagers.list.queryOptions({accountId:t})),h=_(r.onboarding.detectPasswordManagers.queryOptions({currentProfilePath:n?.profilePath})),m=bt(sa(h.data??[])),x=()=>{c.refetch()},v=()=>a(!0),y=()=>a(!1),C=async(w,{unlockPreference:f,unlockPassword:P})=>{await o.externalPasswordManagers.connect.mutate({accountId:t,provider:w,...f===\"remember-unlock-password\"&&{password:P}}),await i.invalidateQueries(r.externalPasswordManagers.list.queryFilter({accountId:t}))},b=()=>u({accountId:t});return(0,p.useEffect)(()=>{d.current||(d.current=!0,u({accountId:t}))},[t,u]),(0,e.jsxs)(e.Fragment,{children:[(0,e.jsxs)(W,{children:[c.error&&(0,e.jsxs)(R,{children:[(0,e.jsx)(E,{title:\"Connections are unavailable\"}),(0,e.jsx)(j,{variant:\"ghost\",onClick:x,children:\"Retry\"})]}),l.isError&&(0,e.jsxs)(R,{children:[(0,e.jsx)(E,{title:\"Previous connections could not be imported\"}),(0,e.jsx)(j,{variant:\"ghost\",onClick:b,children:\"Retry\"})]}),c.data?.map(w=>(0,e.jsx)(Tt,{connection:w,hasLegacyPassword:l.data?.some(f=>f.providers.includes(w.provider))??!1,needsExtension:m.find(f=>f.provider===w.provider)?.agentUsable===!1},`${t}:${w.connectionId}`)),(0,e.jsxs)(ze,{variant:\"action\",className:\"w-full gap-1\",render:(0,e.jsx)(\"button\",{type:\"button\"}),onClick:v,children:[(0,e.jsx)(Ns,{className:\"mx-1 size-4 shrink-0\"}),(0,e.jsx)(E,{title:\"Connect external password manager\"})]})]}),(0,e.jsx)(nt,{open:s,connectedProviders:c.data?.map(w=>w.provider)??[],options:m,onCancel:y,onFinish:y,onConnect:C})]})}",
+          "replace": "({connectOpen:s,onConnectOpenChange:a})=>{const {accountId:t,browserProfile:n}=te(),r=U(),o=ve(),i=J(),c=_(r.externalPasswordManagers.list.queryOptions({accountId:t})),h=_(r.onboarding.detectPasswordManagers.queryOptions({currentProfilePath:n?.profilePath})),m=bt(sa(h.data??[])),x=()=>{c.refetch()},v=()=>a(!0),y=()=>a(!1),C=async(w,{unlockPreference:f,unlockPassword:P})=>{await o.externalPasswordManagers.connect.mutate({accountId:t,provider:w,...f===\"remember-unlock-password\"&&{password:P}}),await i.invalidateQueries(r.externalPasswordManagers.list.queryFilter({accountId:t}))};return (0,e.jsxs)(e.Fragment,{children:[(0,e.jsxs)(W,{children:[c.error&&(0,e.jsxs)(R,{children:[(0,e.jsx)(E,{title:\"Connections are unavailable\"}),(0,e.jsx)(j,{variant:\"ghost\",onClick:x,children:\"Retry\"})]}),null,c.data?.map(w=>(0,e.jsx)(Tt,{connection:w,needsExtension:m.find(f=>f.provider===w.provider)?.agentUsable===!1},`${t}:${w.connectionId}`)),(0,e.jsxs)(ze,{variant:\"action\",className:\"w-full gap-1\",render:(0,e.jsx)(\"button\",{type:\"button\"}),onClick:v,children:[(0,e.jsx)(Ns,{className:\"mx-1 size-4 shrink-0\"}),(0,e.jsx)(E,{title:\"Connect external password manager\"})]})]}),(0,e.jsx)(nt,{open:s,connectedProviders:c.data?.map(w=>w.provider)??[],options:m,onCancel:y,onFinish:y,onConnect:C})]})}",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "assets/conversation-D9Q3VEsl.js",
+      "sha256": "ad6c51122bca3d4573204c7a829d52c7a394991b42635dad20b3d0a763418c88",
+      "rules": [
+        {
+          "scope": "cloud chat wrapper no longer starts excluded Vault polling/automatic seed",
+          "find": "function As({accountId:e,sessionId:s,client:a,children:l}){const c=De({accountId:e,sessionId:s,client:a,suspended:!0});return(0,t.jsx)(he,{value:c,children:l})}",
+          "replace": "function As({children:l}){return(0,t.jsx)(t.Fragment,{children:l})}",
+          "count": 1
+        },
+        {
+          "scope": "remove excluded cloud Vault lock control",
+          "find": "function _s(){const e=(0,p.useContext)(he);return e?(0,t.jsxs)(\"div\",{className:\"flex items-center gap-2\",children:[e.lock.error&&(0,t.jsx)(\"span\",{role:\"alert\",className:\"text-destructive text-xs\",children:e.lock.error.message}),(0,t.jsx)(A,{variant:\"ghost\",size:\"sm\",disabled:e.lock.isPending||e.transfer.isPending,onClick:()=>e.lock.mutate(),children:e.lock.isPending?\"Locking…\":e.lock.isSuccess?\"Vault locked\":\"Lock vault\"})]}):null}",
+          "replace": "function _s(){return null}",
+          "count": 1
+        },
+        {
+          "scope": "known legacy unlock requests fail visibly without collecting or transferring a password",
+          "find": "function Pt({toolCallId:e,prompt:s}){const a=(0,p.useContext)(he);return a?a.finished===e?(0,t.jsx)(\"p\",{className:\"text-muted-foreground text-sm\",children:\"Request completed\"}):a.request?.toolCallId!==e?(0,t.jsx)(\"p\",{className:\"text-muted-foreground text-sm\",children:a.session.isFetching?\"Checking vault request…\":\"This unlock request is no longer pending.\"}):(0,t.jsx)(Oe,{state:a}):(0,t.jsxs)(\"p\",{children:[s,\" Only the channel owner can unlock Aux Vault.\"]})}",
+          "replace": "function Pt({prompt:s}){return(0,t.jsxs)(\"p\",{className:\"text-muted-foreground text-sm\",children:[s,\" The built-in password manager is excluded from Aux. Use your existing browser extension.\"]})}",
+          "count": 1
+        },
+        {
+          "scope": "retain generic cloud-request review without a Vault probe",
+          "find": "function Es(e){const s=De(e);return s.request?(0,t.jsx)(Oe,{state:s}):e.suspended?(0,t.jsx)(ce,{to:\"/u/$userId/tasks/$sessionId\",params:{userId:String(e.accountId),sessionId:e.sessionId},search:{host:`cloud:${e.sessionId}`},children:\"Review pending request in cloud chat\"}):null}",
+          "replace": "function Es(e){return e.suspended?(0,t.jsx)(ce,{to:\"/u/$userId/tasks/$sessionId\",params:{userId:String(e.accountId),sessionId:e.sessionId},search:{host:`cloud:${e.sessionId}`},children:\"Review pending request in cloud chat\"}):null}",
+          "count": 1
+        },
+        {
+          "scope": "remove now-closed Vault polling/unlock/seed/lock implementation",
+          "find": "function De({accountId:e,sessionId:s,suspended:a,client:l}){const[c,h]=(0,p.useState)(\"\"),[o,i]=(0,p.useState)(),d=(0,p.useRef)(new Set),{data:m}=te(xe.accounts.get.queryOptions({accountId:e})),u=te({...xe.passwordManager.accounts.list.queryOptions({accountId:e}),refetchInterval:5e3}),x=u.data?.accounts.find(R=>R.owner.kind===\"aside\"&&R.owner.userId===m?.userId),w=te({queryKey:[\"cloud-vault-request\",e,s],queryFn:()=>l.sessions.get.query({accountId:e,sessionId:s}),enabled:a,refetchInterval:a?2e3:!1}),r=w.data?.suspension,f=a&&bt(r)&&r.kind===\"ask-user-question\"&&r.request.questions[0]?.header===\"vault-unlock\"?r:void 0,g=f?.toolCallId??s,b=ee({mutationFn:async()=>{f&&(await l.sessions.resolveSuspension.mutate({accountId:e,sessionId:s,toolCallId:f.toolCallId,response:{answers:[{header:\"vault-unlock\",answer:\"cancelled\"}]}}),i(f.toolCallId),await w.refetch())}}),y=ee({mutationFn:async R=>{if(!x)throw new Error(\"Connect this Aux account in Aux Vault first.\");const E={accountId:e,pwmAccountId:x.id};R&&(await se.passwordManager.auth.unlock.mutate({...E,password:R}),h(\"\")),await se.passwordManager.auth.seedCloud.mutate({...E,sessionId:s}),f&&await l.sessions.resolveSuspension.mutate({accountId:e,sessionId:s,toolCallId:f.toolCallId,response:{answers:[{header:\"vault-unlock\",answer:\"unlocked\"}]}}),d.current.add(g),M.reset(),f&&i(f.toolCallId),await u.refetch(),f&&await w.refetch()}}),M=ee({mutationFn:async()=>{if(x&&await se.passwordManager.auth.lock.mutate({accountId:e,pwmAccountId:x.id}),await u.refetch(),!(await fetch(`${Z}/cloud-agent/sessions/${encodeURIComponent(s)}/vault-key`,{method:\"DELETE\",headers:{authorization:`Bearer ${await de(e)}`}})).ok)throw new Error(\"Could not lock the cloud vault. Try again.\");d.current.clear(),y.reset()}});return(0,p.useEffect)(()=>{!x?.authStatus||x.authStatus.isLocked||!x.authStatus.isInitialized||d.current.has(g)||y.isPending||y.isError||!b.isIdle||M.isPending||y.mutate(void 0)},[x?.authStatus,g,y,b.isIdle,M.isPending]),{password:c,setPassword:h,vault:x,accounts:u,session:w,request:f,decline:b,transfer:y,lock:M,finished:o}}",
+          "replace": "",
+          "count": 1
+        },
+        {
+          "scope": "remove now-closed Vault unlock form",
+          "find": "function Oe({state:e}){const{password:s,setPassword:a,vault:l,accounts:c,request:h,decline:o,transfer:i}=e;return h?(0,t.jsxs)(\"section\",{className:\"max-w-sm min-w-56 space-y-3 py-1\",\"aria-label\":\"Unlock Aux Vault\",children:[(0,t.jsx)(\"p\",{className:\"text-sm font-medium\",children:\"Unlock Aux Vault\"}),(0,t.jsx)(\"p\",{className:\"text-muted-foreground text-sm\",children:h.request.questions[0].question}),l?.authStatus?.isInitialized?(0,t.jsxs)(\"form\",{className:\"flex flex-wrap items-center gap-2\",onSubmit:d=>{d.preventDefault(),i.mutate(l.authStatus?.isLocked?s:void 0)},children:[l.authStatus.isLocked&&(0,t.jsx)(ht,{\"aria-label\":\"Aux Vault password\",autoComplete:\"current-password\",value:s,onChange:d=>a(d.target.value),disabled:i.isPending}),(0,t.jsx)(A,{type:\"submit\",disabled:i.isPending||o.isPending||l.authStatus.isLocked&&!s,children:i.isPending?\"Unlocking…\":\"Unlock and continue\"})]}):(0,t.jsx)(\"p\",{className:\"text-muted-foreground text-sm\",children:\"Connect and unlock this Aux account in Password Manager, then return here.\"}),(0,t.jsx)(A,{variant:\"ghost\",disabled:i.isPending||o.isPending,onClick:()=>o.mutate(),children:\"Continue without Password Manager\"}),(i.error||o.error||c.error||l?.statusError)&&(0,t.jsx)(\"p\",{role:\"alert\",className:\"text-destructive text-sm\",children:i.error?.message??o.error?.message??c.error?.message??l?.statusError})]}):null}",
+          "replace": "",
+          "count": 1
+        },
+        {
+          "scope": "remove unused Vault context declaration",
+          "find": "var he=(0,p.createContext)(null);",
+          "replace": "",
+          "count": 1
+        }
+      ]
+    }
+  ],
+  "ciphertextReadOrReinterpreted": false,
+  "oldRecordsRenamed": false
+}

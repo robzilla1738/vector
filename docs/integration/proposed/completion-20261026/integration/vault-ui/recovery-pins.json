@@ -1,0 +1,15 @@
+{
+  "format": "aux.recovery-plaintext-armor.v2",
+  "path": "assets/recovery-key-CPOQuYx2.js",
+  "sha256": "985ff9c9a11486c50a3f74c6df80b5481238ef7847a055427f1953d11abd7a52",
+  "headers": "m=\"BEGIN ASIDE RECOVERY KEY\",h=\"END ASIDE RECOVERY KEY\"",
+  "reader": "function E(n){const e=n.match(new RegExp(`${m}([\\\\s\\\\S]*?)${h}`,\"i\"));return e?.[1]&&c(e[1])||null}",
+  "unchangedCryptographicFunctions": [
+    "R",
+    "I",
+    "j",
+    "f"
+  ],
+  "encryptedEnvelopeVersionChanged": false,
+  "legacyReaderPreserved": true
+}

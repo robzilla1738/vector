@@ -1,0 +1,52 @@
+{
+  "format": "aux.external-password-ui.source-check.v1",
+  "passed": true,
+  "files": [
+    {
+      "path": "assets/-context-CnivYB_B.js",
+      "output": "/var/folders/98/j36zgdnd0h507whjl16gxl780000gp/T/aux-external-password-ui-xypvo5/-context-CnivYB_B.js",
+      "sha256": "b7e12594f95a6e0c7cd6e30fd28413d8a4b2c2ac279eb1fe91b5fca1f1fc3ff8",
+      "anchors": 1,
+      "parse": true,
+      "reverse": true
+    },
+    {
+      "path": "assets/import-password-mvM-KsU6.js",
+      "output": "/var/folders/98/j36zgdnd0h507whjl16gxl780000gp/T/aux-external-password-ui-xypvo5/import-password-mvM-KsU6.js",
+      "sha256": "fcbddbf6edcc1a5903a6a7ee7b8e3f68cdad343b21b2351fa3a4ea4f8450997d",
+      "anchors": 5,
+      "parse": true,
+      "reverse": true
+    },
+    {
+      "path": "assets/password-LjdLcSRV.js",
+      "output": "/var/folders/98/j36zgdnd0h507whjl16gxl780000gp/T/aux-external-password-ui-xypvo5/password-LjdLcSRV.js",
+      "sha256": "c61ba4c9f47312b7a2183cd6c1958e01c7ac31cdd292dcd104f8da2512e8ba41",
+      "anchors": 4,
+      "parse": true,
+      "reverse": true
+    },
+    {
+      "path": "assets/conversation-D9Q3VEsl.js",
+      "output": "/var/folders/98/j36zgdnd0h507whjl16gxl780000gp/T/aux-external-password-ui-xypvo5/conversation-D9Q3VEsl.js",
+      "sha256": "7fb278a2687ba15da25c1432a738f2c145acbdfddd2c0cce788658d90c21b093",
+      "anchors": 7,
+      "parse": true,
+      "reverse": true
+    },
+    {
+      "path": "assets/recovery-key-CPOQuYx2.js",
+      "output": "/var/folders/98/j36zgdnd0h507whjl16gxl780000gp/T/aux-external-password-ui-xypvo5/recovery-key-CPOQuYx2.js",
+      "sha256": "803f08ea67e5e42453cbf8e7ca515cd86c436c77e00b74e6a376cd0c9b0a9a1d",
+      "anchors": 2,
+      "parse": true,
+      "reverse": true
+    }
+  ],
+  "plaintextNewAndLegacyArmor": true,
+  "ambiguousArmorRefused": true,
+  "noCryptographicFunctionCalled": true,
+  "noCredentialProfileOrCiphertextRead": true,
+  "appExecuted": false,
+  "nativeBuilt": false
+}
