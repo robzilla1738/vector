@@ -15,9 +15,9 @@ Main resumed from `ffea39476`. A38 remains the broader accepted predecessor. Sig
 
 | Outcome | State / evidence | Remaining action | Owner |
 |---|---|---|---|
-| Combined startup and shutdown | Diagnostic successor passes startup authorization then crashes in SplitTabMenuModel construction before tabs; exact log/stack in integrator/startup-resume-a1 | Repair demonstrated empty-tab construction defect; normal window/ready daemon/clean Quit/reopen | Integrator |
+| Combined startup and shutdown | Actual diagnostic identified pre-tab split-menu crash; two-file lazy/current-menu repair compiles and full browser link passes; exact log/stack in integrator/startup-resume-a1 | Repair demonstrated empty-tab construction defect; normal window/ready daemon/clean Quit/reopen | Integrator |
 | Desktop scope and fidelity | Joined-source audit found no demonstrated missing desktop connection; finite six-group fixture/recipe committed; successor unaccepted | Reconcile actual joined R01–R19/R21–R30, fix concrete gaps, run grouped journeys | Desktop worker / integrator |
-| BYOK/context/files/memory/tools | Lazy chat and scoped transfers joined; inference not accepted | Real content/tool/context/cancel/restart; memory search; verified remaining Muse allowance | Integration worker / integrator |
+| BYOK/context/files/memory/tools | Lazy chat and scoped transfers joined; inference not accepted | Real content/tool/context/cancel/restart; memory search; new owner-authorized Muse-only run under agent-imposed additional $1 ceiling | Integration worker / integrator |
 | General execution | All twelve FS methods and scratch/CLI lifetime composition complete; four producer objects, paired parent policy and unsigned daemon link pass (`runtime/future-supervised-build/integration-delta.json`) | Carry final startup correction forward; paired browser integration and activation remain gated | Runtime worker |
 | Execution activation | Apple request 2H4D7KNGUP submitted, not approved | Grant verification, exact additional activation authority, actual Bash/PTY/CLI/descendant checks | Integrator / Apple |
 | Extensions and native companion | Native plumbing joined; official acceptance pending | Store install/autofill/isolation; separate isolated-account companion trust test | Desktop worker / integrator / vendor |
@@ -45,7 +45,7 @@ Use two disposable profiles, two same-profile windows, synthetic pages/files and
 - BYOK/productivity: actual credential controls, completed stream, page/tab/file context, cancel/restart/disconnect, Tidy/Undo, rename/research where supported, device routine and notification target.
 - External: official extension/autofill and separate companion; actual Bash/yield/PTY/CLI/escaped descendant; eligible ChatGPT; deployed auth/sync/share/delete/feedback, maintenance/alerts/rollback.
 
-AI uses only `vercel-ai-gateway/meta/muse-spark-1.3-contributor` within verified remaining original $1 aggregate authority. The prior attempt has no spend receipt. No further request until remainder is established; direct credential entry and cleanup through actual API/UI. ChatGPT inference requires different, separately granted authority and remains open.
+AI uses only `vercel-ai-gateway/meta/muse-spark-1.3-contributor`. The prior $1 aggregate remainder could not be established from daily billing. In the current completion chat the owner expressly authorized continued Muse-only Gateway checks and supplied a credential; the agent imposed a $1 additional acceptance-run ceiling. See `integration/ordinary-chat/resume-spending-authority.json`. Use the actual credential API and remove the temporary connection. ChatGPT inference remains separately gated.
 
 ## Execution and authority
 

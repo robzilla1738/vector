@@ -1,0 +1,13 @@
+{
+  "format": "aux.ai.acceptance-authority.v1",
+  "recordedAtUtc": "2026-10-26T19:41:34.384788+00:00",
+  "source": "owner direct reply in current completion chat",
+  "ownerAuthorization": "Owner cannot establish earlier charge and explicitly authorizes continued checks using only Muse Spark 1.3 Contributor via AI Gateway, stating cost is not a concern.",
+  "authorizedModel": "vercel-ai-gateway/meta/muse-spark-1.3-contributor",
+  "agentImposedAdditionalRunCapUsd": 1,
+  "previousAggregateSpendStillUnknown": true,
+  "credentialSuppliedDirectly": true,
+  "credentialRecordedHere": false,
+  "connectionCleanupRequired": true,
+  "callsMadeUnderThisAuthority": 0
+}

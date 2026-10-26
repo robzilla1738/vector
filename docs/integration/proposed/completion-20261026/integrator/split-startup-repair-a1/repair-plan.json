@@ -1,0 +1,37 @@
+{
+  "format": "aux.browser-startup.same-scope-repair.v1",
+  "app": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-completion-20261026-a1/Aux.app",
+  "approvedReviewSha256": "20572af30ef6613f1fc8bced01edada6d52f4b3f7c1f21dd97fb610ec2b257f2",
+  "executor": {
+    "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/integrator/startup-resume-a1/repair-framework.py",
+    "sha256": "24bf2a42ecf39df965747d119e0c1bdc78a92d39ffe2b06edd4dc85ec6307d68"
+  },
+  "signedReceipt": {
+    "path": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-completion-20261026-a1/browser-startup-diagnostic-a1/receipt.json",
+    "sha256": "095217041b87f313b5ac97c0e271c20bdf76c5ed3888fa39b1ff00fa16e320c9"
+  },
+  "newUnsignedFramework": {
+    "path": "/Users/rcourson/Documents/Vibe/web/out/completion-resume-20261026/Aux Framework-split-startup-fix",
+    "sha256": "7e274549c191aa4a47580bbb60ea0345d701457f0a87504b17e199a97d48324d"
+  },
+  "replaceOnlyExecutable": "Contents/Frameworks/Aux Framework.framework/Versions/155.0.8059.85/Aux Framework",
+  "receiptDirectory": "browser-split-startup-repair-a1",
+  "sourceEvidence": [
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/integrator/split-startup-repair-a1/build-receipt.json",
+      "sha256": "071c52b5e3b705a885c19ce0cb0bed78eed0490eddd21663aeda8fd52040632a"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/integrator/split-startup-repair-a1/projection.json",
+      "sha256": "ab03cede1702ab36ae9d67ecfaa1d09998f103902a7d445d7d928ad4be712668"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/desktop/split-menu-startup/source/chrome/browser/ui/tabs/split_tab_menu_model.cc",
+      "sha256": "1be240cb726c09a009d0fee3781ffb4ecbc67e23d2ddb43b311ac8a6bb571f94"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/desktop/split-menu-startup/source/chrome/browser/ui/views/toolbar/split_tabs_button.cc",
+      "sha256": "e54f121304f7593cf99e54089fcfcc9ee09c3e095d92f8999b22e41b50b77805"
+    }
+  ]
+}

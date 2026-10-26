@@ -1,7 +1,7 @@
 {
   "format": "aux.completion.current-source-selection.v1",
   "candidate": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-completion-20261026-a1/Aux.app",
-  "signedInventorySha256": "f5c299a9be15512353133a86df4409ac94ddb8b069ce596a421f6cb386d7177f",
+  "signedInventorySha256": "fdb77a4ba9557a42cd79df61cacf60fb3415dd93890ffdc1864bb5350cbb07f7",
   "sourceSnapshots": [
     {
       "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/runtime/addon-local-signing-review/actual-signed-source-a1/source/daemon-policy.swift",
@@ -22,6 +22,14 @@
     {
       "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/integrator/startup-resume-a1/AuxSelectedStateHome.cc",
       "sha256": "2e25c7f4b67380c73559d6cdb30e463518c95c1aa417a65dff39d37a3c834713"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/desktop/split-menu-startup/source/chrome/browser/ui/tabs/split_tab_menu_model.cc",
+      "sha256": "1be240cb726c09a009d0fee3781ffb4ecbc67e23d2ddb43b311ac8a6bb571f94"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/desktop/split-menu-startup/source/chrome/browser/ui/views/toolbar/split_tabs_button.cc",
+      "sha256": "e54f121304f7593cf99e54089fcfcc9ee09c3e095d92f8999b22e41b50b77805"
     }
   ],
   "descriptor": {
@@ -39,5 +47,9 @@
   "browserStartupRepair": {
     "path": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-completion-20261026-a1/browser-startup-diagnostic-a1/receipt.json",
     "sha256": "095217041b87f313b5ac97c0e271c20bdf76c5ed3888fa39b1ff00fa16e320c9"
+  },
+  "browserSplitStartupRepair": {
+    "path": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-completion-20261026-a1/browser-split-startup-repair-a1/receipt.json",
+    "sha256": "b08d22febdf72ace9cf1211b8768d2f68f3a659bd0c7713833fa8f62cfd1e479"
   }
 }

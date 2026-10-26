@@ -1,0 +1,20 @@
+{
+  "format": "aux.split-startup.projected.v1",
+  "reason": "actual null active-tab crash in toolbar menu constructor",
+  "sourcePlan": {
+    "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/desktop/split-menu-startup/source-plan.json",
+    "sha256": "e34066f8b12b885006a10a40edaaf84de7eae617973192d3935d7941d01833a9"
+  },
+  "files": [
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/ui/tabs/split_tab_menu_model.cc",
+      "sha256": "1be240cb726c09a009d0fee3781ffb4ecbc67e23d2ddb43b311ac8a6bb571f94",
+      "frozenPath": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/desktop/split-menu-startup/source/chrome/browser/ui/tabs/split_tab_menu_model.cc"
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/ui/views/toolbar/split_tabs_button.cc",
+      "sha256": "e54f121304f7593cf99e54089fcfcc9ee09c3e095d92f8999b22e41b50b77805",
+      "frozenPath": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/desktop/split-menu-startup/source/chrome/browser/ui/views/toolbar/split_tabs_button.cc"
+    }
+  ]
+}

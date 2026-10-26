@@ -1,0 +1,17 @@
+{
+  "format": "aux.split-startup.build.v1",
+  "passed": true,
+  "exitCode": 0,
+  "projection": {
+    "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/integrator/split-startup-repair-a1/projection.json",
+    "sha256": "ab03cede1702ab36ae9d67ecfaa1d09998f103902a7d445d7d928ad4be712668"
+  },
+  "log": {
+    "path": "/Users/rcourson/Documents/Vibe/web/out/completion-resume-20261026/browser-split-fix-build.log",
+    "sha256": "02a24b620e0631176904983651e361d750de2ece9173a033ea5849e4377addd6"
+  },
+  "framework": {
+    "path": "/Users/rcourson/Documents/Vibe/web/out/completion-resume-20261026/Aux Framework-split-startup-fix",
+    "sha256": "7e274549c191aa4a47580bbb60ea0345d701457f0a87504b17e199a97d48324d"
+  }
+}
