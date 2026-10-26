@@ -1,0 +1,9 @@
+# Product information and legal review packet
+
+Owner/legal review drafts only. No content has been published or deployed. Do not present these drafts as accepted legal terms. The four current marketing links returned 404 in root's `integrator/product-link-audit.json` on October 26, 2026. Marketing/getaux.co and mail/registrar DNS are outside this change.
+
+Desktop owns the four cloud routes and exact paired app URL transforms: future `https://app.getaux.co/docs`, `/community`, `/policy/privacy`, `/policy/terms`. Source route existence does not establish the public URLs work. Keep link-fix/runtime acceptance open until the approved exact cloud source deploy and four public GET results are observed. No dashboard mutation, deployment, message, email or credentials are involved in preparing this packet.
+
+Copy facts are grounded in the current cloud configuration/architecture review, current source and root's whole-bundle OS inventory: proposed Apple Silicon/macOS27 scope, final inventory pending; account-scoped provider credentials; BYOK independent from Aux payments; no built-in Vault; actual extension compatibility and ChatGPT eligibility still open; selected-context/OS permission boundaries; Clerk/Vercel/Neon/Blob/Resend roles; encrypted content with readable service metadata; encrypted R2 recovery source with scheduled acceptance still pending. The feedback route refers only to the existing in-app feedback dialog, not an invented public contact address.
+
+Unresolved legal/operator facts are explicitly listed in the privacy and terms drafts. They require owner/legal input rather than fabrication. No current deployment, recipient, account data or provider secret was read. Cloud activation packet pins should be refreshed once after desktop's final cloud route source and metadata changes are integrated; do not re-run local cloud suites, backups or provider calls for these content-only drafts.
