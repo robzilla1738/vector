@@ -1,0 +1,18 @@
+{
+  "passed": false,
+  "session": 20925,
+  "log": "out/completion-resume-20261026/cold-input-sign-objects.log",
+  "sha256": "417f7026a3f4a8c6dc36ef771a02dff768cb8b95576a527d441da2e31d36b848",
+  "failures": [
+    "Native peer child signing wrapper missing observe-only forwarding parameter",
+    "Palette native Textfield compatibility: empty border insets, move-only Layout passkey, mutable WebContents target"
+  ],
+  "passedProducers": [
+    "AuxNativePeerTransport",
+    "installation_auth",
+    "daemon_supervisor",
+    "aux_browser_preferences_api",
+    "aux_account_api"
+  ],
+  "next": "Correct concrete compiler errors; compile affected producers before combined link"
+}

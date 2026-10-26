@@ -42,8 +42,9 @@ TABSEARCH = 'Contents/Resources/aux/apps/extension/dist/assets/tabsearch-3k_2hgi
 required = {FRAMEWORK, DAEMON+'index.mjs', DAEMON+'aux-native-entry.mjs'}
 BACKGROUND = 'Contents/Resources/aux/apps/extension/dist/background.js'
 EXTENSION_MANIFEST = 'Contents/Resources/aux/apps/extension/dist/manifest.json'
+SHORTCUT_CAPTURE = 'Contents/Resources/aux/apps/extension/dist/assets/use-shortcut-capture-DGr8Ws5Z.js'
 actual_targets = {item['target'] for item in replacements}
-require(len(actual_targets)==len(replacements) and required <= actual_targets <= required|{TABSEARCH, BACKGROUND, EXTENSION_MANIFEST}, 'Only enumerated existing leaves may change')
+require(len(actual_targets)==len(replacements) and required <= actual_targets <= required|{TABSEARCH, BACKGROUND, EXTENSION_MANIFEST, SHORTCUT_CAPTURE}, 'Only enumerated existing leaves may change')
 for item in replacements:
     pin(item['input'])
     if item['target'] == EXTENSION_MANIFEST:

@@ -11,3 +11,5 @@ The executor takes only --plan and --plan-sha256. It validates original approval
 Only AST/structural validation was performed: scripts parse, original three seals are ordered correctly, one backup and one metadata refresh. No authority or runtime acceptance is inferred from preparation. If execution fails, retain its failed receipt/bytes and preimage clone; do not blindly rerun or auto-reset.
 
 An optional --extension-manifest updates only the existing manifest version, strictly upward. Chromium retains same-version component service workers across restart; the version advance invokes its existing update path. The executor rejects any other manifest change. This is a demonstrated repair within the same outer signed object, with no added permissions, targets or entitlements. Supplied source version remains pinned in provenance.
+
+Optional --shortcut-capture is confined to existing assets/use-shortcut-capture-DGr8Ws5Z.js for the repeated-focus state correction. No additional signed object or API is introduced.
