@@ -1,6 +1,6 @@
 {
   "format": "aux.future-supervised-integration.v2",
-  "sourceGatesClosed": false,
+  "sourceGatesClosed": true,
   "unsignedLinkPassed": true,
   "runtimeAccepted": false,
   "activated": false,
@@ -104,20 +104,56 @@
       "sources": 7,
       "sharedProjectionChanged": false,
       "fullBrowserLinked": true,
-      "selection": "Existing early main-image observer/bridge, original daemon ticket reservation and binding, original strict browser ordering/Crashpad registration/ES-ACK shutdown; existing native-current-user startup and legacy migration refusal retained."
+      "selection": "Existing early main-image observer/bridge, original daemon ticket reservation and binding, original strict browser ordering/Crashpad registration/ES-ACK shutdown; existing native-current-user startup and legacy migration refusal retained.",
+      "startupSuccessorPlan": "startup-observation-plan.json"
     },
     "privateLink": {
-      "receipt": "/private/tmp/aux-future-browser-link-20261026-b3/receipt.json",
-      "receiptSha256": "a2274aa9bc38815c273870a6a11d459b2ad12d3d9de00a4b76dddfbd0d27e89b",
-      "recipe": "/private/tmp/aux-future-browser-link-20261026-b3/recipe.json",
-      "recipeSha256": "d386cb3c03e94a0c6b90fb6e9ee0ab0b0730da474f8860c505f60b942556fdfe",
+      "receipt": "/private/tmp/aux-future-browser-link-20261026-b4/receipt.json",
+      "receiptSha256": "d713870371a48150949c40e8bb5db9107fe173dea1e45f3b7da2bbdb2f14e4f1",
+      "recipe": "/private/tmp/aux-future-browser-link-20261026-b4/recipe.json",
+      "recipeSha256": "f5ce848fa5ad3aef57df2ebfd1ced0e214fc6c323f7c28d9035ed97e82ebc920",
       "outputs": {
-        "/private/tmp/aux-future-browser-link-20261026-b3/Aux": "f1d74243a7cffcf1877bf31c721e8aedfceb93a7e7f6c1b357ee59f0e5c27d85",
-        "/private/tmp/aux-future-browser-link-20261026-b3/Aux Framework": "49f3840806f700a21065d7bff1d2d44cb4f9a1638655dbd0e414adaaf7b88df6",
-        "/private/tmp/aux-future-browser-link-20261026-b3/libui.a": "af07522764455b90267f8e54b14bdbbbbceac3deb23fac52f8055821bdc184ca"
+        "/private/tmp/aux-future-browser-link-20261026-b4/Aux": "f1d74243a7cffcf1877bf31c721e8aedfceb93a7e7f6c1b357ee59f0e5c27d85",
+        "/private/tmp/aux-future-browser-link-20261026-b4/Aux Framework": "cc03f829999097f671e621c24349fbf9d8a94b34bb52457c7f164f59fbf52901",
+        "/private/tmp/aux-future-browser-link-20261026-b4/libui.a": "12a04ebfd14403c23ada389fde90969a1d947dfc0c2a03c91cf217e2b1a246e3"
       },
       "unchangedUiMembersPreserved": 174,
-      "sourceRecompiled": false
+      "reusedPrimary": {
+        "source": "/private/tmp/aux-future-browser-link-20261026-b3/Aux",
+        "sha256": "f1d74243a7cffcf1877bf31c721e8aedfceb93a7e7f6c1b357ee59f0e5c27d85",
+        "receipt": "/private/tmp/aux-future-browser-link-20261026-b3/receipt.json",
+        "receiptSha256": "a2274aa9bc38815c273870a6a11d459b2ad12d3d9de00a4b76dddfbd0d27e89b"
+      },
+      "onlyFrameworkRelinked": true,
+      "sourceProducerCompiles": 2,
+      "startupProducerReceipt": "/private/tmp/aux-future-startup-refresh-20261026-b1/receipt.json",
+      "startupProducerReceiptSha256": "24c74b61867094e219dc183e8c6432ba4ec5d54faa841f9346117cb637f23f5a",
+      "startupProducerOutputs": {
+        "/private/tmp/aux-future-startup-refresh-20261026-b1/AuxNativeParentColdLaunch.o": "64503cf153ad1027b2c88211bb4878c32255d38906e0561bf467f8c563a9e685",
+        "/private/tmp/aux-future-startup-refresh-20261026-b1/AuxSelectedStateHome.o": "c30a7d5c505795a6495f7e3c2b79bdf1b35d0230c096f857bc48ebc247f0d9df"
+      },
+      "currentLocalBaseline": {
+        "receipt": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/integrator/sidebar-files-repair-a1/build-receipt.json",
+        "receiptSha256": "d9bec642fd0b8b30fd3f8c6cc0061e3b28a2b7b85baa34beab7d3150832cbce4",
+        "framework": {
+          "path": "/Users/rcourson/Documents/Vibe/web/out/completion-resume-20261026/Aux Framework-sidebar-files-url",
+          "sha256": "9e6d48be4e9f9a6943e0402097ad1015986f9a5e7b3dd447e70acc079bf6e9ac"
+        },
+        "rootReportedBuild": "40453",
+        "includes": [
+          "accepted same-nonce/original-deadline startup repair",
+          "CLI producer updates",
+          "vertical-only hover ScrollView",
+          "Recent Files native IsInsecure status restoration",
+          "two drag diagnostic removals",
+          "normal resting full-URL formatting"
+        ]
+      },
+      "uiRuntimeAcceptanceClaimed": false
+    },
+    "producerOverrides": {
+      "/private/tmp/aux-future-startup-refresh-20261026-b1/AuxNativeParentColdLaunch.o": "64503cf153ad1027b2c88211bb4878c32255d38906e0561bf467f8c563a9e685",
+      "/private/tmp/aux-future-startup-refresh-20261026-b1/AuxSelectedStateHome.o": "c30a7d5c505795a6495f7e3c2b79bdf1b35d0230c096f857bc48ebc247f0d9df"
     }
   },
   "policies": {
@@ -135,33 +171,38 @@
     "Browser primary executable dev.aux.browser also calls the existing es_new_descendants_client and needs legitimate EndpointSecurity entitlement/profile authority. Recorded Apple request 2H4D7KNGUP names daemon only; browser coverage is unverified, not implied or requested here."
   ],
   "remainingIntegration": [
-    "generate exact paired v11 resources using actual signed helper and composed leaf hashes before containing seals",
-    "perform real Bash/yielded/PTY/CLI/fs cancellation and escaped-descendant shutdown acceptance under granted authority"
+    "Generate exact paired v11 policy/image resources with actual subsequently authorized signed helper and final resource hashes.",
+    "Assemble/activate only under legitimate daemon/browser ES coverage, separately authorized exact signatures and a supported fresh namespace.",
+    "Accept actual execution, escaped descendants, cancellation/shutdown and remaining UI journeys; compiled/link evidence is not runtime acceptance."
   ],
-  "sourceGateScope": "Execution and corrected resource joins are closed for recorded predecessor; confirmed startup-timeout successor is prepared but awaits local acceptance and two affected producer compiles/framework relink.",
+  "sourceGateScope": "Known execution sources, corrected final resource pair, accepted startup repair and final settled local UI/CLI baseline are coherently linked unsigned. No activation or UI/runtime acceptance claimed.",
   "browserProducerObjectsCompiled": true,
   "coherentFutureBrowserLinked": true,
   "nativeSourceGatesClosed": true,
   "nativeCohortReceipt": "native-cohort-receipt.json",
   "activationPackageComplete": false,
   "acceptedLocalRepairDependency": {
-    "status": "No accepted concrete split repair supplied at this checkpoint.",
-    "scope": "Root current local native diagnostic and CLI build are not automatically substituted into this frozen cohort.",
-    "nextAction": "If the local split diagnosis produces an accepted concrete source repair, carry that exact repair into the future resource/native selection and rebuild only affected producers/links before activation. Diagnostic-only changes do not invalidate the recorded cohort."
+    "status": "Resolved for final settled build40453 baseline.",
+    "baselineReceipt": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/integrator/sidebar-files-repair-a1/build-receipt.json",
+    "baselineReceiptSha256": "d9bec642fd0b8b30fd3f8c6cc0061e3b28a2b7b85baa34beab7d3150832cbce4",
+    "currentLocalSourceDeltaPending": false,
+    "uiRuntimeAcceptanceClaimed": false
   },
-  "pendingStartupObservation": {
+  "startupObservation": {
     "sourcePrepared": true,
     "sourceProposalCommit": "07a2974cb2ffd55a346d9e1ce3c49d4481c35d06",
     "observedTriggerCommit": "05953cf383c90eb5db4ba4d39be03691cf3736df",
     "plan": "startup-observation-plan.json",
     "planSha256": "b86b93a57ad512cf3a4aa06e87c0cdfa1f1f770160cfc2435ea52d51831d6c3a",
-    "files": 3,
-    "startupAnchorCount": 8,
+    "localAcceptanceConfirmed": true,
+    "acceptanceReference": "Root reported e4efa859 startup7 normal window and completed Muse response.",
+    "compiled": true,
+    "linked": true,
+    "producerReceipt": "/private/tmp/aux-future-startup-refresh-20261026-b1/receipt.json",
+    "producerReceiptSha256": "24c74b61867094e219dc183e8c6432ba4ec5d54faa841f9346117cb637f23f5a",
+    "frameworkLinkReceipt": "/private/tmp/aux-future-browser-link-20261026-b4/receipt.json",
+    "frameworkLinkReceiptSha256": "d713870371a48150949c40e8bb5db9107fe173dea1e45f3b7da2bbdb2f14e4f1",
     "existingFutureBranchPreserved": true,
-    "bothCompositionOrdersEqual": true,
-    "compiled": false,
-    "linked": false,
-    "localAcceptanceConfirmed": false,
-    "nextAction": "Only after root accepts the actual local startup repair: compile future AuxNativeParentColdLaunch.cc and AuxSelectedStateHome.cc with the composed header, then relink the affected framework. Keep previous linked artifacts and final resource pair intact until that successor passes."
+    "bothCompositionOrdersEqual": true
   }
 }

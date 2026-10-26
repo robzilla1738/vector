@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Freeze existing browser link inputs and link private unsigned successors only."""
 from pathlib import Path
-import argparse,concurrent.futures,hashlib,json,os,re,shlex,subprocess,time,sys
+import argparse,concurrent.futures,hashlib,json,os,re,shlex,subprocess,time,sys,shutil
 HERE=Path(__file__).resolve().parent;ROOT=Path('/private/tmp/aux-chromium-recovery-snapshot-20261023/src');BUILD=ROOT/'out/AuxFast';LLVM=ROOT/'third_party/llvm-build/Release+Asserts/bin'
 PRODUCERS=Path('/private/tmp/aux-future-browser-producers-20261026-b1');PARENT=Path('/private/tmp/aux-future-supervised-native-20261026-b1/parent-policy.o')
 def sha(p):
@@ -36,7 +36,7 @@ def read_target(name,rule):
    raw=line.split(': '+rule+' ',1)[1].split(' |',1)[0];inputs=shlex.split(raw.replace('$ ','\\ '));continue
   if ' = ' in line and not line.startswith('build '):key,value=line.strip().split(' = ',1);values[key]=value
  require(inputs is not None,'Missing exact link target');return p,values,inputs
-parser=argparse.ArgumentParser();parser.add_argument('--output',required=True);args=parser.parse_args();out=Path(args.output);require(not out.exists(),'Fresh private output required');out.mkdir(mode=0o700)
+parser=argparse.ArgumentParser();parser.add_argument('--output',required=True);parser.add_argument('--startup-producers');parser.add_argument('--reuse-primary-receipt');parser.add_argument('--baseline-receipt');args=parser.parse_args();out=Path(args.output);require(not out.exists(),'Fresh private output required');out.mkdir(mode=0o700)
 receipt={'format':'aux.future-browser-private-link.v1','passed':False,'signed':False,'executed':False,'sharedSourceChanged':False,'commands':[]}
 pins={};archive_inventory={}
 def pin(path):
@@ -55,6 +55,7 @@ def run(command,kind):
  with (out/f'command-{index}.log').open('wb') as log:done=subprocess.run(command,cwd=BUILD,stdout=log,stderr=subprocess.STDOUT)
  receipt['commands'].append({'kind':kind,'argv':command,'exitCode':done.returncode,'seconds':time.monotonic()-start});require(done.returncode==0,'Failed: '+kind)
 try:
+ if args.baseline_receipt:pin(Path(args.baseline_receipt))
  for p in [HERE/'link-browser.py',HERE/'private-browser-link-driver.py',HERE/'browser-source-plan.json',PRODUCERS/'receipt.json',PARENT.parent/'receipt.json',BUILD/'toolchain.ninja',ROOT/'build/toolchain/apple/linker_driver.py',LLVM/'clang++',LLVM/'ld64.lld',LLVM/'llvm-ar']:pin(p)
  producer_receipt=json.loads((PRODUCERS/'receipt.json').read_text());require(producer_receipt['passed'],'Producer proof required')
  for p,h in producer_receipt['outputs'].items():require(sha(p)==h,'Producer changed: '+p);pin(p)
@@ -69,9 +70,23 @@ try:
  'obj/chrome/chrome_app_executable/chrome_exe_main_mac.o':PRODUCERS/'chrome_exe_main_mac.o',
  'obj/base/aux_browser_descendant_engine/aux_browser_descendant_bridge.o':PRODUCERS/'aux_browser_descendant_bridge.o',
  'obj/chrome/browser/ui/libui.a':private_ui}
+ reused_primary=None;startup_receipt=None
+ if args.startup_producers:
+  folder=Path(args.startup_producers);startup_receipt=folder/'receipt.json';proof=json.loads(startup_receipt.read_text())
+  require(proof['passed'] and proof['sourcePlanSha256']==sha(HERE/'startup-observation-plan.json'),'Accepted startup producer proof required');pin(startup_receipt);pin(HERE/'startup-observation-plan.json')
+  require(set(Path(p).name for p in proof['outputs'])=={'AuxNativeParentColdLaunch.o','AuxSelectedStateHome.o'},'Exactly two startup producer outputs required')
+  for path,expected in proof['outputs'].items():
+   require(sha(path)==expected,'Startup producer changed');pin(path)
+   replacement['obj/chrome/browser/aux/platform/'+Path(path).name]=Path(path)
+ if args.reuse_primary_receipt:
+  primary_receipt=Path(args.reuse_primary_receipt);proof=json.loads(primary_receipt.read_text());require(proof['passed'],'Successful primary receipt required');pin(primary_receipt)
+  matches=[(Path(p),h) for p,h in proof['outputs'].items() if Path(p).name=='Aux'];require(len(matches)==1,'Exactly one passed primary required');primary,expected=matches[0];require(sha(primary)==expected,'Passed primary changed');pin(primary)
+  shutil.copy2(primary,out/'Aux');require(sha(out/'Aux')==expected,'Private primary copy differs')
+  reused_primary={'source':str(primary),'sha256':expected,'receipt':str(primary_receipt),'receiptSha256':sha(primary_receipt)}
  old_swift=['obj/chrome/browser/aux/native_peer_policy/aux_parent_sealed_policy/'+n+'.o' for n in ['AuxAuthenticatedChildParentPolicyReader','AuxFreshBootstrapPolicy','AuxStrictEnvelopeObject']]
  links=[]
  for name,rule,label in [('chrome_app_executable.ninja','link','Aux'),('chrome_framework_shared_library.ninja','solink','Aux Framework')]:
+  if rule=='link' and reused_primary:continue
   ninja,values,inputs=read_target(name,rule);pin(ninja)
   for p in inputs:pin(p)
   if rule=='solink':require(all(inputs.count(p)==1 for p in old_swift),'Exact three old parent Swift objects required')
@@ -98,17 +113,17 @@ try:
   require('-Wl,-no_adhoc_codesign' in command,'Unsigned linker flag required')
   links.append({'label':label,'command':command,'responseFile':str(rsp),'responseSha256':sha(rsp),'originalSwiftDebugMetadata':values.get('swiftmodules',''),'predecessorAstOmitted':rule=='solink'})
  print('Freezing '+str(len(pins))+' actual link inputs',flush=True);pins=hashes(list(pins))
- recipe={'format':'aux.future-browser-private-link-recipe.v1','cwd':str(BUILD),'links':links,'inputHashes':pins,'thinArchives':archive_inventory,'uiReplacement':{'source':str(old_ui),'output':str(private_ui),'before':list(map(str,members)),'after':list(map(str,new_members))},'deploymentTarget':'macOS 27.0, arm64; matches accepted M-series scope','sourceRecompiled':False,'signed':False,'executed':False};(out/'recipe.json').write_text(json.dumps(recipe,indent=2)+'\n');receipt['recipeSha256']=sha(out/'recipe.json')
+ recipe={'format':'aux.future-browser-private-link-recipe.v1','cwd':str(BUILD),'links':links,'inputHashes':pins,'thinArchives':archive_inventory,'uiReplacement':{'source':str(old_ui),'output':str(private_ui),'before':list(map(str,members)),'after':list(map(str,new_members))},'deploymentTarget':'macOS 27.0, arm64; matches accepted M-series scope','baselineReceipt':args.baseline_receipt,'reusedPrimary':reused_primary,'startupProducerReceipt':str(startup_receipt) if startup_receipt else None,'sourceRecompiled':False,'signed':False,'executed':False};(out/'recipe.json').write_text(json.dumps(recipe,indent=2)+'\n');receipt['recipeSha256']=sha(out/'recipe.json')
  run([str(LLVM/'llvm-ar'),'rcsT',str(private_ui),*map(str,new_members)],'private UI archive with one changed member')
  require(thin_members(private_ui)==new_members,'Private archive member order or paths changed')
  for link in links:run(link['command'],'unsigned '+link['label']+' link')
- for label in ['Aux','Aux Framework']:
+ for label in [item['label'] for item in links]:
   run(['/usr/bin/otool','-l',str(out/label)],label+' load commands')
   require('LC_CODE_SIGNATURE' not in (out/f'command-{len(receipt["commands"])-1}.log').read_text(),'Unexpected signature')
   run([str(LLVM/'llvm-nm'),'-u',str(out/label)],label+' unresolved symbols')
   require(not re.search(r'\b_Aux(?:Native|GetBrowserDescendant|GetActualCli|Authenticated)',(out/f'command-{len(receipt["commands"])-1}.log').read_text()),'Unresolved Aux producer ABI')
  print('Verifying frozen inputs after link',flush=True);require(hashes(list(pins))==pins,'A frozen input changed during link')
- receipt.update(passed=True,outputs={str(out/name):sha(out/name) for name in ['Aux','Aux Framework','libui.a']},unchangedUiMembersPreserved=len(members)-1,inputPinsCheckedBeforeAndAfter=True,daemonCohortReceipt=str(PARENT.parent/'receipt.json'),activationPackageComplete=False)
+ receipt.update(passed=True,outputs={str(out/name):sha(out/name) for name in ['Aux','Aux Framework','libui.a']},unchangedUiMembersPreserved=len(members)-1,inputPinsCheckedBeforeAndAfter=True,daemonCohortReceipt=str(PARENT.parent/'receipt.json'),activationPackageComplete=False,baselineReceipt=args.baseline_receipt,reusedPrimary=reused_primary,startupProducerReceipt=str(startup_receipt) if startup_receipt else None)
 except Exception as error:receipt['error']=str(error);raise
 finally:(out/'receipt.json').write_text(json.dumps(receipt,indent=2)+'\n')
 print(json.dumps({'passed':True,'receipt':str(out/'receipt.json')}))

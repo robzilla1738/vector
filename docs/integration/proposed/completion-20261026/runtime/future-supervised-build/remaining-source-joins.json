@@ -1,6 +1,6 @@
 {
   "format": "aux.future-supervised-source-gates.v2",
-  "finiteSourceGatesClosed": false,
+  "finiteSourceGatesClosed": true,
   "sourceEvidence": "../selected-repl-fs/completion-evidence.json",
   "inactiveLinkReceipt": "/private/tmp/aux-future-supervised-native-20261026-b1/receipt.json",
   "runtimeAccepted": false,
@@ -8,7 +8,7 @@
   "browserOverlay": "browser-source-plan.json",
   "browserProducersCompiled": true,
   "coherentFutureBrowserLinked": true,
-  "sourceGateScope": "Prepared startup-observation successor awaits actual local acceptance and affected future native build; previous coherent cohort is unchanged.",
+  "sourceGateScope": "No known local source/build join remains for the frozen execution cohort. External activation authority, exact future image descriptors and actual runtime/UI acceptance remain.",
   "nativeSourceGatesClosed": true,
   "nativeCohortReceipt": "native-cohort-receipt.json",
   "resourceDependency": {
@@ -58,23 +58,27 @@
     "modelCalls": 0
   },
   "acceptedLocalRepairDependency": {
-    "status": "No accepted concrete split repair supplied at this checkpoint.",
-    "scope": "Root current local native diagnostic and CLI build are not automatically substituted into this frozen cohort.",
-    "nextAction": "If the local split diagnosis produces an accepted concrete source repair, carry that exact repair into the future resource/native selection and rebuild only affected producers/links before activation. Diagnostic-only changes do not invalidate the recorded cohort."
+    "status": "Resolved for final settled build40453 baseline.",
+    "baselineReceipt": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/integrator/sidebar-files-repair-a1/build-receipt.json",
+    "baselineReceiptSha256": "d9bec642fd0b8b30fd3f8c6cc0061e3b28a2b7b85baa34beab7d3150832cbce4",
+    "currentLocalSourceDeltaPending": false,
+    "uiRuntimeAcceptanceClaimed": false
   },
-  "pendingStartupObservation": {
+  "startupObservation": {
     "sourcePrepared": true,
     "sourceProposalCommit": "07a2974cb2ffd55a346d9e1ce3c49d4481c35d06",
     "observedTriggerCommit": "05953cf383c90eb5db4ba4d39be03691cf3736df",
     "plan": "startup-observation-plan.json",
     "planSha256": "b86b93a57ad512cf3a4aa06e87c0cdfa1f1f770160cfc2435ea52d51831d6c3a",
-    "files": 3,
-    "startupAnchorCount": 8,
+    "localAcceptanceConfirmed": true,
+    "acceptanceReference": "Root reported e4efa859 startup7 normal window and completed Muse response.",
+    "compiled": true,
+    "linked": true,
+    "producerReceipt": "/private/tmp/aux-future-startup-refresh-20261026-b1/receipt.json",
+    "producerReceiptSha256": "24c74b61867094e219dc183e8c6432ba4ec5d54faa841f9346117cb637f23f5a",
+    "frameworkLinkReceipt": "/private/tmp/aux-future-browser-link-20261026-b4/receipt.json",
+    "frameworkLinkReceiptSha256": "d713870371a48150949c40e8bb5db9107fe173dea1e45f3b7da2bbdb2f14e4f1",
     "existingFutureBranchPreserved": true,
-    "bothCompositionOrdersEqual": true,
-    "compiled": false,
-    "linked": false,
-    "localAcceptanceConfirmed": false,
-    "nextAction": "Only after root accepts the actual local startup repair: compile future AuxNativeParentColdLaunch.cc and AuxSelectedStateHome.cc with the composed header, then relink the affected framework. Keep previous linked artifacts and final resource pair intact until that successor passes."
+    "bothCompositionOrdersEqual": true
   }
 }
