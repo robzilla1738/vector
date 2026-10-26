@@ -1,0 +1,21 @@
+{
+  "receipt": "/private/tmp/aux-future-analytics-resources-20261026-b1/receipt.json",
+  "receiptSha256": "b495b8b4474ce4fe7fa172bea5c2b7cc4cb214412515a678c3ec040561e7ea70",
+  "resources": [
+    {
+      "path": "/private/tmp/aux-future-analytics-resources-20261026-b1/index.mjs",
+      "sha256": "3f3eecdb8db3a7278e6ec4f424e58d596cd33f1f5474fc80ee539a9a94ca2896"
+    },
+    {
+      "path": "/private/tmp/aux-future-analytics-resources-20261026-b1/aux-native-entry.mjs",
+      "sha256": "f27cd69f53672079928e6ec7688a5da3ebddd7461e7cfc87810594a474a2d43f"
+    },
+    {
+      "path": "/private/tmp/aux-future-analytics-resources-20261026-b1/background.js",
+      "sha256": "3cb595b2b79e91cf93362a989cb8d740835d2c7113cf7ae7ce8b7870b54fa54d"
+    }
+  ],
+  "passed": true,
+  "nativeRefreshPending": true,
+  "fixedCaptureDefectPending": true
+}

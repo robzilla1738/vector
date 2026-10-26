@@ -1,0 +1,135 @@
+{
+  "format": "aux.future-analytics-resource-refresh.v1",
+  "evidence": [
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/integration/ordinary-chat/analytics-no-spawn/proposal.json",
+      "sha256": "92070eef1101da9fd606641bb0dc85fea0500df4c0c3bef89fba496677362b02"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/integration/ordinary-chat/profile-binding-diagnostic/proposal.json",
+      "sha256": "6a6a83e7a275df49eb81da0e2765911f1fec8bf7b1288df2a42ac15db84070a6"
+    },
+    {
+      "path": "/private/tmp/aux-future-direct-fixed-dispatch-20261026-b1/receipt.json",
+      "sha256": "be56bd50133a7c5707d57f4a4289cb05cafcf68ff1622bfe4e23d858b7ca3db4"
+    }
+  ],
+  "predecessorResourceDependency": {
+    "required": false,
+    "completed": true,
+    "integratedCorrectionCommit": "253db9854",
+    "sourceCommit": "0f4537c24",
+    "receipt": "/private/tmp/aux-future-direct-fixed-dispatch-20261026-b1/receipt.json",
+    "receiptSha256": "be56bd50133a7c5707d57f4a4289cb05cafcf68ff1622bfe4e23d858b7ca3db4",
+    "plan": "../../integration/ordinary-chat/direct-fixed-dispatch/future-proposal.json",
+    "resources": [
+      {
+        "path": "/private/tmp/aux-future-direct-fixed-dispatch-20261026-b1/index.mjs",
+        "sha256": "35224aa4bb1633f71bd4963a7d02fa63d6d5aafc6490b3e55afeedc1b507843a",
+        "preservedAdapters": {
+          "selected-repl-fs-resource.mjs": "de8c25462318a399e971b6be59d735c4b064aa1a86a0ce94a4d0d7637a04ccfd",
+          "selected-repl-resource.mjs": "b97a6ac7031f1d9dd4c9b8e1105908c7c8deb63f648c70adae40c9ece5b4b0dd"
+        }
+      },
+      {
+        "path": "/private/tmp/aux-future-direct-fixed-dispatch-20261026-b1/aux-native-entry.mjs",
+        "sha256": "882031706a125573c03a246f28f6c01f73f80b779345a10a0bb59ecd658ec2fc",
+        "preservedAdapters": {
+          "selected-repl-fs-resource.mjs": "de8c25462318a399e971b6be59d735c4b064aa1a86a0ce94a4d0d7637a04ccfd",
+          "selected-repl-resource.mjs": "b97a6ac7031f1d9dd4c9b8e1105908c7c8deb63f648c70adae40c9ece5b4b0dd"
+        }
+      }
+    ],
+    "ruleCounts": [
+      [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ]
+    ],
+    "focusedChecksPassed": true,
+    "nativeRebuild": false,
+    "signed": false,
+    "appModified": false,
+    "modelCalls": 0,
+    "reusedWithoutRecomposition": false,
+    "nativeInterfaceUnchanged": true,
+    "exactReverseReplay": true,
+    "futureVerificationScope": "Two syntax checks plus exact substitution counts/reverse replay; focused direct-boundary checks reused from0f4537c24. No native rebuild or runtime acceptance.",
+    "previousResourceReceipt": {
+      "path": "/private/tmp/aux-future-final-resources-20261026-b1/receipt.json",
+      "sha256": "71f221028b11b88d31a922df45552b5b8b7dd1c8716a1763c5086493773823ff"
+    }
+  },
+  "resources": [
+    {
+      "name": "index.mjs",
+      "path": "/private/tmp/aux-future-direct-fixed-dispatch-20261026-b1/index.mjs",
+      "beforeSha256": "35224aa4bb1633f71bd4963a7d02fa63d6d5aafc6490b3e55afeedc1b507843a",
+      "afterSha256": "3f3eecdb8db3a7278e6ec4f424e58d596cd33f1f5474fc80ee539a9a94ca2896",
+      "rules": [
+        {
+          "find": "if(process.platform===`darwin`){let[Cn,ei]=await Promise.all([$(`sw_vers -productVersion`),$(`sysctl -n hw.model`)]);return{os_version:Cn,device_model:ei}}",
+          "replace": "if(process.platform===`darwin`)return{};",
+          "count": 1
+        }
+      ],
+      "preservedAdapters": {
+        "selected-repl-fs-resource.mjs": "de8c25462318a399e971b6be59d735c4b064aa1a86a0ce94a4d0d7637a04ccfd",
+        "selected-repl-resource.mjs": "b97a6ac7031f1d9dd4c9b8e1105908c7c8deb63f648c70adae40c9ece5b4b0dd"
+      }
+    },
+    {
+      "name": "aux-native-entry.mjs",
+      "path": "/private/tmp/aux-future-direct-fixed-dispatch-20261026-b1/aux-native-entry.mjs",
+      "beforeSha256": "882031706a125573c03a246f28f6c01f73f80b779345a10a0bb59ecd658ec2fc",
+      "afterSha256": "f27cd69f53672079928e6ec7688a5da3ebddd7461e7cfc87810594a474a2d43f",
+      "rules": [
+        {
+          "find": "if(process.platform===`darwin`){let[Cn,ei]=await Promise.all([$(`sw_vers -productVersion`),$(`sysctl -n hw.model`)]);return{os_version:Cn,device_model:ei}}",
+          "replace": "if(process.platform===`darwin`)return{};",
+          "count": 1
+        }
+      ],
+      "preservedAdapters": {
+        "selected-repl-fs-resource.mjs": "de8c25462318a399e971b6be59d735c4b064aa1a86a0ce94a4d0d7637a04ccfd",
+        "selected-repl-resource.mjs": "b97a6ac7031f1d9dd4c9b8e1105908c7c8deb63f648c70adae40c9ece5b4b0dd"
+      }
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-completion-20261026-a1/Aux.app/Contents/Resources/aux/apps/extension/dist/background.js",
+      "name": "background.js",
+      "beforeSha256": "f170233b0d7f8465bd54330a0f9e6b7fb614db93685458917823a3d56547ca92",
+      "afterSha256": "3cb595b2b79e91cf93362a989cb8d740835d2c7113cf7ae7ce8b7870b54fa54d",
+      "rules": [
+        {
+          "find": "if(native.profileId!==route.profileId||native.boundAccountId!==route.accountId||native.isRegularProfile!==true||native.isOffTheRecord!==false||native.accountAuthPaused===true||native.cookieRestorePending!==false||![native.browserContextId,native.cookieBindingEpoch,native.cookieRestoreEpoch].every(value=>typeof value==='string'&&value))throw Error('The native browser profile binding changed.');",
+          "replace": "const checks=[native.profileId===route.profileId,native.boundAccountId===route.accountId,native.isRegularProfile===true,native.isOffTheRecord===false,native.accountAuthPaused!==true,native.cookieRestorePending===false,...[native.browserContextId,native.cookieBindingEpoch,native.cookieRestoreEpoch].map(value=>typeof value==='string'&&value.length>0)];\n if(checks.some(value=>!value))throw Error('The native browser profile binding changed. [checks='+checks.map(value=>value?'1':'0').join('')+']');",
+          "count": 1
+        }
+      ],
+      "target": "Contents/Resources/aux/apps/extension/dist/background.js"
+    }
+  ]
+}
