@@ -1,0 +1,24 @@
+{
+  "format": "aux.reconnect-run-error.v1",
+  "rules": [
+    {
+      "find": "let si=`skipped`;if(oi&&(si=await this.resumeRun(Cn,ei)),!this.#s)return;",
+      "replace": "if(ii?.status===`errored`&&!ai&&!oi){ri.fanout.send(ti,{op:`error`,protocolVersion:1,message:`This task stopped before completing. Your saved messages are preserved. Retry this task after checking its model, tools and selected page.`});this.#w(ri);return}let si=`skipped`;if(oi&&(si=await this.resumeRun(Cn,ei)),!this.#s)return;",
+      "count": 1
+    }
+  ],
+  "resources": [
+    {
+      "path": "/private/tmp/aux-settled-browser-rejection-20261026-a1/future/index.mjs",
+      "name": "index.mjs",
+      "beforeSha256": "0c58944c7623d8ef6fb6c2b59d038c3e9e49bdda592a639ef58e172e63f9b34b",
+      "afterSha256": "0255c918fe9d10140e2af4ee2fe2db028c9e860304579f0e1fc3f989a1a7f97a"
+    },
+    {
+      "path": "/private/tmp/aux-settled-browser-rejection-20261026-a1/future/aux-native-entry.mjs",
+      "name": "aux-native-entry.mjs",
+      "beforeSha256": "4603d500d5de3b34123f2cc12232ae3477fe79a2ed8aec937879d7f011753041",
+      "afterSha256": "05a7f6d07fef42002cad0523844f0bd47e9e5b30b0502a88da5d1a9ea6746950"
+    }
+  ]
+}

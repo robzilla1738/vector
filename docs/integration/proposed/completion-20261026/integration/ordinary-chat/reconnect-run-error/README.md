@@ -1,0 +1,7 @@
+# Restore failed-run feedback on connection
+
+The supplied run catch broadcasts agent_error but persists only errored status. Before the first assistant message, there is no transcript error to render. Session connect sends ready(running:false); without retained replay a new/reopened client receives no error. The existing initialization helper does not handle this later prompt-preparation failure.
+
+This one-count join sends the existing protocol error envelope to the connecting socket only when the exact stored session is errored and has neither live nor orphaned-running work. It uses fixed safe guidance, not the underlying error/stack. Existing provider UI handles op:error with its error presentation; no new UI or protocol is added. It changes no transcript, status, account selection or draft. Session lookup remains after the original account/session admission and owner initialization, and no asynchronous operation intervenes between status snapshot and publication. Live work is never overwritten. Existing socket identity checks fence switched clients. Retry continues through the original command path.
+
+Current and future receipts start from the settled-browser-rejection a1 derivatives, preserving analytics and all runtime-specific changes. Preparation is local and unsigned; actual app error presentation and Retry remain to be observed. No live app/state/model operation performed.
