@@ -1,0 +1,26 @@
+{
+  "scope": "proposal only; conditional on observed transient startup authorization failure",
+  "projected": false,
+  "compiled": false,
+  "files": [
+    {
+      "path": "chrome/browser/aux/AuxNativeParentColdLaunch.h",
+      "beforeSha256": "c2187e748e0676c1edc9c591ddc88e8c87b4bc2936bdbe90ae112a62b42fa9cc",
+      "afterSha256": "4ccef428e661568605464d0c202cf355e8357ac0343645071bcd553ee8a9181c",
+      "anchors": 2
+    },
+    {
+      "path": "chrome/browser/aux/AuxNativeParentColdLaunch.cc",
+      "beforeSha256": "5fd1c2824f27f9e017787ba9f2be0f2aa6d9b63d4aea7bdc88679c7a126fb574",
+      "afterSha256": "1c2996c7c3b8931330033688b7c6997749e4d3a7c2908b97dab6e9450ac1784b",
+      "anchors": 3
+    },
+    {
+      "path": "chrome/browser/aux/AuxSelectedStateHome.cc",
+      "beforeSha256": "2e25c7f4b67380c73559d6cdb30e463518c95c1aa417a65dff39d37a3c834713",
+      "afterSha256": "1ccb3f17b2dd85a1c8a717b4ad80f62ea22567e57e8e48bf2f0adc8c8959b921",
+      "anchors": 3
+    }
+  ],
+  "totalAnchors": 8
+}

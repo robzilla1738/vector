@@ -1,0 +1,128 @@
+--- a/chrome/browser/aux/AuxNativeParentColdLaunch.h
++++ b/chrome/browser/aux/AuxNativeParentColdLaunch.h
+@@ -2,12 +2,15 @@
+ #include "AuxSelectedStateHome.h"
+ #include <optional>
+ #include "base/files/file_path.h"
++#include "base/time/time.h"
+ 
+ namespace aux::peer {
+ // Native startup only, before profile/extension construction. The fixed signed
+ // bundle derives its own child image; no caller path, identity or home exists.
+ // This starts only the fresh native service, not a legacy-state migration.
+ SelectedStateHomeResolution StartSealedNativeDaemonBeforeProfiles();
++// Observation of the existing one-shot startup budget, never a new allowance.
++base::TimeTicks NativeBrowserStartupDeadline();
+ // Native signed-image observations and fixed OS-user directories only. These
+ // never select legacy state, settle a writer, or authorize browser startup.
+ struct NativeUserStartupPaths {
+--- a/chrome/browser/aux/AuxNativeParentColdLaunch.cc
++++ b/chrome/browser/aux/AuxNativeParentColdLaunch.cc
+@@ -54,6 +54,7 @@
+   const pid_t process = getpid();
+   std::mutex mutex;
+   bool attempted = false;
++  base::TimeTicks deadline;
+   std::optional<LocationPreflight> location;
+ };
+ StartupAttempt& CurrentAttempt() {
+@@ -462,6 +463,12 @@
+   return prepared && SameUserPaths(prepared->paths, paths) && RevalidatePreparedDirectories(*prepared);
+ }
+ 
++base::TimeTicks NativeBrowserStartupDeadline() {
++  auto& attempt = CurrentAttempt();
++  if (getpid() != attempt.process) return {};
++  std::lock_guard<std::mutex> lock(attempt.mutex);
++  return attempt.deadline;
++}
+ SelectedStateHomeResolution StartSealedNativeDaemonBeforeProfiles() {
+   auto selected = ReadNativeSelectedStateHome();
+   if (selected.route != SelectedStateHomeRoute::unselected) return selected;
+@@ -476,6 +483,10 @@
+   if (!child || ReadNativeSelectedStateHome().route != SelectedStateHomeRoute::unselected ||
+       !child->LaunchOnce()) return {SelectedStateHomeRoute::unavailable, {}};
+   const auto deadline = base::TimeTicks::Now() + kStartupLimit;
++  {
++    std::lock_guard<std::mutex> lock(attempt.mutex);
++    attempt.deadline = deadline;
++  }
+   while (base::TimeTicks::Now() < deadline) {
+     const auto status = child->ServicePeerOnce(250);
+     if (status != ExchangeStatus::authenticated && status != ExchangeStatus::timedOut) break;
+--- a/chrome/browser/aux/AuxSelectedStateHome.cc
++++ b/chrome/browser/aux/AuxSelectedStateHome.cc
+@@ -1,4 +1,5 @@
+ #include "AuxSelectedStateHome.h"
++#include "AuxNativeParentColdLaunch.h"
+ #include "chrome/browser/aux/ui_storage_migration_completion.h"
+ #include "AuxBrowserPrivateRoots.h"
+ #include "base/files/scoped_file.h"
+@@ -419,7 +420,46 @@
+   auto pulse = owner->InspectReadyPulse();
+   if (!pulse || !Fresh(*pulse) || !roots->Revalidate()) return refused(5);
+   if (!admitted_generation) {
+-    auto reply = owner->GetBrowserStartupLease(2'000);
++    const auto deadline = NativeBrowserStartupDeadline();
++    auto current_startup = [&] {
++      if (deadline.is_null() || base::TimeTicks::Now() >= deadline) return false;
++      const auto current = owner->InspectReadyPulse();
++      const auto child = owner->InspectOwnedChild();
++      if (!current || !Fresh(*current) || current->generation != pulse->generation ||
++          current->exports < pulse->exports || !roots->Revalidate() ||
++          child.closed || child.wrong_process || child.exit_observed_and_reaped ||
++          child.exit_ownership_unknown || child.child_pid <= 1) return false;
++      std::lock_guard<std::mutex> lock(state.mutex);
++      return !state.closed && !state.browser_shutdown_phase && !state.initializing &&
++          state.selected == owner && !state.browser_generation &&
++          base::TimeTicks::Now() < deadline;
++    };
++    auto next_slice = [&]() -> uint32_t {
++      // RequestAuthority may send/receive twice when retiring a failed reply.
++      // Bound all four transport waits by the remaining original budget.
++      const int64_t remaining = (deadline - base::TimeTicks::Now()).InMilliseconds();
++      return remaining < 4 ? 0 : static_cast<uint32_t>(std::min<int64_t>(2'000, remaining / 4));
++    };
++    auto transient = [](DaemonAuthorityStatus status) {
++      return status == DaemonAuthorityStatus::timedOut || status == DaemonAuthorityStatus::pending;
++    };
++    auto pause_observation = [&] {
++      const auto remaining = deadline - base::TimeTicks::Now();
++      if (remaining.is_positive())
++        base::PlatformThread::Sleep(std::min(base::Milliseconds(25), remaining));
++    };
++    DaemonAuthorityReply reply;
++    for (;;) {
++      if (!current_startup()) return refused(6);
++      const auto slice = next_slice();
++      if (!slice) return refused(6);
++      // Same operation/body retains the original native nonce. After any send
++      // attempt this observes that request; it never repeats the root grant.
++      reply = owner->GetBrowserStartupLease(slice);
++      if (!current_startup()) return refused(6);
++      if (!transient(reply.status)) break;
++      pause_observation();
++    }
+     if (reply.status != DaemonAuthorityStatus::ready)
+       fprintf(stderr, "Aux browser startup lease status=%d bytes=%zu\n",
+               static_cast<int>(reply.status), reply.payload.size());
+@@ -437,7 +477,18 @@
+       std::lock_guard<std::mutex> lock(state.mutex);
+       if ((state.closed || state.browser_shutdown_phase != 0) || state.selected != owner) return refused(10);
+     }
+-    if (owner->AcceptAuthorityReply(reply, 2'000) != DaemonAuthorityStatus::ready) return refused(11);
++    for (;;) {
++      if (!current_startup()) return refused(11);
++      const auto slice = next_slice();
++      if (!slice) return refused(11);
++      // Retain this exact ready publication across ACK uncertainty. Repeating
++      // its nonce-bound ACK is idempotent; a timeout is never acceptance.
++      const auto accepted = owner->AcceptAuthorityReply(reply, slice);
++      if (!current_startup()) return refused(11);
++      if (accepted == DaemonAuthorityStatus::ready) break;
++      if (!transient(accepted)) return refused(11);
++      pause_observation();
++    }
+ #if !defined(AUX_BROWSER_ONLY_NATIVE_STARTUP)
+     if (!owner->BindBrowserDescendantScope(generation)) return refused(12);
+ #endif

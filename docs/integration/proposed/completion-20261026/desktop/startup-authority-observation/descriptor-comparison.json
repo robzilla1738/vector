@@ -1,0 +1,29 @@
+{
+  "scope": "read-only signed artifact descriptor comparison; not latency or runtime acceptance evidence",
+  "observations": [
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-local-completion-20261025-a38/Aux.app/Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/AuxFreshBootstrapPolicy.json",
+      "sha256": "ee33876818fe606ef2751427cf3db5361a8e7774cf592fb8d5ddbe15a3c53225",
+      "format": "aux.fresh.bootstrap.policy.v9",
+      "pdfModule": null,
+      "macOSUtilitiesModule": null
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/runtime/addon-local-signing-review/actual-signed-source-a1/AuxFreshBootstrapPolicy.json",
+      "sha256": "d29979e1a2b9d6d6ebfa3eb213e030188fa45e1d52649da0b2e1c0f318652ee2",
+      "format": "aux.fresh.bootstrap.policy.v10",
+      "pdfModule": {
+        "bytes": 9437920,
+        "identifier": "dev.aux.browser.pdf",
+        "path": "Contents/Resources/native/aux-pdf.node",
+        "sha256": "8145277feda966e4d2c8912baa6b72e06ae9ae0a1fd925a0376043c25f808881"
+      },
+      "macOSUtilitiesModule": {
+        "bytes": 409728,
+        "identifier": "dev.aux.browser.macos-utilities",
+        "path": "Contents/Resources/native/aux-macos-utilities.node",
+        "sha256": "e7204915d9d656c2212153c0b9d3d734447278e4744fe6f407b1af767baa272e"
+      }
+    }
+  ]
+}
