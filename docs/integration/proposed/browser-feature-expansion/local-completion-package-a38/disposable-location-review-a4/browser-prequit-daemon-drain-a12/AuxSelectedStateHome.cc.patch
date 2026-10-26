@@ -1,0 +1,31 @@
+--- a/chrome/browser/aux/AuxSelectedStateHome.cc
++++ b/chrome/browser/aux/AuxSelectedStateHome.cc
+@@ -518,6 +518,28 @@
+           state.browser_generation, state.active_reads, state.monitor_running,
+           false, aux::features::InspectNativeFeatureWrites()};
+ }
++SelectedStateHomeObservation InspectNativeSelectedOwnedChildForShutdown() {
++  auto& state = CurrentState();
++  if (getpid() != state.process) return {SelectedStateHomeRoute::wrongProcess};
++  std::shared_ptr<SelectedNativeHome> owner;
++  {
++    std::lock_guard<std::mutex> lock(state.mutex);
++    if (state.initializing || !state.selected) return ObserveLocked(state);
++    owner = state.selected;
++    ++state.active_reads;
++  }
++  // Existing sole original-child wait/birth/reap owner. Never close its peer
++  // merely because the authenticated shutdown request has been acknowledged.
++  auto child = owner->InspectOwnedChild();
++  std::lock_guard<std::mutex> lock(state.mutex);
++  --state.active_reads;
++  if (state.selected != owner) {
++    state.browser_shutdown_uncertain = true;
++    return {SelectedStateHomeRoute::unavailable};
++  }
++  state.child_close = child;
++  return ObserveLocked(state);
++}
+ SelectedStateHomeObservation CloseNativeSelectedStateHome() {
+   aux::features::CloseNativeFeatureIoAdmission();
+   auto& state = CurrentState();

@@ -1,0 +1,11 @@
+--- a/chrome/browser/aux/AuxSelectedStateHome.h
++++ b/chrome/browser/aux/AuxSelectedStateHome.h
+@@ -64,5 +64,8 @@
+ // It retains actual selected child ownership; it does not admit profile writers.
+ bool InstallNativeSelectedStateHome(std::unique_ptr<SelectedNativeHome> selected);
+ SelectedStateHomeResolution ReadNativeSelectedStateHome();
++// Native-only read/reap observation of the original selected child. This does
++// not close its parent peer, roots or admission and cannot certify no-child.
++SelectedStateHomeObservation InspectNativeSelectedOwnedChildForShutdown();
+ SelectedStateHomeObservation CloseNativeSelectedStateHome();
+ }  // namespace aux::peer

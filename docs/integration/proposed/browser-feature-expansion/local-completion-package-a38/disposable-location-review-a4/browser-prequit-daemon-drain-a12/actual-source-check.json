@@ -1,0 +1,34 @@
+{
+  "format": "aux.native-prequit-source-check.v1",
+  "passed": true,
+  "files": [
+    {
+      "path": "chrome/browser/aux/AuxSelectedStateHome.h",
+      "inputSha256": "340e954939b4b9d08ef532b266ef37c403abf85a31b74599d5ed19ff3ebb0c52",
+      "outputSha256": "16a222690c017271b962b980c60cd0a94e4429b79c81826fb4e857f1ec9ed12d",
+      "anchorCount": 1,
+      "forwardReverseExact": true
+    },
+    {
+      "path": "chrome/browser/aux/AuxSelectedStateHome.cc",
+      "inputSha256": "3e428cc87add669fff579ac0be8baaab3c278210047514cbe2e0ed5989c32271",
+      "outputSha256": "b4612ad86ddbd0092b2c4cd61627b38629b295d5d58a21a3fbf8ef94392fbb4b",
+      "anchorCount": 1,
+      "forwardReverseExact": true
+    },
+    {
+      "path": "chrome/browser/aux/daemon_supervisor.cc",
+      "inputSha256": "ae01a9fddbdc5fb2ecbd78eaa72825adf752c859b6d3d00034bbfb209a362e29",
+      "outputSha256": "9c3aab2e4bd56e2986ce2d1abf00135ce7fa7a0b6f4bdf321259848eb2cefc01",
+      "anchorCount": 1,
+      "forwardReverseExact": true
+    }
+  ],
+  "fullModeSupervisorBytesExact": true,
+  "authenticatedHttpTriggerUnchanged": true,
+  "inspectionDoesNotClosePeer": true,
+  "originalReapRequiredBeforeNativeClose": true,
+  "deadlineFailureNotDrain": true,
+  "productExecuted": false,
+  "nativeTreeMutated": false
+}

@@ -1,0 +1,32 @@
+--- a/chrome/browser/aux/daemon_supervisor.cc
++++ b/chrome/browser/aux/daemon_supervisor.cc
+@@ -668,6 +668,29 @@
+ }
+ void DaemonSupervisor::FinishNativeShutdown() {
+   loader_.reset();
++#if defined(AUX_BROWSER_ONLY_NATIVE_STARTUP) && AUX_BROWSER_ONLY_NATIVE_STARTUP
++  // POST /shutdown acknowledges starting the existing asynchronous JS drain.
++  // SQLite/producer close still needs this exact live browser peer and roots.
++  // Keep servicing that authority until the original child actually exits;
++  // neither an HTTP acknowledgement nor absent ownership proves settlement.
++  if (native_shutdown_deadline_.is_null())
++    native_shutdown_deadline_ = base::TimeTicks::Now() + base::Seconds(5);
++  const auto observed = peer::InspectNativeSelectedOwnedChildForShutdown();
++  const auto& child = observed.child_close;
++  const bool original_child_exited = child && child->exit_observed_and_reaped &&
++      !child->wrong_process && !child->exit_ownership_unknown;
++  if (!original_child_exited) {
++    if (base::TimeTicks::Now() < native_shutdown_deadline_) {
++      timer_.Start(FROM_HERE, base::Milliseconds(250), this,
++                   &DaemonSupervisor::FinishNativeShutdown);
++      return;
++    }
++    LOG(ERROR) << "Aux owned daemon did not establish original-child exit "
++                  "before the native shutdown deadline";
++    DidFinishShutdown({false, std::nullopt});
++    return;  // Retain the exact native owner; never convert timeout to drain.
++  }
++#endif
+   const auto browser_shutdown = peer::InspectNativeBrowserShutdown();
+   if (browser_shutdown.admission_closed && browser_shutdown.phase < 6) {
+     // Ordinary process shutdown must finish Profile/content/thread teardown
