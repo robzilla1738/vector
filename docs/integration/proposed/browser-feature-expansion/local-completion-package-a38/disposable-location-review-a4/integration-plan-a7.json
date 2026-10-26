@@ -1,0 +1,26 @@
+{
+  "format": "aux.fixed-location.integration.v1",
+  "previousInventorySha256": "46ac8e9b030bd5d6a7925789282d56a772f5846be416dd0e3a4f46646f989ab1",
+  "approvedReview": {
+    "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/local-completion-package-a38/disposable-location-review-a4/review.json",
+    "sha256": "39542f2dc150fd40f0d4cc354a54b74ccdf1b1210c68b8c3511e762addfc633a"
+  },
+  "executor": {
+    "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/local-completion-package-a38/disposable-location-review-a4/integrate-sign-a7.py",
+    "sha256": "37df727ccd49c87a7f2d019cca7fcfa8d7fe2f13af5493e5df6955d933a33521"
+  },
+  "preserved": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-local-completion-20261025-a38/before-disposable-location-a7/Aux.app",
+  "replacements": [
+    {
+      "path": "/private/tmp/aux-browser-only-daemon-build-20261025-a66/Aux Daemon",
+      "sha256": "9604e41509998559a5bbfbb75a66ba91494d4b95e0f32c07f0ba2766a1776abf",
+      "executable": "Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/MacOS/aux-daemon",
+      "unsigned": true
+    }
+  ],
+  "signingObjects": [
+    "Contents/Resources/aux/apps/daemon/Aux Daemon.app",
+    "."
+  ],
+  "release": false
+}

@@ -1,0 +1,71 @@
+{
+  "format": "aux.focused-local-checks.v1",
+  "scope": "Aux Browser A38 Disposable",
+  "acceptedAppPreserved": true,
+  "originalNonemptyFolderPreserved": true,
+  "noRelease": true,
+  "predecessorA7": {
+    "startup": true,
+    "httpReady": true,
+    "navigation": [
+      "loopback",
+      "HTTPS example.com",
+      "back/forward"
+    ],
+    "profileIsolation": [
+      "cookie",
+      "localStorage",
+      "account0 versus account1",
+      "unsent draft and TXT switching"
+    ],
+    "multipleWindows": [
+      "shared tab list",
+      "independent selected tab"
+    ],
+    "cli": [
+      "native queued dispatch",
+      "actual Personal destination"
+    ],
+    "sidebar": [
+      "collapsed and expanded click endpoints"
+    ],
+    "chat": [
+      "draft editable",
+      "correct native account context",
+      "provider-free state"
+    ],
+    "settings": [
+      "General initial load",
+      "Memory USER.md edit/save"
+    ]
+  },
+  "finalA8": {
+    "runtimeChecks": "pending",
+    "signatures": "pending"
+  },
+  "explicitFollowups": {
+    "implementation": [
+      "third-party native-messaging per-Profile lifetime integration",
+      "legacy migration deliberately deferred",
+      "cloud production services acceptance/operations"
+    ],
+    "testing": [
+      "account-backed BYOK/ChatGPT consent/inference/refresh/revoke",
+      "1Password/autofill/native-host compatibility after integration",
+      "genuine pointer hover",
+      "broad attachment/crash recovery",
+      "production cookie-key behavior without development mock keychain"
+    ],
+    "disabled": [
+      "general exec/PTY",
+      "Computer Use",
+      "arbitrary native helpers/addons"
+    ],
+    "release": [
+      "distribution signing",
+      "notarization",
+      "updater",
+      "installation/distribution checks"
+    ]
+  }
+}

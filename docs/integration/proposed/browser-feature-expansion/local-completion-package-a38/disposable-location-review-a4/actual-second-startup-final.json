@@ -1,0 +1,20 @@
+{
+  "format": "aux.a5.actual-startup-final.v1",
+  "startupPassed": false,
+  "daemonReady": false,
+  "diagnostics": [
+    "Aux native policy diagnostic stage=currentUserParents error=path",
+    "Aux native policy diagnostic stage=authenticatedBase error=path",
+    "Aux native policy diagnostic stage=prepareEmbeddedImages error=path",
+    "Aux native daemon refused at images (status -1).",
+    "Aux fresh startup refused: paired daemon receipt",
+    "{\"event\":\"aux-fresh-child-exit\",\"pid\":49413,\"exitCode\":1,\"signal\":null,\"groupStopped\":true,\"forced\":false}"
+  ],
+  "scope": "Aux Browser A38 Disposable",
+  "failedStage": "currentUserParents",
+  "error": "path",
+  "cause": "Existing cache mapping was compiled out of chrome/common:constants; owned cache contains unexpected User Data child.",
+  "ownerFolderTouched": false,
+  "uiChanged": false,
+  "release": false
+}

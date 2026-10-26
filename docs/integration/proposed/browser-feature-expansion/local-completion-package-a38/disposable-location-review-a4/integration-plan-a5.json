@@ -1,0 +1,39 @@
+{
+  "format": "aux.fixed-location.integration.v1",
+  "previousInventorySha256": "177c6ed876c3b714d650c7d173d70eab2252cbff825bbefee746ed44c3568f39",
+  "approvedReview": {
+    "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/local-completion-package-a38/disposable-location-review-a4/review.json",
+    "sha256": "39542f2dc150fd40f0d4cc354a54b74ccdf1b1210c68b8c3511e762addfc633a"
+  },
+  "executor": {
+    "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/local-completion-package-a38/disposable-location-review-a4/integrate-sign-a5.py",
+    "sha256": "d69ae00efb4e2f090be7094adbc3fed30283ca7791f40d19ac48385f53fc05c5"
+  },
+  "preserved": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-local-completion-20261025-a38/before-disposable-location-a5/Aux.app",
+  "replacements": [
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/unsigned-disposable-location-build-20261025-a71/Contents/Frameworks/Aux Framework.framework/Versions/155.0.8059.85/Aux Framework",
+      "executable": "Contents/Frameworks/Aux Framework.framework/Versions/155.0.8059.85/Aux Framework",
+      "sha256": "1633a7cab962e127104fb72d71c46afe40a05cf45ab5bb70ddb63f421415efa2",
+      "unsigned": true
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/unsigned-disposable-location-build-20261025-a71/Contents/MacOS/Aux",
+      "executable": "Contents/MacOS/Aux",
+      "sha256": "b7ede79122912003d213385619c791fbf78e8c03d7b4250b7ae143a102f6159c",
+      "unsigned": true
+    },
+    {
+      "path": "/private/tmp/aux-browser-only-daemon-build-20261025-a65/Aux Daemon",
+      "sha256": "d8152a51466e26341299bdefe724ca5e9f3cb534f48f7728ff8df98d2a75ca80",
+      "executable": "Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/MacOS/aux-daemon",
+      "unsigned": true
+    }
+  ],
+  "signingObjects": [
+    "Contents/Frameworks/Aux Framework.framework",
+    "Contents/Resources/aux/apps/daemon/Aux Daemon.app",
+    "."
+  ],
+  "release": false
+}

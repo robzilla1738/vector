@@ -1,0 +1,32 @@
+{
+  "format": "aux.fixed-location.integration.v1",
+  "previousInventorySha256": "f49aad244ba972da75dd876cb0f489a8e1d012782d79cf5ec700c3d58db2ab8f",
+  "approvedReview": {
+    "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/local-completion-package-a38/disposable-location-review-a4/review.json",
+    "sha256": "39542f2dc150fd40f0d4cc354a54b74ccdf1b1210c68b8c3511e762addfc633a"
+  },
+  "executor": {
+    "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/local-completion-package-a38/disposable-location-review-a4/integrate-sign-a6.py",
+    "sha256": "d02dcd5a8bc352d81b2df0031905d30d3083facdbdd0e7ac061bf4d1ffaeee5d"
+  },
+  "preserved": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-local-completion-20261025-a38/before-disposable-location-a6/Aux.app",
+  "replacements": [
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/unsigned-disposable-location-build-20261025-a72/Contents/Frameworks/Aux Framework.framework/Versions/155.0.8059.85/Aux Framework",
+      "executable": "Contents/Frameworks/Aux Framework.framework/Versions/155.0.8059.85/Aux Framework",
+      "sha256": "7eb4c4c253e56206fcce305f237323391e8a377ba46a74a6d2d871ad0293c3ee",
+      "unsigned": true
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/unsigned-disposable-location-build-20261025-a72/Contents/MacOS/Aux",
+      "executable": "Contents/MacOS/Aux",
+      "sha256": "b7ede79122912003d213385619c791fbf78e8c03d7b4250b7ae143a102f6159c",
+      "unsigned": true
+    }
+  ],
+  "signingObjects": [
+    "Contents/Frameworks/Aux Framework.framework",
+    "."
+  ],
+  "release": false
+}

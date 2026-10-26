@@ -1,0 +1,15 @@
+{
+  "format": "aux.a7.actual-cli-route.v1",
+  "arguments": [
+    "open",
+    "http://127.0.0.1:50420/cli-personal",
+    "--profile",
+    "Aux A4 Personal"
+  ],
+  "exitCode": 0,
+  "stdout": "Aux queued the URL for browser destination validation.\n",
+  "stderr": "",
+  "dispatchAccepted": true,
+  "destinationUIVerified": false,
+  "release": false
+}

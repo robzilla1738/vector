@@ -1,0 +1,15 @@
+{
+  "reason": "Actual second launch refused at currentUserParents; owned cache contains User Data, while actual constants.ninja has no AUX_BROWSER_ONLY_NATIVE_STARTUP definition. The existing correct native cache mapping was therefore compiled out.",
+  "input": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/common/BUILD.gn",
+  "inputSha256": "0c5747f66e65687aa2dfb06c3df0d246eb697ef10b9e09aef47ffa68a81d0264",
+  "outputSha256": "53fabac560084c180ccc59b85bcdda700f584e11e5b0b98c6becbdef8ff658fe",
+  "anchors": 1,
+  "changedTarget": "//chrome/common:constants",
+  "platformCondition": "is_mac && enable_aux_browser",
+  "addedDefine": "AUX_BROWSER_ONLY_NATIVE_STARTUP=1",
+  "validationRelaxed": false,
+  "uiChanged": false,
+  "newObjects": false,
+  "newEntitlements": false,
+  "release": false
+}

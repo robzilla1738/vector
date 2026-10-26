@@ -1,0 +1,12 @@
+--- a/chrome/common/BUILD.gn
++++ b/chrome/common/BUILD.gn
+@@ -567,6 +567,9 @@
+ }
+ 
+ static_library("constants") {
++  if (is_mac && enable_aux_browser) {
++    defines = [ "AUX_BROWSER_ONLY_NATIVE_STARTUP=1" ]
++  }
+   sources = [
+     "chrome_paths.cc",
+     "chrome_paths.h",

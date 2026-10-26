@@ -1,0 +1,18 @@
+{
+  "passed": true,
+  "removed": true,
+  "ownedDisposableOnly": true,
+  "fileContentsRead": false,
+  "recursiveRemoval": false,
+  "originalFolderTouched": false,
+  "release": false,
+  "childBefore": {
+    "device": 16777232,
+    "inode": 71729171,
+    "uid": 502,
+    "mode": 448
+  },
+  "childWasEmpty": true,
+  "cacheInodePreserved": true,
+  "misplacedChildAbsent": true
+}

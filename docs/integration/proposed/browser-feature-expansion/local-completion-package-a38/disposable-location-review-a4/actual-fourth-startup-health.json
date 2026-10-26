@@ -1,0 +1,8 @@
+{
+  "ready": true,
+  "httpStatus": 200,
+  "service": "aux-daemon",
+  "pid": 54743,
+  "daemonExecutable": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-local-completion-20261025-a38/Aux.app/Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/MacOS/aux-daemon",
+  "elapsedSeconds": 19.82
+}

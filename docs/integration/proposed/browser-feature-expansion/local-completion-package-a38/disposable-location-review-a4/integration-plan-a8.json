@@ -1,0 +1,49 @@
+{
+  "format": "aux.fixed-location.integration.v1",
+  "previousInventorySha256": "80c8f0ed54d037118406a75f0e130498aaaf6beba9c5fbe2450392a209b724c9",
+  "approvedReview": {
+    "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/local-completion-package-a38/disposable-location-review-a4/review.json",
+    "sha256": "39542f2dc150fd40f0d4cc354a54b74ccdf1b1210c68b8c3511e762addfc633a"
+  },
+  "executor": {
+    "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/local-completion-package-a38/disposable-location-review-a4/integrate-sign-a8.py",
+    "sha256": "8490a9e5510ccc39444c2fe7e98fffa0ada82fd2ae46db1953cca129917c05fa"
+  },
+  "preserved": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-local-completion-20261025-a38/before-disposable-location-a8/Aux.app",
+  "replacements": [
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/unsigned-disposable-location-build-20261025-a73/Contents/Frameworks/Aux Framework.framework/Versions/155.0.8059.85/Aux Framework",
+      "executable": "Contents/Frameworks/Aux Framework.framework/Versions/155.0.8059.85/Aux Framework",
+      "sha256": "34d6b7c2a78e6a6bba721b8f19beff43a8280a2cb4b7cbee4963a416858b56dd",
+      "unsigned": true
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/unsigned-disposable-location-build-20261025-a73/Contents/MacOS/Aux",
+      "executable": "Contents/MacOS/Aux",
+      "sha256": "b7ede79122912003d213385619c791fbf78e8c03d7b4250b7ae143a102f6159c",
+      "unsigned": true
+    },
+    {
+      "path": "/private/tmp/aux-memory-cache-probe-a45-riv1ejxh/index.mjs",
+      "sha256": "e51c0d9f8df78f50b576421a9695b1572aee793d746a6c1e740432321e5c8e78",
+      "executable": "Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/node-development/index.mjs",
+      "unsigned": true
+    },
+    {
+      "path": "/private/tmp/aux-memory-cache-probe-a45-riv1ejxh/aux-native-entry.mjs",
+      "sha256": "e7e20d7690a886af1ac124c503a155aa4f74b999a47f743138a4fbfaf82f15a5",
+      "executable": "Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/node-development/aux-native-entry.mjs",
+      "unsigned": true
+    }
+  ],
+  "signingObjects": [
+    "Contents/Frameworks/Aux Framework.framework",
+    "Contents/Resources/aux/apps/daemon/Aux Daemon.app",
+    "."
+  ],
+  "sourceAdaptation": {
+    "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/productivity-memory-cache-probe-a45/source-plan.json",
+    "sha256": "e58b808673a0c20b74bfe1c23cf1249d29c7a54c47aa0a7daa8480607168cabc"
+  },
+  "release": false
+}

@@ -1,3 +1,15 @@
+# Disposable A38 startup works; bounded final repairs integrated — 2026-10-25
+
+A38 now starts in the approved separate `Aux Browser A38 Disposable` namespace with real daemon HTTP readiness. A72 corrected the cache mapping that was compiled out; A66 restored the exact ordinary-mode storage includes and removed startup validation churn. The new scope is creation-receipt bound. The original nonempty support container and accepted app remain untouched.
+
+Actual A7 checks pass navigation/back/forward/public HTTPS, Work/Personal cookie/localStorage/account-context isolation, active unsent draft/TXT switching, two Personal windows with a shared tab list and independent selections, actual native CLI profile destination, sidebar collapsed/expanded click endpoints, editable chat and initial General Settings. Work's cookie/note already survived one normal quit/restart. These are actual bounded observations, not full acceptance.
+
+Demonstrated failures are being repaired: modern native actions bypassed the centered palette; footer profile roster/renames stayed stale; local memory startup attempted a forbidden `xattr` subprocess on an unused cached executable. A73 plus the exact paired A45 memory-source successor are now integrated and locally re-signed within the same approved objects/location/identity/entitlements. All19 signatures verify, other16 retained; complete inventory proves existing UI33/styles/fonts/art resources unchanged. Final affected runtime checks are pending.
+
+macOS diagnostics also show a real A7 daemon SIGABRT during browser quit (PID54743, peer-loss callback reaches Node's destroyed Environment mutex). Browser exit0/groupStoppedtrue was insufficient evidence of clean daemon shutdown. The exact shutdown lifetime is being corrected within the current components. No release readiness claim, new architecture, general exec exception, provisioning or new OS grants. Account-backed AI, third-party native-messaging implementation/acceptance, genuine hover, broad recovery, production cloud operations and release remain explicit follow-ups.
+
+Historical checkpoints below remain truthful evidence of earlier bytes, not current acceptance.
+
 # Approved disposable relocation built/signed; first runtime exposed image-preparation refusal — 2026-10-25
 
 The owner approved the separate `Aux Browser A38 Disposable` namespace and necessary same-object local re-signs. Root applied the three reviewed C++ path projections; full browser A70 passed. The independent A64 daemon rebuilt with the exact approved Swift resolver and unchanged49otherSwift/15nativeobjects. The assembled A38 received only framework/daemon/outer-app re-signs; all19 signatures verify, other16 retained, complete resource inventory proves UI33/styles/fonts/art unchanged. Native CLI helpers and accepted app are intact. Original nonempty support folder was not inspected or moved.
