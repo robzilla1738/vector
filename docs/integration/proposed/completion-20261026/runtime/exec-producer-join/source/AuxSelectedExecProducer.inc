@@ -1,4 +1,6 @@
 // Existing selected session, synchronous native spawn boundary only.
+std::shared_ptr<ExecReservation> LookupExec(void*) noexcept;
+void RuntimeChildCohortSettled(const std::shared_ptr<RuntimeScope>&);
 thread_local std::shared_ptr<SelectedBuiltinScope> selected_exec_spawn;
 napi_value SelectedWithExecSpawn(napi_env env,napi_callback_info info) {
   if(kBrowserOnlyNativeStartup)return RefuseSupervisedTaskBinding(env,info);

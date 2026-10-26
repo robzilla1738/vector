@@ -12,5 +12,14 @@
   "ptySandboxWrapperCarriesSameSelectedScope": true,
   "correctedCompilePinsChecked": 330,
   "historicalCheckerPin": "Separated immutable historical receipt/Git-r4-checker lineage; all actual emitted compiler dependencies remain strict",
-  "originalNodeCompileWorkingDirectoriesPreserved": true
+  "originalNodeCompileWorkingDirectoriesPreserved": true,
+  "actualRootObjectCompile": {
+    "processWrap": "pass",
+    "spawnSync": "pass",
+    "worker": "failed with exactly two missing forward declarations",
+    "failedReceipt": "/private/tmp/aux-selected-exec-producer-compile-20261026-a1/receipt.json",
+    "workerRepairPrepared": true,
+    "workerRepairRecipeSha256": "cc74476e1e88e13c8a1c94873f65e8f3908bfaf4d436a1c935c5b2c55edd8a8e",
+    "repairExecutedByWorker": false
+  }
 }
