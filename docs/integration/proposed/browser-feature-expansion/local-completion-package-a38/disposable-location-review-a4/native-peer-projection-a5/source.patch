@@ -1,0 +1,14 @@
+--- a/chrome/browser/aux/native_peer_policy/AuxFreshBootstrapPolicy.swift
++++ b/chrome/browser/aux/native_peer_policy/AuxFreshBootstrapPolicy.swift
+@@ -24,9 +24,9 @@
+     // synthetic paths without consulting or touching a real user's home.
+     fileprivate static func deriveFixedRoots(canonicalHome:String,uid:uid_t)throws->Self {
+         guard uid != 0,AuxFreshBootstrapPolicyContents.validCanonicalParentSyntax(canonicalHome) else{throw AuxFreshBootstrapPolicyError.path}
+-        let support=canonicalHome+"/Library/Application Support/Aux Browser"
++        let support=canonicalHome+"/Library/Application Support/Aux Browser A38 Disposable"
+         let data=support+"/User Data",control=support+"/Control",tasks=support+"/Tasks"
+-        let cache=canonicalHome+"/Library/Caches/Aux Browser"
++        let cache=canonicalHome+"/Library/Caches/Aux Browser A38 Disposable"
+         for path in [support,data,control,tasks,cache] {
+             guard AuxFreshBootstrapPolicyContents.validCanonicalParentSyntax(path) else{throw AuxFreshBootstrapPolicyError.path}
+         }

@@ -1,0 +1,39 @@
+{
+  "format": "aux.fixed-location.integration.v1",
+  "previousInventorySha256": "51eb69dc3d94f489854c08abefd3e38a3fef2aaccc1121a136ef6907e0bad45a",
+  "approvedReview": {
+    "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/local-completion-package-a38/disposable-location-review-a4/review.json",
+    "sha256": "39542f2dc150fd40f0d4cc354a54b74ccdf1b1210c68b8c3511e762addfc633a"
+  },
+  "executor": {
+    "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/browser-feature-expansion/local-completion-package-a38/disposable-location-review-a4/integrate-sign.py",
+    "sha256": "f63954b26e9c388766a8d3157b07415b8f1946a134e5ee4713fe5c6a8ac97a45"
+  },
+  "preserved": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-local-completion-20261025-a38/before-disposable-location-a4/Aux.app",
+  "replacements": [
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/unsigned-disposable-location-build-20261025-a70/Contents/Frameworks/Aux Framework.framework/Versions/155.0.8059.85/Aux Framework",
+      "executable": "Contents/Frameworks/Aux Framework.framework/Versions/155.0.8059.85/Aux Framework",
+      "sha256": "574a4d2687904ac484109db001bba824241af4016718e6fea188707a7eedf8c3",
+      "unsigned": true
+    },
+    {
+      "path": "/private/tmp/aux-chromium-recovery-snapshot-20261023/unsigned-disposable-location-build-20261025-a70/Contents/MacOS/Aux",
+      "executable": "Contents/MacOS/Aux",
+      "sha256": "b7ede79122912003d213385619c791fbf78e8c03d7b4250b7ae143a102f6159c",
+      "unsigned": true
+    },
+    {
+      "path": "/private/tmp/aux-browser-only-daemon-build-20261025-a64/Aux Daemon",
+      "sha256": "b56560c77c734261792d5f3cf9877cfa49dceb6968a14453b6f4dfc2e7f95b5a",
+      "executable": "Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/MacOS/aux-daemon",
+      "unsigned": true
+    }
+  ],
+  "signingObjects": [
+    "Contents/Frameworks/Aux Framework.framework",
+    "Contents/Resources/aux/apps/daemon/Aux Daemon.app",
+    "."
+  ],
+  "release": false
+}

@@ -1,0 +1,44 @@
+{
+  "format": "aux.a4.created-scope-receipt.v1",
+  "parentPrelaunch": "actual-prelaunch.json",
+  "firstLauncherSession": 83985,
+  "firstBrowserPid": 46683,
+  "roots": [
+    {
+      "path": "/Users/rcourson/Library/Application Support/Aux Browser A38 Disposable",
+      "exists": true,
+      "uid": 502,
+      "mode": 448,
+      "device": 16777232,
+      "inode": 71729168
+    },
+    {
+      "path": "/Users/rcourson/Library/Caches/Aux Browser A38 Disposable",
+      "exists": true,
+      "uid": 502,
+      "mode": 448,
+      "device": 16777232,
+      "inode": 71729170
+    }
+  ],
+  "children": [
+    {
+      "path": "/Users/rcourson/Library/Application Support/Aux Browser A38 Disposable/User Data",
+      "exists": true,
+      "uid": 502,
+      "mode": 448,
+      "device": 16777232,
+      "inode": 71729169
+    },
+    {
+      "path": "/Users/rcourson/Library/Application Support/Aux Browser A38 Disposable/Control",
+      "exists": false
+    },
+    {
+      "path": "/Users/rcourson/Library/Application Support/Aux Browser A38 Disposable/Tasks",
+      "exists": false
+    }
+  ],
+  "originalFolderContentsRead": false,
+  "release": false
+}

@@ -1,0 +1,11 @@
+{
+  "input": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/aux/native_peer_policy/AuxFreshBootstrapPolicy.swift",
+  "inputSha256": "c6967a1d41229ec27969b44e90c922cd25c367af0cefe7b3f5b5535f48499337",
+  "outputSha256": "00edadd03d337ec42c908b2175967d0ab49210e0faa92c0ff32b3ba2ffe31fbc",
+  "count": 2,
+  "reason": "The native peer action compiles a separately projected copy of the same reviewed resolver. Preserve its existing image-validation variant and apply the approved namespace to this copy too.",
+  "approvedReviewSha256": "39542f2dc150fd40f0d4cc354a54b74ccdf1b1210c68b8c3511e762addfc633a",
+  "uiChanged": false,
+  "validationChecksChanged": false,
+  "release": false
+}

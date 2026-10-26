@@ -1,0 +1,26 @@
+{
+  "healthErrorType": "URLError",
+  "startupLogBytes": 205,
+  "nativeRefusals": [],
+  "terminalEvents": [
+    "{\"event\":\"aux-fresh-child-exit\",\"pid\":46683,\"exitCode\":1,\"signal\":null,\"groupStopped\":true,\"forced\":false}"
+  ],
+  "roots": [
+    {
+      "path": "/Users/rcourson/Library/Application Support/Aux Browser A38 Disposable",
+      "exists": true,
+      "uid": 502,
+      "mode": 448,
+      "device": 16777232,
+      "inode": 71729168
+    },
+    {
+      "path": "/Users/rcourson/Library/Caches/Aux Browser A38 Disposable",
+      "exists": true,
+      "uid": 502,
+      "mode": 448,
+      "device": 16777232,
+      "inode": 71729170
+    }
+  ]
+}

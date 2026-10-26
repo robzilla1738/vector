@@ -1,0 +1,26 @@
+{
+  "format": "aux.a4.runtime-prelaunch.v1",
+  "rootsBefore": [
+    {
+      "kind": "support",
+      "path": "/Users/rcourson/Library/Application Support/Aux Browser A38 Disposable",
+      "exists": false
+    },
+    {
+      "kind": "cache",
+      "path": "/Users/rcourson/Library/Caches/Aux Browser A38 Disposable",
+      "exists": false
+    }
+  ],
+  "originalFolderMetadataUnchanged": true,
+  "originalFolderContentsRead": false,
+  "ports": {
+    "21520": [],
+    "21522": [],
+    "45203": []
+  },
+  "previousCandidateQuitNormally": true,
+  "fixtureUrl": "http://127.0.0.1:50420",
+  "appOpened": false,
+  "release": false
+}
