@@ -1,0 +1,21 @@
+{
+  "format": "aux.device-routines-server-check.v1",
+  "date": "2026-10-26",
+  "command": "./node_modules/.bin/tsx --test src/routines-1852.test.ts",
+  "cwd": "services/aux-cloud",
+  "exitCode": 0,
+  "passedTests": 1,
+  "seconds": 5.12,
+  "checks": [
+    "actual current PGlite DDL",
+    "preserved cloud record with stale matching device ID rejects update without mutation",
+    "device sync excludes cloud records"
+  ],
+  "productionChanged": false,
+  "credentialsRead": false,
+  "rerun": false,
+  "inputs": {
+    "services/aux-cloud/src/routines-1852.ts": "ea13c2e73173e1b8c4226bbf32e755eed7bf358b9ba005ac713b0ad87cb8db81",
+    "services/aux-cloud/src/routines-1852.test.ts": "081c19cec4d619bc0c7d88638af3ed3027e31efb6acb591258a90c06a34db94f"
+  }
+}

@@ -44,6 +44,15 @@ test('actual routine-v2 routes retain owner/device/revision boundaries and prese
     assert.equal((await(await request('/routines/routine-one')).json() as {status:string}).status,'paused');
     assert.equal((await request('/routines/device-sync','POST',{device,routines:[{id:'routine-one',revision:2,status:'active',nextRunAt:'2026-10-27T00:00:00Z'}]})).status,200);
     const settled=await(await request('/routines/routine-one')).json() as {status:string;appliedRevision:number;nextRunAt:null};assert.equal(settled.status,'paused');assert.equal(settled.appliedRevision,2);assert.equal(settled.nextRunAt,null);
+    const cloud={format:'aux.routine.v2',...definition,id:'preserved-cloud',environment:'cloud',deviceId:session,status:'active',pausedAt:null,revision:1,appliedRevision:null,updatedAt:'2026-10-26T00:00:00Z'};
+    await pg.query("INSERT INTO sync_entities(user_id,kind,entity_id,payload) VALUES($1,'routine',$2,$3::jsonb)",[owner,cloud.id,JSON.stringify(cloud)]);
+    const cloudBytes=async()=>(await pg.query<{payload:string}>("SELECT payload::text AS payload FROM sync_entities WHERE user_id=$1 AND entity_id=$2",[owner,cloud.id])).rows[0].payload;
+    const preserved=await cloudBytes();
+    response=await request('/routines/preserved-cloud','PATCH',{revision:1,status:'paused'});assert.equal(response.status,409);assert.equal((await response.json() as {error:{code:string}}).error.code,'CLOUD_ROUTINE_UNAVAILABLE');
+    assert.equal((await request('/routines/preserved-cloud','PATCH',{revision:1,status:'deleted'})).status,409);
+    assert.equal((await request('/routines/device-sync','POST',{device,routines:[{id:cloud.id,revision:1,status:'completed',nextRunAt:null}]})).status,200);
+    assert.equal(await cloudBytes(),preserved,'Cloud record with matching stale device ID is never changed by device-sync or PATCH');
+    assert.equal((await(await request('/routines/preserved-cloud')).json() as {environment:string}).environment,'cloud');
     const legacy={id:'old-routine',kind:'cron',state:'active',private:'keep exact'};await pg.query("INSERT INTO sync_entities(user_id,kind,entity_id,payload) VALUES($1,'routine','old-routine',$2::jsonb)",[owner,JSON.stringify(legacy)]);
     assert.equal((await request('/routines')).status,409);assert.equal((await request('/routines/old-routine','PUT',legacy)).status,409);
     assert.deepEqual((await pg.query<{payload:unknown}>("SELECT payload FROM sync_entities WHERE user_id=$1 AND entity_id='old-routine'",[owner])).rows[0].payload,legacy);
