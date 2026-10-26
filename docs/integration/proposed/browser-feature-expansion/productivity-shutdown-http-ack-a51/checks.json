@@ -1,0 +1,8 @@
+{
+  "exactInputHashes": true,
+  "singleCountAnchorsPerLeaf": 1,
+  "forwardReplay": true,
+  "reverseReplay": true,
+  "syntax": "both paired outputs passed node --check (exit 0; no evaluation)",
+  "runtimeAcceptance": "parent-owned actual HTTP close and normal Quit pending"
+}

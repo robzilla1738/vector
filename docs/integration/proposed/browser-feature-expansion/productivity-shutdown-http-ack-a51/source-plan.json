@@ -1,0 +1,36 @@
+{
+  "format": "aux.shutdown-http-ack.v1",
+  "files": [
+    {
+      "input": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-local-completion-20261025-a38/Aux.app/Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/node-development/index.mjs",
+      "inputSha256": "d945364420cdec5fd7f6b256af9dc6bb1c26cca605106f19d5856aca3e4572f7",
+      "output": "/private/tmp/aux-shutdown-http-ack-a51-x1445igq/index.mjs",
+      "outputSha256": "48af998738fb6d2fc30cb8d5b2e9de03cb04ab7d8563ebdaa5fe8100944fc514",
+      "anchors": [
+        {
+          "before": "ei.post(`/shutdown`,ei=>(Cn.requestShutdown?.(),ei.json({status:`shutting_down`})))",
+          "after": "ei.post(`/shutdown`,ei=>(Cn.requestShutdown?.(),ei.header(`Connection`,`close`),ei.json({status:`shutting_down`})))",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "input": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-local-completion-20261025-a38/Aux.app/Contents/Resources/aux/apps/daemon/Aux Daemon.app/Contents/Resources/node-development/aux-native-entry.mjs",
+      "inputSha256": "f9dddbe77bac7c637ae2fbe1cc37f1c18af9e44ce1f595ff643885df9d010238",
+      "output": "/private/tmp/aux-shutdown-http-ack-a51-x1445igq/aux-native-entry.mjs",
+      "outputSha256": "f355833cb607963a65ca3108e7ae19ea7ca60192a9f3d8e2644a3c12ec49c808",
+      "anchors": [
+        {
+          "before": "ei.post(`/shutdown`,ei=>(Cn.requestShutdown?.(),ei.json({status:`shutting_down`})))",
+          "after": "ei.post(`/shutdown`,ei=>(Cn.requestShutdown?.(),ei.header(`Connection`,`close`),ei.json({status:`shutting_down`})))",
+          "count": 1
+        }
+      ]
+    }
+  ],
+  "authChanged": false,
+  "responseStatusBodyChanged": false,
+  "timeoutsChanged": false,
+  "otherConnectionsTerminated": false,
+  "productExecuted": false
+}
