@@ -1,0 +1,44 @@
+{
+  "format": "aux.initial-prompt-preservation.v1",
+  "rules": [
+    {
+      "find": "let ei=await createSession$1(Cn.accountId,ni);return ri=ei.id,",
+      "replace": "let ei=await createSession$1(Cn.accountId,{...ni,queuedMessages:auxCaptureInitialPrompt(Cn.accountId,Cn.account,ti)});return ri=ei.id,",
+      "count": 1
+    },
+    {
+      "find": "let ei=await this.#_e(Cn);await this.#ne(ei)}async#ne(Cn){",
+      "replace": "const auxQueued=auxInitialQueuedPromptOwner(this,Cn,()=>this.#te());let ei;try{ei=await this.#_e(Cn)}catch(error){if(auxQueued){auxQueued();this.changeStatus(`errored`)}throw error}if(auxQueued){auxQueued();this.#E=!1;this.#Ve(ei)}await this.#ne(ei)}async#ne(Cn){",
+      "count": 1
+    },
+    {
+      "find": "let Cn=[...this.#d],ei=last(this.agent.state.messages);if(ei?.role===`assistant`){if(Cn.length===0)",
+      "replace": "let Cn=[...this.#d],ei=last(this.agent.state.messages);if(Cn.length&&!this.agent.state.messages.some(message=>['user','assistant','toolResult','user-message-metadata','compaction'].includes(message.role))){await this.prompt(Cn);return}if(ei?.role===`assistant`){if(Cn.length===0)",
+      "count": 1
+    },
+    {
+      "find": "This task stopped before completing. Your saved messages are preserved. Retry this task after checking its model, tools and selected page.",
+      "replace": "This task stopped before completing. Check the pending message and attachments, then retry after checking its model, tools and selected page.",
+      "count": 1
+    },
+    {
+      "find": "function auxCaptureAgentStartAttempt(accountId, sessionId) {",
+      "replace": "function auxCaptureInitialPrompt(accountId,owner,message){\n const current=AccountRegistry.getAccount(accountId);\n if(!owner||!current||current.id!==accountId||['createdAt','incarnationId','mode','provider','userId','authStatus'].some(key=>current[key]!==owner[key]))throw Error('The original task account changed.');\n // Persist submitted bytes in the supplied pending-message field atomically\n // with session creation, before any browser, provider or attachment work.\n return structuredClone(Array.isArray(message)?message:[message]);\n}\nfunction auxInitialQueuedPromptOwner(agent,input,isCurrent){\n const pending=Array.isArray(input)?input:[input],stored=SessionStore.get(agent.accountId,agent.session.id);\n if(!stored||!stored.queuedMessages?.length||JSON.stringify(stored.queuedMessages)!==JSON.stringify(pending)||agent.agent.state.messages.some(message=>['user','assistant','toolResult','user-message-metadata','compaction'].includes(message.role)))return null;\n const snapshot=()=>{\n  const account=AccountRegistry.getAccount(agent.accountId),session=SessionStore.get(agent.accountId,agent.session.id);\n  if(!account||!session||!isCurrent()||agent.agent.state.isStreaming||session.archivedAt||!['idle','errored'].includes(session.status)||String(session.createdAt)!==String(agent.session.createdAt))throw Error('The original pending task changed.');\n  const overview=SessionStore.listTurnOverviews(agent.accountId,agent.session.id,undefined,1);\n  return JSON.stringify({account:['id','createdAt','incarnationId','mode','provider','userId','authStatus'].map(key=>account[key]),session:['id','createdAt','status','queuedMessages','steeringMessages','browserBinding','model','projectId','permission','permissionMode','runtimeConfig','cwd'].map(key=>session[key]),revision:overview.transcriptRevision,turns:overview.turns});\n };\n const original=snapshot();\n return ()=>{if(snapshot()!==original)throw Error('The pending message changed during preparation.');};\n}\n\nfunction auxCaptureAgentStartAttempt(accountId, sessionId) {",
+      "count": 1
+    }
+  ],
+  "resources": [
+    {
+      "path": "/private/tmp/aux-reconnect-run-error-20261026-a1-future/index.mjs",
+      "name": "index.mjs",
+      "beforeSha256": "0255c918fe9d10140e2af4ee2fe2db028c9e860304579f0e1fc3f989a1a7f97a",
+      "afterSha256": "8e50157c7ea6a20c2ba828f59c0a00e3db1848113855089e394cb39b2289269a"
+    },
+    {
+      "path": "/private/tmp/aux-reconnect-run-error-20261026-a1-future/aux-native-entry.mjs",
+      "name": "aux-native-entry.mjs",
+      "beforeSha256": "05a7f6d07fef42002cad0523844f0bd47e9e5b30b0502a88da5d1a9ea6746950",
+      "afterSha256": "a0c8ac8010c728c2ee4ac2757b8e6aa5cc5bf0ec6899b14e6124ac6b9bcd7dd8"
+    }
+  ]
+}
