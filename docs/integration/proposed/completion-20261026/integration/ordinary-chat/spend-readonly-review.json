@@ -1,0 +1,50 @@
+{
+  "format": "aux.provider.spend-readonly-review.v1",
+  "reviewedOn": "2026-10-26",
+  "sourceAttempt": "../../integrator/provider-attempt-a1.json",
+  "account": "Personal",
+  "teamId": "team_aFPyA9tVAkB2WegquB3aADsL",
+  "billing": {
+    "tool": "vercel_list_billing_charges",
+    "requestedFrom": "2026-10-26T00:00:00Z",
+    "requestedTo": "2026-10-27T00:00:00Z",
+    "returnedPeriodStart": "2026-10-25T07:00:00.000Z",
+    "returnedPeriodEnd": "2026-10-26T07:00:00.000Z",
+    "aiTokensCategory": {
+      "category": "AI Tokens",
+      "currency": "USD",
+      "billedCost": 0,
+      "effectiveCost": 0,
+      "recordCount": 1
+    },
+    "sampleTruncated": true,
+    "serviceGroupsTruncated": true
+  },
+  "observability": {
+    "schemaExposesCost": true,
+    "query": {
+      "metric": "vercel.ai_gateway_request.cost",
+      "aggregation": "sum",
+      "scope": {
+        "ownerId": "team_aFPyA9tVAkB2WegquB3aADsL"
+      },
+      "startTime": "2026-10-26T00:00:00Z",
+      "endTime": "2026-10-26T14:39:02Z",
+      "limit": 10
+    },
+    "result": "400 bad_request; no usage returned",
+    "limitation": "Connector fallback describes /v2/observability/query as legacy, while native metrics uses /metrics/v1. No authenticated CLI fallback or speculative additional queries performed."
+  },
+  "conclusion": {
+    "priorRequestCostUSD": null,
+    "verifiedRemainingAuthorityUSD": null,
+    "budgetUSD": 1,
+    "newInferencePermittedByThisEvidence": false,
+    "reason": "Returned daily coverage ends07:00 UTC and does not establish coverage through the14:39:02 disconnect. No request-level usage receipt, key/team binding or settled current-day cost established. Absence or zero in older aggregate billing must not be interpreted as zero prior request cost.",
+    "nextEvidence": "Provider usage/cost evidence covering the actual disposable key and attempt, with settled coverage and correct team binding; do not expose the key."
+  },
+  "credentialsRead": false,
+  "providerInferenceCalls": 0,
+  "cloudMutations": false,
+  "unrelatedWorkAccountRead": false
+}
