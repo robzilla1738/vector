@@ -1,0 +1,58 @@
+{
+  "format": "aux.backup-catalog-readonly-review.v1",
+  "observedAt": "2026-10-26",
+  "browser": "Aside owner-authorized signed-in existing Aux service tab",
+  "url": "https://console.neon.tech/app/projects/ancient-river-76453764/branches/br-red-hall-b857cl2i/sql-editor?database=neondb",
+  "project": "aux-cloud-prod",
+  "branch": "main",
+  "database": "neondb",
+  "reviewingRole": "neondb_owner",
+  "serverVersionNum": "180006",
+  "source": {
+    "path": "docs/integration/proposed/completion-20261026/desktop/backup-readonly-preflight/catalog-preflight.sql",
+    "sha256": "c2c20a470b17c904cb6107e66f4bb3da2628e487e48e665333fc69f8c5374259"
+  },
+  "observations": {
+    "path": "docs/integration/proposed/completion-20261026/integrator/backup-catalog-observed-a1.json",
+    "sha256": "7de928db7f0b82f1c0c25490f62877c5cb829bdc836d7ef43e9e5b32495c3d91"
+  },
+  "execution": {
+    "queryCount": 19,
+    "repeatableRead": true,
+    "readOnlyObserved": true,
+    "finalRollbackSucceeded": true,
+    "queriesRerun": false,
+    "applicationRowsRead": false,
+    "functionBodiesRead": false,
+    "secretValuesRead": false,
+    "grantsChanged": false,
+    "databaseObjectsChanged": false
+  },
+  "facts": {
+    "publicTables": 30,
+    "sequences": 0,
+    "rowSecurityTables": 0,
+    "rowPolicies": 0,
+    "outsidePublicRelations": 0,
+    "largeObjects": 0,
+    "crossSchemaPartitions": 0,
+    "extensionConfigurationRelations": 0,
+    "objectAclRows": 251,
+    "routineAclRows": 80,
+    "publicDatabasePrivileges": [
+      "CONNECT",
+      "TEMPORARY"
+    ],
+    "publicSchemaPrivileges": [
+      "USAGE"
+    ],
+    "allPublicRelationsOwner": "neondb_owner",
+    "captureRoleCreated": false
+  },
+  "remaining": [
+    "Dedicated non-owner capture role proposal and exact approval",
+    "PUBLIC TEMP inheritance decision affects other principals",
+    "Separate approved secret custody/runner/billing/restore/monitor steps",
+    "Schema12 source is not yet deployed; repin catalog after activation"
+  ]
+}
