@@ -1,0 +1,64 @@
+{
+  "format": "aux.extension-sign-observation.v2",
+  "files": [
+    {
+      "source": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/aux/AuxNativePeerTransport.cc",
+      "beforeSha256": "8ced5b9206e062f63e67444f71d1d4624a0b93dbaa3f3cfe584f53d7ea763b1d",
+      "successor": "AuxNativePeerTransport.cc",
+      "afterSha256": "2e37de722dd6ee22a3a81c83e86032d5a64d51738000cdc82a46b26f80ae81a8"
+    },
+    {
+      "source": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/aux/AuxNativePeerTransport.h",
+      "beforeSha256": "52b28dc33a82ddd4fcf2c8c6aefec45d1d0fb4e1fbf592851d09e39e8a3f66fb",
+      "successor": "AuxNativePeerTransport.h",
+      "afterSha256": "d8e87471aa6a24634f3466edd198b58389e1f91e76d7d48c245dd75743eb1f9f"
+    },
+    {
+      "source": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/aux/AuxSelectedStateHome.cc",
+      "beforeSha256": "1ccb3f17b2dd85a1c8a717b4ad80f62ea22567e57e8e48bf2f0adc8c8959b921",
+      "successor": "AuxSelectedStateHome.cc",
+      "afterSha256": "d5ef5387e492c80836e31553b8e1af7e2e48ee962e61d60212c7866637841399"
+    },
+    {
+      "source": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/aux/AuxSelectedStateHome.h",
+      "beforeSha256": "ed29109e3e981dc877b962771f7c3d3629ca3bae221563c7e3cd6d57e6164f66",
+      "successor": "AuxSelectedStateHome.h",
+      "afterSha256": "8e3cd3b57ce7097a13b982ae4450e97b3cbc136e0cd45cffa5f3d749311050f1"
+    },
+    {
+      "source": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/extensions/api/aux_account/aux_account_api.cc",
+      "beforeSha256": "d009dc7a6e6db9884858eb858b8f4a858fb80c7dd75b49f0d46dd2d5104333f4",
+      "successor": "aux_account_api.cc",
+      "afterSha256": "b6b048319171055ba697d9ff3df9a63d23f7823f41237f63a2bf83107e051886"
+    },
+    {
+      "source": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/extensions/api/aux_account/aux_account_api.h",
+      "beforeSha256": "075c061c65ef53af23ef252e12053d5660d3f9c954f05b7923cb4de092718b1f",
+      "successor": "aux_account_api.h",
+      "afterSha256": "0145a76803e99466b9d77c250638f7626064ec440c551c8d1722e00d6e8d0578"
+    },
+    {
+      "source": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/aux/daemon_supervisor.cc",
+      "beforeSha256": "be60cd4b8b5430ba93b9af5395c58a649e1e55ef72af1c33c530584f3d4688a9",
+      "successor": "daemon_supervisor.cc",
+      "afterSha256": "c7b2f5b173929970f2b9221833005390bd88c93bd5fa365e600a0d406db2eb8f"
+    },
+    {
+      "source": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/aux/installation_auth.cc",
+      "beforeSha256": "35213300f345197ce640eaf3f5fc0d53abf1922404e6185423d0f80b6cdaf0d6",
+      "successor": "installation_auth.cc",
+      "afterSha256": "57d2ca83e22972fb0f626f59787709bdc9a6a57e5342ffd67b9a07c28d8645cf"
+    },
+    {
+      "source": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src/chrome/browser/aux/installation_auth.h",
+      "beforeSha256": "fb9c4d9b26595bac83fbc4b77baee840608f2f2123b789ee48967f946beab5de",
+      "successor": "installation_auth.h",
+      "afterSha256": "0d8ce7494408859677079df1697c25c29132adbccd4e1d201b819572a6490c1a"
+    }
+  ],
+  "deadlineSeconds": 5,
+  "retryIntervalMilliseconds": 250,
+  "afterDeadline": "Respond unavailable once; retain existing request for observe-only physical settlement; no late signature publication",
+  "nativeBuild": false,
+  "appModified": false
+}
