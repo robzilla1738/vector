@@ -1,0 +1,7 @@
+[
+  {
+    "path": "daemon/AuxNativeDaemonMain.cc",
+    "baselineSha256": "e8c48cf91a2411169c78b31f3c0ac18b9a4a8950ceb9dc628390a5b8927f824c",
+    "sourceSha256": "3b28b236ae478cc426c1dc64a0672a77d3de46531b34107f284c72fdab8f4e61"
+  }
+]

@@ -1,7 +1,7 @@
 {
   "format": "aux.completion.current-source-selection.v1",
   "candidate": "/Users/rcourson/Documents/Vibe/Aux/out/provided-candidate-completion-20261026-a1/Aux.app",
-  "signedInventorySha256": "0e79a58274ba005e8e0d57ce457372ae24cbcaf4ca5721b9e23206b1e15c96c4",
+  "signedInventorySha256": "03e13f8e6886f83ca2d81c484246252f8786f675e5be50d0282f0993ed09fef3",
   "sourceSnapshots": [
     {
       "path": "/Users/rcourson/Documents/Vibe/Aux/docs/integration/proposed/completion-20261026/runtime/addon-local-signing-review/actual-signed-source-a1/source/daemon-policy.swift",
@@ -253,7 +253,12 @@
     },
     "relinkRecipe": "/Users/rcourson/Documents/Vibe/Aux/docs/integration/proposed/completion-20261026/runtime/final-daemon-pdf-abi/relink/relink.py",
     "linkReceipt": "/Users/rcourson/Documents/Vibe/Aux/docs/integration/proposed/completion-20261026/runtime/final-daemon-pdf-abi/relink/link-receipt.json",
-    "note": "Exact two-addon build-a2 link command with only worker-host.o swapped for the PDF-ABI build; packaged and re-signed by the bounded repair."
+    "note": "Exact two-addon build-a2 link command with only worker-host.o swapped for the PDF-ABI build; packaged and re-signed by the bounded repair.",
+    "peerLossRelink": {
+      "compile": "out/live-inputs/completion-20261026/daemon-peerloss-a1/fix2/compile.json",
+      "link": "out/live-inputs/completion-20261026/daemon-peerloss-a1/fix2/link.json",
+      "source": "docs/integration/proposed/completion-20261026/runtime/daemon-peerloss-deadline-a1/source/AuxNativeDaemonMain.cc"
+    }
   },
   "combinedBrandSweepRepair": {
     "path": "/Users/rcourson/Documents/Vibe/Aux/out/provided-candidate-completion-20261026-a1/combined-brand-sweep-a1/receipt.json",
@@ -280,5 +285,9 @@
   "batch1Repair": {
     "path": "/Users/rcourson/Documents/Vibe/Aux/out/provided-candidate-completion-20261026-a1/combined-batch1-a1/receipt.json",
     "sha256": "4e13ef22d2a8143827bd05de81e1e386ec680db3e9be53f58bdf517a2614dfd7"
+  },
+  "daemonPeerLossRepair": {
+    "path": "/Users/rcourson/Documents/Vibe/Aux/out/provided-candidate-completion-20261026-a1/combined-peerloss-deadline-a2/receipt.json",
+    "sha256": "a9bf2f3b2f3cdff9f983b2febbb7d464a8d88467c08d1970fe27ee349dbb482d"
   }
 }

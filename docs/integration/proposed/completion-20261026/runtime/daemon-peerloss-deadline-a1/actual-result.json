@@ -1,0 +1,27 @@
+{
+ "format": "aux.completion.actual-result.v1",
+ "batch": "daemon-peerloss-deadline-a1",
+ "date": "2026-10-27",
+ "diagnosis": {
+  "seal": "combined-peerloss-diag-a1 (instrumented; os_log and file markers were both unavailable: the daemon writes nothing to the unified log, and file writes appear to go through the browser broker, so they fail once the browser is gone)",
+  "samples": "After a browser abort the ReadyPulse and AuthorityLoop threads had returned (peer loss detected, supplied SIGTERM shutdown requested; port 21520 closed). Main stayed in uv_run; the only other live source was libuv's FSEvents run loop: chokidar watchers opened via auxBrokerBoundary().watcher (memory manager, loop runtimes) that the supplied shutdown never closes. A later SIGTERM re-runs the idempotent shutdown, so it looks ignored.",
+  "second stage": "With node::Stop after 10 s the loop returned, then main waited forever in the worker drain: browser grant retirement stays pending until a browser peer proves teardown."
+ },
+ "change": "After observed peer loss: node::Stop if the loop has not returned 10 s after the supplied shutdown was requested; then, if the worker drain is still unresolved 10 s later, Refuse(\"parent-loss-drain\") and _exit(75) with no disposal or clean claim. JS lifeline edit dropped: index.mjs and aux-native-entry.mjs are back to their pre-Batch-1 bytes.",
+ "build": {
+  "compile": "out/live-inputs/completion-20261026/daemon-peerloss-a1/fix2/compile.json",
+  "link": "out/live-inputs/completion-20261026/daemon-peerloss-a1/fix2/link.json",
+  "reproducibility": "unmodified main.o rebuilds with identical code, symbols and section sizes; only DWARF accelerator tables and debug strings differ"
+ },
+ "repairReceipt": {
+  "path": "/Users/rcourson/Documents/Vibe/Aux/out/provided-candidate-completion-20261026-a1/combined-peerloss-deadline-a2/receipt.json",
+  "sha256": "a9bf2f3b2f3cdff9f983b2febbb7d464a8d88467c08d1970fe27ee349dbb482d"
+ },
+ "inventorySha256": "03e13f8e6886f83ca2d81c484246252f8786f675e5be50d0282f0993ed09fef3",
+ "observed": {
+  "abort": "observed: daemon exited 21 s after SIGABRT to the browser",
+  "relaunchAfterAbort": "observed: relaunch started normally; daemon listening after 25 s (previously refused with \"paired daemon receipt\")",
+  "quit": "observed twice: Quit completes, but slowly: browser exited 17 s and daemon 37 s after Quit (the daemon leaves through the new peer-loss bound). On the Batch 1 seal, whose JS edit exited 10 s after a requested shutdown, both had exited within 8 s."
+ },
+ "open": "Normal Quit is slow because the supplied shutdown never closes the chokidar watchers, so the loop does not end while the browser waits."
+}

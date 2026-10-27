@@ -1,0 +1,70 @@
+--- docs/integration/proposed/completion-20261026/runtime/daemon-peerloss-deadline-a1/baseline/AuxNativeDaemonMain.cc	2026-10-27 13:43:04
++++ docs/integration/proposed/completion-20261026/runtime/daemon-peerloss-deadline-a1/source/AuxNativeDaemonMain.cc	2026-10-27 13:48:12
+@@ -45,6 +45,35 @@
+ namespace {
+ constexpr uint32_t kPeerTimeoutMs = 2000;
+ constexpr auto kPulseInterval = std::chrono::seconds(1);
++// After peer loss the supplied shutdown closes its servers, but a remaining
++// handle (an fs.watch FSEvents source) keeps the loop alive indefinitely, and
++// the next launch is refused while this process lives. Bound it with the
++// existing fatal Stop.
++constexpr auto kPeerLossDeadline = std::chrono::seconds(10);
++std::mutex peer_loss_mutex;
++std::condition_variable peer_loss_wake;
++bool event_loop_returned = false;
++std::thread peer_loss_deadline;
++// Called only from the pulse and authority threads, which main joins before
++// joining the deadline thread.
++void ArmPeerLossDeadline(node::Environment* environment) {
++  std::lock_guard<std::mutex> lock(peer_loss_mutex);
++  if (event_loop_returned || peer_loss_deadline.joinable()) return;
++  peer_loss_deadline = std::thread([environment] {
++    std::unique_lock<std::mutex> wait(peer_loss_mutex);
++    // Main sets the flag under this lock before any teardown, so Stop
++    // never reaches a released environment.
++    if (!peer_loss_wake.wait_for(wait, kPeerLossDeadline, [] { return event_loop_returned; }))
++      node::Stop(environment);
++  });
++}
++void EndPeerLossDeadline() {
++  {
++    std::lock_guard<std::mutex> lock(peer_loss_mutex);
++    event_loop_returned = true;
++  }
++  peer_loss_wake.notify_all();
++}
+ // Peer loss still records a native failure. Give only the existing, actually
+ // registered SIGTERM listener the opportunity to drain its physical producers.
+ // No listener/exception retains the fatal Stop behavior; no timeout is clean.
+@@ -69,6 +98,7 @@
+       node::Stop(actual);
+     }
+   });
++  ArmPeerLossDeadline(environment);
+ #else
+   node::Stop(environment);
+ #endif
+@@ -379,12 +409,23 @@
+   AuxNativeEnvironmentPreload preload(host, setup->env());
+   ReadyPulse pulse(lifetime, *setup);
+   const auto result = RunAuxNativeNodeEnvironment(*setup, entry, preload);
++  EndPeerLossDeadline();
+   pulse.StopAndJoin();
+   authority.StopAndDrain();
++  if (peer_loss_deadline.joinable()) peer_loss_deadline.join();
+   // Retain every actual object while drain is unresolved; no V8 disposal from
+   // a timeout, missing callback or an untracked image. No readmission/reset.
+   auto drain = result.native_drain;
++  const auto drain_started = std::chrono::steady_clock::now();
+   while (drain != AuxDevelopmentWorkerDrain::drained) {
++    // Browser grant retirement stays pending until a browser peer proves
++    // teardown, which a lost peer never does. End this interrupted process
++    // without disposal or a clean claim; the next launch recovers it.
++    if ((pulse.failed() || authority.failure()) &&
++        std::chrono::steady_clock::now() - drain_started >= kPeerLossDeadline) {
++      Refuse("parent-loss-drain", static_cast<int>(drain), 75);
++      _exit(75);
++    }
+     std::this_thread::sleep_for(std::chrono::milliseconds(250));
+     drain = preload.CloseAndDrain();
+   }

@@ -12,8 +12,8 @@ Resume at the local journeys under Open. The Phase 1 link, the logo replacement,
 
 | Role | Path | Inventory |
 |---|---|---|
-| Current candidate | `out/provided-candidate-completion-20261026-a1/Aux.app` | `0e79a58274ba005e8e0d57ce457372ae24cbcaf4ca5721b9e23206b1e15c96c4` (Batch 1 seal, receipt `combined-batch1-a1`) |
-| What that seal adds | Split menu without "Send Feedback", Framework built in the reconciled durable checkout, and the daemon lifeline edit (observed ineffective, see Open) | On top of `2a215e71`: Phase 1 native batch, Aux product logos, multi-pane split metrics fix, brand-sweep `e0228418` |
+| Current candidate | `out/provided-candidate-completion-20261026-a1/Aux.app` | `03e13f8e6886f83ca2d81c484246252f8786f675e5be50d0282f0993ed09fef3` (receipt `combined-peerloss-deadline-a2`) |
+| What that seal adds | Bounded peer-loss shutdown in the daemon entry (`runtime/daemon-peerloss-deadline-a1`); split menu without "Send Feedback" and a Framework built in the reconciled durable checkout (Batch 1 `0e79a582`). The JS lifeline edit is gone | On top of `2a215e71`: Phase 1 native batch, Aux product logos, multi-pane split metrics fix, brand-sweep `e0228418` |
 | Fallback | `out/provided-candidate-local-completion-20261025-a38/Aux.app` | Last broad acceptance. Launch with its adjacent `Launch Aux.command` |
 | Source selection | `docs/integration/proposed/completion-20261026/integrator/current-source-selection.json` | |
 | Native checkout | `/Users/rcourson/Documents/Vibe/aux-chromium-durable/snapshot-20261023/src` | Default in `scripts/aux_chromium.py`. `AUX_CHROMIUM_SRC` overrides it |
@@ -45,7 +45,8 @@ Startup with the relinked PDF-ABI daemon, session restore, attached-PDF `read_fi
 Local, on this candidate:
 
 - Profile-note isolation, protected close prompt, file download/collision/drag, capture, PiP, DevTools, BYOK Muse journey, REPL `aux.pdf`, site-rule routing, Quit/reopen persistence of Spaces/theme/remap, and Finder launch without the workspace launcher. A profile-note type was attempted and is inconclusive: the field did not show the typed value, and SecurityAgentHelper was frontmost.
-- **Daemon after a browser abort (observed on `0e79a582`, `desktop/batch1-a1/actual-result.json`):** the daemon stops listening but keeps running, idle, and ignores SIGTERM. While it lives, relaunch is refused ("paired daemon receipt"), so a crash leaves Aux unable to reopen until the daemon is killed. The sealed JS lifeline/bounded-exit edit (`desktop/daemon-lifeline-a1`) did not change this. The native peer-loss shutdown already starts the supplied shutdown; the JS loop then stays alive. Next: instrument that path in a disposable run and bound it natively. Normal Quit stops both processes.
+- **Daemon after a browser abort:** fixed on `03e13f8e` (`runtime/daemon-peerloss-deadline-a1`). The daemon exits 21 s after the abort and relaunch works. The cause was chokidar watchers the supplied shutdown never closes, plus a drain that waits for a browser that is gone.
+- **Normal Quit is slow on `03e13f8e`:** the browser exits after 17 s and the daemon after 37 s, because the same watchers keep the loop alive and the browser waits for it. On the Batch 1 seal, whose JS edit exited 10 s after a requested shutdown, both exited within 8 s. Owner decision pending: close the watchers in the supplied shutdown, or restore that bounded exit.
 - Split toolbar menu "Send Feedback": removed in the sealed Framework (`desktop/split-menu-feedback-a1`). Not yet looked at in the UI.
 - Shortcut-edit acceptance was not repeated on this seal. The validator source is in the linked Phase 1 batch.
 - Sidebar popup lifetime: `desktop/popup-lifetime-rebase-a1` found no source change. The current snapshot already contains the A32 fixes and calls `RetireAuxProfilePopup` from `OnOrdinaryWindowClosing`. The real-app checks in that README were not run.
@@ -75,6 +76,7 @@ Owner decisions that gate later phases: signing for vendor pairing, how to proce
 
 ## Progress log
 
+- 2026-10-27: Daemon peer-loss shutdown bounded natively (seal `03e13f8e`); abort no longer blocks relaunch. Normal Quit slow (17 s / 37 s), recorded under Open.
 - 2026-10-27: The owner approved the plan to full pre-release, in six batches. Decisions: signing, notarization and distribution stay deferred; the versioned identity migration is in scope; REPL source is built now, and Apple gates only its activation; one local Developer ID signing is allowed for the 1Password pairing test; "Send Feedback" is removed; local candidate reseals through the approved repair executor are allowed (AGENTS.md). Batch 1: durable checkout reconciled and built, executor re-rooted, Batch 1 seal `0e79a582` (feedback removal, lifeline edit). Abort test failed and is recorded under Open. 93 `/private/tmp` directories referenced by receipts were APFS-cloned to `out/live-inputs/tmp-preserved/` (`runtime/repl-activation-ready/README.md`).
 
 - 2026-10-27: Repo cleanup. Fixed the paths the `web`→`Aux` rename broke (launchers, live source selection, 39 tests) and moved six live inputs out of `/private/tmp` into `out/live-inputs/`. `pnpm test` now runs every test: 406 pass, 0 fail, 12 opt-in skips (it was 218 pass, 55 fail). Retired `apps/`, `packages/` and their tooling, removed 760 unreferenced receipt folders and 542 uncited archive/acceptance files, and rewrote AGENTS.md and the entry docs as current rules. Everything removed is at tag `archive/pre-cleanup-2026-10-27`.
