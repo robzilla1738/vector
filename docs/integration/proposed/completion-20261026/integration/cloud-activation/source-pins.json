@@ -1,10 +1,10 @@
 {
   "format": "aux.cloud.activation-source-pins.v1",
-  "sourceRoot": "/Users/rcourson/Documents/Vibe/web",
+  "sourceRoot": "/Users/rcourson/Documents/Vibe/Aux",
   "reviewedAt": "2026-10-26",
-  "sourceCommit": "c58d54187499d82876b18d54d75d6dee414e0979",
-  "serviceTree": "a0251fd1925fa95a00b2bfe39d7afe4c557a9150",
-  "lastServiceCommit": "c58d54187499d82876b18d54d75d6dee414e0979",
+  "sourceCommit": "8bb36c9fb26efd89baf4f2bc5758972f06b25f9b",
+  "serviceTree": "d270fcd9c36f122dec49ff86034f82b777a434df",
+  "lastServiceCommit": "36ed09783d0d1816acc8e0f7ece7ff4a222b8bd4",
   "serviceFiles": [
     {
       "path": "services/aux-cloud/.env.example",
@@ -928,8 +928,8 @@
     },
     {
       "path": "services/aux-cloud/src/cloud-identity.test.ts",
-      "bytes": 4517,
-      "sha256": "bb5963934cdf75ae55322874188edc7f96d8f078cfdff6fac6a740970d0546bc"
+      "bytes": 4284,
+      "sha256": "e2414e3f5d60001a5d65a3eae09cc61eb3398ae403bb4967b83c0dec305843a8"
     },
     {
       "path": "services/aux-cloud/src/db.ts",
@@ -1181,13 +1181,13 @@
     },
     {
       "path": "docs/integration/proposed/completion-20261026/integration/product-information/community.md",
-      "bytes": 1271,
-      "sha256": "77c7a1d5077f59e39b03757cb6ef286d57e4299276bfb98ce386844daf742222"
+      "bytes": 1362,
+      "sha256": "575a7c43e9cd91d1a03c6f2669f0c283d2ddf1076c2f83262fdda06f48b9a86d"
     },
     {
       "path": "docs/integration/proposed/completion-20261026/integration/product-information/privacy.md",
-      "bytes": 4207,
-      "sha256": "fe7a20f9c49332e71e47d047b16228c25d08184f82fb3ce41d1128c97b0c53aa"
+      "bytes": 4406,
+      "sha256": "6ae3a9f2734298bbcf2f8141a6a8e34630b351b6777b1867cc48099da86ba90f"
     },
     {
       "path": "docs/integration/proposed/completion-20261026/integrator/paired-source-a7.json",
@@ -1221,18 +1221,18 @@
     },
     {
       "path": "docs/cloud/setup-2026-10-21.md",
-      "bytes": 5956,
-      "sha256": "10afb3ea28681fd6e53a7ac2ca9b86fb6ac2bf7f6227a6ec6f46cb115426e582"
+      "bytes": 6132,
+      "sha256": "a8a1d804b73abb408930b5abb55baadaf2f5413feee0df35bb14639f523af592"
     },
     {
       "path": "docs/cloud/account-setup-2026-10-23.md",
-      "bytes": 6676,
-      "sha256": "ed8a0c2e8fa63ca16694caf04f03eb30dcf240aa73517025e5988216c61178a1"
+      "bytes": 6776,
+      "sha256": "ee748795a170270647b2f88d700b004a3917d356dd807b2528bbb1a48bd2b05d"
     },
     {
       "path": "docs/cloud/dedicated-backup-runner-review/README.md",
-      "bytes": 8505,
-      "sha256": "f1911097367b359d96288987a691e5a1f54d4788387011acff8cd342127be3f2"
+      "bytes": 8594,
+      "sha256": "6ab7ce4a0688881d9d9f8e1b8fc6e43f30c6dfbccd144447aefc34100a2549c6"
     },
     {
       "path": "docs/integration/proposed/aux-backup-r2-live/README.md",
