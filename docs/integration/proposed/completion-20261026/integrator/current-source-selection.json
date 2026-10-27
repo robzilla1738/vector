@@ -1,7 +1,7 @@
 {
   "format": "aux.completion.current-source-selection.v1",
   "candidate": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-completion-20261026-a1/Aux.app",
-  "signedInventorySha256": "582c9aa8fd641c666ee16fdafb2aba9f10268d97e2b27d2cb20aacf8a6bc52c4",
+  "signedInventorySha256": "2ed31bade5f9b26f950833136b54fdecea0ab64eac4665b26cc8a74e535adf4f",
   "sourceSnapshots": [
     {
       "path": "/Users/rcourson/Documents/Vibe/web/docs/integration/proposed/completion-20261026/runtime/addon-local-signing-review/actual-signed-source-a1/source/daemon-policy.swift",
@@ -207,5 +207,29 @@
   "combinedLocalAccountShortcutRepair": {
     "path": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-completion-20261026-a1/combined-local-account-shortcut-a1/receipt.json",
     "sha256": "c2896b750db21d49a2655514e2fdb20c59fca221db718ce6ec8fddae5acbae95"
+  },
+  "combinedReplEventLoopGuardRepair": {
+    "path": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-completion-20261026-a1/combined-repl-event-loop-guard-a1/receipt.json",
+    "sha256": "710eac50f084c6de7c4ad4e08140607a5e44087590020082ed484522fb644590"
+  },
+  "currentDaemonResources": {
+    "index": {
+      "path": "/private/tmp/aux-repl-event-loop-guard-20261026-a1-current/index.mjs",
+      "sha256": "5549eed1a1c98c89109633d0f86f6c03000ec3c0e2e266db78b98ed3cba0d6d6"
+    },
+    "entry": {
+      "path": "/private/tmp/aux-repl-event-loop-guard-20261026-a1-current/aux-native-entry.mjs",
+      "sha256": "1f04eed7505d3cf65c7a4e65fc203154b7e789afd77da8a659c7fb3de7eb0fed"
+    }
+  },
+  "futureDaemonResources": {
+    "index": {
+      "path": "/private/tmp/aux-repl-event-loop-guard-20261026-a1-future/index.mjs",
+      "sha256": "83e180982aa4885b1a780e75f695c887d301a127f1eec8314d51470744136837"
+    },
+    "entry": {
+      "path": "/private/tmp/aux-repl-event-loop-guard-20261026-a1-future/aux-native-entry.mjs",
+      "sha256": "5f03ff33426a21ac9f112f83d3a55d4f8e34d795652a3a80f085674538662f8f"
+    }
   }
 }

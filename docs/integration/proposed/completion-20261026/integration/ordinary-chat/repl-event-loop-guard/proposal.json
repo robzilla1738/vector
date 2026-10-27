@@ -1,0 +1,45 @@
+{
+  "format": "aux.repl-event-loop-guard-proposal.v1",
+  "variant": "current",
+  "resources": [
+    {
+      "path": "/private/tmp/aux-queued-send-preservation-20261026-a3-current/index.mjs",
+      "name": "index.mjs",
+      "beforeSha256": "728b23c29c1fc3c828947c5342c9f07f1c8daac5d40f5b4c5116ac79caaa7b98",
+      "afterSha256": "5549eed1a1c98c89109633d0f86f6c03000ec3c0e2e266db78b98ed3cba0d6d6"
+    },
+    {
+      "path": "/private/tmp/aux-queued-send-preservation-20261026-a3-current/aux-native-entry.mjs",
+      "name": "aux-native-entry.mjs",
+      "beforeSha256": "859226116f2a4f76a988750ba15deaae844f75776afb70d55ab8d646d16fce2a",
+      "afterSha256": "1f04eed7505d3cf65c7a4e65fc203154b7e789afd77da8a659c7fb3de7eb0fed"
+    }
+  ],
+  "rules": [
+    {
+      "find": "QuickJSBridge=class Cn{runtime;ctx;#e;",
+      "replace": "QuickJSBridge=class Cn{runtime;ctx;#auxPumpScheduled=!1;#e;",
+      "count": 1
+    },
+    {
+      "find": "EVAL_FLAG_ASYNC,GUEST_FILENAME,HOST_DENYLIST,QuickJSBridge,init_bridge=",
+      "replace": "EVAL_FLAG_ASYNC,GUEST_FILENAME,HOST_DENYLIST,QuickJSBridge,AUX_QUICKJS_PUMP_BATCH=64,AUX_QUICKJS_PUMP_SLICE_MS=50,init_bridge=",
+      "count": 1
+    },
+    {
+      "find": "pump(){for(;this.ctx.alive&&this.runtime.hasPendingJob();){let Cn=this.runtime.executePendingJobs();Cn.error?Cn.error.dispose():Cn.dispose()}}",
+      "replace": "pump(){if(this.#auxPumpScheduled)return;let Cn=Date.now();for(;this.ctx.alive&&this.runtime.hasPendingJob();){let ei=this.runtime.executePendingJobs(AUX_QUICKJS_PUMP_BATCH);if(ei.error?ei.error.dispose():ei.dispose(),this.ctx.alive&&this.runtime.hasPendingJob()&&Date.now()-Cn>=AUX_QUICKJS_PUMP_SLICE_MS){this.#auxPumpScheduled=!0;setImmediate(()=>{this.#auxPumpScheduled=!1,this.pump()});return}}}",
+      "count": 1
+    },
+    {
+      "find": "var REPL_RECOVERY_SYNC_TIMEOUT_MS,SNAPSHOT_SLICE_WARNINGS,MODULE_ACCESS_PATTERN,init_run=",
+      "replace": "var REPL_RECOVERY_SYNC_TIMEOUT_MS,SNAPSHOT_SLICE_WARNINGS,MODULE_ACCESS_PATTERN,AUX_REPL_HEARTBEAT_MS=250,AUX_REPL_BLOCK_LIMIT_MS=5e3,init_run=",
+      "count": 1
+    },
+    {
+      "find": "beginRun:(Cn,ei)=>{let ni=Date.now()+ei,ri=!1;return ti.runtime.setInterruptHandler(()=>ri=Cn.signal.aborted||Date.now()>ni),{evaluate:ei=>Promise.race([this.#s(ti,ei),Cn.promise]),normalizeError:ti=>Cn.signal.aborted?Cn.signal.reason:ri?new TimeoutError(`Timed out after ${ei}ms`):ti,dispose:()=>ti.alive&&ti.runtime.removeInterruptHandler()}}",
+      "replace": "beginRun:(Cn,ei)=>{let ni=Date.now()+ei,ri=!1,bi=!1,hb=Date.now(),hi=setInterval(()=>{hb=Date.now()},AUX_REPL_HEARTBEAT_MS);hi.unref?.();return ti.runtime.setInterruptHandler(()=>{let now=Date.now();return ri=Cn.signal.aborted||now>ni,bi||=now-hb>AUX_REPL_BLOCK_LIMIT_MS,ri||bi}),{evaluate:ei=>Promise.race([this.#s(ti,ei),Cn.promise]),normalizeError:ti=>Cn.signal.aborted?Cn.signal.reason:bi?new TimeoutError(`Script ran for over ${AUX_REPL_BLOCK_LIMIT_MS}ms without yielding and was stopped; split long synchronous work into smaller awaited steps`):ri?new TimeoutError(`Timed out after ${ei}ms`):ti,dispose:()=>{clearInterval(hi);if(!ti.alive)return;Cn.signal.aborted||ri||bi?ti.runtime.setInterruptHandler(()=>!0):ti.runtime.removeInterruptHandler()}}}",
+      "count": 1
+    }
+  ]
+}
