@@ -28,10 +28,6 @@ await writeFile(join(root, 'assets/brand/inventory.json'), JSON.stringify({
   outputs,
   consumers: [
     { path: 'scripts/lib/provided-ui.mjs', method: 'Both source paths, exact group/clip and 1024 viewBox; existing 64px slot retained' },
-    { path: 'packages/ui/src/tokens.css', method: 'Canonical SVG mask for shared Mark component' },
-    { path: 'apps/extension/src/first-frame.css', method: 'Canonical SVG mask' },
-    { path: 'apps/vault/src/styles.css', method: 'Canonical SVG mask' },
-    { path: 'scripts/package-aux.mjs', method: 'Canonical Aux.icns copied at packaging' },
     { path: 'Computer Use Resources/MenuBarIcon*.png', method: 'Root packaging must copy canonical 16px/32px template assets into cloned helper, never source helper' },
   ],
   nativeProposal: { path: proposal, sha256: hash(await readFile(join(root, proposal))), applied: false },

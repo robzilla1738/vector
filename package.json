@@ -10,32 +10,14 @@
   },
   "scripts": {
     "aux": "node scripts/aux.mjs",
-    "package": "node scripts/package-provided.mjs",
-    "package:independent": "node scripts/package-aux.mjs",
-    "smoke": "node scripts/daemon-smoke.mjs",
-    "check": "pnpm test:provided && pnpm check:provided",
+    "test": "node --experimental-vm-modules --test vendor/provided/*.test.mjs vendor/aside/shims/*.test.mjs scripts/lib/*.test.mjs scripts/lib/__tests__/*.test.mjs scripts/test_launcher_port_contract.mjs && python3 scripts/test-shell-retirement.py && python3 scripts/test_extend_provided_native.py",
+    "check": "pnpm test && pnpm check:provided",
     "stage:provided": "node scripts/stage-provided.mjs",
     "assemble:provided": "node scripts/assemble-provided.mjs",
     "package:provided": "node scripts/package-provided.mjs",
-    "check:provided": "node scripts/check-provided.mjs",
-    "test:provided": "node --experimental-vm-modules --test vendor/provided/*.test.mjs scripts/lib/provided-*.test.mjs scripts/lib/aux-mark.test.mjs scripts/lib/owned-process.test.mjs scripts/test_launcher_port_contract.mjs",
-    "check:independent": "pnpm build && pnpm typecheck && pnpm lint && pnpm test && pnpm check:cleanroom && pnpm smoke",
-    "check:cleanroom": "node scripts/check-cleanroom.mjs",
-    "reference:index": "node scripts/reference-hashes.mjs",
-    "typecheck": "pnpm -r --if-present typecheck",
-    "lint": "biome check apps packages",
-    "build": "pnpm -r --if-present build",
-    "test": "pnpm -r --if-present test"
+    "check:provided": "node scripts/check-provided.mjs"
   },
   "dependencies": {
     "ws": "8.21.3"
-  },
-  "devDependencies": {
-    "@biomejs/biome": "^2.5.15",
-    "@types/node": "^26.6.5",
-    "@types/ws": "^8.18.2",
-    "esbuild": "^0.28.2",
-    "tsx": "^4.23.15",
-    "typescript": "^7.0.2"
   }
 }
