@@ -11,6 +11,8 @@ import os
 from pathlib import Path, PurePosixPath
 import stat
 
+from aux_chromium import permitted_roots
+
 
 def digest(path):
     return hashlib.sha256(path.read_bytes()).hexdigest()
@@ -46,8 +48,7 @@ def main():
     repo = Path(__file__).resolve().parents[1]
     native = Path(args.native_root).resolve()
     # This feature composition must never mutate the owner's Chromium checkout.
-    permitted = Path('/private/tmp/aux-chromium-recovery-snapshot-20261023/src')
-    if native != permitted or not native.is_dir():
+    if native not in permitted_roots() or not native.is_dir():
         raise ValueError('Only the recorded isolated native tree is permitted')
     manifest_path = Path(args.manifest).resolve()
     if not manifest_path.is_relative_to(repo):

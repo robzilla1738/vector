@@ -1,0 +1,39 @@
+{
+  "format": "aux.completion.actual-result.v1",
+  "batch": "phase1-native-a1",
+  "changes": [
+    "daemon_supervisor: 10 s /auth/ timeout, up to 3 transport retries 500 ms apart",
+    "aside scheme removed from content client and browser client",
+    "profile indicator key aux_profile_indicator_icon with legacy read fallback",
+    "import_webui_resources copyright strings"
+  ],
+  "build": {
+    "command": "ninja -C out/AuxFast -k4 -j8 chrome native_cli_open",
+    "exit": 0,
+    "log": "/Users/rcourson/Documents/Vibe/web/out/completion-resume-20261026/phase1-native-a1-build.log"
+  },
+  "plan": {
+    "path": "/Users/rcourson/Documents/Vibe/web/out/completion-resume-20261026/phase1-native-a1-plan.json",
+    "sha256": "ffff6d30517368f81b15cbc76a1b6b939f1b1826c51ce1a8b79c9061c87081f6"
+  },
+  "repairReceipt": {
+    "path": "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-completion-20261026-a1/combined-phase1-native-a1/receipt.json",
+    "sha256": "e243d902ce1763c187bff7fc69a0232b01c3b2cdaef1df72b7218c237972793e"
+  },
+  "inventorySha256": "d81855c4050f7b7b4de92f0e8e9cd78d1300ed7675aa42a99c9a3da8a6f53f30",
+  "observed": {
+    "startup": "observed: profile picker shown; profile opened via Profiles menu with restored windows, Aux sidebar and agent new-tab page",
+    "authorizationFailedLogLine": "observed absent in direct-launch stderr",
+    "quit": "observed: menu Quit Aux exited 0; daemon stopped",
+    "residuals": [
+      "Chromium logo on profile picker and on the session-restore infobar (fix staged separately as product-logo-a1)",
+      "one-shot '[Remix] Failed to sync content script registration' when the extension starts before the local service is ready (supplied behavior, low impact)",
+      "profile picker card press via accessibility did not open the profile; Profiles menu did (not investigated further)"
+    ]
+  },
+  "evidence": [
+    "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-completion-20261026-a1/phase1-native-startup-a1/startup.png",
+    "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-completion-20261026-a1/phase1-native-startup-a1/browser.png",
+    "/Users/rcourson/Documents/Vibe/web/out/provided-candidate-completion-20261026-a1/phase1-native-startup-a1/direct.stderr"
+  ]
+}

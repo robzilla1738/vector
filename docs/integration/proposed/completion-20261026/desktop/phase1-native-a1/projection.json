@@ -1,0 +1,35 @@
+{
+  "source": "/private/tmp/aux-chromium-recovery-snapshot-20261023/src",
+  "files": [
+    {
+      "path": "chrome/browser/aux/daemon_supervisor.cc",
+      "baselineSha256": "c7b2f5b173929970f2b9221833005390bd88c93bd5fa365e600a0d406db2eb8f",
+      "outputSha256": "54a775979fe26960e4453745bad297e791c89638bc23717ff57fb5973c973339"
+    },
+    {
+      "path": "chrome/browser/aux/daemon_supervisor.h",
+      "baselineSha256": "39405df1cbc9a4c81b44bff371779d77e5ef8b1d1d7f97777b29933ef5fbc91f",
+      "outputSha256": "6ad964f991ef40dabffe554d37538760bd8b5801404d70e17a63ea574218b169"
+    },
+    {
+      "path": "chrome/browser/chrome_content_browser_client.cc",
+      "baselineSha256": "0584d40c6a3d884a3510119ef787d15b18a7ed89ee5fab8a8f8516fc112c693a",
+      "outputSha256": "8f301dfa46a8f79cd0b3b84dc3c153ba7770aee12e0bb8e228ec37fe776dd742"
+    },
+    {
+      "path": "chrome/browser/extensions/api/aux_browser_import/import_webui_resources.h",
+      "baselineSha256": "a8f6d3fe940119df4095a045da942d7d29e1eefc296968611e29ab8790f97b92",
+      "outputSha256": "442ece210fe0fab84f1194983c6421a19fc5ab36e89e351f0c4a21719b899a78"
+    },
+    {
+      "path": "chrome/browser/profiles/profile_attributes_entry.cc",
+      "baselineSha256": "99e1891feae5ff684c10f382e54b4f8b427b8b2cd42ace2942eb8bf71c53f327",
+      "outputSha256": "0caf6d4026d4cd853b797c95da00fc9cd9abe5c32975ca2e1f895697f402eff0"
+    },
+    {
+      "path": "chrome/common/chrome_content_client.cc",
+      "baselineSha256": "b2b0e805529733c5ef8f858f5beae31bf881e9ca3db0b2e9a60863c5ddae64ae",
+      "outputSha256": "12a07605f41c7ed113c0d0a21080fecb0cb039d66c48b57acb8f5d85d7f5a437"
+    }
+  ]
+}
