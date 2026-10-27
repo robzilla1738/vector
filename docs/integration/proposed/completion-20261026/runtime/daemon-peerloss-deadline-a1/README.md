@@ -17,4 +17,4 @@ Built with the recorded fixed-builtins `main.o` command and the PDF-ABI relink c
 Observed on `03e13f8e`:
 - the daemon exits 21 s after a browser abort;
 - relaunch then works;
-- normal Quit works but takes 17 s for the browser and 37 s for the daemon, because on a clean Quit the loop doesn't end either.
+- Quit and abort re-timed with stage logs (`shutdown-timing.json`). Quit once the daemon is idle is clean: daemon 1.2 to 2.9 s, browser 6.1 to 7.8 s. The slow Quit (17 s / 37 s) happens only when quitting in the first seconds after launch, through two startup races in Aux's shutdown code, not the watchers. In the first race, `/shutdown` is sent before the supervisor holds a token and is refused with 401. In the second, a memory write still in flight is refused once broker admission closes, and the owner is retained.

@@ -1,0 +1,18 @@
+{
+ "format": "aux.completion.shutdown-timing.v1",
+ "date": "2026-10-27",
+ "seal": "03e13f8e6886f83ca2d81c484246252f8786f675e5be50d0282f0993ed09fef3",
+ "method": "candidate launched directly with browser stderr (and the inherited daemon stderr) timestamped; Aux shutdown stage markers come from auxShutdownDiagnostic; supervisor states from --enable-logging=stderr --log-level=0. Logs: out/provided-candidate-completion-20261026-a1/shutdown-stages-a1/",
+ "watchers": "Not the cause. broker.watchers.settled appears in every Quit run; both chokidar watchers close. No watcher change was made.",
+ "observed": {
+  "idleQuit": "Quit 75 s after startup: daemon exited 2.9 s, browser 7.8 s after Quit; stages ran to daemon.exit",
+  "quitAfterRecovery": "after an abort and relaunch, Quit 60 s after startup: daemon 1.2 s, browser 6.1 s",
+  "idleAbort": "abort 60 s after startup: daemon exited 20.8 s later; relaunch listening after 25 s",
+  "earlyQuitA": "Quit about 10 s after startup, before the supervisor held a session token: POST /shutdown answered 401, the supervisor gave up after its 5 s native deadline, the browser exited, and the daemon left through the peer-loss bound (browser 17 s, daemon 37 s)",
+  "earlyQuitB": "Quit right after the supervisor became Ready: /shutdown accepted and every stage ran in 0.26 s, but a startup memory-index write was refused (AUX_BROKER_CLOSED) because beginShutdown closes broker admission before producer stops. The memory close then failed (\"Memory process closed before write completion\"), broker.failed, the owner was retained, and the daemon left through the peer-loss bound"
+ },
+ "open": [
+  "Supervisor sends /shutdown with whatever token it holds; when none is held yet, the daemon refuses it with 401 and shutdown waits for peer loss.",
+  "beginShutdown refuses broker writes before producer stops finish, so an in-flight memory write turns a normal Quit into a retained, unclean exit."
+ ]
+}
