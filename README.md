@@ -13,7 +13,7 @@ Neither is a release. `python3 scripts/verify-candidate.py` checks that the cand
 
 | Path | What it holds |
 |---|---|
-| `scripts/` | Stage, assemble, package and audit the supplied implementation (`stage-provided`, `assemble-provided`, `package-provided`, `check-provided`), the dev launcher `aux.mjs`, and native helpers (`native-build.py`, `compose-provided-native.py`). Shared code is in `scripts/lib/`. |
+| `scripts/` | Stage, assemble, package and audit the supplied implementation (`stage-provided`, `assemble-provided`, `package-provided`, `check-provided`), the dev launcher `aux.mjs`, native helpers (`native-build.py`, `compose-provided-native.py`), and the candidate tools in `scripts/candidate/` (edit preparation, daemon relink, plan freeze and the repair executor). Shared code is in `scripts/lib/`. |
 | `vendor/provided/` | Aux adaptations of supplied components: branding/identity transforms, adapters and their tests. |
 | `vendor/aside/` | Shims, patches and entitlements applied to the supplied binaries. |
 | `vendor/provided-ui/` | Aux branding assets for the supplied UI. |

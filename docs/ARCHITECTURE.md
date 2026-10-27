@@ -28,6 +28,6 @@ There is no Vault extension and no built-in password manager. Users bring a prov
 
 ## Compatibility boundaries
 
-The candidate still uses the compatibility protocol bytes and `aside.dk.*` HKDF domains listed in the contract. They are wire and cryptographic formats, not branding, and change only through a versioned migration. A few Aside identifiers live inside the immutable supplied addon and are remapped at runtime; STATUS lists them.
+The wire protocol and key domains are Aux (`AuxDaemonSessionToken`, `aux.dk.v2`; see the contract). Changing a wire or cryptographic format again is a versioned migration, not branding. The boundary guard's legacy Keychain acceptance list is the last Aside identifier; STATUS tracks it.
 
 The retired clean-room implementation that preceded this design is at tag `archive/pre-cleanup-2026-10-27`.

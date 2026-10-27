@@ -9,8 +9,8 @@ Read the root `AGENTS.md` and `docs/STATUS.md` first.
 ## Native targets
 
 - `out/AuxAside` is the intermediate component build. Its historical output directory
-  name is not a shipped product identifier. It must have `enable_aux_browser=true`
-  and `enable_aux_shell=false`; a disabled browser flag does not verify new sources.
+  name is not a shipped product identifier. It must have `enable_aux_browser=true`;
+  a disabled browser flag does not verify new sources. The retired shell flag no longer exists.
 - `out/AuxFast` is the final non-component build. Use
   `chromium/flags.aux.gn`, with `is_official_build=false` for the local unsigned build.
   Preserve an existing args file before changing it. The browser executable lives
